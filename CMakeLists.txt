@@ -973,7 +973,7 @@ ENDIF()
 
 IF(loam_velodyne_FOUND)
 MESSAGE(STATUS "  With loam_velodyne        = YES (License: BSD)")
-ELSEIF(NOT WITH_POINTMATCHER)
+ELSEIF(NOT WITH_LOAM)
 MESSAGE(STATUS "  With loam_velodyne        = NO (WITH_LOAM=OFF)")
 ELSE()
 MESSAGE(STATUS "  With loam_velodyne        = NO (loam_velodyne not found)")
