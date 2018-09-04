@@ -90,7 +90,7 @@ before_build:
   - cd c:\projects\rtabmap\build
   - ECHO %PROGRAMFILES%
   - ECHO %PATH%
-  - cmake -G "Visual Studio 14 2015 Win64" -DOpenCV_DIR="C:\Program Files\opencv\build" -DPCL_DIR="C:\Program Files\PCL\cmake" -DZLIB_ROOT="C:\Program Files\zlib" ..
+  - cmake -G "Visual Studio 14 2015 Win64" -DOpenCV_DIR="C:\Program Files\opencv\build" -DPCL_DIR="C:\Program Files\PCL\cmake" -DZLIB_ROOT="C:\Program Files\zlib" -DBUILD_AS_BUNDLE=ON ..
   
 after_build :
   - cmake --build . --config Release --target package
