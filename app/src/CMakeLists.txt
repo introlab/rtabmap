@@ -189,5 +189,5 @@ IF(BUILD_AS_BUNDLE AND (APPLE OR WIN32))
     include(\"BundleUtilities\")
     fixup_bundle(\"${APPS}\" \"\${QTPLUGINS}\" \"${DIRS}\")
   " COMPONENT runtime)
-ENDIF((APPLE AND BUILD_AS_BUNDLE) OR WIN32)
+ENDIF(BUILD_AS_BUNDLE AND (APPLE OR WIN32))
   
