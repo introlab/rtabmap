@@ -6,25 +6,6 @@
 #  Sqlite3_INCLUDE_DIR - The Sqlite3 include directory.
 #  Sqlite3_LIBRARY     - The Sqlite3 library to link against.
 
-SET(Sqlite3_VERSION_REQUIRED "3.6.0")
-
-IF(UNIX)
-	FIND_PROGRAM(Sqlite3_EXEC NAME sqlite3 PATHS $ENV{Sqlite3_ROOT_DIR}/bin $ENV{Sqlite3_ROOT_DIR})  
-	IF(Sqlite3_EXEC)  
-        MESSAGE(STATUS "Found Sqlite3 executable : ${Sqlite3_EXEC}")
-		EXECUTE_PROCESS(COMMAND ${Sqlite3_EXEC} --version 
-				   	    OUTPUT_VARIABLE Sqlite3_VERSION
-						OUTPUT_STRIP_TRAILING_WHITESPACE
-						WORKING_DIRECTORY "./"
-   		)
-		IF(Sqlite3_VERSION VERSION_LESS Sqlite3_VERSION_REQUIRED)
-		    MESSAGE(FATAL_ERROR "Sqlite ${Sqlite3_VERSION} found, but version ${Sqlite3_VERSION_REQUIRED} minimum is required")
-		ENDIF(Sqlite3_VERSION VERSION_LESS Sqlite3_VERSION_REQUIRED)
-	ELSE(Sqlite3_EXEC)
-		MESSAGE(FATAL_ERROR "Could not find Sqlite3 executable")
-	ENDIF(Sqlite3_EXEC)
-ENDIF(UNIX)
-
 FIND_PATH(Sqlite3_INCLUDE_DIR sqlite3.h PATHS $ENV{Sqlite3_ROOT_DIR}/include $ENV{Sqlite3_ROOT_DIR})
 
 FIND_LIBRARY(Sqlite3_LIBRARY NAMES sqlite3 PATHS $ENV{Sqlite3_ROOT_DIR}/lib $ENV{Sqlite3_ROOT_DIR})
