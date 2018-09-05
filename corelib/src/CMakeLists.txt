@@ -83,9 +83,7 @@ SET(SRC_FILES
 		
 	rtflann/ext/lz4.c
 	rtflann/ext/lz4hc.c
-	FlannIndex.cpp
-	
-	sqlite3/sqlite3.c	
+	FlannIndex.cpp	
 	
 	#clams stuff
 	clams/discrete_depth_distortion_model_helpers.cpp
@@ -128,6 +126,26 @@ SET(LIBRARIES
 	${PCL_LIBRARIES} 
 	${ZLIB_LIBRARIES} 
 )
+
+IF(Sqlite3_FOUND)
+    SET(INCLUDE_DIRS
+		${INCLUDE_DIRS}
+		${Sqlite3_INCLUDE_DIRS}
+	)
+	SET(LIBRARIES
+		${LIBRARIES}
+		${Sqlite3_LIBRARIES}
+	)
+ELSE()
+	SET(SRC_FILES
+		${SRC_FILES}
+		sqlite3/sqlite3.c
+	)
+	 SET(INCLUDE_DIRS
+	    ${CMAKE_CURRENT_SOURCE_DIR}/sqlite3
+		${INCLUDE_DIRS}
+	)
+ENDIF()
 
 IF(Freenect_FOUND)
 	IF(Freenect_DASH_INCLUDES)

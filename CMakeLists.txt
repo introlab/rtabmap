@@ -187,6 +187,11 @@ endif()
 
 FIND_PACKAGE(ZLIB REQUIRED QUIET)
 
+FIND_PACKAGE(Sqlite3 QUIET)
+IF(Sqlite3_FOUND)
+   MESSAGE(STATUS "Found Sqlite3: ${Sqlite3_INCLUDE_DIRS} ${Sqlite3_LIBRARIES}")
+ENDIF(Sqlite3_FOUND)
+
 if(NOT "${PCL_LIBRARIES}" STREQUAL "")
    # fix libproj.so not found on Xenial
    list(REMOVE_ITEM PCL_LIBRARIES "vtkproj4")
@@ -878,6 +883,12 @@ IF(OpenCV_FOUND)
     ENDIF()
   ENDIF()
 ENDIF(OpenCV_FOUND)
+
+IF(SQLITE3_FOUND)
+MESSAGE(STATUS "  With external SQLite3     = YES")
+ELSE()
+MESSAGE(STATUS "  With external SQLite3     = NO (sqlite3 not found, internal version is used for convenience)")
+ENDIF()
 
 IF(Freenect_FOUND)
 MESSAGE(STATUS "  With Freenect             = YES (License: Apache v2 and/or GPLv2)")
