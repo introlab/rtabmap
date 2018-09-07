@@ -47,7 +47,7 @@ void showUsage()
 			"\n"
 			"Example:\n"
 			"     (with images from \"https://github.com/introlab/rtabmap/wiki/Stereo-mapping#process-a-directory-of-stereo-images\") \n"
-			"     $ rtabmap-noEventsExample 20 2 10 stereo_20hz stereo_20Hz stereo_20hz/left stereo_20hz/right\n"
+			"     $ rtabmap-noEventsExample 20 2 10 stereo_20Hz stereo_20Hz stereo_20Hz/left stereo_20Hz/right\n"
 			"       Camera rate = 20 Hz\n"
 			"       Odometry update rate = 10 Hz\n"
 			"       Map update rate = 1 Hz\n");
