@@ -55,12 +55,12 @@ private:
 #ifdef RTABMAP_OKVIS
 	OkvisCallbackHandler * okvisCallbackHandler_;
 	okvis::ThreadedKFVio * okvisEstimator_;
+	int imagesProcessed_;
+	bool initGravity_;
 #endif
 	ParametersMap okvisParameters_;
 	IMU lastImu_; // only used for initialization
-	int imagesProcessed_;
 	Transform previousPose_;
-	bool initGravity_;
 };
 
 }

@@ -131,11 +131,11 @@ OdometryOkvis::OdometryOkvis(const ParametersMap & parameters) :
 #ifdef RTABMAP_OKVIS
 	okvisCallbackHandler_(new OkvisCallbackHandler),
 	okvisEstimator_(0),
+	imagesProcessed_(0),
+	initGravity_(false),
 #endif
 	okvisParameters_(parameters),
-	imagesProcessed_(0),
-	previousPose_(Transform::getIdentity()),
-	initGravity_(false)
+	previousPose_(Transform::getIdentity())
 {
 #ifdef RTABMAP_OKVIS
 	Parameters::parse(parameters, Parameters::kOdomOKVISConfigPath(), configFilename_);
