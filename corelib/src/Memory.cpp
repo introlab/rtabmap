@@ -3744,11 +3744,12 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 
 	int preDecimation = 1;
 	std::vector<cv::Point3f> keypoints3D;
+	SensorData decimatedData;
 	if(!_useOdometryFeatures || data.keypoints().empty() || (int)data.keypoints().size() != data.descriptors().rows)
 	{
 		if(_feature2D->getMaxFeatures() >= 0 && !data.imageRaw().empty() && !isIntermediateNode)
 		{
-			SensorData decimatedData = data;
+			decimatedData = data;
 			if(_imagePreDecimation > 1)
 			{
 				preDecimation = _imagePreDecimation;
@@ -4034,7 +4035,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 		UASSERT(wordIds.size() == keypoints.size());
 		UASSERT(keypoints3D.size() == 0 || keypoints3D.size() == wordIds.size());
 		unsigned int i=0;
-		float decimationRatio = preDecimation / _imagePostDecimation;
+		float decimationRatio = float(preDecimation) / float(_imagePostDecimation);
 		double log2value = log(double(preDecimation))/log(2.0);
 		for(std::list<int>::iterator iter=wordIds.begin(); iter!=wordIds.end() && i < keypoints.size(); ++iter, ++i)
 		{
@@ -4060,9 +4061,47 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 		}
 	}
 
+	cv::Mat image = data.imageRaw();
+	cv::Mat depthOrRightImage = data.depthOrRightRaw();
+	std::vector<CameraModel> cameraModels = data.cameraModels();
+	StereoCameraModel stereoCameraModel = data.stereoCameraModel();
+
+	// apply decimation?
+	if(_imagePostDecimation > 1 && !isIntermediateNode)
+	{
+		if(_imagePostDecimation == preDecimation && decimatedData.isValid())
+		{
+			image = decimatedData.imageRaw();
+			depthOrRightImage = decimatedData.depthOrRightRaw();
+			cameraModels = decimatedData.cameraModels();
+			stereoCameraModel = decimatedData.stereoCameraModel();
+		}
+		else
+		{
+			if(!data.rightRaw().empty() ||
+				(data.depthRaw().rows == image.rows && data.depthRaw().cols == image.cols))
+			{
+				depthOrRightImage = util2d::decimate(depthOrRightImage, _imagePostDecimation);
+			}
+			image = util2d::decimate(image, _imagePostDecimation);
+			for(unsigned int i=0; i<cameraModels.size(); ++i)
+			{
+				cameraModels[i] = cameraModels[i].scaled(1.0/double(_imagePostDecimation));
+			}
+			if(stereoCameraModel.isValidForProjection())
+			{
+				stereoCameraModel.scale(1.0/double(_imagePostDecimation));
+			}
+		}
+
+		t = timer.ticks();
+		if(stats) stats->addStatistic(Statistics::kTimingMemPost_decimation(), t*1000.0f);
+		UDEBUG("time post-decimation = %fs", t);
+	}
+
 	bool triangulateWordsWithoutDepth = !_depthAsMask;
 	if(!pose.isNull() &&
-		data.cameraModels().size() == 1 &&
+		cameraModels.size() == 1 &&
 		words.size() &&
 		(words3D.size() == 0 || (triangulateWordsWithoutDepth && words.size() == words3D.size())) &&
 		_registrationPipeline->isImageRequired() &&
@@ -4087,7 +4126,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 			Signature cpCurrent(1);
 			uniqueWords = uMultimapToMapUnique(words);
 			uniqueWordsDescriptors = uMultimapToMapUnique(wordsDescriptors);
-			cpCurrent.sensorData().setCameraModels(data.cameraModels());
+			cpCurrent.sensorData().setCameraModels(cameraModels);
 			cpCurrent.setWords(std::multimap<int, cv::KeyPoint>(uniqueWords.begin(), uniqueWords.end()));
 			cpCurrent.setWordsDescriptors(std::multimap<int, cv::Mat>(uniqueWordsDescriptors.begin(), uniqueWordsDescriptors.end()));
 			// This will force comparing descriptors between both images directly
@@ -4098,7 +4137,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 			std::map<int, cv::Point3f> inliers = util3d::generateWords3DMono(
 					uMultimapToMapUnique(cpCurrent.getWords()),
 					uMultimapToMapUnique(cpPrevious.getWords()),
-					data.cameraModels()[0],
+					cameraModels[0],
 					cameraTransform);
 
 			UDEBUG("inliers=%d", (int)inliers.size());
@@ -4137,34 +4176,6 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 			if(stats) stats->addStatistic(Statistics::kTimingMemKeypoints_3D(), t*1000.0f);
 			UDEBUG("time keypoints 3D (%d) = %fs", (int)words3D.size(), t);
 		}
-	}
-
-	cv::Mat image = data.imageRaw();
-	cv::Mat depthOrRightImage = data.depthOrRightRaw();
-	std::vector<CameraModel> cameraModels = data.cameraModels();
-	StereoCameraModel stereoCameraModel = data.stereoCameraModel();
-
-	// apply decimation?
-	if(_imagePostDecimation > 1 && !isIntermediateNode)
-	{
-		if(!data.rightRaw().empty() ||
-			(data.depthRaw().rows == image.rows && data.depthRaw().cols == image.cols))
-		{
-			depthOrRightImage = util2d::decimate(depthOrRightImage, _imagePostDecimation);
-		}
-		image = util2d::decimate(image, _imagePostDecimation);
-		for(unsigned int i=0; i<cameraModels.size(); ++i)
-		{
-			cameraModels[i] = cameraModels[i].scaled(1.0/double(_imagePostDecimation));
-		}
-		if(stereoCameraModel.isValidForProjection())
-		{
-			stereoCameraModel.scale(1.0/double(_imagePostDecimation));
-		}
-
-		t = timer.ticks();
-		if(stats) stats->addStatistic(Statistics::kTimingMemPost_decimation(), t*1000.0f);
-		UDEBUG("time post-decimation = %fs", t);
 	}
 
 	// Filter the laser scan?
