@@ -837,16 +837,19 @@ void Memory::addSignatureToStm(Signature * signature, const cv::Mat & covariance
 						*_stMem.rbegin(), signature->id(),
 						_signatures.at(*_stMem.rbegin())->mapId(), signature->mapId());
 
-				//Tag the first node of the map
-				std::string tag = uFormat("map%d", signature->mapId());
-				if(getSignatureIdByLabel(tag, false) == 0)
+				if(_mapLabelsAdded && isIncremental())
 				{
-					UINFO("Tagging node %d with label \"%s\"", signature->id(), tag.c_str());
-					signature->setLabel(tag);
+					//Tag the first node of the map
+					std::string tag = uFormat("map%d", signature->mapId());
+					if(getSignatureIdByLabel(tag, false) == 0)
+					{
+						UINFO("Tagging node %d with label \"%s\"", signature->id(), tag.c_str());
+						signature->setLabel(tag);
+					}
 				}
 			}
 		}
-		else if(_mapLabelsAdded)
+		else if(_mapLabelsAdded && isIncremental())
 		{
 			//Tag the first node of the map
 			std::string tag = uFormat("map%d", signature->mapId());
