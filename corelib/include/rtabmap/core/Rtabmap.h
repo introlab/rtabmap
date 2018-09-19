@@ -250,7 +250,7 @@ private:
 	float _proximityAngle;
 	std::string _databasePath;
 	bool _optimizeFromGraphEnd;
-	float _optimizationMaxLinearError;
+	float _optimizationMaxError;
 	bool _startNewMapOnLoopClosure;
 	bool _startNewMapOnGoodSignature;
 	float _goalReachedRadius; // meters

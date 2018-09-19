@@ -114,7 +114,7 @@ Rtabmap::Rtabmap() :
 	_proximityAngle(Parameters::defaultRGBDProximityAngle()*M_PI/180.0f),
 	_databasePath(""),
 	_optimizeFromGraphEnd(Parameters::defaultRGBDOptimizeFromGraphEnd()),
-	_optimizationMaxLinearError(Parameters::defaultRGBDOptimizeMaxError()),
+	_optimizationMaxError(Parameters::defaultRGBDOptimizeMaxError()),
 	_startNewMapOnLoopClosure(Parameters::defaultRtabmapStartNewMapOnLoopClosure()),
 	_startNewMapOnGoodSignature(Parameters::defaultRtabmapStartNewMapOnGoodSignature()),
 	_goalReachedRadius(Parameters::defaultRGBDGoalReachedRadius()),
@@ -455,7 +455,7 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 		_proximityAngle *= M_PI/180.0f;
 	}
 	Parameters::parse(parameters, Parameters::kRGBDOptimizeFromGraphEnd(), _optimizeFromGraphEnd);
-	Parameters::parse(parameters, Parameters::kRGBDOptimizeMaxError(), _optimizationMaxLinearError);
+	Parameters::parse(parameters, Parameters::kRGBDOptimizeMaxError(), _optimizationMaxError);
 	Parameters::parse(parameters, Parameters::kRtabmapStartNewMapOnLoopClosure(), _startNewMapOnLoopClosure);
 	Parameters::parse(parameters, Parameters::kRtabmapStartNewMapOnGoodSignature(), _startNewMapOnGoodSignature);
 	Parameters::parse(parameters, Parameters::kRGBDGoalReachedRadius(), _goalReachedRadius);
@@ -2244,6 +2244,8 @@ bool Rtabmap::process(
 	//============================================================
 	float maxLinearError = 0.0f;
 	float maxLinearErrorRatio = 0.0f;
+	float maxAngularError = 0.0f;
+	float maxAngularErrorRatio = 0.0f;
 	double optimizationError = 0.0;
 	int optimizationIterations = 0;
 	cv::Mat localizationCovariance;
@@ -2340,12 +2342,13 @@ bool Rtabmap::process(
 				rejectedHypothesis = true;
 			}
 			else if(_memory->isIncremental() && // FIXME: not tested in localization mode, so do it only in mapping mode
-			  _optimizationMaxLinearError > 0.0f &&
+			  _optimizationMaxError > 0.0f &&
 			  loopClosureLinksAdded.size() &&
 			  optimizationIterations > 0 &&
 			  constraints.size())
 			{
 				const Link * maxLinearLink = 0;
+				const Link * maxAngularLink = 0;
 				for(std::multimap<int, Link>::iterator iter=constraints.begin(); iter!=constraints.end(); ++iter)
 				{
 					// ignore links with high variance
@@ -2358,27 +2361,43 @@ bool Rtabmap::process(
 								fabs(iter->second.transform().x() - t.x()),
 								fabs(iter->second.transform().y() - t.y()),
 								fabs(iter->second.transform().z() - t.z()));
-						float stddev = sqrt(iter->second.transVariance());
-						float linearErrorRatio = linearError/stddev;
+						float opt_roll,opt__pitch,opt__yaw;
+						float link_roll,link_pitch,link_yaw;
+						t.getEulerAngles(opt_roll, opt__pitch, opt__yaw);
+						iter->second.transform().getEulerAngles(link_roll, link_pitch, link_yaw);
+						float angularError = uMax3(
+								fabs(opt_roll - link_roll),
+								fabs(opt__pitch - link_pitch),
+								fabs(opt__yaw - link_yaw));
+						float stddevLinear = sqrt(iter->second.transVariance());
+						float linearErrorRatio = linearError/stddevLinear;
 						if(linearErrorRatio > maxLinearErrorRatio)
 						{
 							maxLinearError = linearError;
 							maxLinearErrorRatio = linearErrorRatio;
 							maxLinearLink = &iter->second;
 						}
+						float stddevAngular = sqrt(iter->second.rotVariance());
+						float angularErrorRatio = angularError/stddevAngular;
+						if(angularErrorRatio > maxAngularErrorRatio)
+						{
+							maxAngularError = angularError;
+							maxAngularErrorRatio = angularErrorRatio;
+							maxAngularLink = &iter->second;
+						}
 					}
 				}
+				bool reject = false;
 				if(maxLinearLink)
 				{
-					UINFO("Max optimization error = %f m (link %d->%d, var=%f, ratio error/std=%f)", maxLinearError, maxLinearLink->from(), maxLinearLink->to(), maxLinearLink->transVariance(), maxLinearError/sqrt(maxLinearLink->transVariance()));
-
-					if(maxLinearErrorRatio > _optimizationMaxLinearError)
+					UINFO("Max optimization linear error = %f m (link %d->%d, var=%f, ratio error/std=%f)", maxLinearError, maxLinearLink->from(), maxLinearLink->to(), maxLinearLink->transVariance(), maxLinearError/sqrt(maxLinearLink->transVariance()));
+					if(maxLinearErrorRatio > _optimizationMaxError)
 					{
 						UWARN("Rejecting all added loop closures (%d) in this "
 							  "iteration because a wrong loop closure has been "
 							  "detected after graph optimization, resulting in "
-							  "a maximum graph error ratio of %f (edge %d->%d, type=%d, abs error=%f, stddev=%f). The "
-							  "maximum error ratio parameter is %f of std deviation.",
+							  "a maximum graph error ratio of %f (edge %d->%d, type=%d, abs error=%f m, stddev=%f). The "
+							  "maximum error ratio parameter \"%s\" is %f of std deviation.",
 							  (int)loopClosureLinksAdded.size(),
 							  maxLinearErrorRatio,
 							  maxLinearLink->from(),
@@ -2386,17 +2405,45 @@ bool Rtabmap::process(
 							  maxLinearLink->type(),
 							  maxLinearError,
 							  sqrt(maxLinearLink->transVariance()),
-							  _optimizationMaxLinearError);
-						for(std::list<std::pair<int, int> >::iterator iter=loopClosureLinksAdded.begin(); iter!=loopClosureLinksAdded.end(); ++iter)
-						{
-							_memory->removeLink(iter->first, iter->second);
-							UWARN("Loop closure %d->%d rejected!", iter->first, iter->second);
-						}
-						updateConstraints = false;
-						_loopClosureHypothesis.first = 0;
-						lastProximitySpaceClosureId = 0;
-						rejectedHypothesis = true;
+							  Parameters::kRGBDOptimizeMaxError().c_str(),
+							  _optimizationMaxError);
+						reject = true;
 					}
+				}
+				if(maxAngularLink)
+				{
+					UINFO("Max optimization angular error = %f deg (link %d->%d, var=%f, ratio error/std=%f)", maxAngularError*180.0f/CV_PI, maxAngularLink->from(), maxAngularLink->to(), maxAngularLink->rotVariance(), maxAngularError/sqrt(maxAngularLink->rotVariance()));
+					if(maxAngularErrorRatio > _optimizationMaxError)
+					{
+						UWARN("Rejecting all added loop closures (%d) in this "
+							  "iteration because a wrong loop closure has been "
+							  "detected after graph optimization, resulting in "
+							  "a maximum graph error ratio of %f (edge %d->%d, type=%d, abs error=%f deg, stddev=%f). The "
+							  "maximum error ratio parameter \"%s\" is %f of std deviation.",
+							  (int)loopClosureLinksAdded.size(),
+							  maxAngularErrorRatio,
+							  maxAngularLink->from(),
+							  maxAngularLink->to(),
+							  maxAngularLink->type(),
+							  maxAngularError*180.0f/CV_PI,
+							  sqrt(maxAngularLink->rotVariance()),
+							  Parameters::kRGBDOptimizeMaxError().c_str(),
+							  _optimizationMaxError);
+						reject = true;
+					}
+				}
+
+				if(reject)
+				{
+					for(std::list<std::pair<int, int> >::iterator iter=loopClosureLinksAdded.begin(); iter!=loopClosureLinksAdded.end(); ++iter)
+					{
+						_memory->removeLink(iter->first, iter->second);
+						UWARN("Loop closure %d->%d rejected!", iter->first, iter->second);
+					}
+					updateConstraints = false;
+					_loopClosureHypothesis.first = 0;
+					lastProximitySpaceClosureId = 0;
+					rejectedHypothesis = true;
 				}
 			}
 
@@ -3877,7 +3924,7 @@ int Rtabmap::detectMoreLoopClosures(float clusterRadius, float clusterAngle, int
 					if(!t.isNull())
 					{
 						bool updateConstraints = true;
-						if(_optimizationMaxLinearError > 0.0f)
+						if(_optimizationMaxError > 0.0f)
 						{
 							//optimize the graph to see if the new constraint is globally valid
 
@@ -3951,7 +3998,7 @@ int Rtabmap::detectMoreLoopClosures(float clusterRadius, float clusterAngle, int
 									UINFO("Max optimization angular error = %f deg (link %d->%d)", maxAngularError*180.0f/M_PI, maxAngularLink->from(), maxAngularLink->to());
 								}
 
-								if(maxLinearError > _optimizationMaxLinearError)
+								if(maxLinearError > _optimizationMaxError)
 								{
 									msg = uFormat("Rejecting edge %d->%d because "
 											  "graph error is too large after optimization (%f m for edge %d->%d, %f deg for edge %d->%d). "
@@ -3965,7 +4012,7 @@ int Rtabmap::detectMoreLoopClosures(float clusterRadius, float clusterAngle, int
 											  maxAngularLink?maxAngularLink->from():0,
 											  maxAngularLink?maxAngularLink->to():0,
 											  Parameters::kRGBDOptimizeMaxError().c_str(),
-											  _optimizationMaxLinearError);
+											  _optimizationMaxError);
 								}
 							}
 							else
