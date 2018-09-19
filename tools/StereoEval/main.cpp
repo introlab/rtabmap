@@ -37,6 +37,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UConversion.h>
 #include <rtabmap/utilite/UTimer.h>
 #include <rtabmap/utilite/UMath.h>
+#include <opencv2/imgproc/types_c.h>
 #include <fstream>
 #include <string>
 

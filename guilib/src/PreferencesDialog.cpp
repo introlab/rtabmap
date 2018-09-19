@@ -190,7 +190,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 		_ui->reextract_type->setItemData(0, 0, Qt::UserRole - 1);
 		_ui->reextract_type->setItemData(1, 0, Qt::UserRole - 1);
 
-#if CV_MAJOR_VERSION == 3
+#if CV_MAJOR_VERSION >= 3
 		_ui->comboBox_detector_strategy->setItemData(0, 0, Qt::UserRole - 1);
 		_ui->comboBox_detector_strategy->setItemData(1, 0, Qt::UserRole - 1);
 		_ui->comboBox_detector_strategy->setItemData(3, 0, Qt::UserRole - 1);

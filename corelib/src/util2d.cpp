@@ -38,6 +38,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/video/tracking.hpp>
 #include <opencv2/highgui/highgui.hpp>
+#include <opencv2/imgproc/types_c.h>
 #include <map>
 #include <Eigen/Core>
 

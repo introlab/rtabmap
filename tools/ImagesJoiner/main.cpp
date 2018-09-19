@@ -138,7 +138,7 @@ int main(int argc, char * argv[])
 
 			cv::Mat roiA(targetImage, cv::Rect( 0, 0, sizeA.width, sizeA.height ));
 			imageA.copyTo(roiA);
-			cv::Mat roiB( targetImage, cvRect( sizeA.width, 0, sizeB.width, sizeB.height ) );
+			cv::Mat roiB( targetImage, cv::Rect( sizeA.width, 0, sizeB.width, sizeB.height ) );
 			imageB.copyTo(roiB);
 
 			if(!cv::imwrite(targetFilePath.c_str(), targetImage))

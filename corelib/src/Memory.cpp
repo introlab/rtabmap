@@ -61,6 +61,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pcl/io/pcd_io.h>
 #include <pcl/common/common.h>
 #include <rtabmap/core/OccupancyGrid.h>
+#include <opencv2/imgproc/types_c.h>
 
 namespace rtabmap {
 

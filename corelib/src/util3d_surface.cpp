@@ -37,6 +37,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/utilite/UConversion.h"
 #include "rtabmap/utilite/UMath.h"
 #include "rtabmap/utilite/UTimer.h"
+#include <opencv2/core/core_c.h>
+#include <opencv2/imgproc/types_c.h>
 #include <pcl/search/kdtree.h>
 #include <pcl/surface/gp3.h>
 #include <pcl/features/normal_3d_omp.h>

@@ -39,6 +39,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UTimer.h>
 #include <rtabmap/utilite/UMath.h>
 
+#include <opencv2/imgproc/types_c.h>
+#include <opencv2/videoio/videoio_c.h>
+
 #ifdef RTABMAP_DC1394
 #include <dc1394/dc1394.h>
 #endif

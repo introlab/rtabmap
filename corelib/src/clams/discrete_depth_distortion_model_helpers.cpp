@@ -198,7 +198,7 @@ namespace clams
 
 	cv::Mat roiA(targetImage, cv::Rect( 0, 0, overview.cols/2, overview.rows ));
 	cv::Mat(overview, cv::Rect( 0, 0, overview.cols/2, overview.rows )).copyTo(roiA);
-	cv::Mat roiB( targetImage, cvRect( overview.cols/2, 0, pub.cols, pub.rows ) );
+	cv::Mat roiB( targetImage, cv::Rect( overview.cols/2, 0, pub.cols, pub.rows ) );
 	pub.copyTo(roiB);
 
     return targetImage;

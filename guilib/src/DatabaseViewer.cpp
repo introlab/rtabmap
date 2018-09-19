@@ -44,6 +44,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UDirectory.h>
 #include <rtabmap/utilite/UConversion.h>
 #include <opencv2/core/core_c.h>
+#include <opencv2/imgproc/types_c.h>
 #include <opencv2/highgui/highgui.hpp>
 #include <rtabmap/utilite/UTimer.h>
 #include <rtabmap/utilite/UFile.h>
