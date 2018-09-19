@@ -40,7 +40,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UMath.h>
 
 #include <opencv2/imgproc/types_c.h>
+#if CV_MAJOR_VERSION >= 3
 #include <opencv2/videoio/videoio_c.h>
+#endif
 
 #ifdef RTABMAP_OPENNI
 #include <pcl/io/openni_grabber.h>

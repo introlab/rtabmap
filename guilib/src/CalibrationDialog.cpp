@@ -32,7 +32,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/imgproc/imgproc_c.h>
 #include <opencv2/calib3d/calib3d.hpp>
+#if CV_MAJOR_VERSION >= 3
 #include <opencv2/calib3d/calib3d_c.h>
+#endif
 #include <opencv2/highgui/highgui.hpp>
 
 #include <QFileDialog>

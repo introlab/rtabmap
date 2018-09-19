@@ -46,7 +46,9 @@
 
 #include <opencv2/core/core.hpp>
 #include <opencv2/calib3d/calib3d.hpp>
+#if CV_MAJOR_VERSION >= 3
 #include <opencv2/calib3d/calib3d_c.h>
+#endif
 
 namespace cv3 {
 

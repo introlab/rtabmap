@@ -38,7 +38,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/imgproc/types_c.h>
+#if CV_MAJOR_VERSION >= 3
 #include <opencv2/videoio/videoio_c.h>
+#endif
 
 #include <rtabmap/core/util3d.h>
 #include <rtabmap/core/util3d_filtering.h>
