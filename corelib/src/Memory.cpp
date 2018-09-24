@@ -104,6 +104,7 @@ Memory::Memory(const ParametersMap & parameters) :
 	_visMaxFeatures(Parameters::defaultVisMaxFeatures()),
 	_visCorType(Parameters::defaultVisCorType()),
 	_imagesAlreadyRectified(Parameters::defaultRtabmapImagesAlreadyRectified()),
+	_rectifyOnlyFeatures(Parameters::defaultRtabmapRectifyOnlyFeatures()),
 	_covOffDiagonalIgnored(Parameters::defaultMemCovOffDiagIgnored()),
 	_idCount(kIdStart),
 	_idMapCount(kIdStart),
@@ -486,6 +487,7 @@ void Memory::parseParameters(const ParametersMap & parameters)
 		uInsert(params, ParametersPair(Parameters::kVisCorType(), "0"));
 	}
 	Parameters::parse(params, Parameters::kRtabmapImagesAlreadyRectified(), _imagesAlreadyRectified);
+	Parameters::parse(params, Parameters::kRtabmapRectifyOnlyFeatures(), _rectifyOnlyFeatures);
 	Parameters::parse(params, Parameters::kMemCovOffDiagIgnored(), _covOffDiagonalIgnored);
 
 
@@ -1506,6 +1508,8 @@ void Memory::clear()
 	_memoryChanged = false;
 	_linksChanged = false;
 	_gpsOrigin = GPS();
+	_rectCameraModels.clear();
+	_rectStereoCameraModel = StereoCameraModel();
 
 	if(_dbDriver)
 	{
@@ -3685,25 +3689,41 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 		}
 	}
 
-	if(!_imagesAlreadyRectified && !data.imageRaw().empty())
+	bool imagesRectified = _imagesAlreadyRectified;
+	// Stereo must be always rectified because of the stereo correspondence approach
+	if(!imagesRectified && !data.imageRaw().empty() && !(_rectifyOnlyFeatures && data.rightRaw().empty()))
 	{
-		if(!data.depthRaw().empty())
-		{
-			UERROR("RGB-D images should be already rectified! Make sure they are and set %s parameter back to true.",
-					Parameters::kRtabmapImagesAlreadyRectified().c_str());
-			return 0;
-		}
+		// we assume that once rtabmap is receiving data, the calibration won't change over time
 		if(data.cameraModels().size())
 		{
+			// Note that only RGB image is rectified, the depth image is assumed to be already registered to rectified RGB camera.
 			UASSERT(int((data.imageRaw().cols/data.cameraModels().size())*data.cameraModels().size()) == data.imageRaw().cols);
 			int subImageWidth = data.imageRaw().cols/data.cameraModels().size();
 			cv::Mat rectifiedImages(data.imageRaw().size(), data.imageRaw().type());
+			bool initRectMaps = _rectCameraModels.empty();
+			if(initRectMaps)
+			{
+				_rectCameraModels.resize(data.cameraModels().size());
+			}
 			for(unsigned int i=0; i<data.cameraModels().size(); ++i)
 			{
 				if(data.cameraModels()[i].isValidForRectification())
 				{
-					cv::Mat rectifiedImage = data.cameraModels()[i].rectifyImage(cv::Mat(data.imageRaw(), cv::Rect(subImageWidth*i, 0, subImageWidth, data.imageRaw().rows)));
+					if(initRectMaps)
+					{
+						_rectCameraModels[i] = data.cameraModels()[i];
+						if(!_rectCameraModels[i].isRectificationMapInitialized())
+						{
+							UWARN("Initializing rectification maps for camera %d (only done for the first image received)...", i);
+							_rectCameraModels[i].initRectificationMap();
+							UWARN("Initializing rectification maps for camera %d (only done for the first image received)... done!", i);
+						}
+					}
+					UASSERT(_rectCameraModels[i].imageWidth() == data.cameraModels()[i].imageWidth() &&
+							_rectCameraModels[i].imageHeight() == data.cameraModels()[i].imageHeight());
+					cv::Mat rectifiedImage = _rectCameraModels[i].rectifyImage(cv::Mat(data.imageRaw(), cv::Rect(subImageWidth*i, 0, subImageWidth, data.imageRaw().rows)));
 					rectifiedImage.copyTo(cv::Mat(rectifiedImages, cv::Rect(subImageWidth*i, 0, subImageWidth, data.imageRaw().rows)));
+					imagesRectified = true;
 				}
 				else
 				{
@@ -3718,8 +3738,21 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 		}
 		else if(data.stereoCameraModel().isValidForRectification())
 		{
-			data.setImageRaw(data.stereoCameraModel().left().rectifyImage(data.imageRaw()));
-			data.setDepthOrRightRaw(data.stereoCameraModel().right().rectifyImage(data.rightRaw()));
+			if(!_rectStereoCameraModel.isValidForRectification())
+			{
+				_rectStereoCameraModel = data.stereoCameraModel();
+				if(!_rectStereoCameraModel.isRectificationMapInitialized())
+				{
+					UWARN("Initializing rectification maps (only done for the first image received)...");
+					_rectStereoCameraModel.initRectificationMap();
+					UWARN("Initializing rectification maps (only done for the first image received)...done!");
+				}
+			}
+			UASSERT(_rectStereoCameraModel.left().imageWidth() == data.stereoCameraModel().left().imageWidth());
+			UASSERT(_rectStereoCameraModel.left().imageHeight() == data.stereoCameraModel().left().imageHeight());
+			data.setImageRaw(_rectStereoCameraModel.left().rectifyImage(data.imageRaw()));
+			data.setDepthOrRightRaw(_rectStereoCameraModel.right().rectifyImage(data.rightRaw()));
+			imagesRectified = true;
 		}
 		else
 		{
@@ -3836,6 +3869,111 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 			else if((!decimatedData.depthRaw().empty() && decimatedData.cameraModels().size() && decimatedData.cameraModels()[0].isValidForProjection()) ||
 					(!decimatedData.rightRaw().empty() && decimatedData.stereoCameraModel().isValidForProjection()))
 			{
+				if(!imagesRectified && decimatedData.cameraModels().size())
+				{
+					std::vector<cv::KeyPoint> keypointsValid;
+					keypointsValid.reserve(keypoints.size());
+					cv::Mat descriptorsValid;
+					descriptorsValid.reserve(descriptors.rows);
+
+					//undistort keypoints before projection (RGB-D)
+					if(decimatedData.cameraModels().size() == 1)
+					{
+						std::vector<cv::Point2f> pointsIn, pointsOut;
+						cv::KeyPoint::convert(keypoints,pointsIn);
+						if(decimatedData.cameraModels()[0].D_raw().cols == 6)
+						{
+							// Equidistant / FishEye
+							// get only k parameters (k1,k2,p1,p2,k3,k4)
+							cv::Mat D(1, 4, CV_64FC1);
+							D.at<double>(0,0) = decimatedData.cameraModels()[0].D_raw().at<double>(0,1);
+							D.at<double>(0,1) = decimatedData.cameraModels()[0].D_raw().at<double>(0,1);
+							D.at<double>(0,2) = decimatedData.cameraModels()[0].D_raw().at<double>(0,4);
+							D.at<double>(0,3) = decimatedData.cameraModels()[0].D_raw().at<double>(0,5);
+							cv::fisheye::undistortPoints(pointsIn, pointsOut,
+									decimatedData.cameraModels()[0].K_raw(),
+									D,
+									decimatedData.cameraModels()[0].R(),
+									decimatedData.cameraModels()[0].P());
+						}
+						else
+						{
+							//RadialTangential
+							cv::undistortPoints(pointsIn, pointsOut,
+									decimatedData.cameraModels()[0].K_raw(),
+									decimatedData.cameraModels()[0].D_raw(),
+									decimatedData.cameraModels()[0].R(),
+									decimatedData.cameraModels()[0].P());
+						}
+						UASSERT(pointsOut.size() == keypoints.size());
+						for(unsigned int i=0; i<pointsOut.size(); ++i)
+						{
+							if(pointsOut.at(i).x>=0 && pointsOut.at(i).x<decimatedData.cameraModels()[0].imageWidth() &&
+							   pointsOut.at(i).y>=0 && pointsOut.at(i).y<decimatedData.cameraModels()[0].imageHeight())
+							{
+								keypointsValid.push_back(keypoints.at(i));
+								keypointsValid.back().pt.x = pointsOut.at(i).x;
+								keypointsValid.back().pt.y = pointsOut.at(i).y;
+								descriptorsValid.push_back(descriptors.row(i));
+							}
+						}
+					}
+					else
+					{
+						UASSERT(int((decimatedData.imageRaw().cols/decimatedData.cameraModels().size())*decimatedData.cameraModels().size()) == decimatedData.imageRaw().cols);
+						float subImageWidth = decimatedData.imageRaw().cols/decimatedData.cameraModels().size();
+						for(unsigned int i=0; i<keypoints.size(); ++i)
+						{
+							int cameraIndex = int(keypoints.at(i).pt.x / subImageWidth);
+							UASSERT_MSG(cameraIndex >= 0 && cameraIndex < (int)decimatedData.cameraModels().size(),
+									uFormat("cameraIndex=%d, models=%d, kpt.x=%f, subImageWidth=%f (Camera model image width=%d)",
+											cameraIndex, (int)decimatedData.cameraModels().size(), keypoints[i].pt.x, subImageWidth, decimatedData.cameraModels()[0].imageWidth()).c_str());
+
+							std::vector<cv::Point2f> pointsIn, pointsOut;
+							pointsIn.push_back(cv::Point2f(keypoints.at(i).pt.x-subImageWidth*cameraIndex, keypoints.at(i).pt.y));
+							if(decimatedData.cameraModels()[cameraIndex].D_raw().cols == 6)
+							{
+								// Equidistant / FishEye
+								// get only k parameters (k1,k2,p1,p2,k3,k4)
+								cv::Mat D(1, 4, CV_64FC1);
+								D.at<double>(0,0) = decimatedData.cameraModels()[cameraIndex].D_raw().at<double>(0,1);
+								D.at<double>(0,1) = decimatedData.cameraModels()[cameraIndex].D_raw().at<double>(0,1);
+								D.at<double>(0,2) = decimatedData.cameraModels()[cameraIndex].D_raw().at<double>(0,4);
+								D.at<double>(0,3) = decimatedData.cameraModels()[cameraIndex].D_raw().at<double>(0,5);
+								cv::fisheye::undistortPoints(pointsIn, pointsOut,
+										decimatedData.cameraModels()[cameraIndex].K_raw(),
+										D,
+										decimatedData.cameraModels()[cameraIndex].R(),
+										decimatedData.cameraModels()[cameraIndex].P());
+							}
+							else
+							{
+								//RadialTangential
+								cv::undistortPoints(pointsIn, pointsOut,
+										decimatedData.cameraModels()[cameraIndex].K_raw(),
+										decimatedData.cameraModels()[cameraIndex].D_raw(),
+										decimatedData.cameraModels()[cameraIndex].R(),
+										decimatedData.cameraModels()[cameraIndex].P());
+							}
+
+							if(pointsOut[0].x>=0 && pointsOut[0].x<decimatedData.cameraModels()[cameraIndex].imageWidth() &&
+							   pointsOut[0].y>=0 && pointsOut[0].y<decimatedData.cameraModels()[cameraIndex].imageHeight())
+							{
+								keypointsValid.push_back(keypoints.at(i));
+								keypointsValid.back().pt.x = pointsOut[0].x + subImageWidth*cameraIndex;
+								keypointsValid.back().pt.y = pointsOut[0].y;
+								descriptorsValid.push_back(descriptors.row(i));
+							}
+						}
+					}
+
+					keypoints = keypointsValid;
+					descriptors = descriptorsValid;
+
+					t = timer.ticks();
+					if(stats) stats->addStatistic(Statistics::kTimingMemRectification(), t*1000.0f);
+					UDEBUG("time rectification = %fs", t);
+				}
 				keypoints3D = _feature2D->generateKeypoints3D(decimatedData, keypoints);
 				t = timer.ticks();
 				if(stats) stats->addStatistic(Statistics::kTimingMemKeypoints_3D(), t*1000.0f);
@@ -3890,6 +4028,8 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 			{
 				imageMono = data.imageRaw();
 			}
+
+			UASSERT_MSG(imagesRectified, "Cannot extract descriptors on not rectified image from keypoints which assumed to be undistorted");
 
 			descriptors = _feature2D->generateDescriptors(imageMono, keypoints);
 		}
@@ -4177,8 +4317,8 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 
 			t = timer.ticks();
 			UASSERT(words3D.size() == words.size());
-			if(stats) stats->addStatistic(Statistics::kTimingMemKeypoints_3D(), t*1000.0f);
-			UDEBUG("time keypoints 3D (%d) = %fs", (int)words3D.size(), t);
+			if(stats) stats->addStatistic(Statistics::kTimingMemKeypoints_3D_motion(), t*1000.0f);
+			UDEBUG("time keypoints 3D by motion (%d) = %fs", (int)words3D.size(), t);
 		}
 	}
 

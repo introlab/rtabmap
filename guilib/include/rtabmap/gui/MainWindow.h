@@ -327,6 +327,7 @@ private:
 	bool _savedMaximized;
 	QStringList _waypoints;
 	int _waypointsIndex;
+	std::vector<CameraModel> _rectCameraModels;
 
 	QMap<int, Signature> _cachedSignatures;
 	long _cachedMemoryUsage;

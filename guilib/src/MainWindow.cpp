@@ -2781,6 +2781,57 @@ std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr, pcl::IndicesPtr> MainWindow::c
 		cv::Mat image, depth;
 		SensorData data = iter->sensorData();
 		data.uncompressData(&image, &depth, 0);
+		ParametersMap allParameters = _preferencesDialog->getAllParameters();
+		bool rectifyOnlyFeatures = Parameters::defaultRtabmapRectifyOnlyFeatures();
+		bool imagesAlreadyRectified = Parameters::defaultRtabmapImagesAlreadyRectified();
+		Parameters::parse(allParameters, Parameters::kRtabmapRectifyOnlyFeatures(), rectifyOnlyFeatures);
+		Parameters::parse(allParameters, Parameters::kRtabmapImagesAlreadyRectified(), imagesAlreadyRectified);
+		if(rectifyOnlyFeatures && !imagesAlreadyRectified)
+		{
+			if(data.cameraModels().size())
+			{
+				UTimer time;
+				// Note that only RGB image is rectified, the depth image is assumed to be already registered to rectified RGB camera.
+				UASSERT(int((data.imageRaw().cols/data.cameraModels().size())*data.cameraModels().size()) == data.imageRaw().cols);
+				int subImageWidth = data.imageRaw().cols/data.cameraModels().size();
+				cv::Mat rectifiedImages = data.imageRaw().clone();
+				bool initRectMaps = _rectCameraModels.empty();
+				if(initRectMaps)
+				{
+					_rectCameraModels.resize(data.cameraModels().size());
+				}
+				for(unsigned int i=0; i<data.cameraModels().size(); ++i)
+				{
+					if(data.cameraModels()[i].isValidForRectification())
+					{
+						if(initRectMaps)
+						{
+							_rectCameraModels[i] = data.cameraModels()[i];
+							if(!_rectCameraModels[i].isRectificationMapInitialized())
+							{
+								UWARN("Initializing rectification maps for camera %d (only done for the first image received)...", i);
+								_rectCameraModels[i].initRectificationMap();
+								UWARN("Initializing rectification maps for camera %d (only done for the first image received)... done!", i);
+							}
+						}
+						UASSERT(_rectCameraModels[i].imageWidth() == data.cameraModels()[i].imageWidth() &&
+								_rectCameraModels[i].imageHeight() == data.cameraModels()[i].imageHeight());
+						cv::Mat rectifiedImage = _rectCameraModels[i].rectifyImage(cv::Mat(data.imageRaw(), cv::Rect(subImageWidth*i, 0, subImageWidth, data.imageRaw().rows)));
+						rectifiedImage.copyTo(cv::Mat(rectifiedImages, cv::Rect(subImageWidth*i, 0, subImageWidth, data.imageRaw().rows)));
+					}
+					else
+					{
+						UWARN("Camera %d of data %d is not valid for rectification (%dx%d).",
+								i, data.id(),
+								data.cameraModels()[i].imageWidth(),
+								data.cameraModels()[i].imageHeight());
+					}
+				}
+				UINFO("Time rectification: %fs", time.ticks());
+				data.setImageRaw(rectifiedImages);
+				image = rectifiedImages;
+			}
+		}
 
 		pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
 		pcl::IndicesPtr indices(new std::vector<int>);
@@ -2792,7 +2843,7 @@ std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr, pcl::IndicesPtr> MainWindow::c
 				_preferencesDialog->getCloudMaxDepth(0),
 				_preferencesDialog->getCloudMinDepth(0),
 				indices.get(),
-				_preferencesDialog->getAllParameters(),
+				allParameters,
 				_preferencesDialog->getCloudRoiRatios(0));
 
 		// view point
@@ -6293,6 +6344,7 @@ void MainWindow::clearTheCache()
 	_octomap = new OctoMap(_preferencesDialog->getAllParameters());
 #endif
 	_occupancyGrid->clear();
+	_rectCameraModels.clear();
 }
 
 void MainWindow::openHelp()

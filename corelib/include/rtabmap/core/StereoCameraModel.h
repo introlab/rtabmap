@@ -86,6 +86,7 @@ public:
 	bool isValidForRectification() const {return left_.isValidForRectification() && right_.isValidForRectification();}
 
 	void initRectificationMap() {left_.initRectificationMap(); right_.initRectificationMap();}
+	bool isRectificationMapInitialized() {return left_.isRectificationMapInitialized() && right_.isRectificationMapInitialized();}
 
 	void setName(const std::string & name, const std::string & leftSuffix = "left", const std::string & rightSuffix = "right");
 	const std::string & name() const {return name_;}

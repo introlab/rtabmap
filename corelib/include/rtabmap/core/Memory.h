@@ -302,6 +302,7 @@ private:
 	int _visMaxFeatures;
 	int _visCorType;
 	bool _imagesAlreadyRectified;
+	bool _rectifyOnlyFeatures;
 	bool _covOffDiagonalIgnored;
 
 	int _idCount;
@@ -312,6 +313,8 @@ private:
 	bool _linksChanged; // False by default, become true when links are modified.
 	int _signaturesAdded;
 	GPS _gpsOrigin;
+	std::vector<CameraModel> _rectCameraModels;
+	StereoCameraModel _rectStereoCameraModel;
 
 	std::map<int, Signature *> _signatures; // TODO : check if a signature is already added? although it is not supposed to occur...
 	std::set<int> _stMem; // id

@@ -188,6 +188,7 @@ class RTABMAP_EXP Parameters
     RTABMAP_PARAM(Rtabmap, StartNewMapOnLoopClosure,     bool, false, "Start a new map only if there is a global loop closure with a previous map.");
     RTABMAP_PARAM(Rtabmap, StartNewMapOnGoodSignature,   bool, false, uFormat("Start a new map only if the first signature is not bad (i.e., has enough features, see %s).", kKpBadSignRatio().c_str()));
     RTABMAP_PARAM(Rtabmap, ImagesAlreadyRectified,       bool, true,  "Images are already rectified. By default RTAB-Map assumes that received images are rectified. If they are not, they can be rectified by RTAB-Map if this parameter is false.");
+    RTABMAP_PARAM(Rtabmap, RectifyOnlyFeatures,          bool, false,  uFormat("If \"%s\" is false and this parameter is true, the whole RGB image will not be rectified, only the features. Warning: As projection of RGB-D image to point cloud is assuming that images are rectified, the generated point cloud map will have wrong colors if this parameter is true.", kRtabmapImagesAlreadyRectified().c_str()));
 
     // Hypotheses selection
     RTABMAP_PARAM(Rtabmap, LoopThr,           float, 0.11,      "Loop closing threshold.");

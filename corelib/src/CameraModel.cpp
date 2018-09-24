@@ -31,6 +31,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UFile.h>
 #include <rtabmap/utilite/UConversion.h>
 #include <rtabmap/utilite/UMath.h>
+#include <rtabmap/utilite/UStl.h>
 #include <opencv2/imgproc/imgproc.hpp>
 
 namespace rtabmap {
@@ -57,7 +58,7 @@ CameraModel::CameraModel(
 		localTransform_(localTransform)
 {
 	UASSERT(K_.empty() || (K_.rows == 3 && K_.cols == 3 && K_.type() == CV_64FC1));
-	UASSERT(D_.empty() || (D_.rows == 1 && (D_.cols == 4 || D_.cols == 5 || D_.cols == 8) && D_.type() == CV_64FC1));
+	UASSERT(D_.empty() || (D_.rows == 1 && (D_.cols == 4 || D_.cols == 5 || D_.cols == 6 || D_.cols == 8) && D_.type() == CV_64FC1));
 	UASSERT(R_.empty() || (R_.rows == 3 && R_.cols == 3 && R_.type() == CV_64FC1));
 	UASSERT(P_.empty() || (P_.rows == 3 && P_.cols == 4 && P_.type() == CV_64FC1));
 }
@@ -153,12 +154,27 @@ CameraModel::CameraModel(
 void CameraModel::initRectificationMap()
 {
 	UASSERT(imageSize_.height > 0 && imageSize_.width > 0);
-	UASSERT(D_.rows == 1 && (D_.cols == 4 || D_.cols == 5 || D_.cols == 8));
+	UASSERT(D_.rows == 1 && (D_.cols == 4 || D_.cols == 5 || D_.cols == 6 || D_.cols == 8));
 	UASSERT(R_.rows == 3 && R_.cols == 3);
 	UASSERT(P_.rows == 3 && P_.cols == 4);
 	// init rectification map
 	UINFO("Initialize rectify map");
-	cv::initUndistortRectifyMap(K_, D_, R_, P_, imageSize_, CV_32FC1, mapX_, mapY_);
+	if(D_.cols == 6)
+	{
+		// Equidistant / FishEye
+		// get only k parameters (k1,k2,p1,p2,k3,k4)
+		cv::Mat D(1, 4, CV_64FC1);
+		D.at<double>(0,0) = D_.at<double>(0,1);
+		D.at<double>(0,1) = D_.at<double>(0,1);
+		D.at<double>(0,2) = D_.at<double>(0,4);
+		D.at<double>(0,3) = D_.at<double>(0,5);
+		cv::fisheye::initUndistortRectifyMap(K_, D, R_, P_, imageSize_, CV_32FC1, mapX_, mapY_);
+	}
+	else
+	{
+		// RadialTangential
+		cv::initUndistortRectifyMap(K_, D_, R_, P_, imageSize_, CV_32FC1, mapX_, mapY_);
+	}
 }
 
 void CameraModel::setImageSize(const cv::Size & size)
@@ -256,7 +272,20 @@ bool CameraModel::load(const std::string & directory, const std::string & camera
 				n["data"] >> data;
 				UASSERT(rows*cols == (int)data.size());
 				UASSERT(rows == 1 && (cols == 4 || cols == 5 || cols == 8));
-				D_ = cv::Mat(rows, cols, CV_64FC1, data.data()).clone();
+				std::string distortionModel = (std::string)n["distortion_model"];
+				if(uStrContains(distortionModel, "fisheye") ||
+				   uStrContains(distortionModel, "equidistant"))
+				{
+					D_ = cv::Mat::zeros(1,6,CV_64FC1);
+					D_.at<double>(0,0) = data[0];
+					D_.at<double>(0,1) = data[1];
+					D_.at<double>(0,4) = data[2];
+					D_.at<double>(0,5) = data[3];
+				}
+				else
+				{
+					D_ = cv::Mat(rows, cols, CV_64FC1, data.data()).clone();
+				}
 			}
 			else
 			{
@@ -347,20 +376,33 @@ bool CameraModel::save(const std::string & directory) const
 
 		if(!D_.empty())
 		{
+			cv::Mat D = D_;
+			if(D_.cols == 6)
+			{
+				D = cv::Mat(1,4,CV_64FC1);
+				D.at<double>(0,0) = D_.at<double>(0,0);
+				D.at<double>(0,1) = D_.at<double>(0,1);
+				D.at<double>(0,2) = D_.at<double>(0,4);
+				D.at<double>(0,3) = D_.at<double>(0,5);
+			}
 			fs << "distortion_coefficients" << "{";
-			fs << "rows" << D_.rows;
-			fs << "cols" << D_.cols;
-			fs << "data" << std::vector<double>((double*)D_.data, ((double*)D_.data)+(D_.rows*D_.cols));
+			fs << "rows" << D.rows;
+			fs << "cols" << D.cols;
+			fs << "data" << std::vector<double>((double*)D.data, ((double*)D.data)+(D.rows*D.cols));
 			fs << "}";
 
 			// compaibility with ROS
-			if(D_.cols > 5)
+			if(D_.cols == 6)
 			{
-				fs << "distortion_model" << "rational_polynomial";
+				fs << "distortion_model" << "fisheye"; // equidistant
+			}
+			else if(D.cols > 5)
+			{
+				fs << "distortion_model" << "rational_polynomial"; // rad tan
 			}
 			else
 			{
-				fs << "distortion_model" << "plumb_bob";
+				fs << "distortion_model" << "plumb_bob"; // rad tan
 			}
 		}
 

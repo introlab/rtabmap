@@ -706,7 +706,19 @@ void CalibrationDialog::calibrate()
 		K = cv::Mat::eye(3,3,CV_64FC1);
 		UINFO("calibrate!");
 		//Find intrinsic and extrinsic camera parameters
-		double rms = cv::calibrateCamera(objectPoints,
+		double rms = 0.0;
+		bool fishEye = ui_->checkBox_fisheye->isChecked();
+		if(fishEye)
+		{
+			rms = cv::fisheye::calibrate(objectPoints,
+				imagePoints_[id],
+				imageSize_[id],
+				K,
+				D,
+				rvecs,
+				tvecs);
+		}
+		rms = cv::calibrateCamera(objectPoints,
 				imagePoints_[id],
 				imageSize_[id],
 				K,
@@ -724,7 +736,14 @@ void CalibrationDialog::calibrate()
 
 		for( i = 0; i < (int)objectPoints.size(); ++i )
 		{
-			cv::projectPoints( cv::Mat(objectPoints[i]), rvecs[i], tvecs[i], K, D, imagePoints2);
+			if(fishEye)
+			{
+				cv::fisheye::projectPoints( cv::Mat(objectPoints[i]), rvecs[i], tvecs[i], K, D, imagePoints2);
+			}
+			else
+			{
+				cv::projectPoints( cv::Mat(objectPoints[i]), rvecs[i], tvecs[i], K, D, imagePoints2);
+			}
 			err = cv::norm(cv::Mat(imagePoints_[id][i]), cv::Mat(imagePoints2), CV_L2);
 
 			int n = (int)objectPoints[i].size();
@@ -740,6 +759,16 @@ void CalibrationDialog::calibrate()
 		cv::Mat P(3,4,CV_64FC1);
 		P.at<double>(2,3) = 1;
 		K.copyTo(P.colRange(0,3).rowRange(0,3));
+
+		if(fishEye)
+		{
+			// Convert to unified distortion model (k1,k2,p1,p2,k3,k4)
+			cv::Mat newD = cv::Mat::zeros(1,6,CV_64FC1);
+			newD.at<double>(0,0) = D.at<double>(0,0);
+			newD.at<double>(0,1) = D.at<double>(0,1);
+			newD.at<double>(0,4) = D.at<double>(0,2);
+			newD.at<double>(0,5) = D.at<double>(0,3);
+		}
 
 		std::cout << "K = " << K << std::endl;
 		std::cout << "D = " << D << std::endl;
@@ -875,28 +904,68 @@ StereoCameraModel CalibrationDialog::stereoCalibration(const CameraModel & left,
 			objectPoints[0].push_back(cv::Point3f(float(j*squareSize), float(i*squareSize), 0));
 	objectPoints.resize(stereoImagePoints_[0].size(), objectPoints[0]);
 
+	double rms = 0.0;
+	bool fishEye = left.D_raw().cols == 6;
 	// calibrate extrinsic
+	if(fishEye)
+	{
+		cv::Mat D_left(1,4,CV_64FC1);
+		D_left.at<double>(0,0) = left.D_raw().at<double>(0,0);
+		D_left.at<double>(0,1) = left.D_raw().at<double>(0,1);
+		D_left.at<double>(0,2) = left.D_raw().at<double>(0,4);
+		D_left.at<double>(0,3) = left.D_raw().at<double>(0,5);
+		cv::Mat D_right(1,4,CV_64FC1);
+		UASSERT(right.D_raw().cols == 6);
+		D_right.at<double>(0,0) = right.D_raw().at<double>(0,0);
+		D_right.at<double>(0,1) = right.D_raw().at<double>(0,1);
+		D_right.at<double>(0,2) = right.D_raw().at<double>(0,4);
+		D_right.at<double>(0,3) = right.D_raw().at<double>(0,5);
 #if CV_MAJOR_VERSION < 3
-	double rms = cv::stereoCalibrate(
-			objectPoints,
-			stereoImagePoints_[0],
-			stereoImagePoints_[1],
-			left.K_raw(), left.D_raw(),
-			right.K_raw(), right.D_raw(),
-			imageSize, R, T, E, F,
-			cv::TermCriteria(cv::TermCriteria::COUNT+cv::TermCriteria::EPS, 100, 1e-5),
-			cv::CALIB_FIX_INTRINSIC);
+		rms = cv::fisheye::stereoCalibrate(
+				objectPoints,
+				stereoImagePoints_[0],
+				stereoImagePoints_[1],
+				left.K_raw(), D_left,
+				right.K_raw(), D_right,
+				imageSize, R, T,
+				cv::CALIB_FIX_INTRINSIC,
+				cv::TermCriteria(cv::TermCriteria::COUNT+cv::TermCriteria::EPS, 100, 1e-5));
 #else
-	double rms = cv::stereoCalibrate(
-			objectPoints,
-			stereoImagePoints_[0],
-			stereoImagePoints_[1],
-			left.K_raw(), left.D_raw(),
-			right.K_raw(), right.D_raw(),
-			imageSize, R, T, E, F,
-			cv::CALIB_FIX_INTRINSIC,
-			cv::TermCriteria(cv::TermCriteria::COUNT+cv::TermCriteria::EPS, 100, 1e-5));
+		rms = cv::fisheye::stereoCalibrate(
+				objectPoints,
+				stereoImagePoints_[0],
+				stereoImagePoints_[1],
+				left.K_raw(), D_left,
+				right.K_raw(), D_right,
+				imageSize, R, T,
+				cv::CALIB_FIX_INTRINSIC,
+				cv::TermCriteria(cv::TermCriteria::COUNT+cv::TermCriteria::EPS, 100, 1e-5));
 #endif
+	}
+	else
+	{
+#if CV_MAJOR_VERSION < 3
+		rms = cv::stereoCalibrate(
+				objectPoints,
+				stereoImagePoints_[0],
+				stereoImagePoints_[1],
+				left.K_raw(), left.D_raw(),
+				right.K_raw(), right.D_raw(),
+				imageSize, R, T, E, F,
+				cv::TermCriteria(cv::TermCriteria::COUNT+cv::TermCriteria::EPS, 100, 1e-5),
+				cv::CALIB_FIX_INTRINSIC);
+#else
+		rms = cv::stereoCalibrate(
+				objectPoints,
+				stereoImagePoints_[0],
+				stereoImagePoints_[1],
+				left.K_raw(), left.D_raw(),
+				right.K_raw(), right.D_raw(),
+				imageSize, R, T, E, F,
+				cv::CALIB_FIX_INTRINSIC,
+				cv::TermCriteria(cv::TermCriteria::COUNT+cv::TermCriteria::EPS, 100, 1e-5));
+#endif
+	}
 	UINFO("stereo calibration... done with RMS error=%f", rms);
 
 	std::cout << "R = " << R << std::endl;
