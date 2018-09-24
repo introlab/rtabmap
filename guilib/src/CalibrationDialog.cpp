@@ -101,6 +101,9 @@ CalibrationDialog::CalibrationDialog(bool stereo, const QString & savingDirector
 
 	ui_->checkBox_switchImages->setChecked(switchImages);
 
+	ui_->checkBox_fisheye->setChecked(false);
+	ui_->checkBox_fisheye->setEnabled(false);
+
 	this->setStereoMode(stereo_);
 }
 
@@ -707,7 +710,9 @@ void CalibrationDialog::calibrate()
 		UINFO("calibrate!");
 		//Find intrinsic and extrinsic camera parameters
 		double rms = 0.0;
+#if CV_MAJOR_VERSION > 2 or (CV_MAJOR_VERSION == 2 and (CV_MINOR_VERSION >4 or (CV_MINOR_VERSION == 4 and CV_SUBMINOR_VERSION >=10)))
 		bool fishEye = ui_->checkBox_fisheye->isChecked();
+
 		if(fishEye)
 		{
 			rms = cv::fisheye::calibrate(objectPoints,
@@ -718,13 +723,17 @@ void CalibrationDialog::calibrate()
 				rvecs,
 				tvecs);
 		}
-		rms = cv::calibrateCamera(objectPoints,
-				imagePoints_[id],
-				imageSize_[id],
-				K,
-				D,
-				rvecs,
-				tvecs);
+		else
+#endif
+		{
+			rms = cv::calibrateCamera(objectPoints,
+					imagePoints_[id],
+					imageSize_[id],
+					K,
+					D,
+					rvecs,
+					tvecs);
+		}
 
 		UINFO("Re-projection error reported by calibrateCamera: %f", rms);
 
@@ -736,11 +745,13 @@ void CalibrationDialog::calibrate()
 
 		for( i = 0; i < (int)objectPoints.size(); ++i )
 		{
+#if CV_MAJOR_VERSION > 2 or (CV_MAJOR_VERSION == 2 and (CV_MINOR_VERSION >4 or (CV_MINOR_VERSION == 4 and CV_SUBMINOR_VERSION >=10)))
 			if(fishEye)
 			{
 				cv::fisheye::projectPoints( cv::Mat(objectPoints[i]), rvecs[i], tvecs[i], K, D, imagePoints2);
 			}
 			else
+#endif
 			{
 				cv::projectPoints( cv::Mat(objectPoints[i]), rvecs[i], tvecs[i], K, D, imagePoints2);
 			}
@@ -760,6 +771,7 @@ void CalibrationDialog::calibrate()
 		P.at<double>(2,3) = 1;
 		K.copyTo(P.colRange(0,3).rowRange(0,3));
 
+#if CV_MAJOR_VERSION > 2 or (CV_MAJOR_VERSION == 2 and (CV_MINOR_VERSION >4 or (CV_MINOR_VERSION == 4 and CV_SUBMINOR_VERSION >=10)))
 		if(fishEye)
 		{
 			// Convert to unified distortion model (k1,k2,p1,p2,k3,k4)
@@ -768,7 +780,9 @@ void CalibrationDialog::calibrate()
 			newD.at<double>(0,1) = D.at<double>(0,1);
 			newD.at<double>(0,4) = D.at<double>(0,2);
 			newD.at<double>(0,5) = D.at<double>(0,3);
+			D = newD;
 		}
+#endif
 
 		std::cout << "K = " << K << std::endl;
 		std::cout << "D = " << D << std::endl;
@@ -905,6 +919,7 @@ StereoCameraModel CalibrationDialog::stereoCalibration(const CameraModel & left,
 	objectPoints.resize(stereoImagePoints_[0].size(), objectPoints[0]);
 
 	double rms = 0.0;
+#if CV_MAJOR_VERSION > 2 or (CV_MAJOR_VERSION == 2 and (CV_MINOR_VERSION >4 or (CV_MINOR_VERSION == 4 and CV_SUBMINOR_VERSION >=10)))
 	bool fishEye = left.D_raw().cols == 6;
 	// calibrate extrinsic
 	if(fishEye)
@@ -920,7 +935,7 @@ StereoCameraModel CalibrationDialog::stereoCalibration(const CameraModel & left,
 		D_right.at<double>(0,1) = right.D_raw().at<double>(0,1);
 		D_right.at<double>(0,2) = right.D_raw().at<double>(0,4);
 		D_right.at<double>(0,3) = right.D_raw().at<double>(0,5);
-#if CV_MAJOR_VERSION < 3
+
 		rms = cv::fisheye::stereoCalibrate(
 				objectPoints,
 				stereoImagePoints_[0],
@@ -930,19 +945,9 @@ StereoCameraModel CalibrationDialog::stereoCalibration(const CameraModel & left,
 				imageSize, R, T,
 				cv::CALIB_FIX_INTRINSIC,
 				cv::TermCriteria(cv::TermCriteria::COUNT+cv::TermCriteria::EPS, 100, 1e-5));
-#else
-		rms = cv::fisheye::stereoCalibrate(
-				objectPoints,
-				stereoImagePoints_[0],
-				stereoImagePoints_[1],
-				left.K_raw(), D_left,
-				right.K_raw(), D_right,
-				imageSize, R, T,
-				cv::CALIB_FIX_INTRINSIC,
-				cv::TermCriteria(cv::TermCriteria::COUNT+cv::TermCriteria::EPS, 100, 1e-5));
-#endif
 	}
 	else
+#endif
 	{
 #if CV_MAJOR_VERSION < 3
 		rms = cv::stereoCalibrate(
