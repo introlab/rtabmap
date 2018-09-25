@@ -166,7 +166,7 @@ void CameraModel::initRectificationMap()
 		// get only k parameters (k1,k2,p1,p2,k3,k4)
 		cv::Mat D(1, 4, CV_64FC1);
 		D.at<double>(0,0) = D_.at<double>(0,1);
-		D.at<double>(0,1) = D_.at<double>(0,1);
+		D.at<double>(0,1) = D_.at<double>(0,2);
 		D.at<double>(0,2) = D_.at<double>(0,4);
 		D.at<double>(0,3) = D_.at<double>(0,5);
 		cv::fisheye::initUndistortRectifyMap(K_, D, R_, P_, imageSize_, CV_32FC1, mapX_, mapY_);
