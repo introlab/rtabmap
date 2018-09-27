@@ -4302,9 +4302,10 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 
 			UDEBUG("inliers=%d", (int)inliers.size());
 
-			// words3D should have the same size than words
+			// words3D should have the same size than words if not empty
 			float bad_point = std::numeric_limits<float>::quiet_NaN ();
-			UASSERT(words.size() == words3D.size());
+			UASSERT(words3D.size() == 0 || words.size() == words3D.size());
+			bool words3DWasEmpty = words3D.empty();
 			int added3DPointsWithoutDepth = 0;
 			for(std::multimap<int, cv::KeyPoint>::const_iterator iter=words.begin(); iter!=words.end(); ++iter)
 			{
@@ -4326,6 +4327,11 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 				{
 					iter3D->second = jter->second;
 					++added3DPointsWithoutDepth;
+				}
+				else if(words3DWasEmpty && jter == inliers.end())
+				{
+					// duplicate
+					words3D.insert(std::make_pair(iter->first, cv::Point3f(bad_point,bad_point,bad_point)));
 				}
 			}
 			UDEBUG("added3DPointsWithoutDepth=%d", added3DPointsWithoutDepth);

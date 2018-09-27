@@ -220,7 +220,7 @@ class RTABMAP_EXP Parameters
     RTABMAP_PARAM(Mem, LaserScanDownsampleStepSize, int, 1,         "If > 1, downsample the laser scans when creating a signature.");
     RTABMAP_PARAM(Mem, LaserScanVoxelSize,          float, 0.0,     uFormat("If > 0 m, voxel filtering is done on laser scans when creating a signature. If the laser scan had normals, they will be removed. To recompute the normals, make sure to use \"%s\" or \"%s\" parameters.", kMemLaserScanNormalK().c_str(), kMemLaserScanNormalRadius().c_str()).c_str());
     RTABMAP_PARAM(Mem, LaserScanNormalK,            int, 0,         "If > 0 and laser scans don't have normals, normals will be computed with K search neighbors when creating a signature.");
-    RTABMAP_PARAM(Mem, LaserScanNormalRadius,       int, 0,         "If > 0 m and laser scans don't have normals, normals will be computed with radius search neighbors when creating a signature.");
+    RTABMAP_PARAM(Mem, LaserScanNormalRadius,       float, 0.0,     "If > 0 m and laser scans don't have normals, normals will be computed with radius search neighbors when creating a signature.");
     RTABMAP_PARAM(Mem, UseOdomFeatures,             bool, true,     "Use odometry features.");
     RTABMAP_PARAM(Mem, CovOffDiagIgnored,           bool, true,     "Ignore off diagonal values of the covariance matrix.");
 

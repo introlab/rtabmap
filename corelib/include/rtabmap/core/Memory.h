@@ -291,7 +291,7 @@ private:
 	float _laserScanDownsampleStepSize;
 	float _laserScanVoxelSize;
 	int _laserScanNormalK;
-	int _laserScanNormalRadius;
+	float _laserScanNormalRadius;
 	bool _reextractLoopClosureFeatures;
 	bool _localBundleOnLoopClosure;
 	float _rehearsalMaxDistance;
