@@ -3866,8 +3866,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 			{
 				descriptors = cv::Mat();
 			}
-			else if((!decimatedData.depthRaw().empty() && decimatedData.cameraModels().size() && decimatedData.cameraModels()[0].isValidForProjection()) ||
-					(!decimatedData.rightRaw().empty() && decimatedData.stereoCameraModel().isValidForProjection()))
+			else
 			{
 				if(!imagesRectified && decimatedData.cameraModels().size())
 				{
@@ -3986,10 +3985,15 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 					if(stats) stats->addStatistic(Statistics::kTimingMemRectification(), t*1000.0f);
 					UDEBUG("time rectification = %fs", t);
 				}
-				keypoints3D = _feature2D->generateKeypoints3D(decimatedData, keypoints);
-				t = timer.ticks();
-				if(stats) stats->addStatistic(Statistics::kTimingMemKeypoints_3D(), t*1000.0f);
-				UDEBUG("time keypoints 3D (%d) = %fs", (int)keypoints3D.size(), t);
+
+				if((!decimatedData.depthRaw().empty() && decimatedData.cameraModels().size() && decimatedData.cameraModels()[0].isValidForProjection()) ||
+				   (!decimatedData.rightRaw().empty() && decimatedData.stereoCameraModel().isValidForProjection()))
+				{
+					keypoints3D = _feature2D->generateKeypoints3D(decimatedData, keypoints);
+					t = timer.ticks();
+					if(stats) stats->addStatistic(Statistics::kTimingMemKeypoints_3D(), t*1000.0f);
+					UDEBUG("time keypoints 3D (%d) = %fs", (int)keypoints3D.size(), t);
+				}
 			}
 		}
 		else if(data.imageRaw().empty())
