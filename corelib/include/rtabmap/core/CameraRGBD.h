@@ -379,6 +379,7 @@ class RTABMAP_EXP CameraRealSense :
 {
 public:
 	static bool available();
+	enum RGBSource {kColor, kInfrared, kFishEye};
 
 public:
 	// default local transform z in, x right, y down));
@@ -391,11 +392,8 @@ public:
 		const Transform & localTransform = Transform::getIdentity());
 	virtual ~CameraRealSense();
 
-	void setDepthScaledToRGBSize(bool enabled) {
-#ifdef RTABMAP_REALSENSE
-		depthScaledToRGBSize_ = enabled;
-#endif
-		}
+	void setDepthScaledToRGBSize(bool enabled);
+	void setRGBSource(RGBSource source);
 	virtual bool init(const std::string & calibrationFolder = ".", const std::string & cameraName = "");
 	virtual bool isCalibrated() const;
 	virtual std::string getSerial() const;
@@ -413,6 +411,9 @@ private:
 	int presetDepth_;
 	bool computeOdometry_;
 	bool depthScaledToRGBSize_;
+	RGBSource rgbSource_;
+	CameraModel cameraModel_;
+	std::vector<int> rsRectificationTable_;
 
 	int motionSeq_[2];
 	rs::slam::slam * slam_;

@@ -574,6 +574,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->comboBox_realsensePresetDepth, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->checkbox_realsenseOdom, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->checkbox_realsenseDepthScaledToRGBSize, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->comboBox_realsenseRGBSource, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->checkbox_rs2_emitter, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->checkbox_rs2_irDepth, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 
@@ -1662,6 +1663,7 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->comboBox_realsensePresetDepth->setCurrentIndex(2);
 		_ui->checkbox_realsenseOdom->setChecked(false);
 		_ui->checkbox_realsenseDepthScaledToRGBSize->setChecked(false);
+		_ui->comboBox_realsenseRGBSource->setCurrentIndex(0);
 		_ui->checkbox_rs2_emitter->setChecked(true);
 		_ui->checkbox_rs2_irDepth->setChecked(false);
 		_ui->lineEdit_openniOniPath->clear();
@@ -2061,6 +2063,7 @@ void PreferencesDialog::readCameraSettings(const QString & filePath)
 	_ui->comboBox_realsensePresetDepth->setCurrentIndex(settings.value("presetDepth", _ui->comboBox_realsensePresetDepth->currentIndex()).toInt());
 	_ui->checkbox_realsenseOdom->setChecked(settings.value("odom", _ui->checkbox_realsenseOdom->isChecked()).toBool());
 	_ui->checkbox_realsenseDepthScaledToRGBSize->setChecked(settings.value("depthScaled", _ui->checkbox_realsenseDepthScaledToRGBSize->isChecked()).toBool());
+	_ui->comboBox_realsenseRGBSource->setCurrentIndex(settings.value("rgbSource", _ui->comboBox_realsenseRGBSource->currentIndex()).toInt());
 	settings.endGroup(); // RealSense
 
 	settings.beginGroup("RealSense2");
@@ -2484,6 +2487,7 @@ void PreferencesDialog::writeCameraSettings(const QString & filePath) const
 	settings.setValue("presetDepth",         _ui->comboBox_realsensePresetDepth->currentIndex());
 	settings.setValue("odom",                _ui->checkbox_realsenseOdom->isChecked());
 	settings.setValue("depthScaled",         _ui->checkbox_realsenseDepthScaledToRGBSize->isChecked());
+	settings.setValue("rgbSource",           _ui->comboBox_realsenseRGBSource->currentIndex());
 	settings.endGroup(); // RealSense
 
 	settings.beginGroup("RealSense2");
@@ -5021,10 +5025,10 @@ Camera * PreferencesDialog::createCamera(bool useRawImages, bool useColor)
 	}
 	else if (driver == kSrcRealSense)
 	{
-		if(useRawImages)
+		if(useRawImages && _ui->comboBox_realsenseRGBSource->currentIndex()!=2)
 		{
 			QMessageBox::warning(this, tr("Calibration"),
-					tr("Using raw images for \"RealSense\" driver is not yet supported. "
+					tr("Using raw images for \"RealSense\" driver is not yet supported for color and infrared streams. "
 						"Factory calibration loaded from RealSense is used."), QMessageBox::Ok);
 			return 0;
 		}
@@ -5038,6 +5042,7 @@ Camera * PreferencesDialog::createCamera(bool useRawImages, bool useColor)
 				this->getGeneralInputRate(),
 				this->getSourceLocalTransform());
 			((CameraRealSense*)camera)->setDepthScaledToRGBSize(_ui->checkbox_realsenseDepthScaledToRGBSize->isChecked());
+			((CameraRealSense*)camera)->setRGBSource((CameraRealSense::RGBSource)_ui->comboBox_realsenseRGBSource->currentIndex());
 		}
 	}
 	else if (driver == kSrcRealSense2)
@@ -5824,7 +5829,7 @@ void PreferencesDialog::calibrate()
 		}
 
 		bool freenect2 = driver == kSrcFreenect2;
-		_calibrationDialog->setStereoMode(this->getSourceType() != kSrcRGB, freenect2?"rgb":"left", freenect2?"depth":"right"); // RGB+Depth or left+right
+		_calibrationDialog->setStereoMode(this->getSourceType() != kSrcRGB && driver != kSrcRealSense, freenect2?"rgb":"left", freenect2?"depth":"right"); // RGB+Depth or left+right
 		_calibrationDialog->setSwitchedImages(freenect2);
 		_calibrationDialog->setSavingDirectory(this->getCameraInfoDir());
 		_calibrationDialog->registerToEventsManager();

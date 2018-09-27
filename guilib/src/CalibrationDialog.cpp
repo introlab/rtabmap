@@ -630,6 +630,7 @@ void CalibrationDialog::restart()
 	maxIrs_[1] = 0x7fff;
 
 	ui_->pushButton_calibrate->setEnabled(ui_->checkBox_unlock->isChecked());
+	ui_->checkBox_fisheye->setEnabled(ui_->checkBox_unlock->isChecked());
 	ui_->pushButton_save->setEnabled(false);
 	ui_->radioButton_raw->setChecked(true);
 	ui_->radioButton_rectified->setEnabled(false);
@@ -673,6 +674,7 @@ void CalibrationDialog::restart()
 void CalibrationDialog::unlock()
 {
 	ui_->pushButton_calibrate->setEnabled(true);
+	ui_->checkBox_fisheye->setEnabled(true);
 }
 
 void CalibrationDialog::calibrate()
@@ -715,13 +717,26 @@ void CalibrationDialog::calibrate()
 
 		if(fishEye)
 		{
-			rms = cv::fisheye::calibrate(objectPoints,
-				imagePoints_[id],
-				imageSize_[id],
-				K,
-				D,
-				rvecs,
-				tvecs);
+			try
+			{
+				rms = cv::fisheye::calibrate(objectPoints,
+					imagePoints_[id],
+					imageSize_[id],
+					K,
+					D,
+					rvecs,
+					tvecs,
+					cv::fisheye::CALIB_RECOMPUTE_EXTRINSIC |
+					cv::fisheye::CALIB_CHECK_COND |
+					cv::fisheye::CALIB_FIX_SKEW);
+			}
+			catch(const cv::Exception & e)
+			{
+				UERROR("Error: %s (try restarting the calibration)", e.what());
+				QMessageBox::warning(this, tr("Calibration failed!"), tr("Error: %1 (try restarting the calibration)").arg(e.what()));
+				processingData_ = false;
+				return;
+			}
 		}
 		else
 #endif
@@ -748,7 +763,7 @@ void CalibrationDialog::calibrate()
 #if CV_MAJOR_VERSION > 2 or (CV_MAJOR_VERSION == 2 and (CV_MINOR_VERSION >4 or (CV_MINOR_VERSION == 4 and CV_SUBMINOR_VERSION >=10)))
 			if(fishEye)
 			{
-				cv::fisheye::projectPoints( cv::Mat(objectPoints[i]), rvecs[i], tvecs[i], K, D, imagePoints2);
+				cv::fisheye::projectPoints( cv::Mat(objectPoints[i]), imagePoints2, rvecs[i], tvecs[i], K, D);
 			}
 			else
 #endif
@@ -1066,8 +1081,7 @@ bool CalibrationDialog::save()
 	else
 	{
 		UASSERT(stereoModel_.left().isValidForRectification() &&
-				stereoModel_.right().isValidForRectification() &&
-				(!ui_->label_baseline->isVisible() || stereoModel_.baseline() > 0.0));
+				stereoModel_.right().isValidForRectification());
 		QString cameraName = stereoModel_.name().c_str();
 		QString filePath = QFileDialog::getSaveFileName(this, tr("Export"), savingDirectory_ + "/" + cameraName, "*.yaml");
 		QString name = QFileInfo(filePath).baseName();

@@ -94,8 +94,8 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>0</y>
-            <width>678</width>
+            <y>-287</y>
+            <width>681</width>
             <height>2943</height>
            </rect>
           </property>
@@ -117,7 +117,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>7</number>
+                <number>5</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,1">
@@ -3600,7 +3600,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                   <string>RealSense</string>
                                  </property>
                                  <layout class="QGridLayout" name="gridLayout_73" columnstretch="0,1">
-                                  <item row="4" column="0">
+                                  <item row="5" column="0">
                                    <spacer name="verticalSpacer_51">
                                     <property name="orientation">
                                      <enum>Qt::Vertical</enum>
@@ -3706,6 +3706,16 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                     </property>
                                    </widget>
                                   </item>
+                                  <item row="3" column="0">
+                                   <widget class="QCheckBox" name="checkbox_realsenseDepthScaledToRGBSize">
+                                    <property name="text">
+                                     <string/>
+                                    </property>
+                                    <property name="checked">
+                                     <bool>false</bool>
+                                    </property>
+                                   </widget>
+                                  </item>
                                   <item row="3" column="1">
                                    <widget class="QLabel" name="label_realsenseOdom_2">
                                     <property name="text">
@@ -3719,13 +3729,38 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                     </property>
                                    </widget>
                                   </item>
-                                  <item row="3" column="0">
-                                   <widget class="QCheckBox" name="checkbox_realsenseDepthScaledToRGBSize">
-                                    <property name="text">
-                                     <string/>
+                                  <item row="4" column="0">
+                                   <widget class="QComboBox" name="comboBox_realsenseRGBSource">
+                                    <property name="sizeAdjustPolicy">
+                                     <enum>QComboBox::AdjustToContents</enum>
                                     </property>
-                                    <property name="checked">
-                                     <bool>false</bool>
+                                    <item>
+                                     <property name="text">
+                                      <string>Color</string>
+                                     </property>
+                                    </item>
+                                    <item>
+                                     <property name="text">
+                                      <string>Infrared</string>
+                                     </property>
+                                    </item>
+                                    <item>
+                                     <property name="text">
+                                      <string>Fisheye</string>
+                                     </property>
+                                    </item>
+                                   </widget>
+                                  </item>
+                                  <item row="4" column="1">
+                                   <widget class="QLabel" name="label_realsenseOdom_3">
+                                    <property name="text">
+                                     <string>RGB camera source. For fisheye has depth available only if it is calibrated.</string>
+                                    </property>
+                                    <property name="wordWrap">
+                                     <bool>true</bool>
+                                    </property>
+                                    <property name="textInteractionFlags">
+                                     <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                                     </property>
                                    </widget>
                                   </item>

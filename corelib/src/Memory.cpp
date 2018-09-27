@@ -3822,7 +3822,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 			}
 
 			cv::Mat depthMask;
-			if(!decimatedData.depthRaw().empty() && _depthAsMask)
+			if(imagesRectified && !decimatedData.depthRaw().empty() && _depthAsMask)
 			{
 				if(imageMono.rows % decimatedData.depthRaw().rows == 0 &&
 					imageMono.cols % decimatedData.depthRaw().cols == 0 &&

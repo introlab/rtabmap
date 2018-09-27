@@ -278,24 +278,32 @@ bool CameraModel::load(const std::string & directory, const std::string & camera
 				n["data"] >> data;
 				UASSERT(rows*cols == (int)data.size());
 				UASSERT(rows == 1 && (cols == 4 || cols == 5 || cols == 8));
-				std::string distortionModel = (std::string)n["distortion_model"];
-				if(uStrContains(distortionModel, "fisheye") ||
-				   uStrContains(distortionModel, "equidistant"))
-				{
-					D_ = cv::Mat::zeros(1,6,CV_64FC1);
-					D_.at<double>(0,0) = data[0];
-					D_.at<double>(0,1) = data[1];
-					D_.at<double>(0,4) = data[2];
-					D_.at<double>(0,5) = data[3];
-				}
-				else
-				{
-					D_ = cv::Mat(rows, cols, CV_64FC1, data.data()).clone();
-				}
+				D_ = cv::Mat(rows, cols, CV_64FC1, data.data()).clone();
 			}
 			else
 			{
 				UWARN("Missing \"distorsion_coefficients\" field in \"%s\"", filePath.c_str());
+			}
+
+			n = fs["distortion_model"];
+			if(n.type() != cv::FileNode::NONE)
+			{
+				std::string distortionModel = (std::string)n;
+				if(D_.cols>=4 &&
+				  (uStrContains(distortionModel, "fisheye") ||
+				   uStrContains(distortionModel, "equidistant")))
+				{
+					cv::Mat D = cv::Mat::zeros(1,6,CV_64FC1);
+					D.at<double>(0,0) = D_.at<double>(0,0);
+					D.at<double>(0,1) = D_.at<double>(0,1);
+					D.at<double>(0,4) = D_.at<double>(0,2);
+					D.at<double>(0,5) = D_.at<double>(0,3);
+					D_ = D;
+				}
+			}
+			else
+			{
+				UWARN("Missing \"distortion_model\" field in \"%s\"", filePath.c_str());
 			}
 
 			n = fs["rectification_matrix"];
@@ -400,7 +408,7 @@ bool CameraModel::save(const std::string & directory) const
 			// compaibility with ROS
 			if(D_.cols == 6)
 			{
-				fs << "distortion_model" << "fisheye"; // equidistant
+				fs << "distortion_model" << "equidistant"; // equidistant, fisheye
 			}
 			else if(D.cols > 5)
 			{
