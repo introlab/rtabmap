@@ -175,8 +175,8 @@ class RTABMAP_EXP Parameters
     RTABMAP_PARAM(Rtabmap, PublishRAMUsage,              bool, false, "Publishing RAM usage in statistics (may add a small overhead to get info from the system).");
     RTABMAP_PARAM(Rtabmap, ComputeRMSE,                  bool, true,  "Compute root mean square error (RMSE) and publish it in statistics, if ground truth is provided.");
     RTABMAP_PARAM(Rtabmap, SaveWMState,                  bool, false, "Save working memory state after each update in statistics.");
-    RTABMAP_PARAM(Rtabmap, TimeThr,                      float, 0,    "Maximum time allowed for the detector (ms) (0 means infinity).");
-    RTABMAP_PARAM(Rtabmap, MemoryThr,                    int, 0,      "Maximum signatures in the Working Memory (0 means infinity).");
+    RTABMAP_PARAM(Rtabmap, TimeThr,                      float, 0,    "Maximum time allowed for map update (ms) (0 means infinity). When map update time exceeds this fixed time threshold, some nodes in Working Memory (WM) are transferred to Long-Term Memory to limit the size of the WM and decrease the update time.");
+    RTABMAP_PARAM(Rtabmap, MemoryThr,                    int, 0,      uFormat("Maximum nodes in the Working Memory (0 means infinity). Similar to \"%s\", when the number of nodes in Working Memory (WM) exceeds this treshold, some nodes are transferred to Long-Term Memory to keep WM size fixed.", kRtabmapTimeThr().c_str()));
     RTABMAP_PARAM(Rtabmap, DetectionRate,                float, 1,    "Detection rate (Hz). RTAB-Map will filter input images to satisfy this rate.");
     RTABMAP_PARAM(Rtabmap, ImageBufferSize,          unsigned int, 1, "Data buffer size (0 min inf).");
     RTABMAP_PARAM(Rtabmap, CreateIntermediateNodes,      bool, false, uFormat("Create intermediate nodes between loop closure detection. Only used when %s>0.", kRtabmapDetectionRate().c_str()));
