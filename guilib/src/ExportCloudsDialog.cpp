@@ -148,6 +148,7 @@ ExportCloudsDialog::ExportCloudsDialog(QWidget *parent) :
 	connect(_ui->spinBox_randomPoints, SIGNAL(valueChanged(int)), this, SIGNAL(configChanged()));
 	connect(_ui->doubleSpinBox_dilationVoxelSize, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
 	connect(_ui->spinBox_dilationSteps, SIGNAL(valueChanged(int)), this, SIGNAL(configChanged()));
+	connect(_ui->doubleSpinBox_mls_outputVoxelSize, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
 	_ui->stackedWidget_upsampling->setCurrentIndex(_ui->comboBox_upsamplingMethod->currentIndex());
 	connect(_ui->comboBox_upsamplingMethod, SIGNAL(currentIndexChanged(int)), _ui->stackedWidget_upsampling, SLOT(setCurrentIndex(int)));
 	connect(_ui->comboBox_upsamplingMethod, SIGNAL(currentIndexChanged(int)), this, SLOT(updateMLSGrpVisibility()));
@@ -335,6 +336,7 @@ void ExportCloudsDialog::saveSettings(QSettings & settings, const QString & grou
 	settings.setValue("mls_point_density", _ui->spinBox_randomPoints->value());
 	settings.setValue("mls_dilation_voxel_size", _ui->doubleSpinBox_dilationVoxelSize->value());
 	settings.setValue("mls_dilation_iterations", _ui->spinBox_dilationSteps->value());
+	settings.setValue("mls_output_voxel_size", _ui->doubleSpinBox_mls_outputVoxelSize->value());
 
 	settings.setValue("gain", _ui->checkBox_gainCompensation->isChecked());
 	settings.setValue("gain_radius", _ui->doubleSpinBox_gainRadius->value());
@@ -469,6 +471,7 @@ void ExportCloudsDialog::loadSettings(QSettings & settings, const QString & grou
 	_ui->spinBox_randomPoints->setValue(settings.value("mls_point_density", _ui->spinBox_randomPoints->value()).toInt());
 	_ui->doubleSpinBox_dilationVoxelSize->setValue(settings.value("mls_dilation_voxel_size", _ui->doubleSpinBox_dilationVoxelSize->value()).toDouble());
 	_ui->spinBox_dilationSteps->setValue(settings.value("mls_dilation_iterations", _ui->spinBox_dilationSteps->value()).toInt());
+	_ui->doubleSpinBox_mls_outputVoxelSize->setValue(settings.value("mls_output_voxel_size", _ui->doubleSpinBox_mls_outputVoxelSize->value()).toInt());
 
 	_ui->checkBox_gainCompensation->setChecked(settings.value("gain", _ui->checkBox_gainCompensation->isChecked()).toBool());
 	_ui->doubleSpinBox_gainRadius->setValue(settings.value("gain_radius", _ui->doubleSpinBox_gainRadius->value()).toDouble());
@@ -596,10 +599,11 @@ void ExportCloudsDialog::restoreDefaults()
 	_ui->spinBox_polygonialOrder->setValue(2);
 	_ui->comboBox_upsamplingMethod->setCurrentIndex(0);
 	_ui->doubleSpinBox_sampleRadius->setValue(0.01);
-	_ui->doubleSpinBox_sampleStep->setValue(0.0);
-	_ui->spinBox_randomPoints->setValue(0);
-	_ui->doubleSpinBox_dilationVoxelSize->setValue(0.01);
-	_ui->spinBox_dilationSteps->setValue(0);
+	_ui->doubleSpinBox_sampleStep->setValue(0.005);
+	_ui->spinBox_randomPoints->setValue(10);
+	_ui->doubleSpinBox_dilationVoxelSize->setValue(0.005);
+	_ui->spinBox_dilationSteps->setValue(1);
+	_ui->doubleSpinBox_mls_outputVoxelSize->setValue(0);
 
 	_ui->checkBox_gainCompensation->setChecked(false);
 	_ui->doubleSpinBox_gainRadius->setValue(0.02);
@@ -1691,16 +1695,16 @@ bool ExportCloudsDialog::getExportedClouds(
 				if(_ui->checkBox_assemble->isChecked())
 				{
 					// Re-voxelize to make sure to have uniform density
-					if(_ui->doubleSpinBox_voxelSize_assembled->value())
+                    if(_ui->doubleSpinBox_mls_outputVoxelSize->value())
 					{
 						_progressDialog->appendText(tr("Voxelize cloud (%1 points, voxel size = %2 m)...")
 								.arg(cloudWithNormals->size())
-								.arg(_ui->doubleSpinBox_voxelSize_assembled->value()));
+								.arg(_ui->doubleSpinBox_mls_outputVoxelSize->value()));
 						QApplication::processEvents();
 
 						cloudWithNormals = util3d::voxelize(
 								cloudWithNormals,
-								_ui->doubleSpinBox_voxelSize_assembled->value());
+								_ui->doubleSpinBox_mls_outputVoxelSize->value());
 					}
 				
 					_progressDialog->appendText(tr("Update %1 normals with %2 camera views...").arg(cloudWithNormals->size()).arg(poses.size()));

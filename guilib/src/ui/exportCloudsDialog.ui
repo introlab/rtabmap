@@ -23,9 +23,9 @@
       <property name="geometry">
        <rect>
         <x>0</x>
-        <y>0</y>
-        <width>778</width>
-        <height>4697</height>
+        <y>-1112</y>
+        <width>773</width>
+        <height>4339</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_13">
@@ -890,12 +890,29 @@ Guidelines: 4 times the voxel size, 0.025 for voxel=0.</string>
               </property>
              </widget>
             </item>
+            <item row="3" column="1">
+             <widget class="QLabel" name="label_90">
+              <property name="text">
+               <string>Output voxel size. Used to filter superposed points after upsampling.</string>
+              </property>
+              <property name="wordWrap">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item row="3" column="0">
+             <widget class="QDoubleSpinBox" name="doubleSpinBox_mls_outputVoxelSize">
+              <property name="decimals">
+               <number>3</number>
+              </property>
+             </widget>
+            </item>
            </layout>
           </item>
           <item>
            <widget class="QStackedWidget" name="stackedWidget_upsampling">
             <property name="currentIndex">
-             <number>0</number>
+             <number>4</number>
             </property>
             <widget class="QWidget" name="page">
              <layout class="QVBoxLayout" name="verticalLayout_3">
@@ -1000,7 +1017,11 @@ Guidelines: 4 times the voxel size, 0.025 for voxel=0.</string>
                     </widget>
                    </item>
                    <item row="0" column="0">
-                    <widget class="QDoubleSpinBox" name="doubleSpinBox_sampleRadius"/>
+                    <widget class="QDoubleSpinBox" name="doubleSpinBox_sampleRadius">
+                     <property name="decimals">
+                      <number>3</number>
+                     </property>
+                    </widget>
                    </item>
                    <item row="0" column="1">
                     <widget class="QLabel" name="label_7">
@@ -1013,7 +1034,11 @@ Guidelines: 4 times the voxel size, 0.025 for voxel=0.</string>
                     </widget>
                    </item>
                    <item row="1" column="0">
-                    <widget class="QDoubleSpinBox" name="doubleSpinBox_sampleStep"/>
+                    <widget class="QDoubleSpinBox" name="doubleSpinBox_sampleStep">
+                     <property name="decimals">
+                      <number>3</number>
+                     </property>
+                    </widget>
                    </item>
                   </layout>
                  </item>
@@ -1119,7 +1144,11 @@ Guidelines: 4 times the voxel size, 0.025 for voxel=0.</string>
                     </widget>
                    </item>
                    <item row="0" column="0">
-                    <widget class="QDoubleSpinBox" name="doubleSpinBox_dilationVoxelSize"/>
+                    <widget class="QDoubleSpinBox" name="doubleSpinBox_dilationVoxelSize">
+                     <property name="decimals">
+                      <number>3</number>
+                     </property>
+                    </widget>
                    </item>
                    <item row="1" column="1">
                     <widget class="QLabel" name="label_11">
