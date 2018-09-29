@@ -1203,6 +1203,7 @@ bool Rtabmap::process(
 						UINFO("Odometry refining rejected: %s", info.rejectedMsg.c_str());
 						if(!info.covariance.empty() && info.covariance.at<double>(0,0) > 0.0 && info.covariance.at<double>(0,0) != 1.0 && info.covariance.at<double>(5,5) > 0.0 && info.covariance.at<double>(5,5) != 1.0)
 						{
+							std::cout << info.covariance << std::endl;
 							_memory->updateLink(Link(oldId, signature->id(), signature->getLinks().begin()->second.type(), guess, (info.covariance*100.0).inv()));
 						}
 					}

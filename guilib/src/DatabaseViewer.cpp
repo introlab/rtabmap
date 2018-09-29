@@ -6277,7 +6277,9 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent)
 		std::multimap<int, Link> linksIn = updateLinksWithModifications(links_);
 		linksIn.insert(std::make_pair(newLink.from(), newLink));
 		const Link * maxLinearLink = 0;
+		const Link * maxAngularLink = 0;
 		float maxLinearErrorRatio = 0.0f;
+		float maxAngularErrorRatio = 0.0f;
 		Optimizer * optimizer = Optimizer::create(ui_->parameters_toolbox->getParameters());
 		std::map<int, Transform> poses;
 		std::multimap<int, Link> links;
@@ -6293,38 +6295,52 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent)
 		std::string msg;
 		if(poses.size())
 		{
+			float maxLinearError = 0.0f;
+			float maxAngularError = 0.0f;
 			for(std::multimap<int, Link>::iterator iter=links.begin(); iter!=links.end(); ++iter)
 			{
 				// ignore links with high variance
 				if(iter->second.transVariance() <= 1.0 && iter->second.from() != iter->second.to())
 				{
-					UASSERT(poses.find(iter->second.from())!=poses.end());
-					UASSERT(poses.find(iter->second.to())!=poses.end());
-					Transform t1 = poses.at(iter->second.from());
-					Transform t2 = poses.at(iter->second.to());
-					UASSERT(!t1.isNull() && !t2.isNull());
+					Transform t1 = uValue(poses, iter->second.from(), Transform());
+					Transform t2 = uValue(poses, iter->second.to(), Transform());
 					Transform t = t1.inverse()*t2;
 					float linearError = uMax3(
 							fabs(iter->second.transform().x() - t.x()),
 							fabs(iter->second.transform().y() - t.y()),
 							fabs(iter->second.transform().z() - t.z()));
-					float stddev = sqrt(iter->second.transVariance());
-					float linearErrorRatio = linearError/stddev;
+					float opt_roll,opt__pitch,opt__yaw;
+					float link_roll,link_pitch,link_yaw;
+					t.getEulerAngles(opt_roll, opt__pitch, opt__yaw);
+					iter->second.transform().getEulerAngles(link_roll, link_pitch, link_yaw);
+					float angularError = uMax3(
+							fabs(opt_roll - link_roll),
+							fabs(opt__pitch - link_pitch),
+							fabs(opt__yaw - link_yaw));
+					float stddevLinear = sqrt(iter->second.transVariance());
+					float linearErrorRatio = linearError/stddevLinear;
 					if(linearErrorRatio > maxLinearErrorRatio)
 					{
+						maxLinearError = linearError;
 						maxLinearErrorRatio = linearErrorRatio;
 						maxLinearLink = &iter->second;
+					}
+					float stddevAngular = sqrt(iter->second.rotVariance());
+					float angularErrorRatio = angularError/stddevAngular;
+					if(angularErrorRatio > maxAngularErrorRatio)
+					{
+						maxAngularError = angularError;
+						maxAngularErrorRatio = angularErrorRatio;
+						maxAngularLink = &iter->second;
 					}
 				}
 			}
 			if(maxLinearLink)
 			{
-				UINFO("Max optimization linear error ratio = %f (link %d->%d)", maxLinearErrorRatio, maxLinearLink->from(), maxLinearLink->to());
-			}
-
-			if(maxLinearErrorRatio > maxOptimizationError)
-			{
-				msg = uFormat("Rejecting edge %d->%d because "
+				UINFO("Max optimization linear error = %f m (link %d->%d, var=%f, ratio error/std=%f)", maxLinearError, maxLinearLink->from(), maxLinearLink->to(), maxLinearLink->transVariance(), maxLinearError/sqrt(maxLinearLink->transVariance()));
+				if(maxLinearErrorRatio > maxOptimizationError)
+				{
+					msg = uFormat("Rejecting edge %d->%d because "
 						  "graph error is too large after optimization (ratio %f for edge %d->%d, stddev=%f). "
 						  "\"%s\" is %f.",
 						  newLink.from(),
@@ -6335,6 +6351,25 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent)
 						  sqrt(maxLinearLink->transVariance()),
 						  Parameters::kRGBDOptimizeMaxError().c_str(),
 						  maxOptimizationError);
+				}
+			}
+			if(maxAngularLink)
+			{
+				UINFO("Max optimization angular error = %f deg (link %d->%d, var=%f, ratio error/std=%f)", maxAngularError*180.0f/CV_PI, maxAngularLink->from(), maxAngularLink->to(), maxAngularLink->rotVariance(), maxAngularError/sqrt(maxAngularLink->rotVariance()));
+				if(maxAngularErrorRatio > maxOptimizationError)
+				{
+					msg = uFormat("Rejecting edge %d->%d because "
+						  "graph error is too large after optimization (ratio %f for edge %d->%d, stddev=%f). "
+						  "\"%s\" is %f.",
+						  newLink.from(),
+						  newLink.to(),
+						  maxAngularErrorRatio,
+						  maxAngularLink->from(),
+						  maxAngularLink->to(),
+						  sqrt(maxAngularLink->rotVariance()),
+						  Parameters::kRGBDOptimizeMaxError().c_str(),
+						  maxOptimizationError);
+				}
 			}
 		}
 		else

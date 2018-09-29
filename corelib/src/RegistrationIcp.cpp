@@ -1046,17 +1046,29 @@ Transform RegistrationIcp::computeTransformationImpl(
 							t = Transform(v[0], v[1], v[2], roll, pitch, yaw);
 							icpT = guess * t.inverse() * guessInv;
 
-							// we were using normals, so compute correspondences using normals
-							pcl::PointCloud<pcl::PointNormal>::Ptr fromCloudNormalsRegistered = util3d::laserScanToPointCloudNormal(fromScan, icpT * fromScan.localTransform());
-							pcl::PointCloud<pcl::PointNormal>::Ptr toCloudNormals = util3d::laserScanToPointCloudNormal(toScan, guess * toScan.localTransform());
+							if(fromScan.hasNormals() && toScan.hasNormals())
+							{
+								// we were using normals, so compute correspondences using normals
+								pcl::PointCloud<pcl::PointNormal>::Ptr fromCloudNormalsRegistered = util3d::laserScanToPointCloudNormal(fromScan, icpT * fromScan.localTransform());
+								pcl::PointCloud<pcl::PointNormal>::Ptr toCloudNormals = util3d::laserScanToPointCloudNormal(toScan, guess * toScan.localTransform());
 
-							util3d::computeVarianceAndCorrespondences(
-									fromCloudNormalsRegistered,
-									toCloudNormals,
-									_maxCorrespondenceDistance,
-									_maxRotation,
-									variance,
-									correspondences);
+								util3d::computeVarianceAndCorrespondences(
+										fromCloudNormalsRegistered,
+										toCloudNormals,
+										_maxCorrespondenceDistance,
+										_maxRotation,
+										variance,
+										correspondences);
+							}
+							else
+							{
+								util3d::computeVarianceAndCorrespondences(
+										fromCloudRegistered,
+										toCloudFiltered,
+										_maxCorrespondenceDistance,
+										variance,
+										correspondences);
+							}
 						}
 						else
 						{
@@ -1097,6 +1109,7 @@ Transform RegistrationIcp::computeTransformationImpl(
 					// verify if there are enough correspondences (using "To" by default if set, in case if "From" is merged from multiple scans)
 					int maxLaserScans = maxLaserScansTo?maxLaserScansTo:maxLaserScansFrom;
 					UDEBUG("Max scans=%d (from=%d, to=%d)", maxLaserScans, maxLaserScansFrom, maxLaserScansTo);
+
 					if(maxLaserScans)
 					{
 						correspondencesRatio = float(correspondences)/float(maxLaserScans);
@@ -1125,10 +1138,17 @@ Transform RegistrationIcp::computeTransformationImpl(
 							info.icpTranslation,
 							info.icpRotation);
 
-					info.covariance = cv::Mat::eye(6,6,CV_64FC1)*variance;
+					if(correspondences == 0)
+					{
+						UERROR("Transform is found but no correspondences has been found!? Variance is unknown!");
+					}
+					else
+					{
+						info.covariance = cv::Mat::eye(6,6,CV_64FC1)*variance;
+					}
 					info.icpInliersRatio = correspondencesRatio;
 
-					if(correspondencesRatio < _correspondenceRatio)
+					if(correspondencesRatio <= _correspondenceRatio)
 					{
 						msg = uFormat("Cannot compute transform (cor=%d corrRatio=%f/%f maxLaserScans=%d)",
 								correspondences, correspondencesRatio, _correspondenceRatio, maxLaserScans);
