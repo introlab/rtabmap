@@ -30,7 +30,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UThread.h>
 #include "MapBuilder.h"
 #include <pcl/visualization/cloud_viewer.h>
-#include <rtabmap/core/OdometryF2M.h>
+#include <rtabmap/core/Odometry.h>
 #include <QApplication>
 #include <stdio.h>
 
@@ -103,7 +103,7 @@ int main(int argc, char * argv[])
 
 	if(camera.init(calibrationDir, calibrationName))
 	{
-		OdometryF2M odom;
+		Odometry * odom = Odometry::create();
 		Rtabmap rtabmap;
 		rtabmap.init();
 
@@ -121,7 +121,7 @@ int main(int argc, char * argv[])
 			if(cameraIteration++ % odomUpdate == 0)
 			{
 				OdometryInfo info;
-				Transform pose = odom.process(data, &info);
+				Transform pose = odom->process(data, &info);
 
 				if(odometryIteration++ % mapUpdate == 0)
 				{
@@ -148,6 +148,7 @@ int main(int argc, char * argv[])
 
 			data = camera.takeImage();
 		}
+		delete odom;
 
 		if(mapBuilder.isVisible())
 		{
