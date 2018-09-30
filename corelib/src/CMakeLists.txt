@@ -27,11 +27,11 @@ SET(SRC_FILES
     camera/CameraRealSense.cpp
     camera/CameraRealSense2.cpp
     camera/CameraRGBDImages.cpp
-    camera/cameraStereoDC1394.cpp
-    camera/cameraStereoFlyCapture2.cpp
-    camera/cameraStereoImages.cpp
-    camera/cameraStereoVideo.cpp
-    camera/cameraStereoZed.cpp
+    camera/CameraStereoDC1394.cpp
+    camera/CameraStereoFlyCapture2.cpp
+    camera/CameraStereoImages.cpp
+    camera/CameraStereoVideo.cpp
+    camera/CameraStereoZed.cpp
     camera/CameraVideo.cpp
     
     EpipolarGeometry.cpp
