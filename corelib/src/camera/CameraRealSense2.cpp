@@ -26,6 +26,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <rtabmap/core/camera/CameraRealSense2.h>
 #include <rtabmap/utilite/UTimer.h>
+#include <rtabmap/utilite/UThreadC.h>
+#include <rtabmap/utilite/UConversion.h>
 
 #ifdef RTABMAP_REALSENSE2
 #include <librealsense2/rs.hpp>

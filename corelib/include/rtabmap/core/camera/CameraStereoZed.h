@@ -30,7 +30,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
 
 #include "rtabmap/core/StereoCameraModel.h"
-#include "rtabmap/core/Camera.h"
+#include "rtabmap/core/camera/CameraVideo.h"
 #include "rtabmap/core/Version.h"
 
 namespace sl

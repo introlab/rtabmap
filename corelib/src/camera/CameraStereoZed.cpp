@@ -27,6 +27,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <rtabmap/core/camera/CameraStereoZed.h>
 #include <rtabmap/utilite/UTimer.h>
+#include <rtabmap/utilite/UThreadC.h>
+#include <rtabmap/utilite/UConversion.h>
 
 #ifdef RTABMAP_ZED
 #include <sl/Camera.hpp>
