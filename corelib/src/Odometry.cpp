@@ -25,16 +25,16 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include <rtabmap/core/OdometryF2M.h>
 #include "rtabmap/core/Odometry.h"
-#include "rtabmap/core/OdometryF2F.h"
-#include "rtabmap/core/OdometryFovis.h"
-#include "rtabmap/core/OdometryViso2.h"
-#include "rtabmap/core/OdometryDVO.h"
-#include "rtabmap/core/OdometryOkvis.h"
-#include "rtabmap/core/OdometryORBSLAM2.h"
-#include "rtabmap/core/OdometryLOAM.h"
-#include "rtabmap/core/OdometryMSCKF.h"
+#include <rtabmap/core/odometry/OdometryF2M.h>
+#include "rtabmap/core/odometry/OdometryF2F.h"
+#include "rtabmap/core/odometry/OdometryFovis.h"
+#include "rtabmap/core/odometry/OdometryViso2.h"
+#include "rtabmap/core/odometry/OdometryDVO.h"
+#include "rtabmap/core/odometry/OdometryOkvis.h"
+#include "rtabmap/core/odometry/OdometryORBSLAM2.h"
+#include "rtabmap/core/odometry/OdometryLOAM.h"
+#include "rtabmap/core/odometry/OdometryMSCKF.h"
 #include "rtabmap/core/OdometryInfo.h"
 #include "rtabmap/core/util3d.h"
 #include "rtabmap/core/util3d_mapping.h"

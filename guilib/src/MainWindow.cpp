@@ -104,7 +104,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/util3d_surface.h"
 #include "rtabmap/core/util3d_registration.h"
 #include "rtabmap/core/Optimizer.h"
-#include "rtabmap/core/OptimizerCVSBA.h"
+#include "rtabmap/core/optimizer/OptimizerCVSBA.h"
 #include "rtabmap/core/Graph.h"
 #include "rtabmap/core/RegistrationIcp.h"
 #include <pcl/visualization/cloud_viewer.h>

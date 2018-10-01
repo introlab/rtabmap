@@ -36,10 +36,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <set>
 #include <queue>
 
-#include <rtabmap/core/OptimizerTORO.h>
-#include <rtabmap/core/OptimizerG2O.h>
-#include <rtabmap/core/OptimizerGTSAM.h>
-#include <rtabmap/core/OptimizerCVSBA.h>
+#include <rtabmap/core/optimizer/OptimizerTORO.h>
+#include <rtabmap/core/optimizer/OptimizerG2O.h>
+#include <rtabmap/core/optimizer/OptimizerGTSAM.h>
+#include <rtabmap/core/optimizer/OptimizerCVSBA.h>
 
 namespace rtabmap {
 

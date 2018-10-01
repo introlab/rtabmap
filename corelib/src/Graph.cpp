@@ -43,8 +43,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <queue>
 #include <fstream>
 
-#include <rtabmap/core/OptimizerTORO.h>
-#include <rtabmap/core/OptimizerG2O.h>
+#include <rtabmap/core/optimizer/OptimizerTORO.h>
+#include <rtabmap/core/optimizer/OptimizerG2O.h>
 
 namespace rtabmap {
 

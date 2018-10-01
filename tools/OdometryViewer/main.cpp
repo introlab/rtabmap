@@ -30,8 +30,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UFile.h>
 #include <rtabmap/utilite/UConversion.h>
 #include <rtabmap/utilite/UStl.h>
-#include <rtabmap/core/OdometryF2F.h>
-#include <rtabmap/core/OdometryMono.h>
+#include <rtabmap/core/Odometry.h>
 #include <rtabmap/core/OdometryThread.h>
 #include <rtabmap/gui/OdometryViewer.h>
 #include <rtabmap/core/CameraThread.h>
@@ -42,7 +41,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QApplication>
 #include <QPushButton>
 #include <pcl/console/print.h>
-#include <rtabmap/core/OdometryF2M.h>
 
 void showUsage()
 {
