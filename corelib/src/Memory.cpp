@@ -827,10 +827,16 @@ void Memory::addSignatureToStm(Signature * signature, const cv::Mat & covariance
 					double maxAngVar = uMax3(covariance.at<double>(3,3), covariance.at<double>(4,4), covariance.at<double>(5,5));
 					if(maxAngVar != 1.0 && maxAngVar > 0.1)
 					{
-						UWARN("Very large angular variance (%f) detected! Please fix odometry "
-								"twist covariance, otherwise poor graph optimizations are "
-								"expected and wrong loop closure detections creating a lot "
-								"of errors in the map could be accepted.", maxAngVar);
+						static bool warned = false;
+						if(!warned)
+						{
+							UWARN("Very large angular variance (%f) detected! Please fix odometry "
+									"twist covariance, otherwise poor graph optimizations are "
+									"expected and wrong loop closure detections creating a lot "
+									"of errors in the map could be accepted. This message is only "
+									"printed once.", maxAngVar);
+							warned = true;
+						}
 					}
 
 					cv::Mat infMatrix;
