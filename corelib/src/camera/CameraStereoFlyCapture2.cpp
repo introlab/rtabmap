@@ -27,6 +27,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <rtabmap/core/camera/CameraStereoFlyCapture2.h>
 #include <rtabmap/utilite/UTimer.h>
+#include <rtabmap/utilite/UConversion.h>
 
 #ifdef RTABMAP_FLYCAPTURE2
 #include <triclops.h>

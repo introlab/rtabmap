@@ -26,6 +26,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <rtabmap/core/camera/CameraK4W2.h>
 #include <rtabmap/utilite/UTimer.h>
+#include <rtabmap/utilite/UThreadC.h>
+#include <rtabmap/core/util2d.h>
 
 #ifdef RTABMAP_K4W2
 #include <Kinect.h>
