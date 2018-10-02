@@ -239,6 +239,29 @@ void Memory::loadDataFromDb(bool postInitClosingEvents)
 				//       global loop closures.
 				_signatures.insert(std::pair<int, Signature *>((*iter)->id(), *iter));
 				_workingMem.insert(std::make_pair((*iter)->id(), UTimer::now()));
+
+				//update odomMaxInf vector
+				std::multimap<int, Link> links = this->getAllLinks(true, true);
+				for(std::multimap<int, Link>::iterator iter=links.begin(); iter!=links.end(); ++iter)
+				{
+					if(iter->second.type() == Link::kNeighbor &&
+					   iter->second.infMatrix().cols == 6 &&
+					   iter->second.infMatrix().rows == 6)
+					{
+						if(_odomMaxInf.empty())
+						{
+							_odomMaxInf.resize(6, 0.0);
+						}
+						for(int i=0; i<6; ++i)
+						{
+							const double & v = iter->second.infMatrix().at<double>(i,i);
+							if(_odomMaxInf[i] < v)
+							{
+								_odomMaxInf[i] = v;
+							}
+						}
+					}
+				}
 			}
 			else
 			{
@@ -832,6 +855,21 @@ void Memory::addSignatureToStm(Signature * signature, const cv::Mat & covariance
 						std::cout << "Covariance: " << covariance << std::endl;
 						infMatrix = cv::Mat::eye(6,6,CV_64FC1);
 					}
+
+					UASSERT(infMatrix.rows == 6 && infMatrix.cols == 6);
+					if(_odomMaxInf.empty())
+					{
+						_odomMaxInf.resize(6, 0.0);
+					}
+					for(int i=0; i<6; ++i)
+					{
+						const double & v = infMatrix.at<double>(i,i);
+						if(_odomMaxInf[i] < v)
+						{
+							_odomMaxInf[i] = v;
+						}
+					}
+
 					motionEstimate = _signatures.at(*_stMem.rbegin())->getPose().inverse() * signature->getPose();
 					_signatures.at(*_stMem.rbegin())->addLink(Link(*_stMem.rbegin(), signature->id(), Link::kNeighbor, motionEstimate, infMatrix));
 					signature->addLink(Link(signature->id(), *_stMem.rbegin(), Link::kNeighbor, motionEstimate.inverse(), infMatrix));
@@ -1519,6 +1557,7 @@ void Memory::clear()
 	_gpsOrigin = GPS();
 	_rectCameraModels.clear();
 	_rectStereoCameraModel = StereoCameraModel();
+	_odomMaxInf.clear();
 
 	if(_dbDriver)
 	{

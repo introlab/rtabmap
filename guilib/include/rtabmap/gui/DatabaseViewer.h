@@ -210,6 +210,7 @@ private:
 	std::map<int, std::pair<std::pair<cv::Mat, cv::Mat>, cv::Mat> > generatedLocalMaps_; // < <ground, obstacles>, empty>
 	std::map<int, std::pair<float, cv::Point3f> > generatedLocalMapsInfo_; // <cell size, viewpoint>
 	std::map<int, cv::Mat> modifiedDepthImages_;
+	std::vector<double> odomMaxInf_;
 	OctoMap * octomap_;
 	ExportCloudsDialog * exportDialog_;
 	QDialog * editDepthDialog_;

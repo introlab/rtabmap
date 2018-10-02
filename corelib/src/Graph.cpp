@@ -818,6 +818,92 @@ Transform calcRMSE (
 	return t;
 }
 
+void computeMaxGraphErrors(
+		const std::map<int, Transform> & poses,
+		const std::multimap<int, Link> & links,
+		float & maxLinearErrorRatio,
+		float & maxAngularErrorRatio,
+		float & maxLinearError,
+		float & maxAngularError,
+		const Link ** maxLinearErrorLink,
+		const Link ** maxAngularErrorLink)
+{
+	maxLinearErrorRatio = -1;
+	maxAngularErrorRatio = -1;
+	maxLinearError = -1;
+	maxAngularError = -1;
+	for(std::multimap<int, Link>::const_iterator iter=links.begin(); iter!=links.end(); ++iter)
+	{
+		// ignore links with high variance
+		if(iter->second.transVariance() <= 1.0 && iter->second.from() != iter->second.to())
+		{
+			Transform t1 = uValue(poses, iter->second.from(), Transform());
+			Transform t2 = uValue(poses, iter->second.to(), Transform());
+			Transform t = t1.inverse()*t2;
+			float linearError = uMax3(
+					fabs(iter->second.transform().x() - t.x()),
+					fabs(iter->second.transform().y() - t.y()),
+					fabs(iter->second.transform().z() - t.z()));
+			float opt_roll,opt__pitch,opt__yaw;
+			float link_roll,link_pitch,link_yaw;
+			t.getEulerAngles(opt_roll, opt__pitch, opt__yaw);
+			iter->second.transform().getEulerAngles(link_roll, link_pitch, link_yaw);
+			float angularError = uMax3(
+					fabs(opt_roll - link_roll),
+					fabs(opt__pitch - link_pitch),
+					fabs(opt__yaw - link_yaw));
+			UASSERT(iter->second.transVariance()>0.0);
+			float stddevLinear = sqrt(iter->second.transVariance());
+			float linearErrorRatio = linearError/stddevLinear;
+			if(linearErrorRatio > maxLinearErrorRatio)
+			{
+				maxLinearError = linearError;
+				maxLinearErrorRatio = linearErrorRatio;
+				if(maxLinearErrorLink)
+				{
+					*maxLinearErrorLink = &iter->second;
+				}
+			}
+			UASSERT(iter->second.rotVariance()>0.0);
+			float stddevAngular = sqrt(iter->second.rotVariance());
+			float angularErrorRatio = angularError/stddevAngular;
+			if(angularErrorRatio > maxAngularErrorRatio)
+			{
+				maxAngularError = angularError;
+				maxAngularErrorRatio = angularErrorRatio;
+				if(maxAngularErrorLink)
+				{
+					*maxAngularErrorLink = &iter->second;
+				}
+			}
+		}
+	}
+}
+
+std::vector<double> getMaxOdomInf(const std::multimap<int, Link> & links)
+{
+	std::vector<double> maxOdomInf(6,0.0);
+	maxOdomInf.resize(6,0.0);
+	for(std::multimap<int, Link>::const_iterator iter=links.begin(); iter!=links.end(); ++iter)
+	{
+		if(iter->second.type() == Link::kNeighbor || iter->second.type() == Link::kNeighborMerged)
+		{
+			for(int i=0; i<6; ++i)
+			{
+				const double & v = iter->second.infMatrix().at<double>(i,i);
+				if(maxOdomInf[i] < v)
+				{
+					maxOdomInf[i] = v;
+				}
+			}
+		}
+	}
+	if(maxOdomInf[0] == 0.0)
+	{
+		maxOdomInf.clear();
+	}
+	return maxOdomInf;
+}
 
 ////////////////////////////////////////////
 // Graph utilities

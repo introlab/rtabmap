@@ -206,6 +206,7 @@ public:
 	int getLastGlobalLoopClosureId() const {return _lastGlobalLoopClosureId;}
 	const Feature2D * getFeature2D() const {return _feature2D;}
 	bool isGraphReduced() const {return _reduceGraph;}
+	const std::vector<double> & getOdomMaxInf() const {return _odomMaxInf;}
 
 	void dumpMemoryTree(const char * fileNameTree) const;
 	virtual void dumpMemory(std::string directory) const;
@@ -315,6 +316,7 @@ private:
 	GPS _gpsOrigin;
 	std::vector<CameraModel> _rectCameraModels;
 	StereoCameraModel _rectStereoCameraModel;
+	std::vector<double> _odomMaxInf;
 
 	std::map<int, Signature *> _signatures; // TODO : check if a signature is already added? although it is not supposed to occur...
 	std::set<int> _stMem; // id

@@ -102,6 +102,18 @@ Transform RTABMAP_EXP calcRMSE(
 		float & rotational_min,
 		float & rotational_max);
 
+void RTABMAP_EXP computeMaxGraphErrors(
+		const std::map<int, Transform> & poses,
+		const std::multimap<int, Link> & links,
+		float & maxLinearErrorRatio,
+		float & maxAngularErrorRatio,
+		float & maxLinearError,
+		float & maxAngularError,
+		const Link ** maxLinearErrorLink = 0,
+		const Link ** maxAngularErrorLink = 0);
+
+std::vector<double> getMaxOdomInf(const std::multimap<int, Link> & links);
+
 std::multimap<int, Link>::iterator RTABMAP_EXP findLink(
 		std::multimap<int, Link> & links,
 		int from,

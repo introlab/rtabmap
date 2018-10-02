@@ -123,6 +123,7 @@ Rtabmap::Rtabmap() :
 	_pathLinearVelocity(Parameters::defaultRGBDPlanLinearVelocity()),
 	_pathAngularVelocity(Parameters::defaultRGBDPlanAngularVelocity()),
 	_savedLocalizationIgnored(Parameters::defaultRGBDSavedLocalizationIgnored()),
+	_loopCovLimited(Parameters::defaultRGBDLoopCovLimited()),
 	_loopClosureHypothesis(0,0.0f),
 	_highestHypothesis(0,0.0f),
 	_lastProcessTime(0.0),
@@ -464,6 +465,7 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kRGBDPlanLinearVelocity(), _pathLinearVelocity);
 	Parameters::parse(parameters, Parameters::kRGBDPlanAngularVelocity(), _pathAngularVelocity);
 	Parameters::parse(parameters, Parameters::kRGBDSavedLocalizationIgnored(), _savedLocalizationIgnored);
+	Parameters::parse(parameters, Parameters::kRGBDLoopCovLimited(), _loopCovLimited);
 
 	UASSERT(_rgbdLinearUpdate >= 0.0f);
 	UASSERT(_rgbdAngularUpdate >= 0.0f);
@@ -1348,7 +1350,7 @@ bool Rtabmap::process(
 								transform.prettyPrint().c_str());
 						// Add a loop constraint
 						UASSERT(info.covariance.at<double>(0,0) > 0.0 && info.covariance.at<double>(5,5) > 0.0);
-						if(_memory->addLink(Link(signature->id(), *iter, Link::kLocalTimeClosure, transform, info.covariance.inv())))
+						if(_memory->addLink(Link(signature->id(), *iter, Link::kLocalTimeClosure, transform, getInformation(info.covariance))))
 						{
 							++proximityDetectionsInTimeFound;
 							UINFO("Local loop closure found between %d and %d with t=%s",
@@ -1916,11 +1918,6 @@ bool Rtabmap::process(
 			transform = _memory->computeTransform(_loopClosureHypothesis.first, signature->id(), Transform(), &info);
 			loopClosureVisualInliers = info.inliers;
 			loopClosureVisualMatches = info.matches;
-			if(info.covariance.cols == 6 && info.covariance.rows == 6 && info.covariance.type() == CV_64FC1)
-			{
-				loopClosureLinearVariance = info.covariance.at<double>(0,0);
-				loopClosureAngularVariance = info.covariance.at<double>(3,3);
-			}
 			rejectedHypothesis = transform.isNull();
 			if(rejectedHypothesis)
 			{
@@ -1936,7 +1933,10 @@ bool Rtabmap::process(
 		{
 			// Make the new one the parent of the old one
 			UASSERT(info.covariance.at<double>(0,0) > 0.0 && info.covariance.at<double>(5,5) > 0.0);
-			rejectedHypothesis = !_memory->addLink(Link(signature->id(), _loopClosureHypothesis.first, Link::kGlobalClosure, transform, info.covariance.inv()));
+			cv::Mat information = getInformation(info.covariance);
+			loopClosureLinearVariance = 1.0/information.at<double>(0,0);
+			loopClosureAngularVariance = 1.0/information.at<double>(5,5);
+			rejectedHypothesis = !_memory->addLink(Link(signature->id(), _loopClosureHypothesis.first, Link::kGlobalClosure, transform, information));
 			if(!rejectedHypothesis)
 			{
 				loopClosureLinksAdded.push_back(std::make_pair(signature->id(), _loopClosureHypothesis.first));
@@ -2043,7 +2043,8 @@ bool Rtabmap::process(
 											nearestId,
 											transform.prettyPrint().c_str());
 									UASSERT(info.covariance.at<double>(0,0) > 0.0 && info.covariance.at<double>(5,5) > 0.0);
-									_memory->addLink(Link(signature->id(), nearestId, Link::kGlobalClosure, transform, info.covariance.inv()));
+									cv::Mat information = getInformation(info.covariance);
+									_memory->addLink(Link(signature->id(), nearestId, Link::kGlobalClosure, transform, information));
 									loopClosureLinksAdded.push_back(std::make_pair(signature->id(), nearestId));
 
 									if(_loopClosureHypothesis.first == 0)
@@ -2053,11 +2054,9 @@ bool Rtabmap::process(
 
 										loopClosureVisualInliers = info.inliers;
 										loopClosureVisualMatches = info.matches;
-										if(info.covariance.cols == 6 && info.covariance.rows == 6 && info.covariance.type() == CV_64FC1)
-										{
-											loopClosureLinearVariance = info.covariance.at<double>(0,0);
-											loopClosureAngularVariance = info.covariance.at<double>(3,3);
-										}
+
+										loopClosureLinearVariance = 1.0/information.at<double>(0,0);
+										loopClosureAngularVariance = 1.0/information.at<double>(5,5);
 									}
 								}
 								else
@@ -2184,7 +2183,7 @@ bool Rtabmap::process(
 
 										// set Identify covariance for laser scan matching only
 										UASSERT(info.covariance.at<double>(0,0) > 0.0 && info.covariance.at<double>(5,5) > 0.0);
-										_memory->addLink(Link(signature->id(), nearestId, Link::kLocalSpaceClosure, transform, (info.covariance*100.0).inv(), scanMatchingIds));
+										_memory->addLink(Link(signature->id(), nearestId, Link::kLocalSpaceClosure, transform, getInformation(info.covariance)/100.0, scanMatchingIds));
 										loopClosureLinksAdded.push_back(std::make_pair(signature->id(), nearestId));
 
 										++proximityDetectionsAddedByICPOnly;
@@ -2348,46 +2347,23 @@ bool Rtabmap::process(
 			  optimizationIterations > 0 &&
 			  constraints.size())
 			{
+				UINFO("Compute max graph errors...");
 				const Link * maxLinearLink = 0;
 				const Link * maxAngularLink = 0;
-				for(std::multimap<int, Link>::iterator iter=constraints.begin(); iter!=constraints.end(); ++iter)
+				graph::computeMaxGraphErrors(
+						poses,
+						constraints,
+						maxLinearErrorRatio,
+						maxAngularErrorRatio,
+						maxLinearError,
+						maxAngularError,
+						&maxLinearLink,
+						&maxAngularLink);
+				if(maxLinearLink == 0 && maxAngularLink==0)
 				{
-					// ignore links with high variance
-					if(iter->second.transVariance() <= 1.0 && iter->second.from() != iter->second.to())
-					{
-						Transform t1 = uValue(poses, iter->second.from(), Transform());
-						Transform t2 = uValue(poses, iter->second.to(), Transform());
-						Transform t = t1.inverse()*t2;
-						float linearError = uMax3(
-								fabs(iter->second.transform().x() - t.x()),
-								fabs(iter->second.transform().y() - t.y()),
-								fabs(iter->second.transform().z() - t.z()));
-						float opt_roll,opt__pitch,opt__yaw;
-						float link_roll,link_pitch,link_yaw;
-						t.getEulerAngles(opt_roll, opt__pitch, opt__yaw);
-						iter->second.transform().getEulerAngles(link_roll, link_pitch, link_yaw);
-						float angularError = uMax3(
-								fabs(opt_roll - link_roll),
-								fabs(opt__pitch - link_pitch),
-								fabs(opt__yaw - link_yaw));
-						float stddevLinear = sqrt(iter->second.transVariance());
-						float linearErrorRatio = linearError/stddevLinear;
-						if(linearErrorRatio > maxLinearErrorRatio)
-						{
-							maxLinearError = linearError;
-							maxLinearErrorRatio = linearErrorRatio;
-							maxLinearLink = &iter->second;
-						}
-						float stddevAngular = sqrt(iter->second.rotVariance());
-						float angularErrorRatio = angularError/stddevAngular;
-						if(angularErrorRatio > maxAngularErrorRatio)
-						{
-							maxAngularError = angularError;
-							maxAngularErrorRatio = angularErrorRatio;
-							maxAngularLink = &iter->second;
-						}
-					}
+					UWARN("Could not compute graph errors! Wrong loop closures could be accepted!");
 				}
+
 				bool reject = false;
 				if(maxLinearLink)
 				{
@@ -3411,7 +3387,7 @@ void Rtabmap::optimizeCurrentMap(
 		}
 		else
 		{
-			UERROR("Failed to optimize the graph! returning empty optimized poses...");
+			UWARN("Failed to optimize the graph! returning empty optimized poses...");
 			optimizedPoses.clear();
 			if(constraints)
 			{
@@ -3941,11 +3917,13 @@ int Rtabmap::detectMoreLoopClosures(float clusterRadius, float clusterAngle, int
 								}
 							}
 							std::multimap<int, Link> linksIn = links;
-							linksIn.insert(std::make_pair(from, Link(from, to, Link::kUserClosure, t, info.covariance.inv())));
+							linksIn.insert(std::make_pair(from, Link(from, to, Link::kUserClosure, t, getInformation(info.covariance))));
 							const Link * maxLinearLink = 0;
 							const Link * maxAngularLink = 0;
 							float maxLinearError = 0.0f;
 							float maxAngularError = 0.0f;
+							float maxLinearErrorRatio = 0.0f;
+							float maxAngularErrorRatio = 0.0f;
 							std::map<int, Transform> optimizedPoses;
 							std::multimap<int, Link> links;
 							UASSERT(poses.find(fromId) != poses.end());
@@ -3960,60 +3938,52 @@ int Rtabmap::detectMoreLoopClosures(float clusterRadius, float clusterAngle, int
 							std::string msg;
 							if(optimizedPoses.size())
 							{
-								for(std::multimap<int, Link>::iterator iter=links.begin(); iter!=links.end(); ++iter)
-								{
-									// ignore links with high variance
-									if(iter->second.transVariance() <= 1.0 && iter->second.from() != iter->second.to())
-									{
-										UASSERT(optimizedPoses.find(iter->second.from())!=optimizedPoses.end());
-										UASSERT(optimizedPoses.find(iter->second.to())!=optimizedPoses.end());
-										Transform t1 = optimizedPoses.at(iter->second.from());
-										Transform t2 = optimizedPoses.at(iter->second.to());
-										UASSERT(!t1.isNull() && !t2.isNull());
-										Transform t = t1.inverse()*t2;
-										float linearError = uMax3(
-												fabs(iter->second.transform().x() - t.x()),
-												fabs(iter->second.transform().y() - t.y()),
-												fabs(iter->second.transform().z() - t.z()));
-										Eigen::Vector3f vA = t1.toEigen3f().linear()*Eigen::Vector3f(1,0,0);
-										Eigen::Vector3f vB = t2.toEigen3f().linear()*Eigen::Vector3f(1,0,0);
-										float angularError = pcl::getAngle3D(Eigen::Vector4f(vA[0], vA[1], vA[2], 0), Eigen::Vector4f(vB[0], vB[1], vB[2], 0));
-										if(linearError > maxLinearError)
-										{
-											maxLinearError = linearError;
-											maxLinearLink = &iter->second;
-										}
-										if(angularError > maxAngularError)
-										{
-											maxAngularError = angularError;
-											maxAngularLink = &iter->second;
-										}
-									}
-								}
+								graph::computeMaxGraphErrors(
+										optimizedPoses,
+										links,
+										maxLinearErrorRatio,
+										maxAngularErrorRatio,
+										maxLinearError,
+										maxAngularError,
+										&maxLinearLink,
+										&maxAngularLink);
 								if(maxLinearLink)
 								{
 									UINFO("Max optimization linear error = %f m (link %d->%d)", maxLinearError, maxLinearLink->from(), maxLinearLink->to());
+									if(maxLinearErrorRatio > _optimizationMaxError)
+									{
+										msg = uFormat("Rejecting edge %d->%d because "
+												  "graph error is too large after optimization (%f m for edge %d->%d with ratio %f > std=%f m). "
+												  "\"%s\" is %f.",
+												  from,
+												  to,
+												  maxLinearError,
+												  maxLinearLink->from(),
+												  maxLinearLink->to(),
+												  maxLinearErrorRatio,
+												  sqrt(maxLinearLink->transVariance()),
+												  Parameters::kRGBDOptimizeMaxError().c_str(),
+												  _optimizationMaxError);
+									}
 								}
-								if(maxAngularLink)
+								else if(maxAngularLink)
 								{
 									UINFO("Max optimization angular error = %f deg (link %d->%d)", maxAngularError*180.0f/M_PI, maxAngularLink->from(), maxAngularLink->to());
-								}
-
-								if(maxLinearError > _optimizationMaxError)
-								{
-									msg = uFormat("Rejecting edge %d->%d because "
-											  "graph error is too large after optimization (%f m for edge %d->%d, %f deg for edge %d->%d). "
-											  "\"%s\" is %f m.",
-											  from,
-											  to,
-											  maxLinearError,
-											  maxLinearLink->from(),
-											  maxLinearLink->to(),
-											  maxAngularError*180.0f/M_PI,
-											  maxAngularLink?maxAngularLink->from():0,
-											  maxAngularLink?maxAngularLink->to():0,
-											  Parameters::kRGBDOptimizeMaxError().c_str(),
-											  _optimizationMaxError);
+									if(maxAngularErrorRatio > _optimizationMaxError)
+									{
+										msg = uFormat("Rejecting edge %d->%d because "
+												  "graph error is too large after optimization (%f deg for edge %d->%d with ratio %f > std=%f deg). "
+												  "\"%s\" is %f m.",
+												  from,
+												  to,
+												  maxAngularError*180.0f/M_PI,
+												  maxAngularLink->from(),
+												  maxAngularLink->to(),
+												  maxAngularErrorRatio,
+												  sqrt(maxAngularLink->rotVariance()),
+												  Parameters::kRGBDOptimizeMaxError().c_str(),
+												  _optimizationMaxError);
+									}
 								}
 							}
 							else
@@ -4034,7 +4004,7 @@ int Rtabmap::detectMoreLoopClosures(float clusterRadius, float clusterAngle, int
 							UINFO("Added new loop closure between %d and %d.", from, to);
 							addedLinks.insert(from);
 							addedLinks.insert(to);
-							cv::Mat inf = info.covariance.inv();
+							cv::Mat inf = getInformation(info.covariance);
 							links.insert(std::make_pair(from, Link(from, to, Link::kUserClosure, t, inf)));
 							loopClosuresAdded.push_back(Link(from, to, Link::kUserClosure, t, inf));
 							UINFO("Detected loop closure %d->%d! (%d/%d)", from, to, i+1, (int)clusters.size());
@@ -4134,6 +4104,26 @@ int Rtabmap::refineLinks()
 		}
 	}
 	return (int)linksRefined.size();
+}
+
+cv::Mat Rtabmap::getInformation(const cv::Mat & covariance) const
+{
+	cv::Mat information = covariance.inv();
+	if(_loopCovLimited)
+	{
+		const std::vector<double> & odomMaxInf = _memory->getOdomMaxInf();
+		if(odomMaxInf.size() == 6)
+		{
+			for(int i=0; i<6; ++i)
+			{
+				if(information.at<double>(i,i) > odomMaxInf[i])
+				{
+					information.at<double>(i,i) = odomMaxInf[i];
+				}
+			}
+		}
+	}
+	return information;
 }
 
 void Rtabmap::clearPath(int status)

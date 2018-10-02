@@ -3201,6 +3201,14 @@ void DatabaseViewer::detectMoreLoopClosures()
 	progressDialog->setMinimumWidth(800);
 	progressDialog->show();
 
+	const ParametersMap & parameters = ui_->parameters_toolbox->getParameters();
+	bool loopCovLimited = Parameters::defaultRGBDLoopCovLimited();
+	Parameters::parse(parameters, Parameters::kRGBDLoopCovLimited(), loopCovLimited);
+	if(loopCovLimited)
+	{
+		odomMaxInf_ = graph::getMaxOdomInf(updateLinksWithModifications(links_));
+	}
+
 	int iterations = ui_->spinBox_detectMore_iterations->value();
 	UASSERT(iterations > 0);
 	int added = 0;
@@ -3268,6 +3276,8 @@ void DatabaseViewer::detectMoreLoopClosures()
 			break;
 		}
 	}
+
+	odomMaxInf_.clear();
 
 	if(added)
 	{
@@ -6157,6 +6167,14 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent)
 		ParametersMap parameters = ui_->parameters_toolbox->getParameters();
 		Registration * reg = Registration::create(parameters);
 
+		bool loopCovLimited = Parameters::defaultRGBDLoopCovLimited();
+		Parameters::parse(parameters, Parameters::kRGBDLoopCovLimited(), loopCovLimited);
+		std::vector<double> odomMaxInf = odomMaxInf_;
+		if(loopCovLimited && odomMaxInf_.empty())
+		{
+			odomMaxInf = graph::getMaxOdomInf(updateLinksWithModifications(links_));
+		}
+
 		Transform t;
 		RegistrationInfo info;
 
@@ -6229,16 +6247,19 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent)
 		
 		if(!t.isNull())
 		{
-			if(!t.isIdentity())
+			cv::Mat information = info.covariance.inv();
+			if(odomMaxInf.size() == 6 && information.cols==6 && information.rows==6)
 			{
-				// normalize variance
-				info.covariance *= t.getNorm();
-				if(info.covariance.at<double>(0,0)<=0.0)
+				for(int i=0; i<6; ++i)
 				{
-					info.covariance = cv::Mat::eye(6,6,CV_64FC1)*0.0001; // epsilon if exact transform
+					if(information.at<double>(i,i) > odomMaxInf[i])
+					{
+						information.at<double>(i,i) = odomMaxInf[i];
+					}
 				}
 			}
-			newLink = Link(from, to, Link::kUserClosure, t, info.covariance.inv());
+
+			newLink = Link(from, to, Link::kUserClosure, t, information);
 		}
 		else if(!silent)
 		{
@@ -6297,44 +6318,15 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent)
 		{
 			float maxLinearError = 0.0f;
 			float maxAngularError = 0.0f;
-			for(std::multimap<int, Link>::iterator iter=links.begin(); iter!=links.end(); ++iter)
-			{
-				// ignore links with high variance
-				if(iter->second.transVariance() <= 1.0 && iter->second.from() != iter->second.to())
-				{
-					Transform t1 = uValue(poses, iter->second.from(), Transform());
-					Transform t2 = uValue(poses, iter->second.to(), Transform());
-					Transform t = t1.inverse()*t2;
-					float linearError = uMax3(
-							fabs(iter->second.transform().x() - t.x()),
-							fabs(iter->second.transform().y() - t.y()),
-							fabs(iter->second.transform().z() - t.z()));
-					float opt_roll,opt__pitch,opt__yaw;
-					float link_roll,link_pitch,link_yaw;
-					t.getEulerAngles(opt_roll, opt__pitch, opt__yaw);
-					iter->second.transform().getEulerAngles(link_roll, link_pitch, link_yaw);
-					float angularError = uMax3(
-							fabs(opt_roll - link_roll),
-							fabs(opt__pitch - link_pitch),
-							fabs(opt__yaw - link_yaw));
-					float stddevLinear = sqrt(iter->second.transVariance());
-					float linearErrorRatio = linearError/stddevLinear;
-					if(linearErrorRatio > maxLinearErrorRatio)
-					{
-						maxLinearError = linearError;
-						maxLinearErrorRatio = linearErrorRatio;
-						maxLinearLink = &iter->second;
-					}
-					float stddevAngular = sqrt(iter->second.rotVariance());
-					float angularErrorRatio = angularError/stddevAngular;
-					if(angularErrorRatio > maxAngularErrorRatio)
-					{
-						maxAngularError = angularError;
-						maxAngularErrorRatio = angularErrorRatio;
-						maxAngularLink = &iter->second;
-					}
-				}
-			}
+			graph::computeMaxGraphErrors(
+					poses,
+					links,
+					maxLinearErrorRatio,
+					maxAngularErrorRatio,
+					maxLinearError,
+					maxAngularError,
+					&maxLinearLink,
+					&maxAngularLink);
 			if(maxLinearLink)
 			{
 				UINFO("Max optimization linear error = %f m (link %d->%d, var=%f, ratio error/std=%f)", maxLinearError, maxLinearLink->from(), maxLinearLink->to(), maxLinearLink->transVariance(), maxLinearError/sqrt(maxLinearLink->transVariance()));

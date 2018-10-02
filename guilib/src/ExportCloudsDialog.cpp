@@ -976,7 +976,7 @@ void ExportCloudsDialog::viewClouds(
 		{
 			viewer->setBackfaceCulling(true, false);
 		}
-		viewer->setLighting(true);
+		viewer->setLighting(false);
 		viewer->setDefaultBackgroundColor(QColor(40, 40, 40, 255));
 		viewer->buildPickingLocator(true);
 

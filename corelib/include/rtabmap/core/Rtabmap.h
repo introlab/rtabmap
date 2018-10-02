@@ -168,6 +168,7 @@ public:
 			std::map<int, Signature> * signatures = 0);
 	int detectMoreLoopClosures(float clusterRadius = 0.5f, float clusterAngle = M_PI/6.0f, int iterations = 1, const ProgressState * state = 0);
 	int refineLinks();
+	cv::Mat getInformation(const cv::Mat & covariance) const;
 
 	int getPathStatus() const {return _pathStatus;} // -1=failed 0=idle/executing 1=success
 	void clearPath(int status); // -1=failed 0=idle/executing 1=success
@@ -259,6 +260,7 @@ private:
 	float _pathLinearVelocity;
 	float _pathAngularVelocity;
 	bool _savedLocalizationIgnored;
+	bool _loopCovLimited;
 
 	std::pair<int, float> _loopClosureHypothesis;
 	std::pair<int, float> _highestHypothesis;

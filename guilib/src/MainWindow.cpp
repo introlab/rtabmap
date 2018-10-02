@@ -5465,6 +5465,14 @@ void MainWindow::postProcessing()
 	{
 		UDEBUG("");
 
+		bool loopCovLimited = Parameters::defaultRGBDLoopCovLimited();
+		Parameters::parse(parameters, Parameters::kRGBDLoopCovLimited(), loopCovLimited);
+		std::vector<double> odomMaxInf;
+		if(loopCovLimited)
+		{
+			odomMaxInf = graph::getMaxOdomInf(_currentLinksMap);
+		}
+
 		UASSERT(detectLoopClosureIterations>0);
 		for(int n=0; n<detectLoopClosureIterations && !_progressCanceled; ++n)
 		{
@@ -5573,18 +5581,19 @@ void MainWindow::postProcessing()
 								delete registration;
 								if(!transform.isNull())
 								{
-									if(!transform.isIdentity())
-									{
-										// normalize variance
-										info.covariance *= transform.getNorm();
-										if(info.covariance.at<double>(0,0)<=0.0)
-										{
-											info.covariance = cv::Mat::eye(6,6,CV_64FC1)*0.0001; // epsilon if exact transform
-										}
-									}
-
 									//optimize the graph to see if the new constraint is globally valid
 									bool updateConstraint = true;
+									cv::Mat information = info.covariance.inv();
+									if(odomMaxInf.size() == 6 && information.cols==6 && information.rows==6)
+									{
+										for(int i=0; i<6; ++i)
+										{
+											if(information.at<double>(i,i) > odomMaxInf[i])
+											{
+												information.at<double>(i,i) = odomMaxInf[i];
+											}
+										}
+									}
 									if(optimizeMaxError > 0.0f && optimizeIterations > 0)
 									{
 										int fromId = from;
@@ -5599,7 +5608,7 @@ void MainWindow::postProcessing()
 											}
 										}
 										std::multimap<int, Link> linksIn = _currentLinksMap;
-										linksIn.insert(std::make_pair(from, Link(from, to, Link::kUserClosure, transform, info.covariance.inv())));
+										linksIn.insert(std::make_pair(from, Link(from, to, Link::kUserClosure, transform, information)));
 										const Link * maxLinearLink = 0;
 										const Link * maxAngularLink = 0;
 										float maxLinearError = 0.0f;
@@ -5618,60 +5627,54 @@ void MainWindow::postProcessing()
 										std::string msg;
 										if(poses.size())
 										{
-											for(std::multimap<int, Link>::iterator iter=links.begin(); iter!=links.end(); ++iter)
-											{
-												// ignore links with high variance
-												if(iter->second.transVariance() <= 1.0 && iter->second.from() != iter->second.to())
-												{
-													UASSERT(poses.find(iter->second.from())!=poses.end());
-													UASSERT(poses.find(iter->second.to())!=poses.end());
-													Transform t1 = poses.at(iter->second.from());
-													Transform t2 = poses.at(iter->second.to());
-													UASSERT(!t1.isNull() && !t2.isNull());
-													Transform t = t1.inverse()*t2;
-													float linearError = uMax3(
-															fabs(iter->second.transform().x() - t.x()),
-															fabs(iter->second.transform().y() - t.y()),
-															fabs(iter->second.transform().z() - t.z()));
-													Eigen::Vector3f vA = t1.toEigen3f().linear()*Eigen::Vector3f(1,0,0);
-													Eigen::Vector3f vB = t2.toEigen3f().linear()*Eigen::Vector3f(1,0,0);
-													float angularError = pcl::getAngle3D(Eigen::Vector4f(vA[0], vA[1], vA[2], 0), Eigen::Vector4f(vB[0], vB[1], vB[2], 0));
-													if(linearError > maxLinearError)
-													{
-														maxLinearError = linearError;
-														maxLinearLink = &iter->second;
-													}
-													if(angularError > maxAngularError)
-													{
-														maxAngularError = angularError;
-														maxAngularLink = &iter->second;
-													}
-												}
-											}
+											float maxLinearErrorRatio = 0.0f;
+											float maxAngularErrorRatio = 0.0f;
+											graph::computeMaxGraphErrors(
+													poses,
+													links,
+													maxLinearErrorRatio,
+													maxAngularErrorRatio,
+													maxLinearError,
+													maxAngularError,
+													&maxLinearLink,
+													&maxAngularLink);
 											if(maxLinearLink)
 											{
 												UINFO("Max optimization linear error = %f m (link %d->%d)", maxLinearError, maxLinearLink->from(), maxLinearLink->to());
+												if(maxLinearErrorRatio > optimizeMaxError)
+												{
+													msg = uFormat("Rejecting edge %d->%d because "
+															  "graph error is too large after optimization (%f m for edge %d->%d with ratio %f > std=%f m). "
+															  "\"%s\" is %f.",
+															  from,
+															  to,
+															  maxLinearError,
+															  maxLinearLink->from(),
+															  maxLinearLink->to(),
+															  maxLinearErrorRatio,
+															  sqrt(maxLinearLink->transVariance()),
+															  Parameters::kRGBDOptimizeMaxError().c_str(),
+															  optimizeMaxError);
+												}
 											}
-											if(maxAngularLink)
+											else if(maxAngularLink)
 											{
 												UINFO("Max optimization angular error = %f deg (link %d->%d)", maxAngularError*180.0f/M_PI, maxAngularLink->from(), maxAngularLink->to());
-											}
-
-											if(maxLinearError > optimizeMaxError)
-											{
-												msg = uFormat("Rejecting edge %d->%d because "
-														  "graph error is too large after optimization (%f m for edge %d->%d, %f deg for edge %d->%d). "
-														  "\"%s\" is %f m.",
-														  from,
-														  to,
-														  maxLinearError,
-														  maxLinearLink->from(),
-														  maxLinearLink->to(),
-														  maxAngularError*180.0f/M_PI,
-														  maxAngularLink?maxAngularLink->from():0,
-														  maxAngularLink?maxAngularLink->to():0,
-														  Parameters::kRGBDOptimizeMaxError().c_str(),
-														  optimizeMaxError);
+												if(maxAngularErrorRatio > optimizeMaxError)
+												{
+													msg = uFormat("Rejecting edge %d->%d because "
+															  "graph error is too large after optimization (%f deg for edge %d->%d with ratio %f > std=%f deg). "
+															  "\"%s\" is %f m.",
+															  from,
+															  to,
+															  maxAngularError*180.0f/M_PI,
+															  maxAngularLink->from(),
+															  maxAngularLink->to(),
+															  maxAngularErrorRatio,
+															  sqrt(maxAngularLink->rotVariance()),
+															  Parameters::kRGBDOptimizeMaxError().c_str(),
+															  optimizeMaxError);
+												}
 											}
 										}
 										else
@@ -5695,7 +5698,7 @@ void MainWindow::postProcessing()
 										addedLinks.insert(from);
 										addedLinks.insert(to);
 
-										_currentLinksMap.insert(std::make_pair(from, Link(from, to, Link::kUserClosure, transform, info.covariance.inv())));
+										_currentLinksMap.insert(std::make_pair(from, Link(from, to, Link::kUserClosure, transform, information)));
 										++loopClosuresAdded;
 										_progressDialog->appendText(tr("Detected loop closure %1->%2! (%3/%4)").arg(from).arg(to).arg(i+1).arg(clusters.size()));
 									}
