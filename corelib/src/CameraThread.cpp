@@ -60,7 +60,7 @@ CameraThread::CameraThread(Camera * camera, const ParametersMap & parameters) :
 		_scanVoxelSize(0.0f),
 		_scanNormalsK(0),
 		_scanNormalsRadius(0.0f),
-		_stereoDense(new StereoBM(parameters)),
+		_stereoDense(StereoDense::create(parameters)),
 		_distortionModel(0),
 		_bilateralFiltering(false),
 		_bilateralSigmaS(10),

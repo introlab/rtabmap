@@ -25,99 +25,33 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include <rtabmap/core/StereoDense.h>
-#include <rtabmap/utilite/ULogger.h>
-#include <opencv2/calib3d/calib3d.hpp>
-#include <opencv2/imgproc/imgproc.hpp>
-#include <opencv2/imgproc/types_c.h>
+#include <rtabmap/core/stereo/StereoBM.h>
+#include <rtabmap/core/stereo/StereoSGBM.h>
 
 namespace rtabmap {
 
-StereoBM::StereoBM(int blockSize, int numDisparities) :
-		blockSize_(blockSize),
-		minDisparity_(Parameters::defaultStereoBMMinDisparity()),
-		numDisparities_(numDisparities),
-		preFilterSize_(Parameters::defaultStereoBMPreFilterSize()),
-		preFilterCap_(Parameters::defaultStereoBMPreFilterCap()),
-		uniquenessRatio_(Parameters::defaultStereoBMUniquenessRatio()),
-		textureThreshold_(Parameters::defaultStereoBMTextureThreshold()),
-		speckleWindowSize_(Parameters::defaultStereoBMSpeckleWindowSize()),
-		speckleRange_(Parameters::defaultStereoBMSpeckleRange())
+StereoDense * StereoDense::create(const ParametersMap & parameters)
 {
-}
-StereoBM::StereoBM(const ParametersMap & parameters) :
-		StereoDense(parameters),
-		blockSize_(Parameters::defaultStereoBMBlockSize()),
-		minDisparity_(Parameters::defaultStereoBMMinDisparity()),
-		numDisparities_(Parameters::defaultStereoBMNumDisparities()),
-		preFilterSize_(Parameters::defaultStereoBMPreFilterSize()),
-		preFilterCap_(Parameters::defaultStereoBMPreFilterCap()),
-		uniquenessRatio_(Parameters::defaultStereoBMUniquenessRatio()),
-		textureThreshold_(Parameters::defaultStereoBMTextureThreshold()),
-		speckleWindowSize_(Parameters::defaultStereoBMSpeckleWindowSize()),
-		speckleRange_(Parameters::defaultStereoBMSpeckleRange())
-{
-	this->parseParameters(parameters);
+	int stereoTypeInt = Parameters::defaultStereoDenseStrategy();
+	Parameters::parse(parameters, Parameters::kStereoDenseStrategy(), stereoTypeInt);
+	return create((StereoDense::Type)stereoTypeInt, parameters);
 }
 
-void StereoBM::parseParameters(const ParametersMap & parameters)
+StereoDense * StereoDense::create(StereoDense::Type type, const ParametersMap & parameters)
 {
-	Parameters::parse(parameters, Parameters::kStereoBMBlockSize(), blockSize_);
-	Parameters::parse(parameters, Parameters::kStereoBMMinDisparity(), minDisparity_);
-	Parameters::parse(parameters, Parameters::kStereoBMNumDisparities(), numDisparities_);
-	Parameters::parse(parameters, Parameters::kStereoBMPreFilterSize(), preFilterSize_);
-	Parameters::parse(parameters, Parameters::kStereoBMPreFilterCap(), preFilterCap_);
-	Parameters::parse(parameters, Parameters::kStereoBMUniquenessRatio(), uniquenessRatio_);
-	Parameters::parse(parameters, Parameters::kStereoBMTextureThreshold(), textureThreshold_);
-	Parameters::parse(parameters, Parameters::kStereoBMSpeckleWindowSize(), speckleWindowSize_);
-	Parameters::parse(parameters, Parameters::kStereoBMSpeckleRange(), speckleRange_);
-}
-
-cv::Mat StereoBM::computeDisparity(
-		const cv::Mat & leftImage,
-		const cv::Mat & rightImage) const
-{
-	UASSERT(!leftImage.empty() && !rightImage.empty());
-	UASSERT(leftImage.cols == rightImage.cols && leftImage.rows == rightImage.rows);
-	UASSERT((leftImage.type() == CV_8UC1 || leftImage.type() == CV_8UC3) && rightImage.type() == CV_8UC1);
-
-	cv::Mat leftMono;
-	if(leftImage.channels() == 3)
+	StereoDense * stereo = 0;
+	switch(type)
 	{
-		cv::cvtColor(leftImage, leftMono, CV_BGR2GRAY);
-	}
-	else
-	{
-		leftMono = leftImage;
-	}
+	case StereoDense::kTypeSGBM:
+		stereo = new StereoSGBM(parameters);
+		break;
+	case StereoDense::kTypeBM:
+	default:
+		stereo = new StereoBM(parameters);
+		break;
 
-	cv::Mat disparity;
-#if CV_MAJOR_VERSION < 3
-	cv::StereoBM stereo(cv::StereoBM::BASIC_PRESET);
-	stereo.state->SADWindowSize = blockSize_;
-	stereo.state->minDisparity = minDisparity_;
-	stereo.state->numberOfDisparities = numDisparities_;
-	stereo.state->preFilterSize = preFilterSize_;
-	stereo.state->preFilterCap = preFilterCap_;
-	stereo.state->uniquenessRatio = uniquenessRatio_;
-	stereo.state->textureThreshold = textureThreshold_;
-	stereo.state->speckleWindowSize = speckleWindowSize_;
-	stereo.state->speckleRange = speckleRange_;
-	stereo(leftMono, rightImage, disparity, CV_16SC1);
-#else
-	cv::Ptr<cv::StereoBM> stereo = cv::StereoBM::create();
-	stereo->setBlockSize(blockSize_);
-	stereo->setMinDisparity(minDisparity_);
-	stereo->setNumDisparities(numDisparities_);
-	stereo->setPreFilterSize(preFilterSize_);
-	stereo->setPreFilterCap(preFilterCap_);
-	stereo->setUniquenessRatio(uniquenessRatio_);
-	stereo->setTextureThreshold(textureThreshold_);
-	stereo->setSpeckleWindowSize(speckleWindowSize_);
-	stereo->setSpeckleRange(speckleRange_);
-	stereo->compute(leftMono, rightImage, disparity);
-#endif
-	return disparity;
+	}
+	return stereo;
 }
 
 } /* namespace rtabmap */

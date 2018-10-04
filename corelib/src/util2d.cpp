@@ -750,9 +750,10 @@ cv::Mat disparityFromStereoImages(
 		leftMono = leftImage;
 	}
 	cv::Mat disparity;
-
-	StereoBM stereo(parameters);
-	return stereo.computeDisparity(leftMono, rightImage);
+	StereoDense * stereo = StereoDense::create(parameters);
+	disparity = stereo->computeDisparity(leftMono, rightImage);
+	delete stereo;
+	return disparity;
 }
 
 cv::Mat depthFromDisparity(const cv::Mat & disparity,
