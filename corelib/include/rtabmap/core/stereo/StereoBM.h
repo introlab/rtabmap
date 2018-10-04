@@ -25,37 +25,41 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef STEREODENSE_H_
-#define STEREODENSE_H_
+#ifndef STEREOBM_H_
+#define STEREOBM_H_
 
 #include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
 
+#include <rtabmap/core/StereoDense.h>
 #include <rtabmap/core/Parameters.h>
 #include <opencv2/core/core.hpp>
 
 namespace rtabmap {
 
-class RTABMAP_EXP StereoDense {
+class RTABMAP_EXP StereoBM : public StereoDense {
 public:
-	enum Type {
-		kTypeBM = 0,
-		kTypeSGBM = 1
-	};
-	static StereoDense * create(const ParametersMap & parameters);
-	static StereoDense * create(StereoDense::Type type, const ParametersMap & parameters = ParametersMap());
+	StereoBM(int blockSize, int numDisparities);
+	StereoBM(const ParametersMap & parameters = ParametersMap());
+	virtual ~StereoBM() {}
 
-public:
-	virtual ~StereoDense() {}
-
-	virtual void parseParameters(const ParametersMap & parameters) {}
+	virtual void parseParameters(const ParametersMap & parameters);
 	virtual cv::Mat computeDisparity(
 			const cv::Mat & leftImage,
-			const cv::Mat & rightImage) const = 0;
+			const cv::Mat & rightImage) const;
 
-protected:
-	StereoDense(const ParametersMap & parameters = ParametersMap()) {}
+private:
+	int blockSize_;         //15
+	int minDisparity_;      //0
+	int numDisparities_;    //64
+	int preFilterSize_;     //9
+	int preFilterCap_;      //31
+	int uniquenessRatio_;   //15
+	int textureThreshold_;  //10
+	int speckleWindowSize_; //100
+	int speckleRange_;      //4
+	int disp12MaxDiff_;     //-1
 };
 
 } /* namespace rtabmap */
 
-#endif /* STEREODENSE_H_ */
+#endif /* STEREOBM_H_ */

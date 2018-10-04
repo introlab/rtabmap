@@ -90,6 +90,8 @@ SET(SRC_FILES
 	Stereo.cpp
 	StereoDense.cpp
 	StereoCameraModel.cpp
+	stereo/StereoBM.cpp
+	stereo/StereoSGBM.cpp
 	
 	OccupancyGrid.cpp
 	

@@ -631,6 +631,8 @@ class RTABMAP_EXP Parameters
     RTABMAP_PARAM(Stereo, SSD,                   bool, true,    uFormat("[%s=false] Use Sum of Squared Differences (SSD) window, otherwise Sum of Absolute Differences (SAD) window is used.", kStereoOpticalFlow().c_str()));
     RTABMAP_PARAM(Stereo, Eps,                   double, 0.01,  uFormat("[%s=true] Epsilon stop criterion.", kStereoOpticalFlow().c_str()));
 
+    RTABMAP_PARAM(Stereo, DenseStrategy,         int, 0,  "0=cv::StereoBM, 1=cv::StereoSGBM");
+
     RTABMAP_PARAM(StereoBM, BlockSize,           int, 15,       "See cv::StereoBM");
     RTABMAP_PARAM(StereoBM, MinDisparity,        int, 0,        "See cv::StereoBM");
     RTABMAP_PARAM(StereoBM, NumDisparities,      int, 128,      "See cv::StereoBM");
@@ -640,6 +642,19 @@ class RTABMAP_EXP Parameters
     RTABMAP_PARAM(StereoBM, TextureThreshold,    int, 10,       "See cv::StereoBM");
     RTABMAP_PARAM(StereoBM, SpeckleWindowSize,   int, 100,      "See cv::StereoBM");
     RTABMAP_PARAM(StereoBM, SpeckleRange,        int, 4,        "See cv::StereoBM");
+    RTABMAP_PARAM(StereoBM, Disp12MaxDiff,       int, -1,       "See cv::StereoBM");
+
+    RTABMAP_PARAM(StereoSGBM, BlockSize,         int, 15,       "See cv::StereoSGBM");
+	RTABMAP_PARAM(StereoSGBM, MinDisparity,      int, 0,        "See cv::StereoSGBM");
+	RTABMAP_PARAM(StereoSGBM, NumDisparities,    int, 128,      "See cv::StereoSGBM");
+	RTABMAP_PARAM(StereoSGBM, PreFilterCap,      int, 31,       "See cv::StereoSGBM");
+	RTABMAP_PARAM(StereoSGBM, UniquenessRatio,   int, 20,       "See cv::StereoSGBM");
+	RTABMAP_PARAM(StereoSGBM, SpeckleWindowSize, int, 100,      "See cv::StereoSGBM");
+	RTABMAP_PARAM(StereoSGBM, SpeckleRange,      int, 4,        "See cv::StereoSGBM");
+	RTABMAP_PARAM(StereoSGBM, Disp12MaxDiff,     int, 1,        "See cv::StereoSGBM");
+	RTABMAP_PARAM(StereoSGBM, P1,                int, 2,        "See cv::StereoSGBM");
+	RTABMAP_PARAM(StereoSGBM, P2,                int, 5,        "See cv::StereoSGBM");
+	RTABMAP_PARAM(StereoSGBM, Mode,              int, 2,        "See cv::StereoSGBM");
 
     // Occupancy Grid
     RTABMAP_PARAM(Grid, FromDepth,               bool,   true,    "Create occupancy grid from depth image(s), otherwise it is created from laser scan.");

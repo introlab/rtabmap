@@ -1161,6 +1161,12 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->stereo_flow_eps->setObjectName(Parameters::kStereoEps().c_str());
 	_ui->stereo_opticalFlow->setObjectName(Parameters::kStereoOpticalFlow().c_str());
 
+	//StereoDense
+	_ui->comboBox_stereoDense_strategy->setObjectName(Parameters::kStereoDenseStrategy().c_str());
+	connect(_ui->comboBox_stereoDense_strategy, SIGNAL(currentIndexChanged(int)), _ui->stackedWidget_stereoDense, SLOT(setCurrentIndex(int)));
+	_ui->comboBox_stereoDense_strategy->setCurrentIndex(Parameters::defaultStereoDenseStrategy());
+	_ui->stackedWidget_stereoDense->setCurrentIndex(Parameters::defaultStereoDenseStrategy());
+
 	//StereoBM
 	_ui->stereobm_blockSize->setObjectName(Parameters::kStereoBMBlockSize().c_str());
 	_ui->stereobm_minDisparity->setObjectName(Parameters::kStereoBMMinDisparity().c_str());
@@ -1171,6 +1177,20 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->stereobm_speckleWinSize->setObjectName(Parameters::kStereoBMSpeckleWindowSize().c_str());
 	_ui->stereobm_tetureThreshold->setObjectName(Parameters::kStereoBMTextureThreshold().c_str());
 	_ui->stereobm_uniquessRatio->setObjectName(Parameters::kStereoBMUniquenessRatio().c_str());
+	_ui->stereobm_disp12MaxDiff->setObjectName(Parameters::kStereoBMDisp12MaxDiff().c_str());
+
+	//StereoSGBM
+	_ui->stereosgbm_blockSize->setObjectName(Parameters::kStereoSGBMBlockSize().c_str());
+	_ui->stereosgbm_minDisparity->setObjectName(Parameters::kStereoSGBMMinDisparity().c_str());
+	_ui->stereosgbm_numDisparities->setObjectName(Parameters::kStereoSGBMNumDisparities().c_str());
+	_ui->stereosgbm_preFilterCap->setObjectName(Parameters::kStereoSGBMPreFilterCap().c_str());
+	_ui->stereosgbm_speckleRange->setObjectName(Parameters::kStereoSGBMSpeckleRange().c_str());
+	_ui->stereosgbm_speckleWinSize->setObjectName(Parameters::kStereoSGBMSpeckleWindowSize().c_str());
+	_ui->stereosgbm_uniquessRatio->setObjectName(Parameters::kStereoSGBMUniquenessRatio().c_str());
+	_ui->stereosgbm_disp12MaxDiff->setObjectName(Parameters::kStereoSGBMDisp12MaxDiff().c_str());
+	_ui->stereosgbm_p1->setObjectName(Parameters::kStereoSGBMP1().c_str());
+	_ui->stereosgbm_p2->setObjectName(Parameters::kStereoSGBMP2().c_str());
+	_ui->stereosgbm_mode->setObjectName(Parameters::kStereoSGBMMode().c_str());
 
 	// reset default settings for the gui
 	resetSettings(_ui->groupBox_generalSettingsGui0);
