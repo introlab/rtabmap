@@ -4916,10 +4916,10 @@ void MainWindow::startDetection()
 				odomParameters.erase(Parameters::kRtabmapPublishRAMUsage()); // as odometry is in the same process than rtabmap, don't get RAM usage in odometry.
 				int odomStrategy = Parameters::defaultOdomStrategy();
 				Parameters::parse(odomParameters, Parameters::kOdomStrategy(), odomStrategy);
-				if(odomStrategy == 1)
+				if(odomStrategy != 1)
 				{
 					// Only Frame To Frame supports all VisCorType
-					odomParameters.insert(ParametersPair(Parameters::kVisCorType(), _preferencesDialog->getParameter(Parameters::kVisCorType())));
+					odomParameters.erase(Parameters::kVisCorType());
 				}
 				_imuThread = 0;
 				if((_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcStereoImages ||

@@ -1045,15 +1045,41 @@ void Parameters::writeINI(const std::string & configFile, const ParametersMap & 
 	// Save current version
 	ini.SetValue("Core", "Version", RTABMAP_VERSION, NULL, true);
 
-	for(ParametersMap::const_iterator i=parameters.begin(); i!=parameters.end(); ++i)
+	for(ParametersMap::const_iterator iter=parameters.begin(); iter!=parameters.end(); ++iter)
 	{
-		std::string key = (*i).first;
+		std::string key = iter->first;
 		key = uReplaceChar(key, '/', '\\'); // Ini files use \ by default for separators, so replace the /
 		
-		std::string value = (*i).second.c_str();
+		std::string value = iter->second.c_str();
 		value = uReplaceChar(value, '\\', '/'); // use always slash for values
 
 		ini.SetValue("Core", key.c_str(), value.c_str(), NULL, true);
+	}
+
+	// Delete removed parameters
+	if(parameters.size() == getDefaultParameters().size())
+	{
+		for(std::map<std::string, std::pair<bool, std::string> >::const_iterator iter = removedParameters_.begin();
+			iter!=removedParameters_.end();
+			++iter)
+		{
+			std::string key = iter->first;
+			key = uReplaceChar(key, '/', '\\'); // Ini files use \ by default for separators, so replace the /
+
+			std::string value = ini.GetValue("Core", key.c_str(), "");
+
+			if(ini.Delete("Core", key.c_str(), true))
+			{
+				if(iter->second.first && parameters.find(iter->second.second) != parameters.end())
+				{
+					UWARN("Removed deprecated parameter %s=%s (replaced by %s=%s) from \"%s\".", iter->first.c_str(), value.c_str(), iter->second.second.c_str(), parameters.at(iter->second.second).c_str(), configFile.c_str());
+				}
+				else
+				{
+					UWARN("Removed deprecated parameter %s=%s from \"%s\".", iter->first.c_str(), value.c_str(), configFile.c_str());
+				}
+			}
+		}
 	}
 
 	ini.SaveFile(configFile.c_str());

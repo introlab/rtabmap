@@ -301,7 +301,6 @@ private:
 	bool _useOdometryFeatures;
 	bool _createOccupancyGrid;
 	int _visMaxFeatures;
-	int _visCorType;
 	bool _imagesAlreadyRectified;
 	bool _rectifyOnlyFeatures;
 	bool _covOffDiagonalIgnored;

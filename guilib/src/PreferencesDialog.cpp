@@ -3242,9 +3242,6 @@ rtabmap::ParametersMap PreferencesDialog::getAllParameters() const
 	ParametersMap parameters = _parameters;
 	uInsert(parameters, _modifiedParameters);
 
-	// It will be added manually for odometry
-	parameters.erase(Parameters::kVisCorType());
-
 	return parameters;
 }
 
@@ -5526,10 +5523,10 @@ void PreferencesDialog::testOdometry()
 
 	int odomStrategy = Parameters::defaultOdomStrategy();
 	Parameters::parse(parameters, Parameters::kOdomStrategy(), odomStrategy);
-	if(odomStrategy == 1)
+	if(odomStrategy != 1)
 	{
 		// Only Frame To Frame supports  all VisCorType
-		parameters.insert(ParametersPair(Parameters::kVisCorType(), this->getParameter(Parameters::kVisCorType())));
+		parameters.erase(Parameters::kVisCorType());
 	}
 
 	Odometry * odometry = Odometry::create(parameters);

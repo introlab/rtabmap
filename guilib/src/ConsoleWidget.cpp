@@ -60,6 +60,7 @@ ConsoleWidget::ConsoleWidget(QWidget * parent) :
 ConsoleWidget::~ConsoleWidget()
 {
 	delete _ui;
+	_errorMessageMutex.unlock();
 }
 
 bool ConsoleWidget::handleEvent(UEvent * anEvent)

@@ -102,7 +102,6 @@ Memory::Memory(const ParametersMap & parameters) :
 	_useOdometryFeatures(Parameters::defaultMemUseOdomFeatures()),
 	_createOccupancyGrid(Parameters::defaultRGBDCreateOccupancyGrid()),
 	_visMaxFeatures(Parameters::defaultVisMaxFeatures()),
-	_visCorType(Parameters::defaultVisCorType()),
 	_imagesAlreadyRectified(Parameters::defaultRtabmapImagesAlreadyRectified()),
 	_rectifyOnlyFeatures(Parameters::defaultRtabmapRectifyOnlyFeatures()),
 	_covOffDiagonalIgnored(Parameters::defaultMemCovOffDiagIgnored()),
@@ -500,19 +499,9 @@ void Memory::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(params, Parameters::kMemUseOdomFeatures(), _useOdometryFeatures);
 	Parameters::parse(params, Parameters::kRGBDCreateOccupancyGrid(), _createOccupancyGrid);
 	Parameters::parse(params, Parameters::kVisMaxFeatures(), _visMaxFeatures);
-	Parameters::parse(params, Parameters::kVisCorType(), _visCorType);
-	if(_visCorType != 0)
-	{
-		UWARN("%s is not 0 (Features Matching), the only approach supported for loop closure transformation estimation. Setting to 0...",
-				Parameters::kVisCorType().c_str());
-		_visCorType = 0;
-		uInsert(parameters_, ParametersPair(Parameters::kVisCorType(), "0"));
-		uInsert(params, ParametersPair(Parameters::kVisCorType(), "0"));
-	}
 	Parameters::parse(params, Parameters::kRtabmapImagesAlreadyRectified(), _imagesAlreadyRectified);
 	Parameters::parse(params, Parameters::kRtabmapRectifyOnlyFeatures(), _rectifyOnlyFeatures);
 	Parameters::parse(params, Parameters::kMemCovOffDiagIgnored(), _covOffDiagonalIgnored);
-
 
 	UASSERT_MSG(_maxStMemSize >= 0, uFormat("value=%d", _maxStMemSize).c_str());
 	UASSERT_MSG(_similarityThreshold >= 0.0f && _similarityThreshold <= 1.0f, uFormat("value=%f", _similarityThreshold).c_str());
@@ -572,6 +561,10 @@ void Memory::parseParameters(const ParametersMap & parameters)
 	{
 		_feature2D->parseParameters(params);
 	}
+
+	// Features Matching is the only correspondence approach supported for loop closure transformation estimation.
+	uInsert(parameters_, ParametersPair(Parameters::kVisCorType(), "0"));
+	uInsert(params, ParametersPair(Parameters::kVisCorType(), "0"));
 
 	Registration::Type regStrategy = Registration::kTypeUndef;
 	if((iter=params.find(Parameters::kRegStrategy())) != params.end())
@@ -2475,13 +2468,13 @@ Transform Memory::computeTransform(
 
 	// make sure we have all data needed
 	// load binary data from database if not in RAM (if image is already here, scan and userData should be or they are null)
-	if((((_reextractLoopClosureFeatures || _visCorType==1) && _registrationPipeline->isImageRequired()) && fromS.sensorData().imageCompressed().empty()) ||
+	if(((_reextractLoopClosureFeatures && _registrationPipeline->isImageRequired()) && fromS.sensorData().imageCompressed().empty()) ||
 	   (_registrationPipeline->isScanRequired() && fromS.sensorData().imageCompressed().empty() && fromS.sensorData().laserScanCompressed().isEmpty()) ||
 	   (_registrationPipeline->isUserDataRequired() && fromS.sensorData().imageCompressed().empty() && fromS.sensorData().userDataCompressed().empty()))
 	{
 		fromS.sensorData() = getNodeData(fromS.id());
 	}
-	if((((_reextractLoopClosureFeatures || _visCorType==1) && _registrationPipeline->isImageRequired()) && toS.sensorData().imageCompressed().empty()) ||
+	if(((_reextractLoopClosureFeatures && _registrationPipeline->isImageRequired()) && toS.sensorData().imageCompressed().empty()) ||
 	   (_registrationPipeline->isScanRequired() && toS.sensorData().imageCompressed().empty() && toS.sensorData().laserScanCompressed().isEmpty()) ||
 	   (_registrationPipeline->isUserDataRequired() && toS.sensorData().imageCompressed().empty() && toS.sensorData().userDataCompressed().empty()))
 	{
@@ -2491,13 +2484,13 @@ Transform Memory::computeTransform(
 	cv::Mat imgBuf, depthBuf, userBuf;
 	LaserScan laserBuf;
 	fromS.sensorData().uncompressData(
-			((_reextractLoopClosureFeatures || _visCorType==1) && _registrationPipeline->isImageRequired())?&imgBuf:0,
-			((_reextractLoopClosureFeatures || _visCorType==1) && _registrationPipeline->isImageRequired())?&depthBuf:0,
+			(_reextractLoopClosureFeatures && _registrationPipeline->isImageRequired())?&imgBuf:0,
+			(_reextractLoopClosureFeatures && _registrationPipeline->isImageRequired())?&depthBuf:0,
 			_registrationPipeline->isScanRequired()?&laserBuf:0,
 			_registrationPipeline->isUserDataRequired()?&userBuf:0);
 	toS.sensorData().uncompressData(
-			((_reextractLoopClosureFeatures || _visCorType==1) && _registrationPipeline->isImageRequired())?&imgBuf:0,
-			((_reextractLoopClosureFeatures || _visCorType==1) && _registrationPipeline->isImageRequired())?&depthBuf:0,
+			(_reextractLoopClosureFeatures && _registrationPipeline->isImageRequired())?&imgBuf:0,
+			(_reextractLoopClosureFeatures && _registrationPipeline->isImageRequired())?&depthBuf:0,
 			_registrationPipeline->isScanRequired()?&laserBuf:0,
 			_registrationPipeline->isUserDataRequired()?&userBuf:0);
 
@@ -2530,7 +2523,7 @@ Transform Memory::computeTransform(
 			tmpTo.setWordsDescriptors(std::multimap<int, cv::Mat>());
 		}
 
-		if(guess.isNull() && (!_registrationPipeline->isImageRequired() || _visCorType==1))
+		if(guess.isNull() && !_registrationPipeline->isImageRequired())
 		{
 			UDEBUG("");
 			// no visual in the pipeline, make visual registration for guess
