@@ -654,7 +654,11 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(StereoSGBM, Disp12MaxDiff,     int, 1,        "See cv::StereoSGBM");
 	RTABMAP_PARAM(StereoSGBM, P1,                int, 2,        "See cv::StereoSGBM");
 	RTABMAP_PARAM(StereoSGBM, P2,                int, 5,        "See cv::StereoSGBM");
+#if CV_MAJOR_VERSION < 3
+	RTABMAP_PARAM(StereoSGBM, Mode,              int, 0,        "See cv::StereoSGBM");
+#else
 	RTABMAP_PARAM(StereoSGBM, Mode,              int, 2,        "See cv::StereoSGBM");
+#endif
 
     // Occupancy Grid
     RTABMAP_PARAM(Grid, FromDepth,               bool,   true,    "Create occupancy grid from depth image(s), otherwise it is created from laser scan.");

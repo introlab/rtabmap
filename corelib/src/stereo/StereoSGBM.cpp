@@ -85,15 +85,19 @@ cv::Mat StereoSGBM::computeDisparity(
 
 	cv::Mat disparity;
 #if CV_MAJOR_VERSION < 3
-	cv::StereoSGBM stereo(cv::StereoSGBM::BASIC_PRESET);
-	stereo.state->SADWindowSize = blockSize_;
-	stereo.state->minDisparity = minDisparity_;
-	stereo.state->numberOfDisparities = numDisparities_;
-	stereo.state->preFilterCap = preFilterCap_;
-	stereo.state->uniquenessRatio = uniquenessRatio_;
-	stereo.state->speckleWindowSize = speckleWindowSize_;
-	stereo.state->speckleRange = speckleRange_;
-	stereo(leftMono, rightImage, disparity, CV_16SC1);
+	cv::StereoSGBM stereo(
+			minDisparity_,
+			numDisparities_,
+			blockSize_,
+            P1_,
+			P2_,
+			disp12MaxDiff_,
+			preFilterCap_,
+			uniquenessRatio_,
+			speckleWindowSize_,
+			speckleRange_,
+            mode_==1);
+	stereo(leftMono, rightImage, disparity);
 #else
 	cv::Ptr<cv::StereoSGBM> stereo = cv::StereoSGBM::create(
 			minDisparity_,

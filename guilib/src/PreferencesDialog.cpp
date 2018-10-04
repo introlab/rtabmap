@@ -184,6 +184,10 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->odom_strategy->setItemData(8, 0, Qt::UserRole - 1);
 #endif
 
+#if CV_MAJOR_VERSION < 3
+	_ui->stereosgbm_mode->setItemData(2, 0, Qt::UserRole - 1);
+#endif
+
 #ifndef RTABMAP_NONFREE
 		_ui->comboBox_detector_strategy->setItemData(0, 0, Qt::UserRole - 1);
 		_ui->comboBox_detector_strategy->setItemData(1, 0, Qt::UserRole - 1);
