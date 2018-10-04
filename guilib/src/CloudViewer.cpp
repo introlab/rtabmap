@@ -2127,7 +2127,7 @@ std::string CloudViewer::getIdByActor(vtkProp * actor) const
 		if(iter->second.GetPointer() == actor)
 		{
 			std::string id = iter->first;
-			while(id.back() == '*')
+			while(id.size() && id.at(id.size()-1) == '*')
 			{
 				id.erase(id.size()-1);
 			}
