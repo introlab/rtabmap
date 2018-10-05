@@ -1449,93 +1449,130 @@ void DBDriverSqlite3::loadNodeDataQuery(std::list<Signature *> & signatures, boo
 						// stereo [fx, fy, cx, cy, baseline, local_transform] (5+12)*float
 						if(dataSize > 0 && data)
 						{
-							float * dataFloat = (float*)data;
-							if(uStrNumCmp(_version, "0.11.2") >= 0 &&
-							   (unsigned int)dataSize % (6+localTransform.size())*sizeof(float) == 0)
+							if(uStrNumCmp(_version, "0.18.0") >= 0)
 							{
-								int cameraCount = dataSize / ((6+localTransform.size())*sizeof(float));
-								UDEBUG("Loading calibration for %d cameras (%d bytes)", cameraCount, dataSize);
-								int max = cameraCount*(6+localTransform.size());
-								for(int i=0; i<max; i+=6+localTransform.size())
+								if(dataSize >= int(sizeof(int)*4))
 								{
-									// Reinitialize to a new Transform, to avoid copying in the same memory than the previous one
-									localTransform = Transform::getIdentity();
-									memcpy(localTransform.data(), dataFloat+i+6, localTransform.size()*sizeof(float));
-									if(uStrNumCmp(_version, "0.15.2") < 0)
+									const int * dataInt = (const int *)data;
+									int type = dataInt[3];
+									if(type == 0) // mono
 									{
-										localTransform.normalizeRotation();
+										CameraModel model;
+										int bytesReadTotal = 0;
+										unsigned int bytesRead = 0;
+										while(bytesReadTotal < dataSize &&
+											  (bytesRead=model.deserialize((const unsigned char *)data+bytesReadTotal, dataSize-bytesReadTotal))!=0)
+										{
+											bytesReadTotal+=bytesRead;
+											models.push_back(model);
+										}
+										UASSERT(bytesReadTotal == dataSize);
 									}
-									models.push_back(CameraModel(
-											(double)dataFloat[i],
-											(double)dataFloat[i+1],
-											(double)dataFloat[i+2],
-											(double)dataFloat[i+3],
-											localTransform));
-									models.back().setImageSize(cv::Size(dataFloat[i+4], dataFloat[i+5]));
-									UDEBUG("%f %f %f %f %f %f %s", dataFloat[i], dataFloat[i+1], dataFloat[i+2],
-											dataFloat[i+3], dataFloat[i+4], dataFloat[i+5],
-											localTransform.prettyPrint().c_str());
-								}
-							}
-							else if(uStrNumCmp(_version, "0.11.2") < 0 &&
-									(unsigned int)dataSize % (4+localTransform.size())*sizeof(float) == 0)
-							{
-								int cameraCount = dataSize / ((4+localTransform.size())*sizeof(float));
-								UDEBUG("Loading calibration for %d cameras (%d bytes)", cameraCount, dataSize);
-								int max = cameraCount*(4+localTransform.size());
-								for(int i=0; i<max; i+=4+localTransform.size())
-								{
-									// Reinitialize to a new Transform, to avoid copying in the same memory than the previous one
-									localTransform = Transform::getIdentity();
-									memcpy(localTransform.data(), dataFloat+i+4, localTransform.size()*sizeof(float));
-									if(uStrNumCmp(_version, "0.15.2") < 0)
+									else if(type == 1) // stereo
 									{
-										localTransform.normalizeRotation();
+										int bytesRead = (int)stereoModel.deserialize((unsigned char*)data, dataSize);
+										UASSERT(bytesRead == dataSize);
 									}
-									models.push_back(CameraModel(
-											(double)dataFloat[i],
-											(double)dataFloat[i+1],
-											(double)dataFloat[i+2],
-											(double)dataFloat[i+3],
-											localTransform));
+									else
+									{
+										UFATAL("Unknown calibration type %d", type);
+									}
 								}
-							}
-							else if((unsigned int)dataSize == (7+localTransform.size())*sizeof(float))
-							{
-								UDEBUG("Loading calibration of a stereo camera");
-								memcpy(localTransform.data(), dataFloat+7, localTransform.size()*sizeof(float));
-								if(uStrNumCmp(_version, "0.15.2") < 0)
+								else
 								{
-									localTransform.normalizeRotation();
+									UFATAL("Wrong format of the Data.calibration field (size=%d bytes)", dataSize);
 								}
-								stereoModel = StereoCameraModel(
-										dataFloat[0],  // fx
-										dataFloat[1],  // fy
-										dataFloat[2],  // cx
-										dataFloat[3],  // cy
-										dataFloat[4], // baseline
-										localTransform,
-										cv::Size(dataFloat[5],dataFloat[6]));
-							}
-							else if((unsigned int)dataSize == (5+localTransform.size())*sizeof(float))
-							{
-								UDEBUG("Loading calibration of a stereo camera");
-								memcpy(localTransform.data(), dataFloat+5, localTransform.size()*sizeof(float));
-								if(uStrNumCmp(_version, "0.15.2") < 0)
-								{
-									localTransform.normalizeRotation();
-								}
-								stereoModel = StereoCameraModel(
-										dataFloat[0],  // fx
-										dataFloat[1],  // fy
-										dataFloat[2],  // cx
-										dataFloat[3],  // cy
-										dataFloat[4], // baseline
-										localTransform);
 							}
 							else
 							{
-								UFATAL("Wrong format of the Data.calibration field (size=%d bytes)", dataSize);
+								float * dataFloat = (float*)data;
+								if(uStrNumCmp(_version, "0.11.2") >= 0 &&
+								   (unsigned int)dataSize % (6+localTransform.size())*sizeof(float) == 0)
+								{
+									int cameraCount = dataSize / ((6+localTransform.size())*sizeof(float));
+									UDEBUG("Loading calibration for %d cameras (%d bytes)", cameraCount, dataSize);
+									int max = cameraCount*(6+localTransform.size());
+									for(int i=0; i<max; i+=6+localTransform.size())
+									{
+										// Reinitialize to a new Transform, to avoid copying in the same memory than the previous one
+										localTransform = Transform::getIdentity();
+										memcpy(localTransform.data(), dataFloat+i+6, localTransform.size()*sizeof(float));
+										if(uStrNumCmp(_version, "0.15.2") < 0)
+										{
+											localTransform.normalizeRotation();
+										}
+										models.push_back(CameraModel(
+												(double)dataFloat[i],
+												(double)dataFloat[i+1],
+												(double)dataFloat[i+2],
+												(double)dataFloat[i+3],
+												localTransform));
+										models.back().setImageSize(cv::Size(dataFloat[i+4], dataFloat[i+5]));
+										UDEBUG("%f %f %f %f %f %f %s", dataFloat[i], dataFloat[i+1], dataFloat[i+2],
+												dataFloat[i+3], dataFloat[i+4], dataFloat[i+5],
+												localTransform.prettyPrint().c_str());
+									}
+								}
+								else if(uStrNumCmp(_version, "0.11.2") < 0 &&
+										(unsigned int)dataSize % (4+localTransform.size())*sizeof(float) == 0)
+								{
+									int cameraCount = dataSize / ((4+localTransform.size())*sizeof(float));
+									UDEBUG("Loading calibration for %d cameras (%d bytes)", cameraCount, dataSize);
+									int max = cameraCount*(4+localTransform.size());
+									for(int i=0; i<max; i+=4+localTransform.size())
+									{
+										// Reinitialize to a new Transform, to avoid copying in the same memory than the previous one
+										localTransform = Transform::getIdentity();
+										memcpy(localTransform.data(), dataFloat+i+4, localTransform.size()*sizeof(float));
+										if(uStrNumCmp(_version, "0.15.2") < 0)
+										{
+											localTransform.normalizeRotation();
+										}
+										models.push_back(CameraModel(
+												(double)dataFloat[i],
+												(double)dataFloat[i+1],
+												(double)dataFloat[i+2],
+												(double)dataFloat[i+3],
+												localTransform));
+									}
+								}
+								else if((unsigned int)dataSize == (7+localTransform.size())*sizeof(float))
+								{
+									UDEBUG("Loading calibration of a stereo camera");
+									memcpy(localTransform.data(), dataFloat+7, localTransform.size()*sizeof(float));
+									if(uStrNumCmp(_version, "0.15.2") < 0)
+									{
+										localTransform.normalizeRotation();
+									}
+									stereoModel = StereoCameraModel(
+											dataFloat[0],  // fx
+											dataFloat[1],  // fy
+											dataFloat[2],  // cx
+											dataFloat[3],  // cy
+											dataFloat[4], // baseline
+											localTransform,
+											cv::Size(dataFloat[5],dataFloat[6]));
+								}
+								else if((unsigned int)dataSize == (5+localTransform.size())*sizeof(float))
+								{
+									UDEBUG("Loading calibration of a stereo camera");
+									memcpy(localTransform.data(), dataFloat+5, localTransform.size()*sizeof(float));
+									if(uStrNumCmp(_version, "0.15.2") < 0)
+									{
+										localTransform.normalizeRotation();
+									}
+									stereoModel = StereoCameraModel(
+											dataFloat[0],  // fx
+											dataFloat[1],  // fy
+											dataFloat[2],  // cx
+											dataFloat[3],  // cy
+											dataFloat[4], // baseline
+											localTransform);
+								}
+								else
+								{
+									UFATAL("Wrong format of the Data.calibration field (size=%d bytes)", dataSize);
+								}
 							}
 						}
 
@@ -1570,8 +1607,12 @@ void DBDriverSqlite3::loadNodeDataQuery(std::list<Signature *> & signatures, boo
 				}
 
 				int laserScanMaxPts = 0;
+				float laserScanMinRange = 0.0f;
 				float laserScanMaxRange = 0.0f;
 				int laserScanFormat = 0;
+				float laserScanAngleMin = 0.0f;
+				float laserScanAngleMax = 0.0f;
+				float laserScanAngleInc = 0.0f;
 				Transform scanLocalTransform = Transform::getIdentity();
 				if(uStrNumCmp(_version, "0.11.10") < 0 || scan)
 				{
@@ -1585,27 +1626,42 @@ void DBDriverSqlite3::loadNodeDataQuery(std::list<Signature *> & signatures, boo
 						{
 							float * dataFloat = (float*)data;
 
-							if(uStrNumCmp(_version, "0.16.1") >= 0 && dataSize == (int)((scanLocalTransform.size()+3)*sizeof(float)))
+							if(uStrNumCmp(_version, "0.18.0") >= 0)
 							{
-								// new in 0.16.1
-								laserScanFormat = (int)dataFloat[2];
-								memcpy(scanLocalTransform.data(), dataFloat+3, scanLocalTransform.size()*sizeof(float));
-							}
-							else if(dataSize == (int)((scanLocalTransform.size()+2)*sizeof(float)))
-							{
-								memcpy(scanLocalTransform.data(), dataFloat+2, scanLocalTransform.size()*sizeof(float));
+								UASSERT(dataSize == (int)((scanLocalTransform.size()+7)*sizeof(float)));
+								laserScanFormat = (int)dataFloat[0];
+								laserScanMinRange = dataFloat[1];
+								laserScanMaxRange = dataFloat[2];
+								laserScanAngleMin = dataFloat[3];
+								laserScanAngleMax = dataFloat[4];
+								laserScanAngleInc = dataFloat[5];
+								laserScanMaxPts = (int)dataFloat[6];
+								memcpy(scanLocalTransform.data(), dataFloat+7, scanLocalTransform.size()*sizeof(float));
 							}
 							else
 							{
-								UFATAL("Unexpected size %d for laser scan info!", dataSize);
-							}
+								if(uStrNumCmp(_version, "0.16.1") >= 0 && dataSize == (int)((scanLocalTransform.size()+3)*sizeof(float)))
+								{
+									// new in 0.16.1
+									laserScanFormat = (int)dataFloat[2];
+									memcpy(scanLocalTransform.data(), dataFloat+3, scanLocalTransform.size()*sizeof(float));
+								}
+								else if(dataSize == (int)((scanLocalTransform.size()+2)*sizeof(float)))
+								{
+									memcpy(scanLocalTransform.data(), dataFloat+2, scanLocalTransform.size()*sizeof(float));
+								}
+								else
+								{
+									UFATAL("Unexpected size %d for laser scan info!", dataSize);
+								}
 
-							if(uStrNumCmp(_version, "0.15.2") < 0)
-							{
-								scanLocalTransform.normalizeRotation();
+								if(uStrNumCmp(_version, "0.15.2") < 0)
+								{
+									scanLocalTransform.normalizeRotation();
+								}
+								laserScanMaxPts = (int)dataFloat[0];
+								laserScanMaxRange = dataFloat[1];
 							}
-							laserScanMaxPts = (int)dataFloat[0];
-							laserScanMaxRange = dataFloat[1];
 						}
 					}
 					else
@@ -1811,93 +1867,130 @@ bool DBDriverSqlite3::getCalibrationQuery(
 				// stereo [fx, fy, cx, cy, baseline, local_transform] (5+12)*float
 				if(dataSize > 0 && data)
 				{
-					float * dataFloat = (float*)data;
-					if(uStrNumCmp(_version, "0.11.2") >= 0 &&
-					  (unsigned int)dataSize % (6+localTransform.size())*sizeof(float) == 0)
+					if(uStrNumCmp(_version, "0.18.0") >= 0)
 					{
-						int cameraCount = dataSize / ((6+localTransform.size())*sizeof(float));
-						UDEBUG("Loading calibration for %d cameras (%d bytes)", cameraCount, dataSize);
-						int max = cameraCount*(6+localTransform.size());
-						for(int i=0; i<max; i+=6+localTransform.size())
+						if(dataSize >= int(sizeof(int)*4))
 						{
-							// Reinitialize to a new Transform, to avoid copying in the same memory than the previous one
-							localTransform = Transform::getIdentity();
-							memcpy(localTransform.data(), dataFloat+i+6, localTransform.size()*sizeof(float));
-							if(uStrNumCmp(_version, "0.15.2") < 0)
+							const int * dataInt = (const int *)data;
+							int type = dataInt[3];
+							if(type == 0) // mono
 							{
-								localTransform.normalizeRotation();
+								CameraModel model;
+								int bytesReadTotal = 0;
+								unsigned int bytesRead = 0;
+								while(bytesReadTotal < dataSize &&
+									  (bytesRead=model.deserialize((const unsigned char *)data+bytesReadTotal, dataSize-bytesReadTotal))!=0)
+								{
+									bytesReadTotal+=bytesRead;
+									models.push_back(model);
+								}
+								UASSERT(bytesReadTotal == dataSize);
 							}
-							models.push_back(CameraModel(
-									(double)dataFloat[i],
-									(double)dataFloat[i+1],
-									(double)dataFloat[i+2],
-									(double)dataFloat[i+3],
-									localTransform));
-							models.back().setImageSize(cv::Size(dataFloat[i+4], dataFloat[i+5]));
-							UDEBUG("%f %f %f %f %f %f %s", dataFloat[i], dataFloat[i+1], dataFloat[i+2],
-									dataFloat[i+3], dataFloat[i+4], dataFloat[i+5],
-									localTransform.prettyPrint().c_str());
-						}
-					}
-					else if(uStrNumCmp(_version, "0.11.2") < 0 &&
-							(unsigned int)dataSize % (4+localTransform.size())*sizeof(float) == 0)
-					{
-						int cameraCount = dataSize / ((4+localTransform.size())*sizeof(float));
-						UDEBUG("Loading calibration for %d cameras (%d bytes)", cameraCount, dataSize);
-						int max = cameraCount*(4+localTransform.size());
-						for(int i=0; i<max; i+=4+localTransform.size())
-						{
-							// Reinitialize to a new Transform, to avoid copying in the same memory than the previous one
-							localTransform = Transform::getIdentity();
-							memcpy(localTransform.data(), dataFloat+i+4, localTransform.size()*sizeof(float));
-							if(uStrNumCmp(_version, "0.15.2") < 0)
+							else if(type == 1) // stereo
 							{
-								localTransform.normalizeRotation();
+								int bytesRead = (int)stereoModel.deserialize((unsigned char*)data, dataSize);
+								UASSERT(bytesRead == dataSize);
 							}
-							models.push_back(CameraModel(
-									(double)dataFloat[i],
-									(double)dataFloat[i+1],
-									(double)dataFloat[i+2],
-									(double)dataFloat[i+3],
-									localTransform));
+							else
+							{
+								UFATAL("Unknown calibration type %d", type);
+							}
 						}
-					}
-					else if((unsigned int)dataSize == (7+localTransform.size())*sizeof(float))
-					{
-						UDEBUG("Loading calibration of a stereo camera");
-						memcpy(localTransform.data(), dataFloat+7, localTransform.size()*sizeof(float));
-						if(uStrNumCmp(_version, "0.15.2") < 0)
+						else
 						{
-							localTransform.normalizeRotation();
+							UFATAL("Wrong format of the Data.calibration field (size=%d bytes)", dataSize);
 						}
-						stereoModel = StereoCameraModel(
-								dataFloat[0],  // fx
-								dataFloat[1],  // fy
-								dataFloat[2],  // cx
-								dataFloat[3],  // cy
-								dataFloat[4], // baseline
-								localTransform,
-								cv::Size(dataFloat[5],dataFloat[6]));
-					}
-					else if((unsigned int)dataSize == (5+localTransform.size())*sizeof(float))
-					{
-						UDEBUG("Loading calibration of a stereo camera");
-						memcpy(localTransform.data(), dataFloat+5, localTransform.size()*sizeof(float));
-						if(uStrNumCmp(_version, "0.15.2") < 0)
-						{
-							localTransform.normalizeRotation();
-						}
-						stereoModel = StereoCameraModel(
-								dataFloat[0],  // fx
-								dataFloat[1],  // fy
-								dataFloat[2],  // cx
-								dataFloat[3],  // cy
-								dataFloat[4], // baseline
-								localTransform);
 					}
 					else
 					{
-						UFATAL("Wrong format of the Data.calibration field (size=%d bytes)", dataSize);
+						float * dataFloat = (float*)data;
+						if(uStrNumCmp(_version, "0.11.2") >= 0 &&
+						  (unsigned int)dataSize % (6+localTransform.size())*sizeof(float) == 0)
+						{
+							int cameraCount = dataSize / ((6+localTransform.size())*sizeof(float));
+							UDEBUG("Loading calibration for %d cameras (%d bytes)", cameraCount, dataSize);
+							int max = cameraCount*(6+localTransform.size());
+							for(int i=0; i<max; i+=6+localTransform.size())
+							{
+								// Reinitialize to a new Transform, to avoid copying in the same memory than the previous one
+								localTransform = Transform::getIdentity();
+								memcpy(localTransform.data(), dataFloat+i+6, localTransform.size()*sizeof(float));
+								if(uStrNumCmp(_version, "0.15.2") < 0)
+								{
+									localTransform.normalizeRotation();
+								}
+								models.push_back(CameraModel(
+										(double)dataFloat[i],
+										(double)dataFloat[i+1],
+										(double)dataFloat[i+2],
+										(double)dataFloat[i+3],
+										localTransform));
+								models.back().setImageSize(cv::Size(dataFloat[i+4], dataFloat[i+5]));
+								UDEBUG("%f %f %f %f %f %f %s", dataFloat[i], dataFloat[i+1], dataFloat[i+2],
+										dataFloat[i+3], dataFloat[i+4], dataFloat[i+5],
+										localTransform.prettyPrint().c_str());
+							}
+						}
+						else if(uStrNumCmp(_version, "0.11.2") < 0 &&
+								(unsigned int)dataSize % (4+localTransform.size())*sizeof(float) == 0)
+						{
+							int cameraCount = dataSize / ((4+localTransform.size())*sizeof(float));
+							UDEBUG("Loading calibration for %d cameras (%d bytes)", cameraCount, dataSize);
+							int max = cameraCount*(4+localTransform.size());
+							for(int i=0; i<max; i+=4+localTransform.size())
+							{
+								// Reinitialize to a new Transform, to avoid copying in the same memory than the previous one
+								localTransform = Transform::getIdentity();
+								memcpy(localTransform.data(), dataFloat+i+4, localTransform.size()*sizeof(float));
+								if(uStrNumCmp(_version, "0.15.2") < 0)
+								{
+									localTransform.normalizeRotation();
+								}
+								models.push_back(CameraModel(
+										(double)dataFloat[i],
+										(double)dataFloat[i+1],
+										(double)dataFloat[i+2],
+										(double)dataFloat[i+3],
+										localTransform));
+							}
+						}
+						else if((unsigned int)dataSize == (7+localTransform.size())*sizeof(float))
+						{
+							UDEBUG("Loading calibration of a stereo camera");
+							memcpy(localTransform.data(), dataFloat+7, localTransform.size()*sizeof(float));
+							if(uStrNumCmp(_version, "0.15.2") < 0)
+							{
+								localTransform.normalizeRotation();
+							}
+							stereoModel = StereoCameraModel(
+									dataFloat[0],  // fx
+									dataFloat[1],  // fy
+									dataFloat[2],  // cx
+									dataFloat[3],  // cy
+									dataFloat[4], // baseline
+									localTransform,
+									cv::Size(dataFloat[5],dataFloat[6]));
+						}
+						else if((unsigned int)dataSize == (5+localTransform.size())*sizeof(float))
+						{
+							UDEBUG("Loading calibration of a stereo camera");
+							memcpy(localTransform.data(), dataFloat+5, localTransform.size()*sizeof(float));
+							if(uStrNumCmp(_version, "0.15.2") < 0)
+							{
+								localTransform.normalizeRotation();
+							}
+							stereoModel = StereoCameraModel(
+									dataFloat[0],  // fx
+									dataFloat[1],  // fy
+									dataFloat[2],  // cx
+									dataFloat[3],  // cy
+									dataFloat[4], // baseline
+									localTransform);
+						}
+						else
+						{
+							UFATAL("Wrong format of the Data.calibration field (size=%d bytes)", dataSize);
+						}
 					}
 				}
 
@@ -2913,94 +3006,131 @@ void DBDriverSqlite3::loadSignaturesQuery(const std::list<int> & ids, std::list<
 					// stereo [fx, fy, cx, cy, baseline, [width,height], local_transform] (5or7+12)*float
 					if(dataSize > 0 && data)
 					{
-						float * dataFloat = (float*)data;
-						if(uStrNumCmp(_version, "0.11.2") >= 0 &&
-						   (unsigned int)dataSize % (6+localTransform.size())*sizeof(float) == 0)
+						if(uStrNumCmp(_version, "0.18.0") >= 0)
 						{
-							int cameraCount = dataSize / ((6+localTransform.size())*sizeof(float));
-							UDEBUG("Loading calibration for %d cameras (%d bytes)", cameraCount, dataSize);
-							int max = cameraCount*(6+localTransform.size());
-							for(int i=0; i<max; i+=6+localTransform.size())
+							if(dataSize >= int(sizeof(int)*4))
 							{
-								// Reinitialize to a new Transform, to avoid copying in the same memory than the previous one
-								localTransform = Transform::getIdentity();
-								memcpy(localTransform.data(), dataFloat+i+6, localTransform.size()*sizeof(float));
-								if(uStrNumCmp(_version, "0.15.2") < 0)
+								const int * dataInt = (const int *)data;
+								int type = dataInt[3];
+								if(type == 0) // mono
 								{
-									localTransform.normalizeRotation();
+									CameraModel model;
+									int bytesReadTotal = 0;
+									unsigned int bytesRead = 0;
+									while(bytesReadTotal < dataSize &&
+										  (bytesRead=model.deserialize((const unsigned char *)data+bytesReadTotal, dataSize-bytesReadTotal))!=0)
+									{
+										bytesReadTotal+=bytesRead;
+										models.push_back(model);
+									}
+									UASSERT(bytesReadTotal == dataSize);
 								}
-								models.push_back(CameraModel(
-										(double)dataFloat[i],
-										(double)dataFloat[i+1],
-										(double)dataFloat[i+2],
-										(double)dataFloat[i+3],
-										localTransform,
-										0,
-										cv::Size(dataFloat[i+4], dataFloat[i+5])));
-								UDEBUG("%f %f %f %f %f %f %s", dataFloat[i], dataFloat[i+1], dataFloat[i+2],
-										dataFloat[i+3], dataFloat[i+4], dataFloat[i+5],
-										localTransform.prettyPrint().c_str());
-							}
-						}
-						else if(uStrNumCmp(_version, "0.11.2") < 0 &&
-								(unsigned int)dataSize % (4+localTransform.size())*sizeof(float) == 0)
-						{
-							int cameraCount = dataSize / ((4+localTransform.size())*sizeof(float));
-							UDEBUG("Loading calibration for %d cameras (%d bytes)", cameraCount, dataSize);
-							int max = cameraCount*(4+localTransform.size());
-							for(int i=0; i<max; i+=4+localTransform.size())
-							{
-								// Reinitialize to a new Transform, to avoid copying in the same memory than the previous one
-								localTransform = Transform::getIdentity();
-								memcpy(localTransform.data(), dataFloat+i+4, localTransform.size()*sizeof(float));
-								if(uStrNumCmp(_version, "0.15.2") < 0)
+								else if(type == 1) // stereo
 								{
-									localTransform.normalizeRotation();
+									int bytesRead = (int)stereoModel.deserialize((unsigned char*)data, dataSize);
+									UASSERT(bytesRead == dataSize);
 								}
-								models.push_back(CameraModel(
-										(double)dataFloat[i],
-										(double)dataFloat[i+1],
-										(double)dataFloat[i+2],
-										(double)dataFloat[i+3],
-										localTransform));
+								else
+								{
+									UFATAL("Unknown calibration type %d", type);
+								}
 							}
-						}
-						else if((unsigned int)dataSize == (7+localTransform.size())*sizeof(float))
-						{
-							UDEBUG("Loading calibration of a stereo camera");
-							memcpy(localTransform.data(), dataFloat+7, localTransform.size()*sizeof(float));
-							if(uStrNumCmp(_version, "0.15.2") < 0)
+							else
 							{
-								localTransform.normalizeRotation();
+								UFATAL("Wrong format of the Data.calibration field (size=%d bytes)", dataSize);
 							}
-							stereoModel = StereoCameraModel(
-									dataFloat[0],  // fx
-									dataFloat[1],  // fy
-									dataFloat[2],  // cx
-									dataFloat[3],  // cy
-									dataFloat[4], // baseline
-									localTransform,
-									cv::Size(dataFloat[5], dataFloat[6]));
-						}
-						else if((unsigned int)dataSize == (5+localTransform.size())*sizeof(float))
-						{
-							UDEBUG("Loading calibration of a stereo camera");
-							memcpy(localTransform.data(), dataFloat+5, localTransform.size()*sizeof(float));
-							if(uStrNumCmp(_version, "0.15.2") < 0)
-							{
-								localTransform.normalizeRotation();
-							}
-							stereoModel = StereoCameraModel(
-									dataFloat[0],  // fx
-									dataFloat[1],  // fy
-									dataFloat[2],  // cx
-									dataFloat[3],  // cy
-									dataFloat[4], // baseline
-									localTransform);
 						}
 						else
 						{
-							UFATAL("Wrong format of the Data.calibration field (size=%d bytes, db version=%s)", dataSize, _version.c_str());
+							float * dataFloat = (float*)data;
+							if(uStrNumCmp(_version, "0.11.2") >= 0 &&
+							   (unsigned int)dataSize % (6+localTransform.size())*sizeof(float) == 0)
+							{
+								int cameraCount = dataSize / ((6+localTransform.size())*sizeof(float));
+								UDEBUG("Loading calibration for %d cameras (%d bytes)", cameraCount, dataSize);
+								int max = cameraCount*(6+localTransform.size());
+								for(int i=0; i<max; i+=6+localTransform.size())
+								{
+									// Reinitialize to a new Transform, to avoid copying in the same memory than the previous one
+									localTransform = Transform::getIdentity();
+									memcpy(localTransform.data(), dataFloat+i+6, localTransform.size()*sizeof(float));
+									if(uStrNumCmp(_version, "0.15.2") < 0)
+									{
+										localTransform.normalizeRotation();
+									}
+									models.push_back(CameraModel(
+											(double)dataFloat[i],
+											(double)dataFloat[i+1],
+											(double)dataFloat[i+2],
+											(double)dataFloat[i+3],
+											localTransform,
+											0,
+											cv::Size(dataFloat[i+4], dataFloat[i+5])));
+									UDEBUG("%f %f %f %f %f %f %s", dataFloat[i], dataFloat[i+1], dataFloat[i+2],
+											dataFloat[i+3], dataFloat[i+4], dataFloat[i+5],
+											localTransform.prettyPrint().c_str());
+								}
+							}
+							else if(uStrNumCmp(_version, "0.11.2") < 0 &&
+									(unsigned int)dataSize % (4+localTransform.size())*sizeof(float) == 0)
+							{
+								int cameraCount = dataSize / ((4+localTransform.size())*sizeof(float));
+								UDEBUG("Loading calibration for %d cameras (%d bytes)", cameraCount, dataSize);
+								int max = cameraCount*(4+localTransform.size());
+								for(int i=0; i<max; i+=4+localTransform.size())
+								{
+									// Reinitialize to a new Transform, to avoid copying in the same memory than the previous one
+									localTransform = Transform::getIdentity();
+									memcpy(localTransform.data(), dataFloat+i+4, localTransform.size()*sizeof(float));
+									if(uStrNumCmp(_version, "0.15.2") < 0)
+									{
+										localTransform.normalizeRotation();
+									}
+									models.push_back(CameraModel(
+											(double)dataFloat[i],
+											(double)dataFloat[i+1],
+											(double)dataFloat[i+2],
+											(double)dataFloat[i+3],
+											localTransform));
+								}
+							}
+							else if((unsigned int)dataSize == (7+localTransform.size())*sizeof(float))
+							{
+								UDEBUG("Loading calibration of a stereo camera");
+								memcpy(localTransform.data(), dataFloat+7, localTransform.size()*sizeof(float));
+								if(uStrNumCmp(_version, "0.15.2") < 0)
+								{
+									localTransform.normalizeRotation();
+								}
+								stereoModel = StereoCameraModel(
+										dataFloat[0],  // fx
+										dataFloat[1],  // fy
+										dataFloat[2],  // cx
+										dataFloat[3],  // cy
+										dataFloat[4], // baseline
+										localTransform,
+										cv::Size(dataFloat[5], dataFloat[6]));
+							}
+							else if((unsigned int)dataSize == (5+localTransform.size())*sizeof(float))
+							{
+								UDEBUG("Loading calibration of a stereo camera");
+								memcpy(localTransform.data(), dataFloat+5, localTransform.size()*sizeof(float));
+								if(uStrNumCmp(_version, "0.15.2") < 0)
+								{
+									localTransform.normalizeRotation();
+								}
+								stereoModel = StereoCameraModel(
+										dataFloat[0],  // fx
+										dataFloat[1],  // fy
+										dataFloat[2],  // cx
+										dataFloat[3],  // cy
+										dataFloat[4], // baseline
+										localTransform);
+							}
+							else
+							{
+								UFATAL("Wrong format of the Data.calibration field (size=%d bytes, db version=%s)", dataSize, _version.c_str());
+							}
 						}
 
 						(*iter)->sensorData().setCameraModels(models);
@@ -5282,12 +5412,24 @@ void DBDriverSqlite3::stepSensorData(sqlite3_stmt * ppStmt,
 	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
 
 	// calibration
+	std::vector<unsigned char> calibrationData;
 	std::vector<float> calibration;
 	// multi-cameras [fx,fy,cx,cy,width,height,local_transform, ... ,fx,fy,cx,cy,width,height,local_transform] (6+12)*float * numCameras
 	// stereo [fx, fy, cx, cy, baseline, local_transform] (5+12)*float
 	if(sensorData.cameraModels().size() && sensorData.cameraModels()[0].isValidForProjection())
 	{
-		if(uStrNumCmp(_version, "0.11.2") >= 0)
+		if(uStrNumCmp(_version, "0.18.0") >= 0)
+		{
+			for(unsigned int i=0; i<sensorData.cameraModels().size(); ++i)
+			{
+				UASSERT(sensorData.cameraModels()[i].isValidForProjection());
+				std::vector<unsigned char> data = sensorData.cameraModels()[i].serialize();
+				UASSERT(!data.empty());
+				calibrationData.resize(calibrationData.size() + data.size());
+				memcpy(calibrationData.data(), data.data(), data.size());
+			}
+		}
+		else if(uStrNumCmp(_version, "0.11.2") >= 0)
 		{
 			calibration.resize(sensorData.cameraModels().size() * (6+Transform().size()));
 			for(unsigned int i=0; i<sensorData.cameraModels().size(); ++i)
@@ -5320,19 +5462,31 @@ void DBDriverSqlite3::stepSensorData(sqlite3_stmt * ppStmt,
 	}
 	else if(sensorData.stereoCameraModel().isValidForProjection())
 	{
-		const Transform & localTransform = sensorData.stereoCameraModel().left().localTransform();
-		calibration.resize(7+localTransform.size());
-		calibration[0] = sensorData.stereoCameraModel().left().fx();
-		calibration[1] = sensorData.stereoCameraModel().left().fy();
-		calibration[2] = sensorData.stereoCameraModel().left().cx();
-		calibration[3] = sensorData.stereoCameraModel().left().cy();
-		calibration[4] = sensorData.stereoCameraModel().baseline();
-		calibration[5] = sensorData.stereoCameraModel().left().imageWidth();
-		calibration[6] = sensorData.stereoCameraModel().left().imageHeight();
-		memcpy(calibration.data()+7, localTransform.data(), localTransform.size()*sizeof(float));
+		if(uStrNumCmp(_version, "0.18.0") >= 0)
+		{
+			calibrationData = sensorData.stereoCameraModel().serialize();
+			UASSERT(!calibrationData.empty());
+		}
+		else
+		{
+			const Transform & localTransform = sensorData.stereoCameraModel().left().localTransform();
+			calibration.resize(7+localTransform.size());
+			calibration[0] = sensorData.stereoCameraModel().left().fx();
+			calibration[1] = sensorData.stereoCameraModel().left().fy();
+			calibration[2] = sensorData.stereoCameraModel().left().cx();
+			calibration[3] = sensorData.stereoCameraModel().left().cy();
+			calibration[4] = sensorData.stereoCameraModel().baseline();
+			calibration[5] = sensorData.stereoCameraModel().left().imageWidth();
+			calibration[6] = sensorData.stereoCameraModel().left().imageHeight();
+			memcpy(calibration.data()+7, localTransform.data(), localTransform.size()*sizeof(float));
+		}
 	}
 
-	if(calibration.size())
+	if(calibrationData.size())
+	{
+		rc = sqlite3_bind_blob(ppStmt, index++, calibrationData.data(), calibrationData.size(), SQLITE_STATIC);
+	}
+	else if(calibration.size())
 	{
 		rc = sqlite3_bind_blob(ppStmt, index++, calibration.data(), calibration.size()*sizeof(float), SQLITE_STATIC);
 	}
@@ -5352,12 +5506,28 @@ void DBDriverSqlite3::stepSensorData(sqlite3_stmt * ppStmt,
 		{
 			if(uStrNumCmp(_version, "0.16.1") >=0)
 			{
-				scanInfo.resize(3 + Transform().size());
-				scanInfo[0] = sensorData.laserScanCompressed().maxPoints();
-				scanInfo[1] = sensorData.laserScanCompressed().maxRange();
-				scanInfo[2] = sensorData.laserScanCompressed().format();
-				const Transform & localTransform = sensorData.laserScanCompressed().localTransform();
-				memcpy(scanInfo.data()+3, localTransform.data(), localTransform.size()*sizeof(float));
+				if(uStrNumCmp(_version, "0.18.0") >=0)
+				{
+					scanInfo.resize(7 + Transform().size());
+					scanInfo[0] = sensorData.laserScanCompressed().format();
+					scanInfo[1] = sensorData.laserScanCompressed().minRange();
+					scanInfo[2] = sensorData.laserScanCompressed().maxRange();
+					scanInfo[3] = sensorData.laserScanCompressed().angleMin();
+					scanInfo[4] = sensorData.laserScanCompressed().angleMax();
+					scanInfo[5] = sensorData.laserScanCompressed().angleIncrement();
+					scanInfo[6] = sensorData.laserScanCompressed().maxPoints(); // only for backward compatibility
+					const Transform & localTransform = sensorData.laserScanCompressed().localTransform();
+					memcpy(scanInfo.data()+7, localTransform.data(), localTransform.size()*sizeof(float));
+				}
+				else
+				{
+					scanInfo.resize(3 + Transform().size());
+					scanInfo[0] = sensorData.laserScanCompressed().maxPoints();
+					scanInfo[1] = sensorData.laserScanCompressed().maxRange();
+					scanInfo[2] = sensorData.laserScanCompressed().format();
+					const Transform & localTransform = sensorData.laserScanCompressed().localTransform();
+					memcpy(scanInfo.data()+3, localTransform.data(), localTransform.size()*sizeof(float));
+				}
 			}
 			else
 			{

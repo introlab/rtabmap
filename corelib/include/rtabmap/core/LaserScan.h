@@ -58,12 +58,28 @@ public:
 
 public:
 	LaserScan();
-	LaserScan(const cv::Mat & data, int maxPoints, float maxRange, Format format, const Transform & localTransform = Transform::getIdentity());
+	LaserScan(const cv::Mat & data,
+			int maxPoints,
+			float maxRange,
+			Format format,
+			const Transform & localTransform = Transform::getIdentity());
+	LaserScan(const cv::Mat & data,
+			Format format,
+			float minRange,
+			float maxRange,
+			float angleMin,
+			float angleMax,
+			float angleIncrement,
+			const Transform & localTransform = Transform::getIdentity());
 
 	const cv::Mat & data() const {return data_;}
-	int maxPoints() const {return maxPoints_;}
-	float maxRange() const {return maxRange_;}
 	Format format() const {return format_;}
+	int maxPoints() const {return maxPoints_;}
+	float minRange() const {return minRange_;}
+	float maxRange() const {return maxRange_;}
+	float angleMin() const {return angleMin_;}
+	float angleMax() const {return angleMax_;}
+	float angleIncrement() const {return angleIncrement_;}
 	Transform localTransform() const {return localTransform_;}
 
 	bool isEmpty() const {return data_.empty();}
@@ -84,9 +100,13 @@ public:
 
 private:
 	cv::Mat data_;
-	int maxPoints_;
-	float maxRange_;
 	Format format_;
+	int maxPoints_;
+	float minRange_;
+	float maxRange_;
+	float angleMin_;
+	float angleMax_;
+	float angleIncrement_;
 	Transform localTransform_;
 };
 

@@ -26,6 +26,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 #include <rtabmap/core/CameraModel.h>
+#include <rtabmap/core/Version.h>
 #include <rtabmap/utilite/ULogger.h>
 #include <rtabmap/utilite/UDirectory.h>
 #include <rtabmap/utilite/UFile.h>
@@ -447,6 +448,117 @@ bool CameraModel::save(const std::string & directory) const
 		UERROR("Cannot save calibration to \"%s\" because it is empty.", filePath.c_str());
 	}
 	return false;
+}
+
+std::vector<unsigned char> CameraModel::serialize() const
+{
+	int headerSize = 11;
+	std::vector<unsigned char> data(
+			sizeof(int)*headerSize +
+			sizeof(double)*(K_.total()+D_.total()+R_.total()+P_.total()) +
+			(localTransform_.isNull()?0:sizeof(float)*localTransform_.size()));
+	int header[headerSize] = {
+			RTABMAP_VERSION_MAJOR, RTABMAP_VERSION_MINOR, RTABMAP_VERSION_PATCH, // 0,1,2
+			0, //mono                                                            // 3,
+			imageSize_.width, imageSize_.height,                                 // 4,5
+			(int)K_.total(), (int)D_.total(), (int)R_.total(), (int)P_.total(),  // 6,7,8,9
+			localTransform_.size()};                                             // 10
+	memcpy(data.data(), header, sizeof(int)*headerSize);
+	int index = sizeof(int)*headerSize;
+	if(!K_.empty())
+	{
+		memcpy(data.data()+index, K_.data, sizeof(double)*(K_.total()));
+		index+=sizeof(double)*(K_.total());
+	}
+	if(!D_.empty())
+	{
+		memcpy(data.data()+index, D_.data, sizeof(double)*(D_.total()));
+		index+=sizeof(double)*(D_.total());
+	}
+	if(!R_.empty())
+	{
+		memcpy(data.data()+index, R_.data, sizeof(double)*(R_.total()));
+		index+=sizeof(double)*(R_.total());
+	}
+	if(!P_.empty())
+	{
+		memcpy(data.data()+index, P_.data, sizeof(double)*(P_.total()));
+		index+=sizeof(double)*(P_.total());
+	}
+	if(!localTransform_.isNull())
+	{
+		memcpy(data.data()+index, localTransform_.data(), sizeof(float)*(localTransform_.size()));
+		index+=sizeof(float)*(localTransform_.size());
+	}
+	return data;
+}
+
+unsigned int CameraModel::deserialize(const std::vector<unsigned char>& data)
+{
+	return deserialize(data.data(), data.size());
+}
+unsigned int CameraModel::deserialize(const unsigned char * data, unsigned int dataSize)
+{
+	*this = CameraModel();
+	int headerSize = 11;
+	if(dataSize >= sizeof(int)*headerSize)
+	{
+		UASSERT(data != 0);
+		const int * header = (const int *)data;
+		int type = header[3];
+		if(type == 0)
+		{
+			imageSize_.width = header[4];
+			imageSize_.height = header[5];
+			int iK = 6;
+			int iD = 7;
+			int iR = 8;
+			int iP = 9;
+			int iL = 10;
+			UASSERT(dataSize >=
+					sizeof(int)*headerSize +
+					sizeof(double)*(header[iK]+header[iD]+header[iR]+header[iP]) +
+					sizeof(float)*header[iL]);
+			unsigned int index = sizeof(int)*headerSize;
+			if(header[iK] != 0)
+			{
+				UASSERT(header[iK] == 9);
+				K_ = cv::Mat(3, 3, CV_64FC1, (void*)(data+index)).clone();
+				index+=sizeof(double)*(K_.total());
+			}
+			if(header[iD] != 0)
+			{
+				D_ = cv::Mat(1, header[iD], CV_64FC1, (void*)(data+index)).clone();
+				index+=sizeof(double)*(D_.total());
+			}
+			if(header[iR] != 0)
+			{
+				UASSERT(header[iR] == 9);
+				R_ = cv::Mat(3, 3, CV_64FC1, (void*)(data+index)).clone();
+				index+=sizeof(double)*(R_.total());
+			}
+			if(header[iP] != 0)
+			{
+				UASSERT(header[iP] == 12);
+				P_ = cv::Mat(3, 4, CV_64FC1, (void*)(data+index)).clone();
+				index+=sizeof(double)*(P_.total());
+			}
+			if(header[iL] != 0)
+			{
+				UASSERT(header[iL] == 12);
+				memcpy(localTransform_.data(), data+index, sizeof(float)*localTransform_.size());
+				index+=sizeof(float)*localTransform_.size();
+			}
+			UASSERT(index <= dataSize);
+			return index;
+		}
+		else
+		{
+			UERROR("Serialized calibration is not mono (type=%d), use the appropriate class matching the type to deserialize.", type);
+		}
+	}
+	UERROR("Wrong serialized calibration data format detected (size in bytes=%d)! Cannot deserialize the data.", (int)dataSize);
+	return 0;
 }
 
 CameraModel CameraModel::scaled(double scale) const
