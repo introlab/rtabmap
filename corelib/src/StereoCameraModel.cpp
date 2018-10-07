@@ -364,16 +364,16 @@ std::vector<unsigned char> StereoCameraModel::serialize() const
 	std::vector<unsigned char> leftData = left_.serialize();
 	std::vector<unsigned char> rightData = right_.serialize();
 
-	int headerSize = 10;
-	std::vector<unsigned char> data(
-			sizeof(int)*headerSize +
-			sizeof(double)*(R_.total()+T_.total()+E_.total()+F_.total()) +
-			leftData.size() + rightData.size());
+	const int headerSize = 10;
 	int header[headerSize] = {
 			RTABMAP_VERSION_MAJOR, RTABMAP_VERSION_MINOR, RTABMAP_VERSION_PATCH, // 0,1,2
 			1, //stereo                                                          // 3
 			(int)R_.total(), (int)T_.total(), (int)E_.total(), (int)F_.total(),  // 4,5,6,7
 			(int)leftData.size(), (int)rightData.size()};                        // 8,9
+	std::vector<unsigned char> data(
+			sizeof(int)*headerSize +
+			sizeof(double)*(R_.total()+T_.total()+E_.total()+F_.total()) +
+			leftData.size() + rightData.size());
 	memcpy(data.data(), header, sizeof(int)*headerSize);
 	int index = sizeof(int)*headerSize;
 	if(!R_.empty())

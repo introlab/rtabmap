@@ -1753,10 +1753,22 @@ void DBDriverSqlite3::loadNodeDataQuery(std::list<Signature *> & signatures, boo
 				}
 
 				SensorData tmp = (*iter)->sensorData();
+				LaserScan laserScan =  tmp.laserScanCompressed();
+				if(scan)
+				{
+					if(laserScanAngleMin < laserScanAngleMax && laserScanAngleInc != 0.0f)
+					{
+						laserScan = LaserScan(scanCompressed, (LaserScan::Format)laserScanFormat, laserScanMinRange, laserScanMaxRange, laserScanAngleMin, laserScanAngleMax, laserScanAngleInc, scanLocalTransform);
+					}
+					else
+					{
+						laserScan = LaserScan(scanCompressed, laserScanMaxPts, laserScanMaxRange, (LaserScan::Format)laserScanFormat, scanLocalTransform);
+					}
+				}
 				if(models.size())
 				{
 					(*iter)->sensorData() = SensorData(
-						    scan?LaserScan(scanCompressed, laserScanMaxPts, laserScanMaxRange, (LaserScan::Format)laserScanFormat, scanLocalTransform):tmp.laserScanCompressed(),
+						    laserScan,
 							images?imageCompressed:tmp.imageCompressed(),
 							images?depthOrRightCompressed:tmp.depthOrRightCompressed(),
 							images?models:tmp.cameraModels(),
@@ -1767,7 +1779,7 @@ void DBDriverSqlite3::loadNodeDataQuery(std::list<Signature *> & signatures, boo
 				else
 				{
 					(*iter)->sensorData() = SensorData(
-							scan?LaserScan(scanCompressed, laserScanMaxPts, laserScanMaxRange, (LaserScan::Format)laserScanFormat, scanLocalTransform):tmp.laserScanCompressed(),
+							laserScan,
 							images?imageCompressed:tmp.imageCompressed(),
 							images?depthOrRightCompressed:tmp.depthOrRightCompressed(),
 							images?stereoModel:tmp.stereoCameraModel(),
@@ -2064,9 +2076,13 @@ bool DBDriverSqlite3::getLaserScanInfoQuery(
 		const void * data = 0;
 		int dataSize = 0;
 		Transform localTransform = Transform::getIdentity();
-		int maxPts = 0;
-		float maxRange = 0.0f;
 		int format = 0;
+		int maxPts = 0;
+		float minRange = 0.0f;
+		float maxRange = 0.0f;
+		float angleMin = 0.0f;
+		float angleMax = 0.0f;
+		float angleInc = 0.0f;
 
 		// Process the result if one
 		rc = sqlite3_step(ppStmt);
@@ -2082,28 +2098,50 @@ bool DBDriverSqlite3::getLaserScanInfoQuery(
 			if(dataSize > 0 && data)
 			{
 				float * dataFloat = (float*)data;
-				if(uStrNumCmp(_version, "0.16.1") >= 0 && dataSize == (int)((localTransform.size()+3)*sizeof(float)))
+				if(uStrNumCmp(_version, "0.18.0") >= 0)
 				{
-					// new in 0.16.1
-					format = (int)dataFloat[2];
-					memcpy(localTransform.data(), dataFloat+3, localTransform.size()*sizeof(float));
-				}
-				else if(dataSize == (int)((localTransform.size()+2)*sizeof(float)))
-				{
-					memcpy(localTransform.data(), dataFloat+2, localTransform.size()*sizeof(float));
+					UASSERT(dataSize == (int)((localTransform.size()+7)*sizeof(float)));
+					format = (int)dataFloat[0];
+					minRange = dataFloat[1];
+					maxRange = dataFloat[2];
+					angleMin = dataFloat[3];
+					angleMax = dataFloat[4];
+					angleInc = dataFloat[5];
+					maxPts = (int)dataFloat[6];
+					memcpy(localTransform.data(), dataFloat+7, localTransform.size()*sizeof(float));
 				}
 				else
 				{
-					UFATAL("Unexpected size %d for laser scan info!", dataSize);
+					if(uStrNumCmp(_version, "0.16.1") >= 0 && dataSize == (int)((localTransform.size()+3)*sizeof(float)))
+					{
+						// new in 0.16.1
+						format = (int)dataFloat[2];
+						memcpy(localTransform.data(), dataFloat+3, localTransform.size()*sizeof(float));
+					}
+					else if(dataSize == (int)((localTransform.size()+2)*sizeof(float)))
+					{
+						memcpy(localTransform.data(), dataFloat+2, localTransform.size()*sizeof(float));
+					}
+					else
+					{
+						UFATAL("Unexpected size %d for laser scan info!", dataSize);
+					}
+					if(uStrNumCmp(_version, "0.15.2") < 0)
+					{
+						localTransform.normalizeRotation();
+					}
+					maxPts = (int)dataFloat[0];
+					maxRange = dataFloat[1];
 				}
-				if(uStrNumCmp(_version, "0.15.2") < 0)
-				{
-					localTransform.normalizeRotation();
-				}
-				maxPts = (int)dataFloat[0];
-				maxRange = dataFloat[1];
 
-				info = LaserScan(cv::Mat(), maxPts, maxRange, (LaserScan::Format)format, localTransform);
+				if(angleInc != 0.0f && angleMin < angleMax)
+				{
+					info = LaserScan(cv::Mat(), (LaserScan::Format)format, minRange, maxRange, angleMin, angleMax, angleInc, localTransform);
+				}
+				else
+				{
+					info = LaserScan(cv::Mat(), maxPts, maxRange, (LaserScan::Format)format, localTransform);
+				}
 			}
 
 			rc = sqlite3_step(ppStmt); // next result...

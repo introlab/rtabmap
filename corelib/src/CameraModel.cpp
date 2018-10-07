@@ -452,17 +452,17 @@ bool CameraModel::save(const std::string & directory) const
 
 std::vector<unsigned char> CameraModel::serialize() const
 {
-	int headerSize = 11;
-	std::vector<unsigned char> data(
-			sizeof(int)*headerSize +
-			sizeof(double)*(K_.total()+D_.total()+R_.total()+P_.total()) +
-			(localTransform_.isNull()?0:sizeof(float)*localTransform_.size()));
+	const int headerSize = 11;
 	int header[headerSize] = {
 			RTABMAP_VERSION_MAJOR, RTABMAP_VERSION_MINOR, RTABMAP_VERSION_PATCH, // 0,1,2
 			0, //mono                                                            // 3,
 			imageSize_.width, imageSize_.height,                                 // 4,5
 			(int)K_.total(), (int)D_.total(), (int)R_.total(), (int)P_.total(),  // 6,7,8,9
 			localTransform_.size()};                                             // 10
+	std::vector<unsigned char> data(
+			sizeof(int)*headerSize +
+			sizeof(double)*(K_.total()+D_.total()+R_.total()+P_.total()) +
+			(localTransform_.isNull()?0:sizeof(float)*localTransform_.size()));
 	memcpy(data.data(), header, sizeof(int)*headerSize);
 	int index = sizeof(int)*headerSize;
 	if(!K_.empty())
