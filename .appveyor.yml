@@ -33,8 +33,10 @@ install:
   - set OPENNI2_LIB64=C:\Program Files\OpenNI2\Lib
   - set OPENNI2_REDIST64=C:\Program Files\OpenNI2\Redist
   # OpenCV
-  - ps: wget 'http://kent.dl.sourceforge.net/project/opencvlibrary/opencv-win/3.3.1/opencv-3.3.1-vc14.exe' -outfile opencv-3.3.1-vc14.exe
-  - cmd: opencv-3.3.1-vc14.exe -o"C:\Program Files" -y
+  #- ps: wget 'http://kent.dl.sourceforge.net/project/opencvlibrary/opencv-win/3.3.1/opencv-3.3.1-vc14.exe' -outfile opencv-3.3.1-vc14.exe
+  #- cmd: opencv-3.3.1-vc14.exe -o"C:\Program Files" -y
+  - ps: wget 'http://kent.dl.sourceforge.net/project/opencvlibrary/opencv-win/2.4.13/opencv-2.4.13.6-vc14.exe' -outfile opencv-2.4.13.6-vc14.exe
+  - cmd: opencv-2.4.13.6-vc14.exe -o"C:\Program Files" -y
   - ECHO "Installed OpenCV:"
   - ps: "ls \"C:/Program Files/opencv/build\""
   - set PATH=%PATH%;C:\Program Files\opencv\build\x64\vc14\bin
@@ -90,7 +92,7 @@ before_build:
   - cd c:\projects\rtabmap\build
   - ECHO %PROGRAMFILES%
   - ECHO %PATH%
-  - cmake -G "Visual Studio 14 2015 Win64" -DOpenCV_DIR="C:\Program Files\opencv\build" -DPCL_DIR="C:\Program Files\PCL\cmake" -DZLIB_ROOT="C:\Program Files\zlib" -DBUILD_AS_BUNDLE=ON ..
+  - cmake -G "Visual Studio 14 2015 Win64" -DOpenCV_DIR="C:\Program Files\opencv\build" -DPCL_DIR="C:\Program Files\PCL\cmake" -DGTSAM_DIR="C:\Program Files\GTSAM\CMake" -DBUILD_AS_BUNDLE=ON ..
   
 after_build :
   - cmake --build . --config Release --target package
