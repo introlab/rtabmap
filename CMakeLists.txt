@@ -205,6 +205,7 @@ endif()
 if(OPENMP_FOUND)
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+  set(CMAKE_INSTALL_OPENMP_LIBRARIES TRUE)
   message (STATUS "Found OpenMP")
   if(PCL_OMP)
     add_definitions(-DPCL_OMP)
@@ -769,7 +770,9 @@ install(FILES package.xml DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/${PROJECT_PR
 #######################
 # CPACK (Packaging)
 #######################
-INCLUDE(InstallRequiredSystemLibraries)
+IF(BUILD_AS_BUNDLE)
+  INCLUDE(InstallRequiredSystemLibraries)
+ENDIF(BUILD_AS_BUNDLE)
 
 SET(CPACK_PACKAGE_NAME "${PROJECT_NAME}")
 SET(CPACK_PACKAGE_VENDOR "${PROJECT_NAME} project")
