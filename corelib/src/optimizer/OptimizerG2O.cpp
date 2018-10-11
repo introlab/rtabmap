@@ -1406,6 +1406,10 @@ bool OptimizerG2O::saveGraph(
 				fprintf(file, "EDGE_SWITCH_PRIOR %d 1 1.0\n", virtualVertexId);
 				suffix = uFormat(" %d", virtualVertexId++);
 			}
+			else if(iter->second.type() == Link::kPosePrior)
+			{
+				prefix = "EDGE_SE3_PRIOR";
+			}
 
 			Eigen::Quaternionf q = iter->second.transform().getQuaternionf();
 			fprintf(file, "%s %d %d%s %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f\n",
