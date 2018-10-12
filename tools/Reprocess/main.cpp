@@ -47,9 +47,14 @@ using namespace rtabmap;
 void showUsage()
 {
 	printf("\nUsage:\n"
-			"rtabmap-reprocess [options] \"input.db\" \"output.db\"\n"
+			"   rtabmap-reprocess [options] \"input.db\" \"output.db\"\n"
+			"   rtabmap-reprocess [options] \"input1.db;input2.db;input3.db\" \"output.db\"\n"
+			"   For the second example, only parameters from the first database are used.\n"
 			"  Options:\n"
-			"     -r          Use database stamps as input rate.\n"
+			"     -r                Use database stamps as input rate.\n"
+			"     -c \"path.ini\"   Configuration file, overwritting parameters read \n"
+			"                       from the database. If custom parameters are also set as \n"
+			"                       arguments, they overwrite those in config file and the database.\n"
 			"     -g2         Assemble 2D occupancy grid map and save it to \"[output]_map.pgm\".\n"
 			"     -g3         Assemble 3D cloud map and save it to \"[output]_map.pcd\".\n"
 			"     -o2         Assemble OctoMap 2D projection and save it to \"[output]_octomap.pgm\".\n"
@@ -76,6 +81,8 @@ int main(int argc, char * argv[])
 	ULogger::setType(ULogger::kTypeConsole);
 	ULogger::setLevel(ULogger::kError);
 
+	ParametersMap customParameters = Parameters::parseArguments(argc, argv);
+
 	if(argc < 3)
 	{
 		showUsage();
@@ -86,12 +93,26 @@ int main(int argc, char * argv[])
 	bool assemble2dOctoMap = false;
 	bool assemble3dOctoMap = false;
 	bool useDatabaseRate = false;
+	ParametersMap configParameters;
 	for(int i=1; i<argc-2; ++i)
 	{
 		if(strcmp(argv[i], "-r") == 0)
 		{
 			useDatabaseRate = true;
 			printf("Using database stamps as input rate.\n");
+		}
+		else if (strcmp(argv[i], "-c") == 0)
+		{
+			++i;
+			if (i < argc - 2 && UFile::exists(argv[i]) && UFile::getExtension(argv[i]).compare("ini") == 0)
+			{
+				Parameters::readINI(argv[i], configParameters);
+				printf("Using %d parameters from config file \"%s\"\n", (int)configParameters.size(), argv[i]);
+			}
+			else
+			{
+				showUsage();
+			}
 		}
 		else if(strcmp(argv[i], "-g2") == 0)
 		{
@@ -123,22 +144,30 @@ int main(int argc, char * argv[])
 		}
 	}
 
-	ParametersMap customParameters = Parameters::parseArguments(argc, argv);
-
 	std::string inputDatabasePath = uReplaceChar(argv[argc-2], '~', UDirectory::homeDir());
 	std::string outputDatabasePath = uReplaceChar(argv[argc-1], '~', UDirectory::homeDir());
 
-	if(!UFile::exists(inputDatabasePath))
+	std::list<std::string> databases = uSplit(inputDatabasePath, ';');
+	if (databases.empty())
 	{
-		printf("Input database \"%s\" doesn't exist!\n", inputDatabasePath.c_str());
+		printf("No input database \"%s\" detected!\n", inputDatabasePath.c_str());
 		return -1;
+	}
+	for (std::list<std::string>::iterator iter = databases.begin(); iter != databases.end(); ++iter)
+	{
+		if (!UFile::exists(*iter))
+		{
+			printf("Input database \"%s\" doesn't exist!\n", iter->c_str());
+			return -1;
+		}
+
+		if (UFile::getExtension(*iter).compare("db") != 0)
+		{
+			printf("File \"%s\" is not a database format (*.db)!\n", iter->c_str());
+			return -1;
+		}
 	}
 
-	if(UFile::getExtension(inputDatabasePath).compare("db") != 0)
-	{
-		printf("File \"%s\" is not a database format (*.db)!\n", inputDatabasePath.c_str());
-		return -1;
-	}
 	if(UFile::getExtension(outputDatabasePath).compare("db") != 0)
 	{
 		printf("File \"%s\" is not a database format (*.db)!\n", outputDatabasePath.c_str());
@@ -150,8 +179,9 @@ int main(int argc, char * argv[])
 		UFile::erase(outputDatabasePath);
 	}
 
+	// Get parameters of the first database
 	DBDriver * dbDriver = DBDriver::create();
-	if(!dbDriver->openConnection(inputDatabasePath, false))
+	if(!dbDriver->openConnection(databases.front(), false))
 	{
 		printf("Failed opening input database!\n");
 		delete dbDriver;
@@ -174,7 +204,10 @@ int main(int argc, char * argv[])
 			printf("  %s\t= %s\n", iter->first.c_str(), iter->second.c_str());
 		}
 	}
+	uInsert(parameters, configParameters);
 	uInsert(parameters, customParameters);
+
+	int totalIds = 0;
 	std::set<int> ids;
 	dbDriver->getAllNodeIds(ids);
 	if(ids.empty())
@@ -184,9 +217,29 @@ int main(int argc, char * argv[])
 		delete dbDriver;
 		return -1;
 	}
-
+	totalIds = ids.size();
 	dbDriver->closeConnection(false);
+
+	// Count remaining ids in the other databases
+	for (std::list<std::string>::iterator iter = ++databases.begin(); iter != databases.end(); ++iter)
+	{
+		if (!dbDriver->openConnection(*iter, false))
+		{
+			printf("Failed opening input database!\n");
+			delete dbDriver;
+			return -1;
+		}
+		ids.clear();
+		dbDriver->getAllNodeIds(ids);
+		totalIds += ids.size();
+		dbDriver->closeConnection(false);
+	}
 	delete dbDriver;
+	dbDriver = 0;
+
+	std::string workingDirectory = UDirectory::getDir(outputDatabasePath);
+	printf("Set working directory to \"%s\".\n", workingDirectory.c_str());
+	uInsert(parameters, ParametersPair(Parameters::kRtabmapWorkingDirectory(), workingDirectory));
 
 	Rtabmap rtabmap;
 	rtabmap.init(parameters, outputDatabasePath);
@@ -310,7 +363,18 @@ int main(int argc, char * argv[])
 			}
 		}
 
-		printf("Processed %d/%d nodes... %dms\n", ++processed, (int)ids.size(), int(iterationTime.ticks()*1000));
+		const rtabmap::Statistics & stats = rtabmap.getStatistics();
+		int loopId = stats.loopClosureId() > 0? stats.loopClosureId(): stats.proximityDetectionId() > 0?stats.proximityDetectionId() :0;
+		int refMapId = uContains(stats.getSignatures(), stats.refImageId())? stats.getSignatures().at(stats.refImageId()).mapId():-1;
+		if (loopId>0)
+		{
+			int loopMapId = uContains(stats.getSignatures(), loopId) ? stats.getSignatures().at(loopId).mapId() : -1;
+			printf("Processed %d/%d nodes [Map=%d]... %dms Loop on %d [Map=%d]\n", ++processed, totalIds, loopMapId, int(iterationTime.ticks() * 1000), loopId, loopMapId);
+		}
+		else
+		{
+			printf("Processed %d/%d nodes [Map=%d]... %dms\n", ++processed, totalIds, refMapId, int(iterationTime.ticks() * 1000));
+		}
 
 		data = dbReader.takeImage(&info);
 	}

@@ -26,10 +26,12 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 #include "rtabmap/core/Parameters.h"
+#include "rtabmap/core/DBDriver.h"
 #include <rtabmap/utilite/UDirectory.h>
 #include <rtabmap/utilite/ULogger.h>
 #include <rtabmap/utilite/UConversion.h>
 #include <rtabmap/utilite/UStl.h>
+#include <rtabmap/utilite/UFile.h>
 #include <cmath>
 #include <stdlib.h>
 #include <sstream>
@@ -520,7 +522,9 @@ const char * Parameters::showUsage()
 	return  "RTAB-Map options:\n"
 			"   --help                         Show usage.\n"
 			"   --version                      Show version of rtabmap and its dependencies.\n"
-			"   --params                       Show all parameters with their default value and description\n"
+			"   --params                       Show all parameters with their default value and description. \n"
+			"                                  If a database path is set as last argument, the parameters in the \n"
+			"                                  database will be shown in INI format.\n"
 			"   --\"parameter name\" \"value\"     Overwrite a specific RTAB-Map's parameter :\n"
 			"                                    --SURF/HessianThreshold 150\n"
 			"                                   For parameters in table format, add ',' between values :\n"
@@ -825,6 +829,43 @@ ParametersMap Parameters::parseArguments(int argc, char * argv[], bool onlyParam
 		{
 			if(strcmp(argv[i], "--params") == 0)
 			{
+				if (i < argc - 1)
+				{
+					// If the last argument is a database, dump the parameters in INI format
+					std::string dbName = argv[argc - 1];
+					if (UFile::exists(dbName) && UFile::getExtension(dbName).compare("db") == 0)
+					{
+						DBDriver * driver = DBDriver::create();
+						bool read = false;
+						if (driver->openConnection(dbName))
+						{
+							ParametersMap dbParameters = driver->getLastParameters();
+							if (!dbParameters.empty())
+							{
+								std::cout << "[Core]" << std::endl;
+								std::cout << "Version = " << RTABMAP_VERSION << std::endl;
+								for (ParametersMap::const_iterator iter = dbParameters.begin(); iter != dbParameters.end(); ++iter)
+								{
+									std::string key = iter->first;
+									key = uReplaceChar(key, '/', '\\'); // Ini files use \ by default for separators, so replace the /
+
+									std::string value = iter->second.c_str();
+									value = uReplaceChar(value, '\\', '/'); // use always slash for values
+
+									std::cout << key << " = " << value << std::endl;
+								}
+								read = true;
+							}
+							driver->closeConnection(false);
+						}
+						delete driver;
+						if (read)
+						{
+							exit(0);
+						}
+					}
+				}
+
 				for(rtabmap::ParametersMap::const_iterator iter=parameters.begin(); iter!=parameters.end(); ++iter)
 				{
 					bool ignore = false;
@@ -890,8 +931,6 @@ ParametersMap Parameters::parseArguments(int argc, char * argv[], bool onlyParam
 								std::endl;
 					}
 				}
-				UWARN("App will now exit after showing default RTAB-Map parameters because "
-						 "argument \"--params\" is detected!");
 				exit(0);
 			}
 			else
