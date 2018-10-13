@@ -1363,9 +1363,13 @@ bool OptimizerG2O::saveGraph(
 		const std::string & fileName,
 		const std::map<int, Transform> & poses,
 		const std::multimap<int, Link> & edgeConstraints,
-		bool useRobustConstraints)
+		const bool useRobustConstraints,
+		const bool ignorePriors)
 {
 	FILE * file = 0;
+
+	OptimizerG2O optimizer;
+	bool priorsIgnored = (ignorePriors != Parameters::defaultOptimizerPriorsIgnored()) ? ignorePriors : optimizer.priorsIgnored();
 
 #ifdef _MSC_VER
 	fopen_s(&file, fileName.c_str(), "w");
@@ -1375,6 +1379,24 @@ bool OptimizerG2O::saveGraph(
 
 	if(file)
 	{
+		// force periods to be used instead of commas
+		std::setlocale(LC_ALL, "en_US.UTF-8");
+
+		// PARAMS_SE3OFFSET id x y z qw qx qy qz
+		if (!priorsIgnored) {
+			Eigen::Vector3f v = Eigen::Vector3f::Zero();
+			Eigen::Quaternionf q = Eigen::Quaternionf::Identity();
+			fprintf(file, "PARAMS_SE3OFFSET %d %f %f %f %f %f %f %f\n\n",
+					PARAM_OFFSET,
+					v.x(),
+					v.y(),
+					v.z(),
+					q.x(),
+					q.y(),
+					q.z(),
+					q.w());
+		}
+
 		// VERTEX_SE3 id x y z qw qx qy qz
 		for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
 		{
@@ -1390,12 +1412,14 @@ bool OptimizerG2O::saveGraph(
 					q.w());
 		}
 
-		//EDGE_SE3 observed_vertex_id observing_vertex_id x y z qx qy qz qw inf_11 inf_12 .. inf_16 inf_22 .. inf_66
+		// EDGE_SE3 observed_vertex_id observing_vertex_id x y z qx qy qz qw inf_11 inf_12 .. inf_16 inf_22 .. inf_66
+		// EDGE_SE3_PRIOR observed_vertex_id x y z qx qy qz qw inf_11 inf_12 .. inf_16 inf_22 .. inf_66
 		int virtualVertexId = poses.size()?poses.rbegin()->first+1:0;
 		for(std::multimap<int, Link>::const_iterator iter = edgeConstraints.begin(); iter!=edgeConstraints.end(); ++iter)
 		{
 			std::string prefix = "EDGE_SE3:QUAT";
 			std::string suffix = "";
+			std::string to = uFormat(" %d", iter->second.to());
 
 			if(useRobustConstraints &&
 			   iter->second.type() != Link::kNeighbor &&
@@ -1408,14 +1432,19 @@ bool OptimizerG2O::saveGraph(
 			}
 			else if(iter->second.type() == Link::kPosePrior)
 			{
+				if(priorsIgnored)
+				{
+					continue;
+				}
 				prefix = "EDGE_SE3_PRIOR";
+				to = uFormat(" %d", PARAM_OFFSET);
 			}
 
 			Eigen::Quaternionf q = iter->second.transform().getQuaternionf();
-			fprintf(file, "%s %d %d%s %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f\n",
+			fprintf(file, "%s %d%s%s %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f\n",
 					prefix.c_str(),
 					iter->second.from(),
-					iter->second.to(),
+					to.c_str(),
 					suffix.c_str(),
 					iter->second.transform().x(),
 					iter->second.transform().y(),
@@ -1447,6 +1476,7 @@ bool OptimizerG2O::saveGraph(
 					iter->second.infMatrix().at<double>(5,5));
 		}
 		UINFO("Graph saved to %s", fileName.c_str());
+
 		fclose(file);
 	}
 	else

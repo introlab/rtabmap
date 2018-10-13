@@ -2304,7 +2304,7 @@ bool Rtabmap::process(
 
 			UINFO("Update map correction");
 			std::map<int, Transform> poses = _optimizedPoses;
-			
+
 			// if _optimizeFromGraphEnd parameter just changed state, don't use optimized poses as guess
 			float normMapCorrection = _mapCorrection.getNormSquared(); // use distance for identity detection
 			if((normMapCorrection > 0.000001f && _optimizeFromGraphEnd) ||
@@ -4694,7 +4694,7 @@ void Rtabmap::updateGoalIndex()
 						this->clearPath(-1);
 						return;
 					}
-				}				
+				}
 			}
 			else if(!isStuck)
 			{
