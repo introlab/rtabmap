@@ -56,7 +56,7 @@ bool exportPoses(
 		const std::map<int, Transform> & poses,
 		const std::multimap<int, Link> & constraints, // required for formats 3 and 4
 		const std::map<int, double> & stamps, // required for format 1
-		bool g2oRobust) // optional for format 4
+		const bool g2oRobust) // optional for format 4
 {
 	UDEBUG("%s", filePath.c_str());
 	std::string tmpPath = filePath;

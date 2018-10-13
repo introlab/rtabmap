@@ -44,8 +44,7 @@ public:
 			const std::string & fileName,
 			const std::map<int, Transform> & poses,
 			const std::multimap<int, Link> & edgeConstraints,
-			const bool useRobustConstraints = Parameters::defaultOptimizerRobust(),
-			const bool ignorePriors = Parameters::defaultOptimizerPriorsIgnored());
+			const bool useRobustConstraints = false);
 
 public:
 	OptimizerG2O(const ParametersMap & parameters = ParametersMap()) :

@@ -1363,13 +1363,9 @@ bool OptimizerG2O::saveGraph(
 		const std::string & fileName,
 		const std::map<int, Transform> & poses,
 		const std::multimap<int, Link> & edgeConstraints,
-		const bool useRobustConstraints,
-		const bool ignorePriors)
+		const bool useRobustConstraints)
 {
 	FILE * file = 0;
-
-	OptimizerG2O optimizer;
-	bool priorsIgnored = (ignorePriors != Parameters::defaultOptimizerPriorsIgnored()) ? ignorePriors : optimizer.priorsIgnored();
 
 #ifdef _MSC_VER
 	fopen_s(&file, fileName.c_str(), "w");
@@ -1382,20 +1378,18 @@ bool OptimizerG2O::saveGraph(
 		// force periods to be used instead of commas
 		std::setlocale(LC_ALL, "en_US.UTF-8");
 
-		// PARAMS_SE3OFFSET id x y z qw qx qy qz
-		if (!priorsIgnored) {
-			Eigen::Vector3f v = Eigen::Vector3f::Zero();
-			Eigen::Quaternionf q = Eigen::Quaternionf::Identity();
-			fprintf(file, "PARAMS_SE3OFFSET %d %f %f %f %f %f %f %f\n\n",
-					PARAM_OFFSET,
-					v.x(),
-					v.y(),
-					v.z(),
-					q.x(),
-					q.y(),
-					q.z(),
-					q.w());
-		}
+		// PARAMS_SE3OFFSET id x y z qw qx qy qz (set for priors)
+		Eigen::Vector3f v = Eigen::Vector3f::Zero();
+		Eigen::Quaternionf q = Eigen::Quaternionf::Identity();
+		fprintf(file, "PARAMS_SE3OFFSET %d %f %f %f %f %f %f %f\n",
+			PARAM_OFFSET,
+			v.x(),
+			v.y(),
+			v.z(),
+			q.x(),
+			q.y(),
+			q.z(),
+			q.w());
 
 		// VERTEX_SE3 id x y z qw qx qy qz
 		for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
@@ -1432,10 +1426,6 @@ bool OptimizerG2O::saveGraph(
 			}
 			else if(iter->second.type() == Link::kPosePrior)
 			{
-				if(priorsIgnored)
-				{
-					continue;
-				}
 				prefix = "EDGE_SE3_PRIOR";
 				to = uFormat(" %d", PARAM_OFFSET);
 			}
