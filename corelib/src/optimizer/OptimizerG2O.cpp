@@ -30,6 +30,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UMath.h>
 #include <rtabmap/utilite/UConversion.h>
 #include <rtabmap/utilite/UTimer.h>
+#include <locale.h>
 #include <set>
 
 #include <rtabmap/core/Version.h>
@@ -1376,7 +1377,7 @@ bool OptimizerG2O::saveGraph(
 	if(file)
 	{
 		// force periods to be used instead of commas
-		std::setlocale(LC_ALL, "en_US.UTF-8");
+		setlocale(LC_ALL, "en_US.UTF-8");
 
 		// PARAMS_SE3OFFSET id x y z qw qx qy qz (set for priors)
 		Eigen::Vector3f v = Eigen::Vector3f::Zero();
