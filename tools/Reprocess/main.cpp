@@ -240,6 +240,7 @@ int main(int argc, char * argv[])
 	std::string workingDirectory = UDirectory::getDir(outputDatabasePath);
 	printf("Set working directory to \"%s\".\n", workingDirectory.c_str());
 	uInsert(parameters, ParametersPair(Parameters::kRtabmapWorkingDirectory(), workingDirectory));
+	uInsert(parameters, ParametersPair(Parameters::kRtabmapPublishStats(), "true")); // to log status below
 
 	Rtabmap rtabmap;
 	rtabmap.init(parameters, outputDatabasePath);
@@ -369,11 +370,11 @@ int main(int argc, char * argv[])
 		if (loopId>0)
 		{
 			int loopMapId = uContains(stats.getSignatures(), loopId) ? stats.getSignatures().at(loopId).mapId() : -1;
-			printf("Processed %d/%d nodes [Map=%d]... %dms Loop on %d [Map=%d]\n", ++processed, totalIds, loopMapId, int(iterationTime.ticks() * 1000), loopId, loopMapId);
+			printf("Processed %d/%d nodes [%d]... %dms Loop on %d [%d]\n", ++processed, totalIds, refMapId, int(iterationTime.ticks() * 1000), loopId, loopMapId);
 		}
 		else
 		{
-			printf("Processed %d/%d nodes [Map=%d]... %dms\n", ++processed, totalIds, refMapId, int(iterationTime.ticks() * 1000));
+			printf("Processed %d/%d nodes [%d]... %dms\n", ++processed, totalIds, refMapId, int(iterationTime.ticks() * 1000));
 		}
 
 		data = dbReader.takeImage(&info);

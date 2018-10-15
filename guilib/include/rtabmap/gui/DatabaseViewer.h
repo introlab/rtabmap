@@ -114,6 +114,8 @@ private Q_SLOTS:
 	void view3DMap();
 	void generate3DMap();
 	void detectMoreLoopClosures();
+	void updateAllNeighborCovariances();
+	void updateAllLoopClosureCovariances();
 	void refineAllNeighborLinks();
 	void refineAllLoopClosureLinks();
 	void resetAllChanges();
@@ -174,6 +176,8 @@ private:
 	std::multimap<int, rtabmap::Link> updateLinksWithModifications(
 			const std::multimap<int, rtabmap::Link> & edgeConstraints);
 	void updateLoopClosuresSlider(int from = 0, int to = 0);
+	void updateAllCovariances(const QList<Link> & links);
+	void refineAllLinks(const QList<Link> & links);
 	void refineConstraint(int from, int to,  bool silent);
 	bool addConstraint(int from, int to, bool silent);
 	void exportPoses(int format);
@@ -198,6 +202,7 @@ private:
 	std::list<std::map<int, rtabmap::Transform> > graphes_;
 	std::multimap<int, rtabmap::Link> graphLinks_;
 	std::map<int, rtabmap::Transform> odomPoses_;
+	std::map<int, rtabmap::Transform> dbOptimizedPoses_;
 	std::map<int, rtabmap::Transform> groundTruthPoses_;
 	std::map<int, rtabmap::Transform> gpsPoses_;
 	std::map<int, GPS> gpsValues_;

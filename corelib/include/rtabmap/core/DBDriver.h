@@ -103,7 +103,7 @@ public:
 	void savePreviewImage(const cv::Mat & image) const;
 	cv::Mat loadPreviewImage() const;
 	void saveOptimizedPoses(const std::map<int, Transform> & optimizedPoses, const Transform & lastlocalizationPose) const;
-	std::map<int, Transform> loadOptimizedPoses(Transform * lastlocalizationPose) const;
+	std::map<int, Transform> loadOptimizedPoses(Transform * lastlocalizationPose = 0) const;
 	void save2DMap(const cv::Mat & map, float xMin, float yMin, float cellSize) const;
 	cv::Mat load2DMap(float & xMin, float & yMin, float & cellSize) const;
 	void saveOptimizedMesh(
@@ -232,7 +232,7 @@ protected:
 	virtual void savePreviewImageQuery(const cv::Mat & image) const = 0;
 	virtual cv::Mat loadPreviewImageQuery() const = 0;
 	virtual void saveOptimizedPosesQuery(const std::map<int, Transform> & optimizedPoses, const Transform & lastlocalizationPose) const = 0;
-	virtual std::map<int, Transform> loadOptimizedPosesQuery(Transform * lastlocalizationPose) const = 0;
+	virtual std::map<int, Transform> loadOptimizedPosesQuery(Transform * lastlocalizationPose = 0) const = 0;
 	virtual void save2DMapQuery(const cv::Mat & map, float xMin, float yMin, float cellSize) const = 0;
 	virtual cv::Mat load2DMapQuery(float & xMin, float & yMin, float & cellSize) const = 0;
 	virtual void saveOptimizedMeshQuery(

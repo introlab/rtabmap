@@ -95,6 +95,14 @@ public:
 			double * finalError = 0,
 			int * iterationsDone = 0);
 
+	std::map<int, Transform> optimizeMultiSession(
+				int rootId,
+				const std::map<int, Transform> & poses,
+				const std::multimap<int, Link> & constraints,
+				std::list<std::map<int, Transform> > * intermediateGraphes = 0,
+				double * finalError = 0,
+				int * iterationsDone = 0);
+
 	std::map<int, Transform> optimize(
 				int rootId,
 				const std::map<int, Transform> & poses,

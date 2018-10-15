@@ -104,7 +104,7 @@ protected:
 	virtual void savePreviewImageQuery(const cv::Mat & image) const;
 	virtual cv::Mat loadPreviewImageQuery() const;
 	virtual void saveOptimizedPosesQuery(const std::map<int, Transform> & optimizedPoses, const Transform & lastlocalizationPose) const;
-	virtual std::map<int, Transform> loadOptimizedPosesQuery(Transform * lastlocalizationPose) const;
+	virtual std::map<int, Transform> loadOptimizedPosesQuery(Transform * lastlocalizationPose = 0) const;
 	virtual void save2DMapQuery(const cv::Mat & map, float xMin, float yMin, float cellSize) const;
 	virtual cv::Mat load2DMapQuery(float & xMin, float & yMin, float & cellSize) const;
 	virtual void saveOptimizedMeshQuery(

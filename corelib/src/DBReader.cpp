@@ -400,10 +400,6 @@ SensorData DBReader::getNextData(CameraInfo * info)
 				_previousStamp = stamp;
 				_previousMapID = mapId;
 			}
-			else
-			{
-				stamp = 0;
-			}
 
 			data.uncompressData();
 			if(data.cameraModels().size() > 1 &&

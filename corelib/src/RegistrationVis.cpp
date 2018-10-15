@@ -1595,7 +1595,7 @@ Transform RegistrationVis::computeTransformationImpl(
 				if((int)allInliers.size() < _minInliers)
 				{
 					msg = uFormat("Not enough inliers after bundle adjustment %d/%d (matches=%d) between %d and %d",
-							(int)allInliers.size(), _minInliers, fromSignature.id(), toSignature.id());
+							(int)allInliers.size(), _minInliers, (int)allInliers.size()+sbaOutliers.size(), fromSignature.id(), toSignature.id());
 					transforms[0].setNull();
 				}
 				else

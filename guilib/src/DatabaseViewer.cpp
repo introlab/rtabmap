@@ -256,6 +256,8 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	connect(ui_->actionView_3D_map, SIGNAL(triggered()), this, SLOT(view3DMap()));
 	connect(ui_->actionGenerate_3D_map_pcd, SIGNAL(triggered()), this, SLOT(generate3DMap()));
 	connect(ui_->actionDetect_more_loop_closures, SIGNAL(triggered()), this, SLOT(detectMoreLoopClosures()));
+	connect(ui_->actionUpdate_all_neighbor_covariances, SIGNAL(triggered()), this, SLOT(updateAllNeighborCovariances()));
+	connect(ui_->actionUpdate_all_loop_closure_covariances, SIGNAL(triggered()), this, SLOT(updateAllLoopClosureCovariances()));
 	connect(ui_->actionRefine_all_neighbor_links, SIGNAL(triggered()), this, SLOT(refineAllNeighborLinks()));
 	connect(ui_->actionRefine_all_loop_closure_links, SIGNAL(triggered()), this, SLOT(refineAllLoopClosureLinks()));
 	connect(ui_->actionRegenerate_local_grid_maps, SIGNAL(triggered()), this, SLOT(regenerateLocalMaps()));
@@ -1466,6 +1468,7 @@ void DatabaseViewer::updateIds()
 	weights_.clear();
 	wmStates_.clear();
 	odomPoses_.clear();
+	dbOptimizedPoses_.clear();
 	groundTruthPoses_.clear();
 	gpsPoses_.clear();
 	gpsValues_.clear();
@@ -1625,6 +1628,8 @@ void DatabaseViewer::updateIds()
 			}
 		}
 	}
+
+	dbOptimizedPoses_ = dbDriver_->loadOptimizedPoses();
 
 	if(!groundTruthPoses_.empty() || !gpsPoses_.empty())
 	{
@@ -3290,24 +3295,75 @@ void DatabaseViewer::detectMoreLoopClosures()
 	progressDialog->setValue(progressDialog->maximumSteps());
 }
 
-void DatabaseViewer::refineAllNeighborLinks()
+void DatabaseViewer::updateAllNeighborCovariances()
 {
-	if(neighborLinks_.size())
+	updateAllCovariances(neighborLinks_);
+}
+void DatabaseViewer::updateAllLoopClosureCovariances()
+{
+	updateAllCovariances(loopLinks_);
+}
+
+void DatabaseViewer::updateAllCovariances(const QList<Link> & links)
+{
+	if(links.size())
 	{
+		bool ok = false;
+		double stddev = QInputDialog::getDouble(this, tr("Linear error"), tr("Std deviation (m)"), 0.01, 0.0001, 9, 4, &ok);
+		if(!ok) return;
+		double linearVar = stddev*stddev;
+		stddev = QInputDialog::getDouble(this, tr("Angular error"), tr("Std deviation (deg)"), 1, 0.01, 45, 2, &ok)*M_PI/180.0;
+		if(!ok) return;
+		double angularVar = stddev*stddev;
+
 		rtabmap::ProgressDialog * progressDialog = new rtabmap::ProgressDialog(this);
 		progressDialog->setAttribute(Qt::WA_DeleteOnClose);
-		progressDialog->setMaximumSteps(neighborLinks_.size());
+		progressDialog->setMaximumSteps(links.size());
 		progressDialog->setCancelButtonVisible(true);
 		progressDialog->setMinimumWidth(800);
 		progressDialog->show();
 
-		for(int i=0; i<neighborLinks_.size(); ++i)
-		{
-			int from = neighborLinks_[i].from();
-			int to = neighborLinks_[i].to();
-			this->refineConstraint(neighborLinks_[i].from(), neighborLinks_[i].to(), true);
+		cv::Mat infMatrix = cv::Mat::eye(6,6,CV_64FC1);
+		infMatrix(cv::Range(0,3), cv::Range(0,3))/=linearVar;
+		infMatrix(cv::Range(3,6), cv::Range(3,6))/=angularVar;
 
-			progressDialog->appendText(tr("Refined link %1->%2 (%3/%4)").arg(from).arg(to).arg(i+1).arg(neighborLinks_.size()));
+		for(int i=0; i<links.size(); ++i)
+		{
+			int from = links[i].from();
+			int to = links[i].to();
+
+			Link currentLink =  findActiveLink(from, to);
+			if(!currentLink.isValid())
+			{
+				UERROR("Not found link! (%d->%d)", from, to);
+				return;
+			}
+			currentLink = Link(
+					currentLink.from(),
+					currentLink.to(),
+					currentLink.type(),
+					currentLink.transform(),
+					infMatrix.clone(),
+					currentLink.userDataCompressed());
+			bool updated = false;
+			std::multimap<int, Link>::iterator iter = linksRefined_.find(currentLink.from());
+			while(iter != linksRefined_.end() && iter->first == currentLink.from())
+			{
+				if(iter->second.to() == currentLink.to() &&
+				   iter->second.type() == currentLink.type())
+				{
+					iter->second = currentLink;
+					updated = true;
+					break;
+				}
+				++iter;
+			}
+			if(!updated)
+			{
+				linksRefined_.insert(std::make_pair(currentLink.from(), currentLink));
+			}
+
+			progressDialog->appendText(tr("Updated link %1->%2 (%3/%4)").arg(from).arg(to).arg(i+1).arg(links.size()));
 			progressDialog->incrementStep();
 			QApplication::processEvents();
 			if(progressDialog->isCanceled())
@@ -3322,24 +3378,32 @@ void DatabaseViewer::refineAllNeighborLinks()
 	}
 }
 
+void DatabaseViewer::refineAllNeighborLinks()
+{
+	refineAllLinks(neighborLinks_);
+}
 void DatabaseViewer::refineAllLoopClosureLinks()
 {
-	if(loopLinks_.size())
+	refineAllLinks(loopLinks_);
+}
+void DatabaseViewer::refineAllLinks(const QList<Link> & links)
+{
+	if(links.size())
 	{
 		rtabmap::ProgressDialog * progressDialog = new rtabmap::ProgressDialog(this);
 		progressDialog->setAttribute(Qt::WA_DeleteOnClose);
-		progressDialog->setMaximumSteps(loopLinks_.size());
+		progressDialog->setMaximumSteps(links.size());
 		progressDialog->setCancelButtonVisible(true);
 		progressDialog->setMinimumWidth(800);
 		progressDialog->show();
 
-		for(int i=0; i<loopLinks_.size(); ++i)
+		for(int i=0; i<links.size(); ++i)
 		{
-			int from = loopLinks_[i].from();
-			int to = loopLinks_[i].to();
-			this->refineConstraint(loopLinks_[i].from(), loopLinks_[i].to(), true);
+			int from = links[i].from();
+			int to = links[i].to();
+			this->refineConstraint(links[i].from(), links[i].to(), true);
 
-			progressDialog->appendText(tr("Refined link %1->%2 (%3/%4)").arg(from).arg(to).arg(i+1).arg(loopLinks_.size()));
+			progressDialog->appendText(tr("Refined link %1->%2 (%3/%4)").arg(from).arg(to).arg(i+1).arg(links.size()));
 			progressDialog->incrementStep();
 			QApplication::processEvents();
 			if(progressDialog->isCanceled())
@@ -5373,6 +5437,10 @@ void DatabaseViewer::updateGraphView()
 		{
 			optimizedGraphGuess = lastOptimizedGraph_;
 		}
+		else
+		{
+			optimizedGraphGuess = dbOptimizedPoses_;
+		}
 
 		graphes_.clear();
 		graphLinks_.clear();
@@ -5610,17 +5678,16 @@ void DatabaseViewer::updateGraphView()
 		time.start();
 		std::map<int, rtabmap::Transform> finalPoses = optimizer->optimize(fromId, posesOut, linksOut, ui_->checkBox_iterativeOptimization->isChecked()?&graphes_:0);
 		ui_->label_timeOptimization->setNum(double(time.elapsed())/1000.0);
-		graphes_.push_back(finalPoses);
 		graphLinks_ = linksOut;
 		ui_->label_poses->setNum((int)finalPoses.size());
 		if(posesOut.size() && finalPoses.empty())
 		{
-			UWARN("Optimization failed, trying incremental optimization instead... this may take a while (poses=%d, links=%d).", (int)posesOut.size(), (int)linksOut.size());
-			finalPoses = optimizer->optimizeIncremental(fromId, posesOut, linksOut, &graphes_);
+			UWARN("Optimization failed, trying multi-session optimization instead... (poses=%d, links=%d).", (int)posesOut.size(), (int)linksOut.size());
+			finalPoses = optimizer->optimizeMultiSession(fromId, posesOut, linksOut, &graphes_);
 
 			if(finalPoses.empty())
 			{
-				UWARN("Incremental optimization also failed.");
+				UWARN("Multi-session optimization also failed.");
 				if(!optimizer->isCovarianceIgnored() || optimizer->type() != Optimizer::kTypeTORO)
 				{
 					QMessageBox::warning(this, tr("Graph optimization error!"), tr("Graph optimization has failed. See the terminal for potential errors. "
@@ -5631,17 +5698,8 @@ void DatabaseViewer::updateGraphView()
 					QMessageBox::warning(this, tr("Graph optimization error!"), tr("Graph optimization has failed. See the terminal for potential errors."));
 				}
 			}
-			else
-			{
-				UWARN("Incremental optimization succeeded!");
-				QMessageBox::information(this, tr("Incremental optimization succeeded!"), tr("Graph optimization has failed but "
-						"incremental optimization succeeded. Next optimizations will use the current "
-						"best optimized poses as first guess instead of odometry poses."));
-				useLastOptimizedGraphAsGuess_ = true;
-				lastOptimizedGraph_ = finalPoses;
-
-			}
 		}
+		graphes_.push_back(finalPoses);
 		delete optimizer;
 	}
 	if(graphes_.size())
@@ -6308,11 +6366,29 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent)
 		UASSERT_MSG(odomPoses_.find(newLink.from()) != odomPoses_.end(), uFormat("id=%d poses=%d links=%d", newLink.from(), (int)poses.size(), (int)links.size()).c_str());
 		UASSERT_MSG(odomPoses_.find(newLink.to()) != odomPoses_.end(), uFormat("id=%d poses=%d links=%d", newLink.to(), (int)poses.size(), (int)links.size()).c_str());
 		optimizer->getConnectedGraph(fromId, odomPoses_, linksIn, poses, links);
+		// use already optimized poses
+		if(graphes_.size())
+		{
+			const std::map<int, Transform> & optimizedPoses = graphes_.back();
+			for(std::map<int, Transform>::iterator iter = poses.begin(); iter!=poses.end(); ++iter)
+			{
+				if(optimizedPoses.find(iter->first) != optimizedPoses.end())
+				{
+					iter->second = optimizedPoses.at(iter->first);
+				}
+			}
+		}
 		UASSERT(poses.find(fromId) != poses.end());
 		UASSERT_MSG(poses.find(newLink.from()) != poses.end(), uFormat("id=%d poses=%d links=%d", newLink.from(), (int)poses.size(), (int)links.size()).c_str());
 		UASSERT_MSG(poses.find(newLink.to()) != poses.end(), uFormat("id=%d poses=%d links=%d", newLink.to(), (int)poses.size(), (int)links.size()).c_str());
 		UASSERT(graph::findLink(links, newLink.from(), newLink.to()) != links.end());
-		poses = optimizer->optimize(fromId, poses, links);
+		std::map<int, Transform> posesIn = poses;
+		poses = optimizer->optimize(fromId, posesIn, links);
+		if(posesIn.size() && poses.empty())
+		{
+			UWARN("Optimization failed, trying multi-session optimization instead... (poses=%d, links=%d).", (int)posesIn.size(), (int)links.size());
+			poses = optimizer->optimizeMultiSession(fromId, posesIn, links);
+		}
 		std::string msg;
 		if(poses.size())
 		{
@@ -6333,7 +6409,7 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent)
 				if(maxLinearErrorRatio > maxOptimizationError)
 				{
 					msg = uFormat("Rejecting edge %d->%d because "
-						  "graph error is too large after optimization (ratio %f for edge %d->%d, stddev=%f). "
+						  "graph error is too large after optimization (ratio %f for edge %d->%d, stddev=%f m). "
 						  "\"%s\" is %f.",
 						  newLink.from(),
 						  newLink.to(),
@@ -6351,7 +6427,7 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent)
 				if(maxAngularErrorRatio > maxOptimizationError)
 				{
 					msg = uFormat("Rejecting edge %d->%d because "
-						  "graph error is too large after optimization (ratio %f for edge %d->%d, stddev=%f). "
+						  "graph error is too large after optimization (ratio %f for edge %d->%d, stddev=%f deg). "
 						  "\"%s\" is %f.",
 						  newLink.from(),
 						  newLink.to(),

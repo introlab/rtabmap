@@ -1037,6 +1037,25 @@ std::multimap<int, int>::const_iterator findLink(
 	return links.end();
 }
 
+std::list<Link> findLinks(
+		const std::multimap<int, Link> & links,
+		int from)
+{
+	std::list<Link> output;
+	for(std::multimap<int, Link>::const_iterator iter=links.begin(); iter != links.end(); ++iter)
+	{
+		if(iter->second.from() == from)
+		{
+			output.push_back(iter->second);
+		}
+		else if(iter->second.to() == from)
+		{
+			output.push_back(iter->second.inverse());
+		}
+	}
+	return output;
+}
+
 std::multimap<int, Link> filterDuplicateLinks(
 		const std::multimap<int, Link> & links)
 {

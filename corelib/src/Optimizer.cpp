@@ -276,7 +276,7 @@ std::map<int, Transform> Optimizer::optimizeIncremental(
 	incGraph.insert(*poses.begin());
 	int i=0;
 	std::multimap<int, Link> constraintsCpy = constraints;
-	UDEBUG("Incremental optimization... poses=%d comstraints=%d", (int)poses.size(), (int)constraints.size());
+	UDEBUG("Incremental optimization... poses=%d constraints=%d", (int)poses.size(), (int)constraints.size());
 	for(std::map<int, Transform>::const_iterator iter=poses.begin(); iter!=poses.end(); ++iter)
 	{
 		incGraph.insert(*iter);
@@ -310,7 +310,7 @@ std::map<int, Transform> Optimizer::optimizeIncremental(
 			incGraph = this->optimize(incGraph.begin()->first, incGraph, incGraphLinks);
 			if(incGraph.empty())
 			{
-				UWARN("Failed incremental optimization...");
+				UWARN("Failed incremental optimization... last pose added is %d", iter->first);
 				break;
 			}
 		}
@@ -322,6 +322,70 @@ std::map<int, Transform> Optimizer::optimizeIncremental(
 		UASSERT(uContains(poses, rootId) && uContains(incGraph, rootId));
 		incGraph.at(rootId) = poses.at(rootId);
 		return this->optimize(rootId, incGraph, incGraphLinks, intermediateGraphes, finalError, iterationsDone);
+	}
+
+	UDEBUG("Failed incremental optimization");
+	return std::map<int, Transform>();
+}
+
+std::map<int, Transform> Optimizer::optimizeMultiSession(
+		int rootId,
+		const std::map<int, Transform> & poses,
+		const std::multimap<int, Link> & constraints,
+		std::list<std::map<int, Transform> > * intermediateGraphes,
+		double * finalError,
+		int * iterationsDone)
+{
+	std::map<int, Transform> incGraph;
+	if(poses.empty())
+	{
+		return incGraph;
+	}
+
+	UDEBUG("Incremental optimization... poses=%d constraints=%d", (int)poses.size(), (int)constraints.size());
+	std::set<int> nextPoses;
+	nextPoses.insert(rootId);
+	UASSERT(uContains(poses, rootId));
+	while(!nextPoses.empty())
+	{
+		std::set<int> currentPoses = nextPoses;
+		nextPoses.clear();
+		for(std::set<int>::iterator iter=currentPoses.begin(); iter!=currentPoses.end(); ++iter)
+		{
+			int fromId = *iter;
+			if(incGraph.empty())
+			{
+				std::map<int, Transform>::const_iterator cter = poses.find(fromId);
+				UASSERT(cter != poses.end());
+				incGraph.insert(*cter);
+			}
+			std::list<Link> links = graph::findLinks(constraints, fromId);
+			for(std::list<Link>::iterator jter = links.begin(); jter!=links.end(); ++jter)
+			{
+				if(!uContains(incGraph, jter->to()))
+				{
+					incGraph.insert(std::make_pair(jter->to(), incGraph.at(jter->from()) * jter->transform()));
+					nextPoses.insert(jter->to());
+				}
+			}
+		}
+	}
+	UASSERT(!incGraph.empty());
+
+	if(intermediateGraphes)
+	{
+		intermediateGraphes->push_back(incGraph);
+	}
+
+	if(incGraph.size() != poses.size())
+	{
+		UWARN("Failed multi-session optimization, output poses (%d) != input poses (%d)", incGraph.size(), poses.size());
+	}
+	else
+	{
+		UASSERT(uContains(poses, rootId) && uContains(incGraph, rootId));
+		incGraph.at(rootId) = poses.at(rootId);
+		return this->optimize(rootId, incGraph, constraints, intermediateGraphes, finalError, iterationsDone);
 	}
 
 	UDEBUG("Failed incremental optimization");

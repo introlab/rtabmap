@@ -1073,7 +1073,7 @@ bool Rtabmap::process(
 		UFATAL("Not supposed to be here...last signature is null?!?");
 	}
 
-	ULOGGER_INFO("Processing signature %d w=%d", signature->id(), signature->getWeight());
+	ULOGGER_INFO("Processing signature %d w=%d map=%d", signature->id(), signature->getWeight(), signature->mapId());
 	timeMemoryUpdate = timer.ticks();
 	ULOGGER_INFO("timeMemoryUpdate=%fs", timeMemoryUpdate);
 
@@ -2370,12 +2370,14 @@ bool Rtabmap::process(
 					UINFO("Max optimization linear error = %f m (link %d->%d, var=%f, ratio error/std=%f)", maxLinearError, maxLinearLink->from(), maxLinearLink->to(), maxLinearLink->transVariance(), maxLinearError/sqrt(maxLinearLink->transVariance()));
 					if(maxLinearErrorRatio > _optimizationMaxError)
 					{
-						UWARN("Rejecting all added loop closures (%d) in this "
+						UWARN("Rejecting all added loop closures (%d, first is %d <-> %d) in this "
 							  "iteration because a wrong loop closure has been "
 							  "detected after graph optimization, resulting in "
 							  "a maximum graph error ratio of %f (edge %d->%d, type=%d, abs error=%f m, stddev=%f). The "
 							  "maximum error ratio parameter \"%s\" is %f of std deviation.",
 							  (int)loopClosureLinksAdded.size(),
+							  loopClosureLinksAdded.front().first,
+							  loopClosureLinksAdded.front().second,
 							  maxLinearErrorRatio,
 							  maxLinearLink->from(),
 							  maxLinearLink->to(),
@@ -2392,12 +2394,14 @@ bool Rtabmap::process(
 					UINFO("Max optimization angular error = %f deg (link %d->%d, var=%f, ratio error/std=%f)", maxAngularError*180.0f/CV_PI, maxAngularLink->from(), maxAngularLink->to(), maxAngularLink->rotVariance(), maxAngularError/sqrt(maxAngularLink->rotVariance()));
 					if(maxAngularErrorRatio > _optimizationMaxError)
 					{
-						UWARN("Rejecting all added loop closures (%d) in this "
+						UWARN("Rejecting all added loop closures (%d, first is %d <-> %d) in this "
 							  "iteration because a wrong loop closure has been "
 							  "detected after graph optimization, resulting in "
 							  "a maximum graph error ratio of %f (edge %d->%d, type=%d, abs error=%f deg, stddev=%f). The "
 							  "maximum error ratio parameter \"%s\" is %f of std deviation.",
 							  (int)loopClosureLinksAdded.size(),
+							  loopClosureLinksAdded.front().first,
+							  loopClosureLinksAdded.front().second,
 							  maxAngularErrorRatio,
 							  maxAngularLink->from(),
 							  maxAngularLink->to(),
@@ -2789,7 +2793,7 @@ bool Rtabmap::process(
 		std::map<int, Signature> signatures;
 		if(_publishLastSignatureData)
 		{
-			UINFO("Adding data %d (rgb/left=%d depth/right=%d)", lastSignatureData.id(), lastSignatureData.sensorData().imageRaw().empty()?0:1, lastSignatureData.sensorData().depthOrRightRaw().empty()?0:1);
+			UINFO("Adding data %d [%d] (rgb/left=%d depth/right=%d)", lastSignatureData.id(), lastSignatureData.mapId(), lastSignatureData.sensorData().imageRaw().empty()?0:1, lastSignatureData.sensorData().depthOrRightRaw().empty()?0:1);
 			signatures.insert(std::make_pair(lastSignatureData.id(), lastSignatureData));
 		}
 		UDEBUG("");
@@ -2811,6 +2815,11 @@ bool Rtabmap::process(
 		std::map<int, Transform> groundTruths;
 		for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter)
 		{
+			if(_publishLastSignatureData && lastSignatureData.id() == iter->first)
+			{
+				//already added
+				continue;
+			}
 			Transform odomPoseLocal;
 			int weight = -1;
 			int mapId = -1;
@@ -3486,26 +3495,26 @@ std::map<int, Transform> Rtabmap::optimizeGraph(
 	{
 		optimizedPoses = _graphOptimizer->optimize(fromId, poses, edgeConstraints, covariance, 0, error, iterationsDone);
 
-		if(!poses.empty() && optimizedPoses.empty() && guessPoses.empty())
+		if(!poses.empty() && optimizedPoses.empty())
 		{
-			UWARN("Optimization has failed, trying incremental optimization instead, this may take a while (poses=%d, links=%d)...", (int)poses.size(), (int)edgeConstraints.size());
-			optimizedPoses = _graphOptimizer->optimizeIncremental(fromId, poses, edgeConstraints, 0, error, iterationsDone);
+			UWARN("Optimization has failed, trying multi-session optimization instead (poses=%d, guess=%d, links=%d)...", (int)poses.size(), (int)guessPoses.size(), (int)edgeConstraints.size());
+			optimizedPoses = _graphOptimizer->optimizeMultiSession(fromId, poses, edgeConstraints, 0, error, iterationsDone);
 
 			if(optimizedPoses.empty())
 			{
 				if(!_graphOptimizer->isCovarianceIgnored() || _graphOptimizer->type() != Optimizer::kTypeTORO)
 				{
-					UWARN("Incremental optimization also failed. You may try changing parameters to %s=0 and %s=true.",
+					UWARN("Multi-session optimization also failed. You may try changing parameters to %s=0 and %s=true.",
 							Parameters::kOptimizerStrategy().c_str(), Parameters::kOptimizerVarianceIgnored().c_str());
 				}
 				else
 				{
-					UWARN("Incremental optimization also failed.");
+					UWARN("Multi-session optimization also failed.");
 				}
 			}
 			else
 			{
-				UWARN("Incremental optimization succeeded!");
+				UWARN("Multi-session optimization succeeded!");
 			}
 		}
 	}

@@ -135,6 +135,9 @@ std::multimap<int, int>::const_iterator RTABMAP_EXP findLink(
 		int from,
 		int to,
 		bool checkBothWays = true);
+std::list<Link> RTABMAP_EXP findLinks(
+		const std::multimap<int, Link> & links,
+		int from);
 
 std::multimap<int, Link> RTABMAP_EXP filterDuplicateLinks(
 		const std::multimap<int, Link> & links);
