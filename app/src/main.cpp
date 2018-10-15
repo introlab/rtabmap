@@ -61,7 +61,6 @@ int main(int argc, char* argv[])
            UFile::getExtension(value).compare("db") == 0)
         {
             database = value;
-            break;
         }
     }
 
