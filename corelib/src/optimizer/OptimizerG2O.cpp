@@ -193,9 +193,18 @@ std::map<int, Transform> OptimizerG2O::optimize(
 
 		g2o::SparseOptimizer optimizer;
 		optimizer.setVerbose(ULogger::level()==ULogger::kDebug);
-		g2o::ParameterSE3Offset* odomOffset = new g2o::ParameterSE3Offset();
-		odomOffset->setId(PARAM_OFFSET);
-		optimizer.addParameter(odomOffset);
+		if (isSlam2d())
+		{
+			g2o::ParameterSE2Offset* odomOffset = new g2o::ParameterSE2Offset();
+			odomOffset->setId(PARAM_OFFSET);
+			optimizer.addParameter(odomOffset);
+		}
+		else
+		{
+			g2o::ParameterSE3Offset* odomOffset = new g2o::ParameterSE3Offset();
+			odomOffset->setId(PARAM_OFFSET);
+			optimizer.addParameter(odomOffset);
+		}
 
 #ifdef RTABMAP_G2O_CPP11
 
@@ -1363,8 +1372,7 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 bool OptimizerG2O::saveGraph(
 		const std::string & fileName,
 		const std::map<int, Transform> & poses,
-		const std::multimap<int, Link> & edgeConstraints,
-		const bool useRobustConstraints)
+		const std::multimap<int, Link> & edgeConstraints)
 {
 	FILE * file = 0;
 
@@ -1379,24 +1387,44 @@ bool OptimizerG2O::saveGraph(
 		// force periods to be used instead of commas
 		setlocale(LC_ALL, "en_US.UTF-8");
 
-		// PARAMS_SE3OFFSET id x y z qw qx qy qz (set for priors)
-		Eigen::Vector3f v = Eigen::Vector3f::Zero();
-		Eigen::Quaternionf q = Eigen::Quaternionf::Identity();
-		fprintf(file, "PARAMS_SE3OFFSET %d %f %f %f %f %f %f %f\n",
-			PARAM_OFFSET,
-			v.x(),
-			v.y(),
-			v.z(),
-			q.x(),
-			q.y(),
-			q.z(),
-			q.w());
+		if(isSlam2d())
+		{
+			// PARAMS_SE2OFFSET id x y theta (set for priors)
+			fprintf(file, "PARAMS_SE2OFFSET %d 0 0 0\n", PARAM_OFFSET);
+		}
+		else
+		{
+			// PARAMS_SE3OFFSET id x y z qw qx qy qz (set for priors)
+			Eigen::Vector3f v = Eigen::Vector3f::Zero();
+			Eigen::Quaternionf q = Eigen::Quaternionf::Identity();
+			fprintf(file, "PARAMS_SE3OFFSET %d %f %f %f %f %f %f %f\n",
+				PARAM_OFFSET,
+				v.x(),
+				v.y(),
+				v.z(),
+				q.x(),
+				q.y(),
+				q.z(),
+				q.w());
+		}
 
-		// VERTEX_SE3 id x y z qw qx qy qz
+		
 		for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
 		{
-			Eigen::Quaternionf q = iter->second.getQuaternionf();
-			fprintf(file, "VERTEX_SE3:QUAT %d %f %f %f %f %f %f %f\n",
+			if (isSlam2d())
+			{
+				// VERTEX_SE2 id x y theta
+				fprintf(file, "VERTEX_SE2 %d %f %f %f\n",
+					iter->first,
+					iter->second.x(),
+					iter->second.y(),
+					iter->second.theta());
+			}
+			else
+			{
+				// VERTEX_SE3 id x y z qw qx qy qz
+				Eigen::Quaternionf q = iter->second.getQuaternionf();
+				fprintf(file, "VERTEX_SE3:QUAT %d %f %f %f %f %f %f %f\n",
 					iter->first,
 					iter->second.x(),
 					iter->second.y(),
@@ -1405,34 +1433,69 @@ bool OptimizerG2O::saveGraph(
 					q.y(),
 					q.z(),
 					q.w());
+			}
 		}
 
-		// EDGE_SE3 observed_vertex_id observing_vertex_id x y z qx qy qz qw inf_11 inf_12 .. inf_16 inf_22 .. inf_66
-		// EDGE_SE3_PRIOR observed_vertex_id x y z qx qy qz qw inf_11 inf_12 .. inf_16 inf_22 .. inf_66
 		int virtualVertexId = poses.size()?poses.rbegin()->first+1:0;
 		for(std::multimap<int, Link>::const_iterator iter = edgeConstraints.begin(); iter!=edgeConstraints.end(); ++iter)
 		{
-			std::string prefix = "EDGE_SE3:QUAT";
+			std::string prefix = isSlam2d()? "EDGE_SE2" :"EDGE_SE3:QUAT";
 			std::string suffix = "";
 			std::string to = uFormat(" %d", iter->second.to());
 
-			if(useRobustConstraints &&
+			if (iter->second.type() == Link::kPosePrior)
+			{
+				if (this->priorsIgnored())
+				{
+					continue;
+				}
+				prefix = isSlam2d() ? "EDGE_SE2_PRIOR" : "EDGE_SE3_PRIOR";
+				if (!isSlam2d())
+				{
+					to = uFormat(" %d", PARAM_OFFSET);
+				}
+				else
+				{
+					//  based on https://github.com/RainerKuemmerle/g2o/blob/38347944c6ad7a3b31976b97406ff0de20be1530/g2o/types/slam2d/edge_se2_prior.cpp#L42
+					//  there is no pid for the 2d prior case
+					to = "";
+				}
+			}
+			else if(this->isRobust() &&
 			   iter->second.type() != Link::kNeighbor &&
 			   iter->second.type() != Link::kNeighborMerged)
 			{
-				prefix = "EDGE_SE3_SWITCHABLE";
 				fprintf(file, "VERTEX_SWITCH %d 1\n", virtualVertexId);
 				fprintf(file, "EDGE_SWITCH_PRIOR %d 1 1.0\n", virtualVertexId);
+				prefix = isSlam2d() ? "EDGE_SE2_SWITCHABLE" : "EDGE_SE3_SWITCHABLE";
 				suffix = uFormat(" %d", virtualVertexId++);
 			}
-			else if(iter->second.type() == Link::kPosePrior)
-			{
-				prefix = "EDGE_SE3_PRIOR";
-				to = uFormat(" %d", PARAM_OFFSET);
-			}
 
-			Eigen::Quaternionf q = iter->second.transform().getQuaternionf();
-			fprintf(file, "%s %d%s%s %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f\n",
+			if(isSlam2d())
+			{
+				// EDGE_SE2 observed_vertex_id observing_vertex_id x y z qx qy qz qw inf_11 inf_12 inf_13 inf_22 inf_23 inf_33
+				// EDGE_SE2_PRIOR observed_vertex_id x y z qx qy qz qw inf_11 inf_12 inf_13 inf_22 inf_23 inf_33
+				fprintf(file, "%s %d%s%s %f %f %f %f %f %f %f %f %f\n",
+					prefix.c_str(),
+					iter->second.from(),
+					to.c_str(),
+					suffix.c_str(),
+					iter->second.transform().x(),
+					iter->second.transform().y(),
+					iter->second.transform().theta(),
+					iter->second.infMatrix().at<double>(0, 0),
+					iter->second.infMatrix().at<double>(0, 1),
+					iter->second.infMatrix().at<double>(0, 5),
+					iter->second.infMatrix().at<double>(1, 1),
+					iter->second.infMatrix().at<double>(1, 5),
+					iter->second.infMatrix().at<double>(5, 5));
+			}
+			else
+			{
+				// EDGE_SE3 observed_vertex_id observing_vertex_id x y z qx qy qz qw inf_11 inf_12 .. inf_16 inf_22 .. inf_66
+				// EDGE_SE3_PRIOR observed_vertex_id offset_parameter_id x y z qx qy qz qw inf_11 inf_12 .. inf_16 inf_22 .. inf_66
+				Eigen::Quaternionf q = iter->second.transform().getQuaternionf();
+				fprintf(file, "%s %d%s%s %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f\n",
 					prefix.c_str(),
 					iter->second.from(),
 					to.c_str(),
@@ -1444,27 +1507,28 @@ bool OptimizerG2O::saveGraph(
 					q.y(),
 					q.z(),
 					q.w(),
-					iter->second.infMatrix().at<double>(0,0),
-					iter->second.infMatrix().at<double>(0,1),
-					iter->second.infMatrix().at<double>(0,2),
-					iter->second.infMatrix().at<double>(0,3),
-					iter->second.infMatrix().at<double>(0,4),
-					iter->second.infMatrix().at<double>(0,5),
-					iter->second.infMatrix().at<double>(1,1),
-					iter->second.infMatrix().at<double>(1,2),
-					iter->second.infMatrix().at<double>(1,3),
-					iter->second.infMatrix().at<double>(1,4),
-					iter->second.infMatrix().at<double>(1,5),
-					iter->second.infMatrix().at<double>(2,2),
-					iter->second.infMatrix().at<double>(2,3),
-					iter->second.infMatrix().at<double>(2,4),
-					iter->second.infMatrix().at<double>(2,5),
-					iter->second.infMatrix().at<double>(3,3),
-					iter->second.infMatrix().at<double>(3,4),
-					iter->second.infMatrix().at<double>(3,5),
-					iter->second.infMatrix().at<double>(4,4),
-					iter->second.infMatrix().at<double>(4,5),
-					iter->second.infMatrix().at<double>(5,5));
+					iter->second.infMatrix().at<double>(0, 0),
+					iter->second.infMatrix().at<double>(0, 1),
+					iter->second.infMatrix().at<double>(0, 2),
+					iter->second.infMatrix().at<double>(0, 3),
+					iter->second.infMatrix().at<double>(0, 4),
+					iter->second.infMatrix().at<double>(0, 5),
+					iter->second.infMatrix().at<double>(1, 1),
+					iter->second.infMatrix().at<double>(1, 2),
+					iter->second.infMatrix().at<double>(1, 3),
+					iter->second.infMatrix().at<double>(1, 4),
+					iter->second.infMatrix().at<double>(1, 5),
+					iter->second.infMatrix().at<double>(2, 2),
+					iter->second.infMatrix().at<double>(2, 3),
+					iter->second.infMatrix().at<double>(2, 4),
+					iter->second.infMatrix().at<double>(2, 5),
+					iter->second.infMatrix().at<double>(3, 3),
+					iter->second.infMatrix().at<double>(3, 4),
+					iter->second.infMatrix().at<double>(3, 5),
+					iter->second.infMatrix().at<double>(4, 4),
+					iter->second.infMatrix().at<double>(4, 5),
+					iter->second.infMatrix().at<double>(5, 5));
+			}
 		}
 		UINFO("Graph saved to %s", fileName.c_str());
 

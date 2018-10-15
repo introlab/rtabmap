@@ -40,11 +40,6 @@ public:
 	static bool available();
 	static bool isCSparseAvailable();
 	static bool isCholmodAvailable();
-	static bool saveGraph(
-			const std::string & fileName,
-			const std::map<int, Transform> & poses,
-			const std::multimap<int, Link> & edgeConstraints,
-			const bool useRobustConstraints = false);
 
 public:
 	OptimizerG2O(const ParametersMap & parameters = ParametersMap()) :
@@ -80,6 +75,11 @@ public:
 			std::map<int, cv::Point3f> & points3DMap,
 			const std::map<int, std::map<int, cv::Point3f> > & wordReferences, // <ID words, IDs frames + keypoint(x,y,depth)>
 			std::set<int> * outliers = 0);
+
+	bool saveGraph(
+		const std::string & fileName,
+		const std::map<int, Transform> & poses,
+		const std::multimap<int, Link> & edgeConstraints);
 
 private:
 	int solver_;

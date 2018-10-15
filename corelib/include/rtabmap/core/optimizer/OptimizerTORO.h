@@ -40,10 +40,6 @@ public:
 	static bool available();
 
 public:
-	static bool saveGraph(
-			const std::string & fileName,
-			const std::map<int, Transform> & poses,
-			const std::multimap<int, Link> & edgeConstraints);
 	static bool loadGraph(
 			const std::string & fileName,
 			std::map<int, Transform> & poses,
@@ -70,6 +66,11 @@ public:
 			std::list<std::map<int, Transform> > * intermediateGraphes = 0,
 			double * finalError = 0,
 			int * iterationsDone = 0);
+
+	bool saveGraph(
+		const std::string & fileName,
+		const std::map<int, Transform> & poses,
+		const std::multimap<int, Link> & edgeConstraints);
 };
 
 } /* namespace rtabmap */

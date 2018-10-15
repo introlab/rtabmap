@@ -5334,7 +5334,7 @@ void MainWindow::exportPoses(int format)
 			}
 
 			_exportPosesFileName[format] = path;
-			bool saved = graph::exportPoses(path.toStdString(), format, poses, links, stamps);
+			bool saved = graph::exportPoses(path.toStdString(), format, poses, links, stamps, _preferencesDialog->getAllParameters());
 
 			if(saved)
 			{

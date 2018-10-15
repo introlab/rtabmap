@@ -56,7 +56,7 @@ bool exportPoses(
 		const std::map<int, Transform> & poses,
 		const std::multimap<int, Link> & constraints, // required for formats 3 and 4
 		const std::map<int, double> & stamps, // required for format 1
-		const bool g2oRobust) // optional for format 4
+		const ParametersMap & parameters) // optional for formats 3 and 4
 {
 	UDEBUG("%s", filePath.c_str());
 	std::string tmpPath = filePath;
@@ -66,7 +66,8 @@ bool exportPoses(
 		{
 			tmpPath+=".graph";
 		}
-		return OptimizerTORO::saveGraph(tmpPath, poses, constraints);
+		OptimizerTORO toro(parameters);
+		return toro.saveGraph(tmpPath, poses, constraints);
 	}
 	else if(format == 4) // g2o
 	{
@@ -74,7 +75,8 @@ bool exportPoses(
 		{
 			tmpPath+=".g2o";
 		}
-		return OptimizerG2O::saveGraph(tmpPath, poses, constraints, g2oRobust);
+		OptimizerG2O g2o(parameters);
+		return g2o.saveGraph(tmpPath, poses, constraints);
 	}
 	else
 	{

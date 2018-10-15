@@ -824,7 +824,7 @@ void Rtabmap::exportPoses(const std::string & path, bool optimized, bool global,
 			}
 		}
 
-		graph::exportPoses(path, format, poses, constraints, stamps);
+		graph::exportPoses(path, format, poses, constraints, stamps, _parameters);
 	}
 }
 

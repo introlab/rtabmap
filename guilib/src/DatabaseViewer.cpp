@@ -2299,7 +2299,7 @@ void DatabaseViewer::exportPoses(int format)
 				}
 			}
 
-			bool saved = graph::exportPoses(path.toStdString(), format, poses, links, stamps);
+			bool saved = graph::exportPoses(path.toStdString(), format, poses, links, stamps, ui_->parameters_toolbox->getParameters());
 
 			if(saved)
 			{
