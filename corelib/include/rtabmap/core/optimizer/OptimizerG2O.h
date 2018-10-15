@@ -44,14 +44,14 @@ public:
 			const std::string & fileName,
 			const std::map<int, Transform> & poses,
 			const std::multimap<int, Link> & edgeConstraints,
-			bool useRobustConstraints = false);
+			const bool useRobustConstraints = false);
 
 public:
 	OptimizerG2O(const ParametersMap & parameters = ParametersMap()) :
 		Optimizer(parameters),
 		solver_(Parameters::defaultg2oSolver()),
 		optimizer_(Parameters::defaultg2oOptimizer()),
-        pixelVariance_(Parameters::defaultg2oPixelVariance()),
+		pixelVariance_(Parameters::defaultg2oPixelVariance()),
 		robustKernelDelta_(Parameters::defaultg2oRobustKernelDelta()),
 		baseline_(Parameters::defaultg2oBaseline())
 	{

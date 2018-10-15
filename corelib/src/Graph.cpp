@@ -56,7 +56,7 @@ bool exportPoses(
 		const std::map<int, Transform> & poses,
 		const std::multimap<int, Link> & constraints, // required for formats 3 and 4
 		const std::map<int, double> & stamps, // required for format 1
-		bool g2oRobust) // optional for format 4
+		const bool g2oRobust) // optional for format 4
 {
 	UDEBUG("%s", filePath.c_str());
 	std::string tmpPath = filePath;
@@ -366,8 +366,8 @@ bool importPoses(
 				std::vector<std::string> strList = uListToVector(uSplit(str));
 				if(strList.size() ==  3)
 				{
-					if( uIsNumber(uReplaceChar(strList[0], ' ', "")) && 
-						uIsNumber(uReplaceChar(strList[1], ' ', "")) && 
+					if( uIsNumber(uReplaceChar(strList[0], ' ', "")) &&
+						uIsNumber(uReplaceChar(strList[1], ' ', "")) &&
 						uIsNumber(uReplaceChar(strList[2], ' ', "")) &&
 						(strList.size()==3 || uIsNumber(uReplaceChar(strList[3], ' ', ""))))
 					{
@@ -379,7 +379,7 @@ bool importPoses(
 						{
 							stamps->insert(std::make_pair(id, stamp));
 						}
-						float yaw = 0.0f; 
+						float yaw = 0.0f;
 						if(uContains(poses, id-1))
 						{
 							// set yaw depending on successive poses

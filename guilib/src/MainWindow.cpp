@@ -208,9 +208,9 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent, bool sh
 
 	// Add cloud viewers
 	// Note that we add them here manually because there is a crash issue
-	// when adding them in a DockWidget of the *.ui file. The cloud viewer is 
+	// when adding them in a DockWidget of the *.ui file. The cloud viewer is
 	// created in a widget which is not yet linked to main window when the CloudViewer constructor
-	// is called (see order in generated ui file). VTK needs to get the top 
+	// is called (see order in generated ui file). VTK needs to get the top
 	// level window at the time CloudViewer is created, otherwise it may crash on some systems.
 	_cloudViewer = new CloudViewer(_ui->layout_cloudViewer);
 	_cloudViewer->setObjectName("widget_cloudViewer");
@@ -394,7 +394,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent, bool sh
 
 	_ui->actionPause->setShortcut(Qt::Key_Space);
 	_ui->actionSave_GUI_config->setShortcut(QKeySequence::Save);
-	// Qt5 issue, we should explicitly add actions not in 
+	// Qt5 issue, we should explicitly add actions not in
 	// menu bar to have shortcut working
 	this->addAction(_ui->actionSave_GUI_config);
 	_ui->actionReset_Odometry->setEnabled(false);
@@ -670,23 +670,23 @@ void MainWindow::setupMainLayout(bool vertical)
 }
 
 void MainWindow::setCloudViewer(rtabmap::CloudViewer * cloudViewer)
-{ 
-	UASSERT(cloudViewer); 
+{
+	UASSERT(cloudViewer);
 	delete _cloudViewer;
-	_cloudViewer = cloudViewer; 
+	_cloudViewer = cloudViewer;
 	_cloudViewer->setParent(_ui->layout_cloudViewer);
 	_cloudViewer->setObjectName("widget_cloudViewer");
 	_ui->layout_cloudViewer->layout()->addWidget(_cloudViewer);
-	
+
 	_cloudViewer->setBackfaceCulling(true, false);
 	_preferencesDialog->loadWidgetState(_cloudViewer);
 
 	connect(_cloudViewer, SIGNAL(configChanged()), this, SLOT(configGUIModified()));
 }
 void MainWindow::setLoopClosureViewer(rtabmap::LoopClosureViewer * loopClosureViewer)
-{ 
-	UASSERT(loopClosureViewer); 
-	delete _loopClosureViewer; 
+{
+	UASSERT(loopClosureViewer);
+	delete _loopClosureViewer;
 	_loopClosureViewer = loopClosureViewer;
 	_loopClosureViewer->setParent(_ui->layout_loopClosureViewer);
 	_loopClosureViewer->setObjectName("widget_loopClosureViewer");
