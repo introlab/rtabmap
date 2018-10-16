@@ -169,10 +169,9 @@ void Optimizer::getConnectedGraph(
 	posesOut.clear();
 	linksOut.clear();
 
-	std::set<int> ids;
-	std::set<int> curentDepth;
-	std::set<int> nextDepth;
-	nextDepth.insert(fromId);
+	std::set<int> curentPoses;
+	std::set<int> nextPoses;
+	nextPoses.insert(fromId);
 	int d = 0;
 	std::multimap<int, int> biLinks;
 	for(std::multimap<int, Link>::const_iterator iter=linksIn.begin(); iter!=linksIn.end(); ++iter)
@@ -187,43 +186,38 @@ void Optimizer::getConnectedGraph(
 		}
 	}
 
-	while((depth == 0 || d < depth) && nextDepth.size())
+	while((depth == 0 || d < depth) && nextPoses.size())
 	{
-		curentDepth = nextDepth;
-		nextDepth.clear();
+		curentPoses = nextPoses;
+		nextPoses.clear();
 
-		for(std::set<int>::iterator jter = curentDepth.begin(); jter!=curentDepth.end(); ++jter)
+		for(std::set<int>::iterator jter = curentPoses.begin(); jter!=curentPoses.end(); ++jter)
 		{
-			if(ids.find(*jter) == ids.end())
+			int fromId = *jter;
+			if(posesOut.empty())
 			{
-				ids.insert(*jter);
-				posesOut.insert(*posesIn.find(*jter));
+				posesOut.insert(*posesIn.find(fromId));
+			}
 
-				for(std::multimap<int, int>::const_iterator iter=biLinks.find(*jter); iter!=biLinks.end() && iter->first==*jter; ++iter)
+			for(std::multimap<int, int>::const_iterator iter=biLinks.find(fromId); iter!=biLinks.end() && iter->first==fromId; ++iter)
+			{
+				int toId = iter->second;
+				std::multimap<int, Link>::const_iterator kter = graph::findLink(linksIn, fromId, toId);
+				int nextDepth = toId!=fromId?depth-1:depth;
+				if(depth == 0 || d < nextDepth || curentPoses.find(toId) != curentPoses.end())
 				{
-					int nextId = iter->second;
-					if(uContains(posesIn, nextId))
+					if(!uContains(posesOut, toId))
 					{
-						if(ids.find(nextId) == ids.end())
+						posesOut.insert(std::make_pair(toId, posesOut.at(fromId) * (kter->second.from()==fromId?kter->second.transform():kter->second.transform().inverse())));
+						if(curentPoses.find(toId) == curentPoses.end())
 						{
-							nextDepth.insert(nextId);
-
-							std::multimap<int, Link>::const_iterator kter = graph::findLink(linksIn, *jter, nextId);
-							if(depth == 0 || d < depth-1)
-							{
-								linksOut.insert(*kter);
-							}
-							else if(curentDepth.find(nextId) != curentDepth.end() ||
-									ids.find(nextId) != ids.end())
-							{
-								linksOut.insert(*kter);
-							}
+							nextPoses.insert(toId);
 						}
-						else if(*jter == nextId)
-						{
-							std::multimap<int, Link>::const_iterator kter = graph::findLink(linksIn, *jter, nextId);
-							linksOut.insert(*kter);
-						}
+					}
+					if(graph::findLink(linksOut, fromId, toId) == linksOut.end())
+					{
+						// only add unique links
+						linksOut.insert(*kter);
 					}
 				}
 			}
@@ -322,70 +316,6 @@ std::map<int, Transform> Optimizer::optimizeIncremental(
 		UASSERT(uContains(poses, rootId) && uContains(incGraph, rootId));
 		incGraph.at(rootId) = poses.at(rootId);
 		return this->optimize(rootId, incGraph, incGraphLinks, intermediateGraphes, finalError, iterationsDone);
-	}
-
-	UDEBUG("Failed incremental optimization");
-	return std::map<int, Transform>();
-}
-
-std::map<int, Transform> Optimizer::optimizeMultiSession(
-		int rootId,
-		const std::map<int, Transform> & poses,
-		const std::multimap<int, Link> & constraints,
-		std::list<std::map<int, Transform> > * intermediateGraphes,
-		double * finalError,
-		int * iterationsDone)
-{
-	std::map<int, Transform> incGraph;
-	if(poses.empty())
-	{
-		return incGraph;
-	}
-
-	UDEBUG("Incremental optimization... poses=%d constraints=%d", (int)poses.size(), (int)constraints.size());
-	std::set<int> nextPoses;
-	nextPoses.insert(rootId);
-	UASSERT(uContains(poses, rootId));
-	while(!nextPoses.empty())
-	{
-		std::set<int> currentPoses = nextPoses;
-		nextPoses.clear();
-		for(std::set<int>::iterator iter=currentPoses.begin(); iter!=currentPoses.end(); ++iter)
-		{
-			int fromId = *iter;
-			if(incGraph.empty())
-			{
-				std::map<int, Transform>::const_iterator cter = poses.find(fromId);
-				UASSERT(cter != poses.end());
-				incGraph.insert(*cter);
-			}
-			std::list<Link> links = graph::findLinks(constraints, fromId);
-			for(std::list<Link>::iterator jter = links.begin(); jter!=links.end(); ++jter)
-			{
-				if(!uContains(incGraph, jter->to()))
-				{
-					incGraph.insert(std::make_pair(jter->to(), incGraph.at(jter->from()) * jter->transform()));
-					nextPoses.insert(jter->to());
-				}
-			}
-		}
-	}
-	UASSERT(!incGraph.empty());
-
-	if(intermediateGraphes)
-	{
-		intermediateGraphes->push_back(incGraph);
-	}
-
-	if(incGraph.size() != poses.size())
-	{
-		UWARN("Failed multi-session optimization, output poses (%d) != input poses (%d)", incGraph.size(), poses.size());
-	}
-	else
-	{
-		UASSERT(uContains(poses, rootId) && uContains(incGraph, rootId));
-		incGraph.at(rootId) = poses.at(rootId);
-		return this->optimize(rootId, incGraph, constraints, intermediateGraphes, finalError, iterationsDone);
 	}
 
 	UDEBUG("Failed incremental optimization");

@@ -3493,29 +3493,25 @@ std::map<int, Transform> Rtabmap::optimizeGraph(
 	}
 	else
 	{
-		optimizedPoses = _graphOptimizer->optimize(fromId, poses, edgeConstraints, covariance, 0, error, iterationsDone);
+		if(poses.size() != guessPoses.size())
+		{
+			// recompute poses using only links (robust to multi-session)
+			std::map<int, Transform> posesOut;
+			std::multimap<int, Link> edgeConstraintsOut;
+			_graphOptimizer->getConnectedGraph(fromId, poses, edgeConstraints, posesOut, edgeConstraintsOut);
+			UASSERT(edgeConstraintsOut.size() == edgeConstraints.size());
+			optimizedPoses = _graphOptimizer->optimize(fromId, posesOut, edgeConstraints, covariance, 0, error, iterationsDone);
+		}
+		else
+		{
+			// use input guess poses
+			optimizedPoses = _graphOptimizer->optimize(fromId, poses, edgeConstraints, covariance, 0, error, iterationsDone);
+		}
 
 		if(!poses.empty() && optimizedPoses.empty())
 		{
-			UWARN("Optimization has failed, trying multi-session optimization instead (poses=%d, guess=%d, links=%d)...", (int)poses.size(), (int)guessPoses.size(), (int)edgeConstraints.size());
-			optimizedPoses = _graphOptimizer->optimizeMultiSession(fromId, poses, edgeConstraints, 0, error, iterationsDone);
-
-			if(optimizedPoses.empty())
-			{
-				if(!_graphOptimizer->isCovarianceIgnored() || _graphOptimizer->type() != Optimizer::kTypeTORO)
-				{
-					UWARN("Multi-session optimization also failed. You may try changing parameters to %s=0 and %s=true.",
-							Parameters::kOptimizerStrategy().c_str(), Parameters::kOptimizerVarianceIgnored().c_str());
-				}
-				else
-				{
-					UWARN("Multi-session optimization also failed.");
-				}
-			}
-			else
-			{
-				UWARN("Multi-session optimization succeeded!");
-			}
+			UWARN("Optimization has failed (poses=%d, guess=%d, links=%d)...",
+				  (int)poses.size(), (int)guessPoses.size(), (int)edgeConstraints.size());
 		}
 	}
 	UINFO("Optimization time %f s", timer.ticks());

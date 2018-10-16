@@ -5679,26 +5679,20 @@ void DatabaseViewer::updateGraphView()
 		std::map<int, rtabmap::Transform> finalPoses = optimizer->optimize(fromId, posesOut, linksOut, ui_->checkBox_iterativeOptimization->isChecked()?&graphes_:0);
 		ui_->label_timeOptimization->setNum(double(time.elapsed())/1000.0);
 		graphLinks_ = linksOut;
-		ui_->label_poses->setNum((int)finalPoses.size());
 		if(posesOut.size() && finalPoses.empty())
 		{
-			UWARN("Optimization failed, trying multi-session optimization instead... (poses=%d, links=%d).", (int)posesOut.size(), (int)linksOut.size());
-			finalPoses = optimizer->optimizeMultiSession(fromId, posesOut, linksOut, &graphes_);
-
-			if(finalPoses.empty())
+			UWARN("Optimization failed... (poses=%d, links=%d).", (int)posesOut.size(), (int)linksOut.size());
+			if(!optimizer->isCovarianceIgnored() || optimizer->type() != Optimizer::kTypeTORO)
 			{
-				UWARN("Multi-session optimization also failed.");
-				if(!optimizer->isCovarianceIgnored() || optimizer->type() != Optimizer::kTypeTORO)
-				{
-					QMessageBox::warning(this, tr("Graph optimization error!"), tr("Graph optimization has failed. See the terminal for potential errors. "
-							"Give it a try with %1=0 and %2=true.").arg(Parameters::kOptimizerStrategy().c_str()).arg(Parameters::kOptimizerVarianceIgnored().c_str()));
-				}
-				else
-				{
-					QMessageBox::warning(this, tr("Graph optimization error!"), tr("Graph optimization has failed. See the terminal for potential errors."));
-				}
+				QMessageBox::warning(this, tr("Graph optimization error!"), tr("Graph optimization has failed. See the terminal for potential errors. "
+						"Give it a try with %1=0 and %2=true.").arg(Parameters::kOptimizerStrategy().c_str()).arg(Parameters::kOptimizerVarianceIgnored().c_str()));
+			}
+			else
+			{
+				QMessageBox::warning(this, tr("Graph optimization error!"), tr("Graph optimization has failed. See the terminal for potential errors."));
 			}
 		}
+		ui_->label_poses->setNum((int)finalPoses.size());
 		graphes_.push_back(finalPoses);
 		delete optimizer;
 	}
@@ -6386,8 +6380,7 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent)
 		poses = optimizer->optimize(fromId, posesIn, links);
 		if(posesIn.size() && poses.empty())
 		{
-			UWARN("Optimization failed, trying multi-session optimization instead... (poses=%d, links=%d).", (int)posesIn.size(), (int)links.size());
-			poses = optimizer->optimizeMultiSession(fromId, posesIn, links);
+			UWARN("Optimization failed... (poses=%d, links=%d).", (int)posesIn.size(), (int)links.size());
 		}
 		std::string msg;
 		if(poses.size())
