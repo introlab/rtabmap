@@ -155,6 +155,7 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 	private boolean mHudVisible = true;
 	private int mSavedRenderingType = 0;
 	private boolean mMenuOpened = false;
+	private long mSavedStamp = 0;
 
 	// UI states
 	private static enum State {
@@ -534,6 +535,8 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 		};
 
 		mSensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
+		
+		setCamera(1);
 
 		DISABLE_LOG =  !( 0 != ( getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE ) );
 	}
@@ -2223,6 +2226,19 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 														File from = new File(mWorkingDirectory, files[position]);
 												        File to   = new File(mWorkingDirectory, fileName + ".db");
 												        from.renameTo(to);
+												        
+												        long stamp = System.currentTimeMillis();
+												        if(stamp-mSavedStamp < 10000)
+												        {
+												        	try {
+																Thread.sleep(10000 - (stamp-mSavedStamp));
+															}
+															catch(InterruptedException e){}
+												        }
+												        
+												        refreshSystemMediaScanDataBase(getActivity(), files[position]);
+												        refreshSystemMediaScanDataBase(getActivity(), to.getAbsolutePath());
+												        
 												        ad.dismiss();
 												        resetNoTouchTimer(true);
 													}
@@ -2245,6 +2261,7 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 										        case DialogInterface.BUTTON_POSITIVE:
 										        	Log.e(TAG, String.format("Yes delete %s!", files[position]));
 										        	(new File(mWorkingDirectory+files[position])).delete();
+										        	refreshSystemMediaScanDataBase(getActivity(), mWorkingDirectory+files[position]);
 										        	ad.dismiss();
 										        	resetNoTouchTimer(true);
 										            break;
@@ -2461,6 +2478,18 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 		exportThread.start();
 	}
 	
+	/** 
+	@param context : it is the reference where this method get called
+	@param docPath : absolute path of file for which broadcast will be send to refresh media database
+	@see https://stackoverflow.com/a/36051318/6163336
+	**/
+	public static void refreshSystemMediaScanDataBase(Context context, String docPath){
+	   Intent mediaScanIntent = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE);
+	   Uri contentUri = Uri.fromFile(new File(docPath));
+	   mediaScanIntent.setData(contentUri);
+	   context.sendBroadcast(mediaScanIntent);
+	}
+	
 	private void saveDatabase(String fileName)
 	{
 		final String newDatabasePath = mWorkingDirectory + fileName + ".db";
@@ -2489,6 +2518,8 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 						}
 						else
 						{
+							refreshSystemMediaScanDataBase(getActivity(), newDatabasePath);
+							mSavedStamp = System.currentTimeMillis();
 							msg = String.format("Database saved to \"%s\".", newDatabasePathHuman);	
 						}
 						
