@@ -1,11 +1,8 @@
 package com.introlab.rtabmap;
 
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
-import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -16,16 +13,11 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.List;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipOutputStream;
 
-import android.app.ActionBar;
 import android.app.Activity;
 import android.app.ActivityManager;
 import android.app.ActivityManager.MemoryInfo;
 import android.app.AlertDialog;
-import android.app.Dialog;
 import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
@@ -41,46 +33,28 @@ import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.PackageManager.NameNotFoundException;
-import android.content.res.Configuration;
-import android.database.Cursor;
-import android.database.sqlite.SQLiteDatabase;
-import android.graphics.Bitmap;
-import android.graphics.Canvas;
-import android.graphics.Color;
-import android.graphics.Paint;
-import android.graphics.Rect;
-import android.graphics.Typeface;
 import android.hardware.Camera;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
+import android.graphics.Matrix;
 import android.graphics.Point;
 import android.hardware.display.DisplayManager;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
-import android.net.ConnectivityManager;
-import android.net.NetworkInfo;
 import android.net.Uri;
 import android.opengl.GLSurfaceView;
-import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
-import android.os.Debug;
 import android.os.IBinder;
 import android.os.Message;
-import android.preference.ListPreference;
 import android.preference.PreferenceManager;
-import android.text.Editable;
 import android.text.Html;
 import android.text.InputType;
-import android.text.SpannableString;
-import android.text.TextPaint;
-import android.text.method.HideReturnsTransformationMethod;
 import android.text.method.LinkMovementMethod;
-import android.text.util.Linkify;
 import android.util.Log;
 import android.util.TypedValue;
 import android.view.ContextMenu;
@@ -91,30 +65,23 @@ import android.view.MenuItem;
 import android.view.MenuItem.OnMenuItemClickListener;
 import android.view.MenuInflater;
 import android.view.MotionEvent;
-import android.view.Surface;
 import android.view.View;
 import android.view.ContextMenu.ContextMenuInfo;
 import android.view.View.OnClickListener;
 import android.view.View.OnCreateContextMenuListener;
 import android.view.View.OnTouchListener;
-import android.view.Window;
 import android.view.WindowManager;
 import android.view.inputmethod.EditorInfo;
-import android.webkit.WebView;
-import android.webkit.WebViewClient;
 import android.widget.AdapterView;
-import android.widget.AdapterView.OnItemLongClickListener;
 import android.widget.AdapterView.OnItemSelectedListener;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
-import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.NumberPicker;
 import android.widget.RelativeLayout;
 import android.widget.SeekBar;
 import android.widget.SeekBar.OnSeekBarChangeListener;
-import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.ToggleButton;
@@ -230,7 +197,20 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 	private LocationListener mLocationListener;
 	private Location mLastKnownLocation;
 	private SensorManager mSensorManager;
+	Sensor mAccelerometer;
+	Sensor mMagnetometer;
 	private float mCompassDeg = 0.0f;
+	
+	private float[] mLastAccelerometer = new float[3];
+    private float[] mLastMagnetometer = new float[3];
+    private boolean mLastAccelerometerSet = false;
+    private boolean mLastMagnetometerSet = false;
+
+    private Matrix mDeviceToCamera = new Matrix();
+    private Matrix mRMat = new Matrix();
+    private Matrix mNewR = new Matrix();
+    private float[] mR = new float[9];
+    private float[] mOrientation = new float[3];
 
 	private int mTotalLoopClosures = 0;
 	private boolean mMapIsEmpty = false;
@@ -535,6 +515,10 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 		};
 
 		mSensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
+		mAccelerometer = mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+	    mMagnetometer = mSensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
+	    float [] values = {1,0,0,0,0,1,0,-1,0};
+	    mDeviceToCamera.setValues(values);
 		
 		setCamera(1);
 
@@ -543,8 +527,25 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 
 	@Override
 	public void onSensorChanged(SensorEvent event) {
-		// get the angle around the z-axis rotated
-		mCompassDeg = event.values[0];
+		if (event.sensor == mAccelerometer) {
+            System.arraycopy(event.values, 0, mLastAccelerometer, 0, event.values.length);
+            mLastAccelerometerSet = true;
+        } else if (event.sensor == mMagnetometer) {
+            System.arraycopy(event.values, 0, mLastMagnetometer, 0, event.values.length);
+            mLastMagnetometerSet = true;
+        }
+        if (mLastAccelerometerSet && mLastMagnetometerSet) {
+            SensorManager.getRotationMatrix(mR, null, mLastAccelerometer, mLastMagnetometer);
+            mRMat.setValues(mR);
+            mNewR.setConcat(mRMat, mDeviceToCamera) ;
+            mNewR.getValues(mR);
+            SensorManager.getOrientation(mR, mOrientation);                 
+            mCompassDeg = mOrientation[0] * 180.0f/(float)Math.PI;
+            if(mCompassDeg<0.0f)
+            {
+            	mCompassDeg += 360.0f;
+            }
+        }
 	}
 
 	@Override
@@ -731,7 +732,8 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 			if(mGPSSaved)
 			{
 				mLocationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, mLocationListener);
-				mSensorManager.registerListener(this, mSensorManager.getDefaultSensor(Sensor.TYPE_ORIENTATION), SensorManager.SENSOR_DELAY_GAME);
+				mSensorManager.registerListener(this, mAccelerometer, SensorManager.SENSOR_DELAY_UI);
+			    mSensorManager.registerListener(this, mMagnetometer, SensorManager.SENSOR_DELAY_UI);
 			}
 			
 			if(!DISABLE_LOG) Log.d(TAG, "set mapping parameters");
@@ -1228,7 +1230,7 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 			}
 			else
 			{
-				statusTexts[3] = getString(R.string.gps)+"[not yet available]";
+				statusTexts[3] = getString(R.string.gps)+String.format("[not yet available, %.0fdeg]", mCompassDeg);
 			}
 		}
 		
