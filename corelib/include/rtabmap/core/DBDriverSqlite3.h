@@ -131,11 +131,12 @@ protected:
 	virtual void loadSignaturesQuery(const std::list<int> & ids, std::list<Signature *> & signatures) const;
 	virtual void loadWordsQuery(const std::set<int> & wordIds, std::list<VisualWord *> & vws) const;
 	virtual void loadLinksQuery(int signatureId, std::map<int, Link> & links, Link::Type type = Link::kUndef) const;
+	virtual void loadTagsQuery(int signatureId, std::map<int, TransformStamped> & tags) const;
 
 	virtual void loadNodeDataQuery(std::list<Signature *> & signatures, bool images=true, bool scan=true, bool userData=true, bool occupancyGrid=true) const;
 	virtual bool getCalibrationQuery(int signatureId, std::vector<CameraModel> & models, StereoCameraModel & stereoModel) const;
 	virtual bool getLaserScanInfoQuery(int signatureId, LaserScan & info) const;
-	virtual bool getNodeInfoQuery(int signatureId, Transform & pose, int & mapId, int & weight, std::string & label, double & stamp, Transform & groundTruthPose, std::vector<float> & velocity, GPS & gps) const;
+	virtual bool getNodeInfoQuery(int signatureId, Transform & pose, int & mapId, int & weight, std::string & label, double & stamp, Transform & groundTruthPose, std::vector<float> & velocity, GPS & gps, EnvSensors & sensors) const;
 	virtual void getAllNodeIdsQuery(std::set<int> & ids, bool ignoreChildren, bool ignoreBadSignatures) const;
 	virtual void getAllLinksQuery(std::multimap<int, Link> & links, bool ignoreNullLinks) const;
 	virtual void getLastIdQuery(const std::string & tableName, int & id) const;
@@ -151,18 +152,17 @@ private:
 	std::string queryStepSensorData() const;
 	std::string queryStepLinkUpdate() const;
 	std::string queryStepLink() const;
+	std::string queryStepTag() const;
 	std::string queryStepWordsChanged() const;
 	std::string queryStepKeypoint() const;
 	std::string queryStepOccupancyGridUpdate() const;
 	void stepNode(sqlite3_stmt * ppStmt, const Signature * s) const;
-	void stepImage(
-			sqlite3_stmt * ppStmt,
-			int id,
-			const cv::Mat & imageBytes) const;
+	void stepImage(sqlite3_stmt * ppStmt, int id, const cv::Mat & imageBytes) const;
 	void stepDepth(sqlite3_stmt * ppStmt, const SensorData & sensorData) const;
 	void stepDepthUpdate(sqlite3_stmt * ppStmt, int nodeId, const cv::Mat & imageCompressed) const;
 	void stepSensorData(sqlite3_stmt * ppStmt, const SensorData & sensorData) const;
 	void stepLink(sqlite3_stmt * ppStmt, const Link & link) const;
+	void stepTag(sqlite3_stmt * ppStmt, int nodeId, int tagId, const TransformStamped & pose) const;
 	void stepWordsChanged(sqlite3_stmt * ppStmt, int signatureId, int oldWordId, int newWordId) const;
 	void stepKeypoint(sqlite3_stmt * ppStmt, int signatureId, int wordId, const cv::KeyPoint & kp, const cv::Point3f & pt, const cv::Mat & descriptor) const;
 	void stepOccupancyGridUpdate(sqlite3_stmt * ppStmt,
@@ -175,6 +175,7 @@ private:
 
 private:
 	void loadLinksQuery(std::list<Signature *> & signatures) const;
+	void loadTagsQuery(std::list<Signature *> & signatures) const;
 	int loadOrSaveDb(sqlite3 *pInMemory, const std::string & fileName, int isSave) const;
 
 protected:

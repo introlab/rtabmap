@@ -155,6 +155,21 @@ private:
 
 RTABMAP_EXP std::ostream& operator<<(std::ostream& os, const Transform& s);
 
+class TransformStamped
+{
+public:
+	TransformStamped(const Transform & transform, const double & stamp) :
+		transform_(transform),
+		stamp_(stamp)
+	{}
+	const Transform & transform() const {return transform_;}
+	const double & stamp() const {return stamp_;}
+
+private:
+	Transform transform_;
+	double stamp_;
+};
+
 }
 
 #endif /* TRANSFORM_H_ */

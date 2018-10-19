@@ -34,7 +34,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QtCore/QMap>
 #include <QtCore/QSettings>
 #include <rtabmap/core/Link.h>
-#include <rtabmap/core/GeodeticCoords.h>
+#include <rtabmap/core/GPS.h>
 #include <opencv2/opencv.hpp>
 #include <map>
 #include <vector>

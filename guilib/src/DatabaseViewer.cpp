@@ -1178,6 +1178,7 @@ void DatabaseViewer::exportDatabase()
 			std::map<int, double> stamps;
 			std::map<int, Transform> groundTruths;
 			std::map<int, GPS> gpsValues;
+			std::map<int, EnvSensors> sensorsValues;
 			for(int i=0; i<ids_.size(); i+=1+framesIgnored)
 			{
 				Transform odomPose, groundTruth;
@@ -1187,7 +1188,8 @@ void DatabaseViewer::exportDatabase()
 				double stamp = 0;
 				std::vector<float> velocity;
 				GPS gps;
-				if(dbDriver_->getNodeInfo(ids_[i], odomPose, mapId, weight, label, stamp, groundTruth, velocity, gps))
+				EnvSensors sensors;
+				if(dbDriver_->getNodeInfo(ids_[i], odomPose, mapId, weight, label, stamp, groundTruth, velocity, gps, sensors))
 				{
 					if(frameRate == 0 ||
 					   previousStamp == 0 ||
@@ -1210,6 +1212,10 @@ void DatabaseViewer::exportDatabase()
 							if(gps.stamp() > 0.0)
 							{
 								gpsValues.insert(std::make_pair(ids_[i], gps));
+							}
+							if(sensors.size())
+							{
+								sensorsValues.insert(std::make_pair(ids_[i], sensors));
 							}
 						}
 					}
@@ -1288,6 +1294,10 @@ void DatabaseViewer::exportDatabase()
 					if(gpsValues.find(id)!=gpsValues.end())
 					{
 						sensorData.setGPS(gpsValues.at(id));
+					}
+					if(sensorsValues.find(id)!=sensorsValues.end())
+					{
+						sensorData.setEnvSensors(sensorsValues.at(id));
 					}
 
 					recorder.addData(sensorData, dialog.isOdomExported()?poses.at(id):Transform(), covariance);
@@ -1527,7 +1537,8 @@ void DatabaseViewer::updateIds()
 		int mapId;
 		std::vector<float> v;
 		GPS gps;
-		dbDriver_->getNodeInfo(ids_[i], p, mapId, w, l, s, g, v, gps);
+		EnvSensors sensors;
+		dbDriver_->getNodeInfo(ids_[i], p, mapId, w, l, s, g, v, gps, sensors);
 		mapIds_.insert(std::make_pair(ids_[i], mapId));
 		weights_.insert(std::make_pair(ids_[i], w));
 		if(wmStates.find(ids_[i]) != wmStates.end())
@@ -2059,7 +2070,8 @@ void DatabaseViewer::exportPoses(int format)
 				int mapId;
 				std::vector<float> v;
 				GPS gps;
-				dbDriver_->getNodeInfo(iter->first, p, mapId, w, l, stamp, g, v, gps);
+				EnvSensors sensors;
+				dbDriver_->getNodeInfo(iter->first, p, mapId, w, l, stamp, g, v, gps, sensors);
 				values.insert(std::make_pair(iter->first, GPS(stamp, coord.longitude(), coord.latitude(), coord.altitude(), 0, 0)));
 			}
 
@@ -2265,7 +2277,8 @@ void DatabaseViewer::exportPoses(int format)
 				int mapId;
 				std::vector<float> v;
 				GPS gps;
-				if(dbDriver_->getNodeInfo(iter->first, p, mapId, w, l, stamp, g, v, gps))
+				EnvSensors sensors;
+				if(dbDriver_->getNodeInfo(iter->first, p, mapId, w, l, stamp, g, v, gps, sensors))
 				{
 					stamps.insert(std::make_pair(iter->first, stamp));
 				}
@@ -2886,7 +2899,8 @@ void DatabaseViewer::regenerateLocalMaps()
 		QString msg;
 		std::vector<float> velocity;
 		GPS gps;
-		if(dbDriver_->getNodeInfo(data.id(), odomPose, mapId, weight, label, stamp, groundTruth, velocity, gps))
+		EnvSensors sensors;
+		if(dbDriver_->getNodeInfo(data.id(), odomPose, mapId, weight, label, stamp, groundTruth, velocity, gps, sensors))
 		{
 			Signature s = data;
 			s.setPose(odomPose);
@@ -3009,7 +3023,8 @@ void DatabaseViewer::regenerateCurrentLocalMaps()
 		QString msg;
 		std::vector<float> velocity;
 		GPS gps;
-		if(dbDriver_->getNodeInfo(data.id(), odomPose, mapId, weight, label, stamp, groundTruth, velocity, gps))
+		EnvSensors sensors;
+		if(dbDriver_->getNodeInfo(data.id(), odomPose, mapId, weight, label, stamp, groundTruth, velocity, gps, sensors))
 		{
 			Signature s = data;
 			s.setPose(odomPose);
@@ -3545,7 +3560,8 @@ void DatabaseViewer::update(int value,
 				double s;
 				std::vector<float> v;
 				GPS gps;
-				dbDriver_->getNodeInfo(id, odomPose, mapId, w, l, s, g, v, gps);
+				EnvSensors sensors;
+				dbDriver_->getNodeInfo(id, odomPose, mapId, w, l, s, g, v, gps, sensors);
 
 				weight->setNum(w);
 				label->setText(l.c_str());
@@ -4633,7 +4649,8 @@ void DatabaseViewer::updateConstraintView(
 			Transform p,g;
 			std::vector<float> v;
 			GPS gps;
-			dbDriver_->getNodeInfo(link.from(), p, m, w, l, s, g, v, gps);
+			EnvSensors sensors;
+			dbDriver_->getNodeInfo(link.from(), p, m, w, l, s, g, v, gps, sensors);
 			if(!p.isNull())
 			{
 				// keep just the z and roll/pitch rotation

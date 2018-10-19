@@ -3430,7 +3430,8 @@ Transform Memory::getOdomPose(int signatureId, bool lookInDatabase) const
 	double stamp;
 	std::vector<float> velocity;
 	GPS gps;
-	getNodeInfo(signatureId, pose, mapId, weight, label, stamp, groundTruth, velocity, gps, lookInDatabase);
+	EnvSensors sensors;
+	getNodeInfo(signatureId, pose, mapId, weight, label, stamp, groundTruth, velocity, gps, sensors, lookInDatabase);
 	return pose;
 }
 
@@ -3442,7 +3443,8 @@ Transform Memory::getGroundTruthPose(int signatureId, bool lookInDatabase) const
 	double stamp;
 	std::vector<float> velocity;
 	GPS gps;
-	getNodeInfo(signatureId, pose, mapId, weight, label, stamp, groundTruth, velocity, gps, lookInDatabase);
+	EnvSensors sensors;
+	getNodeInfo(signatureId, pose, mapId, weight, label, stamp, groundTruth, velocity, gps, sensors, lookInDatabase);
 	return groundTruth;
 }
 
@@ -3502,6 +3504,7 @@ bool Memory::getNodeInfo(int signatureId,
 		Transform & groundTruth,
 		std::vector<float> & velocity,
 		GPS & gps,
+		EnvSensors & sensors,
 		bool lookInDatabase) const
 {
 	const Signature * s = this->getSignature(signatureId);
@@ -3515,11 +3518,12 @@ bool Memory::getNodeInfo(int signatureId,
 		groundTruth = s->getGroundTruthPose();
 		velocity = s->getVelocity();
 		gps = s->sensorData().gps();
+		sensors = s->sensorData().envSensors();
 		return true;
 	}
 	else if(lookInDatabase && _dbDriver)
 	{
-		return _dbDriver->getNodeInfo(signatureId, odomPose, mapId, weight, label, stamp, groundTruth, velocity, gps);
+		return _dbDriver->getNodeInfo(signatureId, odomPose, mapId, weight, label, stamp, groundTruth, velocity, gps, sensors);
 	}
 	return false;
 }
