@@ -458,7 +458,8 @@ std::vector<unsigned char> CameraModel::serialize() const
 			0, //mono                                                            // 3,
 			imageSize_.width, imageSize_.height,                                 // 4,5
 			(int)K_.total(), (int)D_.total(), (int)R_.total(), (int)P_.total(),  // 6,7,8,9
-			localTransform_.size()};                                             // 10
+			localTransform_.isNull()?0:localTransform_.size()};                  // 10
+	UDEBUG("Header: %d %d %d %d %d %d %d %d %d %d %d", header[0],header[1],header[2],header[3],header[4],header[5],header[6],header[7],header[8],header[9],header[10]);
 	std::vector<unsigned char> data(
 			sizeof(int)*headerSize +
 			sizeof(double)*(K_.total()+D_.total()+R_.total()+P_.total()) +
@@ -515,10 +516,16 @@ unsigned int CameraModel::deserialize(const unsigned char * data, unsigned int d
 			int iR = 8;
 			int iP = 9;
 			int iL = 10;
-			UASSERT(dataSize >=
-					sizeof(int)*headerSize +
+			UDEBUG("Header: %d %d %d %d %d %d %d %d %d %d %d", header[0],header[1],header[2],header[3],header[4],header[5],header[6],header[7],header[8],header[9],header[10]);
+			unsigned int requiredDataSize = sizeof(int)*headerSize +
 					sizeof(double)*(header[iK]+header[iD]+header[iR]+header[iP]) +
-					sizeof(float)*header[iL]);
+					sizeof(float)*header[iL];
+			UASSERT_MSG(dataSize >= requiredDataSize,
+					uFormat("dataSize=%d != required=%d (header: version %d.%d.%d %dx%d type=%d K=%d D=%d R=%d P=%d L=%d)",
+							dataSize,
+							requiredDataSize,
+							header[0], header[1], header[2], header[4], header[5], header[3],
+							header[iK], header[iD], header[iR],header[iP], header[iL]).c_str());
 			unsigned int index = sizeof(int)*headerSize;
 			if(header[iK] != 0)
 			{

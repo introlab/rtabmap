@@ -370,6 +370,7 @@ std::vector<unsigned char> StereoCameraModel::serialize() const
 			1, //stereo                                                          // 3
 			(int)R_.total(), (int)T_.total(), (int)E_.total(), (int)F_.total(),  // 4,5,6,7
 			(int)leftData.size(), (int)rightData.size()};                        // 8,9
+	UDEBUG("Header: %d %d %d %d %d %d %d %d %d %d", header[0],header[1],header[2],header[3],header[4],header[5],header[6],header[7],header[8],header[9]);
 	std::vector<unsigned char> data(
 			sizeof(int)*headerSize +
 			sizeof(double)*(R_.total()+T_.total()+E_.total()+F_.total()) +
@@ -426,47 +427,62 @@ unsigned int StereoCameraModel::deserialize(const unsigned char * data, unsigned
 		int iLeft = 8;
 		int iRight = 9;
 		const int * header = (const int *)data;
+		UDEBUG("Header: %d %d %d %d %d %d %d %d %d %d", header[0],header[1],header[2],header[3],header[4],header[5],header[6],header[7],header[8],header[9]);
 		int type = header[3];
 		if(type==1)
 		{
-			UASSERT(dataSize >=
-					sizeof(int)*headerSize +
+			unsigned int requiredDataSize = sizeof(int)*headerSize +
 					sizeof(double)*(header[iR]+header[iT]+header[iE]+header[iF]) +
-					header[iLeft] + header[iRight]);
+					header[iLeft] + header[iRight];
+			UASSERT_MSG(dataSize >= requiredDataSize,
+					uFormat("dataSize=%d != required=%d (header: version %d.%d.%d type=%d R=%d T=%d E=%d F=%d Left=%d Right=%d)",
+							dataSize,
+							requiredDataSize,
+							header[0], header[1], header[2], header[3],
+							header[iR], header[iT], header[iE],header[iF], header[iLeft], header[iRight]).c_str());
+
 			unsigned int index = sizeof(int)*headerSize;
+
 			if(header[iR] != 0)
 			{
 				UASSERT(header[iR] == 9);
 				R_ = cv::Mat(3, 3, CV_64FC1, (void*)(data+index)).clone();
 				index+=sizeof(double)*(R_.total());
 			}
+
 			if(header[iT] != 0)
 			{
 				UASSERT(header[iT] == 3);
 				T_ = cv::Mat(3, 1, CV_64FC1, (void*)(data+index)).clone();
 				index+=sizeof(double)*(T_.total());
 			}
+
 			if(header[iE] != 0)
 			{
 				UASSERT(header[iE] == 9);
 				E_ = cv::Mat(3, 3, CV_64FC1, (void*)(data+index)).clone();
 				index+=sizeof(double)*(E_.total());
 			}
+
 			if(header[iF] != 0)
 			{
 				UASSERT(header[iF] == 9);
 				F_ = cv::Mat(3, 3, CV_64FC1, (void*)(data+index)).clone();
 				index+=sizeof(double)*(F_.total());
 			}
+
 			if(header[iLeft] != 0)
 			{
 				index += left_.deserialize((data+index), header[iLeft]);
 			}
+
 			if(header[iRight] != 0)
 			{
-				index += left_.deserialize((data+index), header[iRight]);
+				index += right_.deserialize((data+index), header[iRight]);
 			}
+
 			UASSERT(index <= dataSize);
+
 			return index;
 		}
 		else
