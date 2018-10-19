@@ -5701,8 +5701,9 @@ void DBDriverSqlite3::stepSensorData(sqlite3_stmt * ppStmt,
 				UASSERT(sensorData.cameraModels()[i].isValidForProjection());
 				std::vector<unsigned char> data = sensorData.cameraModels()[i].serialize();
 				UASSERT(!data.empty());
+				unsigned int oldSize = calibrationData.size();
 				calibrationData.resize(calibrationData.size() + data.size());
-				memcpy(calibrationData.data(), data.data(), data.size());
+				memcpy(calibrationData.data()+oldSize, data.data(), data.size());
 			}
 		}
 		else if(uStrNumCmp(_version, "0.11.2") >= 0)
