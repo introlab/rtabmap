@@ -26,6 +26,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <rtabmap/core/camera/CameraOpenNICV.h>
 #include <rtabmap/utilite/UTimer.h>
+#include <opencv2/videoio/videoio_c.h>
 
 namespace rtabmap
 {

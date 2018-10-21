@@ -28,6 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/camera/CameraVideo.h>
 #include <rtabmap/utilite/UTimer.h>
 #include <rtabmap/utilite/UConversion.h>
+#include <opencv2/videoio/videoio_c.h>
 
 namespace rtabmap
 {

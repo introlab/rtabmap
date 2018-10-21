@@ -948,6 +948,8 @@ void ORB::parseParameters(const ParametersMap & parameters)
 	{
 #if CV_MAJOR_VERSION < 3
 		_orb = cv::Ptr<CV_ORB>(new CV_ORB(this->getMaxFeatures(), scaleFactor_, nLevels_, edgeThreshold_, firstLevel_, WTA_K_, scoreType_, patchSize_, parameters));
+#elif CV_MAJOR_VERSION > 3
+		_orb = CV_ORB::create(this->getMaxFeatures(), scaleFactor_, nLevels_, edgeThreshold_, firstLevel_, WTA_K_, (cv::ORB::ScoreType)scoreType_, patchSize_, fastThreshold_);
 #else
 		_orb = CV_ORB::create(this->getMaxFeatures(), scaleFactor_, nLevels_, edgeThreshold_, firstLevel_, WTA_K_, scoreType_, patchSize_, fastThreshold_);
 #endif
@@ -1548,7 +1550,9 @@ void KAZE::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kKAZENOctaveLayers(), nOctaveLayers_);
 	Parameters::parse(parameters, Parameters::kKAZEDiffusivity(), diffusivity_);
 
-#if CV_MAJOR_VERSION > 2
+#if CV_MAJOR_VERSION > 3
+	kaze_ = cv::KAZE::create(extended_, upright_, threshold_, nOctaves_, nOctaveLayers_, (cv::KAZE::DiffusivityType)diffusivity_);
+#elif CV_MAJOR_VERSION > 2
 	kaze_ = cv::KAZE::create(extended_, upright_, threshold_, nOctaves_, nOctaveLayers_, diffusivity_);
 #else
 	UWARN("RTAB-Map is not built with OpenCV3 so Kaze feature cannot be used!");

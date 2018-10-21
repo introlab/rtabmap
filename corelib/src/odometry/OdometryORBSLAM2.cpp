@@ -34,6 +34,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/utilite/UStl.h"
 #include "rtabmap/utilite/UDirectory.h"
 #include <pcl/common/transforms.h>
+#include <opencv2/imgproc/types_c.h>
 
 #ifdef RTABMAP_ORB_SLAM2
 #include <System.h>

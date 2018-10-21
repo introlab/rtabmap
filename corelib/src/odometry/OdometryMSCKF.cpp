@@ -32,6 +32,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/utilite/UTimer.h"
 #include "rtabmap/utilite/UStl.h"
 #include "rtabmap/utilite/UThread.h"
+#include <opencv2/imgproc/types_c.h>
 
 #ifdef RTABMAP_MSCKF_VIO
 #include <msckf_vio/image_processor.h>
