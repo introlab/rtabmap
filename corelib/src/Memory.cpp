@@ -4653,6 +4653,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 
 	s->sensorData().setGroundTruth(data.groundTruth());
 	s->sensorData().setGPS(data.gps());
+	s->sensorData().setEnvSensors(data.envSensors());
 
 	t = timer.ticks();
 	if(stats) stats->addStatistic(Statistics::kTimingMemCompressing_data(), t*1000.0f);
