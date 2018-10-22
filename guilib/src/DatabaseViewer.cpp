@@ -3635,6 +3635,7 @@ void DatabaseViewer::update(int value,
 				}
 				if(data.cameraModels().size() || data.stereoCameraModel().isValidForProjection())
 				{
+					std::stringstream calibrationDetails;
 					if(data.cameraModels().size())
 					{
 						if(!data.depthRaw().empty() && data.depthRaw().cols!=data.imageRaw().cols && data.imageRaw().cols)
@@ -3663,6 +3664,17 @@ void DatabaseViewer::update(int value,
 									.arg(data.cameraModels()[0].cy())
 									.arg(data.cameraModels()[0].localTransform().prettyPrint().c_str()));
 						}
+
+						for(unsigned int i=0; i<data.cameraModels().size();++i)
+						{
+							if(i!=0) calibrationDetails << std::endl;
+							calibrationDetails << "Id: " << i << " Size=" << data.cameraModels()[i].imageWidth() << "x" << data.cameraModels()[i].imageWidth() << std::endl;
+							if( data.cameraModels()[i].K_raw().total()) calibrationDetails << "K=" << data.cameraModels()[i].K_raw() << std::endl;
+							if( data.cameraModels()[i].D_raw().total()) calibrationDetails << "D=" << data.cameraModels()[i].D_raw() << std::endl;
+							if( data.cameraModels()[i].R().total()) calibrationDetails << "R=" << data.cameraModels()[i].R() << std::endl;
+							if( data.cameraModels()[i].P().total()) calibrationDetails << "P=" << data.cameraModels()[i].P() << std::endl;
+						}
+
 					}
 					else
 					{
@@ -3676,7 +3688,25 @@ void DatabaseViewer::update(int value,
 									.arg(data.stereoCameraModel().left().cy())
 									.arg(data.stereoCameraModel().baseline())
 									.arg(data.stereoCameraModel().localTransform().prettyPrint().c_str()));
+
+						calibrationDetails << "Left:" << " Size=" << data.stereoCameraModel().left().imageWidth() << "x" << data.stereoCameraModel().left().imageWidth() << std::endl;
+						if( data.stereoCameraModel().left().K_raw().total()) calibrationDetails << "K=" << data.stereoCameraModel().left().K_raw() << std::endl;
+						if( data.stereoCameraModel().left().D_raw().total()) calibrationDetails << "D=" << data.stereoCameraModel().left().D_raw() << std::endl;
+						if( data.stereoCameraModel().left().R().total()) calibrationDetails << "R=" << data.stereoCameraModel().left().R() << std::endl;
+						if( data.stereoCameraModel().left().P().total()) calibrationDetails << "P=" << data.stereoCameraModel().left().P() << std::endl;
+						calibrationDetails << std::endl;
+						calibrationDetails << "Right:" << " Size=" << data.stereoCameraModel().right().imageWidth() << "x" << data.stereoCameraModel().right().imageWidth() << std::endl;
+						if( data.stereoCameraModel().right().K_raw().total()) calibrationDetails << "K=" << data.stereoCameraModel().right().K_raw() << std::endl;
+						if( data.stereoCameraModel().right().D_raw().total()) calibrationDetails << "D=" << data.stereoCameraModel().right().D_raw() << std::endl;
+						if( data.stereoCameraModel().right().R().total()) calibrationDetails << "R=" << data.stereoCameraModel().right().R() << std::endl;
+						if( data.stereoCameraModel().right().P().total()) calibrationDetails << "P=" << data.stereoCameraModel().right().P() << std::endl;
+						calibrationDetails << std::endl;
+						if( data.stereoCameraModel().R().total()) calibrationDetails << "R=" << data.stereoCameraModel().R() << std::endl;
+						if( data.stereoCameraModel().T().total()) calibrationDetails << "T=" << data.stereoCameraModel().T() << std::endl;
+						if( data.stereoCameraModel().F().total()) calibrationDetails << "F=" << data.stereoCameraModel().F() << std::endl;
+						if( data.stereoCameraModel().E().total()) calibrationDetails << "E=" << data.stereoCameraModel().E() << std::endl;
 					}
+					labelCalib->setToolTip(calibrationDetails.str().c_str());
 
 				}
 				else
