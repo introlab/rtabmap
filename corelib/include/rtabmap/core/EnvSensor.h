@@ -60,7 +60,7 @@ public:
 		value_(0.0),
 		stamp_(0.0)
 	{}
-	EnvSensor(const Type & type, const double & value,const double & stamp) :
+	EnvSensor(const Type & type, const double & value,const double & stamp = 0) :
 		type_(type),
 		value_(value),
 		stamp_(stamp)

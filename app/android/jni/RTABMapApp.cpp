@@ -2064,6 +2064,14 @@ void RTABMapApp::setGPS(const rtabmap::GPS & gps)
 	}
 }
 
+void RTABMapApp::addEnvSensor(int type, float value)
+{
+	if(camera_)
+	{
+		camera_->addEnvSensor(type, value);
+	}
+}
+
 void RTABMapApp::resetMapping()
 {
 	LOGW("Reset!");
