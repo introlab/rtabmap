@@ -571,25 +571,25 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 		{
 			mLastEnvSensors[1] = event.values[0];
 			mLastEnvSensorsSet[1] = true;
-			RTABMapLib.addEnvSensor(1, event.values[0]);
+			RTABMapLib.addEnvSensor(2, event.values[0]);
 		}
 		else if(event.sensor == mAmbientAirPressure)
 		{
 			mLastEnvSensors[2] = event.values[0];
 			mLastEnvSensorsSet[2] = true;
-			RTABMapLib.addEnvSensor(2, event.values[0]);
+			RTABMapLib.addEnvSensor(3, event.values[0]);
 		}
 		else if(event.sensor == mAmbientLight)
 		{
 			mLastEnvSensors[3] = event.values[0];
 			mLastEnvSensorsSet[3] = true;
-			RTABMapLib.addEnvSensor(3, event.values[0]);
+			RTABMapLib.addEnvSensor(4, event.values[0]);
 		}
 		else if(event.sensor == mAmbientRelativeHumidity)
 		{
 			mLastEnvSensors[4] = event.values[0];
 			mLastEnvSensorsSet[4] = true;
-			RTABMapLib.addEnvSensor(4, event.values[0]);
+			RTABMapLib.addEnvSensor(5, event.values[0]);
 		}
 	}
 
@@ -800,7 +800,7 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 			        	{
 			        		mLastEnvSensors[0] = (float)dbm;
 			        		mLastEnvSensorsSet[0] = true;
-			        		RTABMapLib.addEnvSensor(0, mLastEnvSensors[0]);
+			        		RTABMapLib.addEnvSensor(1, mLastEnvSensors[0]);
 			        	}
 			        }
 
