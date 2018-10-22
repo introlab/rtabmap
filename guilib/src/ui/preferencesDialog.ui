@@ -94,7 +94,7 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>0</y>
+            <y>-57</y>
             <width>681</width>
             <height>2983</height>
            </rect>
@@ -126,7 +126,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>24</number>
+                <number>11</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,1">
@@ -8701,6 +8701,26 @@ see Sqlite3 doc 'PRAGMA temp_store'.</string>
                         </property>
                         <property name="checked">
                          <bool>true</bool>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="3" column="1">
+                       <widget class="QLabel" name="label_502">
+                        <property name="text">
+                         <string>Use GPS to filter likelihood (if GPS is recorded). Only locations inside the Local Radius (see RGBD-SLAM panel) of the current GPS location are considered for loop closure detection.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="3" column="0">
+                       <widget class="QCheckBox" name="checkBox_rtabmap_loopGPS">
+                        <property name="text">
+                         <string/>
                         </property>
                        </widget>
                       </item>

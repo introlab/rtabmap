@@ -124,6 +124,7 @@ Rtabmap::Rtabmap() :
 	_pathAngularVelocity(Parameters::defaultRGBDPlanAngularVelocity()),
 	_savedLocalizationIgnored(Parameters::defaultRGBDSavedLocalizationIgnored()),
 	_loopCovLimited(Parameters::defaultRGBDLoopCovLimited()),
+	_loopGPS(Parameters::defaultRtabmapLoopGPS()),
 	_loopClosureHypothesis(0,0.0f),
 	_highestHypothesis(0,0.0f),
 	_lastProcessTime(0.0),
@@ -469,6 +470,7 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kRGBDPlanAngularVelocity(), _pathAngularVelocity);
 	Parameters::parse(parameters, Parameters::kRGBDSavedLocalizationIgnored(), _savedLocalizationIgnored);
 	Parameters::parse(parameters, Parameters::kRGBDLoopCovLimited(), _loopCovLimited);
+	Parameters::parse(parameters, Parameters::kRtabmapLoopGPS(), _loopGPS);
 
 	UASSERT(_rgbdLinearUpdate >= 0.0f);
 	UASSERT(_rgbdAngularUpdate >= 0.0f);
@@ -1399,37 +1401,41 @@ bool Rtabmap::process(
 			ULOGGER_INFO("computing likelihood...");
 
 			std::list<int> signaturesToCompare;
-			GPS originGPS = signature->sensorData().gps();
+			GPS originGPS;
 			Transform originOffsetENU = Transform::getIdentity();
-			if(originGPS.stamp() == 0.0 && _currentSessionHasGPS)
+			if(_loopGPS)
 			{
-				UTimer tmpT;
-				if(_optimizedPoses.size() && _memory->isIncremental())
+				originGPS = signature->sensorData().gps();
+				if(originGPS.stamp() == 0.0 && _currentSessionHasGPS)
 				{
-					//Search for latest node having GPS linked to current signature not too far.
-					std::map<int, float> nearestIds = graph::getNodesInRadius(signature->id(), _optimizedPoses, _localRadius);
-					for(std::map<int, float>::reverse_iterator iter=nearestIds.rbegin(); iter!=nearestIds.rend(); ++iter)
+					UTimer tmpT;
+					if(_optimizedPoses.size() && _memory->isIncremental())
 					{
-						const Signature * s = _memory->getSignature(iter->first);
-						UASSERT(s!=0);
-						if(s->sensorData().gps().stamp() > 0.0)
+						//Search for latest node having GPS linked to current signature not too far.
+						std::map<int, float> nearestIds = graph::getNodesInRadius(signature->id(), _optimizedPoses, _localRadius);
+						for(std::map<int, float>::reverse_iterator iter=nearestIds.rbegin(); iter!=nearestIds.rend(); ++iter)
 						{
-							originGPS = s->sensorData().gps();
-							const Transform & sPose = _optimizedPoses.at(s->id());
-							Transform localToENU(0,0,(float)((-(originGPS.bearing()-90))*M_PI/180.0) - sPose.theta());
-							originOffsetENU = localToENU * (sPose.rotation()*(sPose.inverse()*_optimizedPoses.at(signature->id())));
-							break;
+							const Signature * s = _memory->getSignature(iter->first);
+							UASSERT(s!=0);
+							if(s->sensorData().gps().stamp() > 0.0)
+							{
+								originGPS = s->sensorData().gps();
+								const Transform & sPose = _optimizedPoses.at(s->id());
+								Transform localToENU(0,0,(float)((-(originGPS.bearing()-90))*M_PI/180.0) - sPose.theta());
+								originOffsetENU = localToENU * (sPose.rotation()*(sPose.inverse()*_optimizedPoses.at(signature->id())));
+								break;
+							}
 						}
 					}
+					//else if(!_memory->isIncremental()) // TODO, how can we estimate current GPS position in localization?
+					//{
+					//}
 				}
-				//else if(!_memory->isIncremental()) // TODO, how can we estimate current GPS position in localization?
-				//{
-				//}
-			}
-			if(originGPS.stamp() > 0.0)
-			{
-				// no need to save it if it is in localization mode
-				_gpsGeocentricCache.insert(std::make_pair(signature->id(), std::make_pair(originGPS.toGeodeticCoords().toGeocentric_WGS84(), originOffsetENU)));
+				if(originGPS.stamp() > 0.0)
+				{
+					// no need to save it if it is in localization mode
+					_gpsGeocentricCache.insert(std::make_pair(signature->id(), std::make_pair(originGPS.toGeodeticCoords().toGeocentric_WGS84(), originOffsetENU)));
+				}
 			}
 
 			for(std::map<int, double>::const_iterator iter=_memory->getWorkingMem().begin();

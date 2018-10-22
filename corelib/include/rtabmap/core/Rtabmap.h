@@ -261,6 +261,7 @@ private:
 	float _pathAngularVelocity;
 	bool _savedLocalizationIgnored;
 	bool _loopCovLimited;
+	bool _loopGPS;
 
 	std::pair<int, float> _loopClosureHypothesis;
 	std::pair<int, float> _highestHypothesis;
