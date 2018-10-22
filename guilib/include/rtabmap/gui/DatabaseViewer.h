@@ -159,6 +159,7 @@ private:
 				QLabel * labelVelocity,
 				QLabel * labeCalib,
 				QLabel * labelGps,
+				QLabel * labelSensors,
 				bool updateConstraintView);
 	void updateStereo(const SensorData * data);
 	void updateWordsMatching();

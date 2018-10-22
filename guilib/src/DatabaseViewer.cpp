@@ -3460,6 +3460,7 @@ void DatabaseViewer::sliderAValueChanged(int value)
 			ui_->label_velA,
 			ui_->label_calibA,
 			ui_->label_gpsA,
+			ui_->label_sensorsA,
 			true);
 }
 
@@ -3479,6 +3480,7 @@ void DatabaseViewer::sliderBValueChanged(int value)
 			ui_->label_velB,
 			ui_->label_calibB,
 			ui_->label_gpsB,
+			ui_->label_sensorsB,
 			true);
 }
 
@@ -3496,6 +3498,7 @@ void DatabaseViewer::update(int value,
 						QLabel * labelVelocity,
 						QLabel * labelCalib,
 						QLabel * labelGps,
+						QLabel * labelSensors,
 						bool updateConstraintView)
 {
 	UTimer timer;
@@ -3510,6 +3513,7 @@ void DatabaseViewer::update(int value,
 	stamp->clear();
 	labelCalib->clear();
 	labelGps->clear();
+	labelSensors->clear();
 	QRectF rect;
 	if(value >= 0 && value < ids_.size())
 	{
@@ -3581,6 +3585,53 @@ void DatabaseViewer::update(int value,
 				{
 					labelGps->setText(QString("stamp=%1 longitude=%2 latitude=%3 altitude=%4m error=%5m bearing=%6deg").arg(QString::number(gps.stamp(), 'f')).arg(gps.longitude()).arg(gps.latitude()).arg(gps.altitude()).arg(gps.error()).arg(gps.bearing()));
 					labelGps->setToolTip(QDateTime::fromMSecsSinceEpoch(gps.stamp()*1000.0).toString("dd.MM.yyyy hh:mm:ss.zzz"));
+				}
+				if(sensors.size())
+				{
+					QString sensorsStr;
+					QString tooltipStr;
+					for(EnvSensors::iterator iter=sensors.begin(); iter!=sensors.end(); ++iter)
+					{
+						if(iter != sensors.begin())
+						{
+							sensorsStr += " | ";
+							tooltipStr += " | ";
+						}
+
+						if(iter->first == EnvSensor::kWifiSignalStrength)
+						{
+							sensorsStr += uFormat("%.1f dbm", iter->second.value()).c_str();
+							tooltipStr += "Wifi signal strength";
+						}
+						else if(iter->first == EnvSensor::kAmbientTemperature)
+						{
+							sensorsStr += uFormat("%.1f \u00B0C", iter->second.value()).c_str();
+							tooltipStr += "Ambient Temperature";
+						}
+						else if(iter->first == EnvSensor::kAmbientAirPressure)
+						{
+							sensorsStr += uFormat("%.1f hPa", iter->second.value()).c_str();
+							tooltipStr += "Ambient Air Pressure";
+						}
+						else if(iter->first == EnvSensor::kAmbientLight)
+						{
+							sensorsStr += uFormat("%.0f lx", iter->second.value()).c_str();
+							tooltipStr += "Ambient Light";
+						}
+						else if(iter->first == EnvSensor::kAmbientRelativeHumidity)
+						{
+							sensorsStr += uFormat("%.0f %%", iter->second.value()).c_str();
+							tooltipStr += "Ambient Relative Humidity";
+						}
+						else
+						{
+							sensorsStr += uFormat("%.2f", iter->second.value()).c_str();
+							tooltipStr += QString("Type %1").arg((int)iter->first);
+						}
+
+					}
+					labelSensors->setText(sensorsStr);
+					labelSensors->setToolTip(tooltipStr);
 				}
 				if(data.cameraModels().size() || data.stereoCameraModel().isValidForProjection())
 				{
@@ -4593,6 +4644,7 @@ void DatabaseViewer::updateConstraintView(
 					ui_->label_velA,
 					ui_->label_calibA,
 					ui_->label_gpsA,
+					ui_->label_sensorsA,
 					false); // don't update constraints view!
 		this->update(idToIndex_.value(link.to()),
 					ui_->label_indexB,
@@ -4608,6 +4660,7 @@ void DatabaseViewer::updateConstraintView(
 					ui_->label_velB,
 					ui_->label_calibB,
 					ui_->label_gpsB,
+					ui_->label_sensorsB,
 					false); // don't update constraints view!
 	}
 

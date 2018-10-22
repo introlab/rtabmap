@@ -60,9 +60,9 @@
          <property name="geometry">
           <rect>
            <x>0</x>
-           <y>0</y>
-           <width>301</width>
-           <height>242</height>
+           <y>-23</y>
+           <width>287</width>
+           <height>265</height>
           </rect>
          </property>
          <layout class="QGridLayout" name="gridLayout" columnstretch="0,1">
@@ -236,6 +236,23 @@
             </property>
            </widget>
           </item>
+          <item row="10" column="0">
+           <widget class="QLabel" name="label_childrenA_20">
+            <property name="text">
+             <string>Sensors</string>
+            </property>
+           </widget>
+          </item>
+          <item row="10" column="1">
+           <widget class="QLabel" name="label_sensorsA">
+            <property name="text">
+             <string/>
+            </property>
+            <property name="textInteractionFlags">
+             <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+            </property>
+           </widget>
+          </item>
          </layout>
         </widget>
        </widget>
@@ -252,9 +269,9 @@
          <property name="geometry">
           <rect>
            <x>0</x>
-           <y>0</y>
-           <width>301</width>
-           <height>242</height>
+           <y>-23</y>
+           <width>287</width>
+           <height>265</height>
           </rect>
          </property>
          <layout class="QGridLayout" name="gridLayout_2" columnstretch="0,1">
@@ -420,6 +437,23 @@
           </item>
           <item row="6" column="1">
            <widget class="QLabel" name="label_velB">
+            <property name="text">
+             <string/>
+            </property>
+            <property name="textInteractionFlags">
+             <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+            </property>
+           </widget>
+          </item>
+          <item row="10" column="0">
+           <widget class="QLabel" name="label_childrenA_21">
+            <property name="text">
+             <string>Sensors</string>
+            </property>
+           </widget>
+          </item>
+          <item row="10" column="1">
+           <widget class="QLabel" name="label_sensorsB">
             <property name="text">
              <string/>
             </property>
