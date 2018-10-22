@@ -1614,7 +1614,7 @@ void DatabaseViewer::updateIds()
 					GPS originGPS = gpsValues_.begin()->second;
 					p = coords.toENU_WGS84(originGPS.toGeodeticCoords());
 				}
-				Transform pose(p.x, p.y, p.z, 0.0f, 0.0f, (float)((-(gps.bearing()-90))*180.0/M_PI));
+				Transform pose(p.x, p.y, p.z, 0.0f, 0.0f, (float)((-(gps.bearing()-90))*M_PI/180.0));
 				gpsPoses_.insert(std::make_pair(ids_[i], pose));
 			}
 		}

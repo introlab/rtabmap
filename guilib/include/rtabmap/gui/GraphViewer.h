@@ -56,6 +56,9 @@ public:
 	GraphViewer(QWidget * parent = 0);
 	virtual ~GraphViewer();
 
+	void setWorldMapRotation(const float & theta);
+	float getWorldMapRotation() const {return _worldMapRotation;}
+
 	void updateGraph(const std::map<int, Transform> & poses,
 					 const std::multimap<int, Link> & constraints,
 					 const std::map<int, int> & mapIds);
@@ -174,6 +177,8 @@ private:
 	QColor _loopIntraSessionColor;
 	QColor _loopInterSessionColor;
 	bool _intraInterSessionColors;
+	float _worldMapRotation;
+	QGraphicsItem * _world;
 	QGraphicsItem * _root;
 	QGraphicsItem * _graphRoot;
 	QGraphicsItem * _globalPathRoot;

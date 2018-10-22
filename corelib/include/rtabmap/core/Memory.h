@@ -161,6 +161,7 @@ public:
 	int getSignatureIdByLabel(const std::string & label, bool lookInDatabase = true) const;
 	bool labelSignature(int id, const std::string & label);
 	std::map<int, std::string> getAllLabels() const;
+
 	/**
 	 * Set user data. Detect automatically if raw or compressed. If raw, the data is
 	 * compressed too. A matrix of type CV_8UC1 with 1 row is considered as compressed.
@@ -175,6 +176,7 @@ public:
 	double getDbSavingTime() const;
 	Transform getOdomPose(int signatureId, bool lookInDatabase = false) const;
 	Transform getGroundTruthPose(int signatureId, bool lookInDatabase = false) const;
+	void getGPS(int id, GPS & gps, Transform & offsetENU, bool lookInDatabase, int maxGraphDepth = 0) const;
 	bool getNodeInfo(int signatureId,
 			Transform & odomPose,
 			int & mapId,

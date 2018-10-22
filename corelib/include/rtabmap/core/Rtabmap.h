@@ -292,6 +292,8 @@ private:
 	Transform _mapCorrectionBackup; // used in localization mode when odom is lost
 	Transform _lastLocalizationPose; // Corrected odometry pose. In mapping mode, this corresponds to last pose return by getLocalOptimizedPoses().
 	int _lastLocalizationNodeId; // for localization mode
+	std::map<int, std::pair<cv::Point3d, Transform> > _gpsGeocentricCache;
+	bool _currentSessionHasGPS;
 
 	// Planning stuff
 	int _pathStatus;

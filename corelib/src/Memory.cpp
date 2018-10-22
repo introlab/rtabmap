@@ -3446,6 +3446,53 @@ Transform Memory::getGroundTruthPose(int signatureId, bool lookInDatabase) const
 	return groundTruth;
 }
 
+void Memory::getGPS(int id, GPS & gps, Transform & offsetENU, bool lookInDatabase, int maxGraphDepth) const
+{
+	gps = GPS();
+	offsetENU=Transform::getIdentity();
+
+	Transform odomPose, groundTruth;
+	int mapId, weight;
+	std::string label;
+	double stamp;
+	std::vector<float> velocity;
+	getNodeInfo(id, odomPose, mapId, weight, label, stamp, groundTruth, velocity, gps, lookInDatabase);
+
+	if(gps.stamp() == 0.0)
+	{
+		// Search for the nearest node with GPS, and compute its relative transform in ENU coordinates
+
+		std::map<int, int> nearestIds;
+		nearestIds = getNeighborsId(id, maxGraphDepth, lookInDatabase?-1:0, true, false, true);
+		std::multimap<int, int> nearestIdsSorted;
+		for(std::map<int, int>::iterator iter=nearestIds.begin(); iter!=nearestIds.end(); ++iter)
+		{
+			nearestIdsSorted.insert(std::make_pair(iter->second, iter->first));
+		}
+
+		for(std::map<int, int>::iterator iter=nearestIdsSorted.begin(); iter!=nearestIdsSorted.end(); ++iter)
+		{
+			const Signature * s = getSignature(iter->second);
+			UASSERT(s!=0);
+			if(s->sensorData().gps().stamp() > 0.0)
+			{
+				std::list<std::pair<int, Transform> > path = graph::computePath(s->id(), id, this, lookInDatabase);
+				if(path.size() >= 2)
+				{
+					gps = s->sensorData().gps();
+					Transform localToENU(0,0,(float)((-(gps.bearing()-90))*M_PI/180.0) - s->getPose().theta());
+					offsetENU = localToENU*(s->getPose().rotation()*path.rbegin()->second);
+					break;
+				}
+				else
+				{
+					UWARN("Failed to find path %d -> %d", s->id(), id);
+				}
+			}
+		}
+	}
+}
+
 bool Memory::getNodeInfo(int signatureId,
 		Transform & odomPose,
 		int & mapId,

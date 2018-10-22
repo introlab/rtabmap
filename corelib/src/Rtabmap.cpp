@@ -138,6 +138,7 @@ Rtabmap::Rtabmap() :
 	_wDir(""),
 	_mapCorrection(Transform::getIdentity()),
 	_lastLocalizationNodeId(0),
+	_currentSessionHasGPS(false),
 	_pathStatus(0),
 	_pathCurrentIndex(0),
 	_pathGoalIndex(0),
@@ -360,6 +361,8 @@ void Rtabmap::close(bool databaseSaved, const std::string & ouputDatabasePath)
 	_lastLocalizationNodeId = 0;
 	_distanceTravelled = 0.0f;
 	this->clearPath(0);
+	_gpsGeocentricCache.clear();
+	_currentSessionHasGPS = false;
 
 	flushStatisticLogs();
 	if(_foutFloat)
@@ -1068,6 +1071,7 @@ bool Rtabmap::process(
 	}
 
 	signature = _memory->getLastWorkingSignature();
+	_currentSessionHasGPS = _currentSessionHasGPS || signature->sensorData().gps().stamp() > 0.0;
 	if(!signature)
 	{
 		UFATAL("Not supposed to be here...last signature is null?!?");
@@ -1395,6 +1399,39 @@ bool Rtabmap::process(
 			ULOGGER_INFO("computing likelihood...");
 
 			std::list<int> signaturesToCompare;
+			GPS originGPS = signature->sensorData().gps();
+			Transform originOffsetENU = Transform::getIdentity();
+			if(originGPS.stamp() == 0.0 && _currentSessionHasGPS)
+			{
+				UTimer tmpT;
+				if(_optimizedPoses.size() && _memory->isIncremental())
+				{
+					//Search for latest node having GPS linked to current signature not too far.
+					std::map<int, float> nearestIds = graph::getNodesInRadius(signature->id(), _optimizedPoses, _localRadius);
+					for(std::map<int, float>::reverse_iterator iter=nearestIds.rbegin(); iter!=nearestIds.rend(); ++iter)
+					{
+						const Signature * s = _memory->getSignature(iter->first);
+						UASSERT(s!=0);
+						if(s->sensorData().gps().stamp() > 0.0)
+						{
+							originGPS = s->sensorData().gps();
+							const Transform & sPose = _optimizedPoses.at(s->id());
+							Transform localToENU(0,0,(float)((-(originGPS.bearing()-90))*M_PI/180.0) - sPose.theta());
+							originOffsetENU = localToENU * (sPose.rotation()*(sPose.inverse()*_optimizedPoses.at(signature->id())));
+							break;
+						}
+					}
+				}
+				//else if(!_memory->isIncremental()) // TODO, how can we estimate current GPS position in localization?
+				//{
+				//}
+			}
+			if(originGPS.stamp() > 0.0)
+			{
+				// no need to save it if it is in localization mode
+				_gpsGeocentricCache.insert(std::make_pair(signature->id(), std::make_pair(originGPS.toGeodeticCoords().toGeocentric_WGS84(), originOffsetENU)));
+			}
+
 			for(std::map<int, double>::const_iterator iter=_memory->getWorkingMem().begin();
 				iter!=_memory->getWorkingMem().end();
 				++iter)
@@ -1405,7 +1442,58 @@ bool Rtabmap::process(
 					UASSERT(s!=0);
 					if(s->getWeight() != -1) // ignore intermediate nodes
 					{
-						signaturesToCompare.push_back(iter->first);
+						bool accept = true;
+						if(originGPS.stamp()>0.0)
+						{
+							std::map<int, std::pair<cv::Point3d, Transform> >::iterator cacheIter = _gpsGeocentricCache.find(s->id());
+							if(cacheIter == _gpsGeocentricCache.end())
+							{
+								GPS gps = s->sensorData().gps();
+								Transform offsetENU = Transform::getIdentity();
+								if(gps.stamp()==0.0)
+								{
+									_memory->getGPS(s->id(), gps, offsetENU, false);
+								}
+								if(gps.stamp() > 0.0)
+								{
+									cacheIter = _gpsGeocentricCache.insert(
+											std::make_pair(s->id(),
+													std::make_pair(gps.toGeodeticCoords().toGeocentric_WGS84(), offsetENU))).first;
+								}
+							}
+
+
+							if(cacheIter != _gpsGeocentricCache.end())
+							{
+								std::map<int, std::pair<cv::Point3d, Transform> >::iterator originIter = _gpsGeocentricCache.find(signature->id());
+								UASSERT(originIter != _gpsGeocentricCache.end());
+								cv::Point3d relativePose = GeodeticCoords::Geocentric_WGS84ToENU_WGS84(cacheIter->second.first, originIter->second.first, originGPS.toGeodeticCoords());
+								const double & error = originGPS.error();
+								const Transform & offsetENU = cacheIter->second.second;
+								relativePose.x += offsetENU.x() - originOffsetENU.x();
+								relativePose.y += offsetENU.y() - originOffsetENU.y();
+								relativePose.z += offsetENU.z() - originOffsetENU.z();
+								 // ignore altitude if difference is under GPS error
+								if(relativePose.z>error)
+								{
+									relativePose.z -= error;
+								}
+								else if(relativePose.z < -error)
+								{
+									relativePose.z += error;
+								}
+								else
+								{
+									relativePose.z = 0;
+								}
+								accept = uNormSquared(relativePose.x, relativePose.y, relativePose.z) < _localRadius*_localRadius;
+							}
+						}
+
+						if(accept)
+						{
+							signaturesToCompare.push_back(iter->first);
+						}
 					}
 				}
 				else
@@ -2683,6 +2771,12 @@ bool Rtabmap::process(
 		}
 	}
 	_lastProcessTime = totalTime;
+
+	// cleanup cached gps values
+	for(std::list<int>::iterator iter=signaturesRemoved.begin(); iter!=signaturesRemoved.end() && _gpsGeocentricCache.size(); ++iter)
+	{
+		_gpsGeocentricCache.erase(*iter);
+	}
 
 	//Remove optimized poses from signatures transferred
 	if(signaturesRemoved.size() && (_optimizedPoses.size() || _constraints.size()))

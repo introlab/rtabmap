@@ -70,6 +70,10 @@ public:
 	void fromENU_WGS84(const cv::Point3d & enu, const GeodeticCoords & origin);
 
 	static cv::Point3d ENU_WGS84ToGeocentric_WGS84(const cv::Point3d & enu, const GeodeticCoords & origin);
+	static cv::Point3d Geocentric_WGS84ToENU_WGS84(
+			const cv::Point3d & geocentric_WGS84,
+			const cv::Point3d & origin_geocentric_WGS84,
+			const GeodeticCoords & origin);
 
 private:
 	double latitude_;  // deg

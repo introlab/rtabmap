@@ -1883,6 +1883,14 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 				{
 					labels.insert(std::make_pair(iter->first, iter->second.getLabel()));
 				}
+				if(_ui->graphicsView_graphView->getWorldMapRotation()==0.0f &&
+					iter->second.sensorData().gps().stamp()!=0.0 &&
+					stat.poses().find(iter->first)!=stat.poses().end())
+				{
+					float bearing = (float)((-(iter->second.sensorData().gps().bearing()-90))*M_PI/180.0);
+					float gpsRotationOffset = stat.poses().at(iter->first).theta()-bearing;
+					_ui->graphicsView_graphView->setWorldMapRotation(gpsRotationOffset);
+				}
 			}
 
 			std::map<int, Transform> poses = stat.poses();
