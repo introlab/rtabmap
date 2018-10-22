@@ -3458,7 +3458,8 @@ void Memory::getGPS(int id, GPS & gps, Transform & offsetENU, bool lookInDatabas
 	std::string label;
 	double stamp;
 	std::vector<float> velocity;
-	getNodeInfo(id, odomPose, mapId, weight, label, stamp, groundTruth, velocity, gps, lookInDatabase);
+	EnvSensors sensors;
+	getNodeInfo(id, odomPose, mapId, weight, label, stamp, groundTruth, velocity, gps, sensors, lookInDatabase);
 
 	if(gps.stamp() == 0.0)
 	{
