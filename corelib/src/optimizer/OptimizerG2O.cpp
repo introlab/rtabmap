@@ -39,6 +39,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/util3d_motion_estimation.h>
 #include <rtabmap/core/util3d.h>
 
+
 #if defined(RTABMAP_G2O) || defined(RTABMAP_ORB_SLAM2)
 #include "g2o/core/sparse_optimizer.h"
 #include "g2o/core/block_solver.h"
@@ -66,9 +67,6 @@ typedef Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic,Eigen::ColMajor> Matr
 #include "g2o/solvers/cholmod/linear_solver_cholmod.h"
 #endif
 #endif // RTABMAP_G2O
-enum {
-    PARAM_OFFSET=0,
-};
 
 #ifdef RTABMAP_ORB_SLAM2
 #include "g2o/types/types_sba.h"
@@ -96,6 +94,10 @@ typedef g2o::LinearSolverCholmod<SlamBlockSolver::PoseMatrixType> SlamLinearChol
 #endif
 
 #endif // end defined(RTABMAP_G2O) || defined(RTABMAP_ORB_SLAM2)
+
+enum {
+    PARAM_OFFSET=0,
+};
 
 namespace rtabmap {
 
