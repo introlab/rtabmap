@@ -325,7 +325,20 @@ SensorData DBReader::getNextData(CameraInfo * info)
 			std::vector<float> velocity;
 			GPS gps;
 			EnvSensors sensors;
+			Transform globalPose;
+			cv::Mat globalPoseCov;
 			_dbDriver->getNodeInfo(*_currentId, pose, mapId, weight, label, stamp, groundTruth, velocity, gps, sensors);
+
+			std::map<int, Link> priorLinks;
+			_dbDriver->loadLinks(*_currentId, priorLinks, Link::kPosePrior);
+			if( priorLinks.size() &&
+				!priorLinks.begin()->second.transform().isNull() &&
+				priorLinks.begin()->second.infMatrix().cols == 6 &&
+				priorLinks.begin()->second.infMatrix().rows == 6)
+			{
+				globalPose = priorLinks.begin()->second.transform();
+				globalPoseCov = priorLinks.begin()->second.infMatrix().inv();
+			}
 
 			cv::Mat infMatrix = cv::Mat::eye(6,6,CV_64FC1);
 			if(!_odometryIgnored)
@@ -377,7 +390,8 @@ SensorData DBReader::getNextData(CameraInfo * info)
 				}
 				else if(_previousMapID == mapId && _previousStamp > 0)
 				{
-					int sleepTime = 1000.0*(stamp-_previousStamp) - 1000.0*_timer.getElapsedTime();
+					float ratio = -this->getImageRate();
+					int sleepTime = 1000.0*(stamp-_previousStamp)/ratio - 1000.0*_timer.getElapsedTime();
 					if(sleepTime > 10000)
 					{
 						UWARN("Detected long delay (%d sec, stamps = %f vs %f). Waiting a maximum of 10 seconds.",
@@ -390,14 +404,14 @@ SensorData DBReader::getNextData(CameraInfo * info)
 					}
 
 					// Add precision at the cost of a small overhead
-					while(_timer.getElapsedTime() < (stamp-_previousStamp)-0.000001)
+					while(_timer.getElapsedTime() < (stamp-_previousStamp)/ratio-0.000001)
 					{
 						//
 					}
 
 					double slept = _timer.getElapsedTime();
 					_timer.start();
-					UDEBUG("slept=%fs vs target=%fs", slept, stamp-_previousStamp);
+					UDEBUG("slept=%fs vs target=%fs (ratio=%f)", slept, (stamp-_previousStamp)/ratio, ratio);
 				}
 				_previousStamp = stamp;
 				_previousMapID = mapId;
@@ -438,6 +452,10 @@ SensorData DBReader::getNextData(CameraInfo * info)
 			data.setId(seq);
 			data.setStamp(stamp);
 			data.setGroundTruth(groundTruth);
+			if(globalPose.isNull())
+			{
+				data.setGlobalPose(globalPose, globalPoseCov);
+			}
 			data.setGPS(gps);
 			data.setEnvSensors(sensors);
 			UDEBUG("Laser=%d RGB/Left=%d Depth/Right=%d, UserData=%d",

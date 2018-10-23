@@ -2300,7 +2300,7 @@ bool DBDriverSqlite3::getNodeInfoQuery(int signatureId,
 								int sensorsNum = (dataSize/sizeof(double))/3;
 								for(int i=0; i<sensorsNum;++i)
 								{
-									EnvSensor::Type type = (EnvSensor::Type)dataDouble[i*3];
+									EnvSensor::Type type = (EnvSensor::Type)(int)dataDouble[i*3];
 									sensors.insert(std::make_pair(type, EnvSensor(type, dataDouble[i*3+1], dataDouble[i*3+2])));
 								}
 							}
@@ -2844,7 +2844,7 @@ void DBDriverSqlite3::loadSignaturesQuery(const std::list<int> & ids, std::list<
 									int sensorsNum = (dataSize/sizeof(double))/3;
 									for(int i=0; i<sensorsNum;++i)
 									{
-										EnvSensor::Type type = (EnvSensor::Type)dataDouble[i*3];
+										EnvSensor::Type type = (EnvSensor::Type)(int)dataDouble[i*3];
 										sensors.insert(std::make_pair(type, EnvSensor(type, dataDouble[i*3+1], dataDouble[i*3+2])));
 									}
 								}
