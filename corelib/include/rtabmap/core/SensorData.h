@@ -33,11 +33,12 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/CameraModel.h>
 #include <rtabmap/core/StereoCameraModel.h>
 #include <rtabmap/core/Transform.h>
-#include <rtabmap/core/GeodeticCoords.h>
 #include <opencv2/core/core.hpp>
 #include <opencv2/features2d/features2d.hpp>
 #include <rtabmap/core/LaserScan.h>
 #include <rtabmap/core/IMU.h>
+#include <rtabmap/core/GPS.h>
+#include <rtabmap/core/EnvSensor.h>
 
 namespace rtabmap
 {
@@ -235,17 +236,15 @@ public:
 	const Transform & globalPose() const {return globalPose_;}
 	const cv::Mat & globalPoseCovariance() const {return globalPoseCovariance_;}
 
-	void setGPS(const GPS & gps)
-	{
-		gps_ = gps;
-	}
+	void setGPS(const GPS & gps) {gps_ = gps;}
 	const GPS & gps() const {return gps_;}
 
-	void setIMU(const IMU & imu)
-	{
-		imu_ = imu;
-	}
+	void setIMU(const IMU & imu) {imu_ = imu; }
 	const IMU & imu() const {return imu_;}
+
+	void setEnvSensors(const EnvSensors & sensors) {_envSensors = sensors;}
+	void addEnvSensor(const EnvSensor & sensor) {_envSensors.insert(std::make_pair(sensor.type(), sensor));}
+	const EnvSensors & envSensors() const {return _envSensors;}
 
 	long getMemoryUsed() const; // Return memory usage in Bytes
 	void clearCompressedData() {_imageCompressed=cv::Mat(); _depthOrRightCompressed=cv::Mat(); _laserScanCompressed.clear(); _userDataCompressed=cv::Mat();}
@@ -280,6 +279,12 @@ private:
 	cv::Mat _emptyCellsRaw;
 	float _cellSize;
 	cv::Point3f _viewPoint;
+
+	// environmental sensors
+	EnvSensors _envSensors;
+
+	// tags
+	std::map<int, TransformStamped> _tags;
 
 	// features
 	std::vector<cv::KeyPoint> _keypoints;

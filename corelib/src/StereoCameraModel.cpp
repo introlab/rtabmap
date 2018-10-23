@@ -26,6 +26,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 #include <rtabmap/core/StereoCameraModel.h>
+#include <rtabmap/core/Version.h>
 #include <rtabmap/utilite/ULogger.h>
 #include <rtabmap/utilite/UDirectory.h>
 #include <rtabmap/utilite/UFile.h>
@@ -356,6 +357,141 @@ bool StereoCameraModel::saveStereoTransform(const std::string & directory) const
 		UERROR("Failed saving stereo extrinsics (they are null).");
 	}
 	return false;
+}
+
+std::vector<unsigned char> StereoCameraModel::serialize() const
+{
+	std::vector<unsigned char> leftData = left_.serialize();
+	std::vector<unsigned char> rightData = right_.serialize();
+
+	const int headerSize = 10;
+	int header[headerSize] = {
+			RTABMAP_VERSION_MAJOR, RTABMAP_VERSION_MINOR, RTABMAP_VERSION_PATCH, // 0,1,2
+			1, //stereo                                                          // 3
+			(int)R_.total(), (int)T_.total(), (int)E_.total(), (int)F_.total(),  // 4,5,6,7
+			(int)leftData.size(), (int)rightData.size()};                        // 8,9
+	UDEBUG("Header: %d %d %d %d %d %d %d %d %d %d", header[0],header[1],header[2],header[3],header[4],header[5],header[6],header[7],header[8],header[9]);
+	std::vector<unsigned char> data(
+			sizeof(int)*headerSize +
+			sizeof(double)*(R_.total()+T_.total()+E_.total()+F_.total()) +
+			leftData.size() + rightData.size());
+	memcpy(data.data(), header, sizeof(int)*headerSize);
+	int index = sizeof(int)*headerSize;
+	if(!R_.empty())
+	{
+		memcpy(data.data()+index, R_.data, sizeof(double)*(R_.total()));
+		index+=sizeof(double)*(R_.total());
+	}
+	if(!T_.empty())
+	{
+		memcpy(data.data()+index, T_.data, sizeof(double)*(T_.total()));
+		index+=sizeof(double)*(T_.total());
+	}
+	if(!E_.empty())
+	{
+		memcpy(data.data()+index, E_.data, sizeof(double)*(E_.total()));
+		index+=sizeof(double)*(E_.total());
+	}
+	if(!F_.empty())
+	{
+		memcpy(data.data()+index, F_.data, sizeof(double)*(F_.total()));
+		index+=sizeof(double)*(F_.total());
+	}
+	if(leftData.size())
+	{
+		memcpy(data.data()+index, leftData.data(), leftData.size());
+		index+=leftData.size();
+	}
+	if(rightData.size())
+	{
+		memcpy(data.data()+index, rightData.data(), rightData.size());
+		index+=rightData.size();
+	}
+	return data;
+}
+
+unsigned int StereoCameraModel::deserialize(const std::vector<unsigned char>& data)
+{
+	return deserialize(data.data(), data.size());
+}
+unsigned int StereoCameraModel::deserialize(const unsigned char * data, unsigned int dataSize)
+{
+	*this = StereoCameraModel();
+	int headerSize = 10;
+	if(dataSize >= sizeof(int)*headerSize)
+	{
+		int iR = 4;
+		int iT = 5;
+		int iE = 6;
+		int iF = 7;
+		int iLeft = 8;
+		int iRight = 9;
+		const int * header = (const int *)data;
+		UDEBUG("Header: %d %d %d %d %d %d %d %d %d %d", header[0],header[1],header[2],header[3],header[4],header[5],header[6],header[7],header[8],header[9]);
+		int type = header[3];
+		if(type==1)
+		{
+			unsigned int requiredDataSize = sizeof(int)*headerSize +
+					sizeof(double)*(header[iR]+header[iT]+header[iE]+header[iF]) +
+					header[iLeft] + header[iRight];
+			UASSERT_MSG(dataSize >= requiredDataSize,
+					uFormat("dataSize=%d != required=%d (header: version %d.%d.%d type=%d R=%d T=%d E=%d F=%d Left=%d Right=%d)",
+							dataSize,
+							requiredDataSize,
+							header[0], header[1], header[2], header[3],
+							header[iR], header[iT], header[iE],header[iF], header[iLeft], header[iRight]).c_str());
+
+			unsigned int index = sizeof(int)*headerSize;
+
+			if(header[iR] != 0)
+			{
+				UASSERT(header[iR] == 9);
+				R_ = cv::Mat(3, 3, CV_64FC1, (void*)(data+index)).clone();
+				index+=sizeof(double)*(R_.total());
+			}
+
+			if(header[iT] != 0)
+			{
+				UASSERT(header[iT] == 3);
+				T_ = cv::Mat(3, 1, CV_64FC1, (void*)(data+index)).clone();
+				index+=sizeof(double)*(T_.total());
+			}
+
+			if(header[iE] != 0)
+			{
+				UASSERT(header[iE] == 9);
+				E_ = cv::Mat(3, 3, CV_64FC1, (void*)(data+index)).clone();
+				index+=sizeof(double)*(E_.total());
+			}
+
+			if(header[iF] != 0)
+			{
+				UASSERT(header[iF] == 9);
+				F_ = cv::Mat(3, 3, CV_64FC1, (void*)(data+index)).clone();
+				index+=sizeof(double)*(F_.total());
+			}
+
+			if(header[iLeft] != 0)
+			{
+				index += left_.deserialize((data+index), header[iLeft]);
+			}
+
+			if(header[iRight] != 0)
+			{
+				index += right_.deserialize((data+index), header[iRight]);
+			}
+
+			UASSERT(index <= dataSize);
+
+			return index;
+		}
+		else
+		{
+			UERROR("Serialized calibration is not stereo (type=%d), use the appropriate class matching the type to deserialize.", type);
+		}
+	}
+	UERROR("Wrong serialized calibration data format detected (size in bytes=%d)! Cannot deserialize the data.", (int)dataSize);
+	return 0;
 }
 
 void StereoCameraModel::scale(double scale)

@@ -268,7 +268,8 @@ SensorData DBReader::captureImage(CameraInfo * info)
 						Transform localTransform, pose, groundTruth;
 						std::vector<float> velocity;
 						GPS gps;
-						_dbDriver->getNodeInfo(*_currentId, pose, mapId, weight, label, stamp, groundTruth, velocity, gps);
+						EnvSensors sensors;
+						_dbDriver->getNodeInfo(*_currentId, pose, mapId, weight, label, stamp, groundTruth, velocity, gps, sensors);
 						if(previousStamp && stamp && stamp > previousStamp)
 						{
 							delay = stamp - previousStamp;
@@ -323,7 +324,8 @@ SensorData DBReader::getNextData(CameraInfo * info)
 			Transform groundTruth;
 			std::vector<float> velocity;
 			GPS gps;
-			_dbDriver->getNodeInfo(*_currentId, pose, mapId, weight, label, stamp, groundTruth, velocity, gps);
+			EnvSensors sensors;
+			_dbDriver->getNodeInfo(*_currentId, pose, mapId, weight, label, stamp, groundTruth, velocity, gps, sensors);
 
 			cv::Mat infMatrix = cv::Mat::eye(6,6,CV_64FC1);
 			if(!_odometryIgnored)
@@ -437,6 +439,7 @@ SensorData DBReader::getNextData(CameraInfo * info)
 			data.setStamp(stamp);
 			data.setGroundTruth(groundTruth);
 			data.setGPS(gps);
+			data.setEnvSensors(sensors);
 			UDEBUG("Laser=%d RGB/Left=%d Depth/Right=%d, UserData=%d",
 					data.laserScanRaw().isEmpty()?0:1,
 					data.imageRaw().empty()?0:1,

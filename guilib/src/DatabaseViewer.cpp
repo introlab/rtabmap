@@ -1178,6 +1178,7 @@ void DatabaseViewer::exportDatabase()
 			std::map<int, double> stamps;
 			std::map<int, Transform> groundTruths;
 			std::map<int, GPS> gpsValues;
+			std::map<int, EnvSensors> sensorsValues;
 			for(int i=0; i<ids_.size(); i+=1+framesIgnored)
 			{
 				Transform odomPose, groundTruth;
@@ -1187,7 +1188,8 @@ void DatabaseViewer::exportDatabase()
 				double stamp = 0;
 				std::vector<float> velocity;
 				GPS gps;
-				if(dbDriver_->getNodeInfo(ids_[i], odomPose, mapId, weight, label, stamp, groundTruth, velocity, gps))
+				EnvSensors sensors;
+				if(dbDriver_->getNodeInfo(ids_[i], odomPose, mapId, weight, label, stamp, groundTruth, velocity, gps, sensors))
 				{
 					if(frameRate == 0 ||
 					   previousStamp == 0 ||
@@ -1210,6 +1212,10 @@ void DatabaseViewer::exportDatabase()
 							if(gps.stamp() > 0.0)
 							{
 								gpsValues.insert(std::make_pair(ids_[i], gps));
+							}
+							if(sensors.size())
+							{
+								sensorsValues.insert(std::make_pair(ids_[i], sensors));
 							}
 						}
 					}
@@ -1288,6 +1294,10 @@ void DatabaseViewer::exportDatabase()
 					if(gpsValues.find(id)!=gpsValues.end())
 					{
 						sensorData.setGPS(gpsValues.at(id));
+					}
+					if(sensorsValues.find(id)!=sensorsValues.end())
+					{
+						sensorData.setEnvSensors(sensorsValues.at(id));
 					}
 
 					recorder.addData(sensorData, dialog.isOdomExported()?poses.at(id):Transform(), covariance);
@@ -1527,7 +1537,8 @@ void DatabaseViewer::updateIds()
 		int mapId;
 		std::vector<float> v;
 		GPS gps;
-		dbDriver_->getNodeInfo(ids_[i], p, mapId, w, l, s, g, v, gps);
+		EnvSensors sensors;
+		dbDriver_->getNodeInfo(ids_[i], p, mapId, w, l, s, g, v, gps, sensors);
 		mapIds_.insert(std::make_pair(ids_[i], mapId));
 		weights_.insert(std::make_pair(ids_[i], w));
 		if(wmStates.find(ids_[i]) != wmStates.end())
@@ -2059,7 +2070,8 @@ void DatabaseViewer::exportPoses(int format)
 				int mapId;
 				std::vector<float> v;
 				GPS gps;
-				dbDriver_->getNodeInfo(iter->first, p, mapId, w, l, stamp, g, v, gps);
+				EnvSensors sensors;
+				dbDriver_->getNodeInfo(iter->first, p, mapId, w, l, stamp, g, v, gps, sensors);
 				values.insert(std::make_pair(iter->first, GPS(stamp, coord.longitude(), coord.latitude(), coord.altitude(), 0, 0)));
 			}
 
@@ -2265,7 +2277,8 @@ void DatabaseViewer::exportPoses(int format)
 				int mapId;
 				std::vector<float> v;
 				GPS gps;
-				if(dbDriver_->getNodeInfo(iter->first, p, mapId, w, l, stamp, g, v, gps))
+				EnvSensors sensors;
+				if(dbDriver_->getNodeInfo(iter->first, p, mapId, w, l, stamp, g, v, gps, sensors))
 				{
 					stamps.insert(std::make_pair(iter->first, stamp));
 				}
@@ -2886,7 +2899,8 @@ void DatabaseViewer::regenerateLocalMaps()
 		QString msg;
 		std::vector<float> velocity;
 		GPS gps;
-		if(dbDriver_->getNodeInfo(data.id(), odomPose, mapId, weight, label, stamp, groundTruth, velocity, gps))
+		EnvSensors sensors;
+		if(dbDriver_->getNodeInfo(data.id(), odomPose, mapId, weight, label, stamp, groundTruth, velocity, gps, sensors))
 		{
 			Signature s = data;
 			s.setPose(odomPose);
@@ -3009,7 +3023,8 @@ void DatabaseViewer::regenerateCurrentLocalMaps()
 		QString msg;
 		std::vector<float> velocity;
 		GPS gps;
-		if(dbDriver_->getNodeInfo(data.id(), odomPose, mapId, weight, label, stamp, groundTruth, velocity, gps))
+		EnvSensors sensors;
+		if(dbDriver_->getNodeInfo(data.id(), odomPose, mapId, weight, label, stamp, groundTruth, velocity, gps, sensors))
 		{
 			Signature s = data;
 			s.setPose(odomPose);
@@ -3444,7 +3459,9 @@ void DatabaseViewer::sliderAValueChanged(int value)
 			ui_->label_poseA,
 			ui_->label_velA,
 			ui_->label_calibA,
+			ui_->label_scanA,
 			ui_->label_gpsA,
+			ui_->label_sensorsA,
 			true);
 }
 
@@ -3463,7 +3480,9 @@ void DatabaseViewer::sliderBValueChanged(int value)
 			ui_->label_poseB,
 			ui_->label_velB,
 			ui_->label_calibB,
+			ui_->label_scanB,
 			ui_->label_gpsB,
+			ui_->label_sensorsB,
 			true);
 }
 
@@ -3480,7 +3499,9 @@ void DatabaseViewer::update(int value,
 						QLabel * labelPose,
 						QLabel * labelVelocity,
 						QLabel * labelCalib,
+						QLabel * labelScan,
 						QLabel * labelGps,
+						QLabel * labelSensors,
 						bool updateConstraintView)
 {
 	UTimer timer;
@@ -3494,7 +3515,9 @@ void DatabaseViewer::update(int value,
 	labelVelocity->clear();
 	stamp->clear();
 	labelCalib->clear();
+	labelScan ->clear();
 	labelGps->clear();
+	labelSensors->clear();
 	QRectF rect;
 	if(value >= 0 && value < ids_.size())
 	{
@@ -3545,7 +3568,8 @@ void DatabaseViewer::update(int value,
 				double s;
 				std::vector<float> v;
 				GPS gps;
-				dbDriver_->getNodeInfo(id, odomPose, mapId, w, l, s, g, v, gps);
+				EnvSensors sensors;
+				dbDriver_->getNodeInfo(id, odomPose, mapId, w, l, s, g, v, gps, sensors);
 
 				weight->setNum(w);
 				label->setText(l.c_str());
@@ -3566,8 +3590,56 @@ void DatabaseViewer::update(int value,
 					labelGps->setText(QString("stamp=%1 longitude=%2 latitude=%3 altitude=%4m error=%5m bearing=%6deg").arg(QString::number(gps.stamp(), 'f')).arg(gps.longitude()).arg(gps.latitude()).arg(gps.altitude()).arg(gps.error()).arg(gps.bearing()));
 					labelGps->setToolTip(QDateTime::fromMSecsSinceEpoch(gps.stamp()*1000.0).toString("dd.MM.yyyy hh:mm:ss.zzz"));
 				}
+				if(sensors.size())
+				{
+					QString sensorsStr;
+					QString tooltipStr;
+					for(EnvSensors::iterator iter=sensors.begin(); iter!=sensors.end(); ++iter)
+					{
+						if(iter != sensors.begin())
+						{
+							sensorsStr += " | ";
+							tooltipStr += " | ";
+						}
+
+						if(iter->first == EnvSensor::kWifiSignalStrength)
+						{
+							sensorsStr += uFormat("%.1f dbm", iter->second.value()).c_str();
+							tooltipStr += "Wifi signal strength";
+						}
+						else if(iter->first == EnvSensor::kAmbientTemperature)
+						{
+							sensorsStr += uFormat("%.1f \u00B0C", iter->second.value()).c_str();
+							tooltipStr += "Ambient Temperature";
+						}
+						else if(iter->first == EnvSensor::kAmbientAirPressure)
+						{
+							sensorsStr += uFormat("%.1f hPa", iter->second.value()).c_str();
+							tooltipStr += "Ambient Air Pressure";
+						}
+						else if(iter->first == EnvSensor::kAmbientLight)
+						{
+							sensorsStr += uFormat("%.0f lx", iter->second.value()).c_str();
+							tooltipStr += "Ambient Light";
+						}
+						else if(iter->first == EnvSensor::kAmbientRelativeHumidity)
+						{
+							sensorsStr += uFormat("%.0f %%", iter->second.value()).c_str();
+							tooltipStr += "Ambient Relative Humidity";
+						}
+						else
+						{
+							sensorsStr += uFormat("%.2f", iter->second.value()).c_str();
+							tooltipStr += QString("Type %1").arg((int)iter->first);
+						}
+
+					}
+					labelSensors->setText(sensorsStr);
+					labelSensors->setToolTip(tooltipStr);
+				}
 				if(data.cameraModels().size() || data.stereoCameraModel().isValidForProjection())
 				{
+					std::stringstream calibrationDetails;
 					if(data.cameraModels().size())
 					{
 						if(!data.depthRaw().empty() && data.depthRaw().cols!=data.imageRaw().cols && data.imageRaw().cols)
@@ -3596,6 +3668,17 @@ void DatabaseViewer::update(int value,
 									.arg(data.cameraModels()[0].cy())
 									.arg(data.cameraModels()[0].localTransform().prettyPrint().c_str()));
 						}
+
+						for(unsigned int i=0; i<data.cameraModels().size();++i)
+						{
+							if(i!=0) calibrationDetails << std::endl;
+							calibrationDetails << "Id: " << i << " Size=" << data.cameraModels()[i].imageWidth() << "x" << data.cameraModels()[i].imageWidth() << std::endl;
+							if( data.cameraModels()[i].K_raw().total()) calibrationDetails << "K=" << data.cameraModels()[i].K_raw() << std::endl;
+							if( data.cameraModels()[i].D_raw().total()) calibrationDetails << "D=" << data.cameraModels()[i].D_raw() << std::endl;
+							if( data.cameraModels()[i].R().total()) calibrationDetails << "R=" << data.cameraModels()[i].R() << std::endl;
+							if( data.cameraModels()[i].P().total()) calibrationDetails << "P=" << data.cameraModels()[i].P() << std::endl;
+						}
+
 					}
 					else
 					{
@@ -3609,12 +3692,47 @@ void DatabaseViewer::update(int value,
 									.arg(data.stereoCameraModel().left().cy())
 									.arg(data.stereoCameraModel().baseline())
 									.arg(data.stereoCameraModel().localTransform().prettyPrint().c_str()));
+
+						calibrationDetails << "Left:" << " Size=" << data.stereoCameraModel().left().imageWidth() << "x" << data.stereoCameraModel().left().imageWidth() << std::endl;
+						if( data.stereoCameraModel().left().K_raw().total()) calibrationDetails << "K=" << data.stereoCameraModel().left().K_raw() << std::endl;
+						if( data.stereoCameraModel().left().D_raw().total()) calibrationDetails << "D=" << data.stereoCameraModel().left().D_raw() << std::endl;
+						if( data.stereoCameraModel().left().R().total()) calibrationDetails << "R=" << data.stereoCameraModel().left().R() << std::endl;
+						if( data.stereoCameraModel().left().P().total()) calibrationDetails << "P=" << data.stereoCameraModel().left().P() << std::endl;
+						calibrationDetails << std::endl;
+						calibrationDetails << "Right:" << " Size=" << data.stereoCameraModel().right().imageWidth() << "x" << data.stereoCameraModel().right().imageWidth() << std::endl;
+						if( data.stereoCameraModel().right().K_raw().total()) calibrationDetails << "K=" << data.stereoCameraModel().right().K_raw() << std::endl;
+						if( data.stereoCameraModel().right().D_raw().total()) calibrationDetails << "D=" << data.stereoCameraModel().right().D_raw() << std::endl;
+						if( data.stereoCameraModel().right().R().total()) calibrationDetails << "R=" << data.stereoCameraModel().right().R() << std::endl;
+						if( data.stereoCameraModel().right().P().total()) calibrationDetails << "P=" << data.stereoCameraModel().right().P() << std::endl;
+						calibrationDetails << std::endl;
+						if( data.stereoCameraModel().R().total()) calibrationDetails << "R=" << data.stereoCameraModel().R() << std::endl;
+						if( data.stereoCameraModel().T().total()) calibrationDetails << "T=" << data.stereoCameraModel().T() << std::endl;
+						if( data.stereoCameraModel().F().total()) calibrationDetails << "F=" << data.stereoCameraModel().F() << std::endl;
+						if( data.stereoCameraModel().E().total()) calibrationDetails << "E=" << data.stereoCameraModel().E() << std::endl;
 					}
+					labelCalib->setToolTip(calibrationDetails.str().c_str());
 
 				}
 				else
 				{
 					labelCalib->setText("NA");
+				}
+
+				if(data.laserScanRaw().size())
+				{
+					labelScan->setText(tr("Format=%1 Points=%2 [max=%3] Range=[%4->%5 m] Angle=[%6->%7 rad inc=%8] Has [Color=%9 2D=%10 Normals=%11 Intensity=%12]")
+							.arg(data.laserScanRaw().format())
+							.arg(data.laserScanRaw().size())
+							.arg(data.laserScanRaw().maxPoints())
+							.arg(data.laserScanRaw().rangeMin())
+							.arg(data.laserScanRaw().rangeMax())
+							.arg(data.laserScanRaw().angleMin())
+							.arg(data.laserScanRaw().angleMax())
+							.arg(data.laserScanRaw().angleIncrement())
+							.arg(data.laserScanRaw().hasRGB()?1:0)
+							.arg(data.laserScanRaw().is2d()?1:0)
+							.arg(data.laserScanRaw().hasNormals()?1:0)
+							.arg(data.laserScanRaw().hasIntensity()?1:0));
 				}
 
 				//stereo
@@ -4576,7 +4694,9 @@ void DatabaseViewer::updateConstraintView(
 					ui_->label_poseA,
 					ui_->label_velA,
 					ui_->label_calibA,
+					ui_->label_scanA,
 					ui_->label_gpsA,
+					ui_->label_sensorsA,
 					false); // don't update constraints view!
 		this->update(idToIndex_.value(link.to()),
 					ui_->label_indexB,
@@ -4591,7 +4711,9 @@ void DatabaseViewer::updateConstraintView(
 					ui_->label_poseB,
 					ui_->label_velB,
 					ui_->label_calibB,
+					ui_->label_scanB,
 					ui_->label_gpsB,
+					ui_->label_sensorsB,
 					false); // don't update constraints view!
 	}
 
@@ -4633,7 +4755,8 @@ void DatabaseViewer::updateConstraintView(
 			Transform p,g;
 			std::vector<float> v;
 			GPS gps;
-			dbDriver_->getNodeInfo(link.from(), p, m, w, l, s, g, v, gps);
+			EnvSensors sensors;
+			dbDriver_->getNodeInfo(link.from(), p, m, w, l, s, g, v, gps, sensors);
 			if(!p.isNull())
 			{
 				// keep just the z and roll/pitch rotation
@@ -6054,7 +6177,7 @@ void DatabaseViewer::refineConstraint(int from, int to, bool silent)
 		assembledData.setLaserScanRaw(LaserScan(
 				assembledScan,
 				fromScan.maxPoints()?fromScan.maxPoints():maxPoints,
-				fromScan.maxRange(),
+				fromScan.rangeMax(),
 				fromScan.format(),
 				fromScan.is2d()?Transform(0,0,fromScan.localTransform().z(),0,0,0):Transform::getIdentity()));
 

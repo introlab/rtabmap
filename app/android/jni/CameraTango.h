@@ -92,6 +92,7 @@ public:
 	void setRawScanPublished(bool enabled) {rawScanPublished_ = enabled;}
 	void setScreenRotation(TangoSupportRotation colorCameraToDisplayRotation) {colorCameraToDisplayRotation_ = colorCameraToDisplayRotation;}
 	void setGPS(const GPS & gps);
+	void addEnvSensor(int type, float value);
 
 	void cloudReceived(const cv::Mat & cloud, double timestamp);
 	void rgbReceived(const cv::Mat & tangoImage, int type, double timestamp);
@@ -130,6 +131,7 @@ private:
 	cv::Mat fisheyeRectifyMapX_;
 	cv::Mat fisheyeRectifyMapY_;
 	GPS lastKnownGPS_;
+	EnvSensors lastEnvSensors_;
 	Transform originOffset_;
 	bool originUpdate_;
 };

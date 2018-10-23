@@ -157,8 +157,10 @@ private:
 				QLabel * labelMapId,
 				QLabel * labelPose,
 				QLabel * labelVelocity,
-				QLabel * labeCalib,
+				QLabel * labelCalib,
+				QLabel * labelScan,
 				QLabel * labelGps,
+				QLabel * labelSensors,
 				bool updateConstraintView);
 	void updateStereo(const SensorData * data);
 	void updateWordsMatching();

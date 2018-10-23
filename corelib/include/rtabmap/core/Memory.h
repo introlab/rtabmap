@@ -186,6 +186,7 @@ public:
 			Transform & groundTruth,
 			std::vector<float> & velocity,
 			GPS & gps,
+			EnvSensors & sensors,
 			bool lookInDatabase = false) const;
 	cv::Mat getImageCompressed(int signatureId) const;
 	SensorData getNodeData(int nodeId, bool uncompressedData = false) const;

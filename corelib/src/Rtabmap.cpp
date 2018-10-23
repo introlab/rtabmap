@@ -824,7 +824,8 @@ void Rtabmap::exportPoses(const std::string & path, bool optimized, bool global,
 				double stamp = 0.0;
 				std::vector<float> v;
 				GPS gps;
-				_memory->getNodeInfo(iter->first, o, m, w, l, stamp, g, v, gps, true);
+				EnvSensors sensors;
+				_memory->getNodeInfo(iter->first, o, m, w, l, stamp, g, v, gps, sensors, true);
 				stamps.insert(std::make_pair(iter->first, stamp));
 			}
 		}
@@ -2928,7 +2929,8 @@ bool Rtabmap::process(
 			Transform groundTruth;
 			std::vector<float> velocity;
 			GPS gps;
-			_memory->getNodeInfo(iter->first, odomPoseLocal, mapId, weight, label, stamp, groundTruth, velocity, gps, false);
+			EnvSensors sensors;
+			_memory->getNodeInfo(iter->first, odomPoseLocal, mapId, weight, label, stamp, groundTruth, velocity, gps, sensors, false);
 			signatures.insert(std::make_pair(iter->first,
 					Signature(iter->first,
 							mapId,
@@ -2942,6 +2944,7 @@ bool Rtabmap::process(
 				signatures.at(iter->first).setVelocity(velocity[0], velocity[1], velocity[2], velocity[3], velocity[4], velocity[5]);
 			}
 			signatures.at(iter->first).sensorData().setGPS(gps);
+			signatures.at(iter->first).sensorData().setEnvSensors(sensors);
 			if(_computeRMSE && !groundTruth.isNull())
 			{
 				groundTruths.insert(std::make_pair(iter->first, groundTruth));
@@ -3801,7 +3804,8 @@ void Rtabmap::get3DMap(
 			Transform groundTruth;
 			std::vector<float> velocity;
 			GPS gps;
-			_memory->getNodeInfo(*iter, odomPoseLocal, mapId, weight, label, stamp, groundTruth, velocity, gps, true);
+			EnvSensors sensors;
+			_memory->getNodeInfo(*iter, odomPoseLocal, mapId, weight, label, stamp, groundTruth, velocity, gps, sensors, true);
 			SensorData data = _memory->getNodeData(*iter);
 			data.setId(*iter);
 			std::multimap<int, cv::KeyPoint> words;
@@ -3825,6 +3829,7 @@ void Rtabmap::get3DMap(
 				signatures.at(*iter).setVelocity(velocity[0], velocity[1], velocity[2], velocity[3], velocity[4], velocity[5]);
 			}
 			signatures.at(*iter).sensorData().setGPS(gps);
+			signatures.at(*iter).sensorData().setEnvSensors(sensors);
 		}
 	}
 	else if(_memory && (_memory->getStMem().size() || _memory->getWorkingMem().size() > 1))
@@ -3879,7 +3884,8 @@ void Rtabmap::getGraph(
 				Transform groundTruth;
 				std::vector<float> velocity;
 				GPS gps;
-				_memory->getNodeInfo(iter->first, odomPoseLocal, mapId, weight, label, stamp, groundTruth, velocity, gps, global);
+				EnvSensors sensors;
+				_memory->getNodeInfo(iter->first, odomPoseLocal, mapId, weight, label, stamp, groundTruth, velocity, gps, sensors, global);
 				signatures->insert(std::make_pair(iter->first,
 						Signature(iter->first,
 							mapId,
@@ -3908,6 +3914,7 @@ void Rtabmap::getGraph(
 					signatures->at(iter->first).setVelocity(velocity[0], velocity[1], velocity[2], velocity[3], velocity[4], velocity[5]);
 				}
 				signatures->at(iter->first).sensorData().setGPS(gps);
+				signatures->at(iter->first).sensorData().setEnvSensors(sensors);
 			}
 		}
 	}

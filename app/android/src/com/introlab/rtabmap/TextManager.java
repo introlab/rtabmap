@@ -50,7 +50,7 @@ public class TextManager {
 	public static final int RI_TEXT_TEXTURE_SIZE = 512; // 512
 	public static final float RI_TEXT_HEIGHT_BASE = 32.0f;
 	public static final char RI_TEXT_START = ' ';
-	public static final char RI_TEXT_STOP = '~'+1;
+	public static final char RI_TEXT_STOP = '\u00B0'+1;
 	
 	public float getMaxTextHeight() {return mTextHeight;}
 	

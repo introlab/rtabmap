@@ -358,6 +358,15 @@ Java_com_introlab_rtabmap_RTABMapLib_setGPS(
 }
 
 JNIEXPORT void JNICALL
+Java_com_introlab_rtabmap_RTABMapLib_addEnvSensor(
+		JNIEnv*, jobject,
+		int type,
+		float value)
+{
+	return app.addEnvSensor(type, value);
+}
+
+JNIEXPORT void JNICALL
 Java_com_introlab_rtabmap_RTABMapLib_resetMapping(
 		JNIEnv*, jobject)
 {

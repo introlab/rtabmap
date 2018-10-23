@@ -438,6 +438,7 @@ void CameraTango::close()
 	fisheyeRectifyMapX_ = cv::Mat();
 	fisheyeRectifyMapY_ = cv::Mat();
 	lastKnownGPS_ = GPS();
+	lastEnvSensors_.clear();
 	originOffset_ = Transform();
 	originUpdate_ = false;
 }
@@ -543,6 +544,11 @@ std::string CameraTango::getSerial() const
 void CameraTango::setGPS(const GPS & gps)
 {
 	lastKnownGPS_ = gps;
+}
+
+void CameraTango::addEnvSensor(int type, float value)
+{
+	lastEnvSensors_.insert(std::make_pair((EnvSensor::Type)type, EnvSensor((EnvSensor::Type)type, value)));
 }
 
 rtabmap::Transform CameraTango::tangoPoseToTransform(const TangoPoseData * tangoPose) const
@@ -906,6 +912,12 @@ SensorData CameraTango::captureImage(CameraInfo * info)
 			else if(lastKnownGPS_.stamp()>0.0)
 			{
 				LOGD("GPS too old (current time=%f, gps time = %f)", rgbStamp, lastKnownGPS_.stamp());
+			}
+
+			if(lastEnvSensors_.size())
+			{
+				data.setEnvSensors(lastEnvSensors_);
+				lastEnvSensors_.clear();
 			}
 		}
 		else

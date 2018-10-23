@@ -130,7 +130,27 @@ LaserScan commonFiltering(
 			}
 			int previousSize = scan.size();
 			int scanMaxPtsTmp = scan.maxPoints();
-			scan = LaserScan(cv::Mat(tmp, cv::Range::all(), cv::Range(0, oi)), scanMaxPtsTmp/downsamplingStep, rangeMax>0.0f&&rangeMax<scan.maxRange()?rangeMax:scan.maxRange(), scan.format(), scan.localTransform());
+			if(scan.angleIncrement() > 0.0f)
+			{
+				scan = LaserScan(
+						cv::Mat(tmp, cv::Range::all(), cv::Range(0, oi)),
+						scan.format(),
+						rangeMin>0.0f&&rangeMin>scan.rangeMin()?rangeMin:scan.rangeMin(),
+						rangeMax>0.0f&&rangeMax<scan.rangeMax()?rangeMax:scan.rangeMax(),
+						scan.angleMin(),
+						scan.angleMax(),
+						scan.angleIncrement() * (float)downsamplingStep,
+						scan.localTransform());
+			}
+			else
+			{
+				scan = LaserScan(
+						cv::Mat(tmp, cv::Range::all(), cv::Range(0, oi)),
+						scanMaxPtsTmp/downsamplingStep,
+						rangeMax>0.0f&&rangeMax<scan.rangeMax()?rangeMax:scan.rangeMax(),
+						scan.format(),
+						scan.localTransform());
+			}
 			UDEBUG("Downsampling scan (step=%d): %d -> %d (scanMaxPts=%d->%d)", downsamplingStep, previousSize, scan.size(), scanMaxPtsTmp, scan.maxPoints());
 		}
 
@@ -154,16 +174,16 @@ LaserScan commonFiltering(
 					if(cloud->size() && (normalK > 0 || normalRadius>0.0f))
 					{
 						pcl::PointCloud<pcl::Normal>::Ptr normals = util3d::computeNormals(cloud, normalK, normalRadius);
-						scan = LaserScan(laserScanFromPointCloud(*cloud, *normals), scanMaxPts, scan.maxRange(), LaserScan::kXYZRGBNormal, scan.localTransform());
+						scan = LaserScan(laserScanFromPointCloud(*cloud, *normals), scanMaxPts, scan.rangeMax(), LaserScan::kXYZRGBNormal, scan.localTransform());
 						UDEBUG("Normals computed (k=%d radius=%f)", normalK, normalRadius);
 					}
 					else
 					{
 						if(scan.hasNormals())
 						{
-							UWARN("Voxel filter i applied, but normal parameters are not set and input scan has normals. The returned scan has no normals.");
+							UWARN("Voxel filter is applied, but normal parameters are not set and input scan has normals. The returned scan has no normals.");
 						}
-						scan = LaserScan(laserScanFromPointCloud(*cloud), scanMaxPts, scan.maxRange(), LaserScan::kXYZRGB, scan.localTransform());
+						scan = LaserScan(laserScanFromPointCloud(*cloud), scanMaxPts, scan.rangeMax(), LaserScan::kXYZRGB, scan.localTransform());
 					}
 				}
 			}
@@ -186,12 +206,19 @@ LaserScan commonFiltering(
 						if(scan.is2d())
 						{
 							normals = util3d::computeNormals2D(cloud, normalK, normalRadius);
-							scan = LaserScan(laserScan2dFromPointCloud(*cloud, *normals), scanMaxPts, scan.maxRange(), LaserScan::kXYINormal, scan.localTransform());
+							if(voxelSize == 0.0f && scan.angleIncrement() > 0.0f)
+							{
+								scan = LaserScan(laserScan2dFromPointCloud(*cloud, *normals), LaserScan::kXYINormal, scan.rangeMin(), scan.rangeMax(), scan.angleMin(), scan.angleMax(), scan.angleIncrement(), scan.localTransform());
+							}
+							else
+							{
+								scan = LaserScan(laserScan2dFromPointCloud(*cloud, *normals), scanMaxPts, scan.rangeMax(), LaserScan::kXYINormal, scan.localTransform());
+							}
 						}
 						else
 						{
 							normals = util3d::computeNormals(cloud, normalK, normalRadius);
-							scan = LaserScan(laserScanFromPointCloud(*cloud, *normals), scanMaxPts, scan.maxRange(), LaserScan::kXYZINormal, scan.localTransform());
+							scan = LaserScan(laserScanFromPointCloud(*cloud, *normals), scanMaxPts, scan.rangeMax(), LaserScan::kXYZINormal, scan.localTransform());
 						}
 						UDEBUG("Normals computed (k=%d radius=%f)", normalK, normalRadius);
 					}
@@ -203,11 +230,11 @@ LaserScan commonFiltering(
 						}
 						if(scan.is2d())
 						{
-							scan = LaserScan(laserScan2dFromPointCloud(*cloud), scanMaxPts, scan.maxRange(), LaserScan::kXYI, scan.localTransform());
+							scan = LaserScan(laserScan2dFromPointCloud(*cloud), scanMaxPts, scan.rangeMax(), LaserScan::kXYI, scan.localTransform());
 						}
 						else
 						{
-							scan = LaserScan(laserScanFromPointCloud(*cloud), scanMaxPts, scan.maxRange(), LaserScan::kXYZI, scan.localTransform());
+							scan = LaserScan(laserScanFromPointCloud(*cloud), scanMaxPts, scan.rangeMax(), LaserScan::kXYZI, scan.localTransform());
 						}
 					}
 				}
@@ -231,12 +258,19 @@ LaserScan commonFiltering(
 						if(scan.is2d())
 						{
 							normals = util3d::computeNormals2D(cloud, normalK, normalRadius);
-							scan = LaserScan(laserScan2dFromPointCloud(*cloud, *normals), scanMaxPts, scan.maxRange(), LaserScan::kXYNormal, scan.localTransform());
+							if(voxelSize == 0.0f && scan.angleIncrement() > 0.0f)
+							{
+								scan = LaserScan(laserScan2dFromPointCloud(*cloud, *normals), LaserScan::kXYNormal, scan.rangeMin(), scan.rangeMax(), scan.angleMin(), scan.angleMax(), scan.angleIncrement(), scan.localTransform());
+							}
+							else
+							{
+								scan = LaserScan(laserScan2dFromPointCloud(*cloud, *normals), scanMaxPts, scan.rangeMax(), LaserScan::kXYNormal, scan.localTransform());
+							}
 						}
 						else
 						{
 							normals = util3d::computeNormals(cloud, normalK, normalRadius);
-							scan = LaserScan(laserScanFromPointCloud(*cloud, *normals), scanMaxPts, scan.maxRange(), LaserScan::kXYZNormal, scan.localTransform());
+							scan = LaserScan(laserScanFromPointCloud(*cloud, *normals), scanMaxPts, scan.rangeMax(), LaserScan::kXYZNormal, scan.localTransform());
 						}
 						UDEBUG("Normals computed (k=%d radius=%f)", normalK, normalRadius);
 					}
@@ -248,11 +282,11 @@ LaserScan commonFiltering(
 						}
 						if(scan.is2d())
 						{
-							scan = LaserScan(laserScan2dFromPointCloud(*cloud), scanMaxPts, scan.maxRange(), LaserScan::kXY, scan.localTransform());
+							scan = LaserScan(laserScan2dFromPointCloud(*cloud), scanMaxPts, scan.rangeMax(), LaserScan::kXY, scan.localTransform());
 						}
 						else
 						{
-							scan = LaserScan(laserScanFromPointCloud(*cloud), scanMaxPts, scan.maxRange(), LaserScan::kXYZ, scan.localTransform());
+							scan = LaserScan(laserScanFromPointCloud(*cloud), scanMaxPts, scan.rangeMax(), LaserScan::kXYZ, scan.localTransform());
 						}
 					}
 				}
@@ -307,7 +341,11 @@ LaserScan rangeFiltering(
 				cv::Mat(scan.data(), cv::Range::all(), cv::Range(i,i+1)).copyTo(cv::Mat(output, cv::Range::all(), cv::Range(oi,oi+1)));
 				++oi;
 			}
-			return LaserScan(cv::Mat(output, cv::Range::all(), cv::Range(0, oi)), scan.maxPoints(), scan.maxRange(), scan.format(), scan.localTransform());
+			if(scan.angleIncrement() > 0.0f)
+			{
+				return LaserScan(cv::Mat(output, cv::Range::all(), cv::Range(0, oi)), scan.format(), scan.rangeMin(), scan.rangeMax(), scan.angleMin(), scan.angleMax(), scan.angleIncrement(), scan.localTransform());
+			}
+			return LaserScan(cv::Mat(output, cv::Range::all(), cv::Range(0, oi)), scan.maxPoints(), scan.rangeMax(), scan.format(), scan.localTransform());
 		}
 	}
 
@@ -334,7 +372,11 @@ LaserScan downsample(
 			cv::Mat(scan.data(), cv::Range::all(), cv::Range(i,i+1)).copyTo(cv::Mat(output, cv::Range::all(), cv::Range(oi,oi+1)));
 			++oi;
 		}
-		return LaserScan(output, scan.maxPoints()/step, scan.maxRange(), scan.format(), scan.localTransform());
+		if(scan.angleIncrement() > 0.0f)
+		{
+			return LaserScan(output, scan.format(), scan.rangeMin(), scan.rangeMax(), scan.angleMin(), scan.angleMax(), scan.angleIncrement()*step, scan.localTransform());
+		}
+		return LaserScan(output, scan.maxPoints()/step, scan.rangeMax(), scan.format(), scan.localTransform());
 	}
 }
 template<typename PointT>

@@ -34,7 +34,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <list>
 #include <rtabmap/core/Parameters.h>
 #include <rtabmap/core/Link.h>
-#include <rtabmap/core/GeodeticCoords.h>
+#include <rtabmap/core/GPS.h>
 
 namespace rtabmap {
 class Memory;

@@ -83,7 +83,7 @@ LaserScan transformLaserScan(const LaserScan & laserScan, const Transform & tran
 			}
 		}
 	}
-	return LaserScan(output, laserScan.maxPoints(), laserScan.maxRange(), laserScan.format(), laserScan.localTransform());
+	return LaserScan(output, laserScan.maxPoints(), laserScan.rangeMax(), laserScan.format(), laserScan.localTransform());
 }
 
 pcl::PointCloud<pcl::PointXYZ>::Ptr transformPointCloud(

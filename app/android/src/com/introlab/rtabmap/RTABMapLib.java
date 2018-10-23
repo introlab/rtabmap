@@ -99,6 +99,7 @@ public class RTABMapLib
 			double altitude,  
 			double accuracy,
 			double bearing);
+    public static native void addEnvSensor(int type, float value);
 
     public static native void resetMapping();
     public static native void save(String outputDatabasePath);
