@@ -81,7 +81,11 @@ bool LaserScan::isScanHasIntensity(const Format & format)
 	return format==kXYZI || format==kXYZINormal || format == kXYI || format == kXYINormal;
 }
 
-LaserScan LaserScan::backwardCompatibility(const cv::Mat & oldScanFormat, int maxPoints, int maxRange, const Transform & localTransform)
+LaserScan LaserScan::backwardCompatibility(
+		const cv::Mat & oldScanFormat,
+		int maxPoints,
+		int maxRange,
+		const Transform & localTransform)
 {
 	if(!oldScanFormat.empty())
 	{
@@ -113,11 +117,50 @@ LaserScan LaserScan::backwardCompatibility(const cv::Mat & oldScanFormat, int ma
 	return LaserScan();
 }
 
+LaserScan LaserScan::backwardCompatibility(
+		const cv::Mat & oldScanFormat,
+		float minRange,
+		float maxRange,
+		float angleMin,
+		float angleMax,
+		float angleInc,
+		const Transform & localTransform)
+{
+	if(!oldScanFormat.empty())
+	{
+		if(oldScanFormat.channels() == 2)
+		{
+			return LaserScan(oldScanFormat, kXY, minRange, maxRange, angleMin, angleMax, angleInc, localTransform);
+		}
+		else if(oldScanFormat.channels() == 3)
+		{
+			return LaserScan(oldScanFormat, kXYZ, minRange, maxRange, angleMin, angleMax, angleInc, localTransform);
+		}
+		else if(oldScanFormat.channels() == 4)
+		{
+			return LaserScan(oldScanFormat, kXYZRGB, minRange, maxRange, angleMin, angleMax, angleInc, localTransform);
+		}
+		else if(oldScanFormat.channels() == 5)
+		{
+			return LaserScan(oldScanFormat, kXYNormal, minRange, maxRange, angleMin, angleMax, angleInc, localTransform);
+		}
+		else if(oldScanFormat.channels() == 6)
+		{
+			return LaserScan(oldScanFormat, kXYZNormal, minRange, maxRange, angleMin, angleMax, angleInc, localTransform);
+		}
+		else if(oldScanFormat.channels() == 7)
+		{
+			return LaserScan(oldScanFormat, kXYZRGBNormal, minRange, maxRange, angleMin, angleMax, angleInc, localTransform);
+		}
+	}
+	return LaserScan();
+}
+
 LaserScan::LaserScan() :
 		format_(kUnknown),
 		maxPoints_(0),
-		minRange_(0),
-		maxRange_(0),
+		rangeMin_(0),
+		rangeMax_(0),
 		angleMin_(0),
 		angleMax_(0),
 		angleIncrement_(0),
@@ -134,8 +177,8 @@ LaserScan::LaserScan(
 	data_(data),
 	format_(format),
 	maxPoints_(maxPoints),
-	minRange_(0),
-	maxRange_(maxRange),
+	rangeMin_(0),
+	rangeMax_(maxRange),
 	angleMin_(0),
 	angleMax_(0),
 	angleIncrement_(0),
@@ -149,7 +192,7 @@ LaserScan::LaserScan(
 	{
 		if(format == kUnknown)
 		{
-			*this = backwardCompatibility(data_, maxPoints_, maxRange_, localTransform_);
+			*this = backwardCompatibility(data_, maxPoints_, rangeMax_, localTransform_);
 		}
 		else // verify that format corresponds to expected number of channels
 		{
@@ -174,8 +217,8 @@ LaserScan::LaserScan(
 		const Transform & localTransform) :
 	data_(data),
 	format_(format),
-	minRange_(minRange),
-	maxRange_(maxRange),
+	rangeMin_(minRange),
+	rangeMax_(maxRange),
 	angleMin_(angleMin),
 	angleMax_(angleMax),
 	angleIncrement_(angleIncrement),
@@ -192,9 +235,16 @@ LaserScan::LaserScan(
 
 	if(!data.empty() && !isCompressed())
 	{
+		if(data_.cols > maxPoints_)
+		{
+			UWARN("The number of points (%d) in the scan is over the maximum "
+				  "points (%d) defined by angle settings (min=%f max=%f inc=%f). "
+				  "The scan info may be wrong!",
+				  data_.cols, maxPoints_, angleMin_, angleMax_, angleIncrement_);
+		}
 		if(format == kUnknown)
 		{
-			*this = backwardCompatibility(data_, maxPoints_, maxRange_, localTransform_);
+			*this = backwardCompatibility(data_, rangeMin_, rangeMax_, angleMin_, angleMax_, angleIncrement_, localTransform_);
 		}
 		else // verify that format corresponds to expected number of channels
 		{
@@ -206,6 +256,15 @@ LaserScan::LaserScan(
 			UASSERT_MSG(data.channels() != 7 || (data.channels() == 7 && (format == kXYZRGBNormal || format == kXYZINormal)), uFormat("format=%d", format).c_str());
 		}
 	}
+}
+
+LaserScan LaserScan::clone() const
+{
+	if(angleIncrement_ > 0.0f)
+	{
+		return LaserScan(data_.clone(), format_, rangeMin_, rangeMax_, angleMin_, angleMax_, angleIncrement_, localTransform_.clone());
+	}
+	return LaserScan(data_.clone(), maxPoints_, rangeMax_, format_, localTransform_.clone());
 }
 
 }

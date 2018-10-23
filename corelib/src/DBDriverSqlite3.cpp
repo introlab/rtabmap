@@ -5777,7 +5777,7 @@ void DBDriverSqlite3::stepSensorData(sqlite3_stmt * ppStmt,
 	if(uStrNumCmp(_version, "0.11.10") >= 0)
 	{
 		if(sensorData.laserScanCompressed().maxPoints() > 0 ||
-			sensorData.laserScanCompressed().maxRange() > 0 ||
+			sensorData.laserScanCompressed().rangeMax() > 0 ||
 			(uStrNumCmp(_version, "0.16.1")>=0 && sensorData.laserScanCompressed().format() != LaserScan::kUnknown) ||
 			(!sensorData.laserScanCompressed().localTransform().isNull() && !sensorData.laserScanCompressed().localTransform().isIdentity()))
 		{
@@ -5787,8 +5787,8 @@ void DBDriverSqlite3::stepSensorData(sqlite3_stmt * ppStmt,
 				{
 					scanInfo.resize(7 + Transform().size());
 					scanInfo[0] = sensorData.laserScanCompressed().format();
-					scanInfo[1] = sensorData.laserScanCompressed().minRange();
-					scanInfo[2] = sensorData.laserScanCompressed().maxRange();
+					scanInfo[1] = sensorData.laserScanCompressed().rangeMin();
+					scanInfo[2] = sensorData.laserScanCompressed().rangeMax();
 					scanInfo[3] = sensorData.laserScanCompressed().angleMin();
 					scanInfo[4] = sensorData.laserScanCompressed().angleMax();
 					scanInfo[5] = sensorData.laserScanCompressed().angleIncrement();
@@ -5800,7 +5800,7 @@ void DBDriverSqlite3::stepSensorData(sqlite3_stmt * ppStmt,
 				{
 					scanInfo.resize(3 + Transform().size());
 					scanInfo[0] = sensorData.laserScanCompressed().maxPoints();
-					scanInfo[1] = sensorData.laserScanCompressed().maxRange();
+					scanInfo[1] = sensorData.laserScanCompressed().rangeMax();
 					scanInfo[2] = sensorData.laserScanCompressed().format();
 					const Transform & localTransform = sensorData.laserScanCompressed().localTransform();
 					memcpy(scanInfo.data()+3, localTransform.data(), localTransform.size()*sizeof(float));
@@ -5810,7 +5810,7 @@ void DBDriverSqlite3::stepSensorData(sqlite3_stmt * ppStmt,
 			{
 				scanInfo.resize(2 + Transform().size());
 				scanInfo[0] = sensorData.laserScanCompressed().maxPoints();
-				scanInfo[1] = sensorData.laserScanCompressed().maxRange();
+				scanInfo[1] = sensorData.laserScanCompressed().rangeMax();
 				const Transform & localTransform = sensorData.laserScanCompressed().localTransform();
 				memcpy(scanInfo.data()+2, localTransform.data(), localTransform.size()*sizeof(float));
 			}
@@ -5836,7 +5836,7 @@ void DBDriverSqlite3::stepSensorData(sqlite3_stmt * ppStmt,
 		// scan_max_range
 		if(uStrNumCmp(_version, "0.10.7") >= 0)
 		{
-			rc = sqlite3_bind_double(ppStmt, index++, sensorData.laserScanCompressed().maxRange());
+			rc = sqlite3_bind_double(ppStmt, index++, sensorData.laserScanCompressed().rangeMax());
 			UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
 		}
 	}

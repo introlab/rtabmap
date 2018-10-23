@@ -2796,11 +2796,11 @@ Transform Memory::computeIcpTransformMulti(
 	{
 		Transform guess = poses.at(fromId).inverse() * poses.at(toId);
 		float guessNorm = guess.getNorm();
-		if(fromScan.maxRange() > 0.0f && toScan.maxRange() > 0.0f &&
-			guessNorm > fromScan.maxRange() + toScan.maxRange())
+		if(fromScan.rangeMax() > 0.0f && toScan.rangeMax() > 0.0f &&
+			guessNorm > fromScan.rangeMax() + toScan.rangeMax())
 		{
 			// stop right known,it is impossible that scans overlay.
-			UINFO("Too far scans between %d and %d to compute transformation: guessNorm=%f, scan range from=%f to=%f", fromId, toId, guessNorm, fromScan.maxRange(), toScan.maxRange());
+			UINFO("Too far scans between %d and %d to compute transformation: guessNorm=%f, scan range from=%f to=%f", fromId, toId, guessNorm, fromScan.rangeMax(), toScan.rangeMax());
 			return t;
 		}
 
@@ -2890,7 +2890,7 @@ Transform Memory::computeIcpTransformMulti(
 		assembledData.setLaserScanRaw(
 				LaserScan(assembledScan,
 					fromScan.maxPoints()?fromScan.maxPoints():maxPoints,
-					fromScan.maxRange(),
+					fromScan.rangeMax(),
 					fromScan.format(),
 					fromScan.is2d()?Transform(0,0,fromScan.localTransform().z(),0,0,0):Transform::getIdentity()));
 
@@ -4456,7 +4456,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 	LaserScan laserScan = data.laserScanRaw();
 	if(!isIntermediateNode && laserScan.size())
 	{
-		if(laserScan.maxRange() == 0.0f)
+		if(laserScan.rangeMax() == 0.0f)
 		{
 			bool id2d = laserScan.is2d();
 			float maxRange = 0.0f;
@@ -4566,7 +4566,20 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 			data.groundTruth(),
 			stereoCameraModel.isValidForProjection()?
 				SensorData(
-						LaserScan(compressedScan, laserScan.maxPoints(), laserScan.maxRange(), laserScan.format(), laserScan.localTransform()),
+						laserScan.angleIncrement() == 0.0f?
+							LaserScan(compressedScan,
+								laserScan.maxPoints(),
+								laserScan.rangeMax(),
+								laserScan.format(),
+								laserScan.localTransform()):
+							LaserScan(compressedScan,
+								laserScan.format(),
+								laserScan.rangeMin(),
+								laserScan.rangeMax(),
+								laserScan.angleMin(),
+								laserScan.angleMax(),
+								laserScan.angleIncrement(),
+								laserScan.localTransform()),
 						compressedImage,
 						compressedDepth,
 						stereoCameraModel,
@@ -4574,7 +4587,20 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 						0,
 						compressedUserData):
 				SensorData(
-						LaserScan(compressedScan, laserScan.maxPoints(), laserScan.maxRange(), laserScan.format(), laserScan.localTransform()),
+						laserScan.angleIncrement() == 0.0f?
+							LaserScan(compressedScan,
+								laserScan.maxPoints(),
+								laserScan.rangeMax(),
+								laserScan.format(),
+								laserScan.localTransform()):
+							LaserScan(compressedScan,
+								laserScan.format(),
+								laserScan.rangeMin(),
+								laserScan.rangeMax(),
+								laserScan.angleMin(),
+								laserScan.angleMax(),
+								laserScan.angleIncrement(),
+								laserScan.localTransform()),
 						compressedImage,
 						compressedDepth,
 						cameraModels,
@@ -4624,7 +4650,20 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 			data.groundTruth(),
 			stereoCameraModel.isValidForProjection()?
 				SensorData(
-						LaserScan(compressedScan, laserScan.maxPoints(), laserScan.maxRange(), laserScan.format(), laserScan.localTransform()),
+						laserScan.angleIncrement() == 0.0f?
+								LaserScan(compressedScan,
+									laserScan.maxPoints(),
+									laserScan.rangeMax(),
+									laserScan.format(),
+									laserScan.localTransform()):
+								LaserScan(compressedScan,
+									laserScan.format(),
+									laserScan.rangeMin(),
+									laserScan.rangeMax(),
+									laserScan.angleMin(),
+									laserScan.angleMax(),
+									laserScan.angleIncrement(),
+									laserScan.localTransform()),
 						cv::Mat(),
 						cv::Mat(),
 						stereoCameraModel,
@@ -4632,7 +4671,20 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 						0,
 						compressedUserData):
 				SensorData(
-						LaserScan(compressedScan, laserScan.maxPoints(), laserScan.maxRange(), laserScan.format(), laserScan.localTransform()),
+						laserScan.angleIncrement() == 0.0f?
+								LaserScan(compressedScan,
+									laserScan.maxPoints(),
+									laserScan.rangeMax(),
+									laserScan.format(),
+									laserScan.localTransform()):
+								LaserScan(compressedScan,
+									laserScan.format(),
+									laserScan.rangeMin(),
+									laserScan.rangeMax(),
+									laserScan.angleMin(),
+									laserScan.angleMax(),
+									laserScan.angleIncrement(),
+									laserScan.localTransform()),
 						cv::Mat(),
 						cv::Mat(),
 						cameraModels,

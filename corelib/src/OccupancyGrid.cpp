@@ -305,13 +305,13 @@ void OccupancyGrid::createLocalMap(
 		}
 
 		float maxRange = cloudMaxDepth_;
-		if(cloudMaxDepth_>0.0f && node.sensorData().laserScanRaw().maxRange()>0.0f)
+		if(cloudMaxDepth_>0.0f && node.sensorData().laserScanRaw().rangeMax()>0.0f)
 		{
-			maxRange = cloudMaxDepth_ < node.sensorData().laserScanRaw().maxRange()?cloudMaxDepth_:node.sensorData().laserScanRaw().maxRange();
+			maxRange = cloudMaxDepth_ < node.sensorData().laserScanRaw().rangeMax()?cloudMaxDepth_:node.sensorData().laserScanRaw().rangeMax();
 		}
-		else if(scan2dUnknownSpaceFilled_ && node.sensorData().laserScanRaw().maxRange()>0.0f)
+		else if(scan2dUnknownSpaceFilled_ && node.sensorData().laserScanRaw().rangeMax()>0.0f)
 		{
-			maxRange = node.sensorData().laserScanRaw().maxRange();
+			maxRange = node.sensorData().laserScanRaw().rangeMax();
 		}
 		util3d::occupancy2DFromLaserScan(
 				util3d::transformLaserScan(scan, node.sensorData().laserScanRaw().localTransform()).data(),
@@ -339,7 +339,7 @@ void OccupancyGrid::createLocalMap(
 				// clipping will be done in OctoMap
 				float maxRange = grid3D_&&rayTracing_?0.0f:cloudMaxDepth_;
 #else
-				float maxRange = cloudMaxDepth_;
+				float rangeMax = cloudMaxDepth_;
 #endif
 				if(cloudMinDepth_ > 0.0f || maxRange > 0.0f)
 				{

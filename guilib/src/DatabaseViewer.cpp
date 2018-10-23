@@ -3459,6 +3459,7 @@ void DatabaseViewer::sliderAValueChanged(int value)
 			ui_->label_poseA,
 			ui_->label_velA,
 			ui_->label_calibA,
+			ui_->label_scanA,
 			ui_->label_gpsA,
 			ui_->label_sensorsA,
 			true);
@@ -3479,6 +3480,7 @@ void DatabaseViewer::sliderBValueChanged(int value)
 			ui_->label_poseB,
 			ui_->label_velB,
 			ui_->label_calibB,
+			ui_->label_scanB,
 			ui_->label_gpsB,
 			ui_->label_sensorsB,
 			true);
@@ -3497,6 +3499,7 @@ void DatabaseViewer::update(int value,
 						QLabel * labelPose,
 						QLabel * labelVelocity,
 						QLabel * labelCalib,
+						QLabel * labelScan,
 						QLabel * labelGps,
 						QLabel * labelSensors,
 						bool updateConstraintView)
@@ -3512,6 +3515,7 @@ void DatabaseViewer::update(int value,
 	labelVelocity->clear();
 	stamp->clear();
 	labelCalib->clear();
+	labelScan ->clear();
 	labelGps->clear();
 	labelSensors->clear();
 	QRectF rect;
@@ -3712,6 +3716,23 @@ void DatabaseViewer::update(int value,
 				else
 				{
 					labelCalib->setText("NA");
+				}
+
+				if(data.laserScanRaw().size())
+				{
+					labelScan->setText(tr("Format=%1 Points=%2 [max=%3] Range=[%4->%5 m] Angle=[%6->%7 rad inc=%8] Has [Color=%9 2D=%10 Normals=%11 Intensity=%12]")
+							.arg(data.laserScanRaw().format())
+							.arg(data.laserScanRaw().size())
+							.arg(data.laserScanRaw().maxPoints())
+							.arg(data.laserScanRaw().rangeMin())
+							.arg(data.laserScanRaw().rangeMax())
+							.arg(data.laserScanRaw().angleMin())
+							.arg(data.laserScanRaw().angleMax())
+							.arg(data.laserScanRaw().angleIncrement())
+							.arg(data.laserScanRaw().hasRGB()?1:0)
+							.arg(data.laserScanRaw().is2d()?1:0)
+							.arg(data.laserScanRaw().hasNormals()?1:0)
+							.arg(data.laserScanRaw().hasIntensity()?1:0));
 				}
 
 				//stereo
@@ -4673,6 +4694,7 @@ void DatabaseViewer::updateConstraintView(
 					ui_->label_poseA,
 					ui_->label_velA,
 					ui_->label_calibA,
+					ui_->label_scanA,
 					ui_->label_gpsA,
 					ui_->label_sensorsA,
 					false); // don't update constraints view!
@@ -4689,6 +4711,7 @@ void DatabaseViewer::updateConstraintView(
 					ui_->label_poseB,
 					ui_->label_velB,
 					ui_->label_calibB,
+					ui_->label_scanB,
 					ui_->label_gpsB,
 					ui_->label_sensorsB,
 					false); // don't update constraints view!
@@ -6154,7 +6177,7 @@ void DatabaseViewer::refineConstraint(int from, int to, bool silent)
 		assembledData.setLaserScanRaw(LaserScan(
 				assembledScan,
 				fromScan.maxPoints()?fromScan.maxPoints():maxPoints,
-				fromScan.maxRange(),
+				fromScan.rangeMax(),
 				fromScan.format(),
 				fromScan.is2d()?Transform(0,0,fromScan.localTransform().z(),0,0,0):Transform::getIdentity()));
 
