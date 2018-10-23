@@ -339,7 +339,7 @@ void OccupancyGrid::createLocalMap(
 				// clipping will be done in OctoMap
 				float maxRange = grid3D_&&rayTracing_?0.0f:cloudMaxDepth_;
 #else
-				float rangeMax = cloudMaxDepth_;
+				float maxRange = cloudMaxDepth_;
 #endif
 				if(cloudMinDepth_ > 0.0f || maxRange > 0.0f)
 				{
