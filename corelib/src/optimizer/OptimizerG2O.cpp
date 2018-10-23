@@ -65,10 +65,10 @@ typedef Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic,Eigen::ColMajor> Matr
 #ifdef G2O_HAVE_CHOLMOD
 #include "g2o/solvers/cholmod/linear_solver_cholmod.h"
 #endif
+#endif // RTABMAP_G2O
 enum {
     PARAM_OFFSET=0,
 };
-#endif // RTABMAP_G2O
 
 #ifdef RTABMAP_ORB_SLAM2
 #include "g2o/types/types_sba.h"
