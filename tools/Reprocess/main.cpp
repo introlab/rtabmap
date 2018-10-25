@@ -50,6 +50,7 @@ void showUsage()
 			"   rtabmap-reprocess [options] \"input.db\" \"output.db\"\n"
 			"   rtabmap-reprocess [options] \"input1.db;input2.db;input3.db\" \"output.db\"\n"
 			"   For the second example, only parameters from the first database are used.\n"
+			"   To see warnings when loop closures are rejected, add \"--uwarn\" argument.\n"
 			"  Options:\n"
 			"     -r                Use database stamps as input rate.\n"
 			"     -c \"path.ini\"   Configuration file, overwritting parameters read \n"
@@ -191,10 +192,7 @@ int main(int argc, char * argv[])
 	ParametersMap parameters = dbDriver->getLastParameters();
 	if(parameters.empty())
 	{
-		printf("Failed getting parameters from database, reprocessing cannot be done. Database version may be too old.\n");
-		dbDriver->closeConnection(false);
-		delete dbDriver;
-		return -1;
+		printf("WARNING: Failed getting parameters from database, reprocessing will be done with default parameters! Database version may be too old (%s).\n", dbDriver->getDatabaseVersion().c_str());
 	}
 	if(customParameters.size())
 	{

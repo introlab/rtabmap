@@ -244,7 +244,7 @@ Transform RegistrationVis::computeTransformationImpl(
 	   (_estimationType==1 || toSignature.getWords3().size())) // required only for 3D->3D and 2D->2D
 	{
 		// no need to extract new features, we have all the data we need
-		UDEBUG("");
+		UDEBUG("Bypassing feature matching as descriptors and images are empty. We assume features are already matched.");
 	}
 	else
 	{

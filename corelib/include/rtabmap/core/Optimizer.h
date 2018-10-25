@@ -140,14 +140,15 @@ public:
 			const std::multimap<int, Link> & links,
 			const std::map<int, Signature> & signatures,
 			std::map<int, cv::Point3f> & points3DMap,
-			std::map<int, std::map<int, FeatureBA> > & wordReferences); // <ID words, IDs frames + keypoint/depth/descriptor>
-
+			std::map<int, std::map<int, FeatureBA> > & wordReferences, // <ID words, IDs frames + keypoint/depth/descriptor>
+			bool rematchFeatures = false);
 
 	std::map<int, Transform> optimizeBA(
 			int rootId,
 			const std::map<int, Transform> & poses,
 			const std::multimap<int, Link> & links,
-			const std::map<int, Signature> & signatures);
+			const std::map<int, Signature> & signatures,
+			bool rematchFeatures = false);
 
 	Transform optimizeBA(
 			const Link & link,
@@ -161,7 +162,8 @@ public:
 			const std::multimap<int, Link> & links,
 			const std::map<int, Signature> & signatures,
 			std::map<int, cv::Point3f> & points3DMap,
-			std::map<int, std::map<int, FeatureBA > > & wordReferences); // <ID words, IDs frames + keypoint/depth/descriptor>
+			std::map<int, std::map<int, FeatureBA > > & wordReferences, // <ID words, IDs frames + keypoint/depth/descriptor>
+			bool rematchFeatures = false);
 
 protected:
 	Optimizer(

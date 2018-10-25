@@ -28,6 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/gui/ExportBundlerDialog.h"
 #include "ui_exportBundlerDialog.h"
 #include <rtabmap/utilite/UMath.h>
+#include <rtabmap/utilite/UStl.h>
 #include <rtabmap/core/Optimizer.h>
 #include <rtabmap/core/util3d_transforms.h>
 #include <QFileDialog>
@@ -51,11 +52,31 @@ ExportBundlerDialog::ExportBundlerDialog(QWidget * parent) :
 	connect(_ui->doubleSpinBox_laplacianVariance, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
 	connect(_ui->doubleSpinBox_linearSpeed, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
 	connect(_ui->doubleSpinBox_angularSpeed, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
-	connect(_ui->checkBox_export_points, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
+	connect(_ui->groupBox_export_points, SIGNAL(clicked(bool)), this, SIGNAL(configChanged()));
+	connect(_ui->sba_iterations, SIGNAL(valueChanged(int)), this, SIGNAL(configChanged()));
+	connect(_ui->comboBox_sbaType, SIGNAL(currentIndexChanged(int)), this, SIGNAL(configChanged()));
+	connect(_ui->comboBox_sbaType, SIGNAL(currentIndexChanged(int)), this, SLOT(updateVisibility()));
+	connect(_ui->sba_rematchFeatures, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
 
-	_ui->checkBox_export_points->setEnabled(Optimizer::isAvailable(Optimizer::kTypeG2O));
+	if(!Optimizer::isAvailable(Optimizer::kTypeCVSBA) && !Optimizer::isAvailable(Optimizer::kTypeG2O))
+	{
+		_ui->groupBox_export_points->setEnabled(false);
+		_ui->groupBox_export_points->setChecked(false);
+	}
+	else if(!Optimizer::isAvailable(Optimizer::kTypeCVSBA))
+	{
+		_ui->comboBox_sbaType->setItemData(1, 0, Qt::UserRole - 1);
+		_ui->comboBox_sbaType->setCurrentIndex(0);
+	}
+	else if(!Optimizer::isAvailable(Optimizer::kTypeG2O))
+	{
+		_ui->comboBox_sbaType->setItemData(0, 0, Qt::UserRole - 1);
+		_ui->comboBox_sbaType->setCurrentIndex(1);
+	}
 
 	_ui->lineEdit_path->setText(QDir::currentPath());
+
+	updateVisibility();
 }
 
 ExportBundlerDialog::~ExportBundlerDialog()
@@ -72,7 +93,11 @@ void ExportBundlerDialog::saveSettings(QSettings & settings, const QString & gro
 	settings.setValue("maxLinearSpeed", _ui->doubleSpinBox_linearSpeed->value());
 	settings.setValue("maxAngularSpeed", _ui->doubleSpinBox_angularSpeed->value());
 	settings.setValue("laplacianThr", _ui->doubleSpinBox_laplacianVariance->value());
-	settings.setValue("exportPoints", _ui->checkBox_export_points->isChecked());
+	settings.setValue("exportPoints", _ui->groupBox_export_points->isChecked());
+	settings.setValue("sba_iterations", _ui->sba_iterations->value());
+	settings.setValue("sba_type", _ui->comboBox_sbaType->currentIndex());
+	settings.setValue("sba_variance", _ui->sba_variance->value());
+	settings.setValue("sba_rematch_features", _ui->sba_rematchFeatures->isChecked());
 	if(!group.isEmpty())
 	{
 		settings.endGroup();
@@ -88,7 +113,11 @@ void ExportBundlerDialog::loadSettings(QSettings & settings, const QString & gro
 	_ui->doubleSpinBox_linearSpeed->setValue(settings.value("maxLinearSpeed", _ui->doubleSpinBox_linearSpeed->value()).toDouble());
 	_ui->doubleSpinBox_angularSpeed->setValue(settings.value("maxAngularSpeed", _ui->doubleSpinBox_angularSpeed->value()).toDouble());
 	_ui->doubleSpinBox_laplacianVariance->setValue(settings.value("laplacianThr", _ui->doubleSpinBox_laplacianVariance->value()).toDouble());
-	_ui->checkBox_export_points->setChecked(settings.value("exportPoints", _ui->checkBox_export_points->isChecked()).toBool());
+	_ui->groupBox_export_points->setChecked(settings.value("exportPoints", _ui->groupBox_export_points->isChecked()).toBool());
+	_ui->sba_iterations->setValue(settings.value("sba_iterations", _ui->sba_iterations->value()).toInt());
+	_ui->comboBox_sbaType->setCurrentIndex((Optimizer::Type)settings.value("sba_type", _ui->comboBox_sbaType->currentIndex()).toInt());
+	_ui->sba_variance->setValue(settings.value("sba_variance", _ui->sba_variance->value()).toDouble());
+	_ui->sba_rematchFeatures->setChecked(settings.value("sba_rematch_features", _ui->sba_rematchFeatures->isChecked()).toBool());
 	if(!group.isEmpty())
 	{
 		settings.endGroup();
@@ -105,7 +134,25 @@ void ExportBundlerDialog::restoreDefaults()
 	_ui->doubleSpinBox_linearSpeed->setValue(0);
 	_ui->doubleSpinBox_angularSpeed->setValue(0);
 	_ui->doubleSpinBox_laplacianVariance->setValue(0);
-	_ui->checkBox_export_points->setChecked(false);
+	_ui->groupBox_export_points->setChecked(false);
+	_ui->sba_iterations->setValue(20);
+	if(Optimizer::isAvailable(Optimizer::kTypeG2O) || !Optimizer::isAvailable(Optimizer::kTypeCVSBA))
+	{
+		_ui->comboBox_sbaType->setCurrentIndex(0);
+	}
+	else
+	{
+		_ui->comboBox_sbaType->setCurrentIndex(1);
+	}
+
+	_ui->sba_variance->setValue(1.0);
+	_ui->sba_rematchFeatures->setChecked(true);
+}
+
+void ExportBundlerDialog::updateVisibility()
+{
+	_ui->sba_variance->setVisible(_ui->comboBox_sbaType->currentIndex() == 0);
+	_ui->label_variance->setVisible(_ui->comboBox_sbaType->currentIndex() == 0);
 }
 
 void ExportBundlerDialog::getPath()
@@ -120,7 +167,8 @@ void ExportBundlerDialog::getPath()
 void ExportBundlerDialog::exportBundler(
 		const std::map<int, Transform> & poses,
 		const std::multimap<int, Link> & links,
-		const QMap<int, Signature> & signatures)
+		const QMap<int, Signature> & signatures,
+		const ParametersMap & parameters)
 {
 	if(this->exec() != QDialog::Accepted)
 	{
@@ -138,11 +186,16 @@ void ExportBundlerDialog::exportBundler(
 		std::map<int, cv::Point3f> points3DMap;
 		std::map<int, std::map<int, FeatureBA> > wordReferences;
 		std::map<int, Transform> newPoses = poses;
-		if(_ui->checkBox_export_points->isEnabled() && _ui->checkBox_export_points->isChecked())
+		if(_ui->groupBox_export_points->isEnabled() && _ui->groupBox_export_points->isChecked())
 		{
 			std::map<int, Transform> posesOut;
 			std::multimap<int, Link> linksOut;
-			Optimizer * sba = Optimizer::create(Optimizer::kTypeG2O);
+			Optimizer::Type sbaType = _ui->comboBox_sbaType->currentIndex()==0?Optimizer::kTypeG2O:Optimizer::kTypeCVSBA;
+			UASSERT(Optimizer::isAvailable(sbaType));
+			ParametersMap parametersSBA = parameters;
+			uInsert(parametersSBA, std::make_pair(Parameters::kOptimizerIterations(), uNumber2Str(_ui->sba_iterations->value())));
+			uInsert(parametersSBA, std::make_pair(Parameters::kg2oPixelVariance(), uNumber2Str(_ui->sba_variance->value())));
+			Optimizer * sba = Optimizer::create(sbaType, parametersSBA);
 			sba->getConnectedGraph(poses.begin()->first, poses, links, posesOut, linksOut);
 			newPoses = sba->optimizeBA(
 					posesOut.begin()->first,
@@ -150,7 +203,8 @@ void ExportBundlerDialog::exportBundler(
 					linksOut,
 					signatures.toStdMap(),
 					points3DMap,
-					wordReferences);
+					wordReferences,
+					_ui->sba_rematchFeatures->isChecked());
 			delete sba;
 
 			if(newPoses.empty())
@@ -269,7 +323,10 @@ void ExportBundlerDialog::exportBundler(
 									{
 										if(kter->first == iter->first)
 										{
-											descriptors.push_back(kter->second);
+											if(!kter->second.descriptor.empty())
+											{
+												descriptors.push_back(kter->second);
+											}
 
 											if(colors.find(jter->first) == colors.end())
 											{
@@ -282,7 +339,7 @@ void ExportBundlerDialog::exportBundler(
 													if(image.channels() == 3)
 													{
 														cv::Vec3b & pixel = image.at<cv::Vec3b>((int)kter->second.kpt.pt.y, (int)kter->second.kpt.pt.x);
-														c.setRgb(pixel[0], pixel[1], pixel[2]);
+														c.setRgb(pixel[2], pixel[1], pixel[0]);
 													}
 													else // grayscale
 													{
@@ -295,12 +352,13 @@ void ExportBundlerDialog::exportBundler(
 										}
 									}
 								}
-								if(descriptors.size())
+
+								QString p = QString("keys")+QDir::separator()+tr("%1.key").arg(iter->first);
+								p = path+QDir::separator()+p;
+								QFile fileKey(p);
+								if(fileKey.open(QIODevice::WriteOnly | QIODevice::Text))
 								{
-									QString p = QString("keys")+QDir::separator()+tr("%1.key").arg(iter->first);
-									p = path+QDir::separator()+p;
-									QFile fileKey(p);
-									if(fileKey.open(QIODevice::WriteOnly | QIODevice::Text))
+									if(descriptors.size())
 									{
 										QTextStream key(&fileKey);
 										key << descriptors.size() << " " << descriptors.front().descriptor.cols << "\n";
@@ -329,15 +387,23 @@ void ExportBundlerDialog::exportBundler(
 											}
 											key << "\n";
 										}
-										fileKey.close();
 									}
+									else
+									{
+										UWARN("No descriptors saved for frame %d in file %s. "
+												"Descriptors may not have been saved in the nodes. "
+												"Verify that parameter %s was true during mapping.",
+												iter->first, p.toStdString().c_str(),
+												Parameters::kMemRawDescriptorsKept().c_str());
+									}
+									fileKey.close();
 								}
 							}
 						}
 					}
 					else
 					{
-						UWARN("Could not find signature data for pose %d", iter->first);
+						UWARN("Could not find node data for pose %d", iter->first);
 					}
 				}
 

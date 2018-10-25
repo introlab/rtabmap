@@ -5390,6 +5390,7 @@ void MainWindow::postProcessing()
 	int sbaIterations = _postProcessingDialog->sbaIterations();
 	double sbaVariance = _postProcessingDialog->sbaVariance();
 	Optimizer::Type sbaType = _postProcessingDialog->sbaType();
+	double sbaRematchFeatures = _postProcessingDialog->sbaRematchFeatures();
 
 	if(!detectMoreLoopClosures && !refineNeighborLinks && !refineLoopClosureLinks && !sba)
 	{
@@ -5864,9 +5865,9 @@ void MainWindow::postProcessing()
 		ParametersMap parametersSBA = _preferencesDialog->getAllParameters();
 		uInsert(parametersSBA, std::make_pair(Parameters::kOptimizerIterations(), uNumber2Str(sbaIterations)));
 		uInsert(parametersSBA, std::make_pair(Parameters::kg2oPixelVariance(), uNumber2Str(sbaVariance)));
-		Optimizer * sba = Optimizer::create(sbaType, parametersSBA);
-		std::map<int, Transform>  newPoses = sba->optimizeBA(optimizedPoses.begin()->first, optimizedPoses, linksOut, _cachedSignatures.toStdMap());
-		delete sba;
+		Optimizer * sbaOptimizer = Optimizer::create(sbaType, parametersSBA);
+		std::map<int, Transform>  newPoses = sbaOptimizer->optimizeBA(optimizedPoses.begin()->first, optimizedPoses, linksOut, _cachedSignatures.toStdMap(), sbaRematchFeatures);
+		delete sbaOptimizer;
 		if(newPoses.size())
 		{
 			optimizedPoses = newPoses;
@@ -7041,7 +7042,8 @@ void MainWindow::exportBundlerFormat()
 		_exportBundlerDialog->exportBundler(
 					poses,
 					_currentLinksMap,
-					_cachedSignatures);
+					_cachedSignatures,
+					_preferencesDialog->getAllParameters());
 	}
 	else
 	{
