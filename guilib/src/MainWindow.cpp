@@ -4027,6 +4027,10 @@ void MainWindow::applyPrefSettings(PreferencesDialog::PANEL_FLAGS flags)
 	{
 		UDEBUG("General settings changed...");
 		setupMainLayout(_preferencesDialog->isVerticalLayoutUsed());
+		if(!_preferencesDialog->isLocalizationsCountGraphView())
+		{
+			_cachedLocalizationsCount.clear();
+		}
 		if(!_preferencesDialog->isPosteriorGraphView() && _ui->graphicsView_graphView->isVisible())
 		{
 			_ui->graphicsView_graphView->clearPosterior();
