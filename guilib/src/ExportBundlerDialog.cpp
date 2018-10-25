@@ -176,6 +176,7 @@ void ExportBundlerDialog::exportBundler(
 				std::map<int, Transform> cameras;
 				std::map<int, int> cameraIndexes;
 				int camIndex = 0;
+				std::map<int, QColor> colors;
 				for(std::map<int, Transform>::const_iterator iter=newPoses.begin(); iter!=newPoses.end(); ++iter)
 				{
 					if(signatures.find(iter->first) != signatures.end())
@@ -269,6 +270,28 @@ void ExportBundlerDialog::exportBundler(
 										if(kter->first == iter->first)
 										{
 											descriptors.push_back(kter->second);
+
+											if(colors.find(jter->first) == colors.end())
+											{
+												if(!image.empty() &&
+												   kter->second.kpt.pt.x >= 0.0f && (int)kter->second.kpt.pt.x < image.cols &&
+												   kter->second.kpt.pt.y >= 0.0f && (int)kter->second.kpt.pt.y < image.rows)
+												{
+													UASSERT(image.type() == CV_8UC3 || image.type() == CV_8UC1);
+													QColor c;
+													if(image.channels() == 3)
+													{
+														cv::Vec3b & pixel = image.at<cv::Vec3b>((int)kter->second.kpt.pt.y, (int)kter->second.kpt.pt.x);
+														c.setRgb(pixel[0], pixel[1], pixel[2]);
+													}
+													else // grayscale
+													{
+														unsigned char & pixel = image.at<unsigned char>((int)kter->second.kpt.pt.y, (int)kter->second.kpt.pt.x);
+														c.setRgb(pixel, pixel, pixel);
+													}
+													colors.insert(std::make_pair(jter->first, c));
+												}
+											}
 										}
 									}
 								}
@@ -409,9 +432,10 @@ void ExportBundlerDialog::exportBundler(
 				for(std::map<int, cv::Point3f>::iterator iter=points3DMap.begin(); iter!=points3DMap.end(); ++iter)
 				{
 					std::map<int, std::map<int, FeatureBA> >::iterator jter = wordReferences.find(iter->first);
-					cv::Point3f pt3d  = util3d::transformPoint(iter->second, opengl_world_T_rtabmap_world);
-					out << pt3d.x << " " << pt3d.y << " " << pt3d.z << "\n";
-					out << 255 << " " << 0 << " " << 0 << "\n"; // make them all red for now
+					out << iter->second.x << " " << iter->second.y << " " << iter->second.z << "\n";
+					UASSERT(colors.find(iter->first) != colors.end());
+					QColor & c = colors.at(iter->first);
+					out << c.red() << " " << c.green() << " " << c.blue() << "\n";
 					out << jter->second.size();
 					for(std::map<int, FeatureBA>::iterator kter = jter->second.begin(); kter!=jter->second.end(); ++kter)
 					{
