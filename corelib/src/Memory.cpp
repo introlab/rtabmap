@@ -2599,7 +2599,7 @@ Transform Memory::computeTransform(
 				std::map<int, Transform> bundlePoses;
 				std::multimap<int, Link> bundleLinks;
 				std::map<int, CameraModel> bundleModels;
-				std::map<int, std::map<int, cv::Point3f> > wordReferences;
+				std::map<int, std::map<int, FeatureBA> > wordReferences;
 
 				std::map<int, Link> links = fromS.getLinks();
 				links.insert(std::make_pair(toS.id(), Link(fromS.id(), toS.id(), Link::kGlobalClosure, transform, info->covariance.inv())));
@@ -2656,8 +2656,8 @@ Transform Memory::computeTransform(
 						{
 							std::multimap<int, cv::Point3f>::const_iterator kter = s->getWords3().find(jter->first);
 							cv::Point3f pt3d = util3d::transformPoint(kter->second, invLocalTransform);
-							wordReferences.insert(std::make_pair(jter->first, std::map<int, cv::Point3f>()));
-							wordReferences.at(jter->first).insert(std::make_pair(id, cv::Point3f(jter->second.pt.x, jter->second.pt.y, pt3d.z)));
+							wordReferences.insert(std::make_pair(jter->first, std::map<int, FeatureBA>()));
+							wordReferences.at(jter->first).insert(std::make_pair(id, FeatureBA(jter->second, pt3d.z)));
 						}
 					}
 				}

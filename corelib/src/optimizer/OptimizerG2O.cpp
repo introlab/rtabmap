@@ -866,7 +866,7 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 		const std::multimap<int, Link> & links,
 		const std::map<int, CameraModel> & models,
 		std::map<int, cv::Point3f> & points3DMap,
-		const std::map<int, std::map<int, cv::Point3f> > & wordReferences,
+		const std::map<int, std::map<int, FeatureBA> > & wordReferences,
 		std::set<int> * outliers)
 {
 	std::map<int, Transform> optimizedPoses;
@@ -1070,7 +1070,7 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 		}
 		UDEBUG("stepVertexId=%d, negVertexOffset=%d", stepVertexId, negVertexOffset);
 		std::list<g2o::OptimizableGraph::Edge*> edges;
-		for(std::map<int, std::map<int, cv::Point3f> >::const_iterator iter = wordReferences.begin(); iter!=wordReferences.end(); ++iter)
+		for(std::map<int, std::map<int, FeatureBA> >::const_iterator iter = wordReferences.begin(); iter!=wordReferences.end(); ++iter)
 		{
 			int id = iter->first;
 			if(points3DMap.find(id) != points3DMap.end())
@@ -1094,13 +1094,13 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 				//UDEBUG("Added 3D point %d (%f,%f,%f)", vpt3d->id()-stepVertexId, pt3d.x, pt3d.y, pt3d.z);
 
 				// set observations
-				for(std::map<int, cv::Point3f>::const_iterator jter=iter->second.begin(); jter!=iter->second.end(); ++jter)
+				for(std::map<int, FeatureBA>::const_iterator jter=iter->second.begin(); jter!=iter->second.end(); ++jter)
 				{
 					int camId = jter->first;
 					if(poses.find(camId) != poses.end() && optimizer.vertex(camId) != 0)
 					{
-						const cv::Point3f & pt = jter->second;
-						double depth = pt.z;
+						const FeatureBA & pt = jter->second;
+						double depth = pt.depth;
 
 						//UDEBUG("Added observation pt=%d to cam=%d (%f,%f) depth=%f", vpt3d->id()-stepVertexId, camId, pt.x, pt.y, depth);
 
@@ -1123,7 +1123,7 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 #ifdef RTABMAP_ORB_SLAM2
 							g2o::EdgeStereoSE3ProjectXYZ* es = new g2o::EdgeStereoSE3ProjectXYZ();
 							float disparity = baseline * iterModel->second.fx() / depth;
-							Eigen::Vector3d obs( pt.x, pt.y, pt.x-disparity);
+							Eigen::Vector3d obs( pt.kpt.pt.x, pt.kpt.pt.y, pt.kpt.pt.x-disparity);
 							es->setMeasurement(obs);
 							//variance *= log(exp(1)+disparity);
 							es->setInformation(Eigen::Matrix3d::Identity() / variance);
@@ -1136,7 +1136,7 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 #else
 							g2o::EdgeProjectP2SC* es = new g2o::EdgeProjectP2SC();
 							float disparity = baseline * vcam->estimate().Kcam(0,0) / depth;
-							Eigen::Vector3d obs( pt.x, pt.y, pt.x-disparity);
+							Eigen::Vector3d obs( pt.kpt.pt.x, pt.kpt.pt.y, pt.kpt.pt.x-disparity);
 							es->setMeasurement(obs);
 							//variance *= log(exp(1)+disparity);
 							es->setInformation(Eigen::Matrix3d::Identity() / variance);
@@ -1155,7 +1155,7 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 							// mono edge
 #ifdef RTABMAP_ORB_SLAM2
 							g2o::EdgeSE3ProjectXYZ* em = new g2o::EdgeSE3ProjectXYZ();
-							Eigen::Vector2d obs( pt.x, pt.y);
+							Eigen::Vector2d obs( pt.kpt.pt.x, pt.kpt.pt.y);
 							em->setMeasurement(obs);
 							em->setInformation(Eigen::Matrix2d::Identity() / variance);
 							em->fx = iterModel->second.fx();
@@ -1166,7 +1166,7 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 
 #else
 							g2o::EdgeProjectP2MC* em = new g2o::EdgeProjectP2MC();
-							Eigen::Vector2d obs( pt.x, pt.y);
+							Eigen::Vector2d obs( pt.kpt.pt.x, pt.kpt.pt.y);
 							em->setMeasurement(obs);
 							em->setInformation(Eigen::Matrix2d::Identity() / variance);
 							e = em;

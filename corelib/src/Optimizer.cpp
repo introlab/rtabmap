@@ -359,7 +359,7 @@ std::map<int, Transform> Optimizer::optimizeBA(
 		const std::multimap<int, Link> & links,
 		const std::map<int, CameraModel> & models,
 		std::map<int, cv::Point3f> & points3DMap,
-		const std::map<int, std::map<int, cv::Point3f> > & wordReferences,
+		const std::map<int, std::map<int, FeatureBA> > & wordReferences,
 		std::set<int> * outliers)
 {
 	UERROR("Optimizer %d doesn't implement optimizeBA() method.", (int)this->type());
@@ -370,7 +370,9 @@ std::map<int, Transform> Optimizer::optimizeBA(
 		int rootId,
 		const std::map<int, Transform> & poses,
 		const std::multimap<int, Link> & links,
-		const std::map<int, Signature> & signatures)
+		const std::map<int, Signature> & signatures,
+		std::map<int, cv::Point3f> & points3DMap,
+		std::map<int, std::map<int, FeatureBA> > & wordReferences)
 {
 	UDEBUG("");
 	std::map<int, CameraModel> models;
@@ -415,18 +417,27 @@ std::map<int, Transform> Optimizer::optimizeBA(
 	}
 
 	// compute correspondences
-	std::map<int, cv::Point3f> points3DMap;
-	std::map<int, std::map<int, cv::Point3f> > wordReferences;
 	this->computeBACorrespondences(poses, links, signatures, points3DMap, wordReferences);
 
 	return optimizeBA(rootId, poses, links, models, points3DMap, wordReferences);
+}
+
+std::map<int, Transform> Optimizer::optimizeBA(
+		int rootId,
+		const std::map<int, Transform> & poses,
+		const std::multimap<int, Link> & links,
+		const std::map<int, Signature> & signatures)
+{
+	std::map<int, cv::Point3f> points3DMap;
+	std::map<int, std::map<int, FeatureBA> > wordReferences;
+	return optimizeBA(rootId, poses, links, signatures, points3DMap, wordReferences);
 }
 
 Transform Optimizer::optimizeBA(
 		const Link & link,
 		const CameraModel & model,
 		std::map<int, cv::Point3f> & points3DMap,
-		const std::map<int, std::map<int, cv::Point3f> > & wordReferences,
+		const std::map<int, std::map<int, FeatureBA> > & wordReferences,
 		std::set<int> * outliers)
 {
 	std::map<int, Transform> poses;
@@ -453,7 +464,7 @@ void Optimizer::computeBACorrespondences(
 		const std::multimap<int, Link> & links,
 		const std::map<int, Signature> & signatures,
 		std::map<int, cv::Point3f> & points3DMap,
-		std::map<int, std::map<int, cv::Point3f> > & wordReferences) // <ID words, IDs frames + keypoint/depth>
+		std::map<int, std::map<int, FeatureBA> > & wordReferences)
 {
 	UDEBUG("");
 	int wordCount = 0;
@@ -465,7 +476,8 @@ void Optimizer::computeBACorrespondences(
 		{
 			link = link.inverse();
 		}
-		if(uContains(signatures, link.from()) &&
+		if(link.to() != link.from() &&
+		   uContains(signatures, link.from()) &&
 		   uContains(signatures, link.to()) &&
 		   uContains(poses, link.from()))
 		{
@@ -513,13 +525,14 @@ void Optimizer::computeBACorrespondences(
 							{
 								int wordId = ++wordCount;
 
-								wordReferences.insert(std::make_pair(wordId, std::map<int, cv::Point3f>()));
+								wordReferences.insert(std::make_pair(wordId, std::map<int, FeatureBA>()));
 
-								cv::Point2f pt = sFrom.getWords().lower_bound(info.inliersIDs[i])->second.pt;
-								wordReferences.at(wordId).insert(std::make_pair(sFrom.id(), cv::Point3f(pt.x, pt.y, p.x)));
+								cv::KeyPoint ptFrom = sFrom.getWords().lower_bound(info.inliersIDs[i])->second;
+								cv::Mat descriptorFrom = sFrom.getWordsDescriptors().lower_bound(info.inliersIDs[i])->second;
+								wordReferences.at(wordId).insert(std::make_pair(sFrom.id(), FeatureBA(ptFrom, p.x, descriptorFrom)));
 
-
-								pt = sTo.getWords().lower_bound(info.inliersIDs[i])->second.pt;
+								cv::KeyPoint ptTo = sTo.getWords().lower_bound(info.inliersIDs[i])->second;
+								cv::Mat descriptorTo = sTo.getWordsDescriptors().lower_bound(info.inliersIDs[i])->second;
 								float depth = 0.0f;
 								std::multimap<int, cv::Point3f>::const_iterator iterTo = sTo.getWords3().lower_bound(info.inliersIDs[i]);
 								if( iterTo!=sTo.getWords3().end() &&
@@ -527,7 +540,7 @@ void Optimizer::computeBACorrespondences(
 								{
 									depth = iterTo->second.x;
 								}
-								wordReferences.at(wordId).insert(std::make_pair(sTo.id(), cv::Point3f(pt.x, pt.y, depth)));
+								wordReferences.at(wordId).insert(std::make_pair(sTo.id(), FeatureBA(ptTo, depth, descriptorTo)));
 
 								p = util3d::transformPoint(p, pose);
 								points3DMap.insert(std::make_pair(wordId, p));

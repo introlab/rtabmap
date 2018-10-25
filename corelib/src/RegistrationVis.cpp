@@ -825,7 +825,9 @@ Transform RegistrationVis::computeTransformationImpl(
 							{
 								if(kptsTo3D.empty() || util3d::isFinite(kptsTo3D[i]))
 								{
-									int octave = kptsTo[i].octave;
+									// Make octave compatible with SIFT packed octave (https://github.com/opencv/opencv/issues/4554)
+									int octave = kptsTo[i].octave & 255;
+									octave = octave < 128 ? octave : (-128 | octave);
 									int matchedIndex = -1;
 									if(indices[i].size() >= 2)
 									{
@@ -837,7 +839,9 @@ Transform RegistrationVis::computeTransformationImpl(
 										}
 										for(unsigned int j=0; j<indices[i].size(); ++j)
 										{
-											if(kptsFrom.at(projectedIndexToDescIndex[indices[i].at(j)]).octave==octave)
+											int octaveFrom = kptsFrom.at(projectedIndexToDescIndex[indices[i].at(j)]).octave & 255;
+											octaveFrom = octaveFrom < 128 ? octaveFrom : (-128 | octaveFrom);
+											if(octaveFrom==octave)
 											{
 												descriptorsFrom.row(projectedIndexToDescIndex[indices[i].at(j)]).copyTo(descriptors.row(oi));
 												descriptorsIndices[oi++] = indices[i].at(j);
@@ -861,10 +865,14 @@ Transform RegistrationVis::computeTransformationImpl(
 											matchedIndex = descriptorsIndices[0];
 										}
 									}
-									else if(indices[i].size() == 1 &&
-											kptsFrom.at(projectedIndexToDescIndex[indices[i].at(0)]).octave == octave)
+									else if(indices[i].size() == 1)
 									{
-										matchedIndex = indices[i].at(0);
+										int octaveFrom = kptsFrom.at(projectedIndexToDescIndex[indices[i].at(0)]).octave & 255;
+										octaveFrom = octaveFrom < 128 ? octaveFrom : (-128 | octaveFrom);
+										if(octaveFrom == octave)
+										{
+											matchedIndex = indices[i].at(0);
+										}
 									}
 
 									if(matchedIndex >= 0)
@@ -972,6 +980,10 @@ Transform RegistrationVis::computeTransformationImpl(
 
 								if(util3d::isFinite(kptsFrom3D[matchedIndexFrom]))
 								{
+									// Make octave compatible with SIFT packed octave (https://github.com/opencv/opencv/issues/4554)
+									int octaveFrom = kptsFrom.at(matchedIndexFrom).octave & 255;
+									octaveFrom = octaveFrom < 128 ? octaveFrom : (-128 | octaveFrom);
+
 									int matchedIndexTo = -1;
 									if(indices[i].size() >= 2)
 									{
@@ -985,8 +997,9 @@ Transform RegistrationVis::computeTransformationImpl(
 										std::list<int> indicesToIgnoretmp;
 										for(unsigned int j=0; j<indices[i].size(); ++j)
 										{
-											int octave = kptsTo[indices[i].at(j)].octave;
-											if(kptsFrom.at(matchedIndexFrom).octave==octave)
+											int octave = kptsTo[indices[i].at(j)].octave & 255;
+											octave = octave < 128 ? octave : (-128 | octave);
+											if(octaveFrom==octave)
 											{
 												descriptorsTo.row(indices[i].at(j)).copyTo(descriptors.row(oi));
 												descriptorsIndices[oi++] = indices[i].at(j);
@@ -1017,8 +1030,9 @@ Transform RegistrationVis::computeTransformationImpl(
 									}
 									else if(indices[i].size() == 1)
 									{
-										int octave = kptsTo[indices[i].at(0)].octave;
-										if(kptsFrom.at(matchedIndexFrom).octave == octave)
+										int octave = kptsTo[indices[i].at(0)].octave & 255;
+										octave = octave < 128 ? octave : (-128 | octave);
+										if(octaveFrom == octave)
 										{
 											matchedIndexTo = indices[i].at(0);
 										}
@@ -1535,26 +1549,26 @@ Transform RegistrationVis::computeTransformationImpl(
 			models.insert(std::make_pair(1, cameraModelFrom.isValidForProjection()?cameraModelFrom:cameraModelTo));
 			models.insert(std::make_pair(2, cameraModelTo));
 
-			std::map<int, std::map<int, cv::Point3f> > wordReferences;
+			std::map<int, std::map<int, FeatureBA> > wordReferences;
 			for(unsigned int i=0; i<allInliers.size(); ++i)
 			{
 				int wordId = allInliers[i];
 				const cv::Point3f & pt3D = fromSignature.getWords3().find(wordId)->second;
 				points3DMap.insert(std::make_pair(wordId, pt3D));
 
-				std::map<int, cv::Point3f> ptMap;
+				std::map<int, FeatureBA> ptMap;
 				if(fromSignature.getWords().size() && cameraModelFrom.isValidForProjection())
 				{
 					float depthFrom = util3d::transformPoint(pt3D, invLocalTransformFrom).z;
-					const cv::Point2f & kpt = fromSignature.getWords().find(wordId)->second.pt;
-					ptMap.insert(std::make_pair(1,cv::Point3f(kpt.x, kpt.y, depthFrom)));
+					const cv::KeyPoint & kpt = fromSignature.getWords().find(wordId)->second;
+					ptMap.insert(std::make_pair(1,FeatureBA(kpt, depthFrom)));
 				}
 				if(toSignature.getWords().size() && cameraModelTo.isValidForProjection())
 				{
 					float depthTo = util3d::transformPoint(toSignature.getWords3().find(wordId)->second, invLocalTransformTo).z;
-					const cv::Point2f & kpt = toSignature.getWords().find(wordId)->second.pt;
+					const cv::KeyPoint & kpt = toSignature.getWords().find(wordId)->second;
 					UASSERT(toSignature.getWords3().find(wordId) != toSignature.getWords3().end());
-					ptMap.insert(std::make_pair(2,cv::Point3f(kpt.x, kpt.y, depthTo)));
+					ptMap.insert(std::make_pair(2,FeatureBA(kpt, depthTo)));
 				}
 
 				wordReferences.insert(std::make_pair(wordId, ptMap));

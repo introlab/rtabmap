@@ -73,7 +73,7 @@ public:
 			const std::multimap<int, Link> & links,
 			const std::map<int, CameraModel> & models, // in case of stereo, Tx should be set
 			std::map<int, cv::Point3f> & points3DMap,
-			const std::map<int, std::map<int, cv::Point3f> > & wordReferences, // <ID words, IDs frames + keypoint(x,y,depth)>
+			const std::map<int, std::map<int, FeatureBA> > & wordReferences, // <ID words, IDs frames + keypoint(x,y,depth)>
 			std::set<int> * outliers = 0);
 
 	bool saveGraph(

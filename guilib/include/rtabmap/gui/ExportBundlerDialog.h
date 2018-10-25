@@ -30,6 +30,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "rtabmap/gui/RtabmapGuiExp.h" // DLL export/import defines
 
+#include <rtabmap/core/Signature.h>
 #include <QDialog>
 #include <QSettings>
 
@@ -51,11 +52,10 @@ public:
 
 	void setWorkingDirectory(const QString & path);
 
-	QString outputPath() const;
-
-	double maxLinearSpeed() const;
-	double maxAngularSpeed() const;
-	double laplacianThreshold() const;
+	void exportBundler(
+			const std::map<int, Transform> & poses,
+			const std::multimap<int, Link> & links,
+			const QMap<int, Signature> & signatures);
 
 Q_SIGNALS:
 	void configChanged();
