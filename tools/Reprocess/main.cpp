@@ -50,12 +50,15 @@ void showUsage()
 			"   rtabmap-reprocess [options] \"input.db\" \"output.db\"\n"
 			"   rtabmap-reprocess [options] \"input1.db;input2.db;input3.db\" \"output.db\"\n"
 			"   For the second example, only parameters from the first database are used.\n"
+			"   If Mem/IncrementalMemory is false, RTAB-Map is initialized with the first input database.\n"
 			"   To see warnings when loop closures are rejected, add \"--uwarn\" argument.\n"
 			"  Options:\n"
 			"     -r                Use database stamps as input rate.\n"
 			"     -c \"path.ini\"   Configuration file, overwritting parameters read \n"
 			"                       from the database. If custom parameters are also set as \n"
 			"                       arguments, they overwrite those in config file and the database.\n"
+			"     -f                When there are many inputs databases, initialize rtabmap\n"
+			"                       with the first one and process the others afterwards.\n"
 			"     -g2         Assemble 2D occupancy grid map and save it to \"[output]_map.pgm\".\n"
 			"     -g3         Assemble 3D cloud map and save it to \"[output]_map.pcd\".\n"
 			"     -o2         Assemble OctoMap 2D projection and save it to \"[output]_octomap.pgm\".\n"
@@ -205,6 +208,9 @@ int main(int argc, char * argv[])
 	uInsert(parameters, configParameters);
 	uInsert(parameters, customParameters);
 
+	bool incrementalMemory = Parameters::defaultMemIncrementalMemory();
+	Parameters::parse(parameters, Parameters::kMemIncrementalMemory(), incrementalMemory);
+
 	int totalIds = 0;
 	std::set<int> ids;
 	dbDriver->getAllNodeIds(ids);
@@ -215,7 +221,10 @@ int main(int argc, char * argv[])
 		delete dbDriver;
 		return -1;
 	}
-	totalIds = ids.size();
+	if(!(!incrementalMemory && databases.size() > 1))
+	{
+		totalIds = ids.size();
+	}
 	dbDriver->closeConnection(false);
 
 	// Count remaining ids in the other databases
@@ -240,6 +249,14 @@ int main(int argc, char * argv[])
 	uInsert(parameters, ParametersPair(Parameters::kRtabmapWorkingDirectory(), workingDirectory));
 	uInsert(parameters, ParametersPair(Parameters::kRtabmapPublishStats(), "true")); // to log status below
 
+	if(!incrementalMemory && databases.size() > 1)
+	{
+		UFile::copy(databases.front(), outputDatabasePath);
+		printf("Parameter \"%s\" is set to false, initializing RTAB-Map with \"%s\" for localization...\n", Parameters::kMemIncrementalMemory().c_str(), databases.front().c_str());
+		databases.pop_front();
+		inputDatabasePath = uJoin(databases, ";");
+	}
+
 	Rtabmap rtabmap;
 	rtabmap.init(parameters, outputDatabasePath);
 
@@ -260,6 +277,8 @@ int main(int argc, char * argv[])
 	int processed = 0;
 	CameraInfo info;
 	SensorData data = dbReader.takeImage(&info);
+	int loopCount = 0;
+	int totalFrames = 0;
 	while(data.isValid() && g_loopForever)
 	{
 		UTimer iterationTime;
@@ -273,6 +292,12 @@ int main(int argc, char * argv[])
 			if(!odometryIgnored && !info.odomCovariance.empty() && info.odomCovariance.at<double>(0,0)>=9999)
 			{
 				printf("High variance detected, triggering a new map...\n");
+				if(!incrementalMemory)
+				{
+					printf("Total localizations on previous session = %d/%d\n", loopCount, totalFrames);
+					loopCount = 0;
+					totalFrames = 0;
+				}
 				rtabmap.triggerNewMap();
 			}
 			UTimer t;
@@ -365,8 +390,10 @@ int main(int argc, char * argv[])
 		const rtabmap::Statistics & stats = rtabmap.getStatistics();
 		int loopId = stats.loopClosureId() > 0? stats.loopClosureId(): stats.proximityDetectionId() > 0?stats.proximityDetectionId() :0;
 		int refMapId = uContains(stats.getSignatures(), stats.refImageId())? stats.getSignatures().at(stats.refImageId()).mapId():-1;
+		++totalFrames;
 		if (loopId>0)
 		{
+			++loopCount;
 			int loopMapId = uContains(stats.getSignatures(), loopId) ? stats.getSignatures().at(loopId).mapId() : -1;
 			printf("Processed %d/%d nodes [%d]... %dms Loop on %d [%d]\n", ++processed, totalIds, refMapId, int(iterationTime.ticks() * 1000), loopId, loopMapId);
 		}
@@ -376,6 +403,15 @@ int main(int argc, char * argv[])
 		}
 
 		data = dbReader.takeImage(&info);
+	}
+
+	if(!incrementalMemory)
+	{
+		printf("Total localizations on previous session = %d/%d\n", loopCount, totalFrames);
+	}
+	else
+	{
+		printf("Total loop closures = %d\n", loopCount);
 	}
 
 	printf("Closing database \"%s\"...\n", outputDatabasePath.c_str());
