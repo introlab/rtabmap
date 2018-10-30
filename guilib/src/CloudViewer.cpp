@@ -2651,6 +2651,30 @@ bool CloudViewer::isCameraOrtho() const
 {
 	return _aCameraOrtho->isChecked();
 }
+bool CloudViewer::isBackfaceCulling() const
+{
+	return _aBackfaceCulling->isChecked();
+}
+bool CloudViewer::isFrontfaceCulling() const
+{
+	return _frontfaceCulling;
+}
+bool CloudViewer::isPolygonPicking() const
+{
+	return _aPolygonPicking->isChecked();
+}
+bool CloudViewer::isLightingOn() const
+{
+	return _aSetLighting->isChecked();
+}
+bool CloudViewer::isShadingOn() const
+{
+	return _aSetFlatShading->isChecked();
+}
+bool CloudViewer::isEdgeVisible() const
+{
+	return _aSetEdgeVisibility->isChecked();
+}
 double CloudViewer::getRenderingRate() const
 {
 	return _renderingRate;
