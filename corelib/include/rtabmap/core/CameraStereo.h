@@ -53,6 +53,7 @@ namespace rtabmap
 /////////////////////////
 class DC1394Device;
 
+
 class RTABMAP_EXP CameraStereoDC1394 :
 	public Camera
 {
@@ -76,6 +77,8 @@ private:
 	StereoCameraModel stereoModel_;
 #endif
 };
+
+
 
 /////////////////////////
 // CameraStereoFlyCapture2
@@ -160,6 +163,41 @@ private:
 #endif
 };
 
+
+/////////////////////////
+// CameraStereoTara
+/////////////////////////
+class CameraImages;
+class RTABMAP_EXP CameraStereoTara :
+public Camera
+{
+public:
+	static bool available();
+public:
+
+	CameraStereoTara(
+			int device,
+			bool rectifyImages = false,
+			float imageRate = 0.0f,
+			const Transform & localTransform = Transform::getIdentity());
+
+	virtual ~CameraStereoTara();
+
+	virtual bool init(const std::string & calibrationFolder = ".", const std::string & cameraName = "");
+	virtual bool isCalibrated() const;
+	virtual std::string getSerial() const;
+
+protected:
+	virtual SensorData captureImage(CameraInfo * info = 0);
+
+private:
+	cv::VideoCapture capture_;
+	bool rectifyImages_;
+	StereoCameraModel stereoModel_;
+	std::string cameraName_;
+	int usbDevice_;
+};
+
 /////////////////////////
 // CameraStereoImages
 /////////////////////////
@@ -197,7 +235,6 @@ private:
 	CameraImages * camera2_;
 	StereoCameraModel stereoModel_;
 };
-
 
 /////////////////////////
 // CameraStereoVideo
@@ -240,6 +277,7 @@ public:
 
 protected:
 	virtual SensorData captureImage(CameraInfo * info = 0);
+
 
 private:
 	cv::VideoCapture capture_;

@@ -844,7 +844,7 @@ bool CameraStereoZed::init(const std::string & calibrationFolder, const std::str
 		delete zed_;
 		zed_ = 0;
 	}
-	
+
 	lost_ = true;
 
 	sl::InitParameters param;
@@ -908,10 +908,10 @@ bool CameraStereoZed::init(const std::string & calibrationFolder, const std::str
 	sl::Resolution res = stereoParams->left_cam.image_size;
 
 	stereoModel_ = StereoCameraModel(
-		stereoParams->left_cam.fx, 
-		stereoParams->left_cam.fy, 
-		stereoParams->left_cam.cx, 
-		stereoParams->left_cam.cy, 
+		stereoParams->left_cam.fx,
+		stereoParams->left_cam.fy,
+		stereoParams->left_cam.cx,
+		stereoParams->left_cam.cy,
 		stereoParams->T[0],//baseline
 		this->getLocalTransform(),
 		cv::Size(res.width, res.height));
@@ -975,7 +975,7 @@ static cv::Mat slMat2cvMat(sl::Mat& input) {
 	case sl::MAT_TYPE_8U_C3: cv_type = CV_8UC3; break;
 	case sl::MAT_TYPE_8U_C4: cv_type = CV_8UC4; break;
 	default: break;
-	}	
+	}
 	// cv::Mat data requires a uchar* pointer. Therefore, we get the uchar1 pointer from sl::Mat (getPtr<T>())
 	//cv::Mat and sl::Mat will share the same memory pointer
 	return cv::Mat(input.getHeight(), input.getWidth(), cv_type, input.getPtr<sl::uchar1>(sl::MEM_CPU));
@@ -1032,7 +1032,7 @@ SensorData CameraStereoZed::captureImage(CameraInfo * info)
 				cv::Mat rgbaRight = slMat2cvMat(tmp);
 				cv::Mat right;
 				cv::cvtColor(rgbaRight, right, cv::COLOR_BGRA2GRAY);
-			
+
 				data = SensorData(left, right, stereoModel_, this->getNextSeqID(), UTimer::now());
 			}
 
@@ -1097,6 +1097,146 @@ SensorData CameraStereoZed::captureImage(CameraInfo * info)
 #else
 	UERROR("CameraStereoZED: RTAB-Map is not built with ZED sdk support!");
 #endif
+	return data;
+}
+
+
+//
+// CameraStereoTara
+//
+bool CameraStereoTara::available()
+{
+	return true;
+}
+
+
+CameraStereoTara::CameraStereoTara(
+	int device,
+	bool rectifyImages,
+	float imageRate,
+	const Transform & localTransform) :
+	Camera(imageRate, localTransform),
+	rectifyImages_(rectifyImages),
+	usbDevice_(device)
+{
+
+	if ( CV_MAJOR_VERSION < 3 || ( CV_MAJOR_VERSION > 3 && CV_MINOR_VERSION < 1 ))
+	{
+		UERROR(" OpenCV %d.%d detected, Minimum OpenCV 3.2 Required ", CV_MAJOR_VERSION,CV_MINOR_VERSION);
+		exit(0);
+	}
+}
+
+CameraStereoTara::~CameraStereoTara()
+{
+	capture_.release();
+}
+
+bool CameraStereoTara::init(const std::string & calibrationFolder, const std::string & cameraName)
+{
+	cameraName_ = cameraName;
+	if(capture_.isOpened())
+	{
+		capture_.release();
+	}
+
+
+		capture_.open(usbDevice_);
+
+		capture_.set(CV_CAP_PROP_FOURCC, CV_FOURCC('Y', '1', '6', ' '));
+		capture_.set(CV_CAP_PROP_FPS, 60);
+		capture_.set(CV_CAP_PROP_FRAME_WIDTH, 752);
+		capture_.set(CV_CAP_PROP_FRAME_HEIGHT, 480);
+		capture_.set(CV_CAP_PROP_CONVERT_RGB,false);
+
+		ULOGGER_DEBUG("CameraStereoTara: Usb device initialization on device %d", usbDevice_);
+
+
+	if (cameraName_.empty())
+	{
+		unsigned int guid = (unsigned int)capture_.get(CV_CAP_PROP_GUID);
+		if (guid != 0 && guid != 0xffffffff)
+		{
+			cameraName_ = uFormat("%08x", guid);
+		}
+	}
+
+	// look for calibration files
+	if(!calibrationFolder.empty() && !cameraName_.empty())
+	{
+		if(!stereoModel_.load(calibrationFolder, cameraName_, false))
+		{
+			UWARN("Missing calibration files for camera \"%s\" in \"%s\" folder, you should calibrate the camera!",
+				cameraName_.c_str(), calibrationFolder.c_str());
+		}
+		else
+		{
+			UINFO("Stereo parameters: fx=%f cx=%f cy=%f baseline=%f",
+					stereoModel_.left().fx(),
+					stereoModel_.left().cx(),
+					stereoModel_.left().cy(),
+					stereoModel_.baseline());
+		}
+	}
+
+	stereoModel_.setLocalTransform(this->getLocalTransform());
+	if(rectifyImages_ && !stereoModel_.isValidForRectification())
+	{
+		UERROR("Parameter \"rectifyImages\" is set, but no stereo model is loaded or valid.");
+		return false;
+	}
+	return true;
+}
+
+bool CameraStereoTara::isCalibrated() const
+{
+	return stereoModel_.isValidForProjection();
+}
+
+std::string CameraStereoTara::getSerial() const
+{
+	return cameraName_;
+}
+
+SensorData CameraStereoTara::captureImage(CameraInfo * info)
+{
+	SensorData data;
+
+	if(capture_.isOpened() )
+	{
+		cv::Mat img, leftImage, interLeavedFrame, rightImage;
+        std::vector<cv::Mat> StereoFrames;
+		interLeavedFrame.create(480, 752, CV_8UC2);
+
+		if(!capture_.read(img))
+		{
+			return data;
+		}
+
+	  interLeavedFrame.data = img.data;
+	  split(interLeavedFrame, StereoFrames);
+    leftImage=StereoFrames[0].clone();
+    rightImage=StereoFrames[1].clone();
+
+		// Rectification
+		if(rectifyImages_ && stereoModel_.left().isValidForRectification() && stereoModel_.right().isValidForRectification())
+		{
+			leftImage = stereoModel_.left().rectifyImage(leftImage);
+			rightImage = stereoModel_.right().rectifyImage(rightImage);
+		}
+
+		if(stereoModel_.left().imageHeight() == 0 || stereoModel_.left().imageWidth() == 0)
+		{
+			stereoModel_.setImageSize(leftImage.size());
+		}
+
+		data = SensorData(leftImage, rightImage, stereoModel_, this->getNextSeqID(), UTimer::now());
+	}
+	else
+	{
+		ULOGGER_WARN("The camera must be initialized before requesting an image.");
+	}
+
 	return data;
 }
 
@@ -1509,6 +1649,4 @@ SensorData CameraStereoVideo::captureImage(CameraInfo * info)
 
 	return data;
 }
-
-
 } // namespace rtabmap
