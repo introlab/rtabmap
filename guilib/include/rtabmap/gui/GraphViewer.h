@@ -34,7 +34,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QtCore/QMap>
 #include <QtCore/QSettings>
 #include <rtabmap/core/Link.h>
-#include <rtabmap/core/GeodeticCoords.h>
+#include <rtabmap/core/GPS.h>
 #include <opencv2/opencv.hpp>
 #include <map>
 #include <vector>
@@ -55,6 +55,9 @@ class RTABMAPGUI_EXP GraphViewer : public QGraphicsView {
 public:
 	GraphViewer(QWidget * parent = 0);
 	virtual ~GraphViewer();
+
+	void setWorldMapRotation(const float & theta);
+	float getWorldMapRotation() const {return _worldMapRotation;}
 
 	void updateGraph(const std::map<int, Transform> & poses,
 					 const std::multimap<int, Link> & constraints,
@@ -174,6 +177,8 @@ private:
 	QColor _loopIntraSessionColor;
 	QColor _loopInterSessionColor;
 	bool _intraInterSessionColors;
+	float _worldMapRotation;
+	QGraphicsItem * _world;
 	QGraphicsItem * _root;
 	QGraphicsItem * _graphRoot;
 	QGraphicsItem * _globalPathRoot;

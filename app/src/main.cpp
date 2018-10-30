@@ -43,7 +43,7 @@ int main(int argc, char* argv[])
 {
 	/* Set logger type */
 	ULogger::setType(ULogger::kTypeConsole);
-	ULogger::setLevel(ULogger::kInfo);
+	ULogger::setLevel(ULogger::kWarning);
 
 	/* Create tasks */
 	QApplication * app = new QApplication(argc, argv);
@@ -61,11 +61,10 @@ int main(int argc, char* argv[])
            UFile::getExtension(value).compare("db") == 0)
         {
             database = value;
-            break;
         }
     }
 
-	UINFO("Program started...");
+	printf("Program started...\n");
 
 	UEventsManager::addHandler(mainWindow);
 
@@ -101,14 +100,13 @@ int main(int argc, char* argv[])
 	UEventsManager::removeHandler(mainWindow);
 	UEventsManager::removeHandler(rtabmap);
 
-	UINFO("Killing threads...");
 	rtabmap->join(true);
 
-	UINFO("Closing RTAB-Map...");
+	printf("Closing RTAB-Map...\n");
 	delete rtabmap;
 	delete mainWindow;
 	delete app;
-	UINFO("All done!");
+	printf("All done!\n");
 
     return 0;
 }

@@ -29,6 +29,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define ODOMETRYF2M_H_
 
 #include <rtabmap/core/Odometry.h>
+#include <rtabmap/core/Optimizer.h>
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 #include <pcl/pcl_base.h>
@@ -74,7 +75,7 @@ private:
 	int lastFrameOldestNewId_;
 	std::vector<std::pair<pcl::PointCloud<pcl::PointNormal>::Ptr, pcl::IndicesPtr> > scansBuffer_;
 
-	std::map<int, std::map<int, cv::Point3f> > bundleWordReferences_; //<WordId, <FrameId, pt2D+depth>>
+	std::map<int, std::map<int, FeatureBA> > bundleWordReferences_; //<WordId, <FrameId, pt2D+depth>>
 	std::map<int, Transform> bundlePoses_;
 	std::multimap<int, Link> bundleLinks_;
 	std::map<int, CameraModel> bundleModels_;

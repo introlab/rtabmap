@@ -2148,7 +2148,7 @@ LaserScan computeNormals(
 		{
 			UASSERT(!laserScan.is2d());
 			pcl::PointCloud<pcl::Normal>::Ptr normals = util3d::computeNormals(cloud, searchK, searchRadius);
-			return LaserScan(laserScanFromPointCloud(*cloud, *normals), laserScan.maxPoints(), laserScan.maxRange(), LaserScan::kXYZRGBNormal, laserScan.localTransform());
+			return LaserScan(laserScanFromPointCloud(*cloud, *normals), laserScan.maxPoints(), laserScan.rangeMax(), LaserScan::kXYZRGBNormal, laserScan.localTransform());
 		}
 	}
 	else if(laserScan.hasIntensity())
@@ -2159,12 +2159,20 @@ LaserScan computeNormals(
 			if(laserScan.is2d())
 			{
 				pcl::PointCloud<pcl::Normal>::Ptr normals = util3d::computeNormals2D(cloud, searchK, searchRadius);
-				return LaserScan(laserScan2dFromPointCloud(*cloud, *normals), laserScan.maxPoints(), laserScan.maxRange(), LaserScan::kXYZRGBNormal, laserScan.localTransform());
+				if(laserScan.angleIncrement() > 0.0f)
+				{
+					return LaserScan(laserScan2dFromPointCloud(*cloud, *normals), LaserScan::kXYINormal, laserScan.rangeMin(), laserScan.rangeMax(), laserScan.angleMin(), laserScan.angleMax(), laserScan.angleIncrement(), laserScan.localTransform());
+				}
+				else
+				{
+					return LaserScan(laserScan2dFromPointCloud(*cloud, *normals), laserScan.maxPoints(), laserScan.rangeMax(), LaserScan::kXYINormal, laserScan.localTransform());
+				}
+
 			}
 			else
 			{
 				pcl::PointCloud<pcl::Normal>::Ptr normals = util3d::computeNormals(cloud, searchK, searchRadius);
-				return LaserScan(laserScanFromPointCloud(*cloud, *normals), laserScan.maxPoints(), laserScan.maxRange(), LaserScan::kXYZRGBNormal, laserScan.localTransform());
+				return LaserScan(laserScanFromPointCloud(*cloud, *normals), laserScan.maxPoints(), laserScan.rangeMax(), LaserScan::kXYZINormal, laserScan.localTransform());
 			}
 		}
 	}
@@ -2176,12 +2184,19 @@ LaserScan computeNormals(
 			if(laserScan.is2d())
 			{
 				pcl::PointCloud<pcl::Normal>::Ptr normals = util3d::computeNormals2D(cloud, searchK, searchRadius);
-				return LaserScan(laserScan2dFromPointCloud(*cloud, *normals), laserScan.maxPoints(), laserScan.maxRange(), LaserScan::kXYZRGBNormal, laserScan.localTransform());
+				if(laserScan.angleIncrement() > 0.0f)
+				{
+					return LaserScan(laserScan2dFromPointCloud(*cloud, *normals), LaserScan::kXYNormal, laserScan.rangeMin(), laserScan.rangeMax(), laserScan.angleMin(), laserScan.angleMax(), laserScan.angleIncrement(), laserScan.localTransform());
+				}
+				else
+				{
+					return LaserScan(laserScan2dFromPointCloud(*cloud, *normals), laserScan.maxPoints(), laserScan.rangeMax(), LaserScan::kXYNormal, laserScan.localTransform());
+				}
 			}
 			else
 			{
 				pcl::PointCloud<pcl::Normal>::Ptr normals = util3d::computeNormals(cloud, searchK, searchRadius);
-				return LaserScan(laserScanFromPointCloud(*cloud, *normals), laserScan.maxPoints(), laserScan.maxRange(), LaserScan::kXYZRGBNormal, laserScan.localTransform());
+				return LaserScan(laserScanFromPointCloud(*cloud, *normals), laserScan.maxPoints(), laserScan.rangeMax(), LaserScan::kXYZNormal, laserScan.localTransform());
 			}
 		}
 	}
@@ -2854,7 +2869,14 @@ LaserScan adjustNormalsToViewPoint(
 				}
 			}
 		}
-		return LaserScan(output, scan.maxPoints(), scan.maxRange(), scan.format(), scan.localTransform());
+		if(scan.angleIncrement() > 0.0f)
+		{
+			return LaserScan(output, scan.format(), scan.rangeMin(), scan.rangeMax(), scan.angleMin(), scan.angleMax(), scan.angleIncrement(), scan.localTransform());
+		}
+		else
+		{
+			return LaserScan(output, scan.maxPoints(), scan.rangeMax(), scan.format(), scan.localTransform());
+		}
 	}
 	return scan;
 }

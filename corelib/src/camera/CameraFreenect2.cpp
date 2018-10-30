@@ -29,6 +29,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UMath.h>
 #include <rtabmap/utilite/UTimer.h>
 #include <rtabmap/core/util2d.h>
+#include <opencv2/imgproc/types_c.h>
 
 #ifdef RTABMAP_FREENECT2
 #include <libfreenect2/libfreenect2.hpp>
@@ -429,11 +430,11 @@ SensorData CameraFreenect2::captureImage(CameraInfo * info)
 					cv::Mat rgbMat; // rtabmap uses 3 channels RGB
 					#ifdef LIBFREENECT2_WITH_TEGRAJPEG_SUPPORT 
 
-					 cv::cvtColor(rgbMatC4, rgbMat, CV_RGBA2BGR); 
+					 cv::cvtColor(rgbMatC4, rgbMat, CV_RGBA2BGR);
 
 					#else 
 
-					cv::cvtColor(rgbMatC4, rgbMat, CV_BGRA2BGR); 
+					cv::cvtColor(rgbMatC4, rgbMat, CV_BGRA2BGR);
 
 					#endif 
 					cv::flip(rgbMat, rgb, 1);

@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2010-2016, Mathieu Labbe - IntRoLab - Universite de Sherbrooke
+Copyright (c) 2010-2018, Mathieu Labbe - IntRoLab - Universite de Sherbrooke
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -25,53 +25,61 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef OPTIMIZERTORO_H_
-#define OPTIMIZERTORO_H_
-
-#include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
-
-#include <rtabmap/core/Optimizer.h>
+#ifndef CORELIB_INCLUDE_RTABMAP_CORE_ENVSENSOR_H_
+#define CORELIB_INCLUDE_RTABMAP_CORE_ENVSENSOR_H_
 
 namespace rtabmap {
 
-class RTABMAP_EXP OptimizerTORO : public Optimizer
+class EnvSensor
 {
 public:
-	static bool available();
+	enum Type {
+		// built-in types
+		kUndefined = 0,
+		kWifiSignalStrength,      // dBm
+		kAmbientTemperature,      // Celcius
+		kAmbientAirPressure,      // hPa
+		kAmbientLight,            // lx
+		kAmbientRelativeHumidity, // %
+
+		// user types
+		kCustomSensor1 = 100,
+		kCustomSensor2,
+		kCustomSensor3,
+		kCustomSensor4,
+		kCustomSensor5,
+		kCustomSensor6,
+		kCustomSensor7,
+		kCustomSensor8,
+		kCustomSensor9
+	};
 
 public:
-	static bool loadGraph(
-			const std::string & fileName,
-			std::map<int, Transform> & poses,
-			std::multimap<int, Link> & edgeConstraints);
+	EnvSensor() :
+		type_(kUndefined),
+		value_(0.0),
+		stamp_(0.0)
+	{}
+	EnvSensor(const Type & type, const double & value,const double & stamp = 0) :
+		type_(type),
+		value_(value),
+		stamp_(stamp)
+	{}
 
-public:
-	OptimizerTORO(
-			int iterations         = Parameters::defaultOptimizerIterations(),
-			bool slam2d            = Parameters::defaultRegForce3DoF(),
-			bool covarianceIgnored = Parameters::defaultOptimizerVarianceIgnored(),
-			double epsilon         = Parameters::defaultOptimizerEpsilon()) :
-		Optimizer(iterations, slam2d, covarianceIgnored, epsilon) {}
-	OptimizerTORO(const ParametersMap & parameters) :
-		Optimizer(parameters) {}
-	virtual ~OptimizerTORO() {}
+	virtual ~EnvSensor() {}
 
-	virtual Type type() const {return kTypeTORO;}
+	const Type & type() const {return type_;}
+	const double & value() const {return value_;}
+	const double & stamp() const {return stamp_;}
 
-	virtual std::map<int, Transform> optimize(
-			int rootId,
-			const std::map<int, Transform> & poses,
-			const std::multimap<int, Link> & edgeConstraints,
-			cv::Mat & outputCovariance,
-			std::list<std::map<int, Transform> > * intermediateGraphes = 0,
-			double * finalError = 0,
-			int * iterationsDone = 0);
-
-	bool saveGraph(
-		const std::string & fileName,
-		const std::map<int, Transform> & poses,
-		const std::multimap<int, Link> & edgeConstraints);
+private:
+	Type type_;
+	double value_;
+	double stamp_;
 };
 
-} /* namespace rtabmap */
-#endif /* GRAPH_H_ */
+typedef std::map<EnvSensor::Type, EnvSensor> EnvSensors;
+
+}
+
+#endif /* CORELIB_INCLUDE_RTABMAP_CORE_ENVSENSOR_H_ */

@@ -310,7 +310,7 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 			optimizer = new gtsam::LevenbergMarquardtOptimizer(graph, initialEstimate, parameters);
 		}
 
-		UINFO("GTSAM optimizing begin (max iterations=%d, robust=%d)", iterations(), isRobust()?1:0);
+		UDEBUG("GTSAM optimizing begin (max iterations=%d, robust=%d)", iterations(), isRobust()?1:0);
 		UTimer timer;
 		int it = 0;
 		double lastError = optimizer->error();
@@ -344,7 +344,9 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 			}
 			catch(gtsam::IndeterminantLinearSystemException & e)
 			{
-				UWARN("GTSAM exception caught: %s", e.what());
+				UWARN("GTSAM exception caught: %s\n Graph has %d edges and %d vertices", e.what(),
+						(int)edgeConstraints.size(),
+						(int)poses.size());
 				delete optimizer;
 				return optimizedPoses;
 			}
@@ -361,7 +363,7 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 				}
 				else
 				{
-					UINFO("Stop optimizing, not enough improvement (%f < %f)", errorDelta, this->epsilon());
+					UDEBUG("Stop optimizing, not enough improvement (%f < %f)", errorDelta, this->epsilon());
 					break;
 				}
 			}
@@ -380,7 +382,7 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 		{
 			*iterationsDone = it;
 		}
-		UINFO("GTSAM optimizing end (%d iterations done, error=%f (initial=%f final=%f), time=%f s)",
+		UDEBUG("GTSAM optimizing end (%d iterations done, error=%f (initial=%f final=%f), time=%f s)",
 				optimizer->iterations(), optimizer->error(), graph.error(initialEstimate), graph.error(optimizer->values()), timer.ticks());
 
 		gtsam::Marginals marginals(graph, optimizer->values());
@@ -406,10 +408,9 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 			UTimer t;
 			gtsam::Marginals marginals(graph, optimizer->values());
 			gtsam::Matrix info = marginals.marginalCovariance(optimizer->values().rbegin()->key);
-			UINFO("Computed marginals = %fs (key=%d)", t.ticks(), optimizer->values().rbegin()->key);
-			if(isSlam2d())
+			UDEBUG("Computed marginals = %fs (key=%d)", t.ticks(), optimizer->values().rbegin()->key);
+			if(isSlam2d() && info.cols() == 3 && info.cols() == 3)
 			{
-				UASSERT(info.cols() == 3 && info.cols() == 3);
 				outputCovariance.at<double>(0,0) = info(0,0); // x-x
 				outputCovariance.at<double>(0,1) = info(0,1); // x-y
 				outputCovariance.at<double>(0,5) = info(0,2); // x-theta
@@ -420,9 +421,8 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 				outputCovariance.at<double>(5,1) = info(2,1); // theta-y
 				outputCovariance.at<double>(5,5) = info(2,2); // theta-theta
 			}
-			else
+			else if(!isSlam2d() && info.cols() == 6 && info.cols() == 6)
 			{
-				UASSERT(info.cols() == 6 && info.cols() == 6);
 				Eigen::Matrix<double, 6, 6> mgtsam = Eigen::Matrix<double, 6, 6>::Identity();
 				mgtsam.block(3,3,3,3) = info.block(0,0,3,3); // cov rotation
 				mgtsam.block(0,0,3,3) = info.block(3,3,3,3); // cov translation
@@ -430,8 +430,18 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 				mgtsam.block(3,0,3,3) = info.block(3,0,3,3); // off diagonal
 				memcpy(outputCovariance.data, mgtsam.data(), outputCovariance.total()*sizeof(double));
 			}
-		} catch(std::exception& e) {
-			cout << e.what() << endl;
+			else
+			{
+				UWARN("GTSAM: Could not compute marginal covariance!");
+			}
+		}
+		catch(gtsam::IndeterminantLinearSystemException & e)
+		{
+			UWARN("GTSAM exception caught: %s", e.what());
+		}
+		catch(std::exception& e)
+		{
+			UWARN("GTSAM exception caught: %s", e.what());
 		}
 
 		delete optimizer;

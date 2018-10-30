@@ -210,6 +210,11 @@
 		            android:summary="@string/pref_summary_gps_saved"
 		            android:defaultValue="@string/pref_default_gps_saved"/>
 		        <com.introlab.rtabmap.CustomSwitchPreference
+		            android:key="@string/pref_key_env_sensors_saved"
+		            android:title="@string/pref_title_env_sensors_saved"
+		            android:summary="@string/pref_summary_env_sensors_saved"
+		            android:defaultValue="@string/pref_default_env_sensors_saved"/>
+		        <com.introlab.rtabmap.CustomSwitchPreference
 		            android:key="@string/pref_key_db_in_memory"
 		            android:title="@string/pref_title_db_in_memory"
 		            android:summary="@string/pref_summary_db_in_memory"

@@ -202,7 +202,8 @@ int main(int argc, char * argv[])
 						std::string l;
 						double s;
 						std::vector<float> v;
-						if(driver->getNodeInfo(*iter, p, m, w, l, s, gt, v, gps))
+						EnvSensors sensors;
+						if(driver->getNodeInfo(*iter, p, m, w, l, s, gt, v, gps, sensors))
 						{
 							odomPoses.insert(std::make_pair(*iter, p));
 							if(!gt.isNull())

@@ -305,13 +305,13 @@ void OccupancyGrid::createLocalMap(
 		}
 
 		float maxRange = cloudMaxDepth_;
-		if(cloudMaxDepth_>0.0f && node.sensorData().laserScanRaw().maxRange()>0.0f)
+		if(cloudMaxDepth_>0.0f && node.sensorData().laserScanRaw().rangeMax()>0.0f)
 		{
-			maxRange = cloudMaxDepth_ < node.sensorData().laserScanRaw().maxRange()?cloudMaxDepth_:node.sensorData().laserScanRaw().maxRange();
+			maxRange = cloudMaxDepth_ < node.sensorData().laserScanRaw().rangeMax()?cloudMaxDepth_:node.sensorData().laserScanRaw().rangeMax();
 		}
-		else if(scan2dUnknownSpaceFilled_ && node.sensorData().laserScanRaw().maxRange()>0.0f)
+		else if(scan2dUnknownSpaceFilled_ && node.sensorData().laserScanRaw().rangeMax()>0.0f)
 		{
-			maxRange = node.sensorData().laserScanRaw().maxRange();
+			maxRange = node.sensorData().laserScanRaw().rangeMax();
 		}
 		util3d::occupancy2DFromLaserScan(
 				util3d::transformLaserScan(scan, node.sensorData().laserScanRaw().localTransform()).data(),

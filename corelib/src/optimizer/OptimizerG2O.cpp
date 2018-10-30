@@ -30,6 +30,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UMath.h>
 #include <rtabmap/utilite/UConversion.h>
 #include <rtabmap/utilite/UTimer.h>
+#include <locale.h>
 #include <set>
 
 #include <rtabmap/core/Version.h>
@@ -37,6 +38,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/util3d_transforms.h>
 #include <rtabmap/core/util3d_motion_estimation.h>
 #include <rtabmap/core/util3d.h>
+
 
 #if defined(RTABMAP_G2O) || defined(RTABMAP_ORB_SLAM2)
 #include "g2o/core/sparse_optimizer.h"
@@ -64,9 +66,6 @@ typedef Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic,Eigen::ColMajor> Matr
 #ifdef G2O_HAVE_CHOLMOD
 #include "g2o/solvers/cholmod/linear_solver_cholmod.h"
 #endif
-enum {
-    PARAM_OFFSET=0,
-};
 #endif // RTABMAP_G2O
 
 #ifdef RTABMAP_ORB_SLAM2
@@ -95,6 +94,10 @@ typedef g2o::LinearSolverCholmod<SlamBlockSolver::PoseMatrixType> SlamLinearChol
 #endif
 
 #endif // end defined(RTABMAP_G2O) || defined(RTABMAP_ORB_SLAM2)
+
+enum {
+    PARAM_OFFSET=0,
+};
 
 namespace rtabmap {
 
@@ -192,9 +195,18 @@ std::map<int, Transform> OptimizerG2O::optimize(
 
 		g2o::SparseOptimizer optimizer;
 		optimizer.setVerbose(ULogger::level()==ULogger::kDebug);
-		g2o::ParameterSE3Offset* odomOffset = new g2o::ParameterSE3Offset();
-		odomOffset->setId(PARAM_OFFSET);
-		optimizer.addParameter(odomOffset);
+		if (isSlam2d())
+		{
+			g2o::ParameterSE2Offset* odomOffset = new g2o::ParameterSE2Offset();
+			odomOffset->setId(PARAM_OFFSET);
+			optimizer.addParameter(odomOffset);
+		}
+		else
+		{
+			g2o::ParameterSE3Offset* odomOffset = new g2o::ParameterSE3Offset();
+			odomOffset->setId(PARAM_OFFSET);
+			optimizer.addParameter(odomOffset);
+		}
 
 #ifdef RTABMAP_G2O_CPP11
 
@@ -854,7 +866,7 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 		const std::multimap<int, Link> & links,
 		const std::map<int, CameraModel> & models,
 		std::map<int, cv::Point3f> & points3DMap,
-		const std::map<int, std::map<int, cv::Point3f> > & wordReferences,
+		const std::map<int, std::map<int, FeatureBA> > & wordReferences,
 		std::set<int> * outliers)
 {
 	std::map<int, Transform> optimizedPoses;
@@ -1058,7 +1070,7 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 		}
 		UDEBUG("stepVertexId=%d, negVertexOffset=%d", stepVertexId, negVertexOffset);
 		std::list<g2o::OptimizableGraph::Edge*> edges;
-		for(std::map<int, std::map<int, cv::Point3f> >::const_iterator iter = wordReferences.begin(); iter!=wordReferences.end(); ++iter)
+		for(std::map<int, std::map<int, FeatureBA> >::const_iterator iter = wordReferences.begin(); iter!=wordReferences.end(); ++iter)
 		{
 			int id = iter->first;
 			if(points3DMap.find(id) != points3DMap.end())
@@ -1082,13 +1094,13 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 				//UDEBUG("Added 3D point %d (%f,%f,%f)", vpt3d->id()-stepVertexId, pt3d.x, pt3d.y, pt3d.z);
 
 				// set observations
-				for(std::map<int, cv::Point3f>::const_iterator jter=iter->second.begin(); jter!=iter->second.end(); ++jter)
+				for(std::map<int, FeatureBA>::const_iterator jter=iter->second.begin(); jter!=iter->second.end(); ++jter)
 				{
 					int camId = jter->first;
 					if(poses.find(camId) != poses.end() && optimizer.vertex(camId) != 0)
 					{
-						const cv::Point3f & pt = jter->second;
-						double depth = pt.z;
+						const FeatureBA & pt = jter->second;
+						double depth = pt.depth;
 
 						//UDEBUG("Added observation pt=%d to cam=%d (%f,%f) depth=%f", vpt3d->id()-stepVertexId, camId, pt.x, pt.y, depth);
 
@@ -1111,7 +1123,7 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 #ifdef RTABMAP_ORB_SLAM2
 							g2o::EdgeStereoSE3ProjectXYZ* es = new g2o::EdgeStereoSE3ProjectXYZ();
 							float disparity = baseline * iterModel->second.fx() / depth;
-							Eigen::Vector3d obs( pt.x, pt.y, pt.x-disparity);
+							Eigen::Vector3d obs( pt.kpt.pt.x, pt.kpt.pt.y, pt.kpt.pt.x-disparity);
 							es->setMeasurement(obs);
 							//variance *= log(exp(1)+disparity);
 							es->setInformation(Eigen::Matrix3d::Identity() / variance);
@@ -1124,7 +1136,7 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 #else
 							g2o::EdgeProjectP2SC* es = new g2o::EdgeProjectP2SC();
 							float disparity = baseline * vcam->estimate().Kcam(0,0) / depth;
-							Eigen::Vector3d obs( pt.x, pt.y, pt.x-disparity);
+							Eigen::Vector3d obs( pt.kpt.pt.x, pt.kpt.pt.y, pt.kpt.pt.x-disparity);
 							es->setMeasurement(obs);
 							//variance *= log(exp(1)+disparity);
 							es->setInformation(Eigen::Matrix3d::Identity() / variance);
@@ -1143,7 +1155,7 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 							// mono edge
 #ifdef RTABMAP_ORB_SLAM2
 							g2o::EdgeSE3ProjectXYZ* em = new g2o::EdgeSE3ProjectXYZ();
-							Eigen::Vector2d obs( pt.x, pt.y);
+							Eigen::Vector2d obs( pt.kpt.pt.x, pt.kpt.pt.y);
 							em->setMeasurement(obs);
 							em->setInformation(Eigen::Matrix2d::Identity() / variance);
 							em->fx = iterModel->second.fx();
@@ -1154,7 +1166,7 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 
 #else
 							g2o::EdgeProjectP2MC* em = new g2o::EdgeProjectP2MC();
-							Eigen::Vector2d obs( pt.x, pt.y);
+							Eigen::Vector2d obs( pt.kpt.pt.x, pt.kpt.pt.y);
 							em->setMeasurement(obs);
 							em->setInformation(Eigen::Matrix2d::Identity() / variance);
 							e = em;
@@ -1182,7 +1194,7 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 
 		UASSERT(optimizer.verifyInformationMatrices());
 
-		UINFO("g2o optimizing begin (max iterations=%d, robustKernel=%f)", iterations(), robustKernelDelta_);
+		UDEBUG("g2o optimizing begin (max iterations=%d, robustKernel=%f)", iterations(), robustKernelDelta_);
 
 		int it = 0;
 		UTimer timer;
@@ -1260,7 +1272,7 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 				UDEBUG("outliers=%d outliersCountFar=%d", outliersCount, outliersCountFar);
 			}
 		}
-		UINFO("g2o optimizing end (%d iterations done, error=%f, outliers=%d/%d (delta=%f) time = %f s)", it, optimizer.activeRobustChi2(), outliersCount, (int)edges.size(), robustKernelDelta_, timer.ticks());
+		UDEBUG("g2o optimizing end (%d iterations done, error=%f, outliers=%d/%d (delta=%f) time = %f s)", it, optimizer.activeRobustChi2(), outliersCount, (int)edges.size(), robustKernelDelta_, timer.ticks());
 
 		if(optimizer.activeRobustChi2() > 1000000000000.0)
 		{
@@ -1362,8 +1374,7 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 bool OptimizerG2O::saveGraph(
 		const std::string & fileName,
 		const std::map<int, Transform> & poses,
-		const std::multimap<int, Link> & edgeConstraints,
-		bool useRobustConstraints)
+		const std::multimap<int, Link> & edgeConstraints)
 {
 	FILE * file = 0;
 
@@ -1375,11 +1386,47 @@ bool OptimizerG2O::saveGraph(
 
 	if(file)
 	{
-		// VERTEX_SE3 id x y z qw qx qy qz
+		// force periods to be used instead of commas
+		setlocale(LC_ALL, "en_US.UTF-8");
+
+		if(isSlam2d())
+		{
+			// PARAMS_SE2OFFSET id x y theta (set for priors)
+			fprintf(file, "PARAMS_SE2OFFSET %d 0 0 0\n", PARAM_OFFSET);
+		}
+		else
+		{
+			// PARAMS_SE3OFFSET id x y z qw qx qy qz (set for priors)
+			Eigen::Vector3f v = Eigen::Vector3f::Zero();
+			Eigen::Quaternionf q = Eigen::Quaternionf::Identity();
+			fprintf(file, "PARAMS_SE3OFFSET %d %f %f %f %f %f %f %f\n",
+				PARAM_OFFSET,
+				v.x(),
+				v.y(),
+				v.z(),
+				q.x(),
+				q.y(),
+				q.z(),
+				q.w());
+		}
+
+		
 		for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
 		{
-			Eigen::Quaternionf q = iter->second.getQuaternionf();
-			fprintf(file, "VERTEX_SE3:QUAT %d %f %f %f %f %f %f %f\n",
+			if (isSlam2d())
+			{
+				// VERTEX_SE2 id x y theta
+				fprintf(file, "VERTEX_SE2 %d %f %f %f\n",
+					iter->first,
+					iter->second.x(),
+					iter->second.y(),
+					iter->second.theta());
+			}
+			else
+			{
+				// VERTEX_SE3 id x y z qw qx qy qz
+				Eigen::Quaternionf q = iter->second.getQuaternionf();
+				fprintf(file, "VERTEX_SE3:QUAT %d %f %f %f %f %f %f %f\n",
 					iter->first,
 					iter->second.x(),
 					iter->second.y(),
@@ -1388,30 +1435,72 @@ bool OptimizerG2O::saveGraph(
 					q.y(),
 					q.z(),
 					q.w());
+			}
 		}
 
-		//EDGE_SE3 observed_vertex_id observing_vertex_id x y z qx qy qz qw inf_11 inf_12 .. inf_16 inf_22 .. inf_66
 		int virtualVertexId = poses.size()?poses.rbegin()->first+1:0;
 		for(std::multimap<int, Link>::const_iterator iter = edgeConstraints.begin(); iter!=edgeConstraints.end(); ++iter)
 		{
-			std::string prefix = "EDGE_SE3:QUAT";
+			std::string prefix = isSlam2d()? "EDGE_SE2" :"EDGE_SE3:QUAT";
 			std::string suffix = "";
+			std::string to = uFormat(" %d", iter->second.to());
 
-			if(useRobustConstraints &&
+			if (iter->second.type() == Link::kPosePrior)
+			{
+				if (this->priorsIgnored())
+				{
+					continue;
+				}
+				prefix = isSlam2d() ? "EDGE_SE2_PRIOR" : "EDGE_SE3_PRIOR";
+				if (!isSlam2d())
+				{
+					to = uFormat(" %d", PARAM_OFFSET);
+				}
+				else
+				{
+					//  based on https://github.com/RainerKuemmerle/g2o/blob/38347944c6ad7a3b31976b97406ff0de20be1530/g2o/types/slam2d/edge_se2_prior.cpp#L42
+					//  there is no pid for the 2d prior case
+					to = "";
+				}
+			}
+			else if(this->isRobust() &&
 			   iter->second.type() != Link::kNeighbor &&
 			   iter->second.type() != Link::kNeighborMerged)
 			{
-				prefix = "EDGE_SE3_SWITCHABLE";
 				fprintf(file, "VERTEX_SWITCH %d 1\n", virtualVertexId);
 				fprintf(file, "EDGE_SWITCH_PRIOR %d 1 1.0\n", virtualVertexId);
+				prefix = isSlam2d() ? "EDGE_SE2_SWITCHABLE" : "EDGE_SE3_SWITCHABLE";
 				suffix = uFormat(" %d", virtualVertexId++);
 			}
 
-			Eigen::Quaternionf q = iter->second.transform().getQuaternionf();
-			fprintf(file, "%s %d %d%s %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f\n",
+			if(isSlam2d())
+			{
+				// EDGE_SE2 observed_vertex_id observing_vertex_id x y z qx qy qz qw inf_11 inf_12 inf_13 inf_22 inf_23 inf_33
+				// EDGE_SE2_PRIOR observed_vertex_id x y z qx qy qz qw inf_11 inf_12 inf_13 inf_22 inf_23 inf_33
+				fprintf(file, "%s %d%s%s %f %f %f %f %f %f %f %f %f\n",
 					prefix.c_str(),
 					iter->second.from(),
-					iter->second.to(),
+					to.c_str(),
+					suffix.c_str(),
+					iter->second.transform().x(),
+					iter->second.transform().y(),
+					iter->second.transform().theta(),
+					iter->second.infMatrix().at<double>(0, 0),
+					iter->second.infMatrix().at<double>(0, 1),
+					iter->second.infMatrix().at<double>(0, 5),
+					iter->second.infMatrix().at<double>(1, 1),
+					iter->second.infMatrix().at<double>(1, 5),
+					iter->second.infMatrix().at<double>(5, 5));
+			}
+			else
+			{
+				// EDGE_SE3 observed_vertex_id observing_vertex_id x y z qx qy qz qw inf_11 inf_12 .. inf_16 inf_22 .. inf_66
+				// EDGE_SE3_PRIOR observed_vertex_id offset_parameter_id x y z qx qy qz qw inf_11 inf_12 .. inf_16 inf_22 .. inf_66
+				Eigen::Quaternionf q = iter->second.transform().getQuaternionf();
+				fprintf(file, "%s %d%s%s %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f\n",
+					prefix.c_str(),
+					iter->second.from(),
+					to.c_str(),
 					suffix.c_str(),
 					iter->second.transform().x(),
 					iter->second.transform().y(),
@@ -1420,29 +1509,31 @@ bool OptimizerG2O::saveGraph(
 					q.y(),
 					q.z(),
 					q.w(),
-					iter->second.infMatrix().at<double>(0,0),
-					iter->second.infMatrix().at<double>(0,1),
-					iter->second.infMatrix().at<double>(0,2),
-					iter->second.infMatrix().at<double>(0,3),
-					iter->second.infMatrix().at<double>(0,4),
-					iter->second.infMatrix().at<double>(0,5),
-					iter->second.infMatrix().at<double>(1,1),
-					iter->second.infMatrix().at<double>(1,2),
-					iter->second.infMatrix().at<double>(1,3),
-					iter->second.infMatrix().at<double>(1,4),
-					iter->second.infMatrix().at<double>(1,5),
-					iter->second.infMatrix().at<double>(2,2),
-					iter->second.infMatrix().at<double>(2,3),
-					iter->second.infMatrix().at<double>(2,4),
-					iter->second.infMatrix().at<double>(2,5),
-					iter->second.infMatrix().at<double>(3,3),
-					iter->second.infMatrix().at<double>(3,4),
-					iter->second.infMatrix().at<double>(3,5),
-					iter->second.infMatrix().at<double>(4,4),
-					iter->second.infMatrix().at<double>(4,5),
-					iter->second.infMatrix().at<double>(5,5));
+					iter->second.infMatrix().at<double>(0, 0),
+					iter->second.infMatrix().at<double>(0, 1),
+					iter->second.infMatrix().at<double>(0, 2),
+					iter->second.infMatrix().at<double>(0, 3),
+					iter->second.infMatrix().at<double>(0, 4),
+					iter->second.infMatrix().at<double>(0, 5),
+					iter->second.infMatrix().at<double>(1, 1),
+					iter->second.infMatrix().at<double>(1, 2),
+					iter->second.infMatrix().at<double>(1, 3),
+					iter->second.infMatrix().at<double>(1, 4),
+					iter->second.infMatrix().at<double>(1, 5),
+					iter->second.infMatrix().at<double>(2, 2),
+					iter->second.infMatrix().at<double>(2, 3),
+					iter->second.infMatrix().at<double>(2, 4),
+					iter->second.infMatrix().at<double>(2, 5),
+					iter->second.infMatrix().at<double>(3, 3),
+					iter->second.infMatrix().at<double>(3, 4),
+					iter->second.infMatrix().at<double>(3, 5),
+					iter->second.infMatrix().at<double>(4, 4),
+					iter->second.infMatrix().at<double>(4, 5),
+					iter->second.infMatrix().at<double>(5, 5));
+			}
 		}
 		UINFO("Graph saved to %s", fileName.c_str());
+
 		fclose(file);
 	}
 	else

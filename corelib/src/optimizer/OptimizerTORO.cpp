@@ -347,12 +347,24 @@ bool OptimizerTORO::saveGraph(
 
 	if(file)
 	{
-		// VERTEX3 id x y z phi theta psi
-		for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
+		
+		for (std::map<int, Transform>::const_iterator iter = poses.begin(); iter != poses.end(); ++iter)
 		{
-			float x,y,z, yaw,pitch,roll;
-			iter->second.getTranslationAndEulerAngles(x,y,z, roll, pitch, yaw);
-			fprintf(file, "VERTEX3 %d %f %f %f %f %f %f\n",
+			if (isSlam2d())
+			{
+				// VERTEX2 id x y theta
+				fprintf(file, "VERTEX2 %d %f %f %f\n",
+					iter->first,
+					iter->second.x(),
+					iter->second.y(),
+					iter->second.theta());
+			}
+			else
+			{
+				// VERTEX3 id x y z phi theta psi
+				float x, y, z, yaw, pitch, roll;
+				iter->second.getTranslationAndEulerAngles(x, y, z, roll, pitch, yaw);
+				fprintf(file, "VERTEX3 %d %f %f %f %f %f %f\n",
 					iter->first,
 					x,
 					y,
@@ -360,43 +372,66 @@ bool OptimizerTORO::saveGraph(
 					roll,
 					pitch,
 					yaw);
+			}
 		}
 
-		//EDGE3 observed_vertex_id observing_vertex_id x y z roll pitch yaw inf_11 inf_12 .. inf_16 inf_22 .. inf_66
 		for(std::multimap<int, Link>::const_iterator iter = edgeConstraints.begin(); iter!=edgeConstraints.end(); ++iter)
 		{
-			float x,y,z, yaw,pitch,roll;
-			iter->second.transform().getTranslationAndEulerAngles(x,y,z, roll, pitch, yaw);
-			fprintf(file, "EDGE3 %d %d %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f\n",
-					iter->second.from(),
-					iter->second.to(),
-					x,
-					y,
-					z,
-					roll,
-					pitch,
-					yaw,
-					iter->second.infMatrix().at<double>(0,0),
-					iter->second.infMatrix().at<double>(0,1),
-					iter->second.infMatrix().at<double>(0,2),
-					iter->second.infMatrix().at<double>(0,3),
-					iter->second.infMatrix().at<double>(0,4),
-					iter->second.infMatrix().at<double>(0,5),
-					iter->second.infMatrix().at<double>(1,1),
-					iter->second.infMatrix().at<double>(1,2),
-					iter->second.infMatrix().at<double>(1,3),
-					iter->second.infMatrix().at<double>(1,4),
-					iter->second.infMatrix().at<double>(1,5),
-					iter->second.infMatrix().at<double>(2,2),
-					iter->second.infMatrix().at<double>(2,3),
-					iter->second.infMatrix().at<double>(2,4),
-					iter->second.infMatrix().at<double>(2,5),
-					iter->second.infMatrix().at<double>(3,3),
-					iter->second.infMatrix().at<double>(3,4),
-					iter->second.infMatrix().at<double>(3,5),
-					iter->second.infMatrix().at<double>(4,4),
-					iter->second.infMatrix().at<double>(4,5),
-					iter->second.infMatrix().at<double>(5,5));
+			if (iter->second.type() != Link::kPosePrior)
+			{
+				if (isSlam2d())
+				{
+					//EDGE2 observed_vertex_id observing_vertex_id x y theta inf_11 inf_12 inf_13 inf_22 inf_23 inf_33
+					fprintf(file, "EDGE2 %d %d %f %f %f %f %f %f %f %f %f\n",
+						iter->second.from(),
+						iter->second.to(),
+						iter->second.transform().x(),
+						iter->second.transform().y(),
+						iter->second.transform().theta(),
+						iter->second.infMatrix().at<double>(0, 0),
+						iter->second.infMatrix().at<double>(0, 1),
+						iter->second.infMatrix().at<double>(0, 5),
+						iter->second.infMatrix().at<double>(1, 1),
+						iter->second.infMatrix().at<double>(1, 5),
+						iter->second.infMatrix().at<double>(5, 5));
+				}
+				else
+				{
+					//EDGE3 observed_vertex_id observing_vertex_id x y z roll pitch yaw inf_11 inf_12 .. inf_16 inf_22 .. inf_66
+					float x, y, z, yaw, pitch, roll;
+					iter->second.transform().getTranslationAndEulerAngles(x, y, z, roll, pitch, yaw);
+					fprintf(file, "EDGE3 %d %d %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f\n",
+						iter->second.from(),
+						iter->second.to(),
+						x,
+						y,
+						z,
+						roll,
+						pitch,
+						yaw,
+						iter->second.infMatrix().at<double>(0, 0),
+						iter->second.infMatrix().at<double>(0, 1),
+						iter->second.infMatrix().at<double>(0, 2),
+						iter->second.infMatrix().at<double>(0, 3),
+						iter->second.infMatrix().at<double>(0, 4),
+						iter->second.infMatrix().at<double>(0, 5),
+						iter->second.infMatrix().at<double>(1, 1),
+						iter->second.infMatrix().at<double>(1, 2),
+						iter->second.infMatrix().at<double>(1, 3),
+						iter->second.infMatrix().at<double>(1, 4),
+						iter->second.infMatrix().at<double>(1, 5),
+						iter->second.infMatrix().at<double>(2, 2),
+						iter->second.infMatrix().at<double>(2, 3),
+						iter->second.infMatrix().at<double>(2, 4),
+						iter->second.infMatrix().at<double>(2, 5),
+						iter->second.infMatrix().at<double>(3, 3),
+						iter->second.infMatrix().at<double>(3, 4),
+						iter->second.infMatrix().at<double>(3, 5),
+						iter->second.infMatrix().at<double>(4, 4),
+						iter->second.infMatrix().at<double>(4, 5),
+						iter->second.infMatrix().at<double>(5, 5));
+				}
+			}
 		}
 		UINFO("Graph saved to %s", fileName.c_str());
 		fclose(file);

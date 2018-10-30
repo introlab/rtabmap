@@ -56,7 +56,7 @@ bool exportPoses(
 		const std::map<int, Transform> & poses,
 		const std::multimap<int, Link> & constraints, // required for formats 3 and 4
 		const std::map<int, double> & stamps, // required for format 1
-		bool g2oRobust) // optional for format 4
+		const ParametersMap & parameters) // optional for formats 3 and 4
 {
 	UDEBUG("%s", filePath.c_str());
 	std::string tmpPath = filePath;
@@ -66,7 +66,8 @@ bool exportPoses(
 		{
 			tmpPath+=".graph";
 		}
-		return OptimizerTORO::saveGraph(tmpPath, poses, constraints);
+		OptimizerTORO toro(parameters);
+		return toro.saveGraph(tmpPath, poses, constraints);
 	}
 	else if(format == 4) // g2o
 	{
@@ -74,7 +75,8 @@ bool exportPoses(
 		{
 			tmpPath+=".g2o";
 		}
-		return OptimizerG2O::saveGraph(tmpPath, poses, constraints, g2oRobust);
+		OptimizerG2O g2o(parameters);
+		return g2o.saveGraph(tmpPath, poses, constraints);
 	}
 	else
 	{
@@ -366,8 +368,8 @@ bool importPoses(
 				std::vector<std::string> strList = uListToVector(uSplit(str));
 				if(strList.size() ==  3)
 				{
-					if( uIsNumber(uReplaceChar(strList[0], ' ', "")) && 
-						uIsNumber(uReplaceChar(strList[1], ' ', "")) && 
+					if( uIsNumber(uReplaceChar(strList[0], ' ', "")) &&
+						uIsNumber(uReplaceChar(strList[1], ' ', "")) &&
 						uIsNumber(uReplaceChar(strList[2], ' ', "")) &&
 						(strList.size()==3 || uIsNumber(uReplaceChar(strList[3], ' ', ""))))
 					{
@@ -379,7 +381,7 @@ bool importPoses(
 						{
 							stamps->insert(std::make_pair(id, stamp));
 						}
-						float yaw = 0.0f; 
+						float yaw = 0.0f;
 						if(uContains(poses, id-1))
 						{
 							// set yaw depending on successive poses
@@ -1033,6 +1035,25 @@ std::multimap<int, int>::const_iterator findLink(
 		}
 	}
 	return links.end();
+}
+
+std::list<Link> findLinks(
+		const std::multimap<int, Link> & links,
+		int from)
+{
+	std::list<Link> output;
+	for(std::multimap<int, Link>::const_iterator iter=links.begin(); iter != links.end(); ++iter)
+	{
+		if(iter->second.from() == from)
+		{
+			output.push_back(iter->second);
+		}
+		else if(iter->second.to() == from)
+		{
+			output.push_back(iter->second.inverse());
+		}
+	}
+	return output;
 }
 
 std::multimap<int, Link> filterDuplicateLinks(

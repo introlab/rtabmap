@@ -256,6 +256,8 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	connect(ui_->actionView_3D_map, SIGNAL(triggered()), this, SLOT(view3DMap()));
 	connect(ui_->actionGenerate_3D_map_pcd, SIGNAL(triggered()), this, SLOT(generate3DMap()));
 	connect(ui_->actionDetect_more_loop_closures, SIGNAL(triggered()), this, SLOT(detectMoreLoopClosures()));
+	connect(ui_->actionUpdate_all_neighbor_covariances, SIGNAL(triggered()), this, SLOT(updateAllNeighborCovariances()));
+	connect(ui_->actionUpdate_all_loop_closure_covariances, SIGNAL(triggered()), this, SLOT(updateAllLoopClosureCovariances()));
 	connect(ui_->actionRefine_all_neighbor_links, SIGNAL(triggered()), this, SLOT(refineAllNeighborLinks()));
 	connect(ui_->actionRefine_all_loop_closure_links, SIGNAL(triggered()), this, SLOT(refineAllLoopClosureLinks()));
 	connect(ui_->actionRegenerate_local_grid_maps, SIGNAL(triggered()), this, SLOT(regenerateLocalMaps()));
@@ -1176,6 +1178,7 @@ void DatabaseViewer::exportDatabase()
 			std::map<int, double> stamps;
 			std::map<int, Transform> groundTruths;
 			std::map<int, GPS> gpsValues;
+			std::map<int, EnvSensors> sensorsValues;
 			for(int i=0; i<ids_.size(); i+=1+framesIgnored)
 			{
 				Transform odomPose, groundTruth;
@@ -1185,7 +1188,8 @@ void DatabaseViewer::exportDatabase()
 				double stamp = 0;
 				std::vector<float> velocity;
 				GPS gps;
-				if(dbDriver_->getNodeInfo(ids_[i], odomPose, mapId, weight, label, stamp, groundTruth, velocity, gps))
+				EnvSensors sensors;
+				if(dbDriver_->getNodeInfo(ids_[i], odomPose, mapId, weight, label, stamp, groundTruth, velocity, gps, sensors))
 				{
 					if(frameRate == 0 ||
 					   previousStamp == 0 ||
@@ -1208,6 +1212,10 @@ void DatabaseViewer::exportDatabase()
 							if(gps.stamp() > 0.0)
 							{
 								gpsValues.insert(std::make_pair(ids_[i], gps));
+							}
+							if(sensors.size())
+							{
+								sensorsValues.insert(std::make_pair(ids_[i], sensors));
 							}
 						}
 					}
@@ -1286,6 +1294,10 @@ void DatabaseViewer::exportDatabase()
 					if(gpsValues.find(id)!=gpsValues.end())
 					{
 						sensorData.setGPS(gpsValues.at(id));
+					}
+					if(sensorsValues.find(id)!=sensorsValues.end())
+					{
+						sensorData.setEnvSensors(sensorsValues.at(id));
 					}
 
 					recorder.addData(sensorData, dialog.isOdomExported()?poses.at(id):Transform(), covariance);
@@ -1466,6 +1478,7 @@ void DatabaseViewer::updateIds()
 	weights_.clear();
 	wmStates_.clear();
 	odomPoses_.clear();
+	dbOptimizedPoses_.clear();
 	groundTruthPoses_.clear();
 	gpsPoses_.clear();
 	gpsValues_.clear();
@@ -1524,7 +1537,8 @@ void DatabaseViewer::updateIds()
 		int mapId;
 		std::vector<float> v;
 		GPS gps;
-		dbDriver_->getNodeInfo(ids_[i], p, mapId, w, l, s, g, v, gps);
+		EnvSensors sensors;
+		dbDriver_->getNodeInfo(ids_[i], p, mapId, w, l, s, g, v, gps, sensors);
 		mapIds_.insert(std::make_pair(ids_[i], mapId));
 		weights_.insert(std::make_pair(ids_[i], w));
 		if(wmStates.find(ids_[i]) != wmStates.end())
@@ -1611,7 +1625,7 @@ void DatabaseViewer::updateIds()
 					GPS originGPS = gpsValues_.begin()->second;
 					p = coords.toENU_WGS84(originGPS.toGeodeticCoords());
 				}
-				Transform pose(p.x, p.y, p.z, 0.0f, 0.0f, (float)((-(gps.bearing()-90))*180.0/M_PI));
+				Transform pose(p.x, p.y, p.z, 0.0f, 0.0f, (float)((-(gps.bearing()-90))*M_PI/180.0));
 				gpsPoses_.insert(std::make_pair(ids_[i], pose));
 			}
 		}
@@ -1625,6 +1639,8 @@ void DatabaseViewer::updateIds()
 			}
 		}
 	}
+
+	dbOptimizedPoses_ = dbDriver_->loadOptimizedPoses();
 
 	if(!groundTruthPoses_.empty() || !gpsPoses_.empty())
 	{
@@ -2054,7 +2070,8 @@ void DatabaseViewer::exportPoses(int format)
 				int mapId;
 				std::vector<float> v;
 				GPS gps;
-				dbDriver_->getNodeInfo(iter->first, p, mapId, w, l, stamp, g, v, gps);
+				EnvSensors sensors;
+				dbDriver_->getNodeInfo(iter->first, p, mapId, w, l, stamp, g, v, gps, sensors);
 				values.insert(std::make_pair(iter->first, GPS(stamp, coord.longitude(), coord.latitude(), coord.altitude(), 0, 0)));
 			}
 
@@ -2260,7 +2277,8 @@ void DatabaseViewer::exportPoses(int format)
 				int mapId;
 				std::vector<float> v;
 				GPS gps;
-				if(dbDriver_->getNodeInfo(iter->first, p, mapId, w, l, stamp, g, v, gps))
+				EnvSensors sensors;
+				if(dbDriver_->getNodeInfo(iter->first, p, mapId, w, l, stamp, g, v, gps, sensors))
 				{
 					stamps.insert(std::make_pair(iter->first, stamp));
 				}
@@ -2299,7 +2317,7 @@ void DatabaseViewer::exportPoses(int format)
 				}
 			}
 
-			bool saved = graph::exportPoses(path.toStdString(), format, poses, links, stamps);
+			bool saved = graph::exportPoses(path.toStdString(), format, poses, links, stamps, ui_->parameters_toolbox->getParameters());
 
 			if(saved)
 			{
@@ -2881,7 +2899,8 @@ void DatabaseViewer::regenerateLocalMaps()
 		QString msg;
 		std::vector<float> velocity;
 		GPS gps;
-		if(dbDriver_->getNodeInfo(data.id(), odomPose, mapId, weight, label, stamp, groundTruth, velocity, gps))
+		EnvSensors sensors;
+		if(dbDriver_->getNodeInfo(data.id(), odomPose, mapId, weight, label, stamp, groundTruth, velocity, gps, sensors))
 		{
 			Signature s = data;
 			s.setPose(odomPose);
@@ -3004,7 +3023,8 @@ void DatabaseViewer::regenerateCurrentLocalMaps()
 		QString msg;
 		std::vector<float> velocity;
 		GPS gps;
-		if(dbDriver_->getNodeInfo(data.id(), odomPose, mapId, weight, label, stamp, groundTruth, velocity, gps))
+		EnvSensors sensors;
+		if(dbDriver_->getNodeInfo(data.id(), odomPose, mapId, weight, label, stamp, groundTruth, velocity, gps, sensors))
 		{
 			Signature s = data;
 			s.setPose(odomPose);
@@ -3290,24 +3310,75 @@ void DatabaseViewer::detectMoreLoopClosures()
 	progressDialog->setValue(progressDialog->maximumSteps());
 }
 
-void DatabaseViewer::refineAllNeighborLinks()
+void DatabaseViewer::updateAllNeighborCovariances()
 {
-	if(neighborLinks_.size())
+	updateAllCovariances(neighborLinks_);
+}
+void DatabaseViewer::updateAllLoopClosureCovariances()
+{
+	updateAllCovariances(loopLinks_);
+}
+
+void DatabaseViewer::updateAllCovariances(const QList<Link> & links)
+{
+	if(links.size())
 	{
+		bool ok = false;
+		double stddev = QInputDialog::getDouble(this, tr("Linear error"), tr("Std deviation (m)"), 0.01, 0.0001, 9, 4, &ok);
+		if(!ok) return;
+		double linearVar = stddev*stddev;
+		stddev = QInputDialog::getDouble(this, tr("Angular error"), tr("Std deviation (deg)"), 1, 0.01, 45, 2, &ok)*M_PI/180.0;
+		if(!ok) return;
+		double angularVar = stddev*stddev;
+
 		rtabmap::ProgressDialog * progressDialog = new rtabmap::ProgressDialog(this);
 		progressDialog->setAttribute(Qt::WA_DeleteOnClose);
-		progressDialog->setMaximumSteps(neighborLinks_.size());
+		progressDialog->setMaximumSteps(links.size());
 		progressDialog->setCancelButtonVisible(true);
 		progressDialog->setMinimumWidth(800);
 		progressDialog->show();
 
-		for(int i=0; i<neighborLinks_.size(); ++i)
-		{
-			int from = neighborLinks_[i].from();
-			int to = neighborLinks_[i].to();
-			this->refineConstraint(neighborLinks_[i].from(), neighborLinks_[i].to(), true);
+		cv::Mat infMatrix = cv::Mat::eye(6,6,CV_64FC1);
+		infMatrix(cv::Range(0,3), cv::Range(0,3))/=linearVar;
+		infMatrix(cv::Range(3,6), cv::Range(3,6))/=angularVar;
 
-			progressDialog->appendText(tr("Refined link %1->%2 (%3/%4)").arg(from).arg(to).arg(i+1).arg(neighborLinks_.size()));
+		for(int i=0; i<links.size(); ++i)
+		{
+			int from = links[i].from();
+			int to = links[i].to();
+
+			Link currentLink =  findActiveLink(from, to);
+			if(!currentLink.isValid())
+			{
+				UERROR("Not found link! (%d->%d)", from, to);
+				return;
+			}
+			currentLink = Link(
+					currentLink.from(),
+					currentLink.to(),
+					currentLink.type(),
+					currentLink.transform(),
+					infMatrix.clone(),
+					currentLink.userDataCompressed());
+			bool updated = false;
+			std::multimap<int, Link>::iterator iter = linksRefined_.find(currentLink.from());
+			while(iter != linksRefined_.end() && iter->first == currentLink.from())
+			{
+				if(iter->second.to() == currentLink.to() &&
+				   iter->second.type() == currentLink.type())
+				{
+					iter->second = currentLink;
+					updated = true;
+					break;
+				}
+				++iter;
+			}
+			if(!updated)
+			{
+				linksRefined_.insert(std::make_pair(currentLink.from(), currentLink));
+			}
+
+			progressDialog->appendText(tr("Updated link %1->%2 (%3/%4)").arg(from).arg(to).arg(i+1).arg(links.size()));
 			progressDialog->incrementStep();
 			QApplication::processEvents();
 			if(progressDialog->isCanceled())
@@ -3322,24 +3393,32 @@ void DatabaseViewer::refineAllNeighborLinks()
 	}
 }
 
+void DatabaseViewer::refineAllNeighborLinks()
+{
+	refineAllLinks(neighborLinks_);
+}
 void DatabaseViewer::refineAllLoopClosureLinks()
 {
-	if(loopLinks_.size())
+	refineAllLinks(loopLinks_);
+}
+void DatabaseViewer::refineAllLinks(const QList<Link> & links)
+{
+	if(links.size())
 	{
 		rtabmap::ProgressDialog * progressDialog = new rtabmap::ProgressDialog(this);
 		progressDialog->setAttribute(Qt::WA_DeleteOnClose);
-		progressDialog->setMaximumSteps(loopLinks_.size());
+		progressDialog->setMaximumSteps(links.size());
 		progressDialog->setCancelButtonVisible(true);
 		progressDialog->setMinimumWidth(800);
 		progressDialog->show();
 
-		for(int i=0; i<loopLinks_.size(); ++i)
+		for(int i=0; i<links.size(); ++i)
 		{
-			int from = loopLinks_[i].from();
-			int to = loopLinks_[i].to();
-			this->refineConstraint(loopLinks_[i].from(), loopLinks_[i].to(), true);
+			int from = links[i].from();
+			int to = links[i].to();
+			this->refineConstraint(links[i].from(), links[i].to(), true);
 
-			progressDialog->appendText(tr("Refined link %1->%2 (%3/%4)").arg(from).arg(to).arg(i+1).arg(loopLinks_.size()));
+			progressDialog->appendText(tr("Refined link %1->%2 (%3/%4)").arg(from).arg(to).arg(i+1).arg(links.size()));
 			progressDialog->incrementStep();
 			QApplication::processEvents();
 			if(progressDialog->isCanceled())
@@ -3380,7 +3459,9 @@ void DatabaseViewer::sliderAValueChanged(int value)
 			ui_->label_poseA,
 			ui_->label_velA,
 			ui_->label_calibA,
+			ui_->label_scanA,
 			ui_->label_gpsA,
+			ui_->label_sensorsA,
 			true);
 }
 
@@ -3399,7 +3480,9 @@ void DatabaseViewer::sliderBValueChanged(int value)
 			ui_->label_poseB,
 			ui_->label_velB,
 			ui_->label_calibB,
+			ui_->label_scanB,
 			ui_->label_gpsB,
+			ui_->label_sensorsB,
 			true);
 }
 
@@ -3416,7 +3499,9 @@ void DatabaseViewer::update(int value,
 						QLabel * labelPose,
 						QLabel * labelVelocity,
 						QLabel * labelCalib,
+						QLabel * labelScan,
 						QLabel * labelGps,
+						QLabel * labelSensors,
 						bool updateConstraintView)
 {
 	UTimer timer;
@@ -3430,7 +3515,9 @@ void DatabaseViewer::update(int value,
 	labelVelocity->clear();
 	stamp->clear();
 	labelCalib->clear();
+	labelScan ->clear();
 	labelGps->clear();
+	labelSensors->clear();
 	QRectF rect;
 	if(value >= 0 && value < ids_.size())
 	{
@@ -3481,7 +3568,8 @@ void DatabaseViewer::update(int value,
 				double s;
 				std::vector<float> v;
 				GPS gps;
-				dbDriver_->getNodeInfo(id, odomPose, mapId, w, l, s, g, v, gps);
+				EnvSensors sensors;
+				dbDriver_->getNodeInfo(id, odomPose, mapId, w, l, s, g, v, gps, sensors);
 
 				weight->setNum(w);
 				label->setText(l.c_str());
@@ -3502,8 +3590,56 @@ void DatabaseViewer::update(int value,
 					labelGps->setText(QString("stamp=%1 longitude=%2 latitude=%3 altitude=%4m error=%5m bearing=%6deg").arg(QString::number(gps.stamp(), 'f')).arg(gps.longitude()).arg(gps.latitude()).arg(gps.altitude()).arg(gps.error()).arg(gps.bearing()));
 					labelGps->setToolTip(QDateTime::fromMSecsSinceEpoch(gps.stamp()*1000.0).toString("dd.MM.yyyy hh:mm:ss.zzz"));
 				}
+				if(sensors.size())
+				{
+					QString sensorsStr;
+					QString tooltipStr;
+					for(EnvSensors::iterator iter=sensors.begin(); iter!=sensors.end(); ++iter)
+					{
+						if(iter != sensors.begin())
+						{
+							sensorsStr += " | ";
+							tooltipStr += " | ";
+						}
+
+						if(iter->first == EnvSensor::kWifiSignalStrength)
+						{
+							sensorsStr += uFormat("%.1f dbm", iter->second.value()).c_str();
+							tooltipStr += "Wifi signal strength";
+						}
+						else if(iter->first == EnvSensor::kAmbientTemperature)
+						{
+							sensorsStr += uFormat("%.1f \u00B0C", iter->second.value()).c_str();
+							tooltipStr += "Ambient Temperature";
+						}
+						else if(iter->first == EnvSensor::kAmbientAirPressure)
+						{
+							sensorsStr += uFormat("%.1f hPa", iter->second.value()).c_str();
+							tooltipStr += "Ambient Air Pressure";
+						}
+						else if(iter->first == EnvSensor::kAmbientLight)
+						{
+							sensorsStr += uFormat("%.0f lx", iter->second.value()).c_str();
+							tooltipStr += "Ambient Light";
+						}
+						else if(iter->first == EnvSensor::kAmbientRelativeHumidity)
+						{
+							sensorsStr += uFormat("%.0f %%", iter->second.value()).c_str();
+							tooltipStr += "Ambient Relative Humidity";
+						}
+						else
+						{
+							sensorsStr += uFormat("%.2f", iter->second.value()).c_str();
+							tooltipStr += QString("Type %1").arg((int)iter->first);
+						}
+
+					}
+					labelSensors->setText(sensorsStr);
+					labelSensors->setToolTip(tooltipStr);
+				}
 				if(data.cameraModels().size() || data.stereoCameraModel().isValidForProjection())
 				{
+					std::stringstream calibrationDetails;
 					if(data.cameraModels().size())
 					{
 						if(!data.depthRaw().empty() && data.depthRaw().cols!=data.imageRaw().cols && data.imageRaw().cols)
@@ -3532,6 +3668,17 @@ void DatabaseViewer::update(int value,
 									.arg(data.cameraModels()[0].cy())
 									.arg(data.cameraModels()[0].localTransform().prettyPrint().c_str()));
 						}
+
+						for(unsigned int i=0; i<data.cameraModels().size();++i)
+						{
+							if(i!=0) calibrationDetails << std::endl;
+							calibrationDetails << "Id: " << i << " Size=" << data.cameraModels()[i].imageWidth() << "x" << data.cameraModels()[i].imageWidth() << std::endl;
+							if( data.cameraModels()[i].K_raw().total()) calibrationDetails << "K=" << data.cameraModels()[i].K_raw() << std::endl;
+							if( data.cameraModels()[i].D_raw().total()) calibrationDetails << "D=" << data.cameraModels()[i].D_raw() << std::endl;
+							if( data.cameraModels()[i].R().total()) calibrationDetails << "R=" << data.cameraModels()[i].R() << std::endl;
+							if( data.cameraModels()[i].P().total()) calibrationDetails << "P=" << data.cameraModels()[i].P() << std::endl;
+						}
+
 					}
 					else
 					{
@@ -3545,12 +3692,47 @@ void DatabaseViewer::update(int value,
 									.arg(data.stereoCameraModel().left().cy())
 									.arg(data.stereoCameraModel().baseline())
 									.arg(data.stereoCameraModel().localTransform().prettyPrint().c_str()));
+
+						calibrationDetails << "Left:" << " Size=" << data.stereoCameraModel().left().imageWidth() << "x" << data.stereoCameraModel().left().imageWidth() << std::endl;
+						if( data.stereoCameraModel().left().K_raw().total()) calibrationDetails << "K=" << data.stereoCameraModel().left().K_raw() << std::endl;
+						if( data.stereoCameraModel().left().D_raw().total()) calibrationDetails << "D=" << data.stereoCameraModel().left().D_raw() << std::endl;
+						if( data.stereoCameraModel().left().R().total()) calibrationDetails << "R=" << data.stereoCameraModel().left().R() << std::endl;
+						if( data.stereoCameraModel().left().P().total()) calibrationDetails << "P=" << data.stereoCameraModel().left().P() << std::endl;
+						calibrationDetails << std::endl;
+						calibrationDetails << "Right:" << " Size=" << data.stereoCameraModel().right().imageWidth() << "x" << data.stereoCameraModel().right().imageWidth() << std::endl;
+						if( data.stereoCameraModel().right().K_raw().total()) calibrationDetails << "K=" << data.stereoCameraModel().right().K_raw() << std::endl;
+						if( data.stereoCameraModel().right().D_raw().total()) calibrationDetails << "D=" << data.stereoCameraModel().right().D_raw() << std::endl;
+						if( data.stereoCameraModel().right().R().total()) calibrationDetails << "R=" << data.stereoCameraModel().right().R() << std::endl;
+						if( data.stereoCameraModel().right().P().total()) calibrationDetails << "P=" << data.stereoCameraModel().right().P() << std::endl;
+						calibrationDetails << std::endl;
+						if( data.stereoCameraModel().R().total()) calibrationDetails << "R=" << data.stereoCameraModel().R() << std::endl;
+						if( data.stereoCameraModel().T().total()) calibrationDetails << "T=" << data.stereoCameraModel().T() << std::endl;
+						if( data.stereoCameraModel().F().total()) calibrationDetails << "F=" << data.stereoCameraModel().F() << std::endl;
+						if( data.stereoCameraModel().E().total()) calibrationDetails << "E=" << data.stereoCameraModel().E() << std::endl;
 					}
+					labelCalib->setToolTip(calibrationDetails.str().c_str());
 
 				}
 				else
 				{
 					labelCalib->setText("NA");
+				}
+
+				if(data.laserScanRaw().size())
+				{
+					labelScan->setText(tr("Format=%1 Points=%2 [max=%3] Range=[%4->%5 m] Angle=[%6->%7 rad inc=%8] Has [Color=%9 2D=%10 Normals=%11 Intensity=%12]")
+							.arg(data.laserScanRaw().format())
+							.arg(data.laserScanRaw().size())
+							.arg(data.laserScanRaw().maxPoints())
+							.arg(data.laserScanRaw().rangeMin())
+							.arg(data.laserScanRaw().rangeMax())
+							.arg(data.laserScanRaw().angleMin())
+							.arg(data.laserScanRaw().angleMax())
+							.arg(data.laserScanRaw().angleIncrement())
+							.arg(data.laserScanRaw().hasRGB()?1:0)
+							.arg(data.laserScanRaw().is2d()?1:0)
+							.arg(data.laserScanRaw().hasNormals()?1:0)
+							.arg(data.laserScanRaw().hasIntensity()?1:0));
 				}
 
 				//stereo
@@ -4512,7 +4694,9 @@ void DatabaseViewer::updateConstraintView(
 					ui_->label_poseA,
 					ui_->label_velA,
 					ui_->label_calibA,
+					ui_->label_scanA,
 					ui_->label_gpsA,
+					ui_->label_sensorsA,
 					false); // don't update constraints view!
 		this->update(idToIndex_.value(link.to()),
 					ui_->label_indexB,
@@ -4527,7 +4711,9 @@ void DatabaseViewer::updateConstraintView(
 					ui_->label_poseB,
 					ui_->label_velB,
 					ui_->label_calibB,
+					ui_->label_scanB,
 					ui_->label_gpsB,
+					ui_->label_sensorsB,
 					false); // don't update constraints view!
 	}
 
@@ -4569,7 +4755,8 @@ void DatabaseViewer::updateConstraintView(
 			Transform p,g;
 			std::vector<float> v;
 			GPS gps;
-			dbDriver_->getNodeInfo(link.from(), p, m, w, l, s, g, v, gps);
+			EnvSensors sensors;
+			dbDriver_->getNodeInfo(link.from(), p, m, w, l, s, g, v, gps, sensors);
 			if(!p.isNull())
 			{
 				// keep just the z and roll/pitch rotation
@@ -5373,6 +5560,10 @@ void DatabaseViewer::updateGraphView()
 		{
 			optimizedGraphGuess = lastOptimizedGraph_;
 		}
+		else
+		{
+			optimizedGraphGuess = dbOptimizedPoses_;
+		}
 
 		graphes_.clear();
 		graphLinks_.clear();
@@ -5610,38 +5801,22 @@ void DatabaseViewer::updateGraphView()
 		time.start();
 		std::map<int, rtabmap::Transform> finalPoses = optimizer->optimize(fromId, posesOut, linksOut, ui_->checkBox_iterativeOptimization->isChecked()?&graphes_:0);
 		ui_->label_timeOptimization->setNum(double(time.elapsed())/1000.0);
-		graphes_.push_back(finalPoses);
 		graphLinks_ = linksOut;
-		ui_->label_poses->setNum((int)finalPoses.size());
 		if(posesOut.size() && finalPoses.empty())
 		{
-			UWARN("Optimization failed, trying incremental optimization instead... this may take a while (poses=%d, links=%d).", (int)posesOut.size(), (int)linksOut.size());
-			finalPoses = optimizer->optimizeIncremental(fromId, posesOut, linksOut, &graphes_);
-
-			if(finalPoses.empty())
+			UWARN("Optimization failed... (poses=%d, links=%d).", (int)posesOut.size(), (int)linksOut.size());
+			if(!optimizer->isCovarianceIgnored() || optimizer->type() != Optimizer::kTypeTORO)
 			{
-				UWARN("Incremental optimization also failed.");
-				if(!optimizer->isCovarianceIgnored() || optimizer->type() != Optimizer::kTypeTORO)
-				{
-					QMessageBox::warning(this, tr("Graph optimization error!"), tr("Graph optimization has failed. See the terminal for potential errors. "
-							"Give it a try with %1=0 and %2=true.").arg(Parameters::kOptimizerStrategy().c_str()).arg(Parameters::kOptimizerVarianceIgnored().c_str()));
-				}
-				else
-				{
-					QMessageBox::warning(this, tr("Graph optimization error!"), tr("Graph optimization has failed. See the terminal for potential errors."));
-				}
+				QMessageBox::warning(this, tr("Graph optimization error!"), tr("Graph optimization has failed. See the terminal for potential errors. "
+						"Give it a try with %1=0 and %2=true.").arg(Parameters::kOptimizerStrategy().c_str()).arg(Parameters::kOptimizerVarianceIgnored().c_str()));
 			}
 			else
 			{
-				UWARN("Incremental optimization succeeded!");
-				QMessageBox::information(this, tr("Incremental optimization succeeded!"), tr("Graph optimization has failed but "
-						"incremental optimization succeeded. Next optimizations will use the current "
-						"best optimized poses as first guess instead of odometry poses."));
-				useLastOptimizedGraphAsGuess_ = true;
-				lastOptimizedGraph_ = finalPoses;
-
+				QMessageBox::warning(this, tr("Graph optimization error!"), tr("Graph optimization has failed. See the terminal for potential errors."));
 			}
 		}
+		ui_->label_poses->setNum((int)finalPoses.size());
+		graphes_.push_back(finalPoses);
 		delete optimizer;
 	}
 	if(graphes_.size())
@@ -6002,7 +6177,7 @@ void DatabaseViewer::refineConstraint(int from, int to, bool silent)
 		assembledData.setLaserScanRaw(LaserScan(
 				assembledScan,
 				fromScan.maxPoints()?fromScan.maxPoints():maxPoints,
-				fromScan.maxRange(),
+				fromScan.rangeMax(),
 				fromScan.format(),
 				fromScan.is2d()?Transform(0,0,fromScan.localTransform().z(),0,0,0):Transform::getIdentity()));
 
@@ -6308,11 +6483,28 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent)
 		UASSERT_MSG(odomPoses_.find(newLink.from()) != odomPoses_.end(), uFormat("id=%d poses=%d links=%d", newLink.from(), (int)poses.size(), (int)links.size()).c_str());
 		UASSERT_MSG(odomPoses_.find(newLink.to()) != odomPoses_.end(), uFormat("id=%d poses=%d links=%d", newLink.to(), (int)poses.size(), (int)links.size()).c_str());
 		optimizer->getConnectedGraph(fromId, odomPoses_, linksIn, poses, links);
+		// use already optimized poses
+		if(graphes_.size())
+		{
+			const std::map<int, Transform> & optimizedPoses = graphes_.back();
+			for(std::map<int, Transform>::iterator iter = poses.begin(); iter!=poses.end(); ++iter)
+			{
+				if(optimizedPoses.find(iter->first) != optimizedPoses.end())
+				{
+					iter->second = optimizedPoses.at(iter->first);
+				}
+			}
+		}
 		UASSERT(poses.find(fromId) != poses.end());
 		UASSERT_MSG(poses.find(newLink.from()) != poses.end(), uFormat("id=%d poses=%d links=%d", newLink.from(), (int)poses.size(), (int)links.size()).c_str());
 		UASSERT_MSG(poses.find(newLink.to()) != poses.end(), uFormat("id=%d poses=%d links=%d", newLink.to(), (int)poses.size(), (int)links.size()).c_str());
 		UASSERT(graph::findLink(links, newLink.from(), newLink.to()) != links.end());
-		poses = optimizer->optimize(fromId, poses, links);
+		std::map<int, Transform> posesIn = poses;
+		poses = optimizer->optimize(fromId, posesIn, links);
+		if(posesIn.size() && poses.empty())
+		{
+			UWARN("Optimization failed... (poses=%d, links=%d).", (int)posesIn.size(), (int)links.size());
+		}
 		std::string msg;
 		if(poses.size())
 		{
@@ -6333,7 +6525,7 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent)
 				if(maxLinearErrorRatio > maxOptimizationError)
 				{
 					msg = uFormat("Rejecting edge %d->%d because "
-						  "graph error is too large after optimization (ratio %f for edge %d->%d, stddev=%f). "
+						  "graph error is too large after optimization (ratio %f for edge %d->%d, stddev=%f m). "
 						  "\"%s\" is %f.",
 						  newLink.from(),
 						  newLink.to(),
@@ -6351,7 +6543,7 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent)
 				if(maxAngularErrorRatio > maxOptimizationError)
 				{
 					msg = uFormat("Rejecting edge %d->%d because "
-						  "graph error is too large after optimization (ratio %f for edge %d->%d, stddev=%f). "
+						  "graph error is too large after optimization (ratio %f for edge %d->%d, stddev=%f deg). "
 						  "\"%s\" is %f.",
 						  newLink.from(),
 						  newLink.to(),

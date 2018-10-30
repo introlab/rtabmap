@@ -107,6 +107,20 @@ cv::Point3d GeodeticCoords::toGeocentric_WGS84() const
  ---------------------------------------------------------------*/
 cv::Point3d GeodeticCoords::toENU_WGS84(const GeodeticCoords &origin) const
 {
+	// Generate 3D point:
+	cv::Point3d	P_geocentric = this->toGeocentric_WGS84();
+
+	// Generate reference 3D point:
+	cv::Point3d P_geocentric_ref = origin.toGeocentric_WGS84();
+
+	return Geocentric_WGS84ToENU_WGS84(P_geocentric, P_geocentric_ref, origin);
+}
+
+cv::Point3d GeodeticCoords::Geocentric_WGS84ToENU_WGS84(
+		const cv::Point3d & geocentric_WGS84,
+		const cv::Point3d & origin_geocentric_WGS84,
+		const GeodeticCoords & origin)
+{
 	// --------------------------------------------------------------------
 	//  Explanation: We compute the earth-centric coordinates first,
 	//    then make a system transformation to local XYZ coordinates
@@ -116,25 +130,20 @@ cv::Point3d GeodeticCoords::toENU_WGS84(const GeodeticCoords &origin) const
 	// (JLBC 21/DEC/2006)  (Fixed: JLBC 9/JUL/2008)
 	// - Oct/2013, Emilio Sanjurjo: Fixed UP vector pointing exactly normal to ellipsoid surface.
 	// --------------------------------------------------------------------
-	// Generate 3D point:
-	cv::Point3d	P_geocentric = this->toGeocentric_WGS84();
-
-	// Generate reference 3D point:
-	cv::Point3d P_geocentric_ref = origin.toGeocentric_WGS84();
 
 	const double clat = cos(DEG2RAD(origin.latitude())), slat = sin(DEG2RAD(origin.latitude()));
 	const double clon = cos(DEG2RAD(origin.longitude())), slon = sin(DEG2RAD(origin.longitude()));
 
 	// Compute the resulting relative coordinates:
 	// For using smaller numbers:
-	P_geocentric -= P_geocentric_ref;
+	cv::Point3d geocentric_WGS84_rel = geocentric_WGS84-origin_geocentric_WGS84;
 
 	// Optimized calculation: Local transformed coordinates of P_geo(x,y,z)
 	//   after rotation given by the transposed rotation matrix from ENU -> ECEF.
 	cv::Point3d out;
-	out.x = -slon*P_geocentric.x + clon*P_geocentric.y;
-	out.y = -clon*slat*P_geocentric.x -slon*slat*P_geocentric.y + clat*P_geocentric.z;
-	out.z = clon*clat*P_geocentric.x + slon*clat*P_geocentric.y +slat*P_geocentric.z;
+	out.x = -slon*geocentric_WGS84_rel.x + clon*geocentric_WGS84_rel.y;
+	out.y = -clon*slat*geocentric_WGS84_rel.x -slon*slat*geocentric_WGS84_rel.y + clat*geocentric_WGS84_rel.z;
+	out.z = clon*clat*geocentric_WGS84_rel.x + slon*clat*geocentric_WGS84_rel.y +slat*geocentric_WGS84_rel.z;
 
 	return out;
 }

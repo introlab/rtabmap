@@ -438,6 +438,7 @@ void CameraTango::close()
 	fisheyeRectifyMapX_ = cv::Mat();
 	fisheyeRectifyMapY_ = cv::Mat();
 	lastKnownGPS_ = GPS();
+	lastEnvSensors_.clear();
 	originOffset_ = Transform();
 	originUpdate_ = false;
 }
@@ -543,6 +544,11 @@ std::string CameraTango::getSerial() const
 void CameraTango::setGPS(const GPS & gps)
 {
 	lastKnownGPS_ = gps;
+}
+
+void CameraTango::addEnvSensor(int type, float value)
+{
+	lastEnvSensors_.insert(std::make_pair((EnvSensor::Type)type, EnvSensor((EnvSensor::Type)type, value)));
 }
 
 rtabmap::Transform CameraTango::tangoPoseToTransform(const TangoPoseData * tangoPose) const
@@ -907,6 +913,12 @@ SensorData CameraTango::captureImage(CameraInfo * info)
 			{
 				LOGD("GPS too old (current time=%f, gps time = %f)", rgbStamp, lastKnownGPS_.stamp());
 			}
+
+			if(lastEnvSensors_.size())
+			{
+				data.setEnvSensors(lastEnvSensors_);
+				lastEnvSensors_.clear();
+			}
 		}
 		else
 		{
@@ -950,7 +962,15 @@ void CameraTango::mainLoop()
 				info.interval = data.stamp()-previousStamp_;
 				info.transform = previousPose_.inverse() * pose;
 			}
+			// linear cov = 0.0001
 			info.reg.covariance = cv::Mat::eye(6,6,CV_64FC1) * (firstFrame?9999.0:0.0001);
+			if(!firstFrame)
+			{
+				// angular cov = 0.000001
+				info.reg.covariance.at<double>(3,3) *= 0.01;
+				info.reg.covariance.at<double>(4,4) *= 0.01;
+				info.reg.covariance.at<double>(5,5) *= 0.01;
+			}
 			LOGI("Publish odometry message (variance=%f)", firstFrame?9999:0.0001);
 			this->post(new OdometryEvent(data, pose, info));
 			previousPose_ = pose;

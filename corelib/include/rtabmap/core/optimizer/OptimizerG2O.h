@@ -40,18 +40,13 @@ public:
 	static bool available();
 	static bool isCSparseAvailable();
 	static bool isCholmodAvailable();
-	static bool saveGraph(
-			const std::string & fileName,
-			const std::map<int, Transform> & poses,
-			const std::multimap<int, Link> & edgeConstraints,
-			bool useRobustConstraints = false);
 
 public:
 	OptimizerG2O(const ParametersMap & parameters = ParametersMap()) :
 		Optimizer(parameters),
 		solver_(Parameters::defaultg2oSolver()),
 		optimizer_(Parameters::defaultg2oOptimizer()),
-        pixelVariance_(Parameters::defaultg2oPixelVariance()),
+		pixelVariance_(Parameters::defaultg2oPixelVariance()),
 		robustKernelDelta_(Parameters::defaultg2oRobustKernelDelta()),
 		baseline_(Parameters::defaultg2oBaseline())
 	{
@@ -78,8 +73,13 @@ public:
 			const std::multimap<int, Link> & links,
 			const std::map<int, CameraModel> & models, // in case of stereo, Tx should be set
 			std::map<int, cv::Point3f> & points3DMap,
-			const std::map<int, std::map<int, cv::Point3f> > & wordReferences, // <ID words, IDs frames + keypoint(x,y,depth)>
+			const std::map<int, std::map<int, FeatureBA> > & wordReferences, // <ID words, IDs frames + keypoint(x,y,depth)>
 			std::set<int> * outliers = 0);
+
+	bool saveGraph(
+		const std::string & fileName,
+		const std::map<int, Transform> & poses,
+		const std::multimap<int, Link> & edgeConstraints);
 
 private:
 	int solver_;

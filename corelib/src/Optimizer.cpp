@@ -169,10 +169,9 @@ void Optimizer::getConnectedGraph(
 	posesOut.clear();
 	linksOut.clear();
 
-	std::set<int> ids;
-	std::set<int> curentDepth;
-	std::set<int> nextDepth;
-	nextDepth.insert(fromId);
+	std::set<int> curentPoses;
+	std::set<int> nextPoses;
+	nextPoses.insert(fromId);
 	int d = 0;
 	std::multimap<int, int> biLinks;
 	for(std::multimap<int, Link>::const_iterator iter=linksIn.begin(); iter!=linksIn.end(); ++iter)
@@ -187,43 +186,38 @@ void Optimizer::getConnectedGraph(
 		}
 	}
 
-	while((depth == 0 || d < depth) && nextDepth.size())
+	while((depth == 0 || d < depth) && nextPoses.size())
 	{
-		curentDepth = nextDepth;
-		nextDepth.clear();
+		curentPoses = nextPoses;
+		nextPoses.clear();
 
-		for(std::set<int>::iterator jter = curentDepth.begin(); jter!=curentDepth.end(); ++jter)
+		for(std::set<int>::iterator jter = curentPoses.begin(); jter!=curentPoses.end(); ++jter)
 		{
-			if(ids.find(*jter) == ids.end())
+			int fromId = *jter;
+			if(posesOut.empty())
 			{
-				ids.insert(*jter);
-				posesOut.insert(*posesIn.find(*jter));
+				posesOut.insert(*posesIn.find(fromId));
+			}
 
-				for(std::multimap<int, int>::const_iterator iter=biLinks.find(*jter); iter!=biLinks.end() && iter->first==*jter; ++iter)
+			for(std::multimap<int, int>::const_iterator iter=biLinks.find(fromId); iter!=biLinks.end() && iter->first==fromId; ++iter)
+			{
+				int toId = iter->second;
+				std::multimap<int, Link>::const_iterator kter = graph::findLink(linksIn, fromId, toId);
+				int nextDepth = toId!=fromId?depth-1:depth;
+				if(depth == 0 || d < nextDepth || curentPoses.find(toId) != curentPoses.end())
 				{
-					int nextId = iter->second;
-					if(uContains(posesIn, nextId))
+					if(!uContains(posesOut, toId))
 					{
-						if(ids.find(nextId) == ids.end())
+						posesOut.insert(std::make_pair(toId, posesOut.at(fromId) * (kter->second.from()==fromId?kter->second.transform():kter->second.transform().inverse())));
+						if(curentPoses.find(toId) == curentPoses.end())
 						{
-							nextDepth.insert(nextId);
-
-							std::multimap<int, Link>::const_iterator kter = graph::findLink(linksIn, *jter, nextId);
-							if(depth == 0 || d < depth-1)
-							{
-								linksOut.insert(*kter);
-							}
-							else if(curentDepth.find(nextId) != curentDepth.end() ||
-									ids.find(nextId) != ids.end())
-							{
-								linksOut.insert(*kter);
-							}
+							nextPoses.insert(toId);
 						}
-						else if(*jter == nextId)
-						{
-							std::multimap<int, Link>::const_iterator kter = graph::findLink(linksIn, *jter, nextId);
-							linksOut.insert(*kter);
-						}
+					}
+					if(graph::findLink(linksOut, fromId, toId) == linksOut.end())
+					{
+						// only add unique links
+						linksOut.insert(*kter);
 					}
 				}
 			}
@@ -276,7 +270,7 @@ std::map<int, Transform> Optimizer::optimizeIncremental(
 	incGraph.insert(*poses.begin());
 	int i=0;
 	std::multimap<int, Link> constraintsCpy = constraints;
-	UDEBUG("Incremental optimization... poses=%d comstraints=%d", (int)poses.size(), (int)constraints.size());
+	UDEBUG("Incremental optimization... poses=%d constraints=%d", (int)poses.size(), (int)constraints.size());
 	for(std::map<int, Transform>::const_iterator iter=poses.begin(); iter!=poses.end(); ++iter)
 	{
 		incGraph.insert(*iter);
@@ -310,7 +304,7 @@ std::map<int, Transform> Optimizer::optimizeIncremental(
 			incGraph = this->optimize(incGraph.begin()->first, incGraph, incGraphLinks);
 			if(incGraph.empty())
 			{
-				UWARN("Failed incremental optimization...");
+				UWARN("Failed incremental optimization... last pose added is %d", iter->first);
 				break;
 			}
 		}
@@ -365,7 +359,7 @@ std::map<int, Transform> Optimizer::optimizeBA(
 		const std::multimap<int, Link> & links,
 		const std::map<int, CameraModel> & models,
 		std::map<int, cv::Point3f> & points3DMap,
-		const std::map<int, std::map<int, cv::Point3f> > & wordReferences,
+		const std::map<int, std::map<int, FeatureBA> > & wordReferences,
 		std::set<int> * outliers)
 {
 	UERROR("Optimizer %d doesn't implement optimizeBA() method.", (int)this->type());
@@ -376,7 +370,10 @@ std::map<int, Transform> Optimizer::optimizeBA(
 		int rootId,
 		const std::map<int, Transform> & poses,
 		const std::multimap<int, Link> & links,
-		const std::map<int, Signature> & signatures)
+		const std::map<int, Signature> & signatures,
+		std::map<int, cv::Point3f> & points3DMap,
+		std::map<int, std::map<int, FeatureBA> > & wordReferences,
+		bool rematchFeatures)
 {
 	UDEBUG("");
 	std::map<int, CameraModel> models;
@@ -421,18 +418,28 @@ std::map<int, Transform> Optimizer::optimizeBA(
 	}
 
 	// compute correspondences
-	std::map<int, cv::Point3f> points3DMap;
-	std::map<int, std::map<int, cv::Point3f> > wordReferences;
-	this->computeBACorrespondences(poses, links, signatures, points3DMap, wordReferences);
+	this->computeBACorrespondences(poses, links, signatures, points3DMap, wordReferences, rematchFeatures);
 
 	return optimizeBA(rootId, poses, links, models, points3DMap, wordReferences);
+}
+
+std::map<int, Transform> Optimizer::optimizeBA(
+		int rootId,
+		const std::map<int, Transform> & poses,
+		const std::multimap<int, Link> & links,
+		const std::map<int, Signature> & signatures,
+		bool rematchFeatures)
+{
+	std::map<int, cv::Point3f> points3DMap;
+	std::map<int, std::map<int, FeatureBA> > wordReferences;
+	return optimizeBA(rootId, poses, links, signatures, points3DMap, wordReferences, rematchFeatures);
 }
 
 Transform Optimizer::optimizeBA(
 		const Link & link,
 		const CameraModel & model,
 		std::map<int, cv::Point3f> & points3DMap,
-		const std::map<int, std::map<int, cv::Point3f> > & wordReferences,
+		const std::map<int, std::map<int, FeatureBA> > & wordReferences,
 		std::set<int> * outliers)
 {
 	std::map<int, Transform> poses;
@@ -454,16 +461,26 @@ Transform Optimizer::optimizeBA(
 	}
 }
 
+struct KeyPointCompare
+{
+   bool operator() (const cv::KeyPoint& lhs, const cv::KeyPoint& rhs) const
+   {
+       return lhs.pt.x < rhs.pt.x || (lhs.pt.x == rhs.pt.x && lhs.pt.y < rhs.pt.y);
+   }
+};
+
 void Optimizer::computeBACorrespondences(
 		const std::map<int, Transform> & poses,
 		const std::multimap<int, Link> & links,
 		const std::map<int, Signature> & signatures,
 		std::map<int, cv::Point3f> & points3DMap,
-		std::map<int, std::map<int, cv::Point3f> > & wordReferences) // <ID words, IDs frames + keypoint/depth>
+		std::map<int, std::map<int, FeatureBA> > & wordReferences,
+		bool rematchFeatures)
 {
 	UDEBUG("");
 	int wordCount = 0;
 	int edgeWithWordsAdded = 0;
+	std::map<int, std::map<cv::KeyPoint, int, KeyPointCompare> > frameToWordMap; // <FrameId, <Keypoint, wordId> >
 	for(std::multimap<int, Link>::const_iterator iter=links.begin(); iter!=links.end(); ++iter)
 	{
 		Link link = iter->second;
@@ -471,7 +488,8 @@ void Optimizer::computeBACorrespondences(
 		{
 			link = link.inverse();
 		}
-		if(uContains(signatures, link.from()) &&
+		if(link.to() != link.from() &&
+		   uContains(signatures, link.from()) &&
 		   uContains(signatures, link.to()) &&
 		   uContains(poses, link.from()))
 		{
@@ -500,8 +518,11 @@ void Optimizer::computeBACorrespondences(
 					regParam.insert(ParametersPair(Parameters::kVisCorNNDR(), "0.6"));
 					RegistrationVis reg(regParam);
 
-					//sFrom.setWordsDescriptors(std::multimap<int, cv::Mat>());
-					//sTo.setWordsDescriptors(std::multimap<int, cv::Mat>());
+					if(!rematchFeatures)
+					{
+						sFrom.setWordsDescriptors(std::multimap<int, cv::Mat>());
+						sTo.setWordsDescriptors(std::multimap<int, cv::Mat>());
+					}
 
 					RegistrationInfo info;
 					Transform t = reg.computeTransformationMod(sFrom, sTo, Transform(), &info);
@@ -510,6 +531,23 @@ void Optimizer::computeBACorrespondences(
 
 					if(!t.isNull())
 					{
+						if(!rematchFeatures)
+						{
+							// set descriptors for the output
+							if(sFrom.getWords().size() &&
+							   sFrom.getWordsDescriptors().empty() &&
+							   sFrom.getWords().size() == signatures.at(link.from()).getWordsDescriptors().size())
+							{
+								sFrom.setWordsDescriptors(signatures.at(link.from()).getWordsDescriptors());
+							}
+							if(sTo.getWords().size() &&
+							   sTo.getWordsDescriptors().empty() &&
+							   sTo.getWords().size() == signatures.at(link.to()).getWordsDescriptors().size())
+							{
+								sTo.setWordsDescriptors(signatures.at(link.to()).getWordsDescriptors());
+							}
+						}
+
 						Transform pose = poses.at(sFrom.id());
 						UASSERT(!pose.isNull());
 						for(unsigned int i=0; i<info.inliersIDs.size(); ++i)
@@ -517,26 +555,75 @@ void Optimizer::computeBACorrespondences(
 							cv::Point3f p = sFrom.getWords3().lower_bound(info.inliersIDs[i])->second;
 							if(p.x > 0.0f) // make sure the point is valid
 							{
-								int wordId = ++wordCount;
+								cv::KeyPoint ptFrom = sFrom.getWords().lower_bound(info.inliersIDs[i])->second;
+								cv::KeyPoint ptTo = sTo.getWords().lower_bound(info.inliersIDs[i])->second;
 
-								wordReferences.insert(std::make_pair(wordId, std::map<int, cv::Point3f>()));
+								int wordId = -1;
 
-								cv::Point2f pt = sFrom.getWords().lower_bound(info.inliersIDs[i])->second.pt;
-								wordReferences.at(wordId).insert(std::make_pair(sFrom.id(), cv::Point3f(pt.x, pt.y, p.x)));
-
-
-								pt = sTo.getWords().lower_bound(info.inliersIDs[i])->second.pt;
-								float depth = 0.0f;
-								std::multimap<int, cv::Point3f>::const_iterator iterTo = sTo.getWords3().lower_bound(info.inliersIDs[i]);
-								if( iterTo!=sTo.getWords3().end() &&
-									iterTo->second.x > 0)
+								// find if the word is already added
+								std::map<int, std::map<cv::KeyPoint, int, KeyPointCompare> >::iterator fromIter = frameToWordMap.find(sFrom.id());
+								std::map<int, std::map<cv::KeyPoint, int, KeyPointCompare> >::iterator toIter = frameToWordMap.find(sTo.id());
+								bool fromAlreadyAdded = false;
+								bool toAlreadyAdded = false;
+								if( fromIter != frameToWordMap.end() &&
+									fromIter->second.find(ptFrom) != fromIter->second.end())
 								{
-									depth = iterTo->second.x;
+									wordId = fromIter->second.at(ptFrom);
+									fromAlreadyAdded = true;
 								}
-								wordReferences.at(wordId).insert(std::make_pair(sTo.id(), cv::Point3f(pt.x, pt.y, depth)));
+								if( toIter != frameToWordMap.end() &&
+									toIter->second.find(ptTo) != toIter->second.end())
+								{
+									wordId = toIter->second.at(ptTo);
+									toAlreadyAdded = true;
+								}
 
-								p = util3d::transformPoint(p, pose);
-								points3DMap.insert(std::make_pair(wordId, p));
+								if(wordId == -1)
+								{
+									wordId = ++wordCount;
+									wordReferences.insert(std::make_pair(wordId, std::map<int, FeatureBA>()));
+
+									p = util3d::transformPoint(p, pose);
+									points3DMap.insert(std::make_pair(wordId, p));
+								}
+								else
+								{
+									UASSERT(wordReferences.find(wordId) != wordReferences.end());
+									UASSERT(points3DMap.find(wordId) != points3DMap.end());
+								}
+
+								if(!fromAlreadyAdded)
+								{
+									cv::Mat descriptorFrom;
+									if(sFrom.getWordsDescriptors().size())
+									{
+										UASSERT(sFrom.getWordsDescriptors().find(info.inliersIDs[i]) != sFrom.getWordsDescriptors().end());
+										descriptorFrom = sFrom.getWordsDescriptors().lower_bound(info.inliersIDs[i])->second;
+									}
+									wordReferences.at(wordId).insert(std::make_pair(sFrom.id(), FeatureBA(ptFrom, p.x, descriptorFrom)));
+									frameToWordMap.insert(std::make_pair(sFrom.id(), std::map<cv::KeyPoint, int, KeyPointCompare>()));
+									frameToWordMap.at(sFrom.id()).insert(std::make_pair(ptFrom, wordId));
+								}
+
+								if(!toAlreadyAdded)
+								{
+									cv::Mat descriptorTo;
+									if(sTo.getWordsDescriptors().size())
+									{
+										UASSERT(sTo.getWordsDescriptors().find(info.inliersIDs[i]) != sTo.getWordsDescriptors().end());
+										descriptorTo = sTo.getWordsDescriptors().lower_bound(info.inliersIDs[i])->second;
+									}
+									float depth = 0.0f;
+									std::multimap<int, cv::Point3f>::const_iterator iterTo = sTo.getWords3().lower_bound(info.inliersIDs[i]);
+									if( iterTo!=sTo.getWords3().end() &&
+										iterTo->second.x > 0)
+									{
+										depth = iterTo->second.x;
+									}
+									wordReferences.at(wordId).insert(std::make_pair(sTo.id(), FeatureBA(ptTo, depth, descriptorTo)));
+									frameToWordMap.insert(std::make_pair(sTo.id(), std::map<cv::KeyPoint, int, KeyPointCompare>()));
+									frameToWordMap.at(sTo.id()).insert(std::make_pair(ptTo, wordId));
+								}
 							}
 						}
 						++edgeWithWordsAdded;

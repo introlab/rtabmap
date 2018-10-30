@@ -28,6 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UThread.h>
 #include <rtabmap/utilite/UTimer.h>
 #include <rtabmap/core/util2d.h>
+#include <opencv2/imgproc/types_c.h>
 
 #ifdef RTABMAP_FREENECT
 #include <libfreenect.h>

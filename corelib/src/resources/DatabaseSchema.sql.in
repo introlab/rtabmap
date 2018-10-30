@@ -23,7 +23,7 @@ CREATE TABLE Node (
 	velocity BLOB,            -- 6 float (vx,vy,vz,vroll,vpitch,vyaw) m/s and rad/s
 	label TEXT,
 	gps BLOB,                 -- 1x6 double: stamp, longitude (DD), latitude (DD), altitude (m), accuracy (m), bearing (North 0->360 deg clockwise)
-	
+	env_sensors BLOB,         -- Variable 3xdouble: (sensorId1, value, stamp, sensorId2, value, stamp, ...)
 	time_enter DATE,
 	PRIMARY KEY (id)
 );
@@ -84,6 +84,15 @@ CREATE TABLE Feature (
 	depth_z FLOAT,
 	descriptor_size INTEGER,
 	descriptor BLOB,
+	FOREIGN KEY (node_id) REFERENCES Node(id)
+);
+
+--
+CREATE TABLE Tag (
+	node_id INTEGER NOT NULL,
+	tag_id INTEGER NOT NULL,
+	stamp FLOAT NOT NULL,
+	transform BLOB NOT NULL,     -- 3x4 float, /base_link -> /tag_frame
 	FOREIGN KEY (node_id) REFERENCES Node(id)
 );
 

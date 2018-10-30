@@ -38,6 +38,19 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 namespace rtabmap {
 
+class FeatureBA
+{
+public:
+	FeatureBA(const cv::KeyPoint & kptIn, const float & depthIn = 0.0f, const cv::Mat & descriptorIn = cv::Mat()):
+		kpt(kptIn),
+		depth(depthIn),
+		descriptor(descriptorIn)
+	{}
+	cv::KeyPoint kpt;
+	float depth;
+	cv::Mat descriptor;
+};
+
 ////////////////////////////////////////////
 // Graph optimizers
 ////////////////////////////////////////////
@@ -118,20 +131,30 @@ public:
 			const std::multimap<int, Link> & links,
 			const std::map<int, CameraModel> & models, // in case of stereo, Tx should be set
 			std::map<int, cv::Point3f> & points3DMap,
-			const std::map<int, std::map<int, cv::Point3f> > & wordReferences, // <ID words, IDs frames + keypoint(x,y,depth)>
+			const std::map<int, std::map<int, FeatureBA> > & wordReferences, // <ID words, IDs frames + keypoint/depth/descriptor>
 			std::set<int> * outliers = 0);
 
 	std::map<int, Transform> optimizeBA(
 			int rootId,
 			const std::map<int, Transform> & poses,
 			const std::multimap<int, Link> & links,
-			const std::map<int, Signature> & signatures);
+			const std::map<int, Signature> & signatures,
+			std::map<int, cv::Point3f> & points3DMap,
+			std::map<int, std::map<int, FeatureBA> > & wordReferences, // <ID words, IDs frames + keypoint/depth/descriptor>
+			bool rematchFeatures = false);
+
+	std::map<int, Transform> optimizeBA(
+			int rootId,
+			const std::map<int, Transform> & poses,
+			const std::multimap<int, Link> & links,
+			const std::map<int, Signature> & signatures,
+			bool rematchFeatures = false);
 
 	Transform optimizeBA(
 			const Link & link,
 			const CameraModel & model,
 			std::map<int, cv::Point3f> & points3DMap,
-			const std::map<int, std::map<int, cv::Point3f> > & wordReferences,
+			const std::map<int, std::map<int, FeatureBA> > & wordReferences,
 			std::set<int> * outliers = 0);
 
 	void computeBACorrespondences(
@@ -139,7 +162,8 @@ public:
 			const std::multimap<int, Link> & links,
 			const std::map<int, Signature> & signatures,
 			std::map<int, cv::Point3f> & points3DMap,
-			std::map<int, std::map<int, cv::Point3f> > & wordReferences); // <ID words, IDs frames + keypoint/depth>
+			std::map<int, std::map<int, FeatureBA > > & wordReferences, // <ID words, IDs frames + keypoint/depth/descriptor>
+			bool rematchFeatures = false);
 
 protected:
 	Optimizer(

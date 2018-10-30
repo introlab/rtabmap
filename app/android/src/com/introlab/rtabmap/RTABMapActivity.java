@@ -1,11 +1,8 @@
 package com.introlab.rtabmap;
 
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
-import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -16,16 +13,13 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.List;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipOutputStream;
+import java.util.Timer;
+import java.util.TimerTask;
 
-import android.app.ActionBar;
 import android.app.Activity;
 import android.app.ActivityManager;
 import android.app.ActivityManager.MemoryInfo;
 import android.app.AlertDialog;
-import android.app.Dialog;
 import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
@@ -41,46 +35,30 @@ import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.PackageManager.NameNotFoundException;
-import android.content.res.Configuration;
-import android.database.Cursor;
-import android.database.sqlite.SQLiteDatabase;
-import android.graphics.Bitmap;
-import android.graphics.Canvas;
-import android.graphics.Color;
-import android.graphics.Paint;
-import android.graphics.Rect;
-import android.graphics.Typeface;
 import android.hardware.Camera;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
+import android.graphics.Matrix;
 import android.graphics.Point;
 import android.hardware.display.DisplayManager;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
-import android.net.ConnectivityManager;
-import android.net.NetworkInfo;
 import android.net.Uri;
+import android.net.wifi.WifiInfo;
+import android.net.wifi.WifiManager;
 import android.opengl.GLSurfaceView;
-import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
-import android.os.Debug;
 import android.os.IBinder;
 import android.os.Message;
-import android.preference.ListPreference;
 import android.preference.PreferenceManager;
-import android.text.Editable;
 import android.text.Html;
 import android.text.InputType;
-import android.text.SpannableString;
-import android.text.TextPaint;
-import android.text.method.HideReturnsTransformationMethod;
 import android.text.method.LinkMovementMethod;
-import android.text.util.Linkify;
 import android.util.Log;
 import android.util.TypedValue;
 import android.view.ContextMenu;
@@ -91,30 +69,23 @@ import android.view.MenuItem;
 import android.view.MenuItem.OnMenuItemClickListener;
 import android.view.MenuInflater;
 import android.view.MotionEvent;
-import android.view.Surface;
 import android.view.View;
 import android.view.ContextMenu.ContextMenuInfo;
 import android.view.View.OnClickListener;
 import android.view.View.OnCreateContextMenuListener;
 import android.view.View.OnTouchListener;
-import android.view.Window;
 import android.view.WindowManager;
 import android.view.inputmethod.EditorInfo;
-import android.webkit.WebView;
-import android.webkit.WebViewClient;
 import android.widget.AdapterView;
-import android.widget.AdapterView.OnItemLongClickListener;
 import android.widget.AdapterView.OnItemSelectedListener;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
-import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.NumberPicker;
 import android.widget.RelativeLayout;
 import android.widget.SeekBar;
 import android.widget.SeekBar.OnSeekBarChangeListener;
-import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.ToggleButton;
@@ -155,6 +126,7 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 	private boolean mHudVisible = true;
 	private int mSavedRenderingType = 0;
 	private boolean mMenuOpened = false;
+	private long mSavedStamp = 0;
 
 	// UI states
 	private static enum State {
@@ -224,12 +196,34 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 	private String mMinInliers;
 	private String mMaxOptimizationError;
 	private boolean mGPSSaved = false;
+	private boolean mEnvSensorsSaved = false;
 	
 	private LocationManager mLocationManager;
 	private LocationListener mLocationListener;
 	private Location mLastKnownLocation;
 	private SensorManager mSensorManager;
+	private WifiManager mWifiManager;
+	private Timer mEnvSensorsTimer = new Timer();
+	Sensor mAccelerometer;
+	Sensor mMagnetometer;
+	Sensor mAmbientTemperature;
+	Sensor mAmbientLight;
+	Sensor mAmbientAirPressure;
+	Sensor mAmbientRelativeHumidity;
 	private float mCompassDeg = 0.0f;
+	private float[] mLastEnvSensors = new float[5];
+	private boolean[] mLastEnvSensorsSet = new boolean[5];
+	
+	private float[] mLastAccelerometer = new float[3];
+    private float[] mLastMagnetometer = new float[3];
+    private boolean mLastAccelerometerSet = false;
+    private boolean mLastMagnetometerSet = false;
+
+    private Matrix mDeviceToCamera = new Matrix();
+    private Matrix mRMat = new Matrix();
+    private Matrix mNewR = new Matrix();
+    private float[] mR = new float[9];
+    private float[] mOrientation = new float[3];
 
 	private int mTotalLoopClosures = 0;
 	private boolean mMapIsEmpty = false;
@@ -239,8 +233,8 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 	
 	private AlertDialog mMemoryWarningDialog = null;
 	
-	private final int STATUS_TEXTS_SIZE = 19;
-	private final int STATUS_TEXTS_POSE_INDEX = 5;
+	private final int STATUS_TEXTS_SIZE = 20;
+	private final int STATUS_TEXTS_POSE_INDEX = 6;
 	private String[] mStatusTexts = new String[STATUS_TEXTS_SIZE];
 	
 	GestureDetector mGesDetect = null;
@@ -534,14 +528,69 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 		};
 
 		mSensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
+		mAccelerometer = mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+	    mMagnetometer = mSensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
+	    mAmbientTemperature = mSensorManager.getDefaultSensor(Sensor.TYPE_AMBIENT_TEMPERATURE);
+	    mAmbientLight = mSensorManager.getDefaultSensor(Sensor.TYPE_LIGHT);
+	    mAmbientAirPressure = mSensorManager.getDefaultSensor(Sensor.TYPE_PRESSURE);
+	    mAmbientRelativeHumidity = mSensorManager.getDefaultSensor(Sensor.TYPE_RELATIVE_HUMIDITY);
+	    float [] values = {1,0,0,0,0,1,0,-1,0};
+	    mDeviceToCamera.setValues(values);
+	    mWifiManager = (WifiManager) getSystemService(Context.WIFI_SERVICE);
+		
+		setCamera(1);
 
 		DISABLE_LOG =  !( 0 != ( getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE ) );
 	}
 
 	@Override
 	public void onSensorChanged(SensorEvent event) {
-		// get the angle around the z-axis rotated
-		mCompassDeg = event.values[0];
+		if(event.sensor == mAccelerometer || event.sensor == mMagnetometer)
+		{
+			if (event.sensor == mAccelerometer) {
+	            System.arraycopy(event.values, 0, mLastAccelerometer, 0, event.values.length);
+	            mLastAccelerometerSet = true;
+	        } else if (event.sensor == mMagnetometer) {
+	            System.arraycopy(event.values, 0, mLastMagnetometer, 0, event.values.length);
+	            mLastMagnetometerSet = true;
+	        }
+	        if (mLastAccelerometerSet && mLastMagnetometerSet) {
+	            SensorManager.getRotationMatrix(mR, null, mLastAccelerometer, mLastMagnetometer);
+	            mRMat.setValues(mR);
+	            mNewR.setConcat(mRMat, mDeviceToCamera) ;
+	            mNewR.getValues(mR);
+	            SensorManager.getOrientation(mR, mOrientation);                 
+	            mCompassDeg = mOrientation[0] * 180.0f/(float)Math.PI;
+	            if(mCompassDeg<0.0f)
+	            {
+	            	mCompassDeg += 360.0f;
+	            }
+	        }
+		}
+		else if(event.sensor == mAmbientTemperature)
+		{
+			mLastEnvSensors[1] = event.values[0];
+			mLastEnvSensorsSet[1] = true;
+			RTABMapLib.addEnvSensor(2, event.values[0]);
+		}
+		else if(event.sensor == mAmbientAirPressure)
+		{
+			mLastEnvSensors[2] = event.values[0];
+			mLastEnvSensorsSet[2] = true;
+			RTABMapLib.addEnvSensor(3, event.values[0]);
+		}
+		else if(event.sensor == mAmbientLight)
+		{
+			mLastEnvSensors[3] = event.values[0];
+			mLastEnvSensorsSet[3] = true;
+			RTABMapLib.addEnvSensor(4, event.values[0]);
+		}
+		else if(event.sensor == mAmbientRelativeHumidity)
+		{
+			mLastEnvSensors[4] = event.values[0];
+			mLastEnvSensorsSet[4] = true;
+			RTABMapLib.addEnvSensor(5, event.values[0]);
+		}
 	}
 
 	@Override
@@ -660,6 +709,9 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 		
 		mLocationManager.removeUpdates(mLocationListener);
 		mSensorManager.unregisterListener(this);
+		mLastAccelerometerSet = false;
+		mLastMagnetometerSet= false;
+		mLastEnvSensorsSet[0] = mLastEnvSensorsSet[1]= mLastEnvSensorsSet[2]= mLastEnvSensorsSet[3]= mLastEnvSensorsSet[4]=false;
 
 		RTABMapLib.onPause();
 		
@@ -728,7 +780,31 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 			if(mGPSSaved)
 			{
 				mLocationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, mLocationListener);
-				mSensorManager.registerListener(this, mSensorManager.getDefaultSensor(Sensor.TYPE_ORIENTATION), SensorManager.SENSOR_DELAY_GAME);
+				mSensorManager.registerListener(this, mAccelerometer, SensorManager.SENSOR_DELAY_UI);
+			    mSensorManager.registerListener(this, mMagnetometer, SensorManager.SENSOR_DELAY_UI);
+			}
+			mEnvSensorsSaved = sharedPref.getBoolean(getString(R.string.pref_key_env_sensors_saved), Boolean.parseBoolean(getString(R.string.pref_default_env_sensors_saved)));
+			if(mEnvSensorsSaved)
+			{
+				mSensorManager.registerListener(this, mAmbientTemperature, SensorManager.SENSOR_DELAY_NORMAL);
+				mSensorManager.registerListener(this, mAmbientAirPressure, SensorManager.SENSOR_DELAY_NORMAL);
+				mSensorManager.registerListener(this, mAmbientLight, SensorManager.SENSOR_DELAY_NORMAL);
+				mSensorManager.registerListener(this, mAmbientRelativeHumidity, SensorManager.SENSOR_DELAY_NORMAL);
+				mEnvSensorsTimer.schedule(new TimerTask() {
+
+			        @Override
+			        public void run() {
+			        	WifiInfo wifiInfo = mWifiManager.getConnectionInfo();
+			        	int dbm = 0;
+			        	if(wifiInfo != null && (dbm = wifiInfo.getRssi()) > -127)
+			        	{
+			        		mLastEnvSensors[0] = (float)dbm;
+			        		mLastEnvSensorsSet[0] = true;
+			        		RTABMapLib.addEnvSensor(1, mLastEnvSensors[0]);
+			        	}
+			        }
+
+			    },0,200);
 			}
 			
 			if(!DISABLE_LOG) Log.d(TAG, "set mapping parameters");
@@ -1225,12 +1301,42 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 			}
 			else
 			{
-				statusTexts[3] = getString(R.string.gps)+"[not yet available]";
+				statusTexts[3] = getString(R.string.gps)+String.format("[not yet available, %.0fdeg]", mCompassDeg);
+			}
+		}
+		if(mEnvSensorsSaved)
+		{
+			statusTexts[4] = getString(R.string.env_sensors);
+			
+			if(mLastEnvSensorsSet[0])
+			{
+				statusTexts[4] += String.format(" %.0f dbm", mLastEnvSensors[0]);
+				mLastEnvSensorsSet[0] = false;
+			}
+			if(mLastEnvSensorsSet[1])
+			{
+				statusTexts[4] += String.format(" %.1f %cC", mLastEnvSensors[1], '\u00B0');
+				mLastEnvSensorsSet[1] = false;
+			}
+			if(mLastEnvSensorsSet[2])
+			{
+				statusTexts[4] += String.format(" %.1f hPa", mLastEnvSensors[2]);
+				mLastEnvSensorsSet[2] = false;
+			}
+			if(mLastEnvSensorsSet[3])
+			{
+				statusTexts[4] += String.format(" %.0f lx", mLastEnvSensors[3]);
+				mLastEnvSensorsSet[3] = false;
+			}
+			if(mLastEnvSensorsSet[4])
+			{
+				statusTexts[4] += String.format(" %.0f %%", mLastEnvSensors[4]);
+				mLastEnvSensorsSet[4] = false;
 			}
 		}
 		
 		String formattedDate = new SimpleDateFormat("HH:mm:ss.SSS").format(new Date());
-		statusTexts[4] = getString(R.string.time)+formattedDate;
+		statusTexts[5] = getString(R.string.time)+formattedDate;
 		
 		int index = STATUS_TEXTS_POSE_INDEX;
 		statusTexts[index++] = getString(R.string.nodes)+nodes+" (" + nodesDrawn + " shown)";
@@ -1525,6 +1631,8 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 
     public void stopDisconnectTimer(){
         notouchHandler.removeCallbacks(notouchCallback);
+        Timer timer = new Timer();
+        timer.cancel();
     }
 		
 	private void updateState(State state)
@@ -2223,6 +2331,19 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 														File from = new File(mWorkingDirectory, files[position]);
 												        File to   = new File(mWorkingDirectory, fileName + ".db");
 												        from.renameTo(to);
+												        
+												        long stamp = System.currentTimeMillis();
+												        if(stamp-mSavedStamp < 10000)
+												        {
+												        	try {
+																Thread.sleep(10000 - (stamp-mSavedStamp));
+															}
+															catch(InterruptedException e){}
+												        }
+												        
+												        refreshSystemMediaScanDataBase(getActivity(), files[position]);
+												        refreshSystemMediaScanDataBase(getActivity(), to.getAbsolutePath());
+												        
 												        ad.dismiss();
 												        resetNoTouchTimer(true);
 													}
@@ -2245,6 +2366,7 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 										        case DialogInterface.BUTTON_POSITIVE:
 										        	Log.e(TAG, String.format("Yes delete %s!", files[position]));
 										        	(new File(mWorkingDirectory+files[position])).delete();
+										        	refreshSystemMediaScanDataBase(getActivity(), mWorkingDirectory+files[position]);
 										        	ad.dismiss();
 										        	resetNoTouchTimer(true);
 										            break;
@@ -2461,6 +2583,18 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 		exportThread.start();
 	}
 	
+	/** 
+	@param context : it is the reference where this method get called
+	@param docPath : absolute path of file for which broadcast will be send to refresh media database
+	@see https://stackoverflow.com/a/36051318/6163336
+	**/
+	public static void refreshSystemMediaScanDataBase(Context context, String docPath){
+	   Intent mediaScanIntent = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE);
+	   Uri contentUri = Uri.fromFile(new File(docPath));
+	   mediaScanIntent.setData(contentUri);
+	   context.sendBroadcast(mediaScanIntent);
+	}
+	
 	private void saveDatabase(String fileName)
 	{
 		final String newDatabasePath = mWorkingDirectory + fileName + ".db";
@@ -2489,6 +2623,8 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 						}
 						else
 						{
+							refreshSystemMediaScanDataBase(getActivity(), newDatabasePath);
+							mSavedStamp = System.currentTimeMillis();
 							msg = String.format("Database saved to \"%s\".", newDatabasePathHuman);	
 						}
 						

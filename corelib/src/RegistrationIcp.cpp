@@ -610,7 +610,7 @@ Transform RegistrationIcp::computeTransformationImpl(
 					{
 						// Load point clouds
 						DP data = laserScanToDP(fromScan);
-						DP ref = laserScanToDP(LaserScan(toScan.data(), toScan.maxPoints(), toScan.maxRange(), toScan.format(), guess * toScan.localTransform()));
+						DP ref = laserScanToDP(LaserScan(toScan.data(), toScan.maxPoints(), toScan.rangeMax(), toScan.format(), guess * toScan.localTransform()));
 
 						// Compute the transformation to express data in ref
 						PM::TransformationParameters T;
@@ -786,7 +786,7 @@ Transform RegistrationIcp::computeTransformationImpl(
 									LaserScan(
 											util3d::laserScan2dFromPointCloud(*fromCloudNormals, fromScan.localTransform().inverse()),
 											maxLaserScansFrom,
-											fromScan.maxRange(),
+											fromScan.rangeMax(),
 											LaserScan::kXYNormal,
 											fromScan.localTransform()));
 						}
@@ -796,7 +796,7 @@ Transform RegistrationIcp::computeTransformationImpl(
 									LaserScan(
 											util3d::laserScanFromPointCloud(*fromCloudNormals, fromScan.localTransform().inverse()),
 											maxLaserScansFrom,
-											fromScan.maxRange(),
+											fromScan.rangeMax(),
 											LaserScan::kXYZNormal,
 											fromScan.localTransform()));
 						}
@@ -806,7 +806,7 @@ Transform RegistrationIcp::computeTransformationImpl(
 									LaserScan(
 											util3d::laserScan2dFromPointCloud(*toCloudNormals, (guess*toScan.localTransform()).inverse()),
 											maxLaserScansTo,
-											toScan.maxRange(),
+											toScan.rangeMax(),
 											LaserScan::kXYNormal,
 											toScan.localTransform()));
 						}
@@ -816,7 +816,7 @@ Transform RegistrationIcp::computeTransformationImpl(
 									LaserScan(
 											util3d::laserScanFromPointCloud(*toCloudNormals, (guess*toScan.localTransform()).inverse()),
 											maxLaserScansTo,
-											toScan.maxRange(),
+											toScan.rangeMax(),
 											LaserScan::kXYZNormal,
 											toScan.localTransform()));
 						}
@@ -833,7 +833,7 @@ Transform RegistrationIcp::computeTransformationImpl(
 							{
 								// Load point clouds
 								DP data = laserScanToDP(fromScan);
-								DP ref = laserScanToDP(LaserScan(toScan.data(), toScan.maxPoints(), toScan.maxRange(), toScan.format(), guess*toScan.localTransform()));
+								DP ref = laserScanToDP(LaserScan(toScan.data(), toScan.maxPoints(), toScan.rangeMax(), toScan.format(), guess*toScan.localTransform()));
 
 								// Compute the transformation to express data in ref
 								PM::TransformationParameters T;
@@ -905,7 +905,7 @@ Transform RegistrationIcp::computeTransformationImpl(
 									LaserScan(
 											util3d::laserScan2dFromPointCloud(*fromCloudFiltered, fromScan.localTransform().inverse()),
 											maxLaserScansFrom,
-											fromScan.maxRange(),
+											fromScan.rangeMax(),
 											LaserScan::kXY,
 											fromScan.localTransform()));
 						}
@@ -915,7 +915,7 @@ Transform RegistrationIcp::computeTransformationImpl(
 									LaserScan(
 											util3d::laserScanFromPointCloud(*fromCloudFiltered, fromScan.localTransform().inverse()),
 											maxLaserScansFrom,
-											fromScan.maxRange(),
+											fromScan.rangeMax(),
 											LaserScan::kXYZ,
 											fromScan.localTransform()));
 						}
@@ -925,7 +925,7 @@ Transform RegistrationIcp::computeTransformationImpl(
 									LaserScan(
 											util3d::laserScan2dFromPointCloud(*toCloudFiltered, (guess*toScan.localTransform()).inverse()),
 											maxLaserScansTo,
-											toScan.maxRange(),
+											toScan.rangeMax(),
 											LaserScan::kXY,
 											toScan.localTransform()));
 						}
@@ -935,7 +935,7 @@ Transform RegistrationIcp::computeTransformationImpl(
 									LaserScan(
 											util3d::laserScanFromPointCloud(*toCloudFiltered, (guess*toScan.localTransform()).inverse()),
 											maxLaserScansTo,
-											toScan.maxRange(),
+											toScan.rangeMax(),
 											LaserScan::kXYZ,
 											toScan.localTransform()));
 						}
@@ -948,7 +948,7 @@ Transform RegistrationIcp::computeTransformationImpl(
 					{
 						// Load point clouds
 						DP data = laserScanToDP(fromScan);
-						DP ref = laserScanToDP(LaserScan(toScan.data(), toScan.maxPoints(), toScan.maxRange(), toScan.format(), guess*toScan.localTransform()));
+						DP ref = laserScanToDP(LaserScan(toScan.data(), toScan.maxPoints(), toScan.rangeMax(), toScan.format(), guess*toScan.localTransform()));
 
 						// Compute the transformation to express data in ref
 						PM::TransformationParameters T;

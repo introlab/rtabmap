@@ -61,8 +61,8 @@
           <rect>
            <x>0</x>
            <y>0</y>
-           <width>327</width>
-           <height>222</height>
+           <width>287</width>
+           <height>288</height>
           </rect>
          </property>
          <layout class="QGridLayout" name="gridLayout" columnstretch="0,1">
@@ -202,14 +202,14 @@
             </property>
            </widget>
           </item>
-          <item row="9" column="0">
+          <item row="10" column="0">
            <widget class="QLabel" name="label_childrenA_16">
             <property name="text">
              <string>GPS</string>
             </property>
            </widget>
           </item>
-          <item row="9" column="1">
+          <item row="10" column="1">
            <widget class="QLabel" name="label_gpsA">
             <property name="text">
              <string/>
@@ -236,6 +236,40 @@
             </property>
            </widget>
           </item>
+          <item row="11" column="0">
+           <widget class="QLabel" name="label_childrenA_20">
+            <property name="text">
+             <string>Sensors</string>
+            </property>
+           </widget>
+          </item>
+          <item row="11" column="1">
+           <widget class="QLabel" name="label_sensorsA">
+            <property name="text">
+             <string/>
+            </property>
+            <property name="textInteractionFlags">
+             <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+            </property>
+           </widget>
+          </item>
+          <item row="9" column="0">
+           <widget class="QLabel" name="label_childrenA_22">
+            <property name="text">
+             <string>Scan</string>
+            </property>
+           </widget>
+          </item>
+          <item row="9" column="1">
+           <widget class="QLabel" name="label_scanA">
+            <property name="text">
+             <string/>
+            </property>
+            <property name="textInteractionFlags">
+             <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+            </property>
+           </widget>
+          </item>
          </layout>
         </widget>
        </widget>
@@ -253,8 +287,8 @@
           <rect>
            <x>0</x>
            <y>0</y>
-           <width>327</width>
-           <height>222</height>
+           <width>287</width>
+           <height>288</height>
           </rect>
          </property>
          <layout class="QGridLayout" name="gridLayout_2" columnstretch="0,1">
@@ -302,14 +336,14 @@
             </property>
            </widget>
           </item>
-          <item row="9" column="0">
+          <item row="10" column="0">
            <widget class="QLabel" name="label_childrenA_17">
             <property name="text">
              <string>GPS</string>
             </property>
            </widget>
           </item>
-          <item row="9" column="1">
+          <item row="10" column="1">
            <widget class="QLabel" name="label_gpsB">
             <property name="text">
              <string/>
@@ -420,6 +454,40 @@
           </item>
           <item row="6" column="1">
            <widget class="QLabel" name="label_velB">
+            <property name="text">
+             <string/>
+            </property>
+            <property name="textInteractionFlags">
+             <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+            </property>
+           </widget>
+          </item>
+          <item row="11" column="0">
+           <widget class="QLabel" name="label_childrenA_21">
+            <property name="text">
+             <string>Sensors</string>
+            </property>
+           </widget>
+          </item>
+          <item row="11" column="1">
+           <widget class="QLabel" name="label_sensorsB">
+            <property name="text">
+             <string/>
+            </property>
+            <property name="textInteractionFlags">
+             <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+            </property>
+           </widget>
+          </item>
+          <item row="9" column="0">
+           <widget class="QLabel" name="label_childrenA_23">
+            <property name="text">
+             <string>Scan</string>
+            </property>
+           </widget>
+          </item>
+          <item row="9" column="1">
+           <widget class="QLabel" name="label_scanB">
             <property name="text">
              <string/>
             </property>
@@ -579,7 +647,7 @@
      <x>0</x>
      <y>0</y>
      <width>1547</width>
-     <height>25</height>
+     <height>22</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -637,6 +705,8 @@
     <addaction name="actionDetect_more_loop_closures"/>
     <addaction name="actionRefine_all_neighbor_links"/>
     <addaction name="actionRefine_all_loop_closure_links"/>
+    <addaction name="actionUpdate_all_neighbor_covariances"/>
+    <addaction name="actionUpdate_all_loop_closure_covariances"/>
     <addaction name="separator"/>
     <addaction name="actionRegenerate_local_grid_maps"/>
     <addaction name="actionRegenerate_local_grid_maps_selected"/>
@@ -1228,8 +1298,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>312</width>
-          <height>200</height>
+          <width>318</width>
+          <height>197</height>
          </rect>
         </property>
         <attribute name="label">
@@ -1389,9 +1459,9 @@
         <property name="geometry">
          <rect>
           <x>0</x>
-          <y>-167</y>
-          <width>441</width>
-          <height>764</height>
+          <y>0</y>
+          <width>519</width>
+          <height>791</height>
          </rect>
         </property>
         <attribute name="label">
@@ -1924,8 +1994,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>200</width>
-          <height>111</height>
+          <width>205</width>
+          <height>114</height>
          </rect>
         </property>
         <attribute name="label">
@@ -2024,8 +2094,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>179</width>
-          <height>452</height>
+          <width>185</width>
+          <height>485</height>
          </rect>
         </property>
         <attribute name="label">
@@ -2694,6 +2764,16 @@
   <action name="actionUpdate_optimized_mesh">
    <property name="text">
     <string>Update optimized mesh...</string>
+   </property>
+  </action>
+  <action name="actionUpdate_all_neighbor_covariances">
+   <property name="text">
+    <string>Update all neighbor covariances...</string>
+   </property>
+  </action>
+  <action name="actionUpdate_all_loop_closure_covariances">
+   <property name="text">
+    <string>Update all loop closure covariances...</string>
    </property>
   </action>
  </widget>

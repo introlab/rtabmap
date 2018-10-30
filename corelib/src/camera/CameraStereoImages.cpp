@@ -27,6 +27,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <rtabmap/core/camera/CameraStereoImages.h>
 #include <rtabmap/utilite/UStl.h>
+#include <opencv2/imgproc/types_c.h>
 
 namespace rtabmap
 {

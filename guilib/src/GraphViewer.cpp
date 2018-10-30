@@ -242,6 +242,8 @@ GraphViewer::GraphViewer(QWidget * parent) :
 		_loopIntraSessionColor(Qt::red),
 		_loopInterSessionColor(Qt::green),
 		_intraInterSessionColors(false),
+		_worldMapRotation(0.0f),
+		_world(0),
 		_root(0),
 		_graphRoot(0),
 		_globalPathRoot(0),
@@ -262,7 +264,9 @@ GraphViewer::GraphViewer(QWidget * parent) :
 	_workingDirectory = QDir::homePath();
 
 	this->scene()->clear();
+	_world = (QGraphicsItem *)this->scene()->addEllipse(QRectF(-0.0001,-0.0001,0.0001,0.0001));
 	_root = (QGraphicsItem *)this->scene()->addEllipse(QRectF(-0.0001,-0.0001,0.0001,0.0001));
+	_root->setParentItem(_world);
 
 	// add referential
 	_originReferential = new QGraphicsItemGroup();
@@ -275,6 +279,7 @@ GraphViewer::GraphViewer(QWidget * parent) :
 	item->setZValue(100);
 	item->setParentItem(_root);
 	_originReferential->addToGroup(item);
+	_originReferential->setParentItem(_root);
 
 	// current pose
 	_referential = new QGraphicsItemGroup();
@@ -287,6 +292,7 @@ GraphViewer::GraphViewer(QWidget * parent) :
 	item->setZValue(100);
 	item->setParentItem(_root);
 	_referential->addToGroup(item);
+	_referential->setParentItem(_root);
 
 	_localRadius = this->scene()->addEllipse(-0.0001,-0.0001,0.0001,0.0001);
 	_localRadius->setZValue(1);
@@ -325,6 +331,12 @@ GraphViewer::GraphViewer(QWidget * parent) :
 
 GraphViewer::~GraphViewer()
 {
+}
+
+void GraphViewer::setWorldMapRotation(const float & theta)
+{
+	_worldMapRotation = theta;
+	setOrientationENU(isOrientationENU());
 }
 
 void GraphViewer::updateGraph(const std::map<int, Transform> & poses,
@@ -808,7 +820,10 @@ void GraphViewer::updateGPSGraph(
 
 void GraphViewer::updateReferentialPosition(const Transform & t)
 {
-	QTransform qt(t.r11(), t.r12(), t.r21(), t.r22(), -t.o24()*100.0f, -t.o14()*100.0f);
+	QTransform qt;
+	qt.translate(-t.o24()*100.0f, -t.o14()*100.0f);
+	qt.rotateRadians(-t.theta());
+
 	_referential->setTransform(qt);
 	_localRadius->setTransform(qt);
 
@@ -922,7 +937,7 @@ void GraphViewer::setCurrentGoalID(int id, const Transform & pose)
 
 void GraphViewer::setLocalRadius(float radius)
 {
-	_localRadius->setRect(-radius, -radius, radius*2, radius*2);
+	_localRadius->setRect(-radius*100, -radius*100, radius*200, radius*200);
 }
 
 void GraphViewer::updateLocalPath(const std::vector<int> & localPath)
@@ -1011,6 +1026,8 @@ void GraphViewer::clearGraph()
 	qDeleteAll(_gpsLinkItems);
 	_gpsLinkItems.clear();
 
+	_root->resetTransform();
+	_worldMapRotation = 0.0f;
 	_referential->resetTransform();
 	_localRadius->resetTransform();
 	this->scene()->setSceneRect(this->scene()->itemsBoundingRect());  // Re-shrink the scene to it's bounding contents
@@ -1438,6 +1455,20 @@ void GraphViewer::setOrientationENU(bool enabled)
 	{
 		_orientationENU = enabled;
 		this->rotate(_orientationENU?90:270);
+	}
+	if(_orientationENU)
+	{
+		QTransform t;
+		t.rotateRadians(_worldMapRotation);
+		_root->setTransform(t);
+	}
+	else
+	{
+		_root->resetTransform();
+	}
+	if(_nodeItems.size() || _linkItems.size())
+	{
+		this->scene()->setSceneRect(this->scene()->itemsBoundingRect());  // Re-shrink the scene to it's bounding contents
 	}
 }
 
