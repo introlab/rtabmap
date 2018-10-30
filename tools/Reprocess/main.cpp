@@ -292,7 +292,7 @@ int main(int argc, char * argv[])
 			if(!odometryIgnored && !info.odomCovariance.empty() && info.odomCovariance.at<double>(0,0)>=9999)
 			{
 				printf("High variance detected, triggering a new map...\n");
-				if(!incrementalMemory)
+				if(!incrementalMemory && processed>0)
 				{
 					printf("Total localizations on previous session = %d/%d\n", loopCount, totalFrames);
 					loopCount = 0;
