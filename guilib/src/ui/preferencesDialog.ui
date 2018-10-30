@@ -94,16 +94,25 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-287</y>
-            <width>681</width>
-            <height>2943</height>
+            <y>-380</y>
+            <width>680</width>
+            <height>2940</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
            <property name="spacing">
             <number>0</number>
            </property>
-           <property name="margin">
+           <property name="leftMargin">
+            <number>0</number>
+           </property>
+           <property name="topMargin">
+            <number>0</number>
+           </property>
+           <property name="rightMargin">
+            <number>0</number>
+           </property>
+           <property name="bottomMargin">
             <number>0</number>
            </property>
            <item>
@@ -2932,7 +2941,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                     <item>
                      <widget class="QStackedWidget" name="stackedWidget_src">
                       <property name="currentIndex">
-                       <number>0</number>
+                       <number>1</number>
                       </property>
                       <widget class="QWidget" name="page_41">
                        <layout class="QVBoxLayout" name="verticalLayout_64">
@@ -4137,6 +4146,11 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                  <string>Usb camera</string>
                                 </property>
                                </item>
+                               <item>
+                                <property name="text">
+                                 <string>Tara</string>
+                                </property>
+                               </item>
                               </widget>
                              </item>
                              <item row="0" column="2">
@@ -4211,7 +4225,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                            <item>
                             <widget class="QStackedWidget" name="stackedWidget_stereo">
                              <property name="currentIndex">
-                              <number>0</number>
+                              <number>4</number>
                              </property>
                              <widget class="QWidget" name="page_49">
                               <layout class="QVBoxLayout" name="verticalLayout_91">
@@ -5119,7 +5133,16 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                        <string>Directory of images (optional settings)</string>
                       </property>
                       <layout class="QVBoxLayout" name="verticalLayout_93">
-                       <property name="margin">
+                       <property name="leftMargin">
+                        <number>0</number>
+                       </property>
+                       <property name="topMargin">
+                        <number>0</number>
+                       </property>
+                       <property name="rightMargin">
+                        <number>0</number>
+                       </property>
+                       <property name="bottomMargin">
                         <number>0</number>
                        </property>
                        <item>
@@ -15316,7 +15339,16 @@ Lower the ratio -&gt; higher the precision.</string>
                         <property name="spacing">
                          <number>0</number>
                         </property>
-                        <property name="margin">
+                        <property name="leftMargin">
+                         <number>0</number>
+                        </property>
+                        <property name="topMargin">
+                         <number>0</number>
+                        </property>
+                        <property name="rightMargin">
+                         <number>0</number>
+                        </property>
+                        <property name="bottomMargin">
                          <number>0</number>
                         </property>
                         <item>
@@ -15396,7 +15428,16 @@ Lower the ratio -&gt; higher the precision.</string>
                         <property name="spacing">
                          <number>0</number>
                         </property>
-                        <property name="margin">
+                        <property name="leftMargin">
+                         <number>0</number>
+                        </property>
+                        <property name="topMargin">
+                         <number>0</number>
+                        </property>
+                        <property name="rightMargin">
+                         <number>0</number>
+                        </property>
+                        <property name="bottomMargin">
                          <number>0</number>
                         </property>
                         <item>
@@ -15508,7 +15549,16 @@ Lower the ratio -&gt; higher the precision.</string>
                         <property name="spacing">
                          <number>0</number>
                         </property>
-                        <property name="margin">
+                        <property name="leftMargin">
+                         <number>0</number>
+                        </property>
+                        <property name="topMargin">
+                         <number>0</number>
+                        </property>
+                        <property name="rightMargin">
+                         <number>0</number>
+                        </property>
+                        <property name="bottomMargin">
                          <number>0</number>
                         </property>
                         <item>
