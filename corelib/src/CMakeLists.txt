@@ -32,6 +32,7 @@ SET(SRC_FILES
     camera/CameraStereoImages.cpp
     camera/CameraStereoVideo.cpp
     camera/CameraStereoZed.cpp
+	camera/CameraStereoTara.cpp
     camera/CameraVideo.cpp
     
     EpipolarGeometry.cpp

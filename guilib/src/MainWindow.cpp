@@ -208,9 +208,9 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent, bool sh
 
 	// Add cloud viewers
 	// Note that we add them here manually because there is a crash issue
-	// when adding them in a DockWidget of the *.ui file. The cloud viewer is 
+	// when adding them in a DockWidget of the *.ui file. The cloud viewer is
 	// created in a widget which is not yet linked to main window when the CloudViewer constructor
-	// is called (see order in generated ui file). VTK needs to get the top 
+	// is called (see order in generated ui file). VTK needs to get the top
 	// level window at the time CloudViewer is created, otherwise it may crash on some systems.
 	_cloudViewer = new CloudViewer(_ui->layout_cloudViewer);
 	_cloudViewer->setObjectName("widget_cloudViewer");
@@ -394,7 +394,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent, bool sh
 
 	_ui->actionPause->setShortcut(Qt::Key_Space);
 	_ui->actionSave_GUI_config->setShortcut(QKeySequence::Save);
-	// Qt5 issue, we should explicitly add actions not in 
+	// Qt5 issue, we should explicitly add actions not in
 	// menu bar to have shortcut working
 	this->addAction(_ui->actionSave_GUI_config);
 	_ui->actionReset_Odometry->setEnabled(false);
@@ -434,6 +434,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent, bool sh
 	connect(_ui->actionStereoDC1394, SIGNAL(triggered()), this, SLOT(selectStereoDC1394()));
 	connect(_ui->actionStereoFlyCapture2, SIGNAL(triggered()), this, SLOT(selectStereoFlyCapture2()));
 	connect(_ui->actionStereoZed, SIGNAL(triggered()), this, SLOT(selectStereoZed()));
+     connect(_ui->actionStereoTara, SIGNAL(triggered()), this, SLOT(selectStereoTara()));
 	connect(_ui->actionStereoUsb, SIGNAL(triggered()), this, SLOT(selectStereoUsb()));
 	_ui->actionFreenect->setEnabled(CameraFreenect::available());
 	_ui->actionOpenNI_CV->setEnabled(CameraOpenNICV::available());
@@ -450,6 +451,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent, bool sh
 	_ui->actionStereoDC1394->setEnabled(CameraStereoDC1394::available());
 	_ui->actionStereoFlyCapture2->setEnabled(CameraStereoFlyCapture2::available());
 	_ui->actionStereoZed->setEnabled(CameraStereoZed::available());
+    _ui->actionStereoTara->setEnabled(CameraStereoTara::available());
 	this->updateSelectSourceMenu();
 
 	connect(_ui->actionPreferences, SIGNAL(triggered()), this, SLOT(openPreferences()));
@@ -670,23 +672,23 @@ void MainWindow::setupMainLayout(bool vertical)
 }
 
 void MainWindow::setCloudViewer(rtabmap::CloudViewer * cloudViewer)
-{ 
-	UASSERT(cloudViewer); 
+{
+	UASSERT(cloudViewer);
 	delete _cloudViewer;
-	_cloudViewer = cloudViewer; 
+	_cloudViewer = cloudViewer;
 	_cloudViewer->setParent(_ui->layout_cloudViewer);
 	_cloudViewer->setObjectName("widget_cloudViewer");
 	_ui->layout_cloudViewer->layout()->addWidget(_cloudViewer);
-	
+
 	_cloudViewer->setBackfaceCulling(true, false);
 	_preferencesDialog->loadWidgetState(_cloudViewer);
 
 	connect(_cloudViewer, SIGNAL(configChanged()), this, SLOT(configGUIModified()));
 }
 void MainWindow::setLoopClosureViewer(rtabmap::LoopClosureViewer * loopClosureViewer)
-{ 
-	UASSERT(loopClosureViewer); 
-	delete _loopClosureViewer; 
+{
+	UASSERT(loopClosureViewer);
+	delete _loopClosureViewer;
 	_loopClosureViewer = loopClosureViewer;
 	_loopClosureViewer->setParent(_ui->layout_loopClosureViewer);
 	_loopClosureViewer->setObjectName("widget_loopClosureViewer");
@@ -1883,6 +1885,14 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 				{
 					labels.insert(std::make_pair(iter->first, iter->second.getLabel()));
 				}
+				if(_ui->graphicsView_graphView->getWorldMapRotation()==0.0f &&
+					iter->second.sensorData().gps().stamp()!=0.0 &&
+					stat.poses().find(iter->first)!=stat.poses().end())
+				{
+					float bearing = (float)((-(iter->second.sensorData().gps().bearing()-90))*M_PI/180.0);
+					float gpsRotationOffset = stat.poses().at(iter->first).theta()-bearing;
+					_ui->graphicsView_graphView->setWorldMapRotation(gpsRotationOffset);
+				}
 			}
 
 			std::map<int, Transform> poses = stat.poses();
@@ -1996,7 +2006,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 					LaserScan(
 							cv::Mat(),
 							signature.sensorData().laserScanRaw().maxPoints(),
-							signature.sensorData().laserScanRaw().maxRange(),
+							signature.sensorData().laserScanRaw().rangeMax(),
 							signature.sensorData().laserScanRaw().format(),
 							signature.sensorData().laserScanRaw().localTransform()));
 			s.sensorData().clearOccupancyGridRaw();
@@ -3351,7 +3361,7 @@ void MainWindow::createAndAddScanToMap(int nodeId, const Transform & pose, int m
 			added = _cloudViewer->addCloud(scanName, cloudRGBWithNormals, pose, color);
 			if(added && nodeId > 0)
 			{
-				scan = LaserScan(util3d::laserScanFromPointCloud(*cloudRGBWithNormals, scan.localTransform().inverse()), scan.maxPoints(), scan.maxRange(), LaserScan::kXYZRGBNormal, scan.localTransform());
+				scan = LaserScan(util3d::laserScanFromPointCloud(*cloudRGBWithNormals, scan.localTransform().inverse()), scan.maxPoints(), scan.rangeMax(), LaserScan::kXYZRGBNormal, scan.localTransform());
 			}
 		}
 		else if(cloudIWithNormals.get())
@@ -3361,11 +3371,11 @@ void MainWindow::createAndAddScanToMap(int nodeId, const Transform & pose, int m
 			{
 				if(scan.is2d())
 				{
-					scan = LaserScan(util3d::laserScan2dFromPointCloud(*cloudIWithNormals, scan.localTransform().inverse()), scan.maxPoints(), scan.maxRange(), LaserScan::kXYINormal, scan.localTransform());
+					scan = LaserScan(util3d::laserScan2dFromPointCloud(*cloudIWithNormals, scan.localTransform().inverse()), scan.maxPoints(), scan.rangeMax(), LaserScan::kXYINormal, scan.localTransform());
 				}
 				else
 				{
-					scan = LaserScan(util3d::laserScanFromPointCloud(*cloudIWithNormals, scan.localTransform().inverse()), scan.maxPoints(), scan.maxRange(), LaserScan::kXYZINormal, scan.localTransform());
+					scan = LaserScan(util3d::laserScanFromPointCloud(*cloudIWithNormals, scan.localTransform().inverse()), scan.maxPoints(), scan.rangeMax(), LaserScan::kXYZINormal, scan.localTransform());
 				}
 			}
 		}
@@ -3376,11 +3386,11 @@ void MainWindow::createAndAddScanToMap(int nodeId, const Transform & pose, int m
 			{
 				if(scan.is2d())
 				{
-					scan = LaserScan(util3d::laserScan2dFromPointCloud(*cloudWithNormals, scan.localTransform().inverse()), scan.maxPoints(), scan.maxRange(), LaserScan::kXYNormal, scan.localTransform());
+					scan = LaserScan(util3d::laserScan2dFromPointCloud(*cloudWithNormals, scan.localTransform().inverse()), scan.maxPoints(), scan.rangeMax(), LaserScan::kXYNormal, scan.localTransform());
 				}
 				else
 				{
-					scan = LaserScan(util3d::laserScanFromPointCloud(*cloudWithNormals, scan.localTransform().inverse()), scan.maxPoints(), scan.maxRange(), LaserScan::kXYZNormal, scan.localTransform());
+					scan = LaserScan(util3d::laserScanFromPointCloud(*cloudWithNormals, scan.localTransform().inverse()), scan.maxPoints(), scan.rangeMax(), LaserScan::kXYZNormal, scan.localTransform());
 				}
 			}
 		}
@@ -3389,7 +3399,7 @@ void MainWindow::createAndAddScanToMap(int nodeId, const Transform & pose, int m
 			added = _cloudViewer->addCloud(scanName, cloudRGB, pose, color);
 			if(added && nodeId > 0)
 			{
-				scan = LaserScan(util3d::laserScanFromPointCloud(*cloudRGB, scan.localTransform().inverse()), scan.maxPoints(), scan.maxRange(), LaserScan::kXYZRGB, scan.localTransform());
+				scan = LaserScan(util3d::laserScanFromPointCloud(*cloudRGB, scan.localTransform().inverse()), scan.maxPoints(), scan.rangeMax(), LaserScan::kXYZRGB, scan.localTransform());
 			}
 		}
 		else if(cloudI.get())
@@ -3399,11 +3409,11 @@ void MainWindow::createAndAddScanToMap(int nodeId, const Transform & pose, int m
 			{
 				if(scan.is2d())
 				{
-					scan = LaserScan(util3d::laserScan2dFromPointCloud(*cloudI, scan.localTransform().inverse()), scan.maxPoints(), scan.maxRange(), LaserScan::kXYI, scan.localTransform());
+					scan = LaserScan(util3d::laserScan2dFromPointCloud(*cloudI, scan.localTransform().inverse()), scan.maxPoints(), scan.rangeMax(), LaserScan::kXYI, scan.localTransform());
 				}
 				else
 				{
-					scan = LaserScan(util3d::laserScanFromPointCloud(*cloudI, scan.localTransform().inverse()), scan.maxPoints(), scan.maxRange(), LaserScan::kXYZI, scan.localTransform());
+					scan = LaserScan(util3d::laserScanFromPointCloud(*cloudI, scan.localTransform().inverse()), scan.maxPoints(), scan.rangeMax(), LaserScan::kXYZI, scan.localTransform());
 				}
 			}
 		}
@@ -3415,11 +3425,11 @@ void MainWindow::createAndAddScanToMap(int nodeId, const Transform & pose, int m
 			{
 				if(scan.is2d())
 				{
-					scan = LaserScan(util3d::laserScan2dFromPointCloud(*cloud, scan.localTransform().inverse()), scan.maxPoints(), scan.maxRange(), LaserScan::kXY, scan.localTransform());
+					scan = LaserScan(util3d::laserScan2dFromPointCloud(*cloud, scan.localTransform().inverse()), scan.maxPoints(), scan.rangeMax(), LaserScan::kXY, scan.localTransform());
 				}
 				else
 				{
-					scan = LaserScan(util3d::laserScanFromPointCloud(*cloud, scan.localTransform().inverse()), scan.maxPoints(), scan.maxRange(), LaserScan::kXYZ, scan.localTransform());
+					scan = LaserScan(util3d::laserScanFromPointCloud(*cloud, scan.localTransform().inverse()), scan.maxPoints(), scan.rangeMax(), LaserScan::kXYZ, scan.localTransform());
 				}
 			}
 		}
@@ -4019,6 +4029,10 @@ void MainWindow::applyPrefSettings(PreferencesDialog::PANEL_FLAGS flags)
 	{
 		UDEBUG("General settings changed...");
 		setupMainLayout(_preferencesDialog->isVerticalLayoutUsed());
+		if(!_preferencesDialog->isLocalizationsCountGraphView())
+		{
+			_cachedLocalizationsCount.clear();
+		}
 		if(!_preferencesDialog->isPosteriorGraphView() && _ui->graphicsView_graphView->isVisible())
 		{
 			_ui->graphicsView_graphView->clearPosterior();
@@ -4341,6 +4355,7 @@ void MainWindow::updateSelectSourceMenu()
 	_ui->actionStereoDC1394->setChecked(_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcDC1394);
 	_ui->actionStereoFlyCapture2->setChecked(_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcFlyCapture2);
 	_ui->actionStereoZed->setChecked(_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcStereoZed);
+    _ui->actionStereoTara->setChecked(_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcStereoTara);
 	_ui->actionStereoUsb->setChecked(_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcStereoUsb);
 }
 
@@ -5334,7 +5349,7 @@ void MainWindow::exportPoses(int format)
 			}
 
 			_exportPosesFileName[format] = path;
-			bool saved = graph::exportPoses(path.toStdString(), format, poses, links, stamps);
+			bool saved = graph::exportPoses(path.toStdString(), format, poses, links, stamps, _preferencesDialog->getAllParameters());
 
 			if(saved)
 			{
@@ -5382,6 +5397,7 @@ void MainWindow::postProcessing()
 	int sbaIterations = _postProcessingDialog->sbaIterations();
 	double sbaVariance = _postProcessingDialog->sbaVariance();
 	Optimizer::Type sbaType = _postProcessingDialog->sbaType();
+	double sbaRematchFeatures = _postProcessingDialog->sbaRematchFeatures();
 
 	if(!detectMoreLoopClosures && !refineNeighborLinks && !refineLoopClosureLinks && !sba)
 	{
@@ -5856,9 +5872,9 @@ void MainWindow::postProcessing()
 		ParametersMap parametersSBA = _preferencesDialog->getAllParameters();
 		uInsert(parametersSBA, std::make_pair(Parameters::kOptimizerIterations(), uNumber2Str(sbaIterations)));
 		uInsert(parametersSBA, std::make_pair(Parameters::kg2oPixelVariance(), uNumber2Str(sbaVariance)));
-		Optimizer * sba = Optimizer::create(sbaType, parametersSBA);
-		std::map<int, Transform>  newPoses = sba->optimizeBA(optimizedPoses.begin()->first, optimizedPoses, linksOut, _cachedSignatures.toStdMap());
-		delete sba;
+		Optimizer * sbaOptimizer = Optimizer::create(sbaType, parametersSBA);
+		std::map<int, Transform>  newPoses = sbaOptimizer->optimizeBA(optimizedPoses.begin()->first, optimizedPoses, linksOut, _cachedSignatures.toStdMap(), sbaRematchFeatures);
+		delete sbaOptimizer;
 		if(newPoses.size())
 		{
 			optimizedPoses = newPoses;
@@ -6050,6 +6066,11 @@ void MainWindow::selectStereoFlyCapture2()
 void MainWindow::selectStereoZed()
 {
 	_preferencesDialog->selectSourceDriver(PreferencesDialog::kSrcStereoZed);
+}
+
+void MainWindow::selectStereoTara()
+{
+    _preferencesDialog->selectSourceDriver(PreferencesDialog::kSrcStereoTara);
 }
 
 void MainWindow::selectStereoUsb()
@@ -7030,166 +7051,11 @@ void MainWindow::exportBundlerFormat()
 
 	if(poses.size())
 	{
-		if(_exportBundlerDialog->exec() != QDialog::Accepted)
-		{
-			return;
-		}
-		QString path = _exportBundlerDialog->outputPath();
-		if(!path.isEmpty())
-		{
-			if(!QDir(path).mkpath("."))
-			{
-				QMessageBox::warning(this, tr("Exporting cameras..."), tr("Failed creating directory %1.").arg(path));
-				return;
-			}
-			// export cameras and images
-			QFile fileOut(path+QDir::separator()+"cameras.out");
-			QFile fileList(path+QDir::separator()+"list.txt");
-			QDir(path).mkdir("images");
-			if(fileOut.open(QIODevice::WriteOnly | QIODevice::Text))
-			{
-				if(fileList.open(QIODevice::WriteOnly | QIODevice::Text))
-				{
-					std::set<int> ignoredCameras;
-					for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter)
-					{
-						QString p = QString("images")+QDir::separator()+tr("%1.jpg").arg(iter->first);
-						p = path+QDir::separator()+p;
-						cv::Mat image = _cachedSignatures[iter->first].sensorData().imageRaw();
-						if(image.empty())
-						{
-							_cachedSignatures[iter->first].sensorData().uncompressDataConst(&image, 0, 0, 0);
-						}
-
-						double maxLinearVel = _exportBundlerDialog->maxLinearSpeed();
-						double maxAngularVel = _exportBundlerDialog->maxAngularSpeed();
-						double laplacianThr = _exportBundlerDialog->laplacianThreshold();
-						bool blurryImage = false;
-						const std::vector<float> & velocity = _cachedSignatures[iter->first].getVelocity();
-						if(maxLinearVel>0.0 || maxAngularVel>0.0)
-						{
-							if(velocity.size() == 6)
-							{
-								float transVel = uMax3(fabs(velocity[0]), fabs(velocity[1]), fabs(velocity[2]));
-								float rotVel = uMax3(fabs(velocity[3]), fabs(velocity[4]), fabs(velocity[5]));
-								if(maxLinearVel>0.0 && transVel > maxLinearVel)
-								{
-									UWARN("Fast motion detected for camera %d (speed=%f m/s > thr=%f m/s), camera is ignored for texturing.", iter->first, transVel, maxLinearVel);
-									blurryImage = true;
-								}
-								else if(maxAngularVel>0.0 && rotVel > maxAngularVel)
-								{
-									UWARN("Fast motion detected for camera %d (speed=%f rad/s > thr=%f rad/s), camera is ignored for texturing.", iter->first, rotVel, maxAngularVel);
-									blurryImage = true;
-								}
-							}
-							else
-							{
-								UWARN("Camera motion filtering is set, but velocity of camera %d is not available.", iter->first);
-							}
-						}
-
-						if(!blurryImage && !image.empty() && laplacianThr>0.0)
-						{
-							cv::Mat imgLaplacian;
-							cv::Laplacian(image, imgLaplacian, CV_16S);
-							cv::Mat m, s;
-							cv::meanStdDev(imgLaplacian, m, s);
-							double stddev_pxl = s.at<double>(0);
-							double var = stddev_pxl*stddev_pxl;
-							if(var < laplacianThr)
-							{
-								blurryImage = true;
-								UWARN("Camera's image %d is detected as blurry (var=%f < thr=%f), camera is ignored for texturing.", iter->first, var, laplacianThr);
-							}
-						}
-						if(blurryImage)
-						{
-							ignoredCameras.insert(iter->first);
-						}
-						else
-						{
-							if(cv::imwrite(p.toStdString(), image))
-							{
-								UINFO("saved image %s", p.toStdString().c_str());
-							}
-							else
-							{
-								UERROR("Failed to save image %s", p.toStdString().c_str());
-							}
-						}
-					}
-
-					QTextStream out(&fileOut);
-					QTextStream list(&fileList);
-					out << "# Bundle file v0.3\n";
-					out << poses.size()-ignoredCameras.size() << " 0\n";
-
-					for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter)
-					{
-						if(ignoredCameras.find(iter->first) == ignoredCameras.end())
-						{
-							QString p = QString("images")+QDir::separator()+tr("%1.jpg").arg(iter->first);
-							list << p << "\n";
-
-							Transform localTransform;
-							if(_cachedSignatures[iter->first].sensorData().cameraModels().size())
-							{
-								out << _cachedSignatures[iter->first].sensorData().cameraModels().at(0).fx() << " 0 0\n";
-								localTransform = _cachedSignatures[iter->first].sensorData().cameraModels().at(0).localTransform();
-							}
-							else
-							{
-								out << _cachedSignatures[iter->first].sensorData().stereoCameraModel().left().fx() << " 0 0\n";
-								localTransform = _cachedSignatures[iter->first].sensorData().stereoCameraModel().left().localTransform();
-							}
-
-							static const Transform opengl_world_T_rtabmap_world(
-									 0.0f, -1.0f, 0.0f, 0.0f,
-									 0.0f,  0.0f, 1.0f, 0.0f,
-									-1.0f,  0.0f, 0.0f, 0.0f);
-
-							static const Transform optical_rotation_inv(
-									 0.0f, -1.0f,  0.0f, 0.0f,
-									 0.0f,  0.0f, -1.0f, 0.0f,
-									 1.0f,  0.0f,  0.0f, 0.0f);
-
-							Transform pose = iter->second;
-							if(!localTransform.isNull())
-							{
-								pose*=localTransform*optical_rotation_inv;
-							}
-							Transform poseGL = opengl_world_T_rtabmap_world*pose.inverse();
-
-							out << poseGL.r11() << " " << poseGL.r12() << " " << poseGL.r13() << "\n";
-							out << poseGL.r21() << " " << poseGL.r22() << " " << poseGL.r23() << "\n";
-							out << poseGL.r31() << " " << poseGL.r32() << " " << poseGL.r33() << "\n";
-							out << poseGL.x()   << " " << poseGL.y()   << " " << poseGL.z()   << "\n";
-
-						}
-					}
-
-					fileList.close();
-					fileOut.close();
-
-					QMessageBox::information(this,
-							tr("Exporting cameras in Bundler format..."),
-							tr("%1 cameras/images exported to directory \"%2\".%3")
-							.arg(poses.size())
-							.arg(path)
-							.arg(ignoredCameras.size()>0?tr(" %1/%2 cameras ignored for too fast motion and/or blur level.").arg(ignoredCameras.size()).arg(poses.size()):""));
-				}
-				else
-				{
-					fileOut.close();
-					QMessageBox::warning(this, tr("Exporting cameras..."), tr("Failed opening file %1 for writing.").arg(path+QDir::separator()+"list.txt"));
-				}
-			}
-			else
-			{
-				QMessageBox::warning(this, tr("Exporting cameras..."), tr("Failed opening file %1 for writing.").arg(path+QDir::separator()+"cameras.out"));
-			}
-		}
+		_exportBundlerDialog->exportBundler(
+					poses,
+					_currentLinksMap,
+					_cachedSignatures,
+					_preferencesDialog->getAllParameters());
 	}
 	else
 	{
