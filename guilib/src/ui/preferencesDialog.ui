@@ -94,10 +94,13 @@
           <property name="geometry">
            <rect>
             <x>0</x>
+            <y>0</y>
+            <width>680</width>
+            <height>2986</height>
             <y>-57</y>
             <width>681</width>
             <height>2983</height>
-           </rect>
+          </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
            <property name="spacing">
@@ -126,6 +129,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
+                <number>5</number>
                 <number>11</number>
                </property>
                <widget class="QWidget" name="page_22">
@@ -2941,7 +2945,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                     <item>
                      <widget class="QStackedWidget" name="stackedWidget_src">
                       <property name="currentIndex">
-                       <number>0</number>
+                       <number>1</number>
                       </property>
                       <widget class="QWidget" name="page_41">
                        <layout class="QVBoxLayout" name="verticalLayout_64">
@@ -4144,6 +4148,11 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                <item>
                                 <property name="text">
                                  <string>Usb camera</string>
+                                </property>
+                               </item>
+                               <item>
+                                <property name="text">
+                                 <string>Tara Camera</string>
                                 </property>
                                </item>
                               </widget>

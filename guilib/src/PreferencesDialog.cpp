@@ -308,6 +308,10 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	{
 		_ui->comboBox_cameraStereo->setItemData(kSrcStereoZed - kSrcStereo, 0, Qt::UserRole - 1);
 	}
+    if (!CameraStereoTara::available())
+    {
+        _ui->comboBox_cameraStereo->setItemData(kSrcStereoTara - kSrcStereo, 0, Qt::UserRole - 1);
+    }
 	_ui->openni2_exposure->setEnabled(CameraOpenNI2::exposureGainAvailable());
 	_ui->openni2_gain->setEnabled(CameraOpenNI2::exposureGainAvailable());
 
@@ -4242,6 +4246,7 @@ void PreferencesDialog::updateStereoDisparityVisibility()
 	_ui->checkBox_stereo_rectify->setEnabled(
 			 _ui->comboBox_cameraStereo->currentIndex() == kSrcStereoImages - kSrcStereo ||
 			 _ui->comboBox_cameraStereo->currentIndex() == kSrcStereoUsb - kSrcStereo ||
+              _ui->comboBox_cameraStereo->currentIndex() == kSrcStereoTara - kSrcStereo ||
 			 _ui->comboBox_cameraStereo->currentIndex() == kSrcStereoVideo - kSrcStereo ||
 			 _ui->comboBox_cameraStereo->currentIndex() == kSrcDC1394 - kSrcStereo);
 	_ui->checkBox_stereo_rectify->setVisible(_ui->checkBox_stereo_rectify->isEnabled());
@@ -4379,6 +4384,7 @@ void PreferencesDialog::updateSourceGrpVisibility()
 		(_ui->comboBox_cameraStereo->currentIndex() == kSrcStereoVideo-kSrcStereo || 
 		 _ui->comboBox_cameraStereo->currentIndex() == kSrcStereoImages-kSrcStereo ||
 		 _ui->comboBox_cameraStereo->currentIndex() == kSrcStereoZed - kSrcStereo ||
+          _ui->comboBox_cameraStereo->currentIndex() == kSrcStereoTara - kSrcStereo ||
 		 _ui->comboBox_cameraStereo->currentIndex() == kSrcStereoUsb - kSrcStereo));
 	_ui->groupBox_cameraStereoImages->setVisible(_ui->comboBox_sourceType->currentIndex() == 1 && _ui->comboBox_cameraStereo->currentIndex() == kSrcStereoImages-kSrcStereo);
 	_ui->groupBox_cameraStereoVideo->setVisible(_ui->comboBox_sourceType->currentIndex() == 1 && _ui->comboBox_cameraStereo->currentIndex() == kSrcStereoVideo - kSrcStereo);
@@ -5206,6 +5212,18 @@ Camera * PreferencesDialog::createCamera(bool useRawImages, bool useColor)
 					this->getSourceLocalTransform());
 		}
 	}
+    
+    else if (driver == kSrcStereoTara)
+    {
+
+            camera = new CameraStereoTara(
+                this->getSourceDevice().isEmpty()?0:atoi(this->getSourceDevice().toStdString().c_str()),
+                _ui->checkBox_stereo_rectify->isChecked() && !useRawImages,
+                this->getGeneralInputRate(),
+                this->getSourceLocalTransform());
+
+    }
+
 	else if (driver == kSrcStereoZed)
 	{
 		UDEBUG("ZED");

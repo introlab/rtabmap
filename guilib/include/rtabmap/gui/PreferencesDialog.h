@@ -101,6 +101,7 @@ public:
 		kSrcStereoVideo    = 103,
 		kSrcStereoZed      = 104,
 		kSrcStereoUsb      = 105,
+		kSrcStereoTara 	   = 106,
 
 		kSrcRGB            = 200,
 		kSrcUsbDevice      = 200,
