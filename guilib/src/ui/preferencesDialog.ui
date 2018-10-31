@@ -94,13 +94,10 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>0</y>
+            <y>-436</y>
             <width>680</width>
             <height>2986</height>
-            <y>-57</y>
-            <width>681</width>
-            <height>2983</height>
-          </rect>
+           </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
            <property name="spacing">
@@ -130,7 +127,6 @@
                </property>
                <property name="currentIndex">
                 <number>5</number>
-                <number>11</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,1">
@@ -4229,7 +4225,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                            <item>
                             <widget class="QStackedWidget" name="stackedWidget_stereo">
                              <property name="currentIndex">
-                              <number>0</number>
+                              <number>6</number>
                              </property>
                              <widget class="QWidget" name="page_49">
                               <layout class="QVBoxLayout" name="verticalLayout_91">
@@ -4735,6 +4731,23 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                   </item>
                                  </layout>
                                 </widget>
+                               </item>
+                              </layout>
+                             </widget>
+                             <widget class="QWidget" name="page_77">
+                              <layout class="QVBoxLayout" name="verticalLayout_135">
+                               <item>
+                                <spacer name="verticalSpacer_75">
+                                 <property name="orientation">
+                                  <enum>Qt::Vertical</enum>
+                                 </property>
+                                 <property name="sizeHint" stdset="0">
+                                  <size>
+                                   <width>20</width>
+                                   <height>471</height>
+                                  </size>
+                                 </property>
+                                </spacer>
                                </item>
                               </layout>
                              </widget>
