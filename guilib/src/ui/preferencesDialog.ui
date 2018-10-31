@@ -94,16 +94,13 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-<<<<<<< HEAD
             <y>0</y>
             <width>680</width>
             <height>2986</height>
-=======
             <y>-57</y>
             <width>681</width>
             <height>2983</height>
->>>>>>> 4a9997f7d280ee124c3469c92a33800852dbd128
-           </rect>
+          </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
            <property name="spacing">
