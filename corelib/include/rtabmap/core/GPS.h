@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2010-2016, Mathieu Labbe - IntRoLab - Universite de Sherbrooke
+Copyright (c) 2010-2018, Mathieu Labbe - IntRoLab - Universite de Sherbrooke
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -25,53 +25,54 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef OPTIMIZERTORO_H_
-#define OPTIMIZERTORO_H_
+#ifndef CORELIB_INCLUDE_RTABMAP_CORE_GPS_H_
+#define CORELIB_INCLUDE_RTABMAP_CORE_GPS_H_
 
-#include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
-
-#include <rtabmap/core/Optimizer.h>
+#include <rtabmap/core/GeodeticCoords.h>
 
 namespace rtabmap {
 
-class RTABMAP_EXP OptimizerTORO : public Optimizer
+class GPS
 {
 public:
-	static bool available();
+	GPS():
+		stamp_(0.0),
+		longitude_(0.0),
+		latitude_(0.0),
+		altitude_(0.0),
+		error_(0.0),
+		bearing_(0.0)
+	{}
+	GPS(const double & stamp,
+		const double & longitude,
+		const double & latitude,
+		const double & altitude,
+		const double & error,
+		const double & bearing):
+			stamp_(stamp),
+			longitude_(longitude),
+			latitude_(latitude),
+			altitude_(altitude),
+			error_(error),
+			bearing_(bearing)
+	{}
+	const double & stamp() const {return stamp_;}
+	const double & longitude() const {return longitude_;}
+	const double & latitude() const {return latitude_;}
+	const double & altitude() const {return altitude_;}
+	const double & error() const {return error_;}
+	const double & bearing() const {return bearing_;}
 
-public:
-	static bool loadGraph(
-			const std::string & fileName,
-			std::map<int, Transform> & poses,
-			std::multimap<int, Link> & edgeConstraints);
-
-public:
-	OptimizerTORO(
-			int iterations         = Parameters::defaultOptimizerIterations(),
-			bool slam2d            = Parameters::defaultRegForce3DoF(),
-			bool covarianceIgnored = Parameters::defaultOptimizerVarianceIgnored(),
-			double epsilon         = Parameters::defaultOptimizerEpsilon()) :
-		Optimizer(iterations, slam2d, covarianceIgnored, epsilon) {}
-	OptimizerTORO(const ParametersMap & parameters) :
-		Optimizer(parameters) {}
-	virtual ~OptimizerTORO() {}
-
-	virtual Type type() const {return kTypeTORO;}
-
-	virtual std::map<int, Transform> optimize(
-			int rootId,
-			const std::map<int, Transform> & poses,
-			const std::multimap<int, Link> & edgeConstraints,
-			cv::Mat & outputCovariance,
-			std::list<std::map<int, Transform> > * intermediateGraphes = 0,
-			double * finalError = 0,
-			int * iterationsDone = 0);
-
-	bool saveGraph(
-		const std::string & fileName,
-		const std::map<int, Transform> & poses,
-		const std::multimap<int, Link> & edgeConstraints);
+	GeodeticCoords toGeodeticCoords() const {return GeodeticCoords(latitude_, longitude_, altitude_);}
+private:
+	double stamp_;     // in sec
+	double longitude_; // DD
+	double latitude_;  // DD
+	double altitude_;  // m
+	double error_;     // m
+	double bearing_;   // deg (North 0->360 clockwise)
 };
 
-} /* namespace rtabmap */
-#endif /* GRAPH_H_ */
+}
+
+#endif /* CORELIB_INCLUDE_RTABMAP_CORE_GPS_H_ */

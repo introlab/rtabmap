@@ -632,7 +632,14 @@ void SensorData::uncompressData(
 		_laserScanRaw = *laserScanRaw;
 		if(_laserScanCompressed.format() == LaserScan::kUnknown)
 		{
-			_laserScanCompressed = LaserScan(_laserScanCompressed.data(), _laserScanCompressed.maxPoints(), _laserScanCompressed.maxRange(), _laserScanRaw.format(), _laserScanCompressed.localTransform());
+			if(_laserScanCompressed.angleIncrement() > 0.0f)
+			{
+				_laserScanCompressed = LaserScan(_laserScanCompressed.data(), _laserScanRaw.format(), _laserScanCompressed.rangeMin(), _laserScanCompressed.rangeMax(), _laserScanCompressed.angleMin(), _laserScanCompressed.angleMax(), _laserScanCompressed.angleIncrement(), _laserScanCompressed.localTransform());
+			}
+			else
+			{
+				_laserScanCompressed = LaserScan(_laserScanCompressed.data(), _laserScanCompressed.maxPoints(), _laserScanCompressed.rangeMax(), _laserScanRaw.format(), _laserScanCompressed.localTransform());
+			}
 		}
 	}
 	if(userDataRaw && !userDataRaw->empty() && _userDataRaw.empty())
@@ -780,8 +787,14 @@ void SensorData::uncompressDataConst(
 		}
 		if(laserScanRaw && laserScanRaw->isEmpty())
 		{
-			*laserScanRaw = LaserScan(ctLaserScan.getUncompressedData(), _laserScanCompressed.maxPoints(), _laserScanCompressed.maxRange(), _laserScanCompressed.format(), _laserScanCompressed.localTransform());
-
+			if(_laserScanCompressed.angleIncrement() > 0.0f)
+			{
+				*laserScanRaw = LaserScan(ctLaserScan.getUncompressedData(), _laserScanCompressed.format(), _laserScanCompressed.rangeMin(), _laserScanCompressed.rangeMax(), _laserScanCompressed.angleMin(), _laserScanCompressed.angleMax(), _laserScanCompressed.angleIncrement(), _laserScanCompressed.localTransform());
+			}
+			else
+			{
+				*laserScanRaw = LaserScan(ctLaserScan.getUncompressedData(), _laserScanCompressed.maxPoints(), _laserScanCompressed.rangeMax(), _laserScanCompressed.format(), _laserScanCompressed.localTransform());
+			}
 			if(laserScanRaw->isEmpty())
 			{
 				if(_laserScanCompressed.isEmpty())

@@ -733,7 +733,8 @@ bool DBDriver::getNodeInfo(
 		double & stamp,
 		Transform & groundTruthPose,
 		std::vector<float> & velocity,
-		GPS & gps) const
+		GPS & gps,
+		EnvSensors & sensors) const
 {
 	bool found = false;
 	// look in the trash
@@ -747,6 +748,7 @@ bool DBDriver::getNodeInfo(
 		stamp = _trashSignatures.at(signatureId)->getStamp();
 		groundTruthPose = _trashSignatures.at(signatureId)->getGroundTruthPose();
 		gps = _trashSignatures.at(signatureId)->sensorData().gps();
+		sensors = _trashSignatures.at(signatureId)->sensorData().envSensors();
 		found = true;
 	}
 	_trashesMutex.unlock();
@@ -754,7 +756,7 @@ bool DBDriver::getNodeInfo(
 	if(!found)
 	{
 		_dbSafeAccessMutex.lock();
-		found = this->getNodeInfoQuery(signatureId, pose, mapId, weight, label, stamp, groundTruthPose, velocity, gps);
+		found = this->getNodeInfoQuery(signatureId, pose, mapId, weight, label, stamp, groundTruthPose, velocity, gps, sensors);
 		_dbSafeAccessMutex.unlock();
 	}
 	return found;
@@ -786,6 +788,33 @@ void DBDriver::loadLinks(int signatureId, std::map<int, Link> & links, Link::Typ
 	{
 		_dbSafeAccessMutex.lock();
 		this->loadLinksQuery(signatureId, links, type);
+		_dbSafeAccessMutex.unlock();
+	}
+}
+
+void DBDriver::loadTags(int signatureId, std::map<int, TransformStamped> & tags) const
+{
+	bool found = false;
+	// look in the trash
+	_trashesMutex.lock();
+	if(uContains(_trashSignatures, signatureId))
+	{
+		const Signature * s = _trashSignatures.at(signatureId);
+		UASSERT(s != 0);
+		for(std::map<int, TransformStamped>::const_iterator nIter = s->getTags().begin();
+				nIter!=s->getTags().end();
+				++nIter)
+		{
+			tags.insert(*nIter);
+		}
+		found = true;
+	}
+	_trashesMutex.unlock();
+
+	if(!found)
+	{
+		_dbSafeAccessMutex.lock();
+		this->loadTagsQuery(signatureId, tags);
 		_dbSafeAccessMutex.unlock();
 	}
 }

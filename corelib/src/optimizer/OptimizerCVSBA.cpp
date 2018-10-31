@@ -59,7 +59,7 @@ std::map<int, Transform> OptimizerCVSBA::optimizeBA(
 		const std::multimap<int, Link> & links,
 		const std::map<int, CameraModel> & models,
 		std::map<int, cv::Point3f> & points3DMap,
-		const std::map<int, std::map<int, cv::Point3f> > & wordReferences, // <ID words, IDs frames + keypoint/Disparity>)
+		const std::map<int, std::map<int, FeatureBA> > & wordReferences, // <ID words, IDs frames + keypoint/Disparity>)
 		std::set<int> * outliers)
 {
 #ifdef RTABMAP_CVSBA
@@ -131,14 +131,14 @@ std::map<int, Transform> OptimizerCVSBA::optimizeBA(
 	{
 		points[i] = kter->second;
 
-		std::map<int, std::map<int, cv::Point3f> >::const_iterator iter = wordReferences.find(kter->first);
+		std::map<int, std::map<int, FeatureBA> >::const_iterator iter = wordReferences.find(kter->first);
 		if(iter != wordReferences.end())
 		{
-			for(std::map<int, cv::Point3f>::const_iterator jter=iter->second.begin(); jter!=iter->second.end(); ++jter)
+			for(std::map<int, FeatureBA>::const_iterator jter=iter->second.begin(); jter!=iter->second.end(); ++jter)
 			{
 				if(frameIdToIndex.find(jter->first) != frameIdToIndex.end())
 				{
-					imagePoints[frameIdToIndex.at(jter->first)][i] = cv::Point2f(jter->second.x, jter->second.y);
+					imagePoints[frameIdToIndex.at(jter->first)][i] = cv::Point2f(jter->second.kpt.pt.x, jter->second.kpt.pt.y);
 					visibility[frameIdToIndex.at(jter->first)][i] = 1;
 				}
 			}

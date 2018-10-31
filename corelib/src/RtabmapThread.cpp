@@ -348,12 +348,12 @@ bool RtabmapThread::handleEvent(UEvent* event)
 					}
 				}
 				else
-				{ 
+				{
 					OdometryInfo infoCov;
 					infoCov.reg.covariance = e->info().odomCovariance;
 					this->addData(OdometryEvent(e->data(), e->info().odomPose, infoCov));
 				}
-				
+
 			}
 		}
 		else if(event->getClassName().compare("OdometryEvent") == 0)

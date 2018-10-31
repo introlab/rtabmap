@@ -54,16 +54,44 @@ public:
 	static bool isScanHasNormals(const Format & format);
 	static bool isScanHasRGB(const Format & format);
 	static bool isScanHasIntensity(const Format & format);
-	static LaserScan backwardCompatibility(const cv::Mat & oldScanFormat, int maxPoints = 0, int maxRange = 0, const Transform & localTransform = Transform::getIdentity());
+	static LaserScan backwardCompatibility(
+			const cv::Mat & oldScanFormat,
+			int maxPoints = 0,
+			int maxRange = 0,
+			const Transform & localTransform = Transform::getIdentity());
+	static LaserScan backwardCompatibility(
+			const cv::Mat & oldScanFormat,
+			float minRange,
+			float maxRange,
+			float angleMin,
+			float angleMax,
+			float angleInc,
+			const Transform & localTransform = Transform::getIdentity());
 
 public:
 	LaserScan();
-	LaserScan(const cv::Mat & data, int maxPoints, float maxRange, Format format, const Transform & localTransform = Transform::getIdentity());
+	LaserScan(const cv::Mat & data,
+			int maxPoints,
+			float maxRange,
+			Format format,
+			const Transform & localTransform = Transform::getIdentity());
+	LaserScan(const cv::Mat & data,
+			Format format,
+			float minRange,
+			float maxRange,
+			float angleMin,
+			float angleMax,
+			float angleIncrement,
+			const Transform & localTransform = Transform::getIdentity());
 
 	const cv::Mat & data() const {return data_;}
-	int maxPoints() const {return maxPoints_;}
-	float maxRange() const {return maxRange_;}
 	Format format() const {return format_;}
+	int maxPoints() const {return maxPoints_;}
+	float rangeMin() const {return rangeMin_;}
+	float rangeMax() const {return rangeMax_;}
+	float angleMin() const {return angleMin_;}
+	float angleMax() const {return angleMax_;}
+	float angleIncrement() const {return angleIncrement_;}
 	Transform localTransform() const {return localTransform_;}
 
 	bool isEmpty() const {return data_.empty();}
@@ -74,7 +102,7 @@ public:
 	bool hasRGB() const {return isScanHasRGB(format_);}
 	bool hasIntensity() const {return isScanHasIntensity(format_);}
 	bool isCompressed() const {return !data_.empty() && data_.type()==CV_8UC1;}
-	LaserScan clone() const {return LaserScan(data_.clone(), maxPoints_, maxRange_, format_, localTransform_.clone());}
+	LaserScan clone() const;
 
 	int getIntensityOffset() const {return hasIntensity()?(is2d()?2:3):-1;}
 	int getRGBOffset() const {return hasRGB()?(is2d()?2:3):-1;}
@@ -84,9 +112,13 @@ public:
 
 private:
 	cv::Mat data_;
-	int maxPoints_;
-	float maxRange_;
 	Format format_;
+	int maxPoints_;
+	float rangeMin_;
+	float rangeMax_;
+	float angleMin_;
+	float angleMax_;
+	float angleIncrement_;
 	Transform localTransform_;
 };
 

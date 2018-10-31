@@ -70,52 +70,15 @@ public:
 	void fromENU_WGS84(const cv::Point3d & enu, const GeodeticCoords & origin);
 
 	static cv::Point3d ENU_WGS84ToGeocentric_WGS84(const cv::Point3d & enu, const GeodeticCoords & origin);
+	static cv::Point3d Geocentric_WGS84ToENU_WGS84(
+			const cv::Point3d & geocentric_WGS84,
+			const cv::Point3d & origin_geocentric_WGS84,
+			const GeodeticCoords & origin);
 
 private:
 	double latitude_;  // deg
 	double longitude_; // deg
 	double altitude_;  // m
-};
-
-class GPS
-{
-public:
-	GPS():
-		stamp_(0.0),
-		longitude_(0.0),
-		latitude_(0.0),
-		altitude_(0.0),
-		error_(0.0),
-		bearing_(0.0)
-	{}
-	GPS(const double & stamp,
-		const double & longitude,
-		const double & latitude,
-		const double & altitude,
-		const double & error,
-		const double & bearing):
-			stamp_(stamp),
-			longitude_(longitude),
-			latitude_(latitude),
-			altitude_(altitude),
-			error_(error),
-			bearing_(bearing)
-	{}
-	const double & stamp() const {return stamp_;}
-	const double & longitude() const {return longitude_;}
-	const double & latitude() const {return latitude_;}
-	const double & altitude() const {return altitude_;}
-	const double & error() const {return error_;}
-	const double & bearing() const {return bearing_;}
-
-	GeodeticCoords toGeodeticCoords() const {return GeodeticCoords(latitude_, longitude_, altitude_);}
-private:
-	double stamp_;     // in sec
-	double longitude_; // DD
-	double latitude_;  // DD
-	double altitude_;  // m
-	double error_;     // m
-	double bearing_;   // deg (North 0->360 clockwise)
 };
 
 }

@@ -2599,7 +2599,7 @@ Transform Memory::computeTransform(
 				std::map<int, Transform> bundlePoses;
 				std::multimap<int, Link> bundleLinks;
 				std::map<int, CameraModel> bundleModels;
-				std::map<int, std::map<int, cv::Point3f> > wordReferences;
+				std::map<int, std::map<int, FeatureBA> > wordReferences;
 
 				std::map<int, Link> links = fromS.getLinks();
 				links.insert(std::make_pair(toS.id(), Link(fromS.id(), toS.id(), Link::kGlobalClosure, transform, info->covariance.inv())));
@@ -2656,8 +2656,8 @@ Transform Memory::computeTransform(
 						{
 							std::multimap<int, cv::Point3f>::const_iterator kter = s->getWords3().find(jter->first);
 							cv::Point3f pt3d = util3d::transformPoint(kter->second, invLocalTransform);
-							wordReferences.insert(std::make_pair(jter->first, std::map<int, cv::Point3f>()));
-							wordReferences.at(jter->first).insert(std::make_pair(id, cv::Point3f(jter->second.pt.x, jter->second.pt.y, pt3d.z)));
+							wordReferences.insert(std::make_pair(jter->first, std::map<int, FeatureBA>()));
+							wordReferences.at(jter->first).insert(std::make_pair(id, FeatureBA(jter->second, pt3d.z)));
 						}
 					}
 				}
@@ -2796,11 +2796,11 @@ Transform Memory::computeIcpTransformMulti(
 	{
 		Transform guess = poses.at(fromId).inverse() * poses.at(toId);
 		float guessNorm = guess.getNorm();
-		if(fromScan.maxRange() > 0.0f && toScan.maxRange() > 0.0f &&
-			guessNorm > fromScan.maxRange() + toScan.maxRange())
+		if(fromScan.rangeMax() > 0.0f && toScan.rangeMax() > 0.0f &&
+			guessNorm > fromScan.rangeMax() + toScan.rangeMax())
 		{
 			// stop right known,it is impossible that scans overlay.
-			UINFO("Too far scans between %d and %d to compute transformation: guessNorm=%f, scan range from=%f to=%f", fromId, toId, guessNorm, fromScan.maxRange(), toScan.maxRange());
+			UINFO("Too far scans between %d and %d to compute transformation: guessNorm=%f, scan range from=%f to=%f", fromId, toId, guessNorm, fromScan.rangeMax(), toScan.rangeMax());
 			return t;
 		}
 
@@ -2890,7 +2890,7 @@ Transform Memory::computeIcpTransformMulti(
 		assembledData.setLaserScanRaw(
 				LaserScan(assembledScan,
 					fromScan.maxPoints()?fromScan.maxPoints():maxPoints,
-					fromScan.maxRange(),
+					fromScan.rangeMax(),
 					fromScan.format(),
 					fromScan.is2d()?Transform(0,0,fromScan.localTransform().z(),0,0,0):Transform::getIdentity()));
 
@@ -3430,7 +3430,8 @@ Transform Memory::getOdomPose(int signatureId, bool lookInDatabase) const
 	double stamp;
 	std::vector<float> velocity;
 	GPS gps;
-	getNodeInfo(signatureId, pose, mapId, weight, label, stamp, groundTruth, velocity, gps, lookInDatabase);
+	EnvSensors sensors;
+	getNodeInfo(signatureId, pose, mapId, weight, label, stamp, groundTruth, velocity, gps, sensors, lookInDatabase);
 	return pose;
 }
 
@@ -3442,8 +3443,57 @@ Transform Memory::getGroundTruthPose(int signatureId, bool lookInDatabase) const
 	double stamp;
 	std::vector<float> velocity;
 	GPS gps;
-	getNodeInfo(signatureId, pose, mapId, weight, label, stamp, groundTruth, velocity, gps, lookInDatabase);
+	EnvSensors sensors;
+	getNodeInfo(signatureId, pose, mapId, weight, label, stamp, groundTruth, velocity, gps, sensors, lookInDatabase);
 	return groundTruth;
+}
+
+void Memory::getGPS(int id, GPS & gps, Transform & offsetENU, bool lookInDatabase, int maxGraphDepth) const
+{
+	gps = GPS();
+	offsetENU=Transform::getIdentity();
+
+	Transform odomPose, groundTruth;
+	int mapId, weight;
+	std::string label;
+	double stamp;
+	std::vector<float> velocity;
+	EnvSensors sensors;
+	getNodeInfo(id, odomPose, mapId, weight, label, stamp, groundTruth, velocity, gps, sensors, lookInDatabase);
+
+	if(gps.stamp() == 0.0)
+	{
+		// Search for the nearest node with GPS, and compute its relative transform in ENU coordinates
+
+		std::map<int, int> nearestIds;
+		nearestIds = getNeighborsId(id, maxGraphDepth, lookInDatabase?-1:0, true, false, true);
+		std::multimap<int, int> nearestIdsSorted;
+		for(std::map<int, int>::iterator iter=nearestIds.begin(); iter!=nearestIds.end(); ++iter)
+		{
+			nearestIdsSorted.insert(std::make_pair(iter->second, iter->first));
+		}
+
+		for(std::map<int, int>::iterator iter=nearestIdsSorted.begin(); iter!=nearestIdsSorted.end(); ++iter)
+		{
+			const Signature * s = getSignature(iter->second);
+			UASSERT(s!=0);
+			if(s->sensorData().gps().stamp() > 0.0)
+			{
+				std::list<std::pair<int, Transform> > path = graph::computePath(s->id(), id, this, lookInDatabase);
+				if(path.size() >= 2)
+				{
+					gps = s->sensorData().gps();
+					Transform localToENU(0,0,(float)((-(gps.bearing()-90))*M_PI/180.0) - s->getPose().theta());
+					offsetENU = localToENU*(s->getPose().rotation()*path.rbegin()->second);
+					break;
+				}
+				else
+				{
+					UWARN("Failed to find path %d -> %d", s->id(), id);
+				}
+			}
+		}
+	}
 }
 
 bool Memory::getNodeInfo(int signatureId,
@@ -3455,6 +3505,7 @@ bool Memory::getNodeInfo(int signatureId,
 		Transform & groundTruth,
 		std::vector<float> & velocity,
 		GPS & gps,
+		EnvSensors & sensors,
 		bool lookInDatabase) const
 {
 	const Signature * s = this->getSignature(signatureId);
@@ -3468,11 +3519,12 @@ bool Memory::getNodeInfo(int signatureId,
 		groundTruth = s->getGroundTruthPose();
 		velocity = s->getVelocity();
 		gps = s->sensorData().gps();
+		sensors = s->sensorData().envSensors();
 		return true;
 	}
 	else if(lookInDatabase && _dbDriver)
 	{
-		return _dbDriver->getNodeInfo(signatureId, odomPose, mapId, weight, label, stamp, groundTruth, velocity, gps);
+		return _dbDriver->getNodeInfo(signatureId, odomPose, mapId, weight, label, stamp, groundTruth, velocity, gps, sensors);
 	}
 	return false;
 }
@@ -4404,7 +4456,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 	LaserScan laserScan = data.laserScanRaw();
 	if(!isIntermediateNode && laserScan.size())
 	{
-		if(laserScan.maxRange() == 0.0f)
+		if(laserScan.rangeMax() == 0.0f)
 		{
 			bool id2d = laserScan.is2d();
 			float maxRange = 0.0f;
@@ -4514,7 +4566,20 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 			data.groundTruth(),
 			stereoCameraModel.isValidForProjection()?
 				SensorData(
-						LaserScan(compressedScan, laserScan.maxPoints(), laserScan.maxRange(), laserScan.format(), laserScan.localTransform()),
+						laserScan.angleIncrement() == 0.0f?
+							LaserScan(compressedScan,
+								laserScan.maxPoints(),
+								laserScan.rangeMax(),
+								laserScan.format(),
+								laserScan.localTransform()):
+							LaserScan(compressedScan,
+								laserScan.format(),
+								laserScan.rangeMin(),
+								laserScan.rangeMax(),
+								laserScan.angleMin(),
+								laserScan.angleMax(),
+								laserScan.angleIncrement(),
+								laserScan.localTransform()),
 						compressedImage,
 						compressedDepth,
 						stereoCameraModel,
@@ -4522,7 +4587,20 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 						0,
 						compressedUserData):
 				SensorData(
-						LaserScan(compressedScan, laserScan.maxPoints(), laserScan.maxRange(), laserScan.format(), laserScan.localTransform()),
+						laserScan.angleIncrement() == 0.0f?
+							LaserScan(compressedScan,
+								laserScan.maxPoints(),
+								laserScan.rangeMax(),
+								laserScan.format(),
+								laserScan.localTransform()):
+							LaserScan(compressedScan,
+								laserScan.format(),
+								laserScan.rangeMin(),
+								laserScan.rangeMax(),
+								laserScan.angleMin(),
+								laserScan.angleMax(),
+								laserScan.angleIncrement(),
+								laserScan.localTransform()),
 						compressedImage,
 						compressedDepth,
 						cameraModels,
@@ -4572,7 +4650,20 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 			data.groundTruth(),
 			stereoCameraModel.isValidForProjection()?
 				SensorData(
-						LaserScan(compressedScan, laserScan.maxPoints(), laserScan.maxRange(), laserScan.format(), laserScan.localTransform()),
+						laserScan.angleIncrement() == 0.0f?
+								LaserScan(compressedScan,
+									laserScan.maxPoints(),
+									laserScan.rangeMax(),
+									laserScan.format(),
+									laserScan.localTransform()):
+								LaserScan(compressedScan,
+									laserScan.format(),
+									laserScan.rangeMin(),
+									laserScan.rangeMax(),
+									laserScan.angleMin(),
+									laserScan.angleMax(),
+									laserScan.angleIncrement(),
+									laserScan.localTransform()),
 						cv::Mat(),
 						cv::Mat(),
 						stereoCameraModel,
@@ -4580,7 +4671,20 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 						0,
 						compressedUserData):
 				SensorData(
-						LaserScan(compressedScan, laserScan.maxPoints(), laserScan.maxRange(), laserScan.format(), laserScan.localTransform()),
+						laserScan.angleIncrement() == 0.0f?
+								LaserScan(compressedScan,
+									laserScan.maxPoints(),
+									laserScan.rangeMax(),
+									laserScan.format(),
+									laserScan.localTransform()):
+								LaserScan(compressedScan,
+									laserScan.format(),
+									laserScan.rangeMin(),
+									laserScan.rangeMax(),
+									laserScan.angleMin(),
+									laserScan.angleMax(),
+									laserScan.angleIncrement(),
+									laserScan.localTransform()),
 						cv::Mat(),
 						cv::Mat(),
 						cameraModels,
@@ -4601,6 +4705,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 
 	s->sensorData().setGroundTruth(data.groundTruth());
 	s->sensorData().setGPS(data.gps());
+	s->sensorData().setEnvSensors(data.envSensors());
 
 	t = timer.ticks();
 	if(stats) stats->addStatistic(Statistics::kTimingMemCompressing_data(), t*1000.0f);

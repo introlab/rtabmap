@@ -30,6 +30,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "rtabmap/gui/RtabmapGuiExp.h" // DLL export/import defines
 
+#include <rtabmap/core/Signature.h>
+#include <rtabmap/core/Parameters.h>
 #include <QDialog>
 #include <QSettings>
 
@@ -51,11 +53,11 @@ public:
 
 	void setWorkingDirectory(const QString & path);
 
-	QString outputPath() const;
-
-	double maxLinearSpeed() const;
-	double maxAngularSpeed() const;
-	double laplacianThreshold() const;
+	void exportBundler(
+			const std::map<int, Transform> & poses,
+			const std::multimap<int, Link> & links,
+			const QMap<int, Signature> & signatures,
+			const ParametersMap & parameters);
 
 Q_SIGNALS:
 	void configChanged();
@@ -63,6 +65,7 @@ Q_SIGNALS:
 private Q_SLOTS:
 	void getPath();
 	void restoreDefaults();
+	void updateVisibility();
 
 private:
 	Ui_ExportBundlerDialog * _ui;

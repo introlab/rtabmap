@@ -124,6 +124,7 @@ Rtabmap::Rtabmap() :
 	_pathAngularVelocity(Parameters::defaultRGBDPlanAngularVelocity()),
 	_savedLocalizationIgnored(Parameters::defaultRGBDSavedLocalizationIgnored()),
 	_loopCovLimited(Parameters::defaultRGBDLoopCovLimited()),
+	_loopGPS(Parameters::defaultRtabmapLoopGPS()),
 	_loopClosureHypothesis(0,0.0f),
 	_highestHypothesis(0,0.0f),
 	_lastProcessTime(0.0),
@@ -138,6 +139,7 @@ Rtabmap::Rtabmap() :
 	_wDir(""),
 	_mapCorrection(Transform::getIdentity()),
 	_lastLocalizationNodeId(0),
+	_currentSessionHasGPS(false),
 	_pathStatus(0),
 	_pathCurrentIndex(0),
 	_pathGoalIndex(0),
@@ -360,6 +362,8 @@ void Rtabmap::close(bool databaseSaved, const std::string & ouputDatabasePath)
 	_lastLocalizationNodeId = 0;
 	_distanceTravelled = 0.0f;
 	this->clearPath(0);
+	_gpsGeocentricCache.clear();
+	_currentSessionHasGPS = false;
 
 	flushStatisticLogs();
 	if(_foutFloat)
@@ -466,6 +470,7 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kRGBDPlanAngularVelocity(), _pathAngularVelocity);
 	Parameters::parse(parameters, Parameters::kRGBDSavedLocalizationIgnored(), _savedLocalizationIgnored);
 	Parameters::parse(parameters, Parameters::kRGBDLoopCovLimited(), _loopCovLimited);
+	Parameters::parse(parameters, Parameters::kRtabmapLoopGPS(), _loopGPS);
 
 	UASSERT(_rgbdLinearUpdate >= 0.0f);
 	UASSERT(_rgbdAngularUpdate >= 0.0f);
@@ -819,12 +824,13 @@ void Rtabmap::exportPoses(const std::string & path, bool optimized, bool global,
 				double stamp = 0.0;
 				std::vector<float> v;
 				GPS gps;
-				_memory->getNodeInfo(iter->first, o, m, w, l, stamp, g, v, gps, true);
+				EnvSensors sensors;
+				_memory->getNodeInfo(iter->first, o, m, w, l, stamp, g, v, gps, sensors, true);
 				stamps.insert(std::make_pair(iter->first, stamp));
 			}
 		}
 
-		graph::exportPoses(path, format, poses, constraints, stamps);
+		graph::exportPoses(path, format, poses, constraints, stamps, _parameters);
 	}
 }
 
@@ -1068,12 +1074,13 @@ bool Rtabmap::process(
 	}
 
 	signature = _memory->getLastWorkingSignature();
+	_currentSessionHasGPS = _currentSessionHasGPS || signature->sensorData().gps().stamp() > 0.0;
 	if(!signature)
 	{
 		UFATAL("Not supposed to be here...last signature is null?!?");
 	}
 
-	ULOGGER_INFO("Processing signature %d w=%d", signature->id(), signature->getWeight());
+	ULOGGER_INFO("Processing signature %d w=%d map=%d", signature->id(), signature->getWeight(), signature->mapId());
 	timeMemoryUpdate = timer.ticks();
 	ULOGGER_INFO("timeMemoryUpdate=%fs", timeMemoryUpdate);
 
@@ -1395,6 +1402,43 @@ bool Rtabmap::process(
 			ULOGGER_INFO("computing likelihood...");
 
 			std::list<int> signaturesToCompare;
+			GPS originGPS;
+			Transform originOffsetENU = Transform::getIdentity();
+			if(_loopGPS)
+			{
+				originGPS = signature->sensorData().gps();
+				if(originGPS.stamp() == 0.0 && _currentSessionHasGPS)
+				{
+					UTimer tmpT;
+					if(_optimizedPoses.size() && _memory->isIncremental())
+					{
+						//Search for latest node having GPS linked to current signature not too far.
+						std::map<int, float> nearestIds = graph::getNodesInRadius(signature->id(), _optimizedPoses, _localRadius);
+						for(std::map<int, float>::reverse_iterator iter=nearestIds.rbegin(); iter!=nearestIds.rend(); ++iter)
+						{
+							const Signature * s = _memory->getSignature(iter->first);
+							UASSERT(s!=0);
+							if(s->sensorData().gps().stamp() > 0.0)
+							{
+								originGPS = s->sensorData().gps();
+								const Transform & sPose = _optimizedPoses.at(s->id());
+								Transform localToENU(0,0,(float)((-(originGPS.bearing()-90))*M_PI/180.0) - sPose.theta());
+								originOffsetENU = localToENU * (sPose.rotation()*(sPose.inverse()*_optimizedPoses.at(signature->id())));
+								break;
+							}
+						}
+					}
+					//else if(!_memory->isIncremental()) // TODO, how can we estimate current GPS position in localization?
+					//{
+					//}
+				}
+				if(originGPS.stamp() > 0.0)
+				{
+					// no need to save it if it is in localization mode
+					_gpsGeocentricCache.insert(std::make_pair(signature->id(), std::make_pair(originGPS.toGeodeticCoords().toGeocentric_WGS84(), originOffsetENU)));
+				}
+			}
+
 			for(std::map<int, double>::const_iterator iter=_memory->getWorkingMem().begin();
 				iter!=_memory->getWorkingMem().end();
 				++iter)
@@ -1405,7 +1449,58 @@ bool Rtabmap::process(
 					UASSERT(s!=0);
 					if(s->getWeight() != -1) // ignore intermediate nodes
 					{
-						signaturesToCompare.push_back(iter->first);
+						bool accept = true;
+						if(originGPS.stamp()>0.0)
+						{
+							std::map<int, std::pair<cv::Point3d, Transform> >::iterator cacheIter = _gpsGeocentricCache.find(s->id());
+							if(cacheIter == _gpsGeocentricCache.end())
+							{
+								GPS gps = s->sensorData().gps();
+								Transform offsetENU = Transform::getIdentity();
+								if(gps.stamp()==0.0)
+								{
+									_memory->getGPS(s->id(), gps, offsetENU, false);
+								}
+								if(gps.stamp() > 0.0)
+								{
+									cacheIter = _gpsGeocentricCache.insert(
+											std::make_pair(s->id(),
+													std::make_pair(gps.toGeodeticCoords().toGeocentric_WGS84(), offsetENU))).first;
+								}
+							}
+
+
+							if(cacheIter != _gpsGeocentricCache.end())
+							{
+								std::map<int, std::pair<cv::Point3d, Transform> >::iterator originIter = _gpsGeocentricCache.find(signature->id());
+								UASSERT(originIter != _gpsGeocentricCache.end());
+								cv::Point3d relativePose = GeodeticCoords::Geocentric_WGS84ToENU_WGS84(cacheIter->second.first, originIter->second.first, originGPS.toGeodeticCoords());
+								const double & error = originGPS.error();
+								const Transform & offsetENU = cacheIter->second.second;
+								relativePose.x += offsetENU.x() - originOffsetENU.x();
+								relativePose.y += offsetENU.y() - originOffsetENU.y();
+								relativePose.z += offsetENU.z() - originOffsetENU.z();
+								 // ignore altitude if difference is under GPS error
+								if(relativePose.z>error)
+								{
+									relativePose.z -= error;
+								}
+								else if(relativePose.z < -error)
+								{
+									relativePose.z += error;
+								}
+								else
+								{
+									relativePose.z = 0;
+								}
+								accept = uNormSquared(relativePose.x, relativePose.y, relativePose.z) < _localRadius*_localRadius;
+							}
+						}
+
+						if(accept)
+						{
+							signaturesToCompare.push_back(iter->first);
+						}
 					}
 				}
 				else
@@ -2304,7 +2399,7 @@ bool Rtabmap::process(
 
 			UINFO("Update map correction");
 			std::map<int, Transform> poses = _optimizedPoses;
-			
+
 			// if _optimizeFromGraphEnd parameter just changed state, don't use optimized poses as guess
 			float normMapCorrection = _mapCorrection.getNormSquared(); // use distance for identity detection
 			if((normMapCorrection > 0.000001f && _optimizeFromGraphEnd) ||
@@ -2370,12 +2465,14 @@ bool Rtabmap::process(
 					UINFO("Max optimization linear error = %f m (link %d->%d, var=%f, ratio error/std=%f)", maxLinearError, maxLinearLink->from(), maxLinearLink->to(), maxLinearLink->transVariance(), maxLinearError/sqrt(maxLinearLink->transVariance()));
 					if(maxLinearErrorRatio > _optimizationMaxError)
 					{
-						UWARN("Rejecting all added loop closures (%d) in this "
+						UWARN("Rejecting all added loop closures (%d, first is %d <-> %d) in this "
 							  "iteration because a wrong loop closure has been "
 							  "detected after graph optimization, resulting in "
 							  "a maximum graph error ratio of %f (edge %d->%d, type=%d, abs error=%f m, stddev=%f). The "
 							  "maximum error ratio parameter \"%s\" is %f of std deviation.",
 							  (int)loopClosureLinksAdded.size(),
+							  loopClosureLinksAdded.front().first,
+							  loopClosureLinksAdded.front().second,
 							  maxLinearErrorRatio,
 							  maxLinearLink->from(),
 							  maxLinearLink->to(),
@@ -2392,12 +2489,14 @@ bool Rtabmap::process(
 					UINFO("Max optimization angular error = %f deg (link %d->%d, var=%f, ratio error/std=%f)", maxAngularError*180.0f/CV_PI, maxAngularLink->from(), maxAngularLink->to(), maxAngularLink->rotVariance(), maxAngularError/sqrt(maxAngularLink->rotVariance()));
 					if(maxAngularErrorRatio > _optimizationMaxError)
 					{
-						UWARN("Rejecting all added loop closures (%d) in this "
+						UWARN("Rejecting all added loop closures (%d, first is %d <-> %d) in this "
 							  "iteration because a wrong loop closure has been "
 							  "detected after graph optimization, resulting in "
 							  "a maximum graph error ratio of %f (edge %d->%d, type=%d, abs error=%f deg, stddev=%f). The "
 							  "maximum error ratio parameter \"%s\" is %f of std deviation.",
 							  (int)loopClosureLinksAdded.size(),
+							  loopClosureLinksAdded.front().first,
+							  loopClosureLinksAdded.front().second,
 							  maxAngularErrorRatio,
 							  maxAngularLink->from(),
 							  maxAngularLink->to(),
@@ -2680,6 +2779,12 @@ bool Rtabmap::process(
 	}
 	_lastProcessTime = totalTime;
 
+	// cleanup cached gps values
+	for(std::list<int>::iterator iter=signaturesRemoved.begin(); iter!=signaturesRemoved.end() && _gpsGeocentricCache.size(); ++iter)
+	{
+		_gpsGeocentricCache.erase(*iter);
+	}
+
 	//Remove optimized poses from signatures transferred
 	if(signaturesRemoved.size() && (_optimizedPoses.size() || _constraints.size()))
 	{
@@ -2789,7 +2894,7 @@ bool Rtabmap::process(
 		std::map<int, Signature> signatures;
 		if(_publishLastSignatureData)
 		{
-			UINFO("Adding data %d (rgb/left=%d depth/right=%d)", lastSignatureData.id(), lastSignatureData.sensorData().imageRaw().empty()?0:1, lastSignatureData.sensorData().depthOrRightRaw().empty()?0:1);
+			UINFO("Adding data %d [%d] (rgb/left=%d depth/right=%d)", lastSignatureData.id(), lastSignatureData.mapId(), lastSignatureData.sensorData().imageRaw().empty()?0:1, lastSignatureData.sensorData().depthOrRightRaw().empty()?0:1);
 			signatures.insert(std::make_pair(lastSignatureData.id(), lastSignatureData));
 		}
 		UDEBUG("");
@@ -2811,6 +2916,11 @@ bool Rtabmap::process(
 		std::map<int, Transform> groundTruths;
 		for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter)
 		{
+			if(_publishLastSignatureData && lastSignatureData.id() == iter->first)
+			{
+				//already added
+				continue;
+			}
 			Transform odomPoseLocal;
 			int weight = -1;
 			int mapId = -1;
@@ -2819,7 +2929,8 @@ bool Rtabmap::process(
 			Transform groundTruth;
 			std::vector<float> velocity;
 			GPS gps;
-			_memory->getNodeInfo(iter->first, odomPoseLocal, mapId, weight, label, stamp, groundTruth, velocity, gps, false);
+			EnvSensors sensors;
+			_memory->getNodeInfo(iter->first, odomPoseLocal, mapId, weight, label, stamp, groundTruth, velocity, gps, sensors, false);
 			signatures.insert(std::make_pair(iter->first,
 					Signature(iter->first,
 							mapId,
@@ -2833,6 +2944,7 @@ bool Rtabmap::process(
 				signatures.at(iter->first).setVelocity(velocity[0], velocity[1], velocity[2], velocity[3], velocity[4], velocity[5]);
 			}
 			signatures.at(iter->first).sensorData().setGPS(gps);
+			signatures.at(iter->first).sensorData().setEnvSensors(sensors);
 			if(_computeRMSE && !groundTruth.isNull())
 			{
 				groundTruths.insert(std::make_pair(iter->first, groundTruth));
@@ -3484,29 +3596,25 @@ std::map<int, Transform> Rtabmap::optimizeGraph(
 	}
 	else
 	{
-		optimizedPoses = _graphOptimizer->optimize(fromId, poses, edgeConstraints, covariance, 0, error, iterationsDone);
-
-		if(!poses.empty() && optimizedPoses.empty() && guessPoses.empty())
+		if(poses.size() != guessPoses.size())
 		{
-			UWARN("Optimization has failed, trying incremental optimization instead, this may take a while (poses=%d, links=%d)...", (int)poses.size(), (int)edgeConstraints.size());
-			optimizedPoses = _graphOptimizer->optimizeIncremental(fromId, poses, edgeConstraints, 0, error, iterationsDone);
+			// recompute poses using only links (robust to multi-session)
+			std::map<int, Transform> posesOut;
+			std::multimap<int, Link> edgeConstraintsOut;
+			_graphOptimizer->getConnectedGraph(fromId, poses, edgeConstraints, posesOut, edgeConstraintsOut);
+			UASSERT(edgeConstraintsOut.size() == edgeConstraints.size());
+			optimizedPoses = _graphOptimizer->optimize(fromId, posesOut, edgeConstraints, covariance, 0, error, iterationsDone);
+		}
+		else
+		{
+			// use input guess poses
+			optimizedPoses = _graphOptimizer->optimize(fromId, poses, edgeConstraints, covariance, 0, error, iterationsDone);
+		}
 
-			if(optimizedPoses.empty())
-			{
-				if(!_graphOptimizer->isCovarianceIgnored() || _graphOptimizer->type() != Optimizer::kTypeTORO)
-				{
-					UWARN("Incremental optimization also failed. You may try changing parameters to %s=0 and %s=true.",
-							Parameters::kOptimizerStrategy().c_str(), Parameters::kOptimizerVarianceIgnored().c_str());
-				}
-				else
-				{
-					UWARN("Incremental optimization also failed.");
-				}
-			}
-			else
-			{
-				UWARN("Incremental optimization succeeded!");
-			}
+		if(!poses.empty() && optimizedPoses.empty())
+		{
+			UWARN("Optimization has failed (poses=%d, guess=%d, links=%d)...",
+				  (int)poses.size(), (int)guessPoses.size(), (int)edgeConstraints.size());
 		}
 	}
 	UINFO("Optimization time %f s", timer.ticks());
@@ -3696,7 +3804,8 @@ void Rtabmap::get3DMap(
 			Transform groundTruth;
 			std::vector<float> velocity;
 			GPS gps;
-			_memory->getNodeInfo(*iter, odomPoseLocal, mapId, weight, label, stamp, groundTruth, velocity, gps, true);
+			EnvSensors sensors;
+			_memory->getNodeInfo(*iter, odomPoseLocal, mapId, weight, label, stamp, groundTruth, velocity, gps, sensors, true);
 			SensorData data = _memory->getNodeData(*iter);
 			data.setId(*iter);
 			std::multimap<int, cv::KeyPoint> words;
@@ -3720,6 +3829,7 @@ void Rtabmap::get3DMap(
 				signatures.at(*iter).setVelocity(velocity[0], velocity[1], velocity[2], velocity[3], velocity[4], velocity[5]);
 			}
 			signatures.at(*iter).sensorData().setGPS(gps);
+			signatures.at(*iter).sensorData().setEnvSensors(sensors);
 		}
 	}
 	else if(_memory && (_memory->getStMem().size() || _memory->getWorkingMem().size() > 1))
@@ -3774,7 +3884,8 @@ void Rtabmap::getGraph(
 				Transform groundTruth;
 				std::vector<float> velocity;
 				GPS gps;
-				_memory->getNodeInfo(iter->first, odomPoseLocal, mapId, weight, label, stamp, groundTruth, velocity, gps, global);
+				EnvSensors sensors;
+				_memory->getNodeInfo(iter->first, odomPoseLocal, mapId, weight, label, stamp, groundTruth, velocity, gps, sensors, global);
 				signatures->insert(std::make_pair(iter->first,
 						Signature(iter->first,
 							mapId,
@@ -3803,6 +3914,7 @@ void Rtabmap::getGraph(
 					signatures->at(iter->first).setVelocity(velocity[0], velocity[1], velocity[2], velocity[3], velocity[4], velocity[5]);
 				}
 				signatures->at(iter->first).sensorData().setGPS(gps);
+				signatures->at(iter->first).sensorData().setEnvSensors(sensors);
 			}
 		}
 	}
@@ -4694,7 +4806,7 @@ void Rtabmap::updateGoalIndex()
 						this->clearPath(-1);
 						return;
 					}
-				}				
+				}
 			}
 			else if(!isStuck)
 			{

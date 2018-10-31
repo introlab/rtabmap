@@ -74,6 +74,7 @@ PostProcessingDialog::PostProcessingDialog(QWidget * parent) :
 	connect(_ui->sba_iterations, SIGNAL(valueChanged(int)), this, SIGNAL(configChanged()));
 	connect(_ui->comboBox_sbaType, SIGNAL(currentIndexChanged(int)), this, SIGNAL(configChanged()));
 	connect(_ui->comboBox_sbaType, SIGNAL(currentIndexChanged(int)), this, SLOT(updateVisibility()));
+	connect(_ui->sba_rematchFeatures, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
 
 	updateVisibility();
 }
@@ -105,6 +106,7 @@ void PostProcessingDialog::saveSettings(QSettings & settings, const QString & gr
 	settings.setValue("sba_iterations", this->sbaIterations());
 	settings.setValue("sba_type", this->sbaType());
 	settings.setValue("sba_variance", this->sbaVariance());
+	settings.setValue("sba_rematch_features", this->sbaRematchFeatures());
 	if(!group.isEmpty())
 	{
 		settings.endGroup();
@@ -127,6 +129,8 @@ void PostProcessingDialog::loadSettings(QSettings & settings, const QString & gr
 	this->setSBAIterations(settings.value("sba_iterations", this->sbaIterations()).toInt());
 	this->setSBAType((Optimizer::Type)settings.value("sba_type", this->sbaType()).toInt());
 	this->setSBAVariance(settings.value("sba_variance", this->sbaVariance()).toDouble());
+	this->setSBARematchFeatures(settings.value("sba_rematch_features", this->sbaRematchFeatures()).toBool());
+
 	if(!group.isEmpty())
 	{
 		settings.endGroup();
@@ -145,6 +149,7 @@ void PostProcessingDialog::restoreDefaults()
 	setSBAIterations(20);
 	setSBAType(!Optimizer::isAvailable(Optimizer::kTypeG2O)&&Optimizer::isAvailable(Optimizer::kTypeCVSBA)?Optimizer::kTypeCVSBA:Optimizer::kTypeG2O);
 	setSBAVariance(1.0);
+	setSBARematchFeatures(true);
 }
 
 void PostProcessingDialog::updateButtonBox()
@@ -200,6 +205,10 @@ Optimizer::Type PostProcessingDialog::sbaType() const
 {
 	return _ui->comboBox_sbaType->currentIndex()==0?Optimizer::kTypeG2O:Optimizer::kTypeCVSBA;
 }
+bool PostProcessingDialog::sbaRematchFeatures() const
+{
+	return _ui->sba_rematchFeatures->isChecked();
+}
 
 //setters
 void PostProcessingDialog::setDetectMoreLoopClosures(bool on)
@@ -228,7 +237,7 @@ void PostProcessingDialog::setRefineLoopClosureLinks(bool on)
 }
 void PostProcessingDialog::setSBA(bool on)
 {
-	_ui->sba->setChecked(Optimizer::isAvailable(Optimizer::kTypeCVSBA) && on);
+	_ui->sba->setChecked((Optimizer::isAvailable(Optimizer::kTypeCVSBA) || Optimizer::isAvailable(Optimizer::kTypeG2O)) && on);
 }
 void PostProcessingDialog::setSBAIterations(int iterations)
 {
@@ -248,6 +257,10 @@ void PostProcessingDialog::setSBAType(Optimizer::Type type)
 	{
 		_ui->comboBox_sbaType->setCurrentIndex(0);
 	}
+}
+void PostProcessingDialog::setSBARematchFeatures(bool value)
+{
+	_ui->sba_rematchFeatures->setChecked(value);
 }
 
 

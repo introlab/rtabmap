@@ -148,6 +148,7 @@ class RTABMapApp : public UEventsHandler {
   void setBackgroundColor(float gray);
   int setMappingParameter(const std::string & key, const std::string & value);
   void setGPS(const rtabmap::GPS & gps);
+  void addEnvSensor(int type, float value);
 
   void resetMapping();
   void save(const std::string & databasePath);

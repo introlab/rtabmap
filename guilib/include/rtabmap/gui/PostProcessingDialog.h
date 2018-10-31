@@ -63,6 +63,7 @@ public:
 	int sbaIterations() const;
 	double sbaVariance() const;
 	Optimizer::Type sbaType() const;
+	bool sbaRematchFeatures() const;
 
 	//setters
 	void setDetectMoreLoopClosures(bool on);
@@ -75,6 +76,7 @@ public:
 	void setSBAIterations(int iterations);
 	void setSBAVariance(double variance);
 	void setSBAType(Optimizer::Type type);
+	void setSBARematchFeatures(bool value);
 
 Q_SIGNALS:
 	void configChanged();

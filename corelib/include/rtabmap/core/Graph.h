@@ -32,8 +32,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <map>
 #include <list>
+#include <rtabmap/core/Parameters.h>
 #include <rtabmap/core/Link.h>
-#include <rtabmap/core/GeodeticCoords.h>
+#include <rtabmap/core/GPS.h>
 
 namespace rtabmap {
 class Memory;
@@ -44,13 +45,13 @@ namespace graph {
 // Graph utilities
 ////////////////////////////////////////////
 
-bool RTABMAP_EXP exportPoses(
+	bool RTABMAP_EXP exportPoses(
 		const std::string & filePath,
 		int format, // 0=Raw (*.txt), 1=RGBD-SLAM (*.txt), 2=KITTI (*.txt), 3=TORO (*.graph), 4=g2o (*.g2o)
 		const std::map<int, Transform> & poses,
 		const std::multimap<int, Link> & constraints = std::multimap<int, Link>(), // required for formats 3 and 4
 		const std::map<int, double> & stamps = std::map<int, double>(),  // required for format 1
-		bool g2oRobust = false); // optional for format 4
+		const ParametersMap & parameters = ParametersMap()); // optional for formats 3 and 4
 
 bool RTABMAP_EXP importPoses(
 		const std::string & filePath,
@@ -134,6 +135,9 @@ std::multimap<int, int>::const_iterator RTABMAP_EXP findLink(
 		int from,
 		int to,
 		bool checkBothWays = true);
+std::list<Link> RTABMAP_EXP findLinks(
+		const std::multimap<int, Link> & links,
+		int from);
 
 std::multimap<int, Link> RTABMAP_EXP filterDuplicateLinks(
 		const std::multimap<int, Link> & links);

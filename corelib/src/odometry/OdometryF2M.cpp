@@ -338,7 +338,7 @@ Transform OdometryF2M::computeTransform(
 							Transform invLocalTransform = model.localTransform().inverse();
 
 							UDEBUG("Fill matches (%d)", (int)regInfo.inliersIDs.size());
-							std::map<int, std::map<int, cv::Point3f> > wordReferences;
+							std::map<int, std::map<int, FeatureBA> > wordReferences;
 							for(unsigned int i=0; i<regInfo.inliersIDs.size(); ++i)
 							{
 								int wordId =regInfo.inliersIDs[i];
@@ -351,17 +351,17 @@ Transform OdometryF2M::computeTransform(
 								std::multimap<int, cv::KeyPoint>::const_iterator iter2D = lastFrame_->getWords().find(wordId);
 
 								// all other references
-								std::map<int, std::map<int, cv::Point3f> >::iterator refIter = bundleWordReferences_.find(wordId);
+								std::map<int, std::map<int, FeatureBA> >::iterator refIter = bundleWordReferences_.find(wordId);
 								UASSERT_MSG(refIter != bundleWordReferences_.end(), uFormat("wordId=%d", wordId).c_str());
 
-								std::map<int, cv::Point3f> references;
+								std::map<int, FeatureBA> references;
 								int step = bundleMaxFrames_>0?(refIter->second.size() / bundleMaxFrames_):1;
 								if(step == 0)
 								{
 									step = 1;
 								}
 								int oi=0;
-								for(std::map<int, cv::Point3f>::iterator jter=refIter->second.begin(); jter!=refIter->second.end(); ++jter)
+								for(std::map<int, FeatureBA>::iterator jter=refIter->second.begin(); jter!=refIter->second.end(); ++jter)
 								{
 									if(oi++ % step == 0 && bundlePoses.find(jter->first)!=bundlePoses.end())
 									{
@@ -383,7 +383,7 @@ Transform OdometryF2M::computeTransform(
 									UASSERT(lastFrame_->getWords3().find(wordId) != lastFrame_->getWords3().end());
 									//move back point in camera frame (to get depth along z)
 									cv::Point3f pt3d = util3d::transformPoint(lastFrame_->getWords3().find(wordId)->second, invLocalTransform);
-									references.insert(std::make_pair(lastFrame_->id(), cv::Point3f(iter2D->second.pt.x, iter2D->second.pt.y, pt3d.z)));
+									references.insert(std::make_pair(lastFrame_->id(), FeatureBA(iter2D->second, pt3d.z)));
 								}
 								wordReferences.insert(std::make_pair(wordId, references));
 
@@ -589,13 +589,13 @@ Transform OdometryF2M::computeTransform(
 									cv::Point3f pt3d = util3d::transformPoint(iter->second, invLocalTransform);
 									if(bundleWordReferences_.find(iter->first) == bundleWordReferences_.end())
 									{
-										std::map<int, cv::Point3f> framePt;
-										framePt.insert(std::make_pair(lastFrame_->id(), cv::Point3f(iter2D->second.pt.x, iter2D->second.pt.y, pt3d.z)));
+										std::map<int, FeatureBA> framePt;
+										framePt.insert(std::make_pair(lastFrame_->id(), FeatureBA(iter2D->second, pt3d.z)));
 										bundleWordReferences_.insert(std::make_pair(iter->first, framePt));
 									}
 									else
 									{
-										bundleWordReferences_.find(iter->first)->second.insert(std::make_pair(lastFrame_->id(), cv::Point3f(iter2D->second.pt.x, iter2D->second.pt.y, pt3d.z)));
+										bundleWordReferences_.find(iter->first)->second.insert(std::make_pair(lastFrame_->id(), FeatureBA(iter2D->second, pt3d.z)));
 									}
 								}
 							}
@@ -622,13 +622,13 @@ Transform OdometryF2M::computeTransform(
 									cv::Point3f pt3d = util3d::transformPoint(iter->second.second.second.first, invLocalTransform);
 									if(bundleWordReferences_.find(iter->second.first) == bundleWordReferences_.end())
 									{
-										std::map<int, cv::Point3f> framePt;
-										framePt.insert(std::make_pair(lastFrame_->id(), cv::Point3f(iter->second.second.first.pt.x, iter->second.second.first.pt.y, pt3d.z)));
+										std::map<int, FeatureBA> framePt;
+										framePt.insert(std::make_pair(lastFrame_->id(), FeatureBA(iter->second.second.first, pt3d.z)));
 										bundleWordReferences_.insert(std::make_pair(iter->second.first, framePt));
 									}
 									else
 									{
-										bundleWordReferences_.find(iter->second.first)->second.insert(std::make_pair(lastFrame_->id(), cv::Point3f(iter->second.second.first.pt.x, iter->second.second.first.pt.y, pt3d.z)));
+										bundleWordReferences_.find(iter->second.first)->second.insert(std::make_pair(lastFrame_->id(), FeatureBA(iter->second.second.first, pt3d.z)));
 									}
 								}
 							}
@@ -669,10 +669,10 @@ Transform OdometryF2M::computeTransform(
 							int id = ids.at(i);
 							if(inliers.find(id) == inliers.end())
 							{
-								std::map<int, std::map<int, cv::Point3f> >::iterator iterRef = bundleWordReferences_.find(id);
+								std::map<int, std::map<int, FeatureBA> >::iterator iterRef = bundleWordReferences_.find(id);
 								if(iterRef != bundleWordReferences_.end())
 								{
-									for(std::map<int, cv::Point3f>::iterator iterFrame = iterRef->second.begin(); iterFrame != iterRef->second.end(); ++iterFrame)
+									for(std::map<int, FeatureBA>::iterator iterFrame = iterRef->second.begin(); iterFrame != iterRef->second.end(); ++iterFrame)
 									{
 										if(bundlePoseReferences_.find(iterFrame->first) != bundlePoseReferences_.end())
 										{
@@ -697,10 +697,10 @@ Transform OdometryF2M::computeTransform(
 						{
 							if(inliers.find(iter->first) == inliers.end())
 							{
-								std::map<int, std::map<int, cv::Point3f> >::iterator iterRef = bundleWordReferences_.find(iter->first);
+								std::map<int, std::map<int, FeatureBA> >::iterator iterRef = bundleWordReferences_.find(iter->first);
 								if(iterRef != bundleWordReferences_.end())
 								{
-									for(std::map<int, cv::Point3f>::iterator iterFrame = iterRef->second.begin(); iterFrame != iterRef->second.end(); ++iterFrame)
+									for(std::map<int, FeatureBA>::iterator iterFrame = iterRef->second.begin(); iterFrame != iterRef->second.end(); ++iterFrame)
 									{
 										if(bundlePoseReferences_.find(iterFrame->first) != bundlePoseReferences_.end())
 										{
@@ -983,7 +983,7 @@ Transform OdometryF2M::computeTransform(
 							if(words.count(iter->first) == 1)
 							{
 								UASSERT(bundleWordReferences_.find(iter->first) == bundleWordReferences_.end());
-								std::map<int, cv::Point3f> framePt;
+								std::map<int, FeatureBA> framePt;
 
 								//get depth
 								float d = 0.0f;
@@ -995,7 +995,7 @@ Transform OdometryF2M::computeTransform(
 								}
 
 
-								framePt.insert(std::make_pair(lastFrame_->id(), cv::Point3f(iter->second.pt.x, iter->second.pt.y, d)));
+								framePt.insert(std::make_pair(lastFrame_->id(), FeatureBA(iter->second, d)));
 								bundleWordReferences_.insert(std::make_pair(iter->first, framePt));
 							}
 						}

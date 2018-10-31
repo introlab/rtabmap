@@ -36,6 +36,7 @@
     <string name="fps">"FPS (rendering): "</string>
     <string name="distance">"Distance travelled: "</string>
     <string name="gps">"GPS (long,lat,alt,bearing,err): "</string>
+    <string name="env_sensors">"Sensors: "</string>
     <string name="time">"Time: "</string>
     
     <!-- Preference keys: BEGIN -->
@@ -91,7 +92,7 @@
     <string name="pref_key_min_inliers">pref_key_min_inliers</string>
     <string name="pref_default_min_inliers">25</string>
     <string name="pref_key_opt_error">pref_key_opt_error</string>
-    <string name="pref_default_opt_error">2</string>
+    <string name="pref_default_opt_error">3</string>
     <string name="pref_key_features_voc">pref_key_features_voc</string>
     <string name="pref_default_features_voc">200</string>
     <string name="pref_key_features">pref_key_features</string>
@@ -108,6 +109,8 @@
     <string name="pref_default_raw_scan_saved">false</string>
     <string name="pref_key_gps_saved">pref_key_gps_saved</string>
     <string name="pref_default_gps_saved">false</string>
+    <string name="pref_key_env_sensors_saved">pref_key_env_sensors_saved</string>
+    <string name="pref_default_env_sensors_saved">false</string>
     <string name="pref_key_db_in_memory">pref_key_db_in_memory</string>
     <string name="pref_default_db_in_memory">false</string>
     
@@ -349,7 +352,9 @@
     <string name="pref_title_raw_scan_saved">Save Raw Scan</string>
     <string name="pref_summary_raw_scan_saved">Save raw point clouds in database.</string>
     <string name="pref_title_gps_saved">Save GPS</string>
-    <string name="pref_summary_gps_saved">Save GPS in database.</string>
+    <string name="pref_summary_gps_saved">Save GPS to database.</string>
+    <string name="pref_title_env_sensors_saved">Save Environmental Sensors</string>
+    <string name="pref_summary_env_sensors_saved">Save Wifi strength, temperature, air pressure, light intensity and relative humidity to database.</string>
     <string name="pref_title_db_in_memory">Database In Memory</string>
     <string name="pref_summary_db_in_memory">The database is kept in RAM for fast access. Set to false to reduce RAM used at the cost of slower access. This parameter is applied on reset or when a database is opened.</string>
 

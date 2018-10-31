@@ -28,6 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UFile.h>
 #include <rtabmap/utilite/UThreadC.h>
 #include <rtabmap/utilite/UTimer.h>
+#include <opencv2/imgproc/types_c.h>
 
 #ifdef RTABMAP_OPENNI
 #include <pcl/io/openni_grabber.h>
