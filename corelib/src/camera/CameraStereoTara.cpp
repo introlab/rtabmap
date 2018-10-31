@@ -25,6 +25,11 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+/**
+ * Contributed by e-consystemgit
+ * https://www.e-consystems.com/opensource-linux-webcam-software-application.asp
+ */
+
 #include <rtabmap/core/camera/CameraStereoTara.h>
 #include <rtabmap/utilite/UTimer.h>
 #include <rtabmap/utilite/UThreadC.h>
