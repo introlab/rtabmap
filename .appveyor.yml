@@ -87,12 +87,36 @@ install:
   - ECHO "Installed GTSAM:"
   - ps: "ls \"C:/Program Files/GTSAM\""
   - set PATH=%PATH%;C:\Program Files\GTSAM\bin
+  # OctoMap
+  - ps: wget 'https://dl.dropboxusercontent.com/s/6jpxu0nm8ne6e54/octomap_x64_vc14.exe?dl=0' -outfile octomap.exe
+  - cmd: octomap.exe -o"C:\Program Files" -y
+  - ECHO "Installed OctoMap:"
+  - ps: "ls \"C:/Program Files/octomap-distribution\""
+  - set PATH=%PATH%;C:\Program Files\octomap-distribution\bin
+  # CPU-TSDF
+  - ps: wget 'https://dl.dropboxusercontent.com/s/odo3m1qhyvt3zh5/cpu_tsdf_x64_vc14.exe?dl=0' -outfile cpu_tsdf.exe
+  - cmd: cpu_tsdf.exe -o"C:\Program Files" -y
+  - ECHO "Installed CPU-TSDF:"
+  - ps: "ls \"C:/Program Files/cpu_tsdf\""
+  - set PATH=%PATH%;C:\Program Files\cpu_tsdf\bin
+  # Open Chisel
+  - ps: wget 'https://dl.dropboxusercontent.com/s/0aaphcde4acrinm/open_chisel_x64_vc14.exe?dl=0' -outfile open_chisel.exe
+  - cmd: open_chisel.exe -o"C:\Program Files" -y
+  - ECHO "Installed Open Chisel:"
+  - ps: "ls \"C:/Program Files/open_chisel\""
+  - set PATH=%PATH%;C:\Program Files\open_chisel\bin
+  # cvsba
+  - ps: wget 'https://dl.dropboxusercontent.com/s/4ey8ergerx46zvj/cvsba_x64_vc14.exe?dl=0' -outfile cvsba.exe
+  - cmd: cvsba.exe -o"C:\Program Files" -y
+  - ECHO "Installed cvsba:"
+  - ps: "ls \"C:/Program Files/cvsba\""
+  - set PATH=%PATH%;C:\Program Files\cvsba\bin
   
 before_build:
   - cd c:\projects\rtabmap\build
   - ECHO %PROGRAMFILES%
   - ECHO %PATH%
-  - cmake -G "Visual Studio 14 2015 Win64" -DOpenCV_DIR="C:\Program Files\opencv\build" -DPCL_DIR="C:\Program Files\PCL\cmake" -DBUILD_AS_BUNDLE=ON ..
+  - cmake -G "Visual Studio 14 2015 Win64" -DOpenCV_DIR="C:\Program Files\opencv\build" -DPCL_DIR="C:\Program Files\PCL\cmake" -DCPUTSDF_DIR="C:\Program Files\cpu_tsdf\share\cpu_tsdf" -Dcvsba_DIR="C:\Program Files\cvsba\lib\cmake" -DBUILD_AS_BUNDLE=ON ..
   
 after_build :
   - cmake --build . --config Release --target package

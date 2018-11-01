@@ -351,21 +351,7 @@ ENDIF(WITH_LOAM)
 
 SET(ZED_FOUND FALSE)
 IF(WITH_ZED)
-    IF(WIN32) # Windows
-        SET(ZED_INCLUDE_DIRS $ENV{ZED_INCLUDE_DIRS})
-        if (CMAKE_CL_64) # 64 bits
-            SET(ZED_LIBRARIES $ENV{ZED_LIBRARIES_64})
-        else(CMAKE_CL_64) # 32 bits
-            message("32bits compilation is no more available with CUDA7.0")
-        endif(CMAKE_CL_64)
-        SET(ZED_LIBRARY_DIR $ENV{ZED_LIBRARY_DIR})
-        IF(ZED_LIBRARIES AND ZED_INCLUDE_DIRS)
-            SET(ZED_FOUND TRUE)
-            LINK_DIRECTORIES( ${LINK_DIRECTORIES} ${ZED_LIBRARY_DIR})
-        ENDIF(ZED_LIBRARIES AND ZED_INCLUDE_DIRS)
-    ELSE() # Linux
-        find_package(ZED 2 QUIET)
-    ENDIF(WIN32)
+    find_package(ZED 2 QUIET)
     
     IF(ZED_FOUND)
        MESSAGE(STATUS "Found ZED sdk: ${ZED_INCLUDE_DIRS}")
