@@ -154,11 +154,28 @@ IF(BUILD_AS_BUNDLE AND (APPLE OR WIN32))
 		get_filename_component(plugin_dir ${plugin_loc} DIRECTORY)
 		string(REPLACE "plugins" ";" loc_list ${plugin_dir})
 		list(GET loc_list 1 plugin_type)
+		IF(NOT plugin_root)
+			get_filename_component(plugin_root ${plugin_dir} DIRECTORY)
+		ENDIF(NOT plugin_root)
 	    #MESSAGE(STATUS "Qt5 plugin \"${plugin_loc}\" installed in \"${plugin_dest_dir}/plugins${plugin_type}\"")
 		INSTALL(FILES ${plugin_loc}
           DESTINATION ${plugin_dest_dir}/plugins${plugin_type}
           COMPONENT runtime)
 	endforeach()
+	IF(WIN32)
+		IF(NOT Qt5Widgets_VERSION VERSION_LESS 5.10.0)
+			SET(plugin_loc "${plugin_root}/styles/qwindowsvistastyle.dll")
+			IF(EXISTS ${plugin_loc})
+				get_filename_component(plugin_dir ${plugin_loc} DIRECTORY)
+				string(REPLACE "plugins" ";" loc_list ${plugin_dir})
+				list(GET loc_list 1 plugin_type)
+				INSTALL(FILES ${plugin_loc}
+					DESTINATION ${plugin_dest_dir}/plugins${plugin_type}
+					COMPONENT runtime)
+				#MESSAGE(STATUS "Qt5 plugin \"${plugin_loc}\" installed in \"${plugin_dest_dir}/plugins${plugin_type}\"")
+			ENDIF(EXISTS ${plugin_loc})
+		ENDIF(NOT Qt5Widgets_VERSION VERSION_LESS 5.10.0)
+	ENDIF(WIN32)
   ENDIF()
   
   # install a qt.conf file
