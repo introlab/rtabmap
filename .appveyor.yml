@@ -64,7 +64,7 @@ install:
   - ECHO "Installed PCL:"
   - ps: "ls \"C:/Program Files/Eigen\""
   # PCL
-  - ps: wget 'https://dl.dropboxusercontent.com/s/r9tvi9md54zlul2/PCL-1_8_1-July2018-msvc140.exe?dl=0' -outfile PCL_1.8.1.exe
+  - ps: wget 'https://dl.dropboxusercontent.com/s/2iayr4lyqa50i9j/PCL_181_August2018_x64_vc14.exe?dl=0' -outfile PCL_1.8.1.exe
   - cmd: PCL_1.8.1.exe -o"C:\Program Files" -y
   - ECHO "Installed PCL:"
   - ps: "ls \"C:/Program Files/PCL\""
