@@ -30,6 +30,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UConversion.h>
 
 #ifdef RTABMAP_FLYCAPTURE2
+#include <triclopsrectify.h>
 #include <triclops.h>
 #include <fc2triclops.h>
 #endif
@@ -72,6 +73,72 @@ bool CameraStereoFlyCapture2::available()
 	return false;
 #endif
 }
+
+#ifdef RTABMAP_FLYCAPTURE2
+
+// struct containing image needed for processing
+struct ImageContainer
+{
+	FlyCapture2::Image tmp[2];
+	FlyCapture2::Image unprocessed[2];
+};
+
+// generate color stereo input
+void generateColorStereoInput(TriclopsContext const &context,
+	FlyCapture2::Image const &grabbedImage,
+	ImageContainer &imageCont,
+	TriclopsColorStereoPair &stereoPair)
+{
+	Fc2Triclops::ErrorType fc2TriclopsError;
+	TriclopsError te;
+
+	TriclopsColorImage triclopsImageContainer[2];
+	FlyCapture2::Image *tmpImage = imageCont.tmp;
+	FlyCapture2::Image *unprocessedImage = imageCont.unprocessed;
+
+	// Convert the pixel interleaved raw data to de-interleaved and color processed data
+	fc2TriclopsError = Fc2Triclops::unpackUnprocessedRawOrMono16Image(
+		grabbedImage,
+		true /*assume little endian*/,
+		tmpImage[0],
+		tmpImage[1]);
+
+	UASSERT_MSG(fc2TriclopsError == Fc2Triclops::ERRORTYPE_OK, uFormat("Error: %d", (int)fc2TriclopsError).c_str());
+
+	// preprocess color image
+	for (int i = 0; i < 2; ++i) {
+		FlyCapture2::Error fc2Error;
+		fc2Error = tmpImage[i].SetColorProcessing(FlyCapture2::HQ_LINEAR);
+		UASSERT_MSG(fc2Error == FlyCapture2::PGRERROR_OK, fc2Error.GetDescription());
+
+		// convert preprocessed color image to BGRU format
+		fc2Error = tmpImage[i].Convert(FlyCapture2::PIXEL_FORMAT_BGRU,
+			&unprocessedImage[i]);
+		UASSERT_MSG(fc2Error == FlyCapture2::PGRERROR_OK, fc2Error.GetDescription());
+	}
+
+	// create triclops image for right and left lens
+	for (size_t i = 0; i < 2; ++i) {
+		TriclopsColorImage *image = &triclopsImageContainer[i];
+		te = triclopsLoadColorImageFromBuffer(
+			reinterpret_cast<TriclopsColorPixel *>(unprocessedImage[i].GetData()),
+			unprocessedImage[i].GetRows(),
+			unprocessedImage[i].GetCols(),
+			unprocessedImage[i].GetStride(),
+			image);
+		UASSERT_MSG(te == Fc2Triclops::ERRORTYPE_OK, uFormat("Error: %d", (int)te).c_str());
+	}
+
+	// create stereo input from the triclops images constructed above
+	// pack image data into a TriclopsColorStereoPair structure
+	te = triclopsBuildColorStereoPairFromBuffers(
+		context,
+		&triclopsImageContainer[1],
+		&triclopsImageContainer[0],
+		&stereoPair);
+	UASSERT_MSG(te == Fc2Triclops::ERRORTYPE_OK, uFormat("Error: %d", (int)te).c_str());
+}
+#endif
 
 bool CameraStereoFlyCapture2::init(const std::string & calibrationFolder, const std::string & cameraName)
 {
@@ -130,15 +197,26 @@ bool CameraStereoFlyCapture2::init(const std::string & calibrationFolder, const 
 		return false;
 	}
 
+	triclopsSetResolution(triclopsCtx_, maxHeight, maxWidth);
+	if (triclopsPrepareRectificationData(triclopsCtx_,
+		maxHeight,
+		maxWidth,
+		maxHeight,
+		maxWidth))
+	{
+		UERROR("Failed to prepare rectification matrices.");
+		return false;
+	}
+	triclopsSetCameraConfiguration(triclopsCtx_, TriCfg_2CAM_HORIZONTAL_NARROW);
+
 	float fx, cx, cy, baseline;
 	triclopsGetFocalLength(triclopsCtx_, &fx);
 	triclopsGetImageCenter(triclopsCtx_, &cy, &cx);
+	cx *= maxWidth;
+	cy *= maxHeight;
 	triclopsGetBaseline(triclopsCtx_, &baseline);
-	UINFO("Stereo parameters: fx=%f cx=%f cy=%f baseline=%f", fx, cx, cy, baseline);
-
-	triclopsSetCameraConfiguration(triclopsCtx_, TriCfg_2CAM_HORIZONTAL_NARROW );
-	UASSERT(triclopsSetResolutionAndPrepare(triclopsCtx_, maxHeight, maxWidth, maxHeight, maxWidth) == Fc2Triclops::ERRORTYPE_OK);
-
+	UINFO("Stereo parameters: fx=%f cx=%f cy=%f baseline=%f %dx%d", fx, cx, cy, baseline, maxWidth, maxHeight);
+		
 	if(camera_->StartCapture() != FlyCapture2::PGRERROR_OK)
 	{
 		UERROR("Failed to start capture.");
@@ -182,15 +260,6 @@ std::string CameraStereoFlyCapture2::getSerial() const
 	return "";
 }
 
-// struct containing image needed for processing
-#ifdef RTABMAP_FLYCAPTURE2
-struct ImageContainer
-{
-	FlyCapture2::Image tmp[2];
-    FlyCapture2::Image unprocessed[2];
-} ;
-#endif
-
 SensorData CameraStereoFlyCapture2::captureImage(CameraInfo * info)
 {
 	SensorData data;
@@ -205,108 +274,67 @@ SensorData CameraStereoFlyCapture2::captureImage(CameraInfo * info)
 			// right and left image extracted from grabbed image
 			ImageContainer imageCont;
 
-			// generate triclops input from grabbed image
-			FlyCapture2::Image imageRawRight;
-			FlyCapture2::Image imageRawLeft;
-			FlyCapture2::Image * unprocessedImage = imageCont.unprocessed;
+			TriclopsColorStereoPair colorStereoInput;
+			generateColorStereoInput(triclopsCtx_, grabbedImage, imageCont, colorStereoInput);
 
-			// Convert the pixel interleaved raw data to de-interleaved and color processed data
-			if(Fc2Triclops::unpackUnprocessedRawOrMono16Image(
-										   grabbedImage,
-										   true /*assume little endian*/,
-										   imageRawLeft /* right */,
-										   imageRawRight /* left */) == Fc2Triclops::ERRORTYPE_OK)
-			{
-				// convert to color
-				FlyCapture2::Image srcImgRightRef(imageRawRight);
-				FlyCapture2::Image srcImgLeftRef(imageRawLeft);
+			// rectify images
+			TriclopsError triclops_status = triclopsColorRectify(triclopsCtx_, &colorStereoInput);
+			UASSERT_MSG(triclops_status == Fc2Triclops::ERRORTYPE_OK, uFormat("Error: %d", (int)triclops_status).c_str());
 
-				bool ok = true;;
-				if ( srcImgRightRef.SetColorProcessing(FlyCapture2::HQ_LINEAR) != FlyCapture2::PGRERROR_OK ||
-				     srcImgLeftRef.SetColorProcessing(FlyCapture2::HQ_LINEAR) != FlyCapture2::PGRERROR_OK)
-				{
-					ok = false;
-				}
+			// get images
+			cv::Mat left,right;
+			TriclopsColorImage color_image;
+			triclops_status = triclopsGetColorImage(triclopsCtx_, TriImg_RECTIFIED_COLOR, TriCam_LEFT, &color_image);
+			UASSERT_MSG(triclops_status == Fc2Triclops::ERRORTYPE_OK, uFormat("Error: %d", (int)triclops_status).c_str());
+			cv::cvtColor(cv::Mat(color_image.nrows, color_image.ncols, CV_8UC4, color_image.data), left, CV_RGBA2RGB);
+			triclops_status = triclopsGetColorImage(triclopsCtx_, TriImg_RECTIFIED_COLOR, TriCam_RIGHT, &color_image);
+			UASSERT_MSG(triclops_status == Fc2Triclops::ERRORTYPE_OK, uFormat("Error: %d", (int)triclops_status).c_str());
+			cv::cvtColor(cv::Mat(color_image.nrows, color_image.ncols, CV_8UC4, color_image.data), right, CV_RGBA2GRAY);
 
-				if(ok)
-				{
-					FlyCapture2::Image imageColorRight;
-					FlyCapture2::Image imageColorLeft;
-					if ( srcImgRightRef.Convert(FlyCapture2::PIXEL_FORMAT_MONO8, &imageColorRight) != FlyCapture2::PGRERROR_OK ||
-						 srcImgLeftRef.Convert(FlyCapture2::PIXEL_FORMAT_BGRU, &imageColorLeft) != FlyCapture2::PGRERROR_OK)
-					{
-						ok = false;
-					}
+			// Set calibration stuff
+			float fx, cy, cx, baseline;
+			triclopsGetFocalLength(triclopsCtx_, &fx);
+			triclopsGetImageCenter(triclopsCtx_, &cy, &cx);
+			triclopsGetBaseline(triclopsCtx_, &baseline);
+			cx *= left.cols;
+			cy *= left.rows;
 
-					if(ok)
-					{
-						//RECTIFY RIGHT
-						TriclopsInput triclopsColorInputs;
-						triclopsBuildRGBTriclopsInput(
-							grabbedImage.GetCols(),
-							grabbedImage.GetRows(),
-							imageColorRight.GetStride(),
-							(unsigned long)grabbedImage.GetTimeStamp().seconds,
-							(unsigned long)grabbedImage.GetTimeStamp().microSeconds,
-							imageColorRight.GetData(),
-							imageColorRight.GetData(),
-							imageColorRight.GetData(),
-							&triclopsColorInputs);
+			StereoCameraModel model(
+				fx,
+				fx,
+				cx,
+				cy,
+				baseline,
+				this->getLocalTransform(),
+				left.size());
+			data = SensorData(left, right, model, this->getNextSeqID(), UTimer::now());
 
-						triclopsRectify(triclopsCtx_, const_cast<TriclopsInput *>(&triclopsColorInputs) );
-						// Retrieve the rectified image from the triclops context
-						TriclopsImage rectifiedImage;
-						triclopsGetImage( triclopsCtx_,
-							TriImg_RECTIFIED,
-							TriCam_REFERENCE,
-							&rectifiedImage );
+			// Compute disparity
+			/*triclops_status = triclopsStereo(triclopsCtx_);
+			UASSERT_MSG(triclops_status == Fc2Triclops::ERRORTYPE_OK, uFormat("Error: %d", (int)triclops_status).c_str());
 
-						cv::Mat left,right;
-						right = cv::Mat(rectifiedImage.nrows, rectifiedImage.ncols, CV_8UC1, rectifiedImage.data).clone();
+			TriclopsImage16 disparity_image;
+			triclops_status = triclopsGetImage16(triclopsCtx_, TriImg16_DISPARITY, TriCam_REFERENCE, &disparity_image);
+			UASSERT_MSG(triclops_status == Fc2Triclops::ERRORTYPE_OK, uFormat("Error: %d", (int)triclops_status).c_str());
+			cv::Mat depth(disparity_image.nrows, disparity_image.ncols, CV_32FC1);
+			int pixelinc = disparity_image.rowinc / 2;
+			float x, y;
+			for (int i = 0, k = 0; i < disparity_image.nrows; i++) {
+				unsigned short *row = disparity_image.data + i * pixelinc;
+				float *rowOut = (float *)depth.row(i).data;
+				for (int j = 0; j < disparity_image.ncols; j++, k++) {
+					unsigned short disparity = row[j];
 
-						//RECTIFY LEFT COLOR
-						triclopsBuildPackedTriclopsInput(
-							grabbedImage.GetCols(),
-							grabbedImage.GetRows(),
-							imageColorLeft.GetStride(),
-							(unsigned long)grabbedImage.GetTimeStamp().seconds,
-							(unsigned long)grabbedImage.GetTimeStamp().microSeconds,
-							imageColorLeft.GetData(),
-							&triclopsColorInputs );
-
-						cv::Mat pixelsLeftBuffer( grabbedImage.GetRows(), grabbedImage.GetCols(), CV_8UC4);
-						TriclopsPackedColorImage colorImage;
-						triclopsSetPackedColorImageBuffer(
-							triclopsCtx_,
-							TriCam_LEFT,
-							(TriclopsPackedColorPixel*)pixelsLeftBuffer.data );
-
-						triclopsRectifyPackedColorImage(
-							triclopsCtx_,
-							TriCam_LEFT,
-							&triclopsColorInputs,
-							&colorImage );
-
-						cv::cvtColor(pixelsLeftBuffer, left, CV_RGBA2RGB);
-
-						// Set calibration stuff
-						float fx, cy, cx, baseline;
-						triclopsGetFocalLength(triclopsCtx_, &fx);
-						triclopsGetImageCenter(triclopsCtx_, &cy, &cx);
-						triclopsGetBaseline(triclopsCtx_, &baseline);
-
-						StereoCameraModel model(
-								fx,
-								fx,
-								cx,
-								cy,
-								baseline,
-								this->getLocalTransform(),
-								left.size());
-						data = SensorData(left, right, model, this->getNextSeqID(), UTimer::now());
+					// do not save invalid points
+					if (disparity < 0xFFF0) {
+						// convert the 16 bit disparity value to floating point x,y,z
+						triclopsRCD16ToXYZ(triclopsCtx_, i, j, disparity, &x, &y, &rowOut[j]);
 					}
 				}
 			}
+			CameraModel model(fx, fx, cx, cy, this->getLocalTransform(), 0, left.size());
+			data = SensorData(left, depth, model, this->getNextSeqID(), UTimer::now());
+			*/
 		}
 	}
 
