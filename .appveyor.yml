@@ -111,12 +111,16 @@ install:
   - ECHO "Installed cvsba:"
   - ps: "ls \"C:/Program Files/cvsba\""
   - set PATH=%PATH%;C:\Program Files\cvsba\bin
+  - ps: wget 'https://dl.dropboxusercontent.com/s/22qfvftwj6zq8tj/yaml-cpp_x64_vc14.exe?dl=0' -outfile yaml-cpp.exe
+  - cmd: cvsba.exe -o"C:\Program Files" -y
+  - ECHO "Installed yaml-cpp:"
+  - ps: "ls \"C:/Program Files/yaml-cpp\""
   
 before_build:
   - cd c:\projects\rtabmap\build
   - ECHO %PROGRAMFILES%
   - ECHO %PATH%
-  - cmake -G "Visual Studio 14 2015 Win64" -DOpenCV_DIR="C:\Program Files\opencv\build" -DPCL_DIR="C:\Program Files\PCL\cmake" -DCPUTSDF_DIR="C:\Program Files\cpu_tsdf\share\cpu_tsdf" -Dcvsba_DIR="C:\Program Files\cvsba\lib\cmake" -DBUILD_AS_BUNDLE=ON ..
+  - cmake -G "Visual Studio 14 2015 Win64" -DOpenCV_DIR="C:\Program Files\opencv\build" -DPCL_DIR="C:\Program Files\PCL\cmake" -DCPUTSDF_DIR="C:\Program Files\cpu_tsdf\share\cpu_tsdf" -Dcvsba_DIR="C:\Program Files\cvsba\lib\cmake" -Dyaml-cpp_DIR="C:\Program Files\yaml-cpp\CMake" -DBUILD_AS_BUNDLE=ON ..
   
 after_build :
   - cmake --build . --config Release --target package
