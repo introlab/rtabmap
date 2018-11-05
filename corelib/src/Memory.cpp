@@ -238,35 +238,37 @@ void Memory::loadDataFromDb(bool postInitClosingEvents)
 				//       global loop closures.
 				_signatures.insert(std::pair<int, Signature *>((*iter)->id(), *iter));
 				_workingMem.insert(std::make_pair((*iter)->id(), UTimer::now()));
-
-				//update odomMaxInf vector
-				std::multimap<int, Link> links = this->getAllLinks(true, true);
-				for(std::multimap<int, Link>::iterator iter=links.begin(); iter!=links.end(); ++iter)
-				{
-					if(iter->second.type() == Link::kNeighbor &&
-					   iter->second.infMatrix().cols == 6 &&
-					   iter->second.infMatrix().rows == 6)
-					{
-						if(_odomMaxInf.empty())
-						{
-							_odomMaxInf.resize(6, 0.0);
-						}
-						for(int i=0; i<6; ++i)
-						{
-							const double & v = iter->second.infMatrix().at<double>(i,i);
-							if(_odomMaxInf[i] < v)
-							{
-								_odomMaxInf[i] = v;
-							}
-						}
-					}
-				}
 			}
 			else
 			{
 				delete *iter;
 			}
 		}
+
+		UDEBUG("update odomMaxInf vector");
+		std::multimap<int, Link> links = this->getAllLinks(true, true);
+		for(std::multimap<int, Link>::iterator iter=links.begin(); iter!=links.end(); ++iter)
+		{
+			if(iter->second.type() == Link::kNeighbor &&
+			   iter->second.infMatrix().cols == 6 &&
+			   iter->second.infMatrix().rows == 6)
+			{
+				if(_odomMaxInf.empty())
+				{
+					_odomMaxInf.resize(6, 0.0);
+				}
+				for(int i=0; i<6; ++i)
+				{
+					const double & v = iter->second.infMatrix().at<double>(i,i);
+					if(_odomMaxInf[i] < v)
+					{
+						_odomMaxInf[i] = v;
+					}
+				}
+			}
+		}
+		UDEBUG("update odomMaxInf vector, done!");
+
 		if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(std::string("Loading nodes to WM, done! (") + uNumber2Str(int(_workingMem.size() + _stMem.size())) + " loaded)"));
 
 		// Assign the last signature
