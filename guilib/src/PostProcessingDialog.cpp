@@ -105,10 +105,6 @@ void PostProcessingDialog::closeDialog ( QAbstractButton * button )
 		{
 			this->accept();
 		}
-		else
-		{
-			this->reject();
-		}
 		break;
 
 	default:
@@ -118,7 +114,7 @@ void PostProcessingDialog::closeDialog ( QAbstractButton * button )
 
 bool PostProcessingDialog::validateForm()
 {
-	if(!this->intraSession() && !this->interSession())
+	if(_ui->detectMoreLoopClosures->isChecked() && !this->intraSession() && !this->interSession())
 	{
 		QMessageBox::warning(this, tr("Configuration error"), tr("Intra-session and inter-session parameters cannot be both disabled at the same time. Please select one (or both)."));
 		return false;
