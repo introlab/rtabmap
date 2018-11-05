@@ -870,6 +870,28 @@ void Rtabmap::resetMemory()
 	this->setupLogFiles(true);
 }
 
+class NearestPathKey
+{
+public:
+	NearestPathKey(float l, int i) :
+		likelihood(l),
+		id(i){}
+	bool operator<(const NearestPathKey & k) const
+	{
+		if(likelihood < k.likelihood)
+		{
+			return true;
+		}
+		else if(likelihood == k.likelihood && id < k.id)
+		{
+			return true;
+		}
+		return false;
+	}
+	float likelihood;
+	int id;
+};
+
 //============================================================
 // MAIN LOOP
 //============================================================
@@ -2101,10 +2123,26 @@ bool Rtabmap::process(
 				UDEBUG("nearestPoses=%d", (int)nearestPoses.size());
 
 				// segment poses by paths, only one detection per path
-				std::map<int, std::map<int, Transform> > nearestPaths = getPaths(nearestPoses, _optimizedPoses.at(signature->id()), _proximityMaxGraphDepth);
+				std::map<int, std::map<int, Transform> > nearestPathsNotSorted = getPaths(nearestPoses, _optimizedPoses.at(signature->id()), _proximityMaxGraphDepth);
+				// sort nearest paths by highest likelihood (if two have same likelihood, sort by id)
+				std::map<NearestPathKey, std::map<int, Transform> > nearestPaths;
+				for(std::map<int, std::map<int, Transform> >::const_iterator iter=nearestPathsNotSorted.begin();iter!=nearestPathsNotSorted.end(); ++iter)
+				{
+					const std::map<int, Transform> & path = iter->second;
+					float highestLikelihood = 0.0f;
+					for(std::map<int, Transform>::const_iterator jter=path.begin(); jter!=path.end(); ++jter)
+					{
+						float v = uValue(likelihood, jter->first, 0.0f);
+						if(v > highestLikelihood)
+						{
+							highestLikelihood = v;
+						}
+					}
+					nearestPaths.insert(std::make_pair(NearestPathKey(highestLikelihood, iter->first), path));
+				}
 				UDEBUG("nearestPaths=%d proximityMaxPaths=%d", (int)nearestPaths.size(), _proximityMaxPaths);
 
-				for(std::map<int, std::map<int, Transform> >::const_reverse_iterator iter=nearestPaths.rbegin();
+				for(std::map<NearestPathKey, std::map<int, Transform> >::const_reverse_iterator iter=nearestPaths.rbegin();
 					iter!=nearestPaths.rend() &&
 					(_memory->isIncremental() || lastProximitySpaceClosureId == 0) &&
 					(_proximityMaxPaths <= 0 || localVisualPathsChecked < _proximityMaxPaths);
@@ -2184,7 +2222,7 @@ bool Rtabmap::process(
 					// local visual closure above.
 
 					proximitySpacePaths = (int)nearestPaths.size();
-					for(std::map<int, std::map<int, Transform> >::const_reverse_iterator iter=nearestPaths.rbegin();
+					for(std::map<NearestPathKey, std::map<int, Transform> >::const_reverse_iterator iter=nearestPaths.rbegin();
 							iter!=nearestPaths.rend() &&
 							(_memory->isIncremental() || lastProximitySpaceClosureId == 0) &&
 							(_proximityMaxPaths <= 0 || localScanPathsChecked < _proximityMaxPaths);
