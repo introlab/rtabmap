@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>552</width>
-    <height>562</height>
+    <height>633</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -107,6 +107,40 @@
           </property>
           <property name="value">
            <number>1</number>
+          </property>
+         </widget>
+        </item>
+        <item row="3" column="1">
+         <widget class="QLabel" name="label_7">
+          <property name="text">
+           <string>Intra-session</string>
+          </property>
+          <property name="wordWrap">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        <item row="4" column="1">
+         <widget class="QLabel" name="label_9">
+          <property name="text">
+           <string>Inter-session</string>
+          </property>
+          <property name="wordWrap">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        <item row="3" column="0">
+         <widget class="QCheckBox" name="intraSession">
+          <property name="text">
+           <string/>
+          </property>
+         </widget>
+        </item>
+        <item row="4" column="0">
+         <widget class="QCheckBox" name="interSession">
+          <property name="text">
+           <string/>
           </property>
          </widget>
         </item>

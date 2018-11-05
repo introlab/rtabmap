@@ -2154,7 +2154,18 @@ bool Rtabmap::process(
 					//find the nearest pose on the path looking in the same direction
 					path.insert(std::make_pair(signature->id(), _optimizedPoses.at(signature->id())));
 					path = graph::getPosesInRadius(signature->id(), path, _localRadius, _proximityAngle);
-					int nearestId = rtabmap::graph::findNearestNode(path, _optimizedPoses.at(signature->id()));
+					//take the one with highest likelihood if not null
+					int nearestId = 0;
+					if(iter->first.likelihood > 0.0f &&
+					   path.find(iter->first.id)!=path.end())
+					{
+						nearestId = iter->first.id;
+					}
+					else
+					{
+						nearestId = rtabmap::graph::findNearestNode(path, _optimizedPoses.at(signature->id()));
+					}
+
 					if(nearestId > 0)
 					{
 						// nearest pose must not be linked to current location and enough close
@@ -3966,7 +3977,13 @@ void Rtabmap::getGraph(
 	}
 }
 
-int Rtabmap::detectMoreLoopClosures(float clusterRadius, float clusterAngle, int iterations, const ProgressState * processState)
+int Rtabmap::detectMoreLoopClosures(
+		float clusterRadius,
+		float clusterAngle,
+		int iterations,
+		bool intraSession,
+		bool interSession,
+		const ProgressState * processState)
 {
 	UASSERT(iterations>0);
 
@@ -3980,6 +3997,11 @@ int Rtabmap::detectMoreLoopClosures(float clusterRadius, float clusterAngle, int
 		UERROR("Detecting more loop closures can be done only in RGBD-SLAM mode.");
 		return -1;
 	}
+	if(!intraSession && !interSession)
+	{
+		UERROR("Intra and/or inter session argument should be true.");
+		return -1;
+	}
 
 	std::list<Link> loopClosuresAdded;
 	std::multimap<int, int> checkedLoopClosures;
@@ -3989,7 +4011,8 @@ int Rtabmap::detectMoreLoopClosures(float clusterRadius, float clusterAngle, int
 	std::map<int, Signature> signatures;
 	this->getGraph(poses, links, true, true, &signatures);
 
-	//remove all invalid or intermediate nodes
+	std::map<int, int> mapIds;
+	//remove all invalid or intermediate nodes, fill mapIds
 	for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end();)
 	{
 		if(signatures.at(iter->first).getWeight() < 0)
@@ -3998,6 +4021,7 @@ int Rtabmap::detectMoreLoopClosures(float clusterRadius, float clusterAngle, int
 		}
 		else
 		{
+			mapIds.insert(std::make_pair(iter->first, signatures.at(iter->first).mapId()));
 			++iter;
 		}
 	}
@@ -4032,132 +4056,140 @@ int Rtabmap::detectMoreLoopClosures(float clusterRadius, float clusterAngle, int
 				to = iter->first;
 			}
 
-			if(rtabmap::graph::findLink(checkedLoopClosures, from, to) == checkedLoopClosures.end())
+			int mapIdFrom = uValue(mapIds, from, 0);
+			int mapIdTo = uValue(mapIds, to, 0);
+
+			if((interSession && mapIdFrom != mapIdTo) ||
+			   (intraSession && mapIdFrom == mapIdTo))
 			{
-				// only add new links and one per cluster per iteration
-				if(addedLinks.find(from) == addedLinks.end() &&
-				   addedLinks.find(to) == addedLinks.end() &&
-				   rtabmap::graph::findLink(links, from, to) == links.end())
+
+				if(rtabmap::graph::findLink(checkedLoopClosures, from, to) == checkedLoopClosures.end())
 				{
-					checkedLoopClosures.insert(std::make_pair(from, to));
-
-					UASSERT(signatures.find(from) != signatures.end());
-					UASSERT(signatures.find(to) != signatures.end());
-
-					RegistrationInfo info;
-					// use signatures instead of IDs because some signatures may not be in WM
-					Transform t = _memory->computeTransform(signatures.at(from), signatures.at(to), Transform(), &info);
-
-					if(!t.isNull())
+					// only add new links and one per cluster per iteration
+					if(addedLinks.find(from) == addedLinks.end() &&
+					   addedLinks.find(to) == addedLinks.end() &&
+					   rtabmap::graph::findLink(links, from, to) == links.end())
 					{
-						bool updateConstraints = true;
-						if(_optimizationMaxError > 0.0f)
-						{
-							//optimize the graph to see if the new constraint is globally valid
+						checkedLoopClosures.insert(std::make_pair(from, to));
 
-							int fromId = from;
-							int mapId = signatures.at(from).mapId();
-							// use first node of the map containing from
-							for(std::map<int, Signature>::iterator iter=signatures.begin(); iter!=signatures.end(); ++iter)
+						UASSERT(signatures.find(from) != signatures.end());
+						UASSERT(signatures.find(to) != signatures.end());
+
+						RegistrationInfo info;
+						// use signatures instead of IDs because some signatures may not be in WM
+						Transform t = _memory->computeTransform(signatures.at(from), signatures.at(to), Transform(), &info);
+
+						if(!t.isNull())
+						{
+							bool updateConstraints = true;
+							if(_optimizationMaxError > 0.0f)
 							{
-								if(iter->second.mapId() == mapId)
+								//optimize the graph to see if the new constraint is globally valid
+
+								int fromId = from;
+								int mapId = signatures.at(from).mapId();
+								// use first node of the map containing from
+								for(std::map<int, Signature>::iterator iter=signatures.begin(); iter!=signatures.end(); ++iter)
 								{
-									fromId = iter->first;
-									break;
-								}
-							}
-							std::multimap<int, Link> linksIn = links;
-							linksIn.insert(std::make_pair(from, Link(from, to, Link::kUserClosure, t, getInformation(info.covariance))));
-							const Link * maxLinearLink = 0;
-							const Link * maxAngularLink = 0;
-							float maxLinearError = 0.0f;
-							float maxAngularError = 0.0f;
-							float maxLinearErrorRatio = 0.0f;
-							float maxAngularErrorRatio = 0.0f;
-							std::map<int, Transform> optimizedPoses;
-							std::multimap<int, Link> links;
-							UASSERT(poses.find(fromId) != poses.end());
-							UASSERT_MSG(poses.find(from) != poses.end(), uFormat("id=%d poses=%d links=%d", from, (int)poses.size(), (int)links.size()).c_str());
-							UASSERT_MSG(poses.find(to) != poses.end(), uFormat("id=%d poses=%d links=%d", to, (int)poses.size(), (int)links.size()).c_str());
-							_graphOptimizer->getConnectedGraph(fromId, poses, linksIn, optimizedPoses, links);
-							UASSERT(optimizedPoses.find(fromId) != optimizedPoses.end());
-							UASSERT_MSG(optimizedPoses.find(from) != optimizedPoses.end(), uFormat("id=%d poses=%d links=%d", from, (int)optimizedPoses.size(), (int)links.size()).c_str());
-							UASSERT_MSG(optimizedPoses.find(to) != optimizedPoses.end(), uFormat("id=%d poses=%d links=%d", to, (int)optimizedPoses.size(), (int)links.size()).c_str());
-							UASSERT(graph::findLink(links, from, to) != links.end());
-							optimizedPoses = _graphOptimizer->optimize(fromId, optimizedPoses, links);
-							std::string msg;
-							if(optimizedPoses.size())
-							{
-								graph::computeMaxGraphErrors(
-										optimizedPoses,
-										links,
-										maxLinearErrorRatio,
-										maxAngularErrorRatio,
-										maxLinearError,
-										maxAngularError,
-										&maxLinearLink,
-										&maxAngularLink);
-								if(maxLinearLink)
-								{
-									UINFO("Max optimization linear error = %f m (link %d->%d)", maxLinearError, maxLinearLink->from(), maxLinearLink->to());
-									if(maxLinearErrorRatio > _optimizationMaxError)
+									if(iter->second.mapId() == mapId)
 									{
-										msg = uFormat("Rejecting edge %d->%d because "
-												  "graph error is too large after optimization (%f m for edge %d->%d with ratio %f > std=%f m). "
-												  "\"%s\" is %f.",
-												  from,
-												  to,
-												  maxLinearError,
-												  maxLinearLink->from(),
-												  maxLinearLink->to(),
-												  maxLinearErrorRatio,
-												  sqrt(maxLinearLink->transVariance()),
-												  Parameters::kRGBDOptimizeMaxError().c_str(),
-												  _optimizationMaxError);
+										fromId = iter->first;
+										break;
 									}
 								}
-								else if(maxAngularLink)
+								std::multimap<int, Link> linksIn = links;
+								linksIn.insert(std::make_pair(from, Link(from, to, Link::kUserClosure, t, getInformation(info.covariance))));
+								const Link * maxLinearLink = 0;
+								const Link * maxAngularLink = 0;
+								float maxLinearError = 0.0f;
+								float maxAngularError = 0.0f;
+								float maxLinearErrorRatio = 0.0f;
+								float maxAngularErrorRatio = 0.0f;
+								std::map<int, Transform> optimizedPoses;
+								std::multimap<int, Link> links;
+								UASSERT(poses.find(fromId) != poses.end());
+								UASSERT_MSG(poses.find(from) != poses.end(), uFormat("id=%d poses=%d links=%d", from, (int)poses.size(), (int)links.size()).c_str());
+								UASSERT_MSG(poses.find(to) != poses.end(), uFormat("id=%d poses=%d links=%d", to, (int)poses.size(), (int)links.size()).c_str());
+								_graphOptimizer->getConnectedGraph(fromId, poses, linksIn, optimizedPoses, links);
+								UASSERT(optimizedPoses.find(fromId) != optimizedPoses.end());
+								UASSERT_MSG(optimizedPoses.find(from) != optimizedPoses.end(), uFormat("id=%d poses=%d links=%d", from, (int)optimizedPoses.size(), (int)links.size()).c_str());
+								UASSERT_MSG(optimizedPoses.find(to) != optimizedPoses.end(), uFormat("id=%d poses=%d links=%d", to, (int)optimizedPoses.size(), (int)links.size()).c_str());
+								UASSERT(graph::findLink(links, from, to) != links.end());
+								optimizedPoses = _graphOptimizer->optimize(fromId, optimizedPoses, links);
+								std::string msg;
+								if(optimizedPoses.size())
 								{
-									UINFO("Max optimization angular error = %f deg (link %d->%d)", maxAngularError*180.0f/M_PI, maxAngularLink->from(), maxAngularLink->to());
-									if(maxAngularErrorRatio > _optimizationMaxError)
+									graph::computeMaxGraphErrors(
+											optimizedPoses,
+											links,
+											maxLinearErrorRatio,
+											maxAngularErrorRatio,
+											maxLinearError,
+											maxAngularError,
+											&maxLinearLink,
+											&maxAngularLink);
+									if(maxLinearLink)
 									{
-										msg = uFormat("Rejecting edge %d->%d because "
-												  "graph error is too large after optimization (%f deg for edge %d->%d with ratio %f > std=%f deg). "
-												  "\"%s\" is %f m.",
-												  from,
-												  to,
-												  maxAngularError*180.0f/M_PI,
-												  maxAngularLink->from(),
-												  maxAngularLink->to(),
-												  maxAngularErrorRatio,
-												  sqrt(maxAngularLink->rotVariance()),
-												  Parameters::kRGBDOptimizeMaxError().c_str(),
-												  _optimizationMaxError);
+										UINFO("Max optimization linear error = %f m (link %d->%d)", maxLinearError, maxLinearLink->from(), maxLinearLink->to());
+										if(maxLinearErrorRatio > _optimizationMaxError)
+										{
+											msg = uFormat("Rejecting edge %d->%d because "
+													  "graph error is too large after optimization (%f m for edge %d->%d with ratio %f > std=%f m). "
+													  "\"%s\" is %f.",
+													  from,
+													  to,
+													  maxLinearError,
+													  maxLinearLink->from(),
+													  maxLinearLink->to(),
+													  maxLinearErrorRatio,
+													  sqrt(maxLinearLink->transVariance()),
+													  Parameters::kRGBDOptimizeMaxError().c_str(),
+													  _optimizationMaxError);
+										}
+									}
+									else if(maxAngularLink)
+									{
+										UINFO("Max optimization angular error = %f deg (link %d->%d)", maxAngularError*180.0f/M_PI, maxAngularLink->from(), maxAngularLink->to());
+										if(maxAngularErrorRatio > _optimizationMaxError)
+										{
+											msg = uFormat("Rejecting edge %d->%d because "
+													  "graph error is too large after optimization (%f deg for edge %d->%d with ratio %f > std=%f deg). "
+													  "\"%s\" is %f m.",
+													  from,
+													  to,
+													  maxAngularError*180.0f/M_PI,
+													  maxAngularLink->from(),
+													  maxAngularLink->to(),
+													  maxAngularErrorRatio,
+													  sqrt(maxAngularLink->rotVariance()),
+													  Parameters::kRGBDOptimizeMaxError().c_str(),
+													  _optimizationMaxError);
+										}
 									}
 								}
+								else
+								{
+									msg = uFormat("Rejecting edge %d->%d because graph optimization has failed!",
+											  from,
+											  to);
+								}
+								if(!msg.empty())
+								{
+									UWARN("%s", msg.c_str());
+									updateConstraints = false;
+								}
 							}
-							else
-							{
-								msg = uFormat("Rejecting edge %d->%d because graph optimization has failed!",
-										  from,
-										  to);
-							}
-							if(!msg.empty())
-							{
-								UWARN("%s", msg.c_str());
-								updateConstraints = false;
-							}
-						}
 
-						if(updateConstraints)
-						{
-							UINFO("Added new loop closure between %d and %d.", from, to);
-							addedLinks.insert(from);
-							addedLinks.insert(to);
-							cv::Mat inf = getInformation(info.covariance);
-							links.insert(std::make_pair(from, Link(from, to, Link::kUserClosure, t, inf)));
-							loopClosuresAdded.push_back(Link(from, to, Link::kUserClosure, t, inf));
-							UINFO("Detected loop closure %d->%d! (%d/%d)", from, to, i+1, (int)clusters.size());
+							if(updateConstraints)
+							{
+								UINFO("Added new loop closure between %d and %d.", from, to);
+								addedLinks.insert(from);
+								addedLinks.insert(to);
+								cv::Mat inf = getInformation(info.covariance);
+								links.insert(std::make_pair(from, Link(from, to, Link::kUserClosure, t, inf)));
+								loopClosuresAdded.push_back(Link(from, to, Link::kUserClosure, t, inf));
+								UINFO("Detected loop closure %d->%d! (%d/%d)", from, to, i+1, (int)clusters.size());
+							}
 						}
 					}
 				}

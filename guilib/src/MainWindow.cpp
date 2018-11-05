@@ -5490,6 +5490,8 @@ void MainWindow::postProcessing()
 		}
 
 		UASSERT(detectLoopClosureIterations>0);
+		bool interSession = _postProcessingDialog->interSession();
+		bool intraSession = _postProcessingDialog->intraSession();
 		for(int n=0; n<detectLoopClosureIterations && !_progressCanceled; ++n)
 		{
 			_progressDialog->appendText(tr("Looking for more loop closures, clustering poses... (iteration=%1/%2, radius=%3 m angle=%4 degrees)")
@@ -5516,207 +5518,215 @@ void MainWindow::postProcessing()
 					to = iter->first;
 				}
 
-				bool alreadyChecked = false;
-				for(std::multimap<int, int>::iterator jter = checkedLoopClosures.lower_bound(from);
-					!alreadyChecked && jter!=checkedLoopClosures.end() && jter->first == from;
-					++jter)
+				int mapIdFrom = uValue(_currentMapIds, from, 0);
+				int mapIdTo = uValue(_currentMapIds, to, 0);
+
+				if((interSession && mapIdFrom != mapIdTo) ||
+				   (intraSession && mapIdFrom == mapIdTo))
 				{
-					if(to == jter->second)
+					bool alreadyChecked = false;
+					for(std::multimap<int, int>::iterator jter = checkedLoopClosures.lower_bound(from);
+						!alreadyChecked && jter!=checkedLoopClosures.end() && jter->first == from;
+						++jter)
 					{
-						alreadyChecked = true;
+						if(to == jter->second)
+						{
+							alreadyChecked = true;
+						}
 					}
-				}
 
-				if(!alreadyChecked)
-				{
-					// only add new links and one per cluster per iteration
-					if(addedLinks.find(from) == addedLinks.end() &&
-					   rtabmap::graph::findLink(_currentLinksMap, from, to) == _currentLinksMap.end())
+					if(!alreadyChecked)
 					{
-						checkedLoopClosures.insert(std::make_pair(from, to));
+						// only add new links and one per cluster per iteration
+						if(addedLinks.find(from) == addedLinks.end() &&
+						   addedLinks.find(to) == addedLinks.end() &&
+						   rtabmap::graph::findLink(_currentLinksMap, from, to) == _currentLinksMap.end())
+						{
+							checkedLoopClosures.insert(std::make_pair(from, to));
 
-						if(!_cachedSignatures.contains(from))
-						{
-							UERROR("Didn't find signature %d", from);
-						}
-						else if(!_cachedSignatures.contains(to))
-						{
-							UERROR("Didn't find signature %d", to);
-						}
-						else
-						{
-							Signature signatureFrom = _cachedSignatures[from];
-							Signature signatureTo = _cachedSignatures[to];
-
-							if(signatureFrom.getWeight() >= 0 &&
-							   signatureTo.getWeight() >= 0) // ignore intermediate nodes
+							if(!_cachedSignatures.contains(from))
 							{
-								Transform transform;
-								RegistrationInfo info;
-								if(parameters.find(Parameters::kRegStrategy()) != parameters.end() &&
-									parameters.at(Parameters::kRegStrategy()).compare("1") == 0)
-								{
-									uInsert(parameters, ParametersPair(Parameters::kRegStrategy(), "2"));
-								}
-								Registration * registration = Registration::create(parameters);
+								UERROR("Didn't find signature %d", from);
+							}
+							else if(!_cachedSignatures.contains(to))
+							{
+								UERROR("Didn't find signature %d", to);
+							}
+							else
+							{
+								Signature signatureFrom = _cachedSignatures[from];
+								Signature signatureTo = _cachedSignatures[to];
 
-								if(reextractFeatures)
+								if(signatureFrom.getWeight() >= 0 &&
+								   signatureTo.getWeight() >= 0) // ignore intermediate nodes
 								{
-									signatureFrom.sensorData().uncompressData();
-									signatureTo.sensorData().uncompressData();
+									Transform transform;
+									RegistrationInfo info;
+									if(parameters.find(Parameters::kRegStrategy()) != parameters.end() &&
+										parameters.at(Parameters::kRegStrategy()).compare("1") == 0)
+									{
+										uInsert(parameters, ParametersPair(Parameters::kRegStrategy(), "2"));
+									}
+									Registration * registration = Registration::create(parameters);
 
-									if(signatureFrom.sensorData().imageRaw().empty() &&
-									   signatureTo.sensorData().imageRaw().empty())
+									if(reextractFeatures)
 									{
-										UWARN("\"%s\" is false and signatures (%d and %d) don't have raw "
-												"images. Update the cache.",
-											Parameters::kRGBDLoopClosureReextractFeatures().c_str());
-									}
-									else
-									{
-										signatureFrom.setWords(std::multimap<int, cv::KeyPoint>());
-										signatureFrom.setWords3(std::multimap<int, cv::Point3f>());
-										signatureFrom.setWordsDescriptors(std::multimap<int, cv::Mat>());
-										signatureFrom.sensorData().setFeatures(std::vector<cv::KeyPoint>(), std::vector<cv::Point3f>(), cv::Mat());
-										signatureTo.setWords(std::multimap<int, cv::KeyPoint>());
-										signatureTo.setWords3(std::multimap<int, cv::Point3f>());
-										signatureTo.setWordsDescriptors(std::multimap<int, cv::Mat>());
-										signatureTo.sensorData().setFeatures(std::vector<cv::KeyPoint>(), std::vector<cv::Point3f>(), cv::Mat());
-									}
-								}
-								else if(!reextractFeatures && signatureFrom.getWords().empty() && signatureTo.getWords().empty())
-								{
-									UWARN("\"%s\" is false and signatures (%d and %d) don't have words, "
-											"registration will not be possible. Set \"%s\" to true.",
-											Parameters::kRGBDLoopClosureReextractFeatures().c_str(),
-											signatureFrom.id(),
-											signatureTo.id(),
-											Parameters::kRGBDLoopClosureReextractFeatures().c_str());
-								}
-								transform = registration->computeTransformation(signatureFrom, signatureTo, Transform(), &info);
-								delete registration;
-								if(!transform.isNull())
-								{
-									//optimize the graph to see if the new constraint is globally valid
-									bool updateConstraint = true;
-									cv::Mat information = info.covariance.inv();
-									if(odomMaxInf.size() == 6 && information.cols==6 && information.rows==6)
-									{
-										for(int i=0; i<6; ++i)
+										signatureFrom.sensorData().uncompressData();
+										signatureTo.sensorData().uncompressData();
+
+										if(signatureFrom.sensorData().imageRaw().empty() &&
+										   signatureTo.sensorData().imageRaw().empty())
 										{
-											if(information.at<double>(i,i) > odomMaxInf[i])
-											{
-												information.at<double>(i,i) = odomMaxInf[i];
-											}
-										}
-									}
-									if(optimizeMaxError > 0.0f && optimizeIterations > 0)
-									{
-										int fromId = from;
-										int mapId = _currentMapIds.at(from);
-										// use first node of the map containing from
-										for(std::map<int, int>::iterator iter=_currentMapIds.begin(); iter!=_currentMapIds.end(); ++iter)
-										{
-											if(iter->second == mapId && odomPoses.find(iter->first)!=odomPoses.end())
-											{
-												fromId = iter->first;
-												break;
-											}
-										}
-										std::multimap<int, Link> linksIn = _currentLinksMap;
-										linksIn.insert(std::make_pair(from, Link(from, to, Link::kUserClosure, transform, information)));
-										const Link * maxLinearLink = 0;
-										const Link * maxAngularLink = 0;
-										float maxLinearError = 0.0f;
-										float maxAngularError = 0.0f;
-										std::map<int, Transform> poses;
-										std::multimap<int, Link> links;
-										UASSERT(odomPoses.find(fromId) != odomPoses.end());
-										UASSERT_MSG(odomPoses.find(from) != odomPoses.end(), uFormat("id=%d poses=%d links=%d", from, (int)poses.size(), (int)links.size()).c_str());
-										UASSERT_MSG(odomPoses.find(to) != odomPoses.end(), uFormat("id=%d poses=%d links=%d", to, (int)poses.size(), (int)links.size()).c_str());
-										optimizer->getConnectedGraph(fromId, odomPoses, linksIn, poses, links);
-										UASSERT(poses.find(fromId) != poses.end());
-										UASSERT_MSG(poses.find(from) != poses.end(), uFormat("id=%d poses=%d links=%d", from, (int)poses.size(), (int)links.size()).c_str());
-										UASSERT_MSG(poses.find(to) != poses.end(), uFormat("id=%d poses=%d links=%d", to, (int)poses.size(), (int)links.size()).c_str());
-										UASSERT(graph::findLink(links, from, to) != links.end());
-										poses = optimizer->optimize(fromId, poses, links);
-										std::string msg;
-										if(poses.size())
-										{
-											float maxLinearErrorRatio = 0.0f;
-											float maxAngularErrorRatio = 0.0f;
-											graph::computeMaxGraphErrors(
-													poses,
-													links,
-													maxLinearErrorRatio,
-													maxAngularErrorRatio,
-													maxLinearError,
-													maxAngularError,
-													&maxLinearLink,
-													&maxAngularLink);
-											if(maxLinearLink)
-											{
-												UINFO("Max optimization linear error = %f m (link %d->%d)", maxLinearError, maxLinearLink->from(), maxLinearLink->to());
-												if(maxLinearErrorRatio > optimizeMaxError)
-												{
-													msg = uFormat("Rejecting edge %d->%d because "
-															  "graph error is too large after optimization (%f m for edge %d->%d with ratio %f > std=%f m). "
-															  "\"%s\" is %f.",
-															  from,
-															  to,
-															  maxLinearError,
-															  maxLinearLink->from(),
-															  maxLinearLink->to(),
-															  maxLinearErrorRatio,
-															  sqrt(maxLinearLink->transVariance()),
-															  Parameters::kRGBDOptimizeMaxError().c_str(),
-															  optimizeMaxError);
-												}
-											}
-											else if(maxAngularLink)
-											{
-												UINFO("Max optimization angular error = %f deg (link %d->%d)", maxAngularError*180.0f/M_PI, maxAngularLink->from(), maxAngularLink->to());
-												if(maxAngularErrorRatio > optimizeMaxError)
-												{
-													msg = uFormat("Rejecting edge %d->%d because "
-															  "graph error is too large after optimization (%f deg for edge %d->%d with ratio %f > std=%f deg). "
-															  "\"%s\" is %f m.",
-															  from,
-															  to,
-															  maxAngularError*180.0f/M_PI,
-															  maxAngularLink->from(),
-															  maxAngularLink->to(),
-															  maxAngularErrorRatio,
-															  sqrt(maxAngularLink->rotVariance()),
-															  Parameters::kRGBDOptimizeMaxError().c_str(),
-															  optimizeMaxError);
-												}
-											}
+											UWARN("\"%s\" is false and signatures (%d and %d) don't have raw "
+													"images. Update the cache.",
+												Parameters::kRGBDLoopClosureReextractFeatures().c_str());
 										}
 										else
 										{
-											msg = uFormat("Rejecting edge %d->%d because graph optimization has failed!",
-													  from,
-													  to);
-										}
-										if(!msg.empty())
-										{
-											UWARN("%s", msg.c_str());
-											_progressDialog->appendText(tr("%1").arg(msg.c_str()));
-											QApplication::processEvents();
-											updateConstraint = false;
+											signatureFrom.setWords(std::multimap<int, cv::KeyPoint>());
+											signatureFrom.setWords3(std::multimap<int, cv::Point3f>());
+											signatureFrom.setWordsDescriptors(std::multimap<int, cv::Mat>());
+											signatureFrom.sensorData().setFeatures(std::vector<cv::KeyPoint>(), std::vector<cv::Point3f>(), cv::Mat());
+											signatureTo.setWords(std::multimap<int, cv::KeyPoint>());
+											signatureTo.setWords3(std::multimap<int, cv::Point3f>());
+											signatureTo.setWordsDescriptors(std::multimap<int, cv::Mat>());
+											signatureTo.sensorData().setFeatures(std::vector<cv::KeyPoint>(), std::vector<cv::Point3f>(), cv::Mat());
 										}
 									}
-
-									if(updateConstraint)
+									else if(!reextractFeatures && signatureFrom.getWords().empty() && signatureTo.getWords().empty())
 									{
-										UINFO("Added new loop closure between %d and %d.", from, to);
-										addedLinks.insert(from);
-										addedLinks.insert(to);
+										UWARN("\"%s\" is false and signatures (%d and %d) don't have words, "
+												"registration will not be possible. Set \"%s\" to true.",
+												Parameters::kRGBDLoopClosureReextractFeatures().c_str(),
+												signatureFrom.id(),
+												signatureTo.id(),
+												Parameters::kRGBDLoopClosureReextractFeatures().c_str());
+									}
+									transform = registration->computeTransformation(signatureFrom, signatureTo, Transform(), &info);
+									delete registration;
+									if(!transform.isNull())
+									{
+										//optimize the graph to see if the new constraint is globally valid
+										bool updateConstraint = true;
+										cv::Mat information = info.covariance.inv();
+										if(odomMaxInf.size() == 6 && information.cols==6 && information.rows==6)
+										{
+											for(int i=0; i<6; ++i)
+											{
+												if(information.at<double>(i,i) > odomMaxInf[i])
+												{
+													information.at<double>(i,i) = odomMaxInf[i];
+												}
+											}
+										}
+										if(optimizeMaxError > 0.0f && optimizeIterations > 0)
+										{
+											int fromId = from;
+											int mapId = _currentMapIds.at(from);
+											// use first node of the map containing from
+											for(std::map<int, int>::iterator iter=_currentMapIds.begin(); iter!=_currentMapIds.end(); ++iter)
+											{
+												if(iter->second == mapId && odomPoses.find(iter->first)!=odomPoses.end())
+												{
+													fromId = iter->first;
+													break;
+												}
+											}
+											std::multimap<int, Link> linksIn = _currentLinksMap;
+											linksIn.insert(std::make_pair(from, Link(from, to, Link::kUserClosure, transform, information)));
+											const Link * maxLinearLink = 0;
+											const Link * maxAngularLink = 0;
+											float maxLinearError = 0.0f;
+											float maxAngularError = 0.0f;
+											std::map<int, Transform> poses;
+											std::multimap<int, Link> links;
+											UASSERT(odomPoses.find(fromId) != odomPoses.end());
+											UASSERT_MSG(odomPoses.find(from) != odomPoses.end(), uFormat("id=%d poses=%d links=%d", from, (int)poses.size(), (int)links.size()).c_str());
+											UASSERT_MSG(odomPoses.find(to) != odomPoses.end(), uFormat("id=%d poses=%d links=%d", to, (int)poses.size(), (int)links.size()).c_str());
+											optimizer->getConnectedGraph(fromId, odomPoses, linksIn, poses, links);
+											UASSERT(poses.find(fromId) != poses.end());
+											UASSERT_MSG(poses.find(from) != poses.end(), uFormat("id=%d poses=%d links=%d", from, (int)poses.size(), (int)links.size()).c_str());
+											UASSERT_MSG(poses.find(to) != poses.end(), uFormat("id=%d poses=%d links=%d", to, (int)poses.size(), (int)links.size()).c_str());
+											UASSERT(graph::findLink(links, from, to) != links.end());
+											poses = optimizer->optimize(fromId, poses, links);
+											std::string msg;
+											if(poses.size())
+											{
+												float maxLinearErrorRatio = 0.0f;
+												float maxAngularErrorRatio = 0.0f;
+												graph::computeMaxGraphErrors(
+														poses,
+														links,
+														maxLinearErrorRatio,
+														maxAngularErrorRatio,
+														maxLinearError,
+														maxAngularError,
+														&maxLinearLink,
+														&maxAngularLink);
+												if(maxLinearLink)
+												{
+													UINFO("Max optimization linear error = %f m (link %d->%d)", maxLinearError, maxLinearLink->from(), maxLinearLink->to());
+													if(maxLinearErrorRatio > optimizeMaxError)
+													{
+														msg = uFormat("Rejecting edge %d->%d because "
+																  "graph error is too large after optimization (%f m for edge %d->%d with ratio %f > std=%f m). "
+																  "\"%s\" is %f.",
+																  from,
+																  to,
+																  maxLinearError,
+																  maxLinearLink->from(),
+																  maxLinearLink->to(),
+																  maxLinearErrorRatio,
+																  sqrt(maxLinearLink->transVariance()),
+																  Parameters::kRGBDOptimizeMaxError().c_str(),
+																  optimizeMaxError);
+													}
+												}
+												else if(maxAngularLink)
+												{
+													UINFO("Max optimization angular error = %f deg (link %d->%d)", maxAngularError*180.0f/M_PI, maxAngularLink->from(), maxAngularLink->to());
+													if(maxAngularErrorRatio > optimizeMaxError)
+													{
+														msg = uFormat("Rejecting edge %d->%d because "
+																  "graph error is too large after optimization (%f deg for edge %d->%d with ratio %f > std=%f deg). "
+																  "\"%s\" is %f m.",
+																  from,
+																  to,
+																  maxAngularError*180.0f/M_PI,
+																  maxAngularLink->from(),
+																  maxAngularLink->to(),
+																  maxAngularErrorRatio,
+																  sqrt(maxAngularLink->rotVariance()),
+																  Parameters::kRGBDOptimizeMaxError().c_str(),
+																  optimizeMaxError);
+													}
+												}
+											}
+											else
+											{
+												msg = uFormat("Rejecting edge %d->%d because graph optimization has failed!",
+														  from,
+														  to);
+											}
+											if(!msg.empty())
+											{
+												UWARN("%s", msg.c_str());
+												_progressDialog->appendText(tr("%1").arg(msg.c_str()));
+												QApplication::processEvents();
+												updateConstraint = false;
+											}
+										}
 
-										_currentLinksMap.insert(std::make_pair(from, Link(from, to, Link::kUserClosure, transform, information)));
-										++loopClosuresAdded;
-										_progressDialog->appendText(tr("Detected loop closure %1->%2! (%3/%4)").arg(from).arg(to).arg(i+1).arg(clusters.size()));
+										if(updateConstraint)
+										{
+											UINFO("Added new loop closure between %d and %d.", from, to);
+											addedLinks.insert(from);
+											addedLinks.insert(to);
+
+											_currentLinksMap.insert(std::make_pair(from, Link(from, to, Link::kUserClosure, transform, information)));
+											++loopClosuresAdded;
+											_progressDialog->appendText(tr("Detected loop closure %1->%2! (%3/%4)").arg(from).arg(to).arg(i+1).arg(clusters.size()));
+										}
 									}
 								}
 							}

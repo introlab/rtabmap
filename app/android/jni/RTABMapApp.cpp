@@ -3094,7 +3094,7 @@ int RTABMapApp::postProcessing(int approach)
 			{
 				progressionStatus_.reset(6);
 			}
-			returnedValue = rtabmap_->detectMoreLoopClosures(1.0f, M_PI/6.0f, approach == -1?5:1, approach==-1?&progressionStatus_:0);
+			returnedValue = rtabmap_->detectMoreLoopClosures(1.0f, M_PI/6.0f, approach == -1?5:1, true, true, approach==-1?&progressionStatus_:0);
 			if(approach == -1 && progressionStatus_.isCanceled())
 			{
 				postProcessing_ = false;

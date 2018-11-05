@@ -391,6 +391,8 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	connect(ui_->doubleSpinBox_detectMore_radius, SIGNAL(valueChanged(double)), this, SLOT(configModified()));
 	connect(ui_->doubleSpinBox_detectMore_angle, SIGNAL(valueChanged(double)), this, SLOT(configModified()));
 	connect(ui_->spinBox_detectMore_iterations, SIGNAL(valueChanged(int)), this, SLOT(configModified()));
+	connect(ui_->checkBox_detectMore_intraSession, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
+	connect(ui_->checkBox_detectMore_interSession, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
 
 	connect(ui_->lineEdit_obstacleColor, SIGNAL(textChanged(const QString &)), this, SLOT(configModified()));
 	connect(ui_->lineEdit_groundColor, SIGNAL(textChanged(const QString &)), this, SLOT(configModified()));
@@ -544,6 +546,8 @@ void DatabaseViewer::readSettings()
 	ui_->doubleSpinBox_detectMore_radius->setValue(settings.value("cluster_radius", ui_->doubleSpinBox_detectMore_radius->value()).toDouble());
 	ui_->doubleSpinBox_detectMore_angle->setValue(settings.value("cluster_angle", ui_->doubleSpinBox_detectMore_angle->value()).toDouble());
 	ui_->spinBox_detectMore_iterations->setValue(settings.value("iterations", ui_->spinBox_detectMore_iterations->value()).toInt());
+	ui_->checkBox_detectMore_intraSession->setChecked(settings.value("intra_session", ui_->checkBox_detectMore_intraSession->isChecked()).toBool());
+	ui_->checkBox_detectMore_interSession->setChecked(settings.value("inter_session", ui_->checkBox_detectMore_interSession->isChecked()).toBool());
 	settings.endGroup();
 	settings.endGroup();
 
@@ -626,6 +630,8 @@ void DatabaseViewer::writeSettings()
 	settings.setValue("cluster_radius",  ui_->doubleSpinBox_detectMore_radius->value());
 	settings.setValue("cluster_angle", ui_->doubleSpinBox_detectMore_angle->value());
 	settings.setValue("iterations", ui_->spinBox_detectMore_iterations->value());
+	settings.setValue("intra_session", ui_->checkBox_detectMore_intraSession->isChecked());
+	settings.setValue("inter_session", ui_->checkBox_detectMore_interSession->isChecked());
 	settings.endGroup();
 	settings.endGroup();
 
@@ -693,6 +699,8 @@ void DatabaseViewer::restoreDefaultSettings()
 	ui_->doubleSpinBox_detectMore_radius->setValue(1.0);
 	ui_->doubleSpinBox_detectMore_angle->setValue(30.0);
 	ui_->spinBox_detectMore_iterations->setValue(5);
+	ui_->checkBox_detectMore_intraSession->setChecked(true);
+	ui_->checkBox_detectMore_interSession->setChecked(true);
 }
 
 void DatabaseViewer::openDatabase()
@@ -3234,6 +3242,13 @@ void DatabaseViewer::detectMoreLoopClosures()
 	int added = 0;
 	std::multimap<int, int> checkedLoopClosures;
 	std::pair<int, int> lastAdded(0,0);
+	bool intraSession = ui_->checkBox_detectMore_intraSession->isChecked();
+	bool interSession = ui_->checkBox_detectMore_interSession->isChecked();
+	if(!interSession && !intraSession)
+	{
+		QMessageBox::warning(this, tr("Cannot detect more loop closures"), tr("Intra and inter session parameters are disabled! Enable one or both."));
+		return;
+	}
 	for(int n=0; n<iterations; ++n)
 	{
 		UINFO("iteration %d/%d", n+1, iterations);
@@ -3262,24 +3277,32 @@ void DatabaseViewer::detectMoreLoopClosures()
 				to = iter->first;
 			}
 
-			// only add new links and one per cluster per iteration
-			if(rtabmap::graph::findLink(checkedLoopClosures, from, to) == checkedLoopClosures.end())
-			{
-				if(!findActiveLink(from, to).isValid() && !containsLink(linksRemoved_, from, to) &&
-				   addedLinks.find(from) == addedLinks.end() && addedLinks.find(to) == addedLinks.end())
-				{
-					checkedLoopClosures.insert(std::make_pair(from, to));
-					if(addConstraint(from, to, true))
-					{
-						UINFO("Added new loop closure between %d and %d.", from, to);
-						++added;
-						addedLinks.insert(from);
-						addedLinks.insert(to);
-						lastAdded.first = from;
-						lastAdded.second = to;
+			int mapIdFrom = uValue(mapIds_, from, 0);
+			int mapIdTo = uValue(mapIds_, to, 0);
 
-						progressDialog->appendText(tr("Detected loop closure %1->%2! (%3/%4)").arg(from).arg(to).arg(i+1).arg(clusters.size()));
-						QApplication::processEvents();
+			if((interSession && mapIdFrom != mapIdTo) ||
+		       (intraSession && mapIdFrom == mapIdTo))
+			{
+				// only add new links and one per cluster per iteration
+				if(rtabmap::graph::findLink(checkedLoopClosures, from, to) == checkedLoopClosures.end())
+				{
+					if(!findActiveLink(from, to).isValid() && !containsLink(linksRemoved_, from, to) &&
+					   addedLinks.find(from) == addedLinks.end() &&
+					   addedLinks.find(to) == addedLinks.end())
+					{
+						checkedLoopClosures.insert(std::make_pair(from, to));
+						if(addConstraint(from, to, true))
+						{
+							UINFO("Added new loop closure between %d and %d.", from, to);
+							++added;
+							addedLinks.insert(from);
+							addedLinks.insert(to);
+							lastAdded.first = from;
+							lastAdded.second = to;
+
+							progressDialog->appendText(tr("Detected loop closure %1->%2! (%3/%4)").arg(from).arg(to).arg(i+1).arg(clusters.size()));
+							QApplication::processEvents();
+						}
 					}
 				}
 			}

@@ -29,6 +29,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "ui_postProcessingDialog.h"
 
 #include <QPushButton>
+#include <QMessageBox>
 #include <rtabmap/core/Optimizer.h>
 
 namespace rtabmap {
@@ -57,6 +58,8 @@ PostProcessingDialog::PostProcessingDialog(QWidget * parent) :
 
 	restoreDefaults();
 
+	connect(_ui->buttonBox, SIGNAL(clicked(QAbstractButton *)), this, SLOT(closeDialog(QAbstractButton *)));
+
 	connect(_ui->detectMoreLoopClosures, SIGNAL(clicked(bool)), this, SLOT(updateButtonBox()));
 	connect(_ui->refineNeighborLinks, SIGNAL(stateChanged(int)), this, SLOT(updateButtonBox()));
 	connect(_ui->refineLoopClosureLinks, SIGNAL(stateChanged(int)), this, SLOT(updateButtonBox()));
@@ -67,6 +70,8 @@ PostProcessingDialog::PostProcessingDialog(QWidget * parent) :
 	connect(_ui->clusterRadius, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
 	connect(_ui->clusterAngle, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
 	connect(_ui->iterations, SIGNAL(valueChanged(int)), this, SIGNAL(configChanged()));
+	connect(_ui->intraSession, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
+	connect(_ui->interSession, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
 	connect(_ui->refineNeighborLinks, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
 	connect(_ui->refineLoopClosureLinks, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
 
@@ -82,6 +87,43 @@ PostProcessingDialog::PostProcessingDialog(QWidget * parent) :
 PostProcessingDialog::~PostProcessingDialog()
 {
 	delete _ui;
+}
+
+void PostProcessingDialog::closeDialog ( QAbstractButton * button )
+{
+	UDEBUG("");
+
+	QDialogButtonBox::ButtonRole role = _ui->buttonBox->buttonRole(button);
+	switch(role)
+	{
+	case QDialogButtonBox::RejectRole:
+		this->reject();
+		break;
+
+	case QDialogButtonBox::AcceptRole:
+		if(validateForm())
+		{
+			this->accept();
+		}
+		else
+		{
+			this->reject();
+		}
+		break;
+
+	default:
+		break;
+	}
+}
+
+bool PostProcessingDialog::validateForm()
+{
+	if(!this->intraSession() && !this->interSession())
+	{
+		QMessageBox::warning(this, tr("Configuration error"), tr("Intra-session and inter-session parameters cannot be both disabled at the same time. Please select one (or both)."));
+		return false;
+	}
+	return true;
 }
 
 void PostProcessingDialog::updateVisibility()
@@ -100,6 +142,8 @@ void PostProcessingDialog::saveSettings(QSettings & settings, const QString & gr
 	settings.setValue("cluster_radius", this->clusterRadius());
 	settings.setValue("cluster_angle", this->clusterAngle());
 	settings.setValue("iterations", this->iterations());
+	settings.setValue("intra_session", this->intraSession());
+	settings.setValue("inter_session", this->interSession());
 	settings.setValue("refine_neigbors", this->isRefineNeighborLinks());
 	settings.setValue("refine_lc", this->isRefineLoopClosureLinks());
 	settings.setValue("sba", this->isSBA());
@@ -123,6 +167,8 @@ void PostProcessingDialog::loadSettings(QSettings & settings, const QString & gr
 	this->setClusterRadius(settings.value("cluster_radius", this->clusterRadius()).toDouble());
 	this->setClusterAngle(settings.value("cluster_angle", this->clusterAngle()).toDouble());
 	this->setIterations(settings.value("iterations", this->iterations()).toInt());
+	this->setIntraSession(settings.value("intra_session", this->intraSession()).toBool());
+	this->setInterSession(settings.value("inter_session", this->interSession()).toBool());
 	this->setRefineNeighborLinks(settings.value("refine_neigbors", this->isRefineNeighborLinks()).toBool());
 	this->setRefineLoopClosureLinks(settings.value("refine_lc", this->isRefineLoopClosureLinks()).toBool());
 	this->setSBA(settings.value("sba", this->isSBA()).toBool());
@@ -143,6 +189,8 @@ void PostProcessingDialog::restoreDefaults()
 	setClusterRadius(1);
 	setClusterAngle(30);
 	setIterations(5);
+	setIntraSession(true);
+	setInterSession(true);
 	setRefineNeighborLinks(false);
 	setRefineLoopClosureLinks(false);
 	setSBA(false);
@@ -176,6 +224,16 @@ double PostProcessingDialog::clusterAngle() const
 int PostProcessingDialog::iterations() const
 {
 	return _ui->iterations->value();
+}
+
+bool PostProcessingDialog::intraSession() const
+{
+	return _ui->intraSession->isChecked();
+}
+
+bool PostProcessingDialog::interSession() const
+{
+	return _ui->interSession->isChecked();
 }
 
 bool PostProcessingDialog::isRefineNeighborLinks() const
@@ -226,6 +284,14 @@ void PostProcessingDialog::setClusterAngle(double angle)
 void PostProcessingDialog::setIterations(int iterations)
 {
 	_ui->iterations->setValue(iterations);
+}
+void PostProcessingDialog::setIntraSession(bool enabled)
+{
+	_ui->intraSession->setChecked(enabled);
+}
+void PostProcessingDialog::setInterSession(bool enabled)
+{
+	_ui->interSession->setChecked(enabled);
 }
 void PostProcessingDialog::setRefineNeighborLinks(bool on)
 {

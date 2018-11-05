@@ -166,7 +166,13 @@ public:
 			bool optimized,
 			bool global,
 			std::map<int, Signature> * signatures = 0);
-	int detectMoreLoopClosures(float clusterRadius = 0.5f, float clusterAngle = M_PI/6.0f, int iterations = 1, const ProgressState * state = 0);
+	int detectMoreLoopClosures(
+			float clusterRadius = 0.5f,
+			float clusterAngle = M_PI/6.0f,
+			int iterations = 1,
+			bool intraSession = true,
+			bool interSession = true,
+			const ProgressState * state = 0);
 	int refineLinks();
 	cv::Mat getInformation(const cv::Mat & covariance) const;
 
