@@ -76,6 +76,7 @@ private:
 	std::vector<double> _predictionLC; // {Vp, Lc, l1, l2, l3, l4...}
 	bool _fullPredictionUpdate;
 	float _totalPredictionLCValues;
+	float _predictionEpsilon;
 	std::map<int, std::map<int, int> > _neighborsIndex;
 };
 

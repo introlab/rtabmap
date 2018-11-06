@@ -43,7 +43,8 @@ namespace rtabmap {
 BayesFilter::BayesFilter(const ParametersMap & parameters) :
 	_virtualPlacePrior(Parameters::defaultBayesVirtualPlacePriorThr()),
 	_fullPredictionUpdate(Parameters::defaultBayesFullPredictionUpdate()),
-	_totalPredictionLCValues(0.0f)
+	_totalPredictionLCValues(0.0f),
+	_predictionEpsilon(0.0f)
 {
 	this->setPredictionLC(Parameters::defaultBayesPredictionLC());
 	this->parseParameters(parameters);
@@ -103,6 +104,14 @@ void BayesFilter::setPredictionLC(const std::string & prediction)
 	for(unsigned int j=0; j<_predictionLC.size(); ++j)
 	{
 		_totalPredictionLCValues += _predictionLC[j];
+		if(j==0 || _predictionLC[j] < _predictionEpsilon)
+		{
+			_predictionEpsilon = _predictionLC[j];
+		}
+	}
+	if(!_predictionLC.empty())
+	{
+		UDEBUG("predictionEpsilon = %f", _predictionEpsilon);
 	}
 }
 
@@ -263,9 +272,16 @@ float addNeighborProb(cv::Mat & prediction,
 
 cv::Mat BayesFilter::generatePrediction(const Memory * memory, const std::vector<int> & ids)
 {
+	std::vector<int> oldIds = uKeys(_posterior);
+	if(oldIds.size() == ids.size() &&
+		memcmp(oldIds.data(), ids.data(), oldIds.size()*sizeof(int)) == 0)
+	{
+		return _prediction;
+	}
+
 	if(!_fullPredictionUpdate && !_prediction.empty())
 	{
-		return updatePrediction(_prediction, memory, uKeys(_posterior), ids);
+		return updatePrediction(_prediction, memory, oldIds, ids);
 	}
 	UDEBUG("");
 
@@ -441,6 +457,10 @@ void BayesFilter::normalize(cv::Mat & prediction, unsigned int index, float adde
 		for(int j=virtualPlaceUsed?1:0; j<cols; ++j)
 		{
 			((float*)prediction.data)[index + j*cols] *= maxNorm / addedProbabilitiesSum;
+			if(((float*)prediction.data)[index + j*cols] < _predictionEpsilon)
+			{
+				((float*)prediction.data)[index + j*cols] = 0.0f;
+			}
 		}
 		addedProbabilitiesSum = maxNorm;
 	}
@@ -518,8 +538,17 @@ cv::Mat BayesFilter::updatePrediction(const cv::Mat & oldPrediction,
 	}
 	UDEBUG("time getting removed ids = %fs", timer.restart());
 
+	bool oldAllCopied = false;
+	if(removedIds.empty() &&
+		newIds.size() > oldIds.size() &&
+		memcmp(oldIds.data(), newIds.data(), oldIds.size()*sizeof(int)) == 0)
+	{
+		oldPrediction.copyTo(cv::Mat(prediction, cv::Range(0, oldPrediction.rows), cv::Range(0, oldPrediction.cols)));
+		oldAllCopied = true;
+		UDEBUG("Copied all old prediction: = %fs", timer.ticks());
+	}
+
 	int added = 0;
-	float epsilon = 0.00001f;
 	// get ids to update
 	std::set<int> idsToUpdate;
 	for(unsigned int i=0; i<oldIds.size() || i<newIds.size(); ++i)
@@ -532,9 +561,7 @@ cv::Mat BayesFilter::updatePrediction(const cv::Mat & oldPrediction,
 				int count = 0;
 				for(unsigned int j=0; j<cols; ++j)
 				{
-					if(((const float *)oldPrediction.data)[i + j*cols] > epsilon &&
-					   j!=i &&
-					   removedIds.find(oldIds[j]) == removedIds.end())
+					if(j!=i && removedIds.find(oldIds[j]) == removedIds.end())
 					{
 						//UDEBUG("to update id=%d from id=%d removed (value=%f)", oldIds[j], oldIds[i], ((const float *)oldPrediction.data)[i + j*cols]);
 						idsToUpdate.insert(oldIds[j]);
@@ -565,6 +592,7 @@ cv::Mat BayesFilter::updatePrediction(const cv::Mat & oldPrediction,
 
 			float sum = addNeighborProb(prediction, i, neighbors, _predictionLC, newIdToIndexMap);
 			this->normalize(prediction, i, sum, newIds[0]<0);
+
 			++added;
 			int count = 0;
 			for(std::map<int,int>::const_iterator iter=neighbors.begin(); iter!=neighbors.end(); ++iter)
@@ -609,36 +637,39 @@ cv::Mat BayesFilter::updatePrediction(const cv::Mat & oldPrediction,
 	}
 	UDEBUG("time updating modified/added %d ids = %fs (e0=%f e1=%f e2=%f e3=%f e4=%f)", idsToUpdate.size(), timer.restart(), e0, e1, e2, e3, e4);
 
-	//UDEBUG("oldIds.size()=%d, oldPrediction.cols=%d, oldPrediction.rows=%d", oldIds.size(), oldPrediction.cols, oldPrediction.rows);
-	//UDEBUG("newIdToIndexMap.size()=%d, prediction.cols=%d, prediction.rows=%d", newIdToIndexMap.size(), prediction.cols, prediction.rows);
-	// copy not changed probabilities
 	int copied = 0;
-	for(unsigned int i=0; i<oldIds.size(); ++i)
+	if(!oldAllCopied)
 	{
-		if(oldIds[i]>0 && removedIds.find(oldIds[i]) == removedIds.end() && idsToUpdate.find(oldIds[i]) == idsToUpdate.end())
+		//UDEBUG("oldIds.size()=%d, oldPrediction.cols=%d, oldPrediction.rows=%d", oldIds.size(), oldPrediction.cols, oldPrediction.rows);
+		//UDEBUG("newIdToIndexMap.size()=%d, prediction.cols=%d, prediction.rows=%d", newIdToIndexMap.size(), prediction.cols, prediction.rows);
+		// copy not changed probabilities
+		for(unsigned int i=0; i<oldIds.size(); ++i)
 		{
-			for(int j=i; j<oldPrediction.cols; ++j)
+			if(oldIds[i]>0 && removedIds.find(oldIds[i]) == removedIds.end() && idsToUpdate.find(oldIds[i]) == idsToUpdate.end())
 			{
-				if(removedIds.find(oldIds[j]) == removedIds.end() && ((const float *)oldPrediction.data)[i + j*oldPrediction.cols] > epsilon)
+				for(int j=0; j<oldPrediction.cols; ++j)
 				{
-					//UDEBUG("i=%d, j=%d", i, j);
-					//UDEBUG("oldIds[i]=%d, oldIds[j]=%d", oldIds[i], oldIds[j]);
-					//UDEBUG("newIdToIndexMap.at(oldIds[i])=%d", newIdToIndexMap.at(oldIds[i]));
-					//UDEBUG("newIdToIndexMap.at(oldIds[j])=%d", newIdToIndexMap.at(oldIds[j]));
-					float v = ((const float *)oldPrediction.data)[i + j*oldPrediction.cols];
-					int ii = newIdToIndexMap.at(oldIds[i]);
-					int jj = newIdToIndexMap.at(oldIds[j]);
-					((float *)prediction.data)[ii + jj*prediction.cols] = v;
-					if(ii != jj)
+					if(oldIds[j]>0 && removedIds.find(oldIds[j]) == removedIds.end())
 					{
-						((float *)prediction.data)[jj + ii*prediction.cols] = v;
+						//UDEBUG("i=%d, j=%d", i, j);
+						//UDEBUG("oldIds[i]=%d, oldIds[j]=%d", oldIds[i], oldIds[j]);
+						//UDEBUG("newIdToIndexMap.at(oldIds[i])=%d", newIdToIndexMap.at(oldIds[i]));
+						//UDEBUG("newIdToIndexMap.at(oldIds[j])=%d", newIdToIndexMap.at(oldIds[j]));
+						float v = ((const float *)oldPrediction.data)[i + j*oldPrediction.cols];
+						int ii = newIdToIndexMap.at(oldIds[i]);
+						int jj = newIdToIndexMap.at(oldIds[j]);
+						((float *)prediction.data)[ii + jj*prediction.cols] = v;
+						//if(ii != jj)
+						//{
+						//	((float *)prediction.data)[jj + ii*prediction.cols] = v;
+						//}
 					}
 				}
+				++copied;
 			}
-			++copied;
 		}
+		UDEBUG("time copying = %fs", timer.restart());
 	}
-	UDEBUG("time copying = %fs", timer.restart());
 
 	//update virtual place
 	if(newIds[0] < 0)

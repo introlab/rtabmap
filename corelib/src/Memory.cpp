@@ -2574,16 +2574,19 @@ Transform Memory::computeTransform(
 			{
 				int id = iter->first;
 				const Signature * s = this->getSignature(id);
-				const std::map<int, cv::Point3f> & words3 = uMultimapToMapUnique(s->getWords3());
-				for(std::map<int, cv::Point3f>::const_iterator jter=words3.begin(); jter!=words3.end(); ++jter)
+				if(s)
 				{
-					if( jter->first > 0 &&
-						util3d::isFinite(jter->second) &&
-					    words3DMap.find(jter->first) == words3DMap.end())
+					const std::map<int, cv::Point3f> & words3 = uMultimapToMapUnique(s->getWords3());
+					for(std::map<int, cv::Point3f>::const_iterator jter=words3.begin(); jter!=words3.end(); ++jter)
 					{
-						words3DMap.insert(std::make_pair(jter->first, util3d::transformPoint(jter->second, iter->second.transform())));
-						wordsMap.insert(*s->getWords().find(jter->first));
-						wordsDescriptorsMap.insert(*s->getWordsDescriptors().find(jter->first));
+						if( jter->first > 0 &&
+							util3d::isFinite(jter->second) &&
+							words3DMap.find(jter->first) == words3DMap.end())
+						{
+							words3DMap.insert(std::make_pair(jter->first, util3d::transformPoint(jter->second, iter->second.transform())));
+							wordsMap.insert(*s->getWords().find(jter->first));
+							wordsDescriptorsMap.insert(*s->getWordsDescriptors().find(jter->first));
+						}
 					}
 				}
 			}
@@ -2619,47 +2622,50 @@ Transform Memory::computeTransform(
 					{
 						s = this->getSignature(id);
 					}
-					CameraModel model;
-					if(s->sensorData().cameraModels().size() == 1 && s->sensorData().cameraModels().at(0).isValidForProjection())
+					if(s)
 					{
-						model = s->sensorData().cameraModels()[0];
-					}
-					else if(s->sensorData().stereoCameraModel().isValidForProjection())
-					{
-						model = s->sensorData().stereoCameraModel().left();
-						// Set Tx for stereo BA
-						model = CameraModel(model.fx(),
-								model.fy(),
-								model.cx(),
-								model.cy(),
-								model.localTransform(),
-								-s->sensorData().stereoCameraModel().baseline()*model.fx());
-					}
-					else
-					{
-						UFATAL("no valid camera model to use local bundle adjustment on loop closure!");
-					}
-					bundleModels.insert(std::make_pair(id, model));
-					Transform invLocalTransform = model.localTransform().inverse();
-					if(iter->second.isValid())
-					{
-						bundleLinks.insert(std::make_pair(iter->second.from(), iter->second));
-						bundlePoses.insert(std::make_pair(id, iter->second.transform()));
-					}
-					else
-					{
-						bundlePoses.insert(std::make_pair(id, Transform::getIdentity()));
-					}
-					const std::map<int,cv::KeyPoint> & words = uMultimapToMapUnique(s->getWords());
-					for(std::map<int, cv::KeyPoint>::const_iterator jter=words.begin(); jter!=words.end(); ++jter)
-					{
-						if(points3DMap.find(jter->first)!=points3DMap.end() &&
-							(id == tmpTo.id() || jter->first > 0))
+						CameraModel model;
+						if(s->sensorData().cameraModels().size() == 1 && s->sensorData().cameraModels().at(0).isValidForProjection())
 						{
-							std::multimap<int, cv::Point3f>::const_iterator kter = s->getWords3().find(jter->first);
-							cv::Point3f pt3d = util3d::transformPoint(kter->second, invLocalTransform);
-							wordReferences.insert(std::make_pair(jter->first, std::map<int, FeatureBA>()));
-							wordReferences.at(jter->first).insert(std::make_pair(id, FeatureBA(jter->second, pt3d.z)));
+							model = s->sensorData().cameraModels()[0];
+						}
+						else if(s->sensorData().stereoCameraModel().isValidForProjection())
+						{
+							model = s->sensorData().stereoCameraModel().left();
+							// Set Tx for stereo BA
+							model = CameraModel(model.fx(),
+									model.fy(),
+									model.cx(),
+									model.cy(),
+									model.localTransform(),
+									-s->sensorData().stereoCameraModel().baseline()*model.fx());
+						}
+						else
+						{
+							UFATAL("no valid camera model to use local bundle adjustment on loop closure!");
+						}
+						bundleModels.insert(std::make_pair(id, model));
+						Transform invLocalTransform = model.localTransform().inverse();
+						if(iter->second.isValid())
+						{
+							bundleLinks.insert(std::make_pair(iter->second.from(), iter->second));
+							bundlePoses.insert(std::make_pair(id, iter->second.transform()));
+						}
+						else
+						{
+							bundlePoses.insert(std::make_pair(id, Transform::getIdentity()));
+						}
+						const std::map<int,cv::KeyPoint> & words = uMultimapToMapUnique(s->getWords());
+						for(std::map<int, cv::KeyPoint>::const_iterator jter=words.begin(); jter!=words.end(); ++jter)
+						{
+							if(points3DMap.find(jter->first)!=points3DMap.end() &&
+								(id == tmpTo.id() || jter->first > 0))
+							{
+								std::multimap<int, cv::Point3f>::const_iterator kter = s->getWords3().find(jter->first);
+								cv::Point3f pt3d = util3d::transformPoint(kter->second, invLocalTransform);
+								wordReferences.insert(std::make_pair(jter->first, std::map<int, FeatureBA>()));
+								wordReferences.at(jter->first).insert(std::make_pair(id, FeatureBA(jter->second, pt3d.z)));
+							}
 						}
 					}
 				}
