@@ -10,6 +10,7 @@ ADD_SUBDIRECTORY( RgbdDataset )
 ADD_SUBDIRECTORY( EurocDataset )
 ADD_SUBDIRECTORY( Recovery )
 ADD_SUBDIRECTORY( Reprocess )
+ADD_SUBDIRECTORY( DetectMoreLoopClosures )
 
 IF(OPENCV_NONFREE_FOUND)
 ADD_SUBDIRECTORY( VocabularyComparison )
