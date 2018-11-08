@@ -127,6 +127,7 @@ class RTABMAP_EXP Statistics
 	RTABMAP_STATS(Timing, Forgetting, ms);
 	RTABMAP_STATS(Timing, Joining_trash, ms);
 	RTABMAP_STATS(Timing, Emptying_trash, ms);
+	RTABMAP_STATS(Timing, Finalizing_statistics, ms);
 
 	RTABMAP_STATS(TimingMem, Pre_update, ms);
 	RTABMAP_STATS(TimingMem, Signature_creation, ms);
@@ -176,12 +177,15 @@ public:
 
 	// setters
 	void setExtended(bool extended) {_extended = extended;}
-	void setRefImageId(int refImageId) {_refImageId = refImageId;}
-	void setLoopClosureId(int loopClosureId) {_loopClosureId = loopClosureId;}
+	void setRefImageId(int id) {_refImageId = id;}
+	void setRefImageMapId(int id) {_refImageMapId = id;}
+	void setLoopClosureId(int id) {_loopClosureId = id;}
+	void setLoopClosureMapId(int id) {_loopClosureMapId = id;}
 	void setProximityDetectionId(int id) {_proximiyDetectionId = id;}
+	void setProximityDetectionMapId(int id) {_proximiyDetectionMapId = id;}
 	void setStamp(double stamp) {_stamp = stamp;}
 
-	void setSignatures(const std::map<int, Signature> & signatures) {_signatures = signatures;}
+	void setLastSignatureData(const Signature & data) {_lastSignatureData = data;}
 
 	void setPoses(const std::map<int, Transform> & poses) {_poses = poses;}
 	void setConstraints(const std::multimap<int, Link> & constraints) {_constraints = constraints;}
@@ -200,11 +204,14 @@ public:
 	// getters
 	bool extended() const {return _extended;}
 	int refImageId() const {return _refImageId;}
+	int refImageMapId() const {return _refImageMapId;}
 	int loopClosureId() const {return _loopClosureId;}
+	int loopClosureMapId() const {return _loopClosureMapId;}
 	int proximityDetectionId() const {return _proximiyDetectionId;}
+	int proximityDetectionMapId() const {return _proximiyDetectionMapId;}
 	double stamp() const {return _stamp;}
 
-	const std::map<int, Signature> & getSignatures() const {return _signatures;}
+	const Signature & getLastSignatureData() const {return _lastSignatureData;}
 
 	const std::map<int, Transform> & poses() const {return _poses;}
 	const std::multimap<int, Link> & constraints() const {return _constraints;}
@@ -226,11 +233,14 @@ private:
 	bool _extended; // 0 -> only loop closure and last signature ID fields are filled
 
 	int _refImageId;
+	int _refImageMapId;
 	int _loopClosureId;
+	int _loopClosureMapId;
 	int _proximiyDetectionId;
+	int _proximiyDetectionMapId;
 	double _stamp;
 
-	std::map<int, Signature> _signatures;
+	Signature _lastSignatureData;
 
 	std::map<int, Transform> _poses;
 	std::multimap<int, Link> _constraints;

@@ -316,11 +316,11 @@ int main(int argc, char * argv[])
 				double timeUpdateOctoMap = 0.0;
 #endif
 				const rtabmap::Statistics & stats = rtabmap.getStatistics();
-				if(stats.poses().size() && stats.getSignatures().size())
+				if(stats.poses().size() && stats.getLastSignatureData().id())
 				{
 					int id = stats.poses().rbegin()->first;
-					if(stats.getSignatures().find(id)!=stats.getSignatures().end() &&
-					   stats.getSignatures().find(id)->second.sensorData().gridCellSize() > 0.0f)
+					if(id == stats.getLastSignatureData().id() &&
+					   stats.getLastSignatureData().sensorData().gridCellSize() > 0.0f)
 					{
 						bool updateGridMap = false;
 						bool updateOctoMap = false;
@@ -337,7 +337,7 @@ int main(int argc, char * argv[])
 						if(updateGridMap || updateOctoMap)
 						{
 							cv::Mat ground, obstacles, empty;
-							stats.getSignatures().find(id)->second.sensorData().uncompressDataConst(0, 0, 0, 0, &ground, &obstacles, &empty);
+							stats.getLastSignatureData().sensorData().uncompressDataConst(0, 0, 0, 0, &ground, &obstacles, &empty);
 
 							timeUpdateInit = t.ticks();
 
@@ -350,7 +350,7 @@ int main(int argc, char * argv[])
 #ifdef RTABMAP_OCTOMAP
 							if(updateOctoMap)
 							{
-								const cv::Point3f & viewpoint = stats.getSignatures().find(id)->second.sensorData().gridViewPoint();
+								const cv::Point3f & viewpoint = stats.getLastSignatureData().sensorData().gridViewPoint();
 								octomap.addToCache(id, ground, obstacles, empty, viewpoint);
 								octomap.update(stats.poses());
 								timeUpdateOctoMap = t.ticks() + timeUpdateInit;
@@ -389,12 +389,12 @@ int main(int argc, char * argv[])
 
 		const rtabmap::Statistics & stats = rtabmap.getStatistics();
 		int loopId = stats.loopClosureId() > 0? stats.loopClosureId(): stats.proximityDetectionId() > 0?stats.proximityDetectionId() :0;
-		int refMapId = uContains(stats.getSignatures(), stats.refImageId())? stats.getSignatures().at(stats.refImageId()).mapId():-1;
+		int refMapId = stats.refImageMapId();
 		++totalFrames;
 		if (loopId>0)
 		{
 			++loopCount;
-			int loopMapId = uContains(stats.getSignatures(), loopId) ? stats.getSignatures().at(loopId).mapId() : -1;
+			int loopMapId = stats.loopClosureId() > 0? stats.loopClosureMapId(): stats.proximityDetectionMapId();
 			printf("Processed %d/%d nodes [%d]... %dms Loop on %d [%d]\n", ++processed, totalIds, refMapId, int(iterationTime.ticks() * 1000), loopId, loopMapId);
 		}
 		else

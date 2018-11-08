@@ -74,8 +74,11 @@ std::map<std::string, float> Statistics::deserializeData(const std::string & dat
 Statistics::Statistics() :
 	_extended(0),
 	_refImageId(0),
+	_refImageMapId(-1),
 	_loopClosureId(0),
+	_loopClosureMapId(-1),
 	_proximiyDetectionId(0),
+	_proximiyDetectionMapId(-1),
 	_stamp(0.0f),
 	_currentGoalId(0)
 {

@@ -112,6 +112,7 @@ Memory::Memory(const ParametersMap & parameters) :
 	_memoryChanged(false),
 	_linksChanged(false),
 	_signaturesAdded(0),
+	_allNodesInWM(true),
 
 	_badSignRatio(Parameters::defaultKpBadSignRatio()),
 	_tfIdfLikelihoodUsed(Parameters::defaultKpTfIdfLikelihoodUsed()),
@@ -238,12 +239,29 @@ void Memory::loadDataFromDb(bool postInitClosingEvents)
 				//       global loop closures.
 				_signatures.insert(std::pair<int, Signature *>((*iter)->id(), *iter));
 				_workingMem.insert(std::make_pair((*iter)->id(), UTimer::now()));
+				if(!(*iter)->getGroundTruthPose().isNull()) {
+					_groundTruths.insert(std::make_pair((*iter)->id(), (*iter)->getGroundTruthPose()));
+				}
 			}
 			else
 			{
 				delete *iter;
 			}
 		}
+
+		UDEBUG("Check if all nodes are in Working Memory");
+		for(std::map<int, Signature*>::iterator iter=_signatures.begin(); iter!=_signatures.end() && _allNodesInWM; ++iter)
+		{
+			for(std::map<int, Link>::const_iterator jter = iter->second->getLinks().begin(); jter!=iter->second->getLinks().end(); ++jter)
+			{
+				if(_signatures.find(jter->first) == _signatures.end())
+				{
+					_allNodesInWM = false;
+					break;
+				}
+			}
+		}
+		UDEBUG("allNodesInWM()=%s", _allNodesInWM?"true":"false");
 
 		UDEBUG("update odomMaxInf vector");
 		std::multimap<int, Link> links = this->getAllLinks(true, true);
@@ -922,6 +940,9 @@ void Memory::addSignatureToStm(Signature * signature, const cv::Mat & covariance
 
 		_signatures.insert(_signatures.end(), std::pair<int, Signature *>(signature->id(), signature));
 		_stMem.insert(_stMem.end(), signature->id());
+		if(!signature->getGroundTruthPose().isNull()) {
+			_groundTruths.insert(std::make_pair(signature->id(), signature->getGroundTruthPose()));
+		}
 		++_signaturesAdded;
 
 		if(_vwd)
@@ -944,6 +965,9 @@ void Memory::addSignatureToWmFromLTM(Signature * signature)
 		UDEBUG("Inserting node %d in WM...", signature->id());
 		_workingMem.insert(std::make_pair(signature->id(), UTimer::now()));
 		_signatures.insert(std::pair<int, Signature*>(signature->id(), signature));
+		if(!signature->getGroundTruthPose().isNull()) {
+			_groundTruths.insert(std::make_pair(signature->id(), signature->getGroundTruthPose()));
+		}
 		++_signaturesAdded;
 	}
 	else
@@ -1568,6 +1592,8 @@ void Memory::clear()
 	_rectCameraModels.clear();
 	_rectStereoCameraModel = StereoCameraModel();
 	_odomMaxInf.clear();
+	_groundTruths.clear();
+	_allNodesInWM = true;
 
 	if(_dbDriver)
 	{
@@ -2097,8 +2123,14 @@ void Memory::moveToTrash(Signature * s, bool keepLinkedToGraph, std::list<int> *
 	UDEBUG("id=%d", s?s->id():0);
 	if(s)
 	{
-		// If not saved to database or it is a bad signature (not saved), remove links!
-		if(!keepLinkedToGraph || (!s->isSaved() && s->isBadSignature() && _badSignaturesIgnored))
+		// it is a bad signature (not saved), remove links!
+		if(keepLinkedToGraph && (!s->isSaved() && s->isBadSignature() && _badSignaturesIgnored))
+		{
+			keepLinkedToGraph = false;
+		}
+
+		// If not saved to database
+		if(!keepLinkedToGraph)
 		{
 			UASSERT_MSG(this->isInSTM(s->id()),
 						uFormat("Deleting location (%d) outside the "
@@ -2169,6 +2201,7 @@ void Memory::moveToTrash(Signature * s, bool keepLinkedToGraph, std::list<int> *
 		_workingMem.erase(s->id());
 		_stMem.erase(s->id());
 		_signatures.erase(s->id());
+		_groundTruths.erase(s->id());
 		if(_signaturesAdded>0)
 		{
 			--_signaturesAdded;
@@ -2197,6 +2230,10 @@ void Memory::moveToTrash(Signature * s, bool keepLinkedToGraph, std::list<int> *
 			s->id()>0 &&
 			(_incrementalMemory || s->isSaved()))
 		{
+			if(keepLinkedToGraph)
+			{
+				_allNodesInWM = false;
+			}
 			_dbDriver->asyncSave(s);
 		}
 		else
@@ -3428,6 +3465,19 @@ bool Memory::rehearsalMerge(int oldId, int newId)
 		}
 	}
 	return false;
+}
+
+int Memory::getMapId(int signatureId, bool lookInDatabase) const
+{
+	Transform pose, groundTruth;
+	int mapId = -1, weight;
+	std::string label;
+	double stamp;
+	std::vector<float> velocity;
+	GPS gps;
+	EnvSensors sensors;
+	getNodeInfo(signatureId, pose, mapId, weight, label, stamp, groundTruth, velocity, gps, sensors, lookInDatabase);
+	return mapId;
 }
 
 Transform Memory::getOdomPose(int signatureId, bool lookInDatabase) const

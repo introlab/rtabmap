@@ -76,26 +76,19 @@ protected Q_SLOTS:
 		//============================
 		// Add WIFI symbols
 		//============================
-		std::map<double, int> nodeStamps; // <stamp, id>
+		// Sort stamps by stamps->id
+		nodeStamps_.insert(std::make_pair(stats.getLastSignatureData().getStamp(), stats.getLastSignatureData().id()));
 
-		for(std::map<int, Signature>::const_iterator iter=stats.getSignatures().begin();
-			iter!=stats.getSignatures().end();
-			++iter)
+		if(!stats.getLastSignatureData().sensorData().userDataRaw().empty())
 		{
-			// Sort stamps by stamps->id
-			nodeStamps.insert(std::make_pair(iter->second.getStamp(), iter->first));
+			UASSERT(stats.getLastSignatureData().sensorData().userDataRaw().type() == CV_64FC1 &&
+					stats.getLastSignatureData().sensorData().userDataRaw().cols == 2 &&
+					stats.getLastSignatureData().sensorData().userDataRaw().rows == 1);
 
-			if(!iter->second.sensorData().userDataRaw().empty())
-			{
-				UASSERT(iter->second.sensorData().userDataRaw().type() == CV_64FC1 &&
-						iter->second.sensorData().userDataRaw().cols == 2 &&
-						iter->second.sensorData().userDataRaw().rows == 1);
-
-				// format [int level, double stamp]
-				int level = iter->second.sensorData().userDataRaw().at<double>(0);
-				double stamp = iter->second.sensorData().userDataRaw().at<double>(1);
-				wifiLevels_.insert(std::make_pair(stamp, level));
-			}
+			// format [int level, double stamp]
+			int level = stats.getLastSignatureData().sensorData().userDataRaw().at<double>(0);
+			double stamp = stats.getLastSignatureData().sensorData().userDataRaw().at<double>(1);
+			wifiLevels_.insert(std::make_pair(stamp, level));
 		}
 
 		int id = 0;
@@ -103,15 +96,15 @@ protected Q_SLOTS:
 		{
 			// The Wifi value may be taken between two nodes, interpolate its position.
 			double stampWifi = iter->first;
-			std::map<double, int>::iterator previousNode = nodeStamps.lower_bound(stampWifi); // lower bound of the stamp
-			if(previousNode!=nodeStamps.end() && previousNode->first > stampWifi && previousNode != nodeStamps.begin())
+			std::map<double, int>::iterator previousNode = nodeStamps_.lower_bound(stampWifi); // lower bound of the stamp
+			if(previousNode!=nodeStamps_.end() && previousNode->first > stampWifi && previousNode != nodeStamps_.begin())
 			{
 				--previousNode;
 			}
-			std::map<double, int>::iterator nextNode = nodeStamps.upper_bound(stampWifi); // upper bound of the stamp
+			std::map<double, int>::iterator nextNode = nodeStamps_.upper_bound(stampWifi); // upper bound of the stamp
 
-			if(previousNode != nodeStamps.end() &&
-			   nextNode != nodeStamps.end() &&
+			if(previousNode != nodeStamps_.end() &&
+			   nextNode != nodeStamps_.end() &&
 			   previousNode->second != nextNode->second &&
 			   uContains(poses, previousNode->second) && uContains(poses, nextNode->second))
 			{
@@ -185,6 +178,7 @@ protected Q_SLOTS:
 
 private:
 	std::map<double, int> wifiLevels_;
+	std::map<double, int> nodeStamps_; // <stamp, id>
 };
 
 

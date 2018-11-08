@@ -1549,9 +1549,9 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 	}
 
 	int refMapId = -1, loopMapId = -1;
-	if(uContains(stat.getSignatures(), stat.refImageId()))
+	if(stat.getLastSignatureData().id() == stat.refImageId())
 	{
-		refMapId = stat.getSignatures().at(stat.refImageId()).mapId();
+		refMapId = stat.getLastSignatureData().mapId();
 	}
 	int highestHypothesisId = static_cast<float>(uValue(stat.data(), Statistics::kLoopHighest_hypothesis_id(), 0.0f));
 	int loopId = stat.loopClosureId()>0?stat.loopClosureId():stat.proximityDetectionId()>0?stat.proximityDetectionId():highestHypothesisId;
@@ -1579,9 +1579,9 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 
 		// update cache
 		Signature signature;
-		if(uContains(stat.getSignatures(), stat.refImageId()))
+		if(stat.getLastSignatureData().id() == stat.refImageId())
 		{
-			signature = stat.getSignatures().at(stat.refImageId());
+			signature = stat.getLastSignatureData();
 			signature.sensorData().uncompressData(); // make sure data are uncompressed
 
 			if( uStr2Bool(_preferencesDialog->getParameter(Parameters::kMemIncrementalMemory())) &&
@@ -1872,28 +1872,26 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 		if(stat.poses().size())
 		{
 			// update pose only if odometry is not received
-			std::map<int, int> mapIds;
-			std::map<int, Transform> groundTruth;
-			std::map<int, std::string> labels;
-			for(std::map<int, Signature>::const_iterator iter=stat.getSignatures().begin(); iter!=stat.getSignatures().end();++iter)
+			std::map<int, int> mapIds = _currentMapIds;
+			std::map<int, Transform> groundTruth = _currentGTPosesMap;
+			std::map<int, std::string> labels = _currentLabels;
+
+			mapIds.insert(std::make_pair(stat.getLastSignatureData().id(), stat.getLastSignatureData().mapId()));
+			if(!stat.getLastSignatureData().getGroundTruthPose().isNull())
 			{
-				mapIds.insert(std::make_pair(iter->first, iter->second.mapId()));
-				if(!iter->second.getGroundTruthPose().isNull())
-				{
-					groundTruth.insert(std::make_pair(iter->first, iter->second.getGroundTruthPose()));
-				}
-				if(!iter->second.getLabel().empty())
-				{
-					labels.insert(std::make_pair(iter->first, iter->second.getLabel()));
-				}
-				if(_ui->graphicsView_graphView->getWorldMapRotation()==0.0f &&
-					iter->second.sensorData().gps().stamp()!=0.0 &&
-					stat.poses().find(iter->first)!=stat.poses().end())
-				{
-					float bearing = (float)((-(iter->second.sensorData().gps().bearing()-90))*M_PI/180.0);
-					float gpsRotationOffset = stat.poses().at(iter->first).theta()-bearing;
-					_ui->graphicsView_graphView->setWorldMapRotation(gpsRotationOffset);
-				}
+				groundTruth.insert(std::make_pair(stat.getLastSignatureData().id(), stat.getLastSignatureData().getGroundTruthPose()));
+			}
+			if(!stat.getLastSignatureData().getLabel().empty())
+			{
+				labels.insert(std::make_pair(stat.getLastSignatureData().id(), stat.getLastSignatureData().getLabel()));
+			}
+			if(_ui->graphicsView_graphView->getWorldMapRotation()==0.0f &&
+				stat.getLastSignatureData().sensorData().gps().stamp()!=0.0 &&
+				stat.poses().find(stat.getLastSignatureData().id())!=stat.poses().end())
+			{
+				float bearing = (float)((-(stat.getLastSignatureData().sensorData().gps().bearing()-90))*M_PI/180.0);
+				float gpsRotationOffset = stat.poses().at(stat.getLastSignatureData().id()).theta()-bearing;
+				_ui->graphicsView_graphView->setWorldMapRotation(gpsRotationOffset);
 			}
 
 			std::map<int, Transform> poses = stat.poses();
@@ -1903,16 +1901,15 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 			{
 				_cloudViewer->updateCameraTargetPosition(poses.rbegin()->second);
 
-				std::map<int, Signature>::const_iterator iter = stat.getSignatures().find(poses.rbegin()->first);
-				if(iter != stat.getSignatures().end())
+				if(poses.rbegin()->first == stat.getLastSignatureData().id())
 				{
-					if(iter->second.sensorData().cameraModels().size() && !iter->second.sensorData().cameraModels()[0].localTransform().isNull())
+					if(stat.getLastSignatureData().sensorData().cameraModels().size() && !stat.getLastSignatureData().sensorData().cameraModels()[0].localTransform().isNull())
 					{
-						_cloudViewer->updateCameraFrustums(poses.rbegin()->second, iter->second.sensorData().cameraModels());
+						_cloudViewer->updateCameraFrustums(poses.rbegin()->second, stat.getLastSignatureData().sensorData().cameraModels());
 					}
-					else if(!iter->second.sensorData().stereoCameraModel().localTransform().isNull())
+					else if(!stat.getLastSignatureData().sensorData().stereoCameraModel().localTransform().isNull())
 					{
-						_cloudViewer->updateCameraFrustum(poses.rbegin()->second, iter->second.sensorData().stereoCameraModel());
+						_cloudViewer->updateCameraFrustum(poses.rbegin()->second, stat.getLastSignatureData().sensorData().stereoCameraModel());
 					}
 				}
 
@@ -2109,10 +2106,6 @@ void MainWindow::updateMapCloud(
 			if(jter!=mapIdsIn.end())
 			{
 				mapIds.insert(*jter);
-			}
-			else
-			{
-				UERROR("map id of node %d not found!", iter->first);
 			}
 		}
 		//keep -1

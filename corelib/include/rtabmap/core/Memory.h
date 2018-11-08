@@ -161,6 +161,7 @@ public:
 	int getSignatureIdByLabel(const std::string & label, bool lookInDatabase = true) const;
 	bool labelSignature(int id, const std::string & label);
 	std::map<int, std::string> getAllLabels() const;
+	bool allNodesInWM() const {return _allNodesInWM;}
 
 	/**
 	 * Set user data. Detect automatically if raw or compressed. If raw, the data is
@@ -174,8 +175,10 @@ public:
 	std::string getDatabaseVersion() const;
 	std::string getDatabaseUrl() const;
 	double getDbSavingTime() const;
+	int getMapId(int id, bool lookInDatabase = false) const;
 	Transform getOdomPose(int signatureId, bool lookInDatabase = false) const;
 	Transform getGroundTruthPose(int signatureId, bool lookInDatabase = false) const;
+	const std::map<int, Transform> & getGroundTruths() const {return _groundTruths;} // only those in working+STM memory
 	void getGPS(int id, GPS & gps, Transform & offsetENU, bool lookInDatabase, int maxGraphDepth = 0) const;
 	bool getNodeInfo(int signatureId,
 			Transform & odomPose,
@@ -315,6 +318,7 @@ private:
 	bool _memoryChanged; // False by default, become true only when Memory::update() is called.
 	bool _linksChanged; // False by default, become true when links are modified.
 	int _signaturesAdded;
+	bool _allNodesInWM;
 	GPS _gpsOrigin;
 	std::vector<CameraModel> _rectCameraModels;
 	StereoCameraModel _rectStereoCameraModel;
@@ -323,6 +327,7 @@ private:
 	std::map<int, Signature *> _signatures; // TODO : check if a signature is already added? although it is not supposed to occur...
 	std::set<int> _stMem; // id
 	std::map<int, double> _workingMem; // id,age
+	std::map<int, Transform> _groundTruths;
 
 	//Keypoint stuff
 	VWDictionary * _vwd;

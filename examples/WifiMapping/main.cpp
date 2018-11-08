@@ -29,6 +29,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/Rtabmap.h"
 #include "rtabmap/core/RtabmapThread.h"
 #include "rtabmap/core/CameraRGBD.h"
+#include "rtabmap/core/CameraStereo.h"
 #include "rtabmap/core/CameraThread.h"
 #include "rtabmap/core/OdometryThread.h"
 #include "rtabmap/utilite/UEventsManager.h"
@@ -46,7 +47,7 @@ void showUsage()
 			"Options:\n"
 			"  -i \"name\"            Wifi interface name (e.g. \"eth0\"). Only required on Linux.\n"
 			"  -m                     Enable mirroring of the camera image.\n"
-			"  -d #                   Driver number to use: 0=OpenNI-PCL, 1=OpenNI2, 2=Freenect, 3=OpenNI-CV, 4=OpenNI-CV-ASUS\n\n");
+			"  -d #                   Driver number to use: 0=OpenNI-PCL, 1=OpenNI2, 2=Freenect, 3=OpenNI-CV, 4=OpenNI-CV-ASUS, 5=Freenect2, 6=ZED SDK, 7=RealSense, 8=RealSense2\n\n");
 	exit(1);
 }
 
@@ -87,9 +88,9 @@ int main(int argc, char * argv[])
 			if(i < argc)
 			{
 				driver = atoi(argv[i]);
-				if(driver < 0 || driver > 4)
+				if(driver < 0 || driver > 8)
 				{
-					UERROR("driver should be between 0 and 4.");
+					UERROR("driver should be between 0 and 8.");
 					showUsage();
 				}
 			}
@@ -146,6 +147,42 @@ int main(int argc, char * argv[])
 			exit(-1);
 		}
 		camera = new CameraOpenNICV(true, 0, opticalRotation);
+	}
+	else if (driver == 5)
+	{
+		if (!CameraFreenect2::available())
+		{
+			UERROR("Not built with Freenect2 support...");
+			exit(-1);
+		}
+		camera = new CameraFreenect2(0, CameraFreenect2::kTypeColor2DepthSD, 0, opticalRotation);
+	}
+	else if (driver == 6)
+	{
+		if (!CameraStereoZed::available())
+		{
+			UERROR("Not built with ZED SDK support...");
+			exit(-1);
+		}
+		camera = new CameraStereoZed(0, 2, 1, 1, 100, false, 0, opticalRotation);
+	}
+	else if (driver == 7)
+	{
+		if (!CameraRealSense::available())
+		{
+			UERROR("Not built with RealSense support...");
+			exit(-1);
+		}
+		camera = new CameraRealSense(0, 0, 0, false, 0, opticalRotation);
+	}
+	else if (driver == 8)
+	{
+		if (!CameraRealSense2::available())
+		{
+			UERROR("Not built with RealSense2 support...");
+			exit(-1);
+		}
+		camera = new CameraRealSense2("", 0, opticalRotation);
 	}
 	else
 	{
