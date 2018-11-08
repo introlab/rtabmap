@@ -154,6 +154,7 @@ protected Q_SLOTS:
 	void generateGraphDOT();
 	void exportPosesRaw();
 	void exportPosesRGBDSLAM();
+	void exportPosesRGBDSLAMMotionCapture();
 	void exportPosesKITTI();
 	void exportPosesTORO();
 	void exportPosesG2O();

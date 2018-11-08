@@ -347,19 +347,19 @@ bool CameraImages::readPoses(std::list<Transform> & outputPoses, std::list<doubl
 		UERROR("Cannot read pose file \"%s\".", filePath.c_str());
 		return false;
 	}
-	else if((format != 1 && format != 5 && format != 6 && format != 7 && format != 9) && poses.size() != this->imagesCount())
+	else if((format != 1 && format != 10 && format != 5 && format != 6 && format != 7 && format != 9) && poses.size() != this->imagesCount())
 	{
 		UERROR("The pose count is not the same as the images (%d vs %d)! Please remove "
 				"the pose file path if you don't want to use it (current file path=%s).",
 				(int)poses.size(), this->imagesCount(), filePath.c_str());
 		return false;
 	}
-	else if((format == 1 || format == 5 || format == 6 || format == 7 || format == 9) && inOutStamps.size() == 0)
+	else if((format == 1 || format == 10 || format == 5 || format == 6 || format == 7 || format == 9) && inOutStamps.size() == 0)
 	{
 		UERROR("When using RGBD-SLAM, GPS, MALAGA, ST LUCIA and EuRoC MAV formats, images must have timestamps!");
 		return false;
 	}
-	else if(format == 1 || format == 5 || format == 6 || format == 7 || format == 9)
+	else if(format == 1 || format == 10 || format == 5 || format == 6 || format == 7 || format == 9)
 	{
 		UDEBUG("");
 		//Match ground truth values with images

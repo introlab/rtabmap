@@ -61,7 +61,7 @@
           <rect>
            <x>0</x>
            <y>0</y>
-           <width>413</width>
+           <width>398</width>
            <height>288</height>
           </rect>
          </property>
@@ -287,7 +287,7 @@
           <rect>
            <x>0</x>
            <y>0</y>
-           <width>412</width>
+           <width>397</width>
            <height>288</height>
           </rect>
          </property>
@@ -647,7 +647,7 @@
      <x>0</x>
      <y>0</y>
      <width>1547</width>
-     <height>22</height>
+     <height>25</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -660,6 +660,7 @@
      </property>
      <addaction name="actionRaw_format_txt"/>
      <addaction name="actionRGBD_SLAM_format_txt"/>
+     <addaction name="actionRGBD_SLAM_motion_capture_format_txt"/>
      <addaction name="actionKITTI_format_txt"/>
      <addaction name="actionTORO_graph"/>
      <addaction name="actionG2o_g2o"/>
@@ -1299,7 +1300,7 @@
           <x>0</x>
           <y>0</y>
           <width>318</width>
-          <height>197</height>
+          <height>219</height>
          </rect>
         </property>
         <attribute name="label">
@@ -1459,9 +1460,9 @@
         <property name="geometry">
          <rect>
           <x>0</x>
-          <y>-151</y>
-          <width>519</width>
-          <height>791</height>
+          <y>0</y>
+          <width>282</width>
+          <height>885</height>
          </rect>
         </property>
         <attribute name="label">
@@ -1994,8 +1995,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>310</width>
-          <height>243</height>
+          <width>307</width>
+          <height>171</height>
          </rect>
         </property>
         <attribute name="label">
@@ -2123,7 +2124,7 @@
           <x>0</x>
           <y>0</y>
           <width>185</width>
-          <height>485</height>
+          <height>487</height>
          </rect>
         </property>
         <attribute name="label">
@@ -2723,15 +2724,24 @@
    <property name="text">
     <string>Raw format (*.txt)</string>
    </property>
+   <property name="toolTip">
+    <string>Raw format (12 values transform)</string>
+   </property>
   </action>
   <action name="actionRGBD_SLAM_format_txt">
    <property name="text">
     <string>RGBD-SLAM format (*.txt)</string>
    </property>
+   <property name="toolTip">
+    <string>RGBD-SLAM (stamp tx ty tz qx qy qz qw)</string>
+   </property>
   </action>
   <action name="actionKITTI_format_txt">
    <property name="text">
     <string>KITTI format (*.txt)</string>
+   </property>
+   <property name="toolTip">
+    <string>KITTI (stamp + 12 values transform)</string>
    </property>
   </action>
   <action name="actionTORO_graph">
@@ -2802,6 +2812,14 @@
   <action name="actionUpdate_all_loop_closure_covariances">
    <property name="text">
     <string>Update all loop closure covariances...</string>
+   </property>
+  </action>
+  <action name="actionRGBD_SLAM_motion_capture_format_txt">
+   <property name="text">
+    <string>RGBD-SLAM motion capture format (*.txt)</string>
+   </property>
+   <property name="toolTip">
+    <string>RGBD-SLAM (stamp tx ty tz qx qy qz qw)</string>
    </property>
   </action>
  </widget>

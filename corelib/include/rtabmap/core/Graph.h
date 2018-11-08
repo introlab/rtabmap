@@ -47,7 +47,7 @@ namespace graph {
 
 	bool RTABMAP_EXP exportPoses(
 		const std::string & filePath,
-		int format, // 0=Raw (*.txt), 1=RGBD-SLAM (*.txt), 2=KITTI (*.txt), 3=TORO (*.graph), 4=g2o (*.g2o)
+		int format, // 0=Raw (*.txt), 1=RGBD-SLAM motion capture (*.txt) (10=without change of coordinate frame), 2=KITTI (*.txt), 3=TORO (*.graph), 4=g2o (*.g2o)
 		const std::map<int, Transform> & poses,
 		const std::multimap<int, Link> & constraints = std::multimap<int, Link>(), // required for formats 3 and 4
 		const std::map<int, double> & stamps = std::map<int, double>(),  // required for format 1
@@ -55,7 +55,7 @@ namespace graph {
 
 bool RTABMAP_EXP importPoses(
 		const std::string & filePath,
-		int format, // 0=Raw, 1=RGBD-SLAM, 2=KITTI, 3=TORO, 4=g2o, 5=NewCollege(t,x,y), 6=Malaga Urban GPS, 7=St Lucia INS, 8=Karlsruhe
+		int format, // 0=Raw, 1=RGBD-SLAM motion capture (10=without change of coordinate frame), 2=KITTI, 3=TORO, 4=g2o, 5=NewCollege(t,x,y), 6=Malaga Urban GPS, 7=St Lucia INS, 8=Karlsruhe
 		std::map<int, Transform> & poses,
 		std::multimap<int, Link> * constraints = 0, // optional for formats 3 and 4
 		std::map<int, double> * stamps = 0); // optional for format 1

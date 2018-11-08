@@ -94,9 +94,9 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-436</y>
-            <width>680</width>
-            <height>2986</height>
+            <y>-812</y>
+            <width>681</width>
+            <height>2983</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -2941,7 +2941,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                     <item>
                      <widget class="QStackedWidget" name="stackedWidget_src">
                       <property name="currentIndex">
-                       <number>1</number>
+                       <number>0</number>
                       </property>
                       <widget class="QWidget" name="page_41">
                        <layout class="QVBoxLayout" name="verticalLayout_64">
@@ -3061,7 +3061,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                            <item>
                             <widget class="QStackedWidget" name="stackedWidget_rgbd">
                              <property name="currentIndex">
-                              <number>6</number>
+                              <number>7</number>
                              </property>
                              <widget class="QWidget" name="page_32">
                               <layout class="QVBoxLayout" name="verticalLayout_63">
@@ -4834,7 +4834,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                            <item>
                             <widget class="QStackedWidget" name="stackedWidget_image">
                              <property name="currentIndex">
-                              <number>1</number>
+                              <number>2</number>
                              </property>
                              <widget class="QWidget" name="page_7">
                               <layout class="QVBoxLayout" name="verticalLayout_30">
@@ -5349,7 +5349,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                            </item>
                            <item>
                             <property name="text">
-                             <string>RGBD-SLAM</string>
+                             <string>RGBD-SLAM (motion capture)</string>
                             </property>
                            </item>
                            <item>
@@ -5390,6 +5390,11 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                            <item>
                             <property name="text">
                              <string>EuRoC MAV</string>
+                            </property>
+                           </item>
+                           <item>
+                            <property name="text">
+                             <string>RGBD-SLAM</string>
                             </property>
                            </item>
                           </widget>
@@ -5497,7 +5502,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                            </item>
                            <item>
                             <property name="text">
-                             <string>RGBD-SLAM</string>
+                             <string>RGBD-SLAM (motion capture)</string>
                             </property>
                            </item>
                            <item>
@@ -5538,6 +5543,11 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                            <item>
                             <property name="text">
                              <string>EuRoC MAV</string>
+                            </property>
+                           </item>
+                           <item>
+                            <property name="text">
+                             <string>RGBD-SLAM</string>
                             </property>
                            </item>
                           </widget>

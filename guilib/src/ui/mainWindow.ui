@@ -27,7 +27,7 @@
      <x>0</x>
      <y>0</y>
      <width>1012</width>
-     <height>22</height>
+     <height>25</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -40,6 +40,7 @@
      </property>
      <addaction name="actionRaw_format_txt"/>
      <addaction name="actionRGBD_SLAM_format_txt"/>
+     <addaction name="actionRGBD_SLAM_motion_capture_format_txt"/>
      <addaction name="actionKITTI_format_txt"/>
      <addaction name="actionTORO_graph"/>
      <addaction name="actionG2o_g2o"/>
@@ -1395,10 +1396,16 @@
    <property name="text">
     <string>KITTI format (*.txt)</string>
    </property>
+   <property name="toolTip">
+    <string>KITTI (stamp + 12 values transform)</string>
+   </property>
   </action>
   <action name="actionRGBD_SLAM_format_txt">
    <property name="text">
     <string>RGBD-SLAM format (*.txt)</string>
+   </property>
+   <property name="toolTip">
+    <string>RGBD-SLAM (stamp tx ty tz qx qy qz qw)</string>
    </property>
   </action>
   <action name="actionTORO_graph">
@@ -1414,6 +1421,9 @@
   <action name="actionRaw_format_txt">
    <property name="text">
     <string>Raw format (*.txt)</string>
+   </property>
+   <property name="toolTip">
+    <string>Raw format (12 values transform)</string>
    </property>
   </action>
   <action name="actionG2o_g2o">
@@ -1521,6 +1531,14 @@
    </property>
    <property name="text">
     <string>Tara Stereo USB Camera</string>
+   </property>
+  </action>
+  <action name="actionRGBD_SLAM_motion_capture_format_txt">
+   <property name="text">
+    <string>RGBD-SLAM motion capture format (*.txt)</string>
+   </property>
+   <property name="toolTip">
+    <string>RGBD-SLAM (stamp tx ty tz qx qy qz qw)</string>
    </property>
   </action>
  </widget>

@@ -359,6 +359,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent, bool sh
 	connect(_ui->actionGenerate_map, SIGNAL(triggered()), this , SLOT(generateGraphDOT()));
 	connect(_ui->actionRaw_format_txt, SIGNAL(triggered()), this , SLOT(exportPosesRaw()));
 	connect(_ui->actionRGBD_SLAM_format_txt, SIGNAL(triggered()), this , SLOT(exportPosesRGBDSLAM()));
+	connect(_ui->actionRGBD_SLAM_motion_capture_format_txt, SIGNAL(triggered()), this , SLOT(exportPosesRGBDSLAMMotionCapture()));
 	connect(_ui->actionKITTI_format_txt, SIGNAL(triggered()), this , SLOT(exportPosesKITTI()));
 	connect(_ui->actionTORO_graph, SIGNAL(triggered()), this , SLOT(exportPosesTORO()));
 	connect(_ui->actionG2o_g2o, SIGNAL(triggered()), this , SLOT(exportPosesG2O()));
@@ -5177,9 +5178,13 @@ void MainWindow::exportPosesRaw()
 {
 	exportPoses(0);
 }
-void MainWindow::exportPosesRGBDSLAM()
+void MainWindow::exportPosesRGBDSLAMMotionCapture()
 {
 	exportPoses(1);
+}
+void MainWindow::exportPosesRGBDSLAM()
+{
+	exportPoses(10);
 }
 void MainWindow::exportPosesKITTI()
 {
@@ -5200,7 +5205,7 @@ void MainWindow::exportPoses(int format)
 	{
 		std::map<int, Transform> localTransforms;
 		QStringList items;
-		items.push_back("Robot");
+		items.push_back("Robot (base frame)");
 		items.push_back("Camera");
 		items.push_back("Scan");
 		bool ok;
@@ -5209,7 +5214,7 @@ void MainWindow::exportPoses(int format)
 		{
 			return;
 		}
-		if(item.compare("Robot") != 0)
+		if(item.compare("Robot (base frame)") != 0)
 		{
 			bool cameraFrame = item.compare("Camera") == 0;
 			_exportPosesFrame = cameraFrame?1:2;
@@ -5302,7 +5307,7 @@ void MainWindow::exportPoses(int format)
 		}
 
 		std::map<int, double> stamps;
-		if(format == 1)
+		if(format == 1 || format == 10)
 		{
 			for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter)
 			{

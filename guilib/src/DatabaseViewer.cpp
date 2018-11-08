@@ -242,6 +242,7 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	connect(ui_->actionGenerate_local_graph_dot, SIGNAL(triggered()), this, SLOT(generateLocalGraph()));
 	connect(ui_->actionRaw_format_txt, SIGNAL(triggered()), this , SLOT(exportPosesRaw()));
 	connect(ui_->actionRGBD_SLAM_format_txt, SIGNAL(triggered()), this , SLOT(exportPosesRGBDSLAM()));
+	connect(ui_->actionRGBD_SLAM_motion_capture_format_txt, SIGNAL(triggered()), this , SLOT(exportPosesRGBDSLAMMotionCapture()));
 	connect(ui_->actionKITTI_format_txt, SIGNAL(triggered()), this , SLOT(exportPosesKITTI()));
 	connect(ui_->actionTORO_graph, SIGNAL(triggered()), this , SLOT(exportPosesTORO()));
 	connect(ui_->actionG2o_g2o, SIGNAL(triggered()), this , SLOT(exportPosesG2O()));
@@ -1981,9 +1982,13 @@ void DatabaseViewer::exportPosesRaw()
 {
 	exportPoses(0);
 }
-void DatabaseViewer::exportPosesRGBDSLAM()
+void DatabaseViewer::exportPosesRGBDSLAMMotionCapture()
 {
 	exportPoses(1);
+}
+void DatabaseViewer::exportPosesRGBDSLAM()
+{
+	exportPoses(10);
 }
 void DatabaseViewer::exportPosesKITTI()
 {
@@ -2177,7 +2182,7 @@ void DatabaseViewer::exportPoses(int format)
 	{
 		std::map<int, Transform> localTransforms;
 		QStringList items;
-		items.push_back("Robot");
+		items.push_back("Robot (base frame)");
 		items.push_back("Camera");
 		items.push_back("Scan");
 		bool ok;
@@ -2186,7 +2191,7 @@ void DatabaseViewer::exportPoses(int format)
 		{
 			return;
 		}
-		if(item.compare("Robot") != 0)
+		if(item.compare("Robot (base frame)") != 0)
 		{
 			bool cameraFrame = item.compare("Camera") == 0;
 			for(std::map<int, Transform>::iterator iter=optimizedPoses.begin(); iter!=optimizedPoses.end(); ++iter)
@@ -2274,7 +2279,7 @@ void DatabaseViewer::exportPoses(int format)
 		}
 
 		std::map<int, double> stamps;
-		if(format == 1)
+		if(format == 1 || format == 10)
 		{
 			for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter)
 			{

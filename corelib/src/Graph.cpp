@@ -52,7 +52,7 @@ namespace graph {
 
 bool exportPoses(
 		const std::string & filePath,
-		int format, // 0=Raw, 1=RGBD-SLAM, 2=KITTI, 3=TORO, 4=g2o
+		int format, // 0=Raw, 1=RGBD-SLAM motion capture (10=without change of coordinate frame), 2=KITTI, 3=TORO, 4=g2o
 		const std::map<int, Transform> & poses,
 		const std::multimap<int, Link> & constraints, // required for formats 3 and 4
 		const std::map<int, double> & stamps, // required for format 1
@@ -104,17 +104,21 @@ bool exportPoses(
 		{
 			for(std::map<int, Transform>::const_iterator iter=poses.begin(); iter!=poses.end(); ++iter)
 			{
-				if(format == 1) // rgbd-slam format
+				if(format == 1 || format == 10) // rgbd-slam format
 				{
-					// put the pose in rgbd-slam world reference
-					Transform t( 0, 0, 1, 0,
-								 0, -1, 0, 0,
-								 1, 0, 0, 0);
-					Transform pose = t.inverse() * iter->second;
-					t = Transform( 0, 0, 1, 0,
-								  -1, 0, 0, 0,
-								   0,-1, 0, 0);
-					pose = t.inverse() * pose * t;
+					Transform pose = iter->second;
+					if(format == 1)
+					{
+						// put the pose in rgbd-slam world reference
+						Transform t( 0, 0, 1, 0,
+									 0, -1, 0, 0,
+									 1, 0, 0, 0);
+						pose = t.inverse() * pose;
+						t = Transform( 0, 0, 1, 0,
+									  -1, 0, 0, 0,
+									   0,-1, 0, 0);
+						pose = t.inverse() * pose * t;
+					}
 
 					// Format: stamp x y z qx qy qz qw
 					Eigen::Quaternionf q = pose.getQuaternionf();
@@ -163,7 +167,7 @@ bool exportPoses(
 
 bool importPoses(
 		const std::string & filePath,
-		int format, // 0=Raw, 1=RGBD-SLAM, 2=KITTI, 3=TORO, 4=g2o, 5=NewCollege(t,x,y), 6=Malaga Urban GPS, 7=St Lucia INS, 8=Karlsruhe, 9=EuRoC MAC
+		int format, // 0=Raw, 1=RGBD-SLAM motion capture (10=without change of coordinate frame), 2=KITTI, 3=TORO, 4=g2o, 5=NewCollege(t,x,y), 6=Malaga Urban GPS, 7=St Lucia INS, 8=Karlsruhe, 9=EuRoC MAC
 		std::map<int, Transform> & poses,
 		std::multimap<int, Link> * constraints, // optional for formats 3 and 4
 		std::map<int, double> * stamps) // optional for format 1 and 9
@@ -407,7 +411,7 @@ bool importPoses(
 					UERROR("Error parsing \"%s\" with NewCollege format (should have 3 values: stamp x y, found %d)", str.c_str(), (int)strList.size());
 				}
 			}
-			else if(format == 1) // rgbd-slam format
+			else if(format == 1 || format==10) // rgbd-slam format
 			{
 				std::list<std::string> strList = uSplit(str);
 				if(strList.size() ==  8)
@@ -426,16 +430,19 @@ bool importPoses(
 						{
 							stamps->insert(std::make_pair(id, stamp));
 						}
-						// we need to remove optical rotation
-						// z pointing front, x left, y down
-						Transform t( 0, 0, 1, 0,
-									-1, 0, 0, 0,
-									 0,-1, 0, 0);
-						pose = t * pose * t.inverse();
-						t = Transform( 0, 0, 1, 0,
-									   0, -1, 0, 0,
-									   1, 0, 0, 0);
-						pose = t*pose;
+						if(format == 1)
+						{
+							// we need to remove optical rotation
+							// z pointing front, x left, y down
+							Transform t( 0, 0, 1, 0,
+										-1, 0, 0, 0,
+										 0,-1, 0, 0);
+							pose = t * pose * t.inverse();
+							t = Transform( 0, 0, 1, 0,
+										   0, -1, 0, 0,
+										   1, 0, 0, 0);
+							pose = t*pose;
+						}
 						poses.insert(std::make_pair(id, pose));
 					}
 				}
