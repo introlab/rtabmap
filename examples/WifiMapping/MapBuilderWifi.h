@@ -91,20 +91,32 @@ protected Q_SLOTS:
 			wifiLevels_.insert(std::make_pair(stamp, level));
 		}
 
+		// for the logic below, we should keep only stamps for
+		// nodes still in the graph (in case nodes are ignored when not moving)
+		std::map<double, int> nodeStamps;
+		for(std::map<double, int>::iterator iter=nodeStamps_.begin(); iter!=nodeStamps_.end(); ++iter)
+		{
+			std::map<int, Transform>::const_iterator jter = poses.find(iter->second);
+			if(jter != poses.end())
+			{
+				nodeStamps.insert(*iter);
+			}
+		}
+
 		int id = 0;
 		for(std::map<double, int>::iterator iter=wifiLevels_.begin(); iter!=wifiLevels_.end(); ++iter, ++id)
 		{
 			// The Wifi value may be taken between two nodes, interpolate its position.
 			double stampWifi = iter->first;
-			std::map<double, int>::iterator previousNode = nodeStamps_.lower_bound(stampWifi); // lower bound of the stamp
-			if(previousNode!=nodeStamps_.end() && previousNode->first > stampWifi && previousNode != nodeStamps_.begin())
+			std::map<double, int>::iterator previousNode = nodeStamps.lower_bound(stampWifi); // lower bound of the stamp
+			if(previousNode!=nodeStamps.end() && previousNode->first > stampWifi && previousNode != nodeStamps.begin())
 			{
 				--previousNode;
 			}
-			std::map<double, int>::iterator nextNode = nodeStamps_.upper_bound(stampWifi); // upper bound of the stamp
+			std::map<double, int>::iterator nextNode = nodeStamps.upper_bound(stampWifi); // upper bound of the stamp
 
-			if(previousNode != nodeStamps_.end() &&
-			   nextNode != nodeStamps_.end() &&
+			if(previousNode != nodeStamps.end() &&
+			   nextNode != nodeStamps.end() &&
 			   previousNode->second != nextNode->second &&
 			   uContains(poses, previousNode->second) && uContains(poses, nextNode->second))
 			{

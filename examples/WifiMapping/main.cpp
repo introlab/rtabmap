@@ -214,6 +214,8 @@ int main(int argc, char * argv[])
 	Rtabmap * rtabmap = new Rtabmap();
 	ParametersMap param;
 	param.insert(ParametersPair(Parameters::kMemRehearsalSimilarity(), "1.0")); // disable rehearsal (node merging when not moving)
+	param.insert(ParametersPair(Parameters::kRGBDLinearUpdate(), "0")); // disable node ignored when not moving
+	param.insert(ParametersPair(Parameters::kRGBDAngularUpdate(), "0")); // disable node ignored when not moving
 	rtabmap->init(param);
 	RtabmapThread rtabmapThread(rtabmap); // ownership is transfered
 
