@@ -468,7 +468,11 @@ void RegistrationIcp::parseParameters(const ParametersMap & parameters)
 			params["maxDist"] = uNumber2Str(_maxCorrespondenceDistance);
 			params["knn"] = uNumber2Str(_libpointmatcherKnn);
 			params["epsilon"] = uNumber2Str(_libpointmatcherEpsilon);
+#if POINTMATCHER_VERSION_INT >= 10300
 			icp->matcher = PM::get().MatcherRegistrar.create("KDTreeMatcher", params);
+#else
+			icp->matcher.reset(PM::get().MatcherRegistrar.create("KDTreeMatcher", params));
+#endif
 			params.clear();
 
 			params["ratio"] = uNumber2Str(_libpointmatcherOutlierRatio);
@@ -482,12 +486,20 @@ void RegistrationIcp::parseParameters(const ParametersMap & parameters)
 				params.clear();
 
 				params["force2D"] = force3DoF()?"1":"0";
+#if POINTMATCHER_VERSION_INT >= 10300
 				icp->errorMinimizer = PM::get().ErrorMinimizerRegistrar.create("PointToPlaneErrorMinimizer", params);
+#else
+				icp->errorMinimizer.reset(PM::get().ErrorMinimizerRegistrar.create("PointToPlaneErrorMinimizer", params));
+#endif
 				params.clear();
 			}
 			else
 			{
+#if POINTMATCHER_VERSION_INT >= 10300
 				icp->errorMinimizer = PM::get().ErrorMinimizerRegistrar.create("PointToPointErrorMinimizer");
+#else
+				icp->errorMinimizer.reset(PM::get().ErrorMinimizerRegistrar.create("PointToPointErrorMinimizer"));
+#endif
 			}
 
 			icp->transformationCheckers.clear();
@@ -961,8 +973,11 @@ Transform RegistrationIcp::computeTransformationImpl(
 							{
 								// temporary set PointToPointErrorMinimizer
 								PM::ICP & icpTmp = icp;
+#if POINTMATCHER_VERSION_INT >= 10300
 								icpTmp.errorMinimizer = PM::get().ErrorMinimizerRegistrar.create("PointToPointErrorMinimizer");
-
+#else
+								icpTmp.errorMinimizer.reset(PM::get().ErrorMinimizerRegistrar.create("PointToPointErrorMinimizer"));
+#endif
 								for(PM::OutlierFilters::iterator iter=icpTmp.outlierFilters.begin(); iter!=icpTmp.outlierFilters.end();)
 								{
 									if((*iter)->className.compare("SurfaceNormalOutlierFilter") == 0)
