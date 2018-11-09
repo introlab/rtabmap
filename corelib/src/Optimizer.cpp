@@ -202,22 +202,25 @@ void Optimizer::getConnectedGraph(
 			for(std::multimap<int, int>::const_iterator iter=biLinks.find(fromId); iter!=biLinks.end() && iter->first==fromId; ++iter)
 			{
 				int toId = iter->second;
-				std::multimap<int, Link>::const_iterator kter = graph::findLink(linksIn, fromId, toId);
-				int nextDepth = toId!=fromId?depth-1:depth;
-				if(depth == 0 || d < nextDepth || curentPoses.find(toId) != curentPoses.end())
+				if(posesIn.find(toId) != posesIn.end())
 				{
-					if(!uContains(posesOut, toId))
+					std::multimap<int, Link>::const_iterator kter = graph::findLink(linksIn, fromId, toId);
+					int nextDepth = toId!=fromId?depth-1:depth;
+					if(depth == 0 || d < nextDepth || curentPoses.find(toId) != curentPoses.end())
 					{
-						posesOut.insert(std::make_pair(toId, posesOut.at(fromId) * (kter->second.from()==fromId?kter->second.transform():kter->second.transform().inverse())));
-						if(curentPoses.find(toId) == curentPoses.end())
+						if(!uContains(posesOut, toId))
 						{
-							nextPoses.insert(toId);
+							posesOut.insert(std::make_pair(toId, posesOut.at(fromId) * (kter->second.from()==fromId?kter->second.transform():kter->second.transform().inverse())));
+							if(curentPoses.find(toId) == curentPoses.end())
+							{
+								nextPoses.insert(toId);
+							}
 						}
-					}
-					if(graph::findLink(linksOut, fromId, toId) == linksOut.end())
-					{
-						// only add unique links
-						linksOut.insert(*kter);
+						if(graph::findLink(linksOut, fromId, toId) == linksOut.end())
+						{
+							// only add unique links
+							linksOut.insert(*kter);
+						}
 					}
 				}
 			}
