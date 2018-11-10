@@ -874,6 +874,15 @@ bool DatabaseViewer::closeDatabase()
 				linksAdded_.clear();
 				linksRefined_.clear();
 				linksRemoved_.clear();
+
+				// Clear the optimized poses, this will force rtabmap to re-optimize the graph on initialization
+				Transform lastLocalizationPose;
+				if(!dbDriver_->loadOptimizedPoses(&lastLocalizationPose).empty())
+				{
+					dbDriver_->saveOptimizedPoses(std::map<int, Transform>(), lastLocalizationPose);
+				}
+				// This will force rtabmap_ros to regenerate the global occupancy grid if there was one
+				dbDriver_->save2DMap(cv::Mat(), 0, 0, 0);
 			}
 
 			if(button != QMessageBox::Yes && button != QMessageBox::No)
@@ -895,7 +904,6 @@ bool DatabaseViewer::closeDatabase()
 
 			if(button == QMessageBox::Yes)
 			{
-				// Rejected links
 				UASSERT(generatedLocalMaps_.size() == generatedLocalMapsInfo_.size());
 				std::map<int, std::pair<std::pair<cv::Mat, cv::Mat>, cv::Mat > >::iterator mapIter = generatedLocalMaps_.begin();
 				std::map<int, std::pair<float, cv::Point3f> >::iterator infoIter = generatedLocalMapsInfo_.begin();
@@ -914,6 +922,9 @@ bool DatabaseViewer::closeDatabase()
 				generatedLocalMapsInfo_.clear();
 				localMaps_.clear();
 				localMapsInfo_.clear();
+
+				// This will force rtabmap_ros to regenerate the global occupancy grid if there was one
+				dbDriver_->save2DMap(cv::Mat(), 0, 0, 0);
 			}
 
 			if(button != QMessageBox::Yes && button != QMessageBox::No)

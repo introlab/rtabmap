@@ -384,7 +384,10 @@ void Rtabmap::close(bool databaseSaved, const std::string & ouputDatabasePath)
 	}
 	if(_memory)
 	{
-		_memory->saveOptimizedPoses(_optimizedPoses, _lastLocalizationPose);
+		if(databaseSaved)
+		{
+			_memory->saveOptimizedPoses(_optimizedPoses, _lastLocalizationPose);
+		}
 		_memory->close(databaseSaved, true, ouputDatabasePath);
 		delete _memory;
 		_memory = 0;
@@ -4253,20 +4256,17 @@ int Rtabmap::detectMoreLoopClosures(
 			break;
 		}
 
-		if(n+1 < iterations)
+		UINFO("Optimizing graph with new links (%d nodes, %d constraints)...",
+				(int)poses.size(), (int)links.size());
+		int fromId = _optimizeFromGraphEnd?poses.rbegin()->first:poses.begin()->first;
+		poses = _graphOptimizer->optimize(fromId, poses, links, 0);
+		if(poses.size() == 0)
 		{
-			UINFO("Optimizing graph with new links (%d nodes, %d constraints)...",
-					(int)poses.size(), (int)links.size());
-			int fromId = _optimizeFromGraphEnd?poses.rbegin()->first:poses.begin()->first;
-			poses = _graphOptimizer->optimize(fromId, poses, links, 0);
-			if(poses.size() == 0)
-			{
-				UERROR("Optimization failed! Rejecting all loop closures...");
-				loopClosuresAdded.clear();
-				return -1;
-			}
-			UINFO("Optimizing graph with new links... done!");
+			UERROR("Optimization failed! Rejecting all loop closures...");
+			loopClosuresAdded.clear();
+			return -1;
 		}
+		UINFO("Optimizing graph with new links... done!");
 	}
 	UINFO("Total added %d loop closures.", (int)loopClosuresAdded.size());
 
@@ -4276,6 +4276,20 @@ int Rtabmap::detectMoreLoopClosures(
 		{
 			_memory->addLink(*iter, true);
 		}
+		// Update optimized poses
+		for(std::map<int, Transform>::iterator iter=_optimizedPoses.begin(); iter!=_optimizedPoses.end(); ++iter)
+		{
+			std::map<int, Transform>::iterator jter = poses.find(iter->first);
+			if(jter != poses.end())
+			{
+				iter->second = jter->second;
+			}
+		}
+		std::map<int, Transform> tmp;
+		// Update also the links if some have been added in WM
+		_memory->getMetricConstraints(uKeysSet(_optimizedPoses), tmp, _constraints, false);
+		// This will force rtabmap_ros to regenerate the global occupancy grid if there was one
+		_memory->save2DMap(cv::Mat(), 0, 0, 0);
 	}
 	return (int)loopClosuresAdded.size();
 }
