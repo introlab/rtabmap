@@ -137,6 +137,7 @@ std::vector<cv::Point2f> calcStereoCorrespondences(
 	UDEBUG("maxDisparity=%f", maxDisparityF);
 	UDEBUG("iterations=%d", iterations);
 	UDEBUG("ssdApproach=%d", ssdApproach?1:0);
+	UASSERT(minDisparityF >= 0.0f && minDisparityF <= maxDisparityF);
 
 	// window should be odd
 	if(winSize.width%2 == 0)
@@ -175,7 +176,7 @@ std::vector<cv::Point2f> calcStereoCorrespondences(
 		int tmpMinDisparity = minDisparity;
 		int tmpMaxDisparity = maxDisparity;
 
-		int iterations = 0;
+		int iterationsDone = 0;
 		for(int level=maxLevel; level>=0; --level)
 		{
 			UASSERT(level < (int)leftPyramid.size());
@@ -194,62 +195,65 @@ std::vector<cv::Point2f> calcStereoCorrespondences(
 				cv::Mat windowLeft(leftPyramid[level],
 						cv::Range(center.y-halfWin.height,center.y+halfWin.height+1),
 						cv::Range(center.x-halfWin.width,center.x+halfWin.width+1));
-				int minCol = center.x+localMaxDisparity-halfWin.width-1;
+				int minCol = center.x+localMaxDisparity-halfWin.width;
 				if(minCol < 0)
 				{
 					localMaxDisparity -= minCol;
 				}
 
-				int maxCol = center.x+localMinDisparity+halfWin.width+1;
-				if(maxCol >= leftPyramid[level].cols)
+				if(localMinDisparity > localMaxDisparity)
 				{
-					localMinDisparity += maxCol-leftPyramid[level].cols-1;
-				}
+					int length = localMinDisparity-localMaxDisparity+1;
+					std::vector<float> scores = std::vector<float>(length, 0.0f);
 
-				if(localMinDisparity < localMaxDisparity)
-				{
-					localMaxDisparity = localMinDisparity;
-				}
-				int length = localMinDisparity-localMaxDisparity+1;
-				std::vector<float> scores = std::vector<float>(length, 0.0f);
-
-				for(int d=localMinDisparity; d>localMaxDisparity; --d)
-				{
-					++iterations;
-					cv::Mat windowRight(rightPyramid[level],
-									cv::Range(center.y-halfWin.height,center.y+halfWin.height+1),
-									cv::Range(center.x+d-halfWin.width,center.x+d+halfWin.width+1));
-					scores[oi] = ssdApproach?ssd(windowLeft, windowRight):sad(windowLeft, windowRight);
-					if(scores[oi] > 0 && (bestScore < 0.0f || scores[oi] < bestScore))
+					for(int d=localMinDisparity; d>localMaxDisparity; --d)
 					{
-						bestScoreIndex = oi;
-						bestScore = scores[oi];
-					}
-					++oi;
-				}
-
-				if(bestScoreIndex>=0)
-				{
-					if(level>0)
-					{
-						tmpMaxDisparity = tmpMinDisparity+(bestScoreIndex+1)*(1<<level);
-						tmpMaxDisparity+=tmpMaxDisparity%level;
-						if(tmpMaxDisparity > maxDisparity)
+						++iterationsDone;
+						cv::Mat windowRight(rightPyramid[level],
+										cv::Range(center.y-halfWin.height,center.y+halfWin.height+1),
+										cv::Range(center.x+d-halfWin.width,center.x+d+halfWin.width+1));
+						scores[oi] = ssdApproach?ssd(windowLeft, windowRight):sad(windowLeft, windowRight);
+						if(scores[oi] > 0 && (bestScore < 0.0f || scores[oi] < bestScore))
 						{
-							tmpMaxDisparity = maxDisparity;
+							bestScoreIndex = oi;
+							bestScore = scores[oi];
 						}
-						tmpMinDisparity = tmpMinDisparity+(bestScoreIndex-1)*(1<<level);
-						tmpMinDisparity -= tmpMinDisparity%level;
-						if(tmpMinDisparity < minDisparity)
+						++oi;
+					}
+
+					if(oi>1)
+					{
+						float m = uMean(scores);
+						float st = sqrt(uVariance(scores, m));
+						if(bestScore > st)
 						{
-							tmpMinDisparity = minDisparity;
+							bestScoreIndex = -1;
+						}
+					}
+
+					if(bestScoreIndex>=0)
+					{
+						if(bestScoreIndex>=0 && level>0)
+						{
+							tmpMaxDisparity = tmpMinDisparity+(bestScoreIndex+1)*(1<<level);
+							tmpMaxDisparity+=tmpMaxDisparity%level;
+							if(tmpMaxDisparity > maxDisparity)
+							{
+								tmpMaxDisparity = maxDisparity;
+							}
+							tmpMinDisparity = tmpMinDisparity+(bestScoreIndex-1)*(1<<level);
+							tmpMinDisparity -= tmpMinDisparity%level;
+							if(tmpMinDisparity < minDisparity)
+							{
+								tmpMinDisparity = minDisparity;
+							}
 						}
 					}
 				}
 			}
 		}
 		disparityTime+=timer.ticks();
-		totalIterations+=iterations;
+		totalIterations+=iterationsDone;
 
 		if(bestScoreIndex>=0)
 		{

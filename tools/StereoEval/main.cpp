@@ -304,7 +304,6 @@ int main(int argc, char * argv[])
 		int inliers = 0;
 		int subInliers = 0;
 		int badInliers = 0;
-		int outliers = 0;
 		float sumInliers = 0.0f;
 		float sumSubInliers = 0.0f;
 		int goodRejected = 0;
@@ -366,26 +365,37 @@ int main(int argc, char * argv[])
 							cv::Point2f(leftCorners[i].x - (d<gt?d:gt), leftCorners[i].y),
 							cv::Point2f(leftCorners[i].x - (d>gt?d:gt), leftCorners[i].y),
 							cv::Scalar( 0, 0, 255 ));
-						++outliers;
+						++badInliers;
 						//UDEBUG("should be rejected: %d", i);
 					}
+				}
+				else
+				{
+					++badInliers;
 				}
 			}
 			else if(mask.at<cv::Vec3b>(int(rightCorners[i].y), int(leftCorners[i].x))[0] == 255 &&
 					rightCorners[i].x > 0.0f)
 			{
 				float d = leftCorners[i].x - rightCorners[i].x;
-				cv::line(left,
-					leftCorners[i],
-					cv::Point2f(leftCorners[i].x - gt, leftCorners[i].y),
-					cv::Scalar( 0, 255, 255 ));
+				if(fabs(d-gt) < 1.0f)
+				{
+					cv::line(left,
+						leftCorners[i],
+						cv::Point2f(leftCorners[i].x - gt, leftCorners[i].y),
+						cv::Scalar( 0, 255, 255 ));
 
-				cv::line(left,
-						cv::Point2f(leftCorners[i].x - (d<gt?d:gt), leftCorners[i].y),
-						cv::Point2f(leftCorners[i].x - (d>gt?d:gt), leftCorners[i].y),
-					cv::Scalar( 0, 0, 255 ));
-				++goodRejected;
-				//UDEBUG("should not be rejected: %d", i);
+					cv::line(left,
+							cv::Point2f(leftCorners[i].x - (d<gt?d:gt), leftCorners[i].y),
+							cv::Point2f(leftCorners[i].x - (d>gt?d:gt), leftCorners[i].y),
+						cv::Scalar( 0, 0, 255 ));
+					++goodRejected;
+					//UDEBUG("should not be rejected: %d", i);
+				}
+				else
+				{
+					++badRejected;
+				}
 			}
 			else
 			{
@@ -394,15 +404,11 @@ int main(int argc, char * argv[])
 			}
 		}
 
-		UINFO("inliers=%d (%d%%) subInliers=%d (%d%%) bad inliers=%d (%d%%) bad accepted=%d (%d%%) good rejected=%d (%d%%) bad rejected=%d (%d%%)",
+		UINFO("good accepted=%d (%d%%) bad accepted=%d (%d%%) good rejected=%d (%d%%) bad rejected=%d (%d%%)",
 				inliers,
 				(inliers*100)/leftCorners.size(),
-				subInliers,
-				(subInliers*100)/leftCorners.size(),
 				badInliers,
 				(badInliers*100)/leftCorners.size(),
-				outliers,
-				(outliers*100)/leftCorners.size(),
 				goodRejected,
 				(goodRejected*100)/leftCorners.size(),
 				badRejected,
