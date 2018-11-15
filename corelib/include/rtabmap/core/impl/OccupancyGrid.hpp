@@ -44,6 +44,13 @@ typename pcl::PointCloud<PointT>::Ptr OccupancyGrid::segmentCloud(
 		pcl::IndicesPtr & obstaclesIndices,
 		pcl::IndicesPtr * flatObstacles) const
 {
+	groundIndices.reset(new std::vector<int>);
+	obstaclesIndices.reset(new std::vector<int>);
+	if(flatObstacles)
+	{
+		flatObstacles->reset(new std::vector<int>);
+	}
+
 	typename pcl::PointCloud<PointT>::Ptr cloud(new pcl::PointCloud<PointT>);
 	pcl::IndicesPtr indices(new std::vector<int>);
 
