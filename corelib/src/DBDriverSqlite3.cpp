@@ -699,7 +699,11 @@ long DBDriverSqlite3::getGridsMemoryUsedQuery() const
 	{
 		std::string query;
 
-		if(uStrNumCmp(_version, "0.11.10") >= 0)
+		if(uStrNumCmp(_version, "0.16.0") >= 0)
+		{
+			query = "SELECT sum(ifnull(length(ground_cells),0) + ifnull(length(obstacle_cells),0) + ifnull(length(empty_cells),0) + length(cell_size) + length(view_point_x) + length(view_point_y) + length(view_point_z)) from Data;";
+		}
+		else if(uStrNumCmp(_version, "0.11.10") >= 0)
 		{
 			query = "SELECT sum(ifnull(length(ground_cells),0) + ifnull(length(obstacle_cells),0) + length(cell_size) + length(view_point_x) + length(view_point_y) + length(view_point_z)) from Data;";
 		}
@@ -882,11 +886,11 @@ long DBDriverSqlite3::getStatisticsMemoryUsedQuery() const
 		std::string query;
 		if(uStrNumCmp(_version, "0.16.2") >= 0)
 		{
-			query = "SELECT sum(length(id) + length(stamp) + length(data) + length(wm_state)) FROM Statistics";
+			query = "SELECT sum(length(id) + length(stamp) + ifnull(length(data),0) + ifnull(length(wm_state),0)) FROM Statistics;";
 		}
 		else if(uStrNumCmp(_version, "0.11.11") >= 0)
 		{
-			query = "SELECT sum(length(id) + length(stamp) + length(data)) FROM Statistics";
+			query = "SELECT sum(length(id) + length(stamp) + length(data)) FROM Statistics;";
 		}
 		else
 		{
