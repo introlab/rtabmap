@@ -1807,54 +1807,57 @@ bool Rtabmap::process(
 					timeGetNeighborsSpaceDb);
 
 		}
+	}
 
-		//============================================================
-		// RETRIEVAL 2/3 : Update planned path and get next nodes to retrieve
-		//============================================================
-		std::list<int> retrievalLocalIds;
-		if(_rgbdSlamMode)
+	//============================================================
+	// RETRIEVAL 2/3 : Update planned path and get next nodes to retrieve
+	//============================================================
+	std::list<int> retrievalLocalIds;
+	if(_rgbdSlamMode)
+	{
+		// Priority on locations on the planned path
+		if(_path.size())
 		{
-			// Priority on locations on the planned path
-			if(_path.size())
+			updateGoalIndex();
+
+			float distanceSoFar = 0.0f;
+			// immunize all nodes after current node and
+			// retrieve nodes after current node in the maximum radius from the current node
+			for(unsigned int i=_pathCurrentIndex; i<_path.size(); ++i)
 			{
-				updateGoalIndex();
-
-				float distanceSoFar = 0.0f;
-				// immunize all nodes after current node and
-				// retrieve nodes after current node in the maximum radius from the current node
-				for(unsigned int i=_pathCurrentIndex; i<_path.size(); ++i)
+				if(_localRadius > 0.0f && i != _pathCurrentIndex)
 				{
-					if(_localRadius > 0.0f && i != _pathCurrentIndex)
-					{
-						distanceSoFar += _path[i-1].second.getDistance(_path[i].second);
-					}
+					distanceSoFar += _path[i-1].second.getDistance(_path[i].second);
+				}
 
-					if(distanceSoFar <= _localRadius)
+				if(distanceSoFar <= _localRadius)
+				{
+					if(_memory->getSignature(_path[i].first) != 0)
 					{
-						if(_memory->getSignature(_path[i].first) != 0)
+						if(immunizedLocations.insert(_path[i].first).second)
 						{
-							if(immunizedLocations.insert(_path[i].first).second)
-							{
-								++immunizedLocally;
-							}
-							UDEBUG("Path immunization: node %d (dist=%fm)", _path[i].first, distanceSoFar);
+							++immunizedLocally;
 						}
-						else if(retrievalLocalIds.size() < _maxLocalRetrieved)
-						{
-							UINFO("retrieval of node %d on path (dist=%fm)", _path[i].first, distanceSoFar);
-							retrievalLocalIds.push_back(_path[i].first);
-							// retrieved locations are automatically immunized
-						}
+						UDEBUG("Path immunization: node %d (dist=%fm)", _path[i].first, distanceSoFar);
 					}
-					else
+					else if(retrievalLocalIds.size() < _maxLocalRetrieved)
 					{
-						UDEBUG("Stop on node %d (dist=%fm > %fm)",
-								_path[i].first, distanceSoFar, _localRadius);
-						break;
+						UINFO("retrieval of node %d on path (dist=%fm)", _path[i].first, distanceSoFar);
+						retrievalLocalIds.push_back(_path[i].first);
+						// retrieved locations are automatically immunized
 					}
 				}
+				else
+				{
+					UDEBUG("Stop on node %d (dist=%fm > %fm)",
+							_path[i].first, distanceSoFar, _localRadius);
+					break;
+				}
 			}
+		}
 
+		if(!(_memory->allNodesInWM() && maxLocalLocationsImmunized == 0))
+		{
 			// immunize the path from the nearest local location to the current location
 			if(immunizedLocally < maxLocalLocationsImmunized &&
 				_memory->isIncremental()) // Can only work in mapping mode
@@ -2738,6 +2741,8 @@ bool Rtabmap::process(
 					statistics_.setRawLikelihood(rawLikelihood);
 				}
 			}
+
+			statistics_.setLabels(_memory->getAllLabels());
 
 			// Path
 			if(_path.size())

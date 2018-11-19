@@ -160,7 +160,7 @@ public:
 	const Signature * getLastWorkingSignature() const;
 	int getSignatureIdByLabel(const std::string & label, bool lookInDatabase = true) const;
 	bool labelSignature(int id, const std::string & label);
-	std::map<int, std::string> getAllLabels() const;
+	const std::map<int, std::string> & getAllLabels() const {return _labels;}
 	bool allNodesInWM() const {return _allNodesInWM;}
 
 	/**
@@ -328,6 +328,7 @@ private:
 	std::set<int> _stMem; // id
 	std::map<int, double> _workingMem; // id,age
 	std::map<int, Transform> _groundTruths;
+	std::map<int, std::string> _labels;
 
 	//Keypoint stuff
 	VWDictionary * _vwd;

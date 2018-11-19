@@ -249,6 +249,10 @@ void Memory::loadDataFromDb(bool postInitClosingEvents)
 			}
 		}
 
+		// Get labels
+		UDEBUG("Get labels");
+		_dbDriver->getAllLabels(_labels);
+
 		UDEBUG("Check if all nodes are in Working Memory");
 		for(std::map<int, Signature*>::iterator iter=_signatures.begin(); iter!=_signatures.end() && _allNodesInWM; ++iter)
 		{
@@ -923,6 +927,7 @@ void Memory::addSignatureToStm(Signature * signature, const cv::Mat & covariance
 					{
 						UINFO("Tagging node %d with label \"%s\"", signature->id(), tag.c_str());
 						signature->setLabel(tag);
+						_labels.insert(std::make_pair(signature->id(), tag));
 					}
 				}
 			}
@@ -935,6 +940,7 @@ void Memory::addSignatureToStm(Signature * signature, const cv::Mat & covariance
 			{
 				UINFO("Tagging node %d with label \"%s\"", signature->id(), tag.c_str());
 				signature->setLabel(tag);
+				_labels.insert(std::make_pair(signature->id(), tag));
 			}
 		}
 
@@ -1593,6 +1599,7 @@ void Memory::clear()
 	_rectStereoCameraModel = StereoCameraModel();
 	_odomMaxInf.clear();
 	_groundTruths.clear();
+	_labels.clear();
 	_allNodesInWM = true;
 
 	if(_dbDriver)
@@ -2286,6 +2293,7 @@ bool Memory::labelSignature(int id, const std::string & label)
 		Signature * s  = this->_getSignature(id);
 		if(s)
 		{
+			uInsert(_labels, std::make_pair(s->id(), label));
 			s->setLabel(label);
 			_linksChanged = s->isSaved(); // HACK to get label updated in Localization mode
 			UWARN("Label \"%s\" set to node %d", label.c_str(), id);
@@ -2299,6 +2307,7 @@ bool Memory::labelSignature(int id, const std::string & label)
 			_dbDriver->loadSignatures(ids,signatures);
 			if(signatures.size())
 			{
+				uInsert(_labels, std::make_pair(signatures.front()->id(), label));
 				signatures.front()->setLabel(label);
 				UWARN("Label \"%s\" set to node %d", label.c_str(), id);
 				_dbDriver->asyncSave(signatures.front()); // move it again to trash
@@ -2315,23 +2324,6 @@ bool Memory::labelSignature(int id, const std::string & label)
 		UWARN("Node %d has already label \"%s\"", idFound, label.c_str());
 	}
 	return false;
-}
-
-std::map<int, std::string> Memory::getAllLabels() const
-{
-	std::map<int, std::string> labels;
-	for(std::map<int, Signature*>::const_iterator iter = _signatures.begin(); iter!=_signatures.end(); ++iter)
-	{
-		if(!iter->second->getLabel().empty())
-		{
-			labels.insert(std::make_pair(iter->first, iter->second->getLabel()));
-		}
-	}
-	if(_dbDriver)
-	{
-		_dbDriver->getAllLabels(labels);
-	}
-	return labels;
 }
 
 bool Memory::setUserData(int id, const cv::Mat & data)

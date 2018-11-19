@@ -1881,9 +1881,9 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 			{
 				groundTruth.insert(std::make_pair(stat.getLastSignatureData().id(), stat.getLastSignatureData().getGroundTruthPose()));
 			}
-			if(!stat.getLastSignatureData().getLabel().empty())
+			for(std::map<int, std::string>::const_iterator iter=stat.labels().begin(); iter!=stat.labels().end(); ++iter)
 			{
-				labels.insert(std::make_pair(stat.getLastSignatureData().id(), stat.getLastSignatureData().getLabel()));
+				uInsert(labels, std::pair<int, std::string>(*iter)); // overwrite labels because they could have been modified
 			}
 			if(_ui->graphicsView_graphView->getWorldMapRotation()==0.0f &&
 				stat.getLastSignatureData().sensorData().gps().stamp()!=0.0 &&
