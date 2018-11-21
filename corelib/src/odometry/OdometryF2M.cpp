@@ -466,7 +466,14 @@ Transform OdometryF2M::computeTransform(
 					}
 					if(!regInfo.rejectedMsg.empty())
 					{
-						UWARN("Registration failed: \"%s\"", regInfo.rejectedMsg.c_str());
+						if(guess.isNull())
+						{
+							UWARN("Registration failed: \"%s\"", regInfo.rejectedMsg.c_str());
+						}
+						else
+						{
+							UWARN("Registration failed: \"%s\" (guess=%s)", regInfo.rejectedMsg.c_str(), guess.prettyPrint().c_str());
+						}
 					}
 					else
 					{

@@ -272,13 +272,14 @@ GraphViewer::GraphViewer(QWidget * parent) :
 	_originReferential = new QGraphicsItemGroup();
 	this->scene()->addItem(_originReferential); // ownership transfered
 	QGraphicsLineItem * item = this->scene()->addLine(0,0,0,-100, QPen(QBrush(Qt::red), _linkWidth));
-	item->setZValue(100);
+	item->setZValue(1);
 	item->setParentItem(_root);
 	_originReferential->addToGroup(item);
 	item = this->scene()->addLine(0,0,-100,0, QPen(QBrush(Qt::green), _linkWidth));
-	item->setZValue(100);
+	item->setZValue(1);
 	item->setParentItem(_root);
 	_originReferential->addToGroup(item);
+	_originReferential->setZValue(1);
 	_originReferential->setParentItem(_root);
 
 	// current pose
@@ -292,6 +293,7 @@ GraphViewer::GraphViewer(QWidget * parent) :
 	item->setZValue(100);
 	item->setParentItem(_root);
 	_referential->addToGroup(item);
+	_referential->setZValue(100);
 	_referential->setParentItem(_root);
 
 	_localRadius = this->scene()->addEllipse(-0.0001,-0.0001,0.0001,0.0001);

@@ -106,6 +106,7 @@ public:
 	Transform transform;
 	Transform transformFiltered;
 	Transform transformGroundTruth;
+	Transform guessVelocity;
 	float distanceTravelled;
 	int memoryUsage; //MB
 
