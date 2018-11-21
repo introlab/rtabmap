@@ -84,6 +84,7 @@ class RtabmapColorOcTree : public octomap::OccupancyOcTreeBase <RtabmapColorOcTr
   public:
     /// Default constructor, sets resolution of leafs
 	RtabmapColorOcTree(double resolution);
+	virtual ~RtabmapColorOcTree() {}
 
     /// virtual constructor: creates a new object of same type
     /// (Covariant return type requires an up-to-date compiler)

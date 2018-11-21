@@ -257,6 +257,8 @@ RtabmapColorOcTree::StaticMemberInitializer::StaticMemberInitializer() {
 	 AbstractOcTree::registerTreeType(tree);
  }
 
+RtabmapColorOcTree::StaticMemberInitializer RtabmapColorOcTree::RtabmapColorOcTreeMemberInit;
+
 
 //////////////////////////////////////
 // OctoMap
