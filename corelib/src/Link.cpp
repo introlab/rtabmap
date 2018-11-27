@@ -112,6 +112,15 @@ Link Link::merge(const Link & link, Type outputType) const
 	UASSERT((link.transform().isNull() && transform_.isNull()) || (!link.transform().isNull() && !transform_.isNull()));
 	UASSERT(infMatrix_.cols == 6 && infMatrix_.rows == 6 && infMatrix_.type() == CV_64FC1);
 	UASSERT(link.infMatrix().cols == 6 && link.infMatrix().rows == 6 && link.infMatrix().type() == CV_64FC1);
+	if(outputType == kNeighborMerged)
+	{
+		return Link(
+			from_,
+			link.to(),
+			outputType,
+			transform_.isNull()?Transform():transform_ * link.transform(),
+			transform_.isNull()?cv::Mat::eye(6,6,CV_64FC1):(infMatrix_.inv() + link.infMatrix().inv()).inv());
+	}
 	return Link(
 			from_,
 			link.to(),
