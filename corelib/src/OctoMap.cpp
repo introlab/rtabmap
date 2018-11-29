@@ -257,7 +257,10 @@ RtabmapColorOcTree::StaticMemberInitializer::StaticMemberInitializer() {
 	 AbstractOcTree::registerTreeType(tree);
  }
 
+#ifndef _WIN32
+// On Windows, the app freezes on start if the following is defined
 RtabmapColorOcTree::StaticMemberInitializer RtabmapColorOcTree::RtabmapColorOcTreeMemberInit;
+#endif
 
 
 //////////////////////////////////////
