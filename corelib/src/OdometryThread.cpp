@@ -150,7 +150,7 @@ void OdometryThread::addData(const SensorData & data)
 	bool notify = true;
 	_dataMutex.lock();
 	{
-		if(data.imu().empty())
+		if(!data.imageRaw().empty() || !data.laserScanRaw().isEmpty() || data.imu().empty())
 		{
 			_dataBuffer.push_back(data);
 			while(_dataBufferMaxSize > 0 && _dataBuffer.size() > _dataBufferMaxSize)
