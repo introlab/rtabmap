@@ -91,6 +91,30 @@ Transform OdometryF2F::computeTransform(
 	UASSERT(!this->getPose().isNull());
 	if(lastKeyFramePose_.isNull())
 	{
+		if(this->getPose().rotation().isIdentity() &&
+			data.imu().linearAcceleration()[0]!=0.0 &&
+			data.imu().linearAcceleration()[1]!=0.0 &&
+			data.imu().linearAcceleration()[2]!=0.0 &&
+			!data.imu().localTransform().isNull())
+		{
+			// align with gravity
+			Eigen::Vector3f n(data.imu().linearAcceleration()[0], data.imu().linearAcceleration()[1], data.imu().linearAcceleration()[2]);
+			n = data.imu().localTransform().toEigen3f() * n;
+			n.normalize();
+			n[0]*=-1;
+			n[1]*=-1;
+			n[2]*=-1;
+			Eigen::Vector3f z(0,0,1);
+			//get rotation from z to n;
+			Eigen::Matrix3f R;
+			R = Eigen::Quaternionf().setFromTwoVectors(n,z);
+			Transform rotation(
+					R(0,0), R(0,1), R(0,2), 0,
+					R(1,0), R(1,1), R(1,2), 0,
+					R(2,0), R(2,1), R(2,2), 0);
+			this->reset(rotation);
+		}
+
 		lastKeyFramePose_ = this->getPose(); // reset to current pose
 	}
 	Transform motionSinceLastKeyFrame = lastKeyFramePose_.inverse()*this->getPose();

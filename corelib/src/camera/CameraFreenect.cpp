@@ -166,6 +166,13 @@ class FreenectDevice : public UThread {
 		}
 	}
 
+	void getAccelerometerValues(double & x, double & y, double & z)
+	{
+		freenect_update_tilt_state(device_);
+		freenect_raw_tilt_state* state = freenect_get_tilt_state(device_);
+		freenect_get_mks_accel(state, &x,&y,&z);
+	}
+
 private:
 	// Do not call directly even in child
 	void VideoCallback(void* rgb)
@@ -216,6 +223,7 @@ private:
 
 	virtual void mainLoopBegin()
 	{
+		if(device_) freenect_set_led(device_, LED_RED);
 		this->startDepth();
 		this->startVideo();
 	}
@@ -234,6 +242,7 @@ private:
 
 	virtual void mainLoopEnd()
 	{
+		if(device_) freenect_set_led(device_, LED_GREEN);
 		this->stopDepth();
 		this->stopVideo();
 		dataReady_.release();
@@ -294,7 +303,7 @@ CameraFreenect::CameraFreenect(int deviceId, Type type, float imageRate, const T
 #ifdef RTABMAP_FREENECT
 	if(freenect_init(&ctx_, NULL) < 0) UERROR("Cannot initialize freenect library");
 	// claim camera
-	freenect_select_subdevices(ctx_, static_cast<freenect_device_flags>(FREENECT_DEVICE_CAMERA));
+	freenect_select_subdevices(ctx_, static_cast<freenect_device_flags>(FREENECT_DEVICE_MOTOR | FREENECT_DEVICE_CAMERA));
 #endif
 }
 
@@ -459,6 +468,14 @@ SensorData CameraFreenect::captureImage(CameraInfo * info)
 				model.setLocalTransform(this->getLocalTransform());
 
 				data = SensorData(rgb, depth, model, this->getNextSeqID(), UTimer::now());
+
+				double x=0,y=0,z=0;
+				freenectDevice_->getAccelerometerValues(x,y,z);
+				if(x != 0.0 && y != 0.0 && z != 0.0)
+				{
+					// frame of imu on kinect is x->right, y->down, z->backward
+					data.setIMU(IMU(cv::Vec3d(0,0,0), cv::Mat(), cv::Vec3d(x, y, z), cv::Mat(), Transform(0,0,-1,0, -1,0,0,0, 0,-1,0,0)));
+				}
 			}
 		}
 		else
