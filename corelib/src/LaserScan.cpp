@@ -227,7 +227,7 @@ LaserScan::LaserScan(
 	UASSERT(maxRange>minRange);
 	UASSERT(angleMax>angleMin);
 	UASSERT(angleIncrement != 0.0f);
-	maxPoints_ = std::ceil((angleMax - angleMin) / angleIncrement);
+	maxPoints_ = std::ceil((angleMax - angleMin) / angleIncrement)+1;
 
 	UASSERT(data.empty() || data.rows == 1);
 	UASSERT(data.empty() || data.type() == CV_8UC1 || data.type() == CV_32FC2 || data.type() == CV_32FC3 || data.type() == CV_32FC(4) || data.type() == CV_32FC(5) || data.type() == CV_32FC(6)  || data.type() == CV_32FC(7));
