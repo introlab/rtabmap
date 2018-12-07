@@ -77,23 +77,29 @@ std::map<int, Transform> OptimizerTORO::optimize(
 		{
 			for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
 			{
-				UASSERT(!iter->second.isNull());
-				AISNavigation::TreePoseGraph2::Pose p(iter->second.x(), iter->second.y(), iter->second.theta());
-				AISNavigation::TreePoseGraph2::Vertex* v = pg2.addVertex(iter->first, p);
-				UASSERT_MSG(v != 0, uFormat("cannot insert vertex %d!?", iter->first).c_str());
+				if(iter->first > 0)
+				{
+					UASSERT(!iter->second.isNull());
+					AISNavigation::TreePoseGraph2::Pose p(iter->second.x(), iter->second.y(), iter->second.theta());
+					AISNavigation::TreePoseGraph2::Vertex* v = pg2.addVertex(iter->first, p);
+					UASSERT_MSG(v != 0, uFormat("cannot insert vertex %d!?", iter->first).c_str());
+				}
 			}
 		}
 		else
 		{
 			for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
 			{
-				UASSERT(!iter->second.isNull());
-				float x,y,z, roll,pitch,yaw;
-				iter->second.getTranslationAndEulerAngles(x,y,z, roll,pitch,yaw);
-				AISNavigation::TreePoseGraph3::Pose p(x, y, z, roll, pitch, yaw);
-				AISNavigation::TreePoseGraph3::Vertex* v = pg3.addVertex(iter->first, p);
-				UASSERT_MSG(v != 0, uFormat("cannot insert vertex %d!?", iter->first).c_str());
-				v->transformation=AISNavigation::TreePoseGraph3::Transformation(p);
+				if(iter->first > 0)
+				{
+					UASSERT(!iter->second.isNull());
+					float x,y,z, roll,pitch,yaw;
+					iter->second.getTranslationAndEulerAngles(x,y,z, roll,pitch,yaw);
+					AISNavigation::TreePoseGraph3::Pose p(x, y, z, roll, pitch, yaw);
+					AISNavigation::TreePoseGraph3::Vertex* v = pg3.addVertex(iter->first, p);
+					UASSERT_MSG(v != 0, uFormat("cannot insert vertex %d!?", iter->first).c_str());
+					v->transformation=AISNavigation::TreePoseGraph3::Transformation(p);
+				}
 			}
 
 		}
@@ -128,7 +134,7 @@ std::map<int, Transform> OptimizerTORO::optimize(
 
 				int id1 = iter->second.from();
 				int id2 = iter->second.to();
-				if(id1 != id2)
+				if(id1 != id2 && id1 > 0 && id2 > 0)
 				{
 					AISNavigation::TreePoseGraph2::Vertex* v1=pg2.vertex(id1);
 					AISNavigation::TreePoseGraph2::Vertex* v2=pg2.vertex(id2);
@@ -140,7 +146,7 @@ std::map<int, Transform> OptimizerTORO::optimize(
 						UERROR("Map: Edge already exits between nodes %d and %d, skipping", id1, id2);
 					}
 				}
-				//else // not supporting pose prior
+				//else // not supporting pose prior and landmarks
 			}
 		}
 		else
@@ -160,7 +166,7 @@ std::map<int, Transform> OptimizerTORO::optimize(
 
 				int id1 = iter->second.from();
 				int id2 = iter->second.to();
-				if(id1 != id2)
+				if(id1 != id2 && id1 > 0 && id2 > 0)
 				{
 					AISNavigation::TreePoseGraph3::Vertex* v1=pg3.vertex(id1);
 					AISNavigation::TreePoseGraph3::Vertex* v2=pg3.vertex(id2);
@@ -172,7 +178,7 @@ std::map<int, Transform> OptimizerTORO::optimize(
 						UERROR("Map: Edge already exits between nodes %d and %d, skipping", id1, id2);
 					}
 				}
-				//else // not supporting pose prior
+				//else // not supporting pose prior and landmarks
 			}
 		}
 		UDEBUG("buildMST... root=%d", rootId);
@@ -214,25 +220,31 @@ std::map<int, Transform> OptimizerTORO::optimize(
 				{
 					for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
 					{
-						AISNavigation::TreePoseGraph2::Vertex* v=pg2.vertex(iter->first);
-						float roll, pitch, yaw;
-						iter->second.getEulerAngles(roll, pitch, yaw);
-						Transform newPose(v->pose.x(), v->pose.y(), iter->second.z(), roll, pitch, v->pose.theta());
+						if(iter->first > 0)
+						{
+							AISNavigation::TreePoseGraph2::Vertex* v=pg2.vertex(iter->first);
+							float roll, pitch, yaw;
+							iter->second.getEulerAngles(roll, pitch, yaw);
+							Transform newPose(v->pose.x(), v->pose.y(), iter->second.z(), roll, pitch, v->pose.theta());
 
-						UASSERT_MSG(!newPose.isNull(), uFormat("Optimized pose %d is null!?!?", iter->first).c_str());
-						tmpPoses.insert(std::pair<int, Transform>(iter->first, newPose));
+							UASSERT_MSG(!newPose.isNull(), uFormat("Optimized pose %d is null!?!?", iter->first).c_str());
+							tmpPoses.insert(std::pair<int, Transform>(iter->first, newPose));
+						}
 					}
 				}
 				else
 				{
 					for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
 					{
-						AISNavigation::TreePoseGraph3::Vertex* v=pg3.vertex(iter->first);
-						AISNavigation::TreePoseGraph3::Pose pose=v->transformation.toPoseType();
-						Transform newPose(pose.x(), pose.y(), pose.z(), pose.roll(), pose.pitch(), pose.yaw());
+						if(iter->first > 0)
+						{
+							AISNavigation::TreePoseGraph3::Vertex* v=pg3.vertex(iter->first);
+							AISNavigation::TreePoseGraph3::Pose pose=v->transformation.toPoseType();
+							Transform newPose(pose.x(), pose.y(), pose.z(), pose.roll(), pose.pitch(), pose.yaw());
 
-						UASSERT_MSG(!newPose.isNull(), uFormat("Optimized pose %d is null!?!?", iter->first).c_str());
-						tmpPoses.insert(std::pair<int, Transform>(iter->first, newPose));
+							UASSERT_MSG(!newPose.isNull(), uFormat("Optimized pose %d is null!?!?", iter->first).c_str());
+							tmpPoses.insert(std::pair<int, Transform>(iter->first, newPose));
+						}
 					}
 				}
 				intermediateGraphes->push_back(tmpPoses);
@@ -293,25 +305,31 @@ std::map<int, Transform> OptimizerTORO::optimize(
 		{
 			for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
 			{
-				AISNavigation::TreePoseGraph2::Vertex* v=pg2.vertex(iter->first);
-				float roll, pitch, yaw;
-				iter->second.getEulerAngles(roll, pitch, yaw);
-				Transform newPose(v->pose.x(), v->pose.y(), iter->second.z(), roll, pitch, v->pose.theta());
+				if(iter->first > 0)
+				{
+					AISNavigation::TreePoseGraph2::Vertex* v=pg2.vertex(iter->first);
+					float roll, pitch, yaw;
+					iter->second.getEulerAngles(roll, pitch, yaw);
+					Transform newPose(v->pose.x(), v->pose.y(), iter->second.z(), roll, pitch, v->pose.theta());
 
-				UASSERT_MSG(!newPose.isNull(), uFormat("Optimized pose %d is null!?!?", iter->first).c_str());
-				optimizedPoses.insert(std::pair<int, Transform>(iter->first, newPose));
+					UASSERT_MSG(!newPose.isNull(), uFormat("Optimized pose %d is null!?!?", iter->first).c_str());
+					optimizedPoses.insert(std::pair<int, Transform>(iter->first, newPose));
+				}
 			}
 		}
 		else
 		{
 			for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
 			{
-				AISNavigation::TreePoseGraph3::Vertex* v=pg3.vertex(iter->first);
-				AISNavigation::TreePoseGraph3::Pose pose=v->transformation.toPoseType();
-				Transform newPose(pose.x(), pose.y(), pose.z(), pose.roll(), pose.pitch(), pose.yaw());
+				if(iter->first > 0)
+				{
+					AISNavigation::TreePoseGraph3::Vertex* v=pg3.vertex(iter->first);
+					AISNavigation::TreePoseGraph3::Pose pose=v->transformation.toPoseType();
+					Transform newPose(pose.x(), pose.y(), pose.z(), pose.roll(), pose.pitch(), pose.yaw());
 
-				UASSERT_MSG(!newPose.isNull(), uFormat("Optimized pose %d is null!?!?", iter->first).c_str());
-				optimizedPoses.insert(std::pair<int, Transform>(iter->first, newPose));
+					UASSERT_MSG(!newPose.isNull(), uFormat("Optimized pose %d is null!?!?", iter->first).c_str());
+					optimizedPoses.insert(std::pair<int, Transform>(iter->first, newPose));
+				}
 			}
 		}
 

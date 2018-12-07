@@ -55,7 +55,7 @@ bool OptimizerCVSBA::available()
 
 std::map<int, Transform> OptimizerCVSBA::optimizeBA(
 		int rootId,
-		const std::map<int, Transform> & poses,
+		const std::map<int, Transform> & posesIn,
 		const std::multimap<int, Link> & links,
 		const std::map<int, CameraModel> & models,
 		std::map<int, cv::Point3f> & points3DMap,
@@ -65,6 +65,8 @@ std::map<int, Transform> OptimizerCVSBA::optimizeBA(
 #ifdef RTABMAP_CVSBA
 	// run sba optimization
 	cvsba::Sba sba;
+
+	std::map<int, Transform> poses(posesIn.lower_bound(1), posesIn.end());
 
 	// change params if desired
 	cvsba::Sba::Params params ;

@@ -229,13 +229,14 @@ void Optimizer::getConnectedGraph(
 	}
 }
 
-Optimizer::Optimizer(int iterations, bool slam2d, bool covarianceIgnored, double epsilon, bool robust, bool priorsIgnored) :
+Optimizer::Optimizer(int iterations, bool slam2d, bool covarianceIgnored, double epsilon, bool robust, bool priorsIgnored, bool landmarksIgnored) :
 		iterations_(iterations),
 		slam2d_(slam2d),
 		covarianceIgnored_(covarianceIgnored),
 		epsilon_(epsilon),
 		robust_(robust),
-		priorsIgnored_(priorsIgnored)
+		priorsIgnored_(priorsIgnored),
+		landmarksIgnored_(landmarksIgnored)
 {
 }
 
@@ -245,7 +246,8 @@ Optimizer::Optimizer(const ParametersMap & parameters) :
 		covarianceIgnored_(Parameters::defaultOptimizerVarianceIgnored()),
 		epsilon_(Parameters::defaultOptimizerEpsilon()),
 		robust_(Parameters::defaultOptimizerRobust()),
-		priorsIgnored_(Parameters::defaultOptimizerPriorsIgnored())
+		priorsIgnored_(Parameters::defaultOptimizerPriorsIgnored()),
+		landmarksIgnored_(Parameters::defaultOptimizerLandmarksIgnored())
 {
 	parseParameters(parameters);
 }
@@ -258,6 +260,7 @@ void Optimizer::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kOptimizerEpsilon(), epsilon_);
 	Parameters::parse(parameters, Parameters::kOptimizerRobust(), robust_);
 	Parameters::parse(parameters, Parameters::kOptimizerPriorsIgnored(), priorsIgnored_);
+	Parameters::parse(parameters, Parameters::kOptimizerLandmarksIgnored(), landmarksIgnored_);
 }
 
 std::map<int, Transform> Optimizer::optimizeIncremental(
@@ -371,7 +374,7 @@ std::map<int, Transform> Optimizer::optimizeBA(
 
 std::map<int, Transform> Optimizer::optimizeBA(
 		int rootId,
-		const std::map<int, Transform> & poses,
+		const std::map<int, Transform> & posesIn,
 		const std::multimap<int, Link> & links,
 		const std::map<int, Signature> & signatures,
 		std::map<int, cv::Point3f> & points3DMap,
@@ -380,7 +383,8 @@ std::map<int, Transform> Optimizer::optimizeBA(
 {
 	UDEBUG("");
 	std::map<int, CameraModel> models;
-	for(std::map<int, Transform>::const_iterator iter=poses.begin(); iter!=poses.end(); ++iter)
+	std::map<int, Transform> poses;
+	for(std::map<int, Transform>::const_iterator iter=posesIn.lower_bound(1); iter!=posesIn.end(); ++iter)
 	{
 		// Get camera model
 		CameraModel model;
@@ -418,6 +422,7 @@ std::map<int, Transform> Optimizer::optimizeBA(
 		UASSERT(model.isValidForProjection());
 
 		models.insert(std::make_pair(iter->first, model));
+		poses.insert(*iter);
 	}
 
 	// compute correspondences
@@ -484,7 +489,7 @@ void Optimizer::computeBACorrespondences(
 	int wordCount = 0;
 	int edgeWithWordsAdded = 0;
 	std::map<int, std::map<cv::KeyPoint, int, KeyPointCompare> > frameToWordMap; // <FrameId, <Keypoint, wordId> >
-	for(std::multimap<int, Link>::const_iterator iter=links.begin(); iter!=links.end(); ++iter)
+	for(std::multimap<int, Link>::const_iterator iter=links.lower_bound(1); iter!=links.end(); ++iter)
 	{
 		Link link = iter->second;
 		if(link.to() < link.from())

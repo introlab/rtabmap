@@ -89,6 +89,7 @@ public:
 	double epsilon() const {return epsilon_;}
 	bool isRobust() const {return robust_;}
 	bool priorsIgnored() const {return priorsIgnored_;}
+	bool landmarksIgnored() const {return landmarksIgnored_;}
 
 	// setters
 	void setIterations(int iterations) {iterations_ = iterations;}
@@ -97,6 +98,7 @@ public:
 	void setEpsilon(double epsilon) {epsilon_ = epsilon;}
 	void setRobust(bool enabled) {robust_ = enabled;}
 	void setPriorsIgnored(bool enabled) {priorsIgnored_ = enabled;}
+	void setLandmarksIgnored(bool enabled) {landmarksIgnored_ = enabled;}
 
 	virtual void parseParameters(const ParametersMap & parameters);
 
@@ -172,7 +174,8 @@ protected:
 			bool covarianceIgnored = Parameters::defaultOptimizerVarianceIgnored(),
 			double epsilon         = Parameters::defaultOptimizerEpsilon(),
 			bool robust            = Parameters::defaultOptimizerRobust(),
-			bool priorsIgnored     = Parameters::defaultOptimizerPriorsIgnored());
+			bool priorsIgnored     = Parameters::defaultOptimizerPriorsIgnored(),
+			bool landmarksIgnored  = Parameters::defaultOptimizerLandmarksIgnored());
 	Optimizer(const ParametersMap & parameters);
 
 private:
@@ -182,6 +185,7 @@ private:
 	double epsilon_;
 	bool robust_;
 	bool priorsIgnored_;
+	bool landmarksIgnored_;
 };
 
 } /* namespace rtabmap */

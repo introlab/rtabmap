@@ -147,7 +147,7 @@ public:
 		//============================
 		const std::map<int, Transform> & poses = stats.poses();
 		QMap<std::string, Transform> clouds = cloudViewer_->getAddedClouds();
-		for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
+		for(std::map<int, Transform>::const_iterator iter = poses.lower_bound(1); iter!=poses.end(); ++iter)
 		{
 			if(!iter->second.isNull())
 			{
@@ -206,7 +206,7 @@ public:
 			// Set graph
 			pcl::PointCloud<pcl::PointXYZ>::Ptr graph(new pcl::PointCloud<pcl::PointXYZ>);
 			pcl::PointCloud<pcl::PointXYZ>::Ptr graphNodes(new pcl::PointCloud<pcl::PointXYZ>);
-			for(std::map<int, Transform>::const_iterator iter=poses.begin(); iter!=poses.end(); ++iter)
+			for(std::map<int, Transform>::const_iterator iter=poses.lower_bound(1); iter!=poses.end(); ++iter)
 			{
 				graph->push_back(pcl::PointXYZ(iter->second.x(), iter->second.y(), iter->second.z()));
 			}

@@ -251,7 +251,7 @@ void OccupancyGrid::setMap(const cv::Mat & map, float xMin, float yMin, float ce
 		xMin_ = xMin;
 		yMin_ = yMin;
 		cellSize_ = cellSize;
-		addedNodes_ = poses;
+		addedNodes_.insert(poses.lower_bound(1), poses.end());
 	}
 }
 
@@ -679,7 +679,12 @@ void OccupancyGrid::addToCache(
 		const cv::Mat & empty)
 {
 	UDEBUG("nodeId=%d", nodeId);
-	uInsert(cache_, std::make_pair(nodeId, std::make_pair(std::make_pair(ground, obstacles), empty)));
+	if(nodeId < 0)
+	{
+		UWARN("Cannot add nodes with negative id (nodeId=%d)", nodeId);
+		return;
+	}
+	uInsert(cache_, std::make_pair(nodeId==0?-1:nodeId, std::make_pair(std::make_pair(ground, obstacles), empty)));
 }
 
 void OccupancyGrid::update(const std::map<int, Transform> & posesIn)
@@ -699,7 +704,7 @@ void OccupancyGrid::update(const std::map<int, Transform> & posesIn)
 
 	// First, check of the graph has changed. If so, re-create the map by moving all occupied nodes (fullUpdate==false).
 	bool graphOptimized = false; // If a loop closure happened (e.g., poses are modified)
-	bool graphChanged = addedNodes_.size()>0; // If the new map doesn't have any node from the previous map
+	bool graphChanged = !addedNodes_.empty(); // If the new map doesn't have any node from the previous map
 	std::map<int, Transform> transforms;
 	float updateErrorSqrd = updateError_*updateError_;
 	for(std::map<int, Transform>::iterator iter=addedNodes_.begin(); iter!=addedNodes_.end(); ++iter)
@@ -884,7 +889,7 @@ void OccupancyGrid::update(const std::map<int, Transform> & posesIn)
 	UDEBUG("Last id = %d", lastId);
 
 	// add old poses that were not in the current map (they were just retrieved from LTM)
-	for(std::map<int, Transform>::const_iterator iter=posesIn.upper_bound(0); iter!=posesIn.end(); ++iter)
+	for(std::map<int, Transform>::const_iterator iter=posesIn.lower_bound(1); iter!=posesIn.end(); ++iter)
 	{
 		if(addedNodes_.find(iter->first) == addedNodes_.end())
 		{
@@ -893,17 +898,10 @@ void OccupancyGrid::update(const std::map<int, Transform> & posesIn)
 		}
 	}
 
-	// insert negative after
-	for(std::map<int, Transform>::const_iterator iter=posesIn.begin(); iter!=posesIn.end(); ++iter)
+	// insert zero after
+	if(posesIn.find(0) != posesIn.end())
 	{
-		if(iter->first < 0)
-		{
-			poses.push_back(*iter);
-		}
-		else
-		{
-			break;
-		}
+		poses.push_back(std::make_pair(-1, posesIn.at(0)));
 	}
 
 	for(std::list<std::pair<int, Transform> >::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)

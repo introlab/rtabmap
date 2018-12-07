@@ -841,26 +841,20 @@ void computeMaxGraphErrors(
 	maxAngularErrorRatio = -1;
 	maxLinearError = -1;
 	maxAngularError = -1;
+
 	for(std::multimap<int, Link>::const_iterator iter=links.begin(); iter!=links.end(); ++iter)
 	{
-		// ignore links with high variance
-		if(iter->second.transVariance() <= 1.0 && iter->second.from() != iter->second.to())
+		// ignore links with high variance, priors and landmarks
+		if(iter->second.transVariance() <= 1.0 && iter->second.from() != iter->second.to() && iter->second.type() != Link::kLandmark)
 		{
 			Transform t1 = uValue(poses, iter->second.from(), Transform());
 			Transform t2 = uValue(poses, iter->second.to(), Transform());
 			Transform t = t1.inverse()*t2;
+
 			float linearError = uMax3(
 					fabs(iter->second.transform().x() - t.x()),
 					fabs(iter->second.transform().y() - t.y()),
 					fabs(iter->second.transform().z() - t.z()));
-			float opt_roll,opt__pitch,opt__yaw;
-			float link_roll,link_pitch,link_yaw;
-			t.getEulerAngles(opt_roll, opt__pitch, opt__yaw);
-			iter->second.transform().getEulerAngles(link_roll, link_pitch, link_yaw);
-			float angularError = uMax3(
-					fabs(opt_roll - link_roll),
-					fabs(opt__pitch - link_pitch),
-					fabs(opt__yaw - link_yaw));
 			UASSERT(iter->second.transVariance()>0.0);
 			float stddevLinear = sqrt(iter->second.transVariance());
 			float linearErrorRatio = linearError/stddevLinear;
@@ -873,6 +867,15 @@ void computeMaxGraphErrors(
 					*maxLinearErrorLink = &iter->second;
 				}
 			}
+
+			float opt_roll,opt__pitch,opt__yaw;
+			float link_roll,link_pitch,link_yaw;
+			t.getEulerAngles(opt_roll, opt__pitch, opt__yaw);
+			iter->second.transform().getEulerAngles(link_roll, link_pitch, link_yaw);
+			float angularError = uMax3(
+					fabs(opt_roll - link_roll),
+					fabs(opt__pitch - link_pitch),
+					fabs(opt__yaw - link_yaw));
 			UASSERT(iter->second.rotVariance()>0.0);
 			float stddevAngular = sqrt(iter->second.rotVariance());
 			float angularErrorRatio = angularError/stddevAngular;
@@ -1780,7 +1783,7 @@ std::list<std::pair<int, Transform> > computePath(
 {
 	UASSERT(memory!=0);
 	UASSERT(fromId>=0);
-	UASSERT(toId>=0);
+	UASSERT(toId!=0);
 	std::list<std::pair<int, Transform> > path;
 	UDEBUG("fromId=%d, toId=%d, lookInDatabase=%d, updateNewCosts=%d, linearVelocity=%f, angularVelocity=%f",
 			fromId,
@@ -1795,7 +1798,14 @@ std::list<std::pair<int, Transform> > computePath(
 	{
 		// Faster to load all links in one query
 		UTimer t;
-		allLinks = memory->getAllLinks(lookInDatabase);
+		allLinks = memory->getAllLinks(lookInDatabase, true, true);
+		for(std::multimap<int, Link>::iterator iter=allLinks.begin(); iter!=allLinks.end(); ++iter)
+		{
+			if(iter->second.to() < 0)
+			{
+				allLinks.insert(std::make_pair(iter->second.to(), iter->second.inverse()));
+			}
+		}
 		UINFO("getting all %d links time = %f s", (int)allLinks.size(), t.ticks());
 	}
 
@@ -1846,7 +1856,7 @@ std::list<std::pair<int, Transform> > computePath(
 		std::map<int, Link> links;
 		if(allLinks.size() == 0)
 		{
-			links = memory->getLinks(currentNode->id(), lookInDatabase);
+			links = memory->getLinks(currentNode->id(), lookInDatabase, true);
 		}
 		else
 		{
@@ -1928,7 +1938,7 @@ std::list<std::pair<int, Transform> > computePath(
 	if(ULogger::level() == ULogger::kDebug)
 	{
 		std::stringstream stream;
-		std::vector<int> linkTypes(Link::kUndef, 0);
+		std::vector<int> linkTypes(Link::kEnd, 0);
 		std::list<std::pair<int, Transform> >::const_iterator previousIter = path.end();
 		float length = 0.0f;
 		for(std::list<std::pair<int, Transform> >::const_iterator iter=path.begin(); iter!=path.end();++iter)
@@ -1953,7 +1963,7 @@ std::list<std::pair<int, Transform> > computePath(
 						//float cost = angle ;
 						//UDEBUG("v1=%f,%f,%f v2=%f,%f,%f a=%f", v1[0], v1[1], v1[2], v2[0], v2[1], v2[2], cost);
 
-						UASSERT(jter->second.type() >= Link::kNeighbor && jter->second.type()<Link::kUndef);
+						UASSERT(jter->second.type() >= Link::kNeighbor && jter->second.type()<Link::kEnd);
 						++linkTypes[jter->second.type()];
 						stream << "[" << jter->second.type() << "]";
 						length += jter->second.transform().getNorm();

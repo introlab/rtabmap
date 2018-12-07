@@ -90,9 +90,8 @@ public:
 	void removeLink(int idTo);
 	void removeVirtualLinks();
 
-	void setTags(const std::map<int, TransformStamped> & tags) {_tags = tags;}
-	void addTag(int id, const TransformStamped & pose) {_tags.insert(std::make_pair(id, pose));}
-	const std::map<int, TransformStamped> & getTags() const {return _tags;}
+	void addLandmark(const Link & landmark) {_landmarks.insert(std::make_pair(landmark.to(), landmark));}
+	const std::map<int, Link> & getLandmarks() const {return _landmarks;}
 
 	void setSaved(bool saved) {_saved = saved;}
 	void setModified(bool modified) {_modified = modified; _linksModified = modified;}
@@ -145,7 +144,7 @@ private:
 	int _mapId;
 	double _stamp;
 	std::map<int, Link> _links; // id, transform
-	std::map<int, TransformStamped> _tags;
+	std::map<int, Link> _landmarks;
 	int _weight;
 	std::string _label;
 	bool _saved; // If it's saved to bd

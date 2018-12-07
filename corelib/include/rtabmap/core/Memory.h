@@ -150,17 +150,21 @@ public:
 			bool lookInDatabase = false) const;
 	std::map<int, Link> getLoopClosureLinks(int signatureId,
 			bool lookInDatabase = false) const;
-	std::map<int, Link> getLinks(int signatureId,
-			bool lookInDatabase = false) const;
-	std::multimap<int, Link> getAllLinks(bool lookInDatabase, bool ignoreNullLinks = true) const;
+	std::map<int, Link> getLinks(int signatureId, // can be also used to get links from landmarks
+			bool lookInDatabase = false,
+			bool withLandmarks = false) const;
+	std::multimap<int, Link> getAllLinks(bool lookInDatabase, bool ignoreNullLinks = true, bool withLandmarks = false) const;
 	bool isBinDataKept() const {return _binDataKept;}
 	float getSimilarityThreshold() const {return _similarityThreshold;}
 	std::map<int, int> getWeights() const;
 	int getLastSignatureId() const;
 	const Signature * getLastWorkingSignature() const;
+	std::map<int, Link> getNodesObservingLandmark(int landmarkId, bool lookInDatabase) const;
 	int getSignatureIdByLabel(const std::string & label, bool lookInDatabase = true) const;
 	bool labelSignature(int id, const std::string & label);
 	const std::map<int, std::string> & getAllLabels() const {return _labels;}
+	const std::map<int, std::set<int> > & getLandmarksIndex() const {return _landmarksIndex;}
+	const std::map<int, std::set<int> > & getLandmarksInvertedIndex() const {return _landmarksInvertedIndex;}
 	bool allNodesInWM() const {return _allNodesInWM;}
 
 	/**
@@ -229,7 +233,8 @@ public:
 			const std::set<int> & ids,
 			std::map<int, Transform> & poses,
 			std::multimap<int, Link> & links,
-			bool lookInDatabase = false);
+			bool lookInDatabase = false,
+			bool landmarksAdded = false);
 
 	Transform computeTransform(Signature & fromS, Signature & toS, Transform guess, RegistrationInfo * info = 0, bool useKnownCorrespondencesIfPossible = false) const;
 	Transform computeTransform(int fromId, int toId, Transform guess, RegistrationInfo * info = 0, bool useKnownCorrespondencesIfPossible = false);
@@ -329,6 +334,8 @@ private:
 	std::map<int, double> _workingMem; // id,age
 	std::map<int, Transform> _groundTruths;
 	std::map<int, std::string> _labels;
+	std::map<int, std::set<int> > _landmarksIndex;         // <nodeId, landmarkIds>
+	std::map<int, std::set<int> > _landmarksInvertedIndex; // <landmarkId, nodeIds>
 
 	//Keypoint stuff
 	VWDictionary * _vwd;

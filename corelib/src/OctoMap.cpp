@@ -351,9 +351,14 @@ void OctoMap::addToCache(int nodeId,
 		const pcl::PointXYZ & viewPoint)
 {
 	UDEBUG("nodeId=%d", nodeId);
-	cacheClouds_.erase(nodeId);
-	cacheClouds_.insert(std::make_pair(nodeId, std::make_pair(ground, obstacles)));
-	uInsert(cacheViewPoints_, std::make_pair(nodeId, cv::Point3f(viewPoint.x, viewPoint.y, viewPoint.z)));
+	if(nodeId < 0)
+	{
+		UWARN("Cannot add nodes with negative id (nodeId=%d)", nodeId);
+		return;
+	}
+	cacheClouds_.erase(nodeId==0?-1:nodeId);
+	cacheClouds_.insert(std::make_pair(nodeId==0?-1:nodeId, std::make_pair(ground, obstacles)));
+	uInsert(cacheViewPoints_, std::make_pair(nodeId==0?-1:nodeId, cv::Point3f(viewPoint.x, viewPoint.y, viewPoint.z)));
 }
 void OctoMap::addToCache(int nodeId,
 		const cv::Mat & ground,
@@ -361,12 +366,17 @@ void OctoMap::addToCache(int nodeId,
 		const cv::Mat & empty,
 		const cv::Point3f & viewPoint)
 {
+	UDEBUG("nodeId=%d", nodeId);
+	if(nodeId < 0)
+	{
+		UWARN("Cannot add nodes with negative id (nodeId=%d)", nodeId);
+		return;
+	}
 	UASSERT_MSG(ground.empty() || ground.type() == CV_32FC3 || ground.type() == CV_32FC(4) || ground.type() == CV_32FC(6), uFormat("Are local occupancy grids not 3d? (opencv type=%d)", ground.type()).c_str());
 	UASSERT_MSG(obstacles.empty() || obstacles.type() == CV_32FC3 || obstacles.type() == CV_32FC(4) || obstacles.type() == CV_32FC(6), uFormat("Are local occupancy grids not 3d? (opencv type=%d)", obstacles.type()).c_str());
 	UASSERT_MSG(empty.empty() || empty.type() == CV_32FC3 || empty.type() == CV_32FC(4) || empty.type() == CV_32FC(6), uFormat("Are local occupancy grids not 3d? (opencv type=%d)", empty.type()).c_str());
-	UDEBUG("nodeId=%d", nodeId);
-	uInsert(cache_, std::make_pair(nodeId, std::make_pair(std::make_pair(ground, obstacles), empty)));
-	uInsert(cacheViewPoints_, std::make_pair(nodeId, viewPoint));
+	uInsert(cache_, std::make_pair(nodeId==0?-1:nodeId, std::make_pair(std::make_pair(ground, obstacles), empty)));
+	uInsert(cacheViewPoints_, std::make_pair(nodeId==0?-1:nodeId, viewPoint));
 }
 
 void OctoMap::update(const std::map<int, Transform> & poses)
@@ -519,7 +529,7 @@ void OctoMap::update(const std::map<int, Transform> & poses)
 	UDEBUG("Last id = %d", lastId);
 
 	// add old poses that were not in the current map (they were just retrieved from LTM)
-	for(std::map<int, Transform>::const_iterator iter=poses.upper_bound(0); iter!=poses.end(); ++iter)
+	for(std::map<int, Transform>::const_iterator iter=poses.lower_bound(1); iter!=poses.end(); ++iter)
 	{
 		if(addedNodes_.find(iter->first) == addedNodes_.end())
 		{
@@ -527,17 +537,10 @@ void OctoMap::update(const std::map<int, Transform> & poses)
 		}
 	}
 
-	// insert negative after
-	for(std::map<int, Transform>::const_iterator iter=poses.begin(); iter!=poses.end(); ++iter)
+	// insert zero after
+	if(poses.find(0) != poses.end())
 	{
-		if(iter->first < 0)
-		{
-			orderedPoses.push_back(*iter);
-		}
-		else
-		{
-			break;
-		}
+		orderedPoses.push_back(std::make_pair(-1, poses.at(0)));
 	}
 
 	UDEBUG("orderedPoses = %d", (int)orderedPoses.size());

@@ -1291,7 +1291,7 @@ std::vector<int> VWDictionary::getUnusedWordIds() const
 
 void VWDictionary::removeWords(const std::vector<VisualWord*> & words)
 {
-	UDEBUG("Removing %d words from dictionary (current size=%d)", (int)words.size(), (int)_visualWords.size());
+	//UDEBUG("Removing %d words from dictionary (current size=%d)", (int)words.size(), (int)_visualWords.size());
 	for(unsigned int i=0; i<words.size(); ++i)
 	{
 		_visualWords.erase(words[i]->id());

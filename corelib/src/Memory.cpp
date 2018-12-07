@@ -242,6 +242,39 @@ void Memory::loadDataFromDb(bool postInitClosingEvents)
 				if(!(*iter)->getGroundTruthPose().isNull()) {
 					_groundTruths.insert(std::make_pair((*iter)->id(), (*iter)->getGroundTruthPose()));
 				}
+
+				if(!(*iter)->getLandmarks().empty())
+				{
+					// Update landmark indexes
+					for(std::map<int, Link>::const_iterator jter = (*iter)->getLandmarks().begin(); jter!=(*iter)->getLandmarks().end(); ++jter)
+					{
+						int landmarkId = jter->first;
+						UASSERT(landmarkId < 0);
+
+						std::map<int, std::set<int> >::iterator nter = _landmarksIndex.find((*iter)->id());
+						if(nter!=_landmarksIndex.end())
+						{
+							nter->second.insert(landmarkId);
+						}
+						else
+						{
+							std::set<int> tmp;
+							tmp.insert(landmarkId);
+							_landmarksIndex.insert(std::make_pair((*iter)->id(), tmp));
+						}
+						nter = _landmarksInvertedIndex.find(landmarkId);
+						if(nter!=_landmarksInvertedIndex.end())
+						{
+							nter->second.insert((*iter)->id());
+						}
+						else
+						{
+							std::set<int> tmp;
+							tmp.insert((*iter)->id());
+							_landmarksInvertedIndex.insert(std::make_pair(landmarkId, tmp));
+						}
+					}
+				}
 			}
 			else
 			{
@@ -1182,32 +1215,70 @@ std::map<int, Link> Memory::getLoopClosureLinks(
 
 std::map<int, Link> Memory::getLinks(
 		int signatureId,
-		bool lookInDatabase) const
+		bool lookInDatabase,
+		bool withLandmarks) const
 {
 	std::map<int, Link> links;
-	Signature * s = uValue(_signatures, signatureId, (Signature*)0);
-	if(s)
+	if(signatureId > 0)
 	{
-		links = s->getLinks();
+		Signature * s = uValue(_signatures, signatureId, (Signature*)0);
+		if(s)
+		{
+			links = s->getLinks();
+			if(withLandmarks)
+			{
+				uInsert(links, s->getLandmarks());
+			}
+		}
+		else if(lookInDatabase && _dbDriver)
+		{
+			_dbDriver->loadLinks(signatureId, links, withLandmarks?Link::kAllWithLandmarks:Link::kAllWithoutLandmarks);
+		}
+		else
+		{
+			UWARN("Cannot find signature %d in memory", signatureId);
+		}
 	}
-	else if(lookInDatabase && _dbDriver)
+	else if(signatureId < 0) //landmark
 	{
-		_dbDriver->loadLinks(signatureId, links, Link::kUndef);
-	}
-	else
-	{
-		UWARN("Cannot find signature %d in memory", signatureId);
+		int landmarkId = signatureId;
+		std::map<int, std::set<int> >::const_iterator iter = _landmarksInvertedIndex.find(landmarkId);
+		if(iter != _landmarksInvertedIndex.end())
+		{
+			for(std::set<int>::const_iterator jter=iter->second.begin(); jter!=iter->second.end(); ++jter)
+			{
+				const Signature * s = getSignature(*jter);
+				if(s)
+				{
+					std::map<int, Link>::const_iterator kter = s->getLandmarks().find(landmarkId);
+					if(kter != s->getLandmarks().end())
+					{
+						// should be from landmark to node
+						links.insert(std::make_pair(s->id(), kter->second.inverse()));
+					}
+				}
+			}
+		}
+		if(_dbDriver && lookInDatabase)
+		{
+			std::map<int, Link> nodes;
+			_dbDriver->getNodesObservingLandmark(landmarkId, nodes);
+			for(std::map<int, Link>::iterator kter=nodes.begin(); kter!=nodes.end(); ++kter)
+			{
+				links.insert(std::make_pair(kter->first, kter->second.inverse()));
+			}
+		}
 	}
 	return links;
 }
 
-std::multimap<int, Link> Memory::getAllLinks(bool lookInDatabase, bool ignoreNullLinks) const
+std::multimap<int, Link> Memory::getAllLinks(bool lookInDatabase, bool ignoreNullLinks, bool withLandmarks) const
 {
 	std::multimap<int, Link> links;
 
 	if(lookInDatabase && _dbDriver)
 	{
-		_dbDriver->getAllLinks(links, ignoreNullLinks);
+		_dbDriver->getAllLinks(links, ignoreNullLinks, withLandmarks);
 	}
 
 	for(std::map<int, Signature*>::const_iterator iter=_signatures.begin(); iter!=_signatures.end(); ++iter)
@@ -1220,6 +1291,18 @@ std::multimap<int, Link> Memory::getAllLinks(bool lookInDatabase, bool ignoreNul
 			if(!ignoreNullLinks || jter->second.isValid())
 			{
 				links.insert(std::make_pair(iter->first, jter->second));
+			}
+		}
+		if(withLandmarks)
+		{
+			for(std::map<int, Link>::const_iterator jter=iter->second->getLandmarks().begin();
+				jter!=iter->second->getLandmarks().end();
+				++jter)
+			{
+				if(!ignoreNullLinks || jter->second.isValid())
+				{
+					links.insert(std::make_pair(iter->first, jter->second));
+				}
 			}
 		}
 	}
@@ -1275,7 +1358,9 @@ std::map<int, int> Memory::getNeighborsId(
 				// Look up in STM/WM if all ids are here, if not... load them from the database
 				const Signature * s = this->getSignature(*jter);
 				std::map<int, Link> tmpLinks;
+				std::map<int, Link> tmpLandmarks;
 				const std::map<int, Link> * links = &tmpLinks;
+				const std::map<int, Link> * landmarks = &tmpLandmarks;
 				if(s)
 				{
 					if(!ignoreIntermediateNodes || s->getWeight() != -1)
@@ -1288,6 +1373,10 @@ std::map<int, int> Memory::getNeighborsId(
 					}
 
 					links = &s->getLinks();
+					if(!ignoreLoopIds)
+					{
+						landmarks = &s->getLandmarks();
+					}
 				}
 				else if(maxCheckedInDatabase == -1 || (maxCheckedInDatabase > 0 && _dbDriver && nbLoadedFromDb < maxCheckedInDatabase))
 				{
@@ -1295,7 +1384,22 @@ std::map<int, int> Memory::getNeighborsId(
 					ids.insert(std::pair<int, int>(*jter, m));
 
 					UTimer timer;
-					_dbDriver->loadLinks(*jter, tmpLinks);
+					_dbDriver->loadLinks(*jter, tmpLinks, ignoreLoopIds?Link::kAllWithoutLandmarks:Link::kAllWithLandmarks);
+					if(!ignoreLoopIds)
+					{
+						for(std::map<int, Link>::iterator kter=tmpLinks.begin(); kter!=tmpLinks.end();)
+						{
+							if(kter->first < 0)
+							{
+								tmpLandmarks.insert(*kter);
+								tmpLinks.erase(kter++);
+							}
+							else
+							{
+								++kter;
+							}
+						}
+					}
 					if(dbAccessTime)
 					{
 						*dbAccessTime += timer.getElapsedTime();
@@ -1335,6 +1439,32 @@ std::map<int, int> Memory::getNeighborsId(
 								if(currentMargin.insert(iter->first).second)
 								{
 									curentMarginList.push_back(iter->first);
+								}
+							}
+						}
+					}
+				}
+
+				// landmarks
+				for(std::map<int, Link>::const_iterator iter=landmarks->begin(); iter!=landmarks->end(); ++iter)
+				{
+					const std::map<int, std::set<int> >::const_iterator kter = _landmarksInvertedIndex.find(iter->first);
+					if(kter != _landmarksInvertedIndex.end())
+					{
+						for(std::set<int>::const_iterator nter=kter->second.begin(); nter!=kter->second.end(); ++nter)
+						{
+							if( !uContains(ids, *nter) && ignoredIds.find(*nter) == ignoredIds.end())
+							{
+								if(incrementMarginOnLoop)
+								{
+									nextMargin.insert(*nter);
+								}
+								else
+								{
+									if(currentMargin.insert(*nter).second)
+									{
+										curentMarginList.push_back(*nter);
+									}
 								}
 							}
 						}
@@ -1600,6 +1730,8 @@ void Memory::clear()
 	_odomMaxInf.clear();
 	_groundTruths.clear();
 	_labels.clear();
+	_landmarksIndex.clear();
+	_landmarksInvertedIndex.clear();
 	_allNodesInWM = true;
 
 	if(_dbDriver)
@@ -2130,6 +2262,33 @@ void Memory::moveToTrash(Signature * s, bool keepLinkedToGraph, std::list<int> *
 	UDEBUG("id=%d", s?s->id():0);
 	if(s)
 	{
+		// Cleanup landmark indexes
+		if(!s->getLandmarks().empty())
+		{
+			for(std::map<int, Link>::const_iterator iter=s->getLandmarks().begin(); iter!=s->getLandmarks().end(); ++iter)
+			{
+				int landmarkId = iter->first;
+				std::map<int, std::set<int> >::iterator nter = _landmarksIndex.find(s->id());
+				if(nter!=_landmarksIndex.end())
+				{
+					nter->second.erase(landmarkId);
+					if(nter->second.empty())
+					{
+						_landmarksIndex.erase(nter);
+					}
+				}
+				nter = _landmarksInvertedIndex.find(landmarkId);
+				if(nter!=_landmarksInvertedIndex.end())
+				{
+					nter->second.erase(s->id());
+					if(nter->second.empty())
+					{
+						_landmarksInvertedIndex.erase(nter);
+					}
+				}
+			}
+		}
+
 		// it is a bad signature (not saved), remove links!
 		if(keepLinkedToGraph && (!s->isSaved() && s->isBadSignature() && _badSignaturesIgnored))
 		{
@@ -2145,7 +2304,7 @@ void Memory::moveToTrash(Signature * s, bool keepLinkedToGraph, std::list<int> *
 			const std::map<int, Link> & links = s->getLinks();
 			for(std::map<int, Link>::const_iterator iter=links.begin(); iter!=links.end(); ++iter)
 			{
-				if(iter->second.from() != iter->second.to())
+				if(iter->second.from() != iter->second.to() && iter->first > 0)
 				{
 					Signature * sTo = this->_getSignature(iter->first);
 					// neighbor to s
@@ -2259,6 +2418,36 @@ const Signature * Memory::getLastWorkingSignature() const
 {
 	UDEBUG("");
 	return _lastSignature;
+}
+
+std::map<int, Link> Memory::getNodesObservingLandmark(int landmarkId, bool lookInDatabase) const
+{
+	UDEBUG("landmarkId=%d", landmarkId);
+	std::map<int, Link> nodes;
+	if(landmarkId < 0)
+	{
+		std::map<int, std::set<int> >::const_iterator iter = _landmarksInvertedIndex.find(landmarkId);
+		if(iter != _landmarksInvertedIndex.end())
+		{
+			for(std::set<int>::const_iterator jter=iter->second.begin(); jter!=iter->second.end(); ++jter)
+			{
+				const Signature * s = getSignature(*jter);
+				if(s)
+				{
+					std::map<int, Link>::const_iterator kter = s->getLandmarks().find(landmarkId);
+					if(kter != s->getLandmarks().end())
+					{
+						nodes.insert(std::make_pair(s->id(), kter->second));
+					}
+				}
+			}
+		}
+		if(_dbDriver && lookInDatabase)
+		{
+			_dbDriver->getNodesObservingLandmark(landmarkId, nodes);
+		}
+	}
+	return nodes;
 }
 
 int Memory::getSignatureIdByLabel(const std::string & label, bool lookInDatabase) const
@@ -2807,7 +2996,7 @@ Transform Memory::computeIcpTransformMulti(
 	for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
 	{
 		Signature * s = _getSignature(iter->first);
-		UASSERT(s != 0);
+		UASSERT_MSG(s != 0, uFormat("id=%d", iter->first).c_str());
 		//if image is already here, scan should be or it is null
 		if(s->sensorData().imageCompressed().empty() &&
 		   s->sensorData().laserScanCompressed().isEmpty())
@@ -3598,7 +3787,7 @@ cv::Mat Memory::getImageCompressed(int signatureId) const
 
 SensorData Memory::getNodeData(int nodeId, bool uncompressedData) const
 {
-	UDEBUG("nodeId=%d", nodeId);
+	//UDEBUG("nodeId=%d", nodeId);
 	SensorData r;
 	Signature * s = this->_getSignature(nodeId);
 	if(s && !s->sensorData().imageCompressed().empty())
@@ -3624,7 +3813,7 @@ void Memory::getNodeWords(int nodeId,
 		std::multimap<int, cv::Point3f> & words3,
 		std::multimap<int, cv::Mat> & wordsDescriptors)
 {
-	UDEBUG("nodeId=%d", nodeId);
+	//UDEBUG("nodeId=%d", nodeId);
 	Signature * s = this->_getSignature(nodeId);
 	if(s)
 	{
@@ -3662,7 +3851,7 @@ void Memory::getNodeCalibration(int nodeId,
 		std::vector<CameraModel> & models,
 		StereoCameraModel & stereoModel)
 {
-	UDEBUG("nodeId=%d", nodeId);
+	//UDEBUG("nodeId=%d", nodeId);
 	Signature * s = this->_getSignature(nodeId);
 	if(s)
 	{
@@ -3679,7 +3868,7 @@ void Memory::getNodeCalibration(int nodeId,
 SensorData Memory::getSignatureDataConst(int locationId,
 		bool images, bool scan, bool userData, bool occupancyGrid) const
 {
-	UDEBUG("");
+	//UDEBUG("");
 	SensorData r;
 	const Signature * s = this->getSignature(locationId);
 	if(s && (!s->sensorData().imageCompressed().empty() ||
@@ -4816,6 +5005,45 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 		}
 	}
 
+	//landmarks
+	for(Landmarks::const_iterator iter = data.landmarks().begin(); iter!=data.landmarks().end(); ++iter)
+	{
+		if(iter->second.id() > 0)
+		{
+			int landmarkId = -iter->first;
+			Link landmark(s->id(), landmarkId, Link::kLandmark, iter->second.pose(), iter->second.covariance().inv());
+			s->addLandmark(landmark);
+
+			// Update landmark indexes
+			std::map<int, std::set<int> >::iterator nter = _landmarksIndex.find(s->id());
+			if(nter!=_landmarksIndex.end())
+			{
+				nter->second.insert(landmarkId);
+			}
+			else
+			{
+				std::set<int> tmp;
+				tmp.insert(landmarkId);
+				_landmarksIndex.insert(std::make_pair(s->id(), tmp));
+			}
+			nter = _landmarksInvertedIndex.find(landmarkId);
+			if(nter!=_landmarksInvertedIndex.end())
+			{
+				nter->second.insert(s->id());
+			}
+			else
+			{
+				std::set<int> tmp;
+				tmp.insert(s->id());
+				_landmarksInvertedIndex.insert(std::make_pair(landmarkId, tmp));
+			}
+		}
+		else
+		{
+			UERROR("Invalid landmark received! IDs should be > 0 (it is %d). Ignoring this landmark.", iter->second.id());
+		}
+	}
+
 	return s;
 }
 
@@ -5009,6 +5237,39 @@ std::set<int> Memory::reactivateSignatures(const std::list<int> & ids, unsigned 
 	std::list<int> idsLoaded;
 	for(std::list<Signature *>::iterator i=reactivatedSigns.begin(); i!=reactivatedSigns.end(); ++i)
 	{
+		if(!(*i)->getLandmarks().empty())
+		{
+			// Update landmark indexes
+			for(std::map<int, Link>::const_iterator iter = (*i)->getLandmarks().begin(); iter!=(*i)->getLandmarks().end(); ++iter)
+			{
+				int landmarkId = iter->first;
+				UASSERT(landmarkId < 0);
+
+				std::map<int, std::set<int> >::iterator nter = _landmarksIndex.find((*i)->id());
+				if(nter!=_landmarksIndex.end())
+				{
+					nter->second.insert(landmarkId);
+				}
+				else
+				{
+					std::set<int> tmp;
+					tmp.insert(landmarkId);
+					_landmarksIndex.insert(std::make_pair((*i)->id(), tmp));
+				}
+				nter = _landmarksInvertedIndex.find(landmarkId);
+				if(nter!=_landmarksInvertedIndex.end())
+				{
+					nter->second.insert((*i)->id());
+				}
+				else
+				{
+					std::set<int> tmp;
+					tmp.insert((*i)->id());
+					_landmarksInvertedIndex.insert(std::make_pair(landmarkId, tmp));
+				}
+			}
+		}
+
 		idsLoaded.push_back((*i)->id());
 		//append to working memory
 		this->addSignatureToWmFromLTM(*i);
@@ -5024,7 +5285,8 @@ void Memory::getMetricConstraints(
 		const std::set<int> & ids,
 		std::map<int, Transform> & poses,
 		std::multimap<int, Link> & links,
-		bool lookInDatabase)
+		bool lookInDatabase,
+		bool landmarksAdded)
 {
 	UDEBUG("");
 	for(std::set<int>::const_iterator iter=ids.begin(); iter!=ids.end(); ++iter)
@@ -5040,49 +5302,63 @@ void Memory::getMetricConstraints(
 	{
 		if(uContains(poses, *iter))
 		{
-			std::map<int, Link> tmpLinks = getLinks(*iter, lookInDatabase);
+			std::map<int, Link> tmpLinks = getLinks(*iter, lookInDatabase, true);
 			for(std::map<int, Link>::iterator jter=tmpLinks.begin(); jter!=tmpLinks.end(); ++jter)
 			{
 				if(	jter->second.isValid() &&
-					uContains(poses, jter->first) &&
-					graph::findLink(links, *iter, jter->first) == links.end())
+					graph::findLink(links, *iter, jter->first) == links.end() &&
+					(uContains(poses, jter->first) || (landmarksAdded && jter->second.type() == Link::kLandmark)))
 				{
 					if(!lookInDatabase &&
 					   (jter->second.type() == Link::kNeighbor ||
 					    jter->second.type() == Link::kNeighborMerged))
 					{
-						Link link = jter->second;
 						const Signature * s = this->getSignature(jter->first);
 						UASSERT(s!=0);
-						while(s && s->getWeight() == -1)
+						if(s->getWeight() == -1)
 						{
-							// skip to next neighbor, well we assume that bad signatures
-							// are only linked by max 2 neighbor links.
-							std::map<int, Link> n = this->getNeighborLinks(s->id(), false);
-							UASSERT(n.size() <= 2);
-							std::map<int, Link>::iterator uter = n.upper_bound(s->id());
-							if(uter != n.end())
+							Link link = jter->second;
+							while(s && s->getWeight() == -1)
 							{
-								const Signature * s2 = this->getSignature(uter->first);
-								if(s2)
+								// skip to next neighbor, well we assume that bad signatures
+								// are only linked by max 2 neighbor links.
+								std::map<int, Link> n = this->getNeighborLinks(s->id(), false);
+								UASSERT(n.size() <= 2);
+								std::map<int, Link>::iterator uter = n.upper_bound(s->id());
+								if(uter != n.end())
 								{
-									link = link.merge(uter->second, uter->second.type());
-									poses.erase(s->id());
-									s = s2;
+									const Signature * s2 = this->getSignature(uter->first);
+									if(s2)
+									{
+										link = link.merge(uter->second, uter->second.type());
+										poses.erase(s->id());
+										s = s2;
+									}
+
 								}
-
+								else
+								{
+									break;
+								}
 							}
-							else
-							{
-								break;
-							}
+							links.insert(std::make_pair(*iter, link));
 						}
-
-						links.insert(std::make_pair(*iter, link));
+						else
+						{
+							links.insert(std::make_pair(*iter, jter->second));
+						}
 					}
-					else
+					else if(jter->second.type() != Link::kLandmark)
 					{
 						links.insert(std::make_pair(*iter, jter->second));
+					}
+					else if(landmarksAdded)
+					{
+						if(!uContains(poses, jter->first))
+						{
+							poses.insert(std::make_pair(jter->first, poses.at(*iter) * jter->second.transform()));
+						}
+						links.insert(std::make_pair(jter->first, jter->second.inverse()));
 					}
 				}
 			}

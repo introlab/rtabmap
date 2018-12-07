@@ -775,10 +775,14 @@ void DBDriver::loadLinks(int signatureId, std::map<int, Link> & links, Link::Typ
 				nIter!=s->getLinks().end();
 				++nIter)
 		{
-			if(type == Link::kUndef || nIter->second.type() == type)
+			if(type == Link::kAllWithoutLandmarks || type == Link::kAllWithLandmarks || nIter->second.type() == type)
 			{
 				links.insert(*nIter);
 			}
+		}
+		if(type == Link::kLandmark || type == Link::kAllWithLandmarks)
+		{
+			uInsert(links, s->getLandmarks());
 		}
 		found = true;
 	}
@@ -788,33 +792,6 @@ void DBDriver::loadLinks(int signatureId, std::map<int, Link> & links, Link::Typ
 	{
 		_dbSafeAccessMutex.lock();
 		this->loadLinksQuery(signatureId, links, type);
-		_dbSafeAccessMutex.unlock();
-	}
-}
-
-void DBDriver::loadTags(int signatureId, std::map<int, TransformStamped> & tags) const
-{
-	bool found = false;
-	// look in the trash
-	_trashesMutex.lock();
-	if(uContains(_trashSignatures, signatureId))
-	{
-		const Signature * s = _trashSignatures.at(signatureId);
-		UASSERT(s != 0);
-		for(std::map<int, TransformStamped>::const_iterator nIter = s->getTags().begin();
-				nIter!=s->getTags().end();
-				++nIter)
-		{
-			tags.insert(*nIter);
-		}
-		found = true;
-	}
-	_trashesMutex.unlock();
-
-	if(!found)
-	{
-		_dbSafeAccessMutex.lock();
-		this->loadTagsQuery(signatureId, tags);
 		_dbSafeAccessMutex.unlock();
 	}
 }
@@ -878,10 +855,10 @@ void DBDriver::getAllNodeIds(std::set<int> & ids, bool ignoreChildren, bool igno
 	_dbSafeAccessMutex.unlock();
 }
 
-void DBDriver::getAllLinks(std::multimap<int, Link> & links, bool ignoreNullLinks) const
+void DBDriver::getAllLinks(std::multimap<int, Link> & links, bool ignoreNullLinks, bool withLandmarks) const
 {
 	_dbSafeAccessMutex.lock();
-	this->getAllLinksQuery(links, ignoreNullLinks);
+	this->getAllLinksQuery(links, ignoreNullLinks, withLandmarks);
 	_dbSafeAccessMutex.unlock();
 
 	// look in the trash
@@ -898,6 +875,18 @@ void DBDriver::getAllLinks(std::multimap<int, Link> & links, bool ignoreNullLink
 				if(!ignoreNullLinks || jter->second.isValid())
 				{
 					links.insert(std::make_pair(iter->first, jter->second));
+				}
+			}
+			if(withLandmarks)
+			{
+				for(std::map<int, Link>::const_iterator jter=iter->second->getLandmarks().begin();
+					jter!=iter->second->getLandmarks().end();
+					++jter)
+				{
+					if(!ignoreNullLinks || jter->second.isValid())
+					{
+						links.insert(std::make_pair(iter->first, jter->second));
+					}
 				}
 			}
 		}
@@ -961,6 +950,33 @@ void DBDriver::getInvertedIndexNi(int signatureId, int & ni) const
 		_dbSafeAccessMutex.lock();
 		this->getInvertedIndexNiQuery(signatureId, ni);
 		_dbSafeAccessMutex.unlock();
+	}
+}
+
+void DBDriver::getNodesObservingLandmark(int landmarkId, std::map<int, Link> & nodes) const
+{
+	if(landmarkId < 0)
+	{
+		// look in the trash
+		_trashesMutex.lock();
+		for(std::map<int, Signature*>::const_iterator sIter = _trashSignatures.begin(); sIter!=_trashSignatures.end(); ++sIter)
+		{
+			std::map<int, Link>::const_iterator kter = sIter->second->getLandmarks().find(landmarkId);
+			if(kter != sIter->second->getLandmarks().end())
+			{
+				nodes.insert(std::make_pair(sIter->second->id(), kter->second));
+			}
+		}
+		_trashesMutex.unlock();
+
+		// then look in the database
+		_dbSafeAccessMutex.lock();
+		this->getNodesObservingLandmarkQuery(landmarkId, nodes);
+		_dbSafeAccessMutex.unlock();
+	}
+	else
+	{
+		UWARN("Can't search with an empty label!");
 	}
 }
 

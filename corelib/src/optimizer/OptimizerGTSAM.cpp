@@ -42,6 +42,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <gtsam/inference/Symbol.h>
 #include <gtsam/slam/PriorFactor.h>
 #include <gtsam/slam/BetweenFactor.h>
+#include <gtsam/sam/BearingRangeFactor.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/nonlinear/GaussNewtonOptimizer.h>
 #include <gtsam/nonlinear/DoglegOptimizer.h>
@@ -138,11 +139,26 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 			UASSERT(!iter->second.isNull());
 			if(isSlam2d())
 			{
-				initialEstimate.insert(iter->first, gtsam::Pose2(iter->second.x(), iter->second.y(), iter->second.theta()));
+				if(iter->first > 0)
+				{
+					initialEstimate.insert(iter->first, gtsam::Pose2(iter->second.x(), iter->second.y(), iter->second.theta()));
+				}
+				else if(!landmarksIgnored())
+				{
+					initialEstimate.insert(iter->first, gtsam::Point2(iter->second.x(), iter->second.y()));
+				}
+
 			}
 			else
 			{
-				initialEstimate.insert(iter->first, gtsam::Pose3(iter->second.toEigen4d()));
+				if(iter->first > 0)
+				{
+					initialEstimate.insert(iter->first, gtsam::Pose3(iter->second.toEigen4d()));
+				}
+				else if(!landmarksIgnored())
+				{
+					initialEstimate.insert(iter->first, gtsam::Point3(iter->second.x(), iter->second.y(), iter->second.z()));
+				}
 			}
 		}
 
@@ -192,6 +208,62 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 						gtsam::SharedNoiseModel model = gtsam::noiseModel::Gaussian::Information(mgtsam);
 
 						graph.add(gtsam::PriorFactor<gtsam::Pose3>(id1, gtsam::Pose3(iter->second.transform().toEigen4d()), model));
+					}
+				}
+			}
+			else if(id1<0 || id2 < 0)
+			{
+				if(!landmarksIgnored())
+				{
+					//landmarks
+					UASSERT((id1 < 0 && id2 > 0) || (id1 > 0 && id2 < 0));
+					if(isSlam2d())
+					{
+						Eigen::Matrix<double, 2, 2> information = Eigen::Matrix<double, 2, 2>::Identity();
+						if(!isCovarianceIgnored())
+						{
+							cv::Mat linearCov = cv::Mat(iter->second.infMatrix(), cv::Range(0,2), cv::Range(0,2)).clone();;
+							memcpy(information.data(), linearCov.data, linearCov.total()*sizeof(double));
+						}
+						gtsam::SharedNoiseModel model = gtsam::noiseModel::Gaussian::Information(information);
+						Transform t;
+						if(id2 < 0)
+						{
+							t = iter->second.transform();
+						}
+						else
+						{
+							t = iter->second.transform().inverse();
+							std::swap(id1, id2); // should be node -> landmark
+						}
+
+						gtsam::Point2 landmark(t.x(), t.y());
+						gtsam::Pose2 p;
+						graph.add(gtsam::BearingRangeFactor<gtsam::Pose2, gtsam::Point2>(id1, id2, p.bearing(landmark), p.range(landmark), model));
+					}
+					else
+					{
+						Eigen::Matrix<double, 3, 3> information = Eigen::Matrix<double, 3, 3>::Identity();
+						if(!isCovarianceIgnored())
+						{
+							cv::Mat linearCov = cv::Mat(iter->second.infMatrix(), cv::Range(0,3), cv::Range(0,3)).clone();;
+							memcpy(information.data(), linearCov.data, linearCov.total()*sizeof(double));
+						}
+						gtsam::SharedNoiseModel model = gtsam::noiseModel::Gaussian::Information(information);
+						Transform t;
+						if(id2 < 0)
+						{
+							t = iter->second.transform();
+						}
+						else
+						{
+							t = iter->second.transform().inverse();
+							std::swap(id1, id2); // should be node -> landmark
+						}
+
+						gtsam::Point3 landmark(t.x(), t.y(), t.z());
+						gtsam::Pose3 p;
+						graph.add(gtsam::BearingRangeFactor<gtsam::Pose3, gtsam::Point3>(id1, id2, p.bearing(landmark), p.range(landmark), model));
 					}
 				}
 			}
@@ -318,20 +390,40 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 		{
 			if(intermediateGraphes && i > 0)
 			{
+				float x,y,z,roll,pitch,yaw;
 				std::map<int, Transform> tmpPoses;
 				for(gtsam::Values::const_iterator iter=optimizer->values().begin(); iter!=optimizer->values().end(); ++iter)
 				{
 					if(iter->value.dim() > 1)
 					{
+						int key = (int)iter->key;
 						if(isSlam2d())
 						{
-							gtsam::Pose2 p = iter->value.cast<gtsam::Pose2>();
-							tmpPoses.insert(std::make_pair((int)iter->key, Transform(p.x(), p.y(), p.theta())));
+							if(key > 0)
+							{
+								gtsam::Pose2 p = iter->value.cast<gtsam::Pose2>();
+								tmpPoses.insert(std::make_pair(key, Transform(p.x(), p.y(), p.theta())));
+							}
+							else if(!landmarksIgnored())
+							{
+								poses.at(key).getTranslationAndEulerAngles(x,y,z,roll,pitch,yaw);
+								gtsam::Point2 p = iter->value.cast<gtsam::Point2>();
+								tmpPoses.insert(std::make_pair(key, Transform(p.x(), p.y(), z, roll,pitch,yaw)));
+							}
 						}
 						else
 						{
-							gtsam::Pose3 p = iter->value.cast<gtsam::Pose3>();
-							tmpPoses.insert(std::make_pair((int)iter->key, Transform::fromEigen4d(p.matrix())));
+							if(key > 0)
+							{
+								gtsam::Pose3 p = iter->value.cast<gtsam::Pose3>();
+								tmpPoses.insert(std::make_pair(key, Transform::fromEigen4d(p.matrix())));
+							}
+							else if(!landmarksIgnored())
+							{
+								poses.at(key).getTranslationAndEulerAngles(x,y,z,roll,pitch,yaw);
+								gtsam::Point3 p = iter->value.cast<gtsam::Point3>();
+								tmpPoses.insert(std::make_pair(key, Transform(p.x(), p.y(), p.z(), roll,pitch,yaw)));
+							}
 						}
 					}
 				}
@@ -385,30 +477,50 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 		UDEBUG("GTSAM optimizing end (%d iterations done, error=%f (initial=%f final=%f), time=%f s)",
 				optimizer->iterations(), optimizer->error(), graph.error(initialEstimate), graph.error(optimizer->values()), timer.ticks());
 
-		gtsam::Marginals marginals(graph, optimizer->values());
+		float x,y,z,roll,pitch,yaw;
 		for(gtsam::Values::const_iterator iter=optimizer->values().begin(); iter!=optimizer->values().end(); ++iter)
 		{
 			if(iter->value.dim() > 1)
 			{
+				int key = (int)iter->key;
 				if(isSlam2d())
 				{
-					gtsam::Pose2 p = iter->value.cast<gtsam::Pose2>();
-					optimizedPoses.insert(std::make_pair((int)iter->key, Transform(p.x(), p.y(), p.theta())));
+					if(key > 0)
+					{
+						gtsam::Pose2 p = iter->value.cast<gtsam::Pose2>();
+						optimizedPoses.insert(std::make_pair(key, Transform(p.x(), p.y(), p.theta())));
+					}
+					else if(!landmarksIgnored())
+					{
+						poses.at(key).getTranslationAndEulerAngles(x,y,z,roll,pitch,yaw);
+						gtsam::Point2 p = iter->value.cast<gtsam::Point2>();
+						optimizedPoses.insert(std::make_pair(key, Transform(p.x(), p.y(), z,roll,pitch,yaw)));
+					}
 				}
 				else
 				{
-					gtsam::Pose3 p = iter->value.cast<gtsam::Pose3>();
-					optimizedPoses.insert(std::make_pair((int)iter->key, Transform::fromEigen4d(p.matrix())));
+					if(key > 0)
+					{
+						gtsam::Pose3 p = iter->value.cast<gtsam::Pose3>();
+						optimizedPoses.insert(std::make_pair(key, Transform::fromEigen4d(p.matrix())));
+					}
+					else if(!landmarksIgnored())
+					{
+						poses.at(key).getTranslationAndEulerAngles(x,y,z,roll,pitch,yaw);
+						gtsam::Point3 p = iter->value.cast<gtsam::Point3>();
+						optimizedPoses.insert(std::make_pair(key, Transform(p.x(), p.y(), p.z(), roll,pitch,yaw)));
+					}
 				}
 			}
 		}
 
 		// compute marginals
 		try {
+			UDEBUG("Computing marginals...");
 			UTimer t;
 			gtsam::Marginals marginals(graph, optimizer->values());
-			gtsam::Matrix info = marginals.marginalCovariance(optimizer->values().rbegin()->key);
-			UDEBUG("Computed marginals = %fs (key=%d)", t.ticks(), optimizer->values().rbegin()->key);
+			gtsam::Matrix info = marginals.marginalCovariance(poses.rbegin()->first);
+			UDEBUG("Computed marginals = %fs (key=%d)", t.ticks(), poses.rbegin()->first);
 			if(isSlam2d() && info.cols() == 3 && info.cols() == 3)
 			{
 				outputCovariance.at<double>(0,0) = info(0,0); // x-x

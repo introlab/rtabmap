@@ -167,13 +167,13 @@ public:
 	bool getLaserScanInfo(int signatureId, LaserScan & info) const;
 	bool getNodeInfo(int signatureId, Transform & pose, int & mapId, int & weight, std::string & label, double & stamp, Transform & groundTruthPose, std::vector<float> & velocity, GPS & gps, EnvSensors & sensors) const;
 	void loadLinks(int signatureId, std::map<int, Link> & links, Link::Type type = Link::kUndef) const;
-	void loadTags(int signatureId, std::map<int, TransformStamped> & tags) const;
 	void getWeight(int signatureId, int & weight) const;
 	void getAllNodeIds(std::set<int> & ids, bool ignoreChildren = false, bool ignoreBadSignatures = false) const;
-	void getAllLinks(std::multimap<int, Link> & links, bool ignoreNullLinks = true) const;
+	void getAllLinks(std::multimap<int, Link> & links, bool ignoreNullLinks = true, bool withLandmarks = false) const;
 	void getLastNodeId(int & id) const;
 	void getLastWordId(int & id) const;
 	void getInvertedIndexNi(int signatureId, int & ni) const;
+	void getNodesObservingLandmark(int landmarkId, std::map<int, Link> & nodes) const;
 	void getNodeIdByLabel(const std::string & label, int & id) const;
 	void getAllLabels(std::map<int, std::string> & labels) const;
 
@@ -260,16 +260,16 @@ protected:
 	virtual void loadSignaturesQuery(const std::list<int> & ids, std::list<Signature *> & signatures) const = 0;
 	virtual void loadWordsQuery(const std::set<int> & wordIds, std::list<VisualWord *> & vws) const = 0;
 	virtual void loadLinksQuery(int signatureId, std::map<int, Link> & links, Link::Type type = Link::kUndef) const = 0;
-	virtual void loadTagsQuery(int signatureId, std::map<int, TransformStamped> & tags) const = 0;
 
 	virtual void loadNodeDataQuery(std::list<Signature *> & signatures, bool images=true, bool scan=true, bool userData=true, bool occupancyGrid=true) const = 0;
 	virtual bool getCalibrationQuery(int signatureId, std::vector<CameraModel> & models, StereoCameraModel & stereoModel) const = 0;
 	virtual bool getLaserScanInfoQuery(int signatureId, LaserScan & info) const = 0;
 	virtual bool getNodeInfoQuery(int signatureId, Transform & pose, int & mapId, int & weight, std::string & label, double & stamp, Transform & groundTruthPose, std::vector<float> & velocity, GPS & gps, EnvSensors & sensors) const = 0;
 	virtual void getAllNodeIdsQuery(std::set<int> & ids, bool ignoreChildren, bool ignoreBadSignatures) const = 0;
-	virtual void getAllLinksQuery(std::multimap<int, Link> & links, bool ignoreNullLinks) const = 0;
+	virtual void getAllLinksQuery(std::multimap<int, Link> & links, bool ignoreNullLinks, bool withLandmarks) const = 0;
 	virtual void getLastIdQuery(const std::string & tableName, int & id) const = 0;
 	virtual void getInvertedIndexNiQuery(int signatureId, int & ni) const = 0;
+	virtual void getNodesObservingLandmarkQuery(int landmarkId, std::map<int, Link> & nodes) const = 0;
 	virtual void getNodeIdByLabelQuery(const std::string & label, int & id) const = 0;
 	virtual void getAllLabelsQuery(std::map<int, std::string> & labels) const = 0;
 

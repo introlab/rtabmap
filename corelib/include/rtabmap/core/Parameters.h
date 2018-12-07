@@ -385,6 +385,7 @@ class RTABMAP_EXP Parameters
     RTABMAP_PARAM(Optimizer, VarianceIgnored, bool, false,     "Ignore constraints' variance. If checked, identity information matrix is used for each constraint. Otherwise, an information matrix is generated from the variance saved in the links.");
     RTABMAP_PARAM(Optimizer, Robust,          bool, false,     uFormat("Robust graph optimization using Vertigo (only work for g2o and GTSAM optimization strategies). Not compatible with \"%s\" if enabled.", kRGBDOptimizeMaxError().c_str()));
     RTABMAP_PARAM(Optimizer, PriorsIgnored,   bool, true,      "Ignore prior constraints (global pose or GPS) while optimizing. Currently only g2o and gtsam optimization supports this.");
+    RTABMAP_PARAM(Optimizer, LandmarksIgnored,   bool, false,  "Ignore landmark constraints while optimizing. Currently only g2o and gtsam optimization supports this.");
 
 #ifdef RTABMAP_ORB_SLAM2
     RTABMAP_PARAM(g2o, Solver,            int, 3,          "0=csparse 1=pcg 2=cholmod 3=Eigen");

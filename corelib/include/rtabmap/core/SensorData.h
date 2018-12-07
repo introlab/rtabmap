@@ -39,6 +39,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/IMU.h>
 #include <rtabmap/core/GPS.h>
 #include <rtabmap/core/EnvSensor.h>
+#include <rtabmap/core/Landmark.h>
 
 namespace rtabmap
 {
@@ -246,6 +247,9 @@ public:
 	void addEnvSensor(const EnvSensor & sensor) {_envSensors.insert(std::make_pair(sensor.type(), sensor));}
 	const EnvSensors & envSensors() const {return _envSensors;}
 
+	void setLandmarks(const Landmarks & landmarks) {_landmarks = landmarks;}
+	const Landmarks & landmarks() const {return _landmarks;}
+
 	long getMemoryUsed() const; // Return memory usage in Bytes
 	void clearCompressedData() {_imageCompressed=cv::Mat(); _depthOrRightCompressed=cv::Mat(); _laserScanCompressed.clear(); _userDataCompressed=cv::Mat();}
 
@@ -283,8 +287,8 @@ private:
 	// environmental sensors
 	EnvSensors _envSensors;
 
-	// tags
-	std::map<int, TransformStamped> _tags;
+	// landmarks
+	Landmarks _landmarks;
 
 	// features
 	std::vector<cv::KeyPoint> _keypoints;

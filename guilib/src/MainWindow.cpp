@@ -1567,7 +1567,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 	}
 	int highestHypothesisId = static_cast<float>(uValue(stat.data(), Statistics::kLoopHighest_hypothesis_id(), 0.0f));
 	int loopId = stat.loopClosureId()>0?stat.loopClosureId():stat.proximityDetectionId()>0?stat.proximityDetectionId():highestHypothesisId;
-	if(_cachedSignatures.contains(loopId))
+	if(loopId>0 && _cachedSignatures.contains(loopId))
 	{
 		loopMapId = _cachedSignatures.value(loopId).mapId();
 	}
@@ -1601,7 +1601,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 			{
 				if(smallMovement || fastMovement)
 				{
-					_cachedSignatures.insert(-1, signature); // negative means temporary
+					_cachedSignatures.insert(0, signature); // zero means temporary
 				}
 				else
 				{
@@ -1700,10 +1700,12 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 
 			int rejectedHyp = bool(uValue(stat.data(), Statistics::kLoopRejectedHypothesis(), 0.0f));
 			float highestHypothesisValue = uValue(stat.data(), Statistics::kLoopHighest_hypothesis_value(), 0.0f);
+			int landmarkId = static_cast<int>(uValue(stat.data(), Statistics::kLoopLandmark_detected(), 0.0f));
+			int landmarkNodeRef = static_cast<int>(uValue(stat.data(), Statistics::kLoopLandmark_detected_node_ref(), 0.0f));
 			int matchId = 0;
 			Signature loopSignature;
 			int shownLoopId = 0;
-			if(highestHypothesisId > 0 || stat.proximityDetectionId()>0)
+			if(highestHypothesisId > 0 || stat.proximityDetectionId()>0 || landmarkId>0)
 			{
 				bool show = true;
 				if(stat.loopClosureId() > 0)
@@ -1722,6 +1724,12 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 					_ui->imageView_loopClosure->setBackgroundColor(Qt::yellow);
 					_ui->label_matchId->setText(QString("Local match = %1 [%2]").arg(stat.proximityDetectionId()).arg(loopMapId));
 					matchId = stat.proximityDetectionId();
+				}
+				else if(landmarkId!=0)
+				{
+					_ui->imageView_loopClosure->setBackgroundColor(QColor("orange"));
+					_ui->label_matchId->setText(QString("Landmark match = %1 with %2").arg(landmarkId).arg(landmarkNodeRef));
+					matchId = landmarkNodeRef;
 				}
 				else if(rejectedHyp && highestHypothesisValue >= _preferencesDialog->getLoopThr())
 				{
@@ -1744,7 +1752,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 
 				if(show)
 				{
-					shownLoopId = stat.loopClosureId()>0?stat.loopClosureId():stat.proximityDetectionId()>0?stat.proximityDetectionId():highestHypothesisId;
+					shownLoopId = matchId>0?matchId:highestHypothesisId;
 					QMap<int, Signature>::iterator iter = _cachedSignatures.find(shownLoopId);
 					if(iter != _cachedSignatures.end())
 					{
@@ -1907,6 +1915,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 			}
 
 			std::map<int, Transform> poses = stat.poses();
+
 			UDEBUG("time= %d ms", time.restart());
 
 			if(!_odometryReceived && poses.size() && poses.rbegin()->first == stat.refImageId())
@@ -1931,16 +1940,16 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 				}
 			}
 
-			if(_cachedSignatures.contains(-1))
+			if(_cachedSignatures.contains(0) && stat.refImageId()>0)
 			{
 				if(poses.find(stat.refImageId())!=poses.end())
 				{
-					poses.insert(std::make_pair(-1, poses.at(stat.refImageId())));
+					poses.insert(std::make_pair(0, poses.at(stat.refImageId())));
 					poses.erase(stat.refImageId());
 				}
 				if(groundTruth.find(stat.refImageId())!=groundTruth.end())
 				{
-					groundTruth.insert(std::make_pair(-1, groundTruth.at(stat.refImageId())));
+					groundTruth.insert(std::make_pair(0, groundTruth.at(stat.refImageId())));
 					groundTruth.erase(stat.refImageId());
 				}
 			}
@@ -2002,7 +2011,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 		}
 		UDEBUG("");
 
-		_cachedSignatures.remove(-1); // remove tmp negative ids
+		_cachedSignatures.remove(0); // remove tmp negative ids
 
 		// keep only compressed data in cache
 		if(_cachedSignatures.contains(stat.refImageId()))
@@ -2075,20 +2084,21 @@ void MainWindow::updateMapCloud(
 		std::map<std::string, float> * stats)
 {
 	UTimer timer;
-	UDEBUG("posesIn=%d constraints=%d mapIdsIn=%d labelsIn=%d",
-			(int)posesIn.size(), (int)constraints.size(), (int)mapIdsIn.size(), (int)labels.size());
+	std::map<int, Transform> nodePoses(posesIn.lower_bound(0), posesIn.end());
+	UDEBUG("nodes=%d landmarks=%d constraints=%d mapIdsIn=%d labelsIn=%d",
+			(int)nodePoses.size(), (int)(posesIn.size() - nodePoses.size()), (int)constraints.size(), (int)mapIdsIn.size(), (int)labels.size());
 	if(posesIn.size())
 	{
 		_currentPosesMap = posesIn;
-		_currentPosesMap.erase(-1); // don't keep -1 if it is there
+		_currentPosesMap.erase(0); // don't keep 0 if it is there
 		_currentLinksMap = constraints;
 		_currentMapIds = mapIdsIn;
 		_currentLabels = labels;
 		_currentGTPosesMap = groundTruths;
-		_currentGTPosesMap.erase(-1);
+		_currentGTPosesMap.erase(0);
 		if(_state != kMonitoring && _state != kDetecting)
 		{
-			_ui->actionPost_processing->setEnabled(_cachedSignatures.size() >= 2 && _currentPosesMap.size() >= 2 && _currentLinksMap.size() >= 1);
+			_ui->actionPost_processing->setEnabled(_cachedSignatures.size() >= 2 && nodePoses.size() >= 2 && _currentLinksMap.size() >= 1);
 			_ui->menuExport_poses->setEnabled(!_currentPosesMap.empty());
 		}
 		_ui->actionAnchor_clouds_to_ground_truth->setEnabled(!_currentGTPosesMap.empty());
@@ -2097,20 +2107,20 @@ void MainWindow::updateMapCloud(
 	// filter duplicated poses
 	std::map<int, Transform> poses;
 	std::map<int, int> mapIds;
-	if(_preferencesDialog->isCloudFiltering() && posesIn.size())
+	if(_preferencesDialog->isCloudFiltering() && nodePoses.size())
 	{
 		float radius = _preferencesDialog->getCloudFilteringRadius();
 		float angle = _preferencesDialog->getCloudFilteringAngle()*CV_PI/180.0; // convert to rad
-		bool hasNeg = posesIn.find(-1) != posesIn.end();
-		if(hasNeg)
+		bool hasZero = nodePoses.find(0) != nodePoses.end();
+		if(hasZero)
 		{
-			std::map<int, Transform> posesInTmp = posesIn;
-			posesInTmp.erase(-1);
+			std::map<int, Transform> posesInTmp = nodePoses;
+			posesInTmp.erase(0);
 			poses = rtabmap::graph::radiusPosesFiltering(posesInTmp, radius, angle);
 		}
 		else
 		{
-			poses = rtabmap::graph::radiusPosesFiltering(posesIn, radius, angle);
+			poses = rtabmap::graph::radiusPosesFiltering(nodePoses, radius, angle);
 		}
 		for(std::map<int, Transform>::iterator iter= poses.begin(); iter!=poses.end(); ++iter)
 		{
@@ -2120,30 +2130,30 @@ void MainWindow::updateMapCloud(
 				mapIds.insert(*jter);
 			}
 		}
-		//keep -1
-		if(hasNeg)
+		//keep 0
+		if(hasZero)
 		{
-			poses.insert(*posesIn.find(-1));
+			poses.insert(*nodePoses.find(0));
 		}
 
 		if(verboseProgress)
 		{
-			_progressDialog->appendText(tr("Map update: %1 nodes shown of %2 (cloud filtering is on)").arg(poses.size()).arg(posesIn.size()));
+			_progressDialog->appendText(tr("Map update: %1 nodes shown of %2 (cloud filtering is on)").arg(poses.size()).arg(nodePoses.size()));
 			QApplication::processEvents();
 		}
 	}
 	else
 	{
-		poses = posesIn;
+		poses = nodePoses;
 		mapIds = mapIdsIn;
 	}
 
 	std::map<int, bool> posesMask;
-	for(std::map<int, Transform>::const_iterator iter = posesIn.begin(); iter!=posesIn.end(); ++iter)
+	for(std::map<int, Transform>::const_iterator iter = nodePoses.begin(); iter!=nodePoses.end(); ++iter)
 	{
 		posesMask.insert(posesMask.end(), std::make_pair(iter->first, poses.find(iter->first) != poses.end()));
 	}
-	_ui->widget_mapVisibility->setMap(posesIn, posesMask);
+	_ui->widget_mapVisibility->setMap(nodePoses, posesMask);
 
 	if(groundTruths.size() && _ui->actionAnchor_clouds_to_ground_truth->isChecked())
 	{
@@ -2179,14 +2189,10 @@ void MainWindow::updateMapCloud(
 				nearestPoses.insert(*pter);
 			}
 		}
-		//add negative...
-		for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter)
+		//add zero...
+		if(poses.find(0) != poses.end())
 		{
-			if(iter->first > 0)
-			{
-				break;
-			}
-			nearestPoses.insert(*iter);
+			nearestPoses.insert(*poses.find(0));
 		}
 		poses=nearestPoses;
 	}
@@ -2201,7 +2207,7 @@ void MainWindow::updateMapCloud(
 		{
 			std::string cloudName = uFormat("cloud%d", iter->first);
 
-			if(iter->first < 0)
+			if(iter->first == 0)
 			{
 				viewerClouds.remove(cloudName);
 				_cloudViewer->removeCloud(cloudName);
@@ -2247,7 +2253,7 @@ void MainWindow::updateMapCloud(
 
 			// 2d point cloud
 			std::string scanName = uFormat("scan%d", iter->first);
-			if(iter->first < 0)
+			if(iter->first == 0)
 			{
 				viewerClouds.remove(scanName);
 				_cloudViewer->removeCloud(scanName);
@@ -2330,7 +2336,7 @@ void MainWindow::updateMapCloud(
 
 			// 3d features
 			std::string featuresName = uFormat("features%d", iter->first);
-			if(iter->first < 0)
+			if(iter->first == 0)
 			{
 				viewerClouds.remove(featuresName);
 				_cloudViewer->removeCloud(featuresName);
@@ -2444,7 +2450,7 @@ void MainWindow::updateMapCloud(
 		UTimer timerGraph;
 		// Find all graphs
 		std::map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr > graphs;
-		for(std::map<int, Transform>::iterator iter=_currentPosesMap.begin(); iter!=_currentPosesMap.end(); ++iter)
+		for(std::map<int, Transform>::iterator iter=_currentPosesMap.lower_bound(1); iter!=_currentPosesMap.end(); ++iter)
 		{
 			int mapId = uValue(_currentMapIds, iter->first, -1);
 
@@ -2552,7 +2558,7 @@ void MainWindow::updateMapCloud(
 	{
 		for(std::map<int, std::string>::const_iterator iter=labels.begin(); iter!=labels.end(); ++iter)
 		{
-			if(posesIn.find(iter->first)!=posesIn.end())
+			if(nodePoses.find(iter->first)!=nodePoses.end())
 			{
 				int mapId = uValue(mapIdsIn, iter->first, -1);
 				QColor color = Qt::gray;
@@ -2851,7 +2857,7 @@ std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr, pcl::IndicesPtr> MainWindow::c
 
 		pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
 		pcl::IndicesPtr indices(new std::vector<int>);
-		UASSERT_MSG(nodeId == -1 || nodeId == data.id(), uFormat("nodeId=%d data.id()=%d", nodeId, data.id()).c_str());
+		UASSERT_MSG(nodeId == 0 || nodeId == data.id(), uFormat("nodeId=%d data.id()=%d", nodeId, data.id()).c_str());
 
 		// Create organized cloud
 		cloud = util3d::cloudRGBFromSensorData(data,
@@ -5223,7 +5229,7 @@ void MainWindow::exportPoses(int format)
 		{
 			bool cameraFrame = item.compare("Camera") == 0;
 			_exportPosesFrame = cameraFrame?1:2;
-			for(std::map<int, Transform>::iterator iter=_currentPosesMap.begin(); iter!=_currentPosesMap.end(); ++iter)
+			for(std::map<int, Transform>::iterator iter=_currentPosesMap.lower_bound(1); iter!=_currentPosesMap.end(); ++iter)
 			{
 				if(_cachedSignatures.contains(iter->first))
 				{
@@ -5289,8 +5295,8 @@ void MainWindow::exportPoses(int format)
 		std::multimap<int, Link> links;
 		if(localTransforms.empty())
 		{
-			poses = _currentPosesMap;
-			links = _currentLinksMap;
+			poses = std::map<int, Transform>(_currentPosesMap.lower_bound(1), _currentPosesMap.end());
+			links = std::multimap<int, Link>(_currentLinksMap.lower_bound(1), _currentLinksMap.end());
 		}
 		else
 		{
@@ -5299,7 +5305,7 @@ void MainWindow::exportPoses(int format)
 			{
 				poses.insert(std::make_pair(iter->first, _currentPosesMap.at(iter->first) * iter->second));
 			}
-			for(std::multimap<int, Link>::iterator iter=_currentLinksMap.begin(); iter!=_currentLinksMap.end(); ++iter)
+			for(std::multimap<int, Link>::iterator iter=_currentLinksMap.lower_bound(1); iter!=_currentLinksMap.end(); ++iter)
 			{
 				if(uContains(poses, iter->second.from()) && uContains(poses, iter->second.to()))
 				{
@@ -5415,27 +5421,20 @@ void MainWindow::postProcessing()
 		return;
 	}
 
+	if(_currentPosesMap.lower_bound(1) == _currentPosesMap.end())
+	{
+		UWARN("No nodes to process...");
+		return;
+	}
+
 	// First, verify that we have all data required in the GUI
 	bool allDataAvailable = true;
-	std::map<int, Transform> odomPoses;
-	for(std::map<int, Transform>::iterator iter = _currentPosesMap.begin();
+	for(std::map<int, Transform>::iterator iter = _currentPosesMap.lower_bound(1);
 			iter!=_currentPosesMap.end() && allDataAvailable;
 			++iter)
 	{
 		QMap<int, Signature>::iterator jter = _cachedSignatures.find(iter->first);
-		if(jter != _cachedSignatures.end())
-		{
-			if(jter->getPose().isNull())
-			{
-				UWARN("Odometry pose of %d is null.", iter->first);
-				allDataAvailable = false;
-			}
-			else
-			{
-				odomPoses.insert(*iter); // fill raw poses
-			}
-		}
-		else
+		if(jter == _cachedSignatures.end())
 		{
 			UWARN("Node %d missing.", iter->first);
 			allDataAvailable = false;
@@ -5460,11 +5459,11 @@ void MainWindow::postProcessing()
 	int totalSteps = 0;
 	if(refineNeighborLinks)
 	{
-		totalSteps+=(int)odomPoses.size();
+		totalSteps+=(int)_currentPosesMap.size();
 	}
 	if(refineLoopClosureLinks)
 	{
-		totalSteps+=(int)_currentLinksMap.size() - (int)odomPoses.size();
+		totalSteps+=(int)_currentLinksMap.size() - (int)_currentPosesMap.size();
 	}
 	if(sba)
 	{
@@ -5636,7 +5635,7 @@ void MainWindow::postProcessing()
 											// use first node of the map containing from
 											for(std::map<int, int>::iterator iter=_currentMapIds.begin(); iter!=_currentMapIds.end(); ++iter)
 											{
-												if(iter->second == mapId && odomPoses.find(iter->first)!=odomPoses.end())
+												if(iter->second == mapId && _currentPosesMap.find(iter->first)!=_currentPosesMap.end())
 												{
 													fromId = iter->first;
 													break;
@@ -5650,10 +5649,10 @@ void MainWindow::postProcessing()
 											float maxAngularError = 0.0f;
 											std::map<int, Transform> poses;
 											std::multimap<int, Link> links;
-											UASSERT(odomPoses.find(fromId) != odomPoses.end());
-											UASSERT_MSG(odomPoses.find(from) != odomPoses.end(), uFormat("id=%d poses=%d links=%d", from, (int)poses.size(), (int)links.size()).c_str());
-											UASSERT_MSG(odomPoses.find(to) != odomPoses.end(), uFormat("id=%d poses=%d links=%d", to, (int)poses.size(), (int)links.size()).c_str());
-											optimizer->getConnectedGraph(fromId, odomPoses, linksIn, poses, links);
+											UASSERT(_currentPosesMap.find(fromId) != _currentPosesMap.end());
+											UASSERT_MSG(_currentPosesMap.find(from) != _currentPosesMap.end(), uFormat("id=%d poses=%d links=%d", from, (int)poses.size(), (int)links.size()).c_str());
+											UASSERT_MSG(_currentPosesMap.find(to) != _currentPosesMap.end(), uFormat("id=%d poses=%d links=%d", to, (int)poses.size(), (int)links.size()).c_str());
+											optimizer->getConnectedGraph(fromId, _currentPosesMap, linksIn, poses, links);
 											UASSERT(poses.find(fromId) != poses.end());
 											UASSERT_MSG(poses.find(from) != poses.end(), uFormat("id=%d poses=%d links=%d", from, (int)poses.size(), (int)links.size()).c_str());
 											UASSERT_MSG(poses.find(to) != poses.end(), uFormat("id=%d poses=%d links=%d", to, (int)poses.size(), (int)links.size()).c_str());
@@ -5755,16 +5754,17 @@ void MainWindow::postProcessing()
 			if(n+1 < detectLoopClosureIterations)
 			{
 				_progressDialog->appendText(tr("Optimizing graph with new links (%1 nodes, %2 constraints)...")
-						.arg(odomPoses.size()).arg(_currentLinksMap.size()));
+						.arg(_currentPosesMap.size()).arg(_currentLinksMap.size()));
 				QApplication::processEvents();
 
-				int fromId = optimizeFromGraphEnd?odomPoses.rbegin()->first:odomPoses.begin()->first;
+				UASSERT(_currentPosesMap.lower_bound(1) != _currentPosesMap.end());
+				int fromId = optimizeFromGraphEnd?_currentPosesMap.rbegin()->first:_currentPosesMap.lower_bound(1)->first;
 				std::map<int, rtabmap::Transform> posesOut;
 				std::multimap<int, rtabmap::Link> linksOut;
 				std::map<int, rtabmap::Transform> optimizedPoses;
 				optimizer->getConnectedGraph(
 						fromId,
-						odomPoses,
+						_currentPosesMap,
 						_currentLinksMap,
 						posesOut,
 						linksOut);
@@ -5791,12 +5791,12 @@ void MainWindow::postProcessing()
 		RegistrationIcp regIcp(parameters);
 
 		int i=0;
-		for(std::multimap<int, Link>::iterator iter = _currentLinksMap.begin(); iter!=_currentLinksMap.end() && !_progressCanceled; ++iter, ++i)
+		for(std::multimap<int, Link>::iterator iter = _currentLinksMap.lower_bound(1); iter!=_currentLinksMap.end() && !_progressCanceled; ++iter, ++i)
 		{
 			int type = iter->second.type();
 
 			if((refineNeighborLinks && type==Link::kNeighbor) ||
-			   (refineLoopClosureLinks && type!=Link::kNeighbor))
+			   (refineLoopClosureLinks && type!=Link::kNeighbor && type!=Link::kLandmark))
 			{
 				int from = iter->second.from();
 				int to = iter->second.to();
@@ -5864,15 +5864,16 @@ void MainWindow::postProcessing()
 	}
 
 	_progressDialog->appendText(tr("Optimizing graph with updated links (%1 nodes, %2 constraints)...")
-			.arg(odomPoses.size()).arg(_currentLinksMap.size()));
+			.arg(_currentPosesMap.size()).arg(_currentLinksMap.size()));
 
-	int fromId = optimizeFromGraphEnd?odomPoses.rbegin()->first:odomPoses.begin()->first;
+	UASSERT(_currentPosesMap.lower_bound(1) != _currentPosesMap.end());
+	int fromId = optimizeFromGraphEnd?_currentPosesMap.rbegin()->first:_currentPosesMap.lower_bound(1)->first;
 	std::map<int, rtabmap::Transform> posesOut;
 	std::multimap<int, rtabmap::Link> linksOut;
 	std::map<int, rtabmap::Transform> optimizedPoses;
 	optimizer->getConnectedGraph(
 			fromId,
-			odomPoses,
+			_currentPosesMap,
 			_currentLinksMap,
 			posesOut,
 			linksOut);

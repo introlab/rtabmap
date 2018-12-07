@@ -355,7 +355,7 @@ void GraphViewer::updateGraph(const std::map<int, Transform> & poses,
 	for(QMap<int, NodeItem*>::iterator iter = _nodeItems.begin(); iter!=_nodeItems.end(); ++iter)
 	{
 		iter.value()->hide();
-		iter.value()->setColor(_nodeColor); // reset color
+		iter.value()->setColor(iter.key()<0?QColor(255-_nodeColor.red(), 255-_nodeColor.green(), 255-_nodeColor.blue()):_nodeColor); // reset color
 	}
 	for(QMultiMap<int, LinkItem*>::iterator iter = _linkItems.begin(); iter!=_linkItems.end(); ++iter)
 	{
@@ -378,8 +378,8 @@ void GraphViewer::updateGraph(const std::map<int, Transform> & poses,
 				const Transform & pose = iter->second;
 				NodeItem * item = new NodeItem(iter->first, uContains(mapIds, iter->first)?mapIds.at(iter->first):-1, pose, _nodeRadius);
 				this->scene()->addItem(item);
-				item->setZValue(20);
-				item->setColor(_nodeColor);
+				item->setZValue(iter->first<0?21:20);
+				item->setColor(iter->first<0?QColor(255-_nodeColor.red(), 255-_nodeColor.green(), 255-_nodeColor.blue()):_nodeColor);
 				item->setParentItem(_graphRoot);
 				item->setVisible(_nodeVisible);
 				_nodeItems.insert(iter->first, item);

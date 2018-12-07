@@ -189,7 +189,7 @@ public:
 	const Transform & getPathTransformToGoal() const {return _pathTransformToGoal;}
 
 	std::map<int, Transform> getForwardWMPoses(int fromId, int maxNearestNeighbors, float radius, int maxDiffID) const;
-	std::map<int, std::map<int, Transform> > getPaths(std::map<int, Transform> poses, const Transform & target, int maxGraphDepth = 0) const;
+	std::map<int, std::map<int, Transform> > getPaths(const std::map<int, Transform> & poses, const Transform & target, int maxGraphDepth = 0) const;
 	void adjustLikelihood(std::map<int, float> & likelihood) const;
 	std::pair<int, float> selectHypothesis(const std::map<int, float> & posterior,
 											const std::map<int, float> & likelihood) const;

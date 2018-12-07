@@ -2375,7 +2375,7 @@ void DBDriverSqlite3::getAllNodeIdsQuery(std::set<int> & ids, bool ignoreChildre
 	}
 }
 
-void DBDriverSqlite3::getAllLinksQuery(std::multimap<int, Link> & links, bool ignoreNullLinks) const
+void DBDriverSqlite3::getAllLinksQuery(std::multimap<int, Link> & links, bool ignoreNullLinks, bool withLandmarks) const
 {
 	links.clear();
 	if(_ppDb)
@@ -2386,7 +2386,11 @@ void DBDriverSqlite3::getAllLinksQuery(std::multimap<int, Link> & links, bool ig
 		sqlite3_stmt * ppStmt = 0;
 		std::stringstream query;
 
-		if(uStrNumCmp(_version, "0.13.0") >= 0)
+		if(uStrNumCmp(_version, "0.18.3") >= 0 && !withLandmarks)
+		{
+			query << "SELECT from_id, to_id, type, transform, information_matrix, user_data FROM Link WHERE type!=" << Link::kLandmark << " ORDER BY from_id, to_id";
+		}
+		else if(uStrNumCmp(_version, "0.13.0") >= 0)
 		{
 			query << "SELECT from_id, to_id, type, transform, information_matrix, user_data FROM Link ORDER BY from_id, to_id";
 		}
@@ -2592,6 +2596,86 @@ void DBDriverSqlite3::getInvertedIndexNiQuery(int nodeId, int & ni) const
 		rc = sqlite3_finalize(ppStmt);
 		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
 		ULOGGER_DEBUG("Time=%fs", timer.ticks());
+	}
+}
+
+void DBDriverSqlite3::getNodesObservingLandmarkQuery(int landmarkId, std::map<int, Link> & nodes) const
+{
+	if(_ppDb && landmarkId < 0 && uStrNumCmp(_version, "0.18.3") >= 0)
+	{
+		UTimer timer;
+		timer.start();
+		int rc = SQLITE_OK;
+		sqlite3_stmt * ppStmt = 0;
+		std::stringstream query;
+
+		query << "SELECT from_id, type, information_matrix, transform, user_data FROM Link WHERE to_id=" << landmarkId <<"";
+
+		rc = sqlite3_prepare_v2(_ppDb, query.str().c_str(), -1, &ppStmt, 0);
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+
+		// Process the result if one
+		int fromId = -1;
+		int linkType = -1;
+		std::list<Link> links;
+		const void * data = 0;
+		int dataSize = 0;
+
+		// Process the result if one
+		rc = sqlite3_step(ppStmt);
+		while(rc == SQLITE_ROW)
+		{
+			int index = 0;
+
+			fromId = sqlite3_column_int(ppStmt, index++);
+			linkType = sqlite3_column_int(ppStmt, index++);
+			cv::Mat userDataCompressed;
+			cv::Mat informationMatrix = cv::Mat::eye(6,6,CV_64FC1);
+
+			data = sqlite3_column_blob(ppStmt, index);
+			dataSize = sqlite3_column_bytes(ppStmt, index++);
+			UASSERT(dataSize==36*sizeof(double) && data);
+			informationMatrix = cv::Mat(6, 6, CV_64FC1, (void *)data).clone(); // information_matrix
+
+			const void * data = sqlite3_column_blob(ppStmt, index);
+			dataSize = sqlite3_column_bytes(ppStmt, index++);
+			//Create the userData
+			if(dataSize>4 && data)
+			{
+				userDataCompressed = cv::Mat(1, dataSize, CV_8UC1, (void *)data).clone(); // userData
+			}
+
+			//transform
+			data = sqlite3_column_blob(ppStmt, index);
+			dataSize = sqlite3_column_bytes(ppStmt, index++);
+			Transform transform;
+			if((unsigned int)dataSize == transform.size()*sizeof(float) && data)
+			{
+				memcpy(transform.data(), data, dataSize);
+			}
+			else if(dataSize)
+			{
+				UERROR("Error while loading link transform from %d to %d! Setting to null...", fromId, landmarkId);
+			}
+
+			if(linkType >= 0 && linkType != Link::kUndef)
+			{
+				nodes.insert(std::make_pair(fromId, Link(fromId, landmarkId, (Link::Type)linkType, transform, informationMatrix, userDataCompressed)));
+			}
+			else
+			{
+				UFATAL("Not supported link type %d ! (fromId=%d, toId=%d)",
+						linkType, fromId, landmarkId);
+			}
+
+			rc = sqlite3_step(ppStmt);
+		}
+		UASSERT_MSG(rc == SQLITE_DONE, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+
+		// Finalize (delete) the statement
+		rc = sqlite3_finalize(ppStmt);
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+		ULOGGER_DEBUG("Time=%f", timer.ticks());
 	}
 }
 
@@ -3063,9 +3147,6 @@ void DBDriverSqlite3::loadSignaturesQuery(const std::list<int> & ids, std::list<
 		this->loadLinksQuery(nodes);
 		ULOGGER_DEBUG("Time load links=%fs", timer.ticks());
 
-		this->loadTagsQuery(nodes);
-		ULOGGER_DEBUG("Time load tags=%fs", timer.ticks());
-
 		for(std::list<Signature*>::iterator iter = nodes.begin(); iter!=nodes.end(); ++iter)
 		{
 			(*iter)->setModified(false);
@@ -3490,10 +3571,10 @@ void DBDriverSqlite3::loadWordsQuery(const std::set<int> & wordIds, std::list<Vi
 
 void DBDriverSqlite3::loadLinksQuery(
 		int signatureId,
-		std::map<int, Link> & neighbors,
+		std::map<int, Link> & links,
 		Link::Type typeIn) const
 {
-	neighbors.clear();
+	links.clear();
 	if(_ppDb)
 	{
 		UTimer timer;
@@ -3538,6 +3619,11 @@ void DBDriverSqlite3::loadLinksQuery(
 				query << " AND type > 0";
 			}
 		}
+		if(uStrNumCmp(_version, "0.18.3") >= 0 && (typeIn != Link::kAllWithLandmarks && typeIn != Link::kLandmark))
+		{
+			query << " AND type != " << Link::kLandmark;
+		}
+
 		query << " ORDER BY to_id";
 
 		rc = sqlite3_prepare_v2(_ppDb, query.str().c_str(), -1, &ppStmt, 0);
@@ -3609,19 +3695,19 @@ void DBDriverSqlite3::loadLinksQuery(
 					}
 				}
 
-				neighbors.insert(neighbors.end(), std::make_pair(toId, Link(signatureId, toId, (Link::Type)type, transform, informationMatrix, userDataCompressed)));
+				links.insert(links.end(), std::make_pair(toId, Link(signatureId, toId, (Link::Type)type, transform, informationMatrix, userDataCompressed)));
 			}
 			else if(uStrNumCmp(_version, "0.7.4") >= 0)
 			{
 				double variance = sqlite3_column_double(ppStmt, index++);
 				UASSERT(variance>0.0);
 				informationMatrix *= 1.0/variance;
-				neighbors.insert(neighbors.end(), std::make_pair(toId, Link(signatureId, toId, (Link::Type)type, transform, informationMatrix)));
+				links.insert(links.end(), std::make_pair(toId, Link(signatureId, toId, (Link::Type)type, transform, informationMatrix)));
 			}
 			else
 			{
-				// neighbor is 0, loop closures are 1 and 2 (child)
-				neighbors.insert(neighbors.end(), std::make_pair(toId, Link(signatureId, toId, type==0?Link::kNeighbor:Link::kGlobalClosure, transform, informationMatrix)));
+				// neighbor is 0, loop closures are 1
+				links.insert(links.end(), std::make_pair(toId, Link(signatureId, toId, type==0?Link::kNeighbor:Link::kGlobalClosure, transform, informationMatrix)));
 			}
 
 			rc = sqlite3_step(ppStmt);
@@ -3633,9 +3719,9 @@ void DBDriverSqlite3::loadLinksQuery(
 		rc = sqlite3_finalize(ppStmt);
 		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
 
-		if(neighbors.size() == 0)
+		if(links.size() == 0)
 		{
-			//UERROR("No neighbors loaded from signature %d", signatureId);
+			//UERROR("No links loaded from signature %d", signatureId);
 		}
 	}
 }
@@ -3765,13 +3851,20 @@ void DBDriverSqlite3::loadLinksQuery(std::list<Signature *> & signatures) const
 
 				if(linkType >= 0 && linkType != Link::kUndef)
 				{
-					if(uStrNumCmp(_version, "0.7.4") >= 0)
+					if(linkType == Link::kLandmark)
 					{
-						links.push_back(Link((*iter)->id(), toId, (Link::Type)linkType, transform, informationMatrix, userDataCompressed));
+						(*iter)->addLandmark(Link((*iter)->id(), toId, (Link::Type)linkType, transform, informationMatrix, userDataCompressed));
 					}
-					else // neighbor is 0, loop closures are 1 and 2 (child)
+					else
 					{
-						links.push_back(Link((*iter)->id(), toId, linkType == 0?Link::kNeighbor:Link::kGlobalClosure, transform, informationMatrix, userDataCompressed));
+						if(uStrNumCmp(_version, "0.7.4") >= 0)
+						{
+							links.push_back(Link((*iter)->id(), toId, (Link::Type)linkType, transform, informationMatrix, userDataCompressed));
+						}
+						else // neighbor is 0, loop closures are 1 and 2 (child)
+						{
+							links.push_back(Link((*iter)->id(), toId, linkType == 0?Link::kNeighbor:Link::kGlobalClosure, transform, informationMatrix, userDataCompressed));
+						}
 					}
 				}
 				else
@@ -3798,133 +3891,6 @@ void DBDriverSqlite3::loadLinksQuery(std::list<Signature *> & signatures) const
 		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
 	}
 }
-
-void DBDriverSqlite3::loadTagsQuery(
-		int signatureId,
-		std::map<int, TransformStamped> & tags) const
-{
-	tags.clear();
-	if(_ppDb && uStrNumCmp(_version, "0.18.0") >= 0)
-	{
-		UTimer timer;
-		timer.start();
-		int rc = SQLITE_OK;
-		sqlite3_stmt * ppStmt = 0;
-		std::stringstream query;
-
-		query << "SELECT tag_id, stamp, transform FROM Tag WHERE node_id = " << signatureId;
-
-		rc = sqlite3_prepare_v2(_ppDb, query.str().c_str(), -1, &ppStmt, 0);
-		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
-
-		int tagId = 0;
-		double stamp = 0.0;
-		const void * data = 0;
-		int dataSize = 0;
-
-		// Process the result if one
-		rc = sqlite3_step(ppStmt);
-		while(rc == SQLITE_ROW)
-		{
-			int index = 0;
-
-			tagId = sqlite3_column_int(ppStmt, index++);
-			stamp = sqlite3_column_double(ppStmt, index++);
-
-			data = sqlite3_column_blob(ppStmt, index);
-			dataSize = sqlite3_column_bytes(ppStmt, index++);
-
-			Transform transform;
-			if((unsigned int)dataSize == transform.size()*sizeof(float) && data)
-			{
-				memcpy(transform.data(), data, dataSize);
-				tags.insert(tags.end(), std::make_pair(tagId, TransformStamped(transform, stamp)));
-			}
-			else if(dataSize)
-			{
-				UERROR("Error while loading tag %d transform node %d! Ignoring it...", tagId, signatureId);
-			}
-
-			rc = sqlite3_step(ppStmt);
-		}
-
-		UASSERT_MSG(rc == SQLITE_DONE, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
-
-		// Finalize (delete) the statement
-		rc = sqlite3_finalize(ppStmt);
-		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
-	}
-}
-
-void DBDriverSqlite3::loadTagsQuery(std::list<Signature *> & signatures) const
-{
-	if(_ppDb && uStrNumCmp(_version, "0.18.0") >= 0)
-	{
-		UTimer timer;
-		timer.start();
-		int rc = SQLITE_OK;
-		sqlite3_stmt * ppStmt = 0;
-		std::stringstream query;
-
-		query << "SELECT tag_id, stamp, transform FROM Tag WHERE node_id = ?";
-
-		rc = sqlite3_prepare_v2(_ppDb, query.str().c_str(), -1, &ppStmt, 0);
-		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
-
-		for(std::list<Signature*>::iterator iter=signatures.begin(); iter!=signatures.end(); ++iter)
-		{
-			// bind id
-			rc = sqlite3_bind_int(ppStmt, 1, (*iter)->id());
-			UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
-
-			int tagId = 0;
-			double stamp = 0.0;
-			std::map<int, TransformStamped> tags;
-			const void * data = 0;
-			int dataSize = 0;
-
-			// Process the result if one
-			rc = sqlite3_step(ppStmt);
-			while(rc == SQLITE_ROW)
-			{
-				int index = 0;
-
-				tagId = sqlite3_column_int(ppStmt, index++);
-				stamp = sqlite3_column_double(ppStmt, index++);
-
-				data = sqlite3_column_blob(ppStmt, index);
-				dataSize = sqlite3_column_bytes(ppStmt, index++);
-
-				Transform transform;
-				if((unsigned int)dataSize == transform.size()*sizeof(float) && data)
-				{
-					memcpy(transform.data(), data, dataSize);
-					tags.insert(tags.end(), std::make_pair(tagId, TransformStamped(transform, stamp)));
-				}
-				else if(dataSize)
-				{
-					UERROR("Error while loading tag %d transform node %d! Ignoring it...", tagId, (*iter)->id());
-				}
-
-				rc = sqlite3_step(ppStmt);
-			}
-			UASSERT_MSG(rc == SQLITE_DONE, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
-
-			// add tags
-			(*iter)->setTags(tags);
-
-			//reset
-			rc = sqlite3_reset(ppStmt);
-			UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
-			UDEBUG("time=%fs, node=%d, links.size=%d", timer.ticks(), (*iter)->id(), tags.size());
-		}
-
-		// Finalize (delete) the statement
-		rc = sqlite3_finalize(ppStmt);
-		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
-	}
-}
-
 
 void DBDriverSqlite3::updateQuery(const std::list<Signature *> & nodes, bool updateTimestamp) const
 {
@@ -4004,7 +3970,14 @@ void DBDriverSqlite3::updateQuery(const std::list<Signature *> & nodes, bool upd
 		ULOGGER_DEBUG("Update Node table, Time=%fs", timer.ticks());
 
 		// Update links part1
-		query = "DELETE FROM Link WHERE from_id=?;";
+		if(uStrNumCmp(_version, "0.18.3") >= 0)
+		{
+			query = uFormat("DELETE FROM Link WHERE from_id=? and type!=%d;", (int)Link::kLandmark);
+		}
+		else
+		{
+			query = uFormat("DELETE FROM Link WHERE from_id=?;");
+		}
 		rc = sqlite3_prepare_v2(_ppDb, query.c_str(), -1, &ppStmt, 0);
 		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
 		for(std::list<Signature *>::const_iterator j=nodes.begin(); j!=nodes.end(); ++j)
@@ -4125,7 +4098,6 @@ void DBDriverSqlite3::saveQuery(const std::list<Signature *> & signatures)
 		rc = sqlite3_prepare_v2(_ppDb, query.c_str(), -1, &ppStmt, 0);
 		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
 
-		bool hasTags = false;
 		for(std::list<Signature *>::const_iterator i=signatures.begin(); i!=signatures.end(); ++i)
 		{
 			_memoryUsedEstimate += (*i)->getMemoryUsed();
@@ -4133,11 +4105,6 @@ void DBDriverSqlite3::saveQuery(const std::list<Signature *> & signatures)
 			_memoryUsedEstimate -= (*i)->sensorData().imageRaw().total() * (*i)->sensorData().imageRaw().elemSize();
 			_memoryUsedEstimate -= (*i)->sensorData().depthOrRightRaw().total() * (*i)->sensorData().depthOrRightRaw().elemSize();
 			_memoryUsedEstimate -= (*i)->sensorData().laserScanRaw().data().total() * (*i)->sensorData().laserScanRaw().data().elemSize();
-
-			if((*i)->getTags().size())
-			{
-				hasTags = true;
-			}
 
 			stepNode(ppStmt, *i);
 		}
@@ -4158,6 +4125,15 @@ void DBDriverSqlite3::saveQuery(const std::list<Signature *> & signatures)
 			for(std::map<int, Link>::const_iterator i=links.begin(); i!=links.end(); ++i)
 			{
 				stepLink(ppStmt, i->second);
+			}
+			if(uStrNumCmp(_version, "0.18.3") >= 0)
+			{
+				// Save landmarks
+				const std::map<int, Link> & links = (*jter)->getLandmarks();
+				for(std::map<int, Link>::const_iterator i=links.begin(); i!=links.end(); ++i)
+				{
+					stepLink(ppStmt, i->second);
+				}
 			}
 		}
 		// Finalize (delete) the statement
@@ -4203,28 +4179,6 @@ void DBDriverSqlite3::saveQuery(const std::list<Signature *> & signatures)
 		rc = sqlite3_finalize(ppStmt);
 		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
 		UDEBUG("Time=%fs", timer.ticks());
-
-		if(hasTags && uStrNumCmp(_version, "0.18.0") >= 0)
-		{
-			// Create new entries in table Tag
-			query = queryStepTag();
-			rc = sqlite3_prepare_v2(_ppDb, query.c_str(), -1, &ppStmt, 0);
-			UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
-			for(std::list<Signature *>::const_iterator jter=signatures.begin(); jter!=signatures.end(); ++jter)
-			{
-				// Save tags
-				const std::map<int, TransformStamped> & tags = (*jter)->getTags();
-				for(std::map<int, TransformStamped>::const_iterator i=tags.begin(); i!=tags.end(); ++i)
-				{
-					stepTag(ppStmt, (*jter)->id(), i->first, i->second);
-				}
-			}
-			// Finalize (delete) the statement
-			rc = sqlite3_finalize(ppStmt);
-			UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
-
-			UDEBUG("Time=%fs", timer.ticks());
-		}
 
 		if(uStrNumCmp(_version, "0.10.0") >= 0)
 		{
@@ -6041,41 +5995,6 @@ void DBDriverSqlite3::stepLink(
 	rc = sqlite3_bind_int(ppStmt, index++, link.from());
 	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
 	rc = sqlite3_bind_int(ppStmt, index++, link.to());
-	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
-
-	rc=sqlite3_step(ppStmt);
-	UASSERT_MSG(rc == SQLITE_DONE, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
-
-	rc=sqlite3_reset(ppStmt);
-	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
-}
-
-std::string DBDriverSqlite3::queryStepTag() const
-{
-	UASSERT(uStrNumCmp(_version, "0.18.0") >= 0);
-	return "INSERT INTO Tag(node_id, tag_id, stamp, transform) VALUES(?,?,?,?);";
-}
-void DBDriverSqlite3::stepTag(
-		sqlite3_stmt * ppStmt,
-		int nodeId,
-		int tagId,
-		const TransformStamped & pose) const
-{
-	if(!ppStmt)
-	{
-		UFATAL("");
-	}
-	UDEBUG("Save tag %d of node %d", tagId, nodeId);
-
-	int rc = SQLITE_OK;
-	int index = 1;
-	rc = sqlite3_bind_int(ppStmt, index++, nodeId);
-	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
-	rc = sqlite3_bind_int(ppStmt, index++, tagId);
-	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
-	rc = sqlite3_bind_double(ppStmt, index++, pose.stamp());
-	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
-	rc = sqlite3_bind_blob(ppStmt, index++, pose.transform().data(), pose.transform().size()*sizeof(float), SQLITE_STATIC);
 	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
 
 	rc=sqlite3_step(ppStmt);

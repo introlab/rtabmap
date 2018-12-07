@@ -883,6 +883,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->graphOptimization_stopEpsilon->setObjectName(Parameters::kOptimizerEpsilon().c_str());
 	_ui->graphOptimization_robust->setObjectName(Parameters::kOptimizerRobust().c_str());
 	_ui->graphOptimization_priorsIgnored->setObjectName(Parameters::kOptimizerPriorsIgnored().c_str());
+	_ui->graphOptimization_landmarksIgnored->setObjectName(Parameters::kOptimizerLandmarksIgnored().c_str());
 
 	_ui->comboBox_g2o_solver->setObjectName(Parameters::kg2oSolver().c_str());
 	_ui->comboBox_g2o_optimizer->setObjectName(Parameters::kg2oOptimizer().c_str());

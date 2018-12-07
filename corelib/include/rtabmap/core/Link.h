@@ -46,7 +46,11 @@ public:
 		kUserClosure,
 		kVirtualClosure,
 		kNeighborMerged,
-		kPosePrior,
+		kPosePrior, // Absolute pose in /world frame, From == To
+		kLandmark,  // Transform /base_link -­­> /landmark, "From" is node observing the landmark "To"
+		kEnd,
+		kAllWithLandmarks = 98,
+		kAllWithoutLandmarks = 99,
 		kUndef = 99};
 	Link();
 	Link(int from,
@@ -56,7 +60,7 @@ public:
 			const cv::Mat & infMatrix = cv::Mat::eye(6,6,CV_64FC1), // information matrix: inverse of covariance matrix
 			const cv::Mat & userData = cv::Mat());
 
-	bool isValid() const {return from_ > 0 && to_ > 0 && !transform_.isNull() && type_!=kUndef;}
+	bool isValid() const {return from_ != 0 && to_ != 0 && !transform_.isNull() && type_!=kUndef;}
 
 	int from() const {return from_;}
 	int to() const {return to_;}
