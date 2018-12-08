@@ -2461,17 +2461,10 @@ bool Rtabmap::process(
 		//used in localization mode: filter virtual links
 		std::map<int, Link> localizationLinks = graph::filterLinks(signature->getLinks(), Link::kVirtualClosure);
 		localizationLinks = graph::filterLinks(localizationLinks, Link::kPosePrior);
-		if(landmarkDetected!=0 && !_memory->isIncremental())
+		if(landmarkDetected!=0 && !_memory->isIncremental() && _optimizedPoses.find(landmarkDetected)!=_optimizedPoses.end())
 		{
-			//Add fake link between current node and the node also observing the same landmark
-			UASSERT(uContains(_optimizedPoses, landmarkDetectedNodeRef));
-			const Signature * s = _memory->getSignature(landmarkDetectedNodeRef);
-			UASSERT(s!=0);
-			UASSERT(uContains(s->getLandmarks(), landmarkDetected));
 			UASSERT(uContains(signature->getLandmarks(), landmarkDetected));
-			const Link & landmarkLink = s->getLandmarks().at(landmarkDetected);
-			const Link & landmarkLink2 = signature->getLandmarks().at(landmarkDetected);
-			localizationLinks.insert(std::make_pair(s->id(), landmarkLink2.merge(landmarkLink.inverse(), Link::kLandmark)));
+			localizationLinks.insert(std::make_pair(landmarkDetected, signature->getLandmarks().at(landmarkDetected)));
 		}
 
 		// Note that in localization mode, we don't re-optimize the graph
@@ -4488,12 +4481,20 @@ bool Rtabmap::computePath(int targetNode, bool global)
 		}
 		else
 		{
-			if(_lastLocalizationPose.isNull() || _optimizedPoses.size() == 0)
+			if(_lastLocalizationPose.isNull() || _optimizedPoses.empty())
 			{
 				UWARN("Last localization pose is null... cannot compute a path");
 				return false;
 			}
-			currentNode = graph::findNearestNode(_optimizedPoses, _lastLocalizationPose);
+			if(_optimizedPoses.begin()->first < 0)
+			{
+				std::map<int, Transform> poses(_optimizedPoses.lower_bound(1), _optimizedPoses.end());
+				currentNode = graph::findNearestNode(poses, _lastLocalizationPose);
+			}
+			else
+			{
+				currentNode = graph::findNearestNode(_optimizedPoses, _lastLocalizationPose);
+			}
 		}
 		if(currentNode && targetNode)
 		{
@@ -4637,12 +4638,20 @@ bool Rtabmap::computePath(const Transform & targetPose, float tolerance)
 	}
 	else
 	{
-		if(_lastLocalizationPose.isNull() || _optimizedPoses.size() == 0)
+		if(_lastLocalizationPose.isNull() || _optimizedPoses.empty())
 		{
 			UWARN("Last localization pose is null... cannot compute a path");
 			return false;
 		}
-		currentNode = graph::findNearestNode(_optimizedPoses, _lastLocalizationPose);
+		if(_optimizedPoses.begin()->first < 0)
+		{
+			std::map<int, Transform> poses(_optimizedPoses.lower_bound(1), _optimizedPoses.end());
+			currentNode = graph::findNearestNode(poses, _lastLocalizationPose);
+		}
+		else
+		{
+			currentNode = graph::findNearestNode(_optimizedPoses, _lastLocalizationPose);
+		}
 	}
 
 	int nearestId;
