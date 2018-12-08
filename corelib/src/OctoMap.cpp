@@ -339,7 +339,6 @@ void OctoMap::clear()
 	cacheClouds_.clear();
 	cacheViewPoints_.clear();
 	addedNodes_.clear();
-	keyRay_ = octomap::KeyRay();
 	hasColor_ = false;
 	minValues_[0] = minValues_[1] = minValues_[2] = 0.0;
 	maxValues_[0] = maxValues_[1] = maxValues_[2] = 0.0;
@@ -410,6 +409,7 @@ void OctoMap::update(const std::map<int, Transform> & poses)
 			UDEBUG("Updated pose for node %d is not found, some points may not be copied. Use negative ids to just update cell values without adding new ones.", jter->first);
 		}
 	}
+
 	if(graphOptimized || graphChanged)
 	{
 		if(graphChanged)
@@ -429,7 +429,6 @@ void OctoMap::update(const std::map<int, Transform> & poses)
 			// clear all but keep cache
 			octree_->clear();
 			addedNodes_.clear();
-			keyRay_ = octomap::KeyRay();
 			hasColor_ = false;
 		}
 		else
@@ -649,11 +648,12 @@ void OctoMap::update(const std::map<int, Transform> & poses)
 				}
 
 				// only clear space (ground points)
+				octomap::KeyRay keyRay;
 				if (computeRays &&
 					(iter->first < 0 || iter->first>lastId) &&
-					octree_->computeRayKeys(sensorOrigin, point, keyRay_))
+					octree_->computeRayKeys(sensorOrigin, point, keyRay))
 				{
-					free_cells.insert(keyRay_.begin(), keyRay_.end());
+					free_cells.insert(keyRay.begin(), keyRay.end());
 				}
 			}
 			UDEBUG("%d: ground cells=%d free cells=%d", iter->first, (int)maxGroundPts, (int)free_cells.size());
@@ -733,11 +733,12 @@ void OctoMap::update(const std::map<int, Transform> & poses)
 				}
 
 				// free cells
+				octomap::KeyRay keyRay;
 				if (computeRays &&
 					(iter->first < 0 || iter->first>lastId) &&
-					octree_->computeRayKeys(sensorOrigin, point, keyRay_))
+					octree_->computeRayKeys(sensorOrigin, point, keyRay))
 				{
-					free_cells.insert(keyRay_.begin(), keyRay_.end());
+					free_cells.insert(keyRay.begin(), keyRay.end());
 				}
 			}
 			UDEBUG("%d: occupied cells=%d free cells=%d", iter->first, (int)maxObstaclePts, (int)free_cells.size());
@@ -756,7 +757,7 @@ void OctoMap::update(const std::map<int, Transform> & poses)
 					}
 				}
 
-				RtabmapColorOcTreeNode * n = octree_->updateNode(*it, false);
+				RtabmapColorOcTreeNode * n = octree_->updateNode(*it, false, orderedPoses.size() == 1);
 				if(n && n->getOccupancyType() == RtabmapColorOcTreeNode::kTypeUnknown)
 				{
 					n->setOccupancyType(RtabmapColorOcTreeNode::kTypeEmpty);
@@ -822,10 +823,14 @@ void OctoMap::update(const std::map<int, Transform> & poses)
 						}
 					}
 				}
+				//octree_->updateInnerOccupancy();
 			}
 
 			// compress map
-			//octree_->prune();
+			//if(orderedPoses.size() > 1)
+			//{
+			//	octree_->prune();
+			//}
 
 			// ignore negative ids as they are temporary clouds
 			if(iter->first > 0)

@@ -224,7 +224,6 @@ private:
 	std::map<int, cv::Point3f> cacheViewPoints_;
 	RtabmapColorOcTree * octree_;
 	std::map<int, Transform> addedNodes_;
-	octomap::KeyRay keyRay_;
 	bool hasColor_;
 	bool fullUpdate_;
 	float updateError_;
