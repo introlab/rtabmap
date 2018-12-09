@@ -2103,7 +2103,7 @@ bool Rtabmap::process(
 		for(std::map<int, Link>::const_iterator iter=signature->getLandmarks().begin(); iter!=signature->getLandmarks().end(); ++iter)
 		{
 			if(uContains(_memory->getLandmarksInvertedIndex(), iter->first) &&
-				_memory->getLandmarksInvertedIndex().find(iter->first)->second.size()>1);
+				_memory->getLandmarksInvertedIndex().find(iter->first)->second.size()>1)
 			{
 				landmarkDetected = iter->first;
 				landmarkDetectedNodeRef = *_memory->getLandmarksInvertedIndex().find(iter->first)->second.begin();
