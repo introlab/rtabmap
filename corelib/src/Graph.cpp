@@ -868,14 +868,15 @@ void computeMaxGraphErrors(
 				}
 			}
 
-			float opt_roll,opt__pitch,opt__yaw;
+			float opt_roll,opt_pitch,opt_yaw;
 			float link_roll,link_pitch,link_yaw;
-			t.getEulerAngles(opt_roll, opt__pitch, opt__yaw);
+			t.getEulerAngles(opt_roll, opt_pitch, opt_yaw);
 			iter->second.transform().getEulerAngles(link_roll, link_pitch, link_yaw);
 			float angularError = uMax3(
 					fabs(opt_roll - link_roll),
-					fabs(opt__pitch - link_pitch),
-					fabs(opt__yaw - link_yaw));
+					fabs(opt_pitch - link_pitch),
+					fabs(opt_yaw - link_yaw));
+			angularError = angularError>M_PI?2*M_PI-angularError:angularError;
 			UASSERT(iter->second.rotVariance()>0.0);
 			float stddevAngular = sqrt(iter->second.rotVariance());
 			float angularErrorRatio = angularError/stddevAngular;
