@@ -1280,8 +1280,6 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 	{
 		_odometryReceived = true;
 		// update camera position
-		_cloudViewer->updateCameraTargetPosition(_odometryCorrection*odom.pose());
-
 		if(odom.data().cameraModels().size() && !odom.data().cameraModels()[0].localTransform().isNull())
 		{
 			_cloudViewer->updateCameraFrustums(_odometryCorrection*odom.pose(), odom.data().cameraModels());
@@ -1290,6 +1288,7 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 		{
 			_cloudViewer->updateCameraFrustum(_odometryCorrection*odom.pose(), odom.data().stereoCameraModel());
 		}
+		_cloudViewer->updateCameraTargetPosition(_odometryCorrection*odom.pose());
 
 	}
 	_cloudViewer->update();
@@ -1920,8 +1919,6 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 
 			if(!_odometryReceived && poses.size() && poses.rbegin()->first == stat.refImageId())
 			{
-				_cloudViewer->updateCameraTargetPosition(poses.rbegin()->second);
-
 				if(poses.rbegin()->first == stat.getLastSignatureData().id())
 				{
 					if(stat.getLastSignatureData().sensorData().cameraModels().size() && !stat.getLastSignatureData().sensorData().cameraModels()[0].localTransform().isNull())
@@ -1933,6 +1930,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 						_cloudViewer->updateCameraFrustum(poses.rbegin()->second, stat.getLastSignatureData().sensorData().stereoCameraModel());
 					}
 				}
+				_cloudViewer->updateCameraTargetPosition(poses.rbegin()->second);
 
 				if(_ui->graphicsView_graphView->isVisible())
 				{
