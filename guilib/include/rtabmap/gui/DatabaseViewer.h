@@ -193,6 +193,7 @@ private:
 	CloudViewer * stereoViewer_;
 	CloudViewer * occupancyGridViewer_;
 	QList<int> ids_;
+	std::set<int> lastWmIds_;
 	std::map<int, int> mapIds_;
 	std::map<int, int> weights_;
 	std::map<int, std::vector<int> > wmStates_;

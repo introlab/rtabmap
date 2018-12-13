@@ -61,14 +61,15 @@ public:
 
 	void updateGraph(const std::map<int, Transform> & poses,
 					 const std::multimap<int, Link> & constraints,
-					 const std::map<int, int> & mapIds);
+					 const std::map<int, int> & mapIds,
+					 const std::map<int, int> & weights = std::map<int, int>());
 	void updateGTGraph(const std::map<int, Transform> & poses);
 	void updateGPSGraph(
 			const std::map<int, Transform> & gpsMapPoses,
 			const std::map<int, GPS> & gpsValues);
 	void updateReferentialPosition(const Transform & t);
 	void updateMap(const cv::Mat & map8U, float resolution, float xMin, float yMin);
-	void updatePosterior(const std::map<int, float> & posterior, float fixedMax = 0.0f);
+	void updatePosterior(const std::map<int, float> & posterior, float fixedMax = 0.0f, int zValueOffset = 0);
 	void updateLocalPath(const std::vector<int> & localPath);
 	void setGlobalPath(const std::vector<std::pair<int, Transform> > & globalPath);
 	void setCurrentGoalID(int id, const Transform & pose = Transform());

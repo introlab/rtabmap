@@ -2324,6 +2324,49 @@ bool DBDriverSqlite3::getNodeInfoQuery(int signatureId,
 	return found;
 }
 
+void DBDriverSqlite3::getLastNodeIdsQuery(std::set<int> & ids) const
+{
+	if(_ppDb)
+	{
+		UTimer timer;
+		timer.start();
+		int rc = SQLITE_OK;
+		sqlite3_stmt * ppStmt = 0;
+		std::string query;
+
+		if(uStrNumCmp(_version, "0.11.11") >= 0)
+		{
+			query = "SELECT n.id "
+					 "FROM Node AS n "
+					 "WHERE n.time_enter >= (SELECT MAX(time_enter) FROM Info) "
+					 "ORDER BY n.id;";
+		}
+		else
+		{
+			query = "SELECT n.id "
+					 "FROM Node AS n "
+					 "WHERE n.time_enter >= (SELECT MAX(time_enter) FROM Statistics) "
+					 "ORDER BY n.id;";
+		}
+
+		rc = sqlite3_prepare_v2(_ppDb, query.c_str(), -1, &ppStmt, 0);
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+
+		// Process the result if one
+		rc = sqlite3_step(ppStmt);
+		while(rc == SQLITE_ROW)
+		{
+			ids.insert(ids.end(), sqlite3_column_int(ppStmt, 0)); // Signature Id
+			rc = sqlite3_step(ppStmt);
+		}
+		UASSERT_MSG(rc == SQLITE_DONE, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+
+		// Finalize (delete) the statement
+		rc = sqlite3_finalize(ppStmt);
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+		ULOGGER_DEBUG("Time=%f ids=%d", timer.ticks(), (int)ids.size());
+	}
+}
 
 void DBDriverSqlite3::getAllNodeIdsQuery(std::set<int> & ids, bool ignoreChildren, bool ignoreBadSignatures) const
 {

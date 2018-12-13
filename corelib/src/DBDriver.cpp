@@ -816,6 +816,13 @@ void DBDriver::getWeight(int signatureId, int & weight) const
 	}
 }
 
+void DBDriver::getLastNodeIds(std::set<int> & ids) const
+{
+	_dbSafeAccessMutex.lock();
+	this->getLastNodeIdsQuery(ids);
+	_dbSafeAccessMutex.unlock();
+}
+
 void DBDriver::getAllNodeIds(std::set<int> & ids, bool ignoreChildren, bool ignoreBadSignatures) const
 {
 	// look in the trash

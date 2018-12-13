@@ -945,6 +945,7 @@ bool DatabaseViewer::closeDatabase()
 		groundTruthPoses_.clear();
 		gpsPoses_.clear();
 		gpsValues_.clear();
+		lastWmIds_.clear();
 		mapIds_.clear();
 		weights_.clear();
 		wmStates_.clear();
@@ -1493,6 +1494,8 @@ void DatabaseViewer::updateIds()
 	std::set<int> ids;
 	dbDriver_->getAllNodeIds(ids);
 	ids_ = QList<int>::fromStdList(std::list<int>(ids.begin(), ids.end()));
+	lastWmIds_.clear();
+	dbDriver_->getLastNodeIds(lastWmIds_);
 	idToIndex_.clear();
 	mapIds_.clear();
 	weights_.clear();
@@ -5342,7 +5345,27 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 
 		ui_->graphViewer->updateGTGraph(groundTruthPoses_);
 		ui_->graphViewer->updateGPSGraph(gpsPoses_, gpsValues_);
-		ui_->graphViewer->updateGraph(graph, graphLinks_, mapIds_);
+		ui_->graphViewer->updateGraph(graph, graphLinks_, mapIds_, weights_);
+		if(!ui_->checkBox_wmState->isChecked())
+		{
+			bool allNodesAreInWM = true;
+			std::map<int, float> colors;
+			for(std::map<int, rtabmap::Transform>::iterator iter=graph.begin(); iter!=graph.end(); ++iter)
+			{
+				if(lastWmIds_.find(iter->first) != lastWmIds_.end())
+				{
+					colors.insert(std::make_pair(iter->first, 1));
+				}
+				else
+				{
+					allNodesAreInWM = false;
+				}
+			}
+			if(!allNodesAreInWM)
+			{
+				ui_->graphViewer->updatePosterior(colors, 1, 1);
+			}
+		}
 		ui_->graphViewer->clearMap();
 		occupancyGridViewer_->clear();
 		if(graph.size() && localMaps.size() &&

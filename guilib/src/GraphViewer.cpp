@@ -60,10 +60,11 @@ class NodeItem: public QGraphicsEllipseItem
 {
 public:
 	// in meter
-	NodeItem(int id, int mapId, const Transform & pose, float radius) :
+	NodeItem(int id, int mapId, const Transform & pose, float radius, int weight=-1) :
 		QGraphicsEllipseItem(QRectF(-radius*100.0f,-radius*100.0f,radius*100.0f*2.0f,radius*100.0f*2.0f)),
 		_id(id),
 		_mapId(mapId),
+		_weight(weight),
 		_pose(pose),
 		_line(0)
 	{
@@ -106,7 +107,14 @@ public:
 protected:
 	virtual void hoverEnterEvent ( QGraphicsSceneHoverEvent * event )
 	{
-		this->setToolTip(QString("%1 [%2] %3").arg(_id).arg(_mapId).arg(_pose.prettyPrint().c_str()));
+		if(_weight>=0)
+		{
+			this->setToolTip(QString("%1 [map=%2, w=%3] %4").arg(_id).arg(_mapId).arg(_weight).arg(_pose.prettyPrint().c_str()));
+		}
+		else
+		{
+			this->setToolTip(QString("%1 [map=%2] %3").arg(_id).arg(_mapId).arg(_pose.prettyPrint().c_str()));
+		}
 		this->setScale(2);
 		QGraphicsEllipseItem::hoverEnterEvent(event);
 	}
@@ -120,6 +128,7 @@ protected:
 private:
 	int _id;
 	int _mapId;
+	int _weight;
 	Transform _pose;
 	QGraphicsLineItem * _line;
 };
@@ -343,7 +352,8 @@ void GraphViewer::setWorldMapRotation(const float & theta)
 
 void GraphViewer::updateGraph(const std::map<int, Transform> & poses,
 				 const std::multimap<int, Link> & constraints,
-				 const std::map<int, int> & mapIds)
+				 const std::map<int, int> & mapIds,
+				 const std::map<int, int> & weights)
 {
 	UTimer timer;
 	bool wasVisible = _graphRoot->isVisible();
@@ -356,6 +366,7 @@ void GraphViewer::updateGraph(const std::map<int, Transform> & poses,
 	{
 		iter.value()->hide();
 		iter.value()->setColor(iter.key()<0?QColor(255-_nodeColor.red(), 255-_nodeColor.green(), 255-_nodeColor.blue()):_nodeColor); // reset color
+		iter.value()->setZValue(iter.key()<0?21:20);
 	}
 	for(QMultiMap<int, LinkItem*>::iterator iter = _linkItems.begin(); iter!=_linkItems.end(); ++iter)
 	{
@@ -376,7 +387,7 @@ void GraphViewer::updateGraph(const std::map<int, Transform> & poses,
 			{
 				// create node item
 				const Transform & pose = iter->second;
-				NodeItem * item = new NodeItem(iter->first, uContains(mapIds, iter->first)?mapIds.at(iter->first):-1, pose, _nodeRadius);
+				NodeItem * item = new NodeItem(iter->first, uContains(mapIds, iter->first)?mapIds.at(iter->first):-1, pose, _nodeRadius, uContains(weights, iter->first)?weights.at(iter->first):-1);
 				this->scene()->addItem(item);
 				item->setZValue(iter->first<0?21:20);
 				item->setColor(iter->first<0?QColor(255-_nodeColor.red(), 255-_nodeColor.green(), 255-_nodeColor.blue()):_nodeColor);
@@ -856,7 +867,7 @@ void GraphViewer::updateMap(const cv::Mat & map8U, float resolution, float xMin,
 	}
 }
 
-void GraphViewer::updatePosterior(const std::map<int, float> & posterior, float max)
+void GraphViewer::updatePosterior(const std::map<int, float> & posterior, float max, int zValueOffset)
 {
 	//find max
 	if(max <= 0.0f)
@@ -878,8 +889,9 @@ void GraphViewer::updatePosterior(const std::map<int, float> & posterior, float 
 			{
 				float v = jter->second>max?max:jter->second;
 				iter.value()->setColor(QColor::fromHsvF((1-v/max)*240.0f/360.0f, 1, 1, 1)); //0=red 240=blue
+				iter.value()->setZValue(iter.value()->zValue()+zValueOffset);
 			}
-			else
+			else if(iter.key() > 0)
 			{
 				iter.value()->setColor(QColor::fromHsvF(240.0f/360.0f, 1, 1, 1)); // blue
 			}
