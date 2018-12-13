@@ -1137,11 +1137,9 @@ bool Rtabmap::process(
 					{
 						float x,y,z, roll,pitch,yaw;
 						links.begin()->second.transform().getTranslationAndEulerAngles(x,y,z, roll,pitch,yaw);
-						bool isMoving = (_rgbdLinearUpdate>0.0f && (
-											fabs(x) > _rgbdLinearUpdate ||
-											fabs(y) > _rgbdLinearUpdate ||
-											fabs(z) > _rgbdLinearUpdate))
-										||
+						bool isMoving = fabs(x) > _rgbdLinearUpdate ||
+										fabs(y) > _rgbdLinearUpdate ||
+										fabs(z) > _rgbdLinearUpdate ||
 									    (_rgbdAngularUpdate>0.0f && (
 											fabs(roll) > _rgbdAngularUpdate ||
 											fabs(pitch) > _rgbdAngularUpdate ||
