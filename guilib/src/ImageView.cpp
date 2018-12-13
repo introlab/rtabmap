@@ -666,6 +666,12 @@ void ImageView::contextMenuEvent(QContextMenuEvent * e)
 #endif
 			if(!text.isEmpty())
 			{
+				if(QFileInfo(text).suffix() == "")
+				{
+					//use png by default
+					text += ".png";
+				}
+
 				_savedFileName = text;
 				QImage img(_graphicsView->sceneRect().width(), _graphicsView->sceneRect().height(), QImage::Format_ARGB32_Premultiplied);
 				QPainter p(&img);
