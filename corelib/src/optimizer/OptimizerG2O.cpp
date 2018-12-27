@@ -404,7 +404,6 @@ std::map<int, Transform> OptimizerG2O::optimize(
                                                         g2o::VertexPointXY* v1 = (g2o::VertexPointXY*)optimizer.vertex(id1);
                                                         priorEdge->setVertex(0, v1);
                                                         priorEdge->setMeasurement(g2o::Vector2(iter->second.transform().x(), iter->second.transform().y()));
-                                                        priorEdge->setParameterId(0, PARAM_OFFSET);
                                                         Eigen::Matrix<double, 2, 2> information = Eigen::Matrix<double, 2, 2>::Identity();
                                                         if(!isCovarianceIgnored())
                                                         {
@@ -453,7 +452,6 @@ std::map<int, Transform> OptimizerG2O::optimize(
                                                         g2o::VertexPointXYZ* v1 = (g2o::VertexPointXYZ*)optimizer.vertex(id1);
                                                         priorEdge->setVertex(0, v1);
                                                         priorEdge->setMeasurement(g2o::Vector3(iter->second.transform().x(), iter->second.transform().y(), iter->second.transform().z()));
-                                                        priorEdge->setParameterId(0, PARAM_OFFSET);
                                                         Eigen::Matrix<double, 3, 3> information = Eigen::Matrix<double, 3, 3>::Identity();
                                                         if(!isCovarianceIgnored())
                                                         {
@@ -1756,7 +1754,7 @@ bool OptimizerG2O::saveGraph(
                                         if (1 / static_cast<double>(iter->second.infMatrix().at<double>(5,5)) > 9999.0 ||
                                                 static_cast<double>(iter->second.infMatrix().at<double>(5,5)) == 0.0)
                                         {
-                                                prefix = "EDGE_XY_PRIOR";
+                                                prefix = "EDGE_POINTXY_PRIOR";
                                                 isSE2 = false;
                                         }
                                         else
@@ -1777,15 +1775,15 @@ bool OptimizerG2O::saveGraph(
                                                         static_cast<double>(iter->second.infMatrix().at<double>(4,4)) == 0.0 &&
                                                         static_cast<double>(iter->second.infMatrix().at<double>(5,5)) == 0.0))
                                         {
-                                                prefix = "EDGE_XYZ_PRIOR";
+                                                to = "";
+                                                prefix = "EDGE_POINTXYZ_PRIOR";
                                                 isSE3 = false;
                                         }
                                         else
                                         {
+                                                to = uFormat(" %d", PARAM_OFFSET);
                                                 prefix = "EDGE_SE3_PRIOR";
                                         }
-
-                                        to = uFormat(" %d", PARAM_OFFSET);
                                 }
 			}
 			else if(this->isRobust() &&
@@ -1803,7 +1801,7 @@ bool OptimizerG2O::saveGraph(
                                 if (isSE2)
                                 {
                                         // EDGE_SE2 observed_vertex_id observing_vertex_id x y qx qy qz qw inf_11 inf_12 inf_13 inf_22 inf_23 inf_33
-        				// EDGE_SE2_PRIOR observed_vertex_id x y qx qy qz qw inf_11 inf_12 inf_13 inf_22 inf_23 inf_33
+                                        // EDGE_SE2_PRIOR observed_vertex_id x y qx qy qz qw inf_11 inf_12 inf_13 inf_22 inf_23 inf_33
         				fprintf(file, "%s %d%s%s %f %f %f %f %f %f %f %f %f\n",
         					prefix.c_str(),
         					iter->second.from(),
@@ -1822,7 +1820,7 @@ bool OptimizerG2O::saveGraph(
 				else
                                 {
                                         // EDGE_XY observed_vertex_id observing_vertex_id x y inf_11 inf_12 inf_22
-        				// EDGE_XY_PRIOR observed_vertex_id x y inf_11 inf_12 inf_22
+                                        // EDGE_POINTXY_PRIOR x y inf_11 inf_12 inf_22
         				fprintf(file, "%s %d%s%s %f %f %f %f %f\n",
         					prefix.c_str(),
         					iter->second.from(),
@@ -1839,7 +1837,7 @@ bool OptimizerG2O::saveGraph(
 			{
                                 if (isSE3) {
                                         // EDGE_SE3 observed_vertex_id observing_vertex_id x y z qx qy qz qw inf_11 inf_12 .. inf_16 inf_22 .. inf_66
-        				// EDGE_SE3_PRIOR observed_vertex_id offset_parameter_id x y z qx qy qz qw inf_11 inf_12 .. inf_16 inf_22 .. inf_66
+                                        // EDGE_SE3_PRIOR observed_vertex_id offset_parameter_id x y z qx qy qz qw inf_11 inf_12 .. inf_16 inf_22 .. inf_66
         				Eigen::Quaternionf q = iter->second.transform().getQuaternionf();
         				fprintf(file, "%s %d%s%s %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f\n",
         					prefix.c_str(),
@@ -1878,7 +1876,7 @@ bool OptimizerG2O::saveGraph(
                                 else
                                 {
                                         // EDGE_XYZ observed_vertex_id observing_vertex_id x y z qx qy qz qw inf_11 inf_12 .. inf_13 inf_22 .. inf_33
-        				// EDGE_XYZ_PRIOR observed_vertex_id offset_parameter_id x y z inf_11 inf_12 .. inf_13 inf_22 .. inf_33
+                                        // EDGE_POINTXYZ_PRIOR observed_vertex_id x y z inf_11 inf_12 .. inf_13 inf_22 .. inf_33
         				fprintf(file, "%s %d%s%s %f %f %f %f %f %f %f %f %f\n",
         					prefix.c_str(),
         					iter->second.from(),
