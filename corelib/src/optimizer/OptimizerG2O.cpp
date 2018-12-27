@@ -397,7 +397,26 @@ std::map<int, Transform> OptimizerG2O::optimize(
 				{
 					if(isSlam2d())
 					{
-                                                if (iter->second.infMatrix().at<double>(3,3) <= 9999 && iter->second.infMatrix().at<double>(4,4) <= 9999 && iter->second.infMatrix().at<double>(5,5) <= 9999)
+                                                if (static_cast<double>(iter->second.infMatrix().at<double>(5,5)) > 9999.0 ||
+                                                        static_cast<double>(iter->second.infMatrix().at<double>(5,5)) == 0.0)
+                                                {
+                                                        g2o::EdgeXYPrior * priorEdge = new g2o::EdgeXYPrior();
+                                                        g2o::VertexPointXY* v1 = (g2o::VertexPointXY*)optimizer.vertex(id1);
+                                                        priorEdge->setVertex(0, v1);
+                                                        priorEdge->setMeasurement(g2o::Vector2(iter->second.transform().x(), iter->second.transform().y()));
+                                                        priorEdge->setParameterId(0, PARAM_OFFSET);
+                                                        Eigen::Matrix<double, 2, 2> information = Eigen::Matrix<double, 2, 2>::Identity();
+                                                        if(!isCovarianceIgnored())
+                                                        {
+                                                                information(0,0) = iter->second.infMatrix().at<double>(0,0); // x-x
+                                                                information(0,1) = iter->second.infMatrix().at<double>(0,1); // x-y
+                                                                information(1,0) = iter->second.infMatrix().at<double>(1,0); // y-x
+                                                                information(1,1) = iter->second.infMatrix().at<double>(1,1); // y-y
+                                                        }
+                                                        priorEdge->setInformation(information);
+                                                        edge = priorEdge;
+                                                }
+                                                else
                                                 {
                                                         g2o::EdgeSE2Prior * priorEdge = new g2o::EdgeSE2Prior();
                                                         g2o::VertexSE2* v1 = (g2o::VertexSE2*)optimizer.vertex(id1);
@@ -420,47 +439,15 @@ std::map<int, Transform> OptimizerG2O::optimize(
                                                         priorEdge->setInformation(information);
                                                         edge = priorEdge;
                                                 }
-                                                else
-                                                {
-                                                        g2o::EdgeXYPrior * priorEdge = new g2o::EdgeXYPrior();
-                                                        g2o::VertexPointXY* v1 = (g2o::VertexPointXY*)optimizer.vertex(id1);
-                                                        priorEdge->setVertex(0, v1);
-                                                        priorEdge->setMeasurement(g2o::Vector2(iter->second.transform().x(), iter->second.transform().y()));
-                                                        priorEdge->setParameterId(0, PARAM_OFFSET);
-                                                        Eigen::Matrix<double, 2, 2> information = Eigen::Matrix<double, 2, 2>::Identity();
-                                                        if(!isCovarianceIgnored())
-                                                        {
-                                                                information(0,0) = iter->second.infMatrix().at<double>(0,0); // x-x
-                                                                information(0,1) = iter->second.infMatrix().at<double>(0,1); // x-y
-                                                                information(1,0) = iter->second.infMatrix().at<double>(1,0); // y-x
-                                                                information(1,1) = iter->second.infMatrix().at<double>(1,1); // y-y
-                                                        }
-                                                        priorEdge->setInformation(information);
-                                                        edge = priorEdge;
-                                                }
                                         }
                                         else
 					{
-                                                if (iter->second.infMatrix().at<double>(3,3) <= 9999 && iter->second.infMatrix().at<double>(4,4) <= 9999 && iter->second.infMatrix().at<double>(5,5) <= 9999)
-                                                {
-                                                        g2o::EdgeSE3Prior * priorEdge = new g2o::EdgeSE3Prior();
-                                                        g2o::VertexSE3* v1 = (g2o::VertexSE3*)optimizer.vertex(id1);
-                                                        priorEdge->setVertex(0, v1);
-                                                        Eigen::Affine3d a = iter->second.transform().toEigen3d();
-                                                        Eigen::Isometry3d pose;
-                                                        pose = a.linear();
-                                                        pose.translation() = a.translation();
-                                                        priorEdge->setMeasurement(pose);
-                                                        priorEdge->setParameterId(0, PARAM_OFFSET);
-                                                        Eigen::Matrix<double, 6, 6> information = Eigen::Matrix<double, 6, 6>::Identity();
-                                                        if(!isCovarianceIgnored())
-                                                        {
-                                                                memcpy(information.data(), iter->second.infMatrix().data, iter->second.infMatrix().total()*sizeof(double));
-                                                        }
-                                                        priorEdge->setInformation(information);
-                                                        edge = priorEdge;
-                                                }
-                                                else
+                                                if ((static_cast<double>(iter->second.infMatrix().at<double>(3,3)) > 9999.0 &&
+                                                        static_cast<double>(iter->second.infMatrix().at<double>(4,4)) > 9999.0 &&
+                                                        static_cast<double>(iter->second.infMatrix().at<double>(5,5)) > 9999.0) ||
+                                                                (static_cast<double>(iter->second.infMatrix().at<double>(3,3)) == 0.0 &&
+                                                                static_cast<double>(iter->second.infMatrix().at<double>(4,4)) == 0.0 &&
+                                                                static_cast<double>(iter->second.infMatrix().at<double>(5,5)) == 0.0))
                                                 {
                                                         g2o::EdgeXYZPrior * priorEdge = new g2o::EdgeXYZPrior();
                                                         g2o::VertexPointXYZ* v1 = (g2o::VertexPointXYZ*)optimizer.vertex(id1);
@@ -479,6 +466,25 @@ std::map<int, Transform> OptimizerG2O::optimize(
                                                                 information(2,0) = iter->second.infMatrix().at<double>(2,0); // z-x
                                                                 information(2,1) = iter->second.infMatrix().at<double>(2,1); // z-y
                                                                 information(2,2) = iter->second.infMatrix().at<double>(2,2); // z-z
+                                                        }
+                                                        priorEdge->setInformation(information);
+                                                        edge = priorEdge;
+                                                }
+                                                else
+                                                {
+                                                        g2o::EdgeSE3Prior * priorEdge = new g2o::EdgeSE3Prior();
+                                                        g2o::VertexSE3* v1 = (g2o::VertexSE3*)optimizer.vertex(id1);
+                                                        priorEdge->setVertex(0, v1);
+                                                        Eigen::Affine3d a = iter->second.transform().toEigen3d();
+                                                        Eigen::Isometry3d pose;
+                                                        pose = a.linear();
+                                                        pose.translation() = a.translation();
+                                                        priorEdge->setMeasurement(pose);
+                                                        priorEdge->setParameterId(0, PARAM_OFFSET);
+                                                        Eigen::Matrix<double, 6, 6> information = Eigen::Matrix<double, 6, 6>::Identity();
+                                                        if(!isCovarianceIgnored())
+                                                        {
+                                                                memcpy(information.data(), iter->second.infMatrix().data, iter->second.infMatrix().total()*sizeof(double));
                                                         }
                                                         priorEdge->setInformation(information);
                                                         edge = priorEdge;
