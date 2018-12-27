@@ -4974,7 +4974,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 	{
 		if(!data.globalPose().isNull() && data.globalPoseCovariance().cols==6 && data.globalPoseCovariance().rows==6 && data.globalPoseCovariance().cols==CV_64FC1)
 		{
-			s->addLink(Link(s->id(), s->id(), Link::kPosePrior, data.globalPose(), data.globalPoseCovariance()));
+			s->addLink(Link(s->id(), s->id(), Link::kPosePrior, data.globalPose(), data.globalPoseCovariance().inv()));
 
 			if(data.gps().stamp() > 0.0)
 			{
@@ -4994,7 +4994,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 			{
 				// only set x, y as we don't know variance for other degrees of freedom.
 				gpsInfMatrix.at<double>(0,0) = gpsInfMatrix.at<double>(1,1) = 0.1;
-				gpsInfMatrix.at<double>(2,2) = 100000;
+				gpsInfMatrix.at<double>(2,2) = 10000;
 				s->addLink(Link(s->id(), s->id(), Link::kPosePrior, gpsPose, gpsInfMatrix));
 			}
 			else

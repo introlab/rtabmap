@@ -397,7 +397,7 @@ std::map<int, Transform> OptimizerG2O::optimize(
 				{
 					if(isSlam2d())
 					{
-                                                if (static_cast<double>(iter->second.infMatrix().at<double>(5,5)) > 9999.0 ||
+                                                if (1 / static_cast<double>(iter->second.infMatrix().at<double>(5,5)) > 9999.0 ||
                                                         static_cast<double>(iter->second.infMatrix().at<double>(5,5)) == 0.0)
                                                 {
                                                         g2o::EdgeXYPrior * priorEdge = new g2o::EdgeXYPrior();
@@ -442,9 +442,9 @@ std::map<int, Transform> OptimizerG2O::optimize(
                                         }
                                         else
 					{
-                                                if ((static_cast<double>(iter->second.infMatrix().at<double>(3,3)) > 9999.0 &&
-                                                        static_cast<double>(iter->second.infMatrix().at<double>(4,4)) > 9999.0 &&
-                                                        static_cast<double>(iter->second.infMatrix().at<double>(5,5)) > 9999.0) ||
+                                                if ((1 / static_cast<double>(iter->second.infMatrix().at<double>(3,3)) > 9999.0 &&
+                                                        1 / static_cast<double>(iter->second.infMatrix().at<double>(4,4)) > 9999.0 &&
+                                                        1 / static_cast<double>(iter->second.infMatrix().at<double>(5,5)) > 9999.0) ||
                                                                 (static_cast<double>(iter->second.infMatrix().at<double>(3,3)) == 0.0 &&
                                                                 static_cast<double>(iter->second.infMatrix().at<double>(4,4)) == 0.0 &&
                                                                 static_cast<double>(iter->second.infMatrix().at<double>(5,5)) == 0.0))
@@ -1742,8 +1742,8 @@ bool OptimizerG2O::saveGraph(
 			std::string suffix = "";
 			std::string to = uFormat(" %d", iter->second.to());
 
-                        bool isSE2 = false;
-                        bool isSE3 = false;
+                        bool isSE2 = true;
+                        bool isSE3 = true;
 
 			if (iter->second.type() == Link::kPosePrior)
 			{
@@ -1753,15 +1753,15 @@ bool OptimizerG2O::saveGraph(
 				}
                                 if (isSlam2d())
                                 {
-                                        if (static_cast<double>(iter->second.infMatrix().at<double>(5,5)) > 9999.0 ||
+                                        if (1 / static_cast<double>(iter->second.infMatrix().at<double>(5,5)) > 9999.0 ||
                                                 static_cast<double>(iter->second.infMatrix().at<double>(5,5)) == 0.0)
                                         {
                                                 prefix = "EDGE_XY_PRIOR";
+                                                isSE2 = false;
                                         }
                                         else
                                         {
                                                 prefix = "EDGE_SE2_PRIOR";
-                                                isSE2 = true;
                                         }
 
                                         //  based on https://github.com/RainerKuemmerle/g2o/blob/38347944c6ad7a3b31976b97406ff0de20be1530/g2o/types/slam2d/edge_se2_prior.cpp#L42
@@ -1770,19 +1770,19 @@ bool OptimizerG2O::saveGraph(
                                 }
                                 else
                                 {
-                                        if ((static_cast<double>(iter->second.infMatrix().at<double>(3,3)) > 9999.0 &&
-                                                static_cast<double>(iter->second.infMatrix().at<double>(4,4)) > 9999.0 &&
-                                                static_cast<double>(iter->second.infMatrix().at<double>(5,5)) > 9999.0) ||
+                                        if ((1 / static_cast<double>(iter->second.infMatrix().at<double>(3,3)) > 9999.0 &&
+                                                1 / static_cast<double>(iter->second.infMatrix().at<double>(4,4)) > 9999.0 &&
+                                                1 / static_cast<double>(iter->second.infMatrix().at<double>(5,5)) > 9999.0) ||
                                                         (static_cast<double>(iter->second.infMatrix().at<double>(3,3)) == 0.0 &&
                                                         static_cast<double>(iter->second.infMatrix().at<double>(4,4)) == 0.0 &&
                                                         static_cast<double>(iter->second.infMatrix().at<double>(5,5)) == 0.0))
                                         {
                                                 prefix = "EDGE_XYZ_PRIOR";
+                                                isSE3 = false;
                                         }
                                         else
                                         {
                                                 prefix = "EDGE_SE3_PRIOR";
-                                                isSE3 = true;
                                         }
 
                                         to = uFormat(" %d", PARAM_OFFSET);
@@ -1879,7 +1879,6 @@ bool OptimizerG2O::saveGraph(
                                 {
                                         // EDGE_XYZ observed_vertex_id observing_vertex_id x y z qx qy qz qw inf_11 inf_12 .. inf_13 inf_22 .. inf_33
         				// EDGE_XYZ_PRIOR observed_vertex_id offset_parameter_id x y z inf_11 inf_12 .. inf_13 inf_22 .. inf_33
-        				Eigen::Quaternionf q = iter->second.transform().getQuaternionf();
         				fprintf(file, "%s %d%s%s %f %f %f %f %f %f %f %f %f\n",
         					prefix.c_str(),
         					iter->second.from(),
