@@ -1742,23 +1742,51 @@ bool OptimizerG2O::saveGraph(
 			std::string suffix = "";
 			std::string to = uFormat(" %d", iter->second.to());
 
+                        bool isSE2 = false;
+                        bool isSE3 = false;
+
 			if (iter->second.type() == Link::kPosePrior)
 			{
 				if (this->priorsIgnored())
 				{
 					continue;
 				}
-				prefix = isSlam2d() ? "EDGE_SE2_PRIOR" : "EDGE_SE3_PRIOR";
-				if (!isSlam2d())
-				{
-					to = uFormat(" %d", PARAM_OFFSET);
-				}
-				else
-				{
-					//  based on https://github.com/RainerKuemmerle/g2o/blob/38347944c6ad7a3b31976b97406ff0de20be1530/g2o/types/slam2d/edge_se2_prior.cpp#L42
+                                if (isSlam2d())
+                                {
+                                        if (static_cast<double>(iter->second.infMatrix().at<double>(5,5)) > 9999.0 ||
+                                                static_cast<double>(iter->second.infMatrix().at<double>(5,5)) == 0.0)
+                                        {
+                                                prefix = "EDGE_XY_PRIOR";
+                                        }
+                                        else
+                                        {
+                                                prefix = "EDGE_SE2_PRIOR";
+                                                isSE2 = true;
+                                        }
+
+                                        //  based on https://github.com/RainerKuemmerle/g2o/blob/38347944c6ad7a3b31976b97406ff0de20be1530/g2o/types/slam2d/edge_se2_prior.cpp#L42
 					//  there is no pid for the 2d prior case
 					to = "";
-				}
+                                }
+                                else
+                                {
+                                        if ((static_cast<double>(iter->second.infMatrix().at<double>(3,3)) > 9999.0 &&
+                                                static_cast<double>(iter->second.infMatrix().at<double>(4,4)) > 9999.0 &&
+                                                static_cast<double>(iter->second.infMatrix().at<double>(5,5)) > 9999.0) ||
+                                                        (static_cast<double>(iter->second.infMatrix().at<double>(3,3)) == 0.0 &&
+                                                        static_cast<double>(iter->second.infMatrix().at<double>(4,4)) == 0.0 &&
+                                                        static_cast<double>(iter->second.infMatrix().at<double>(5,5)) == 0.0))
+                                        {
+                                                prefix = "EDGE_XYZ_PRIOR";
+                                        }
+                                        else
+                                        {
+                                                prefix = "EDGE_SE3_PRIOR";
+                                                isSE3 = true;
+                                        }
+
+                                        to = uFormat(" %d", PARAM_OFFSET);
+                                }
 			}
 			else if(this->isRobust() &&
 			   iter->second.type() != Link::kNeighbor &&
@@ -1772,61 +1800,101 @@ bool OptimizerG2O::saveGraph(
 
 			if(isSlam2d())
 			{
-				// EDGE_SE2 observed_vertex_id observing_vertex_id x y z qx qy qz qw inf_11 inf_12 inf_13 inf_22 inf_23 inf_33
-				// EDGE_SE2_PRIOR observed_vertex_id x y z qx qy qz qw inf_11 inf_12 inf_13 inf_22 inf_23 inf_33
-				fprintf(file, "%s %d%s%s %f %f %f %f %f %f %f %f %f\n",
-					prefix.c_str(),
-					iter->second.from(),
-					to.c_str(),
-					suffix.c_str(),
-					iter->second.transform().x(),
-					iter->second.transform().y(),
-					iter->second.transform().theta(),
-					iter->second.infMatrix().at<double>(0, 0),
-					iter->second.infMatrix().at<double>(0, 1),
-					iter->second.infMatrix().at<double>(0, 5),
-					iter->second.infMatrix().at<double>(1, 1),
-					iter->second.infMatrix().at<double>(1, 5),
-					iter->second.infMatrix().at<double>(5, 5));
+                                if (isSE2)
+                                {
+                                        // EDGE_SE2 observed_vertex_id observing_vertex_id x y qx qy qz qw inf_11 inf_12 inf_13 inf_22 inf_23 inf_33
+        				// EDGE_SE2_PRIOR observed_vertex_id x y qx qy qz qw inf_11 inf_12 inf_13 inf_22 inf_23 inf_33
+        				fprintf(file, "%s %d%s%s %f %f %f %f %f %f %f %f %f\n",
+        					prefix.c_str(),
+        					iter->second.from(),
+        					to.c_str(),
+        					suffix.c_str(),
+        					iter->second.transform().x(),
+        					iter->second.transform().y(),
+        					iter->second.transform().theta(),
+        					iter->second.infMatrix().at<double>(0, 0),
+        					iter->second.infMatrix().at<double>(0, 1),
+        					iter->second.infMatrix().at<double>(0, 5),
+        					iter->second.infMatrix().at<double>(1, 1),
+        					iter->second.infMatrix().at<double>(1, 5),
+        					iter->second.infMatrix().at<double>(5, 5));
+                                }
+				else
+                                {
+                                        // EDGE_XY observed_vertex_id observing_vertex_id x y inf_11 inf_12 inf_22
+        				// EDGE_XY_PRIOR observed_vertex_id x y inf_11 inf_12 inf_22
+        				fprintf(file, "%s %d%s%s %f %f %f %f %f\n",
+        					prefix.c_str(),
+        					iter->second.from(),
+        					to.c_str(),
+        					suffix.c_str(),
+        					iter->second.transform().x(),
+        					iter->second.transform().y(),
+        					iter->second.infMatrix().at<double>(0, 0),
+        					iter->second.infMatrix().at<double>(0, 1),
+        					iter->second.infMatrix().at<double>(1, 1));
+                                }
 			}
 			else
 			{
-				// EDGE_SE3 observed_vertex_id observing_vertex_id x y z qx qy qz qw inf_11 inf_12 .. inf_16 inf_22 .. inf_66
-				// EDGE_SE3_PRIOR observed_vertex_id offset_parameter_id x y z qx qy qz qw inf_11 inf_12 .. inf_16 inf_22 .. inf_66
-				Eigen::Quaternionf q = iter->second.transform().getQuaternionf();
-				fprintf(file, "%s %d%s%s %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f\n",
-					prefix.c_str(),
-					iter->second.from(),
-					to.c_str(),
-					suffix.c_str(),
-					iter->second.transform().x(),
-					iter->second.transform().y(),
-					iter->second.transform().z(),
-					q.x(),
-					q.y(),
-					q.z(),
-					q.w(),
-					iter->second.infMatrix().at<double>(0, 0),
-					iter->second.infMatrix().at<double>(0, 1),
-					iter->second.infMatrix().at<double>(0, 2),
-					iter->second.infMatrix().at<double>(0, 3),
-					iter->second.infMatrix().at<double>(0, 4),
-					iter->second.infMatrix().at<double>(0, 5),
-					iter->second.infMatrix().at<double>(1, 1),
-					iter->second.infMatrix().at<double>(1, 2),
-					iter->second.infMatrix().at<double>(1, 3),
-					iter->second.infMatrix().at<double>(1, 4),
-					iter->second.infMatrix().at<double>(1, 5),
-					iter->second.infMatrix().at<double>(2, 2),
-					iter->second.infMatrix().at<double>(2, 3),
-					iter->second.infMatrix().at<double>(2, 4),
-					iter->second.infMatrix().at<double>(2, 5),
-					iter->second.infMatrix().at<double>(3, 3),
-					iter->second.infMatrix().at<double>(3, 4),
-					iter->second.infMatrix().at<double>(3, 5),
-					iter->second.infMatrix().at<double>(4, 4),
-					iter->second.infMatrix().at<double>(4, 5),
-					iter->second.infMatrix().at<double>(5, 5));
+                                if (isSE3) {
+                                        // EDGE_SE3 observed_vertex_id observing_vertex_id x y z qx qy qz qw inf_11 inf_12 .. inf_16 inf_22 .. inf_66
+        				// EDGE_SE3_PRIOR observed_vertex_id offset_parameter_id x y z qx qy qz qw inf_11 inf_12 .. inf_16 inf_22 .. inf_66
+        				Eigen::Quaternionf q = iter->second.transform().getQuaternionf();
+        				fprintf(file, "%s %d%s%s %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f\n",
+        					prefix.c_str(),
+        					iter->second.from(),
+        					to.c_str(),
+        					suffix.c_str(),
+        					iter->second.transform().x(),
+        					iter->second.transform().y(),
+        					iter->second.transform().z(),
+        					q.x(),
+        					q.y(),
+        					q.z(),
+        					q.w(),
+        					iter->second.infMatrix().at<double>(0, 0),
+        					iter->second.infMatrix().at<double>(0, 1),
+        					iter->second.infMatrix().at<double>(0, 2),
+        					iter->second.infMatrix().at<double>(0, 3),
+        					iter->second.infMatrix().at<double>(0, 4),
+        					iter->second.infMatrix().at<double>(0, 5),
+        					iter->second.infMatrix().at<double>(1, 1),
+        					iter->second.infMatrix().at<double>(1, 2),
+        					iter->second.infMatrix().at<double>(1, 3),
+        					iter->second.infMatrix().at<double>(1, 4),
+        					iter->second.infMatrix().at<double>(1, 5),
+        					iter->second.infMatrix().at<double>(2, 2),
+        					iter->second.infMatrix().at<double>(2, 3),
+        					iter->second.infMatrix().at<double>(2, 4),
+        					iter->second.infMatrix().at<double>(2, 5),
+        					iter->second.infMatrix().at<double>(3, 3),
+        					iter->second.infMatrix().at<double>(3, 4),
+        					iter->second.infMatrix().at<double>(3, 5),
+        					iter->second.infMatrix().at<double>(4, 4),
+        					iter->second.infMatrix().at<double>(4, 5),
+        					iter->second.infMatrix().at<double>(5, 5));
+                                }
+                                else
+                                {
+                                        // EDGE_XYZ observed_vertex_id observing_vertex_id x y z qx qy qz qw inf_11 inf_12 .. inf_13 inf_22 .. inf_33
+        				// EDGE_XYZ_PRIOR observed_vertex_id offset_parameter_id x y z inf_11 inf_12 .. inf_13 inf_22 .. inf_33
+        				Eigen::Quaternionf q = iter->second.transform().getQuaternionf();
+        				fprintf(file, "%s %d%s%s %f %f %f %f %f %f %f %f %f\n",
+        					prefix.c_str(),
+        					iter->second.from(),
+        					to.c_str(),
+        					suffix.c_str(),
+        					iter->second.transform().x(),
+        					iter->second.transform().y(),
+        					iter->second.transform().z(),
+        					iter->second.infMatrix().at<double>(0, 0),
+        					iter->second.infMatrix().at<double>(0, 1),
+        					iter->second.infMatrix().at<double>(0, 2),
+        					iter->second.infMatrix().at<double>(1, 1),
+        					iter->second.infMatrix().at<double>(1, 2),
+        					iter->second.infMatrix().at<double>(2, 2));
+                                }
 			}
 		}
 		UINFO("Graph saved to %s", fileName.c_str());
