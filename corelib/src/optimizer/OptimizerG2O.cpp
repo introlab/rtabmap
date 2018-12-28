@@ -449,7 +449,7 @@ std::map<int, Transform> OptimizerG2O::optimize(
                                                                 static_cast<double>(iter->second.infMatrix().at<double>(5,5)) == 0.0))
                                                 {
                                                         g2o::EdgeXYZPrior * priorEdge = new g2o::EdgeXYZPrior();
-                                                        g2o::VertexPointXYZ* v1 = (g2o::VertexPointXYZ*)optimizer.vertex(id1);
+                                                        g2o::VertexSE3* v1 = (g2o::VertexSE3*)optimizer.vertex(id1);
                                                         priorEdge->setVertex(0, v1);
                                                         priorEdge->setMeasurement(g2o::Vector3(iter->second.transform().x(), iter->second.transform().y(), iter->second.transform().z()));
                                                         Eigen::Matrix<double, 3, 3> information = Eigen::Matrix<double, 3, 3>::Identity();
