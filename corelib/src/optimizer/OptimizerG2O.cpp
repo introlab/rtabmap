@@ -400,8 +400,8 @@ std::map<int, Transform> OptimizerG2O::optimize(
                                                 if (1 / static_cast<double>(iter->second.infMatrix().at<double>(5,5)) > 9999.0 ||
                                                         static_cast<double>(iter->second.infMatrix().at<double>(5,5)) == 0.0)
                                                 {
-                                                        g2o::EdgeXYPrior * priorEdge = new g2o::EdgeXYPrior();
-                                                        g2o::VertexPointXY* v1 = (g2o::VertexPointXY*)optimizer.vertex(id1);
+                                                        g2o::EdgeSE2XYPrior * priorEdge = new g2o::EdgeSE2XYPrior();
+                                                        g2o::VertexSE2* v1 = (g2o::VertexSE2*)optimizer.vertex(id1);
                                                         priorEdge->setVertex(0, v1);
                                                         priorEdge->setMeasurement(g2o::Vector2(iter->second.transform().x(), iter->second.transform().y()));
                                                         Eigen::Matrix<double, 2, 2> information = Eigen::Matrix<double, 2, 2>::Identity();
@@ -1754,12 +1754,12 @@ bool OptimizerG2O::saveGraph(
                                         if (1 / static_cast<double>(iter->second.infMatrix().at<double>(5,5)) > 9999.0 ||
                                                 static_cast<double>(iter->second.infMatrix().at<double>(5,5)) == 0.0)
                                         {
-                                                prefix = "EDGE_POINTXY_PRIOR";
+                                                prefix = "EDGE_PRIOR_SE2_XY";
                                                 isSE2 = false;
                                         }
                                         else
                                         {
-                                                prefix = "EDGE_SE2_PRIOR";
+                                                prefix = "EDGE_PRIOR_SE2";
                                         }
 
                                         //  based on https://github.com/RainerKuemmerle/g2o/blob/38347944c6ad7a3b31976b97406ff0de20be1530/g2o/types/slam2d/edge_se2_prior.cpp#L42
