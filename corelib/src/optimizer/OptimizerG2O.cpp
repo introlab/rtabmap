@@ -1685,8 +1685,8 @@ bool OptimizerG2O::saveGraph(
 				}
 				else if(!landmarksIgnored())
 				{
-					// VERTEX_XYZ id x y z
-					fprintf(file, "VERTEX_XYZ %d %f %f %f\n",
+					// VERTEX_TRACKXYZ id x y z
+					fprintf(file, "VERTEX_TRACKXYZ %d %f %f %f\n",
 						landmarkOffset-iter->first,
 						iter->second.x(),
 						iter->second.y(),
@@ -1718,8 +1718,8 @@ bool OptimizerG2O::saveGraph(
 				}
 				else
 				{
-					// EDGE_SE3_XYZ observed_vertex_id observing_vertex_id param_offset x y z inf_11 inf_12 inf_13 inf_22 inf_23 inf_33
-					fprintf(file, "EDGE_SE2_XY %d %d %d %f %f %f %f %f %f %f %f %f\n",
+					// EDGE_SE3_TRACKXYZ observed_vertex_id observing_vertex_id param_offset x y z inf_11 inf_12 inf_13 inf_22 inf_23 inf_33
+					fprintf(file, "EDGE_SE3_TRACKXYZ %d %d %d %f %f %f %f %f %f %f %f %f\n",
 						iter->second.from()<0?landmarkOffset-iter->second.from():iter->second.from(),
 						iter->second.to()<0?landmarkOffset-iter->second.to():iter->second.to(),
 						PARAM_OFFSET,
