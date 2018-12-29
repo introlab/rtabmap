@@ -35,7 +35,7 @@ Process all datasets, results will be written to subfolders `results/euroc`, `re
 ```bash
 ./run_all.sh
 ```
-WARNING: processing all datasets with all different odometry approaches can require more than 10 hours to process. You can comment some configurations in [run_all.sh](https://github.com/introlab/rtabmap/blob/master/docker/jfr2018/run_all.sh) if you are interested in just one odometry approach or one database. A single sequence can be tested like this too:
+WARNING: processing all datasets with all different odometry approaches can require more than 10 hours to process. You can comment some configurations in [run_all.sh](https://github.com/introlab/rtabmap/blob/master/docker/jfr2018/run_all.sh) if you are interested in just one odometry approach or one dataset. A single sequence can be tested like this too:
 ```bash
 # Processing only sequence 07 of the kitti dataset with F2M odometry approach
 ./run_kitti_datasets.sh f2m 0 0 07
