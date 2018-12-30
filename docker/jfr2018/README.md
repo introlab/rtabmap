@@ -1,4 +1,4 @@
-Docker image used to reproduce all results for KITTI, EuRoC and TUM datasets of the following paper:
+Docker image used to reproduce all results for KITTI, EuRoC and TUM datasets of the following paper (for MIT Stata Center dataset, see this [page](https://github.com/introlab/rtabmap_ros/blob/master/launch/jfr2018)):
 
  * M. Labbé and F. Michaud, “RTAB-Map as an Open-Source Lidar and Visual SLAM Library for Large-Scale and Long-Term Online Operation,” in Journal of Field Robotics, accepted, 2018. ([pdf](https://introlab.3it.usherbrooke.ca/mediawiki-introlab/images/7/7a/Labbe18JFR_preprint.pdf)) ([Wiley](https://doi.org/10.1002/rob.21831))
 

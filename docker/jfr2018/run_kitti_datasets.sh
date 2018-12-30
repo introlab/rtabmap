@@ -77,7 +77,7 @@ elif [ $STRATEGY -eq 7 ]
 then
     TOOL_PREFIX="/root/rtabmap_loam/bin"
 fi
-RTABMAP_KITTI_TOOL="docker run -v $PWD/datasets/KITTI:$KITTI_ROOT_PATH -v $PWD/results/kitti:$KITTI_RESULTS_PATH -i -t --rm introlab3it/rtabmap:jfr2018 $TOOL_PREFIX/rtabmap-kitti_dataset"
+RTABMAP_KITTI_TOOL="docker run -v $PWD/datasets/kitti:$KITTI_ROOT_PATH -v $PWD/results/kitti:$KITTI_RESULTS_PATH -i -t --rm introlab3it/rtabmap:jfr2018 $TOOL_PREFIX/rtabmap-kitti_dataset"
 echo $RTABMAP_KITTI_TOOL
 
 for d in "${LIST[@]}"

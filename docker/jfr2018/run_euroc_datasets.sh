@@ -73,11 +73,11 @@ elif [ $STRATEGY -eq 8 ]
 then
     TOOL_PREFIX="/root/rtabmap_msckf/bin"
 fi
-RTABMAP_RGBD_TOOL="docker run -v $PWD/datasets/EuRoC:$DATASET_ROOT_PATH -v $PWD/results/euroc:$EUROC_RESULTS_PATH -i -t --rm introlab3it/rtabmap:jfr2018 $TOOL_PREFIX/rtabmap-euroc_dataset"
+RTABMAP_RGBD_TOOL="docker run -v $PWD/datasets/euroc:$DATASET_ROOT_PATH -v $PWD/results/euroc:$EUROC_RESULTS_PATH -i -t --rm introlab3it/rtabmap:jfr2018 $TOOL_PREFIX/rtabmap-euroc_dataset"
 if [ $STRATEGY -eq 6 ]
 then
     xhost +
-    RTABMAP_RGBD_TOOL="docker run -e DISPLAY=$DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix -v $PWD/datasets/EuRoC:$DATASET_ROOT_PATH -v $PWD/results/euroc:$EUROC_RESULTS_PATH -i -t --rm introlab3it/rtabmap:jfr2018 $TOOL_PREFIX/rtabmap-euroc_dataset"
+    RTABMAP_RGBD_TOOL="docker run -e DISPLAY=$DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix -v $PWD/datasets/euroc:$DATASET_ROOT_PATH -v $PWD/results/euroc:$EUROC_RESULTS_PATH -i -t --rm introlab3it/rtabmap:jfr2018 $TOOL_PREFIX/rtabmap-euroc_dataset"
 fi
 echo $RTABMAP_RGBD_TOOL
 
