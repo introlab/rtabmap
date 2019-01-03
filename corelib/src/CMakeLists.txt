@@ -68,6 +68,7 @@ SET(SRC_FILES
 	optimizer/OptimizerG2O.cpp
 	optimizer/OptimizerGTSAM.cpp
 	optimizer/OptimizerCVSBA.cpp
+	optimizer/g2o/edge_se3_xyzprior.cpp
 	
 	Registration.cpp
 	RegistrationIcp.cpp

@@ -4989,12 +4989,11 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 			}
 			cv::Point3f pt = data.gps().toGeodeticCoords().toENU_WGS84(_gpsOrigin.toGeodeticCoords());
 			Transform gpsPose(pt.x, pt.y, pose.z(), 0, 0, -(data.gps().bearing()-90.0)*180.0/M_PI);
-			cv::Mat gpsInfMatrix = cv::Mat::eye(6,6,CV_64FC1)*0.00000001;
+			cv::Mat gpsInfMatrix = cv::Mat::eye(6,6,CV_64FC1)/9999.0; // variance not used >= 9999
 			if(data.gps().error() > 0.0)
 			{
-				// only set x, y as we don't know variance for other degrees of freedom.
-				gpsInfMatrix.at<double>(0,0) = gpsInfMatrix.at<double>(1,1) = 0.1;
-				gpsInfMatrix.at<double>(2,2) = 10000;
+				// only set x, y and z as we don't know variance for other degrees of freedom.
+				gpsInfMatrix.at<double>(0,0) = gpsInfMatrix.at<double>(1,1) = gpsInfMatrix.at<double>(2,2) = 1.0/data.gps().error();
 				s->addLink(Link(s->id(), s->id(), Link::kPosePrior, gpsPose, gpsInfMatrix));
 			}
 			else

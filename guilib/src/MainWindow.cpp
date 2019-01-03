@@ -1904,14 +1904,6 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 			{
 				uInsert(labels, std::pair<int, std::string>(*iter)); // overwrite labels because they could have been modified
 			}
-			if(_ui->graphicsView_graphView->getWorldMapRotation()==0.0f &&
-				stat.getLastSignatureData().sensorData().gps().stamp()!=0.0 &&
-				stat.poses().find(stat.getLastSignatureData().id())!=stat.poses().end())
-			{
-				float bearing = (float)((-(stat.getLastSignatureData().sensorData().gps().bearing()-90))*M_PI/180.0);
-				float gpsRotationOffset = stat.poses().at(stat.getLastSignatureData().id()).theta()-bearing;
-				_ui->graphicsView_graphView->setWorldMapRotation(gpsRotationOffset);
-			}
 
 			std::map<int, Transform> poses = stat.poses();
 
@@ -2402,7 +2394,7 @@ void MainWindow::updateMapCloud(
 			}
 		}
 
-		if(id != 0 && poses.find(id) == poses.end())
+		if(poses.find(id) == poses.end())
 		{
 			if(_cloudViewer->getCloudVisibility(iter.key()))
 			{
