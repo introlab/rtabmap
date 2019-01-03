@@ -464,6 +464,13 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 	}
 	Parameters::parse(parameters, Parameters::kRGBDOptimizeFromGraphEnd(), _optimizeFromGraphEnd);
 	Parameters::parse(parameters, Parameters::kRGBDOptimizeMaxError(), _optimizationMaxError);
+	if(_optimizationMaxError > 0.0 && _optimizationMaxError < 1.0)
+	{
+		UWARN("RGBD/OptimizeMaxError (value=%f) is smaller than 1.0, setting to default %f "
+			  "instead (for backward compatibility issues when this parameter was previously "
+			  "an absolute error value).", _optimizationMaxError, Parameters::defaultRGBDOptimizeMaxError());
+		_optimizationMaxError = Parameters::defaultRGBDOptimizeMaxError();
+	}
 	Parameters::parse(parameters, Parameters::kRtabmapStartNewMapOnLoopClosure(), _startNewMapOnLoopClosure);
 	Parameters::parse(parameters, Parameters::kRtabmapStartNewMapOnGoodSignature(), _startNewMapOnGoodSignature);
 	Parameters::parse(parameters, Parameters::kRGBDGoalReachedRadius(), _goalReachedRadius);
@@ -2448,7 +2455,7 @@ bool Rtabmap::process(
 		(_loopClosureHypothesis.first>0 ||
 	     lastProximitySpaceClosureId>0 || // can be different map of the current one
 	     statistics_.reducedIds().size() ||
-		 signature->hasLink(signature->id()) || // prior edge
+		 (signature->hasLink(signature->id()) && !_graphOptimizer->priorsIgnored()) || // prior edge
 	     proximityDetectionsInTimeFound>0 ||
 		 landmarkDetected!=0 ||
 		 ((_memory->isIncremental() || graph::filterLinks(signature->getLinks(), Link::kPosePrior).size()) && // In localization mode, the new node should be linked
@@ -2648,7 +2655,21 @@ bool Rtabmap::process(
 		_lastLocalizationPose = _optimizedPoses.at(signature->id()); // update
 		if(_mapCorrection.getNormSquared() > 0.001f && _optimizeFromGraphEnd)
 		{
-			UERROR("Map correction should be identity when optimizing from the last node. T=%s", _mapCorrection.prettyPrint().c_str());
+			bool hasPrior = signature->hasLink(signature->id());
+			if(!_graphOptimizer->priorsIgnored())
+			{
+				for(std::multimap<int, Link>::reverse_iterator iter=_constraints.rbegin(); !hasPrior && iter!=_constraints.rend(); ++iter)
+				{
+					if(iter->second.type() == Link::kPosePrior)
+					{
+						hasPrior = true;
+					}
+				}
+			}
+			if(!hasPrior || _graphOptimizer->priorsIgnored())
+			{
+				UERROR("Map correction should be identity when optimizing from the last node. T=%s", _mapCorrection.prettyPrint().c_str());
+			}
 		}
 	}
 	_lastLocalizationNodeId = _loopClosureHypothesis.first>0?_loopClosureHypothesis.first:lastProximitySpaceClosureId>0?lastProximitySpaceClosureId:_lastLocalizationNodeId;

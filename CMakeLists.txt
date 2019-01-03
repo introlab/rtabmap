@@ -180,7 +180,7 @@ option(WITH_VISO2         "Include VISO2 support"                ON)
 option(WITH_DVO           "Include DVO support"                  ON)
 option(WITH_ORB_SLAM2     "Include ORB_SLAM2 support"            ON)
 option(WITH_OKVIS         "Include OKVIS support"                ON)
-option(WITH_MSCKF_VIO     "Include MSCKF_VIO support"            OFF)
+option(WITH_MSCKF_VIO     "Include MSCKF_VIO support"           OFF)
 option(PCL_OMP            "With PCL OMP implementations"         ON)
 
 FIND_PACKAGE(OpenCV REQUIRED QUIET)
