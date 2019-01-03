@@ -4976,15 +4976,14 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 		{
 			s->addLink(Link(s->id(), s->id(), Link::kPosePrior, data.globalPose(), data.globalPoseCovariance().inv()));
 
-			/*if(data.gps().stamp() > 0.0)
+			if(data.gps().stamp() > 0.0)
 			{
 				UWARN("GPS constraint ignored as global pose is also set.");
-			}*/
+			}
 		}
 		else if(data.gps().stamp() > 0.0)
 		{
-			// TODO: What kind of covariance should we set to have decent gtsam and g2o results!?
-			/*if(_gpsOrigin.stamp() <= 0.0)
+			if(_gpsOrigin.stamp() <= 0.0)
 			{
 				_gpsOrigin =  data.gps();
 			}
@@ -4995,13 +4994,13 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 			{
 				// only set x, y as we don't know variance for other degrees of freedom.
 				gpsInfMatrix.at<double>(0,0) = gpsInfMatrix.at<double>(1,1) = 0.1;
-				gpsInfMatrix.at<double>(2,2) = 100000;
+				gpsInfMatrix.at<double>(2,2) = 10000;
 				s->addLink(Link(s->id(), s->id(), Link::kPosePrior, gpsPose, gpsInfMatrix));
 			}
 			else
 			{
 				UERROR("Invalid GPS error value (%f m), must be > 0 m.", data.gps().error());
-			}*/
+			}
 		}
 	}
 
