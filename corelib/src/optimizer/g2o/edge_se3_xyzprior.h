@@ -34,24 +34,24 @@
 /**
 * \brief Prior for a 3D pose with constraints only in xyz direction
 */
-class EdgeSE3XYZPrior : public g2o::BaseUnaryEdge<3, g2o::Vector3D, g2o::VertexSE3>
+class EdgeSE3XYZPrior : public g2o::BaseUnaryEdge<3, Eigen::Vector3d, g2o::VertexSE3>
 {
 public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
   EdgeSE3XYZPrior();
 
-  virtual void setMeasurement(const g2o::Vector3D& m) {
+  virtual void setMeasurement(const Eigen::Vector3d& m) {
     _measurement = m;
   }
 
   virtual bool setMeasurementData(const double * d) {
-    Eigen::Map<const g2o::Vector3D> v(d);
+    Eigen::Map<const Eigen::Vector3d> v(d);
     _measurement = v;
     return true;
   }
 
   virtual bool getMeasurementData(double* d) const {
-    Eigen::Map<g2o::Vector3D> v(d);
+    Eigen::Map<Eigen::Vector3d> v(d);
     v = _measurement;
     return true;
   }

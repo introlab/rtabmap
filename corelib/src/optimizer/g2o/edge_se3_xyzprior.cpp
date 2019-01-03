@@ -26,10 +26,10 @@
 
 #include "edge_se3_xyzprior.h"
 
-EdgeSE3XYZPrior::EdgeSE3XYZPrior() : BaseUnaryEdge<3, g2o::Vector3D, g2o::VertexSE3>()
+EdgeSE3XYZPrior::EdgeSE3XYZPrior() : BaseUnaryEdge<3, Eigen::Vector3d, g2o::VertexSE3>()
 {
   information().setIdentity();
-  setMeasurement(g2o::Vector3D::Zero());
+  setMeasurement(Eigen::Vector3d::Zero());
   _cache = 0;
   _offsetParam = 0;
   resizeParameters(1);
@@ -52,7 +52,7 @@ bool EdgeSE3XYZPrior::read(std::istream& is)
   return false;
 
   // measured keypoint
-  g2o::Vector3D meas;
+  Eigen::Vector3d meas;
   for (int i = 0; i < 3; i++) is >> meas[i];
   setMeasurement(meas);
 
@@ -86,7 +86,7 @@ void EdgeSE3XYZPrior::computeError() {
 }
 
 void EdgeSE3XYZPrior::linearizeOplus() {
-  _jacobianOplusXi << g2o::Matrix3D::Identity();
+  _jacobianOplusXi << Eigen::Matrix3d::Identity();
 }
 
 bool EdgeSE3XYZPrior::setMeasurementFromState() {
@@ -99,7 +99,7 @@ void EdgeSE3XYZPrior::initialEstimate(const g2o::OptimizableGraph::VertexSet& /*
   g2o::VertexSE3 *v = static_cast<g2o::VertexSE3*>(_vertices[0]);
   assert(v && "Vertex for the Prior edge is not set");
 
-  g2o::Isometry3D newEstimate = _offsetParam->offset().inverse() * Eigen::Translation3d(measurement());
+  Eigen::Isometry3d newEstimate = _offsetParam->offset().inverse() * Eigen::Translation3d(measurement());
   if (_information.block<3,3>(0,0).array().abs().sum() == 0){ // do not set translation, as that part of the information is all zero
     newEstimate.translation() = v->estimate().translation();
   }

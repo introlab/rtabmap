@@ -404,7 +404,7 @@ std::map<int, Transform> OptimizerG2O::optimize(
 							g2o::EdgeSE2XYPrior * priorEdge = new g2o::EdgeSE2XYPrior();
 							g2o::VertexSE2* v1 = (g2o::VertexSE2*)optimizer.vertex(id1);
 							priorEdge->setVertex(0, v1);
-							priorEdge->setMeasurement(g2o::Vector2D(iter->second.transform().x(), iter->second.transform().y()));
+							priorEdge->setMeasurement(Eigen::Vector2d(iter->second.transform().x(), iter->second.transform().y()));
 							Eigen::Matrix<double, 2, 2> information = Eigen::Matrix<double, 2, 2>::Identity();
 							if(!isCovarianceIgnored())
 							{
@@ -452,7 +452,7 @@ std::map<int, Transform> OptimizerG2O::optimize(
 							EdgeSE3XYZPrior * priorEdge = new EdgeSE3XYZPrior();
 							g2o::VertexSE3* v1 = (g2o::VertexSE3*)optimizer.vertex(id1);
 							priorEdge->setVertex(0, v1);
-							priorEdge->setMeasurement(g2o::Vector3D(iter->second.transform().x(), iter->second.transform().y(), iter->second.transform().z()));
+							priorEdge->setMeasurement(Eigen::Vector3d(iter->second.transform().x(), iter->second.transform().y(), iter->second.transform().z()));
 							Eigen::Matrix<double, 3, 3> information = Eigen::Matrix<double, 3, 3>::Identity();
 							if(!isCovarianceIgnored())
 							{
