@@ -453,7 +453,8 @@ std::map<int, Transform> OptimizerG2O::optimize(
 							g2o::VertexSE3* v1 = (g2o::VertexSE3*)optimizer.vertex(id1);
 							priorEdge->setVertex(0, v1);
 							priorEdge->setMeasurement(Eigen::Vector3d(iter->second.transform().x(), iter->second.transform().y(), iter->second.transform().z()));
-							Eigen::Matrix<double, 3, 3> information = Eigen::Matrix<double, 3, 3>::Identity();
+                                                        priorEdge->setParameterId(0, PARAM_OFFSET);
+                                                        Eigen::Matrix<double, 3, 3> information = Eigen::Matrix<double, 3, 3>::Identity();
 							if(!isCovarianceIgnored())
 							{
 								information(0,0) = iter->second.infMatrix().at<double>(0,0); // x-x
