@@ -134,6 +134,7 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 
 		UDEBUG("fill poses to gtsam...");
 		gtsam::Values initialEstimate;
+		std::map<int, bool> isLandmarkWithRotation;
 		for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
 		{
 			UASSERT(!iter->second.isNull());
@@ -145,7 +146,21 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 				}
 				else if(!landmarksIgnored())
 				{
-					initialEstimate.insert(iter->first, gtsam::Point2(iter->second.x(), iter->second.y()));
+					// check if it is SE2 or only PointXY
+					std::multimap<int, Link>::const_iterator jter=edgeConstraints.find(iter->first);
+					if(jter != edgeConstraints.end())
+					{
+						if (1 / static_cast<double>(jter->second.infMatrix().at<double>(5,5)) >= 9999.0)
+						{
+							initialEstimate.insert(iter->first, gtsam::Point2(iter->second.x(), iter->second.y()));
+							isLandmarkWithRotation.insert(std::make_pair(iter->first, false));
+						}
+						else
+						{
+							initialEstimate.insert(iter->first, gtsam::Pose2(iter->second.x(), iter->second.y(), iter->second.theta()));
+							isLandmarkWithRotation.insert(std::make_pair(iter->first, true));
+						}
+					}
 				}
 
 			}
@@ -157,7 +172,23 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 				}
 				else if(!landmarksIgnored())
 				{
-					initialEstimate.insert(iter->first, gtsam::Point3(iter->second.x(), iter->second.y(), iter->second.z()));
+					// check if it is SE3 or only PointXYZ
+					std::multimap<int, Link>::const_iterator jter=edgeConstraints.find(iter->first);
+					if(jter != edgeConstraints.end())
+					{
+						if (1 / static_cast<double>(jter->second.infMatrix().at<double>(3,3)) >= 9999.0 ||
+							1 / static_cast<double>(jter->second.infMatrix().at<double>(4,4)) >= 9999.0 ||
+							1 / static_cast<double>(jter->second.infMatrix().at<double>(5,5)) >= 9999.0)
+						{
+							initialEstimate.insert(iter->first, gtsam::Point3(iter->second.x(), iter->second.y(), iter->second.z()));
+							isLandmarkWithRotation.insert(std::make_pair(iter->first, false));
+						}
+						else
+						{
+							initialEstimate.insert(iter->first, gtsam::Pose3(iter->second.toEigen4d()));
+							isLandmarkWithRotation.insert(std::make_pair(iter->first, true));
+						}
+					}
 				}
 			}
 		}
@@ -217,53 +248,83 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 				{
 					//landmarks
 					UASSERT((id1 < 0 && id2 > 0) || (id1 > 0 && id2 < 0));
-					if(isSlam2d())
+					Transform t;
+					if(id2 < 0)
 					{
-						Eigen::Matrix<double, 2, 2> information = Eigen::Matrix<double, 2, 2>::Identity();
-						if(!isCovarianceIgnored())
-						{
-							cv::Mat linearCov = cv::Mat(iter->second.infMatrix(), cv::Range(0,2), cv::Range(0,2)).clone();;
-							memcpy(information.data(), linearCov.data, linearCov.total()*sizeof(double));
-						}
-						gtsam::SharedNoiseModel model = gtsam::noiseModel::Gaussian::Information(information);
-						Transform t;
-						if(id2 < 0)
-						{
-							t = iter->second.transform();
-						}
-						else
-						{
-							t = iter->second.transform().inverse();
-							std::swap(id1, id2); // should be node -> landmark
-						}
-
-						gtsam::Point2 landmark(t.x(), t.y());
-						gtsam::Pose2 p;
-						graph.add(gtsam::BearingRangeFactor<gtsam::Pose2, gtsam::Point2>(id1, id2, p.bearing(landmark), p.range(landmark), model));
+						t = iter->second.transform();
 					}
 					else
 					{
-						Eigen::Matrix<double, 3, 3> information = Eigen::Matrix<double, 3, 3>::Identity();
-						if(!isCovarianceIgnored())
+						t = iter->second.transform().inverse();
+						std::swap(id1, id2); // should be node -> landmark
+					}
+					if(isSlam2d())
+					{
+						if(isLandmarkWithRotation.at(id2))
 						{
-							cv::Mat linearCov = cv::Mat(iter->second.infMatrix(), cv::Range(0,3), cv::Range(0,3)).clone();;
-							memcpy(information.data(), linearCov.data, linearCov.total()*sizeof(double));
-						}
-						gtsam::SharedNoiseModel model = gtsam::noiseModel::Gaussian::Information(information);
-						Transform t;
-						if(id2 < 0)
-						{
-							t = iter->second.transform();
+							Eigen::Matrix<double, 3, 3> information = Eigen::Matrix<double, 3, 3>::Identity();
+							if(!isCovarianceIgnored())
+							{
+								information(0,0) = iter->second.infMatrix().at<double>(0,0); // x-x
+								information(0,1) = iter->second.infMatrix().at<double>(0,1); // x-y
+								information(0,2) = iter->second.infMatrix().at<double>(0,5); // x-theta
+								information(1,0) = iter->second.infMatrix().at<double>(1,0); // y-x
+								information(1,1) = iter->second.infMatrix().at<double>(1,1); // y-y
+								information(1,2) = iter->second.infMatrix().at<double>(1,5); // y-theta
+								information(2,0) = iter->second.infMatrix().at<double>(5,0); // theta-x
+								information(2,1) = iter->second.infMatrix().at<double>(5,1); // theta-y
+								information(2,2) = iter->second.infMatrix().at<double>(5,5); // theta-theta
+							}
+							gtsam::noiseModel::Gaussian::shared_ptr model = gtsam::noiseModel::Gaussian::Information(information);
+							graph.add(gtsam::BetweenFactor<gtsam::Pose2>(id1, id2, gtsam::Pose2(iter->second.transform().x(), iter->second.transform().y(), iter->second.transform().theta()), model));
 						}
 						else
 						{
-							t = iter->second.transform().inverse();
-							std::swap(id1, id2); // should be node -> landmark
-						}
+							Eigen::Matrix<double, 2, 2> information = Eigen::Matrix<double, 2, 2>::Identity();
+							if(!isCovarianceIgnored())
+							{
+								cv::Mat linearCov = cv::Mat(iter->second.infMatrix(), cv::Range(0,2), cv::Range(0,2)).clone();;
+								memcpy(information.data(), linearCov.data, linearCov.total()*sizeof(double));
+							}
+							gtsam::SharedNoiseModel model = gtsam::noiseModel::Gaussian::Information(information);
 
-						gtsam::Point3 landmark(t.x(), t.y(), t.z());
-						gtsam::Pose3 p;
-						graph.add(gtsam::BearingRangeFactor<gtsam::Pose3, gtsam::Point3>(id1, id2, p.bearing(landmark), p.range(landmark), model));
+							gtsam::Point2 landmark(t.x(), t.y());
+							gtsam::Pose2 p;
+							graph.add(gtsam::BearingRangeFactor<gtsam::Pose2, gtsam::Point2>(id1, id2, p.bearing(landmark), p.range(landmark), model));
+						}
+					}
+					else
+					{
+						if(isLandmarkWithRotation.at(id2))
+						{
+							Eigen::Matrix<double, 6, 6> information = Eigen::Matrix<double, 6, 6>::Identity();
+							if(!isCovarianceIgnored())
+							{
+								memcpy(information.data(), iter->second.infMatrix().data, iter->second.infMatrix().total()*sizeof(double));
+							}
+
+							Eigen::Matrix<double, 6, 6> mgtsam = Eigen::Matrix<double, 6, 6>::Identity();
+							mgtsam.block(0,0,3,3) = information.block(3,3,3,3); // cov rotation
+							mgtsam.block(3,3,3,3) = information.block(0,0,3,3); // cov translation
+							mgtsam.block(0,3,3,3) = information.block(0,3,3,3); // off diagonal
+							mgtsam.block(3,0,3,3) = information.block(3,0,3,3); // off diagonal
+							gtsam::SharedNoiseModel model = gtsam::noiseModel::Gaussian::Information(mgtsam);
+							graph.add(gtsam::BetweenFactor<gtsam::Pose3>(id1, id2, gtsam::Pose3(t.toEigen4d()), model));
+						}
+						else
+						{
+							Eigen::Matrix<double, 3, 3> information = Eigen::Matrix<double, 3, 3>::Identity();
+							if(!isCovarianceIgnored())
+							{
+								cv::Mat linearCov = cv::Mat(iter->second.infMatrix(), cv::Range(0,3), cv::Range(0,3)).clone();;
+								memcpy(information.data(), linearCov.data, linearCov.total()*sizeof(double));
+							}
+							gtsam::SharedNoiseModel model = gtsam::noiseModel::Gaussian::Information(information);
+
+							gtsam::Point3 landmark(t.x(), t.y(), t.z());
+							gtsam::Pose3 p;
+							graph.add(gtsam::BearingRangeFactor<gtsam::Pose3, gtsam::Point3>(id1, id2, p.bearing(landmark), p.range(landmark), model));
+						}
 					}
 				}
 			}
@@ -404,11 +465,19 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 								gtsam::Pose2 p = iter->value.cast<gtsam::Pose2>();
 								tmpPoses.insert(std::make_pair(key, Transform(p.x(), p.y(), p.theta())));
 							}
-							else if(!landmarksIgnored())
+							else if(!landmarksIgnored() && isLandmarkWithRotation.find(key)!=isLandmarkWithRotation.end())
 							{
-								poses.at(key).getTranslationAndEulerAngles(x,y,z,roll,pitch,yaw);
-								gtsam::Point2 p = iter->value.cast<gtsam::Point2>();
-								tmpPoses.insert(std::make_pair(key, Transform(p.x(), p.y(), z, roll,pitch,yaw)));
+								if(isLandmarkWithRotation.at(key))
+								{
+									gtsam::Pose2 p = iter->value.cast<gtsam::Pose2>();
+									tmpPoses.insert(std::make_pair(key, Transform(p.x(), p.y(), p.theta())));
+								}
+								else
+								{
+									poses.at(key).getTranslationAndEulerAngles(x,y,z,roll,pitch,yaw);
+									gtsam::Point2 p = iter->value.cast<gtsam::Point2>();
+									tmpPoses.insert(std::make_pair(key, Transform(p.x(), p.y(), z, roll,pitch,yaw)));
+								}
 							}
 						}
 						else
@@ -418,11 +487,19 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 								gtsam::Pose3 p = iter->value.cast<gtsam::Pose3>();
 								tmpPoses.insert(std::make_pair(key, Transform::fromEigen4d(p.matrix())));
 							}
-							else if(!landmarksIgnored())
+							else if(!landmarksIgnored() && isLandmarkWithRotation.find(key)!=isLandmarkWithRotation.end())
 							{
-								poses.at(key).getTranslationAndEulerAngles(x,y,z,roll,pitch,yaw);
-								gtsam::Point3 p = iter->value.cast<gtsam::Point3>();
-								tmpPoses.insert(std::make_pair(key, Transform(p.x(), p.y(), p.z(), roll,pitch,yaw)));
+								if(isLandmarkWithRotation.at(key))
+								{
+									gtsam::Pose3 p = iter->value.cast<gtsam::Pose3>();
+									tmpPoses.insert(std::make_pair(key, Transform::fromEigen4d(p.matrix())));
+								}
+								else
+								{
+									poses.at(key).getTranslationAndEulerAngles(x,y,z,roll,pitch,yaw);
+									gtsam::Point3 p = iter->value.cast<gtsam::Point3>();
+									tmpPoses.insert(std::make_pair(key, Transform(p.x(), p.y(), p.z(), roll,pitch,yaw)));
+								}
 							}
 						}
 					}
@@ -490,11 +567,19 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 						gtsam::Pose2 p = iter->value.cast<gtsam::Pose2>();
 						optimizedPoses.insert(std::make_pair(key, Transform(p.x(), p.y(), p.theta())));
 					}
-					else if(!landmarksIgnored())
+					else if(!landmarksIgnored() && isLandmarkWithRotation.find(key)!=isLandmarkWithRotation.end())
 					{
-						poses.at(key).getTranslationAndEulerAngles(x,y,z,roll,pitch,yaw);
-						gtsam::Point2 p = iter->value.cast<gtsam::Point2>();
-						optimizedPoses.insert(std::make_pair(key, Transform(p.x(), p.y(), z,roll,pitch,yaw)));
+						if(isLandmarkWithRotation.at(key))
+						{
+							gtsam::Pose2 p = iter->value.cast<gtsam::Pose2>();
+							optimizedPoses.insert(std::make_pair(key, Transform(p.x(), p.y(), p.theta())));
+						}
+						else
+						{
+							poses.at(key).getTranslationAndEulerAngles(x,y,z,roll,pitch,yaw);
+							gtsam::Point2 p = iter->value.cast<gtsam::Point2>();
+							optimizedPoses.insert(std::make_pair(key, Transform(p.x(), p.y(), z,roll,pitch,yaw)));
+						}
 					}
 				}
 				else
@@ -504,11 +589,19 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 						gtsam::Pose3 p = iter->value.cast<gtsam::Pose3>();
 						optimizedPoses.insert(std::make_pair(key, Transform::fromEigen4d(p.matrix())));
 					}
-					else if(!landmarksIgnored())
+					else if(!landmarksIgnored() && isLandmarkWithRotation.find(key)!=isLandmarkWithRotation.end())
 					{
-						poses.at(key).getTranslationAndEulerAngles(x,y,z,roll,pitch,yaw);
-						gtsam::Point3 p = iter->value.cast<gtsam::Point3>();
-						optimizedPoses.insert(std::make_pair(key, Transform(p.x(), p.y(), p.z(), roll,pitch,yaw)));
+						if(isLandmarkWithRotation.at(key))
+						{
+							gtsam::Pose3 p = iter->value.cast<gtsam::Pose3>();
+							optimizedPoses.insert(std::make_pair(key, Transform::fromEigen4d(p.matrix())));
+						}
+						else
+						{
+							poses.at(key).getTranslationAndEulerAngles(x,y,z,roll,pitch,yaw);
+							gtsam::Point3 p = iter->value.cast<gtsam::Point3>();
+							optimizedPoses.insert(std::make_pair(key, Transform(p.x(), p.y(), p.z(), roll,pitch,yaw)));
+						}
 					}
 				}
 			}

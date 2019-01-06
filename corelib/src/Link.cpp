@@ -78,12 +78,12 @@ double Link::transVariance() const
 
 void Link::setInfMatrix(const cv::Mat & infMatrix) {
 	UASSERT(infMatrix.cols == 6 && infMatrix.rows == 6 && infMatrix.type() == CV_64FC1);
-	UASSERT_MSG(uIsFinite(infMatrix.at<double>(0,0)) && infMatrix.at<double>(0,0)>0, uFormat("Linear information should not be null! Value=%f (set to 1 if unknown).", infMatrix.at<double>(0,0)).c_str());
-	UASSERT_MSG(uIsFinite(infMatrix.at<double>(1,1)) && infMatrix.at<double>(1,1)>0, uFormat("Linear information should not be null! Value=%f (set to 1 if unknown).", infMatrix.at<double>(1,1)).c_str());
-	UASSERT_MSG(uIsFinite(infMatrix.at<double>(2,2)) && infMatrix.at<double>(2,2)>0, uFormat("Linear information should not be null! Value=%f (set to 1 if unknown).", infMatrix.at<double>(2,2)).c_str());
-	UASSERT_MSG(uIsFinite(infMatrix.at<double>(3,3)) && infMatrix.at<double>(3,3)>0, uFormat("Angular information should not be null! Value=%f (set to 1 if unknown).", infMatrix.at<double>(3,3)).c_str());
-	UASSERT_MSG(uIsFinite(infMatrix.at<double>(4,4)) && infMatrix.at<double>(4,4)>0, uFormat("Angular information should not be null! Value=%f (set to 1 if unknown).", infMatrix.at<double>(4,4)).c_str());
-	UASSERT_MSG(uIsFinite(infMatrix.at<double>(5,5)) && infMatrix.at<double>(5,5)>0, uFormat("Angular information should not be null! Value=%f (set to 1 if unknown).", infMatrix.at<double>(5,5)).c_str());
+	UASSERT_MSG(uIsFinite(infMatrix.at<double>(0,0)) && infMatrix.at<double>(0,0)>0, uFormat("Linear information X should not be null! Value=%f (set to 1 if unknown or <=1/9999 to be ignored in some computations).", infMatrix.at<double>(0,0)).c_str());
+	UASSERT_MSG(uIsFinite(infMatrix.at<double>(1,1)) && infMatrix.at<double>(1,1)>0, uFormat("Linear information Y should not be null! Value=%f (set to 1 if unknown or <=1/9999 to be ignored in some computations).", infMatrix.at<double>(1,1)).c_str());
+	UASSERT_MSG(uIsFinite(infMatrix.at<double>(2,2)) && infMatrix.at<double>(2,2)>0, uFormat("Linear information Z should not be null! Value=%f (set to 1 if unknown or <=1/9999 to be ignored in some computations).", infMatrix.at<double>(2,2)).c_str());
+	UASSERT_MSG(uIsFinite(infMatrix.at<double>(3,3)) && infMatrix.at<double>(3,3)>0, uFormat("Angular information roll should not be null! Value=%f (set to 1 if unknown or <=1/9999 to be ignored in some computations).", infMatrix.at<double>(3,3)).c_str());
+	UASSERT_MSG(uIsFinite(infMatrix.at<double>(4,4)) && infMatrix.at<double>(4,4)>0, uFormat("Angular information pitch should not be null! Value=%f (set to 1 if unknown or <=1/9999 to be ignored in some computations).", infMatrix.at<double>(4,4)).c_str());
+	UASSERT_MSG(uIsFinite(infMatrix.at<double>(5,5)) && infMatrix.at<double>(5,5)>0, uFormat("Angular information yaw should not be null! Value=%f (set to 1 if unknown or <=1/9999 to be ignored in some computations).", infMatrix.at<double>(5,5)).c_str());
 	infMatrix_ = infMatrix;
 }
 
