@@ -2538,7 +2538,6 @@ void CloudViewer::setBackgroundColor(const QColor & color)
 
 void CloudViewer::setCloudVisibility(const std::string & id, bool isVisible)
 {
-	UWARN("isVisible=%d cloud=%s", isVisible?1:0, id.c_str());
 	pcl::visualization::CloudActorMapPtr cloudActorMap = _visualizer->getCloudActorMap();
 	pcl::visualization::CloudActorMap::iterator iter = cloudActorMap->find(id);
 	if(iter != cloudActorMap->end())
