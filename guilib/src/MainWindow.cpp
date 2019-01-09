@@ -2388,18 +2388,13 @@ void MainWindow::updateMapCloud(
 		if(splitted.size() == 2)
 		{
 			id = std::atoi(splitted.back().c_str());
-			if(splitted.front().at(splitted.front().size()-1) == '-')
+			if(poses.find(id) == poses.end())
 			{
-				id*=-1;
-			}
-		}
-
-		if(poses.find(id) == poses.end())
-		{
-			if(_cloudViewer->getCloudVisibility(iter.key()))
-			{
-				UDEBUG("Hide %s", iter.key().c_str());
-				_cloudViewer->setCloudVisibility(iter.key(), false);
+				if(_cloudViewer->getCloudVisibility(iter.key()))
+				{
+					UDEBUG("Hide %s", iter.key().c_str());
+					_cloudViewer->setCloudVisibility(iter.key(), false);
+				}
 			}
 		}
 	}
