@@ -54,12 +54,13 @@ CameraThread::CameraThread(Camera * camera, const ParametersMap & parameters) :
 		_imageDecimation(1),
 		_stereoToDepth(false),
 		_scanFromDepth(false),
-		_scanDecimation(4),
-		_scanMaxDepth(4.0f),
-		_scanMinDepth(0.0f),
+		_scanDownsampleStep(1),
+		_scanRangeMin(0.0f),
+		_scanRangeMax(0.0f),
 		_scanVoxelSize(0.0f),
 		_scanNormalsK(0),
 		_scanNormalsRadius(0.0f),
+		_scanForceGroundNormalsUp(false),
 		_stereoDense(StereoDense::create(parameters)),
 		_distortionModel(0),
 		_bilateralFiltering(false),
@@ -321,16 +322,16 @@ void CameraThread::postUpdate(SensorData * dataPtr, CameraInfo * info) const
 		UDEBUG("");
 		if(data.laserScanRaw().isEmpty())
 		{
-			UASSERT(_scanDecimation >= 1);
+			UASSERT(_scanDownsampleStep >= 1);
 			UTimer timer;
 			pcl::IndicesPtr validIndices(new std::vector<int>);
 			pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = util3d::cloudRGBFromSensorData(
 					data,
-					_scanDecimation,
-					_scanMaxDepth,
-					_scanMinDepth,
+					_scanDownsampleStep,
+					_scanRangeMax,
+					_scanRangeMin,
 					validIndices.get());
-			float maxPoints = (data.depthRaw().rows/_scanDecimation)*(data.depthRaw().cols/_scanDecimation);
+			float maxPoints = (data.depthRaw().rows/_scanDownsampleStep)*(data.depthRaw().cols/_scanDownsampleStep);
 			cv::Mat scan;
 			const Transform & baseToScan = data.cameraModels()[0].localTransform();
 			LaserScan::Format format = LaserScan::kXYZRGB;
@@ -366,7 +367,7 @@ void CameraThread::postUpdate(SensorData * dataPtr, CameraInfo * info) const
 					}
 				}
 			}
-			data.setLaserScanRaw(LaserScan(scan, (int)maxPoints, _scanMaxDepth, format, baseToScan));
+			data.setLaserScanRaw(LaserScan(scan, (int)maxPoints, _scanRangeMax, format, baseToScan));
 			if(info) info->timeScanFromDepth = timer.ticks();
 		}
 		else
@@ -375,6 +376,12 @@ void CameraThread::postUpdate(SensorData * dataPtr, CameraInfo * info) const
 				  "there is already a laser scan in the captured sensor data. Scan from "
 				  "depth will not be created.");
 		}
+	}
+	else if(!data.laserScanRaw().isEmpty())
+	{
+		UDEBUG("");
+		// filter the scan after registration
+		data.setLaserScanRaw(util3d::commonFiltering(data.laserScanRaw(), _scanDownsampleStep, _scanRangeMin, _scanRangeMax, _scanVoxelSize, _scanNormalsK, _scanNormalsRadius, _scanForceGroundNormalsUp));
 	}
 }
 

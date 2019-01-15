@@ -311,7 +311,7 @@ int main (int argc, char * argv[])
 		{
 			rtabmap::CameraThread cameraThread(camera, parameters);
 
-			cameraThread.setScanFromDepth(icp, decimation<1?1:decimation, maxDepth, voxelSize, normalsK, normalsRadius);
+			cameraThread.setScanParameters(icp, decimation<1?1:decimation, 0, maxDepth, voxelSize, normalsK, normalsRadius);
 
 			odomThread.start();
 			cameraThread.start();

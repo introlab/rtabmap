@@ -76,21 +76,11 @@ public:
 	void setScanPath(
 			const std::string & dir,
 			int maxScanPts = 0,
-			int downsampleStep = 1,
-			float voxelSize = 0.0f,
-			int normalsK = 0,        // compute normals if > 0
-			float normalsRadius = 0, // compute normals if > 0
-			const Transform & localTransform=Transform::getIdentity(),
-			bool forceGroundNormalsUp = false)
+			const Transform & localTransform=Transform::getIdentity())
 	{
 		_scanPath = dir;
 		_scanLocalTransform = localTransform;
 		_scanMaxPts = maxScanPts;
-		_scanDownsampleStep = downsampleStep;
-		_scanNormalsK = normalsK;
-		_scanNormalsRadius = normalsRadius;
-		_scanVoxelSize = voxelSize;
-		_scanForceGroundNormalsUp = forceGroundNormalsUp;
 	}
 
 	void setDepthFromScan(bool enabled, int fillHoles = 1, bool fillHolesFromBorder = false)
@@ -152,11 +142,6 @@ private:
 	std::string _scanPath;
 	Transform _scanLocalTransform;
 	int _scanMaxPts;
-	int _scanDownsampleStep;
-	float _scanVoxelSize;
-	int _scanNormalsK;
-	float _scanNormalsRadius;
-	bool _scanForceGroundNormalsUp;
 
 	bool _depthFromScan;
 	int _depthFromScanFillHoles; // <0:horizontal 0:disabled >0:vertical

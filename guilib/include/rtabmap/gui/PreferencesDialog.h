@@ -247,11 +247,13 @@ public:
 	bool isSourceStereoDepthGenerated() const;
 	bool isSourceStereoExposureCompensation() const;
 	bool isSourceScanFromDepth() const;
-	int getSourceScanFromDepthDecimation() const;
-	double getSourceScanFromDepthMaxDepth() const;
+	int getSourceScanDownsampleStep() const;
+	double getSourceScanRangeMin() const;
+	double getSourceScanRangeMax() const;
 	double getSourceScanVoxelSize() const;
 	int getSourceScanNormalsK() const;
 	double getSourceScanNormalsRadius() const;
+	bool isSourceScanForceGroundNormalsUp() const;
 	Transform getSourceLocalTransform() const;    //Openni group
 	Transform getLaserLocalTransform() const; // directory images
 	Transform getIMULocalTransform() const; // directory images

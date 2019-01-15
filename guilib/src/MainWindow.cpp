@@ -4863,13 +4863,15 @@ void MainWindow::startDetection()
 	_camera->setImageDecimation(_preferencesDialog->getSourceImageDecimation());
 	_camera->setStereoToDepth(_preferencesDialog->isSourceStereoDepthGenerated());
 	_camera->setStereoExposureCompensation(_preferencesDialog->isSourceStereoExposureCompensation());
-	_camera->setScanFromDepth(
+	_camera->setScanParameters(
 			_preferencesDialog->isSourceScanFromDepth(),
-			_preferencesDialog->getSourceScanFromDepthDecimation(),
-			_preferencesDialog->getSourceScanFromDepthMaxDepth(),
+			_preferencesDialog->getSourceScanDownsampleStep(),
+			_preferencesDialog->getSourceScanRangeMin(),
+			_preferencesDialog->getSourceScanRangeMax(),
 			_preferencesDialog->getSourceScanVoxelSize(),
 			_preferencesDialog->getSourceScanNormalsK(),
-			_preferencesDialog->getSourceScanNormalsRadius());
+			_preferencesDialog->getSourceScanNormalsRadius(),
+			_preferencesDialog->isSourceScanForceGroundNormalsUp());
 	if(_preferencesDialog->isDepthFilteringAvailable())
 	{
 		if(_preferencesDialog->isBilateralFiltering())

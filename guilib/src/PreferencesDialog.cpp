@@ -603,8 +603,6 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->lineEdit_cameraImages_path_scans, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->lineEdit_cameraImages_laser_transform, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->spinBox_cameraImages_max_scan_pts, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
-	connect(_ui->spinBox_cameraImages_scanDownsampleStep, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
-	connect(_ui->doubleSpinBox_cameraImages_scanVoxelSize, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->lineEdit_cameraImages_odom, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->comboBox_cameraImages_odomFormat, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->lineEdit_cameraImages_gt, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
@@ -661,13 +659,14 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->doubleSpinBox_bilateral_sigmaS, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->doubleSpinBox_bilateral_sigmaR, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteSourcePanel()));
 
-	connect(_ui->groupBox_scanFromDepth, SIGNAL(toggled(bool)), this, SLOT(makeObsoleteSourcePanel()));
-	connect(_ui->spinBox_cameraScanFromDepth_decimation, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
-	connect(_ui->doubleSpinBox_cameraSCanFromDepth_maxDepth, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteSourcePanel()));
-	connect(_ui->doubleSpinBox_cameraImages_scanVoxelSize, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteSourcePanel()));
-	connect(_ui->spinBox_cameraImages_scanNormalsK, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
-	connect(_ui->doubleSpinBox_cameraImages_scanNormalsRadius, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteSourcePanel()));
-	connect(_ui->checkBox_cameraImages_scanForceGroundNormalsUp, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->checkBox_source_scanFromDepth, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->spinBox_source_scanDownsampleStep, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->doubleSpinBox_source_scanRangeMin, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->doubleSpinBox_source_scanRangeMax, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->doubleSpinBox_source_scanVoxelSize, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->spinBox_source_scanNormalsK, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->doubleSpinBox_source_scanNormalsRadius, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->checkBox_source_scanForceGroundNormalsUp, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 
 
 	//Rtabmap basic
@@ -1731,8 +1730,6 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->lineEdit_cameraImages_path_scans->setText("");
 		_ui->lineEdit_cameraImages_laser_transform->setText("0 0 0 0 0 0");
 		_ui->spinBox_cameraImages_max_scan_pts->setValue(0);
-		_ui->spinBox_cameraImages_scanDownsampleStep->setValue(1);
-		_ui->doubleSpinBox_cameraImages_scanVoxelSize->setValue(0.0f);
 		_ui->lineEdit_cameraImages_odom->setText("");
 		_ui->comboBox_cameraImages_odomFormat->setCurrentIndex(0);
 		_ui->lineEdit_cameraImages_gt->setText("");
@@ -1742,13 +1739,14 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->lineEdit_cameraImages_imu_transform->setText("0 0 1 0 -1 0 1 0 0");
 		_ui->spinBox_cameraImages_max_imu_rate->setValue(0);
 
-		_ui->groupBox_scanFromDepth->setChecked(false);
-		_ui->spinBox_cameraScanFromDepth_decimation->setValue(8);
-		_ui->doubleSpinBox_cameraSCanFromDepth_maxDepth->setValue(4.0);
-		_ui->doubleSpinBox_cameraImages_scanVoxelSize->setValue(0.025f);
-		_ui->spinBox_cameraImages_scanNormalsK->setValue(20);
-		_ui->doubleSpinBox_cameraImages_scanNormalsRadius->setValue(0.0);
-		_ui->checkBox_cameraImages_scanForceGroundNormalsUp->setChecked(false);
+		_ui->checkBox_source_scanFromDepth->setChecked(false);
+		_ui->spinBox_source_scanDownsampleStep->setValue(1);
+		_ui->doubleSpinBox_source_scanRangeMin->setValue(0);
+		_ui->doubleSpinBox_source_scanRangeMax->setValue(0);
+		_ui->doubleSpinBox_source_scanVoxelSize->setValue(0.0f);
+		_ui->spinBox_source_scanNormalsK->setValue(0);
+		_ui->doubleSpinBox_source_scanNormalsRadius->setValue(0.0);
+		_ui->checkBox_source_scanForceGroundNormalsUp->setChecked(false);
 
 		_ui->groupBox_depthFromScan->setChecked(false);
 		_ui->groupBox_depthFromScan_fillHoles->setChecked(true);
@@ -2145,8 +2143,6 @@ void PreferencesDialog::readCameraSettings(const QString & filePath)
 	_ui->lineEdit_cameraImages_path_scans->setText(settings.value("path_scans", _ui->lineEdit_cameraImages_path_scans->text()).toString());
 	_ui->lineEdit_cameraImages_laser_transform->setText(settings.value("scan_transform", _ui->lineEdit_cameraImages_laser_transform->text()).toString());
 	_ui->spinBox_cameraImages_max_scan_pts->setValue(settings.value("scan_max_pts", _ui->spinBox_cameraImages_max_scan_pts->value()).toInt());
-	_ui->spinBox_cameraImages_scanDownsampleStep->setValue(settings.value("scan_downsample_step", _ui->spinBox_cameraImages_scanDownsampleStep->value()).toInt());
-	_ui->doubleSpinBox_cameraImages_scanVoxelSize->setValue(settings.value("scan_voxel_size", _ui->doubleSpinBox_cameraImages_scanVoxelSize->value()).toDouble());
 	_ui->lineEdit_cameraImages_odom->setText(settings.value("odom_path", _ui->lineEdit_cameraImages_odom->text()).toString());
 	_ui->comboBox_cameraImages_odomFormat->setCurrentIndex(settings.value("odom_format", _ui->comboBox_cameraImages_odomFormat->currentIndex()).toInt());
 	_ui->lineEdit_cameraImages_gt->setText(settings.value("gt_path", _ui->lineEdit_cameraImages_gt->text()).toString());
@@ -2162,16 +2158,16 @@ void PreferencesDialog::readCameraSettings(const QString & filePath)
 	_ui->source_video_lineEdit_path->setText(settings.value("path", _ui->source_video_lineEdit_path->text()).toString());
 	settings.endGroup(); // video
 
-	settings.beginGroup("ScanFromDepth");
-	_ui->groupBox_scanFromDepth->setChecked(settings.value("enabled", _ui->groupBox_scanFromDepth->isChecked()).toBool());
-	_ui->spinBox_cameraScanFromDepth_decimation->setValue(settings.value("decimation", _ui->spinBox_cameraScanFromDepth_decimation->value()).toInt());
-	_ui->doubleSpinBox_cameraSCanFromDepth_maxDepth->setValue(settings.value("maxDepth", _ui->doubleSpinBox_cameraSCanFromDepth_maxDepth->value()).toDouble());
-	_ui->doubleSpinBox_cameraImages_scanVoxelSize->setValue(settings.value("voxelSize", _ui->doubleSpinBox_cameraImages_scanVoxelSize->value()).toDouble());
-	_ui->spinBox_cameraImages_scanNormalsK->setValue(settings.value("normalsK", _ui->spinBox_cameraImages_scanNormalsK->value()).toInt());
-	_ui->doubleSpinBox_cameraImages_scanNormalsRadius->setValue(settings.value("normalsRadius", _ui->doubleSpinBox_cameraImages_scanNormalsRadius->value()).toDouble());
-	_ui->checkBox_cameraImages_scanForceGroundNormalsUp->setChecked(settings.value("normalsUp", _ui->checkBox_cameraImages_scanForceGroundNormalsUp->isChecked()).toBool());
-
-	settings.endGroup();//ScanFromDepth
+	settings.beginGroup("Scan");
+	_ui->checkBox_source_scanFromDepth->setChecked(settings.value("fromDepth", _ui->checkBox_source_scanFromDepth->isChecked()).toBool());
+	_ui->spinBox_source_scanDownsampleStep->setValue(settings.value("downsampleStep", _ui->spinBox_source_scanDownsampleStep->value()).toInt());
+	_ui->doubleSpinBox_source_scanRangeMin->setValue(settings.value("rangeMin", _ui->doubleSpinBox_source_scanRangeMin->value()).toDouble());
+	_ui->doubleSpinBox_source_scanRangeMax->setValue(settings.value("rangeMax", _ui->doubleSpinBox_source_scanRangeMax->value()).toDouble());
+	_ui->doubleSpinBox_source_scanVoxelSize->setValue(settings.value("voxelSize", _ui->doubleSpinBox_source_scanVoxelSize->value()).toDouble());
+	_ui->spinBox_source_scanNormalsK->setValue(settings.value("normalsK", _ui->spinBox_source_scanNormalsK->value()).toInt());
+	_ui->doubleSpinBox_source_scanNormalsRadius->setValue(settings.value("normalsRadius", _ui->doubleSpinBox_source_scanNormalsRadius->value()).toDouble());
+	_ui->checkBox_source_scanForceGroundNormalsUp->setChecked(settings.value("normalsUp", _ui->checkBox_source_scanForceGroundNormalsUp->isChecked()).toBool());
+	settings.endGroup();//Scan
 
 	settings.beginGroup("DepthFromScan");
 	_ui->groupBox_depthFromScan->setChecked(settings.value("depthFromScan", _ui->groupBox_depthFromScan->isChecked()).toBool());
@@ -2569,8 +2565,6 @@ void PreferencesDialog::writeCameraSettings(const QString & filePath) const
 	settings.setValue("path_scans",          _ui->lineEdit_cameraImages_path_scans->text());
 	settings.setValue("scan_transform",      _ui->lineEdit_cameraImages_laser_transform->text());
 	settings.setValue("scan_max_pts",        _ui->spinBox_cameraImages_max_scan_pts->value());
-	settings.setValue("scan_downsample_step", _ui->spinBox_cameraImages_scanDownsampleStep->value());
-	settings.setValue("scan_voxel_size",     _ui->doubleSpinBox_cameraImages_scanVoxelSize->value());
 	settings.setValue("odom_path",           _ui->lineEdit_cameraImages_odom->text());
 	settings.setValue("odom_format",         _ui->comboBox_cameraImages_odomFormat->currentIndex());
 	settings.setValue("gt_path",             _ui->lineEdit_cameraImages_gt->text());
@@ -2585,14 +2579,15 @@ void PreferencesDialog::writeCameraSettings(const QString & filePath) const
 	settings.setValue("path", 			_ui->source_video_lineEdit_path->text());
 	settings.endGroup(); // video
 
-	settings.beginGroup("ScanFromDepth");
-	settings.setValue("enabled", 			_ui->groupBox_scanFromDepth->isChecked());
-	settings.setValue("decimation", 		_ui->spinBox_cameraScanFromDepth_decimation->value());
-	settings.setValue("maxDepth", 			_ui->doubleSpinBox_cameraSCanFromDepth_maxDepth->value());
-	settings.setValue("voxelSize", 			_ui->doubleSpinBox_cameraImages_scanVoxelSize->value());
-	settings.setValue("normalsK", 			_ui->spinBox_cameraImages_scanNormalsK->value());
-	settings.setValue("normalsRadius", 		_ui->doubleSpinBox_cameraImages_scanNormalsRadius->value());
-	settings.setValue("normalsUp", 	        _ui->checkBox_cameraImages_scanForceGroundNormalsUp->isChecked());
+	settings.beginGroup("Scan");
+	settings.setValue("fromDepth", 			_ui->checkBox_source_scanFromDepth->isChecked());
+	settings.setValue("downsampleStep", 	_ui->spinBox_source_scanDownsampleStep->value());
+	settings.setValue("rangeMin", 			_ui->doubleSpinBox_source_scanRangeMin->value());
+	settings.setValue("rangeMax", 			_ui->doubleSpinBox_source_scanRangeMax->value());
+	settings.setValue("voxelSize", 			_ui->doubleSpinBox_source_scanVoxelSize->value());
+	settings.setValue("normalsK", 			_ui->spinBox_source_scanNormalsK->value());
+	settings.setValue("normalsRadius", 		_ui->doubleSpinBox_source_scanNormalsRadius->value());
+	settings.setValue("normalsUp", 	        _ui->checkBox_source_scanForceGroundNormalsUp->isChecked());
 	settings.endGroup();
 
 	settings.beginGroup("DepthFromScan");
@@ -4364,7 +4359,8 @@ void PreferencesDialog::updateSourceGrpVisibility()
 	_ui->groupBox_sourceRGB->setVisible(_ui->comboBox_sourceType->currentIndex() == 2);
 	_ui->groupBox_sourceDatabase->setVisible(_ui->comboBox_sourceType->currentIndex() == 3);
 
-	_ui->groupBox_scanFromDepth->setVisible(_ui->comboBox_sourceType->currentIndex() <= 1 || _ui->comboBox_sourceType->currentIndex() == 3);
+	_ui->checkBox_source_scanFromDepth->setVisible(_ui->comboBox_sourceType->currentIndex() <= 1 || _ui->comboBox_sourceType->currentIndex() == 3);
+	_ui->label_source_scanFromDepth->setVisible(_ui->comboBox_sourceType->currentIndex() <= 1 || _ui->comboBox_sourceType->currentIndex() == 3);
 
 	_ui->stackedWidget_rgbd->setVisible(_ui->comboBox_sourceType->currentIndex() == 0 &&
 			(_ui->comboBox_cameraRGBD->currentIndex() == kSrcOpenNI2-kSrcRGBD ||
@@ -4953,27 +4949,35 @@ bool PreferencesDialog::isSourceStereoExposureCompensation() const
 }
 bool PreferencesDialog::isSourceScanFromDepth() const
 {
-	return _ui->groupBox_scanFromDepth->isChecked();
+	return _ui->checkBox_source_scanFromDepth->isChecked();
 }
-int PreferencesDialog::getSourceScanFromDepthDecimation() const
+int PreferencesDialog::getSourceScanDownsampleStep() const
 {
-	return _ui->spinBox_cameraScanFromDepth_decimation->value();
+	return _ui->spinBox_source_scanDownsampleStep->value();
 }
-double PreferencesDialog::getSourceScanFromDepthMaxDepth() const
+double PreferencesDialog::getSourceScanRangeMin() const
 {
-	return _ui->doubleSpinBox_cameraSCanFromDepth_maxDepth->value();
+	return _ui->doubleSpinBox_source_scanRangeMin->value();
+}
+double PreferencesDialog::getSourceScanRangeMax() const
+{
+	return _ui->doubleSpinBox_source_scanRangeMax->value();
 }
 double PreferencesDialog::getSourceScanVoxelSize() const
 {
-	return _ui->doubleSpinBox_cameraImages_scanVoxelSize->value();
+	return _ui->doubleSpinBox_source_scanVoxelSize->value();
 }
 int PreferencesDialog::getSourceScanNormalsK() const
 {
-	return _ui->spinBox_cameraImages_scanNormalsK->value();
+	return _ui->spinBox_source_scanNormalsK->value();
 }
 double PreferencesDialog::getSourceScanNormalsRadius() const
 {
-	return _ui->doubleSpinBox_cameraImages_scanNormalsRadius->value();
+	return _ui->doubleSpinBox_source_scanNormalsRadius->value();
+}
+bool PreferencesDialog::isSourceScanForceGroundNormalsUp() const
+{
+	return _ui->checkBox_source_scanForceGroundNormalsUp->isChecked();
 }
 
 Camera * PreferencesDialog::createCamera(bool useRawImages, bool useColor)
@@ -5111,12 +5115,7 @@ Camera * PreferencesDialog::createCamera(bool useRawImages, bool useColor)
 		((CameraRGBDImages*)camera)->setScanPath(
 						_ui->lineEdit_cameraImages_path_scans->text().isEmpty()?"":_ui->lineEdit_cameraImages_path_scans->text().append(QDir::separator()).toStdString(),
 						_ui->spinBox_cameraImages_max_scan_pts->value(),
-						_ui->spinBox_cameraImages_scanDownsampleStep->value(),
-						_ui->doubleSpinBox_cameraImages_scanVoxelSize->value(),
-						_ui->spinBox_cameraImages_scanNormalsK->value(),
-						_ui->doubleSpinBox_cameraImages_scanNormalsRadius->value(),
-						this->getLaserLocalTransform(),
-						_ui->checkBox_cameraImages_scanForceGroundNormalsUp->isChecked());
+						this->getLaserLocalTransform());
 		((CameraRGBDImages*)camera)->setTimestamps(
 				_ui->checkBox_cameraImages_timestamps->isChecked(),
 				_ui->lineEdit_cameraImages_timestamps->text().toStdString(),
@@ -5160,12 +5159,7 @@ Camera * PreferencesDialog::createCamera(bool useRawImages, bool useColor)
 		((CameraStereoImages*)camera)->setScanPath(
 						_ui->lineEdit_cameraImages_path_scans->text().isEmpty()?"":_ui->lineEdit_cameraImages_path_scans->text().append(QDir::separator()).toStdString(),
 						_ui->spinBox_cameraImages_max_scan_pts->value(),
-						_ui->spinBox_cameraImages_scanDownsampleStep->value(),
-						_ui->doubleSpinBox_cameraImages_scanVoxelSize->value(),
-						_ui->spinBox_cameraImages_scanNormalsK->value(),
-						_ui->doubleSpinBox_cameraImages_scanNormalsRadius->value(),
-						this->getLaserLocalTransform(),
-						_ui->checkBox_cameraImages_scanForceGroundNormalsUp->isChecked());
+						this->getLaserLocalTransform());
 		((CameraStereoImages*)camera)->setTimestamps(
 				_ui->checkBox_cameraImages_timestamps->isChecked(),
 				_ui->lineEdit_cameraImages_timestamps->text().toStdString(),
@@ -5292,12 +5286,7 @@ Camera * PreferencesDialog::createCamera(bool useRawImages, bool useColor)
 		((CameraImages*)camera)->setScanPath(
 						_ui->lineEdit_cameraImages_path_scans->text().isEmpty()?"":_ui->lineEdit_cameraImages_path_scans->text().append(QDir::separator()).toStdString(),
 						_ui->spinBox_cameraImages_max_scan_pts->value(),
-						_ui->spinBox_cameraImages_scanDownsampleStep->value(),
-						_ui->doubleSpinBox_cameraImages_scanVoxelSize->value(),
-						_ui->spinBox_cameraImages_scanNormalsK->value(),
-						_ui->doubleSpinBox_cameraImages_scanNormalsRadius->value(),
-						this->getLaserLocalTransform(),
-						_ui->checkBox_cameraImages_scanForceGroundNormalsUp->isChecked());
+						this->getLaserLocalTransform());
 		((CameraImages*)camera)->setDepthFromScan(
 				_ui->groupBox_depthFromScan->isChecked(),
 				!_ui->groupBox_depthFromScan_fillHoles->isChecked()?0:_ui->radioButton_depthFromScan_vertical->isChecked()?1:-1,
@@ -5574,13 +5563,15 @@ void PreferencesDialog::testOdometry()
 	cameraThread.setImageDecimation(_ui->spinBox_source_imageDecimation->value());
 	cameraThread.setStereoToDepth(_ui->checkbox_stereo_depthGenerated->isChecked());
 	cameraThread.setStereoExposureCompensation(_ui->checkBox_stereo_exposureCompensation->isChecked());
-	cameraThread.setScanFromDepth(
-			_ui->groupBox_scanFromDepth->isChecked(),
-			_ui->spinBox_cameraScanFromDepth_decimation->value(),
-			_ui->doubleSpinBox_cameraSCanFromDepth_maxDepth->value(),
-			_ui->doubleSpinBox_cameraImages_scanVoxelSize->value(),
-			_ui->spinBox_cameraImages_scanNormalsK->value(),
-			_ui->doubleSpinBox_cameraImages_scanNormalsRadius->value());
+	cameraThread.setScanParameters(
+			_ui->checkBox_source_scanFromDepth->isChecked(),
+			_ui->spinBox_source_scanDownsampleStep->value(),
+			_ui->doubleSpinBox_source_scanRangeMin->value(),
+			_ui->doubleSpinBox_source_scanRangeMax->value(),
+			_ui->doubleSpinBox_source_scanVoxelSize->value(),
+			_ui->spinBox_source_scanNormalsK->value(),
+			_ui->doubleSpinBox_source_scanNormalsRadius->value(),
+			_ui->checkBox_source_scanForceGroundNormalsUp->isChecked());
 	if(isDepthFilteringAvailable())
 	{
 		if(_ui->groupBox_bilateral->isChecked())
@@ -5639,13 +5630,15 @@ void PreferencesDialog::testCamera()
 		cameraThread.setImageDecimation(_ui->spinBox_source_imageDecimation->value());
 		cameraThread.setStereoToDepth(_ui->checkbox_stereo_depthGenerated->isChecked());
 		cameraThread.setStereoExposureCompensation(_ui->checkBox_stereo_exposureCompensation->isChecked());
-		cameraThread.setScanFromDepth(
-				_ui->groupBox_scanFromDepth->isChecked(),
-				_ui->spinBox_cameraScanFromDepth_decimation->value(),
-				_ui->doubleSpinBox_cameraSCanFromDepth_maxDepth->value(),
-				_ui->doubleSpinBox_cameraImages_scanVoxelSize->value(),
-				_ui->spinBox_cameraImages_scanNormalsK->value(),
-				_ui->doubleSpinBox_cameraImages_scanNormalsRadius->value());
+		cameraThread.setScanParameters(
+				_ui->checkBox_source_scanFromDepth->isChecked(),
+				_ui->spinBox_source_scanDownsampleStep->value(),
+				_ui->doubleSpinBox_source_scanRangeMin->value(),
+				_ui->doubleSpinBox_source_scanRangeMax->value(),
+				_ui->doubleSpinBox_source_scanVoxelSize->value(),
+				_ui->spinBox_source_scanNormalsK->value(),
+				_ui->doubleSpinBox_source_scanNormalsRadius->value(),
+				_ui->checkBox_source_scanForceGroundNormalsUp->isChecked());
 		if(isDepthFilteringAvailable())
 		{
 			if(_ui->groupBox_bilateral->isChecked())

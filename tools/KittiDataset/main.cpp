@@ -379,12 +379,15 @@ int main(int argc, char * argv[])
 		((CameraStereoImages*)cameraThread.camera())->setScanPath(
 						pathScan,
 						130000,
-						scanStep,
-						scanVoxel,
-						scanNormalK,
-						scanNormalRadius,
-						Transform(-0.27f, 0.0f, 0.08+(height?1.67f:0.0f), 0.0f, 0.0f, 0.0f),
-						true);
+						Transform(-0.27f, 0.0f, 0.08+(height?1.67f:0.0f), 0.0f, 0.0f, 0.0f));
+		cameraThread.setScanParameters(
+								false,
+								scanStep,
+								0,
+								scanVoxel,
+								scanNormalK,
+								scanNormalRadius,
+								true);
 	}
 
 	float detectionRate = Parameters::defaultRtabmapDetectionRate();

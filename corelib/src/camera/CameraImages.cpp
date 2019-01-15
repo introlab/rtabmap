@@ -52,11 +52,6 @@ CameraImages::CameraImages() :
 		_scanDir(0),
 		_scanLocalTransform(Transform::getIdentity()),
 		_scanMaxPts(0),
-		_scanDownsampleStep(1),
-		_scanVoxelSize(0.0f),
-		_scanNormalsK(0),
-		_scanNormalsRadius(0),
-		_scanForceGroundNormalsUp(false),
 		_depthFromScan(false),
 		_depthFromScanFillHoles(1),
 		_depthFromScanFillHolesFromBorder(false),
@@ -84,11 +79,6 @@ CameraImages::CameraImages(const std::string & path,
 	_scanDir(0),
 	_scanLocalTransform(Transform::getIdentity()),
 	_scanMaxPts(0),
-	_scanDownsampleStep(1),
-	_scanVoxelSize(0.0f),
-	_scanNormalsK(0),
-	_scanNormalsRadius(0),
-	_scanForceGroundNormalsUp(false),
 	_depthFromScan(false),
 	_depthFromScanFillHoles(1),
 	_depthFromScanFillHolesFromBorder(false),
@@ -731,8 +721,6 @@ SensorData CameraImages::captureImage(CameraInfo * info)
 					}
 				}
 			}
-			// filter the scan after registration
-			scan = util3d::commonFiltering(scan, _scanDownsampleStep, 0, 0, _scanVoxelSize, _scanNormalsK, _scanNormalsRadius, _scanForceGroundNormalsUp);
 		}
 	}
 	else
