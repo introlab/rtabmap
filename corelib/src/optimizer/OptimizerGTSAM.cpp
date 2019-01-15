@@ -132,7 +132,7 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 			}
 		}
 
-		UDEBUG("fill poses to gtsam...");
+		UDEBUG("fill poses to gtsam... rootId=%d", rootId);
 		gtsam::Values initialEstimate;
 		std::map<int, bool> isLandmarkWithRotation;
 		for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
@@ -276,7 +276,7 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 								information(2,2) = iter->second.infMatrix().at<double>(5,5); // theta-theta
 							}
 							gtsam::noiseModel::Gaussian::shared_ptr model = gtsam::noiseModel::Gaussian::Information(information);
-							graph.add(gtsam::BetweenFactor<gtsam::Pose2>(id1, id2, gtsam::Pose2(iter->second.transform().x(), iter->second.transform().y(), iter->second.transform().theta()), model));
+							graph.add(gtsam::BetweenFactor<gtsam::Pose2>(id1, id2, gtsam::Pose2(t.x(), t.y(), t.theta()), model));
 						}
 						else
 						{
