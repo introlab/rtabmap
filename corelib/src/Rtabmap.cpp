@@ -316,6 +316,7 @@ void Rtabmap::init(const ParametersMap & parameters, const std::string & databas
 
 	Transform lastPose;
 	_optimizedPoses = _memory->loadOptimizedPoses(&lastPose);
+	UINFO("Loaded optimizedPoses=%d lastPose=%s", _optimizedPoses.size(), lastPose.prettyPrint().c_str());
 	if(!_optimizedPoses.empty())
 	{
 		if(!_savedLocalizationIgnored)
@@ -2672,7 +2673,19 @@ bool Rtabmap::process(
 			}
 		}
 	}
-	_lastLocalizationNodeId = _loopClosureHypothesis.first>0?_loopClosureHypothesis.first:lastProximitySpaceClosureId>0?lastProximitySpaceClosureId:_lastLocalizationNodeId;
+	int newLocId = _loopClosureHypothesis.first>0?_loopClosureHypothesis.first:lastProximitySpaceClosureId>0?lastProximitySpaceClosureId:0;
+	_lastLocalizationNodeId = newLocId!=0?newLocId:_lastLocalizationNodeId;
+	if(newLocId==0 && landmarkDetected!=0)
+	{
+		std::map<int, std::set<int> >::const_iterator iter = _memory->getLandmarksInvertedIndex().find(landmarkDetected);
+		if(iter!=_memory->getLandmarksInvertedIndex().end())
+		{
+			if(iter->second.size() && *iter->second.begin()!=signature->id())
+			{
+				_lastLocalizationNodeId = *iter->second.begin();
+			}
+		}
+	}
 
 	timeMapOptimization = timer.ticks();
 	ULOGGER_INFO("timeMapOptimization=%fs", timeMapOptimization);
@@ -2923,7 +2936,7 @@ bool Rtabmap::process(
 
 	//Remove optimized poses from signatures transferred
 	if(signaturesRemoved.size() && (_optimizedPoses.size() || _constraints.size()))
-{
+	{
 		//refresh the local map because some transferred nodes may have broken the tree
 		int id = 0;
 		if(!_memory->isIncremental() && (_lastLocalizationNodeId > 0 || _path.size()))
