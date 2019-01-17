@@ -271,6 +271,7 @@ public:
 	bool isSLAMMode() const;
 	bool isRGBDMode() const;
 	int getKpMaxFeatures() const;
+	bool isPriorIgnored() const;
 
 	//specific
 	bool isStatisticsPublished() const;

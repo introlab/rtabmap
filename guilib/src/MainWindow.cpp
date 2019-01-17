@@ -1905,6 +1905,22 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 				uInsert(labels, std::pair<int, std::string>(*iter)); // overwrite labels because they could have been modified
 			}
 
+			if(_preferencesDialog->isPriorIgnored() &&
+				_ui->graphicsView_graphView->getWorldMapRotation()==0.0f &&
+				stat.getLastSignatureData().sensorData().gps().stamp()!=0.0 &&
+				stat.poses().find(stat.getLastSignatureData().id())!=stat.poses().end())
+			{
+				float bearing = (float)((-(stat.getLastSignatureData().sensorData().gps().bearing()-90))*M_PI/180.0);
+				float gpsRotationOffset = stat.poses().at(stat.getLastSignatureData().id()).theta()-bearing;
+				_ui->graphicsView_graphView->setWorldMapRotation(gpsRotationOffset);
+			}
+			else if(!_preferencesDialog->isPriorIgnored() &&
+					_ui->graphicsView_graphView->getWorldMapRotation() != 0.0f)
+			{
+				_ui->graphicsView_graphView->setWorldMapRotation(0.0f);
+			}
+
+
 			std::map<int, Transform> poses = stat.poses();
 
 			UDEBUG("time= %d ms", time.restart());

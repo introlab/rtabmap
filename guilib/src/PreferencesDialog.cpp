@@ -5422,6 +5422,10 @@ int PreferencesDialog::getKpMaxFeatures() const
 {
 	return _ui->surf_spinBox_wordsPerImageTarget->value();
 }
+bool PreferencesDialog::isPriorIgnored() const
+{
+	return _ui->graphOptimization_priorsIgnored->isChecked();
+}
 
 /*** SETTERS ***/
 void PreferencesDialog::setInputRate(double value)
