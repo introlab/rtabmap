@@ -1565,9 +1565,12 @@ Transform RegistrationVis::computeTransformationImpl(
 				}
 				if(toSignature.getWords().size() && cameraModelTo.isValidForProjection())
 				{
-					float depthTo = util3d::transformPoint(toSignature.getWords3().find(wordId)->second, invLocalTransformTo).z;
+					float depthTo = 0.0f;
+					if(toSignature.getWords3().find(wordId) != toSignature.getWords3().end())
+					{
+						depthTo = util3d::transformPoint(toSignature.getWords3().find(wordId)->second, invLocalTransformTo).z;
+					}
 					const cv::KeyPoint & kpt = toSignature.getWords().find(wordId)->second;
-					UASSERT(toSignature.getWords3().find(wordId) != toSignature.getWords3().end());
 					ptMap.insert(std::make_pair(2,FeatureBA(kpt, depthTo)));
 				}
 
