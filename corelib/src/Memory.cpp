@@ -652,7 +652,7 @@ void Memory::parseParameters(const ParametersMap & parameters)
 			float corRatio = Parameters::defaultIcpCorrespondenceRatio();
 			Parameters::parse(parameters, Parameters::kIcpCorrespondenceRatio(), corRatio);
 			ParametersMap paramsMulti = params;
-			paramsMulti.insert(ParametersPair(Parameters::kIcpCorrespondenceRatio(), uNumber2Str(corRatio>=0.5f?1.0f:corRatio*2.0f)));
+			uInsert(paramsMulti, ParametersPair(Parameters::kIcpCorrespondenceRatio(), uNumber2Str(corRatio>=0.5f?1.0f:corRatio*2.0f)));
 			if(corRatio >= 0.5)
 			{
 				UWARN(	"%s is >=0.5, which sets correspondence ratio for proximity detection using "
