@@ -68,7 +68,6 @@ SET(SRC_FILES
 	optimizer/OptimizerG2O.cpp
 	optimizer/OptimizerGTSAM.cpp
 	optimizer/OptimizerCVSBA.cpp
-	optimizer/g2o/edge_se3_xyzprior.cpp
 	
 	Registration.cpp
 	RegistrationIcp.cpp
@@ -284,10 +283,13 @@ IF(G2O_FOUND)
 		${LIBRARIES}
 		${G2O_LIBRARIES}
 	)
-	
+	SET(SRC_FILES
+    		${SRC_FILES}
+		optimizer/g2o/edge_se3_xyzprior.cpp
+	)
 	IF(WITH_VERTIGO)
 		SET(SRC_FILES
-    		${SRC_FILES}
+    			${SRC_FILES}
 			optimizer/vertigo/g2o/edge_se2Switchable.cpp
 			optimizer/vertigo/g2o/edge_se3Switchable.cpp
 			optimizer/vertigo/g2o/edge_switchPrior.cpp
