@@ -5233,7 +5233,8 @@ Camera * PreferencesDialog::createCamera(bool useRawImages, bool useColor)
 				_ui->checkbox_stereoZed_odom->isChecked(),
 				this->getGeneralInputRate(),
 				this->getSourceLocalTransform(),
-				_ui->checkbox_stereoZed_selfCalibration->isChecked());
+				_ui->checkbox_stereoZed_selfCalibration->isChecked(),
+				_ui->loopClosure_bowForce2D->isChecked());
 		}
 		else
 		{
@@ -5246,7 +5247,8 @@ Camera * PreferencesDialog::createCamera(bool useRawImages, bool useColor)
 				_ui->checkbox_stereoZed_odom->isChecked(),
 				this->getGeneralInputRate(),
 				this->getSourceLocalTransform(),
-				_ui->checkbox_stereoZed_selfCalibration->isChecked());
+				_ui->checkbox_stereoZed_selfCalibration->isChecked(),
+				_ui->loopClosure_bowForce2D->isChecked());
 		}
 	}
 	else if(driver == kSrcUsbDevice)

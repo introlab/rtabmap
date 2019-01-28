@@ -55,7 +55,8 @@ CameraStereoZed::CameraStereoZed(
 		bool computeOdometry,
 		float imageRate,
 		const Transform & localTransform,
-		bool selfCalibration) :
+		bool selfCalibration,
+		bool odomForce3DoF) :
 	Camera(imageRate, localTransform)
 #ifdef RTABMAP_ZED
     ,
@@ -69,7 +70,8 @@ CameraStereoZed::CameraStereoZed(
 	sensingMode_(sensingMode),
 	confidenceThr_(confidenceThr),
 	computeOdometry_(computeOdometry),
-	lost_(true)
+	lost_(true),
+	force3DoF_(odomForce3DoF)
 #endif
 {
 	UDEBUG("");
@@ -89,7 +91,8 @@ CameraStereoZed::CameraStereoZed(
 		bool computeOdometry,
 		float imageRate,
 		const Transform & localTransform,
-		bool selfCalibration) :
+		bool selfCalibration,
+		bool odomForce3DoF) :
 	Camera(imageRate, localTransform)
 #ifdef RTABMAP_ZED
     ,
@@ -103,7 +106,8 @@ CameraStereoZed::CameraStereoZed(
 	sensingMode_(sensingMode),
 	confidenceThr_(confidenceThr),
 	computeOdometry_(computeOdometry),
-	lost_(true)
+	lost_(true),
+	force3DoF_(odomForce3DoF)
 #endif
 {
 	UDEBUG("");
@@ -339,7 +343,10 @@ SensorData CameraStereoZed::captureImage(CameraInfo * info)
 							//transform x->forward, y->left, z->up
 							Transform opticalTransform(0, 0, 1, 0, -1, 0, 0, 0, 0, -1, 0, 0);
 							info->odomPose = opticalTransform * info->odomPose * opticalTransform.inverse();
-
+							if(force3DoF_)
+							{
+								info->odomPose = info->odomPose.to3DoF();
+							}
 							if (lost_)
 							{
 								info->odomCovariance = cv::Mat::eye(6, 6, CV_64FC1) * 9999.0f; // don't know transform with previous pose
