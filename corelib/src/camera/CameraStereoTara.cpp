@@ -34,8 +34,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UTimer.h>
 #include <rtabmap/utilite/UThreadC.h>
 #include <rtabmap/utilite/UConversion.h>
+#if CV_MAJOR_VERSION > 3
 #include <opencv2/videoio/videoio_c.h>
-
+#endif
 
 namespace rtabmap
 {
