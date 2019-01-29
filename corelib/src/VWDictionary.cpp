@@ -1082,17 +1082,19 @@ std::vector<int> VWDictionary::findNN(const cv::Mat & queryIn) const
 #ifdef HAVE_OPENCV_CUDAFEATURES2D
 				cv::cuda::GpuMat newDescriptorsGpu(query);
 				cv::cuda::GpuMat lastDescriptorsGpu(_dataTree);
+				cv::cuda::GpuMat matchesGpu;
 				cv::Ptr<cv::cuda::DescriptorMatcher> gpuMatcher;
 				if(query.type()==CV_8U)
 				{
 					gpuMatcher = cv::cuda::DescriptorMatcher::createBFMatcher(cv::NORM_HAMMING);
-					gpuMatcher->knnMatchAsync(newDescriptorsGpu, lastDescriptorsGpu, matches, k);
+					gpuMatcher->knnMatchAsync(newDescriptorsGpu, lastDescriptorsGpu, matchesGpu, k);
 				}
 				else
 				{
 					gpuMatcher = cv::cuda::DescriptorMatcher::createBFMatcher(cv::NORM_L2);
-					gpuMatcher->knnMatchAsync(newDescriptorsGpu, lastDescriptorsGpu, matches, k);
+					gpuMatcher->knnMatchAsync(newDescriptorsGpu, lastDescriptorsGpu, matchesGpu, k);
 				}
+				gpuMatcher->knnMatchConvert(matchesGpu, matches);
 #else
 			UERROR("Cannot use brute Force GPU because OpenCV is not built with cuda module.");
 #endif
