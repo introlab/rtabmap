@@ -10,7 +10,8 @@
 
 #pragma once
 
-#include <gtsam/base/DerivedValue.h>
+// DerivedValue.h removed from gtsam repo (Dec 2018): https://github.com/borglab/gtsam/commit/e550f4f2aec423cb3f2791b81cb5858b8826ebac
+#include "DerivedValue.h"
 #include <gtsam/base/Lie.h>
 
 namespace vertigo {
