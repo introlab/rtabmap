@@ -10,7 +10,7 @@
 
 #pragma once
 
-// DerivedValue.h removed from gtsam repo (Dec 2018): https://github.com/borglab/gtsam/commit/e550f4f2aec423cb3f2791b81cb5858b8826ebac
+// DerivedValue2.h removed from gtsam repo (Dec 2018): https://github.com/borglab/gtsam/commit/e550f4f2aec423cb3f2791b81cb5858b8826ebac
 #include "DerivedValue.h"
 #include <gtsam/base/Lie.h>
 
@@ -19,7 +19,7 @@ namespace vertigo {
   /**
    * SwitchVariableLinear is a wrapper around double to allow it to be a Lie type
    */
-  struct SwitchVariableLinear : public gtsam::DerivedValue<SwitchVariableLinear> {
+  struct SwitchVariableLinear : public rtabmap::DerivedValue<SwitchVariableLinear> {
 
     /** default constructor */
     SwitchVariableLinear() : d_(0.0) {};

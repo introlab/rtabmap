@@ -19,7 +19,7 @@ namespace vertigo {
   /**
    * SwitchVariableSigmoid is a wrapper around double to allow it to be a Lie type
    */
-  struct SwitchVariableSigmoid : public gtsam::DerivedValue<SwitchVariableSigmoid> {
+  struct SwitchVariableSigmoid : public rtabmap::DerivedValue<SwitchVariableSigmoid> {
 
     /** default constructor */
     SwitchVariableSigmoid() : d_(10.0) {};
