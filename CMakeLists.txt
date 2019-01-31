@@ -211,10 +211,12 @@ IF(Sqlite3_FOUND)
    MESSAGE(STATUS "Found Sqlite3: ${Sqlite3_INCLUDE_DIRS} ${Sqlite3_LIBRARIES}")
 ENDIF(Sqlite3_FOUND)
 
+IF(WITH_GTSAM)
 find_package(Boost REQUIRED COMPONENTS system timer)
 IF(BOOST_FOUND)
    MESSAGE(STATUS "Found BOOST: ${BOOST_INCLUDE_DIRS} ${BOOST_LIBRARIES}")
 ENDIF(BOOST_FOUND)
+ENDIF()
 
 if(NOT "${PCL_LIBRARIES}" STREQUAL "")
    # fix libproj.so not found on Xenial
