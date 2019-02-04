@@ -325,7 +325,7 @@ void Rtabmap::init(const ParametersMap & parameters, const std::string & databas
 		}
 		std::map<int, Transform> tmp;
 		// Get just the links
-		_memory->getMetricConstraints(uKeysSet(_optimizedPoses), tmp, _constraints, false);
+		_memory->getMetricConstraints(uKeysSet(_optimizedPoses), tmp, _constraints, false, true);
 	}
 
 	if(_databasePath.empty())
