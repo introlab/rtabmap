@@ -111,6 +111,9 @@ ExportCloudsDialog::ExportCloudsDialog(QWidget *parent) :
 	connect(_ui->spinBox_decimation, SIGNAL(valueChanged(int)), this, SIGNAL(configChanged()));
 	connect(_ui->doubleSpinBox_maxDepth, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
 	connect(_ui->doubleSpinBox_minDepth, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
+	connect(_ui->spinBox_decimation_scan, SIGNAL(valueChanged(int)), this, SIGNAL(configChanged()));
+	connect(_ui->doubleSpinBox_rangeMin, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
+	connect(_ui->doubleSpinBox_rangeMax, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
 	connect(_ui->spinBox_fillDepthHoles, SIGNAL(valueChanged(int)), this, SIGNAL(configChanged()));
 	connect(_ui->spinBox_fillDepthHolesError, SIGNAL(valueChanged(int)), this, SIGNAL(configChanged()));
 	connect(_ui->lineEdit_roiRatios, SIGNAL(textChanged(const QString &)), this, SIGNAL(configChanged()));
@@ -305,6 +308,9 @@ void ExportCloudsDialog::saveSettings(QSettings & settings, const QString & grou
 	settings.setValue("regenerate_decimation", _ui->spinBox_decimation->value());
 	settings.setValue("regenerate_max_depth", _ui->doubleSpinBox_maxDepth->value());
 	settings.setValue("regenerate_min_depth", _ui->doubleSpinBox_minDepth->value());
+	settings.setValue("regenerate_scan_decimation", _ui->spinBox_decimation_scan->value());
+	settings.setValue("regenerate_scan_max_range", _ui->doubleSpinBox_rangeMax->value());
+	settings.setValue("regenerate_scan_min_range", _ui->doubleSpinBox_rangeMin->value());
 	settings.setValue("regenerate_fill_size", _ui->spinBox_fillDepthHoles->value());
 	settings.setValue("regenerate_fill_error", _ui->spinBox_fillDepthHolesError->value());
 	settings.setValue("regenerate_roi", _ui->lineEdit_roiRatios->text());
@@ -437,6 +443,9 @@ void ExportCloudsDialog::loadSettings(QSettings & settings, const QString & grou
 	_ui->spinBox_decimation->setValue(settings.value("regenerate_decimation", _ui->spinBox_decimation->value()).toInt());
 	_ui->doubleSpinBox_maxDepth->setValue(settings.value("regenerate_max_depth", _ui->doubleSpinBox_maxDepth->value()).toDouble());
 	_ui->doubleSpinBox_minDepth->setValue(settings.value("regenerate_min_depth", _ui->doubleSpinBox_minDepth->value()).toDouble());
+	_ui->spinBox_decimation_scan->setValue(settings.value("regenerate_scan_decimation", _ui->spinBox_decimation_scan->value()).toInt());
+	_ui->doubleSpinBox_rangeMax->setValue(settings.value("regenerate_scan_max_range", _ui->doubleSpinBox_rangeMax->value()).toDouble());
+	_ui->doubleSpinBox_rangeMin->setValue(settings.value("regenerate_scan_min_range", _ui->doubleSpinBox_rangeMin->value()).toDouble());
 	_ui->spinBox_fillDepthHoles->setValue(settings.value("regenerate_fill_size", _ui->spinBox_fillDepthHoles->value()).toInt());
 	_ui->spinBox_fillDepthHolesError->setValue(settings.value("regenerate_fill_error", _ui->spinBox_fillDepthHolesError->value()).toInt());
 	_ui->lineEdit_roiRatios->setText(settings.value("regenerate_roi", _ui->lineEdit_roiRatios->text()).toString());
@@ -572,6 +581,9 @@ void ExportCloudsDialog::restoreDefaults()
 	_ui->spinBox_decimation->setValue(1);
 	_ui->doubleSpinBox_maxDepth->setValue(4);
 	_ui->doubleSpinBox_minDepth->setValue(0);
+	_ui->spinBox_decimation_scan->setValue(1);
+	_ui->doubleSpinBox_rangeMax->setValue(0);
+	_ui->doubleSpinBox_rangeMin->setValue(0);
 	_ui->spinBox_fillDepthHoles->setValue(0);
 	_ui->spinBox_fillDepthHolesError->setValue(2);
 	_ui->lineEdit_roiRatios->setText("0.0 0.0 0.0 0.0");
@@ -1195,7 +1207,30 @@ void ExportCloudsDialog::viewClouds(
 				{
 					color = (Qt::GlobalColor)(mapId % 12 + 7 );
 				}
-				viewer->addCloud(uFormat("cloud%d",iter->first), iter->second, iter->first>0?poses.at(iter->first):Transform::getIdentity());
+
+				if(!_ui->checkBox_fromDepth->isChecked())
+				{
+					// When laser scans are exported, convert RGB to Intensity
+					pcl::PointCloud<pcl::PointXYZINormal>::Ptr cloudI(new pcl::PointCloud<pcl::PointXYZINormal>);
+					cloudI->resize(iter->second->size());
+					for(unsigned int i=0; i<cloudI->size(); ++i)
+					{
+						cloudI->points[i].x = iter->second->points[i].x;
+						cloudI->points[i].y = iter->second->points[i].y;
+						cloudI->points[i].z = iter->second->points[i].z;
+						cloudI->points[i].normal_x = iter->second->points[i].normal_x;
+						cloudI->points[i].normal_y = iter->second->points[i].normal_y;
+						cloudI->points[i].normal_z = iter->second->points[i].normal_z;
+						cloudI->points[i].curvature = iter->second->points[i].curvature;
+						cloudI->points[i].intensity = (float)iter->second->points[i].r;
+					}
+					viewer->addCloud(uFormat("cloud%d",iter->first), cloudI, iter->first>0?poses.at(iter->first):Transform::getIdentity());
+				}
+				else
+				{
+					viewer->addCloud(uFormat("cloud%d",iter->first), iter->second, iter->first>0?poses.at(iter->first):Transform::getIdentity());
+				}
+
 				viewer->setCloudPointSize(uFormat("cloud%d",iter->first), 2);
 				_progressDialog->appendText(tr("Viewing the cloud %1 (%2 points)... done.").arg(iter->first).arg(iter->second->size()));
 			}
@@ -3047,46 +3082,20 @@ std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::Indic
 				}
 				else if(!_ui->checkBox_fromDepth->isChecked() && !scan.isEmpty())
 				{
-					bool is2D = scan.is2d();
-					pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudWithoutNormals;
-					localTransform = Transform::getIdentity();
-					Eigen::Vector3f viewPoint(0.0f,0.0f,0.0f);
-					localTransform = scan.localTransform();
-					viewPoint[0] = localTransform.x();
-					viewPoint[1] = localTransform.y();
-					viewPoint[2] = localTransform.z();
+					scan = util3d::commonFiltering(scan,
+							_ui->spinBox_decimation_scan->value(),
+							_ui->doubleSpinBox_rangeMin->value(),
+							_ui->doubleSpinBox_rangeMax->value(),
+							_ui->doubleSpinBox_voxelSize_assembled->value(),
+							_ui->spinBox_normalKSearch->value(),
+							_ui->doubleSpinBox_normalRadiusSearch->value());
 
-					cloudWithoutNormals = util3d::laserScanToPointCloudRGB(scan, localTransform); // put in base frame by default
-					if(cloudWithoutNormals->size())
+					localTransform = scan.localTransform();
+					cloud = util3d::laserScanToPointCloudRGBNormal(scan, localTransform); // put in base frame by default
+					indices->resize(cloud->size());
+					for(unsigned int i=0; i<indices->size(); ++i)
 					{
-						if(_ui->doubleSpinBox_voxelSize_assembled->value()>0.0)
-						{
-							cloudWithoutNormals = util3d::voxelize(cloudWithoutNormals, _ui->doubleSpinBox_voxelSize_assembled->value());
-						}
-						indices->resize(cloudWithoutNormals->size());
-						for(unsigned int i=0; i<indices->size(); ++i)
-						{
-							indices->at(i) = i;
-						}
-						pcl::PointCloud<pcl::Normal>::Ptr normals;
-						if(is2D)
-						{
-							// set nan normals
-							normals.reset(new pcl::PointCloud<pcl::Normal>);
-							normals->resize(cloudWithoutNormals->size());
-							for(unsigned int i=0;i<cloudWithoutNormals->size(); ++i)
-							{
-								normals->points[i].normal_x =std::numeric_limits<float>::quiet_NaN();
-								normals->points[i].normal_y =std::numeric_limits<float>::quiet_NaN();
-								normals->points[i].normal_z =std::numeric_limits<float>::quiet_NaN();
-							}
-							has2dScans = true;
-						}
-						else
-						{
-							normals = util3d::computeNormals(cloudWithoutNormals, indices, _ui->spinBox_normalKSearch->value(), _ui->doubleSpinBox_normalRadiusSearch->value(), viewPoint);
-						}
-						pcl::concatenateFields(*cloudWithoutNormals, *normals, *cloud);
+						indices->at(i) = i;
 					}
 				}
 				else
@@ -3170,47 +3179,20 @@ std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::Indic
 			}
 			else if(!_ui->checkBox_fromDepth->isChecked() && uContains(cachedScans, iter->first))
 			{
-				pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudWithoutNormals;
+				LaserScan scan = util3d::commonFiltering(cachedScans.at(iter->first),
+							_ui->spinBox_decimation_scan->value(),
+							_ui->doubleSpinBox_rangeMin->value(),
+							_ui->doubleSpinBox_rangeMax->value(),
+							_ui->doubleSpinBox_voxelSize_assembled->value(),
+							_ui->spinBox_normalKSearch->value(),
+							_ui->doubleSpinBox_normalRadiusSearch->value());
 
-				localTransform = cachedScans.at(iter->first).localTransform();
-				Eigen::Vector3f viewPoint(0.0f,0.0f,0.0f);
-				viewPoint[0] = localTransform.x();
-				viewPoint[1] = localTransform.y();
-				viewPoint[2] = localTransform.z();
-
-				bool is2D = cachedScans.at(iter->first).is2d();
-				cloudWithoutNormals = util3d::laserScanToPointCloudRGB(cachedScans.at(iter->first), cachedScans.at(iter->first).localTransform());
-				if(cloudWithoutNormals->size())
+				localTransform = scan.localTransform();
+				cloud = util3d::laserScanToPointCloudRGBNormal(scan, localTransform); // put in base frame by default
+				indices->resize(cloud->size());
+				for(unsigned int i=0; i<indices->size(); ++i)
 				{
-					if(_ui->doubleSpinBox_voxelSize_assembled->value()>0.0)
-					{
-						cloudWithoutNormals = util3d::voxelize(cloudWithoutNormals, _ui->doubleSpinBox_voxelSize_assembled->value());
-					}
-					indices->resize(cloudWithoutNormals->size());
-					for(unsigned int i=0; i<indices->size(); ++i)
-					{
-						indices->at(i) = i;
-					}
-
-					pcl::PointCloud<pcl::Normal>::Ptr normals;
-					if(is2D)
-					{
-						// set nan normals
-						normals.reset(new pcl::PointCloud<pcl::Normal>);
-						normals->resize(cloudWithoutNormals->size());
-						for(unsigned int i=0;i<cloudWithoutNormals->size(); ++i)
-						{
-							normals->points[i].normal_x =std::numeric_limits<float>::quiet_NaN();
-							normals->points[i].normal_y =std::numeric_limits<float>::quiet_NaN();
-							normals->points[i].normal_z =std::numeric_limits<float>::quiet_NaN();
-						}
-						has2dScans = true;
-					}
-					else
-					{
-						normals = util3d::computeNormals(cloudWithoutNormals, indices, _ui->spinBox_normalKSearch->value(), _ui->doubleSpinBox_normalRadiusSearch->value(), viewPoint);
-					}
-					pcl::concatenateFields(*cloudWithoutNormals, *normals, *cloud);
+					indices->at(i) = i;
 				}
 			}
 			else
@@ -3297,22 +3279,62 @@ void ExportCloudsDialog::saveClouds(
 		{
 			if(clouds.begin()->second->size())
 			{
+				pcl::PointCloud<pcl::PointXYZINormal>::Ptr cloudI;
+				if(!_ui->checkBox_fromDepth->isChecked())
+				{
+					// When laser scans are exported, convert RGB to Intensity
+					cloudI.reset(new pcl::PointCloud<pcl::PointXYZINormal>);
+					cloudI->resize(clouds.begin()->second->size());
+					for(unsigned int i=0; i<cloudI->size(); ++i)
+					{
+						cloudI->points[i].x = clouds.begin()->second->points[i].x;
+						cloudI->points[i].y = clouds.begin()->second->points[i].y;
+						cloudI->points[i].z = clouds.begin()->second->points[i].z;
+						cloudI->points[i].normal_x = clouds.begin()->second->points[i].normal_x;
+						cloudI->points[i].normal_y = clouds.begin()->second->points[i].normal_y;
+						cloudI->points[i].normal_z = clouds.begin()->second->points[i].normal_z;
+						cloudI->points[i].curvature = clouds.begin()->second->points[i].curvature;
+						cloudI->points[i].intensity = (float)clouds.begin()->second->points[i].r;
+					}
+				}
+
 				_progressDialog->appendText(tr("Saving the cloud (%1 points)...").arg(clouds.begin()->second->size()));
 
 				bool success =false;
 				if(QFileInfo(path).suffix() == "pcd")
 				{
-					success = pcl::io::savePCDFile(path.toStdString(), *clouds.begin()->second, binaryMode) == 0;
+					if(cloudI.get())
+					{
+						success = pcl::io::savePCDFile(path.toStdString(), *cloudI, binaryMode) == 0;
+					}
+					else
+					{
+						success = pcl::io::savePCDFile(path.toStdString(), *clouds.begin()->second, binaryMode) == 0;
+					}
 				}
 				else if(QFileInfo(path).suffix() == "ply")
 				{
-					success = pcl::io::savePLYFile(path.toStdString(), *clouds.begin()->second, binaryMode) == 0;
+					if(cloudI.get())
+					{
+						success = pcl::io::savePLYFile(path.toStdString(), *cloudI, binaryMode) == 0;
+					}
+					else
+					{
+						success = pcl::io::savePLYFile(path.toStdString(), *clouds.begin()->second, binaryMode) == 0;
+					}
 				}
 				else if(QFileInfo(path).suffix() == "")
 				{
 					//use ply by default
 					path += ".ply";
-					success = pcl::io::savePLYFile(path.toStdString(), *clouds.begin()->second, binaryMode) == 0;
+					if(cloudI.get())
+					{
+						success = pcl::io::savePLYFile(path.toStdString(), *cloudI, binaryMode) == 0;
+					}
+					else
+					{
+						success = pcl::io::savePLYFile(path.toStdString(), *clouds.begin()->second, binaryMode) == 0;
+					}
 				}
 				else
 				{
@@ -3360,15 +3382,48 @@ void ExportCloudsDialog::saveClouds(
 							pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr transformedCloud;
 							transformedCloud = util3d::transformPointCloud(iter->second, !_ui->comboBox_frame->isEnabled()||_ui->comboBox_frame->currentIndex()==0?poses.at(iter->first):Transform::getIdentity());
 
+							pcl::PointCloud<pcl::PointXYZINormal>::Ptr cloudI;
+							if(!_ui->checkBox_fromDepth->isChecked())
+							{
+								// When laser scans are exported, convert RGB to Intensity
+								cloudI.reset(new pcl::PointCloud<pcl::PointXYZINormal>);
+								cloudI->resize(transformedCloud->size());
+								for(unsigned int i=0; i<cloudI->size(); ++i)
+								{
+									cloudI->points[i].x = transformedCloud->points[i].x;
+									cloudI->points[i].y = transformedCloud->points[i].y;
+									cloudI->points[i].z = transformedCloud->points[i].z;
+									cloudI->points[i].normal_x = transformedCloud->points[i].normal_x;
+									cloudI->points[i].normal_y = transformedCloud->points[i].normal_y;
+									cloudI->points[i].normal_z = transformedCloud->points[i].normal_z;
+									cloudI->points[i].curvature = transformedCloud->points[i].curvature;
+									cloudI->points[i].intensity = (float)transformedCloud->points[i].r;
+								}
+							}
+
 							QString pathFile = path+QDir::separator()+QString("%1%2.%3").arg(prefix).arg(iter->first).arg(suffix);
 							bool success =false;
 							if(suffix == "pcd")
 							{
-								success = pcl::io::savePCDFile(pathFile.toStdString(), *transformedCloud, binaryMode) == 0;
+								if(cloudI.get())
+								{
+									success = pcl::io::savePCDFile(pathFile.toStdString(), *cloudI, binaryMode) == 0;
+								}
+								else
+								{
+									success = pcl::io::savePCDFile(pathFile.toStdString(), *transformedCloud, binaryMode) == 0;
+								}
 							}
 							else if(suffix == "ply")
 							{
-								success = pcl::io::savePLYFile(pathFile.toStdString(), *transformedCloud, binaryMode) == 0;
+								if(cloudI.get())
+								{
+									success = pcl::io::savePLYFile(pathFile.toStdString(), *cloudI, binaryMode) == 0;
+								}
+								else
+								{
+									success = pcl::io::savePLYFile(pathFile.toStdString(), *transformedCloud, binaryMode) == 0;
+								}
 							}
 							else
 							{

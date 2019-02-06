@@ -792,6 +792,10 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr removeNaNFromPointCloud(const pcl::PointC
 {
 	return removeNaNFromPointCloudImpl<pcl::PointXYZRGB>(cloud);
 }
+pcl::PointCloud<pcl::PointXYZI>::Ptr removeNaNFromPointCloud(const pcl::PointCloud<pcl::PointXYZI>::Ptr & cloud)
+{
+	return removeNaNFromPointCloudImpl<pcl::PointXYZI>(cloud);
+}
 
 template<typename PointT>
 typename pcl::PointCloud<PointT>::Ptr removeNaNNormalsFromPointCloudImpl(
@@ -811,6 +815,11 @@ pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr removeNaNNormalsFromPointCloud(
 		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud)
 {
 	return removeNaNNormalsFromPointCloudImpl<pcl::PointXYZRGBNormal>(cloud);
+}
+pcl::PointCloud<pcl::PointXYZINormal>::Ptr removeNaNNormalsFromPointCloud(
+		const pcl::PointCloud<pcl::PointXYZINormal>::Ptr & cloud)
+{
+	return removeNaNNormalsFromPointCloudImpl<pcl::PointXYZINormal>(cloud);
 }
 
 

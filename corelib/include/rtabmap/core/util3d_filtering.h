@@ -316,12 +316,16 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP removeNaNFromPointCloud(
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud);
 pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_EXP removeNaNFromPointCloud(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud);
+pcl::PointCloud<pcl::PointXYZI>::Ptr RTABMAP_EXP removeNaNFromPointCloud(
+		const pcl::PointCloud<pcl::PointXYZI>::Ptr & cloud);
 
 
 pcl::PointCloud<pcl::PointNormal>::Ptr RTABMAP_EXP removeNaNNormalsFromPointCloud(
 		const pcl::PointCloud<pcl::PointNormal>::Ptr & cloud);
 pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr RTABMAP_EXP removeNaNNormalsFromPointCloud(
 		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud);
+pcl::PointCloud<pcl::PointXYZINormal>::Ptr RTABMAP_EXP removeNaNNormalsFromPointCloud(
+		const pcl::PointCloud<pcl::PointXYZINormal>::Ptr & cloud);
 
 /**
  * For convenience.

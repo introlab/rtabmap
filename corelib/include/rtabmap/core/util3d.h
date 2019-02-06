@@ -234,12 +234,12 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP laserScanToPointCloud(const Lase
 // For laserScan without normals, normals are set to null.
 pcl::PointCloud<pcl::PointNormal>::Ptr RTABMAP_EXP laserScanToPointCloudNormal(const LaserScan & laserScan, const Transform & transform = Transform());
 // For laserScan without rgb, rgb is set to default r,g,b parameters.
-pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_EXP laserScanToPointCloudRGB(const LaserScan & laserScan, const Transform & transform = Transform(), unsigned char r = 255, unsigned char g = 255, unsigned char b = 255);
+pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_EXP laserScanToPointCloudRGB(const LaserScan & laserScan, const Transform & transform = Transform(), unsigned char r = 100, unsigned char g = 100, unsigned char b = 100);
 // For laserScan without intensity, intensity is set to intensity parameter.
 pcl::PointCloud<pcl::PointXYZI>::Ptr RTABMAP_EXP laserScanToPointCloudI(const LaserScan & laserScan, const Transform & transform = Transform(), float intensity = 0.0f);
 // For laserScan without rgb, rgb is set to default r,g,b parameters.
 // For laserScan without normals, normals are set to null.
-pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr RTABMAP_EXP laserScanToPointCloudRGBNormal(const LaserScan & laserScan, const Transform & transform = Transform(), unsigned char r = 255, unsigned char g = 255, unsigned char b = 255);
+pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr RTABMAP_EXP laserScanToPointCloudRGBNormal(const LaserScan & laserScan, const Transform & transform = Transform(), unsigned char r = 100, unsigned char g = 100, unsigned char b = 100);
 // For laserScan without intensity, intensity is set to default intensity parameter.
 // For laserScan without normals, normals are set to null.
 pcl::PointCloud<pcl::PointXYZINormal>::Ptr RTABMAP_EXP laserScanToPointCloudINormal(const LaserScan & laserScan, const Transform & transform = Transform(), float intensity = 0.0f);
@@ -249,7 +249,7 @@ pcl::PointXYZ RTABMAP_EXP laserScanToPoint(const LaserScan & laserScan, int inde
 // For laserScan without normals, normals are set to null.
 pcl::PointNormal RTABMAP_EXP laserScanToPointNormal(const LaserScan & laserScan, int index);
 // For laserScan without rgb, rgb is set to default r,g,b parameters.
-pcl::PointXYZRGB RTABMAP_EXP laserScanToPointRGB(const LaserScan & laserScan, int index, unsigned char r = 255, unsigned char g = 255, unsigned char b = 255);
+pcl::PointXYZRGB RTABMAP_EXP laserScanToPointRGB(const LaserScan & laserScan, int index, unsigned char r = 100, unsigned char g = 100, unsigned char b = 100);
 // For laserScan without intensity, intensity is set to intensity parameter.
 pcl::PointXYZI RTABMAP_EXP laserScanToPointI(const LaserScan & laserScan, int index, float intensity);
 // For laserScan without rgb, rgb is set to default r,g,b parameters.

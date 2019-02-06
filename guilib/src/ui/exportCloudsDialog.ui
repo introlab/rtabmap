@@ -23,9 +23,9 @@
       <property name="geometry">
        <rect>
         <x>0</x>
-        <y>-1112</y>
-        <width>773</width>
-        <height>4339</height>
+        <y>0</y>
+        <width>780</width>
+        <height>4775</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_13">
@@ -299,7 +299,7 @@
        <item>
         <widget class="QGroupBox" name="groupBox_regenerateScans">
          <property name="title">
-          <string>Regenerate clouds</string>
+          <string>Regenerate Scans</string>
          </property>
          <layout class="QGridLayout" name="gridLayout_18" columnstretch="0,1">
           <item row="0" column="0">
@@ -319,6 +319,64 @@
            <widget class="QLabel" name="label_109">
             <property name="text">
              <string>Downsampling step.</string>
+            </property>
+            <property name="wordWrap">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="1">
+           <widget class="QLabel" name="label_138">
+            <property name="text">
+             <string>Minimum range.</string>
+            </property>
+            <property name="wordWrap">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="0">
+           <widget class="QDoubleSpinBox" name="doubleSpinBox_rangeMin">
+            <property name="suffix">
+             <string> m</string>
+            </property>
+            <property name="decimals">
+             <number>1</number>
+            </property>
+            <property name="maximum">
+             <double>100.000000000000000</double>
+            </property>
+            <property name="singleStep">
+             <double>0.100000000000000</double>
+            </property>
+            <property name="value">
+             <double>0.000000000000000</double>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="0">
+           <widget class="QDoubleSpinBox" name="doubleSpinBox_rangeMax">
+            <property name="suffix">
+             <string> m</string>
+            </property>
+            <property name="decimals">
+             <number>1</number>
+            </property>
+            <property name="maximum">
+             <double>1000.000000000000000</double>
+            </property>
+            <property name="singleStep">
+             <double>0.100000000000000</double>
+            </property>
+            <property name="value">
+             <double>0.000000000000000</double>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="1">
+           <widget class="QLabel" name="label_139">
+            <property name="text">
+             <string>Maximum range (0 means no limit).</string>
             </property>
             <property name="wordWrap">
              <bool>true</bool>
