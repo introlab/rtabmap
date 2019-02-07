@@ -2560,36 +2560,28 @@ float computeNormalsComplexity(
 		bool is2d = scan.is2d();
 		cv::Mat data_normals = cv::Mat::zeros(sz, is2d?2:3, CV_32FC1);
 		int oi = 0;
-		int nOffset = 0;
-		if(!scan.is2d())
-		{
-			nOffset+=1;
-		}
-		if(scan.hasIntensity() || scan.hasRGB())
-		{
-			nOffset+=1;
-		}
+		int nOffset = scan.getNormalsOffset();
 		for (int i = 0; i < scan.size(); ++i)
 		{
 			const float * ptrScan = scan.data().ptr<float>(0, i);
 
 			if(is2d)
 			{
-				if(uIsFinite(ptrScan[nOffset+2]) && uIsFinite(ptrScan[nOffset+3]))
+				if(uIsFinite(ptrScan[nOffset]) && uIsFinite(ptrScan[nOffset+1]))
 				{
 					float * ptr = data_normals.ptr<float>(oi++, 0);
-					ptr[0] = ptrScan[2];
-					ptr[1] = ptrScan[3];
+					ptr[0] = ptrScan[nOffset];
+					ptr[1] = ptrScan[nOffset+1];
 				}
 			}
 			else
 			{
-				if(uIsFinite(ptrScan[nOffset+2]) && uIsFinite(ptrScan[nOffset+3]) && uIsFinite(ptrScan[nOffset+4]))
+				if(uIsFinite(ptrScan[nOffset]) && uIsFinite(ptrScan[nOffset+1]) && uIsFinite(ptrScan[nOffset+2]))
 				{
 					float * ptr = data_normals.ptr<float>(oi++, 0);
-					ptr[0] = ptrScan[3];
-					ptr[1] = ptrScan[4];
-					ptr[2] = ptrScan[5];
+					ptr[0] = ptrScan[nOffset];
+					ptr[1] = ptrScan[nOffset+1];
+					ptr[2] = ptrScan[nOffset+2];
 				}
 			}
 		}

@@ -49,7 +49,8 @@ public:
 		kXYZINormal=9,
 		kXYZRGBNormal=10};
 
-	static int channels(Format format);
+	static std::string formatName(const Format & format);
+	static int channels(const Format & format);
 	static bool isScan2d(const Format & format);
 	static bool isScanHasNormals(const Format & format);
 	static bool isScanHasRGB(const Format & format);
@@ -86,6 +87,8 @@ public:
 
 	const cv::Mat & data() const {return data_;}
 	Format format() const {return format_;}
+	std::string formatName() const {return formatName(format_);}
+	int channels() const {return data_.channels();}
 	int maxPoints() const {return maxPoints_;}
 	float rangeMin() const {return rangeMin_;}
 	float rangeMax() const {return rangeMax_;}

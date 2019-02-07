@@ -83,7 +83,25 @@ LaserScan transformLaserScan(const LaserScan & laserScan, const Transform & tran
 			}
 		}
 	}
-	return LaserScan(output, laserScan.maxPoints(), laserScan.rangeMax(), laserScan.format(), laserScan.localTransform());
+	if(laserScan.angleIncrement() > 0.0f)
+	{
+		return LaserScan(output,
+				laserScan.format(),
+				laserScan.rangeMin(),
+				laserScan.rangeMax(),
+				laserScan.angleMin(),
+				laserScan.angleMax(),
+				laserScan.angleIncrement(),
+				laserScan.localTransform());
+	}
+	else
+	{
+		return LaserScan(output,
+				laserScan.maxPoints(),
+				laserScan.rangeMax(),
+				laserScan.format(),
+				laserScan.localTransform());
+	}
 }
 
 pcl::PointCloud<pcl::PointXYZ>::Ptr transformPointCloud(

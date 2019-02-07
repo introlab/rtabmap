@@ -31,7 +31,48 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 namespace rtabmap {
 
-int LaserScan::channels(Format format)
+std::string LaserScan::formatName(const Format & format)
+{
+	std::string name;
+	switch (format) {
+		case kXY:
+			name = "XY";
+			break;
+		case kXYZ:
+			name = "XYZ";
+			break;
+		case kXYI:
+			name = "XYI";
+			break;
+		case kXYZI:
+			name = "XYZI";
+			break;
+		case kXYZRGB:
+			name = "XYZRGB";
+			break;
+		case kXYNormal:
+			name = "XYNormal";
+			break;
+		case kXYZNormal:
+			name = "XYZNormal";
+			break;
+		case kXYINormal:
+			name = "XYINormal";
+			break;
+		case kXYZINormal:
+			name = "XYZINormal";
+			break;
+		case kXYZRGBNormal:
+			name = "XYZRGBNormal";
+			break;
+		default:
+			name = "Unknown";
+			break;
+	}
+	return name;
+}
+
+int LaserScan::channels(const Format & format)
 {
 	int channels=0;
 	switch (format) {
@@ -196,12 +237,12 @@ LaserScan::LaserScan(
 		}
 		else // verify that format corresponds to expected number of channels
 		{
-			UASSERT_MSG(data.channels() != 2 || (data.channels() == 2 && format == kXY), uFormat("format=%d", format).c_str());
-			UASSERT_MSG(data.channels() != 3 || (data.channels() == 3 && (format == kXYZ || format == kXYI)), uFormat("format=%d", format).c_str());
-			UASSERT_MSG(data.channels() != 4 || (data.channels() == 4 && (format == kXYZI || format == kXYZRGB)), uFormat("format=%d", format).c_str());
-			UASSERT_MSG(data.channels() != 5 || (data.channels() == 5 && (format == kXYNormal)), uFormat("format=%d", format).c_str());
-			UASSERT_MSG(data.channels() != 6 || (data.channels() == 6 && (format == kXYINormal || format == kXYZNormal)), uFormat("format=%d", format).c_str());
-			UASSERT_MSG(data.channels() != 7 || (data.channels() == 7 && (format == kXYZRGBNormal || format == kXYZINormal)), uFormat("format=%d", format).c_str());
+			UASSERT_MSG(data.channels() != 2 || (data.channels() == 2 && format == kXY), uFormat("format=%s", LaserScan::formatName(format).c_str()).c_str());
+			UASSERT_MSG(data.channels() != 3 || (data.channels() == 3 && (format == kXYZ || format == kXYI)), uFormat("format=%s", LaserScan::formatName(format).c_str()).c_str());
+			UASSERT_MSG(data.channels() != 4 || (data.channels() == 4 && (format == kXYZI || format == kXYZRGB)), uFormat("format=%s", LaserScan::formatName(format).c_str()).c_str());
+			UASSERT_MSG(data.channels() != 5 || (data.channels() == 5 && (format == kXYNormal)), uFormat("format=%s", LaserScan::formatName(format).c_str()).c_str());
+			UASSERT_MSG(data.channels() != 6 || (data.channels() == 6 && (format == kXYINormal || format == kXYZNormal)), uFormat("format=%s", LaserScan::formatName(format).c_str()).c_str());
+			UASSERT_MSG(data.channels() != 7 || (data.channels() == 7 && (format == kXYZRGBNormal || format == kXYZINormal)), uFormat("format=%s", LaserScan::formatName(format).c_str()).c_str());
 		}
 	}
 }
@@ -248,12 +289,12 @@ LaserScan::LaserScan(
 		}
 		else // verify that format corresponds to expected number of channels
 		{
-			UASSERT_MSG(data.channels() != 2 || (data.channels() == 2 && format == kXY), uFormat("format=%d", format).c_str());
-			UASSERT_MSG(data.channels() != 3 || (data.channels() == 3 && (format == kXYZ || format == kXYI)), uFormat("format=%d", format).c_str());
-			UASSERT_MSG(data.channels() != 4 || (data.channels() == 4 && (format == kXYZI || format == kXYZRGB)), uFormat("format=%d", format).c_str());
-			UASSERT_MSG(data.channels() != 5 || (data.channels() == 5 && (format == kXYNormal)), uFormat("format=%d", format).c_str());
-			UASSERT_MSG(data.channels() != 6 || (data.channels() == 6 && (format == kXYINormal || format == kXYZNormal)), uFormat("format=%d", format).c_str());
-			UASSERT_MSG(data.channels() != 7 || (data.channels() == 7 && (format == kXYZRGBNormal || format == kXYZINormal)), uFormat("format=%d", format).c_str());
+			UASSERT_MSG(data.channels() != 2 || (data.channels() == 2 && format == kXY), uFormat("format=%s", LaserScan::formatName(format).c_str()).c_str());
+			UASSERT_MSG(data.channels() != 3 || (data.channels() == 3 && (format == kXYZ || format == kXYI)), uFormat("format=%s", LaserScan::formatName(format).c_str()).c_str());
+			UASSERT_MSG(data.channels() != 4 || (data.channels() == 4 && (format == kXYZI || format == kXYZRGB)), uFormat("format=%s", LaserScan::formatName(format).c_str()).c_str());
+			UASSERT_MSG(data.channels() != 5 || (data.channels() == 5 && (format == kXYNormal)), uFormat("format=%s", LaserScan::formatName(format).c_str()).c_str());
+			UASSERT_MSG(data.channels() != 6 || (data.channels() == 6 && (format == kXYINormal || format == kXYZNormal)), uFormat("format=%s", LaserScan::formatName(format).c_str()).c_str());
+			UASSERT_MSG(data.channels() != 7 || (data.channels() == 7 && (format == kXYZRGBNormal || format == kXYZINormal)), uFormat("format=%s", LaserScan::formatName(format).c_str()).c_str());
 		}
 	}
 }

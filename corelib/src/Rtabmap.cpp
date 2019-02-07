@@ -2321,7 +2321,7 @@ bool Rtabmap::process(
 							}
 
 							// Assemble scans in the path and do ICP only
-							std::map<int, Transform> filteredPath;
+							std::map<int, Transform> optimizedLocalPath;
 							if(_proximityRawPosesUsed)
 							{
 								//optimize the path's poses locally
@@ -2333,20 +2333,25 @@ bool Rtabmap::process(
 
 								for(std::map<int, Transform>::iterator jter=path.lower_bound(1); jter!=path.end(); ++jter)
 								{
-									filteredPath.insert(std::make_pair(jter->first, t * jter->second));
+									optimizedLocalPath.insert(std::make_pair(jter->first, t * jter->second));
 								}
 							}
 							else
 							{
-								filteredPath = path;
+								optimizedLocalPath = path;
 							}
 
-							if(filteredPath.size() > 2 && _proximityFilteringRadius > 0.0f)
+							std::map<int, Transform> filteredPath;
+							if(optimizedLocalPath.size() > 2 && _proximityFilteringRadius > 0.0f)
 							{
 								// path filtering
-								filteredPath = graph::radiusPosesFiltering(filteredPath, _proximityFilteringRadius, 0, true);
+								filteredPath = graph::radiusPosesFiltering(optimizedLocalPath, _proximityFilteringRadius, 0, true);
 								// make sure the current pose is still here
-								filteredPath.insert(*path.find(nearestId));
+								filteredPath.insert(*optimizedLocalPath.find(nearestId));
+							}
+							else
+							{
+								filteredPath = optimizedLocalPath;
 							}
 
 							if(filteredPath.size() > 0)
@@ -2371,9 +2376,9 @@ bool Rtabmap::process(
 										{
 											std::stringstream stream;
 											stream << "SCANS:";
-											for(std::map<int, Transform>::iterator iter=filteredPath.begin(); iter!=filteredPath.end(); ++iter)
+											for(std::map<int, Transform>::iterator iter=optimizedLocalPath.begin(); iter!=optimizedLocalPath.end(); ++iter)
 											{
-												if(iter != filteredPath.begin())
+												if(iter != optimizedLocalPath.begin())
 												{
 													stream << ";";
 												}
