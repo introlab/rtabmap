@@ -314,7 +314,7 @@ public:
         }
     }
 
-#ifdef ANDROID
+#ifdef FLANN_KDTREE_MEM_OPT
 
     /**
 	 * Find set of nearest neighbors to vec. Their indices are stored inside
@@ -908,7 +908,7 @@ private:
 
     }
 
-#ifdef ANDROID
+#ifdef FLANN_KDTREE_MEM_OPT
     /**
 	 * Performs the approximate nearest-neighbor search. The search is approximate
 	 * because the tree traversal is abandoned after a given number of descends in
