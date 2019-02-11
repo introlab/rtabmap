@@ -287,6 +287,7 @@ private:
 	bool _saveDepth16Format;
 	bool _notLinkedNodesKeptInDb;
 	bool _saveIntermediateNodeData;
+	std::string _rgbCompressionFormat;
 	bool _incrementalMemory;
 	bool _reduceGraph;
 	int _maxStMemSize;
