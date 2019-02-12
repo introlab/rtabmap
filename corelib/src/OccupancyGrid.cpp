@@ -1333,10 +1333,9 @@ void OccupancyGrid::update(const std::map<int, Transform> & posesIn)
 								info[2] = ptf[1];
 								cter->second.second+=1;
 							}
-							value = 100; // obstacles
 
 							// update odds
-							if(nodeId != kter->first)
+							if(nodeId != kter->first || value!=100)
 							{
 								info[3] += probHit_;
 								if (info[3] < probClampingMin_)
@@ -1348,6 +1347,8 @@ void OccupancyGrid::update(const std::map<int, Transform> & posesIn)
 									info[3] = probClampingMax_;
 								}
 							}
+
+							value = 100; // obstacles
 						}
 					}
 				}
