@@ -1334,11 +1334,11 @@ int RTABMapApp::Render()
 						int smallMovement = (int)uValue(stats.data(), rtabmap::Statistics::kMemorySmall_movement(), 0.0f);
 						int fastMovement = (int)uValue(stats.data(), rtabmap::Statistics::kMemoryFast_movement(), 0.0f);
 						int rehearsalMerged = (int)uValue(stats.data(), rtabmap::Statistics::kMemoryRehearsal_merged(), 0.0f);
-						if(!localizationMode_ && stats.getSignatures().size() &&
+						if(!localizationMode_ && stats.getLastSignatureData().id() > 0 &&
 							smallMovement == 0 && rehearsalMerged == 0 && fastMovement == 0)
 						{
-							int id = stats.getSignatures().rbegin()->first;
-							const rtabmap::Signature & s = stats.getSignatures().rbegin()->second;
+							int id = stats.getLastSignatureData().id();
+							const rtabmap::Signature & s = stats.getLastSignatureData();
 
 							if(!trajectoryMode_ &&
 							   !s.sensorData().imageRaw().empty() &&
@@ -3303,7 +3303,7 @@ bool RTABMapApp::handleEvent(UEvent * event)
 		{
 			const rtabmap::Statistics & stats = ((PostRenderEvent*)event)->getRtabmapEvent()->getStats();
 			loopClosureId = stats.loopClosureId()>0?stats.loopClosureId():stats.proximityDetectionId()>0?stats.proximityDetectionId():0;
-			featuresExtracted = stats.getSignatures().size()?stats.getSignatures().rbegin()->second.getWords().size():0;
+			featuresExtracted = stats.getLastSignatureData().getWords().size();
 
 			uInsert(bufferedStatsData_, std::make_pair<std::string, float>(rtabmap::Statistics::kMemoryWorking_memory_size(), uValue(stats.data(), rtabmap::Statistics::kMemoryWorking_memory_size(), 0.0f)));
 			uInsert(bufferedStatsData_, std::make_pair<std::string, float>(rtabmap::Statistics::kMemoryShort_time_memory_size(), uValue(stats.data(), rtabmap::Statistics::kMemoryShort_time_memory_size(), 0.0f)));
