@@ -1063,7 +1063,6 @@ cv::Mat OctoMap::createProjectionMap(float & xMin, float & yMin, float & gridCel
 	}
 
 	gridCellSize = octree_->getNodeSize(treeDepth);
-	float halfCellSize = gridCellSize/2.0f;
 
 	cv::Mat obstaclesMat = cv::Mat(1, (int)octree_->size(), CV_32FC2);
 	cv::Mat groundMat = cv::Mat(1, (int)octree_->size(), CV_32FC2);
@@ -1077,15 +1076,15 @@ cv::Mat OctoMap::createProjectionMap(float & xMin, float & yMin, float & gridCel
 		if(octree_->isNodeOccupied(*it) && it->getOccupancyType() == RtabmapColorOcTreeNode::kTypeObstacle)
 		{
 			// projected on ground
-			oPtr[oi][0] = pt.x()-halfCellSize;
-			oPtr[oi][1] = pt.y()-halfCellSize;
+			oPtr[oi][0] = pt.x();
+			oPtr[oi][1] = pt.y();
 			++oi;
 		}
 		else
 		{
 			// projected on ground
-			gPtr[gi][0] = pt.x()-halfCellSize;
-			gPtr[gi][1] = pt.y()-halfCellSize;
+			gPtr[gi][0] = pt.x();
+			gPtr[gi][1] = pt.y();
 			++gi;
 		}
 	}
