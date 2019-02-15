@@ -1536,9 +1536,16 @@ void DatabaseViewer::updateIds()
 	linksRemoved_.clear();
 	ui_->toolBox_statistics->clear();
 	ui_->label_optimizeFrom->setText(tr("Root"));
+	std::multimap<int, Link> unilinks;
+	dbDriver_->getAllLinks(unilinks, true);
+	UDEBUG("%d total links loaded", (int)unilinks.size());
+	// add both direction links
 	std::multimap<int, Link> links;
-	dbDriver_->getAllLinks(links, true);
-	UDEBUG("%d total links loaded", (int)links.size());
+	for(std::multimap<int, Link>::iterator iter=unilinks.begin(); iter!=unilinks.end(); ++iter)
+	{
+		links.insert(*iter);
+		links.insert(std::make_pair(iter->second.to(), iter->second.inverse()));
+	}
 
 	double totalOdom = 0.0;
 	Transform previousPose;
@@ -1599,7 +1606,7 @@ void DatabaseViewer::updateIds()
 		previousPose=p;
 
 		//links
-		bool addPose = links.find(ids_[i]) == links.end();
+		bool addPose = false;
 		for(std::multimap<int, Link>::iterator jter=links.find(ids_[i]); jter!=links.end() && jter->first == ids_[i]; ++jter)
 		{
 			if(jter->second.type() == Link::kNeighborMerged)
@@ -3620,6 +3627,10 @@ void DatabaseViewer::update(int value,
 				float x,y,z,roll,pitch,yaw;
 				odomPose.getTranslationAndEulerAngles(x,y,z,roll, pitch,yaw);
 				labelPose->setText(QString("%1xyz=(%2,%3,%4)\nrpy=(%5,%6,%7)").arg(odomPose.isIdentity()?"* ":"").arg(x).arg(y).arg(z).arg(roll).arg(pitch).arg(yaw));
+				if(odomPoses_.size() && odomPoses_.find(id) == odomPoses_.end())
+				{
+					labelPose->setText(labelPose->text() + "\n<Not in graph>");
+				}
 				if(s!=0.0)
 				{
 					stamp->setText(QString::number(s, 'f'));
@@ -6552,16 +6563,6 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent)
 	   uStr2Int(ui_->parameters_toolbox->getParameters().at(Parameters::kOptimizerIterations())) > 0.0f)
 	{
 		int fromId = newLink.from();
-		int mapId = mapIds_.at(newLink.from());
-		// use first node of the map containing from
-		for(std::map<int, int>::iterator iter=mapIds_.begin(); iter!=mapIds_.end(); ++iter)
-		{
-			if(iter->second == mapId)
-			{
-				fromId = iter->first;
-				break;
-			}
-		}
 		std::multimap<int, Link> linksIn = updateLinksWithModifications(links_);
 		linksIn.insert(std::make_pair(newLink.from(), newLink));
 		const Link * maxLinearLink = 0;
@@ -6572,8 +6573,8 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent)
 		std::map<int, Transform> poses;
 		std::multimap<int, Link> links;
 		UASSERT(odomPoses_.find(fromId) != odomPoses_.end());
-		UASSERT_MSG(odomPoses_.find(newLink.from()) != odomPoses_.end(), uFormat("id=%d poses=%d links=%d", newLink.from(), (int)poses.size(), (int)links.size()).c_str());
-		UASSERT_MSG(odomPoses_.find(newLink.to()) != odomPoses_.end(), uFormat("id=%d poses=%d links=%d", newLink.to(), (int)poses.size(), (int)links.size()).c_str());
+		UASSERT_MSG(odomPoses_.find(newLink.from()) != odomPoses_.end(), uFormat("id=%d poses=%d links=%d", newLink.from(), (int)odomPoses_.size(), (int)linksIn.size()).c_str());
+		UASSERT_MSG(odomPoses_.find(newLink.to()) != odomPoses_.end(), uFormat("id=%d poses=%d links=%d", newLink.to(), (int)odomPoses_.size(), (int)linksIn.size()).c_str());
 		optimizer->getConnectedGraph(fromId, odomPoses_, linksIn, poses, links);
 		// use already optimized poses
 		if(graphes_.size())
