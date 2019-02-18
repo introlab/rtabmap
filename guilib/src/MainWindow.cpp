@@ -119,6 +119,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/OctoMap.h>
 #endif
 
+#ifdef HAVE_OPENCV_ARUCO
+#include <opencv2/aruco.hpp>
+#endif
+
 #define LOG_FILE_NAME "LogRtabmap.txt"
 #define SHARE_SHOW_LOG_FILE "share/rtabmap/showlogs.m"
 #define SHARE_GET_PRECISION_RECALL_FILE "share/rtabmap/getPrecisionRecall.m"
@@ -1770,8 +1774,27 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 
 			//update image views
 			{
-				UCvMat2QImageThread qimageThread(signature.sensorData().imageRaw());
-				UCvMat2QImageThread qimageLoopThread(loopSignature.sensorData().imageRaw());
+				cv::Mat refImage = signature.sensorData().imageRaw();
+				cv::Mat loopImage = loopSignature.sensorData().imageRaw();
+
+				if( _preferencesDialog->isMarkerDetection() &&
+					_preferencesDialog->isLandmarksShown())
+				{
+					//draw markers
+					if(!signature.getLandmarks().empty())
+					{
+						refImage = refImage.clone();
+						drawLandmarks(refImage, signature);
+					}
+					if(!loopSignature.getLandmarks().empty())
+					{
+						loopImage = loopImage.clone();
+						drawLandmarks(loopImage, loopSignature);
+					}
+				}
+
+				UCvMat2QImageThread qimageThread(refImage);
+				UCvMat2QImageThread qimageLoopThread(loopImage);
 				qimageThread.start();
 				qimageLoopThread.start();
 				qimageThread.join();
@@ -2623,6 +2646,30 @@ void MainWindow::updateMapCloud(
 		stats->insert(std::make_pair("GUI/Octomap Rendering/ms", (float)timer.restart()*1000.0f));
 	}
 #endif
+
+	// Add landmarks to 3D Map view
+#if PCL_VERSION_COMPARE(>=, 1, 7, 2)
+	_cloudViewer->removeAllCoordinates("landmark_");
+#endif
+	if(_preferencesDialog->isLandmarksShown())
+	{
+		for(std::map<int, Transform>::const_iterator iter=posesIn.begin(); iter!=posesIn.end() && iter->first<0; ++iter)
+		{
+#if PCL_VERSION_COMPARE(>=, 1, 7, 2)
+			_cloudViewer->addOrUpdateCoordinate(uFormat("landmark_%d", -iter->first), iter->second, _preferencesDialog->getMarkerLength()/2.0, false);
+#endif
+			if(_preferencesDialog->isLabelsShown())
+			{
+				std::string num = uNumber2Str(-iter->first);
+				_cloudViewer->addOrUpdateText(
+						std::string("landmark_str_") + num,
+						num,
+						iter->second,
+						0.1,
+						Qt::yellow);
+			}
+		}
+	}
 
 	// Update occupancy grid map in 3D map view and graph view
 	if(_ui->graphicsView_graphView->isVisible())
@@ -4287,6 +4334,51 @@ void MainWindow::drawKeypoints(const std::multimap<int, cv::KeyPoint> & refWords
 	}
 	_ui->imageView_source->update();
 	_ui->imageView_loopClosure->update();
+}
+
+void MainWindow::drawLandmarks(cv::Mat & image, const Signature & signature)
+{
+	for(std::map<int, Link>::const_iterator iter=signature.getLandmarks().begin(); iter!=signature.getLandmarks().end(); ++iter)
+	{
+		CameraModel model;
+		if(!signature.sensorData().cameraModels().empty() &&
+			signature.sensorData().cameraModels()[0].isValidForProjection())
+		{
+			model = signature.sensorData().cameraModels()[0];
+		}
+		else if(signature.sensorData().stereoCameraModel().isValidForProjection())
+		{
+			model = signature.sensorData().stereoCameraModel().left();
+		}
+		if(model.isValidForProjection())
+		{
+			Transform t = model.localTransform().inverse() * iter->second.transform();
+			cv::Vec3d rvec, tvec;
+			tvec.val[0] = t.x();
+			tvec.val[1] = t.y();
+			tvec.val[2] = t.z();
+			cv::Mat R;
+			t.rotationMatrix().convertTo(R, CV_64F);
+			cv::Rodrigues(R, rvec);
+
+			//cv::aruco::drawAxis(image, model.K(), model.D(), rvec, tvec, _preferencesDialog->getMarkerLength() * 0.5f);
+
+			// project axis points
+			std::vector< cv::Point3f > axisPoints;
+			float length = _preferencesDialog->getMarkerLength() * 0.5f;
+			axisPoints.push_back(cv::Point3f(0, 0, 0));
+			axisPoints.push_back(cv::Point3f(length, 0, 0));
+			axisPoints.push_back(cv::Point3f(0, length, 0));
+			axisPoints.push_back(cv::Point3f(0, 0, length));
+			std::vector< cv::Point2f > imagePoints;
+			projectPoints(axisPoints, rvec, tvec, model.K(), model.D(), imagePoints);
+			// draw axis lines
+			cv::line(image, imagePoints[0], imagePoints[1], cv::Scalar(0, 0, 255), 3);
+			cv::line(image, imagePoints[0], imagePoints[2], cv::Scalar(0, 255, 0), 3);
+			cv::line(image, imagePoints[0], imagePoints[3], cv::Scalar(255, 0, 0), 3);
+			cv::putText(image, uNumber2Str(-iter->first), imagePoints[0], cv::FONT_HERSHEY_SIMPLEX, 0.75, cv::Scalar(0, 255, 255), 2);
+		}
+	}
 }
 
 void MainWindow::showEvent(QShowEvent* anEvent)

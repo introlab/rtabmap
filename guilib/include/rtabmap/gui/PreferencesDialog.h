@@ -163,6 +163,9 @@ public:
 
 	bool isGraphsShown() const;
 	bool isLabelsShown() const;
+	bool isLandmarksShown() const;
+	bool isMarkerDetection() const;
+	double getMarkerLength() const;
 	double getVoxel() const;
 	double getNoiseRadius() const;
 	int getNoiseMinNeighbors() const;

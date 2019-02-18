@@ -1328,14 +1328,17 @@ void CloudViewer::removeCoordinate(const std::string & id)
 	}
 }
 
-void CloudViewer::removeAllCoordinates()
+void CloudViewer::removeAllCoordinates(const std::string & prefix)
 {
 	std::set<std::string> coordinates = _coordinates;
 	for(std::set<std::string>::iterator iter = coordinates.begin(); iter!=coordinates.end(); ++iter)
 	{
-		this->removeCoordinate(*iter);
+		if(prefix.empty() || iter->find(prefix) != std::string::npos)
+		{
+			this->removeCoordinate(*iter);
+		}
 	}
-	UASSERT(_coordinates.empty());
+	UASSERT(!prefix.empty() || _coordinates.empty());
 }
 
 void CloudViewer::addOrUpdateLine(

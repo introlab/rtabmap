@@ -128,6 +128,7 @@ public:
 	void setUserLoopClosureColor(const QColor & color);
 	void setVirtualLoopClosureColor(const QColor & color);
 	void setNeighborMergedColor(const QColor & color);
+	void setLandmarkColor(const QColor & color);
 	void setRejectedLoopClosureColor(const QColor & color);
 	void setLocalPathColor(const QColor & color);
 	void setGlobalPathColor(const QColor & color);
@@ -170,6 +171,7 @@ private:
 	QColor _loopClosureUserColor;
 	QColor _loopClosureVirtualColor;
 	QColor _neighborMergedColor;
+	QColor _landmarkColor;
 	QColor _loopClosureRejectedColor;
 	QColor _localPathColor;
 	QColor _globalPathColor;

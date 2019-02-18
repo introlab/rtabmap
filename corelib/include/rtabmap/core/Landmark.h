@@ -49,12 +49,12 @@ public:
 		UASSERT(id_>0);
 		UASSERT(!pose_.isNull());
 		UASSERT(covariance_.cols == 6 && covariance_.rows == 6 && covariance_.type() == CV_64FC1);
-		UASSERT_MSG(uIsFinite(covariance_.at<double>(0,0)) && covariance_.at<double>(0,0)>0, uFormat("Linear covariance should not be null! Value=%f (set to 1 if unknown).", covariance_.at<double>(0,0)).c_str());
-		UASSERT_MSG(uIsFinite(covariance_.at<double>(1,1)) && covariance_.at<double>(1,1)>0, uFormat("Linear covariance should not be null! Value=%f (set to 1 if unknown).", covariance_.at<double>(1,1)).c_str());
-		UASSERT_MSG(uIsFinite(covariance_.at<double>(2,2)) && covariance_.at<double>(2,2)>0, uFormat("Linear covariance should not be null! Value=%f (set to 1 if unknown).", covariance_.at<double>(2,2)).c_str());
-		UASSERT_MSG(uIsFinite(covariance_.at<double>(3,3)) && covariance_.at<double>(3,3)>0, uFormat("Angular covariance should not be null! Value=%f (set to 1 if unknown).", covariance_.at<double>(3,3)).c_str());
-		UASSERT_MSG(uIsFinite(covariance_.at<double>(4,4)) && covariance_.at<double>(4,4)>0, uFormat("Angular covariance should not be null! Value=%f (set to 1 if unknown).", covariance_.at<double>(4,4)).c_str());
-		UASSERT_MSG(uIsFinite(covariance_.at<double>(5,5)) && covariance_.at<double>(5,5)>0, uFormat("Angular covariance should not be null! Value=%f (set to 1 if unknown).", covariance_.at<double>(5,5)).c_str());
+		UASSERT_MSG(uIsFinite(covariance_.at<double>(0,0)) && covariance_.at<double>(0,0)>0, uFormat("Linear covariance should not be null! Value=%f.", covariance_.at<double>(0,0)).c_str());
+		UASSERT_MSG(uIsFinite(covariance_.at<double>(1,1)) && covariance_.at<double>(1,1)>0, uFormat("Linear covariance should not be null! Value=%f.", covariance_.at<double>(1,1)).c_str());
+		UASSERT_MSG(uIsFinite(covariance_.at<double>(2,2)) && covariance_.at<double>(2,2)>0, uFormat("Linear covariance should not be null! Value=%f.", covariance_.at<double>(2,2)).c_str());
+		UASSERT_MSG(uIsFinite(covariance_.at<double>(3,3)) && covariance_.at<double>(3,3)>0, uFormat("Angular covariance should not be null! Value=%f (set to 9999 if unknown).", covariance_.at<double>(3,3)).c_str());
+		UASSERT_MSG(uIsFinite(covariance_.at<double>(4,4)) && covariance_.at<double>(4,4)>0, uFormat("Angular covariance should not be null! Value=%f (set to 9999 if unknown).", covariance_.at<double>(4,4)).c_str());
+		UASSERT_MSG(uIsFinite(covariance_.at<double>(5,5)) && covariance_.at<double>(5,5)>0, uFormat("Angular covariance should not be null! Value=%f (set to 9999 if unknown).", covariance_.at<double>(5,5)).c_str());
 	}
 
 	virtual ~Landmark() {}

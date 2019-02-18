@@ -95,15 +95,24 @@
            <rect>
             <x>0</x>
             <y>0</y>
-            <width>673</width>
-            <height>2979</height>
+            <width>680</width>
+            <height>2986</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
            <property name="spacing">
             <number>0</number>
            </property>
-           <property name="margin">
+           <property name="leftMargin">
+            <number>0</number>
+           </property>
+           <property name="topMargin">
+            <number>0</number>
+           </property>
+           <property name="rightMargin">
+            <number>0</number>
+           </property>
+           <property name="bottomMargin">
             <number>0</number>
            </property>
            <item>
@@ -117,7 +126,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>10</number>
+                <number>18</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,1">
@@ -1861,6 +1870,29 @@ Show a yellow background when the number of odometry inliers goes under this thr
                        </item>
                        <item row="4" column="1">
                         <widget class="QCheckBox" name="checkBox_showOdomFrustums">
+                         <property name="text">
+                          <string/>
+                         </property>
+                         <property name="checked">
+                          <bool>true</bool>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="6" column="2">
+                        <widget class="QLabel" name="label_301">
+                         <property name="text">
+                          <string>Show landmarks.</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="6" column="0">
+                        <widget class="QCheckBox" name="checkBox_showLandmarks">
                          <property name="text">
                           <string/>
                          </property>
@@ -5141,7 +5173,16 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                        <string>Directory of images (optional settings)</string>
                       </property>
                       <layout class="QVBoxLayout" name="verticalLayout_93">
-                       <property name="margin">
+                       <property name="leftMargin">
+                        <number>0</number>
+                       </property>
+                       <property name="topMargin">
+                        <number>0</number>
+                       </property>
+                       <property name="rightMargin">
+                        <number>0</number>
+                       </property>
+                       <property name="bottomMargin">
                         <number>0</number>
                        </property>
                        <item>
@@ -11088,6 +11129,323 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                  </item>
                 </layout>
                </widget>
+               <widget class="QWidget" name="page_78">
+                <layout class="QVBoxLayout" name="verticalLayout_137">
+                 <item>
+                  <widget class="QGroupBox" name="groupBox_markerDetection2">
+                   <property name="title">
+                    <string>Marker Detection</string>
+                   </property>
+                   <layout class="QVBoxLayout" name="verticalLayout_136">
+                    <item>
+                     <layout class="QGridLayout" name="gridLayout_63" columnstretch="0,1">
+                      <item row="3" column="1">
+                       <widget class="QLabel" name="label_space2_9">
+                        <property name="text">
+                         <string>Angular variance to set on marker detections. Set to &gt;=9999 to use only position (xyz) constraint in graph optimization.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="0" column="0">
+                       <widget class="QCheckBox" name="RGBDMarkerDetection">
+                        <property name="text">
+                         <string/>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="2" column="0">
+                       <widget class="QDoubleSpinBox" name="ArucoVarianceLinear">
+                        <property name="suffix">
+                         <string/>
+                        </property>
+                        <property name="decimals">
+                         <number>6</number>
+                        </property>
+                        <property name="minimum">
+                         <double>0.000001000000000</double>
+                        </property>
+                        <property name="singleStep">
+                         <double>0.001000000000000</double>
+                        </property>
+                        <property name="value">
+                         <double>0.001000000000000</double>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="0" column="1">
+                       <widget class="QLabel" name="label_markerDetection">
+                        <property name="text">
+                         <string>Detect static markers to be added as landmarks for graph optimization. If input data have already landmarks, this will be ignored.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="2" column="1">
+                       <widget class="QLabel" name="label_space2_6">
+                        <property name="text">
+                         <string>Linear variance to set on marker detections.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="1" column="1">
+                       <widget class="QLabel" name="label_space2_7">
+                        <property name="text">
+                         <string>Marker length. The length (m) of the markers' side.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="3" column="0">
+                       <widget class="QDoubleSpinBox" name="ArucoVarianceAngular">
+                        <property name="suffix">
+                         <string/>
+                        </property>
+                        <property name="decimals">
+                         <number>6</number>
+                        </property>
+                        <property name="minimum">
+                         <double>0.000001000000000</double>
+                        </property>
+                        <property name="maximum">
+                         <double>9999.000000000000000</double>
+                        </property>
+                        <property name="singleStep">
+                         <double>0.001000000000000</double>
+                        </property>
+                        <property name="value">
+                         <double>0.001000000000000</double>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="1" column="0">
+                       <widget class="QDoubleSpinBox" name="ArucoMarkerLength">
+                        <property name="suffix">
+                         <string> m</string>
+                        </property>
+                        <property name="decimals">
+                         <number>4</number>
+                        </property>
+                        <property name="minimum">
+                         <double>0.000100000000000</double>
+                        </property>
+                        <property name="singleStep">
+                         <double>0.010000000000000</double>
+                        </property>
+                        <property name="value">
+                         <double>0.100000000000000</double>
+                        </property>
+                       </widget>
+                      </item>
+                     </layout>
+                    </item>
+                    <item>
+                     <widget class="QGroupBox" name="groupBox_31">
+                      <property name="title">
+                       <string>ArUco</string>
+                      </property>
+                      <layout class="QGridLayout" name="gridLayout_106" columnstretch="0,1">
+                       <item row="0" column="0">
+                        <widget class="QComboBox" name="ArucoDictionary">
+                         <item>
+                          <property name="text">
+                           <string>4X4_50</string>
+                          </property>
+                         </item>
+                         <item>
+                          <property name="text">
+                           <string>4X4_100</string>
+                          </property>
+                         </item>
+                         <item>
+                          <property name="text">
+                           <string>4X4_250</string>
+                          </property>
+                         </item>
+                         <item>
+                          <property name="text">
+                           <string>4X4_1000</string>
+                          </property>
+                         </item>
+                         <item>
+                          <property name="text">
+                           <string>5X5_50</string>
+                          </property>
+                         </item>
+                         <item>
+                          <property name="text">
+                           <string>5X5_100</string>
+                          </property>
+                         </item>
+                         <item>
+                          <property name="text">
+                           <string>5X5_250</string>
+                          </property>
+                         </item>
+                         <item>
+                          <property name="text">
+                           <string>5X5_1000</string>
+                          </property>
+                         </item>
+                         <item>
+                          <property name="text">
+                           <string>6X6_50</string>
+                          </property>
+                         </item>
+                         <item>
+                          <property name="text">
+                           <string>6X6_100</string>
+                          </property>
+                         </item>
+                         <item>
+                          <property name="text">
+                           <string>6X6_250</string>
+                          </property>
+                         </item>
+                         <item>
+                          <property name="text">
+                           <string>6X6_1000</string>
+                          </property>
+                         </item>
+                         <item>
+                          <property name="text">
+                           <string>7X7_50</string>
+                          </property>
+                         </item>
+                         <item>
+                          <property name="text">
+                           <string>7X7_100</string>
+                          </property>
+                         </item>
+                         <item>
+                          <property name="text">
+                           <string>7X7_250</string>
+                          </property>
+                         </item>
+                         <item>
+                          <property name="text">
+                           <string>7X7_1000</string>
+                          </property>
+                         </item>
+                         <item>
+                          <property name="text">
+                           <string>ARUCO_ORIGINAL</string>
+                          </property>
+                         </item>
+                         <item>
+                          <property name="text">
+                           <string>APRILTAG_16h5</string>
+                          </property>
+                         </item>
+                         <item>
+                          <property name="text">
+                           <string>APRILTAG_25h9</string>
+                          </property>
+                         </item>
+                         <item>
+                          <property name="text">
+                           <string>APRILTAG_36h10</string>
+                          </property>
+                         </item>
+                         <item>
+                          <property name="text">
+                           <string>APRILTAG_36h11</string>
+                          </property>
+                         </item>
+                        </widget>
+                       </item>
+                       <item row="0" column="1">
+                        <widget class="QLabel" name="label_space2_10">
+                         <property name="text">
+                          <string>Dictionary to use.</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="1" column="0">
+                        <widget class="QComboBox" name="ArucoCornerRefinementMethod">
+                         <item>
+                          <property name="text">
+                           <string>None</string>
+                          </property>
+                         </item>
+                         <item>
+                          <property name="text">
+                           <string>Subpixel</string>
+                          </property>
+                         </item>
+                         <item>
+                          <property name="text">
+                           <string>Contour</string>
+                          </property>
+                         </item>
+                         <item>
+                          <property name="text">
+                           <string>AprilTag 2</string>
+                          </property>
+                         </item>
+                        </widget>
+                       </item>
+                       <item row="1" column="1">
+                        <widget class="QLabel" name="label_space2_11">
+                         <property name="text">
+                          <string>Corner refinement method.</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
+                        </widget>
+                       </item>
+                      </layout>
+                     </widget>
+                    </item>
+                   </layout>
+                  </widget>
+                 </item>
+                 <item>
+                  <spacer name="verticalSpacer_76">
+                   <property name="orientation">
+                    <enum>Qt::Vertical</enum>
+                   </property>
+                   <property name="sizeHint" stdset="0">
+                    <size>
+                     <width>20</width>
+                     <height>2627</height>
+                    </size>
+                   </property>
+                  </spacer>
+                 </item>
+                </layout>
+               </widget>
                <widget class="QWidget" name="page_12">
                 <layout class="QVBoxLayout" name="verticalLayout_32" stretch="0,1">
                  <item>
@@ -15461,7 +15819,16 @@ Lower the ratio -&gt; higher the precision.</string>
                         <property name="spacing">
                          <number>0</number>
                         </property>
-                        <property name="margin">
+                        <property name="leftMargin">
+                         <number>0</number>
+                        </property>
+                        <property name="topMargin">
+                         <number>0</number>
+                        </property>
+                        <property name="rightMargin">
+                         <number>0</number>
+                        </property>
+                        <property name="bottomMargin">
                          <number>0</number>
                         </property>
                         <item>
@@ -15541,7 +15908,16 @@ Lower the ratio -&gt; higher the precision.</string>
                         <property name="spacing">
                          <number>0</number>
                         </property>
-                        <property name="margin">
+                        <property name="leftMargin">
+                         <number>0</number>
+                        </property>
+                        <property name="topMargin">
+                         <number>0</number>
+                        </property>
+                        <property name="rightMargin">
+                         <number>0</number>
+                        </property>
+                        <property name="bottomMargin">
                          <number>0</number>
                         </property>
                         <item>
@@ -15653,7 +16029,16 @@ Lower the ratio -&gt; higher the precision.</string>
                         <property name="spacing">
                          <number>0</number>
                         </property>
-                        <property name="margin">
+                        <property name="leftMargin">
+                         <number>0</number>
+                        </property>
+                        <property name="topMargin">
+                         <number>0</number>
+                        </property>
+                        <property name="rightMargin">
+                         <number>0</number>
+                        </property>
+                        <property name="bottomMargin">
                          <number>0</number>
                         </property>
                         <item>

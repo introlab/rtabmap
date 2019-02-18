@@ -322,6 +322,17 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->checkBox_showOdomFrustums->setChecked(false);
 #endif
 
+	//if OpenCV < 3.4.2
+#if CV_MAJOR_VERSION < 3 || (CV_MAJOR_VERSION == 3 && (CV_MINOR_VERSION <4 || (CV_MINOR_VERSION ==4 && CV_SUBMINOR_VERSION<2)))
+	_ui->ArucoDictionary->setItemData(17, 0, Qt::UserRole - 1);
+	_ui->ArucoDictionary->setItemData(18, 0, Qt::UserRole - 1);
+	_ui->ArucoDictionary->setItemData(19, 0, Qt::UserRole - 1);
+	_ui->ArucoDictionary->setItemData(20, 0, Qt::UserRole - 1);
+#endif
+#ifndef HAVE_OPENCV_ARUCO
+	_ui->label_markerDetection->setText(_ui->label_markerDetection->text()+" This option works only if OpenCV has been built with \"aruco\" module.");
+#endif
+
 	// in case we change the ui, we should not forget to change stuff related to this parameter
 	UASSERT(_ui->odom_registration->count() == 4);
 
@@ -482,6 +493,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 
 	connect(_ui->checkBox_showGraphs, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 	connect(_ui->checkBox_showLabels, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
+	connect(_ui->checkBox_showLandmarks, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 
 	connect(_ui->radioButton_noFiltering, SIGNAL(toggled(bool)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 	connect(_ui->radioButton_nodeFiltering, SIGNAL(toggled(bool)), this, SLOT(makeObsoleteCloudRenderingPanel()));
@@ -912,6 +924,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->loopClosure_reextract->setObjectName(Parameters::kRGBDLoopClosureReextractFeatures().c_str());
 	_ui->loopClosure_bunlde->setObjectName(Parameters::kRGBDLocalBundleOnLoopClosure().c_str());
 	_ui->checkbox_rgbd_createOccupancyGrid->setObjectName(Parameters::kRGBDCreateOccupancyGrid().c_str());
+	_ui->RGBDMarkerDetection->setObjectName(Parameters::kRGBDMarkerDetection().c_str());
 
 	// Registration
 	_ui->reg_repeatOnce->setObjectName(Parameters::kRegRepeatOnce().c_str());
@@ -1202,6 +1215,13 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->stereosgbm_p1->setObjectName(Parameters::kStereoSGBMP1().c_str());
 	_ui->stereosgbm_p2->setObjectName(Parameters::kStereoSGBMP2().c_str());
 	_ui->stereosgbm_mode->setObjectName(Parameters::kStereoSGBMMode().c_str());
+
+	// Aruco marker
+	_ui->ArucoDictionary->setObjectName(Parameters::kArucoDictionary().c_str());
+	_ui->ArucoMarkerLength->setObjectName(Parameters::kArucoMarkerLength().c_str());
+	_ui->ArucoVarianceLinear->setObjectName(Parameters::kArucoVarianceLinear().c_str());
+	_ui->ArucoVarianceAngular->setObjectName(Parameters::kArucoVarianceAngular().c_str());
+	_ui->ArucoCornerRefinementMethod->setObjectName(Parameters::kArucoCornerRefinementMethod().c_str());
 
 	// reset default settings for the gui
 	resetSettings(_ui->groupBox_generalSettingsGui0);
@@ -1574,6 +1594,7 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 
 		_ui->checkBox_showGraphs->setChecked(true);
 		_ui->checkBox_showLabels->setChecked(false);
+		_ui->checkBox_showLandmarks->setChecked(true);
 
 		_ui->doubleSpinBox_mesh_angleTolerance->setValue(15.0);
 		_ui->groupBox_organized->setChecked(false);
@@ -1990,6 +2011,7 @@ void PreferencesDialog::readGuiSettings(const QString & filePath)
 
 	_ui->checkBox_showGraphs->setChecked(settings.value("showGraphs", _ui->checkBox_showGraphs->isChecked()).toBool());
 	_ui->checkBox_showLabels->setChecked(settings.value("showLabels", _ui->checkBox_showLabels->isChecked()).toBool());
+	_ui->checkBox_showLandmarks->setChecked(settings.value("showLandmarks", _ui->checkBox_showLandmarks->isChecked()).toBool());
 
 	_ui->radioButton_noFiltering->setChecked(settings.value("noFiltering", _ui->radioButton_noFiltering->isChecked()).toBool());
 	_ui->radioButton_nodeFiltering->setChecked(settings.value("cloudFiltering", _ui->radioButton_nodeFiltering->isChecked()).toBool());
@@ -2410,6 +2432,8 @@ void PreferencesDialog::writeGuiSettings(const QString & filePath) const
 
 	settings.setValue("showGraphs", _ui->checkBox_showGraphs->isChecked());
 	settings.setValue("showLabels", _ui->checkBox_showLabels->isChecked());
+	settings.setValue("showLandmarks", _ui->checkBox_showLandmarks->isChecked());
+
 
 	settings.setValue("noFiltering",             _ui->radioButton_noFiltering->isChecked());
 	settings.setValue("cloudFiltering",          _ui->radioButton_nodeFiltering->isChecked());
@@ -2861,6 +2885,15 @@ bool PreferencesDialog::validateForm()
 				tr("Odometry is disabled but incremental RGB-D SLAM is activated! Re-enabling odometry."));
 		_ui->checkbox_odomDisabled->setChecked(false);
 	}
+
+#if CV_MAJOR_VERSION < 3 || (CV_MAJOR_VERSION == 3 && (CV_MINOR_VERSION <4 || (CV_MINOR_VERSION ==4 && CV_SUBMINOR_VERSION<2)))
+	if(_ui->ArucoDictionary->currentIndex()>=17)
+	{
+		QMessageBox::warning(this, tr("Parameter warning"),
+				tr("ArUco dictionary: cannot select AprilTag dictionary, OpenCV version should be at least 3.4.2. Setting back to 0."));
+		_ui->ArucoDictionary->setCurrentIndex(0);
+	}
+#endif
 
 	return true;
 }
@@ -4599,6 +4632,18 @@ bool PreferencesDialog::isGraphsShown() const
 bool PreferencesDialog::isLabelsShown() const
 {
 	return _ui->checkBox_showLabels->isChecked();
+}
+bool PreferencesDialog::isLandmarksShown() const
+{
+	return _ui->checkBox_showLandmarks->isChecked();
+}
+bool PreferencesDialog::isMarkerDetection() const
+{
+	return _ui->RGBDMarkerDetection->isChecked();
+}
+double PreferencesDialog::getMarkerLength() const
+{
+	return _ui->ArucoMarkerLength->value();
 }
 bool PreferencesDialog::isCloudMeshing() const
 {

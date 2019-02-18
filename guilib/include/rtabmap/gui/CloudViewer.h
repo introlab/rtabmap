@@ -197,7 +197,7 @@ public:
 			const std::string & id,
 			const Transform & transform);
 	void removeCoordinate(const std::string & id);
-	void removeAllCoordinates();
+	void removeAllCoordinates(const std::string & prefix = "");
 	const std::set<std::string> & getAddedCoordinates() const {return _coordinates;}
 
 	void addOrUpdateLine(

@@ -261,6 +261,7 @@ private:
 	void createAndAddFeaturesToMap(int nodeId, const Transform & pose, int mapId);
 	Transform alignPosesToGroundTruth(const std::map<int, Transform> & poses, const std::map<int, Transform> & groundTruth);
 	void drawKeypoints(const std::multimap<int, cv::KeyPoint> & refWords, const std::multimap<int, cv::KeyPoint> & loopWords);
+	void drawLandmarks(cv::Mat & image, const Signature & signature);
 	void setupMainLayout(bool vertical);
 	void updateSelectSourceMenu();
 	void applyPrefSettings(const rtabmap::ParametersMap & parameters, bool postParamEvent);

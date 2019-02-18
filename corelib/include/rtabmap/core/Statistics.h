@@ -147,6 +147,7 @@ class RTABMAP_EXP Statistics
 	RTABMAP_STATS(TimingMem, Post_decimation, ms);
 	RTABMAP_STATS(TimingMem, Scan_filtering, ms);
 	RTABMAP_STATS(TimingMem, Occupancy_grid, ms);
+	RTABMAP_STATS(TimingMem, Markers_detection, ms);
 
 	RTABMAP_STATS(Keypoint, Dictionary_size, words);
 	RTABMAP_STATS(Keypoint, Indexed_words, words);

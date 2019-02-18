@@ -61,6 +61,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pcl/io/pcd_io.h>
 #include <pcl/common/common.h>
 #include <rtabmap/core/OccupancyGrid.h>
+#include <rtabmap/core/MarkerDetector.h>
 #include <opencv2/imgproc/types_c.h>
 
 namespace rtabmap {
@@ -106,6 +107,9 @@ Memory::Memory(const ParametersMap & parameters) :
 	_imagesAlreadyRectified(Parameters::defaultRtabmapImagesAlreadyRectified()),
 	_rectifyOnlyFeatures(Parameters::defaultRtabmapRectifyOnlyFeatures()),
 	_covOffDiagonalIgnored(Parameters::defaultMemCovOffDiagIgnored()),
+	_detectMarkers(Parameters::defaultRGBDMarkerDetection()),
+	_markerLinVariance(Parameters::defaultArucoVarianceLinear()),
+	_markerAngVariance(Parameters::defaultArucoVarianceAngular()),
 	_idCount(kIdStart),
 	_idMapCount(kIdStart),
 	_lastSignature(0),
@@ -137,6 +141,7 @@ Memory::Memory(const ParametersMap & parameters) :
 	_registrationIcpMulti = new RegistrationIcp(paramsMulti);
 
 	_occupancy = new OccupancyGrid(parameters);
+	_markerDetector = new MarkerDetector(parameters);
 	this->parseParameters(parameters);
 }
 
@@ -561,6 +566,9 @@ void Memory::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(params, Parameters::kRtabmapImagesAlreadyRectified(), _imagesAlreadyRectified);
 	Parameters::parse(params, Parameters::kRtabmapRectifyOnlyFeatures(), _rectifyOnlyFeatures);
 	Parameters::parse(params, Parameters::kMemCovOffDiagIgnored(), _covOffDiagonalIgnored);
+	Parameters::parse(params, Parameters::kRGBDMarkerDetection(), _detectMarkers);
+	Parameters::parse(params, Parameters::kArucoVarianceLinear(), _markerLinVariance);
+	Parameters::parse(params, Parameters::kArucoVarianceAngular(), _markerAngVariance);
 
 	UASSERT_MSG(_maxStMemSize >= 0, uFormat("value=%d", _maxStMemSize).c_str());
 	UASSERT_MSG(_similarityThreshold >= 0.0f && _similarityThreshold <= 1.0f, uFormat("value=%f", _similarityThreshold).c_str());
@@ -672,6 +680,11 @@ void Memory::parseParameters(const ParametersMap & parameters)
 	if(_occupancy)
 	{
 		_occupancy->parseParameters(params);
+	}
+
+	if(_markerDetector)
+	{
+		_markerDetector->parseParameters(params);
 	}
 
 	// do this after all params are parsed
@@ -4577,6 +4590,53 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 		}
 	}
 
+	Landmarks landmarks = data.landmarks();
+	if(_detectMarkers)
+	{
+		UDEBUG("Detecting markers...");
+		if(landmarks.empty())
+		{
+			std::map<int, Transform> markers;
+			if(!data.cameraModels().empty() && data.cameraModels()[0].isValidForProjection())
+			{
+				if(data.cameraModels().size() > 1)
+				{
+					static bool warned = false;
+					if(!warned)
+					{
+						UWARN("Detecting markers in multi-camera setup is not yet implemented, detecting only in first camera. This message is only printed once.");
+					}
+					warned = true;
+				}
+				markers = _markerDetector->detect(data.imageRaw(), data.cameraModels()[0]);
+			}
+			else if(data.stereoCameraModel().isValidForProjection())
+			{
+				markers = _markerDetector->detect(data.imageRaw(), data.stereoCameraModel().left());
+			}
+			for(std::map<int, Transform>::iterator iter=markers.begin(); iter!=markers.end(); ++iter)
+			{
+				if(iter->first <= 0)
+				{
+					UERROR("Invalid marker received! IDs should be > 0 (it is %d). Ignoring this marker.", iter->first);
+					continue;
+				}
+				cv::Mat covariance = cv::Mat::eye(6,6,CV_64FC1);
+				covariance(cv::Range(0,3), cv::Range(0,3)) *= _markerLinVariance;
+				covariance(cv::Range(3,6), cv::Range(3,6)) *= _markerAngVariance;
+				landmarks.insert(std::make_pair(iter->first, Landmark(iter->first, iter->second, covariance)));
+			}
+			UDEBUG("Markers detected = %d", (int)markers.size());
+		}
+		else
+		{
+			UWARN("Input data has already landmarks, cannot do marker detection.");
+		}
+		t = timer.ticks();
+		if(stats) stats->addStatistic(Statistics::kTimingMemMarkers_detection(), t*1000.0f);
+		UDEBUG("time markers detection = %fs", t);
+	}
+
 	cv::Mat image = data.imageRaw();
 	cv::Mat depthOrRightImage = data.depthOrRightRaw();
 	std::vector<CameraModel> cameraModels = data.cameraModels();
@@ -5025,7 +5085,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 	}
 
 	//landmarks
-	for(Landmarks::const_iterator iter = data.landmarks().begin(); iter!=data.landmarks().end(); ++iter)
+	for(Landmarks::const_iterator iter = landmarks.begin(); iter!=landmarks.end(); ++iter)
 	{
 		if(iter->second.id() > 0)
 		{

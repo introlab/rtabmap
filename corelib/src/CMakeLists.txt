@@ -96,6 +96,8 @@ SET(SRC_FILES
 	
 	OccupancyGrid.cpp
 	
+	MarkerDetector.cpp
+	
 	GainCompensator.cpp
 		
 	rtflann/ext/lz4.c

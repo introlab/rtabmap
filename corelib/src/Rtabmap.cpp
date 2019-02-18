@@ -2526,7 +2526,9 @@ bool Rtabmap::process(
 			{
 				for(std::multimap<int, Link>::iterator iter=_constraints.begin(); iter!=_constraints.end(); ++iter)
 				{
-					if(iter->second.type() != Link::kNeighbor && iter->second.type() != Link::kVirtualClosure)
+					if( iter->second.type() != Link::kNeighbor &&
+						iter->second.type() != Link::kVirtualClosure &&
+						iter->second.type() != Link::kLandmark)
 					{
 						UWARN("Optimization: clearing guess poses as %s may have changed state, now %s (normMapCorrection=%f)", Parameters::kRGBDOptimizeFromGraphEnd().c_str(), _optimizeFromGraphEnd?"true":"false", normMapCorrection);
 						poses.clear();

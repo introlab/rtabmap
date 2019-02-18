@@ -57,6 +57,7 @@ class RegistrationInfo;
 class RegistrationIcp;
 class Stereo;
 class OccupancyGrid;
+class MarkerDetector;
 
 class RTABMAP_EXP Memory
 {
@@ -316,6 +317,9 @@ private:
 	bool _imagesAlreadyRectified;
 	bool _rectifyOnlyFeatures;
 	bool _covOffDiagonalIgnored;
+	bool _detectMarkers;
+	float _markerLinVariance;
+	float _markerAngVariance;
 
 	int _idCount;
 	int _idMapCount;
@@ -349,6 +353,8 @@ private:
 	RegistrationIcp * _registrationIcpMulti;
 
 	OccupancyGrid * _occupancy;
+
+	MarkerDetector * _markerDetector;
 };
 
 } // namespace rtabmap

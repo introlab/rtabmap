@@ -243,6 +243,7 @@ GraphViewer::GraphViewer(QWidget * parent) :
 		_loopClosureUserColor(Qt::red),
 		_loopClosureVirtualColor(Qt::magenta),
 		_neighborMergedColor(QColor(255,170,0)),
+		_landmarkColor(Qt::darkGreen),
 		_loopClosureRejectedColor(Qt::black),
 		_localPathColor(Qt::cyan),
 		_globalPathColor(Qt::darkMagenta),
@@ -477,6 +478,10 @@ void GraphViewer::updateGraph(const std::map<int, Transform> & poses,
 				else if(iter->second.type() == Link::kUserClosure)
 				{
 					linkItem->setColor(_loopClosureUserColor);
+				}
+				else if(iter->second.type() == Link::kLandmark)
+				{
+					linkItem->setColor(_landmarkColor);
 				}
 				else if(iter->second.type() == Link::kLocalSpaceClosure || iter->second.type() == Link::kLocalTimeClosure)
 				{
@@ -1331,6 +1336,17 @@ void GraphViewer::setNeighborMergedColor(const QColor & color)
 		}
 	}
 }
+void GraphViewer::setLandmarkColor(const QColor & color)
+{
+	_landmarkColor = color;
+	for(QMultiMap<int, LinkItem*>::iterator iter=_linkItems.begin(); iter!=_linkItems.end(); ++iter)
+	{
+		if(iter.value()->linkType() == Link::kLandmark)
+		{
+			iter.value()->setColor(_landmarkColor);
+		}
+	}
+}
 void GraphViewer::setRejectedLoopClosureColor(const QColor & color)
 {
 	_loopClosureRejectedColor = color;
@@ -1497,6 +1513,7 @@ void GraphViewer::restoreDefaults()
 	setUserLoopClosureColor(Qt::red);
 	setVirtualLoopClosureColor(Qt::magenta);
 	setNeighborMergedColor(QColor(255,170,0));
+	setLandmarkColor(Qt::darkGreen);
 	setGridMapVisible(true);
 	setGraphVisible(true);
 	setGlobalPathVisible(true);
@@ -1546,6 +1563,7 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 	QAction * aChangeUserLoopColor = menuLink->addAction(tr("User loop closure"));
 	QAction * aChangeVirtualLoopColor = menuLink->addAction(tr("Virtual loop closure"));
 	QAction * aChangeNeighborMergedColor = menuLink->addAction(tr("Neighbor merged"));
+	QAction * aChangeLandmarkColor = menuLink->addAction(tr("Landmark"));
 	QAction * aChangeRejectedLoopColor = menuLink->addAction(tr("Outlier loop closure"));
 	QAction * aChangeRejectedLoopThr = menuLink->addAction(tr("Set outlier threshold..."));
 	QAction * aChangeLocalPathColor = menuLink->addAction(tr("Local path"));
@@ -1562,11 +1580,12 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 	aChangeUserLoopColor->setIcon(createIcon(_loopClosureUserColor));
 	aChangeVirtualLoopColor->setIcon(createIcon(_loopClosureVirtualColor));
 	aChangeNeighborMergedColor->setIcon(createIcon(_neighborMergedColor));
+	aChangeLandmarkColor->setIcon(createIcon(_landmarkColor));
 	aChangeRejectedLoopColor->setIcon(createIcon(_loopClosureRejectedColor));
 	aChangeLocalPathColor->setIcon(createIcon(_localPathColor));
 	aChangeGlobalPathColor->setIcon(createIcon(_globalPathColor));
 	aChangeGTColor->setIcon(createIcon(_gtPathColor));
-	aChangeGPSColor->setIcon(createIcon(_gpsPathColor));
+	aChangeGPSColor->setIcon(createIcon(_gpsPathColor));;
 	aChangeIntraSessionLoopColor->setIcon(createIcon(_loopIntraSessionColor));
 	aChangeInterSessionLoopColor->setIcon(createIcon(_loopInterSessionColor));
 	aChangeNeighborColor->setIconVisibleInMenu(true);
@@ -1843,6 +1862,10 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 		{
 			color = _neighborMergedColor;
 		}
+		else if(r == aChangeLandmarkColor)
+		{
+			color = _landmarkColor;
+		}
 		else if(r == aChangeRejectedLoopColor)
 		{
 			color = _loopClosureRejectedColor;
@@ -1906,6 +1929,10 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 			else if(r == aChangeNeighborMergedColor)
 			{
 				this->setNeighborMergedColor(color);
+			}
+			else if(r == aChangeLandmarkColor)
+			{
+				this->setLandmarkColor(color);
 			}
 			else if(r == aChangeRejectedLoopColor)
 			{
