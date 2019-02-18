@@ -2745,6 +2745,8 @@ Transform Memory::computeTransform(
 			tmpTo.setWordsDescriptors(std::multimap<int, cv::Mat>());
 		}
 
+		bool isNeighborRefining = fromS.getLinks().find(toS.id()) != fromS.getLinks().end() && fromS.getLinks().find(toS.id())->second.type() == Link::kNeighbor;
+
 		if(guess.isNull() && !_registrationPipeline->isImageRequired())
 		{
 			UDEBUG("");
@@ -2760,7 +2762,8 @@ Transform Memory::computeTransform(
 				transform = _registrationPipeline->computeTransformationMod(tmpFrom, tmpTo, guess, info);
 			}
 		}
-		else if(_localBundleOnLoopClosure &&
+		else if(!isNeighborRefining &&
+				_localBundleOnLoopClosure &&
 				_registrationPipeline->isImageRequired() &&
 			   !_registrationPipeline->isScanRequired() &&
 			   !_registrationPipeline->isUserDataRequired() &&
@@ -2928,6 +2931,10 @@ Transform Memory::computeTransform(
 					else
 					{
 						transform = bundlePoses.rbegin()->second;
+						if(_registrationPipeline->force3DoF())
+						{
+							transform = transform.to3DoF();
+						}
 					}
 				}
 				UDEBUG("Local Bundle Adjustment After : %s", transform.prettyPrint().c_str());
