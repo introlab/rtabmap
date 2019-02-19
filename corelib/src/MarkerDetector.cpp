@@ -130,7 +130,7 @@ std::map<int, Transform> MarkerDetector::detect(const cv::Mat & image, const Cam
 	}
 
 #else
-	ROS_ERROR("RTAB-Map is not built with \"aruco\" module from OpenCV.");
+	UERROR("RTAB-Map is not built with \"aruco\" module from OpenCV.");
 #endif
 
 	return detections;
