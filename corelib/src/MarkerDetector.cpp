@@ -30,11 +30,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 namespace rtabmap {
 
-MarkerDetector::MarkerDetector(const ParametersMap & parameters) :
-		markerLength_(Parameters::defaultArucoMarkerLength()),
-		dictionaryId_(Parameters::defaultArucoDictionary())
+MarkerDetector::MarkerDetector(const ParametersMap & parameters)
 {
 #ifdef HAVE_OPENCV_ARUCO
+	markerLength_ = Parameters::defaultArucoMarkerLength();
+	dictionaryId_ = Parameters::defaultArucoDictionary();
 	detectorParams_ = cv::aruco::DetectorParameters::create();
 	detectorParams_->cornerRefinementMethod = Parameters::defaultArucoCornerRefinementMethod();
 	parseParameters(parameters);
