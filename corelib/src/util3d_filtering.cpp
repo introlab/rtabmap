@@ -411,6 +411,10 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr downsample(const pcl::PointCloud<pcl::Poi
 {
 	return downsampleImpl<pcl::PointXYZRGB>(cloud, step);
 }
+pcl::PointCloud<pcl::PointXYZI>::Ptr downsample(const pcl::PointCloud<pcl::PointXYZI>::Ptr & cloud, int step)
+{
+	return downsampleImpl<pcl::PointXYZI>(cloud, step);
+}
 pcl::PointCloud<pcl::PointNormal>::Ptr downsample(const pcl::PointCloud<pcl::PointNormal>::Ptr & cloud, int step)
 {
 	return downsampleImpl<pcl::PointNormal>(cloud, step);
@@ -418,6 +422,10 @@ pcl::PointCloud<pcl::PointNormal>::Ptr downsample(const pcl::PointCloud<pcl::Poi
 pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr downsample(const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud, int step)
 {
 	return downsampleImpl<pcl::PointXYZRGBNormal>(cloud, step);
+}
+pcl::PointCloud<pcl::PointXYZINormal>::Ptr downsample(const pcl::PointCloud<pcl::PointXYZINormal>::Ptr & cloud, int step)
+{
+	return downsampleImpl<pcl::PointXYZINormal>(cloud, step);
 }
 
 template<typename PointT>
