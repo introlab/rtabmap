@@ -3405,7 +3405,7 @@ void MainWindow::createAndAddScanToMap(int nodeId, const Transform & pose, int m
 					normals = util3d::computeNormals(cloudI, _preferencesDialog->getScanNormalKSearch(), _preferencesDialog->getScanNormalRadiusSearch(), scanViewpoint);
 				}
 				cloudIWithNormals.reset(new pcl::PointCloud<pcl::PointXYZINormal>);
-				pcl::concatenateFields(*cloud, *normals, *cloudIWithNormals);
+				pcl::concatenateFields(*cloudI, *normals, *cloudIWithNormals);
 				cloudI.reset();
 			}
 		}
