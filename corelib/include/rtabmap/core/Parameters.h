@@ -714,7 +714,7 @@ class RTABMAP_EXP Parameters
     RTABMAP_PARAM(Aruco, MarkerLength,           float, 0.1,   "The length (m) of the markers' side.");
     RTABMAP_PARAM(Aruco, VarianceLinear,         float, 0.001, "Linear variance to set on marker detections.");
     RTABMAP_PARAM(Aruco, VarianceAngular,        float, 0.001, "Angular variance to set on marker detections. Set to >=9999 to use only position (xyz) constraint in graph optimization.");
-    RTABMAP_PARAM(Aruco, CornerRefinementMethod, int,   0,     "Corner refinement method (0: None, 1: Subpixel, 2:contour, 3: AprilTag 2)");
+    RTABMAP_PARAM(Aruco, CornerRefinementMethod, int,   0,     "Corner refinement method (0: None, 1: Subpixel, 2:contour, 3: AprilTag 2). For OpenCV <3.3.0, this is \"doCornerRefinement\" parameter: set 0 for false and 1 for true.");
 
 public:
     virtual ~Parameters();

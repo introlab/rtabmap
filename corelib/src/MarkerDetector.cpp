@@ -36,7 +36,11 @@ MarkerDetector::MarkerDetector(const ParametersMap & parameters)
 	markerLength_ = Parameters::defaultArucoMarkerLength();
 	dictionaryId_ = Parameters::defaultArucoDictionary();
 	detectorParams_ = cv::aruco::DetectorParameters::create();
+#if CV_MAJOR_VERSION > 3 || (CV_MAJOR_VERSION == 3 && CV_MINOR_VERSION >=3)
 	detectorParams_->cornerRefinementMethod = Parameters::defaultArucoCornerRefinementMethod();
+#else
+	detectorParams_->doCornerRefinement = Parameters::defaultArucoCornerRefinementMethod()!=0;
+#endif
 	parseParameters(parameters);
 #endif
 }
@@ -58,7 +62,13 @@ void MarkerDetector::parseParameters(const ParametersMap & parameters)
 	detectorParams_->minCornerDistanceRate = 0.05;
 	detectorParams_->minDistanceToBorder = 3;
 	detectorParams_->minMarkerDistanceRate = 0.05;
+#if CV_MAJOR_VERSION > 3 || (CV_MAJOR_VERSION == 3 && CV_MINOR_VERSION >=3)
 	Parameters::parse(parameters, Parameters::kArucoCornerRefinementMethod(), detectorParams_->cornerRefinementMethod);
+#else
+	int doCornerRefinement = detectorParams_->doCornerRefinement?1:0;
+	Parameters::parse(parameters, Parameters::kArucoCornerRefinementMethod(), doCornerRefinement);
+	detectorParams_->doCornerRefinement = doCornerRefinement!=0;
+#endif
 	detectorParams_->cornerRefinementWinSize = 5;
 	detectorParams_->cornerRefinementMaxIterations = 30;
 	detectorParams_->cornerRefinementMinAccuracy = 0.1;
