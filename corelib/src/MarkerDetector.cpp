@@ -35,7 +35,11 @@ MarkerDetector::MarkerDetector(const ParametersMap & parameters)
 #ifdef HAVE_OPENCV_ARUCO
 	markerLength_ = Parameters::defaultArucoMarkerLength();
 	dictionaryId_ = Parameters::defaultArucoDictionary();
+#if CV_MAJOR_VERSION > 3 || (CV_MAJOR_VERSION == 3 && CV_MINOR_VERSION >=2)
 	detectorParams_ = cv::aruco::DetectorParameters::create();
+#else
+	detectorParams_.reset(new cv::aruco::DetectorParameters());
+#endif
 #if CV_MAJOR_VERSION > 3 || (CV_MAJOR_VERSION == 3 && CV_MINOR_VERSION >=3)
 	detectorParams_->cornerRefinementMethod = Parameters::defaultArucoCornerRefinementMethod();
 #else
@@ -91,7 +95,12 @@ void MarkerDetector::parseParameters(const ParametersMap & parameters)
 		dictionaryId_ = Parameters::defaultArucoDictionary();
 	}
 #endif
+#if CV_MAJOR_VERSION > 3 || (CV_MAJOR_VERSION == 3 && CV_MINOR_VERSION >=2)
 	dictionary_ = cv::aruco::getPredefinedDictionary(cv::aruco::PREDEFINED_DICTIONARY_NAME(dictionaryId_));
+#else
+	dictionary_.reset(new cv::aruco::Dictionary());
+	*dictionary_ = cv::aruco::getPredefinedDictionary(cv::aruco::PREDEFINED_DICTIONARY_NAME(dictionaryId_));
+#endif
 #endif
 }
 
@@ -106,7 +115,11 @@ std::map<int, Transform> MarkerDetector::detect(const cv::Mat & image, const Cam
 	std::vector< cv::Vec3d > rvecs, tvecs;
 
 	// detect markers and estimate pose
+#if CV_MAJOR_VERSION > 3 || (CV_MAJOR_VERSION == 3 && CV_MINOR_VERSION >=2)
 	cv::aruco::detectMarkers(image, dictionary_, corners, ids, detectorParams_, rejected);
+#else
+	cv::aruco::detectMarkers(image, *dictionary_, corners, ids, *detectorParams_, rejected);
+#endif
 	UDEBUG("Markers detected=%d rejected=%d", (int)ids.size(), (int)rejected.size());
 	if(ids.size() > 0)
 	{
