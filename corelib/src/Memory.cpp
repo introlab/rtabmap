@@ -4604,11 +4604,14 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 					static bool warned = false;
 					if(!warned)
 					{
-						UWARN("Detecting markers in multi-camera setup is not yet implemented, detecting only in first camera. This message is only printed once.");
+						UWARN("Detecting markers in multi-camera setup is not yet implemented, aborting marker detection. This message is only printed once.");
 					}
 					warned = true;
 				}
-				markers = _markerDetector->detect(data.imageRaw(), data.cameraModels()[0]);
+				else
+				{
+					markers = _markerDetector->detect(data.imageRaw(), data.cameraModels()[0], data.depthRaw());
+				}
 			}
 			else if(data.stereoCameraModel().isValidForProjection())
 			{

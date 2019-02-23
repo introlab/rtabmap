@@ -96,7 +96,7 @@
             <x>0</x>
             <y>0</y>
             <width>680</width>
-            <height>2986</height>
+            <height>3008</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -11207,7 +11207,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                       <item row="1" column="1">
                        <widget class="QLabel" name="label_space2_7">
                         <property name="text">
-                         <string>Marker length. The length (m) of the markers' side.</string>
+                         <string>Marker length. The length (m) of the markers' side. 0 means automatic marker length estimation using the depth image (the camera should look at the marker perpendicularly for initialization).</string>
                         </property>
                         <property name="wordWrap">
                          <bool>true</bool>
@@ -11248,7 +11248,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                          <number>4</number>
                         </property>
                         <property name="minimum">
-                         <double>0.000100000000000</double>
+                         <double>0.000000000000000</double>
                         </property>
                         <property name="singleStep">
                          <double>0.010000000000000</double>

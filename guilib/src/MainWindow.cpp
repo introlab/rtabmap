@@ -2656,7 +2656,7 @@ void MainWindow::updateMapCloud(
 		for(std::map<int, Transform>::const_iterator iter=posesIn.begin(); iter!=posesIn.end() && iter->first<0; ++iter)
 		{
 #if PCL_VERSION_COMPARE(>=, 1, 7, 2)
-			_cloudViewer->addOrUpdateCoordinate(uFormat("landmark_%d", -iter->first), iter->second, _preferencesDialog->getMarkerLength()/2.0, false);
+			_cloudViewer->addOrUpdateCoordinate(uFormat("landmark_%d", -iter->first), iter->second, _preferencesDialog->getMarkerLength()<=0?0.1:_preferencesDialog->getMarkerLength()/2.0, false);
 #endif
 			if(_preferencesDialog->isLabelsShown())
 			{
@@ -4361,11 +4361,11 @@ void MainWindow::drawLandmarks(cv::Mat & image, const Signature & signature)
 			t.rotationMatrix().convertTo(R, CV_64F);
 			cv::Rodrigues(R, rvec);
 
-			//cv::aruco::drawAxis(image, model.K(), model.D(), rvec, tvec, _preferencesDialog->getMarkerLength() * 0.5f);
+			//cv::aruco::drawAxis(image, model.K(), model.D(), rvec, tvec, _preferencesDialog->getMarkerLength()<=0?0.1:_preferencesDialog->getMarkerLength() * 0.5f);
 
 			// project axis points
 			std::vector< cv::Point3f > axisPoints;
-			float length = _preferencesDialog->getMarkerLength() * 0.5f;
+			float length = _preferencesDialog->getMarkerLength()<=0?0.1:_preferencesDialog->getMarkerLength() * 0.5f;
 			axisPoints.push_back(cv::Point3f(0, 0, 0));
 			axisPoints.push_back(cv::Point3f(length, 0, 0));
 			axisPoints.push_back(cv::Point3f(0, length, 0));

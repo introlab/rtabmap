@@ -26,6 +26,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 #include <rtabmap/core/MarkerDetector.h>
+#include <rtabmap/core/util2d.h>
 #include <rtabmap/utilite/ULogger.h>
 
 namespace rtabmap {
@@ -104,7 +105,7 @@ void MarkerDetector::parseParameters(const ParametersMap & parameters)
 #endif
 }
 
-std::map<int, Transform> MarkerDetector::detect(const cv::Mat & image, const CameraModel & model, cv::Mat * imageWithDetections)
+std::map<int, Transform> MarkerDetector::detect(const cv::Mat & image, const CameraModel & model, const cv::Mat & depth, float * markerLengthOut, cv::Mat * imageWithDetections)
 {
 	std::map<int, Transform> detections;
 
@@ -123,9 +124,69 @@ std::map<int, Transform> MarkerDetector::detect(const cv::Mat & image, const Cam
 	UDEBUG("Markers detected=%d rejected=%d", (int)ids.size(), (int)rejected.size());
 	if(ids.size() > 0)
 	{
-		cv::aruco::estimatePoseSingleMarkers(corners, markerLength_, model.K(), model.D(), rvecs, tvecs);
+		float rgbToDepthFactorX = 1.0f;
+		float rgbToDepthFactorY = 1.0f;
+		if(markerLength_ == 0)
+		{
+			if(depth.empty())
+			{
+				UERROR("Depth image is empty, please set %s parameter to non-null.", Parameters::kArucoMarkerLength().c_str());
+				return detections;
+			}
+			rgbToDepthFactorX = 1.0f/(model.imageWidth()>0?model.imageWidth()/depth.cols:1);
+			rgbToDepthFactorY = 1.0f/(model.imageHeight()>0?model.imageHeight()/depth.rows:1);
+		}
+
+		cv::aruco::estimatePoseSingleMarkers(corners, markerLength_==0?1.0f:markerLength_, model.K(), model.D(), rvecs, tvecs);
+		std::vector<float> scales;
 		for(size_t i=0; i<ids.size(); ++i)
 		{
+			if(markerLength_ == 0)
+			{
+				float d1 = util2d::getDepth(depth, corners[i][0].x*rgbToDepthFactorX, corners[i][0].y*rgbToDepthFactorY, true, 0.02f, true);
+				float d2 = util2d::getDepth(depth, corners[i][1].x*rgbToDepthFactorX, corners[i][1].y*rgbToDepthFactorY, true, 0.02f, true);
+				float d3 = util2d::getDepth(depth, corners[i][2].x*rgbToDepthFactorX, corners[i][2].y*rgbToDepthFactorY, true, 0.02f, true);
+				float d4 = util2d::getDepth(depth, corners[i][3].x*rgbToDepthFactorX, corners[i][3].y*rgbToDepthFactorY, true, 0.02f, true);
+				// Accept measurement only if all 4 depth values are valid and
+				// they are at the same depth (camera should be perpendicular to marker for
+				// best depth estimation)
+				if(d1>0 && d2>0 && d3>0 && d4>0)
+				{
+					if( fabs(d1-d2) < 0.01f &&
+						fabs(d1-d3) < 0.01f &&
+						fabs(d1-d4) < 0.01f)
+					{
+						float depth = (d1+d2+d3+d4)/4.0f;
+						scales.push_back(depth/tvecs[i].val[2]);
+						tvecs[i] *= scales.back();
+						UWARN("Automatic marker length estimation: id=%d depth=%fm length=%fm", ids[i], depth, scales.back());
+					}
+					else
+					{
+						UWARN("The four marker's corners should be "
+							  "perpendicular to camera to estimate correctly "
+							  "the marker's length. Errors: %f, %f, %f > 0.01m."
+							  "Parameter %s can be set to non-null to skip automatic "
+							  "marker length estimation. Detections are ignored.",
+							  fabs(d1-d2), fabs(d1-d3), fabs(d1-d4),
+								Parameters::kArucoMarkerLength().c_str());
+						detections.clear();
+						return detections;
+					}
+				}
+				else
+				{
+					UWARN("Some depth values (%f,%f,%f,%f) cannot be detected on the "
+						  "marker's corners, cannot initialize marker length. "
+						  "Parameter %s can be set to non-null to skip automatic "
+						  "marker length estimation. Detections are ignored.",
+						  d1,d2,d3,d4,
+						  Parameters::kArucoMarkerLength().c_str());
+					detections.clear();
+					return detections;
+				}
+			}
+
 			cv::Mat R;
 			cv::Rodrigues(rvecs[i], R);
 			Transform t(R.at<double>(0,0), R.at<double>(0,1), R.at<double>(0,2), tvecs[i].val[0],
@@ -136,6 +197,41 @@ std::map<int, Transform> MarkerDetector::detect(const cv::Mat & image, const Cam
 			detections.insert(std::make_pair(ids[i], pose));
 			UDEBUG("Marker %d detected at %s (%s)", ids[i], pose.prettyPrint().c_str(), t.prettyPrint().c_str());
 		}
+		if(markerLength_ == 0)
+		{
+			float sum = 0.0f;
+			float maxError = 0.0f;
+			for(size_t i=0; i<scales.size(); ++i)
+			{
+				if(i>0)
+				{
+					float error = fabs(scales[i]-scales[0]);
+					if(error > 0.001f)
+					{
+						UWARN("The marker's length detected between 2 of the "
+							  "markers doesn't match (%d->%fm vs %d->%fm)."
+							  "Parameter %s can be set to non-null to skip automatic "
+							  "marker length estimation. Detections are ignored.",
+							  ids[i], scales[i], ids[0], scales[0],
+							  Parameters::kArucoMarkerLength().c_str());
+						detections.clear();
+						return detections;
+					}
+					if(error > maxError)
+					{
+						maxError = error;
+					}
+				}
+				sum += scales[i];
+			}
+			markerLength_ = sum/float(scales.size());
+			UWARN("Final marker length estimated = %fm, max error=%fm (used for subsequent detections)", markerLength_, maxError);
+		}
+	}
+
+	if(markerLengthOut)
+	{
+		*markerLengthOut = markerLength_;
 	}
 
 	if(imageWithDetections)

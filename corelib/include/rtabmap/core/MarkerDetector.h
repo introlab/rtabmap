@@ -43,7 +43,7 @@ public:
 	MarkerDetector(const ParametersMap & parameters = ParametersMap());
 	virtual ~MarkerDetector();
 	void parseParameters(const ParametersMap & parameters);
-	std::map<int, Transform> detect(const cv::Mat & image, const CameraModel & model, cv::Mat * imageWithDetections = 0);
+	std::map<int, Transform> detect(const cv::Mat & image, const CameraModel & model, const cv::Mat & depth = cv::Mat(), float * estimatedMarkerLength = 0, cv::Mat * imageWithDetections = 0);
 
 private:
 #ifdef HAVE_OPENCV_ARUCO
