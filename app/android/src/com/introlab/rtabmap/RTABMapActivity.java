@@ -832,7 +832,7 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 			RTABMapLib.setMappingParameter("Mem/NotLinkedNodesKept", String.valueOf(keepAllDb));
 			RTABMapLib.setMappingParameter("RGBD/OptimizeFromGraphEnd", String.valueOf(optimizeFromGraphEnd));
 			RTABMapLib.setMappingParameter("Optimizer/Strategy", optimizer);
-			if(Float.parseFloat(markerDetection) == -1)
+			if(Integer.parseInt(markerDetection) == -1)
 			{
 				RTABMapLib.setMappingParameter("RGBD/MarkerDetection", "false");
 			}
@@ -840,6 +840,7 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 			{
 				RTABMapLib.setMappingParameter("RGBD/MarkerDetection", "true");
 				RTABMapLib.setMappingParameter("Aruco/Dictionary", markerDetection);
+                                RTABMapLib.setMappingParameter("Aruco/CornerRefinementMethod", Integer.parseInt(markerDetection) > 16?"3":"0");
 			}
 	
 			if(!DISABLE_LOG) Log.d(TAG, "set exporting parameters...");
@@ -1204,7 +1205,7 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 			}
 			else if(landmarkDetected != 0)
 			{
-				mToast.setText(String.format("Landmark %d detected!", landmarkDetected));
+				mToast.setText(String.format("Marker %d detected!", landmarkDetected));
 				mToast.show();
 			}
 			else if(rejected > 0)

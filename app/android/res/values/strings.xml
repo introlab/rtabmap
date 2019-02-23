@@ -619,6 +619,10 @@
         <item>"7X7_250"</item>
         <item>"7X7_1000"</item>
         <item>"ARUCO_ORIGINAL"</item>
+        <item>"APRILTAG_16h5"</item>
+        <item>"APRILTAG_25h9"</item>
+        <item>"APRILTAG_36h10"</item>
+        <item>"APRILTAG_36h11"</item>
     </string-array>
     <string-array name="pref_marker_detection_values">
         <item>"-1"</item>
@@ -639,6 +643,10 @@
         <item>"14"</item>
         <item>"15"</item>
         <item>"16"</item>
+        <item>"17"</item>
+        <item>"18"</item>
+        <item>"19"</item>
+        <item>"20"</item>
     </string-array>
 
     <string name="pref_title_export_sub">Exporting&#8230;</string>
