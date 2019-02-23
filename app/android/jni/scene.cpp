@@ -188,6 +188,10 @@ void Scene::clear()
 	{
 		delete iter->second;
 	}
+	for(std::map<int, tango_gl::Axis*>::iterator iter=markers_.begin(); iter!=markers_.end(); ++iter)
+	{
+		delete iter->second;
+	}
 	if(trace_)
 	{
 		trace_->ClearVertexArray();
@@ -198,6 +202,7 @@ void Scene::clear()
 		graph_ = 0;
 	}
 	pointClouds_.clear();
+	markers_.clear();
 	if(grid_)
 	{
 		grid_->SetPosition(kHeightOffset);
@@ -551,6 +556,12 @@ int Scene::Render() {
 		glDepthMask(GL_TRUE);
 	}
 
+	//draw markers on foreground
+	for(std::map<int, tango_gl::Axis*>::const_iterator iter=markers_.begin(); iter!=markers_.end(); ++iter)
+	{
+		iter->second->Render(projectionMatrix, viewMatrix);
+	}
+
 	return (int)cloudsToDraw.size();
 }
 
@@ -648,6 +659,53 @@ void Scene::setTraceVisible(bool visible)
 }
 
 //Should only be called in OpenGL thread!
+void Scene::addMarker(
+		int id,
+		const rtabmap::Transform & pose)
+{
+	LOGI("add marker %d", id);
+	std::map<int, tango_gl::Axis*>::iterator iter=markers_.find(id);
+	if(iter == markers_.end())
+	{
+		//create
+		tango_gl::Axis * drawable = new tango_gl::Axis();
+		drawable->SetScale(glm::vec3(0.05f,0.05f,0.05f));
+		drawable->SetLineWidth(5);
+		markers_.insert(std::make_pair(id, drawable));
+	}
+	setMarkerPose(id, pose);
+}
+void Scene::setMarkerPose(int id, const rtabmap::Transform & pose)
+{
+	UASSERT(!pose.isNull());
+	std::map<int, tango_gl::Axis*>::iterator iter=markers_.find(id);
+	if(iter != markers_.end())
+	{
+		glm::vec3 position(pose.x(), pose.y(), pose.z());
+		Eigen::Quaternionf quat = pose.getQuaternionf();
+		glm::quat rotation(quat.w(), quat.x(), quat.y(), quat.z());
+		iter->second->SetPosition(position);
+		iter->second->SetRotation(rotation);
+	}
+}
+bool Scene::hasMarker(int id) const
+{
+	return markers_.find(id) != markers_.end();
+}
+void Scene::removeMarker(int id)
+{
+	std::map<int, tango_gl::Axis*>::iterator iter=markers_.find(id);
+	if(iter != markers_.end())
+	{
+		delete iter->second;
+		markers_.erase(iter);
+	}
+}
+std::set<int> Scene::getAddedMarkers() const
+{
+	return uKeysSet(markers_);
+}
+
 void Scene::addCloud(
 		int id,
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,

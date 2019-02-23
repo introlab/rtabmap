@@ -191,6 +191,13 @@
 		    		android:title="@string/pref_title_optimize_end"
 		    		android:summary="@string/pref_summary_optimize_end"
 		   			android:defaultValue="@string/pref_default_optimize_end"/>
+		   		<ListPreference 
+		            android:key="@string/pref_key_marker_detection"
+		    		android:title="@string/pref_title_marker_detection"
+		    		android:summary="@string/pref_summary_marker_detection"
+		   			android:entries="@array/pref_marker_detection_keys"
+		   			android:entryValues="@array/pref_marker_detection_values"
+		   			android:defaultValue="@string/pref_default_marker_detection"/>
 		    </PreferenceCategory>
 	        <PreferenceCategory
 	        	android:title="@string/pref_title_mapping_database">

@@ -100,6 +100,7 @@ rtabmap::ParametersMap RTABMapApp::getRtabmapParameters()
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kRGBDProximityBySpace(), std::string("false"))); // just keep loop closure detection
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kRGBDLinearUpdate(), std::string("0.05")));
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kRGBDAngularUpdate(), std::string("0.05")));
+	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kArucoMarkerLength(), std::string("0.0")));
 
 	if(parameters.find(rtabmap::Parameters::kOptimizerStrategy()) != parameters.end())
 	{
@@ -1379,14 +1380,14 @@ int RTABMapApp::Render()
 				LOGW("Looking fo data to load (%d) %fs", bufferedSensorData.size(), time.ticks());
 #endif
 
-				std::map<int, rtabmap::Transform> poses = rtabmapEvents.back()->getStats().poses();
+				std::map<int, rtabmap::Transform> posesWithMarkers = rtabmapEvents.back()->getStats().poses();
 				if(!rtabmapEvents.back()->getStats().mapCorrection().isNull())
 				{
 					mapToOdom_ = rtabmapEvents.back()->getStats().mapCorrection();
 				}
 
 				// Transform pose in OpenGL world
-				for(std::map<int, rtabmap::Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter)
+				for(std::map<int, rtabmap::Transform>::iterator iter=posesWithMarkers.begin(); iter!=posesWithMarkers.end(); ++iter)
 				{
 					if(!graphOptimization_)
 					{
@@ -1402,6 +1403,7 @@ int RTABMapApp::Render()
 					}
 				}
 
+				std::map<int, rtabmap::Transform> poses(posesWithMarkers.lower_bound(0), posesWithMarkers.end());
 				const std::multimap<int, rtabmap::Link> & links = rtabmapEvents.back()->getStats().constraints();
 				if(poses.size())
 				{
@@ -1533,7 +1535,7 @@ int RTABMapApp::Render()
 					}
 				}
 
-				if(poses.size())
+				if(!poses.empty())
 				{
 					//update cloud visibility
 					boost::mutex::scoped_lock  lock(meshesMutex_);
@@ -1549,6 +1551,33 @@ int RTABMapApp::Render()
 							UASSERT(meshIter!=createdMeshes_.end());
 							meshIter->second.visible = false;
 						}
+					}
+				}
+
+				// Update markers
+				std::set<int> addedMarkers = main_scene_.getAddedMarkers();
+				for(std::set<int>::const_iterator iter=addedMarkers.begin();
+					iter!=addedMarkers.end();
+					++iter)
+				{
+					if(posesWithMarkers.find(*iter) == posesWithMarkers.end())
+					{
+						main_scene_.removeMarker(*iter);
+					}
+				}
+				for(std::map<int, rtabmap::Transform>::const_iterator iter=posesWithMarkers.begin();
+					iter!=posesWithMarkers.end() && iter->first<0;
+					++iter)
+				{
+					int id = iter->first;
+					if(main_scene_.hasMarker(id))
+					{
+						//just update pose
+						main_scene_.setMarkerPose(id, iter->second);
+					}
+					else
+					{
+						main_scene_.addMarker(id, iter->second);
 					}
 				}
 			}
@@ -3320,6 +3349,7 @@ bool RTABMapApp::handleEvent(UEvent * event)
 			uInsert(bufferedStatsData_, std::make_pair<std::string, float>(rtabmap::Statistics::kLoopHighest_hypothesis_value(), uValue(stats.data(), rtabmap::Statistics::kLoopHighest_hypothesis_value(), 0.0f)));
 			uInsert(bufferedStatsData_, std::make_pair<std::string, float>(rtabmap::Statistics::kMemoryDistance_travelled(), uValue(stats.data(), rtabmap::Statistics::kMemoryDistance_travelled(), 0.0f)));
 			uInsert(bufferedStatsData_, std::make_pair<std::string, float>(rtabmap::Statistics::kMemoryFast_movement(), uValue(stats.data(), rtabmap::Statistics::kMemoryFast_movement(), 0.0f)));
+			uInsert(bufferedStatsData_, std::make_pair<std::string, float>(rtabmap::Statistics::kLoopLandmark_detected(), uValue(stats.data(), rtabmap::Statistics::kLoopLandmark_detected(), 0.0f)));
 		}
 		// else use last data
 
@@ -3338,6 +3368,7 @@ bool RTABMapApp::handleEvent(UEvent * event)
 		float hypothesis = uValue(bufferedStatsData_, rtabmap::Statistics::kLoopHighest_hypothesis_value(), 0.0f);
 		float distanceTravelled = uValue(bufferedStatsData_, rtabmap::Statistics::kMemoryDistance_travelled(), 0.0f);
 		int fastMovement = (int)uValue(bufferedStatsData_, rtabmap::Statistics::kMemoryFast_movement(), 0.0f);
+		int landmarkDetected = (int)uValue(bufferedStatsData_, rtabmap::Statistics::kLoopLandmark_detected(), 0.0f);
 		rtabmap::Transform currentPose = main_scene_.GetCameraPose();
 		float x=0.0f,y=0.0f,z=0.0f,roll=0.0f,pitch=0.0f,yaw=0.0f;
 		if(!currentPose.isNull())
@@ -3357,7 +3388,7 @@ bool RTABMapApp::handleEvent(UEvent * event)
 				jclass clazz = env->GetObjectClass(RTABMapActivity);
 				if(clazz)
 				{
-					jmethodID methodID = env->GetMethodID(clazz, "updateStatsCallback", "(IIIIFIIIIIIFIFIFFFFIFFFFFF)V" );
+					jmethodID methodID = env->GetMethodID(clazz, "updateStatsCallback", "(IIIIFIIIIIIFIFIFFFFIIFFFFFF)V" );
 					if(methodID)
 					{
 						env->CallVoidMethod(RTABMapActivity, methodID,
@@ -3381,6 +3412,7 @@ bool RTABMapApp::handleEvent(UEvent * event)
 								optimizationMaxErrorRatio,
 								distanceTravelled,
 								fastMovement,
+								landmarkDetected,
 								x,
 								y,
 								z,

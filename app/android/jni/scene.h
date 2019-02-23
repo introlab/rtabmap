@@ -102,6 +102,12 @@ class Scene {
   void setGridVisible(bool visible);
   void setTraceVisible(bool visible);
 
+  void addMarker(int id, const rtabmap::Transform & pose);
+  void setMarkerPose(int id, const rtabmap::Transform & pose);
+  bool hasMarker(int id) const;
+  void removeMarker(int id);
+  std::set<int> getAddedMarkers() const;
+
   void addCloud(
   		  int id,
   		  const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
@@ -166,6 +172,8 @@ class Scene {
   bool graphVisible_;
   bool gridVisible_;
   bool traceVisible_;
+
+  std::map<int, tango_gl::Axis*> markers_;
 
   TangoSupportRotation color_camera_to_display_rotation_;
 

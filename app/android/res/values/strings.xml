@@ -103,6 +103,8 @@
     <string name="pref_default_optimizer">2</string>
     <string name="pref_key_optimize_end">pref_key_optimize_end</string>
     <string name="pref_default_optimize_end">true</string>
+    <string name="pref_key_marker_detection">pref_key_marker_detection</string>
+    <string name="pref_default_marker_detection">-1</string>
     <string name="pref_key_keep_all_db">pref_key_keep_all_db</string>
     <string name="pref_default_keep_all_db">true</string>
     <string name="pref_key_raw_scan_saved">pref_key_raw_scan_saved</string>
@@ -347,6 +349,8 @@
     <string name="pref_summary_optimizer">Graph optimization approach.</string>
     <string name="pref_title_optimize_end">Optimization from Graph End</string>
     <string name="pref_summary_optimize_end">The map\'s graph is optimized from the last node. The map is moved when a loop closure happens instead of jumping the current pose back to localized area. </string>
+    <string name="pref_title_marker_detection">ArUco Marker Detection</string>
+    <string name="pref_summary_marker_detection">ArUco markers can be detected for localization and graph optimization.</string>
     <string name="pref_title_keep_all_db">Save All Frames in Database</string>
     <string name="pref_summary_keep_all_db">Discarded frames while not moving are still saved in database. Useful to replay exactly the scanning on RTAB-Map Desktop.</string>
     <string name="pref_title_raw_scan_saved">Save Raw Scan</string>
@@ -595,6 +599,46 @@
         <item>"2"</item>
         <item>"1"</item>
         <item>"0"</item>
+    </string-array>
+    <string-array name="pref_marker_detection_keys">
+        <item>"Disabled"</item>
+        <item>"4X4_50"</item>
+        <item>"4X4_100"</item>
+        <item>"4X4_250"</item>
+        <item>"4X4_1000"</item>
+        <item>"5X5_50"</item>
+        <item>"5X5_100"</item>
+        <item>"5X5_250"</item>
+        <item>"5X5_1000"</item>
+        <item>"6X6_50"</item>
+        <item>"6X6_100"</item>
+        <item>"6X6_250"</item>
+        <item>"6X6_1000"</item>
+        <item>"7X7_50"</item>
+        <item>"7X7_100"</item>
+        <item>"7X7_250"</item>
+        <item>"7X7_1000"</item>
+        <item>"ARUCO_ORIGINAL"</item>
+    </string-array>
+    <string-array name="pref_marker_detection_values">
+        <item>"-1"</item>
+        <item>"0"</item>
+        <item>"1"</item>
+        <item>"2"</item>
+        <item>"3"</item>
+        <item>"4"</item>
+        <item>"5"</item>
+        <item>"6"</item>
+        <item>"7"</item>
+        <item>"8"</item>
+        <item>"9"</item>
+        <item>"10"</item>
+        <item>"11"</item>
+        <item>"12"</item>
+        <item>"13"</item>
+        <item>"14"</item>
+        <item>"15"</item>
+        <item>"16"</item>
     </string-array>
 
     <string name="pref_title_export_sub">Exporting&#8230;</string>

@@ -776,6 +776,7 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 			boolean keepAllDb = sharedPref.getBoolean(getString(R.string.pref_key_keep_all_db), Boolean.parseBoolean(getString(R.string.pref_default_keep_all_db)));
 			boolean optimizeFromGraphEnd = sharedPref.getBoolean(getString(R.string.pref_key_optimize_end), Boolean.parseBoolean(getString(R.string.pref_default_optimize_end)));
 			String optimizer = sharedPref.getString(getString(R.string.pref_key_optimizer), getString(R.string.pref_default_optimizer));
+			String markerDetection = sharedPref.getString(getString(R.string.pref_key_marker_detection), getString(R.string.pref_default_marker_detection));
 			mGPSSaved = sharedPref.getBoolean(getString(R.string.pref_key_gps_saved), Boolean.parseBoolean(getString(R.string.pref_default_gps_saved)));
 			if(mGPSSaved)
 			{
@@ -831,6 +832,15 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 			RTABMapLib.setMappingParameter("Mem/NotLinkedNodesKept", String.valueOf(keepAllDb));
 			RTABMapLib.setMappingParameter("RGBD/OptimizeFromGraphEnd", String.valueOf(optimizeFromGraphEnd));
 			RTABMapLib.setMappingParameter("Optimizer/Strategy", optimizer);
+			if(Float.parseFloat(markerDetection) == -1)
+			{
+				RTABMapLib.setMappingParameter("RGBD/MarkerDetection", "false");
+			}
+			else
+			{
+				RTABMapLib.setMappingParameter("RGBD/MarkerDetection", "true");
+				RTABMapLib.setMappingParameter("Aruco/Dictionary", markerDetection);
+			}
 	
 			if(!DISABLE_LOG) Log.d(TAG, "set exporting parameters...");
 			RTABMapLib.setCloudDensityLevel(Integer.parseInt(sharedPref.getString(getString(R.string.pref_key_density), getString(R.string.pref_default_density))));
@@ -1111,6 +1121,7 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 			float optimizationMaxError,
 			float optimizationMaxErrorRatio,
 			boolean fastMovement,
+			int landmarkDetected,
 			String[] statusTexts)
 	{
 		mStatusTexts = statusTexts;
@@ -1191,6 +1202,11 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 				mToast.setText(String.format("Loop closure detected! (%d/%d inliers)", inliers, matches));
 				mToast.show();
 			}
+			else if(landmarkDetected != 0)
+			{
+				mToast.setText(String.format("Landmark %d detected!", landmarkDetected));
+				mToast.show();
+			}
 			else if(rejected > 0)
 			{
 				if(inliers >= Integer.parseInt(mMinInliers))
@@ -1206,7 +1222,7 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 				}
 				else
 				{
-					mToast.setText(String.format("Loop closure rejected, not enough inliers (%d/%d < %s).", inliers, matches, mMinInliers));
+					mToast.setText(String.format("Loop closure rejected, not enough inliers (%d/%d < %s).", inliers, matches, mMinInliers));
 				}
 				mToast.show();
 			}
@@ -1248,6 +1264,7 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 			final float optimizationMaxErrorRatio,
 			final float distanceTravelled,
 			final int fastMovement,
+			final int landmarkDetected,
 			final float x,
 			final float y,
 			final float z,
@@ -1356,7 +1373,7 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 			
 		runOnUiThread(new Runnable() {
 				public void run() {
-					updateStatsUI(loopClosureId, inliers, matches, rejected, optimizationMaxError, optimizationMaxErrorRatio, fastMovement!=0, statusTexts);
+					updateStatsUI(loopClosureId, inliers, matches, rejected, optimizationMaxError, optimizationMaxErrorRatio, fastMovement!=0, landmarkDetected, statusTexts);
 				} 
 		});
 	}

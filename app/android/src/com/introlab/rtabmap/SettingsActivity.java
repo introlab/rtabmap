@@ -206,6 +206,7 @@ public class SettingsActivity extends PreferenceActivity implements OnSharedPref
         ((Preference)findPreference(getString(R.string.pref_key_features))).setSummary("("+((ListPreference)findPreference(getString(R.string.pref_key_features))).getEntry() + ") "+getString(R.string.pref_summary_features));
         ((Preference)findPreference(getString(R.string.pref_key_features_type))).setSummary("("+((ListPreference)findPreference(getString(R.string.pref_key_features_type))).getEntry() + ") "+getString(R.string.pref_summary_features_type));
         ((Preference)findPreference(getString(R.string.pref_key_optimizer))).setSummary("("+((ListPreference)findPreference(getString(R.string.pref_key_optimizer))).getEntry() + ") "+getString(R.string.pref_summary_optimizer));
+        ((Preference)findPreference(getString(R.string.pref_key_marker_detection))).setSummary("("+((ListPreference)findPreference(getString(R.string.pref_key_marker_detection))).getEntry() + ") "+getString(R.string.pref_summary_marker_detection));
         
         ((Preference)findPreference(getString(R.string.pref_key_cloud_voxel))).setSummary("("+((ListPreference)findPreference(getString(R.string.pref_key_cloud_voxel))).getEntry() + ") "+getString(R.string.pref_summary_cloud_voxel));
         ((Preference)findPreference(getString(R.string.pref_key_texture_size))).setSummary("("+((ListPreference)findPreference(getString(R.string.pref_key_texture_size))).getEntry() + ") "+getString(R.string.pref_summary_texture_size));
@@ -265,6 +266,7 @@ public class SettingsActivity extends PreferenceActivity implements OnSharedPref
         	if(key.compareTo(getString(R.string.pref_key_features))==0) pref.setSummary("("+((ListPreference)pref).getEntry() + ") "+getString(R.string.pref_summary_features));
         	if(key.compareTo(getString(R.string.pref_key_features_type))==0) pref.setSummary("("+((ListPreference)pref).getEntry() + ") "+getString(R.string.pref_summary_features_type));
         	if(key.compareTo(getString(R.string.pref_key_optimizer))==0) pref.setSummary("("+((ListPreference)pref).getEntry() + ") "+getString(R.string.pref_summary_optimizer));
+        	if(key.compareTo(getString(R.string.pref_key_marker_detection))==0) pref.setSummary("("+((ListPreference)pref).getEntry() + ") "+getString(R.string.pref_summary_marker_detection));
         	
         	if(key.compareTo(getString(R.string.pref_key_cloud_voxel))==0) pref.setSummary("("+((ListPreference)pref).getEntry() + ") "+getString(R.string.pref_summary_cloud_voxel));
         	if(key.compareTo(getString(R.string.pref_key_texture_size))==0) pref.setSummary("("+((ListPreference)pref).getEntry() + ") "+getString(R.string.pref_summary_texture_size));
