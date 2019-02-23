@@ -5,6 +5,7 @@ if [ $# -ne 1 ]; then
     exit 1
 fi
 
+cpus=-j4
 prefix=$1
 pwd=$(pwd)
 wget -nv https://github.com/introlab/rtabmap/raw/master/cmake_modules/android.toolchain.cmake
@@ -23,11 +24,11 @@ wget -nv https://gist.github.com/matlabbe/0bce8feeb73a499a76afbbcc5c687221/raw/e
 mkdir build
 cd build
 cmake -DCMAKE_TOOLCHAIN_FILE=$pwd/android.toolchain.cmake -DANDROID_ABI=armeabi-v7a -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$prefix/armeabi-v7a ..
-make
+make $cpus
 make install
 rm -r *
 cmake -DCMAKE_TOOLCHAIN_FILE=$pwd/android.toolchain.cmake -DANDROID_ABI=arm64-v8a -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$prefix/arm64-v8a ..
-make
+make $cpus
 make install
 cd $pwd
 rm -r boost_1_59_0.tar.gz boost_1_59_0
@@ -40,11 +41,11 @@ cd eigen-eigen-b30b87236a1b
 mkdir build
 cd build
 cmake -DCMAKE_TOOLCHAIN_FILE=$pwd/android.toolchain.cmake -DANDROID_ABI=armeabi-v7a -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$prefix/armeabi-v7a ..
-make
+make $cpus
 make install
 rm -r *
 cmake -DCMAKE_TOOLCHAIN_FILE=$pwd/android.toolchain.cmake -DANDROID_ABI=arm64-v8a -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$prefix/arm64-v8a ..
-make
+make $cpus
 make install
 cd $pwd
 rm -r 3.2.7.tar.gz eigen-eigen-b30b87236a1b
@@ -57,11 +58,11 @@ cd flann-1.8.4-src
 mkdir build
 cd build
 cmake -DCMAKE_TOOLCHAIN_FILE=$pwd/android.toolchain.cmake -DANDROID_ABI=armeabi-v7a -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$prefix/armeabi-v7a ..
-make 
+make $cpus
 make install
 rm -r *
 cmake -DCMAKE_TOOLCHAIN_FILE=$pwd/android.toolchain.cmake -DANDROID_ABI=arm64-v8a -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$prefix/arm64-v8a ..
-make
+make $cpus
 make install
 cd $pwd
 rm -r flann-1.8.4-src.zip flann-1.8.4-src
@@ -76,11 +77,11 @@ git apply gtsam_GKlib_android_fix.patch
 mkdir build
 cd build
 cmake -DCMAKE_TOOLCHAIN_FILE=$pwd/android.toolchain.cmake -DANDROID_ABI=armeabi-v7a -DMETIS_SHARED=OFF -DGTSAM_BUILD_STATIC_LIBRARY=ON -DGTSAM_BUILD_TESTS=OFF -DGTSAM_BUILD_EXAMPLES_ALWAYS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$prefix/armeabi-v7a ..
-make 
+make $cpus
 make install
 rm -r *
 cmake -DCMAKE_TOOLCHAIN_FILE=$pwd/android.toolchain.cmake -DANDROID_ABI=arm64-v8a -DMETIS_SHARED=OFF -DGTSAM_BUILD_STATIC_LIBRARY=ON -DGTSAM_BUILD_TESTS=OFF -DGTSAM_BUILD_EXAMPLES_ALWAYS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$prefix/arm64-v8a ..
-make
+make $cpus
 make install
 cd $pwd
 rm -rf gtsam
@@ -92,15 +93,14 @@ git checkout a3f7706bdbb849b2808dc3e1b7aee189f63b498e
 mkdir build
 cd build
 cmake -DCMAKE_TOOLCHAIN_FILE=$pwd/android.toolchain.cmake -DANDROID_ABI=armeabi-v7a -DBUILD_LGPL_SHARED_LIBS=OFF -DG2O_BUILD_APPS=OFF -DG2O_BUILD_EXAMPLES=OFF -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$prefix/armeabi-v7a ..
-make
+make $cpus
 make install
 rm -r *
 cmake -DCMAKE_TOOLCHAIN_FILE=$pwd/android.toolchain.cmake -DANDROID_ABI=arm64-v8a -DBUILD_LGPL_SHARED_LIBS=OFF -DG2O_BUILD_APPS=OFF -DG2O_BUILD_EXAMPLES=OFF -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$prefix/arm64-v8a ..
-make
+make $cpus
 make install
 cd $pwd
 rm -rf g2o
-
 
 #CMake 3.7 for VTK
 echo "wget cmake3.7..."
@@ -115,11 +115,11 @@ git checkout tags/v7.1.1
 mkdir build
 cd build
 $pwd/cmake-3.7.2-Linux-x86_64/bin/cmake -DBUILD_EXAMPLES=OFF -DBUILD_TESTING=OFF -DVTK_ANDROID_BUILD=ON -DANDROID_ARCH_ABI=armeabi-v7a -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$prefix/armeabi-v7a ..
-make
+make $cpus
 cp -r CMakeExternals/Install/vtk-android/* $prefix/armeabi-v7a/.
 rm -r *
 $pwd/cmake-3.7.2-Linux-x86_64/bin/cmake -DBUILD_EXAMPLES=OFF -DBUILD_TESTING=OFF -DVTK_ANDROID_BUILD=ON -DANDROID_ARCH_ABI=arm64-v8a -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$prefix/arm64-v8a ..
-make
+make $cpus
 cp -r CMakeExternals/Install/vtk-android/* $prefix/arm64-v8a/.
 cd $pwd
 rm -rf VTK cmake-3.7.2-Linux-x86_64
@@ -136,13 +136,13 @@ cd build
 # do it 2 times because there is a cmake error on the first time and not the second time!?
 cmake -DCMAKE_TOOLCHAIN_FILE=$pwd/android.toolchain.cmake -DANDROID_ABI=armeabi-v7a -DBUILD_apps=OFF -DBUILD_examples=OFF -DBUILD_tools=OFF -DBUILD_visualization=OFF -DBUILD_tracking=OFF -DBUILD_people=OFF -DBUILD_global_tests=OFF -DWITH_QT=OFF -DWITH_OPENGL=OFF -DWITH_VTK=ON -DPCL_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$prefix/armeabi-v7a ..
 cmake -DCMAKE_TOOLCHAIN_FILE=$pwd/android.toolchain.cmake -DANDROID_ABI=armeabi-v7a -DBUILD_apps=OFF -DBUILD_examples=OFF -DBUILD_tools=OFF -DBUILD_visualization=OFF -DBUILD_tracking=OFF -DBUILD_people=OFF -DBUILD_global_tests=OFF -DWITH_QT=OFF -DWITH_OPENGL=OFF -DWITH_VTK=ON -DPCL_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$prefix/armeabi-v7a ..
-make
+make $cpus
 make install
 rm -r *
 # do it 2 times because there is a cmake error on the first time and not the second time!?
 cmake -DCMAKE_TOOLCHAIN_FILE=$pwd/android.toolchain.cmake -DANDROID_ABI=arm64-v8a -DBUILD_apps=OFF -DBUILD_examples=OFF -DBUILD_tools=OFF -DBUILD_visualization=OFF -DBUILD_tracking=OFF -DBUILD_people=OFF -DBUILD_global_tests=OFF -DWITH_QT=OFF -DWITH_OPENGL=OFF -DWITH_VTK=ON -DPCL_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$prefix/arm64-v8a ..
 cmake -DCMAKE_TOOLCHAIN_FILE=$pwd/android.toolchain.cmake -DANDROID_ABI=arm64-v8a -DBUILD_apps=OFF -DBUILD_examples=OFF -DBUILD_tools=OFF -DBUILD_visualization=OFF -DBUILD_tracking=OFF -DBUILD_people=OFF -DBUILD_global_tests=OFF -DWITH_QT=OFF -DWITH_OPENGL=OFF -DWITH_VTK=ON -DPCL_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$prefix/arm64-v8a ..
-make
+make $cpus
 make install
 cd $pwd
 rm -rf pcl
@@ -150,19 +150,19 @@ rm -rf pcl
 # OpenCV
 git clone https://github.com/opencv/opencv_contrib.git
 cd opencv_contrib
-git checkout tags/3.2.0
+git checkout tags/3.4.2
 cd $pwd
 git clone https://github.com/opencv/opencv.git
 cd opencv
-git checkout tags/3.2.0
+git checkout tags/3.4.2
 mkdir build
 cd build
 cmake -DCMAKE_TOOLCHAIN_FILE=$pwd/android.toolchain.cmake -DANDROID_ABI=armeabi-v7a -DOPENCV_EXTRA_MODULES_PATH=$pwd/opencv_contrib/modules -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DBUILD_TESTS=OFF -DBUILD_PERF_TESTS=OFF -DWITH_CUDA=OFF -DCMAKE_INSTALL_PREFIX=$prefix/armeabi-v7a ..
-make
+make $cpus
 make install
 rm -r *
 cmake -DCMAKE_TOOLCHAIN_FILE=$pwd/android.toolchain.cmake -DANDROID_ABI=arm64-v8a -DOPENCV_EXTRA_MODULES_PATH=$pwd/opencv_contrib/modules -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DBUILD_TESTS=OFF -DBUILD_PERF_TESTS=OFF -DWITH_CUDA=OFF -DCMAKE_INSTALL_PREFIX=$prefix/arm64-v8a ..
-make
+make $cpus
 make install
 cd $pwd
 rm -rf opencv opencv_contrib

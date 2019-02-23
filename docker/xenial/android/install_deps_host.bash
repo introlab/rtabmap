@@ -6,8 +6,9 @@ if [ $# -ne 1 ]; then
 fi
 
 sudo apt-get update
-sudo apt-get install -y git cmake g++ software-properties-common wget unzip zlib1g-dev qtbase5-dev libqt5x11extras5-dev libqt5svg5-dev qttools5-dev libxt-dev 
+sudo apt-get install -y git cmake g++ software-properties-common wget unzip zlib1g-dev qtbase5-dev libqt5x11extras5-dev libqt5svg5-dev qttools5-dev libxt-dev freeglut3-dev
 
+cpus=-j4
 prefix=$1
 pwd=$(pwd)
 
@@ -23,7 +24,7 @@ wget -nv https://gist.github.com/matlabbe/0bce8feeb73a499a76afbbcc5c687221/raw/4
 mkdir build
 cd build
 cmake -DBUILD_SHARED_LIBS=ON -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$prefix ..
-make
+make $cpus
 make install
 cd $pwd
 rm -r boost_1_59_0.tar.gz boost_1_59_0
@@ -36,7 +37,7 @@ cd eigen-eigen-b30b87236a1b
 mkdir build
 cd build
 cmake -DBUILD_SHARED_LIBS=ON -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$prefix ..
-make
+make $cpus
 make install
 cd $pwd
 rm -r 3.2.7.tar.gz eigen-eigen-b30b87236a1b
@@ -49,7 +50,7 @@ cd flann-1.8.4-src
 mkdir build
 cd build
 cmake -DBUILD_SHARED_LIBS=ON -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$prefix ..
-make 
+make $cpus
 make install
 cd $pwd
 rm -r flann-1.8.4-src.zip flann-1.8.4-src
@@ -64,7 +65,7 @@ git apply gtsam_GKlib_android_fix.patch
 mkdir build
 cd build
 cmake -DMETIS_SHARED=ON -DGTSAM_BUILD_STATIC_LIBRARY=OFF -DGTSAM_BUILD_TESTS=OFF -DGTSAM_BUILD_EXAMPLES_ALWAYS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$prefix ..
-make 
+make $cpus
 make install
 cd $pwd
 rm -rf gtsam
@@ -76,7 +77,7 @@ git checkout a3f7706bdbb849b2808dc3e1b7aee189f63b498e
 mkdir build
 cd build
 cmake -DBUILD_LGPL_SHARED_LIBS=ON -DG2O_BUILD_APPS=OFF -DG2O_BUILD_EXAMPLES=OFF -DBUILD_SHARED_LIBS=ON -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$prefix ..
-make
+make $cpus
 make install
 cd $pwd
 rm -rf g2o
@@ -88,7 +89,7 @@ git checkout tags/v7.1.1
 mkdir build
 cd build
 cmake -DBUILD_EXAMPLES=OFF -DBUILD_TESTING=OFF -DBUILD_SHARED_LIBS=ON -DCMAKE_BUILD_TYPE=Release -DVTK_Group_Qt=ON -DVTK_QT_VERSION=5 -DCMAKE_INSTALL_PREFIX=$prefix ..
-make
+make $cpus
 make install
 cd $pwd
 rm -rf VTK
@@ -103,7 +104,7 @@ git apply pcl_1_8_0_vtk_android_support.patch
 mkdir build
 cd build
 cmake -DBUILD_apps=OFF -DBUILD_examples=OFF -DBUILD_tools=OFF -DBUILD_visualization=ON -DBUILD_tracking=OFF -DBUILD_people=OFF -DBUILD_global_tests=OFF -DWITH_QT=ON -DWITH_OPENGL=OFF -DWITH_VTK=ON -DPCL_SHARED_LIBS=ON -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$prefix ..
-make
+make $cpus
 make install
 cd $pwd
 rm -rf pcl
@@ -111,15 +112,15 @@ rm -rf pcl
 # OpenCV
 git clone https://github.com/opencv/opencv_contrib.git
 cd opencv_contrib
-git checkout tags/3.2.0
+git checkout tags/3.4.2
 cd $pwd
 git clone https://github.com/opencv/opencv.git
 cd opencv
-git checkout tags/3.2.0
+git checkout tags/3.4.2
 mkdir build
 cd build
 cmake -DOPENCV_EXTRA_MODULES_PATH=$pwd/opencv_contrib/modules -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON -DBUILD_TESTS=OFF -DBUILD_PERF_TESTS=OFF -DCMAKE_INSTALL_PREFIX=$prefix ..
-make
+make $cpus
 make install
 cd $pwd
 rm -rf opencv opencv_contrib

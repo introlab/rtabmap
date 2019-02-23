@@ -7,7 +7,8 @@ RUN apt-get update && apt-get install -y \
       git \
       cmake \
       g++ \
-      software-properties-common
+      software-properties-common \
+      freeglut3-dev
 
 ENV ANDROID_HOME=/opt/android-sdk
 ENV ANDROID_NATIVE_API_LEVEL=android-19
