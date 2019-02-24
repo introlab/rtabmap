@@ -1544,7 +1544,10 @@ void DatabaseViewer::updateIds()
 	for(std::multimap<int, Link>::iterator iter=unilinks.begin(); iter!=unilinks.end(); ++iter)
 	{
 		links.insert(*iter);
-		links.insert(std::make_pair(iter->second.to(), iter->second.inverse()));
+		if(graph::findLink(unilinks, iter->second.to(), iter->second.from(), false) == unilinks.end())
+		{
+			links.insert(std::make_pair(iter->second.to(), iter->second.inverse()));
+		}
 	}
 
 	double totalOdom = 0.0;
@@ -1619,7 +1622,6 @@ void DatabaseViewer::updateIds()
 				ids.find(jter->second.from()) != ids.end() &&
 				ids.find(jter->second.to()) != ids.end() &&
 				graph::findLink(links_, jter->second.from(), jter->second.to()) == links_.end() &&
-				graph::findLink(links, jter->second.from(), jter->second.to(), false) != links.end() &&
 				invertedLinkIter != links.end())
 			{
 				// check if user_data is set in opposite direction
@@ -4964,6 +4966,7 @@ void DatabaseViewer::updateConstraintView(
 			   !link.userDataCompressed().empty())
 			{
 				std::vector<int> ids;
+				UWARN("");
 				cv::Mat userData = link.uncompressUserDataConst();
 				if(userData.type() == CV_8SC1 &&
 				   userData.rows == 1 &&
@@ -4972,7 +4975,7 @@ void DatabaseViewer::updateConstraintView(
 				   memcmp(userData.data, "SCANS:", 6) == 0)
 				{
 					std::string scansStr = (const char *)userData.data;
-					UINFO("Detected \"%s\" in links's user data", scansStr.c_str());
+					UWARN("Detected \"%s\" in links's user data", scansStr.c_str());
 					if(!scansStr.empty())
 					{
 						std::list<std::string> strs = uSplit(scansStr, ':');
