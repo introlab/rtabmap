@@ -4966,7 +4966,6 @@ void DatabaseViewer::updateConstraintView(
 			   !link.userDataCompressed().empty())
 			{
 				std::vector<int> ids;
-				UWARN("");
 				cv::Mat userData = link.uncompressUserDataConst();
 				if(userData.type() == CV_8SC1 &&
 				   userData.rows == 1 &&
@@ -4975,7 +4974,7 @@ void DatabaseViewer::updateConstraintView(
 				   memcmp(userData.data, "SCANS:", 6) == 0)
 				{
 					std::string scansStr = (const char *)userData.data;
-					UWARN("Detected \"%s\" in links's user data", scansStr.c_str());
+					UINFO("Detected \"%s\" in links's user data", scansStr.c_str());
 					if(!scansStr.empty())
 					{
 						std::list<std::string> strs = uSplit(scansStr, ':');
