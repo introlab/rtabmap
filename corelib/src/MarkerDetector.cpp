@@ -35,6 +35,7 @@ MarkerDetector::MarkerDetector(const ParametersMap & parameters)
 {
 #ifdef HAVE_OPENCV_ARUCO
 	markerLength_ = Parameters::defaultArucoMarkerLength();
+	maxDepthError_ = Parameters::defaultArucoMaxDepthError();
 	dictionaryId_ = Parameters::defaultArucoDictionary();
 #if CV_MAJOR_VERSION > 3 || (CV_MAJOR_VERSION == 3 && CV_MINOR_VERSION >=2)
 	detectorParams_ = cv::aruco::DetectorParameters::create();
@@ -85,6 +86,7 @@ void MarkerDetector::parseParameters(const ParametersMap & parameters)
 	detectorParams_->errorCorrectionRate = 0.6;
 
 	Parameters::parse(parameters, Parameters::kArucoMarkerLength(), markerLength_);
+	Parameters::parse(parameters, Parameters::kArucoMaxDepthError(), maxDepthError_);
 	Parameters::parse(parameters, Parameters::kArucoDictionary(), dictionaryId_);
 #if CV_MAJOR_VERSION < 3 || (CV_MAJOR_VERSION == 3 && (CV_MINOR_VERSION <4 || (CV_MINOR_VERSION ==4 && CV_SUBMINOR_VERSION<2)))
 	if(dictionaryId_ >= 17)
@@ -152,9 +154,9 @@ std::map<int, Transform> MarkerDetector::detect(const cv::Mat & image, const Cam
 				// best depth estimation)
 				if(d1>0 && d2>0 && d3>0 && d4>0)
 				{
-					if( fabs(d1-d2) < 0.01f &&
-						fabs(d1-d3) < 0.01f &&
-						fabs(d1-d4) < 0.01f)
+					if( fabs(d1-d2) < maxDepthError_ &&
+						fabs(d1-d3) < maxDepthError_ &&
+						fabs(d1-d4) < maxDepthError_)
 					{
 						float depth = (d1+d2+d3+d4)/4.0f;
 						scales.push_back(depth/tvecs[i].val[2]);
@@ -165,10 +167,11 @@ std::map<int, Transform> MarkerDetector::detect(const cv::Mat & image, const Cam
 					{
 						UWARN("The four marker's corners should be "
 							  "perpendicular to camera to estimate correctly "
-							  "the marker's length. Errors: %f, %f, %f > 0.01m."
+							  "the marker's length. Errors: %f, %f, %f > %fm (%s). Four corners: %f %f %f %f. "
 							  "Parameter %s can be set to non-null to skip automatic "
 							  "marker length estimation. Detections are ignored.",
-							  fabs(d1-d2), fabs(d1-d3), fabs(d1-d4),
+							  fabs(d1-d2), fabs(d1-d3), fabs(d1-d4), maxDepthError_, Parameters::kArucoMaxDepthError().c_str(),
+							  d1, d2, d3, d4,
 								Parameters::kArucoMarkerLength().c_str());
 						detections.clear();
 						return detections;

@@ -1219,6 +1219,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	// Aruco marker
 	_ui->ArucoDictionary->setObjectName(Parameters::kArucoDictionary().c_str());
 	_ui->ArucoMarkerLength->setObjectName(Parameters::kArucoMarkerLength().c_str());
+	_ui->ArucoMaxDepthError->setObjectName(Parameters::kArucoMaxDepthError().c_str());
 	_ui->ArucoVarianceLinear->setObjectName(Parameters::kArucoVarianceLinear().c_str());
 	_ui->ArucoVarianceAngular->setObjectName(Parameters::kArucoVarianceAngular().c_str());
 	_ui->ArucoCornerRefinementMethod->setObjectName(Parameters::kArucoCornerRefinementMethod().c_str());
