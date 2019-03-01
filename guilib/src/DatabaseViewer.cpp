@@ -3283,7 +3283,7 @@ void DatabaseViewer::detectMoreLoopClosures()
 	{
 		UINFO("iteration %d/%d", n+1, iterations);
 		std::multimap<int, int> clusters = rtabmap::graph::radiusPosesClustering(
-				optimizedPoses,
+				std::map<int, Transform>(optimizedPoses.upper_bound(0), optimizedPoses.end()),
 				ui_->doubleSpinBox_detectMore_radius->value(),
 				ui_->doubleSpinBox_detectMore_angle->value()*CV_PI/180.0);
 

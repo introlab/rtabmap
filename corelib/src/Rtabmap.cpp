@@ -2880,10 +2880,10 @@ bool Rtabmap::process(
 			_memory->deleteLocation(signature->id());
 		}
 		else if(_startNewMapOnGoodSignature &&
-				signature->isBadSignature() &&
+				(signature->getLandmarks().empty() && signature->isBadSignature()) &&
 				graph::filterLinks(signature->getLinks(), Link::kPosePrior).size() == 0)     // alone in the current map
 		{
-			UWARN("Ignoring location %d because a good signature (with enough features) is required before starting a new map!",
+			UWARN("Ignoring location %d because a good signature (with enough features or with a landmark detected) is required before starting a new map!",
 					signature->id());
 			signaturesRemoved.push_back(signature->id());
 			_memory->deleteLocation(signature->id());
@@ -4146,28 +4146,23 @@ int Rtabmap::detectMoreLoopClosures(
 	std::list<Link> loopClosuresAdded;
 	std::multimap<int, int> checkedLoopClosures;
 
-	std::map<int, Transform> posesWithoutLandmarks;
+	std::map<int, Transform> posesToCheckLoopClosures;
 	std::map<int, Transform> poses;
 	std::multimap<int, Link> links;
 	std::map<int, Signature> signatures;
 	this->getGraph(poses, links, true, true, &signatures);
 
 	std::map<int, int> mapIds;
-	//remove all invalid or intermediate nodes, fill mapIds
-	for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end();)
+	UDEBUG("remove all invalid or intermediate nodes, fill mapIds");
+	for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end();++iter)
 	{
-		if(signatures.at(iter->first).getWeight() < 0)
+		if(iter->first > 0)
 		{
-			poses.erase(iter++);
-		}
-		else
-		{
-			if(iter->first > 0)
+			if(signatures.at(iter->first).getWeight() >= 0)
 			{
-				posesWithoutLandmarks.insert(*iter);
+				posesToCheckLoopClosures.insert(*iter);
 				mapIds.insert(std::make_pair(iter->first, signatures.at(iter->first).mapId()));
 			}
-			++iter;
 		}
 	}
 
@@ -4177,7 +4172,7 @@ int Rtabmap::detectMoreLoopClosures(
 				n+1, iterations, clusterRadius, clusterAngle);
 
 		std::multimap<int, int> clusters = graph::radiusPosesClustering(
-				posesWithoutLandmarks,
+				posesToCheckLoopClosures,
 				clusterRadius,
 				clusterAngle);
 

@@ -5602,7 +5602,7 @@ void MainWindow::postProcessing()
 					.arg(n+1).arg(detectLoopClosureIterations).arg(clusterRadius).arg(clusterAngle));
 
 			std::multimap<int, int> clusters = graph::radiusPosesClustering(
-					_currentPosesMap,
+					std::map<int, Transform>(_currentPosesMap.upper_bound(0), _currentPosesMap.end()),
 					clusterRadius,
 					clusterAngle*CV_PI/180.0);
 
