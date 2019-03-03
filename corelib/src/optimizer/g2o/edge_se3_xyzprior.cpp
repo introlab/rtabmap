@@ -26,6 +26,8 @@
 
 #include "edge_se3_xyzprior.h"
 
+namespace rtabmap {
+
 EdgeSE3XYZPrior::EdgeSE3XYZPrior() : BaseUnaryEdge<3, Eigen::Vector3d, g2o::VertexSE3>()
 {
   information().setIdentity();
@@ -104,4 +106,6 @@ void EdgeSE3XYZPrior::initialEstimate(const g2o::OptimizableGraph::VertexSet& /*
     newEstimate.translation() = v->estimate().translation();
   }
   v->setEstimate(newEstimate);
+}
+
 }

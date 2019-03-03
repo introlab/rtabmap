@@ -24,12 +24,14 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#ifndef G2O_EDGE_SE3_PRIOR_XYZ_H
-#define G2O_EDGE_SE3_PRIOR_XYZ_H
+#ifndef RTAB_G2O_EDGE_SE3_PRIOR_XYZ_H
+#define RTAB_G2O_EDGE_SE3_PRIOR_XYZ_H
 
 #include "g2o/types/slam3d/vertex_se3.h"
 #include "g2o/core/base_unary_edge.h"
 #include "g2o/types/slam3d/parameter_se3_offset.h"
+
+namespace rtabmap {
 
 /**
 * \brief Prior for a 3D pose with constraints only in xyz direction
@@ -74,5 +76,7 @@ protected:
   g2o::ParameterSE3Offset* _offsetParam;
   g2o::CacheSE3Offset* _cache;
 };
+
+}
 
 #endif
