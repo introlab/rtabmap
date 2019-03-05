@@ -1507,7 +1507,7 @@ void DatabaseViewer::updateIds()
 	groundTruthPoses_.clear();
 	gpsPoses_.clear();
 	gpsValues_.clear();
-	lastImageBrowsed_ = 0;
+	lastSliderIndexBrowsed_ = 0;
 	ui_->checkBox_wmState->setVisible(false);
 	ui_->checkBox_alignPosesWithGroundTruth->setVisible(false);
 	ui_->checkBox_alignScansCloudsWithGroundTruth->setVisible(false);
@@ -1984,12 +1984,17 @@ void DatabaseViewer::editDepthImage()
 {
 	if(dbDriver_ && ids_.size())
 	{
-		int id = ids_.at(ui_->horizontalSlider_A->value());
+		if(lastSliderIndexBrowsed_>= ids_.size())
+		{
+			lastSliderIndexBrowsed_ = ui_->horizontalSlider_A->value();
+		}
+		int id = ids_.at(lastSliderIndexBrowsed_);
 		SensorData data;
 		dbDriver_->getNodeData(id, data, true, false, false, false);
 		data.uncompressData();
 		if(!data.depthRaw().empty())
 		{
+			editDepthArea_->setColorMap(lastSliderIndexBrowsed_ == ui_->horizontalSlider_B->value()?ui_->graphicsView_B->getDepthColorMap():ui_->graphicsView_A->getDepthColorMap());
 			editDepthArea_->setImage(data.depthRaw(), data.imageRaw());
 			if(editDepthDialog_->exec() == QDialog::Accepted && editDepthArea_->isModified())
 			{
@@ -3558,7 +3563,7 @@ void DatabaseViewer::update(int value,
 						QLabel * labelSensors,
 						bool updateConstraintView)
 {
-	lastImageBrowsed_ = value;
+	lastSliderIndexBrowsed_ = value;
 
 	UTimer timer;
 	labelIndex->setText(QString::number(value));
@@ -4611,7 +4616,7 @@ void DatabaseViewer::update3dView()
 {
 	if(ui_->dockWidget_view3d->isVisible())
 	{
-		if(lastImageBrowsed_ == ui_->horizontalSlider_B->value())
+		if(lastSliderIndexBrowsed_ == ui_->horizontalSlider_B->value())
 		{
 			sliderBValueChanged(ui_->horizontalSlider_B->value());
 		}

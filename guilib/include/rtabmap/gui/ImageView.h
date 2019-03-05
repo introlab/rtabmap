@@ -36,6 +36,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QtCore/QSettings>
 #include <opencv2/features2d/features2d.hpp>
 #include <map>
+#include "rtabmap/utilite/UCv2Qt.h"
 
 class QAction;
 class QMenu;
@@ -67,6 +68,7 @@ public:
 	bool isGraphicsViewScaledToHeight() const;
 	const QColor & getDefaultBackgroundColor() const;
 	const QColor & getBackgroundColor() const;
+	uCvQtDepthColorMap getDepthColorMap() const;
 
 	float viewScale() const;
 

@@ -34,7 +34,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "rtabmap/gui/EditDepthArea.h"
 #include <rtabmap/utilite/ULogger.h>
-#include <rtabmap/utilite/UCv2Qt.h>
 
 namespace rtabmap {
 
@@ -55,13 +54,13 @@ EditDepthArea::EditDepthArea(QWidget *parent)
 	QMenu * colorMap = menu_->addMenu("Depth color map");
 	colorMapWhiteToBlack_ = colorMap->addAction(tr("White to black"));
 	colorMapWhiteToBlack_->setCheckable(true);
-	colorMapWhiteToBlack_->setChecked(true);
+	colorMapWhiteToBlack_->setChecked(false);
 	colorMapBlackToWhite_ = colorMap->addAction(tr("Black to white"));
 	colorMapBlackToWhite_->setCheckable(true);
 	colorMapBlackToWhite_->setChecked(false);
 	colorMapRedToBlue_ = colorMap->addAction(tr("Red to blue"));
 	colorMapRedToBlue_->setCheckable(true);
-	colorMapRedToBlue_->setChecked(false);
+	colorMapRedToBlue_->setChecked(true);
 	colorMapBlueToRed_ = colorMap->addAction(tr("Blue to red"));
 	colorMapBlueToRed_->setCheckable(true);
 	colorMapBlueToRed_->setChecked(false);
@@ -154,6 +153,32 @@ void EditDepthArea::resetChanges()
     image_ = uCvMat2QImage(originalImage_).convertToFormat(QImage::Format_RGB32);
     modified_ = false;
     update();
+}
+
+void EditDepthArea::setColorMap(uCvQtDepthColorMap type)
+{
+	if(type == uCvQtDepthBlackToWhite)
+	{
+		colorMapBlackToWhite_->setChecked(true);
+	}
+	else if(type == uCvQtDepthRedToBlue)
+	{
+		colorMapRedToBlue_->setChecked(true);
+	}
+	else if(type == uCvQtDepthBlueToRed)
+	{
+		colorMapBlueToRed_->setChecked(true);
+	}
+	else
+	{
+		colorMapWhiteToBlack_->setChecked(true);
+	}
+
+	if(!originalImage_.empty())
+	{
+		image_ = uCvMat2QImage(originalImage_, true, type).convertToFormat(QImage::Format_RGB32);
+		update();
+	}
 }
 
 void EditDepthArea::mousePressEvent(QMouseEvent *event)
@@ -332,25 +357,20 @@ void EditDepthArea::contextMenuEvent(QContextMenuEvent * e)
 			action == colorMapRedToBlue_ ||
 			action == colorMapBlueToRed_)
 	{
-		if(!originalImage_.empty())
+		uCvQtDepthColorMap colorMap = uCvQtDepthWhiteToBlack;
+		if(colorMapBlackToWhite_->isChecked())
 		{
-			uCvQtDepthColorMap colorMap = uCvQtDepthWhiteToBlack;
-			if(colorMapBlackToWhite_->isChecked())
-			{
-				colorMap = uCvQtDepthBlackToWhite;
-			}
-			else if(colorMapRedToBlue_->isChecked())
-			{
-				colorMap = uCvQtDepthRedToBlue;
-			}
-			else if(colorMapBlueToRed_->isChecked())
-			{
-				colorMap = uCvQtDepthBlueToRed;
-			}
-
-			image_ = uCvMat2QImage(originalImage_, true, colorMap).convertToFormat(QImage::Format_RGB32);
-			update();
+			colorMap = uCvQtDepthBlackToWhite;
 		}
+		else if(colorMapRedToBlue_->isChecked())
+		{
+			colorMap = uCvQtDepthRedToBlue;
+		}
+		else if(colorMapBlueToRed_->isChecked())
+		{
+			colorMap = uCvQtDepthBlueToRed;
+		}
+		this->setColorMap(colorMap);
 	}
 	else if(action == resetChanges_)
 	{

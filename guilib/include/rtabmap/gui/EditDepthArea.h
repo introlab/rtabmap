@@ -35,6 +35,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QPoint>
 #include <QWidget>
 #include <opencv2/opencv.hpp>
+#include "rtabmap/utilite/UCv2Qt.h"
 
 class QMenu;
 class QAction;
@@ -54,6 +55,7 @@ public:
 
     void setPenWidth(int newWidth);
     int penWidth() const { return myPenWidth_; }
+    void setColorMap(uCvQtDepthColorMap type);
 
 public Q_SLOTS:
     void resetChanges();

@@ -38,7 +38,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QVBoxLayout>
 #include <QGraphicsRectItem>
 #include "rtabmap/utilite/ULogger.h"
-#include "rtabmap/utilite/UCv2Qt.h"
 #include "rtabmap/gui/KeypointItem.h"
 #include "rtabmap/core/util2d.h"
 
@@ -202,13 +201,13 @@ ImageView::ImageView(QWidget * parent) :
 	QMenu * colorMap = _menu->addMenu("Depth color map");
 	_colorMapWhiteToBlack = colorMap->addAction(tr("White to black"));
 	_colorMapWhiteToBlack->setCheckable(true);
-	_colorMapWhiteToBlack->setChecked(true);
+	_colorMapWhiteToBlack->setChecked(false);
 	_colorMapBlackToWhite = colorMap->addAction(tr("Black to white"));
 	_colorMapBlackToWhite->setCheckable(true);
 	_colorMapBlackToWhite->setChecked(false);
 	_colorMapRedToBlue = colorMap->addAction(tr("Red to blue"));
 	_colorMapRedToBlue->setCheckable(true);
-	_colorMapRedToBlue->setChecked(false);
+	_colorMapRedToBlue->setChecked(true);
 	_colorMapBlueToRed = colorMap->addAction(tr("Blue to red"));
 	_colorMapBlueToRed->setCheckable(true);
 	_colorMapBlueToRed->setChecked(false);
@@ -321,6 +320,24 @@ const QColor & ImageView::getDefaultBackgroundColor() const
 const QColor & ImageView::getBackgroundColor() const
 {
 	return _graphicsView->backgroundBrush().color();
+}
+
+uCvQtDepthColorMap ImageView::getDepthColorMap() const
+{
+	uCvQtDepthColorMap colorMap = uCvQtDepthWhiteToBlack;
+	if(_colorMapBlackToWhite->isChecked())
+	{
+		colorMap = uCvQtDepthBlackToWhite;
+	}
+	else if(_colorMapRedToBlue->isChecked())
+	{
+		colorMap = uCvQtDepthRedToBlue;
+	}
+	else if(_colorMapBlueToRed->isChecked())
+	{
+		colorMap = uCvQtDepthBlueToRed;
+	}
+	return colorMap;
 }
 
 
@@ -904,20 +921,7 @@ void ImageView::setImage(const QImage & image)
 void ImageView::setImageDepth(const cv::Mat & imageDepth)
 {
 	_imageDepthCv = imageDepth;
-	uCvQtDepthColorMap colorMap = uCvQtDepthWhiteToBlack;
-	if(_colorMapBlackToWhite->isChecked())
-	{
-		colorMap = uCvQtDepthBlackToWhite;
-	}
-	else if(_colorMapRedToBlue->isChecked())
-	{
-		colorMap = uCvQtDepthRedToBlue;
-	}
-	else if(_colorMapBlueToRed->isChecked())
-	{
-		colorMap = uCvQtDepthBlueToRed;
-	}
-	setImageDepth(uCvMat2QImage(_imageDepthCv, true, colorMap));
+	setImageDepth(uCvMat2QImage(_imageDepthCv, true, getDepthColorMap()));
 }
 
 void ImageView::setImageDepth(const QImage & imageDepth)
