@@ -200,6 +200,7 @@ private:
 	QMap<int, int> idToIndex_;
 	QList<rtabmap::Link> neighborLinks_;
 	QList<rtabmap::Link> loopLinks_;
+	int lastImageBrowsed_ = 0;
 	rtabmap::DBDriver * dbDriver_;
 	QString pathDatabase_;
 	std::string databaseFileName_;

@@ -83,6 +83,10 @@ private:
     QAction * removeCluster_;
     QAction * resetChanges_;
     QAction * setPenWidth_;
+    QAction * colorMapWhiteToBlack_;
+	QAction * colorMapBlackToWhite_;
+	QAction * colorMapRedToBlue_;
+	QAction * colorMapBlueToRed_;
 };
 
 }

@@ -52,6 +52,24 @@ EditDepthArea::EditDepthArea(QWidget *parent)
     showRGB_->setChecked(true);
     removeCluster_ = menu_->addAction(tr("Remove Cluster"));
 	setPenWidth_ = menu_->addAction(tr("Set Pen Width..."));
+	QMenu * colorMap = menu_->addMenu("Depth color map");
+	colorMapWhiteToBlack_ = colorMap->addAction(tr("White to black"));
+	colorMapWhiteToBlack_->setCheckable(true);
+	colorMapWhiteToBlack_->setChecked(true);
+	colorMapBlackToWhite_ = colorMap->addAction(tr("Black to white"));
+	colorMapBlackToWhite_->setCheckable(true);
+	colorMapBlackToWhite_->setChecked(false);
+	colorMapRedToBlue_ = colorMap->addAction(tr("Red to blue"));
+	colorMapRedToBlue_->setCheckable(true);
+	colorMapRedToBlue_->setChecked(false);
+	colorMapBlueToRed_ = colorMap->addAction(tr("Blue to red"));
+	colorMapBlueToRed_->setCheckable(true);
+	colorMapBlueToRed_->setChecked(false);
+	QActionGroup * group = new QActionGroup(this);
+	group->addAction(colorMapWhiteToBlack_);
+	group->addAction(colorMapBlackToWhite_);
+	group->addAction(colorMapRedToBlue_);
+	group->addAction(colorMapBlueToRed_);
 	resetChanges_ = menu_->addAction(tr("Reset Changes"));
 }
 
@@ -61,7 +79,22 @@ void EditDepthArea::setImage(const cv::Mat &depth, const cv::Mat & rgb)
 	UASSERT(depth.type() == CV_32FC1 ||
 			depth.type() == CV_16UC1);
 	originalImage_ = depth;
-	image_ = uCvMat2QImage(depth).convertToFormat(QImage::Format_RGB32);
+
+	uCvQtDepthColorMap colorMap = uCvQtDepthWhiteToBlack;
+	if(colorMapBlackToWhite_->isChecked())
+	{
+		colorMap = uCvQtDepthBlackToWhite;
+	}
+	else if(colorMapRedToBlue_->isChecked())
+	{
+		colorMap = uCvQtDepthRedToBlue;
+	}
+	else if(colorMapBlueToRed_->isChecked())
+	{
+		colorMap = uCvQtDepthBlueToRed;
+	}
+
+	image_ = uCvMat2QImage(depth, true, colorMap).convertToFormat(QImage::Format_RGB32);
 
 	imageRGB_ = QImage();
 	if(!rgb.empty())
@@ -292,6 +325,31 @@ void EditDepthArea::contextMenuEvent(QContextMenuEvent * e)
 		if(ok)
 		{
 			myPenWidth_ = width;
+		}
+	}
+	else if(action == colorMapBlackToWhite_ ||
+			action == colorMapWhiteToBlack_ ||
+			action == colorMapRedToBlue_ ||
+			action == colorMapBlueToRed_)
+	{
+		if(!originalImage_.empty())
+		{
+			uCvQtDepthColorMap colorMap = uCvQtDepthWhiteToBlack;
+			if(colorMapBlackToWhite_->isChecked())
+			{
+				colorMap = uCvQtDepthBlackToWhite;
+			}
+			else if(colorMapRedToBlue_->isChecked())
+			{
+				colorMap = uCvQtDepthRedToBlue;
+			}
+			else if(colorMapBlueToRed_->isChecked())
+			{
+				colorMap = uCvQtDepthBlueToRed;
+			}
+
+			image_ = uCvMat2QImage(originalImage_, true, colorMap).convertToFormat(QImage::Format_RGB32);
+			update();
 		}
 	}
 	else if(action == resetChanges_)

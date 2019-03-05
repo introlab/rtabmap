@@ -1507,6 +1507,7 @@ void DatabaseViewer::updateIds()
 	groundTruthPoses_.clear();
 	gpsPoses_.clear();
 	gpsValues_.clear();
+	lastImageBrowsed_ = 0;
 	ui_->checkBox_wmState->setVisible(false);
 	ui_->checkBox_alignPosesWithGroundTruth->setVisible(false);
 	ui_->checkBox_alignScansCloudsWithGroundTruth->setVisible(false);
@@ -3557,6 +3558,8 @@ void DatabaseViewer::update(int value,
 						QLabel * labelSensors,
 						bool updateConstraintView)
 {
+	lastImageBrowsed_ = value;
+
 	UTimer timer;
 	labelIndex->setText(QString::number(value));
 	labelParents->clear();
@@ -4608,8 +4611,14 @@ void DatabaseViewer::update3dView()
 {
 	if(ui_->dockWidget_view3d->isVisible())
 	{
-		sliderAValueChanged(ui_->horizontalSlider_A->value());
-		sliderBValueChanged(ui_->horizontalSlider_B->value());
+		if(lastImageBrowsed_ == ui_->horizontalSlider_B->value())
+		{
+			sliderBValueChanged(ui_->horizontalSlider_B->value());
+		}
+		else
+		{
+			sliderAValueChanged(ui_->horizontalSlider_A->value());
+		}
 	}
 }
 
