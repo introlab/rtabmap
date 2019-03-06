@@ -68,6 +68,7 @@ private:
 	float scanSubtractAngle_;
 	int bundleAdjustment_;
 	int bundleMaxFrames_;
+	float validDepthRatio_;
 
 	Registration * regPipeline_;
 	Signature * map_;

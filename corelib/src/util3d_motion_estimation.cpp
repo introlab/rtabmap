@@ -176,6 +176,11 @@ Transform estimateMotion3DTo2D(
 				{
 					UWARN("Not enough close points to compute covariance!");
 				}
+
+				if(float(oi) / float(inliers.size()) < 0.2f)
+				{
+					UWARN("A very low number of inliers have valid depth (%d/%d), the transform returned may be wrong!", oi, (int)inliers.size());
+				}
 			}
 			else if(covariance)
 			{
