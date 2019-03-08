@@ -2500,6 +2500,11 @@ bool Rtabmap::process(
 				Transform oldPose = _optimizedPoses.at(localizationLinks.begin()->first);
 				Transform mapCorrectionInv = _mapCorrection.inverse();
 				Transform u = signature->getPose() * localizationLinks.begin()->second.transform();
+				if(_graphOptimizer->isSlam2d())
+				{
+					// in case of 3d landmarks, transform constraint to 2D
+					u = u.to3DoF();
+				}
 				Transform up = u * oldPose.inverse();
 				for(std::map<int, Transform>::iterator iter=_optimizedPoses.begin(); iter!=_optimizedPoses.end(); ++iter)
 				{
@@ -2509,7 +2514,13 @@ bool Rtabmap::process(
 			}
 			else
 			{
-				_optimizedPoses.at(signature->id()) = _optimizedPoses.at(localizationLinks.begin()->first) * localizationLinks.begin()->second.transform().inverse();
+				Transform newPose = _optimizedPoses.at(localizationLinks.begin()->first) * localizationLinks.begin()->second.transform().inverse();
+				if(_graphOptimizer->isSlam2d())
+				{
+					// in case of 3d landmarks, transform constraint to 2D
+					newPose = newPose.to3DoF();
+				}
+				_optimizedPoses.at(signature->id()) = newPose;
 			}
 			localizationCovariance = localizationLinks.begin()->second.infMatrix().inv();
 		}
