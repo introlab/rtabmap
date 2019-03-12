@@ -89,9 +89,9 @@ This website uses Google Analytics. See their Privacy Policy [here](https://supp
     <a href="https://youtu.be/FvhxdUhsNUk"><img src="https://raw.githubusercontent.com/wiki/introlab/rtabmap/doc/video_screenshots/tango0.11.14.jpg" alt="video" title="video"></a>
 
 ### October 2016
-* Application example: See how RTAB-Map is helping nuclear dismantling with Areva's MANUELA project (Mobile Apparatus for Nuclear Expertise and Localisation Assistance):
+* Application example: See how RTAB-Map is helping nuclear dismantling with Orano's MANUELA project (Mobile Apparatus for Nuclear Expertise and Localisation Assistance):
 
-    <a href="https://youtu.be/bHsNVoRkK2w"><img src="https://raw.githubusercontent.com/wiki/introlab/rtabmap/doc/video_screenshots/manuela.jpg" alt="video" title="video"></a>
+    <a href="https://www.youtube.com/watch?v=V4dN2qnJXOU"><img src="https://raw.githubusercontent.com/wiki/introlab/rtabmap/doc/video_screenshots/manuela.jpg" alt="video" title="video"></a>
 
 * **Version 0.11.11**: Visit the [release page](https://github.com/introlab/rtabmap/releases/0.11.11) for more info!
 
