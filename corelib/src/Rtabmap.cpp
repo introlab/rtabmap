@@ -4655,7 +4655,7 @@ bool Rtabmap::computePath(const Transform & targetPose, float tolerance)
 	UTimer timer;
 	std::map<int, Transform> nodes = _optimizedPoses;
 	std::multimap<int, int> links;
-	for(std::map<int, Transform>::iterator iter=nodes.begin(); iter!=nodes.end(); ++iter)
+	for(std::map<int, Transform>::iterator iter=nodes.upper_bound(0); iter!=nodes.end(); ++iter)
 	{
 		const Signature * s = _memory->getSignature(iter->first);
 		UASSERT(s);
