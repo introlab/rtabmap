@@ -1143,7 +1143,7 @@ Transform OdometryF2M::computeTransform(
 										0,
 										0.0f,
 										LaserScan::kXYNormal,
-										Transform(newFramePose.x(), newFramePose.y(), lastFrame_->sensorData().laserScanRaw().localTransform().z(),0,0,newFramePose.theta())));
+										Transform(newFramePose.x(), newFramePose.y(), lastFrame_->sensorData().laserScanRaw().localTransform().z(),0,0,0)));
 					}
 					else
 					{
@@ -1154,8 +1154,9 @@ Transform OdometryF2M::computeTransform(
 										0,
 										0.0f,
 										LaserScan::kXYZNormal,
-										newFramePose));
+										newFramePose.translation()));
 					}
+
 					addKeyFrame = true;
 				}
 				else
