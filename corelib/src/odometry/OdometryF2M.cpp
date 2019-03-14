@@ -158,6 +158,7 @@ OdometryF2M::~OdometryF2M()
 
 void OdometryF2M::reset(const Transform & initialPose)
 {
+	UDEBUG("initialPose=%s", initialPose.prettyPrint().c_str());
 	Odometry::reset(initialPose);
 	*lastFrame_ = Signature(1);
 	*map_ = Signature(-1);
@@ -1142,7 +1143,7 @@ Transform OdometryF2M::computeTransform(
 										0,
 										0.0f,
 										LaserScan::kXYNormal,
-										Transform(newFramePose.x(), newFramePose.y(), lastFrame_->sensorData().laserScanRaw().localTransform().z(),0,0,0)));
+										Transform(newFramePose.x(), newFramePose.y(), lastFrame_->sensorData().laserScanRaw().localTransform().z(),0,0,newFramePose.theta())));
 					}
 					else
 					{
@@ -1153,7 +1154,7 @@ Transform OdometryF2M::computeTransform(
 										0,
 										0.0f,
 										LaserScan::kXYZNormal,
-										newFramePose.translation()));
+										newFramePose));
 					}
 					addKeyFrame = true;
 				}
