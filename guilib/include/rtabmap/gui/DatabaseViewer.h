@@ -60,6 +60,7 @@ class CloudViewer;
 class OctoMap;
 class ExportCloudsDialog;
 class EditDepthArea;
+class EditMapArea;
 
 class RTABMAPGUI_EXP DatabaseViewer : public QMainWindow
 {
@@ -93,8 +94,10 @@ private Q_SLOTS:
 	void selectEmptyColor();
 	void editDepthImage();
 	void generateGraph();
+	void editSaved2DMap();
 	void exportSaved2DMap();
 	void import2DMap();
+	void regenerateSavedMap();
 	void viewOptimizedMesh();
 	void exportOptimizedMesh();
 	void updateOptimizedMesh();
@@ -225,6 +228,8 @@ private:
 	ExportCloudsDialog * exportDialog_;
 	QDialog * editDepthDialog_;
 	EditDepthArea * editDepthArea_;
+	QDialog * editMapDialog_;
+	EditMapArea * editMapArea_;
 
 	bool savedMaximized_;
 	bool firstCall_;

@@ -32,6 +32,7 @@ SET(headers_ui
 	../include/${PROJECT_PREFIX}/gui/TexturingState.h
 	../include/${PROJECT_PREFIX}/gui/RecoveryState.h
 	../include/${PROJECT_PREFIX}/gui/EditDepthArea.h
+	../include/${PROJECT_PREFIX}/gui/EditMapArea.h
 )
 
 SET(uis
@@ -98,6 +99,7 @@ SET(SRC_FILES
 	./MapVisibilityWidget.cpp
 	./GraphViewer.cpp
 	./EditDepthArea.cpp
+	./EditMapArea.cpp
 	./CreateSimpleCalibrationDialog.cpp
 	./ParametersToolBox.cpp
 	./DepthCalibrationDialog.cpp

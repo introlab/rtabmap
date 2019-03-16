@@ -61,7 +61,7 @@
           <rect>
            <x>0</x>
            <y>0</y>
-           <width>398</width>
+           <width>413</width>
            <height>288</height>
           </rect>
          </property>
@@ -287,7 +287,7 @@
           <rect>
            <x>0</x>
            <y>0</y>
-           <width>397</width>
+           <width>412</width>
            <height>288</height>
           </rect>
          </property>
@@ -647,7 +647,7 @@
      <x>0</x>
      <y>0</y>
      <width>1547</width>
-     <height>25</height>
+     <height>22</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -687,8 +687,10 @@
     <addaction name="menuExport_poses"/>
     <addaction name="menuExport_GPS"/>
     <addaction name="separator"/>
+    <addaction name="actionEdit_optimized_2D_map"/>
     <addaction name="actionExport_saved_2D_map"/>
     <addaction name="actionImport_2D_map"/>
+    <addaction name="actionRegenerate_optimized_2D_map"/>
     <addaction name="separator"/>
     <addaction name="actionView_optimized_mesh"/>
     <addaction name="actionUpdate_optimized_mesh"/>
@@ -1300,7 +1302,7 @@
           <x>0</x>
           <y>0</y>
           <width>318</width>
-          <height>219</height>
+          <height>197</height>
          </rect>
         </property>
         <attribute name="label">
@@ -1461,8 +1463,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>282</width>
-          <height>885</height>
+          <width>280</width>
+          <height>875</height>
          </rect>
         </property>
         <attribute name="label">
@@ -1995,8 +1997,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>307</width>
-          <height>171</height>
+          <width>296</width>
+          <height>160</height>
          </rect>
         </property>
         <attribute name="label">
@@ -2124,7 +2126,7 @@
           <x>0</x>
           <y>0</y>
           <width>185</width>
-          <height>487</height>
+          <height>485</height>
          </rect>
         </property>
         <attribute name="label">
@@ -2781,12 +2783,12 @@
   </action>
   <action name="actionExport_saved_2D_map">
    <property name="text">
-    <string>Export saved 2D map...</string>
+    <string>Export optimized 2D map...</string>
    </property>
   </action>
   <action name="actionImport_2D_map">
    <property name="text">
-    <string>Import 2D map...</string>
+    <string>Import optimized 2D map...</string>
    </property>
   </action>
   <action name="actionView_optimized_mesh">
@@ -2820,6 +2822,16 @@
    </property>
    <property name="toolTip">
     <string>RGBD-SLAM (stamp tx ty tz qx qy qz qw)</string>
+   </property>
+  </action>
+  <action name="actionEdit_optimized_2D_map">
+   <property name="text">
+    <string>Edit optimized 2D map...</string>
+   </property>
+  </action>
+  <action name="actionRegenerate_optimized_2D_map">
+   <property name="text">
+    <string>Regenerate optimized 2D map...</string>
    </property>
   </action>
  </widget>

@@ -75,6 +75,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/gui/DataRecorder.h"
 #include "rtabmap/gui/ExportCloudsDialog.h"
 #include "rtabmap/gui/EditDepthArea.h"
+#include "rtabmap/gui/EditMapArea.h"
 #include "rtabmap/core/SensorData.h"
 #include "rtabmap/core/GainCompensator.h"
 #include "rtabmap/gui/ExportDialog.h"
@@ -100,6 +101,7 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	octomap_(0),
 	exportDialog_(new ExportCloudsDialog(this)),
 	editDepthDialog_(new QDialog(this)),
+	editMapDialog_(new QDialog(this)),
 	savedMaximized_(false),
 	firstCall_(true),
 	iniFilePath_(ini),
@@ -135,6 +137,20 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	connect(buttonBox->button(QDialogButtonBox::Reset), SIGNAL(clicked()), editDepthArea_, SLOT(resetChanges()));
 	editDepthDialog_->setLayout(vLayout);
 	editDepthDialog_->setWindowTitle(tr("Edit Depth Image"));
+
+	editMapDialog_->resize(640, 480);
+	vLayout = new QVBoxLayout(editMapDialog_);
+	editMapArea_ = new EditMapArea(editMapDialog_);
+	vLayout->setContentsMargins(0,0,0,0);
+	vLayout->setSpacing(0);
+	vLayout->addWidget(editMapArea_, 1);
+	buttonBox = new QDialogButtonBox(QDialogButtonBox::Save | QDialogButtonBox::Cancel | QDialogButtonBox::Reset, Qt::Horizontal, editMapDialog_);
+	vLayout->addWidget(buttonBox);
+	connect(buttonBox, SIGNAL(accepted()), editMapDialog_, SLOT(accept()));
+	connect(buttonBox, SIGNAL(rejected()), editMapDialog_, SLOT(reject()));
+	connect(buttonBox->button(QDialogButtonBox::Reset), SIGNAL(clicked()), editMapArea_, SLOT(resetChanges()));
+	editMapDialog_->setLayout(vLayout);
+	editMapDialog_->setWindowTitle(tr("Edit Optimized Map"));
 
 	QString title("RTAB-Map Database Viewer[*]");
 	this->setWindowTitle(title);
@@ -251,8 +267,10 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	connect(ui_->actionPoses_KML, SIGNAL(triggered()), this , SLOT(exportPosesKML()));
 	connect(ui_->actionGPS_TXT, SIGNAL(triggered()), this , SLOT(exportGPS_TXT()));
 	connect(ui_->actionGPS_KML, SIGNAL(triggered()), this , SLOT(exportGPS_KML()));
+	connect(ui_->actionEdit_optimized_2D_map, SIGNAL(triggered()), this , SLOT(editSaved2DMap()));
 	connect(ui_->actionExport_saved_2D_map, SIGNAL(triggered()), this , SLOT(exportSaved2DMap()));
 	connect(ui_->actionImport_2D_map, SIGNAL(triggered()), this , SLOT(import2DMap()));
+	connect(ui_->actionRegenerate_optimized_2D_map, SIGNAL(triggered()), this , SLOT(regenerateSavedMap()));
 	connect(ui_->actionView_optimized_mesh, SIGNAL(triggered()), this , SLOT(viewOptimizedMesh()));
 	connect(ui_->actionExport_optimized_mesh, SIGNAL(triggered()), this , SLOT(exportOptimizedMesh()));
 	connect(ui_->actionUpdate_optimized_mesh, SIGNAL(triggered()), this , SLOT(updateOptimizedMesh()));
@@ -285,7 +303,10 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	ui_->menuExport_poses->setEnabled(false);
 	ui_->menuExport_GPS->setEnabled(false);
 	ui_->actionPoses_KML->setEnabled(false);
+	ui_->actionEdit_optimized_2D_map->setEnabled(false);
 	ui_->actionExport_saved_2D_map->setEnabled(false);
+	ui_->actionImport_2D_map->setEnabled(false);
+	ui_->actionRegenerate_optimized_2D_map->setEnabled(false);
 	ui_->actionView_optimized_mesh->setEnabled(false);
 	ui_->actionExport_optimized_mesh->setEnabled(false);
 	ui_->actionUpdate_optimized_mesh->setEnabled(false);
@@ -968,8 +989,10 @@ bool DatabaseViewer::closeDatabase()
 		ui_->menuExport_poses->setEnabled(false);
 		ui_->menuExport_GPS->setEnabled(false);
 		ui_->actionPoses_KML->setEnabled(false);
+		ui_->actionEdit_optimized_2D_map->setEnabled(false);
 		ui_->actionExport_saved_2D_map->setEnabled(false);
 		ui_->actionImport_2D_map->setEnabled(false);
+		ui_->actionRegenerate_optimized_2D_map->setEnabled(false);
 		ui_->actionView_optimized_mesh->setEnabled(false);
 		ui_->actionExport_optimized_mesh->setEnabled(false);
 		ui_->actionUpdate_optimized_mesh->setEnabled(false);
@@ -1526,8 +1549,10 @@ void DatabaseViewer::updateIds()
 	ui_->menuExport_poses->setEnabled(false);
 	ui_->menuExport_GPS->setEnabled(false);
 	ui_->actionPoses_KML->setEnabled(false);
+	ui_->actionEdit_optimized_2D_map->setEnabled(false);
 	ui_->actionExport_saved_2D_map->setEnabled(false);
 	ui_->actionImport_2D_map->setEnabled(false);
+	ui_->actionRegenerate_optimized_2D_map->setEnabled(false);
 	ui_->actionView_optimized_mesh->setEnabled(false);
 	ui_->actionExport_optimized_mesh->setEnabled(false);
 	ui_->actionUpdate_optimized_mesh->setEnabled(uStrNumCmp(dbDriver_->getDatabaseVersion(), "0.13.0") >= 0);
@@ -1705,8 +1730,10 @@ void DatabaseViewer::updateIds()
 
 	float xMin, yMin, cellSize;
 	bool hasMap = !dbDriver_->load2DMap(xMin, yMin, cellSize).empty();
+	ui_->actionEdit_optimized_2D_map->setEnabled(hasMap);
 	ui_->actionExport_saved_2D_map->setEnabled(hasMap);
 	ui_->actionImport_2D_map->setEnabled(hasMap);
+	ui_->actionRegenerate_optimized_2D_map->setEnabled(uStrNumCmp(dbDriver_->getDatabaseVersion(), "0.17.0") >= 0);
 
 	if(!dbDriver_->loadOptimizedMesh().empty())
 	{
@@ -2425,6 +2452,74 @@ void DatabaseViewer::exportGPS(int format)
 	}
 }
 
+void DatabaseViewer::editSaved2DMap()
+{
+	if(!dbDriver_)
+	{
+		QMessageBox::warning(this, tr("Cannot edit 2D map"), tr("A database must must loaded first...\nUse File->Open database."));
+		return;
+	}
+
+	if(uStrNumCmp(dbDriver_->getDatabaseVersion(), "0.17.0") < 0)
+	{
+		QMessageBox::warning(this, tr("Cannot edit 2D map"),
+				tr("The database has too old version (%1) to saved "
+					"optimized map. Version 0.17.0 minimum required.").arg(dbDriver_->getDatabaseVersion().c_str()));
+		return;
+	}
+
+	if(linksAdded_.size() || linksRefined_.size() || linksRemoved_.size() || generatedLocalMaps_.size())
+	{
+		QMessageBox::warning(this, tr("Cannot edit 2D map"),
+				tr("The database has modified links and/or modified local "
+				   "occupancy grids, the 2D optimized map cannot be modified."));
+		return;
+	}
+
+	float xMin, yMin, cellSize;
+	cv::Mat map = dbDriver_->load2DMap(xMin, yMin, cellSize);
+	if(map.empty())
+	{
+		QMessageBox::warning(this, tr("Cannot export 2D map"), tr("The database doesn't contain a saved 2D map."));
+		return;
+	}
+
+	cv::Mat map8U = rtabmap::util3d::convertMap2Image8U(map, false);
+	cv::Mat map8UFlip, map8URotated;
+	cv::flip(map8U, map8UFlip, 0);
+	if(!ui_->graphViewer->isOrientationENU())
+	{
+		cv::rotate(map8UFlip, map8URotated, cv::ROTATE_90_COUNTERCLOCKWISE);
+	}
+	else
+	{
+		map8URotated = map8UFlip;
+	}
+
+	editMapArea_->setMap(map8URotated);
+	if(editMapDialog_->exec() == QDialog::Accepted && editMapArea_->isModified())
+	{
+		cv::Mat map = editMapArea_->getModifiedMap();
+
+		if(!ui_->graphViewer->isOrientationENU())
+		{
+			cv::rotate(map, map8URotated, cv::ROTATE_90_CLOCKWISE);
+		}
+		else
+		{
+			map8URotated = map;
+		}
+		cv::flip(map8URotated, map8UFlip, 0);
+
+		UASSERT(map8UFlip.type() == map8U.type());
+		UASSERT(map8UFlip.cols == map8U.cols);
+		UASSERT(map8UFlip.rows == map8U.rows);
+
+		dbDriver_->save2DMap(rtabmap::util3d::convertImage8U2Map(map8UFlip, false), xMin, yMin, cellSize);
+		QMessageBox::information(this, tr("Edit 2D map"), tr("Map updated!"));
+	}
+}
+
 void DatabaseViewer::exportSaved2DMap()
 {
 	if(!dbDriver_)
@@ -2469,6 +2564,22 @@ void DatabaseViewer::import2DMap()
 		return;
 	}
 
+	if(uStrNumCmp(dbDriver_->getDatabaseVersion(), "0.17.0") < 0)
+	{
+		QMessageBox::warning(this, tr("Cannot edit 2D map"),
+				tr("The database has too old version (%1) to saved "
+					"optimized map. Version 0.17.0 minimum required.").arg(dbDriver_->getDatabaseVersion().c_str()));
+		return;
+	}
+
+	if(linksAdded_.size() || linksRefined_.size() || linksRemoved_.size() || generatedLocalMaps_.size())
+	{
+		QMessageBox::warning(this, tr("Cannot import 2D map"),
+				tr("The database has modified links and/or modified local "
+				   "occupancy grids, the 2D optimized map cannot be modified."));
+		return;
+	}
+
 	float xMin, yMin, cellSize;
 	cv::Mat mapOrg = dbDriver_->load2DMap(xMin, yMin, cellSize);
 	if(mapOrg.empty())
@@ -2497,6 +2608,64 @@ void DatabaseViewer::import2DMap()
 				QMessageBox::warning(this, tr("Import 2D map"), tr("Cannot import %1 as its size doesn't match the current saved map. Import 2D Map action should only be used to modify the map saved in the database.").arg(path));
 			}
 		}
+	}
+}
+
+void DatabaseViewer::regenerateSavedMap()
+{
+	if(!dbDriver_)
+	{
+		QMessageBox::warning(this, tr("Cannot import 2D map"), tr("A database must must loaded first...\nUse File->Open database."));
+		return;
+	}
+
+	if(uStrNumCmp(dbDriver_->getDatabaseVersion(), "0.17.0") < 0)
+	{
+		QMessageBox::warning(this, tr("Cannot edit 2D map"),
+				tr("The database has too old version (%1) to saved "
+					"optimized map. Version 0.17.0 minimum required.").arg(dbDriver_->getDatabaseVersion().c_str()));
+		return;
+	}
+
+	if(linksAdded_.size() || linksRefined_.size() || linksRemoved_.size() || generatedLocalMaps_.size())
+	{
+		QMessageBox::warning(this, tr("Cannot import 2D map"),
+				tr("The database has modified links and/or modified local "
+				   "occupancy grids, the 2D optimized map cannot be modified."));
+		return;
+	}
+
+	if((int)graphes_.empty() || localMaps_.empty())
+	{
+		QMessageBox::warning(this, tr("Cannot regenerate 2D map"),
+				tr("Graph is empty, make sure you opened the "
+				   "Graph View and there is a map shown."));
+		return;
+	}
+
+
+	//update scans
+	UINFO("Update local maps list...");
+	OccupancyGrid grid(ui_->parameters_toolbox->getParameters());
+	for(std::map<int, std::pair<std::pair<cv::Mat, cv::Mat>, cv::Mat> >::iterator iter=localMaps_.begin(); iter!=localMaps_.end(); ++iter)
+	{
+		grid.addToCache(iter->first, iter->second.first.first, iter->second.first.second, iter->second.second);
+	}
+	grid.update(graphes_.back());
+	float xMin, yMin;
+	cv::Mat map = grid.getMap(xMin, yMin);
+
+	if(map.empty())
+	{
+		QMessageBox::information(this, tr("Regenerate 2D map"), tr("Failed to renegerate the map, resulting map is empty!"));
+	}
+	else
+	{
+		dbDriver_->save2DMap(map, xMin, yMin, grid.getCellSize());
+		QMessageBox::information(this, tr("Regenerate 2D map"), tr("Map regenerated!"));
+		ui_->actionEdit_optimized_2D_map->setEnabled(true);
+		ui_->actionExport_saved_2D_map->setEnabled(true);
+		ui_->actionImport_2D_map->setEnabled(true);
 	}
 }
 
