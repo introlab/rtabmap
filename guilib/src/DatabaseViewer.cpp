@@ -2489,7 +2489,9 @@ void DatabaseViewer::editSaved2DMap()
 	cv::flip(map8U, map8UFlip, 0);
 	if(!ui_->graphViewer->isOrientationENU())
 	{
-		cv::rotate(map8UFlip, map8URotated, cv::ROTATE_90_COUNTERCLOCKWISE);
+		//ROTATE_90_COUNTERCLOCKWISE
+		cv::transpose(map8UFlip, map8URotated);
+		cv::flip(map8URotated, map8URotated, 0);
 	}
 	else
 	{
@@ -2503,7 +2505,9 @@ void DatabaseViewer::editSaved2DMap()
 
 		if(!ui_->graphViewer->isOrientationENU())
 		{
-			cv::rotate(map, map8URotated, cv::ROTATE_90_CLOCKWISE);
+			//ROTATE_90_CLOCKWISE
+			cv::transpose(map, map8URotated);
+			cv::flip(map8URotated, map8URotated, 1);
 		}
 		else
 		{
