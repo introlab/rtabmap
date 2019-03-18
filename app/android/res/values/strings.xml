@@ -105,6 +105,8 @@
     <string name="pref_default_optimize_end">true</string>
     <string name="pref_key_marker_detection">pref_key_marker_detection</string>
     <string name="pref_default_marker_detection">-1</string>
+    <string name="pref_key_marker_detection_depth_error">pref_key_marker_detection_depth_error</string>
+    <string name="pref_default_marker_detection_depth_error">0.1</string>
     <string name="pref_key_keep_all_db">pref_key_keep_all_db</string>
     <string name="pref_default_keep_all_db">true</string>
     <string name="pref_key_raw_scan_saved">pref_key_raw_scan_saved</string>
@@ -351,6 +353,8 @@
     <string name="pref_summary_optimize_end">The map\'s graph is optimized from the last node. The map is moved when a loop closure happens instead of jumping the current pose back to localized area. </string>
     <string name="pref_title_marker_detection">ArUco Marker Detection</string>
     <string name="pref_summary_marker_detection">ArUco markers can be detected for localization and graph optimization.</string>
+    <string name="pref_title_marker_detection_depth_error">Marker Depth Error Estimation</string>
+    <string name="pref_summary_marker_detection_depth_error">Size of markers are automatically initialized on the first marker seen. All markers should have the same size. This value is the maximum depth error to do the initialization to get accurate size of the tag. The lower it is, the more perpendicular the camera should be from the marker to do initialization, but size estimated would be more accurate.</string>
     <string name="pref_title_keep_all_db">Save All Frames in Database</string>
     <string name="pref_summary_keep_all_db">Discarded frames while not moving are still saved in database. Useful to replay exactly the scanning on RTAB-Map Desktop.</string>
     <string name="pref_title_raw_scan_saved">Save Raw Scan</string>
@@ -647,6 +651,43 @@
         <item>"18"</item>
         <item>"19"</item>
         <item>"20"</item>
+    </string-array>
+    
+    <string-array name="pref_marker_detection_depth_error_keys">
+        <item>"1 cm"</item>
+        <item>"2 cm"</item>
+        <item>"3 cm"</item>
+        <item>"4 cm"</item>
+        <item>"5 cm"</item>
+        <item>"6 cm"</item>
+        <item>"7 cm"</item>
+        <item>"8 cm"</item>
+        <item>"9 cm"</item>
+        <item>"10 cm"</item>
+        <item>"15 cm"</item>
+        <item>"20 cm"</item>
+        <item>"30 cm"</item>
+        <item>"40 cm"</item>
+        <item>"50 cm"</item>
+        <item>"100 cm"</item>
+    </string-array>
+    <string-array name="pref_marker_detection_depth_error_values">
+        <item>"0.01"</item>
+        <item>"0.02"</item>
+        <item>"0.03"</item>
+        <item>"0.04"</item>
+        <item>"0.05"</item>
+        <item>"0.06"</item>
+        <item>"0.07"</item>
+        <item>"0.08"</item>
+        <item>"0.09"</item>
+        <item>"0.1"</item>
+        <item>"0.15"</item>
+        <item>"0.20"</item>
+        <item>"0.30"</item>
+        <item>"0.40"</item>
+        <item>"0.50"</item>
+        <item>"1"</item>
     </string-array>
 
     <string name="pref_title_export_sub">Exporting&#8230;</string>

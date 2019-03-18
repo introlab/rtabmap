@@ -198,6 +198,13 @@
 		   			android:entries="@array/pref_marker_detection_keys"
 		   			android:entryValues="@array/pref_marker_detection_values"
 		   			android:defaultValue="@string/pref_default_marker_detection"/>
+		   		<ListPreference 
+		            android:key="@string/pref_key_marker_detection_depth_error"
+		    		android:title="@string/pref_title_marker_detection_depth_error"
+		    		android:summary="@string/pref_summary_marker_detection_depth_error"
+		   			android:entries="@array/pref_marker_detection_depth_error_keys"
+		   			android:entryValues="@array/pref_marker_detection_depth_error_values"
+		   			android:defaultValue="@string/pref_default_marker_detection_depth_error"/>
 		    </PreferenceCategory>
 	        <PreferenceCategory
 	        	android:title="@string/pref_title_mapping_database">

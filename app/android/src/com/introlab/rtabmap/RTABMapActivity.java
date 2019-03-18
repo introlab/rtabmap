@@ -777,6 +777,7 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 			boolean optimizeFromGraphEnd = sharedPref.getBoolean(getString(R.string.pref_key_optimize_end), Boolean.parseBoolean(getString(R.string.pref_default_optimize_end)));
 			String optimizer = sharedPref.getString(getString(R.string.pref_key_optimizer), getString(R.string.pref_default_optimizer));
 			String markerDetection = sharedPref.getString(getString(R.string.pref_key_marker_detection), getString(R.string.pref_default_marker_detection));
+			String markerDetectionDepthError = sharedPref.getString(getString(R.string.pref_key_marker_detection_depth_error), getString(R.string.pref_default_marker_detection_depth_error));
 			mGPSSaved = sharedPref.getBoolean(getString(R.string.pref_key_gps_saved), Boolean.parseBoolean(getString(R.string.pref_default_gps_saved)));
 			if(mGPSSaved)
 			{
@@ -842,6 +843,7 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 				RTABMapLib.setMappingParameter("Aruco/Dictionary", markerDetection);
                                 RTABMapLib.setMappingParameter("Aruco/CornerRefinementMethod", Integer.parseInt(markerDetection) > 16?"3":"0");
 			}
+			RTABMapLib.setMappingParameter("Aruco/MaxDepthError", markerDetectionDepthError);
 	
 			if(!DISABLE_LOG) Log.d(TAG, "set exporting parameters...");
 			RTABMapLib.setCloudDensityLevel(Integer.parseInt(sharedPref.getString(getString(R.string.pref_key_density), getString(R.string.pref_default_density))));

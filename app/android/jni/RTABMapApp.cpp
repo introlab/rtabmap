@@ -1139,9 +1139,14 @@ int RTABMapApp::Render()
 				int fastMovement = (int)uValue(stats.data(), rtabmap::Statistics::kMemoryFast_movement(), 0.0f);
 				int loopClosure = (int)uValue(stats.data(), rtabmap::Statistics::kLoopAccepted_hypothesis_id(), 0.0f);
 				int rejected = (int)uValue(stats.data(), rtabmap::Statistics::kLoopRejectedHypothesis(), 0.0f);
+				int landmark = (int)uValue(stats.data(), rtabmap::Statistics::kLoopLandmark_detected(), 0.0f);
 				if(!paused_ && loopClosure>0)
 				{
 					main_scene_.setBackgroundColor(0, 0.5f, 0); // green
+				}
+				else if(!paused_ && landmark!=0)
+				{
+					main_scene_.setBackgroundColor(1, 0.65f, 0); // orange
 				}
 				else if(!paused_ && rejected>0)
 				{
@@ -1353,9 +1358,14 @@ int RTABMapApp::Render()
 
 						int loopClosure = (int)uValue(stats.data(), rtabmap::Statistics::kLoopAccepted_hypothesis_id(), 0.0f);
 						int rejected = (int)uValue(stats.data(), rtabmap::Statistics::kLoopRejectedHypothesis(), 0.0f);
+						int landmark = (int)uValue(stats.data(), rtabmap::Statistics::kLoopLandmark_detected(), 0.0f);
 						if(!paused_ && loopClosure>0)
 						{
 							main_scene_.setBackgroundColor(0, 0.5f, 0); // green
+						}
+						else if(!paused_ && landmark!=0)
+						{
+							main_scene_.setBackgroundColor(1, 0.65f, 0); // orange
 						}
 						else if(!paused_ && rejected>0)
 						{
