@@ -378,7 +378,7 @@ void OctoMap::addToCache(int nodeId,
 	uInsert(cacheViewPoints_, std::make_pair(nodeId==0?-1:nodeId, viewPoint));
 }
 
-void OctoMap::update(const std::map<int, Transform> & poses)
+bool OctoMap::update(const std::map<int, Transform> & poses)
 {
 	UDEBUG("Update (poses=%d addedNodes_=%d)", (int)poses.size(), (int)addedNodes_.size());
 
@@ -543,305 +543,309 @@ void OctoMap::update(const std::map<int, Transform> & poses)
 	}
 
 	UDEBUG("orderedPoses = %d", (int)orderedPoses.size());
-	float rangeMaxSqrd = rangeMax_*rangeMax_;
-	float cellSize = octree_->getResolution();
-	for(std::list<std::pair<int, Transform> >::const_iterator iter=orderedPoses.begin(); iter!=orderedPoses.end(); ++iter)
+
+	if(!orderedPoses.empty())
 	{
-		std::map<int, std::pair<const pcl::PointCloud<pcl::PointXYZRGB>::Ptr, const pcl::PointCloud<pcl::PointXYZRGB>::Ptr> >::iterator cloudIter;
-		std::map<int, std::pair<std::pair<cv::Mat, cv::Mat>, cv::Mat> >::iterator occupancyIter;
-		std::map<int, cv::Point3f>::iterator viewPointIter;
-		cloudIter = cacheClouds_.find(iter->first);
-		occupancyIter = cache_.find(iter->first);
-		viewPointIter = cacheViewPoints_.find(iter->first);
-		if(occupancyIter != cache_.end() || cloudIter != cacheClouds_.end())
+		float rangeMaxSqrd = rangeMax_*rangeMax_;
+		float cellSize = octree_->getResolution();
+		for(std::list<std::pair<int, Transform> >::const_iterator iter=orderedPoses.begin(); iter!=orderedPoses.end(); ++iter)
 		{
-			UDEBUG("Adding %d to octomap (resolution=%f)", iter->first, octree_->getResolution());
-
-			UASSERT(viewPointIter != cacheViewPoints_.end());
-			octomap::point3d sensorOrigin(iter->second.x(), iter->second.y(), iter->second.z());
-			sensorOrigin += octomap::point3d(viewPointIter->second.x, viewPointIter->second.y, viewPointIter->second.z);
-
-			updateMinMax(sensorOrigin);
-
-			octomap::OcTreeKey tmpKey;
-			if (!octree_->coordToKeyChecked(sensorOrigin, tmpKey)
-					|| !octree_->coordToKeyChecked(sensorOrigin, tmpKey))
+			std::map<int, std::pair<const pcl::PointCloud<pcl::PointXYZRGB>::Ptr, const pcl::PointCloud<pcl::PointXYZRGB>::Ptr> >::iterator cloudIter;
+			std::map<int, std::pair<std::pair<cv::Mat, cv::Mat>, cv::Mat> >::iterator occupancyIter;
+			std::map<int, cv::Point3f>::iterator viewPointIter;
+			cloudIter = cacheClouds_.find(iter->first);
+			occupancyIter = cache_.find(iter->first);
+			viewPointIter = cacheViewPoints_.find(iter->first);
+			if(occupancyIter != cache_.end() || cloudIter != cacheClouds_.end())
 			{
-				UERROR("Could not generate Key for origin ", sensorOrigin.x(), sensorOrigin.y(), sensorOrigin.z());
-			}
+				UDEBUG("Adding %d to octomap (resolution=%f)", iter->first, octree_->getResolution());
 
-			bool computeRays = rayTracing_ && (occupancyIter == cache_.end() || occupancyIter->second.second.empty());
+				UASSERT(viewPointIter != cacheViewPoints_.end());
+				octomap::point3d sensorOrigin(iter->second.x(), iter->second.y(), iter->second.z());
+				sensorOrigin += octomap::point3d(viewPointIter->second.x, viewPointIter->second.y, viewPointIter->second.z);
 
-			// instead of direct scan insertion, compute update to filter ground:
-			octomap::KeySet free_cells;
-			// insert ground points only as free:
-			unsigned int maxGroundPts = occupancyIter != cache_.end()?occupancyIter->second.first.first.cols:cloudIter->second.first->size();
-			UDEBUG("%d: compute free cells (from %d ground points)", iter->first, (int)maxGroundPts);
-			Eigen::Affine3f t = iter->second.toEigen3f();
-			LaserScan tmpGround;
-			if(occupancyIter != cache_.end())
-			{
-				tmpGround = LaserScan::backwardCompatibility(occupancyIter->second.first.first);
-				UASSERT(tmpGround.size() == (int)maxGroundPts);
-			}
-			for (unsigned int i=0; i<maxGroundPts; ++i)
-			{
-				pcl::PointXYZRGB pt;
+				updateMinMax(sensorOrigin);
+
+				octomap::OcTreeKey tmpKey;
+				if (!octree_->coordToKeyChecked(sensorOrigin, tmpKey)
+						|| !octree_->coordToKeyChecked(sensorOrigin, tmpKey))
+				{
+					UERROR("Could not generate Key for origin ", sensorOrigin.x(), sensorOrigin.y(), sensorOrigin.z());
+				}
+
+				bool computeRays = rayTracing_ && (occupancyIter == cache_.end() || occupancyIter->second.second.empty());
+
+				// instead of direct scan insertion, compute update to filter ground:
+				octomap::KeySet free_cells;
+				// insert ground points only as free:
+				unsigned int maxGroundPts = occupancyIter != cache_.end()?occupancyIter->second.first.first.cols:cloudIter->second.first->size();
+				UDEBUG("%d: compute free cells (from %d ground points)", iter->first, (int)maxGroundPts);
+				Eigen::Affine3f t = iter->second.toEigen3f();
+				LaserScan tmpGround;
 				if(occupancyIter != cache_.end())
 				{
-					pt = util3d::laserScanToPointRGB(tmpGround, i);
-					pt = pcl::transformPoint(pt, t);
+					tmpGround = LaserScan::backwardCompatibility(occupancyIter->second.first.first);
+					UASSERT(tmpGround.size() == (int)maxGroundPts);
 				}
-				else
+				for (unsigned int i=0; i<maxGroundPts; ++i)
 				{
-					pt = pcl::transformPoint(cloudIter->second.first->at(i), t);
-				}
-				octomap::point3d point(pt.x, pt.y, pt.z);
-				bool ignoreOccupiedCell = false;
-				if(rangeMaxSqrd > 0.0f)
-				{
-					octomap::point3d v(pt.x - cellSize - sensorOrigin.x(), pt.y - cellSize - sensorOrigin.y(), pt.z - cellSize - sensorOrigin.z());
-					if(v.norm_sq() > rangeMaxSqrd)
+					pcl::PointXYZRGB pt;
+					if(occupancyIter != cache_.end())
 					{
-						// compute new point to max range
-						v.normalize();
-						v*=rangeMax_;
-						point = sensorOrigin + v;
-						ignoreOccupiedCell=true;
+						pt = util3d::laserScanToPointRGB(tmpGround, i);
+						pt = pcl::transformPoint(pt, t);
 					}
-				}
-
-				if(!ignoreOccupiedCell)
-				{
-					// occupied endpoint
-					octomap::OcTreeKey key;
-					if (octree_->coordToKeyChecked(point, key))
+					else
 					{
-						if(iter->first >0 && iter->first<lastId)
-						{
-							RtabmapColorOcTreeNode * n = octree_->search(key);
-							if(n && n->getNodeRefId() > 0 && n->getNodeRefId() > iter->first)
-							{
-								// The cell has been updated from more recent node, don't update the cell
-								continue;
-							}
-						}
-
-						updateMinMax(point);
-						RtabmapColorOcTreeNode * n = octree_->updateNode(key, true);
-
-						if(n)
-						{
-							if(!hasColor_ && !(pt.r ==0 && pt.g == 0 && pt.b == 0) && !(pt.r ==255 && pt.g == 255 && pt.b == 255))
-							{
-								hasColor_ = true;
-							}
-							octree_->averageNodeColor(key, pt.r, pt.g, pt.b);
-							if(iter->first > 0)
-							{
-								n->setNodeRefId(iter->first);
-								n->setPointRef(point);
-							}
-							n->setOccupancyType(RtabmapColorOcTreeNode::kTypeGround);
-						}
+						pt = pcl::transformPoint(cloudIter->second.first->at(i), t);
 					}
-				}
-
-				// only clear space (ground points)
-				octomap::KeyRay keyRay;
-				if (computeRays &&
-					(iter->first < 0 || iter->first>lastId) &&
-					octree_->computeRayKeys(sensorOrigin, point, keyRay))
-				{
-					free_cells.insert(keyRay.begin(), keyRay.end());
-				}
-			}
-			UDEBUG("%d: ground cells=%d free cells=%d", iter->first, (int)maxGroundPts, (int)free_cells.size());
-
-			// all other points: free on ray, occupied on endpoint:
-			unsigned int maxObstaclePts = occupancyIter != cache_.end()?occupancyIter->second.first.second.cols:cloudIter->second.second->size();
-			UDEBUG("%d: compute occupied cells (from %d obstacle points)", iter->first, (int)maxObstaclePts);
-			LaserScan tmpObstacle;
-			if(occupancyIter != cache_.end())
-			{
-				tmpObstacle = LaserScan::backwardCompatibility(occupancyIter->second.first.second);
-				UASSERT(tmpObstacle.size() == (int)maxObstaclePts);
-			}
-			for (unsigned int i=0; i<maxObstaclePts; ++i)
-			{
-				pcl::PointXYZRGB pt;
-				if(occupancyIter != cache_.end())
-				{
-					pt = util3d::laserScanToPointRGB(tmpObstacle, i);
-					pt = pcl::transformPoint(pt, t);
-				}
-				else
-				{
-					pt = pcl::transformPoint(cloudIter->second.second->at(i), t);
-				}
-
-				octomap::point3d point(pt.x, pt.y, pt.z);
-
-				bool ignoreOccupiedCell = false;
-				if(rangeMaxSqrd > 0.0f)
-				{
-					octomap::point3d v(pt.x - cellSize - sensorOrigin.x(), pt.y - cellSize - sensorOrigin.y(), pt.z - cellSize - sensorOrigin.z());
-					if(v.norm_sq() > rangeMaxSqrd)
-					{
-						// compute new point to max range
-						v.normalize();
-						v*=rangeMax_;
-						point = sensorOrigin + v;
-						ignoreOccupiedCell=true;
-					}
-				}
-
-				if(!ignoreOccupiedCell)
-				{
-					// occupied endpoint
-					octomap::OcTreeKey key;
-					if (octree_->coordToKeyChecked(point, key))
-					{
-						if(iter->first >0 && iter->first<lastId)
-						{
-							RtabmapColorOcTreeNode * n = octree_->search(key);
-							if(n && n->getNodeRefId() > 0 && n->getNodeRefId() > iter->first)
-							{
-								// The cell has been updated from more recent node, don't update the cell
-								continue;
-							}
-						}
-
-						updateMinMax(point);
-
-						RtabmapColorOcTreeNode * n = octree_->updateNode(key, true);
-						if(n)
-						{
-							if(!hasColor_ && !(pt.r ==0 && pt.g == 0 && pt.b == 0) && !(pt.r ==255 && pt.g == 255 && pt.b == 255))
-							{
-								hasColor_ = true;
-							}
-							octree_->averageNodeColor(key, pt.r, pt.g, pt.b);
-							if(iter->first > 0)
-							{
-								n->setNodeRefId(iter->first);
-								n->setPointRef(point);
-							}
-							n->setOccupancyType(RtabmapColorOcTreeNode::kTypeObstacle);
-						}
-					}
-				}
-
-				// free cells
-				octomap::KeyRay keyRay;
-				if (computeRays &&
-					(iter->first < 0 || iter->first>lastId) &&
-					octree_->computeRayKeys(sensorOrigin, point, keyRay))
-				{
-					free_cells.insert(keyRay.begin(), keyRay.end());
-				}
-			}
-			UDEBUG("%d: occupied cells=%d free cells=%d", iter->first, (int)maxObstaclePts, (int)free_cells.size());
-
-
-			// mark free cells only if not seen occupied in this cloud
-			for(octomap::KeySet::iterator it = free_cells.begin(), end=free_cells.end(); it!= end; ++it)
-			{
-				if(iter->first > 0)
-				{
-					RtabmapColorOcTreeNode * n = octree_->search(*it);
-					if(n && n->getNodeRefId() > 0 && n->getNodeRefId() >= iter->first)
-					{
-						// The cell has been updated from current node or more recent node, don't update the cell
-						continue;
-					}
-				}
-
-				RtabmapColorOcTreeNode * n = octree_->updateNode(*it, false, orderedPoses.size() == 1);
-				if(n && n->getOccupancyType() == RtabmapColorOcTreeNode::kTypeUnknown)
-				{
-					n->setOccupancyType(RtabmapColorOcTreeNode::kTypeEmpty);
-					if(iter->first > 0)
-					{
-						n->setNodeRefId(iter->first);
-					}
-				}
-			}
-
-			// all empty cells
-			if(occupancyIter != cache_.end() && occupancyIter->second.second.cols)
-			{
-				unsigned int maxEmptyPts = occupancyIter->second.second.cols;
-				UDEBUG("%d: compute free cells (from %d empty points)", iter->first, (int)maxEmptyPts);
-				LaserScan tmpEmpty = LaserScan::backwardCompatibility(occupancyIter->second.second);
-				UASSERT(tmpEmpty.size() == (int)maxEmptyPts);
-				for (unsigned int i=0; i<maxEmptyPts; ++i)
-				{
-					pcl::PointXYZ pt;
-					pt = util3d::laserScanToPoint(tmpEmpty, i);
-					pt = pcl::transformPoint(pt, t);
-
 					octomap::point3d point(pt.x, pt.y, pt.z);
-
-					bool ignoreCell = false;
+					bool ignoreOccupiedCell = false;
 					if(rangeMaxSqrd > 0.0f)
 					{
-						octomap::point3d v(pt.x - sensorOrigin.x(), pt.y - sensorOrigin.y(), pt.z - sensorOrigin.z());
+						octomap::point3d v(pt.x - cellSize - sensorOrigin.x(), pt.y - cellSize - sensorOrigin.y(), pt.z - cellSize - sensorOrigin.z());
 						if(v.norm_sq() > rangeMaxSqrd)
 						{
-							ignoreCell=true;
+							// compute new point to max range
+							v.normalize();
+							v*=rangeMax_;
+							point = sensorOrigin + v;
+							ignoreOccupiedCell=true;
 						}
 					}
 
-					if(!ignoreCell)
+					if(!ignoreOccupiedCell)
 					{
+						// occupied endpoint
 						octomap::OcTreeKey key;
 						if (octree_->coordToKeyChecked(point, key))
 						{
-
-							if(iter->first >0)
+							if(iter->first >0 && iter->first<lastId)
 							{
 								RtabmapColorOcTreeNode * n = octree_->search(key);
-								if(n && n->getNodeRefId() > 0 && n->getNodeRefId() >= iter->first)
+								if(n && n->getNodeRefId() > 0 && n->getNodeRefId() > iter->first)
 								{
-									// The cell has been updated from current node or more recent node, don't update the cell
+									// The cell has been updated from more recent node, don't update the cell
+									continue;
+								}
+							}
+
+							updateMinMax(point);
+							RtabmapColorOcTreeNode * n = octree_->updateNode(key, true);
+
+							if(n)
+							{
+								if(!hasColor_ && !(pt.r ==0 && pt.g == 0 && pt.b == 0) && !(pt.r ==255 && pt.g == 255 && pt.b == 255))
+								{
+									hasColor_ = true;
+								}
+								octree_->averageNodeColor(key, pt.r, pt.g, pt.b);
+								if(iter->first > 0)
+								{
+									n->setNodeRefId(iter->first);
+									n->setPointRef(point);
+								}
+								n->setOccupancyType(RtabmapColorOcTreeNode::kTypeGround);
+							}
+						}
+					}
+
+					// only clear space (ground points)
+					octomap::KeyRay keyRay;
+					if (computeRays &&
+						(iter->first < 0 || iter->first>lastId) &&
+						octree_->computeRayKeys(sensorOrigin, point, keyRay))
+					{
+						free_cells.insert(keyRay.begin(), keyRay.end());
+					}
+				}
+				UDEBUG("%d: ground cells=%d free cells=%d", iter->first, (int)maxGroundPts, (int)free_cells.size());
+
+				// all other points: free on ray, occupied on endpoint:
+				unsigned int maxObstaclePts = occupancyIter != cache_.end()?occupancyIter->second.first.second.cols:cloudIter->second.second->size();
+				UDEBUG("%d: compute occupied cells (from %d obstacle points)", iter->first, (int)maxObstaclePts);
+				LaserScan tmpObstacle;
+				if(occupancyIter != cache_.end())
+				{
+					tmpObstacle = LaserScan::backwardCompatibility(occupancyIter->second.first.second);
+					UASSERT(tmpObstacle.size() == (int)maxObstaclePts);
+				}
+				for (unsigned int i=0; i<maxObstaclePts; ++i)
+				{
+					pcl::PointXYZRGB pt;
+					if(occupancyIter != cache_.end())
+					{
+						pt = util3d::laserScanToPointRGB(tmpObstacle, i);
+						pt = pcl::transformPoint(pt, t);
+					}
+					else
+					{
+						pt = pcl::transformPoint(cloudIter->second.second->at(i), t);
+					}
+
+					octomap::point3d point(pt.x, pt.y, pt.z);
+
+					bool ignoreOccupiedCell = false;
+					if(rangeMaxSqrd > 0.0f)
+					{
+						octomap::point3d v(pt.x - cellSize - sensorOrigin.x(), pt.y - cellSize - sensorOrigin.y(), pt.z - cellSize - sensorOrigin.z());
+						if(v.norm_sq() > rangeMaxSqrd)
+						{
+							// compute new point to max range
+							v.normalize();
+							v*=rangeMax_;
+							point = sensorOrigin + v;
+							ignoreOccupiedCell=true;
+						}
+					}
+
+					if(!ignoreOccupiedCell)
+					{
+						// occupied endpoint
+						octomap::OcTreeKey key;
+						if (octree_->coordToKeyChecked(point, key))
+						{
+							if(iter->first >0 && iter->first<lastId)
+							{
+								RtabmapColorOcTreeNode * n = octree_->search(key);
+								if(n && n->getNodeRefId() > 0 && n->getNodeRefId() > iter->first)
+								{
+									// The cell has been updated from more recent node, don't update the cell
 									continue;
 								}
 							}
 
 							updateMinMax(point);
 
-							RtabmapColorOcTreeNode * n = octree_->updateNode(key, false);
-							if(n && n->getOccupancyType() == RtabmapColorOcTreeNode::kTypeUnknown)
+							RtabmapColorOcTreeNode * n = octree_->updateNode(key, true);
+							if(n)
 							{
-								n->setOccupancyType(RtabmapColorOcTreeNode::kTypeEmpty);
+								if(!hasColor_ && !(pt.r ==0 && pt.g == 0 && pt.b == 0) && !(pt.r ==255 && pt.g == 255 && pt.b == 255))
+								{
+									hasColor_ = true;
+								}
+								octree_->averageNodeColor(key, pt.r, pt.g, pt.b);
 								if(iter->first > 0)
 								{
 									n->setNodeRefId(iter->first);
+									n->setPointRef(point);
+								}
+								n->setOccupancyType(RtabmapColorOcTreeNode::kTypeObstacle);
+							}
+						}
+					}
+
+					// free cells
+					octomap::KeyRay keyRay;
+					if (computeRays &&
+						(iter->first < 0 || iter->first>lastId) &&
+						octree_->computeRayKeys(sensorOrigin, point, keyRay))
+					{
+						free_cells.insert(keyRay.begin(), keyRay.end());
+					}
+				}
+				UDEBUG("%d: occupied cells=%d free cells=%d", iter->first, (int)maxObstaclePts, (int)free_cells.size());
+
+
+				// mark free cells only if not seen occupied in this cloud
+				for(octomap::KeySet::iterator it = free_cells.begin(), end=free_cells.end(); it!= end; ++it)
+				{
+					if(iter->first > 0)
+					{
+						RtabmapColorOcTreeNode * n = octree_->search(*it);
+						if(n && n->getNodeRefId() > 0 && n->getNodeRefId() >= iter->first)
+						{
+							// The cell has been updated from current node or more recent node, don't update the cell
+							continue;
+						}
+					}
+
+					RtabmapColorOcTreeNode * n = octree_->updateNode(*it, false, orderedPoses.size() == 1);
+					if(n && n->getOccupancyType() == RtabmapColorOcTreeNode::kTypeUnknown)
+					{
+						n->setOccupancyType(RtabmapColorOcTreeNode::kTypeEmpty);
+						if(iter->first > 0)
+						{
+							n->setNodeRefId(iter->first);
+						}
+					}
+				}
+
+				// all empty cells
+				if(occupancyIter != cache_.end() && occupancyIter->second.second.cols)
+				{
+					unsigned int maxEmptyPts = occupancyIter->second.second.cols;
+					UDEBUG("%d: compute free cells (from %d empty points)", iter->first, (int)maxEmptyPts);
+					LaserScan tmpEmpty = LaserScan::backwardCompatibility(occupancyIter->second.second);
+					UASSERT(tmpEmpty.size() == (int)maxEmptyPts);
+					for (unsigned int i=0; i<maxEmptyPts; ++i)
+					{
+						pcl::PointXYZ pt;
+						pt = util3d::laserScanToPoint(tmpEmpty, i);
+						pt = pcl::transformPoint(pt, t);
+
+						octomap::point3d point(pt.x, pt.y, pt.z);
+
+						bool ignoreCell = false;
+						if(rangeMaxSqrd > 0.0f)
+						{
+							octomap::point3d v(pt.x - sensorOrigin.x(), pt.y - sensorOrigin.y(), pt.z - sensorOrigin.z());
+							if(v.norm_sq() > rangeMaxSqrd)
+							{
+								ignoreCell=true;
+							}
+						}
+
+						if(!ignoreCell)
+						{
+							octomap::OcTreeKey key;
+							if (octree_->coordToKeyChecked(point, key))
+							{
+
+								if(iter->first >0)
+								{
+									RtabmapColorOcTreeNode * n = octree_->search(key);
+									if(n && n->getNodeRefId() > 0 && n->getNodeRefId() >= iter->first)
+									{
+										// The cell has been updated from current node or more recent node, don't update the cell
+										continue;
+									}
+								}
+
+								updateMinMax(point);
+
+								RtabmapColorOcTreeNode * n = octree_->updateNode(key, false);
+								if(n && n->getOccupancyType() == RtabmapColorOcTreeNode::kTypeUnknown)
+								{
+									n->setOccupancyType(RtabmapColorOcTreeNode::kTypeEmpty);
+									if(iter->first > 0)
+									{
+										n->setNodeRefId(iter->first);
+									}
 								}
 							}
 						}
 					}
+					//octree_->updateInnerOccupancy();
 				}
-				//octree_->updateInnerOccupancy();
+
+				// compress map
+				//if(orderedPoses.size() > 1)
+				//{
+				//	octree_->prune();
+				//}
+
+				// ignore negative ids as they are temporary clouds
+				if(iter->first > 0)
+				{
+					addedNodes_.insert(*iter);
+				}
+				UDEBUG("%d: end", iter->first);
 			}
-
-			// compress map
-			//if(orderedPoses.size() > 1)
-			//{
-			//	octree_->prune();
-			//}
-
-			// ignore negative ids as they are temporary clouds
-			if(iter->first > 0)
+			else
 			{
-				addedNodes_.insert(*iter);
+				UDEBUG("Did not find %d in cache", iter->first);
 			}
-			UDEBUG("%d: end", iter->first);
-		}
-		else
-		{
-			UDEBUG("Did not find %d in cache", iter->first);
 		}
 	}
 
@@ -851,6 +855,7 @@ void OctoMap::update(const std::map<int, Transform> & poses)
 		cacheClouds_.clear();
 		cacheViewPoints_.clear();
 	}
+	return !orderedPoses.empty() || graphOptimized || graphChanged;
 }
 
 void OctoMap::updateMinMax(const octomap::point3d & point)

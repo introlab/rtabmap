@@ -97,7 +97,7 @@ public:
 			const cv::Mat & ground,
 			const cv::Mat & obstacles,
 			const cv::Mat & empty);
-	void update(const std::map<int, Transform> & poses);
+	bool update(const std::map<int, Transform> & poses); // return true if map has changed
 	cv::Mat getMap(float & xMin, float & yMin) const;
 	cv::Mat getProbMap(float & xMin, float & yMin) const;
 	const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & getMapGround() const {return assembledGround_;}

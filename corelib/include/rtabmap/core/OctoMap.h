@@ -185,7 +185,7 @@ public:
 			const cv::Mat & obstacles,
 			const cv::Mat & empty,
 			const cv::Point3f & viewPoint);
-	void update(const std::map<int, Transform> & poses);
+	bool update(const std::map<int, Transform> & poses); // return true if map has changed
 
 	const RtabmapColorOcTree * octree() const {return octree_;}
 
