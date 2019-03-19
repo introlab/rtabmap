@@ -52,7 +52,8 @@ public:
 		kTypeORBSLAM2 = 5,
 		kTypeOkvis = 6,
 		kTypeLOAM = 7,
-		kTypeMSCKF = 8
+		kTypeMSCKF = 8,
+		kTypeVINS = 9
 	};
 
 public:

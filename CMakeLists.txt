@@ -21,7 +21,7 @@ SET(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake_modules")
 #######################
 SET(RTABMAP_MAJOR_VERSION 0)
 SET(RTABMAP_MINOR_VERSION 19)
-SET(RTABMAP_PATCH_VERSION 0)
+SET(RTABMAP_PATCH_VERSION 1)
 SET(RTABMAP_VERSION
   ${RTABMAP_MAJOR_VERSION}.${RTABMAP_MINOR_VERSION}.${RTABMAP_PATCH_VERSION})
   
@@ -188,6 +188,7 @@ option(WITH_DVO           "Include DVO support"                  ON)
 option(WITH_ORB_SLAM2     "Include ORB_SLAM2 support"            ON)
 option(WITH_OKVIS         "Include OKVIS support"                ON)
 option(WITH_MSCKF_VIO     "Include MSCKF_VIO support"           OFF)
+option(WITH_VINS          "Include VINS-Fusion support"          ON)
 option(PCL_OMP            "With PCL OMP implementations"         ON)
 
 FIND_PACKAGE(OpenCV REQUIRED QUIET)
@@ -481,6 +482,13 @@ IF(WITH_MSCKF_VIO)
     ENDIF(msckf_vio_FOUND)
 ENDIF(WITH_MSCKF_VIO)
 
+IF(WITH_VINS AND NOT okvis_FOUND)
+    FIND_PACKAGE(vins QUIET)
+    IF(vins_FOUND)
+       MESSAGE(STATUS "Found vins: ${vins_INCLUDE_DIRS}")
+    ENDIF(vins_FOUND)
+ENDIF(WITH_VINS AND NOT okvis_FOUND)
+
 
 IF(WITH_ORB_SLAM2 AND NOT G2O_FOUND)
     FIND_PACKAGE(ORB_SLAM2 QUIET)
@@ -509,7 +517,17 @@ IF(loam_velodyne_FOUND)
         message(STATUS "The compiler ${CMAKE_CXX_COMPILER} has no C++14 support. Please use a different C++ compiler if you want to use LOAM (set \"-DWITH_LOAM=OFF\" to build without LOAM).")
       ENDIF()
    ENDIF()
-ELSEIF(G2O_FOUND OR GTSAM_FOUND OR ZED_FOUND OR ANDROID OR RealSense_FOUND OR realsense2_FOUND OR ORB_SLAM2_FOUND OR okvis_FOUND OR open_chisel_FOUND OR msckf_vio_FOUND)
+ELSEIF(G2O_FOUND OR 
+       GTSAM_FOUND OR 
+       ZED_FOUND OR 
+       ANDROID OR 
+       RealSense_FOUND OR 
+       realsense2_FOUND OR 
+       ORB_SLAM2_FOUND OR 
+       okvis_FOUND OR 
+       open_chisel_FOUND OR 
+       msckf_vio_FOUND OR 
+       vins_FOUND)
    #Newest versions require std11
    IF(NOT MSVC)
      include(CheckCXXCompilerFlag)
@@ -689,6 +707,11 @@ IF(NOT msckf_vio_FOUND)
    SET(MSCKF_VIO "//")
 ELSE()
    SET(CONF_DEPENDENCIES ${CONF_DEPENDENCIES} ${msckf_vio_LIBRARIES}) 
+ENDIF()
+IF(NOT vins_FOUND)
+   SET(VINS "//")
+ELSE()
+   SET(CONF_DEPENDENCIES ${CONF_DEPENDENCIES} ${vins_LIBRARIES}) 
 ENDIF()
 IF(NOT ORB_SLAM2_FOUND)
    SET(ORB_SLAM2 "//")
@@ -1122,6 +1145,16 @@ ELSEIF(NOT WITH_MSCKF_VIO)
 MESSAGE(STATUS "  With msckf_vio            = NO (WITH_MSCKF_VIO=OFF)")
 ELSE()
 MESSAGE(STATUS "  With msckf_vio            = NO (msckf_vio not found)")
+ENDIF()
+
+IF(vins_FOUND)
+MESSAGE(STATUS "  With VINS-Fusion          = YES (License: GPLv3)")
+ELSEIF(NOT WITH_VINS)
+MESSAGE(STATUS "  With VINS-Fusion          = NO (WITH_VINS=OFF)")
+ELSEIF(okvis_FOUND)
+MESSAGE(STATUS "  With VINS-Fusion          = NO (WITH_OKVIS should be OFF to avoid conflicts with ceres library built by okvis)")
+ELSE()
+MESSAGE(STATUS "  With VINS-Fusion          = NO (VINS-Fusion not found)")
 ENDIF()
 
 IF(ORB_SLAM2_FOUND)

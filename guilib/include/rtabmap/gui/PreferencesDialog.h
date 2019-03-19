@@ -325,6 +325,7 @@ private Q_SLOTS:
 	void changeDictionaryPath();
 	void changeOdometryORBSLAM2Vocabulary();
 	void changeOdometryOKVISConfigPath();
+	void changeOdometryVINSConfigPath();
 	void changeIcpPMConfigPath();
 	void readSettingsEnd();
 	void setupTreeView();

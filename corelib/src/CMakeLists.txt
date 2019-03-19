@@ -85,6 +85,7 @@ SET(SRC_FILES
 	odometry/OdometryORBSLAM2.cpp
 	odometry/OdometryLOAM.cpp
 	odometry/OdometryMSCKF.cpp
+	odometry/OdometryVINS.cpp
 	
 	IMUThread.cpp
 	
@@ -430,6 +431,17 @@ IF(msckf_vio_FOUND)
 		${LIBRARIES}
 	)
 ENDIF(msckf_vio_FOUND)
+
+IF(vins_FOUND)
+    SET(INCLUDE_DIRS
+		${vins_INCLUDE_DIRS}
+		${INCLUDE_DIRS}
+	)
+	SET(LIBRARIES
+		${vins_LIBRARIES}
+		${LIBRARIES}
+	)
+ENDIF(vins_FOUND)
 
 IF(ORB_SLAM2_FOUND)
     SET(INCLUDE_DIRS

@@ -537,6 +537,9 @@ class RTABMAP_EXP Parameters
     RTABMAP_PARAM(OdomMSCKF, InitCovExTrans,  double,  0.000025,  "");
     RTABMAP_PARAM(OdomMSCKF, MaxCamStateSize,  int,  20,  "");
 
+    // Odometry VINS
+    RTABMAP_PARAM_STR(OdomVINS, ConfigPath,     "",  "Path of VINS config file.");
+
     // Common registration parameters
     RTABMAP_PARAM(Reg, RepeatOnce,               bool, true,    "Do a second registration with the output of the first registration as guess. Only done if no guess was provided for the first registration (like on loop closure). It can be useful if the registration approach used can use a guess to get better matches.");
     RTABMAP_PARAM(Reg, Strategy,                 int, 0,        "0=Vis, 1=Icp, 2=VisIcp");

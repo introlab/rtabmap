@@ -183,6 +183,9 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 #ifndef RTABMAP_MSCKF_VIO
 	_ui->odom_strategy->setItemData(8, 0, Qt::UserRole - 1);
 #endif
+#ifndef RTABMAP_VINS
+	_ui->odom_strategy->setItemData(9, 0, Qt::UserRole - 1);
+#endif
 
 #if CV_MAJOR_VERSION < 3
 	_ui->stereosgbm_mode->setItemData(2, 0, Qt::UserRole - 1);
@@ -1174,6 +1177,10 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->OdomMSCKFInitCovAccBias->setObjectName(Parameters::kOdomMSCKFInitCovAccBias().c_str());
 	_ui->OdomMSCKFInitCovExRot->setObjectName(Parameters::kOdomMSCKFInitCovExRot().c_str());
 	_ui->OdomMSCKFInitCovExTrans->setObjectName(Parameters::kOdomMSCKFInitCovExTrans().c_str());
+
+	// Odometry VINS
+	_ui->lineEdit_OdomVinsPath->setObjectName(Parameters::kOdomVINSConfigPath().c_str());
+	connect(_ui->toolButton_OdomVinsPath, SIGNAL(clicked()), this, SLOT(changeOdometryVINSConfigPath()));
 
 	//Stereo
 	_ui->stereo_winWidth->setObjectName(Parameters::kStereoWinWidth().c_str());
@@ -4371,6 +4378,23 @@ void PreferencesDialog::changeOdometryOKVISConfigPath()
 	}
 }
 
+void PreferencesDialog::changeOdometryVINSConfigPath()
+{
+	QString path;
+	if(_ui->lineEdit_OdomVinsPath->text().isEmpty())
+	{
+		path = QFileDialog::getOpenFileName(this, tr("VINS-Fusion Config"), this->getWorkingDirectory(), tr("VINS-Fusion config (*.yaml)"));
+	}
+	else
+	{
+		path = QFileDialog::getOpenFileName(this, tr("VINS-Fusion Config"), _ui->lineEdit_OdomVinsPath->text(), tr("VINS-Fusion config (*.yaml)"));
+	}
+	if(!path.isEmpty())
+	{
+		_ui->lineEdit_OdomVinsPath->setText(path);
+	}
+}
+
 void PreferencesDialog::changeIcpPMConfigPath()
 {
 	QString path;
@@ -5560,7 +5584,9 @@ void PreferencesDialog::testOdometry()
 	   this->getSourceDriver() == kSrcImages) &&
 	   !_ui->lineEdit_cameraImages_path_imu->text().isEmpty())
 	{
-		if(this->getOdomStrategy() != Odometry::kTypeOkvis && this->getOdomStrategy() != Odometry::kTypeMSCKF)
+		if(this->getOdomStrategy() != Odometry::kTypeOkvis &&
+		   this->getOdomStrategy() != Odometry::kTypeMSCKF &&
+		   this->getOdomStrategy() != Odometry::kTypeVINS)
 		{
 			QMessageBox::warning(this, tr("Source IMU Path"),
 					tr("IMU path is set but odometry chosen doesn't support IMU, ignoring IMU..."), QMessageBox::Ok);
