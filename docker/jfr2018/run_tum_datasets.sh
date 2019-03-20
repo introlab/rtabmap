@@ -5,7 +5,7 @@ DOCKER=1 # set to 0 to use host rtabmap tool and relative datasets to this scrip
 
 RGBD_ROOT_PATH='./datasets/tum'
 RGBD_RESULTS_PATH='./results/tum'
-mkdir -p $EUROC_RESULTS_PATH
+mkdir -p $RGBD_RESULTS_PATH
 if [ $DOCKER -eq 1 ]
 then
     RGBD_ROOT_PATH='/root/datasets/tum'
@@ -81,7 +81,7 @@ do
        --Odom/Strategy $STRATEGY\
        --Mem/STMSize 30\
        --Mem/UseOdomFeatures false \
-       --Mem/BinDataKept false \
+       --Mem/BinDataKept true \
        --Rtabmap/CreateIntermediateNodes false\
        $F2F_params\
        --OdomORBSLAM2/VocPath /root/ORBvoc.txt\
