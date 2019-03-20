@@ -31,7 +31,7 @@ run_euroc_datasets.sh
 run_tum_datasets.sh
 ```
 
-For TUM dataset, use this script [associate.py](https://gist.github.com/matlabbe/484134a2d9da8ad425362c6669824798) to synchronize RGB and epth images before processing. Usage in a TUM dataset: `python associate.py rgb.txt depth.txt`, this will create `rgb_sync` and `depth_sync` folders.
+For TUM dataset, use this script [associate.py](https://gist.github.com/matlabbe/484134a2d9da8ad425362c6669824798) to synchronize RGB and depth images before processing. Usage in a TUM dataset: `python associate.py rgb.txt depth.txt`, this will create `rgb_sync` and `depth_sync` folders.
 
 Process all datasets, results will be written to subfolders `results/euroc`, `results/kitti` and `results/tum`:
 ```bash
