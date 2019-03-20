@@ -32,6 +32,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/utilite/UTimer.h"
 #include "rtabmap/utilite/UStl.h"
 #include "rtabmap/utilite/UThread.h"
+#include "rtabmap/utilite/UFile.h"
+#include "rtabmap/utilite/UDirectory.h"
 #include <opencv2/imgproc/types_c.h>
 
 #ifdef RTABMAP_OKVIS
@@ -140,9 +142,10 @@ OdometryOkvis::OdometryOkvis(const ParametersMap & parameters) :
 {
 #ifdef RTABMAP_OKVIS
 	Parameters::parse(parameters, Parameters::kOdomOKVISConfigPath(), configFilename_);
-	if(configFilename_.empty())
+	configFilename_ = uReplaceChar(configFilename_, '~', UDirectory::homeDir());
+	if(configFilename_.empty() || !UFile::exists(configFilename_))
 	{
-		UERROR("OKVIS config file is empty (%s)!", Parameters::kOdomOKVISConfigPath().c_str());
+		UERROR("OKVIS config file is empty or doesn't exist (%s)!", Parameters::kOdomOKVISConfigPath().c_str());
 	}
 #endif
 }
@@ -283,14 +286,14 @@ Transform OdometryOkvis::computeTransform(
 				}
 
 				okvis::VioParameters parameters;
-				if(configFilename_.empty())
+				if(configFilename_.empty() || !UFile::exists(configFilename_))
 				{
-					UERROR("OKVIS config file is empty (%s)!", Parameters::kOdomOKVISConfigPath().c_str());
+					UERROR("OKVIS config file is empty or doesn't exist (%s)!", Parameters::kOdomOKVISConfigPath().c_str());
 					return t;
 				}
 				else
 				{
-					okvis::VioParametersReader vio_parameters_reader(configFilename_);
+					okvis::VioParametersReader vio_parameters_reader(uReplaceChar(configFilename_, '~', UDirectory::homeDir()));
 					vio_parameters_reader.getParameters(parameters);
 					if(parameters.nCameraSystem.numCameras() > 0)
 					{
