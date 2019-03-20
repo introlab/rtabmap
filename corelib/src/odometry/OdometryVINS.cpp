@@ -123,7 +123,7 @@ public:
 			}
 			else
 			{
-				cam0cam1 = model.stereoTransform();
+				cam0cam1 = model.stereoTransform().inverse();
 			}
 			UASSERT(!cam0cam1.isNull());
 			Transform imuCam1 = imuCam0 * cam0cam1;

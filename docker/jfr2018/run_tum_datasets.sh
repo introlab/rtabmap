@@ -1,8 +1,16 @@
 #!/bin/bash
 
 PWD=$(pwd)
-RGBD_ROOT_PATH='/root/datasets/tum'
+DOCKER=1 # set to 0 to use host rtabmap tool and relative datasets to this script
+
+RGBD_ROOT_PATH='./datasets/tum'
+RGBD_RESULTS_PATH='./results/tum'
+mkdir -p $EUROC_RESULTS_PATH
+if [ $DOCKER -eq 1 ]
+then
+    RGBD_ROOT_PATH='/root/datasets/tum'
 RGBD_RESULTS_PATH='/root/results/tum'
+fi
 
 LIST=( 'rgbd_dataset_freiburg1_desk' 'rgbd_dataset_freiburg1_desk2' 'rgbd_dataset_freiburg1_room' 'rgbd_dataset_freiburg2_desk' 'rgbd_dataset_freiburg2_xyz' 'rgbd_dataset_freiburg3_long_office_household' 'rgbd_dataset_freiburg3_nostructure_texture_near_withloop_validation')
 # more: 'rgbd_dataset_freiburg1_360' 'rgbd_dataset_freiburg1_plant' 'rgbd_dataset_freiburg1_rpy' 'rgbd_dataset_freiburg1_teddy' 'rgbd_dataset_freiburg2_360_hemisphere' 'rgbd_dataset_freiburg2_large_no_loop' 'rgbd_dataset_freiburg2_large_with_loop' 'rgbd_dataset_freiburg1_floor'
@@ -41,13 +49,17 @@ then
     F2F_params="--RGBD/OptimizeMaxError 0 $F2F_params"
 fi
 
-# Select rtabmap built with os2 support or not
-TOOL_PREFIX="/usr/local/bin"
-if [ $STRATEGY -eq 5 ]
+RTABMAP_RGBD_TOOL="rtabmap-rgbd_dataset"
+if [ $DOCKER -eq 1 ]
 then
-    TOOL_PREFIX="/root/rtabmap_os2/bin"
+    # Select rtabmap built with os2 support or not
+    TOOL_PREFIX="/usr/local/bin"
+    if [ $STRATEGY -eq 5 ]
+    then
+        TOOL_PREFIX="/root/rtabmap_os2/bin"
+    fi
+    RTABMAP_RGBD_TOOL="docker run -v $PWD/datasets/tum:$RGBD_ROOT_PATH -v $PWD/results/tum:$RGBD_RESULTS_PATH -i -t --rm introlab3it/rtabmap:jfr2018 $TOOL_PREFIX/rtabmap-rgbd_dataset"
 fi
-RTABMAP_RGBD_TOOL="docker run -v $PWD/datasets/tum:$RGBD_ROOT_PATH -v $PWD/results/tum:$RGBD_RESULTS_PATH -i -t --rm introlab3it/rtabmap:jfr2018 $TOOL_PREFIX/rtabmap-rgbd_dataset"
 echo $RTABMAP_RGBD_TOOL
 
 # no --disp with 01?

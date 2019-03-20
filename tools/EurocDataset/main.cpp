@@ -61,7 +61,7 @@ void showUsage()
 			"  --quiet            Don't show log messages and iteration updates.\n"
 			"  --exposure_comp    Do exposure compensation between left and right images.\n"
 			"  --disp             Generate full disparity.\n"
-			"  --raw              Use raw images (not rectified, this only works with okvis and msckf odometry).\n"
+			"  --raw              Use raw images (not rectified, this only works with okvis, msckf or vins odometry).\n"
 			"%s\n"
 			"Example:\n\n"
 			"   $ rtabmap-euroc_dataset \\\n"
@@ -253,6 +253,9 @@ int main(int argc, char * argv[])
 		UASSERT(models.back().isValidForRectification());
 	}
 
+	int odomStrategy = Parameters::defaultOdomStrategy();
+	Parameters::parse(parameters, Parameters::kOdomStrategy(), odomStrategy);
+
 	StereoCameraModel model(outputName+"_calib", models[0], models[1], models[1].localTransform().inverse() * models[0].localTransform());
 	if(!model.save(output, false))
 	{
@@ -297,8 +300,6 @@ int main(int argc, char * argv[])
 
 	float detectionRate = Parameters::defaultRtabmapDetectionRate();
 	bool intermediateNodes = Parameters::defaultRtabmapCreateIntermediateNodes();
-	int odomStrategy = Parameters::defaultOdomStrategy();
-	Parameters::parse(parameters, Parameters::kOdomStrategy(), odomStrategy);
 	Parameters::parse(parameters, Parameters::kRtabmapDetectionRate(), detectionRate);
 	Parameters::parse(parameters, Parameters::kRtabmapCreateIntermediateNodes(), intermediateNodes);
 
@@ -309,7 +310,7 @@ int main(int argc, char * argv[])
 	}
 
 	std::ifstream imu_file;
-	if(odomStrategy == Odometry::kTypeOkvis || odomStrategy == Odometry::kTypeMSCKF)
+	if(odomStrategy == Odometry::kTypeOkvis || odomStrategy == Odometry::kTypeMSCKF || odomStrategy == Odometry::kTypeVINS)
 	{
 		// open the IMU file
 		std::string line;
@@ -393,7 +394,7 @@ int main(int argc, char * argv[])
 		while(data.isValid() && g_forever)
 		{
 			UDEBUG("");
-			if(odomStrategy == Odometry::kTypeOkvis || odomStrategy == Odometry::kTypeMSCKF)
+			if(odomStrategy == Odometry::kTypeOkvis || odomStrategy == Odometry::kTypeMSCKF || odomStrategy == Odometry::kTypeVINS)
 			{
 				// get all IMU measurements till then
 				double t_imu = start;
@@ -442,7 +443,7 @@ int main(int argc, char * argv[])
 			UDEBUG("");
 			Transform pose = odom->process(data, &odomInfo);
 			UDEBUG("");
-			if((odomStrategy == Odometry::kTypeOkvis || odomStrategy == Odometry::kTypeMSCKF) &&
+			if((odomStrategy == Odometry::kTypeOkvis || odomStrategy == Odometry::kTypeMSCKF || odomStrategy == Odometry::kTypeVINS) &&
 				pose.isNull())
 			{
 				cameraInfo = CameraInfo();
@@ -664,7 +665,7 @@ int main(int argc, char * argv[])
 					rotational_max);
 
 			printf("   translational_rmse=   %f m   (vo = %f m)\n", translational_rmse, translational_rmse_vo);
-			printf("   rotational_rmse=      %f deg (vo = %f def)\n", rotational_rmse, rotational_rmse_vo);
+			printf("   rotational_rmse=      %f deg (vo = %f deg)\n", rotational_rmse, rotational_rmse_vo);
 
 			FILE * pFile = 0;
 			std::string pathErrors = output+"/"+outputName+"_rmse.txt";

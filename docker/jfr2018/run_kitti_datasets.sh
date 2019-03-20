@@ -1,8 +1,16 @@
 #!/bin/bash
 
 PWD=$(pwd)
-KITTI_ROOT_PATH='/root/datasets/kitti'
-KITTI_RESULTS_PATH='/root/results/kitti'
+DOCKER=1 # set to 0 to use host rtabmap tool and relative datasets to this script
+
+KITTI_ROOT_PATH='./datasets/kitti'
+KITTI_RESULTS_PATH='./results/kitti'
+mkdir -p $KITTI_RESULTS_PATH
+if [ $DOCKER -eq 1 ]
+then
+    KITTI_ROOT_PATH='/root/datasets/kitti'
+    KITTI_RESULTS_PATH='/root/results/kitti'
+fi
 
 LIST=('00' '01' '02' '03' '04' '05' '06' '07' '08' '09' '10')
 #LIST=('11' '12' '13' '14' '15' '16' '17' '18' '19' '20' '21')
@@ -22,7 +30,7 @@ then
     STRATEGY=$2
     REG=$3
 else
-echo "Usage: run_tum_datasets.sh \"output name\" \"odom strategy: 0=f2m 1=f2f 11=f2f_optflow 2=fovis 3=viso2 4=dvo 5=orbslam2 7=LOAM\" \"reg strategy: 0=vis 1=icp-point2point 11=icp-point2plane\" [sequence]"
+echo "Usage: run_tum_datasets.sh \"output name\" \"odom strategy: 0=f2m 1=f2f 11=f2f_optflow 2=fovis 3=viso2 4=dvo 5=orbslam2 7=LOAM 9=VINS\" \"reg strategy: 0=vis 1=icp-point2point 11=icp-point2plane\" [sequence]"
 exit
 fi
 
@@ -41,6 +49,11 @@ fi
 if [ $STRATEGY -eq 3 ]
 then
     F2F_params=" $F2F_params"
+fi
+
+if [ $STRATEGY -eq 3 ]
+then
+    F2F_params="--OdomVINS/ConfigPath ./kitti_config04-12.yaml $F2F_params"
 fi
 
 SCAN=""
@@ -68,16 +81,20 @@ then
    SCAN="--scan --Reg/Strategy $REG --OdomF2M/ScanMaxSize 10000 --OdomF2M/ScanSubtractRadius 0.5 --Odom/LOAMSensor 2 --Icp/MaxTranslation 2 --Icp/Epsilon 0.0001 --Icp/MaxCorrespondenceDistance 1.5 --Icp/CorrespondenceRatio 0.01 --Icp/PM true --Icp/PMOutlierRatio 0.7 --Icp/PMMatcherKnn 3 --Icp/PMMatcherEpsilon 1  $SCAN"
 fi
 
-# Select rtabmap built with os2 support or not
-TOOL_PREFIX="/usr/local/bin"
-if [ $STRATEGY -eq 5 ]
+RTABMAP_RGBD_TOOL="rtabmap-kitti_dataset"
+if [ $DOCKER -eq 1 ]
 then
-    TOOL_PREFIX="/root/rtabmap_os2/bin"
-elif [ $STRATEGY -eq 7 ]
-then
-    TOOL_PREFIX="/root/rtabmap_loam/bin"
-fi
-RTABMAP_KITTI_TOOL="docker run -v $PWD/datasets/kitti:$KITTI_ROOT_PATH -v $PWD/results/kitti:$KITTI_RESULTS_PATH -i -t --rm introlab3it/rtabmap:jfr2018 $TOOL_PREFIX/rtabmap-kitti_dataset"
+   # Select rtabmap built with os2 support or not
+   TOOL_PREFIX="/usr/local/bin"
+   if [ $STRATEGY -eq 5 ]
+   then
+       TOOL_PREFIX="/root/rtabmap_os2/bin"
+   elif [ $STRATEGY -eq 7 ]
+   then
+       TOOL_PREFIX="/root/rtabmap_loam/bin"
+   fi
+   RTABMAP_KITTI_TOOL="docker run -v $PWD/datasets/kitti:$KITTI_ROOT_PATH -v $PWD/results/kitti:$KITTI_RESULTS_PATH -i -t --rm introlab3it/rtabmap:jfr2018 $TOOL_PREFIX/rtabmap-kitti_dataset"
+if
 echo $RTABMAP_KITTI_TOOL
 
 for d in "${LIST[@]}"
