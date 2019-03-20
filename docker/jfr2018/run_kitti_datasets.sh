@@ -51,7 +51,7 @@ then
     F2F_params=" $F2F_params"
 fi
 
-if [ $STRATEGY -eq 3 ]
+if [ $STRATEGY -eq 9 ]
 then
     F2F_params="--OdomVINS/ConfigPath ./kitti_config04-12.yaml $F2F_params"
 fi
