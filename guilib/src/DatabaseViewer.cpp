@@ -6826,10 +6826,11 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent)
 				if(maxAngularErrorRatio > maxOptimizationError)
 				{
 					msg = uFormat("Rejecting edge %d->%d because "
-						  "graph error is too large after optimization (ratio %f for edge %d->%d, stddev=%f deg, abs=%f deg). "
+						  "graph error is too large (abs=%f deg) after optimization (ratio %f for edge %d->%d, stddev=%f deg). "
 						  "\"%s\" is %f.",
 						  newLink.from(),
 						  newLink.to(),
+						  maxAngularError*180.0f/CV_PI,
 						  maxAngularErrorRatio,
 						  maxAngularLink->from(),
 						  maxAngularLink->to(),
