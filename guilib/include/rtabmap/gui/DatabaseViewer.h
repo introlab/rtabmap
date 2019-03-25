@@ -88,6 +88,7 @@ private Q_SLOTS:
 	void openDatabase();
 	bool closeDatabase();
 	void recoverDatabase();
+	void updateInfo();
 	void updateStatistics();
 	void selectObstacleColor();
 	void selectGroundColor();
@@ -234,6 +235,13 @@ private:
 	bool savedMaximized_;
 	bool firstCall_;
 	QString iniFilePath_;
+
+	bool infoReducedGraph_;
+	double infoTotalOdom_;
+	double infoTotalTime_;
+	int infoSessions_;
+	int infoBadcountInLTM_;
+	int infoBadCountInGraph_;
 
 	bool useLastOptimizedGraphAsGuess_;
 	std::map<int, Transform> lastOptimizedGraph_;

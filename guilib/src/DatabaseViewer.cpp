@@ -105,6 +105,11 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	savedMaximized_(false),
 	firstCall_(true),
 	iniFilePath_(ini),
+	infoReducedGraph_(false),
+	infoTotalOdom_(0.0),
+	infoSessions_(0),
+	infoBadcountInLTM_(0),
+	infoBadCountInGraph_(0),
 	useLastOptimizedGraphAsGuess_(false)
 {
 	pathDatabase_ = QDir::homePath()+"/Documents/RTAB-Map"; //use home directory by default
@@ -238,6 +243,7 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	connect(ui_->dockWidget_graphView->toggleViewAction(), SIGNAL(triggered()), this, SLOT(updateGraphView()));
 	connect(ui_->dockWidget_occupancyGridView->toggleViewAction(), SIGNAL(triggered()), this, SLOT(updateGraphView()));
 	connect(ui_->dockWidget_statistics->toggleViewAction(), SIGNAL(triggered()), this, SLOT(updateStatistics()));
+	connect(ui_->dockWidget_info->toggleViewAction(), SIGNAL(triggered()), this, SLOT(updateInfo()));
 
 
 	connect(ui_->parameters_toolbox, SIGNAL(parametersChanged(const QStringList &)), this, SLOT(notifyParametersChanged(const QStringList &)));
@@ -1576,16 +1582,16 @@ void DatabaseViewer::updateIds()
 		}
 	}
 
-	double totalOdom = 0.0;
+	infoTotalOdom_ = 0.0;
 	Transform previousPose;
-	int sessions = ids_.size()?1:0;
-	double totalTime = 0.0;
+	infoSessions_ = ids_.size()?1:0;
+	infoTotalTime_ = 0.0;
 	double previousStamp = 0.0;
 	std::set<int> idsWithoutBad;
 	dbDriver_->getAllNodeIds(idsWithoutBad, false, true);
-	int badcountInLTM = 0;
-	int badCountInGraph = 0;
-	bool hasReducedGraph = false;
+	infoBadcountInLTM_ = 0;
+	infoBadCountInGraph_ = 0;
+	infoReducedGraph_ = false;
 	std::map<int, std::vector<int> > wmStates = dbDriver_->getAllStatisticsWmStates();
 	for(int i=0; i<ids_.size(); ++i)
 	{
@@ -1618,17 +1624,17 @@ void DatabaseViewer::updateIds()
 			{
 				if(!p.isNull() && !previousPose.isNull())
 				{
-					totalOdom += p.getDistance(previousPose);
+					infoTotalOdom_ += p.getDistance(previousPose);
 				}
 
 				if(previousStamp > 0.0 && s > 0.0)
 				{
-					totalTime += s-previousStamp;
+					infoTotalTime_ += s-previousStamp;
 				}
 			}
 			else
 			{
-				++sessions;
+				++infoSessions_;
 			}
 		}
 		previousStamp=s;
@@ -1640,7 +1646,7 @@ void DatabaseViewer::updateIds()
 		{
 			if(jter->second.type() == Link::kNeighborMerged)
 			{
-				hasReducedGraph = true;
+				infoReducedGraph_ = true;
 			}
 
 			std::multimap<int, Link>::iterator invertedLinkIter = graph::findLink(links, jter->second.to(), jter->second.from(), false);
@@ -1692,10 +1698,10 @@ void DatabaseViewer::updateIds()
 
 		if(idsWithoutBad.find(ids_[i]) == idsWithoutBad.end())
 		{
-			++badcountInLTM;
+			++infoBadcountInLTM_;
 			if(addPose)
 			{
-				++badCountInGraph;
+				++infoBadCountInGraph_;
 			}
 		}
 	}
@@ -1749,84 +1755,11 @@ void DatabaseViewer::updateIds()
 		updateStatistics();
 	}
 
-	UINFO("Update database info...");
 	ui_->textEdit_info->clear();
-	ui_->textEdit_info->append(tr("Path:\t\t%1").arg(dbDriver_->getUrl().c_str()));
-	ui_->textEdit_info->append(tr("Version:\t\t%1").arg(dbDriver_->getDatabaseVersion().c_str()));
-	ui_->textEdit_info->append(tr("Sessions:\t\t%1").arg(sessions));
-	if(hasReducedGraph)
+	if(ui_->textEdit_info->isVisible())
 	{
-		ui_->textEdit_info->append(tr("Total odometry length:\t%1 m (approx. as graph has been reduced)").arg(totalOdom));
+		updateInfo();
 	}
-	else
-	{
-		ui_->textEdit_info->append(tr("Total odometry length:\t%1 m").arg(totalOdom));
-	}
-	ui_->textEdit_info->append(tr("Total time:\t\t%1").arg(QDateTime::fromMSecsSinceEpoch(totalTime*1000).toUTC().toString("hh:mm:ss.zzz")));
-	ui_->textEdit_info->append(tr("LTM:\t\t%1 nodes and %2 words").arg(ids.size()).arg(dbDriver_->getTotalDictionarySize()));
-	ui_->textEdit_info->append(tr("WM:\t\t%1 nodes and %2 words").arg(dbDriver_->getLastNodesSize()).arg(dbDriver_->getLastDictionarySize()));
-	ui_->textEdit_info->append(tr("Global graph:\t%1 poses and %2 links").arg(odomPoses_.size()).arg(links_.size()));
-	ui_->textEdit_info->append(tr("Ground truth:\t%1 poses").arg(groundTruthPoses_.size()));
-	ui_->textEdit_info->append(tr("GPS:\t%1 poses").arg(gpsValues_.size()));
-	ui_->textEdit_info->append("");
-	long total = 0;
-	long dbSize = UFile::length(dbDriver_->getUrl());
-	long mem = dbSize;
-	ui_->textEdit_info->append(tr("Database size:\t%1 %2").arg(mem>1000000?mem/1000000:mem>1000?mem/1000:mem).arg(mem>1000000?"MB":mem>1000?"KB":"Bytes"));
-	mem = dbDriver_->getNodesMemoryUsed();
-	total+=mem;
-	ui_->textEdit_info->append(tr("Nodes size:\t\t%1 %2\t%3%").arg(mem>1000000?mem/1000000:mem>1000?mem/1000:mem).arg(mem>1000000?"MB":mem>1000?"KB":"Bytes").arg(dbSize>0?QString::number(double(mem)/double(dbSize)*100.0, 'f', 2 ):"0"));
-	mem = dbDriver_->getLinksMemoryUsed();
-	total+=mem;
-	ui_->textEdit_info->append(tr("Links size:\t\t%1 %2\t%3%").arg(mem>1000000?mem/1000000:mem>1000?mem/1000:mem).arg(mem>1000000?"MB":mem>1000?"KB":"Bytes").arg(dbSize>0?QString::number(double(mem)/double(dbSize)*100.0, 'f', 2 ):"0"));
-	mem = dbDriver_->getImagesMemoryUsed();
-	total+=mem;
-	ui_->textEdit_info->append(tr("RGB Images size:\t%1 %2\t%3%").arg(mem>1000000?mem/1000000:mem>1000?mem/1000:mem).arg(mem>1000000?"MB":mem>1000?"KB":"Bytes").arg(dbSize>0?QString::number(double(mem)/double(dbSize)*100.0, 'f', 2 ):"0"));
-	mem = dbDriver_->getDepthImagesMemoryUsed();
-	total+=mem;
-	ui_->textEdit_info->append(tr("Depth Images size:\t%1 %2\t%3%").arg(mem>1000000?mem/1000000:mem>1000?mem/1000:mem).arg(mem>1000000?"MB":mem>1000?"KB":"Bytes").arg(dbSize>0?QString::number(double(mem)/double(dbSize)*100.0, 'f', 2 ):"0"));
-	mem = dbDriver_->getCalibrationsMemoryUsed();
-	total+=mem;
-	ui_->textEdit_info->append(tr("Calibrations size:\t%1 %2\t%3%").arg(mem>1000000?mem/1000000:mem>1000?mem/1000:mem).arg(mem>1000000?"MB":mem>1000?"KB":"Bytes").arg(dbSize>0?QString::number(double(mem)/double(dbSize)*100.0, 'f', 2 ):"0"));
-	mem = dbDriver_->getGridsMemoryUsed();
-	total+=mem;
-	ui_->textEdit_info->append(tr("Grids size:\t\t%1 %2\t%3%").arg(mem>1000000?mem/1000000:mem>1000?mem/1000:mem).arg(mem>1000000?"MB":mem>1000?"KB":"Bytes").arg(dbSize>0?QString::number(double(mem)/double(dbSize)*100.0, 'f', 2 ):"0"));
-	mem = dbDriver_->getLaserScansMemoryUsed();
-	total+=mem;
-	ui_->textEdit_info->append(tr("Scans size:\t\t%1 %2\t%3%").arg(mem>1000000?mem/1000000:mem>1000?mem/1000:mem).arg(mem>1000000?"MB":mem>1000?"KB":"Bytes").arg(dbSize>0?QString::number(double(mem)/double(dbSize)*100.0, 'f', 2 ):"0"));
-	mem = dbDriver_->getUserDataMemoryUsed();
-	total+=mem;
-	ui_->textEdit_info->append(tr("User data size:\t%1 %2\t%3%").arg(mem>1000000?mem/1000000:mem>1000?mem/1000:mem).arg(mem>1000000?"MB":mem>1000?"KB":"Bytes").arg(dbSize>0?QString::number(double(mem)/double(dbSize)*100.0, 'f', 2 ):"0"));
-	mem = dbDriver_->getWordsMemoryUsed();
-	total+=mem;
-	ui_->textEdit_info->append(tr("Dictionary size:\t%1 %2\t%3%").arg(mem>1000000?mem/1000000:mem>1000?mem/1000:mem).arg(mem>1000000?"MB":mem>1000?"KB":"Bytes").arg(dbSize>0?QString::number(double(mem)/double(dbSize)*100.0, 'f', 2 ):"0"));
-	mem = dbDriver_->getFeaturesMemoryUsed();
-	total+=mem;
-	ui_->textEdit_info->append(tr("Features size:\t%1 %2\t%3%").arg(mem>1000000?mem/1000000:mem>1000?mem/1000:mem).arg(mem>1000000?"MB":mem>1000?"KB":"Bytes").arg(dbSize>0?QString::number(double(mem)/double(dbSize)*100.0, 'f', 2 ):"0"));
-	mem = dbDriver_->getStatisticsMemoryUsed();
-	total+=mem;
-	ui_->textEdit_info->append(tr("Statistics size:\t%1 %2\t%3%").arg(mem>1000000?mem/1000000:mem>1000?mem/1000:mem).arg(mem>1000000?"MB":mem>1000?"KB":"Bytes").arg(dbSize>0?QString::number(double(mem)/double(dbSize)*100.0, 'f', 2 ):"0"));
-	mem = dbSize - total;
-	ui_->textEdit_info->append(tr("Other (indexing):\t%1 %2\t%3%").arg(mem>1000000?mem/1000000:mem>1000?mem/1000:mem).arg(mem>1000000?"MB":mem>1000?"KB":"Bytes").arg(dbSize>0?QString::number(double(mem)/double(dbSize)*100.0, 'f', 2 ):"0"));
-	ui_->textEdit_info->append("");
-	ui_->textEdit_info->append(tr("%1 bad signatures in LTM").arg(badcountInLTM));
-	ui_->textEdit_info->append(tr("%1 bad signatures in the global graph").arg(badCountInGraph));
-	ui_->textEdit_info->append("");
-	ParametersMap parameters = dbDriver_->getLastParameters();
-	QFontMetrics metrics(ui_->textEdit_info->font());
-	int tabW = ui_->textEdit_info->tabStopWidth();
-	for(ParametersMap::iterator iter=parameters.begin(); iter!=parameters.end(); ++iter)
-	{
-		int strW = metrics.width(QString(iter->first.c_str()) + "=");
-		ui_->textEdit_info->append(tr("%1=%2%3")
-				.arg(iter->first.c_str())
-				.arg(strW < tabW?"\t\t\t\t":strW < tabW*2?"\t\t\t":strW < tabW*3?"\t\t":"\t")
-				.arg(iter->second.c_str()));
-	}
-
-	// move back the cursor at the beginning
-	ui_->textEdit_info->moveCursor(QTextCursor::Start) ;
-	ui_->textEdit_info->ensureCursorVisible() ;
 
 	if(ids.size())
 	{
@@ -1928,6 +1861,97 @@ void DatabaseViewer::updateIds()
 		{
 			updateGraphView();
 		}
+	}
+}
+
+void DatabaseViewer::updateInfo()
+{
+	UINFO("Update database info...");
+	if(dbDriver_)
+	{
+		if(ui_->textEdit_info->toPlainText().isEmpty())
+		{
+			ui_->textEdit_info->append(tr("Path:\t\t%1").arg(dbDriver_->getUrl().c_str()));
+			ui_->textEdit_info->append(tr("Version:\t\t%1").arg(dbDriver_->getDatabaseVersion().c_str()));
+			ui_->textEdit_info->append(tr("Sessions:\t\t%1").arg(infoSessions_));
+			if(infoReducedGraph_)
+			{
+				ui_->textEdit_info->append(tr("Total odometry length:\t%1 m (approx. as graph has been reduced)").arg(infoTotalOdom_));
+			}
+			else
+			{
+				ui_->textEdit_info->append(tr("Total odometry length:\t%1 m").arg(infoTotalOdom_));
+			}
+			ui_->textEdit_info->append(tr("Total time:\t\t%1").arg(QDateTime::fromMSecsSinceEpoch(infoTotalTime_*1000).toUTC().toString("hh:mm:ss.zzz")));
+			ui_->textEdit_info->append(tr("LTM:\t\t%1 nodes and %2 words").arg(ids_.size()).arg(dbDriver_->getTotalDictionarySize()));
+			ui_->textEdit_info->append(tr("WM:\t\t%1 nodes and %2 words").arg(dbDriver_->getLastNodesSize()).arg(dbDriver_->getLastDictionarySize()));
+			ui_->textEdit_info->append(tr("Global graph:\t%1 poses and %2 links").arg(odomPoses_.size()).arg(links_.size()));
+			ui_->textEdit_info->append(tr("Ground truth:\t%1 poses").arg(groundTruthPoses_.size()));
+			ui_->textEdit_info->append(tr("GPS:\t%1 poses").arg(gpsValues_.size()));
+			ui_->textEdit_info->append("");
+			long total = 0;
+			long dbSize = UFile::length(dbDriver_->getUrl());
+			long mem = dbSize;
+			ui_->textEdit_info->append(tr("Database size:\t%1 %2").arg(mem>1000000?mem/1000000:mem>1000?mem/1000:mem).arg(mem>1000000?"MB":mem>1000?"KB":"Bytes"));
+			mem = dbDriver_->getNodesMemoryUsed();
+			total+=mem;
+			ui_->textEdit_info->append(tr("Nodes size:\t\t%1 %2\t%3%").arg(mem>1000000?mem/1000000:mem>1000?mem/1000:mem).arg(mem>1000000?"MB":mem>1000?"KB":"Bytes").arg(dbSize>0?QString::number(double(mem)/double(dbSize)*100.0, 'f', 2 ):"0"));
+			mem = dbDriver_->getLinksMemoryUsed();
+			total+=mem;
+			ui_->textEdit_info->append(tr("Links size:\t\t%1 %2\t%3%").arg(mem>1000000?mem/1000000:mem>1000?mem/1000:mem).arg(mem>1000000?"MB":mem>1000?"KB":"Bytes").arg(dbSize>0?QString::number(double(mem)/double(dbSize)*100.0, 'f', 2 ):"0"));
+			mem = dbDriver_->getImagesMemoryUsed();
+			total+=mem;
+			ui_->textEdit_info->append(tr("RGB Images size:\t%1 %2\t%3%").arg(mem>1000000?mem/1000000:mem>1000?mem/1000:mem).arg(mem>1000000?"MB":mem>1000?"KB":"Bytes").arg(dbSize>0?QString::number(double(mem)/double(dbSize)*100.0, 'f', 2 ):"0"));
+			mem = dbDriver_->getDepthImagesMemoryUsed();
+			total+=mem;
+			ui_->textEdit_info->append(tr("Depth Images size:\t%1 %2\t%3%").arg(mem>1000000?mem/1000000:mem>1000?mem/1000:mem).arg(mem>1000000?"MB":mem>1000?"KB":"Bytes").arg(dbSize>0?QString::number(double(mem)/double(dbSize)*100.0, 'f', 2 ):"0"));
+			mem = dbDriver_->getCalibrationsMemoryUsed();
+			total+=mem;
+			ui_->textEdit_info->append(tr("Calibrations size:\t%1 %2\t%3%").arg(mem>1000000?mem/1000000:mem>1000?mem/1000:mem).arg(mem>1000000?"MB":mem>1000?"KB":"Bytes").arg(dbSize>0?QString::number(double(mem)/double(dbSize)*100.0, 'f', 2 ):"0"));
+			mem = dbDriver_->getGridsMemoryUsed();
+			total+=mem;
+			ui_->textEdit_info->append(tr("Grids size:\t\t%1 %2\t%3%").arg(mem>1000000?mem/1000000:mem>1000?mem/1000:mem).arg(mem>1000000?"MB":mem>1000?"KB":"Bytes").arg(dbSize>0?QString::number(double(mem)/double(dbSize)*100.0, 'f', 2 ):"0"));
+			mem = dbDriver_->getLaserScansMemoryUsed();
+			total+=mem;
+			ui_->textEdit_info->append(tr("Scans size:\t\t%1 %2\t%3%").arg(mem>1000000?mem/1000000:mem>1000?mem/1000:mem).arg(mem>1000000?"MB":mem>1000?"KB":"Bytes").arg(dbSize>0?QString::number(double(mem)/double(dbSize)*100.0, 'f', 2 ):"0"));
+			mem = dbDriver_->getUserDataMemoryUsed();
+			total+=mem;
+			ui_->textEdit_info->append(tr("User data size:\t%1 %2\t%3%").arg(mem>1000000?mem/1000000:mem>1000?mem/1000:mem).arg(mem>1000000?"MB":mem>1000?"KB":"Bytes").arg(dbSize>0?QString::number(double(mem)/double(dbSize)*100.0, 'f', 2 ):"0"));
+			mem = dbDriver_->getWordsMemoryUsed();
+			total+=mem;
+			ui_->textEdit_info->append(tr("Dictionary size:\t%1 %2\t%3%").arg(mem>1000000?mem/1000000:mem>1000?mem/1000:mem).arg(mem>1000000?"MB":mem>1000?"KB":"Bytes").arg(dbSize>0?QString::number(double(mem)/double(dbSize)*100.0, 'f', 2 ):"0"));
+			mem = dbDriver_->getFeaturesMemoryUsed();
+			total+=mem;
+			ui_->textEdit_info->append(tr("Features size:\t%1 %2\t%3%").arg(mem>1000000?mem/1000000:mem>1000?mem/1000:mem).arg(mem>1000000?"MB":mem>1000?"KB":"Bytes").arg(dbSize>0?QString::number(double(mem)/double(dbSize)*100.0, 'f', 2 ):"0"));
+			mem = dbDriver_->getStatisticsMemoryUsed();
+			total+=mem;
+			ui_->textEdit_info->append(tr("Statistics size:\t%1 %2\t%3%").arg(mem>1000000?mem/1000000:mem>1000?mem/1000:mem).arg(mem>1000000?"MB":mem>1000?"KB":"Bytes").arg(dbSize>0?QString::number(double(mem)/double(dbSize)*100.0, 'f', 2 ):"0"));
+			mem = dbSize - total;
+			ui_->textEdit_info->append(tr("Other (indexing):\t%1 %2\t%3%").arg(mem>1000000?mem/1000000:mem>1000?mem/1000:mem).arg(mem>1000000?"MB":mem>1000?"KB":"Bytes").arg(dbSize>0?QString::number(double(mem)/double(dbSize)*100.0, 'f', 2 ):"0"));
+			ui_->textEdit_info->append("");
+			ui_->textEdit_info->append(tr("%1 bad signatures in LTM").arg(infoBadcountInLTM_));
+			ui_->textEdit_info->append(tr("%1 bad signatures in the global graph").arg(infoBadCountInGraph_));
+			ui_->textEdit_info->append("");
+			ParametersMap parameters = dbDriver_->getLastParameters();
+			QFontMetrics metrics(ui_->textEdit_info->font());
+			int tabW = ui_->textEdit_info->tabStopWidth();
+			for(ParametersMap::iterator iter=parameters.begin(); iter!=parameters.end(); ++iter)
+			{
+				int strW = metrics.width(QString(iter->first.c_str()) + "=");
+				ui_->textEdit_info->append(tr("%1=%2%3")
+						.arg(iter->first.c_str())
+						.arg(strW < tabW?"\t\t\t\t":strW < tabW*2?"\t\t\t":strW < tabW*3?"\t\t":"\t")
+						.arg(iter->second.c_str()));
+			}
+
+			// move back the cursor at the beginning
+			ui_->textEdit_info->moveCursor(QTextCursor::Start) ;
+			ui_->textEdit_info->ensureCursorVisible() ;
+		}
+	}
+	else
+	{
+		ui_->textEdit_info->clear();
 	}
 }
 
