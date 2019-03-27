@@ -40,6 +40,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pcl/common/common.h>
 #include <pcl/surface/poisson.h>
 #include <stdio.h>
+#include <signal.h>
 
 using namespace rtabmap;
 
