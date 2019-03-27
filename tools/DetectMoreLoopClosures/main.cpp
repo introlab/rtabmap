@@ -57,6 +57,14 @@ void showUsage()
 	exit(1);
 }
 
+// catch ctrl-c
+bool g_loopForever = true;
+void sighandler(int sig)
+{
+	printf("\nSignal %d caught...\n", sig);
+	g_loopForever = false;
+}
+
 class PrintProgressState : public ProgressState
 {
 public:
@@ -64,12 +72,16 @@ public:
 	{
 		if(!msg.empty())
 			printf("%s \n", msg.c_str());
-		return true;
+		return g_loopForever;
 	}
 };
 
 int main(int argc, char * argv[])
 {
+	signal(SIGABRT, &sighandler);
+	signal(SIGTERM, &sighandler);
+	signal(SIGINT, &sighandler);
+
 	ULogger::setType(ULogger::kTypeConsole);
 	ULogger::setLevel(ULogger::kError);
 
@@ -183,7 +195,14 @@ int main(int argc, char * argv[])
 	int detected = rtabmap.detectMoreLoopClosures(clusterRadius, clusterAngle, iterations, intraSession, interSession, &progress);
 	if(detected < 0)
 	{
-		printf("Loop closure detection failed!\n");
+		if(!g_loopForever)
+		{
+			printf("Detection interrupted. Loop closures found so far (if any) are not saved.\n");
+		}
+		else
+		{
+			printf("Loop closure detection failed!\n");
+		}
 	}
 
 	rtabmap.close();

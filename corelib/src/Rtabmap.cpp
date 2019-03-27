@@ -4333,13 +4333,22 @@ int Rtabmap::detectMoreLoopClosures(
 
 							if(updateConstraints)
 							{
-								UINFO("Added new loop closure between %d and %d.", from, to);
 								addedLinks.insert(from);
 								addedLinks.insert(to);
 								cv::Mat inf = getInformation(info.covariance);
 								links.insert(std::make_pair(from, Link(from, to, Link::kUserClosure, t, inf)));
 								loopClosuresAdded.push_back(Link(from, to, Link::kUserClosure, t, inf));
-								UINFO("Detected loop closure %d->%d! (%d/%d)", from, to, i+1, (int)clusters.size());
+								std::string msg = uFormat("Iteration %d/%d: Added loop closure %d->%d! (%d/%d)", n+1, iterations, from, to, i+1, (int)clusters.size());
+								UINFO(msg.c_str());
+
+								if(processState)
+								{
+									UINFO(msg.c_str());
+									if(!processState->callback(msg))
+									{
+										return -1;
+									}
+								}
 							}
 						}
 					}
@@ -4349,7 +4358,7 @@ int Rtabmap::detectMoreLoopClosures(
 
 		if(processState)
 		{
-			std::string msg = uFormat("Iteration %d/%d: Detected %d loop closures!", n+1, iterations, (int)addedLinks.size()/2);
+			std::string msg = uFormat("Iteration %d/%d: Detected %d total loop closures!", n+1, iterations, (int)addedLinks.size()/2);
 			UINFO(msg.c_str());
 			if(!processState->callback(msg))
 			{
@@ -4358,7 +4367,7 @@ int Rtabmap::detectMoreLoopClosures(
 		}
 		else
 		{
-			UINFO("Iteration %d/%d: Detected %d loop closures!", n+1, iterations, (int)addedLinks.size()/2);
+			UINFO("Iteration %d/%d: Detected %d total loop closures!", n+1, iterations, (int)addedLinks.size()/2);
 		}
 
 		if(addedLinks.size() == 0)
