@@ -298,7 +298,10 @@ int main(int argc, char * argv[])
 					loopCount = 0;
 					totalFrames = 0;
 				}
-				rtabmap.triggerNewMap();
+				if(incrementalMemory)
+				{
+					rtabmap.triggerNewMap();
+				}
 			}
 			UTimer t;
 			if(!rtabmap.process(data, info.odomPose, info.odomCovariance, info.odomVelocity, globalMapStats))

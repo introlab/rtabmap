@@ -697,6 +697,13 @@ int Rtabmap::triggerNewMap()
 	int mapId = -1;
 	if(_memory)
 	{
+		if(!_memory->isIncremental())
+		{
+			UWARN("Memory is not incremental (%s=false), ignoring creating a new map as we "
+				  "should be already processing new nodes in a new session.",
+				  Parameters::kMemIncrementalMemory().c_str());
+			return mapId;
+		}
 		std::map<int, int> reducedIds;
 		mapId = _memory->incrementMapId(&reducedIds);
 		UINFO("New map triggered, new map = %d", mapId);
