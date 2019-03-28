@@ -684,6 +684,13 @@ void Rtabmap::setInitialPose(const Transform & initialPose)
 			_lastLocalizationNodeId = 0;
 			_mapCorrection.setIdentity();
 			_mapCorrectionBackup.setNull();
+
+			if(_memory->getLastWorkingSignature()->id() &&
+				_optimizedPoses.empty())
+			{
+				cv::Mat covariance;
+				this->optimizeCurrentMap(_memory->getLastWorkingSignature()->id(), false, _optimizedPoses, covariance, &_constraints);
+			}
 		}
 		else
 		{
