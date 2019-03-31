@@ -467,6 +467,10 @@ IF(GTSAM_FOUND)
 			${GTSAM_INCLUDE_DIRS}
 		)
 	ENDIF()
+	SET(SRC_FILES
+    		${SRC_FILES}
+		optimizer/gtsam/GravityFactor.cpp
+	)
 	IF(WIN32)
 		# GTSAM should be built in STATIC on Windows to avoid "error C2338: THIS_METHOD_IS_ONLY_FOR_1x1_EXPRESSIONS" when building GTSAM
 		add_definitions("-DGTSAM_IMPORT_STATIC") 

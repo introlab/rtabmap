@@ -94,16 +94,25 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-631</y>
-            <width>681</width>
-            <height>3071</height>
+            <y>0</y>
+            <width>680</width>
+            <height>3082</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
            <property name="spacing">
             <number>0</number>
            </property>
-           <property name="margin">
+           <property name="leftMargin">
+            <number>0</number>
+           </property>
+           <property name="topMargin">
+            <number>0</number>
+           </property>
+           <property name="rightMargin">
+            <number>0</number>
+           </property>
+           <property name="bottomMargin">
             <number>0</number>
            </property>
            <item>
@@ -117,7 +126,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>19</number>
+                <number>14</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,1">
@@ -2955,7 +2964,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                     <item>
                      <widget class="QStackedWidget" name="stackedWidget_src">
                       <property name="currentIndex">
-                       <number>0</number>
+                       <number>3</number>
                       </property>
                       <widget class="QWidget" name="page_41">
                        <layout class="QVBoxLayout" name="verticalLayout_64">
@@ -2978,6 +2987,9 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                              </property>
                              <property name="wordWrap">
                               <bool>true</bool>
+                             </property>
+                             <property name="textInteractionFlags">
+                              <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                              </property>
                             </widget>
                            </item>
@@ -3048,6 +3060,9 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                <property name="wordWrap">
                                 <bool>true</bool>
                                </property>
+                               <property name="textInteractionFlags">
+                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                               </property>
                               </widget>
                              </item>
                              <item row="1" column="1">
@@ -3057,6 +3072,9 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                </property>
                                <property name="wordWrap">
                                 <bool>true</bool>
+                               </property>
+                               <property name="textInteractionFlags">
+                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                                </property>
                               </widget>
                              </item>
@@ -4121,6 +4139,9 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                              <property name="wordWrap">
                               <bool>true</bool>
                              </property>
+                             <property name="textInteractionFlags">
+                              <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                             </property>
                             </widget>
                            </item>
                            <item>
@@ -4175,6 +4196,9 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                <property name="wordWrap">
                                 <bool>true</bool>
                                </property>
+                               <property name="textInteractionFlags">
+                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                               </property>
                               </widget>
                              </item>
                              <item row="1" column="1">
@@ -4191,6 +4215,9 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                </property>
                                <property name="wordWrap">
                                 <bool>true</bool>
+                               </property>
+                               <property name="textInteractionFlags">
+                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                                </property>
                               </widget>
                              </item>
@@ -5164,7 +5191,16 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                        <string>Directory of images (optional settings)</string>
                       </property>
                       <layout class="QVBoxLayout" name="verticalLayout_93">
-                       <property name="margin">
+                       <property name="leftMargin">
+                        <number>0</number>
+                       </property>
+                       <property name="topMargin">
+                        <number>0</number>
+                       </property>
+                       <property name="rightMargin">
+                        <number>0</number>
+                       </property>
+                       <property name="bottomMargin">
                         <number>0</number>
                        </property>
                        <item>
@@ -9646,21 +9682,21 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                       </property>
                      </widget>
                     </item>
-                    <item row="5" column="0" rowspan="2">
+                    <item row="6" column="0" rowspan="2">
                      <widget class="QCheckBox" name="graphOptimization_fromGraphEnd">
                       <property name="text">
                        <string/>
                       </property>
                      </widget>
                     </item>
-                    <item row="5" column="1">
+                    <item row="6" column="1">
                      <widget class="Line" name="line">
                       <property name="orientation">
                        <enum>Qt::Horizontal</enum>
                       </property>
                      </widget>
                     </item>
-                    <item row="6" column="1">
+                    <item row="7" column="1">
                      <widget class="QLabel" name="label_151">
                       <property name="text">
                        <string>Optimize graph from the newest node.</string>
@@ -9673,7 +9709,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                       </property>
                      </widget>
                     </item>
-                    <item row="7" column="1">
+                    <item row="8" column="1">
                      <widget class="QLabel" name="label_211">
                       <property name="text">
                        <string>-If true, there is no odometry correction computed. All previous poses in the map are corrected instead, not the last one (which corresponds to latest odometry value). So, the transform between frames /map to /odom will be always Identity even on loop closures.</string>
@@ -9686,7 +9722,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                       </property>
                      </widget>
                     </item>
-                    <item row="8" column="1">
+                    <item row="9" column="1">
                      <widget class="QLabel" name="label_183">
                       <property name="text">
                        <string>-If false, the graph is optimized from the oldest node of the current graph. It can be useful to preserve the map referential from the oldest node. An odometry correction between frames /map to /odom is computed. Warning: when some nodes are transferred, the first referential of the local map may change, resulting in momentary changes in robot/map position (which are annoying in teleoperation).</string>
@@ -9699,7 +9735,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                       </property>
                      </widget>
                     </item>
-                    <item row="3" column="1">
+                    <item row="4" column="1">
                      <widget class="QLabel" name="label_431">
                       <property name="text">
                        <string>Ignore pose priors.</string>
@@ -9712,14 +9748,21 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                       </property>
                      </widget>
                     </item>
-                    <item row="3" column="0">
+                    <item row="4" column="0">
                      <widget class="QCheckBox" name="graphOptimization_priorsIgnored">
                       <property name="text">
                        <string/>
                       </property>
                      </widget>
                     </item>
-                    <item row="4" column="1">
+                    <item row="5" column="0">
+                     <widget class="QCheckBox" name="graphOptimization_landmarksIgnored">
+                      <property name="text">
+                       <string/>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="5" column="1">
                      <widget class="QLabel" name="label_521">
                       <property name="text">
                        <string>Ignore landmarks.</string>
@@ -9732,10 +9775,38 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                       </property>
                      </widget>
                     </item>
-                    <item row="4" column="0">
-                     <widget class="QCheckBox" name="graphOptimization_landmarksIgnored">
+                    <item row="3" column="1">
+                     <widget class="QLabel" name="label_527">
                       <property name="text">
+                       <string>Gravity sigma value (&gt;=0, typically between 0.1 and 0.3). Optimization is done while preserving gravity orientation of the poses. This should be used only with visual/lidar inertial odometry approaches, for which we assume that all odometry poses are aligned with gravity. Set to 0 to disable gravity constraints. Currently supported only with GTSAM optimization strategy.</string>
+                      </property>
+                      <property name="wordWrap">
+                       <bool>true</bool>
+                      </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="3" column="0">
+                     <widget class="QDoubleSpinBox" name="graphOptimization_gravitySigma">
+                      <property name="suffix">
                        <string/>
+                      </property>
+                      <property name="decimals">
+                       <number>2</number>
+                      </property>
+                      <property name="minimum">
+                       <double>0.000000000000000</double>
+                      </property>
+                      <property name="maximum">
+                       <double>10.000000000000000</double>
+                      </property>
+                      <property name="singleStep">
+                       <double>0.100000000000000</double>
+                      </property>
+                      <property name="value">
+                       <double>0.000000000000000</double>
                       </property>
                      </widget>
                     </item>
@@ -15939,7 +16010,16 @@ Lower the ratio -&gt; higher the precision.</string>
                         <property name="spacing">
                          <number>0</number>
                         </property>
-                        <property name="margin">
+                        <property name="leftMargin">
+                         <number>0</number>
+                        </property>
+                        <property name="topMargin">
+                         <number>0</number>
+                        </property>
+                        <property name="rightMargin">
+                         <number>0</number>
+                        </property>
+                        <property name="bottomMargin">
                          <number>0</number>
                         </property>
                         <item>
@@ -16019,7 +16099,16 @@ Lower the ratio -&gt; higher the precision.</string>
                         <property name="spacing">
                          <number>0</number>
                         </property>
-                        <property name="margin">
+                        <property name="leftMargin">
+                         <number>0</number>
+                        </property>
+                        <property name="topMargin">
+                         <number>0</number>
+                        </property>
+                        <property name="rightMargin">
+                         <number>0</number>
+                        </property>
+                        <property name="bottomMargin">
                          <number>0</number>
                         </property>
                         <item>
@@ -16131,7 +16220,16 @@ Lower the ratio -&gt; higher the precision.</string>
                         <property name="spacing">
                          <number>0</number>
                         </property>
-                        <property name="margin">
+                        <property name="leftMargin">
+                         <number>0</number>
+                        </property>
+                        <property name="topMargin">
+                         <number>0</number>
+                        </property>
+                        <property name="rightMargin">
+                         <number>0</number>
+                        </property>
+                        <property name="bottomMargin">
                          <number>0</number>
                         </property>
                         <item>

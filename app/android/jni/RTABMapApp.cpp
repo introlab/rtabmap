@@ -108,16 +108,19 @@ rtabmap::ParametersMap RTABMapApp::getRtabmapParameters()
 		{
 			parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOptimizerEpsilon(), "0.00001"));
 			parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOptimizerIterations(), graphOptimization_?"10":"0"));
+			parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOptimizerGravitySigma(), "0.2"));
 		}
 		else if(parameters.at(rtabmap::Parameters::kOptimizerStrategy()).compare("1") == 0) // g2o
 		{
 			parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOptimizerEpsilon(), "0.0"));
 			parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOptimizerIterations(), graphOptimization_?"10":"0"));
+			parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOptimizerGravitySigma(), "0"));
 		}
 		else // TORO
 		{
 			parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOptimizerEpsilon(), "0.00001"));
 			parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOptimizerIterations(), graphOptimization_?"100":"0"));
+			parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOptimizerGravitySigma(), "0"));
 		}
 	}
 

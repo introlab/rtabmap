@@ -90,6 +90,7 @@ public:
 	bool isRobust() const {return robust_;}
 	bool priorsIgnored() const {return priorsIgnored_;}
 	bool landmarksIgnored() const {return landmarksIgnored_;}
+	float gravitySigma() const {return gravitySigma_;}
 
 	// setters
 	void setIterations(int iterations) {iterations_ = iterations;}
@@ -99,6 +100,7 @@ public:
 	void setRobust(bool enabled) {robust_ = enabled;}
 	void setPriorsIgnored(bool enabled) {priorsIgnored_ = enabled;}
 	void setLandmarksIgnored(bool enabled) {landmarksIgnored_ = enabled;}
+	void setGravitySigma(float value) {gravitySigma_ = value;}
 
 	virtual void parseParameters(const ParametersMap & parameters);
 
@@ -175,7 +177,8 @@ protected:
 			double epsilon         = Parameters::defaultOptimizerEpsilon(),
 			bool robust            = Parameters::defaultOptimizerRobust(),
 			bool priorsIgnored     = Parameters::defaultOptimizerPriorsIgnored(),
-			bool landmarksIgnored  = Parameters::defaultOptimizerLandmarksIgnored());
+			bool landmarksIgnored  = Parameters::defaultOptimizerLandmarksIgnored(),
+			float gravitySigma     = Parameters::defaultOptimizerGravitySigma());
 	Optimizer(const ParametersMap & parameters);
 
 private:
@@ -186,6 +189,7 @@ private:
 	bool robust_;
 	bool priorsIgnored_;
 	bool landmarksIgnored_;
+	float gravitySigma_;
 };
 
 } /* namespace rtabmap */

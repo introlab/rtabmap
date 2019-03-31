@@ -50,6 +50,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <gtsam/nonlinear/NonlinearOptimizer.h>
 #include <gtsam/nonlinear/Marginals.h>
 #include <gtsam/nonlinear/Values.h>
+#include "optimizer/gtsam/GravityFactor.h"
 
 #ifdef RTABMAP_VERTIGO
 #include "vertigo/gtsam/betweenFactorMaxMix.h"
@@ -202,7 +203,7 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 			UASSERT(!iter->second.transform().isNull());
 			if(id1 == id2)
 			{
-				if(!priorsIgnored())
+				if(iter->second.type() == Link::kPosePrior && !priorsIgnored())
 				{
 					if(isSlam2d())
 					{
@@ -240,6 +241,13 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 
 						graph.add(gtsam::PriorFactor<gtsam::Pose3>(id1, gtsam::Pose3(iter->second.transform().toEigen4d()), model));
 					}
+				}
+				else if(gravitySigma() > 0 && iter->second.type() == Link::kPoseOdom && poses.find(iter->first) != poses.end())
+				{
+					Vector3 r = gtsam::Pose3(iter->second.transform().toEigen4d()).rotation().xyz();
+					gtsam::Unit3 nG = gtsam::Rot3::RzRyRx(r.x(), r.y(), 0).rotate(gtsam::Unit3(0,0,-1));
+					gtsam::SharedNoiseModel model = gtsam::noiseModel::Isotropic::Sigmas(gtsam::Vector2(gravitySigma(), 10));
+					graph.add(Pose3GravityFactor(iter->first, nG, model, Unit3(0,0,1)));
 				}
 			}
 			else if(id1<0 || id2 < 0)

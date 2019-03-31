@@ -392,6 +392,7 @@ int main(int argc, char * argv[])
 
 		const rtabmap::Statistics & stats = rtabmap.getStatistics();
 		int loopId = stats.loopClosureId() > 0? stats.loopClosureId(): stats.proximityDetectionId() > 0?stats.proximityDetectionId() :0;
+		int landmarkId = (int)uValue(stats.data(), rtabmap::Statistics::kLoopLandmark_detected(), 0.0f);
 		int refMapId = stats.refImageMapId();
 		++totalFrames;
 		if (loopId>0)
@@ -399,6 +400,10 @@ int main(int argc, char * argv[])
 			++loopCount;
 			int loopMapId = stats.loopClosureId() > 0? stats.loopClosureMapId(): stats.proximityDetectionMapId();
 			printf("Processed %d/%d nodes [%d]... %dms Loop on %d [%d]\n", ++processed, totalIds, refMapId, int(iterationTime.ticks() * 1000), loopId, loopMapId);
+		}
+		else if(landmarkId != 0)
+		{
+			printf("Processed %d/%d nodes [%d]... %dms Loop on landmark %d\n", ++processed, totalIds, refMapId, int(iterationTime.ticks() * 1000), landmarkId);
 		}
 		else
 		{

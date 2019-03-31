@@ -5523,6 +5523,7 @@ void MainWindow::postProcessing()
 	}
 
 	// First, verify that we have all data required in the GUI
+	std::map<int, Transform> odomPoses;
 	bool allDataAvailable = true;
 	for(std::map<int, Transform>::iterator iter = _currentPosesMap.lower_bound(1);
 			iter!=_currentPosesMap.end() && allDataAvailable;
@@ -5533,6 +5534,10 @@ void MainWindow::postProcessing()
 		{
 			UWARN("Node %d missing.", iter->first);
 			allDataAvailable = false;
+		}
+		else if(!jter.value().getPose().isNull())
+		{
+			odomPoses.insert(std::make_pair(iter->first, jter.value().getPose()));
 		}
 	}
 
@@ -5747,6 +5752,13 @@ void MainWindow::postProcessing()
 											UASSERT(_currentPosesMap.find(fromId) != _currentPosesMap.end());
 											UASSERT_MSG(_currentPosesMap.find(from) != _currentPosesMap.end(), uFormat("id=%d poses=%d links=%d", from, (int)poses.size(), (int)links.size()).c_str());
 											UASSERT_MSG(_currentPosesMap.find(to) != _currentPosesMap.end(), uFormat("id=%d poses=%d links=%d", to, (int)poses.size(), (int)links.size()).c_str());
+											if(optimizer->gravitySigma() > 0)
+											{
+												for(std::map<int, Transform>::iterator jter=odomPoses.begin(); jter!=odomPoses.end(); ++jter)
+												{
+													linksIn.insert(std::make_pair(jter->first, Link(jter->first, jter->first, Link::kPoseOdom, jter->second)));
+												}
+											}
 											optimizer->getConnectedGraph(fromId, _currentPosesMap, linksIn, poses, links);
 											UASSERT(poses.find(fromId) != poses.end());
 											UASSERT_MSG(poses.find(from) != poses.end(), uFormat("id=%d poses=%d links=%d", from, (int)poses.size(), (int)links.size()).c_str());
@@ -5857,10 +5869,18 @@ void MainWindow::postProcessing()
 				std::map<int, rtabmap::Transform> posesOut;
 				std::multimap<int, rtabmap::Link> linksOut;
 				std::map<int, rtabmap::Transform> optimizedPoses;
+				std::multimap<int, rtabmap::Link> linksIn = _currentLinksMap;
+				if(optimizer->gravitySigma() > 0)
+				{
+					for(std::map<int, Transform>::iterator iter=odomPoses.begin(); iter!=odomPoses.end(); ++iter)
+					{
+						linksIn.insert(std::make_pair(iter->first, Link(iter->first, iter->first, Link::kPoseOdom, iter->second)));
+					}
+				}
 				optimizer->getConnectedGraph(
 						fromId,
 						_currentPosesMap,
-						_currentLinksMap,
+						linksIn,
 						posesOut,
 						linksOut);
 				optimizedPoses = optimizer->optimize(fromId, posesOut, linksOut);
@@ -5889,13 +5909,12 @@ void MainWindow::postProcessing()
 		for(std::multimap<int, Link>::iterator iter = _currentLinksMap.lower_bound(1); iter!=_currentLinksMap.end() && !_progressCanceled; ++iter, ++i)
 		{
 			int type = iter->second.type();
+			int from = iter->second.from();
+			int to = iter->second.to();
 
 			if((refineNeighborLinks && type==Link::kNeighbor) ||
-			   (refineLoopClosureLinks && type!=Link::kNeighbor && type!=Link::kLandmark))
+			   (refineLoopClosureLinks && type!=Link::kNeighbor && type!=Link::kLandmark && from!=to))
 			{
-				int from = iter->second.from();
-				int to = iter->second.to();
-
 				_progressDialog->appendText(tr("Refining link %1->%2 (%3/%4)").arg(from).arg(to).arg(i+1).arg(_currentLinksMap.size()));
 				_progressDialog->incrementStep();
 				QApplication::processEvents();
@@ -5966,10 +5985,18 @@ void MainWindow::postProcessing()
 	std::map<int, rtabmap::Transform> posesOut;
 	std::multimap<int, rtabmap::Link> linksOut;
 	std::map<int, rtabmap::Transform> optimizedPoses;
+	std::multimap<int, rtabmap::Link> linksIn = _currentLinksMap;
+	if(optimizer->gravitySigma() > 0)
+	{
+		for(std::map<int, Transform>::iterator iter=odomPoses.begin(); iter!=odomPoses.end(); ++iter)
+		{
+			linksIn.insert(std::make_pair(iter->first, Link(iter->first, iter->first, Link::kPoseOdom, iter->second)));
+		}
+	}
 	optimizer->getConnectedGraph(
 			fromId,
 			_currentPosesMap,
-			_currentLinksMap,
+			linksIn,
 			posesOut,
 			linksOut);
 	optimizedPoses = optimizer->optimize(fromId, posesOut, linksOut);

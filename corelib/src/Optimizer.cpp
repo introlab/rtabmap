@@ -210,7 +210,7 @@ void Optimizer::getConnectedGraph(
 					{
 						if(!uContains(posesOut, toId))
 						{
-							posesOut.insert(std::make_pair(toId, posesOut.at(fromId) * (kter->second.from()==fromId?kter->second.transform():kter->second.transform().inverse())));
+							posesOut.insert(*posesIn.find(toId));//std::make_pair(toId, posesOut.at(fromId) * (kter->second.from()==fromId?kter->second.transform():kter->second.transform().inverse())));
 							if(curentPoses.find(toId) == curentPoses.end())
 							{
 								nextPoses.insert(toId);
@@ -229,14 +229,15 @@ void Optimizer::getConnectedGraph(
 	}
 }
 
-Optimizer::Optimizer(int iterations, bool slam2d, bool covarianceIgnored, double epsilon, bool robust, bool priorsIgnored, bool landmarksIgnored) :
+Optimizer::Optimizer(int iterations, bool slam2d, bool covarianceIgnored, double epsilon, bool robust, bool priorsIgnored, bool landmarksIgnored, float gravitySigma) :
 		iterations_(iterations),
 		slam2d_(slam2d),
 		covarianceIgnored_(covarianceIgnored),
 		epsilon_(epsilon),
 		robust_(robust),
 		priorsIgnored_(priorsIgnored),
-		landmarksIgnored_(landmarksIgnored)
+		landmarksIgnored_(landmarksIgnored),
+		gravitySigma_(gravitySigma)
 {
 }
 
@@ -247,7 +248,8 @@ Optimizer::Optimizer(const ParametersMap & parameters) :
 		epsilon_(Parameters::defaultOptimizerEpsilon()),
 		robust_(Parameters::defaultOptimizerRobust()),
 		priorsIgnored_(Parameters::defaultOptimizerPriorsIgnored()),
-		landmarksIgnored_(Parameters::defaultOptimizerLandmarksIgnored())
+		landmarksIgnored_(Parameters::defaultOptimizerLandmarksIgnored()),
+		gravitySigma_(Parameters::defaultOptimizerGravitySigma())
 {
 	parseParameters(parameters);
 }
@@ -261,6 +263,7 @@ void Optimizer::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kOptimizerRobust(), robust_);
 	Parameters::parse(parameters, Parameters::kOptimizerPriorsIgnored(), priorsIgnored_);
 	Parameters::parse(parameters, Parameters::kOptimizerLandmarksIgnored(), landmarksIgnored_);
+	Parameters::parse(parameters, Parameters::kOptimizerGravitySigma(), gravitySigma_);
 }
 
 std::map<int, Transform> Optimizer::optimizeIncremental(

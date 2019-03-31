@@ -5250,6 +5250,14 @@ void DatabaseViewer::updateConstraintView(
 							}
 						}
 
+						if(optimizer->gravitySigma() > 0)
+						{
+							for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter)
+							{
+								linksOut.insert(std::make_pair(iter->first, Link(iter->first, iter->first, Link::kPoseOdom, odomPoses_.at(iter->first))));
+							}
+						}
+
 						QTime time;
 						time.start();
 						std::map<int, rtabmap::Transform> finalPoses = optimizer->optimize(link.to(), posesOut, linksOut);
@@ -6397,6 +6405,14 @@ void DatabaseViewer::refineConstraint(int from, int to, bool silent)
 			}
 		}
 
+		if(optimizer->gravitySigma() > 0)
+		{
+			for(std::map<int, Transform>::iterator iter=scanPoses.begin(); iter!=scanPoses.end(); ++iter)
+			{
+				linksOut.insert(std::make_pair(iter->first, Link(iter->first, iter->first, Link::kPoseOdom, odomPoses_.at(iter->first))));
+			}
+		}
+
 		scanPoses = optimizer->optimize(currentLink.to(), posesOut, linksOut);
 		delete optimizer;
 
@@ -6788,6 +6804,13 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent)
 		UASSERT(odomPoses_.find(fromId) != odomPoses_.end());
 		UASSERT_MSG(odomPoses_.find(newLink.from()) != odomPoses_.end(), uFormat("id=%d poses=%d links=%d", newLink.from(), (int)odomPoses_.size(), (int)linksIn.size()).c_str());
 		UASSERT_MSG(odomPoses_.find(newLink.to()) != odomPoses_.end(), uFormat("id=%d poses=%d links=%d", newLink.to(), (int)odomPoses_.size(), (int)linksIn.size()).c_str());
+		if(optimizer->gravitySigma() > 0)
+		{
+			for(std::map<int, Transform>::iterator iter=odomPoses_.begin(); iter!=odomPoses_.end(); ++iter)
+			{
+				linksIn.insert(std::make_pair(iter->first, Link(iter->first, iter->first, Link::kPoseOdom, iter->second)));
+			}
+		}
 		optimizer->getConnectedGraph(fromId, odomPoses_, linksIn, poses, links);
 		// use already optimized poses
 		if(graphes_.size())

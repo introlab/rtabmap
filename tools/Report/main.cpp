@@ -280,7 +280,7 @@ int main(int argc, char * argv[])
 					}
 
 					std::multimap<int, Link> links;
-					driver->getAllLinks(links, true);
+					driver->getAllLinks(links, true, true);
 					std::multimap<int, Link> loopClosureLinks;
 					for(std::multimap<int, Link>::iterator jter=links.begin(); jter!=links.end(); ++jter)
 					{
@@ -304,7 +304,14 @@ int main(int argc, char * argv[])
 						std::multimap<int, Link> linksOut;
 						int firstId = *ids.begin();
 						rtabmap::Optimizer * optimizer = rtabmap::Optimizer::create(params);
-						optimizer->getConnectedGraph(firstId, odomPoses, graph::filterDuplicateLinks(links), posesOut, linksOut);
+						if(optimizer->gravitySigma() > 0)
+						{
+							for(std::map<int, Transform>::iterator iter=odomPoses.begin(); iter!=odomPoses.end(); ++iter)
+							{
+								links.insert(std::make_pair(iter->first, Link(iter->first, iter->first, Link::kPoseOdom, iter->second)));
+							}
+						}
+						optimizer->getConnectedGraph(firstId, odomPoses, links, posesOut, linksOut);
 
 						std::map<int, Transform> poses = optimizer->optimize(firstId, posesOut, linksOut);
 						if(poses.empty())

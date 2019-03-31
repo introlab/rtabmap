@@ -388,6 +388,7 @@ class RTABMAP_EXP Parameters
     RTABMAP_PARAM(Optimizer, Robust,          bool, false,     uFormat("Robust graph optimization using Vertigo (only work for g2o and GTSAM optimization strategies). Not compatible with \"%s\" if enabled.", kRGBDOptimizeMaxError().c_str()));
     RTABMAP_PARAM(Optimizer, PriorsIgnored,   bool, true,      "Ignore prior constraints (global pose or GPS) while optimizing. Currently only g2o and gtsam optimization supports this.");
     RTABMAP_PARAM(Optimizer, LandmarksIgnored,   bool, false,  "Ignore landmark constraints while optimizing. Currently only g2o and gtsam optimization supports this.");
+    RTABMAP_PARAM(Optimizer, GravitySigma,    float, 0.0,      uFormat("Gravity sigma value (>=0, typically between 0.1 and 0.3). Optimization is done while preserving gravity orientation of the poses. This should be used only with visual/lidar inertial odometry approaches, for which we assume that all odometry poses are aligned with gravity. Set to 0 to disable gravity constraints. Currently supported only with GTSAM optimization strategy (see %s).", kOptimizerStrategy().c_str()));
 
 #ifdef RTABMAP_ORB_SLAM2
     RTABMAP_PARAM(g2o, Solver,            int, 3,          "0=csparse 1=pcg 2=cholmod 3=Eigen");

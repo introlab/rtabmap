@@ -48,6 +48,7 @@ public:
 		kNeighborMerged,
 		kPosePrior, // Absolute pose in /world frame, From == To
 		kLandmark,  // Transform /base_link -­­> /landmark, "From" is node observing the landmark "To"
+		kPoseOdom,  // Pose in /odom frame, From == To (mainly used for gravity constraints)
 		kEnd,
 		kAllWithLandmarks = 98,
 		kAllWithoutLandmarks = 99,

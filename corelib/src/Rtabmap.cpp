@@ -3737,15 +3737,21 @@ std::map<int, Transform> Rtabmap::optimizeGraph(
 	_memory->getMetricConstraints(ids, poses, edgeConstraints, lookInDatabase, true);
 	UINFO("get constraints (ids=%d, %d poses, %d edges) time %f s", (int)ids.size(), (int)poses.size(), (int)edgeConstraints.size(), timer.ticks());
 
-	// Apply guess poses (if some)
 	if(_graphOptimizer->iterations() > 0)
 	{
-		for(std::map<int, Transform>::const_iterator iter=guessPoses.begin(); iter!=guessPoses.end(); ++iter)
+		for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter)
 		{
-			std::map<int, Transform>::iterator foundPose = poses.find(iter->first);
-			if(foundPose!=poses.end())
+			if(iter->first > 0 && _graphOptimizer->gravitySigma() > 0.0f)
 			{
-				foundPose->second = iter->second;
+				// add odometry constraints
+				edgeConstraints.insert(std::make_pair(iter->first, Link(iter->first, iter->first, Link::kPoseOdom, iter->second)));
+			}
+
+			// Apply guess poses (if some)
+			std::map<int, Transform>::const_iterator foundGuess = guessPoses.find(iter->first);
+			if(foundGuess!=guessPoses.end())
+			{
+				iter->second = foundGuess->second;
 			}
 		}
 	}
@@ -4275,6 +4281,18 @@ int Rtabmap::detectMoreLoopClosures(
 								UASSERT(poses.find(fromId) != poses.end());
 								UASSERT_MSG(poses.find(from) != poses.end(), uFormat("id=%d poses=%d links=%d", from, (int)poses.size(), (int)links.size()).c_str());
 								UASSERT_MSG(poses.find(to) != poses.end(), uFormat("id=%d poses=%d links=%d", to, (int)poses.size(), (int)links.size()).c_str());
+								if(_graphOptimizer->gravitySigma() > 0.0f)
+								{
+									for(std::map<int, Transform>::iterator jter=poses.lower_bound(1); jter!=poses.end(); ++jter)
+									{
+										std::map<int, Signature>::iterator ster = signatures.find(iter->first);
+										if(ster != signatures.end() && !ster->second.getPose().isNull())
+										{
+											// add odometry constraints
+											linksIn.insert(std::make_pair(iter->first, Link(iter->first, iter->first, Link::kPoseOdom, ster->second.getPose())));
+										}
+									}
+								}
 								_graphOptimizer->getConnectedGraph(fromId, poses, linksIn, optimizedPoses, links);
 								UASSERT(optimizedPoses.find(fromId) != optimizedPoses.end());
 								UASSERT_MSG(optimizedPoses.find(from) != optimizedPoses.end(), uFormat("id=%d poses=%d links=%d", from, (int)optimizedPoses.size(), (int)links.size()).c_str());

@@ -443,7 +443,7 @@ std::map<int, Transform> OptimizerG2O::optimize(
 
 			if(id1 == id2)
 			{
-				if(!priorsIgnored())
+				if(iter->second.type() == Link::kPosePrior && !priorsIgnored())
 				{
 					if(isSlam2d())
 					{
