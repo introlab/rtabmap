@@ -38,6 +38,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <iostream>
 #include <iomanip>
 #include "SimpleIni.h"
+#include <opencv2/core/version.hpp>
+#include <pcl/pcl_config.h>
+#include <vtkVersion.h>
 
 namespace rtabmap
 {
@@ -565,12 +568,12 @@ ParametersMap Parameters::parseArguments(int argc, char * argv[], bool onlyParam
 
 				int spacing = 30;
 				std::cout << str << std::setw(spacing - str.size()) << RTABMAP_VERSION << std::endl;
+				str = "PCL:";
+				std::cout << str << std::setw(spacing - str.size()) << PCL_VERSION_PRETTY << std::endl;
+				str = "VTK:";
+				std::cout << str << std::setw(spacing - str.size()) << vtkVersion::GetVTKVersion() << std::endl;
 				str = "OpenCV:";
-#ifdef RTABMAP_OPENCV3
-				std::cout << str << std::setw(spacing - str.size()) << "3" << std::endl;
-#else
-				std::cout << str << std::setw(spacing - str.size()) << "2" << std::endl;
-#endif
+				std::cout << str << std::setw(spacing - str.size()) << CV_VERSION << std::endl;
 				str = "With OpenCV nonfree:";
 #ifdef RTABMAP_NONFREE
 				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
@@ -729,6 +732,12 @@ ParametersMap Parameters::parseArguments(int argc, char * argv[], bool onlyParam
 #endif
 				str = "With MSCKF_VIO:";
 #ifdef RTABMAP_MSCKF_VIO
+				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
+#else
+				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
+#endif
+				str = "With VINS-Fusion:";
+#ifdef RTABMAP_VINS
 				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
 #else
 				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
