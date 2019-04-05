@@ -1032,15 +1032,28 @@ bool Rtabmap::process(
 			}
 			else if(_optimizedPoses.size() && _mapCorrection.isIdentity() && !_lastLocalizationPose.isNull() && _lastLocalizationNodeId == 0)
 			{
-				// Localization mode, set map->odom so that odom is moved back to last saved localization
-				_mapCorrection = _lastLocalizationPose * odomPose.inverse();
-				std::map<int, Transform> nodesOnly(_optimizedPoses.lower_bound(1), _optimizedPoses.end());
-				_lastLocalizationNodeId = graph::findNearestNode(nodesOnly, _lastLocalizationPose);
-				UWARN("Update map correction based on last localization saved in database! correction = %s, nearest id = %d of last pose = %s, odom = %s",
-						_mapCorrection.prettyPrint().c_str(),
-						_lastLocalizationNodeId,
-						_lastLocalizationPose.prettyPrint().c_str(),
-						odomPose.prettyPrint().c_str());
+				// Localization mode
+				if(!_optimizeFromGraphEnd)
+				{
+					//set map->odom so that odom is moved back to last saved localization
+					_mapCorrection = _lastLocalizationPose * odomPose.inverse();
+					std::map<int, Transform> nodesOnly(_optimizedPoses.lower_bound(1), _optimizedPoses.end());
+					_lastLocalizationNodeId = graph::findNearestNode(nodesOnly, _lastLocalizationPose);
+					UWARN("Update map correction based on last localization saved in database! correction = %s, nearest id = %d of last pose = %s, odom = %s",
+							_mapCorrection.prettyPrint().c_str(),
+							_lastLocalizationNodeId,
+							_lastLocalizationPose.prettyPrint().c_str(),
+							odomPose.prettyPrint().c_str());
+				}
+				else
+				{
+					//move optimized poses accordingly to last saved localization
+					Transform mapCorrectionInv = odomPose * _lastLocalizationPose.inverse();
+					for(std::map<int, Transform>::iterator iter=_optimizedPoses.begin(); iter!=_optimizedPoses.end(); ++iter)
+					{
+						iter->second = mapCorrectionInv * iter->second;
+					}
+				}
 			}
 		}
 
@@ -2519,6 +2532,31 @@ bool Rtabmap::process(
 					// in case of 3d landmarks, transform constraint to 2D
 					u = u.to3DoF();
 				}
+				else if(_graphOptimizer->gravitySigma() > 0)
+				{
+					// Adjust transform with gravity
+					Transform transform = localizationLinks.begin()->second.transform();
+					int loopId = localizationLinks.begin()->first;
+					if(loopId < 0)
+					{
+						//For landmarks, use transform against other node looking the landmark
+						// (because we don't assume that landmarks are aligned with gravity)
+						int landmarkId = loopId;
+						const Signature * loopS = _memory->getSignature(landmarkDetectedNodeRef);
+						transform = transform * loopS->getLandmarks().at(landmarkId).transform().inverse();
+						loopId = landmarkDetectedNodeRef;
+						oldPose = _optimizedPoses.at(loopId);
+					}
+
+					float roll,pitch,yaw;
+					_memory->getSignature(loopId)->getPose().getEulerAngles(roll, pitch, yaw);
+					Transform targetRotation = signature->getPose().rotation()*transform.rotation();
+					targetRotation = Transform(0,0,0,roll,pitch,targetRotation.theta());
+					Transform error = transform.rotation().inverse() * signature->getPose().rotation().inverse() * targetRotation;
+					transform *= error;
+
+					u  = signature->getPose() * transform;
+				}
 				Transform up = u * oldPose.inverse();
 				for(std::map<int, Transform>::iterator iter=_optimizedPoses.begin(); iter!=_optimizedPoses.end(); ++iter)
 				{
@@ -2533,6 +2571,30 @@ bool Rtabmap::process(
 				{
 					// in case of 3d landmarks, transform constraint to 2D
 					newPose = newPose.to3DoF();
+				}
+				else if(_graphOptimizer->gravitySigma() > 0)
+				{
+					// Adjust transform with gravity
+					Transform transform = localizationLinks.begin()->second.transform();
+					int loopId = localizationLinks.begin()->first;
+					if(loopId < 0)
+					{
+						//For landmarks, use transform against other node looking the landmark
+						// (because we don't assume that landmarks are aligned with gravity)
+						int landmarkId = loopId;
+						const Signature * loopS = _memory->getSignature(landmarkDetectedNodeRef);
+						transform = transform * loopS->getLandmarks().at(landmarkId).transform().inverse();
+						loopId = landmarkDetectedNodeRef;
+					}
+
+					float roll,pitch,yaw;
+					_memory->getSignature(loopId)->getPose().getEulerAngles(roll, pitch, yaw);
+					Transform targetRotation = signature->getPose().rotation()*transform.rotation();
+					targetRotation = Transform(0,0,0,roll,pitch,targetRotation.theta());
+					Transform error = transform.rotation().inverse() * signature->getPose().rotation().inverse() * targetRotation;
+					transform *= error;
+
+					newPose  = _optimizedPoses.at(loopId) * transform.inverse();
 				}
 				_optimizedPoses.at(signature->id()) = newPose;
 			}
