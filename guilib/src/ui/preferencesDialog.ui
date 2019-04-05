@@ -94,7 +94,7 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>0</y>
+            <y>-184</y>
             <width>680</width>
             <height>3082</height>
            </rect>
@@ -126,7 +126,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>14</number>
+                <number>12</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,1">
@@ -9165,6 +9165,13 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                          </property>
                         </widget>
                        </item>
+                       <item row="9" column="0">
+                        <widget class="QCheckBox" name="memCovOffDiagIgnored">
+                         <property name="text">
+                          <string/>
+                         </property>
+                        </widget>
+                       </item>
                        <item row="8" column="1">
                         <widget class="QLabel" name="label_scanMatching_10">
                          <property name="text">
@@ -9191,13 +9198,6 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                          </property>
                         </widget>
                        </item>
-                       <item row="9" column="0">
-                        <widget class="QCheckBox" name="memCovOffDiagIgnored">
-                         <property name="text">
-                          <string/>
-                         </property>
-                        </widget>
-                       </item>
                        <item row="0" column="0">
                         <widget class="QDoubleSpinBox" name="rgdb_linearUpdate">
                          <property name="suffix">
@@ -9221,6 +9221,13 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                          </property>
                          <property name="textInteractionFlags">
                           <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="8" column="0">
+                        <widget class="QCheckBox" name="loopClosure_bunlde">
+                         <property name="text">
+                          <string/>
                          </property>
                         </widget>
                        </item>
@@ -9253,13 +9260,6 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                          </property>
                         </widget>
                        </item>
-                       <item row="8" column="0">
-                        <widget class="QCheckBox" name="loopClosure_bunlde">
-                         <property name="text">
-                          <string/>
-                         </property>
-                        </widget>
-                       </item>
                        <item row="13" column="1">
                         <widget class="QLabel" name="label_space2">
                          <property name="text">
@@ -9283,6 +9283,13 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                          </property>
                          <property name="textInteractionFlags">
                           <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="10" column="0">
+                        <widget class="QCheckBox" name="rgbd_loopCovLimited">
+                         <property name="text">
+                          <string/>
                          </property>
                         </widget>
                        </item>
@@ -9315,10 +9322,23 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                          </property>
                         </widget>
                        </item>
-                       <item row="10" column="0">
-                        <widget class="QCheckBox" name="rgbd_loopCovLimited">
+                       <item row="14" column="1">
+                        <widget class="QLabel" name="label_space2_5">
                          <property name="text">
-                          <string/>
+                          <string>Maximum odometry cache size. Used only in localization mode and when maximum graph error parameter is not null. This is used to verify localization transforms to make sure we don't teleport to a location very similar to one we previously localized on. When the cache is full, the whole cache is cleared and the next localization is automatically accepted without verification. Set 0 to disable caching.</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="14" column="0">
+                        <widget class="QSpinBox" name="spinBox_maxOdomCacheSize">
+                         <property name="maximum">
+                          <number>9999</number>
                          </property>
                         </widget>
                        </item>

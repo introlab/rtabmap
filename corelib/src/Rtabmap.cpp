@@ -125,6 +125,7 @@ Rtabmap::Rtabmap() :
 	_savedLocalizationIgnored(Parameters::defaultRGBDSavedLocalizationIgnored()),
 	_loopCovLimited(Parameters::defaultRGBDLoopCovLimited()),
 	_loopGPS(Parameters::defaultRtabmapLoopGPS()),
+	_maxOdomCacheSize(Parameters::defaultRGBDMaxOdomCacheSize()),
 	_loopClosureHypothesis(0,0.0f),
 	_highestHypothesis(0,0.0f),
 	_lastProcessTime(0.0),
@@ -361,6 +362,8 @@ void Rtabmap::close(bool databaseSaved, const std::string & ouputDatabasePath)
 	_mapCorrectionBackup.setNull();
 
 	_lastLocalizationNodeId = 0;
+	_odomCachePoses.clear();
+	_odomCacheConstraints.clear();
 	_distanceTravelled = 0.0f;
 	this->clearPath(0);
 	_gpsGeocentricCache.clear();
@@ -482,6 +485,7 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kRGBDSavedLocalizationIgnored(), _savedLocalizationIgnored);
 	Parameters::parse(parameters, Parameters::kRGBDLoopCovLimited(), _loopCovLimited);
 	Parameters::parse(parameters, Parameters::kRtabmapLoopGPS(), _loopGPS);
+	Parameters::parse(parameters, Parameters::kRGBDMaxOdomCacheSize(), _maxOdomCacheSize);
 
 	UASSERT(_rgbdLinearUpdate >= 0.0f);
 	UASSERT(_rgbdAngularUpdate >= 0.0f);
@@ -682,6 +686,8 @@ void Rtabmap::setInitialPose(const Transform & initialPose)
 		{
 			_lastLocalizationPose = initialPose;
 			_lastLocalizationNodeId = 0;
+			_odomCachePoses.clear();
+			_odomCacheConstraints.clear();
 			_mapCorrection.setIdentity();
 			_mapCorrectionBackup.setNull();
 
@@ -717,6 +723,8 @@ int Rtabmap::triggerNewMap()
 		_optimizedPoses.clear();
 		_constraints.clear();
 		_lastLocalizationNodeId = 0;
+		_odomCachePoses.clear();
+		_odomCacheConstraints.clear();
 
 		if(_bayesFilter)
 		{
@@ -864,6 +872,8 @@ void Rtabmap::resetMemory()
 	_mapCorrectionBackup.setNull();
 	_lastLocalizationPose.setNull();
 	_lastLocalizationNodeId = 0;
+	_odomCachePoses.clear();
+	_odomCacheConstraints.clear();
 	_distanceTravelled = 0.0f;
 	this->clearPath(0);
 
@@ -1318,7 +1328,6 @@ bool Rtabmap::process(
 				_constraints.insert(std::make_pair(iter->first, iter->second.inverse()));
 			}
 		}
-		_lastLocalizationPose = newPose; // keep in cache the latest corrected pose
 		if(signature->getLinks().size() &&
 		   signature->getLinks().begin()->second.type() == Link::kNeighbor)
 		{
@@ -1345,6 +1354,42 @@ bool Rtabmap::process(
 			}
 			_constraints.insert(std::make_pair(tmp.from(), tmp));
 		}
+		// Localization mode stuff
+		_lastLocalizationPose = newPose; // keep in cache the latest corrected pose
+		if(!_memory->isIncremental())
+		{
+			if(_optimizationMaxError <= 0.0f || _maxOdomCacheSize <= 0)
+			{
+				_odomCachePoses.clear();
+				_odomCacheConstraints.clear();
+			}
+			else if(!_odomCachePoses.empty())
+			{
+				if((int)_odomCachePoses.size() > _maxOdomCacheSize)
+				{
+					UWARN("Odometry poses cached for localization verification reached the "
+						  "maximum numbers of %d, clearing the buffer. The next localization "
+						  "won't be verified! Set %s to 0 if you want to disable the localization verification.",
+						  _maxOdomCacheSize,
+						  Parameters::kRGBDMaxOdomCacheSize().c_str());
+					_odomCachePoses.clear();
+					_odomCacheConstraints.clear();
+				}
+				else
+				{
+					_odomCacheConstraints.insert(
+							std::make_pair(signature->id(),
+									Link(signature->id(),
+										 _odomCacheConstraints.rbegin()->first,
+										 Link::kNeighbor,
+										 signature->getPose().inverse() * _odomCachePoses.rbegin()->second,
+										 odomCovariance.inv())));
+					_odomCachePoses.insert(std::make_pair(signature->id(), signature->getPose())); // keep odometry poses
+				}
+
+			}
+		}
+
 		//============================================================
 		// Reduced graph
 		//============================================================
@@ -2514,91 +2559,215 @@ bool Rtabmap::process(
 		   localizationLinks.size() &&
 		   uContains(_optimizedPoses, localizationLinks.begin()->first))
 		{
-			// If there are no signatures retrieved, we don't
-			// need to re-optimize the graph. Just update the last
-			// position if OptimizeFromGraphEnd=false or transform the
-			// whole graph if OptimizeFromGraphEnd=true
-			UINFO("Localization without map optimization");
-			if(_optimizeFromGraphEnd)
+			bool rejectLocalization = false;
+			if(!_odomCachePoses.empty() && _optimizationMaxError > 0.0f)
 			{
-				// update all previous nodes
-				// Normally _mapCorrection should be identity, but if _optimizeFromGraphEnd
-				// parameters just changed state, we should put back all poses without map correction.
-				Transform oldPose = _optimizedPoses.at(localizationLinks.begin()->first);
-				Transform mapCorrectionInv = _mapCorrection.inverse();
-				Transform u = signature->getPose() * localizationLinks.begin()->second.transform();
-				if(_graphOptimizer->isSlam2d())
+				// Verify if the new localization is valid by checking if there is
+				// not too much deformation in odometry poses since previous localization
+				std::map<int, Transform>::iterator iter = _optimizedPoses.find(_odomCacheConstraints.find(_odomCachePoses.begin()->first)->second.to());
+				Transform optPoseRefA;
+				Transform optPoseRefB;
+				if(iter != _optimizedPoses.end());
 				{
-					// in case of 3d landmarks, transform constraint to 2D
-					u = u.to3DoF();
+					optPoseRefA = iter->second * _odomCacheConstraints.find(_odomCachePoses.begin()->first)->second.transform().inverse();
 				}
-				else if(_graphOptimizer->gravitySigma() > 0)
+				iter = _optimizedPoses.find(localizationLinks.begin()->first);
+				if(iter != _optimizedPoses.end())
 				{
-					// Adjust transform with gravity
-					Transform transform = localizationLinks.begin()->second.transform();
-					int loopId = localizationLinks.begin()->first;
-					if(loopId < 0)
+					optPoseRefB = iter->second * localizationLinks.begin()->second.transform().inverse();
+				}
+				if(optPoseRefA.isNull() || optPoseRefB.isNull())
+				{
+					UWARN("Both optimized pose references are null! Flushing cached odometry poses. Localization won't be verified.");
+					_odomCachePoses.clear();
+					_constraints.clear();
+				}
+				else
+				{
+					std::multimap<int, Link> constraints = _odomCacheConstraints;
+					constraints.erase(_odomCachePoses.begin()->first);
+					constraints.insert(std::make_pair(_odomCachePoses.begin()->first,
+							Link(_odomCachePoses.begin()->first, signature->id(), Link::kVirtualClosure,
+									optPoseRefA.inverse() * optPoseRefB, cv::Mat::eye(6,6,CV_64FC1)*100)));
+
+					std::map<int, Transform> optPoses = _graphOptimizer->optimize(signature->id(), _odomCachePoses, constraints);
+
+					if(optPoses.empty())
 					{
-						//For landmarks, use transform against other node looking the landmark
-						// (because we don't assume that landmarks are aligned with gravity)
-						int landmarkId = loopId;
-						const Signature * loopS = _memory->getSignature(landmarkDetectedNodeRef);
-						transform = transform * loopS->getLandmarks().at(landmarkId).transform().inverse();
-						loopId = landmarkDetectedNodeRef;
-						oldPose = _optimizedPoses.at(loopId);
+						UWARN("Optimization failed, rejecting localization!");
+						rejectLocalization = true;
 					}
+					else
+					{
+						UINFO("Compute max graph errors...");
+						const Link * maxLinearLink = 0;
+						const Link * maxAngularLink = 0;
+						graph::computeMaxGraphErrors(
+								optPoses,
+								constraints,
+								maxLinearErrorRatio,
+								maxAngularErrorRatio,
+								maxLinearError,
+								maxAngularError,
+								&maxLinearLink,
+								&maxAngularLink);
+						if(maxLinearLink == 0 && maxAngularLink==0)
+						{
+							UWARN("Could not compute graph errors! Wrong loop closures could be accepted!");
+						}
 
-					float roll,pitch,yaw;
-					_memory->getSignature(loopId)->getPose().getEulerAngles(roll, pitch, yaw);
-					Transform targetRotation = signature->getPose().rotation()*transform.rotation();
-					targetRotation = Transform(0,0,0,roll,pitch,targetRotation.theta());
-					Transform error = transform.rotation().inverse() * signature->getPose().rotation().inverse() * targetRotation;
-					transform *= error;
-
-					u  = signature->getPose() * transform;
+						if(maxLinearLink)
+						{
+							UINFO("Max optimization linear error = %f m (link %d->%d, var=%f, ratio error/std=%f)", maxLinearError, maxLinearLink->from(), maxLinearLink->to(), maxLinearLink->transVariance(), maxLinearError/sqrt(maxLinearLink->transVariance()));
+							if(maxLinearErrorRatio > _optimizationMaxError)
+							{
+								UWARN("Rejecting localization (%d <-> %d) in this "
+									  "iteration because a wrong loop closure has been "
+									  "detected after graph optimization, resulting in "
+									  "a maximum graph error ratio of %f (edge %d->%d, type=%d, abs error=%f m, stddev=%f). The "
+									  "maximum error ratio parameter \"%s\" is %f of std deviation.",
+									  loopClosureLinksAdded.front().first,
+									  loopClosureLinksAdded.front().second,
+									  maxLinearErrorRatio,
+									  maxLinearLink->from(),
+									  maxLinearLink->to(),
+									  maxLinearLink->type(),
+									  maxLinearError,
+									  sqrt(maxLinearLink->transVariance()),
+									  Parameters::kRGBDOptimizeMaxError().c_str(),
+									  _optimizationMaxError);
+								rejectLocalization = true;
+							}
+						}
+						if(maxAngularLink)
+						{
+							UINFO("Max optimization angular error = %f deg (link %d->%d, var=%f, ratio error/std=%f)", maxAngularError*180.0f/CV_PI, maxAngularLink->from(), maxAngularLink->to(), maxAngularLink->rotVariance(), maxAngularError/sqrt(maxAngularLink->rotVariance()));
+							if(maxAngularErrorRatio > _optimizationMaxError)
+							{
+								UWARN("Rejecting localization (%d <-> %d) in this "
+									  "iteration because a wrong loop closure has been "
+									  "detected after graph optimization, resulting in "
+									  "a maximum graph error ratio of %f (edge %d->%d, type=%d, abs error=%f deg, stddev=%f). The "
+									  "maximum error ratio parameter \"%s\" is %f of std deviation.",
+									  loopClosureLinksAdded.front().first,
+									  loopClosureLinksAdded.front().second,
+									  maxAngularErrorRatio,
+									  maxAngularLink->from(),
+									  maxAngularLink->to(),
+									  maxAngularLink->type(),
+									  maxAngularError*180.0f/CV_PI,
+									  sqrt(maxAngularLink->rotVariance()),
+									  Parameters::kRGBDOptimizeMaxError().c_str(),
+									  _optimizationMaxError);
+								rejectLocalization = true;
+							}
+						}
+					}
 				}
-				Transform up = u * oldPose.inverse();
-				for(std::map<int, Transform>::iterator iter=_optimizedPoses.begin(); iter!=_optimizedPoses.end(); ++iter)
+			}
+
+			if(!rejectLocalization)
+			{
+				// If there are no signatures retrieved, we don't
+				// need to re-optimize the graph. Just update the last
+				// position if OptimizeFromGraphEnd=false or transform the
+				// whole graph if OptimizeFromGraphEnd=true
+				UINFO("Localization without map optimization");
+				if(_optimizeFromGraphEnd)
 				{
-					iter->second = mapCorrectionInv * up * iter->second;
+					// update all previous nodes
+					// Normally _mapCorrection should be identity, but if _optimizeFromGraphEnd
+					// parameters just changed state, we should put back all poses without map correction.
+					Transform oldPose = _optimizedPoses.at(localizationLinks.begin()->first);
+					Transform mapCorrectionInv = _mapCorrection.inverse();
+					Transform u = signature->getPose() * localizationLinks.begin()->second.transform();
+					if(_graphOptimizer->isSlam2d())
+					{
+						// in case of 3d landmarks, transform constraint to 2D
+						u = u.to3DoF();
+					}
+					else if(_graphOptimizer->gravitySigma() > 0)
+					{
+						// Adjust transform with gravity
+						Transform transform = localizationLinks.begin()->second.transform();
+						int loopId = localizationLinks.begin()->first;
+						if(loopId < 0)
+						{
+							//For landmarks, use transform against other node looking the landmark
+							// (because we don't assume that landmarks are aligned with gravity)
+							int landmarkId = loopId;
+							const Signature * loopS = _memory->getSignature(landmarkDetectedNodeRef);
+							transform = transform * loopS->getLandmarks().at(landmarkId).transform().inverse();
+							loopId = landmarkDetectedNodeRef;
+							oldPose = _optimizedPoses.at(loopId);
+						}
+
+						float roll,pitch,yaw;
+						_memory->getSignature(loopId)->getPose().getEulerAngles(roll, pitch, yaw);
+						Transform targetRotation = signature->getPose().rotation()*transform.rotation();
+						targetRotation = Transform(0,0,0,roll,pitch,targetRotation.theta());
+						Transform error = transform.rotation().inverse() * signature->getPose().rotation().inverse() * targetRotation;
+						transform *= error;
+
+						u  = signature->getPose() * transform;
+					}
+					Transform up = u * oldPose.inverse();
+					for(std::map<int, Transform>::iterator iter=_optimizedPoses.begin(); iter!=_optimizedPoses.end(); ++iter)
+					{
+						iter->second = mapCorrectionInv * up * iter->second;
+					}
+					_optimizedPoses.at(signature->id()) = signature->getPose();
 				}
-				_optimizedPoses.at(signature->id()) = signature->getPose();
+				else
+				{
+					Transform newPose = _optimizedPoses.at(localizationLinks.begin()->first) * localizationLinks.begin()->second.transform().inverse();
+					if(_graphOptimizer->isSlam2d())
+					{
+						// in case of 3d landmarks, transform constraint to 2D
+						newPose = newPose.to3DoF();
+					}
+					else if(_graphOptimizer->gravitySigma() > 0)
+					{
+						// Adjust transform with gravity
+						Transform transform = localizationLinks.begin()->second.transform();
+						int loopId = localizationLinks.begin()->first;
+						if(loopId < 0)
+						{
+							//For landmarks, use transform against other node looking the landmark
+							// (because we don't assume that landmarks are aligned with gravity)
+							int landmarkId = loopId;
+							const Signature * loopS = _memory->getSignature(landmarkDetectedNodeRef);
+							transform = transform * loopS->getLandmarks().at(landmarkId).transform().inverse();
+							loopId = landmarkDetectedNodeRef;
+						}
+
+						float roll,pitch,yaw;
+						_memory->getSignature(loopId)->getPose().getEulerAngles(roll, pitch, yaw);
+						Transform targetRotation = signature->getPose().rotation()*transform.rotation();
+						targetRotation = Transform(0,0,0,roll,pitch,targetRotation.theta());
+						Transform error = transform.rotation().inverse() * signature->getPose().rotation().inverse() * targetRotation;
+						transform *= error;
+
+						newPose  = _optimizedPoses.at(loopId) * transform.inverse();
+					}
+					_optimizedPoses.at(signature->id()) = newPose;
+				}
+				localizationCovariance = localizationLinks.begin()->second.infMatrix().inv();
+
+				_odomCachePoses.clear();
+				_odomCacheConstraints.clear();
+				if(_optimizationMaxError > 0.0f && _maxOdomCacheSize > 0)
+				{
+					_odomCachePoses.insert(std::make_pair(signature->id(), signature->getPose()));
+					_odomCacheConstraints.insert(std::make_pair(signature->id(), localizationLinks.begin()->second));
+				}
 			}
 			else
 			{
-				Transform newPose = _optimizedPoses.at(localizationLinks.begin()->first) * localizationLinks.begin()->second.transform().inverse();
-				if(_graphOptimizer->isSlam2d())
-				{
-					// in case of 3d landmarks, transform constraint to 2D
-					newPose = newPose.to3DoF();
-				}
-				else if(_graphOptimizer->gravitySigma() > 0)
-				{
-					// Adjust transform with gravity
-					Transform transform = localizationLinks.begin()->second.transform();
-					int loopId = localizationLinks.begin()->first;
-					if(loopId < 0)
-					{
-						//For landmarks, use transform against other node looking the landmark
-						// (because we don't assume that landmarks are aligned with gravity)
-						int landmarkId = loopId;
-						const Signature * loopS = _memory->getSignature(landmarkDetectedNodeRef);
-						transform = transform * loopS->getLandmarks().at(landmarkId).transform().inverse();
-						loopId = landmarkDetectedNodeRef;
-					}
-
-					float roll,pitch,yaw;
-					_memory->getSignature(loopId)->getPose().getEulerAngles(roll, pitch, yaw);
-					Transform targetRotation = signature->getPose().rotation()*transform.rotation();
-					targetRotation = Transform(0,0,0,roll,pitch,targetRotation.theta());
-					Transform error = transform.rotation().inverse() * signature->getPose().rotation().inverse() * targetRotation;
-					transform *= error;
-
-					newPose  = _optimizedPoses.at(loopId) * transform.inverse();
-				}
-				_optimizedPoses.at(signature->id()) = newPose;
+				_loopClosureHypothesis.first = 0;
+				lastProximitySpaceClosureId = 0;
+				rejectedHypothesis = true;
 			}
-			localizationCovariance = localizationLinks.begin()->second.infMatrix().inv();
 		}
 		else
 		{
@@ -2988,6 +3157,14 @@ bool Rtabmap::process(
 		{
 			_memory->saveLocationData(signature->id());
 		}
+	}
+	else if(!_memory->isIncremental() &&
+			(smallDisplacement || tooFastMovement) &&
+			_loopClosureHypothesis.first == 0 &&
+			lastProximitySpaceClosureId == 0)
+	{
+		_odomCachePoses.erase(signatureRemoved);
+		_odomCacheConstraints.erase(signatureRemoved);
 	}
 
 	// Pass this point signature should not be used, since it could have been transferred...

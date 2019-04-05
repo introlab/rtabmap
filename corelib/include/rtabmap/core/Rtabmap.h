@@ -268,6 +268,7 @@ private:
 	bool _savedLocalizationIgnored;
 	bool _loopCovLimited;
 	bool _loopGPS;
+	int _maxOdomCacheSize;
 
 	std::pair<int, float> _loopClosureHypothesis;
 	std::pair<int, float> _highestHypothesis;
@@ -301,6 +302,8 @@ private:
 	int _lastLocalizationNodeId; // for localization mode
 	std::map<int, std::pair<cv::Point3d, Transform> > _gpsGeocentricCache;
 	bool _currentSessionHasGPS;
+	std::map<int, Transform> _odomCachePoses;       // used in localization mode to reject loop closures
+	std::multimap<int, Link> _odomCacheConstraints; // used in localization mode to reject loop closures
 
 	// Planning stuff
 	int _pathStatus;

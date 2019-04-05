@@ -842,6 +842,7 @@ void computeMaxGraphErrors(
 	maxLinearError = -1;
 	maxAngularError = -1;
 
+	UDEBUG("poses=%d links=%d", (int)poses.size(), (int)links.size());
 	for(std::multimap<int, Link>::const_iterator iter=links.begin(); iter!=links.end(); ++iter)
 	{
 		// ignore links with high variance, priors and landmarks
