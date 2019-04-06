@@ -40,7 +40,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "SimpleIni.h"
 #include <opencv2/core/version.hpp>
 #include <pcl/pcl_config.h>
+#ifndef DISABLE_VTK
 #include <vtkVersion.h>
+#endif
 
 namespace rtabmap
 {
@@ -570,8 +572,12 @@ ParametersMap Parameters::parseArguments(int argc, char * argv[], bool onlyParam
 				std::cout << str << std::setw(spacing - str.size()) << RTABMAP_VERSION << std::endl;
 				str = "PCL:";
 				std::cout << str << std::setw(spacing - str.size()) << PCL_VERSION_PRETTY << std::endl;
-				str = "VTK:";
+				str = "With VTK:";
+#ifndef DISABLE_VTK
 				std::cout << str << std::setw(spacing - str.size()) << vtkVersion::GetVTKVersion() << std::endl;
+#else
+				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
+#endif
 				str = "OpenCV:";
 				std::cout << str << std::setw(spacing - str.size()) << CV_VERSION << std::endl;
 				str = "With OpenCV nonfree:";
