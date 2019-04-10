@@ -405,20 +405,27 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 	{
 		// Decimation of images with calibrations
 		SensorData decimatedData = data;
-		decimatedData.setImageRaw(util2d::decimate(decimatedData.imageRaw(), _imageDecimation));
-		decimatedData.setDepthOrRightRaw(util2d::decimate(decimatedData.depthOrRightRaw(), _imageDecimation));
+		cv::Mat rgbLeft = util2d::decimate(decimatedData.imageRaw(), _imageDecimation);
+		cv::Mat depthRight = util2d::decimate(decimatedData.depthOrRightRaw(), _imageDecimation);
 		std::vector<CameraModel> cameraModels = decimatedData.cameraModels();
 		for(unsigned int i=0; i<cameraModels.size(); ++i)
 		{
 			cameraModels[i] = cameraModels[i].scaled(1.0/double(_imageDecimation));
 		}
-		decimatedData.setCameraModels(cameraModels);
-		StereoCameraModel stereoModel = decimatedData.stereoCameraModel();
-		if(stereoModel.isValidForProjection())
+		if(!cameraModels.empty())
 		{
-			stereoModel.scale(1.0/double(_imageDecimation));
+			decimatedData.setRGBDImage(rgbLeft, depthRight, cameraModels);
 		}
-		decimatedData.setStereoCameraModel(stereoModel);
+		else
+		{
+			StereoCameraModel stereoModel = decimatedData.stereoCameraModel();
+			if(stereoModel.isValidForProjection())
+			{
+				stereoModel.scale(1.0/double(_imageDecimation));
+			}
+			decimatedData.setStereoImage(rgbLeft, depthRight, stereoModel);
+		}
+
 
 		// compute transform
 		t = this->computeTransform(decimatedData, guess, info);

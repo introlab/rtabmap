@@ -54,26 +54,8 @@ SensorData::SensorData(
 		_stamp(stamp),
 		_cellSize(0.0f)
 {
-	if(image.rows == 1)
-	{
-		UASSERT(image.type() == CV_8UC1); // Bytes
-		_imageCompressed = image;
-	}
-	else if(!image.empty())
-	{
-		UASSERT(image.type() == CV_8UC1 || // Mono
-				image.type() == CV_8UC3);  // RGB
-		_imageRaw = image;
-	}
-
-	 if(userData.type() == CV_8UC1 &&  userData.rows == 1 && userData.cols > int(3*sizeof(int))) // Bytes
-	{
-		_userDataCompressed = userData; // assume compressed
-	}
-	else
-	{
-		_userDataRaw = userData;
-	}
+	setRGBDImage(image, cv::Mat(), CameraModel());
+	setUserData(userData);
 }
 
 // Mono constructor
@@ -85,29 +67,10 @@ SensorData::SensorData(
 		const cv::Mat & userData) :
 		_id(id),
 		_stamp(stamp),
-		_cameraModels(std::vector<CameraModel>(1, cameraModel)),
 		_cellSize(0.0f)
 {
-	if(image.rows == 1)
-	{
-		UASSERT(image.type() == CV_8UC1); // Bytes
-		_imageCompressed = image;
-	}
-	else if(!image.empty())
-	{
-		UASSERT(image.type() == CV_8UC1 || // Mono
-				image.type() == CV_8UC3);  // RGB
-		_imageRaw = image;
-	}
-
-	 if(userData.type() == CV_8UC1 &&  userData.rows == 1 && userData.cols > int(3*sizeof(int))) // Bytes
-	{
-		_userDataCompressed = userData; // assume compressed
-	}
-	else
-	{
-		_userDataRaw = userData;
-	}
+	setRGBDImage(image, cv::Mat(), cameraModel);
+	setUserData(userData);
 }
 
 // RGB-D constructor
@@ -120,41 +83,10 @@ SensorData::SensorData(
 		const cv::Mat & userData) :
 		_id(id),
 		_stamp(stamp),
-		_cameraModels(std::vector<CameraModel>(1, cameraModel)),
 		_cellSize(0.0f)
 {
-	if(rgb.rows == 1)
-	{
-		UASSERT(rgb.type() == CV_8UC1); // Bytes
-		_imageCompressed = rgb;
-	}
-	else if(!rgb.empty())
-	{
-		UASSERT(rgb.type() == CV_8UC1 || // Mono
-				rgb.type() == CV_8UC3);  // RGB
-		_imageRaw = rgb;
-	}
-
-	if(depth.rows == 1)
-	{
-		UASSERT(depth.type() == CV_8UC1); // Bytes
-		_depthOrRightCompressed = depth;
-	}
-	else if(!depth.empty())
-	{
-		UASSERT(depth.type() == CV_32FC1 || // Depth in meter
-				depth.type() == CV_16UC1); // Depth in millimetre
-		_depthOrRightRaw = depth;
-	}
-
-	 if(userData.type() == CV_8UC1 &&  userData.rows == 1 && userData.cols > int(3*sizeof(int))) // Bytes
-	{
-		_userDataCompressed = userData; // assume compressed
-	}
-	else
-	{
-		_userDataRaw = userData;
-	}
+	setRGBDImage(rgb, depth, cameraModel);
+	setUserData(userData);
 }
 
 // RGB-D constructor + laser scan
@@ -168,49 +100,11 @@ SensorData::SensorData(
 		const cv::Mat & userData) :
 		_id(id),
 		_stamp(stamp),
-		_cameraModels(std::vector<CameraModel>(1, cameraModel)),
 		_cellSize(0.0f)
 {
-	if(rgb.rows == 1)
-	{
-		UASSERT(rgb.type() == CV_8UC1); // Bytes
-		_imageCompressed = rgb;
-	}
-	else if(!rgb.empty())
-	{
-		UASSERT(rgb.type() == CV_8UC1 || // Mono
-				rgb.type() == CV_8UC3);  // RGB
-		_imageRaw = rgb;
-	}
-	if(depth.rows == 1)
-	{
-		UASSERT(depth.type() == CV_8UC1); // Bytes
-		_depthOrRightCompressed = depth;
-	}
-	else if(!depth.empty())
-	{
-		UASSERT(depth.type() == CV_32FC1 || // Depth in meter
-				depth.type() == CV_16UC1); // Depth in millimetre
-		_depthOrRightRaw = depth;
-	}
-
-	if(!laserScan.isCompressed())
-	{
-		_laserScanRaw = laserScan;
-	}
-	else
-	{
-		_laserScanCompressed = laserScan;
-	}
-
-	 if(userData.type() == CV_8UC1 &&  userData.rows == 1 && userData.cols > int(3*sizeof(int))) // Bytes
-	{
-		_userDataCompressed = userData; // assume compressed
-	}
-	else
-	{
-		_userDataRaw = userData;
-	}
+	setRGBDImage(rgb, depth, cameraModel);
+	setLaserScan(laserScan);
+	setUserData(userData);
 }
 
 // Multi-cameras RGB-D constructor
@@ -223,40 +117,10 @@ SensorData::SensorData(
 		const cv::Mat & userData) :
 		_id(id),
 		_stamp(stamp),
-		_cameraModels(cameraModels),
 		_cellSize(0.0f)
 {
-	if(rgb.rows == 1)
-	{
-		UASSERT(rgb.type() == CV_8UC1); // Bytes
-		_imageCompressed = rgb;
-	}
-	else if(!rgb.empty())
-	{
-		UASSERT(rgb.type() == CV_8UC1 || // Mono
-				rgb.type() == CV_8UC3);  // RGB
-		_imageRaw = rgb;
-	}
-	if(depth.rows == 1)
-	{
-		UASSERT(depth.type() == CV_8UC1); // Bytes
-		_depthOrRightCompressed = depth;
-	}
-	else if(!depth.empty())
-	{
-		UASSERT(depth.type() == CV_32FC1 || // Depth in meter
-				depth.type() == CV_16UC1); // Depth in millimetre
-		_depthOrRightRaw = depth;
-	}
-
-	 if(userData.type() == CV_8UC1 &&  userData.rows == 1 && userData.cols > int(3*sizeof(int))) // Bytes
-	{
-		_userDataCompressed = userData; // assume compressed
-	}
-	else
-	{
-		_userDataRaw = userData;
-	}
+	setRGBDImage(rgb, depth, cameraModels);
+	setUserData(userData);
 }
 
 // Multi-cameras RGB-D constructor + laser scan
@@ -270,49 +134,11 @@ SensorData::SensorData(
 		const cv::Mat & userData) :
 		_id(id),
 		_stamp(stamp),
-		_cameraModels(cameraModels),
 		_cellSize(0.0f)
 {
-	if(rgb.rows == 1)
-	{
-		UASSERT(rgb.type() == CV_8UC1); // Bytes
-		_imageCompressed = rgb;
-	}
-	else if(!rgb.empty())
-	{
-		UASSERT(rgb.type() == CV_8UC1 || // Mono
-				rgb.type() == CV_8UC3);  // RGB
-		_imageRaw = rgb;
-	}
-	if(depth.rows == 1)
-	{
-		UASSERT(depth.type() == CV_8UC1); // Bytes
-		_depthOrRightCompressed = depth;
-	}
-	else if(!depth.empty())
-	{
-		UASSERT(depth.type() == CV_32FC1 || // Depth in meter
-				depth.type() == CV_16UC1); // Depth in millimetre
-		_depthOrRightRaw = depth;
-	}
-
-	if(!laserScan.isCompressed())
-	{
-		_laserScanRaw = laserScan;
-	}
-	else
-	{
-		_laserScanCompressed = laserScan;
-	}
-
-	 if(userData.type() == CV_8UC1 &&  userData.rows == 1 && userData.cols > int(3*sizeof(int))) // Bytes
-	{
-		_userDataCompressed = userData; // assume compressed
-	}
-	else
-	{
-		_userDataRaw = userData;
-	}
+	setRGBDImage(rgb, depth, cameraModels);
+	setLaserScan(laserScan);
+	setUserData(userData);
 }
 
 // Stereo constructor
@@ -325,42 +151,10 @@ SensorData::SensorData(
 		const cv::Mat & userData):
 		_id(id),
 		_stamp(stamp),
-		_stereoCameraModel(cameraModel),
 		_cellSize(0.0f)
 {
-	if(left.rows == 1)
-	{
-		UASSERT(left.type() == CV_8UC1); // Bytes
-		_imageCompressed = left;
-	}
-	else if(!left.empty())
-	{
-		UASSERT(left.type() == CV_8UC1 || // Mono
-				left.type() == CV_8UC3 || // RGB
-				left.type() == CV_16UC1); // IR
-		_imageRaw = left;
-	}
-	if(right.rows == 1)
-	{
-		UASSERT(right.type() == CV_8UC1); // Bytes
-		_depthOrRightCompressed = right;
-	}
-	else if(!right.empty())
-	{
-		UASSERT(right.type() == CV_8UC1 || // Mono
-				right.type() == CV_16UC1);  // IR
-		_depthOrRightRaw = right;
-	}
-
-	 if(userData.type() == CV_8UC1 &&  userData.rows == 1 && userData.cols > int(3*sizeof(int))) // Bytes
-	{
-		_userDataCompressed = userData; // assume compressed
-	}
-	else
-	{
-		_userDataRaw = userData;
-	}
-
+	setStereoImage(left, right, cameraModel);
+	setUserData(userData);
 }
 
 // Stereo constructor + 2d laser scan
@@ -374,48 +168,11 @@ SensorData::SensorData(
 		const cv::Mat & userData) :
 		_id(id),
 		_stamp(stamp),
-		_stereoCameraModel(cameraModel),
 		_cellSize(0.0f)
 {
-	if(left.rows == 1)
-	{
-		UASSERT(left.type() == CV_8UC1); // Bytes
-		_imageCompressed = left;
-	}
-	else if(!left.empty())
-	{
-		UASSERT(left.type() == CV_8UC1 || // Mono
-				left.type() == CV_8UC3);  // RGB
-		_imageRaw = left;
-	}
-	if(right.rows == 1)
-	{
-		UASSERT(right.type() == CV_8UC1); // Bytes
-		_depthOrRightCompressed = right;
-	}
-	else if(!right.empty())
-	{
-		UASSERT(right.type() == CV_8UC1); // Mono
-		_depthOrRightRaw = right;
-	}
-
-	if(!laserScan.isCompressed())
-	{
-		_laserScanRaw = laserScan;
-	}
-	else
-	{
-		_laserScanCompressed = laserScan;
-	}
-
-	 if(userData.type() == CV_8UC1 &&  userData.rows == 1 && userData.cols > int(3*sizeof(int))) // Bytes
-	{
-		_userDataCompressed = userData; // assume compressed
-	}
-	else
-	{
-		_userDataRaw = userData;
-	}
+	setStereoImage(left, right, cameraModel);
+	setLaserScan(laserScan);
+	setUserData(userData);
 }
 
 SensorData::SensorData(
@@ -433,47 +190,208 @@ SensorData::~SensorData()
 {
 }
 
+void SensorData::setRGBDImage(
+		const cv::Mat & rgb,
+		const cv::Mat & depth,
+		const CameraModel & model,
+		bool clearPreviousData)
+{
+	std::vector<CameraModel> models;
+	models.push_back(model);
+	setRGBDImage(rgb, depth, models, clearPreviousData);
+}
+void SensorData::setRGBDImage(
+		const cv::Mat & rgb,
+		const cv::Mat & depth,
+		const std::vector<CameraModel> & models,
+		bool clearPreviousData)
+{
+	if(!clearPreviousData && _stereoCameraModel.isValidForProjection())
+	{
+		UERROR("Sensor data has previously stereo images "
+				"but clearPreviousData parameter is false. We "
+				"will still clear previous data to avoid incompatibilities "
+				"between raw and compressed data!");
+	}
+	bool clearData = clearPreviousData || _stereoCameraModel.isValidForProjection();
+
+	_stereoCameraModel = StereoCameraModel();
+	_cameraModels = models;
+	if(rgb.rows == 1)
+	{
+		UASSERT(rgb.type() == CV_8UC1); // Bytes
+		_imageCompressed = rgb;
+		if(clearData)
+		{
+			_imageRaw = cv::Mat();
+		}
+	}
+	else if(!rgb.empty())
+	{
+		UASSERT(rgb.type() == CV_8UC1 || // Mono
+				rgb.type() == CV_8UC3);  // RGB
+		_imageRaw = rgb;
+		if(clearData)
+		{
+			_imageCompressed = cv::Mat();
+		}
+	}
+	else if(clearData)
+	{
+		_imageRaw = cv::Mat();
+		_imageCompressed = cv::Mat();
+	}
+
+	if(depth.rows == 1)
+	{
+		UASSERT(depth.type() == CV_8UC1); // Bytes
+		_depthOrRightCompressed = depth;
+		if(clearData)
+		{
+			_depthOrRightRaw = cv::Mat();
+		}
+	}
+	else if(!depth.empty())
+	{
+		UASSERT(depth.type() == CV_32FC1 || // Depth in meter
+				depth.type() == CV_16UC1); // Depth in millimetre
+		_depthOrRightRaw = depth;
+		if(clearData)
+		{
+			_depthOrRightCompressed = cv::Mat();
+		}
+	}
+	else if(clearData)
+	{
+		_depthOrRightRaw = cv::Mat();
+		_depthOrRightCompressed = cv::Mat();
+	}
+}
+void SensorData::setStereoImage(
+		const cv::Mat & left,
+		const cv::Mat & right,
+		const StereoCameraModel & stereoCameraModel,
+		bool clearPreviousData)
+{
+	if(!clearPreviousData && !_cameraModels.empty())
+	{
+		UERROR("Sensor data has previously RGB-D/RGB images "
+				"but clearPreviousData parameter is false. We "
+				"will still clear previous data to avoid incompatibilities "
+				"between raw and compressed data!");
+	}
+	bool clearData = clearPreviousData || !_cameraModels.empty();
+
+	_cameraModels.clear();
+	_stereoCameraModel = stereoCameraModel;
+
+	if(left.rows == 1)
+	{
+		UASSERT(left.type() == CV_8UC1); // Bytes
+		_imageCompressed = left;
+		if(clearData)
+		{
+			_imageRaw = cv::Mat();
+		}
+	}
+	else if(!left.empty())
+	{
+		UASSERT(left.type() == CV_8UC1 || // Mono
+				left.type() == CV_8UC3);  // RGB
+		_imageRaw = left;
+		if(clearData)
+		{
+			_imageCompressed = cv::Mat();
+		}
+	}
+	else if(clearData)
+	{
+		_imageRaw = cv::Mat();
+		_imageCompressed = cv::Mat();
+	}
+
+	if(right.rows == 1)
+	{
+		UASSERT(right.type() == CV_8UC1); // Bytes
+		_depthOrRightCompressed = right;
+		if(clearData)
+		{
+			_depthOrRightRaw = cv::Mat();
+		}
+	}
+	else if(!right.empty())
+	{
+		UASSERT(right.type() == CV_8UC1); // Mono
+		_depthOrRightRaw = right;
+		if(clearData)
+		{
+			_depthOrRightCompressed = cv::Mat();
+		}
+	}
+	else if(clearData)
+	{
+		_depthOrRightRaw = cv::Mat();
+		_depthOrRightCompressed = cv::Mat();
+	}
+}
+void SensorData::setLaserScan(const LaserScan & laserScan, bool clearPreviousData)
+{
+	if(!laserScan.isCompressed())
+	{
+		_laserScanRaw = laserScan;
+		if(clearPreviousData)
+		{
+			_laserScanCompressed = LaserScan();
+		}
+	}
+	else
+	{
+		_laserScanCompressed = laserScan;
+		if(clearPreviousData)
+		{
+			_laserScanRaw = LaserScan();
+		}
+	}
+}
+
+void SensorData::setImageRaw(const cv::Mat & image)
+{
+	UASSERT(image.empty() || image.rows > 1);
+	_imageRaw = image;
+}
+void SensorData::setDepthOrRightRaw(const cv::Mat & image)
+{
+	UASSERT(image.empty() || image.rows > 1);
+	_depthOrRightRaw = image;
+}
+void SensorData::setLaserScanRaw(const LaserScan & scan)
+{
+	UASSERT(scan.isEmpty() || !scan.isCompressed());
+	_laserScanRaw = scan;
+}
+
 void SensorData::setUserDataRaw(const cv::Mat & userDataRaw)
 {
-	if(!userDataRaw.empty() && !_userDataRaw.empty())
-	{
-		UWARN("Cannot write new user data (%d bytes) over existing user "
-			  "data (%d bytes, %d compressed). Set user data of %d to null "
-			  "before setting a new one.",
-			  int(userDataRaw.total()*userDataRaw.elemSize()),
-			  int(_userDataRaw.total()*_userDataRaw.elemSize()),
-			  _userDataCompressed.cols,
-			  this->id());
-		return;
-	}
 	_userDataRaw = userDataRaw;
 }
 
-void SensorData::setUserData(const cv::Mat & userData)
+void SensorData::setUserData(const cv::Mat & userData, bool clearPreviousData)
 {
-	if(!userData.empty() && (!_userDataCompressed.empty() || !_userDataRaw.empty()))
+	if(clearPreviousData)
 	{
-		UWARN("Cannot write new user data (%d bytes) over existing user "
-			  "data (%d bytes, %d compressed). Set user data of %d to null "
-			  "before setting a new one.",
-			  int(userData.total()*userData.elemSize()),
-			  int(_userDataRaw.total()*_userDataRaw.elemSize()),
-			  _userDataCompressed.cols,
-			  this->id());
-		return;
+		_userDataRaw = cv::Mat();
+		_userDataCompressed = cv::Mat();
 	}
-	_userDataRaw = cv::Mat();
-	_userDataCompressed = cv::Mat();
 
-	if(!userData.empty())
+	if(userData.type() == CV_8UC1 &&  userData.rows == 1 && userData.cols > int(3*sizeof(int))) // Bytes
 	{
-		 if(userData.type() == CV_8UC1 &&  userData.rows == 1 && userData.cols > int(3*sizeof(int))) // Bytes
+		_userDataCompressed = userData; // assume compressed
+	}
+	else
+	{
+		_userDataRaw = userData;
+		if(!userData.empty())
 		{
-			_userDataCompressed = userData; // assume compressed
-		}
-		else
-		{
-			_userDataRaw = userData;
 			_userDataCompressed = compressData2(userData);
 		}
 	}
@@ -491,7 +409,8 @@ void SensorData::setOccupancyGrid(
 	   (!obstacles.empty() && (!_obstacleCellsCompressed.empty() || !_obstacleCellsRaw.empty())) ||
 	   (!empty.empty() && (!_emptyCellsCompressed.empty() || !_emptyCellsRaw.empty())))
 	{
-		UWARN("Occupancy grid cannot be overwritten! id=%d", this->id());
+		UWARN("Occupancy grid cannot be overwritten! id=%d, Set occupancy grid of %d to null "
+			  "before setting a new one.", this->id());
 		return;
 	}
 
@@ -515,7 +434,6 @@ void SensorData::setOccupancyGrid(
 		}
 		else if(ground.type() == CV_8UC1)
 		{
-			UASSERT(ground.type() == CV_8UC1); // Bytes
 			_groundCellsCompressed = ground;
 		}
 	}
@@ -528,7 +446,6 @@ void SensorData::setOccupancyGrid(
 		}
 		else if(obstacles.type() == CV_8UC1)
 		{
-			UASSERT(obstacles.type() == CV_8UC1); // Bytes
 			_obstacleCellsCompressed = obstacles;
 		}
 	}
@@ -541,7 +458,6 @@ void SensorData::setOccupancyGrid(
 		}
 		else if(empty.type() == CV_8UC1)
 		{
-			UASSERT(empty.type() == CV_8UC1); // Bytes
 			_emptyCellsCompressed = empty;
 		}
 	}
@@ -867,6 +783,40 @@ long SensorData::getMemoryUsed() const // Return memory usage in Bytes
 			_keypoints3D.size() * sizeof(float)*3 +
 			_descriptors.total()*_descriptors.elemSize();
 }
+
+void SensorData::clearCompressedData(bool images, bool scan, bool userData)
+{
+	if(images)
+	{
+		_imageCompressed=cv::Mat();
+		_depthOrRightCompressed=cv::Mat();
+	}
+	if(scan)
+	{
+		_laserScanCompressed.clear();
+	}
+	if(userData)
+	{
+		_userDataCompressed=cv::Mat();
+	}
+}
+void SensorData::clearRawData(bool images, bool scan, bool userData)
+{
+	if(images)
+	{
+		_imageRaw=cv::Mat();
+		_depthOrRightRaw=cv::Mat();
+	}
+	if(scan)
+	{
+		_laserScanRaw.clear();
+	}
+	if(userData)
+	{
+		_userDataRaw=cv::Mat();
+	}
+}
+
 
 bool SensorData::isPointVisibleFromCameras(const cv::Point3f & pt) const
 {

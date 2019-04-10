@@ -2047,16 +2047,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 		{
 			Signature & s = *_cachedSignatures.find(stat.refImageId());
 			_cachedMemoryUsage -= s.sensorData().getMemoryUsed();
-			s.sensorData().setImageRaw(cv::Mat());
-			s.sensorData().setDepthOrRightRaw(cv::Mat());
-			s.sensorData().setUserDataRaw(cv::Mat());
-			s.sensorData().setLaserScanRaw(
-					LaserScan(
-							cv::Mat(),
-							signature.sensorData().laserScanRaw().maxPoints(),
-							signature.sensorData().laserScanRaw().rangeMax(),
-							signature.sensorData().laserScanRaw().format(),
-							signature.sensorData().laserScanRaw().localTransform()));
+			s.sensorData().clearRawData();
 			s.sensorData().clearOccupancyGridRaw();
 			_cachedMemoryUsage += s.sensorData().getMemoryUsed();
 		}
@@ -2898,7 +2889,7 @@ std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr, pcl::IndicesPtr> MainWindow::c
 					}
 				}
 				UINFO("Time rectification: %fs", time.ticks());
-				data.setImageRaw(rectifiedImages);
+				data.setRGBDImage(rectifiedImages, data.depthOrRightRaw(), data.cameraModels());
 				image = rectifiedImages;
 			}
 		}

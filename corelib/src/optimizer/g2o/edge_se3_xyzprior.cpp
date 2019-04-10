@@ -87,10 +87,6 @@ void EdgeSE3XYZPrior::computeError() {
   _error = v->estimate().translation() - _measurement;
 }
 
-void EdgeSE3XYZPrior::linearizeOplus() {
-  _jacobianOplusXi << Eigen::Matrix3d::Identity();
-}
-
 bool EdgeSE3XYZPrior::setMeasurementFromState() {
   const g2o::VertexSE3* v = static_cast<const g2o::VertexSE3*>(_vertices[0]);
   _measurement = v->estimate().translation();

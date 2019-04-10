@@ -10,6 +10,13 @@
  * -------------------------------------------------------------------------- */
 
 /**
+ * Author: Mathieu Labbe
+ * This file is a copy of AttitudeFactor.cpp of gtsam library but
+ * with attitudeError() function overridden to ignore yaw errors.
+ * For the noise model, use Sigmas(Vector2(0.1, 10)) (with second sigma high!)
+ */
+
+/**
  *  @file   GravityFactor.cpp
  *  @author Frank Dellaert
  *  @brief  Implementation file for Attitude factor

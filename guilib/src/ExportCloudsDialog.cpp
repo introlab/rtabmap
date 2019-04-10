@@ -2950,12 +2950,12 @@ std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::Indic
 			if(_ui->checkBox_regenerate->isChecked())
 			{
 				SensorData data;
-				cv::Mat image, depth;
 				LaserScan scan;
 				if(cachedSignatures.contains(iter->first))
 				{
 					const Signature & s = cachedSignatures.find(iter->first).value();
 					data = s.sensorData();
+					cv::Mat image,depth;
 					data.uncompressData(
 							_ui->checkBox_fromDepth->isChecked()?&image:0,
 							_ui->checkBox_fromDepth->isChecked()?&depth:0,
@@ -2963,6 +2963,7 @@ std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::Indic
 				}
 				else if(_dbDriver)
 				{
+					cv::Mat image,depth;
 					_dbDriver->getNodeData(iter->first, data, _ui->checkBox_fromDepth->isChecked(), !_ui->checkBox_fromDepth->isChecked(), false, false);
 					data.uncompressData(
 							_ui->checkBox_fromDepth->isChecked()?&image:0,
@@ -2970,30 +2971,35 @@ std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::Indic
 							!_ui->checkBox_fromDepth->isChecked()?&scan:0);
 				}
 
-				if(_ui->checkBox_fromDepth->isChecked() && !image.empty() && !depth.empty())
+				if(_ui->checkBox_fromDepth->isChecked() && !data.imageRaw().empty() && !data.depthOrRightRaw().empty())
 				{
-					if(_ui->spinBox_fillDepthHoles->value() > 0)
+					cv::Mat depth = data.depthRaw();
+					if(!depth.empty() && _ui->spinBox_fillDepthHoles->value() > 0)
 					{
 						depth = util2d::fillDepthHoles(depth, _ui->spinBox_fillDepthHoles->value(), float(_ui->spinBox_fillDepthHolesError->value())/100.f);
 					}
 
-					if(!_ui->lineEdit_distortionModel->text().isEmpty() &&
+					if(!depth.empty() &&
+					  !_ui->lineEdit_distortionModel->text().isEmpty() &&
 					   QFileInfo(_ui->lineEdit_distortionModel->text()).exists())
 					{
 						clams::DiscreteDepthDistortionModel model;
 						model.load(_ui->lineEdit_distortionModel->text().toStdString());
 						depth = depth.clone();// make sure we are not modifying data in cached signatures.
 						model.undistort(depth);
-						data.setDepthOrRightRaw(depth);
 					}
 
 					// bilateral filtering
-					if(_ui->checkBox_bilateral->isChecked())
+					if(!depth.empty() && _ui->checkBox_bilateral->isChecked())
 					{
 						depth = util2d::fastBilateralFiltering(depth,
 								_ui->doubleSpinBox_bilateral_sigmaS->value(),
 								_ui->doubleSpinBox_bilateral_sigmaR->value());
-						data.setDepthOrRightRaw(depth);
+					}
+
+					if(!depth.empty())
+					{
+						data.setRGBDImage(data.imageRaw(), depth, data.cameraModels());
 					}
 
 					UASSERT(iter->first == data.id());

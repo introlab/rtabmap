@@ -63,7 +63,6 @@ public:
   virtual bool read(std::istream& is);
   virtual bool write(std::ostream& os) const;
   virtual void computeError();
-  virtual void linearizeOplus();
   virtual bool setMeasurementFromState();
 
   virtual double initialEstimatePossible(const g2o::OptimizableGraph::VertexSet& /*from*/, g2o::OptimizableGraph::Vertex* /*to*/) {return 1.;}

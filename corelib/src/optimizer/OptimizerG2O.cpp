@@ -60,6 +60,8 @@ typedef Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic,Eigen::ColMajor> Matr
 #include "g2o/types/slam2d/types_slam2d.h"
 #include "g2o/types/slam3d/types_slam3d.h"
 #include "g2o/edge_se3_xyzprior.h"
+#include "g2o/edge_se3_gravity.h"
+#include "g2o/edge_sbacam_gravity.h"
 #ifdef G2O_HAVE_CSPARSE
 #include "g2o/solvers/csparse/linear_solver_csparse.h"
 #endif
@@ -306,7 +308,7 @@ std::map<int, Transform> OptimizerG2O::optimize(
 		{
 			for(std::multimap<int, Link>::const_iterator iter=edgeConstraints.begin(); iter!=edgeConstraints.end(); ++iter)
 			{
-				if(iter->second.from() == iter->second.to())
+				if(iter->second.from() == iter->second.to() && iter->second.type() == Link::kPosePrior)
 				{
 					rootId = 0;
 					break;
@@ -494,6 +496,7 @@ std::map<int, Transform> OptimizerG2O::optimize(
 						    1 / static_cast<double>(iter->second.infMatrix().at<double>(4,4)) >= 9999.0 ||
 							1 / static_cast<double>(iter->second.infMatrix().at<double>(5,5)) >= 9999.0)
 						{
+							//GPS XYZ case
 							EdgeSE3XYZPrior * priorEdge = new EdgeSE3XYZPrior();
 							g2o::VertexSE3* v1 = (g2o::VertexSE3*)optimizer.vertex(id1);
 							priorEdge->setVertex(0, v1);
@@ -517,6 +520,7 @@ std::map<int, Transform> OptimizerG2O::optimize(
 						}
 						else
 						{
+							// XYZ+RPY case
 							g2o::EdgeSE3Prior * priorEdge = new g2o::EdgeSE3Prior();
 							g2o::VertexSE3* v1 = (g2o::VertexSE3*)optimizer.vertex(id1);
 							priorEdge->setVertex(0, v1);
@@ -535,6 +539,25 @@ std::map<int, Transform> OptimizerG2O::optimize(
 							edge = priorEdge;
 						}
 					}
+				}
+				else if(!isSlam2d() && gravitySigma() > 0 && iter->second.type() == Link::kPoseOdom && poses.find(iter->first) != poses.end())
+				{
+					Eigen::Matrix<double, 6, 1> m;
+					// Up vector in robot frame
+					m.head<3>() = Eigen::Vector3d::UnitZ();
+					// Observed Gravity vector in world frame
+					float roll, pitch, yaw;
+					iter->second.transform().getEulerAngles(roll, pitch, yaw);
+					m.tail<3>() = Transform(0,0,0,roll,pitch,0).toEigen3d() * -Eigen::Vector3d::UnitZ();
+
+					Eigen::MatrixXd information = Eigen::MatrixXd::Identity(3, 3) * 1.0/(gravitySigma()*gravitySigma());
+
+					g2o::VertexSE3* v1 = (g2o::VertexSE3*)optimizer.vertex(id1);
+					EdgeSE3Gravity* priorEdge(new EdgeSE3Gravity());
+					priorEdge->setMeasurement(m);
+					priorEdge->setInformation(information);
+					priorEdge->vertices()[0] = v1;
+					edge = priorEdge;
 				}
 			}
 			else if(id1<0 || id2 < 0)
@@ -1386,7 +1409,38 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 				int id1 = iter->second.from();
 				int id2 = iter->second.to();
 
-				if(id1 != id2) // not supporting prior
+				if(id1 == id2)
+				{
+#ifndef RTABMAP_ORB_SLAM2
+					g2o::HyperGraph::Edge * edge = 0;
+					if(gravitySigma() > 0 && iter->second.type() == Link::kPoseOdom && poses.find(iter->first) != poses.end())
+					{
+						Eigen::Matrix<double, 6, 1> m;
+						// Up vector in robot frame
+						m.head<3>() = Eigen::Vector3d::UnitZ();
+						// Observed Gravity vector in world frame
+						float roll, pitch, yaw;
+						iter->second.transform().getEulerAngles(roll, pitch, yaw);
+						m.tail<3>() = Transform(0,0,0,roll,pitch,0).toEigen3d() * -Eigen::Vector3d::UnitZ();
+
+						Eigen::MatrixXd information = Eigen::MatrixXd::Identity(3, 3) * 1.0/(gravitySigma()*gravitySigma());
+
+						g2o::VertexCam* v1 = (g2o::VertexCam*)optimizer.vertex(id1);
+						EdgeSBACamGravity* priorEdge(new EdgeSBACamGravity());
+						priorEdge->setMeasurement(m);
+						priorEdge->setInformation(information);
+						priorEdge->vertices()[0] = v1;
+						edge = priorEdge;
+					}
+					if (edge && !optimizer.addEdge(edge))
+					{
+						delete edge;
+						UERROR("Map: Failed adding constraint between %d and %d, skipping", id1, id2);
+						return optimizedPoses;
+					}
+#endif
+				}
+				else if(id1>0 && id2>0) // not supporting landmarks
 				{
 					UASSERT(!iter->second.transform().isNull());
 

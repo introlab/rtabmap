@@ -794,7 +794,7 @@ Transform RegistrationIcp::computeTransformationImpl(
 						// update output scans
 						if(fromScan.is2d())
 						{
-							fromSignature.sensorData().setLaserScanRaw(
+							fromSignature.sensorData().setLaserScan(
 									LaserScan(
 											util3d::laserScan2dFromPointCloud(*fromCloudNormals, fromScan.localTransform().inverse()),
 											maxLaserScansFrom,
@@ -804,7 +804,7 @@ Transform RegistrationIcp::computeTransformationImpl(
 						}
 						else
 						{
-							fromSignature.sensorData().setLaserScanRaw(
+							fromSignature.sensorData().setLaserScan(
 									LaserScan(
 											util3d::laserScanFromPointCloud(*fromCloudNormals, fromScan.localTransform().inverse()),
 											maxLaserScansFrom,
@@ -814,7 +814,7 @@ Transform RegistrationIcp::computeTransformationImpl(
 						}
 						if(toScan.is2d())
 						{
-							toSignature.sensorData().setLaserScanRaw(
+							toSignature.sensorData().setLaserScan(
 									LaserScan(
 											util3d::laserScan2dFromPointCloud(*toCloudNormals, (guess*toScan.localTransform()).inverse()),
 											maxLaserScansTo,
@@ -824,7 +824,7 @@ Transform RegistrationIcp::computeTransformationImpl(
 						}
 						else
 						{
-							toSignature.sensorData().setLaserScanRaw(
+							toSignature.sensorData().setLaserScan(
 									LaserScan(
 											util3d::laserScanFromPointCloud(*toCloudNormals, (guess*toScan.localTransform()).inverse()),
 											maxLaserScansTo,
@@ -913,7 +913,7 @@ Transform RegistrationIcp::computeTransformationImpl(
 						// update output scans
 						if(fromScan.is2d())
 						{
-							fromSignature.sensorData().setLaserScanRaw(
+							fromSignature.sensorData().setLaserScan(
 									LaserScan(
 											util3d::laserScan2dFromPointCloud(*fromCloudFiltered, fromScan.localTransform().inverse()),
 											maxLaserScansFrom,
@@ -923,7 +923,7 @@ Transform RegistrationIcp::computeTransformationImpl(
 						}
 						else
 						{
-							fromSignature.sensorData().setLaserScanRaw(
+							fromSignature.sensorData().setLaserScan(
 									LaserScan(
 											util3d::laserScanFromPointCloud(*fromCloudFiltered, fromScan.localTransform().inverse()),
 											maxLaserScansFrom,
@@ -933,7 +933,7 @@ Transform RegistrationIcp::computeTransformationImpl(
 						}
 						if(toScan.is2d())
 						{
-							toSignature.sensorData().setLaserScanRaw(
+							toSignature.sensorData().setLaserScan(
 									LaserScan(
 											util3d::laserScan2dFromPointCloud(*toCloudFiltered, (guess*toScan.localTransform()).inverse()),
 											maxLaserScansTo,
@@ -943,7 +943,7 @@ Transform RegistrationIcp::computeTransformationImpl(
 						}
 						else
 						{
-							toSignature.sensorData().setLaserScanRaw(
+							toSignature.sensorData().setLaserScan(
 									LaserScan(
 											util3d::laserScanFromPointCloud(*toCloudFiltered, (guess*toScan.localTransform()).inverse()),
 											maxLaserScansTo,

@@ -1760,10 +1760,9 @@ void DBDriverSqlite3::loadNodeDataQuery(std::list<Signature *> & signatures, boo
 					viewPoint.z = sqlite3_column_double(ppStmt, index++);
 				}
 
-				SensorData tmp = (*iter)->sensorData();
-				LaserScan laserScan =  tmp.laserScanCompressed();
 				if(scan)
 				{
+					LaserScan laserScan;
 					if(laserScanAngleMin < laserScanAngleMax && laserScanAngleInc != 0.0f)
 					{
 						laserScan = LaserScan(scanCompressed, (LaserScan::Format)laserScanFormat, laserScanMinRange, laserScanMaxRange, laserScanAngleMin, laserScanAngleMax, laserScanAngleInc, scanLocalTransform);
@@ -1772,37 +1771,29 @@ void DBDriverSqlite3::loadNodeDataQuery(std::list<Signature *> & signatures, boo
 					{
 						laserScan = LaserScan(scanCompressed, laserScanMaxPts, laserScanMaxRange, (LaserScan::Format)laserScanFormat, scanLocalTransform);
 					}
+					(*iter)->sensorData().setLaserScan(laserScan);
 				}
-				if(models.size())
+				if(images)
 				{
-					(*iter)->sensorData() = SensorData(
-						    laserScan,
-							images?imageCompressed:tmp.imageCompressed(),
-							images?depthOrRightCompressed:tmp.depthOrRightCompressed(),
-							images?models:tmp.cameraModels(),
-							(*iter)->id(),
-							(*iter)->getStamp(),
-							userData?userDataCompressed:tmp.userDataCompressed());
+					if(models.size())
+					{
+						(*iter)->sensorData().setRGBDImage(imageCompressed, depthOrRightCompressed, models);
+					}
+					else
+					{
+						(*iter)->sensorData().setStereoImage(imageCompressed, depthOrRightCompressed, stereoModel);
+					}
 				}
-				else
+				if(userData)
 				{
-					(*iter)->sensorData() = SensorData(
-							laserScan,
-							images?imageCompressed:tmp.imageCompressed(),
-							images?depthOrRightCompressed:tmp.depthOrRightCompressed(),
-							images?stereoModel:tmp.stereoCameraModel(),
-							(*iter)->id(),
-							(*iter)->getStamp(),
-							userData?userDataCompressed:tmp.userDataCompressed());
+					(*iter)->sensorData().setUserData(userDataCompressed);
 				}
+
 				if(occupancyGrid)
 				{
 					(*iter)->sensorData().setOccupancyGrid(groundCellsCompressed, obstacleCellsCompressed, emptyCellsCompressed, cellSize, viewPoint);
 				}
-				else
-				{
-					(*iter)->sensorData().setOccupancyGrid(tmp.gridGroundCellsCompressed(), tmp.gridObstacleCellsCompressed(), tmp.gridEmptyCellsCompressed(), tmp.gridCellSize(), tmp.gridViewPoint());
-				}
+
 				rc = sqlite3_step(ppStmt); // next result...
 			}
 			UASSERT_MSG(rc == SQLITE_DONE, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());

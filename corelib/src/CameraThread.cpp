@@ -176,7 +176,7 @@ void CameraThread::postUpdate(SensorData * dataPtr, CameraInfo * info) const
 	SensorData & data = *dataPtr;
 	if(_colorOnly && !data.depthRaw().empty())
 	{
-		data.setDepthOrRightRaw(cv::Mat());
+		data.setRGBDImage(data.imageRaw(), cv::Mat(), data.cameraModels());
 	}
 
 	if(_distortionModel && !data.depthRaw().empty())
@@ -187,7 +187,7 @@ void CameraThread::postUpdate(SensorData * dataPtr, CameraInfo * info) const
 		{
 			cv::Mat depth = data.depthRaw().clone();// make sure we are not modifying data in cached signatures.
 			_distortionModel->undistort(depth);
-			data.setDepthOrRightRaw(depth);
+			data.setRGBDImage(data.imageRaw(), depth, data.cameraModels());
 		}
 		else
 		{
@@ -201,7 +201,7 @@ void CameraThread::postUpdate(SensorData * dataPtr, CameraInfo * info) const
 	if(_bilateralFiltering && !data.depthRaw().empty())
 	{
 		UTimer timer;
-		data.setDepthOrRightRaw(util2d::fastBilateralFiltering(data.depthRaw(), _bilateralSigmaS, _bilateralSigmaR));
+		data.setRGBDImage(data.imageRaw(), util2d::fastBilateralFiltering(data.depthRaw(), _bilateralSigmaS, _bilateralSigmaR), data.cameraModels());
 		if(info) info->timeBilateralFiltering = timer.ticks();
 	}
 
@@ -217,8 +217,8 @@ void CameraThread::postUpdate(SensorData * dataPtr, CameraInfo * info) const
 		}
 		else
 		{
-			data.setImageRaw(util2d::decimate(data.imageRaw(), _imageDecimation));
-			data.setDepthOrRightRaw(util2d::decimate(data.depthOrRightRaw(), _imageDecimation));
+			cv::Mat image = util2d::decimate(data.imageRaw(), _imageDecimation);
+			cv::Mat depthOrRight = util2d::decimate(data.depthOrRightRaw(), _imageDecimation);
 			std::vector<CameraModel> models = data.cameraModels();
 			for(unsigned int i=0; i<models.size(); ++i)
 			{
@@ -227,12 +227,18 @@ void CameraThread::postUpdate(SensorData * dataPtr, CameraInfo * info) const
 					models[i] = models[i].scaled(1.0/double(_imageDecimation));
 				}
 			}
-			data.setCameraModels(models);
-			StereoCameraModel stereoModel = data.stereoCameraModel();
-			if(stereoModel.isValidForProjection())
+			if(!models.empty())
 			{
-				stereoModel.scale(1.0/double(_imageDecimation));
-				data.setStereoCameraModel(stereoModel);
+				data.setRGBDImage(image, depthOrRight, models);
+			}
+			else
+			{
+				StereoCameraModel stereoModel = data.stereoCameraModel();
+				if(stereoModel.isValidForProjection())
+				{
+					stereoModel.scale(1.0/double(_imageDecimation));
+				}
+				data.setStereoImage(image, depthOrRight, stereoModel);
 			}
 		}
 		if(info) info->timeImageDecimation = timer.ticks();
@@ -243,11 +249,12 @@ void CameraThread::postUpdate(SensorData * dataPtr, CameraInfo * info) const
 		UTimer timer;
 		cv::Mat tmpRgb;
 		cv::flip(data.imageRaw(), tmpRgb, 1);
-		data.setImageRaw(tmpRgb);
+
 		UASSERT_MSG(data.cameraModels().size() <= 1 && !data.stereoCameraModel().isValidForProjection(), "Only single RGBD cameras are supported for mirroring.");
-		if(data.cameraModels().size() && data.cameraModels()[0].cx())
+		CameraModel tmpModel = data.cameraModels()[0];
+		if(data.cameraModels()[0].cx())
 		{
-			CameraModel tmpModel(
+			tmpModel = CameraModel(
 					data.cameraModels()[0].fx(),
 					data.cameraModels()[0].fy(),
 					float(data.imageRaw().cols) - data.cameraModels()[0].cx(),
@@ -255,14 +262,13 @@ void CameraThread::postUpdate(SensorData * dataPtr, CameraInfo * info) const
 					data.cameraModels()[0].localTransform(),
 					data.cameraModels()[0].Tx(),
 					data.cameraModels()[0].imageSize());
-			data.setCameraModel(tmpModel);
 		}
+		cv::Mat tmpDepth = data.depthOrRightRaw();
 		if(!data.depthRaw().empty())
 		{
-			cv::Mat tmpDepth;
 			cv::flip(data.depthRaw(), tmpDepth, 1);
-			data.setDepthOrRightRaw(tmpDepth);
 		}
+		data.setRGBDImage(tmpRgb, tmpDepth, tmpModel);
 		if(info) info->timeMirroring = timer.ticks();
 	}
 
@@ -280,12 +286,11 @@ void CameraThread::postUpdate(SensorData * dataPtr, CameraInfo * info) const
 		images.push_back(data.imageRaw().getUMat(cv::ACCESS_READ));
 		images.push_back(data.rightRaw().getUMat(cv::ACCESS_READ));
 		compensator->feed(topLeftCorners, images, masks);
-		cv::Mat img = data.imageRaw().clone();
-		compensator->apply(0, cv::Point(0,0), img, masks[0]);
-		data.setImageRaw(img);
-		img = data.rightRaw().clone();
-		compensator->apply(1, cv::Point(0,0), img, masks[1]);
-		data.setDepthOrRightRaw(img);
+		cv::Mat imgLeft = data.imageRaw().clone();
+		compensator->apply(0, cv::Point(0,0), imgLeft, masks[0]);
+		cv::Mat imgRight = data.rightRaw().clone();
+		compensator->apply(1, cv::Point(0,0), imgRight, masks[1]);
+		data.setStereoImage(imgLeft, imgRight, data.stereoCameraModel());
 		cv::detail::GainCompensator * gainCompensator = (cv::detail::GainCompensator*)compensator.get();
 		UDEBUG("gains = %f %f ", gainCompensator->gains()[0], gainCompensator->gains()[1]);
 		if(info) info->timeStereoExposureCompensation = timer.ticks();
@@ -309,9 +314,7 @@ void CameraThread::postUpdate(SensorData * dataPtr, CameraInfo * info) const
 				data.stereoCameraModel().localTransform(),
 				-data.stereoCameraModel().baseline()*data.stereoCameraModel().left().fx(),
 				data.stereoCameraModel().left().imageSize());
-		data.setCameraModel(model);
-		data.setDepthOrRightRaw(depth);
-		data.setStereoCameraModel(StereoCameraModel());
+		data.setRGBDImage(data.imageRaw(), depth, model);
 		if(info) info->timeDisparity = timer.ticks();
 	}
 	if(_scanFromDepth &&
@@ -367,7 +370,7 @@ void CameraThread::postUpdate(SensorData * dataPtr, CameraInfo * info) const
 					}
 				}
 			}
-			data.setLaserScanRaw(LaserScan(scan, (int)maxPoints, _scanRangeMax, format, baseToScan));
+			data.setLaserScan(LaserScan(scan, (int)maxPoints, _scanRangeMax, format, baseToScan));
 			if(info) info->timeScanFromDepth = timer.ticks();
 		}
 		else
@@ -381,7 +384,7 @@ void CameraThread::postUpdate(SensorData * dataPtr, CameraInfo * info) const
 	{
 		UDEBUG("");
 		// filter the scan after registration
-		data.setLaserScanRaw(util3d::commonFiltering(data.laserScanRaw(), _scanDownsampleStep, _scanRangeMin, _scanRangeMax, _scanVoxelSize, _scanNormalsK, _scanNormalsRadius, _scanForceGroundNormalsUp));
+		data.setLaserScan(util3d::commonFiltering(data.laserScanRaw(), _scanDownsampleStep, _scanRangeMin, _scanRangeMax, _scanVoxelSize, _scanNormalsK, _scanNormalsRadius, _scanForceGroundNormalsUp));
 	}
 }
 

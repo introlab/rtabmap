@@ -2643,21 +2643,10 @@ void Memory::removeRawData(int id, bool image, bool scan, bool userData)
 	Signature * s = this->_getSignature(id);
 	if(s)
 	{
-		if(image && (!_reextractLoopClosureFeatures || !_registrationPipeline->isImageRequired()))
-		{
-			s->sensorData().setImageRaw(cv::Mat());
-			s->sensorData().setDepthOrRightRaw(cv::Mat());
-		}
-		if(scan && !_registrationPipeline->isScanRequired())
-		{
-			LaserScan scan = s->sensorData().laserScanRaw();
-			scan.clear();
-			s->sensorData().setLaserScanRaw(scan);
-		}
-		if(userData && !_registrationPipeline->isUserDataRequired())
-		{
-			s->sensorData().setUserDataRaw(cv::Mat());
-		}
+		s->sensorData().clearRawData(
+				image && (!_reextractLoopClosureFeatures || !_registrationPipeline->isImageRequired()),
+				scan && !_registrationPipeline->isScanRequired(),
+				userData && !_registrationPipeline->isUserDataRequired());
 	}
 }
 
@@ -3135,7 +3124,7 @@ Transform Memory::computeIcpTransformMulti(
 		}
 
 		// scans are in base frame but for 2d scans, set the height so that correspondences matching works
-		assembledData.setLaserScanRaw(
+		assembledData.setLaserScan(
 				LaserScan(assembledScan,
 					fromScan.maxPoints()?fromScan.maxPoints():maxPoints,
 					fromScan.rangeMax(),
@@ -4103,7 +4092,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 					return 0;
 				}
 			}
-			data.setImageRaw(rectifiedImages);
+			data.setRGBDImage(rectifiedImages, data.depthOrRightRaw(), data.cameraModels());
 		}
 		else if(data.stereoCameraModel().isValidForRectification())
 		{
@@ -4119,8 +4108,10 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 			}
 			UASSERT(_rectStereoCameraModel.left().imageWidth() == data.stereoCameraModel().left().imageWidth());
 			UASSERT(_rectStereoCameraModel.left().imageHeight() == data.stereoCameraModel().left().imageHeight());
-			data.setImageRaw(_rectStereoCameraModel.left().rectifyImage(data.imageRaw()));
-			data.setDepthOrRightRaw(_rectStereoCameraModel.right().rectifyImage(data.rightRaw()));
+			data.setStereoImage(
+					_rectStereoCameraModel.left().rectifyImage(data.imageRaw()),
+					_rectStereoCameraModel.right().rectifyImage(data.rightRaw()),
+					data.stereoCameraModel());
 			imagesRectified = true;
 		}
 		else
@@ -4159,24 +4150,41 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 			if(_imagePreDecimation > 1)
 			{
 				preDecimation = _imagePreDecimation;
-				if(!decimatedData.rightRaw().empty() ||
-					(decimatedData.depthRaw().rows == decimatedData.imageRaw().rows && decimatedData.depthRaw().cols == decimatedData.imageRaw().cols))
-				{
-					decimatedData.setDepthOrRightRaw(util2d::decimate(decimatedData.depthOrRightRaw(), _imagePreDecimation));
-				}
-				decimatedData.setImageRaw(util2d::decimate(decimatedData.imageRaw(), _imagePreDecimation));
 				std::vector<CameraModel> cameraModels = decimatedData.cameraModels();
 				for(unsigned int i=0; i<cameraModels.size(); ++i)
 				{
 					cameraModels[i] = cameraModels[i].scaled(1.0/double(_imagePreDecimation));
 				}
-				decimatedData.setCameraModels(cameraModels);
-				StereoCameraModel stereoModel = decimatedData.stereoCameraModel();
-				if(stereoModel.isValidForProjection())
+				if(!cameraModels.empty())
 				{
-					stereoModel.scale(1.0/double(_imagePreDecimation));
+					if(decimatedData.depthRaw().rows == decimatedData.imageRaw().rows &&
+					   decimatedData.depthRaw().cols == decimatedData.imageRaw().cols)
+					{
+						decimatedData.setRGBDImage(
+								util2d::decimate(decimatedData.imageRaw(), _imagePreDecimation),
+								util2d::decimate(decimatedData.depthOrRightRaw(), _imagePreDecimation),
+								cameraModels);
+					}
+					else
+					{
+						decimatedData.setRGBDImage(
+								util2d::decimate(decimatedData.imageRaw(), _imagePreDecimation),
+								decimatedData.depthOrRightRaw(),
+								cameraModels);
+					}
 				}
-				decimatedData.setStereoCameraModel(stereoModel);
+				else
+				{
+					StereoCameraModel stereoModel = decimatedData.stereoCameraModel();
+					if(stereoModel.isValidForProjection())
+					{
+						stereoModel.scale(1.0/double(_imagePreDecimation));
+					}
+					decimatedData.setStereoImage(
+							util2d::decimate(decimatedData.imageRaw(), _imagePreDecimation),
+							util2d::decimate(decimatedData.depthOrRightRaw(), _imagePreDecimation),
+							stereoModel);
+				}
 			}
 
 			UINFO("Extract features");
@@ -5009,10 +5017,16 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 	s->setWordsDescriptors(wordsDescriptors);
 
 	// set raw data
-	s->sensorData().setImageRaw(image);
-	s->sensorData().setDepthOrRightRaw(depthOrRightImage);
-	s->sensorData().setLaserScanRaw(laserScan);
-	s->sensorData().setUserDataRaw(data.userDataRaw());
+	if(!cameraModels.empty())
+	{
+		s->sensorData().setRGBDImage(image, depthOrRightImage, cameraModels, false);
+	}
+	else
+	{
+		s->sensorData().setStereoImage(image, depthOrRightImage, stereoCameraModel, false);
+	}
+	s->sensorData().setLaserScan(laserScan, false);
+	s->sensorData().setUserData(data.userDataRaw(), false);
 
 	s->sensorData().setGroundTruth(data.groundTruth());
 	s->sensorData().setGPS(data.gps());
@@ -5059,6 +5073,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 		if(!data.globalPose().isNull() && data.globalPoseCovariance().cols==6 && data.globalPoseCovariance().rows==6 && data.globalPoseCovariance().cols==CV_64FC1)
 		{
 			s->addLink(Link(s->id(), s->id(), Link::kPosePrior, data.globalPose(), data.globalPoseCovariance().inv()));
+			UDEBUG("Added global pose prior: %s", data.globalPose().prettyPrint().c_str());
 
 			if(data.gps().stamp() > 0.0)
 			{
@@ -5070,14 +5085,17 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 			if(_gpsOrigin.stamp() <= 0.0)
 			{
 				_gpsOrigin =  data.gps();
+				UINFO("Added GPS origin: long=%f lat=%f alt=%f bearing=%f error=%f", data.gps().longitude(), data.gps().latitude(), data.gps().altitude(), data.gps().bearing(), data.gps().error());
 			}
 			cv::Point3f pt = data.gps().toGeodeticCoords().toENU_WGS84(_gpsOrigin.toGeodeticCoords());
 			Transform gpsPose(pt.x, pt.y, pose.z(), 0, 0, -(data.gps().bearing()-90.0)*180.0/M_PI);
 			cv::Mat gpsInfMatrix = cv::Mat::eye(6,6,CV_64FC1)/9999.0; // variance not used >= 9999
 			if(data.gps().error() > 0.0)
 			{
-				// only set x, y and z as we don't know variance for other degrees of freedom.
-				gpsInfMatrix.at<double>(0,0) = gpsInfMatrix.at<double>(1,1) = gpsInfMatrix.at<double>(2,2) = 1.0/data.gps().error();
+				UDEBUG("Added GPS prior: x=%f y=%f z=%f yaw=%f", gpsPose.x(), gpsPose.y(), gpsPose.z(), gpsPose.theta());
+				// only set x, y as we don't know variance for other degrees of freedom.
+				gpsInfMatrix.at<double>(0,0) = gpsInfMatrix.at<double>(1,1) = 1.0/data.gps().error();
+				gpsInfMatrix.at<double>(2,2) = 1; // z variance is set to avoid issues with g2o and gtsam requiring a prior on Z
 				s->addLink(Link(s->id(), s->id(), Link::kPosePrior, gpsPose, gpsInfMatrix));
 			}
 			else

@@ -423,24 +423,23 @@ SensorData DBReader::getNextData(CameraInfo * info)
 				{
 					// select one camera
 					int subImageWidth = data.imageRaw().cols/data.cameraModels().size();
+					cv::Mat image;
 					UASSERT(!data.imageRaw().empty() &&
 							data.imageRaw().cols % data.cameraModels().size() == 0 &&
 							_cameraIndex*subImageWidth < data.imageRaw().cols);
-					data.setImageRaw(
-							cv::Mat(data.imageRaw(),
-							cv::Rect(_cameraIndex*subImageWidth, 0, subImageWidth, data.imageRaw().rows)).clone());
+					image= cv::Mat(data.imageRaw(),
+						   cv::Rect(_cameraIndex*subImageWidth, 0, subImageWidth, data.imageRaw().rows)).clone();
 
+					cv::Mat depth;
 					if(!data.depthOrRightRaw().empty())
 					{
 						UASSERT(data.depthOrRightRaw().cols % data.cameraModels().size() == 0 &&
 								subImageWidth == data.depthOrRightRaw().cols/(int)data.cameraModels().size() &&
 								_cameraIndex*subImageWidth < data.depthOrRightRaw().cols);
-						data.setDepthOrRightRaw(
-								cv::Mat(data.depthOrRightRaw(),
-								cv::Rect(_cameraIndex*subImageWidth, 0, subImageWidth, data.depthOrRightRaw().rows)).clone());
+						depth = cv::Mat(data.depthOrRightRaw(),
+							    cv::Rect(_cameraIndex*subImageWidth, 0, subImageWidth, data.depthOrRightRaw().rows)).clone();
 					}
-					CameraModel model = data.cameraModels().at(_cameraIndex);
-					data.setCameraModel(model);
+					data.setRGBDImage(image, depth, data.cameraModels().at(_cameraIndex));
 				}
 				else
 				{

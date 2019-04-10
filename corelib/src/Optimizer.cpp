@@ -176,13 +176,16 @@ void Optimizer::getConnectedGraph(
 	std::multimap<int, int> biLinks;
 	for(std::multimap<int, Link>::const_iterator iter=linksIn.begin(); iter!=linksIn.end(); ++iter)
 	{
-		UASSERT_MSG(graph::findLink(biLinks, iter->second.from(), iter->second.to()) == biLinks.end(),
-				uFormat("Input links should be unique between two poses (%d->%d).",
-						iter->second.from(), iter->second.to()).c_str());
-		biLinks.insert(std::make_pair(iter->second.from(), iter->second.to()));
 		if(iter->second.from() != iter->second.to())
 		{
-			biLinks.insert(std::make_pair(iter->second.to(), iter->second.from()));
+			UASSERT_MSG(graph::findLink(biLinks, iter->second.from(), iter->second.to()) == biLinks.end(),
+					uFormat("Input links should be unique between two poses (%d->%d).",
+							iter->second.from(), iter->second.to()).c_str());
+			biLinks.insert(std::make_pair(iter->second.from(), iter->second.to()));
+			if(iter->second.from() != iter->second.to())
+			{
+				biLinks.insert(std::make_pair(iter->second.to(), iter->second.from()));
+			}
 		}
 	}
 
@@ -197,6 +200,14 @@ void Optimizer::getConnectedGraph(
 			if(posesOut.empty())
 			{
 				posesOut.insert(*posesIn.find(fromId));
+				// add prior links
+				for(std::multimap<int, Link>::const_iterator pter=linksIn.find(fromId); pter!=linksIn.end() && pter->first==fromId; ++pter)
+				{
+					if(pter->second.from() == pter->second.to())
+					{
+						linksOut.insert(*pter);
+					}
+				}
 			}
 
 			for(std::multimap<int, int>::const_iterator iter=biLinks.find(fromId); iter!=biLinks.end() && iter->first==fromId; ++iter)
@@ -211,6 +222,15 @@ void Optimizer::getConnectedGraph(
 						if(!uContains(posesOut, toId))
 						{
 							posesOut.insert(*posesIn.find(toId));//std::make_pair(toId, posesOut.at(fromId) * (kter->second.from()==fromId?kter->second.transform():kter->second.transform().inverse())));
+							// add prior links
+							for(std::multimap<int, Link>::const_iterator pter=linksIn.find(toId); pter!=linksIn.end() && pter->first==toId; ++pter)
+							{
+								if(pter->second.from() == pter->second.to())
+								{
+									linksOut.insert(*pter);
+								}
+							}
+
 							if(curentPoses.find(toId) == curentPoses.end())
 							{
 								nextPoses.insert(toId);

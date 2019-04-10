@@ -957,7 +957,7 @@ Transform OdometryF2M::computeTransform(
 					if(mapScan.is2d())
 					{
 
-						map_->sensorData().setLaserScanRaw(
+						map_->sensorData().setLaserScan(
 								LaserScan(
 										mapScan.data(),
 										0,
@@ -967,7 +967,7 @@ Transform OdometryF2M::computeTransform(
 					}
 					else
 					{
-						map_->sensorData().setLaserScanRaw(
+						map_->sensorData().setLaserScan(
 								LaserScan(
 										mapScan.data(),
 										0,
@@ -1137,7 +1137,7 @@ Transform OdometryF2M::computeTransform(
 					if(lastFrame_->sensorData().laserScanRaw().is2d())
 					{
 						Transform mapViewpoint(-newFramePose.x(), -newFramePose.y(),0,0,0,0);
-						map_->sensorData().setLaserScanRaw(
+						map_->sensorData().setLaserScan(
 								LaserScan(
 										util3d::laserScan2dFromPointCloud(*mapCloudNormals, mapViewpoint),
 										0,
@@ -1148,7 +1148,7 @@ Transform OdometryF2M::computeTransform(
 					else
 					{
 						Transform mapViewpoint(-newFramePose.x(), -newFramePose.y(), -newFramePose.z(),0,0,0);
-						map_->sensorData().setLaserScanRaw(
+						map_->sensorData().setLaserScan(
 								LaserScan(
 										util3d::laserScanFromPointCloud(*mapCloudNormals, mapViewpoint),
 										0,

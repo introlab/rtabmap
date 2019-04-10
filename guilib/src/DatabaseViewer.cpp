@@ -6506,7 +6506,7 @@ void DatabaseViewer::refineConstraint(int from, int to, bool silent)
 		}
 		SensorData assembledData;
 		// scans are in base frame but for 2d scans, set the height so that correspondences matching works
-		assembledData.setLaserScanRaw(LaserScan(
+		assembledData.setLaserScan(LaserScan(
 				assembledScan,
 				fromScan.maxPoints()?fromScan.maxPoints():maxPoints,
 				fromScan.rangeMax(),
@@ -6549,8 +6549,8 @@ void DatabaseViewer::refineConstraint(int from, int to, bool silent)
 						0,
 						ui_->parameters_toolbox->getParameters());
 				int maxLaserScans = cloudFrom->size();
-				dataFrom.setLaserScanRaw(LaserScan(util3d::laserScanFromPointCloud(*util3d::removeNaNFromPointCloud(cloudFrom), Transform()), maxLaserScans, 0, LaserScan::kXYZ));
-				dataTo.setLaserScanRaw(LaserScan(util3d::laserScanFromPointCloud(*util3d::removeNaNFromPointCloud(cloudTo), Transform()), maxLaserScans, 0, LaserScan::kXYZ));
+				dataFrom.setLaserScan(LaserScan(util3d::laserScanFromPointCloud(*util3d::removeNaNFromPointCloud(cloudFrom), Transform()), maxLaserScans, 0, LaserScan::kXYZ));
+				dataTo.setLaserScan(LaserScan(util3d::laserScanFromPointCloud(*util3d::removeNaNFromPointCloud(cloudTo), Transform()), maxLaserScans, 0, LaserScan::kXYZ));
 
 				if(!dataFrom.laserScanCompressed().isEmpty() || !dataTo.laserScanCompressed().isEmpty())
 				{
