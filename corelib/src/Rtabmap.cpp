@@ -4499,11 +4499,11 @@ int Rtabmap::detectMoreLoopClosures(
 								int fromId = from;
 								int mapId = signatures.at(from).mapId();
 								// use first node of the map containing from
-								for(std::map<int, Signature>::iterator iter=signatures.begin(); iter!=signatures.end(); ++iter)
+								for(std::map<int, Signature>::iterator ster=signatures.begin(); ster!=signatures.end(); ++ster)
 								{
-									if(iter->second.mapId() == mapId)
+									if(ster->second.mapId() == mapId)
 									{
-										fromId = iter->first;
+										fromId = ster->first;
 										break;
 									}
 								}
