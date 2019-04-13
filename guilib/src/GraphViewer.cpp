@@ -521,10 +521,7 @@ void GraphViewer::updateGraph(const std::map<int, Transform> & poses,
 					if(iter->second.type() != Link::kNeighbor &&
 					   iter->second.type() != Link::kNeighborMerged)
 					{
-						float linearError = uMax3(
-								fabs(iter->second.transform().x() - t.x()),
-								fabs(iter->second.transform().y() - t.y()),
-								fabs(iter->second.transform().z() - t.z()));
+						float linearError = fabs(iter->second.transform().getNorm() - t.getNorm());
 						if(linearError > _loopClosureOutlierThr)
 						{
 							linkItem->setColor(_loopClosureRejectedColor);

@@ -432,7 +432,7 @@ std::map<int, Transform> OptimizerG2O::optimize(
 
 		UDEBUG("fill edges to g2o...");
 #if defined(RTABMAP_VERTIGO)
-		int vertigoVertexId = landmarkVertexOffset - (poses.begin()->first<0?poses.begin()->first:0);
+		int vertigoVertexId = landmarkVertexOffset - (poses.begin()->first<0?poses.begin()->first-1:0);
 #endif
 		for(std::multimap<int, Link>::const_iterator iter=edgeConstraints.begin(); iter!=edgeConstraints.end(); ++iter)
 		{
