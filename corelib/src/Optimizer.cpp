@@ -221,7 +221,7 @@ void Optimizer::getConnectedGraph(
 					{
 						if(!uContains(posesOut, toId))
 						{
-							posesOut.insert(*posesIn.find(toId));//std::make_pair(toId, posesOut.at(fromId) * (kter->second.from()==fromId?kter->second.transform():kter->second.transform().inverse())));
+							posesOut.insert(std::make_pair(toId, posesOut.at(fromId) * (kter->second.from()==fromId?kter->second.transform():kter->second.transform().inverse())));
 							// add prior links
 							for(std::multimap<int, Link>::const_iterator pter=linksIn.find(toId); pter!=linksIn.end() && pter->first==toId; ++pter)
 							{
