@@ -40,6 +40,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QtCore/QTextStream>
 #include <QtCore/QDateTime>
 #include <QtCore/QSettings>
+#include <QThread>
 #include <rtabmap/utilite/ULogger.h>
 #include <rtabmap/utilite/UDirectory.h>
 #include <rtabmap/utilite/UConversion.h>
@@ -1519,6 +1520,30 @@ void DatabaseViewer::updateIds()
 		return;
 	}
 
+	rtabmap::ProgressDialog * progressDialog = new rtabmap::ProgressDialog(this);
+	progressDialog->setAttribute(Qt::WA_DeleteOnClose);
+	int progressSteps = 5;
+	if(ui_->graphViewer->isVisible() || ui_->dockWidget_occupancyGridView->isVisible())
+	{
+		++progressSteps;
+	}
+	if(ui_->textEdit_info->isVisible())
+	{
+		++progressSteps;
+	}
+	if(ui_->toolBox_statistics->isVisible())
+	{
+		++progressSteps;
+	}
+	progressDialog->setMaximumSteps(progressSteps);
+	progressDialog->show();
+	progressDialog->setCancelButtonVisible(false);
+
+	progressDialog->appendText(tr("Loading all ids..."));
+	QApplication::processEvents();
+	QThread::msleep(100);
+	QApplication::processEvents();
+
 	UINFO("Loading all IDs...");
 	std::set<int> ids;
 	dbDriver_->getAllNodeIds(ids);
@@ -1566,6 +1591,14 @@ void DatabaseViewer::updateIds()
 	linksRemoved_.clear();
 	ui_->toolBox_statistics->clear();
 	ui_->label_optimizeFrom->setText(tr("Root"));
+
+	progressDialog->appendText(tr("%1 ids loaded!").arg(ids.size()));
+	progressDialog->incrementStep();
+	progressDialog->appendText(tr("Loading all links..."));
+	QApplication::processEvents();
+	QThread::msleep(100);
+	QApplication::processEvents();
+
 	std::multimap<int, Link> unilinks;
 	dbDriver_->getAllLinks(unilinks, true);
 	UDEBUG("%d total links loaded", (int)unilinks.size());
@@ -1580,6 +1613,13 @@ void DatabaseViewer::updateIds()
 		}
 	}
 
+	progressDialog->appendText(tr("%1 links loaded!").arg(unilinks.size()));
+	progressDialog->incrementStep();
+	progressDialog->appendText("Loading Working Memory state...");
+	QApplication::processEvents();
+	QThread::msleep(100);
+	QApplication::processEvents();
+
 	infoTotalOdom_ = 0.0;
 	Transform previousPose;
 	infoSessions_ = ids_.size()?1:0;
@@ -1587,6 +1627,14 @@ void DatabaseViewer::updateIds()
 	double previousStamp = 0.0;
 	infoReducedGraph_ = false;
 	std::map<int, std::vector<int> > wmStates = dbDriver_->getAllStatisticsWmStates();
+
+	progressDialog->appendText("Loading Working Memory state... done!");
+	progressDialog->incrementStep();
+	progressDialog->appendText("Loading info for all nodes...");
+	QApplication::processEvents();
+	QThread::msleep(100);
+	QApplication::processEvents();
+
 	for(int i=0; i<ids_.size(); ++i)
 	{
 		idToIndex_.insert(ids_[i], i);
@@ -1691,6 +1739,13 @@ void DatabaseViewer::updateIds()
 		}
 	}
 
+	progressDialog->appendText("Loading info for all nodes... done!");
+	progressDialog->incrementStep();
+	progressDialog->appendText("Loading optimized poses and maps...");
+	QApplication::processEvents();
+	QThread::msleep(100);
+	QApplication::processEvents();
+
 	dbOptimizedPoses_ = dbDriver_->loadOptimizedPoses();
 
 	if(!groundTruthPoses_.empty() || !gpsPoses_.empty())
@@ -1734,16 +1789,45 @@ void DatabaseViewer::updateIds()
 
 	UINFO("Loaded %d ids, %d poses and %d links", (int)ids_.size(), (int)odomPoses_.size(), (int)links_.size());
 
+	progressDialog->appendText("Loading optimized poses and maps... done!");
+	progressDialog->incrementStep();
+	QApplication::processEvents();
+	QThread::msleep(100);
+	QApplication::processEvents();
+
 	if(ids_.size() && ui_->toolBox_statistics->isVisible())
 	{
+		progressDialog->appendText("Loading statistics...");
+		QApplication::processEvents();
+		QThread::msleep(100);
+		QApplication::processEvents();
+
 		UINFO("Update statistics...");
 		updateStatistics();
+
+		progressDialog->appendText("Loading statistics... done!");
+		progressDialog->incrementStep();
+		QApplication::processEvents();
+		QThread::msleep(100);
+		QApplication::processEvents();
 	}
+
 
 	ui_->textEdit_info->clear();
 	if(ui_->textEdit_info->isVisible())
 	{
+		progressDialog->appendText("Update database info...");
+		QApplication::processEvents();
+		QThread::msleep(100);
+		QApplication::processEvents();
+
 		updateInfo();
+
+		progressDialog->appendText("Update database info... done!");
+		progressDialog->incrementStep();
+		QApplication::processEvents();
+		QThread::msleep(100);
+		QApplication::processEvents();
 	}
 
 	if(ids.size())
@@ -1844,9 +1928,21 @@ void DatabaseViewer::updateIds()
 		updateLoopClosuresSlider();
 		if(ui_->graphViewer->isVisible() || ui_->dockWidget_occupancyGridView->isVisible())
 		{
+			progressDialog->appendText("Updating Graph View...");
+			QApplication::processEvents();
+			QThread::msleep(100);
+			QApplication::processEvents();
+
 			updateGraphView();
+
+			progressDialog->appendText("Updating Graph View... done!");
+			progressDialog->incrementStep();
+			QApplication::processEvents();
+			QThread::msleep(100);
+			QApplication::processEvents();
 		}
 	}
+	progressDialog->setValue(progressDialog->maximumSteps());
 }
 
 void DatabaseViewer::updateInfo()
