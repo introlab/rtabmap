@@ -36,6 +36,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UDirectory.h>
 #include <rtabmap/utilite/UTimer.h>
 #include <rtabmap/utilite/UStl.h>
+#include <rtabmap/utilite/UMath.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -57,8 +58,6 @@ void showUsage()
 			"     -c \"path.ini\"   Configuration file, overwritting parameters read \n"
 			"                       from the database. If custom parameters are also set as \n"
 			"                       arguments, they overwrite those in config file and the database.\n"
-			"     -f                When there are many inputs databases, initialize rtabmap\n"
-			"                       with the first one and process the others afterwards.\n"
 			"     -g2         Assemble 2D occupancy grid map and save it to \"[output]_map.pgm\".\n"
 			"     -g3         Assemble 3D cloud map and save it to \"[output]_map.pcd\".\n"
 			"     -o2         Assemble OctoMap 2D projection and save it to \"[output]_octomap.pgm\".\n"
@@ -74,6 +73,62 @@ void sighandler(int sig)
 {
 	printf("\nSignal %d caught...\n", sig);
 	g_loopForever = false;
+}
+
+int loopCount = 0;
+int totalFrames = 0;
+std::vector<float> previousLocalizationDistances;
+std::vector<float> odomDistances;
+std::vector<float> localizationDistances;
+std::vector<float> localizationTime;
+void showLocalizationStats()
+{
+	printf("Total localizations on previous session = %d/%d\n", loopCount, totalFrames);
+	loopCount = 0;
+	totalFrames = 0;
+	{
+		float m = uMean(localizationTime);
+		float var = uVariance(localizationTime, m);
+		float stddev = -1;
+		if(var>0)
+		{
+			stddev = sqrt(var);
+		}
+		printf("Average localization time = %f ms (stddev=%f ms)\n", m, stddev);
+	}
+	if(!localizationDistances.empty())
+	{
+		float m = uMean(localizationDistances);
+		float var = uVariance(localizationDistances, m);
+		float stddev = -1;
+		if(var>0)
+		{
+			stddev = sqrt(var);
+		}
+		printf("Average localization distance = %f m (stddev=%f m)\n", m, stddev);
+	}
+	if(!previousLocalizationDistances.empty())
+	{
+		float m = uMean(previousLocalizationDistances);
+		float var = uVariance(previousLocalizationDistances, m);
+		float stddev = -1;
+		if(var>0)
+		{
+			stddev = sqrt(var);
+		}
+		printf("Average distance from previous localization = %f m (stddev=%f m)\n", m, stddev);
+	}
+	if(!odomDistances.empty())
+	{
+		float m = uMean(odomDistances);
+		float var = uVariance(odomDistances, m);
+		float stddev = -1;
+		if(var>0)
+		{
+			stddev = sqrt(var);
+		}
+		printf("Average odometry distances = %f m (stddev=%f m)\n", m, stddev);
+	}
 }
 
 int main(int argc, char * argv[])
@@ -277,8 +332,7 @@ int main(int argc, char * argv[])
 	int processed = 0;
 	CameraInfo info;
 	SensorData data = dbReader.takeImage(&info);
-	int loopCount = 0;
-	int totalFrames = 0;
+	Transform lastLocalizationPose = info.odomPose;
 	while(data.isValid() && g_loopForever)
 	{
 		UTimer iterationTime;
@@ -294,9 +348,8 @@ int main(int argc, char * argv[])
 				printf("High variance detected, triggering a new map...\n");
 				if(!incrementalMemory && processed>0)
 				{
-					printf("Total localizations on previous session = %d/%d\n", loopCount, totalFrames);
-					loopCount = 0;
-					totalFrames = 0;
+					showLocalizationStats();
+					lastLocalizationPose = info.odomPose;
 				}
 				if(incrementalMemory)
 				{
@@ -410,12 +463,41 @@ int main(int argc, char * argv[])
 			printf("Processed %d/%d nodes [%d]... %dms\n", ++processed, totalIds, refMapId, int(iterationTime.ticks() * 1000));
 		}
 
+		// Here we accumulate statistics about distance from last localization
+		if(!incrementalMemory &&
+		   !lastLocalizationPose.isNull() &&
+		   !info.odomPose.isNull())
+		{
+			if(loopId>0 || landmarkId != 0)
+			{
+				previousLocalizationDistances.push_back(lastLocalizationPose.getDistance(info.odomPose));
+				lastLocalizationPose = info.odomPose;
+			}
+		}
+		if(!incrementalMemory)
+		{
+			float totalTime = uValue(stats.data(), rtabmap::Statistics::kTimingTotal(), 0.0f);
+			localizationTime.push_back(totalTime);
+			if(loopId>0)
+			{
+				localizationDistances.push_back(stats.loopClosureTransform().getNorm());
+			}
+		}
+
+		Transform odomPose = info.odomPose;
 		data = dbReader.takeImage(&info);
+
+		if(!incrementalMemory &&
+		   !odomPose.isNull() &&
+		   !info.odomPose.isNull())
+		{
+			odomDistances.push_back(odomPose.getDistance(info.odomPose));
+		}
 	}
 
 	if(!incrementalMemory)
 	{
-		printf("Total localizations on previous session = %d/%d\n", loopCount, totalFrames);
+		showLocalizationStats();
 	}
 	else
 	{
