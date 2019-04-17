@@ -108,8 +108,6 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	infoReducedGraph_(false),
 	infoTotalOdom_(0.0),
 	infoSessions_(0),
-	infoBadcountInLTM_(0),
-	infoBadCountInGraph_(0),
 	useLastOptimizedGraphAsGuess_(false)
 {
 	pathDatabase_ = QDir::homePath()+"/Documents/RTAB-Map"; //use home directory by default
@@ -1587,10 +1585,6 @@ void DatabaseViewer::updateIds()
 	infoSessions_ = ids_.size()?1:0;
 	infoTotalTime_ = 0.0;
 	double previousStamp = 0.0;
-	std::set<int> idsWithoutBad;
-	dbDriver_->getAllNodeIds(idsWithoutBad, false, true);
-	infoBadcountInLTM_ = 0;
-	infoBadCountInGraph_ = 0;
 	infoReducedGraph_ = false;
 	std::map<int, std::vector<int> > wmStates = dbDriver_->getAllStatisticsWmStates();
 	for(int i=0; i<ids_.size(); ++i)
@@ -1693,15 +1687,6 @@ void DatabaseViewer::updateIds()
 				}
 				Transform pose(p.x, p.y, p.z, 0.0f, 0.0f, (float)((-(gps.bearing()-90))*M_PI/180.0));
 				gpsPoses_.insert(std::make_pair(ids_[i], pose));
-			}
-		}
-
-		if(idsWithoutBad.find(ids_[i]) == idsWithoutBad.end())
-		{
-			++infoBadcountInLTM_;
-			if(addPose)
-			{
-				++infoBadCountInGraph_;
 			}
 		}
 	}
@@ -1929,8 +1914,23 @@ void DatabaseViewer::updateInfo()
 			mem = dbSize - total;
 			ui_->textEdit_info->append(tr("Other (indexing):\t%1 %2\t%3%").arg(mem>1000000?mem/1000000:mem>1000?mem/1000:mem).arg(mem>1000000?"MB":mem>1000?"KB":"Bytes").arg(dbSize>0?QString::number(double(mem)/double(dbSize)*100.0, 'f', 2 ):"0"));
 			ui_->textEdit_info->append("");
-			ui_->textEdit_info->append(tr("%1 bad signatures in LTM").arg(infoBadcountInLTM_));
-			ui_->textEdit_info->append(tr("%1 bad signatures in the global graph").arg(infoBadCountInGraph_));
+			std::set<int> idsWithoutBad;
+			dbDriver_->getAllNodeIds(idsWithoutBad, false, true);
+			int infoBadcountInLTM = 0;
+			int infoBadCountInGraph = 0;
+			for(int i=0; i<ids_.size(); ++i)
+			{
+				if(idsWithoutBad.find(ids_[i]) == idsWithoutBad.end())
+				{
+					++infoBadcountInLTM;
+					if(odomPoses_.find(ids_[i]) != odomPoses_.end())
+					{
+						++infoBadCountInGraph;
+					}
+				}
+			}
+			ui_->textEdit_info->append(tr("%1 bad signatures in LTM").arg(infoBadcountInLTM));
+			ui_->textEdit_info->append(tr("%1 bad signatures in the global graph").arg(infoBadCountInGraph));
 			ui_->textEdit_info->append("");
 			ParametersMap parameters = dbDriver_->getLastParameters();
 			QFontMetrics metrics(ui_->textEdit_info->font());
@@ -5545,7 +5545,7 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 				else
 				{
 					SensorData data;
-					dbDriver_->getNodeData(ids.at(i), data);
+					dbDriver_->getNodeData(ids.at(i), data, false, false, false);
 					cv::Mat ground, obstacles, empty;
 					data.uncompressData(0, 0, 0, 0, &ground, &obstacles, &empty);
 					localMaps_.insert(std::make_pair(ids.at(i), std::make_pair(std::make_pair(ground, obstacles), empty)));

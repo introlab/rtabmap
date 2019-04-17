@@ -240,8 +240,6 @@ private:
 	double infoTotalOdom_;
 	double infoTotalTime_;
 	int infoSessions_;
-	int infoBadcountInLTM_;
-	int infoBadCountInGraph_;
 
 	bool useLastOptimizedGraphAsGuess_;
 	std::map<int, Transform> lastOptimizedGraph_;
