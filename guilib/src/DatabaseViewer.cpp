@@ -1541,7 +1541,7 @@ void DatabaseViewer::updateIds()
 
 	progressDialog->appendText(tr("Loading all ids..."));
 	QApplication::processEvents();
-	QThread::msleep(100);
+	uSleep(100);
 	QApplication::processEvents();
 
 	UINFO("Loading all IDs...");
@@ -1596,7 +1596,7 @@ void DatabaseViewer::updateIds()
 	progressDialog->incrementStep();
 	progressDialog->appendText(tr("Loading all links..."));
 	QApplication::processEvents();
-	QThread::msleep(100);
+	uSleep(100);
 	QApplication::processEvents();
 
 	std::multimap<int, Link> unilinks;
@@ -1617,7 +1617,7 @@ void DatabaseViewer::updateIds()
 	progressDialog->incrementStep();
 	progressDialog->appendText("Loading Working Memory state...");
 	QApplication::processEvents();
-	QThread::msleep(100);
+	uSleep(100);
 	QApplication::processEvents();
 
 	infoTotalOdom_ = 0.0;
@@ -1632,7 +1632,7 @@ void DatabaseViewer::updateIds()
 	progressDialog->incrementStep();
 	progressDialog->appendText("Loading info for all nodes...");
 	QApplication::processEvents();
-	QThread::msleep(100);
+	uSleep(100);
 	QApplication::processEvents();
 
 	for(int i=0; i<ids_.size(); ++i)
@@ -1743,7 +1743,7 @@ void DatabaseViewer::updateIds()
 	progressDialog->incrementStep();
 	progressDialog->appendText("Loading optimized poses and maps...");
 	QApplication::processEvents();
-	QThread::msleep(100);
+	uSleep(100);
 	QApplication::processEvents();
 
 	dbOptimizedPoses_ = dbDriver_->loadOptimizedPoses();
@@ -1792,14 +1792,14 @@ void DatabaseViewer::updateIds()
 	progressDialog->appendText("Loading optimized poses and maps... done!");
 	progressDialog->incrementStep();
 	QApplication::processEvents();
-	QThread::msleep(100);
+	uSleep(100);
 	QApplication::processEvents();
 
 	if(ids_.size() && ui_->toolBox_statistics->isVisible())
 	{
 		progressDialog->appendText("Loading statistics...");
 		QApplication::processEvents();
-		QThread::msleep(100);
+		uSleep(100);
 		QApplication::processEvents();
 
 		UINFO("Update statistics...");
@@ -1808,7 +1808,7 @@ void DatabaseViewer::updateIds()
 		progressDialog->appendText("Loading statistics... done!");
 		progressDialog->incrementStep();
 		QApplication::processEvents();
-		QThread::msleep(100);
+		uSleep(100);
 		QApplication::processEvents();
 	}
 
@@ -1818,7 +1818,7 @@ void DatabaseViewer::updateIds()
 	{
 		progressDialog->appendText("Update database info...");
 		QApplication::processEvents();
-		QThread::msleep(100);
+		uSleep(100);
 		QApplication::processEvents();
 
 		updateInfo();
@@ -1826,7 +1826,7 @@ void DatabaseViewer::updateIds()
 		progressDialog->appendText("Update database info... done!");
 		progressDialog->incrementStep();
 		QApplication::processEvents();
-		QThread::msleep(100);
+		uSleep(100);
 		QApplication::processEvents();
 	}
 
@@ -1930,7 +1930,7 @@ void DatabaseViewer::updateIds()
 		{
 			progressDialog->appendText("Updating Graph View...");
 			QApplication::processEvents();
-			QThread::msleep(100);
+			uSleep(100);
 			QApplication::processEvents();
 
 			updateGraphView();
@@ -1938,7 +1938,7 @@ void DatabaseViewer::updateIds()
 			progressDialog->appendText("Updating Graph View... done!");
 			progressDialog->incrementStep();
 			QApplication::processEvents();
-			QThread::msleep(100);
+			uSleep(100);
 			QApplication::processEvents();
 		}
 	}
