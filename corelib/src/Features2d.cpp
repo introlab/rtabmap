@@ -40,6 +40,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <opencv2/core/version.hpp>
 #include <opencv2/opencv_modules.hpp>
 
+#ifdef RTABMAP_ORB_OCTREE
+#include "opencv/ORBextractor.h"
+#endif
+
 #if CV_MAJOR_VERSION < 3
 #include "opencv/Orb.h"
 #ifdef HAVE_OPENCV_GPU
@@ -445,6 +449,14 @@ Feature2D * Feature2D::create(Feature2D::Type type, const ParametersMap & parame
 	}
 #endif
 
+#ifndef RTABMAP_ORB_OCTREE
+	if(type == Feature2D::kFeatureOrbOctree)
+	{
+		UWARN("ORB OcTree feature cannot be used as RTAB-Map is not built with the option enabled. ORB is used instead.");
+		type = Feature2D::kFeatureOrb;
+	}
+#endif
+
 	Feature2D * feature2D = 0;
 	switch(type)
 	{
@@ -478,6 +490,9 @@ Feature2D * Feature2D::create(Feature2D::Type type, const ParametersMap & parame
 	case Feature2D::kFeatureKaze:
 		feature2D = new KAZE(parameters);
 		break;
+	case Feature2D::kFeatureOrbOctree:
+		feature2D = new ORBOctree(parameters);
+		break;
 #ifdef RTABMAP_NONFREE
 	default:
 		feature2D = new SURF(parameters);
@@ -494,7 +509,7 @@ Feature2D * Feature2D::create(Feature2D::Type type, const ParametersMap & parame
 	return feature2D;
 }
 
-std::vector<cv::KeyPoint> Feature2D::generateKeypoints(const cv::Mat & image, const cv::Mat & maskIn) const
+std::vector<cv::KeyPoint> Feature2D::generateKeypoints(const cv::Mat & image, const cv::Mat & maskIn)
 {
 	UASSERT(!image.empty());
 	UASSERT(image.type() == CV_8UC1);
@@ -725,7 +740,7 @@ void SURF::parseParameters(const ParametersMap & parameters)
 #endif
 }
 
-std::vector<cv::KeyPoint> SURF::generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask) const
+std::vector<cv::KeyPoint> SURF::generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask)
 {
 	UASSERT(!image.empty() && image.channels() == 1 && image.depth() == CV_8U);
 	std::vector<cv::KeyPoint> keypoints;
@@ -833,7 +848,7 @@ void SIFT::parseParameters(const ParametersMap & parameters)
 #endif
 }
 
-std::vector<cv::KeyPoint> SIFT::generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask) const
+std::vector<cv::KeyPoint> SIFT::generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask)
 {
 	UASSERT(!image.empty() && image.channels() == 1 && image.depth() == CV_8U);
 	std::vector<cv::KeyPoint> keypoints;
@@ -956,7 +971,7 @@ void ORB::parseParameters(const ParametersMap & parameters)
 	}
 }
 
-std::vector<cv::KeyPoint> ORB::generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask) const
+std::vector<cv::KeyPoint> ORB::generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask)
 {
 	UASSERT(!image.empty() && image.channels() == 1 && image.depth() == CV_8U);
 	std::vector<cv::KeyPoint> keypoints;
@@ -1164,7 +1179,7 @@ void FAST::parseParameters(const ParametersMap & parameters)
 	}
 }
 
-std::vector<cv::KeyPoint> FAST::generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask) const
+std::vector<cv::KeyPoint> FAST::generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask)
 {
 	UASSERT(!image.empty() && image.channels() == 1 && image.depth() == CV_8U);
 	std::vector<cv::KeyPoint> keypoints;
@@ -1330,7 +1345,7 @@ void GFTT::parseParameters(const ParametersMap & parameters)
 #endif
 }
 
-std::vector<cv::KeyPoint> GFTT::generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask) const
+std::vector<cv::KeyPoint> GFTT::generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask)
 {
 	UASSERT(!image.empty() && image.channels() == 1 && image.depth() == CV_8U);
 	std::vector<cv::KeyPoint> keypoints;
@@ -1499,7 +1514,7 @@ void BRISK::parseParameters(const ParametersMap & parameters)
 #endif
 }
 
-std::vector<cv::KeyPoint> BRISK::generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask) const
+std::vector<cv::KeyPoint> BRISK::generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask)
 {
 	UASSERT(!image.empty() && image.channels() == 1 && image.depth() == CV_8U);
 	std::vector<cv::KeyPoint> keypoints;
@@ -1559,7 +1574,7 @@ void KAZE::parseParameters(const ParametersMap & parameters)
 #endif
 }
 
-std::vector<cv::KeyPoint> KAZE::generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask) const
+std::vector<cv::KeyPoint> KAZE::generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask)
 {
 	UASSERT(!image.empty() && image.channels() == 1 && image.depth() == CV_8U);
 	std::vector<cv::KeyPoint> keypoints;
@@ -1587,6 +1602,73 @@ cv::Mat KAZE::generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::Key
 	UWARN("RTAB-Map is not built with OpenCV3 so Kaze feature cannot be used!");
 #endif
 	return descriptors;
+}
+
+//////////////////////////
+//ORBOctree
+//////////////////////////
+ORBOctree::ORBOctree(const ParametersMap & parameters) :
+		scaleFactor_(Parameters::defaultORBScaleFactor()),
+		nLevels_(Parameters::defaultORBNLevels()),
+		fastThreshold_(Parameters::defaultFASTThreshold())
+{
+	parseParameters(parameters);
+}
+
+ORBOctree::~ORBOctree()
+{
+}
+
+void ORBOctree::parseParameters(const ParametersMap & parameters)
+{
+	Feature2D::parseParameters(parameters);
+
+	Parameters::parse(parameters, Parameters::kORBScaleFactor(), scaleFactor_);
+	Parameters::parse(parameters, Parameters::kORBNLevels(), nLevels_);
+
+	Parameters::parse(parameters, Parameters::kFASTThreshold(), fastThreshold_);
+	Parameters::parse(parameters, Parameters::kFASTMinThreshold(), fastMinThreshold_);
+
+#ifdef RTABMAP_ORB_OCTREE
+	_orb.reset(new ORBextractor(this->getMaxFeatures(), scaleFactor_, nLevels_, fastThreshold_, fastMinThreshold_));
+#else
+	UWARN("RTAB-Map is not built with ORB OcTree option enabled so ORB OcTree feature cannot be used!");
+#endif
+}
+
+std::vector<cv::KeyPoint> ORBOctree::generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask)
+{
+	std::vector<cv::KeyPoint> keypoints;
+	descriptors_ = cv::Mat();
+#ifdef RTABMAP_ORB_OCTREE
+	UASSERT(!image.empty() && image.channels() == 1 && image.depth() == CV_8U);
+	cv::Mat imgRoi(image, roi);
+	cv::Mat maskRoi;
+	if(!mask.empty())
+	{
+		maskRoi = cv::Mat(mask, roi);
+	}
+
+	(*_orb)(imgRoi, maskRoi, keypoints, descriptors_);
+
+	if((int)keypoints.size() > this->getMaxFeatures())
+	{
+		limitKeypoints(keypoints, descriptors_, this->getMaxFeatures());
+	}
+#else
+	UWARN("RTAB-Map is not built with ORB OcTree option enabled so ORB OcTree feature cannot be used!");
+#endif
+	return keypoints;
+}
+
+cv::Mat ORBOctree::generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const
+{
+#ifdef RTABMAP_ORB_OCTREE
+	UASSERT_MSG((int)keypoints.size() == descriptors_.rows, uFormat("keypoints=%d descriptors=%d", (int)keypoints.size(), descriptors_.rows).c_str());
+#else
+	UWARN("RTAB-Map is not built with ORB OcTree option enabled so ORB OcTree feature cannot be used!");
+#endif
+	return descriptors_;
 }
 
 }

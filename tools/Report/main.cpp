@@ -280,10 +280,15 @@ int main(int argc, char * argv[])
 					}
 
 					std::multimap<int, Link> links;
-					driver->getAllLinks(links, true, true);
+					std::multimap<int, Link> allLinks;
+					driver->getAllLinks(allLinks, true, true);
 					std::multimap<int, Link> loopClosureLinks;
-					for(std::multimap<int, Link>::iterator jter=links.begin(); jter!=links.end(); ++jter)
+					for(std::multimap<int, Link>::iterator jter=allLinks.begin(); jter!=allLinks.end(); ++jter)
 					{
+						if(jter->second.from() == jter->second.to() || graph::findLink(links, jter->second.from(), jter->second.to(), true) == links.end())
+						{
+							links.insert(*jter);
+						}
 						if(jter->second.type() == Link::kGlobalClosure &&
 							graph::findLink(loopClosureLinks, jter->second.from(), jter->second.to()) == loopClosureLinks.end())
 						{

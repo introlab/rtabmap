@@ -153,6 +153,10 @@ int main(int argc, char * argv[])
 	}
 
 	std::string dbPath = argv[argc-1];
+	if(!UFile::exists(dbPath))
+	{
+		printf("Database %s doesn't exist!\n", dbPath.c_str());
+	}
 
 	printf("\nDatabase: %s\n", dbPath.c_str());
 	printf("Cluster radius = %f m\n", clusterRadius);

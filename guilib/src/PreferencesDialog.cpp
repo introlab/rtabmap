@@ -213,6 +213,11 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 #endif
 #endif
 
+#ifndef RTABMAP_ORB_OCTREE
+		_ui->comboBox_detector_strategy->setItemData(10, 0, Qt::UserRole - 1);
+		_ui->reextract_type->setItemData(10, 0, Qt::UserRole - 1);
+#endif
+
 #if CV_MAJOR_VERSION >= 3
 	_ui->groupBox_fast_opencv2->setEnabled(false);
 #else
@@ -2711,6 +2716,23 @@ bool PreferencesDialog::validateForm()
 				"for the re-extraction of features on loop closure."));
 				_ui->reextract_type->setCurrentIndex(Feature2D::kFeatureOrb);
 #endif
+	}
+#endif
+
+#ifndef RTABMAP_ORB_OCTREE
+	if (_ui->comboBox_detector_strategy->currentIndex() == Feature2D::kFeatureOrbOctree)
+	{
+		QMessageBox::warning(this, tr("Parameter warning"),
+			tr("Selected feature type (ORB Octree) is not available. ORB is set instead "
+				"for the bag-of-words dictionary."));
+		_ui->comboBox_detector_strategy->setCurrentIndex(Feature2D::kFeatureOrb);
+	}
+	if (_ui->reextract_type->currentIndex() == Feature2D::kFeatureOrbOctree)
+	{
+		QMessageBox::warning(this, tr("Parameter warning"),
+			tr("Selected feature type (ORB Octree) is not available on OpenCV2. ORB is set instead "
+				"for the re-extraction of features on loop closure."));
+				_ui->reextract_type->setCurrentIndex(Feature2D::kFeatureOrb);
 	}
 #endif
 

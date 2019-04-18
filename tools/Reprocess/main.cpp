@@ -55,7 +55,7 @@ void showUsage()
 			"   To see warnings when loop closures are rejected, add \"--uwarn\" argument.\n"
 			"  Options:\n"
 			"     -r                Use database stamps as input rate.\n"
-			"     -c \"path.ini\"   Configuration file, overwritting parameters read \n"
+			"     -c \"path.ini\"   Configuration file, overwriting parameters read \n"
 			"                       from the database. If custom parameters are also set as \n"
 			"                       arguments, they overwrite those in config file and the database.\n"
 			"     -g2         Assemble 2D occupancy grid map and save it to \"[output]_map.pgm\".\n"

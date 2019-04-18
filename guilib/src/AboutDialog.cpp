@@ -59,6 +59,13 @@ AboutDialog::AboutDialog(QWidget * parent) :
 	_ui->label_pcl_version->setText(PCL_VERSION_PRETTY);
 	_ui->label_vtk_version->setText(vtkVersion::GetVTKVersion());
 	_ui->label_qt_version->setText(qVersion());
+#ifdef RTABMAP_ORB_OCTREE
+	_ui->label_orboctree->setText("Yes");
+	_ui->label_orboctree_license->setEnabled(true);
+#else
+	_ui->label_orboctree->setText("No");
+	_ui->label_orboctree_license->setEnabled(false);
+#endif
 #ifdef RTABMAP_OCTOMAP
 	_ui->label_octomap->setText("Yes");
 	_ui->label_octomap_license->setEnabled(true);
