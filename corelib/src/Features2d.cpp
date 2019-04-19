@@ -1630,7 +1630,7 @@ void ORBOctree::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kFASTMinThreshold(), fastMinThreshold_);
 
 #ifdef RTABMAP_ORB_OCTREE
-	_orb.reset(new ORBextractor(this->getMaxFeatures(), scaleFactor_, nLevels_, fastThreshold_, fastMinThreshold_));
+	_orb = cv::Ptr<ORBextractor>(new ORBextractor(this->getMaxFeatures(), scaleFactor_, nLevels_, fastThreshold_, fastMinThreshold_));
 #else
 	UWARN("RTAB-Map is not built with ORB OcTree option enabled so ORB OcTree feature cannot be used!");
 #endif
