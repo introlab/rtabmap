@@ -81,7 +81,7 @@ then
    SCAN="--scan --Reg/Strategy $REG --OdomF2M/ScanMaxSize 10000 --OdomF2M/ScanSubtractRadius 0.5 --Odom/LOAMSensor 2 --Icp/MaxTranslation 2 --Icp/Epsilon 0.0001 --Icp/MaxCorrespondenceDistance 1.5 --Icp/CorrespondenceRatio 0.01 --Icp/PM true --Icp/PMOutlierRatio 0.7 --Icp/PMMatcherKnn 3 --Icp/PMMatcherEpsilon 1  $SCAN"
 fi
 
-RTABMAP_RGBD_TOOL="rtabmap-kitti_dataset"
+RTABMAP_KITTI_TOOL="rtabmap-kitti_dataset"
 if [ $DOCKER -eq 1 ]
 then
    # Select rtabmap built with os2 support or not
@@ -94,7 +94,7 @@ then
        TOOL_PREFIX="/root/rtabmap_loam/bin"
    fi
    RTABMAP_KITTI_TOOL="docker run -v $PWD/datasets/kitti:$KITTI_ROOT_PATH -v $PWD/results/kitti:$KITTI_RESULTS_PATH -i -t --rm introlab3it/rtabmap:jfr2018 $TOOL_PREFIX/rtabmap-kitti_dataset"
-if
+fi
 echo $RTABMAP_KITTI_TOOL
 
 for d in "${LIST[@]}"
