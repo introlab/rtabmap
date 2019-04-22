@@ -64,7 +64,7 @@ void KeypointItem::showDescription()
 	{
 		_placeHolder = new QGraphicsRectItem (this);
 		_placeHolder->setVisible(false);
-		if(qGray(pen().color().rgb() > 255/2))
+		if(qGray(pen().color().rgb()) > 255/2)
 		{
 			_placeHolder->setBrush(QBrush(QColor ( 0,0,0, 170 )));
 		}

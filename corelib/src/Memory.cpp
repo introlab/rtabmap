@@ -4142,7 +4142,10 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 	int preDecimation = 1;
 	std::vector<cv::Point3f> keypoints3D;
 	SensorData decimatedData;
-	if(!_useOdometryFeatures || data.keypoints().empty() || (int)data.keypoints().size() != data.descriptors().rows)
+	if(!_useOdometryFeatures ||
+		data.keypoints().empty() ||
+		(int)data.keypoints().size() != data.descriptors().rows ||
+		(_feature2D->getType() == Feature2D::kFeatureOrbOctree && data.descriptors().empty()))
 	{
 		if(_feature2D->getMaxFeatures() >= 0 && !data.imageRaw().empty() && !isIntermediateNode)
 		{
@@ -4423,7 +4426,6 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 			}
 
 			UASSERT_MSG(imagesRectified, "Cannot extract descriptors on not rectified image from keypoints which assumed to be undistorted");
-
 			descriptors = _feature2D->generateDescriptors(imageMono, keypoints);
 		}
 		t = timer.ticks();

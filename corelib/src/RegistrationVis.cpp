@@ -271,7 +271,8 @@ Transform RegistrationVis::computeTransformationImpl(
 				toSignature.sensorData().imageRaw().type() == CV_8UC1 ||
 				toSignature.sensorData().imageRaw().type() == CV_8UC3);
 
-		Feature2D * detector = createFeatureDetector();
+		Feature2D * detectorFrom = createFeatureDetector();
+		Feature2D * detectorTo = createFeatureDetector();
 		std::vector<cv::KeyPoint> kptsFrom;
 		cv::Mat imageFrom = fromSignature.sensorData().imageRaw();
 		cv::Mat imageTo = toSignature.sensorData().imageRaw();
@@ -301,7 +302,7 @@ Transform RegistrationVis::computeTransformationImpl(
 						}
 					}
 
-					kptsFrom = detector->generateKeypoints(
+					kptsFrom = detectorFrom->generateKeypoints(
 							imageFrom,
 							depthMask);
 				}
@@ -368,7 +369,7 @@ Transform RegistrationVis::computeTransformationImpl(
 			}
 			else
 			{
-				kptsFrom3D = detector->generateKeypoints3D(fromSignature.sensorData(), kptsFrom);
+				kptsFrom3D = detectorFrom->generateKeypoints3D(fromSignature.sensorData(), kptsFrom);
 			}
 
 			if(!imageFrom.empty() && !imageTo.empty())
@@ -442,7 +443,7 @@ Transform RegistrationVis::computeTransformationImpl(
 				std::vector<cv::Point3f> kptsTo3D;
 				if(_estimationType == 0 || _estimationType == 1 || !_forwardEstimateOnly)
 				{
-					kptsTo3D = detector->generateKeypoints3D(toSignature.sensorData(), kptsTo);
+					kptsTo3D = detectorTo->generateKeypoints3D(toSignature.sensorData(), kptsTo);
 				}
 
 				UASSERT(kptsFrom.size() == kptsFrom3DKept.size());
@@ -509,7 +510,7 @@ Transform RegistrationVis::computeTransformationImpl(
 						}
 					}
 
-					kptsTo = detector->generateKeypoints(
+					kptsTo = detectorTo->generateKeypoints(
 							imageTo,
 							depthMask);
 				}
@@ -555,7 +556,7 @@ Transform RegistrationVis::computeTransformationImpl(
 					imageFrom = tmp;
 				}
 				orignalWordsFromIds.clear();
-				descriptorsFrom = detector->generateDescriptors(imageFrom, kptsFrom);
+				descriptorsFrom = detectorFrom->generateDescriptors(imageFrom, kptsFrom);
 			}
 
 			cv::Mat descriptorsTo;
@@ -587,7 +588,7 @@ Transform RegistrationVis::computeTransformationImpl(
 						imageTo = tmp;
 					}
 
-					descriptorsTo = detector->generateDescriptors(imageTo, kptsTo);
+					descriptorsTo = detectorTo->generateDescriptors(imageTo, kptsTo);
 				}
 			}
 
@@ -618,9 +619,9 @@ Transform RegistrationVis::computeTransformationImpl(
 						   kptsFrom.size(),
 						   fromSignature.sensorData().keypoints3D().size());
 				}
-				kptsFrom3D = detector->generateKeypoints3D(fromSignature.sensorData(), kptsFrom);
+				kptsFrom3D = detectorFrom->generateKeypoints3D(fromSignature.sensorData(), kptsFrom);
 				UDEBUG("generated kptsFrom3D=%d", (int)kptsFrom3D.size());
-				if(detector->getMinDepth() > 0.0f || detector->getMaxDepth() > 0.0f)
+				if(detectorFrom->getMinDepth() > 0.0f || detectorFrom->getMaxDepth() > 0.0f)
 				{
 					//remove all keypoints/descriptors with no valid 3D points
 					UASSERT((int)kptsFrom.size() == descriptorsFrom.rows &&
@@ -688,8 +689,8 @@ Transform RegistrationVis::computeTransformationImpl(
 						   (int)kptsTo.size(),
 						   (int)toSignature.sensorData().keypoints3D().size());
 				}
-				kptsTo3D = detector->generateKeypoints3D(toSignature.sensorData(), kptsTo);
-				if(kptsTo3D.size() && (detector->getMinDepth() > 0.0f || detector->getMaxDepth() > 0.0f))
+				kptsTo3D = detectorTo->generateKeypoints3D(toSignature.sensorData(), kptsTo);
+				if(kptsTo3D.size() && (detectorTo->getMinDepth() > 0.0f || detectorTo->getMaxDepth() > 0.0f))
 				{
 					UDEBUG("");
 					//remove all keypoints/descriptors with no valid 3D points
@@ -793,6 +794,7 @@ Transform RegistrationVis::computeTransformationImpl(
 					UDEBUG("guessMatchToProjection=%d, cornersProjected=%d", _guessMatchToProjection?1:0, (int)cornersProjected.size());
 					if(cornersProjected.size())
 					{
+						int octaveError = 1;
 						if(_guessMatchToProjection)
 						{
 							// match frame to projected
@@ -831,6 +833,7 @@ Transform RegistrationVis::computeTransformationImpl(
 								if(indices[i].size() >= 2)
 								{
 									std::vector<int> descriptorsIndices(indices[i].size());
+									std::vector<int> descriptorsOctave(indices[i].size());
 									int oi=0;
 									if((int)indices[i].size() > descriptors.rows)
 									{
@@ -840,10 +843,12 @@ Transform RegistrationVis::computeTransformationImpl(
 									{
 										int octaveFrom = kptsFrom.at(projectedIndexToDescIndex[indices[i].at(j)]).octave & 255;
 										octaveFrom = octaveFrom < 128 ? octaveFrom : (-128 | octaveFrom);
-										if(octaveFrom==octave)
+										if(abs(octaveFrom-octave) <= octaveError)
 										{
 											descriptorsFrom.row(projectedIndexToDescIndex[indices[i].at(j)]).copyTo(descriptors.row(oi));
+											descriptorsOctave[oi] = octaveFrom;
 											descriptorsIndices[oi++] = indices[i].at(j);
+
 										}
 									}
 									descriptorsIndices.resize(oi);
@@ -851,10 +856,22 @@ Transform RegistrationVis::computeTransformationImpl(
 									{
 										std::vector<std::vector<cv::DMatch> > matches;
 										cv::BFMatcher matcher(descriptors.type()==CV_8U?cv::NORM_HAMMING:cv::NORM_L2SQR);
-										matcher.knnMatch(descriptorsTo.row(i), cv::Mat(descriptors, cv::Range(0, oi)), matches, 2);
+										matcher.knnMatch(descriptorsTo.row(i), cv::Mat(descriptors, cv::Range(0, oi)), matches, 2 + octaveError*2);
 										UASSERT(matches.size() == 1);
-										UASSERT(matches[0].size() == 2);
-										if(matches[0].at(0).distance < _nndr * matches[0].at(1).distance)
+										UASSERT(matches[0].size() >= 2);
+										float secondDistance = -1.0f;
+										std::set<int> addedOctaves;
+										for(unsigned int j=0; j<matches[0].size(); ++j)
+										{
+											int octave = descriptorsOctave.at(matches[0].at(j).trainIdx);
+											if(addedOctaves.find(octave) != addedOctaves.end())
+											{
+												secondDistance = matches[0].at(j).distance;
+												break;
+											}
+											addedOctaves.insert(octave);
+										}
+										if(secondDistance < 0.0f || matches[0].at(0).distance < _nndr * matches[0].at(1).distance)
 										{
 											matchedIndex = descriptorsIndices.at(matches[0].at(0).trainIdx);
 										}
@@ -868,7 +885,7 @@ Transform RegistrationVis::computeTransformationImpl(
 								{
 									int octaveFrom = kptsFrom.at(projectedIndexToDescIndex[indices[i].at(0)]).octave & 255;
 									octaveFrom = octaveFrom < 128 ? octaveFrom : (-128 | octaveFrom);
-									if(octaveFrom == octave)
+									if(abs(octaveFrom-octave) <= octaveError)
 									{
 										matchedIndex = indices[i].at(0);
 									}
@@ -962,7 +979,6 @@ Transform RegistrationVis::computeTransformationImpl(
 							// Process results (Nearest Neighbor Distance Ratio)
 							std::set<int> addedWordsTo;
 							std::set<int> addedWordsFrom;
-							std::set<int> indicesToIgnore;
 							double bruteForceTotalTime = 0.0;
 							double bruteForceDescCopy = 0.0;
 							UTimer bruteForceTimer;
@@ -987,6 +1003,7 @@ Transform RegistrationVis::computeTransformationImpl(
 									{
 										bruteForceTimer.restart();
 										std::vector<int> descriptorsIndices(indices[i].size());
+										std::vector<int> descriptorsOctave(indices[i].size());
 										int oi=0;
 										if((int)indices[i].size() > descriptors.rows)
 										{
@@ -997,9 +1014,10 @@ Transform RegistrationVis::computeTransformationImpl(
 										{
 											int octave = kptsTo[indices[i].at(j)].octave & 255;
 											octave = octave < 128 ? octave : (-128 | octave);
-											if(octaveFrom==octave)
+											if(abs(octaveFrom-octave) <= octaveError)
 											{
 												descriptorsTo.row(indices[i].at(j)).copyTo(descriptors.row(oi));
+												descriptorsOctave[oi] = octave;
 												descriptorsIndices[oi++] = indices[i].at(j);
 
 												indicesToIgnoretmp.push_back(indices[i].at(j));
@@ -1010,15 +1028,25 @@ Transform RegistrationVis::computeTransformationImpl(
 										{
 											std::vector<std::vector<cv::DMatch> > matches;
 											cv::BFMatcher matcher(descriptors.type()==CV_8U?cv::NORM_HAMMING:cv::NORM_L2SQR);
-											matcher.knnMatch(descriptorsFrom.row(matchedIndexFrom), cv::Mat(descriptors, cv::Range(0, oi)), matches, 2);
+											matcher.knnMatch(descriptorsFrom.row(matchedIndexFrom), cv::Mat(descriptors, cv::Range(0, oi)), matches, 2 + octaveError*2);
 											UASSERT(matches.size() == 1);
-											UASSERT(matches[0].size() == 2);
+											UASSERT(matches[0].size() >= 2);
 											bruteForceTotalTime+=bruteForceTimer.elapsed();
-											if(matches[0].at(0).distance < _nndr * matches[0].at(1).distance)
+											float secondDistance = -1.0f;
+											std::set<int> addedOctaves;
+											for(unsigned int j=0; j<matches[0].size(); ++j)
+											{
+												int octave = descriptorsOctave.at(matches[0].at(j).trainIdx);
+												if(addedOctaves.find(octave) != addedOctaves.end())
+												{
+													secondDistance = matches[0].at(j).distance;
+													break;
+												}
+												addedOctaves.insert(octave);
+											}
+											if(secondDistance < 0.0f || matches[0].at(0).distance < _nndr * secondDistance)
 											{
 												matchedIndexTo = descriptorsIndices.at(matches[0].at(0).trainIdx);
-
-												indicesToIgnore.insert(indicesToIgnore.begin(), indicesToIgnore.end());
 											}
 										}
 										else if(oi == 1)
@@ -1030,7 +1058,7 @@ Transform RegistrationVis::computeTransformationImpl(
 									{
 										int octave = kptsTo[indices[i].at(0)].octave & 255;
 										octave = octave < 128 ? octave : (-128 | octave);
-										if(octaveFrom == octave)
+										if(abs(octaveFrom-octave) <= octaveError)
 										{
 											matchedIndexTo = indices[i].at(0);
 										}
@@ -1077,7 +1105,7 @@ Transform RegistrationVis::computeTransformationImpl(
 							int newToId = orignalWordsFromIds.size()?orignalWordsFromIds.back():descriptorsFrom.rows;
 							for(unsigned int i = 0; i < kptsTo.size(); ++i)
 							{
-								if(addedWordsTo.find(i) == addedWordsTo.end() && indicesToIgnore.find(i) == indicesToIgnore.end())
+								if(addedWordsTo.find(i) == addedWordsTo.end())
 								{
 									wordsTo.insert(wordsTo.end(), std::make_pair(newToId, kptsTo[i]));
 									wordsDescTo.insert(wordsDescTo.end(), std::make_pair(newToId, descriptorsTo.row(i)));
@@ -1196,7 +1224,8 @@ Transform RegistrationVis::computeTransformationImpl(
 		toSignature.setWords(wordsTo);
 		toSignature.setWords3(words3To);
 		toSignature.setWordsDescriptors(wordsDescTo);
-		delete detector;
+		delete detectorFrom;
+		delete detectorTo;
 	}
 
 	/////////////////////
