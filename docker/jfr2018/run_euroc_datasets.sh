@@ -92,7 +92,7 @@ then
     F2F_params="--Odom/GuessMotion false --OdomVINS/ConfigPath ./euroc_stereo_config.yaml $F2F_params"
 fi
 
-RTABMAP_RGBD_TOOL="rtabmap-euroc_dataset"
+RTABMAP_EUROC_TOOL="rtabmap-euroc_dataset"
 if [ $DOCKER -eq 1 ]
 then
     # Select rtabmap built with os2 support or not
@@ -104,14 +104,14 @@ then
     then
         TOOL_PREFIX="/root/rtabmap_msckf/bin"
     fi
-    RTABMAP_RGBD_TOOL="docker run -v $PWD/datasets/euroc:$DATASET_ROOT_PATH -v $PWD/results/euroc:$EUROC_RESULTS_PATH -i -t --rm introlab3it/rtabmap:jfr2018 $TOOL_PREFIX/rtabmap-euroc_dataset"
+    RTABMAP_EUROC_TOOL="docker run -v $PWD/datasets/euroc:$DATASET_ROOT_PATH -v $PWD/results/euroc:$EUROC_RESULTS_PATH -i -t --rm introlab3it/rtabmap:jfr2018 $TOOL_PREFIX/rtabmap-euroc_dataset"
     if [ $STRATEGY -eq 6 ]
     then
         xhost +
-        RTABMAP_RGBD_TOOL="docker run -e DISPLAY=$DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix -v $PWD/datasets/euroc:$DATASET_ROOT_PATH -v $PWD/results/euroc:$EUROC_RESULTS_PATH -i -t --rm introlab3it/rtabmap:jfr2018 $TOOL_PREFIX/rtabmap-euroc_dataset"
+        RTABMAP_EUROC_TOOL="docker run -e DISPLAY=$DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix -v $PWD/datasets/euroc:$DATASET_ROOT_PATH -v $PWD/results/euroc:$EUROC_RESULTS_PATH -i -t --rm introlab3it/rtabmap:jfr2018 $TOOL_PREFIX/rtabmap-euroc_dataset"
     fi
 fi
-echo $RTABMAP_RGBD_TOOL
+echo $RTABMAP_EUROC_TOOL
 
 for d in "${LIST[@]}"
 do
@@ -124,7 +124,7 @@ do
        fi
     fi
 
-    taskset 0x1 $RTABMAP_RGBD_TOOL \
+    taskset 0x1 $RTABMAP_EUROC_TOOL \
        --Rtabmap/PublishRAMUsage true\
        --RGBD/LinearUpdate 0\
        --RGBD/AngularUpdate 0\
@@ -143,6 +143,7 @@ do
        --OdomORBSLAM2/MaxFeatures 1200\
        --output "$EUROC_RESULTS_PATH/$d"\
        --output_name $OUTPUT\
+       --quiet\
        $DATASET_ROOT_PATH/$d
 done
 # For V2_03_difficult: --Vis/MinInliers 10 --disp StereoBM/NumDisparities 32 --StereoBM/UniquenessRatio 5 --Vis/PnPReprojError 3
