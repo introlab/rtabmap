@@ -345,6 +345,61 @@ unsigned int VWDictionary::getIndexMemoryUsed() const
 	return _flannIndex->memoryUsed();
 }
 
+cv::Mat VWDictionary::convertBinTo32F(const cv::Mat & descriptorsIn)
+{
+	// Old approach
+	//cv::Mat descriptorsOut;
+	//descriptorsIn.convertTo(descriptorsOut, CV_32F);
+	//return descriptorsOut;
+
+	// New approach
+	UASSERT(descriptorsIn.type() == CV_8UC1);
+	cv::Mat descriptorsOut(descriptorsIn.rows, descriptorsIn.cols*8, CV_32FC1);
+	for(int i=0; i<descriptorsIn.rows; ++i)
+	{
+		const unsigned char * ptrIn = descriptorsIn.ptr(i);
+		float * ptrOut = descriptorsOut.ptr<float>(i);
+		for(int j=0; j<descriptorsIn.cols; ++j)
+		{
+			int jo = j*8;
+			ptrOut[jo] = (ptrIn[j] & 1) == 1?1.0f:0.0f;
+			ptrOut[jo+1] = (ptrIn[j] & (1<<1)) != 0?1.0f:0.0f;
+			ptrOut[jo+2] = (ptrIn[j] & (1<<2)) != 0?1.0f:0.0f;
+			ptrOut[jo+3] = (ptrIn[j] & (1<<3)) != 0?1.0f:0.0f;
+			ptrOut[jo+4] = (ptrIn[j] & (1<<4)) != 0?1.0f:0.0f;
+			ptrOut[jo+5] = (ptrIn[j] & (1<<5)) != 0?1.0f:0.0f;
+			ptrOut[jo+6] = (ptrIn[j] & (1<<6)) != 0?1.0f:0.0f;
+			ptrOut[jo+7] = (ptrIn[j] & (1<<7)) != 0?1.0f:0.0f;
+		}
+	}
+	return descriptorsOut;
+}
+
+cv::Mat VWDictionary::convert32FToBin(const cv::Mat & descriptorsIn)
+{
+	UASSERT(descriptorsIn.type() == CV_32FC1 && descriptorsIn.cols % 8 == 0);
+	cv::Mat descriptorsOut(descriptorsIn.rows, descriptorsIn.cols/8, CV_8UC1);
+	for(int i=0; i<descriptorsIn.rows; ++i)
+	{
+		const float * ptrIn = descriptorsIn.ptr<float>(i);
+		unsigned char * ptrOut = descriptorsOut.ptr(i);
+		for(int j=0; j<descriptorsOut.cols; ++j)
+		{
+			int jo = j*8;
+			ptrOut[j] =
+					(unsigned char)(ptrIn[jo] == 0?0:1) |
+					(ptrIn[jo+1] == 0?0:(1<<1)) |
+					(ptrIn[jo+2] == 0?0:(1<<2)) |
+					(ptrIn[jo+3] == 0?0:(1<<3)) |
+					(ptrIn[jo+4] == 0?0:(1<<4)) |
+					(ptrIn[jo+5] == 0?0:(1<<5)) |
+					(ptrIn[jo+6] == 0?0:(1<<6)) |
+					(ptrIn[jo+7] == 0?0:(1<<7));
+		}
+	}
+	return descriptorsOut;
+}
+
 void VWDictionary::update()
 {
 	ULOGGER_DEBUG("");
@@ -385,9 +440,9 @@ void VWDictionary::update()
 					if(w->getDescriptor().type() == CV_8U)
 					{
 						useDistanceL1_ = true;
-						if(_strategy == kNNFlannKdTree || _strategy == kNNFlannNaive)
+						if(_strategy == kNNFlannKdTree)
 						{
-							w->getDescriptor().convertTo(descriptor, CV_32F);
+							descriptor = convertBinTo32F(w->getDescriptor());
 						}
 						else
 						{
@@ -475,7 +530,7 @@ void VWDictionary::update()
 				if(_visualWords.begin()->second->getDescriptor().type() == CV_8U)
 				{
 					useDistanceL1_ = true;
-					if(_strategy == kNNFlannKdTree || _strategy == kNNFlannNaive)
+					if(_strategy == kNNFlannKdTree)
 					{
 						type = CV_32F;
 					}
@@ -501,9 +556,9 @@ void VWDictionary::update()
 					cv::Mat descriptor;
 					if(iter->second->getDescriptor().type() == CV_8U)
 					{
-						if(_strategy == kNNFlannKdTree || _strategy == kNNFlannNaive)
+						if(_strategy == kNNFlannKdTree)
 						{
-							iter->second->getDescriptor().convertTo(descriptor, CV_32F);
+							descriptor = convertBinTo32F(iter->second->getDescriptor());
 						}
 						else
 						{
@@ -631,8 +686,9 @@ void VWDictionary::removeAllWordRef(int wordId, int signatureId)
 	}
 }
 
-std::list<int> VWDictionary::addNewWords(const cv::Mat & descriptorsIn,
-							   int signatureId)
+std::list<int> VWDictionary::addNewWords(
+		const cv::Mat & descriptorsIn,
+		int signatureId)
 {
 	UDEBUG("id=%d descriptors=%d", signatureId, descriptorsIn.rows);
 	UTimer timer;
@@ -674,9 +730,9 @@ std::list<int> VWDictionary::addNewWords(const cv::Mat & descriptorsIn,
 	if(descriptorsIn.type() == CV_8U)
 	{
 		useDistanceL1_ = true;
-		if(_strategy == kNNFlannKdTree || _strategy == kNNFlannNaive)
+		if(_strategy == kNNFlannKdTree)
 		{
-			descriptorsIn.convertTo(descriptors, CV_32F);
+			descriptors = convertBinTo32F(descriptorsIn);
 		}
 		else
 		{
@@ -1004,9 +1060,9 @@ std::vector<int> VWDictionary::findNN(const cv::Mat & queryIn) const
 		cv::Mat query;
 		if(queryIn.type() == CV_8U)
 		{
-			if(_strategy == kNNFlannKdTree || _strategy == kNNFlannNaive)
+			if(_strategy == kNNFlannKdTree)
 			{
-				queryIn.convertTo(query, CV_32F);
+				query = convertBinTo32F(queryIn);
 			}
 			else
 			{
@@ -1129,9 +1185,9 @@ std::vector<int> VWDictionary::findNN(const cv::Mat & queryIn) const
 				cv::Mat descriptor;
 				if(vw->getDescriptor().type() == CV_8U)
 				{
-					if(_strategy == kNNFlannKdTree || _strategy == kNNFlannNaive)
+					if(_strategy == kNNFlannKdTree)
 					{
-						vw->getDescriptor().convertTo(descriptor, CV_32F);
+						descriptor = convertBinTo32F(vw->getDescriptor());
 					}
 					else
 					{

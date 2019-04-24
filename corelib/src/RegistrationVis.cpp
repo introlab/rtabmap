@@ -794,7 +794,6 @@ Transform RegistrationVis::computeTransformationImpl(
 					UDEBUG("guessMatchToProjection=%d, cornersProjected=%d", _guessMatchToProjection?1:0, (int)cornersProjected.size());
 					if(cornersProjected.size())
 					{
-						int octaveError = 1;
 						if(_guessMatchToProjection)
 						{
 							// match frame to projected
@@ -826,14 +825,10 @@ Transform RegistrationVis::computeTransformationImpl(
 							cv::Mat descriptors(10, descriptorsTo.cols, descriptorsTo.type());
 							for(unsigned int i = 0; i < pointsToMat.rows; ++i)
 							{
-								// Make octave compatible with SIFT packed octave (https://github.com/opencv/opencv/issues/4554)
-								int octave = kptsTo[i].octave & 255;
-								octave = octave < 128 ? octave : (-128 | octave);
 								int matchedIndex = -1;
 								if(indices[i].size() >= 2)
 								{
 									std::vector<int> descriptorsIndices(indices[i].size());
-									std::vector<int> descriptorsOctave(indices[i].size());
 									int oi=0;
 									if((int)indices[i].size() > descriptors.rows)
 									{
@@ -841,54 +836,25 @@ Transform RegistrationVis::computeTransformationImpl(
 									}
 									for(unsigned int j=0; j<indices[i].size(); ++j)
 									{
-										int octaveFrom = kptsFrom.at(projectedIndexToDescIndex[indices[i].at(j)]).octave & 255;
-										octaveFrom = octaveFrom < 128 ? octaveFrom : (-128 | octaveFrom);
-										if(abs(octaveFrom-octave) <= octaveError)
-										{
-											descriptorsFrom.row(projectedIndexToDescIndex[indices[i].at(j)]).copyTo(descriptors.row(oi));
-											descriptorsOctave[oi] = octaveFrom;
-											descriptorsIndices[oi++] = indices[i].at(j);
-
-										}
+										descriptorsFrom.row(projectedIndexToDescIndex[indices[i].at(j)]).copyTo(descriptors.row(oi));
+										descriptorsIndices[oi++] = indices[i].at(j);
 									}
 									descriptorsIndices.resize(oi);
-									if(oi >=2)
+									UASSERT(oi >=2);
+
+									std::vector<std::vector<cv::DMatch> > matches;
+									cv::BFMatcher matcher(descriptors.type()==CV_8U?cv::NORM_HAMMING:cv::NORM_L2SQR);
+									matcher.knnMatch(descriptorsTo.row(i), cv::Mat(descriptors, cv::Range(0, oi)), matches, 2);
+									UASSERT(matches.size() == 1);
+									UASSERT(matches[0].size() == 2);
+									if(matches[0].at(0).distance < _nndr * matches[0].at(1).distance)
 									{
-										std::vector<std::vector<cv::DMatch> > matches;
-										cv::BFMatcher matcher(descriptors.type()==CV_8U?cv::NORM_HAMMING:cv::NORM_L2SQR);
-										matcher.knnMatch(descriptorsTo.row(i), cv::Mat(descriptors, cv::Range(0, oi)), matches, 2 + octaveError*2);
-										UASSERT(matches.size() == 1);
-										UASSERT(matches[0].size() >= 2);
-										float secondDistance = -1.0f;
-										std::set<int> addedOctaves;
-										for(unsigned int j=0; j<matches[0].size(); ++j)
-										{
-											int octave = descriptorsOctave.at(matches[0].at(j).trainIdx);
-											if(addedOctaves.find(octave) != addedOctaves.end())
-											{
-												secondDistance = matches[0].at(j).distance;
-												break;
-											}
-											addedOctaves.insert(octave);
-										}
-										if(secondDistance < 0.0f || matches[0].at(0).distance < _nndr * matches[0].at(1).distance)
-										{
-											matchedIndex = descriptorsIndices.at(matches[0].at(0).trainIdx);
-										}
-									}
-									else if(oi == 1)
-									{
-										matchedIndex = descriptorsIndices[0];
+										matchedIndex = descriptorsIndices.at(matches[0].at(0).trainIdx);
 									}
 								}
 								else if(indices[i].size() == 1)
 								{
-									int octaveFrom = kptsFrom.at(projectedIndexToDescIndex[indices[i].at(0)]).octave & 255;
-									octaveFrom = octaveFrom < 128 ? octaveFrom : (-128 | octaveFrom);
-									if(abs(octaveFrom-octave) <= octaveError)
-									{
-										matchedIndex = indices[i].at(0);
-									}
+									matchedIndex = indices[i].at(0);
 								}
 
 								if(matchedIndex >= 0)
@@ -994,74 +960,38 @@ Transform RegistrationVis::computeTransformationImpl(
 
 								if(util3d::isFinite(kptsFrom3D[matchedIndexFrom]))
 								{
-									// Make octave compatible with SIFT packed octave (https://github.com/opencv/opencv/issues/4554)
-									int octaveFrom = kptsFrom.at(matchedIndexFrom).octave & 255;
-									octaveFrom = octaveFrom < 128 ? octaveFrom : (-128 | octaveFrom);
-
 									int matchedIndexTo = -1;
 									if(indices[i].size() >= 2)
 									{
 										bruteForceTimer.restart();
 										std::vector<int> descriptorsIndices(indices[i].size());
-										std::vector<int> descriptorsOctave(indices[i].size());
 										int oi=0;
 										if((int)indices[i].size() > descriptors.rows)
 										{
 											descriptors.resize(indices[i].size());
 										}
-										std::list<int> indicesToIgnoretmp;
 										for(unsigned int j=0; j<indices[i].size(); ++j)
 										{
-											int octave = kptsTo[indices[i].at(j)].octave & 255;
-											octave = octave < 128 ? octave : (-128 | octave);
-											if(abs(octaveFrom-octave) <= octaveError)
-											{
-												descriptorsTo.row(indices[i].at(j)).copyTo(descriptors.row(oi));
-												descriptorsOctave[oi] = octave;
-												descriptorsIndices[oi++] = indices[i].at(j);
-
-												indicesToIgnoretmp.push_back(indices[i].at(j));
-											}
+											descriptorsTo.row(indices[i].at(j)).copyTo(descriptors.row(oi));
+											descriptorsIndices[oi++] = indices[i].at(j);
 										}
 										bruteForceDescCopy += bruteForceTimer.ticks();
-										if(oi >=2)
+										UASSERT(oi >=2);
+
+										std::vector<std::vector<cv::DMatch> > matches;
+										cv::BFMatcher matcher(descriptors.type()==CV_8U?cv::NORM_HAMMING:cv::NORM_L2SQR);
+										matcher.knnMatch(descriptorsFrom.row(matchedIndexFrom), cv::Mat(descriptors, cv::Range(0, oi)), matches, 2);
+										UASSERT(matches.size() == 1);
+										UASSERT(matches[0].size() == 2);
+										bruteForceTotalTime+=bruteForceTimer.elapsed();
+										if(matches[0].at(0).distance < _nndr * matches[0].at(1).distance)
 										{
-											std::vector<std::vector<cv::DMatch> > matches;
-											cv::BFMatcher matcher(descriptors.type()==CV_8U?cv::NORM_HAMMING:cv::NORM_L2SQR);
-											matcher.knnMatch(descriptorsFrom.row(matchedIndexFrom), cv::Mat(descriptors, cv::Range(0, oi)), matches, 2 + octaveError*2);
-											UASSERT(matches.size() == 1);
-											UASSERT(matches[0].size() >= 2);
-											bruteForceTotalTime+=bruteForceTimer.elapsed();
-											float secondDistance = -1.0f;
-											std::set<int> addedOctaves;
-											for(unsigned int j=0; j<matches[0].size(); ++j)
-											{
-												int octave = descriptorsOctave.at(matches[0].at(j).trainIdx);
-												if(addedOctaves.find(octave) != addedOctaves.end())
-												{
-													secondDistance = matches[0].at(j).distance;
-													break;
-												}
-												addedOctaves.insert(octave);
-											}
-											if(secondDistance < 0.0f || matches[0].at(0).distance < _nndr * secondDistance)
-											{
-												matchedIndexTo = descriptorsIndices.at(matches[0].at(0).trainIdx);
-											}
-										}
-										else if(oi == 1)
-										{
-											matchedIndexTo = descriptorsIndices[0];
+											matchedIndexTo = descriptorsIndices.at(matches[0].at(0).trainIdx);
 										}
 									}
 									else if(indices[i].size() == 1)
 									{
-										int octave = kptsTo[indices[i].at(0)].octave & 255;
-										octave = octave < 128 ? octave : (-128 | octave);
-										if(abs(octaveFrom-octave) <= octaveError)
-										{
-											matchedIndexTo = indices[i].at(0);
-										}
+										matchedIndexTo = indices[i].at(0);
 									}
 
 									int id = orignalWordsFromIds.size()?orignalWordsFromIds[matchedIndexFrom]:matchedIndexFrom;
@@ -1147,11 +1077,18 @@ Transform RegistrationVis::computeTransformationImpl(
 					// match between all descriptors
 					VWDictionary dictionary(_featureParameters);
 					std::list<int> fromWordIds;
-					for (int i = 0; i < descriptorsFrom.rows; ++i)
+					if(orignalWordsFromIds.empty())
 					{
-						int id = orignalWordsFromIds.size() ? orignalWordsFromIds[i] : i;
-						dictionary.addWord(new VisualWord(id, descriptorsFrom.row(i), 1));
-						fromWordIds.push_back(id);
+						fromWordIds = dictionary.addNewWords(descriptorsFrom, 1);
+					}
+					else
+					{
+						for (int i = 0; i < descriptorsFrom.rows; ++i)
+						{
+							int id = orignalWordsFromIds[i];
+							dictionary.addWord(new VisualWord(id, descriptorsFrom.row(i), 1));
+							fromWordIds.push_back(id);
+						}
 					}
 
 					std::list<int> toWordIds;
