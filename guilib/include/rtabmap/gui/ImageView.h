@@ -67,6 +67,9 @@ public:
 	bool isGraphicsViewScaled() const;
 	bool isGraphicsViewScaledToHeight() const;
 	const QColor & getDefaultBackgroundColor() const;
+	const QColor & getDefaultFeatureColor() const;
+	const QColor & getDefaultMatchingFeatureColor() const;
+	const QColor & getDefaultMatchingLineColor() const;
 	const QColor & getBackgroundColor() const;
 	uCvQtDepthColorMap getDepthColorMap() const;
 
@@ -80,6 +83,9 @@ public:
 	void setGraphicsViewScaled(bool scaled);
 	void setGraphicsViewScaledToHeight(bool scaled);
 	void setDefaultBackgroundColor(const QColor & color);
+	void setDefaultFeatureColor(const QColor & color);
+	void setDefaultMatchingFeatureColor(const QColor & color);
+	void setDefaultMatchingLineColor(const QColor & color);
 	void setBackgroundColor(const QColor & color);
 
 	void setFeatures(const std::multimap<int, cv::KeyPoint> & refWords, const cv::Mat & depth = cv::Mat(), const QColor & color = Qt::yellow);
@@ -117,18 +123,25 @@ private Q_SLOTS:
 private:
 	void updateOpacity();
 	void computeScaleOffsets(const QRect & targetRect, float & scale, float & offsetX, float & offsetY) const;
+	QIcon createIcon(const QColor & color);
 
 private:
 	QString _savedFileName;
 	int _alpha;
 	int _featuresSize;
 	QColor _defaultBgColor;
+	QColor _defaultFeatureColor;
+	QColor _defaultMatchingFeatureColor;
+	QColor _defaultMatchingLineColor;
 
 	QMenu * _menu;
 	QAction * _showImage;
 	QAction * _showImageDepth;
 	QAction * _showFeatures;
 	QAction * _showLines;
+	QAction * _setFeatureColor;
+	QAction * _setMatchingFeatureColor;
+	QAction * _setMatchingLineColor;
 	QAction * _saveImage;
 	QAction * _setAlpha;
 	QAction * _setFeaturesSize;
@@ -140,6 +153,7 @@ private:
 	QAction * _colorMapBlackToWhite;
 	QAction * _colorMapRedToBlue;
 	QAction * _colorMapBlueToRed;
+	QMenu * _featureMenu;
 	QMenu * _scaleMenu;
 
 	QGraphicsView * _graphicsView;

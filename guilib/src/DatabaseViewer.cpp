@@ -4820,11 +4820,10 @@ void DatabaseViewer::updateWordsMatching()
 	int to = ids_.at(ui_->horizontalSlider_B->value());
 	if(from && to)
 	{
-		int alpha = 70;
 		ui_->graphicsView_A->clearLines();
-		ui_->graphicsView_A->setFeaturesColor(QColor(255, 255, 0, alpha)); // yellow
+		ui_->graphicsView_A->setFeaturesColor(ui_->graphicsView_A->getDefaultFeatureColor());
 		ui_->graphicsView_B->clearLines();
-		ui_->graphicsView_B->setFeaturesColor(QColor(255, 255, 0, alpha)); // yellow
+		ui_->graphicsView_B->setFeaturesColor(ui_->graphicsView_B->getDefaultFeatureColor());
 
 		const QMultiMap<int, KeypointItem*> & wordsA = ui_->graphicsView_A->getFeatures();
 		const QMultiMap<int, KeypointItem*> & wordsB = ui_->graphicsView_B->getFeatures();
@@ -4836,8 +4835,8 @@ void DatabaseViewer::updateWordsMatching()
 				if(ids[i] > 0 && wordsA.count(ids[i]) == 1 && wordsB.count(ids[i]) == 1)
 				{
 					// PINK features
-					ui_->graphicsView_A->setFeatureColor(ids[i], Qt::magenta);
-					ui_->graphicsView_B->setFeatureColor(ids[i], Qt::magenta);
+					ui_->graphicsView_A->setFeatureColor(ids[i], ui_->graphicsView_A->getDefaultMatchingFeatureColor());
+					ui_->graphicsView_B->setFeatureColor(ids[i], ui_->graphicsView_B->getDefaultMatchingFeatureColor());
 
 					// Add lines
 					// Draw lines between corresponding features...
@@ -4861,14 +4860,14 @@ void DatabaseViewer::updateWordsMatching()
 							kptA->rect().y()+kptA->rect().height()/2,
 							kptB->rect().x()+kptB->rect().width()/2+deltaX,
 							kptB->rect().y()+kptB->rect().height()/2+deltaY,
-							Qt::cyan);
+							ui_->graphicsView_A->getDefaultMatchingLineColor());
 
 					ui_->graphicsView_B->addLine(
 							kptA->rect().x()+kptA->rect().width()/2-deltaX,
 							kptA->rect().y()+kptA->rect().height()/2-deltaY,
 							kptB->rect().x()+kptB->rect().width()/2,
 							kptB->rect().y()+kptB->rect().height()/2,
-							Qt::cyan);
+							ui_->graphicsView_B->getDefaultMatchingLineColor());
 				}
 			}
 			ui_->graphicsView_A->update();

@@ -4313,14 +4313,14 @@ void MainWindow::drawKeypoints(const std::multimap<int, cv::KeyPoint> & refWords
 				iter->first.y,
 				(iter->second.x*scaleLoop+loopMarginX+deltaX-sourceMarginX)/scaleSource,
 				(iter->second.y*scaleLoop+loopMarginY+deltaY-sourceMarginY)/scaleSource,
-				Qt::cyan);
+				_ui->imageView_source->getDefaultMatchingLineColor());
 
 		_ui->imageView_loopClosure->addLine(
 				(iter->first.x*scaleSource+sourceMarginX-deltaX-loopMarginX)/scaleLoop,
 				(iter->first.y*scaleSource+sourceMarginY-deltaY-loopMarginY)/scaleLoop,
 				iter->second.x,
 				iter->second.y,
-				Qt::cyan);
+				_ui->imageView_loopClosure->getDefaultMatchingLineColor());
 	}
 	_ui->imageView_source->update();
 	_ui->imageView_loopClosure->update();

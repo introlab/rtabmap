@@ -36,6 +36,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QGraphicsEffect>
 #include <QInputDialog>
 #include <QVBoxLayout>
+#include <QColorDialog>
 #include <QGraphicsRectItem>
 #include "rtabmap/utilite/ULogger.h"
 #include "rtabmap/gui/KeypointItem.h"
@@ -148,12 +149,22 @@ private:
 	int _width;
 };
 
+QIcon ImageView::createIcon(const QColor & color)
+{
+	QPixmap pixmap(50, 50);
+	pixmap.fill(color);
+	return QIcon(pixmap);
+}
+
 ImageView::ImageView(QWidget * parent) :
 		QWidget(parent),
 		_savedFileName((QDir::homePath()+ "/") + "picture" + ".png"),
 		_alpha(50),
 		_featuresSize(0.0f),
 		_defaultBgColor(Qt::black),
+		_defaultFeatureColor(Qt::yellow),
+		_defaultMatchingFeatureColor(Qt::magenta),
+		_defaultMatchingLineColor(Qt::cyan),
 		_imageItem(0),
 		_imageDepthItem(0)
 {
@@ -173,13 +184,24 @@ ImageView::ImageView(QWidget * parent) :
 	_showImageDepth = _menu->addAction(tr("Show image depth"));
 	_showImageDepth->setCheckable(true);
 	_showImageDepth->setChecked(false);
-	_showFeatures = _menu->addAction(tr("Show features"));
+	_featureMenu = _menu->addMenu("Features");
+	_showFeatures = _featureMenu->addAction(tr("Show features"));
 	_showFeatures->setCheckable(true);
 	_showFeatures->setChecked(true);
-	_setFeaturesSize = _menu->addAction(tr("Set features size..."));
-	_showLines = _menu->addAction(tr("Show lines"));
+	_setFeaturesSize = _featureMenu->addAction(tr("Set features size..."));
+	_showLines = _featureMenu->addAction(tr("Show lines"));
 	_showLines->setCheckable(true);
 	_showLines->setChecked(true);
+	_setFeatureColor = _featureMenu->addAction(tr("Set default feature color"));
+	_setFeatureColor->setIcon(createIcon(_defaultFeatureColor));
+	_setFeatureColor->setIconVisibleInMenu(true);
+	_setMatchingFeatureColor = _featureMenu->addAction(tr("Set default correspondence color"));
+	_setMatchingFeatureColor->setIcon(createIcon(_defaultMatchingFeatureColor));
+	_setMatchingFeatureColor->setIconVisibleInMenu(true);
+	_setMatchingLineColor = _featureMenu->addAction(tr("Set default line color"));
+	_setMatchingLineColor->setIcon(createIcon(_defaultMatchingLineColor));
+	_setMatchingLineColor->setIconVisibleInMenu(true);
+	_setAlpha = _featureMenu->addAction(tr("Set transparency..."));
 	_graphicsViewMode = _menu->addAction(tr("Graphics view"));
 	_graphicsViewMode->setCheckable(true);
 	_graphicsViewMode->setChecked(false);
@@ -216,7 +238,6 @@ ImageView::ImageView(QWidget * parent) :
 	group->addAction(_colorMapBlackToWhite);
 	group->addAction(_colorMapRedToBlue);
 	group->addAction(_colorMapBlueToRed);
-	_setAlpha = _menu->addAction(tr("Set transparency..."));
 	_saveImage = _menu->addAction(tr("Save picture..."));
 	_saveImage->setEnabled(false);
 
@@ -240,6 +261,9 @@ void ImageView::saveSettings(QSettings & settings, const QString & group) const
 	settings.setValue("lines_shown", this->isLinesShown());
 	settings.setValue("alpha", this->getAlpha());
 	settings.setValue("bg_color", this->getDefaultBackgroundColor());
+	settings.setValue("feature_color", this->getDefaultFeatureColor());
+	settings.setValue("matching_feature_color", this->getDefaultMatchingFeatureColor());
+	settings.setValue("matching_line_color", this->getDefaultMatchingLineColor());
 	settings.setValue("graphics_view", this->isGraphicsViewMode());
 	settings.setValue("graphics_view_scale", this->isGraphicsViewScaled());
 	settings.setValue("graphics_view_scale_to_height", this->isGraphicsViewScaledToHeight());
@@ -263,6 +287,9 @@ void ImageView::loadSettings(QSettings & settings, const QString & group)
 	this->setLinesShown(settings.value("lines_shown", this->isLinesShown()).toBool());
 	this->setAlpha(settings.value("alpha", this->getAlpha()).toInt());
 	this->setDefaultBackgroundColor(settings.value("bg_color", this->getDefaultBackgroundColor()).value<QColor>());
+	this->setDefaultFeatureColor(settings.value("feature_color", this->getDefaultFeatureColor()).value<QColor>());
+	this->setDefaultMatchingFeatureColor(settings.value("matching_feature_color", this->getDefaultMatchingFeatureColor()).value<QColor>());
+	this->setDefaultMatchingLineColor(settings.value("matching_line_color", this->getDefaultMatchingLineColor()).value<QColor>());
 	this->setGraphicsViewMode(settings.value("graphics_view", this->isGraphicsViewMode()).toBool());
 	this->setGraphicsViewScaled(settings.value("graphics_view_scale", this->isGraphicsViewScaled()).toBool());
 	this->setGraphicsViewScaledToHeight(settings.value("graphics_view_scale_to_height", this->isGraphicsViewScaledToHeight()).toBool());
@@ -315,6 +342,18 @@ bool ImageView::isGraphicsViewScaledToHeight() const
 const QColor & ImageView::getDefaultBackgroundColor() const
 {
 	return _defaultBgColor;
+}
+const QColor & ImageView::getDefaultFeatureColor() const
+{
+	return _defaultFeatureColor;
+}
+const QColor & ImageView::getDefaultMatchingFeatureColor() const
+{
+	return _defaultMatchingFeatureColor;
+}
+const QColor & ImageView::getDefaultMatchingLineColor() const
+{
+	return _defaultMatchingLineColor;
 }
 
 const QColor & ImageView::getBackgroundColor() const
@@ -525,6 +564,19 @@ void ImageView::setDefaultBackgroundColor(const QColor & color)
 	setBackgroundColor(color);
 }
 
+void ImageView::setDefaultFeatureColor(const QColor & color)
+{
+	_defaultFeatureColor = color;
+}
+void ImageView::setDefaultMatchingFeatureColor(const QColor & color)
+{
+	_defaultMatchingFeatureColor = color;
+}
+void ImageView::setDefaultMatchingLineColor(const QColor & color)
+{
+	_defaultMatchingLineColor = color;
+}
+
 void ImageView::setBackgroundColor(const QColor & color)
 {
 	_graphicsView->setBackgroundBrush(QBrush(color));
@@ -670,6 +722,13 @@ void ImageView::resizeEvent(QResizeEvent* event)
 
 void ImageView::contextMenuEvent(QContextMenuEvent * e)
 {
+	_setFeatureColor->setIcon(createIcon(_defaultFeatureColor));
+	_setMatchingFeatureColor->setIcon(createIcon(_defaultMatchingFeatureColor));
+	_setMatchingLineColor->setIcon(createIcon(_defaultMatchingLineColor));
+	_setFeatureColor->setIconVisibleInMenu(true);
+	_setMatchingFeatureColor->setIconVisibleInMenu(true);
+	_setMatchingLineColor->setIconVisibleInMenu(true);
+
 	QAction * action = _menu->exec(e->globalPos());
 	if(action == _saveImage)
 	{
@@ -708,6 +767,41 @@ void ImageView::contextMenuEvent(QContextMenuEvent * e)
 	{
 		this->setFeaturesShown(_showFeatures->isChecked());
 		Q_EMIT configChanged();
+	}
+	else if(action == _setFeatureColor ||
+			action == _setMatchingFeatureColor ||
+			action == _setMatchingLineColor)
+	{
+		QColor color;
+		if(action == _setMatchingFeatureColor)
+		{
+			color = _defaultMatchingFeatureColor;
+		}
+		else if(action == _setMatchingLineColor)
+		{
+			color = _defaultMatchingLineColor;
+		}
+		else //if(action == _setFeatureColor)
+		{
+			color = _defaultFeatureColor;
+		}
+		color = QColorDialog::getColor(color, this);
+		if(color.isValid())
+		{
+
+			if(action == _setMatchingFeatureColor)
+			{
+				this->setDefaultMatchingFeatureColor(color);
+			}
+			else if(action == _setMatchingLineColor)
+			{
+				this->setDefaultMatchingLineColor(color);
+			}
+			else //if(action == _setFeatureColor)
+			{
+				this->setDefaultFeatureColor(color);
+			}
+		}
 	}
 	else if(action == _showImage)
 	{

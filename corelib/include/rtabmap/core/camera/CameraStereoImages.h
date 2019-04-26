@@ -62,6 +62,7 @@ public:
 	virtual std::string getSerial() const;
 
 	virtual void setStartIndex(int index) {CameraImages::setStartIndex(index);camera2_->setStartIndex(index);} // negative means last
+	virtual void setMaxFrames(int value) {CameraImages::setMaxFrames(value);camera2_->setMaxFrames(value);}
 
 protected:
 	virtual SensorData captureImage(CameraInfo * info = 0);

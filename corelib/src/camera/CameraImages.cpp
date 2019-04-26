@@ -41,12 +41,14 @@ namespace rtabmap
 
 CameraImages::CameraImages() :
 		_startAt(0),
+		_maxFrames(0),
 		_refreshDir(false),
 		_rectifyImages(false),
 		_bayerMode(-1),
 		_isDepth(false),
 		_depthScaleFactor(1.0f),
 		_count(0),
+		_framesPublished(0),
 		_dir(0),
 		_countScan(0),
 		_scanDir(0),
@@ -68,12 +70,14 @@ CameraImages::CameraImages(const std::string & path,
 	Camera(imageRate, localTransform),
 	_path(path),
 	_startAt(0),
+	_maxFrames(0),
 	_refreshDir(false),
 	_rectifyImages(false),
 	_bayerMode(-1),
 	_isDepth(false),
 	_depthScaleFactor(1.0f),
 	_count(0),
+	_framesPublished(0),
 	_dir(0),
 	_countScan(0),
 	_scanDir(0),
@@ -106,6 +110,7 @@ bool CameraImages::init(const std::string & calibrationFolder, const std::string
 	_count = 0;
 	_countScan = 0;
 	_captureDelay = 0.0;
+	_framesPublished=0;
 
 	UDEBUG("");
 	if(_dir)
@@ -617,7 +622,7 @@ SensorData CameraImages::captureImage(CameraInfo * info)
 				if(!fileName.empty())
 				{
 					scanFilePath = _scanPath + fileName;
-					while(++_countScan < _startAt && (fileName = _scanDir->getNextFileName()).size())
+					while(_countScan++ < _startAt && (fileName = _scanDir->getNextFileName()).size())
 					{
 						scanFilePath = _scanPath + fileName;
 					}
@@ -625,99 +630,103 @@ SensorData CameraImages::captureImage(CameraInfo * info)
 			}
 		}
 
-		if(!imageFilePath.empty())
+		if(_maxFrames <=0 || ++_framesPublished <= _maxFrames)
 		{
-			ULOGGER_DEBUG("Loading image : %s", imageFilePath.c_str());
+
+			if(!imageFilePath.empty())
+			{
+				ULOGGER_DEBUG("Loading image : %s", imageFilePath.c_str());
 
 #if CV_MAJOR_VERSION >2 || (CV_MAJOR_VERSION >=2 && CV_MINOR_VERSION >=4)
-			img = cv::imread(imageFilePath.c_str(), cv::IMREAD_UNCHANGED);
+				img = cv::imread(imageFilePath.c_str(), cv::IMREAD_UNCHANGED);
 #else
-			img = cv::imread(imageFilePath.c_str(), -1);
+				img = cv::imread(imageFilePath.c_str(), -1);
 #endif
-			UDEBUG("width=%d, height=%d, channels=%d, elementSize=%d, total=%d",
-					img.cols, img.rows, img.channels(), img.elemSize(), img.total());
+				UDEBUG("width=%d, height=%d, channels=%d, elementSize=%d, total=%d",
+						img.cols, img.rows, img.channels(), img.elemSize(), img.total());
 
-			if(_isDepth)
-			{
-				if(img.type() != CV_16UC1 && img.type() != CV_32FC1)
+				if(_isDepth)
 				{
-					UERROR("Depth is on and the loaded image has not a format supported (file = \"%s\", type=%d). "
-							"Formats supported are 16 bits 1 channel (mm) and 32 bits 1 channel (m).",
-							imageFilePath.c_str(), img.type());
-					img = cv::Mat();
-				}
-
-				if(_depthScaleFactor > 1.0f)
-				{
-					img /= _depthScaleFactor;
-				}
-			}
-			else
-			{
-#if CV_MAJOR_VERSION < 3
-				// FIXME : it seems that some png are incorrectly loaded with opencv c++ interface, where c interface works...
-				if(img.depth() != CV_8U)
-				{
-					// The depth should be 8U
-					UWARN("Cannot read the image correctly, falling back to old OpenCV C interface...");
-					IplImage * i = cvLoadImage(imageFilePath.c_str());
-					img = cv::Mat(i, true);
-					cvReleaseImage(&i);
-				}
-#endif
-				if(img.channels()>3)
-				{
-					UWARN("Conversion from 4 channels to 3 channels (file=%s)", imageFilePath.c_str());
-					cv::Mat out;
-					cv::cvtColor(img, out, CV_BGRA2BGR);
-					img = out;
-				}
-				else if(_bayerMode >= 0 && _bayerMode <=3)
-				{
-					cv::Mat debayeredImg;
-					try
+					if(img.type() != CV_16UC1 && img.type() != CV_32FC1)
 					{
-						cv::cvtColor(img, debayeredImg, CV_BayerBG2BGR + _bayerMode);
-						img = debayeredImg;
+						UERROR("Depth is on and the loaded image has not a format supported (file = \"%s\", type=%d). "
+								"Formats supported are 16 bits 1 channel (mm) and 32 bits 1 channel (m).",
+								imageFilePath.c_str(), img.type());
+						img = cv::Mat();
 					}
-					catch(const cv::Exception & e)
+
+					if(_depthScaleFactor > 1.0f)
 					{
-						UWARN("Error debayering images: \"%s\". Please set bayer mode to -1 if images are not bayered!", e.what());
+						img /= _depthScaleFactor;
 					}
-				}
-
-			}
-
-			if(!img.empty() && _model.isValidForRectification() && _rectifyImages)
-			{
-				img = _model.rectifyImage(img);
-			}
-		}
-
-		if(!scanFilePath.empty())
-		{
-			// load without filtering
-			scan = util3d::loadScan(scanFilePath);
-			scan = LaserScan(scan.data(), _scanMaxPts, 0.0f, scan.format(), _scanLocalTransform);
-			UDEBUG("Loaded scan=%d points", (int)scan.size());
-			if(_depthFromScan && !img.empty())
-			{
-				UDEBUG("Computing depth from scan...");
-				if(!_model.isValidForProjection())
-				{
-					UWARN("Depth from laser scan: Camera model should be valid.");
-				}
-				else if(_isDepth)
-				{
-					UWARN("Depth from laser scan: Loading already a depth image.");
 				}
 				else
 				{
-					pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = util3d::laserScanToPointCloud(scan, scan.localTransform());
-					depthFromScan = util3d::projectCloudToCamera(img.size(), _model.K(), cloud, _model.localTransform());
-					if(_depthFromScanFillHoles!=0)
+#if CV_MAJOR_VERSION < 3
+					// FIXME : it seems that some png are incorrectly loaded with opencv c++ interface, where c interface works...
+					if(img.depth() != CV_8U)
 					{
-						util3d::fillProjectedCloudHoles(depthFromScan, _depthFromScanFillHoles>0, _depthFromScanFillHolesFromBorder);
+						// The depth should be 8U
+						UWARN("Cannot read the image correctly, falling back to old OpenCV C interface...");
+						IplImage * i = cvLoadImage(imageFilePath.c_str());
+						img = cv::Mat(i, true);
+						cvReleaseImage(&i);
+					}
+#endif
+					if(img.channels()>3)
+					{
+						UWARN("Conversion from 4 channels to 3 channels (file=%s)", imageFilePath.c_str());
+						cv::Mat out;
+						cv::cvtColor(img, out, CV_BGRA2BGR);
+						img = out;
+					}
+					else if(_bayerMode >= 0 && _bayerMode <=3)
+					{
+						cv::Mat debayeredImg;
+						try
+						{
+							cv::cvtColor(img, debayeredImg, CV_BayerBG2BGR + _bayerMode);
+							img = debayeredImg;
+						}
+						catch(const cv::Exception & e)
+						{
+							UWARN("Error debayering images: \"%s\". Please set bayer mode to -1 if images are not bayered!", e.what());
+						}
+					}
+
+				}
+
+				if(!img.empty() && _model.isValidForRectification() && _rectifyImages)
+				{
+					img = _model.rectifyImage(img);
+				}
+			}
+
+			if(!scanFilePath.empty())
+			{
+				// load without filtering
+				scan = util3d::loadScan(scanFilePath);
+				scan = LaserScan(scan.data(), _scanMaxPts, 0.0f, scan.format(), _scanLocalTransform);
+				UDEBUG("Loaded scan=%d points", (int)scan.size());
+				if(_depthFromScan && !img.empty())
+				{
+					UDEBUG("Computing depth from scan...");
+					if(!_model.isValidForProjection())
+					{
+						UWARN("Depth from laser scan: Camera model should be valid.");
+					}
+					else if(_isDepth)
+					{
+						UWARN("Depth from laser scan: Loading already a depth image.");
+					}
+					else
+					{
+						pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = util3d::laserScanToPointCloud(scan, scan.localTransform());
+						depthFromScan = util3d::projectCloudToCamera(img.size(), _model.K(), cloud, _model.localTransform());
+						if(_depthFromScanFillHoles!=0)
+						{
+							util3d::fillProjectedCloudHoles(depthFromScan, _depthFromScanFillHoles>0, _depthFromScanFillHolesFromBorder);
+						}
 					}
 				}
 			}
