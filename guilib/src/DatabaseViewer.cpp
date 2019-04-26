@@ -5479,6 +5479,11 @@ void DatabaseViewer::updateConstraintButtons()
 	ui_->pushButton_add->setEnabled(false);
 	ui_->pushButton_reject->setEnabled(false);
 
+	if(ui_->label_type->text().toInt() == Link::kLandmark)
+	{
+		return;
+	}
+
 	int from = ids_.at(ui_->horizontalSlider_A->value());
 	int to = ids_.at(ui_->horizontalSlider_B->value());
 	if(from!=to && from && to && odomPoses_.find(from) != odomPoses_.end() && odomPoses_.find(to) != odomPoses_.end())
