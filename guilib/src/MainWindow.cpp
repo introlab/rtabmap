@@ -2646,7 +2646,7 @@ void MainWindow::updateMapCloud(
 		for(std::map<int, Transform>::const_iterator iter=posesIn.begin(); iter!=posesIn.end() && iter->first<0; ++iter)
 		{
 #if PCL_VERSION_COMPARE(>=, 1, 7, 2)
-			_cloudViewer->addOrUpdateCoordinate(uFormat("landmark_%d", -iter->first), iter->second, _preferencesDialog->getMarkerLength()<=0?0.1:_preferencesDialog->getMarkerLength()/2.0, false);
+			_cloudViewer->addOrUpdateCoordinate(uFormat("landmark_%d", -iter->first), iter->second, _preferencesDialog->landmarkVisSize()>0.0?_preferencesDialog->landmarkVisSize():_preferencesDialog->getMarkerLength()<=0?0.1:_preferencesDialog->getMarkerLength()/2.0, false);
 #endif
 			if(_preferencesDialog->isLabelsShown())
 			{

@@ -3970,10 +3970,10 @@ std::map<int, Transform> Rtabmap::optimizeGraph(
 {
 	UTimer timer;
 	std::map<int, Transform> optimizedPoses;
-	std::map<int, Transform> poses, posesOut;
-	std::multimap<int, Link> edgeConstraints, linksOut;
+	std::map<int, Transform> poses;
+	std::multimap<int, Link> edgeConstraints;
 	UDEBUG("ids=%d", (int)ids.size());
-	_memory->getMetricConstraints(ids, poses, edgeConstraints, lookInDatabase, true);
+	_memory->getMetricConstraints(ids, poses, edgeConstraints, lookInDatabase, !_graphOptimizer->landmarksIgnored());
 	UINFO("get constraints (ids=%d, %d poses, %d edges) time %f s", (int)ids.size(), (int)poses.size(), (int)edgeConstraints.size(), timer.ticks());
 
 	if(_graphOptimizer->iterations() > 0)
@@ -3995,78 +3995,40 @@ std::map<int, Transform> Rtabmap::optimizeGraph(
 		}
 	}
 
-	bool hasLandmarks = poses.begin()->first < 0;
-
-	// The constraints must be all already connected! Only check in debug
-	if(ULogger::level() == ULogger::kDebug)
-	{
-		_graphOptimizer->getConnectedGraph(fromId, poses, edgeConstraints, posesOut, linksOut);
-		if(poses.size() != posesOut.size())
-		{
-			for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter)
-			{
-				if(posesOut.find(iter->first) == posesOut.end())
-				{
-					UERROR("Not found %d in posesOut", iter->first);
-					for(std::multimap<int, Link>::iterator jter=edgeConstraints.begin(); jter!=edgeConstraints.end(); ++jter)
-					{
-						if(jter->second.from() == iter->first || jter->second.to()==iter->first)
-						{
-							UERROR("Found link %d->%d", jter->second.from(), jter->second.to());
-						}
-					}
-				}
-			}
-		}
-		int ignoredLinks = 0;
-		if(edgeConstraints.size() != linksOut.size())
-		{
-			for(std::multimap<int, Link>::iterator iter=edgeConstraints.begin(); iter!=edgeConstraints.end(); ++iter)
-			{
-				if(graph::findLink(linksOut, iter->second.from(), iter->second.to()) == linksOut.end())
-				{
-					if(iter->second.type() == Link::kPosePrior)
-					{
-						++ignoredLinks;
-					}
-					else
-					{
-						UERROR("Not found link %d->%d in linksOut", iter->second.from(), iter->second.to());
-					}
-				}
-			}
-		}
-		UDEBUG("nodes %d->%d, links %d->%d (ignored=%d)", poses.size(), posesOut.size(), edgeConstraints.size(), linksOut.size(), ignoredLinks);
-		UASSERT_MSG(poses.size() == posesOut.size() && edgeConstraints.size()-ignoredLinks == linksOut.size(),
-				uFormat("nodes %d->%d, links %d->%d (ignored=%d)", poses.size(), posesOut.size(), edgeConstraints.size(), linksOut.size(), ignoredLinks).c_str());
-	}
-
-	if(constraints)
-	{
-		*constraints = edgeConstraints;
-	}
 
 	UASSERT(_graphOptimizer!=0);
 	if(_graphOptimizer->iterations() == 0)
 	{
 		// Optimization disabled! Return not optimized poses.
 		optimizedPoses = poses;
+		if(constraints)
+		{
+			*constraints = edgeConstraints;
+		}
 	}
 	else
 	{
+		bool hasLandmarks = edgeConstraints.begin()->first < 0;
 		if(poses.size() != guessPoses.size() || hasLandmarks)
 		{
-			// recompute poses using only links (robust to multi-session)
+			UDEBUG("recompute poses using only links (robust to multi-session)");
 			std::map<int, Transform> posesOut;
 			std::multimap<int, Link> edgeConstraintsOut;
 			_graphOptimizer->getConnectedGraph(fromId, poses, edgeConstraints, posesOut, edgeConstraintsOut);
-			UASSERT(edgeConstraintsOut.size() == edgeConstraints.size());
-			optimizedPoses = _graphOptimizer->optimize(fromId, posesOut, edgeConstraints, covariance, 0, error, iterationsDone);
+			optimizedPoses = _graphOptimizer->optimize(fromId, posesOut, edgeConstraintsOut, covariance, 0, error, iterationsDone);
+			if(constraints)
+			{
+				*constraints = edgeConstraintsOut;
+			}
 		}
 		else
 		{
-			// use input guess poses
+			UDEBUG("use input guess poses");
 			optimizedPoses = _graphOptimizer->optimize(fromId, poses, edgeConstraints, covariance, 0, error, iterationsDone);
+			if(constraints)
+			{
+				*constraints = edgeConstraints;
+			}
 		}
 
 		if(!poses.empty() && optimizedPoses.empty())

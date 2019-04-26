@@ -69,13 +69,12 @@ public:
 	static Optimizer * create(Optimizer::Type type, const ParametersMap & parameters = ParametersMap());
 
 	// Get connected poses and constraints from a set of links
-	static void getConnectedGraph(
+	void getConnectedGraph(
 			int fromId,
 			const std::map<int, Transform> & posesIn,
-			const std::multimap<int, Link> & linksIn, // only one link between two poses
+			const std::multimap<int, Link> & linksIn,
 			std::map<int, Transform> & posesOut,
-			std::multimap<int, Link> & linksOut,
-			int depth = 0);
+			std::multimap<int, Link> & linksOut) const;
 
 public:
 	virtual ~Optimizer() {}

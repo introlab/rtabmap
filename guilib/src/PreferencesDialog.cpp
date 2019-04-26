@@ -502,6 +502,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->checkBox_showGraphs, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 	connect(_ui->checkBox_showLabels, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 	connect(_ui->checkBox_showLandmarks, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
+	connect(_ui->doubleSpinBox_landmarkSize, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 
 	connect(_ui->radioButton_noFiltering, SIGNAL(toggled(bool)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 	connect(_ui->radioButton_nodeFiltering, SIGNAL(toggled(bool)), this, SLOT(makeObsoleteCloudRenderingPanel()));
@@ -1611,6 +1612,7 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->checkBox_showGraphs->setChecked(true);
 		_ui->checkBox_showLabels->setChecked(false);
 		_ui->checkBox_showLandmarks->setChecked(true);
+		_ui->doubleSpinBox_landmarkSize->setValue(0);
 
 		_ui->doubleSpinBox_mesh_angleTolerance->setValue(15.0);
 		_ui->groupBox_organized->setChecked(false);
@@ -2028,6 +2030,7 @@ void PreferencesDialog::readGuiSettings(const QString & filePath)
 	_ui->checkBox_showGraphs->setChecked(settings.value("showGraphs", _ui->checkBox_showGraphs->isChecked()).toBool());
 	_ui->checkBox_showLabels->setChecked(settings.value("showLabels", _ui->checkBox_showLabels->isChecked()).toBool());
 	_ui->checkBox_showLandmarks->setChecked(settings.value("showLandmarks", _ui->checkBox_showLandmarks->isChecked()).toBool());
+	_ui->doubleSpinBox_landmarkSize->setValue(settings.value("landmarkSize", _ui->doubleSpinBox_landmarkSize->value()).toDouble());
 
 	_ui->radioButton_noFiltering->setChecked(settings.value("noFiltering", _ui->radioButton_noFiltering->isChecked()).toBool());
 	_ui->radioButton_nodeFiltering->setChecked(settings.value("cloudFiltering", _ui->radioButton_nodeFiltering->isChecked()).toBool());
@@ -2449,6 +2452,7 @@ void PreferencesDialog::writeGuiSettings(const QString & filePath) const
 	settings.setValue("showGraphs", _ui->checkBox_showGraphs->isChecked());
 	settings.setValue("showLabels", _ui->checkBox_showLabels->isChecked());
 	settings.setValue("showLandmarks", _ui->checkBox_showLandmarks->isChecked());
+	settings.setValue("landmarkSize", _ui->doubleSpinBox_landmarkSize->value());
 
 
 	settings.setValue("noFiltering",             _ui->radioButton_noFiltering->isChecked());
@@ -4686,6 +4690,10 @@ bool PreferencesDialog::isLabelsShown() const
 bool PreferencesDialog::isLandmarksShown() const
 {
 	return _ui->checkBox_showLandmarks->isChecked();
+}
+double PreferencesDialog::landmarkVisSize() const
+{
+	return _ui->doubleSpinBox_landmarkSize->value();
 }
 bool PreferencesDialog::isMarkerDetection() const
 {

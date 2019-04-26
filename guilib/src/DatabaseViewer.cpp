@@ -370,7 +370,6 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	connect(ui_->checkBox_ignoreLocalLoopSpace, SIGNAL(stateChanged(int)), this, SLOT(updateGraphView()));
 	connect(ui_->checkBox_ignoreLocalLoopTime, SIGNAL(stateChanged(int)), this, SLOT(updateGraphView()));
 	connect(ui_->checkBox_ignoreUserLoop, SIGNAL(stateChanged(int)), this, SLOT(updateGraphView()));
-	connect(ui_->spinBox_optimizationDepth, SIGNAL(editingFinished()), this, SLOT(updateGraphView()));
 	connect(ui_->doubleSpinBox_optimizationScale, SIGNAL(editingFinished()), this, SLOT(updateGraphView()));
 	connect(ui_->checkBox_octomap, SIGNAL(stateChanged(int)), this, SLOT(updateGrid()));
 	connect(ui_->checkBox_grid_2d, SIGNAL(stateChanged(int)), this, SLOT(updateGrid()));
@@ -698,7 +697,6 @@ void DatabaseViewer::restoreDefaultSettings()
 	ui_->checkBox_ignoreLocalLoopSpace->setChecked(false);
 	ui_->checkBox_ignoreLocalLoopTime->setChecked(false);
 	ui_->checkBox_ignoreUserLoop->setChecked(false);
-	ui_->spinBox_optimizationDepth->setValue(0);
 	ui_->doubleSpinBox_optimizationScale->setValue(1.0);
 	ui_->doubleSpinBox_gainCompensationRadius->setValue(0.0);
 	ui_->doubleSpinBox_voxelSize->setValue(0.0);
@@ -1600,7 +1598,7 @@ void DatabaseViewer::updateIds()
 	QApplication::processEvents();
 
 	std::multimap<int, Link> unilinks;
-	dbDriver_->getAllLinks(unilinks, true);
+	dbDriver_->getAllLinks(unilinks, true, true);
 	UDEBUG("%d total links loaded", (int)unilinks.size());
 	// add both direction links
 	std::multimap<int, Link> links;
@@ -1694,7 +1692,7 @@ void DatabaseViewer::updateIds()
 			std::multimap<int, Link>::iterator invertedLinkIter = graph::findLink(links, jter->second.to(), jter->second.from(), false);
 			if(	jter->second.isValid() && // null transform means a rehearsed location
 				ids.find(jter->second.from()) != ids.end() &&
-				ids.find(jter->second.to()) != ids.end() &&
+				(ids.find(jter->second.to()) != ids.end() || jter->second.to()<0) && // to add landmark links
 				graph::findLink(links_, jter->second.from(), jter->second.to()) == links_.end() &&
 				invertedLinkIter != links.end())
 			{
@@ -4995,14 +4993,15 @@ void DatabaseViewer::updateConstraintView(
 	ui_->checkBox_showOptimized->setEnabled(false);
 	UASSERT(!t.isNull() && dbDriver_);
 
-	ui_->label_type->setText(tr("%1 (%2)")
-			.arg(link.type())
+	ui_->label_type->setText(QString::number(link.type()));
+	ui_->label_type_name->setText(tr("(%1)")
 			.arg(link.type()==Link::kNeighbor?"Neighbor":
 				 link.type()==Link::kNeighborMerged?"Merged neighbor":
 				 link.type()==Link::kGlobalClosure?"Loop closure":
 				 link.type()==Link::kLocalSpaceClosure?"Space proximity link":
 				 link.type()==Link::kLocalTimeClosure?"Time proximity link":
 				 link.type()==Link::kUserClosure?"User link":
+				 link.type()==Link::kLandmark?"Landmark link":
 				 link.type()==Link::kVirtualClosure?"Virtual link":"Undefined"));
 	ui_->label_variance->setText(QString("%1, %2")
 			.arg(sqrt(link.transVariance()))
@@ -5040,45 +5039,51 @@ void DatabaseViewer::updateConstraintView(
 	{
 		ui_->horizontalSlider_A->blockSignals(true);
 		ui_->horizontalSlider_B->blockSignals(true);
-		// set from on left and to on right		{
-		ui_->horizontalSlider_A->setValue(idToIndex_.value(link.from()));
-		ui_->horizontalSlider_B->setValue(idToIndex_.value(link.to()));
+		// set from on left and to on right
+		if(link.from()>0)
+			ui_->horizontalSlider_A->setValue(idToIndex_.value(link.from()));
+		if(link.to() > 0)
+			ui_->horizontalSlider_B->setValue(idToIndex_.value(link.to()));
 		ui_->horizontalSlider_A->blockSignals(false);
 		ui_->horizontalSlider_B->blockSignals(false);
-		this->update(idToIndex_.value(link.from()),
-					ui_->label_indexA,
-					ui_->label_parentsA,
-					ui_->label_childrenA,
-					ui_->label_weightA,
-					ui_->label_labelA,
-					ui_->label_stampA,
-					ui_->graphicsView_A,
-					ui_->label_idA,
-					ui_->label_mapA,
-					ui_->label_poseA,
-					ui_->label_velA,
-					ui_->label_calibA,
-					ui_->label_scanA,
-					ui_->label_gpsA,
-					ui_->label_sensorsA,
-					false); // don't update constraints view!
-		this->update(idToIndex_.value(link.to()),
-					ui_->label_indexB,
-					ui_->label_parentsB,
-					ui_->label_childrenB,
-					ui_->label_weightB,
-					ui_->label_labelB,
-					ui_->label_stampB,
-					ui_->graphicsView_B,
-					ui_->label_idB,
-					ui_->label_mapB,
-					ui_->label_poseB,
-					ui_->label_velB,
-					ui_->label_calibB,
-					ui_->label_scanB,
-					ui_->label_gpsB,
-					ui_->label_sensorsB,
-					false); // don't update constraints view!
+		if(link.from()>0)
+			this->update(idToIndex_.value(link.from()),
+						ui_->label_indexA,
+						ui_->label_parentsA,
+						ui_->label_childrenA,
+						ui_->label_weightA,
+						ui_->label_labelA,
+						ui_->label_stampA,
+						ui_->graphicsView_A,
+						ui_->label_idA,
+						ui_->label_mapA,
+						ui_->label_poseA,
+						ui_->label_velA,
+						ui_->label_calibA,
+						ui_->label_scanA,
+						ui_->label_gpsA,
+						ui_->label_sensorsA,
+						false); // don't update constraints view!
+		if(link.to()>0)
+		{
+			this->update(idToIndex_.value(link.to()),
+						ui_->label_indexB,
+						ui_->label_parentsB,
+						ui_->label_childrenB,
+						ui_->label_weightB,
+						ui_->label_labelB,
+						ui_->label_stampB,
+						ui_->graphicsView_B,
+						ui_->label_idB,
+						ui_->label_mapB,
+						ui_->label_poseB,
+						ui_->label_velB,
+						ui_->label_calibB,
+						ui_->label_scanB,
+						ui_->label_gpsB,
+						ui_->label_sensorsB,
+						false); // don't update constraints view!
+		}
 	}
 
 	if(constraintsViewer_->isVisible())
@@ -5989,8 +5994,7 @@ void DatabaseViewer::updateGraphView()
 			int currentMapId = mapIds_.at(fromId);
 			for(std::map<int, rtabmap::Transform>::iterator iter=poses.begin(); iter!=poses.end();)
 			{
-				if(!uContains(mapIds_, iter->first) ||
-					mapIds_.at(iter->first) != currentMapId)
+				if(iter->first>0 && (!uContains(mapIds_, iter->first) || mapIds_.at(iter->first) != currentMapId))
 				{
 					poses.erase(iter++);
 				}
@@ -6011,10 +6015,8 @@ void DatabaseViewer::updateGraphView()
 			int currentMapId = mapIds_.at(fromId);
 			for(std::multimap<int, rtabmap::Link>::iterator iter=links.begin(); iter!=links.end();)
 			{
-				if(!uContains(mapIds_, iter->second.from()) ||
-					!uContains(mapIds_, iter->second.to()) ||
-					mapIds_.at(iter->second.from()) != currentMapId ||
-					mapIds_.at(iter->second.to()) != currentMapId)
+				if((iter->second.from()>0 && (!uContains(mapIds_, iter->second.from()) || mapIds_.at(iter->second.from()) != currentMapId)) ||
+					(iter->second.to()>0 && (!uContains(mapIds_, iter->second.to()) || mapIds_.at(iter->second.to()) != currentMapId)))
 				{
 					links.erase(iter++);
 				}
@@ -6056,6 +6058,7 @@ void DatabaseViewer::updateGraphView()
 		int totalLocalSpace = 0;
 		int totalUser = 0;
 		int totalPriors = 0;
+		int totalLandmarks = 0;
 		for(std::multimap<int, rtabmap::Link>::iterator iter=links.begin(); iter!=links.end();)
 		{
 			if(iter->second.type() == Link::kNeighbor)
@@ -6106,6 +6109,16 @@ void DatabaseViewer::updateGraphView()
 				loopLinks_.push_back(iter->second);
 				++totalUser;
 			}
+			else if(iter->second.type() == Link::kLandmark)
+			{
+				UASSERT(iter->second.from() > 0 && iter->second.to() < 0);
+				if(poses.find(iter->second.from()) != poses.end() && poses.find(iter->second.to()) == poses.end())
+				{
+					poses.insert(std::make_pair(iter->second.to(), poses.at(iter->second.from())*iter->second.transform()));
+				}
+				loopLinks_.push_back(iter->second);
+				++totalLandmarks;
+			}
 			else if(iter->second.type() == Link::kPosePrior)
 			{
 				++totalPriors;
@@ -6118,14 +6131,15 @@ void DatabaseViewer::updateGraphView()
 		}
 		updateLoopClosuresSlider();
 
-		ui_->label_loopClosures->setText(tr("(%1, %2, %3, %4, %5, %6, %7)")
+		ui_->label_loopClosures->setText(tr("(%1, %2, %3, %4, %5, %6, %7, %8)")
 				.arg(totalNeighbor)
 				.arg(totalNeighborMerged)
 				.arg(totalGlobal)
 				.arg(totalLocalSpace)
 				.arg(totalLocalTime)
 				.arg(totalUser)
-				.arg(totalPriors));
+				.arg(totalPriors)
+				.arg(totalLandmarks));
 
 		// remove intermediate nodes?
 		if(ui_->checkBox_ignoreIntermediateNodes->isVisible() &&
@@ -6170,8 +6184,7 @@ void DatabaseViewer::updateGraphView()
 				poses,
 				links,
 				posesOut,
-				linksOut,
-				ui_->spinBox_optimizationDepth->value());
+				linksOut);
 		if(optimizedGraphGuess.size() == posesOut.size())
 		{
 			bool identical=true;

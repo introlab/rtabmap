@@ -61,7 +61,7 @@
           <rect>
            <x>0</x>
            <y>0</y>
-           <width>413</width>
+           <width>409</width>
            <height>288</height>
           </rect>
          </property>
@@ -287,7 +287,7 @@
           <rect>
            <x>0</x>
            <y>0</y>
-           <width>412</width>
+           <width>408</width>
            <height>288</height>
           </rect>
          </property>
@@ -870,16 +870,6 @@
          </property>
         </widget>
        </item>
-       <item row="2" column="1">
-        <widget class="QLabel" name="label_type">
-         <property name="text">
-          <string/>
-         </property>
-         <property name="textInteractionFlags">
-          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-         </property>
-        </widget>
-       </item>
        <item row="3" column="0">
         <widget class="QLabel" name="label_16">
          <property name="text">
@@ -920,6 +910,30 @@
           <string>σ (lin, ang), cov</string>
          </property>
         </widget>
+       </item>
+       <item row="2" column="1">
+        <layout class="QHBoxLayout" name="horizontalLayout_14" stretch="0,1">
+         <item>
+          <widget class="QLabel" name="label_type">
+           <property name="text">
+            <string/>
+           </property>
+           <property name="textInteractionFlags">
+            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QLabel" name="label_type_name">
+           <property name="text">
+            <string/>
+           </property>
+           <property name="textInteractionFlags">
+            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+           </property>
+          </widget>
+         </item>
+        </layout>
        </item>
       </layout>
      </item>
@@ -1075,7 +1089,7 @@
        <item row="9" column="1">
         <widget class="QLabel" name="label_41">
          <property name="text">
-          <string>Links (N, NM, G, LS, LT, U, P)</string>
+          <string>Links (N, NM, G, LS, LT, U, P, LM)</string>
          </property>
         </widget>
        </item>
@@ -1294,7 +1308,7 @@
      <item>
       <widget class="QToolBox" name="toolBox">
        <property name="currentIndex">
-        <number>2</number>
+        <number>0</number>
        </property>
        <widget class="QWidget" name="page_3">
         <property name="geometry">
@@ -1302,28 +1316,31 @@
           <x>0</x>
           <y>0</y>
           <width>318</width>
-          <height>197</height>
+          <height>165</height>
          </rect>
         </property>
         <attribute name="label">
          <string>Graph optimization</string>
         </attribute>
-        <layout class="QGridLayout" name="gridLayout_7" columnstretch="0,0,1">
-         <item row="0" column="2">
-          <widget class="QLabel" name="label_8">
+        <layout class="QGridLayout" name="gridLayout_7" columnstretch="0,0,0">
+         <item row="2" column="0">
+          <widget class="QCheckBox" name="checkBox_ignoreGlobalLoop">
            <property name="text">
-            <string>Depth (0=inf)</string>
+            <string/>
+           </property>
+           <property name="checked">
+            <bool>false</bool>
            </property>
           </widget>
          </item>
-         <item row="5" column="2">
+         <item row="4" column="2">
           <widget class="QLabel" name="label_49">
            <property name="text">
             <string>Ignore local loop closures (time)</string>
            </property>
           </widget>
          </item>
-         <item row="4" column="0">
+         <item row="3" column="0">
           <widget class="QCheckBox" name="checkBox_ignoreLocalLoopSpace">
            <property name="text">
             <string/>
@@ -1333,21 +1350,21 @@
            </property>
           </widget>
          </item>
-         <item row="3" column="2">
+         <item row="2" column="2">
           <widget class="QLabel" name="label_48">
            <property name="text">
             <string>Ignore global loop closures</string>
            </property>
           </widget>
          </item>
-         <item row="2" column="2">
+         <item row="1" column="2">
           <widget class="QLabel" name="label_35">
            <property name="text">
             <string>Ignore pose correction</string>
            </property>
           </widget>
          </item>
-         <item row="2" column="0">
+         <item row="1" column="0">
           <widget class="QCheckBox" name="checkBox_ignorePoseCorrection">
            <property name="text">
             <string/>
@@ -1357,7 +1374,7 @@
            </property>
           </widget>
          </item>
-         <item row="5" column="0">
+         <item row="4" column="0">
           <widget class="QCheckBox" name="checkBox_ignoreLocalLoopTime">
            <property name="text">
             <string/>
@@ -1367,7 +1384,7 @@
            </property>
           </widget>
          </item>
-         <item row="7" column="0">
+         <item row="6" column="0">
           <spacer name="verticalSpacer_3">
            <property name="orientation">
             <enum>Qt::Vertical</enum>
@@ -1380,7 +1397,7 @@
            </property>
           </spacer>
          </item>
-         <item row="6" column="0">
+         <item row="5" column="0">
           <widget class="QCheckBox" name="checkBox_ignoreUserLoop">
            <property name="text">
             <string/>
@@ -1390,38 +1407,28 @@
            </property>
           </widget>
          </item>
-         <item row="6" column="2">
+         <item row="5" column="2">
           <widget class="QLabel" name="label_50">
            <property name="text">
             <string>Ignore user loop closures</string>
            </property>
           </widget>
          </item>
-         <item row="3" column="0">
-          <widget class="QCheckBox" name="checkBox_ignoreGlobalLoop">
-           <property name="text">
-            <string/>
-           </property>
-           <property name="checked">
-            <bool>false</bool>
-           </property>
-          </widget>
-         </item>
-         <item row="4" column="2">
+         <item row="3" column="2">
           <widget class="QLabel" name="label_47">
            <property name="text">
             <string>Ignore local loop closures (space)</string>
            </property>
           </widget>
          </item>
-         <item row="1" column="2">
+         <item row="0" column="2">
           <widget class="QLabel" name="label_scale_title">
            <property name="text">
             <string>Scale</string>
            </property>
           </widget>
          </item>
-         <item row="1" column="0">
+         <item row="0" column="0">
           <widget class="QDoubleSpinBox" name="doubleSpinBox_optimizationScale">
            <property name="decimals">
             <number>3</number>
@@ -1440,22 +1447,6 @@
            </property>
           </widget>
          </item>
-         <item row="0" column="0">
-          <widget class="QSpinBox" name="spinBox_optimizationDepth">
-           <property name="suffix">
-            <string/>
-           </property>
-           <property name="minimum">
-            <number>0</number>
-           </property>
-           <property name="maximum">
-            <number>1000</number>
-           </property>
-           <property name="value">
-            <number>0</number>
-           </property>
-          </widget>
-         </item>
         </layout>
        </widget>
        <widget class="QWidget" name="page_4">
@@ -1463,8 +1454,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>280</width>
-          <height>875</height>
+          <width>519</width>
+          <height>791</height>
          </rect>
         </property>
         <attribute name="label">
