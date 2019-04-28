@@ -690,6 +690,48 @@ void calcKittiSequenceErrors (
 }
 // KITTI evaluation end
 
+void calcRelativeErrors (
+		const std::vector<Transform> &poses_gt,
+		const std::vector<Transform> &poses_result,
+		float & t_err,
+		float & r_err) {
+
+	UASSERT(poses_gt.size() == poses_result.size());
+
+	// error vector
+	std::vector<errors> err;
+
+	// for all start positions do
+	for (unsigned int i=0; i<poses_gt.size()-1; ++i)
+	{
+		// compute rotational and translational errors
+		Transform pose_delta_gt     = poses_gt[i].inverse()*poses_gt[i+1];
+		Transform pose_delta_result = poses_result[i].inverse()*poses_result[i+1];
+		Transform pose_error        = pose_delta_result.inverse()*pose_delta_gt;
+		float r_err = pose_error.getAngle();
+		float t_err = pose_error.getNorm();
+
+		// write to file
+		err.push_back(errors(i,r_err,t_err,0,0));
+	}
+
+	t_err = 0;
+	r_err = 0;
+
+	// for all errors do => compute sum of t_err, r_err
+	for (std::vector<errors>::iterator it=err.begin(); it!=err.end(); it++)
+	{
+		t_err += it->t_err;
+		r_err += it->r_err;
+	}
+
+	// save errors
+	float num = err.size();
+	t_err /= num;
+	r_err /= num;
+	r_err *= 180/CV_PI; // Rotation error (deg)
+}
+
 Transform calcRMSE (
 		const std::map<int, Transform> & groundTruth,
 		const std::map<int, Transform> & poses,
