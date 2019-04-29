@@ -155,12 +155,12 @@ int main(int argc, char * argv[])
 	ParametersMap configParameters;
 	for(int i=1; i<argc-2; ++i)
 	{
-		if(strcmp(argv[i], "-r") == 0)
+		if(strcmp(argv[i], "-r") == 0 || strcmp(argv[i], "--r") == 0)
 		{
 			useDatabaseRate = true;
 			printf("Using database stamps as input rate.\n");
 		}
-		else if (strcmp(argv[i], "-c") == 0)
+		else if (strcmp(argv[i], "-c") == 0 || strcmp(argv[i], "--c") == 0)
 		{
 			++i;
 			if (i < argc - 2 && UFile::exists(argv[i]) && UFile::getExtension(argv[i]).compare("ini") == 0)
@@ -168,22 +168,26 @@ int main(int argc, char * argv[])
 				Parameters::readINI(argv[i], configParameters);
 				printf("Using %d parameters from config file \"%s\"\n", (int)configParameters.size(), argv[i]);
 			}
+			else if(i < argc - 2)
+			{
+				printf("Config file \"%s\" is not valid or doesn't exist!\n", argv[i]);
+			}
 			else
 			{
-				showUsage();
+				printf("Config file is not set!\n");
 			}
 		}
-		else if(strcmp(argv[i], "-g2") == 0)
+		else if(strcmp(argv[i], "-g2") == 0 || strcmp(argv[i], "--g2") == 0)
 		{
 			assemble2dMap = true;
 			printf("2D occupancy grid will be assembled (-g2 option).\n");
 		}
-		else if(strcmp(argv[i], "-g3") == 0)
+		else if(strcmp(argv[i], "-g3") == 0 || strcmp(argv[i], "--g3") == 0)
 		{
 			assemble3dMap = true;
 			printf("3D cloud map will be assembled (-g3 option).\n");
 		}
-		else if(strcmp(argv[i], "-o2") == 0)
+		else if(strcmp(argv[i], "-o2") == 0 || strcmp(argv[i], "--o2") == 0)
 		{
 #ifdef RTABMAP_OCTOMAP
 			assemble2dOctoMap = true;
@@ -192,7 +196,7 @@ int main(int argc, char * argv[])
 			printf("RTAB-Map is not built with OctoMap support, cannot set -o2 option!\n");
 #endif
 		}
-		else if(strcmp(argv[i], "-o3") == 0)
+		else if(strcmp(argv[i], "-o3") == 0 || strcmp(argv[i], "--o3") == 0)
 		{
 #ifdef RTABMAP_OCTOMAP
 			assemble3dOctoMap = true;

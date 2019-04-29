@@ -2567,7 +2567,7 @@ bool Rtabmap::process(
 				std::map<int, Transform>::iterator iter = _optimizedPoses.find(_odomCacheConstraints.find(_odomCachePoses.begin()->first)->second.to());
 				Transform optPoseRefA;
 				Transform optPoseRefB;
-				if(iter != _optimizedPoses.end());
+				if(iter != _optimizedPoses.end())
 				{
 					optPoseRefA = iter->second * _odomCacheConstraints.find(_odomCachePoses.begin()->first)->second.transform().inverse();
 				}
