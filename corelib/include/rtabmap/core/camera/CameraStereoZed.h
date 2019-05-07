@@ -83,6 +83,7 @@ private:
 #ifdef RTABMAP_ZED
 	sl::Camera * zed_;
 	StereoCameraModel stereoModel_;
+	Transform imuLocalTransform_;
 	CameraVideo::Source src_;
 	int usbDevice_;
 	std::string svoFilePath_;

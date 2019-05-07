@@ -34,18 +34,18 @@ namespace rtabmap {
 MarkerDetector::MarkerDetector(const ParametersMap & parameters)
 {
 #ifdef HAVE_OPENCV_ARUCO
-	markerLength_ = Parameters::defaultArucoMarkerLength();
-	maxDepthError_ = Parameters::defaultArucoMaxDepthError();
-	dictionaryId_ = Parameters::defaultArucoDictionary();
+	markerLength_ = Parameters::defaultMarkerLength();
+	maxDepthError_ = Parameters::defaultMarkerMaxDepthError();
+	dictionaryId_ = Parameters::defaultMarkerDictionary();
 #if CV_MAJOR_VERSION > 3 || (CV_MAJOR_VERSION == 3 && CV_MINOR_VERSION >=2)
 	detectorParams_ = cv::aruco::DetectorParameters::create();
 #else
 	detectorParams_.reset(new cv::aruco::DetectorParameters());
 #endif
 #if CV_MAJOR_VERSION > 3 || (CV_MAJOR_VERSION == 3 && CV_MINOR_VERSION >=3)
-	detectorParams_->cornerRefinementMethod = Parameters::defaultArucoCornerRefinementMethod();
+	detectorParams_->cornerRefinementMethod = Parameters::defaultMarkerCornerRefinementMethod();
 #else
-	detectorParams_->doCornerRefinement = Parameters::defaultArucoCornerRefinementMethod()!=0;
+	detectorParams_->doCornerRefinement = Parameters::defaultMarkerCornerRefinementMethod()!=0;
 #endif
 	parseParameters(parameters);
 #endif
@@ -69,10 +69,10 @@ void MarkerDetector::parseParameters(const ParametersMap & parameters)
 	detectorParams_->minDistanceToBorder = 3;
 	detectorParams_->minMarkerDistanceRate = 0.05;
 #if CV_MAJOR_VERSION > 3 || (CV_MAJOR_VERSION == 3 && CV_MINOR_VERSION >=3)
-	Parameters::parse(parameters, Parameters::kArucoCornerRefinementMethod(), detectorParams_->cornerRefinementMethod);
+	Parameters::parse(parameters, Parameters::kMarkerCornerRefinementMethod(), detectorParams_->cornerRefinementMethod);
 #else
 	int doCornerRefinement = detectorParams_->doCornerRefinement?1:0;
-	Parameters::parse(parameters, Parameters::kArucoCornerRefinementMethod(), doCornerRefinement);
+	Parameters::parse(parameters, Parameters::kMarkerCornerRefinementMethod(), doCornerRefinement);
 	detectorParams_->doCornerRefinement = doCornerRefinement!=0;
 #endif
 	detectorParams_->cornerRefinementWinSize = 5;
@@ -85,18 +85,18 @@ void MarkerDetector::parseParameters(const ParametersMap & parameters)
 	detectorParams_->minOtsuStdDev = 5.0;
 	detectorParams_->errorCorrectionRate = 0.6;
 
-	Parameters::parse(parameters, Parameters::kArucoMarkerLength(), markerLength_);
-	Parameters::parse(parameters, Parameters::kArucoMaxDepthError(), maxDepthError_);
-	Parameters::parse(parameters, Parameters::kArucoDictionary(), dictionaryId_);
+	Parameters::parse(parameters, Parameters::kMarkerLength(), markerLength_);
+	Parameters::parse(parameters, Parameters::kMarkerMaxDepthError(), maxDepthError_);
+	Parameters::parse(parameters, Parameters::kMarkerDictionary(), dictionaryId_);
 #if CV_MAJOR_VERSION < 3 || (CV_MAJOR_VERSION == 3 && (CV_MINOR_VERSION <4 || (CV_MINOR_VERSION ==4 && CV_SUBMINOR_VERSION<2)))
 	if(dictionaryId_ >= 17)
 	{
 		UERROR("Cannot set AprilTag dictionary. OpenCV version should be at least 3.4.2, "
 				"current version is %s. Setting %s to default (%d)",
 				CV_VERSION,
-				Parameters::kArucoDictionary().c_str(),
-				Parameters::defaultArucoDictionary());
-		dictionaryId_ = Parameters::defaultArucoDictionary();
+				Parameters::kMarkerDictionary().c_str(),
+				Parameters::defaultMarkerDictionary());
+		dictionaryId_ = Parameters::defaultMarkerDictionary();
 	}
 #endif
 #if CV_MAJOR_VERSION > 3 || (CV_MAJOR_VERSION == 3 && CV_MINOR_VERSION >=2)
@@ -133,7 +133,7 @@ std::map<int, Transform> MarkerDetector::detect(const cv::Mat & image, const Cam
 		{
 			if(depth.empty())
 			{
-				UERROR("Depth image is empty, please set %s parameter to non-null.", Parameters::kArucoMarkerLength().c_str());
+				UERROR("Depth image is empty, please set %s parameter to non-null.", Parameters::kMarkerLength().c_str());
 				return detections;
 			}
 			rgbToDepthFactorX = 1.0f/(model.imageWidth()>0?model.imageWidth()/depth.cols:1);
@@ -171,9 +171,9 @@ std::map<int, Transform> MarkerDetector::detect(const cv::Mat & image, const Cam
 							  "the marker's length. Errors: %f, %f, %f > %fm (%s). Four corners: %f %f %f %f. "
 							  "Parameter %s can be set to non-null to skip automatic "
 							  "marker length estimation. Detections are ignored.",
-							  fabs(d1-d2), fabs(d1-d3), fabs(d1-d4), maxDepthError_, Parameters::kArucoMaxDepthError().c_str(),
+							  fabs(d1-d2), fabs(d1-d3), fabs(d1-d4), maxDepthError_, Parameters::kMarkerMaxDepthError().c_str(),
 							  d1, d2, d3, d4,
-								Parameters::kArucoMarkerLength().c_str());
+								Parameters::kMarkerLength().c_str());
 						detections.clear();
 						return detections;
 					}
@@ -185,7 +185,7 @@ std::map<int, Transform> MarkerDetector::detect(const cv::Mat & image, const Cam
 						  "Parameter %s can be set to non-null to skip automatic "
 						  "marker length estimation. Detections are ignored.",
 						  d1,d2,d3,d4,
-						  Parameters::kArucoMarkerLength().c_str());
+						  Parameters::kMarkerLength().c_str());
 					detections.clear();
 					return detections;
 				}
@@ -217,7 +217,7 @@ std::map<int, Transform> MarkerDetector::detect(const cv::Mat & image, const Cam
 							  "Parameter %s can be set to non-null to skip automatic "
 							  "marker length estimation. Detections are ignored.",
 							  ids[i], scales[i], ids[0], scales[0],
-							  Parameters::kArucoMarkerLength().c_str());
+							  Parameters::kMarkerLength().c_str());
 						detections.clear();
 						return detections;
 					}

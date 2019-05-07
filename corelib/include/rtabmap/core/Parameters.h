@@ -355,7 +355,7 @@ class RTABMAP_EXP Parameters
     RTABMAP_PARAM(RGBD, LoopClosureReextractFeatures, bool, false,  "Extract features even if there are some already in the nodes.");
     RTABMAP_PARAM(RGBD, LocalBundleOnLoopClosure,     bool, false,  "Do local bundle adjustment with neighborhood of the loop closure.");
     RTABMAP_PARAM(RGBD, CreateOccupancyGrid,          bool, false,  "Create local occupancy grid maps. See \"Grid\" group for parameters.");
-    RTABMAP_PARAM(RGBD, MarkerDetection,              bool, false,  "Detect static markers to be added as landmarks for graph optimization. If input data have already landmarks, this will be ignored. See \"Aruco\" group for parameters.");
+    RTABMAP_PARAM(RGBD, MarkerDetection,              bool, false,  "Detect static markers to be added as landmarks for graph optimization. If input data have already landmarks, this will be ignored. See \"Marker\" group for parameters.");
     RTABMAP_PARAM(RGBD, LoopCovLimited,               bool, false,  "Limit covariance of non-neighbor links to minimum covariance of neighbor links. In other words, if covariance of a loop closure link is smaller than the minimum covariance of odometry links, its covariance is set to minimum covariance of odometry links.");
     RTABMAP_PARAM(RGBD, MaxOdomCacheSize,             int,  0,      uFormat("Maximum odometry cache size. Used only in localization mode (when %s=false) and when %s!=0. This is used to verify localization transforms to make sure we don't teleport to a location very similar to one we previously localized on. When the cache is full, the whole cache is cleared and the next localization is automatically accepted without verification. Set 0 to disable caching.", kMemIncrementalMemory().c_str(), kRGBDOptimizeMaxError().c_str()));
 
@@ -409,7 +409,8 @@ class RTABMAP_EXP Parameters
     RTABMAP_PARAM(Odom, Holonomic,              bool, true,   "If the robot is holonomic (strafing commands can be issued). If not, y value will be estimated from x and yaw values (y=x*tan(yaw)).");
     RTABMAP_PARAM(Odom, FillInfoData,           bool, true,   "Fill info with data (inliers/outliers features).");
     RTABMAP_PARAM(Odom, ImageBufferSize,     unsigned int, 1, "Data buffer size (0 min inf).");
-    RTABMAP_PARAM(Odom, FilteringStrategy,      int, 0,       "0=No filtering 1=Kalman filtering 2=Particle filtering");
+    RTABMAP_PARAM(Odom, ImuFilteringStrategy,   int, 0,       "0=No filtering 1=Madgwick Filter 2=Complementary Filter. This is used to estimate the quaternion from acceleration and angular velocities of IMU before doing odometry updates. IMU data should be in ENU coordinates.");
+    RTABMAP_PARAM(Odom, FilteringStrategy,      int, 0,       "0=No filtering 1=Kalman filtering 2=Particle filtering. This filter is used to smooth the odometry output.");
     RTABMAP_PARAM(Odom, ParticleSize,      unsigned int, 400, "Number of particles of the filter.");
     RTABMAP_PARAM(Odom, ParticleNoiseT,         float, 0.002, "Noise (m) of translation components (x,y,z).");
     RTABMAP_PARAM(Odom, ParticleLambdaT,        float, 100,   "Lambda of translation components (x,y,z).");
@@ -716,12 +717,32 @@ class RTABMAP_EXP Parameters
     RTABMAP_PARAM(GridGlobal, ProbClampingMin,      float,  0.1192,  "Probability clamping minimum (value between 0 and 1).");
     RTABMAP_PARAM(GridGlobal, ProbClampingMax,      float,  0.971,   "Probability clamping maximum (value between 0 and 1).");
 
-    RTABMAP_PARAM(Aruco, Dictionary,             int,   0,     "Dictionary to use: DICT_4X4_50=0, DICT_4X4_100=1, DICT_4X4_250=2, DICT_4X4_1000=3, DICT_5X5_50=4, DICT_5X5_100=5, DICT_5X5_250=6, DICT_5X5_1000=7, DICT_6X6_50=8, DICT_6X6_100=9, DICT_6X6_250=10, DICT_6X6_1000=11, DICT_7X7_50=12, DICT_7X7_100=13, DICT_7X7_250=14, DICT_7X7_1000=15, DICT_ARUCO_ORIGINAL = 16, DICT_APRILTAG_16h5=17, DICT_APRILTAG_25h9=18, DICT_APRILTAG_36h10=19, DICT_APRILTAG_36h11=20");
-    RTABMAP_PARAM(Aruco, MarkerLength,           float, 0,     "The length (m) of the markers' side. 0 means automatic marker length estimation using the depth image (the camera should look at the marker perpendicularly for initialization).");
-    RTABMAP_PARAM(Aruco, MaxDepthError,          float, 0.01,  uFormat("Maximum depth error between all corners of a marker when estimating the marker length (when %s is 0). The smaller it is, the more perpendicular the camera should be toward the marker to initialize the length.", kArucoMarkerLength().c_str()));
-    RTABMAP_PARAM(Aruco, VarianceLinear,         float, 0.001, "Linear variance to set on marker detections.");
-    RTABMAP_PARAM(Aruco, VarianceAngular,        float, 0.01,  "Angular variance to set on marker detections. Set to >=9999 to use only position (xyz) constraint in graph optimization.");
-    RTABMAP_PARAM(Aruco, CornerRefinementMethod, int,   0,     "Corner refinement method (0: None, 1: Subpixel, 2:contour, 3: AprilTag 2). For OpenCV <3.3.0, this is \"doCornerRefinement\" parameter: set 0 for false and 1 for true.");
+    RTABMAP_PARAM(Marker, Dictionary,             int,   0,     "Dictionary to use: DICT_ARUCO_4X4_50=0, DICT_ARUCO_4X4_100=1, DICT_ARUCO_4X4_250=2, DICT_ARUCO_4X4_1000=3, DICT_ARUCO_5X5_50=4, DICT_ARUCO_5X5_100=5, DICT_ARUCO_5X5_250=6, DICT_ARUCO_5X5_1000=7, DICT_ARUCO_6X6_50=8, DICT_ARUCO_6X6_100=9, DICT_ARUCO_6X6_250=10, DICT_ARUCO_6X6_1000=11, DICT_ARUCO_7X7_50=12, DICT_ARUCO_7X7_100=13, DICT_ARUCO_7X7_250=14, DICT_ARUCO_7X7_1000=15, DICT_ARUCO_ORIGINAL = 16, DICT_APRILTAG_16h5=17, DICT_APRILTAG_25h9=18, DICT_APRILTAG_36h10=19, DICT_APRILTAG_36h11=20");
+    RTABMAP_PARAM(Marker, Length,                 float, 0,     "The length (m) of the markers' side. 0 means automatic marker length estimation using the depth image (the camera should look at the marker perpendicularly for initialization).");
+    RTABMAP_PARAM(Marker, MaxDepthError,          float, 0.01,  uFormat("Maximum depth error between all corners of a marker when estimating the marker length (when %s is 0). The smaller it is, the more perpendicular the camera should be toward the marker to initialize the length.", kMarkerLength().c_str()));
+    RTABMAP_PARAM(Marker, VarianceLinear,         float, 0.001, "Linear variance to set on marker detections.");
+    RTABMAP_PARAM(Marker, VarianceAngular,        float, 0.01,  "Angular variance to set on marker detections. Set to >=9999 to use only position (xyz) constraint in graph optimization.");
+    RTABMAP_PARAM(Marker, CornerRefinementMethod, int,   0,     "Corner refinement method (0: None, 1: Subpixel, 2:contour, 3: AprilTag2). For OpenCV <3.3.0, this is \"doCornerRefinement\" parameter: set 0 for false and 1 for true.");
+
+    RTABMAP_PARAM(ImuFilter, MadgwickGain,                  double, 0.1,  "Gain of the filter. Higher values lead to faster convergence but more noise. Lower values lead to slower convergence but smoother signal, belongs in [0, 1].");
+    RTABMAP_PARAM(ImuFilter, MadgwickZeta,                  double, 0.0,  "Gyro drift gain (approx. rad/s), belongs in [-1, 1].");
+
+    RTABMAP_PARAM(ImuFilter, ComplementaryGainAcc,          double, 0.01, "Gain parameter for the complementary filter, belongs in [0, 1].");
+    RTABMAP_PARAM(ImuFilter, ComplementaryBiasAlpha,        double, 0.01, "Bias estimation gain parameter, belongs in [0, 1].");
+    RTABMAP_PARAM(ImuFilter, ComplementaryDoBiasEstimation, bool,   true, "Parameter whether to do bias estimation or not.");
+    RTABMAP_PARAM(ImuFilter, ComplementaryDoAdpativeGain,   bool,   true, "Parameter whether to do adaptive gain or not.");
+
+    //
+        double gain_acc_;
+
+        //
+        double bias_alpha_;
+
+        //
+        bool do_bias_estimation_;
+
+        //
+        bool do_adaptive_gain_;
 
 public:
     virtual ~Parameters();

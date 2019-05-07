@@ -108,8 +108,8 @@ Memory::Memory(const ParametersMap & parameters) :
 	_rectifyOnlyFeatures(Parameters::defaultRtabmapRectifyOnlyFeatures()),
 	_covOffDiagonalIgnored(Parameters::defaultMemCovOffDiagIgnored()),
 	_detectMarkers(Parameters::defaultRGBDMarkerDetection()),
-	_markerLinVariance(Parameters::defaultArucoVarianceLinear()),
-	_markerAngVariance(Parameters::defaultArucoVarianceAngular()),
+	_markerLinVariance(Parameters::defaultMarkerVarianceLinear()),
+	_markerAngVariance(Parameters::defaultMarkerVarianceAngular()),
 	_idCount(kIdStart),
 	_idMapCount(kIdStart),
 	_lastSignature(0),
@@ -567,8 +567,8 @@ void Memory::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(params, Parameters::kRtabmapRectifyOnlyFeatures(), _rectifyOnlyFeatures);
 	Parameters::parse(params, Parameters::kMemCovOffDiagIgnored(), _covOffDiagonalIgnored);
 	Parameters::parse(params, Parameters::kRGBDMarkerDetection(), _detectMarkers);
-	Parameters::parse(params, Parameters::kArucoVarianceLinear(), _markerLinVariance);
-	Parameters::parse(params, Parameters::kArucoVarianceAngular(), _markerAngVariance);
+	Parameters::parse(params, Parameters::kMarkerVarianceLinear(), _markerLinVariance);
+	Parameters::parse(params, Parameters::kMarkerVarianceAngular(), _markerAngVariance);
 
 	UASSERT_MSG(_maxStMemSize >= 0, uFormat("value=%d", _maxStMemSize).c_str());
 	UASSERT_MSG(_similarityThreshold >= 0.0f && _similarityThreshold <= 1.0f, uFormat("value=%f", _similarityThreshold).c_str());

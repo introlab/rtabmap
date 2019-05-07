@@ -840,10 +840,10 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 			else
 			{
 				RTABMapLib.setMappingParameter("RGBD/MarkerDetection", "true");
-				RTABMapLib.setMappingParameter("Aruco/Dictionary", markerDetection);
-                                RTABMapLib.setMappingParameter("Aruco/CornerRefinementMethod", Integer.parseInt(markerDetection) > 16?"3":"0");
+				RTABMapLib.setMappingParameter("Marker/Dictionary", markerDetection);
+                                RTABMapLib.setMappingParameter("Marker/CornerRefinementMethod", Integer.parseInt(markerDetection) > 16?"3":"0");
 			}
-			RTABMapLib.setMappingParameter("Aruco/MaxDepthError", markerDetectionDepthError);
+			RTABMapLib.setMappingParameter("Marker/MaxDepthError", markerDetectionDepthError);
 	
 			if(!DISABLE_LOG) Log.d(TAG, "set exporting parameters...");
 			RTABMapLib.setCloudDensityLevel(Integer.parseInt(sharedPref.getString(getString(R.string.pref_key_density), getString(R.string.pref_default_density))));

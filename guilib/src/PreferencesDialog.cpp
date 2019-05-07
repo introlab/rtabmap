@@ -1237,12 +1237,12 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->stereosgbm_mode->setObjectName(Parameters::kStereoSGBMMode().c_str());
 
 	// Aruco marker
-	_ui->ArucoDictionary->setObjectName(Parameters::kArucoDictionary().c_str());
-	_ui->ArucoMarkerLength->setObjectName(Parameters::kArucoMarkerLength().c_str());
-	_ui->ArucoMaxDepthError->setObjectName(Parameters::kArucoMaxDepthError().c_str());
-	_ui->ArucoVarianceLinear->setObjectName(Parameters::kArucoVarianceLinear().c_str());
-	_ui->ArucoVarianceAngular->setObjectName(Parameters::kArucoVarianceAngular().c_str());
-	_ui->ArucoCornerRefinementMethod->setObjectName(Parameters::kArucoCornerRefinementMethod().c_str());
+	_ui->ArucoDictionary->setObjectName(Parameters::kMarkerDictionary().c_str());
+	_ui->ArucoMarkerLength->setObjectName(Parameters::kMarkerLength().c_str());
+	_ui->ArucoMaxDepthError->setObjectName(Parameters::kMarkerMaxDepthError().c_str());
+	_ui->ArucoVarianceLinear->setObjectName(Parameters::kMarkerVarianceLinear().c_str());
+	_ui->ArucoVarianceAngular->setObjectName(Parameters::kMarkerVarianceAngular().c_str());
+	_ui->ArucoCornerRefinementMethod->setObjectName(Parameters::kMarkerCornerRefinementMethod().c_str());
 
 	// reset default settings for the gui
 	resetSettings(_ui->groupBox_generalSettingsGui0);

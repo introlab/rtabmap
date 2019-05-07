@@ -100,7 +100,7 @@ rtabmap::ParametersMap RTABMapApp::getRtabmapParameters()
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kRGBDProximityBySpace(), std::string("false"))); // just keep loop closure detection
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kRGBDLinearUpdate(), std::string("0.05")));
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kRGBDAngularUpdate(), std::string("0.05")));
-	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kArucoMarkerLength(), std::string("0.0")));
+	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kMarkerLength(), std::string("0.0")));
 
 	if(parameters.find(rtabmap::Parameters::kOptimizerStrategy()) != parameters.end())
 	{

@@ -41,6 +41,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/utilite/UMath.h"
 #include "rtabmap/utilite/UStl.h"
 #include "rtabmap/utilite/UProcessInfo.h"
+#include "rtabmap/core/IMUFilter.h"
 #include <pcl/common/common.h>
 #include <yaml-cpp/yaml.h>
 #include <stdio.h>
@@ -309,60 +310,6 @@ int main(int argc, char * argv[])
 		mapUpdate = 1;
 	}
 
-	std::ifstream imu_file;
-	if(odomStrategy == Odometry::kTypeOkvis || odomStrategy == Odometry::kTypeMSCKF || odomStrategy == Odometry::kTypeVINS)
-	{
-		// open the IMU file
-		std::string line;
-		imu_file.open(pathImu.c_str());
-		if (!imu_file.good()) {
-			UERROR("no imu file found at %s",pathImu.c_str());
-			return -1;
-		}
-		int number_of_lines = 0;
-		while (std::getline(imu_file, line))
-			++number_of_lines;
-		printf("No. IMU measurements: %d\n", number_of_lines-1);
-		if (number_of_lines - 1 <= 0) {
-			UERROR("no imu messages present in %s", pathImu.c_str());
-			return -1;
-		}
-		// set reading position to second line
-		imu_file.clear();
-		imu_file.seekg(0, std::ios::beg);
-		std::getline(imu_file, line);
-
-		if(odomStrategy == Odometry::kTypeMSCKF)
-		{
-			if(seq.compare("MH_01_easy") == 0)
-			{
-				printf("MH_01_easy detected with MSCFK odometry, ignoring first moving 440 images...\n");
-				((CameraStereoImages*)cameraThread.camera())->setStartIndex(440);
-			}
-			else if(seq.compare("MH_02_easy") == 0)
-			{
-				printf("MH_02_easy detected with MSCFK odometry, ignoring first moving 525 images...\n");
-				((CameraStereoImages*)cameraThread.camera())->setStartIndex(525);
-			}
-			else if(seq.compare("MH_03_medium") == 0)
-			{
-				printf("MH_03_medium detected with MSCFK odometry, ignoring first moving 210 images...\n");
-				((CameraStereoImages*)cameraThread.camera())->setStartIndex(210);
-			}
-			else if(seq.compare("MH_04_difficult") == 0)
-			{
-				printf("MH_04_difficult detected with MSCFK odometry, ignoring first moving 250 images...\n");
-				((CameraStereoImages*)cameraThread.camera())->setStartIndex(250);
-			}
-			else if(seq.compare("MH_05_difficult") == 0)
-			{
-				printf("MH_05_difficult detected with MSCFK odometry, ignoring first moving 310 images...\n");
-				((CameraStereoImages*)cameraThread.camera())->setStartIndex(310);
-			}
-		}
-	}
-
-
 	std::string databasePath = output+"/"+outputName+".db";
 	UFile::erase(databasePath);
 	if(cameraThread.camera()->init(output, outputName+"_calib"))
@@ -374,6 +321,60 @@ int main(int argc, char * argv[])
 		ParametersMap odomParameters = parameters;
 		odomParameters.erase(Parameters::kRtabmapPublishRAMUsage()); // as odometry is in the same process than rtabmap, don't get RAM usage in odometry.
 		Odometry * odom = Odometry::create(odomParameters);
+
+		std::ifstream imu_file;
+		if(odom->canProcessIMU())
+		{
+			// open the IMU file
+			std::string line;
+			imu_file.open(pathImu.c_str());
+			if (!imu_file.good()) {
+				UERROR("no imu file found at %s",pathImu.c_str());
+				return -1;
+			}
+			int number_of_lines = 0;
+			while (std::getline(imu_file, line))
+				++number_of_lines;
+			printf("No. IMU measurements: %d\n", number_of_lines-1);
+			if (number_of_lines - 1 <= 0) {
+				UERROR("no imu messages present in %s", pathImu.c_str());
+				return -1;
+			}
+			// set reading position to second line
+			imu_file.clear();
+			imu_file.seekg(0, std::ios::beg);
+			std::getline(imu_file, line);
+
+			if(odomStrategy == Odometry::kTypeMSCKF)
+			{
+				if(seq.compare("MH_01_easy") == 0)
+				{
+					printf("MH_01_easy detected with MSCFK odometry, ignoring first moving 440 images...\n");
+					((CameraStereoImages*)cameraThread.camera())->setStartIndex(440);
+				}
+				else if(seq.compare("MH_02_easy") == 0)
+				{
+					printf("MH_02_easy detected with MSCFK odometry, ignoring first moving 525 images...\n");
+					((CameraStereoImages*)cameraThread.camera())->setStartIndex(525);
+				}
+				else if(seq.compare("MH_03_medium") == 0)
+				{
+					printf("MH_03_medium detected with MSCFK odometry, ignoring first moving 210 images...\n");
+					((CameraStereoImages*)cameraThread.camera())->setStartIndex(210);
+				}
+				else if(seq.compare("MH_04_difficult") == 0)
+				{
+					printf("MH_04_difficult detected with MSCFK odometry, ignoring first moving 250 images...\n");
+					((CameraStereoImages*)cameraThread.camera())->setStartIndex(250);
+				}
+				else if(seq.compare("MH_05_difficult") == 0)
+				{
+					printf("MH_05_difficult detected with MSCFK odometry, ignoring first moving 310 images...\n");
+					((CameraStereoImages*)cameraThread.camera())->setStartIndex(310);
+				}
+			}
+		}
+
 		Rtabmap rtabmap;
 		rtabmap.init(parameters, databasePath);
 
@@ -394,7 +395,7 @@ int main(int argc, char * argv[])
 		while(data.isValid() && g_forever)
 		{
 			UDEBUG("");
-			if(odomStrategy == Odometry::kTypeOkvis || odomStrategy == Odometry::kTypeMSCKF || odomStrategy == Odometry::kTypeVINS)
+			if(odom->canProcessIMU())
 			{
 				// get all IMU measurements till then
 				double t_imu = start;
@@ -426,6 +427,7 @@ int main(int argc, char * argv[])
 					t_imu = double(uStr2Int(seconds)) + double(uStr2Int(nanoseconds))*1e-9;
 
 					if (t_imu - start + 1 > 0) {
+
 						SensorData dataImu(IMU(gyr, cv::Mat(3,3,CV_64FC1), acc, cv::Mat(3,3,CV_64FC1), baseToImu), 0, t_imu);
 						UDEBUG("");
 						odom->process(dataImu);
@@ -443,14 +445,6 @@ int main(int argc, char * argv[])
 			UDEBUG("");
 			Transform pose = odom->process(data, &odomInfo);
 			UDEBUG("");
-			if((odomStrategy == Odometry::kTypeOkvis || odomStrategy == Odometry::kTypeMSCKF || odomStrategy == Odometry::kTypeVINS) &&
-				pose.isNull())
-			{
-				cameraInfo = CameraInfo();
-				timer.restart();
-				data = cameraThread.camera()->takeImage(&cameraInfo);
-				continue;
-			}
 
 			if(odomInfo.keyFrameAdded)
 			{

@@ -126,6 +126,73 @@ CameraStereoZed::~CameraStereoZed()
 #endif
 }
 
+#ifdef RTABMAP_ZED
+static cv::Mat slMat2cvMat(sl::Mat& input) {
+	//convert MAT_TYPE to CV_TYPE
+	int cv_type = -1;
+	switch (input.getDataType()) {
+	case sl::MAT_TYPE_32F_C1: cv_type = CV_32FC1; break;
+	case sl::MAT_TYPE_32F_C2: cv_type = CV_32FC2; break;
+	case sl::MAT_TYPE_32F_C3: cv_type = CV_32FC3; break;
+	case sl::MAT_TYPE_32F_C4: cv_type = CV_32FC4; break;
+	case sl::MAT_TYPE_8U_C1: cv_type = CV_8UC1; break;
+	case sl::MAT_TYPE_8U_C2: cv_type = CV_8UC2; break;
+	case sl::MAT_TYPE_8U_C3: cv_type = CV_8UC3; break;
+	case sl::MAT_TYPE_8U_C4: cv_type = CV_8UC4; break;
+	default: break;
+	}
+	// cv::Mat data requires a uchar* pointer. Therefore, we get the uchar1 pointer from sl::Mat (getPtr<T>())
+	//cv::Mat and sl::Mat will share the same memory pointer
+	return cv::Mat(input.getHeight(), input.getWidth(), cv_type, input.getPtr<sl::uchar1>(sl::MEM_CPU));
+}
+
+Transform zedPoseToTransform(const sl::Pose & pose)
+{
+	return Transform(
+			pose.pose_data.m[0], pose.pose_data.m[1], pose.pose_data.m[2], pose.pose_data.m[3],
+			pose.pose_data.m[4], pose.pose_data.m[5], pose.pose_data.m[6], pose.pose_data.m[7],
+			pose.pose_data.m[8], pose.pose_data.m[9], pose.pose_data.m[10], pose.pose_data.m[11]);
+}
+
+IMU zedIMUtoIMU(const sl::IMUData & imuData, const Transform & imuLocalTransform)
+{
+	sl::Orientation orientation = imuData.pose_data.getOrientation();
+
+	//Convert zed imu orientation from camera frame to world frame ENU!
+	Transform opticalTransform(0, 0, 1, 0, -1, 0, 0, 0, 0, -1, 0, 0);
+	Transform orientationT(0,0,0, orientation.ox, orientation.oy, orientation.oz, orientation.ow);
+	orientationT = opticalTransform * orientationT;
+
+	Eigen::Matrix4d opticalTransform4d = opticalTransform.toEigen4d();
+	Eigen::Vector4d accT = opticalTransform4d * Eigen::Vector4d(imuData.linear_acceleration.v[0], imuData.linear_acceleration.v[1], imuData.linear_acceleration.v[2], 1);
+	Eigen::Vector4d gyrT = opticalTransform4d * Eigen::Vector4d(imuData.angular_velocity.v[0], imuData.angular_velocity.v[1], imuData.angular_velocity.v[2], 1);
+
+	// FIXME covariance should be rotated too: see https://robotics.stackexchange.com/questions/2556/how-to-rotate-covariance
+	cv::Mat orientationCov = (cv::Mat_<double>(3,3)<<
+			imuData.pose_covariance[21], imuData.pose_covariance[22], imuData.pose_covariance[23],
+			imuData.pose_covariance[27], imuData.pose_covariance[28], imuData.pose_covariance[29],
+			imuData.pose_covariance[33], imuData.pose_covariance[34], imuData.pose_covariance[35]);
+	cv::Mat angCov = (cv::Mat_<double>(3,3)<<
+			imuData.angular_velocity_convariance.r[0], imuData.angular_velocity_convariance.r[1], imuData.angular_velocity_convariance.r[2],
+			imuData.angular_velocity_convariance.r[3], imuData.angular_velocity_convariance.r[4], imuData.angular_velocity_convariance.r[5],
+			imuData.angular_velocity_convariance.r[6], imuData.angular_velocity_convariance.r[7], imuData.angular_velocity_convariance.r[8]);
+	cv::Mat accCov = (cv::Mat_<double>(3,3)<<
+			imuData.linear_acceleration_convariance.r[0], imuData.linear_acceleration_convariance.r[1], imuData.linear_acceleration_convariance.r[2],
+			imuData.linear_acceleration_convariance.r[3], imuData.linear_acceleration_convariance.r[4], imuData.linear_acceleration_convariance.r[5],
+			imuData.linear_acceleration_convariance.r[6], imuData.linear_acceleration_convariance.r[7], imuData.linear_acceleration_convariance.r[8]);
+
+	Eigen::Quaternionf quat = orientationT.getQuaternionf();
+	return IMU(
+			cv::Vec4d(quat.x(), quat.y(), quat.z(), quat.w()),
+			orientationCov,
+			cv::Vec3d(gyrT[0], gyrT[1], gyrT[2]),
+			angCov,
+			cv::Vec3d(accT[0], accT[1], accT[2]),
+			accCov,
+			imuLocalTransform);
+}
+#endif
+
 bool CameraStereoZed::init(const std::string & calibrationFolder, const std::string & cameraName)
 {
 	UDEBUG("");
@@ -217,6 +284,14 @@ bool CameraStereoZed::init(const std::string & calibrationFolder, const std::str
 			(int)res.height,
 			this->getLocalTransform().prettyPrint().c_str());
 
+	if(infos.camera_model == sl::MODEL_ZED_M)
+	{
+		imuLocalTransform_ = this->getLocalTransform() * zedPoseToTransform(infos.camera_imu_transform).inverse();
+		UINFO("IMU local transform: %s (imu2cam=%s))",
+				imuLocalTransform_.prettyPrint().c_str(),
+				zedPoseToTransform(infos.camera_imu_transform).prettyPrint().c_str());
+	}
+
 	return true;
 #else
 	UERROR("CameraStereoZED: RTAB-Map is not built with ZED sdk support!");
@@ -252,34 +327,6 @@ bool CameraStereoZed::odomProvided() const
 	return false;
 #endif
 }
-#ifdef RTABMAP_ZED
-static cv::Mat slMat2cvMat(sl::Mat& input) {
-	//convert MAT_TYPE to CV_TYPE
-	int cv_type = -1;
-	switch (input.getDataType()) {
-	case sl::MAT_TYPE_32F_C1: cv_type = CV_32FC1; break;
-	case sl::MAT_TYPE_32F_C2: cv_type = CV_32FC2; break;
-	case sl::MAT_TYPE_32F_C3: cv_type = CV_32FC3; break;
-	case sl::MAT_TYPE_32F_C4: cv_type = CV_32FC4; break;
-	case sl::MAT_TYPE_8U_C1: cv_type = CV_8UC1; break;
-	case sl::MAT_TYPE_8U_C2: cv_type = CV_8UC2; break;
-	case sl::MAT_TYPE_8U_C3: cv_type = CV_8UC3; break;
-	case sl::MAT_TYPE_8U_C4: cv_type = CV_8UC4; break;
-	default: break;
-	}	
-	// cv::Mat data requires a uchar* pointer. Therefore, we get the uchar1 pointer from sl::Mat (getPtr<T>())
-	//cv::Mat and sl::Mat will share the same memory pointer
-	return cv::Mat(input.getHeight(), input.getWidth(), cv_type, input.getPtr<sl::uchar1>(sl::MEM_CPU));
-}
-
-Transform zedPoseToTransform(const sl::Pose & pose)
-{
-	return Transform(
-			pose.pose_data.m[0], pose.pose_data.m[1], pose.pose_data.m[2], pose.pose_data.m[3],
-			pose.pose_data.m[4], pose.pose_data.m[5], pose.pose_data.m[6], pose.pose_data.m[7],
-			pose.pose_data.m[8], pose.pose_data.m[9], pose.pose_data.m[10], pose.pose_data.m[11]);
-}
-#endif
 
 SensorData CameraStereoZed::captureImage(CameraInfo * info)
 {
@@ -325,6 +372,14 @@ SensorData CameraStereoZed::captureImage(CameraInfo * info)
 				cv::cvtColor(rgbaRight, right, cv::COLOR_BGRA2GRAY);
 			
 				data = SensorData(left, right, stereoModel_, this->getNextSeqID(), UTimer::now());
+			}
+
+			sl::IMUData imudata;
+			res = zed_->getIMUData(imudata, sl::TIME_REFERENCE_IMAGE);
+			if(res == sl::SUCCESS && imudata.valid)
+			{
+				//ZED-Mini
+				data.setIMU(zedIMUtoIMU(imudata, imuLocalTransform_));
 			}
 
 			if (computeOdometry_ && info)

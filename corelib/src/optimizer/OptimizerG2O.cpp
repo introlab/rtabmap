@@ -1417,6 +1417,9 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 
 						g2o::VertexCam* v1 = (g2o::VertexCam*)optimizer.vertex(id1);
 						EdgeSBACamGravity* priorEdge(new EdgeSBACamGravity());
+						std::map<int, CameraModel>::const_iterator iterModel = models.find(iter->first);
+						UASSERT(iterModel != models.end() && !iterModel->second.localTransform().isNull());
+						priorEdge->setCameraInvLocalTransform(iterModel->second.localTransform().inverse().toEigen3d().linear());
 						priorEdge->setMeasurement(m);
 						priorEdge->setInformation(information);
 						priorEdge->vertices()[0] = v1;
