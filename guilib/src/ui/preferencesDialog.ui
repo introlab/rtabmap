@@ -94,7 +94,7 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>0</y>
+            <y>-359</y>
             <width>680</width>
             <height>3082</height>
            </rect>
@@ -126,7 +126,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>14</number>
+                <number>5</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,1">
@@ -2993,7 +2993,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                     <item>
                      <widget class="QStackedWidget" name="stackedWidget_src">
                       <property name="currentIndex">
-                       <number>3</number>
+                       <number>1</number>
                       </property>
                       <widget class="QWidget" name="page_41">
                        <layout class="QVBoxLayout" name="verticalLayout_64">
@@ -3122,7 +3122,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                            <item>
                             <widget class="QStackedWidget" name="stackedWidget_rgbd">
                              <property name="currentIndex">
-                              <number>7</number>
+                              <number>9</number>
                              </property>
                              <widget class="QWidget" name="page_32">
                               <layout class="QVBoxLayout" name="verticalLayout_63">
@@ -4235,6 +4235,11 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                  <string>Tara Camera</string>
                                 </property>
                                </item>
+                               <item>
+                                <property name="text">
+                                 <string>RealSense2</string>
+                                </property>
+                               </item>
                               </widget>
                              </item>
                              <item row="0" column="2">
@@ -4315,7 +4320,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                            <item>
                             <widget class="QStackedWidget" name="stackedWidget_stereo">
                              <property name="currentIndex">
-                              <number>2</number>
+                              <number>7</number>
                              </property>
                              <widget class="QWidget" name="page_49">
                               <layout class="QVBoxLayout" name="verticalLayout_91">
@@ -4848,6 +4853,23 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                               <layout class="QVBoxLayout" name="verticalLayout_135">
                                <item>
                                 <spacer name="verticalSpacer_75">
+                                 <property name="orientation">
+                                  <enum>Qt::Vertical</enum>
+                                 </property>
+                                 <property name="sizeHint" stdset="0">
+                                  <size>
+                                   <width>20</width>
+                                   <height>471</height>
+                                  </size>
+                                 </property>
+                                </spacer>
+                               </item>
+                              </layout>
+                             </widget>
+                             <widget class="QWidget" name="page_80">
+                              <layout class="QVBoxLayout" name="verticalLayout_140">
+                               <item>
+                                <spacer name="verticalSpacer_78">
                                  <property name="orientation">
                                   <enum>Qt::Vertical</enum>
                                  </property>

@@ -69,6 +69,7 @@ public:
 	// parameters are set during initialization
 	void setEmitterEnabled(bool enabled);
 	void setIRDepthFormat(bool enabled);
+	void setImagesRectified(bool enabled);
 
 protected:
 	virtual SensorData captureImage(CameraInfo * info = 0);
@@ -86,9 +87,11 @@ private:
 	cv::Mat depthBuffer_;
 	cv::Mat rgbBuffer_;
 	CameraModel model_;
+	StereoCameraModel stereoModel_;
 
 	bool emitterEnabled_;
 	bool irDepth_;
+	bool rectifyImages_;
 #endif
 };
 

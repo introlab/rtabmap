@@ -65,7 +65,8 @@ CameraRealSense2::CameraRealSense2(
 	rgbIntrinsics_(new rs2_intrinsics),
 	depthToRGBExtrinsics_(new rs2_extrinsics),
 	emitterEnabled_(true),
-	irDepth_(false)
+	irDepth_(false),
+	rectifyImages_(true)
 #endif
 {
 	UDEBUG("");
@@ -74,11 +75,18 @@ CameraRealSense2::CameraRealSense2(
 CameraRealSense2::~CameraRealSense2()
 {
 #ifdef RTABMAP_REALSENSE2
-  for(rs2::sensor _sensor : dev_->query_sensors())
-  {
-      _sensor.stop();
-      _sensor.close();
-  }
+	for(rs2::sensor _sensor : dev_->query_sensors())
+	{
+		try
+		{
+			_sensor.stop();
+			_sensor.close();
+		}
+		catch(const rs2::wrong_api_call_sequence_error & error)
+		{
+			UINFO("%s", error.what());
+		}
+	}
 	delete ctx_;
 	delete dev_;
 	delete syncer_;
@@ -224,6 +232,7 @@ bool CameraRealSense2::init(const std::string & calibrationFolder, const std::st
 
 	UINFO("Device Sensors: ");
 	std::vector<rs2::sensor> sensors(2); //0=rgb 1=depth
+	bool stereo = false;
 	for(auto&& elem : dev_sensors)
 	{
 		std::string module_name = elem.get_info(RS2_CAMERA_INFO_NAME);
@@ -238,6 +247,7 @@ bool CameraRealSense2::init(const std::string & calibrationFolder, const std::st
 		}
 		else if ("Coded-Light Depth Sensor" == module_name)
 		{
+			UINFO("Found \"%s\"", module_name.c_str());
 		}
 		else if ("RGB Camera" == module_name)
 		{
@@ -252,9 +262,15 @@ bool CameraRealSense2::init(const std::string & calibrationFolder, const std::st
 		else if ("Motion Module" == module_name)
 		{
 		}
+		else if ("Tracking Module" == module_name)
+		{
+			sensors.resize(1);
+			sensors[0] = elem;
+			stereo = true;
+		}
 		else
 		{
-			UERROR("Module Name \"%s\" isn't supported by LibRealSense!", module_name.c_str());
+			UERROR("Module Name \"%s\" isn't supported!", module_name.c_str());
 			return false;
 		}
 		UINFO("%s was found.", elem.get_info(RS2_CAMERA_INFO_NAME));
@@ -265,39 +281,85 @@ bool CameraRealSense2::init(const std::string & calibrationFolder, const std::st
 	model_ = CameraModel();
 	rs2::stream_profile depthStreamProfile;
 	rs2::stream_profile rgbStreamProfile;
-	std::vector<std::vector<rs2::stream_profile> > profilesPerSensor(2);
+	std::vector<std::vector<rs2::stream_profile> > profilesPerSensor(sensors.size());
 	 for (unsigned int i=0; i<sensors.size(); ++i)
 	 {
-		 UDEBUG("i=%d", (int)i);
+		UINFO("Sensor %d \"%s\"", (int)i, sensors[i].get_info(RS2_CAMERA_INFO_NAME));
 		auto profiles = sensors[i].get_stream_profiles();
 		bool added = false;
-		UDEBUG("profiles=%d", (int)profiles.size());
+		UINFO("profiles=%d", (int)profiles.size());
+		int pi = 0;
 		for (auto& profile : profiles)
 		{
 			auto video_profile = profile.as<rs2::video_stream_profile>();
-			if (video_profile.format() == (i==1?RS2_FORMAT_Z16:irDepth_?RS2_FORMAT_Y8:RS2_FORMAT_RGB8) &&
-				video_profile.width()  == 640 &&
-				video_profile.height() == 480 &&
-				video_profile.fps()    == 30)
+			UINFO("%s %d %d %d", rs2_format_to_string(
+					video_profile.format()),
+					video_profile.width(),
+					video_profile.height(),
+					video_profile.fps());
+
+			if(!stereo)
 			{
-				profilesPerSensor[irDepth_?1:i].push_back(profile);
-				auto intrinsic = video_profile.get_intrinsics();
-				if(i==1)
+				if (video_profile.format() == (i==1?RS2_FORMAT_Z16:irDepth_?RS2_FORMAT_Y8:RS2_FORMAT_RGB8) &&
+					video_profile.width()  == 640 &&
+					video_profile.height() == 480 &&
+					video_profile.fps()    == 30)
 				{
-					depthBuffer_ = cv::Mat(cv::Size(640, 480), CV_16UC1, cv::Scalar(0));
-					depthStreamProfile = profile;
-					*depthIntrinsics_ = intrinsic;
+					profilesPerSensor[irDepth_?1:i].push_back(profile);
+					auto intrinsic = video_profile.get_intrinsics();
+					if(i==1)
+					{
+						depthBuffer_ = cv::Mat(cv::Size(640, 480), CV_16UC1, cv::Scalar(0));
+						depthStreamProfile = profile;
+						*depthIntrinsics_ = intrinsic;
+					}
+					else
+					{
+						rgbBuffer_ = cv::Mat(cv::Size(640, 480), irDepth_?CV_8UC1:CV_8UC3, irDepth_?cv::Scalar(0):cv::Scalar(0, 0, 0));
+						model_ = CameraModel(camera_name, intrinsic.fx, intrinsic.fy, intrinsic.ppx, intrinsic.ppy, this->getLocalTransform(), 0, cv::Size(intrinsic.width, intrinsic.height));
+						rgbStreamProfile = profile;
+						*rgbIntrinsics_ = intrinsic;
+					}
+					added = true;
+					break;
 				}
-				else
-				{
-					rgbBuffer_ = cv::Mat(cv::Size(640, 480), irDepth_?CV_8UC1:CV_8UC3, irDepth_?cv::Scalar(0):cv::Scalar(0, 0, 0));
-					model_ = CameraModel(camera_name, intrinsic.fx, intrinsic.fy, intrinsic.ppx, intrinsic.ppy, this->getLocalTransform(), 0, cv::Size(intrinsic.width, intrinsic.height));
-					rgbStreamProfile = profile;
-					*rgbIntrinsics_ = intrinsic;
-				}
-				added = true;
-				break;
 			}
+			else if(stereo)
+			{
+				if(video_profile.format() == RS2_FORMAT_Y8 &&
+					video_profile.width()  == 848 &&
+					video_profile.height() == 800 &&
+					video_profile.fps()    == 30)
+				{
+					UASSERT(i<2);
+					profilesPerSensor[0].push_back(profile);
+					auto intrinsic = video_profile.get_intrinsics();
+					if(pi==0)
+					{
+						// RIGHT FISHEYE
+						depthBuffer_ = cv::Mat(cv::Size(848, 800), CV_8UC1, cv::Scalar(0));
+						depthStreamProfile = profile;
+						*depthIntrinsics_ = intrinsic;
+					}
+					else
+					{
+						// LEFT FISHEYE
+						rgbBuffer_ = cv::Mat(cv::Size(848, 800), CV_8UC1, cv::Scalar(0));
+						rgbStreamProfile = profile;
+						*rgbIntrinsics_ = intrinsic;
+					}
+					added = true;
+				}
+				//MOTION_XYZ32F 0 0 200
+				//[ INFO] (2019-05-08 15:11:04.824) CameraRealSense2.cpp:299::init() MOTION_XYZ32F 0 0 62
+				//[ INFO] (2019-05-08 15:11:04.824) CameraRealSense2.cpp:299::init() 6DOF 0 0 200
+				else if(video_profile.format() == RS2_FORMAT_MOTION_XYZ32F || video_profile.format() == RS2_FORMAT_6DOF)
+				{
+					//profilesPerSensor[0].push_back(profile);
+					//added = true;
+				}
+			}
+			++pi;
 		}
 		if (!added)
 		{
@@ -306,13 +368,49 @@ bool CameraRealSense2::init(const std::string & calibrationFolder, const std::st
 			return false;
 		}
 	 }
-
-	 if(!model_.isValidForProjection())
+	 UDEBUG("");
+	 if(!stereo)
 	 {
-		 UERROR("Calibration info not valid!");
-		 return false;
+		 if(!model_.isValidForProjection())
+		 {
+			 UERROR("Calibration info not valid!");
+			 return false;
+		 }
+		 *depthToRGBExtrinsics_ = depthStreamProfile.get_extrinsics_to(rgbStreamProfile);
 	 }
-	 *depthToRGBExtrinsics_ = depthStreamProfile.get_extrinsics_to(rgbStreamProfile);
+	 else
+	 {
+
+		// look for calibration files
+		 std::string serial = sn;
+		 if(!cameraName.empty())
+		 {
+			 serial = cameraName;
+		 }
+		if(!calibrationFolder.empty() && !serial.empty())
+		{
+			if(!stereoModel_.load(calibrationFolder, serial, false))
+			{
+				UWARN("Missing calibration files for camera \"%s\" in \"%s\" folder, you should calibrate the camera!",
+						serial.c_str(), calibrationFolder.c_str());
+			}
+			else
+			{
+				UINFO("Stereo parameters: fx=%f cx=%f cy=%f baseline=%f",
+						stereoModel_.left().fx(),
+						stereoModel_.left().cx(),
+						stereoModel_.left().cy(),
+						stereoModel_.baseline());
+			}
+		}
+
+		stereoModel_.setLocalTransform(this->getLocalTransform());
+		if(rectifyImages_ && !stereoModel_.isValidForRectification())
+		{
+			UERROR("Parameter \"rectifyImages\" is set, but no stereo model is loaded or valid.");
+			return false;
+		}
+	 }
 
 	 for (unsigned int i=0; i<sensors.size(); ++i)
 	 {
@@ -320,7 +418,7 @@ bool CameraRealSense2::init(const std::string & calibrationFolder, const std::st
 		 {
 			 UINFO("Starting sensor %d with %d profiles", (int)i, (int)profilesPerSensor[i].size());
 			 sensors[i].open(profilesPerSensor[i]);
-			 if(i ==1)
+			 if(sensors[i].is<rs2::depth_sensor>())
 			 {
 				 auto depth_sensor = sensors[i].as<rs2::depth_sensor>();
 				 depth_scale_meters_ = depth_sensor.get_depth_scale();
@@ -342,7 +440,7 @@ bool CameraRealSense2::init(const std::string & calibrationFolder, const std::st
 
 bool CameraRealSense2::isCalibrated() const
 {
-	return true;
+	return model_.isValidForProjection() || stereoModel_.isValidForRectification();
 }
 
 std::string CameraRealSense2::getSerial() const
@@ -367,6 +465,13 @@ void CameraRealSense2::setIRDepthFormat(bool enabled)
 #endif
 }
 
+void CameraRealSense2::setImagesRectified(bool enabled)
+{
+#ifdef RTABMAP_REALSENSE2
+	rectifyImages_ = enabled;
+#endif
+}
+
 SensorData CameraRealSense2::captureImage(CameraInfo * info)
 {
 	SensorData data;
@@ -386,6 +491,8 @@ SensorData CameraRealSense2::captureImage(CameraInfo * info)
 			UDEBUG("Frameset arrived.");
 			bool is_rgb_arrived = false;
 			bool is_depth_arrived = false;
+			bool is_left_fisheye_arrived = false;
+			bool is_right_fisheye_arrived = false;
 			rs2::frame rgb_frame;
 			rs2::frame depth_frame;
 			for (auto it = frameset.begin(); it != frameset.end(); ++it)
@@ -401,6 +508,19 @@ SensorData CameraRealSense2::captureImage(CameraInfo * info)
 				{
 					depth_frame = f;
 					is_depth_arrived = true;
+				}
+				else if (stream_type == RS2_STREAM_FISHEYE)
+				{
+					if(!is_right_fisheye_arrived)
+					{
+						depth_frame = f;
+						is_right_fisheye_arrived = true;
+					}
+					else
+					{
+						rgb_frame = f;
+						is_left_fisheye_arrived = true;
+					}
 				}
 			}
 
@@ -432,6 +552,28 @@ SensorData CameraRealSense2::captureImage(CameraInfo * info)
 				}
 
 				data = SensorData(bgr, depth, model_, this->getNextSeqID(), stamp);
+			}
+			else if(is_left_fisheye_arrived && is_right_fisheye_arrived)
+			{
+				auto from_image_frame = depth_frame.as<rs2::video_frame>();
+				cv::Mat left,right;
+				if(rectifyImages_ && stereoModel_.left().isValidForRectification() && stereoModel_.right().isValidForRectification())
+				{
+					left = stereoModel_.left().rectifyImage(cv::Mat(rgbBuffer_.size(), rgbBuffer_.type(), (void*)rgb_frame.get_data()));
+					right = stereoModel_.right().rectifyImage(cv::Mat(depthBuffer_.size(), depthBuffer_.type(), (void*)depth_frame.get_data()));
+				}
+				else
+				{
+					left = cv::Mat(rgbBuffer_.size(), rgbBuffer_.type(), (void*)rgb_frame.get_data()).clone();
+					right = cv::Mat(depthBuffer_.size(), depthBuffer_.type(), (void*)depth_frame.get_data()).clone();
+				}
+
+				if(stereoModel_.left().imageHeight() == 0 || stereoModel_.left().imageWidth() == 0)
+				{
+					stereoModel_.setImageSize(left.size());
+				}
+
+				data = SensorData(left, right, stereoModel_, this->getNextSeqID(), stamp);
 			}
 			else
 			{
