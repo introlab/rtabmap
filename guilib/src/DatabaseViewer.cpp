@@ -6180,6 +6180,14 @@ void DatabaseViewer::updateGraphView()
 
 		Optimizer * optimizer = Optimizer::create(ui_->parameters_toolbox->getParameters());
 
+		if(optimizer->gravitySigma() > 0)
+		{
+			for(std::map<int, rtabmap::Transform>::iterator iter=poses.upper_bound(0); iter!=poses.end(); ++iter)
+			{
+				links.insert(std::make_pair(iter->first, Link(iter->first,iter->first, Link::kPoseOdom, iter->second)));
+			}
+		}
+
 		std::map<int, rtabmap::Transform> posesOut;
 		std::multimap<int, rtabmap::Link> linksOut;
 		UINFO("Get connected graph from %d (%d poses, %d links)", fromId, (int)poses.size(), (int)links.size());
