@@ -440,15 +440,20 @@ bool CameraRealSense2::init(const std::string & calibrationFolder, const std::st
 
 bool CameraRealSense2::isCalibrated() const
 {
+#ifdef RTABMAP_REALSENSE2
 	return model_.isValidForProjection() || stereoModel_.isValidForRectification();
+#else
+	return false;
+#endif
 }
 
 std::string CameraRealSense2::getSerial() const
 {
 #ifdef RTABMAP_REALSENSE2
 	return dev_->get_info(RS2_CAMERA_INFO_SERIAL_NUMBER);
-#endif
+#else
 	return "NA";
+#endif
 }
 
 void CameraRealSense2::setEmitterEnabled(bool enabled)
