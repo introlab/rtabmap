@@ -66,7 +66,8 @@ CameraRealSense2::CameraRealSense2(
 	depthToRGBExtrinsics_(new rs2_extrinsics),
 	emitterEnabled_(true),
 	irDepth_(false),
-	rectifyImages_(true)
+	rectifyImages_(true),
+	odometryProvided_(true)
 #endif
 {
 	UDEBUG("");
@@ -167,6 +168,200 @@ void alignFrame(const rs2_intrinsics& from_intrin,
         }
     }
 }
+
+void CameraRealSense2::imu_callback(rs2::frame frame)
+{
+	auto stream = frame.get_profile().stream_type();
+	cv::Vec3f crnt_reading = *reinterpret_cast<const cv::Vec3f*>(frame.get_data());
+	if(stream == RS2_STREAM_GYRO)
+	{
+		UDEBUG("GYRO callback! %f (%f %f %f)", frame.get_timestamp(),
+				crnt_reading[0],
+				crnt_reading[1],
+				crnt_reading[2]);
+		gyroBuffer_.insert(gyroBuffer_.end(), std::make_pair(frame.get_timestamp(), crnt_reading));
+		if(gyroBuffer_.size() > 10)
+		{
+			gyroBuffer_.erase(gyroBuffer_.begin());
+		}
+	}
+	else
+	{
+
+		UDEBUG("ACC callback! %f (%f %f %f)", frame.get_timestamp(),
+				crnt_reading[0],
+				crnt_reading[1],
+				crnt_reading[2]);
+		accBuffer_.insert(accBuffer_.end(), std::make_pair(frame.get_timestamp(), crnt_reading));
+		if(accBuffer_.size() > 10)
+		{
+			accBuffer_.erase(accBuffer_.begin());
+		}
+	}
+
+}
+
+Transform CameraRealSense2::realsense2PoseRotation_ = Transform(
+		0, 0,-1,0,
+		-1, 0, 0,0,
+		 0, 1, 0,0);
+Transform CameraRealSense2::realsense2PoseRotationInv_ = realsense2PoseRotation_.inverse();
+
+void CameraRealSense2::pose_callback(rs2::frame frame)
+{
+	rs2_pose pose = frame.as<rs2::pose_frame>().get_pose_data();
+	Transform poseT(
+			pose.translation.x,
+			pose.translation.y,
+			pose.translation.z,
+			pose.rotation.x,
+			pose.rotation.y,
+			pose.rotation.z,
+			pose.rotation.w);
+	poseT = realsense2PoseRotation_ * poseT * realsense2PoseRotationInv_;
+	UDEBUG("POSE callback! %f %s (confidence=%d)", frame.get_timestamp(), poseT.prettyPrint().c_str(), (int)pose.tracker_confidence);
+	poseBuffer_.insert(poseBuffer_.end(), std::make_pair(frame.get_timestamp(), std::make_pair(poseT, pose.tracker_confidence)));
+	if(poseBuffer_.size() > 10)
+	{
+		poseBuffer_.erase(poseBuffer_.begin());
+	}
+}
+
+void CameraRealSense2::frame_callback(rs2::frame frame)
+{
+	UDEBUG("Frame callback! %f", frame.get_timestamp());
+	(*syncer_)(frame);
+}
+void CameraRealSense2::multiple_message_callback(rs2::frame frame)
+{
+    auto stream = frame.get_profile().stream_type();
+    switch (stream)
+    {
+        case RS2_STREAM_GYRO:
+        case RS2_STREAM_ACCEL:
+            imu_callback(frame);
+            break;
+        case RS2_STREAM_POSE:
+            pose_callback(frame);
+            break;
+        default:
+            frame_callback(frame);
+    }
+}
+
+bool CameraRealSense2::getPoseAndIMU(
+		const double & stamp,
+		Transform & pose,
+		unsigned int & poseConfidence,
+		IMU & imu) const
+{
+	pose.setNull();
+	imu = IMU();
+	poseConfidence = 0;
+	if(poseBuffer_.empty() || accBuffer_.empty() || gyroBuffer_.empty())
+	{
+		return false;
+	}
+
+	// Interpolate pose
+	{
+		std::map<double, std::pair<Transform, unsigned int> >::const_iterator iterB = poseBuffer_.lower_bound(stamp);
+		std::map<double, std::pair<Transform, unsigned int> >::const_iterator iterA = iterB;
+		if(iterA != poseBuffer_.begin())
+		{
+			iterA = --iterA;
+		}
+		if(iterB == poseBuffer_.end())
+		{
+			iterB = --iterB;
+		}
+		if(iterA == iterB && stamp == iterA->first)
+		{
+			pose = iterA->second.first;
+			poseConfidence = iterA->second.second;
+		}
+		else if(stamp >= iterA->first && stamp <= iterB->first)
+		{
+			pose = iterA->second.first.interpolate((stamp-iterA->first) / (iterB->first-iterA->first), iterB->second.first);
+			poseConfidence = iterA->second.second;
+		}
+		else
+		{
+			UWARN("Could not find poses to interpolate at time %f", stamp);
+			return false;
+		}
+	}
+
+	// Interpolate acc
+	cv::Vec3d acc;
+	{
+		std::map<double, cv::Vec3f>::const_iterator iterB = accBuffer_.lower_bound(stamp);
+		std::map<double, cv::Vec3f>::const_iterator iterA = iterB;
+		if(iterA != accBuffer_.begin())
+		{
+			iterA = --iterA;
+		}
+		if(iterB == accBuffer_.end())
+		{
+			iterB = --iterB;
+		}
+		if(iterA == iterB && stamp == iterA->first)
+		{
+			acc[0] = iterA->second[0];
+			acc[1] = iterA->second[1];
+			acc[2] = iterA->second[2];
+		}
+		else if(stamp >= iterA->first && stamp <= iterB->first)
+		{
+			float t = (stamp-iterA->first) / (iterB->first-iterA->first);
+			acc[0] = iterA->second[0] + t*(iterB->second[0] - iterA->second[0]);
+			acc[1] = iterA->second[1] + t*(iterB->second[1] - iterA->second[1]);
+			acc[2] = iterA->second[2] + t*(iterB->second[2] - iterA->second[2]);
+		}
+		else
+		{
+			UWARN("Could not find acc data to interpolate at time %f", stamp);
+			return false;
+		}
+	}
+
+	// Interpolate gyro
+	cv::Vec3d gyro;
+	{
+		std::map<double, cv::Vec3f>::const_iterator iterB = gyroBuffer_.lower_bound(stamp);
+		std::map<double, cv::Vec3f>::const_iterator iterA = iterB;
+		if(iterA != gyroBuffer_.begin())
+		{
+			iterA = --iterA;
+		}
+		if(iterB == gyroBuffer_.end())
+		{
+			iterB = --iterB;
+		}
+		if(iterA == iterB && stamp == iterA->first)
+		{
+			gyro[0] = iterA->second[0];
+			gyro[1] = iterA->second[1];
+			gyro[2] = iterA->second[2];
+		}
+		else if(stamp >= iterA->first && stamp <= iterB->first)
+		{
+			float t = (stamp-iterA->first) / (iterB->first-iterA->first);
+			gyro[0] = iterA->second[0] + t*(iterB->second[0] - iterA->second[0]);
+			gyro[1] = iterA->second[1] + t*(iterB->second[1] - iterA->second[1]);
+			gyro[2] = iterA->second[2] + t*(iterB->second[2] - iterA->second[2]);
+		}
+		else
+		{
+			UWARN("Could not find gyro data to interpolate at time %f", stamp);
+			return false;
+		}
+	}
+
+	imu = IMU(gyro, cv::Mat::eye(3, 3, CV_64FC1), acc, cv::Mat::eye(3, 3, CV_64FC1), imuLocalTransform_);
+
+	return true;
+}
 #endif
 
 bool CameraRealSense2::init(const std::string & calibrationFolder, const std::string & cameraName)
@@ -261,6 +456,8 @@ bool CameraRealSense2::init(const std::string & calibrationFolder, const std::st
 		}
 		else if ("Motion Module" == module_name)
 		{
+			sensors.resize(3);
+			sensors[2] = elem;
 		}
 		else if ("Tracking Module" == module_name)
 		{
@@ -323,6 +520,10 @@ bool CameraRealSense2::init(const std::string & calibrationFolder, const std::st
 					added = true;
 					break;
 				}
+				else if(video_profile.format() == RS2_FORMAT_MOTION_XYZ32F)
+				{
+					profilesPerSensor[i].push_back(profile);
+				}
 			}
 			else if(stereo)
 			{
@@ -351,12 +552,12 @@ bool CameraRealSense2::init(const std::string & calibrationFolder, const std::st
 					added = true;
 				}
 				//MOTION_XYZ32F 0 0 200
-				//[ INFO] (2019-05-08 15:11:04.824) CameraRealSense2.cpp:299::init() MOTION_XYZ32F 0 0 62
-				//[ INFO] (2019-05-08 15:11:04.824) CameraRealSense2.cpp:299::init() 6DOF 0 0 200
+				//MOTION_XYZ32F 0 0 62
+				//6DOF 0 0 200
 				else if(video_profile.format() == RS2_FORMAT_MOTION_XYZ32F || video_profile.format() == RS2_FORMAT_6DOF)
 				{
-					//profilesPerSensor[0].push_back(profile);
-					//added = true;
+					profilesPerSensor[0].push_back(profile);
+					added = true;
 				}
 			}
 			++pi;
@@ -377,6 +578,30 @@ bool CameraRealSense2::init(const std::string & calibrationFolder, const std::st
 			 return false;
 		 }
 		 *depthToRGBExtrinsics_ = depthStreamProfile.get_extrinsics_to(rgbStreamProfile);
+
+		 std::function<void(rs2::frame)> imu_callback_function = [this](rs2::frame frame){imu_callback(frame);};
+
+		 for (unsigned int i=0; i<sensors.size(); ++i)
+		 {
+			 if(profilesPerSensor[i].size())
+			 {
+				 UINFO("Starting sensor %d with %d profiles", (int)i, (int)profilesPerSensor[i].size());
+				 sensors[i].open(profilesPerSensor[i]);
+				 if(sensors[i].is<rs2::depth_sensor>())
+				 {
+					 auto depth_sensor = sensors[i].as<rs2::depth_sensor>();
+					 depth_scale_meters_ = depth_sensor.get_depth_scale();
+				 }
+				 if(i == 2) // 2 is ACC/GYRO
+				 {
+					 sensors[i].start(imu_callback_function);
+				 }
+				 else
+				 {
+					 sensors[i].start(*syncer_);
+				 }
+			 }
+		 }
 	 }
 	 else
 	 {
@@ -404,26 +629,50 @@ bool CameraRealSense2::init(const std::string & calibrationFolder, const std::st
 			}
 		}
 
-		stereoModel_.setLocalTransform(this->getLocalTransform());
+		// Get extrinsics with pose as the base frame:
+		// 0=Right fisheye
+		// 1=Left fisheye
+		// 2=GYRO
+		// 3=ACC
+		// 4=POSE
+		UASSERT(profilesPerSensor[0].size() == 5);
+		rs2_extrinsics poseToLeft = profilesPerSensor[0][4].get_extrinsics_to(profilesPerSensor[0][1]);
+		rs2_extrinsics poseToIMU = profilesPerSensor[0][4].get_extrinsics_to(profilesPerSensor[0][2]);
+		Transform realsense2_pose_rotation(0, 0,-1,0,
+							-1, 0, 0,0,
+							 0, 1, 0,0);
+		Transform poseToLeftT(
+				poseToLeft.rotation[0], poseToLeft.rotation[1], poseToLeft.rotation[2], poseToLeft.translation[0],
+				poseToLeft.rotation[3], poseToLeft.rotation[4], poseToLeft.rotation[5], poseToLeft.translation[1],
+				poseToLeft.rotation[6], poseToLeft.rotation[7], poseToLeft.rotation[8], poseToLeft.translation[2]);
+		poseToLeftT = realsense2PoseRotation_ * poseToLeftT;
+		UINFO("poseToLeft = %s", poseToLeftT.prettyPrint().c_str());
+
+		Transform poseToIMUT(
+				poseToIMU.rotation[0], poseToIMU.rotation[1], poseToIMU.rotation[2], poseToIMU.translation[0],
+				poseToIMU.rotation[3], poseToIMU.rotation[4], poseToIMU.rotation[5], poseToIMU.translation[1],
+				poseToIMU.rotation[6], poseToIMU.rotation[7], poseToIMU.rotation[8], poseToIMU.translation[2]);
+		poseToIMUT = realsense2PoseRotation_ * poseToIMUT;
+		UINFO("poseToIMU = %s", poseToIMUT.prettyPrint().c_str());
+
+		stereoModel_.setLocalTransform(this->getLocalTransform()*poseToLeftT);
+		imuLocalTransform_ = poseToIMUT;
 		if(rectifyImages_ && !stereoModel_.isValidForRectification())
 		{
 			UERROR("Parameter \"rectifyImages\" is set, but no stereo model is loaded or valid.");
 			return false;
 		}
-	 }
 
-	 for (unsigned int i=0; i<sensors.size(); ++i)
-	 {
-		 if(profilesPerSensor[i].size())
+		std::function<void(rs2::frame)> multiple_message_callback_function = [this](rs2::frame frame){multiple_message_callback(frame);};
+
+		 for (unsigned int i=0; i<sensors.size(); ++i)
 		 {
-			 UINFO("Starting sensor %d with %d profiles", (int)i, (int)profilesPerSensor[i].size());
-			 sensors[i].open(profilesPerSensor[i]);
-			 if(sensors[i].is<rs2::depth_sensor>())
+			 if(profilesPerSensor[i].size())
 			 {
-				 auto depth_sensor = sensors[i].as<rs2::depth_sensor>();
-				 depth_scale_meters_ = depth_sensor.get_depth_scale();
+				 UINFO("Starting sensor %d with %d profiles", (int)i, (int)profilesPerSensor[i].size());
+				 sensors[i].open(profilesPerSensor[i]);
+				 sensors[i].start(multiple_message_callback_function);
 			 }
-			 sensors[i].start(*syncer_);
 		 }
 	 }
 
@@ -456,6 +705,15 @@ std::string CameraRealSense2::getSerial() const
 #endif
 }
 
+bool CameraRealSense2::odomProvided() const
+{
+#ifdef RTABMAP_REALSENSE2
+	return odometryProvided_;
+#else
+	return false;
+#endif
+}
+
 void CameraRealSense2::setEmitterEnabled(bool enabled)
 {
 #ifdef RTABMAP_REALSENSE2
@@ -474,6 +732,13 @@ void CameraRealSense2::setImagesRectified(bool enabled)
 {
 #ifdef RTABMAP_REALSENSE2
 	rectifyImages_ = enabled;
+#endif
+}
+
+void CameraRealSense2::setOdomProvided(bool enabled)
+{
+#ifdef RTABMAP_REALSENSE2
+	odometryProvided_ = enabled;
 #endif
 }
 
@@ -579,6 +844,21 @@ SensorData CameraRealSense2::captureImage(CameraInfo * info)
 				}
 
 				data = SensorData(left, right, stereoModel_, this->getNextSeqID(), stamp);
+
+				IMU imu;
+				unsigned int confidence = 0;
+				getPoseAndIMU(frameset.get_timestamp(), info->odomPose, confidence, imu);
+
+				if(!info->odomPose.isNull())
+				{
+					info->odomCovariance = cv::Mat::eye(6,6,CV_64FC1) * 0.0001;
+					info->odomCovariance.rowRange(0,3) *= pow(10, 3-(int)confidence);
+					info->odomCovariance.rowRange(3,6) *= pow(10, 1-(int)confidence);
+				}
+				if(!imu.empty())
+				{
+					data.setIMU(imu);
+				}
 			}
 			else
 			{

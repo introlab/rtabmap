@@ -35,6 +35,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <pcl/pcl_config.h>
 
+#ifdef RTABMAP_REALSENSE2
+#include <librealsense2/hpp/rs_frame.hpp>
+#endif
+
 
 namespace rs2
 {
@@ -65,11 +69,25 @@ public:
 	virtual bool init(const std::string & calibrationFolder = ".", const std::string & cameraName = "");
 	virtual bool isCalibrated() const;
 	virtual std::string getSerial() const;
+	bool odomProvided() const;
 
 	// parameters are set during initialization
 	void setEmitterEnabled(bool enabled);
 	void setIRDepthFormat(bool enabled);
 	void setImagesRectified(bool enabled);
+	void setOdomProvided(bool enabled);
+
+#ifdef RTABMAP_REALSENSE2
+	void imu_callback(rs2::frame frame);
+	void pose_callback(rs2::frame frame);
+	void frame_callback(rs2::frame frame);
+	void multiple_message_callback(rs2::frame frame);
+	bool getPoseAndIMU(
+			const double & stamp,
+			Transform & pose,
+			unsigned int & poseConfidence,
+			IMU & imu) const;
+#endif
 
 protected:
 	virtual SensorData captureImage(CameraInfo * info = 0);
@@ -88,10 +106,18 @@ private:
 	cv::Mat rgbBuffer_;
 	CameraModel model_;
 	StereoCameraModel stereoModel_;
+	Transform imuLocalTransform_;
+	std::map<double, cv::Vec3f> accBuffer_;
+	std::map<double, cv::Vec3f> gyroBuffer_;
+	std::map<double, std::pair<Transform, unsigned int> > poseBuffer_; // <stamp, <Pose, confidence: 1=lost, 2=low, 3=high> >
 
 	bool emitterEnabled_;
 	bool irDepth_;
 	bool rectifyImages_;
+	bool odometryProvided_;
+
+	static Transform realsense2PoseRotation_;
+	static Transform realsense2PoseRotationInv_;
 #endif
 };
 
