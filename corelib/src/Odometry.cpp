@@ -37,7 +37,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/odometry/OdometryMSCKF.h"
 #include "rtabmap/core/odometry/OdometryVINS.h"
 #include "rtabmap/core/OdometryInfo.h"
-#include "rtabmap/core/IMUFilter.h"
 #include "rtabmap/core/util3d.h"
 #include "rtabmap/core/util3d_mapping.h"
 #include "rtabmap/core/util3d_filtering.h"
@@ -111,7 +110,6 @@ Odometry::Odometry(const rtabmap::ParametersMap & parameters) :
 		_holonomic(Parameters::defaultOdomHolonomic()),
 		guessFromMotion_(Parameters::defaultOdomGuessMotion()),
 		guessSmoothingDelay_(Parameters::defaultOdomGuessSmoothingDelay()),
-		_imuFilteringStrategy(Parameters::defaultOdomImuFilteringStrategy()),
 		_filteringStrategy(Parameters::defaultOdomFilteringStrategy()),
 		_particleSize(Parameters::defaultOdomParticleSize()),
 		_particleNoiseT(Parameters::defaultOdomParticleNoiseT()),
@@ -129,8 +127,7 @@ Odometry::Odometry(const rtabmap::ParametersMap & parameters) :
 		_resetCurrentCount(0),
 		previousStamp_(0),
 		distanceTravelled_(0),
-		framesProcessed_(0),
-		imuFilter_(0)
+		framesProcessed_(0)
 {
 	Parameters::parse(parameters, Parameters::kOdomResetCountdown(), _resetCountdown);
 
@@ -139,7 +136,6 @@ Odometry::Odometry(const rtabmap::ParametersMap & parameters) :
 	Parameters::parse(parameters, Parameters::kOdomGuessMotion(), guessFromMotion_);
 	Parameters::parse(parameters, Parameters::kOdomGuessSmoothingDelay(), guessSmoothingDelay_);
 	Parameters::parse(parameters, Parameters::kOdomFillInfoData(), _fillInfoData);
-	Parameters::parse(parameters, Parameters::kOdomImuFilteringStrategy(), _imuFilteringStrategy);
 	Parameters::parse(parameters, Parameters::kOdomFilteringStrategy(), _filteringStrategy);
 	Parameters::parse(parameters, Parameters::kOdomParticleSize(), _particleSize);
 	Parameters::parse(parameters, Parameters::kOdomParticleNoiseT(), _particleNoiseT);
@@ -182,11 +178,6 @@ Odometry::Odometry(const rtabmap::ParametersMap & parameters) :
 	{
 		initKalmanFilter();
 	}
-
-	if(_imuFilteringStrategy > 0)
-	{
-		imuFilter_ = IMUFilter::create((IMUFilter::Type)(_imuFilteringStrategy-1), parameters);
-	}
 }
 
 Odometry::~Odometry()
@@ -196,7 +187,6 @@ Odometry::~Odometry()
 		delete particleFilters_[i];
 	}
 	particleFilters_.clear();
-	delete imuFilter_;
 }
 
 void Odometry::reset(const Transform & initialPose)
@@ -250,10 +240,6 @@ void Odometry::reset(const Transform & initialPose)
 	else
 	{
 		_pose = initialPose;
-	}
-	if(imuFilter_)
-	{
-		imuFilter_->reset();
 	}
 }
 
@@ -367,28 +353,6 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 		}
 	}
 
-	// Update IMU orientation
-	if(!data.imu().empty() && imuFilter_ != 0)
-	{
-		imuFilter_->update(
-				data.imu().angularVelocity()[0],
-				data.imu().angularVelocity()[1],
-				data.imu().angularVelocity()[2],
-				data.imu().linearAcceleration()[0],
-				data.imu().linearAcceleration()[1],
-				data.imu().linearAcceleration()[2],
-				data.stamp());
-
-		double qx,qy,qz,qw;
-		imuFilter_->getOrientation(qx,qy,qz,qw);
-
-		data.setIMU(IMU(
-				cv::Vec4d(qx,qy,qz,qw), cv::Mat::eye(3,3,CV_64FC1),
-				data.imu().angularVelocity(), data.imu().angularVelocityCovariance(),
-				data.imu().linearAcceleration(), data.imu().linearAccelerationCovariance(),
-				data.imu().localTransform()));
-	}
-
 	// KITTI datasets start with stamp=0
 	double dt = previousStamp_>0.0f || (previousStamp_==0.0f && framesProcessed()==1)?data.stamp() - previousStamp_:0.0;
 	Transform guess = dt>0.0 && guessFromMotion_ && !velocityGuess_.isNull()?Transform::getIdentity():Transform();
@@ -406,7 +370,6 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 		previousVelocities_.clear();
 		velocityGuess_.setNull();
 	}
-
 	if(!velocityGuess_.isNull())
 	{
 		if(guessFromMotion_)

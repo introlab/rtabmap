@@ -63,6 +63,7 @@ void showUsage()
 			"  --exposure_comp    Do exposure compensation between left and right images.\n"
 			"  --disp             Generate full disparity.\n"
 			"  --raw              Use raw images (not rectified, this only works with okvis, msckf or vins odometry).\n"
+			"  --imu #            IMU filter: 0=madgwick, 1=complementary (default).\n"
 			"%s\n"
 			"Example:\n\n"
 			"   $ rtabmap-euroc_dataset \\\n"
@@ -100,6 +101,7 @@ int main(int argc, char * argv[])
 	bool raw = false;
 	bool exposureCompensation = false;
 	bool quiet = false;
+	int imuFilter = 1;
 	if(argc < 2)
 	{
 		showUsage();
@@ -127,6 +129,10 @@ int main(int argc, char * argv[])
 			else if(std::strcmp(argv[i], "--raw") == 0)
 			{
 				raw = true;
+			}
+			else if(std::strcmp(argv[i], "--imu") == 0)
+			{
+				imuFilter = atoi(argv[++i]);
 			}
 			else if(std::strcmp(argv[i], "--exposure_comp") == 0)
 			{
@@ -191,6 +197,7 @@ int main(int argc, char * argv[])
 	if(!pathImu.empty())
 	{
 		printf("   IMU:              %s\n", pathImu.c_str());
+		printf("   IMU Filter:       %d\n", imuFilter);
 	}
 
 	printf("   Exposure Compensation: %s\n", exposureCompensation?"true":"false");
@@ -373,6 +380,8 @@ int main(int argc, char * argv[])
 					((CameraStereoImages*)cameraThread.camera())->setStartIndex(310);
 				}
 			}
+
+			cameraThread.enableIMUFiltering(imuFilter, parameters);
 		}
 
 		Rtabmap rtabmap;
@@ -429,6 +438,7 @@ int main(int argc, char * argv[])
 					if (t_imu - start + 1 > 0) {
 
 						SensorData dataImu(IMU(gyr, cv::Mat(3,3,CV_64FC1), acc, cv::Mat(3,3,CV_64FC1), baseToImu), 0, t_imu);
+						cameraThread.postUpdate(&dataImu);
 						UDEBUG("");
 						odom->process(dataImu);
 						UDEBUG("");

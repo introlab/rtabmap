@@ -67,7 +67,7 @@ CameraRealSense2::CameraRealSense2(
 	emitterEnabled_(true),
 	irDepth_(false),
 	rectifyImages_(true),
-	odometryProvided_(true)
+	odometryProvided_(false)
 #endif
 {
 	UDEBUG("");
@@ -173,12 +173,15 @@ void CameraRealSense2::imu_callback(rs2::frame frame)
 {
 	auto stream = frame.get_profile().stream_type();
 	cv::Vec3f crnt_reading = *reinterpret_cast<const cv::Vec3f*>(frame.get_data());
+	UDEBUG("%s callback! %f (%f %f %f)",
+			stream == RS2_STREAM_GYRO?"GYRO":"ACC",
+			frame.get_timestamp(),
+			crnt_reading[0],
+			crnt_reading[1],
+			crnt_reading[2]);
+	UScopeMutex sm(imuMutex_);
 	if(stream == RS2_STREAM_GYRO)
 	{
-		UDEBUG("GYRO callback! %f (%f %f %f)", frame.get_timestamp(),
-				crnt_reading[0],
-				crnt_reading[1],
-				crnt_reading[2]);
 		gyroBuffer_.insert(gyroBuffer_.end(), std::make_pair(frame.get_timestamp(), crnt_reading));
 		if(gyroBuffer_.size() > 10)
 		{
@@ -187,18 +190,12 @@ void CameraRealSense2::imu_callback(rs2::frame frame)
 	}
 	else
 	{
-
-		UDEBUG("ACC callback! %f (%f %f %f)", frame.get_timestamp(),
-				crnt_reading[0],
-				crnt_reading[1],
-				crnt_reading[2]);
 		accBuffer_.insert(accBuffer_.end(), std::make_pair(frame.get_timestamp(), crnt_reading));
 		if(accBuffer_.size() > 10)
 		{
 			accBuffer_.erase(accBuffer_.begin());
 		}
 	}
-
 }
 
 Transform CameraRealSense2::realsense2PoseRotation_ = Transform(
@@ -220,6 +217,8 @@ void CameraRealSense2::pose_callback(rs2::frame frame)
 			pose.rotation.w);
 	poseT = realsense2PoseRotation_ * poseT * realsense2PoseRotationInv_;
 	UDEBUG("POSE callback! %f %s (confidence=%d)", frame.get_timestamp(), poseT.prettyPrint().c_str(), (int)pose.tracker_confidence);
+
+	UScopeMutex sm(poseMutex_);
 	poseBuffer_.insert(poseBuffer_.end(), std::make_pair(frame.get_timestamp(), std::make_pair(poseT, pose.tracker_confidence)));
 	if(poseBuffer_.size() > 10)
 	{
@@ -242,14 +241,17 @@ void CameraRealSense2::multiple_message_callback(rs2::frame frame)
             imu_callback(frame);
             break;
         case RS2_STREAM_POSE:
-            pose_callback(frame);
+        	if(odometryProvided_)
+        	{
+        		pose_callback(frame);
+        	}
             break;
         default:
             frame_callback(frame);
     }
 }
 
-bool CameraRealSense2::getPoseAndIMU(
+void CameraRealSense2::getPoseAndIMU(
 		const double & stamp,
 		Transform & pose,
 		unsigned int & poseConfidence,
@@ -258,109 +260,166 @@ bool CameraRealSense2::getPoseAndIMU(
 	pose.setNull();
 	imu = IMU();
 	poseConfidence = 0;
-	if(poseBuffer_.empty() || accBuffer_.empty() || gyroBuffer_.empty())
+	if(accBuffer_.empty() || gyroBuffer_.empty())
 	{
-		return false;
+		return;
 	}
 
+	int maxWaitTime = 30;
+
 	// Interpolate pose
+	if(!poseBuffer_.empty())
 	{
-		std::map<double, std::pair<Transform, unsigned int> >::const_iterator iterB = poseBuffer_.lower_bound(stamp);
-		std::map<double, std::pair<Transform, unsigned int> >::const_iterator iterA = iterB;
-		if(iterA != poseBuffer_.begin())
+		poseMutex_.lock();
+		int waitTry = 0;
+		while(poseBuffer_.rbegin()->first < stamp && waitTry < maxWaitTime)
 		{
-			iterA = --iterA;
+			poseMutex_.unlock();
+			++waitTry;
+			uSleep(1);
+			poseMutex_.lock();
 		}
-		if(iterB == poseBuffer_.end())
+		if(poseBuffer_.rbegin()->first < stamp)
 		{
-			iterB = --iterB;
-		}
-		if(iterA == iterB && stamp == iterA->first)
-		{
-			pose = iterA->second.first;
-			poseConfidence = iterA->second.second;
-		}
-		else if(stamp >= iterA->first && stamp <= iterB->first)
-		{
-			pose = iterA->second.first.interpolate((stamp-iterA->first) / (iterB->first-iterA->first), iterB->second.first);
-			poseConfidence = iterA->second.second;
+			UWARN("Could not find poses to interpolate at time %f after waiting %d ms (last is %f)...", stamp, maxWaitTime, poseBuffer_.rbegin()->first);
 		}
 		else
 		{
-			UWARN("Could not find poses to interpolate at time %f", stamp);
-			return false;
+			std::map<double, std::pair<Transform, unsigned int> >::const_iterator iterB = poseBuffer_.lower_bound(stamp);
+			std::map<double, std::pair<Transform, unsigned int> >::const_iterator iterA = iterB;
+			if(iterA != poseBuffer_.begin())
+			{
+				iterA = --iterA;
+			}
+			if(iterB == poseBuffer_.end())
+			{
+				iterB = --iterB;
+			}
+			if(iterA == iterB && stamp == iterA->first)
+			{
+				pose = iterA->second.first;
+				poseConfidence = iterA->second.second;
+			}
+			else if(stamp >= iterA->first && stamp <= iterB->first)
+			{
+				pose = iterA->second.first.interpolate((stamp-iterA->first) / (iterB->first-iterA->first), iterB->second.first);
+				poseConfidence = iterA->second.second;
+			}
+			else
+			{
+				UWARN("Could not find poses to interpolate at time %f", stamp);
+			}
 		}
+		poseMutex_.unlock();
 	}
 
 	// Interpolate acc
 	cv::Vec3d acc;
 	{
-		std::map<double, cv::Vec3f>::const_iterator iterB = accBuffer_.lower_bound(stamp);
-		std::map<double, cv::Vec3f>::const_iterator iterA = iterB;
-		if(iterA != accBuffer_.begin())
+		imuMutex_.lock();
+		int waitTry = 0;
+		while(accBuffer_.rbegin()->first < stamp && waitTry < maxWaitTime)
 		{
-			iterA = --iterA;
+			imuMutex_.unlock();
+			++waitTry;
+			uSleep(1);
+			imuMutex_.lock();
 		}
-		if(iterB == accBuffer_.end())
+		if(accBuffer_.rbegin()->first < stamp)
 		{
-			iterB = --iterB;
-		}
-		if(iterA == iterB && stamp == iterA->first)
-		{
-			acc[0] = iterA->second[0];
-			acc[1] = iterA->second[1];
-			acc[2] = iterA->second[2];
-		}
-		else if(stamp >= iterA->first && stamp <= iterB->first)
-		{
-			float t = (stamp-iterA->first) / (iterB->first-iterA->first);
-			acc[0] = iterA->second[0] + t*(iterB->second[0] - iterA->second[0]);
-			acc[1] = iterA->second[1] + t*(iterB->second[1] - iterA->second[1]);
-			acc[2] = iterA->second[2] + t*(iterB->second[2] - iterA->second[2]);
+			UWARN("Could not find acc data to interpolate at time %f after waiting %d ms (last is %f)...", stamp, maxWaitTime, accBuffer_.rbegin()->first);
+			imuMutex_.unlock();
+			return;
 		}
 		else
 		{
-			UWARN("Could not find acc data to interpolate at time %f", stamp);
-			return false;
+			std::map<double, cv::Vec3f>::const_iterator iterB = accBuffer_.lower_bound(stamp);
+			std::map<double, cv::Vec3f>::const_iterator iterA = iterB;
+			if(iterA != accBuffer_.begin())
+			{
+				iterA = --iterA;
+			}
+			if(iterB == accBuffer_.end())
+			{
+				iterB = --iterB;
+			}
+			if(iterA == iterB && stamp == iterA->first)
+			{
+				acc[0] = iterA->second[0];
+				acc[1] = iterA->second[1];
+				acc[2] = iterA->second[2];
+			}
+			else if(stamp >= iterA->first && stamp <= iterB->first)
+			{
+				float t = (stamp-iterA->first) / (iterB->first-iterA->first);
+				acc[0] = iterA->second[0] + t*(iterB->second[0] - iterA->second[0]);
+				acc[1] = iterA->second[1] + t*(iterB->second[1] - iterA->second[1]);
+				acc[2] = iterA->second[2] + t*(iterB->second[2] - iterA->second[2]);
+			}
+			else
+			{
+				UWARN("Could not find acc data to interpolate at time %f", stamp);
+				imuMutex_.unlock();
+				return;
+			}
 		}
+		imuMutex_.unlock();
 	}
 
 	// Interpolate gyro
 	cv::Vec3d gyro;
 	{
-		std::map<double, cv::Vec3f>::const_iterator iterB = gyroBuffer_.lower_bound(stamp);
-		std::map<double, cv::Vec3f>::const_iterator iterA = iterB;
-		if(iterA != gyroBuffer_.begin())
+		imuMutex_.lock();
+		int waitTry = 0;
+		while(gyroBuffer_.rbegin()->first < stamp && waitTry < maxWaitTime)
 		{
-			iterA = --iterA;
+			imuMutex_.unlock();
+			++waitTry;
+			uSleep(1);
+			imuMutex_.lock();
 		}
-		if(iterB == gyroBuffer_.end())
+		if(gyroBuffer_.rbegin()->first < stamp)
 		{
-			iterB = --iterB;
-		}
-		if(iterA == iterB && stamp == iterA->first)
-		{
-			gyro[0] = iterA->second[0];
-			gyro[1] = iterA->second[1];
-			gyro[2] = iterA->second[2];
-		}
-		else if(stamp >= iterA->first && stamp <= iterB->first)
-		{
-			float t = (stamp-iterA->first) / (iterB->first-iterA->first);
-			gyro[0] = iterA->second[0] + t*(iterB->second[0] - iterA->second[0]);
-			gyro[1] = iterA->second[1] + t*(iterB->second[1] - iterA->second[1]);
-			gyro[2] = iterA->second[2] + t*(iterB->second[2] - iterA->second[2]);
+			UWARN("Could not find gyro data to interpolate at time %f after waiting %d ms (last is %f)...", stamp, maxWaitTime, gyroBuffer_.rbegin()->first);
+			imuMutex_.unlock();
+			return;
 		}
 		else
 		{
-			UWARN("Could not find gyro data to interpolate at time %f", stamp);
-			return false;
+			std::map<double, cv::Vec3f>::const_iterator iterB = gyroBuffer_.lower_bound(stamp);
+			std::map<double, cv::Vec3f>::const_iterator iterA = iterB;
+			if(iterA != gyroBuffer_.begin())
+			{
+				iterA = --iterA;
+			}
+			if(iterB == gyroBuffer_.end())
+			{
+				iterB = --iterB;
+			}
+			if(iterA == iterB && stamp == iterA->first)
+			{
+				gyro[0] = iterA->second[0];
+				gyro[1] = iterA->second[1];
+				gyro[2] = iterA->second[2];
+			}
+			else if(stamp >= iterA->first && stamp <= iterB->first)
+			{
+				float t = (stamp-iterA->first) / (iterB->first-iterA->first);
+				gyro[0] = iterA->second[0] + t*(iterB->second[0] - iterA->second[0]);
+				gyro[1] = iterA->second[1] + t*(iterB->second[1] - iterA->second[1]);
+				gyro[2] = iterA->second[2] + t*(iterB->second[2] - iterA->second[2]);
+			}
+			else
+			{
+				UWARN("Could not find gyro data to interpolate at time %f", stamp);
+				imuMutex_.unlock();
+				return;
+			}
 		}
+		imuMutex_.unlock();
 	}
 
 	imu = IMU(gyro, cv::Mat::eye(3, 3, CV_64FC1), acc, cv::Mat::eye(3, 3, CV_64FC1), imuLocalTransform_);
-
-	return true;
 }
 #endif
 
@@ -485,18 +544,25 @@ bool CameraRealSense2::init(const std::string & calibrationFolder, const std::st
 		auto profiles = sensors[i].get_stream_profiles();
 		bool added = false;
 		UINFO("profiles=%d", (int)profiles.size());
+		if(ULogger::level()>=ULogger::kInfo)
+		{
+			for (auto& profile : profiles)
+			{
+				auto video_profile = profile.as<rs2::video_stream_profile>();
+				UINFO("%s %d %d %d", rs2_format_to_string(
+						video_profile.format()),
+						video_profile.width(),
+						video_profile.height(),
+						video_profile.fps());
+			}
+		}
 		int pi = 0;
 		for (auto& profile : profiles)
 		{
 			auto video_profile = profile.as<rs2::video_stream_profile>();
-			UINFO("%s %d %d %d", rs2_format_to_string(
-					video_profile.format()),
-					video_profile.width(),
-					video_profile.height(),
-					video_profile.fps());
-
 			if(!stereo)
 			{
+				//D400 series:
 				if (video_profile.format() == (i==1?RS2_FORMAT_Z16:irDepth_?RS2_FORMAT_Y8:RS2_FORMAT_RGB8) &&
 					video_profile.width()  == 640 &&
 					video_profile.height() == 480 &&
@@ -522,11 +588,18 @@ bool CameraRealSense2::init(const std::string & calibrationFolder, const std::st
 				}
 				else if(video_profile.format() == RS2_FORMAT_MOTION_XYZ32F)
 				{
+					//D435i:
+					//MOTION_XYZ32F 0 0 200
+					//MOTION_XYZ32F 0 0 400
+					//MOTION_XYZ32F 0 0 63
+					//MOTION_XYZ32F 0 0 250
 					profilesPerSensor[i].push_back(profile);
+					added = true;
 				}
 			}
 			else if(stereo)
 			{
+				//T265:
 				if(video_profile.format() == RS2_FORMAT_Y8 &&
 					video_profile.width()  == 848 &&
 					video_profile.height() == 800 &&
@@ -551,11 +624,11 @@ bool CameraRealSense2::init(const std::string & calibrationFolder, const std::st
 					}
 					added = true;
 				}
-				//MOTION_XYZ32F 0 0 200
-				//MOTION_XYZ32F 0 0 62
-				//6DOF 0 0 200
 				else if(video_profile.format() == RS2_FORMAT_MOTION_XYZ32F || video_profile.format() == RS2_FORMAT_6DOF)
 				{
+					//MOTION_XYZ32F 0 0 200
+					//MOTION_XYZ32F 0 0 62
+					//6DOF 0 0 200
 					profilesPerSensor[0].push_back(profile);
 					added = true;
 				}
@@ -579,28 +652,16 @@ bool CameraRealSense2::init(const std::string & calibrationFolder, const std::st
 		 }
 		 *depthToRGBExtrinsics_ = depthStreamProfile.get_extrinsics_to(rgbStreamProfile);
 
-		 std::function<void(rs2::frame)> imu_callback_function = [this](rs2::frame frame){imu_callback(frame);};
-
-		 for (unsigned int i=0; i<sensors.size(); ++i)
+		 if(profilesPerSensor.size() == 3 && !profilesPerSensor[2].empty() && !profilesPerSensor[0].empty())
 		 {
-			 if(profilesPerSensor[i].size())
-			 {
-				 UINFO("Starting sensor %d with %d profiles", (int)i, (int)profilesPerSensor[i].size());
-				 sensors[i].open(profilesPerSensor[i]);
-				 if(sensors[i].is<rs2::depth_sensor>())
-				 {
-					 auto depth_sensor = sensors[i].as<rs2::depth_sensor>();
-					 depth_scale_meters_ = depth_sensor.get_depth_scale();
-				 }
-				 if(i == 2) // 2 is ACC/GYRO
-				 {
-					 sensors[i].start(imu_callback_function);
-				 }
-				 else
-				 {
-					 sensors[i].start(*syncer_);
-				 }
-			 }
+			 rs2_extrinsics leftToIMU = profilesPerSensor[0][0].get_extrinsics_to(profilesPerSensor[2][0]);
+			 Transform leftToIMUT(
+					 leftToIMU.rotation[0], leftToIMU.rotation[1], leftToIMU.rotation[2], leftToIMU.translation[0],
+					 leftToIMU.rotation[3], leftToIMU.rotation[4], leftToIMU.rotation[5], leftToIMU.translation[1],
+					 leftToIMU.rotation[6], leftToIMU.rotation[7], leftToIMU.rotation[8], leftToIMU.translation[2]);
+			 UINFO("leftToIMU = %s", leftToIMUT.prettyPrint().c_str());
+			 imuLocalTransform_ = this->getLocalTransform() * leftToIMUT;
+			 UINFO("imu local transform = %s", imuLocalTransform_.prettyPrint().c_str());
 		 }
 	 }
 	 else
@@ -636,43 +697,73 @@ bool CameraRealSense2::init(const std::string & calibrationFolder, const std::st
 		// 3=ACC
 		// 4=POSE
 		UASSERT(profilesPerSensor[0].size() == 5);
-		rs2_extrinsics poseToLeft = profilesPerSensor[0][4].get_extrinsics_to(profilesPerSensor[0][1]);
-		rs2_extrinsics poseToIMU = profilesPerSensor[0][4].get_extrinsics_to(profilesPerSensor[0][2]);
-		Transform realsense2_pose_rotation(0, 0,-1,0,
-							-1, 0, 0,0,
-							 0, 1, 0,0);
-		Transform poseToLeftT(
-				poseToLeft.rotation[0], poseToLeft.rotation[1], poseToLeft.rotation[2], poseToLeft.translation[0],
-				poseToLeft.rotation[3], poseToLeft.rotation[4], poseToLeft.rotation[5], poseToLeft.translation[1],
-				poseToLeft.rotation[6], poseToLeft.rotation[7], poseToLeft.rotation[8], poseToLeft.translation[2]);
-		poseToLeftT = realsense2PoseRotation_ * poseToLeftT;
-		UINFO("poseToLeft = %s", poseToLeftT.prettyPrint().c_str());
+		if(odometryProvided_)
+		{
+			rs2_extrinsics poseToLeft = profilesPerSensor[0][4].get_extrinsics_to(profilesPerSensor[0][1]);
+			rs2_extrinsics poseToIMU = profilesPerSensor[0][4].get_extrinsics_to(profilesPerSensor[0][2]);
+			Transform realsense2_pose_rotation(0, 0,-1,0,
+								-1, 0, 0,0,
+								 0, 1, 0,0);
+			Transform poseToLeftT(
+					poseToLeft.rotation[0], poseToLeft.rotation[1], poseToLeft.rotation[2], poseToLeft.translation[0],
+					poseToLeft.rotation[3], poseToLeft.rotation[4], poseToLeft.rotation[5], poseToLeft.translation[1],
+					poseToLeft.rotation[6], poseToLeft.rotation[7], poseToLeft.rotation[8], poseToLeft.translation[2]);
+			poseToLeftT = realsense2PoseRotation_ * poseToLeftT;
+			UINFO("poseToLeft = %s", poseToLeftT.prettyPrint().c_str());
 
-		Transform poseToIMUT(
-				poseToIMU.rotation[0], poseToIMU.rotation[1], poseToIMU.rotation[2], poseToIMU.translation[0],
-				poseToIMU.rotation[3], poseToIMU.rotation[4], poseToIMU.rotation[5], poseToIMU.translation[1],
-				poseToIMU.rotation[6], poseToIMU.rotation[7], poseToIMU.rotation[8], poseToIMU.translation[2]);
-		poseToIMUT = realsense2PoseRotation_ * poseToIMUT;
-		UINFO("poseToIMU = %s", poseToIMUT.prettyPrint().c_str());
+			Transform poseToIMUT(
+					poseToIMU.rotation[0], poseToIMU.rotation[1], poseToIMU.rotation[2], poseToIMU.translation[0],
+					poseToIMU.rotation[3], poseToIMU.rotation[4], poseToIMU.rotation[5], poseToIMU.translation[1],
+					poseToIMU.rotation[6], poseToIMU.rotation[7], poseToIMU.rotation[8], poseToIMU.translation[2]);
+			poseToIMUT = realsense2PoseRotation_ * poseToIMUT;
+			UINFO("poseToIMU = %s", poseToIMUT.prettyPrint().c_str());
 
-		stereoModel_.setLocalTransform(this->getLocalTransform()*poseToLeftT);
-		imuLocalTransform_ = poseToIMUT;
+			if(this->getLocalTransform().rotation().r13() == 1.0f &&
+			   this->getLocalTransform().rotation().r21() == -1.0f &&
+			   this->getLocalTransform().rotation().r32() == -1.0f)
+			{
+				UWARN("Detected optical rotation in local transform, removing it for convenience to match realsense2 poses.");
+				Transform opticalTransform(0, 0, 1, 0, -1, 0, 0, 0, 0, -1, 0, 0);
+				this->setLocalTransform(this->getLocalTransform()*opticalTransform.inverse());
+			}
+
+			stereoModel_.setLocalTransform(this->getLocalTransform()*poseToLeftT);
+			imuLocalTransform_ = poseToIMUT;
+		}
+		else
+		{
+			// Set imu transform based on the left camera instead of pose
+			 rs2_extrinsics leftToIMU = profilesPerSensor[0][1].get_extrinsics_to(profilesPerSensor[0][2]);
+			 Transform leftToIMUT(
+					 leftToIMU.rotation[0], leftToIMU.rotation[1], leftToIMU.rotation[2], leftToIMU.translation[0],
+					 leftToIMU.rotation[3], leftToIMU.rotation[4], leftToIMU.rotation[5], leftToIMU.translation[1],
+					 leftToIMU.rotation[6], leftToIMU.rotation[7], leftToIMU.rotation[8], leftToIMU.translation[2]);
+			 UINFO("leftToIMU = %s", leftToIMUT.prettyPrint().c_str());
+			 imuLocalTransform_ = this->getLocalTransform() * leftToIMUT;
+			 UINFO("imu local transform = %s", imuLocalTransform_.prettyPrint().c_str());
+			 stereoModel_.setLocalTransform(this->getLocalTransform());
+		}
 		if(rectifyImages_ && !stereoModel_.isValidForRectification())
 		{
 			UERROR("Parameter \"rectifyImages\" is set, but no stereo model is loaded or valid.");
 			return false;
 		}
+	 }
 
-		std::function<void(rs2::frame)> multiple_message_callback_function = [this](rs2::frame frame){multiple_message_callback(frame);};
+	 std::function<void(rs2::frame)> multiple_message_callback_function = [this](rs2::frame frame){multiple_message_callback(frame);};
 
-		 for (unsigned int i=0; i<sensors.size(); ++i)
+	 for (unsigned int i=0; i<sensors.size(); ++i)
+	 {
+		 if(profilesPerSensor[i].size())
 		 {
-			 if(profilesPerSensor[i].size())
+			 UINFO("Starting sensor %d with %d profiles", (int)i, (int)profilesPerSensor[i].size());
+			 sensors[i].open(profilesPerSensor[i]);
+			 if(sensors[i].is<rs2::depth_sensor>())
 			 {
-				 UINFO("Starting sensor %d with %d profiles", (int)i, (int)profilesPerSensor[i].size());
-				 sensors[i].open(profilesPerSensor[i]);
-				 sensors[i].start(multiple_message_callback_function);
+				 auto depth_sensor = sensors[i].as<rs2::depth_sensor>();
+				 depth_scale_meters_ = depth_sensor.get_depth_scale();
 			 }
+			 sensors[i].start(multiple_message_callback_function);
 		 }
 	 }
 
@@ -844,25 +935,25 @@ SensorData CameraRealSense2::captureImage(CameraInfo * info)
 				}
 
 				data = SensorData(left, right, stereoModel_, this->getNextSeqID(), stamp);
-
-				IMU imu;
-				unsigned int confidence = 0;
-				getPoseAndIMU(frameset.get_timestamp(), info->odomPose, confidence, imu);
-
-				if(!info->odomPose.isNull())
-				{
-					info->odomCovariance = cv::Mat::eye(6,6,CV_64FC1) * 0.0001;
-					info->odomCovariance.rowRange(0,3) *= pow(10, 3-(int)confidence);
-					info->odomCovariance.rowRange(3,6) *= pow(10, 1-(int)confidence);
-				}
-				if(!imu.empty())
-				{
-					data.setIMU(imu);
-				}
 			}
 			else
 			{
 				UERROR("Not received depth and rgb");
+			}
+
+			IMU imu;
+			unsigned int confidence = 0;
+			getPoseAndIMU(frameset.get_timestamp(), info->odomPose, confidence, imu);
+
+			if(odometryProvided_ && !info->odomPose.isNull())
+			{
+				info->odomCovariance = cv::Mat::eye(6,6,CV_64FC1) * 0.0001;
+				info->odomCovariance.rowRange(0,3) *= pow(10, 3-(int)confidence);
+				info->odomCovariance.rowRange(3,6) *= pow(10, 1-(int)confidence);
+			}
+			if(!imu.empty())
+			{
+				data.setIMU(imu);
 			}
 		}
 		else

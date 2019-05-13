@@ -409,7 +409,6 @@ class RTABMAP_EXP Parameters
     RTABMAP_PARAM(Odom, Holonomic,              bool, true,   "If the robot is holonomic (strafing commands can be issued). If not, y value will be estimated from x and yaw values (y=x*tan(yaw)).");
     RTABMAP_PARAM(Odom, FillInfoData,           bool, true,   "Fill info with data (inliers/outliers features).");
     RTABMAP_PARAM(Odom, ImageBufferSize,     unsigned int, 1, "Data buffer size (0 min inf).");
-    RTABMAP_PARAM(Odom, ImuFilteringStrategy,   int, 0,       "0=No filtering 1=Madgwick Filter 2=Complementary Filter. This is used to estimate the quaternion from acceleration and angular velocities of IMU before doing odometry updates. IMU data should be in ENU coordinates.");
     RTABMAP_PARAM(Odom, FilteringStrategy,      int, 0,       "0=No filtering 1=Kalman filtering 2=Particle filtering. This filter is used to smooth the odometry output.");
     RTABMAP_PARAM(Odom, ParticleSize,      unsigned int, 400, "Number of particles of the filter.");
     RTABMAP_PARAM(Odom, ParticleNoiseT,         float, 0.002, "Noise (m) of translation components (x,y,z).");
@@ -731,18 +730,6 @@ class RTABMAP_EXP Parameters
     RTABMAP_PARAM(ImuFilter, ComplementaryBiasAlpha,        double, 0.01, "Bias estimation gain parameter, belongs in [0, 1].");
     RTABMAP_PARAM(ImuFilter, ComplementaryDoBiasEstimation, bool,   true, "Parameter whether to do bias estimation or not.");
     RTABMAP_PARAM(ImuFilter, ComplementaryDoAdpativeGain,   bool,   true, "Parameter whether to do adaptive gain or not.");
-
-    //
-        double gain_acc_;
-
-        //
-        double bias_alpha_;
-
-        //
-        bool do_bias_estimation_;
-
-        //
-        bool do_adaptive_gain_;
 
 public:
     virtual ~Parameters();

@@ -195,7 +195,7 @@ Transform OdometryF2M::computeTransform(
 		info->type = 0;
 	}
 
-	if(!data.imu().empty())
+	if(sba_ && sba_->gravitySigma() > 0.0f && !data.imu().empty())
 	{
 		if(data.imu().orientation()[0] == 0.0 && data.imu().orientation()[1] == 0.0 && data.imu().orientation()[2] == 0.0)
 		{
@@ -1332,14 +1332,16 @@ Transform OdometryF2M::getClosestIMU(const double & stamp, double & stampDiff) c
 		if(fabs(imuIterA->first - lastFrame_->getStamp()) <
 		   fabs(imuIterB->first - lastFrame_->getStamp()))
 		{
-			imuT = imuIterA->second;
+			//imuT = imuIterA->second;
 			stampDiff = fabs(imuIterA->first - lastFrame_->getStamp());
 		}
 		else
 		{
-			imuT = imuIterB->second;
+			//imuT = imuIterB->second;
 			stampDiff = fabs(imuIterB->first - lastFrame_->getStamp());
 		}
+		//interpolate:
+		imuT = imuIterA->second.interpolate((stamp-imuIterA->first) / (imuIterB->first-imuIterA->first), imuIterB->second);
 	}
 	return imuT;
 }

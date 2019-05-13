@@ -24,37 +24,6 @@
     <normaloff>:/images/RTAB-Map.ico</normaloff>:/images/RTAB-Map.ico</iconset>
   </property>
   <layout class="QGridLayout" name="gridLayout_49">
-   <item row="1" column="0">
-    <layout class="QHBoxLayout" name="horizontalLayout_3">
-     <item>
-      <widget class="QRadioButton" name="radioButton_basic">
-       <property name="text">
-        <string>Basic</string>
-       </property>
-       <property name="checked">
-        <bool>true</bool>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QRadioButton" name="radioButton_advanced">
-       <property name="text">
-        <string>Advanced</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QDialogButtonBox" name="buttonBox_global">
-       <property name="orientation">
-        <enum>Qt::Horizontal</enum>
-       </property>
-       <property name="standardButtons">
-        <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
-       </property>
-      </widget>
-     </item>
-    </layout>
-   </item>
    <item row="0" column="0">
     <layout class="QHBoxLayout" name="horizontalLayout_2" stretch="0,1">
      <property name="spacing">
@@ -94,7 +63,7 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-359</y>
+            <y>-1977</y>
             <width>680</width>
             <height>3082</height>
            </rect>
@@ -2731,7 +2700,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                    <property name="title">
                     <string>Source</string>
                    </property>
-                   <layout class="QVBoxLayout" name="verticalLayout_7" stretch="0,0,0,0,1">
+                   <layout class="QVBoxLayout" name="verticalLayout_7" stretch="0,0,0,0,0,1">
                     <item>
                      <layout class="QGridLayout" name="gridLayout_28" columnstretch="0,1">
                       <item row="1" column="1">
@@ -3122,7 +3091,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                            <item>
                             <widget class="QStackedWidget" name="stackedWidget_rgbd">
                              <property name="currentIndex">
-                              <number>9</number>
+                              <number>6</number>
                              </property>
                              <widget class="QWidget" name="page_32">
                               <layout class="QVBoxLayout" name="verticalLayout_63">
@@ -4075,7 +4044,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                               </layout>
                              </widget>
                              <widget class="QWidget" name="page_55">
-                              <layout class="QVBoxLayout" name="verticalLayout_103">
+                              <layout class="QVBoxLayout" name="verticalLayout_103" stretch="0,1">
                                <item>
                                 <widget class="QGroupBox" name="groupBox_realsense2">
                                  <property name="sizePolicy">
@@ -4152,7 +4121,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                  <property name="sizeHint" stdset="0">
                                   <size>
                                    <width>20</width>
-                                   <height>338</height>
+                                   <height>0</height>
                                   </size>
                                  </property>
                                 </spacer>
@@ -4320,7 +4289,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                            <item>
                             <widget class="QStackedWidget" name="stackedWidget_stereo">
                              <property name="currentIndex">
-                              <number>7</number>
+                              <number>5</number>
                              </property>
                              <widget class="QWidget" name="page_49">
                               <layout class="QVBoxLayout" name="verticalLayout_91">
@@ -4869,6 +4838,41 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                              <widget class="QWidget" name="page_80">
                               <layout class="QVBoxLayout" name="verticalLayout_140">
                                <item>
+                                <widget class="QGroupBox" name="groupBox_cameraStereoRealSense2">
+                                 <property name="sizePolicy">
+                                  <sizepolicy hsizetype="Ignored" vsizetype="Ignored">
+                                   <horstretch>0</horstretch>
+                                   <verstretch>0</verstretch>
+                                  </sizepolicy>
+                                 </property>
+                                 <property name="title">
+                                  <string>RealSense2</string>
+                                 </property>
+                                 <layout class="QGridLayout" name="gridLayout_108" columnstretch="0,1">
+                                  <item row="0" column="0">
+                                   <widget class="QCheckBox" name="checkbox_stereoRealSense2_odom">
+                                    <property name="text">
+                                     <string/>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="0" column="1">
+                                   <widget class="QLabel" name="label_546">
+                                    <property name="text">
+                                     <string>Use RealSense2 visual inertial odometry.</string>
+                                    </property>
+                                    <property name="wordWrap">
+                                     <bool>true</bool>
+                                    </property>
+                                    <property name="textInteractionFlags">
+                                     <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                 </layout>
+                                </widget>
+                               </item>
+                               <item>
                                 <spacer name="verticalSpacer_78">
                                  <property name="orientation">
                                   <enum>Qt::Vertical</enum>
@@ -4876,7 +4880,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                  <property name="sizeHint" stdset="0">
                                   <size>
                                    <width>20</width>
-                                   <height>471</height>
+                                   <height>0</height>
                                   </size>
                                  </property>
                                 </spacer>
@@ -6029,6 +6033,307 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                            </widget>
                           </item>
                          </layout>
+                        </widget>
+                       </item>
+                      </layout>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QGroupBox" name="groupBox_imuFiltering">
+                      <property name="title">
+                       <string>IMU Filtering</string>
+                      </property>
+                      <layout class="QVBoxLayout" name="verticalLayout_141">
+                       <item>
+                        <layout class="QGridLayout" name="gridLayout_109" columnstretch="0,1">
+                         <item row="0" column="0">
+                          <widget class="QComboBox" name="comboBox_imuFilter_strategy">
+                           <item>
+                            <property name="text">
+                             <string>None</string>
+                            </property>
+                           </item>
+                           <item>
+                            <property name="text">
+                             <string>Madgwick Filter</string>
+                            </property>
+                           </item>
+                           <item>
+                            <property name="text">
+                             <string>Complementary Filter</string>
+                            </property>
+                           </item>
+                          </widget>
+                         </item>
+                         <item row="0" column="1">
+                          <widget class="QLabel" name="label_541">
+                           <property name="text">
+                            <string>IMU filtering strategy used to estimate the orientation.</string>
+                           </property>
+                           <property name="wordWrap">
+                            <bool>true</bool>
+                           </property>
+                           <property name="textInteractionFlags">
+                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                           </property>
+                          </widget>
+                         </item>
+                        </layout>
+                       </item>
+                       <item>
+                        <widget class="QStackedWidget" name="stackedWidget_imuFilter">
+                         <property name="currentIndex">
+                          <number>2</number>
+                         </property>
+                         <widget class="QWidget" name="page_83">
+                          <layout class="QVBoxLayout" name="verticalLayout_144">
+                           <item>
+                            <spacer name="verticalSpacer_80">
+                             <property name="orientation">
+                              <enum>Qt::Vertical</enum>
+                             </property>
+                             <property name="sizeHint" stdset="0">
+                              <size>
+                               <width>20</width>
+                               <height>0</height>
+                              </size>
+                             </property>
+                            </spacer>
+                           </item>
+                          </layout>
+                         </widget>
+                         <widget class="QWidget" name="page_81">
+                          <layout class="QVBoxLayout" name="verticalLayout_142">
+                           <item>
+                            <widget class="QGroupBox" name="groupBox_madgwickfilter">
+                             <property name="title">
+                              <string>Madgwick Filter</string>
+                             </property>
+                             <layout class="QGridLayout" name="gridLayout_110" columnstretch="0,1">
+                              <item row="0" column="0">
+                               <widget class="QDoubleSpinBox" name="doubleSpinBox_imuFilterMadgwickGain">
+                                <property name="suffix">
+                                 <string/>
+                                </property>
+                                <property name="decimals">
+                                 <number>4</number>
+                                </property>
+                                <property name="minimum">
+                                 <double>0.000000000000000</double>
+                                </property>
+                                <property name="maximum">
+                                 <double>1.000000000000000</double>
+                                </property>
+                                <property name="singleStep">
+                                 <double>0.010000000000000</double>
+                                </property>
+                                <property name="value">
+                                 <double>0.010000000000000</double>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="0" column="1">
+                               <widget class="QLabel" name="label_542">
+                                <property name="text">
+                                 <string>Gain.</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="1" column="0">
+                               <widget class="QDoubleSpinBox" name="doubleSpinBox_imuFilterMadgwickZeta">
+                                <property name="suffix">
+                                 <string/>
+                                </property>
+                                <property name="decimals">
+                                 <number>4</number>
+                                </property>
+                                <property name="minimum">
+                                 <double>0.000000000000000</double>
+                                </property>
+                                <property name="maximum">
+                                 <double>1.000000000000000</double>
+                                </property>
+                                <property name="singleStep">
+                                 <double>0.010000000000000</double>
+                                </property>
+                                <property name="value">
+                                 <double>0.010000000000000</double>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="1" column="1">
+                               <widget class="QLabel" name="label_543">
+                                <property name="text">
+                                 <string>Zeta.</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                             </layout>
+                            </widget>
+                           </item>
+                           <item>
+                            <spacer name="verticalSpacer_79">
+                             <property name="orientation">
+                              <enum>Qt::Vertical</enum>
+                             </property>
+                             <property name="sizeHint" stdset="0">
+                              <size>
+                               <width>20</width>
+                               <height>0</height>
+                              </size>
+                             </property>
+                            </spacer>
+                           </item>
+                          </layout>
+                         </widget>
+                         <widget class="QWidget" name="page_82">
+                          <layout class="QVBoxLayout" name="verticalLayout_143">
+                           <item>
+                            <widget class="QGroupBox" name="groupBox_complementaryfilter">
+                             <property name="title">
+                              <string>Complementary Filter</string>
+                             </property>
+                             <layout class="QGridLayout" name="gridLayout_111" columnstretch="0,1">
+                              <item row="2" column="1">
+                               <widget class="QLabel" name="label_547">
+                                <property name="text">
+                                 <string>Do bias estimation.</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="0" column="1">
+                               <widget class="QLabel" name="label_544">
+                                <property name="text">
+                                 <string>Gain acc.</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="2" column="0">
+                               <widget class="QCheckBox" name="checkBox_imuFilterComplementaryDoBiasEstimation">
+                                <property name="text">
+                                 <string/>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="0" column="0">
+                               <widget class="QDoubleSpinBox" name="doubleSpinBox_imuFilterComplementaryGainAcc">
+                                <property name="suffix">
+                                 <string/>
+                                </property>
+                                <property name="decimals">
+                                 <number>4</number>
+                                </property>
+                                <property name="minimum">
+                                 <double>0.000000000000000</double>
+                                </property>
+                                <property name="maximum">
+                                 <double>1.000000000000000</double>
+                                </property>
+                                <property name="singleStep">
+                                 <double>0.010000000000000</double>
+                                </property>
+                                <property name="value">
+                                 <double>0.010000000000000</double>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="1" column="1">
+                               <widget class="QLabel" name="label_545">
+                                <property name="text">
+                                 <string>Bias alpha.</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="1" column="0">
+                               <widget class="QDoubleSpinBox" name="doubleSpinBox_imuFilterComplementaryBiasAlpha">
+                                <property name="suffix">
+                                 <string/>
+                                </property>
+                                <property name="decimals">
+                                 <number>4</number>
+                                </property>
+                                <property name="minimum">
+                                 <double>0.000000000000000</double>
+                                </property>
+                                <property name="maximum">
+                                 <double>1.000000000000000</double>
+                                </property>
+                                <property name="singleStep">
+                                 <double>0.010000000000000</double>
+                                </property>
+                                <property name="value">
+                                 <double>0.010000000000000</double>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="3" column="0">
+                               <widget class="QCheckBox" name="checkBox_imuFilterComplementaryDoAdaptiveGain">
+                                <property name="text">
+                                 <string/>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="3" column="1">
+                               <widget class="QLabel" name="label_548">
+                                <property name="text">
+                                 <string>Do adaptive gain.</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                             </layout>
+                            </widget>
+                           </item>
+                           <item>
+                            <spacer name="verticalSpacer_81">
+                             <property name="orientation">
+                              <enum>Qt::Vertical</enum>
+                             </property>
+                             <property name="sizeHint" stdset="0">
+                              <size>
+                               <width>20</width>
+                               <height>0</height>
+                              </size>
+                             </property>
+                            </spacer>
+                           </item>
+                          </layout>
+                         </widget>
                         </widget>
                        </item>
                       </layout>
@@ -20129,6 +20434,37 @@ Lower the ratio -&gt; higher the precision.</string>
         </layout>
        </item>
       </layout>
+     </item>
+    </layout>
+   </item>
+   <item row="1" column="0">
+    <layout class="QHBoxLayout" name="horizontalLayout_3">
+     <item>
+      <widget class="QRadioButton" name="radioButton_basic">
+       <property name="text">
+        <string>Basic</string>
+       </property>
+       <property name="checked">
+        <bool>true</bool>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QRadioButton" name="radioButton_advanced">
+       <property name="text">
+        <string>Advanced</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QDialogButtonBox" name="buttonBox_global">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="standardButtons">
+        <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
+       </property>
+      </widget>
      </item>
     </layout>
    </item>

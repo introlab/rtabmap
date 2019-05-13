@@ -4454,7 +4454,7 @@ void MainWindow::updateSelectSourceMenu()
 	_ui->actionStereoZed->setChecked(_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcStereoZed);
     _ui->actionStereoTara->setChecked(_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcStereoTara);
 	_ui->actionStereoUsb->setChecked(_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcStereoUsb);
-	_ui->actionRealSense2_T265->setChecked(_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcRealSense2Stereo);
+	_ui->actionRealSense2_T265->setChecked(_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcStereoRealSense2);
 }
 
 void MainWindow::changeImgRateSetting()
@@ -4973,6 +4973,10 @@ void MainWindow::startDetection()
 			_preferencesDialog->getSourceScanNormalsK(),
 			_preferencesDialog->getSourceScanNormalsRadius(),
 			_preferencesDialog->isSourceScanForceGroundNormalsUp());
+	if(_preferencesDialog->getIMUFilteringStrategy()>0)
+	{
+		_camera->enableIMUFiltering(_preferencesDialog->getIMUFilteringStrategy()-1, parameters);
+	}
 	if(_preferencesDialog->isDepthFilteringAvailable())
 	{
 		if(_preferencesDialog->isBilateralFiltering())
@@ -6192,7 +6196,7 @@ void MainWindow::selectRealSense2()
 
 void MainWindow::selectRealSense2Stereo()
 {
-	_preferencesDialog->selectSourceDriver(PreferencesDialog::kSrcRealSense2Stereo);
+	_preferencesDialog->selectSourceDriver(PreferencesDialog::kSrcStereoRealSense2);
 }
 
 void MainWindow::selectStereoDC1394()

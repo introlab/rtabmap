@@ -45,6 +45,7 @@ class Camera;
 class CameraInfo;
 class SensorData;
 class StereoDense;
+class IMUFilter;
 
 /**
  * Class CameraThread
@@ -68,6 +69,8 @@ public:
 	void setDistortionModel(const std::string & path);
 	void enableBilateralFiltering(float sigmaS, float sigmaR);
 	void disableBilateralFiltering() {_bilateralFiltering = false;}
+	void enableIMUFiltering(int filteringStrategy=1, const ParametersMap & parameters = ParametersMap());
+	void disableIMUFiltering();
 
 	void setScanParameters(
 			bool fromDepth,
@@ -122,6 +125,7 @@ private:
 	bool _bilateralFiltering;
 	float _bilateralSigmaS;
 	float _bilateralSigmaR;
+	IMUFilter * _imuFilter;
 };
 
 } // namespace rtabmap

@@ -163,11 +163,10 @@ IMU zedIMUtoIMU(const sl::IMUData & imuData, const Transform & imuLocalTransform
 	Transform orientationT(0,0,0, orientation.ox, orientation.oy, orientation.oz, orientation.ow);
 	orientationT = opticalTransform * orientationT;
 
-	Eigen::Matrix4d opticalTransform4d = opticalTransform.toEigen4d();
-	Eigen::Vector4d accT = opticalTransform4d * Eigen::Vector4d(imuData.linear_acceleration.v[0], imuData.linear_acceleration.v[1], imuData.linear_acceleration.v[2], 1);
-	Eigen::Vector4d gyrT = opticalTransform4d * Eigen::Vector4d(imuData.angular_velocity.v[0], imuData.angular_velocity.v[1], imuData.angular_velocity.v[2], 1);
+	static double deg2rad = 0.017453293;
+	Eigen::Vector4d accT = Eigen::Vector4d(imuData.linear_acceleration.v[0], imuData.linear_acceleration.v[1], imuData.linear_acceleration.v[2], 1);
+	Eigen::Vector4d gyrT = Eigen::Vector4d(imuData.angular_velocity.v[0]*deg2rad, imuData.angular_velocity.v[1]*deg2rad, imuData.angular_velocity.v[2]*deg2rad, 1);
 
-	// FIXME covariance should be rotated too: see https://robotics.stackexchange.com/questions/2556/how-to-rotate-covariance
 	cv::Mat orientationCov = (cv::Mat_<double>(3,3)<<
 			imuData.pose_covariance[21], imuData.pose_covariance[22], imuData.pose_covariance[23],
 			imuData.pose_covariance[27], imuData.pose_covariance[28], imuData.pose_covariance[29],
@@ -182,6 +181,7 @@ IMU zedIMUtoIMU(const sl::IMUData & imuData, const Transform & imuLocalTransform
 			imuData.linear_acceleration_convariance.r[6], imuData.linear_acceleration_convariance.r[7], imuData.linear_acceleration_convariance.r[8]);
 
 	Eigen::Quaternionf quat = orientationT.getQuaternionf();
+
 	return IMU(
 			cv::Vec4d(quat.x(), quat.y(), quat.z(), quat.w()),
 			orientationCov,

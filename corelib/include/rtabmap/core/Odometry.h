@@ -38,7 +38,6 @@ namespace rtabmap {
 
 class OdometryInfo;
 class ParticleFilter;
-class IMUFilter;
 
 class RTABMAP_EXP Odometry
 {
@@ -92,7 +91,6 @@ private:
 	bool _holonomic;
 	bool guessFromMotion_;
 	bool guessSmoothingDelay_;
-	int _imuFilteringStrategy;
 	int _filteringStrategy;
 	int _particleSize;
 	float _particleNoiseT;
@@ -117,7 +115,6 @@ private:
 
 	std::vector<ParticleFilter *> particleFilters_;
 	cv::KalmanFilter kalmanFilter_;
-	IMUFilter * imuFilter_;
 
 protected:
 	Odometry(const rtabmap::ParametersMap & parameters);

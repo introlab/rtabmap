@@ -82,7 +82,7 @@ public:
 	void pose_callback(rs2::frame frame);
 	void frame_callback(rs2::frame frame);
 	void multiple_message_callback(rs2::frame frame);
-	bool getPoseAndIMU(
+	void getPoseAndIMU(
 			const double & stamp,
 			Transform & pose,
 			unsigned int & poseConfidence,
@@ -110,6 +110,8 @@ private:
 	std::map<double, cv::Vec3f> accBuffer_;
 	std::map<double, cv::Vec3f> gyroBuffer_;
 	std::map<double, std::pair<Transform, unsigned int> > poseBuffer_; // <stamp, <Pose, confidence: 1=lost, 2=low, 3=high> >
+	UMutex poseMutex_;
+	UMutex imuMutex_;
 
 	bool emitterEnabled_;
 	bool irDepth_;

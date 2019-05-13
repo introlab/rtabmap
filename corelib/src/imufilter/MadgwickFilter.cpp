@@ -312,7 +312,6 @@ void MadgwickFilter::updateImpl(
 	  A[2] = az;
 	computeOrientation(A,orientation);
 	reset(orientation.x(), orientation.y(), orientation.z(), orientation.w());
-	printf("%f %f %f -> %f %f %f %f\n", A[0], A[1], A[2], orientation.x(), orientation.y(), orientation.z(), orientation.w());
 	initialized_ = true;
 	return;
   }

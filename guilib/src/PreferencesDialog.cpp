@@ -303,7 +303,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	if (!CameraRealSense2::available())
 	{
 		_ui->comboBox_cameraRGBD->setItemData(kSrcRealSense2 - kSrcRGBD, 0, Qt::UserRole - 1);
-		_ui->comboBox_cameraRGBD->setItemData(kSrcRealSense2Stereo - kSrcStereo, 0, Qt::UserRole - 1);
+		_ui->comboBox_cameraRGBD->setItemData(kSrcStereoRealSense2 - kSrcStereo, 0, Qt::UserRole - 1);
 	}
 	if(!CameraStereoDC1394::available())
 	{
@@ -342,6 +342,10 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->label_markerDetection->setText(_ui->label_markerDetection->text()+" This option works only if OpenCV has been built with \"aruco\" module.");
 #endif
 
+#ifndef RTABMAP_MADGWICK
+	_ui->comboBox_imuFilter_strategy->setItemData(1, 0, Qt::UserRole - 1);
+#endif
+
 	// in case we change the ui, we should not forget to change stuff related to this parameter
 	UASSERT(_ui->odom_registration->count() == 4);
 
@@ -350,6 +354,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->comboBox_cameraRGBD, SIGNAL(currentIndexChanged(int)), this, SLOT(updateSourceGrpVisibility()));
 	connect(_ui->source_comboBox_image_type, SIGNAL(currentIndexChanged(int)), this, SLOT(updateSourceGrpVisibility()));
 	connect(_ui->comboBox_cameraStereo, SIGNAL(currentIndexChanged(int)), this, SLOT(updateSourceGrpVisibility()));
+	connect(_ui->comboBox_imuFilter_strategy, SIGNAL(currentIndexChanged(int)), this, SLOT(updateSourceGrpVisibility()));
 	this->resetSettings(_ui->groupBox_source0);
 
 	_ui->predictionPlot->showLegend(false);
@@ -668,6 +673,8 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->toolButton_zedSvoPath, SIGNAL(clicked()), this, SLOT(selectSourceSvoPath()));
 	connect(_ui->lineEdit_zedSvoPath, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
 
+	connect(_ui->checkbox_stereoRealSense2_odom, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+
 	connect(_ui->checkbox_rgbd_colorOnly, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->spinBox_source_imageDecimation, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->checkbox_stereo_depthGenerated, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
@@ -684,6 +691,10 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->groupBox_bilateral, SIGNAL(toggled(bool)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->doubleSpinBox_bilateral_sigmaS, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->doubleSpinBox_bilateral_sigmaR, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteSourcePanel()));
+
+	connect(_ui->comboBox_imuFilter_strategy, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->comboBox_imuFilter_strategy, SIGNAL(currentIndexChanged(int)), _ui->stackedWidget_imuFilter, SLOT(setCurrentIndex(int)));
+	_ui->stackedWidget_imuFilter->setCurrentIndex(_ui->comboBox_imuFilter_strategy->currentIndex());
 
 	connect(_ui->checkBox_source_scanFromDepth, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->spinBox_source_scanDownsampleStep, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
@@ -1245,6 +1256,14 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->ArucoVarianceAngular->setObjectName(Parameters::kMarkerVarianceAngular().c_str());
 	_ui->ArucoCornerRefinementMethod->setObjectName(Parameters::kMarkerCornerRefinementMethod().c_str());
 
+	// IMU filter
+	_ui->doubleSpinBox_imuFilterMadgwickGain->setObjectName(Parameters::kImuFilterMadgwickGain().c_str());
+	_ui->doubleSpinBox_imuFilterMadgwickZeta->setObjectName(Parameters::kImuFilterMadgwickZeta().c_str());
+	_ui->doubleSpinBox_imuFilterComplementaryGainAcc->setObjectName(Parameters::kImuFilterComplementaryGainAcc().c_str());
+	_ui->doubleSpinBox_imuFilterComplementaryBiasAlpha->setObjectName(Parameters::kImuFilterComplementaryBiasAlpha().c_str());
+	_ui->checkBox_imuFilterComplementaryDoAdaptiveGain->setObjectName(Parameters::kImuFilterComplementaryDoAdpativeGain().c_str());
+	_ui->checkBox_imuFilterComplementaryDoBiasEstimation->setObjectName(Parameters::kImuFilterComplementaryDoBiasEstimation().c_str());
+
 	// reset default settings for the gui
 	resetSettings(_ui->groupBox_generalSettingsGui0);
 	resetSettings(_ui->groupBox_cloudRendering1);
@@ -1772,6 +1791,7 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->spinBox_stereoZed_confidenceThr->setValue(100);
 		_ui->checkbox_stereoZed_odom->setChecked(false);
 		_ui->lineEdit_zedSvoPath->clear();
+		_ui->checkbox_stereoRealSense2_odom->setChecked(false);
 
 		_ui->checkBox_cameraImages_timestamps->setChecked(false);
 		_ui->checkBox_cameraImages_syncTimeStamps->setChecked(true);
@@ -2184,6 +2204,9 @@ void PreferencesDialog::readCameraSettings(const QString & filePath)
 	_ui->lineEdit_zedSvoPath->setText(settings.value("svo_path", _ui->lineEdit_zedSvoPath->text()).toString());
 	settings.endGroup(); // StereoZed
 	
+	settings.beginGroup("StereoRealSense2");
+	_ui->checkbox_stereoRealSense2_odom->setChecked(settings.value("odom", _ui->checkbox_stereoRealSense2_odom->isChecked()).toBool());
+	settings.endGroup(); // StereoRealSense2
 
 	settings.beginGroup("Images");
 	_ui->source_images_lineEdit_path->setText(settings.value("path", _ui->source_images_lineEdit_path->text()).toString());
@@ -2613,7 +2636,9 @@ void PreferencesDialog::writeCameraSettings(const QString & filePath) const
 	settings.setValue("svo_path", _ui->lineEdit_zedSvoPath->text());
 	settings.endGroup(); // StereoZed
 
-	
+	settings.beginGroup("StereoRealSense2");
+	settings.setValue("odom", _ui->checkbox_stereoRealSense2_odom->isChecked());
+	settings.endGroup(); // StereoRealSense2
 
 	settings.beginGroup("Images");
 	settings.setValue("path", 			_ui->source_images_lineEdit_path->text());
@@ -4336,7 +4361,7 @@ void PreferencesDialog::updateStereoDisparityVisibility()
               _ui->comboBox_cameraStereo->currentIndex() == kSrcStereoTara - kSrcStereo ||
 			 _ui->comboBox_cameraStereo->currentIndex() == kSrcStereoVideo - kSrcStereo ||
 			 _ui->comboBox_cameraStereo->currentIndex() == kSrcDC1394 - kSrcStereo ||
-			 _ui->comboBox_cameraStereo->currentIndex() == kSrcRealSense2Stereo - kSrcStereo);
+			 _ui->comboBox_cameraStereo->currentIndex() == kSrcStereoRealSense2 - kSrcStereo);
 	_ui->checkBox_stereo_rectify->setVisible(_ui->checkBox_stereo_rectify->isEnabled());
 	_ui->label_stereo_rectify->setVisible(_ui->checkBox_stereo_rectify->isEnabled());
 }
@@ -4490,12 +4515,13 @@ void PreferencesDialog::updateSourceGrpVisibility()
 		(_ui->comboBox_cameraStereo->currentIndex() == kSrcStereoVideo-kSrcStereo || 
 		 _ui->comboBox_cameraStereo->currentIndex() == kSrcStereoImages-kSrcStereo ||
 		 _ui->comboBox_cameraStereo->currentIndex() == kSrcStereoZed - kSrcStereo ||
-          _ui->comboBox_cameraStereo->currentIndex() == kSrcStereoTara - kSrcStereo ||
-		 _ui->comboBox_cameraStereo->currentIndex() == kSrcStereoUsb - kSrcStereo));
+		 _ui->comboBox_cameraStereo->currentIndex() == kSrcStereoUsb - kSrcStereo ||
+		 _ui->comboBox_cameraStereo->currentIndex() == kSrcStereoRealSense2 - kSrcStereo));
 	_ui->groupBox_cameraStereoImages->setVisible(_ui->comboBox_sourceType->currentIndex() == 1 && _ui->comboBox_cameraStereo->currentIndex() == kSrcStereoImages-kSrcStereo);
 	_ui->groupBox_cameraStereoVideo->setVisible(_ui->comboBox_sourceType->currentIndex() == 1 && _ui->comboBox_cameraStereo->currentIndex() == kSrcStereoVideo - kSrcStereo);
 	_ui->groupBox_cameraStereoUsb->setVisible(_ui->comboBox_sourceType->currentIndex() == 1 && _ui->comboBox_cameraStereo->currentIndex() == kSrcStereoUsb - kSrcStereo);
 	_ui->groupBox_cameraStereoZed->setVisible(_ui->comboBox_sourceType->currentIndex() == 1 && _ui->comboBox_cameraStereo->currentIndex() == kSrcStereoZed - kSrcStereo);
+	_ui->groupBox_cameraStereoRealSense2->setVisible(_ui->comboBox_sourceType->currentIndex() == 1 && _ui->comboBox_cameraStereo->currentIndex() == kSrcStereoRealSense2 - kSrcStereo);
 
 	_ui->stackedWidget_image->setVisible(_ui->comboBox_sourceType->currentIndex() == 2 && (_ui->source_comboBox_image_type->currentIndex() == kSrcImages-kSrcRGB || _ui->source_comboBox_image_type->currentIndex() == kSrcVideo-kSrcRGB));
 	_ui->source_groupBox_images->setVisible(_ui->comboBox_sourceType->currentIndex() == 2 && _ui->source_comboBox_image_type->currentIndex() == kSrcImages-kSrcRGB);
@@ -4510,6 +4536,18 @@ void PreferencesDialog::updateSourceGrpVisibility()
 				_ui->comboBox_sourceType->currentIndex() == 0 || // RGBD
 				_ui->comboBox_sourceType->currentIndex() == 3);  // Database
 	_ui->groupBox_depthImageFiltering->setVisible(_ui->groupBox_depthImageFiltering->isEnabled());
+
+	_ui->groupBox_imuFiltering->setEnabled(
+			(_ui->comboBox_sourceType->currentIndex() == 0 && _ui->comboBox_cameraRGBD->currentIndex() == kSrcRGBDImages-kSrcRGBD) ||
+			(_ui->comboBox_sourceType->currentIndex() == 1 && _ui->comboBox_cameraStereo->currentIndex() == kSrcStereoImages-kSrcStereo) ||
+			(_ui->comboBox_sourceType->currentIndex() == 2 && _ui->source_comboBox_image_type->currentIndex() == kSrcImages-kSrcRGB) ||
+			(_ui->comboBox_sourceType->currentIndex() == 0 && _ui->comboBox_cameraRGBD->currentIndex() == kSrcRealSense2 - kSrcRGBD) || //D435i
+			(_ui->comboBox_sourceType->currentIndex() == 1 && _ui->comboBox_cameraStereo->currentIndex() == kSrcStereoRealSense2 - kSrcStereo) || //T265
+			(_ui->comboBox_sourceType->currentIndex() == 1 && _ui->comboBox_cameraStereo->currentIndex() == kSrcStereoZed - kSrcStereo)); // ZEDm
+	_ui->stackedWidget_imuFilter->setVisible(_ui->comboBox_imuFilter_strategy->currentIndex() > 0);
+	_ui->groupBox_madgwickfilter->setVisible(_ui->comboBox_imuFilter_strategy->currentIndex() == 1);
+	_ui->groupBox_complementaryfilter->setVisible(_ui->comboBox_imuFilter_strategy->currentIndex() == 2);
+	_ui->groupBox_imuFiltering->setVisible(_ui->groupBox_imuFiltering->isEnabled());
 
 	//_ui->groupBox_scan->setVisible(_ui->comboBox_sourceType->currentIndex() != 3);
 
@@ -5039,6 +5077,10 @@ bool PreferencesDialog::isSourceRGBDColorOnly() const
 {
 	return _ui->checkbox_rgbd_colorOnly->isChecked();
 }
+int PreferencesDialog::getIMUFilteringStrategy() const
+{
+	return _ui->comboBox_imuFilter_strategy->currentIndex();
+}
 bool PreferencesDialog::isDepthFilteringAvailable() const
 {
 	return _ui->groupBox_depthImageFiltering->isEnabled();
@@ -5204,7 +5246,7 @@ Camera * PreferencesDialog::createCamera(bool useRawImages, bool useColor)
 			((CameraRealSense*)camera)->setRGBSource((CameraRealSense::RGBSource)_ui->comboBox_realsenseRGBSource->currentIndex());
 		}
 	}
-	else if (driver == kSrcRealSense2 || driver == kSrcRealSense2Stereo)
+	else if (driver == kSrcRealSense2 || driver == kSrcStereoRealSense2)
 	{
 		if(driver == kSrcRealSense2 && useRawImages)
 		{
@@ -5219,9 +5261,16 @@ Camera * PreferencesDialog::createCamera(bool useRawImages, bool useColor)
 				this->getSourceDevice().toStdString(),
 				this->getGeneralInputRate(),
 				this->getSourceLocalTransform());
-			((CameraRealSense2*)camera)->setEmitterEnabled(_ui->checkbox_rs2_emitter->isChecked());
-			((CameraRealSense2*)camera)->setIRDepthFormat(_ui->checkbox_rs2_irDepth->isChecked());
-			((CameraRealSense2*)camera)->setImagesRectified(_ui->checkBox_stereo_rectify->isChecked() && !useRawImages);
+			if(driver == kSrcStereoRealSense2)
+			{
+				((CameraRealSense2*)camera)->setImagesRectified(_ui->checkBox_stereo_rectify->isChecked() && !useRawImages);
+				((CameraRealSense2*)camera)->setOdomProvided(_ui->checkbox_stereoRealSense2_odom->isChecked());
+			}
+			else
+			{
+				((CameraRealSense2*)camera)->setEmitterEnabled(_ui->checkbox_rs2_emitter->isChecked());
+				((CameraRealSense2*)camera)->setIRDepthFormat(_ui->checkbox_rs2_irDepth->isChecked());
+			}
 		}
 	}
 	else if(driver == kSrcRGBDImages)
@@ -5709,6 +5758,10 @@ void PreferencesDialog::testOdometry()
 			_ui->spinBox_source_scanNormalsK->value(),
 			_ui->doubleSpinBox_source_scanNormalsRadius->value(),
 			_ui->checkBox_source_scanForceGroundNormalsUp->isChecked());
+	if(_ui->comboBox_imuFilter_strategy->currentIndex()>0)
+	{
+		cameraThread.enableIMUFiltering(_ui->comboBox_imuFilter_strategy->currentIndex()-1, this->getAllParameters());
+	}
 	if(isDepthFilteringAvailable())
 	{
 		if(_ui->groupBox_bilateral->isChecked())
@@ -5776,6 +5829,10 @@ void PreferencesDialog::testCamera()
 				_ui->spinBox_source_scanNormalsK->value(),
 				_ui->doubleSpinBox_source_scanNormalsRadius->value(),
 				_ui->checkBox_source_scanForceGroundNormalsUp->isChecked());
+		if(_ui->comboBox_imuFilter_strategy->currentIndex()>0)
+		{
+			cameraThread.enableIMUFiltering(_ui->comboBox_imuFilter_strategy->currentIndex()-1, this->getAllParameters());
+		}
 		if(isDepthFilteringAvailable())
 		{
 			if(_ui->groupBox_bilateral->isChecked())
@@ -6002,7 +6059,7 @@ void PreferencesDialog::calibrate()
 		}
 
 		bool freenect2 = driver == kSrcFreenect2;
-		bool fisheye = driver == kSrcRealSense2Stereo;
+		bool fisheye = driver == kSrcStereoRealSense2;
 		_calibrationDialog->setStereoMode(this->getSourceType() != kSrcRGB && driver != kSrcRealSense, freenect2?"rgb":"left", freenect2?"depth":"right"); // RGB+Depth or left+right
 		_calibrationDialog->setSwitchedImages(freenect2);
 		_calibrationDialog->setFisheyeImages(fisheye);
