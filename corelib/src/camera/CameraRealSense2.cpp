@@ -67,7 +67,10 @@ CameraRealSense2::CameraRealSense2(
 	emitterEnabled_(true),
 	irDepth_(false),
 	rectifyImages_(true),
-	odometryProvided_(false)
+	odometryProvided_(false),
+	cameraWidth_(640),
+	cameraHeight_(480),
+	cameraFps_(30)
 #endif
 {
 	UDEBUG("");
@@ -564,21 +567,21 @@ bool CameraRealSense2::init(const std::string & calibrationFolder, const std::st
 			{
 				//D400 series:
 				if (video_profile.format() == (i==1?RS2_FORMAT_Z16:irDepth_?RS2_FORMAT_Y8:RS2_FORMAT_RGB8) &&
-					video_profile.width()  == 640 &&
-					video_profile.height() == 480 &&
-					video_profile.fps()    == 30)
+					video_profile.width()  == cameraWidth_ &&
+					video_profile.height() == cameraHeight_ &&
+					video_profile.fps()    == cameraFps_)
 				{
 					profilesPerSensor[irDepth_?1:i].push_back(profile);
 					auto intrinsic = video_profile.get_intrinsics();
 					if(i==1)
 					{
-						depthBuffer_ = cv::Mat(cv::Size(640, 480), CV_16UC1, cv::Scalar(0));
+						depthBuffer_ = cv::Mat(cv::Size(cameraWidth_, cameraHeight_), CV_16UC1, cv::Scalar(0));
 						depthStreamProfile = profile;
 						*depthIntrinsics_ = intrinsic;
 					}
 					else
 					{
-						rgbBuffer_ = cv::Mat(cv::Size(640, 480), irDepth_?CV_8UC1:CV_8UC3, irDepth_?cv::Scalar(0):cv::Scalar(0, 0, 0));
+						rgbBuffer_ = cv::Mat(cv::Size(cameraWidth_, cameraHeight_), irDepth_?CV_8UC1:CV_8UC3, irDepth_?cv::Scalar(0):cv::Scalar(0, 0, 0));
 						model_ = CameraModel(camera_name, intrinsic.fx, intrinsic.fy, intrinsic.ppx, intrinsic.ppy, this->getLocalTransform(), 0, cv::Size(intrinsic.width, intrinsic.height));
 						rgbStreamProfile = profile;
 						*rgbIntrinsics_ = intrinsic;
@@ -638,7 +641,17 @@ bool CameraRealSense2::init(const std::string & calibrationFolder, const std::st
 		if (!added)
 		{
 			UERROR("Given stream configuration is not supported by the device! "
-					"Stream Index: %d, Width: %d, Height: %d, FPS: %d", i, 640, 480, 30);
+					"Stream Index: %d, Width: %d, Height: %d, FPS: %d", i, cameraWidth_, cameraHeight_, cameraFps_);
+			UERROR("Available configurations:");
+			for (auto& profile : profiles)
+			{
+				auto video_profile = profile.as<rs2::video_stream_profile>();
+				UERROR("%s %d %d %d", rs2_format_to_string(
+						video_profile.format()),
+						video_profile.width(),
+						video_profile.height(),
+						video_profile.fps());
+			}
 			return false;
 		}
 	 }
@@ -816,6 +829,15 @@ void CameraRealSense2::setIRDepthFormat(bool enabled)
 {
 #ifdef RTABMAP_REALSENSE2
 	irDepth_ = enabled;
+#endif
+}
+
+void CameraRealSense2::setResolution(int width, int height, int fps)
+{
+#ifdef RTABMAP_REALSENSE2
+	cameraWidth_ = width;
+	cameraHeight_ = height;
+	cameraFps_ = fps;
 #endif
 }
 

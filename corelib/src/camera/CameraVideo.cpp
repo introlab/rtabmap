@@ -43,7 +43,9 @@ CameraVideo::CameraVideo(
 	Camera(imageRate, localTransform),
 	_rectifyImages(rectifyImages),
 	_src(kUsbDevice),
-	_usbDevice(usbDevice)
+	_usbDevice(usbDevice),
+	_width(0),
+	_height(0)
 {
 
 }
@@ -57,7 +59,9 @@ CameraVideo::CameraVideo(
 	_filePath(filePath),
 	_rectifyImages(rectifyImages),
 	_src(kVideoFile),
-	_usbDevice(0)
+	_usbDevice(0),
+	_width(0),
+	_height(0)
 {
 }
 
@@ -123,6 +127,19 @@ bool CameraVideo::init(const std::string & calibrationFolder, const std::string 
 			}
 		}
 		_model.setLocalTransform(this->getLocalTransform());
+		if(_src == kUsbDevice)
+		{
+			if(_model.isValidForProjection())
+			{
+				_capture.set(cv::CAP_PROP_FRAME_WIDTH, _model.imageWidth());
+				_capture.set(cv::CAP_PROP_FRAME_HEIGHT, _model.imageHeight());
+			}
+			else if(_width > 0 && _height > 0)
+			{
+				_capture.set(cv::CAP_PROP_FRAME_WIDTH, _width);
+				_capture.set(cv::CAP_PROP_FRAME_HEIGHT, _height);
+			}
+		}
 		if(_rectifyImages && !_model.isValidForRectification())
 		{
 			UERROR("Parameter \"rectifyImages\" is set, but no camera model is loaded or valid.");

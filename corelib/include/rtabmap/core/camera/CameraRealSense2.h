@@ -59,7 +59,6 @@ public:
 	static bool available();
 
 public:
-	// default local transform z in, x right, y down));
 	CameraRealSense2(
 		const std::string & deviceId = "",
 		float imageRate = 0,
@@ -72,8 +71,11 @@ public:
 	bool odomProvided() const;
 
 	// parameters are set during initialization
+	// D400 series
 	void setEmitterEnabled(bool enabled);
 	void setIRDepthFormat(bool enabled);
+	void setResolution(int width, int height, int fps = 30);
+	// T265 related parameters
 	void setImagesRectified(bool enabled);
 	void setOdomProvided(bool enabled);
 
@@ -117,6 +119,9 @@ private:
 	bool irDepth_;
 	bool rectifyImages_;
 	bool odometryProvided_;
+	int cameraWidth_;
+	int cameraHeight_;
+	int cameraFps_;
 
 	static Transform realsense2PoseRotation_;
 	static Transform realsense2PoseRotationInv_;
