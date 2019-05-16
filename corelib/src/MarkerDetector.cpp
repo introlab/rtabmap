@@ -92,8 +92,9 @@ void MarkerDetector::parseParameters(const ParametersMap & parameters)
 	if(dictionaryId_ >= 17)
 	{
 		UERROR("Cannot set AprilTag dictionary. OpenCV version should be at least 3.4.2, "
-				"current version is %s. Setting dictionary type to default (%d)",
+				"current version is %s. Setting %s to default (%d)",
 				CV_VERSION,
+				Parameters::kArucoDictionary().c_str(),
 				Parameters::defaultArucoDictionary());
 		dictionaryId_ = Parameters::defaultArucoDictionary();
 	}

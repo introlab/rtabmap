@@ -62,6 +62,7 @@ public:
 
 	void setPath(const std::string & dir) {_path=dir;}
 	virtual void setStartIndex(int index) {_startAt = index;} // negative means last
+	virtual void setMaxFrames(int value) {_maxFrames = value;}
 	void setDirRefreshed(bool enabled) {_refreshDir = enabled;}
 	void setImagesRectified(bool enabled) {_rectifyImages = enabled;}
 	void setBayerMode(int mode) {_bayerMode = mode;} // -1=disabled (default) 0=BayerBG, 1=BayerGB, 2=BayerRG, 3=BayerGR
@@ -125,6 +126,7 @@ protected:
 private:
 	std::string _path;
 	int _startAt;
+	int _maxFrames;
 	// If the list of files in the directory is refreshed
 	// on each call of takeImage()
 	bool _refreshDir;
@@ -133,6 +135,7 @@ private:
 	bool _isDepth;
 	float _depthScaleFactor;
 	int _count;
+	int _framesPublished;
 	UDirectory * _dir;
 	std::string _lastFileName;
 

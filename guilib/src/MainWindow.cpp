@@ -84,7 +84,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QtCore/QTimer>
 #include <QtCore/QTime>
 #include <QActionGroup>
-#include <QtCore/QThread>
 #include <QtGui/QDesktopServices>
 #include <QtCore/QStringList>
 #include <QtCore/QProcess>
@@ -2647,7 +2646,7 @@ void MainWindow::updateMapCloud(
 		for(std::map<int, Transform>::const_iterator iter=posesIn.begin(); iter!=posesIn.end() && iter->first<0; ++iter)
 		{
 #if PCL_VERSION_COMPARE(>=, 1, 7, 2)
-			_cloudViewer->addOrUpdateCoordinate(uFormat("landmark_%d", -iter->first), iter->second, _preferencesDialog->getMarkerLength()<=0?0.1:_preferencesDialog->getMarkerLength()/2.0, false);
+			_cloudViewer->addOrUpdateCoordinate(uFormat("landmark_%d", -iter->first), iter->second, _preferencesDialog->landmarkVisSize()>0.0?_preferencesDialog->landmarkVisSize():_preferencesDialog->getMarkerLength()<=0?0.1:_preferencesDialog->getMarkerLength()/2.0, false);
 #endif
 			if(_preferencesDialog->isLabelsShown())
 			{
@@ -4314,14 +4313,14 @@ void MainWindow::drawKeypoints(const std::multimap<int, cv::KeyPoint> & refWords
 				iter->first.y,
 				(iter->second.x*scaleLoop+loopMarginX+deltaX-sourceMarginX)/scaleSource,
 				(iter->second.y*scaleLoop+loopMarginY+deltaY-sourceMarginY)/scaleSource,
-				Qt::cyan);
+				_ui->imageView_source->getDefaultMatchingLineColor());
 
 		_ui->imageView_loopClosure->addLine(
 				(iter->first.x*scaleSource+sourceMarginX-deltaX-loopMarginX)/scaleLoop,
 				(iter->first.y*scaleSource+sourceMarginY-deltaY-loopMarginY)/scaleLoop,
 				iter->second.x,
 				iter->second.y,
-				Qt::cyan);
+				_ui->imageView_loopClosure->getDefaultMatchingLineColor());
 	}
 	_ui->imageView_source->update();
 	_ui->imageView_loopClosure->update();

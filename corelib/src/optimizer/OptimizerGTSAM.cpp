@@ -168,18 +168,17 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 				{
 					// check if it is SE2 or only PointXY
 					std::multimap<int, Link>::const_iterator jter=edgeConstraints.find(iter->first);
-					if(jter != edgeConstraints.end())
+					UASSERT_MSG(jter != edgeConstraints.end(), uFormat("Not found landmark %d in edges!", iter->first).c_str());
+
+					if (1 / static_cast<double>(jter->second.infMatrix().at<double>(5,5)) >= 9999.0)
 					{
-						if (1 / static_cast<double>(jter->second.infMatrix().at<double>(5,5)) >= 9999.0)
-						{
-							initialEstimate.insert(iter->first, gtsam::Point2(iter->second.x(), iter->second.y()));
-							isLandmarkWithRotation.insert(std::make_pair(iter->first, false));
-						}
-						else
-						{
-							initialEstimate.insert(iter->first, gtsam::Pose2(iter->second.x(), iter->second.y(), iter->second.theta()));
-							isLandmarkWithRotation.insert(std::make_pair(iter->first, true));
-						}
+						initialEstimate.insert(iter->first, gtsam::Point2(iter->second.x(), iter->second.y()));
+						isLandmarkWithRotation.insert(std::make_pair(iter->first, false));
+					}
+					else
+					{
+						initialEstimate.insert(iter->first, gtsam::Pose2(iter->second.x(), iter->second.y(), iter->second.theta()));
+						isLandmarkWithRotation.insert(std::make_pair(iter->first, true));
 					}
 				}
 
@@ -194,20 +193,19 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 				{
 					// check if it is SE3 or only PointXYZ
 					std::multimap<int, Link>::const_iterator jter=edgeConstraints.find(iter->first);
-					if(jter != edgeConstraints.end())
+					UASSERT_MSG(jter != edgeConstraints.end(), uFormat("Not found landmark %d in edges!", iter->first).c_str());
+
+					if (1 / static_cast<double>(jter->second.infMatrix().at<double>(3,3)) >= 9999.0 ||
+						1 / static_cast<double>(jter->second.infMatrix().at<double>(4,4)) >= 9999.0 ||
+						1 / static_cast<double>(jter->second.infMatrix().at<double>(5,5)) >= 9999.0)
 					{
-						if (1 / static_cast<double>(jter->second.infMatrix().at<double>(3,3)) >= 9999.0 ||
-							1 / static_cast<double>(jter->second.infMatrix().at<double>(4,4)) >= 9999.0 ||
-							1 / static_cast<double>(jter->second.infMatrix().at<double>(5,5)) >= 9999.0)
-						{
-							initialEstimate.insert(iter->first, gtsam::Point3(iter->second.x(), iter->second.y(), iter->second.z()));
-							isLandmarkWithRotation.insert(std::make_pair(iter->first, false));
-						}
-						else
-						{
-							initialEstimate.insert(iter->first, gtsam::Pose3(iter->second.toEigen4d()));
-							isLandmarkWithRotation.insert(std::make_pair(iter->first, true));
-						}
+						initialEstimate.insert(iter->first, gtsam::Point3(iter->second.x(), iter->second.y(), iter->second.z()));
+						isLandmarkWithRotation.insert(std::make_pair(iter->first, false));
+					}
+					else
+					{
+						initialEstimate.insert(iter->first, gtsam::Pose3(iter->second.toEigen4d()));
+						isLandmarkWithRotation.insert(std::make_pair(iter->first, true));
 					}
 				}
 			}

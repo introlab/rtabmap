@@ -57,6 +57,7 @@ void showUsage()
 			"                        \"groundtruth.txt\" is found in the sequence folder, they will be saved in the database.\n"
 			"  --output           Output directory. By default, results are saved in \"path\".\n"
 			"  --output_name      Output database name (default \"rtabmap\").\n"
+			"  --skip #           Skip X frames.\n"
 			"  --quiet            Don't show log messages and iteration updates.\n"
 			"%s\n"
 			"Example:\n\n"
@@ -90,6 +91,7 @@ int main(int argc, char * argv[])
 	std::string path;
 	std::string output;
 	std::string outputName = "rtabmap";
+	int skipFrames = 0;
 	bool quiet = false;
 	if(argc < 2)
 	{
@@ -106,6 +108,11 @@ int main(int argc, char * argv[])
 			else if(std::strcmp(argv[i], "--output_name") == 0)
 			{
 				outputName = argv[++i];
+			}
+			else if(std::strcmp(argv[i], "--skip") == 0)
+			{
+				skipFrames = atoi(argv[++i]);
+				UASSERT(skipFrames > 0);
 			}
 			else if(std::strcmp(argv[i], "--quiet") == 0)
 			{
@@ -150,13 +157,15 @@ int main(int argc, char * argv[])
 			"   RGB path:        %s\n"
 			"   Depth path:      %s\n"
 			"   Output:          %s\n"
-			"   Output name:     %s\n",
+			"   Output name:     %s\n"
+			"   Skip frames:     %d\n",
 			seq.c_str(),
 			path.c_str(),
 			pathRgbImages.c_str(),
 			pathDepthImages.c_str(),
 			output.c_str(),
-			outputName.c_str());
+			outputName.c_str(),
+			skipFrames);
 	if(!pathGt.empty())
 	{
 		printf("   groundtruth.txt: %s\n", pathGt.c_str());
@@ -216,6 +225,11 @@ int main(int argc, char * argv[])
 	{
 		int totalImages = (int)((CameraRGBDImages*)cameraThread.camera())->filenames().size();
 
+		if(skipFrames>0)
+		{
+			totalImages /= skipFrames+1;
+		}
+
 		printf("Processing %d images...\n", totalImages);
 
 		ParametersMap odomParameters = parameters;
@@ -236,8 +250,20 @@ int main(int argc, char * argv[])
 		cv::Mat covariance;
 		int odomKeyFrames = 0;
 		double previousStamp = 0.0;
+		int skipCount = 0;
 		while(data.isValid() && g_forever)
 		{
+			if(skipCount < skipFrames)
+			{
+				++skipCount;
+
+				cameraInfo = CameraInfo();
+				timer.restart();
+				data = cameraThread.camera()->takeImage(&cameraInfo);
+				continue;
+			}
+			skipCount = 0;
+
 			cameraThread.postUpdate(&data, &cameraInfo);
 			cameraInfo.timeTotal = timer.ticks();
 

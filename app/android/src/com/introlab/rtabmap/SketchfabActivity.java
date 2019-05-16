@@ -66,6 +66,7 @@ public class SketchfabActivity extends Activity implements OnClickListener {
 		mButtonOk = (Button)findViewById(R.id.button_ok);
 		
 		mProgressDialog = new ProgressDialog(this);
+		mProgressDialog.setCancelable(false);
 		mProgressDialog.setCanceledOnTouchOutside(false);
 		
 		mAuthToken = getIntent().getExtras().getString(RTABMapActivity.RTABMAP_AUTH_TOKEN_KEY);
@@ -142,7 +143,8 @@ public class SketchfabActivity extends Activity implements OnClickListener {
 		if(!isNetworkAvailable())
 		{
 			// Visualize the result?
-			new AlertDialog.Builder(this)
+			AlertDialog ad = new AlertDialog.Builder(this)
+			.setCancelable(false)
 			.setTitle("Sharing to Sketchfab...")
 			.setMessage("Network is not available. Make sure you have internet before continuing.")
 			.setPositiveButton("Try Again", new DialogInterface.OnClickListener() {
@@ -154,7 +156,9 @@ public class SketchfabActivity extends Activity implements OnClickListener {
 				public void onClick(DialogInterface dialog, int which) {
 				}
 			})
-			.show();
+			.create();
+			ad.setCanceledOnTouchOutside(false);
+			ad.show();
 			return;
 		}	
 
@@ -165,6 +169,8 @@ public class SketchfabActivity extends Activity implements OnClickListener {
 
 			WebView web;
 			mAuthDialog = new Dialog(this);
+			mAuthDialog.setCancelable(false);
+			mAuthDialog.setCanceledOnTouchOutside(false);
 			mAuthDialog.setContentView(R.layout.auth_dialog);
 			web = (WebView)mAuthDialog.findViewById(R.id.webv);
 			web.setWebContentsDebuggingEnabled(!RTABMapActivity.DISABLE_LOG);
@@ -200,7 +206,6 @@ public class SketchfabActivity extends Activity implements OnClickListener {
 			});
 			mAuthDialog.show();
 			mAuthDialog.setTitle("Authorize RTAB-Map");
-			mAuthDialog.setCancelable(true);
 			web.loadUrl(auth_url);
 		}
 		else
@@ -213,6 +218,8 @@ public class SketchfabActivity extends Activity implements OnClickListener {
 	{		
 		mProgressDialog.setTitle("Upload to Sketchfab");
 		mProgressDialog.setMessage(String.format("Compressing the files..."));
+		mProgressDialog.setCancelable(false);
+		mProgressDialog.setCanceledOnTouchOutside(false);
 		mProgressDialog.show();
 
 		Thread workingThread = new Thread(new Runnable() {
@@ -308,7 +315,10 @@ public class SketchfabActivity extends Activity implements OnClickListener {
 											// do nothing...
 										}
 									});
-									builder.show();
+									AlertDialog ad = builder.create();
+									ad.setCancelable(false);
+									ad.setCanceledOnTouchOutside(false);
+									ad.show();
 								}
 							});
 						}
@@ -371,6 +381,7 @@ public class SketchfabActivity extends Activity implements OnClickListener {
 						finish();
 					}
 				}).create();
+				d.setCanceledOnTouchOutside(false);
 				d.show();
 				((TextView)d.findViewById(android.R.id.message)).setMovementMethod(LinkMovementMethod.getInstance());
 			}

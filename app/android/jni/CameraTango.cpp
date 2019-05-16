@@ -891,7 +891,6 @@ SensorData CameraTango::captureImage(CameraInfo * info)
 			{
 				//UTimer t;
 				depth = rtabmap::util2d::fastBilateralFiltering(depth, bilateralFilteringSigmaS, bilateralFilteringSigmaR);
-				data.setDepthOrRightRaw(depth);
 				//LOGD("Bilateral filtering, time=%fs", t.ticks());
 			}
 

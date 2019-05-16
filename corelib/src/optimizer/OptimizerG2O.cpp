@@ -341,28 +341,23 @@ std::map<int, Transform> OptimizerG2O::optimize(
 				{
 					// check if it is SE2 or only PointXY
 					std::multimap<int, Link>::const_iterator jter=edgeConstraints.find(id);
-					if(jter != edgeConstraints.end())
+					UASSERT(jter != edgeConstraints.end());
+
+					if (1 / static_cast<double>(jter->second.infMatrix().at<double>(5,5)) >= 9999.0)
 					{
-						if (1 / static_cast<double>(jter->second.infMatrix().at<double>(5,5)) >= 9999.0)
-						{
-							g2o::VertexPointXY * v2 = new g2o::VertexPointXY();
-							v2->setEstimate(Eigen::Vector2d(iter->second.x(), iter->second.y()));
-							vertex = v2;
-							isLandmarkWithRotation.insert(std::make_pair(id, false));
-							id = landmarkVertexOffset - id;
-						}
-						else
-						{
-							g2o::VertexSE2 * v2 = new g2o::VertexSE2();
-							v2->setEstimate(g2o::SE2(iter->second.x(), iter->second.y(), iter->second.theta()));
-							vertex = v2;
-							isLandmarkWithRotation.insert(std::make_pair(id, true));
-							id = landmarkVertexOffset - id;
-						}
+						g2o::VertexPointXY * v2 = new g2o::VertexPointXY();
+						v2->setEstimate(Eigen::Vector2d(iter->second.x(), iter->second.y()));
+						vertex = v2;
+						isLandmarkWithRotation.insert(std::make_pair(id, false));
+						id = landmarkVertexOffset - id;
 					}
 					else
 					{
-						continue;
+						g2o::VertexSE2 * v2 = new g2o::VertexSE2();
+						v2->setEstimate(g2o::SE2(iter->second.x(), iter->second.y(), iter->second.theta()));
+						vertex = v2;
+						isLandmarkWithRotation.insert(std::make_pair(id, true));
+						id = landmarkVertexOffset - id;
 					}
 				}
 				else
@@ -391,34 +386,29 @@ std::map<int, Transform> OptimizerG2O::optimize(
 				{
 					// check if it is SE3 or only PointXYZ
 					std::multimap<int, Link>::const_iterator jter=edgeConstraints.find(id);
-					if(jter != edgeConstraints.end())
+					UASSERT(jter != edgeConstraints.end());
+
+					if (1 / static_cast<double>(jter->second.infMatrix().at<double>(3,3)) >= 9999.0 ||
+						1 / static_cast<double>(jter->second.infMatrix().at<double>(4,4)) >= 9999.0 ||
+						1 / static_cast<double>(jter->second.infMatrix().at<double>(5,5)) >= 9999.0)
 					{
-						if (1 / static_cast<double>(jter->second.infMatrix().at<double>(3,3)) >= 9999.0 ||
-							1 / static_cast<double>(jter->second.infMatrix().at<double>(4,4)) >= 9999.0 ||
-							1 / static_cast<double>(jter->second.infMatrix().at<double>(5,5)) >= 9999.0)
-						{
-							g2o::VertexPointXYZ * v3 = new g2o::VertexPointXYZ();
-							v3->setEstimate(Eigen::Vector3d(iter->second.x(), iter->second.y(), iter->second.z()));
-							vertex = v3;
-							isLandmarkWithRotation.insert(std::make_pair(id, false));
-							id = landmarkVertexOffset - id;
-						}
-						else
-						{
-							g2o::VertexSE3 * v3 = new g2o::VertexSE3();
-							Eigen::Affine3d a = iter->second.toEigen3d();
-							Eigen::Isometry3d pose;
-							pose = a.linear();
-							pose.translation() = a.translation();
-							v3->setEstimate(pose);
-							vertex = v3;
-							isLandmarkWithRotation.insert(std::make_pair(id, true));
-							id = landmarkVertexOffset - id;
-						}
+						g2o::VertexPointXYZ * v3 = new g2o::VertexPointXYZ();
+						v3->setEstimate(Eigen::Vector3d(iter->second.x(), iter->second.y(), iter->second.z()));
+						vertex = v3;
+						isLandmarkWithRotation.insert(std::make_pair(id, false));
+						id = landmarkVertexOffset - id;
 					}
 					else
 					{
-						continue;
+						g2o::VertexSE3 * v3 = new g2o::VertexSE3();
+						Eigen::Affine3d a = iter->second.toEigen3d();
+						Eigen::Isometry3d pose;
+						pose = a.linear();
+						pose.translation() = a.translation();
+						v3->setEstimate(pose);
+						vertex = v3;
+						isLandmarkWithRotation.insert(std::make_pair(id, true));
+						id = landmarkVertexOffset - id;
 					}
 				}
 				else
@@ -432,7 +422,7 @@ std::map<int, Transform> OptimizerG2O::optimize(
 
 		UDEBUG("fill edges to g2o...");
 #if defined(RTABMAP_VERTIGO)
-		int vertigoVertexId = landmarkVertexOffset - (poses.begin()->first<0?poses.begin()->first:0);
+		int vertigoVertexId = landmarkVertexOffset - (poses.begin()->first<0?poses.begin()->first-1:0);
 #endif
 		for(std::multimap<int, Link>::const_iterator iter=edgeConstraints.begin(); iter!=edgeConstraints.end(); ++iter)
 		{

@@ -74,6 +74,11 @@ CameraRealSense2::CameraRealSense2(
 CameraRealSense2::~CameraRealSense2()
 {
 #ifdef RTABMAP_REALSENSE2
+  for(rs2::sensor _sensor : dev_->query_sensors())
+  {
+      _sensor.stop();
+      _sensor.close();
+  }
 	delete ctx_;
 	delete dev_;
 	delete syncer_;

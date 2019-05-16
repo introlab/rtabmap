@@ -1617,7 +1617,10 @@ bool ExportCloudsDialog::getExportedClouds(
 			}
 
 			assembledCloud->is_dense = true;
-			pcl::copyPointCloud(*assembledCloud, *rawAssembledCloud);
+			if(_ui->spinBox_normalKSearch->value()>0 || _ui->doubleSpinBox_normalRadiusSearch->value()>0.0)
+			{
+				pcl::copyPointCloud(*assembledCloud, *rawAssembledCloud);
+			}
 
 			if(_ui->doubleSpinBox_voxelSize_assembled->value())
 			{
@@ -1643,7 +1646,8 @@ bool ExportCloudsDialog::getExportedClouds(
 				indices->at(i) = i;
 			}
 
-			if(!_ui->checkBox_fromDepth->isChecked() && !has2dScans)
+			if(!_ui->checkBox_fromDepth->isChecked() && !has2dScans &&
+					(_ui->spinBox_normalKSearch->value()>0 || _ui->doubleSpinBox_normalRadiusSearch->value()>0.0))
 			{
 				// recompute normals
 				pcl::PointCloud<pcl::PointXYZ>::Ptr cloudWithoutNormals(new pcl::PointCloud<pcl::PointXYZ>);
@@ -3056,8 +3060,15 @@ std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::Indic
 							viewPoint[2] = data.stereoCameraModel().localTransform().z();
 						}
 
-						pcl::PointCloud<pcl::Normal>::Ptr normals = util3d::computeNormals(cloudWithoutNormals, indices, _ui->spinBox_normalKSearch->value(), _ui->doubleSpinBox_normalRadiusSearch->value(), viewPoint);
-						pcl::concatenateFields(*cloudWithoutNormals, *normals, *cloud);
+						if(_ui->spinBox_normalKSearch->value()>0 || _ui->doubleSpinBox_normalRadiusSearch->value()>0.0)
+						{
+							pcl::PointCloud<pcl::Normal>::Ptr normals = util3d::computeNormals(cloudWithoutNormals, indices, _ui->spinBox_normalKSearch->value(), _ui->doubleSpinBox_normalRadiusSearch->value(), viewPoint);
+							pcl::concatenateFields(*cloudWithoutNormals, *normals, *cloud);
+						}
+						else
+						{
+							pcl::copyPointCloud(*cloudWithoutNormals, *cloud);
+						}
 
 						if(_ui->checkBox_subtraction->isChecked() &&
 						   _ui->doubleSpinBox_subtractPointFilteringRadius->value() > 0.0)
@@ -3180,8 +3191,15 @@ std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::Indic
 					_progressDialog->appendText(tr("Cached cloud %1 is not found in cached data, the view point for normal computation will not be set (%2/%3).").arg(iter->first).arg(index).arg(poses.size()), Qt::darkYellow);
 				}
 
-				pcl::PointCloud<pcl::Normal>::Ptr normals = util3d::computeNormals(cloudWithoutNormals, indices, _ui->spinBox_normalKSearch->value(), _ui->doubleSpinBox_normalRadiusSearch->value(), viewPoint);
-				pcl::concatenateFields(*cloudWithoutNormals, *normals, *cloud);
+				if(_ui->spinBox_normalKSearch->value()>0 || _ui->doubleSpinBox_normalRadiusSearch->value()>0.0)
+				{
+					pcl::PointCloud<pcl::Normal>::Ptr normals = util3d::computeNormals(cloudWithoutNormals, indices, _ui->spinBox_normalKSearch->value(), _ui->doubleSpinBox_normalRadiusSearch->value(), viewPoint);
+					pcl::concatenateFields(*cloudWithoutNormals, *normals, *cloud);
+				}
+				else
+				{
+					pcl::copyPointCloud(*cloudWithoutNormals, *cloud);
+				}
 			}
 			else if(!_ui->checkBox_fromDepth->isChecked() && uContains(cachedScans, iter->first))
 			{
@@ -3285,23 +3303,45 @@ void ExportCloudsDialog::saveClouds(
 		{
 			if(clouds.begin()->second->size())
 			{
-				pcl::PointCloud<pcl::PointXYZINormal>::Ptr cloudI;
+				pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudRGBWithoutNormals;
+				pcl::PointCloud<pcl::PointXYZI>::Ptr cloudIWithoutNormals;
+				pcl::PointCloud<pcl::PointXYZINormal>::Ptr cloudIWithNormals;
 				if(!_ui->checkBox_fromDepth->isChecked())
 				{
 					// When laser scans are exported, convert RGB to Intensity
-					cloudI.reset(new pcl::PointCloud<pcl::PointXYZINormal>);
-					cloudI->resize(clouds.begin()->second->size());
-					for(unsigned int i=0; i<cloudI->size(); ++i)
+					if(_ui->spinBox_normalKSearch->value()>0 || _ui->doubleSpinBox_normalRadiusSearch->value()>0.0)
 					{
-						cloudI->points[i].x = clouds.begin()->second->points[i].x;
-						cloudI->points[i].y = clouds.begin()->second->points[i].y;
-						cloudI->points[i].z = clouds.begin()->second->points[i].z;
-						cloudI->points[i].normal_x = clouds.begin()->second->points[i].normal_x;
-						cloudI->points[i].normal_y = clouds.begin()->second->points[i].normal_y;
-						cloudI->points[i].normal_z = clouds.begin()->second->points[i].normal_z;
-						cloudI->points[i].curvature = clouds.begin()->second->points[i].curvature;
-						cloudI->points[i].intensity = (float)clouds.begin()->second->points[i].r;
+						cloudIWithNormals.reset(new pcl::PointCloud<pcl::PointXYZINormal>);
+						cloudIWithNormals->resize(clouds.begin()->second->size());
+						for(unsigned int i=0; i<cloudIWithNormals->size(); ++i)
+						{
+							cloudIWithNormals->points[i].x = clouds.begin()->second->points[i].x;
+							cloudIWithNormals->points[i].y = clouds.begin()->second->points[i].y;
+							cloudIWithNormals->points[i].z = clouds.begin()->second->points[i].z;
+							cloudIWithNormals->points[i].normal_x = clouds.begin()->second->points[i].normal_x;
+							cloudIWithNormals->points[i].normal_y = clouds.begin()->second->points[i].normal_y;
+							cloudIWithNormals->points[i].normal_z = clouds.begin()->second->points[i].normal_z;
+							cloudIWithNormals->points[i].curvature = clouds.begin()->second->points[i].curvature;
+							cloudIWithNormals->points[i].intensity = (float)clouds.begin()->second->points[i].r;
+						}
 					}
+					else
+					{
+						cloudIWithoutNormals.reset(new pcl::PointCloud<pcl::PointXYZI>);
+						cloudIWithoutNormals->resize(clouds.begin()->second->size());
+						for(unsigned int i=0; i<cloudIWithoutNormals->size(); ++i)
+						{
+							cloudIWithoutNormals->points[i].x = clouds.begin()->second->points[i].x;
+							cloudIWithoutNormals->points[i].y = clouds.begin()->second->points[i].y;
+							cloudIWithoutNormals->points[i].z = clouds.begin()->second->points[i].z;
+							cloudIWithoutNormals->points[i].intensity = (float)clouds.begin()->second->points[i].r;
+						}
+					}
+				}
+				else if(_ui->spinBox_normalKSearch->value()<=0 && _ui->doubleSpinBox_normalRadiusSearch->value()<=0.0)
+				{
+					cloudRGBWithoutNormals.reset(new pcl::PointCloud<pcl::PointXYZRGB>);
+					pcl::copyPointCloud(*clouds.begin()->second, *cloudRGBWithoutNormals);
 				}
 
 				_progressDialog->appendText(tr("Saving the cloud (%1 points)...").arg(clouds.begin()->second->size()));
@@ -3309,33 +3349,42 @@ void ExportCloudsDialog::saveClouds(
 				bool success =false;
 				if(QFileInfo(path).suffix() == "pcd")
 				{
-					if(cloudI.get())
+					if(cloudIWithNormals.get())
 					{
-						success = pcl::io::savePCDFile(path.toStdString(), *cloudI, binaryMode) == 0;
+						success = pcl::io::savePCDFile(path.toStdString(), *cloudIWithNormals, binaryMode) == 0;
+					}
+					else if(cloudIWithoutNormals.get())
+					{
+						success = pcl::io::savePCDFile(path.toStdString(), *cloudIWithoutNormals, binaryMode) == 0;
+					}
+					else if(cloudRGBWithoutNormals.get())
+					{
+						success = pcl::io::savePCDFile(path.toStdString(), *cloudRGBWithoutNormals, binaryMode) == 0;
 					}
 					else
 					{
 						success = pcl::io::savePCDFile(path.toStdString(), *clouds.begin()->second, binaryMode) == 0;
 					}
 				}
-				else if(QFileInfo(path).suffix() == "ply")
+				else if(QFileInfo(path).suffix() == "ply" || QFileInfo(path).suffix() == "")
 				{
-					if(cloudI.get())
+					if(QFileInfo(path).suffix() == "")
 					{
-						success = pcl::io::savePLYFile(path.toStdString(), *cloudI, binaryMode) == 0;
+						//use ply by default
+						path += ".ply";
 					}
-					else
+
+					if(cloudIWithNormals.get())
 					{
-						success = pcl::io::savePLYFile(path.toStdString(), *clouds.begin()->second, binaryMode) == 0;
+						success = pcl::io::savePLYFile(path.toStdString(), *cloudIWithNormals, binaryMode) == 0;
 					}
-				}
-				else if(QFileInfo(path).suffix() == "")
-				{
-					//use ply by default
-					path += ".ply";
-					if(cloudI.get())
+					else if(cloudIWithoutNormals.get())
 					{
-						success = pcl::io::savePLYFile(path.toStdString(), *cloudI, binaryMode) == 0;
+						success = pcl::io::savePLYFile(path.toStdString(), *cloudIWithoutNormals, binaryMode) == 0;
+					}
+					else if(cloudRGBWithoutNormals.get())
+					{
+						success = pcl::io::savePLYFile(path.toStdString(), *cloudRGBWithoutNormals, binaryMode) == 0;
 					}
 					else
 					{
@@ -3388,32 +3437,62 @@ void ExportCloudsDialog::saveClouds(
 							pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr transformedCloud;
 							transformedCloud = util3d::transformPointCloud(iter->second, !_ui->comboBox_frame->isEnabled()||_ui->comboBox_frame->currentIndex()==0?poses.at(iter->first):Transform::getIdentity());
 
-							pcl::PointCloud<pcl::PointXYZINormal>::Ptr cloudI;
+							pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudRGBWithoutNormals;
+							pcl::PointCloud<pcl::PointXYZI>::Ptr cloudIWithoutNormals;
+							pcl::PointCloud<pcl::PointXYZINormal>::Ptr cloudIWithNormals;
 							if(!_ui->checkBox_fromDepth->isChecked())
 							{
 								// When laser scans are exported, convert RGB to Intensity
-								cloudI.reset(new pcl::PointCloud<pcl::PointXYZINormal>);
-								cloudI->resize(transformedCloud->size());
-								for(unsigned int i=0; i<cloudI->size(); ++i)
+								if(_ui->spinBox_normalKSearch->value()>0 || _ui->doubleSpinBox_normalRadiusSearch->value()>0.0)
 								{
-									cloudI->points[i].x = transformedCloud->points[i].x;
-									cloudI->points[i].y = transformedCloud->points[i].y;
-									cloudI->points[i].z = transformedCloud->points[i].z;
-									cloudI->points[i].normal_x = transformedCloud->points[i].normal_x;
-									cloudI->points[i].normal_y = transformedCloud->points[i].normal_y;
-									cloudI->points[i].normal_z = transformedCloud->points[i].normal_z;
-									cloudI->points[i].curvature = transformedCloud->points[i].curvature;
-									cloudI->points[i].intensity = (float)transformedCloud->points[i].r;
+									cloudIWithNormals.reset(new pcl::PointCloud<pcl::PointXYZINormal>);
+									cloudIWithNormals->resize(transformedCloud->size());
+									for(unsigned int i=0; i<cloudIWithNormals->size(); ++i)
+									{
+										cloudIWithNormals->points[i].x = transformedCloud->points[i].x;
+										cloudIWithNormals->points[i].y = transformedCloud->points[i].y;
+										cloudIWithNormals->points[i].z = transformedCloud->points[i].z;
+										cloudIWithNormals->points[i].normal_x = transformedCloud->points[i].normal_x;
+										cloudIWithNormals->points[i].normal_y = transformedCloud->points[i].normal_y;
+										cloudIWithNormals->points[i].normal_z = transformedCloud->points[i].normal_z;
+										cloudIWithNormals->points[i].curvature = transformedCloud->points[i].curvature;
+										cloudIWithNormals->points[i].intensity = (float)transformedCloud->points[i].r;
+									}
 								}
+								else
+								{
+									cloudIWithoutNormals.reset(new pcl::PointCloud<pcl::PointXYZI>);
+									cloudIWithoutNormals->resize(transformedCloud->size());
+									for(unsigned int i=0; i<cloudIWithoutNormals->size(); ++i)
+									{
+										cloudIWithoutNormals->points[i].x = transformedCloud->points[i].x;
+										cloudIWithoutNormals->points[i].y = transformedCloud->points[i].y;
+										cloudIWithoutNormals->points[i].z = transformedCloud->points[i].z;
+										cloudIWithoutNormals->points[i].intensity = (float)transformedCloud->points[i].r;
+									}
+								}
+							}
+							else if(_ui->spinBox_normalKSearch->value()<=0 && _ui->doubleSpinBox_normalRadiusSearch->value()<=0.0)
+							{
+								cloudRGBWithoutNormals.reset(new pcl::PointCloud<pcl::PointXYZRGB>);
+								pcl::copyPointCloud(*transformedCloud, *cloudRGBWithoutNormals);
 							}
 
 							QString pathFile = path+QDir::separator()+QString("%1%2.%3").arg(prefix).arg(iter->first).arg(suffix);
 							bool success =false;
 							if(suffix == "pcd")
 							{
-								if(cloudI.get())
+								if(cloudIWithNormals.get())
 								{
-									success = pcl::io::savePCDFile(pathFile.toStdString(), *cloudI, binaryMode) == 0;
+									success = pcl::io::savePCDFile(pathFile.toStdString(), *cloudIWithNormals, binaryMode) == 0;
+								}
+								else if(cloudIWithoutNormals.get())
+								{
+									success = pcl::io::savePCDFile(pathFile.toStdString(), *cloudIWithoutNormals, binaryMode) == 0;
+								}
+								else if(cloudRGBWithoutNormals.get())
+								{
+									success = pcl::io::savePCDFile(pathFile.toStdString(), *cloudRGBWithoutNormals, binaryMode) == 0;
 								}
 								else
 								{
@@ -3422,9 +3501,17 @@ void ExportCloudsDialog::saveClouds(
 							}
 							else if(suffix == "ply")
 							{
-								if(cloudI.get())
+								if(cloudIWithNormals.get())
 								{
-									success = pcl::io::savePLYFile(pathFile.toStdString(), *cloudI, binaryMode) == 0;
+									success = pcl::io::savePLYFile(pathFile.toStdString(), *cloudIWithNormals, binaryMode) == 0;
+								}
+								else if(cloudIWithoutNormals.get())
+								{
+									success = pcl::io::savePLYFile(pathFile.toStdString(), *cloudIWithoutNormals, binaryMode) == 0;
+								}
+								else if(cloudRGBWithoutNormals.get())
+								{
+									success = pcl::io::savePLYFile(pathFile.toStdString(), *cloudRGBWithoutNormals, binaryMode) == 0;
 								}
 								else
 								{

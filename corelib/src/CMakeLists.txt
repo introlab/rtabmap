@@ -110,6 +110,8 @@ SET(SRC_FILES
 	clams/discrete_depth_distortion_model.cpp
 	clams/frame_projector.cpp
 	clams/slam_calibrator.cpp
+	
+	opencv/ORBextractor.cc
 )
 
 IF(OpenCV_VERSION_MAJOR EQUAL 2)

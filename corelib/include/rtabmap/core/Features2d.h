@@ -84,8 +84,9 @@ typedef cv::cuda::ORB CV_ORB_GPU;
 typedef cv::cuda::FastFeatureDetector CV_FAST_GPU;
 #endif
 
-
 namespace rtabmap {
+
+class ORBextractor;
 
 class Stereo;
 #if CV_MAJOR_VERSION < 3
@@ -105,7 +106,8 @@ public:
 		kFeatureGfttBrief=6,
 		kFeatureBrisk=7,
 		kFeatureGfttOrb=8,  //new 0.10.11
-		kFeatureKaze=9};    //new 0.13.2
+		kFeatureKaze=9,     //new 0.13.2
+		kFeatureOrbOctree=10};   //new 0.19.2
 
 	static Feature2D * create(const ParametersMap & parameters = ParametersMap());
 	static Feature2D * create(Feature2D::Type type, const ParametersMap & parameters = ParametersMap()); // for convenience
@@ -149,7 +151,7 @@ public:
 
 	std::vector<cv::KeyPoint> generateKeypoints(
 			const cv::Mat & image,
-			const cv::Mat & mask = cv::Mat()) const;
+			const cv::Mat & mask = cv::Mat());
 	cv::Mat generateDescriptors(
 			const cv::Mat & image,
 			std::vector<cv::KeyPoint> & keypoints) const;
@@ -165,7 +167,7 @@ protected:
 	Feature2D(const ParametersMap & parameters = ParametersMap());
 
 private:
-	virtual std::vector<cv::KeyPoint> generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask = cv::Mat()) const = 0;
+	virtual std::vector<cv::KeyPoint> generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask = cv::Mat()) = 0;
 	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const = 0;
 
 private:
@@ -194,7 +196,7 @@ public:
 	virtual Feature2D::Type getType() const {return kFeatureSurf;}
 
 private:
-	virtual std::vector<cv::KeyPoint> generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask = cv::Mat()) const;
+	virtual std::vector<cv::KeyPoint> generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask = cv::Mat());
 	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const;
 
 private:
@@ -221,7 +223,7 @@ public:
 	virtual Feature2D::Type getType() const {return kFeatureSift;}
 
 private:
-	virtual std::vector<cv::KeyPoint> generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask = cv::Mat()) const;
+	virtual std::vector<cv::KeyPoint> generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask = cv::Mat());
 	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const;
 
 private:
@@ -244,7 +246,7 @@ public:
 	virtual Feature2D::Type getType() const {return kFeatureOrb;}
 
 private:
-	virtual std::vector<cv::KeyPoint> generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask = cv::Mat()) const;
+	virtual std::vector<cv::KeyPoint> generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask = cv::Mat());
 	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const;
 
 private:
@@ -275,7 +277,7 @@ public:
 	virtual Feature2D::Type getType() const {return kFeatureUndef;}
 
 private:
-	virtual std::vector<cv::KeyPoint> generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask = cv::Mat()) const;
+	virtual std::vector<cv::KeyPoint> generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask = cv::Mat());
 	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const {return cv::Mat();}
 
 private:
@@ -343,7 +345,7 @@ public:
 	virtual void parseParameters(const ParametersMap & parameters);
 
 private:
-	virtual std::vector<cv::KeyPoint> generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask = cv::Mat()) const;
+	virtual std::vector<cv::KeyPoint> generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask = cv::Mat());
 
 private:
 	double _qualityLevel;
@@ -424,7 +426,7 @@ public:
 	virtual Feature2D::Type getType() const {return kFeatureBrisk;}
 
 private:
-	virtual std::vector<cv::KeyPoint> generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask = cv::Mat()) const;
+	virtual std::vector<cv::KeyPoint> generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask = cv::Mat());
 	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const;
 
 private:
@@ -446,7 +448,7 @@ public:
 	virtual Feature2D::Type getType() const { return kFeatureKaze; }
 
 private:
-	virtual std::vector<cv::KeyPoint> generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask = cv::Mat()) const;
+	virtual std::vector<cv::KeyPoint> generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask = cv::Mat());
 	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const;
 
 private:
@@ -460,6 +462,30 @@ private:
 #if CV_MAJOR_VERSION > 2
 	cv::Ptr<cv::KAZE> kaze_;
 #endif
+};
+
+//ORB OCTREE
+class RTABMAP_EXP ORBOctree : public Feature2D
+{
+public:
+	ORBOctree(const ParametersMap & parameters = ParametersMap());
+	virtual ~ORBOctree();
+
+	virtual void parseParameters(const ParametersMap & parameters);
+	virtual Feature2D::Type getType() const {return kFeatureOrbOctree;}
+
+private:
+	virtual std::vector<cv::KeyPoint> generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask = cv::Mat());
+	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const;
+
+private:
+	float scaleFactor_;
+	int nLevels_;
+	int fastThreshold_;
+	int fastMinThreshold_;
+
+	cv::Ptr<ORBextractor> _orb;
+	cv::Mat descriptors_;
 };
 
 

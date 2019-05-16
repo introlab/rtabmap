@@ -164,6 +164,7 @@ public:
 	bool isGraphsShown() const;
 	bool isLabelsShown() const;
 	bool isLandmarksShown() const;
+	double landmarkVisSize() const;
 	bool isMarkerDetection() const;
 	double getMarkerLength() const;
 	double getVoxel() const;

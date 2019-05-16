@@ -40,6 +40,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QtCore/QTextStream>
 #include <QtCore/QDateTime>
 #include <QtCore/QSettings>
+#include <QThread>
 #include <rtabmap/utilite/ULogger.h>
 #include <rtabmap/utilite/UDirectory.h>
 #include <rtabmap/utilite/UConversion.h>
@@ -108,8 +109,6 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	infoReducedGraph_(false),
 	infoTotalOdom_(0.0),
 	infoSessions_(0),
-	infoBadcountInLTM_(0),
-	infoBadCountInGraph_(0),
 	useLastOptimizedGraphAsGuess_(false)
 {
 	pathDatabase_ = QDir::homePath()+"/Documents/RTAB-Map"; //use home directory by default
@@ -371,7 +370,6 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	connect(ui_->checkBox_ignoreLocalLoopSpace, SIGNAL(stateChanged(int)), this, SLOT(updateGraphView()));
 	connect(ui_->checkBox_ignoreLocalLoopTime, SIGNAL(stateChanged(int)), this, SLOT(updateGraphView()));
 	connect(ui_->checkBox_ignoreUserLoop, SIGNAL(stateChanged(int)), this, SLOT(updateGraphView()));
-	connect(ui_->spinBox_optimizationDepth, SIGNAL(editingFinished()), this, SLOT(updateGraphView()));
 	connect(ui_->doubleSpinBox_optimizationScale, SIGNAL(editingFinished()), this, SLOT(updateGraphView()));
 	connect(ui_->checkBox_octomap, SIGNAL(stateChanged(int)), this, SLOT(updateGrid()));
 	connect(ui_->checkBox_grid_2d, SIGNAL(stateChanged(int)), this, SLOT(updateGrid()));
@@ -699,7 +697,6 @@ void DatabaseViewer::restoreDefaultSettings()
 	ui_->checkBox_ignoreLocalLoopSpace->setChecked(false);
 	ui_->checkBox_ignoreLocalLoopTime->setChecked(false);
 	ui_->checkBox_ignoreUserLoop->setChecked(false);
-	ui_->spinBox_optimizationDepth->setValue(0);
 	ui_->doubleSpinBox_optimizationScale->setValue(1.0);
 	ui_->doubleSpinBox_gainCompensationRadius->setValue(0.0);
 	ui_->doubleSpinBox_voxelSize->setValue(0.0);
@@ -1521,6 +1518,30 @@ void DatabaseViewer::updateIds()
 		return;
 	}
 
+	rtabmap::ProgressDialog * progressDialog = new rtabmap::ProgressDialog(this);
+	progressDialog->setAttribute(Qt::WA_DeleteOnClose);
+	int progressSteps = 5;
+	if(ui_->graphViewer->isVisible() || ui_->dockWidget_occupancyGridView->isVisible())
+	{
+		++progressSteps;
+	}
+	if(ui_->textEdit_info->isVisible())
+	{
+		++progressSteps;
+	}
+	if(ui_->toolBox_statistics->isVisible())
+	{
+		++progressSteps;
+	}
+	progressDialog->setMaximumSteps(progressSteps);
+	progressDialog->show();
+	progressDialog->setCancelButtonVisible(false);
+
+	progressDialog->appendText(tr("Loading all ids..."));
+	QApplication::processEvents();
+	uSleep(100);
+	QApplication::processEvents();
+
 	UINFO("Loading all IDs...");
 	std::set<int> ids;
 	dbDriver_->getAllNodeIds(ids);
@@ -1568,8 +1589,16 @@ void DatabaseViewer::updateIds()
 	linksRemoved_.clear();
 	ui_->toolBox_statistics->clear();
 	ui_->label_optimizeFrom->setText(tr("Root"));
+
+	progressDialog->appendText(tr("%1 ids loaded!").arg(ids.size()));
+	progressDialog->incrementStep();
+	progressDialog->appendText(tr("Loading all links..."));
+	QApplication::processEvents();
+	uSleep(100);
+	QApplication::processEvents();
+
 	std::multimap<int, Link> unilinks;
-	dbDriver_->getAllLinks(unilinks, true);
+	dbDriver_->getAllLinks(unilinks, true, true);
 	UDEBUG("%d total links loaded", (int)unilinks.size());
 	// add both direction links
 	std::multimap<int, Link> links;
@@ -1582,17 +1611,28 @@ void DatabaseViewer::updateIds()
 		}
 	}
 
+	progressDialog->appendText(tr("%1 links loaded!").arg(unilinks.size()));
+	progressDialog->incrementStep();
+	progressDialog->appendText("Loading Working Memory state...");
+	QApplication::processEvents();
+	uSleep(100);
+	QApplication::processEvents();
+
 	infoTotalOdom_ = 0.0;
 	Transform previousPose;
 	infoSessions_ = ids_.size()?1:0;
 	infoTotalTime_ = 0.0;
 	double previousStamp = 0.0;
-	std::set<int> idsWithoutBad;
-	dbDriver_->getAllNodeIds(idsWithoutBad, false, true);
-	infoBadcountInLTM_ = 0;
-	infoBadCountInGraph_ = 0;
 	infoReducedGraph_ = false;
 	std::map<int, std::vector<int> > wmStates = dbDriver_->getAllStatisticsWmStates();
+
+	progressDialog->appendText("Loading Working Memory state... done!");
+	progressDialog->incrementStep();
+	progressDialog->appendText("Loading info for all nodes...");
+	QApplication::processEvents();
+	uSleep(100);
+	QApplication::processEvents();
+
 	for(int i=0; i<ids_.size(); ++i)
 	{
 		idToIndex_.insert(ids_[i], i);
@@ -1652,7 +1692,7 @@ void DatabaseViewer::updateIds()
 			std::multimap<int, Link>::iterator invertedLinkIter = graph::findLink(links, jter->second.to(), jter->second.from(), false);
 			if(	jter->second.isValid() && // null transform means a rehearsed location
 				ids.find(jter->second.from()) != ids.end() &&
-				ids.find(jter->second.to()) != ids.end() &&
+				(ids.find(jter->second.to()) != ids.end() || jter->second.to()<0) && // to add landmark links
 				graph::findLink(links_, jter->second.from(), jter->second.to()) == links_.end() &&
 				invertedLinkIter != links.end())
 			{
@@ -1695,16 +1735,14 @@ void DatabaseViewer::updateIds()
 				gpsPoses_.insert(std::make_pair(ids_[i], pose));
 			}
 		}
-
-		if(idsWithoutBad.find(ids_[i]) == idsWithoutBad.end())
-		{
-			++infoBadcountInLTM_;
-			if(addPose)
-			{
-				++infoBadCountInGraph_;
-			}
-		}
 	}
+
+	progressDialog->appendText("Loading info for all nodes... done!");
+	progressDialog->incrementStep();
+	progressDialog->appendText("Loading optimized poses and maps...");
+	QApplication::processEvents();
+	uSleep(100);
+	QApplication::processEvents();
 
 	dbOptimizedPoses_ = dbDriver_->loadOptimizedPoses();
 
@@ -1749,16 +1787,45 @@ void DatabaseViewer::updateIds()
 
 	UINFO("Loaded %d ids, %d poses and %d links", (int)ids_.size(), (int)odomPoses_.size(), (int)links_.size());
 
+	progressDialog->appendText("Loading optimized poses and maps... done!");
+	progressDialog->incrementStep();
+	QApplication::processEvents();
+	uSleep(100);
+	QApplication::processEvents();
+
 	if(ids_.size() && ui_->toolBox_statistics->isVisible())
 	{
+		progressDialog->appendText("Loading statistics...");
+		QApplication::processEvents();
+		uSleep(100);
+		QApplication::processEvents();
+
 		UINFO("Update statistics...");
 		updateStatistics();
+
+		progressDialog->appendText("Loading statistics... done!");
+		progressDialog->incrementStep();
+		QApplication::processEvents();
+		uSleep(100);
+		QApplication::processEvents();
 	}
+
 
 	ui_->textEdit_info->clear();
 	if(ui_->textEdit_info->isVisible())
 	{
+		progressDialog->appendText("Update database info...");
+		QApplication::processEvents();
+		uSleep(100);
+		QApplication::processEvents();
+
 		updateInfo();
+
+		progressDialog->appendText("Update database info... done!");
+		progressDialog->incrementStep();
+		QApplication::processEvents();
+		uSleep(100);
+		QApplication::processEvents();
 	}
 
 	if(ids.size())
@@ -1859,9 +1926,21 @@ void DatabaseViewer::updateIds()
 		updateLoopClosuresSlider();
 		if(ui_->graphViewer->isVisible() || ui_->dockWidget_occupancyGridView->isVisible())
 		{
+			progressDialog->appendText("Updating Graph View...");
+			QApplication::processEvents();
+			uSleep(100);
+			QApplication::processEvents();
+
 			updateGraphView();
+
+			progressDialog->appendText("Updating Graph View... done!");
+			progressDialog->incrementStep();
+			QApplication::processEvents();
+			uSleep(100);
+			QApplication::processEvents();
 		}
 	}
+	progressDialog->setValue(progressDialog->maximumSteps());
 }
 
 void DatabaseViewer::updateInfo()
@@ -1929,8 +2008,23 @@ void DatabaseViewer::updateInfo()
 			mem = dbSize - total;
 			ui_->textEdit_info->append(tr("Other (indexing):\t%1 %2\t%3%").arg(mem>1000000?mem/1000000:mem>1000?mem/1000:mem).arg(mem>1000000?"MB":mem>1000?"KB":"Bytes").arg(dbSize>0?QString::number(double(mem)/double(dbSize)*100.0, 'f', 2 ):"0"));
 			ui_->textEdit_info->append("");
-			ui_->textEdit_info->append(tr("%1 bad signatures in LTM").arg(infoBadcountInLTM_));
-			ui_->textEdit_info->append(tr("%1 bad signatures in the global graph").arg(infoBadCountInGraph_));
+			std::set<int> idsWithoutBad;
+			dbDriver_->getAllNodeIds(idsWithoutBad, false, true);
+			int infoBadcountInLTM = 0;
+			int infoBadCountInGraph = 0;
+			for(int i=0; i<ids_.size(); ++i)
+			{
+				if(idsWithoutBad.find(ids_[i]) == idsWithoutBad.end())
+				{
+					++infoBadcountInLTM;
+					if(odomPoses_.find(ids_[i]) != odomPoses_.end())
+					{
+						++infoBadCountInGraph;
+					}
+				}
+			}
+			ui_->textEdit_info->append(tr("%1 bad signatures in LTM").arg(infoBadcountInLTM));
+			ui_->textEdit_info->append(tr("%1 bad signatures in the global graph").arg(infoBadCountInGraph));
 			ui_->textEdit_info->append("");
 			ParametersMap parameters = dbDriver_->getLastParameters();
 			QFontMetrics metrics(ui_->textEdit_info->font());
@@ -4726,11 +4820,10 @@ void DatabaseViewer::updateWordsMatching()
 	int to = ids_.at(ui_->horizontalSlider_B->value());
 	if(from && to)
 	{
-		int alpha = 70;
 		ui_->graphicsView_A->clearLines();
-		ui_->graphicsView_A->setFeaturesColor(QColor(255, 255, 0, alpha)); // yellow
+		ui_->graphicsView_A->setFeaturesColor(ui_->graphicsView_A->getDefaultFeatureColor());
 		ui_->graphicsView_B->clearLines();
-		ui_->graphicsView_B->setFeaturesColor(QColor(255, 255, 0, alpha)); // yellow
+		ui_->graphicsView_B->setFeaturesColor(ui_->graphicsView_B->getDefaultFeatureColor());
 
 		const QMultiMap<int, KeypointItem*> & wordsA = ui_->graphicsView_A->getFeatures();
 		const QMultiMap<int, KeypointItem*> & wordsB = ui_->graphicsView_B->getFeatures();
@@ -4742,8 +4835,8 @@ void DatabaseViewer::updateWordsMatching()
 				if(ids[i] > 0 && wordsA.count(ids[i]) == 1 && wordsB.count(ids[i]) == 1)
 				{
 					// PINK features
-					ui_->graphicsView_A->setFeatureColor(ids[i], Qt::magenta);
-					ui_->graphicsView_B->setFeatureColor(ids[i], Qt::magenta);
+					ui_->graphicsView_A->setFeatureColor(ids[i], ui_->graphicsView_A->getDefaultMatchingFeatureColor());
+					ui_->graphicsView_B->setFeatureColor(ids[i], ui_->graphicsView_B->getDefaultMatchingFeatureColor());
 
 					// Add lines
 					// Draw lines between corresponding features...
@@ -4767,14 +4860,14 @@ void DatabaseViewer::updateWordsMatching()
 							kptA->rect().y()+kptA->rect().height()/2,
 							kptB->rect().x()+kptB->rect().width()/2+deltaX,
 							kptB->rect().y()+kptB->rect().height()/2+deltaY,
-							Qt::cyan);
+							ui_->graphicsView_A->getDefaultMatchingLineColor());
 
 					ui_->graphicsView_B->addLine(
 							kptA->rect().x()+kptA->rect().width()/2-deltaX,
 							kptA->rect().y()+kptA->rect().height()/2-deltaY,
 							kptB->rect().x()+kptB->rect().width()/2,
 							kptB->rect().y()+kptB->rect().height()/2,
-							Qt::cyan);
+							ui_->graphicsView_B->getDefaultMatchingLineColor());
 				}
 			}
 			ui_->graphicsView_A->update();
@@ -4899,14 +4992,15 @@ void DatabaseViewer::updateConstraintView(
 	ui_->checkBox_showOptimized->setEnabled(false);
 	UASSERT(!t.isNull() && dbDriver_);
 
-	ui_->label_type->setText(tr("%1 (%2)")
-			.arg(link.type())
+	ui_->label_type->setText(QString::number(link.type()));
+	ui_->label_type_name->setText(tr("(%1)")
 			.arg(link.type()==Link::kNeighbor?"Neighbor":
 				 link.type()==Link::kNeighborMerged?"Merged neighbor":
 				 link.type()==Link::kGlobalClosure?"Loop closure":
 				 link.type()==Link::kLocalSpaceClosure?"Space proximity link":
 				 link.type()==Link::kLocalTimeClosure?"Time proximity link":
 				 link.type()==Link::kUserClosure?"User link":
+				 link.type()==Link::kLandmark?"Landmark link":
 				 link.type()==Link::kVirtualClosure?"Virtual link":"Undefined"));
 	ui_->label_variance->setText(QString("%1, %2")
 			.arg(sqrt(link.transVariance()))
@@ -4944,45 +5038,51 @@ void DatabaseViewer::updateConstraintView(
 	{
 		ui_->horizontalSlider_A->blockSignals(true);
 		ui_->horizontalSlider_B->blockSignals(true);
-		// set from on left and to on right		{
-		ui_->horizontalSlider_A->setValue(idToIndex_.value(link.from()));
-		ui_->horizontalSlider_B->setValue(idToIndex_.value(link.to()));
+		// set from on left and to on right
+		if(link.from()>0)
+			ui_->horizontalSlider_A->setValue(idToIndex_.value(link.from()));
+		if(link.to() > 0)
+			ui_->horizontalSlider_B->setValue(idToIndex_.value(link.to()));
 		ui_->horizontalSlider_A->blockSignals(false);
 		ui_->horizontalSlider_B->blockSignals(false);
-		this->update(idToIndex_.value(link.from()),
-					ui_->label_indexA,
-					ui_->label_parentsA,
-					ui_->label_childrenA,
-					ui_->label_weightA,
-					ui_->label_labelA,
-					ui_->label_stampA,
-					ui_->graphicsView_A,
-					ui_->label_idA,
-					ui_->label_mapA,
-					ui_->label_poseA,
-					ui_->label_velA,
-					ui_->label_calibA,
-					ui_->label_scanA,
-					ui_->label_gpsA,
-					ui_->label_sensorsA,
-					false); // don't update constraints view!
-		this->update(idToIndex_.value(link.to()),
-					ui_->label_indexB,
-					ui_->label_parentsB,
-					ui_->label_childrenB,
-					ui_->label_weightB,
-					ui_->label_labelB,
-					ui_->label_stampB,
-					ui_->graphicsView_B,
-					ui_->label_idB,
-					ui_->label_mapB,
-					ui_->label_poseB,
-					ui_->label_velB,
-					ui_->label_calibB,
-					ui_->label_scanB,
-					ui_->label_gpsB,
-					ui_->label_sensorsB,
-					false); // don't update constraints view!
+		if(link.from()>0)
+			this->update(idToIndex_.value(link.from()),
+						ui_->label_indexA,
+						ui_->label_parentsA,
+						ui_->label_childrenA,
+						ui_->label_weightA,
+						ui_->label_labelA,
+						ui_->label_stampA,
+						ui_->graphicsView_A,
+						ui_->label_idA,
+						ui_->label_mapA,
+						ui_->label_poseA,
+						ui_->label_velA,
+						ui_->label_calibA,
+						ui_->label_scanA,
+						ui_->label_gpsA,
+						ui_->label_sensorsA,
+						false); // don't update constraints view!
+		if(link.to()>0)
+		{
+			this->update(idToIndex_.value(link.to()),
+						ui_->label_indexB,
+						ui_->label_parentsB,
+						ui_->label_childrenB,
+						ui_->label_weightB,
+						ui_->label_labelB,
+						ui_->label_stampB,
+						ui_->graphicsView_B,
+						ui_->label_idB,
+						ui_->label_mapB,
+						ui_->label_poseB,
+						ui_->label_velB,
+						ui_->label_calibB,
+						ui_->label_scanB,
+						ui_->label_gpsB,
+						ui_->label_sensorsB,
+						false); // don't update constraints view!
+		}
 	}
 
 	if(constraintsViewer_->isVisible())
@@ -5378,6 +5478,11 @@ void DatabaseViewer::updateConstraintButtons()
 	ui_->pushButton_add->setEnabled(false);
 	ui_->pushButton_reject->setEnabled(false);
 
+	if(ui_->label_type->text().toInt() == Link::kLandmark)
+	{
+		return;
+	}
+
 	int from = ids_.at(ui_->horizontalSlider_A->value());
 	int to = ids_.at(ui_->horizontalSlider_B->value());
 	if(from!=to && from && to && odomPoses_.find(from) != odomPoses_.end() && odomPoses_.find(to) != odomPoses_.end())
@@ -5545,7 +5650,7 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 				else
 				{
 					SensorData data;
-					dbDriver_->getNodeData(ids.at(i), data);
+					dbDriver_->getNodeData(ids.at(i), data, false, false, false);
 					cv::Mat ground, obstacles, empty;
 					data.uncompressData(0, 0, 0, 0, &ground, &obstacles, &empty);
 					localMaps_.insert(std::make_pair(ids.at(i), std::make_pair(std::make_pair(ground, obstacles), empty)));
@@ -5893,8 +5998,7 @@ void DatabaseViewer::updateGraphView()
 			int currentMapId = mapIds_.at(fromId);
 			for(std::map<int, rtabmap::Transform>::iterator iter=poses.begin(); iter!=poses.end();)
 			{
-				if(!uContains(mapIds_, iter->first) ||
-					mapIds_.at(iter->first) != currentMapId)
+				if(iter->first>0 && (!uContains(mapIds_, iter->first) || mapIds_.at(iter->first) != currentMapId))
 				{
 					poses.erase(iter++);
 				}
@@ -5915,10 +6019,8 @@ void DatabaseViewer::updateGraphView()
 			int currentMapId = mapIds_.at(fromId);
 			for(std::multimap<int, rtabmap::Link>::iterator iter=links.begin(); iter!=links.end();)
 			{
-				if(!uContains(mapIds_, iter->second.from()) ||
-					!uContains(mapIds_, iter->second.to()) ||
-					mapIds_.at(iter->second.from()) != currentMapId ||
-					mapIds_.at(iter->second.to()) != currentMapId)
+				if((iter->second.from()>0 && (!uContains(mapIds_, iter->second.from()) || mapIds_.at(iter->second.from()) != currentMapId)) ||
+					(iter->second.to()>0 && (!uContains(mapIds_, iter->second.to()) || mapIds_.at(iter->second.to()) != currentMapId)))
 				{
 					links.erase(iter++);
 				}
@@ -5960,6 +6062,7 @@ void DatabaseViewer::updateGraphView()
 		int totalLocalSpace = 0;
 		int totalUser = 0;
 		int totalPriors = 0;
+		int totalLandmarks = 0;
 		for(std::multimap<int, rtabmap::Link>::iterator iter=links.begin(); iter!=links.end();)
 		{
 			if(iter->second.type() == Link::kNeighbor)
@@ -6010,6 +6113,16 @@ void DatabaseViewer::updateGraphView()
 				loopLinks_.push_back(iter->second);
 				++totalUser;
 			}
+			else if(iter->second.type() == Link::kLandmark)
+			{
+				UASSERT(iter->second.from() > 0 && iter->second.to() < 0);
+				if(poses.find(iter->second.from()) != poses.end() && poses.find(iter->second.to()) == poses.end())
+				{
+					poses.insert(std::make_pair(iter->second.to(), poses.at(iter->second.from())*iter->second.transform()));
+				}
+				loopLinks_.push_back(iter->second);
+				++totalLandmarks;
+			}
 			else if(iter->second.type() == Link::kPosePrior)
 			{
 				++totalPriors;
@@ -6022,14 +6135,15 @@ void DatabaseViewer::updateGraphView()
 		}
 		updateLoopClosuresSlider();
 
-		ui_->label_loopClosures->setText(tr("(%1, %2, %3, %4, %5, %6, %7)")
+		ui_->label_loopClosures->setText(tr("(%1, %2, %3, %4, %5, %6, %7, %8)")
 				.arg(totalNeighbor)
 				.arg(totalNeighborMerged)
 				.arg(totalGlobal)
 				.arg(totalLocalSpace)
 				.arg(totalLocalTime)
 				.arg(totalUser)
-				.arg(totalPriors));
+				.arg(totalPriors)
+				.arg(totalLandmarks));
 
 		// remove intermediate nodes?
 		if(ui_->checkBox_ignoreIntermediateNodes->isVisible() &&
@@ -6074,8 +6188,7 @@ void DatabaseViewer::updateGraphView()
 				poses,
 				links,
 				posesOut,
-				linksOut,
-				ui_->spinBox_optimizationDepth->value());
+				linksOut);
 		if(optimizedGraphGuess.size() == posesOut.size())
 		{
 			bool identical=true;

@@ -48,20 +48,23 @@ DBReader::DBReader(const std::string & databasePath,
 				   bool ignoreGoalDelay,
 				   bool goalsIgnored,
 				   int startIndex,
-				   int cameraIndex) :
+				   int cameraIndex,
+				   int maxFrames) :
 	Camera(frameRate),
 	_paths(uSplit(databasePath, ';')),
 	_odometryIgnored(odometryIgnored),
 	_ignoreGoalDelay(ignoreGoalDelay),
 	_goalsIgnored(goalsIgnored),
 	_startIndex(startIndex),
+	_maxFrames(maxFrames),
 	_cameraIndex(cameraIndex),
 	_dbDriver(0),
 	_currentId(_ids.end()),
 	_previousMapId(-1),
 	_previousStamp(0),
 	_previousMapID(0),
-	_calibrated(false)
+	_calibrated(false),
+	_framesPublished(0)
 {
 }
 
@@ -71,20 +74,23 @@ DBReader::DBReader(const std::list<std::string> & databasePaths,
 				   bool ignoreGoalDelay,
 				   bool goalsIgnored,
 				   int startIndex,
-				   int cameraIndex) :
+				   int cameraIndex,
+				   int maxFrames) :
 	Camera(frameRate),
    _paths(databasePaths),
 	_odometryIgnored(odometryIgnored),
 	_ignoreGoalDelay(ignoreGoalDelay),
 	_goalsIgnored(goalsIgnored),
 	_startIndex(startIndex),
+	_maxFrames(maxFrames),
 	_cameraIndex(cameraIndex),
 	_dbDriver(0),
 	_currentId(_ids.end()),
 	_previousMapId(-1),
 	_previousStamp(0),
 	_previousMapID(0),
-	_calibrated(false)
+	_calibrated(false),
+	_framesPublished(0)
 {
 }
 
@@ -114,6 +120,7 @@ bool DBReader::init(
 	_previousStamp = 0;
 	_previousMapID = 0;
 	_calibrated = false;
+	_framesPublished = 0;
 
 	if(_paths.size() == 0)
 	{
@@ -212,6 +219,12 @@ std::string DBReader::getSerial() const
 
 SensorData DBReader::captureImage(CameraInfo * info)
 {
+	if(_maxFrames>0 && ++_framesPublished > _maxFrames)
+	{
+		UINFO("Maximum frames (%d) reached!", _maxFrames);
+		return SensorData();
+	}
+
 	SensorData data = this->getNextData(info);
 	if(data.id() == 0)
 	{
@@ -231,6 +244,7 @@ SensorData DBReader::captureImage(CameraInfo * info)
 			}
 		}
 	}
+
 	if(data.id())
 	{
 		std::string goalId;
