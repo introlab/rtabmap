@@ -3761,15 +3761,15 @@ bool Memory::getNodeInfo(int signatureId,
 	const Signature * s = this->getSignature(signatureId);
 	if(s)
 	{
-		odomPose = s->getPose();
+		odomPose = s->getPose().clone();
 		mapId = s->mapId();
 		weight = s->getWeight();
-		label = s->getLabel();
+		label = std::string(s->getLabel());
 		stamp = s->getStamp();
-		groundTruth = s->getGroundTruthPose();
-		velocity = s->getVelocity();
-		gps = s->sensorData().gps();
-		sensors = s->sensorData().envSensors();
+		groundTruth = s->getGroundTruthPose().clone();
+		velocity = std::vector<float>(s->getVelocity());
+		gps = GPS(s->sensorData().gps());
+		sensors = EnvSensors(s->sensorData().envSensors());
 		return true;
 	}
 	else if(lookInDatabase && _dbDriver)

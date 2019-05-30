@@ -4245,7 +4245,7 @@ void Rtabmap::get3DMap(
 			signatures.at(*iter).setWords(words);
 			signatures.at(*iter).setWords3(words3);
 			signatures.at(*iter).setWordsDescriptors(wordsDescriptors);
-			if(!velocity.empty())
+			if(velocity.size()==6)
 			{
 				signatures.at(*iter).setVelocity(velocity[0], velocity[1], velocity[2], velocity[3], velocity[4], velocity[5]);
 			}

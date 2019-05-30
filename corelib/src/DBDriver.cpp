@@ -741,14 +741,15 @@ bool DBDriver::getNodeInfo(
 	_trashesMutex.lock();
 	if(uContains(_trashSignatures, signatureId))
 	{
-		pose = _trashSignatures.at(signatureId)->getPose();
+		pose = _trashSignatures.at(signatureId)->getPose().clone();
 		mapId = _trashSignatures.at(signatureId)->mapId();
 		weight = _trashSignatures.at(signatureId)->getWeight();
-		label = _trashSignatures.at(signatureId)->getLabel();
+		label = std::string(_trashSignatures.at(signatureId)->getLabel());
 		stamp = _trashSignatures.at(signatureId)->getStamp();
-		groundTruthPose = _trashSignatures.at(signatureId)->getGroundTruthPose();
-		gps = _trashSignatures.at(signatureId)->sensorData().gps();
-		sensors = _trashSignatures.at(signatureId)->sensorData().envSensors();
+		groundTruthPose = _trashSignatures.at(signatureId)->getGroundTruthPose().clone();
+		velocity = std::vector<float>(_trashSignatures.at(signatureId)->getVelocity());
+		gps = GPS(_trashSignatures.at(signatureId)->sensorData().gps());
+		sensors = EnvSensors(_trashSignatures.at(signatureId)->sensorData().envSensors());
 		found = true;
 	}
 	_trashesMutex.unlock();
