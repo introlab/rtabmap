@@ -621,11 +621,13 @@ Transform RegistrationVis::computeTransformationImpl(
 				}
 				kptsFrom3D = detectorFrom->generateKeypoints3D(fromSignature.sensorData(), kptsFrom);
 				UDEBUG("generated kptsFrom3D=%d", (int)kptsFrom3D.size());
-				if(detectorFrom->getMinDepth() > 0.0f || detectorFrom->getMaxDepth() > 0.0f)
+				if(!kptsFrom3D.empty() && (detectorFrom->getMinDepth() > 0.0f || detectorFrom->getMaxDepth() > 0.0f))
 				{
 					//remove all keypoints/descriptors with no valid 3D points
-					UASSERT((int)kptsFrom.size() == descriptorsFrom.rows &&
-							kptsFrom3D.size() == kptsFrom.size());
+					UASSERT_MSG((int)kptsFrom.size() == descriptorsFrom.rows &&
+							kptsFrom3D.size() == kptsFrom.size(),
+							uFormat("kptsFrom=%d descriptorsFrom=%d kptsFrom3D=%d",
+									(int)kptsFrom.size(), descriptorsFrom.rows, (int)kptsFrom3D.size()).c_str());
 					std::vector<cv::KeyPoint> validKeypoints(kptsFrom.size());
 					std::vector<cv::Point3f> validKeypoints3D(kptsFrom.size());
 					cv::Mat validDescriptors(descriptorsFrom.size(), descriptorsFrom.type());

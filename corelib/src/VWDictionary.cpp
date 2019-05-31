@@ -526,6 +526,7 @@ void VWDictionary::update()
 				UTimer timer;
 				timer.start();
 
+				int dim = _visualWords.begin()->second->getDescriptor().cols;
 				int type;
 				if(_visualWords.begin()->second->getDescriptor().type() == CV_8U)
 				{
@@ -533,6 +534,7 @@ void VWDictionary::update()
 					if(_strategy == kNNFlannKdTree)
 					{
 						type = CV_32F;
+						dim *= 8;
 					}
 					else
 					{
@@ -543,7 +545,6 @@ void VWDictionary::update()
 				{
 					type = _visualWords.begin()->second->getDescriptor().type();
 				}
-				int dim = _visualWords.begin()->second->getDescriptor().cols;
 
 				UASSERT(type == CV_32F || type == CV_8U);
 				UASSERT(dim > 0);
@@ -570,8 +571,8 @@ void VWDictionary::update()
 						descriptor = iter->second->getDescriptor();
 					}
 
-					UASSERT(descriptor.cols == dim);
-					UASSERT(descriptor.type() == type);
+					UASSERT_MSG(descriptor.type() == type, uFormat("%d vs %d", descriptor.type(), type).c_str());
+					UASSERT_MSG(descriptor.cols == dim, uFormat("%d vs %d", descriptor.cols, dim).c_str());
 
 					descriptor.copyTo(_dataTree.row(i));
 					_mapIndexId.insert(_mapIndexId.end(), std::pair<int, int>(i, iter->second->id()));
