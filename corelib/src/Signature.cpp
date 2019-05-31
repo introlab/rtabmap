@@ -126,9 +126,20 @@ void Signature::addLink(const Link & link)
 	_linksModified = true;
 }
 
-bool Signature::hasLink(int idTo) const
+bool Signature::hasLink(int idTo, Link::Type type) const
 {
-	return _links.find(idTo) != _links.end();
+	if(type == Link::kUndef)
+	{
+		return _links.find(idTo) != _links.end();
+	}
+	for(std::multimap<int, Link>::const_iterator iter=_links.find(idTo); iter!=_links.end() && iter->first == idTo; ++iter)
+	{
+		if(type == iter->second.type())
+		{
+			return true;
+		}
+	}
+	return false;
 }
 
 void Signature::changeLinkIds(int idFrom, int idTo)

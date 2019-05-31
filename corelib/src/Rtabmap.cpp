@@ -2533,7 +2533,8 @@ bool Rtabmap::process(
 		(_loopClosureHypothesis.first>0 ||
 	     lastProximitySpaceClosureId>0 || // can be different map of the current one
 	     statistics_.reducedIds().size() ||
-		 (signature->hasLink(signature->id()) && !_graphOptimizer->priorsIgnored()) || // prior edge
+		 (signature->hasLink(signature->id(), Link::kPosePrior) && !_graphOptimizer->priorsIgnored()) || // prior edge
+		 (signature->hasLink(signature->id(), Link::kGravity) && _graphOptimizer->gravitySigma()>0.0f) || // gravity edge
 	     proximityDetectionsInTimeFound>0 ||
 		 landmarkDetected!=0 ||
 		 ((_memory->isIncremental() || graph::filterLinks(signature->getLinks(), Link::kSelfRefLink).size()) && // In localization mode, the new node should be linked
@@ -2719,6 +2720,10 @@ bool Rtabmap::process(
 							transform *= error;
 
 							u  = signature->getPose() * transform;
+						}
+						else
+						{
+							UWARN("Gravity link not found for %d and/or %d, localization won't be corrected with gravity.", loopId, signature->id());
 						}
 					}
 					Transform up = u * oldPose.inverse();

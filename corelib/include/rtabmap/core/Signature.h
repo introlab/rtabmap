@@ -82,7 +82,7 @@ public:
 	void addLinks(const std::map<int, Link> & links);
 	void addLink(const Link & link);
 
-	bool hasLink(int idTo) const;
+	bool hasLink(int idTo, Link::Type type = Link::kUndef) const;
 
 	void changeLinkIds(int idFrom, int idTo);
 
