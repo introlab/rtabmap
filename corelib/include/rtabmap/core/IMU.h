@@ -65,7 +65,6 @@ public:
 		return localTransform_.isNull();
 	}
 
-
 private:
 	cv::Vec4d orientation_;
 	cv::Mat orientationCovariance_; // 3x3 double Row major about x, y, z axes, empty if orientation is not set

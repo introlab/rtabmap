@@ -30,6 +30,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UConversion.h>
 #if CV_MAJOR_VERSION > 3
 #include <opencv2/videoio/videoio_c.h>
+#if CV_MAJOR_VERSION > 4
+#include <opencv2/videoio/legacy/constants_c.h>
+#endif
 #endif
 
 namespace rtabmap
@@ -131,13 +134,13 @@ bool CameraVideo::init(const std::string & calibrationFolder, const std::string 
 		{
 			if(_model.isValidForProjection())
 			{
-				_capture.set(cv::CAP_PROP_FRAME_WIDTH, _model.imageWidth());
-				_capture.set(cv::CAP_PROP_FRAME_HEIGHT, _model.imageHeight());
+				_capture.set(CV_CAP_PROP_FRAME_WIDTH, _model.imageWidth());
+				_capture.set(CV_CAP_PROP_FRAME_HEIGHT, _model.imageHeight());
 			}
 			else if(_width > 0 && _height > 0)
 			{
-				_capture.set(cv::CAP_PROP_FRAME_WIDTH, _width);
-				_capture.set(cv::CAP_PROP_FRAME_HEIGHT, _height);
+				_capture.set(CV_CAP_PROP_FRAME_WIDTH, _width);
+				_capture.set(CV_CAP_PROP_FRAME_HEIGHT, _height);
 			}
 		}
 		if(_rectifyImages && !_model.isValidForRectification())

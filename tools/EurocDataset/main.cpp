@@ -439,9 +439,7 @@ int main(int argc, char * argv[])
 
 						SensorData dataImu(IMU(gyr, cv::Mat(3,3,CV_64FC1), acc, cv::Mat(3,3,CV_64FC1), baseToImu), 0, t_imu);
 						cameraThread.postUpdate(&dataImu);
-						UDEBUG("");
 						odom->process(dataImu);
-						UDEBUG("");
 					}
 
 				} while (t_imu <= data.stamp());

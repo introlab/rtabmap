@@ -335,8 +335,7 @@ Transform OdometryF2M::computeTransform(
 					Transform imuT;
 					if(!imus_.empty())
 					{
-						double stampDiff = 0.0;
-						imuT = getClosestIMU(lastFrame_->getStamp(), stampDiff);
+						imuT = Transform::getClosestTransform(imus_, lastFrame_->getStamp());
 					}
 
 					// local bundle adjustment
@@ -1302,45 +1301,6 @@ Transform OdometryF2M::computeTransform(
 			regPipeline_->isScanRequired()?(int)map_->sensorData().laserScanRaw().size():0);
 
 	return output;
-}
-
-Transform OdometryF2M::getClosestIMU(const double & stamp, double & stampDiff) const
-{
-	UASSERT(!imus_.empty());
-	std::map<double, Transform>::const_iterator imuIterB = imus_.lower_bound(stamp);
-	std::map<double, Transform>::const_iterator imuIterA = imuIterB;
-	if(imuIterA != imus_.begin())
-	{
-		imuIterA = --imuIterA;
-	}
-	if(imuIterB == imus_.end())
-	{
-		imuIterB = --imuIterB;
-	}
-	Transform imuT;
-	stampDiff = 0.0;
-	if(imuIterB->first == lastFrame_->getStamp() || imuIterA == imuIterB)
-	{
-		imuT = imuIterB->second;
-		stampDiff = fabs(imuIterB->first - lastFrame_->getStamp());
-	}
-	else if(imuIterA != imuIterB)
-	{
-		if(fabs(imuIterA->first - lastFrame_->getStamp()) <
-		   fabs(imuIterB->first - lastFrame_->getStamp()))
-		{
-			//imuT = imuIterA->second;
-			stampDiff = fabs(imuIterA->first - lastFrame_->getStamp());
-		}
-		else
-		{
-			//imuT = imuIterB->second;
-			stampDiff = fabs(imuIterB->first - lastFrame_->getStamp());
-		}
-		//interpolate:
-		imuT = imuIterA->second.interpolate((stamp-imuIterA->first) / (imuIterB->first-imuIterA->first), imuIterB->second);
-	}
-	return imuT;
 }
 
 } // namespace rtabmap

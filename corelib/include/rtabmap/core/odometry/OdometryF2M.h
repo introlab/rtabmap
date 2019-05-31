@@ -56,7 +56,6 @@ public:
 
 private:
 	virtual Transform computeTransform(SensorData & data, const Transform & guess = Transform(), OdometryInfo * info = 0);
-	Transform getClosestIMU(const double & stamp, double & stampDiff) const;
 
 private:
 	//Parameters
