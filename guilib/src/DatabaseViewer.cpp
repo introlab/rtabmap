@@ -213,6 +213,7 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	uInsert(parameters, Parameters::getDefaultParameters("StereoBM"));
 	uInsert(parameters, Parameters::getDefaultParameters("Grid"));
 	uInsert(parameters, Parameters::getDefaultParameters("GridGlobal"));
+	uInsert(parameters, Parameters::getDefaultParameters("Marker"));
 	parameters.insert(*Parameters::getDefaultParameters().find(Parameters::kRGBDOptimizeMaxError()));
 	parameters.insert(*Parameters::getDefaultParameters().find(Parameters::kRGBDLoopClosureReextractFeatures()));
 	parameters.insert(*Parameters::getDefaultParameters().find(Parameters::kRGBDLoopCovLimited()));
@@ -1305,7 +1306,7 @@ void DatabaseViewer::exportDatabase()
 					cv::Mat covariance = cv::Mat::eye(6,6,CV_64FC1);
 					if(dialog.isOdomExported())
 					{
-						std::map<int, Link> links;
+						std::multimap<int, Link> links;
 						dbDriver_->loadLinks(id, links, Link::kNeighbor);
 						if(links.size() && links.begin()->first < id)
 						{
@@ -1877,7 +1878,7 @@ void DatabaseViewer::updateIds()
 			{
 				neighborLinks_.append(iter->second);
 			}
-			else if(iter->second.type()!=rtabmap::Link::kPosePrior)
+			else if(iter->second.from()!=iter->second.to())
 			{
 				loopLinks_.append(iter->second);
 			}
@@ -3133,14 +3134,14 @@ void DatabaseViewer::generateLocalGraph()
 					{
 						if(ids.find(*jter) == ids.end())
 						{
-							std::map<int, Link> links;
+							std::multimap<int, Link> links;
 							ids.insert(std::pair<int, int>(*jter, m));
 
 							UTimer timer;
 							dbDriver_->loadLinks(*jter, links);
 
 							// links
-							for(std::map<int, Link>::const_iterator iter=links.begin(); iter!=links.end(); ++iter)
+							for(std::multimap<int, Link>::const_iterator iter=links.begin(); iter!=links.end(); ++iter)
 							{
 								if( !uContains(ids, iter->first))
 								{
@@ -4495,12 +4496,12 @@ void DatabaseViewer::update(int value,
 			}
 
 			// loops
-			std::map<int, rtabmap::Link> links;
+			std::multimap<int, rtabmap::Link> links;
 			dbDriver_->loadLinks(id, links);
 			if(links.size())
 			{
 				QString strParents, strChildren;
-				for(std::map<int, rtabmap::Link>::iterator iter=links.begin(); iter!=links.end(); ++iter)
+				for(std::multimap<int, rtabmap::Link>::iterator iter=links.begin(); iter!=links.end(); ++iter)
 				{
 					if(iter->second.type() != Link::kNeighbor &&
 				       iter->second.type() != Link::kNeighborMerged)
@@ -5350,13 +5351,6 @@ void DatabaseViewer::updateConstraintView(
 							}
 						}
 
-						if(optimizer->gravitySigma() > 0)
-						{
-							for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter)
-							{
-								linksOut.insert(std::make_pair(iter->first, Link(iter->first, iter->first, Link::kPoseOdom, odomPoses_.at(iter->first))));
-							}
-						}
 
 						QTime time;
 						time.start();
@@ -6063,6 +6057,7 @@ void DatabaseViewer::updateGraphView()
 		int totalUser = 0;
 		int totalPriors = 0;
 		int totalLandmarks = 0;
+		int totalGravity = 0;
 		for(std::multimap<int, rtabmap::Link>::iterator iter=links.begin(); iter!=links.end();)
 		{
 			if(iter->second.type() == Link::kNeighbor)
@@ -6127,6 +6122,10 @@ void DatabaseViewer::updateGraphView()
 			{
 				++totalPriors;
 			}
+			else if(iter->second.type() == Link::kGravity)
+			{
+				++totalGravity;
+			}
 			else
 			{
 				loopLinks_.push_back(iter->second);
@@ -6135,7 +6134,7 @@ void DatabaseViewer::updateGraphView()
 		}
 		updateLoopClosuresSlider();
 
-		ui_->label_loopClosures->setText(tr("(%1, %2, %3, %4, %5, %6, %7, %8)")
+		ui_->label_loopClosures->setText(tr("(%1, %2, %3, %4, %5, %6, %7, %8, %9)")
 				.arg(totalNeighbor)
 				.arg(totalNeighborMerged)
 				.arg(totalGlobal)
@@ -6143,7 +6142,8 @@ void DatabaseViewer::updateGraphView()
 				.arg(totalLocalTime)
 				.arg(totalUser)
 				.arg(totalPriors)
-				.arg(totalLandmarks));
+				.arg(totalLandmarks)
+				.arg(totalGravity));
 
 		// remove intermediate nodes?
 		if(ui_->checkBox_ignoreIntermediateNodes->isVisible() &&
@@ -6179,14 +6179,6 @@ void DatabaseViewer::updateGraphView()
 		graphes_.push_back(poses);
 
 		Optimizer * optimizer = Optimizer::create(ui_->parameters_toolbox->getParameters());
-
-		if(optimizer->gravitySigma() > 0)
-		{
-			for(std::map<int, rtabmap::Transform>::iterator iter=poses.upper_bound(0); iter!=poses.end(); ++iter)
-			{
-				links.insert(std::make_pair(iter->first, Link(iter->first,iter->first, Link::kPoseOdom, iter->second)));
-			}
-		}
 
 		std::map<int, rtabmap::Transform> posesOut;
 		std::multimap<int, rtabmap::Link> linksOut;
@@ -6523,14 +6515,6 @@ void DatabaseViewer::refineConstraint(int from, int to, bool silent)
 			for(std::multimap<int, Link>::iterator iter=modifiedLinks.begin(); iter!=modifiedLinks.end(); ++iter)
 			{
 				UWARN(" %d->%d", iter->second.from(), iter->second.to());
-			}
-		}
-
-		if(optimizer->gravitySigma() > 0)
-		{
-			for(std::map<int, Transform>::iterator iter=scanPoses.begin(); iter!=scanPoses.end(); ++iter)
-			{
-				linksOut.insert(std::make_pair(iter->first, Link(iter->first, iter->first, Link::kPoseOdom, odomPoses_.at(iter->first))));
 			}
 		}
 
@@ -6925,13 +6909,6 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent)
 		UASSERT(odomPoses_.find(fromId) != odomPoses_.end());
 		UASSERT_MSG(odomPoses_.find(newLink.from()) != odomPoses_.end(), uFormat("id=%d poses=%d links=%d", newLink.from(), (int)odomPoses_.size(), (int)linksIn.size()).c_str());
 		UASSERT_MSG(odomPoses_.find(newLink.to()) != odomPoses_.end(), uFormat("id=%d poses=%d links=%d", newLink.to(), (int)odomPoses_.size(), (int)linksIn.size()).c_str());
-		if(optimizer->gravitySigma() > 0)
-		{
-			for(std::map<int, Transform>::iterator iter=odomPoses_.begin(); iter!=odomPoses_.end(); ++iter)
-			{
-				linksIn.insert(std::make_pair(iter->first, Link(iter->first, iter->first, Link::kPoseOdom, iter->second)));
-			}
-		}
 		optimizer->getConnectedGraph(fromId, odomPoses_, linksIn, poses, links);
 		// use already optimized poses
 		if(graphes_.size())

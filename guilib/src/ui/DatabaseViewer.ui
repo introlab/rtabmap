@@ -1089,7 +1089,7 @@
        <item row="9" column="1">
         <widget class="QLabel" name="label_41">
          <property name="text">
-          <string>Links (N, NM, G, LS, LT, U, P, LM)</string>
+          <string>Links (N, NM, G, LS, LT, U, P, LM, GR)</string>
          </property>
         </widget>
        </item>
@@ -1454,8 +1454,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>519</width>
-          <height>791</height>
+          <width>280</width>
+          <height>875</height>
          </rect>
         </property>
         <attribute name="label">
@@ -1988,7 +1988,7 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>296</width>
+          <width>226</width>
           <height>160</height>
          </rect>
         </property>

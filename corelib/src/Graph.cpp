@@ -1031,12 +1031,13 @@ std::multimap<int, Link>::const_iterator findLink(
 		const std::multimap<int, Link> & links,
 		int from,
 		int to,
-		bool checkBothWays)
+		bool checkBothWays,
+		Link::Type type)
 {
 	std::multimap<int, Link>::const_iterator iter = links.find(from);
 	while(iter != links.end() && iter->first == from)
 	{
-		if(iter->second.to() == to)
+		if(iter->second.to() == to && (type==Link::kUndef || type == iter->second.type()))
 		{
 			return iter;
 		}
@@ -1049,7 +1050,7 @@ std::multimap<int, Link>::const_iterator findLink(
 		iter = links.find(to);
 		while(iter != links.end() && iter->first == to)
 		{
-			if(iter->second.to() == from)
+			if(iter->second.to() == from && (type==Link::kUndef || type == iter->second.type()))
 			{
 				return iter;
 			}
@@ -1146,7 +1147,14 @@ std::map<int, Link> filterLinks(
 	std::map<int, Link> output;
 	for(std::map<int, Link>::const_iterator iter=links.begin(); iter!=links.end(); ++iter)
 	{
-		if(iter->second.type() != filteredType)
+		if(filteredType == Link::kSelfRefLink)
+		{
+			if(iter->second.from() != iter->second.to())
+			{
+				output.insert(*iter);
+			}
+		}
+		else if(iter->second.type() != filteredType)
 		{
 			output.insert(*iter);
 		}
@@ -1897,7 +1905,7 @@ std::list<std::pair<int, Transform> > computePath(
 		}
 
 		// lookup neighbors
-		std::map<int, Link> links;
+		std::multimap<int, Link> links;
 		if(allLinks.size() == 0)
 		{
 			links = memory->getLinks(currentNode->id(), lookInDatabase, true);
@@ -1911,7 +1919,7 @@ std::list<std::pair<int, Transform> > computePath(
 				links.insert(std::make_pair(iter->second.to(), iter->second));
 			}
 		}
-		for(std::map<int, Link>::const_iterator iter = links.begin(); iter!=links.end(); ++iter)
+		for(std::multimap<int, Link>::const_iterator iter = links.begin(); iter!=links.end(); ++iter)
 		{
 			if(iter->second.from() != iter->second.to())
 			{

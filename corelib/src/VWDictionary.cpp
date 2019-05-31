@@ -1173,7 +1173,7 @@ std::vector<int> VWDictionary::findNN(const cv::Mat & queryIn) const
 
 		std::map<int, int> mapIndexIdNotIndexed;
 		std::vector<std::vector<cv::DMatch> > matchesNotIndexed;
-		if(_notIndexedWords.size())
+		if(!_notIndexedWords.empty())
 		{
 			cv::Mat dataNotIndexed = cv::Mat::zeros(_notIndexedWords.size(), query.cols, query.type());
 			unsigned int index = 0;
@@ -1198,12 +1198,10 @@ std::vector<int> VWDictionary::findNN(const cv::Mat & queryIn) const
 				{
 					descriptor = vw->getDescriptor();
 				}
-
 				UASSERT(vw != 0 && descriptor.cols == query.cols && descriptor.type() == query.type());
-				vw->getDescriptor().copyTo(dataNotIndexed.row(index));
+				descriptor.copyTo(dataNotIndexed.row(index));
 				mapIndexIdNotIndexed.insert(mapIndexIdNotIndexed.end(), std::pair<int,int>(index, vw->id()));
 			}
-
 			// Find nearest neighbor
 			ULOGGER_DEBUG("Searching in words not indexed...");
 			cv::BFMatcher matcher(query.type()==CV_8U?cv::NORM_HAMMING:useDistanceL1_?cv::NORM_L1:cv::NORM_L2SQR);

@@ -1172,7 +1172,7 @@ bool Rtabmap::process(
 				//============================================================
 				// Minimum displacement required to add to Memory
 				//============================================================
-				const std::map<int, Link> & links = signature->getLinks();
+				const std::multimap<int, Link> & links = signature->getLinks();
 				if(links.size() && links.begin()->second.type() == Link::kNeighbor)
 				{
 					// don't do this if there are intermediate nodes
@@ -1292,9 +1292,9 @@ bool Rtabmap::process(
 				UASSERT(oldS->hasLink(signature->id()));
 				UASSERT(uContains(_optimizedPoses, oldId));
 
-				statistics_.addStatistic(Statistics::kNeighborLinkRefiningVariance(), oldS->getLinks().at(signature->id()).transVariance());
+				statistics_.addStatistic(Statistics::kNeighborLinkRefiningVariance(), oldS->getLinks().find(signature->id())->second.transVariance());
 
-				newPose = _optimizedPoses.at(oldId) * oldS->getLinks().at(signature->id()).transform();
+				newPose = _optimizedPoses.at(oldId) * oldS->getLinks().find(signature->id())->second.transform();
 				_mapCorrection = newPose * signature->getPose().inverse();
 				if(_mapCorrection.getNormSquared() > 0.001f && _optimizeFromGraphEnd)
 				{
@@ -1667,7 +1667,7 @@ bool Rtabmap::process(
 			{
 				float loopThr = _loopThr;
 				if((_startNewMapOnLoopClosure || !_memory->isIncremental()) &&
-					graph::filterLinks(signature->getLinks(), Link::kPosePrior).size() == 0 && // alone in the current map
+					graph::filterLinks(signature->getLinks(), Link::kSelfRefLink).size() == 0 && // alone in the current map
 					_memory->getWorkingMem().size()>1 && // should have an old map (beside virtual signature)
 					(int)_memory->getWorkingMem().size()<=_memory->getMaxStMemSize() &&
 					_rgbdSlamMode)
@@ -2038,8 +2038,8 @@ bool Rtabmap::process(
 				{
 					// If there is a change of direction, better to be retrieving
 					// ALL nearest signatures than only newest neighbors
-					const std::map<int, Link> & links = s->getLinks();
-					for(std::map<int, Link>::const_reverse_iterator jter=links.rbegin();
+					const std::multimap<int, Link> & links = s->getLinks();
+					for(std::multimap<int, Link>::const_reverse_iterator jter=links.rbegin();
 						jter!=links.rend() && retrievalLocalIds.size() < _maxLocalRetrieved;
 						++jter)
 					{
@@ -2175,7 +2175,7 @@ bool Rtabmap::process(
 	// Landmark
 	//============================================================
 	int landmarkDetected = 0;
-	int landmarkDetectedNodeRef = 0;
+	std::set<int> landmarkDetectedNodesRef;
 	if(!signature->getLandmarks().empty())
 	{
 		for(std::map<int, Link>::const_iterator iter=signature->getLandmarks().begin(); iter!=signature->getLandmarks().end(); ++iter)
@@ -2184,8 +2184,8 @@ bool Rtabmap::process(
 				_memory->getLandmarksInvertedIndex().find(iter->first)->second.size()>1)
 			{
 				landmarkDetected = iter->first;
-				landmarkDetectedNodeRef = *_memory->getLandmarksInvertedIndex().find(iter->first)->second.begin();
-				UINFO("Landmark %d observed again! Seen the first time by node %d.", -iter->first, landmarkDetectedNodeRef);
+				landmarkDetectedNodesRef = _memory->getLandmarksInvertedIndex().find(iter->first)->second;
+				UINFO("Landmark %d observed again! Seen the first time by node %d.", -iter->first, *landmarkDetectedNodesRef.begin());
 				break;
 			}
 		}
@@ -2536,14 +2536,14 @@ bool Rtabmap::process(
 		 (signature->hasLink(signature->id()) && !_graphOptimizer->priorsIgnored()) || // prior edge
 	     proximityDetectionsInTimeFound>0 ||
 		 landmarkDetected!=0 ||
-		 ((_memory->isIncremental() || graph::filterLinks(signature->getLinks(), Link::kPosePrior).size()) && // In localization mode, the new node should be linked
+		 ((_memory->isIncremental() || graph::filterLinks(signature->getLinks(), Link::kSelfRefLink).size()) && // In localization mode, the new node should be linked
 		          signaturesRetrieved.size())))  		// can be different map of the current one
 	{
 		UASSERT(uContains(_optimizedPoses, signature->id()));
 
 		//used in localization mode: filter virtual links
-		std::map<int, Link> localizationLinks = graph::filterLinks(signature->getLinks(), Link::kVirtualClosure);
-		localizationLinks = graph::filterLinks(localizationLinks, Link::kPosePrior);
+		std::multimap<int, Link> localizationLinks = graph::filterLinks(signature->getLinks(), Link::kVirtualClosure);
+		localizationLinks = graph::filterLinks(localizationLinks, Link::kSelfRefLink);
 		if(landmarkDetected!=0 && !_memory->isIncremental() && _optimizedPoses.find(landmarkDetected)!=_optimizedPoses.end())
 		{
 			UASSERT(uContains(signature->getLandmarks(), landmarkDetected));
@@ -2696,20 +2696,30 @@ bool Rtabmap::process(
 							//For landmarks, use transform against other node looking the landmark
 							// (because we don't assume that landmarks are aligned with gravity)
 							int landmarkId = loopId;
-							const Signature * loopS = _memory->getSignature(landmarkDetectedNodeRef);
+							UASSERT(!landmarkDetectedNodesRef.empty());
+							loopId = *landmarkDetectedNodesRef.begin();
+							const Signature * loopS = _memory->getSignature(loopId);
 							transform = transform * loopS->getLandmarks().at(landmarkId).transform().inverse();
-							loopId = landmarkDetectedNodeRef;
+							UASSERT(_optimizedPoses.find(loopId) != _optimizedPoses.end());
 							oldPose = _optimizedPoses.at(loopId);
 						}
 
-						float roll,pitch,yaw;
-						_memory->getSignature(loopId)->getPose().getEulerAngles(roll, pitch, yaw);
-						Transform targetRotation = signature->getPose().rotation()*transform.rotation();
-						targetRotation = Transform(0,0,0,roll,pitch,targetRotation.theta());
-						Transform error = transform.rotation().inverse() * signature->getPose().rotation().inverse() * targetRotation;
-						transform *= error;
+						const Signature * loopS = _memory->getSignature(loopId);
+						UASSERT(loopS !=0);
+						std::multimap<int, Link>::const_iterator iterGravityLoop = graph::findLink(loopS->getLinks(), loopS->id(), loopS->id(), false, Link::kGravity);
+						std::multimap<int, Link>::const_iterator iterGravitySign = graph::findLink(signature->getLinks(), signature->id(), signature->id(), false, Link::kGravity);
+						if(iterGravityLoop!=loopS->getLinks().end() &&
+						   iterGravitySign!=signature->getLinks().end())
+						{
+							float roll,pitch,yaw;
+							iterGravityLoop->second.transform().getEulerAngles(roll, pitch, yaw);
+							Transform targetRotation = iterGravitySign->second.transform().rotation()*transform.rotation();
+							targetRotation = Transform(0,0,0,roll,pitch,targetRotation.theta());
+							Transform error = transform.rotation().inverse() * iterGravitySign->second.transform().rotation().inverse() * targetRotation;
+							transform *= error;
 
-						u  = signature->getPose() * transform;
+							u  = signature->getPose() * transform;
+						}
 					}
 					Transform up = u * oldPose.inverse();
 					for(std::map<int, Transform>::iterator iter=_optimizedPoses.begin(); iter!=_optimizedPoses.end(); ++iter)
@@ -2736,19 +2746,32 @@ bool Rtabmap::process(
 							//For landmarks, use transform against other node looking the landmark
 							// (because we don't assume that landmarks are aligned with gravity)
 							int landmarkId = loopId;
-							const Signature * loopS = _memory->getSignature(landmarkDetectedNodeRef);
+							UASSERT(!landmarkDetectedNodesRef.empty());
+							loopId = *landmarkDetectedNodesRef.begin();
+							const Signature * loopS = _memory->getSignature(loopId);
 							transform = transform * loopS->getLandmarks().at(landmarkId).transform().inverse();
-							loopId = landmarkDetectedNodeRef;
 						}
 
-						float roll,pitch,yaw;
-						_memory->getSignature(loopId)->getPose().getEulerAngles(roll, pitch, yaw);
-						Transform targetRotation = signature->getPose().rotation()*transform.rotation();
-						targetRotation = Transform(0,0,0,roll,pitch,targetRotation.theta());
-						Transform error = transform.rotation().inverse() * signature->getPose().rotation().inverse() * targetRotation;
-						transform *= error;
+						const Signature * loopS = _memory->getSignature(loopId);
+						UASSERT(loopS !=0);
+						std::multimap<int, Link>::const_iterator iterGravityLoop = graph::findLink(loopS->getLinks(), loopS->id(), loopS->id(), false, Link::kGravity);
+						std::multimap<int, Link>::const_iterator iterGravitySign = graph::findLink(signature->getLinks(), signature->id(), signature->id(), false, Link::kGravity);
+						if(iterGravityLoop!=loopS->getLinks().end() &&
+						   iterGravitySign!=signature->getLinks().end())
+						{
+							float roll,pitch,yaw;
+							iterGravityLoop->second.transform().getEulerAngles(roll, pitch, yaw);
+							Transform targetRotation = iterGravitySign->second.transform().rotation()*transform.rotation();
+							targetRotation = Transform(0,0,0,roll,pitch,targetRotation.theta());
+							Transform error = transform.rotation().inverse() * iterGravitySign->second.transform().rotation().inverse() * targetRotation;
+							transform *= error;
 
-						newPose  = _optimizedPoses.at(loopId) * transform.inverse();
+							newPose  = _optimizedPoses.at(loopId) * transform.inverse();
+						}
+						else
+						{
+							UWARN("Gravity link not found for %d and/or %d, localization won't be corrected with gravity.", loopId, signature->id());
+						}
 					}
 					_optimizedPoses.at(signature->id()) = newPose;
 				}
@@ -2930,7 +2953,7 @@ bool Rtabmap::process(
 					}
 				}
 			}
-			if(!hasPrior || _graphOptimizer->priorsIgnored())
+			if((!hasPrior || _graphOptimizer->priorsIgnored()) && _graphOptimizer->gravitySigma()==0.0f)
 			{
 				UERROR("Map correction should be identity when optimizing from the last node. T=%s", _mapCorrection.prettyPrint().c_str());
 			}
@@ -3010,7 +3033,7 @@ bool Rtabmap::process(
 			statistics_.addStatistic(Statistics::kLoopOptimization_error(), optimizationError);
 			statistics_.addStatistic(Statistics::kLoopOptimization_iterations(), optimizationIterations);
 			statistics_.addStatistic(Statistics::kLoopLandmark_detected(), -landmarkDetected);
-			statistics_.addStatistic(Statistics::kLoopLandmark_detected_node_ref(), landmarkDetectedNodeRef);
+			statistics_.addStatistic(Statistics::kLoopLandmark_detected_node_ref(), landmarkDetectedNodesRef.empty()?0:*landmarkDetectedNodesRef.begin());
 
 			statistics_.addStatistic(Statistics::kProximityTime_detections(), proximityDetectionsInTimeFound);
 			statistics_.addStatistic(Statistics::kProximitySpace_detections_added_visually(), proximityDetectionsAddedVisually);
@@ -3024,8 +3047,8 @@ bool Rtabmap::process(
 			if(_loopClosureHypothesis.first || lastProximitySpaceClosureId)
 			{
 				UASSERT(uContains(sLoop->getLinks(), signature->id()));
-				UINFO("Set loop closure transform = %s", sLoop->getLinks().at(signature->id()).transform().prettyPrint().c_str());
-				statistics_.setLoopClosureTransform(sLoop->getLinks().at(signature->id()).transform());
+				UINFO("Set loop closure transform = %s", sLoop->getLinks().find(signature->id())->second.transform().prettyPrint().c_str());
+				statistics_.setLoopClosureTransform(sLoop->getLinks().find(signature->id())->second.transform());
 			}
 			statistics_.setMapCorrection(_mapCorrection);
 			UINFO("Set map correction = %s", _mapCorrection.prettyPrint().c_str());
@@ -3097,7 +3120,8 @@ bool Rtabmap::process(
 
 	Signature lastSignatureData(signature->id());
 	Transform lastSignatureLocalizedPose;
-	if(_optimizedPoses.find(signature->id()) != _optimizedPoses.end() && graph::filterLinks(signature->getLinks(), Link::kPosePrior).size())
+	if(_optimizedPoses.find(signature->id()) != _optimizedPoses.end() &&
+		graph::filterLinks(signature->getLinks(), Link::kSelfRefLink).size())
 	{
 		// only if localized set it
 		lastSignatureLocalizedPose = _optimizedPoses.at(signature->id());
@@ -3126,7 +3150,7 @@ bool Rtabmap::process(
 	{
 		if(_startNewMapOnLoopClosure &&
 			_memory->isIncremental() &&              // only in mapping mode
-			graph::filterLinks(signature->getLinks(), Link::kPosePrior).size() == 0 &&      // alone in the current map
+			graph::filterLinks(signature->getLinks(), Link::kSelfRefLink).size() == 0 &&      // alone in the current map
 			(landmarkDetected == 0 || rejectedHypothesis) &&      // if we re not seeing a landmark from a previous map
 			_memory->getWorkingMem().size()>=2)       // The working memory should not be empty (beside virtual signature)
 		{
@@ -3137,7 +3161,7 @@ bool Rtabmap::process(
 		}
 		else if(_startNewMapOnGoodSignature &&
 				(signature->getLandmarks().empty() && signature->isBadSignature()) &&
-				graph::filterLinks(signature->getLinks(), Link::kPosePrior).size() == 0)     // alone in the current map
+				graph::filterLinks(signature->getLinks(), Link::kSelfRefLink).size() == 0)     // alone in the current map
 		{
 			UWARN("Ignoring location %d because a good signature (with enough features or with a landmark detected) is required before starting a new map!",
 					signature->id());
@@ -3587,9 +3611,9 @@ void Rtabmap::rejectLastLoopClosure()
 {
 	if(_memory && _memory->getStMem().find(getLastLocationId())!=_memory->getStMem().end())
 	{
-		std::map<int, Link> links = _memory->getLinks(getLastLocationId(), false);
+		std::multimap<int, Link> links = _memory->getLinks(getLastLocationId(), false);
 		bool linksRemoved = false;
-		for(std::map<int, Link>::iterator iter = links.begin(); iter!=links.end(); ++iter)
+		for(std::multimap<int, Link>::iterator iter = links.begin(); iter!=links.end(); ++iter)
 		{
 			if(iter->second.type() == Link::kGlobalClosure ||
 				iter->second.type() == Link::kLocalSpaceClosure ||
@@ -3872,8 +3896,8 @@ std::map<int, std::map<int, Transform> > Rtabmap::getPaths(const std::map<int, T
 					if(!valid)
 					{
 						// make sure it has a neighbor added to path
-						std::map<int, Link> links = _memory->getNeighborLinks(iter->first);
-						for(std::map<int, Link>::iterator kter=links.begin(); kter!=links.end() && !valid; ++kter)
+						std::multimap<int, Link> links = _memory->getNeighborLinks(iter->first);
+						for(std::multimap<int, Link>::iterator kter=links.begin(); kter!=links.end() && !valid; ++kter)
 						{
 							valid = path.find(kter->first) != path.end();
 						}
@@ -3980,12 +4004,6 @@ std::map<int, Transform> Rtabmap::optimizeGraph(
 	{
 		for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter)
 		{
-			if(iter->first > 0 && _graphOptimizer->gravitySigma() > 0.0f)
-			{
-				// add odometry constraints
-				edgeConstraints.insert(std::make_pair(iter->first, Link(iter->first, iter->first, Link::kPoseOdom, iter->second)));
-			}
-
 			// Apply guess poses (if some)
 			std::map<int, Transform>::const_iterator foundGuess = guessPoses.find(iter->first);
 			if(foundGuess!=guessPoses.end())
@@ -4482,18 +4500,6 @@ int Rtabmap::detectMoreLoopClosures(
 								UASSERT(poses.find(fromId) != poses.end());
 								UASSERT_MSG(poses.find(from) != poses.end(), uFormat("id=%d poses=%d links=%d", from, (int)poses.size(), (int)links.size()).c_str());
 								UASSERT_MSG(poses.find(to) != poses.end(), uFormat("id=%d poses=%d links=%d", to, (int)poses.size(), (int)links.size()).c_str());
-								if(_graphOptimizer->gravitySigma() > 0.0f)
-								{
-									for(std::map<int, Transform>::iterator jter=poses.lower_bound(1); jter!=poses.end(); ++jter)
-									{
-										std::map<int, Signature>::iterator ster = signatures.find(iter->first);
-										if(ster != signatures.end() && !ster->second.getPose().isNull())
-										{
-											// add odometry constraints
-											linksIn.insert(std::make_pair(iter->first, Link(iter->first, iter->first, Link::kPoseOdom, ster->second.getPose())));
-										}
-									}
-								}
 								_graphOptimizer->getConnectedGraph(fromId, poses, linksIn, optimizedPoses, links);
 								UASSERT(optimizedPoses.find(fromId) != optimizedPoses.end());
 								UASSERT_MSG(optimizedPoses.find(from) != optimizedPoses.end(), uFormat("id=%d poses=%d links=%d", from, (int)optimizedPoses.size(), (int)links.size()).c_str());
@@ -5090,9 +5096,9 @@ void Rtabmap::updateGoalIndex()
 		UASSERT(_pathCurrentIndex < _path.size());
 		const Signature * currentIndexS = _memory->getSignature(_path[_pathCurrentIndex].first);
 		UASSERT_MSG(currentIndexS != 0, uFormat("_path[%d].first=%d", _pathCurrentIndex, _path[_pathCurrentIndex].first).c_str());
-		std::map<int, Link> links = currentIndexS->getLinks(); // make a copy
+		std::multimap<int, Link> links = currentIndexS->getLinks(); // make a copy
 		bool latestVirtualLinkFound = false;
-		for(std::map<int, Link>::reverse_iterator iter=links.rbegin(); iter!=links.rend(); ++iter)
+		for(std::multimap<int, Link>::reverse_iterator iter=links.rbegin(); iter!=links.rend(); ++iter)
 		{
 			if(iter->second.type() == Link::kVirtualClosure)
 			{

@@ -50,7 +50,7 @@ public:
 	virtual void reset(const Transform & initialPose = Transform::getIdentity());
 	const Signature & getMap() const {return *map_;}
 	const Signature & getLastFrame() const {return *lastFrame_;}
-	virtual bool canProcessIMU() const {return true;}
+	virtual bool canProcessIMU() const;
 
 	virtual Odometry::Type getType() {return Odometry::kTypeF2M;}
 

@@ -102,6 +102,7 @@ rtabmap::ParametersMap RTABMapApp::getRtabmapParameters()
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kRGBDAngularUpdate(), std::string("0.05")));
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kMarkerLength(), std::string("0.0")));
 
+	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kMemUseOdomGravity(), "true"));
 	if(parameters.find(rtabmap::Parameters::kOptimizerStrategy()) != parameters.end())
 	{
 		if(parameters.at(rtabmap::Parameters::kOptimizerStrategy()).compare("2") == 0) // GTSAM

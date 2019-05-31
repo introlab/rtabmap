@@ -762,7 +762,7 @@ bool DBDriver::getNodeInfo(
 	return found;
 }
 
-void DBDriver::loadLinks(int signatureId, std::map<int, Link> & links, Link::Type type) const
+void DBDriver::loadLinks(int signatureId, std::multimap<int, Link> & links, Link::Type type) const
 {
 	bool found = false;
 	// look in the trash
@@ -782,7 +782,7 @@ void DBDriver::loadLinks(int signatureId, std::map<int, Link> & links, Link::Typ
 		}
 		if(type == Link::kLandmark || type == Link::kAllWithLandmarks)
 		{
-			uInsert(links, s->getLandmarks());
+			links.insert(s->getLandmarks().begin(), s->getLandmarks().end());
 		}
 		found = true;
 	}
@@ -1219,11 +1219,11 @@ void DBDriver::generateGraph(
 				 if(otherSignatures.find(*i) == otherSignatures.end())
 				 {
 					 int id = *i;
-					 std::map<int, Link> links;
+					 std::multimap<int, Link> links;
 					 this->loadLinks(id, links);
 					 int weight = 0;
 					 this->getWeight(id, weight);
-					 for(std::map<int, Link>::iterator iter = links.begin(); iter!=links.end(); ++iter)
+					 for(std::multimap<int, Link>::iterator iter = links.begin(); iter!=links.end(); ++iter)
 					 {
 						 int weightNeighbor = 0;
 						 if(otherSignatures.find(iter->first) == otherSignatures.end())
@@ -1281,9 +1281,9 @@ void DBDriver::generateGraph(
 				 if(ids.find(i->first) != ids.end())
 				 {
 					 int id = i->second->id();
-					 const std::map<int, Link> & links = i->second->getLinks();
+					 const std::multimap<int, Link> & links = i->second->getLinks();
 					 int weight = i->second->getWeight();
-					 for(std::map<int, Link>::const_iterator iter = links.begin(); iter!=links.end(); ++iter)
+					 for(std::multimap<int, Link>::const_iterator iter = links.begin(); iter!=links.end(); ++iter)
 					 {
 						 int weightNeighbor = 0;
 						 const Signature * s = uValue(otherSignatures, iter->first, (Signature*)0);

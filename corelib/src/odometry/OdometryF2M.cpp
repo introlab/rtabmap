@@ -180,6 +180,11 @@ void OdometryF2M::reset(const Transform & initialPose)
 	initGravity_ = false;
 }
 
+bool OdometryF2M::canProcessIMU() const
+{
+	return sba_ && sba_->gravitySigma() > 0.0f;
+}
+
 // return not null transform if odometry is correctly computed
 Transform OdometryF2M::computeTransform(
 		SensorData & data,
@@ -332,14 +337,6 @@ Transform OdometryF2M::computeTransform(
 					{
 						double stampDiff = 0.0;
 						imuT = getClosestIMU(lastFrame_->getStamp(), stampDiff);
-						if(stampDiff < 0.05)
-						{
-							bundleLinks.insert(std::make_pair(lastFrame_->id(), Link(lastFrame_->id(), lastFrame_->id(), Link::kPoseOdom, imuT)));
-						}
-						else
-						{
-							UWARN("IMUs are set, but we could not find one matching the current frame stamp %f (stampDiff=%f > 0.05)", lastFrame_->getStamp(), stampDiff);
-						}
 					}
 
 					// local bundle adjustment
@@ -380,7 +377,7 @@ Transform OdometryF2M::computeTransform(
 
 							if(!imuT.isNull())
 							{
-								bundleLinks.insert(std::make_pair(lastFrame_->id(), Link(lastFrame_->id(), lastFrame_->id(), Link::kPoseOdom, imuT)));
+								bundleLinks.insert(std::make_pair(lastFrame_->id(), Link(lastFrame_->id(), lastFrame_->id(), Link::kGravity, imuT)));
 							}
 
 							CameraModel model;
@@ -1191,7 +1188,7 @@ Transform OdometryF2M::computeTransform(
 
 						if(!imus_.empty())
 						{
-							bundleIMUOrientations_.insert(std::make_pair(lastFrame_->id(), Link(lastFrame_->id(), lastFrame_->id(), Link::kPoseOdom, newFramePose)));
+							bundleIMUOrientations_.insert(std::make_pair(lastFrame_->id(), Link(lastFrame_->id(), lastFrame_->id(), Link::kGravity, newFramePose)));
 						}
 					}
 

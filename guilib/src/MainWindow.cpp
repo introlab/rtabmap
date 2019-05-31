@@ -5749,13 +5749,6 @@ void MainWindow::postProcessing()
 											UASSERT(_currentPosesMap.find(fromId) != _currentPosesMap.end());
 											UASSERT_MSG(_currentPosesMap.find(from) != _currentPosesMap.end(), uFormat("id=%d poses=%d links=%d", from, (int)poses.size(), (int)links.size()).c_str());
 											UASSERT_MSG(_currentPosesMap.find(to) != _currentPosesMap.end(), uFormat("id=%d poses=%d links=%d", to, (int)poses.size(), (int)links.size()).c_str());
-											if(optimizer->gravitySigma() > 0)
-											{
-												for(std::map<int, Transform>::iterator jter=odomPoses.begin(); jter!=odomPoses.end(); ++jter)
-												{
-													linksIn.insert(std::make_pair(jter->first, Link(jter->first, jter->first, Link::kPoseOdom, jter->second)));
-												}
-											}
 											optimizer->getConnectedGraph(fromId, _currentPosesMap, linksIn, poses, links);
 											UASSERT(poses.find(fromId) != poses.end());
 											UASSERT_MSG(poses.find(from) != poses.end(), uFormat("id=%d poses=%d links=%d", from, (int)poses.size(), (int)links.size()).c_str());
@@ -5867,13 +5860,6 @@ void MainWindow::postProcessing()
 				std::multimap<int, rtabmap::Link> linksOut;
 				std::map<int, rtabmap::Transform> optimizedPoses;
 				std::multimap<int, rtabmap::Link> linksIn = _currentLinksMap;
-				if(optimizer->gravitySigma() > 0)
-				{
-					for(std::map<int, Transform>::iterator iter=odomPoses.begin(); iter!=odomPoses.end(); ++iter)
-					{
-						linksIn.insert(std::make_pair(iter->first, Link(iter->first, iter->first, Link::kPoseOdom, iter->second)));
-					}
-				}
 				optimizer->getConnectedGraph(
 						fromId,
 						_currentPosesMap,
@@ -5983,13 +5969,6 @@ void MainWindow::postProcessing()
 	std::multimap<int, rtabmap::Link> linksOut;
 	std::map<int, rtabmap::Transform> optimizedPoses;
 	std::multimap<int, rtabmap::Link> linksIn = _currentLinksMap;
-	if(optimizer->gravitySigma() > 0)
-	{
-		for(std::map<int, Transform>::iterator iter=odomPoses.begin(); iter!=odomPoses.end(); ++iter)
-		{
-			linksIn.insert(std::make_pair(iter->first, Link(iter->first, iter->first, Link::kPoseOdom, iter->second)));
-		}
-	}
 	optimizer->getConnectedGraph(
 			fromId,
 			_currentPosesMap,

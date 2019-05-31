@@ -142,7 +142,8 @@ std::multimap<int, Link>::const_iterator RTABMAP_EXP findLink(
 		const std::multimap<int, Link> & links,
 		int from,
 		int to,
-		bool checkBothWays = true);
+		bool checkBothWays = true,
+		Link::Type type = Link::kUndef);
 std::multimap<int, int>::const_iterator RTABMAP_EXP findLink(
 		const std::multimap<int, int> & links,
 		int from,

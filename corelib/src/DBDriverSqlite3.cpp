@@ -3605,7 +3605,7 @@ void DBDriverSqlite3::loadWordsQuery(const std::set<int> & wordIds, std::list<Vi
 
 void DBDriverSqlite3::loadLinksQuery(
 		int signatureId,
-		std::map<int, Link> & links,
+		std::multimap<int, Link> & links,
 		Link::Type typeIn) const
 {
 	links.clear();
@@ -4041,8 +4041,8 @@ void DBDriverSqlite3::updateQuery(const std::list<Signature *> & nodes, bool upd
 			if((*j)->isLinksModified())
 			{
 				// Save links
-				const std::map<int, Link> & links = (*j)->getLinks();
-				for(std::map<int, Link>::const_iterator i=links.begin(); i!=links.end(); ++i)
+				const std::multimap<int, Link> & links = (*j)->getLinks();
+				for(std::multimap<int, Link>::const_iterator i=links.begin(); i!=links.end(); ++i)
 				{
 					stepLink(ppStmt, i->second);
 				}
@@ -4155,8 +4155,8 @@ void DBDriverSqlite3::saveQuery(const std::list<Signature *> & signatures)
 		for(std::list<Signature *>::const_iterator jter=signatures.begin(); jter!=signatures.end(); ++jter)
 		{
 			// Save links
-			const std::map<int, Link> & links = (*jter)->getLinks();
-			for(std::map<int, Link>::const_iterator i=links.begin(); i!=links.end(); ++i)
+			const std::multimap<int, Link> & links = (*jter)->getLinks();
+			for(std::multimap<int, Link>::const_iterator i=links.begin(); i!=links.end(); ++i)
 			{
 				stepLink(ppStmt, i->second);
 			}
