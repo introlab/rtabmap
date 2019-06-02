@@ -2838,8 +2838,9 @@ Transform Memory::computeTransform(
 				for(std::multimap<int, Link>::iterator iter=links.begin(); iter!=links.end(); ++iter)
 				{
 					int id = iter->first;
-					if(id != fromS.id())
+					if(id != fromS.id() || iter->second.transform().isNull())
 					{
+						UDEBUG("%d", id);
 						const Signature * s;
 						if(id == tmpTo.id())
 						{
@@ -2873,15 +2874,19 @@ Transform Memory::computeTransform(
 							}
 							bundleModels.insert(std::make_pair(id, model));
 							Transform invLocalTransform = model.localTransform().inverse();
-							if(iter->second.isValid())
+							UASSERT(iter->second.isValid() || iter->first == fromS.id());
+
+							if(iter->second.transform().isNull())
+							{
+								// fromId pose
+								bundlePoses.insert(std::make_pair(id, Transform::getIdentity()));
+							}
+							else
 							{
 								bundleLinks.insert(std::make_pair(iter->second.from(), iter->second));
 								bundlePoses.insert(std::make_pair(id, iter->second.transform()));
 							}
-							else
-							{
-								bundlePoses.insert(std::make_pair(id, Transform::getIdentity()));
-							}
+
 							const std::map<int,cv::KeyPoint> & words = uMultimapToMapUnique(s->getWords());
 							for(std::map<int, cv::KeyPoint>::const_iterator jter=words.begin(); jter!=words.end(); ++jter)
 							{
@@ -2903,6 +2908,7 @@ Transform Memory::computeTransform(
 				std::set<int> sbaOutliers;
 				UTimer bundleTimer;
 				OptimizerG2O sba;
+				sba.setIterations(5);
 				UTimer bundleTime;
 				bundlePoses = sba.optimizeBA(-toS.id(), bundlePoses, bundleLinks, bundleModels, points3DMap, wordReferences, &sbaOutliers);
 				UDEBUG("sba...end");

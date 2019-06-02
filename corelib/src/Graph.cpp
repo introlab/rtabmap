@@ -1117,7 +1117,7 @@ std::multimap<int, Link> filterDuplicateLinks(
 	std::multimap<int, Link> output;
 	for(std::multimap<int, Link>::const_iterator iter=links.begin(); iter!=links.end(); ++iter)
 	{
-		if(graph::findLink(output, iter->second.from(), iter->second.to(), true) == output.end())
+		if(graph::findLink(output, iter->second.from(), iter->second.to(), true, iter->second.type()) == output.end())
 		{
 			output.insert(*iter);
 		}
@@ -1132,7 +1132,14 @@ std::multimap<int, Link> filterLinks(
 	std::multimap<int, Link> output;
 	for(std::multimap<int, Link>::const_iterator iter=links.begin(); iter!=links.end(); ++iter)
 	{
-		if(iter->second.type() != filteredType)
+		if(filteredType == Link::kSelfRefLink)
+		{
+			if(iter->second.from() != iter->second.to())
+			{
+				output.insert(*iter);
+			}
+		}
+		else if(iter->second.type() != filteredType)
 		{
 			output.insert(*iter);
 		}

@@ -7191,7 +7191,7 @@ void DatabaseViewer::updateLoopClosuresSlider(int from, int to)
 		{
 			linksSortedByParents.insert(std::make_pair(iter->second.to(), iter->second.inverse()));
 		}
-		else
+		else if(iter->second.to() != iter->second.from())
 		{
 			linksSortedByParents.insert(*iter);
 		}

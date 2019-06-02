@@ -2533,8 +2533,8 @@ bool Rtabmap::process(
 		(_loopClosureHypothesis.first>0 ||
 	     lastProximitySpaceClosureId>0 || // can be different map of the current one
 	     statistics_.reducedIds().size() ||
-		 (signature->hasLink(signature->id(), Link::kPosePrior) && !_graphOptimizer->priorsIgnored()) || // prior edge
-		 (signature->hasLink(signature->id(), Link::kGravity) && _graphOptimizer->gravitySigma()>0.0f) || // gravity edge
+		 (signature->hasLink(signature->id(), Link::kPosePrior) && !_graphOptimizer->priorsIgnored() && !_memory->isIncremental()) || // prior edge
+		 (signature->hasLink(signature->id(), Link::kGravity) && _graphOptimizer->gravitySigma()>0.0f && !_memory->isIncremental()) || // gravity edge
 	     proximityDetectionsInTimeFound>0 ||
 		 landmarkDetected!=0 ||
 		 ((_memory->isIncremental() || graph::filterLinks(signature->getLinks(), Link::kSelfRefLink).size()) && // In localization mode, the new node should be linked
@@ -3251,9 +3251,15 @@ bool Rtabmap::process(
 			}
 			else
 			{
-				UASSERT_MSG(uContains(_optimizedPoses, _lastLocalizationNodeId), uFormat("id=%d isInWM?=%d", _lastLocalizationNodeId, _memory->isInWM(_lastLocalizationNodeId)?1:0).c_str());
-				id = _lastLocalizationNodeId;
-				UDEBUG("Refresh local map from %d", id);
+				if(uContains(_optimizedPoses, _lastLocalizationNodeId))
+				{
+					id = _lastLocalizationNodeId;
+					UDEBUG("Refresh local map from %d", id);
+				}
+				else
+				{
+					_lastLocalizationNodeId = 0;
+				}
 			}
 		}
 		else if(_memory->isIncremental() &&
