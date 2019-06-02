@@ -4725,10 +4725,22 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 			uniqueWords = uMultimapToMapUnique(words);
 			uniqueWordsDescriptors = uMultimapToMapUnique(wordsDescriptors);
 			cpCurrent.sensorData().setCameraModels(cameraModels);
+			// This will force comparing descriptors between both images directly
 			cpCurrent.setWords(std::multimap<int, cv::KeyPoint>(uniqueWords.begin(), uniqueWords.end()));
 			cpCurrent.setWordsDescriptors(std::multimap<int, cv::Mat>(uniqueWordsDescriptors.begin(), uniqueWordsDescriptors.end()));
-			// This will force comparing descriptors between both images directly
-			Transform tmpt = _registrationPipeline->computeTransformationMod(cpCurrent, cpPrevious, cameraTransform);
+
+			Transform tmpt;
+			if(_registrationPipeline->isScanRequired())
+			{
+				// If icp is used, remove it to just do visual registration
+				RegistrationVis vis(parameters_);
+				tmpt = vis.computeTransformationMod(cpCurrent, cpPrevious, cameraTransform);
+			}
+			else
+			{
+				tmpt = _registrationPipeline->computeTransformationMod(cpCurrent, cpPrevious, cameraTransform);
+			}
+
 			UDEBUG("t=%s", tmpt.prettyPrint().c_str());
 
 			// compute 3D words by epipolar geometry with the previous signature
