@@ -111,9 +111,8 @@ void LoopClosureViewer::updateView(const Transform & transform, const Parameters
 
 			//cloud 2d
 			pcl::PointCloud<pcl::PointXYZ>::Ptr scanA, scanB;
-			scanA = util3d::laserScanToPointCloud(sA_.sensorData().laserScanRaw());
-			scanB = util3d::laserScanToPointCloud(sB_.sensorData().laserScanRaw());
-			scanB = util3d::transformPointCloud(scanB, t);
+			scanA = util3d::laserScanToPointCloud(sA_.sensorData().laserScanRaw(), sA_.sensorData().laserScanRaw().localTransform());
+			scanB = util3d::laserScanToPointCloud(sB_.sensorData().laserScanRaw(), sB_.sensorData().laserScanRaw().localTransform());
 
 			ui_->label_idA->setText(QString("[%1 (%2) -> %3 (%4)]").arg(sB_.id()).arg(cloudB->size()).arg(sA_.id()).arg(cloudA->size()));
 
@@ -132,6 +131,7 @@ void LoopClosureViewer::updateView(const Transform & transform, const Parameters
 			}
 			if(scanB->size())
 			{
+				scanB = util3d::transformPointCloud(scanB, t);
 				ui_->cloudViewerTransform->addCloud("scan1", scanB);
 			}
 		}
