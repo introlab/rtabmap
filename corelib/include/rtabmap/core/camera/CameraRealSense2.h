@@ -35,6 +35,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <pcl/pcl_config.h>
 
+#ifdef RTABMAP_REALSENSE2
+#include <librealsense2/hpp/rs_frame.hpp>
+#endif
+
 
 namespace rs2
 {
@@ -55,7 +59,6 @@ public:
 	static bool available();
 
 public:
-	// default local transform z in, x right, y down));
 	CameraRealSense2(
 		const std::string & deviceId = "",
 		float imageRate = 0,
@@ -65,10 +68,28 @@ public:
 	virtual bool init(const std::string & calibrationFolder = ".", const std::string & cameraName = "");
 	virtual bool isCalibrated() const;
 	virtual std::string getSerial() const;
+	bool odomProvided() const;
 
 	// parameters are set during initialization
+	// D400 series
 	void setEmitterEnabled(bool enabled);
 	void setIRDepthFormat(bool enabled);
+	void setResolution(int width, int height, int fps = 30);
+	// T265 related parameters
+	void setImagesRectified(bool enabled);
+	void setOdomProvided(bool enabled);
+
+#ifdef RTABMAP_REALSENSE2
+	void imu_callback(rs2::frame frame);
+	void pose_callback(rs2::frame frame);
+	void frame_callback(rs2::frame frame);
+	void multiple_message_callback(rs2::frame frame);
+	void getPoseAndIMU(
+			const double & stamp,
+			Transform & pose,
+			unsigned int & poseConfidence,
+			IMU & imu) const;
+#endif
 
 protected:
 	virtual SensorData captureImage(CameraInfo * info = 0);
@@ -86,9 +107,24 @@ private:
 	cv::Mat depthBuffer_;
 	cv::Mat rgbBuffer_;
 	CameraModel model_;
+	StereoCameraModel stereoModel_;
+	Transform imuLocalTransform_;
+	std::map<double, cv::Vec3f> accBuffer_;
+	std::map<double, cv::Vec3f> gyroBuffer_;
+	std::map<double, std::pair<Transform, unsigned int> > poseBuffer_; // <stamp, <Pose, confidence: 1=lost, 2=low, 3=high> >
+	UMutex poseMutex_;
+	UMutex imuMutex_;
 
 	bool emitterEnabled_;
 	bool irDepth_;
+	bool rectifyImages_;
+	bool odometryProvided_;
+	int cameraWidth_;
+	int cameraHeight_;
+	int cameraFps_;
+
+	static Transform realsense2PoseRotation_;
+	static Transform realsense2PoseRotationInv_;
 #endif
 };
 

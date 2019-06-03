@@ -65,6 +65,7 @@ public:
 	void setCameraName(const QString & name);
 	void setProgressVisibility(bool visible);
 	void setSwitchedImages(bool switched);
+	void setFisheyeImages(bool enabled);
 	void setStereoMode(bool stereo, const QString & leftSuffix = "left", const QString & rightSuffix = "right");
 	void setSavingDirectory(const QString & savingDirectory) {savingDirectory_ = savingDirectory;}
 

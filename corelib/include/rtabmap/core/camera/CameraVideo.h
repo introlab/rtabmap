@@ -58,6 +58,13 @@ public:
 	int getUsbDevice() const {return _usbDevice;}
 	const std::string & getFilePath() const {return _filePath;}
 
+	/**
+	 * Set wanted usb resolution, should be set before initialization. 0 means
+	 * default resolution. It won't be applied if a valid camera calibration
+	 * has been loaded, thus resolution from calibration is used.
+	 * */
+	void setResolution(int width, int height) {_width=width, _height=height;}
+
 protected:
 	virtual SensorData captureImage(CameraInfo * info = 0);
 
@@ -72,6 +79,8 @@ private:
 	// Usb camera
 	int _usbDevice;
 	std::string _guid;
+	int _width;
+	int _height;
 
 	CameraModel _model;
 };

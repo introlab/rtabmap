@@ -317,11 +317,13 @@ int main(int argc, char * argv[])
 						std::multimap<int, Link> linksOut;
 						int firstId = *ids.begin();
 						rtabmap::Optimizer * optimizer = rtabmap::Optimizer::create(params);
-						if(optimizer->gravitySigma() > 0)
+						bool useOdomGravity = Parameters::defaultMemUseOdomGravity();
+						Parameters::parse(params, Parameters::kMemUseOdomGravity(), useOdomGravity);
+						if(useOdomGravity)
 						{
 							for(std::map<int, Transform>::iterator iter=odomPoses.begin(); iter!=odomPoses.end(); ++iter)
 							{
-								links.insert(std::make_pair(iter->first, Link(iter->first, iter->first, Link::kPoseOdom, iter->second)));
+								links.insert(std::make_pair(iter->first, Link(iter->first, iter->first, Link::kGravity, iter->second)));
 							}
 						}
 						optimizer->getConnectedGraph(firstId, odomPoses, links, posesOut, linksOut);

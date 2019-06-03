@@ -282,7 +282,7 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 						}
 					}
 				}
-				else if(!isSlam2d() && gravitySigma() > 0 && iter->second.type() == Link::kPoseOdom && poses.find(iter->first) != poses.end())
+				else if(!isSlam2d() && gravitySigma() > 0 && iter->second.type() == Link::kGravity && poses.find(iter->first) != poses.end())
 				{
 					Vector3 r = gtsam::Pose3(iter->second.transform().toEigen4d()).rotation().xyz();
 					gtsam::Unit3 nG = gtsam::Rot3::RzRyRx(r.x(), r.y(), 0).rotate(gtsam::Unit3(0,0,-1));
@@ -376,13 +376,12 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 					}
 				}
 			}
-			else
+			else // id1 != id2
 			{
 #ifdef RTABMAP_VERTIGO
 				if(this->isRobust() &&
 				   iter->second.type() != Link::kNeighbor &&
-				   iter->second.type() != Link::kNeighborMerged &&
-				   iter->second.type() != Link::kPosePrior)
+				   iter->second.type() != Link::kNeighborMerged)
 				{
 					// create new switch variable
 					// Sunderhauf IROS 2012:
@@ -451,8 +450,7 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 #ifdef RTABMAP_VERTIGO
 					if(this->isRobust() &&
 					   iter->second.type() != Link::kNeighbor &&
-					   iter->second.type() != Link::kNeighborMerged &&
-					   iter->second.type() != Link::kPosePrior)
+					   iter->second.type() != Link::kNeighborMerged)
 					{
 						// create switchable edge factor
 						graph.add(vertigo::BetweenFactorSwitchableLinear<gtsam::Pose3>(id1, id2, gtsam::Symbol('s', switchCounter++), gtsam::Pose3(iter->second.transform().toEigen4d()), model));

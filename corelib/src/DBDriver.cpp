@@ -741,14 +741,15 @@ bool DBDriver::getNodeInfo(
 	_trashesMutex.lock();
 	if(uContains(_trashSignatures, signatureId))
 	{
-		pose = _trashSignatures.at(signatureId)->getPose();
+		pose = _trashSignatures.at(signatureId)->getPose().clone();
 		mapId = _trashSignatures.at(signatureId)->mapId();
 		weight = _trashSignatures.at(signatureId)->getWeight();
-		label = _trashSignatures.at(signatureId)->getLabel();
+		label = std::string(_trashSignatures.at(signatureId)->getLabel());
 		stamp = _trashSignatures.at(signatureId)->getStamp();
-		groundTruthPose = _trashSignatures.at(signatureId)->getGroundTruthPose();
-		gps = _trashSignatures.at(signatureId)->sensorData().gps();
-		sensors = _trashSignatures.at(signatureId)->sensorData().envSensors();
+		groundTruthPose = _trashSignatures.at(signatureId)->getGroundTruthPose().clone();
+		velocity = std::vector<float>(_trashSignatures.at(signatureId)->getVelocity());
+		gps = GPS(_trashSignatures.at(signatureId)->sensorData().gps());
+		sensors = EnvSensors(_trashSignatures.at(signatureId)->sensorData().envSensors());
 		found = true;
 	}
 	_trashesMutex.unlock();
@@ -762,7 +763,7 @@ bool DBDriver::getNodeInfo(
 	return found;
 }
 
-void DBDriver::loadLinks(int signatureId, std::map<int, Link> & links, Link::Type type) const
+void DBDriver::loadLinks(int signatureId, std::multimap<int, Link> & links, Link::Type type) const
 {
 	bool found = false;
 	// look in the trash
@@ -782,7 +783,7 @@ void DBDriver::loadLinks(int signatureId, std::map<int, Link> & links, Link::Typ
 		}
 		if(type == Link::kLandmark || type == Link::kAllWithLandmarks)
 		{
-			uInsert(links, s->getLandmarks());
+			links.insert(s->getLandmarks().begin(), s->getLandmarks().end());
 		}
 		found = true;
 	}
@@ -1219,11 +1220,11 @@ void DBDriver::generateGraph(
 				 if(otherSignatures.find(*i) == otherSignatures.end())
 				 {
 					 int id = *i;
-					 std::map<int, Link> links;
+					 std::multimap<int, Link> links;
 					 this->loadLinks(id, links);
 					 int weight = 0;
 					 this->getWeight(id, weight);
-					 for(std::map<int, Link>::iterator iter = links.begin(); iter!=links.end(); ++iter)
+					 for(std::multimap<int, Link>::iterator iter = links.begin(); iter!=links.end(); ++iter)
 					 {
 						 int weightNeighbor = 0;
 						 if(otherSignatures.find(iter->first) == otherSignatures.end())
@@ -1281,9 +1282,9 @@ void DBDriver::generateGraph(
 				 if(ids.find(i->first) != ids.end())
 				 {
 					 int id = i->second->id();
-					 const std::map<int, Link> & links = i->second->getLinks();
+					 const std::multimap<int, Link> & links = i->second->getLinks();
 					 int weight = i->second->getWeight();
-					 for(std::map<int, Link>::const_iterator iter = links.begin(); iter!=links.end(); ++iter)
+					 for(std::multimap<int, Link>::const_iterator iter = links.begin(); iter!=links.end(); ++iter)
 					 {
 						 int weightNeighbor = 0;
 						 const Signature * s = uValue(otherSignatures, iter->first, (Signature*)0);

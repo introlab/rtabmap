@@ -72,6 +72,7 @@ OdometryF2M::OdometryF2M(const ParametersMap & parameters) :
 	map_(new Signature(-1)),
 	lastFrame_(new Signature(1)),
 	lastFrameOldestNewId_(0),
+	initGravity_(false),
 	bundleSeq_(0),
 	sba_(0)
 {
@@ -150,6 +151,7 @@ OdometryF2M::~OdometryF2M()
 	bundleLinks_.clear();
 	bundleModels_.clear();
 	bundlePoseReferences_.clear();
+	imus_.clear();
 	delete sba_;
 	delete regPipeline_;
 	UDEBUG("");
@@ -158,32 +160,77 @@ OdometryF2M::~OdometryF2M()
 
 void OdometryF2M::reset(const Transform & initialPose)
 {
-	UDEBUG("initialPose=%s", initialPose.prettyPrint().c_str());
 	Odometry::reset(initialPose);
-	*lastFrame_ = Signature(1);
-	*map_ = Signature(-1);
-	scansBuffer_.clear();
-	bundleWordReferences_.clear();
-	bundlePoses_.clear();
-	bundleLinks_.clear();
-	bundleModels_.clear();
-	bundlePoseReferences_.clear();
-	bundleSeq_ = 0;
-	lastFrameOldestNewId_ = 0;
+	if(!initGravity_)
+	{
+		UDEBUG("initialPose=%s", initialPose.prettyPrint().c_str());
+		Odometry::reset(initialPose);
+		*lastFrame_ = Signature(1);
+		*map_ = Signature(-1);
+		scansBuffer_.clear();
+		bundleWordReferences_.clear();
+		bundlePoses_.clear();
+		bundleLinks_.clear();
+		bundleModels_.clear();
+		bundlePoseReferences_.clear();
+		bundleSeq_ = 0;
+		lastFrameOldestNewId_ = 0;
+		imus_.clear();
+	}
+	initGravity_ = false;
+}
+
+bool OdometryF2M::canProcessIMU() const
+{
+	return sba_ && sba_->gravitySigma() > 0.0f;
 }
 
 // return not null transform if odometry is correctly computed
 Transform OdometryF2M::computeTransform(
 		SensorData & data,
-		const Transform & guess,
+		const Transform & guessIn,
 		OdometryInfo * info)
 {
+	Transform guess = guessIn;
 	UTimer timer;
 	Transform output;
 
 	if(info)
 	{
 		info->type = 0;
+	}
+
+	if(sba_ && sba_->gravitySigma() > 0.0f && !data.imu().empty())
+	{
+		if(data.imu().orientation()[0] == 0.0 && data.imu().orientation()[1] == 0.0 && data.imu().orientation()[2] == 0.0)
+		{
+			UERROR("IMU received doesn't have orientation set, it is ignored.");
+		}
+		else
+		{
+			Transform orientation(0,0,0, data.imu().orientation()[0], data.imu().orientation()[1], data.imu().orientation()[2], data.imu().orientation()[3]);
+			//UWARN("%fs %s", data.stamp(), orientation.prettyPrint().c_str());
+			imus_.insert(std::make_pair(data.stamp(), orientation*data.imu().localTransform().inverse()));
+			if(imus_.size() > 1000)
+			{
+				imus_.erase(imus_.begin());
+			}
+
+			if(this->getPose().r11() == 1.0f && this->getPose().r22() == 1.0f && this->getPose().r33() == 1.0f)
+			{
+				Eigen::Quaterniond imuQuat = imus_.rbegin()->second.getQuaterniond();
+				Transform previous = this->getPose();
+				Transform newFramePose = Transform(previous.x(), previous.y(), previous.z(), imuQuat.x(), imuQuat.y(), imuQuat.z(), imuQuat.w());
+				UWARN("Updated initial pose from %s to %s with IMU orientation", previous.prettyPrint().c_str(), newFramePose.prettyPrint().c_str());
+				initGravity_ = true;
+				this->reset(newFramePose);
+			}
+		}
+
+		if(data.imageRaw().empty() && data.laserScanRaw().isEmpty())
+		{
+			return output;
+		}
 	}
 
 	RegistrationInfo regInfo;
@@ -285,6 +332,12 @@ Transform OdometryF2M::computeTransform(
 				UDEBUG("Registration time = %fs", regInfo.totalTime);
 				if(!transform.isNull())
 				{
+					Transform imuT;
+					if(!imus_.empty())
+					{
+						imuT = Transform::getClosestTransform(imus_, lastFrame_->getStamp());
+					}
+
 					// local bundle adjustment
 					if(bundleAdjustment_>0 && sba_ &&
 					   regPipeline_->isImageRequired() &&
@@ -311,6 +364,7 @@ Transform OdometryF2M::computeTransform(
 							bundlePoses = bundlePoses_;
 							bundleLinks = bundleLinks_;
 							bundleModels = bundleModels_;
+							bundleLinks.insert(bundleIMUOrientations_.begin(), bundleIMUOrientations_.end());
 
 							UASSERT_MSG(bundlePoses.find(lastFrame_->id()) == bundlePoses.end(),
 									uFormat("Frame %d already added! Make sure the input frames have unique IDs!", lastFrame_->id()).c_str());
@@ -319,6 +373,11 @@ Transform OdometryF2M::computeTransform(
 							//var(cv::Range(3,6), cv::Range(3,6)) *= 0.001;
 							bundleLinks.insert(std::make_pair(bundlePoses_.rbegin()->first, Link(bundlePoses_.rbegin()->first, lastFrame_->id(), Link::kNeighbor, bundlePoses_.rbegin()->second.inverse()*transform, var.inv())));
 							bundlePoses.insert(std::make_pair(lastFrame_->id(), transform));
+
+							if(!imuT.isNull())
+							{
+								bundleLinks.insert(std::make_pair(lastFrame_->id(), Link(lastFrame_->id(), lastFrame_->id(), Link::kGravity, imuT)));
+							}
 
 							CameraModel model;
 							if(lastFrame_->sensorData().cameraModels().size() == 1 && lastFrame_->sensorData().cameraModels().at(0).isValidForProjection())
@@ -445,7 +504,9 @@ Transform OdometryF2M::computeTransform(
 									else
 									{
 										transform = bundlePoses.rbegin()->second;
-										bundleLinks.find(bundlePoses_.rbegin()->first)->second.setTransform(bundlePoses_.rbegin()->second.inverse()*transform);
+										std::multimap<int, Link>::iterator iter = graph::findLink(bundleLinks, bundlePoses_.rbegin()->first, lastFrame_->id(), false);
+										UASSERT(iter != bundleLinks.end());
+										iter->second.setTransform(bundlePoses_.rbegin()->second.inverse()*transform);
 									}
 								}
 								UDEBUG("Local Bundle Adjustment After : %s", transform.prettyPrint().c_str());
@@ -534,8 +595,14 @@ Transform OdometryF2M::computeTransform(
 					if(bundleAdjustment_>0)
 					{
 						bundlePoseReferences_.insert(std::make_pair(lastFrame_->id(), 0));
-						UASSERT(graph::findLink(bundleLinks, bundlePoses_.rbegin()->first, lastFrame_->id(), false) != bundleLinks.end());
-						bundleLinks_.insert(*bundleLinks.find(bundlePoses_.rbegin()->first));
+						std::multimap<int, Link>::iterator iter = graph::findLink(bundleLinks, bundlePoses_.rbegin()->first, lastFrame_->id(), false);
+						UASSERT(iter != bundleLinks.end());
+						bundleLinks_.insert(*iter);
+						iter = graph::findLink(bundleLinks, lastFrame_->id(), lastFrame_->id(), false);
+						if(iter != bundleLinks.end())
+						{
+							bundleIMUOrientations_.insert(*iter);
+						}
 						uInsert(bundlePoses_, bundlePoses);
 						UASSERT(bundleModels.find(lastFrame_->id()) != bundleModels.end());
 						bundleModels_.insert(*bundleModels.find(lastFrame_->id()));
@@ -818,6 +885,7 @@ Transform OdometryF2M::computeTransform(
 									UASSERT(bundlePoses_.erase(iter->first) == 1);
 									bundleLinks_.erase(iter->first);
 									bundleModels_.erase(iter->first);
+									bundleIMUOrientations_.erase(iter->first);
 									bundlePoseReferences_.erase(iter++);
 								}
 							}
@@ -1012,6 +1080,7 @@ Transform OdometryF2M::computeTransform(
 
 			bool frameValid = false;
 			Transform newFramePose = this->getPose(); // initial pose may be not identity...
+
 			if(regPipeline_->isImageRequired())
 			{
 				int ptsWithDepth = 0;
@@ -1115,6 +1184,11 @@ Transform OdometryF2M::computeTransform(
 						}
 						bundleModels_.insert(std::make_pair(lastFrame_->id(), model));
 						bundlePoses_.insert(std::make_pair(lastFrame_->id(), newFramePose));
+
+						if(!imus_.empty())
+						{
+							bundleIMUOrientations_.insert(std::make_pair(lastFrame_->id(), Link(lastFrame_->id(), lastFrame_->id(), Link::kGravity, newFramePose)));
+						}
 					}
 
 					map_->setWords(words);

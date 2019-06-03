@@ -48,6 +48,11 @@ class EdgeSBACamGravity : public g2o::BaseUnaryEdge<3, Eigen::Matrix<double, 6, 
     virtual bool read(std::istream& is) {return false;} // not implemented
     virtual bool write(std::ostream& os) const {return false;} // not implemented
 
+    void setCameraInvLocalTransform(const Eigen::Matrix3d & t)
+    {
+    	cameraInvLocalTransform_ = t;
+    }
+
     // return the error estimate as a 3-vector
     void computeError(){
     	const g2o::VertexCam* v1 = static_cast<const g2o::VertexCam*>(_vertices[0]);
@@ -57,7 +62,8 @@ class EdgeSBACamGravity : public g2o::BaseUnaryEdge<3, Eigen::Matrix<double, 6, 
 
 		Eigen::Vector3d ea;
 
-		Eigen::Matrix3d t = v1->estimate().rotation().toRotationMatrix();
+		// Transform pose from camera frame to world frame
+		Eigen::Matrix3d t = v1->estimate().rotation().toRotationMatrix() * cameraInvLocalTransform_;
 		ea[0] = atan2(t (2, 1), t (2, 2));
 		ea[1] = asin(-t (2, 0));
 		ea[2] = atan2(t (1, 0), t (0, 0));
@@ -69,10 +75,10 @@ class EdgeSBACamGravity : public g2o::BaseUnaryEdge<3, Eigen::Matrix<double, 6, 
 		Eigen::Vector3d estimate = rot * -direction;
 		_error = estimate - measurement;
 
-		//printf("%d : measured=%f %f %f est=%f %f %f error=%f %f %f\n", v1->id(),
-		//  measurement[0], measurement[1], measurement[2],
-		//  estimate[0], estimate[1], estimate[2],
-		//  _error[0], _error[1], _error[2]);
+		/*printf("%d : measured=%f %f %f est=%f %f %f error=%f %f %f\n", v1->id(),
+		  measurement[0], measurement[1], measurement[2],
+		  estimate[0], estimate[1], estimate[2],
+		  _error[0], _error[1], _error[2]);*/
     }
 
     // 6 values:
@@ -82,6 +88,9 @@ class EdgeSBACamGravity : public g2o::BaseUnaryEdge<3, Eigen::Matrix<double, 6, 
     	_measurement.head<3>() = m.head<3>().normalized();
         _measurement.tail<3>() = m.tail<3>().normalized();
     }
+
+  private:
+    Eigen::Matrix3d cameraInvLocalTransform_;
   };
 
 }

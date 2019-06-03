@@ -88,6 +88,8 @@ SET(SRC_FILES
 	odometry/OdometryVINS.cpp
 	
 	IMUThread.cpp
+	IMUFilter.cpp
+	imufilter/ComplementaryFilter.cpp
 	
 	Stereo.cpp
 	StereoDense.cpp
@@ -470,7 +472,7 @@ IF(GTSAM_FOUND)
 		)
 	ENDIF()
 	SET(SRC_FILES
-    		${SRC_FILES}
+    	${SRC_FILES}
 		optimizer/gtsam/GravityFactor.cpp
 	)
 	IF(WIN32)
@@ -482,6 +484,13 @@ IF(GTSAM_FOUND)
 		gtsam # Windows: Place static libs at the end
 	)
 ENDIF(GTSAM_FOUND)
+
+IF(WITH_MADGWICK)
+	SET(SRC_FILES
+		${SRC_FILES}
+		imufilter/MadgwickFilter.cpp
+	)
+ENDIF(WITH_MADGWICK)
 
 ####################################
 # Generate resources files

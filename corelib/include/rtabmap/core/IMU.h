@@ -19,7 +19,7 @@ class IMU
 {
 public:
 	IMU() {}
-	IMU(const cv::Vec4d & orientation,
+	IMU(const cv::Vec4d & orientation, // qx qy qz qw
 		const cv::Mat & orientationCovariance,
 		const cv::Vec3d & angularVelocity,
 		const cv::Mat & angularVelocityCovariance,
@@ -48,6 +48,7 @@ public:
 	{
 	}
 
+	// qx qy qz qw
 	const cv::Vec4d & orientation() const {return orientation_;}
 	const cv::Mat & orientationCovariance() const {return orientationCovariance_;} // 3x3 double Row major about x, y, z axes, empty if orientation is not set
 
@@ -63,7 +64,6 @@ public:
 	{
 		return localTransform_.isNull();
 	}
-
 
 private:
 	cv::Vec4d orientation_;

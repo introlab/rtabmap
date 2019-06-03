@@ -604,7 +604,7 @@ Transform RegistrationIcp::computeTransformationImpl(
 				{
 					tooLowComplexityForPlaneToPlane = true;
 					complexityVectors = fromComplexity<toComplexity?complexityVectorsFrom:complexityVectorsTo;
-					UWARN("ICP PointToPlane ignored as structural complexity is too low (corridor-like environment): %f < %f (%s). PointToPoint is done instead.", complexity, _pointToPlaneMinComplexity, Parameters::kIcpPointToPlaneMinComplexity().c_str());
+					UWARN("ICP PointToPlane ignored as structural complexity is too low (corridor-like environment): %f < %f (%s). PointToPoint is done instead, orientation is still optimized but translation will be limited to direction of normals.", complexity, _pointToPlaneMinComplexity, Parameters::kIcpPointToPlaneMinComplexity().c_str());
 				}
 				else
 				{
@@ -777,7 +777,7 @@ Transform RegistrationIcp::computeTransformationImpl(
 					{
 						tooLowComplexityForPlaneToPlane = true;
 						complexityVectors = fromComplexity<toComplexity?complexityVectorsFrom:complexityVectorsTo;
-						UWARN("ICP PointToPlane ignored as structural complexity is too low (corridor-like environment): %f < %f (%s). PointToPoint is done instead.", complexity, _pointToPlaneMinComplexity, Parameters::kIcpPointToPlaneMinComplexity().c_str());
+						UWARN("ICP PointToPlane ignored as structural complexity is too low (corridor-like environment): %f < %f (%s). PointToPoint is done instead, orientation is still optimized but translation will be limited to direction of normals.", complexity, _pointToPlaneMinComplexity, Parameters::kIcpPointToPlaneMinComplexity().c_str());
 					}
 					else
 					{

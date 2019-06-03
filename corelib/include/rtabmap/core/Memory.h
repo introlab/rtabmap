@@ -147,11 +147,11 @@ public:
 	const std::map<int, double> & getWorkingMem() const {return _workingMem;}
 	const std::set<int> & getStMem() const {return _stMem;}
 	int getMaxStMemSize() const {return _maxStMemSize;}
-	std::map<int, Link> getNeighborLinks(int signatureId,
+	std::multimap<int, Link> getNeighborLinks(int signatureId,
 			bool lookInDatabase = false) const;
-	std::map<int, Link> getLoopClosureLinks(int signatureId,
+	std::multimap<int, Link> getLoopClosureLinks(int signatureId,
 			bool lookInDatabase = false) const;
-	std::map<int, Link> getLinks(int signatureId, // can be also used to get links from landmarks
+	std::multimap<int, Link> getLinks(int signatureId, // can be also used to get links from landmarks
 			bool lookInDatabase = false,
 			bool withLandmarks = false) const;
 	std::multimap<int, Link> getAllLinks(bool lookInDatabase, bool ignoreNullLinks = true, bool withLandmarks = false) const;
@@ -312,6 +312,7 @@ private:
 	float _rehearsalMaxAngle;
 	bool _rehearsalWeightIgnoredWhileMoving;
 	bool _useOdometryFeatures;
+	bool _useOdometryGravity;
 	bool _createOccupancyGrid;
 	int _visMaxFeatures;
 	bool _imagesAlreadyRectified;

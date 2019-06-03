@@ -35,6 +35,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/util3d_filtering.h"
 #include "rtabmap/core/StereoDense.h"
 #include "rtabmap/core/DBReader.h"
+#include "rtabmap/core/IMUFilter.h"
 #include "rtabmap/core/clams/discrete_depth_distortion_model.h"
 #include <opencv2/stitching/detail/exposure_compensate.hpp>
 #include <rtabmap/utilite/UTimer.h>
@@ -65,7 +66,8 @@ CameraThread::CameraThread(Camera * camera, const ParametersMap & parameters) :
 		_distortionModel(0),
 		_bilateralFiltering(false),
 		_bilateralSigmaS(10),
-		_bilateralSigmaR(0.1)
+		_bilateralSigmaR(0.1),
+		_imuFilter(0)
 {
 	UASSERT(_camera != 0);
 }
@@ -77,6 +79,7 @@ CameraThread::~CameraThread()
 	delete _camera;
 	delete _distortionModel;
 	delete _stereoDense;
+	delete _imuFilter;
 }
 
 void CameraThread::setImageRate(float imageRate)
@@ -113,6 +116,18 @@ void CameraThread::enableBilateralFiltering(float sigmaS, float sigmaR)
 	_bilateralFiltering = true;
 	_bilateralSigmaS = sigmaS;
 	_bilateralSigmaR = sigmaR;
+}
+
+void CameraThread::enableIMUFiltering(int filteringStrategy, const ParametersMap & parameters)
+{
+	delete _imuFilter;
+	_imuFilter = IMUFilter::create((IMUFilter::Type)filteringStrategy, parameters);
+}
+
+void CameraThread::disableIMUFiltering()
+{
+	delete _imuFilter;
+	_imuFilter = 0;
 }
 
 void CameraThread::mainLoopBegin()
@@ -385,6 +400,38 @@ void CameraThread::postUpdate(SensorData * dataPtr, CameraInfo * info) const
 		UDEBUG("");
 		// filter the scan after registration
 		data.setLaserScan(util3d::commonFiltering(data.laserScanRaw(), _scanDownsampleStep, _scanRangeMin, _scanRangeMax, _scanVoxelSize, _scanNormalsK, _scanNormalsRadius, _scanForceGroundNormalsUp));
+	}
+
+	// IMU filtering
+	if(_imuFilter && !data.imu().empty())
+	{
+		_imuFilter->update(
+				data.imu().angularVelocity()[0],
+				data.imu().angularVelocity()[1],
+				data.imu().angularVelocity()[2],
+				data.imu().linearAcceleration()[0],
+				data.imu().linearAcceleration()[1],
+				data.imu().linearAcceleration()[2],
+				data.stamp());
+		double qx,qy,qz,qw;
+		_imuFilter->getOrientation(qx,qy,qz,qw);
+		data.setIMU(IMU(
+				cv::Vec4d(qx,qy,qz,qw), cv::Mat::eye(3,3,CV_64FC1),
+				data.imu().angularVelocity(), data.imu().angularVelocityCovariance(),
+				data.imu().linearAcceleration(), data.imu().linearAccelerationCovariance(),
+				data.imu().localTransform()));
+		UDEBUG("%f %f %f %f (gyro=%f %f %f, acc=%f %f %f, %fs)",
+					data.imu().orientation()[0],
+					data.imu().orientation()[1],
+					data.imu().orientation()[2],
+					data.imu().orientation()[3],
+					data.imu().angularVelocity()[0],
+					data.imu().angularVelocity()[1],
+					data.imu().angularVelocity()[2],
+					data.imu().linearAcceleration()[0],
+					data.imu().linearAcceleration()[1],
+					data.imu().linearAcceleration()[2],
+					data.stamp());
 	}
 }
 

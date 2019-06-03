@@ -344,7 +344,7 @@ SensorData DBReader::getNextData(CameraInfo * info)
 			Transform globalPose;
 			cv::Mat globalPoseCov;
 
-			std::map<int, Link> priorLinks;
+			std::multimap<int, Link> priorLinks;
 			_dbDriver->loadLinks(*_currentId, priorLinks, Link::kPosePrior);
 			if( priorLinks.size() &&
 				!priorLinks.begin()->second.transform().isNull() &&
@@ -355,10 +355,21 @@ SensorData DBReader::getNextData(CameraInfo * info)
 				globalPoseCov = priorLinks.begin()->second.infMatrix().inv();
 			}
 
+			Transform gravityTransform;
+			std::multimap<int, Link> gravityLinks;
+			_dbDriver->loadLinks(*_currentId, gravityLinks, Link::kGravity);
+			if( gravityLinks.size() &&
+				!gravityLinks.begin()->second.transform().isNull() &&
+				gravityLinks.begin()->second.infMatrix().cols == 6 &&
+				gravityLinks.begin()->second.infMatrix().rows == 6)
+			{
+				gravityTransform = gravityLinks.begin()->second.transform();
+			}
+
 			cv::Mat infMatrix = cv::Mat::eye(6,6,CV_64FC1);
 			if(!_odometryIgnored)
 			{
-				std::map<int, Link> links;
+				std::multimap<int, Link> links;
 				_dbDriver->loadLinks(*_currentId, links, Link::kNeighbor);
 				if(links.size() && links.begin()->first < *_currentId)
 				{
@@ -467,13 +478,24 @@ SensorData DBReader::getNextData(CameraInfo * info)
 			{
 				data.setGlobalPose(globalPose, globalPoseCov);
 			}
+			if(!gravityTransform.isNull())
+			{
+				Eigen::Quaterniond q = gravityTransform.getQuaterniond();
+				data.setIMU(IMU(
+						cv::Vec4d(q.x(), q.y(), q.z(), q.w()), cv::Mat::eye(3,3,CV_64FC1),
+						cv::Vec3d(), cv::Mat(),
+						cv::Vec3d(), cv::Mat(),
+						Transform::getIdentity())); // we assume that gravity links are already transformed in base_link
+			}
 
-			UDEBUG("Laser=%d RGB/Left=%d Depth/Right=%d, Grid=%d, UserData=%d",
+			UDEBUG("Laser=%d RGB/Left=%d Depth/Right=%d, Grid=%d, UserData=%d, GlobalPose=%d, IMU=%d",
 					data.laserScanRaw().isEmpty()?0:1,
 					data.imageRaw().empty()?0:1,
 					data.depthOrRightRaw().empty()?0:1,
 					data.gridCellSize()==0.0f?0:1,
-					data.userDataRaw().empty()?0:1);
+					data.userDataRaw().empty()?0:1,
+					globalPose.isNull()?0:1,
+					gravityTransform.isNull()?0:1);
 
 			cv::Mat descriptors;
 			if(!s->getWordsDescriptors().empty())

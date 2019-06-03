@@ -24,37 +24,6 @@
     <normaloff>:/images/RTAB-Map.ico</normaloff>:/images/RTAB-Map.ico</iconset>
   </property>
   <layout class="QGridLayout" name="gridLayout_49">
-   <item row="1" column="0">
-    <layout class="QHBoxLayout" name="horizontalLayout_3">
-     <item>
-      <widget class="QRadioButton" name="radioButton_basic">
-       <property name="text">
-        <string>Basic</string>
-       </property>
-       <property name="checked">
-        <bool>true</bool>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QRadioButton" name="radioButton_advanced">
-       <property name="text">
-        <string>Advanced</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QDialogButtonBox" name="buttonBox_global">
-       <property name="orientation">
-        <enum>Qt::Horizontal</enum>
-       </property>
-       <property name="standardButtons">
-        <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
-       </property>
-      </widget>
-     </item>
-    </layout>
-   </item>
    <item row="0" column="0">
     <layout class="QHBoxLayout" name="horizontalLayout_2" stretch="0,1">
      <property name="spacing">
@@ -94,7 +63,7 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-234</y>
+            <y>0</y>
             <width>680</width>
             <height>3082</height>
            </rect>
@@ -126,7 +95,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>5</number>
+                <number>12</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,1">
@@ -2731,7 +2700,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                    <property name="title">
                     <string>Source</string>
                    </property>
-                   <layout class="QVBoxLayout" name="verticalLayout_7" stretch="0,0,0,0,1">
+                   <layout class="QVBoxLayout" name="verticalLayout_7" stretch="0,0,0,0,0,1">
                     <item>
                      <layout class="QGridLayout" name="gridLayout_28" columnstretch="0,1">
                       <item row="1" column="1">
@@ -2993,7 +2962,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                     <item>
                      <widget class="QStackedWidget" name="stackedWidget_src">
                       <property name="currentIndex">
-                       <number>3</number>
+                       <number>0</number>
                       </property>
                       <widget class="QWidget" name="page_41">
                        <layout class="QVBoxLayout" name="verticalLayout_64">
@@ -3122,7 +3091,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                            <item>
                             <widget class="QStackedWidget" name="stackedWidget_rgbd">
                              <property name="currentIndex">
-                              <number>7</number>
+                              <number>9</number>
                              </property>
                              <widget class="QWidget" name="page_32">
                               <layout class="QVBoxLayout" name="verticalLayout_63">
@@ -4075,7 +4044,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                               </layout>
                              </widget>
                              <widget class="QWidget" name="page_55">
-                              <layout class="QVBoxLayout" name="verticalLayout_103">
+                              <layout class="QVBoxLayout" name="verticalLayout_103" stretch="0,1">
                                <item>
                                 <widget class="QGroupBox" name="groupBox_realsense2">
                                  <property name="sizePolicy">
@@ -4088,6 +4057,36 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                   <string>RealSense2</string>
                                  </property>
                                  <layout class="QGridLayout" name="gridLayout_100" columnstretch="0,1">
+                                  <item row="2" column="1">
+                                   <widget class="QLabel" name="label_549">
+                                    <property name="text">
+                                     <string>Stream width.</string>
+                                    </property>
+                                    <property name="wordWrap">
+                                     <bool>true</bool>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="3" column="0">
+                                   <widget class="QSpinBox" name="spinBox_rs2_height">
+                                    <property name="suffix">
+                                     <string> pix</string>
+                                    </property>
+                                    <property name="maximum">
+                                     <number>9999</number>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="4" column="0">
+                                   <widget class="QSpinBox" name="spinBox_rs2_rate">
+                                    <property name="suffix">
+                                     <string> Hz</string>
+                                    </property>
+                                    <property name="maximum">
+                                     <number>999</number>
+                                    </property>
+                                   </widget>
+                                  </item>
                                   <item row="0" column="0">
                                    <widget class="QCheckBox" name="checkbox_rs2_emitter">
                                     <property name="text">
@@ -4129,6 +4128,26 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                    </widget>
                                   </item>
                                   <item row="2" column="0">
+                                   <widget class="QSpinBox" name="spinBox_rs2_width">
+                                    <property name="suffix">
+                                     <string> pix</string>
+                                    </property>
+                                    <property name="maximum">
+                                     <number>9999</number>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="3" column="1">
+                                   <widget class="QLabel" name="label_550">
+                                    <property name="text">
+                                     <string>Stream height.</string>
+                                    </property>
+                                    <property name="wordWrap">
+                                     <bool>true</bool>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="5" column="0">
                                    <spacer name="verticalSpacer_71">
                                     <property name="orientation">
                                      <enum>Qt::Vertical</enum>
@@ -4141,6 +4160,16 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                     </property>
                                    </spacer>
                                   </item>
+                                  <item row="4" column="1">
+                                   <widget class="QLabel" name="label_551">
+                                    <property name="text">
+                                     <string>Stream rate.</string>
+                                    </property>
+                                    <property name="wordWrap">
+                                     <bool>true</bool>
+                                    </property>
+                                   </widget>
+                                  </item>
                                  </layout>
                                 </widget>
                                </item>
@@ -4152,7 +4181,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                  <property name="sizeHint" stdset="0">
                                   <size>
                                    <width>20</width>
-                                   <height>338</height>
+                                   <height>0</height>
                                   </size>
                                  </property>
                                 </spacer>
@@ -4235,6 +4264,11 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                  <string>Tara Camera</string>
                                 </property>
                                </item>
+                               <item>
+                                <property name="text">
+                                 <string>RealSense2</string>
+                                </property>
+                               </item>
                               </widget>
                              </item>
                              <item row="0" column="2">
@@ -4315,7 +4349,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                            <item>
                             <widget class="QStackedWidget" name="stackedWidget_stereo">
                              <property name="currentIndex">
-                              <number>2</number>
+                              <number>7</number>
                              </property>
                              <widget class="QWidget" name="page_49">
                               <layout class="QVBoxLayout" name="verticalLayout_91">
@@ -4861,6 +4895,58 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                </item>
                               </layout>
                              </widget>
+                             <widget class="QWidget" name="page_80">
+                              <layout class="QVBoxLayout" name="verticalLayout_140">
+                               <item>
+                                <widget class="QGroupBox" name="groupBox_cameraStereoRealSense2">
+                                 <property name="sizePolicy">
+                                  <sizepolicy hsizetype="Ignored" vsizetype="Ignored">
+                                   <horstretch>0</horstretch>
+                                   <verstretch>0</verstretch>
+                                  </sizepolicy>
+                                 </property>
+                                 <property name="title">
+                                  <string>RealSense2</string>
+                                 </property>
+                                 <layout class="QGridLayout" name="gridLayout_108" columnstretch="0,1">
+                                  <item row="0" column="0">
+                                   <widget class="QCheckBox" name="checkbox_stereoRealSense2_odom">
+                                    <property name="text">
+                                     <string/>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="0" column="1">
+                                   <widget class="QLabel" name="label_546">
+                                    <property name="text">
+                                     <string>Use RealSense2 visual inertial odometry.</string>
+                                    </property>
+                                    <property name="wordWrap">
+                                     <bool>true</bool>
+                                    </property>
+                                    <property name="textInteractionFlags">
+                                     <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                 </layout>
+                                </widget>
+                               </item>
+                               <item>
+                                <spacer name="verticalSpacer_78">
+                                 <property name="orientation">
+                                  <enum>Qt::Vertical</enum>
+                                 </property>
+                                 <property name="sizeHint" stdset="0">
+                                  <size>
+                                   <width>20</width>
+                                   <height>0</height>
+                                  </size>
+                                 </property>
+                                </spacer>
+                               </item>
+                              </layout>
+                             </widget>
                             </widget>
                            </item>
                           </layout>
@@ -4944,10 +5030,65 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                            <item>
                             <widget class="QStackedWidget" name="stackedWidget_image">
                              <property name="currentIndex">
-                              <number>1</number>
+                              <number>0</number>
                              </property>
                              <widget class="QWidget" name="page_7">
                               <layout class="QVBoxLayout" name="verticalLayout_30">
+                               <item>
+                                <widget class="QGroupBox" name="source_groupBox_usbcam">
+                                 <property name="title">
+                                  <string>USB Camera</string>
+                                 </property>
+                                 <layout class="QGridLayout" name="gridLayout_112" columnstretch="0,1">
+                                  <item row="1" column="0">
+                                   <widget class="QSpinBox" name="spinBox_usbcam_streamHeight">
+                                    <property name="minimum">
+                                     <number>0</number>
+                                    </property>
+                                    <property name="maximum">
+                                     <number>10000</number>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="1" column="1">
+                                   <widget class="QLabel" name="label_553">
+                                    <property name="text">
+                                     <string>Stream height (0 for default resolution).</string>
+                                    </property>
+                                    <property name="wordWrap">
+                                     <bool>true</bool>
+                                    </property>
+                                    <property name="textInteractionFlags">
+                                     <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="0" column="1">
+                                   <widget class="QLabel" name="label_552">
+                                    <property name="text">
+                                     <string>Stream width (0 for default resolution).</string>
+                                    </property>
+                                    <property name="wordWrap">
+                                     <bool>true</bool>
+                                    </property>
+                                    <property name="textInteractionFlags">
+                                     <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="0" column="0">
+                                   <widget class="QSpinBox" name="spinBox_usbcam_streamWidth">
+                                    <property name="minimum">
+                                     <number>0</number>
+                                    </property>
+                                    <property name="maximum">
+                                     <number>10000</number>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                 </layout>
+                                </widget>
+                               </item>
                                <item>
                                 <spacer name="verticalSpacer_8">
                                  <property name="orientation">
@@ -4955,7 +5096,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                  </property>
                                  <property name="sizeHint" stdset="0">
                                   <size>
-                                   <width>0</width>
+                                   <width>20</width>
                                    <height>0</height>
                                   </size>
                                  </property>
@@ -6007,6 +6148,307 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                            </widget>
                           </item>
                          </layout>
+                        </widget>
+                       </item>
+                      </layout>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QGroupBox" name="groupBox_imuFiltering">
+                      <property name="title">
+                       <string>IMU Filtering</string>
+                      </property>
+                      <layout class="QVBoxLayout" name="verticalLayout_141">
+                       <item>
+                        <layout class="QGridLayout" name="gridLayout_109" columnstretch="0,1">
+                         <item row="0" column="0">
+                          <widget class="QComboBox" name="comboBox_imuFilter_strategy">
+                           <item>
+                            <property name="text">
+                             <string>None</string>
+                            </property>
+                           </item>
+                           <item>
+                            <property name="text">
+                             <string>Madgwick Filter</string>
+                            </property>
+                           </item>
+                           <item>
+                            <property name="text">
+                             <string>Complementary Filter</string>
+                            </property>
+                           </item>
+                          </widget>
+                         </item>
+                         <item row="0" column="1">
+                          <widget class="QLabel" name="label_541">
+                           <property name="text">
+                            <string>IMU filtering strategy used to estimate the orientation.</string>
+                           </property>
+                           <property name="wordWrap">
+                            <bool>true</bool>
+                           </property>
+                           <property name="textInteractionFlags">
+                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                           </property>
+                          </widget>
+                         </item>
+                        </layout>
+                       </item>
+                       <item>
+                        <widget class="QStackedWidget" name="stackedWidget_imuFilter">
+                         <property name="currentIndex">
+                          <number>2</number>
+                         </property>
+                         <widget class="QWidget" name="page_83">
+                          <layout class="QVBoxLayout" name="verticalLayout_144">
+                           <item>
+                            <spacer name="verticalSpacer_80">
+                             <property name="orientation">
+                              <enum>Qt::Vertical</enum>
+                             </property>
+                             <property name="sizeHint" stdset="0">
+                              <size>
+                               <width>20</width>
+                               <height>0</height>
+                              </size>
+                             </property>
+                            </spacer>
+                           </item>
+                          </layout>
+                         </widget>
+                         <widget class="QWidget" name="page_81">
+                          <layout class="QVBoxLayout" name="verticalLayout_142">
+                           <item>
+                            <widget class="QGroupBox" name="groupBox_madgwickfilter">
+                             <property name="title">
+                              <string>Madgwick Filter</string>
+                             </property>
+                             <layout class="QGridLayout" name="gridLayout_110" columnstretch="0,1">
+                              <item row="0" column="0">
+                               <widget class="QDoubleSpinBox" name="doubleSpinBox_imuFilterMadgwickGain">
+                                <property name="suffix">
+                                 <string/>
+                                </property>
+                                <property name="decimals">
+                                 <number>4</number>
+                                </property>
+                                <property name="minimum">
+                                 <double>0.000000000000000</double>
+                                </property>
+                                <property name="maximum">
+                                 <double>1.000000000000000</double>
+                                </property>
+                                <property name="singleStep">
+                                 <double>0.010000000000000</double>
+                                </property>
+                                <property name="value">
+                                 <double>0.010000000000000</double>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="0" column="1">
+                               <widget class="QLabel" name="label_542">
+                                <property name="text">
+                                 <string>Gain.</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="1" column="0">
+                               <widget class="QDoubleSpinBox" name="doubleSpinBox_imuFilterMadgwickZeta">
+                                <property name="suffix">
+                                 <string/>
+                                </property>
+                                <property name="decimals">
+                                 <number>4</number>
+                                </property>
+                                <property name="minimum">
+                                 <double>0.000000000000000</double>
+                                </property>
+                                <property name="maximum">
+                                 <double>1.000000000000000</double>
+                                </property>
+                                <property name="singleStep">
+                                 <double>0.010000000000000</double>
+                                </property>
+                                <property name="value">
+                                 <double>0.010000000000000</double>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="1" column="1">
+                               <widget class="QLabel" name="label_543">
+                                <property name="text">
+                                 <string>Zeta.</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                             </layout>
+                            </widget>
+                           </item>
+                           <item>
+                            <spacer name="verticalSpacer_79">
+                             <property name="orientation">
+                              <enum>Qt::Vertical</enum>
+                             </property>
+                             <property name="sizeHint" stdset="0">
+                              <size>
+                               <width>20</width>
+                               <height>0</height>
+                              </size>
+                             </property>
+                            </spacer>
+                           </item>
+                          </layout>
+                         </widget>
+                         <widget class="QWidget" name="page_82">
+                          <layout class="QVBoxLayout" name="verticalLayout_143">
+                           <item>
+                            <widget class="QGroupBox" name="groupBox_complementaryfilter">
+                             <property name="title">
+                              <string>Complementary Filter</string>
+                             </property>
+                             <layout class="QGridLayout" name="gridLayout_111" columnstretch="0,1">
+                              <item row="2" column="1">
+                               <widget class="QLabel" name="label_547">
+                                <property name="text">
+                                 <string>Do bias estimation.</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="0" column="1">
+                               <widget class="QLabel" name="label_544">
+                                <property name="text">
+                                 <string>Gain acc.</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="2" column="0">
+                               <widget class="QCheckBox" name="checkBox_imuFilterComplementaryDoBiasEstimation">
+                                <property name="text">
+                                 <string/>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="0" column="0">
+                               <widget class="QDoubleSpinBox" name="doubleSpinBox_imuFilterComplementaryGainAcc">
+                                <property name="suffix">
+                                 <string/>
+                                </property>
+                                <property name="decimals">
+                                 <number>4</number>
+                                </property>
+                                <property name="minimum">
+                                 <double>0.000000000000000</double>
+                                </property>
+                                <property name="maximum">
+                                 <double>1.000000000000000</double>
+                                </property>
+                                <property name="singleStep">
+                                 <double>0.010000000000000</double>
+                                </property>
+                                <property name="value">
+                                 <double>0.010000000000000</double>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="1" column="1">
+                               <widget class="QLabel" name="label_545">
+                                <property name="text">
+                                 <string>Bias alpha.</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="1" column="0">
+                               <widget class="QDoubleSpinBox" name="doubleSpinBox_imuFilterComplementaryBiasAlpha">
+                                <property name="suffix">
+                                 <string/>
+                                </property>
+                                <property name="decimals">
+                                 <number>4</number>
+                                </property>
+                                <property name="minimum">
+                                 <double>0.000000000000000</double>
+                                </property>
+                                <property name="maximum">
+                                 <double>1.000000000000000</double>
+                                </property>
+                                <property name="singleStep">
+                                 <double>0.010000000000000</double>
+                                </property>
+                                <property name="value">
+                                 <double>0.010000000000000</double>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="3" column="0">
+                               <widget class="QCheckBox" name="checkBox_imuFilterComplementaryDoAdaptiveGain">
+                                <property name="text">
+                                 <string/>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="3" column="1">
+                               <widget class="QLabel" name="label_548">
+                                <property name="text">
+                                 <string>Do adaptive gain.</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                             </layout>
+                            </widget>
+                           </item>
+                           <item>
+                            <spacer name="verticalSpacer_81">
+                             <property name="orientation">
+                              <enum>Qt::Vertical</enum>
+                             </property>
+                             <property name="sizeHint" stdset="0">
+                              <size>
+                               <width>20</width>
+                               <height>0</height>
+                              </size>
+                             </property>
+                            </spacer>
+                           </item>
+                          </layout>
+                         </widget>
                         </widget>
                        </item>
                       </layout>
@@ -7602,7 +8044,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                        <item row="0" column="1">
                         <widget class="QLabel" name="label_similarity">
                          <property name="text">
-                          <string>T_similarity : Similarity threshold. Values must be &gt;=0.0 ans &lt;=1.0.</string>
+                          <string>T_similarity : Similarity threshold. Values must be &gt;=0.0 and &lt;=1.0.</string>
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>
@@ -9145,10 +9587,10 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                          </property>
                         </widget>
                        </item>
-                       <item row="11" column="0">
+                       <item row="12" column="0">
                         <widget class="QSpinBox" name="spinBox_maxLocalLocationsRetrieved"/>
                        </item>
-                       <item row="7" column="0">
+                       <item row="8" column="0">
                         <widget class="QCheckBox" name="loopClosure_reextract">
                          <property name="text">
                           <string/>
@@ -9174,7 +9616,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                          </property>
                         </widget>
                        </item>
-                       <item row="12" column="1">
+                       <item row="13" column="1">
                         <widget class="QLabel" name="label_scanMatching_5">
                          <property name="text">
                           <string>Ratio of working memory for which local nodes are immunized from transfer.</string>
@@ -9187,7 +9629,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                          </property>
                         </widget>
                        </item>
-                       <item row="7" column="1">
+                       <item row="8" column="1">
                         <widget class="QLabel" name="label_scanMatching_9">
                          <property name="text">
                           <string>Re-extract visual features when computing loop closure transformations.</string>
@@ -9220,7 +9662,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                          </property>
                         </widget>
                        </item>
-                       <item row="13" column="0">
+                       <item row="14" column="0">
                         <widget class="QDoubleSpinBox" name="localDetection_radius">
                          <property name="suffix">
                           <string> m</string>
@@ -9237,7 +9679,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                          </property>
                         </widget>
                        </item>
-                       <item row="12" column="0">
+                       <item row="13" column="0">
                         <widget class="QDoubleSpinBox" name="rgdb_localImmunizationRatio">
                          <property name="suffix">
                           <string/>
@@ -9253,6 +9695,13 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                          </property>
                          <property name="value">
                           <double>0.100000000000000</double>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="10" column="0">
+                        <widget class="QCheckBox" name="memCovOffDiagIgnored">
+                         <property name="text">
+                          <string/>
                          </property>
                         </widget>
                        </item>
@@ -9282,14 +9731,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                          </property>
                         </widget>
                        </item>
-                       <item row="9" column="0">
-                        <widget class="QCheckBox" name="memCovOffDiagIgnored">
-                         <property name="text">
-                          <string/>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="8" column="1">
+                       <item row="9" column="1">
                         <widget class="QLabel" name="label_scanMatching_10">
                          <property name="text">
                           <string>Do local bundle adjustment with neighborhood of the loop closure.</string>
@@ -9302,7 +9744,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                          </property>
                         </widget>
                        </item>
-                       <item row="9" column="1">
+                       <item row="10" column="1">
                         <widget class="QLabel" name="label_scanMatching_11">
                          <property name="text">
                           <string>Ignore off diagonal values of the odometry covariance matrix.</string>
@@ -9312,6 +9754,13 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                          </property>
                          <property name="textInteractionFlags">
                           <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="9" column="0">
+                        <widget class="QCheckBox" name="loopClosure_bunlde">
+                         <property name="text">
+                          <string/>
                          </property>
                         </widget>
                        </item>
@@ -9338,13 +9787,6 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                          </property>
                          <property name="textInteractionFlags">
                           <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="8" column="0">
-                        <widget class="QCheckBox" name="loopClosure_bunlde">
-                         <property name="text">
-                          <string/>
                          </property>
                         </widget>
                        </item>
@@ -9377,7 +9819,14 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                          </property>
                         </widget>
                        </item>
-                       <item row="13" column="1">
+                       <item row="11" column="0">
+                        <widget class="QCheckBox" name="rgbd_loopCovLimited">
+                         <property name="text">
+                          <string/>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="14" column="1">
                         <widget class="QLabel" name="label_space2">
                          <property name="text">
                           <string>Local radius for nodes selection in the local map. This parameter is used in some approaches of the sub-panels.</string>
@@ -9390,7 +9839,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                          </property>
                         </widget>
                        </item>
-                       <item row="11" column="1">
+                       <item row="12" column="1">
                         <widget class="QLabel" name="label_scanMatching_3">
                          <property name="text">
                           <string>Maximum local locations retrieved (0=disabled) near the current pose in the local map or on the current planned path (those on the planned path have priority).</string>
@@ -9400,13 +9849,6 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                          </property>
                          <property name="textInteractionFlags">
                           <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="10" column="0">
-                        <widget class="QCheckBox" name="rgbd_loopCovLimited">
-                         <property name="text">
-                          <string/>
                          </property>
                         </widget>
                        </item>
@@ -9426,7 +9868,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                          </property>
                         </widget>
                        </item>
-                       <item row="10" column="1">
+                       <item row="11" column="1">
                         <widget class="QLabel" name="label_scanMatching_12">
                          <property name="text">
                           <string>Limit covariance of non-neighbor links to minimum covariance of neighbor links. In other words, if covariance of a loop closure link is smaller than the minimum covariance of odometry links, its covariance is set to minimum covariance of odometry links.</string>
@@ -9439,7 +9881,14 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                          </property>
                         </widget>
                        </item>
-                       <item row="14" column="1">
+                       <item row="15" column="0">
+                        <widget class="QSpinBox" name="spinBox_maxOdomCacheSize">
+                         <property name="maximum">
+                          <number>9999</number>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="15" column="1">
                         <widget class="QLabel" name="label_space2_5">
                          <property name="text">
                           <string>Maximum odometry cache size. Used only in localization mode and when maximum graph error parameter is not null. This is used to verify localization transforms to make sure we don't teleport to a location very similar to one we previously localized on. When the cache is full, the whole cache is cleared and the next localization is automatically accepted without verification. Set 0 to disable caching.</string>
@@ -9452,10 +9901,23 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                          </property>
                         </widget>
                        </item>
-                       <item row="14" column="0">
-                        <widget class="QSpinBox" name="spinBox_maxOdomCacheSize">
-                         <property name="maximum">
-                          <number>9999</number>
+                       <item row="7" column="1">
+                        <widget class="QLabel" name="label_scanMatching_7">
+                         <property name="text">
+                          <string>Use odometry instead of IMU orientation to add gravity links to new nodes created. We assume that odometry is already aligned with gravity (e.g., we are using a VIO approach). Gravity constraints are used by graph optimization only if &quot;Optimizer/GravitySigma&quot; is not zero.</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="7" column="0">
+                        <widget class="QCheckBox" name="odomGravity">
+                         <property name="text">
+                          <string/>
                          </property>
                         </widget>
                        </item>
@@ -20107,6 +20569,37 @@ Lower the ratio -&gt; higher the precision.</string>
         </layout>
        </item>
       </layout>
+     </item>
+    </layout>
+   </item>
+   <item row="1" column="0">
+    <layout class="QHBoxLayout" name="horizontalLayout_3">
+     <item>
+      <widget class="QRadioButton" name="radioButton_basic">
+       <property name="text">
+        <string>Basic</string>
+       </property>
+       <property name="checked">
+        <bool>true</bool>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QRadioButton" name="radioButton_advanced">
+       <property name="text">
+        <string>Advanced</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QDialogButtonBox" name="buttonBox_global">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="standardButtons">
+        <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
+       </property>
+      </widget>
      </item>
     </layout>
    </item>

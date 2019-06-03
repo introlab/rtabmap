@@ -47,9 +47,10 @@ public:
 		kVirtualClosure,
 		kNeighborMerged,
 		kPosePrior, // Absolute pose in /world frame, From == To
-		kLandmark,  // Transform /base_link -­­> /landmark, "From" is node observing the landmark "To"
-		kPoseOdom,  // Pose in /odom frame, From == To (mainly used for gravity constraints)
+		kLandmark,  // Transform /base_link -­­> /landmark, "From" is node observing the landmark "To" (landmark is negative id)
+		kGravity,  // Orientation of the base frame accordingly to gravity (From == To)
 		kEnd,
+		kSelfRefLink = 97, // Include kPosePrior and kGravity (all links where From=To)
 		kAllWithLandmarks = 98,
 		kAllWithoutLandmarks = 99,
 		kUndef = 99};

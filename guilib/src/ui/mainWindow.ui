@@ -27,7 +27,7 @@
      <x>0</x>
      <y>0</y>
      <width>1012</width>
-     <height>25</height>
+     <height>22</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -257,9 +257,20 @@
        </property>
        <addaction name="actionStereoTara"/>
       </widget>
+      <widget class="QMenu" name="menuRealSense_T265">
+       <property name="title">
+        <string>RealSense T265</string>
+       </property>
+       <property name="icon">
+        <iconset resource="../GuiLib.qrc">
+         <normaloff>:/images/t265.png</normaloff>:/images/t265.png</iconset>
+       </property>
+       <addaction name="actionRealSense2_T265"/>
+      </widget>
       <addaction name="menuBumblebee2_2"/>
       <addaction name="menuZed_camera"/>
       <addaction name="menuTara_Camera"/>
+      <addaction name="menuRealSense_T265"/>
      </widget>
      <addaction name="menuRGB_D_camera"/>
      <addaction name="menuStereo_camera"/>
@@ -1539,6 +1550,14 @@
    </property>
    <property name="toolTip">
     <string>RGBD-SLAM (stamp tx ty tz qx qy qz qw)</string>
+   </property>
+  </action>
+  <action name="actionRealSense2_T265">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>RealSense2</string>
    </property>
   </action>
  </widget>

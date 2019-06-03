@@ -120,24 +120,35 @@ void Signature::addLink(const Link & link)
 {
 	UDEBUG("Add link %d to %d (type=%d var=%f,%f)", link.to(), this->id(), (int)link.type(), link.transVariance(), link.rotVariance());
 	UASSERT_MSG(link.from() == this->id(), uFormat("%d->%d for signature %d (type=%d)", link.from(), link.to(), this->id(), link.type()).c_str());
-	UASSERT_MSG((link.to() != this->id()) || link.type()==Link::kPosePrior, uFormat("%d->%d for signature %d (type=%d)", link.from(), link.to(), this->id(), link.type()).c_str());
-	std::pair<std::map<int, Link>::iterator, bool> pair = _links.insert(std::make_pair(link.to(), link));
-	UASSERT_MSG(pair.second, uFormat("Link %d (type=%d) already added to signature %d!", link.to(), link.type(), this->id()).c_str());
+	UASSERT_MSG((link.to() != this->id()) || link.type()==Link::kPosePrior || link.type()==Link::kGravity, uFormat("%d->%d for signature %d (type=%d)", link.from(), link.to(), this->id(), link.type()).c_str());
+	UASSERT_MSG(link.to() == this->id() || _links.find(link.to()) == _links.end(), uFormat("Link %d (type=%d) already added to signature %d!", link.to(), link.type(), this->id()).c_str());
+	_links.insert(std::make_pair(link.to(), link));
 	_linksModified = true;
 }
 
-bool Signature::hasLink(int idTo) const
+bool Signature::hasLink(int idTo, Link::Type type) const
 {
-	return _links.find(idTo) != _links.end();
+	if(type == Link::kUndef)
+	{
+		return _links.find(idTo) != _links.end();
+	}
+	for(std::multimap<int, Link>::const_iterator iter=_links.find(idTo); iter!=_links.end() && iter->first == idTo; ++iter)
+	{
+		if(type == iter->second.type())
+		{
+			return true;
+		}
+	}
+	return false;
 }
 
 void Signature::changeLinkIds(int idFrom, int idTo)
 {
-	std::map<int, Link>::iterator iter = _links.find(idFrom);
-	if(iter != _links.end())
+	std::multimap<int, Link>::iterator iter = _links.find(idFrom);
+	while(iter != _links.end() && iter->first == idFrom)
 	{
 		Link link = iter->second;
-		_links.erase(iter);
+		_links.erase(iter++);
 		link.setTo(idTo);
 		_links.insert(std::make_pair(idTo, link));
 		_linksModified = true;
@@ -164,7 +175,7 @@ void Signature::removeLink(int idTo)
 
 void Signature::removeVirtualLinks()
 {
-	for(std::map<int, Link>::iterator iter=_links.begin(); iter!=_links.end();)
+	for(std::multimap<int, Link>::iterator iter=_links.begin(); iter!=_links.end();)
 	{
 		if(iter->second.type() == Link::kVirtualClosure)
 		{
@@ -276,7 +287,7 @@ cv::Mat Signature::getPoseCovariance() const
 	cv::Mat covariance = cv::Mat::eye(6,6,CV_64FC1);
 	if(_links.size())
 	{
-		for(std::map<int, Link>::const_iterator iter = _links.begin(); iter!=_links.end(); ++iter)
+		for(std::multimap<int, Link>::const_iterator iter = _links.begin(); iter!=_links.end(); ++iter)
 		{
 			if(iter->second.kNeighbor)
 			{

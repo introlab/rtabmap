@@ -467,4 +467,41 @@ bool Transform::canParseString(const std::string & string)
 	return list.size() == 0 || list.size() == 3 || list.size() == 6 || list.size() == 7 || list.size() == 9 || list.size() == 12;
 }
 
+Transform Transform::getClosestTransform(
+				const std::map<double, Transform> & tfBuffer,
+				const double & stamp,
+				double * stampDiff)
+{
+	UASSERT(!tfBuffer.empty());
+	std::map<double, Transform>::const_iterator imuIterB = tfBuffer.lower_bound(stamp);
+	std::map<double, Transform>::const_iterator imuIterA = imuIterB;
+	if(imuIterA != tfBuffer.begin())
+	{
+		imuIterA = --imuIterA;
+	}
+	if(imuIterB == tfBuffer.end())
+	{
+		imuIterB = --imuIterB;
+	}
+	Transform imuT;
+	if(imuIterB->first == stamp || imuIterA == imuIterB)
+	{
+		imuT = imuIterB->second;
+		if(stampDiff)
+		{
+			*stampDiff = fabs(imuIterB->first - stamp);
+		}
+	}
+	else if(imuIterA != imuIterB)
+	{
+		//interpolate:
+		imuT = imuIterA->second.interpolate((stamp-imuIterA->first) / (imuIterB->first-imuIterA->first), imuIterB->second);
+		if(stampDiff)
+		{
+			*stampDiff = 0.0;
+		}
+	}
+	return imuT;
+}
+
 }

@@ -530,7 +530,7 @@ std::map<int, Transform> OptimizerG2O::optimize(
 						}
 					}
 				}
-				else if(!isSlam2d() && gravitySigma() > 0 && iter->second.type() == Link::kPoseOdom && poses.find(iter->first) != poses.end())
+				else if(!isSlam2d() && gravitySigma() > 0 && iter->second.type() == Link::kGravity && poses.find(iter->first) != poses.end())
 				{
 					Eigen::Matrix<double, 6, 1> m;
 					// Up vector in robot frame
@@ -1403,7 +1403,7 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 				{
 #ifndef RTABMAP_ORB_SLAM2
 					g2o::HyperGraph::Edge * edge = 0;
-					if(gravitySigma() > 0 && iter->second.type() == Link::kPoseOdom && poses.find(iter->first) != poses.end())
+					if(gravitySigma() > 0 && iter->second.type() == Link::kGravity && poses.find(iter->first) != poses.end())
 					{
 						Eigen::Matrix<double, 6, 1> m;
 						// Up vector in robot frame
@@ -1417,6 +1417,9 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 
 						g2o::VertexCam* v1 = (g2o::VertexCam*)optimizer.vertex(id1);
 						EdgeSBACamGravity* priorEdge(new EdgeSBACamGravity());
+						std::map<int, CameraModel>::const_iterator iterModel = models.find(iter->first);
+						UASSERT(iterModel != models.end() && !iterModel->second.localTransform().isNull());
+						priorEdge->setCameraInvLocalTransform(iterModel->second.localTransform().inverse().toEigen3d().linear());
 						priorEdge->setMeasurement(m);
 						priorEdge->setInformation(information);
 						priorEdge->vertices()[0] = v1;
@@ -1929,7 +1932,11 @@ bool OptimizerG2O::saveGraph(
 			bool isSE2 = true;
 			bool isSE3 = true;
 
-			if (iter->second.type() == Link::kPosePrior)
+			if (iter->second.type() == Link::kGravity)
+			{
+				continue;
+			}
+			else if (iter->second.type() == Link::kPosePrior)
 			{
 				if (this->priorsIgnored())
 				{

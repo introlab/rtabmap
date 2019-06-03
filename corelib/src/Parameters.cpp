@@ -180,6 +180,9 @@ rtabmap::ParametersMap Parameters::getDefaultOdometryParameters(bool stereo, boo
 			(icp && group.compare("Icp") == 0) ||
 			(vis && Parameters::isFeatureParameter(iter->first)) ||
 			group.compare("Reg") == 0 ||
+			group.compare("Optimizer") == 0 ||
+			group.compare("g2o") == 0 ||
+			group.compare("GTSAM") == 0 ||
 			(vis && group.compare("Vis") == 0) ||
 			iter->first.compare(kRtabmapPublishRAMUsage())==0)
 		{
@@ -233,6 +236,14 @@ const std::map<std::string, std::pair<bool, std::string> > & Parameters::getRemo
 	if(removedParameters_.empty())
 	{
 		// removed parameters
+
+		// 0.19.3
+		removedParameters_.insert(std::make_pair("Aruco/Dictionary",             std::make_pair(true,  Parameters::kMarkerDictionary())));
+		removedParameters_.insert(std::make_pair("Aruco/MarkerLength",           std::make_pair(true,  Parameters::kMarkerLength())));
+		removedParameters_.insert(std::make_pair("Aruco/MaxDepthError",          std::make_pair(true,  Parameters::kMarkerMaxDepthError())));
+		removedParameters_.insert(std::make_pair("Aruco/VarianceLinear",         std::make_pair(true,  Parameters::kMarkerVarianceLinear())));
+		removedParameters_.insert(std::make_pair("Aruco/VarianceAngular",        std::make_pair(true,  Parameters::kMarkerVarianceAngular())));
+		removedParameters_.insert(std::make_pair("Aruco/CornerRefinementMethod", std::make_pair(true,  Parameters::kMarkerCornerRefinementMethod())));
 
 		// 0.17.5
 		removedParameters_.insert(std::make_pair("Grid/OctoMapOccupancyThr",     std::make_pair(true,  Parameters::kGridGlobalOccupancyThr())));
@@ -588,6 +599,12 @@ ParametersMap Parameters::parseArguments(int argc, char * argv[], bool onlyParam
 #endif
 				str = "With ORB OcTree:";
 #ifdef RTABMAP_ORB_OCTREE
+				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
+#else
+				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
+#endif
+				str = "With Madgwick:";
+#ifdef RTABMAP_MADGWICK
 				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
 #else
 				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;

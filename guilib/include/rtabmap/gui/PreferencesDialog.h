@@ -102,6 +102,7 @@ public:
 		kSrcStereoZed      = 104,
 		kSrcStereoUsb      = 105,
 		kSrcStereoTara 	   = 106,
+		kSrcStereoRealSense2 = 107,
 
 		kSrcRGB            = 200,
 		kSrcUsbDevice      = 200,
@@ -242,6 +243,7 @@ public:
 
 	bool isSourceDatabaseStampsUsed() const;
 	bool isSourceRGBDColorOnly() const;
+	int getIMUFilteringStrategy() const;
 	bool isDepthFilteringAvailable() const;
 	QString getSourceDistortionModel() const;
 	bool isBilateralFiltering() const;
