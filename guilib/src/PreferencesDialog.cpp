@@ -1772,9 +1772,9 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->comboBox_realsenseRGBSource->setCurrentIndex(0);
 		_ui->checkbox_rs2_emitter->setChecked(true);
 		_ui->checkbox_rs2_irDepth->setChecked(false);
-		_ui->spinBox_rs2_width->setValue(640);
+		_ui->spinBox_rs2_width->setValue(848);
 		_ui->spinBox_rs2_height->setValue(480);
-		_ui->spinBox_rs2_rate->setValue(30);
+		_ui->spinBox_rs2_rate->setValue(60);
 		_ui->lineEdit_openniOniPath->clear();
 		_ui->lineEdit_openni2OniPath->clear();
 		_ui->lineEdit_cameraRGBDImages_path_rgb->setText("");

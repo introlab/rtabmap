@@ -95,7 +95,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>12</number>
+                <number>5</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,1">
@@ -4100,7 +4100,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                   <item row="0" column="1">
                                    <widget class="QLabel" name="label_468">
                                     <property name="text">
-                                     <string>Emitter enabled</string>
+                                     <string>IR emitter enabled</string>
                                     </property>
                                     <property name="wordWrap">
                                      <bool>true</bool>
@@ -4120,7 +4120,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                   <item row="1" column="1">
                                    <widget class="QLabel" name="label_471">
                                     <property name="text">
-                                     <string>Use IR for RGB image.</string>
+                                     <string>Use IR for RGB image. Tracking will be more accurate (field-of-view of the IR camera is larger with less motion blur). Make sure to disable IR emitter. </string>
                                     </property>
                                     <property name="wordWrap">
                                      <bool>true</bool>

@@ -204,7 +204,7 @@ Transform OdometryF2M::computeTransform(
 	{
 		if(data.imu().orientation()[0] == 0.0 && data.imu().orientation()[1] == 0.0 && data.imu().orientation()[2] == 0.0)
 		{
-			UERROR("IMU received doesn't have orientation set, it is ignored.");
+			UERROR("IMU received doesn't have orientation set, it is ignored. If you are using RTAB-Map standalone, enable IMU filtering in Preferences->Source panel. On ROS, use \"imu_filter_madgwick\" or \"imu_complementary_filter\" packages to compute the orientation.");
 		}
 		else
 		{
