@@ -64,6 +64,8 @@ CameraRealSense2::CameraRealSense2(
 	depthIntrinsics_(new rs2_intrinsics),
 	rgbIntrinsics_(new rs2_intrinsics),
 	depthToRGBExtrinsics_(new rs2_extrinsics),
+	hostStartStamp_(0.0),
+	cameraStartStamp_(0.0),
 	emitterEnabled_(true),
 	irDepth_(false),
 	rectifyImages_(true),
@@ -79,26 +81,50 @@ CameraRealSense2::CameraRealSense2(
 CameraRealSense2::~CameraRealSense2()
 {
 #ifdef RTABMAP_REALSENSE2
-	for(rs2::sensor _sensor : dev_->query_sensors())
+	try
 	{
-		try
+		for(rs2::sensor _sensor : dev_->query_sensors())
 		{
-			_sensor.stop();
-			_sensor.close();
-		}
-		catch(const rs2::wrong_api_call_sequence_error & error)
-		{
-			UINFO("%s", error.what());
+			try
+			{
+				_sensor.stop();
+				_sensor.close();
+			}
+			catch(const rs2::error & error)
+			{
+				UWARN("%s", error.what());
+			}
 		}
 	}
-	delete ctx_;
-	delete dev_;
-	delete syncer_;
+	catch(const rs2::error & error)
+	{
+		UINFO("%s", error.what());
+	}
+	try {
+		delete ctx_;
+	}
+	catch(const rs2::error & error)
+	{
+		UWARN("%s", error.what());
+	}
+	try {
+		delete dev_;
+	}
+	catch(const rs2::error & error)
+	{
+		UWARN("%s", error.what());
+	}
+	try {
+		delete syncer_;
+	}
+	catch(const rs2::error & error)
+	{
+		UWARN("%s", error.what());
+	}
 	delete depthIntrinsics_;
 	delete rgbIntrinsics_;
 	delete depthToRGBExtrinsics_;
 #endif
-	UDEBUG("");
 }
 
 #ifdef RTABMAP_REALSENSE2
@@ -186,7 +212,7 @@ void CameraRealSense2::imu_callback(rs2::frame frame)
 	if(stream == RS2_STREAM_GYRO)
 	{
 		gyroBuffer_.insert(gyroBuffer_.end(), std::make_pair(frame.get_timestamp(), crnt_reading));
-		if(gyroBuffer_.size() > 10)
+		if(gyroBuffer_.size() > 100)
 		{
 			gyroBuffer_.erase(gyroBuffer_.begin());
 		}
@@ -194,7 +220,7 @@ void CameraRealSense2::imu_callback(rs2::frame frame)
 	else
 	{
 		accBuffer_.insert(accBuffer_.end(), std::make_pair(frame.get_timestamp(), crnt_reading));
-		if(accBuffer_.size() > 10)
+		if(accBuffer_.size() > 100)
 		{
 			accBuffer_.erase(accBuffer_.begin());
 		}
@@ -210,20 +236,21 @@ Transform CameraRealSense2::realsense2PoseRotationInv_ = realsense2PoseRotation_
 void CameraRealSense2::pose_callback(rs2::frame frame)
 {
 	rs2_pose pose = frame.as<rs2::pose_frame>().get_pose_data();
-	Transform poseT(
-			pose.translation.x,
-			pose.translation.y,
-			pose.translation.z,
-			pose.rotation.x,
-			pose.rotation.y,
-			pose.rotation.z,
-			pose.rotation.w);
+	Transform poseT = Transform(
+				pose.translation.x,
+				pose.translation.y,
+				pose.translation.z,
+				pose.rotation.x,
+				pose.rotation.y,
+				pose.rotation.z,
+				pose.rotation.w);
 	poseT = realsense2PoseRotation_ * poseT * realsense2PoseRotationInv_;
+
 	UDEBUG("POSE callback! %f %s (confidence=%d)", frame.get_timestamp(), poseT.prettyPrint().c_str(), (int)pose.tracker_confidence);
 
 	UScopeMutex sm(poseMutex_);
 	poseBuffer_.insert(poseBuffer_.end(), std::make_pair(frame.get_timestamp(), std::make_pair(poseT, pose.tracker_confidence)));
-	if(poseBuffer_.size() > 10)
+	if(poseBuffer_.size() > 100)
 	{
 		poseBuffer_.erase(poseBuffer_.begin());
 	}
@@ -236,6 +263,14 @@ void CameraRealSense2::frame_callback(rs2::frame frame)
 }
 void CameraRealSense2::multiple_message_callback(rs2::frame frame)
 {
+	if(hostStartStamp_ == 0 && cameraStartStamp_ == 0)
+	{
+		hostStartStamp_ = UTimer::now();
+	}
+	if(cameraStartStamp_ == 0)
+	{
+		cameraStartStamp_ = frame.get_timestamp();
+	}
     auto stream = frame.get_profile().stream_type();
     switch (stream)
     {
@@ -870,7 +905,7 @@ SensorData CameraRealSense2::captureImage(CameraInfo * info)
 		}
 		if (frameset.size() == 2)
 		{
-			double stamp = UTimer::now();
+			double stamp = (frameset.get_timestamp() - cameraStartStamp_) / 1000.0 + hostStartStamp_;
 			UDEBUG("Frameset arrived.");
 			bool is_rgb_arrived = false;
 			bool is_depth_arrived = false;

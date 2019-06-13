@@ -114,6 +114,8 @@ private:
 	std::map<double, std::pair<Transform, unsigned int> > poseBuffer_; // <stamp, <Pose, confidence: 1=lost, 2=low, 3=high> >
 	UMutex poseMutex_;
 	UMutex imuMutex_;
+	double hostStartStamp_;
+	double cameraStartStamp_;
 
 	bool emitterEnabled_;
 	bool irDepth_;

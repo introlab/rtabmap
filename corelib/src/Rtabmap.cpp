@@ -87,6 +87,7 @@ Rtabmap::Rtabmap() :
 	_maxMemoryAllowed(Parameters::defaultRtabmapMemoryThr()), // 0=inf
 	_loopThr(Parameters::defaultRtabmapLoopThr()),
 	_loopRatio(Parameters::defaultRtabmapLoopRatio()),
+	_localizationMaxDistance(Parameters::defaultRGBDMaxLocalizationDistance()),
 	_verifyLoopClosureHypothesis(Parameters::defaultVhEpEnabled()),
 	_maxRetrieved(Parameters::defaultRtabmapMaxRetrieved()),
 	_maxLocalRetrieved(Parameters::defaultRGBDMaxLocalRetrieved()),
@@ -441,6 +442,7 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kRtabmapMemoryThr(), _maxMemoryAllowed);
 	Parameters::parse(parameters, Parameters::kRtabmapLoopThr(), _loopThr);
 	Parameters::parse(parameters, Parameters::kRtabmapLoopRatio(), _loopRatio);
+	Parameters::parse(parameters, Parameters::kRGBDMaxLocalizationDistance(), _localizationMaxDistance);
 	Parameters::parse(parameters, Parameters::kVhEpEnabled(), _verifyLoopClosureHypothesis);
 	Parameters::parse(parameters, Parameters::kRtabmapMaxRetrieved(), _maxRetrieved);
 	Parameters::parse(parameters, Parameters::kRGBDMaxLocalRetrieved(), _maxLocalRetrieved);
@@ -2143,6 +2145,12 @@ bool Rtabmap::process(
 				UWARN("Rejected loop closure %d -> %d: %s",
 						_loopClosureHypothesis.first, signature->id(), info.rejectedMsg.c_str());
 			}
+			else if(!_memory->isIncremental() && _localizationMaxDistance>0.0f && transform.getNorm() > _localizationMaxDistance)
+			{
+				rejectedHypothesis = true;
+				UWARN("Rejected localization %d -> %d because distance to map (%fm) is over %s=%fm.",
+						_loopClosureHypothesis.first, signature->id(), transform.getNorm(), Parameters::kRGBDMaxLocalizationDistance().c_str(), _localizationMaxDistance);
+			}
 			else
 			{
 				transform = transform.inverse();
@@ -2266,6 +2274,11 @@ bool Rtabmap::process(
 				}
 				UDEBUG("nearestPaths=%d proximityMaxPaths=%d", (int)nearestPaths.size(), _proximityMaxPaths);
 
+				float proximityFilteringRadius = _proximityFilteringRadius;
+				if(!_memory->isIncremental() && _localizationMaxDistance>0.0f && (proximityFilteringRadius <= 0.0f || _localizationMaxDistance<proximityFilteringRadius))
+				{
+					proximityFilteringRadius = _localizationMaxDistance;
+				}
 				for(std::map<NearestPathKey, std::map<int, Transform> >::const_reverse_iterator iter=nearestPaths.rbegin();
 					iter!=nearestPaths.rend() &&
 					(_memory->isIncremental() || lastProximitySpaceClosureId == 0) &&
@@ -2294,8 +2307,8 @@ bool Rtabmap::process(
 					{
 						// nearest pose must not be linked to current location and enough close
 						if(!signature->hasLink(nearestId) &&
-							(_proximityFilteringRadius <= 0.0f ||
-							 _optimizedPoses.at(signature->id()).getDistanceSquared(_optimizedPoses.at(nearestId)) < _proximityFilteringRadius*_proximityFilteringRadius))
+							(proximityFilteringRadius <= 0.0f ||
+							 _optimizedPoses.at(signature->id()).getDistanceSquared(_optimizedPoses.at(nearestId)) < proximityFilteringRadius*proximityFilteringRadius))
 						{
 							++localVisualPathsChecked;
 							RegistrationInfo info;
@@ -2304,7 +2317,7 @@ bool Rtabmap::process(
 							if(!transform.isNull())
 							{
 								transform = transform.inverse();
-								if(_proximityFilteringRadius <= 0 || transform.getNormSquared() <= _proximityFilteringRadius*_proximityFilteringRadius)
+								if(proximityFilteringRadius <= 0 || transform.getNormSquared() <= proximityFilteringRadius*proximityFilteringRadius)
 								{
 									UINFO("[Visual] Add local loop closure in SPACE (%d->%d) %s",
 											signature->id(),
@@ -2331,7 +2344,7 @@ bool Rtabmap::process(
 								{
 									UWARN("Ignoring local loop closure with %d because resulting "
 										  "transform is too large!? (%fm > %fm)",
-											nearestId, transform.getNorm(), _proximityFilteringRadius);
+											nearestId, transform.getNorm(), proximityFilteringRadius);
 								}
 							}
 						}
@@ -2414,10 +2427,10 @@ bool Rtabmap::process(
 							}
 
 							std::map<int, Transform> filteredPath;
-							if(optimizedLocalPath.size() > 2 && _proximityFilteringRadius > 0.0f)
+							if(optimizedLocalPath.size() > 2 && proximityFilteringRadius > 0.0f)
 							{
 								// path filtering
-								filteredPath = graph::radiusPosesFiltering(optimizedLocalPath, _proximityFilteringRadius, 0, true);
+								filteredPath = graph::radiusPosesFiltering(optimizedLocalPath, proximityFilteringRadius, 0, true);
 								// make sure the current pose is still here
 								filteredPath.insert(*optimizedLocalPath.find(nearestId));
 							}
