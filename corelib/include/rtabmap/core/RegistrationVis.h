@@ -85,6 +85,8 @@ private:
 	bool _guessMatchToProjection;
 	int _bundleAdjustment;
 	bool _depthAsMask;
+	float _minInliersDistributionThr;
+	float _maxInliersMeanDistance;
 
 	ParametersMap _featureParameters;
 	ParametersMap _bundleParameters;

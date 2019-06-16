@@ -230,7 +230,7 @@ private:
 	unsigned int _maxMemoryAllowed; // signatures count in WM
 	float _loopThr;
 	float _loopRatio;
-	float _localizationMaxDistance;
+	float _maxLoopClosureDistance;
 	bool _verifyLoopClosureHypothesis;
 	unsigned int _maxRetrieved;
 	unsigned int _maxLocalRetrieved;

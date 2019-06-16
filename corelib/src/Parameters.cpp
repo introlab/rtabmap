@@ -237,6 +237,9 @@ const std::map<std::string, std::pair<bool, std::string> > & Parameters::getRemo
 	{
 		// removed parameters
 
+		// 0.19.4
+		removedParameters_.insert(std::make_pair("RGBD/MaxLocalizationDistance", std::make_pair(true,  Parameters::kRGBDMaxLoopClosureDistance())));
+
 		// 0.19.3
 		removedParameters_.insert(std::make_pair("Aruco/Dictionary",             std::make_pair(true,  Parameters::kMarkerDictionary())));
 		removedParameters_.insert(std::make_pair("Aruco/MarkerLength",           std::make_pair(true,  Parameters::kMarkerLength())));

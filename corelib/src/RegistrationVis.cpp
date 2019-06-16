@@ -68,7 +68,9 @@ RegistrationVis::RegistrationVis(const ParametersMap & parameters, Registration 
 		_guessWinSize(Parameters::defaultVisCorGuessWinSize()),
 		_guessMatchToProjection(Parameters::defaultVisCorGuessMatchToProjection()),
 		_bundleAdjustment(Parameters::defaultVisBundleAdjustment()),
-		_depthAsMask(Parameters::defaultVisDepthAsMask())
+		_depthAsMask(Parameters::defaultVisDepthAsMask()),
+		_minInliersDistributionThr(Parameters::defaultVisMinInliersDistribution()),
+		_maxInliersMeanDistance(Parameters::defaultVisMeanInliersDistance())
 {
 	_featureParameters = Parameters::getDefaultParameters();
 	uInsert(_featureParameters, ParametersPair(Parameters::kKpNNStrategy(), _featureParameters.at(Parameters::kVisCorNNType())));
@@ -112,6 +114,8 @@ void RegistrationVis::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kVisCorGuessMatchToProjection(), _guessMatchToProjection);
 	Parameters::parse(parameters, Parameters::kVisBundleAdjustment(), _bundleAdjustment);
 	Parameters::parse(parameters, Parameters::kVisDepthAsMask(), _depthAsMask);
+	Parameters::parse(parameters, Parameters::kVisMinInliersDistribution(), _minInliersDistributionThr);
+	Parameters::parse(parameters, Parameters::kVisMeanInliersDistance(), _maxInliersMeanDistance);
 	uInsert(_bundleParameters, parameters);
 
 	UASSERT_MSG(_minInliers >= 1, uFormat("value=%d", _minInliers).c_str());
@@ -555,6 +559,7 @@ Transform RegistrationVis::computeTransformationImpl(
 					cv::cvtColor(imageFrom, tmp, cv::COLOR_BGR2GRAY);
 					imageFrom = tmp;
 				}
+				UDEBUG("cleared orignalWordsFromIds");
 				orignalWordsFromIds.clear();
 				descriptorsFrom = detectorFrom->generateDescriptors(imageFrom, kptsFrom);
 			}
@@ -729,6 +734,7 @@ Transform RegistrationVis::computeTransformationImpl(
 
 			UDEBUG("descriptorsFrom=%d", descriptorsFrom.rows);
 			UDEBUG("descriptorsTo=%d", descriptorsTo.rows);
+			UDEBUG("orignalWordsFromIds=%d", (int)orignalWordsFromIds.size());
 
 			// We have all data we need here, so match!
 			if(descriptorsFrom.rows > 0 && descriptorsTo.rows > 0)
@@ -1631,6 +1637,99 @@ Transform RegistrationVis::computeTransformationImpl(
 		{
 			transform = transforms[0];
 			covariance = covariances[0];
+		}
+
+		if(!transform.isNull() && !allInliers.empty() && (_minInliersDistributionThr>0.0f || _maxInliersMeanDistance>0.0f))
+		{
+			cv::Mat pcaData;
+			float cx=0, cy=0, w=0, h=0;
+			if(_minInliersDistributionThr > 0)
+			{
+				if(toSignature.sensorData().stereoCameraModel().isValidForProjection() ||
+					(toSignature.sensorData().cameraModels().size() == 1 && toSignature.sensorData().cameraModels()[0].isValidForReprojection()))
+				{
+					const CameraModel & cameraModel = toSignature.sensorData().stereoCameraModel().isValidForProjection()?toSignature.sensorData().stereoCameraModel().left():toSignature.sensorData().cameraModels()[0];
+					cx = cameraModel.cx();
+					cy = cameraModel.cy();
+					w = cameraModel.imageWidth();
+					h = cameraModel.imageHeight();
+
+					if(w>0 && h>0)
+					{
+						pcaData = cv::Mat(allInliers.size(), 2, CV_32FC1);
+					}
+					else
+					{
+						UERROR("Invalid calibration image size (%dx%d), cannot compute inliers distribution! (see %s=%f)", w, h, Parameters::kVisMinInliersDistribution().c_str(), _minInliersDistributionThr);
+					}
+				}
+				else if(toSignature.sensorData().cameraModels().size() > 1)
+				{
+					UERROR("Multi-camera not supported when computing inliers distribution! (see %s=%f)", Parameters::kVisMinInliersDistribution().c_str(), _minInliersDistributionThr);
+				}
+				else
+				{
+					UERROR("Calibration not valid, cannot compute inliers distribution! (see %s=%f)", Parameters::kVisMinInliersDistribution().c_str(), _minInliersDistributionThr);
+				}
+			}
+
+			Transform transformInv = transform.inverse();
+			std::vector<float> distances;
+			if(_maxInliersMeanDistance>0.0f)
+			{
+				distances.reserve(allInliers.size());
+			}
+			for(unsigned int i=0; i<allInliers.size(); ++i)
+			{
+				if(_maxInliersMeanDistance>0.0f)
+				{
+					std::multimap<int, cv::Point3f>::const_iterator words3Iter = fromSignature.getWords3().find(allInliers[i]);
+					if(words3Iter != fromSignature.getWords3().end())
+					{
+						if(uIsFinite(words3Iter->second.x))
+						{
+							cv::Point3f pt = util3d::transformPoint(words3Iter->second, transformInv);
+							distances.push_back(pt.x);
+						}
+					}
+				}
+
+				if(!pcaData.empty())
+				{
+					std::multimap<int, cv::KeyPoint>::const_iterator wordsIter = fromSignature.getWords().find(allInliers[i]);
+					UASSERT(wordsIter != fromSignature.getWords().end());
+					float * ptr = pcaData.ptr<float>(i, 0);
+					ptr[0] = (wordsIter->second.pt.x-cx) / w;
+					ptr[1] = (wordsIter->second.pt.y-cy) / h;
+				}
+			}
+
+			if(!distances.empty())
+			{
+				info.inliersMeanDistance = uMean(distances);
+
+				if(info.inliersMeanDistance > _maxInliersMeanDistance)
+				{
+					msg = uFormat("The mean distance of the inliers is over %s threshold (%f)",
+							info.inliersMeanDistance, Parameters::kVisMeanInliersDistance().c_str(), _maxInliersMeanDistance);
+					transform.setNull();
+				}
+			}
+
+			if(!transform.isNull() && !pcaData.empty())
+			{
+				cv::Mat pcaEigenVectors, pcaEigenValues;
+				cv::PCA pca_analysis(pcaData, cv::Mat(), CV_PCA_DATA_AS_ROW);
+				// We take the second eigen value
+				info.inliersDistribution = pca_analysis.eigenvalues.at<float>(0, 1);
+
+				if(info.inliersDistribution < _minInliersDistributionThr)
+				{
+					msg = uFormat("The distribution (%f) of inliers is under %s threshold (%f)",
+							info.inliersDistribution, Parameters::kVisMinInliersDistribution().c_str(), _minInliersDistributionThr);
+					transform.setNull();
+				}
+			}
 		}
 	}
 	else if(toSignature.sensorData().isValid())

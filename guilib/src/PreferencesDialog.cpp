@@ -947,7 +947,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->groupBox_localDetection_time->setObjectName(Parameters::kRGBDProximityByTime().c_str());
 	_ui->groupBox_localDetection_space->setObjectName(Parameters::kRGBDProximityBySpace().c_str());
 	_ui->localDetection_radius->setObjectName(Parameters::kRGBDLocalRadius().c_str());
-	_ui->maxLocalizationDistance->setObjectName(Parameters::kRGBDMaxLocalizationDistance().c_str());
+	_ui->maxLocalizationDistance->setObjectName(Parameters::kRGBDMaxLoopClosureDistance().c_str());
 	_ui->localDetection_maxDiffID->setObjectName(Parameters::kRGBDProximityMaxGraphDepth().c_str());
 	_ui->localDetection_maxNeighbors->setObjectName(Parameters::kRGBDProximityPathMaxNeighbors().c_str());
 	_ui->localDetection_maxPaths->setObjectName(Parameters::kRGBDProximityMaxPaths().c_str());
@@ -971,6 +971,8 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->loopClosure_bowInlierDistance->setObjectName(Parameters::kVisInlierDistance().c_str());
 	_ui->loopClosure_bowIterations->setObjectName(Parameters::kVisIterations().c_str());
 	_ui->loopClosure_bowRefineIterations->setObjectName(Parameters::kVisRefineIterations().c_str());
+	_ui->visMeanDistance->setObjectName(Parameters::kVisMeanInliersDistance().c_str());
+	_ui->visMinDistribution->setObjectName(Parameters::kVisMinInliersDistribution().c_str());
 	_ui->loopClosure_estimationType->setObjectName(Parameters::kVisEstimationType().c_str());
 	connect(_ui->loopClosure_estimationType, SIGNAL(currentIndexChanged(int)), _ui->stackedWidget_loopClosureEstimation, SLOT(setCurrentIndex(int)));
 	_ui->stackedWidget_loopClosureEstimation->setCurrentIndex(Parameters::defaultVisEstimationType());

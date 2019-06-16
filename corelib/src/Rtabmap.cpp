@@ -87,7 +87,7 @@ Rtabmap::Rtabmap() :
 	_maxMemoryAllowed(Parameters::defaultRtabmapMemoryThr()), // 0=inf
 	_loopThr(Parameters::defaultRtabmapLoopThr()),
 	_loopRatio(Parameters::defaultRtabmapLoopRatio()),
-	_localizationMaxDistance(Parameters::defaultRGBDMaxLocalizationDistance()),
+	_maxLoopClosureDistance(Parameters::defaultRGBDMaxLoopClosureDistance()),
 	_verifyLoopClosureHypothesis(Parameters::defaultVhEpEnabled()),
 	_maxRetrieved(Parameters::defaultRtabmapMaxRetrieved()),
 	_maxLocalRetrieved(Parameters::defaultRGBDMaxLocalRetrieved()),
@@ -442,7 +442,7 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kRtabmapMemoryThr(), _maxMemoryAllowed);
 	Parameters::parse(parameters, Parameters::kRtabmapLoopThr(), _loopThr);
 	Parameters::parse(parameters, Parameters::kRtabmapLoopRatio(), _loopRatio);
-	Parameters::parse(parameters, Parameters::kRGBDMaxLocalizationDistance(), _localizationMaxDistance);
+	Parameters::parse(parameters, Parameters::kRGBDMaxLoopClosureDistance(), _maxLoopClosureDistance);
 	Parameters::parse(parameters, Parameters::kVhEpEnabled(), _verifyLoopClosureHypothesis);
 	Parameters::parse(parameters, Parameters::kRtabmapMaxRetrieved(), _maxRetrieved);
 	Parameters::parse(parameters, Parameters::kRGBDMaxLocalRetrieved(), _maxLocalRetrieved);
@@ -2128,6 +2128,8 @@ bool Rtabmap::process(
 	int loopClosureVisualMatches = 0;
 	float loopClosureLinearVariance = 0.0f;
 	float loopClosureAngularVariance = 0.0f;
+	float loopClosureVisualInliersMeanDist = 0;
+	float loopClosureVisualInliersDistribution = 0;
 	if(_loopClosureHypothesis.first>0)
 	{
 		//Compute transform if metric data are present
@@ -2137,6 +2139,9 @@ bool Rtabmap::process(
 		if(_rgbdSlamMode)
 		{
 			transform = _memory->computeTransform(_loopClosureHypothesis.first, signature->id(), Transform(), &info);
+			loopClosureVisualInliersMeanDist = info.inliersMeanDistance;
+			loopClosureVisualInliersDistribution = info.inliersDistribution;
+
 			loopClosureVisualInliers = info.inliers;
 			loopClosureVisualMatches = info.matches;
 			rejectedHypothesis = transform.isNull();
@@ -2145,11 +2150,11 @@ bool Rtabmap::process(
 				UWARN("Rejected loop closure %d -> %d: %s",
 						_loopClosureHypothesis.first, signature->id(), info.rejectedMsg.c_str());
 			}
-			else if(!_memory->isIncremental() && _localizationMaxDistance>0.0f && transform.getNorm() > _localizationMaxDistance)
+			else if(_maxLoopClosureDistance>0.0f && transform.getNorm() > _maxLoopClosureDistance)
 			{
 				rejectedHypothesis = true;
 				UWARN("Rejected localization %d -> %d because distance to map (%fm) is over %s=%fm.",
-						_loopClosureHypothesis.first, signature->id(), transform.getNorm(), Parameters::kRGBDMaxLocalizationDistance().c_str(), _localizationMaxDistance);
+						_loopClosureHypothesis.first, signature->id(), transform.getNorm(), Parameters::kRGBDMaxLoopClosureDistance().c_str(), _maxLoopClosureDistance);
 			}
 			else
 			{
@@ -2275,9 +2280,9 @@ bool Rtabmap::process(
 				UDEBUG("nearestPaths=%d proximityMaxPaths=%d", (int)nearestPaths.size(), _proximityMaxPaths);
 
 				float proximityFilteringRadius = _proximityFilteringRadius;
-				if(!_memory->isIncremental() && _localizationMaxDistance>0.0f && (proximityFilteringRadius <= 0.0f || _localizationMaxDistance<proximityFilteringRadius))
+				if(_maxLoopClosureDistance>0.0f && (proximityFilteringRadius <= 0.0f || _maxLoopClosureDistance<proximityFilteringRadius))
 				{
-					proximityFilteringRadius = _localizationMaxDistance;
+					proximityFilteringRadius = _maxLoopClosureDistance;
 				}
 				for(std::map<NearestPathKey, std::map<int, Transform> >::const_reverse_iterator iter=nearestPaths.rbegin();
 					iter!=nearestPaths.rend() &&
@@ -2330,6 +2335,12 @@ bool Rtabmap::process(
 
 									if(_loopClosureHypothesis.first == 0)
 									{
+										if(proximityDetectionsAddedVisually == 0)
+										{
+											loopClosureVisualInliersMeanDist = info.inliersMeanDistance;
+											loopClosureVisualInliersDistribution = info.inliersDistribution;
+										}
+
 										++proximityDetectionsAddedVisually;
 										lastProximitySpaceClosureId = nearestId;
 
@@ -3052,6 +3063,8 @@ bool Rtabmap::process(
 			statistics_.addStatistic(Statistics::kLoopOptimization_iterations(), optimizationIterations);
 			statistics_.addStatistic(Statistics::kLoopLandmark_detected(), -landmarkDetected);
 			statistics_.addStatistic(Statistics::kLoopLandmark_detected_node_ref(), landmarkDetectedNodesRef.empty()?0:*landmarkDetectedNodesRef.begin());
+			statistics_.addStatistic(Statistics::kLoopVisual_inliers_mean_dist(), loopClosureVisualInliersMeanDist);
+			statistics_.addStatistic(Statistics::kLoopVisual_inliers_distribution(), loopClosureVisualInliersDistribution);
 
 			statistics_.addStatistic(Statistics::kProximityTime_detections(), proximityDetectionsInTimeFound);
 			statistics_.addStatistic(Statistics::kProximitySpace_detections_added_visually(), proximityDetectionsAddedVisually);
@@ -3067,6 +3080,13 @@ bool Rtabmap::process(
 				UASSERT(uContains(sLoop->getLinks(), signature->id()));
 				UINFO("Set loop closure transform = %s", sLoop->getLinks().find(signature->id())->second.transform().prettyPrint().c_str());
 				statistics_.setLoopClosureTransform(sLoop->getLinks().find(signature->id())->second.transform());
+
+				statistics_.addStatistic(Statistics::kLoopMap_correction_norm(), _mapCorrection.getNorm());
+				float roll,pitch,yaw;
+				_mapCorrection.getEulerAngles(roll, pitch, yaw);
+				statistics_.addStatistic(Statistics::kLoopMap_correction_roll(),  roll*180/M_PI);
+				statistics_.addStatistic(Statistics::kLoopMap_correction_pitch(),  pitch*180/M_PI);
+				statistics_.addStatistic(Statistics::kLoopMap_correction_yaw(), yaw*180/M_PI);
 			}
 			statistics_.setMapCorrection(_mapCorrection);
 			UINFO("Set map correction = %s", _mapCorrection.prettyPrint().c_str());

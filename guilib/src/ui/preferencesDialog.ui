@@ -63,7 +63,7 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-354</y>
+            <y>0</y>
             <width>681</width>
             <height>3071</height>
            </rect>
@@ -95,7 +95,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>12</number>
+                <number>21</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,1">
@@ -9924,7 +9924,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                        <item row="15" column="1">
                         <widget class="QLabel" name="label_space2_12">
                          <property name="text">
-                          <string>Reject localizations if the distance from the map is over this distance (0=disabled). Only used in localization mode.</string>
+                          <string>Reject loop closures/localizations if the distance from the map is over this distance (0=disabled).</string>
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>
@@ -16347,7 +16347,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </item>
                        </widget>
                       </item>
-                      <item row="3" column="0">
+                      <item row="4" column="0">
                        <widget class="QSpinBox" name="loopClosure_bowIterations">
                         <property name="minimum">
                          <number>1</number>
@@ -16363,7 +16363,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
-                      <item row="3" column="1">
+                      <item row="4" column="1">
                        <widget class="QLabel" name="label_15">
                         <property name="text">
                          <string>Maximum RANSAC iterations.</string>
@@ -16373,7 +16373,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
-                      <item row="4" column="1">
+                      <item row="5" column="1">
                        <widget class="QLabel" name="label_298">
                         <property name="text">
                          <string>Forward estimation only (A-&gt;B). If false, a transformation is also computed in backward direction (B-&gt;A), then the two resulting transforms are merged (middle interpolation between the transforms).</string>
@@ -16386,7 +16386,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
-                      <item row="4" column="0">
+                      <item row="5" column="0">
                        <widget class="QCheckBox" name="loopClosure_forwardEst">
                         <property name="text">
                          <string/>
@@ -16432,7 +16432,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
-                      <item row="5" column="0">
+                      <item row="6" column="0">
                        <widget class="QComboBox" name="loopClosure_bundle">
                         <property name="sizeAdjustPolicy">
                          <enum>QComboBox::AdjustToContentsOnFirstShow</enum>
@@ -16454,7 +16454,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </item>
                        </widget>
                       </item>
-                      <item row="5" column="1">
+                      <item row="6" column="1">
                        <widget class="QLabel" name="label_346">
                         <property name="text">
                          <string>Refine transformation with bundle adjustment. See Optimizer panel.</string>
@@ -16464,6 +16464,46 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                         <property name="textInteractionFlags">
                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="2" column="1">
+                       <widget class="QLabel" name="label_554">
+                        <property name="text">
+                         <string>Maximum distance (m) of the mean distance of inliers from the camera to accept the transformation. 0 means disabled.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="3" column="1">
+                       <widget class="QLabel" name="label_555">
+                        <property name="text">
+                         <string>Minimum distribution value of the inliers in the image to accept the transformation. The distribution is the second eigen value of the PCA (Principal Component Analysis) on the keypoints of the normalized image [-0.5, 0.5]. 0 means disabled.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="3" column="0">
+                       <widget class="QDoubleSpinBox" name="visMinDistribution">
+                        <property name="maximum">
+                         <double>0.500000000000000</double>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="2" column="0">
+                       <widget class="QDoubleSpinBox" name="visMeanDistance">
+                        <property name="suffix">
+                         <string> m</string>
                         </property>
                        </widget>
                       </item>

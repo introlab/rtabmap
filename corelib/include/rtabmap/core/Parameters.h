@@ -342,7 +342,7 @@ class RTABMAP_EXP Parameters
     RTABMAP_PARAM(RGBD, NewMapOdomChangeDistance, float, 0,    "A new map is created if a change of odometry translation greater than X m is detected (0 m = disabled).");
     RTABMAP_PARAM(RGBD, OptimizeFromGraphEnd,     bool, false, "Optimize graph from the newest node. If false, the graph is optimized from the oldest node of the current graph (this adds an overhead computation to detect to oldest node of the current graph, but it can be useful to preserve the map referential from the oldest node). Warning when set to false: when some nodes are transferred, the first referential of the local map may change, resulting in momentary changes in robot/map position (which are annoying in teleoperation).");
     RTABMAP_PARAM(RGBD, OptimizeMaxError,         float, 3.0,   uFormat("Reject loop closures if optimization error ratio is greater than this value (0=disabled). Ratio is computed as absolute error over standard deviation of each link. This will help to detect when a wrong loop closure is added to the graph. Not compatible with \"%s\" if enabled.", kOptimizerRobust().c_str()));
-    RTABMAP_PARAM(RGBD, MaxLocalizationDistance,  float, 0.0,   "Reject localizations if the distance from the map is over this distance (0=disabled). Only used in localization mode.");
+    RTABMAP_PARAM(RGBD, MaxLoopClosureDistance,   float, 0.0,   "Reject loop closures/localizations if the distance from the map is over this distance (0=disabled).");
     RTABMAP_PARAM(RGBD, SavedLocalizationIgnored, bool, false, "Ignore last saved localization pose from previous session. If true, RTAB-Map won't assume it is restarting from the same place than where it shut down previously.");
     RTABMAP_PARAM(RGBD, GoalReachedRadius,        float, 0.5,  "Goal reached radius (m).");
     RTABMAP_PARAM(RGBD, PlanStuckIterations,      int, 0,      "Mark the current goal node on the path as unreachable if it is not updated after X iterations (0=disabled). If all upcoming nodes on the path are unreachabled, the plan fails.");
@@ -564,6 +564,9 @@ class RTABMAP_EXP Parameters
 
     RTABMAP_PARAM(Vis, EpipolarGeometryVar,      float, 0.02,   uFormat("[%s = 2] Epipolar geometry maximum variance to accept the transformation.", kVisEstimationType().c_str()));
     RTABMAP_PARAM(Vis, MinInliers,               int, 20,       "Minimum feature correspondences to compute/accept the transformation.");
+    RTABMAP_PARAM(Vis, MeanInliersDistance,      float, 0.0,    "Maximum distance (m) of the mean distance of inliers from the camera to accept the transformation. 0 means disabled.");
+    RTABMAP_PARAM(Vis, MinInliersDistribution,   float, 0.0,    "Minimum distribution value of the inliers in the image to accept the transformation. The distribution is the second eigen value of the PCA (Principal Component Analysis) on the keypoints of the normalized image [-0.5, 0.5]. The value would be between 0 and 0.5. 0 means disabled.");
+
     RTABMAP_PARAM(Vis, Iterations,               int, 300,      "Maximum iterations to compute the transform.");
 #ifndef RTABMAP_NONFREE
 #ifdef RTABMAP_OPENCV3
