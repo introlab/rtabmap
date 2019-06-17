@@ -3998,8 +3998,9 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 				 data.depthOrRightRaw().type() == CV_8UC1)
 			   &&
 				( (data.imageRaw().empty() && data.depthOrRightRaw().type() != CV_8UC1) ||
-				  (data.imageRaw().rows % data.depthOrRightRaw().rows == 0 && data.imageRaw().cols % data.depthOrRightRaw().cols == 0))),
-				uFormat("image=(%d/%d) depth=(%d/%d, type=%d [accepted=%d,%d,%d])",
+				  (data.imageRaw().rows % data.depthOrRightRaw().rows == 0 && data.imageRaw().cols % data.depthOrRightRaw().cols == 0 &&
+				   data.depthOrRightRaw().rows <= data.imageRaw().rows && data.depthOrRightRaw().cols <= data.imageRaw().cols))),
+				uFormat("image=(%d/%d) depth=(%d/%d, type=%d [accepted=%d,%d,%d]) RGB should be",
 						data.imageRaw().cols,
 						data.imageRaw().rows,
 						data.depthOrRightRaw().cols,
@@ -4218,6 +4219,14 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 					imageMono.rows/decimatedData.depthRaw().rows == imageMono.cols/decimatedData.depthRaw().cols)
 				{
 					depthMask = util2d::interpolate(decimatedData.depthRaw(), imageMono.rows/decimatedData.depthRaw().rows, 0.1f);
+				}
+				else if(_imagePreDecimation > 1)
+				{
+					UWARN("%s=%d is not compatible between RGB and depth images, the depth mask cannot be used! (decimated RGB=%dx%d, depth=%dx%d)",
+							Parameters::kMemImagePreDecimation().c_str(),
+							_imagePreDecimation,
+							imageMono.cols, imageMono.rows,
+							decimatedData.depthRaw().cols, decimatedData.depthRaw().rows);
 				}
 			}
 
@@ -4610,7 +4619,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 	}
 
 	Landmarks landmarks = data.landmarks();
-	if(_detectMarkers && !isIntermediateNode)
+	if(_detectMarkers && !isIntermediateNode && !data.imageRaw().empty())
 	{
 		UDEBUG("Detecting markers...");
 		if(landmarks.empty())
@@ -4690,6 +4699,13 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 			{
 				stereoCameraModel.scale(1.0/double(_imagePostDecimation));
 			}
+		}
+
+		if(!image.empty() && (depthOrRightImage.cols > image.cols || depthOrRightImage.rows > image.rows))
+		{
+			UWARN("Depth image is bigger than RGB image after post decimation, %s=%d is too high! RGB=%dx%d, depth=%dx%d",
+					Parameters::kMemImagePostDecimation().c_str(), _imagePostDecimation,
+					image.cols, image.rows, depthOrRightImage.cols, depthOrRightImage.rows);
 		}
 
 		t = timer.ticks();

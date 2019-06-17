@@ -63,7 +63,7 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>0</y>
+            <y>-132</y>
             <width>681</width>
             <height>3071</height>
            </rect>
@@ -95,7 +95,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>21</number>
+                <number>8</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,1">
@@ -7515,7 +7515,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                       <item row="14" column="0">
                        <widget class="QSpinBox" name="spinBox_imagePreDecimation">
                         <property name="minimum">
-                         <number>-16</number>
+                         <number>1</number>
                         </property>
                         <property name="maximum">
                          <number>16</number>
@@ -7525,7 +7525,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                       <item row="15" column="0">
                        <widget class="QSpinBox" name="spinBox_imagePostDecimation">
                         <property name="minimum">
-                         <number>-16</number>
+                         <number>1</number>
                         </property>
                         <property name="maximum">
                          <number>16</number>
@@ -7708,7 +7708,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                       <item row="14" column="1">
                        <widget class="QLabel" name="label_retrieved_13">
                         <property name="text">
-                         <string>Image pre decimation. This option can be used to reduce image size before features extraction. Negative decimation is done from RGB size instead of depth size (if depth is smaller than RGB, it may be interpolated depending of the decimation value).</string>
+                         <string>Image pre decimation. This option can be used to reduce image size before features extraction.</string>
                         </property>
                         <property name="wordWrap">
                          <bool>true</bool>
@@ -7826,7 +7826,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                       <item row="15" column="1">
                        <widget class="QLabel" name="label_retrieved_6">
                         <property name="text">
-                         <string>Image post decimation. This option can be used to save images in lower resolution (size/decimation). It is done on the original image. Negative decimation is done from RGB size instead of depth size (if depth is smaller than RGB, it may be interpolated depending of the decimation value).</string>
+                         <string>Image post decimation. This option can be used to save images in lower resolution (size/decimation). It is done on the original image.</string>
                         </property>
                         <property name="wordWrap">
                          <bool>true</bool>

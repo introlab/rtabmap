@@ -216,8 +216,8 @@ class RTABMAP_EXP Parameters
     RTABMAP_PARAM(Mem, BadSignaturesIgnored,        bool, false,    "Bad signatures are ignored.");
     RTABMAP_PARAM(Mem, InitWMWithAllNodes,          bool, false,    "Initialize the Working Memory with all nodes in Long-Term Memory. When false, it is initialized with nodes of the previous session.");
     RTABMAP_PARAM(Mem, DepthAsMask,                 bool, true,     "Use depth image as mask when extracting features for vocabulary.");
-    RTABMAP_PARAM(Mem, ImagePreDecimation,          int, 1,         "Image decimation (>=1) before features extraction. Negative decimation is done from RGB size instead of depth size (if depth is smaller than RGB, it may be interpolated depending of the decimation value).");
-    RTABMAP_PARAM(Mem, ImagePostDecimation,         int, 1,         "Image decimation (>=1) of saved data in created signatures (after features extraction). Decimation is done from the original image. Negative decimation is done from RGB size instead of depth size (if depth is smaller than RGB, it may be interpolated depending of the decimation value).");
+    RTABMAP_PARAM(Mem, ImagePreDecimation,          int, 1,         "Image decimation (>=1) before features extraction.");
+    RTABMAP_PARAM(Mem, ImagePostDecimation,         int, 1,         "Image decimation (>=1) of saved data in created signatures (after features extraction). Decimation is done from the original image.");
     RTABMAP_PARAM(Mem, CompressionParallelized,     bool, true,     "Compression of sensor data is multi-threaded.");
     RTABMAP_PARAM(Mem, LaserScanDownsampleStepSize, int, 1,         "If > 1, downsample the laser scans when creating a signature.");
     RTABMAP_PARAM(Mem, LaserScanVoxelSize,          float, 0.0,     uFormat("If > 0 m, voxel filtering is done on laser scans when creating a signature. If the laser scan had normals, they will be removed. To recompute the normals, make sure to use \"%s\" or \"%s\" parameters.", kMemLaserScanNormalK().c_str(), kMemLaserScanNormalRadius().c_str()));
