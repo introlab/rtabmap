@@ -63,25 +63,16 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-132</y>
-            <width>681</width>
-            <height>3071</height>
+            <y>0</y>
+            <width>673</width>
+            <height>3038</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
            <property name="spacing">
             <number>0</number>
            </property>
-           <property name="leftMargin">
-            <number>0</number>
-           </property>
-           <property name="topMargin">
-            <number>0</number>
-           </property>
-           <property name="rightMargin">
-            <number>0</number>
-           </property>
-           <property name="bottomMargin">
+           <property name="margin">
             <number>0</number>
            </property>
            <item>
@@ -95,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>8</number>
+                <number>21</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,1">
@@ -5444,16 +5435,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                        <string>Directory of images (optional settings)</string>
                       </property>
                       <layout class="QVBoxLayout" name="verticalLayout_93">
-                       <property name="leftMargin">
-                        <number>0</number>
-                       </property>
-                       <property name="topMargin">
-                        <number>0</number>
-                       </property>
-                       <property name="rightMargin">
-                        <number>0</number>
-                       </property>
-                       <property name="bottomMargin">
+                       <property name="margin">
                         <number>0</number>
                        </property>
                        <item>
@@ -16495,8 +16477,14 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                       </item>
                       <item row="3" column="0">
                        <widget class="QDoubleSpinBox" name="visMinDistribution">
+                        <property name="decimals">
+                         <number>4</number>
+                        </property>
                         <property name="maximum">
                          <double>0.500000000000000</double>
+                        </property>
+                        <property name="singleStep">
+                         <double>0.010000000000000</double>
                         </property>
                        </widget>
                       </item>
@@ -16504,6 +16492,9 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                        <widget class="QDoubleSpinBox" name="visMeanDistance">
                         <property name="suffix">
                          <string> m</string>
+                        </property>
+                        <property name="maximum">
+                         <double>9999.000000000000000</double>
                         </property>
                        </widget>
                       </item>
@@ -16672,16 +16663,7 @@ Lower the ratio -&gt; higher the precision.</string>
                         <property name="spacing">
                          <number>0</number>
                         </property>
-                        <property name="leftMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="topMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="rightMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="bottomMargin">
+                        <property name="margin">
                          <number>0</number>
                         </property>
                         <item>
@@ -16761,16 +16743,7 @@ Lower the ratio -&gt; higher the precision.</string>
                         <property name="spacing">
                          <number>0</number>
                         </property>
-                        <property name="leftMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="topMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="rightMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="bottomMargin">
+                        <property name="margin">
                          <number>0</number>
                         </property>
                         <item>
@@ -16882,16 +16855,7 @@ Lower the ratio -&gt; higher the precision.</string>
                         <property name="spacing">
                          <number>0</number>
                         </property>
-                        <property name="leftMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="topMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="rightMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="bottomMargin">
+                        <property name="margin">
                          <number>0</number>
                         </property>
                         <item>
