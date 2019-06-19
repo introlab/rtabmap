@@ -71,6 +71,12 @@ class RTABMAP_EXP Statistics
 	RTABMAP_STATS(Loop, Angular_variance,);
 	RTABMAP_STATS(Loop, Landmark_detected,);
 	RTABMAP_STATS(Loop, Landmark_detected_node_ref,);
+	RTABMAP_STATS(Loop, Visual_inliers_mean_dist,m);
+	RTABMAP_STATS(Loop, Visual_inliers_distribution,);
+	RTABMAP_STATS(Loop, Map_correction_norm, m);
+	RTABMAP_STATS(Loop, Map_correction_roll, deg);
+	RTABMAP_STATS(Loop, Map_correction_pitch, deg);
+	RTABMAP_STATS(Loop, Map_correction_yaw, deg);
 
 	RTABMAP_STATS(Proximity, Time_detections,);
 	RTABMAP_STATS(Proximity, Space_last_detection_id,);
