@@ -1427,20 +1427,23 @@ void UPlotLegendItem::contextMenuEvent(QContextMenuEvent * event)
 			QVector<float> x;
 			QVector<float> y;
 			_curve->getData(x, y);
-			QString textX;
-			QString textY;
+			QString text;
+			text.append("x");
+			text.append('\t');
+			text.append(_curve->name());
+			text.append('\n');
 			for(int i=0; i<x.size(); ++i)
 			{
-				textX.append(QString::number(x[i]));
-				textY.append(QString::number(y[i]));
+				text.append(QString::number(x[i]));
+				text.append('\t');
+				text.append(QString::number(y[i]));
 				if(i+1<x.size())
 				{
-					textX.append(' ');
-					textY.append(' ');
+					text.append('\n');
 				}
 			}
 			QClipboard * clipboard = QApplication::clipboard();
-			clipboard->setText((textX+"\n")+textY);
+			clipboard->setText(text);
 		}
 	}
 	else if(action == _aShowStdDev)
@@ -1667,7 +1670,7 @@ void UPlotLegend::contextMenuEvent(QContextMenuEvent * event)
 				}
 				else
 				{
-					QVector<float> y(firstData.size(), 0.0f);
+					QVector<float> y(firstData.size(), std::numeric_limits<float>::quiet_NaN());
 					// ust to make usre that we have the same number of data on each curve, set 0 for unknowns
 					int j=0;
 					for(QMap<float,float>::iterator iter=firstData.begin(); iter!=firstData.end(); ++iter)
@@ -1686,17 +1689,35 @@ void UPlotLegend::contextMenuEvent(QContextMenuEvent * event)
 				axes.push_front(firstData.values().toVector());
 				axes.push_front(firstData.keys().toVector());
 				QString text;
-				for(int i=0; i<axes.size(); ++i)
+				text.append('x');
+				text.append('\t');
+				for(int i=0; i<items.size(); ++i)
 				{
-					for(int j=0; j<axes[i].size(); ++j)
+					text.append(items.at(i)->curve()->name());
+					if(i+1<axes.size())
 					{
-						text.append(QString::number(axes[i][j]));
-						if(j+1<axes[i].size())
+						text.append('\t');
+					}
+				}
+				text.append('\n');
+				for(int i=0; i<axes[0].size(); ++i)
+				{
+					for(int j=0; j<axes.size(); ++j)
+					{
+						if(uIsNan(axes[j][i]))
 						{
-							text.append(' ');
+							text.append("NA");
+						}
+						else
+						{
+							text.append(QString::number(axes[j][i]));
+						}
+						if(j+1<axes.size())
+						{
+							text.append('\t');
 						}
 					}
-					if(i+1<axes.size())
+					if(i+1<axes[0].size())
 					{
 						text.append("\n");
 					}
