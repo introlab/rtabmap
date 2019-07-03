@@ -1665,15 +1665,17 @@ void UPlotLegend::contextMenuEvent(QContextMenuEvent * event)
 		if(items.size())
 		{
 			// create common x-axis
-			QSet<float> xAxisSet;
+			QMap<float, float> xAxisMap;
 			for(int i=0; i<items.size(); ++i)
 			{
 				QMap<float, float> data;
 				items.at(i)->curve()->getData(data);
-				xAxisSet.unite(QSet<float>::fromList(data.keys()));
+				for(QMap<float, float>::iterator iter=data.begin(); iter!=data.end(); ++iter)
+				{
+					xAxisMap.insert(iter.key(), iter.value());
+				}
 			}
-			QList<float> xAxis = xAxisSet.toList();
-			qSort(xAxis.begin(), xAxis.end());
+			QList<float> xAxis = xAxisMap.uniqueKeys();
 
 			QVector<QVector<float> > axes;
 			for(int i=0; i<items.size(); ++i)
