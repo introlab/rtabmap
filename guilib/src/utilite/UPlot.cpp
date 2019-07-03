@@ -1143,6 +1143,10 @@ void UPlotCurveThreshold::update(float scaleX, float scaleY, float offsetX, floa
 UPlotAxis::UPlotAxis(Qt::Orientation orientation, float min, float max, QWidget * parent) :
 	QWidget(parent),
 	_orientation(orientation),
+	_min(0),
+	_max(0),
+	_count(0),
+	_step(0),
 	_reversed(false),
 	_gradMaxDigits(4),
 	_border(0)
@@ -1365,8 +1369,8 @@ UPlotLegendItem::UPlotLegendItem(UPlotCurve * curve, QWidget * parent) :
 	_aResetText = new QAction(tr("Reset text..."), this);
 	_aChangeColor = new QAction(tr("Change color..."), this);
 	_aCopyToClipboard = new QAction(tr("Copy curve data to clipboard"), this);
-	_aShowStdDev = new QAction(tr("Show std deviation"), this);
-	_aShowStdDev->setCheckable(true);
+	_aShowStdDevMeanMax = new QAction(tr("Show %1, %2, max").arg(QChar(0xbc, 0x03)).arg(QChar(0xc3, 0x03)), this);
+	_aShowStdDevMeanMax->setCheckable(true);
 	_aMoveUp = new QAction(tr("Move up"), this);
 	_aMoveDown = new QAction(tr("Move down"), this);
 	_aRemoveCurve = new QAction(tr("Remove this curve"), this);
@@ -1375,7 +1379,7 @@ UPlotLegendItem::UPlotLegendItem(UPlotCurve * curve, QWidget * parent) :
 	_menu->addAction(_aResetText);
 	_menu->addAction(_aChangeColor);
 	_menu->addAction(_aCopyToClipboard);
-	_menu->addAction(_aShowStdDev);
+	_menu->addAction(_aShowStdDevMeanMax);
 	_menu->addSeparator();
 	_menu->addAction(_aMoveUp);
 	_menu->addAction(_aMoveDown);
@@ -1446,15 +1450,16 @@ void UPlotLegendItem::contextMenuEvent(QContextMenuEvent * event)
 			clipboard->setText(text);
 		}
 	}
-	else if(action == _aShowStdDev)
+	else if(action == _aShowStdDevMeanMax)
 	{
-		if(_aShowStdDev->isChecked())
+		if(_aShowStdDevMeanMax->isChecked())
 		{
-			connect(_curve, SIGNAL(dataChanged(const UPlotCurve *)), this, SLOT(updateStdDev()));
+			connect(_curve, SIGNAL(dataChanged(const UPlotCurve *)), this, SLOT(updateStdDevMeanMax()));
+			updateStdDevMeanMax();
 		}
 		else
 		{
-			disconnect(_curve, SIGNAL(dataChanged(const UPlotCurve *)), this, SLOT(updateStdDev()));
+			disconnect(_curve, SIGNAL(dataChanged(const UPlotCurve *)), this, SLOT(updateStdDevMeanMax()));
 			QString nameSpaced = _curve->name();
 			nameSpaced.replace('_', ' ');
 			this->setText(nameSpaced);
@@ -1486,14 +1491,16 @@ QPixmap UPlotLegendItem::createSymbol(const QPen & pen, const QBrush & brush)
 	return pixmap;
 }
 
-void UPlotLegendItem::updateStdDev()
+void UPlotLegendItem::updateStdDevMeanMax()
 {
 	QVector<float> x, y;
 	_curve->getData(x, y);
-	float stdDev = std::sqrt(uVariance(y.data(), y.size()));
+	float mean = uMean(y.data(), y.size());
+	float stdDev = std::sqrt(uVariance(y.data(), y.size(), mean));
+	float max = uMax(y.data(), y.size());
 	QString nameSpaced = _curve->name();
 	nameSpaced.replace('_', ' ');
-	nameSpaced += QString(" (%1=%2)").arg(QChar(0xc3, 0x03)).arg(stdDev);
+	nameSpaced += QString("\n(%1=%2, %3=%4, max=%5)").arg(QChar(0xbc, 0x03)).arg(mean).arg(QChar(0xc3, 0x03)).arg(stdDev).arg(max);
 	this->setText(nameSpaced);
 }
 
@@ -1510,10 +1517,10 @@ UPlotLegend::UPlotLegend(QWidget * parent) :
 	_aUseFlatButtons = new QAction(tr("Use flat buttons"), this);
 	_aUseFlatButtons->setCheckable(true);
 	_aUseFlatButtons->setChecked(_flat);
-	_aCopyAllCurveToClipboard = new QAction(tr("Copy all curve data to clipboard"), this);
+	_aCopyAllCurvesToClipboard = new QAction(tr("Copy all curve data to clipboard"), this);
 	_menu = new QMenu(tr("Legend"), this);
 	_menu->addAction(_aUseFlatButtons);
-	_menu->addAction(_aCopyAllCurveToClipboard);
+	_menu->addAction(_aCopyAllCurvesToClipboard);
 
 	QVBoxLayout * vLayout = new QVBoxLayout(this);
 	vLayout->setContentsMargins(0,0,0,0);
@@ -1652,42 +1659,44 @@ void UPlotLegend::contextMenuEvent(QContextMenuEvent * event)
 	{
 		this->setFlat(_aUseFlatButtons->isChecked());
 	}
-	else if(action == _aCopyAllCurveToClipboard)
+	else if(action == _aCopyAllCurvesToClipboard)
 	{
 		QList<UPlotLegendItem *> items = this->findChildren<UPlotLegendItem*>();
 		if(items.size())
 		{
-			QMap<float,float> firstData;
+			// create common x-axis
+			QSet<float> xAxisSet;
+			for(int i=0; i<items.size(); ++i)
+			{
+				QMap<float, float> data;
+				items.at(i)->curve()->getData(data);
+				xAxisSet.unite(QSet<float>::fromList(data.keys()));
+			}
+			QList<float> xAxis = xAxisSet.toList();
+			qSort(xAxis.begin(), xAxis.end());
+
 			QVector<QVector<float> > axes;
 			for(int i=0; i<items.size(); ++i)
 			{
 				QMap<float, float> data;
 				items.at(i)->curve()->getData(data);
 
-				if(i==0)
+				QVector<float> y(xAxis.size(), std::numeric_limits<float>::quiet_NaN());
+				// just to make sure that we have the same number of data on each curve, set NAN for unknowns
+				int j=0;
+				for(QList<float>::iterator iter=xAxis.begin(); iter!=xAxis.end(); ++iter)
 				{
-					firstData = data;
-				}
-				else
-				{
-					QVector<float> y(firstData.size(), std::numeric_limits<float>::quiet_NaN());
-					// ust to make usre that we have the same number of data on each curve, set 0 for unknowns
-					int j=0;
-					for(QMap<float,float>::iterator iter=firstData.begin(); iter!=firstData.end(); ++iter)
+					if(data.contains(*iter))
 					{
-						if(data.contains(iter.key()))
-						{
-							y[j] = data.value(iter.key());
-						}
-						++j;
+						y[j] = data.value(*iter);
 					}
-					axes.push_back(y);
+					++j;
 				}
+				axes.push_back(y);
 			}
-			if(firstData.size())
+			if(!xAxis.empty())
 			{
-				axes.push_front(firstData.values().toVector());
-				axes.push_front(firstData.keys().toVector());
+				axes.push_front(xAxis.toVector());
 				QString text;
 				text.append('x');
 				text.append('\t');
@@ -1822,9 +1831,46 @@ void UOrientableLabel::paintEvent(QPaintEvent* event)
 
 UPlot::UPlot(QWidget *parent) :
 	QWidget(parent),
+	_legend(0),
+	_view(0),
+	_sceneRoot(0),
+	_graphicsViewHolder(0),
+	_verticalAxis(0),
+	_horizontalAxis(0),
+	_penStyleCount(0),
 	_maxVisibleItems(-1),
+	_title(0),
+	_xLabel(0),
+	_yLabel(0),
+	_refreshRate(0),
+	_workingDirectory(QDir::homePath()),
+	_lowestRefreshRate(99),
 	_autoScreenCaptureFormat("png"),
-	_bgColor(Qt::white)
+	_bgColor(Qt::white),
+	_menu(0),
+	_aShowLegend(0),
+	_aShowGrid(0),
+	_aKeepAllData(0),
+	_aLimit0(0),
+	_aLimit10(0),
+	_aLimit50(0),
+	_aLimit100(0),
+	_aLimit500(0),
+	_aLimit1000(0),
+	_aLimitCustom(0),
+	_aAddVerticalLine(0),
+	_aAddHorizontalLine(0),
+	_aChangeTitle(0),
+	_aChangeXLabel(0),
+	_aChangeYLabel(0),
+	_aChangeBackgroundColor(0),
+	_aYLabelVertical(0),
+	_aShowRefreshRate(0),
+	_aMouseTracking(0),
+	_aSaveFigure(0),
+	_aAutoScreenCapture(0),
+	_aClearData(0),
+	_aGraphicsView(0)
 {
 	this->setupUi();
 	this->createActions();
@@ -1836,7 +1882,7 @@ UPlot::UPlot(QWidget *parent) :
 	this->setMaxVisibleItems(0);
 	this->showGrid(false);
 	this->showRefreshRate(false);
-	this->keepAllData(false);
+	this->keepAllData(true);
 
 	for(int i=0; i<4; ++i)
 	{
@@ -1851,11 +1897,7 @@ UPlot::UPlot(QWidget *parent) :
 	_mouseCurrentPos = _mousePressedPos; // for zooming
 
 	_refreshIntervalTime.start();
-	_lowestRefreshRate = 99;
 	_refreshStartTime.start();
-
-	_penStyleCount = 0;
-	_workingDirectory = QDir::homePath();
 }
 
 UPlot::~UPlot()

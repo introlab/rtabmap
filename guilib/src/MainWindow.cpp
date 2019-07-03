@@ -1924,7 +1924,8 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 			std::map<int, std::string> labels = _currentLabels;
 
 			mapIds.insert(std::make_pair(stat.getLastSignatureData().id(), stat.getLastSignatureData().mapId()));
-			if(!stat.getLastSignatureData().getGroundTruthPose().isNull())
+			if(!stat.getLastSignatureData().getGroundTruthPose().isNull() &&
+				_cachedSignatures.contains(stat.getLastSignatureData().id()))
 			{
 				groundTruth.insert(std::make_pair(stat.getLastSignatureData().id(), stat.getLastSignatureData().getGroundTruthPose()));
 			}
