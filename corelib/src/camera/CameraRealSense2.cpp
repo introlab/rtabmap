@@ -539,7 +539,7 @@ bool CameraRealSense2::init(const std::string & calibrationFolder, const std::st
 		}
 		else if ("Coded-Light Depth Sensor" == module_name)
 		{
-			UINFO("Found \"%s\"", module_name.c_str());
+			sensors[1] = elem;
 		}
 		else if ("RGB Camera" == module_name)
 		{
