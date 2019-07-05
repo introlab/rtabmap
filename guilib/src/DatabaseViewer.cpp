@@ -6838,7 +6838,27 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent)
 					Parameters::kRGBDLoopClosureReextractFeatures().c_str());
 		}
 
-		t = reg->computeTransformationMod(*fromS, *toS, Transform(), &info);
+		Transform guess;
+		if(!reg->isImageRequired())
+		{
+			// make a fake guess using globally optimized poses
+			if(graphes_.size())
+			{
+				std::map<int, Transform> optimizedPoses = uValueAt(graphes_, ui_->horizontalSlider_iterations->value());
+				if(optimizedPoses.size() > 0)
+				{
+					std::map<int, Transform>::iterator fromIter = optimizedPoses.find(from);
+					std::map<int, Transform>::iterator toIter = optimizedPoses.find(to);
+					if(fromIter != optimizedPoses.end() &&
+					   toIter != optimizedPoses.end())
+					{
+						guess = fromIter->second.inverse() * toIter->second;
+					}
+				}
+			}
+		}
+
+		t = reg->computeTransformationMod(*fromS, *toS, guess, &info);
 		delete reg;
 		UDEBUG("");
 
