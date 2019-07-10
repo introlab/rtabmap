@@ -21,6 +21,7 @@ SET(SRC_FILES
     camera/CameraFreenect2.cpp
     camera/CameraImages.cpp
     camera/CameraK4W2.cpp
+	camera/CameraK4A.cpp
     camera/CameraOpenni.cpp
     camera/CameraOpenNI2.cpp
     camera/CameraOpenNICV.cpp
@@ -217,6 +218,17 @@ IF(KinectSDK2_FOUND)
 		${KinectSDK2_LIBRARIES}
 	)
 ENDIF(KinectSDK2_FOUND)
+
+IF(K4A_FOUND)
+	SET(INCLUDE_DIRS
+		${INCLUDE_DIRS}
+		${K4A_INCLUDE_DIRS}
+	)
+	SET(LIBRARIES
+		${LIBRARIES}
+		${K4A_LIBRARIES}
+	)
+ENDIF(K4A_FOUND)
 
 IF(RealSense_FOUND)
 	SET(INCLUDE_DIRS

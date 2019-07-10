@@ -24,6 +24,14 @@ SET(SRC_FILES
 
 add_definitions(${PCL_DEFINITIONS})
 
+# Hack as CameraRealsense2.h needs realsense2 include dir
+IF(realsense2_FOUND)
+	SET(INCLUDE_DIRS
+		${INCLUDE_DIRS}
+		${realsense2_INCLUDE_DIRS}
+	)
+ENDIF(realsense2_FOUND)
+
 INCLUDE_DIRECTORIES(${INCLUDE_DIRS})
 
 IF(MINGW)

@@ -58,6 +58,14 @@ SET(LIBRARIES
 	${PCL_LIBRARIES}
 )
 
+# Hack as CameraRealsense2.h needs realsense2 include dir
+IF(realsense2_FOUND)
+	SET(INCLUDE_DIRS
+		${INCLUDE_DIRS}
+		${realsense2_INCLUDE_DIRS}
+	)
+ENDIF(realsense2_FOUND)
+
 INCLUDE_DIRECTORIES(${INCLUDE_DIRS})
 
 IF(QT4_FOUND)

@@ -93,6 +93,7 @@ public:
 		kSrcRGBDImages     = 7,
 		kSrcK4W2           = 8,
 		kSrcRealSense2     = 9,
+		kSrcK4A            = 10,
 
 		kSrcStereo         = 100,
 		kSrcDC1394         = 100,
@@ -353,6 +354,7 @@ private Q_SLOTS:
 	void selectSourceDistortionModel();
 	void selectSourceOniPath();
 	void selectSourceOni2Path();
+	void selectSourceMKVPath();
 	void selectSourceSvoPath();
 	void updateSourceGrpVisibility();
 	void testOdometry();
