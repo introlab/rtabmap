@@ -33,7 +33,9 @@ echo "Usage: run_euroc_datasets.sh \"output name\" \"odom strategy: 0=f2m 1=f2f 
 exit
 fi
 
-F2F_params=""
+#uncomment for graph gravity optimization
+#F2F_params="--Optimizer/GravitySigma 0.01 --g2o/PixelVariance 5"
+
 if [ $STRATEGY -eq 11 ] # F2F optical flow
 then
     STRATEGY=1

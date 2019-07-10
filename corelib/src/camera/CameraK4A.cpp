@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2010-2016, Mathieu Labbe - IntRoLab - Universite de Sherbrooke
+Copyright (c) 2010-2019, Mathieu Labbe - IntRoLab - Universite de Sherbrooke
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -52,26 +52,27 @@ CameraK4A::CameraK4A(
 	int deviceId,
 	float imageRate,
 	const Transform & localTransform) :
-	Camera(imageRate, localTransform),
-	deviceId_(deviceId)
+	Camera(imageRate, localTransform)
 #ifdef RTABMAP_K4A
-	, playbackHandle_(NULL),
+	,playbackHandle_(NULL),
 	transformationHandle_(NULL),
+	deviceId_(deviceId),
 	ir_(false)
 #endif
 {
+	UERROR("CameraK4A: Live camera stream is not yet supported, only recorded mkv files are.");
 }
 
 CameraK4A::CameraK4A(
 	const std::string & fileName,
 	float imageRate,
 	const Transform & localTransform) :
-	Camera(imageRate, localTransform),
-	deviceId_(-1),
-	fileName_(fileName)
+	Camera(imageRate, localTransform)
 #ifdef RTABMAP_K4A
-	, playbackHandle_(NULL),
+	,playbackHandle_(NULL),
 	transformationHandle_(NULL),
+	deviceId_(-1),
+	fileName_(fileName),
 	ir_(false)
 #endif
 {
@@ -84,6 +85,7 @@ CameraK4A::~CameraK4A()
 
 void CameraK4A::close()
 {
+#ifdef RTABMAP_K4A
 	if (playbackHandle_ != NULL)
 	{
 		k4a_playback_close((k4a_playback_t)playbackHandle_);
@@ -97,7 +99,14 @@ void CameraK4A::close()
 	k4a_device_stop_cameras(device);
 	k4a_device_close(device);
 	*/
+#endif
+}
 
+void CameraK4A::setIRDepthFormat(bool enabled)
+{
+#ifdef RTABMAP_K4A
+	ir_ = enabled;
+#endif
 }
 
 bool CameraK4A::init(const std::string & calibrationFolder, const std::string & cameraName)
@@ -216,7 +225,11 @@ bool CameraK4A::isCalibrated() const
 
 std::string CameraK4A::getSerial() const
 {
+#ifdef RTABMAP_K4A
 	return fileName_.empty()?"":fileName_;
+#else
+	return "";
+#endif
 }
 
 SensorData CameraK4A::captureImage(CameraInfo * info)

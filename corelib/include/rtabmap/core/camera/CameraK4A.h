@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2010-2016, Mathieu Labbe - IntRoLab - Universite de Sherbrooke
+Copyright (c) 2010-2019, Mathieu Labbe - IntRoLab - Universite de Sherbrooke
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -55,7 +55,7 @@ public:
 	virtual bool isCalibrated() const;
 	virtual std::string getSerial() const;
 
-	void setIRDepthFormat(bool enabled) {ir_ = enabled;}
+	void setIRDepthFormat(bool enabled);
 
 protected:
 	virtual SensorData captureImage(CameraInfo * info = 0);
@@ -64,13 +64,13 @@ private:
 	void close();
 
 private:
-	int deviceId_;
-	std::string fileName_;
 
 #ifdef RTABMAP_K4A
 	void* playbackHandle_;
 	void* transformationHandle_;
 	CameraModel model_;
+	int deviceId_;
+	std::string fileName_;
 	bool ir_;
 #endif
 
