@@ -360,7 +360,7 @@ Q_SIGNALS:
 	void moveDownRequest(UPlotLegendItem *);
 
 private Q_SLOTS:
-	void updateStdDev();
+	void updateStdDevMeanMax();
 
 protected:
 	virtual void contextMenuEvent(QContextMenuEvent * event);
@@ -372,7 +372,7 @@ private:
 	QAction * _aResetText;
 	QAction * _aChangeColor;
 	QAction * _aCopyToClipboard;
-	QAction * _aShowStdDev;
+	QAction * _aShowStdDevMeanMax;
 	QAction * _aRemoveCurve;
 	QAction * _aMoveUp;
 	QAction * _aMoveDown;
@@ -417,7 +417,7 @@ private:
 	bool _flat;
 	QMenu * _menu;
 	QAction * _aUseFlatButtons;
-	QAction * _aCopyAllCurveToClipboard;
+	QAction * _aCopyAllCurvesToClipboard;
 };
 
 

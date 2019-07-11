@@ -296,6 +296,10 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	{
 		_ui->comboBox_cameraRGBD->setItemData(kSrcK4W2 - kSrcRGBD, 0, Qt::UserRole - 1);
 	}
+	if (!CameraK4A::available())
+	{
+		_ui->comboBox_cameraRGBD->setItemData(kSrcK4A - kSrcRGBD, 0, Qt::UserRole - 1);
+	}
 	if (!CameraRealSense::available())
 	{
 		_ui->comboBox_cameraRGBD->setItemData(kSrcRealSense - kSrcRGBD, 0, Qt::UserRole - 1);
@@ -689,10 +693,12 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->pushButton_calibrate_simple, SIGNAL(clicked()), this, SLOT(calibrateSimple()));
 	connect(_ui->toolButton_openniOniPath, SIGNAL(clicked()), this, SLOT(selectSourceOniPath()));
 	connect(_ui->toolButton_openni2OniPath, SIGNAL(clicked()), this, SLOT(selectSourceOni2Path()));
+	connect(_ui->toolButton_k4a_mkv, SIGNAL(clicked()), this, SLOT(selectSourceMKVPath()));
 	connect(_ui->toolButton_source_distortionModel, SIGNAL(clicked()), this, SLOT(selectSourceDistortionModel()));
 	connect(_ui->toolButton_distortionModel, SIGNAL(clicked()), this, SLOT(visualizeDistortionModel()));
 	connect(_ui->lineEdit_openniOniPath, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->lineEdit_openni2OniPath, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->lineEdit_k4a_mkv, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->lineEdit_source_distortionModel, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->groupBox_bilateral, SIGNAL(toggled(bool)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->doubleSpinBox_bilateral_sigmaS, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteSourcePanel()));
@@ -1780,6 +1786,8 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->spinBox_rs2_rate->setValue(60);
 		_ui->lineEdit_openniOniPath->clear();
 		_ui->lineEdit_openni2OniPath->clear();
+		_ui->checkbox_k4a_irDepth->setChecked(false);
+		_ui->lineEdit_k4a_mkv->clear();
 		_ui->lineEdit_cameraRGBDImages_path_rgb->setText("");
 		_ui->lineEdit_cameraRGBDImages_path_depth->setText("");
 		_ui->doubleSpinBox_cameraRGBDImages_scale->setValue(1.0);
@@ -2174,6 +2182,11 @@ void PreferencesDialog::readCameraSettings(const QString & filePath)
 	_ui->comboBox_k4w2Format->setCurrentIndex(settings.value("format", _ui->comboBox_k4w2Format->currentIndex()).toInt());
 	settings.endGroup(); // K4W2
 
+	settings.beginGroup("K4A");
+	_ui->checkbox_k4a_irDepth->setChecked(settings.value("ir", _ui->checkbox_k4a_irDepth->isChecked()).toBool());
+	_ui->lineEdit_k4a_mkv->setText(settings.value("mkvPath", _ui->lineEdit_k4a_mkv->text()).toString());
+	settings.endGroup(); // K4A
+
 	settings.beginGroup("RealSense");
 	_ui->comboBox_realsensePresetRGB->setCurrentIndex(settings.value("presetRGB", _ui->comboBox_realsensePresetRGB->currentIndex()).toInt());
 	_ui->comboBox_realsensePresetDepth->setCurrentIndex(settings.value("presetDepth", _ui->comboBox_realsensePresetDepth->currentIndex()).toInt());
@@ -2257,6 +2270,16 @@ void PreferencesDialog::readCameraSettings(const QString & filePath)
 	settings.beginGroup("Video");
 	_ui->source_video_lineEdit_path->setText(settings.value("path", _ui->source_video_lineEdit_path->text()).toString());
 	settings.endGroup(); // video
+
+	settings.beginGroup("IMU");
+	_ui->comboBox_imuFilter_strategy->setCurrentIndex(settings.value("strategy", _ui->comboBox_imuFilter_strategy->currentIndex()).toInt());
+	_ui->doubleSpinBox_imuFilterMadgwickGain->setValue(settings.value("madgwick_gain", _ui->doubleSpinBox_imuFilterMadgwickGain->value()).toDouble());
+	_ui->doubleSpinBox_imuFilterMadgwickZeta->setValue(settings.value("madgwick_zeta", _ui->doubleSpinBox_imuFilterMadgwickZeta->value()).toDouble());
+	_ui->doubleSpinBox_imuFilterComplementaryGainAcc->setValue(settings.value("complementary_gain_acc", _ui->doubleSpinBox_imuFilterComplementaryGainAcc->value()).toDouble());
+	_ui->doubleSpinBox_imuFilterComplementaryBiasAlpha->setValue(settings.value("complementary_bias_alpha", _ui->doubleSpinBox_imuFilterComplementaryBiasAlpha->value()).toDouble());
+	_ui->checkBox_imuFilterComplementaryDoAdaptiveGain->setChecked(settings.value("complementary_adaptive_gain", _ui->checkBox_imuFilterComplementaryDoAdaptiveGain->isChecked()).toBool());
+	_ui->checkBox_imuFilterComplementaryDoBiasEstimation->setChecked(settings.value("complementary_biais_estimation", _ui->checkBox_imuFilterComplementaryDoBiasEstimation->isChecked()).toBool());
+	settings.endGroup();//IMU
 
 	settings.beginGroup("Scan");
 	_ui->checkBox_source_scanFromDepth->setChecked(settings.value("fromDepth", _ui->checkBox_source_scanFromDepth->isChecked()).toBool());
@@ -2614,6 +2637,11 @@ void PreferencesDialog::writeCameraSettings(const QString & filePath) const
 	settings.setValue("format",				_ui->comboBox_k4w2Format->currentIndex());
 	settings.endGroup(); // K4W2
 
+	settings.beginGroup("K4A");
+	settings.setValue("ir", _ui->checkbox_k4a_irDepth->isChecked());
+	settings.setValue("mkvPath", _ui->lineEdit_k4a_mkv->text());
+	settings.endGroup(); // K4A
+
 	settings.beginGroup("RealSense");
 	settings.setValue("presetRGB",           _ui->comboBox_realsensePresetRGB->currentIndex());
 	settings.setValue("presetDepth",         _ui->comboBox_realsensePresetDepth->currentIndex());
@@ -2695,6 +2723,16 @@ void PreferencesDialog::writeCameraSettings(const QString & filePath) const
 	settings.beginGroup("Video");
 	settings.setValue("path", 			_ui->source_video_lineEdit_path->text());
 	settings.endGroup(); // video
+
+	settings.beginGroup("IMU");
+	settings.setValue("strategy",                       _ui->comboBox_imuFilter_strategy->currentIndex());
+	settings.setValue("madgwick_gain",                  _ui->doubleSpinBox_imuFilterMadgwickGain->value());
+	settings.setValue("madgwick_zeta",                  _ui->doubleSpinBox_imuFilterMadgwickZeta->value());
+	settings.setValue("complementary_gain_acc",         _ui->doubleSpinBox_imuFilterComplementaryGainAcc->value());
+	settings.setValue("complementary_bias_alpha",       _ui->doubleSpinBox_imuFilterComplementaryBiasAlpha->value());
+	settings.setValue("complementary_adaptive_gain",    _ui->checkBox_imuFilterComplementaryDoAdaptiveGain->isChecked());
+	settings.setValue("complementary_biais_estimation", _ui->checkBox_imuFilterComplementaryDoBiasEstimation->isChecked());
+	settings.endGroup();//IMU
 
 	settings.beginGroup("Scan");
 	settings.setValue("fromDepth", 			_ui->checkBox_source_scanFromDepth->isChecked());
@@ -3444,6 +3482,10 @@ void PreferencesDialog::selectSourceDriver(Src src)
 		{
 			_ui->lineEdit_openni2OniPath->clear();
 		}
+		else if (src == kSrcK4A)
+		{
+			_ui->lineEdit_k4a_mkv->clear();
+		}
 	}
 	else if(src >= kSrcStereo && src<kSrcRGB)
 	{
@@ -3832,6 +3874,20 @@ void PreferencesDialog::selectSourceOni2Path()
 	if(!path.isEmpty())
 	{
 		_ui->lineEdit_openni2OniPath->setText(path);
+	}
+}
+
+void PreferencesDialog::selectSourceMKVPath()
+{
+	QString dir = _ui->lineEdit_k4a_mkv->text();
+	if (dir.isEmpty())
+	{
+		dir = getWorkingDirectory();
+	}
+	QString path = QFileDialog::getOpenFileName(this, tr("Select file"), _ui->lineEdit_k4a_mkv->text(), tr("K4A recording (*.mkv)"));
+	if (!path.isEmpty())
+	{
+		_ui->lineEdit_k4a_mkv->setText(path);
 	}
 }
 
@@ -4530,6 +4586,7 @@ void PreferencesDialog::updateSourceGrpVisibility()
 			(_ui->comboBox_cameraRGBD->currentIndex() == kSrcOpenNI2-kSrcRGBD ||
 			 _ui->comboBox_cameraRGBD->currentIndex() == kSrcFreenect2-kSrcRGBD ||
 			 _ui->comboBox_cameraRGBD->currentIndex() == kSrcK4W2 - kSrcRGBD ||
+			 _ui->comboBox_cameraRGBD->currentIndex() == kSrcK4A - kSrcRGBD ||
 			 _ui->comboBox_cameraRGBD->currentIndex() == kSrcRealSense - kSrcRGBD ||
 			 _ui->comboBox_cameraRGBD->currentIndex() == kSrcRGBDImages-kSrcRGBD ||
 			 _ui->comboBox_cameraRGBD->currentIndex() == kSrcOpenNI_PCL-kSrcRGBD ||
@@ -4537,10 +4594,11 @@ void PreferencesDialog::updateSourceGrpVisibility()
 	_ui->groupBox_openni2->setVisible(_ui->comboBox_sourceType->currentIndex() == 0 && _ui->comboBox_cameraRGBD->currentIndex() == kSrcOpenNI2-kSrcRGBD);
 	_ui->groupBox_freenect2->setVisible(_ui->comboBox_sourceType->currentIndex() == 0 && _ui->comboBox_cameraRGBD->currentIndex() == kSrcFreenect2-kSrcRGBD);
 	_ui->groupBox_k4w2->setVisible(_ui->comboBox_sourceType->currentIndex() == 0 && _ui->comboBox_cameraRGBD->currentIndex() == kSrcK4W2 - kSrcRGBD);
+	_ui->groupBox_k4a->setVisible(_ui->comboBox_sourceType->currentIndex() == 0 && _ui->comboBox_cameraRGBD->currentIndex() == kSrcK4A - kSrcRGBD);
 	_ui->groupBox_realsense->setVisible(_ui->comboBox_sourceType->currentIndex() == 0 && _ui->comboBox_cameraRGBD->currentIndex() == kSrcRealSense - kSrcRGBD);
 	_ui->groupBox_realsense2->setVisible(_ui->comboBox_sourceType->currentIndex() == 0 && _ui->comboBox_cameraRGBD->currentIndex() == kSrcRealSense2 - kSrcRGBD);
 	_ui->groupBox_cameraRGBDImages->setVisible(_ui->comboBox_sourceType->currentIndex() == 0 && _ui->comboBox_cameraRGBD->currentIndex() == kSrcRGBDImages-kSrcRGBD);
-	_ui->groupBox_openni->setVisible(_ui->comboBox_sourceType->currentIndex() == 0 && _ui->comboBox_cameraRGBD->currentIndex() == kSrcOpenNI_PCL-kSrcRGBD);
+	_ui->groupBox_openni->setVisible(_ui->comboBox_sourceType->currentIndex() == 0 && _ui->comboBox_cameraRGBD->currentIndex() == kSrcOpenNI_PCL - kSrcRGBD);
 
 	_ui->stackedWidget_stereo->setVisible(_ui->comboBox_sourceType->currentIndex() == 1 && 
 		(_ui->comboBox_cameraStereo->currentIndex() == kSrcStereoVideo-kSrcStereo || 
@@ -4576,6 +4634,7 @@ void PreferencesDialog::updateSourceGrpVisibility()
 			(_ui->comboBox_sourceType->currentIndex() == 0 && _ui->comboBox_cameraRGBD->currentIndex() == kSrcRGBDImages-kSrcRGBD) ||
 			(_ui->comboBox_sourceType->currentIndex() == 1 && _ui->comboBox_cameraStereo->currentIndex() == kSrcStereoImages-kSrcStereo) ||
 			(_ui->comboBox_sourceType->currentIndex() == 2 && _ui->source_comboBox_image_type->currentIndex() == kSrcImages-kSrcRGB) ||
+			(_ui->comboBox_sourceType->currentIndex() == 0 && _ui->comboBox_cameraRGBD->currentIndex() == kSrcK4A - kSrcRGBD) || //K4A
 			(_ui->comboBox_sourceType->currentIndex() == 0 && _ui->comboBox_cameraRGBD->currentIndex() == kSrcRealSense2 - kSrcRGBD) || //D435i
 			(_ui->comboBox_sourceType->currentIndex() == 1 && _ui->comboBox_cameraStereo->currentIndex() == kSrcStereoRealSense2 - kSrcStereo) || //T265
 			(_ui->comboBox_sourceType->currentIndex() == 1 && _ui->comboBox_cameraStereo->currentIndex() == kSrcStereoZed - kSrcStereo)); // ZEDm
@@ -5258,6 +5317,26 @@ Camera * PreferencesDialog::createCamera(bool useRawImages, bool useColor)
 			(CameraK4W2::Type)_ui->comboBox_k4w2Format->currentIndex(),
 			this->getGeneralInputRate(),
 			this->getSourceLocalTransform());
+	}
+	else if (driver == kSrcK4A)
+	{
+		if (!_ui->lineEdit_k4a_mkv->text().isEmpty())
+		{
+			// playback
+			camera = new CameraK4A(
+				_ui->lineEdit_k4a_mkv->text().toStdString().c_str(),
+				this->getGeneralInputRate(),
+				this->getSourceLocalTransform());
+		}
+		else
+		{
+			camera = new CameraK4A(
+				this->getSourceDevice().isEmpty() ? 0 : atoi(this->getSourceDevice().toStdString().c_str()),
+				this->getGeneralInputRate(),
+				this->getSourceLocalTransform());
+		}
+		
+		((CameraK4A*)camera)->setIRDepthFormat(_ui->checkbox_k4a_irDepth->isChecked());
 	}
 	else if (driver == kSrcRealSense)
 	{

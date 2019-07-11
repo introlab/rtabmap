@@ -3077,10 +3077,23 @@ bool Rtabmap::process(
 			statistics_.setProximityDetectionMapId(_memory->getMapId(lastProximitySpaceClosureId));
 			if(_loopClosureHypothesis.first || lastProximitySpaceClosureId)
 			{
-				UASSERT(uContains(sLoop->getLinks(), signature->id()));
-				UINFO("Set loop closure transform = %s", sLoop->getLinks().find(signature->id())->second.transform().prettyPrint().c_str());
-				statistics_.setLoopClosureTransform(sLoop->getLinks().find(signature->id())->second.transform());
+				// Loop closure transform
+				UASSERT(sLoop);
+				std::multimap<int, Link>::const_iterator loopIter =  sLoop->getLinks().find(signature->id());
+				UASSERT(loopIter!=sLoop->getLinks().end());
+				UINFO("Set loop closure transform = %s", loopIter->second.transform().prettyPrint().c_str());
+				statistics_.setLoopClosureTransform(loopIter->second.transform());
 
+				// if ground truth exists, compute localization error
+				if(!sLoop->getGroundTruthPose().isNull() && !signature->getGroundTruthPose().isNull())
+				{
+					Transform transformGT = sLoop->getGroundTruthPose().inverse() * signature->getGroundTruthPose();
+					Transform error = loopIter->second.transform().inverse() * transformGT;
+					statistics_.addStatistic(Statistics::kGtLocalization_linear_error(), error.getNorm());
+					statistics_.addStatistic(Statistics::kGtLocalization_angular_error(), error.getAngle(1,0,0)*180/M_PI);
+				}
+
+				// Map correction (/map -> /odom)
 				statistics_.addStatistic(Statistics::kLoopMap_correction_norm(), _mapCorrection.getNorm());
 				float roll,pitch,yaw;
 				_mapCorrection.getEulerAngles(roll, pitch, yaw);

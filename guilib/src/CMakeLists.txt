@@ -129,6 +129,14 @@ SET(INCLUDE_DIRS
 	${PCL_INCLUDE_DIRS}
 )
 
+# Hack as CameraRealsense2.h needs realsense2 include dir
+IF(realsense2_FOUND)
+	SET(INCLUDE_DIRS
+		${INCLUDE_DIRS}
+		${realsense2_INCLUDE_DIRS}
+	)
+ENDIF(realsense2_FOUND)
+
 IF(QT4_FOUND)
     INCLUDE(${QT_USE_FILE})
 ENDIF(QT4_FOUND)

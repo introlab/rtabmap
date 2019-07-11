@@ -622,7 +622,7 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 
 		if(dt)
 		{
-			if(dt >=guessSmoothingDelay_/2.0 || particleFilters_.size() || _filteringStrategy==1)
+			if(dt >= (guessSmoothingDelay_/2.0) || particleFilters_.size() || _filteringStrategy==1)
 			{
 				velocityGuess_ = Transform(vx, vy, vz, vroll, vpitch, vyaw);
 				previousVelocities_.clear();

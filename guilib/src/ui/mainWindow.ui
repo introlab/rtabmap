@@ -174,7 +174,7 @@
        </property>
        <property name="icon">
         <iconset resource="../GuiLib.qrc">
-         <normaloff>:/images/d435.png</normaloff>:/images/d435.png</iconset>
+         <normaloff>:/images/r200.png</normaloff>:/images/r200.png</iconset>
        </property>
        <addaction name="actionRealSense_R200"/>
       </widget>
@@ -208,12 +208,23 @@
        </property>
        <addaction name="actionRealSense2_D415"/>
       </widget>
+      <widget class="QMenu" name="menuRealSense_SR300">
+       <property name="title">
+        <string>RealSense SR300</string>
+       </property>
+       <property name="icon">
+        <iconset resource="../GuiLib.qrc">
+         <normaloff>:/images/sr300.png</normaloff>:/images/sr300.png</iconset>
+       </property>
+       <addaction name="actionRealSense2_SR300"/>
+      </widget>
       <addaction name="menuKinect_for_Xbox_360"/>
       <addaction name="menuXtion_PRO_LIVE"/>
       <addaction name="menuSense_3D_scanner"/>
       <addaction name="menuKinect_v2"/>
       <addaction name="menuRealSense_R200"/>
       <addaction name="menuRealSense_ZR300"/>
+      <addaction name="menuRealSense_SR300"/>
       <addaction name="menuRealSense_D415"/>
       <addaction name="menuRealSense_D435"/>
      </widget>
@@ -1553,6 +1564,14 @@
    </property>
   </action>
   <action name="actionRealSense2_T265">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>RealSense2</string>
+   </property>
+  </action>
+  <action name="actionRealSense2_SR300">
    <property name="checkable">
     <bool>true</bool>
    </property>

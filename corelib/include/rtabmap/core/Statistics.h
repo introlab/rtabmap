@@ -171,6 +171,8 @@ class RTABMAP_EXP Statistics
 	RTABMAP_STATS(Gt, Rotational_std, deg);
 	RTABMAP_STATS(Gt, Rotational_min, deg);
 	RTABMAP_STATS(Gt, Rotational_max, deg);
+	RTABMAP_STATS(Gt, Localization_linear_error, m);
+	RTABMAP_STATS(Gt, Localization_angular_error, deg);
 
 public:
 	static const std::map<std::string, float> & defaultData();
