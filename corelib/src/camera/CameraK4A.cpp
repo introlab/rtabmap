@@ -57,7 +57,8 @@ CameraK4A::CameraK4A(
 	,playbackHandle_(NULL),
 	transformationHandle_(NULL),
 	deviceId_(deviceId),
-	ir_(false)
+	ir_(false),
+	previousStamp_(0.0)
 #endif
 {
 	UERROR("CameraK4A: Live camera stream is not yet supported, only recorded mkv files are.");
@@ -73,7 +74,8 @@ CameraK4A::CameraK4A(
 	transformationHandle_(NULL),
 	deviceId_(-1),
 	fileName_(fileName),
-	ir_(false)
+	ir_(false),
+	previousStamp_(0.0)
 #endif
 {
 }
@@ -388,6 +390,42 @@ SensorData CameraK4A::captureImage(CameraInfo * info)
 				{
 					data = SensorData(bgrCV, depthCV, model_, this->getNextSeqID(), stamp);
 					data.setIMU(imu);
+
+					// Frame rate
+					if (this->getImageRate() < 0.0f)
+					{
+						if (stamp == 0)
+						{
+							UWARN("The option to use mkv stamps is set (framerate<0), but there are no stamps saved in the file! Aborting...");
+						}
+						else if (previousStamp_ > 0)
+						{
+							float ratio = -this->getImageRate();
+							int sleepTime = 1000.0*(stamp - previousStamp_) / ratio - 1000.0*timer_.getElapsedTime();
+							if (sleepTime > 10000)
+							{
+								UWARN("Detected long delay (%d sec, stamps = %f vs %f). Waiting a maximum of 10 seconds.",
+									sleepTime / 1000, previousStamp_, stamp);
+								sleepTime = 10000;
+							}
+							if (sleepTime > 2)
+							{
+								uSleep(sleepTime - 2);
+							}
+
+							// Add precision at the cost of a small overhead
+							while (timer_.getElapsedTime() < (stamp - previousStamp_) / ratio - 0.000001)
+							{
+								//
+							}
+
+							double slept = timer_.getElapsedTime();
+							timer_.start();
+							UDEBUG("slept=%fs vs target=%fs (ratio=%f)", slept, (stamp - previousStamp_) / ratio, ratio);
+						}
+						previousStamp_ = stamp;
+					}
+
 					break;
 				}
 			}
