@@ -5495,9 +5495,7 @@ void DatabaseViewer::updateConstraintButtons()
 	{
 		if(!containsLink(linksRemoved_, from ,to))
 		{
-			ui_->pushButton_reject->setEnabled(
-					currentLink.type() != Link::kNeighbor &&
-					currentLink.type() != Link::kNeighborMerged);
+			ui_->pushButton_reject->setEnabled(true);
 		}
 
 		//check for modified link
@@ -7109,8 +7107,13 @@ void DatabaseViewer::rejectConstraint()
 	{
 		if(iter->second.type() == Link::kNeighbor || iter->second.type() == Link::kNeighborMerged)
 		{
-			UWARN("Cannot reject neighbor links (%d->%d)", from, to);
-			return;
+			QMessageBox::StandardButton button = QMessageBox::warning(this, tr("Reject link"),
+					tr("Removing the neighbor link %1->%2 will split the graph. Do you want to continue?").arg(from).arg(to),
+					QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
+			if(button != QMessageBox::Yes)
+			{
+				return;
+			}
 		}
 		linksRemoved_.insert(*iter);
 		removed = true;
