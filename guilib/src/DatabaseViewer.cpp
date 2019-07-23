@@ -6712,11 +6712,12 @@ void DatabaseViewer::refineConstraint(int from, int to, bool silent)
 		if(!updated)
 		{
 			linksRefined_.insert(std::make_pair(newLink.from(), newLink));
+			updated = true;
+		}
 
-			if(!silent)
-			{
-				this->updateGraphView();
-			}
+		if(updated && !silent)
+		{
+			this->updateGraphView();
 		}
 
 		if(!silent && ui_->dockWidget_constraints->isVisible())
@@ -6850,6 +6851,11 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent)
 					if(fromIter != optimizedPoses.end() &&
 					   toIter != optimizedPoses.end())
 					{
+						QMessageBox::information(this,
+								tr("Add constraint"),
+								tr("Registration is done without vision (see %1 parameter), "
+									"a guess is taken from the optimized graph.")
+									.arg(Parameters::kRegStrategy().c_str()));
 						guess = fromIter->second.inverse() * toIter->second;
 					}
 				}
@@ -7142,6 +7148,8 @@ void DatabaseViewer::rejectConstraint()
 std::multimap<int, rtabmap::Link> DatabaseViewer::updateLinksWithModifications(
 		const std::multimap<int, rtabmap::Link> & edgeConstraints)
 {
+	UINFO("linksAdded_=%d linksRefined_=%d linksRemoved_=%d", (int)linksAdded_.size(), (int)linksRefined_.size(), (int)linksRemoved_.size());
+
 	std::multimap<int, rtabmap::Link> links;
 	for(std::multimap<int, rtabmap::Link>::const_iterator iter=edgeConstraints.begin();
 		iter!=edgeConstraints.end();
@@ -7152,38 +7160,16 @@ std::multimap<int, rtabmap::Link> DatabaseViewer::updateLinksWithModifications(
 		findIter = rtabmap::graph::findLink(linksRemoved_, iter->second.from(), iter->second.to());
 		if(findIter != linksRemoved_.end())
 		{
-			if(!(iter->second.from() == findIter->second.from() &&
-			   iter->second.to() == findIter->second.to() &&
-			   iter->second.type() == findIter->second.type()))
-			{
-				UWARN("Links (%d->%d,%d) and (%d->%d,%d) are not equal!?",
-						iter->second.from(), iter->second.to(), iter->second.type(),
-						findIter->second.from(), findIter->second.to(), findIter->second.type());
-			}
-			else
-			{
-				//UINFO("Removed link (%d->%d, %d)", iter->second.from(), iter->second.to(), iter->second.type());
-				continue; // don't add this link
-			}
+			UINFO("Removed link (%d->%d, %d)", iter->second.from(), iter->second.to(), iter->second.type());
+			continue; // don't add this link
 		}
 
 		findIter = rtabmap::graph::findLink(linksRefined_, iter->second.from(), iter->second.to());
 		if(findIter!=linksRefined_.end())
 		{
-			if(iter->second.from() == findIter->second.from() &&
-			   iter->second.to() == findIter->second.to() &&
-			   iter->second.type() == findIter->second.type())
-			{
-				links.insert(*findIter); // add the refined link
-				//UINFO("Updated link (%d->%d, %d)", iter->second.from(), iter->second.to(), iter->second.type());
-				continue;
-			}
-			else
-			{
-				UWARN("Links (%d->%d,%d) and (%d->%d,%d) are not equal!?",
-						iter->second.from(), iter->second.to(), iter->second.type(),
-						findIter->second.from(), findIter->second.to(), findIter->second.type());
-			}
+			links.insert(*findIter); // add the refined link
+			UINFO("Updated link (%d->%d, %d)", iter->second.from(), iter->second.to(), iter->second.type());
+			continue;
 		}
 
 		links.insert(*iter); // add original link
@@ -7194,7 +7180,15 @@ std::multimap<int, rtabmap::Link> DatabaseViewer::updateLinksWithModifications(
 		iter!=linksAdded_.end();
 		++iter)
 	{
-		//UINFO("Added link (%d->%d, %d)", iter->second.from(), iter->second.to(), iter->second.type());
+		std::multimap<int, rtabmap::Link>::iterator findIter = rtabmap::graph::findLink(linksRefined_, iter->second.from(), iter->second.to());
+		if(findIter!=linksRefined_.end())
+		{
+			links.insert(*findIter); // add the refined link
+			UINFO("Added refined link (%d->%d, %d)", findIter->second.from(), findIter->second.to(), findIter->second.type());
+			continue;
+		}
+
+		UINFO("Added link (%d->%d, %d)", iter->second.from(), iter->second.to(), iter->second.type());
 		links.insert(*iter);
 	}
 
