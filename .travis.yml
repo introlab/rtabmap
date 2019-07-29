@@ -4,31 +4,36 @@ group: deprecated-2017Q3
 
 compiler:
   - gcc
-  - clang
 
 matrix:
   include:
 
     - dist: trusty
-
-      addons:
-        apt:
-          packages:
-            - cmake
-            - libopencv-dev
-            - libqt4-dev
-            - libsqlite3-dev
-            - libyaml-cpp-dev
-
       install:
         - sudo sh -c 'echo "deb http://packages.ros.org/ros/ubuntu trusty main" > /etc/apt/sources.list.d/ros-latest.list'
         - wget http://packages.ros.org/ros.key -O - | sudo apt-key add -
         - sudo apt-get update
         - sudo apt-get update && sudo apt-get install dpkg
-        - sudo apt-get -y install libpcl-1.7-all libfreenect-dev ros-indigo-libg2o ros-indigo-octomap libopenni2-dev
+        - sudo apt-get -y install ros-indigo-rtabmap
+        - sudo apt-get -y remove ros-indigo-rtabmap
 
       script: 
         - source /opt/ros/indigo/setup.bash
+        - mkdir -p build && cd build
+        - cmake .. 
+        - make
+
+    - dist: xenial
+      install:
+        - sudo sh -c 'echo "deb http://packages.ros.org/ros/ubuntu xenial main" > /etc/apt/sources.list.d/ros-latest.list'
+        - wget http://packages.ros.org/ros.key -O - | sudo apt-key add -
+        - sudo apt-get update
+        - sudo apt-get update && sudo apt-get install dpkg
+        - sudo apt-get -y install ros-kinetic-rtabmap
+        - sudo apt-get -y remove ros-kinetic-rtabmap
+
+      script: 
+        - source /opt/ros/kinetic/setup.bash
         - mkdir -p build && cd build
         - cmake .. 
         - make
@@ -39,11 +44,11 @@ matrix:
         - wget http://packages.ros.org/ros.key -O - | sudo apt-key add -
         - sudo apt-get update
         - sudo apt-get update && sudo apt-get install dpkg
-        - sudo apt-get -y install ros-bionic-rtabmap-ros
-        - sudo apt-get -y remove ros-bionic-rtabmap
+        - sudo apt-get -y install ros-melodic-rtabmap
+        - sudo apt-get -y remove ros-melodic-rtabmap
 
       script: 
-        - source /opt/ros/bionic/setup.bash
+        - source /opt/ros/melodic/setup.bash
         - mkdir -p build && cd build
         - cmake .. 
         - make
