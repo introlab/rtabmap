@@ -3811,6 +3811,7 @@ void DatabaseViewer::sliderAValueChanged(int value)
 			ui_->label_velA,
 			ui_->label_calibA,
 			ui_->label_scanA,
+			ui_->label_gravityA,
 			ui_->label_gpsA,
 			ui_->label_sensorsA,
 			true);
@@ -3832,6 +3833,7 @@ void DatabaseViewer::sliderBValueChanged(int value)
 			ui_->label_velB,
 			ui_->label_calibB,
 			ui_->label_scanB,
+			ui_->label_gravityB,
 			ui_->label_gpsB,
 			ui_->label_sensorsB,
 			true);
@@ -3851,6 +3853,7 @@ void DatabaseViewer::update(int value,
 						QLabel * labelVelocity,
 						QLabel * labelCalib,
 						QLabel * labelScan,
+						QLabel * labelGravity,
 						QLabel * labelGps,
 						QLabel * labelSensors,
 						bool updateConstraintView)
@@ -3869,6 +3872,7 @@ void DatabaseViewer::update(int value,
 	stamp->clear();
 	labelCalib->clear();
 	labelScan ->clear();
+	labelGravity->clear();
 	labelGps->clear();
 	labelSensors->clear();
 	QRectF rect;
@@ -3941,6 +3945,14 @@ void DatabaseViewer::update(int value,
 				if(v.size()==6)
 				{
 					labelVelocity->setText(QString("vx=%1 vy=%2 vz=%3 vroll=%4 vpitch=%5 vyaw=%6").arg(v[0]).arg(v[1]).arg(v[2]).arg(v[3]).arg(v[4]).arg(v[5]));
+				}
+				std::multimap<int, Link>::const_iterator imuIter = graph::findLink(links_, id, id, false, Link::kGravity);
+				if(imuIter != links_.end())
+				{
+					float roll,pitch,yaw;
+					imuIter->second.transform().getEulerAngles(roll, pitch, yaw);
+					Eigen::Vector3d v = Transform(0,0,0,roll,pitch,0).toEigen3d() * -Eigen::Vector3d::UnitZ();
+					labelGravity->setText(QString("x=%1 y=%2 z=%3").arg(v[0]).arg(v[1]).arg(v[2]));
 				}
 				if(gps.stamp()>0.0)
 				{
@@ -5061,6 +5073,7 @@ void DatabaseViewer::updateConstraintView(
 						ui_->label_velA,
 						ui_->label_calibA,
 						ui_->label_scanA,
+						ui_->label_gravityA,
 						ui_->label_gpsA,
 						ui_->label_sensorsA,
 						false); // don't update constraints view!
@@ -5080,6 +5093,7 @@ void DatabaseViewer::updateConstraintView(
 						ui_->label_velB,
 						ui_->label_calibB,
 						ui_->label_scanB,
+						ui_->label_gravityB,
 						ui_->label_gpsB,
 						ui_->label_sensorsB,
 						false); // don't update constraints view!
