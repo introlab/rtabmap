@@ -194,6 +194,9 @@ option(WITH_VINS          "Include VINS-Fusion support"          ON)
 option(WITH_MADGWICK      "Include Madgwick IMU filtering support" ON)
 option(PCL_OMP            "With PCL OMP implementations"         ON)
 
+set(RTABMAP_QT_VERSION AUTO CACHE STRING "Force a specific Qt version.")
+set_property(CACHE RTABMAP_QT_VERSION PROPERTY STRINGS AUTO 4 5)
+
 FIND_PACKAGE(OpenCV REQUIRED QUIET)
 
 IF(WITH_QT)
@@ -264,14 +267,18 @@ IF(WITH_QT)
     # If Qt is here, the GUI will be built
     # look for Qt5 (if vtk>5 is installed) before Qt4
     IF("${VTK_MAJOR_VERSION}" GREATER 5)
-        FIND_PACKAGE(Qt5 COMPONENTS Widgets Core Gui QUIET)
-        IF(Qt5_FOUND)
-             FIND_PACKAGE(Qt5 COMPONENTS Widgets Core Gui OPTIONAL_COMPONENTS Svg)
-        ENDIF(Qt5_FOUND)
+        if(RTABMAP_QT_VERSION STREQUAL "AUTO" OR RTABMAP_QT_VERSION STREQUAL "5")
+            FIND_PACKAGE(Qt5 COMPONENTS Widgets Core Gui QUIET)
+            IF(Qt5_FOUND)
+                FIND_PACKAGE(Qt5 COMPONENTS Widgets Core Gui OPTIONAL_COMPONENTS Svg)
+            ENDIF(Qt5_FOUND)
+        ENDIF(RTABMAP_QT_VERSION STREQUAL "AUTO" OR RTABMAP_QT_VERSION STREQUAL "5")
     ENDIF("${VTK_MAJOR_VERSION}" GREATER 5)
 
     IF(NOT Qt5_FOUND)
-        FIND_PACKAGE(Qt4 COMPONENTS QtCore QtGui OPTIONAL_COMPONENTS QtSvg)
+        IF(RTABMAP_QT_VERSION STREQUAL "AUTO" OR RTABMAP_QT_VERSION STREQUAL "4")
+            FIND_PACKAGE(Qt4 COMPONENTS QtCore QtGui OPTIONAL_COMPONENTS QtSvg)
+        ENDIF(RTABMAP_QT_VERSION STREQUAL "AUTO" OR RTABMAP_QT_VERSION STREQUAL "4")
     ENDIF(NOT Qt5_FOUND)
         
     IF(QT4_FOUND OR Qt5_FOUND)
