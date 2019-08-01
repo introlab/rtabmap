@@ -608,6 +608,8 @@ class RTABMAP_EXP Parameters
     RTABMAP_PARAM(Icp, MaxRotation,               float, 0.78,  "Maximum ICP rotation correction accepted (rad).");
     RTABMAP_PARAM(Icp, VoxelSize,                 float, 0.0,   "Uniform sampling voxel size (0=disabled).");
     RTABMAP_PARAM(Icp, DownsamplingStep,          int, 1,       "Downsampling step size (1=no sampling). This is done before uniform sampling.");
+    RTABMAP_PARAM(Icp, RangeMin,                  float, 0,     "Minimum range filtering (0=disabled).");
+    RTABMAP_PARAM(Icp, RangeMax,                  float, 0,     "Maximum range filtering (0=disabled).");
 #ifdef RTABMAP_POINTMATCHER
     RTABMAP_PARAM(Icp, MaxCorrespondenceDistance, float, 0.1,   "Max distance for point correspondences.");
 #else

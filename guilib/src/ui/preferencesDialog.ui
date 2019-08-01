@@ -64,8 +64,8 @@
            <rect>
             <x>0</x>
             <y>0</y>
-            <width>677</width>
-            <height>2974</height>
+            <width>680</width>
+            <height>3082</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -95,7 +95,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>5</number>
+                <number>22</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,1">
@@ -17539,7 +17539,7 @@ Lower the ratio -&gt; higher the precision.</string>
                     </item>
                     <item>
                      <layout class="QGridLayout" name="gridLayout_48" columnstretch="0,1">
-                      <item row="4" column="0">
+                      <item row="6" column="0">
                        <widget class="QDoubleSpinBox" name="loopClosure_icpMaxCorrespondenceDistance">
                         <property name="decimals">
                          <number>3</number>
@@ -17587,14 +17587,14 @@ Lower the ratio -&gt; higher the precision.</string>
                         </property>
                        </widget>
                       </item>
-                      <item row="10" column="0">
+                      <item row="12" column="0">
                        <widget class="QDoubleSpinBox" name="loopClosure_icpPointToPlaneNormalsRadius">
                         <property name="singleStep">
                          <double>0.010000000000000</double>
                         </property>
                        </widget>
                       </item>
-                      <item row="8" column="0">
+                      <item row="10" column="0">
                        <widget class="QCheckBox" name="loopClosure_icpPointToPlane">
                         <property name="text">
                          <string/>
@@ -17614,7 +17614,7 @@ Lower the ratio -&gt; higher the precision.</string>
                         </property>
                        </widget>
                       </item>
-                      <item row="4" column="1">
+                      <item row="6" column="1">
                        <widget class="QLabel" name="label_122">
                         <property name="text">
                          <string>Max distance for point correspondences.</string>
@@ -17640,7 +17640,7 @@ Lower the ratio -&gt; higher the precision.</string>
                         </property>
                        </widget>
                       </item>
-                      <item row="7" column="0">
+                      <item row="9" column="0">
                        <widget class="QDoubleSpinBox" name="loopClosure_icpRatio">
                         <property name="minimum">
                          <double>0.000000000000000</double>
@@ -17656,7 +17656,7 @@ Lower the ratio -&gt; higher the precision.</string>
                         </property>
                        </widget>
                       </item>
-                      <item row="7" column="1">
+                      <item row="9" column="1">
                        <widget class="QLabel" name="label_133">
                         <property name="text">
                          <string>Ratio of matching correspondences to accept the transform. If the maximum laser scans is set, this is the minimum ratio of correspondences on laser scan maximum size to accept the transform.</string>
@@ -17669,7 +17669,7 @@ Lower the ratio -&gt; higher the precision.</string>
                         </property>
                        </widget>
                       </item>
-                      <item row="9" column="1">
+                      <item row="11" column="1">
                        <widget class="QLabel" name="label_212">
                         <property name="text">
                          <string>Number of neighbors to compute normals for point to plane. Normals won't be recomputed if uniform sampling is disabled and that there are already normals in the laser scans.</string>
@@ -17682,7 +17682,7 @@ Lower the ratio -&gt; higher the precision.</string>
                         </property>
                        </widget>
                       </item>
-                      <item row="9" column="0">
+                      <item row="11" column="0">
                        <widget class="QSpinBox" name="loopClosure_icpPointToPlaneNormals">
                         <property name="minimum">
                          <number>1</number>
@@ -17714,7 +17714,7 @@ Lower the ratio -&gt; higher the precision.</string>
                         </property>
                        </widget>
                       </item>
-                      <item row="5" column="1">
+                      <item row="7" column="1">
                        <widget class="QLabel" name="label_124">
                         <property name="text">
                          <string>Max iterations.</string>
@@ -17727,7 +17727,7 @@ Lower the ratio -&gt; higher the precision.</string>
                         </property>
                        </widget>
                       </item>
-                      <item row="5" column="0">
+                      <item row="7" column="0">
                        <widget class="QSpinBox" name="loopClosure_icpIterations">
                         <property name="minimum">
                          <number>1</number>
@@ -17791,7 +17791,7 @@ Lower the ratio -&gt; higher the precision.</string>
                         </property>
                        </widget>
                       </item>
-                      <item row="8" column="1">
+                      <item row="10" column="1">
                        <widget class="QLabel" name="label_144">
                         <property name="text">
                          <string>Point to plane ICP.</string>
@@ -17804,7 +17804,7 @@ Lower the ratio -&gt; higher the precision.</string>
                         </property>
                        </widget>
                       </item>
-                      <item row="6" column="1">
+                      <item row="8" column="1">
                        <widget class="QLabel" name="label_136">
                         <property name="text">
                          <string>Set the transformation epsilon (maximum allowable difference between two consecutive transformations) in order for an optimization to be considered as having converged to the final solution.</string>
@@ -17817,7 +17817,7 @@ Lower the ratio -&gt; higher the precision.</string>
                         </property>
                        </widget>
                       </item>
-                      <item row="6" column="0">
+                      <item row="8" column="0">
                        <widget class="QDoubleSpinBox" name="loopClosure_icpEpsilon">
                         <property name="suffix">
                          <string> m</string>
@@ -17839,7 +17839,7 @@ Lower the ratio -&gt; higher the precision.</string>
                         </property>
                        </widget>
                       </item>
-                      <item row="10" column="1">
+                      <item row="12" column="1">
                        <widget class="QLabel" name="label_426">
                         <property name="text">
                          <string>Search radius to compute normals for point to plane. Normals won't be recomputed if uniform sampling is disabled and that there are already normals in the laser scans.</string>
@@ -17852,7 +17852,7 @@ Lower the ratio -&gt; higher the precision.</string>
                         </property>
                        </widget>
                       </item>
-                      <item row="11" column="1">
+                      <item row="13" column="1">
                        <widget class="QLabel" name="label_429">
                         <property name="text">
                          <string>Minimum structural complexity (0.0=low, 1.0=high) of the scan to do point to plane registration, otherwise point to point registration is done instead.</string>
@@ -17865,7 +17865,7 @@ Lower the ratio -&gt; higher the precision.</string>
                         </property>
                        </widget>
                       </item>
-                      <item row="11" column="0">
+                      <item row="13" column="0">
                        <widget class="QDoubleSpinBox" name="loopClosure_icpPointToPlaneNormalsMinComplexity">
                         <property name="decimals">
                          <number>3</number>
@@ -17875,6 +17875,73 @@ Lower the ratio -&gt; higher the precision.</string>
                         </property>
                         <property name="singleStep">
                          <double>0.010000000000000</double>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="4" column="0">
+                       <widget class="QDoubleSpinBox" name="loopClosure_icpRangeMin">
+                        <property name="suffix">
+                         <string> m</string>
+                        </property>
+                        <property name="decimals">
+                         <number>2</number>
+                        </property>
+                        <property name="minimum">
+                         <double>0.000000000000000</double>
+                        </property>
+                        <property name="singleStep">
+                         <double>1.000000000000000</double>
+                        </property>
+                        <property name="value">
+                         <double>0.000000000000000</double>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="4" column="1">
+                       <widget class="QLabel" name="label_559">
+                        <property name="text">
+                         <string>Minimum range filtering. Set to 0 to disable.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="5" column="1">
+                       <widget class="QLabel" name="label_560">
+                        <property name="text">
+                         <string>Maximum range filtering. Set to 0 to disable.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="5" column="0">
+                       <widget class="QDoubleSpinBox" name="loopClosure_icpRangeMax">
+                        <property name="suffix">
+                         <string> m</string>
+                        </property>
+                        <property name="decimals">
+                         <number>2</number>
+                        </property>
+                        <property name="minimum">
+                         <double>0.000000000000000</double>
+                        </property>
+                        <property name="maximum">
+                         <double>999.000000000000000</double>
+                        </property>
+                        <property name="singleStep">
+                         <double>1.000000000000000</double>
+                        </property>
+                        <property name="value">
+                         <double>0.000000000000000</double>
                         </property>
                        </widget>
                       </item>
