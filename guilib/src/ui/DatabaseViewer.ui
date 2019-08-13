@@ -62,7 +62,7 @@
            <x>0</x>
            <y>0</y>
            <width>409</width>
-           <height>288</height>
+           <height>311</height>
           </rect>
          </property>
          <layout class="QGridLayout" name="gridLayout" columnstretch="0,1">
@@ -202,14 +202,14 @@
             </property>
            </widget>
           </item>
-          <item row="10" column="0">
+          <item row="11" column="0">
            <widget class="QLabel" name="label_childrenA_16">
             <property name="text">
              <string>GPS</string>
             </property>
            </widget>
           </item>
-          <item row="10" column="1">
+          <item row="11" column="1">
            <widget class="QLabel" name="label_gpsA">
             <property name="text">
              <string/>
@@ -236,14 +236,14 @@
             </property>
            </widget>
           </item>
-          <item row="11" column="0">
+          <item row="12" column="0">
            <widget class="QLabel" name="label_childrenA_20">
             <property name="text">
              <string>Sensors</string>
             </property>
            </widget>
           </item>
-          <item row="11" column="1">
+          <item row="12" column="1">
            <widget class="QLabel" name="label_sensorsA">
             <property name="text">
              <string/>
@@ -270,6 +270,23 @@
             </property>
            </widget>
           </item>
+          <item row="10" column="0">
+           <widget class="QLabel" name="label_childrenA_24">
+            <property name="text">
+             <string>Gravity</string>
+            </property>
+           </widget>
+          </item>
+          <item row="10" column="1">
+           <widget class="QLabel" name="label_gravityA">
+            <property name="text">
+             <string/>
+            </property>
+            <property name="textInteractionFlags">
+             <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+            </property>
+           </widget>
+          </item>
          </layout>
         </widget>
        </widget>
@@ -288,7 +305,7 @@
            <x>0</x>
            <y>0</y>
            <width>408</width>
-           <height>288</height>
+           <height>311</height>
           </rect>
          </property>
          <layout class="QGridLayout" name="gridLayout_2" columnstretch="0,1">
@@ -336,14 +353,14 @@
             </property>
            </widget>
           </item>
-          <item row="10" column="0">
+          <item row="11" column="0">
            <widget class="QLabel" name="label_childrenA_17">
             <property name="text">
              <string>GPS</string>
             </property>
            </widget>
           </item>
-          <item row="10" column="1">
+          <item row="11" column="1">
            <widget class="QLabel" name="label_gpsB">
             <property name="text">
              <string/>
@@ -462,14 +479,14 @@
             </property>
            </widget>
           </item>
-          <item row="11" column="0">
+          <item row="12" column="0">
            <widget class="QLabel" name="label_childrenA_21">
             <property name="text">
              <string>Sensors</string>
             </property>
            </widget>
           </item>
-          <item row="11" column="1">
+          <item row="12" column="1">
            <widget class="QLabel" name="label_sensorsB">
             <property name="text">
              <string/>
@@ -488,6 +505,23 @@
           </item>
           <item row="9" column="1">
            <widget class="QLabel" name="label_scanB">
+            <property name="text">
+             <string/>
+            </property>
+            <property name="textInteractionFlags">
+             <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+            </property>
+           </widget>
+          </item>
+          <item row="10" column="0">
+           <widget class="QLabel" name="label_childrenA_25">
+            <property name="text">
+             <string>Gravity</string>
+            </property>
+           </widget>
+          </item>
+          <item row="10" column="1">
+           <widget class="QLabel" name="label_gravityB">
             <property name="text">
              <string/>
             </property>

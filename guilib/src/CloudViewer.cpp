@@ -68,6 +68,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <vtkOpenGLRenderWindow.h>
 #include <vtkPointPicker.h>
 #include <vtkTextActor.h>
+#include <vtkTexture.h>
 #include <vtkOBBTree.h>
 #include <vtkObjectFactory.h>
 #include <vtkQuad.h>

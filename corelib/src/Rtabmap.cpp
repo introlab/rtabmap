@@ -2404,12 +2404,15 @@ bool Rtabmap::process(
 								std::map<int, Transform> filteredPath;
 								int i=0;
 								std::map<int, Transform>::iterator nearestIdIter = path.find(nearestId);
-								for(std::map<int, Transform>::iterator iter=nearestIdIter; iter!=path.end() && i<=_proximityMaxNeighbors; ++iter, ++i)
+								// "_proximityMaxNeighbors-1" means that if _proximityMaxNeighbors=1,
+								// only nearest node on the path is taken (no scan merging). Useful to find
+								// proximity detection between only 2 nodes with 360x360 lidar scans.
+								for(std::map<int, Transform>::iterator iter=nearestIdIter; iter!=path.end() && i<=_proximityMaxNeighbors-1; ++iter, ++i)
 								{
 									filteredPath.insert(*iter);
 								}
 								i=1;
-								for(std::map<int, Transform>::reverse_iterator iter(nearestIdIter); iter!=path.rend() && i<=_proximityMaxNeighbors; ++iter, ++i)
+								for(std::map<int, Transform>::reverse_iterator iter(nearestIdIter); iter!=path.rend() && i<=_proximityMaxNeighbors-1; ++iter, ++i)
 								{
 									filteredPath.insert(*iter);
 								}

@@ -699,6 +699,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->lineEdit_openniOniPath, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->lineEdit_openni2OniPath, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->lineEdit_k4a_mkv, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->source_checkBox_useMKVStamps, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->lineEdit_source_distortionModel, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->groupBox_bilateral, SIGNAL(toggled(bool)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->doubleSpinBox_bilateral_sigmaS, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteSourcePanel()));
@@ -1013,6 +1014,8 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->globalDetection_icpMaxRotation->setObjectName(Parameters::kIcpMaxRotation().c_str());
 	_ui->loopClosure_icpVoxelSize->setObjectName(Parameters::kIcpVoxelSize().c_str());
 	_ui->loopClosure_icpDownsamplingStep->setObjectName(Parameters::kIcpDownsamplingStep().c_str());
+	_ui->loopClosure_icpRangeMin->setObjectName(Parameters::kIcpRangeMin().c_str());
+	_ui->loopClosure_icpRangeMax->setObjectName(Parameters::kIcpRangeMax().c_str());
 	_ui->loopClosure_icpMaxCorrespondenceDistance->setObjectName(Parameters::kIcpMaxCorrespondenceDistance().c_str());
 	_ui->loopClosure_icpIterations->setObjectName(Parameters::kIcpIterations().c_str());
 	_ui->loopClosure_icpEpsilon->setObjectName(Parameters::kIcpEpsilon().c_str());
@@ -1788,6 +1791,7 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->lineEdit_openni2OniPath->clear();
 		_ui->checkbox_k4a_irDepth->setChecked(false);
 		_ui->lineEdit_k4a_mkv->clear();
+		_ui->source_checkBox_useMKVStamps->setChecked(true);
 		_ui->lineEdit_cameraRGBDImages_path_rgb->setText("");
 		_ui->lineEdit_cameraRGBDImages_path_depth->setText("");
 		_ui->doubleSpinBox_cameraRGBDImages_scale->setValue(1.0);
@@ -1830,6 +1834,14 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->lineEdit_cameraImages_path_imu->setText("");
 		_ui->lineEdit_cameraImages_imu_transform->setText("0 0 1 0 -1 0 1 0 0");
 		_ui->spinBox_cameraImages_max_imu_rate->setValue(0);
+
+		_ui->comboBox_imuFilter_strategy->setCurrentIndex(0);
+		_ui->doubleSpinBox_imuFilterMadgwickGain->setValue(Parameters::defaultImuFilterMadgwickGain());
+		_ui->doubleSpinBox_imuFilterMadgwickZeta->setValue(Parameters::defaultImuFilterMadgwickZeta());
+		_ui->doubleSpinBox_imuFilterComplementaryGainAcc->setValue(Parameters::defaultImuFilterComplementaryGainAcc());
+		_ui->doubleSpinBox_imuFilterComplementaryBiasAlpha->setValue(Parameters::defaultImuFilterComplementaryBiasAlpha());
+		_ui->checkBox_imuFilterComplementaryDoAdaptiveGain->setChecked(Parameters::defaultImuFilterComplementaryDoAdpativeGain());
+		_ui->checkBox_imuFilterComplementaryDoBiasEstimation->setChecked(Parameters::defaultImuFilterComplementaryDoBiasEstimation());
 
 		_ui->checkBox_source_scanFromDepth->setChecked(false);
 		_ui->spinBox_source_scanDownsampleStep->setValue(1);
@@ -2185,6 +2197,7 @@ void PreferencesDialog::readCameraSettings(const QString & filePath)
 	settings.beginGroup("K4A");
 	_ui->checkbox_k4a_irDepth->setChecked(settings.value("ir", _ui->checkbox_k4a_irDepth->isChecked()).toBool());
 	_ui->lineEdit_k4a_mkv->setText(settings.value("mkvPath", _ui->lineEdit_k4a_mkv->text()).toString());
+	_ui->source_checkBox_useMKVStamps->setChecked(settings.value("useMkvStamps", _ui->source_checkBox_useMKVStamps->isChecked()).toBool());
 	settings.endGroup(); // K4A
 
 	settings.beginGroup("RealSense");
@@ -2640,6 +2653,7 @@ void PreferencesDialog::writeCameraSettings(const QString & filePath) const
 	settings.beginGroup("K4A");
 	settings.setValue("ir", _ui->checkbox_k4a_irDepth->isChecked());
 	settings.setValue("mkvPath", _ui->lineEdit_k4a_mkv->text());
+	settings.setValue("useMkvStamps", _ui->source_checkBox_useMKVStamps->isChecked());
 	settings.endGroup(); // K4A
 
 	settings.beginGroup("RealSense");
@@ -5325,7 +5339,7 @@ Camera * PreferencesDialog::createCamera(bool useRawImages, bool useColor)
 			// playback
 			camera = new CameraK4A(
 				_ui->lineEdit_k4a_mkv->text().toStdString().c_str(),
-				this->getGeneralInputRate(),
+				_ui->source_checkBox_useMKVStamps->isChecked() ? -1 : this->getGeneralInputRate(),
 				this->getSourceLocalTransform());
 		}
 		else

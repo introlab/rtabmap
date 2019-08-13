@@ -368,6 +368,8 @@ RegistrationIcp::RegistrationIcp(const ParametersMap & parameters, Registration 
 	_maxRotation(Parameters::defaultIcpMaxRotation()),
 	_voxelSize(Parameters::defaultIcpVoxelSize()),
 	_downsamplingStep(Parameters::defaultIcpDownsamplingStep()),
+	_rangeMin(Parameters::defaultIcpRangeMin()),
+	_rangeMax(Parameters::defaultIcpRangeMax()),
 	_maxCorrespondenceDistance(Parameters::defaultIcpMaxCorrespondenceDistance()),
 	_maxIterations(Parameters::defaultIcpIterations()),
 	_epsilon(Parameters::defaultIcpEpsilon()),
@@ -401,6 +403,8 @@ void RegistrationIcp::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kIcpMaxRotation(), _maxRotation);
 	Parameters::parse(parameters, Parameters::kIcpVoxelSize(), _voxelSize);
 	Parameters::parse(parameters, Parameters::kIcpDownsamplingStep(), _downsamplingStep);
+	Parameters::parse(parameters, Parameters::kIcpRangeMin(), _rangeMin);
+	Parameters::parse(parameters, Parameters::kIcpRangeMax(), _rangeMax);
 	Parameters::parse(parameters, Parameters::kIcpMaxCorrespondenceDistance(), _maxCorrespondenceDistance);
 	Parameters::parse(parameters, Parameters::kIcpIterations(), _maxIterations);
 	Parameters::parse(parameters, Parameters::kIcpEpsilon(), _epsilon);
@@ -569,11 +573,11 @@ Transform RegistrationIcp::computeTransformationImpl(
 		// ICP with guess transform
 		LaserScan fromScan = dataFrom.laserScanRaw();
 		LaserScan toScan = dataTo.laserScanRaw();
-		if(_downsamplingStep>1)
+		if(_downsamplingStep>1 || _rangeMin >0.0f || _rangeMax > 0.0f)
 		{
-			fromScan = util3d::downsample(fromScan, _downsamplingStep);
-			toScan = util3d::downsample(toScan, _downsamplingStep);
-			UDEBUG("Downsampling time (step=%d) = %f s", _downsamplingStep, timer.ticks());
+			fromScan = util3d::commonFiltering(fromScan, _downsamplingStep, _rangeMin, _rangeMax);
+			toScan = util3d::commonFiltering(toScan, _downsamplingStep, _rangeMin, _rangeMax);
+			UDEBUG("Downsampling and/or range filtering time (step=%d, min=%fm, max=%fm) = %f s", _downsamplingStep, _rangeMin, _rangeMax,  timer.ticks());
 		}
 
 		if(fromScan.size() && toScan.size())
