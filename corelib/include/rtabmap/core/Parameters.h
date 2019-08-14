@@ -727,6 +727,8 @@ class RTABMAP_EXP Parameters
     RTABMAP_PARAM(Marker, VarianceLinear,         float, 0.001, "Linear variance to set on marker detections.");
     RTABMAP_PARAM(Marker, VarianceAngular,        float, 0.01,  "Angular variance to set on marker detections. Set to >=9999 to use only position (xyz) constraint in graph optimization.");
     RTABMAP_PARAM(Marker, CornerRefinementMethod, int,   0,     "Corner refinement method (0: None, 1: Subpixel, 2:contour, 3: AprilTag2). For OpenCV <3.3.0, this is \"doCornerRefinement\" parameter: set 0 for false and 1 for true.");
+    RTABMAP_PARAM(Marker, MaxRange,               float, -1,    "Maximum range in which markers will be detected. -1 is reserved for unlimited range.")
+    RTABMAP_PARAM(Marker, MinRange,               float, -1,    "Miniminum range in which markers will be detected. -1 is reserved for unlimited range.")
 
     RTABMAP_PARAM(ImuFilter, MadgwickGain,                  double, 0.1,  "Gain of the filter. Higher values lead to faster convergence but more noise. Lower values lead to slower convergence but smoother signal, belongs in [0, 1].");
     RTABMAP_PARAM(ImuFilter, MadgwickZeta,                  double, 0.0,  "Gyro drift gain (approx. rad/s), belongs in [-1, 1].");
@@ -814,4 +816,3 @@ private:
 }
 
 #endif /* PARAMETERS_H_ */
-
