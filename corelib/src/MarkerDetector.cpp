@@ -36,6 +36,8 @@ MarkerDetector::MarkerDetector(const ParametersMap & parameters)
 #ifdef HAVE_OPENCV_ARUCO
 	markerLength_ = Parameters::defaultMarkerLength();
 	maxDepthError_ = Parameters::defaultMarkerMaxDepthError();
+	maxRange_ = Parameters::defaultMarkerMaxRange();
+	minRange_ = Parameters::defaultMarkerMinRange();
 	dictionaryId_ = Parameters::defaultMarkerDictionary();
 #if CV_MAJOR_VERSION > 3 || (CV_MAJOR_VERSION == 3 && CV_MINOR_VERSION >=2)
 	detectorParams_ = cv::aruco::DetectorParameters::create();
@@ -87,6 +89,8 @@ void MarkerDetector::parseParameters(const ParametersMap & parameters)
 
 	Parameters::parse(parameters, Parameters::kMarkerLength(), markerLength_);
 	Parameters::parse(parameters, Parameters::kMarkerMaxDepthError(), maxDepthError_);
+	Parameters::parse(parameters, Parameters::kMarkerMaxRange(), maxRange_);
+	Parameters::parse(parameters, Parameters::kMarkerMinRange(), minRange_);
 	Parameters::parse(parameters, Parameters::kMarkerDictionary(), dictionaryId_);
 #if CV_MAJOR_VERSION < 3 || (CV_MAJOR_VERSION == 3 && (CV_MINOR_VERSION <4 || (CV_MINOR_VERSION ==4 && CV_SUBMINOR_VERSION<2)))
 	if(dictionaryId_ >= 17)
@@ -191,7 +195,10 @@ std::map<int, Transform> MarkerDetector::detect(const cv::Mat & image, const Cam
 				}
 			}
 
-			if(tvecs[i].val[2] < 3) // <X meters
+			// Limit the detection range to be between the min / max range.
+			// If the ranges are -1, allow any detection within that direction.
+			if((maxRange_ == -1 || tvecs[i].val[2] < maxRange_) &&
+				(minRange_ == -1 || tvecs[i].val[2] > minRange_))
 			{
 				cv::Mat R;
 				cv::Rodrigues(rvecs[i], R);
