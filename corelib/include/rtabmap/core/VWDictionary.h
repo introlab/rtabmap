@@ -115,7 +115,8 @@ private:
 	bool _incrementalFlann;
 	float _rebalancingFactor;
 	float _nndrRatio;
-	std::string _dictionaryPath; // a pre-computed dictionary (.txt)
+	std::string _dictionaryPath; // a pre-computed dictionary (.txt or .db)
+	std::string _newDictionaryPath; // a pre-computed dictionary (.txt or .db)
 	bool _newWordsComparedTogether;
 	int _lastWordId;
 	bool useDistanceL1_;

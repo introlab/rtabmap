@@ -1,18 +1,18 @@
 
 SET(SRC_FILES
-	Rtabmap.cpp
-	RtabmapThread.cpp
-	
-	Statistics.cpp
-	
-	Memory.cpp
-	
-	DBDriver.cpp
-	DBDriverSqlite3.cpp
-	DBReader.cpp
-	
-	Recovery.cpp
-	
+    Rtabmap.cpp
+    RtabmapThread.cpp
+    
+    Statistics.cpp
+    
+    Memory.cpp
+    
+    DBDriver.cpp
+    DBDriverSqlite3.cpp
+    DBReader.cpp
+    
+    Recovery.cpp
+    
     Camera.cpp
     CameraThread.cpp
     CameraModel.cpp
@@ -33,88 +33,88 @@ SET(SRC_FILES
     camera/CameraStereoImages.cpp
     camera/CameraStereoVideo.cpp
     camera/CameraStereoZed.cpp
-	camera/CameraStereoTara.cpp
+    camera/CameraStereoTara.cpp
     camera/CameraVideo.cpp
     
     EpipolarGeometry.cpp
-	VisualWord.cpp
-	VWDictionary.cpp
-	BayesFilter.cpp
-	Parameters.cpp
+    VisualWord.cpp
+    VWDictionary.cpp
+    BayesFilter.cpp
+    Parameters.cpp
     Signature.cpp
-	Features2d.cpp
-	Transform.cpp
-	GeodeticCoords.cpp
-	
-	util2d.cpp
-	
-	util3d.cpp
-	util3d_filtering.cpp
-	util3d_mapping.cpp
-	util3d_transforms.cpp
-	util3d_registration.cpp
-	util3d_surface.cpp
-	util3d_features.cpp
-	util3d_correspondences.cpp
-	util3d_motion_estimation.cpp
-	
-	SensorData.cpp
-	Graph.cpp
-	Compression.cpp
-	Link.cpp
-	LaserScan.cpp
-	
-	Optimizer.cpp
-	optimizer/OptimizerTORO.cpp
-	optimizer/OptimizerG2O.cpp
-	optimizer/OptimizerGTSAM.cpp
-	optimizer/OptimizerCVSBA.cpp
-	
-	Registration.cpp
-	RegistrationIcp.cpp
-	RegistrationVis.cpp
-	
-	Odometry.cpp
-	OdometryThread.cpp
-	odometry/OdometryF2M.cpp
-	odometry/OdometryMono.cpp
-	odometry/OdometryF2F.cpp
-	odometry/OdometryFovis.cpp
-	odometry/OdometryViso2.cpp
-	odometry/OdometryDVO.cpp
-	odometry/OdometryOkvis.cpp
-	odometry/OdometryORBSLAM2.cpp
-	odometry/OdometryLOAM.cpp
-	odometry/OdometryMSCKF.cpp
-	odometry/OdometryVINS.cpp
-	
-	IMUThread.cpp
-	IMUFilter.cpp
-	imufilter/ComplementaryFilter.cpp
-	
-	Stereo.cpp
-	StereoDense.cpp
-	StereoCameraModel.cpp
-	stereo/StereoBM.cpp
-	stereo/StereoSGBM.cpp
-	
-	OccupancyGrid.cpp
-	
-	MarkerDetector.cpp
-	
-	GainCompensator.cpp
-		
-	rtflann/ext/lz4.c
-	rtflann/ext/lz4hc.c
-	FlannIndex.cpp	
-	
-	#clams stuff
-	clams/discrete_depth_distortion_model_helpers.cpp
-	clams/discrete_depth_distortion_model.cpp
-	clams/frame_projector.cpp
-	clams/slam_calibrator.cpp
-	
-	opencv/ORBextractor.cc
+    Features2d.cpp
+    Transform.cpp
+    GeodeticCoords.cpp
+    
+    util2d.cpp
+    
+    util3d.cpp
+    util3d_filtering.cpp
+    util3d_mapping.cpp
+    util3d_transforms.cpp
+    util3d_registration.cpp
+    util3d_surface.cpp
+    util3d_features.cpp
+    util3d_correspondences.cpp
+    util3d_motion_estimation.cpp
+    
+    SensorData.cpp
+    Graph.cpp
+    Compression.cpp
+    Link.cpp
+    LaserScan.cpp
+    
+    Optimizer.cpp
+    optimizer/OptimizerTORO.cpp
+    optimizer/OptimizerG2O.cpp
+    optimizer/OptimizerGTSAM.cpp
+    optimizer/OptimizerCVSBA.cpp
+    
+    Registration.cpp
+    RegistrationIcp.cpp
+    RegistrationVis.cpp
+    
+    Odometry.cpp
+    OdometryThread.cpp
+    odometry/OdometryF2M.cpp
+    odometry/OdometryMono.cpp
+    odometry/OdometryF2F.cpp
+    odometry/OdometryFovis.cpp
+    odometry/OdometryViso2.cpp
+    odometry/OdometryDVO.cpp
+    odometry/OdometryOkvis.cpp
+    odometry/OdometryORBSLAM2.cpp
+    odometry/OdometryLOAM.cpp
+    odometry/OdometryMSCKF.cpp
+    odometry/OdometryVINS.cpp
+    
+    IMUThread.cpp
+    IMUFilter.cpp
+    imufilter/ComplementaryFilter.cpp
+    
+    Stereo.cpp
+    StereoDense.cpp
+    StereoCameraModel.cpp
+    stereo/StereoBM.cpp
+    stereo/StereoSGBM.cpp
+    
+    OccupancyGrid.cpp
+    
+    MarkerDetector.cpp
+    
+    GainCompensator.cpp
+
+    rtflann/ext/lz4.c
+    rtflann/ext/lz4hc.c
+    FlannIndex.cpp
+    
+    #clams stuff
+    clams/discrete_depth_distortion_model_helpers.cpp
+    clams/discrete_depth_distortion_model.cpp
+    clams/frame_projector.cpp
+    clams/slam_calibrator.cpp
+    
+    opencv/ORBextractor.cc
 )
 
 IF(OpenCV_VERSION_MAJOR EQUAL 2)
@@ -347,6 +347,17 @@ IF(libpointmatcher_FOUND)
 		${libpointmatcher_LIBRARIES}
 	)
 ENDIF(libpointmatcher_FOUND)
+
+IF(FastCV_FOUND)
+	SET(INCLUDE_DIRS 
+		${INCLUDE_DIRS} 
+		${FastCV_INCLUDE_DIRS}
+	)
+	SET(LIBRARIES
+		${LIBRARIES}
+		${FastCV_LIBRARIES}
+	)
+ENDIF(FastCV_FOUND)
 
 IF(loam_velodyne_FOUND)
 	SET(INCLUDE_DIRS 

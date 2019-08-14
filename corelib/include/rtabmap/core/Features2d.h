@@ -289,6 +289,14 @@ private:
 	int maxThreshold_;
 	int gridRows_;
 	int gridCols_;
+	int fastCV_;
+
+	bool fastCVinit_;
+	int fastCVMaxFeatures_;
+	int fastCVLastImageHeight_;
+	uint32_t* fastCVCorners_= NULL;
+	uint32_t* fastCVCornerScores_ = NULL;
+	void* fastCVTempBuf_ = NULL;
 
 	cv::Ptr<cv::FeatureDetector> _fast;
 	cv::Ptr<CV_FAST_GPU> _gpuFast;

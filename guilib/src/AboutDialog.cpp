@@ -66,6 +66,13 @@ AboutDialog::AboutDialog(QWidget * parent) :
 	_ui->label_orboctree->setText("No");
 	_ui->label_orboctree_license->setEnabled(false);
 #endif
+#ifdef RTABMAP_FASTCV
+	_ui->label_fastcv->setText("Yes");
+	_ui->label_fastcv_license->setEnabled(true);
+#else
+	_ui->label_fastcv->setText("No");
+	_ui->label_fastcv_license->setEnabled(false);
+#endif
 #ifdef RTABMAP_OCTOMAP
 	_ui->label_octomap->setText("Yes");
 	_ui->label_octomap_license->setEnabled(true);

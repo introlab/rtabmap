@@ -869,6 +869,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->fastGridCols->setObjectName(Parameters::kFASTGridCols().c_str());
 	_ui->fastGpu->setObjectName(Parameters::kFASTGpu().c_str());
 	_ui->fastKeypointRatio->setObjectName(Parameters::kFASTGpuKeypointsRatio().c_str());
+	_ui->fastCV->setObjectName(Parameters::kFASTCV().c_str());
 
 	//ORB detector
 	_ui->doubleSpinBox_ORBScaleFactor->setObjectName(Parameters::kORBScaleFactor().c_str());

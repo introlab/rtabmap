@@ -290,6 +290,7 @@ class RTABMAP_EXP Parameters
     RTABMAP_PARAM(FAST, MaxThreshold,       int, 200,     "Maximum threshold. Used only when FAST/GridRows and FAST/GridCols are set.");
     RTABMAP_PARAM(FAST, GridRows,           int, 0,       "Grid rows (0 to disable). Adapts the detector to partition the source image into a grid and detect points in each cell.");
     RTABMAP_PARAM(FAST, GridCols,           int, 0,       "Grid cols (0 to disable). Adapts the detector to partition the source image into a grid and detect points in each cell.");
+    RTABMAP_PARAM(FAST, CV,                 int, 0,       "Enable FastCV implementation if non-zero (and RTAB-Map is built with FastCV support). Values should be 9 and 10.");
 
     RTABMAP_PARAM(GFTT, QualityLevel,      double, 0.001, "");
     RTABMAP_PARAM(GFTT, MinDistance,       double, 3,    "");

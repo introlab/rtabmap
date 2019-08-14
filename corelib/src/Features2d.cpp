@@ -65,6 +65,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
   #include <opencv2/xfeatures2d/cuda.hpp>
 #endif
 
+#ifdef RTABMAP_FASTCV
+#include <fastcv.h>
+#endif
+
 namespace rtabmap {
 
 void Feature2D::filterKeypointsByDepth(
@@ -1081,13 +1085,66 @@ FAST::FAST(const ParametersMap & parameters) :
 		minThreshold_(Parameters::defaultFASTMinThreshold()),
 		maxThreshold_(Parameters::defaultFASTMaxThreshold()),
 		gridRows_(Parameters::defaultFASTGridRows()),
-		gridCols_(Parameters::defaultFASTGridCols())
+		gridCols_(Parameters::defaultFASTGridCols()),
+		fastCV_(Parameters::defaultFASTCV()),
+		fastCVinit_(false),
+		fastCVMaxFeatures_(10000),
+		fastCVLastImageHeight_(0)
 {
+#ifdef RTABMAP_FASTCV
+	char sVersion[128] = { 0 };
+	fcvGetVersion(sVersion, 128);
+	UINFO("fastcv version = %s", sVersion);
+	int ix;
+	if ((ix = fcvSetOperationMode(FASTCV_OP_PERFORMANCE)))
+	{
+		UERROR("fcvSetOperationMode return=%d, OpenCV FAST will be used instead!", ix);
+		fastCV_ = 0;
+	}
+	else
+	{
+		fcvMemInit();
+
+		if (!(fastCVCorners_ = (uint32_t*)fcvMemAlloc(fastCVMaxFeatures_ * sizeof(uint32_t) * 2, 16)) ||
+			!(fastCVCornerScores_ = (uint32_t*)fcvMemAlloc( fastCVMaxFeatures_ * sizeof(uint32_t), 16 )))
+		{
+			UERROR("could not alloc fastcv mem, using opencv fast instead!");
+
+			if (fastCVCorners_)
+			{
+				fcvMemFree(fastCVCorners_);
+				fastCVCorners_ = NULL;
+			}
+			if (fastCVCornerScores_)
+			{
+				fcvMemFree(fastCVCornerScores_);
+				fastCVCornerScores_ = NULL;
+			}
+		}
+		else
+		{
+			fastCVinit_ = true;
+		}
+	}
+	#endif
 	parseParameters(parameters);
 }
 
 FAST::~FAST()
 {
+#ifdef RTABMAP_FASTCV
+	if(fastCVinit_)
+	{
+		fcvMemDeInit();
+
+		if (fastCVCorners_)
+			fcvMemFree(fastCVCorners_);
+		if (fastCVCornerScores_)
+			fcvMemFree(fastCVCornerScores_);
+		if (fastCVTempBuf_)
+			fcvMemFree(fastCVTempBuf_);
+	}
+#endif
 }
 
 void FAST::parseParameters(const ParametersMap & parameters)
@@ -1103,6 +1160,9 @@ void FAST::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kFASTMaxThreshold(), maxThreshold_);
 	Parameters::parse(parameters, Parameters::kFASTGridRows(), gridRows_);
 	Parameters::parse(parameters, Parameters::kFASTGridCols(), gridCols_);
+
+	Parameters::parse(parameters, Parameters::kFASTCV(), fastCV_);
+	UASSERT(fastCV_ == 0 || fastCV_ == 9 || fastCV_ == 10);
 
 	UASSERT_MSG(threshold_ >= minThreshold_, uFormat("%d vs %d", threshold_, minThreshold_).c_str());
 	UASSERT_MSG(threshold_ <= maxThreshold_, uFormat("%d vs %d", threshold_, maxThreshold_).c_str());
@@ -1183,6 +1243,69 @@ std::vector<cv::KeyPoint> FAST::generateKeypointsImpl(const cv::Mat & image, con
 {
 	UASSERT(!image.empty() && image.channels() == 1 && image.depth() == CV_8U);
 	std::vector<cv::KeyPoint> keypoints;
+
+#ifdef RTABMAP_FASTCV
+	if(fastCV_>0)
+	{
+		// Note: mask not supported, it should be the inverse of the current mask used (0=where to extract)
+		uint32_t nCorners = 0;
+
+		UASSERT(fastCVCorners_ != NULL && fastCVCornerScores_ != NULL);
+		if (nonmaxSuppression_)
+		{
+			if(fastCVTempBuf_==NULL || (fastCVTempBuf_!= NULL && fastCVLastImageHeight_!= image.rows))
+			{
+				if (fastCVTempBuf_)
+				{
+					fcvMemFree(fastCVTempBuf_);
+					fastCVTempBuf_ = NULL;
+				}
+				if(!(fastCVTempBuf_ = (uint32_t*)fcvMemAlloc( (3*fastCVMaxFeatures_+image.rows+1)*4, 16 )))
+				{
+					UERROR("could not alloc fastcv mem for temp buf (%s=true)", Parameters::kFASTNonmaxSuppression().c_str());
+					fastCVLastImageHeight_ = 0;
+					return keypoints;
+				}
+				fastCVLastImageHeight_ = image.rows;
+			}
+		}
+
+		// image.data should be 128 bits aligned
+		UDEBUG("%dx%d (step=%d) thr=%d maxFeatures=%d", image.cols, image.rows, image.step1(), threshold_, fastCVMaxFeatures_);
+		if(fastCV_ == 10)
+		{
+			fcvCornerFast10Scoreu8(image.data, image.cols, image.rows, 0, threshold_, 0, fastCVCorners_, fastCVCornerScores_, fastCVMaxFeatures_, &nCorners, nonmaxSuppression_?1:0, fastCVTempBuf_);
+		}
+		else
+		{
+			fcvCornerFast9Scoreu8_v2(image.data, image.cols, image.rows, image.step1(), threshold_, 0, fastCVCorners_, fastCVCornerScores_, fastCVMaxFeatures_, &nCorners, nonmaxSuppression_?1:0, fastCVTempBuf_);
+		}
+		UDEBUG("number of corners found = %d:", nCorners);
+		keypoints.resize(nCorners);
+		for (uint32_t i = 0; i < nCorners; i++)
+		{
+			keypoints[i].pt.x = fastCVCorners_[i * 2];
+			keypoints[i].pt.y = fastCVCorners_[(i * 2) + 1];
+			keypoints[i].size = 3;
+			keypoints[i].response = fastCVCornerScores_[i];
+		}
+
+		if(this->getMaxFeatures() > 0)
+		{
+			this->limitKeypoints(keypoints, this->getMaxFeatures());
+		}
+		return keypoints;
+	}
+#endif
+
+	if(fastCV_>0)
+	{
+		UWARN(  "RTAB-Map is not built with FastCV support. OpenCV's FAST is used instead. "
+				"Please set %s to 0. This message will only appear once.",
+				Parameters::kFASTCV().c_str());
+		fastCV_ = 0;
+	}
+
 	cv::Mat imgRoi(image, roi);
 	cv::Mat maskRoi;
 	if(!mask.empty())
