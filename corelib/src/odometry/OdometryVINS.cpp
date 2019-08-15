@@ -417,7 +417,7 @@ Transform OdometryVINS::computeTransform(
 			{
 				if(!lastImu_.localTransform().isNull())
 				{
-					p = p * lastImu_.localTransform();
+					p = Transform(0,1,0,0,-1,0,0,0, 0,0,1,0) * p * lastImu_.localTransform().inverse();
 				}
 
 				if(this->getPose().rotation().isIdentity())
@@ -442,7 +442,7 @@ Transform OdometryVINS::computeTransform(
 					info->reg.covariance *= this->framesProcessed() == 0?9999:0.0001;
 
 					// feature map
-					Transform fixT = this->getPose()*previousPoseInv;
+					Transform fixT = this->getPose()*previousPoseInv*Transform(0,1,0,0,-1,0,0,0, 0,0,1,0);
 					for (auto &it_per_id : vinsEstimator_->f_manager.feature)
 					{
 						int used_num;
