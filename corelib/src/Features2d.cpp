@@ -541,7 +541,8 @@ std::vector<cv::KeyPoint> Feature2D::generateKeypoints(const cv::Mat & image, co
 				}
 
 				if(value>_minDepth &&
-				   (_maxDepth == 0.0f || value <= _maxDepth))
+				   (_maxDepth == 0.0f || value <= _maxDepth) &&
+				   uIsFinite(value))
 				{
 					((unsigned char*)mask.data)[i] = 255; // ORB uses 255 to handle pyramids
 				}
