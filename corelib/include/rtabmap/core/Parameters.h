@@ -374,25 +374,31 @@ class RTABMAP_EXP Parameters
 
     // Graph optimization
 #ifdef RTABMAP_GTSAM
-    RTABMAP_PARAM(Optimizer, Strategy,        int, 2,          "Graph optimization strategy: 0=TORO, 1=g2o and 2=GTSAM.");
+    RTABMAP_PARAM(Optimizer, Strategy,        int, 2,          "Graph optimization strategy: 0=TORO, 1=g2o, 2=GTSAM and 3=Ceres.");
     RTABMAP_PARAM(Optimizer, Iterations,      int, 20,         "Optimization iterations.");
     RTABMAP_PARAM(Optimizer, Epsilon,         double, 0.00001, "Stop optimizing when the error improvement is less than this value.");
 #else
 #ifdef RTABMAP_G2O
-    RTABMAP_PARAM(Optimizer, Strategy,        int, 1,          "Graph optimization strategy: 0=TORO, 1=g2o and 2=GTSAM.");
+    RTABMAP_PARAM(Optimizer, Strategy,        int, 1,          "Graph optimization strategy: 0=TORO, 1=g2o, 2=GTSAM and 3=Ceres.");
     RTABMAP_PARAM(Optimizer, Iterations,      int, 20,         "Optimization iterations.");
     RTABMAP_PARAM(Optimizer, Epsilon,         double, 0.0,     "Stop optimizing when the error improvement is less than this value.");
 #else
-    RTABMAP_PARAM(Optimizer, Strategy,        int, 0,          "Graph optimization strategy: 0=TORO, 1=g2o and 2=GTSAM.");
+#ifdef RTABMAP_CERES
+    RTABMAP_PARAM(Optimizer, Strategy,        int, 3,          "Graph optimization strategy: 0=TORO, 1=g2o, 2=GTSAM and 3=Ceres.");
+    RTABMAP_PARAM(Optimizer, Iterations,      int, 20,         "Optimization iterations.");
+    RTABMAP_PARAM(Optimizer, Epsilon,         double, 0.000001, "Stop optimizing when the error improvement is less than this value.");
+#else
+    RTABMAP_PARAM(Optimizer, Strategy,        int, 0,          "Graph optimization strategy: 0=TORO, 1=g2o, 2=GTSAM and 3=Ceres.");
     RTABMAP_PARAM(Optimizer, Iterations,      int, 100,        "Optimization iterations.");
     RTABMAP_PARAM(Optimizer, Epsilon,         double, 0.00001, "Stop optimizing when the error improvement is less than this value.");
+#endif
 #endif
 #endif
     RTABMAP_PARAM(Optimizer, VarianceIgnored, bool, false,     "Ignore constraints' variance. If checked, identity information matrix is used for each constraint. Otherwise, an information matrix is generated from the variance saved in the links.");
     RTABMAP_PARAM(Optimizer, Robust,          bool, false,     uFormat("Robust graph optimization using Vertigo (only work for g2o and GTSAM optimization strategies). Not compatible with \"%s\" if enabled.", kRGBDOptimizeMaxError().c_str()));
     RTABMAP_PARAM(Optimizer, PriorsIgnored,   bool, true,      "Ignore prior constraints (global pose or GPS) while optimizing. Currently only g2o and gtsam optimization supports this.");
     RTABMAP_PARAM(Optimizer, LandmarksIgnored,   bool, false,  "Ignore landmark constraints while optimizing. Currently only g2o and gtsam optimization supports this.");
-    RTABMAP_PARAM(Optimizer, GravitySigma,    float, 0.0,      uFormat("Gravity sigma value (>=0, typically between 0.1 and 0.3). Optimization is done while preserving gravity orientation of the poses. This should be used only with visual/lidar inertial odometry approaches, for which we assume that all odometry poses are aligned with gravity. Set to 0 to disable gravity constraints. Currently supported only with GTSAM optimization strategy (see %s).", kOptimizerStrategy().c_str()));
+    RTABMAP_PARAM(Optimizer, GravitySigma,    float, 0.0,      uFormat("Gravity sigma value (>=0, typically between 0.1 and 0.3). Optimization is done while preserving gravity orientation of the poses. This should be used only with visual/lidar inertial odometry approaches, for which we assume that all odometry poses are aligned with gravity. Set to 0 to disable gravity constraints. Currently supported only with g2o and GTSAM optimization strategies (see %s).", kOptimizerStrategy().c_str()));
 
 #ifdef RTABMAP_ORB_SLAM2
     RTABMAP_PARAM(g2o, Solver,            int, 3,          "0=csparse 1=pcg 2=cholmod 3=Eigen");
@@ -436,9 +442,9 @@ class RTABMAP_EXP Parameters
     RTABMAP_PARAM(OdomF2M, ScanSubtractAngle,   float, 45,    uFormat("[Geometry] Max angle (degrees) used to filter points of a new added scan to local map (when \"%s\">0). 0 means any angle.", kOdomF2MScanSubtractRadius().c_str()).c_str());
     RTABMAP_PARAM(OdomF2M, ValidDepthRatio,     float, 0.75,  "If a new frame has points without valid depth, they are added to local feature map only if points with valid depth on total points is over this ratio. Setting to 1 means no points without valid depth are added to local feature map.");
 #if defined(RTABMAP_G2O) || defined(RTABMAP_ORB_SLAM2)
-    RTABMAP_PARAM(OdomF2M, BundleAdjustment,          int, 1, "Local bundle adjustment: 0=disabled, 1=g2o, 2=cvsba.");
+    RTABMAP_PARAM(OdomF2M, BundleAdjustment,          int, 1, "Local bundle adjustment: 0=disabled, 1=g2o, 2=cvsba, 3=Ceres.");
 #else
-    RTABMAP_PARAM(OdomF2M, BundleAdjustment,          int, 0, "Local bundle adjustment: 0=disabled, 1=g2o, 2=cvsba.");
+    RTABMAP_PARAM(OdomF2M, BundleAdjustment,          int, 0, "Local bundle adjustment: 0=disabled, 1=g2o, 2=cvsba, 3=Ceres.");
 #endif
     RTABMAP_PARAM(OdomF2M, BundleAdjustmentMaxFrames, int, 10, "Maximum frames used for bundle adjustment (0=inf or all current frames in the local map).");
 
@@ -599,9 +605,9 @@ class RTABMAP_EXP Parameters
     RTABMAP_PARAM(Vis, CorFlowEps,               float, 0.01, uFormat("[%s=1] See cv::calcOpticalFlowPyrLK(). Used for optical flow approach.", kVisCorType().c_str()));
     RTABMAP_PARAM(Vis, CorFlowMaxLevel,          int, 3,      uFormat("[%s=1] See cv::calcOpticalFlowPyrLK(). Used for optical flow approach.", kVisCorType().c_str()));
 #if defined(RTABMAP_G2O) || defined(RTABMAP_ORB_SLAM2)
-    RTABMAP_PARAM(Vis, BundleAdjustment,         int, 1,      "Optimization with bundle adjustment: 0=disabled, 1=g2o, 2=cvsba.");
+    RTABMAP_PARAM(Vis, BundleAdjustment,         int, 1,      "Optimization with bundle adjustment: 0=disabled, 1=g2o, 2=cvsba, 3=Ceres.");
 #else
-    RTABMAP_PARAM(Vis, BundleAdjustment,         int, 0,      "Optimization with bundle adjustment: 0=disabled, 1=g2o, 2=cvsba.");
+    RTABMAP_PARAM(Vis, BundleAdjustment,         int, 0,      "Optimization with bundle adjustment: 0=disabled, 1=g2o, 2=cvsba, 3=Ceres.");
 #endif
 
     // ICP registration parameters

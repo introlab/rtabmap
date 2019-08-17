@@ -118,6 +118,8 @@ AboutDialog::AboutDialog(QWidget * parent) :
 	_ui->label_gtsam_license->setEnabled(Optimizer::isAvailable(Optimizer::kTypeGTSAM)?true:false);
 	_ui->label_cvsba->setText(Optimizer::isAvailable(Optimizer::kTypeCVSBA)?"Yes":"No");
 	_ui->label_cvsba_license->setEnabled(Optimizer::isAvailable(Optimizer::kTypeCVSBA)?true:false);
+	_ui->label_ceres->setText(Optimizer::isAvailable(Optimizer::kTypeCeres)?"Yes":"No");
+	_ui->label_ceres_license->setEnabled(Optimizer::isAvailable(Optimizer::kTypeCeres)?true:false);
 
 #ifdef RTABMAP_POINTMATCHER
 	_ui->label_libpointmatcher->setText("Yes");

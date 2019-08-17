@@ -95,7 +95,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>29</number>
+                <number>16</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,1">
@@ -10354,6 +10354,11 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         <string>GTSAM</string>
                        </property>
                       </item>
+                      <item>
+                       <property name="text">
+                        <string>Ceres</string>
+                       </property>
+                      </item>
                      </widget>
                     </item>
                     <item row="0" column="1">
@@ -12703,7 +12708,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                     <item>
                      <widget class="QStackedWidget" name="stackedWidget_odometryType">
                       <property name="currentIndex">
-                       <number>9</number>
+                       <number>0</number>
                       </property>
                       <widget class="QWidget" name="page_52">
                        <layout class="QVBoxLayout" name="verticalLayout_77">
@@ -12883,6 +12888,11 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                                <item>
                                 <property name="text">
                                  <string>cvsba</string>
+                                </property>
+                               </item>
+                               <item>
+                                <property name="text">
+                                 <string>Ceres</string>
                                 </property>
                                </item>
                               </widget>
@@ -16567,6 +16577,11 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         <item>
                          <property name="text">
                           <string>cvsba</string>
+                         </property>
+                        </item>
+                        <item>
+                         <property name="text">
+                          <string>Ceres</string>
                          </property>
                         </item>
                        </widget>

@@ -69,6 +69,7 @@ SET(SRC_FILES
     optimizer/OptimizerG2O.cpp
     optimizer/OptimizerGTSAM.cpp
     optimizer/OptimizerCVSBA.cpp
+    optimizer/OptimizerCeres.cpp
     
     Registration.cpp
     RegistrationIcp.cpp
@@ -336,6 +337,17 @@ IF(cvsba_FOUND)
 		${cvsba_LIBS}
 	)
 ENDIF(cvsba_FOUND)
+
+IF(CERES_FOUND)
+	SET(INCLUDE_DIRS 
+		${INCLUDE_DIRS} 
+		${CERES_INCLUDE_DIRS}
+	)
+	SET(LIBRARIES
+		${LIBRARIES}
+		${CERES_LIBRARIES}
+	)
+ENDIF(CERES_FOUND)
 
 IF(libpointmatcher_FOUND)
 	SET(INCLUDE_DIRS 
