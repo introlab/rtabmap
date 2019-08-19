@@ -32,6 +32,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/CameraModel.h"
 #include "rtabmap/core/Camera.h"
 #include "rtabmap/core/Version.h"
+#include "rtabmap/utilite/UTimer.h"
 
 namespace rtabmap
 {
@@ -72,6 +73,8 @@ private:
 	int deviceId_;
 	std::string fileName_;
 	bool ir_;
+	double previousStamp_;
+	UTimer timer_;
 #endif
 
 };

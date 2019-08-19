@@ -262,7 +262,7 @@ IF(realsense2_FOUND)
 	ELSE()
 		SET(LIBRARIES
 			${LIBRARIES}
-			realsense2
+			realsense2::realsense2 # target
 		)
 	ENDIF()
 ENDIF(realsense2_FOUND)

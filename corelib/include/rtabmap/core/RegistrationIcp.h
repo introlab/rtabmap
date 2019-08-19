@@ -60,6 +60,8 @@ private:
 	float _maxRotation;
 	float _voxelSize;
 	int _downsamplingStep;
+	float _rangeMin;
+	float _rangeMax;
 	float _maxCorrespondenceDistance;
 	int _maxIterations;
 	float _epsilon;
