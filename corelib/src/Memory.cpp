@@ -2343,6 +2343,7 @@ void Memory::moveToTrash(Signature * s, bool keepLinkedToGraph, std::list<int> *
 
 			}
 			s->removeLinks(); // remove all links
+			s->removeLandmarks(); // remove all landmarks
 			s->setWeight(0);
 			s->setLabel(""); // reset label
 		}
