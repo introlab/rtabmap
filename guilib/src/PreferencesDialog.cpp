@@ -262,6 +262,12 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 		_ui->odom_f2m_bundleStrategy->setItemData(2, 0, Qt::UserRole - 1);
 		_ui->loopClosure_bundle->setItemData(2, 0, Qt::UserRole - 1);
 	}
+	if(!Optimizer::isAvailable(Optimizer::kTypeCeres))
+	{
+		_ui->graphOptimization_type->setItemData(3, 0, Qt::UserRole - 1);
+		_ui->odom_f2m_bundleStrategy->setItemData(3, 0, Qt::UserRole - 1);
+		_ui->loopClosure_bundle->setItemData(3, 0, Qt::UserRole - 1);
+	}
 #ifdef RTABMAP_VERTIGO
 	if(!Optimizer::isAvailable(Optimizer::kTypeG2O) && !Optimizer::isAvailable(Optimizer::kTypeGTSAM))
 #endif
@@ -869,6 +875,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->fastGridCols->setObjectName(Parameters::kFASTGridCols().c_str());
 	_ui->fastGpu->setObjectName(Parameters::kFASTGpu().c_str());
 	_ui->fastKeypointRatio->setObjectName(Parameters::kFASTGpuKeypointsRatio().c_str());
+	_ui->fastCV->setObjectName(Parameters::kFASTCV().c_str());
 
 	//ORB detector
 	_ui->doubleSpinBox_ORBScaleFactor->setObjectName(Parameters::kORBScaleFactor().c_str());
@@ -2942,6 +2949,13 @@ bool PreferencesDialog::validateForm()
 				   "with cvsba. Bundle adjustment is disabled."));
 		_ui->loopClosure_bundle->setCurrentIndex(0);
 	}
+	if(_ui->loopClosure_bundle->currentIndex() == 3 && !Optimizer::isAvailable(Optimizer::kTypeCeres))
+	{
+		QMessageBox::warning(this, tr("Parameter warning"),
+				tr("Selected visual registration bundle adjustment optimization strategy (Ceres) is not available. RTAB-Map is not built "
+				   "with cERES. Bundle adjustment is disabled."));
+		_ui->loopClosure_bundle->setCurrentIndex(0);
+	}
 
 	// Local bundle adjustment strategy for odometry F2M
 	if(_ui->odom_f2m_bundleStrategy->currentIndex() == 1 && !Optimizer::isAvailable(Optimizer::kTypeG2O))
@@ -2956,6 +2970,13 @@ bool PreferencesDialog::validateForm()
 		QMessageBox::warning(this, tr("Parameter warning"),
 				tr("Selected odometry local bundle adjustment optimization strategy (cvsba) is not available. RTAB-Map is not built "
 				   "with cvsba. Bundle adjustment is disabled."));
+		_ui->odom_f2m_bundleStrategy->setCurrentIndex(0);
+	}
+	if(_ui->odom_f2m_bundleStrategy->currentIndex() == 3 && !Optimizer::isAvailable(Optimizer::kTypeCeres))
+	{
+		QMessageBox::warning(this, tr("Parameter warning"),
+				tr("Selected odometry local bundle adjustment optimization strategy (Ceres) is not available. RTAB-Map is not built "
+				   "with Ceres. Bundle adjustment is disabled."));
 		_ui->odom_f2m_bundleStrategy->setCurrentIndex(0);
 	}
 

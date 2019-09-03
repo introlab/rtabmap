@@ -1372,7 +1372,7 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 				// negative root means that all other poses should be fixed instead of the root
 				vCam->setFixed((rootId >= 0 && iter->first == rootId) || (rootId < 0 && iter->first != -rootId));
 
-				UDEBUG("cam %d (fixed=%d) fx=%f fy=%f cx=%f cy=%f Tx=%f baseline=%f t=%s",
+				/*UDEBUG("cam %d (fixed=%d) fx=%f fy=%f cx=%f cy=%f Tx=%f baseline=%f t=%s",
 						iter->first,
 						vCam->fixed()?1:0,
 						iterModel->second.fx(),
@@ -1381,7 +1381,7 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 						iterModel->second.cy(),
 						iterModel->second.Tx(),
 						iterModel->second.Tx()<0.0?-iterModel->second.Tx()/iterModel->second.fx():baseline_,
-						camPose.prettyPrint().c_str());
+						camPose.prettyPrint().c_str());*/
 
 				UASSERT_MSG(optimizer.addVertex(vCam), uFormat("cannot insert vertex %d!?", iter->first).c_str());
 			}
@@ -1721,7 +1721,7 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 					// remove model local transform
 					t *= models.at(iter->first).localTransform().inverse();
 
-					UDEBUG("%d from=%s to=%s", iter->first, iter->second.prettyPrint().c_str(), t.prettyPrint().c_str());
+					//UDEBUG("%d from=%s to=%s", iter->first, iter->second.prettyPrint().c_str(), t.prettyPrint().c_str());
 					if(t.isNull())
 					{
 						UERROR("Optimized pose %d is null!?!?", iter->first);

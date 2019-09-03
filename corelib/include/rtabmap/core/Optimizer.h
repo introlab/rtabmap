@@ -62,7 +62,8 @@ public:
 		kTypeTORO = 0,
 		kTypeG2O = 1,
 		kTypeGTSAM = 2,
-		kTypeCVSBA = 3
+		kTypeCeres = 3,
+		kTypeCVSBA = 4
 	};
 	static bool isAvailable(Optimizer::Type type);
 	static Optimizer * create(const ParametersMap & parameters);

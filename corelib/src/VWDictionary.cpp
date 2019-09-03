@@ -66,7 +66,7 @@ VWDictionary::VWDictionary(const ParametersMap & parameters) :
 	_incrementalFlann(Parameters::defaultKpIncrementalFlann()),
 	_rebalancingFactor(Parameters::defaultKpFlannRebalancingFactor()),
 	_nndrRatio(Parameters::defaultKpNndrRatio()),
-	_dictionaryPath(Parameters::defaultKpDictionaryPath()),
+	_newDictionaryPath(Parameters::defaultKpDictionaryPath()),
 	_newWordsComparedTogether(Parameters::defaultKpNewWordsComparedTogether()),
 	_lastWordId(0),
 	useDistanceL1_(false),
@@ -93,11 +93,10 @@ void VWDictionary::parseParameters(const ParametersMap & parameters)
 
 	UASSERT_MSG(_nndrRatio > 0.0f, uFormat("String=%s value=%f", uContains(parameters, Parameters::kKpNndrRatio())?parameters.at(Parameters::kKpNndrRatio()).c_str():"", _nndrRatio).c_str());
 
-	std::string dictionaryPath = _dictionaryPath;
 	bool incrementalDictionary = _incrementalDictionary;
 	if((iter=parameters.find(Parameters::kKpDictionaryPath())) != parameters.end())
 	{
-		dictionaryPath = (*iter).second.c_str();
+		_newDictionaryPath = (*iter).second.c_str();
 	}
 	if((iter=parameters.find(Parameters::kKpIncrementalDictionary())) != parameters.end())
 	{
@@ -115,11 +114,7 @@ void VWDictionary::parseParameters(const ParametersMap & parameters)
 	{
 		this->setIncrementalDictionary();
 	}
-	else
-	{
-		this->setFixedDictionary(dictionaryPath);
-	}
-
+	_incrementalDictionary = incrementalDictionary;
 }
 
 void VWDictionary::setIncrementalDictionary()
@@ -133,21 +128,23 @@ void VWDictionary::setIncrementalDictionary()
 		}
 	}
 	_dictionaryPath = "";
+	_newDictionaryPath = "";
 }
 
 void VWDictionary::setFixedDictionary(const std::string & dictionaryPath)
 {
+	UDEBUG("");
 	if(!dictionaryPath.empty())
 	{
 		if((!_incrementalDictionary && _dictionaryPath.compare(dictionaryPath) != 0) ||
 		   _visualWords.size() == 0)
 		{
-			UDEBUG("incremental=%d, oldPath=%s newPath=%s, visual words=%d",
+			UINFO("incremental=%d, oldPath=%s newPath=%s, visual words=%d",
 					_incrementalDictionary?1:0, _dictionaryPath.c_str(), dictionaryPath.c_str(), (int)_visualWords.size());
 
 			if(UFile::getExtension(dictionaryPath).compare("db") == 0)
 			{
-				UDEBUG("Loading fixed vocabulary \"%s\", this may take a while...", dictionaryPath.c_str());
+				UWARN("Loading fixed vocabulary \"%s\", this may take a while...", dictionaryPath.c_str());
 				DBDriver * driver = DBDriver::create();
 				if(driver->openConnection(dictionaryPath, false))
 				{
@@ -252,9 +249,11 @@ void VWDictionary::setFixedDictionary(const std::string & dictionaryPath)
 			}
 			else
 			{
-				this->update();
+				_dictionaryPath = dictionaryPath;
+				_newDictionaryPath = dictionaryPath;
 				_incrementalDictionary = false;
-				UDEBUG("Loaded %d words!", (int)_visualWords.size());
+				this->update();
+				UWARN("Loaded %d words!", (int)_visualWords.size());
 			}
 		}
 		else if(!_incrementalDictionary)
@@ -275,6 +274,7 @@ void VWDictionary::setFixedDictionary(const std::string & dictionaryPath)
 		_incrementalDictionary = false;
 	}
 	_dictionaryPath = dictionaryPath;
+	_newDictionaryPath = dictionaryPath;
 }
 
 void VWDictionary::setNNStrategy(NNStrategy strategy)
@@ -402,13 +402,19 @@ cv::Mat VWDictionary::convert32FToBin(const cv::Mat & descriptorsIn)
 
 void VWDictionary::update()
 {
-	ULOGGER_DEBUG("");
-	if(!_incrementalDictionary && !_notIndexedWords.size())
+	ULOGGER_DEBUG("incremental=%d", _incrementalDictionary?1:0);
+	if(!_incrementalDictionary)
 	{
-		// No need to update the search index if we
-		// use a fixed dictionary and the index is
-		// already built
-		return;
+		// reload the fixed dictionary if it has been cleared or not yet initialized
+		this->setFixedDictionary(_newDictionaryPath);
+
+		if(!_incrementalDictionary && !_notIndexedWords.size())
+		{
+			// No need to update the search index if we
+			// use a fixed dictionary and the index is
+			// already built
+			return;
+		}
 	}
 
 	if(_notIndexedWords.size() || _visualWords.size() == 0 || _removedIndexedWords.size())
@@ -643,12 +649,6 @@ void VWDictionary::clear(bool printWarningsIfNotEmpty)
 	_unusedWords.clear();
 	_flannIndex->release();
 	useDistanceL1_ = false;
-
-	if(!_incrementalDictionary)
-	{
-		// reload the fixed dictionary
-		this->setFixedDictionary(_dictionaryPath);
-	}
 }
 
 int VWDictionary::getNextId()

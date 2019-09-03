@@ -40,20 +40,30 @@ PostProcessingDialog::PostProcessingDialog(QWidget * parent) :
 	_ui = new Ui_PostProcessingDialog();
 	_ui->setupUi(this);
 
-	if(!Optimizer::isAvailable(Optimizer::kTypeCVSBA) && !Optimizer::isAvailable(Optimizer::kTypeG2O))
+	if(!Optimizer::isAvailable(Optimizer::kTypeCVSBA) &&
+		!Optimizer::isAvailable(Optimizer::kTypeG2O) &&
+		!Optimizer::isAvailable(Optimizer::kTypeCeres))
 	{
 		_ui->sba->setEnabled(false);
 		_ui->sba->setChecked(false);
 	}
-	else if(!Optimizer::isAvailable(Optimizer::kTypeCVSBA))
+	else
 	{
-		_ui->comboBox_sbaType->setItemData(1, 0, Qt::UserRole - 1);
-		_ui->comboBox_sbaType->setCurrentIndex(0);
-	}
-	else if(!Optimizer::isAvailable(Optimizer::kTypeG2O))
-	{
-		_ui->comboBox_sbaType->setItemData(0, 0, Qt::UserRole - 1);
-		_ui->comboBox_sbaType->setCurrentIndex(1);
+		if(!Optimizer::isAvailable(Optimizer::kTypeCVSBA))
+		{
+			_ui->comboBox_sbaType->setItemData(1, 0, Qt::UserRole - 1);
+			_ui->comboBox_sbaType->setCurrentIndex(0);
+		}
+		if(!Optimizer::isAvailable(Optimizer::kTypeG2O))
+		{
+			_ui->comboBox_sbaType->setItemData(0, 0, Qt::UserRole - 1);
+			_ui->comboBox_sbaType->setCurrentIndex(1);
+		}
+		if(!Optimizer::isAvailable(Optimizer::kTypeCeres))
+		{
+			_ui->comboBox_sbaType->setItemData(2, 0, Qt::UserRole - 1);
+			_ui->comboBox_sbaType->setCurrentIndex(1);
+		}
 	}
 
 	restoreDefaults();
@@ -191,7 +201,19 @@ void PostProcessingDialog::restoreDefaults()
 	setRefineLoopClosureLinks(false);
 	setSBA(false);
 	setSBAIterations(20);
-	setSBAType(!Optimizer::isAvailable(Optimizer::kTypeG2O)&&Optimizer::isAvailable(Optimizer::kTypeCVSBA)?Optimizer::kTypeCVSBA:Optimizer::kTypeG2O);
+	Optimizer::Type sbaType = Optimizer::kTypeG2O; // g2o
+	if(!Optimizer::isAvailable(Optimizer::kTypeG2O))
+	{
+		if(Optimizer::isAvailable(Optimizer::kTypeCVSBA))
+		{
+			sbaType = Optimizer::kTypeCVSBA;
+		}
+		else if(Optimizer::isAvailable(Optimizer::kTypeCeres))
+		{
+			sbaType = Optimizer::kTypeCeres;
+		}
+	}
+	setSBAType(sbaType);
 	setSBAVariance(1.0);
 	setSBARematchFeatures(true);
 }
@@ -244,7 +266,7 @@ bool PostProcessingDialog::isRefineLoopClosureLinks() const
 
 bool PostProcessingDialog::isSBA() const
 {
-	return _ui->sba->isChecked();
+	return _ui->sba->isEnabled() && _ui->sba->isChecked();
 }
 
 int PostProcessingDialog::sbaIterations() const
@@ -257,7 +279,7 @@ double PostProcessingDialog::sbaVariance() const
 }
 Optimizer::Type PostProcessingDialog::sbaType() const
 {
-	return _ui->comboBox_sbaType->currentIndex()==0?Optimizer::kTypeG2O:Optimizer::kTypeCVSBA;
+	return _ui->comboBox_sbaType->currentIndex()==2?Optimizer::kTypeCeres:_ui->comboBox_sbaType->currentIndex()==1?Optimizer::kTypeCVSBA:Optimizer::kTypeG2O;
 }
 bool PostProcessingDialog::sbaRematchFeatures() const
 {
@@ -299,7 +321,10 @@ void PostProcessingDialog::setRefineLoopClosureLinks(bool on)
 }
 void PostProcessingDialog::setSBA(bool on)
 {
-	_ui->sba->setChecked((Optimizer::isAvailable(Optimizer::kTypeCVSBA) || Optimizer::isAvailable(Optimizer::kTypeG2O)) && on);
+	_ui->sba->setChecked((
+			Optimizer::isAvailable(Optimizer::kTypeCVSBA) ||
+			Optimizer::isAvailable(Optimizer::kTypeG2O) ||
+			Optimizer::isAvailable(Optimizer::kTypeCeres)) && on);
 }
 void PostProcessingDialog::setSBAIterations(int iterations)
 {
@@ -311,7 +336,11 @@ void PostProcessingDialog::setSBAVariance(double variance)
 }
 void PostProcessingDialog::setSBAType(Optimizer::Type type)
 {
-	if(type == Optimizer::kTypeCVSBA)
+	if(type == Optimizer::kTypeCeres)
+	{
+		_ui->comboBox_sbaType->setCurrentIndex(2);
+	}
+	else if(type == Optimizer::kTypeCVSBA)
 	{
 		_ui->comboBox_sbaType->setCurrentIndex(1);
 	}

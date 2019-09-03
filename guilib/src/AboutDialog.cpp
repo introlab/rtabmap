@@ -66,6 +66,13 @@ AboutDialog::AboutDialog(QWidget * parent) :
 	_ui->label_orboctree->setText("No");
 	_ui->label_orboctree_license->setEnabled(false);
 #endif
+#ifdef RTABMAP_FASTCV
+	_ui->label_fastcv->setText("Yes");
+	_ui->label_fastcv_license->setEnabled(true);
+#else
+	_ui->label_fastcv->setText("No");
+	_ui->label_fastcv_license->setEnabled(false);
+#endif
 #ifdef RTABMAP_OCTOMAP
 	_ui->label_octomap->setText("Yes");
 	_ui->label_octomap_license->setEnabled(true);
@@ -111,6 +118,8 @@ AboutDialog::AboutDialog(QWidget * parent) :
 	_ui->label_gtsam_license->setEnabled(Optimizer::isAvailable(Optimizer::kTypeGTSAM)?true:false);
 	_ui->label_cvsba->setText(Optimizer::isAvailable(Optimizer::kTypeCVSBA)?"Yes":"No");
 	_ui->label_cvsba_license->setEnabled(Optimizer::isAvailable(Optimizer::kTypeCVSBA)?true:false);
+	_ui->label_ceres->setText(Optimizer::isAvailable(Optimizer::kTypeCeres)?"Yes":"No");
+	_ui->label_ceres_license->setEnabled(Optimizer::isAvailable(Optimizer::kTypeCeres)?true:false);
 
 #ifdef RTABMAP_POINTMATCHER
 	_ui->label_libpointmatcher->setText("Yes");

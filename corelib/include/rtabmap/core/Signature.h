@@ -92,6 +92,7 @@ public:
 
 	void addLandmark(const Link & landmark) {_landmarks.insert(std::make_pair(landmark.to(), landmark));}
 	const std::map<int, Link> & getLandmarks() const {return _landmarks;}
+	void removeLandmarks() {_landmarks.clear();}
 
 	void setSaved(bool saved) {_saved = saved;}
 	void setModified(bool modified) {_modified = modified; _linksModified = modified;}

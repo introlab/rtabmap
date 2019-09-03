@@ -1435,7 +1435,7 @@ Transform RegistrationVis::computeTransformationImpl(
 			toSignature.sensorData().cameraModels().size() <= 1)
 		{
 			UDEBUG("Refine with bundle adjustment");
-			Optimizer * sba = Optimizer::create(_bundleAdjustment==2?Optimizer::kTypeCVSBA:Optimizer::kTypeG2O, _bundleParameters);
+			Optimizer * sba = Optimizer::create(_bundleAdjustment==3?Optimizer::kTypeCeres:_bundleAdjustment==2?Optimizer::kTypeCVSBA:Optimizer::kTypeG2O, _bundleParameters);
 
 			std::map<int, Transform> poses;
 			std::multimap<int, Link> links;

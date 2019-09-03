@@ -303,7 +303,7 @@ void CameraRealSense2::getPoseAndIMU(
 		return;
 	}
 
-	int maxWaitTime = 30;
+	int maxWaitTime = 35;
 
 	// Interpolate pose
 	if(!poseBuffer_.empty())

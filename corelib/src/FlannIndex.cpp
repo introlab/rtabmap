@@ -49,6 +49,7 @@ FlannIndex::~FlannIndex()
 
 void FlannIndex::release()
 {
+	UDEBUG("");
 	if(index_)
 	{
 		if(featuresType_ == CV_8UC1)
@@ -76,6 +77,7 @@ void FlannIndex::release()
 	isLSH_ = false;
 	addedDescriptors_.clear();
 	removedIndexes_.clear();
+	UDEBUG("");
 }
 
 unsigned int FlannIndex::indexedFeatures() const
@@ -138,6 +140,7 @@ void FlannIndex::buildLinearIndex(
 		bool useDistanceL1,
 		float rebalancingFactor)
 {
+	UDEBUG("");
 	this->release();
 	UASSERT(index_ == 0);
 	UASSERT(features.type() == CV_32FC1 || features.type() == CV_8UC1);
@@ -178,6 +181,7 @@ void FlannIndex::buildLinearIndex(
 	addedDescriptors_.insert(std::make_pair(nextIndex_, features));
 
 	nextIndex_ = features.rows;
+	UDEBUG("");
 }
 
 void FlannIndex::buildKDTreeIndex(
@@ -186,6 +190,7 @@ void FlannIndex::buildKDTreeIndex(
 		bool useDistanceL1,
 		float rebalancingFactor)
 {
+	UDEBUG("");
 	this->release();
 	UASSERT(index_ == 0);
 	UASSERT(features.type() == CV_32FC1 || features.type() == CV_8UC1);
@@ -226,6 +231,7 @@ void FlannIndex::buildKDTreeIndex(
 	addedDescriptors_.insert(std::make_pair(nextIndex_, features));
 
 	nextIndex_ = features.rows;
+	UDEBUG("");
 }
 
 void FlannIndex::buildKDTreeSingleIndex(
@@ -235,6 +241,7 @@ void FlannIndex::buildKDTreeSingleIndex(
 		bool useDistanceL1,
 		float rebalancingFactor)
 {
+	UDEBUG("");
 	this->release();
 	UASSERT(index_ == 0);
 	UASSERT(features.type() == CV_32FC1 || features.type() == CV_8UC1);
@@ -275,6 +282,7 @@ void FlannIndex::buildKDTreeSingleIndex(
 	addedDescriptors_.insert(std::make_pair(nextIndex_, features));
 
 	nextIndex_ = features.rows;
+	UDEBUG("");
 }
 
 void FlannIndex::buildLSHIndex(
@@ -284,6 +292,7 @@ void FlannIndex::buildLSHIndex(
 		unsigned int multi_probe_level,
 		float rebalancingFactor)
 {
+	UDEBUG("");
 	this->release();
 	UASSERT(index_ == 0);
 	UASSERT(features.type() == CV_8UC1);
@@ -300,6 +309,7 @@ void FlannIndex::buildLSHIndex(
 	addedDescriptors_.insert(std::make_pair(nextIndex_, features));
 
 	nextIndex_ = features.rows;
+	UDEBUG("");
 }
 
 bool FlannIndex::isBuilt()

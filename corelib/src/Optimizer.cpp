@@ -40,6 +40,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/optimizer/OptimizerG2O.h>
 #include <rtabmap/core/optimizer/OptimizerGTSAM.h>
 #include <rtabmap/core/optimizer/OptimizerCVSBA.h>
+#include <rtabmap/core/optimizer/OptimizerCeres.h>
 
 namespace rtabmap {
 
@@ -61,6 +62,10 @@ bool Optimizer::isAvailable(Optimizer::Type type)
 	{
 		return OptimizerTORO::available();
 	}
+	else if(type == Optimizer::kTypeCeres)
+	{
+		return OptimizerCeres::available();
+	}
 	return false;
 }
 
@@ -73,7 +78,7 @@ Optimizer * Optimizer::create(const ParametersMap & parameters)
 
 Optimizer * Optimizer::create(Optimizer::Type type, const ParametersMap & parameters)
 {
-	UASSERT_MSG(OptimizerG2O::available() || OptimizerGTSAM::available() || OptimizerTORO::available(),
+	UASSERT_MSG(OptimizerG2O::available() || OptimizerGTSAM::available() || OptimizerTORO::available() || OptimizerCeres::available(),
 			"RTAB-Map is not built with any graph optimization approach!");
 
 	if(!OptimizerTORO::available() && type == Optimizer::kTypeTORO)
@@ -88,6 +93,11 @@ Optimizer * Optimizer::create(Optimizer::Type type, const ParametersMap & parame
 			UWARN("TORO optimizer not available. g2o will be used instead.");
 					type = Optimizer::kTypeG2O;
 		}
+		else if(OptimizerCeres::available())
+		{
+			UWARN("TORO optimizer not available. ceres will be used instead.");
+					type = Optimizer::kTypeCeres;
+		}
 	}
 	if(!OptimizerG2O::available() && type == Optimizer::kTypeG2O)
 	{
@@ -101,6 +111,11 @@ Optimizer * Optimizer::create(Optimizer::Type type, const ParametersMap & parame
 			UWARN("g2o optimizer not available. GTSAM will be used instead.");
 					type = Optimizer::kTypeGTSAM;
 		}
+		else if(OptimizerCeres::available())
+		{
+			UWARN("g2o optimizer not available. ceres will be used instead.");
+					type = Optimizer::kTypeCeres;
+		}
 	}
 	if(!OptimizerGTSAM::available() && type == Optimizer::kTypeGTSAM)
 	{
@@ -113,6 +128,11 @@ Optimizer * Optimizer::create(Optimizer::Type type, const ParametersMap & parame
 		{
 			UWARN("GTSAM optimizer not available. g2o will be used instead.");
 					type = Optimizer::kTypeG2O;
+		}
+		else if(OptimizerCeres::available())
+		{
+			UWARN("GTSAM optimizer not available. ceres will be used instead.");
+					type = Optimizer::kTypeCeres;
 		}
 	}
 	if(!OptimizerCVSBA::available() && type == Optimizer::kTypeCVSBA)
@@ -132,6 +152,29 @@ Optimizer * Optimizer::create(Optimizer::Type type, const ParametersMap & parame
 			UWARN("CVSBA optimizer not available. g2o will be used instead.");
 					type = Optimizer::kTypeG2O;
 		}
+		else if(OptimizerCeres::available())
+		{
+			UWARN("CVSBA optimizer not available. ceres will be used instead.");
+					type = Optimizer::kTypeCeres;
+		}
+	}
+	if(!OptimizerCeres::available() && type == Optimizer::kTypeCeres)
+	{
+		if(OptimizerGTSAM::available())
+		{
+			UWARN("Ceres optimizer not available. gtsam will be used instead.");
+					type = Optimizer::kTypeGTSAM;
+		}
+		else if(OptimizerG2O::available())
+		{
+			UWARN("Ceres optimizer not available. g2o will be used instead.");
+					type = Optimizer::kTypeG2O;
+		}
+		else if(OptimizerTORO::available())
+		{
+			UWARN("Ceres optimizer not available. TORO will be used instead.");
+					type = Optimizer::kTypeTORO;
+		}
 	}
 	Optimizer * optimizer = 0;
 	switch(type)
@@ -144,6 +187,9 @@ Optimizer * Optimizer::create(Optimizer::Type type, const ParametersMap & parame
 		break;
 	case Optimizer::kTypeCVSBA:
 		optimizer = new OptimizerCVSBA(parameters);
+		break;
+	case Optimizer::kTypeCeres:
+		optimizer = new OptimizerCeres(parameters);
 		break;
 	case Optimizer::kTypeTORO:
 	default:
