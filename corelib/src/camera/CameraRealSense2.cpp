@@ -263,13 +263,21 @@ void CameraRealSense2::frame_callback(rs2::frame frame)
 }
 void CameraRealSense2::multiple_message_callback(rs2::frame frame)
 {
-	if(hostStartStamp_ == 0 && cameraStartStamp_ == 0)
+	if(frame.get_timestamp() < UTimer::now()+1000000000)
 	{
-		hostStartStamp_ = UTimer::now();
-	}
-	if(cameraStartStamp_ == 0)
-	{
-		cameraStartStamp_ = frame.get_timestamp();
+		// ISSUE: my D435i reports timestamps for images 50 years in the future,
+		// we will use host stamp in those cases in captureImage() below.
+		// This doesn't seem to happen with acc/gyro
+		// See also realsense ros in sync mode, they take also ros time directly:
+		// https://github.com/IntelRealSense/realsense-ros/blob/7a35280f9d19d5eed5a9dc174dcc73b85fd95a46/realsense2_camera/src/base_realsense_node.cpp#L1483
+		if(hostStartStamp_ == 0 && cameraStartStamp_ == 0)
+		{
+			hostStartStamp_ = UTimer::now();
+		}
+		if(cameraStartStamp_ == 0)
+		{
+			cameraStartStamp_ = frame.get_timestamp();
+		}
 	}
     auto stream = frame.get_profile().stream_type();
     switch (stream)
@@ -700,16 +708,28 @@ bool CameraRealSense2::init(const std::string & calibrationFolder, const std::st
 		 }
 		 *depthToRGBExtrinsics_ = depthStreamProfile.get_extrinsics_to(rgbStreamProfile);
 
-		 if(profilesPerSensor.size() == 3 && !profilesPerSensor[2].empty() && !profilesPerSensor[0].empty())
+		 if(profilesPerSensor.size() == 3)
 		 {
-			 rs2_extrinsics leftToIMU = profilesPerSensor[0][0].get_extrinsics_to(profilesPerSensor[2][0]);
-			 Transform leftToIMUT(
-					 leftToIMU.rotation[0], leftToIMU.rotation[1], leftToIMU.rotation[2], leftToIMU.translation[0],
-					 leftToIMU.rotation[3], leftToIMU.rotation[4], leftToIMU.rotation[5], leftToIMU.translation[1],
-					 leftToIMU.rotation[6], leftToIMU.rotation[7], leftToIMU.rotation[8], leftToIMU.translation[2]);
-			 UINFO("leftToIMU = %s", leftToIMUT.prettyPrint().c_str());
-			 imuLocalTransform_ = this->getLocalTransform() * leftToIMUT;
-			 UINFO("imu local transform = %s", imuLocalTransform_.prettyPrint().c_str());
+			 if(!profilesPerSensor[2].empty() && !profilesPerSensor[0].empty())
+			 {
+				 rs2_extrinsics leftToIMU = profilesPerSensor[0][0].get_extrinsics_to(profilesPerSensor[2][0]);
+				 Transform leftToIMUT(
+						 leftToIMU.rotation[0], leftToIMU.rotation[1], leftToIMU.rotation[2], leftToIMU.translation[0],
+						 leftToIMU.rotation[3], leftToIMU.rotation[4], leftToIMU.rotation[5], leftToIMU.translation[1],
+						 leftToIMU.rotation[6], leftToIMU.rotation[7], leftToIMU.rotation[8], leftToIMU.translation[2]);
+				 imuLocalTransform_ = this->getLocalTransform() * leftToIMUT;
+				 UINFO("imu local transform = %s", imuLocalTransform_.prettyPrint().c_str());
+			 }
+			 else if(!profilesPerSensor[2].empty() && !profilesPerSensor[1].empty())
+			 {
+				 rs2_extrinsics leftToIMU = profilesPerSensor[1][0].get_extrinsics_to(profilesPerSensor[2][0]);
+				 Transform leftToIMUT(
+						 leftToIMU.rotation[0], leftToIMU.rotation[1], leftToIMU.rotation[2], leftToIMU.translation[0],
+						 leftToIMU.rotation[3], leftToIMU.rotation[4], leftToIMU.rotation[5], leftToIMU.translation[1],
+						 leftToIMU.rotation[6], leftToIMU.rotation[7], leftToIMU.rotation[8], leftToIMU.translation[2]);
+				 imuLocalTransform_ = this->getLocalTransform() * leftToIMUT;
+				 UINFO("imu local transform = %s", imuLocalTransform_.prettyPrint().c_str());
+			 }
 		 }
 	 }
 	 else
@@ -905,7 +925,16 @@ SensorData CameraRealSense2::captureImage(CameraInfo * info)
 		}
 		if (frameset.size() == 2)
 		{
-			double stamp = (frameset.get_timestamp() - cameraStartStamp_) / 1000.0 + hostStartStamp_;
+			double stamp;
+			// See ISSUE in multiple_message_callback()
+			if(frameset.get_timestamp() > UTimer::now()+1000000000)
+			{
+				stamp = UTimer::now();
+			}
+			else
+			{
+				stamp = (frameset.get_timestamp() - cameraStartStamp_) / 1000.0 + hostStartStamp_;
+			}
 			UDEBUG("Frameset arrived.");
 			bool is_rgb_arrived = false;
 			bool is_depth_arrived = false;
@@ -1000,7 +1029,7 @@ SensorData CameraRealSense2::captureImage(CameraInfo * info)
 
 			IMU imu;
 			unsigned int confidence = 0;
-			getPoseAndIMU(frameset.get_timestamp(), info->odomPose, confidence, imu);
+			getPoseAndIMU(frameset.get_timestamp()> UTimer::now()+1000000000?stamp*1000.0:frameset.get_timestamp(), info->odomPose, confidence, imu);
 
 			if(odometryProvided_ && !info->odomPose.isNull())
 			{
