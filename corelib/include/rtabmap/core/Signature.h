@@ -86,7 +86,7 @@ public:
 
 	void changeLinkIds(int idFrom, int idTo);
 
-	void removeLinks();
+	void removeLinks(bool keepSelfReferringLinks = false);
 	void removeLink(int idTo);
 	void removeVirtualLinks();
 

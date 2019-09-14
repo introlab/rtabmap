@@ -63,17 +63,47 @@ Link::Link(int from,
 	}
 }
 
-double Link::rotVariance() const
+double Link::rotVariance(bool minimum) const
 {
-	double min = uMax3(infMatrix_.at<double>(3,3), infMatrix_.at<double>(4,4), infMatrix_.at<double>(5,5));
-	UASSERT(min > 0.0);
-	return 1.0/min;
+	double value;
+	if(minimum)
+	{
+		value = uMax3(infMatrix_.at<double>(3,3), infMatrix_.at<double>(4,4), infMatrix_.at<double>(5,5));
+	}
+	else
+	{
+		value = uMin3(
+				infMatrix_.at<double>(3,3) <= 0.0001?9999999.0:infMatrix_.at<double>(3,3),
+				infMatrix_.at<double>(4,4) <= 0.0001?9999999.0:infMatrix_.at<double>(4,4),
+				infMatrix_.at<double>(5,5) <= 0.0001?9999999.0:infMatrix_.at<double>(5,5));
+		if(value == 9999999.0)
+		{
+			value = 0.0001;
+		}
+	}
+	UASSERT(value > 0.0);
+	return 1.0/value;
 }
-double Link::transVariance() const
+double Link::transVariance(bool minimum) const
 {
-	double min = uMax3(infMatrix_.at<double>(0,0), infMatrix_.at<double>(1,1), infMatrix_.at<double>(2,2));
-	UASSERT(min > 0.0);
-	return 1.0/min;
+	double value;
+	if(minimum)
+	{
+		value = uMax3(infMatrix_.at<double>(0,0), infMatrix_.at<double>(1,1), infMatrix_.at<double>(2,2));
+	}
+	else
+	{
+		value = uMin3(
+				infMatrix_.at<double>(0,0) <= 0.0001?9999999.0:infMatrix_.at<double>(0,0),
+				infMatrix_.at<double>(1,1) <= 0.0001?9999999.0:infMatrix_.at<double>(1,1),
+				infMatrix_.at<double>(2,2) <= 0.0001?9999999.0:infMatrix_.at<double>(2,2));
+		if(value == 9999999.0)
+		{
+			value = 0.0001;
+		}
+	}
+	UASSERT(value > 0.0);
+	return 1.0/value;
 }
 
 void Link::setInfMatrix(const cv::Mat & infMatrix) {

@@ -3946,14 +3946,17 @@ void DatabaseViewer::update(int value,
 				{
 					labelVelocity->setText(QString("vx=%1 vy=%2 vz=%3 vroll=%4 vpitch=%5 vyaw=%6").arg(v[0]).arg(v[1]).arg(v[2]).arg(v[3]).arg(v[4]).arg(v[5]));
 				}
-				std::multimap<int, Link>::const_iterator imuIter = graph::findLink(links_, id, id, false, Link::kGravity);
-				if(imuIter != links_.end())
+
+				std::multimap<int, Link> gravityLink;
+				dbDriver_->loadLinks(id, gravityLink, Link::kGravity);
+				if(!gravityLink.empty())
 				{
 					float roll,pitch,yaw;
-					imuIter->second.transform().getEulerAngles(roll, pitch, yaw);
+					gravityLink.begin()->second.transform().getEulerAngles(roll, pitch, yaw);
 					Eigen::Vector3d v = Transform(0,0,0,roll,pitch,0).toEigen3d() * -Eigen::Vector3d::UnitZ();
 					labelGravity->setText(QString("x=%1 y=%2 z=%3").arg(v[0]).arg(v[1]).arg(v[2]));
 				}
+
 				if(gps.stamp()>0.0)
 				{
 					labelGps->setText(QString("stamp=%1 longitude=%2 latitude=%3 altitude=%4m error=%5m bearing=%6deg").arg(QString::number(gps.stamp(), 'f')).arg(gps.longitude()).arg(gps.latitude()).arg(gps.altitude()).arg(gps.error()).arg(gps.bearing()));

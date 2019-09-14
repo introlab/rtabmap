@@ -5909,7 +5909,7 @@ void PreferencesDialog::testOdometry()
 			_ui->spinBox_source_scanNormalsK->value(),
 			_ui->doubleSpinBox_source_scanNormalsRadius->value(),
 			_ui->checkBox_source_scanForceGroundNormalsUp->isChecked());
-	if(_ui->comboBox_imuFilter_strategy->currentIndex()>0)
+	if(_ui->comboBox_imuFilter_strategy->currentIndex()>0 && dynamic_cast<DBReader*>(camera) == 0)
 	{
 		cameraThread.enableIMUFiltering(_ui->comboBox_imuFilter_strategy->currentIndex()-1, this->getAllParameters());
 	}
@@ -5980,7 +5980,7 @@ void PreferencesDialog::testCamera()
 				_ui->spinBox_source_scanNormalsK->value(),
 				_ui->doubleSpinBox_source_scanNormalsRadius->value(),
 				_ui->checkBox_source_scanForceGroundNormalsUp->isChecked());
-		if(_ui->comboBox_imuFilter_strategy->currentIndex()>0)
+		if(_ui->comboBox_imuFilter_strategy->currentIndex()>0 && dynamic_cast<DBReader*>(camera) == 0)
 		{
 			cameraThread.enableIMUFiltering(_ui->comboBox_imuFilter_strategy->currentIndex()-1, this->getAllParameters());
 		}

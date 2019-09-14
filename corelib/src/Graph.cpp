@@ -898,8 +898,8 @@ void computeMaxGraphErrors(
 					fabs(iter->second.transform().x() - t.x()),
 					fabs(iter->second.transform().y() - t.y()),
 					fabs(iter->second.transform().z() - t.z()));
-			UASSERT(iter->second.transVariance()>0.0);
-			float stddevLinear = sqrt(iter->second.transVariance());
+			UASSERT(iter->second.transVariance(false)>0.0);
+			float stddevLinear = sqrt(iter->second.transVariance(false));
 			float linearErrorRatio = linearError/stddevLinear;
 			if(linearErrorRatio > maxLinearErrorRatio)
 			{
@@ -920,8 +920,8 @@ void computeMaxGraphErrors(
 					fabs(opt_pitch - link_pitch),
 					fabs(opt_yaw - link_yaw));
 			angularError = angularError>M_PI?2*M_PI-angularError:angularError;
-			UASSERT(iter->second.rotVariance()>0.0);
-			float stddevAngular = sqrt(iter->second.rotVariance());
+			UASSERT(iter->second.rotVariance(false)>0.0);
+			float stddevAngular = sqrt(iter->second.rotVariance(false));
 			float angularErrorRatio = angularError/stddevAngular;
 			if(angularErrorRatio > maxAngularErrorRatio)
 			{

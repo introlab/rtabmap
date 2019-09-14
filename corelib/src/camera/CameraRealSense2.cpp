@@ -614,7 +614,14 @@ bool CameraRealSense2::init(const std::string & calibrationFolder, const std::st
 					video_profile.height() == cameraHeight_ &&
 					video_profile.fps()    == cameraFps_)
 				{
-					profilesPerSensor[irDepth_?1:i].push_back(profile);
+					if(irDepth_ && i==0)
+					{
+						profilesPerSensor[1].push_back(profile.clone(profile.stream_type(), 1, profile.format()));
+					}
+					else
+					{
+						profilesPerSensor[i].push_back(profile);
+					}
 					auto intrinsic = video_profile.get_intrinsics();
 					if(i==1)
 					{

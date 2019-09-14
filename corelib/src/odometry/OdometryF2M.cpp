@@ -333,10 +333,20 @@ Transform OdometryF2M::computeTransform(
 				UDEBUG("Registration time = %fs", regInfo.totalTime);
 				if(!transform.isNull())
 				{
+					cv::Mat var = regInfo.covariance.clone();
 					Transform imuT;
 					if(!imus_.empty())
 					{
 						imuT = Transform::getClosestTransform(imus_, lastFrame_->getStamp());
+
+						if(!imuT.isNull())
+						{
+							float roll, pitch, yaw;
+							imuT.getEulerAngles(roll, pitch, yaw);
+							transform = Transform(transform.x(),transform.y(),transform.z(),roll,pitch,transform.theta());
+							var.at<double>(3,3)/=100.0; // roll
+							var.at<double>(4,4)/=100.0; // pitch
+						}
 					}
 
 					// local bundle adjustment
@@ -369,9 +379,6 @@ Transform OdometryF2M::computeTransform(
 
 							UASSERT_MSG(bundlePoses.find(lastFrame_->id()) == bundlePoses.end(),
 									uFormat("Frame %d already added! Make sure the input frames have unique IDs!", lastFrame_->id()).c_str());
-							cv::Mat var = regInfo.covariance;//cv::Mat::eye(6,6,CV_64FC1); //regInfo.covariance.inv()
-							//var(cv::Range(0,3), cv::Range(0,3)) *= 0.001;
-							//var(cv::Range(3,6), cv::Range(3,6)) *= 0.001;
 							bundleLinks.insert(std::make_pair(bundlePoses_.rbegin()->first, Link(bundlePoses_.rbegin()->first, lastFrame_->id(), Link::kNeighbor, bundlePoses_.rbegin()->second.inverse()*transform, var.inv())));
 							bundlePoses.insert(std::make_pair(lastFrame_->id(), transform));
 

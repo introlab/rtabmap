@@ -4981,7 +4981,7 @@ void MainWindow::startDetection()
 			_preferencesDialog->getSourceScanNormalsK(),
 			_preferencesDialog->getSourceScanNormalsRadius(),
 			_preferencesDialog->isSourceScanForceGroundNormalsUp());
-	if(_preferencesDialog->getIMUFilteringStrategy()>0)
+	if(_preferencesDialog->getIMUFilteringStrategy()>0 && dynamic_cast<DBReader*>(camera) == 0)
 	{
 		_camera->enableIMUFiltering(_preferencesDialog->getIMUFilteringStrategy()-1, parameters);
 	}
