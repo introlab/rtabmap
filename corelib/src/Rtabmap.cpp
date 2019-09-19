@@ -2556,7 +2556,8 @@ bool Rtabmap::process(
 	double optimizationError = 0.0;
 	int optimizationIterations = 0;
 	cv::Mat localizationCovariance;
-	if(_rgbdSlamMode &&
+	if(_rgbdSlamMode
+		&&
 		(_loopClosureHypothesis.first>0 ||
 	     lastProximitySpaceClosureId>0 || // can be different map of the current one
 	     statistics_.reducedIds().size() ||
@@ -2564,8 +2565,9 @@ bool Rtabmap::process(
 		 (signature->hasLink(signature->id(), Link::kGravity) && _graphOptimizer->gravitySigma()>0.0f) || // gravity edge
 	     proximityDetectionsInTimeFound>0 ||
 		 landmarkDetected!=0 ||
-		 ((_memory->isIncremental() || graph::filterLinks(signature->getLinks(), Link::kSelfRefLink).size()) && // In localization mode, the new node should be linked
-		          signaturesRetrieved.size())))  		// can be different map of the current one
+		 signaturesRetrieved.size()) // can be different map of the current one
+		 &&
+		 (_memory->isIncremental() || graph::filterLinks(signature->getLinks(), Link::kSelfRefLink).size())) // In localization mode, the new node should be linked
 	{
 		UASSERT(uContains(_optimizedPoses, signature->id()));
 
