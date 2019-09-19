@@ -63,9 +63,9 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>0</y>
-            <width>681</width>
-            <height>3071</height>
+            <y>-2150</y>
+            <width>680</width>
+            <height>3083</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -95,7 +95,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>16</number>
+                <number>5</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,1">
@@ -3096,7 +3096,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                            <item>
                             <widget class="QStackedWidget" name="stackedWidget_rgbd">
                              <property name="currentIndex">
-                              <number>10</number>
+                              <number>9</number>
                              </property>
                              <widget class="QWidget" name="page_32">
                               <layout class="QVBoxLayout" name="verticalLayout_63">
@@ -4062,7 +4062,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                   <string>RealSense2</string>
                                  </property>
                                  <layout class="QGridLayout" name="gridLayout_100" columnstretch="0,1">
-                                  <item row="2" column="1">
+                                  <item row="3" column="1">
                                    <widget class="QLabel" name="label_549">
                                     <property name="text">
                                      <string>Stream width.</string>
@@ -4072,7 +4072,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                     </property>
                                    </widget>
                                   </item>
-                                  <item row="3" column="0">
+                                  <item row="4" column="0">
                                    <widget class="QSpinBox" name="spinBox_rs2_height">
                                     <property name="suffix">
                                      <string> pix</string>
@@ -4082,7 +4082,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                     </property>
                                    </widget>
                                   </item>
-                                  <item row="4" column="0">
+                                  <item row="5" column="0">
                                    <widget class="QSpinBox" name="spinBox_rs2_rate">
                                     <property name="suffix">
                                      <string> Hz</string>
@@ -4113,7 +4113,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                    </widget>
                                   </item>
                                   <item row="1" column="0">
-                                   <widget class="QCheckBox" name="checkbox_rs2_irDepth">
+                                   <widget class="QCheckBox" name="checkbox_rs2_irMode">
                                     <property name="text">
                                      <string/>
                                     </property>
@@ -4125,14 +4125,14 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                   <item row="1" column="1">
                                    <widget class="QLabel" name="label_471">
                                     <property name="text">
-                                     <string>Use IR for RGB image. Tracking will be more accurate (field-of-view of the IR camera is larger with less motion blur). Make sure to disable IR emitter. </string>
+                                     <string>IR mode: use IR camera instead of RGB camera. Tracking will be more accurate (field-of-view of the IR camera is larger with less motion blur). Make sure to disable IR emitter. </string>
                                     </property>
                                     <property name="wordWrap">
                                      <bool>true</bool>
                                     </property>
                                    </widget>
                                   </item>
-                                  <item row="2" column="0">
+                                  <item row="3" column="0">
                                    <widget class="QSpinBox" name="spinBox_rs2_width">
                                     <property name="suffix">
                                      <string> pix</string>
@@ -4142,7 +4142,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                     </property>
                                    </widget>
                                   </item>
-                                  <item row="3" column="1">
+                                  <item row="4" column="1">
                                    <widget class="QLabel" name="label_550">
                                     <property name="text">
                                      <string>Stream height.</string>
@@ -4152,7 +4152,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                     </property>
                                    </widget>
                                   </item>
-                                  <item row="5" column="0">
+                                  <item row="6" column="0">
                                    <spacer name="verticalSpacer_71">
                                     <property name="orientation">
                                      <enum>Qt::Vertical</enum>
@@ -4165,13 +4165,33 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                     </property>
                                    </spacer>
                                   </item>
-                                  <item row="4" column="1">
+                                  <item row="5" column="1">
                                    <widget class="QLabel" name="label_551">
                                     <property name="text">
                                      <string>Stream rate.</string>
                                     </property>
                                     <property name="wordWrap">
                                      <bool>true</bool>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="2" column="1">
+                                   <widget class="QLabel" name="label_562">
+                                    <property name="text">
+                                     <string>Use depth image in IR mode (instead of right image).</string>
+                                    </property>
+                                    <property name="wordWrap">
+                                     <bool>true</bool>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="2" column="0">
+                                   <widget class="QCheckBox" name="checkbox_rs2_irDepth">
+                                    <property name="text">
+                                     <string/>
+                                    </property>
+                                    <property name="checked">
+                                     <bool>false</bool>
                                     </property>
                                    </widget>
                                   </item>
@@ -6307,6 +6327,26 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                            </property>
                            <property name="textInteractionFlags">
                             <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="1" column="0">
+                          <widget class="QCheckBox" name="checkbox_publishInterIMU">
+                           <property name="text">
+                            <string/>
+                           </property>
+                           <property name="checked">
+                            <bool>false</bool>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="1" column="1">
+                          <widget class="QLabel" name="label_563">
+                           <property name="text">
+                            <string>Publish inter IMU messages from the camera. IMU received between images will be published as separate topic.</string>
+                           </property>
+                           <property name="wordWrap">
+                            <bool>true</bool>
                            </property>
                           </widget>
                          </item>

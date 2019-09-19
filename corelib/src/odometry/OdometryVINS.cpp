@@ -104,6 +104,18 @@ public:
 			UWARN("Images are rectified but received calibration cannot be "
 					"used, make sure calibration in config file doesn't have "
 					"distortion or send raw images to VINS odometry.");
+			if(!featureTracker.m_camera.empty())
+			{
+				if(featureTracker.m_camera.front()->imageWidth() != model.left().imageWidth() ||
+				   featureTracker.m_camera.front()->imageHeight() != model.left().imageHeight())
+				{
+					UERROR("Received images don't have same size (%dx%d) than in the config file (%dx%d)!",
+							model.left().imageWidth(),
+							model.left().imageHeight(),
+							featureTracker.m_camera.front()->imageWidth(),
+							featureTracker.m_camera.front()->imageHeight());
+				}
+			}
 		}
 
 		Transform imuCam0 = imuLocalTransform.inverse() * model.localTransform();
@@ -471,6 +483,14 @@ Transform OdometryVINS::computeTransform(
 		{
 			UWARN("VINS not yet initialized... waiting to get enough IMU messages");
 		}
+	}
+	else if(!data.imageRaw().empty() && !data.depthRaw().empty())
+	{
+		UERROR("VINS-Fusion doesn't work with RGB-D data, stereo images are required!");
+	}
+	else if(!data.imageRaw().empty() && data.depthOrRightRaw().empty())
+	{
+		UERROR("VINS-Fusion requires stereo images!");
 	}
 #else
 	UERROR("RTAB-Map is not built with VINS support! Select another visual odometry approach.");

@@ -28,6 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UTimer.h>
 #include <rtabmap/utilite/UThreadC.h>
 #include <rtabmap/utilite/UConversion.h>
+#include <rtabmap/utilite/UEventsManager.h>
 #include <opencv2/imgproc/types_c.h>
 
 #ifdef RTABMAP_REALSENSE2
@@ -66,13 +67,16 @@ CameraRealSense2::CameraRealSense2(
 	depthToRGBExtrinsics_(new rs2_extrinsics),
 	hostStartStamp_(0.0),
 	cameraStartStamp_(0.0),
+	lastImuStamp_(0.0),
 	emitterEnabled_(true),
-	irDepth_(false),
+	ir_(false),
+	irDepth_(true),
 	rectifyImages_(true),
 	odometryProvided_(false),
 	cameraWidth_(640),
 	cameraHeight_(480),
-	cameraFps_(30)
+	cameraFps_(30),
+	publishInterIMU_(false)
 #endif
 {
 	UDEBUG("");
@@ -540,18 +544,13 @@ bool CameraRealSense2::init(const std::string & calibrationFolder, const std::st
 		{
 			sensors[1] = elem;
 			sensors[1].set_option(rs2_option::RS2_OPTION_EMITTER_ENABLED, emitterEnabled_);
-			if(irDepth_)
-			{
-				sensors[0] = elem;
-			}
 		}
 		else if ("Coded-Light Depth Sensor" == module_name)
 		{
-			sensors[1] = elem;
 		}
 		else if ("RGB Camera" == module_name)
 		{
-			if(!irDepth_)
+			if(!ir_)
 			{
 				sensors[0] = elem;
 			}
@@ -586,6 +585,10 @@ bool CameraRealSense2::init(const std::string & calibrationFolder, const std::st
 	std::vector<std::vector<rs2::stream_profile> > profilesPerSensor(sensors.size());
 	 for (unsigned int i=0; i<sensors.size(); ++i)
 	 {
+		if(i==0 && ir_ && !stereo)
+		{
+			continue;
+		}
 		UINFO("Sensor %d \"%s\"", (int)i, sensors[i].get_info(RS2_CAMERA_INFO_NAME));
 		auto profiles = sensors[i].get_stream_profiles();
 		bool added = false;
@@ -595,11 +598,12 @@ bool CameraRealSense2::init(const std::string & calibrationFolder, const std::st
 			for (auto& profile : profiles)
 			{
 				auto video_profile = profile.as<rs2::video_stream_profile>();
-				UINFO("%s %d %d %d", rs2_format_to_string(
+				UINFO("%s %d %d %d %d", rs2_format_to_string(
 						video_profile.format()),
 						video_profile.width(),
 						video_profile.height(),
-						video_profile.fps());
+						video_profile.fps(),
+						video_profile.stream_index());
 			}
 		}
 		int pi = 0;
@@ -609,35 +613,50 @@ bool CameraRealSense2::init(const std::string & calibrationFolder, const std::st
 			if(!stereo)
 			{
 				//D400 series:
-				if (video_profile.format() == (i==1?RS2_FORMAT_Z16:irDepth_?RS2_FORMAT_Y8:RS2_FORMAT_RGB8) &&
-					video_profile.width()  == cameraWidth_ &&
+				if (video_profile.width()  == cameraWidth_ &&
 					video_profile.height() == cameraHeight_ &&
 					video_profile.fps()    == cameraFps_)
 				{
-					if(irDepth_ && i==0)
-					{
-						profilesPerSensor[1].push_back(profile.clone(profile.stream_type(), 1, profile.format()));
-					}
-					else
-					{
-						profilesPerSensor[i].push_back(profile);
-					}
 					auto intrinsic = video_profile.get_intrinsics();
-					if(i==1)
+
+					// rgb or ir left
+					if((!ir_ && video_profile.format() == RS2_FORMAT_RGB8) ||
+					  (ir_ && video_profile.format() == RS2_FORMAT_Y8 && video_profile.stream_index() == 1))
 					{
-						depthBuffer_ = cv::Mat(cv::Size(cameraWidth_, cameraHeight_), CV_16UC1, cv::Scalar(0));
-						depthStreamProfile = profile;
-						*depthIntrinsics_ = intrinsic;
-					}
-					else
-					{
-						rgbBuffer_ = cv::Mat(cv::Size(cameraWidth_, cameraHeight_), irDepth_?CV_8UC1:CV_8UC3, irDepth_?cv::Scalar(0):cv::Scalar(0, 0, 0));
+						if(!profilesPerSensor[i].empty())
+						{
+							// IR right already there, push ir left front
+							profilesPerSensor[i].push_back(profilesPerSensor[i].back());
+							profilesPerSensor[i].front() = profile;
+						}
+						else
+						{
+							profilesPerSensor[i].push_back(profile);
+						}
+						rgbBuffer_ = cv::Mat(cv::Size(cameraWidth_, cameraHeight_), video_profile.format() == RS2_FORMAT_Y8?CV_8UC1:CV_8UC3, ir_?cv::Scalar(0):cv::Scalar(0, 0, 0));
 						model_ = CameraModel(camera_name, intrinsic.fx, intrinsic.fy, intrinsic.ppx, intrinsic.ppy, this->getLocalTransform(), 0, cv::Size(intrinsic.width, intrinsic.height));
 						rgbStreamProfile = profile;
 						*rgbIntrinsics_ = intrinsic;
+						added = true;
+						if(video_profile.format() == RS2_FORMAT_RGB8 || profilesPerSensor[i].size()==2)
+						{
+							break;
+						}
 					}
-					added = true;
-					break;
+					// depth or ir right
+					else if(((!ir_ || irDepth_) && video_profile.format() == RS2_FORMAT_Z16) ||
+						   (ir_ && !irDepth_ && video_profile.format() == RS2_FORMAT_Y8 && video_profile.stream_index() == 2))
+					{
+						profilesPerSensor[i].push_back(profile);
+						depthBuffer_ = cv::Mat(cv::Size(cameraWidth_, cameraHeight_), video_profile.format() == RS2_FORMAT_Y8?CV_8UC1:CV_16UC1, cv::Scalar(0));
+						depthStreamProfile = profile;
+						*depthIntrinsics_ = intrinsic;
+						added = true;
+						if(!ir_ || irDepth_ || profilesPerSensor[i].size()==2)
+						{
+							break;
+						}
+					}
 				}
 				else if(video_profile.format() == RS2_FORMAT_MOTION_XYZ32F)
 				{
@@ -696,11 +715,12 @@ bool CameraRealSense2::init(const std::string & calibrationFolder, const std::st
 			for (auto& profile : profiles)
 			{
 				auto video_profile = profile.as<rs2::video_stream_profile>();
-				UERROR("%s %d %d %d", rs2_format_to_string(
+				UERROR("%s %d %d %d %d", rs2_format_to_string(
 						video_profile.format()),
 						video_profile.width(),
 						video_profile.height(),
-						video_profile.fps());
+						video_profile.fps(),
+						video_profile.stream_index());
 			}
 			return false;
 		}
@@ -715,11 +735,30 @@ bool CameraRealSense2::init(const std::string & calibrationFolder, const std::st
 		 }
 		 *depthToRGBExtrinsics_ = depthStreamProfile.get_extrinsics_to(rgbStreamProfile);
 
+		 if(ir_ && !irDepth_ && profilesPerSensor.size() >= 2 && profilesPerSensor[1].size() >= 2)
+		 {
+			 rs2_extrinsics leftToRight = profilesPerSensor[1][1].get_extrinsics_to(profilesPerSensor[1][0]);
+			 Transform leftToRightT(
+					 leftToRight.rotation[0], leftToRight.rotation[1], leftToRight.rotation[2], leftToRight.translation[0],
+					 leftToRight.rotation[3], leftToRight.rotation[4], leftToRight.rotation[5], leftToRight.translation[1],
+					 leftToRight.rotation[6], leftToRight.rotation[7], leftToRight.rotation[8], leftToRight.translation[2]);
+
+			 UINFO("left to right transform = %s", leftToRightT.prettyPrint().c_str());
+
+			 // Create stereo camera model from left and right ir of D435
+			 stereoModel_ = StereoCameraModel(model_.fx(), model_.fy(), model_.cx(), model_.cy(), leftToRightT.x(), model_.localTransform(), model_.imageSize());
+			 UINFO("Stereo parameters: fx=%f cx=%f cy=%f baseline=%f",
+						stereoModel_.left().fx(),
+						stereoModel_.left().cx(),
+						stereoModel_.left().cy(),
+						stereoModel_.baseline());
+		 }
+
 		 if(profilesPerSensor.size() == 3)
 		 {
 			 if(!profilesPerSensor[2].empty() && !profilesPerSensor[0].empty())
 			 {
-				 rs2_extrinsics leftToIMU = profilesPerSensor[0][0].get_extrinsics_to(profilesPerSensor[2][0]);
+				 rs2_extrinsics leftToIMU = profilesPerSensor[2][0].get_extrinsics_to(profilesPerSensor[0][0]);
 				 Transform leftToIMUT(
 						 leftToIMU.rotation[0], leftToIMU.rotation[1], leftToIMU.rotation[2], leftToIMU.translation[0],
 						 leftToIMU.rotation[3], leftToIMU.rotation[4], leftToIMU.rotation[5], leftToIMU.translation[1],
@@ -729,17 +768,18 @@ bool CameraRealSense2::init(const std::string & calibrationFolder, const std::st
 			 }
 			 else if(!profilesPerSensor[2].empty() && !profilesPerSensor[1].empty())
 			 {
-				 rs2_extrinsics leftToIMU = profilesPerSensor[1][0].get_extrinsics_to(profilesPerSensor[2][0]);
+				 rs2_extrinsics leftToIMU = profilesPerSensor[2][0].get_extrinsics_to(profilesPerSensor[1][0]);
 				 Transform leftToIMUT(
 						 leftToIMU.rotation[0], leftToIMU.rotation[1], leftToIMU.rotation[2], leftToIMU.translation[0],
 						 leftToIMU.rotation[3], leftToIMU.rotation[4], leftToIMU.rotation[5], leftToIMU.translation[1],
 						 leftToIMU.rotation[6], leftToIMU.rotation[7], leftToIMU.rotation[8], leftToIMU.translation[2]);
+
 				 imuLocalTransform_ = this->getLocalTransform() * leftToIMUT;
 				 UINFO("imu local transform = %s", imuLocalTransform_.prettyPrint().c_str());
 			 }
 		 }
 	 }
-	 else
+	 else // T265
 	 {
 
 		// look for calibration files
@@ -887,10 +927,11 @@ void CameraRealSense2::setEmitterEnabled(bool enabled)
 #endif
 }
 
-void CameraRealSense2::setIRDepthFormat(bool enabled)
+void CameraRealSense2::setIRFormat(bool enabled, bool useDepthInsteadOfRightImage)
 {
 #ifdef RTABMAP_REALSENSE2
-	irDepth_ = enabled;
+	ir_ = enabled;
+	irDepth_ = useDepthInsteadOfRightImage;
 #endif
 }
 
@@ -900,6 +941,13 @@ void CameraRealSense2::setResolution(int width, int height, int fps)
 	cameraWidth_ = width;
 	cameraHeight_ = height;
 	cameraFps_ = fps;
+#endif
+}
+
+void CameraRealSense2::publishInterIMU(bool enabled)
+{
+#ifdef RTABMAP_REALSENSE2
+	publishInterIMU_ = enabled;
 #endif
 }
 
@@ -955,8 +1003,25 @@ SensorData CameraRealSense2::captureImage(CameraInfo * info)
 				auto stream_type = f.get_profile().stream_type();
 				if (stream_type == RS2_STREAM_COLOR || stream_type == RS2_STREAM_INFRARED)
 				{
-					rgb_frame = f;
-					is_rgb_arrived = true;
+					if(ir_ && !irDepth_)
+					{
+						//stereo D435
+						if(!is_depth_arrived)
+						{
+							depth_frame = f; // right image
+							is_depth_arrived = true;
+						}
+						else
+						{
+							rgb_frame = f; // left image
+							is_rgb_arrived = true;
+						}
+					}
+					else
+					{
+						rgb_frame = f;
+						is_rgb_arrived = true;
+					}
 				}
 				else if (stream_type == RS2_STREAM_DEPTH)
 				{
@@ -982,7 +1047,7 @@ SensorData CameraRealSense2::captureImage(CameraInfo * info)
 			{
 				auto from_image_frame = depth_frame.as<rs2::video_frame>();
 				cv::Mat depth;
-				if(irDepth_)
+				if(ir_)
 				{
 					depth = cv::Mat(depthBuffer_.size(), depthBuffer_.type(), (void*)depth_frame.get_data()).clone();
 				}
@@ -1005,7 +1070,15 @@ SensorData CameraRealSense2::captureImage(CameraInfo * info)
 					bgr = rgb.clone();
 				}
 
-				data = SensorData(bgr, depth, model_, this->getNextSeqID(), stamp);
+				if(ir_ && !irDepth_)
+				{
+					//stereo D435
+					data = SensorData(bgr, depth, stereoModel_, this->getNextSeqID(), stamp);
+				}
+				else
+				{
+					data = SensorData(bgr, depth, model_, this->getNextSeqID(), stamp);
+				}
 			}
 			else if(is_left_fisheye_arrived && is_right_fisheye_arrived)
 			{
@@ -1036,7 +1109,8 @@ SensorData CameraRealSense2::captureImage(CameraInfo * info)
 
 			IMU imu;
 			unsigned int confidence = 0;
-			getPoseAndIMU(frameset.get_timestamp()> UTimer::now()+1000000000?stamp*1000.0:frameset.get_timestamp(), info->odomPose, confidence, imu);
+			double imuStamp = frameset.get_timestamp()> UTimer::now()+1000000000?stamp*1000.0:frameset.get_timestamp();
+			getPoseAndIMU(imuStamp, info->odomPose, confidence, imu);
 
 			if(odometryProvided_ && !info->odomPose.isNull())
 			{
@@ -1047,6 +1121,33 @@ SensorData CameraRealSense2::captureImage(CameraInfo * info)
 			if(!imu.empty())
 			{
 				data.setIMU(imu);
+
+				if(publishInterIMU_ && lastImuStamp_ > 0.0)
+				{
+					UASSERT(imuStamp > lastImuStamp_);
+					imuMutex_.lock();
+					std::map<double, cv::Vec3f>::iterator iterA = gyroBuffer_.upper_bound(lastImuStamp_);
+					std::map<double, cv::Vec3f>::iterator iterB = gyroBuffer_.lower_bound(imuStamp);
+					if(iterA != gyroBuffer_.end())
+					{
+						++iterA;
+					}
+					if(iterA != iterB)
+					{
+						for(;iterA != iterB;++iterA)
+						{
+							Transform tmp;
+							IMU imuTmp;
+							getPoseAndIMU(iterA->first, tmp, confidence, imuTmp);
+							if(!imuTmp.empty())
+							{
+								UEventsManager::post(new IMUEvent(imuTmp, iterA->first/1000.0));
+							}
+						}
+					}
+					imuMutex_.unlock();
+				}
+				lastImuStamp_ = imuStamp;
 			}
 		}
 		else
