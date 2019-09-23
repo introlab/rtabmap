@@ -313,7 +313,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	if (!CameraRealSense2::available())
 	{
 		_ui->comboBox_cameraRGBD->setItemData(kSrcRealSense2 - kSrcRGBD, 0, Qt::UserRole - 1);
-		_ui->comboBox_cameraRGBD->setItemData(kSrcStereoRealSense2 - kSrcStereo, 0, Qt::UserRole - 1);
+		_ui->comboBox_cameraStereo->setItemData(kSrcStereoRealSense2 - kSrcStereo, 0, Qt::UserRole - 1);
 	}
 	if(!CameraStereoDC1394::available())
 	{
