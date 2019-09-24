@@ -1222,7 +1222,12 @@ void ExportCloudsDialog::viewClouds(
 						cloudI->points[i].normal_y = iter->second->points[i].normal_y;
 						cloudI->points[i].normal_z = iter->second->points[i].normal_z;
 						cloudI->points[i].curvature = iter->second->points[i].curvature;
-						cloudI->points[i].intensity = (float)iter->second->points[i].r;
+						int * intensity = (int *)&cloudI->points[i].intensity;
+						*intensity =
+								int(iter->second->points[i].r) |
+								int(iter->second->points[i].g) << 8 |
+								int(iter->second->points[i].b) << 16 |
+								int(iter->second->points[i].a) << 24;
 					}
 					viewer->addCloud(uFormat("cloud%d",iter->first), cloudI, iter->first>0?poses.at(iter->first):Transform::getIdentity());
 				}
@@ -3322,7 +3327,12 @@ void ExportCloudsDialog::saveClouds(
 							cloudIWithNormals->points[i].normal_y = clouds.begin()->second->points[i].normal_y;
 							cloudIWithNormals->points[i].normal_z = clouds.begin()->second->points[i].normal_z;
 							cloudIWithNormals->points[i].curvature = clouds.begin()->second->points[i].curvature;
-							cloudIWithNormals->points[i].intensity = (float)clouds.begin()->second->points[i].r;
+							int * intensity = (int *)&cloudIWithNormals->points[i].intensity;
+							*intensity =
+									int(clouds.begin()->second->points[i].r) |
+									int(clouds.begin()->second->points[i].g) << 8 |
+									int(clouds.begin()->second->points[i].b) << 16 |
+									int(clouds.begin()->second->points[i].a) << 24;
 						}
 					}
 					else
@@ -3334,7 +3344,12 @@ void ExportCloudsDialog::saveClouds(
 							cloudIWithoutNormals->points[i].x = clouds.begin()->second->points[i].x;
 							cloudIWithoutNormals->points[i].y = clouds.begin()->second->points[i].y;
 							cloudIWithoutNormals->points[i].z = clouds.begin()->second->points[i].z;
-							cloudIWithoutNormals->points[i].intensity = (float)clouds.begin()->second->points[i].r;
+							int * intensity = (int *)&cloudIWithoutNormals->points[i].intensity;
+							*intensity =
+									int(clouds.begin()->second->points[i].r) |
+									int(clouds.begin()->second->points[i].g) << 8 |
+									int(clouds.begin()->second->points[i].b) << 16 |
+									int(clouds.begin()->second->points[i].a) << 24;
 						}
 					}
 				}
@@ -3456,7 +3471,12 @@ void ExportCloudsDialog::saveClouds(
 										cloudIWithNormals->points[i].normal_y = transformedCloud->points[i].normal_y;
 										cloudIWithNormals->points[i].normal_z = transformedCloud->points[i].normal_z;
 										cloudIWithNormals->points[i].curvature = transformedCloud->points[i].curvature;
-										cloudIWithNormals->points[i].intensity = (float)transformedCloud->points[i].r;
+										int * intensity = (int *)&cloudIWithNormals->points[i].intensity;
+										*intensity =
+												int(transformedCloud->points[i].r) |
+												int(transformedCloud->points[i].g) << 8 |
+												int(transformedCloud->points[i].b) << 16 |
+												int(transformedCloud->points[i].a) << 24;
 									}
 								}
 								else
@@ -3468,7 +3488,12 @@ void ExportCloudsDialog::saveClouds(
 										cloudIWithoutNormals->points[i].x = transformedCloud->points[i].x;
 										cloudIWithoutNormals->points[i].y = transformedCloud->points[i].y;
 										cloudIWithoutNormals->points[i].z = transformedCloud->points[i].z;
-										cloudIWithoutNormals->points[i].intensity = (float)transformedCloud->points[i].r;
+										int * intensity = (int *)&cloudIWithoutNormals->points[i].intensity;
+										*intensity =
+												int(transformedCloud->points[i].r) |
+												int(transformedCloud->points[i].g) << 8 |
+												int(transformedCloud->points[i].b) << 16 |
+												int(transformedCloud->points[i].a) << 24;
 									}
 								}
 							}
