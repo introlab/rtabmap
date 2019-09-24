@@ -1211,25 +1211,47 @@ void ExportCloudsDialog::viewClouds(
 				if(!_ui->checkBox_fromDepth->isChecked())
 				{
 					// When laser scans are exported, convert RGB to Intensity
-					pcl::PointCloud<pcl::PointXYZINormal>::Ptr cloudI(new pcl::PointCloud<pcl::PointXYZINormal>);
-					cloudI->resize(iter->second->size());
-					for(unsigned int i=0; i<cloudI->size(); ++i)
+					if(_ui->spinBox_normalKSearch->value()<=0 && _ui->doubleSpinBox_normalRadiusSearch->value()<=0.0)
 					{
-						cloudI->points[i].x = iter->second->points[i].x;
-						cloudI->points[i].y = iter->second->points[i].y;
-						cloudI->points[i].z = iter->second->points[i].z;
-						cloudI->points[i].normal_x = iter->second->points[i].normal_x;
-						cloudI->points[i].normal_y = iter->second->points[i].normal_y;
-						cloudI->points[i].normal_z = iter->second->points[i].normal_z;
-						cloudI->points[i].curvature = iter->second->points[i].curvature;
-						int * intensity = (int *)&cloudI->points[i].intensity;
-						*intensity =
-								int(iter->second->points[i].r) |
-								int(iter->second->points[i].g) << 8 |
-								int(iter->second->points[i].b) << 16 |
-								int(iter->second->points[i].a) << 24;
+						// remove normals if not used
+						pcl::PointCloud<pcl::PointXYZI>::Ptr cloudIWithoutNormals(new pcl::PointCloud<pcl::PointXYZI>);
+						cloudIWithoutNormals->resize(iter->second->size());
+						for(unsigned int i=0; i<cloudIWithoutNormals->size(); ++i)
+						{
+							cloudIWithoutNormals->points[i].x = iter->second->points[i].x;
+							cloudIWithoutNormals->points[i].y = iter->second->points[i].y;
+							cloudIWithoutNormals->points[i].z = iter->second->points[i].z;
+							int * intensity = (int *)&cloudIWithoutNormals->points[i].intensity;
+							*intensity =
+									int(iter->second->points[i].r) |
+									int(iter->second->points[i].g) << 8 |
+									int(iter->second->points[i].b) << 16 |
+									int(iter->second->points[i].a) << 24;
+						}
+						viewer->addCloud(uFormat("cloud%d",iter->first), cloudIWithoutNormals, iter->first>0?poses.at(iter->first):Transform::getIdentity());
 					}
-					viewer->addCloud(uFormat("cloud%d",iter->first), cloudI, iter->first>0?poses.at(iter->first):Transform::getIdentity());
+					else
+					{
+						pcl::PointCloud<pcl::PointXYZINormal>::Ptr cloudI(new pcl::PointCloud<pcl::PointXYZINormal>);
+						cloudI->resize(iter->second->size());
+						for(unsigned int i=0; i<cloudI->size(); ++i)
+						{
+							cloudI->points[i].x = iter->second->points[i].x;
+							cloudI->points[i].y = iter->second->points[i].y;
+							cloudI->points[i].z = iter->second->points[i].z;
+							cloudI->points[i].normal_x = iter->second->points[i].normal_x;
+							cloudI->points[i].normal_y = iter->second->points[i].normal_y;
+							cloudI->points[i].normal_z = iter->second->points[i].normal_z;
+							cloudI->points[i].curvature = iter->second->points[i].curvature;
+							int * intensity = (int *)&cloudI->points[i].intensity;
+							*intensity =
+									int(iter->second->points[i].r) |
+									int(iter->second->points[i].g) << 8 |
+									int(iter->second->points[i].b) << 16 |
+									int(iter->second->points[i].a) << 24;
+						}
+						viewer->addCloud(uFormat("cloud%d",iter->first), cloudI, iter->first>0?poses.at(iter->first):Transform::getIdentity());
+					}
 				}
 				else
 				{
