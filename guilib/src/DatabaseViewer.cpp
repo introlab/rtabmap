@@ -6868,11 +6868,14 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent)
 					if(fromIter != optimizedPoses.end() &&
 					   toIter != optimizedPoses.end())
 					{
-						QMessageBox::information(this,
-								tr("Add constraint"),
-								tr("Registration is done without vision (see %1 parameter), "
-									"a guess is taken from the optimized graph.")
-									.arg(Parameters::kRegStrategy().c_str()));
+						if(!silent)
+						{
+							QMessageBox::information(this,
+									tr("Add constraint"),
+									tr("Registration is done without vision (see %1 parameter), "
+										"a guess is taken from the optimized graph.")
+										.arg(Parameters::kRegStrategy().c_str()));
+						}
 						guess = fromIter->second.inverse() * toIter->second;
 					}
 				}
