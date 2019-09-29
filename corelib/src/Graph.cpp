@@ -85,11 +85,12 @@ bool exportPoses(
 			tmpPath+=".txt";
 		}
 
-		if(format == 1)
+		if(format == 1 || format == 10)
 		{
 			if(stamps.size() != poses.size())
 			{
-				UERROR("When exporting poses to format 1 (RGBD-SLAM), stamps and poses maps should have the same size!");
+				UERROR("When exporting poses to format 1 (RGBD-SLAM), stamps and poses maps should have the same size! stamps=%d psoes=%d",
+						(int)stamps.size(), (int)poses.size());
 				return false;
 			}
 		}
