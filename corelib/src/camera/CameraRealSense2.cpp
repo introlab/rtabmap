@@ -568,6 +568,8 @@ bool CameraRealSense2::init(const std::string & calibrationFolder, const std::st
 			sensors.resize(1);
 			sensors[0] = elem;
 			stereo = true;
+			sensors[0].set_option(rs2_option::RS2_OPTION_ENABLE_POSE_JUMPING, 0);
+			sensors[0].set_option(rs2_option::RS2_OPTION_ENABLE_RELOCALIZATION, 0);
 		}
 		else
 		{
