@@ -76,6 +76,7 @@ public:
 	void setIRFormat(bool enabled, bool useDepthInsteadOfRightImage);
 	void setResolution(int width, int height, int fps = 30);
 	void publishInterIMU(bool enabled);
+	void setDualMode(bool enabled, const Transform & extrinsics);
 	// T265 related parameters
 	void setImagesRectified(bool enabled);
 	void setOdomProvided(bool enabled);
@@ -98,7 +99,7 @@ protected:
 private:
 #ifdef RTABMAP_REALSENSE2
 	rs2::context * ctx_;
-	rs2::device * dev_;
+	std::vector<rs2::device *> dev_;
 	std::string deviceId_;
 	rs2::syncer * syncer_;
 	float depth_scale_meters_;
@@ -128,6 +129,8 @@ private:
 	int cameraHeight_;
 	int cameraFps_;
 	bool publishInterIMU_;
+	bool dualMode_;
+	Transform dualExtrinsics_;
 
 	static Transform realsense2PoseRotation_;
 	static Transform realsense2PoseRotationInv_;
