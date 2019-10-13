@@ -5594,6 +5594,7 @@ Camera * PreferencesDialog::createCamera(bool useRawImages, bool useColor)
 				_ui->checkbox_stereoZed_selfCalibration->isChecked(),
 				_ui->loopClosure_bowForce2D->isChecked());
 		}
+		((CameraStereoZed*)camera)->publishInterIMU(_ui->checkbox_publishInterIMU->isChecked());
 	}
 	else if(driver == kSrcUsbDevice)
 	{

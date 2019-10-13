@@ -317,7 +317,12 @@ bool RtabmapThread::handleEvent(UEvent* event)
 {
 	if(this->isRunning())
 	{
-		if(event->getClassName().compare("CameraEvent") == 0)
+		if(event->getClassName().compare("IMUEvent") == 0)
+		{
+			// IMU events are published at high frequency, exit now
+			return false;
+		}
+		else if(event->getClassName().compare("CameraEvent") == 0)
 		{
 			UDEBUG("CameraEvent");
 			CameraEvent * e = (CameraEvent*)event;

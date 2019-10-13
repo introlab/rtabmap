@@ -40,6 +40,7 @@ class Camera;
 
 namespace rtabmap
 {
+class ZedIMUThread;
 
 class RTABMAP_EXP CameraStereoZed :
 	public Camera
@@ -76,6 +77,8 @@ public:
 	virtual std::string getSerial() const;
 	virtual bool odomProvided() const;
 
+	void publishInterIMU(bool enabled);
+
 protected:
 	virtual SensorData captureImage(CameraInfo * info = 0);
 
@@ -95,6 +98,8 @@ private:
 	bool computeOdometry_;
 	bool lost_;
 	bool force3DoF_;
+	bool publishInterIMU_;
+	ZedIMUThread * imuPublishingThread_;
 #endif
 };
 

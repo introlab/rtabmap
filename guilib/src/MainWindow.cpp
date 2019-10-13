@@ -804,7 +804,12 @@ void MainWindow::closeEvent(QCloseEvent* event)
 
 bool MainWindow::handleEvent(UEvent* anEvent)
 {
-	if(anEvent->getClassName().compare("RtabmapEvent") == 0)
+	if(anEvent->getClassName().compare("IMUEvent") == 0)
+	{
+		// IMU events are published at high frequency, exit now
+		return false;
+	}
+	else if(anEvent->getClassName().compare("RtabmapEvent") == 0)
 	{
 		RtabmapEvent * rtabmapEvent = (RtabmapEvent*)anEvent;
 		Statistics stats = rtabmapEvent->getStats();

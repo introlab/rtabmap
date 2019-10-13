@@ -27,7 +27,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <rtabmap/core/camera/CameraStereoZed.h>
 #include <rtabmap/utilite/UTimer.h>
-#include <rtabmap/utilite/UThreadC.h>
+#include <rtabmap/utilite/UThread.h>
+#include <rtabmap/utilite/UEventsManager.h>
 #include <rtabmap/utilite/UConversion.h>
 
 #ifdef RTABMAP_ZED
@@ -37,96 +38,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 namespace rtabmap
 {
 
-bool CameraStereoZed::available()
-{
 #ifdef RTABMAP_ZED
-	return true;
-#else
-	return false;
-#endif
-}
 
-CameraStereoZed::CameraStereoZed(
-		int deviceId,
-		int resolution,
-		int quality,
-		int sensingMode,
-		int confidenceThr,
-		bool computeOdometry,
-		float imageRate,
-		const Transform & localTransform,
-		bool selfCalibration,
-		bool odomForce3DoF) :
-	Camera(imageRate, localTransform)
-#ifdef RTABMAP_ZED
-    ,
-	zed_(0),
-	src_(CameraVideo::kUsbDevice),
-	usbDevice_(deviceId),
-	svoFilePath_(""),
-	resolution_(resolution),
-	quality_(quality),
-	selfCalibration_(selfCalibration),
-	sensingMode_(sensingMode),
-	confidenceThr_(confidenceThr),
-	computeOdometry_(computeOdometry),
-	lost_(true),
-	force3DoF_(odomForce3DoF)
-#endif
-{
-	UDEBUG("");
-#ifdef RTABMAP_ZED
-	UASSERT(resolution_ >= sl::RESOLUTION_HD2K && resolution_ <sl::RESOLUTION_LAST);
-	UASSERT(quality_ >= sl::DEPTH_MODE_NONE && quality_ <sl::DEPTH_MODE_LAST);
-	UASSERT(sensingMode_ >= sl::SENSING_MODE_STANDARD && sensingMode_ <sl::SENSING_MODE_LAST);
-	UASSERT(confidenceThr_ >= 0 && confidenceThr_ <=100);
-#endif
-}
-
-CameraStereoZed::CameraStereoZed(
-		const std::string & filePath,
-		int quality,
-		int sensingMode,
-		int confidenceThr,
-		bool computeOdometry,
-		float imageRate,
-		const Transform & localTransform,
-		bool selfCalibration,
-		bool odomForce3DoF) :
-	Camera(imageRate, localTransform)
-#ifdef RTABMAP_ZED
-    ,
-	zed_(0),
-	src_(CameraVideo::kVideoFile),
-	usbDevice_(0),
-	svoFilePath_(filePath),
-	resolution_(2),
-	quality_(quality),
-	selfCalibration_(selfCalibration),
-	sensingMode_(sensingMode),
-	confidenceThr_(confidenceThr),
-	computeOdometry_(computeOdometry),
-	lost_(true),
-	force3DoF_(odomForce3DoF)
-#endif
-{
-	UDEBUG("");
-#ifdef RTABMAP_ZED
-	UASSERT(resolution_ >= sl::RESOLUTION_HD2K && resolution_ <sl::RESOLUTION_LAST);
-	UASSERT(quality_ >= sl::DEPTH_MODE_NONE && quality_ <sl::DEPTH_MODE_LAST);
-	UASSERT(sensingMode_ >= sl::SENSING_MODE_STANDARD && sensingMode_ <sl::SENSING_MODE_LAST);
-	UASSERT(confidenceThr_ >= 0 && confidenceThr_ <=100);
-#endif
-}
-
-CameraStereoZed::~CameraStereoZed()
-{
-#ifdef RTABMAP_ZED
-	delete zed_;
-#endif
-}
-
-#ifdef RTABMAP_ZED
 static cv::Mat slMat2cvMat(sl::Mat& input) {
 	//convert MAT_TYPE to CV_TYPE
 	int cv_type = -1;
@@ -191,12 +104,180 @@ IMU zedIMUtoIMU(const sl::IMUData & imuData, const Transform & imuLocalTransform
 			accCov,
 			imuLocalTransform);
 }
+
+class ZedIMUThread: public UThread
+{
+public:
+	ZedIMUThread(float rate, sl::Camera * zed, const Transform & imuLocalTransform, bool accurate)
+	{
+		UASSERT(rate > 0.0f);
+		UASSERT(zed != 0);
+		rate_ = rate;
+		zed_= zed;
+		accurate_ = accurate;
+		imuLocalTransform_ = imuLocalTransform;
+	}
+private:
+	virtual void mainLoopBegin()
+	{
+		frameRateTimer_.start();
+	}
+	virtual void mainLoop()
+	{
+		double delay = 1000.0/double(rate_);
+		int sleepTime = delay - 1000.0f*frameRateTimer_.getElapsedTime();
+		if(sleepTime > 0)
+		{
+			if(accurate_)
+			{
+				if(sleepTime > 1)
+				{
+					uSleep(sleepTime-1);
+				}
+				// Add precision at the cost of a small overhead
+				delay/=1000.0;
+				while(frameRateTimer_.getElapsedTime() < delay-0.000001)
+				{
+					//
+				}
+			}
+			else
+			{
+				uSleep(sleepTime);
+			}
+		}
+		frameRateTimer_.start();
+
+		sl::IMUData imudata;
+		bool res = zed_->getIMUData(imudata, sl::TIME_REFERENCE_IMAGE);
+		if(res == sl::SUCCESS && imudata.valid)
+		{
+			UEventsManager::post(new IMUEvent(zedIMUtoIMU(imudata, imuLocalTransform_), UTimer::now()));
+		}
+	}
+	float rate_;
+	sl::Camera * zed_;
+	bool accurate_;
+	Transform imuLocalTransform_;
+	UTimer frameRateTimer_;
+};
 #endif
+
+bool CameraStereoZed::available()
+{
+#ifdef RTABMAP_ZED
+	return true;
+#else
+	return false;
+#endif
+}
+
+CameraStereoZed::CameraStereoZed(
+		int deviceId,
+		int resolution,
+		int quality,
+		int sensingMode,
+		int confidenceThr,
+		bool computeOdometry,
+		float imageRate,
+		const Transform & localTransform,
+		bool selfCalibration,
+		bool odomForce3DoF) :
+	Camera(imageRate, localTransform)
+#ifdef RTABMAP_ZED
+    ,
+	zed_(0),
+	src_(CameraVideo::kUsbDevice),
+	usbDevice_(deviceId),
+	svoFilePath_(""),
+	resolution_(resolution),
+	quality_(quality),
+	selfCalibration_(selfCalibration),
+	sensingMode_(sensingMode),
+	confidenceThr_(confidenceThr),
+	computeOdometry_(computeOdometry),
+	lost_(true),
+	force3DoF_(odomForce3DoF),
+	publishInterIMU_(false),
+	imuPublishingThread_(0)
+#endif
+{
+	UDEBUG("");
+#ifdef RTABMAP_ZED
+	UASSERT(resolution_ >= sl::RESOLUTION_HD2K && resolution_ <sl::RESOLUTION_LAST);
+	UASSERT(quality_ >= sl::DEPTH_MODE_NONE && quality_ <sl::DEPTH_MODE_LAST);
+	UASSERT(sensingMode_ >= sl::SENSING_MODE_STANDARD && sensingMode_ <sl::SENSING_MODE_LAST);
+	UASSERT(confidenceThr_ >= 0 && confidenceThr_ <=100);
+#endif
+}
+
+CameraStereoZed::CameraStereoZed(
+		const std::string & filePath,
+		int quality,
+		int sensingMode,
+		int confidenceThr,
+		bool computeOdometry,
+		float imageRate,
+		const Transform & localTransform,
+		bool selfCalibration,
+		bool odomForce3DoF) :
+	Camera(imageRate, localTransform)
+#ifdef RTABMAP_ZED
+    ,
+	zed_(0),
+	src_(CameraVideo::kVideoFile),
+	usbDevice_(0),
+	svoFilePath_(filePath),
+	resolution_(2),
+	quality_(quality),
+	selfCalibration_(selfCalibration),
+	sensingMode_(sensingMode),
+	confidenceThr_(confidenceThr),
+	computeOdometry_(computeOdometry),
+	lost_(true),
+	force3DoF_(odomForce3DoF),
+	publishInterIMU_(false),
+	imuPublishingThread_(0)
+#endif
+{
+	UDEBUG("");
+#ifdef RTABMAP_ZED
+	UASSERT(resolution_ >= sl::RESOLUTION_HD2K && resolution_ <sl::RESOLUTION_LAST);
+	UASSERT(quality_ >= sl::DEPTH_MODE_NONE && quality_ <sl::DEPTH_MODE_LAST);
+	UASSERT(sensingMode_ >= sl::SENSING_MODE_STANDARD && sensingMode_ <sl::SENSING_MODE_LAST);
+	UASSERT(confidenceThr_ >= 0 && confidenceThr_ <=100);
+#endif
+}
+
+CameraStereoZed::~CameraStereoZed()
+{
+#ifdef RTABMAP_ZED
+	if(imuPublishingThread_)
+	{
+		imuPublishingThread_->join(true);
+	}
+	delete imuPublishingThread_;
+	delete zed_;
+#endif
+}
+
+void CameraStereoZed::publishInterIMU(bool enabled)
+{
+#ifdef RTABMAP_ZED
+	publishInterIMU_ = enabled;
+#endif
+}
 
 bool CameraStereoZed::init(const std::string & calibrationFolder, const std::string & cameraName)
 {
 	UDEBUG("");
 #ifdef RTABMAP_ZED
+	if(imuPublishingThread_)
+	{
+		imuPublishingThread_->join(true);
+		delete imuPublishingThread_;
+		imuPublishingThread_=0;
+	}
 	if(zed_)
 	{
 		delete zed_;
@@ -290,6 +371,12 @@ bool CameraStereoZed::init(const std::string & calibrationFolder, const std::str
 		UINFO("IMU local transform: %s (imu2cam=%s))",
 				imuLocalTransform_.prettyPrint().c_str(),
 				zedPoseToTransform(infos.camera_imu_transform).prettyPrint().c_str());
+
+		if(publishInterIMU_)
+		{
+			imuPublishingThread_ = new ZedIMUThread(200, zed_, imuLocalTransform_, true);
+			imuPublishingThread_->start();
+		}
 	}
 
 	return true;
@@ -374,12 +461,15 @@ SensorData CameraStereoZed::captureImage(CameraInfo * info)
 				data = SensorData(left, right, stereoModel_, this->getNextSeqID(), UTimer::now());
 			}
 
-			sl::IMUData imudata;
-			res = zed_->getIMUData(imudata, sl::TIME_REFERENCE_IMAGE);
-			if(res == sl::SUCCESS && imudata.valid)
+			if(imuPublishingThread_ == 0)
 			{
-				//ZED-Mini
-				data.setIMU(zedIMUtoIMU(imudata, imuLocalTransform_));
+				sl::IMUData imudata;
+				res = zed_->getIMUData(imudata, sl::TIME_REFERENCE_IMAGE);
+				if(res == sl::SUCCESS && imudata.valid)
+				{
+					//ZED-Mini
+					data.setIMU(zedIMUtoIMU(imudata, imuLocalTransform_));
+				}
 			}
 
 			if (computeOdometry_ && info)
@@ -395,9 +485,11 @@ SensorData CameraStereoZed::captureImage(CameraInfo * info)
 						info->odomPose = zedPoseToTransform(pose);
 						if (!info->odomPose.isNull())
 						{
-							//transform x->forward, y->left, z->up
-							Transform opticalTransform(0, 0, 1, 0, -1, 0, 0, 0, 0, -1, 0, 0);
-							info->odomPose = opticalTransform * info->odomPose * opticalTransform.inverse();
+							//transform from:
+							// x->right, y->down, z->forward
+							//to:
+							// x->forward, y->left, z->up
+							info->odomPose = this->getLocalTransform() * info->odomPose * this->getLocalTransform().inverse();
 							if(force3DoF_)
 							{
 								info->odomPose = info->odomPose.to3DoF();
