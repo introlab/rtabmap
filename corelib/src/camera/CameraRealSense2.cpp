@@ -931,8 +931,8 @@ bool CameraRealSense2::init(const std::string & calibrationFolder, const std::st
 			UINFO("poseToIMU = %s", poseToIMUT.prettyPrint().c_str());
 
 			UINFO("Set base to pose");
-			this->setLocalTransform(this->getLocalTransform()*poseToLeftT.inverse());
-
+			Transform opticalTransform(0, 0, 1, 0, -1, 0, 0, 0, 0, -1, 0, 0);
+			this->setLocalTransform(this->getLocalTransform() * opticalTransform.inverse());
 			stereoModel_.setLocalTransform(this->getLocalTransform()*poseToLeftT);
 			imuLocalTransform_ = this->getLocalTransform()* poseToIMUT;
 		}
