@@ -1341,7 +1341,8 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 			else if(odom.info().type == (int)Odometry::kTypeF2F ||
 					odom.info().type == (int)Odometry::kTypeViso2 ||
 					odom.info().type == (int)Odometry::kTypeFovis ||
-					odom.info().type == (int)Odometry::kTypeMSCKF)
+					odom.info().type == (int)Odometry::kTypeMSCKF ||
+					odom.info().type == (int)Odometry::kTypeVINS)
 			{
 				std::vector<cv::KeyPoint> kpts;
 				cv::KeyPoint::convert(odom.info().newCorners, kpts, 7);
@@ -1389,7 +1390,8 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 
 			if( odom.info().type == (int)Odometry::kTypeF2M ||
 				odom.info().type == (int)Odometry::kTypeORBSLAM2 ||
-				odom.info().type == (int)Odometry::kTypeMSCKF)
+				odom.info().type == (int)Odometry::kTypeMSCKF ||
+				odom.info().type == (int)Odometry::kTypeVINS)
 			{
 				if(_ui->imageView_odometry->isFeaturesShown() && !_preferencesDialog->isOdomOnlyInliersShown())
 				{

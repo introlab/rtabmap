@@ -55,7 +55,7 @@ private:
 	MsckfVioNoROS * msckf_;
 	IMU lastImu_;
 	ParametersMap parameters_;
-	Transform flipXY_;
+	Transform fixPoseRotation_;
 	Transform previousPose_;
 	bool initGravity_;
 #endif

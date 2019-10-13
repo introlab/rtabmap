@@ -372,7 +372,7 @@ private:
 	LoopClosureViewer * _loopClosureViewer;
 
 	QString _graphSavingFileName;
-	bool _exportPosesFrame;
+	int _exportPosesFrame;
 	QMap<int, QString> _exportPosesFileName;
 	bool _autoScreenCaptureOdomSync;
 	bool _autoScreenCaptureRAM;

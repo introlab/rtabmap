@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>976</width>
-    <height>900</height>
+    <height>896</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -63,7 +63,7 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-571</y>
+            <y>-1371</y>
             <width>680</width>
             <height>3083</height>
            </rect>
@@ -6131,7 +6131,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                          <item row="14" column="1">
                           <widget class="QSpinBox" name="spinBox_cameraImages_max_imu_rate">
                            <property name="toolTip">
-                            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;KITTI: 130 000 points&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                            <string>EuRoC: 200 Hz -&gt; 250 Hz</string>
                            </property>
                            <property name="maximum">
                             <number>99999999</number>

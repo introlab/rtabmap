@@ -216,45 +216,45 @@ void CameraRealSense2::imu_callback(rs2::frame frame)
 	UScopeMutex sm(imuMutex_);
 	if(stream == RS2_STREAM_GYRO)
 	{
-		gyroBuffer_.insert(gyroBuffer_.end(), std::make_pair(hostStartStamp_ == 0?UTimer::now():frame.get_timestamp(), crnt_reading));
-		if(gyroBuffer_.size() > 100)
+		gyroBuffer_.insert(gyroBuffer_.end(), std::make_pair(frame.get_timestamp(), crnt_reading));
+		if(gyroBuffer_.size() > 1000)
 		{
 			gyroBuffer_.erase(gyroBuffer_.begin());
 		}
 	}
 	else
 	{
-		accBuffer_.insert(accBuffer_.end(), std::make_pair(hostStartStamp_ == 0?UTimer::now():frame.get_timestamp(), crnt_reading));
-		if(accBuffer_.size() > 100)
+		accBuffer_.insert(accBuffer_.end(), std::make_pair(frame.get_timestamp(), crnt_reading));
+		if(accBuffer_.size() > 1000)
 		{
 			accBuffer_.erase(accBuffer_.begin());
 		}
 	}
 }
 
+// See https://github.com/IntelRealSense/realsense-ros/blob/2a45f09003c98a5bdf39ee89df032bdb9c9bcd2d/realsense2_camera/src/base_realsense_node.cpp#L1397-L1404
 Transform CameraRealSense2::realsense2PoseRotation_ = Transform(
 		0, 0,-1,0,
 		-1, 0, 0,0,
 		 0, 1, 0,0);
-Transform CameraRealSense2::realsense2PoseRotationInv_ = realsense2PoseRotation_.inverse();
 
 void CameraRealSense2::pose_callback(rs2::frame frame)
 {
 	rs2_pose pose = frame.as<rs2::pose_frame>().get_pose_data();
+	// See https://github.com/IntelRealSense/realsense-ros/blob/2a45f09003c98a5bdf39ee89df032bdb9c9bcd2d/realsense2_camera/src/base_realsense_node.cpp#L1397-L1404
 	Transform poseT = Transform(
-				pose.translation.x,
+				-pose.translation.z,
+				-pose.translation.x,
 				pose.translation.y,
-				pose.translation.z,
-				pose.rotation.x,
+				-pose.rotation.z,
+				-pose.rotation.x,
 				pose.rotation.y,
-				pose.rotation.z,
 				pose.rotation.w);
-	poseT = realsense2PoseRotation_ * poseT * realsense2PoseRotationInv_;
 
 	UDEBUG("POSE callback! %f %s (confidence=%d)", frame.get_timestamp(), poseT.prettyPrint().c_str(), (int)pose.tracker_confidence);
 
 	UScopeMutex sm(poseMutex_);
-	poseBuffer_.insert(poseBuffer_.end(), std::make_pair(hostStartStamp_ == 0?UTimer::now():frame.get_timestamp(), std::make_pair(poseT, pose.tracker_confidence)));
+	poseBuffer_.insert(poseBuffer_.end(), std::make_pair(frame.get_timestamp(), std::make_pair(poseT, pose.tracker_confidence)));
 	if(poseBuffer_.size() > 100)
 	{
 		poseBuffer_.erase(poseBuffer_.begin());
@@ -268,7 +268,7 @@ void CameraRealSense2::frame_callback(rs2::frame frame)
 }
 void CameraRealSense2::multiple_message_callback(rs2::frame frame)
 {
-	if(dev_[1]==0 && frame.get_timestamp() < UTimer::now()+1000000000)
+	if(frame.get_timestamp() < UTimer::now()+1000000000)
 	{
 		// 1) In dual setup, use host time
 		// 2) ISSUE: my D435i reports timestamps for images 50 years in the future,
@@ -307,7 +307,8 @@ void CameraRealSense2::getPoseAndIMU(
 		const double & stamp,
 		Transform & pose,
 		unsigned int & poseConfidence,
-		IMU & imu) const
+		IMU & imu,
+		int maxWaitTimeMs) const
 {
 	pose.setNull();
 	imu = IMU();
@@ -317,14 +318,12 @@ void CameraRealSense2::getPoseAndIMU(
 		return;
 	}
 
-	int maxWaitTime = 35;
-
 	// Interpolate pose
 	if(!poseBuffer_.empty())
 	{
 		poseMutex_.lock();
 		int waitTry = 0;
-		while(poseBuffer_.rbegin()->first < stamp && waitTry < maxWaitTime)
+		while(maxWaitTimeMs>0 && poseBuffer_.rbegin()->first < stamp && waitTry < maxWaitTimeMs)
 		{
 			poseMutex_.unlock();
 			++waitTry;
@@ -333,7 +332,10 @@ void CameraRealSense2::getPoseAndIMU(
 		}
 		if(poseBuffer_.rbegin()->first < stamp)
 		{
-			UWARN("Could not find poses to interpolate at time %f after waiting %d ms (last is %f)...", stamp, maxWaitTime, poseBuffer_.rbegin()->first);
+			if(maxWaitTimeMs > 0)
+			{
+				UWARN("Could not find poses to interpolate at time %f after waiting %d ms (last is %f)...", stamp, maxWaitTimeMs, poseBuffer_.rbegin()->first);
+			}
 		}
 		else
 		{
@@ -370,7 +372,7 @@ void CameraRealSense2::getPoseAndIMU(
 	{
 		imuMutex_.lock();
 		int waitTry = 0;
-		while(accBuffer_.rbegin()->first < stamp && waitTry < maxWaitTime)
+		while(maxWaitTimeMs > 0 && accBuffer_.rbegin()->first < stamp && waitTry < maxWaitTimeMs)
 		{
 			imuMutex_.unlock();
 			++waitTry;
@@ -379,7 +381,10 @@ void CameraRealSense2::getPoseAndIMU(
 		}
 		if(accBuffer_.rbegin()->first < stamp)
 		{
-			UWARN("Could not find acc data to interpolate at time %f after waiting %d ms (last is %f)...", stamp, maxWaitTime, accBuffer_.rbegin()->first);
+			if(maxWaitTimeMs>0)
+			{
+				UWARN("Could not find acc data to interpolate at time %f after waiting %d ms (last is %f)...", stamp, maxWaitTimeMs, accBuffer_.rbegin()->first);
+			}
 			imuMutex_.unlock();
 			return;
 		}
@@ -423,7 +428,7 @@ void CameraRealSense2::getPoseAndIMU(
 	{
 		imuMutex_.lock();
 		int waitTry = 0;
-		while(gyroBuffer_.rbegin()->first < stamp && waitTry < maxWaitTime)
+		while(maxWaitTimeMs>0 && gyroBuffer_.rbegin()->first < stamp && waitTry < maxWaitTimeMs)
 		{
 			imuMutex_.unlock();
 			++waitTry;
@@ -432,7 +437,10 @@ void CameraRealSense2::getPoseAndIMU(
 		}
 		if(gyroBuffer_.rbegin()->first < stamp)
 		{
-			UWARN("Could not find gyro data to interpolate at time %f after waiting %d ms (last is %f)...", stamp, maxWaitTime, gyroBuffer_.rbegin()->first);
+			if(maxWaitTimeMs>0)
+			{
+				UWARN("Could not find gyro data to interpolate at time %f after waiting %d ms (last is %f)...", stamp, maxWaitTimeMs, gyroBuffer_.rbegin()->first);
+			}
 			imuMutex_.unlock();
 			return;
 		}
@@ -741,17 +749,17 @@ bool CameraRealSense2::init(const std::string & calibrationFolder, const std::st
 					auto intrinsic = video_profile.get_intrinsics();
 					if(pi==0)
 					{
-						// RIGHT FISHEYE
-						depthBuffer_ = cv::Mat(cv::Size(848, 800), CV_8UC1, cv::Scalar(0));
-						depthStreamProfile = profile;
-						*depthIntrinsics_ = intrinsic;
-					}
-					else
-					{
 						// LEFT FISHEYE
 						rgbBuffer_ = cv::Mat(cv::Size(848, 800), CV_8UC1, cv::Scalar(0));
 						rgbStreamProfile = profile;
 						*rgbIntrinsics_ = intrinsic;
+					}
+					else
+					{
+						// RIGHT FISHEYE
+						depthBuffer_ = cv::Mat(cv::Size(848, 800), CV_8UC1, cv::Scalar(0));
+						depthStreamProfile = profile;
+						*depthIntrinsics_ = intrinsic;
 					}
 					added = true;
 				}
@@ -797,13 +805,11 @@ bool CameraRealSense2::init(const std::string & calibrationFolder, const std::st
 		 if(dualMode_)
 		 {
 			 Transform opticalTransform(0, 0, 1, 0, -1, 0, 0, 0, 0, -1, 0, 0);
+			 UINFO("Set base to pose");
 			 this->setLocalTransform(this->getLocalTransform()*opticalTransform.inverse());
 			 UINFO("poseToLeftIR = %s", dualExtrinsics_.prettyPrint().c_str());
-			 if(ir_)
-			 {
-				 this->setLocalTransform(this->getLocalTransform()*dualExtrinsics_*opticalTransform);
-			 }
-			 else
+			 Transform baseToCam = this->getLocalTransform()*dualExtrinsics_*opticalTransform;
+			 if(!ir_)
 			 {
 				 Transform leftIRToRGB(
 						 depthToRGBExtrinsics_->rotation[0], depthToRGBExtrinsics_->rotation[1], depthToRGBExtrinsics_->rotation[2], depthToRGBExtrinsics_->translation[0],
@@ -811,11 +817,11 @@ bool CameraRealSense2::init(const std::string & calibrationFolder, const std::st
 						 depthToRGBExtrinsics_->rotation[6], depthToRGBExtrinsics_->rotation[7], depthToRGBExtrinsics_->rotation[8], depthToRGBExtrinsics_->translation[2]);
 				 leftIRToRGB = leftIRToRGB.inverse();
 				 UINFO("leftIRToRGB = %s", leftIRToRGB.prettyPrint().c_str());
-				 this->setLocalTransform(this->getLocalTransform()*dualExtrinsics_*opticalTransform*leftIRToRGB);
+				 baseToCam *= leftIRToRGB;
 			 }
 			 UASSERT(profilesPerSensor.size()>=2);
 			 UASSERT(profilesPerSensor.back().size() == 3);
-			 rs2_extrinsics poseToIMU = profilesPerSensor.back()[2].get_extrinsics_to(profilesPerSensor.back()[0]);
+			 rs2_extrinsics poseToIMU = profilesPerSensor.back()[0].get_extrinsics_to(profilesPerSensor.back()[2]);
 
 			 Transform poseToIMUT(
 					 poseToIMU.rotation[0], poseToIMU.rotation[1], poseToIMU.rotation[2], poseToIMU.translation[0],
@@ -824,9 +830,9 @@ bool CameraRealSense2::init(const std::string & calibrationFolder, const std::st
 			 poseToIMUT = realsense2PoseRotation_ * poseToIMUT;
 			 UINFO("poseToIMU = %s", poseToIMUT.prettyPrint().c_str());
 
-			 UINFO("PoseToCam = %s", this->getLocalTransform().prettyPrint().c_str());
-			 model_.setLocalTransform(this->getLocalTransform());
-			 imuLocalTransform_ = poseToIMUT;
+			 UINFO("BaseToCam = %s", baseToCam.prettyPrint().c_str());
+			 model_.setLocalTransform(baseToCam);
+			 imuLocalTransform_ = this->getLocalTransform() * poseToIMUT;
 		 }
 
 		 if(ir_ && !irDepth_ && profilesPerSensor.size() >= 2 && profilesPerSensor[1].size() >= 2)
@@ -900,19 +906,16 @@ bool CameraRealSense2::init(const std::string & calibrationFolder, const std::st
 		}
 
 		// Get extrinsics with pose as the base frame:
-		// 0=Right fisheye
-		// 1=Left fisheye
+		// 0=Left fisheye
+		// 1=Right fisheye
 		// 2=GYRO
 		// 3=ACC
 		// 4=POSE
 		UASSERT(profilesPerSensor[0].size() == 5);
 		if(odometryProvided_)
 		{
-			rs2_extrinsics poseToLeft = profilesPerSensor[0][4].get_extrinsics_to(profilesPerSensor[0][1]);
-			rs2_extrinsics poseToIMU = profilesPerSensor[0][4].get_extrinsics_to(profilesPerSensor[0][2]);
-			Transform realsense2_pose_rotation(0, 0,-1,0,
-								-1, 0, 0,0,
-								 0, 1, 0,0);
+			rs2_extrinsics poseToLeft = profilesPerSensor[0][0].get_extrinsics_to(profilesPerSensor[0][4]);
+			rs2_extrinsics poseToIMU = profilesPerSensor[0][2].get_extrinsics_to(profilesPerSensor[0][4]);
 			Transform poseToLeftT(
 					poseToLeft.rotation[0], poseToLeft.rotation[1], poseToLeft.rotation[2], poseToLeft.translation[0],
 					poseToLeft.rotation[3], poseToLeft.rotation[4], poseToLeft.rotation[5], poseToLeft.translation[1],
@@ -927,17 +930,16 @@ bool CameraRealSense2::init(const std::string & calibrationFolder, const std::st
 			poseToIMUT = realsense2PoseRotation_ * poseToIMUT;
 			UINFO("poseToIMU = %s", poseToIMUT.prettyPrint().c_str());
 
-			UINFO("Removing optical rotation to match realsense2 poses.");
-			Transform opticalTransform(0, 0, 1, 0, -1, 0, 0, 0, 0, -1, 0, 0);
-			this->setLocalTransform(this->getLocalTransform()*opticalTransform.inverse());
+			UINFO("Set base to pose");
+			this->setLocalTransform(this->getLocalTransform()*poseToLeftT.inverse());
 
 			stereoModel_.setLocalTransform(this->getLocalTransform()*poseToLeftT);
-			imuLocalTransform_ = poseToIMUT;
+			imuLocalTransform_ = this->getLocalTransform()* poseToIMUT;
 		}
 		else
 		{
 			// Set imu transform based on the left camera instead of pose
-			 rs2_extrinsics leftToIMU = profilesPerSensor[0][1].get_extrinsics_to(profilesPerSensor[0][2]);
+			 rs2_extrinsics leftToIMU = profilesPerSensor[0][2].get_extrinsics_to(profilesPerSensor[0][0]);
 			 Transform leftToIMUT(
 					 leftToIMU.rotation[0], leftToIMU.rotation[1], leftToIMU.rotation[2], leftToIMU.translation[0],
 					 leftToIMU.rotation[3], leftToIMU.rotation[4], leftToIMU.rotation[5], leftToIMU.translation[1],
@@ -1091,7 +1093,7 @@ SensorData CameraRealSense2::captureImage(CameraInfo * info)
 		{
 			double stamp;
 			// See ISSUE in multiple_message_callback()
-			if(frameset.get_timestamp() > UTimer::now()+1000000000 || hostStartStamp_ == 0)
+			if(frameset.get_timestamp() >= UTimer::now()+1000000000)
 			{
 				stamp = UTimer::now();
 			}
@@ -1218,20 +1220,25 @@ SensorData CameraRealSense2::captureImage(CameraInfo * info)
 
 			IMU imu;
 			unsigned int confidence = 0;
-			double imuStamp = hostStartStamp_==0?stamp:frameset.get_timestamp()> UTimer::now()+1000000000?stamp*1000.0:frameset.get_timestamp();
+			double imuStamp = frameset.get_timestamp()> UTimer::now()+1000000000?stamp*1000.0:frameset.get_timestamp();
 			getPoseAndIMU(imuStamp, info->odomPose, confidence, imu);
 
 			if(odometryProvided_ && !info->odomPose.isNull())
 			{
+				// Transform in base frame (local transform should contain base to pose transform)
+				info->odomPose = this->getLocalTransform() * info->odomPose * this->getLocalTransform().inverse();
+
 				info->odomCovariance = cv::Mat::eye(6,6,CV_64FC1) * 0.0001;
 				info->odomCovariance.rowRange(0,3) *= pow(10, 3-(int)confidence);
 				info->odomCovariance.rowRange(3,6) *= pow(10, 1-(int)confidence);
 			}
-			if(!imu.empty())
+			if(!imu.empty() && !publishInterIMU_)
 			{
 				data.setIMU(imu);
-
-				if(publishInterIMU_ && lastImuStamp_ > 0.0)
+			}
+			else if(publishInterIMU_ && !gyroBuffer_.empty())
+			{
+				if(lastImuStamp_ > 0.0)
 				{
 					UASSERT(imuStamp > lastImuStamp_);
 					imuMutex_.lock();
@@ -1241,8 +1248,13 @@ SensorData CameraRealSense2::captureImage(CameraInfo * info)
 					{
 						++iterA;
 					}
+					if(iterB != gyroBuffer_.end())
+					{
+						++iterB;
+					}
 					if(iterA != iterB)
 					{
+						int pub = 0;
 						for(;iterA != iterB;++iterA)
 						{
 							Transform tmp;
@@ -1251,8 +1263,14 @@ SensorData CameraRealSense2::captureImage(CameraInfo * info)
 							if(!imuTmp.empty())
 							{
 								UEventsManager::post(new IMUEvent(imuTmp, iterA->first/1000.0));
+								pub++;
+							}
+							else
+							{
+								break;
 							}
 						}
+						UDEBUG("inter imu published=%d, %f -> %f", pub, lastImuStamp_, imuStamp);
 					}
 					imuMutex_.unlock();
 				}

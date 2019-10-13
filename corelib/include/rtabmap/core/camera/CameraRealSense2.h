@@ -90,7 +90,8 @@ public:
 			const double & stamp,
 			Transform & pose,
 			unsigned int & poseConfidence,
-			IMU & imu) const;
+			IMU & imu,
+			int maxWaitTimeMs = 35) const;
 #endif
 
 protected:

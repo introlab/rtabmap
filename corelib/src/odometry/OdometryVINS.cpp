@@ -355,6 +355,8 @@ Transform OdometryVINS::computeTransform(
 		Vector3d acc(dx, dy, dz);
 		Vector3d gyr(rx, ry, rz);
 
+		UDEBUG("IMU update stamp=%f", data.stamp());
+
 		if(vinsEstimator_ != 0)
 		{
 			vinsEstimator_->inputIMU(t, acc, gyr);
@@ -450,6 +452,7 @@ Transform OdometryVINS::computeTransform(
 
 				if(info)
 				{
+					info->type = this->getType();
 					info->reg.covariance = cv::Mat::eye(6,6, CV_64FC1);
 					info->reg.covariance *= this->framesProcessed() == 0?9999:0.0001;
 
@@ -473,7 +476,16 @@ Transform OdometryVINS::computeTransform(
 						p.z = w_pts_i(2);
 						p = util3d::transformPoint(p, fixT);
 						info->localMap.insert(std::make_pair(it_per_id.feature_id, p));
+
+						if(this->imagesAlreadyRectified())
+						{
+							cv::Point2f pt;
+							data.stereoCameraModel().left().reproject(pts_i(0), pts_i(1), pts_i(2), pt.x, pt.y);
+							info->reg.inliersIDs.push_back(info->newCorners.size());
+							info->newCorners.push_back(pt);
+						}
 					}
+					info->features = info->newCorners.size();
 					info->localMapSize = info->localMap.size();
 				}
 				UINFO("Odom update time = %fs p=%s", timer.elapsed(), p.prettyPrint().c_str());
