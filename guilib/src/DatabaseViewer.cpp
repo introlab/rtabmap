@@ -80,6 +80,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/SensorData.h"
 #include "rtabmap/core/GainCompensator.h"
 #include "rtabmap/gui/ExportDialog.h"
+#include "rtabmap/gui/EditConstraintDialog.h"
 #include "rtabmap/gui/ProgressDialog.h"
 #include "rtabmap/gui/ParametersToolBox.h"
 #include "rtabmap/gui/RecoveryState.h"
@@ -354,6 +355,7 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	connect(ui_->checkBox_show3DWords, SIGNAL(stateChanged(int)), this, SLOT(updateConstraintView()));
 	connect(ui_->checkBox_odomFrame, SIGNAL(stateChanged(int)), this, SLOT(updateConstraintView()));
 	ui_->checkBox_showOptimized->setEnabled(false);
+	connect(ui_->toolButton_constraint, SIGNAL(clicked(bool)), this, SLOT(editConstraint()));
 
 	ui_->horizontalSlider_iterations->setTracking(false);
 	ui_->horizontalSlider_iterations->setEnabled(false);
@@ -4949,6 +4951,45 @@ void DatabaseViewer::sliderLoopValueChanged(int value)
 	}
 }
 
+void DatabaseViewer::editConstraint()
+{
+	if(ids_.size())
+	{
+		Link link = this->findActiveLink(ids_.at(ui_->horizontalSlider_A->value()), ids_.at(ui_->horizontalSlider_B->value()));
+		if(link.isValid())
+		{
+			EditConstraintDialog dialog(link.transform());
+			if(dialog.exec() == QDialog::Accepted)
+			{
+				bool updated = false;
+				Link newLink = link;
+				newLink.setTransform(dialog.getTransform());
+				std::multimap<int, Link>::iterator iter = linksRefined_.find(link.from());
+				while(iter != linksRefined_.end() && iter->first == link.from())
+				{
+					if(iter->second.to() == link.to() &&
+					   iter->second.type() == link.type())
+					{
+						iter->second = newLink;
+						updated = true;
+						break;
+					}
+					++iter;
+				}
+				if(!updated)
+				{
+					linksRefined_.insert(std::make_pair(newLink.from(), newLink));
+					updated = true;
+				}
+				if(updated)
+				{
+					updateConstraintView();
+				}
+			}
+		}
+	}
+}
+
 // only called when ui_->checkBox_showOptimized state changed
 void DatabaseViewer::updateConstraintView()
 {
@@ -5488,6 +5529,7 @@ void DatabaseViewer::updateConstraintButtons()
 	ui_->pushButton_reset->setEnabled(false);
 	ui_->pushButton_add->setEnabled(false);
 	ui_->pushButton_reject->setEnabled(false);
+	ui_->toolButton_constraint->setEnabled(false);
 
 	if(ui_->label_type->text().toInt() == Link::kLandmark)
 	{
@@ -5529,6 +5571,7 @@ void DatabaseViewer::updateConstraintButtons()
 			ui_->pushButton_reset->setEnabled(false);
 		}
 		ui_->pushButton_refine->setEnabled(true);
+		ui_->toolButton_constraint->setEnabled(true);
 	}
 }
 

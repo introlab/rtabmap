@@ -132,6 +132,7 @@ private Q_SLOTS:
 	void sliderNeighborValueChanged(int);
 	void sliderLoopValueChanged(int);
 	void sliderIterationsValueChanged(int);
+	void editConstraint();
 	void updateGrid();
 	void updateOctomapView();
 	void updateGraphView();
