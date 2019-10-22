@@ -1,5 +1,6 @@
 
-[![video](https://raw.githubusercontent.com/wiki/introlab/rtabmap/doc/video_screenshots/onlinergbdslam.jpeg)](http://www.youtube.com/watch?v=AMLwjo80WzI)
+<a href="https://youtu.be/71eRxTc1DaU" target="_blank"><img src="https://raw.githubusercontent.com/wiki/introlab/rtabmap/doc/Tutorials/MultiSessionTango/youtube.jpg"
+ alt="video" title="video"/></a>
 
 ## Overview 
 <img src="https://raw.githubusercontent.com/introlab/rtabmap/master/guilib/src/images/RTAB-Map.png" alt="RTAB-Map logo" title="RTAB-Map" align="left" width="120">
@@ -78,9 +79,6 @@ This website uses Google Analytics. See their Privacy Policy [here](https://supp
 * New tutorial: [Multi-Session Mapping with RTAB-Map Tango](https://github.com/introlab/rtabmap/wiki/Multi-Session-Mapping-with-RTAB-Map-Tango)
 
     <img src="https://raw.githubusercontent.com/wiki/introlab/rtabmap/doc/Tutorials/MultiSessionTango/mesh.jpg" alt="Mesh" width="400"><img src="https://raw.githubusercontent.com/wiki/introlab/rtabmap/doc/Tutorials/MultiSessionTango/cloudSessionColor.jpg" alt="Cloud" width="200">
-    
-    <a href="https://youtu.be/71eRxTc1DaU" target="_blank"><img src="https://raw.githubusercontent.com/wiki/introlab/rtabmap/doc/Tutorials/MultiSessionTango/youtube.jpg"
- alt="video" title="video"/></a>
 
 ### February 2017
 * **Version 0.11.14** : Visit the [release page](https://github.com/introlab/rtabmap/releases/0.11.14) for more info!
@@ -174,6 +172,8 @@ This website uses Google Analytics. See their Privacy Policy [here](https://supp
    <a href="http://www.youtube.com/watch?v=Nm2ggyAW4rw"><img src="https://raw.githubusercontent.com/wiki/introlab/rtabmap/doc/video_screenshots/desktop.jpeg" alt="video" title="video"></a>
 
    <a href="http://www.youtube.com/watch?v=joV7VCvGrKM"><img src="https://raw.githubusercontent.com/wiki/introlab/rtabmap/doc/video_screenshots/globalonly.jpeg" alt="video" title="video"></a>
+   
+   [![video](https://raw.githubusercontent.com/wiki/introlab/rtabmap/doc/video_screenshots/onlinergbdslam.jpeg)](http://www.youtube.com/watch?v=AMLwjo80WzI)
 
 * **Appearance-based loop closure detection**
 
