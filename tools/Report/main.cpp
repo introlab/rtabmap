@@ -183,6 +183,7 @@ int main(int argc, char * argv[])
 					driver->getAllNodeIds(ids);
 					std::map<int, std::pair<std::map<std::string, float>, double> > stats = driver->getAllStatistics();
 					std::map<int, Transform> odomPoses, gtPoses;
+					std::map<int, double> odomStamps;
 					std::vector<float> cameraTime;
 					cameraTime.reserve(ids.size());
 					std::vector<float> odomTime;
@@ -212,6 +213,7 @@ int main(int argc, char * argv[])
 						if(driver->getNodeInfo(*iter, p, m, w, l, s, gt, v, gps, sensors))
 						{
 							odomPoses.insert(std::make_pair(*iter, p));
+							odomStamps.insert(std::make_pair(*iter, s));
 							if(!gt.isNull())
 							{
 								gtPoses.insert(std::make_pair(*iter, gt));
@@ -493,48 +495,54 @@ int main(int argc, char * argv[])
 								std::string dir = UDirectory::getDir(filePath);
 								std::string dbName = UFile::getName(filePath);
 								dbName = dbName.substr(0, dbName.size()-3); // remove db
-								std::string path = dir+UDirectory::separator()+dbName+"_poses.txt";
-								if(!graph::exportPoses(path, outputKittiError?2:0, poses))
+								std::string path = dir+UDirectory::separator()+dbName+"_slam.txt";
+								std::multimap<int, Link> dummyLinks;
+								std::map<int, double> stamps;
+								if(!outputKittiError)
+								{
+									for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter)
+									{
+										UASSERT(odomStamps.find(iter->first) != odomStamps.end());
+										stamps.insert(*odomStamps.find(iter->first));
+									}
+								}
+								if(!graph::exportPoses(path, outputKittiError?2:10, poses, dummyLinks, stamps))
 								{
 									printf("Could not export the poses to \"%s\"!?!\n", path.c_str());
 								}
+
+								//export odom
+								path = dir+UDirectory::separator()+dbName+"_odom.txt";
+								stamps.clear();
+								if(!outputKittiError)
+								{
+									for(std::map<int, Transform>::iterator iter=odomPoses.begin(); iter!=odomPoses.end(); ++iter)
+									{
+										UASSERT(odomStamps.find(iter->first) != odomStamps.end());
+										stamps.insert(*odomStamps.find(iter->first));
+									}
+								}
+								if(!graph::exportPoses(path, outputKittiError?2:10, odomPoses, dummyLinks, stamps))
+								{
+									printf("Could not export the ground truth to \"%s\"!?!\n", path.c_str());
+								}
+
+								//export ground truth
 								if(groundTruth.size())
 								{
-									// For missing ground truth poses, set them to null
-									std::vector<int> validIndices(poses.size(), 1);
-									int i=0;
-									for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter, ++i)
+									path = dir+UDirectory::separator()+dbName+"_gt.txt";
+									stamps.clear();
+									if(!outputKittiError)
 									{
-										if(groundTruth.find(iter->first) == groundTruth.end())
+										for(std::map<int, Transform>::iterator iter=groundTruth.begin(); iter!=groundTruth.end(); ++iter)
 										{
-											groundTruth.insert(std::make_pair(iter->first, Transform()));
-											validIndices[i] = 0;
+											UASSERT(odomStamps.find(iter->first) != odomStamps.end());
+											stamps.insert(*odomStamps.find(iter->first));
 										}
 									}
-									path = dir+UDirectory::separator()+dbName+"_gt.txt";
-									if(!graph::exportPoses(path, outputKittiError?2:0, groundTruth))
+									if(!graph::exportPoses(path, outputKittiError?2:10, groundTruth, dummyLinks, stamps))
 									{
 										printf("Could not export the ground truth to \"%s\"!?!\n", path.c_str());
-									}
-									else
-									{
-										// save valid indices
-										path = dir+UDirectory::separator()+dbName+"_indices.txt";
-										FILE * file = 0;
-	#ifdef _MSC_VER
-										fopen_s(&file, path.c_str(), "w");
-	#else
-										file = fopen(path.c_str(), "w");
-	#endif
-										if(file)
-										{
-											// VERTEX3 id x y z phi theta psi
-											for(unsigned int k=0; k<validIndices.size(); ++k)
-											{
-												fprintf(file, "%d\n", validIndices[k]);
-											}
-											fclose(file);
-										}
 									}
 								}
 							}

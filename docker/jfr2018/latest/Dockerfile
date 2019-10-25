@@ -132,7 +132,7 @@ RUN git clone https://github.com/tum-vision/dvo_slam.git && cd dvo_slam && git c
 # VISO2
 RUN git clone https://github.com/srv/viso2.git && cd viso2 && git checkout ${ROS_DISTRO}
 # MSCKF-VIO
-RUN git clone https://github.com/KumarRobotics/msckf_vio.git && cd msckf_vio && git checkout a9386c5 && wget https://gist.githubusercontent.com/matlabbe/f2518d7427e7f6740af2110e540b1f2b/raw/900a76b0a6741e172e76722e07c0aae50d3b94f3/msckf_vio_a9386c5_ros_commented.patch && git apply --ignore-space-change --ignore-whitespace msckf_vio_a9386c5_ros_commented.patch
+RUN git clone https://github.com/KumarRobotics/msckf_vio.git && cd msckf_vio && git checkout a9386c5 && wget https://gist.githubusercontent.com/matlabbe/f2518d7427e7f6740af2110e540b1f2b/raw/a6d604e730bcbf3dcd7fd8a27302bed4bb94b799/msckf_vio_a9386c5_ros_commented.patch && git apply --ignore-space-change --ignore-whitespace msckf_vio_a9386c5_ros_commented.patch
 # FOVIS
 RUN git clone https://github.com/srv/libfovis.git && cd libfovis && git checkout 896acc8425e9fd7c5609153b8bad349ae1abbb50
 # LOAM

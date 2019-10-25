@@ -80,6 +80,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/SensorData.h"
 #include "rtabmap/core/GainCompensator.h"
 #include "rtabmap/gui/ExportDialog.h"
+#include "rtabmap/gui/EditConstraintDialog.h"
 #include "rtabmap/gui/ProgressDialog.h"
 #include "rtabmap/gui/ParametersToolBox.h"
 #include "rtabmap/gui/RecoveryState.h"
@@ -354,6 +355,7 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	connect(ui_->checkBox_show3DWords, SIGNAL(stateChanged(int)), this, SLOT(updateConstraintView()));
 	connect(ui_->checkBox_odomFrame, SIGNAL(stateChanged(int)), this, SLOT(updateConstraintView()));
 	ui_->checkBox_showOptimized->setEnabled(false);
+	connect(ui_->toolButton_constraint, SIGNAL(clicked(bool)), this, SLOT(editConstraint()));
 
 	ui_->horizontalSlider_iterations->setTracking(false);
 	ui_->horizontalSlider_iterations->setEnabled(false);
@@ -3946,14 +3948,17 @@ void DatabaseViewer::update(int value,
 				{
 					labelVelocity->setText(QString("vx=%1 vy=%2 vz=%3 vroll=%4 vpitch=%5 vyaw=%6").arg(v[0]).arg(v[1]).arg(v[2]).arg(v[3]).arg(v[4]).arg(v[5]));
 				}
-				std::multimap<int, Link>::const_iterator imuIter = graph::findLink(links_, id, id, false, Link::kGravity);
-				if(imuIter != links_.end())
+
+				std::multimap<int, Link> gravityLink;
+				dbDriver_->loadLinks(id, gravityLink, Link::kGravity);
+				if(!gravityLink.empty())
 				{
 					float roll,pitch,yaw;
-					imuIter->second.transform().getEulerAngles(roll, pitch, yaw);
+					gravityLink.begin()->second.transform().getEulerAngles(roll, pitch, yaw);
 					Eigen::Vector3d v = Transform(0,0,0,roll,pitch,0).toEigen3d() * -Eigen::Vector3d::UnitZ();
 					labelGravity->setText(QString("x=%1 y=%2 z=%3").arg(v[0]).arg(v[1]).arg(v[2]));
 				}
+
 				if(gps.stamp()>0.0)
 				{
 					labelGps->setText(QString("stamp=%1 longitude=%2 latitude=%3 altitude=%4m error=%5m bearing=%6deg").arg(QString::number(gps.stamp(), 'f')).arg(gps.longitude()).arg(gps.latitude()).arg(gps.altitude()).arg(gps.error()).arg(gps.bearing()));
@@ -4946,6 +4951,45 @@ void DatabaseViewer::sliderLoopValueChanged(int value)
 	}
 }
 
+void DatabaseViewer::editConstraint()
+{
+	if(ids_.size())
+	{
+		Link link = this->findActiveLink(ids_.at(ui_->horizontalSlider_A->value()), ids_.at(ui_->horizontalSlider_B->value()));
+		if(link.isValid())
+		{
+			EditConstraintDialog dialog(link.transform());
+			if(dialog.exec() == QDialog::Accepted)
+			{
+				bool updated = false;
+				Link newLink = link;
+				newLink.setTransform(dialog.getTransform());
+				std::multimap<int, Link>::iterator iter = linksRefined_.find(link.from());
+				while(iter != linksRefined_.end() && iter->first == link.from())
+				{
+					if(iter->second.to() == link.to() &&
+					   iter->second.type() == link.type())
+					{
+						iter->second = newLink;
+						updated = true;
+						break;
+					}
+					++iter;
+				}
+				if(!updated)
+				{
+					linksRefined_.insert(std::make_pair(newLink.from(), newLink));
+					updated = true;
+				}
+				if(updated)
+				{
+					updateConstraintView();
+				}
+			}
+		}
+	}
+}
+
 // only called when ui_->checkBox_showOptimized state changed
 void DatabaseViewer::updateConstraintView()
 {
@@ -5485,6 +5529,7 @@ void DatabaseViewer::updateConstraintButtons()
 	ui_->pushButton_reset->setEnabled(false);
 	ui_->pushButton_add->setEnabled(false);
 	ui_->pushButton_reject->setEnabled(false);
+	ui_->toolButton_constraint->setEnabled(false);
 
 	if(ui_->label_type->text().toInt() == Link::kLandmark)
 	{
@@ -5526,6 +5571,7 @@ void DatabaseViewer::updateConstraintButtons()
 			ui_->pushButton_reset->setEnabled(false);
 		}
 		ui_->pushButton_refine->setEnabled(true);
+		ui_->toolButton_constraint->setEnabled(true);
 	}
 }
 
@@ -6865,11 +6911,14 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent)
 					if(fromIter != optimizedPoses.end() &&
 					   toIter != optimizedPoses.end())
 					{
-						QMessageBox::information(this,
-								tr("Add constraint"),
-								tr("Registration is done without vision (see %1 parameter), "
-									"a guess is taken from the optimized graph.")
-									.arg(Parameters::kRegStrategy().c_str()));
+						if(!silent)
+						{
+							QMessageBox::information(this,
+									tr("Add constraint"),
+									tr("Registration is done without vision (see %1 parameter), "
+										"a guess is taken from the optimized graph.")
+										.arg(Parameters::kRegStrategy().c_str()));
+						}
 						guess = fromIter->second.inverse() * toIter->second;
 					}
 				}

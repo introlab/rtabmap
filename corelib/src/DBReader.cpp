@@ -353,6 +353,14 @@ SensorData DBReader::getNextData(CameraInfo * info)
 			{
 				globalPose = priorLinks.begin()->second.transform();
 				globalPoseCov = priorLinks.begin()->second.infMatrix().inv();
+				if(data.gps().stamp() != 0.0 &&
+						globalPoseCov.at<double>(3,3)>=9999 &&
+						globalPoseCov.at<double>(4,4)>=9999 &&
+						globalPoseCov.at<double>(5,5)>=9999)
+				{
+					// clear global pose as GPS was used for prior
+					globalPose.setNull();
+				}
 			}
 
 			Transform gravityTransform;
@@ -488,13 +496,14 @@ SensorData DBReader::getNextData(CameraInfo * info)
 						Transform::getIdentity())); // we assume that gravity links are already transformed in base_link
 			}
 
-			UDEBUG("Laser=%d RGB/Left=%d Depth/Right=%d, Grid=%d, UserData=%d, GlobalPose=%d, IMU=%d",
+			UDEBUG("Laser=%d RGB/Left=%d Depth/Right=%d, Grid=%d, UserData=%d, GlobalPose=%d, GPS=%d, IMU=%d",
 					data.laserScanRaw().isEmpty()?0:1,
 					data.imageRaw().empty()?0:1,
 					data.depthOrRightRaw().empty()?0:1,
 					data.gridCellSize()==0.0f?0:1,
 					data.userDataRaw().empty()?0:1,
 					globalPose.isNull()?0:1,
+					data.gps().stamp()!=0.0?1:0,
 					gravityTransform.isNull()?0:1);
 
 			cv::Mat descriptors;

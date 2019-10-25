@@ -346,7 +346,7 @@ void MadgwickFilter::updateImpl(
   // Integrate rate of change of quaternion to yield quaternion
   if(dt <= 0.0)
   {
-	  UERROR("dt=%f <=0.0, orientation will not be updated!", dt);
+	  UWARN("dt=%f <=0.0, orientation will not be updated!", dt);
 	  return;
   }
   q0 += qDot1 * dt;

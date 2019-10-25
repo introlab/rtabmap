@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2010-2016, Mathieu Labbe - IntRoLab - Universite de Sherbrooke
+Copyright (c) 2010-2019, Mathieu Labbe - IntRoLab - Universite de Sherbrooke
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -25,42 +25,32 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef ODOMETRYMSCKF_H_
-#define ODOMETRYMSCKF_H_
+#ifndef RTABMAP_EDITCONSTRAINTDIALOG_H_
+#define RTABMAP_EDITCONSTRAINTDIALOG_H_
 
-#include <rtabmap/core/Odometry.h>
+#include "rtabmap/gui/RtabmapGuiExp.h" // DLL export/import defines
+
+#include <QDialog>
+#include <rtabmap/core/Transform.h>
+
+class Ui_EditConstraintDialog;
 
 namespace rtabmap {
 
-class ImageProcessorNoROS;
-class MsckfVioNoROS;
-
-class RTABMAP_EXP OdometryMSCKF : public Odometry
+class RTABMAPGUI_EXP EditConstraintDialog : public QDialog
 {
+	Q_OBJECT
+
 public:
-	OdometryMSCKF(const rtabmap::ParametersMap & parameters = rtabmap::ParametersMap());
-	virtual ~OdometryMSCKF();
+	EditConstraintDialog(const Transform & constraint, QWidget * parent = 0);
 
-	virtual void reset(const Transform & initialPose = Transform::getIdentity());
-	virtual Odometry::Type getType() {return Odometry::kTypeMSCKF;}
-	virtual bool canProcessRawImages() const {return true;}
-	virtual bool canProcessIMU() const {return true;}
+	virtual ~EditConstraintDialog();
+	Transform getTransform() const;
 
 private:
-	virtual Transform computeTransform(SensorData & image, const Transform & guess = Transform(), OdometryInfo * info = 0);
-
-private:
-#ifdef RTABMAP_MSCKF_VIO
-	ImageProcessorNoROS * imageProcessor_;
-	MsckfVioNoROS * msckf_;
-	IMU lastImu_;
-	ParametersMap parameters_;
-	Transform fixPoseRotation_;
-	Transform previousPose_;
-	bool initGravity_;
-#endif
+	Ui_EditConstraintDialog * _ui;
 };
 
 }
 
-#endif /* ODOMETRYMSCKF_H_ */
+#endif /* EDITCONSTRAINTDIALOG_H_ */

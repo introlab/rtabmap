@@ -2556,16 +2556,18 @@ bool Rtabmap::process(
 	double optimizationError = 0.0;
 	int optimizationIterations = 0;
 	cv::Mat localizationCovariance;
-	if(_rgbdSlamMode &&
+	if(_rgbdSlamMode
+		&&
 		(_loopClosureHypothesis.first>0 ||
 	     lastProximitySpaceClosureId>0 || // can be different map of the current one
 	     statistics_.reducedIds().size() ||
-		 (signature->hasLink(signature->id(), Link::kPosePrior) && !_graphOptimizer->priorsIgnored() && !_memory->isIncremental()) || // prior edge
-		 (signature->hasLink(signature->id(), Link::kGravity) && _graphOptimizer->gravitySigma()>0.0f && !_memory->isIncremental()) || // gravity edge
+		 (signature->hasLink(signature->id(), Link::kPosePrior) && !_graphOptimizer->priorsIgnored()) || // prior edge
+		 (signature->hasLink(signature->id(), Link::kGravity) && _graphOptimizer->gravitySigma()>0.0f) || // gravity edge
 	     proximityDetectionsInTimeFound>0 ||
 		 landmarkDetected!=0 ||
-		 ((_memory->isIncremental() || graph::filterLinks(signature->getLinks(), Link::kSelfRefLink).size()) && // In localization mode, the new node should be linked
-		          signaturesRetrieved.size())))  		// can be different map of the current one
+		 signaturesRetrieved.size()) // can be different map of the current one
+		 &&
+		 (_memory->isIncremental() || graph::filterLinks(signature->getLinks(), Link::kSelfRefLink).size())) // In localization mode, the new node should be linked
 	{
 		UASSERT(uContains(_optimizedPoses, signature->id()));
 
@@ -2839,7 +2841,9 @@ bool Rtabmap::process(
 				{
 					if( iter->second.type() != Link::kNeighbor &&
 						iter->second.type() != Link::kVirtualClosure &&
-						iter->second.type() != Link::kLandmark)
+						iter->second.type() != Link::kLandmark &&
+						iter->second.type() != Link::kGravity &&
+						iter->second.type() != Link::kPosePrior)
 					{
 						UWARN("Optimization: clearing guess poses as %s may have changed state, now %s (normMapCorrection=%f)", Parameters::kRGBDOptimizeFromGraphEnd().c_str(), _optimizeFromGraphEnd?"true":"false", normMapCorrection);
 						poses.clear();

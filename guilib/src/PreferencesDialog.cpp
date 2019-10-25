@@ -313,7 +313,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	if (!CameraRealSense2::available())
 	{
 		_ui->comboBox_cameraRGBD->setItemData(kSrcRealSense2 - kSrcRGBD, 0, Qt::UserRole - 1);
-		_ui->comboBox_cameraRGBD->setItemData(kSrcStereoRealSense2 - kSrcStereo, 0, Qt::UserRole - 1);
+		_ui->comboBox_cameraStereo->setItemData(kSrcStereoRealSense2 - kSrcStereo, 0, Qt::UserRole - 1);
 	}
 	if(!CameraStereoDC1394::available())
 	{
@@ -626,10 +626,13 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->checkbox_realsenseDepthScaledToRGBSize, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->comboBox_realsenseRGBSource, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->checkbox_rs2_emitter, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->checkbox_rs2_irMode, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->checkbox_rs2_irDepth, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->spinBox_rs2_width, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->spinBox_rs2_height, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->spinBox_rs2_rate, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->checkbox_rs2_dualMode, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->lineEdit_rs2_dualModeExtrinsics, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
 
 	connect(_ui->toolButton_cameraImages_timestamps, SIGNAL(clicked()), this, SLOT(selectSourceImagesStamps()));
 	connect(_ui->lineEdit_cameraImages_timestamps, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
@@ -714,6 +717,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->comboBox_imuFilter_strategy, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->comboBox_imuFilter_strategy, SIGNAL(currentIndexChanged(int)), _ui->stackedWidget_imuFilter, SLOT(setCurrentIndex(int)));
 	_ui->stackedWidget_imuFilter->setCurrentIndex(_ui->comboBox_imuFilter_strategy->currentIndex());
+	connect(_ui->checkbox_publishInterIMU, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 
 	connect(_ui->checkBox_source_scanFromDepth, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->spinBox_source_scanDownsampleStep, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
@@ -1790,10 +1794,13 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->checkbox_realsenseDepthScaledToRGBSize->setChecked(false);
 		_ui->comboBox_realsenseRGBSource->setCurrentIndex(0);
 		_ui->checkbox_rs2_emitter->setChecked(true);
-		_ui->checkbox_rs2_irDepth->setChecked(false);
+		_ui->checkbox_rs2_irMode->setChecked(false);
+		_ui->checkbox_rs2_irDepth->setChecked(true);
 		_ui->spinBox_rs2_width->setValue(848);
 		_ui->spinBox_rs2_height->setValue(480);
 		_ui->spinBox_rs2_rate->setValue(60);
+		_ui->checkbox_rs2_dualMode->setChecked(false);
+		_ui->lineEdit_rs2_dualModeExtrinsics->setText("0.009 0.021 0.027 0 -0.018 0.005");
 		_ui->lineEdit_openniOniPath->clear();
 		_ui->lineEdit_openni2OniPath->clear();
 		_ui->checkbox_k4a_irDepth->setChecked(false);
@@ -1849,6 +1856,7 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->doubleSpinBox_imuFilterComplementaryBiasAlpha->setValue(Parameters::defaultImuFilterComplementaryBiasAlpha());
 		_ui->checkBox_imuFilterComplementaryDoAdaptiveGain->setChecked(Parameters::defaultImuFilterComplementaryDoAdpativeGain());
 		_ui->checkBox_imuFilterComplementaryDoBiasEstimation->setChecked(Parameters::defaultImuFilterComplementaryDoBiasEstimation());
+		_ui->checkbox_publishInterIMU->setChecked(false);
 
 		_ui->checkBox_source_scanFromDepth->setChecked(false);
 		_ui->spinBox_source_scanDownsampleStep->setValue(1);
@@ -2217,10 +2225,13 @@ void PreferencesDialog::readCameraSettings(const QString & filePath)
 
 	settings.beginGroup("RealSense2");
 	_ui->checkbox_rs2_emitter->setChecked(settings.value("emitter", _ui->checkbox_rs2_emitter->isChecked()).toBool());
+	_ui->checkbox_rs2_irMode->setChecked(settings.value("ir", _ui->checkbox_rs2_irMode->isChecked()).toBool());
 	_ui->checkbox_rs2_irDepth->setChecked(settings.value("irdepth", _ui->checkbox_rs2_irDepth->isChecked()).toBool());
 	_ui->spinBox_rs2_width->setValue(settings.value("width", _ui->spinBox_rs2_width->value()).toInt());
 	_ui->spinBox_rs2_height->setValue(settings.value("height", _ui->spinBox_rs2_height->value()).toInt());
 	_ui->spinBox_rs2_rate->setValue(settings.value("rate", _ui->spinBox_rs2_rate->value()).toInt());
+	_ui->checkbox_rs2_dualMode->setChecked(settings.value("dual_mode", _ui->checkbox_rs2_dualMode->isChecked()).toBool());
+	_ui->lineEdit_rs2_dualModeExtrinsics->setText(settings.value("dual_mode_extrinsics", _ui->lineEdit_rs2_dualModeExtrinsics->text()).toString());
 	settings.endGroup(); // RealSense
 
 	settings.beginGroup("RGBDImages");
@@ -2299,6 +2310,7 @@ void PreferencesDialog::readCameraSettings(const QString & filePath)
 	_ui->doubleSpinBox_imuFilterComplementaryBiasAlpha->setValue(settings.value("complementary_bias_alpha", _ui->doubleSpinBox_imuFilterComplementaryBiasAlpha->value()).toDouble());
 	_ui->checkBox_imuFilterComplementaryDoAdaptiveGain->setChecked(settings.value("complementary_adaptive_gain", _ui->checkBox_imuFilterComplementaryDoAdaptiveGain->isChecked()).toBool());
 	_ui->checkBox_imuFilterComplementaryDoBiasEstimation->setChecked(settings.value("complementary_biais_estimation", _ui->checkBox_imuFilterComplementaryDoBiasEstimation->isChecked()).toBool());
+	_ui->checkbox_publishInterIMU->setChecked(settings.value("publish_inter_imu", _ui->checkbox_publishInterIMU->isChecked()).toBool());
 	settings.endGroup();//IMU
 
 	settings.beginGroup("Scan");
@@ -2673,10 +2685,13 @@ void PreferencesDialog::writeCameraSettings(const QString & filePath) const
 
 	settings.beginGroup("RealSense2");
 	settings.setValue("emitter",                _ui->checkbox_rs2_emitter->isChecked());
+	settings.setValue("ir",                     _ui->checkbox_rs2_irMode->isChecked());
 	settings.setValue("irdepth",                _ui->checkbox_rs2_irDepth->isChecked());
 	settings.setValue("width",                  _ui->spinBox_rs2_width->value());
 	settings.setValue("height",                 _ui->spinBox_rs2_height->value());
 	settings.setValue("rate",                   _ui->spinBox_rs2_rate->value());
+	settings.setValue("dual_mode",              _ui->checkbox_rs2_dualMode->isChecked());
+	settings.setValue("dual_mode_extrinsics",   _ui->lineEdit_rs2_dualModeExtrinsics->text());
 	settings.endGroup(); // RealSense2
 
 	settings.beginGroup("RGBDImages");
@@ -2753,6 +2768,7 @@ void PreferencesDialog::writeCameraSettings(const QString & filePath) const
 	settings.setValue("complementary_bias_alpha",       _ui->doubleSpinBox_imuFilterComplementaryBiasAlpha->value());
 	settings.setValue("complementary_adaptive_gain",    _ui->checkBox_imuFilterComplementaryDoAdaptiveGain->isChecked());
 	settings.setValue("complementary_biais_estimation", _ui->checkBox_imuFilterComplementaryDoBiasEstimation->isChecked());
+	settings.setValue("publish_inter_imu",              _ui->checkbox_publishInterIMU->isChecked());
 	settings.endGroup();//IMU
 
 	settings.beginGroup("Scan");
@@ -5410,6 +5426,7 @@ Camera * PreferencesDialog::createCamera(bool useRawImages, bool useColor)
 				this->getSourceDevice().toStdString(),
 				this->getGeneralInputRate(),
 				this->getSourceLocalTransform());
+			((CameraRealSense2*)camera)->publishInterIMU(_ui->checkbox_publishInterIMU->isChecked());
 			if(driver == kSrcStereoRealSense2)
 			{
 				((CameraRealSense2*)camera)->setImagesRectified(_ui->checkBox_stereo_rectify->isChecked() && !useRawImages);
@@ -5418,8 +5435,9 @@ Camera * PreferencesDialog::createCamera(bool useRawImages, bool useColor)
 			else
 			{
 				((CameraRealSense2*)camera)->setEmitterEnabled(_ui->checkbox_rs2_emitter->isChecked());
-				((CameraRealSense2*)camera)->setIRDepthFormat(_ui->checkbox_rs2_irDepth->isChecked());
+				((CameraRealSense2*)camera)->setIRFormat(_ui->checkbox_rs2_irMode->isChecked(), _ui->checkbox_rs2_irDepth->isChecked());
 				((CameraRealSense2*)camera)->setResolution(_ui->spinBox_rs2_width->value(), _ui->spinBox_rs2_height->value(), _ui->spinBox_rs2_rate->value());
+				((CameraRealSense2*)camera)->setDualMode(_ui->checkbox_rs2_dualMode->isChecked(), Transform::fromString(_ui->lineEdit_rs2_dualModeExtrinsics->text().toStdString()));
 			}
 		}
 	}
@@ -5576,6 +5594,7 @@ Camera * PreferencesDialog::createCamera(bool useRawImages, bool useColor)
 				_ui->checkbox_stereoZed_selfCalibration->isChecked(),
 				_ui->loopClosure_bowForce2D->isChecked());
 		}
+		((CameraStereoZed*)camera)->publishInterIMU(_ui->checkbox_publishInterIMU->isChecked());
 	}
 	else if(driver == kSrcUsbDevice)
 	{
@@ -5909,7 +5928,7 @@ void PreferencesDialog::testOdometry()
 			_ui->spinBox_source_scanNormalsK->value(),
 			_ui->doubleSpinBox_source_scanNormalsRadius->value(),
 			_ui->checkBox_source_scanForceGroundNormalsUp->isChecked());
-	if(_ui->comboBox_imuFilter_strategy->currentIndex()>0)
+	if(_ui->comboBox_imuFilter_strategy->currentIndex()>0 && dynamic_cast<DBReader*>(camera) == 0)
 	{
 		cameraThread.enableIMUFiltering(_ui->comboBox_imuFilter_strategy->currentIndex()-1, this->getAllParameters());
 	}
@@ -5980,7 +5999,7 @@ void PreferencesDialog::testCamera()
 				_ui->spinBox_source_scanNormalsK->value(),
 				_ui->doubleSpinBox_source_scanNormalsRadius->value(),
 				_ui->checkBox_source_scanForceGroundNormalsUp->isChecked());
-		if(_ui->comboBox_imuFilter_strategy->currentIndex()>0)
+		if(_ui->comboBox_imuFilter_strategy->currentIndex()>0 && dynamic_cast<DBReader*>(camera) == 0)
 		{
 			cameraThread.enableIMUFiltering(_ui->comboBox_imuFilter_strategy->currentIndex()-1, this->getAllParameters());
 		}

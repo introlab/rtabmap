@@ -61,7 +61,7 @@
           <rect>
            <x>0</x>
            <y>0</y>
-           <width>409</width>
+           <width>404</width>
            <height>311</height>
           </rect>
          </property>
@@ -304,7 +304,7 @@
           <rect>
            <x>0</x>
            <y>0</y>
-           <width>408</width>
+           <width>403</width>
            <height>311</height>
           </rect>
          </property>
@@ -836,7 +836,7 @@
      </item>
      <item>
       <layout class="QGridLayout" name="gridLayout_6" columnstretch="0,0">
-       <item row="4" column="1">
+       <item row="5" column="1">
         <layout class="QHBoxLayout" name="horizontalLayout_13">
          <item>
           <widget class="QLabel" name="label_variance">
@@ -904,31 +904,14 @@
          </property>
         </widget>
        </item>
-       <item row="3" column="0">
-        <widget class="QLabel" name="label_16">
-         <property name="text">
-          <string>Transform</string>
-         </property>
-        </widget>
-       </item>
-       <item row="3" column="1">
-        <widget class="QLabel" name="label_constraint">
-         <property name="text">
-          <string/>
-         </property>
-         <property name="textInteractionFlags">
-          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-         </property>
-        </widget>
-       </item>
-       <item row="6" column="0">
+       <item row="7" column="0">
         <widget class="QCheckBox" name="checkBox_showOptimized">
          <property name="text">
           <string>Optimized</string>
          </property>
         </widget>
        </item>
-       <item row="6" column="1">
+       <item row="7" column="1">
         <widget class="QLabel" name="label_constraint_opt">
          <property name="text">
           <string/>
@@ -938,7 +921,7 @@
          </property>
         </widget>
        </item>
-       <item row="4" column="0">
+       <item row="5" column="0">
         <widget class="QLabel" name="label_18">
          <property name="text">
           <string>σ (lin, ang), cov</string>
@@ -968,6 +951,50 @@
           </widget>
          </item>
         </layout>
+       </item>
+       <item row="3" column="1">
+        <layout class="QHBoxLayout" name="horizontalLayout_16">
+         <item>
+          <widget class="QLabel" name="label_constraint">
+           <property name="text">
+            <string/>
+           </property>
+           <property name="textInteractionFlags">
+            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QToolButton" name="toolButton_constraint">
+           <property name="toolTip">
+            <string>Edit Constraint</string>
+           </property>
+           <property name="text">
+            <string>...</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <spacer name="horizontalSpacer_6">
+           <property name="orientation">
+            <enum>Qt::Horizontal</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>40</width>
+             <height>20</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
+        </layout>
+       </item>
+       <item row="3" column="0">
+        <widget class="QLabel" name="label_16">
+         <property name="text">
+          <string>Transform</string>
+         </property>
+        </widget>
        </item>
       </layout>
      </item>
@@ -1488,8 +1515,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>280</width>
-          <height>875</height>
+          <width>519</width>
+          <height>791</height>
          </rect>
         </property>
         <attribute name="label">
@@ -2022,7 +2049,7 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>226</width>
+          <width>298</width>
           <height>160</height>
          </rect>
         </property>
@@ -2150,8 +2177,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>185</width>
-          <height>485</height>
+          <width>432</width>
+          <height>196</height>
          </rect>
         </property>
         <attribute name="label">

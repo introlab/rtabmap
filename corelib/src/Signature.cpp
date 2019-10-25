@@ -156,11 +156,29 @@ void Signature::changeLinkIds(int idFrom, int idTo)
 	}
 }
 
-void Signature::removeLinks()
+void Signature::removeLinks(bool keepSelfReferringLinks)
 {
-	if(_links.size())
+	size_t sizeBefore = _links.size();
+	if(keepSelfReferringLinks)
+	{
+		for(std::multimap<int, Link>::iterator iter = _links.begin(); iter != _links.end();)
+		{
+			if(iter->second.from() == iter->second.to())
+			{
+				++iter;
+			}
+			else
+			{
+				_links.erase(iter++);
+			}
+		}
+	}
+	else
+	{
+		_links.clear();
+	}
+	if(_links.size() != sizeBefore)
 		_linksModified = true;
-	_links.clear();
 }
 
 void Signature::removeLink(int idTo)

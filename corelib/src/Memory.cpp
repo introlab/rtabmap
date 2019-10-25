@@ -2342,7 +2342,7 @@ void Memory::moveToTrash(Signature * s, bool keepLinkedToGraph, std::list<int> *
 				}
 
 			}
-			s->removeLinks(); // remove all links
+			s->removeLinks(true); // remove all links, but keep self referring link
 			s->removeLandmarks(); // remove all landmarks
 			s->setWeight(0);
 			s->setLabel(""); // reset label
@@ -5107,62 +5107,59 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 		}
 	}
 
-	if(!isIntermediateNode)
+	// prior
+	if(!data.globalPose().isNull() && data.globalPoseCovariance().cols==6 && data.globalPoseCovariance().rows==6 && data.globalPoseCovariance().cols==CV_64FC1)
 	{
-		// prior
-		if(!data.globalPose().isNull() && data.globalPoseCovariance().cols==6 && data.globalPoseCovariance().rows==6 && data.globalPoseCovariance().cols==CV_64FC1)
-		{
-			s->addLink(Link(s->id(), s->id(), Link::kPosePrior, data.globalPose(), data.globalPoseCovariance().inv()));
-			UDEBUG("Added global pose prior: %s", data.globalPose().prettyPrint().c_str());
+		s->addLink(Link(s->id(), s->id(), Link::kPosePrior, data.globalPose(), data.globalPoseCovariance().inv()));
+		UDEBUG("Added global pose prior: %s", data.globalPose().prettyPrint().c_str());
 
-			if(data.gps().stamp() > 0.0)
-			{
-				UWARN("GPS constraint ignored as global pose is also set.");
-			}
-		}
-		else if(data.gps().stamp() > 0.0)
+		if(data.gps().stamp() > 0.0)
 		{
-			if(_gpsOrigin.stamp() <= 0.0)
-			{
-				_gpsOrigin =  data.gps();
-				UINFO("Added GPS origin: long=%f lat=%f alt=%f bearing=%f error=%f", data.gps().longitude(), data.gps().latitude(), data.gps().altitude(), data.gps().bearing(), data.gps().error());
-			}
-			cv::Point3f pt = data.gps().toGeodeticCoords().toENU_WGS84(_gpsOrigin.toGeodeticCoords());
-			Transform gpsPose(pt.x, pt.y, pose.z(), 0, 0, -(data.gps().bearing()-90.0)*180.0/M_PI);
-			cv::Mat gpsInfMatrix = cv::Mat::eye(6,6,CV_64FC1)/9999.0; // variance not used >= 9999
-			if(data.gps().error() > 0.0)
-			{
-				UDEBUG("Added GPS prior: x=%f y=%f z=%f yaw=%f", gpsPose.x(), gpsPose.y(), gpsPose.z(), gpsPose.theta());
-				// only set x, y as we don't know variance for other degrees of freedom.
-				gpsInfMatrix.at<double>(0,0) = gpsInfMatrix.at<double>(1,1) = 1.0/data.gps().error();
-				gpsInfMatrix.at<double>(2,2) = 1; // z variance is set to avoid issues with g2o and gtsam requiring a prior on Z
-				s->addLink(Link(s->id(), s->id(), Link::kPosePrior, gpsPose, gpsInfMatrix));
-			}
-			else
-			{
-				UERROR("Invalid GPS error value (%f m), must be > 0 m.", data.gps().error());
-			}
+			UWARN("GPS constraint ignored as global pose is also set.");
 		}
-
-		// IMU / Gravity constraint
-		if(_useOdometryGravity && !pose.isNull())
+	}
+	else if(data.gps().stamp() > 0.0)
+	{
+		if(_gpsOrigin.stamp() <= 0.0)
 		{
-			s->addLink(Link(s->id(), s->id(), Link::kGravity, pose.rotation()));
-			UDEBUG("Added gravity constraint from odom pose: %s", pose.rotation().prettyPrint().c_str());
+			_gpsOrigin =  data.gps();
+			UINFO("Added GPS origin: long=%f lat=%f alt=%f bearing=%f error=%f", data.gps().longitude(), data.gps().latitude(), data.gps().altitude(), data.gps().bearing(), data.gps().error());
 		}
-		else if(!data.imu().localTransform().isNull() &&
-			(data.imu().orientation()[0] != 0 ||
-			 data.imu().orientation()[1] != 0 ||
-			 data.imu().orientation()[2] != 0 ||
-			 data.imu().orientation()[3] != 0))
-
+		cv::Point3f pt = data.gps().toGeodeticCoords().toENU_WGS84(_gpsOrigin.toGeodeticCoords());
+		Transform gpsPose(pt.x, pt.y, pose.z(), 0, 0, -(data.gps().bearing()-90.0)*180.0/M_PI);
+		cv::Mat gpsInfMatrix = cv::Mat::eye(6,6,CV_64FC1)/9999.0; // variance not used >= 9999
+		if(data.gps().error() > 0.0)
 		{
-			Transform orientation(0,0,0, data.imu().orientation()[0], data.imu().orientation()[1], data.imu().orientation()[2], data.imu().orientation()[3]);
-			orientation*=data.imu().localTransform().rotation().inverse();
-
-			s->addLink(Link(s->id(), s->id(), Link::kGravity, orientation));
-			UDEBUG("Added gravity constraint: %s", orientation.prettyPrint().c_str());
+			UDEBUG("Added GPS prior: x=%f y=%f z=%f yaw=%f", gpsPose.x(), gpsPose.y(), gpsPose.z(), gpsPose.theta());
+			// only set x, y as we don't know variance for other degrees of freedom.
+			gpsInfMatrix.at<double>(0,0) = gpsInfMatrix.at<double>(1,1) = 1.0/data.gps().error();
+			gpsInfMatrix.at<double>(2,2) = 1; // z variance is set to avoid issues with g2o and gtsam requiring a prior on Z
+			s->addLink(Link(s->id(), s->id(), Link::kPosePrior, gpsPose, gpsInfMatrix));
 		}
+		else
+		{
+			UERROR("Invalid GPS error value (%f m), must be > 0 m.", data.gps().error());
+		}
+	}
+
+	// IMU / Gravity constraint
+	if(_useOdometryGravity && !pose.isNull())
+	{
+		s->addLink(Link(s->id(), s->id(), Link::kGravity, pose.rotation()));
+		UDEBUG("Added gravity constraint from odom pose: %s", pose.rotation().prettyPrint().c_str());
+	}
+	else if(!data.imu().localTransform().isNull() &&
+		(data.imu().orientation()[0] != 0 ||
+		 data.imu().orientation()[1] != 0 ||
+		 data.imu().orientation()[2] != 0 ||
+		 data.imu().orientation()[3] != 0))
+
+	{
+		Transform orientation(0,0,0, data.imu().orientation()[0], data.imu().orientation()[1], data.imu().orientation()[2], data.imu().orientation()[3]);
+		orientation*=data.imu().localTransform().rotation().inverse();
+
+		s->addLink(Link(s->id(), s->id(), Link::kGravity, orientation));
+		UDEBUG("Added gravity constraint: %s", orientation.prettyPrint().c_str());
 	}
 
 	//landmarks

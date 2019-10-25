@@ -333,12 +333,6 @@ Transform OdometryF2M::computeTransform(
 				UDEBUG("Registration time = %fs", regInfo.totalTime);
 				if(!transform.isNull())
 				{
-					Transform imuT;
-					if(!imus_.empty())
-					{
-						imuT = Transform::getClosestTransform(imus_, lastFrame_->getStamp());
-					}
-
 					// local bundle adjustment
 					if(bundleAdjustment_>0 && sba_ &&
 					   regPipeline_->isImageRequired() &&
@@ -369,15 +363,17 @@ Transform OdometryF2M::computeTransform(
 
 							UASSERT_MSG(bundlePoses.find(lastFrame_->id()) == bundlePoses.end(),
 									uFormat("Frame %d already added! Make sure the input frames have unique IDs!", lastFrame_->id()).c_str());
-							cv::Mat var = regInfo.covariance;//cv::Mat::eye(6,6,CV_64FC1); //regInfo.covariance.inv()
-							//var(cv::Range(0,3), cv::Range(0,3)) *= 0.001;
-							//var(cv::Range(3,6), cv::Range(3,6)) *= 0.001;
-							bundleLinks.insert(std::make_pair(bundlePoses_.rbegin()->first, Link(bundlePoses_.rbegin()->first, lastFrame_->id(), Link::kNeighbor, bundlePoses_.rbegin()->second.inverse()*transform, var.inv())));
+							bundleLinks.insert(std::make_pair(bundlePoses_.rbegin()->first, Link(bundlePoses_.rbegin()->first, lastFrame_->id(), Link::kNeighbor, bundlePoses_.rbegin()->second.inverse()*transform, regInfo.covariance.inv())));
 							bundlePoses.insert(std::make_pair(lastFrame_->id(), transform));
 
-							if(!imuT.isNull())
+							Transform imuT;
+							if(!imus_.empty())
 							{
-								bundleLinks.insert(std::make_pair(lastFrame_->id(), Link(lastFrame_->id(), lastFrame_->id(), Link::kGravity, imuT)));
+								imuT = Transform::getTransform(imus_, lastFrame_->getStamp());
+								if(!imuT.isNull())
+								{
+									bundleLinks.insert(std::make_pair(lastFrame_->id(), Link(lastFrame_->id(), lastFrame_->id(), Link::kGravity, imuT)));
+								}
 							}
 
 							CameraModel model;

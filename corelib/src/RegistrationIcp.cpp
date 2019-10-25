@@ -1159,7 +1159,8 @@ Transform RegistrationIcp::computeTransformationImpl(
 
 					if(correspondences == 0)
 					{
-						UERROR("Transform is found but no correspondences has been found!? Variance is unknown!");
+						UWARN("Transform is found (%s) but no correspondences has been found!? Variance is unknown!",
+								icpT.prettyPrint().c_str());
 					}
 					else
 					{

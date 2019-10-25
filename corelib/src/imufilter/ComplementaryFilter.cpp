@@ -172,7 +172,7 @@ void ComplementaryFilter::updateImpl(
 
   if(dt <= 0.0)
   {
-    UERROR("dt=%f <=0.0, orientation will not be updated!", dt);
+    UWARN("dt=%f <=0.0, orientation will not be updated!", dt);
     return;
   }
 

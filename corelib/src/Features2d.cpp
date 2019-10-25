@@ -422,11 +422,11 @@ Feature2D * Feature2D::create(Feature2D::Type type, const ParametersMap & parame
 	if(type == Feature2D::kFeatureSurf || type == Feature2D::kFeatureSift)
 	{
 #if CV_MAJOR_VERSION < 3
-		UWARN("SURF and SIFT features cannot be used because OpenCV was not built with nonfree module. ORB is used instead.");
+		UWARN("SURF and SIFT features cannot be used because OpenCV was not built with nonfree module. GFTT/ORB is used instead.");
 #else
-		UWARN("SURF and SIFT features cannot be used because OpenCV was not built with xfeatures2d module. ORB is used instead.");
+		UWARN("SURF and SIFT features cannot be used because OpenCV was not built with xfeatures2d module. GFTT/ORB is used instead.");
 #endif
-		type = Feature2D::kFeatureOrb;
+		type = Feature2D::kFeatureGfttOrb;
 	}
 #if CV_MAJOR_VERSION == 3
 	if(type == Feature2D::kFeatureFastBrief ||
@@ -434,8 +434,8 @@ Feature2D * Feature2D::create(Feature2D::Type type, const ParametersMap & parame
 	   type == Feature2D::kFeatureGfttBrief ||
 	   type == Feature2D::kFeatureGfttFreak)
 	{
-		UWARN("BRIEF and FREAK features cannot be used because OpenCV was not built with xfeatures2d module. ORB is used instead.");
-		type = Feature2D::kFeatureOrb;
+		UWARN("BRIEF and FREAK features cannot be used because OpenCV was not built with xfeatures2d module. GFTT/ORB is used instead.");
+		type = Feature2D::kFeatureGfttOrb;
 	}
 #endif
 #endif
@@ -447,8 +447,8 @@ Feature2D * Feature2D::create(Feature2D::Type type, const ParametersMap & parame
 		UWARN("KAZE detector/descriptor can be used only with OpenCV3. SURF is used instead.");
 		type = Feature2D::kFeatureSurf;
 #else
-		UWARN("KAZE detector/descriptor can be used only with OpenCV3. ORB is used instead.");
-		type = Feature2D::kFeatureOrb;
+		UWARN("KAZE detector/descriptor can be used only with OpenCV3. GFTT/ORB is used instead.");
+		type = Feature2D::kFeatureGfttOrb;
 #endif
 	}
 #endif
@@ -456,8 +456,8 @@ Feature2D * Feature2D::create(Feature2D::Type type, const ParametersMap & parame
 #ifndef RTABMAP_ORB_OCTREE
 	if(type == Feature2D::kFeatureOrbOctree)
 	{
-		UWARN("ORB OcTree feature cannot be used as RTAB-Map is not built with the option enabled. ORB is used instead.");
-		type = Feature2D::kFeatureOrb;
+		UWARN("ORB OcTree feature cannot be used as RTAB-Map is not built with the option enabled. GFTT/ORB is used instead.");
+		type = Feature2D::kFeatureGfttOrb;
 	}
 #endif
 

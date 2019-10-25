@@ -150,10 +150,13 @@ public:
 	static Transform fromString(const std::string & string);
 	static bool canParseString(const std::string & string);
 
-	static Transform getClosestTransform(
+	static Transform getTransform(
+				const std::map<double, Transform> & tfBuffer,
+				const double & stamp);
+	RTABMAP_DEPRECATED(static Transform getClosestTransform(
 				const std::map<double, Transform> & tfBuffer,
 				const double & stamp,
-				double * stampDiff = 0);
+				double * stampDiff), "Use Transform::getTransform() instead to get always accurate transforms.");
 
 private:
 	cv::Mat data_;

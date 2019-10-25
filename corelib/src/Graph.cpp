@@ -85,11 +85,12 @@ bool exportPoses(
 			tmpPath+=".txt";
 		}
 
-		if(format == 1)
+		if(format == 1 || format == 10)
 		{
 			if(stamps.size() != poses.size())
 			{
-				UERROR("When exporting poses to format 1 (RGBD-SLAM), stamps and poses maps should have the same size!");
+				UERROR("When exporting poses to format 1 (RGBD-SLAM), stamps and poses maps should have the same size! stamps=%d psoes=%d",
+						(int)stamps.size(), (int)poses.size());
 				return false;
 			}
 		}
@@ -898,8 +899,8 @@ void computeMaxGraphErrors(
 					fabs(iter->second.transform().x() - t.x()),
 					fabs(iter->second.transform().y() - t.y()),
 					fabs(iter->second.transform().z() - t.z()));
-			UASSERT(iter->second.transVariance()>0.0);
-			float stddevLinear = sqrt(iter->second.transVariance());
+			UASSERT(iter->second.transVariance(false)>0.0);
+			float stddevLinear = sqrt(iter->second.transVariance(false));
 			float linearErrorRatio = linearError/stddevLinear;
 			if(linearErrorRatio > maxLinearErrorRatio)
 			{
@@ -920,8 +921,8 @@ void computeMaxGraphErrors(
 					fabs(opt_pitch - link_pitch),
 					fabs(opt_yaw - link_yaw));
 			angularError = angularError>M_PI?2*M_PI-angularError:angularError;
-			UASSERT(iter->second.rotVariance()>0.0);
-			float stddevAngular = sqrt(iter->second.rotVariance());
+			UASSERT(iter->second.rotVariance(false)>0.0);
+			float stddevAngular = sqrt(iter->second.rotVariance(false));
 			float angularErrorRatio = angularError/stddevAngular;
 			if(angularErrorRatio > maxAngularErrorRatio)
 			{

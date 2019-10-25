@@ -73,8 +73,10 @@ public:
 	// parameters are set during initialization
 	// D400 series
 	void setEmitterEnabled(bool enabled);
-	void setIRDepthFormat(bool enabled);
+	void setIRFormat(bool enabled, bool useDepthInsteadOfRightImage);
 	void setResolution(int width, int height, int fps = 30);
+	void publishInterIMU(bool enabled);
+	void setDualMode(bool enabled, const Transform & extrinsics);
 	// T265 related parameters
 	void setImagesRectified(bool enabled);
 	void setOdomProvided(bool enabled);
@@ -88,7 +90,8 @@ public:
 			const double & stamp,
 			Transform & pose,
 			unsigned int & poseConfidence,
-			IMU & imu) const;
+			IMU & imu,
+			int maxWaitTimeMs = 35) const;
 #endif
 
 protected:
@@ -97,7 +100,7 @@ protected:
 private:
 #ifdef RTABMAP_REALSENSE2
 	rs2::context * ctx_;
-	rs2::device * dev_;
+	std::vector<rs2::device *> dev_;
 	std::string deviceId_;
 	rs2::syncer * syncer_;
 	float depth_scale_meters_;
@@ -116,14 +119,19 @@ private:
 	UMutex imuMutex_;
 	double hostStartStamp_;
 	double cameraStartStamp_;
+	double lastImuStamp_;
 
 	bool emitterEnabled_;
+	bool ir_;
 	bool irDepth_;
 	bool rectifyImages_;
 	bool odometryProvided_;
 	int cameraWidth_;
 	int cameraHeight_;
 	int cameraFps_;
+	bool publishInterIMU_;
+	bool dualMode_;
+	Transform dualExtrinsics_;
 
 	static Transform realsense2PoseRotation_;
 	static Transform realsense2PoseRotationInv_;

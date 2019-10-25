@@ -2487,9 +2487,13 @@ pcl::PointXYZRGB laserScanToPointRGB(const LaserScan & laserScan, int index, uns
 	}
 	else if(laserScan.hasIntensity())
 	{
-		// based on Velodyne/SICK specification of intensity 0-100
+		// package intensity float -> rgba
+		int * ptrInt = (int*)ptr;
 		int indexIntensity = laserScan.getIntensityOffset();
-		output.b = output.g = output.r = (unsigned char)ptr[indexIntensity];
+		output.r = (unsigned char)(ptrInt[indexIntensity] & 0xFF);
+		output.g = (unsigned char)((ptrInt[indexIntensity] >> 8) & 0xFF);
+		output.b = (unsigned char)((ptrInt[indexIntensity] >> 16) & 0xFF);
+		output.a = (unsigned char)((ptrInt[indexIntensity] >> 24) & 0xFF);
 	}
 	else
 	{
@@ -2547,9 +2551,12 @@ pcl::PointXYZRGBNormal laserScanToPointRGBNormal(const LaserScan & laserScan, in
 	}
 	else if(laserScan.hasIntensity())
 	{
-		// based on Velodyne/SICK specification of intensity 0-100
+		int * ptrInt = (int*)ptr;
 		int indexIntensity = laserScan.getIntensityOffset();
-		output.b = output.g = output.r = (unsigned char)ptr[indexIntensity];
+		output.r = (unsigned char)(ptrInt[indexIntensity] & 0xFF);
+		output.g = (unsigned char)((ptrInt[indexIntensity] >> 8) & 0xFF);
+		output.b = (unsigned char)((ptrInt[indexIntensity] >> 16) & 0xFF);
+		output.a = (unsigned char)((ptrInt[indexIntensity] >> 24) & 0xFF);
 	}
 	else
 	{

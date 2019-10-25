@@ -804,7 +804,12 @@ void MainWindow::closeEvent(QCloseEvent* event)
 
 bool MainWindow::handleEvent(UEvent* anEvent)
 {
-	if(anEvent->getClassName().compare("RtabmapEvent") == 0)
+	if(anEvent->getClassName().compare("IMUEvent") == 0)
+	{
+		// IMU events are published at high frequency, exit now
+		return false;
+	}
+	else if(anEvent->getClassName().compare("RtabmapEvent") == 0)
 	{
 		RtabmapEvent * rtabmapEvent = (RtabmapEvent*)anEvent;
 		Statistics stats = rtabmapEvent->getStats();
@@ -1341,7 +1346,8 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 			else if(odom.info().type == (int)Odometry::kTypeF2F ||
 					odom.info().type == (int)Odometry::kTypeViso2 ||
 					odom.info().type == (int)Odometry::kTypeFovis ||
-					odom.info().type == (int)Odometry::kTypeMSCKF)
+					odom.info().type == (int)Odometry::kTypeMSCKF ||
+					odom.info().type == (int)Odometry::kTypeVINS)
 			{
 				std::vector<cv::KeyPoint> kpts;
 				cv::KeyPoint::convert(odom.info().newCorners, kpts, 7);
@@ -1389,7 +1395,8 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 
 			if( odom.info().type == (int)Odometry::kTypeF2M ||
 				odom.info().type == (int)Odometry::kTypeORBSLAM2 ||
-				odom.info().type == (int)Odometry::kTypeMSCKF)
+				odom.info().type == (int)Odometry::kTypeMSCKF ||
+				odom.info().type == (int)Odometry::kTypeVINS)
 			{
 				if(_ui->imageView_odometry->isFeaturesShown() && !_preferencesDialog->isOdomOnlyInliersShown())
 				{
@@ -4981,7 +4988,7 @@ void MainWindow::startDetection()
 			_preferencesDialog->getSourceScanNormalsK(),
 			_preferencesDialog->getSourceScanNormalsRadius(),
 			_preferencesDialog->isSourceScanForceGroundNormalsUp());
-	if(_preferencesDialog->getIMUFilteringStrategy()>0)
+	if(_preferencesDialog->getIMUFilteringStrategy()>0 && dynamic_cast<DBReader*>(camera) == 0)
 	{
 		_camera->enableIMUFiltering(_preferencesDialog->getIMUFilteringStrategy()-1, parameters);
 	}

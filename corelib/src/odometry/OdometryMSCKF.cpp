@@ -111,7 +111,10 @@ public:
 		cam1_intrinsics[2] = rectified?model.right().cx():model.right().K_raw().at<double>(0,2);
 		cam1_intrinsics[3] = rectified?model.right().cy():model.right().K_raw().at<double>(1,2);
 
+		UINFO("Local transform=%s", model.localTransform().prettyPrint().c_str());
+		UINFO("imuLocalTransform=%s", imuLocalTransform.prettyPrint().c_str());
 		Transform imuCam = model.localTransform().inverse() * imuLocalTransform;
+		UINFO("imuCam=%s", imuCam.prettyPrint().c_str());
 		cv::Mat     T_imu_cam0 = imuCam.dataMatrix();
 		cv::Matx33d R_imu_cam0(T_imu_cam0(cv::Rect(0,0,3,3)));
 		cv::Vec3d   t_imu_cam0 = T_imu_cam0(cv::Rect(3,0,1,3));
@@ -130,7 +133,7 @@ public:
 		{
 			cam0cam1 = model.stereoTransform();
 		}
-
+		UINFO("cam0cam1=%s", cam0cam1.prettyPrint().c_str());
 		UASSERT(!cam0cam1.isNull());
 		Transform imuCam1 = cam0cam1 * imuCam;
 		cv::Mat T_imu_cam1 = imuCam1.dataMatrix();
@@ -423,7 +426,10 @@ public:
 			state_server.state_cov(i, i) = extrinsic_translation_cov;
 
 		// Transformation offsets between the frames involved.
+		UINFO("Local transform=%s", model.localTransform().prettyPrint().c_str());
+		UINFO("imuLocalTransform=%s", imuLocalTransform.prettyPrint().c_str());
 		Transform imuCam = model.localTransform().inverse() * imuLocalTransform;
+		UINFO("imuCam=%s", imuCam.prettyPrint().c_str());
 		Eigen::Isometry3d T_imu_cam0(imuCam.toEigen4d());
 		Eigen::Isometry3d T_cam0_imu = T_imu_cam0.inverse();
 
@@ -441,8 +447,9 @@ public:
 		{
 			cam0cam1 = model.stereoTransform();
 		}
+		UINFO("cam0cam1=%s", cam0cam1.prettyPrint().c_str());
 		msckf_vio::CAMState::T_cam0_cam1 = cam0cam1.toEigen3d().matrix();
-		msckf_vio::IMUState::T_imu_body = Transform::getIdentity().toEigen3d().matrix();
+		msckf_vio::IMUState::T_imu_body = imuLocalTransform.toEigen3d().matrix();
 
 		// Maximum number of camera states to be stored
 		Parameters::parse(parameters_, Parameters::kOdomMSCKFMaxCamStateSize(), max_cam_state_size); //30
@@ -748,7 +755,7 @@ OdometryMSCKF::OdometryMSCKF(const ParametersMap & parameters) :
 imageProcessor_(0),
 msckf_(0),
 parameters_(parameters),
-flipXY_(-1, 0, 0, 0, 0, -1, 0, 0, 0, 0, 1, 0),
+fixPoseRotation_(0, 0, -1, 0, 0, 1, 0, 0, 1, 0, 0, 0),
 previousPose_(Transform::getIdentity()),
 initGravity_(false)
 #endif
@@ -889,19 +896,21 @@ Transform OdometryMSCKF::computeTransform(
 			pcl::PointCloud<pcl::PointXYZ>::Ptr localMap;
 			nav_msgs::Odometry odom = msckf_->featureCallback2(measurements, localMap);
 
-			Transform p = Transform(
-					odom.pose.pose.position.x,
-					odom.pose.pose.position.y,
-					odom.pose.pose.position.z,
-					odom.pose.pose.orientation.x,
-					odom.pose.pose.orientation.y,
-					odom.pose.pose.orientation.z,
-					odom.pose.pose.orientation.w);
-
-			if(!p.isNull())
+			if( odom.pose.pose.orientation.x != 0.0f ||
+				odom.pose.pose.orientation.y != 0.0f ||
+				odom.pose.pose.orientation.z != 0.0f ||
+				odom.pose.pose.orientation.w != 0.0f)
 			{
-				// pose in rtabmap/ros coordinates
-				p = flipXY_*p*lastImu_.localTransform();
+				Transform p = Transform(
+						odom.pose.pose.position.x,
+						odom.pose.pose.position.y,
+						odom.pose.pose.position.z,
+						odom.pose.pose.orientation.x,
+						odom.pose.pose.orientation.y,
+						odom.pose.pose.orientation.z,
+						odom.pose.pose.orientation.w);
+
+				p = fixPoseRotation_*p;
 
 				if(this->getPose().rotation().isIdentity())
 				{
@@ -956,10 +965,10 @@ Transform OdometryMSCKF::computeTransform(
 					{
 						if(localMap.get() && localMap->size())
 						{
-							Eigen::Affine3f flip = (this->getPose()*previousPoseInv*flipXY_).toEigen3f();
+							Eigen::Affine3f fixRot = fixPoseRotation_.toEigen3f();
 							for(unsigned int i=0; i<localMap->size(); ++i)
 							{
-								pcl::PointXYZ pt = pcl::transformPoint(localMap->at(i), flip);
+								pcl::PointXYZ pt = pcl::transformPoint(localMap->at(i), fixRot);
 								info->localMap.insert(std::make_pair(i, cv::Point3f(pt.x, pt.y, pt.z)));
 							}
 						}
@@ -980,9 +989,8 @@ Transform OdometryMSCKF::computeTransform(
 						}
 					}
 				}
+				UINFO("Odom update time = %fs p=%s", timer.elapsed(), p.prettyPrint().c_str());
 			}
-
-			UINFO("Odom update time = %fs p=%s", timer.elapsed(), p.prettyPrint().c_str());
 		}
 	}
 
