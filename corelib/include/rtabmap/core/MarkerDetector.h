@@ -50,6 +50,8 @@ private:
 	cv::Ptr<cv::aruco::DetectorParameters> detectorParams_;
 	float markerLength_;
 	float maxDepthError_;
+	float maxRange_;
+	float minRange_;
 	int dictionaryId_;
 	cv::Ptr<cv::aruco::Dictionary> dictionary_;
 #endif
