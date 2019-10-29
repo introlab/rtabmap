@@ -31,9 +31,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/util3d_filtering.h>
 #include <rtabmap/core/util3d_transforms.h>
 #include <rtabmap/core/util3d_surface.h>
+#include <rtabmap/core/optimizer/OptimizerG2O.h>
 #include <rtabmap/utilite/UMath.h>
 #include <rtabmap/utilite/UTimer.h>
 #include <rtabmap/utilite/UFile.h>
+#include <rtabmap/utilite/UStl.h>
 #include <pcl/filters/filter.h>
 #include <pcl/io/ply_io.h>
 #include <pcl/io/obj_io.h>
@@ -48,9 +50,22 @@ void showUsage()
 	printf("\nUsage:\n"
 			"rtabmap-exportCloud [options] database.db\n"
 			"Options:\n"
-			"    --mesh          Create a mesh.\n"
-			"    --texture       Create a mesh with texture.\n"
-			"\n");
+			"    --mesh                Create a mesh.\n"
+			"    --texture             Create a mesh with texture.\n"
+			"    --texture_size        Texture size (default 4096.\n"
+			"    --texture_count       Maximum textures generated (default 1).\n"
+			"    --ba                  Do global bundle adjustment before assembling the clouds.\n"
+			"    --no_gain             Disable gain compensation when texturing.\n"
+			"    --no_blending         Disable blending when texturing.\n"
+			"    --no_clean            Disable cleaning colorless polygons.\n"
+			"    --multiband           Enable multiband texturing (AliceVision dependency required).\n"
+			"    --poisson_depth #     Set Poisson depth for mesh reconstruction.\n"
+			"    --max_polygons  #     Maximum polygons when creating a mesh (default 1000000, set 0 for no limit).\n"
+			"    --max_range     #     Maximum range of the created clouds (default 4 m).\n"
+			"    --decimation    #     Image decimation before creating the clouds (default 4).\n"
+			"    --voxel         #     Voxel size of the created clouds (default 0.01 m).\n"
+			"\n%s", Parameters::showUsage());
+	;
 	exit(1);
 }
 
@@ -66,6 +81,19 @@ int main(int argc, char * argv[])
 
 	bool mesh = false;
 	bool texture = false;
+	bool ba = false;
+	bool doGainCompensation = true;
+	bool doBlending = true;
+	bool doClean = true;
+	int poissonDepth = 0;
+	int maxPolygons = 1000000;
+	int decimation = 4;
+	float maxRange = 4.0f;
+	float voxelSize = 0.01f;
+	int textureSize = 8192;
+	int textureCount = 8;
+	bool multiband = false;
+	ParametersMap params = Parameters::parseArguments(argc, argv, false);
 	for(int i=1; i<argc-1; ++i)
 	{
 		if(std::strcmp(argv[i], "--mesh") == 0)
@@ -75,6 +103,111 @@ int main(int argc, char * argv[])
 		else if(std::strcmp(argv[i], "--texture") == 0)
 		{
 			texture = true;
+		}
+		else if(std::strcmp(argv[i], "--texture_size") == 0)
+		{
+			++i;
+			if(i<argc-1)
+			{
+				textureSize = uStr2Int(argv[i]);
+				UASSERT(textureSize%256==0);
+			}
+			else
+			{
+				showUsage();
+			}
+		}
+		else if(std::strcmp(argv[i], "--texture_count") == 0)
+		{
+			++i;
+			if(i<argc-1)
+			{
+				textureCount = uStr2Int(argv[i]);
+			}
+			else
+			{
+				showUsage();
+			}
+		}
+		else if(std::strcmp(argv[i], "--ba") == 0)
+		{
+			ba = true;
+		}
+		else if(std::strcmp(argv[i], "--no_gain") == 0)
+		{
+			doGainCompensation = false;
+		}
+		else if(std::strcmp(argv[i], "--no_blending") == 0)
+		{
+			doBlending = false;
+		}
+		else if(std::strcmp(argv[i], "--no_clean") == 0)
+		{
+			doClean = false;
+		}
+		else if(std::strcmp(argv[i], "--multiband") == 0)
+		{
+			multiband = true;
+		}
+		else if(std::strcmp(argv[i], "--poisson_depth") == 0)
+		{
+			++i;
+			if(i<argc-1)
+			{
+				poissonDepth = uStr2Int(argv[i]);
+			}
+			else
+			{
+				showUsage();
+			}
+		}
+		else if(std::strcmp(argv[i], "--max_polygons") == 0)
+		{
+			++i;
+			if(i<argc-1)
+			{
+				maxPolygons = uStr2Int(argv[i]);
+			}
+			else
+			{
+				showUsage();
+			}
+		}
+		else if(std::strcmp(argv[i], "--max_range") == 0)
+		{
+			++i;
+			if(i<argc-1)
+			{
+				maxRange = uStr2Float(argv[i]);
+			}
+			else
+			{
+				showUsage();
+			}
+		}
+		else if(std::strcmp(argv[i], "--decimation") == 0)
+		{
+			++i;
+			if(i<argc-1)
+			{
+				decimation = uStr2Int(argv[i]);
+			}
+			else
+			{
+				showUsage();
+			}
+		}
+		else if(std::strcmp(argv[i], "--voxel") == 0)
+		{
+			++i;
+			if(i<argc-1)
+			{
+				voxelSize = uStr2Float(argv[i]);
+			}
+			else
+			{
+				showUsage();
+			}
 		}
 	}
 
@@ -94,21 +227,51 @@ int main(int argc, char * argv[])
 	}
 	delete driver;
 
+	for(ParametersMap::iterator iter=params.begin(); iter!=params.end(); ++iter)
+	{
+		printf("Added custom parameter %s=%s\n",iter->first.c_str(), iter->second.c_str());
+	}
+
+	printf("Loading database \"%s\"...\n", dbPath.c_str());
 	// Get the global optimized map
 	Rtabmap rtabmap;
+	uInsert(parameters, params);
 	rtabmap.init(parameters, dbPath);
+	printf("Loading database \"%s\"... done.\n", dbPath.c_str());
 
 	std::map<int, Signature> nodes;
 	std::map<int, Transform> optimizedPoses;
 	std::multimap<int, Link> links;
+	printf("Optimizing the map...\n");
 	rtabmap.get3DMap(nodes, optimizedPoses, links, true, true);
+	printf("Optimizing the map... done.\n");
+
+	if(ba)
+	{
+		printf("Global bundle adjustment...\n");
+		OptimizerG2O g2o(parameters);
+		std::map<int, cv::Point3f> points3DMap;
+		std::map<int, std::map<int, FeatureBA> > wordReferences;
+		g2o.computeBACorrespondences(optimizedPoses, links, nodes, points3DMap, wordReferences, true);
+		std::map<int, rtabmap::CameraModel> cameraSingleModels;
+		for(std::map<int, Transform>::iterator iter=optimizedPoses.lower_bound(1); iter!=optimizedPoses.end(); ++iter)
+		{
+			Signature node = nodes.find(iter->first)->second;
+			UASSERT(node.sensorData().cameraModels().size()==1);
+			cameraSingleModels.insert(std::make_pair(iter->first, node.sensorData().cameraModels().front()));
+		}
+		optimizedPoses = g2o.optimizeBA(optimizedPoses.begin()->first, optimizedPoses, links, cameraSingleModels, points3DMap, wordReferences);
+		printf("Global bundle adjustment... done.\n");
+	}
 
 	// Construct the cloud
+	printf("Create and assemble the clouds...\n");
 	pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr mergedClouds(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
 	std::map<int, rtabmap::Transform> cameraPoses;
 	std::map<int, std::vector<rtabmap::CameraModel> > cameraModels;
 	std::map<int, cv::Mat> cameraDepths;
-	for(std::map<int, Transform>::iterator iter=optimizedPoses.begin(); iter!=optimizedPoses.end(); ++iter)
+
+	for(std::map<int, Transform>::iterator iter=optimizedPoses.lower_bound(1); iter!=optimizedPoses.end(); ++iter)
 	{
 		Signature node = nodes.find(iter->first)->second;
 
@@ -120,13 +283,13 @@ int main(int argc, char * argv[])
 		pcl::IndicesPtr indices(new std::vector<int>);
 		pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = util3d::cloudRGBFromSensorData(
 				node.sensorData(),
-				4,           // image decimation before creating the clouds
-				4.0f,        // maximum depth of the cloud
+				decimation,      // image decimation before creating the clouds
+				maxRange,        // maximum depth of the cloud
 				0.0f,
 				indices.get());
 
 		pcl::PointCloud<pcl::PointXYZRGB>::Ptr transformedCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
-		transformedCloud = rtabmap::util3d::voxelize(cloud, indices, 0.01);
+		transformedCloud = rtabmap::util3d::voxelize(cloud, indices, voxelSize);
 		transformedCloud = rtabmap::util3d::transformPointCloud(transformedCloud, iter->second);
 
 		Eigen::Vector3f viewpoint( iter->second.x(),  iter->second.y(),  iter->second.z());
@@ -154,12 +317,14 @@ int main(int argc, char * argv[])
 			cameraDepths.insert(std::make_pair(iter->first, depth));
 		}
 	}
+	printf("Create and assemble the clouds... done.\n");
+
 	if(mergedClouds->size())
 	{
 		if(!(mesh || texture))
 		{
 			printf("Voxel grid filtering of the assembled cloud (voxel=%f, %d points)\n", 0.01f, (int)mergedClouds->size());
-			mergedClouds = util3d::voxelize(mergedClouds, 0.01f);
+			mergedClouds = util3d::voxelize(mergedClouds, voxelSize);
 
 			printf("Saving cloud.ply... (%d points)\n", (int)mergedClouds->size());
 			pcl::io::savePLYFile("cloud.ply", *mergedClouds);
@@ -179,9 +344,13 @@ int main(int argc, char * argv[])
 					break;
 				}
 			}
+			if(poissonDepth>0)
+			{
+				optimizedDepth = poissonDepth;
+			}
 
 			// Mesh reconstruction
-			printf("Mesh reconstruction...\n");
+			printf("Mesh reconstruction... depth=%d\n", optimizedDepth);
 			pcl::PolygonMesh::Ptr mesh(new pcl::PolygonMesh);
 			pcl::Poisson<pcl::PointXYZRGBNormal> poisson;
 			poisson.setDepth(optimizedDepth);
@@ -195,10 +364,11 @@ int main(int argc, char * argv[])
 				rtabmap::util3d::denseMeshPostProcessing<pcl::PointXYZRGBNormal>(
 						mesh,
 						0.0f,
-						0,
+						maxPolygons,
 						mergedClouds,
-						0.05,
-						!texture);
+						doClean?0.05:0,
+						!texture,
+						doClean);
 
 				if(!texture)
 				{
@@ -208,7 +378,7 @@ int main(int argc, char * argv[])
 				}
 				else
 				{
-					printf("Texturing... cameraPoses=%d, cameraDepths=%d\n", (int)cameraPoses.size(), (int)cameraDepths.size());
+					printf("Texturing %d polygons... cameraPoses=%d, cameraDepths=%d\n", (int)mesh->polygons.size(), (int)cameraPoses.size(), (int)cameraDepths.size());
 					std::vector<std::map<int, pcl::PointXY> > vertexToPixels;
 					pcl::TextureMeshPtr textureMesh = rtabmap::util3d::createTextureMesh(
 							mesh,
@@ -225,7 +395,7 @@ int main(int argc, char * argv[])
 					printf("Texturing... done! %fs\n", timer.ticks());
 
 					// Remove occluded polygons (polygons with no texture)
-					if(textureMesh->tex_coordinates.size())
+					if(doClean && textureMesh->tex_coordinates.size())
 					{
 						printf("Cleanup mesh...\n");
 						rtabmap::util3d::cleanTextureMesh(*textureMesh, 0);
@@ -235,36 +405,42 @@ int main(int argc, char * argv[])
 					if(textureMesh->tex_materials.size())
 					{
 						printf("Merging %d textures...\n", (int)textureMesh->tex_materials.size());
+						std::map<int, std::map<int, cv::Vec4d> > gains;
+						std::map<int, std::map<int, cv::Mat> > blendingGains;
 						cv::Mat textures = rtabmap::util3d::mergeTextures(
 								*textureMesh,
 								std::map<int, cv::Mat>(),
 								std::map<int, std::vector<rtabmap::CameraModel> >(),
 								rtabmap.getMemory(),
 								0,
-								4096,
-								1,
+								textureSize,
+								textureCount,
 								vertexToPixels,
-								true, 10.0f, true ,true, 0, 0, 0, false);
-
+								doGainCompensation, 10.0f, true ,doBlending, 0, 0, 0, false,
+								0,
+								0,
+								&gains,
+								&blendingGains);
+						printf("Merging %d textures... done. %fs\n", (int)textureMesh->tex_materials.size(), timer.ticks());
 
 						// TextureMesh OBJ
 						bool success = false;
 						UASSERT(!textures.empty());
-						UASSERT(textureMesh->tex_materials.size() == 1);
-
-						std::string filePath = "mesh.jpg";
-						textureMesh->tex_materials[0].tex_file = filePath;
-						printf("Saving texture to %s.\n", filePath.c_str());
-						success = cv::imwrite(filePath, textures);
-						if(!success)
+						for(size_t i=0; i<textureMesh->tex_materials.size(); ++i)
 						{
-							UERROR("Failed saving %s!", filePath.c_str());
+							textureMesh->tex_materials[i].tex_file += ".jpg";
+							printf("Saving texture to %s.\n", textureMesh->tex_materials[i].tex_file.c_str());
+							UASSERT(textures.cols % textures.rows == 0);
+							success = cv::imwrite(textureMesh->tex_materials[i].tex_file, cv::Mat(textures, cv::Range::all(), cv::Range(textures.rows*i, textures.rows*(i+1))));
+							if(!success)
+							{
+								UERROR("Failed saving %s!", textureMesh->tex_materials[i].tex_file.c_str());
+							}
+							else
+							{
+								printf("Saved %s.\n", textureMesh->tex_materials[i].tex_file.c_str());
+							}
 						}
-						else
-						{
-							printf("Saved %s.\n", filePath.c_str());
-						}
-
 						if(success)
 						{
 
@@ -280,6 +456,34 @@ int main(int argc, char * argv[])
 							{
 								UERROR("Failed saving obj to %s!", filePath.c_str());
 							}
+						}
+
+						if(multiband)
+						{
+#ifndef RTABMAP_ALICE_VISION
+							UERROR("Cannot use --unwrap option, RTAB-Map is not built with AliceVision support.");
+#else
+							timer.restart();
+							printf("MultiBand texturing... \"mesh_multiband.obj\"\n");
+							if(util3d::multiBandTexturing("mesh_multiband.obj",
+									*mesh,
+									cameraPoses,
+									vertexToPixels,
+									std::map<int, cv::Mat >(),
+									std::map<int, std::vector<CameraModel> >(),
+									rtabmap.getMemory(),
+									0,
+									textureSize,
+									gains,
+									blendingGains))
+							{
+								printf("MultiBand texturing...done. %fs\n", timer.ticks());
+							}
+							else
+							{
+								printf("MultiBand texturing...failed! %fs\n", timer.ticks());
+							}
+#endif
 						}
 					}
 				}

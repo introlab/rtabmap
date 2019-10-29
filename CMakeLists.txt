@@ -474,6 +474,9 @@ IF(WITH_ALICE_VISION)
     IF(AliceVision_FOUND)
         SET(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH};/usr/local/lib/cmake/modules")
         find_package(Geogram REQUIRED QUIET)
+        # Make sure the two following lines are also commented in AliceVision to avoid Eigen memory alignment error
+        #add_definitions("-DEIGEN_DONT_ALIGN_STATICALLY=1")
+        #add_definitions("-DEIGEN_DONT_VECTORIZE=1")
     ENDIF(AliceVision_FOUND)
 ENDIF(WITH_ALICE_VISION)
 
