@@ -382,6 +382,7 @@ void ExportCloudsDialog::saveSettings(QSettings & settings, const QString & grou
 	settings.setValue("mesh_textureExposureFusion", _ui->checkBox_exposureFusion->isChecked());
 	settings.setValue("mesh_textureBlending", _ui->checkBox_blending->isChecked());
 	settings.setValue("mesh_textureBlendingDecimation", _ui->comboBox_blendingDecimation->currentIndex());
+	settings.setValue("mesh_textureMultiband", _ui->checkBox_multiband->isChecked());
 
 
 	settings.setValue("mesh_angle_tolerance", _ui->doubleSpinBox_mesh_angleTolerance->value());
@@ -523,6 +524,7 @@ void ExportCloudsDialog::loadSettings(QSettings & settings, const QString & grou
 	}
 	_ui->checkBox_blending->setChecked(settings.value("mesh_textureBlending", _ui->checkBox_blending->isChecked()).toBool());
 	_ui->comboBox_blendingDecimation->setCurrentIndex(settings.value("mesh_textureBlendingDecimation", _ui->comboBox_blendingDecimation->currentIndex()).toInt());
+	_ui->checkBox_multiband->setChecked(settings.value("mesh_textureMultiband", _ui->checkBox_multiband->isChecked()).toBool());
 
 	_ui->doubleSpinBox_mesh_angleTolerance->setValue(settings.value("mesh_angle_tolerance", _ui->doubleSpinBox_mesh_angleTolerance->value()).toDouble());
 	_ui->checkBox_mesh_quad->setChecked(settings.value("mesh_quad", _ui->checkBox_mesh_quad->isChecked()).toBool());
@@ -655,6 +657,7 @@ void ExportCloudsDialog::restoreDefaults()
 	_ui->checkBox_exposureFusion->setChecked(false);
 	_ui->checkBox_blending->setChecked(true);
 	_ui->comboBox_blendingDecimation->setCurrentIndex(0);
+	_ui->checkBox_multiband->setChecked(false);
 
 	_ui->doubleSpinBox_mesh_angleTolerance->setValue(15.0);
 	_ui->checkBox_mesh_quad->setChecked(false);
@@ -833,6 +836,11 @@ void ExportCloudsDialog::updateReconstructionFlavor()
 		_ui->spinBox_meshMaxPolygons->setEnabled(_ui->comboBox_meshingApproach->currentIndex()!=3);
 		_ui->label_meshMaxPolygons->setEnabled(_ui->comboBox_meshingApproach->currentIndex()!=3);
 #endif
+
+#ifndef RTABMAP_ALICE_VISION
+		_ui->checkBox_multiband->setEnabled(false);
+		_ui->label_multiband->setEnabled(false);
+#endif
 	}
 }
 
@@ -860,6 +868,9 @@ void ExportCloudsDialog::setSaveButton()
 	_ui->checkBox_mesh_quad->setVisible(false);
 	_ui->checkBox_mesh_quad->setEnabled(false);
 	_ui->label_quad->setVisible(false);
+	_ui->checkBox_multiband->setVisible(true);
+	_ui->checkBox_multiband->setEnabled(true);
+	_ui->label_multiband->setVisible(true);
 	updateReconstructionFlavor();
 }
 
@@ -873,6 +884,9 @@ void ExportCloudsDialog::setOkButton()
 	_ui->checkBox_mesh_quad->setVisible(true);
 	_ui->checkBox_mesh_quad->setEnabled(true);
 	_ui->label_quad->setVisible(true);
+	_ui->checkBox_multiband->setVisible(false);
+	_ui->checkBox_multiband->setEnabled(false);
+	_ui->label_multiband->setVisible(false);
 	updateReconstructionFlavor();
 }
 
@@ -2969,7 +2983,7 @@ std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::Indic
 	pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr previousCloud;
 	pcl::IndicesPtr previousIndices;
 	Transform previousPose;
-	for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end() && !_canceled; ++iter, ++index)
+	for(std::map<int, Transform>::const_iterator iter = poses.lower_bound(1); iter!=poses.end() && !_canceled; ++iter, ++index)
 	{
 		int points = 0;
 		int totalIndices = 0;
@@ -3826,7 +3840,10 @@ void ExportCloudsDialog::saveTextureMeshes(
 				cv::Mat globalTextures;
 				bool texturesMerged = _ui->comboBox_meshingTextureSize->isEnabled() && _ui->comboBox_meshingTextureSize->currentIndex() > 0;
 				if(texturesMerged && mesh->tex_materials.size()>1)
-				{
+{
+					std::map<int, std::map<int, cv::Vec4d> > gains;
+					std::map<int, std::map<int, cv::Mat> > blendingGains;
+
 					globalTextures = util3d::mergeTextures(
 							*mesh,
 							images,
@@ -3843,7 +3860,43 @@ void ExportCloudsDialog::saveTextureMeshes(
 							blendingDecimation,
 							_ui->spinBox_textureBrightnessContrastRatioLow->value(),
 							_ui->spinBox_textureBrightnessContrastRatioHigh->value(),
-							_ui->checkBox_exposureFusion->isEnabled() && _ui->checkBox_exposureFusion->isChecked());
+							_ui->checkBox_exposureFusion->isEnabled() && _ui->checkBox_exposureFusion->isChecked(),
+							0,
+							0,
+							&gains,
+							&blendingGains);
+
+					if(_ui->checkBox_multiband->isEnabled() && _ui->checkBox_multiband->isChecked() && mesh->tex_polygons.size() == 1)
+					{
+						pcl::PolygonMesh multibandMesh;
+						multibandMesh.cloud = mesh->cloud;
+						multibandMesh.polygons = mesh->tex_polygons[0];
+
+						success = util3d::multiBandTexturing(
+								path.toStdString(),
+								multibandMesh,
+								poses,
+								textureVertexToPixels,
+								images,
+								calibrations,
+								0,
+								_dbDriver,
+								textureSize,
+								gains,
+								blendingGains);
+						if(success)
+						{
+							_progressDialog->incrementStep();
+							_progressDialog->appendText(tr("Saving the mesh... done."));
+
+							QMessageBox::information(this, tr("Save successful!"), tr("Mesh saved to \"%1\"").arg(path));
+						}
+						else
+						{
+							QMessageBox::warning(this, tr("Save failed!"), tr("Failed to save to \"%1\"").arg(path));
+						}
+						return;
+					}
 				}
 
 				bool singleTexture = mesh->tex_materials.size() == 1;

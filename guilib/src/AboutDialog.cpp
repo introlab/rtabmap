@@ -92,6 +92,13 @@ AboutDialog::AboutDialog(QWidget * parent) :
 #else
 	_ui->label_openchisel->setText("No");
 #endif
+#ifdef RTABMAP_ALICE_VISION
+	_ui->label_aliceVision->setText("Yes");
+	_ui->label_aliceVision_license->setEnabled(true);
+#else
+	_ui->label_aliceVision->setText("No");
+	_ui->label_aliceVision_license->setEnabled(false);
+#endif
 
 	_ui->label_freenect->setText(CameraFreenect::available()?"Yes":"No");
 	_ui->label_freenect_license->setEnabled(CameraFreenect::available());

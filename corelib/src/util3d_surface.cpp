@@ -34,6 +34,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/Compression.h"
 #include "rtabmap/utilite/ULogger.h"
 #include "rtabmap/utilite/UDirectory.h"
+#include "rtabmap/utilite/UFile.h"
 #include "rtabmap/utilite/UConversion.h"
 #include "rtabmap/utilite/UMath.h"
 #include "rtabmap/utilite/UTimer.h"
@@ -45,6 +46,15 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pcl/surface/mls.h>
 #include <pcl18/surface/texture_mapping.h>
 #include <pcl/features/integral_image_normal.h>
+
+#ifdef RTABMAP_ALICE_VISION
+#include <aliceVision/sfmData/SfMData.hpp>
+#include <aliceVision/sfmDataIO/sfmDataIO.hpp>
+#include <aliceVision/mesh/Mesh.hpp>
+#include <aliceVision/mesh/Texturing.hpp>
+#include <aliceVision/camera/Pinhole.hpp>
+using namespace aliceVision;
+#endif
 
 #ifndef DISABLE_VTK
 #include <pcl/surface/vtk_smoothing/vtk_mesh_quadric_decimation.h>
@@ -1426,7 +1436,10 @@ cv::Mat mergeTextures(
 		int brightnessContrastRatioLow,
 		int brightnessContrastRatioHigh,
 		bool exposureFusion,
-		const ProgressState * state)
+		const ProgressState * state,
+		unsigned char blankValue,
+		std::map<int, std::map<int, cv::Vec4d> > * gains,
+		std::map<int, std::map<int, cv::Mat> > * blendingGains)
 {
 	std::map<int, std::vector<CameraModel> > calibVectors;
 	for(std::map<int, CameraModel>::const_iterator iter=calibrations.begin(); iter!=calibrations.end(); ++iter)
@@ -1451,7 +1464,10 @@ cv::Mat mergeTextures(
 			brightnessContrastRatioLow,
 			brightnessContrastRatioHigh,
 			exposureFusion,
-			state);
+			state,
+			blankValue,
+			gains,
+			blendingGains);
 }
 cv::Mat mergeTextures(
 		pcl::TextureMesh & mesh,
@@ -1470,7 +1486,10 @@ cv::Mat mergeTextures(
 		int brightnessContrastRatioLow,
 		int brightnessContrastRatioHigh,
 		bool exposureFusion,
-		const ProgressState * state)
+		const ProgressState * state,
+		unsigned char blankValue,
+		std::map<int, std::map<int, cv::Vec4d> > * gainsOut,
+		std::map<int, std::map<int, cv::Mat> > * blendingGainsOut)
 {
 	//get texture size, if disabled use default 1024
 	UASSERT(textureSize%256 == 0);
@@ -1605,7 +1624,7 @@ cv::Mat mergeTextures(
 				int cols = float(textureSize)/(scale*imageSize.width);
 				int rows = float(textureSize)/(scale*imageSize.height);
 
-				globalTextures = cv::Mat(textureSize, materials*textureSize, imageType, cv::Scalar::all(255));
+				globalTextures = cv::Mat(textureSize, materials*textureSize, imageType, cv::Scalar::all(blankValue));
 				cv::Mat globalTextureMasks = cv::Mat(textureSize, materials*textureSize, CV_8UC1, cv::Scalar::all(0));
 
 				// used for multi camera texturing, to avoid reloading same texture for sub cameras
@@ -1614,7 +1633,7 @@ cv::Mat mergeTextures(
 				std::vector<CameraModel> previousCameraModels;
 
 				// make a blank texture
-				cv::Mat emptyImage(int(imageSize.height*scale), int(imageSize.width*scale), imageType, cv::Scalar::all(255));
+				cv::Mat emptyImage(int(imageSize.height*scale), int(imageSize.width*scale), imageType, cv::Scalar::all(blankValue));
 				cv::Mat emptyImageMask(int(imageSize.height*scale), int(imageSize.width*scale), CV_8UC1, cv::Scalar::all(255));
 				int oi=0;
 				std::vector<cv::Point2i> imageOrigin(textures.size());
@@ -1874,6 +1893,25 @@ cv::Mat mergeTextures(
 								cv::multiply(channels[2], gains(newCamIndex[t], gainRGB?1:0), channels[2]);
 
 								cv::merge(channels, roi);
+
+								if(gainsOut)
+								{
+									cv::Vec4d g(
+										gains(newCamIndex[t], 0),
+										gains(newCamIndex[t], 1),
+										gains(newCamIndex[t], 2),
+										gains(newCamIndex[t], 3));
+									if(gainsOut->find(textures[t].first) == gainsOut->end())
+									{
+										std::map<int,cv::Vec4d> value;
+										value.insert(std::make_pair(textures[t].second, g));
+										gainsOut->insert(std::make_pair(textures[t].first, value));
+									}
+									else
+									{
+										gainsOut->at(textures[t].first).insert(std::make_pair(textures[t].second,  g));
+									}
+								}
 							}
 						}
 						//UWARN("Saving gain.png", globalTexture);
@@ -2008,6 +2046,32 @@ cv::Mat mergeTextures(
 							}
 						}
 
+						if(blendingGainsOut)
+						{
+							for(int t=0; t<(int)textures.size(); ++t)
+							{
+								//break;
+								if(materialsKept.at(t))
+								{
+									int u = imageOrigin[t].x/decimation;
+									int v = imageOrigin[t].y/decimation;
+
+									int indexMaterial = newCamIndex[t] / (cols*rows);
+									cv::Mat roi = blendGains[indexMaterial](cv::Rect(u, v, emptyImage.cols/decimation, emptyImage.rows/decimation));
+									if(blendingGainsOut->find(textures[t].first) == blendingGainsOut->end())
+									{
+										std::map<int,cv::Mat> value;
+										value.insert(std::make_pair(textures[t].second, roi.clone()));
+										blendingGainsOut->insert(std::make_pair(textures[t].first, value));
+									}
+									else
+									{
+										blendingGainsOut->at(textures[t].first).insert(std::make_pair(textures[t].second, roi.clone()));
+									}
+								}
+							}
+						}
+
 						for(int i=0; i<materials; ++i)
 						{
 							/*std::vector<cv::Mat> channels;
@@ -2127,6 +2191,239 @@ void fixTextureMeshForVisualization(pcl::TextureMesh & textureMesh)
 			pcl::toPCLPointCloud2(*newCloud, textureMesh.cloud);
 		}
 	}
+}
+
+bool multiBandTexturing(
+		const std::string & outputOBJPath,
+		const pcl::PolygonMesh & mesh,
+		const std::map<int, Transform> & cameraPoses,
+		const std::vector<std::map<int, pcl::PointXY> > & vertexToPixels, // required output of util3d::createTextureMesh()
+		const std::map<int, cv::Mat> & images,        // raw or compressed, can be empty if memory or dbDriver should be used
+		const std::map<int, std::vector<CameraModel> > & cameraModels, // Should match images
+		const Memory * memory,                    // Should be set if images are not set
+		const DBDriver * dbDriver,                // Should be set if images and memory are not set
+		int textureSize,
+		const std::map<int, std::map<int, cv::Vec4d> > & gains,       // optional output of util3d::mergeTextures()
+		const std::map<int, std::map<int, cv::Mat> > & blendingGains)// optional output of util3d::mergeTextures()
+{
+#ifdef RTABMAP_ALICE_VISION
+	if(ULogger::level() == ULogger::kDebug)
+	{
+		system::Logger::get()->setLogLevel(system::EVerboseLevel::Trace);
+	}
+	else if(ULogger::level() == ULogger::kInfo)
+	{
+		system::Logger::get()->setLogLevel(system::EVerboseLevel::Info);
+	}
+	else if(ULogger::level() == ULogger::kWarning)
+	{
+		system::Logger::get()->setLogLevel(system::EVerboseLevel::Warning);
+	}
+	else
+	{
+		system::Logger::get()->setLogLevel(system::EVerboseLevel::Error);
+	}
+
+	sfmData::SfMData sfmData;
+	pcl::PointCloud<pcl::PointXYZRGB> cloud2;
+	pcl::fromPCLPointCloud2(mesh.cloud, cloud2);
+	UASSERT(vertexToPixels.size() == cloud2.size());
+	UINFO("Input mesh: %d points %d polygons", (int)cloud2.size(), (int)mesh.polygons.size());
+	mesh::Texturing texturing;
+	texturing.me = new mesh::Mesh();
+	texturing.me->pts = new StaticVector<Point3d>(cloud2.size());
+	texturing.pointsVisibilities = new mesh::PointsVisibility();
+	texturing.pointsVisibilities->reserve(cloud2.size());
+	texturing.texParams.textureSide = textureSize;
+
+	std::vector<int> camIndexToId(uKeys(cameraModels));
+	for(size_t i=0;i<cloud2.size();++i)
+	{
+		pcl::PointXYZRGB pt = cloud2.at(i);
+		mesh::PointVisibility* pointVisibility = new mesh::PointVisibility();
+		pointVisibility->reserve(vertexToPixels[i].size());
+		for(std::map<int, pcl::PointXY>::const_iterator iter=vertexToPixels[i].begin(); iter!=vertexToPixels[i].end();++iter)
+		{
+			pointVisibility->push_back(iter->first);
+		}
+		texturing.pointsVisibilities->push_back(pointVisibility);
+		(*texturing.me->pts)[i] = Point3d(pt.x, pt.y, pt.z);
+	}
+
+	texturing.me->tris = new StaticVector<mesh::Mesh::triangle>(mesh.polygons.size());
+	for(size_t i=0;i<mesh.polygons.size();++i)
+	{
+		UASSERT(mesh.polygons[i].vertices.size() == 3);
+		(*texturing.me->tris)[i] = mesh::Mesh::triangle(
+				mesh.polygons[i].vertices[0],
+				mesh.polygons[i].vertices[1],
+				mesh.polygons[i].vertices[2]);
+	}
+	UTimer timer;
+	std::string outputDirectory = UDirectory::getDir(outputOBJPath);
+	std::string tmpImageDirectory = outputDirectory+"/rtabmap_tmp_textures";
+	UDirectory::makeDir(tmpImageDirectory);
+	UINFO("Temporary saving images in directory \"%s\"...", tmpImageDirectory.c_str());
+	for(std::map<int, Transform>::const_iterator iter = cameraPoses.lower_bound(1); iter!=cameraPoses.end(); ++iter)
+	{
+		int camId = iter->first;
+		cv::Mat image;
+		std::vector<CameraModel> models;
+
+		if( images.find(camId) != images.end() &&
+			!images.find(camId)->second.empty() &&
+			cameraModels.find(camId) != cameraModels.end())
+		{
+			models = cameraModels.find(camId)->second;
+		}
+		else if(memory)
+		{
+			SensorData data = memory->getSignatureDataConst(camId, true, false, false, false);
+			models = data.cameraModels();
+			if(models.empty() && data.stereoCameraModel().isValidForProjection())
+			{
+				models.push_back(data.stereoCameraModel().left());
+			}
+			if(data.imageRaw().empty())
+			{
+				image = data.imageCompressed();
+			}
+			else
+			{
+				image = data.imageRaw();
+			}
+		}
+		else if(dbDriver)
+		{
+			StereoCameraModel stereoModel;
+			dbDriver->getCalibration(camId, models, stereoModel);
+			if(models.empty() && stereoModel.isValidForProjection())
+			{
+				models.push_back(stereoModel.left());
+			}
+
+			SensorData data;
+			dbDriver->getNodeData(camId, data, true, false, false, false);
+			if(data.imageRaw().empty())
+			{
+				image = data.imageCompressed();
+			}
+			else
+			{
+				image = data.imageRaw();
+			}
+		}
+		if(models.empty())
+		{
+			UERROR("No camera models found for camera %d", iter->first);
+			continue;
+		}
+		else if(models.size() != 1)
+		{
+			UERROR("Unwrapping not supporting multi-camera yet... ignoring %d", iter->first);
+			continue;
+		}
+		if(image.empty())
+		{
+			UERROR("No image found for camera %d", iter->first);
+			continue;
+		}
+
+		if(image.rows == 1 && image.type() == CV_8UC1)
+		{
+			image = uncompressImage(image);
+		}
+		else
+		{
+			image = image.clone();
+		}
+
+		UASSERT(models.size() == 1);
+		const CameraModel & model = models[0];
+		Transform t = iter->second * model.localTransform();
+		Eigen::Matrix<double, 3, 4> m = (t.inverse()).toEigen3d().matrix().block<3,4>(0, 0);
+		sfmData::CameraPose pose(geometry::Pose3(m), true);
+		sfmData.setAbsolutePose((IndexT)camId, pose);
+		cv::Size imageSize = model.imageSize();
+		if(imageSize.height == 0)
+		{
+			// backward compatibility
+			imageSize.height = image.rows;
+			imageSize.width = image.cols;
+		}
+		std::shared_ptr<camera::IntrinsicBase> camPtr(new camera::Pinhole(imageSize.width, imageSize.height, model.fx(), model.cx(), model.cy()));
+		sfmData.intrinsics.insert(std::make_pair((IndexT)camId, camPtr));
+
+		std::string imagePath = tmpImageDirectory+uFormat("/%d.jpg", camId);
+
+		if(gains.find(camId) != gains.end())
+		{
+			UASSERT(gains.at(camId).size() == 1);
+			const cv::Vec4d & g = gains.at(camId).begin()->second;
+			std::vector<cv::Mat> channels;
+			cv::split(image, channels);
+
+			// assuming BGR
+			cv::multiply(channels[0], g.val[3], channels[0]);
+			cv::multiply(channels[1], g.val[2], channels[1]);
+			cv::multiply(channels[2], g.val[1], channels[2]);
+
+			cv::merge(channels, image);
+		}
+		if(blendingGains.find(camId) != blendingGains.end())
+		{
+			UASSERT(blendingGains.at(camId).size() == 1);
+			cv::Mat g = blendingGains.at(camId).begin()->second;
+			cv::Mat dst;
+			cv::blur(g, dst, cv::Size(3,3));
+			cv::Mat gResized;
+			cv::resize(dst, gResized, image.size(), 0, 0, cv::INTER_LINEAR);
+			cv::multiply(image, gResized, image, 1.0, CV_8UC3);
+		}
+		cv::imwrite(imagePath, image);
+
+		sfmData.views.insert(std::make_pair((IndexT)camId,
+				new sfmData::View(
+						imagePath,
+						(IndexT)camId,
+						(IndexT)camId,
+						(IndexT)camId,
+						imageSize.width,
+						imageSize.height)));
+	}
+	UINFO("Temporary saving images in directory \"%s\"... done. %fs", tmpImageDirectory.c_str(), timer.ticks());
+
+	mvsUtils::MultiViewParams mp(sfmData);
+
+	UINFO("Unwrapping...");
+	texturing.unwrap(mp, mesh::EUnwrapMethod::Basic);
+	UINFO("Unwrapping done. %fs", timer.ticks());
+
+	// save final obj file
+	texturing.saveAsOBJ(outputDirectory, uSplit(UFile::getName(outputOBJPath), '.').front());
+	UINFO("Saved %s. %fs\n", outputOBJPath, timer.ticks());
+
+	// generate textures
+	UINFO("Generating textures...\n");
+	texturing.generateTextures(mp, outputDirectory);
+	UINFO("Generating textures done. %fs\n", timer.ticks());
+
+	UINFO("Cleanup temporary directory \"%s\"...", tmpImageDirectory.c_str());
+	UDirectory dir(tmpImageDirectory);
+	std::string fp = dir.getNextFilePath();
+	while(!fp.empty())
+	{
+		UFile::erase(fp);
+		fp = dir.getNextFilePath();
+	}
+	UDirectory::removeDir(tmpImageDirectory);
+	UINFO("Cleanup temporary directory \"%s\"... done.", tmpImageDirectory.c_str());
+
+	return true;
+#else
+	UERROR("Cannot unwrap texture mesh. RTAB-Map is not built with Alice Vision support! Returning false.");
+	return false;
+#endif
 }
 
 LaserScan computeNormals(

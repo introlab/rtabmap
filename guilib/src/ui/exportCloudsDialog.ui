@@ -23,9 +23,9 @@
       <property name="geometry">
        <rect>
         <x>0</x>
-        <y>0</y>
+        <y>-2339</y>
         <width>780</width>
-        <height>4775</height>
+        <height>4823</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_13">
@@ -1975,6 +1975,23 @@ Guidelines: 4 times the voxel size, 0.025 for voxel=0.</string>
                  </property>
                  <property name="value">
                   <double>0.000000000000000</double>
+                 </property>
+                </widget>
+               </item>
+               <item row="15" column="1">
+                <widget class="QLabel" name="label_multiband">
+                 <property name="text">
+                  <string>MultiBand texturing. Only available on export and RTAB-Map should be built with AliceVision support.</string>
+                 </property>
+                 <property name="wordWrap">
+                  <bool>true</bool>
+                 </property>
+                </widget>
+               </item>
+               <item row="15" column="0">
+                <widget class="QCheckBox" name="checkBox_multiband">
+                 <property name="text">
+                  <string/>
                  </property>
                 </widget>
                </item>

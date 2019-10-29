@@ -738,6 +738,12 @@ ParametersMap Parameters::parseArguments(int argc, char * argv[], bool onlyParam
 #else
 				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
 #endif
+				str = "With Alice Vision:";
+#ifdef RTABMAP_ALICE_VISION
+				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
+#else
+				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
+#endif
 				str = "With LOAM:";
 #ifdef RTABMAP_LOAM
 				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
