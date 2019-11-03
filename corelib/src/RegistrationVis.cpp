@@ -119,7 +119,11 @@ void RegistrationVis::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kVisMeanInliersDistance(), _maxInliersMeanDistance);
 	uInsert(_bundleParameters, parameters);
 
-	UASSERT_MSG(_minInliers >= 1, uFormat("value=%d", _minInliers).c_str());
+	if(_minInliers < 6)
+	{
+		UWARN("%s should be >= 6 but it is set to %d, setting to 6.", Parameters::kVisMinInliers().c_str(), _minInliers);
+		_minInliers = 6;
+	}
 	UASSERT_MSG(_inlierDistance > 0.0f, uFormat("value=%f", _inlierDistance).c_str());
 	UASSERT_MSG(_iterations > 0, uFormat("value=%d", _iterations).c_str());
 

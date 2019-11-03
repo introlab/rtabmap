@@ -653,7 +653,7 @@ void ExportCloudsDialog::restoreDefaults()
 	_ui->doubleSpinBox_cameraFilterVelRad->setValue(0);
 	_ui->doubleSpinBox_laplacianVariance->setValue(0);
 	_ui->spinBox_textureBrightnessContrastRatioLow->setValue(0);
-	_ui->spinBox_textureBrightnessContrastRatioHigh->setValue(0);
+	_ui->spinBox_textureBrightnessContrastRatioHigh->setValue(5);
 	_ui->checkBox_exposureFusion->setChecked(false);
 	_ui->checkBox_blending->setChecked(true);
 	_ui->comboBox_blendingDecimation->setCurrentIndex(0);
@@ -3840,10 +3840,15 @@ void ExportCloudsDialog::saveTextureMeshes(
 				cv::Mat globalTextures;
 				bool texturesMerged = _ui->comboBox_meshingTextureSize->isEnabled() && _ui->comboBox_meshingTextureSize->currentIndex() > 0;
 				if(texturesMerged && mesh->tex_materials.size()>1)
-{
+				{
+					_progressDialog->appendText(tr("Merging textures..."));
+					QApplication::processEvents();
+					uSleep(100);
+					QApplication::processEvents();
+
 					std::map<int, std::map<int, cv::Vec4d> > gains;
 					std::map<int, std::map<int, cv::Mat> > blendingGains;
-
+					std::pair<float, float> contrastValues(0,0);
 					globalTextures = util3d::mergeTextures(
 							*mesh,
 							images,
@@ -3851,7 +3856,7 @@ void ExportCloudsDialog::saveTextureMeshes(
 							0,
 							_dbDriver,
 							textureSize,
-							_ui->spinBox_mesh_maxTextures->value(),
+							_ui->checkBox_multiband->isEnabled() && _ui->checkBox_multiband->isChecked()?1:_ui->spinBox_mesh_maxTextures->value(),
 							textureVertexToPixels,
 							_ui->checkBox_gainCompensation->isChecked(),
 							_ui->doubleSpinBox_gainBeta->value(),
@@ -3864,17 +3869,25 @@ void ExportCloudsDialog::saveTextureMeshes(
 							0,
 							0,
 							&gains,
-							&blendingGains);
+							&blendingGains,
+							&contrastValues);
+
+					_progressDialog->appendText(tr("Merging textures... done."));
+					QApplication::processEvents();
+					uSleep(100);
+					QApplication::processEvents();
 
 					if(_ui->checkBox_multiband->isEnabled() && _ui->checkBox_multiband->isChecked() && mesh->tex_polygons.size() == 1)
 					{
-						pcl::PolygonMesh multibandMesh;
-						multibandMesh.cloud = mesh->cloud;
-						multibandMesh.polygons = mesh->tex_polygons[0];
+						_progressDialog->appendText(tr("Multiband texturing... (this may take a couple of minutes!)"));
+						QApplication::processEvents();
+						uSleep(100);
+						QApplication::processEvents();
 
 						success = util3d::multiBandTexturing(
 								path.toStdString(),
-								multibandMesh,
+								mesh->cloud,
+								mesh->tex_polygons[0],
 								poses,
 								textureVertexToPixels,
 								images,
@@ -3882,8 +3895,10 @@ void ExportCloudsDialog::saveTextureMeshes(
 								0,
 								_dbDriver,
 								textureSize,
+								_ui->comboBox_meshingTextureFormat->currentText().toStdString(),
 								gains,
-								blendingGains);
+								blendingGains,
+								contrastValues);
 						if(success)
 						{
 							_progressDialog->incrementStep();

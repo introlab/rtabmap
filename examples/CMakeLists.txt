@@ -1,6 +1,5 @@
 
 ADD_SUBDIRECTORY( BOWMapping )
-ADD_SUBDIRECTORY( Export )
 
 IF(TARGET rtabmap_gui)
    ADD_SUBDIRECTORY( RGBDMapping )

@@ -1939,7 +1939,7 @@ cv::Mat fastBilateralFiltering(const cv::Mat & depth, float sigmaS, float sigmaR
  *  \note In case of BGRA image, we won't touch the transparency
  *  See http://answers.opencv.org/question/75510/how-to-make-auto-adjustmentsbrightness-and-contrast-for-image-android-opencv-image-correction/
 */
-cv::Mat brightnessAndContrastAuto(const cv::Mat &src, const cv::Mat & mask, float clipLowHistPercent, float clipHighHistPercent)
+cv::Mat brightnessAndContrastAuto(const cv::Mat &src, const cv::Mat & mask, float clipLowHistPercent, float clipHighHistPercent, float * alphaOut, float * betaOut)
 {
 
     CV_Assert(clipLowHistPercent >= 0 && clipHighHistPercent>=0);
@@ -2011,6 +2011,16 @@ cv::Mat brightnessAndContrastAuto(const cv::Mat &src, const cv::Mat & mask, floa
         int from_to[] = { 3, 3};
         cv::mixChannels(&src, 4, &dst,1, from_to, 1);
     }
+
+    if(alphaOut)
+    {
+    	*alphaOut = alpha;
+    }
+    if(betaOut)
+	{
+		*betaOut = beta;
+	}
+
     return dst;
 }
 

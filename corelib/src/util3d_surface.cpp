@@ -53,6 +53,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <aliceVision/mesh/Mesh.hpp>
 #include <aliceVision/mesh/Texturing.hpp>
 #include <aliceVision/camera/Pinhole.hpp>
+#include <boost/algorithm/string.hpp>
 using namespace aliceVision;
 #endif
 
@@ -1439,7 +1440,8 @@ cv::Mat mergeTextures(
 		const ProgressState * state,
 		unsigned char blankValue,
 		std::map<int, std::map<int, cv::Vec4d> > * gains,
-		std::map<int, std::map<int, cv::Mat> > * blendingGains)
+		std::map<int, std::map<int, cv::Mat> > * blendingGains,
+		std::pair<float, float> * contrastValues)
 {
 	std::map<int, std::vector<CameraModel> > calibVectors;
 	for(std::map<int, CameraModel>::const_iterator iter=calibrations.begin(); iter!=calibrations.end(); ++iter)
@@ -1467,7 +1469,8 @@ cv::Mat mergeTextures(
 			state,
 			blankValue,
 			gains,
-			blendingGains);
+			blendingGains,
+			contrastValues);
 }
 cv::Mat mergeTextures(
 		pcl::TextureMesh & mesh,
@@ -1489,7 +1492,8 @@ cv::Mat mergeTextures(
 		const ProgressState * state,
 		unsigned char blankValue,
 		std::map<int, std::map<int, cv::Vec4d> > * gainsOut,
-		std::map<int, std::map<int, cv::Mat> > * blendingGainsOut)
+		std::map<int, std::map<int, cv::Mat> > * blendingGainsOut,
+		std::pair<float, float> * contrastValuesOut)
 {
 	//get texture size, if disabled use default 1024
 	UASSERT(textureSize%256 == 0);
@@ -2109,40 +2113,43 @@ cv::Mat mergeTextures(
 
 				if(brightnessContrastRatioLow > 0 || brightnessContrastRatioHigh > 0)
 				{
-					for(int i=0; i<materials; ++i)
+					if(exposureFusion)
 					{
-						cv::Mat globalTexturesROI = globalTextures(cv::Range::all(), cv::Range(i*globalTextures.rows, (i+1)*globalTextures.rows));
-						cv::Mat globalTextureMasksROI = globalTextureMasks(cv::Range::all(), cv::Range(i*globalTextureMasks.rows, (i+1)*globalTextureMasks.rows));
-						if(exposureFusion)
+						std::vector<cv::Mat> images;
+						images.push_back(globalTextures);
+						if (brightnessContrastRatioLow > 0)
 						{
-							std::vector<cv::Mat> images;
-							images.push_back(globalTexturesROI);
-							if (brightnessContrastRatioLow > 0)
-							{
-								images.push_back(util2d::brightnessAndContrastAuto(
-									globalTexturesROI,
-									globalTextureMasksROI,
+							images.push_back(util2d::brightnessAndContrastAuto(
+									globalTextures,
+									globalTextureMasks,
 									(float)brightnessContrastRatioLow,
 									0.0f));
-							}
-							if (brightnessContrastRatioHigh > 0)
-							{
-								images.push_back(util2d::brightnessAndContrastAuto(
-									globalTexturesROI,
-									globalTextureMasksROI,
+						}
+						if (brightnessContrastRatioHigh > 0)
+						{
+							images.push_back(util2d::brightnessAndContrastAuto(
+									globalTextures,
+									globalTextureMasks,
 									0.0f,
 									(float)brightnessContrastRatioHigh));
-							}
-
-							util2d::exposureFusion(images).copyTo(globalTexturesROI);
 						}
-						else
-						{
-							util2d::brightnessAndContrastAuto(
-								globalTexturesROI,
-								globalTextureMasksROI,
+
+						globalTextures = util2d::exposureFusion(images);
+					}
+					else
+					{
+						float alpha, beta;
+						globalTextures = util2d::brightnessAndContrastAuto(
+								globalTextures,
+								globalTextureMasks,
 								(float)brightnessContrastRatioLow,
-								(float)brightnessContrastRatioHigh).copyTo(globalTexturesROI);
+								(float)brightnessContrastRatioHigh,
+								&alpha,
+								&beta);
+						if(contrastValuesOut)
+						{
+							contrastValuesOut->first = alpha;
+							contrastValuesOut->second = beta;
 						}
 					}
 					if(state) state->callback(uFormat("Brightness and contrast auto %fs", timer.ticks()));
@@ -2195,7 +2202,8 @@ void fixTextureMeshForVisualization(pcl::TextureMesh & textureMesh)
 
 bool multiBandTexturing(
 		const std::string & outputOBJPath,
-		const pcl::PolygonMesh & mesh,
+		const pcl::PCLPointCloud2 & cloud,
+		const std::vector<pcl::Vertices> & polygons,
 		const std::map<int, Transform> & cameraPoses,
 		const std::vector<std::map<int, pcl::PointXY> > & vertexToPixels, // required output of util3d::createTextureMesh()
 		const std::map<int, cv::Mat> & images,        // raw or compressed, can be empty if memory or dbDriver should be used
@@ -2203,8 +2211,10 @@ bool multiBandTexturing(
 		const Memory * memory,                    // Should be set if images are not set
 		const DBDriver * dbDriver,                // Should be set if images and memory are not set
 		int textureSize,
+		const std::string & textureFormat,
 		const std::map<int, std::map<int, cv::Vec4d> > & gains,       // optional output of util3d::mergeTextures()
-		const std::map<int, std::map<int, cv::Mat> > & blendingGains)// optional output of util3d::mergeTextures()
+		const std::map<int, std::map<int, cv::Mat> > & blendingGains, // optional output of util3d::mergeTextures()
+		const std::pair<float, float> & contrastValues)               // optional output of util3d::mergeTextures()
 {
 #ifdef RTABMAP_ALICE_VISION
 	if(ULogger::level() == ULogger::kDebug)
@@ -2226,15 +2236,16 @@ bool multiBandTexturing(
 
 	sfmData::SfMData sfmData;
 	pcl::PointCloud<pcl::PointXYZRGB> cloud2;
-	pcl::fromPCLPointCloud2(mesh.cloud, cloud2);
+	pcl::fromPCLPointCloud2(cloud, cloud2);
 	UASSERT(vertexToPixels.size() == cloud2.size());
-	UINFO("Input mesh: %d points %d polygons", (int)cloud2.size(), (int)mesh.polygons.size());
+	UINFO("Input mesh: %d points %d polygons", (int)cloud2.size(), (int)polygons.size());
 	mesh::Texturing texturing;
 	texturing.me = new mesh::Mesh();
 	texturing.me->pts = new StaticVector<Point3d>(cloud2.size());
 	texturing.pointsVisibilities = new mesh::PointsVisibility();
 	texturing.pointsVisibilities->reserve(cloud2.size());
-	texturing.texParams.textureSide = textureSize;
+	texturing.texParams.textureSide = 8192;
+	texturing.texParams.downscale = 8192/textureSize;
 
 	std::vector<int> camIndexToId(uKeys(cameraModels));
 	for(size_t i=0;i<cloud2.size();++i)
@@ -2250,14 +2261,14 @@ bool multiBandTexturing(
 		(*texturing.me->pts)[i] = Point3d(pt.x, pt.y, pt.z);
 	}
 
-	texturing.me->tris = new StaticVector<mesh::Mesh::triangle>(mesh.polygons.size());
-	for(size_t i=0;i<mesh.polygons.size();++i)
+	texturing.me->tris = new StaticVector<mesh::Mesh::triangle>(polygons.size());
+	for(size_t i=0;i<polygons.size();++i)
 	{
-		UASSERT(mesh.polygons[i].vertices.size() == 3);
+		UASSERT(polygons[i].vertices.size() == 3);
 		(*texturing.me->tris)[i] = mesh::Mesh::triangle(
-				mesh.polygons[i].vertices[0],
-				mesh.polygons[i].vertices[1],
-				mesh.polygons[i].vertices[2]);
+				polygons[i].vertices[0],
+				polygons[i].vertices[1],
+				polygons[i].vertices[2]);
 	}
 	UTimer timer;
 	std::string outputDirectory = UDirectory::getDir(outputOBJPath);
@@ -2274,6 +2285,7 @@ bool multiBandTexturing(
 			!images.find(camId)->second.empty() &&
 			cameraModels.find(camId) != cameraModels.end())
 		{
+			image = images.find(camId)->second;
 			models = cameraModels.find(camId)->second;
 		}
 		else if(memory)
@@ -2315,18 +2327,18 @@ bool multiBandTexturing(
 		}
 		if(models.empty())
 		{
-			UERROR("No camera models found for camera %d", iter->first);
-			continue;
+			UERROR("No camera models found for camera %d. Aborting multiband texturing...", iter->first);
+			return false;
 		}
 		else if(models.size() != 1)
 		{
-			UERROR("Unwrapping not supporting multi-camera yet... ignoring %d", iter->first);
-			continue;
+			UERROR("Unwrapping not supporting multi-camera yet... ignoring %d. Aborting multiband texturing...", iter->first);
+			return false;
 		}
 		if(image.empty())
 		{
-			UERROR("No image found for camera %d", iter->first);
-			continue;
+			UERROR("No image found for camera %d. Aborting multiband texturing...", iter->first);
+			return false;
 		}
 
 		if(image.rows == 1 && image.type() == CV_8UC1)
@@ -2400,13 +2412,14 @@ bool multiBandTexturing(
 	UINFO("Unwrapping done. %fs", timer.ticks());
 
 	// save final obj file
-	texturing.saveAsOBJ(outputDirectory, uSplit(UFile::getName(outputOBJPath), '.').front());
-	UINFO("Saved %s. %fs\n", outputOBJPath, timer.ticks());
+	std::string baseName = uSplit(UFile::getName(outputOBJPath), '.').front();
+	texturing.saveAsOBJ(outputDirectory, baseName);
+	UINFO("Saved %s. %fs", outputOBJPath, timer.ticks());
 
 	// generate textures
-	UINFO("Generating textures...\n");
+	UINFO("Generating textures...");
 	texturing.generateTextures(mp, outputDirectory);
-	UINFO("Generating textures done. %fs\n", timer.ticks());
+	UINFO("Generating textures done. %fs", timer.ticks());
 
 	UINFO("Cleanup temporary directory \"%s\"...", tmpImageDirectory.c_str());
 	UDirectory dir(tmpImageDirectory);
@@ -2418,6 +2431,48 @@ bool multiBandTexturing(
 	}
 	UDirectory::removeDir(tmpImageDirectory);
 	UINFO("Cleanup temporary directory \"%s\"... done.", tmpImageDirectory.c_str());
+
+	UINFO("Rename/convert textures...");
+	dir.setPath(outputDirectory, "png");
+	std::map<std::string, std::string> texNames; // <old, new>
+	std::string outputFormat = textureFormat;
+	if(outputFormat.front() == '.')
+	{
+		outputFormat = outputFormat.substr(1, std::string::npos);
+	}
+	for(std::list<std::string>::const_iterator iter=dir.getFileNames().begin(); iter!=dir.getFileNames().end(); ++iter)
+	{
+		// Textures are called "texture_1001.png", "texture_1002.png", ...
+		if(uStrContains(*iter, "texture_10"))
+		{
+			cv::Mat img = cv::imread(outputDirectory+"/"+*iter);
+			if(contrastValues.first != 0.0f || contrastValues.second != 0.0f)
+			{
+				UASSERT(img.channels() == 3);
+				// Re-use same contrast values with all images
+				img.convertTo(img, -1, contrastValues.first, contrastValues.second);
+			}
+			std::string newName = *iter;
+			boost::replace_all(newName, "png", outputFormat);
+			boost::replace_all(newName, "texture", baseName);
+			texNames.insert(std::make_pair(*iter, newName));
+			cv::imwrite(outputDirectory+"/"+newName, img);
+			UFile::erase(outputDirectory+"/"+*iter);
+		}
+	}
+	std::ifstream fi(outputDirectory+"/"+baseName+".mtl");
+	std::string mtlStr((std::istreambuf_iterator<char>(fi)),
+	                 std::istreambuf_iterator<char>());
+	fi.close();
+	UFile::erase(outputDirectory+"/"+baseName);
+	for(std::map<std::string, std::string>::iterator iter=texNames.begin(); iter!=texNames.end(); ++iter)
+	{
+		boost::replace_all(mtlStr, iter->first, iter->second);
+	}
+	std::ofstream fo(outputDirectory+"/"+baseName+".mtl");
+	fo.write(mtlStr.c_str(), mtlStr.size());
+	fo.close();
+	UINFO("Rename/convert textures... done. %fs", timer.ticks());
 
 	return true;
 #else
