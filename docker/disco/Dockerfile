@@ -1,20 +1,20 @@
-# Image: introlab3it/rtabmap:zesty
+# Image: introlab3it/rtabmap:bionic
 
-FROM ubuntu:17.04
+FROM ubuntu:19.04
 
 # Install build dependencies
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
       libsqlite3-dev \
       libpcl-dev \
-      libopencv-dev \
       git \
       cmake \
+      libopencv-dev \
       libproj-dev \
       libqt5svg5-dev \
+      libfreenect-dev \
+      libopenni2-dev \
+      ffmpeg \
       software-properties-common
-
-# Issue: http://www.pcl-users.org/Build-failure-on-Ubuntu-17-04-td4044552.html
-RUN sed -i 's|/usr/lib/libmpi.so;||g' /usr/lib/x86_64-linux-gnu/cmake/pcl/PCLConfig.cmake
 
 WORKDIR /root/
 
