@@ -65,6 +65,11 @@ This website uses Google Analytics. See their Privacy Policy [here](https://supp
 
 ## What's new 
 
+### November 2019
+ * [AliceVision](https://alicevision.org/) library has been integrated to RTAB-Map to provide higher texture quality. Compare the updated version of the Ski Cottage on Sketchfab here: https://skfb.ly/6OyUy (old version: https://skfb.ly/6KBFz). Look at how the edges between camera texures are smoother (thx to multi-band blending), decreasing significantly the sharp edge artifacts. Multi-band blending approach can be enabled in File->Export Clouds dialog under Texturing section. RTAB-Map should be built with AliceVision support (CUDA is not required as only texture pipeline is used). A patch is required to avoid problems with Eigen, refer to Docker file [here](https://github.com/introlab/rtabmap/blob/e7be12e0ff7ae95e492837f0414d553c977d6d4d/docker/bionic/Dockerfile#L69-L116).
+ 
+<img src="https://raw.githubusercontent.com/wiki/introlab/rtabmap/doc/Tutorials/MultiSessionTango/texture_old.jpg" alt="texture_old" width="400"><img src="https://raw.githubusercontent.com/wiki/introlab/rtabmap/doc/Tutorials/MultiSessionTango/texture_new.jpg" alt="texture_new" width="400">
+
 ### September 2017
  * New version 0.14 of RTAB-Map Tango with GPS support. See it on [play store](https://play.google.com/store/apps/details?id=com.introlab.rtabmap&hl=en).
 
