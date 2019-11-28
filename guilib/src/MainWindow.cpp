@@ -4741,6 +4741,13 @@ void MainWindow::openDatabase(const QString & path, const ParametersMap & overri
 								different = false;
 							}
 						}
+						else if(Parameters::getType(iter->first).compare("bool") == 0)
+						{
+							if(uStr2Bool(iter->second) == uStr2Bool(jter->second))
+							{
+								different = false;
+							}
+						}
 						if(different)
 						{
 							differentParameters.insert(*iter);

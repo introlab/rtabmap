@@ -2,9 +2,9 @@
 # This module finds an kinect 4 azure SDK
 #
 # It sets the following variables:
-#  K4A_FOUND       - Set to false, or undefined, if FlyCapture2 isn't found.
-#  K4A_INCLUDE_DIRS - The FlyCapture2 include directory.
-#  K4A_LIBRARIES     - The FlyCapture2 library to link against.
+#  K4A_FOUND       - Set to false, or undefined, if K4A isn't found.
+#  K4A_INCLUDE_DIRS - The K4A include directory.
+#  K4A_LIBRARIES     - The K4A library to link against.
 
 find_library(K4A_LIBRARY NAMES k4a NO_DEFAULT_PATH PATHS $ENV{K4A_ROOT_DIR}/sdk/windows-desktop/amd64/release/lib)
 find_library(K4ARECORD_LIBRARY NAMES k4arecord NO_DEFAULT_PATH PATHS $ENV{K4A_ROOT_DIR}/sdk/windows-desktop/amd64/release/lib)

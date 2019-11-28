@@ -1,20 +1,12 @@
 # Image: introlab3it/rtabmap:xenial
 
-FROM ubuntu:16.04
+FROM ros:kinetic-perception
 
-# Install build dependencies
-RUN apt-get update && apt-get install -y \
-      libsqlite3-dev \
-      libpcl-dev \
-      libopencv-dev \
-      git \
-      cmake \
-      libproj-dev \
-      libqt5svg5-dev \
-      libfreenect-dev \
-      libopenni2-dev \
-      libyaml-cpp-dev \
-      software-properties-common
+# Install/build dependencies
+RUN apt-get update && \
+    apt-get install -y ros-kinetic-rtabmap-ros && \
+    apt-get remove -y ros-kinetic-rtabmap && \
+    rm -rf /var/lib/apt/lists/
 
 WORKDIR /root/
 
@@ -29,18 +21,6 @@ RUN cd gtsam && \
     make install && \
     cd && \
     rm -r gtsam
-
-# g2o
-RUN git clone https://github.com/RainerKuemmerle/g2o.git
-RUN cd g2o && \
-    git checkout 20170730_git && \
-    mkdir build && \
-    cd build && \
-    cmake -DBUILD_LGPL_SHARED_LIBS=ON -DG2O_BUILD_APPS=OFF -DBUILD_WITH_MARCH_NATIVE=OFF -DG2O_BUILD_EXAMPLES=OFF -DBUILD_SHARED_LIBS=ON -DCMAKE_BUILD_TYPE=Release .. && \
-    make -j$(nproc) && \
-    make install && \
-    cd && \
-    rm -r g2o
 
 # libpointmatcher 
 RUN git clone https://github.com/ethz-asl/libnabo.git
@@ -70,14 +50,15 @@ RUN cd libpointmatcher && \
 ARG CACHE_DATE=2016-01-01
 RUN git clone https://github.com/introlab/rtabmap.git
 
+RUN rm /bin/sh && ln -s /bin/bash /bin/sh
+
 # Build RTAB-Map project
-RUN cd rtabmap/build && \
+RUN source /ros_entrypoint.sh && \
+    cd rtabmap/build && \
     cmake .. && \
-    make -j$(nproc) && \
+    make && \
     make install && \
     cd ../.. && \
     rm -rf rtabmap && \
     ldconfig
-
-WORKDIR /root
     

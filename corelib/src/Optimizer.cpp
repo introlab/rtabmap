@@ -604,7 +604,7 @@ void Optimizer::computeBACorrespondences(
 					ParametersMap regParam;
 					regParam.insert(ParametersPair(Parameters::kVisEstimationType(), "1"));
 					regParam.insert(ParametersPair(Parameters::kVisPnPReprojError(), "5"));
-					regParam.insert(ParametersPair(Parameters::kVisMinInliers(), "5"));
+					regParam.insert(ParametersPair(Parameters::kVisMinInliers(), "6"));
 					regParam.insert(ParametersPair(Parameters::kVisCorNNDR(), "0.6"));
 					RegistrationVis reg(regParam);
 

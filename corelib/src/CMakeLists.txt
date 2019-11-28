@@ -418,6 +418,13 @@ IF(OCTOMAP_FOUND)
 	)
 ENDIF(OCTOMAP_FOUND)
 
+IF(AliceVision_FOUND)
+  SET(LIBRARIES
+    ${LIBRARIES}
+    aliceVision_mesh 
+    aliceVision_sfmDataIO)
+ENDIF(AliceVision_FOUND)
+
 IF(libfovis_FOUND)
     SET(INCLUDE_DIRS
 		${INCLUDE_DIRS}

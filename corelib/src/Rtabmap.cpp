@@ -4468,15 +4468,12 @@ int Rtabmap::detectMoreLoopClosures(
 
 	std::map<int, int> mapIds;
 	UDEBUG("remove all invalid or intermediate nodes, fill mapIds");
-	for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end();++iter)
+	for(std::map<int, Transform>::iterator iter=poses.upper_bound(0); iter!=poses.end();++iter)
 	{
-		if(iter->first > 0)
+		if(signatures.at(iter->first).getWeight() >= 0)
 		{
-			if(signatures.at(iter->first).getWeight() >= 0)
-			{
-				posesToCheckLoopClosures.insert(*iter);
-				mapIds.insert(std::make_pair(iter->first, signatures.at(iter->first).mapId()));
-			}
+			posesToCheckLoopClosures.insert(*iter);
+			mapIds.insert(std::make_pair(iter->first, signatures.at(iter->first).mapId()));
 		}
 	}
 
@@ -4517,7 +4514,18 @@ int Rtabmap::detectMoreLoopClosures(
 			   (intraSession && mapIdFrom == mapIdTo))
 			{
 
-				if(rtabmap::graph::findLink(checkedLoopClosures, from, to) == checkedLoopClosures.end())
+				bool alreadyChecked = false;
+				for(std::multimap<int, int>::iterator jter = checkedLoopClosures.lower_bound(from);
+					!alreadyChecked && jter!=checkedLoopClosures.end() && jter->first == from;
+					++jter)
+				{
+					if(to == jter->second)
+					{
+						alreadyChecked = true;
+					}
+				}
+
+				if(!alreadyChecked)
 				{
 					// only add new links and one per cluster per iteration
 					if(addedLinks.find(from) == addedLinks.end() &&

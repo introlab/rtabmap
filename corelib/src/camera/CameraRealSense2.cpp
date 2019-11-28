@@ -65,9 +65,8 @@ CameraRealSense2::CameraRealSense2(
 	depthIntrinsics_(new rs2_intrinsics),
 	rgbIntrinsics_(new rs2_intrinsics),
 	depthToRGBExtrinsics_(new rs2_extrinsics),
-	hostStartStamp_(0.0),
-	cameraStartStamp_(0.0),
 	lastImuStamp_(0.0),
+	clockSyncWarningShown_(false),
 	emitterEnabled_(true),
 	ir_(false),
 	irDepth_(true),
@@ -198,37 +197,23 @@ void CameraRealSense2::frame_callback(rs2::frame frame)
 }
 void CameraRealSense2::multiple_message_callback(rs2::frame frame)
 {
-	if(frame.get_timestamp() < UTimer::now()+1000000000)
-	{
-		// 1) In dual setup, use host time
-		// 2) ISSUE: my D435i reports timestamps for images 50 years in the future,
-		// we will use host stamp in those cases in captureImage() below.
-		// This doesn't seem to happen with acc/gyro
-		// See also realsense ros in sync mode, they take also ros time directly:
-		// https://github.com/IntelRealSense/realsense-ros/blob/7a35280f9d19d5eed5a9dc174dcc73b85fd95a46/realsense2_camera/src/base_realsense_node.cpp#L1483
-		if(hostStartStamp_ == 0)
-		{
-			hostStartStamp_ = UTimer::now();
-		}
-		if(cameraStartStamp_ == 0)
-		{
-			cameraStartStamp_ = frame.get_timestamp();
-		}
-	}
     auto stream = frame.get_profile().stream_type();
     switch (stream)
     {
         case RS2_STREAM_GYRO:
         case RS2_STREAM_ACCEL:
+        	//UWARN("IMU : Domain=%d time=%f host=%f", frame.get_frame_timestamp_domain(), frame.get_timestamp()/1000.0, UTimer::now());
             imu_callback(frame);
             break;
         case RS2_STREAM_POSE:
+        	//UWARN("POSE : Domain=%d time=%f host=%f", frame.get_frame_timestamp_domain(), frame.get_timestamp()/1000.0, UTimer::now());
         	if(odometryProvided_)
         	{
         		pose_callback(frame);
         	}
             break;
         default:
+        	//UWARN("IMG : Domain=%d time=%f host=%f", frame.get_frame_timestamp_domain(), frame.get_timestamp()/1000.0, UTimer::now());
             frame_callback(frame);
     }
 }
@@ -425,6 +410,7 @@ bool CameraRealSense2::init(const std::string & calibrationFolder, const std::st
 		delete dev_[i];
 		dev_[i] = 0;
 	}
+	clockSyncWarningShown_ = false;
 
 	auto list = ctx_->query_devices();
 	if (0 == list.size())
@@ -1021,16 +1007,7 @@ SensorData CameraRealSense2::captureImage(CameraInfo * info)
 		}
 		if (frameset.size() == 2)
 		{
-			double stamp;
-			// See ISSUE in multiple_message_callback()
-			if(frameset.get_timestamp() >= UTimer::now()+1000000000)
-			{
-				stamp = UTimer::now();
-			}
-			else
-			{
-				stamp = (frameset.get_timestamp() - cameraStartStamp_) / 1000.0 + hostStartStamp_;
-			}
+			double now = UTimer::now();
 			UDEBUG("Frameset arrived.");
 			bool is_rgb_arrived = false;
 			bool is_depth_arrived = false;
@@ -1038,9 +1015,14 @@ SensorData CameraRealSense2::captureImage(CameraInfo * info)
 			bool is_right_fisheye_arrived = false;
 			rs2::frame rgb_frame;
 			rs2::frame depth_frame;
+			double stamp = frameset.get_timestamp();
 			for (auto it = frameset.begin(); it != frameset.end(); ++it)
 			{
 				auto f = (*it);
+				if(stamp > f.get_timestamp())
+				{
+					stamp = f.get_timestamp();
+				}
 				auto stream_type = f.get_profile().stream_type();
 				if (stream_type == RS2_STREAM_COLOR || stream_type == RS2_STREAM_INFRARED)
 				{
@@ -1082,6 +1064,21 @@ SensorData CameraRealSense2::captureImage(CameraInfo * info)
 						is_left_fisheye_arrived = true;
 					}
 				}
+			}
+
+			stamp /= 1000.0; // put in seconds
+			if(stamp - now > 1000000000.0)
+			{
+				if(!clockSyncWarningShown_)
+				{
+					UWARN("Clocks are not sync with host computer! Detected stamps in far "
+							"future %f, thus using host time instead (%f)! This message "
+							"will only appear once. "
+							"See https://github.com/IntelRealSense/librealsense/issues/4505 "
+							"for more info", stamp, now);
+					clockSyncWarningShown_ = true;
+				}
+				stamp = now;
 			}
 
 			if(is_rgb_arrived && is_depth_arrived)
@@ -1150,7 +1147,7 @@ SensorData CameraRealSense2::captureImage(CameraInfo * info)
 
 			IMU imu;
 			unsigned int confidence = 0;
-			double imuStamp = frameset.get_timestamp()> UTimer::now()+1000000000?stamp*1000.0:frameset.get_timestamp();
+			double imuStamp = stamp*1000.0;
 			getPoseAndIMU(imuStamp, info->odomPose, confidence, imu);
 
 			if(odometryProvided_ && !info->odomPose.isNull())

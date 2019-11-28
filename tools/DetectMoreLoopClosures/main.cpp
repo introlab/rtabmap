@@ -34,6 +34,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UMath.h>
 #include <rtabmap/utilite/UTimer.h>
 #include <rtabmap/utilite/UFile.h>
+#include <rtabmap/utilite/UStl.h>
 #include <pcl/filters/filter.h>
 #include <pcl/io/ply_io.h>
 #include <pcl/io/obj_io.h>
@@ -54,7 +55,7 @@ void showUsage()
 			"    -i #          Iterations (default 1).\n"
 			"    --intra       Add only intra-session loop closures.\n"
 			"    --inter       Add only inter-session loop closures.\n"
-			"\n");
+			"\n%s", Parameters::showUsage());
 	exit(1);
 }
 
@@ -98,7 +99,11 @@ int main(int argc, char * argv[])
 	bool interSession = false;
 	for(int i=1; i<argc-1; ++i)
 	{
-		if(std::strcmp(argv[i], "--intra") == 0)
+		if(std::strcmp(argv[i], "--help") == 0)
+		{
+			showUsage();
+		}
+		else if(std::strcmp(argv[i], "--intra") == 0)
 		{
 			intraSession = true;
 			if(interSession)
@@ -151,6 +156,7 @@ int main(int argc, char * argv[])
 			}
 		}
 	}
+	ParametersMap inputParams = Parameters::parseArguments(argc,  argv);
 
 	std::string dbPath = argv[argc-1];
 	if(!UFile::exists(dbPath))
@@ -193,6 +199,7 @@ int main(int argc, char * argv[])
 	// Get the global optimized map
 	Rtabmap rtabmap;
 	printf("Initialization...\n");
+	uInsert(parameters, inputParams);
 	rtabmap.init(parameters, dbPath);
 
 	PrintProgressState progress;

@@ -220,7 +220,11 @@ cv::Mat RTABMAP_EXP mergeTextures(
 		int brightnessContrastRatioLow = 0,  //0=disabled, values between 0 and 100
 		int brightnessContrastRatioHigh = 0, //0=disabled, values between 0 and 100
 		bool exposureFusion = false,         //Exposure fusion can be used only with OpenCV3
-		const ProgressState * state = 0);
+		const ProgressState * state = 0,
+		unsigned char blankValue = 255,      //Gray value for blank polygons (without texture)
+		std::map<int, std::map<int, cv::Vec4d> > * gains = 0, // <Camera ID, Camera Sub Index (multi-cameras), gains Gray-R-G-B>
+		std::map<int, std::map<int, cv::Mat> > * blendingGains = 0, // <Camera ID, Camera Sub Index (multi-cameras), gains>
+		std::pair<float, float> * contrastValues = 0); // Alpha/beta contrast values
 cv::Mat RTABMAP_EXP mergeTextures(
 		pcl::TextureMesh & mesh,
 		const std::map<int, cv::Mat> & images, // raw or compressed, can be empty if memory or dbDriver should be used
@@ -238,9 +242,29 @@ cv::Mat RTABMAP_EXP mergeTextures(
 		int brightnessContrastRatioLow = 0,  //0=disabled, values between 0 and 100
 		int brightnessContrastRatioHigh = 0, //0=disabled, values between 0 and 100
 		bool exposureFusion = false,         //Exposure fusion can be used only with OpenCV3
-		const ProgressState * state = 0);
+		const ProgressState * state = 0,
+		unsigned char blankValue = 255,      //Gray value for blank polygons (without texture)
+		std::map<int, std::map<int, cv::Vec4d> > * gains = 0, // <Camera ID, Camera Sub Index (multi-cameras), gains Gray-R-G-B>
+		std::map<int, std::map<int, cv::Mat> > * blendingGains = 0, // <Camera ID, Camera Sub Index (multi-cameras), gains>
+		std::pair<float, float> * contrastValues = 0); // Alpha/beta contrast values
 
 void RTABMAP_EXP fixTextureMeshForVisualization(pcl::TextureMesh & textureMesh);
+
+bool RTABMAP_EXP multiBandTexturing(
+		const std::string & outputOBJPath,
+		const pcl::PCLPointCloud2 & cloud,
+		const std::vector<pcl::Vertices> & polygons,
+		const std::map<int, Transform> & cameraPoses,
+		const std::vector<std::map<int, pcl::PointXY> > & vertexToPixels, // required output of util3d::createTextureMesh()
+		const std::map<int, cv::Mat> & images,        // raw or compressed, can be empty if memory or dbDriver should be used
+		const std::map<int, std::vector<CameraModel> > & cameraModels, // Should match images
+		const Memory * memory = 0,                    // Should be set if images are not set
+		const DBDriver * dbDriver = 0,                // Should be set if images and memory are not set
+		int textureSize = 8192,
+		const std::string & textureFormat = "jpg",    // png, jpg
+		const std::map<int, std::map<int, cv::Vec4d> > & gains = std::map<int, std::map<int, cv::Vec4d> >(),       // optional output of util3d::mergeTextures()
+		const std::map<int, std::map<int, cv::Mat> > & blendingGains = std::map<int, std::map<int, cv::Mat> >(),    // optional output of util3d::mergeTextures()
+		const std::pair<float, float> & contrastValues = std::pair<float, float>(0,0));               // optional output of util3d::mergeTextures()
 
 cv::Mat RTABMAP_EXP computeNormals(
 		const cv::Mat & laserScan,

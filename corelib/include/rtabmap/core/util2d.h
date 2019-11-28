@@ -147,7 +147,9 @@ cv::Mat RTABMAP_EXP brightnessAndContrastAuto(
 		const cv::Mat & src,
 		const cv::Mat & mask,
 		float clipLowHistPercent=0,
-		float clipHighHistPercent=0);
+		float clipHighHistPercent=0,
+		float * alphaOut = 0,
+		float * betaOut = 0);
 
 cv::Mat RTABMAP_EXP exposureFusion(
 	const std::vector<cv::Mat> & images);
