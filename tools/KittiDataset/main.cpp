@@ -384,6 +384,7 @@ int main(int argc, char * argv[])
 								false,
 								scanStep,
 								0,
+								0,
 								scanVoxel,
 								scanNormalK,
 								scanNormalRadius,
