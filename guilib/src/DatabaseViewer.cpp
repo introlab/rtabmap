@@ -4609,9 +4609,14 @@ void DatabaseViewer::update(int value,
 
 			constraintsViewer_->removeAllClouds();
 
-			// make a fake link using globally optimized poses
-			if(graphes_.size())
+			Link link = this->findActiveLink(from, to);
+			if(link.isValid())
 			{
+				this->updateConstraintView(link, false);
+			}
+			else if(graphes_.size())
+			{
+				// make a fake link using globally optimized poses
 				std::map<int, Transform> optimizedPoses = uValueAt(graphes_, ui_->horizontalSlider_iterations->value());
 				if(optimizedPoses.size() > 0)
 				{
@@ -4625,7 +4630,6 @@ void DatabaseViewer::update(int value,
 					}
 				}
 			}
-
 			constraintsViewer_->update();
 
 		}
@@ -5058,7 +5062,8 @@ void DatabaseViewer::updateConstraintView(
 				 link.type()==Link::kLocalTimeClosure?"Time proximity link":
 				 link.type()==Link::kUserClosure?"User link":
 				 link.type()==Link::kLandmark?"Landmark link":
-				 link.type()==Link::kVirtualClosure?"Virtual link":"Undefined"));
+				 link.type()==Link::kVirtualClosure?"Virtual link":
+				 link.type()==Link::kGravity?"Gravity link":"Undefined"));
 	ui_->label_variance->setText(QString("%1, %2")
 			.arg(sqrt(link.transVariance()))
 			.arg(sqrt(link.rotVariance())));
@@ -5570,7 +5575,7 @@ void DatabaseViewer::updateConstraintButtons()
 		{
 			ui_->pushButton_reset->setEnabled(false);
 		}
-		ui_->pushButton_refine->setEnabled(true);
+		ui_->pushButton_refine->setEnabled(currentLink.from()!=currentLink.to());
 		ui_->toolButton_constraint->setEnabled(true);
 	}
 }
@@ -6913,14 +6918,43 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent)
 					{
 						if(!silent)
 						{
-							QMessageBox::information(this,
-									tr("Add constraint"),
+							if(QMessageBox::question(this,
+									tr("Add constraint from optimized graph"),
 									tr("Registration is done without vision (see %1 parameter), "
-										"a guess is taken from the optimized graph.")
-										.arg(Parameters::kRegStrategy().c_str()));
+										"do you want to use a guess from the optimized graph?"
+										""
+										"\n\nOtherwise, if "
+										"the database has images, it is recommended to use %2=2 instead so that "
+										"the guess can be found visually.")
+										.arg(Parameters::kRegStrategy().c_str()).arg(Parameters::kRegStrategy().c_str()),
+										QMessageBox::StandardButton::Yes | QMessageBox::StandardButton::No,
+										QMessageBox::StandardButton::Yes) == QMessageBox::StandardButton::Yes)
+							{
+								guess = fromIter->second.inverse() * toIter->second;
+							}
 						}
-						guess = fromIter->second.inverse() * toIter->second;
+						else
+						{
+							guess = fromIter->second.inverse() * toIter->second;
+						}
 					}
+				}
+			}
+			if(guess.isNull() && !silent)
+			{
+				if(QMessageBox::question(this,
+						tr("Add constraint without guess"),
+						tr("Registration is done without vision (see %1 parameter) and we cannot (or we don't want to) find relative "
+							"transformation between the nodes with the current graph. Do you want to use an identity "
+							"transform for ICP guess? "
+							""
+							"\n\nOtherwise, if the database has images, it is recommended to use %2=2 "
+							"instead so that the guess can be found visually.")
+							.arg(Parameters::kRegStrategy().c_str()).arg(Parameters::kRegStrategy().c_str()),
+							QMessageBox::StandardButton::Yes | QMessageBox::StandardButton::Abort,
+							QMessageBox::StandardButton::Abort) == QMessageBox::StandardButton::Yes)
+				{
+					guess.setIdentity();
 				}
 			}
 		}
@@ -7211,7 +7245,7 @@ void DatabaseViewer::rejectConstraint()
 std::multimap<int, rtabmap::Link> DatabaseViewer::updateLinksWithModifications(
 		const std::multimap<int, rtabmap::Link> & edgeConstraints)
 {
-	UINFO("linksAdded_=%d linksRefined_=%d linksRemoved_=%d", (int)linksAdded_.size(), (int)linksRefined_.size(), (int)linksRemoved_.size());
+	UDEBUG("linksAdded_=%d linksRefined_=%d linksRemoved_=%d", (int)linksAdded_.size(), (int)linksRefined_.size(), (int)linksRemoved_.size());
 
 	std::multimap<int, rtabmap::Link> links;
 	for(std::multimap<int, rtabmap::Link>::const_iterator iter=edgeConstraints.begin();
@@ -7223,7 +7257,7 @@ std::multimap<int, rtabmap::Link> DatabaseViewer::updateLinksWithModifications(
 		findIter = rtabmap::graph::findLink(linksRemoved_, iter->second.from(), iter->second.to());
 		if(findIter != linksRemoved_.end())
 		{
-			UINFO("Removed link (%d->%d, %d)", iter->second.from(), iter->second.to(), iter->second.type());
+			UDEBUG("Removed link (%d->%d, %d)", iter->second.from(), iter->second.to(), iter->second.type());
 			continue; // don't add this link
 		}
 
@@ -7231,7 +7265,7 @@ std::multimap<int, rtabmap::Link> DatabaseViewer::updateLinksWithModifications(
 		if(findIter!=linksRefined_.end())
 		{
 			links.insert(*findIter); // add the refined link
-			UINFO("Updated link (%d->%d, %d)", iter->second.from(), iter->second.to(), iter->second.type());
+			UDEBUG("Updated link (%d->%d, %d)", iter->second.from(), iter->second.to(), iter->second.type());
 			continue;
 		}
 
@@ -7247,11 +7281,11 @@ std::multimap<int, rtabmap::Link> DatabaseViewer::updateLinksWithModifications(
 		if(findIter!=linksRefined_.end())
 		{
 			links.insert(*findIter); // add the refined link
-			UINFO("Added refined link (%d->%d, %d)", findIter->second.from(), findIter->second.to(), findIter->second.type());
+			UDEBUG("Added refined link (%d->%d, %d)", findIter->second.from(), findIter->second.to(), findIter->second.type());
 			continue;
 		}
 
-		UINFO("Added link (%d->%d, %d)", iter->second.from(), iter->second.to(), iter->second.type());
+		UDEBUG("Added link (%d->%d, %d)", iter->second.from(), iter->second.to(), iter->second.type());
 		links.insert(*iter);
 	}
 

@@ -1179,6 +1179,7 @@ void ExportCloudsDialog::viewClouds(
 		else if(meshes.size())
 		{
 			viewer->setPolygonPicking(true);
+			viewer->setLighting(_ui->doubleSpinBox_transferColorRadius->value() < 0.0);
 			for(std::map<int, pcl::PolygonMesh::Ptr>::iterator iter = meshes.begin(); iter!=meshes.end(); ++iter)
 			{
 				_progressDialog->appendText(tr("Viewing the mesh %1 (%2 polygons)...").arg(iter->first).arg(iter->second->polygons.size()));
@@ -1272,7 +1273,7 @@ void ExportCloudsDialog::viewClouds(
 					viewer->addCloud(uFormat("cloud%d",iter->first), iter->second, iter->first>0?poses.at(iter->first):Transform::getIdentity());
 				}
 
-				viewer->setCloudPointSize(uFormat("cloud%d",iter->first), 2);
+				viewer->setCloudPointSize(uFormat("cloud%d",iter->first), 1);
 				_progressDialog->appendText(tr("Viewing the cloud %1 (%2 points)... done.").arg(iter->first).arg(iter->second->size()));
 			}
 		}
@@ -2358,6 +2359,40 @@ bool ExportCloudsDialog::getExportedClouds(
 					if(mesh->polygons.size()>0)
 					{
 						TexturingState texturingState(_progressDialog, false);
+
+						if(!_ui->checkBox_fromDepth->isChecked())
+						{
+							// When laser scans are exported, convert Intensity to GrayScale
+							int maxIntensity = 1;
+							// first: get max intensity
+							for(size_t i=0; i<iter->second->size(); ++i)
+							{
+								int intensity =
+										int(iter->second->points[i].r) |
+										int(iter->second->points[i].g) << 8 |
+										int(iter->second->points[i].b) << 16 |
+										int(iter->second->points[i].a) << 24;
+								if(intensity > maxIntensity)
+								{
+									maxIntensity = intensity;
+								}
+							}
+							// second: convert to grayscale
+							for(size_t i=0; i<iter->second->size(); ++i)
+							{
+								int intensity =
+										int(iter->second->points[i].r) |
+										int(iter->second->points[i].g) << 8 |
+										int(iter->second->points[i].b) << 16 |
+										int(iter->second->points[i].a) << 24;
+								intensity = intensity*255/maxIntensity;
+								iter->second->points[i].r = (unsigned char)intensity;
+								iter->second->points[i].g = (unsigned char)intensity;
+								iter->second->points[i].b = (unsigned char)intensity;
+								iter->second->points[i].a = (unsigned char)255;
+							}
+						}
+
 						util3d::denseMeshPostProcessing<pcl::PointXYZRGBNormal>(
 								mesh,
 								_ui->doubleSpinBox_meshDecimationFactor->isEnabled()?(float)_ui->doubleSpinBox_meshDecimationFactor->value():0.0f,
