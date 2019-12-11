@@ -70,6 +70,9 @@ private:
 	int bundleAdjustment_;
 	int bundleMaxFrames_;
 	float validDepthRatio_;
+	float scanMapMaxRange_;
+	int pointToPlaneK_;
+	float pointToPlaneRadius_;
 
 	Registration * regPipeline_;
 	Signature * map_;

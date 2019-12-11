@@ -27,19 +27,17 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "rtabmap/core/OdometryInfo.h"
 #include "rtabmap/core/Memory.h"
-#include "rtabmap/core/VisualWord.h"
 #include "rtabmap/core/Signature.h"
 #include "rtabmap/core/RegistrationVis.h"
+#include "rtabmap/core/util3d.h"
 #include "rtabmap/core/util3d_transforms.h"
 #include "rtabmap/core/util3d_registration.h"
-#include "rtabmap/core/util3d_correspondences.h"
 #include "rtabmap/core/util3d_motion_estimation.h"
 #include "rtabmap/core/util3d_filtering.h"
+#include "rtabmap/core/util3d_surface.h"
 #include "rtabmap/core/Optimizer.h"
 #include "rtabmap/core/VWDictionary.h"
-#include "rtabmap/core/util3d.h"
 #include "rtabmap/core/Graph.h"
-#include "rtflann/flann.hpp"
 #include "rtabmap/utilite/ULogger.h"
 #include "rtabmap/utilite/UTimer.h"
 #include "rtabmap/utilite/UMath.h"
@@ -66,9 +64,12 @@ OdometryF2M::OdometryF2M(const ParametersMap & parameters) :
 	scanMaximumMapSize_(Parameters::defaultOdomF2MScanMaxSize()),
 	scanSubtractRadius_(Parameters::defaultOdomF2MScanSubtractRadius()),
 	scanSubtractAngle_(Parameters::defaultOdomF2MScanSubtractAngle()),
+	scanMapMaxRange_(Parameters::defaultOdomF2MScanRange()),
 	bundleAdjustment_(Parameters::defaultOdomF2MBundleAdjustment()),
 	bundleMaxFrames_(Parameters::defaultOdomF2MBundleAdjustmentMaxFrames()),
 	validDepthRatio_(Parameters::defaultOdomF2MValidDepthRatio()),
+	pointToPlaneK_(Parameters::defaultIcpPointToPlaneK()),
+	pointToPlaneRadius_(Parameters::defaultIcpPointToPlaneRadius()),
 	map_(new Signature(-1)),
 	lastFrame_(new Signature(1)),
 	lastFrameOldestNewId_(0),
@@ -88,17 +89,21 @@ OdometryF2M::OdometryF2M(const ParametersMap & parameters) :
 	{
 		scanSubtractAngle_ *= M_PI/180.0f;
 	}
+	Parameters::parse(parameters, Parameters::kOdomF2MScanRange(), scanMapMaxRange_);
 	Parameters::parse(parameters, Parameters::kOdomF2MBundleAdjustment(), bundleAdjustment_);
 	Parameters::parse(parameters, Parameters::kOdomF2MBundleAdjustmentMaxFrames(), bundleMaxFrames_);
 	Parameters::parse(parameters, Parameters::kOdomF2MValidDepthRatio(), validDepthRatio_);
+
+	Parameters::parse(parameters_, Parameters::kIcpPointToPlaneK(), pointToPlaneK_);
+	Parameters::parse(parameters_, Parameters::kIcpPointToPlaneRadius(), pointToPlaneRadius_);
 
 	UASSERT(bundleMaxFrames_ >= 0);
 	ParametersMap bundleParameters = parameters;
 	if(bundleAdjustment_ > 0)
 	{
 		if((bundleAdjustment_==1 && Optimizer::isAvailable(Optimizer::kTypeG2O)) ||
-		   (bundleAdjustment_==2 && Optimizer::isAvailable(Optimizer::kTypeCVSBA)) ||
-		   (bundleAdjustment_==3 && Optimizer::isAvailable(Optimizer::kTypeCeres)))
+		(bundleAdjustment_==2 && Optimizer::isAvailable(Optimizer::kTypeCVSBA)) ||
+		(bundleAdjustment_==3 && Optimizer::isAvailable(Optimizer::kTypeCeres)))
 		{
 			// disable bundle in RegistrationVis as we do it already here
 			uInsert(bundleParameters, ParametersPair(Parameters::kVisBundleAdjustment(), "0"));
@@ -911,12 +916,29 @@ Transform OdometryF2M::computeTransform(
 					if(lastFrame_->sensorData().laserScanRaw().size())
 					{
 						pcl::PointCloud<pcl::PointNormal>::Ptr mapCloudNormals = util3d::laserScanToPointCloudNormal(mapScan, tmpMap.sensorData().laserScanRaw().localTransform());
-						pcl::PointCloud<pcl::PointNormal>::Ptr frameCloudNormals = util3d::laserScanToPointCloudNormal(lastFrame_->sensorData().laserScanRaw(), newFramePose * lastFrame_->sensorData().laserScanRaw().localTransform());
-
+						Transform viewpoint =  newFramePose * lastFrame_->sensorData().laserScanRaw().localTransform();
+						pcl::PointCloud<pcl::PointNormal>::Ptr frameCloudNormals (new pcl::PointCloud<pcl::PointNormal>());
+						
+						if(scanMapMaxRange_ > 0)
+						{
+							frameCloudNormals = util3d::laserScanToPointCloudNormal(
+									lastFrame_->sensorData().laserScanRaw());
+							frameCloudNormals = util3d::cropBox(frameCloudNormals,
+									Eigen::Vector4f(-scanMapMaxRange_ / 2, -scanMapMaxRange_ / 2,-scanMapMaxRange_ / 2, 0),
+									Eigen::Vector4f(scanMapMaxRange_ / 2,scanMapMaxRange_ / 2,scanMapMaxRange_ / 2, 0)
+									);
+							frameCloudNormals = util3d::transformPointCloud(frameCloudNormals, viewpoint);
+						} else
+						{
+							frameCloudNormals = util3d::laserScanToPointCloudNormal(
+									lastFrame_->sensorData().laserScanRaw(), viewpoint);
+						}
+						
 						pcl::IndicesPtr frameCloudNormalsIndices(new std::vector<int>);
 						int newPoints;
 						if(mapCloudNormals->size() && scanSubtractRadius_ > 0.0f)
 						{
+							// remove points that overlap (the ones found in both clouds)
 							frameCloudNormalsIndices = util3d::subtractFiltering(
 									frameCloudNormals,
 									pcl::IndicesPtr(new std::vector<int>),
@@ -933,72 +955,108 @@ Transform OdometryF2M::computeTransform(
 
 						if(newPoints)
 						{
-							scansBuffer_.push_back(std::make_pair(frameCloudNormals, frameCloudNormalsIndices));
+							if (scanMapMaxRange_ > 0) {
+								// Copying new points to tmp cloud
+								// These are the points that have no overlap between mapScan and lastFrame
+								pcl::PointCloud<pcl::PointNormal> tmp;
+								pcl::copyPointCloud(*frameCloudNormals, *frameCloudNormalsIndices, tmp);
 
-							//remove points if too big
-							UDEBUG("scansBuffer=%d, mapSize=%d newPoints=%d maxPoints=%d",
-									(int)scansBuffer_.size(),
-									int(mapCloudNormals->size()),
-									newPoints,
-									scanMaximumMapSize_);
-
-							if(scansBuffer_.size() > 1 &&
-								int(mapCloudNormals->size() + newPoints) > scanMaximumMapSize_)
-							{
-								//regenerate the local map
-								mapCloudNormals->clear();
-								std::list<int> toRemove;
-								int i = int(scansBuffer_.size())-1;
-								for(; i>=0; --i)
+								if (int(mapCloudNormals->size() + newPoints) > scanMaximumMapSize_) // 20 000 points
 								{
-									int pointsToAdd = scansBuffer_[i].second->size()?scansBuffer_[i].second->size():scansBuffer_[i].first->size();
-									if((int)mapCloudNormals->size() + pointsToAdd > scanMaximumMapSize_ ||
-										i == 0)
+									// Print mapSize
+									UINFO("mapSize=%d newPoints=%d maxPoints=%d",
+										  int(mapCloudNormals->size()),
+										  newPoints,
+										  scanMaximumMapSize_);
+
+									*mapCloudNormals += tmp;
+									cv::Point3f boxMin (-scanMapMaxRange_/2, -scanMapMaxRange_/2, -scanMapMaxRange_/2);
+									cv::Point3f boxMax (scanMapMaxRange_/2, scanMapMaxRange_/2, scanMapMaxRange_/2);
+
+									boxMin = util3d::transformPoint(boxMin, viewpoint.translation());
+									boxMax = util3d::transformPoint(boxMax, viewpoint.translation());
+
+									mapCloudNormals = util3d::cropBox(mapCloudNormals, Eigen::Vector4f(boxMin.x, boxMin.y, boxMin.z, 0 ), Eigen::Vector4f(boxMax.x, boxMax.y, boxMax.z, 0 ));
+
+								} else {
+									*mapCloudNormals += tmp;
+								}
+
+								mapCloudNormals = util3d::voxelize(mapCloudNormals, scanSubtractRadius_);
+								pcl::PointCloud<pcl::PointXYZI>::Ptr mapCloud (new pcl::PointCloud<pcl::PointXYZI> ());
+								copyPointCloud(*mapCloudNormals, *mapCloud);
+								pcl::PointCloud<pcl::Normal>::Ptr normals = util3d::computeNormals(mapCloud, pointToPlaneK_, pointToPlaneRadius_, Eigen::Vector3f(viewpoint.x(), viewpoint.y(), viewpoint.z()));
+								copyPointCloud(*normals, *mapCloudNormals);
+
+							} else {
+								scansBuffer_.push_back(std::make_pair(frameCloudNormals, frameCloudNormalsIndices));
+
+								//remove points if too big
+								UDEBUG("scansBuffer=%d, mapSize=%d newPoints=%d maxPoints=%d",
+									   (int)scansBuffer_.size(),
+									   int(mapCloudNormals->size()),
+									   newPoints,
+									   scanMaximumMapSize_);
+
+								if(scansBuffer_.size() > 1 &&
+								   int(mapCloudNormals->size() + newPoints) > scanMaximumMapSize_)
+								{
+									//regenerate the local map
+									mapCloudNormals->clear();
+									std::list<int> toRemove;
+									int i = int(scansBuffer_.size())-1;
+									for(; i>=0; --i)
 									{
-										*mapCloudNormals += *scansBuffer_[i].first;
-										break;
-									}
-									else
-									{
-										if(scansBuffer_[i].second->size())
+										int pointsToAdd = scansBuffer_[i].second->size()?scansBuffer_[i].second->size():scansBuffer_[i].first->size();
+										if((int)mapCloudNormals->size() + pointsToAdd > scanMaximumMapSize_ ||
+										   i == 0)
 										{
-											pcl::PointCloud<pcl::PointNormal> tmp;
-											pcl::copyPointCloud(*scansBuffer_[i].first, *scansBuffer_[i].second, tmp);
-											*mapCloudNormals += tmp;
+											*mapCloudNormals += *scansBuffer_[i].first;
+											break;
 										}
 										else
 										{
-											*mapCloudNormals += *scansBuffer_[i].first;
+											if(scansBuffer_[i].second->size())
+											{
+												pcl::PointCloud<pcl::PointNormal> tmp;
+												pcl::copyPointCloud(*scansBuffer_[i].first, *scansBuffer_[i].second, tmp);
+												*mapCloudNormals += tmp;
+											}
+											else
+											{
+												*mapCloudNormals += *scansBuffer_[i].first;
+											}
 										}
 									}
-								}
-								// remove old clouds
-								if(i > 0)
-								{
-									std::vector<std::pair<pcl::PointCloud<pcl::PointNormal>::Ptr, pcl::IndicesPtr> > scansTmp(scansBuffer_.size()-i);
-									int oi = 0;
-									for(; i<(int)scansBuffer_.size(); ++i)
+									// remove old clouds
+									if(i > 0)
 									{
-										UASSERT(oi < (int)scansTmp.size());
-										scansTmp[oi++] = scansBuffer_[i];
+										std::vector<std::pair<pcl::PointCloud<pcl::PointNormal>::Ptr, pcl::IndicesPtr> > scansTmp(scansBuffer_.size()-i);
+										int oi = 0;
+										for(; i<(int)scansBuffer_.size(); ++i)
+										{
+											UASSERT(oi < (int)scansTmp.size());
+											scansTmp[oi++] = scansBuffer_[i];
+										}
+										scansBuffer_ = scansTmp;
 									}
-									scansBuffer_ = scansTmp;
-								}
-							}
-							else
-							{
-								// just append the last cloud
-								if(scansBuffer_.back().second->size())
-								{
-									pcl::PointCloud<pcl::PointNormal> tmp;
-									pcl::copyPointCloud(*scansBuffer_.back().first, *scansBuffer_.back().second, tmp);
-									*mapCloudNormals += tmp;
 								}
 								else
 								{
-									*mapCloudNormals += *scansBuffer_.back().first;
+									// just append the last cloud
+									if(scansBuffer_.back().second->size())
+									{
+										pcl::PointCloud<pcl::PointNormal> tmp;
+										pcl::copyPointCloud(*scansBuffer_.back().first, *scansBuffer_.back().second, tmp);
+										*mapCloudNormals += tmp;
+									}
+									else
+									{
+										*mapCloudNormals += *scansBuffer_.back().first;
+									}
 								}
 							}
+
 							if(mapScan.is2d())
 							{
 								Transform mapViewpoint(-newFramePose.x(), -newFramePose.y(),0,0,0,0);
@@ -1204,7 +1262,11 @@ Transform OdometryF2M::computeTransform(
 				{
 					frameValid = true;
 					pcl::PointCloud<pcl::PointNormal>::Ptr mapCloudNormals = util3d::laserScanToPointCloudNormal(lastFrame_->sensorData().laserScanRaw(), newFramePose * lastFrame_->sensorData().laserScanRaw().localTransform());
-					scansBuffer_.push_back(std::make_pair(mapCloudNormals, pcl::IndicesPtr(new std::vector<int>)));
+					if (scanMapMaxRange_ > 0 ){
+						UINFO("Local map will be updated using range instead of time with range threshold set at %f", scanMapMaxRange_);
+					} else {
+						scansBuffer_.push_back(std::make_pair(mapCloudNormals, pcl::IndicesPtr(new std::vector<int>)));
+					}
 					if(lastFrame_->sensorData().laserScanRaw().is2d())
 					{
 						Transform mapViewpoint(-newFramePose.x(), -newFramePose.y(),0,0,0,0);
