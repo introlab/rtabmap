@@ -67,10 +67,10 @@ private:
 	int scanMaximumMapSize_;
 	float scanSubtractRadius_;
 	float scanSubtractAngle_;
+	float scanMapMaxRange_;
 	int bundleAdjustment_;
 	int bundleMaxFrames_;
 	float validDepthRatio_;
-	float scanMapMaxRange_;
 	int pointToPlaneK_;
 	float pointToPlaneRadius_;
 
