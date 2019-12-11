@@ -929,10 +929,10 @@ Transform OdometryF2M::computeTransform(
 									);
 							frameCloudNormals = util3d::transformPointCloud(frameCloudNormals, viewpoint);
 						} else
-							{
+						{
 							frameCloudNormals = util3d::laserScanToPointCloudNormal(
 									lastFrame_->sensorData().laserScanRaw(), viewpoint);
-							}
+						}
 						
 						pcl::IndicesPtr frameCloudNormalsIndices(new std::vector<int>);
 						int newPoints;
