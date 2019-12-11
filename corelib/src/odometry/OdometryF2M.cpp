@@ -94,8 +94,8 @@ OdometryF2M::OdometryF2M(const ParametersMap & parameters) :
 	Parameters::parse(parameters, Parameters::kOdomF2MBundleAdjustmentMaxFrames(), bundleMaxFrames_);
 	Parameters::parse(parameters, Parameters::kOdomF2MValidDepthRatio(), validDepthRatio_);
 
-	Parameters::parse(parameters_, Parameters::kIcpPointToPlaneK(), pointToPlaneK_);
-	Parameters::parse(parameters_, Parameters::kIcpPointToPlaneRadius(), pointToPlaneRadius_);
+	Parameters::parse(parameters, Parameters::kIcpPointToPlaneK(), pointToPlaneK_);
+	Parameters::parse(parameters, Parameters::kIcpPointToPlaneRadius(), pointToPlaneRadius_);
 
 	UASSERT(bundleMaxFrames_ >= 0);
 	ParametersMap bundleParameters = parameters;
