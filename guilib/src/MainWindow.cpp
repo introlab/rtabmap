@@ -4876,10 +4876,17 @@ void MainWindow::editDatabase()
 	}
 }
 
+Camera * MainWindow::createCamera()
+{
+	return _preferencesDialog->createCamera();
+}
+
 void MainWindow::startDetection()
 {
 	UDEBUG("");
 	ParametersMap parameters = _preferencesDialog->getAllParameters();
+	uInsert(parameters, this->getCustomParameters());
+
 	// verify source with input rates
 	if(_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcImages ||
 	   _preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcVideo ||
@@ -4973,7 +4980,7 @@ void MainWindow::startDetection()
 	}
 
 
-	Camera * camera = _preferencesDialog->createCamera();
+	Camera * camera = this->createCamera();
 	if(!camera)
 	{
 		Q_EMIT stateChanged(kInitialized);

@@ -298,6 +298,9 @@ protected:
 	void setNewDatabasePathOutput(const QString & newDatabasePathOutput) {_newDatabasePathOutput = newDatabasePathOutput;}
 	const QString & newDatabasePathOutput() const { return _newDatabasePathOutput; }
 
+	virtual ParametersMap getCustomParameters() {return ParametersMap();}
+	virtual Camera* createCamera();
+
 private:
 	Ui_mainWindow * _ui;
 
