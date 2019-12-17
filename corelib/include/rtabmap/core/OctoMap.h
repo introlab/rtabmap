@@ -194,7 +194,8 @@ public:
 			std::vector<int> * obstacleIndices = 0,
 			std::vector<int> * emptyIndices = 0,
 			std::vector<int> * groundIndices = 0,
-			bool originalRefPoints = true) const;
+			bool originalRefPoints = true,
+			std::vector<int> * frontierIndices = 0) const;
 
 	cv::Mat createProjectionMap(
 			float & xMin,
