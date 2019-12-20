@@ -1032,9 +1032,10 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr OctoMap::createCloud(
 		{
 			octomap::point3d pt = octree_->keyToCoord(it.getKey());
 
-			if(frontierIndices !=0 && (!octree_->search( pt.x()+octree_->getNodeSize(treeDepth), pt.y(), pt.z() ) || !octree_->search( pt.x()-octree_->getNodeSize(treeDepth), pt.y(), pt.z() ) 
-			|| !octree_->search( pt.x(), pt.y()+octree_->getNodeSize(treeDepth), pt.z() ) || !octree_->search( pt.x(), pt.y()-octree_->getNodeSize(treeDepth), pt.z() ) 
-			|| !octree_->search( pt.x(), pt.y(), pt.z()+octree_->getNodeSize(treeDepth) ) || !octree_->search( pt.x(), pt.y(), pt.z()-octree_->getNodeSize(treeDepth) ) )) //ajouter 1 au key ?
+			if(frontierIndices !=0 &&
+				(!octree_->search( pt.x()+octree_->getNodeSize(treeDepth), pt.y(), pt.z(), treeDepth) || !octree_->search( pt.x()-octree_->getNodeSize(treeDepth), pt.y(), pt.z(), treeDepth) ||
+				 !octree_->search( pt.x(), pt.y()+octree_->getNodeSize(treeDepth), pt.z(), treeDepth) || !octree_->search( pt.x(), pt.y()-octree_->getNodeSize(treeDepth), pt.z(), treeDepth) ||
+				 !octree_->search( pt.x(), pt.y(), pt.z()+octree_->getNodeSize(treeDepth), treeDepth) || !octree_->search( pt.x(), pt.y(), pt.z()-octree_->getNodeSize(treeDepth), treeDepth) )) //ajouter 1 au key ?
 			{
 				//unknown neighbor FACE cell
 				frontierIndices->at(fi++) = oi;
