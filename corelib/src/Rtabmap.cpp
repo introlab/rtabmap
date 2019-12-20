@@ -1167,7 +1167,7 @@ bool Rtabmap::process(
 		{
 			_optimizedPoses.erase(rehearsedId);
 		}
-		else if(signature->getWeight() >= 0)
+		else
 		{
 			if(_rgbdLinearUpdate > 0.0f || _rgbdAngularUpdate > 0.0f)
 			{
@@ -1177,10 +1177,10 @@ bool Rtabmap::process(
 				const std::multimap<int, Link> & links = signature->getLinks();
 				if(links.size() && links.begin()->second.type() == Link::kNeighbor)
 				{
-					// don't do this if there are intermediate nodes
 					const Signature * s = _memory->getSignature(links.begin()->second.to());
 					UASSERT(s!=0);
-					if(s->getWeight() >= 0)
+					// don't filter if the new node is not intermediate but previous one is
+					if(signature->getWeight() < 0 || s->getWeight() >= 0)
 					{
 						float x,y,z, roll,pitch,yaw;
 						links.begin()->second.transform().getTranslationAndEulerAngles(x,y,z, roll,pitch,yaw);
