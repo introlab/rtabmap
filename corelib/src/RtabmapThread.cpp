@@ -319,7 +319,7 @@ bool RtabmapThread::handleEvent(UEvent* event)
 	{
 		if(event->getClassName().compare("IMUEvent") == 0)
 		{
-			// IMU events are published at high frequency, exit now
+			// IMU events are published at high frequency, early exit
 			return false;
 		}
 		else if(event->getClassName().compare("CameraEvent") == 0)

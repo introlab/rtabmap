@@ -38,6 +38,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 class QSpinBox;
 class QCheckBox;
 class QPushButton;
+class QLabel;
 
 namespace rtabmap {
 
@@ -63,9 +64,9 @@ private:
 	CloudViewer* cloudView_;
 	bool processingImages_;
 	QSpinBox * decimationSpin_;
-	int validDecimationValue_;
 	ParametersMap parameters_;
 	QPushButton * pause_;
+	QLabel * imageSizeLabel_;
 	QCheckBox * showCloudCheckbox_;
 	QCheckBox * showScanCheckbox_;
 };

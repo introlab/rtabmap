@@ -167,6 +167,9 @@ public:
 	bool isLabelsShown() const;
 	bool isLandmarksShown() const;
 	double landmarkVisSize() const;
+	bool isIMUGravityShown(int index) const;
+	double getIMUGravityLength(int index) const;
+	bool isIMUAccShown() const;
 	bool isMarkerDetection() const;
 	double getMarkerLength() const;
 	double getVoxel() const;
@@ -430,6 +433,8 @@ private:
 	QVector<QCheckBox*> _3dRenderingShowFeatures;
 	QVector<QCheckBox*> _3dRenderingShowFrustums;
 	QVector<QSpinBox*> _3dRenderingPtSizeFeatures;
+	QVector<QCheckBox*> _3dRenderingGravity;
+	QVector<QDoubleSpinBox*> _3dRenderingGravityLength;
 };
 
 Q_DECLARE_OPERATORS_FOR_FLAGS(PreferencesDialog::PANEL_FLAGS)

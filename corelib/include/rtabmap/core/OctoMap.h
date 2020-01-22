@@ -195,7 +195,8 @@ public:
 			std::vector<int> * emptyIndices = 0,
 			std::vector<int> * groundIndices = 0,
 			bool originalRefPoints = true,
-			std::vector<int> * frontierIndices = 0) const;
+			std::vector<int> * frontierIndices = 0,
+			std::vector<double> * cloudProb = 0) const;
 
 	cv::Mat createProjectionMap(
 			float & xMin,

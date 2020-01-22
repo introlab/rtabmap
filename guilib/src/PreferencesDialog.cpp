@@ -480,6 +480,14 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_3dRenderingPtSizeFeatures[0] = _ui->spinBox_ptsize_features;
 	_3dRenderingPtSizeFeatures[1] = _ui->spinBox_ptsize_odom_features;
 
+	_3dRenderingGravity.resize(2);
+	_3dRenderingGravity[0] = _ui->checkBox_showIMUGravity;
+	_3dRenderingGravity[1] = _ui->checkBox_showIMUGravity_odom;
+
+	_3dRenderingGravityLength.resize(2);
+	_3dRenderingGravityLength[0] = _ui->doubleSpinBox_lengthIMUGravity;
+	_3dRenderingGravityLength[1] = _ui->doubleSpinBox_lengthIMUGravity_odom;
+
 	for(int i=0; i<2; ++i)
 	{
 		connect(_3dRenderingShowClouds[i], SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
@@ -502,6 +510,9 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 		connect(_3dRenderingOpacityScan[i], SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 		connect(_3dRenderingPtSizeScan[i], SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 		connect(_3dRenderingPtSizeFeatures[i], SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
+		connect(_3dRenderingGravity[i], SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
+		connect(_3dRenderingGravityLength[i], SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
+
 	}
 	connect(_ui->doubleSpinBox_voxel, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 	connect(_ui->doubleSpinBox_noiseRadius, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
@@ -519,6 +530,8 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->checkBox_showLabels, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 	connect(_ui->checkBox_showLandmarks, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 	connect(_ui->doubleSpinBox_landmarkSize, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
+	connect(_ui->checkBox_showIMUGravity, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
+	connect(_ui->checkBox_showIMUAcc, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 
 	connect(_ui->radioButton_noFiltering, SIGNAL(toggled(bool)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 	connect(_ui->radioButton_nodeFiltering, SIGNAL(toggled(bool)), this, SLOT(makeObsoleteCloudRenderingPanel()));
@@ -1649,6 +1662,8 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 			_3dRenderingOpacityScan[i]->setValue(i==0?1.0:0.5);
 			_3dRenderingPtSizeScan[i]->setValue(2);
 			_3dRenderingPtSizeFeatures[i]->setValue(3);
+			_3dRenderingGravity[i]->setChecked(false);
+			_3dRenderingGravityLength[i]->setValue(1);
 		}
 		_ui->doubleSpinBox_voxel->setValue(0);
 		_ui->doubleSpinBox_noiseRadius->setValue(0);
@@ -1668,6 +1683,8 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->checkBox_showLabels->setChecked(false);
 		_ui->checkBox_showLandmarks->setChecked(true);
 		_ui->doubleSpinBox_landmarkSize->setValue(0);
+		_ui->checkBox_showIMUGravity->setChecked(false);
+		_ui->checkBox_showIMUAcc->setChecked(false);
 
 		_ui->doubleSpinBox_mesh_angleTolerance->setValue(15.0);
 		_ui->groupBox_organized->setChecked(false);
@@ -2094,6 +2111,9 @@ void PreferencesDialog::readGuiSettings(const QString & filePath)
 		_3dRenderingOpacityScan[i]->setValue(settings.value(QString("opacityScan%1").arg(i), _3dRenderingOpacityScan[i]->value()).toDouble());
 		_3dRenderingPtSizeScan[i]->setValue(settings.value(QString("ptSizeScan%1").arg(i), _3dRenderingPtSizeScan[i]->value()).toInt());
 		_3dRenderingPtSizeFeatures[i]->setValue(settings.value(QString("ptSizeFeatures%1").arg(i), _3dRenderingPtSizeFeatures[i]->value()).toInt());
+		_3dRenderingGravity[i]->setChecked(settings.value(QString("gravityShown%1").arg(i), _3dRenderingGravity[i]->isChecked()).toBool());
+		_3dRenderingGravityLength[i]->setValue(settings.value(QString("gravityLength%1").arg(i), _3dRenderingGravityLength[i]->value()).toDouble());
+
 	}
 	_ui->doubleSpinBox_voxel->setValue(settings.value("cloudVoxel", _ui->doubleSpinBox_voxel->value()).toDouble());
 	_ui->doubleSpinBox_noiseRadius->setValue(settings.value("cloudNoiseRadius", _ui->doubleSpinBox_noiseRadius->value()).toDouble());
@@ -2111,6 +2131,8 @@ void PreferencesDialog::readGuiSettings(const QString & filePath)
 	_ui->checkBox_showLabels->setChecked(settings.value("showLabels", _ui->checkBox_showLabels->isChecked()).toBool());
 	_ui->checkBox_showLandmarks->setChecked(settings.value("showLandmarks", _ui->checkBox_showLandmarks->isChecked()).toBool());
 	_ui->doubleSpinBox_landmarkSize->setValue(settings.value("landmarkSize", _ui->doubleSpinBox_landmarkSize->value()).toDouble());
+	_ui->checkBox_showIMUGravity->setChecked(settings.value("showIMUGravity", _ui->checkBox_showIMUGravity->isChecked()).toBool());
+	_ui->checkBox_showIMUAcc->setChecked(settings.value("showIMUAcc", _ui->checkBox_showIMUAcc->isChecked()).toBool());
 
 	_ui->radioButton_noFiltering->setChecked(settings.value("noFiltering", _ui->radioButton_noFiltering->isChecked()).toBool());
 	_ui->radioButton_nodeFiltering->setChecked(settings.value("cloudFiltering", _ui->radioButton_nodeFiltering->isChecked()).toBool());
@@ -2551,6 +2573,8 @@ void PreferencesDialog::writeGuiSettings(const QString & filePath) const
 		settings.setValue(QString("opacityScan%1").arg(i), _3dRenderingOpacityScan[i]->value());
 		settings.setValue(QString("ptSizeScan%1").arg(i), _3dRenderingPtSizeScan[i]->value());
 		settings.setValue(QString("ptSizeFeatures%1").arg(i), _3dRenderingPtSizeFeatures[i]->value());
+		settings.setValue(QString("gravityShown%1").arg(i), _3dRenderingGravity[i]->isChecked());
+		settings.setValue(QString("gravityLength%1").arg(i), _3dRenderingGravityLength[i]->value());
 	}
 	settings.setValue("cloudVoxel",             _ui->doubleSpinBox_voxel->value());
 	settings.setValue("cloudNoiseRadius",       _ui->doubleSpinBox_noiseRadius->value());
@@ -2568,6 +2592,8 @@ void PreferencesDialog::writeGuiSettings(const QString & filePath) const
 	settings.setValue("showLabels", _ui->checkBox_showLabels->isChecked());
 	settings.setValue("showLandmarks", _ui->checkBox_showLandmarks->isChecked());
 	settings.setValue("landmarkSize", _ui->doubleSpinBox_landmarkSize->value());
+	settings.setValue("showIMUGravity", _ui->checkBox_showIMUGravity->isChecked());
+	settings.setValue("showIMUAcc", _ui->checkBox_showIMUAcc->isChecked());
 
 
 	settings.setValue("noFiltering",             _ui->radioButton_noFiltering->isChecked());
@@ -4898,6 +4924,20 @@ bool PreferencesDialog::isLandmarksShown() const
 double PreferencesDialog::landmarkVisSize() const
 {
 	return _ui->doubleSpinBox_landmarkSize->value();
+}
+bool PreferencesDialog::isIMUGravityShown(int index) const
+{
+	UASSERT(index >= 0 && index <= 1);
+	return _3dRenderingGravity[index]->isChecked();
+}
+double PreferencesDialog::getIMUGravityLength(int index) const
+{
+	UASSERT(index >= 0 && index <= 1);
+	return _3dRenderingGravityLength[index]->value();
+}
+bool PreferencesDialog::isIMUAccShown() const
+{
+	return _ui->checkBox_showIMUAcc->isChecked();
 }
 bool PreferencesDialog::isMarkerDetection() const
 {

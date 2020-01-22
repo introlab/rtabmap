@@ -293,7 +293,7 @@ void ImageView::loadSettings(QSettings & settings, const QString & group)
 	this->setGraphicsViewMode(settings.value("graphics_view", this->isGraphicsViewMode()).toBool());
 	this->setGraphicsViewScaled(settings.value("graphics_view_scale", this->isGraphicsViewScaled()).toBool());
 	this->setGraphicsViewScaledToHeight(settings.value("graphics_view_scale_to_height", this->isGraphicsViewScaledToHeight()).toBool());
-	int colorMap = settings.value("colormap", 0).toInt();
+	int colorMap = settings.value("colormap", 2).toInt();
 	_colorMapWhiteToBlack->setChecked(colorMap==0);
 	_colorMapBlackToWhite->setChecked(colorMap==1);
 	_colorMapRedToBlue->setChecked(colorMap==2);

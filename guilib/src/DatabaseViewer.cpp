@@ -5002,14 +5002,21 @@ void DatabaseViewer::updateConstraintView()
 		Link link = this->findActiveLink(ids_.at(ui_->horizontalSlider_A->value()), ids_.at(ui_->horizontalSlider_B->value()));
 		if(link.isValid())
 		{
-			if(link.type() == Link::kNeighbor ||
-			   link.type() == Link::kNeighborMerged)
+			UDEBUG("link %d->%d type=%d", link.from(), link.to(), link.type());
+			if((link.type() == Link::kNeighbor ||
+			   link.type() == Link::kNeighborMerged) &&
+					ui_->horizontalSlider_neighbors->value() >= 0 && ui_->horizontalSlider_neighbors->value() < neighborLinks_.size())
 			{
 				this->updateConstraintView(neighborLinks_.at(ui_->horizontalSlider_neighbors->value()), false);
 			}
-			else
+			else if((link.type() != Link::kPosePrior || link.type() != Link::kGravity) &&
+					ui_->horizontalSlider_loops->value() >= 0 && ui_->horizontalSlider_loops->value() < loopLinks_.size())
 			{
 				this->updateConstraintView(loopLinks_.at(ui_->horizontalSlider_loops->value()), false);
+			}
+			else
+			{
+				this->updateConstraintView(link, false);
 			}
 		}
 	}
@@ -5047,6 +5054,13 @@ void DatabaseViewer::updateConstraintView(
 		}
 	}
 	rtabmap::Transform t = link.transform();
+	if(link.type() == Link::kGravity)
+	{
+		// remove yaw, keep only roll and pitch
+		float roll, pitch, yaw;
+		t.getEulerAngles(roll, pitch, yaw);
+		t = Transform(0,0,0,roll,pitch,0);
+	}
 
 	ui_->label_constraint->clear();
 	ui_->label_constraint_opt->clear();
@@ -6369,7 +6383,15 @@ void DatabaseViewer::updateOctomapView()
 					pcl::IndicesPtr obstacles(new std::vector<int>);
 					pcl::IndicesPtr empty(new std::vector<int>);
 					pcl::IndicesPtr ground(new std::vector<int>);
-					pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = octomap_->createCloud(ui_->spinBox_grid_depth->value(), obstacles.get(), empty.get(), ground.get());
+					std::vector<double> prob;
+					pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = octomap_->createCloud(
+							ui_->spinBox_grid_depth->value(),
+							obstacles.get(),
+							empty.get(),
+							ground.get(),
+							true,
+							0,
+							&prob);
 
 					if(octomap_->hasColor())
 					{
@@ -6398,11 +6420,35 @@ void DatabaseViewer::updateOctomapView()
 
 					if(ui_->checkBox_grid_empty->isChecked())
 					{
-						pcl::PointCloud<pcl::PointXYZ>::Ptr emptyCloud(new pcl::PointCloud<pcl::PointXYZ>);
-						pcl::copyPointCloud(*cloud, *empty, *emptyCloud);
-						occupancyGridViewer_->addCloud("octomap_empty", emptyCloud, Transform::getIdentity(), QColor(ui_->lineEdit_emptyColor->text()));
-						occupancyGridViewer_->setCloudOpacity("octomap_empty", 0.5);
-						occupancyGridViewer_->setCloudPointSize("octomap_empty", 5);
+						if(prob.size()==cloud->size())
+						{
+							float occThr = Parameters::defaultGridGlobalOccupancyThr();
+							Parameters::parse(ui_->parameters_toolbox->getParameters(), Parameters::kGridGlobalOccupancyThr(), occThr);
+							pcl::PointCloud<pcl::PointXYZRGB>::Ptr emptyCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+							emptyCloud->resize(empty->size());
+							for(unsigned int i=0;i<empty->size(); ++i)
+							{
+								emptyCloud->points.at(i).x = cloud->points.at(empty->at(i)).x;
+								emptyCloud->points.at(i).y = cloud->points.at(empty->at(i)).y;
+								emptyCloud->points.at(i).z = cloud->points.at(empty->at(i)).z;
+								QColor hsv = QColor::fromHsv(int(prob.at(empty->at(i))/occThr*240.0), 255, 255, 255);
+								QRgb color = hsv.rgb();
+								emptyCloud->points.at(i).r = qRed(color);
+								emptyCloud->points.at(i).g = qGreen(color);
+								emptyCloud->points.at(i).b = qBlue(color);
+							}
+							occupancyGridViewer_->addCloud("octomap_empty", emptyCloud, Transform::getIdentity(), QColor(ui_->lineEdit_emptyColor->text()));
+							occupancyGridViewer_->setCloudOpacity("octomap_empty", 0.5);
+							occupancyGridViewer_->setCloudPointSize("octomap_empty", 5);
+						}
+						else
+						{
+							pcl::PointCloud<pcl::PointXYZ>::Ptr emptyCloud(new pcl::PointCloud<pcl::PointXYZ>);
+							pcl::copyPointCloud(*cloud, *empty, *emptyCloud);
+							occupancyGridViewer_->addCloud("octomap_empty", emptyCloud, Transform::getIdentity(), QColor(ui_->lineEdit_emptyColor->text()));
+							occupancyGridViewer_->setCloudOpacity("octomap_empty", 0.5);
+							occupancyGridViewer_->setCloudPointSize("octomap_empty", 5);
+						}
 					}
 				}
 				occupancyGridViewer_->update();
