@@ -77,7 +77,7 @@ public:
 		kPanelAll = 15
 	};
 	// TODO, tried to change the name of PANEL_FLAGS to PanelFlags... but signals/slots errors appeared...
-	Q_DECLARE_FLAGS(PANEL_FLAGS, PanelFlag);
+	Q_DECLARE_FLAGS(PANEL_FLAGS, PanelFlag)
 
 	enum Src {
 		kSrcUndef = -1,

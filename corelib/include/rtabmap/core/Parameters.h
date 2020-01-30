@@ -71,7 +71,7 @@ typedef std::pair<std::string, std::string> ParametersPair;
                                    parametersType_.insert(ParametersPair(#PREFIX "/" #NAME, #TYPE)); \
                                    descriptions_.insert(ParametersPair(#PREFIX "/" #NAME, DESCRIPTION));} \
         }; \
-        Dummy##PREFIX##NAME dummy##PREFIX##NAME;
+        Dummy##PREFIX##NAME dummy##PREFIX##NAME
 // end define PARAM
 
 /**
@@ -105,7 +105,7 @@ typedef std::pair<std::string, std::string> ParametersPair;
                                    parametersType_.insert(ParametersPair(#PREFIX "/" #NAME, "string")); \
                                    descriptions_.insert(ParametersPair(#PREFIX "/" #NAME, DESCRIPTION));} \
         }; \
-        Dummy##PREFIX##NAME dummy##PREFIX##NAME;
+        Dummy##PREFIX##NAME dummy##PREFIX##NAME
 // end define PARAM
 
 /**
@@ -138,7 +138,7 @@ typedef std::pair<std::string, std::string> ParametersPair;
                                    parametersType_.insert(ParametersPair(#PREFIX "/" #NAME, #TYPE)); \
                                    descriptions_.insert(ParametersPair(#PREFIX "/" #NAME, DESCRIPTION));} \
         }; \
-        Dummy##PREFIX##NAME dummy##PREFIX##NAME;
+        Dummy##PREFIX##NAME dummy##PREFIX##NAME
 // end define PARAM
 
 /**

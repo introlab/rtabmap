@@ -48,7 +48,7 @@ namespace rtabmap {
 		public: \
 			Dummy##PREFIX##NAME() {if(!_defaultDataInitialized)_defaultData.insert(std::pair<std::string, float>(#PREFIX "/" #NAME "/" #UNIT, 0.0f));} \
 		}; \
-		Dummy##PREFIX##NAME dummy##PREFIX##NAME;
+		Dummy##PREFIX##NAME dummy##PREFIX##NAME
 
 class RTABMAP_EXP Statistics
 {

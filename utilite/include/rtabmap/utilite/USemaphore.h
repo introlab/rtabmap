@@ -208,12 +208,12 @@ public:
 #endif
 
 private:
-	void operator=(const USemaphore &S){}
+	void operator=(const USemaphore &){}
 #ifdef _WIN32
 	USemaphore(const USemaphore &S){}
 	HANDLE S;
 #else
-	USemaphore(const USemaphore &S):_available(0){}
+	USemaphore(const USemaphore &):_available(0){}
 	pthread_mutex_t _waitMutex;
 	pthread_cond_t _cond;
 	int _available;

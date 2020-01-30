@@ -253,8 +253,8 @@ private:
 	  { return UThreadC<void>::Detach(H); }
 
 private:
-	void operator=(UThread & t) {}
-	UThread( const UThread & t ) : state_(kSIdle) {}
+	void operator=(UThread &) {}
+	UThread( const UThread &) : state_(kSIdle) {}
 
 private:
     enum State{kSIdle, kSCreating, kSRunning, kSKilled}; /* Enum of states. */

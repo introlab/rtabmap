@@ -472,8 +472,8 @@ private:
      * @param msg the message to write.
      * @param arg the variable arguments
      */
-    virtual void _write(const char* msg, va_list arg) {} // Do nothing by default
-    virtual void _writeStr(const char* msg) {} // Do nothing by default
+    virtual void _write(const char*, va_list) {} // Do nothing by default
+    virtual void _writeStr(const char*) {} // Do nothing by default
 
 private:
     /*

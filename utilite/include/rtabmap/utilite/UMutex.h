@@ -125,8 +125,8 @@ public:
 #else
 		mutable pthread_mutex_t M;
 #endif
-		void operator=(UMutex &M) {}
-		UMutex( const UMutex &M ) {}
+		void operator=(UMutex &) {}
+		UMutex( const UMutex & ) {}
 };
 
 /**
