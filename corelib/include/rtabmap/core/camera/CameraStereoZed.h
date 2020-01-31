@@ -89,7 +89,7 @@ private:
 	Transform imuLocalTransform_;
 	CameraVideo::Source src_;
 	int usbDevice_;
-	std::string svoFilePath_;
+    std::string svoFilePath_;
 	int resolution_;
 	int quality_;
 	bool selfCalibration_;
