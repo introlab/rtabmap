@@ -59,7 +59,8 @@ public:
 			float imageRate=0.0f,
 			const Transform & localTransform = Transform::getIdentity(),
 			bool selfCalibration = true,
-			bool odomForce3DoF = false);
+			bool odomForce3DoF = false,
+			int texturenessConfidenceThr = 90); // introduced with ZED SDK 3
 	CameraStereoZed(
 			const std::string & svoFilePath,
 			int quality = 1,    // 0=NONE, 1=PERFORMANCE, 2=QUALITY
@@ -69,7 +70,8 @@ public:
 			float imageRate=0.0f,
 			const Transform & localTransform = Transform::getIdentity(),
 			bool selfCalibration = true,
-			bool odomForce3DoF = false);
+			bool odomForce3DoF = false,
+			int texturenessConfidenceThr = 90); // introduced with ZED SDK 3
 	virtual ~CameraStereoZed();
 
 	virtual bool init(const std::string & calibrationFolder = ".", const std::string & cameraName = "");
@@ -95,6 +97,7 @@ private:
 	bool selfCalibration_;
 	int sensingMode_;
 	int confidenceThr_;
+	int texturenessConfidenceThr_; // introduced with ZED SDK 3
 	bool computeOdometry_;
 	bool lost_;
 	bool force3DoF_;

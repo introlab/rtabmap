@@ -250,7 +250,8 @@ CameraStereoZed::CameraStereoZed(
 		float imageRate,
 		const Transform & localTransform,
 		bool selfCalibration,
-		bool odomForce3DoF) :
+		bool odomForce3DoF,
+		int texturenessConfidenceThr) :
 	Camera(imageRate, localTransform)
 #ifdef RTABMAP_ZED
     ,
@@ -263,6 +264,7 @@ CameraStereoZed::CameraStereoZed(
 	selfCalibration_(selfCalibration),
 	sensingMode_(sensingMode),
 	confidenceThr_(confidenceThr),
+	texturenessConfidenceThr_(texturenessConfidenceThr),
 	computeOdometry_(computeOdometry),
 	lost_(true),
 	force3DoF_(odomForce3DoF),
@@ -286,6 +288,7 @@ CameraStereoZed::CameraStereoZed(
     UASSERT(qual >= sl::DEPTH_MODE::NONE && qual < sl::DEPTH_MODE::LAST);
     UASSERT(sens >= sl::SENSING_MODE::STANDARD && sens < sl::SENSING_MODE::LAST);
     UASSERT(confidenceThr_ >= 0 && confidenceThr_ <=100);
+    UASSERT(texturenessConfidenceThr_ >= 0 && texturenessConfidenceThr_ <=100);
 #endif
 #endif
 }
@@ -299,7 +302,8 @@ CameraStereoZed::CameraStereoZed(
 		float imageRate,
 		const Transform & localTransform,
 		bool selfCalibration,
-		bool odomForce3DoF) :
+		bool odomForce3DoF,
+		int texturenessConfidenceThr) :
 	Camera(imageRate, localTransform)
 #ifdef RTABMAP_ZED
     ,
@@ -312,6 +316,7 @@ CameraStereoZed::CameraStereoZed(
 	selfCalibration_(selfCalibration),
 	sensingMode_(sensingMode),
 	confidenceThr_(confidenceThr),
+	texturenessConfidenceThr_(texturenessConfidenceThr),
 	computeOdometry_(computeOdometry),
 	lost_(true),
 	force3DoF_(odomForce3DoF),
@@ -335,6 +340,7 @@ CameraStereoZed::CameraStereoZed(
     UASSERT(qual >= sl::DEPTH_MODE::NONE && qual < sl::DEPTH_MODE::LAST);
     UASSERT(sens >= sl::SENSING_MODE::STANDARD && sens < sl::SENSING_MODE::LAST);
     UASSERT(confidenceThr_ >= 0 && confidenceThr_ <=100);
+    UASSERT(texturenessConfidenceThr_ >= 0 && texturenessConfidenceThr_ <=100);
 #endif
 #endif
 }
@@ -542,8 +548,7 @@ SensorData CameraStereoZed::captureImage(CameraInfo * info)
 #if ZED_SDK_MAJOR_VERSION < 3
 	sl::RuntimeParameters rparam((sl::SENSING_MODE)sensingMode_, quality_ > 0, quality_ > 0, sl::REFERENCE_FRAME_CAMERA);
 #else
-    sl::RuntimeParameters rparam((sl::SENSING_MODE)sensingMode_, quality_ > 0, quality_ > 0, sl::REFERENCE_FRAME::CAMERA);
-    rparam.confidence_threshold = confidenceThr_;
+    sl::RuntimeParameters rparam((sl::SENSING_MODE)sensingMode_, quality_ > 0, confidenceThr_, texturenessConfidenceThr_, sl::REFERENCE_FRAME::CAMERA);
 #endif
 
 	if(zed_)
