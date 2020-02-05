@@ -480,6 +480,14 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_3dRenderingPtSizeFeatures[0] = _ui->spinBox_ptsize_features;
 	_3dRenderingPtSizeFeatures[1] = _ui->spinBox_ptsize_odom_features;
 
+	_3dRenderingGravity.resize(2);
+	_3dRenderingGravity[0] = _ui->checkBox_showIMUGravity;
+	_3dRenderingGravity[1] = _ui->checkBox_showIMUGravity_odom;
+
+	_3dRenderingGravityLength.resize(2);
+	_3dRenderingGravityLength[0] = _ui->doubleSpinBox_lengthIMUGravity;
+	_3dRenderingGravityLength[1] = _ui->doubleSpinBox_lengthIMUGravity_odom;
+
 	for(int i=0; i<2; ++i)
 	{
 		connect(_3dRenderingShowClouds[i], SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
@@ -502,6 +510,9 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 		connect(_3dRenderingOpacityScan[i], SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 		connect(_3dRenderingPtSizeScan[i], SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 		connect(_3dRenderingPtSizeFeatures[i], SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
+		connect(_3dRenderingGravity[i], SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
+		connect(_3dRenderingGravityLength[i], SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
+
 	}
 	connect(_ui->doubleSpinBox_voxel, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 	connect(_ui->doubleSpinBox_noiseRadius, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
@@ -519,6 +530,8 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->checkBox_showLabels, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 	connect(_ui->checkBox_showLandmarks, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 	connect(_ui->doubleSpinBox_landmarkSize, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
+	connect(_ui->checkBox_showIMUGravity, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
+	connect(_ui->checkBox_showIMUAcc, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 
 	connect(_ui->radioButton_noFiltering, SIGNAL(toggled(bool)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 	connect(_ui->radioButton_nodeFiltering, SIGNAL(toggled(bool)), this, SLOT(makeObsoleteCloudRenderingPanel()));
@@ -688,6 +701,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->comboBox_cameraStereo, SIGNAL(currentIndexChanged(int)), this, SLOT(updateStereoDisparityVisibility()));
 	connect(_ui->comboBox_stereoZed_sensingMode, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->spinBox_stereoZed_confidenceThr, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->spinBox_stereoZed_texturenessConfidenceThr, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->checkbox_stereoZed_odom, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->toolButton_zedSvoPath, SIGNAL(clicked()), this, SLOT(selectSourceSvoPath()));
 	connect(_ui->lineEdit_zedSvoPath, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
@@ -1107,6 +1121,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->spinBox_odom_f2m_scanMaxSize->setObjectName(Parameters::kOdomF2MScanMaxSize().c_str());
 	_ui->doubleSpinBox_odom_f2m_scanRadius->setObjectName(Parameters::kOdomF2MScanSubtractRadius().c_str());
 	_ui->doubleSpinBox_odom_f2m_scanAngle->setObjectName(Parameters::kOdomF2MScanSubtractAngle().c_str());
+	_ui->doubleSpinBox_odom_f2m_scanRange->setObjectName(Parameters::kOdomF2MScanRange().c_str());
 	_ui->odom_f2m_validDepthRatio->setObjectName(Parameters::kOdomF2MValidDepthRatio().c_str());
 	_ui->odom_f2m_bundleStrategy->setObjectName(Parameters::kOdomF2MBundleAdjustment().c_str());
 	_ui->odom_f2m_bundleMaxFrames->setObjectName(Parameters::kOdomF2MBundleAdjustmentMaxFrames().c_str());
@@ -1648,6 +1663,8 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 			_3dRenderingOpacityScan[i]->setValue(i==0?1.0:0.5);
 			_3dRenderingPtSizeScan[i]->setValue(2);
 			_3dRenderingPtSizeFeatures[i]->setValue(3);
+			_3dRenderingGravity[i]->setChecked(false);
+			_3dRenderingGravityLength[i]->setValue(1);
 		}
 		_ui->doubleSpinBox_voxel->setValue(0);
 		_ui->doubleSpinBox_noiseRadius->setValue(0);
@@ -1667,6 +1684,8 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->checkBox_showLabels->setChecked(false);
 		_ui->checkBox_showLandmarks->setChecked(true);
 		_ui->doubleSpinBox_landmarkSize->setValue(0);
+		_ui->checkBox_showIMUGravity->setChecked(false);
+		_ui->checkBox_showIMUAcc->setChecked(false);
 
 		_ui->doubleSpinBox_mesh_angleTolerance->setValue(15.0);
 		_ui->groupBox_organized->setChecked(false);
@@ -1830,6 +1849,7 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->checkbox_stereoZed_selfCalibration->setChecked(true);
 		_ui->comboBox_stereoZed_sensingMode->setCurrentIndex(0);
 		_ui->spinBox_stereoZed_confidenceThr->setValue(100);
+		_ui->spinBox_stereoZed_texturenessConfidenceThr->setValue(90);
 		_ui->checkbox_stereoZed_odom->setChecked(false);
 		_ui->lineEdit_zedSvoPath->clear();
 		_ui->checkbox_stereoRealSense2_odom->setChecked(false);
@@ -2093,6 +2113,9 @@ void PreferencesDialog::readGuiSettings(const QString & filePath)
 		_3dRenderingOpacityScan[i]->setValue(settings.value(QString("opacityScan%1").arg(i), _3dRenderingOpacityScan[i]->value()).toDouble());
 		_3dRenderingPtSizeScan[i]->setValue(settings.value(QString("ptSizeScan%1").arg(i), _3dRenderingPtSizeScan[i]->value()).toInt());
 		_3dRenderingPtSizeFeatures[i]->setValue(settings.value(QString("ptSizeFeatures%1").arg(i), _3dRenderingPtSizeFeatures[i]->value()).toInt());
+		_3dRenderingGravity[i]->setChecked(settings.value(QString("gravityShown%1").arg(i), _3dRenderingGravity[i]->isChecked()).toBool());
+		_3dRenderingGravityLength[i]->setValue(settings.value(QString("gravityLength%1").arg(i), _3dRenderingGravityLength[i]->value()).toDouble());
+
 	}
 	_ui->doubleSpinBox_voxel->setValue(settings.value("cloudVoxel", _ui->doubleSpinBox_voxel->value()).toDouble());
 	_ui->doubleSpinBox_noiseRadius->setValue(settings.value("cloudNoiseRadius", _ui->doubleSpinBox_noiseRadius->value()).toDouble());
@@ -2110,6 +2133,8 @@ void PreferencesDialog::readGuiSettings(const QString & filePath)
 	_ui->checkBox_showLabels->setChecked(settings.value("showLabels", _ui->checkBox_showLabels->isChecked()).toBool());
 	_ui->checkBox_showLandmarks->setChecked(settings.value("showLandmarks", _ui->checkBox_showLandmarks->isChecked()).toBool());
 	_ui->doubleSpinBox_landmarkSize->setValue(settings.value("landmarkSize", _ui->doubleSpinBox_landmarkSize->value()).toDouble());
+	_ui->checkBox_showIMUGravity->setChecked(settings.value("showIMUGravity", _ui->checkBox_showIMUGravity->isChecked()).toBool());
+	_ui->checkBox_showIMUAcc->setChecked(settings.value("showIMUAcc", _ui->checkBox_showIMUAcc->isChecked()).toBool());
 
 	_ui->radioButton_noFiltering->setChecked(settings.value("noFiltering", _ui->radioButton_noFiltering->isChecked()).toBool());
 	_ui->radioButton_nodeFiltering->setChecked(settings.value("cloudFiltering", _ui->radioButton_nodeFiltering->isChecked()).toBool());
@@ -2262,6 +2287,7 @@ void PreferencesDialog::readCameraSettings(const QString & filePath)
 	_ui->checkbox_stereoZed_selfCalibration->setChecked(settings.value("self_calibration", _ui->checkbox_stereoZed_selfCalibration->isChecked()).toBool());
 	_ui->comboBox_stereoZed_sensingMode->setCurrentIndex(settings.value("sensing_mode", _ui->comboBox_stereoZed_sensingMode->currentIndex()).toInt());
 	_ui->spinBox_stereoZed_confidenceThr->setValue(settings.value("confidence_thr", _ui->spinBox_stereoZed_confidenceThr->value()).toInt());
+	_ui->spinBox_stereoZed_texturenessConfidenceThr->setValue(settings.value("textureness_confidence_thr", _ui->spinBox_stereoZed_texturenessConfidenceThr->value()).toInt());
 	_ui->checkbox_stereoZed_odom->setChecked(settings.value("odom", _ui->checkbox_stereoZed_odom->isChecked()).toBool());
 	_ui->lineEdit_zedSvoPath->setText(settings.value("svo_path", _ui->lineEdit_zedSvoPath->text()).toString());
 	settings.endGroup(); // StereoZed
@@ -2550,6 +2576,8 @@ void PreferencesDialog::writeGuiSettings(const QString & filePath) const
 		settings.setValue(QString("opacityScan%1").arg(i), _3dRenderingOpacityScan[i]->value());
 		settings.setValue(QString("ptSizeScan%1").arg(i), _3dRenderingPtSizeScan[i]->value());
 		settings.setValue(QString("ptSizeFeatures%1").arg(i), _3dRenderingPtSizeFeatures[i]->value());
+		settings.setValue(QString("gravityShown%1").arg(i), _3dRenderingGravity[i]->isChecked());
+		settings.setValue(QString("gravityLength%1").arg(i), _3dRenderingGravityLength[i]->value());
 	}
 	settings.setValue("cloudVoxel",             _ui->doubleSpinBox_voxel->value());
 	settings.setValue("cloudNoiseRadius",       _ui->doubleSpinBox_noiseRadius->value());
@@ -2567,6 +2595,8 @@ void PreferencesDialog::writeGuiSettings(const QString & filePath) const
 	settings.setValue("showLabels", _ui->checkBox_showLabels->isChecked());
 	settings.setValue("showLandmarks", _ui->checkBox_showLandmarks->isChecked());
 	settings.setValue("landmarkSize", _ui->doubleSpinBox_landmarkSize->value());
+	settings.setValue("showIMUGravity", _ui->checkBox_showIMUGravity->isChecked());
+	settings.setValue("showIMUAcc", _ui->checkBox_showIMUAcc->isChecked());
 
 
 	settings.setValue("noFiltering",             _ui->radioButton_noFiltering->isChecked());
@@ -2722,6 +2752,7 @@ void PreferencesDialog::writeCameraSettings(const QString & filePath) const
 	settings.setValue("self_calibration", _ui->checkbox_stereoZed_selfCalibration->isChecked());
 	settings.setValue("sensing_mode", _ui->comboBox_stereoZed_sensingMode->currentIndex());
 	settings.setValue("confidence_thr", _ui->spinBox_stereoZed_confidenceThr->value());
+	settings.setValue("textureness_confidence_thr", _ui->spinBox_stereoZed_texturenessConfidenceThr->value());
 	settings.setValue("odom", _ui->checkbox_stereoZed_odom->isChecked());
 	settings.setValue("svo_path", _ui->lineEdit_zedSvoPath->text());
 	settings.endGroup(); // StereoZed
@@ -4898,6 +4929,20 @@ double PreferencesDialog::landmarkVisSize() const
 {
 	return _ui->doubleSpinBox_landmarkSize->value();
 }
+bool PreferencesDialog::isIMUGravityShown(int index) const
+{
+	UASSERT(index >= 0 && index <= 1);
+	return _3dRenderingGravity[index]->isChecked();
+}
+double PreferencesDialog::getIMUGravityLength(int index) const
+{
+	UASSERT(index >= 0 && index <= 1);
+	return _3dRenderingGravityLength[index]->value();
+}
+bool PreferencesDialog::isIMUAccShown() const
+{
+	return _ui->checkBox_showIMUAcc->isChecked();
+}
 bool PreferencesDialog::isMarkerDetection() const
 {
 	return _ui->RGBDMarkerDetection->isChecked();
@@ -5578,7 +5623,8 @@ Camera * PreferencesDialog::createCamera(bool useRawImages, bool useColor)
 				this->getGeneralInputRate(),
 				this->getSourceLocalTransform(),
 				_ui->checkbox_stereoZed_selfCalibration->isChecked(),
-				_ui->loopClosure_bowForce2D->isChecked());
+				_ui->loopClosure_bowForce2D->isChecked(),
+				_ui->spinBox_stereoZed_texturenessConfidenceThr->value());
 		}
 		else
 		{
@@ -5592,7 +5638,8 @@ Camera * PreferencesDialog::createCamera(bool useRawImages, bool useColor)
 				this->getGeneralInputRate(),
 				this->getSourceLocalTransform(),
 				_ui->checkbox_stereoZed_selfCalibration->isChecked(),
-				_ui->loopClosure_bowForce2D->isChecked());
+				_ui->loopClosure_bowForce2D->isChecked(),
+				_ui->spinBox_stereoZed_texturenessConfidenceThr->value());
 		}
 		((CameraStereoZed*)camera)->publishInterIMU(_ui->checkbox_publishInterIMU->isChecked());
 	}

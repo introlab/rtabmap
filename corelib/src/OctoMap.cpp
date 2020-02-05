@@ -940,10 +940,16 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr OctoMap::createCloud(
 		std::vector<int> * obstacleIndices,
 		std::vector<int> * emptyIndices,
 		std::vector<int> * groundIndices,
-		bool originalRefPoints) const
+		bool originalRefPoints,
+		std::vector<int> * frontierIndices,
+		std::vector<double> * cloudProb) const
 {
 	UASSERT(treeDepth <= octree_->getTreeDepth());
 	pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+	if(cloudProb)
+	{
+		cloudProb->resize(octree_->size());
+	}
 	UDEBUG("depth=%d (maxDepth=%d) octree = %d",
 			(int)treeDepth, (int)octree_->getTreeDepth(), (int)octree_->size());
 	cloud->resize(octree_->size());
@@ -954,6 +960,10 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr OctoMap::createCloud(
 	if(emptyIndices)
 	{
 		emptyIndices->resize(octree_->size());
+	}
+	if(frontierIndices)
+	{
+		frontierIndices->resize(octree_->size());
 	}
 	if(groundIndices)
 	{
@@ -972,6 +982,7 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr OctoMap::createCloud(
 	int oi=0;
 	int si=0;
 	int ei=0;
+	int fi=0;
 	int gi=0;
 	float halfCellSize = octree_->getNodeSize(treeDepth)/2.0f;
 	for (RtabmapColorOcTree::iterator it = octree_->begin(treeDepth); it != octree_->end(); ++it)
@@ -979,6 +990,10 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr OctoMap::createCloud(
 		if(octree_->isNodeOccupied(*it) && (obstacleIndices != 0 || groundIndices != 0 || addAllPoints))
 		{
 			octomap::point3d pt = octree_->keyToCoord(it.getKey());
+			if(cloudProb)
+			{
+				(*cloudProb)[oi] = it->getOccupancy();
+			}
 			if(octree_->getTreeDepth() == it.getDepth() && hasColor_)
 			{
 				(*cloud)[oi]  = pcl::PointXYZRGB(it->getColor().r, it->getColor().g, it->getColor().b);
@@ -1022,9 +1037,24 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr OctoMap::createCloud(
 
 			++oi;
 		}
-		else if(!octree_->isNodeOccupied(*it) && (emptyIndices != 0 || addAllPoints))
+		else if(!octree_->isNodeOccupied(*it) && (emptyIndices != 0 || addAllPoints || frontierIndices !=0))
 		{
 			octomap::point3d pt = octree_->keyToCoord(it.getKey());
+			if(cloudProb)
+			{
+				(*cloudProb)[oi] = it->getOccupancy();
+			}
+
+			if(frontierIndices !=0 &&
+				(!octree_->search( pt.x()+octree_->getNodeSize(treeDepth), pt.y(), pt.z(), treeDepth) || !octree_->search( pt.x()-octree_->getNodeSize(treeDepth), pt.y(), pt.z(), treeDepth) ||
+				 !octree_->search( pt.x(), pt.y()+octree_->getNodeSize(treeDepth), pt.z(), treeDepth) || !octree_->search( pt.x(), pt.y()-octree_->getNodeSize(treeDepth), pt.z(), treeDepth) ||
+				 !octree_->search( pt.x(), pt.y(), pt.z()+octree_->getNodeSize(treeDepth), treeDepth) || !octree_->search( pt.x(), pt.y(), pt.z()-octree_->getNodeSize(treeDepth), treeDepth) )) //ajouter 1 au key ?
+			{
+				//unknown neighbor FACE cell
+				frontierIndices->at(fi++) = oi;
+			}
+
+			
 			(*cloud)[oi]  = pcl::PointXYZRGB(it->getColor().r, it->getColor().g, it->getColor().b);
 			(*cloud)[oi].x = pt.x()-halfCellSize;
 			(*cloud)[oi].y = pt.y()-halfCellSize;
@@ -1033,11 +1063,16 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr OctoMap::createCloud(
 			{
 				emptyIndices->at(ei++) = oi;
 			}
+			
 			++oi;
-		}
+		}	
 	}
 
 	cloud->resize(oi);
+	if(cloudProb)
+	{
+		cloudProb->resize(oi);
+	}
 	if(obstacleIndices)
 	{
 		obstacleIndices->resize(si);
@@ -1047,6 +1082,11 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr OctoMap::createCloud(
 	{
 		emptyIndices->resize(ei);
 		UDEBUG("empty=%d", ei);
+	}
+	if(frontierIndices)
+	{
+		frontierIndices->resize(fi);
+		UDEBUG("frontier=%d", fi);
 	}
 	if(groundIndices)
 	{

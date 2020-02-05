@@ -278,7 +278,7 @@ public:
 
 private:
 	virtual std::vector<cv::KeyPoint> generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask = cv::Mat());
-	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const {return cv::Mat();}
+	virtual cv::Mat generateDescriptorsImpl(const cv::Mat &, std::vector<cv::KeyPoint> &) const {return cv::Mat();}
 
 private:
 	int threshold_;

@@ -237,6 +237,10 @@ int main(int argc, char * argv[])
 								{
 									odomTime.push_back(stat.at(std::string("Odometry/TotalTime/ms")));
 								}
+								else if(uContains(stat, std::string("Odometry/TimeEstimation/ms")))
+								{
+									odomTime.push_back(stat.at(std::string("Odometry/TimeEstimation/ms")));
+								}
 
 								if(uContains(stat, std::string("RtabmapROS/TotalTime/ms")))
 								{

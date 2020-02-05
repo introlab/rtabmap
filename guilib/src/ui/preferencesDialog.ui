@@ -63,9 +63,9 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>0</y>
+            <y>-365</y>
             <width>680</width>
-            <height>3083</height>
+            <height>3157</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -95,7 +95,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>21</number>
+                <number>5</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,1">
@@ -1899,6 +1899,107 @@ Show a yellow background when the number of odometry inliers goes under this thr
                          </property>
                         </widget>
                        </item>
+                       <item row="8" column="2">
+                        <widget class="QLabel" name="label_567">
+                         <property name="text">
+                          <string>Show IMU filtered gravity.</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="10" column="2">
+                        <widget class="QLabel" name="label_568">
+                         <property name="text">
+                          <string>Show IMU acceleration.</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="10" column="1">
+                        <widget class="QCheckBox" name="checkBox_showIMUAcc">
+                         <property name="text">
+                          <string/>
+                         </property>
+                         <property name="checked">
+                          <bool>true</bool>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="8" column="0">
+                        <widget class="QCheckBox" name="checkBox_showIMUGravity">
+                         <property name="text">
+                          <string/>
+                         </property>
+                         <property name="checked">
+                          <bool>true</bool>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="8" column="1">
+                        <widget class="QCheckBox" name="checkBox_showIMUGravity_odom">
+                         <property name="text">
+                          <string/>
+                         </property>
+                         <property name="checked">
+                          <bool>true</bool>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="9" column="0">
+                        <widget class="QDoubleSpinBox" name="doubleSpinBox_lengthIMUGravity">
+                         <property name="suffix">
+                          <string> m</string>
+                         </property>
+                         <property name="minimum">
+                          <double>0.010000000000000</double>
+                         </property>
+                         <property name="singleStep">
+                          <double>1.000000000000000</double>
+                         </property>
+                         <property name="value">
+                          <double>1.000000000000000</double>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="9" column="1">
+                        <widget class="QDoubleSpinBox" name="doubleSpinBox_lengthIMUGravity_odom">
+                         <property name="suffix">
+                          <string> m</string>
+                         </property>
+                         <property name="minimum">
+                          <double>0.010000000000000</double>
+                         </property>
+                         <property name="singleStep">
+                          <double>1.000000000000000</double>
+                         </property>
+                         <property name="value">
+                          <double>1.000000000000000</double>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="9" column="2">
+                        <widget class="QLabel" name="label_569">
+                         <property name="text">
+                          <string>IMU filtered gravity length.</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
+                        </widget>
+                       </item>
                       </layout>
                      </widget>
                     </item>
@@ -2962,7 +3063,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                     <item>
                      <widget class="QStackedWidget" name="stackedWidget_src">
                       <property name="currentIndex">
-                       <number>0</number>
+                       <number>1</number>
                       </property>
                       <widget class="QWidget" name="page_41">
                        <layout class="QVBoxLayout" name="verticalLayout_64">
@@ -3058,7 +3159,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                              <item row="0" column="1">
                               <widget class="QLabel" name="label_228">
                                <property name="text">
-                                <string>Driver</string>
+                                <string>Driver.</string>
                                </property>
                                <property name="wordWrap">
                                 <bool>true</bool>
@@ -3096,7 +3197,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                            <item>
                             <widget class="QStackedWidget" name="stackedWidget_rgbd">
                              <property name="currentIndex">
-                              <number>9</number>
+                              <number>8</number>
                              </property>
                              <widget class="QWidget" name="page_32">
                               <layout class="QVBoxLayout" name="verticalLayout_63">
@@ -4529,7 +4630,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                            <item>
                             <widget class="QStackedWidget" name="stackedWidget_stereo">
                              <property name="currentIndex">
-                              <number>7</number>
+                              <number>4</number>
                              </property>
                              <widget class="QWidget" name="page_49">
                               <layout class="QVBoxLayout" name="verticalLayout_91">
@@ -4791,7 +4892,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                   <string>Zed sdk</string>
                                  </property>
                                  <layout class="QGridLayout" name="gridLayout_37" columnstretch="0,1">
-                                  <item row="7" column="0">
+                                  <item row="8" column="0">
                                    <spacer name="verticalSpacer_54">
                                     <property name="orientation">
                                      <enum>Qt::Vertical</enum>
@@ -4804,7 +4905,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                     </property>
                                    </spacer>
                                   </item>
-                                  <item row="6" column="1">
+                                  <item row="7" column="1">
                                    <widget class="QLabel" name="label_305">
                                     <property name="text">
                                      <string>Path to a *.SVO file.</string>
@@ -4930,7 +5031,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                     </property>
                                    </widget>
                                   </item>
-                                  <item row="6" column="0">
+                                  <item row="7" column="0">
                                    <layout class="QHBoxLayout" name="horizontalLayout_8">
                                     <item>
                                      <widget class="QToolButton" name="toolButton_zedSvoPath">
@@ -4961,14 +5062,14 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                     </property>
                                    </widget>
                                   </item>
-                                  <item row="5" column="0">
+                                  <item row="6" column="0">
                                    <widget class="QCheckBox" name="checkbox_stereoZed_odom">
                                     <property name="text">
                                      <string/>
                                     </property>
                                    </widget>
                                   </item>
-                                  <item row="5" column="1">
+                                  <item row="6" column="1">
                                    <widget class="QLabel" name="label_316">
                                     <property name="text">
                                      <string>Use ZED visual odometry.</string>
@@ -4998,6 +5099,26 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                    <widget class="QCheckBox" name="checkbox_stereoZed_selfCalibration">
                                     <property name="text">
                                      <string/>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="5" column="1">
+                                   <widget class="QLabel" name="label_570">
+                                    <property name="text">
+                                     <string>[SDK3] Threshold to reject depth values based on their textureness confidence. A lower value means more confidence and precision (but less density). An upper value reduces filtering (more density, less certainty.).</string>
+                                    </property>
+                                    <property name="wordWrap">
+                                     <bool>true</bool>
+                                    </property>
+                                    <property name="textInteractionFlags">
+                                     <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="5" column="0">
+                                   <widget class="QSpinBox" name="spinBox_stereoZed_texturenessConfidenceThr">
+                                    <property name="maximum">
+                                     <number>100</number>
                                     </property>
                                    </widget>
                                   </item>
@@ -12832,6 +12953,19 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                                </property>
                               </widget>
                              </item>
+                             <item row="3" column="0">
+                              <widget class="QDoubleSpinBox" name="doubleSpinBox_odom_f2m_scanRadius">
+                               <property name="suffix">
+                                <string> m</string>
+                               </property>
+                               <property name="decimals">
+                                <number>3</number>
+                               </property>
+                               <property name="value">
+                                <double>0.025000000000000</double>
+                               </property>
+                              </widget>
+                             </item>
                              <item row="3" column="1">
                               <widget class="QLabel" name="label_215">
                                <property name="text">
@@ -12907,20 +13041,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                                </property>
                               </widget>
                              </item>
-                             <item row="3" column="0">
-                              <widget class="QDoubleSpinBox" name="doubleSpinBox_odom_f2m_scanRadius">
-                               <property name="suffix">
-                                <string> m</string>
-                               </property>
-                               <property name="decimals">
-                                <number>3</number>
-                               </property>
-                               <property name="value">
-                                <double>0.025000000000000</double>
-                               </property>
-                              </widget>
-                             </item>
-                             <item row="6" column="1">
+                             <item row="7" column="1">
                               <widget class="QLabel" name="label_357">
                                <property name="text">
                                 <string>[Visual] Local bundle adjustment. See Optimizer panel. This will not work if Optical Flow correspondences strategy is selected in Visual Registration panel.</string>
@@ -12933,14 +13054,14 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                                </property>
                               </widget>
                              </item>
-                             <item row="7" column="0">
+                             <item row="8" column="0">
                               <widget class="QSpinBox" name="odom_f2m_bundleMaxFrames">
                                <property name="maximum">
                                 <number>999999</number>
                                </property>
                               </widget>
                              </item>
-                             <item row="7" column="1">
+                             <item row="8" column="1">
                               <widget class="QLabel" name="label_358">
                                <property name="text">
                                 <string>[Visual] Maximum frames used for bundle adjustment (0=inf or all current frames in the local map).</string>
@@ -12953,7 +13074,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                                </property>
                               </widget>
                              </item>
-                             <item row="6" column="0">
+                             <item row="7" column="0">
                               <widget class="QComboBox" name="odom_f2m_bundleStrategy">
                                <property name="sizeAdjustPolicy">
                                 <enum>QComboBox::AdjustToContents</enum>
@@ -13009,7 +13130,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                                </property>
                               </widget>
                              </item>
-                             <item row="5" column="1">
+                             <item row="6" column="1">
                               <widget class="QLabel" name="label_524">
                                <property name="text">
                                 <string>[Visual] If a new frame has points without valid depth, they are added to local feature map only if points with valid depth on total points is over this ratio. Setting to 1 means no points without valid depth are added to local feature map.</string>
@@ -13022,7 +13143,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                                </property>
                               </widget>
                              </item>
-                             <item row="5" column="0">
+                             <item row="6" column="0">
                               <widget class="QDoubleSpinBox" name="odom_f2m_validDepthRatio">
                                <property name="suffix">
                                 <string/>
@@ -13038,6 +13159,35 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                                </property>
                                <property name="value">
                                 <double>0.750000000000000</double>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="5" column="1">
+                              <widget class="QLabel" name="label_564">
+                               <property name="text">
+                                <string>[Geometry] Distance Range used to filter points of local map (when &gt; 0). 0 means local map is updated using time and not range.</string>
+                               </property>
+                               <property name="wordWrap">
+                                <bool>true</bool>
+                               </property>
+                               <property name="textInteractionFlags">
+                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="5" column="0">
+                              <widget class="QDoubleSpinBox" name="doubleSpinBox_odom_f2m_scanRange">
+                               <property name="suffix">
+                                <string> m</string>
+                               </property>
+                               <property name="decimals">
+                                <number>0</number>
+                               </property>
+                               <property name="maximum">
+                                <double>9999.000000000000000</double>
+                               </property>
+                               <property name="value">
+                                <double>0.000000000000000</double>
                                </property>
                               </widget>
                              </item>

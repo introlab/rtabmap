@@ -107,6 +107,10 @@ void OdometryThread::mainLoop()
 	{
 		_odometry->reset(_resetPose);
 		_resetOdometry = false;
+		UScopeMutex lock(_dataMutex);
+		_dataBuffer.clear();
+		_imuBuffer.clear();
+		_lastImuStamp = 0.0f;
 	}
 
 	SensorData data;

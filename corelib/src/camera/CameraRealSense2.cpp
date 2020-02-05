@@ -184,7 +184,7 @@ void CameraRealSense2::pose_callback(rs2::frame frame)
 
 	UScopeMutex sm(poseMutex_);
 	poseBuffer_.insert(poseBuffer_.end(), std::make_pair(frame.get_timestamp(), std::make_pair(poseT, pose.tracker_confidence)));
-	if(poseBuffer_.size() > 100)
+	if(poseBuffer_.size() > 1000)
 	{
 		poseBuffer_.erase(poseBuffer_.begin());
 	}
@@ -274,9 +274,13 @@ void CameraRealSense2::getPoseAndIMU(
 				pose = iterA->second.first.interpolate((stamp-iterA->first) / (iterB->first-iterA->first), iterB->second.first);
 				poseConfidence = iterA->second.second;
 			}
+			else if(stamp < iterA->first)
+			{
+				UWARN("Could not find poses to interpolate at image time %f (earliest is %f). Are sensors synchronized?", stamp, iterA->first);
+			}
 			else
 			{
-				UWARN("Could not find poses to interpolate at time %f", stamp);
+				UWARN("Could not find poses to interpolate at image time %f (between %f and %f), Are sensors synchronized?", stamp, iterA->first, iterB->first);
 			}
 		}
 		poseMutex_.unlock();
@@ -330,7 +334,14 @@ void CameraRealSense2::getPoseAndIMU(
 			}
 			else
 			{
-				UWARN("Could not find acc data to interpolate at time %f", stamp);
+				if(stamp < iterA->first)
+				{
+					UWARN("Could not find acc data to interpolate at image time %f (earliest is %f). Are sensors synchronized?", stamp, iterA->first);
+				}
+				else
+				{
+					UWARN("Could not find acc data to interpolate at image time %f (between %f and %f). Are sensors synchronized?", stamp, iterA->first, iterB->first);
+				}
 				imuMutex_.unlock();
 				return;
 			}
@@ -386,7 +397,14 @@ void CameraRealSense2::getPoseAndIMU(
 			}
 			else
 			{
-				UWARN("Could not find gyro data to interpolate at time %f", stamp);
+				if(stamp < iterA->first)
+				{
+					UWARN("Could not find gyro data to interpolate at image time %f (earliest is %f). Are sensors synchronized?", stamp, iterA->first);
+				}
+				else
+				{
+					UWARN("Could not find gyro data to interpolate at image time %f (between %f and %f). Are sensors synchronized?", stamp, iterA->first, iterB->first);
+				}
 				imuMutex_.unlock();
 				return;
 			}
@@ -1148,6 +1166,7 @@ SensorData CameraRealSense2::captureImage(CameraInfo * info)
 			IMU imu;
 			unsigned int confidence = 0;
 			double imuStamp = stamp*1000.0;
+			UASSERT(info!=0);
 			getPoseAndIMU(imuStamp, info->odomPose, confidence, imu);
 
 			if(odometryProvided_ && !info->odomPose.isNull())

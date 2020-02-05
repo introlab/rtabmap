@@ -77,7 +77,7 @@ public:
 		kPanelAll = 15
 	};
 	// TODO, tried to change the name of PANEL_FLAGS to PanelFlags... but signals/slots errors appeared...
-	Q_DECLARE_FLAGS(PANEL_FLAGS, PanelFlag);
+	Q_DECLARE_FLAGS(PANEL_FLAGS, PanelFlag)
 
 	enum Src {
 		kSrcUndef = -1,
@@ -167,6 +167,9 @@ public:
 	bool isLabelsShown() const;
 	bool isLandmarksShown() const;
 	double landmarkVisSize() const;
+	bool isIMUGravityShown(int index) const;
+	double getIMUGravityLength(int index) const;
+	bool isIMUAccShown() const;
 	bool isMarkerDetection() const;
 	double getMarkerLength() const;
 	double getVoxel() const;
@@ -430,6 +433,8 @@ private:
 	QVector<QCheckBox*> _3dRenderingShowFeatures;
 	QVector<QCheckBox*> _3dRenderingShowFrustums;
 	QVector<QSpinBox*> _3dRenderingPtSizeFeatures;
+	QVector<QCheckBox*> _3dRenderingGravity;
+	QVector<QDoubleSpinBox*> _3dRenderingGravityLength;
 };
 
 Q_DECLARE_OPERATORS_FOR_FLAGS(PreferencesDialog::PANEL_FLAGS)

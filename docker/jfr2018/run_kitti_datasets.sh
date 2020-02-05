@@ -68,7 +68,7 @@ then
       else
          SCAN="--scan_k 10 --scan_voxel 0.5"
       fi
-      SCAN="--Icp/PointToPlane true --Icp/Iterations 5 --Odom/ScanKeyFrameThr 0.6 $SCAN"
+      SCAN="--Icp/PointToPlane true --Icp/PointToPlaneK 10 --Icp/PointToPlaneRadius 0 --Icp/Iterations 5 --Odom/ScanKeyFrameThr 0.6 $SCAN"
    else
       if [ $STRATEGY -eq 7 ]
       then

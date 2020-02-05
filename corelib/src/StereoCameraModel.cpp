@@ -88,14 +88,18 @@ StereoCameraModel::StereoCameraModel(
 	{
 		UASSERT(leftCameraModel.isValidForRectification() && rightCameraModel.isValidForRectification());
 
-		cv::Mat R1,R2,P1,P2,Q;
-		cv::stereoRectify(left_.K_raw(), left_.D_raw(),
-				right_.K_raw(), right_.D_raw(),
-				left_.imageSize(), R_, T_, R1, R2, P1, P2, Q,
-				cv::CALIB_ZERO_DISPARITY, 0, left_.imageSize());
+		if(left_.imageWidth() == right_.imageHeight())
+		{
+			cv::Mat R1,R2,P1,P2,Q;
+			cv::stereoRectify(
+					left_.K_raw(), left_.D_raw(),
+					right_.K_raw(), right_.D_raw(),
+					left_.imageSize(), R_, T_, R1, R2, P1, P2, Q,
+					cv::CALIB_ZERO_DISPARITY, 0, left_.imageSize());
 
-		left_ = CameraModel(left_.name(), left_.imageSize(), left_.K_raw(), left_.D_raw(), R1, P1, left_.localTransform());
-		right_ = CameraModel(right_.name(), right_.imageSize(), right_.K_raw(), right_.D_raw(), R2, P2, right_.localTransform());
+			left_ = CameraModel(left_.name(), left_.imageSize(), left_.K_raw(), left_.D_raw(), R1, P1, left_.localTransform());
+			right_ = CameraModel(right_.name(), right_.imageSize(), right_.K_raw(), right_.D_raw(), R2, P2, right_.localTransform());
+		}
 	}
 }
 
@@ -120,14 +124,18 @@ StereoCameraModel::StereoCameraModel(
 		extrinsics.rotationMatrix().convertTo(R_, CV_64FC1);
 		extrinsics.translationMatrix().convertTo(T_, CV_64FC1);
 
-		cv::Mat R1,R2,P1,P2,Q;
-		cv::stereoRectify(left_.K_raw(), left_.D_raw(),
-				right_.K_raw(), right_.D_raw(),
-				left_.imageSize(), R_, T_, R1, R2, P1, P2, Q,
-				cv::CALIB_ZERO_DISPARITY, 0, left_.imageSize());
+		if(left_.imageWidth() == right_.imageHeight())
+		{
+			cv::Mat R1,R2,P1,P2,Q;
+			cv::stereoRectify(
+					left_.K_raw(), left_.D_raw(),
+					right_.K_raw(), right_.D_raw(),
+					left_.imageSize(), R_, T_, R1, R2, P1, P2, Q,
+					cv::CALIB_ZERO_DISPARITY, 0, left_.imageSize());
 
-		left_ = CameraModel(left_.name(), left_.imageSize(), left_.K_raw(), left_.D_raw(), R1, P1, left_.localTransform());
-		right_ = CameraModel(right_.name(), right_.imageSize(), right_.K_raw(), right_.D_raw(), R2, P2, right_.localTransform());
+			left_ = CameraModel(left_.name(), left_.imageSize(), left_.K_raw(), left_.D_raw(), R1, P1, left_.localTransform());
+			right_ = CameraModel(right_.name(), right_.imageSize(), right_.K_raw(), right_.D_raw(), R2, P2, right_.localTransform());
+		}
 	}
 }
 

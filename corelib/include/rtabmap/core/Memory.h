@@ -346,7 +346,7 @@ private:
 	//Keypoint stuff
 	VWDictionary * _vwd;
 	Feature2D * _feature2D;
-	float _badSignRatio;;
+	float _badSignRatio;
 	bool _tfIdfLikelihoodUsed;
 	bool _parallelized;
 
