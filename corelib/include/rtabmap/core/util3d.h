@@ -196,7 +196,7 @@ pcl::PointCloud<pcl::PointXYZ> RTABMAP_EXP laserScanFromDepthImages(
 		float maxDepth,
 		float minDepth);
 
-LaserScan RTABMAP_EXP laserScanFromPointCloud(const pcl::PCLPointCloud2 & cloud, bool filterNaNs = true);
+LaserScan RTABMAP_EXP laserScanFromPointCloud(const pcl::PCLPointCloud2 & cloud, bool filterNaNs = true, bool is2D = false, const Transform & transform = Transform());
 // return CV_32FC3  (x,y,z)
 cv::Mat RTABMAP_EXP laserScanFromPointCloud(const pcl::PointCloud<pcl::PointXYZ> & cloud, const Transform & transform = Transform(), bool filterNaNs = true);
 cv::Mat RTABMAP_EXP laserScanFromPointCloud(const pcl::PointCloud<pcl::PointXYZ> & cloud, const pcl::IndicesPtr & indices, const Transform & transform = Transform(), bool filterNaNs = true);

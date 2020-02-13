@@ -100,6 +100,10 @@ protected:
 			int nodeId,
 			const cv::Mat & image) const;
 
+	void updateLaserScanQuery(
+			int nodeId,
+			const LaserScan & scan) const;
+
 	virtual void addStatisticsQuery(const Statistics & statistics) const;
 	virtual void savePreviewImageQuery(const cv::Mat & image) const;
 	virtual cv::Mat loadPreviewImageQuery() const;
@@ -150,6 +154,7 @@ private:
 	std::string queryStepImage() const;
 	std::string queryStepDepth() const;
 	std::string queryStepDepthUpdate() const;
+	std::string queryStepScanUpdate() const;
 	std::string queryStepSensorData() const;
 	std::string queryStepLinkUpdate() const;
 	std::string queryStepLink() const;
@@ -160,6 +165,7 @@ private:
 	void stepImage(sqlite3_stmt * ppStmt, int id, const cv::Mat & imageBytes) const;
 	void stepDepth(sqlite3_stmt * ppStmt, const SensorData & sensorData) const;
 	void stepDepthUpdate(sqlite3_stmt * ppStmt, int nodeId, const cv::Mat & imageCompressed) const;
+	void stepScanUpdate(sqlite3_stmt * ppStmt, int nodeId, const LaserScan & image) const;
 	void stepSensorData(sqlite3_stmt * ppStmt, const SensorData & sensorData) const;
 	void stepLink(sqlite3_stmt * ppStmt, const Link & link) const;
 	void stepWordsChanged(sqlite3_stmt * ppStmt, int signatureId, int oldWordId, int newWordId) const;

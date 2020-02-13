@@ -96,6 +96,7 @@ public:
 				float cellSize,
 				const cv::Point3f & viewpoint);
 	void updateDepthImage(int nodeId, const cv::Mat & image);
+	void updateLaserScan(int nodeId, const LaserScan & scan);
 
 public:
 	void addInfoAfterRun(int stMemSize, int lastSignAdded, int processMemUsed, int databaseMemUsed, int dictionarySize, const ParametersMap & parameters) const;
@@ -219,16 +220,20 @@ protected:
 	virtual void updateLinkQuery(const Link & link) const = 0;
 
 	virtual void updateOccupancyGridQuery(
-				int nodeId,
-				const cv::Mat & ground,
-				const cv::Mat & obstacles,
-				const cv::Mat & empty,
-				float cellSize,
-				const cv::Point3f & viewpoint) const = 0;
+			int nodeId,
+			const cv::Mat & ground,
+			const cv::Mat & obstacles,
+			const cv::Mat & empty,
+			float cellSize,
+			const cv::Point3f & viewpoint) const = 0;
 
 	virtual void updateDepthImageQuery(
-					int nodeId,
-					const cv::Mat & image) const = 0;
+			int nodeId,
+			const cv::Mat & image) const = 0;
+
+	virtual void updateLaserScanQuery(
+			int nodeId,
+			const LaserScan & scan) const = 0;
 
 	virtual void addStatisticsQuery(const Statistics & statistics) const = 0;
 	virtual void savePreviewImageQuery(const cv::Mat & image) const = 0;

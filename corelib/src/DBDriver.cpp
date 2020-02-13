@@ -511,6 +511,15 @@ void DBDriver::updateDepthImage(int nodeId, const cv::Mat & image)
 	_dbSafeAccessMutex.unlock();
 }
 
+void DBDriver::updateLaserScan(int nodeId, const LaserScan & scan)
+{
+	_dbSafeAccessMutex.lock();
+	this->updateLaserScanQuery(
+			nodeId,
+			scan);
+	_dbSafeAccessMutex.unlock();
+}
+
 void DBDriver::load(VWDictionary * dictionary, bool lastStateOnly) const
 {
 	_dbSafeAccessMutex.lock();

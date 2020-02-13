@@ -58,10 +58,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pcl/segmentation/impl/extract_labeled_clusters.hpp>
 #include <pcl/filters/impl/extract_indices.hpp>
 
-PCL_INSTANTIATE(EuclideanClusterExtraction, (pcl::PointXYZRGBNormal))
-PCL_INSTANTIATE(extractEuclideanClusters, (pcl::PointXYZRGBNormal))
-PCL_INSTANTIATE(extractEuclideanClusters_indices, (pcl::PointXYZRGBNormal))
-PCL_INSTANTIATE(ExtractIndices, (pcl::PointNormal))
+PCL_INSTANTIATE(EuclideanClusterExtraction, (pcl::PointXYZRGBNormal));
+PCL_INSTANTIATE(extractEuclideanClusters, (pcl::PointXYZRGBNormal));
+PCL_INSTANTIATE(extractEuclideanClusters_indices, (pcl::PointXYZRGBNormal));
+PCL_INSTANTIATE(ExtractIndices, (pcl::PointNormal));
 
 #endif
 
@@ -650,6 +650,24 @@ pcl::IndicesPtr cropBoxImpl(
 	return output;
 }
 
+pcl::IndicesPtr cropBox(const pcl::PCLPointCloud2::Ptr & cloud, const pcl::IndicesPtr & indices, const Eigen::Vector4f & min, const Eigen::Vector4f & max, const Transform & transform, bool negative)
+{
+	UASSERT(min[0] < max[0] && min[1] < max[1] && min[2] < max[2]);
+
+	pcl::IndicesPtr output(new std::vector<int>);
+	pcl::CropBox<pcl::PCLPointCloud2> filter;
+	filter.setNegative(negative);
+	filter.setMin(min);
+	filter.setMax(max);
+	if(!transform.isNull() && !transform.isIdentity())
+	{
+		filter.setTransform(transform.toEigen3f());
+	}
+	filter.setInputCloud(cloud);
+	filter.setIndices(indices);
+	filter.filter(*output);
+	return output;
+}
 pcl::IndicesPtr cropBox(const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud, const pcl::IndicesPtr & indices, const Eigen::Vector4f & min, const Eigen::Vector4f & max, const Transform & transform, bool negative)
 {
 	return cropBoxImpl<pcl::PointXYZ>(cloud, indices, min, max, transform, negative);

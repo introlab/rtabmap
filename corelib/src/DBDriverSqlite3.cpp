@@ -4408,12 +4408,12 @@ void DBDriverSqlite3::updateLinkQuery(const Link & link) const
 }
 
 void DBDriverSqlite3::updateOccupancyGridQuery(
-			int nodeId,
-			const cv::Mat & ground,
-			const cv::Mat & obstacles,
-			const cv::Mat & empty,
-			float cellSize,
-			const cv::Point3f & viewpoint) const
+		int nodeId,
+		const cv::Mat & ground,
+		const cv::Mat & obstacles,
+		const cv::Mat & empty,
+		float cellSize,
+		const cv::Point3f & viewpoint) const
 {
 	UDEBUG("");
 	if(_ppDb)
@@ -4447,8 +4447,8 @@ void DBDriverSqlite3::updateOccupancyGridQuery(
 }
 
 void DBDriverSqlite3::updateDepthImageQuery(
-				int nodeId,
-				const cv::Mat & image) const
+		int nodeId,
+		const cv::Mat & image) const
 {
 	UDEBUG("");
 	if(_ppDb)
@@ -4468,6 +4468,37 @@ void DBDriverSqlite3::updateDepthImageQuery(
 		stepDepthUpdate(ppStmt,
 				nodeId,
 				image);
+
+		// Finalize (delete) the statement
+		rc = sqlite3_finalize(ppStmt);
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+
+		UDEBUG("Time=%fs", timer.ticks());
+	}
+}
+
+void DBDriverSqlite3::updateLaserScanQuery(
+		int nodeId,
+		const LaserScan & scan) const
+{
+	UDEBUG("");
+	if(_ppDb)
+	{
+		std::string type;
+		UTimer timer;
+		timer.start();
+		int rc = SQLITE_OK;
+		sqlite3_stmt * ppStmt = 0;
+
+		// Create query
+		std::string query = queryStepScanUpdate();
+		rc = sqlite3_prepare_v2(_ppDb, query.c_str(), -1, &ppStmt, 0);
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+
+		// Save depth
+		stepScanUpdate(ppStmt,
+				nodeId,
+				scan);
 
 		// Finalize (delete) the statement
 		rc = sqlite3_finalize(ppStmt);
@@ -5607,6 +5638,132 @@ void DBDriverSqlite3::stepDepthUpdate(sqlite3_stmt * ppStmt, int nodeId, const c
 	else
 	{
 		rc = sqlite3_bind_zeroblob(ppStmt, index++, 4);
+	}
+	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+
+	//id
+	rc = sqlite3_bind_int(ppStmt, index++, nodeId);
+	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+
+	//step
+	rc=sqlite3_step(ppStmt);
+	UASSERT_MSG(rc == SQLITE_DONE, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+
+	rc = sqlite3_reset(ppStmt);
+	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+}
+
+std::string DBDriverSqlite3::queryStepScanUpdate() const
+{
+	UASSERT(uStrNumCmp(_version, "0.10.0") >= 0);
+	if(uStrNumCmp(_version, "0.11.10") >= 0)
+	{
+		return "UPDATE Data SET scan_info=?, scan=? WHERE id=?;";
+	}
+	else if(uStrNumCmp(_version, "0.10.7") >= 0)
+	{
+		return "UPDATE Data SET scan_max_pts=?, scan_max_range=?, scan=? WHERE id=?;";
+	}
+	else
+	{
+		return "UPDATE Data SET scan_max_pts=? scan=? WHERE id=?;";
+	}
+}
+void DBDriverSqlite3::stepScanUpdate(sqlite3_stmt * ppStmt, int nodeId, const LaserScan & scan) const
+{
+	if(!ppStmt)
+	{
+		UFATAL("");
+	}
+
+	int rc = SQLITE_OK;
+	int index = 1;
+
+	std::vector<float> scanInfo;
+	if(uStrNumCmp(_version, "0.11.10") >= 0)
+	{
+		if(scan.maxPoints() > 0 ||
+			scan.rangeMax() > 0 ||
+			(uStrNumCmp(_version, "0.16.1")>=0 && scan.format() != LaserScan::kUnknown) ||
+			(!scan.localTransform().isNull() && !scan.localTransform().isIdentity()))
+		{
+			if(uStrNumCmp(_version, "0.16.1") >=0)
+			{
+				if(uStrNumCmp(_version, "0.18.0") >=0)
+				{
+					scanInfo.resize(7 + Transform().size());
+					scanInfo[0] = scan.format();
+					scanInfo[1] = scan.rangeMin();
+					scanInfo[2] = scan.rangeMax();
+					scanInfo[3] = scan.angleMin();
+					scanInfo[4] = scan.angleMax();
+					scanInfo[5] = scan.angleIncrement();
+					scanInfo[6] = scan.maxPoints(); // only for backward compatibility
+					const Transform & localTransform = scan.localTransform();
+					memcpy(scanInfo.data()+7, localTransform.data(), localTransform.size()*sizeof(float));
+				}
+				else
+				{
+					scanInfo.resize(3 + Transform().size());
+					scanInfo[0] = scan.maxPoints();
+					scanInfo[1] = scan.rangeMax();
+					scanInfo[2] = scan.format();
+					const Transform & localTransform = scan.localTransform();
+					memcpy(scanInfo.data()+3, localTransform.data(), localTransform.size()*sizeof(float));
+				}
+			}
+			else
+			{
+				scanInfo.resize(2 + Transform().size());
+				scanInfo[0] = scan.maxPoints();
+				scanInfo[1] = scan.rangeMax();
+				const Transform & localTransform = scan.localTransform();
+				memcpy(scanInfo.data()+2, localTransform.data(), localTransform.size()*sizeof(float));
+			}
+		}
+
+		if(scanInfo.size())
+		{
+			rc = sqlite3_bind_blob(ppStmt, index++, scanInfo.data(), scanInfo.size()*sizeof(float), SQLITE_STATIC);
+		}
+		else
+		{
+			rc = sqlite3_bind_null(ppStmt, index++);
+		}
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+
+	}
+	else
+	{
+		// scan_max_pts
+		rc = sqlite3_bind_int(ppStmt, index++, scan.maxPoints());
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+
+		// scan_max_range
+		if(uStrNumCmp(_version, "0.10.7") >= 0)
+		{
+			rc = sqlite3_bind_double(ppStmt, index++, scan.rangeMax());
+			UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+		}
+	}
+
+	// scan
+	cv::Mat scanCompressed;
+	if(scan.isCompressed())
+	{
+		scanCompressed = scan.data();
+	}
+	else
+	{
+		scanCompressed = compressData2(scan.data());
+	}
+	if(!scanCompressed.empty())
+	{
+		rc = sqlite3_bind_blob(ppStmt, index++, scanCompressed.data, scanCompressed.total(), SQLITE_STATIC);
+	}
+	else
+	{
+		rc = sqlite3_bind_null(ppStmt, index++);
 	}
 	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
 
