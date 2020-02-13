@@ -2790,7 +2790,7 @@ void DatabaseViewer::editSaved2DMap()
 					}
 				}
 
-				if(!scan.isEmpty())
+				if(b == QMessageBox::YesToAll && !scan.isEmpty())
 				{
 					Transform mapToScan = iter->second * scan.localTransform();
 
@@ -2872,6 +2872,7 @@ void DatabaseViewer::editSaved2DMap()
 			else
 			{
 				update3dView();
+				updateGraphView();
 			}
 			progressDialog.setValue(progressDialog.maximumSteps());
 		}
