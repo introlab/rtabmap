@@ -2957,7 +2957,9 @@ Transform Memory::computeTransform(
 			transform = _registrationPipeline->computeTransformationMod(tmpFrom, tmpTo, guess, info);
 		}
 
-		if(!transform.isNull())
+		if(!transform.isNull() &&
+			fromS.sensorData().cameraModels().size()<=1 &&
+			toS.sensorData().cameraModels().size()<=1)
 		{
 			UDEBUG("");
 			// verify if it is a 180 degree transform, well verify > 90
