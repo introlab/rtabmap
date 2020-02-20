@@ -359,6 +359,10 @@ public:
 	float getNormalsScale() const;
 	void setNormalsStep(int step);
 	void setNormalsScale(float scale);
+	bool isIntensityRedColormap() const;
+	float getIntensityMax() const;
+	void setIntensityRedColormap(bool value);
+	void setIntensityMax(float value);
 	void buildPickingLocator(bool enable);
 	const std::map<std::string, vtkSmartPointer<vtkOBBTree> > & getLocators() const {return _locators;}
 
@@ -409,6 +413,8 @@ private:
     QAction * _aShowNormals;
 	QAction * _aSetNormalsStep;
 	QAction * _aSetNormalsScale;
+	QAction * _aSetIntensityRedColormap;
+	QAction * _aSetIntensityMaximum;
     QAction * _aSetBackgroundColor;
     QAction * _aSetRenderingRate;
     QAction * _aSetLighting;
@@ -446,6 +452,7 @@ private:
     bool _frontfaceCulling;
     double _renderingRate;
     vtkProp * _octomapActor;
+    float _intensityAbsMax;
 };
 
 } /* namespace rtabmap */

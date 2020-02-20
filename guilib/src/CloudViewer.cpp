@@ -121,7 +121,8 @@ CloudViewer::CloudViewer(QWidget *parent, CloudViewerInteractorStyle * style) :
 		_currentBgColor(Qt::black),
 		_frontfaceCulling(false),
 		_renderingRate(5.0),
-		_octomapActor(0)
+		_octomapActor(0),
+		_intensityAbsMax(0.0f)
 {
 	UDEBUG("");
 	this->setMinimumSize(200, 200);
@@ -248,6 +249,10 @@ void CloudViewer::createMenu()
 	_aShowNormals->setCheckable(true);
 	_aSetNormalsStep = new QAction("Set normals step...", this);
 	_aSetNormalsScale = new QAction("Set normals scale...", this);
+	_aSetIntensityRedColormap = new QAction("Red/Yellow Colormap", this);
+	_aSetIntensityRedColormap->setCheckable(true);
+	_aSetIntensityRedColormap->setChecked(false);
+	_aSetIntensityMaximum = new QAction("Set maximum absolute intensity...", this);
 	_aSetBackgroundColor = new QAction("Set background color...", this);	
 	_aSetRenderingRate = new QAction("Set rendering rate...", this);
 	_aSetLighting = new QAction("Lighting", this);
@@ -299,6 +304,10 @@ void CloudViewer::createMenu()
 	normalsMenu->addAction(_aSetNormalsStep);
 	normalsMenu->addAction(_aSetNormalsScale);
 
+	QMenu * scanMenu = new QMenu("Scan", this);
+	scanMenu->addAction(_aSetIntensityRedColormap);
+	scanMenu->addAction(_aSetIntensityMaximum);
+
 	//menus
 	_menu = new QMenu(this);
 	_menu->addMenu(cameraMenu);
@@ -306,6 +315,7 @@ void CloudViewer::createMenu()
 	_menu->addMenu(frustumMenu);
 	_menu->addMenu(gridMenu);
 	_menu->addMenu(normalsMenu);
+	_menu->addMenu(scanMenu);
 	_menu->addAction(_aSetBackgroundColor);
 	_menu->addAction(_aSetRenderingRate);
 	_menu->addAction(_aSetLighting);
@@ -353,6 +363,9 @@ void CloudViewer::saveSettings(QSettings & settings, const QString & group) cons
 	settings.setValue("normals_step", this->getNormalsStep());
 	settings.setValue("normals_scale", (double)this->getNormalsScale());
 
+	settings.setValue("intensity_red_colormap", this->isIntensityRedColormap());
+	settings.setValue("normals_scale", (double)this->getIntensityMax());
+
 	settings.setValue("trajectory_shown", this->isTrajectoryShown());
 	settings.setValue("trajectory_size", this->getTrajectorySize());
 
@@ -396,6 +409,9 @@ void CloudViewer::loadSettings(QSettings & settings, const QString & group)
 	this->setNormalsShown(settings.value("normals", this->isNormalsShown()).toBool());
 	this->setNormalsStep(settings.value("normals_step", this->getNormalsStep()).toInt());
 	this->setNormalsScale(settings.value("normals_scale", this->getNormalsScale()).toFloat());
+
+	this->setIntensityRedColormap(settings.value("intensity_red_colormap", this->isIntensityRedColormap()).toBool());
+	this->setIntensityMax(settings.value("normals_scale", this->getIntensityMax()).toFloat());
 
 	this->setTrajectoryShown(settings.value("trajectory_shown", this->isTrajectoryShown()).toBool());
 	this->setTrajectorySize(settings.value("trajectory_size", this->getTrajectorySize()).toUInt());
@@ -464,8 +480,10 @@ public:
 	typedef boost::shared_ptr<const PointCloudColorHandlerIntensityField > ConstPtr;
 
 	/** \brief Constructor. */
-	PointCloudColorHandlerIntensityField (const PointCloudConstPtr &cloud) :
-		pcl::visualization::PointCloudColorHandler<pcl::PCLPointCloud2>::PointCloudColorHandler (cloud)
+	PointCloudColorHandlerIntensityField (const PointCloudConstPtr &cloud, float maxAbsIntensity = 0.0f, bool redYellowColormap = true) :
+		pcl::visualization::PointCloudColorHandler<pcl::PCLPointCloud2>::PointCloudColorHandler (cloud),
+		maxAbsIntensity_(maxAbsIntensity),
+		redColormap_(redYellowColormap)
 		{
 		field_idx_  = pcl::getFieldIndex (*cloud, "intensity");
 		if (field_idx_ != -1)
@@ -541,10 +559,22 @@ public:
 			// Allocate enough memory to hold all colors
 			unsigned char* colors = new unsigned char[j * 3];
 			float min, max;
-			uMinMax(intensities, j, min, max);
+			if(maxAbsIntensity_>0.0f)
+			{
+				max = maxAbsIntensity_;
+			}
+			else
+			{
+				uMinMax(intensities, j, min, max);
+			}
 			for(size_t k=0; k<j; ++k)
 			{
-				colors[k*3+0] = colors[k*3+1] = colors[k*3+2] = max>0?(unsigned char)(intensities[k]/max*255.0f):0;
+				colors[k*3+0] = colors[k*3+1] = colors[k*3+2] = max>0?(unsigned char)(std::min(intensities[k]/max*255.0f, 255.0f)):255;
+				if(redColormap_)
+				{
+					colors[k*3+0] = 255;
+					colors[k*3+2] = 0;
+				}
 			}
 			reinterpret_cast<vtkUnsignedCharArray*>(&(*scalars))->SetNumberOfTuples (j);
 			reinterpret_cast<vtkUnsignedCharArray*>(&(*scalars))->SetArray (colors, j*3, 0, vtkUnsignedCharArray::VTK_DATA_ARRAY_DELETE);
@@ -564,6 +594,10 @@ protected:
 	/** \brief Get the name of the field used. */
 	virtual std::string
 	getFieldName () const { return ("intensity"); }
+
+private:
+	float maxAbsIntensity_;
+	bool redColormap_;
 };
 
 bool CloudViewer::addCloud(
@@ -627,7 +661,7 @@ bool CloudViewer::addCloud(
 		else if(hasIntensity)
 		{
 			//intensity
-			colorHandler.reset(new PointCloudColorHandlerIntensityField(binaryCloud));
+			colorHandler.reset(new PointCloudColorHandlerIntensityField(binaryCloud, _intensityAbsMax, _aSetIntensityRedColormap->isChecked()));
 			_visualizer->addPointCloud (binaryCloud, colorHandler, origin, orientation, id, 1);
 		}
 		else if(previousColorIndex == 5)
@@ -2940,6 +2974,31 @@ void CloudViewer::setNormalsScale(float scale)
 	}
 }
 
+bool CloudViewer::isIntensityRedColormap() const
+{
+	return _aSetIntensityRedColormap->isChecked();
+}
+float CloudViewer::getIntensityMax() const
+{
+	return _intensityAbsMax;
+}
+
+void CloudViewer::setIntensityRedColormap(bool on)
+{
+	_aSetIntensityRedColormap->setChecked(on);
+}
+void CloudViewer::setIntensityMax(float value)
+{
+	if(value >= 0.0f)
+	{
+		_intensityAbsMax = value;
+	}
+	else
+	{
+		UERROR("Cannot set normals scale < 0, value=%f", value);
+	}
+}
+
 void CloudViewer::buildPickingLocator(bool enable)
 {
 	_buildLocator = enable;
@@ -3274,6 +3333,19 @@ void CloudViewer::handleAction(QAction * a)
 		{
 			this->setNormalsScale(value);
 		}
+	}
+	else if(a == _aSetIntensityMaximum)
+	{
+		bool ok;
+		double value = QInputDialog::getDouble(this, tr("Set maximum absolute intensity"), tr("Intensity (0=auto)"), _intensityAbsMax, 0.0, 99999, 2, &ok);
+		if(ok)
+		{
+			this->setIntensityMax(value);
+		}
+	}
+	else if(a == _aShowNormals)
+	{
+		this->setIntensityRedColormap(_aSetIntensityRedColormap->isChecked());
 	}
 	else if(a == _aSetBackgroundColor)
 	{
