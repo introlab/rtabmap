@@ -1950,10 +1950,14 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 
 		// Update statistics tool box
 		const std::map<std::string, float> & statistics = stat.data();
+		std::string odomStr =  "Odometry/";
 		for(std::map<std::string, float>::const_iterator iter = statistics.begin(); iter != statistics.end(); ++iter)
 		{
 			//ULOGGER_DEBUG("Updating stat \"%s\"", (*iter).first.c_str());
-			_ui->statsToolBox->updateStat(QString((*iter).first.c_str()).replace('_', ' '), _preferencesDialog->isTimeUsedInFigures()?stat.stamp()-_firstStamp:stat.refImageId(), (*iter).second, _preferencesDialog->isCacheSavedInFigures());
+			if((*iter).first.size()<odomStr.size() || (*iter).first.substr(0, odomStr.size()).compare(odomStr)!=0)
+			{
+				_ui->statsToolBox->updateStat(QString((*iter).first.c_str()).replace('_', ' '), _preferencesDialog->isTimeUsedInFigures()?stat.stamp()-_firstStamp:stat.refImageId(), (*iter).second, _preferencesDialog->isCacheSavedInFigures());
+			}
 		}
 
 		UDEBUG("time= %d ms", time.restart());
