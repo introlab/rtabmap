@@ -820,6 +820,7 @@ void ExportCloudsDialog::updateReconstructionFlavor()
 					_ui->doubleSpinBox_meshDecimationFactor->value()!=0.0 ||
 					_ui->spinBox_meshMaxPolygons->value()!=0 ||
 					_ui->checkBox_textureMapping->isChecked());
+		_ui->label_outputPolygons->setEnabled(_ui->checkBox_poisson_outputPolygons->isEnabled());
 
 		_ui->checkBox_cleanMesh->setEnabled(_ui->comboBox_pipeline->currentIndex() == 1);
 		_ui->label_meshClean->setEnabled(_ui->comboBox_pipeline->currentIndex() == 1);
@@ -839,8 +840,10 @@ void ExportCloudsDialog::updateReconstructionFlavor()
 
 #ifndef RTABMAP_ALICE_VISION
 		_ui->checkBox_multiband->setEnabled(false);
-		_ui->label_multiband->setEnabled(false);
+#else
+		_ui->checkBox_multiband->setEnabled(_ui->checkBox_binary->isEnabled());
 #endif
+		_ui->label_multiband->setEnabled(_ui->checkBox_multiband->isEnabled());
 	}
 }
 
@@ -868,9 +871,6 @@ void ExportCloudsDialog::setSaveButton()
 	_ui->checkBox_mesh_quad->setVisible(false);
 	_ui->checkBox_mesh_quad->setEnabled(false);
 	_ui->label_quad->setVisible(false);
-	_ui->checkBox_multiband->setVisible(true);
-	_ui->checkBox_multiband->setEnabled(true);
-	_ui->label_multiband->setVisible(true);
 	updateReconstructionFlavor();
 }
 
@@ -884,9 +884,6 @@ void ExportCloudsDialog::setOkButton()
 	_ui->checkBox_mesh_quad->setVisible(true);
 	_ui->checkBox_mesh_quad->setEnabled(true);
 	_ui->label_quad->setVisible(true);
-	_ui->checkBox_multiband->setVisible(false);
-	_ui->checkBox_multiband->setEnabled(false);
-	_ui->label_multiband->setVisible(false);
 	updateReconstructionFlavor();
 }
 
