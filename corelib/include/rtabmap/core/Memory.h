@@ -218,6 +218,7 @@ public:
 	const Feature2D * getFeature2D() const {return _feature2D;}
 	bool isGraphReduced() const {return _reduceGraph;}
 	const std::vector<double> & getOdomMaxInf() const {return _odomMaxInf;}
+	bool isOdomGravityUsed() const {return _useOdometryGravity;}
 
 	void dumpMemoryTree(const char * fileNameTree) const;
 	virtual void dumpMemory(std::string directory) const;
