@@ -36,6 +36,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/ULogger.h>
 #include <QApplication>
 #include <stdio.h>
+#include <iostream>
+#include <fstream>
 
 using namespace rtabmap;
 
@@ -50,7 +52,8 @@ void showUsage()
 			"  --scale            Find the best scale for the map against the ground truth\n"
 			"                       and compute error based on the scaled path.\n"
 			"  --poses            Export poses to [path]_poses.txt, ground truth to [path]_gt.txt\n"
-			"                       and valid ground truth indices to [path]_indices.txt \n\n");
+			"                       and valid ground truth indices to [path]_indices.txt \n"
+			"  --report               Export all statistics values in report.txt \n\n");
 	exit(1);
 }
 
@@ -71,6 +74,7 @@ int main(int argc, char * argv[])
 	bool outputPoses = false;
 	bool outputKittiError = false;
 	bool outputRelativeError = false;
+	bool outputReport = false;
 	std::map<std::string, UPlot*> figures;
 	for(int i=1; i<argc-1; ++i)
 	{
@@ -93,6 +97,10 @@ int main(int argc, char * argv[])
 		else if(strcmp(argv[i], "--poses") == 0)
 		{
 			outputPoses = true;
+		}
+		else if(strcmp(argv[i],"--report") == 0)
+		{
+			outputReport = true;
 		}
 		else
 		{
@@ -549,6 +557,37 @@ int main(int argc, char * argv[])
 										printf("Could not export the ground truth to \"%s\"!?!\n", path.c_str());
 									}
 								}
+							}
+
+							if (outputReport)
+							{
+								bool fillHeader = false;
+								std::ifstream f("report.csv");
+    							if(!f.good())
+								{
+									fillHeader = true;
+								}
+
+								std::ofstream myfile;
+								myfile.open("report.csv", std::fstream::in | std::fstream::out | std::fstream::app);
+								if(fillHeader)
+								{
+									myfile 	<< "Rosbag name"<<";"<<"error linear (m)"<<";"<<"error linear max (m)"<<";"<<"error linear odom (m)"<<";"
+											<<"error angular"<<";"
+											<<"Slam avg (hz)"<<";"<<"Slam max (hz)"<<";"
+											<<"Odom avg (hz)"<<";"<<"Odom max (hz)"<<std::endl;
+								}
+
+								myfile 	<<fileName.c_str()<<";"
+										<<bestRMSE<< ";"
+										<<maxRMSE<<";"
+										<<bestVoRMSE<<";"
+										<<bestRMSEAng<<";"
+										<<(1/(uMean(slamTime)/1000.0))<<";"
+										<<(1/(uMax(slamTime)/1000.0))<<";"
+										<<(1/(uMean(odomTime)/1000.0))<<";"
+										<<(1/(uMax(odomTime)/1000.0))<<";"<<std::endl;
+								myfile.close();
 							}
 						}
 					}
