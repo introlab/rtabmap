@@ -44,16 +44,18 @@ using namespace rtabmap;
 void showUsage()
 {
 	printf("\nUsage:\n"
-			"rtabmap-report [\"Statistic/Id\"] [--latex] [--kitti] [--scale] [--poses] path\n"
+			"rtabmap-report [\"Statistic/Id\"] [options] path\n"
 			"  path               Directory containing rtabmap databases or path of a database.\n"
-			"  --latex            Print table formatted in LaTeX with results.\n"
-			"  --kitti            Compute error based on KITTI benchmark.\n"
-			"  --relative         Compute relative motion error between poses.\n"
-			"  --scale            Find the best scale for the map against the ground truth\n"
-			"                       and compute error based on the scaled path.\n"
-			"  --poses            Export poses to [path]_poses.txt, ground truth to [path]_gt.txt\n"
-			"                       and valid ground truth indices to [path]_indices.txt \n"
-			"  --report               Export all statistics values in report.txt \n\n");
+			"  Options:"
+			"    --latex            Print table formatted in LaTeX with results.\n"
+			"    --kitti            Compute error based on KITTI benchmark.\n"
+			"    --relative         Compute relative motion error between poses.\n"
+			"    --loop             Compute relative motion error of loop closures.\n"
+			"    --scale            Find the best scale for the map against the ground truth\n"
+			"                         and compute error based on the scaled path.\n"
+			"    --poses            Export poses to [path]_poses.txt, ground truth to [path]_gt.txt\n"
+			"                         and valid ground truth indices to [path]_indices.txt \n"
+			"    --report           Export all statistics values in report.txt \n\n");
 	exit(1);
 }
 
@@ -75,6 +77,7 @@ int main(int argc, char * argv[])
 	bool outputKittiError = false;
 	bool outputRelativeError = false;
 	bool outputReport = false;
+	bool outputLoopAccuracy = false;
 	std::map<std::string, UPlot*> figures;
 	for(int i=1; i<argc-1; ++i)
 	{
@@ -97,6 +100,10 @@ int main(int argc, char * argv[])
 		else if(strcmp(argv[i], "--poses") == 0)
 		{
 			outputPoses = true;
+		}
+		else if(strcmp(argv[i], "--loop") == 0)
+		{
+			outputLoopAccuracy = true;
 		}
 		else if(strcmp(argv[i],"--report") == 0)
 		{
@@ -309,7 +316,8 @@ int main(int argc, char * argv[])
 						{
 							links.insert(*jter);
 						}
-						if(jter->second.type() == Link::kGlobalClosure &&
+						if( jter->second.type() != Link::kNeighbor &&
+							jter->second.type() != Link::kNeighborMerged &&
 							graph::findLink(loopClosureLinks, jter->second.from(), jter->second.to()) == loopClosureLinks.end())
 						{
 							loopClosureLinks.insert(*jter);
@@ -325,6 +333,9 @@ int main(int argc, char * argv[])
 					float kitti_r_err = 0.0f;
 					float relative_t_err = 0.0f;
 					float relative_r_err = 0.0f;
+					float loop_t_err = 0.0f;
+					float loop_r_err = 0.0f;
+
 					if(ids.size())
 					{
 						std::map<int, Transform> posesOut;
@@ -589,9 +600,39 @@ int main(int argc, char * argv[])
 										<<(1/(uMax(odomTime)/1000.0))<<";"<<std::endl;
 								myfile.close();
 							}
+
+							if(outputLoopAccuracy && !groundTruth.empty() && !linksOut.empty())
+							{
+								float sumDist = 0.0f;
+								float sumAngle = 0.0f;
+								int count = 0;
+								for(std::multimap<int, Link>::iterator iter=loopClosureLinks.begin(); iter!=loopClosureLinks.end(); ++iter)
+								{
+									if(	groundTruth.find(iter->second.from())!=groundTruth.end() &&
+										groundTruth.find(iter->second.to())!=groundTruth.end())
+									{
+										Transform gtLink = groundTruth.at(iter->second.from()).inverse()*groundTruth.at(iter->second.to());
+										const Transform & t = iter->second.transform();
+										Transform scaledLink(
+												t.r11(), t.r12(), t.r13(), t.x()*bestScale,
+												t.r21(), t.r22(), t.r23(), t.y()*bestScale,
+												t.r31(), t.r32(), t.r33(), t.z()*bestScale);
+										Transform diff = gtLink.inverse()*scaledLink;
+										sumDist += diff.getNorm();
+										sumAngle += diff.getAngle();
+										++count;
+									}
+								}
+								if(count>0)
+								{
+									loop_t_err = sumDist/float(count);
+									loop_r_err = sumAngle/float(count);
+									loop_r_err *= 180/CV_PI; // Rotation error (deg)
+								}
+							}
 						}
 					}
-					printf("   %s (%d, s=%.3f):\terror lin=%.3fm (max=%.3fm, odom=%.3fm) ang=%.1fdeg%s%s, slam: avg=%dms (max=%dms) loops=%d, odom: avg=%dms (max=%dms), camera: avg=%dms, %smap=%dMB\n",
+					printf("   %s (%d, s=%.3f):\terror lin=%.3fm (max=%.3fm, odom=%.3fm) ang=%.1fdeg%s%s, slam: avg=%dms (max=%dms) loops=%d%s, odom: avg=%dms (max=%dms), camera: avg=%dms, %smap=%dMB\n",
 							fileName.c_str(),
 							(int)ids.size(),
 							bestScale,
@@ -603,6 +644,7 @@ int main(int argc, char * argv[])
 							!outputRelativeError?"":uFormat(", Relative: t_err=%.3fm r_err=%.2f deg", relative_t_err, relative_r_err).c_str(),
 							(int)uMean(slamTime), (int)uMax(slamTime),
 							(int)loopClosureLinks.size(),
+							!outputLoopAccuracy?"":uFormat(" (t_err=%.3fm r_err=%.2f deg)", loop_t_err, loop_r_err).c_str(),
 							(int)uMean(odomTime), (int)uMax(odomTime),
 							(int)uMean(cameraTime),
 							maxOdomRAM!=-1.0f?uFormat("RAM odom=%dMB ", (int)maxOdomRAM).c_str():"",
