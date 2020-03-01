@@ -2570,7 +2570,10 @@ bool Rtabmap::process(
 		 landmarkDetected!=0 ||
 		 signaturesRetrieved.size()) // can be different map of the current one
 		 &&
-		 (_memory->isIncremental() || graph::filterLinks(signature->getLinks(), Link::kSelfRefLink).size())) // In localization mode, the new node should be linked
+		 (_memory->isIncremental() ||
+				 // In localization mode, the new node should be linked to another node or a landmark already in the graph
+				 graph::filterLinks(signature->getLinks(), Link::kSelfRefLink).size() ||
+				 (landmarkDetected!=0 && _optimizedPoses.find(landmarkDetected)!=_optimizedPoses.end())))
 	{
 		UASSERT(uContains(_optimizedPoses, signature->id()));
 
