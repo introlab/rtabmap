@@ -110,8 +110,7 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	iniFilePath_(ini),
 	infoReducedGraph_(false),
 	infoTotalOdom_(0.0),
-	infoSessions_(0),
-	useLastOptimizedGraphAsGuess_(false)
+	infoSessions_(0)
 {
 	pathDatabase_ = QDir::homePath()+"/Documents/RTAB-Map"; //use home directory by default
 
@@ -1100,9 +1099,6 @@ bool DatabaseViewer::closeDatabase()
 		stereoViewer_->update();
 
 		ui_->toolBox_statistics->clear();
-
-		useLastOptimizedGraphAsGuess_ = false;
-		lastOptimizedGraph_.clear();
 	}
 
 	ui_->actionClose_database->setEnabled(dbDriver_ != 0);
@@ -1588,7 +1584,6 @@ void DatabaseViewer::updateIds()
 	weights_.clear();
 	wmStates_.clear();
 	odomPoses_.clear();
-	dbOptimizedPoses_.clear();
 	groundTruthPoses_.clear();
 	gpsPoses_.clear();
 	gpsValues_.clear();
@@ -1778,8 +1773,6 @@ void DatabaseViewer::updateIds()
 	QApplication::processEvents();
 	uSleep(100);
 	QApplication::processEvents();
-
-	dbOptimizedPoses_ = dbDriver_->loadOptimizedPoses();
 
 	if(!groundTruthPoses_.empty() || !gpsPoses_.empty())
 	{
@@ -6277,16 +6270,6 @@ void DatabaseViewer::updateGraphView()
 			return;
 		}
 
-		std::map<int, Transform> optimizedGraphGuess;
-		if(graphes_.size() && useLastOptimizedGraphAsGuess_)
-		{
-			optimizedGraphGuess = lastOptimizedGraph_;
-		}
-		else
-		{
-			optimizedGraphGuess = dbOptimizedPoses_;
-		}
-
 		graphes_.clear();
 		graphLinks_.clear();
 
@@ -6516,22 +6499,6 @@ void DatabaseViewer::updateGraphView()
 				links,
 				posesOut,
 				linksOut);
-		if(optimizedGraphGuess.size() == posesOut.size())
-		{
-			bool identical=true;
-			for(std::map<int, Transform>::iterator iter=posesOut.begin(); iter!=posesOut.end(); ++iter)
-			{
-				if(!uContains(optimizedGraphGuess, iter->first))
-				{
-					identical = false;
-					break;
-				}
-			}
-			if(identical)
-			{
-				posesOut = optimizedGraphGuess;
-			}
-		}
 		UINFO("Connected graph of %d poses and %d links", (int)posesOut.size(), (int)linksOut.size());
 		QTime time;
 		time.start();
