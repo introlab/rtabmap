@@ -115,6 +115,7 @@ private:
 
 	std::vector<ParticleFilter *> particleFilters_;
 	cv::KalmanFilter kalmanFilter_;
+	StereoCameraModel stereoModel_;
 
 protected:
 	Odometry(const rtabmap::ParametersMap & parameters);
