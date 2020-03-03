@@ -3386,6 +3386,53 @@ pcl::PolygonMesh::Ptr meshDecimation(const pcl::PolygonMesh::Ptr & mesh, float f
 	return output;
 }
 
+bool intersectRayTriangle(
+		const Eigen::Vector3f & p,
+		const Eigen::Vector3f & dir,
+		const Eigen::Vector3f & v0,
+		const Eigen::Vector3f & v1,
+		const Eigen::Vector3f & v2,
+		float & distance,
+		Eigen::Vector3f & normal)
+{
+    // get triangle edge cv::Vec3fs and plane normal
+    const Eigen::Vector3f u = v1-v0;
+    const Eigen::Vector3f v = v2-v0;
+    normal = u.cross(v);              // cross product
+    if (normal == Eigen::Vector3f(0,0,0))   // triangle is degenerate
+        return false;                 // do not deal with this case
+
+    const float denomimator = normal.dot(dir);
+    if (fabs(denomimator) < 10e-9)    // ray is  parallel to triangle plane
+       return false;
+
+    // get intersect of ray with triangle plane
+    distance = normal.dot(v0 - p) / denomimator;
+    if (distance < 0.0)                      // ray goes away from triangle
+        return false;
+
+    // is I inside T?
+    float    uu, uv, vv, wu, wv, D;
+    uu = u.dot(u);
+    uv = u.dot(v);
+    vv = v.dot(v);
+    const Eigen::Vector3f w = p + dir * distance - v0;
+    wu = w.dot(u);
+    wv = w.dot(v);
+    D = uv * uv - uu * vv;
+
+    // get and test parametric coords
+    float s, t;
+    s = (uv * wv - vv * wu) / D;
+    if (s < 0.0 || s > 1.0)         // I is outside T
+        return false;
+    t = (uv * wu - uu * wv) / D;
+    if (t < 0.0 || (s + t) > 1.0)   // I is outside T
+        return false;
+
+    return true;                    // I is in T
+}
+
 }
 
 }

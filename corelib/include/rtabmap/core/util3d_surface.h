@@ -422,6 +422,49 @@ void denseMeshPostProcessing(
 		int minClusterSize = 50,           // Remove small polygon clusters after the mesh has been cleaned (0=disabled)
 		ProgressState * progressState = 0);
 
+/**
+ * intersectRayTriangle(): find the 3D intersection of a ray with a triangle
+ *     Input:   p = origin of the ray
+ *              dir = direction of the ray
+ *              v0 = point 0 of the triangle
+ *              v1 = point 1 of the triangle
+ *              v2 = point 2 of the triangle
+ *     Output:  distance = distance from origin along ray direction
+ *              normal = normal of the triangle (not normalized)
+ *     Return: true = intersect in unique point inside the triangle
+ *
+ *     Intersection point can be computed with "I = p + dir*distance"
+ *
+ *  Copyright 2001 softSurfer, 2012 Dan Sunday
+ *  This code may be freely used and modified for any purpose
+ *  providing that this copyright notice is included with it.
+ *  SoftSurfer makes no warranty for this code, and cannot be held
+ *  liable for any real or imagined damage resulting from its use.
+ *  Users of this code must verify correctness for their application.
+ *
+ *   Mathieu:  Adapted for PCL format
+ */
+bool RTABMAP_EXP intersectRayTriangle(
+		const Eigen::Vector3f & p,
+		const Eigen::Vector3f & dir,
+		const Eigen::Vector3f & v0,
+		const Eigen::Vector3f & v1,
+		const Eigen::Vector3f & v2,
+		float & distance,
+		Eigen::Vector3f & normal);
+
+template<typename PointT>
+bool intersectRayMesh(
+		const Eigen::Vector3f & origin,
+		const Eigen::Vector3f & dir,
+		const typename pcl::PointCloud<PointT> & cloud,
+		const std::vector<pcl::Vertices> & polygons,
+		bool ignoreBackFaces,
+		float & distance,
+		Eigen::Vector3f & normal,
+		int & index);
+
+
 } // namespace util3d
 } // namespace rtabmap
 
