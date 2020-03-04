@@ -28,6 +28,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <tango-gl/conversions.h>
 
 #include "RTABMapApp.h"
+#ifdef RTABMAP_TANGO
+#include "CameraTango.h"
+#endif
 
 #include <rtabmap/core/Rtabmap.h>
 #include <rtabmap/core/util2d.h>
@@ -149,6 +152,7 @@ rtabmap::ParametersMap RTABMapApp::getRtabmapParameters()
 }
 
 RTABMapApp::RTABMapApp() :
+		cameraDriver_(0),
 		camera_(0),
 		rtabmapThread_(0),
 		rtabmap_(0),
@@ -172,7 +176,6 @@ RTABMapApp::RTABMapApp() :
 		maxGainRadius_(0.02f),
 		renderingTextureDecimation_(4),
 		backgroundColor_(0.2f),
-		paused_(false),
 		dataRecorderMode_(false),
 		clearSceneOnNextRender_(false),
 		openingDatabase_(false),
@@ -202,23 +205,14 @@ RTABMapApp::RTABMapApp() :
 }
 
 RTABMapApp::~RTABMapApp() {
-	if(camera_)
-	{
-		delete camera_;
-	}
+	delete camera_;
 	if(rtabmapThread_)
 	{
 		rtabmapThread_->close(false);
-		delete rtabmapThread_;
 	}
-	if(logHandler_)
-	{
-		delete logHandler_;
-	}
-	if(optRefPose_)
-	{
-		delete optRefPose_;
-	}
+	delete rtabmapThread_;
+	delete logHandler_;
+	delete optRefPose_;
 	{
 		boost::mutex::scoped_lock  lock(rtabmapMutex_);
 		if(rtabmapEvents_.size())
@@ -280,20 +274,21 @@ void RTABMapApp::onCreate(JNIEnv* env, jobject caller_activity)
 
 	if(logHandler_ == 0)
 	{
-		logHandler_ = new LogHandler();
+		logHandler_ = new rtabmap::LogHandler();
 	}
 
 	this->registerToEventsManager();
-
-	camera_ = new rtabmap::CameraTango(cameraColor_, !cameraColor_ || fullResolution_?1:2, rawScanSaved_, smoothing_);
 }
 
 void RTABMapApp::setScreenRotation(int displayRotation, int cameraRotation)
 {
-	TangoSupportRotation rotation = tango_gl::util::GetAndroidRotationFromColorCameraToDisplay(displayRotation, cameraRotation);
+	rtabmap::ScreenRotation rotation = rtabmap::GetAndroidRotationFromColorCameraToDisplay(displayRotation, cameraRotation);
 	LOGI("Set orientation: display=%d camera=%d -> %d", displayRotation, cameraRotation, (int)rotation);
 	main_scene_.setScreenRotation(rotation);
-	camera_->setScreenRotation(rotation);
+	if(camera_)
+	{
+		camera_->setScreenRotation(rotation);
+	}
 }
 
 int RTABMapApp::openDatabase(const std::string & databasePath, bool databaseInMemory, bool optimize, const std::string & databaseSource)
@@ -475,7 +470,7 @@ int RTABMapApp::openDatabase(const std::string & databasePath, bool databaseInMe
 
 								if((main_scene_.isMeshRendering() && polygons.size()) || !main_scene_.isMeshRendering() || !main_scene_.isMapRendering())
 								{
-									std::pair<std::map<int, Mesh>::iterator, bool> inserted = createdMeshes_.insert(std::make_pair(id, Mesh()));
+									std::pair<std::map<int, rtabmap::Mesh>::iterator, bool> inserted = createdMeshes_.insert(std::make_pair(id, rtabmap::Mesh()));
 									UASSERT(inserted.second);
 									inserted.first->second.cloud = cloud;
 									inserted.first->second.indices = indices;
@@ -568,7 +563,7 @@ int RTABMapApp::openDatabase(const std::string & databasePath, bool databaseInMe
 		LOGI("Polygon filtering...");
 		boost::mutex::scoped_lock  lock(meshesMutex_);
 		UTimer time;
-		for(std::map<int, Mesh>::iterator iter = createdMeshes_.begin(); iter!=createdMeshes_.end(); ++iter)
+		for(std::map<int, rtabmap::Mesh>::iterator iter = createdMeshes_.begin(); iter!=createdMeshes_.end(); ++iter)
 		{
 			if(iter->second.polygons.size())
 			{
@@ -603,11 +598,6 @@ int RTABMapApp::openDatabase(const std::string & databasePath, bool databaseInMe
 		camera_->resetOrigin();
 	}
 
-	// Start threads
-	LOGI("Start rtabmap thread");
-	rtabmapThread_->registerToEventsManager();
-	rtabmapThread_->start();
-
 	UEventsManager::post(new rtabmap::RtabmapEventInit(rtabmap::RtabmapEventInit::kInitialized, ""));
 
 	status_.first = rtabmap::RtabmapEventInit::kInitialized;
@@ -625,101 +615,121 @@ int RTABMapApp::openDatabase(const std::string & databasePath, bool databaseInMe
 	return status;
 }
 
-bool RTABMapApp::onTangoServiceConnected(JNIEnv* env, jobject iBinder)
+void RTABMapApp::setCameraDriver(int driver)
 {
-	LOGW("onTangoServiceConnected()");
+	cameraDriver_ = driver;
+}
+
+bool RTABMapApp::onCameraServiceConnected(JNIEnv* env, jobject iBinder)
+{
+	LOGW("onCameraServiceConnected() camera driver=%d", cameraDriver_);
 	if(camera_)
 	{
 		camera_->join(true);
+		delete camera_;
+		camera_ = 0;
+	}
+
+	if(cameraDriver_ == 0) // Tango
+	{
+#ifdef RTABMAP_TANGO
+		camera_ = new rtabmap::CameraTango(cameraColor_, !cameraColor_ || fullResolution_?1:2, rawScanSaved_, smoothing_);
 
 		if (TangoService_setBinder(env, iBinder) != TANGO_SUCCESS) {
 		    UERROR("TangoHandler::ConnectTango, TangoService_setBinder error");
+		    delete camera_;
+		    camera_ = 0;
 		    return false;
 		}
-
-		camera_->setColorCamera(cameraColor_);
-		if(camera_->init())
-		{
-			//update mesh decimation based on camera calibration
-			LOGI("Cloud density level %d", cloudDensityLevel_);
-			meshDecimation_ = 1;
-			if(camera_)
-			{
-				// Google Tango Tablet 160x90
-				// Phab2Pro 240x135
-				// FishEye 640x480
-				int width = camera_->getCameraModel().imageWidth()/(cameraColor_?8:1);
-				int height = camera_->getCameraModel().imageHeight()/(cameraColor_?8:1);
-				if(cloudDensityLevel_ == 3) // high
-				{
-					if(height >= 480 && width % 20 == 0 && height % 20 == 0)
-					{
-						meshDecimation_ = 20;
-					}
-					else if(width % 10 == 0 && height % 10 == 0)
-					{
-						meshDecimation_ = 10;
-					}
-					else if(width % 15 == 0 && height % 15 == 0)
-					{
-						meshDecimation_ = 15;
-					}
-					else
-					{
-						UERROR("Could not set decimation to high (size=%dx%d)", width, height);
-					}
-				}
-				else if(cloudDensityLevel_ == 2) // medium
-				{
-					if(height >= 480 && width % 10 == 0 && height % 10 == 0)
-					{
-						meshDecimation_ = 10;
-					}
-					else if(width % 5 == 0 && height % 5 == 0)
-					{
-						meshDecimation_ = 5;
-					}
-					else
-					{
-						UERROR("Could not set decimation to medium (size=%dx%d)", width, height);
-					}
-				}
-				else if(cloudDensityLevel_ == 1) // low
-				{
-					if(height >= 480 && width % 5 == 0 && height % 5 == 0)
-					{
-						meshDecimation_ = 5;
-					}
-					else if(width % 3 == 0 && width % 3 == 0)
-					{
-						meshDecimation_ = 3;
-					}
-					else if(width % 2 == 0 && width % 2 == 0)
-					{
-						meshDecimation_ = 2;
-					}
-					else
-					{
-						UERROR("Could not set decimation to low (size=%dx%d)", width, height);
-					}
-				}
-			}
-			LOGI("Set decimation to %d", meshDecimation_);
-
-			LOGI("Start camera thread");
-			if(!paused_)
-			{
-				camera_->start();
-			}
-			cameraJustInitialized_ = true;
-			return true;
-		}
-		UERROR("Failed camera initialization!");
+#else
+		UERROR("RTAB-Map is not built with Tango support!");
+#endif
 	}
+
+	if(camera_ == 0)
+	{
+		UERROR("Unknown or not supported camera driver! %d", cameraDriver_);
+		return false;
+	}
+
+	if(camera_->init())
+	{
+		camera_->setScreenRotation(main_scene_.getScreenRotation());
+
+		//update mesh decimation based on camera calibration
+		LOGI("Cloud density level %d", cloudDensityLevel_);
+		meshDecimation_ = 1;
+
+		// Google Tango Tablet 160x90
+		// Phab2Pro 240x135
+		// FishEye 640x480
+		int width = camera_->getCameraModel().imageWidth()/(cameraColor_?8:1);
+		int height = camera_->getCameraModel().imageHeight()/(cameraColor_?8:1);
+		if(cloudDensityLevel_ == 3) // high
+		{
+			if(height >= 480 && width % 20 == 0 && height % 20 == 0)
+			{
+				meshDecimation_ = 20;
+			}
+			else if(width % 10 == 0 && height % 10 == 0)
+			{
+				meshDecimation_ = 10;
+			}
+			else if(width % 15 == 0 && height % 15 == 0)
+			{
+				meshDecimation_ = 15;
+			}
+			else
+			{
+				UERROR("Could not set decimation to high (size=%dx%d)", width, height);
+			}
+		}
+		else if(cloudDensityLevel_ == 2) // medium
+		{
+			if(height >= 480 && width % 10 == 0 && height % 10 == 0)
+			{
+				meshDecimation_ = 10;
+			}
+			else if(width % 5 == 0 && height % 5 == 0)
+			{
+				meshDecimation_ = 5;
+			}
+			else
+			{
+				UERROR("Could not set decimation to medium (size=%dx%d)", width, height);
+			}
+		}
+		else if(cloudDensityLevel_ == 1) // low
+		{
+			if(height >= 480 && width % 5 == 0 && height % 5 == 0)
+			{
+				meshDecimation_ = 5;
+			}
+			else if(width % 3 == 0 && width % 3 == 0)
+			{
+				meshDecimation_ = 3;
+			}
+			else if(width % 2 == 0 && width % 2 == 0)
+			{
+				meshDecimation_ = 2;
+			}
+			else
+			{
+				UERROR("Could not set decimation to low (size=%dx%d)", width, height);
+			}
+		}
+		LOGI("Set decimation to %d", meshDecimation_);
+
+		LOGI("Start camera thread");
+		camera_->start();
+		cameraJustInitialized_ = true;
+		return true;
+	}
+	UERROR("Failed camera initialization!");
 	return false;
 }
 
-void RTABMapApp::onPause()
+void RTABMapApp::stopCamera()
 {
 	LOGI("onPause()");
 	if(camera_)
@@ -727,11 +737,6 @@ void RTABMapApp::onPause()
 		camera_->join(true);
 		camera_->close();
 	}
-}
-
-
-void RTABMapApp::TangoResetMotionTracking() {
-  TangoService_resetMotionTracking();
 }
 
 std::vector<pcl::Vertices> RTABMapApp::filterOrganizedPolygons(
@@ -881,7 +886,7 @@ private:
 };
 
 // OpenGL thread
-bool RTABMapApp::smoothMesh(int id, Mesh & mesh)
+bool RTABMapApp::smoothMesh(int id, rtabmap::Mesh & mesh)
 {
 	UTimer t;
 	// reconstruct depth image
@@ -954,7 +959,7 @@ void RTABMapApp::gainCompensation(bool full)
 
 	std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr > clouds;
 	std::map<int, pcl::IndicesPtr> indices;
-	for(std::map<int, Mesh>::iterator iter = createdMeshes_.begin(); iter!=createdMeshes_.end(); ++iter)
+	for(std::map<int, rtabmap::Mesh>::iterator iter = createdMeshes_.begin(); iter!=createdMeshes_.end(); ++iter)
 	{
 		clouds.insert(std::make_pair(iter->first, iter->second.cloud));
 		indices.insert(std::make_pair(iter->first, iter->second.indices));
@@ -987,7 +992,7 @@ void RTABMapApp::gainCompensation(bool full)
 		LOGI("Gain compensation... compute gain: links=%d, time=%fs", (int)links.size(), tGainCompensation.ticks());
 	}
 
-	for(std::map<int, Mesh>::iterator iter = createdMeshes_.begin(); iter!=createdMeshes_.end(); ++iter)
+	for(std::map<int, rtabmap::Mesh>::iterator iter = createdMeshes_.begin(); iter!=createdMeshes_.end(); ++iter)
 	{
 		if(!iter->second.cloud->empty())
 		{
@@ -1007,8 +1012,6 @@ int RTABMapApp::Render()
 	std::list<rtabmap::RtabmapEvent*> rtabmapEvents;
 	try
 	{
-		UASSERT(camera_!=0);
-
 		UTimer fpsTime;
 #ifdef DEBUG_RENDERING_PERFORMANCE
 		UTimer time;
@@ -1038,13 +1041,13 @@ int RTABMapApp::Render()
 			// update camera pose?
 			if(graphOptimization_ && !mapToOdom_.isIdentity())
 			{
-				main_scene_.SetCameraPose(opengl_world_T_rtabmap_world*mapToOdom_*rtabmap_world_T_tango_world*pose);
+				main_scene_.SetCameraPose(rtabmap::opengl_world_T_rtabmap_world*mapToOdom_*rtabmap::rtabmap_world_T_tango_world*pose);
 			}
 			else
 			{
-				main_scene_.SetCameraPose(opengl_world_T_tango_world*pose);
+				main_scene_.SetCameraPose(rtabmap::opengl_world_T_tango_world*pose);
 			}
-			if(!camera_->isRunning() && cameraJustInitialized_)
+			if(camera_ && !camera_->isRunning() && cameraJustInitialized_)
 			{
 				notifyCameraStarted = true;
 				cameraJustInitialized_ = false;
@@ -1085,7 +1088,7 @@ int RTABMapApp::Render()
 						optTexture_.cols, optTexture_.rows);
 				if(optMesh_->tex_polygons.size() && optMesh_->tex_polygons[0].size())
 				{
-					Mesh mesh;
+					rtabmap::Mesh mesh;
 					mesh.gains[0] = mesh.gains[1] = mesh.gains[2] = 1.0;
 					mesh.cloud.reset(new pcl::PointCloud<pcl::PointXYZRGB>);
 					mesh.normals.reset(new pcl::PointCloud<pcl::Normal>);
@@ -1098,14 +1101,14 @@ int RTABMapApp::Render()
 						mesh.texCoords = optMesh_->tex_coordinates[0];
 						mesh.texture = optTexture_;
 					}
-					main_scene_.addMesh(g_optMeshId, mesh, opengl_world_T_rtabmap_world, true);
+					main_scene_.addMesh(g_optMeshId, mesh, rtabmap::opengl_world_T_rtabmap_world, true);
 				}
 				else
 				{
 					pcl::IndicesPtr indices(new std::vector<int>); // null
 					pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
 					pcl::fromPCLPointCloud2(optMesh_->cloud, *cloud);
-					main_scene_.addCloud(g_optMeshId, cloud, indices, opengl_world_T_rtabmap_world);
+					main_scene_.addCloud(g_optMeshId, cloud, indices, rtabmap::opengl_world_T_rtabmap_world);
 				}
 
 				// clean up old messages if there are ones
@@ -1138,25 +1141,25 @@ int RTABMapApp::Render()
 				if(iter != stats.poses().end() && !iter->second.isNull() && optRefPose_)
 				{
 					// adjust opt mesh pose
-					main_scene_.setCloudPose(g_optMeshId, opengl_world_T_rtabmap_world * iter->second * (*optRefPose_).inverse());
+					main_scene_.setCloudPose(g_optMeshId, rtabmap::opengl_world_T_rtabmap_world * iter->second * (*optRefPose_).inverse());
 				}
 				int fastMovement = (int)uValue(stats.data(), rtabmap::Statistics::kMemoryFast_movement(), 0.0f);
 				int loopClosure = (int)uValue(stats.data(), rtabmap::Statistics::kLoopAccepted_hypothesis_id(), 0.0f);
 				int rejected = (int)uValue(stats.data(), rtabmap::Statistics::kLoopRejectedHypothesis(), 0.0f);
 				int landmark = (int)uValue(stats.data(), rtabmap::Statistics::kLoopLandmark_detected(), 0.0f);
-				if(!paused_ && loopClosure>0)
+				if(rtabmapThread_ && rtabmapThread_->isRunning() && loopClosure>0)
 				{
 					main_scene_.setBackgroundColor(0, 0.5f, 0); // green
 				}
-				else if(!paused_ && landmark!=0)
+				else if(rtabmapThread_ && rtabmapThread_->isRunning() && landmark!=0)
 				{
 					main_scene_.setBackgroundColor(1, 0.65f, 0); // orange
 				}
-				else if(!paused_ && rejected>0)
+				else if(rtabmapThread_ && rtabmapThread_->isRunning() && rejected>0)
 				{
 					main_scene_.setBackgroundColor(0, 0.2f, 0); // dark green
 				}
-				else if(!paused_ && fastMovement)
+				else if(rtabmapThread_ && rtabmapThread_->isRunning() && fastMovement)
 				{
 					main_scene_.setBackgroundColor(0.2f, 0, 0.2f); // dark magenta
 				}
@@ -1173,6 +1176,7 @@ int RTABMapApp::Render()
 			main_scene_.setMeshRendering(main_scene_.hasMesh(g_optMeshId), main_scene_.hasTexture(g_optMeshId));
 
 			fpsTime.restart();
+			main_scene_.setFrustumVisible(false);
 			lastDrawnCloudsCount_ = main_scene_.Render();
 			if(renderingTime_ < fpsTime.elapsed())
 			{
@@ -1278,7 +1282,7 @@ int RTABMapApp::Render()
 					LOGI("added (%d) != meshes (%d)", (int)added.size(), meshes);
 					boost::mutex::scoped_lock  lockRtabmap(rtabmapMutex_);
 					UASSERT(rtabmap_!=0);
-					for(std::map<int, Mesh>::iterator iter=createdMeshes_.begin(); iter!=createdMeshes_.end(); ++iter)
+					for(std::map<int, rtabmap::Mesh>::iterator iter=createdMeshes_.begin(); iter!=createdMeshes_.end(); ++iter)
 					{
 						if(!main_scene_.hasCloud(iter->first) && !iter->second.pose.isNull())
 						{
@@ -1307,7 +1311,7 @@ int RTABMapApp::Render()
 									}
 								}
 							}
-							main_scene_.addMesh(iter->first, iter->second, opengl_world_T_rtabmap_world*iter->second.pose);
+							main_scene_.addMesh(iter->first, iter->second, rtabmap::opengl_world_T_rtabmap_world*iter->second.pose);
 							main_scene_.setCloudVisible(iter->first, iter->second.visible);
 
 							iter->second.texture = cv::Mat(); // don't keep textures in memory
@@ -1363,23 +1367,23 @@ int RTABMapApp::Render()
 						int loopClosure = (int)uValue(stats.data(), rtabmap::Statistics::kLoopAccepted_hypothesis_id(), 0.0f);
 						int rejected = (int)uValue(stats.data(), rtabmap::Statistics::kLoopRejectedHypothesis(), 0.0f);
 						int landmark = (int)uValue(stats.data(), rtabmap::Statistics::kLoopLandmark_detected(), 0.0f);
-						if(!paused_ && loopClosure>0)
+						if(rtabmapThread_ && rtabmapThread_->isRunning() && loopClosure>0)
 						{
 							main_scene_.setBackgroundColor(0, 0.5f, 0); // green
 						}
-						else if(!paused_ && landmark!=0)
+						else if(rtabmapThread_ && rtabmapThread_->isRunning() && landmark!=0)
 						{
 							main_scene_.setBackgroundColor(1, 0.65f, 0); // orange
 						}
-						else if(!paused_ && rejected>0)
+						else if(rtabmapThread_ && rtabmapThread_->isRunning() && rejected>0)
 						{
 							main_scene_.setBackgroundColor(0, 0.2f, 0); // dark green
 						}
-						else if(!paused_ && rehearsalMerged>0)
+						else if(rtabmapThread_ && rtabmapThread_->isRunning() && rehearsalMerged>0)
 						{
 							main_scene_.setBackgroundColor(0, 0, 0.2f); // blue
 						}
-						else if(!paused_ && fastMovement)
+						else if(rtabmapThread_ && rtabmapThread_->isRunning() && fastMovement)
 						{
 							main_scene_.setBackgroundColor(0.2f, 0, 0.2f); // dark magenta
 						}
@@ -1408,12 +1412,12 @@ int RTABMapApp::Render()
 						std::map<int, rtabmap::Transform>::iterator jter = rawPoses_.find(iter->first);
 						if(jter != rawPoses_.end())
 						{
-							iter->second = opengl_world_T_rtabmap_world*jter->second;
+							iter->second = rtabmap::opengl_world_T_rtabmap_world*jter->second;
 						}
 					}
 					else
 					{
-						iter->second = opengl_world_T_rtabmap_world*iter->second;
+						iter->second = rtabmap::opengl_world_T_rtabmap_world*iter->second;
 					}
 				}
 
@@ -1441,9 +1445,9 @@ int RTABMapApp::Render()
 								//just update pose
 								main_scene_.setCloudPose(id, iter->second);
 								main_scene_.setCloudVisible(id, true);
-								std::map<int, Mesh>::iterator meshIter = createdMeshes_.find(id);
+								std::map<int, rtabmap::Mesh>::iterator meshIter = createdMeshes_.find(id);
 								UASSERT(meshIter!=createdMeshes_.end());
-								meshIter->second.pose = opengl_world_T_rtabmap_world.inverse()*iter->second;
+								meshIter->second.pose = rtabmap::opengl_world_T_rtabmap_world.inverse()*iter->second;
 								meshIter->second.visible = true;
 							}
 							else
@@ -1486,7 +1490,7 @@ int RTABMapApp::Render()
 
 											if((main_scene_.isMeshRendering() && polygons.size()) || !main_scene_.isMeshRendering() || !main_scene_.isMapRendering())
 											{
-												std::pair<std::map<int, Mesh>::iterator, bool> inserted = createdMeshes_.insert(std::make_pair(id, Mesh()));
+												std::pair<std::map<int, rtabmap::Mesh>::iterator, bool> inserted = createdMeshes_.insert(std::make_pair(id, rtabmap::Mesh()));
 												UASSERT(inserted.second);
 												inserted.first->second.cloud = cloud;
 												inserted.first->second.indices = indices;
@@ -1518,10 +1522,10 @@ int RTABMapApp::Render()
 								}
 								if(createdMeshes_.find(id) != createdMeshes_.end())
 								{
-									Mesh & mesh = createdMeshes_.at(id);
+									rtabmap::Mesh & mesh = createdMeshes_.at(id);
 									totalPoints_+=mesh.indices->size();
 									totalPolygons_ += mesh.polygons.size();
-									mesh.pose = opengl_world_T_rtabmap_world.inverse()*iter->second;
+									mesh.pose = rtabmap::opengl_world_T_rtabmap_world.inverse()*iter->second;
 									main_scene_.addMesh(id, mesh, iter->second);
 #ifdef DEBUG_RENDERING_PERFORMANCE
 									LOGW("Adding mesh to scene: %fs", time.ticks());
@@ -1561,7 +1565,7 @@ int RTABMapApp::Render()
 						if(*iter > 0 && poses.find(*iter) == poses.end())
 						{
 							main_scene_.setCloudVisible(*iter, false);
-							std::map<int, Mesh>::iterator meshIter = createdMeshes_.find(*iter);
+							std::map<int, rtabmap::Mesh>::iterator meshIter = createdMeshes_.find(*iter);
 							UASSERT(meshIter!=createdMeshes_.end());
 							meshIter->second.visible = false;
 						}
@@ -1597,7 +1601,7 @@ int RTABMapApp::Render()
 			}
 			else
 			{
-				main_scene_.setCloudVisible(-1, odomCloudShown_ && !trajectoryMode_ && !paused_);
+				main_scene_.setCloudVisible(-1, odomCloudShown_ && !trajectoryMode_ && camera_ && camera_->isRunning());
 
 				//just process the last one
 				if(!odomEvent.pose().isNull())
@@ -1615,7 +1619,7 @@ int RTABMapApp::Render()
 										odomEvent.data().imageRaw().cols, odomEvent.data().imageRaw().rows,
 										odomEvent.data().depthRaw().cols, odomEvent.data().depthRaw().rows,
 									   (int)cloud->width, (int)cloud->height);
-								main_scene_.addCloud(-1, cloud, indices, opengl_world_T_rtabmap_world*mapToOdom_*odomEvent.pose());
+								main_scene_.addCloud(-1, cloud, indices, rtabmap::opengl_world_T_rtabmap_world*mapToOdom_*odomEvent.pose());
 								main_scene_.setCloudVisible(-1, true);
 							}
 							else
@@ -1634,7 +1638,7 @@ int RTABMapApp::Render()
 			if(gainCompensationOnNextRender_>0)
 			{
 				gainCompensation(gainCompensationOnNextRender_==2);
-				for(std::map<int, Mesh>::iterator iter = createdMeshes_.begin(); iter!=createdMeshes_.end(); ++iter)
+				for(std::map<int, rtabmap::Mesh>::iterator iter = createdMeshes_.begin(); iter!=createdMeshes_.end(); ++iter)
 				{
 					main_scene_.updateGains(iter->first, iter->second.gains[0], iter->second.gains[1], iter->second.gains[2]);
 				}
@@ -1647,7 +1651,7 @@ int RTABMapApp::Render()
 				LOGI("Bilateral filtering...");
 				bilateralFilteringOnNextRender_ = false;
 				boost::mutex::scoped_lock  lock(meshesMutex_);
-				for(std::map<int, Mesh>::iterator iter = createdMeshes_.begin(); iter!=createdMeshes_.end(); ++iter)
+				for(std::map<int, rtabmap::Mesh>::iterator iter = createdMeshes_.begin(); iter!=createdMeshes_.end(); ++iter)
 				{
 					if(iter->second.cloud->size() && iter->second.indices->size())
 					{
@@ -1666,7 +1670,7 @@ int RTABMapApp::Render()
 				filterPolygonsOnNextRender_ = false;
 				boost::mutex::scoped_lock  lock(meshesMutex_);
 				UTimer time;
-				for(std::map<int, Mesh>::iterator iter = createdMeshes_.begin(); iter!=createdMeshes_.end(); ++iter)
+				for(std::map<int, rtabmap::Mesh>::iterator iter = createdMeshes_.begin(); iter!=createdMeshes_.end(); ++iter)
 				{
 					if(iter->second.polygons.size())
 					{
@@ -1679,6 +1683,7 @@ int RTABMapApp::Render()
 			}
 
 			fpsTime.restart();
+			main_scene_.setFrustumVisible(camera_ && camera_->isRunning());
 			lastDrawnCloudsCount_ = main_scene_.Render();
 			if(renderingTime_ < fpsTime.elapsed())
 			{
@@ -1703,7 +1708,7 @@ int RTABMapApp::Render()
 				if(lastPoseEventTime_>0.0 && UTimer::now()-lastPoseEventTime_ > 1.0)
 				{
 					UERROR("TangoPoseEventNotReceived");
-					UEventsManager::post(new rtabmap::CameraTangoEvent(10, "TangoPoseEventNotReceived", uNumber2Str(UTimer::now()-lastPoseEventTime_)));
+					UEventsManager::post(new rtabmap::CameraInfoEvent(10, "TangoPoseEventNotReceived", uNumber2Str(UTimer::now()-lastPoseEventTime_)));
 				}
 			}
 		}
@@ -1745,7 +1750,7 @@ int RTABMapApp::Render()
 			}
 		}
 
-		if(paused_ && lastPostRenderEventTime_ > 0.0)
+		if((rtabmapThread_==0 || !rtabmapThread_->isRunning()) && lastPostRenderEventTime_ > 0.0)
 		{
 			double interval = UTimer::now() - lastPostRenderEventTime_;
 			double updateInterval = 1.0;
@@ -1824,19 +1829,22 @@ void RTABMapApp::setPausedMapping(bool paused)
 		}
 		main_scene_.setBackgroundColor(backgroundColor_, backgroundColor_, backgroundColor_);
 	}
-	paused_ = paused;
-	if(camera_)
+
+	if(rtabmapThread_)
 	{
-		if(paused_)
+		if(rtabmapThread_->isRunning())
 		{
 			LOGW("Pause!");
-			camera_->kill();
+			rtabmapThread_->unregisterFromEventsManager();
+			rtabmapThread_->join(true);
 		}
 		else
 		{
 			LOGW("Resume!");
-			UEventsManager::post(new rtabmap::RtabmapEventCmd(rtabmap::RtabmapEventCmd::kCmdTriggerNewMap));
-			camera_->start();
+			rtabmap_->triggerNewMap();
+			rtabmap_->parseParameters(getRtabmapParameters());
+			rtabmapThread_->registerToEventsManager();
+			rtabmapThread_->start();
 		}
 	}
 }
@@ -1900,8 +1908,7 @@ void RTABMapApp::setTrajectoryMode(bool enabled)
 void RTABMapApp::setGraphOptimization(bool enabled)
 {
 	graphOptimization_ = enabled;
-	UASSERT(camera_ != 0 && rtabmap_!=0 && rtabmap_->getMemory()!=0);
-	if(!camera_->isRunning() && rtabmap_->getMemory()->getLastWorkingSignature()!=0)
+	if((camera_ == 0 || !camera_->isRunning()) && rtabmap_ && rtabmap_->getMemory()->getLastWorkingSignature()!=0)
 	{
 		std::map<int, rtabmap::Transform> poses;
 		std::multimap<int, rtabmap::Link> links;
@@ -1940,10 +1947,6 @@ void RTABMapApp::setRawScanSaved(bool enabled)
 	if(rawScanSaved_ != enabled)
 	{
 		rawScanSaved_ = enabled;
-		if(camera_)
-		{
-			camera_->setRawScanPublished(rawScanSaved_);
-		}
 	}
 }
 
@@ -1960,13 +1963,6 @@ void RTABMapApp::setFullResolution(bool enabled)
 	if(fullResolution_ != enabled)
 	{
 		fullResolution_ = enabled;
-		if(camera_)
-		{
-			camera_->setDecimation(fullResolution_?1:2);
-		}
-		rtabmap::ParametersMap parameters;
-		parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kMemImagePreDecimation(), std::string(fullResolution_?"2":"1")));
-		this->post(new rtabmap::ParamEvent(parameters));
 	}
 }
 
@@ -1975,10 +1971,6 @@ void RTABMapApp::setSmoothing(bool enabled)
 	if(smoothing_ != enabled)
 	{
 		smoothing_ = enabled;
-		if(camera_)
-		{
-			camera_->setSmoothing(smoothing_);
-		}
 	}
 }
 
@@ -2135,6 +2127,7 @@ void RTABMapApp::resetMapping()
 void RTABMapApp::save(const std::string & databasePath)
 {
 	LOGI("Saving database to %s", databasePath.c_str());
+	rtabmapThread_->unregisterFromEventsManager();
 	rtabmapThread_->join(true);
 
 	LOGI("Taking screenshot...");
@@ -2180,8 +2173,6 @@ void RTABMapApp::save(const std::string & databasePath)
 	{
 		clearSceneOnNextRender_ = true;
 	}
-	rtabmapThread_->start();
-
 }
 
 void RTABMapApp::cancelProcessing()
@@ -2300,7 +2291,7 @@ bool RTABMapApp::exportMesh(
 						iter!= poses.end();
 						++iter)
 					{
-						std::map<int, Mesh>::iterator jter = createdMeshes_.find(iter->first);
+						std::map<int, rtabmap::Mesh>::iterator jter = createdMeshes_.find(iter->first);
 						pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
 						pcl::IndicesPtr indices(new std::vector<int>);
 						rtabmap::CameraModel model;
@@ -2568,7 +2559,7 @@ bool RTABMapApp::exportMesh(
 					{
 						LOGI("Assembling cloud %d (total=%d)...", iter->first, (int)poses.size());
 
-						std::map<int, Mesh>::iterator jter = createdMeshes_.find(iter->first);
+						std::map<int, rtabmap::Mesh>::iterator jter = createdMeshes_.find(iter->first);
 						pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
 						std::vector<pcl::Vertices> polygons;
 						float gains[3] = {1.0f};
@@ -2806,7 +2797,7 @@ bool RTABMapApp::exportMesh(
 				iter!= poses.end();
 				++iter)
 			{
-				std::map<int, Mesh>::iterator jter=createdMeshes_.find(iter->first);
+				std::map<int, rtabmap::Mesh>::iterator jter=createdMeshes_.find(iter->first);
 				pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
 				pcl::IndicesPtr indices(new std::vector<int>);
 				float gains[3];
@@ -3267,9 +3258,9 @@ bool RTABMapApp::handleEvent(UEvent * event)
 		}
 	}
 
-	if(event->getClassName().compare("CameraTangoEvent") == 0)
+	if(event->getClassName().compare("CameraInfoEvent") == 0)
 	{
-		rtabmap::CameraTangoEvent * tangoEvent = (rtabmap::CameraTangoEvent*)event;
+		rtabmap::CameraInfoEvent * tangoEvent = (rtabmap::CameraInfoEvent*)event;
 
 		// Call JAVA callback with tango event msg
 		bool success = false;
@@ -3282,7 +3273,7 @@ bool RTABMapApp::handleEvent(UEvent * event)
 				jclass clazz = env->GetObjectClass(RTABMapActivity);
 				if(clazz)
 				{
-					jmethodID methodID = env->GetMethodID(clazz, "tangoEventCallback", "(ILjava/lang/String;Ljava/lang/String;)V" );
+					jmethodID methodID = env->GetMethodID(clazz, "cameraEventCallback", "(ILjava/lang/String;Ljava/lang/String;)V" );
 					if(methodID)
 					{
 						env->CallVoidMethod(RTABMapActivity, methodID,

@@ -83,9 +83,9 @@ Java_com_introlab_rtabmap_RTABMapLib_openDatabase2(
 }
 
 JNIEXPORT bool JNICALL
-Java_com_introlab_rtabmap_RTABMapLib_onTangoServiceConnected(
+Java_com_introlab_rtabmap_RTABMapLib_onCameraServiceConnected(
 		JNIEnv* env, jobject, jobject iBinder) {
-  return app.onTangoServiceConnected(env, iBinder);
+  return app.onCameraServiceConnected(env, iBinder);
 }
 
 JNIEXPORT void JNICALL
@@ -107,9 +107,15 @@ Java_com_introlab_rtabmap_RTABMapLib_render(
 }
 
 JNIEXPORT void JNICALL
-Java_com_introlab_rtabmap_RTABMapLib_onPause(
+Java_com_introlab_rtabmap_RTABMapLib_setCameraDriver(
+    JNIEnv*, jobject, int driver) {
+  app.setCameraDriver(driver);
+}
+
+JNIEXPORT void JNICALL
+Java_com_introlab_rtabmap_RTABMapLib_stopCamera(
     JNIEnv*, jobject) {
-  app.onPause();
+  app.stopCamera();
 }
 
 JNIEXPORT void JNICALL

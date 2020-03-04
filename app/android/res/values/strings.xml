@@ -9,8 +9,10 @@
     <string name="status">"Status: "</string>
     <string name="words">"Words: "</string>
     <string name="camera_button">First View</string>
-    <string name="pause">Pause</string>
-    <string name="resume">Resume</string>
+    <string name="library">Library</string>
+    <string name="new_scan">New Scan</string>
+    <string name="pause">Stop</string>
+    <string name="resume">Start</string>
     <string name="backface_on">Backface</string>
     <string name="backface_off">Backface</string>
     <string name="light_on">Lighting</string>

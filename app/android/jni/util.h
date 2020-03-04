@@ -39,6 +39,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pcl/Vertices.h>
 #include <pcl/pcl_base.h>
 
+namespace rtabmap {
+
 class LogHandler : public UEventsHandler
 {
 public:
@@ -172,5 +174,62 @@ public:
 #endif
 	cv::Mat texture;
 };
+
+typedef enum {
+  /// Not apply any rotation.
+  ROTATION_IGNORED = -1,
+
+  /// 0 degree rotation (natural orientation)
+  ROTATION_0 = 0,
+
+  /// 90 degree rotation.
+  ROTATION_90 = 1,
+
+  /// 180 degree rotation.
+  ROTATION_180 = 2,
+
+  /// 270 degree rotation.
+  ROTATION_270 = 3
+} ScreenRotation;
+
+inline int NormalizedColorCameraRotation(int camera_rotation) {
+  int camera_n = 0;
+  switch (camera_rotation) {
+    case 90:
+      camera_n = 1;
+      break;
+    case 180:
+      camera_n = 2;
+      break;
+    case 270:
+      camera_n = 3;
+      break;
+    default:
+      camera_n = 0;
+      break;
+  }
+  return camera_n;
+}
+
+inline ScreenRotation GetAndroidRotationFromColorCameraToDisplay(
+		ScreenRotation display_rotation, int color_camera_rotation) {
+  int color_camera_n = NormalizedColorCameraRotation(color_camera_rotation);
+
+  int ret = static_cast<int>(display_rotation) - color_camera_n;
+  if (ret < 0) {
+    ret += 4;
+  }
+  return static_cast<ScreenRotation>(ret % 4);
+}
+
+inline ScreenRotation GetAndroidRotationFromColorCameraToDisplay(
+    int display_rotation, int color_camera_rotation) {
+	ScreenRotation r =
+      static_cast<ScreenRotation>(display_rotation);
+  return GetAndroidRotationFromColorCameraToDisplay(
+      r, color_camera_rotation);
+}
+
+}
 
 #endif /* UTIL_H_ */

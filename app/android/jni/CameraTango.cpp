@@ -104,23 +104,15 @@ void onTangoEventAvailableRouter(void* context, const TangoEvent* event)
 //////////////////////////////
 // CameraTango
 //////////////////////////////
-const float CameraTango::bilateralFilteringSigmaS = 2.0f;
-const float CameraTango::bilateralFilteringSigmaR = 0.075f;
-
 CameraTango::CameraTango(bool colorCamera, int decimation, bool publishRawScan, bool smoothing) :
-		Camera(0),
+		CameraMobile(smoothing),
 		tango_config_(0),
-		previousStamp_(0.0),
-		stampEpochOffset_(0.0),
 		colorCamera_(colorCamera),
 		decimation_(decimation),
 		rawScanPublished_(publishRawScan),
-		smoothing_(smoothing),
 		cloudStamp_(0),
 		tangoColorType_(0),
-		tangoColorStamp_(0),
-		colorCameraToDisplayRotation_(ROTATION_0),
-		originUpdate_(false)
+		tangoColorStamp_(0)
 {
 	UASSERT(decimation >= 1);
 }
@@ -418,8 +410,6 @@ bool CameraTango::init(const std::string & calibrationFolder, const std::string 
 	LOGI("deviceTColorCameraTango  =%s", deviceTColorCamera_.prettyPrint().c_str());
 	LOGI("deviceTColorCameraRtabmap=%s", (tango_device_T_rtabmap_device.inverse()*deviceTColorCamera_).prettyPrint().c_str());
 
-	cameraStartedTime_.restart();
-
 	return true;
 }
 
@@ -433,19 +423,10 @@ void CameraTango::close()
 		TangoService_disconnect();
 		LOGI("TangoService_disconnect() done.");
 	}
-	previousPose_.setNull();
-	previousStamp_ = 0.0;
 	fisheyeRectifyMapX_ = cv::Mat();
 	fisheyeRectifyMapY_ = cv::Mat();
-	lastKnownGPS_ = GPS();
-	lastEnvSensors_.clear();
-	originOffset_ = Transform();
-	originUpdate_ = false;
-}
 
-void CameraTango::resetOrigin()
-{
-	originUpdate_ = true;
+	CameraMobile::close();
 }
 
 void CameraTango::cloudReceived(const cv::Mat & cloud, double timestamp)
@@ -500,55 +481,14 @@ void CameraTango::rgbReceived(const cv::Mat & tangoImage, int type, double times
 	}
 }
 
-static rtabmap::Transform opticalRotation(
-								1.0f,  0.0f,  0.0f, 0.0f,
-							    0.0f, -1.0f,  0.0f, 0.0f,
-								0.0f,  0.0f, -1.0f, 0.0f);
-void CameraTango::poseReceived(const Transform & pose)
-{
-	if(!pose.isNull())
-	{
-		// send pose of the camera (without optical rotation), not the device
-		Transform p = pose*deviceTColorCamera_*opticalRotation;
-		if(originUpdate_)
-		{
-			originOffset_ = p.translation().inverse();
-			originUpdate_ = false;
-		}
-		if(!originOffset_.isNull())
-		{
-			this->post(new PoseEvent(originOffset_*p));
-		}
-		else
-		{
-			this->post(new PoseEvent(p));
-		}
-	}
-}
-
 void CameraTango::tangoEventReceived(int type, const char * key, const char * value)
 {
-	this->post(new CameraTangoEvent(type, key, value));
-}
-
-bool CameraTango::isCalibrated() const
-{
-	return model_.isValidForProjection();
+	this->post(new CameraInfoEvent(type, key, value));
 }
 
 std::string CameraTango::getSerial() const
 {
 	return "Tango";
-}
-
-void CameraTango::setGPS(const GPS & gps)
-{
-	lastKnownGPS_ = gps;
-}
-
-void CameraTango::addEnvSensor(int type, float value)
-{
-	lastEnvSensors_.insert(std::make_pair((EnvSensor::Type)type, EnvSensor((EnvSensor::Type)type, value)));
 }
 
 rtabmap::Transform CameraTango::tangoPoseToTransform(const TangoPoseData * tangoPose) const
@@ -610,7 +550,7 @@ SensorData CameraTango::captureImage(CameraInfo * info)
 		if(this->isRunning())
 		{
 			LOGE("Not received any frames since 2 seconds, try to restart the camera again.");
-			this->post(new CameraTangoEvent(0, "CameraTango", "No frames received since 2 seconds."));
+			this->post(new CameraInfoEvent(0, "CameraTango", "No frames received since 2 seconds."));
 
 			boost::mutex::scoped_lock  lock(dataMutex_);
 			if(!cloud_.empty() && !tangoColor_.empty())
@@ -804,7 +744,7 @@ SensorData CameraTango::captureImage(CameraInfo * info)
 
 			if(closePoints > 100)
 			{
-				this->post(new CameraTangoEvent(0, "TooClose", ""));
+				this->post(new CameraInfoEvent(0, "TooClose", ""));
 			}
 
 			if(oi)
@@ -825,9 +765,9 @@ SensorData CameraTango::captureImage(CameraInfo * info)
 			Transform poseDevice = getPoseAtTimestamp(rgbStamp);
 
 			// adjust origin
-			if(!originOffset_.isNull())
+			if(!getOriginOffset().isNull())
 			{
-				poseDevice = originOffset_ * poseDevice;
+				poseDevice = getOriginOffset() * poseDevice;
 			}
 
 			//LOGD("Local    = %s", model.localTransform().prettyPrint().c_str());
@@ -842,58 +782,6 @@ SensorData CameraTango::captureImage(CameraInfo * info)
 
 			Transform scanLocalTransform = model.localTransform();
 
-			// Rotate image depending on the camera orientation
-			if(colorCameraToDisplayRotation_ == ROTATION_90)
-			{
-				cv::Mat rgbt(rgb.cols, rgb.rows, rgb.type());
-				cv::flip(rgb,rgb,1);
-				cv::transpose(rgb,rgbt);
-				rgb = rgbt;
-				cv::Mat deptht(depth.cols, depth.rows, depth.type());
-				cv::flip(depth,depth,1);
-				cv::transpose(depth,deptht);
-				depth = deptht;
-				cv::Size sizet(model.imageHeight(), model.imageWidth());
-				model = CameraModel(model.fy(), model.fx(), model.cy(), model.cx()>0?model.imageWidth()-model.cx():0, model.localTransform()*rtabmap::Transform(0,0,0,0,0,1.57079632679489661923132169163975144));
-				model.setImageSize(sizet);
-			}
-			else if(colorCameraToDisplayRotation_ == ROTATION_180)
-			{
-				cv::flip(rgb,rgb,1);
-				cv::flip(rgb,rgb,0);
-				cv::flip(depth,depth,1);
-				cv::flip(depth,depth,0);
-				cv::Size sizet(model.imageWidth(), model.imageHeight());
-				model = CameraModel(
-						model.fx(),
-						model.fy(),
-						model.cx()>0?model.imageWidth()-model.cx():0,
-						model.cy()>0?model.imageHeight()-model.cy():0,
-						model.localTransform()*rtabmap::Transform(0,0,0,0,0,1.57079632679489661923132169163975144*2.0));
-				model.setImageSize(sizet);
-			}
-			else if(colorCameraToDisplayRotation_ == ROTATION_270)
-			{
-				cv::Mat rgbt(rgb.cols, rgb.rows, rgb.type());
-				cv::transpose(rgb,rgbt);
-				cv::flip(rgbt,rgbt,1);
-				rgb = rgbt;
-				cv::Mat deptht(depth.cols, depth.rows, depth.type());
-				cv::transpose(depth,deptht);
-				cv::flip(deptht,deptht,1);
-				depth = deptht;
-				cv::Size sizet(model.imageHeight(), model.imageWidth());
-				model = CameraModel(model.fy(), model.fx(), model.cy()>0?model.imageHeight()-model.cy():0, model.cx(), model.localTransform()*rtabmap::Transform(0,0,0,0,0,-1.57079632679489661923132169163975144));
-				model.setImageSize(sizet);
-			}
-
-			if(smoothing_)
-			{
-				//UTimer t;
-				depth = rtabmap::util2d::fastBilateralFiltering(depth, bilateralFilteringSigmaS, bilateralFilteringSigmaR);
-				//LOGD("Bilateral filtering, time=%fs", t.ticks());
-			}
-
 			if(rawScanPublished_)
 			{
 				data = SensorData(LaserScan::backwardCompatibility(scan, cloud.total()/scanDownsampling, 0, scanLocalTransform), rgb, depth, model, this->getNextSeqID(), rgbStamp);
@@ -902,22 +790,7 @@ SensorData CameraTango::captureImage(CameraInfo * info)
 			{
 				data = SensorData(rgb, depth, model, this->getNextSeqID(), rgbStamp);
 			}
-			data.setGroundTruth(odom);
-
-			if(lastKnownGPS_.stamp() > 0.0 && rgbStamp-lastKnownGPS_.stamp()<1.0)
-			{
-				data.setGPS(lastKnownGPS_);
-			}
-			else if(lastKnownGPS_.stamp()>0.0)
-			{
-				LOGD("GPS too old (current time=%f, gps time = %f)", rgbStamp, lastKnownGPS_.stamp());
-			}
-
-			if(lastEnvSensors_.size())
-			{
-				data.setEnvSensors(lastEnvSensors_);
-				lastEnvSensors_.clear();
-			}
+			info->odomPose = odom;
 		}
 		else
 		{
@@ -926,66 +799,6 @@ SensorData CameraTango::captureImage(CameraInfo * info)
 	}
 	return data;
 
-}
-
-void CameraTango::mainLoopBegin()
-{
-	double t = cameraStartedTime_.elapsed();
-	if(t < 5.0)
-	{
-		uSleep((5.0-t)*1000); // just to make sure that the camera is started
-	}
-}
-
-void CameraTango::mainLoop()
-{
-	if(tango_config_)
-	{
-		SensorData data = this->captureImage();
-
-		if(!data.groundTruth().isNull())
-		{
-			rtabmap::Transform pose = data.groundTruth();
-			data.setGroundTruth(Transform());
-
-			// convert stamp to epoch
-			bool firstFrame = previousPose_.isNull();
-			if(firstFrame)
-			{
-				stampEpochOffset_ = UTimer::now()-data.stamp();
-			}
-			data.setStamp(stampEpochOffset_ + data.stamp());
-			OdometryInfo info;
-			if(!firstFrame)
-			{
-				info.interval = data.stamp()-previousStamp_;
-				info.transform = previousPose_.inverse() * pose;
-			}
-			// linear cov = 0.0001
-			info.reg.covariance = cv::Mat::eye(6,6,CV_64FC1) * (firstFrame?9999.0:0.0001);
-			if(!firstFrame)
-			{
-				// angular cov = 0.000001
-				info.reg.covariance.at<double>(3,3) *= 0.01;
-				info.reg.covariance.at<double>(4,4) *= 0.01;
-				info.reg.covariance.at<double>(5,5) *= 0.01;
-			}
-			LOGI("Publish odometry message (variance=%f)", firstFrame?9999:0.0001);
-			this->post(new OdometryEvent(data, pose, info));
-			previousPose_ = pose;
-			previousStamp_ = data.stamp();
-		}
-		else if(!this->isKilled())
-		{
-			LOGW("Odometry lost");
-			this->post(new OdometryEvent());
-		}
-	}
-	else
-	{
-		UERROR("Camera not initialized, cannot start thread.");
-		this->kill();
-	}
 }
 
 } /* namespace rtabmap */

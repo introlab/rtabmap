@@ -21,7 +21,7 @@
 #include <memory>
 #include <set>
 
-#include <tango_client_api.h>  // NOLINT
+#include "CameraMobile.h"
 #include <tango-gl/axis.h>
 #include <tango-gl/camera.h>
 #include <tango-gl/color.h>
@@ -60,7 +60,8 @@ class Scene {
   int getViewPortWidth() const {return screenWidth_;}
   int getViewPortHeight() const {return screenHeight_;}
 
-  void setScreenRotation(TangoSupportRotation colorCameraToDisplayRotation) {color_camera_to_display_rotation_ = colorCameraToDisplayRotation;}
+  rtabmap::ScreenRotation getScreenRotation() const {return color_camera_to_display_rotation_;}
+  void setScreenRotation(rtabmap::ScreenRotation colorCameraToDisplayRotation) {color_camera_to_display_rotation_ = colorCameraToDisplayRotation;}
 
   void clear(); // removed all point clouds
 
@@ -101,6 +102,7 @@ class Scene {
   void setGraphVisible(bool visible);
   void setGridVisible(bool visible);
   void setTraceVisible(bool visible);
+  void setFrustumVisible(bool visible);
 
   void addMarker(int id, const rtabmap::Transform & pose);
   void setMarkerPose(int id, const rtabmap::Transform & pose);
@@ -115,7 +117,7 @@ class Scene {
   		  const rtabmap::Transform & pose);
   void addMesh(
   		int id,
-  		const Mesh & mesh,
+  		const rtabmap::Mesh & mesh,
   		const rtabmap::Transform & pose,
 		bool createWireframe = false);
 
@@ -126,7 +128,7 @@ class Scene {
   bool hasTexture(int id) const;
   std::set<int> getAddedClouds() const;
   void updateCloudPolygons(int id, const std::vector<pcl::Vertices> & polygons);
-  void updateMesh(int id, const Mesh & mesh);
+  void updateMesh(int id, const rtabmap::Mesh & mesh);
   void updateGains(int id, float gainR, float gainG, float gainB);
 
   void setBlending(bool enabled) {blending_ = enabled;}
@@ -172,10 +174,11 @@ class Scene {
   bool graphVisible_;
   bool gridVisible_;
   bool traceVisible_;
+  bool frustumVisible_;
 
   std::map<int, tango_gl::Axis*> markers_;
 
-  TangoSupportRotation color_camera_to_display_rotation_;
+  rtabmap::ScreenRotation color_camera_to_display_rotation_;
 
   std::map<int, PointCloudDrawable*> pointClouds_;
 

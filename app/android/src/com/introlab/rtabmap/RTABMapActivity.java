@@ -81,6 +81,7 @@ import android.widget.AdapterView.OnItemSelectedListener;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageButton;
 import android.widget.ListView;
 import android.widget.NumberPicker;
 import android.widget.RelativeLayout;
@@ -130,12 +131,15 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 
 	// UI states
 	private static enum State {
-		STATE_IDLE,
-		STATE_PROCESSING,
-		STATE_VISUALIZING,
-		STATE_VISUALIZING_WHILE_LOADING
+		STATE_WELCOME,         // Camera/Motion off - showing only buttons open and start new scan
+		STATE_CAMERA, // Camera/Motion on - not mapping
+		STATE_MAPPING,         // Camera/Motion on - mapping
+		STATE_IDLE,            // Camera/Motion off
+		STATE_PROCESSING,      // Camera/Motion off - post processing
+		STATE_VISUALIZING,     // Camera/Motion off - Showing optimized mesh
+		STATE_VISUALIZING_WHILE_LOADING // Camera/Motion off - Loading data while showing optimized mesh
 	}
-	State mState = State.STATE_IDLE;
+	State mState = State.STATE_WELCOME;
 
 	// GLSurfaceView and renderer, all of the graphic content is rendered
 	// through OpenGL ES 2.0 in native code.
@@ -151,15 +155,16 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 
 	// Screen size for normalizing the touch input for orbiting the render camera.
 	private Point mScreenSize = new Point();
+	private Date mBackClickedTime = new Date();
 	private long mOnPauseStamp = 0;
 	private boolean mOnPause = false;
 	private Date mDateOnPause = new Date();
 	private long mLastFastMovementNotificationStamp = 0;
-	private boolean mBlockBack = true;
 	private long mFreeMemoryOnStart = 0;
 
 	private MenuItem mItemSave;
 	private MenuItem mItemOpen;
+	private MenuItem mItemNewScan;
 	private MenuItem mItemPostProcessing;
 	private MenuItem mItemExport;
 	private MenuItem mItemSettings;
@@ -175,13 +180,16 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 	private MenuItem mItemDebugVisibility;
 
 	private NDSpinner mButtonCameraView;
-	private ToggleButton mButtonPause;
+	private ImageButton mButtonStart;
+	private ImageButton mButtonStop;
 	private ToggleButton mButtonLighting;
 	private ToggleButton mButtonWireframe;
 	private ToggleButton mButtonBackfaceShown;
 	private Button mButtonCloseVisualization;
 	private Button mButtonSaveOnDevice;
 	private Button mButtonShareOnSketchfab;
+	private Button mButtonLibrary;
+	private Button mButtonNewScan;
 	private SeekBar mSeekBarOrthoCut;
 	private SeekBar mSeekBarGrid;
 
@@ -240,19 +248,22 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 	GestureDetector mGesDetect = null;
 
 	//Tango Service connection.
-	ServiceConnection mTangoServiceConnection = new ServiceConnection() {
+	ServiceConnection mCameraServiceConnection = new ServiceConnection() {
 		public void onServiceConnected(ComponentName name, final IBinder service) {
 			Thread bindThread = new Thread(new Runnable() {
 				public void run() {
-					if(!RTABMapLib.onTangoServiceConnected(service))
-					{
-						runOnUiThread(new Runnable() {
-							public void run() {
+					final boolean cameraStartSucess = RTABMapLib.onCameraServiceConnected(service);
+					runOnUiThread(new Runnable() {
+						public void run() {
+							mProgressDialog.dismiss();
+							if(!cameraStartSucess)
+							{
 								mToast.makeText(getApplicationContext(), 
-										String.format("Failed to intialize Tango!"), mToast.LENGTH_LONG).show();
-							} 
-						});
-					}
+										String.format("Failed to intialize Camera!"), mToast.LENGTH_LONG).show();
+								updateState(State.STATE_IDLE);
+							}
+						} 
+					});
 				}
 			});
 			bindThread.start();
@@ -293,21 +304,27 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 	
 		// Buttons for selecting camera view and Set up button click listeners.
 		mButtonCameraView = (NDSpinner)findViewById(R.id.camera_button);
-		mButtonPause = (ToggleButton)findViewById(R.id.pause_button);
+		mButtonStart = (ImageButton)findViewById(R.id.start_button);
+		mButtonStop = (ImageButton)findViewById(R.id.stop_button);
 		mButtonLighting = (ToggleButton)findViewById(R.id.light_button);
 		mButtonWireframe = (ToggleButton)findViewById(R.id.wireframe_button);
 		mButtonBackfaceShown = (ToggleButton)findViewById(R.id.backface_button);
 		mButtonCloseVisualization = (Button)findViewById(R.id.close_visualization_button);
 		mButtonSaveOnDevice = (Button)findViewById(R.id.button_saveOnDevice);
 		mButtonShareOnSketchfab = (Button)findViewById(R.id.button_shareToSketchfab);
+		mButtonLibrary = (Button)findViewById(R.id.button_library);
+		mButtonNewScan = (Button)findViewById(R.id.button_new_scan);
 		mButtonCameraView.setOnItemSelectedListener(this);
-		mButtonPause.setOnClickListener(this);
+		mButtonStart.setOnClickListener(this);
+		mButtonStop.setOnClickListener(this);
 		mButtonLighting.setOnClickListener(this);
 		mButtonWireframe.setOnClickListener(this);
 		mButtonBackfaceShown.setOnClickListener(this);
 		mButtonCloseVisualization.setOnClickListener(this);
 		mButtonSaveOnDevice.setOnClickListener(this);
 		mButtonShareOnSketchfab.setOnClickListener(this);
+		mButtonLibrary.setOnClickListener(this);
+		mButtonNewScan.setOnClickListener(this);
 		mButtonLighting.setChecked(false);
 		mButtonLighting.setVisibility(View.INVISIBLE);
 		mButtonWireframe.setChecked(false);
@@ -315,6 +332,8 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 		mButtonCloseVisualization.setVisibility(View.INVISIBLE);
 		mButtonSaveOnDevice.setVisibility(View.INVISIBLE);
 		mButtonShareOnSketchfab.setVisibility(View.INVISIBLE);
+		mButtonLibrary.setVisibility(View.INVISIBLE);
+		mButtonNewScan.setVisibility(View.INVISIBLE);
 		if(mItemRenderingMesh != null && mItemRenderingTextureMesh != null)
 		{
 			mButtonBackfaceShown.setVisibility(mItemRenderingMesh.isChecked() || mItemRenderingTextureMesh.isChecked()?View.VISIBLE:View.INVISIBLE);
@@ -444,13 +463,6 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 		    }
 		});
 
-		// Check if the Tango Core is out dated.
-		if (!CheckTangoCoreVersion(MIN_TANGO_CORE_VERSION)) {
-			mToast.makeText(this, "Tango Core out dated, please update in Play Store", mToast.LENGTH_LONG).show();
-			finish();
-			return;
-		}   
-
 		mOpenedDatabasePath = "";
 		mWorkingDirectory = "";
 		mWorkingDirectoryHuman = "";
@@ -541,6 +553,16 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 		setCamera(1);
 
 		DISABLE_LOG =  !( 0 != ( getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE ) );
+		
+		final String[] files = Util.loadFileList(mWorkingDirectory, true);
+		if(files.length > 0)
+		{
+			openDatabase();
+		}
+		else
+		{
+			mButtonLibrary.setVisibility(View.INVISIBLE);
+		}
 	}
 
 	@Override
@@ -657,7 +679,6 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 			// Make sure the request was successful
 			if (resultCode == RESULT_CANCELED) {
 				mToast.makeText(this, "Motion Tracking Permissions Required!", mToast.LENGTH_SHORT).show();
-				finish();
 			}
 		}
 		else if (requestCode == SKETCHFAB_ACTIVITY_CODE) {
@@ -682,14 +703,23 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 	@Override
 	public void onBackPressed() {
 	   
-		if(mBlockBack)
+		Date t = new Date();
+		boolean doubleBack = t.getTime() - mBackClickedTime.getTime() < 3500; // mToast.LENGTH_LONG
+		mBackClickedTime = t;
+		if(mState == State.STATE_IDLE || mState == State.STATE_WELCOME || mState == State.STATE_MAPPING || mState == State.STATE_CAMERA)
 		{
-			mToast.makeText(this, "Press Back once more to exit", mToast.LENGTH_LONG).show();
-			mBlockBack = false;
+			if(doubleBack)
+			{
+				super.onBackPressed();
+			}
+			else
+			{
+				mToast.makeText(this, "Press Back once more to exit", mToast.LENGTH_LONG).show();
+			}
 		}
-		else
+		else if(mState == State.STATE_VISUALIZING)
 		{
-			super.onBackPressed();
+			closeVisualization();
 		}
 	}
 	
@@ -701,10 +731,9 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 		if(!DISABLE_LOG) Log.i(TAG, "onPause()");
 		mOnPause = true;
 		
-		if(!mButtonPause.isChecked())
+		if(mState == State.STATE_MAPPING || mState == State.STATE_CAMERA)
 		{
-			mButtonPause.setChecked(true);
-			pauseMapping();
+			stopMapping();
 		}
 		
 		mLocationManager.removeUpdates(mLocationListener);
@@ -712,10 +741,6 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 		mLastAccelerometerSet = false;
 		mLastMagnetometerSet= false;
 		mLastEnvSensorsSet[0] = mLastEnvSensorsSet[1]= mLastEnvSensorsSet[2]= mLastEnvSensorsSet[3]= mLastEnvSensorsSet[4]=false;
-
-		RTABMapLib.onPause();
-		
-		unbindService(mTangoServiceConnection);
 		
 		// This deletes OpenGL context!
 		mGLView.onPause();
@@ -727,25 +752,6 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 	protected void onResume() {
 		super.onResume();
 		
-		mProgressDialog.setTitle("");
-		if(mOnPause)
-		{
-			if(System.currentTimeMillis()/1000 - mOnPauseStamp < 1)
-			{
-				mProgressDialog.setMessage(String.format("RTAB-Map has been interrupted by another application, Tango should be re-initialized! Set your phone/tablet in Airplane mode if this happens often."));
-			}
-			else
-			{
-				mProgressDialog.setMessage(String.format("Hold Tight! Initializing Tango Service..."));
-			}
-			mToast.makeText(this, "Mapping is paused!", mToast.LENGTH_LONG).show();
-		}
-		else
-		{
-			mProgressDialog.setMessage(String.format("Hold Tight! Initializing Tango Service...\nTip: If the camera is still drifting just after the mapping has started, do \"Reset\"."));
-		}
-		mProgressDialog.show();
-		mOnPause = false;
 		setAndroidOrientation();
 		
 		// update preferences
@@ -890,20 +896,76 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 		}
 
 		if(!DISABLE_LOG) Log.i(TAG, String.format("onResume()"));
+		mGLView.onResume();
 
-		if (Tango.hasPermission(this, Tango.PERMISSIONTYPE_MOTION_TRACKING)) {
-
-			mGLView.onResume();
-
-		} else {
-			if(!DISABLE_LOG) Log.i(TAG, String.format("Asking for motion tracking permission"));
-			startActivityForResult(
-					Tango.getRequestPermissionIntent(Tango.PERMISSIONTYPE_MOTION_TRACKING),
-					Tango.TANGO_INTENT_ACTIVITYCODE);
+		if(mState == State.STATE_MAPPING || mState == State.STATE_CAMERA)
+		{
+			String message = new String();
+			if(mOnPause)
+			{
+				if(System.currentTimeMillis()/1000 - mOnPauseStamp < 1)
+				{
+					message = String.format("RTAB-Map has been interrupted by another application, Camera should be re-initialized! Set your phone/tablet in Airplane mode if this happens often.");
+				}
+				else
+				{
+					message = String.format("Hold Tight! Initializing Camera Service...");
+				}
+				mToast.makeText(this, "Mapping is paused!", mToast.LENGTH_LONG).show();
+			}
+			else
+			{
+				message = String.format("Hold Tight! Initializing Tango Service...\nTip: If the camera is still drifting just after the mapping has started, do \"Reset\".");
+			}
+			startCamera(message);
 		}
+		mOnPause = false;
+	}
+	
+	private void startCamera(String message)
+	{		
+		updateState(State.STATE_CAMERA);
 		
-		TangoInitializationHelper.bindTangoService(getActivity(), mTangoServiceConnection);
-		resetNoTouchTimer(true);
+		// Currently only one driver supported (Tango).
+		// Depending on the phone, we could have a nice menu showing all compatible drivers.
+		int cameraDriver = 0; 
+		
+		RTABMapLib.setCameraDriver(cameraDriver); // Tell C++ library which camera to expect after the service is binded
+		
+		if(cameraDriver == 0) // Tango
+		{
+			// Check if the Tango Core is out dated.
+			if (!CheckTangoCoreVersion(MIN_TANGO_CORE_VERSION)) {
+				mToast.makeText(this, "Tango core out dated or not available!", mToast.LENGTH_LONG).show();
+				
+				updateState(State.STATE_IDLE);
+				return;
+			}   
+			
+			if (!Tango.hasPermission(this, Tango.PERMISSIONTYPE_MOTION_TRACKING)) {
+				if(!DISABLE_LOG) Log.i(TAG, String.format("Asking for motion tracking permission"));
+				startActivityForResult(
+						Tango.getRequestPermissionIntent(Tango.PERMISSIONTYPE_MOTION_TRACKING),
+						Tango.TANGO_INTENT_ACTIVITYCODE);
+				
+				updateState(State.STATE_IDLE);
+				return;
+			}
+			else
+			{
+				mProgressDialog.setTitle("");
+				mProgressDialog.setMessage(message);
+				mProgressDialog.show();
+				TangoInitializationHelper.bindTangoService(getActivity(), mCameraServiceConnection);
+				resetNoTouchTimer(true);
+				
+				// When the service has been connected, RTABMapLib.onCameraServiceConnected(service) should be called, see above 
+			}
+		}
+		else
+		{
+			mToast.makeText(this, "Supported camera driver not found! Cannot start a new scan.", mToast.LENGTH_LONG).show();
+		}
 	}
 	
 	private void setCamera(int type)
@@ -932,10 +994,12 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 		// Handle button clicks.
 		switch (v.getId()) {
 		case R.id.gl_surface_view:
-
 			break;
-		case R.id.pause_button:
-			pauseMapping();
+		case R.id.start_button:
+			startMapping();
+			break;
+		case R.id.stop_button:
+			stopMapping();
 			break;
 		case R.id.light_button:
 			RTABMapLib.setLighting(mButtonLighting.isChecked());
@@ -947,20 +1011,7 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 			RTABMapLib.setWireframe(mButtonWireframe.isChecked());
 			break;
 		case R.id.close_visualization_button:
-			if(mSavedRenderingType==0)
-			{
-				mItemRenderingPointCloud.setChecked(true);
-			}
-			else if(mSavedRenderingType==1)
-			{
-				mItemRenderingMesh.setChecked(true);
-			}
-			else 
-			{
-				mItemRenderingTextureMesh.setChecked(true);
-			}
-			updateState(State.STATE_IDLE);
-			RTABMapLib.postExportation(false);
+			closeVisualization();
 			break;
 		case R.id.button_saveOnDevice:
 			saveOnDevice();
@@ -968,10 +1019,34 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 		case R.id.button_shareToSketchfab:
 			shareToSketchfab();
 			break;
+		case R.id.button_library:
+			openDatabase();
+			break;
+		case R.id.button_new_scan:
+			newScan();
+			break;
 		default:
 			return;
 		}
 		resetNoTouchTimer();
+	}
+	
+	private void closeVisualization()
+	{
+		if(mSavedRenderingType==0)
+		{
+			mItemRenderingPointCloud.setChecked(true);
+		}
+		else if(mSavedRenderingType==1)
+		{
+			mItemRenderingMesh.setChecked(true);
+		}
+		else 
+		{
+			mItemRenderingTextureMesh.setChecked(true);
+		}
+		updateState(State.STATE_IDLE);
+		RTABMapLib.postExportation(false);
 	}
 	
 	public void onItemSelected(AdapterView<?> parent, View view, int pos, long id) {
@@ -1030,6 +1105,7 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 
 		mItemSave = menu.findItem(R.id.save);
 		mItemOpen = menu.findItem(R.id.open);
+		mItemNewScan = menu.findItem(R.id.new_scan);
 		mItemPostProcessing = menu.findItem(R.id.post_processing);
 		mItemExport = menu.findItem(R.id.export);
 		mItemSettings = menu.findItem(R.id.settings);
@@ -1044,8 +1120,9 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 		mItemStatusVisibility = menu.findItem(R.id.status);
 		mItemDebugVisibility = menu.findItem(R.id.debug);
 		mItemSave.setEnabled(false);
+		mItemNewScan.setEnabled(true);
 		mItemExport.setEnabled(false);
-		mItemOpen.setEnabled(false);
+		mItemOpen.setEnabled(true);
 		mItemPostProcessing.setEnabled(false);
 		mItemDataRecorderMode.setEnabled(false);
 
@@ -1114,6 +1191,10 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 				mRenderer.updateTexts(null);
 			}
 		}
+		if(mGLView.getRenderMode() == GLSurfaceView.RENDERMODE_WHEN_DIRTY)
+		{
+			mGLView.requestRender();
+		}
 	}
 
 	private void updateStatsUI(
@@ -1130,9 +1211,9 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 		mStatusTexts = statusTexts;
 		updateStatusTexts();
 
-		if(mButtonPause!=null)
+		if(mButtonStart!=null)
 		{
-			if(!mButtonPause.isChecked())
+			if(mButtonStart.getVisibility() != View.VISIBLE)
 			{	
 				//check if we are low in memory
 				long memoryFree = getFreeMemory();
@@ -1140,8 +1221,7 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 				
 				if(memoryFree < 400)
 				{
-					mButtonPause.setChecked(true);
-					pauseMapping();
+					stopMapping();
 					
 					if(mMemoryWarningDialog!=null)
 					{
@@ -1183,8 +1263,7 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 							+ "Note that showing only point clouds reduces memory needed for rendering.", memoryFree, memoryUsed))
 					.setPositiveButton("Pause", new DialogInterface.OnClickListener() {
 						public void onClick(DialogInterface dialog, int which) {
-							mButtonPause.setChecked(true);
-							pauseMapping();
+							stopMapping();
 						}
 					})
 					.setNeutralButton("Continue", new DialogInterface.OnClickListener() {
@@ -1199,7 +1278,7 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 		}
 
 		
-		if(mButtonPause!=null && !mButtonPause.isChecked())
+		if(mButtonStop!=null && mButtonStop.getVisibility() == View.VISIBLE)
 		{
 			long currentTime = System.currentTimeMillis()/1000;
 			if(loopClosureId > 0)
@@ -1280,7 +1359,7 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 		if(!DISABLE_LOG) Log.i(TAG, String.format("updateStatsCallback()"));
 
 		final String[] statusTexts = new String[STATUS_TEXTS_SIZE];
-		if(mButtonPause!=null && !mButtonPause.isChecked())
+		if(mButtonStop!=null && mButtonStop.getVisibility() == View.VISIBLE)
 		{
 			String updateValue = mUpdateRate.compareTo("0")==0?"Max":mUpdateRate;
 			statusTexts[0] = getString(R.string.status)+(mItemDataRecorderMode!=null&&mItemDataRecorderMode.isChecked()?String.format("Recording (%s Hz)", updateValue):mItemLocalizationMode!=null && mItemLocalizationMode.isChecked()?String.format("Localization (%s Hz)", updateValue):String.format("Mapping (%s Hz)", updateValue));
@@ -1429,9 +1508,9 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 			mProgressDialog.dismiss();
 		}
 		
-		if(mButtonPause!=null)
+		if(mButtonStart!=null)
 		{
-			if(mButtonPause.isChecked())
+			if(mButtonStart.getVisibility() == View.VISIBLE)
 			{
 				mStatusTexts[0] = getString(R.string.status)+(status == 1 && msg.isEmpty()?"Paused":msg);
 			}
@@ -1485,7 +1564,7 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 		});
 	}
 
-	private void tangoEventUI(
+	private void cameraEventUI(
 			int type, 
 			String key,
 			String value)
@@ -1531,7 +1610,7 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 		}
 		else	
 		{
-			str = String.format("Unknown Tango event detected!? (type=%d, key=%s, value=%s)", type, key, value);
+			str = String.format("Unknown Camera event detected!? (type=%d, key=%s, value=%s)", type, key, value);
 		}
 		if(str!=null)
 		{
@@ -1541,16 +1620,16 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 	}
 
 	//called from jni
-	public void tangoEventCallback(
+	public void cameraEventCallback(
 			final int type, 
 			final String key,
 			final String value)
 	{
-		if(mButtonPause != null && !mButtonPause.isChecked())
+		if(mButtonStop != null && mButtonStop.getVisibility() == View.VISIBLE)
 		{
 			runOnUiThread(new Runnable() {
 				public void run() {
-					tangoEventUI(type, key, value);
+					cameraEventUI(type, key, value);
 				} 
 			});
 		}
@@ -1572,6 +1651,7 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 	private RTABMapActivity getActivity() {return this;}
 
 	private void standardOptimization() {
+							
 		mExportProgressDialog.setTitle("Post-Processing");
 		mExportProgressDialog.setMessage(String.format("Please wait while optimizing..."));
 		mExportProgressDialog.setProgress(0);
@@ -1603,11 +1683,12 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 							mProgressDialog.dismiss();
 							mToast.makeText(getActivity(), String.format("Optimization canceled"), mToast.LENGTH_LONG).show();
 						}
+						
 						updateState(State.STATE_IDLE);
 					}
 				});
 			} 
-		});
+		});	
 		workingThread.start();
 	}
 	
@@ -1649,6 +1730,11 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
     		
         notouchHandler.removeCallbacks(notouchCallback);
         notouchHandler.postDelayed(notouchCallback, NOTOUCH_TIMEOUT);
+        
+        if(mGLView.getRenderMode() == GLSurfaceView.RENDERMODE_WHEN_DIRTY)
+    	{
+    		mGLView.requestRender();
+    	}
     }
 
     public void stopDisconnectTimer(){
@@ -1659,7 +1745,7 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 		
 	private void updateState(State state)
 	{	
-		if(mState == State.STATE_VISUALIZING && state == State.STATE_IDLE && mMapNodes > 100)
+		if(mState == State.STATE_VISUALIZING && state == State.STATE_CAMERA && mMapNodes > 100)
 		{
 			mToast.makeText(getActivity(), String.format("Re-adding %d online clouds, this may take some time...", mMapNodes), mToast.LENGTH_LONG).show();
 		}
@@ -1667,38 +1753,66 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 		if(!DISABLE_LOG) Log.i(TAG, String.format("updateState() state=%s hud=%d", state.toString(), mHudVisible?1:0));
 		switch(state)
 		{
+		case STATE_MAPPING:
+		case STATE_CAMERA:
+			mButtonLighting.setVisibility(View.INVISIBLE);
+			mButtonWireframe.setVisibility(View.INVISIBLE);
+			mButtonCloseVisualization.setVisibility(View.INVISIBLE);
+			mButtonSaveOnDevice.setVisibility(View.INVISIBLE);
+			mButtonShareOnSketchfab.setVisibility(View.INVISIBLE);
+			mButtonLibrary.setVisibility(View.INVISIBLE);
+			mButtonNewScan.setVisibility(View.INVISIBLE);
+			mItemSave.setEnabled(false);
+			mItemExport.setEnabled(false);
+			mItemOpen.setEnabled(false);
+			mItemNewScan.setEnabled(false);
+			mItemPostProcessing.setEnabled(false);
+			mItemSettings.setEnabled(false);
+			mItemReset.setEnabled(true);
+			mItemModes.setEnabled(mState == State.STATE_CAMERA);
+			mItemLocalizationMode.setEnabled(true);
+			mItemDataRecorderMode.setEnabled(true);
+			mButtonStart.setVisibility(mState == State.STATE_CAMERA?View.VISIBLE:View.INVISIBLE);
+			mButtonStop.setVisibility(mState == State.STATE_MAPPING?View.VISIBLE:View.INVISIBLE);
+			break;
 		case STATE_PROCESSING:
 			mButtonLighting.setVisibility(View.INVISIBLE);
 			mButtonWireframe.setVisibility(View.INVISIBLE);
 			mButtonCloseVisualization.setVisibility(View.INVISIBLE);
 			mButtonSaveOnDevice.setVisibility(View.INVISIBLE);
 			mButtonShareOnSketchfab.setVisibility(View.INVISIBLE);
+			mButtonLibrary.setVisibility(View.INVISIBLE);
+			mButtonNewScan.setVisibility(View.INVISIBLE);
 			mItemSave.setEnabled(false);
 			mItemExport.setEnabled(false);
 			mItemOpen.setEnabled(false);
+			mItemNewScan.setEnabled(false);
 			mItemPostProcessing.setEnabled(false);
 			mItemSettings.setEnabled(false);
 			mItemReset.setEnabled(false);
 			mItemModes.setEnabled(false);
-			mButtonPause.setVisibility(View.INVISIBLE);
+			mButtonStart.setVisibility(View.INVISIBLE);
+			mButtonStop.setVisibility(View.INVISIBLE);
 			break;
 		case STATE_VISUALIZING:
 			mButtonLighting.setVisibility(mHudVisible && !mItemRenderingPointCloud.isChecked()?View.VISIBLE:View.INVISIBLE);
 			mButtonWireframe.setVisibility(mHudVisible && !mItemRenderingPointCloud.isChecked()?View.VISIBLE:View.INVISIBLE);
-			mButtonCloseVisualization.setVisibility(mHudVisible && mButtonPause.isChecked()?View.VISIBLE:View.INVISIBLE);
+			mButtonCloseVisualization.setVisibility(mHudVisible?View.VISIBLE:View.INVISIBLE);
 			mButtonCloseVisualization.setEnabled(true);
-			mButtonSaveOnDevice.setVisibility(mHudVisible && mButtonPause.isChecked()?View.VISIBLE:View.INVISIBLE);
-			mButtonShareOnSketchfab.setVisibility(mHudVisible && mButtonPause.isChecked()?View.VISIBLE:View.INVISIBLE);
-			mItemSave.setEnabled(mButtonPause.isChecked());
-			mItemExport.setEnabled(mButtonPause.isChecked() && !mItemDataRecorderMode.isChecked());
-			mItemOpen.setEnabled(false);
+			mButtonSaveOnDevice.setVisibility(mHudVisible?View.VISIBLE:View.INVISIBLE);
+			mButtonShareOnSketchfab.setVisibility(mHudVisible?View.VISIBLE:View.INVISIBLE);
+			mButtonLibrary.setVisibility(View.INVISIBLE);
+			mButtonNewScan.setVisibility(View.INVISIBLE);
+			mItemSave.setEnabled(true);
+			mItemExport.setEnabled(!mItemDataRecorderMode.isChecked());
+			mItemOpen.setEnabled(true);
+			mItemNewScan.setEnabled(false);
 			mItemPostProcessing.setEnabled(false);
 			mItemSettings.setEnabled(true);
-			mItemReset.setEnabled(true);
-			mItemModes.setEnabled(true);
-			mButtonPause.setVisibility(mHudVisible && mItemLocalizationMode.isChecked()?View.VISIBLE:View.GONE);
-			mItemLocalizationMode.setEnabled(mButtonPause.isChecked());
-			mItemDataRecorderMode.setEnabled(mButtonPause.isChecked());
+			mItemReset.setEnabled(false);
+			mItemModes.setEnabled(false);
+			mButtonStart.setVisibility(View.INVISIBLE);
+			mButtonStop.setVisibility(View.INVISIBLE);
 			break;
 		case STATE_VISUALIZING_WHILE_LOADING:
 			mButtonLighting.setVisibility(mHudVisible && !mItemRenderingPointCloud.isChecked()?View.VISIBLE:View.INVISIBLE);
@@ -1707,6 +1821,8 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 			mButtonCloseVisualization.setEnabled(false);
 			mButtonSaveOnDevice.setVisibility(View.INVISIBLE);
 			mButtonShareOnSketchfab.setVisibility(View.INVISIBLE);
+			mButtonLibrary.setVisibility(View.INVISIBLE);
+			mButtonNewScan.setVisibility(View.INVISIBLE);
 			mItemSave.setEnabled(false);
 			mItemExport.setEnabled(false);
 			mItemOpen.setEnabled(false);
@@ -1714,111 +1830,141 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 			mItemSettings.setEnabled(false);
 			mItemReset.setEnabled(false);
 			mItemModes.setEnabled(false);
-			mButtonPause.setVisibility(View.INVISIBLE);
+			mButtonStart.setVisibility(View.INVISIBLE);
+			mButtonStop.setVisibility(View.INVISIBLE);
 			break;
-		default:
+		default: // IDLE // WELCOME
 			mButtonLighting.setVisibility(View.INVISIBLE);
 			mButtonWireframe.setVisibility(View.INVISIBLE);
 			mButtonCloseVisualization.setVisibility(View.INVISIBLE);
 			mButtonSaveOnDevice.setVisibility(View.INVISIBLE);
 			mButtonShareOnSketchfab.setVisibility(View.INVISIBLE);
-			mItemSave.setEnabled(mButtonPause.isChecked());
-			mItemExport.setEnabled(mButtonPause.isChecked() && !mItemDataRecorderMode.isChecked());
-			mItemOpen.setEnabled(mButtonPause.isChecked() && !mItemDataRecorderMode.isChecked());
-			mItemPostProcessing.setEnabled(mButtonPause.isChecked() && !mItemDataRecorderMode.isChecked());
+			mButtonLibrary.setVisibility(mState==State.STATE_WELCOME?View.VISIBLE:View.INVISIBLE);
+			mButtonNewScan.setVisibility(mState==State.STATE_WELCOME?View.VISIBLE:View.INVISIBLE);
+			mItemSave.setEnabled(!mMapIsEmpty);
+			mItemExport.setEnabled(!mMapIsEmpty);
+			mItemOpen.setEnabled(true);
+			mItemNewScan.setEnabled(true);
+			mItemPostProcessing.setEnabled(!mMapIsEmpty);
 			mItemSettings.setEnabled(true);
-			mItemReset.setEnabled(true);
+			mItemReset.setEnabled(!mMapIsEmpty);
 			mItemModes.setEnabled(true);
-			mButtonPause.setVisibility(mHudVisible?View.VISIBLE:View.INVISIBLE);
-			mItemDataRecorderMode.setEnabled(mButtonPause.isChecked());
+			mButtonStart.setVisibility(View.INVISIBLE);
+			mButtonStop.setVisibility(View.INVISIBLE);
+			mItemLocalizationMode.setEnabled(true);
+			mItemDataRecorderMode.setEnabled(true);
 			break;
 		}
 		mButtonCameraView.setVisibility(mHudVisible?View.VISIBLE:View.INVISIBLE);
 		mButtonBackfaceShown.setVisibility(mHudVisible && (mItemRenderingMesh.isChecked() || mItemRenderingTextureMesh.isChecked())?View.VISIBLE:View.INVISIBLE);
 		mSeekBarOrthoCut.setVisibility(mHudVisible && mButtonCameraView.getSelectedItemPosition() == 3?View.VISIBLE:View.INVISIBLE);
 		mSeekBarGrid.setVisibility(mHudVisible && mSeekBarGrid.isEnabled() && mButtonCameraView.getSelectedItemPosition() == 3?View.VISIBLE:View.INVISIBLE);
-	}
-
-	private void pauseMapping() {
-
-		if(mState != State.STATE_VISUALIZING)
+	
+		if(mState != State.STATE_MAPPING && mState != State.STATE_CAMERA)
 		{
-			updateState(State.STATE_IDLE);
+			mGLView.setRenderMode(GLSurfaceView.RENDERMODE_WHEN_DIRTY);
+			mGLView.requestRender();
 		}
 		else
 		{
-			updateState(State.STATE_VISUALIZING);
+			mGLView.setRenderMode(GLSurfaceView.RENDERMODE_CONTINUOUSLY);
 		}
+	}
+	
+	private void startMapping() {
+		if(!DISABLE_LOG) Log.i(TAG, String.format("startMapping()"));
 
-		if(mButtonPause.isChecked())
+		updateState(State.STATE_MAPPING);
+		
+		if(mMemoryWarningDialog != null)
 		{
+			mMemoryWarningDialog.dismiss();
+			mMemoryWarningDialog=null;
+		}
+		RTABMapLib.setPausedMapping(false);
+		mLastFastMovementNotificationStamp = System.currentTimeMillis()/1000;
+		
+		if(mItemDataRecorderMode.isChecked())
+		{
+			mToast.makeText(getActivity(), String.format("Data Recorder Mode: no map is created, only raw data is recorded."), mToast.LENGTH_LONG).show();
+		}
+		else if(!mMapIsEmpty)
+		{
+			if(mItemLocalizationMode!=null && mItemLocalizationMode.isChecked())
+			{
+				mToast.makeText(getActivity(), String.format("Localization mode"), mToast.LENGTH_LONG).show();
+			}
+			else
+			{
+				mToast.makeText(getActivity(), String.format("On resume, a new map is created. Tip: Try relocalizing in the previous area."), mToast.LENGTH_LONG).show();
+			}
+		}
+		else if(mMapIsEmpty && mItemLocalizationMode!=null && mItemLocalizationMode.isChecked())
+		{
+			mItemLocalizationMode.setChecked(false);
+			RTABMapLib.setLocalizationMode(false);
+			mToast.makeText(getActivity(), String.format("Disabled localization mode as the map is empty, now mapping..."), mToast.LENGTH_LONG).show();
+		}
+	}
+
+private void stopMapping() {
+	
+	mProgressDialog.setTitle("");
+	mProgressDialog.setMessage("Stopping camera...");
+	mProgressDialog.show();
+	
+	updateState(State.STATE_IDLE);
+
+	Thread stopThread = new Thread(new Runnable() {
+		public void run() {
 			RTABMapLib.setPausedMapping(true);
-			
-			mStatusTexts[0] = getString(R.string.status)+"Paused";
-			long freeMemory = getFreeMemory();
-			mStatusTexts[1] = getString(R.string.memory)+String.valueOf(mFreeMemoryOnStart>freeMemory?mFreeMemoryOnStart-freeMemory:0);
-			mStatusTexts[2] = getString(R.string.free_memory)+String.valueOf(freeMemory);
-			updateStatusTexts();
-			
-			mMapIsEmpty = false;
-			mDateOnPause = new Date();
-			
-			long memoryFree = getFreeMemory();
-			if(!mOnPause && !mItemLocalizationMode.isChecked() && !mItemDataRecorderMode.isChecked() && memoryFree >= 100 && mMapNodes>2)
-			{
-				// Do standard post processing?
-				AlertDialog d2 = new AlertDialog.Builder(getActivity())
-				.setCancelable(false)
-				.setTitle("Mapping Paused! Optimize Now?")
-				.setMessage("Do you want to do standard map optimization now? This can be also done later using \"Optimize\" menu.")
-				.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
-					public void onClick(DialogInterface dialog, int which) {
-						standardOptimization();
-					}
-				})
-				.setNegativeButton("No", new DialogInterface.OnClickListener() {
-					public void onClick(DialogInterface dialog, int which) {
-						// do nothing...
-					}
-				})
-				.create();
-				d2.setCanceledOnTouchOutside(false);
-				d2.show();
-			} 
-		}
-		else
-		{
-			if(mMemoryWarningDialog != null)
-			{
-				mMemoryWarningDialog.dismiss();
-				mMemoryWarningDialog=null;
-			}
-			RTABMapLib.setPausedMapping(false);
-			mLastFastMovementNotificationStamp = System.currentTimeMillis()/1000;
-			
-			if(mItemDataRecorderMode.isChecked())
-			{
-				mToast.makeText(getActivity(), String.format("Data Recorder Mode: no map is created, only raw data is recorded."), mToast.LENGTH_LONG).show();
-			}
-			else if(!mMapIsEmpty)
-			{
-				if(mItemLocalizationMode!=null && mItemLocalizationMode.isChecked())
-				{
-					mToast.makeText(getActivity(), String.format("Localization mode"), mToast.LENGTH_LONG).show();
+			RTABMapLib.stopCamera();
+			unbindService(mCameraServiceConnection);
+		
+			runOnUiThread(new Runnable() {
+				public void run() {
+					
+					mProgressDialog.dismiss();
+					
+					setCamera(2);
+
+					mStatusTexts[0] = getString(R.string.status)+"Paused";
+					long freeMemory = getFreeMemory();
+					mStatusTexts[1] = getString(R.string.memory)+String.valueOf(mFreeMemoryOnStart>freeMemory?mFreeMemoryOnStart-freeMemory:0);
+					mStatusTexts[2] = getString(R.string.free_memory)+String.valueOf(freeMemory);
+					updateStatusTexts();
+					
+					mMapIsEmpty = false;
+					mDateOnPause = new Date();
+					
+					long memoryFree = getFreeMemory();
+					if(!mOnPause && !mItemLocalizationMode.isChecked() && !mItemDataRecorderMode.isChecked() && memoryFree >= 100 && mMapNodes>2)
+					{
+						// Do standard post processing?
+						AlertDialog d2 = new AlertDialog.Builder(getActivity())
+						.setCancelable(false)
+						.setTitle("Mapping Paused! Optimize Now?")
+						.setMessage("Do you want to do standard map optimization now? This can be also done later using \"Optimize\" menu.")
+						.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
+							public void onClick(DialogInterface dialog, int which) {
+								standardOptimization();
+							}
+						})
+						.setNegativeButton("No", new DialogInterface.OnClickListener() {
+							public void onClick(DialogInterface dialog, int which) {
+								// do nothing...
+							}
+						})
+						.create();
+						d2.setCanceledOnTouchOutside(false);
+						d2.show();
+					} 
 				}
-				else
-				{
-					mToast.makeText(getActivity(), String.format("On resume, a new map is created. Tip: Try relocalizing in the previous area."), mToast.LENGTH_LONG).show();
-				}
-			}
-			else if(mMapIsEmpty && mItemLocalizationMode!=null && mItemLocalizationMode.isChecked())
-			{
-				mItemLocalizationMode.setChecked(false);
-				RTABMapLib.setLocalizationMode(false);
-				mToast.makeText(getActivity(), String.format("Disabled localization mode as the map is empty, now mapping..."), mToast.LENGTH_LONG).show();
-			}
+			});
 		}
-	}
+	});
+	stopThread.start();
+}
 
 	public boolean onOptionsItemSelected(MenuItem item) {
 		resetNoTouchTimer();
@@ -1981,10 +2127,6 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 		{
 			item.setChecked(!item.isChecked());
 			RTABMapLib.setLocalizationMode(item.isChecked());
-			if(mState == State.STATE_VISUALIZING)
-			{
-				mButtonPause.setVisibility(mItemLocalizationMode.isChecked()?View.VISIBLE:View.GONE);
-			}
 		}
 		else if(itemId == R.id.trajectory_mode)
 		{
@@ -2075,37 +2217,11 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 		}
 		else if(itemId == R.id.reset)
 		{
-			mTotalLoopClosures = 0;
-			
-			int index = STATUS_TEXTS_POSE_INDEX;
-			mMapNodes = 0;
-			mStatusTexts[index++] = getString(R.string.nodes)+0;
-			mStatusTexts[index++] = getString(R.string.words)+0;
-			mStatusTexts[index++] = getString(R.string.database_size)+0;
-			mStatusTexts[index++] = getString(R.string.points)+0;
-			mStatusTexts[index++] = getString(R.string.polygons)+0;
-			mStatusTexts[index++] = getString(R.string.update_time)+0;
-			mStatusTexts[index++] = getString(R.string.features)+0;
-			mStatusTexts[index++] = getString(R.string.rehearsal)+0;
-			mStatusTexts[index++] = getString(R.string.total_loop)+0;
-			mStatusTexts[index++] = getString(R.string.inliers)+0;
-			mStatusTexts[index++] = getString(R.string.hypothesis)+0;
-			mStatusTexts[index++] = getString(R.string.fps)+0;
-			mStatusTexts[index++] = getString(R.string.distance)+0;
-			mStatusTexts[index++] = String.format("Pose (x,y,z): 0 0 0");
-			updateStatusTexts();
-
-			mOpenedDatabasePath = "";
-			SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
-			boolean databaseInMemory = sharedPref.getBoolean(getString(R.string.pref_key_db_in_memory), Boolean.parseBoolean(getString(R.string.pref_default_db_in_memory)));
-			String tmpDatabase = mWorkingDirectory+RTABMAP_TMP_DB;
-			RTABMapLib.openDatabase(tmpDatabase, databaseInMemory, false);
-			
-			mMapIsEmpty = true;
-			mItemSave.setEnabled(false);
-			mItemExport.setEnabled(false);
-			mItemPostProcessing.setEnabled(false);
-			updateState(State.STATE_IDLE);
+			reset();
+		}
+		else if(itemId == R.id.new_scan)
+		{
+			newScan();
 		}
 		else if(itemId == R.id.data_recorder)
 		{
@@ -2144,10 +2260,6 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 					boolean databaseInMemory = sharedPref.getBoolean(getString(R.string.pref_key_db_in_memory), Boolean.parseBoolean(getString(R.string.pref_default_db_in_memory)));
 					String tmpDatabase = mWorkingDirectory+RTABMAP_TMP_DB;
 					RTABMapLib.openDatabase(tmpDatabase, databaseInMemory, false);
-
-					mItemOpen.setEnabled(!mItemDataRecorderMode.isChecked() && mButtonPause.isChecked());
-					mItemPostProcessing.setEnabled(!mItemDataRecorderMode.isChecked() && mButtonPause.isChecked());
-					mItemExport.setEnabled(!mItemDataRecorderMode.isChecked() && mButtonPause.isChecked());
 
 					mItemLocalizationMode.setEnabled(!mItemDataRecorderMode.isChecked());		   
 
@@ -2252,7 +2364,6 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 		{
 			Intent intent = new Intent(getActivity(), SettingsActivity.class);
 			startActivity(intent);
-			mBlockBack = true;
 		}
 		else if(itemId == R.id.about)
 		{
@@ -2262,6 +2373,42 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 		}
 
 		return true;
+	}
+	
+	private void reset() {
+		mTotalLoopClosures = 0;
+		
+		int index = STATUS_TEXTS_POSE_INDEX;
+		mMapNodes = 0;
+		mStatusTexts[index++] = getString(R.string.nodes)+0;
+		mStatusTexts[index++] = getString(R.string.words)+0;
+		mStatusTexts[index++] = getString(R.string.database_size)+0;
+		mStatusTexts[index++] = getString(R.string.points)+0;
+		mStatusTexts[index++] = getString(R.string.polygons)+0;
+		mStatusTexts[index++] = getString(R.string.update_time)+0;
+		mStatusTexts[index++] = getString(R.string.features)+0;
+		mStatusTexts[index++] = getString(R.string.rehearsal)+0;
+		mStatusTexts[index++] = getString(R.string.total_loop)+0;
+		mStatusTexts[index++] = getString(R.string.inliers)+0;
+		mStatusTexts[index++] = getString(R.string.hypothesis)+0;
+		mStatusTexts[index++] = getString(R.string.fps)+0;
+		mStatusTexts[index++] = getString(R.string.distance)+0;
+		mStatusTexts[index++] = String.format("Pose (x,y,z): 0 0 0");
+		updateStatusTexts();
+
+		mOpenedDatabasePath = "";
+		SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
+		boolean databaseInMemory = sharedPref.getBoolean(getString(R.string.pref_key_db_in_memory), Boolean.parseBoolean(getString(R.string.pref_default_db_in_memory)));
+		String tmpDatabase = mWorkingDirectory+RTABMAP_TMP_DB;
+		RTABMapLib.openDatabase(tmpDatabase, databaseInMemory, false);
+		
+		mMapIsEmpty = true;
+	}
+	
+	private void newScan() {
+		setCamera(1);
+		startCamera(String.format("Hold Tight! Initializing Camera Service...\n"
+				+ "Tip: If the camera is still drifting just after the mapping has started, do \"Reset\"."));
 	}
 	
 	private void openDatabase()
@@ -2289,8 +2436,13 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 	        DatabaseListArrayAdapter simpleAdapter = new DatabaseListArrayAdapter(this, arrayList, R.layout.database_list, from, to);//Create object and set the parameters for simpleAdapter
 
 			AlertDialog.Builder builder = new AlertDialog.Builder(this);
-			builder.setCancelable(false);
+			builder.setCancelable(true);
 			builder.setTitle("Choose Your File (*.db)");
+			builder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+				public void onClick(DialogInterface dialog, int whichIn) {
+					// do nothing
+				}
+			});
 			builder.setAdapter(simpleAdapter, new DialogInterface.OnClickListener() {
 			//builder.setItems(filesWithSize, new DialogInterface.OnClickListener() {
 				public void onClick(DialogInterface dialog, final int which) {
@@ -2318,7 +2470,7 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 			});
 
 			final AlertDialog ad = builder.create(); //don't show dialog yet
-			ad.setCanceledOnTouchOutside(false);
+			ad.setCanceledOnTouchOutside(true);
 			ad.setOnShowListener(new OnShowListener() 
 			{   			
 				@Override
@@ -2933,7 +3085,6 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 		SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(getActivity());
 		final boolean databaseInMemory = sharedPref.getBoolean(getString(R.string.pref_key_db_in_memory), Boolean.parseBoolean(getString(R.string.pref_default_db_in_memory)));		
 		
-		
 		mProgressDialog.setTitle("Loading");
 		mProgressDialog.setMessage(String.format("Opening database \"%s\"...", fileName));
 		mProgressDialog.show();
@@ -2962,7 +3113,6 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 								public void onClick(DialogInterface dialog, int which) {
 									Intent intent = new Intent(getActivity(), SettingsActivity.class);
 									startActivity(intent);
-									mBlockBack = true;
 								}
 							})
 							.setNegativeButton("Close", new DialogInterface.OnClickListener() {
@@ -2985,7 +3135,6 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 								public void onClick(DialogInterface dialog, int which) {
 									Intent intent = new Intent(getActivity(), SettingsActivity.class);
 									startActivity(intent);
-									mBlockBack = true;
 								}
 							})
 							.setNegativeButton("Close", new DialogInterface.OnClickListener() {
@@ -3057,6 +3206,5 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 		}
 		
 		startActivityForResult(intent, SKETCHFAB_ACTIVITY_CODE);
-		mBlockBack = true;
 	}
 }

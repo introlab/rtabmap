@@ -1,6 +1,4 @@
 
-find_package(Tango REQUIRED)
-
 SET(INCLUDE_DIRS
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/tango-gl/include
@@ -9,23 +7,17 @@ SET(INCLUDE_DIRS
 	${PROJECT_SOURCE_DIR}/utilite/include
     ${OpenCV_INCLUDE_DIRS}
     ${PCL_INCLUDE_DIRS}
-    ${Tango_INCLUDE_DIRS}
     "${ANDROID_NDK}/platforms/android-${ANDROID_NATIVE_API_LEVEL}/arch-${ANDROID_ARCH_NAME}/usr/include"
 )
 
 SET(LIBRARIES
 	${OpenCV_LIBRARIES} 
 	${PCL_LIBRARIES}
-	${Tango_LIBRARIES}
 )
-
-add_definitions(${PCL_DEFINITIONS})
-
-INCLUDE_DIRECTORIES(${INCLUDE_DIRS})
 
 set(sources
   jni_interface.cpp
-  CameraTango.cpp
+  CameraMobile.cpp
   RTABMapApp.cpp
   scene.cpp
   point_cloud_drawable.cpp
@@ -43,6 +35,27 @@ set(sources
   tango-gl/transform.cpp 
   tango-gl/util.cpp
 )
+
+IF(Tango_FOUND)
+
+  SET(sources
+    ${sources}
+    CameraTango.cpp
+  )
+  SET(INCLUDE_DIRS
+    ${INCLUDE_DIRS}
+    ${Tango_INCLUDE_DIRS}
+  )
+  SET(LIBRARIES
+    ${LIBRARIES}
+    ${Tango_LIBRARIES}
+  )
+    
+ENDIF(Tango_FOUND)
+
+add_definitions(${PCL_DEFINITIONS})
+
+INCLUDE_DIRECTORIES(${INCLUDE_DIRS})
 
 add_library(NativeRTABMap SHARED ${sources})        
 target_link_libraries(NativeRTABMap ${LIBRARIES}

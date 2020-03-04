@@ -7,9 +7,12 @@
 		  <item android:id="@+id/mesh" android:title="Mesh" />
 		  <item android:id="@+id/texture_mesh" android:checked="true" android:title="Texture Mesh" />
 	   </group>
-	   <item android:id="@+id/save" android:title="Save" android:showAsAction="ifRoom"/>
+	   
+       <item android:id="@+id/open" android:title="Library" android:showAsAction="ifRoom"/>
+       <item android:id="@+id/new_scan" android:title="New Scan" android:showAsAction="ifRoom"/>
+	   <item android:id="@+id/save" android:title="Save"/>
                      
-       <item android:id="@+id/export" android:showAsAction="ifRoom" android:title="Export">
+       <item android:id="@+id/export" android:title="Export">
           <menu>
               <item android:id="@+id/export_point_cloud_menu" android:title="Point Cloud">
                   <menu>
@@ -42,8 +45,6 @@
 	         </item>
           </menu>
        </item>
-       
-       <item android:id="@+id/open" android:title="Open" android:showAsAction="ifRoom"/>
        
        <item android:id="@+id/menu_rendering_settings" android:title="Visibility...">
         <menu >

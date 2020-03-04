@@ -31,14 +31,13 @@ public class RTABMapLib
     public static native int openDatabase2(String databaseSource, String databasePath, boolean databaseInMemory, boolean optimize);
     
     /*
-     * Called when the Tango service is connected.
+     * Called when the camera service is connected.
      *
      * @param binder The native binder object.
      */
-    public static native boolean onTangoServiceConnected(IBinder binder);
+    public static native boolean onCameraServiceConnected(IBinder binder);
 
-    // Release all non OpenGl resources that are allocated from the program.
-    public static native void onPause();
+    public static native void stopCamera();
 
     // Allocate OpenGL resources for rendering.
     public static native void initGlContent();
@@ -57,7 +56,7 @@ public class RTABMapLib
     public static native void onTouchEvent(int touchCount, int event0,
                                            float x0, float y0, float x1, float y1);
     
-
+    public static native void setCameraDriver(int driver);
     public static native void setPausedMapping(boolean paused);
     public static native void setOnlineBlending(boolean enabled);
     public static native void setMapCloudShown(boolean shown);

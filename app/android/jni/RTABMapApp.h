@@ -35,7 +35,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <tango-gl/util.h>
 
 #include "scene.h"
-#include "CameraTango.h"
+#include "CameraMobile.h"
 #include "util.h"
 #include "ProgressionStatus.h"
 
@@ -58,30 +58,7 @@ class RTABMapApp : public UEventsHandler {
 
   int openDatabase(const std::string & databasePath, bool databaseInMemory, bool optimize, const std::string & databaseSource=std::string());
 
-  bool onTangoServiceConnected(JNIEnv* env, jobject iBinder);
-
-  // Explicitly reset motion tracking and restart the pipeline.
-  // Note that this will cause motion tracking to re-initialize.
-  void TangoResetMotionTracking();
-
-  // Tango Service point cloud callback function for depth data. Called when new
-  // new point cloud data is available from the Tango Service.
-  //
-  // @param pose: The current point cloud returned by the service,
-  //              caller allocated.
-  void onPointCloudAvailable(const TangoXYZij* xyz_ij);
-
-  // Tango service pose callback function for pose data. Called when new
-  // information about device pose is available from the Tango Service.
-  //
-  // @param pose: The current pose returned by the service, caller allocated.
-  void onPoseAvailable(const TangoPoseData* pose);
-
-  // Tango service event callback function for event data. Called when new events
-  // are available from the Tango Service.
-  //
-  // @param event: Tango event, caller allocated.
-  void onTangoEventAvailable(const TangoEvent* event);
+  bool onCameraServiceConnected(JNIEnv* env, jobject iBinder);
 
   // Allocate OpenGL resources for rendering, mainly for initializing the Scene.
   void InitializeGLContent();
@@ -92,8 +69,7 @@ class RTABMapApp : public UEventsHandler {
   // Main render loop.
   int Render();
 
-  // Release all non-OpenGL allocated resources.
-  void onPause();
+  void stopCamera();
 
   // Set render camera's viewing angle, first person, third person or top down.
   //
@@ -113,6 +89,7 @@ class RTABMapApp : public UEventsHandler {
   void OnTouchEvent(int touch_count, tango_gl::GestureCamera::TouchEvent event,
                     float x0, float y0, float x1, float y1);
 
+  void setCameraDriver(int driver);
   void setPausedMapping(bool paused);
   void setOnlineBlending(bool enabled);
   void setMapCloudShown(bool shown);
@@ -179,16 +156,17 @@ class RTABMapApp : public UEventsHandler {
 
  private:
   rtabmap::ParametersMap getRtabmapParameters();
-  bool smoothMesh(int id, Mesh & mesh);
+  bool smoothMesh(int id, rtabmap::Mesh & mesh);
   void gainCompensation(bool full = false);
   std::vector<pcl::Vertices> filterOrganizedPolygons(const std::vector<pcl::Vertices> & polygons, int cloudSize) const;
   std::vector<pcl::Vertices> filterPolygons(const std::vector<pcl::Vertices> & polygons, int cloudSize) const;
 
  private:
-  rtabmap::CameraTango * camera_;
+  int cameraDriver_;
+  rtabmap::CameraMobile * camera_;
   rtabmap::RtabmapThread * rtabmapThread_;
   rtabmap::Rtabmap * rtabmap_;
-  LogHandler * logHandler_;
+  rtabmap::LogHandler * logHandler_;
 
   bool odomCloudShown_;
   bool graphOptimization_;
@@ -212,7 +190,6 @@ class RTABMapApp : public UEventsHandler {
 
   rtabmap::ParametersMap mappingParameters_;
 
-  bool paused_;
   bool dataRecorderMode_;
   bool clearSceneOnNextRender_;
   bool openingDatabase_;
@@ -259,7 +236,7 @@ class RTABMapApp : public UEventsHandler {
 
 	USemaphore screenshotReady_;
 
-	std::map<int, Mesh> createdMeshes_;
+	std::map<int, rtabmap::Mesh> createdMeshes_;
 	std::map<int, rtabmap::Transform> rawPoses_;
 
 	std::pair<rtabmap::RtabmapEventInit::Status, std::string> status_;
