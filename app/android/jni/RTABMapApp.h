@@ -31,7 +31,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <jni.h>
 #include <memory>
 
-#include <tango_client_api.h>  // NOLINT
 #include <tango-gl/util.h>
 
 #include "scene.h"

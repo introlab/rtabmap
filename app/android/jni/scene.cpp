@@ -369,8 +369,7 @@ int Scene::Render() {
 
 	if(currentPose_ == 0)
 	{
-		currentPose_ = new rtabmap::Transform();
-		currentPose_->setIdentity();
+		currentPose_ = new rtabmap::Transform(0,0,0,0,0,-M_PI/2.0f);
 	}
 	glm::vec3 position(currentPose_->x(), currentPose_->y(), currentPose_->z());
 	Eigen::Quaternionf quat = currentPose_->getQuaternionf();
@@ -579,7 +578,7 @@ void Scene::SetCameraPose(const rtabmap::Transform & pose)
 	UASSERT(!pose.isNull());
 	if(currentPose_ ==0)
 	{
-		currentPose_ = new rtabmap::Transform();
+		currentPose_ = new rtabmap::Transform(0,0,0,0,0,-M_PI/2.0f);
 	}
 	*currentPose_ = pose;
 }

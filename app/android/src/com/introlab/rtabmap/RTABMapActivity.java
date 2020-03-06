@@ -260,7 +260,10 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 							{
 								mToast.makeText(getApplicationContext(), 
 										String.format("Failed to intialize Camera!"), mToast.LENGTH_LONG).show();
-								updateState(State.STATE_IDLE);
+							}
+							else
+							{
+								updateState(State.STATE_CAMERA);
 							}
 						} 
 					});
@@ -915,7 +918,7 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 			}
 			else
 			{
-				message = String.format("Hold Tight! Initializing Tango Service...\nTip: If the camera is still drifting just after the mapping has started, do \"Reset\".");
+				message = String.format("Hold Tight! Initializing Camera Service...\nTip: If the camera is still drifting just after the mapping has started, do \"Reset\".");
 			}
 			startCamera(message);
 		}
@@ -923,9 +926,7 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 	}
 	
 	private void startCamera(String message)
-	{		
-		updateState(State.STATE_CAMERA);
-		
+	{				
 		// Currently only one driver supported (Tango).
 		// Depending on the phone, we could have a nice menu showing all compatible drivers.
 		int cameraDriver = 0; 
@@ -936,9 +937,7 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 		{
 			// Check if the Tango Core is out dated.
 			if (!CheckTangoCoreVersion(MIN_TANGO_CORE_VERSION)) {
-				mToast.makeText(this, "Tango core out dated or not available!", mToast.LENGTH_LONG).show();
-				
-				updateState(State.STATE_IDLE);
+				mToast.makeText(this, "Motion tracking and depth camera driver are not available/supportd for this phone. Abort scanning...", mToast.LENGTH_LONG).show();
 				return;
 			}   
 			
@@ -947,8 +946,6 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 				startActivityForResult(
 						Tango.getRequestPermissionIntent(Tango.PERMISSIONTYPE_MOTION_TRACKING),
 						Tango.TANGO_INTENT_ACTIVITYCODE);
-				
-				updateState(State.STATE_IDLE);
 				return;
 			}
 			else
@@ -1211,7 +1208,7 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 		mStatusTexts = statusTexts;
 		updateStatusTexts();
 
-		if(mButtonStart!=null)
+		if(mButtonStart!=null && mState == State.STATE_MAPPING)
 		{
 			if(mButtonStart.getVisibility() != View.VISIBLE)
 			{	
