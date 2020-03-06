@@ -937,7 +937,7 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 		{
 			// Check if the Tango Core is out dated.
 			if (!CheckTangoCoreVersion(MIN_TANGO_CORE_VERSION)) {
-				mToast.makeText(this, "Motion tracking and depth camera driver are not available/supportd for this phone. Abort scanning...", mToast.LENGTH_LONG).show();
+				mToast.makeText(this, "Motion tracking and depth camera driver are not available or supported for this phone. Abort scanning...", mToast.LENGTH_LONG).show();
 				return;
 			}   
 			
