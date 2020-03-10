@@ -1340,6 +1340,9 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 			_cloudViewer->updateCameraFrustum(_odometryCorrection*odom.pose(), odom.data().stereoCameraModel());
 		}
 		_cloudViewer->updateCameraTargetPosition(_odometryCorrection*odom.pose());
+#if PCL_VERSION_COMPARE(>=, 1, 7, 2)
+		_cloudViewer->addOrUpdateLine("odom_to_base_link", _odometryCorrection, _odometryCorrection*odom.pose(), Qt::yellow, false, false);
+#endif
 
 	}
 	_cloudViewer->update();
@@ -2017,6 +2020,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 						_cloudViewer->updateCameraFrustum(poses.rbegin()->second, stat.getLastSignatureData().sensorData().stereoCameraModel());
 					}
 				}
+
 				_cloudViewer->updateCameraTargetPosition(poses.rbegin()->second);
 
 				if(_ui->graphicsView_graphView->isVisible())
@@ -2024,6 +2028,12 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 					_ui->graphicsView_graphView->updateReferentialPosition(poses.rbegin()->second);
 				}
 			}
+
+#if PCL_VERSION_COMPARE(>=, 1, 7, 2)
+			_cloudViewer->addOrUpdateCoordinate("map_frame", Transform::getIdentity(), 0.5, false);
+			_cloudViewer->addOrUpdateCoordinate("odom_frame", _odometryCorrection, 0.35, false);
+			_cloudViewer->addOrUpdateLine("map_to_odom", Transform::getIdentity(), _odometryCorrection, Qt::yellow, false, false);
+#endif
 
 			if(_cachedSignatures.contains(0) && stat.refImageId()>0)
 			{
@@ -4683,6 +4693,9 @@ void MainWindow::newDatabase()
 	_newDatabasePath.clear();
 	_newDatabasePathOutput.clear();
 	_databaseUpdated = false;
+	_cloudViewer->removeLine("map_to_odom");
+	_cloudViewer->removeLine("odom_to_base_link");
+	_cloudViewer->removeCoordinate("odom_frame");
 	ULOGGER_DEBUG("");
 	this->clearTheCache();
 	std::string databasePath = (_preferencesDialog->getWorkingDirectory()+QDir::separator()+QString("rtabmap.tmp.db")).toStdString();
