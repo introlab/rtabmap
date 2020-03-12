@@ -67,7 +67,7 @@ struct EVComparator{
   EVComparator(){
     mode=CompareLevel;
   }
-  inline bool operator() (const E& e1, const E& e2){
+  inline bool operator() (const E& e1, const E& e2) const {
     int o1=0, o2=0;
     switch (mode){
     case CompareLevel:
