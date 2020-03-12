@@ -364,7 +364,7 @@ void CloudViewer::saveSettings(QSettings & settings, const QString & group) cons
 	settings.setValue("normals_scale", (double)this->getNormalsScale());
 
 	settings.setValue("intensity_red_colormap", this->isIntensityRedColormap());
-	settings.setValue("normals_scale", (double)this->getIntensityMax());
+	settings.setValue("intensity_max", (double)this->getIntensityMax());
 
 	settings.setValue("trajectory_shown", this->isTrajectoryShown());
 	settings.setValue("trajectory_size", this->getTrajectorySize());
@@ -411,7 +411,7 @@ void CloudViewer::loadSettings(QSettings & settings, const QString & group)
 	this->setNormalsScale(settings.value("normals_scale", this->getNormalsScale()).toFloat());
 
 	this->setIntensityRedColormap(settings.value("intensity_red_colormap", this->isIntensityRedColormap()).toBool());
-	this->setIntensityMax(settings.value("normals_scale", this->getIntensityMax()).toFloat());
+	this->setIntensityMax(settings.value("intensity_max", this->getIntensityMax()).toFloat());
 
 	this->setTrajectoryShown(settings.value("trajectory_shown", this->isTrajectoryShown()).toBool());
 	this->setTrajectorySize(settings.value("trajectory_size", this->getTrajectorySize()).toUInt());
