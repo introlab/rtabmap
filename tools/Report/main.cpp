@@ -259,14 +259,14 @@ int main(int argc, char * argv[])
 
 								if(uContains(stat, std::string("RtabmapROS/TotalTime/ms")))
 								{
-									if(w>=0 || stat.at("RtabmapROS/TotalTime/ms") > 10.0f)
+									if(w>=0)
 									{
 										slamTime.push_back(stat.at("RtabmapROS/TotalTime/ms"));
 									}
 								}
 								else if(uContains(stat, Statistics::kTimingTotal()))
 								{
-									if(w>=0 || stat.at(Statistics::kTimingTotal()) > 10.0f)
+									if(w>=0)
 									{
 										slamTime.push_back(stat.at(Statistics::kTimingTotal()));
 									}
