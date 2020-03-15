@@ -60,19 +60,19 @@ protected:
 			ULogEvent * logEvent = (ULogEvent*)event;
 			if(logEvent->getCode() == ULogger::kDebug)
 			{
-				LOGD(logEvent->getMsg().c_str());
+				LOGD("%s", logEvent->getMsg().c_str());
 			}
 			else if(logEvent->getCode() == ULogger::kInfo)
 			{
-				LOGI(logEvent->getMsg().c_str());
+				LOGI("%s", logEvent->getMsg().c_str());
 			}
 			else if(logEvent->getCode() == ULogger::kWarning)
 			{
-				LOGW(logEvent->getMsg().c_str());
+				LOGW("%s", logEvent->getMsg().c_str());
 			}
 			else if(logEvent->getCode() >= ULogger::kError)
 			{
-				LOGE(logEvent->getMsg().c_str());
+				LOGE("%s", logEvent->getMsg().c_str());
 			}
 
 		}
