@@ -42,6 +42,15 @@ namespace rtabmap {
 const float CameraMobile::bilateralFilteringSigmaS = 2.0f;
 const float CameraMobile::bilateralFilteringSigmaR = 0.075f;
 
+const rtabmap::Transform CameraMobile::opticalRotation = Transform(
+		0.0f,  0.0f,  1.0f, 0.0f,
+	   -1.0f,  0.0f,  0.0f, 0.0f,
+		0.0f, -1.0f,  0.0f, 0.0f);
+const rtabmap::Transform CameraMobile::opticalRotationInv = Transform(
+		0.0f, -1.0f,  0.0f, 0.0f,
+	    0.0f,  0.0f, -1.0f, 0.0f,
+		1.0f,  0.0f,  0.0f, 0.0f);
+
 CameraMobile::CameraMobile(bool smoothing) :
 		Camera(0),
 		deviceTColorCamera_(Transform::getIdentity()),
@@ -73,16 +82,12 @@ void CameraMobile::resetOrigin()
 	originUpdate_ = true;
 }
 
-static rtabmap::Transform opticalRotation(
-								1.0f,  0.0f,  0.0f, 0.0f,
-							    0.0f, -1.0f,  0.0f, 0.0f,
-								0.0f,  0.0f, -1.0f, 0.0f);
 void CameraMobile::poseReceived(const Transform & pose)
 {
 	if(!pose.isNull())
 	{
-		// send pose of the camera (without optical rotation), not the device
-		Transform p = pose*deviceTColorCamera_*opticalRotation;
+		// send pose of the camera (without optical rotation)
+		Transform p = pose*deviceTColorCamera_;
 		if(originUpdate_)
 		{
 			originOffset_ = p.translation().inverse();
@@ -112,6 +117,14 @@ void CameraMobile::setGPS(const GPS & gps)
 void CameraMobile::addEnvSensor(int type, float value)
 {
 	lastEnvSensors_.insert(std::make_pair((EnvSensor::Type)type, EnvSensor((EnvSensor::Type)type, value)));
+}
+
+void CameraMobile::spinOnce()
+{
+	if(!this->isRunning())
+	{
+		mainLoop();
+	}
 }
 
 void CameraMobile::mainLoopBegin()
@@ -145,7 +158,7 @@ void CameraMobile::mainLoop()
 			lastEnvSensors_.clear();
 		}
 
-		if(smoothing_)
+		if(smoothing_ && !data.depthRaw().empty())
 		{
 			//UTimer t;
 			data.setDepthOrRightRaw(rtabmap::util2d::fastBilateralFiltering(data.depthRaw(), bilateralFilteringSigmaS, bilateralFilteringSigmaR));

@@ -73,6 +73,9 @@ public:
 	static const float bilateralFilteringSigmaS;
 	static const float bilateralFilteringSigmaR;
 
+	static const rtabmap::Transform opticalRotation;
+	static const rtabmap::Transform opticalRotationInv;
+
 public:
 	CameraMobile(bool smoothing = false);
 	virtual ~CameraMobile();
@@ -82,17 +85,19 @@ public:
 	virtual void close(); // inherited classes should call its parent in their close().
 	virtual std::string getSerial() const = 0;
 
-	const Transform & getOriginOffset() const {return originOffset_;} // in tango frame
+	const Transform & getOriginOffset() const {return originOffset_;} // in rtabmap frame
 	void resetOrigin();
 	virtual bool isCalibrated() const;
 
-	void poseReceived(const Transform & pose);
+	void poseReceived(const Transform & pose); // in rtabmap frame
 
 	const CameraModel & getCameraModel() const {return model_;}
 	void setSmoothing(bool enabled) {smoothing_ = enabled;}
 	void setScreenRotation(ScreenRotation colorCameraToDisplayRotation) {colorCameraToDisplayRotation_ = colorCameraToDisplayRotation;}
 	void setGPS(const GPS & gps);
 	void addEnvSensor(int type, float value);
+
+	void spinOnce(); // Should only be called if not thread is not running, otherwise it does nothing
 
 protected:
 	virtual SensorData captureImage(CameraInfo * info = 0) = 0;
@@ -102,7 +107,7 @@ protected:
 
 protected:
 	CameraModel model_; // local transform is the device to camera optical rotation in rtabmap frame
-	Transform deviceTColorCamera_;
+	Transform deviceTColorCamera_; // device to camera optical rotation in rtabmap frame
 
 private:
 	Transform previousPose_;

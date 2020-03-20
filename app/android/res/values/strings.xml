@@ -79,6 +79,8 @@
     <string name="pref_key_fisheye">pref_key_fisheye</string>
     <string name="pref_default_fisheye">false</string>
     
+    <string name="pref_key_camera_driver">pref_key_camera_driver</string>
+    <string name="pref_default_camera_driver">0</string>
     <string name="pref_key_update_rate">pref_key_update_rate</string>
     <string name="pref_default_update_rate">1</string>
     <string name="pref_key_max_speed">pref_key_max_speed</string>
@@ -319,6 +321,8 @@
     <string name="pref_summary_mapping">Advanced mapping parameters for fine tuning.</string>
     <string name="pref_title_mapping_core">Core</string>
     <string name="pref_title_mapping_database">Database</string>
+    <string name="pref_title_camera_driver">Camera Driver</string>
+    <string name="pref_summary_camera_driver">AR sdk use for capturing 6DoF poses and images. A TOF camera is required to record a 3D model.</string>
     <string name="pref_title_append">Append Mode</string>
     <string name="pref_summary_append">When resuming mapping, wait for a relocalization on the current map before starting a new map.</string>
     <string name="pref_title_resolution">HD Mode</string>
@@ -368,6 +372,14 @@
     <string name="pref_title_db_in_memory">Database In Memory</string>
     <string name="pref_summary_db_in_memory">The database is kept in RAM for fast access. Set to false to reduce RAM used at the cost of slower access. This parameter is applied on reset or when a database is opened.</string>
 
+    <string-array name="pref_camera_driver_keys">
+        <item>"Google Tango"</item>
+        <item>"ARCore"</item>
+    </string-array>
+    <string-array name="pref_camera_driver_values">
+        <item>"0"</item>
+        <item>"1"</item>
+    </string-array>
     <string-array name="pref_update_rate_keys">
         <item>"Max"</item>
         <item>"5 Hz"</item>

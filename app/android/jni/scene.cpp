@@ -506,8 +506,13 @@ int Scene::Render() {
 			frustum_->SetScale(kFrustumScale);
 			frustum_->Render(projectionMatrix, viewMatrix);
 
-			axis_->SetPosition(position);
-			axis_->SetRotation(rotation);
+			rtabmap::Transform cameraFrame = *currentPose_*rtabmap::optical_T_opengl*rtabmap::CameraMobile::opticalRotationInv;
+			glm::vec3 positionCamera(cameraFrame.x(), cameraFrame.y(), cameraFrame.z());
+			Eigen::Quaternionf quatCamera = cameraFrame.getQuaternionf();
+			glm::quat rotationCamera(quatCamera.w(), quatCamera.x(), quatCamera.y(), quatCamera.z());
+
+			axis_->SetPosition(positionCamera);
+			axis_->SetRotation(rotationCamera);
 			axis_->Render(projectionMatrix, viewMatrix);
 		}
 

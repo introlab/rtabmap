@@ -18,7 +18,7 @@
     <uses-feature android:glEsVersion="0x00020000" />
 
     <!-- This is the platform API where NativeActivity was introduced. -->
-    <uses-sdk android:minSdkVersion="19" />
+    <uses-sdk android:minSdkVersion="14" />
 
     <!-- This .apk has no Java code itself, so set hasCode to false. -->
     <application 
@@ -27,6 +27,7 @@
         android:debuggable="@ANDROID_DEBUGGABLE@">
         
         <uses-library android:name="com.projecttango.libtango_device2" android:required="false" />
+        <meta-data android:name="com.google.ar.core" android:value="optional" />
 
         <!-- Our activity is the built-in NativeActivity framework class.
              This will take care of integrating with our NDK code. -->
@@ -47,6 +48,17 @@
 
         <activity android:name="SettingsActivity" android:label="@string/settings" android:screenOrientation="fullSensor"/>
         <activity android:name="SketchfabActivity" android:label="@string/sketchfab" android:screenOrientation="fullSensor"/>
+    
+        <meta-data
+            android:name="com.google.ar.core.min_apk_version"
+            android:value="191106000" /> <!-- This activity is critical for installing ARCore when it is not already present. -->
+        <activity
+            android:name="com.google.ar.core.InstallActivity"
+            android:configChanges="keyboardHidden|orientation|screenSize"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:launchMode="singleTop"
+            android:theme="@android:style/Theme.Material.Light.Dialog.Alert" />
     </application>
 
 </manifest>

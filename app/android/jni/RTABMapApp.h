@@ -48,16 +48,14 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 class RTABMapApp : public UEventsHandler {
  public:
   // Constructor and deconstructor.
-  RTABMapApp();
+  RTABMapApp(JNIEnv* env, jobject caller_activity);
   ~RTABMapApp();
-
-  void onCreate(JNIEnv* env, jobject caller_activity);
 
   void setScreenRotation(int displayRotation, int cameraRotation);
 
   int openDatabase(const std::string & databasePath, bool databaseInMemory, bool optimize, const std::string & databaseSource=std::string());
 
-  bool onCameraServiceConnected(JNIEnv* env, jobject iBinder);
+  bool startCamera(JNIEnv* env, jobject iBinder, jobject context, jobject activity, int driver);
 
   // Allocate OpenGL resources for rendering, mainly for initializing the Scene.
   void InitializeGLContent();
@@ -88,7 +86,6 @@ class RTABMapApp : public UEventsHandler {
   void OnTouchEvent(int touch_count, tango_gl::GestureCamera::TouchEvent event,
                     float x0, float y0, float x1, float y1);
 
-  void setCameraDriver(int driver);
   void setPausedMapping(bool paused);
   void setOnlineBlending(bool enabled);
   void setMapCloudShown(bool shown);
@@ -126,7 +123,6 @@ class RTABMapApp : public UEventsHandler {
   void setGPS(const rtabmap::GPS & gps);
   void addEnvSensor(int type, float value);
 
-  void resetMapping();
   void save(const std::string & databasePath);
   void cancelProcessing();
   bool exportMesh(
@@ -226,6 +222,7 @@ class RTABMapApp : public UEventsHandler {
 
 	rtabmap::Transform mapToOdom_;
 
+	boost::mutex cameraMutex_;
 	boost::mutex rtabmapMutex_;
 	boost::mutex visLocalizationMutex_;
 	boost::mutex meshesMutex_;

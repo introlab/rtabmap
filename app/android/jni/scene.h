@@ -79,7 +79,7 @@ class Scene {
   //         top down
   void SetCameraType(tango_gl::GestureCamera::CameraType camera_type);
 
-  void SetCameraPose(const rtabmap::Transform & pose);
+  void SetCameraPose(const rtabmap::Transform & pose); // opengl camera
   rtabmap::Transform GetCameraPose() const {return currentPose_!=0?*currentPose_:rtabmap::Transform();}
   rtabmap::Transform GetOpenGLCameraPose(float * fov = 0) const;
 

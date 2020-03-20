@@ -1,5 +1,13 @@
 <PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
     
+    <ListPreference 
+            android:key="@string/pref_key_camera_driver"
+    		android:title="@string/pref_title_camera_driver"
+    		android:summary="@string/pref_summary_camera_driver"
+   			android:entries="@array/pref_camera_driver_keys"
+   			android:entryValues="@array/pref_camera_driver_values"
+   			android:defaultValue="@string/pref_default_camera_driver"/>
+    
     <PreferenceCategory
         android:title="@string/pref_title_rendering">
         <ListPreference 
@@ -78,7 +86,7 @@
             android:title="@string/pref_title_mapping_sub"
             android:summary="@string/pref_summary_mapping"
             android:persistent="false">
-        
+                    
 		    <com.introlab.rtabmap.CustomSwitchPreference
 	            android:key="@string/pref_key_append"
 	            android:title="@string/pref_title_append"

@@ -6,8 +6,8 @@
 		<copy todir="${native.libs.dir}/${android.abi}">
 			<fileset dir="${srcdir}/jni/third-party/lib" includes="*.so"/>
 		</copy>
-                <copy todir="${native.libs.dir}">
-                        <fileset dir="${srcdir}/jni/third-party/lib" includes="${android.abi}/*.so"/>
-                </copy>
+		<copy todir="${native.libs.dir}">
+			<fileset dir="${srcdir}/jni/third-party/lib" includes="${android.abi}/*.so"/>
+		</copy>
 	</target>
 </project>

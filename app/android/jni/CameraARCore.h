@@ -25,8 +25,8 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef CAMERATANGO_H_
-#define CAMERATANGO_H_
+#ifndef CAMERAARCORE_H_
+#define CAMERAARCORE_H_
 
 #include "CameraMobile.h"
 #include <rtabmap/core/Camera.h>
@@ -38,27 +38,29 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UEvent.h>
 #include <rtabmap/utilite/UTimer.h>
 #include <boost/thread/mutex.hpp>
-#include <tango_client_api.h>
-#include <tango_support_api.h>
+
+#include <arcore_c_api.h>
+#ifdef DEPTH_TEST
+#include <camera/NdkCameraDevice.h>
+#include <camera/NdkCameraManager.h>
+#include <media/NdkImageReader.h>
+#include <android/native_window.h>
+#endif
 
 namespace rtabmap {
 
-class CameraTango : public CameraMobile {
+class CameraARCore : public CameraMobile {
 public:
-	CameraTango(bool colorCamera, int decimation, bool publishRawScan, bool smoothing);
-	virtual ~CameraTango();
+	CameraARCore(void* env, void* context, void* activity, bool smoothing = false);
+	virtual ~CameraARCore();
 
 	virtual bool init(const std::string & calibrationFolder = ".", const std::string & cameraName = "");
 	virtual void close(); // close Tango connection
 	virtual std::string getSerial() const;
-	rtabmap::Transform tangoPoseToTransform(const TangoPoseData * tangoPose) const;
-	void setColorCamera(bool enabled) {if(!this->isRunning()) colorCamera_ = enabled;}
-	void setDecimation(int value) {decimation_ = value;}
-	void setRawScanPublished(bool enabled) {rawScanPublished_ = enabled;}
 
-	void cloudReceived(const cv::Mat & cloud, double timestamp);
-	void rgbReceived(const cv::Mat & tangoImage, int type, double timestamp);
-	void tangoEventReceived(int type, const char * key, const char * value);
+#ifdef DEPTH_TEST
+	void imageCallback(AImageReader *reader);
+#endif // DEPTH_TEST
 
 protected:
 	virtual SensorData captureImage(CameraInfo * info = 0);
@@ -67,20 +69,35 @@ private:
 	rtabmap::Transform getPoseAtTimestamp(double timestamp);
 
 private:
-	void * tango_config_;
-	bool colorCamera_;
-	int decimation_;
-	bool rawScanPublished_;
-	cv::Mat cloud_;
-	double cloudStamp_;
-	cv::Mat tangoColor_;
-	int tangoColorType_;
-	double tangoColorStamp_;
-	boost::mutex dataMutex_;
-	USemaphore dataReady_;
-	cv::Mat fisheyeRectifyMapX_;
-	cv::Mat fisheyeRectifyMapY_;
+	void * env_;
+	void * context_;
+	void * activity_;
+	ArSession* arSession_ = nullptr;
+	ArConfig* arConfig_ = nullptr;
+	ArFrame* arFrame_ = nullptr;
+	ArCameraIntrinsics *arCameraIntrinsics_ = nullptr;
+	ArPose * arPose_ = nullptr;
+	bool arInstallRequested_;
+	GLuint textureId_;
+	UMutex arSessionMutex_;
+
+#ifdef DEPTH_TEST
+	// Camera variables
+	ACameraDevice* cameraDevice_ = nullptr;
+	ACaptureRequest* captureRequest_ = nullptr;
+	ACameraOutputTarget* cameraOutputTarget_ = nullptr;
+	ACaptureSessionOutput* sessionOutput_ = nullptr;
+	ACaptureSessionOutputContainer* captureSessionOutputContainer_ = nullptr;
+	ACameraCaptureSession* captureSession_ = nullptr;
+	ANativeWindow *outputNativeWindow_ = nullptr;
+
+	ACameraDevice_StateCallbacks deviceStateCallbacks_;
+	ACameraCaptureSession_stateCallbacks captureSessionStateCallbacks_;
+
+	ACameraManager* cameraManager_ = nullptr;
+	AImageReader* imageReader_ = nullptr;
+#endif // DEPTH_TEST
 };
 
 } /* namespace rtabmap */
-#endif /* CAMERATANGO_H_ */
+#endif /* CAMERAARCORE_H_ */

@@ -75,87 +75,95 @@ public class Renderer implements GLSurfaceView.Renderer {
 	// Render loop of the Gl context.
 	public void onDrawFrame(GL10 useGLES20instead) {
 
-		try
-		{
-			final int value = RTABMapLib.render();
-
-			if(mTextManager!=null)
+		synchronized (this) {
+			if(mActivity.nativeApplication != 0)
 			{
-				if(mTextChanged)
+				try
 				{
-					mTextChanged = false;
-					Vector<TextObject> txtcollection = new Vector<TextObject>();
-					
-					mTextLock.lock();
-				    try {
-				    	if(mTexts.size() > 0)
-				    	{
-				    		txtcollection.addAll(mTexts);
-				    	}
-				    } finally {
-				    	mTextLock.unlock();
-				    }
-				    
-					// Prepare the text for rendering
-					mTextManager.PrepareDraw(txtcollection);
-				}
-				
-				float[] mvp = new float[16];
-				Matrix.translateM(mvp, 0, mtrxProjectionAndView, 0, 0, mOffset, 0);
-				mTextManager.Draw(mvp);
-			}
-
-			if(value != 0 && mProgressDialog != null && mProgressDialog.isShowing())
-			{
-				mActivity.runOnUiThread(new Runnable() {
-					public void run() {
-						if(!RTABMapActivity.DISABLE_LOG) Log.i("RTABMapActivity", "Renderer: dismiss dialog, value received=" + String.valueOf(value));
-						mProgressDialog.dismiss();
-						mActivity.resetNoTouchTimer();
-					}
-				});
-			}
-			if(value==-1)
-			{
-				mActivity.runOnUiThread(new Runnable() {
-					public void run() {
-						if(mToast!=null)
-						{
-							mToast.makeText(mActivity, String.format("Out of Memory!"), Toast.LENGTH_SHORT).show();
-						}
-					}
-				});
-			}
-			else if(value==-2)
-			{
-				mActivity.runOnUiThread(new Runnable() {
-					public void run() {
-						if(mToast!=null)
-						{
-							mToast.makeText(mActivity, String.format("Rendering Error!"), Toast.LENGTH_SHORT).show();
-						}
-					}
-				});
-			}
-		}
-		catch(final Exception e)
-		{
-			mActivity.runOnUiThread(new Runnable() {
-				public void run() {
-					if(mToast!=null)
+					final int value = RTABMapLib.render(mActivity.nativeApplication);
+		
+					if(mTextManager!=null)
 					{
-						mToast.makeText(mActivity, String.format("Rendering error! %s", e.getMessage()), Toast.LENGTH_SHORT).show();
+						if(mTextChanged)
+						{
+							mTextChanged = false;
+							Vector<TextObject> txtcollection = new Vector<TextObject>();
+							
+							mTextLock.lock();
+						    try {
+						    	if(mTexts.size() > 0)
+						    	{
+						    		txtcollection.addAll(mTexts);
+						    	}
+						    } finally {
+						    	mTextLock.unlock();
+						    }
+						    
+							// Prepare the text for rendering
+							mTextManager.PrepareDraw(txtcollection);
+						}
+						
+						float[] mvp = new float[16];
+						Matrix.translateM(mvp, 0, mtrxProjectionAndView, 0, 0, mOffset, 0);
+						mTextManager.Draw(mvp);
+					}
+		
+					if(value != 0 && mProgressDialog != null && mProgressDialog.isShowing())
+					{
+						mActivity.runOnUiThread(new Runnable() {
+							public void run() {
+								if(!RTABMapActivity.DISABLE_LOG) Log.i("RTABMapActivity", "Renderer: dismiss dialog, value received=" + String.valueOf(value));
+								mProgressDialog.dismiss();
+								mActivity.resetNoTouchTimer();
+							}
+						});
+					}
+					if(value==-1)
+					{
+						mActivity.runOnUiThread(new Runnable() {
+							public void run() {
+								if(mToast!=null)
+								{
+									mToast.makeText(mActivity, String.format("Out of Memory!"), Toast.LENGTH_SHORT).show();
+								}
+							}
+						});
+					}
+					else if(value==-2)
+					{
+						mActivity.runOnUiThread(new Runnable() {
+							public void run() {
+								if(mToast!=null)
+								{
+									mToast.makeText(mActivity, String.format("Rendering Error!"), Toast.LENGTH_SHORT).show();
+								}
+							}
+						});
 					}
 				}
-
-			});
+				catch(final Exception e)
+				{
+					mActivity.runOnUiThread(new Runnable() {
+						public void run() {
+							if(mToast!=null)
+							{
+								mToast.makeText(mActivity, String.format("Rendering error! %s", e.getMessage()), Toast.LENGTH_SHORT).show();
+							}
+						}
+		
+					});
+				}
+			}
 		}
 	}
 
 	// Called when the surface size changes.
 	public void onSurfaceChanged(GL10 useGLES20instead, int width, int height) {
 		
-		RTABMapLib.setupGraphic(width, height);
+		if(mActivity.nativeApplication!=0)
+		{
+			RTABMapLib.setupGraphic(mActivity.nativeApplication, width, height);
+		}
 		
 		mSurfaceHeight = (float)height;
 
@@ -180,7 +188,10 @@ public class Renderer implements GLSurfaceView.Renderer {
 	// Called when the surface is created or recreated.
 	public void onSurfaceCreated(GL10 useGLES20instead, EGLConfig config) {
 
-		RTABMapLib.initGlContent();
+		if(mActivity.nativeApplication != 0)
+		{
+			RTABMapLib.initGlContent(mActivity.nativeApplication);
+		}
 		
 		// Create our text manager
 		mTextManager = new TextManager(mActivity);

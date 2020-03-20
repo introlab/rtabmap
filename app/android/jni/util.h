@@ -80,6 +80,11 @@ protected:
 	}
 };
 
+static const rtabmap::Transform optical_T_opengl(
+		1.0f,  0.0f,  0.0f, 0.0f,
+		0.0f, -1.0f,  0.0f, 0.0f,
+		0.0f,  0.0f, -1.0f, 0.0f);
+
 static const rtabmap::Transform opengl_world_T_tango_world(
 		1.0f,  0.0f,  0.0f, 0.0f,
 		0.0f,  0.0f,  1.0f, 0.0f,
@@ -90,20 +95,25 @@ static const rtabmap::Transform rtabmap_world_T_tango_world(
 	    -1.0f, 0.0f, 0.0f, 0.0f,
 		 0.0f, 0.0f, 1.0f, 0.0f);
 
-static const rtabmap::Transform tango_device_T_rtabmap_device(
+static const rtabmap::Transform tango_device_T_rtabmap_world(
 		 0.0f, -1.0f, 0.0f, 0.0f,
 	     0.0f,  0.0f, 1.0f, 0.0f,
 		-1.0f,  0.0f, 0.0f, 0.0f);
+
+static const rtabmap::Transform tango_world_T_rtabmap_world(
+		 0.0f, -1.0f, 0.0f, 0.0f,
+	     1.0f, 0.0f, 0.0f, 0.0f,
+		 0.0f, 0.0f, 1.0f, 0.0f);
 
 static const rtabmap::Transform opengl_world_T_rtabmap_world(
 		 0.0f, -1.0f, 0.0f, 0.0f,
 		 0.0f,  0.0f, 1.0f, 0.0f,
 		-1.0f,  0.0f, 0.0f, 0.0f);
 
-static const rtabmap::Transform rtabmap_device_T_opengl_device(
-		 0.0f, 0.0f, -1.0f, 0.0f,
-		-1.0f, 0.0f,  0.0f, 0.0f,
-		 0.0f, 1.0f,  0.0f, 0.0f);
+static const rtabmap::Transform rtabmap_world_T_opengl_world(
+		 0.0f,  0.0f,-1.0f, 0.0f,
+		-1.0f,  0.0f, 0.0f, 0.0f,
+		 0.0f,  1.0f, 0.0f, 0.0f);
 
 inline glm::mat4 glmFromTransform(const rtabmap::Transform & transform)
 {

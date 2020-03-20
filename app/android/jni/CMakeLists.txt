@@ -50,8 +50,31 @@ IF(Tango_FOUND)
     ${LIBRARIES}
     ${Tango_LIBRARIES}
   )
-    
+  
+  file(COPY ${Tango_support_LIBRARY} 
+       DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/../libs/${ANDROID_NDK_ABI_NAME})
+   
 ENDIF(Tango_FOUND)
+
+IF(ARCore_FOUND)
+
+  SET(sources
+    ${sources}
+    CameraARCore.cpp
+  )
+  SET(INCLUDE_DIRS
+    ${INCLUDE_DIRS}
+    ${ARCore_INCLUDE_DIRS}
+  )
+  SET(LIBRARIES
+    ${LIBRARIES}
+    ${ARCore_LIBRARIES}
+  )
+ 
+  file(COPY ${ARCore_LIBRARY} 
+       DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/../libs/${ANDROID_NDK_ABI_NAME})
+    
+ENDIF(ARCore_FOUND)
 
 add_definitions(${PCL_DEFINITIONS})
 
@@ -62,6 +85,8 @@ target_link_libraries(NativeRTABMap ${LIBRARIES}
   android
   log
   GLESv2
+  camera2ndk
+  mediandk
   rtabmap_core
   rtabmap_utilite
 )

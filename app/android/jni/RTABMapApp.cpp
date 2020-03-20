@@ -28,8 +28,12 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <tango-gl/conversions.h>
 
 #include "RTABMapApp.h"
+#include "CameraAvailability.h"
 #ifdef RTABMAP_TANGO
 #include "CameraTango.h"
+#endif
+#ifdef RTABMAP_ARCORE
+#include "CameraARCore.h"
 #endif
 
 #include <rtabmap/core/Rtabmap.h>
@@ -68,10 +72,6 @@ const int g_optMeshId = -100;
 
 static JavaVM *jvm;
 static jobject RTABMapActivity = 0;
-
-namespace {
-constexpr int kTangoCoreMinimumVersion = 9377;
-}  // anonymous namespace.
 
 rtabmap::ParametersMap RTABMapApp::getRtabmapParameters()
 {
@@ -151,7 +151,7 @@ rtabmap::ParametersMap RTABMapApp::getRtabmapParameters()
 	return parameters;
 }
 
-RTABMapApp::RTABMapApp() :
+RTABMapApp::RTABMapApp(JNIEnv* env, jobject caller_activity) :
 		cameraDriver_(0),
 		camera_(0),
 		rtabmapThread_(0),
@@ -202,10 +202,46 @@ RTABMapApp::RTABMapApp() :
 
 {
 	mappingParameters_.insert(rtabmap::ParametersPair(rtabmap::Parameters::kKpDetectorStrategy(), "5")); // GFTT/FREAK
+
+	env->GetJavaVM(&jvm);
+	RTABMapActivity = env->NewGlobalRef(caller_activity);
+
+	LOGI("RTABMapApp::onCreate()");
+	createdMeshes_.clear();
+	rawPoses_.clear();
+	clearSceneOnNextRender_ = true;
+	openingDatabase_ = false;
+	exporting_ = false;
+	postProcessing_=false;
+	totalPoints_ = 0;
+	totalPolygons_ = 0;
+	lastDrawnCloudsCount_ = 0;
+	renderingTime_ = 0.0f;
+	lastPostRenderEventTime_ = 0.0;
+	lastPoseEventTime_ = 0.0;
+	bufferedStatsData_.clear();
+	progressionStatus_.setJavaObjects(jvm, RTABMapActivity);
+	main_scene_.setBackgroundColor(backgroundColor_, backgroundColor_, backgroundColor_);
+
+	if(rtabmapThread_)
+	{
+		rtabmapThread_->close(false);
+		delete rtabmapThread_;
+		rtabmapThread_ = 0;
+		rtabmap_ = 0;
+	}
+
+	if(logHandler_ == 0)
+	{
+		logHandler_ = new rtabmap::LogHandler();
+	}
+
+	this->registerToEventsManager();
 }
 
 RTABMapApp::~RTABMapApp() {
-	delete camera_;
+	LOGI("~RTABMapApp() begin");
+	stopCamera();
 	if(rtabmapThread_)
 	{
 		rtabmapThread_->close(false);
@@ -235,49 +271,7 @@ RTABMapApp::~RTABMapApp() {
 		}
 		visLocalizationEvents_.clear();
 	}
-}
-
-void RTABMapApp::onCreate(JNIEnv* env, jobject caller_activity)
-{
-	env->GetJavaVM(&jvm);
-	RTABMapActivity = env->NewGlobalRef(caller_activity);
-
-	LOGI("RTABMapApp::onCreate()");
-	createdMeshes_.clear();
-	rawPoses_.clear();
-	clearSceneOnNextRender_ = true;
-	openingDatabase_ = false;
-	exporting_ = false;
-	postProcessing_=false;
-	totalPoints_ = 0;
-	totalPolygons_ = 0;
-	lastDrawnCloudsCount_ = 0;
-	renderingTime_ = 0.0f;
-	lastPostRenderEventTime_ = 0.0;
-	lastPoseEventTime_ = 0.0;
-	bufferedStatsData_.clear();
-	progressionStatus_.setJavaObjects(jvm, RTABMapActivity);
-	main_scene_.setBackgroundColor(backgroundColor_, backgroundColor_, backgroundColor_);
-
-	if(camera_)
-	{
-	  delete camera_;
-	  camera_ = 0;
-	}
-	if(rtabmapThread_)
-	{
-		rtabmapThread_->close(false);
-	    delete rtabmapThread_;
-	    rtabmapThread_ = 0;
-	    rtabmap_ = 0;
-	}
-
-	if(logHandler_ == 0)
-	{
-		logHandler_ = new rtabmap::LogHandler();
-	}
-
-	this->registerToEventsManager();
+	LOGI("~RTABMapApp() end");
 }
 
 void RTABMapApp::setScreenRotation(int displayRotation, int cameraRotation)
@@ -285,6 +279,8 @@ void RTABMapApp::setScreenRotation(int displayRotation, int cameraRotation)
 	rtabmap::ScreenRotation rotation = rtabmap::GetAndroidRotationFromColorCameraToDisplay(displayRotation, cameraRotation);
 	LOGI("Set orientation: display=%d camera=%d -> %d", displayRotation, cameraRotation, (int)rotation);
 	main_scene_.setScreenRotation(rotation);
+
+	boost::mutex::scoped_lock  lock(cameraMutex_);
 	if(camera_)
 	{
 		camera_->setScreenRotation(rotation);
@@ -293,7 +289,7 @@ void RTABMapApp::setScreenRotation(int displayRotation, int cameraRotation)
 
 int RTABMapApp::openDatabase(const std::string & databasePath, bool databaseInMemory, bool optimize, const std::string & databaseSource)
 {
-	LOGI("Opening database %s (inMemory=%d, optimize=%d)", databasePath.c_str(), databaseInMemory?1:0, optimize?1:0);
+	LOGW("Opening database %s (inMemory=%d, optimize=%d)", databasePath.c_str(), databaseInMemory?1:0, optimize?1:0);
 	this->unregisterFromEventsManager(); // to ignore published init events when closing rtabmap
 	status_.first = rtabmap::RtabmapEventInit::kInitializing;
 	rtabmapMutex_.lock();
@@ -306,8 +302,11 @@ int RTABMapApp::openDatabase(const std::string & databasePath, bool databaseInMe
 	}
 	rtabmapEvents_.clear();
 	openingDatabase_ = true;
+	bool restartThread = false;
 	if(rtabmapThread_)
 	{
+		restartThread = rtabmapThread_->isRunning();
+
 		rtabmapThread_->close(false);
 		delete rtabmapThread_;
 		rtabmapThread_ = 0;
@@ -593,15 +592,21 @@ int RTABMapApp::openDatabase(const std::string & databasePath, bool databaseInMe
 		optRefPose_ = new rtabmap::Transform(poses.rbegin()->second);
 	}
 
-	if(camera_)
 	{
-		camera_->resetOrigin();
+		boost::mutex::scoped_lock  lock(cameraMutex_);
+		if(camera_)
+		{
+			camera_->resetOrigin();
+		}
 	}
 
 	UEventsManager::post(new rtabmap::RtabmapEventInit(rtabmap::RtabmapEventInit::kInitialized, ""));
 
-	status_.first = rtabmap::RtabmapEventInit::kInitialized;
-	status_.second = "";
+	if(restartThread)
+	{
+		rtabmapThread_->start();
+	}
+
 	rtabmapMutex_.unlock();
 
 	boost::mutex::scoped_lock  lockRender(renderingMutex_);
@@ -615,14 +620,11 @@ int RTABMapApp::openDatabase(const std::string & databasePath, bool databaseInMe
 	return status;
 }
 
-void RTABMapApp::setCameraDriver(int driver)
+bool RTABMapApp::startCamera(JNIEnv* env, jobject iBinder, jobject context, jobject activity, int driver)
 {
 	cameraDriver_ = driver;
-}
-
-bool RTABMapApp::onCameraServiceConnected(JNIEnv* env, jobject iBinder)
-{
-	LOGW("onCameraServiceConnected() camera driver=%d", cameraDriver_);
+	LOGW("startCamera() camera driver=%d", cameraDriver_);
+	boost::mutex::scoped_lock  lock(cameraMutex_);
 	if(camera_)
 	{
 		camera_->join(true);
@@ -643,6 +645,14 @@ bool RTABMapApp::onCameraServiceConnected(JNIEnv* env, jobject iBinder)
 		}
 #else
 		UERROR("RTAB-Map is not built with Tango support!");
+#endif
+	}
+	else if(cameraDriver_ == 1)
+	{
+#ifdef RTABMAP_ARCORE
+		camera_ = new rtabmap::CameraARCore(env, context, activity, smoothing_);
+#else
+		UERROR("RTAB-Map is not built with ARCore support!");
 #endif
 	}
 
@@ -721,7 +731,10 @@ bool RTABMapApp::onCameraServiceConnected(JNIEnv* env, jobject iBinder)
 		LOGI("Set decimation to %d", meshDecimation_);
 
 		LOGI("Start camera thread");
-		camera_->start();
+		if(cameraDriver_ == 0)
+		{
+			camera_->start();
+		}
 		cameraJustInitialized_ = true;
 		return true;
 	}
@@ -731,11 +744,16 @@ bool RTABMapApp::onCameraServiceConnected(JNIEnv* env, jobject iBinder)
 
 void RTABMapApp::stopCamera()
 {
-	LOGI("onPause()");
-	if(camera_)
+	LOGI("stopCamera()");
 	{
-		camera_->join(true);
-		camera_->close();
+		boost::mutex::scoped_lock  lock(cameraMutex_);
+		if(camera_!=0)
+		{
+			camera_->join(true);
+			camera_->close();
+			delete camera_;
+			camera_ = 0;
+		}
 	}
 }
 
@@ -1026,6 +1044,16 @@ int RTABMapApp::Render()
 			visualizingMesh_ = false;
 		}
 
+		// ARCore capture should be done in opengl thread!
+		if(cameraDriver_ == 1 && camera_!=0)
+		{
+			boost::mutex::scoped_lock  lock(cameraMutex_);
+			if(camera_!=0)
+			{
+				camera_->spinOnce();
+			}
+		}
+
 		// process only pose events in visualization mode
 		rtabmap::Transform pose;
 		{
@@ -1035,24 +1063,6 @@ int RTABMapApp::Render()
 				pose = poseEvents_.back();
 				poseEvents_.clear();
 			}
-		}
-		if(!pose.isNull())
-		{
-			// update camera pose?
-			if(graphOptimization_ && !mapToOdom_.isIdentity())
-			{
-				main_scene_.SetCameraPose(rtabmap::opengl_world_T_rtabmap_world*mapToOdom_*rtabmap::rtabmap_world_T_tango_world*pose);
-			}
-			else
-			{
-				main_scene_.SetCameraPose(rtabmap::opengl_world_T_tango_world*pose);
-			}
-			if(camera_ && !camera_->isRunning() && cameraJustInitialized_)
-			{
-				notifyCameraStarted = true;
-				cameraJustInitialized_ = false;
-			}
-			lastPoseEventTime_ = UTimer::now();
 		}
 
 		rtabmap::OdometryEvent odomEvent;
@@ -1069,6 +1079,29 @@ int RTABMapApp::Render()
 					cameraJustInitialized_ = false;
 				}
 			}
+			if(pose.isNull() && !odomEvent.pose().isNull())
+			{
+				pose = odomEvent.pose();
+			}
+		}
+
+		if(!pose.isNull())
+		{
+			// update camera pose?
+			if(graphOptimization_ && !mapToOdom_.isIdentity())
+			{
+				main_scene_.SetCameraPose(rtabmap::opengl_world_T_rtabmap_world*mapToOdom_*pose*rtabmap::optical_T_opengl);
+			}
+			else
+			{
+				main_scene_.SetCameraPose(rtabmap::opengl_world_T_rtabmap_world*pose*rtabmap::optical_T_opengl);
+			}
+			if(camera_!=0 && cameraJustInitialized_)
+			{
+				notifyCameraStarted = true;
+				cameraJustInitialized_ = false;
+			}
+			lastPoseEventTime_ = UTimer::now();
 		}
 
 		if(visualizingMesh_)
@@ -1601,7 +1634,7 @@ int RTABMapApp::Render()
 			}
 			else
 			{
-				main_scene_.setCloudVisible(-1, odomCloudShown_ && !trajectoryMode_ && camera_ && camera_->isRunning());
+				main_scene_.setCloudVisible(-1, odomCloudShown_ && !trajectoryMode_ && camera_!=0);
 
 				//just process the last one
 				if(!odomEvent.pose().isNull())
@@ -1683,7 +1716,7 @@ int RTABMapApp::Render()
 			}
 
 			fpsTime.restart();
-			main_scene_.setFrustumVisible(camera_ && camera_->isRunning());
+			main_scene_.setFrustumVisible(camera_!=0);
 			lastDrawnCloudsCount_ = main_scene_.Render();
 			if(renderingTime_ < fpsTime.elapsed())
 			{
@@ -1908,7 +1941,7 @@ void RTABMapApp::setTrajectoryMode(bool enabled)
 void RTABMapApp::setGraphOptimization(bool enabled)
 {
 	graphOptimization_ = enabled;
-	if((camera_ == 0 || !camera_->isRunning()) && rtabmap_ && rtabmap_->getMemory()->getLastWorkingSignature()!=0)
+	if((camera_ == 0) && rtabmap_ && rtabmap_->getMemory()->getLastWorkingSignature()!=0)
 	{
 		std::map<int, rtabmap::Transform> poses;
 		std::multimap<int, rtabmap::Link> links;
@@ -1990,6 +2023,10 @@ void RTABMapApp::setDataRecorderMode(bool enabled)
 	if(dataRecorderMode_ != enabled)
 	{
 		dataRecorderMode_ = enabled; // parameters will be set when resuming (we assume we are paused)
+		if(localizationMode_ && enabled)
+		{
+			localizationMode_ = false;
+		}
 	}
 }
 
@@ -2073,13 +2110,7 @@ int RTABMapApp::setMappingParameter(const std::string & key, const std::string &
 
 	if(rtabmap::Parameters::getDefaultParameters().find(compatibleKey) != rtabmap::Parameters::getDefaultParameters().end())
 	{
-		LOGI(uFormat("Setting param \"%s\"  to \"%s\"", compatibleKey.c_str(), value.c_str()).c_str());
-		if(compatibleKey.compare(rtabmap::Parameters::kKpDetectorStrategy()) == 0 &&
-		   mappingParameters_.at(rtabmap::Parameters::kKpDetectorStrategy()).compare(value) != 0)
-		{
-			// Changing feature type should reset mapping!
-			resetMapping();
-		}
+		LOGI("%s", uFormat("Setting param \"%s\"  to \"%s\"", compatibleKey.c_str(), value.c_str()).c_str());
 		uInsert(mappingParameters_, rtabmap::ParametersPair(compatibleKey, value));
 		UEventsManager::post(new rtabmap::ParamEvent(this->getRtabmapParameters()));
 		return 0;
@@ -2093,7 +2124,8 @@ int RTABMapApp::setMappingParameter(const std::string & key, const std::string &
 
 void RTABMapApp::setGPS(const rtabmap::GPS & gps)
 {
-	if(camera_)
+	boost::mutex::scoped_lock  lock(cameraMutex_);
+	if(camera_!=0)
 	{
 		camera_->setGPS(gps);
 	}
@@ -2101,27 +2133,11 @@ void RTABMapApp::setGPS(const rtabmap::GPS & gps)
 
 void RTABMapApp::addEnvSensor(int type, float value)
 {
-	if(camera_)
+	boost::mutex::scoped_lock  lock(cameraMutex_);
+	if(camera_!=0)
 	{
 		camera_->addEnvSensor(type, value);
 	}
-}
-
-void RTABMapApp::resetMapping()
-{
-	LOGW("Reset!");
-	status_.first = rtabmap::RtabmapEventInit::kInitializing;
-	status_.second = "";
-
-	mapToOdom_.setIdentity();
-	clearSceneOnNextRender_ = true;
-
-	if(camera_)
-	{
-		camera_->resetOrigin();
-	}
-
-	UEventsManager::post(new rtabmap::RtabmapEventCmd(rtabmap::RtabmapEventCmd::kCmdResetMemory));
 }
 
 void RTABMapApp::save(const std::string & databasePath)
@@ -3211,7 +3227,7 @@ int RTABMapApp::postProcessing(int approach)
 
 bool RTABMapApp::handleEvent(UEvent * event)
 {
-	if(camera_ && camera_->isRunning())
+	if(camera_!=0)
 	{
 		// called from events manager thread, so protect the data
 		if(event->getClassName().compare("OdometryEvent") == 0)
@@ -3220,18 +3236,14 @@ bool RTABMapApp::handleEvent(UEvent * event)
 			if(odomMutex_.try_lock())
 			{
 				odomEvents_.clear();
-				if(camera_->isRunning())
-				{
-					odomEvents_.push_back(*((rtabmap::OdometryEvent*)(event)));
-				}
+				odomEvents_.push_back(*((rtabmap::OdometryEvent*)(event)));
 				odomMutex_.unlock();
 			}
 		}
-		if(status_.first == rtabmap::RtabmapEventInit::kInitialized &&
-		   event->getClassName().compare("RtabmapEvent") == 0)
+		if(event->getClassName().compare("RtabmapEvent") == 0)
 		{
-			LOGI("Received RtabmapEvent event!");
-			if(camera_->isRunning())
+			LOGI("Received RtabmapEvent event! status=%d", status_.first);
+			if(status_.first == rtabmap::RtabmapEventInit::kInitialized)
 			{
 				if(visualizingMesh_)
 				{
@@ -3244,6 +3256,10 @@ bool RTABMapApp::handleEvent(UEvent * event)
 					rtabmapEvents_.push_back((rtabmap::RtabmapEvent*)event);
 				}
 				return true;
+			}
+			else
+			{
+				LOGW("Received RtabmapEvent event but ignoring it while we are initializing...status=%d", status_.first);
 			}
 		}
 	}
@@ -3294,9 +3310,9 @@ bool RTABMapApp::handleEvent(UEvent * event)
 
 	if(event->getClassName().compare("RtabmapEventInit") == 0)
 	{
-		LOGI("Received RtabmapEventInit!");
 		status_.first = ((rtabmap::RtabmapEventInit*)event)->getStatus();
 		status_.second = ((rtabmap::RtabmapEventInit*)event)->getInfo();
+		LOGI("Received RtabmapEventInit! Status=%d info=%s", (int)status_.first, status_.second.c_str());
 
 		// Call JAVA callback with init msg
 		bool success = false;

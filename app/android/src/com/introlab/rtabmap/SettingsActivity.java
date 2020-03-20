@@ -34,7 +34,7 @@ public class SettingsActivity extends PreferenceActivity implements OnSharedPref
         	@Override
         	public boolean onPreferenceClick(Preference preference) {   
         		getPreferenceScreen().getSharedPreferences().edit().clear().commit();
-        		
+        	
                 recreate();
         		
         		return true;
@@ -184,7 +184,7 @@ public class SettingsActivity extends PreferenceActivity implements OnSharedPref
         	}
         });
         
-        
+        ((Preference)findPreference(getString(R.string.pref_key_camera_driver))).setSummary("("+((ListPreference)findPreference(getString(R.string.pref_key_camera_driver))).getEntry() + ") "+getString(R.string.pref_summary_camera_driver));
         ((Preference)findPreference(getString(R.string.pref_key_density))).setSummary("("+((ListPreference)findPreference(getString(R.string.pref_key_density))).getEntry() + ") "+getString(R.string.pref_summary_density));
         ((Preference)findPreference(getString(R.string.pref_key_depth))).setSummary("("+((ListPreference)findPreference(getString(R.string.pref_key_depth))).getEntry() + ") "+getString(R.string.pref_summary_depth));
         ((Preference)findPreference(getString(R.string.pref_key_min_depth))).setSummary("("+((ListPreference)findPreference(getString(R.string.pref_key_min_depth))).getEntry() + ") "+getString(R.string.pref_summary_min_depth));
@@ -228,6 +228,7 @@ public class SettingsActivity extends PreferenceActivity implements OnSharedPref
         Preference pref = findPreference(key);
 
         if (pref instanceof ListPreference) {
+        	if(key.compareTo(getString(R.string.pref_key_camera_driver))==0) pref.setSummary("("+ ((ListPreference)pref).getEntry() + ") "+getString(R.string.pref_summary_camera_driver));
         	if(key.compareTo(getString(R.string.pref_key_density))==0) pref.setSummary("("+ ((ListPreference)pref).getEntry() + ") "+getString(R.string.pref_summary_density));
         	if(key.compareTo(getString(R.string.pref_key_depth))==0) 
     		{

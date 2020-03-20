@@ -91,7 +91,7 @@ void onPoseAvailableRouter(void* context, const TangoPoseData* pose)
 	if(pose->status_code == TANGO_POSE_VALID)
 	{
 		CameraTango* app = static_cast<CameraTango*>(context);
-		app->poseReceived(app->tangoPoseToTransform(pose));
+		app->poseReceived(rtabmap_world_T_tango_world * app->tangoPoseToTransform(pose) * tango_device_T_rtabmap_world);
 	}
 }
 
@@ -342,6 +342,7 @@ bool CameraTango::init(const std::string & calibrationFolder, const std::string 
 			pose_data.orientation[1],
 			pose_data.orientation[2],
 			pose_data.orientation[3]);
+	deviceTColorCamera_ = rtabmap_world_T_opengl_world * deviceTColorCamera_;
 
 	// camera intrinsic
 	TangoCameraIntrinsics color_camera_intrinsics;
@@ -400,16 +401,14 @@ bool CameraTango::init(const std::string & calibrationFolder, const std::string 
 	model_ = CameraModel(colorCamera_?"color":"fisheye",
 			cv::Size(color_camera_intrinsics.width, color_camera_intrinsics.height),
 			K, D, R, P,
-			tango_device_T_rtabmap_device.inverse()*deviceTColorCamera_); // device to camera optical rotation in rtabmap frame
+			deviceTColorCamera_);
 
 	if(!colorCamera_)
 	{
 		initFisheyeRectificationMap(model_, fisheyeRectifyMapX_, fisheyeRectifyMapY_);
 	}
 
-	LOGI("deviceTColorCameraTango  =%s", deviceTColorCamera_.prettyPrint().c_str());
-	LOGI("deviceTColorCameraRtabmap=%s", (tango_device_T_rtabmap_device.inverse()*deviceTColorCamera_).prettyPrint().c_str());
-
+	LOGI("deviceTColorCameraRtabmap  =%s", deviceTColorCamera_.prettyPrint().c_str());
 	return true;
 }
 
@@ -534,7 +533,7 @@ rtabmap::Transform CameraTango::getPoseAtTimestamp(double timestamp)
 	else
 	{
 
-		pose = tangoPoseToTransform(&pose_start_service_T_device);
+		pose = rtabmap_world_T_tango_world * tangoPoseToTransform(&pose_start_service_T_device) * tango_device_T_rtabmap_world;
 	}
 
 	return pose;
@@ -762,20 +761,17 @@ SensorData CameraTango::captureImage(CameraInfo * info)
 		{
 			depth = rtabmap::util2d::fillDepthHoles(depth, holeSize, maxDepthError);
 
-			Transform poseDevice = getPoseAtTimestamp(rgbStamp);
-
-			// adjust origin
-			if(!getOriginOffset().isNull())
-			{
-				poseDevice = getOriginOffset() * poseDevice;
-			}
+			Transform odom = getPoseAtTimestamp(rgbStamp);
 
 			//LOGD("Local    = %s", model.localTransform().prettyPrint().c_str());
 			//LOGD("tango    = %s", poseDevice.prettyPrint().c_str());
 			//LOGD("opengl(t)= %s", (opengl_world_T_tango_world * poseDevice).prettyPrint().c_str());
 
-			//Rotate in RTAB-Map's coordinate
-			Transform odom = rtabmap_world_T_tango_world * poseDevice * tango_device_T_rtabmap_device;
+			// adjust origin
+			if(!getOriginOffset().isNull())
+			{
+				odom = getOriginOffset() * odom;
+			}
 
 			//LOGD("rtabmap  = %s", odom.prettyPrint().c_str());
 			//LOGD("opengl(r)= %s", (opengl_world_T_rtabmap_world * odom * rtabmap_device_T_opengl_device).prettyPrint().c_str());
