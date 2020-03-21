@@ -76,6 +76,30 @@ IF(ARCore_FOUND)
     
 ENDIF(ARCore_FOUND)
 
+IF(AREngine_FOUND)
+
+  SET(sources
+    ${sources}
+    CameraAREngine.cpp
+  )
+  SET(INCLUDE_DIRS
+    ${INCLUDE_DIRS}
+    ${AREngine_INCLUDE_DIRS}
+  )
+  SET(LIBRARIES
+    ${LIBRARIES}
+    ${AREngine_LIBRARIES}
+  )
+ 
+  file(COPY ${AREngine_impl_LIBRARY} 
+       DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/../libs/${ANDROID_NDK_ABI_NAME})
+  file(COPY ${AREngine_jni_LIBRARY} 
+       DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/../libs/${ANDROID_NDK_ABI_NAME})
+  file(COPY ${AREngine_ndk_LIBRARY} 
+       DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/../libs/${ANDROID_NDK_ABI_NAME})
+    
+ENDIF(AREngine_FOUND)
+
 add_definitions(${PCL_DEFINITIONS})
 
 INCLUDE_DIRECTORIES(${INCLUDE_DIRS})

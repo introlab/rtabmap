@@ -25,8 +25,8 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef CAMERAARCORE_H_
-#define CAMERAARCORE_H_
+#ifndef CAMERAARENGINE_H_
+#define CAMERAARENGINE_H_
 
 #include "CameraMobile.h"
 #include <rtabmap/core/Camera.h>
@@ -39,28 +39,18 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UTimer.h>
 #include <boost/thread/mutex.hpp>
 
-#include <arcore_c_api.h>
-#ifdef DEPTH_TEST
-#include <camera/NdkCameraDevice.h>
-#include <camera/NdkCameraManager.h>
-#include <media/NdkImageReader.h>
-#include <android/native_window.h>
-#endif
+#include <huawei_arengine_interface.h>
 
 namespace rtabmap {
 
-class CameraARCore : public CameraMobile {
+class CameraAREngine : public CameraMobile {
 public:
-	CameraARCore(void* env, void* context, void* activity, bool smoothing = false);
-	virtual ~CameraARCore();
+	CameraAREngine(void* env, void* context, void* activity, bool smoothing = false);
+	virtual ~CameraAREngine();
 
 	virtual bool init(const std::string & calibrationFolder = ".", const std::string & cameraName = "");
 	virtual void close(); // close Tango connection
 	virtual std::string getSerial() const;
-
-#ifdef DEPTH_TEST
-	void imageCallback(AImageReader *reader);
-#endif // DEPTH_TEST
 
 protected:
 	virtual SensorData captureImage(CameraInfo * info = 0);
@@ -73,32 +63,16 @@ private:
 	void * env_;
 	void * context_;
 	void * activity_;
-	ArSession* arSession_ = nullptr;
-	ArConfig* arConfig_ = nullptr;
-	ArFrame* arFrame_ = nullptr;
-	ArCameraIntrinsics *arCameraIntrinsics_ = nullptr;
-	ArPose * arPose_ = nullptr;
+	HwArSession* arSession_ = nullptr;
+	HwArConfig* arConfig_ = nullptr;
+	HwArFrame* arFrame_ = nullptr;
+	HwArCameraIntrinsics *arCameraIntrinsics_ = nullptr;
+	HwArPose * arPose_ = nullptr;
 	bool arInstallRequested_;
 	GLuint textureId_;
 	UMutex arSessionMutex_;
 
-#ifdef DEPTH_TEST
-	// Camera variables
-	ACameraDevice* cameraDevice_ = nullptr;
-	ACaptureRequest* captureRequest_ = nullptr;
-	ACameraOutputTarget* cameraOutputTarget_ = nullptr;
-	ACaptureSessionOutput* sessionOutput_ = nullptr;
-	ACaptureSessionOutputContainer* captureSessionOutputContainer_ = nullptr;
-	ACameraCaptureSession* captureSession_ = nullptr;
-	ANativeWindow *outputNativeWindow_ = nullptr;
-
-	ACameraDevice_StateCallbacks deviceStateCallbacks_;
-	ACameraCaptureSession_stateCallbacks captureSessionStateCallbacks_;
-
-	ACameraManager* cameraManager_ = nullptr;
-	AImageReader* imageReader_ = nullptr;
-#endif // DEPTH_TEST
 };
 
 } /* namespace rtabmap */
-#endif /* CAMERAARCORE_H_ */
+#endif /* CAMERAARENGINE_H_ */

@@ -52,13 +52,14 @@ const rtabmap::Transform CameraMobile::opticalRotationInv = Transform(
 		1.0f,  0.0f,  0.0f, 0.0f);
 
 CameraMobile::CameraMobile(bool smoothing) :
-		Camera(0),
+		Camera(10),
 		deviceTColorCamera_(Transform::getIdentity()),
 		previousStamp_(0.0),
 		stampEpochOffset_(0.0),
 		smoothing_(smoothing),
 		colorCameraToDisplayRotation_(ROTATION_0),
-		originUpdate_(false)
+		originUpdate_(false),
+		spinOncePreviousStamp_(0.0)
 {
 }
 
@@ -93,6 +94,7 @@ void CameraMobile::poseReceived(const Transform & pose)
 			originOffset_ = p.translation().inverse();
 			originUpdate_ = false;
 		}
+
 		if(!originOffset_.isNull())
 		{
 			this->post(new PoseEvent(originOffset_*p));
@@ -123,7 +125,29 @@ void CameraMobile::spinOnce()
 {
 	if(!this->isRunning())
 	{
-		mainLoop();
+		bool ignoreFrame = false;
+		float rate = 5.0f; // maximum 10 FPS for image data
+		double now = UTimer::now();
+		if(rate>0.0f)
+		{
+			if((spinOncePreviousStamp_>=0.0 && now>spinOncePreviousStamp_ && now - spinOncePreviousStamp_ < 1.0f/rate) ||
+				((spinOncePreviousStamp_<=0.0 || now<=spinOncePreviousStamp_) && spinOnceFrameRateTimer_.getElapsedTime() < 1.0f/rate))
+			{
+				ignoreFrame = true;
+			}
+		}
+
+		if(!ignoreFrame)
+		{
+			spinOnceFrameRateTimer_.start();
+			spinOncePreviousStamp_ = now;
+			mainLoop();
+		}
+		else
+		{
+			// just send pose
+			capturePoseOnly();
+		}
 	}
 }
 

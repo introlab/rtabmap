@@ -361,6 +361,9 @@ bool CameraARCore::init(const std::string & calibrationFolder, const std::string
 
 	deviceTColorCamera_ = opticalRotation;
 
+	// Required as ArSession_update does some off-screen OpenGL stuff...
+	ArSession_setCameraTextureName(arSession_, textureId_);
+
 	if (ArSession_resume(arSession_) != ArStatus::AR_SUCCESS)
 	{
 		UERROR("Cannot resume camera!");
@@ -459,9 +462,6 @@ SensorData CameraARCore::captureImage(CameraInfo * info)
 		return data;
 	}
 
-	// Required as ArSession_update does some off-screen OpenGL stuff...
-	ArSession_setCameraTextureName(arSession_, textureId_);
-
 	// Update session to get current frame and render camera background.
 	if (ArSession_update(arSession_, arFrame_) != AR_SUCCESS) {
 		LOGE("CameraARCore::captureImage() ArSession_update error");
@@ -491,7 +491,7 @@ SensorData CameraARCore::captureImage(CameraInfo * info)
 		ArCameraIntrinsics_getFocalLength(arSession_, arCameraIntrinsics_, &fx, &fy);
 		ArCameraIntrinsics_getPrincipalPoint(arSession_, arCameraIntrinsics_, &cx, &cy);
 		ArCameraIntrinsics_getImageDimensions(arSession_, arCameraIntrinsics_, &width, &height);
-		//UINFO("%f %f %f %f %d %d", fx, fy, cx, cy, width, height);
+		UINFO("%f %f %f %f %d %d", fx, fy, cx, cy, width, height);
 
 		if(fx > 0 && fy > 0 && width > 0 && height > 0 && cx > 0 && cy > 0)
 		{
@@ -525,9 +525,10 @@ SensorData CameraARCore::captureImage(CameraInfo * info)
 
 					if(plane_data != nullptr)
 					{
-						double stamp = double(timestamp_ns)/10e9;
+						double stamp = double(timestamp_ns)/10e8;
 						//LOGI("data_length=%d stamp=%f", data_length, stamp);
-						cv::Mat rgb = cv::Mat(height, width, CV_8UC1, (void*)plane_data).clone();
+						cv::Mat rgb;
+						cv::cvtColor(cv::Mat(height+height/2, width, CV_8UC1, (void*)plane_data), rgb, CV_YUV2BGR_NV21);
 						data = SensorData(rgb, cv::Mat(), model, 0, stamp);
 					}
 				}
@@ -559,6 +560,48 @@ SensorData CameraARCore::captureImage(CameraInfo * info)
 	}
 	return data;
 
+}
+
+void CameraARCore::capturePoseOnly()
+{
+	UScopeMutex lock(arSessionMutex_);
+	//LOGI("Capturing image...");
+
+	SensorData data;
+	if(!arSession_)
+	{
+		return;
+	}
+
+	// Update session to get current frame and render camera background.
+	if (ArSession_update(arSession_, arFrame_) != AR_SUCCESS) {
+		LOGE("CameraARCore::captureImage() ArSession_update error");
+		return;
+	}
+
+	ArCamera* ar_camera;
+	ArFrame_acquireCamera(arSession_, arFrame_, &ar_camera);
+
+	ArTrackingState camera_tracking_state;
+	ArCamera_getTrackingState(arSession_, ar_camera, &camera_tracking_state);
+
+	Transform pose;
+	CameraModel model;
+	if(camera_tracking_state == AR_TRACKING_STATE_TRACKING)
+	{
+		// pose in OpenGL coordinates
+		float pose_raw[7];
+		ArCamera_getPose(arSession_, ar_camera, arPose_);
+		ArPose_getPoseRaw(arSession_, arPose_, pose_raw);
+		pose = Transform(pose_raw[4], pose_raw[5], pose_raw[6], pose_raw[0], pose_raw[1], pose_raw[2], pose_raw[3]);
+		if(!pose.isNull())
+		{
+			pose = rtabmap::rtabmap_world_T_opengl_world * pose * rtabmap::opengl_world_T_rtabmap_world;
+			this->poseReceived(pose);
+		}
+	}
+
+	ArCamera_release(ar_camera);
 }
 
 } /* namespace rtabmap */

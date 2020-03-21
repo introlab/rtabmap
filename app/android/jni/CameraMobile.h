@@ -101,6 +101,7 @@ public:
 
 protected:
 	virtual SensorData captureImage(CameraInfo * info = 0) = 0;
+	virtual void capturePoseOnly() {}
 
 	virtual void mainLoopBegin();
 	virtual void mainLoop();
@@ -108,6 +109,8 @@ protected:
 protected:
 	CameraModel model_; // local transform is the device to camera optical rotation in rtabmap frame
 	Transform deviceTColorCamera_; // device to camera optical rotation in rtabmap frame
+	UTimer spinOnceFrameRateTimer_;
+	double spinOncePreviousStamp_;
 
 private:
 	Transform previousPose_;

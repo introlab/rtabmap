@@ -65,7 +65,7 @@
     <string name="pref_key_rendering_texture_decimation">pref_key_rendering_texture_decimation</string>
     <string name="pref_default_rendering_texture_decimation">4</string>
     <string name="pref_key_blending">pref_key_blending</string>
-    <string name="pref_default_blending">true</string>
+    <string name="pref_default_blending">false</string>
     <string name="pref_key_background_color">pref_key_background_color</string>
     <string name="pref_default_background_color">0.2</string>
     <string name="pref_key_nodes_filtering">pref_key_nodes_filtering</string>
@@ -375,10 +375,12 @@
     <string-array name="pref_camera_driver_keys">
         <item>"Google Tango"</item>
         <item>"ARCore"</item>
+        <item>"AREngine"</item>
     </string-array>
     <string-array name="pref_camera_driver_values">
         <item>"0"</item>
         <item>"1"</item>
+        <item>"2"</item>
     </string-array>
     <string-array name="pref_update_rate_keys">
         <item>"Max"</item>

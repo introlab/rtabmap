@@ -94,11 +94,13 @@ import android.widget.ToggleButton;
 
 import com.google.ar.core.ArCoreApk;
 import com.google.atap.tangoservice.Tango;
+import com.huawei.hiar.AREnginesApk;
+
 
 // The main activity of the application. This activity shows debug information
 // and a glSurfaceView that renders graphic content.
 public class RTABMapActivity extends FragmentActivity implements OnClickListener, OnItemSelectedListener, SensorEventListener {
-
+	
 	// Opaque native pointer to the native application instance.
 	public static long nativeApplication;
 	  
@@ -212,6 +214,7 @@ public class RTABMapActivity extends FragmentActivity implements OnClickListener
 	private boolean mGPSSaved = false;
 	private boolean mEnvSensorsSaved = false;
 	private boolean mIsARCoreAvailable = false;
+	private boolean mIsAREngineAvailable = false;
 	
 	private LocationManager mLocationManager;
 	private LocationListener mLocationListener;
@@ -579,6 +582,7 @@ public class RTABMapActivity extends FragmentActivity implements OnClickListener
 		}
 		
 		isArCoreAvailable();
+		isArEngineAvailable();
 	}
 	
 	private void isArCoreAvailable() {
@@ -593,9 +597,31 @@ public class RTABMapActivity extends FragmentActivity implements OnClickListener
 		    }, 200);
 		  }
 		  if (availability.isSupported()) {
+			  Log.i(TAG, "ARCore supported");
 			  mIsARCoreAvailable = true;
 		  } else { // Unsupported or unknown.
+			  Log.i(TAG, "ARCore supported");
 			  mIsARCoreAvailable = false;
+		  }
+		}
+	
+	private void isArEngineAvailable() {
+		AREnginesApk.ARAvailability availability = AREnginesApk.checkAvailability(this);
+		  if (availability.isTransient()) {
+		    // Re-query at 5Hz while compatibility is checked in the background.
+		    new Handler().postDelayed(new Runnable() {
+		      @Override
+		      public void run() {
+		    	  isArEngineAvailable();
+		      }
+		    }, 200);
+		  }
+		  if (availability.isSupported()) {
+			  Log.i(TAG, "AREngine supported");
+			  mIsAREngineAvailable = true;
+		  } else { // Unsupported or unknown.
+			  Log.i(TAG, "AREngine not supported");
+			  mIsAREngineAvailable = false;
 		  }
 		}
 
@@ -1005,6 +1031,7 @@ public class RTABMapActivity extends FragmentActivity implements OnClickListener
 		String cameraDriverStr = sharedPref.getString(getString(R.string.pref_key_camera_driver), getString(R.string.pref_default_camera_driver));
 		mCameraDriver = Integer.parseInt(cameraDriverStr);
 		
+		if(!DISABLE_LOG) Log.i(TAG, String.format("startCamera() driver=%d", mCameraDriver));
 		if(mCameraDriver == 0) // Tango
 		{
 			// Check if the Tango Core is out dated.
@@ -1038,11 +1065,16 @@ public class RTABMapActivity extends FragmentActivity implements OnClickListener
 				}
 			}
 		}
-		else if(mCameraDriver == 1)
+		else if(mCameraDriver == 1 || mCameraDriver == 2)
 		{
-			if(!mIsARCoreAvailable)
+			if(mCameraDriver == 1 && !mIsARCoreAvailable)
 			{
 				mToast.makeText(this, "ARCore not supported on this phone! Cannot start a new scan.", mToast.LENGTH_LONG).show();
+				return;
+			}
+			if(mCameraDriver == 2 && !mIsAREngineAvailable)
+			{
+				mToast.makeText(this, "AREngine not supported on this phone! Cannot start a new scan.", mToast.LENGTH_LONG).show();
 				return;
 			}
 			

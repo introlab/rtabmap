@@ -28,6 +28,7 @@
         
         <uses-library android:name="com.projecttango.libtango_device2" android:required="false" />
         <meta-data android:name="com.google.ar.core" android:value="optional" />
+        <meta-data android:name="com.huawei.ar.engine" android:value="optional" />
 
         <!-- Our activity is the built-in NativeActivity framework class.
              This will take care of integrating with our NDK code. -->

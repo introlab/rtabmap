@@ -74,6 +74,10 @@ protected:
 			{
 				LOGE("%s", logEvent->getMsg().c_str());
 			}
+			else if(logEvent->getCode() >= ULogger::kFatal)
+			{
+				LOGF("%s", logEvent->getMsg().c_str());
+			}
 
 		}
 		return false;

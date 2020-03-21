@@ -35,6 +35,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifdef RTABMAP_ARCORE
 #include "CameraARCore.h"
 #endif
+#ifdef RTABMAP_ARENGINE
+#include "CameraAREngine.h"
+#endif
 
 #include <rtabmap/core/Rtabmap.h>
 #include <rtabmap/core/util2d.h>
@@ -604,6 +607,7 @@ int RTABMapApp::openDatabase(const std::string & databasePath, bool databaseInMe
 
 	if(restartThread)
 	{
+		rtabmapThread_->registerToEventsManager();
 		rtabmapThread_->start();
 	}
 
@@ -653,6 +657,14 @@ bool RTABMapApp::startCamera(JNIEnv* env, jobject iBinder, jobject context, jobj
 		camera_ = new rtabmap::CameraARCore(env, context, activity, smoothing_);
 #else
 		UERROR("RTAB-Map is not built with ARCore support!");
+#endif
+	}
+else if(cameraDriver_ == 2)
+	{
+#ifdef RTABMAP_ARCORE
+		camera_ = new rtabmap::CameraAREngine(env, context, activity, smoothing_);
+#else
+		UERROR("RTAB-Map is not built with AREngine support!");
 #endif
 	}
 
@@ -1044,8 +1056,8 @@ int RTABMapApp::Render()
 			visualizingMesh_ = false;
 		}
 
-		// ARCore capture should be done in opengl thread!
-		if(cameraDriver_ == 1 && camera_!=0)
+		// ARCore and AREngine capture should be done in opengl thread!
+		if(cameraDriver_ != 0 && camera_!=0)
 		{
 			boost::mutex::scoped_lock  lock(cameraMutex_);
 			if(camera_!=0)
@@ -1078,10 +1090,6 @@ int RTABMapApp::Render()
 					notifyCameraStarted = true;
 					cameraJustInitialized_ = false;
 				}
-			}
-			if(pose.isNull() && !odomEvent.pose().isNull())
-			{
-				pose = odomEvent.pose();
 			}
 		}
 
