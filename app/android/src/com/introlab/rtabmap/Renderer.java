@@ -43,6 +43,7 @@ public class Renderer implements GLSurfaceView.Renderer {
 	private float mSurfaceHeight = 0.0f;
 	private float mTextColor = 1.0f;
 	private int mOffset = 0;
+	private ARCoreSharedCamera mCamera = null;
 	
 	private Vector<TextObject> mTexts;
 
@@ -71,6 +72,11 @@ public class Renderer implements GLSurfaceView.Renderer {
 	{
 		mOffset = offset;
 	}
+	
+	public void setCamera(ARCoreSharedCamera camera)
+	{
+		mCamera = camera;
+	}
 
 	// Render loop of the Gl context.
 	public void onDrawFrame(GL10 useGLES20instead) {
@@ -80,6 +86,11 @@ public class Renderer implements GLSurfaceView.Renderer {
 			{
 				try
 				{
+					if(mCamera!=null)
+					{
+						mCamera.updateGL();
+					}
+					
 					final int value = RTABMapLib.render(mActivity.nativeApplication);
 		
 					if(mTextManager!=null)

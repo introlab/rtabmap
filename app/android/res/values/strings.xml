@@ -373,14 +373,16 @@
     <string name="pref_summary_db_in_memory">The database is kept in RAM for fast access. Set to false to reduce RAM used at the cost of slower access. This parameter is applied on reset or when a database is opened.</string>
 
     <string-array name="pref_camera_driver_keys">
-        <item>"Google Tango"</item>
-        <item>"ARCore"</item>
-        <item>"AREngine"</item>
+        <item>"Google Tango NDK"</item>
+        <item>"ARCore NDK"</item>
+        <item>"AREngine NDK"</item>
+        <item>"ARCore Java"</item>
     </string-array>
     <string-array name="pref_camera_driver_values">
         <item>"0"</item>
         <item>"1"</item>
         <item>"2"</item>
+        <item>"3"</item>
     </string-array>
     <string-array name="pref_update_rate_keys">
         <item>"Max"</item>

@@ -34,6 +34,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #endif
 #ifdef RTABMAP_ARCORE
 #include "CameraARCore.h"
+#include <media/NdkImage.h>
 #endif
 #ifdef RTABMAP_ARENGINE
 #include "CameraAREngine.h"
@@ -659,13 +660,17 @@ bool RTABMapApp::startCamera(JNIEnv* env, jobject iBinder, jobject context, jobj
 		UERROR("RTAB-Map is not built with ARCore support!");
 #endif
 	}
-else if(cameraDriver_ == 2)
+	else if(cameraDriver_ == 2)
 	{
 #ifdef RTABMAP_ARCORE
 		camera_ = new rtabmap::CameraAREngine(env, context, activity, smoothing_);
 #else
 		UERROR("RTAB-Map is not built with AREngine support!");
 #endif
+	}
+	else if(cameraDriver_ == 3)
+	{
+		camera_ = new rtabmap::CameraMobile(smoothing_);
 	}
 
 	if(camera_ == 0)
@@ -687,60 +692,68 @@ else if(cameraDriver_ == 2)
 		// FishEye 640x480
 		int width = camera_->getCameraModel().imageWidth()/(cameraColor_?8:1);
 		int height = camera_->getCameraModel().imageHeight()/(cameraColor_?8:1);
-		if(cloudDensityLevel_ == 3) // high
+		if(width == 0 && cameraDriver_ > 0)
 		{
-			if(height >= 480 && width % 20 == 0 && height % 20 == 0)
-			{
-				meshDecimation_ = 20;
-			}
-			else if(width % 10 == 0 && height % 10 == 0)
-			{
-				meshDecimation_ = 10;
-			}
-			else if(width % 15 == 0 && height % 15 == 0)
-			{
-				meshDecimation_ = 15;
-			}
-			else
-			{
-				UERROR("Could not set decimation to high (size=%dx%d)", width, height);
-			}
+			width = 640;
+			height = 480;
 		}
-		else if(cloudDensityLevel_ == 2) // medium
+		if(width && height)
 		{
-			if(height >= 480 && width % 10 == 0 && height % 10 == 0)
+			if(cloudDensityLevel_ == 3) // high
 			{
-				meshDecimation_ = 10;
+				if(height >= 480 && width % 20 == 0 && height % 20 == 0)
+				{
+					meshDecimation_ = 20;
+				}
+				else if(width % 10 == 0 && height % 10 == 0)
+				{
+					meshDecimation_ = 10;
+				}
+				else if(width % 15 == 0 && height % 15 == 0)
+				{
+					meshDecimation_ = 15;
+				}
+				else
+				{
+					UERROR("Could not set decimation to high (size=%dx%d)", width, height);
+				}
 			}
-			else if(width % 5 == 0 && height % 5 == 0)
+			else if(cloudDensityLevel_ == 2) // medium
 			{
-				meshDecimation_ = 5;
+				if(height >= 480 && width % 10 == 0 && height % 10 == 0)
+				{
+					meshDecimation_ = 10;
+				}
+				else if(width % 5 == 0 && height % 5 == 0)
+				{
+					meshDecimation_ = 5;
+				}
+				else
+				{
+					UERROR("Could not set decimation to medium (size=%dx%d)", width, height);
+				}
 			}
-			else
+			else if(cloudDensityLevel_ == 1) // low
 			{
-				UERROR("Could not set decimation to medium (size=%dx%d)", width, height);
+				if(height >= 480 && width % 5 == 0 && height % 5 == 0)
+				{
+					meshDecimation_ = 5;
+				}
+				else if(width % 3 == 0 && width % 3 == 0)
+				{
+					meshDecimation_ = 3;
+				}
+				else if(width % 2 == 0 && width % 2 == 0)
+				{
+					meshDecimation_ = 2;
+				}
+				else
+				{
+					UERROR("Could not set decimation to low (size=%dx%d)", width, height);
+				}
 			}
+			LOGI("Set decimation to %d", meshDecimation_);
 		}
-		else if(cloudDensityLevel_ == 1) // low
-		{
-			if(height >= 480 && width % 5 == 0 && height % 5 == 0)
-			{
-				meshDecimation_ = 5;
-			}
-			else if(width % 3 == 0 && width % 3 == 0)
-			{
-				meshDecimation_ = 3;
-			}
-			else if(width % 2 == 0 && width % 2 == 0)
-			{
-				meshDecimation_ = 2;
-			}
-			else
-			{
-				UERROR("Could not set decimation to low (size=%dx%d)", width, height);
-			}
-		}
-		LOGI("Set decimation to %d", meshDecimation_);
 
 		LOGI("Start camera thread");
 		if(cameraDriver_ == 0)
@@ -1057,7 +1070,7 @@ int RTABMapApp::Render()
 		}
 
 		// ARCore and AREngine capture should be done in opengl thread!
-		if(cameraDriver_ != 0 && camera_!=0)
+		if((cameraDriver_ == 1 || cameraDriver_ == 2) && camera_!=0)
 		{
 			boost::mutex::scoped_lock  lock(cameraMutex_);
 			if(camera_!=0)
@@ -2084,6 +2097,7 @@ void RTABMapApp::setBackgroundColor(float gray)
 	backgroundColor_ = gray;
 	float v = backgroundColor_ == 0.5f?0.4f:1.0f-backgroundColor_;
 	main_scene_.setGridColor(v, v, v);
+	main_scene_.setBackgroundColor(backgroundColor_, backgroundColor_, backgroundColor_);
 }
 
 int RTABMapApp::setMappingParameter(const std::string & key, const std::string & value)
@@ -3231,6 +3245,64 @@ int RTABMapApp::postProcessing(int approach)
 
 	postProcessing_ = false;
 	return returnedValue;
+}
+
+void RTABMapApp::postCameraPoseEvent(
+		float x, float y, float z, float qx, float qy, float qz, float qw)
+{
+	if(cameraDriver_ == 3 && camera_)
+	{
+		rtabmap::Transform pose(x,y,z,qx,qy,qz,qw);
+		pose = rtabmap::rtabmap_world_T_opengl_world * pose * rtabmap::opengl_world_T_rtabmap_world;
+		camera_->poseReceived(pose);
+	}
+}
+
+void RTABMapApp::postOdometryEvent(
+		float x, float y, float z, float qx, float qy, float qz, float qw,
+		float fx, float fy, float cx, float cy,
+		double stamp,
+		void * rgb, int rgbLen, int rgbWidth, int rgbHeight, int rgbFormat,
+		void * depth, int depthLen, int depthWidth, int depthHeight, int depthFormat)
+{
+#ifdef RTABMAP_ARCORE
+	if(cameraDriver_ == 3 && camera_)
+	{
+		if(fx > 0.0f && fy > 0.0f && cx > 0.0f && cy > 0.0f && stamp > 0.0f && rgb && depth)
+		{
+			if(rgbFormat == AR_IMAGE_FORMAT_YUV_420_888 &&
+			   depthFormat == AIMAGE_FORMAT_DEPTH16)
+			{
+				cv::Mat outputRGB;
+				cv::cvtColor(cv::Mat(rgbHeight+rgbHeight/2, rgbWidth, CV_8UC1, rgb), outputRGB, CV_YUV2BGR_NV21);
+
+				cv::Mat outputDepth(depthHeight, depthWidth, CV_16UC1);
+				uint16_t *dataShort = (uint16_t *)depth;
+				for (int y = 0; y < outputDepth.rows; ++y)
+				{
+					for (int x = 0; x < outputDepth.cols; ++x)
+					{
+						uint16_t depthSample = dataShort[y*outputDepth.cols + x];
+						uint16_t depthRange = (depthSample & 0x1FFF); // first 3 bits are confidence
+						outputDepth.at<uint16_t>(y,x) = depthRange;
+					}
+				}
+
+				if(!outputRGB.empty() && !outputDepth.empty())
+				{
+					rtabmap::CameraModel model = rtabmap::CameraModel(fx, fy, cx, cy, camera_->getDeviceTColorCamera(), 0, cv::Size(rgbWidth, rgbHeight));
+					rtabmap::SensorData data(outputRGB, outputDepth, model, 0, stamp);
+					rtabmap::Transform pose(x,y,z,qx,qy,qz,qw);
+					pose = rtabmap::rtabmap_world_T_opengl_world * pose * rtabmap::opengl_world_T_rtabmap_world;
+					camera_->setData(data, pose);
+					camera_->spinOnce();
+				}
+			}
+		}
+	}
+#else
+	UERROR("Not built with ARCore!");
+#endif
 }
 
 bool RTABMapApp::handleEvent(UEvent * event)

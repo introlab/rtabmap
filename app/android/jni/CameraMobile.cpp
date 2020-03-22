@@ -54,18 +54,24 @@ const rtabmap::Transform CameraMobile::opticalRotationInv = Transform(
 CameraMobile::CameraMobile(bool smoothing) :
 		Camera(10),
 		deviceTColorCamera_(Transform::getIdentity()),
+		spinOncePreviousStamp_(0.0),
 		previousStamp_(0.0),
 		stampEpochOffset_(0.0),
 		smoothing_(smoothing),
 		colorCameraToDisplayRotation_(ROTATION_0),
-		originUpdate_(false),
-		spinOncePreviousStamp_(0.0)
+		originUpdate_(false)
 {
 }
 
 CameraMobile::~CameraMobile() {
 	// Disconnect camera service
 	close();
+}
+
+bool CameraMobile::init(const std::string &, const std::string &)
+{
+	deviceTColorCamera_ = opticalRotation;
+	return true;
 }
 
 void CameraMobile::close()
@@ -76,6 +82,8 @@ void CameraMobile::close()
 	lastEnvSensors_.clear();
 	originOffset_ = Transform();
 	originUpdate_ = false;
+	pose_ = Transform();
+	data_ = SensorData();
 }
 
 void CameraMobile::resetOrigin()
@@ -116,6 +124,13 @@ void CameraMobile::setGPS(const GPS & gps)
 	lastKnownGPS_ = gps;
 }
 
+void CameraMobile::setData(const SensorData & data, const Transform & pose)
+{
+	LOGD("CameraMobile::setData pose=%s stamp=%f", pose.prettyPrint().c_str(), data.stamp());
+	data_ = data;
+	pose_ = pose;
+}
+
 void CameraMobile::addEnvSensor(int type, float value)
 {
 	lastEnvSensors_.insert(std::make_pair((EnvSensor::Type)type, EnvSensor((EnvSensor::Type)type, value)));
@@ -126,7 +141,7 @@ void CameraMobile::spinOnce()
 	if(!this->isRunning())
 	{
 		bool ignoreFrame = false;
-		float rate = 5.0f; // maximum 10 FPS for image data
+		float rate = 10.0f; // maximum 10 FPS for image data
 		double now = UTimer::now();
 		if(rate>0.0f)
 		{
@@ -285,6 +300,15 @@ void CameraMobile::mainLoop()
 		LOGW("Odometry lost");
 		this->post(new OdometryEvent());
 	}
+}
+
+SensorData CameraMobile::captureImage(CameraInfo * info)
+{
+	if(info)
+	{
+		info->odomPose = pose_;
+	}
+	return data_;
 }
 
 } /* namespace rtabmap */

@@ -256,6 +256,7 @@ public class RTABMapActivity extends FragmentActivity implements OnClickListener
 	
 	GestureDetector mGesDetect = null;
 	
+	ARCoreSharedCamera mArCoreCamera = null;
 	int mCameraDriver = 0;
 
 	//Tango Service connection.
@@ -1022,7 +1023,7 @@ public class RTABMapActivity extends FragmentActivity implements OnClickListener
 	    }
 	  }
 	
-	private void startCamera(String message)
+	private void startCamera(final String message)
 	{				
 		// Currently only one driver supported (Tango).
 		// Depending on the phone, we could have a nice menu showing all compatible drivers.
@@ -1065,9 +1066,9 @@ public class RTABMapActivity extends FragmentActivity implements OnClickListener
 				}
 			}
 		}
-		else if(mCameraDriver == 1 || mCameraDriver == 2)
+		else if(mCameraDriver == 1 || mCameraDriver == 2 || mCameraDriver == 3)
 		{
-			if(mCameraDriver == 1 && !mIsARCoreAvailable)
+			if((mCameraDriver == 1 || mCameraDriver == 3) && !mIsARCoreAvailable)
 			{
 				mToast.makeText(this, "ARCore not supported on this phone! Cannot start a new scan.", mToast.LENGTH_LONG).show();
 				return;
@@ -1090,9 +1091,30 @@ public class RTABMapActivity extends FragmentActivity implements OnClickListener
 					public void run() {
 						final boolean cameraStartSucess = RTABMapLib.startCamera(nativeApplication, null, getApplicationContext(), getActivity(), mCameraDriver);
 						runOnUiThread(new Runnable() {
-							public void run() {
+							public void run() {	
+								boolean localSuccess = cameraStartSucess;
+								if(cameraStartSucess && mCameraDriver == 3)
+								{
+									synchronized (this) {
+										mArCoreCamera = new ARCoreSharedCamera(getActivity());
+										mProgressDialog.setTitle("");
+										mProgressDialog.setMessage(message);
+										mProgressDialog.show();
+										if(!mArCoreCamera.openCamera())
+										{
+											mToast.makeText(getActivity(), "Current camera driver selected is ARCore Java, but initialization failed. Abort scanning...", mToast.LENGTH_LONG).show();
+											mArCoreCamera = null;
+											localSuccess = false;
+										}
+										else
+										{
+											mRenderer.setCamera(mArCoreCamera);
+										}
+						    		}
+								}
+
 								mProgressDialog.dismiss();
-								if(!cameraStartSucess)
+								if(!localSuccess)
 								{
 									mToast.makeText(getApplicationContext(), 
 											String.format("Failed to intialize Camera!"), mToast.LENGTH_LONG).show();
@@ -1328,7 +1350,11 @@ public class RTABMapActivity extends FragmentActivity implements OnClickListener
 	{
 		if(mItemStatusVisibility != null && mItemDebugVisibility != null)
 		{
-			if((mItemStatusVisibility.isChecked() || mState == State.STATE_VISUALIZING_WHILE_LOADING) && mItemDebugVisibility.isChecked())
+			if(mState == State.STATE_WELCOME)
+			{
+				mRenderer.updateTexts(null);
+			}
+			else if((mItemStatusVisibility.isChecked() || mState == State.STATE_VISUALIZING_WHILE_LOADING) && mItemDebugVisibility.isChecked())
 			{
 				mRenderer.updateTexts(mStatusTexts);
 			}
@@ -2077,6 +2103,15 @@ public class RTABMapActivity extends FragmentActivity implements OnClickListener
 			}
 		}
 		
+		if(mArCoreCamera != null)
+		{
+			synchronized (this) {
+				mRenderer.setCamera(null);
+				mArCoreCamera.close();
+				mArCoreCamera = null;
+			}
+		}
+
 		Thread stopThread = new Thread(new Runnable() {
 			public void run() {
 				if(!DISABLE_LOG) Log.i(TAG, String.format("stopCamera()"));

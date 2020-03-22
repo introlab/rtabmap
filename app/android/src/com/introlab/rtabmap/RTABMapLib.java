@@ -1,5 +1,7 @@
 
 package com.introlab.rtabmap;
+import java.nio.ByteBuffer;
+
 import android.app.Activity;
 import android.content.Context;
 import android.os.IBinder;
@@ -134,5 +136,13 @@ public class RTABMapLib
     public static native int getTotalPoints(long nativeApplication);
     public static native float getUpdateTime(long nativeApplication);
     public static native int getLoopClosureId(long nativeApplication);
+    
+    public static native void postCameraPoseEvent(long nativeApplication, float x, float y, float z, float qx, float qy, float qz, float qw);
+    public static native void postOdometryEvent(long nativeApplication,
+    		float x, float y, float z, float qx, float qy, float qz, float qw,
+    		float fx, float fy, float cx, float cy,
+    		double stamp, 
+    		ByteBuffer rgb, int rgbLen, int rgbWidth, int rgbHeight, int rgbFormat,
+    		ByteBuffer depth, int depthLen, int depthWidth, int depthHeight, int depthFormat);
     
 }

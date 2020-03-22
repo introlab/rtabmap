@@ -839,6 +839,49 @@ Java_com_introlab_rtabmap_RTABMapLib_postProcessing(
 	}
 }
 
+JNIEXPORT void JNICALL
+Java_com_introlab_rtabmap_RTABMapLib_postCameraPoseEvent(
+		JNIEnv* env, jclass, jlong native_application,
+		float x, float y, float z, float qx, float qy, float qz, float qw)
+{
+	if(native_application)
+	{
+		native(native_application)->postCameraPoseEvent(x,y,z,qx,qy,qz,qw);
+	}
+	else
+	{
+		UERROR("native_application is null!");
+		return;
+	}
+}
+
+JNIEXPORT void JNICALL
+Java_com_introlab_rtabmap_RTABMapLib_postOdometryEvent(
+		JNIEnv* env, jclass, jlong native_application,
+		float x, float y, float z, float qx, float qy, float qz, float qw,
+		float fx, float fy, float cx, float cy,
+		double stamp,
+		jobject rgb, int rgbLen, int rgbWidth, int rgbHeight, int rgbFormat,
+		jobject depth, int depthLen, int depthWidth, int depthHeight, int depthFormat)
+{
+	if(native_application)
+	{
+		void *rgbPtr = env->GetDirectBufferAddress(rgb);
+		void *depthPtr = env->GetDirectBufferAddress(depth);
+		native(native_application)->postOdometryEvent(
+				x,y,z,qx,qy,qz,qw,
+				fx,fy,cx,cy,
+				stamp,
+				rgbPtr, rgbLen, rgbWidth, rgbHeight, rgbFormat,
+				depthPtr, depthLen, depthWidth, depthHeight, depthFormat);
+	}
+	else
+	{
+		UERROR("native_application is null!");
+		return;
+	}
+}
+
 
 
 #ifdef __cplusplus

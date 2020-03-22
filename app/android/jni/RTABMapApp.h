@@ -146,6 +146,16 @@ class RTABMapApp : public UEventsHandler {
   bool writeExportedMesh(const std::string & directory, const std::string & name);
   int postProcessing(int approach);
 
+  void postCameraPoseEvent(
+  		float x, float y, float z, float qx, float qy, float qz, float qw);
+
+  void postOdometryEvent(
+  		float x, float y, float z, float qx, float qy, float qz, float qw,
+  		float fx, float fy, float cx, float cy,
+  		double stamp,
+  		void * rgb, int rgbLen, int rgbWidth, int rgbHeight, int rgbFormat,
+  		void * depth, int depthLen, int depthWidth, int depthHeight, int depthFormat);
+
  protected:
   virtual bool handleEvent(UEvent * event);
 

@@ -81,9 +81,9 @@ public:
 	virtual ~CameraMobile();
 
 	// abstract functions
-	virtual bool init(const std::string & calibrationFolder = ".", const std::string & cameraName = "") = 0;
+	virtual bool init(const std::string & calibrationFolder = ".", const std::string & cameraName = "");
 	virtual void close(); // inherited classes should call its parent in their close().
-	virtual std::string getSerial() const = 0;
+	virtual std::string getSerial() const {return "CameraMobile";}
 
 	const Transform & getOriginOffset() const {return originOffset_;} // in rtabmap frame
 	void resetOrigin();
@@ -92,15 +92,17 @@ public:
 	void poseReceived(const Transform & pose); // in rtabmap frame
 
 	const CameraModel & getCameraModel() const {return model_;}
+	const Transform & getDeviceTColorCamera() const {return deviceTColorCamera_;}
 	void setSmoothing(bool enabled) {smoothing_ = enabled;}
 	void setScreenRotation(ScreenRotation colorCameraToDisplayRotation) {colorCameraToDisplayRotation_ = colorCameraToDisplayRotation;}
 	void setGPS(const GPS & gps);
 	void addEnvSensor(int type, float value);
+	void setData(const SensorData & data, const Transform & pose);
 
 	void spinOnce(); // Should only be called if not thread is not running, otherwise it does nothing
 
 protected:
-	virtual SensorData captureImage(CameraInfo * info = 0) = 0;
+	virtual SensorData captureImage(CameraInfo * info = 0);
 	virtual void capturePoseOnly() {}
 
 	virtual void mainLoopBegin();
@@ -123,6 +125,9 @@ private:
 	EnvSensors lastEnvSensors_;
 	Transform originOffset_;
 	bool originUpdate_;
+
+	SensorData data_;
+	Transform pose_;
 };
 
 } /* namespace rtabmap */
