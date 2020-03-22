@@ -70,7 +70,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pcl/surface/vtk_smoothing/vtk_mesh_quadric_decimation.h>
 
 #define LOW_RES_PIX 2
-//#define DEBUG_RENDERING_PERFORMANCE;
+#define DEBUG_RENDERING_PERFORMANCE;
 
 const int g_optMeshId = -100;
 
@@ -445,17 +445,36 @@ int RTABMapApp::openDatabase(const std::string & databasePath, bool databaseInMe
 
 						cv::Mat tmpA, depth;
 						data.uncompressData(&tmpA, &depth);
-						if(!data.imageRaw().empty() && !data.depthRaw().empty())
+						if(!(!data.imageRaw().empty() && !data.depthRaw().empty()) && !data.laserScanCompressed().isEmpty())
+						{
+							rtabmap::LaserScan scan;
+							data.uncompressData(0, 0, &scan);
+						}
+
+						if((!data.imageRaw().empty() && !data.depthRaw().empty()) || !data.laserScanRaw().isEmpty())
 						{
 							// Voxelize and filter depending on the previous cloud?
 							pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
 							pcl::IndicesPtr indices(new std::vector<int>);
-							cloud = rtabmap::util3d::cloudRGBFromSensorData(data, meshDecimation_, maxCloudDepth_, minCloudDepth_, indices.get());
+							if(!data.imageRaw().empty() && !data.depthRaw().empty())
+							{
+								cloud = rtabmap::util3d::cloudRGBFromSensorData(data, meshDecimation_, maxCloudDepth_, minCloudDepth_, indices.get());
+							}
+							else
+							{
+								//scan
+								cloud = rtabmap::util3d::laserScanToPointCloudRGB(data.laserScanRaw(), data.laserScanRaw().localTransform(), 255, 255, 255);
+								indices->resize(cloud->size());
+								for(unsigned int i=0; i<cloud->size(); ++i)
+								{
+									indices->at(i) = i;
+								}
+							}
 							if(cloud->size() && indices->size())
 							{
 								std::vector<pcl::Vertices> polygons;
 								std::vector<pcl::Vertices> polygonsLowRes;
-								if(main_scene_.isMeshRendering() && main_scene_.isMapRendering())
+								if(cloud->isOrganized() && main_scene_.isMeshRendering() && main_scene_.isMapRendering())
 								{
 									polygons = rtabmap::util3d::organizedFastMesh(cloud, meshAngleToleranceDeg_*M_PI/180.0, false, meshTrianglePix_);
 									polygonsLowRes = rtabmap::util3d::organizedFastMesh(cloud, meshAngleToleranceDeg_*M_PI/180.0, false, meshTrianglePix_+LOW_RES_PIX);
@@ -474,7 +493,7 @@ int RTABMapApp::openDatabase(const std::string & databasePath, bool databaseInMe
 									inserted.first->second.gains[0] = 1.0;
 									inserted.first->second.gains[1] = 1.0;
 									inserted.first->second.gains[2] = 1.0;
-									if(main_scene_.isMeshTexturing() && main_scene_.isMapRendering())
+									if(cloud->isOrganized() && main_scene_.isMeshTexturing() && main_scene_.isMapRendering())
 									{
 										if(renderingTextureDecimation_>1)
 										{
@@ -1331,13 +1350,13 @@ int RTABMapApp::Render()
 						if(!main_scene_.hasCloud(iter->first) && !iter->second.pose.isNull())
 						{
 							LOGI("Re-add mesh %d to OpenGL context", iter->first);
-							if(main_scene_.isMeshRendering() && iter->second.polygons.size() == 0)
+							if(iter->second.cloud->isOrganized() && main_scene_.isMeshRendering() && iter->second.polygons.size() == 0)
 							{
 								iter->second.polygons = rtabmap::util3d::organizedFastMesh(iter->second.cloud, meshAngleToleranceDeg_*M_PI/180.0, false, meshTrianglePix_);
 								iter->second.polygonsLowRes = rtabmap::util3d::organizedFastMesh(iter->second.cloud, meshAngleToleranceDeg_*M_PI/180.0, false, meshTrianglePix_+LOW_RES_PIX);
 							}
 
-							if(main_scene_.isMeshTexturing())
+							if(iter->second.cloud->isOrganized() && main_scene_.isMeshTexturing())
 							{
 								cv::Mat textureRaw;
 								textureRaw = rtabmap::uncompressImage(rtabmap_->getMemory()->getImageCompressed(iter->first));
@@ -1399,8 +1418,8 @@ int RTABMapApp::Render()
 							const rtabmap::Signature & s = stats.getLastSignatureData();
 
 							if(!trajectoryMode_ &&
-							   !s.sensorData().imageRaw().empty() &&
-							   !s.sensorData().depthRaw().empty())
+							   ((!s.sensorData().imageRaw().empty() && !s.sensorData().depthRaw().empty()) ||
+							     !s.sensorData().laserScanRaw().isEmpty()))
 							{
 								uInsert(bufferedSensorData, std::make_pair(id, s.sensorData()));
 							}
@@ -1439,7 +1458,7 @@ int RTABMapApp::Render()
 				}
 
 #ifdef DEBUG_RENDERING_PERFORMANCE
-				LOGW("Looking fo data to load (%d) %fs", bufferedSensorData.size(), time.ticks());
+				LOGW("Looking for data to load (%d) %fs", bufferedSensorData.size(), time.ticks());
 #endif
 
 				std::map<int, rtabmap::Transform> posesWithMarkers = rtabmapEvents.back()->getStats().poses();
@@ -1503,16 +1522,34 @@ int RTABMapApp::Render()
 
 									cv::Mat tmpA, depth;
 									data.uncompressData(&tmpA, &depth);
+									if(!(!data.imageRaw().empty() && !data.depthRaw().empty()) && !data.laserScanCompressed().isEmpty())
+									{
+										rtabmap::LaserScan scan;
+										data.uncompressData(0, 0, &scan);
+									}
 #ifdef DEBUG_RENDERING_PERFORMANCE
 									LOGW("Decompressing data: %fs", time.ticks());
 #endif
 
-									if(!data.imageRaw().empty() && !data.depthRaw().empty())
+									if((!data.imageRaw().empty() && !data.depthRaw().empty()) || !data.laserScanRaw().isEmpty())
 									{
 										// Voxelize and filter depending on the previous cloud?
 										pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
 										pcl::IndicesPtr indices(new std::vector<int>);
-										cloud = rtabmap::util3d::cloudRGBFromSensorData(data, meshDecimation_, maxCloudDepth_, minCloudDepth_, indices.get());
+										if(!data.imageRaw().empty() && !data.depthRaw().empty())
+										{
+											cloud = rtabmap::util3d::cloudRGBFromSensorData(data, meshDecimation_, maxCloudDepth_, minCloudDepth_, indices.get());
+										}
+										else
+										{
+											//scan
+											cloud = rtabmap::util3d::laserScanToPointCloudRGB(data.laserScanRaw(), data.laserScanRaw().localTransform(), 255, 255, 255);
+											indices->resize(cloud->size());
+											for(unsigned int i=0; i<cloud->size(); ++i)
+											{
+												indices->at(i) = i;
+											}
+										}
 #ifdef DEBUG_RENDERING_PERFORMANCE
 										LOGW("Creating node cloud %d (depth=%dx%d rgb=%dx%d, %fs)", id, data.depthRaw().cols, data.depthRaw().rows, data.imageRaw().cols, data.imageRaw().rows, time.ticks());
 #endif
@@ -1520,7 +1557,7 @@ int RTABMapApp::Render()
 										{
 											std::vector<pcl::Vertices> polygons;
 											std::vector<pcl::Vertices> polygonsLowRes;
-											if(main_scene_.isMeshRendering() && main_scene_.isMapRendering())
+											if(cloud->isOrganized() && main_scene_.isMeshRendering() && main_scene_.isMapRendering())
 											{
 												polygons = rtabmap::util3d::organizedFastMesh(cloud, meshAngleToleranceDeg_*M_PI/180.0, false, meshTrianglePix_);
 #ifdef DEBUG_RENDERING_PERFORMANCE
@@ -1545,7 +1582,7 @@ int RTABMapApp::Render()
 												inserted.first->second.gains[0] = 1.0;
 												inserted.first->second.gains[1] = 1.0;
 												inserted.first->second.gains[2] = 1.0;
-												if(main_scene_.isMeshTexturing() && main_scene_.isMapRendering())
+												if(cloud->isOrganized() && main_scene_.isMeshTexturing() && main_scene_.isMapRendering())
 												{
 													if(renderingTextureDecimation_ > 1)
 													{
@@ -1663,14 +1700,7 @@ int RTABMapApp::Render()
 							else
 							{
 								//scan
-								rtabmap::LaserScan scan = rtabmap::util3d::commonFiltering(
-										odomEvent.data().laserScanRaw(),
-										meshDecimation_,
-										minCloudDepth_,
-										maxCloudDepth_);
-
-
-								cloud = rtabmap::util3d::laserScanToPointCloudRGB(scan, scan.localTransform(), 255, 255, 255);
+								cloud = rtabmap::util3d::laserScanToPointCloudRGB(odomEvent.data().laserScanRaw(), odomEvent.data().laserScanRaw().localTransform(), 255, 255, 255);
 								indices->resize(cloud->size());
 								for(unsigned int i=0; i<cloud->size(); ++i)
 								{

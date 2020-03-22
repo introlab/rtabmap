@@ -550,7 +550,23 @@ SensorData CameraARCore::captureImage(CameraInfo * info)
 									ptr[i*4] = pt.x;
 									ptr[i*4 + 1] = pt.y;
 									ptr[i*4 + 2] = pt.z;
-									*(int*)&ptr[i*4 + 3] = (int(pointCloudData[i*4 + 3] * 255.0f) << 8) | (int(255) << 16);
+
+									//get color from rgb image
+									cv::Point3f org= pt;
+									pt = util3d::transformPoint(pt, opticalRotationInv);
+									int u,v;
+									model.reproject(pt.x, pt.y, pt.z, u, v);
+									unsigned char r=255,g=255,b=255;
+									if(model.inFrame(u, v))
+									{
+										b=rgb.at<cv::Vec3b>(v,u).val[0];
+										g=rgb.at<cv::Vec3b>(v,u).val[1];
+										r=rgb.at<cv::Vec3b>(v,u).val[2];
+									}
+									*(int*)&ptr[i*4 + 3] = int(b) | (int(g) << 8) | (int(r) << 16);
+
+									//confidence
+									//*(int*)&ptr[i*4 + 3] = (int(pointCloudData[i*4 + 3] * 255.0f) << 8) | (int(255) << 16);
 
 								}
 								scan = LaserScan::backwardCompatibility(scanData, 0, 10, rtabmap::Transform::getIdentity());
