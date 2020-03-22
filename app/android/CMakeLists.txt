@@ -95,7 +95,8 @@ endif()
 
 configure_file(
   "${CMAKE_CURRENT_SOURCE_DIR}/AndroidManifest.xml.in"
-  "${CMAKE_CURRENT_SOURCE_DIR}/AndroidManifest.xml")
+  "${CMAKE_CURRENT_SOURCE_DIR}/AndroidManifest.xml"
+  @ONLY)
   
 configure_file(
   "${CMAKE_CURRENT_SOURCE_DIR}/AndroidManifest.xml"

@@ -210,7 +210,7 @@ RTABMapApp::RTABMapApp(JNIEnv* env, jobject caller_activity) :
 	env->GetJavaVM(&jvm);
 	RTABMapActivity = env->NewGlobalRef(caller_activity);
 
-	LOGI("RTABMapApp::onCreate()");
+	LOGI("RTABMapApp::RTABMapApp()");
 	createdMeshes_.clear();
 	rawPoses_.clear();
 	clearSceneOnNextRender_ = true;
@@ -227,20 +227,10 @@ RTABMapApp::RTABMapApp(JNIEnv* env, jobject caller_activity) :
 	progressionStatus_.setJavaObjects(jvm, RTABMapActivity);
 	main_scene_.setBackgroundColor(backgroundColor_, backgroundColor_, backgroundColor_);
 
-	if(rtabmapThread_)
-	{
-		rtabmapThread_->close(false);
-		delete rtabmapThread_;
-		rtabmapThread_ = 0;
-		rtabmap_ = 0;
-	}
-
-	if(logHandler_ == 0)
-	{
-		logHandler_ = new rtabmap::LogHandler();
-	}
+	logHandler_ = new rtabmap::LogHandler();
 
 	this->registerToEventsManager();
+	LOGI("RTABMapApp::RTABMapApp() end");
 }
 
 RTABMapApp::~RTABMapApp() {
@@ -1662,11 +1652,32 @@ int RTABMapApp::Render()
 				{
 					if(odomCloudShown_ && !trajectoryMode_)
 					{
-						if(!odomEvent.data().imageRaw().empty() && !odomEvent.data().depthRaw().empty())
+						if((!odomEvent.data().imageRaw().empty() && !odomEvent.data().depthRaw().empty()) || !odomEvent.data().laserScanRaw().isEmpty())
 						{
 							pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
 							pcl::IndicesPtr indices(new std::vector<int>);
-							cloud = rtabmap::util3d::cloudRGBFromSensorData(odomEvent.data(), meshDecimation_, maxCloudDepth_, minCloudDepth_, indices.get());
+							if((!odomEvent.data().imageRaw().empty() && !odomEvent.data().depthRaw().empty()))
+							{
+								cloud = rtabmap::util3d::cloudRGBFromSensorData(odomEvent.data(), meshDecimation_, maxCloudDepth_, minCloudDepth_, indices.get());
+							}
+							else
+							{
+								//scan
+								rtabmap::LaserScan scan = rtabmap::util3d::commonFiltering(
+										odomEvent.data().laserScanRaw(),
+										meshDecimation_,
+										minCloudDepth_,
+										maxCloudDepth_);
+
+
+								cloud = rtabmap::util3d::laserScanToPointCloudRGB(scan, scan.localTransform(), 255, 255, 255);
+								indices->resize(cloud->size());
+								for(unsigned int i=0; i<cloud->size(); ++i)
+								{
+									indices->at(i) = i;
+								}
+							}
+
 							if(cloud->size() && indices->size())
 							{
 								LOGI("Created odom cloud (rgb=%dx%d depth=%dx%d cloud=%dx%d)",

@@ -19,7 +19,7 @@ public class RTABMapLib
         // the correct library first.
         if (TangoInitializationHelper.loadTangoSharedLibrary() ==
                 TangoInitializationHelper.ARCH_ERROR) {
-            Log.e(RTABMapActivity.class.getSimpleName(), "ERROR! Unable to load libtango_client_api.so!");
+            Log.w(RTABMapActivity.class.getSimpleName(), "WArning! Unable to load libtango_client_api.so! This can be safely ignored if RTAB-Map NDK is not build with tango support.");
         }
         System.loadLibrary("NativeRTABMap");
     }

@@ -483,6 +483,7 @@ SensorData CameraARCore::captureImage(CameraInfo * info)
 		ArCamera_getPose(arSession_, ar_camera, arPose_);
 		ArPose_getPoseRaw(arSession_, arPose_, pose_raw);
 		pose = Transform(pose_raw[4], pose_raw[5], pose_raw[6], pose_raw[0], pose_raw[1], pose_raw[2], pose_raw[3]);
+		pose = rtabmap::rtabmap_world_T_opengl_world * pose * rtabmap::opengl_world_T_rtabmap_world;
 
 		// Get calibration parameters
 		float fx,fy, cx, cy;
@@ -497,8 +498,8 @@ SensorData CameraARCore::captureImage(CameraInfo * info)
 		{
 			model = CameraModel(fx, fy, cx, cy, deviceTColorCamera_, 0, cv::Size(width, height));
 
-			//ArPointCloud * point_cloud;
-			//ArFrame_acquirePointCloud(ar_session_, ar_frame_, &point_cloud);
+			ArPointCloud * pointCloud = nullptr;
+			ArFrame_acquirePointCloud(arSession_, arFrame_, &pointCloud);
 
 			ArImage * image = nullptr;
 			ArStatus status = ArFrame_acquireCameraImage(arSession_, arFrame_, &image);
@@ -529,7 +530,38 @@ SensorData CameraARCore::captureImage(CameraInfo * info)
 						//LOGI("data_length=%d stamp=%f", data_length, stamp);
 						cv::Mat rgb;
 						cv::cvtColor(cv::Mat(height+height/2, width, CV_8UC1, (void*)plane_data), rgb, CV_YUV2BGR_NV21);
-						data = SensorData(rgb, cv::Mat(), model, 0, stamp);
+
+						LaserScan scan;
+						if(pointCloud)
+						{
+							int32_t points = 0;
+							ArPointCloud_getNumberOfPoints(arSession_, pointCloud, &points);
+							const float * pointCloudData = 0;
+							ArPointCloud_getData(arSession_, pointCloud, &pointCloudData);
+							LOGI("pointCloudData=%d size=%d", pointCloudData?1:0, points);
+							if(pointCloudData && points>0)
+							{
+								cv::Mat scanData(1, points, CV_32FC4);
+								float * ptr = scanData.ptr<float>();
+								for(unsigned int i=0;i<points; ++i)
+								{
+									cv::Point3f pt(pointCloudData[i*4], pointCloudData[i*4 + 1], pointCloudData[i*4 + 2]);
+									pt = util3d::transformPoint(pt, pose.inverse()*rtabmap_world_T_opengl_world);
+									ptr[i*4] = pt.x;
+									ptr[i*4 + 1] = pt.y;
+									ptr[i*4 + 2] = pt.z;
+									*(int*)&ptr[i*4 + 3] = (int(pointCloudData[i*4 + 3] * 255.0f) << 8) | (int(255) << 16);
+
+								}
+								scan = LaserScan::backwardCompatibility(scanData, 0, 10, rtabmap::Transform::getIdentity());
+							}
+						}
+						else
+						{
+							LOGI("pointCloud empty");
+						}
+
+						data = SensorData(scan, rgb, cv::Mat(), model, 0, stamp);
 					}
 				}
 				else
@@ -543,6 +575,7 @@ SensorData CameraARCore::captureImage(CameraInfo * info)
 			}
 
 			ArImage_release(image);
+			ArPointCloud_release(pointCloud);
 		}
 	}
 
@@ -554,7 +587,6 @@ SensorData CameraARCore::captureImage(CameraInfo * info)
 	}
 	else
 	{
-		pose = rtabmap::rtabmap_world_T_opengl_world * pose * rtabmap::opengl_world_T_rtabmap_world;
 		this->poseReceived(pose);
 		info->odomPose = pose;
 	}
