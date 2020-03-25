@@ -16,7 +16,7 @@
     <uses-feature android:glEsVersion="0x00020000" />
 
     <!-- This is the platform API where depth16 support in android was introduced. -->
-    <uses-sdk android:minSdkVersion="24" />
+    <uses-sdk android:minSdkVersion="@ANDROID_NATIVE_API_LEVEL@" />
 
     <!-- This .apk has no Java code itself, so set hasCode to false. -->
     <application 
