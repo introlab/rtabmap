@@ -1,5 +1,5 @@
 
-option(WITH_TANGO         "Include Tango support"                ON)
+option(WITH_TANGO         "Include Tango support"                OFF) # Android API < 24 required!
 option(WITH_ARCORE        "Include ARCore support"               ON)
 option(WITH_ARENGINE      "Include AREngine support"             ON)
 option(DISABLE_LOG        "Disable Android logging (should be true in release)"    ON)

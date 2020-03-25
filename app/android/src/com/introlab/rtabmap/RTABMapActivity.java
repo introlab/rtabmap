@@ -1141,8 +1141,20 @@ public class RTABMapActivity extends FragmentActivity implements OnClickListener
 			}
 			else
 			{
+				// only point cloud supported
+				if(mCameraDriver==1 && !mItemRenderingPointCloud.isChecked())
+				{
+					mItemRenderingPointCloud.setChecked(true);
+				}
 				Thread bindThread = new Thread(new Runnable() {
 					public void run() {
+						if(mCameraDriver==1)
+						{
+							RTABMapLib.setMeshRendering(
+									nativeApplication, 
+									mItemRenderingMesh.isChecked() || mItemRenderingTextureMesh.isChecked(), 
+									mItemRenderingTextureMesh.isChecked());
+						}
 						final boolean cameraStartSucess = RTABMapLib.startCamera(nativeApplication, null, getApplicationContext(), getActivity(), mCameraDriver);
 						runOnUiThread(new Runnable() {
 							public void run() {	

@@ -665,6 +665,7 @@ bool RTABMapApp::startCamera(JNIEnv* env, jobject iBinder, jobject context, jobj
 	{
 #ifdef RTABMAP_ARCORE
 		camera_ = new rtabmap::CameraARCore(env, context, activity, smoothing_);
+
 #else
 		UERROR("RTAB-Map is not built with ARCore support!");
 #endif

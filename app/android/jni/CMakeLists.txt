@@ -36,6 +36,11 @@ set(sources
   tango-gl/util.cpp
 )
 
+IF(OPENMP_FOUND)
+file(COPY ${OpenMP_CXX_LIBRARIES}
+       DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/../libs/${ANDROID_NDK_ABI_NAME})
+ENDIF(OPENMP_FOUND)
+
 IF(Tango_FOUND)
 
   SET(sources
@@ -53,7 +58,8 @@ IF(Tango_FOUND)
   
   file(COPY ${Tango_support_LIBRARY} 
        DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/../libs/${ANDROID_NDK_ABI_NAME})
-   
+  file(COPY ${Tango_LIBRARY}
+       DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/../libs/${ANDROID_NDK_ABI_NAME})   
 ENDIF(Tango_FOUND)
 
 IF(ARCore_FOUND)
