@@ -672,7 +672,7 @@ bool RTABMapApp::startCamera(JNIEnv* env, jobject iBinder, jobject context, jobj
 	}
 	else if(cameraDriver_ == 2)
 	{
-#ifdef RTABMAP_ARCORE
+#ifdef RTABMAP_ARENGINE
 		camera_ = new rtabmap::CameraAREngine(env, context, activity, smoothing_);
 #else
 		UERROR("RTAB-Map is not built with AREngine support!");
