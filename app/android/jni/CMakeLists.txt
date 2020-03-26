@@ -97,6 +97,8 @@ IF(AREngine_FOUND)
   SET(LIBRARIES
     ${LIBRARIES}
     ${AREngine_LIBRARIES}
+    camera2ndk
+    mediandk
   )
  
   file(COPY ${AREngine_impl_LIBRARY} 
@@ -117,8 +119,6 @@ target_link_libraries(NativeRTABMap ${LIBRARIES}
   android
   log
   GLESv2
-  camera2ndk
-  mediandk
   rtabmap_core
   rtabmap_utilite
 )
