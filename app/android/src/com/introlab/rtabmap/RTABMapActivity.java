@@ -1092,8 +1092,12 @@ public class RTABMapActivity extends FragmentActivity implements OnClickListener
 
 	private void startCamera(final String message)
 	{				
-		// Currently only one driver supported (Tango).
-		// Depending on the phone, we could have a nice menu showing all compatible drivers.
+		// If we did not yet obtain runtime permission on Android M and above, 
+		// now is a good time to ask the user for it.
+		if (!PermissionHelper.hasPermission(this, Manifest.permission.CAMERA)) {
+			PermissionHelper.requestPermission(this, Manifest.permission.CAMERA);
+			return;
+		}
 
 		SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
 		String cameraDriverStr = sharedPref.getString(getString(R.string.pref_key_camera_driver), getString(R.string.pref_default_camera_driver));
@@ -1146,72 +1150,63 @@ public class RTABMapActivity extends FragmentActivity implements OnClickListener
 				return;
 			}
 
-			// ARCore requires camera permissions to operate. If we did not yet obtain runtime
-			// permission on Android M and above, now is a good time to ask the user for it.
-			if (!PermissionHelper.hasPermission(this, Manifest.permission.CAMERA)) {
-				PermissionHelper.requestPermission(this, Manifest.permission.CAMERA);
-				return;
-			}
-			else
+			// only point cloud supported
+			if(mCameraDriver==1 && !mItemRenderingPointCloud.isChecked())
 			{
-				// only point cloud supported
-				if(mCameraDriver==1 && !mItemRenderingPointCloud.isChecked())
-				{
-					mItemRenderingPointCloud.setChecked(true);
-				}
-				Thread bindThread = new Thread(new Runnable() {
-					public void run() {
-						if(mCameraDriver==1)
-						{
-							RTABMapLib.setMeshRendering(
-									nativeApplication, 
-									mItemRenderingMesh.isChecked() || mItemRenderingTextureMesh.isChecked(), 
-									mItemRenderingTextureMesh.isChecked());
-						}
-						final boolean cameraStartSucess = RTABMapLib.startCamera(nativeApplication, null, getApplicationContext(), getActivity(), mCameraDriver);
-						runOnUiThread(new Runnable() {
-							public void run() {	
-								boolean localSuccess = cameraStartSucess;
-								if(cameraStartSucess && mCameraDriver == 3)
-								{
-									synchronized (this) {
-										mArCoreCamera = new ARCoreSharedCamera(getActivity());
-										mProgressDialog.setTitle("");
-										mProgressDialog.setMessage(message);
-										mProgressDialog.show();
-										if(!mArCoreCamera.openCamera())
-										{
-											mToast.makeText(getActivity(), "Current camera driver selected is ARCore Java, but initialization failed. Abort scanning...", mToast.LENGTH_LONG).show();
-											mArCoreCamera = null;
-											localSuccess = false;
-										}
-										else
-										{
-											mRenderer.setCamera(mArCoreCamera);
-										}
-									}
-								}
-
-								mProgressDialog.dismiss();
-								if(!localSuccess)
-								{
-									mToast.makeText(getApplicationContext(), 
-											String.format("Failed to intialize Camera!"), mToast.LENGTH_LONG).show();
-								}
-								else
-								{
-									if(mState==State.STATE_CAMERA && mCameraDriver == 1)
-									{
-										mToast.makeText(getApplicationContext(), "Currently ARCore NDK driver doesn't support depth, only poses and RGB images can be recorded.", mToast.LENGTH_LONG).show();
-									}
-									updateState(mState==State.STATE_VISUALIZING?State.STATE_VISUALIZING:State.STATE_CAMERA);									
-								}
-							} 
-						});
-					}
-				});
-				bindThread.start();
+				mItemRenderingPointCloud.setChecked(true);
 			}
+			Thread bindThread = new Thread(new Runnable() {
+				public void run() {
+					if(mCameraDriver==1)
+					{
+						RTABMapLib.setMeshRendering(
+								nativeApplication, 
+								mItemRenderingMesh.isChecked() || mItemRenderingTextureMesh.isChecked(), 
+								mItemRenderingTextureMesh.isChecked());
+					}
+					final boolean cameraStartSucess = RTABMapLib.startCamera(nativeApplication, null, getApplicationContext(), getActivity(), mCameraDriver);
+					runOnUiThread(new Runnable() {
+						public void run() {	
+							boolean localSuccess = cameraStartSucess;
+							if(cameraStartSucess && mCameraDriver == 3)
+							{
+								synchronized (this) {
+									mArCoreCamera = new ARCoreSharedCamera(getActivity());
+									mProgressDialog.setTitle("");
+									mProgressDialog.setMessage(message);
+									mProgressDialog.show();
+									if(!mArCoreCamera.openCamera())
+									{
+										mToast.makeText(getActivity(), "Current camera driver selected is ARCore Java, but initialization failed. Abort scanning...", mToast.LENGTH_LONG).show();
+										mArCoreCamera = null;
+										localSuccess = false;
+									}
+									else
+									{
+										mRenderer.setCamera(mArCoreCamera);
+									}
+								}
+							}
+
+							mProgressDialog.dismiss();
+							if(!localSuccess)
+							{
+								mToast.makeText(getApplicationContext(), 
+										String.format("Failed to intialize Camera!"), mToast.LENGTH_LONG).show();
+							}
+							else
+							{
+								if(mState==State.STATE_CAMERA && mCameraDriver == 1)
+								{
+									mToast.makeText(getApplicationContext(), "Currently ARCore NDK driver doesn't support depth, only poses and RGB images can be recorded.", mToast.LENGTH_LONG).show();
+								}
+								updateState(mState==State.STATE_VISUALIZING?State.STATE_VISUALIZING:State.STATE_CAMERA);									
+							}
+						} 
+					});
+				}
+			});
+			bindThread.start();
 		}
 		else
 		{
@@ -1881,14 +1876,11 @@ public class RTABMapActivity extends FragmentActivity implements OnClickListener
 			final String key,
 			final String value)
 	{
-		if(mButtonStop != null && mButtonStop.getVisibility() == View.VISIBLE)
-		{
-			runOnUiThread(new Runnable() {
-				public void run() {
-					cameraEventUI(type, key, value);
-				} 
-			});
-		}
+		runOnUiThread(new Runnable() {
+			public void run() {
+				cameraEventUI(type, key, value);
+			} 
+		});
 	}
 
 	private boolean CheckTangoCoreVersion(int minVersion) {
