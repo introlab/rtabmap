@@ -5,6 +5,9 @@ option(WITH_ARENGINE      "Include AREngine support"             ON)
 option(DISABLE_LOG        "Disable Android logging (should be true in release)"    ON)
 option(DEPTH_TEST         "Enable depth test on ARCore"    OFF)
 
+# Google Tango needs access to system shared 
+# libraries (e.g. libbinder.so) that are not accessible 
+# with android >=24
 IF(WITH_TANGO AND ${ANDROID_NATIVE_API_LEVEL} LESS 24)
     FIND_PACKAGE(Tango QUIET)
     IF(Tango_FOUND)

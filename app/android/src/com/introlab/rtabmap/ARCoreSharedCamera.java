@@ -175,7 +175,7 @@ public class ARCoreSharedCamera {
 			Log.i(TAG, "onCaptureCompleted");
 		}
 
-		@Override
+		//@Override // android 23 
 		public void onCaptureBufferLost(
 				@NonNull CameraCaptureSession session,
 				@NonNull CaptureRequest request,

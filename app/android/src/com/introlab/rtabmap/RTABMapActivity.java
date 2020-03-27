@@ -274,7 +274,13 @@ public class RTABMapActivity extends FragmentActivity implements OnClickListener
 							if(!cameraStartSucess)
 							{
 								mToast.makeText(getApplicationContext(), 
-										String.format("Failed to intialize Camera!"), mToast.LENGTH_LONG).show();
+										String.format("Failed to intialize Tango camera! RTAB-Map may not be built with Tango support."), mToast.LENGTH_LONG).show();
+								if(mCameraServiceConnectionUsed)
+								{
+									if(!DISABLE_LOG) Log.i(TAG, String.format("unbindService"));
+									getActivity().unbindService(mCameraServiceConnection);
+								}
+								mCameraServiceConnectionUsed = false;
 							}
 							else
 							{
@@ -623,20 +629,27 @@ public class RTABMapActivity extends FragmentActivity implements OnClickListener
 	}
 
 	private void isArEngineAvailable() {
-		AREnginesApk.ARAvailability availability = AREnginesApk.checkAvailability(this);
-		if (availability.isTransient()) {
-			// Re-query at 5Hz while compatibility is checked in the background.
-			new Handler().postDelayed(new Runnable() {
-				@Override
-				public void run() {
-					isArEngineAvailable();
-				}
-			}, 200);
+		try {
+			AREnginesApk.ARAvailability availability = AREnginesApk.checkAvailability(this);
+			if (availability.isTransient()) {
+				// Re-query at 5Hz while compatibility is checked in the background.
+				new Handler().postDelayed(new Runnable() {
+					@Override
+					public void run() {
+						isArEngineAvailable();
+					}
+				}, 200);
+			}
+			if (availability.isSupported()) {
+				Log.i(TAG, "AREngine supported");
+				mIsAREngineAvailable = true;
+			} else { // Unsupported or unknown.
+				Log.i(TAG, "AREngine not supported");
+				mIsAREngineAvailable = false;
+			}
 		}
-		if (availability.isSupported()) {
-			Log.i(TAG, "AREngine supported");
-			mIsAREngineAvailable = true;
-		} else { // Unsupported or unknown.
+		catch(UnsatisfiedLinkError e)
+		{
 			Log.i(TAG, "AREngine not supported");
 			mIsAREngineAvailable = false;
 		}
