@@ -152,7 +152,8 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 			}
 		}
 
-		UDEBUG("fill poses to gtsam... rootId=%d", rootId);
+		UDEBUG("fill poses to gtsam... rootId=%d (priorsIgnored=%d gpsPriorOnly=%d landmarksIgnored=%d)",
+				rootId, priorsIgnored()?1:0, gpsPriorOnly?1:0, landmarksIgnored()?1:0);
 		gtsam::Values initialEstimate;
 		std::map<int, bool> isLandmarkWithRotation;
 		for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)

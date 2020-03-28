@@ -81,6 +81,7 @@ public:
 		output.transform = transform;
 		output.transformFiltered = transformFiltered;
 		output.transformGroundTruth = transformGroundTruth;
+		output.guessVelocity = guessVelocity;
 		output.distanceTravelled = distanceTravelled;
 		output.memoryUsage = memoryUsage;
 		output.type = type;
