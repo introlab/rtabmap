@@ -1222,6 +1222,7 @@ Transform RegistrationIcp::computeTransformationImpl(
 						info.covariance = cv::Mat::eye(6,6,CV_64FC1)*variance;
 					}
 					info.icpInliersRatio = correspondencesRatio;
+					info.icpCorrespondences = correspondences;
 
 					if(correspondencesRatio <= _correspondenceRatio)
 					{

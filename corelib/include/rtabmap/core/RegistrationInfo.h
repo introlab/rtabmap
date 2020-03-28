@@ -83,6 +83,7 @@ public:
 	float icpTranslation;
 	float icpRotation;
 	float icpStructuralComplexity;
+	int   icpCorrespondences;
 };
 
 }
