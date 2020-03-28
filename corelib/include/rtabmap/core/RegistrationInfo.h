@@ -43,7 +43,8 @@ public:
 		icpInliersRatio(0),
 		icpTranslation(0.0f),
 		icpRotation(0.0f),
-		icpStructuralComplexity(0.0f)
+		icpStructuralComplexity(0.0f),
+		icpCorrespondences(0)
 
 	{
 	}
@@ -62,6 +63,7 @@ public:
 		output.icpTranslation = icpTranslation;
 		output.icpRotation = icpRotation;
 		output.icpStructuralComplexity = icpStructuralComplexity;
+		output.icpCorrespondences = icpCorrespondences;
 		return output;
 	}
 

@@ -593,6 +593,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent, bool sh
 	_ui->statsToolBox->updateStat("Odometry/ICPRotation/rad", false);
 	_ui->statsToolBox->updateStat("Odometry/ICPTranslation/m", false);
 	_ui->statsToolBox->updateStat("Odometry/ICPStructuralComplexity/", false);
+	_ui->statsToolBox->updateStat("Odometry/ICPCorrespondences/", false);
 	_ui->statsToolBox->updateStat("Odometry/StdDevLin/", false);
 	_ui->statsToolBox->updateStat("Odometry/StdDevAng/", false);
 	_ui->statsToolBox->updateStat("Odometry/VarianceLin/", false);
