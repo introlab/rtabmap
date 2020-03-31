@@ -609,8 +609,10 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent, bool sh
 	_ui->statsToolBox->updateStat("Odometry/KeyFrameAdded/", false);
 	_ui->statsToolBox->updateStat("Odometry/Interval/ms", false);
 	_ui->statsToolBox->updateStat("Odometry/Speed/kph", false);
+	_ui->statsToolBox->updateStat("Odometry/Speed/mph", false);
 	_ui->statsToolBox->updateStat("Odometry/Speed/mps", false);
 	_ui->statsToolBox->updateStat("Odometry/SpeedGuess/kph", false);
+	_ui->statsToolBox->updateStat("Odometry/SpeedGuess/mph", false);
 	_ui->statsToolBox->updateStat("Odometry/SpeedGuess/mps", false);
 	_ui->statsToolBox->updateStat("Odometry/Distance/m", false);
 	_ui->statsToolBox->updateStat("Odometry/T/m", false);
@@ -1521,9 +1523,11 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 	_ui->statsToolBox->updateStat("Odometry/KeyFrameAdded/", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), (float)odom.info().keyFrameAdded?1.0f:0.0f, _preferencesDialog->isCacheSavedInFigures());
 	_ui->statsToolBox->updateStat("Odometry/ID/", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), (float)odom.data().id(), _preferencesDialog->isCacheSavedInFigures());
 
+	Transform odomT;
 	float dist=0.0f, x,y,z, roll,pitch,yaw;
 	if(!odom.info().transform.isNull())
 	{
+		odomT = odom.info().transform;
 		odom.info().transform.getTranslationAndEulerAngles(x,y,z,roll,pitch,yaw);
 		dist = odom.info().transform.getNorm();
 		_ui->statsToolBox->updateStat("Odometry/T/m", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), dist, _preferencesDialog->isCacheSavedInFigures());
@@ -1537,6 +1541,7 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 
 	if(!odom.info().transformFiltered.isNull())
 	{
+		odomT = odom.info().transformFiltered;
 		odom.info().transformFiltered.getTranslationAndEulerAngles(x,y,z,roll,pitch,yaw);
 		dist = odom.info().transformFiltered.getNorm();
 		_ui->statsToolBox->updateStat("Odometry/TF/m", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), dist, _preferencesDialog->isCacheSavedInFigures());
@@ -1566,6 +1571,13 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 
 	if(!odom.info().transformGroundTruth.isNull())
 	{
+		if(!odomT.isNull())
+		{
+			rtabmap::Transform diff = odom.info().transformGroundTruth.inverse()*odomT;
+			_ui->statsToolBox->updateStat("Odometry/TG_error_lin/m", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), diff.getNorm(), _preferencesDialog->isCacheSavedInFigures());
+			_ui->statsToolBox->updateStat("Odometry/TG_error_ang/deg", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), diff.getAngle()*180.0/CV_PI, _preferencesDialog->isCacheSavedInFigures());
+		}
+
 		odom.info().transformGroundTruth.getTranslationAndEulerAngles(x,y,z,roll,pitch,yaw);
 		dist = odom.info().transformGroundTruth.getNorm();
 		_ui->statsToolBox->updateStat("Odometry/TG/m", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), dist, _preferencesDialog->isCacheSavedInFigures());
