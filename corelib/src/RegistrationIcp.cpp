@@ -1021,7 +1021,7 @@ Transform RegistrationIcp::computeTransformationImpl(
 								params["knn"] = uNumber2Str(_libpointmatcherKnn);
 								params["epsilon"] = uNumber2Str(_libpointmatcherEpsilon);
 #if POINTMATCHER_VERSION_INT >= 10300
-								icp->matcher = PM::get().MatcherRegistrar.create("KDTreeMatcher", params);
+								icpTmp.matcher = PM::get().MatcherRegistrar.create("KDTreeMatcher", params);
 #else
 								icpTmp.matcher.reset(PM::get().MatcherRegistrar.create("KDTreeMatcher", params));
 #endif
