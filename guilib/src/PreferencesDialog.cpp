@@ -646,6 +646,8 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->spinBox_rs2_rate, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->checkbox_rs2_dualMode, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->lineEdit_rs2_dualModeExtrinsics, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->lineEdit_rs2_jsonFile, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->toolButton_rs2_jsonFile, SIGNAL(clicked()), this, SLOT(selectSourceRealsense2JsonPath()));
 
 	connect(_ui->toolButton_cameraImages_timestamps, SIGNAL(clicked()), this, SLOT(selectSourceImagesStamps()));
 	connect(_ui->lineEdit_cameraImages_timestamps, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
@@ -1820,6 +1822,7 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->spinBox_rs2_rate->setValue(60);
 		_ui->checkbox_rs2_dualMode->setChecked(false);
 		_ui->lineEdit_rs2_dualModeExtrinsics->setText("0.009 0.021 0.027 0 -0.018 0.005");
+		_ui->lineEdit_rs2_jsonFile->clear();
 		_ui->lineEdit_openniOniPath->clear();
 		_ui->lineEdit_openni2OniPath->clear();
 		_ui->checkbox_k4a_irDepth->setChecked(false);
@@ -2257,6 +2260,7 @@ void PreferencesDialog::readCameraSettings(const QString & filePath)
 	_ui->spinBox_rs2_rate->setValue(settings.value("rate", _ui->spinBox_rs2_rate->value()).toInt());
 	_ui->checkbox_rs2_dualMode->setChecked(settings.value("dual_mode", _ui->checkbox_rs2_dualMode->isChecked()).toBool());
 	_ui->lineEdit_rs2_dualModeExtrinsics->setText(settings.value("dual_mode_extrinsics", _ui->lineEdit_rs2_dualModeExtrinsics->text()).toString());
+	_ui->lineEdit_rs2_jsonFile->setText(settings.value("json_preset", _ui->lineEdit_rs2_jsonFile->text()).toString());
 	settings.endGroup(); // RealSense
 
 	settings.beginGroup("RGBDImages");
@@ -2722,6 +2726,7 @@ void PreferencesDialog::writeCameraSettings(const QString & filePath) const
 	settings.setValue("rate",                   _ui->spinBox_rs2_rate->value());
 	settings.setValue("dual_mode",              _ui->checkbox_rs2_dualMode->isChecked());
 	settings.setValue("dual_mode_extrinsics",   _ui->lineEdit_rs2_dualModeExtrinsics->text());
+	settings.setValue("json_preset",            _ui->lineEdit_rs2_jsonFile->text());
 	settings.endGroup(); // RealSense2
 
 	settings.beginGroup("RGBDImages");
@@ -3882,7 +3887,7 @@ void PreferencesDialog::selectSourceVideoPath()
 	{
 		dir = getWorkingDirectory();
 	}
-	QString path = QFileDialog::getOpenFileName(this, tr("Select file"), _ui->source_video_lineEdit_path->text(), tr("Videos (*.avi *.mpg *.mp4 *.mov *.mkv)"));
+	QString path = QFileDialog::getOpenFileName(this, tr("Select file"), dir, tr("Videos (*.avi *.mpg *.mp4 *.mov *.mkv)"));
 	if(!path.isEmpty())
 	{
 		_ui->source_video_lineEdit_path->setText(path);
@@ -3896,7 +3901,7 @@ void PreferencesDialog::selectSourceStereoVideoPath()
 	{
 		dir = getWorkingDirectory();
 	}
-	QString path = QFileDialog::getOpenFileName(this, tr("Select file"), _ui->lineEdit_cameraStereoVideo_path->text(), tr("Videos (*.avi *.mpg *.mp4 *.mov *.mkv)"));
+	QString path = QFileDialog::getOpenFileName(this, tr("Select file"), dir, tr("Videos (*.avi *.mpg *.mp4 *.mov *.mkv)"));
 	if(!path.isEmpty())
 	{
 		_ui->lineEdit_cameraStereoVideo_path->setText(path);
@@ -3910,7 +3915,7 @@ void PreferencesDialog::selectSourceStereoVideoPath2()
 	{
 		dir = getWorkingDirectory();
 	}
-	QString path = QFileDialog::getOpenFileName(this, tr("Select file"), _ui->lineEdit_cameraStereoVideo_path_2->text(), tr("Videos (*.avi *.mpg *.mp4 *.mov *.mkv)"));
+	QString path = QFileDialog::getOpenFileName(this, tr("Select file"), dir, tr("Videos (*.avi *.mpg *.mp4 *.mov *.mkv)"));
 	if(!path.isEmpty())
 	{
 		_ui->lineEdit_cameraStereoVideo_path_2->setText(path);
@@ -3924,7 +3929,7 @@ void PreferencesDialog::selectSourceDistortionModel()
 	{
 		dir = getWorkingDirectory();
 	}
-	QString path = QFileDialog::getOpenFileName(this, tr("Select file"), _ui->lineEdit_source_distortionModel->text(), tr("Distortion model (*.bin *.txt)"));
+	QString path = QFileDialog::getOpenFileName(this, tr("Select file"), dir, tr("Distortion model (*.bin *.txt)"));
 	if(!path.isEmpty())
 	{
 		_ui->lineEdit_source_distortionModel->setText(path);
@@ -3938,7 +3943,7 @@ void PreferencesDialog::selectSourceOniPath()
 	{
 		dir = getWorkingDirectory();
 	}
-	QString path = QFileDialog::getOpenFileName(this, tr("Select file"), _ui->lineEdit_openniOniPath->text(), tr("OpenNI (*.oni)"));
+	QString path = QFileDialog::getOpenFileName(this, tr("Select file"), dir, tr("OpenNI (*.oni)"));
 	if(!path.isEmpty())
 	{
 		_ui->lineEdit_openniOniPath->setText(path);
@@ -3952,7 +3957,7 @@ void PreferencesDialog::selectSourceOni2Path()
 	{
 		dir = getWorkingDirectory();
 	}
-	QString path = QFileDialog::getOpenFileName(this, tr("Select file"), _ui->lineEdit_openni2OniPath->text(), tr("OpenNI (*.oni)"));
+	QString path = QFileDialog::getOpenFileName(this, tr("Select file"), dir, tr("OpenNI (*.oni)"));
 	if(!path.isEmpty())
 	{
 		_ui->lineEdit_openni2OniPath->setText(path);
@@ -3966,7 +3971,7 @@ void PreferencesDialog::selectSourceMKVPath()
 	{
 		dir = getWorkingDirectory();
 	}
-	QString path = QFileDialog::getOpenFileName(this, tr("Select file"), _ui->lineEdit_k4a_mkv->text(), tr("K4A recording (*.mkv)"));
+	QString path = QFileDialog::getOpenFileName(this, tr("Select file"), dir, tr("K4A recording (*.mkv)"));
 	if (!path.isEmpty())
 	{
 		_ui->lineEdit_k4a_mkv->setText(path);
@@ -3980,10 +3985,24 @@ void PreferencesDialog::selectSourceSvoPath()
 	{
 		dir = getWorkingDirectory();
 	}
-	QString path = QFileDialog::getOpenFileName(this, tr("Select file"), _ui->lineEdit_zedSvoPath->text(), tr("ZED (*.svo)"));
+	QString path = QFileDialog::getOpenFileName(this, tr("Select file"), dir, tr("ZED (*.svo)"));
 	if(!path.isEmpty())
 	{
 		_ui->lineEdit_zedSvoPath->setText(path);
+	}
+}
+
+void PreferencesDialog::selectSourceRealsense2JsonPath()
+{
+	QString dir = _ui->lineEdit_rs2_jsonFile->text();
+	if(dir.isEmpty())
+	{
+		dir = getWorkingDirectory();
+	}
+	QString path = QFileDialog::getOpenFileName(this, tr("Select RealSense2 preset"), dir, tr("JSON (*.json)"));
+	if(path.size())
+	{
+		_ui->lineEdit_rs2_jsonFile->setText(path);
 	}
 }
 
@@ -5483,6 +5502,7 @@ Camera * PreferencesDialog::createCamera(bool useRawImages, bool useColor)
 				((CameraRealSense2*)camera)->setIRFormat(_ui->checkbox_rs2_irMode->isChecked(), _ui->checkbox_rs2_irDepth->isChecked());
 				((CameraRealSense2*)camera)->setResolution(_ui->spinBox_rs2_width->value(), _ui->spinBox_rs2_height->value(), _ui->spinBox_rs2_rate->value());
 				((CameraRealSense2*)camera)->setDualMode(_ui->checkbox_rs2_dualMode->isChecked(), Transform::fromString(_ui->lineEdit_rs2_dualModeExtrinsics->text().toStdString()));
+				((CameraRealSense2*)camera)->setJsonConfig(_ui->lineEdit_rs2_jsonFile->text().toStdString());
 			}
 		}
 	}

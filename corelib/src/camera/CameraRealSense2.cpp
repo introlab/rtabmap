@@ -484,6 +484,32 @@ bool CameraRealSense2::init(const std::string & calibrationFolder, const std::st
 		return false;
 	}
 
+	if (!jsonConfig_.empty())
+	{
+		if (dev_[0]->is<rs400::advanced_mode>())
+		{
+			std::stringstream ss;
+			std::ifstream in(jsonConfig_);
+			if (in.is_open())
+			{
+				ss << in.rdbuf();
+				std::string json_file_content = ss.str();
+
+				auto adv = dev_[0]->as<rs400::advanced_mode>();
+				adv.load_json(json_file_content);
+				UINFO("JSON file is loaded! (%s)", jsonConfig_.c_str());
+			}
+			else
+			{
+				UWARN("JSON file provided doesn't exist! (%s)", jsonConfig_.c_str());
+			}
+		}
+		else
+		{
+			UWARN("A json config file is provided (%s), but device does not support advanced settings!", jsonConfig_.c_str());
+		}
+	}
+
 	ctx_->set_devices_changed_callback([this](rs2::event_information& info)
 	{
 		for(size_t i=0; i<dev_.size(); ++i)
@@ -988,6 +1014,13 @@ void CameraRealSense2::setDualMode(bool enabled, const Transform & extrinsics)
 	{
 		odometryProvided_ = true;
 	}
+#endif
+}
+
+void CameraRealSense2::setJsonConfig(const std::string & json)
+{
+#ifdef RTABMAP_REALSENSE2
+	jsonConfig_ = json;
 #endif
 }
 

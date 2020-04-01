@@ -359,6 +359,7 @@ private Q_SLOTS:
 	void selectSourceOni2Path();
 	void selectSourceMKVPath();
 	void selectSourceSvoPath();
+	void selectSourceRealsense2JsonPath();
 	void updateSourceGrpVisibility();
 	void testOdometry();
 	void testCamera();
