@@ -317,6 +317,42 @@ void denseMeshPostProcessing(
 	}
 }
 
+template<typename PointT>
+bool intersectRayMesh(
+		const Eigen::Vector3f & origin,
+		const Eigen::Vector3f & dir,
+		const typename pcl::PointCloud<PointT> & cloud,
+		const std::vector<pcl::Vertices> & polygons,
+		bool ignoreBackFaces,
+		float & distance,
+		Eigen::Vector3f & normal,
+		int & index)
+{
+	bool intersect = false;
+	distance = std::numeric_limits<float>::max();
+	for (size_t i = 0; i < polygons.size(); ++i)
+	{
+		const pcl::Vertices & vert = polygons.at(i);
+		UASSERT(vert.vertices.size()==3);
+		float d;
+		Eigen::Vector3f n;
+		if (intersectRayTriangle(origin, dir,
+				cloud.at(vert.vertices.at(0)).getVector3fMap(),
+				cloud.at(vert.vertices.at(1)).getVector3fMap(),
+				cloud.at(vert.vertices.at(2)).getVector3fMap(), d, n) &&
+			d < distance &&
+			(!ignoreBackFaces || n.dot(dir)<0))
+		{
+			distance = d;
+			index = i;
+			normal = n;
+			intersect |= true;
+		}
+	}
+	normal.normalize();
+	return intersect;
+}
+
 }
 
 }

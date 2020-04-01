@@ -74,7 +74,7 @@ if(@CONF_WITH_GUI@ AND ${WITH_GUI})
    
    set(RTABMap_LIBRARIES ${RTABMap_LIBRARIES} ${RTABMap_GUI})
 elseif(${WITH_GUI})
-   MESSAGE(ERROR "Asked for \"gui\" module but RTABMap hasn't been built with gui support.")
+   MESSAGE(WARNING "Asked for \"gui\" module but RTABMap hasn't been built with gui support.")
 endif()
 
 # Dependencies

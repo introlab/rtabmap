@@ -283,11 +283,40 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 {
 	UASSERT_MSG(data.id() >= 0, uFormat("Input data should have ID greater or equal than 0 (id=%d)!", data.id()).c_str());
 
-	if(!_imagesAlreadyRectified && !this->canProcessRawImages())
+	if(!_imagesAlreadyRectified && !this->canProcessRawImages() && !data.imageRaw().empty())
 	{
-		UERROR("Odometry approach chosen cannot process raw images (not rectified images). Make sure images "
-				"are rectified, and set %s parameter back to true.",
-				Parameters::kRtabmapImagesAlreadyRectified().c_str());
+		if(data.stereoCameraModel().isValidForRectification())
+		{
+			if(!stereoModel_.isRectificationMapInitialized() ||
+				stereoModel_.left().imageSize() != data.stereoCameraModel().left().imageSize())
+			{
+				stereoModel_ = data.stereoCameraModel();
+				stereoModel_.initRectificationMap();
+				if(stereoModel_.isRectificationMapInitialized())
+				{
+					UWARN("%s parameter is set to false but the selected odometry approach cannot "
+							"process raw images. We will rectify them for convenience.",
+							Parameters::kRtabmapImagesAlreadyRectified().c_str());
+				}
+				else
+				{
+					UERROR("Odometry approach chosen cannot process raw images (not rectified images) and we cannot rectify them. "
+							"Make sure images are rectified, and set %s parameter back to true.",
+							Parameters::kRtabmapImagesAlreadyRectified().c_str());
+				}
+			}
+			if(stereoModel_.isRectificationMapInitialized())
+			{
+				data.setImageRaw(stereoModel_.left().rectifyImage(data.imageRaw()));
+				data.setDepthOrRightRaw(stereoModel_.right().rectifyImage(data.rightRaw()));
+			}
+		}
+		else
+		{
+			UERROR("Odometry approach chosen cannot process raw images (not rectified images). Make sure images "
+					"are rectified, and set %s parameter back to true.",
+					Parameters::kRtabmapImagesAlreadyRectified().c_str());
+		}
 	}
 
 	// Ground alignment

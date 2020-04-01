@@ -167,7 +167,8 @@ protected Q_SLOTS:
 						}
 						cloud->push_back(pt);
 					}
-					pcl::PointXYZRGB anchor(255, 0, 0);
+					pcl::PointXYZRGB anchor;
+					anchor.r = 255;
 					cloud->push_back(anchor);
 					//UWARN("level %d -> %d pose=%s size=%d", level, iter->second.first, wifiPose.prettyPrint().c_str(), (int)cloud->size());
 					if(!cloudViewer_->addCloud(cloudName, cloud, wifiPose, Qt::yellow))

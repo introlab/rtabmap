@@ -213,7 +213,6 @@ private:
 	std::list<std::map<int, rtabmap::Transform> > graphes_;
 	std::multimap<int, rtabmap::Link> graphLinks_;
 	std::map<int, rtabmap::Transform> odomPoses_;
-	std::map<int, rtabmap::Transform> dbOptimizedPoses_;
 	std::map<int, rtabmap::Transform> groundTruthPoses_;
 	std::map<int, rtabmap::Transform> gpsPoses_;
 	std::map<int, GPS> gpsValues_;
@@ -225,7 +224,7 @@ private:
 	std::map<int, std::pair<float, cv::Point3f> > localMapsInfo_; // <cell size, viewpoint>
 	std::map<int, std::pair<std::pair<cv::Mat, cv::Mat>, cv::Mat> > generatedLocalMaps_; // < <ground, obstacles>, empty>
 	std::map<int, std::pair<float, cv::Point3f> > generatedLocalMapsInfo_; // <cell size, viewpoint>
-	std::map<int, cv::Mat> modifiedDepthImages_;
+	std::map<int, LaserScan> modifiedLaserScans_;
 	std::vector<double> odomMaxInf_;
 	OctoMap * octomap_;
 	ExportCloudsDialog * exportDialog_;
@@ -242,9 +241,6 @@ private:
 	double infoTotalOdom_;
 	double infoTotalTime_;
 	int infoSessions_;
-
-	bool useLastOptimizedGraphAsGuess_;
-	std::map<int, Transform> lastOptimizedGraph_;
 };
 
 }

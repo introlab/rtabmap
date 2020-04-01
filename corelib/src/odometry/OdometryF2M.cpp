@@ -573,7 +573,14 @@ Transform OdometryF2M::computeTransform(
 						  visKeyFrameThr_ == 0 ||
 						  float(regInfo.inliers) <= (keyFrameThr_*float(lastFrame_->getWords().size())) ||
 						  regInfo.inliers <= visKeyFrameThr_);
-				bool addGeometricKeyFrame = regPipeline_->isScanRequired() && (scanKeyFrameThr_==0 || regInfo.icpInliersRatio <= scanKeyFrameThr_);
+				float minComplexity = Parameters::defaultIcpPointToPlaneMinComplexity();
+				bool p2n = Parameters::defaultIcpPointToPlane();
+				Parameters::parse(parameters_, Parameters::kIcpPointToPlane(), p2n);
+				Parameters::parse(parameters_, Parameters::kIcpPointToPlaneMinComplexity(), minComplexity);
+				bool addGeometricKeyFrame =
+					regPipeline_->isScanRequired() &&
+					(scanKeyFrameThr_==0 || regInfo.icpInliersRatio <= scanKeyFrameThr_) &&
+					(addVisualKeyFrame || !p2n || regInfo.icpStructuralComplexity>=minComplexity);
 
 				addKeyFrame = false;//bundleLinks.rbegin()->second.transform().getNorm() > 5.0f*0.075f;
 				addKeyFrame = addKeyFrame || addVisualKeyFrame || addGeometricKeyFrame;
@@ -1260,37 +1267,65 @@ Transform OdometryF2M::computeTransform(
 			{
 				if (lastFrame_->sensorData().laserScanRaw().size())
 				{
-					frameValid = true;
 					pcl::PointCloud<pcl::PointNormal>::Ptr mapCloudNormals = util3d::laserScanToPointCloudNormal(lastFrame_->sensorData().laserScanRaw(), newFramePose * lastFrame_->sensorData().laserScanRaw().localTransform());
-					if (scanMapMaxRange_ > 0 ){
-						UINFO("Local map will be updated using range instead of time with range threshold set at %f", scanMapMaxRange_);
-					} else {
-						scansBuffer_.push_back(std::make_pair(mapCloudNormals, pcl::IndicesPtr(new std::vector<int>)));
-					}
-					if(lastFrame_->sensorData().laserScanRaw().is2d())
+
+					double complexity = 0.0;;
+					if(!frameValid)
 					{
-						Transform mapViewpoint(-newFramePose.x(), -newFramePose.y(),0,0,0,0);
-						map_->sensorData().setLaserScan(
-								LaserScan(
-										util3d::laserScan2dFromPointCloud(*mapCloudNormals, mapViewpoint),
-										0,
-										0.0f,
-										LaserScan::kXYNormal,
-										Transform(newFramePose.x(), newFramePose.y(), lastFrame_->sensorData().laserScanRaw().localTransform().z(),0,0,0)));
+						float minComplexity = Parameters::defaultIcpPointToPlaneMinComplexity();
+						bool p2n = Parameters::defaultIcpPointToPlane();
+						Parameters::parse(parameters_, Parameters::kIcpPointToPlane(), p2n);
+						Parameters::parse(parameters_, Parameters::kIcpPointToPlaneMinComplexity(), minComplexity);
+						if(p2n && minComplexity>0.0f)
+						{
+							complexity = util3d::computeNormalsComplexity(*mapCloudNormals);
+							if(complexity > minComplexity)
+							{
+								frameValid = true;
+							}
+						}
+						else
+						{
+							frameValid = true;
+						}
+					}
+
+					if(frameValid)
+					{
+						if (scanMapMaxRange_ > 0 ){
+							UINFO("Local map will be updated using range instead of time with range threshold set at %f", scanMapMaxRange_);
+						} else {
+							scansBuffer_.push_back(std::make_pair(mapCloudNormals, pcl::IndicesPtr(new std::vector<int>)));
+						}
+						if(lastFrame_->sensorData().laserScanRaw().is2d())
+						{
+							Transform mapViewpoint(-newFramePose.x(), -newFramePose.y(),0,0,0,0);
+							map_->sensorData().setLaserScan(
+									LaserScan(
+											util3d::laserScan2dFromPointCloud(*mapCloudNormals, mapViewpoint),
+											0,
+											0.0f,
+											LaserScan::kXYNormal,
+											Transform(newFramePose.x(), newFramePose.y(), lastFrame_->sensorData().laserScanRaw().localTransform().z(),0,0,0)));
+						}
+						else
+						{
+							Transform mapViewpoint(-newFramePose.x(), -newFramePose.y(), -newFramePose.z(),0,0,0);
+							map_->sensorData().setLaserScan(
+									LaserScan(
+											util3d::laserScanFromPointCloud(*mapCloudNormals, mapViewpoint),
+											0,
+											0.0f,
+											LaserScan::kXYZNormal,
+											newFramePose.translation()));
+						}
+
+						addKeyFrame = true;
 					}
 					else
 					{
-						Transform mapViewpoint(-newFramePose.x(), -newFramePose.y(), -newFramePose.z(),0,0,0);
-						map_->sensorData().setLaserScan(
-								LaserScan(
-										util3d::laserScanFromPointCloud(*mapCloudNormals, mapViewpoint),
-										0,
-										0.0f,
-										LaserScan::kXYZNormal,
-										newFramePose.translation()));
+						UWARN("Scan complexity too low (%f) to init first keyframe.", complexity);
 					}
-
-					addKeyFrame = true;
 				}
 				else
 				{

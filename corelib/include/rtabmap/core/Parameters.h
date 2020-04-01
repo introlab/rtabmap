@@ -62,7 +62,7 @@ typedef std::pair<std::string, std::string> ParametersPair;
 #define RTABMAP_PARAM(PREFIX, NAME, TYPE, DEFAULT_VALUE, DESCRIPTION) \
     public: \
         static std::string k##PREFIX##NAME() {return std::string(#PREFIX "/" #NAME);} \
-        static TYPE default##PREFIX##NAME() {return DEFAULT_VALUE;} \
+        static TYPE default##PREFIX##NAME() {return (TYPE)DEFAULT_VALUE;} \
         static std::string type##PREFIX##NAME() {return std::string(#TYPE);} \
     private: \
         class Dummy##PREFIX##NAME { \

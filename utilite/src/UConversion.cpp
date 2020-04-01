@@ -154,12 +154,12 @@ std::string uBool2Str(bool boolean)
 
 bool uStr2Bool(const char * str)
 {
-	return !(str && (uStrContains(str, "false") || uStrContains(str, "FALSE") || strcmp(str, "0") == 0));
+	return !(str && (uStrContains(uToLowerCase(str), "false") || strcmp(str, "0") == 0));
 }
 
 bool uStr2Bool(const std::string & str)
 {
-	return !(uStrContains(str, "false") || uStrContains(str, "FALSE") || str.compare("0") == 0);
+	return !(uStrContains(uToLowerCase(str), "false") || str.compare("0") == 0);
 }
 
 std::vector<unsigned char> uStr2Bytes(const std::string & str)

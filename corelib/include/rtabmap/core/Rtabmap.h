@@ -174,6 +174,7 @@ public:
 			bool interSession = true,
 			const ProgressState * state = 0);
 	int refineLinks();
+	bool addLink(const Link & link);
 	cv::Mat getInformation(const cv::Mat & covariance) const;
 
 	int getPathStatus() const {return _pathStatus;} // -1=failed 0=idle/executing 1=success

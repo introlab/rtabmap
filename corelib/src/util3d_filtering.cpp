@@ -58,10 +58,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pcl/segmentation/impl/extract_labeled_clusters.hpp>
 #include <pcl/filters/impl/extract_indices.hpp>
 
-PCL_INSTANTIATE(EuclideanClusterExtraction, (pcl::PointXYZRGBNormal))
-PCL_INSTANTIATE(extractEuclideanClusters, (pcl::PointXYZRGBNormal))
-PCL_INSTANTIATE(extractEuclideanClusters_indices, (pcl::PointXYZRGBNormal))
-PCL_INSTANTIATE(ExtractIndices, (pcl::PointNormal))
+PCL_INSTANTIATE(EuclideanClusterExtraction, (pcl::PointXYZRGBNormal));
+PCL_INSTANTIATE(extractEuclideanClusters, (pcl::PointXYZRGBNormal));
+PCL_INSTANTIATE(extractEuclideanClusters_indices, (pcl::PointXYZRGBNormal));
+PCL_INSTANTIATE(ExtractIndices, (pcl::PointNormal));
 
 #endif
 
@@ -393,12 +393,61 @@ typename pcl::PointCloud<PointT>::Ptr downsampleImpl(
 	}
 	else
 	{
-		int finalSize = int(cloud->size())/step;
-		output->resize(finalSize);
-		int oi = 0;
-		for(unsigned int i=0; i<cloud->size()-step+1; i+=step)
+		if(cloud->height > 1 && cloud->height < cloud->width/4)
 		{
-			(*output)[oi++] = cloud->at(i);
+			// Assuming ouster point cloud (e.g, 2048x64),
+			// for which the lower dimension is the number of rings.
+			// Downsample each ring by the step.
+			// Example data packed:
+			// <ringA-1, ringB-1, ringC-1, ringD-1;
+			//  ringA-2, ringB-2, ringC-2, ringD-2;
+			//  ringA-3, ringB-3, ringC-3, ringD-3;
+			//  ringA-4, ringB-4, ringC-4, ringD-4>
+			unsigned int rings = cloud->height<cloud->width?cloud->height:cloud->width;
+			unsigned int pts = cloud->height>cloud->width?cloud->height:cloud->width;
+			unsigned int finalSize = rings * pts/step;
+			output->resize(finalSize);
+			output->width =  rings;
+			output->height = pts/step;
+
+			for(unsigned int j=0; j<rings; ++j)
+			{
+				for(unsigned int i=0; i<output->height; ++i)
+				{
+					(*output)[i*rings + j] = cloud->at(i*step*rings + j);
+				}
+			}
+
+		}
+		else if(cloud->height > 1)
+		{
+			// assume depth image (e.g., 640x480), downsample like an image
+			UASSERT_MSG(cloud->height % step == 0 && cloud->width % step == 0,
+					uFormat("Decimation of depth images should be exact! (decimation=%d, size=%dx%d)",
+					step, cloud->width, cloud->height).c_str());
+
+			int finalSize = cloud->height/step * cloud->width/step;
+			output->resize(finalSize);
+			output->width = cloud->width/step;
+			output->height = cloud->height/step;
+
+			for(unsigned int j=0; j<output->height; ++j)
+			{
+				for(unsigned int i=0; i<output->width; ++i)
+				{
+					output->at(j*output->width + i) = cloud->at(j*output->width*step + i*step);
+				}
+			}
+		}
+		else
+		{
+			int finalSize = int(cloud->size())/step;
+			output->resize(finalSize);
+			int oi = 0;
+			for(unsigned int i=0; i<cloud->size()-step+1; i+=step)
+			{
+				(*output)[oi++] = cloud->at(i);
+			}
 		}
 	}
 	return output;
@@ -650,6 +699,24 @@ pcl::IndicesPtr cropBoxImpl(
 	return output;
 }
 
+pcl::IndicesPtr cropBox(const pcl::PCLPointCloud2::Ptr & cloud, const pcl::IndicesPtr & indices, const Eigen::Vector4f & min, const Eigen::Vector4f & max, const Transform & transform, bool negative)
+{
+	UASSERT(min[0] < max[0] && min[1] < max[1] && min[2] < max[2]);
+
+	pcl::IndicesPtr output(new std::vector<int>);
+	pcl::CropBox<pcl::PCLPointCloud2> filter;
+	filter.setNegative(negative);
+	filter.setMin(min);
+	filter.setMax(max);
+	if(!transform.isNull() && !transform.isIdentity())
+	{
+		filter.setTransform(transform.toEigen3f());
+	}
+	filter.setInputCloud(cloud);
+	filter.setIndices(indices);
+	filter.filter(*output);
+	return output;
+}
 pcl::IndicesPtr cropBox(const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud, const pcl::IndicesPtr & indices, const Eigen::Vector4f & min, const Eigen::Vector4f & max, const Transform & transform, bool negative)
 {
 	return cropBoxImpl<pcl::PointXYZ>(cloud, indices, min, max, transform, negative);

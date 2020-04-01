@@ -1263,7 +1263,7 @@ pcl::PointCloud<pcl::PointXYZ> laserScanFromDepthImages(
 	return scan;
 }
 
-LaserScan laserScanFromPointCloud(const pcl::PCLPointCloud2 & cloud, bool filterNaNs)
+LaserScan laserScanFromPointCloud(const pcl::PCLPointCloud2 & cloud, bool filterNaNs, bool is2D, const Transform & transform)
 {
 	if(cloud.data.empty())
 	{
@@ -1284,7 +1284,7 @@ LaserScan laserScanFromPointCloud(const pcl::PCLPointCloud2 & cloud, bool filter
 			fieldStates[1] = 1;
 			fieldOffsets[1] = cloud.fields[i].offset;
 		}
-		else if(cloud.fields[i].name.compare("z") == 0)
+		else if(cloud.fields[i].name.compare("z") == 0 && !is2D)
 		{
 			fieldStates[2] = 1;
 			fieldOffsets[2] = cloud.fields[i].offset;
@@ -1332,15 +1332,23 @@ LaserScan laserScanFromPointCloud(const pcl::PCLPointCloud2 & cloud, bool filter
 	bool is3D = fieldStates[0] && fieldStates[1] && fieldStates[2];
 
 	LaserScan::Format format;
+	int outputNormalOffset = 0;
 	if(is3D)
 	{
 		if(hasNormals && hasIntensity)
 		{
 			format = LaserScan::kXYZINormal;
+			outputNormalOffset = 4;
+		}
+		else if(hasNormals && !hasIntensity && !hasRGB)
+		{
+			format = LaserScan::kXYZNormal;
+			outputNormalOffset = 3;
 		}
 		else if(hasNormals && hasRGB)
 		{
 			format = LaserScan::kXYZRGBNormal;
+			outputNormalOffset = 4;
 		}
 		else if(!hasNormals && hasIntensity)
 		{
@@ -1360,6 +1368,12 @@ LaserScan laserScanFromPointCloud(const pcl::PCLPointCloud2 & cloud, bool filter
 		if(hasNormals && hasIntensity)
 		{
 			format = LaserScan::kXYINormal;
+			outputNormalOffset = 3;
+		}
+		else if(hasNormals && !hasIntensity)
+		{
+			format = LaserScan::kXYNormal;
+			outputNormalOffset = 2;
 		}
 		else if(!hasNormals && hasIntensity)
 		{
@@ -1374,6 +1388,12 @@ LaserScan laserScanFromPointCloud(const pcl::PCLPointCloud2 & cloud, bool filter
 	UASSERT(cloud.data.size()/cloud.point_step == cloud.height*cloud.width);
 	cv::Mat laserScan = cv::Mat(1, (int)cloud.data.size()/cloud.point_step, CV_32FC(LaserScan::channels(format)));
 
+	bool transformValid = !transform.isNull() && !transform.isIdentity();
+	Transform transformRot;
+	if(transformValid)
+	{
+		transformRot = transform.rotation();
+	}
 	int oi=0;
 	for (uint32_t row = 0; row < cloud.height; ++row)
 	{
@@ -1479,6 +1499,24 @@ LaserScan laserScanFromPointCloud(const pcl::PCLPointCloud2 & cloud, bool filter
 
 			if(!filterNaNs || valid)
 			{
+				if(valid && transformValid)
+				{
+					cv::Point3f pt = util3d::transformPoint(cv::Point3f(ptr[0], ptr[1], is3D?ptr[3]:0), transform);
+					ptr[0] = pt.x;
+					ptr[1] = pt.y;
+					if(is3D)
+					{
+						ptr[2] = pt.z;
+					}
+					if(hasNormals)
+					{
+						pt = util3d::transformPoint(cv::Point3f(ptr[outputNormalOffset], ptr[outputNormalOffset+1], ptr[outputNormalOffset+2]), transformRot);
+						ptr[outputNormalOffset] = pt.x;
+						ptr[outputNormalOffset+1] = pt.y;
+						ptr[outputNormalOffset+2] = pt.z;
+					}
+				}
+
 				++oi;
 			}
 		}

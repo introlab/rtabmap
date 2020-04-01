@@ -2957,7 +2957,9 @@ Transform Memory::computeTransform(
 			transform = _registrationPipeline->computeTransformationMod(tmpFrom, tmpTo, guess, info);
 		}
 
-		if(!transform.isNull())
+		if(!transform.isNull() &&
+			fromS.sensorData().cameraModels().size()<=1 &&
+			toS.sensorData().cameraModels().size()<=1)
 		{
 			UDEBUG("");
 			// verify if it is a 180 degree transform, well verify > 90
@@ -4290,7 +4292,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 							// Equidistant / FishEye
 							// get only k parameters (k1,k2,p1,p2,k3,k4)
 							cv::Mat D(1, 4, CV_64FC1);
-							D.at<double>(0,0) = decimatedData.cameraModels()[0].D_raw().at<double>(0,1);
+							D.at<double>(0,0) = decimatedData.cameraModels()[0].D_raw().at<double>(0,0);
 							D.at<double>(0,1) = decimatedData.cameraModels()[0].D_raw().at<double>(0,1);
 							D.at<double>(0,2) = decimatedData.cameraModels()[0].D_raw().at<double>(0,4);
 							D.at<double>(0,3) = decimatedData.cameraModels()[0].D_raw().at<double>(0,5);
@@ -4346,7 +4348,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 								// Equidistant / FishEye
 								// get only k parameters (k1,k2,p1,p2,k3,k4)
 								cv::Mat D(1, 4, CV_64FC1);
-								D.at<double>(0,0) = decimatedData.cameraModels()[cameraIndex].D_raw().at<double>(0,1);
+								D.at<double>(0,0) = decimatedData.cameraModels()[cameraIndex].D_raw().at<double>(0,0);
 								D.at<double>(0,1) = decimatedData.cameraModels()[cameraIndex].D_raw().at<double>(0,1);
 								D.at<double>(0,2) = decimatedData.cameraModels()[cameraIndex].D_raw().at<double>(0,4);
 								D.at<double>(0,3) = decimatedData.cameraModels()[cameraIndex].D_raw().at<double>(0,5);
