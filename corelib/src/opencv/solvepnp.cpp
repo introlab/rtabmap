@@ -144,7 +144,7 @@ bool solvePnPRansac(InputArray _opoints, InputArray _ipoints,
     Mat tvec = useExtrinsicGuess ? _tvec.getMat() : Mat(3, 1, CV_64FC1);
     Mat cameraMatrix = _cameraMatrix.getMat(), distCoeffs = _distCoeffs.getMat();
 
-    int model_points = 5;
+    int model_points = 6;
     int ransac_kernel_method = CV_EPNP;
 
     if( npoints == 4 )
