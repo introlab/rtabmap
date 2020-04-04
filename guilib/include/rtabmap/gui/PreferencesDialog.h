@@ -165,6 +165,7 @@ public:
 
 	bool isGraphsShown() const;
 	bool isLabelsShown() const;
+	bool isFramesShown() const;
 	bool isLandmarksShown() const;
 	double landmarkVisSize() const;
 	bool isIMUGravityShown(int index) const;

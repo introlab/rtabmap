@@ -63,7 +63,7 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-374</y>
+            <y>-1162</y>
             <width>680</width>
             <height>3157</height>
            </rect>
@@ -95,7 +95,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>5</number>
+                <number>1</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,1">
@@ -1847,7 +1847,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                          </property>
                         </widget>
                        </item>
-                       <item row="6" column="2">
+                       <item row="7" column="2">
                         <widget class="QLabel" name="label_301">
                          <property name="text">
                           <string>Show landmarks.</string>
@@ -1860,7 +1860,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                          </property>
                         </widget>
                        </item>
-                       <item row="6" column="0">
+                       <item row="7" column="0">
                         <widget class="QCheckBox" name="checkBox_showLandmarks">
                          <property name="text">
                           <string/>
@@ -1870,7 +1870,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                          </property>
                         </widget>
                        </item>
-                       <item row="7" column="2">
+                       <item row="8" column="2">
                         <widget class="QLabel" name="label_528">
                          <property name="text">
                           <string>Landmark size. If zero, marker's length parameter is used.</string>
@@ -1883,7 +1883,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                          </property>
                         </widget>
                        </item>
-                       <item row="7" column="0">
+                       <item row="8" column="0">
                         <widget class="QDoubleSpinBox" name="doubleSpinBox_landmarkSize">
                          <property name="suffix">
                           <string> m</string>
@@ -1899,7 +1899,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                          </property>
                         </widget>
                        </item>
-                       <item row="8" column="2">
+                       <item row="9" column="2">
                         <widget class="QLabel" name="label_567">
                          <property name="text">
                           <string>Show IMU filtered gravity.</string>
@@ -1912,7 +1912,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                          </property>
                         </widget>
                        </item>
-                       <item row="10" column="2">
+                       <item row="11" column="2">
                         <widget class="QLabel" name="label_568">
                          <property name="text">
                           <string>Show IMU acceleration.</string>
@@ -1925,7 +1925,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                          </property>
                         </widget>
                        </item>
-                       <item row="10" column="1">
+                       <item row="11" column="1">
                         <widget class="QCheckBox" name="checkBox_showIMUAcc">
                          <property name="text">
                           <string/>
@@ -1935,7 +1935,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                          </property>
                         </widget>
                        </item>
-                       <item row="8" column="0">
+                       <item row="9" column="0">
                         <widget class="QCheckBox" name="checkBox_showIMUGravity">
                          <property name="text">
                           <string/>
@@ -1945,7 +1945,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                          </property>
                         </widget>
                        </item>
-                       <item row="8" column="1">
+                       <item row="9" column="1">
                         <widget class="QCheckBox" name="checkBox_showIMUGravity_odom">
                          <property name="text">
                           <string/>
@@ -1955,7 +1955,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                          </property>
                         </widget>
                        </item>
-                       <item row="9" column="0">
+                       <item row="10" column="0">
                         <widget class="QDoubleSpinBox" name="doubleSpinBox_lengthIMUGravity">
                          <property name="suffix">
                           <string> m</string>
@@ -1971,7 +1971,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                          </property>
                         </widget>
                        </item>
-                       <item row="9" column="1">
+                       <item row="10" column="1">
                         <widget class="QDoubleSpinBox" name="doubleSpinBox_lengthIMUGravity_odom">
                          <property name="suffix">
                           <string> m</string>
@@ -1987,7 +1987,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                          </property>
                         </widget>
                        </item>
-                       <item row="9" column="2">
+                       <item row="10" column="2">
                         <widget class="QLabel" name="label_569">
                          <property name="text">
                           <string>IMU filtered gravity length.</string>
@@ -1997,6 +1997,29 @@ Show a yellow background when the number of odometry inliers goes under this thr
                          </property>
                          <property name="textInteractionFlags">
                           <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="6" column="2">
+                        <widget class="QLabel" name="label_572">
+                         <property name="text">
+                          <string>Show frames.</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="6" column="0">
+                        <widget class="QCheckBox" name="checkBox_showFrames">
+                         <property name="text">
+                          <string/>
+                         </property>
+                         <property name="checked">
+                          <bool>true</bool>
                          </property>
                         </widget>
                        </item>

@@ -1345,7 +1345,14 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 		}
 		_cloudViewer->updateCameraTargetPosition(_odometryCorrection*odom.pose());
 #if PCL_VERSION_COMPARE(>=, 1, 7, 2)
-		_cloudViewer->addOrUpdateLine("odom_to_base_link", _odometryCorrection, _odometryCorrection*odom.pose(), Qt::yellow, false, false);
+		if(_preferencesDialog->isFramesShown())
+		{
+			_cloudViewer->addOrUpdateLine("odom_to_base_link", _odometryCorrection, _odometryCorrection*odom.pose(), Qt::yellow, false, false);
+		}
+		else
+		{
+			_cloudViewer->removeLine("odom_to_base_link");
+		}
 #endif
 
 	}
@@ -2055,9 +2062,18 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 			}
 
 #if PCL_VERSION_COMPARE(>=, 1, 7, 2)
-			_cloudViewer->addOrUpdateCoordinate("map_frame", Transform::getIdentity(), 0.5, false);
-			_cloudViewer->addOrUpdateCoordinate("odom_frame", _odometryCorrection, 0.35, false);
-			_cloudViewer->addOrUpdateLine("map_to_odom", Transform::getIdentity(), _odometryCorrection, Qt::yellow, false, false);
+			if(_preferencesDialog->isFramesShown())
+			{
+				_cloudViewer->addOrUpdateCoordinate("map_frame", Transform::getIdentity(), 0.5, false);
+				_cloudViewer->addOrUpdateCoordinate("odom_frame", _odometryCorrection, 0.35, false);
+				_cloudViewer->addOrUpdateLine("map_to_odom", Transform::getIdentity(), _odometryCorrection, Qt::yellow, false, false);
+			}
+			else
+			{
+				_cloudViewer->removeLine("map_to_odom");
+				_cloudViewer->removeCoordinate("odom_frame");
+				_cloudViewer->removeCoordinate("map_frame");
+			}
 #endif
 
 			if(_cachedSignatures.contains(0) && stat.refImageId()>0)
@@ -4721,6 +4737,7 @@ void MainWindow::newDatabase()
 	_cloudViewer->removeLine("map_to_odom");
 	_cloudViewer->removeLine("odom_to_base_link");
 	_cloudViewer->removeCoordinate("odom_frame");
+	_cloudViewer->removeCoordinate("map_frame");
 	ULOGGER_DEBUG("");
 	this->clearTheCache();
 	std::string databasePath = (_preferencesDialog->getWorkingDirectory()+QDir::separator()+QString("rtabmap.tmp.db")).toStdString();

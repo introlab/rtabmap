@@ -90,6 +90,7 @@ CloudViewer::CloudViewer(QWidget *parent, CloudViewerInteractorStyle * style) :
 		_aShowTrajectory(0),
 		_aSetTrajectorySize(0),
 		_aClearTrajectory(0),
+		_aShowCameraAxis(0),
 		_aShowFrustum(0),
 		_aSetFrustumScale(0),
 		_aSetFrustumColor(0),
@@ -204,7 +205,10 @@ void CloudViewer::clear()
 	this->removeOccupancyGridMap();
 	this->removeOctomap();
 
-	this->addOrUpdateCoordinate("reference", Transform::getIdentity(), 0.2);
+	if(_aShowCameraAxis->isChecked())
+	{
+		this->addOrUpdateCoordinate("reference", Transform::getIdentity(), 0.2);
+	}
 	_lastPose.setNull();
 	if(_aLockCamera->isChecked() || _aFollowCamera->isChecked())
 	{
@@ -236,6 +240,9 @@ void CloudViewer::createMenu()
 	_aShowTrajectory->setChecked(true);
 	_aSetTrajectorySize = new QAction("Set trajectory size...", this);
 	_aClearTrajectory = new QAction("Clear trajectory", this);
+	_aShowCameraAxis= new QAction("Show base frame", this);
+	_aShowCameraAxis->setCheckable(true);
+	_aShowCameraAxis->setChecked(true);
 	_aShowFrustum= new QAction("Show frustum", this);
 	_aShowFrustum->setCheckable(true);
 	_aShowFrustum->setChecked(false);
@@ -312,6 +319,7 @@ void CloudViewer::createMenu()
 	_menu = new QMenu(this);
 	_menu->addMenu(cameraMenu);
 	_menu->addMenu(trajectoryMenu);
+	_menu->addAction(_aShowCameraAxis);
 	_menu->addMenu(frustumMenu);
 	_menu->addMenu(gridMenu);
 	_menu->addMenu(normalsMenu);
@@ -369,6 +377,8 @@ void CloudViewer::saveSettings(QSettings & settings, const QString & group) cons
 	settings.setValue("trajectory_shown", this->isTrajectoryShown());
 	settings.setValue("trajectory_size", this->getTrajectorySize());
 
+	settings.setValue("camera_axis_shown", this->isCameraAxisShown());
+
 	settings.setValue("frustum_shown", this->isFrustumShown());
 	settings.setValue("frustum_scale", this->getFrustumScale());
 	settings.setValue("frustum_color", this->getFrustumColor());
@@ -415,6 +425,8 @@ void CloudViewer::loadSettings(QSettings & settings, const QString & group)
 
 	this->setTrajectoryShown(settings.value("trajectory_shown", this->isTrajectoryShown()).toBool());
 	this->setTrajectorySize(settings.value("trajectory_size", this->getTrajectorySize()).toUInt());
+
+	this->setCameraAxisShown(settings.value("camera_axis_shown", this->isCameraAxisShown()).toBool());
 
 	this->setFrustumShown(settings.value("frustum_shown", this->isFrustumShown()).toBool());
 	this->setFrustumScale(settings.value("frustum_scale", this->getFrustumScale()).toDouble());
@@ -2117,6 +2129,25 @@ void CloudViewer::clearTrajectory()
 	this->update();
 }
 
+bool CloudViewer::isCameraAxisShown() const
+{
+	return _aShowCameraAxis->isChecked();
+}
+
+void CloudViewer::setCameraAxisShown(bool shown)
+{
+	if(!shown)
+	{
+		this->removeCoordinate("reference");
+	}
+	else
+	{
+		this->addOrUpdateCoordinate("reference", Transform::getIdentity(), 0.2);
+	}
+	this->update();
+	_aShowCameraAxis->setChecked(shown);
+}
+
 bool CloudViewer::isFrustumShown() const
 {
 	return _aShowFrustum->isChecked();
@@ -2595,15 +2626,18 @@ void CloudViewer::updateCameraTargetPosition(const Transform & pose)
 				cameras.front().view[2] = _aLockViewZ->isChecked()?1:Fp[10];
 			}
 
+			if(_aShowCameraAxis->isChecked())
+			{
 #if PCL_VERSION_COMPARE(>=, 1, 7, 2)
-			if(_coordinates.find("reference") != _coordinates.end())
-			{
-				this->updateCoordinatePose("reference", pose);
-			}
-			else
+				if(_coordinates.find("reference") != _coordinates.end())
+				{
+					this->updateCoordinatePose("reference", pose);
+				}
+				else
 #endif
-			{
-				this->addOrUpdateCoordinate("reference", pose, 0.2);
+				{
+					this->addOrUpdateCoordinate("reference", pose, 0.2);
+				}
 			}
 
 			_visualizer->setCameraPosition(
@@ -3254,6 +3288,10 @@ void CloudViewer::handleAction(QAction * a)
 	else if(a == _aClearTrajectory)
 	{
 		this->clearTrajectory();
+	}
+	else if(a == _aShowCameraAxis)
+	{
+		this->setCameraAxisShown(a->isChecked());
 	}
 	else if(a == _aShowFrustum)
 	{
