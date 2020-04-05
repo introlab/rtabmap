@@ -2555,18 +2555,18 @@ void DBDriverSqlite3::getAllLinksQuery(std::multimap<int, Link> & links, bool ig
 	}
 }
 
-void DBDriverSqlite3::getLastIdQuery(const std::string & tableName, int & id) const
+void DBDriverSqlite3::getLastIdQuery(const std::string & tableName, int & id, const std::string & fieldName) const
 {
 	if(_ppDb)
 	{
-		UDEBUG("get last id from table \"%s\"", tableName.c_str());
+		UDEBUG("get last %s from table \"%s\"", fieldName.c_str(), tableName.c_str());
 		UTimer timer;
 		timer.start();
 		int rc = SQLITE_OK;
 		sqlite3_stmt * ppStmt = 0;
 		std::stringstream query;
 
-		query << "SELECT max(id) "
+		query << "SELECT max(" << fieldName << ") "
 			  << "FROM " << tableName
 			  << ";";
 

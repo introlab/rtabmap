@@ -3541,7 +3541,7 @@ bool Rtabmap::process(
 	}
 
 	//Save statistics to database
-	if(_memory->isIncremental())
+	if(_memory->isIncremental() || _memory->isLocalizationDataSaved())
 	{
 		_memory->saveStatistics(statistics_);
 	}

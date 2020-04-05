@@ -80,6 +80,7 @@ Memory::Memory(const ParametersMap & parameters) :
 	_saveIntermediateNodeData(Parameters::defaultMemIntermediateNodeDataKept()),
 	_rgbCompressionFormat(Parameters::defaultMemImageCompressionFormat()),
 	_incrementalMemory(Parameters::defaultMemIncrementalMemory()),
+	_localizationDataSaved(Parameters::defaultMemLocalizationDataSaved()),
 	_reduceGraph(Parameters::defaultMemReduceGraph()),
 	_maxStMemSize(Parameters::defaultMemSTMSize()),
 	_recentWmRatio(Parameters::defaultMemRecentWmRatio()),
@@ -345,7 +346,9 @@ void Memory::loadDataFromDb(bool postInitClosingEvents)
 
 		// Last id
 		_dbDriver->getLastNodeId(_idCount);
-		_idMapCount = _lastSignature?_lastSignature->mapId()+1:kIdStart;
+		_idMapCount = -1;
+		_dbDriver->getLastMapId(_idMapCount);
+		++_idMapCount;
 
 		// Now load the dictionary if we have a connection
 		if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit("Loading dictionary..."));
@@ -571,6 +574,7 @@ void Memory::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(params, Parameters::kRGBDMarkerDetection(), _detectMarkers);
 	Parameters::parse(params, Parameters::kMarkerVarianceLinear(), _markerLinVariance);
 	Parameters::parse(params, Parameters::kMarkerVarianceAngular(), _markerAngVariance);
+	Parameters::parse(params, Parameters::kMemLocalizationDataSaved(), _localizationDataSaved);
 
 	UASSERT_MSG(_maxStMemSize >= 0, uFormat("value=%d", _maxStMemSize).c_str());
 	UASSERT_MSG(_similarityThreshold >= 0.0f && _similarityThreshold <= 1.0f, uFormat("value=%f", _similarityThreshold).c_str());
@@ -864,7 +868,7 @@ bool Memory::update(
 	}
 	if(stats) stats->setReducedIds(reducedIds);
 
-	if(!_memoryChanged && _incrementalMemory)
+	if(!_memoryChanged && (_incrementalMemory || _localizationDataSaved))
 	{
 		_memoryChanged = true;
 	}
@@ -2407,7 +2411,7 @@ void Memory::moveToTrash(Signature * s, bool keepLinkedToGraph, std::list<int> *
 		if(	(_notLinkedNodesKeptInDb || keepLinkedToGraph || s->isSaved()) &&
 			_dbDriver &&
 			s->id()>0 &&
-			(_incrementalMemory || s->isSaved()))
+			(_incrementalMemory || s->isSaved() || _localizationDataSaved))
 		{
 			if(keepLinkedToGraph)
 			{

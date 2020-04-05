@@ -806,6 +806,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->general_spinBox_maxStMemSize->setObjectName(Parameters::kMemSTMSize().c_str());
 	_ui->doubleSpinBox_similarityThreshold->setObjectName(Parameters::kMemRehearsalSimilarity().c_str());
 	_ui->general_checkBox_SLAM_mode->setObjectName(Parameters::kMemIncrementalMemory().c_str());
+	_ui->general_checkBox_saveLocalizationData->setObjectName(Parameters::kMemLocalizationDataSaved().c_str());
 	_ui->general_doubleSpinBox_recentWmRatio->setObjectName(Parameters::kMemRecentWmRatio().c_str());
 	_ui->general_checkBox_transferSortingByWeightId->setObjectName(Parameters::kMemTransferSortingByWeightId().c_str());
 	_ui->general_checkBox_RehearsalIdUpdatedToNewOne->setObjectName(Parameters::kMemRehearsalIdUpdatedToNewOne().c_str());

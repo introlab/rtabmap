@@ -207,6 +207,7 @@ class RTABMAP_EXP Parameters
     RTABMAP_PARAM_STR(Mem, ImageCompressionFormat,   ".jpg",        "RGB image compression format. It should be \".jpg\" or \".png\".");
     RTABMAP_PARAM(Mem, STMSize,                   unsigned int, 10, "Short-term memory size.");
     RTABMAP_PARAM(Mem, IncrementalMemory,           bool, true,     "SLAM mode, otherwise it is Localization mode.");
+    RTABMAP_PARAM(Mem, LocalizationDataSaved,       bool, false,     uFormat("Save localization data during localization session (when %s=false). When enabled, the database will then also grow in localization mode. This mode would be used only for debugging purpose.", kMemIncrementalMemory().c_str()).c_str());
     RTABMAP_PARAM(Mem, ReduceGraph,                 bool, false,    "Reduce graph. Merge nodes when loop closures are added (ignoring those with user data set).");
     RTABMAP_PARAM(Mem, RecentWmRatio,               float, 0.2,     "Ratio of locations after the last loop closure in WM that cannot be transferred.");
     RTABMAP_PARAM(Mem, TransferSortingByWeightId,   bool, false,    "On transfer, signatures are sorted by weight->ID only (i.e. the oldest of the lowest weighted signatures are transferred first). If false, the signatures are sorted by weight->Age->ID (i.e. the oldest inserted in WM of the lowest weighted signatures are transferred first). Note that retrieval updates the age, not the ID.");

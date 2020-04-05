@@ -63,7 +63,7 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-1162</y>
+            <y>0</y>
             <width>680</width>
             <height>3157</height>
            </rect>
@@ -95,7 +95,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>1</number>
+                <number>7</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,1">
@@ -7504,6 +7504,29 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                       </item>
                       <item row="7" column="0">
                        <widget class="QCheckBox" name="general_checkBox_rectifyOnlyFeatures">
+                        <property name="text">
+                         <string/>
+                        </property>
+                        <property name="checked">
+                         <bool>true</bool>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="8" column="1">
+                       <widget class="QLabel" name="label_573">
+                        <property name="text">
+                         <string>Save localization data during localization session (when SLAM mode is false). When enabled, the database will then also grow in localization mode. This mode would be used only for debugging purpose.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="8" column="0">
+                       <widget class="QCheckBox" name="general_checkBox_saveLocalizationData">
                         <property name="text">
                          <string/>
                         </property>
