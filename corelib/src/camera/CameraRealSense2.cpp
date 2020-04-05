@@ -36,6 +36,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <librealsense2/rsutil.h>
 #include <librealsense2/hpp/rs_processing.hpp>
 #include <librealsense2/rs_advanced_mode.hpp>
+#include <fstream>
 #endif
 
 namespace rtabmap
