@@ -2566,7 +2566,7 @@ void DBDriverSqlite3::getLastIdQuery(const std::string & tableName, int & id, co
 		sqlite3_stmt * ppStmt = 0;
 		std::stringstream query;
 
-		query << "SELECT max(" << fieldName << ") "
+		query << "SELECT COALESCE(MAX(" << fieldName << "), " << id << ") " // In case the table is empty, return back input id
 			  << "FROM " << tableName
 			  << ";";
 
@@ -2584,7 +2584,7 @@ void DBDriverSqlite3::getLastIdQuery(const std::string & tableName, int & id, co
 		}
 		else
 		{
-			ULOGGER_ERROR("No result !?! from the DB");
+			UDEBUG("No result from the DB for table %s with field %s", tableName.c_str(), fieldName.c_str());
 		}
 
 		// Finalize (delete) the statement
