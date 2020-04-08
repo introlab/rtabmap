@@ -7088,7 +7088,7 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent)
 		UWARN("Cannot add link to same node");
 		return false;
 	}
-	else if(from < to)
+	else if(from > to)
 	{
 		switchedIds = true;
 		int tmp = from;
@@ -7398,6 +7398,10 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent)
 		}
 		else
 		{
+			if(newLink.from() < newLink.to())
+			{
+				newLink = newLink.inverse();
+			}
 			linksAdded_.insert(std::make_pair(newLink.from(), newLink));
 		}
 		if(!silent)
