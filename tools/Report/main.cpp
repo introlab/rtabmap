@@ -32,19 +32,26 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UFile.h>
 #include <rtabmap/utilite/UStl.h>
 #include <rtabmap/utilite/UMath.h>
-#include <rtabmap/utilite/UPlot.h>
 #include <rtabmap/utilite/ULogger.h>
-#include <QApplication>
 #include <stdio.h>
 #include <iostream>
 #include <fstream>
+
+#ifdef WITH_QT
+#include <rtabmap/utilite/UPlot.h>
+#include <QApplication>
+#endif
 
 using namespace rtabmap;
 
 void showUsage()
 {
 	printf("\nUsage:\n"
+#ifdef WITH_QT
 			"rtabmap-report [\"Statistic/Id\"] [options] path\n"
+#else
+			"rtabmap-report [options] path\n"
+#endif
 			"  path               Directory containing rtabmap databases or path of a database.\n"
 			"  Options:"
 			"    --latex            Print table formatted in LaTeX with results.\n"
@@ -68,8 +75,9 @@ int main(int argc, char * argv[])
 
 	ULogger::setType(ULogger::kTypeConsole);
 	ULogger::setLevel(ULogger::kWarning);
-
+#ifdef WITH_QT
 	QApplication app(argc, argv);
+#endif
 
 	bool outputLatex = false;
 	bool outputScaled = false;
@@ -78,7 +86,9 @@ int main(int argc, char * argv[])
 	bool outputRelativeError = false;
 	bool outputReport = false;
 	bool outputLoopAccuracy = false;
+#ifdef WITH_QT
 	std::map<std::string, UPlot*> figures;
+#endif
 	for(int i=1; i<argc-1; ++i)
 	{
 		if(strcmp(argv[i], "--latex") == 0)
@@ -111,12 +121,14 @@ int main(int argc, char * argv[])
 		}
 		else
 		{
+#ifdef WITH_QT
 			std::string figureTitle = argv[i];
 			printf("Plot %s\n", figureTitle.c_str());
 			UPlot * fig = new UPlot();
 			fig->setTitle(figureTitle.c_str());
 			fig->setXLabel("Time (s)");
 			figures.insert(std::make_pair(figureTitle, fig));
+#endif
 		}
 	}
 
@@ -209,12 +221,14 @@ int main(int argc, char * argv[])
 					float maxRMSE = -1;
 					float maxOdomRAM = -1;
 					float maxMapRAM = -1;
+#ifdef WITH_QT
 					std::map<std::string, UPlotCurve*> curves;
 					std::map<std::string, double> firstStamps;
 					for(std::map<std::string, UPlot*>::iterator iter=figures.begin(); iter!=figures.end(); ++iter)
 					{
 						curves.insert(std::make_pair(iter->first, iter->second->addCurve(filePath.c_str())));
 					}
+#endif
 
 					for(std::set<int>::iterator iter=ids.begin(); iter!=ids.end(); ++iter)
 					{
@@ -289,6 +303,7 @@ int main(int argc, char * argv[])
 									}
 								}
 
+#ifdef WITH_QT
 								for(std::map<std::string, UPlotCurve*>::iterator jter=curves.begin(); jter!=curves.end(); ++jter)
 								{
 									if(uContains(stat, jter->first))
@@ -302,6 +317,7 @@ int main(int argc, char * argv[])
 										jter->second->addValue(x,y);
 									}
 								}
+#endif
 							}
 						}
 					}
@@ -773,10 +789,11 @@ int main(int argc, char * argv[])
 			}
 		}
 
+
 		printf("\\end{tabular}\n");
 		printf("\\end{table*}\n----------------\n");
 	}
-
+#ifdef WITH_QT
 	if(figures.size())
 	{
 		for(std::map<std::string, UPlot*>::iterator iter=figures.begin(); iter!=figures.end(); ++iter)
@@ -785,5 +802,6 @@ int main(int argc, char * argv[])
 		}
 		return app.exec();
 	}
+#endif
 	return 0;
 }
