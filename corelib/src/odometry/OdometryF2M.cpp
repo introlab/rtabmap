@@ -216,7 +216,7 @@ Transform OdometryF2M::computeTransform(
 		{
 			Transform orientation(0,0,0, data.imu().orientation()[0], data.imu().orientation()[1], data.imu().orientation()[2], data.imu().orientation()[3]);
 			//UWARN("%fs %s", data.stamp(), orientation.prettyPrint().c_str());
-			imus_.insert(std::make_pair(data.stamp(), orientation*data.imu().localTransform().inverse()));
+			imus_.insert(std::make_pair(data.stamp(), Transform(0,0,data.imu().localTransform().theta()) * orientation*data.imu().localTransform().inverse()));
 			if(imus_.size() > 1000)
 			{
 				imus_.erase(imus_.begin());
