@@ -952,7 +952,7 @@ Transform OdometryF2M::computeTransform(
 									mapCloudNormals,
 									pcl::IndicesPtr(new std::vector<int>),
 									scanSubtractRadius_,
-									scanSubtractAngle_);
+									lastFrame_->sensorData().laserScanRaw().hasNormals()&&mapScan.hasNormals()?scanSubtractAngle_:0.0f);
 							newPoints = frameCloudNormalsIndices->size();
 						}
 						else
