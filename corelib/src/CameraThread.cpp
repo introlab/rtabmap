@@ -189,9 +189,16 @@ void CameraThread::postUpdate(SensorData * dataPtr, CameraInfo * info) const
 {
 	UASSERT(dataPtr!=0);
 	SensorData & data = *dataPtr;
-	if(_colorOnly && !data.depthRaw().empty())
+	if(_colorOnly)
 	{
-		data.setRGBDImage(data.imageRaw(), cv::Mat(), data.cameraModels());
+		if(!data.depthRaw().empty())
+		{
+			data.setRGBDImage(data.imageRaw(), cv::Mat(), data.cameraModels());
+		}
+		else if(!data.rightRaw().empty())
+		{
+			data.setRGBDImage(data.imageRaw(), cv::Mat(), data.stereoCameraModel().left());
+		}
 	}
 
 	if(_distortionModel && !data.depthRaw().empty())
