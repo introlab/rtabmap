@@ -1347,7 +1347,7 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 #if PCL_VERSION_COMPARE(>=, 1, 7, 2)
 		if(_preferencesDialog->isFramesShown())
 		{
-			_cloudViewer->addOrUpdateLine("odom_to_base_link", _odometryCorrection, _odometryCorrection*odom.pose(), Qt::yellow, false, false);
+			_cloudViewer->addOrUpdateLine("odom_to_base_link", _odometryCorrection, _odometryCorrection*odom.pose(), qRgb(255, 128, 0), false, false);
 		}
 		else
 		{
@@ -2066,7 +2066,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 			{
 				_cloudViewer->addOrUpdateCoordinate("map_frame", Transform::getIdentity(), 0.5, false);
 				_cloudViewer->addOrUpdateCoordinate("odom_frame", _odometryCorrection, 0.35, false);
-				_cloudViewer->addOrUpdateLine("map_to_odom", Transform::getIdentity(), _odometryCorrection, Qt::yellow, false, false);
+				_cloudViewer->addOrUpdateLine("map_to_odom", Transform::getIdentity(), _odometryCorrection, qRgb(255, 128, 0), false, false);
 			}
 			else
 			{
