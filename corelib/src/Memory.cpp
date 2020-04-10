@@ -5167,7 +5167,8 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 
 	{
 		Transform orientation(0,0,0, data.imu().orientation()[0], data.imu().orientation()[1], data.imu().orientation()[2], data.imu().orientation()[3]);
-		orientation*=data.imu().localTransform().rotation().inverse();
+		// orientation includes roll and pitch but not yaw in local transform
+		orientation= Transform(0,0,data.imu().localTransform().theta()) * orientation * data.imu().localTransform().rotation().inverse();
 
 		s->addLink(Link(s->id(), s->id(), Link::kGravity, orientation));
 		UDEBUG("Added gravity constraint: %s", orientation.prettyPrint().c_str());

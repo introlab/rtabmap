@@ -4195,6 +4195,7 @@ void DatabaseViewer::update(int value,
 					gravityLink.begin()->second.transform().getEulerAngles(roll, pitch, yaw);
 					Eigen::Vector3d v = Transform(0,0,0,roll,pitch,0).toEigen3d() * -Eigen::Vector3d::UnitZ();
 					labelGravity->setText(QString("x=%1 y=%2 z=%3").arg(v[0]).arg(v[1]).arg(v[2]));
+					labelGravity->setToolTip(QString("roll=%1 pitch=%2 yaw=%3").arg(roll).arg(pitch).arg(yaw));
 				}
 
 				if(gps.stamp()>0.0)

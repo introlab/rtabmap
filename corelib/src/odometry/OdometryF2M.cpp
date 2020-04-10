@@ -215,7 +215,7 @@ Transform OdometryF2M::computeTransform(
 		else
 		{
 			Transform orientation(0,0,0, data.imu().orientation()[0], data.imu().orientation()[1], data.imu().orientation()[2], data.imu().orientation()[3]);
-			//UWARN("%fs %s", data.stamp(), orientation.prettyPrint().c_str());
+			// orientation includes roll and pitch but not yaw in local transform
 			imus_.insert(std::make_pair(data.stamp(), Transform(0,0,data.imu().localTransform().theta()) * orientation*data.imu().localTransform().inverse()));
 			if(imus_.size() > 1000)
 			{
