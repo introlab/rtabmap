@@ -37,6 +37,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UMath.h>
 #include <rtabmap/utilite/UTimer.h>
 #include <pcl/conversions.h>
+#include <pcl/common/pca.h>
 
 #ifdef RTABMAP_POINTMATCHER
 #include <fstream>
@@ -637,6 +638,22 @@ Transform RegistrationIcp::computeTransformationImpl(
 					fromCloudNormals = util3d::removeNaNNormalsFromPointCloud(fromCloudNormals);
 					toCloudNormals = util3d::removeNaNNormalsFromPointCloud(toCloudNormals);
 
+					if(fromCloudNormals->size() > 2 && toCloudNormals->size() > 2)
+					{
+						pcl::PCA<pcl::PointNormal> pca;
+						pca.setInputCloud(fromCloudNormals);
+						Eigen::Vector3f valuesFrom = pca.getEigenValues();
+						pca.setInputCloud(toCloudNormals);
+						Eigen::Vector3f valuesTo = pca.getEigenValues();
+						if(valuesFrom[0]/fromCloudNormals->size() < valuesTo[0]/toCloudNormals->size())
+						{
+							info.icpStructuralDistribution = sqrt(valuesFrom[0]/fromCloudNormals->size());
+						}
+						else
+						{
+							info.icpStructuralDistribution = sqrt(valuesTo[0]/toCloudNormals->size());
+						}
+					}
 
 					UDEBUG("Conversion time = %f s", timer.ticks());
 					pcl::PointCloud<pcl::PointNormal>::Ptr fromCloudNormalsRegistered(new pcl::PointCloud<pcl::PointNormal>());
@@ -707,6 +724,23 @@ Transform RegistrationIcp::computeTransformationImpl(
 				pcl::PointCloud<pcl::PointXYZ>::Ptr fromCloud = util3d::laserScanToPointCloud(fromScan, fromScan.localTransform());
 				pcl::PointCloud<pcl::PointXYZ>::Ptr toCloud = util3d::laserScanToPointCloud(toScan, guess * toScan.localTransform());
 				UDEBUG("Conversion time = %f s", timer.ticks());
+
+				if(fromCloud->size() > 2 && toCloud->size() > 2)
+				{
+					pcl::PCA<pcl::PointXYZ> pca;
+					pca.setInputCloud(fromCloud);
+					Eigen::Vector3f valuesFrom = pca.getEigenValues();
+					pca.setInputCloud(toCloud);
+					Eigen::Vector3f valuesTo = pca.getEigenValues();
+					if(valuesFrom[0]/fromCloud->size() < valuesTo[0]/toCloud->size())
+					{
+						info.icpStructuralDistribution = sqrt(valuesFrom[0]/fromCloud->size());
+					}
+					else
+					{
+						info.icpStructuralDistribution = sqrt(valuesTo[0]/toCloud->size());
+					}
+				}
 
 				pcl::PointCloud<pcl::PointXYZ>::Ptr fromCloudFiltered = fromCloud;
 				pcl::PointCloud<pcl::PointXYZ>::Ptr toCloudFiltered = toCloud;
