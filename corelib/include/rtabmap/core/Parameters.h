@@ -319,10 +319,16 @@ class RTABMAP_EXP Parameters
 
     RTABMAP_PARAM(KAZE, Extended,       bool, false,   "Set to enable extraction of extended (128-byte) descriptor.");
     RTABMAP_PARAM(KAZE, Upright,        bool, false,   "Set to enable use of upright descriptors (non rotation-invariant).");
-    RTABMAP_PARAM(KAZE, Threshold,      float, 0.001,  "Detector response threshold to accept point.");
+    RTABMAP_PARAM(KAZE, Threshold,      float, 0.001,  "Detector response threshold to accept keypoint.");
     RTABMAP_PARAM(KAZE, NOctaves,       int, 4,        "Maximum octave evolution of the image.");
     RTABMAP_PARAM(KAZE, NOctaveLayers,  int, 4,        "Default number of sublevels per scale level.");
     RTABMAP_PARAM(KAZE, Diffusivity,    int, 1,        "Diffusivity type: 0=DIFF_PM_G1, 1=DIFF_PM_G2, 2=DIFF_WEICKERT or 3=DIFF_CHARBONNIER.");
+
+    RTABMAP_PARAM_STR(SPTorch, ModelPath,              "", "[Required] Path to pre-trained weights Torch file of SuperPoint (*.pt).");
+    RTABMAP_PARAM(SPTorch, Threshold,         float,  0.2, "Detector response threshold to accept keypoint.");
+    RTABMAP_PARAM(SPTorch, NMS,               bool,  true, "If true, non-maximum suppression is applied to detected keypoints.");
+    RTABMAP_PARAM(SPTorch, MinDistance,       int,      4, uFormat("[%s=true] Minimum distance (pixels) between keypoints.", kSPTorchNMS().c_str()));
+    RTABMAP_PARAM(SPTorch, Cuda,              bool, false, "Use Cuda device for Torch, otherwise CPU device is used by default.");
 
     // BayesFilter
     RTABMAP_PARAM(Bayes, VirtualPlacePriorThr, float, 0.9,  "Virtual place prior");

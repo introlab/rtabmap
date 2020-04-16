@@ -194,8 +194,8 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 #ifndef RTABMAP_NONFREE
 		_ui->comboBox_detector_strategy->setItemData(0, 0, Qt::UserRole - 1);
 		_ui->comboBox_detector_strategy->setItemData(1, 0, Qt::UserRole - 1);
-		_ui->reextract_type->setItemData(0, 0, Qt::UserRole - 1);
-		_ui->reextract_type->setItemData(1, 0, Qt::UserRole - 1);
+		_ui->vis_feature_detector->setItemData(0, 0, Qt::UserRole - 1);
+		_ui->vis_feature_detector->setItemData(1, 0, Qt::UserRole - 1);
 
 #if CV_MAJOR_VERSION >= 3
 		_ui->comboBox_detector_strategy->setItemData(0, 0, Qt::UserRole - 1);
@@ -204,25 +204,30 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 		_ui->comboBox_detector_strategy->setItemData(4, 0, Qt::UserRole - 1);
 		_ui->comboBox_detector_strategy->setItemData(5, 0, Qt::UserRole - 1);
 		_ui->comboBox_detector_strategy->setItemData(6, 0, Qt::UserRole - 1);
-		_ui->reextract_type->setItemData(0, 0, Qt::UserRole - 1);
-		_ui->reextract_type->setItemData(1, 0, Qt::UserRole - 1);
-		_ui->reextract_type->setItemData(3, 0, Qt::UserRole - 1);
-		_ui->reextract_type->setItemData(4, 0, Qt::UserRole - 1);
-		_ui->reextract_type->setItemData(5, 0, Qt::UserRole - 1);
-		_ui->reextract_type->setItemData(6, 0, Qt::UserRole - 1);
+		_ui->vis_feature_detector->setItemData(0, 0, Qt::UserRole - 1);
+		_ui->vis_feature_detector->setItemData(1, 0, Qt::UserRole - 1);
+		_ui->vis_feature_detector->setItemData(3, 0, Qt::UserRole - 1);
+		_ui->vis_feature_detector->setItemData(4, 0, Qt::UserRole - 1);
+		_ui->vis_feature_detector->setItemData(5, 0, Qt::UserRole - 1);
+		_ui->vis_feature_detector->setItemData(6, 0, Qt::UserRole - 1);
 #endif
 #endif
 
 #ifndef RTABMAP_ORB_OCTREE
 		_ui->comboBox_detector_strategy->setItemData(10, 0, Qt::UserRole - 1);
-		_ui->reextract_type->setItemData(10, 0, Qt::UserRole - 1);
+		_ui->vis_feature_detector->setItemData(10, 0, Qt::UserRole - 1);
+#endif
+
+#ifndef RTABMAP_SP_TORCH
+		_ui->comboBox_detector_strategy->setItemData(11, 0, Qt::UserRole - 1);
+		_ui->vis_feature_detector->setItemData(11, 0, Qt::UserRole - 1);
 #endif
 
 #if CV_MAJOR_VERSION >= 3
 	_ui->groupBox_fast_opencv2->setEnabled(false);
 #else
 	_ui->comboBox_detector_strategy->setItemData(9, 0, Qt::UserRole - 1); // No KAZE
-	_ui->reextract_type->setItemData(9, 0, Qt::UserRole - 1); // No KAZE
+	_ui->vis_feature_detector->setItemData(9, 0, Qt::UserRole - 1); // No KAZE
 #endif
 
 	_ui->comboBox_cameraImages_odomFormat->setItemData(4, 0, Qt::UserRole - 1);
@@ -935,6 +940,14 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->spinBox_kaze_octavelayers->setObjectName(Parameters::kKAZENOctaveLayers().c_str());
 	_ui->spinBox_kaze_diffusivity->setObjectName(Parameters::kKAZEDiffusivity().c_str());
 
+	// SuperPoint Torch
+	_ui->lineEdit_sptorch_path->setObjectName(Parameters::kSPTorchModelPath().c_str());
+	connect(_ui->toolButton_sptorch_path, SIGNAL(clicked()), this, SLOT(changeSPTorchModelPath()));
+	_ui->doubleSpinBox_sptorch_threshold->setObjectName(Parameters::kSPTorchThreshold().c_str());
+	_ui->checkBox_sptorch_nms->setObjectName(Parameters::kSPTorchNMS().c_str());
+	_ui->spinBox_sptorch_minDistance->setObjectName(Parameters::kSPTorchMinDistance().c_str());
+	_ui->checkBox_sptorch_cuda->setObjectName(Parameters::kSPTorchCuda().c_str());
+
 	// verifyHypotheses
 	_ui->groupBox_vh_epipolar2->setObjectName(Parameters::kVhEpEnabled().c_str());
 	_ui->surf_spinBox_matchCountMinAccepted->setObjectName(Parameters::kVhEpMatchCountMin().c_str());
@@ -1021,7 +1034,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->reextract_nndrRatio->setObjectName(Parameters::kVisCorNNDR().c_str());
 	_ui->spinBox_visCorGuessWinSize->setObjectName(Parameters::kVisCorGuessWinSize().c_str());
 	_ui->checkBox__visCorGuessMatchToProjection->setObjectName(Parameters::kVisCorGuessMatchToProjection().c_str());
-	_ui->reextract_type->setObjectName(Parameters::kVisFeatureType().c_str());
+	_ui->vis_feature_detector->setObjectName(Parameters::kVisFeatureType().c_str());
 	_ui->reextract_maxFeatures->setObjectName(Parameters::kVisMaxFeatures().c_str());
 	_ui->reextract_gridrows->setObjectName(Parameters::kVisGridRows().c_str());
 	_ui->reextract_gridcols->setObjectName(Parameters::kVisGridCols().c_str());
@@ -2871,13 +2884,13 @@ bool PreferencesDialog::validateForm()
 		_ui->comboBox_detector_strategy->setCurrentIndex(Feature2D::kFeatureOrb);
 	}
 	// BOW Reextract features type
-	if(_ui->reextract_type->currentIndex() <= 1)
+	if(_ui->vis_feature_detector->currentIndex() <= 1)
 	{
 		QMessageBox::warning(this, tr("Parameter warning"),
 				tr("Selected feature type (SURF/SIFT) is not available. RTAB-Map is not built "
 				   "with the nonfree module from OpenCV. Fast/Brief is set instead for the re-extraction "
 				   "of features on loop closure."));
-		_ui->reextract_type->setCurrentIndex(Feature2D::kFeatureFastBrief);
+		_ui->vis_feature_detector->setCurrentIndex(Feature2D::kFeatureFastBrief);
 	}
 #endif
 
@@ -2896,18 +2909,18 @@ bool PreferencesDialog::validateForm()
 		_ui->comboBox_detector_strategy->setCurrentIndex(Feature2D::kFeatureOrb);
 #endif
 	}
-	if (_ui->reextract_type->currentIndex() == Feature2D::kFeatureKaze)
+	if (_ui->vis_feature_detector->currentIndex() == Feature2D::kFeatureKaze)
 	{
 #ifdef RTABMAP_NONFREE
 		QMessageBox::warning(this, tr("Parameter warning"),
 			tr("Selected feature type (KAZE) is not available on OpenCV2. SURF is set instead "
 				"for the re-extraction of features on loop closure."));
-				_ui->reextract_type->setCurrentIndex(Feature2D::kFeatureSurf);
+				_ui->vis_feature_detector->setCurrentIndex(Feature2D::kFeatureSurf);
 #else
 		QMessageBox::warning(this, tr("Parameter warning"),
 			tr("Selected feature type (KAZE) is not available on OpenCV2. ORB is set instead "
 				"for the re-extraction of features on loop closure."));
-				_ui->reextract_type->setCurrentIndex(Feature2D::kFeatureOrb);
+				_ui->vis_feature_detector->setCurrentIndex(Feature2D::kFeatureOrb);
 #endif
 	}
 #endif
@@ -2920,12 +2933,12 @@ bool PreferencesDialog::validateForm()
 				"for the bag-of-words dictionary."));
 		_ui->comboBox_detector_strategy->setCurrentIndex(Feature2D::kFeatureOrb);
 	}
-	if (_ui->reextract_type->currentIndex() == Feature2D::kFeatureOrbOctree)
+	if (_ui->vis_feature_detector->currentIndex() == Feature2D::kFeatureOrbOctree)
 	{
 		QMessageBox::warning(this, tr("Parameter warning"),
 			tr("Selected feature type (ORB Octree) is not available on OpenCV2. ORB is set instead "
 				"for the re-extraction of features on loop closure."));
-				_ui->reextract_type->setCurrentIndex(Feature2D::kFeatureOrb);
+				_ui->vis_feature_detector->setCurrentIndex(Feature2D::kFeatureOrb);
 	}
 #endif
 
@@ -3057,7 +3070,7 @@ bool PreferencesDialog::validateForm()
 	}
 
 	// BOW Reextract features type
-	if(_ui->reextract_nn->currentIndex() == VWDictionary::kNNFlannLSH && _ui->reextract_type->currentIndex() <= 1)
+	if(_ui->reextract_nn->currentIndex() == VWDictionary::kNNFlannLSH && _ui->vis_feature_detector->currentIndex() <= 1)
 	{
 		QMessageBox::warning(this, tr("Parameter warning"),
 				tr("With the selected feature type (SURF or SIFT), parameter \"Visual word->Nearest Neighbor\" "
@@ -4569,7 +4582,7 @@ void PreferencesDialog::useOdomFeatures()
 
 		if(r == QMessageBox::Yes)
 		{
-			_ui->comboBox_detector_strategy->setCurrentIndex(_ui->reextract_type->currentIndex());
+			_ui->comboBox_detector_strategy->setCurrentIndex(_ui->vis_feature_detector->currentIndex());
 			_ui->surf_doubleSpinBox_maxDepth->setValue(_ui->loopClosure_bowMaxDepth->value());
 			_ui->surf_doubleSpinBox_minDepth->setValue(_ui->loopClosure_bowMinDepth->value());
 			_ui->surf_spinBox_wordsPerImageTarget->setValue(_ui->reextract_maxFeatures->value());
@@ -4675,6 +4688,23 @@ void PreferencesDialog::changeIcpPMConfigPath()
 	if(!path.isEmpty())
 	{
 		_ui->lineEdit_IcpPMConfigPath->setText(path);
+	}
+}
+
+void PreferencesDialog::changeSPTorchModelPath()
+{
+	QString path;
+	if(_ui->lineEdit_sptorch_path->text().isEmpty())
+	{
+		path = QFileDialog::getOpenFileName(this, tr("Select file"), this->getWorkingDirectory(), tr("SuperPoint weights (*.pt)"));
+	}
+	else
+	{
+		path = QFileDialog::getOpenFileName(this, tr("Select file"), _ui->lineEdit_sptorch_path->text(), tr("SuperPoint weights (*.pt)"));
+	}
+	if(!path.isEmpty())
+	{
+		_ui->lineEdit_sptorch_path->setText(path);
 	}
 }
 

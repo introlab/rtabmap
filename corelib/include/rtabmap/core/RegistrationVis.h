@@ -51,8 +51,6 @@ public:
 	int getIterations() const {return _iterations;}
 	int getMinInliers() const {return _minInliers;}
 
-	Feature2D * createFeatureDetector() const; // for convenience
-
 protected:
 	virtual Transform computeTransformationImpl(
 			Signature & from,
@@ -90,6 +88,9 @@ private:
 
 	ParametersMap _featureParameters;
 	ParametersMap _bundleParameters;
+
+	Feature2D * _detectorFrom;
+	Feature2D * _detectorTo;
 };
 
 }

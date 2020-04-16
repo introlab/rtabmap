@@ -335,6 +335,7 @@ private Q_SLOTS:
 	void changeOdometryOKVISConfigPath();
 	void changeOdometryVINSConfigPath();
 	void changeIcpPMConfigPath();
+	void changeSPTorchModelPath();
 	void readSettingsEnd();
 	void setupTreeView();
 	void updateBasicParameter();

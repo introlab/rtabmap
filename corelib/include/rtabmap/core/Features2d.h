@@ -87,6 +87,7 @@ typedef cv::cuda::FastFeatureDetector CV_FAST_GPU;
 namespace rtabmap {
 
 class ORBextractor;
+class SPDetector;
 
 class Stereo;
 #if CV_MAJOR_VERSION < 3
@@ -107,7 +108,8 @@ public:
 		kFeatureBrisk=7,
 		kFeatureGfttOrb=8,  //new 0.10.11
 		kFeatureKaze=9,     //new 0.13.2
-		kFeatureOrbOctree=10};   //new 0.19.2
+		kFeatureOrbOctree=10, //new 0.19.2
+		kFeatureSuperPointTorch=11}; //new 0.19.7
 
 	static Feature2D * create(const ParametersMap & parameters = ParametersMap());
 	static Feature2D * create(Feature2D::Type type, const ParametersMap & parameters = ParametersMap()); // for convenience
@@ -496,6 +498,28 @@ private:
 	cv::Mat descriptors_;
 };
 
+//SuperPointTorch
+class RTABMAP_EXP SuperPointTorch : public Feature2D
+{
+public:
+	SuperPointTorch(const ParametersMap & parameters = ParametersMap());
+	virtual ~SuperPointTorch();
+
+	virtual void parseParameters(const ParametersMap & parameters);
+	virtual Feature2D::Type getType() const { return kFeatureSuperPointTorch; }
+
+private:
+	virtual std::vector<cv::KeyPoint> generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask = cv::Mat());
+	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const;
+
+	cv::Ptr<SPDetector> superPoint_;
+
+	std::string path_;
+	float threshold_;
+	bool nms_;
+	int minDistance_;
+	bool cuda_;
+};
 
 }
 
