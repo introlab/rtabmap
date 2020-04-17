@@ -1064,7 +1064,7 @@ MESSAGE(STATUS "  With ORB OcTree           = NO (WITH_ORB_OCTREE=OFF)")
 ENDIF()
 
 IF(TORCH_FOUND)
-MESSAGE(STATUS "  With SupertPoint Torch    = YES (License: GPLv3)")
+MESSAGE(STATUS "  With SupertPoint Torch    = YES (License: GPLv3) libtorch=${Torch_VERSION}")
 ELSEIF(NOT WITH_SP_TORCH)
 MESSAGE(STATUS "  With SupertPoint Torch    = NO (WITH_SP_TORCH=OFF)")
 ELSE()
