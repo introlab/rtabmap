@@ -71,7 +71,9 @@ RegistrationVis::RegistrationVis(const ParametersMap & parameters, Registration 
 		_bundleAdjustment(Parameters::defaultVisBundleAdjustment()),
 		_depthAsMask(Parameters::defaultVisDepthAsMask()),
 		_minInliersDistributionThr(Parameters::defaultVisMinInliersDistribution()),
-		_maxInliersMeanDistance(Parameters::defaultVisMeanInliersDistance())
+		_maxInliersMeanDistance(Parameters::defaultVisMeanInliersDistance()),
+		_detectorFrom(0),
+		_detectorTo(0)
 {
 	_featureParameters = Parameters::getDefaultParameters();
 	uInsert(_featureParameters, ParametersPair(Parameters::kKpNNStrategy(), _featureParameters.at(Parameters::kVisCorNNType())));
@@ -185,15 +187,17 @@ void RegistrationVis::parseParameters(const ParametersMap & parameters)
 	{
 		uInsert(_featureParameters, ParametersPair(Parameters::kKpGridCols(), parameters.at(Parameters::kVisGridCols())));
 	}
+
+	delete _detectorFrom;
+	delete _detectorTo;
+	_detectorFrom = Feature2D::create(_featureParameters);
+	_detectorTo = Feature2D::create(_featureParameters);
 }
 
 RegistrationVis::~RegistrationVis()
 {
-}
-
-Feature2D * RegistrationVis::createFeatureDetector() const
-{
-	return Feature2D::create(_featureParameters);
+	delete _detectorFrom;
+	delete _detectorTo;
 }
 
 Transform RegistrationVis::computeTransformationImpl(
@@ -280,8 +284,6 @@ Transform RegistrationVis::computeTransformationImpl(
 				toSignature.sensorData().imageRaw().type() == CV_8UC1 ||
 				toSignature.sensorData().imageRaw().type() == CV_8UC3);
 
-		Feature2D * detectorFrom = createFeatureDetector();
-		Feature2D * detectorTo = createFeatureDetector();
 		std::vector<cv::KeyPoint> kptsFrom;
 		cv::Mat imageFrom = fromSignature.sensorData().imageRaw();
 		cv::Mat imageTo = toSignature.sensorData().imageRaw();
@@ -311,7 +313,7 @@ Transform RegistrationVis::computeTransformationImpl(
 						}
 					}
 
-					kptsFrom = detectorFrom->generateKeypoints(
+					kptsFrom = _detectorFrom->generateKeypoints(
 							imageFrom,
 							depthMask);
 				}
@@ -378,7 +380,7 @@ Transform RegistrationVis::computeTransformationImpl(
 			}
 			else
 			{
-				kptsFrom3D = detectorFrom->generateKeypoints3D(fromSignature.sensorData(), kptsFrom);
+				kptsFrom3D = _detectorFrom->generateKeypoints3D(fromSignature.sensorData(), kptsFrom);
 			}
 
 			if(!imageFrom.empty() && !imageTo.empty())
@@ -452,7 +454,7 @@ Transform RegistrationVis::computeTransformationImpl(
 				std::vector<cv::Point3f> kptsTo3D;
 				if(_estimationType == 0 || _estimationType == 1 || !_forwardEstimateOnly)
 				{
-					kptsTo3D = detectorTo->generateKeypoints3D(toSignature.sensorData(), kptsTo);
+					kptsTo3D = _detectorTo->generateKeypoints3D(toSignature.sensorData(), kptsTo);
 				}
 
 				UASSERT(kptsFrom.size() == kptsFrom3DKept.size());
@@ -519,7 +521,7 @@ Transform RegistrationVis::computeTransformationImpl(
 						}
 					}
 
-					kptsTo = detectorTo->generateKeypoints(
+					kptsTo = _detectorTo->generateKeypoints(
 							imageTo,
 							depthMask);
 				}
@@ -566,7 +568,7 @@ Transform RegistrationVis::computeTransformationImpl(
 				}
 				UDEBUG("cleared orignalWordsFromIds");
 				orignalWordsFromIds.clear();
-				descriptorsFrom = detectorFrom->generateDescriptors(imageFrom, kptsFrom);
+				descriptorsFrom = _detectorFrom->generateDescriptors(imageFrom, kptsFrom);
 			}
 
 			cv::Mat descriptorsTo;
@@ -598,7 +600,7 @@ Transform RegistrationVis::computeTransformationImpl(
 						imageTo = tmp;
 					}
 
-					descriptorsTo = detectorTo->generateDescriptors(imageTo, kptsTo);
+					descriptorsTo = _detectorTo->generateDescriptors(imageTo, kptsTo);
 				}
 			}
 
@@ -629,9 +631,9 @@ Transform RegistrationVis::computeTransformationImpl(
 						   kptsFrom.size(),
 						   fromSignature.sensorData().keypoints3D().size());
 				}
-				kptsFrom3D = detectorFrom->generateKeypoints3D(fromSignature.sensorData(), kptsFrom);
+				kptsFrom3D = _detectorFrom->generateKeypoints3D(fromSignature.sensorData(), kptsFrom);
 				UDEBUG("generated kptsFrom3D=%d", (int)kptsFrom3D.size());
-				if(!kptsFrom3D.empty() && (detectorFrom->getMinDepth() > 0.0f || detectorFrom->getMaxDepth() > 0.0f))
+				if(!kptsFrom3D.empty() && (_detectorFrom->getMinDepth() > 0.0f || _detectorFrom->getMaxDepth() > 0.0f))
 				{
 					//remove all keypoints/descriptors with no valid 3D points
 					UASSERT_MSG((int)kptsFrom.size() == descriptorsFrom.rows &&
@@ -701,8 +703,8 @@ Transform RegistrationVis::computeTransformationImpl(
 						   (int)kptsTo.size(),
 						   (int)toSignature.sensorData().keypoints3D().size());
 				}
-				kptsTo3D = detectorTo->generateKeypoints3D(toSignature.sensorData(), kptsTo);
-				if(kptsTo3D.size() && (detectorTo->getMinDepth() > 0.0f || detectorTo->getMaxDepth() > 0.0f))
+				kptsTo3D = _detectorTo->generateKeypoints3D(toSignature.sensorData(), kptsTo);
+				if(kptsTo3D.size() && (_detectorTo->getMinDepth() > 0.0f || _detectorTo->getMaxDepth() > 0.0f))
 				{
 					UDEBUG("");
 					//remove all keypoints/descriptors with no valid 3D points
@@ -1174,8 +1176,6 @@ Transform RegistrationVis::computeTransformationImpl(
 		toSignature.setWords(wordsTo);
 		toSignature.setWords3(words3To);
 		toSignature.setWordsDescriptors(wordsDescTo);
-		delete detectorFrom;
-		delete detectorTo;
 	}
 
 	/////////////////////

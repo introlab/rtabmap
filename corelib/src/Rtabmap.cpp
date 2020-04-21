@@ -2571,9 +2571,9 @@ bool Rtabmap::process(
 		 signaturesRetrieved.size()) // can be different map of the current one
 		 &&
 		 (_memory->isIncremental() ||
-				 // In localization mode, the new node should be linked to another node or a landmark already in the graph
-				 graph::filterLinks(signature->getLinks(), Link::kSelfRefLink).size() ||
-				 (landmarkDetected!=0 && _optimizedPoses.find(landmarkDetected)!=_optimizedPoses.end())))
+		  // In localization mode, the new node should be linked to another node or a landmark already in the working memory
+		  graph::filterLinks(signature->getLinks(), Link::kSelfRefLink).size() ||
+		  landmarkDetected!=0))
 	{
 		UASSERT(uContains(_optimizedPoses, signature->id()));
 
@@ -2834,7 +2834,6 @@ bool Rtabmap::process(
 		}
 		else
 		{
-
 			UINFO("Update map correction");
 			std::map<int, Transform> poses = _optimizedPoses;
 
@@ -3542,7 +3541,7 @@ bool Rtabmap::process(
 	}
 
 	//Save statistics to database
-	if(_memory->isIncremental())
+	if(_memory->isIncremental() || _memory->isLocalizationDataSaved())
 	{
 		_memory->saveStatistics(statistics_);
 	}

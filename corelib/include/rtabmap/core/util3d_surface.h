@@ -339,20 +339,24 @@ pcl::PointCloud<pcl::Normal>::Ptr RTABMAP_EXP computeFastOrganizedNormals(
 
 float RTABMAP_EXP computeNormalsComplexity(
 		const LaserScan & scan,
+		const Transform & t = Transform::getIdentity(),
 		cv::Mat * pcaEigenVectors = 0,
 		cv::Mat * pcaEigenValues = 0);
 float RTABMAP_EXP computeNormalsComplexity(
 		const pcl::PointCloud<pcl::Normal> & normals,
+		const Transform & t = Transform::getIdentity(),
 		bool is2d = false,
 		cv::Mat * pcaEigenVectors = 0,
 		cv::Mat * pcaEigenValues = 0);
 float RTABMAP_EXP computeNormalsComplexity(
 		const pcl::PointCloud<pcl::PointNormal> & cloud,
+		const Transform & t = Transform::getIdentity(),
 		bool is2d = false,
 		cv::Mat * pcaEigenVectors = 0,
 		cv::Mat * pcaEigenValues = 0);
 float RTABMAP_EXP computeNormalsComplexity(
 		const pcl::PointCloud<pcl::PointXYZRGBNormal> & cloud,
+		const Transform & t = Transform::getIdentity(),
 		bool is2d = false,
 		cv::Mat * pcaEigenVectors = 0,
 		cv::Mat * pcaEigenValues = 0);

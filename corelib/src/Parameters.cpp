@@ -165,7 +165,8 @@ bool Parameters::isFeatureParameter(const std::string & parameter)
 			group.compare("BRIEF") == 0 ||
 			group.compare("GFTT") == 0 ||
 			group.compare("BRISK") == 0 ||
-			group.compare("KAZE") == 0;
+			group.compare("KAZE") == 0 ||
+			group.compare("SPTorch") == 0;
 }
 
 rtabmap::ParametersMap Parameters::getDefaultOdometryParameters(bool stereo, bool vis, bool icp)
@@ -602,6 +603,12 @@ ParametersMap Parameters::parseArguments(int argc, char * argv[], bool onlyParam
 #endif
 				str = "With ORB OcTree:";
 #ifdef RTABMAP_ORB_OCTREE
+				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
+#else
+				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
+#endif
+				str = "With SuperPoint Torch:";
+#ifdef RTABMAP_SP_TORCH
 				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
 #else
 				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;

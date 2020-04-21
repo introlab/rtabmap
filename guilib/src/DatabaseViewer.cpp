@@ -1711,7 +1711,7 @@ void DatabaseViewer::updateIds()
 		previousPose=p;
 
 		//links
-		bool addPose = false;
+		bool addPose = links.find(ids_[i]) == links.end();
 		for(std::multimap<int, Link>::iterator jter=links.find(ids_[i]); jter!=links.end() && jter->first == ids_[i]; ++jter)
 		{
 			if(jter->second.type() == Link::kNeighborMerged)
@@ -4195,6 +4195,7 @@ void DatabaseViewer::update(int value,
 					gravityLink.begin()->second.transform().getEulerAngles(roll, pitch, yaw);
 					Eigen::Vector3d v = Transform(0,0,0,roll,pitch,0).toEigen3d() * -Eigen::Vector3d::UnitZ();
 					labelGravity->setText(QString("x=%1 y=%2 z=%3").arg(v[0]).arg(v[1]).arg(v[2]));
+					labelGravity->setToolTip(QString("roll=%1 pitch=%2 yaw=%3").arg(roll).arg(pitch).arg(yaw));
 				}
 
 				if(gps.stamp()>0.0)
@@ -5105,31 +5106,46 @@ void DatabaseViewer::updateWordsMatching()
 
 					// Add lines
 					// Draw lines between corresponding features...
-					float scaleX = ui_->graphicsView_A->viewScale();
-					float deltaX = 0;
-					float deltaY = 0;
+					float scaleAX = ui_->graphicsView_A->viewScale();
+					float scaleBX = ui_->graphicsView_B->viewScale();
+
+					float scaleDiff = ui_->graphicsView_A->viewScale() / ui_->graphicsView_B->viewScale();
+					float deltaAX = 0;
+					float deltaAY = 0;
 
 					if(ui_->actionVertical_Layout->isChecked())
 					{
-						deltaY = ui_->graphicsView_A->height()/scaleX;
+						deltaAY = ui_->graphicsView_A->height()/scaleAX;
 					}
 					else
 					{
-						deltaX = ui_->graphicsView_A->width()/scaleX;
+						deltaAX = ui_->graphicsView_A->width()/scaleAX;
+					}
+					float deltaBX = 0;
+					float deltaBY = 0;
+
+					if(ui_->actionVertical_Layout->isChecked())
+					{
+						deltaBY = ui_->graphicsView_B->height()/scaleBX;
+					}
+					else
+					{
+						deltaBX = ui_->graphicsView_A->width()/scaleBX;
 					}
 
 					const KeypointItem * kptA = wordsA.value(ids[i]);
 					const KeypointItem * kptB = wordsB.value(ids[i]);
+
 					ui_->graphicsView_A->addLine(
 							kptA->rect().x()+kptA->rect().width()/2,
 							kptA->rect().y()+kptA->rect().height()/2,
-							kptB->rect().x()+kptB->rect().width()/2+deltaX,
-							kptB->rect().y()+kptB->rect().height()/2+deltaY,
+							kptB->rect().x()/scaleDiff+kptB->rect().width()/scaleDiff/2+deltaAX,
+							kptB->rect().y()/scaleDiff+kptB->rect().height()/scaleDiff/2+deltaAY,
 							ui_->graphicsView_A->getDefaultMatchingLineColor());
 
 					ui_->graphicsView_B->addLine(
-							kptA->rect().x()+kptA->rect().width()/2-deltaX,
-							kptA->rect().y()+kptA->rect().height()/2-deltaY,
+							kptA->rect().x()*scaleDiff+kptA->rect().width()*scaleDiff/2-deltaBX,
+							kptA->rect().y()*scaleDiff+kptA->rect().height()*scaleDiff/2-deltaBY,
 							kptB->rect().x()+kptB->rect().width()/2,
 							kptB->rect().y()+kptB->rect().height()/2,
 							ui_->graphicsView_B->getDefaultMatchingLineColor());
@@ -6719,11 +6735,13 @@ void DatabaseViewer::refineConstraint()
 
 void DatabaseViewer::refineConstraint(int from, int to, bool silent)
 {
+	bool switchedIds = false;
 	if(from == to)
 	{
 		UWARN("Cannot refine link to same node");
 		return;
 	}
+
 
 	Link currentLink =  findActiveLink(from, to);
 	if(!currentLink.isValid())
@@ -6731,7 +6749,8 @@ void DatabaseViewer::refineConstraint(int from, int to, bool silent)
 		UERROR("Not found link! (%d->%d)", from, to);
 		return;
 	}
-	UDEBUG("%d -> %d (type=%d)", from ,to, currentLink.type());
+
+	UDEBUG("%d -> %d (type=%d)", currentLink.from(), currentLink.to(), currentLink.type());
 	Transform t = currentLink.transform();
 	if(ui_->checkBox_showOptimized->isChecked() &&
 	   (currentLink.type() == Link::kNeighbor || currentLink.type() == Link::kNeighborMerged) &&
@@ -6751,7 +6770,7 @@ void DatabaseViewer::refineConstraint(int from, int to, bool silent)
 		}
 	}
 	else if(ui_->checkBox_ignorePoseCorrection->isChecked() &&
-			graph::findLink(linksRefined_, from, to) == linksRefined_.end())
+			graph::findLink(linksRefined_, currentLink.from(), currentLink.to()) == linksRefined_.end())
 	{
 		if(currentLink.type() == Link::kNeighbor ||
 		   currentLink.type() == Link::kNeighborMerged)
@@ -7008,10 +7027,20 @@ void DatabaseViewer::refineConstraint(int from, int to, bool silent)
 
 		fromS = Signature(dataFrom);
 		toS = Signature(dataTo);
-		transform = registration->computeTransformationMod(fromS, toS, t, &info);
+
+		if(fromS.id() < toS.id())
+		{
+			transform = registration->computeTransformationMod(fromS, toS, t, &info);
+		}
+		else
+		{
+			transform = registration->computeTransformationMod(toS, fromS, t.isNull()?t:t.inverse(), &info);
+			switchedIds = true;
+		}
+
 		delete registration;
 	}
-	UINFO("(%d ->%d) Registration time: %f s", from, to, timer.ticks());
+	UINFO("(%d ->%d) Registration time: %f s", currentLink.from(), currentLink.to(), timer.ticks());
 
 	if(!transform.isNull())
 	{
@@ -7022,6 +7051,11 @@ void DatabaseViewer::refineConstraint(int from, int to, bool silent)
 				info.covariance = cv::Mat::eye(6,6,CV_64FC1)*0.0001; // epsilon if exact transform
 			}
 		}
+		if(switchedIds)
+		{
+			transform = transform.inverse();
+		}
+
 		Link newLink(currentLink.from(), currentLink.to(), currentLink.type(), transform, info.covariance.inv(), currentLink.userDataCompressed());
 
 		bool updated = false;
@@ -7053,9 +7087,9 @@ void DatabaseViewer::refineConstraint(int from, int to, bool silent)
 			if(fromS.id() > 0 && toS.id() > 0)
 			{
 				this->updateConstraintView(newLink, true, fromS, toS);
-
 				ui_->graphicsView_A->setFeatures(fromS.getWords(), fromS.sensorData().depthRaw());
 				ui_->graphicsView_B->setFeatures(toS.getWords(), toS.sensorData().depthRaw());
+
 				updateWordsMatching();
 			}
 			else
@@ -7069,7 +7103,7 @@ void DatabaseViewer::refineConstraint(int from, int to, bool silent)
 	{
 		QMessageBox::warning(this,
 				tr("Refine link"),
-				tr("Cannot find a transformation between nodes %1 and %2: %3").arg(from).arg(to).arg(info.rejectedMsg.c_str()));
+				tr("Cannot find a transformation between nodes %1 and %2: %3").arg(currentLink.from()).arg(currentLink.to()).arg(info.rejectedMsg.c_str()));
 	}
 }
 
@@ -7088,13 +7122,16 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent)
 		UWARN("Cannot add link to same node");
 		return false;
 	}
-	else if(from < to)
+	else if(from > to)
 	{
-		switchedIds = true;
 		int tmp = from;
 		from = to;
 		to = tmp;
+		switchedIds = true;
 	}
+	std::list<Signature*> signatures;
+	Signature * fromS=0;
+	Signature * toS=0;
 
 	Link newLink;
 	if(!containsLink(linksAdded_, from, to) &&
@@ -7120,7 +7157,6 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent)
 		std::list<int> ids;
 		ids.push_back(from);
 		ids.push_back(to);
-		std::list<Signature*> signatures;
 		dbDriver_->loadSignatures(ids, signatures);
 		if(signatures.size() != 2)
 		{
@@ -7130,8 +7166,8 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent)
 				return false;
 			}
 		}
-		Signature * fromS = *signatures.begin();
-		Signature * toS = *signatures.rbegin();
+		fromS = *signatures.begin();
+		toS = *signatures.rbegin();
 
 		bool reextractVisualFeatures = uStr2Bool(parameters.at(Parameters::kRGBDLoopClosureReextractFeatures()));
 		if(reg->isScanRequired() ||
@@ -7226,21 +7262,6 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent)
 		delete reg;
 		UDEBUG("");
 
-		if(!silent)
-		{
-			if(switchedIds)
-			{
-				ui_->graphicsView_A->setFeatures(toS->getWords(), toS->sensorData().depthRaw());
-				ui_->graphicsView_B->setFeatures(fromS->getWords(), fromS->sensorData().depthRaw());
-			}
-			else
-			{
-				ui_->graphicsView_A->setFeatures(fromS->getWords(), fromS->sensorData().depthRaw());
-				ui_->graphicsView_B->setFeatures(toS->getWords(), toS->sensorData().depthRaw());
-			}
-			updateWordsMatching();
-		}
-		
 		if(!t.isNull())
 		{
 			cv::Mat information = info.covariance.inv();
@@ -7262,11 +7283,6 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent)
 			QMessageBox::warning(this,
 					tr("Add link"),
 					tr("Cannot find a transformation between nodes %1 and %2: %3").arg(from).arg(to).arg(info.rejectedMsg.c_str()));
-		}
-
-		for(std::list<Signature*>::iterator iter=signatures.begin(); iter!=signatures.end(); ++iter)
-		{
-			delete *iter;
 		}
 	}
 	else if(containsLink(linksRemoved_, from, to))
@@ -7398,13 +7414,46 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent)
 		}
 		else
 		{
+			if(newLink.from() < newLink.to())
+			{
+				newLink = newLink.inverse();
+			}
 			linksAdded_.insert(std::make_pair(newLink.from(), newLink));
 		}
-		if(!silent)
+	}
+	
+	if(!silent)
+	{
+		if(fromS && toS)
+		{
+			if((updateConstraints && newLink.from() > newLink.to()) || (!updateConstraints && switchedIds))
+			{
+				Signature * tmpS = fromS;
+				fromS = toS;
+				toS = tmpS;
+			}
+
+			if(updateConstraints)
+			{
+				updateLoopClosuresSlider(fromS->id(), toS->id());
+				this->updateGraphView();
+				this->updateConstraintView(newLink, false, *fromS, *toS);
+			}
+
+			ui_->graphicsView_A->setFeatures(fromS->getWords(), fromS->sensorData().depthRaw());
+			ui_->graphicsView_B->setFeatures(toS->getWords(), toS->sensorData().depthRaw());
+			updateWordsMatching();
+		}
+		else if(updateConstraints)
 		{
 			updateLoopClosuresSlider(from, to);
 			this->updateGraphView();
 		}
+	}
+
+	for(std::list<Signature*>::iterator iter=signatures.begin(); iter!=signatures.end(); ++iter)
+	{
+		delete *iter;
 	}
 
 	return updateConstraints;

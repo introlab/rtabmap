@@ -37,6 +37,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UMath.h>
 #include <rtabmap/utilite/UTimer.h>
 #include <pcl/conversions.h>
+#include <pcl/common/pca.h>
 
 #ifdef RTABMAP_POINTMATCHER
 #include <fstream>
@@ -600,15 +601,34 @@ Transform RegistrationIcp::computeTransformationImpl(
 				//special case if we have already normals computed and there is no filtering
 
 				cv::Mat complexityVectorsFrom, complexityVectorsTo;
-				double fromComplexity = util3d::computeNormalsComplexity(fromScan, &complexityVectorsFrom);
-				double toComplexity = util3d::computeNormalsComplexity(toScan, &complexityVectorsTo);
+				cv::Mat complexityValuesFrom, complexityValuesTo;
+				double fromComplexity = util3d::computeNormalsComplexity(fromScan, Transform::getIdentity(), &complexityVectorsFrom, &complexityValuesFrom);
+				double toComplexity = util3d::computeNormalsComplexity(toScan, guess, &complexityVectorsTo, &complexityValuesTo);
 				float complexity = fromComplexity<toComplexity?fromComplexity:toComplexity;
 				info.icpStructuralComplexity = complexity;
 				if(complexity < _pointToPlaneMinComplexity)
 				{
 					tooLowComplexityForPlaneToPlane = true;
 					complexityVectors = fromComplexity<toComplexity?complexityVectorsFrom:complexityVectorsTo;
-					UWARN("ICP PointToPlane ignored as structural complexity is too low (corridor-like environment): %f < %f (%s). PointToPoint is done instead, orientation is still optimized but translation will be limited to direction of normals.", complexity, _pointToPlaneMinComplexity, Parameters::kIcpPointToPlaneMinComplexity().c_str());
+
+					UASSERT((complexityVectors.rows == 2 && complexityVectors.cols == 2)||
+							(complexityVectors.rows == 3 && complexityVectors.cols == 3));
+					UWARN("ICP PointToPlane ignored as structural complexity is too low (corridor-like environment): (from=%f || to=%f) < %f (%s). "
+						  "PointToPoint is done instead, orientation is still optimized but translation will be limited to "
+						  "direction of normals (%s: %s).",
+						  fromComplexity, toComplexity, _pointToPlaneMinComplexity, Parameters::kIcpPointToPlaneMinComplexity().c_str(),
+						  fromComplexity<toComplexity?"From":"To",
+						  complexityVectors.rows==2?
+								  uFormat("n=%f,%f", complexityVectors.at<float>(0,0), complexityVectors.at<float>(0,1)).c_str():
+								  uFormat("n1=%f,%f,%f n2=%f,%f,%f", complexityVectors.at<float>(0,0), complexityVectors.at<float>(0,1), complexityVectors.at<float>(0,2), complexityVectors.at<float>(1,0), complexityVectors.at<float>(1,1), complexityVectors.at<float>(1,2)).c_str());
+
+					if(ULogger::level() == ULogger::kDebug)
+					{
+						std::cout << "complexityVectorsFrom = " << std::endl << complexityVectorsFrom << std::endl;
+						std::cout << "complexityValuesFrom = " << std::endl << complexityValuesFrom << std::endl;
+						std::cout << "complexityVectorsTo = " << std::endl << complexityVectorsTo << std::endl;
+						std::cout << "complexityValuesTo = " << std::endl << complexityValuesTo << std::endl;
+					}
 				}
 				else
 				{
@@ -618,6 +638,22 @@ Transform RegistrationIcp::computeTransformationImpl(
 					fromCloudNormals = util3d::removeNaNNormalsFromPointCloud(fromCloudNormals);
 					toCloudNormals = util3d::removeNaNNormalsFromPointCloud(toCloudNormals);
 
+					if(fromCloudNormals->size() > 2 && toCloudNormals->size() > 2)
+					{
+						pcl::PCA<pcl::PointNormal> pca;
+						pca.setInputCloud(fromCloudNormals);
+						Eigen::Vector3f valuesFrom = pca.getEigenValues();
+						pca.setInputCloud(toCloudNormals);
+						Eigen::Vector3f valuesTo = pca.getEigenValues();
+						if(valuesFrom[0]/fromCloudNormals->size() < valuesTo[0]/toCloudNormals->size())
+						{
+							info.icpStructuralDistribution = sqrt(valuesFrom[0]/fromCloudNormals->size());
+						}
+						else
+						{
+							info.icpStructuralDistribution = sqrt(valuesTo[0]/toCloudNormals->size());
+						}
+					}
 
 					UDEBUG("Conversion time = %f s", timer.ticks());
 					pcl::PointCloud<pcl::PointNormal>::Ptr fromCloudNormalsRegistered(new pcl::PointCloud<pcl::PointNormal>());
@@ -688,6 +724,23 @@ Transform RegistrationIcp::computeTransformationImpl(
 				pcl::PointCloud<pcl::PointXYZ>::Ptr fromCloud = util3d::laserScanToPointCloud(fromScan, fromScan.localTransform());
 				pcl::PointCloud<pcl::PointXYZ>::Ptr toCloud = util3d::laserScanToPointCloud(toScan, guess * toScan.localTransform());
 				UDEBUG("Conversion time = %f s", timer.ticks());
+
+				if(fromCloud->size() > 2 && toCloud->size() > 2)
+				{
+					pcl::PCA<pcl::PointXYZ> pca;
+					pca.setInputCloud(fromCloud);
+					Eigen::Vector3f valuesFrom = pca.getEigenValues();
+					pca.setInputCloud(toCloud);
+					Eigen::Vector3f valuesTo = pca.getEigenValues();
+					if(valuesFrom[0]/fromCloud->size() < valuesTo[0]/toCloud->size())
+					{
+						info.icpStructuralDistribution = sqrt(valuesFrom[0]/fromCloud->size());
+					}
+					else
+					{
+						info.icpStructuralDistribution = sqrt(valuesTo[0]/toCloud->size());
+					}
+				}
 
 				pcl::PointCloud<pcl::PointXYZ>::Ptr fromCloudFiltered = fromCloud;
 				pcl::PointCloud<pcl::PointXYZ>::Ptr toCloudFiltered = toCloud;
@@ -773,15 +826,33 @@ Transform RegistrationIcp::computeTransformationImpl(
 					}
 
 					cv::Mat complexityVectorsFrom, complexityVectorsTo;
-					double fromComplexity = util3d::computeNormalsComplexity(*normalsFrom, fromScan.is2d(), &complexityVectorsFrom);
-					double toComplexity = util3d::computeNormalsComplexity(*normalsTo, toScan.is2d(), &complexityVectorsTo);
+					cv::Mat complexityValuesFrom, complexityValuesTo;
+					double fromComplexity = util3d::computeNormalsComplexity(*normalsFrom, Transform::getIdentity(), fromScan.is2d(), &complexityVectorsFrom, &complexityValuesFrom);
+					double toComplexity = util3d::computeNormalsComplexity(*normalsTo, Transform::getIdentity(), toScan.is2d(), &complexityVectorsTo, &complexityValuesTo);
 					float complexity = fromComplexity<toComplexity?fromComplexity:toComplexity;
 					info.icpStructuralComplexity = complexity;
 					if(complexity < _pointToPlaneMinComplexity)
 					{
 						tooLowComplexityForPlaneToPlane = true;
 						complexityVectors = fromComplexity<toComplexity?complexityVectorsFrom:complexityVectorsTo;
-						UWARN("ICP PointToPlane ignored as structural complexity is too low (corridor-like environment): %f < %f (%s). PointToPoint is done instead, orientation is still optimized but translation will be limited to direction of normals.", complexity, _pointToPlaneMinComplexity, Parameters::kIcpPointToPlaneMinComplexity().c_str());
+						UASSERT((complexityVectors.rows == 2 && complexityVectors.cols == 2)||
+								(complexityVectors.rows == 3 && complexityVectors.cols == 3));
+						UWARN("ICP PointToPlane ignored as structural complexity is too low (corridor-like environment): (from=%f || to=%f) < %f (%s). "
+							  "PointToPoint is done instead, orientation is still optimized but translation will be limited to "
+							  "direction of normals (%s: %s).",
+							  fromComplexity, toComplexity, _pointToPlaneMinComplexity, Parameters::kIcpPointToPlaneMinComplexity().c_str(),
+							  fromComplexity<toComplexity?"From":"To",
+							  complexityVectors.rows==2?
+									  uFormat("n=%f,%f", complexityVectors.at<float>(0,0), complexityVectors.at<float>(0,1)).c_str():
+									  uFormat("n1=%f,%f,%f n2=%f,%f,%f", complexityVectors.at<float>(0,0), complexityVectors.at<float>(0,1), complexityVectors.at<float>(0,2), complexityVectors.at<float>(1,0), complexityVectors.at<float>(1,1), complexityVectors.at<float>(1,2)).c_str());
+
+						if(ULogger::level() == ULogger::kDebug)
+						{
+							std::cout << "complexityVectorsFrom = " << std::endl << complexityVectorsFrom << std::endl;
+							std::cout << "complexityValuesFrom = " << std::endl << complexityValuesFrom << std::endl;
+							std::cout << "complexityVectorsTo = " << std::endl << complexityVectorsTo << std::endl;
+							std::cout << "complexityValuesTo = " << std::endl << complexityValuesTo << std::endl;
+						}
 					}
 					else
 					{
@@ -976,7 +1047,19 @@ Transform RegistrationIcp::computeTransformationImpl(
 							if(_pointToPlane)
 							{
 								// temporary set PointToPointErrorMinimizer
-								PM::ICP & icpTmp = icp;
+								PM::ICP icpTmp = icp;
+
+								PM::Parameters params;
+								params["maxDist"] = uNumber2Str(_voxelSize>0?_voxelSize:_maxCorrespondenceDistance/2.0f);
+								UWARN("libpointmatcher icp...temporary maxDist=%s (%s=%f, %s=%f)", params["maxDist"].c_str(),  Parameters::kIcpMaxCorrespondenceDistance().c_str(), _maxCorrespondenceDistance, Parameters::kIcpVoxelSize().c_str(), _voxelSize);
+								params["knn"] = uNumber2Str(_libpointmatcherKnn);
+								params["epsilon"] = uNumber2Str(_libpointmatcherEpsilon);
+#if POINTMATCHER_VERSION_INT >= 10300
+								icpTmp.matcher = PM::get().MatcherRegistrar.create("KDTreeMatcher", params);
+#else
+								icpTmp.matcher.reset(PM::get().MatcherRegistrar.create("KDTreeMatcher", params));
+#endif
+
 #if POINTMATCHER_VERSION_INT >= 10300
 								icpTmp.errorMinimizer = PM::get().ErrorMinimizerRegistrar.create("PointToPointErrorMinimizer");
 #else
@@ -1043,7 +1126,10 @@ Transform RegistrationIcp::computeTransformationImpl(
 								// limit translation in direction of the first eigen vector
 								Eigen::Vector3f n(complexityVectors.at<float>(0,0), complexityVectors.at<float>(0,1), 0.0f);
 								float a = v.dot(n);
-								v = n*a;
+								Eigen::Vector3f vp = n*a;
+								UWARN("Normals low complexity: Limiting translation from (%f,%f) to (%f,%f)",
+										v[0], v[1], vp[0], vp[1]);
+								v= vp;
 							}
 							else if(complexityVectors.rows == 3)
 							{
@@ -1052,8 +1138,11 @@ Transform RegistrationIcp::computeTransformationImpl(
 								Eigen::Vector3f n2(complexityVectors.at<float>(1,0), complexityVectors.at<float>(1,1), complexityVectors.at<float>(1,2));
 								float a = v.dot(n1);
 								float b = v.dot(n2);
-								v = n1*a;
-								v += n2*b;
+								Eigen::Vector3f vp = n1*a;
+								vp += n2*b;
+								UWARN("Normals low complexity: Limiting translation from (%f,%f,%f) to (%f,%f,%f)",
+										v[0], v[1], v[2], vp[0], vp[1], vp[2]);
+								v = vp;
 							}
 							else
 							{
@@ -1167,6 +1256,7 @@ Transform RegistrationIcp::computeTransformationImpl(
 						info.covariance = cv::Mat::eye(6,6,CV_64FC1)*variance;
 					}
 					info.icpInliersRatio = correspondencesRatio;
+					info.icpCorrespondences = correspondences;
 
 					if(correspondencesRatio <= _correspondenceRatio)
 					{

@@ -11,6 +11,7 @@ ADD_SUBDIRECTORY( Recovery )
 ADD_SUBDIRECTORY( Reprocess )
 ADD_SUBDIRECTORY( DetectMoreLoopClosures )
 ADD_SUBDIRECTORY( Export )
+ADD_SUBDIRECTORY( Report )
 
 IF(OPENCV_NONFREE_FOUND)
 ADD_SUBDIRECTORY( VocabularyComparison )
@@ -23,8 +24,8 @@ IF(TARGET rtabmap_gui)
 	ADD_SUBDIRECTORY( OdometryViewer )
 	ADD_SUBDIRECTORY( DataRecorder )
 	ADD_SUBDIRECTORY( Calibration )
-	ADD_SUBDIRECTORY( Report )
 ELSE()
    MESSAGE(STATUS "RTAB-Map GUI lib is not built, some tools won't be built...")
 ENDIF()
+
 

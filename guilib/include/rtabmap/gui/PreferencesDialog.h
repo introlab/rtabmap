@@ -165,6 +165,7 @@ public:
 
 	bool isGraphsShown() const;
 	bool isLabelsShown() const;
+	bool isFramesShown() const;
 	bool isLandmarksShown() const;
 	double landmarkVisSize() const;
 	bool isIMUGravityShown(int index) const;
@@ -334,6 +335,7 @@ private Q_SLOTS:
 	void changeOdometryOKVISConfigPath();
 	void changeOdometryVINSConfigPath();
 	void changeIcpPMConfigPath();
+	void changeSPTorchModelPath();
 	void readSettingsEnd();
 	void setupTreeView();
 	void updateBasicParameter();
@@ -359,6 +361,7 @@ private Q_SLOTS:
 	void selectSourceOni2Path();
 	void selectSourceMKVPath();
 	void selectSourceSvoPath();
+	void selectSourceRealsense2JsonPath();
 	void updateSourceGrpVisibility();
 	void testOdometry();
 	void testCamera();

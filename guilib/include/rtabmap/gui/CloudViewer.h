@@ -290,6 +290,8 @@ public:
 	void setTrajectoryShown(bool shown);
 	void setTrajectorySize(unsigned int value);
 	void clearTrajectory();
+	bool isCameraAxisShown() const;
+	void setCameraAxisShown(bool shown);
 	bool isFrustumShown() const;
 	float getFrustumScale() const;
 	QColor getFrustumColor() const;
@@ -404,6 +406,7 @@ private:
     QAction * _aShowTrajectory;
     QAction * _aSetTrajectorySize;
     QAction * _aClearTrajectory;
+    QAction * _aShowCameraAxis;
     QAction * _aShowFrustum;
     QAction * _aSetFrustumScale;
     QAction * _aSetFrustumColor;

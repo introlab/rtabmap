@@ -77,6 +77,7 @@ public:
 	void setResolution(int width, int height, int fps = 30);
 	void publishInterIMU(bool enabled);
 	void setDualMode(bool enabled, const Transform & extrinsics);
+	void setJsonConfig(const std::string & json);
 	// T265 related parameters
 	void setImagesRectified(bool enabled);
 	void setOdomProvided(bool enabled);
@@ -131,6 +132,7 @@ private:
 	bool publishInterIMU_;
 	bool dualMode_;
 	Transform dualExtrinsics_;
+	std::string jsonConfig_;
 
 	static Transform realsense2PoseRotation_;
 	static Transform realsense2PoseRotationInv_;

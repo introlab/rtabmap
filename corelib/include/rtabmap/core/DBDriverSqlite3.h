@@ -143,7 +143,7 @@ protected:
 	virtual void getLastNodeIdsQuery(std::set<int> & ids) const;
 	virtual void getAllNodeIdsQuery(std::set<int> & ids, bool ignoreChildren, bool ignoreBadSignatures) const;
 	virtual void getAllLinksQuery(std::multimap<int, Link> & links, bool ignoreNullLinks, bool withLandmarks) const;
-	virtual void getLastIdQuery(const std::string & tableName, int & id) const;
+	virtual void getLastIdQuery(const std::string & tableName, int & id, const std::string & fieldName="id") const;
 	virtual void getInvertedIndexNiQuery(int signatureId, int & ni) const;
 	virtual void getNodesObservingLandmarkQuery(int landmarkId, std::map<int, Link> & nodes) const;
 	virtual void getNodeIdByLabelQuery(const std::string & label, int & id) const;

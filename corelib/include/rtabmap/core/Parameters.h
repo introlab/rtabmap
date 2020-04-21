@@ -62,7 +62,7 @@ typedef std::pair<std::string, std::string> ParametersPair;
 #define RTABMAP_PARAM(PREFIX, NAME, TYPE, DEFAULT_VALUE, DESCRIPTION) \
     public: \
         static std::string k##PREFIX##NAME() {return std::string(#PREFIX "/" #NAME);} \
-        static TYPE default##PREFIX##NAME() {return DEFAULT_VALUE;} \
+        static TYPE default##PREFIX##NAME() {return (TYPE)DEFAULT_VALUE;} \
         static std::string type##PREFIX##NAME() {return std::string(#TYPE);} \
     private: \
         class Dummy##PREFIX##NAME { \
@@ -207,6 +207,7 @@ class RTABMAP_EXP Parameters
     RTABMAP_PARAM_STR(Mem, ImageCompressionFormat,   ".jpg",        "RGB image compression format. It should be \".jpg\" or \".png\".");
     RTABMAP_PARAM(Mem, STMSize,                   unsigned int, 10, "Short-term memory size.");
     RTABMAP_PARAM(Mem, IncrementalMemory,           bool, true,     "SLAM mode, otherwise it is Localization mode.");
+    RTABMAP_PARAM(Mem, LocalizationDataSaved,       bool, false,     uFormat("Save localization data during localization session (when %s=false). When enabled, the database will then also grow in localization mode. This mode would be used only for debugging purpose.", kMemIncrementalMemory().c_str()).c_str());
     RTABMAP_PARAM(Mem, ReduceGraph,                 bool, false,    "Reduce graph. Merge nodes when loop closures are added (ignoring those with user data set).");
     RTABMAP_PARAM(Mem, RecentWmRatio,               float, 0.2,     "Ratio of locations after the last loop closure in WM that cannot be transferred.");
     RTABMAP_PARAM(Mem, TransferSortingByWeightId,   bool, false,    "On transfer, signatures are sorted by weight->ID only (i.e. the oldest of the lowest weighted signatures are transferred first). If false, the signatures are sorted by weight->Age->ID (i.e. the oldest inserted in WM of the lowest weighted signatures are transferred first). Note that retrieval updates the age, not the ID.");
@@ -318,10 +319,16 @@ class RTABMAP_EXP Parameters
 
     RTABMAP_PARAM(KAZE, Extended,       bool, false,   "Set to enable extraction of extended (128-byte) descriptor.");
     RTABMAP_PARAM(KAZE, Upright,        bool, false,   "Set to enable use of upright descriptors (non rotation-invariant).");
-    RTABMAP_PARAM(KAZE, Threshold,      float, 0.001,  "Detector response threshold to accept point.");
+    RTABMAP_PARAM(KAZE, Threshold,      float, 0.001,  "Detector response threshold to accept keypoint.");
     RTABMAP_PARAM(KAZE, NOctaves,       int, 4,        "Maximum octave evolution of the image.");
     RTABMAP_PARAM(KAZE, NOctaveLayers,  int, 4,        "Default number of sublevels per scale level.");
     RTABMAP_PARAM(KAZE, Diffusivity,    int, 1,        "Diffusivity type: 0=DIFF_PM_G1, 1=DIFF_PM_G2, 2=DIFF_WEICKERT or 3=DIFF_CHARBONNIER.");
+
+    RTABMAP_PARAM_STR(SPTorch, ModelPath,              "", "[Required] Path to pre-trained weights Torch file of SuperPoint (*.pt).");
+    RTABMAP_PARAM(SPTorch, Threshold,         float,  0.2, "Detector response threshold to accept keypoint.");
+    RTABMAP_PARAM(SPTorch, NMS,               bool,  true, "If true, non-maximum suppression is applied to detected keypoints.");
+    RTABMAP_PARAM(SPTorch, MinDistance,       int,      4, uFormat("[%s=true] Minimum distance (pixels) between keypoints.", kSPTorchNMS().c_str()));
+    RTABMAP_PARAM(SPTorch, Cuda,              bool, false, "Use Cuda device for Torch, otherwise CPU device is used by default.");
 
     // BayesFilter
     RTABMAP_PARAM(Bayes, VirtualPlacePriorThr, float, 0.9,  "Virtual place prior");

@@ -935,6 +935,21 @@ void DBDriver::getLastNodeId(int & id) const
 	_dbSafeAccessMutex.unlock();
 }
 
+void DBDriver::getLastMapId(int & mapId) const
+{
+	// look in the trash
+	_trashesMutex.lock();
+	if(_trashSignatures.size())
+	{
+		mapId = _trashSignatures.rbegin()->second->mapId();
+	}
+	_trashesMutex.unlock();
+
+	_dbSafeAccessMutex.lock();
+	this->getLastIdQuery("Node", mapId, "map_id");
+	_dbSafeAccessMutex.unlock();
+}
+
 void DBDriver::getLastWordId(int & id) const
 {
 	// look in the trash

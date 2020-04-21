@@ -194,8 +194,8 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 #ifndef RTABMAP_NONFREE
 		_ui->comboBox_detector_strategy->setItemData(0, 0, Qt::UserRole - 1);
 		_ui->comboBox_detector_strategy->setItemData(1, 0, Qt::UserRole - 1);
-		_ui->reextract_type->setItemData(0, 0, Qt::UserRole - 1);
-		_ui->reextract_type->setItemData(1, 0, Qt::UserRole - 1);
+		_ui->vis_feature_detector->setItemData(0, 0, Qt::UserRole - 1);
+		_ui->vis_feature_detector->setItemData(1, 0, Qt::UserRole - 1);
 
 #if CV_MAJOR_VERSION >= 3
 		_ui->comboBox_detector_strategy->setItemData(0, 0, Qt::UserRole - 1);
@@ -204,25 +204,30 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 		_ui->comboBox_detector_strategy->setItemData(4, 0, Qt::UserRole - 1);
 		_ui->comboBox_detector_strategy->setItemData(5, 0, Qt::UserRole - 1);
 		_ui->comboBox_detector_strategy->setItemData(6, 0, Qt::UserRole - 1);
-		_ui->reextract_type->setItemData(0, 0, Qt::UserRole - 1);
-		_ui->reextract_type->setItemData(1, 0, Qt::UserRole - 1);
-		_ui->reextract_type->setItemData(3, 0, Qt::UserRole - 1);
-		_ui->reextract_type->setItemData(4, 0, Qt::UserRole - 1);
-		_ui->reextract_type->setItemData(5, 0, Qt::UserRole - 1);
-		_ui->reextract_type->setItemData(6, 0, Qt::UserRole - 1);
+		_ui->vis_feature_detector->setItemData(0, 0, Qt::UserRole - 1);
+		_ui->vis_feature_detector->setItemData(1, 0, Qt::UserRole - 1);
+		_ui->vis_feature_detector->setItemData(3, 0, Qt::UserRole - 1);
+		_ui->vis_feature_detector->setItemData(4, 0, Qt::UserRole - 1);
+		_ui->vis_feature_detector->setItemData(5, 0, Qt::UserRole - 1);
+		_ui->vis_feature_detector->setItemData(6, 0, Qt::UserRole - 1);
 #endif
 #endif
 
 #ifndef RTABMAP_ORB_OCTREE
 		_ui->comboBox_detector_strategy->setItemData(10, 0, Qt::UserRole - 1);
-		_ui->reextract_type->setItemData(10, 0, Qt::UserRole - 1);
+		_ui->vis_feature_detector->setItemData(10, 0, Qt::UserRole - 1);
+#endif
+
+#ifndef RTABMAP_SP_TORCH
+		_ui->comboBox_detector_strategy->setItemData(11, 0, Qt::UserRole - 1);
+		_ui->vis_feature_detector->setItemData(11, 0, Qt::UserRole - 1);
 #endif
 
 #if CV_MAJOR_VERSION >= 3
 	_ui->groupBox_fast_opencv2->setEnabled(false);
 #else
 	_ui->comboBox_detector_strategy->setItemData(9, 0, Qt::UserRole - 1); // No KAZE
-	_ui->reextract_type->setItemData(9, 0, Qt::UserRole - 1); // No KAZE
+	_ui->vis_feature_detector->setItemData(9, 0, Qt::UserRole - 1); // No KAZE
 #endif
 
 	_ui->comboBox_cameraImages_odomFormat->setItemData(4, 0, Qt::UserRole - 1);
@@ -528,6 +533,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 
 	connect(_ui->checkBox_showGraphs, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 	connect(_ui->checkBox_showLabels, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
+	connect(_ui->checkBox_showFrames, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 	connect(_ui->checkBox_showLandmarks, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 	connect(_ui->doubleSpinBox_landmarkSize, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 	connect(_ui->checkBox_showIMUGravity, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
@@ -646,6 +652,8 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->spinBox_rs2_rate, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->checkbox_rs2_dualMode, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->lineEdit_rs2_dualModeExtrinsics, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->lineEdit_rs2_jsonFile, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->toolButton_rs2_jsonFile, SIGNAL(clicked()), this, SLOT(selectSourceRealsense2JsonPath()));
 
 	connect(_ui->toolButton_cameraImages_timestamps, SIGNAL(clicked()), this, SLOT(selectSourceImagesStamps()));
 	connect(_ui->lineEdit_cameraImages_timestamps, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
@@ -803,6 +811,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->general_spinBox_maxStMemSize->setObjectName(Parameters::kMemSTMSize().c_str());
 	_ui->doubleSpinBox_similarityThreshold->setObjectName(Parameters::kMemRehearsalSimilarity().c_str());
 	_ui->general_checkBox_SLAM_mode->setObjectName(Parameters::kMemIncrementalMemory().c_str());
+	_ui->general_checkBox_saveLocalizationData->setObjectName(Parameters::kMemLocalizationDataSaved().c_str());
 	_ui->general_doubleSpinBox_recentWmRatio->setObjectName(Parameters::kMemRecentWmRatio().c_str());
 	_ui->general_checkBox_transferSortingByWeightId->setObjectName(Parameters::kMemTransferSortingByWeightId().c_str());
 	_ui->general_checkBox_RehearsalIdUpdatedToNewOne->setObjectName(Parameters::kMemRehearsalIdUpdatedToNewOne().c_str());
@@ -931,6 +940,14 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->spinBox_kaze_octavelayers->setObjectName(Parameters::kKAZENOctaveLayers().c_str());
 	_ui->spinBox_kaze_diffusivity->setObjectName(Parameters::kKAZEDiffusivity().c_str());
 
+	// SuperPoint Torch
+	_ui->lineEdit_sptorch_path->setObjectName(Parameters::kSPTorchModelPath().c_str());
+	connect(_ui->toolButton_sptorch_path, SIGNAL(clicked()), this, SLOT(changeSPTorchModelPath()));
+	_ui->doubleSpinBox_sptorch_threshold->setObjectName(Parameters::kSPTorchThreshold().c_str());
+	_ui->checkBox_sptorch_nms->setObjectName(Parameters::kSPTorchNMS().c_str());
+	_ui->spinBox_sptorch_minDistance->setObjectName(Parameters::kSPTorchMinDistance().c_str());
+	_ui->checkBox_sptorch_cuda->setObjectName(Parameters::kSPTorchCuda().c_str());
+
 	// verifyHypotheses
 	_ui->groupBox_vh_epipolar2->setObjectName(Parameters::kVhEpEnabled().c_str());
 	_ui->surf_spinBox_matchCountMinAccepted->setObjectName(Parameters::kVhEpMatchCountMin().c_str());
@@ -1017,7 +1034,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->reextract_nndrRatio->setObjectName(Parameters::kVisCorNNDR().c_str());
 	_ui->spinBox_visCorGuessWinSize->setObjectName(Parameters::kVisCorGuessWinSize().c_str());
 	_ui->checkBox__visCorGuessMatchToProjection->setObjectName(Parameters::kVisCorGuessMatchToProjection().c_str());
-	_ui->reextract_type->setObjectName(Parameters::kVisFeatureType().c_str());
+	_ui->vis_feature_detector->setObjectName(Parameters::kVisFeatureType().c_str());
 	_ui->reextract_maxFeatures->setObjectName(Parameters::kVisMaxFeatures().c_str());
 	_ui->reextract_gridrows->setObjectName(Parameters::kVisGridRows().c_str());
 	_ui->reextract_gridcols->setObjectName(Parameters::kVisGridCols().c_str());
@@ -1682,6 +1699,7 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 
 		_ui->checkBox_showGraphs->setChecked(true);
 		_ui->checkBox_showLabels->setChecked(false);
+		_ui->checkBox_showFrames->setChecked(true);
 		_ui->checkBox_showLandmarks->setChecked(true);
 		_ui->doubleSpinBox_landmarkSize->setValue(0);
 		_ui->checkBox_showIMUGravity->setChecked(false);
@@ -1820,6 +1838,7 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->spinBox_rs2_rate->setValue(60);
 		_ui->checkbox_rs2_dualMode->setChecked(false);
 		_ui->lineEdit_rs2_dualModeExtrinsics->setText("0.009 0.021 0.027 0 -0.018 0.005");
+		_ui->lineEdit_rs2_jsonFile->clear();
 		_ui->lineEdit_openniOniPath->clear();
 		_ui->lineEdit_openni2OniPath->clear();
 		_ui->checkbox_k4a_irDepth->setChecked(false);
@@ -2131,6 +2150,7 @@ void PreferencesDialog::readGuiSettings(const QString & filePath)
 
 	_ui->checkBox_showGraphs->setChecked(settings.value("showGraphs", _ui->checkBox_showGraphs->isChecked()).toBool());
 	_ui->checkBox_showLabels->setChecked(settings.value("showLabels", _ui->checkBox_showLabels->isChecked()).toBool());
+	_ui->checkBox_showFrames->setChecked(settings.value("showFrames", _ui->checkBox_showFrames->isChecked()).toBool());
 	_ui->checkBox_showLandmarks->setChecked(settings.value("showLandmarks", _ui->checkBox_showLandmarks->isChecked()).toBool());
 	_ui->doubleSpinBox_landmarkSize->setValue(settings.value("landmarkSize", _ui->doubleSpinBox_landmarkSize->value()).toDouble());
 	_ui->checkBox_showIMUGravity->setChecked(settings.value("showIMUGravity", _ui->checkBox_showIMUGravity->isChecked()).toBool());
@@ -2257,6 +2277,7 @@ void PreferencesDialog::readCameraSettings(const QString & filePath)
 	_ui->spinBox_rs2_rate->setValue(settings.value("rate", _ui->spinBox_rs2_rate->value()).toInt());
 	_ui->checkbox_rs2_dualMode->setChecked(settings.value("dual_mode", _ui->checkbox_rs2_dualMode->isChecked()).toBool());
 	_ui->lineEdit_rs2_dualModeExtrinsics->setText(settings.value("dual_mode_extrinsics", _ui->lineEdit_rs2_dualModeExtrinsics->text()).toString());
+	_ui->lineEdit_rs2_jsonFile->setText(settings.value("json_preset", _ui->lineEdit_rs2_jsonFile->text()).toString());
 	settings.endGroup(); // RealSense
 
 	settings.beginGroup("RGBDImages");
@@ -2593,6 +2614,7 @@ void PreferencesDialog::writeGuiSettings(const QString & filePath) const
 
 	settings.setValue("showGraphs", _ui->checkBox_showGraphs->isChecked());
 	settings.setValue("showLabels", _ui->checkBox_showLabels->isChecked());
+	settings.setValue("showFrames", _ui->checkBox_showFrames->isChecked());
 	settings.setValue("showLandmarks", _ui->checkBox_showLandmarks->isChecked());
 	settings.setValue("landmarkSize", _ui->doubleSpinBox_landmarkSize->value());
 	settings.setValue("showIMUGravity", _ui->checkBox_showIMUGravity->isChecked());
@@ -2722,6 +2744,7 @@ void PreferencesDialog::writeCameraSettings(const QString & filePath) const
 	settings.setValue("rate",                   _ui->spinBox_rs2_rate->value());
 	settings.setValue("dual_mode",              _ui->checkbox_rs2_dualMode->isChecked());
 	settings.setValue("dual_mode_extrinsics",   _ui->lineEdit_rs2_dualModeExtrinsics->text());
+	settings.setValue("json_preset",            _ui->lineEdit_rs2_jsonFile->text());
 	settings.endGroup(); // RealSense2
 
 	settings.beginGroup("RGBDImages");
@@ -2861,13 +2884,13 @@ bool PreferencesDialog::validateForm()
 		_ui->comboBox_detector_strategy->setCurrentIndex(Feature2D::kFeatureOrb);
 	}
 	// BOW Reextract features type
-	if(_ui->reextract_type->currentIndex() <= 1)
+	if(_ui->vis_feature_detector->currentIndex() <= 1)
 	{
 		QMessageBox::warning(this, tr("Parameter warning"),
 				tr("Selected feature type (SURF/SIFT) is not available. RTAB-Map is not built "
 				   "with the nonfree module from OpenCV. Fast/Brief is set instead for the re-extraction "
 				   "of features on loop closure."));
-		_ui->reextract_type->setCurrentIndex(Feature2D::kFeatureFastBrief);
+		_ui->vis_feature_detector->setCurrentIndex(Feature2D::kFeatureFastBrief);
 	}
 #endif
 
@@ -2886,18 +2909,18 @@ bool PreferencesDialog::validateForm()
 		_ui->comboBox_detector_strategy->setCurrentIndex(Feature2D::kFeatureOrb);
 #endif
 	}
-	if (_ui->reextract_type->currentIndex() == Feature2D::kFeatureKaze)
+	if (_ui->vis_feature_detector->currentIndex() == Feature2D::kFeatureKaze)
 	{
 #ifdef RTABMAP_NONFREE
 		QMessageBox::warning(this, tr("Parameter warning"),
 			tr("Selected feature type (KAZE) is not available on OpenCV2. SURF is set instead "
 				"for the re-extraction of features on loop closure."));
-				_ui->reextract_type->setCurrentIndex(Feature2D::kFeatureSurf);
+				_ui->vis_feature_detector->setCurrentIndex(Feature2D::kFeatureSurf);
 #else
 		QMessageBox::warning(this, tr("Parameter warning"),
 			tr("Selected feature type (KAZE) is not available on OpenCV2. ORB is set instead "
 				"for the re-extraction of features on loop closure."));
-				_ui->reextract_type->setCurrentIndex(Feature2D::kFeatureOrb);
+				_ui->vis_feature_detector->setCurrentIndex(Feature2D::kFeatureOrb);
 #endif
 	}
 #endif
@@ -2910,12 +2933,12 @@ bool PreferencesDialog::validateForm()
 				"for the bag-of-words dictionary."));
 		_ui->comboBox_detector_strategy->setCurrentIndex(Feature2D::kFeatureOrb);
 	}
-	if (_ui->reextract_type->currentIndex() == Feature2D::kFeatureOrbOctree)
+	if (_ui->vis_feature_detector->currentIndex() == Feature2D::kFeatureOrbOctree)
 	{
 		QMessageBox::warning(this, tr("Parameter warning"),
 			tr("Selected feature type (ORB Octree) is not available on OpenCV2. ORB is set instead "
 				"for the re-extraction of features on loop closure."));
-				_ui->reextract_type->setCurrentIndex(Feature2D::kFeatureOrb);
+				_ui->vis_feature_detector->setCurrentIndex(Feature2D::kFeatureOrb);
 	}
 #endif
 
@@ -3047,7 +3070,7 @@ bool PreferencesDialog::validateForm()
 	}
 
 	// BOW Reextract features type
-	if(_ui->reextract_nn->currentIndex() == VWDictionary::kNNFlannLSH && _ui->reextract_type->currentIndex() <= 1)
+	if(_ui->reextract_nn->currentIndex() == VWDictionary::kNNFlannLSH && _ui->vis_feature_detector->currentIndex() <= 1)
 	{
 		QMessageBox::warning(this, tr("Parameter warning"),
 				tr("With the selected feature type (SURF or SIFT), parameter \"Visual word->Nearest Neighbor\" "
@@ -3882,7 +3905,7 @@ void PreferencesDialog::selectSourceVideoPath()
 	{
 		dir = getWorkingDirectory();
 	}
-	QString path = QFileDialog::getOpenFileName(this, tr("Select file"), _ui->source_video_lineEdit_path->text(), tr("Videos (*.avi *.mpg *.mp4 *.mov *.mkv)"));
+	QString path = QFileDialog::getOpenFileName(this, tr("Select file"), dir, tr("Videos (*.avi *.mpg *.mp4 *.mov *.mkv)"));
 	if(!path.isEmpty())
 	{
 		_ui->source_video_lineEdit_path->setText(path);
@@ -3896,7 +3919,7 @@ void PreferencesDialog::selectSourceStereoVideoPath()
 	{
 		dir = getWorkingDirectory();
 	}
-	QString path = QFileDialog::getOpenFileName(this, tr("Select file"), _ui->lineEdit_cameraStereoVideo_path->text(), tr("Videos (*.avi *.mpg *.mp4 *.mov *.mkv)"));
+	QString path = QFileDialog::getOpenFileName(this, tr("Select file"), dir, tr("Videos (*.avi *.mpg *.mp4 *.mov *.mkv)"));
 	if(!path.isEmpty())
 	{
 		_ui->lineEdit_cameraStereoVideo_path->setText(path);
@@ -3910,7 +3933,7 @@ void PreferencesDialog::selectSourceStereoVideoPath2()
 	{
 		dir = getWorkingDirectory();
 	}
-	QString path = QFileDialog::getOpenFileName(this, tr("Select file"), _ui->lineEdit_cameraStereoVideo_path_2->text(), tr("Videos (*.avi *.mpg *.mp4 *.mov *.mkv)"));
+	QString path = QFileDialog::getOpenFileName(this, tr("Select file"), dir, tr("Videos (*.avi *.mpg *.mp4 *.mov *.mkv)"));
 	if(!path.isEmpty())
 	{
 		_ui->lineEdit_cameraStereoVideo_path_2->setText(path);
@@ -3924,7 +3947,7 @@ void PreferencesDialog::selectSourceDistortionModel()
 	{
 		dir = getWorkingDirectory();
 	}
-	QString path = QFileDialog::getOpenFileName(this, tr("Select file"), _ui->lineEdit_source_distortionModel->text(), tr("Distortion model (*.bin *.txt)"));
+	QString path = QFileDialog::getOpenFileName(this, tr("Select file"), dir, tr("Distortion model (*.bin *.txt)"));
 	if(!path.isEmpty())
 	{
 		_ui->lineEdit_source_distortionModel->setText(path);
@@ -3938,7 +3961,7 @@ void PreferencesDialog::selectSourceOniPath()
 	{
 		dir = getWorkingDirectory();
 	}
-	QString path = QFileDialog::getOpenFileName(this, tr("Select file"), _ui->lineEdit_openniOniPath->text(), tr("OpenNI (*.oni)"));
+	QString path = QFileDialog::getOpenFileName(this, tr("Select file"), dir, tr("OpenNI (*.oni)"));
 	if(!path.isEmpty())
 	{
 		_ui->lineEdit_openniOniPath->setText(path);
@@ -3952,7 +3975,7 @@ void PreferencesDialog::selectSourceOni2Path()
 	{
 		dir = getWorkingDirectory();
 	}
-	QString path = QFileDialog::getOpenFileName(this, tr("Select file"), _ui->lineEdit_openni2OniPath->text(), tr("OpenNI (*.oni)"));
+	QString path = QFileDialog::getOpenFileName(this, tr("Select file"), dir, tr("OpenNI (*.oni)"));
 	if(!path.isEmpty())
 	{
 		_ui->lineEdit_openni2OniPath->setText(path);
@@ -3966,7 +3989,7 @@ void PreferencesDialog::selectSourceMKVPath()
 	{
 		dir = getWorkingDirectory();
 	}
-	QString path = QFileDialog::getOpenFileName(this, tr("Select file"), _ui->lineEdit_k4a_mkv->text(), tr("K4A recording (*.mkv)"));
+	QString path = QFileDialog::getOpenFileName(this, tr("Select file"), dir, tr("K4A recording (*.mkv)"));
 	if (!path.isEmpty())
 	{
 		_ui->lineEdit_k4a_mkv->setText(path);
@@ -3980,10 +4003,24 @@ void PreferencesDialog::selectSourceSvoPath()
 	{
 		dir = getWorkingDirectory();
 	}
-	QString path = QFileDialog::getOpenFileName(this, tr("Select file"), _ui->lineEdit_zedSvoPath->text(), tr("ZED (*.svo)"));
+	QString path = QFileDialog::getOpenFileName(this, tr("Select file"), dir, tr("ZED (*.svo)"));
 	if(!path.isEmpty())
 	{
 		_ui->lineEdit_zedSvoPath->setText(path);
+	}
+}
+
+void PreferencesDialog::selectSourceRealsense2JsonPath()
+{
+	QString dir = _ui->lineEdit_rs2_jsonFile->text();
+	if(dir.isEmpty())
+	{
+		dir = getWorkingDirectory();
+	}
+	QString path = QFileDialog::getOpenFileName(this, tr("Select RealSense2 preset"), dir, tr("JSON (*.json)"));
+	if(path.size())
+	{
+		_ui->lineEdit_rs2_jsonFile->setText(path);
 	}
 }
 
@@ -4545,7 +4582,7 @@ void PreferencesDialog::useOdomFeatures()
 
 		if(r == QMessageBox::Yes)
 		{
-			_ui->comboBox_detector_strategy->setCurrentIndex(_ui->reextract_type->currentIndex());
+			_ui->comboBox_detector_strategy->setCurrentIndex(_ui->vis_feature_detector->currentIndex());
 			_ui->surf_doubleSpinBox_maxDepth->setValue(_ui->loopClosure_bowMaxDepth->value());
 			_ui->surf_doubleSpinBox_minDepth->setValue(_ui->loopClosure_bowMinDepth->value());
 			_ui->surf_spinBox_wordsPerImageTarget->setValue(_ui->reextract_maxFeatures->value());
@@ -4651,6 +4688,23 @@ void PreferencesDialog::changeIcpPMConfigPath()
 	if(!path.isEmpty())
 	{
 		_ui->lineEdit_IcpPMConfigPath->setText(path);
+	}
+}
+
+void PreferencesDialog::changeSPTorchModelPath()
+{
+	QString path;
+	if(_ui->lineEdit_sptorch_path->text().isEmpty())
+	{
+		path = QFileDialog::getOpenFileName(this, tr("Select file"), this->getWorkingDirectory(), tr("SuperPoint weights (*.pt)"));
+	}
+	else
+	{
+		path = QFileDialog::getOpenFileName(this, tr("Select file"), _ui->lineEdit_sptorch_path->text(), tr("SuperPoint weights (*.pt)"));
+	}
+	if(!path.isEmpty())
+	{
+		_ui->lineEdit_sptorch_path->setText(path);
 	}
 }
 
@@ -4920,6 +4974,10 @@ bool PreferencesDialog::isGraphsShown() const
 bool PreferencesDialog::isLabelsShown() const
 {
 	return _ui->checkBox_showLabels->isChecked();
+}
+bool PreferencesDialog::isFramesShown() const
+{
+	return _ui->checkBox_showFrames->isChecked();
 }
 bool PreferencesDialog::isLandmarksShown() const
 {
@@ -5483,6 +5541,7 @@ Camera * PreferencesDialog::createCamera(bool useRawImages, bool useColor)
 				((CameraRealSense2*)camera)->setIRFormat(_ui->checkbox_rs2_irMode->isChecked(), _ui->checkbox_rs2_irDepth->isChecked());
 				((CameraRealSense2*)camera)->setResolution(_ui->spinBox_rs2_width->value(), _ui->spinBox_rs2_height->value(), _ui->spinBox_rs2_rate->value());
 				((CameraRealSense2*)camera)->setDualMode(_ui->checkbox_rs2_dualMode->isChecked(), Transform::fromString(_ui->lineEdit_rs2_dualModeExtrinsics->text().toStdString()));
+				((CameraRealSense2*)camera)->setJsonConfig(_ui->lineEdit_rs2_jsonFile->text().toStdString());
 			}
 		}
 	}

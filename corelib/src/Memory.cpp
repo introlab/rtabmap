@@ -80,6 +80,7 @@ Memory::Memory(const ParametersMap & parameters) :
 	_saveIntermediateNodeData(Parameters::defaultMemIntermediateNodeDataKept()),
 	_rgbCompressionFormat(Parameters::defaultMemImageCompressionFormat()),
 	_incrementalMemory(Parameters::defaultMemIncrementalMemory()),
+	_localizationDataSaved(Parameters::defaultMemLocalizationDataSaved()),
 	_reduceGraph(Parameters::defaultMemReduceGraph()),
 	_maxStMemSize(Parameters::defaultMemSTMSize()),
 	_recentWmRatio(Parameters::defaultMemRecentWmRatio()),
@@ -345,7 +346,9 @@ void Memory::loadDataFromDb(bool postInitClosingEvents)
 
 		// Last id
 		_dbDriver->getLastNodeId(_idCount);
-		_idMapCount = _lastSignature?_lastSignature->mapId()+1:kIdStart;
+		_idMapCount = -1;
+		_dbDriver->getLastMapId(_idMapCount);
+		++_idMapCount;
 
 		// Now load the dictionary if we have a connection
 		if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit("Loading dictionary..."));
@@ -571,6 +574,7 @@ void Memory::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(params, Parameters::kRGBDMarkerDetection(), _detectMarkers);
 	Parameters::parse(params, Parameters::kMarkerVarianceLinear(), _markerLinVariance);
 	Parameters::parse(params, Parameters::kMarkerVarianceAngular(), _markerAngVariance);
+	Parameters::parse(params, Parameters::kMemLocalizationDataSaved(), _localizationDataSaved);
 
 	UASSERT_MSG(_maxStMemSize >= 0, uFormat("value=%d", _maxStMemSize).c_str());
 	UASSERT_MSG(_similarityThreshold >= 0.0f && _similarityThreshold <= 1.0f, uFormat("value=%f", _similarityThreshold).c_str());
@@ -864,7 +868,7 @@ bool Memory::update(
 	}
 	if(stats) stats->setReducedIds(reducedIds);
 
-	if(!_memoryChanged && _incrementalMemory)
+	if(!_memoryChanged && (_incrementalMemory || _localizationDataSaved))
 	{
 		_memoryChanged = true;
 	}
@@ -2407,7 +2411,7 @@ void Memory::moveToTrash(Signature * s, bool keepLinkedToGraph, std::list<int> *
 		if(	(_notLinkedNodesKeptInDb || keepLinkedToGraph || s->isSaved()) &&
 			_dbDriver &&
 			s->id()>0 &&
-			(_incrementalMemory || s->isSaved()))
+			(_incrementalMemory || s->isSaved() || _localizationDataSaved))
 		{
 			if(keepLinkedToGraph)
 			{
@@ -4291,7 +4295,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 							// Equidistant / FishEye
 							// get only k parameters (k1,k2,p1,p2,k3,k4)
 							cv::Mat D(1, 4, CV_64FC1);
-							D.at<double>(0,0) = decimatedData.cameraModels()[0].D_raw().at<double>(0,1);
+							D.at<double>(0,0) = decimatedData.cameraModels()[0].D_raw().at<double>(0,0);
 							D.at<double>(0,1) = decimatedData.cameraModels()[0].D_raw().at<double>(0,1);
 							D.at<double>(0,2) = decimatedData.cameraModels()[0].D_raw().at<double>(0,4);
 							D.at<double>(0,3) = decimatedData.cameraModels()[0].D_raw().at<double>(0,5);
@@ -4347,7 +4351,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 								// Equidistant / FishEye
 								// get only k parameters (k1,k2,p1,p2,k3,k4)
 								cv::Mat D(1, 4, CV_64FC1);
-								D.at<double>(0,0) = decimatedData.cameraModels()[cameraIndex].D_raw().at<double>(0,1);
+								D.at<double>(0,0) = decimatedData.cameraModels()[cameraIndex].D_raw().at<double>(0,0);
 								D.at<double>(0,1) = decimatedData.cameraModels()[cameraIndex].D_raw().at<double>(0,1);
 								D.at<double>(0,2) = decimatedData.cameraModels()[cameraIndex].D_raw().at<double>(0,4);
 								D.at<double>(0,3) = decimatedData.cameraModels()[cameraIndex].D_raw().at<double>(0,5);
@@ -5162,7 +5166,8 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 
 	{
 		Transform orientation(0,0,0, data.imu().orientation()[0], data.imu().orientation()[1], data.imu().orientation()[2], data.imu().orientation()[3]);
-		orientation*=data.imu().localTransform().rotation().inverse();
+		// orientation includes roll and pitch but not yaw in local transform
+		orientation= Transform(0,0,data.imu().localTransform().theta()) * orientation * data.imu().localTransform().rotation().inverse();
 
 		s->addLink(Link(s->id(), s->id(), Link::kGravity, orientation));
 		UDEBUG("Added gravity constraint: %s", orientation.prettyPrint().c_str());

@@ -209,6 +209,7 @@ public:
 	std::set<int> getAllSignatureIds() const;
 	bool memoryChanged() const {return _memoryChanged;}
 	bool isIncremental() const {return _incrementalMemory;}
+	bool isLocalizationDataSaved() const {return _localizationDataSaved;}
 	const Signature * getSignature(int id) const;
 	bool isInSTM(int signatureId) const {return _stMem.find(signatureId) != _stMem.end();}
 	bool isInWM(int signatureId) const {return _workingMem.find(signatureId) != _workingMem.end();}
@@ -291,6 +292,7 @@ private:
 	bool _saveIntermediateNodeData;
 	std::string _rgbCompressionFormat;
 	bool _incrementalMemory;
+	bool _localizationDataSaved;
 	bool _reduceGraph;
 	int _maxStMemSize;
 	float _recentWmRatio;
