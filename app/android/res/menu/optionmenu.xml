@@ -9,7 +9,7 @@
 	   </group>
 	   
        <item android:id="@+id/new_scan" android:title="New Scan"/>
-       <item android:id="@+id/open" android:title="Library" />
+       <item android:id="@+id/open" android:title="Library" android:showAsAction="ifRoom"/>
 	   <item android:id="@+id/save" android:title="Save"/>
                      
        <item android:id="@+id/export" android:title="Export">

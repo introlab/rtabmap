@@ -70,7 +70,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pcl/surface/vtk_smoothing/vtk_mesh_quadric_decimation.h>
 
 #define LOW_RES_PIX 2
-#define DEBUG_RENDERING_PERFORMANCE;
+#define DEBUG_RENDERING_PERFORMANCE
 
 const int g_optMeshId = -100;
 
@@ -253,17 +253,6 @@ RTABMapApp::~RTABMapApp() {
 			}
 		}
 		rtabmapEvents_.clear();
-	}
-	{
-		boost::mutex::scoped_lock  lock(visLocalizationMutex_);
-		if(visLocalizationEvents_.size())
-		{
-			for(std::list<rtabmap::RtabmapEvent*>::iterator iter=visLocalizationEvents_.begin(); iter!=visLocalizationEvents_.end(); ++iter)
-			{
-				delete *iter;
-			}
-		}
-		visLocalizationEvents_.clear();
 	}
 	LOGI("~RTABMapApp() end");
 }
@@ -1174,62 +1163,53 @@ int RTABMapApp::Render()
 					pcl::fromPCLPointCloud2(optMesh_->cloud, *cloud);
 					main_scene_.addCloud(g_optMeshId, cloud, indices, rtabmap::opengl_world_T_rtabmap_world);
 				}
-
-				// clean up old messages if there are ones
-				boost::mutex::scoped_lock  lock(visLocalizationMutex_);
-				if(visLocalizationEvents_.size())
-				{
-					for(std::list<rtabmap::RtabmapEvent*>::iterator iter=visLocalizationEvents_.begin(); iter!=visLocalizationEvents_.end(); ++iter)
-					{
-						delete *iter;
-					}
-				}
-				visLocalizationEvents_.clear();
 			}
 
-			std::list<rtabmap::RtabmapEvent*> visLocalizationEvents;
-			visLocalizationMutex_.lock();
-			visLocalizationEvents = visLocalizationEvents_;
-			visLocalizationEvents_.clear();
-			visLocalizationMutex_.unlock();
-
-			if(visLocalizationEvents.size())
+			if(!openingDatabase_)
 			{
-				const rtabmap::Statistics & stats = visLocalizationEvents.back()->getStats();
-				if(!stats.mapCorrection().isNull())
-				{
-					mapToOdom_ = stats.mapCorrection();
-				}
+				rtabmapMutex_.lock();
+				rtabmapEvents = rtabmapEvents_;
+				rtabmapEvents_.clear();
+				rtabmapMutex_.unlock();
 
-				std::map<int, rtabmap::Transform>::const_iterator iter = stats.poses().find(optRefId_);
-				if(iter != stats.poses().end() && !iter->second.isNull() && optRefPose_)
+				if(rtabmapEvents.size())
 				{
-					// adjust opt mesh pose
-					main_scene_.setCloudPose(g_optMeshId, rtabmap::opengl_world_T_rtabmap_world * iter->second * (*optRefPose_).inverse());
-				}
-				int fastMovement = (int)uValue(stats.data(), rtabmap::Statistics::kMemoryFast_movement(), 0.0f);
-				int loopClosure = (int)uValue(stats.data(), rtabmap::Statistics::kLoopAccepted_hypothesis_id(), 0.0f);
-				int rejected = (int)uValue(stats.data(), rtabmap::Statistics::kLoopRejectedHypothesis(), 0.0f);
-				int landmark = (int)uValue(stats.data(), rtabmap::Statistics::kLoopLandmark_detected(), 0.0f);
-				if(rtabmapThread_ && rtabmapThread_->isRunning() && loopClosure>0)
-				{
-					main_scene_.setBackgroundColor(0, 0.5f, 0); // green
-				}
-				else if(rtabmapThread_ && rtabmapThread_->isRunning() && landmark!=0)
-				{
-					main_scene_.setBackgroundColor(1, 0.65f, 0); // orange
-				}
-				else if(rtabmapThread_ && rtabmapThread_->isRunning() && rejected>0)
-				{
-					main_scene_.setBackgroundColor(0, 0.2f, 0); // dark green
-				}
-				else if(rtabmapThread_ && rtabmapThread_->isRunning() && fastMovement)
-				{
-					main_scene_.setBackgroundColor(0.2f, 0, 0.2f); // dark magenta
-				}
-				else
-				{
-					main_scene_.setBackgroundColor(backgroundColor_, backgroundColor_, backgroundColor_);
+					const rtabmap::Statistics & stats = rtabmapEvents.back()->getStats();
+					if(!stats.mapCorrection().isNull())
+					{
+						mapToOdom_ = stats.mapCorrection();
+					}
+
+					std::map<int, rtabmap::Transform>::const_iterator iter = stats.poses().find(optRefId_);
+					if(iter != stats.poses().end() && !iter->second.isNull() && optRefPose_)
+					{
+						// adjust opt mesh pose
+						main_scene_.setCloudPose(g_optMeshId, rtabmap::opengl_world_T_rtabmap_world * iter->second * (*optRefPose_).inverse());
+					}
+					int fastMovement = (int)uValue(stats.data(), rtabmap::Statistics::kMemoryFast_movement(), 0.0f);
+					int loopClosure = (int)uValue(stats.data(), rtabmap::Statistics::kLoopAccepted_hypothesis_id(), 0.0f);
+					int rejected = (int)uValue(stats.data(), rtabmap::Statistics::kLoopRejectedHypothesis(), 0.0f);
+					int landmark = (int)uValue(stats.data(), rtabmap::Statistics::kLoopLandmark_detected(), 0.0f);
+					if(rtabmapThread_ && rtabmapThread_->isRunning() && loopClosure>0)
+					{
+						main_scene_.setBackgroundColor(0, 0.5f, 0); // green
+					}
+					else if(rtabmapThread_ && rtabmapThread_->isRunning() && landmark!=0)
+					{
+						main_scene_.setBackgroundColor(1, 0.65f, 0); // orange
+					}
+					else if(rtabmapThread_ && rtabmapThread_->isRunning() && rejected>0)
+					{
+						main_scene_.setBackgroundColor(0, 0.2f, 0); // dark green
+					}
+					else if(rtabmapThread_ && rtabmapThread_->isRunning() && fastMovement)
+					{
+						main_scene_.setBackgroundColor(0.2f, 0, 0.2f); // dark magenta
+					}
+					else
+					{
+						main_scene_.setBackgroundColor(backgroundColor_, backgroundColor_, backgroundColor_);
+					}
 				}
 			}
 
@@ -1240,7 +1220,7 @@ int RTABMapApp::Render()
 			main_scene_.setMeshRendering(main_scene_.hasMesh(g_optMeshId), main_scene_.hasTexture(g_optMeshId));
 
 			fpsTime.restart();
-			main_scene_.setFrustumVisible(false);
+			main_scene_.setFrustumVisible(camera_!=0);
 			lastDrawnCloudsCount_ = main_scene_.Render();
 			if(renderingTime_ < fpsTime.elapsed())
 			{
@@ -1250,17 +1230,17 @@ int RTABMapApp::Render()
 			// revert state
 			main_scene_.setMeshRendering(isMeshRendering, isTextureRendering);
 
-			if(visLocalizationEvents.size())
+			if(rtabmapEvents.size())
 			{
 				// send statistics to GUI
-				UEventsManager::post(new PostRenderEvent(visLocalizationEvents.back()));
-				visLocalizationEvents.pop_back();
+				UEventsManager::post(new PostRenderEvent(rtabmapEvents.back()));
+				rtabmapEvents.pop_back();
 
-				for(std::list<rtabmap::RtabmapEvent*>::iterator iter=visLocalizationEvents.begin(); iter!=visLocalizationEvents.end(); ++iter)
+				for(std::list<rtabmap::RtabmapEvent*>::iterator iter=rtabmapEvents.begin(); iter!=rtabmapEvents.end(); ++iter)
 				{
 					delete *iter;
 				}
-				visLocalizationEvents.clear();
+				rtabmapEvents.clear();
 				lastPostRenderEventTime_ = UTimer::now();
 			}
 		}
@@ -1801,7 +1781,7 @@ int RTABMapApp::Render()
 
 				lastPostRenderEventTime_ = UTimer::now();
 
-				if(lastPoseEventTime_>0.0 && UTimer::now()-lastPoseEventTime_ > 1.0)
+				if(camera_!=0 && lastPoseEventTime_>0.0 && UTimer::now()-lastPoseEventTime_ > 1.0)
 				{
 					UERROR("TangoPoseEventNotReceived");
 					UEventsManager::post(new rtabmap::CameraInfoEvent(10, "TangoPoseEventNotReceived", uNumber2Str(UTimer::now()-lastPoseEventTime_)));
@@ -1919,22 +1899,18 @@ void RTABMapApp::setPausedMapping(bool paused)
 {
 	{
 		boost::mutex::scoped_lock  lock(renderingMutex_);
-		if(!localizationMode_)
-		{
-			visualizingMesh_ = false;
-		}
 		main_scene_.setBackgroundColor(backgroundColor_, backgroundColor_, backgroundColor_);
 	}
 
 	if(rtabmapThread_)
 	{
-		if(rtabmapThread_->isRunning())
+		if(rtabmapThread_->isRunning() && paused)
 		{
 			LOGW("Pause!");
 			rtabmapThread_->unregisterFromEventsManager();
 			rtabmapThread_->join(true);
 		}
-		else
+		else if(!rtabmapThread_->isRunning() && !paused)
 		{
 			LOGW("Resume!");
 			rtabmap_->triggerNewMap();
@@ -3367,16 +3343,8 @@ bool RTABMapApp::handleEvent(UEvent * event)
 			LOGI("Received RtabmapEvent event! status=%d", status_.first);
 			if(status_.first == rtabmap::RtabmapEventInit::kInitialized)
 			{
-				if(visualizingMesh_)
-				{
-					boost::mutex::scoped_lock lock(visLocalizationMutex_);
-					visLocalizationEvents_.push_back((rtabmap::RtabmapEvent*)event);
-				}
-				else
-				{
-					boost::mutex::scoped_lock lock(rtabmapMutex_);
-					rtabmapEvents_.push_back((rtabmap::RtabmapEvent*)event);
-				}
+				boost::mutex::scoped_lock lock(rtabmapMutex_);
+				rtabmapEvents_.push_back((rtabmap::RtabmapEvent*)event);
 				return true;
 			}
 			else

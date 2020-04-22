@@ -226,7 +226,6 @@ class RTABMapApp : public UEventsHandler {
   Scene main_scene_;
 
 	std::list<rtabmap::RtabmapEvent*> rtabmapEvents_;
-	std::list<rtabmap::RtabmapEvent*> visLocalizationEvents_;
 	std::list<rtabmap::OdometryEvent> odomEvents_;
 	std::list<rtabmap::Transform> poseEvents_;
 
@@ -234,7 +233,6 @@ class RTABMapApp : public UEventsHandler {
 
 	boost::mutex cameraMutex_;
 	boost::mutex rtabmapMutex_;
-	boost::mutex visLocalizationMutex_;
 	boost::mutex meshesMutex_;
 	boost::mutex odomMutex_;
 	boost::mutex poseMutex_;

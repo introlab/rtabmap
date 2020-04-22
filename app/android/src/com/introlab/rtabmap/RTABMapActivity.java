@@ -285,6 +285,10 @@ public class RTABMapActivity extends FragmentActivity implements OnClickListener
 							else
 							{
 								updateState(mState==State.STATE_VISUALIZING?State.STATE_VISUALIZING_CAMERA:State.STATE_CAMERA);
+								if(mState==State.STATE_VISUALIZING_CAMERA && mItemLocalizationMode.isChecked())
+								{
+									RTABMapLib.setPausedMapping(nativeApplication, false);
+								}
 							}
 						} 
 					});
@@ -831,6 +835,7 @@ public class RTABMapActivity extends FragmentActivity implements OnClickListener
 		else if(mState == State.STATE_VISUALIZING)
 		{
 			closeVisualization();
+			RTABMapLib.postExportation(nativeApplication, false);
 		}
 	}
 
@@ -1196,11 +1201,15 @@ public class RTABMapActivity extends FragmentActivity implements OnClickListener
 							}
 							else
 							{
-								if(mState==State.STATE_CAMERA && mCameraDriver == 1)
+								if((mState==State.STATE_IDLE || mState==State.STATE_WELCOME) && mCameraDriver == 1)
 								{
 									mToast.makeText(getApplicationContext(), "Currently ARCore NDK driver doesn't support depth, only poses and RGB images can be recorded.", mToast.LENGTH_LONG).show();
 								}
-								updateState(mState==State.STATE_VISUALIZING?State.STATE_VISUALIZING:State.STATE_CAMERA);									
+								updateState(mState==State.STATE_VISUALIZING?State.STATE_VISUALIZING_CAMERA:State.STATE_CAMERA);	
+								if(mState==State.STATE_VISUALIZING_CAMERA && mItemLocalizationMode.isChecked())
+								{
+									RTABMapLib.setPausedMapping(nativeApplication, false);
+								}
 							}
 						} 
 					});
@@ -1265,6 +1274,7 @@ public class RTABMapActivity extends FragmentActivity implements OnClickListener
 			break;
 		case R.id.close_visualization_button:
 			closeVisualization();
+			RTABMapLib.postExportation(nativeApplication, false);
 			break;
 		case R.id.button_saveOnDevice:
 			saveOnDevice();
@@ -1299,7 +1309,6 @@ public class RTABMapActivity extends FragmentActivity implements OnClickListener
 			mItemRenderingTextureMesh.setChecked(true);
 		}
 		updateState(State.STATE_IDLE);
-		RTABMapLib.postExportation(nativeApplication, false);
 	}
 
 	public void onItemSelected(AdapterView<?> parent, View view, int pos, long id) {
@@ -1853,7 +1862,10 @@ public class RTABMapActivity extends FragmentActivity implements OnClickListener
 		}
 		else if(key.equals("TooClose"))
 		{
-			str = String.format("Too close! Tip: Scan from at least ~1 meter from surfaces.", value);
+			if(mState != State.STATE_VISUALIZING_CAMERA)
+			{
+				str = String.format("Too close! Tip: Scan from at least ~1 meter from surfaces.", value);
+			}
 		}
 		else if(key.equals("TangoPoseEventNotReceived"))
 		{
@@ -2020,6 +2032,7 @@ public class RTABMapActivity extends FragmentActivity implements OnClickListener
 			mItemResume.setEnabled(false);
 			mItemModes.setEnabled(mState == State.STATE_CAMERA);
 			mItemLocalizationMode.setEnabled(true);
+			mItemTrajectoryMode.setEnabled(true);
 			mItemDataRecorderMode.setEnabled(true);
 			mButtonStart.setVisibility(mState == State.STATE_CAMERA?View.VISIBLE:View.INVISIBLE);
 			mButtonStop.setVisibility(mState == State.STATE_MAPPING?View.VISIBLE:View.INVISIBLE);
@@ -2056,11 +2069,14 @@ public class RTABMapActivity extends FragmentActivity implements OnClickListener
 			mItemSave.setEnabled(mState != State.STATE_VISUALIZING_CAMERA);
 			mItemExport.setEnabled(!mItemDataRecorderMode.isChecked() && mState != State.STATE_VISUALIZING_CAMERA);
 			mItemOpen.setEnabled(mState != State.STATE_VISUALIZING_CAMERA);
-			mItemNewScan.setEnabled(false);
+			mItemNewScan.setEnabled(mState != State.STATE_VISUALIZING_CAMERA);
 			mItemPostProcessing.setEnabled(false);
 			mItemSettings.setEnabled(mState != State.STATE_VISUALIZING_CAMERA);
-			mItemResume.setEnabled(true);
-			mItemModes.setEnabled(false);
+			mItemResume.setEnabled(mMapNodes>0 && mState == State.STATE_VISUALIZING);
+			mItemModes.setEnabled(mState == State.STATE_VISUALIZING);
+			mItemLocalizationMode.setEnabled(true);
+			mItemTrajectoryMode.setEnabled(false);
+			mItemDataRecorderMode.setEnabled(false);
 			mButtonStop.setVisibility(mState == State.STATE_VISUALIZING_CAMERA?View.VISIBLE:View.INVISIBLE);
 			break;
 		case STATE_VISUALIZING_WHILE_LOADING:
@@ -2102,6 +2118,7 @@ public class RTABMapActivity extends FragmentActivity implements OnClickListener
 			mButtonStop.setVisibility(View.INVISIBLE);
 			mItemLocalizationMode.setEnabled(true);
 			mItemDataRecorderMode.setEnabled(true);
+			mItemTrajectoryMode.setEnabled(true);
 			break;
 		}
 		mButtonCameraView.setVisibility(mHudVisible?View.VISIBLE:View.INVISIBLE);
@@ -2164,6 +2181,7 @@ public class RTABMapActivity extends FragmentActivity implements OnClickListener
 
 		if(mState == State.STATE_VISUALIZING_CAMERA)
 		{
+			RTABMapLib.setPausedMapping(nativeApplication, true);
 			updateState(State.STATE_VISUALIZING);
 		}
 		else
@@ -2200,6 +2218,7 @@ public class RTABMapActivity extends FragmentActivity implements OnClickListener
 
 				runOnUiThread(new Runnable() {
 					public void run() {
+						setCamera(2);
 						if(!DISABLE_LOG) Log.i(TAG, String.format("stopMapping(): runOnUiThread"));
 						mProgressDialog.dismiss();
 					}
@@ -2693,6 +2712,12 @@ public class RTABMapActivity extends FragmentActivity implements OnClickListener
 
 	private void newScan() {
 
+		if(mState == State.STATE_VISUALIZING)
+		{
+			mMapNodes = 0; // To avoid "re-adding clouds..." message when changing state from VIS to IDLE
+			closeVisualization();
+		}
+		
 		mTotalLoopClosures = 0;
 
 		int index = STATUS_TEXTS_POSE_INDEX;
