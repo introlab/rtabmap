@@ -204,6 +204,8 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	uInsert(parameters, Parameters::getDefaultParameters("ORB"));
 	uInsert(parameters, Parameters::getDefaultParameters("FREAK"));
 	uInsert(parameters, Parameters::getDefaultParameters("BRISK"));
+	uInsert(parameters, Parameters::getDefaultParameters("KAZE"));
+	uInsert(parameters, Parameters::getDefaultParameters("SPTorch"));
 	uInsert(parameters, Parameters::getDefaultParameters("Optimizer"));
 	uInsert(parameters, Parameters::getDefaultParameters("g2o"));
 	uInsert(parameters, Parameters::getDefaultParameters("GTSAM"));

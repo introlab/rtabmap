@@ -1699,7 +1699,7 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 
 		_ui->checkBox_showGraphs->setChecked(true);
 		_ui->checkBox_showLabels->setChecked(false);
-		_ui->checkBox_showFrames->setChecked(true);
+		_ui->checkBox_showFrames->setChecked(false);
 		_ui->checkBox_showLandmarks->setChecked(true);
 		_ui->doubleSpinBox_landmarkSize->setValue(0);
 		_ui->checkBox_showIMUGravity->setChecked(false);
