@@ -58,6 +58,8 @@ void showUsage()
 			"     -c \"path.ini\"   Configuration file, overwriting parameters read \n"
 			"                       from the database. If custom parameters are also set as \n"
 			"                       arguments, they overwrite those in config file and the database.\n"
+			"     -start #    Start from this node ID.\n"
+			"     -stop #     Last node to process.\n"
 			"     -g2         Assemble 2D occupancy grid map and save it to \"[output]_map.pgm\".\n"
 			"     -g3         Assemble 3D cloud map and save it to \"[output]_map.pcd\".\n"
 			"     -o2         Assemble OctoMap 2D projection and save it to \"[output]_octomap.pgm\".\n"
@@ -152,6 +154,8 @@ int main(int argc, char * argv[])
 	bool assemble2dOctoMap = false;
 	bool assemble3dOctoMap = false;
 	bool useDatabaseRate = false;
+	int startId = 0;
+	int stopId = 0;
 	ParametersMap configParameters;
 	for(int i=1; i<argc-2; ++i)
 	{
@@ -175,6 +179,24 @@ int main(int argc, char * argv[])
 			else
 			{
 				printf("Config file is not set!\n");
+			}
+		}
+		else if (strcmp(argv[i], "-start") == 0 || strcmp(argv[i], "--start") == 0)
+		{
+			++i;
+			if(i < argc - 2)
+			{
+				startId = atoi(argv[i]);
+				printf("Start at node ID = %d.\n", startId);
+			}
+		}
+		else if (strcmp(argv[i], "-stop") == 0 || strcmp(argv[i], "--stop") == 0)
+		{
+			++i;
+			if(i < argc - 2)
+			{
+				stopId = atoi(argv[i]);
+				printf("Stop at node ID = %d.\n", stopId);
 			}
 		}
 		else if(strcmp(argv[i], "-g2") == 0 || strcmp(argv[i], "--g2") == 0)
@@ -322,7 +344,7 @@ int main(int argc, char * argv[])
 	bool rgbdEnabled = Parameters::defaultRGBDEnabled();
 	Parameters::parse(parameters, Parameters::kRGBDEnabled(), rgbdEnabled);
 	bool odometryIgnored = !rgbdEnabled;
-	DBReader dbReader(inputDatabasePath, useDatabaseRate?-1:0, odometryIgnored);
+	DBReader dbReader(inputDatabasePath, useDatabaseRate?-1:0, odometryIgnored, false, false, startId, -1, stopId);
 	dbReader.init();
 
 	OccupancyGrid grid(parameters);

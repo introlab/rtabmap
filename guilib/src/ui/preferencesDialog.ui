@@ -63,7 +63,7 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>0</y>
+            <y>-224</y>
             <width>680</width>
             <height>3310</height>
            </rect>
@@ -95,7 +95,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>36</number>
+                <number>5</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,1">
@@ -3109,7 +3109,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                     <item>
                      <widget class="QStackedWidget" name="stackedWidget_src">
                       <property name="currentIndex">
-                       <number>0</number>
+                       <number>3</number>
                       </property>
                       <widget class="QWidget" name="page_41">
                        <layout class="QVBoxLayout" name="verticalLayout_64">
@@ -5665,7 +5665,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                            <item row="5" column="1">
                             <widget class="QLabel" name="label_58">
                              <property name="text">
-                              <string>Start position (index).</string>
+                              <string>Start position (node ID).</string>
                              </property>
                              <property name="textInteractionFlags">
                               <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
@@ -5673,7 +5673,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                             </widget>
                            </item>
                            <item row="5" column="0">
-                            <widget class="QSpinBox" name="source_spinBox_databaseStartPos">
+                            <widget class="QSpinBox" name="source_spinBox_databaseStartId">
                              <property name="minimum">
                               <number>0</number>
                              </property>
@@ -5761,7 +5761,10 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                            <item row="6" column="1">
                             <widget class="QLabel" name="label_529">
                              <property name="text">
-                              <string>Maximum frames after start position. 0 means publishing all frames.</string>
+                              <string>Stop position (node ID) is the last node to process. If 0, all nodes after start position are published.</string>
+                             </property>
+                             <property name="wordWrap">
+                              <bool>true</bool>
                              </property>
                              <property name="textInteractionFlags">
                               <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
@@ -5769,7 +5772,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                             </widget>
                            </item>
                            <item row="6" column="0">
-                            <widget class="QSpinBox" name="source_spinBox_databaseMaxFrames">
+                            <widget class="QSpinBox" name="source_spinBox_databaseStopId">
                              <property name="minimum">
                               <number>0</number>
                              </property>

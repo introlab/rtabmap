@@ -611,8 +611,8 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->source_checkBox_ignoreOdometry, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->source_checkBox_ignoreGoalDelay, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->source_checkBox_ignoreGoals, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
-	connect(_ui->source_spinBox_databaseStartPos, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
-	connect(_ui->source_spinBox_databaseMaxFrames, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->source_spinBox_databaseStartId, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->source_spinBox_databaseStopId, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->source_checkBox_useDbStamps, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->source_spinBox_database_cameraIndex, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 
@@ -1771,8 +1771,8 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->source_checkBox_ignoreOdometry->setChecked(false);
 		_ui->source_checkBox_ignoreGoalDelay->setChecked(true);
 		_ui->source_checkBox_ignoreGoals->setChecked(true);
-		_ui->source_spinBox_databaseStartPos->setValue(0);
-		_ui->source_spinBox_databaseMaxFrames->setValue(0);
+		_ui->source_spinBox_databaseStartId->setValue(0);
+		_ui->source_spinBox_databaseStopId->setValue(0);
 		_ui->source_spinBox_database_cameraIndex->setValue(-1);
 		_ui->source_checkBox_useDbStamps->setChecked(true);
 
@@ -2384,8 +2384,8 @@ void PreferencesDialog::readCameraSettings(const QString & filePath)
 	_ui->source_checkBox_ignoreOdometry->setChecked(settings.value("ignoreOdometry", _ui->source_checkBox_ignoreOdometry->isChecked()).toBool());
 	_ui->source_checkBox_ignoreGoalDelay->setChecked(settings.value("ignoreGoalDelay", _ui->source_checkBox_ignoreGoalDelay->isChecked()).toBool());
 	_ui->source_checkBox_ignoreGoals->setChecked(settings.value("ignoreGoals", _ui->source_checkBox_ignoreGoals->isChecked()).toBool());
-	_ui->source_spinBox_databaseStartPos->setValue(settings.value("startPos", _ui->source_spinBox_databaseStartPos->value()).toInt());
-	_ui->source_spinBox_databaseMaxFrames->setValue(settings.value("maxFrames", _ui->source_spinBox_databaseMaxFrames->value()).toInt());
+	_ui->source_spinBox_databaseStartId->setValue(settings.value("startId", _ui->source_spinBox_databaseStartId->value()).toInt());
+	_ui->source_spinBox_databaseStopId->setValue(settings.value("stopId", _ui->source_spinBox_databaseStopId->value()).toInt());
 	_ui->source_spinBox_database_cameraIndex->setValue(settings.value("cameraIndex", _ui->source_spinBox_database_cameraIndex->value()).toInt());
 	_ui->source_checkBox_useDbStamps->setChecked(settings.value("useDatabaseStamps", _ui->source_checkBox_useDbStamps->isChecked()).toBool());
 	settings.endGroup(); // Database
@@ -2849,8 +2849,8 @@ void PreferencesDialog::writeCameraSettings(const QString & filePath) const
 	settings.setValue("ignoreOdometry",    _ui->source_checkBox_ignoreOdometry->isChecked());
 	settings.setValue("ignoreGoalDelay",   _ui->source_checkBox_ignoreGoalDelay->isChecked());
 	settings.setValue("ignoreGoals",       _ui->source_checkBox_ignoreGoals->isChecked());
-	settings.setValue("startPos",          _ui->source_spinBox_databaseStartPos->value());
-	settings.setValue("maxFrames",          _ui->source_spinBox_databaseMaxFrames->value());
+	settings.setValue("startId",          _ui->source_spinBox_databaseStartId->value());
+	settings.setValue("stopId",          _ui->source_spinBox_databaseStopId->value());
 	settings.setValue("cameraIndex",       _ui->source_spinBox_database_cameraIndex->value());
 	settings.setValue("useDatabaseStamps", _ui->source_checkBox_useDbStamps->isChecked());
 	settings.endGroup(); // Database
@@ -3669,8 +3669,8 @@ void PreferencesDialog::selectSourceDatabase()
 		}
 
 		_ui->source_database_lineEdit_path->setText(paths.size()==1?paths.front():paths.join(";"));
-		_ui->source_spinBox_databaseStartPos->setValue(0);
-		_ui->source_spinBox_databaseMaxFrames->setValue(0);
+		_ui->source_spinBox_databaseStartId->setValue(0);
+		_ui->source_spinBox_databaseStopId->setValue(0);
 		_ui->source_spinBox_database_cameraIndex->setValue(-1);
 	}
 }
@@ -5758,9 +5758,9 @@ Camera * PreferencesDialog::createCamera(bool useRawImages, bool useColor)
 				_ui->source_checkBox_ignoreOdometry->isChecked(),
 				_ui->source_checkBox_ignoreGoalDelay->isChecked(),
 				_ui->source_checkBox_ignoreGoals->isChecked(),
-				_ui->source_spinBox_databaseStartPos->value(),
+				_ui->source_spinBox_databaseStartId->value(),
 				_ui->source_spinBox_database_cameraIndex->value(),
-				_ui->source_spinBox_databaseMaxFrames->value());
+				_ui->source_spinBox_databaseStopId->value());
 	}
 	else
 	{
