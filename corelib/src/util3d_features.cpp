@@ -76,8 +76,8 @@ std::vector<cv::Point3f> generateKeypoints3DDepth(
 		UASSERT(int((depth.cols/cameraModels.size())*cameraModels.size()) == depth.cols);
 		float subImageWidth = depth.cols/cameraModels.size();
 		keypoints3d.resize(keypoints.size());
-		float rgbToDepthFactorX = 1.0f/(cameraModels[0].imageWidth()>0?cameraModels[0].imageWidth()/subImageWidth:1);
-		float rgbToDepthFactorY = 1.0f/(cameraModels[0].imageHeight()>0?cameraModels[0].imageHeight()/depth.rows:1);
+		float rgbToDepthFactorX = 1.0f/(cameraModels[0].imageWidth()>0?float(cameraModels[0].imageWidth())/subImageWidth:1.0f);
+		float rgbToDepthFactorY = 1.0f/(cameraModels[0].imageHeight()>0?float(cameraModels[0].imageHeight())/float(depth.rows):1.0f);
 		float bad_point = std::numeric_limits<float>::quiet_NaN ();
 		for(unsigned int i=0; i<keypoints.size(); ++i)
 		{

@@ -28,6 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef CAMERATANGO_H_
 #define CAMERATANGO_H_
 
+#include "CameraMobile.h"
 #include <rtabmap/core/Camera.h>
 #include <rtabmap/core/GeodeticCoords.h>
 #include <rtabmap/utilite/UMutex.h>
@@ -37,66 +38,26 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UEvent.h>
 #include <rtabmap/utilite/UTimer.h>
 #include <boost/thread/mutex.hpp>
+#include <tango_client_api.h>
 #include <tango_support_api.h>
-
-class TangoPoseData;
 
 namespace rtabmap {
 
-class PoseEvent: public UEvent
-{
-public:
-	PoseEvent(const Transform & pose) : pose_(pose) {}
-	virtual std::string getClassName() const {return "PoseEvent";}
-	const Transform & pose() const {return pose_;}
-
-private:
-	Transform pose_;
-};
-
-class CameraTangoEvent: public UEvent
-{
-public:
-	CameraTangoEvent(int type, const std::string & key, const std::string & value) : type_(type), key_(key), value_(value) {}
-	virtual std::string getClassName() const {return "CameraTangoEvent";}
-	int type() const {return type_;}
-	const std::string & key() const {return key_;}
-	const std::string & value() const {return value_;}
-
-private:
-	int type_;
-	std::string key_;
-	std::string value_;
-
-};
-
-class CameraTango : public Camera, public UThread, public UEventsSender {
-public:
-	static const float bilateralFilteringSigmaS;
-	static const float bilateralFilteringSigmaR;
-
+class CameraTango : public CameraMobile {
 public:
 	CameraTango(bool colorCamera, int decimation, bool publishRawScan, bool smoothing);
 	virtual ~CameraTango();
 
 	virtual bool init(const std::string & calibrationFolder = ".", const std::string & cameraName = "");
-	void close(); // close Tango connection
-	void resetOrigin();
-	virtual bool isCalibrated() const;
+	virtual void close(); // close Tango connection
 	virtual std::string getSerial() const;
-	const CameraModel & getCameraModel() const {return model_;}
 	rtabmap::Transform tangoPoseToTransform(const TangoPoseData * tangoPose) const;
 	void setColorCamera(bool enabled) {if(!this->isRunning()) colorCamera_ = enabled;}
 	void setDecimation(int value) {decimation_ = value;}
-	void setSmoothing(bool enabled) {smoothing_ = enabled;}
 	void setRawScanPublished(bool enabled) {rawScanPublished_ = enabled;}
-	void setScreenRotation(TangoSupportRotation colorCameraToDisplayRotation) {colorCameraToDisplayRotation_ = colorCameraToDisplayRotation;}
-	void setGPS(const GPS & gps);
-	void addEnvSensor(int type, float value);
 
 	void cloudReceived(const cv::Mat & cloud, double timestamp);
 	void rgbReceived(const cv::Mat & tangoImage, int type, double timestamp);
-	void poseReceived(const Transform & pose);
 	void tangoEventReceived(int type, const char * key, const char * value);
 
 protected:
@@ -105,19 +66,11 @@ protected:
 private:
 	rtabmap::Transform getPoseAtTimestamp(double timestamp);
 
-	virtual void mainLoopBegin();
-	virtual void mainLoop();
-
 private:
 	void * tango_config_;
-	Transform previousPose_;
-	double previousStamp_;
-	UTimer cameraStartedTime_;
-	double stampEpochOffset_;
 	bool colorCamera_;
 	int decimation_;
 	bool rawScanPublished_;
-	bool smoothing_;
 	cv::Mat cloud_;
 	double cloudStamp_;
 	cv::Mat tangoColor_;
@@ -125,15 +78,8 @@ private:
 	double tangoColorStamp_;
 	boost::mutex dataMutex_;
 	USemaphore dataReady_;
-	CameraModel model_;
-	Transform deviceTColorCamera_;
-	TangoSupportRotation colorCameraToDisplayRotation_;
 	cv::Mat fisheyeRectifyMapX_;
 	cv::Mat fisheyeRectifyMapY_;
-	GPS lastKnownGPS_;
-	EnvSensors lastEnvSensors_;
-	Transform originOffset_;
-	bool originUpdate_;
 };
 
 } /* namespace rtabmap */

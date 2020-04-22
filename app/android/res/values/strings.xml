@@ -9,8 +9,10 @@
     <string name="status">"Status: "</string>
     <string name="words">"Words: "</string>
     <string name="camera_button">First View</string>
-    <string name="pause">Pause</string>
-    <string name="resume">Resume</string>
+    <string name="library">Library</string>
+    <string name="new_scan">New Scan</string>
+    <string name="pause">Stop</string>
+    <string name="resume">Start</string>
     <string name="backface_on">Backface</string>
     <string name="backface_off">Backface</string>
     <string name="light_on">Lighting</string>
@@ -63,7 +65,7 @@
     <string name="pref_key_rendering_texture_decimation">pref_key_rendering_texture_decimation</string>
     <string name="pref_default_rendering_texture_decimation">4</string>
     <string name="pref_key_blending">pref_key_blending</string>
-    <string name="pref_default_blending">true</string>
+    <string name="pref_default_blending">false</string>
     <string name="pref_key_background_color">pref_key_background_color</string>
     <string name="pref_default_background_color">0.2</string>
     <string name="pref_key_nodes_filtering">pref_key_nodes_filtering</string>
@@ -77,6 +79,8 @@
     <string name="pref_key_fisheye">pref_key_fisheye</string>
     <string name="pref_default_fisheye">false</string>
     
+    <string name="pref_key_camera_driver">pref_key_camera_driver</string>
+    <string name="pref_default_camera_driver">0</string>
     <string name="pref_key_update_rate">pref_key_update_rate</string>
     <string name="pref_default_update_rate">1</string>
     <string name="pref_key_max_speed">pref_key_max_speed</string>
@@ -317,6 +321,8 @@
     <string name="pref_summary_mapping">Advanced mapping parameters for fine tuning.</string>
     <string name="pref_title_mapping_core">Core</string>
     <string name="pref_title_mapping_database">Database</string>
+    <string name="pref_title_camera_driver">Camera Driver</string>
+    <string name="pref_summary_camera_driver">AR sdk use for capturing 6DoF poses and images. A TOF camera is required to record a 3D model.</string>
     <string name="pref_title_append">Append Mode</string>
     <string name="pref_summary_append">When resuming mapping, wait for a relocalization on the current map before starting a new map.</string>
     <string name="pref_title_resolution">HD Mode</string>
@@ -366,6 +372,18 @@
     <string name="pref_title_db_in_memory">Database In Memory</string>
     <string name="pref_summary_db_in_memory">The database is kept in RAM for fast access. Set to false to reduce RAM used at the cost of slower access. This parameter is applied on reset or when a database is opened.</string>
 
+    <string-array name="pref_camera_driver_keys">
+        <item>"Google Tango NDK"</item>
+        <item>"ARCore NDK"</item>
+        <item>"AREngine NDK"</item>
+        <item>"ARCore Java"</item>
+    </string-array>
+    <string-array name="pref_camera_driver_values">
+        <item>"0"</item>
+        <item>"1"</item>
+        <item>"2"</item>
+        <item>"3"</item>
+    </string-array>
     <string-array name="pref_update_rate_keys">
         <item>"Max"</item>
         <item>"5 Hz"</item>

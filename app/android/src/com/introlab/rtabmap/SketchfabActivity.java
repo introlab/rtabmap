@@ -245,7 +245,7 @@ public class SketchfabActivity extends Activity implements OnClickListener {
 					File exportDir = new File(mWorkingDirectory + RTABMapActivity.RTABMAP_EXPORT_DIR);
 					exportDir.mkdirs();
 					
-					if(RTABMapLib.writeExportedMesh(mWorkingDirectory + RTABMapActivity.RTABMAP_TMP_DIR, RTABMapActivity.RTABMAP_TMP_FILENAME))
+					if(RTABMapLib.writeExportedMesh(RTABMapActivity.nativeApplication, mWorkingDirectory + RTABMapActivity.RTABMAP_TMP_DIR, RTABMapActivity.RTABMAP_TMP_FILENAME))
 					{
 						String[] files = new String[0];
 						// verify if we have all files

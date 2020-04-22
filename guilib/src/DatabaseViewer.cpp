@@ -4257,7 +4257,7 @@ void DatabaseViewer::update(int value,
 					{
 						if(!data.depthRaw().empty() && data.depthRaw().cols!=data.imageRaw().cols && data.imageRaw().cols)
 						{
-							labelCalib->setText(tr("%1 %2x%3 [%8x%9] fx=%4 fy=%5 cx=%6 cy=%7 T=%10")
+							labelCalib->setText(tr("%1 %2x%3 [%8x%9] fx=%4 fy=%5 cx=%6 cy=%7 T=%10 [%11 %12 %13 %14; %15 %16 %17 %18; %19 %20 %21 %22]")
 									.arg(data.cameraModels().size())
 									.arg(data.cameraModels()[0].imageWidth()>0?data.cameraModels()[0].imageWidth():data.imageRaw().cols/data.cameraModels().size())
 									.arg(data.cameraModels()[0].imageHeight()>0?data.cameraModels()[0].imageHeight():data.imageRaw().rows)
@@ -4267,11 +4267,14 @@ void DatabaseViewer::update(int value,
 									.arg(data.cameraModels()[0].cy())
 									.arg(data.depthRaw().cols/data.cameraModels().size())
 									.arg(data.depthRaw().rows)
-									.arg(data.cameraModels()[0].localTransform().prettyPrint().c_str()));
+									.arg(data.cameraModels()[0].localTransform().prettyPrint().c_str())
+									.arg(data.cameraModels()[0].localTransform().r11()).arg(data.cameraModels()[0].localTransform().r12()).arg(data.cameraModels()[0].localTransform().r13()).arg(data.cameraModels()[0].localTransform().o14())
+									.arg(data.cameraModels()[0].localTransform().r21()).arg(data.cameraModels()[0].localTransform().r22()).arg(data.cameraModels()[0].localTransform().r23()).arg(data.cameraModels()[0].localTransform().o24())
+									.arg(data.cameraModels()[0].localTransform().r31()).arg(data.cameraModels()[0].localTransform().r32()).arg(data.cameraModels()[0].localTransform().r33()).arg(data.cameraModels()[0].localTransform().o34()));
 						}
 						else
 						{
-							labelCalib->setText(tr("%1 %2x%3 fx=%4 fy=%5 cx=%6 cy=%7 T=%8")
+							labelCalib->setText(tr("%1 %2x%3 fx=%4 fy=%5 cx=%6 cy=%7 T=%8 [%9 %10 %11 %12; %13 %14 %15 %16; %17 %18 %19 %20]")
 									.arg(data.cameraModels().size())
 									.arg(data.cameraModels()[0].imageWidth()>0?data.cameraModels()[0].imageWidth():data.imageRaw().cols/data.cameraModels().size())
 									.arg(data.cameraModels()[0].imageHeight()>0?data.cameraModels()[0].imageHeight():data.imageRaw().rows)
@@ -4279,13 +4282,16 @@ void DatabaseViewer::update(int value,
 									.arg(data.cameraModels()[0].fy())
 									.arg(data.cameraModels()[0].cx())
 									.arg(data.cameraModels()[0].cy())
-									.arg(data.cameraModels()[0].localTransform().prettyPrint().c_str()));
+									.arg(data.cameraModels()[0].localTransform().prettyPrint().c_str())
+									.arg(data.cameraModels()[0].localTransform().r11()).arg(data.cameraModels()[0].localTransform().r12()).arg(data.cameraModels()[0].localTransform().r13()).arg(data.cameraModels()[0].localTransform().o14())
+									.arg(data.cameraModels()[0].localTransform().r21()).arg(data.cameraModels()[0].localTransform().r22()).arg(data.cameraModels()[0].localTransform().r23()).arg(data.cameraModels()[0].localTransform().o24())
+									.arg(data.cameraModels()[0].localTransform().r31()).arg(data.cameraModels()[0].localTransform().r32()).arg(data.cameraModels()[0].localTransform().r33()).arg(data.cameraModels()[0].localTransform().o34()));
 						}
 
 						for(unsigned int i=0; i<data.cameraModels().size();++i)
 						{
 							if(i!=0) calibrationDetails << std::endl;
-							calibrationDetails << "Id: " << i << " Size=" << data.cameraModels()[i].imageWidth() << "x" << data.cameraModels()[i].imageWidth() << std::endl;
+							calibrationDetails << "Id: " << i << " Size=" << data.cameraModels()[i].imageWidth() << "x" << data.cameraModels()[i].imageHeight() << std::endl;
 							if( data.cameraModels()[i].K_raw().total()) calibrationDetails << "K=" << data.cameraModels()[i].K_raw() << std::endl;
 							if( data.cameraModels()[i].D_raw().total()) calibrationDetails << "D=" << data.cameraModels()[i].D_raw() << std::endl;
 							if( data.cameraModels()[i].R().total()) calibrationDetails << "R=" << data.cameraModels()[i].R() << std::endl;
@@ -4296,7 +4302,7 @@ void DatabaseViewer::update(int value,
 					else
 					{
 						//stereo
-						labelCalib->setText(tr("%1x%2 fx=%3 fy=%4 cx=%5 cy=%6 baseline=%7m T=%8")
+						labelCalib->setText(tr("%1x%2 fx=%3 fy=%4 cx=%5 cy=%6 baseline=%7m T=%8 [%9 %10 %11 %12; %13 %14 %15 %16; %17 %18 %19 %20]")
 									.arg(data.stereoCameraModel().left().imageWidth()>0?data.stereoCameraModel().left().imageWidth():data.imageRaw().cols)
 									.arg(data.stereoCameraModel().left().imageHeight()>0?data.stereoCameraModel().left().imageHeight():data.imageRaw().rows)
 									.arg(data.stereoCameraModel().left().fx())
@@ -4304,15 +4310,18 @@ void DatabaseViewer::update(int value,
 									.arg(data.stereoCameraModel().left().cx())
 									.arg(data.stereoCameraModel().left().cy())
 									.arg(data.stereoCameraModel().baseline())
-									.arg(data.stereoCameraModel().localTransform().prettyPrint().c_str()));
+									.arg(data.stereoCameraModel().localTransform().prettyPrint().c_str())
+									.arg(data.stereoCameraModel().localTransform().r11()).arg(data.stereoCameraModel().localTransform().r12()).arg(data.stereoCameraModel().localTransform().r13()).arg(data.stereoCameraModel().localTransform().o14())
+									.arg(data.stereoCameraModel().localTransform().r21()).arg(data.stereoCameraModel().localTransform().r22()).arg(data.stereoCameraModel().localTransform().r23()).arg(data.stereoCameraModel().localTransform().o24())
+									.arg(data.stereoCameraModel().localTransform().r31()).arg(data.stereoCameraModel().localTransform().r32()).arg(data.stereoCameraModel().localTransform().r33()).arg(data.stereoCameraModel().localTransform().o34()));
 
-						calibrationDetails << "Left:" << " Size=" << data.stereoCameraModel().left().imageWidth() << "x" << data.stereoCameraModel().left().imageWidth() << std::endl;
+						calibrationDetails << "Left:" << " Size=" << data.stereoCameraModel().left().imageWidth() << "x" << data.stereoCameraModel().left().imageHeight() << std::endl;
 						if( data.stereoCameraModel().left().K_raw().total()) calibrationDetails << "K=" << data.stereoCameraModel().left().K_raw() << std::endl;
 						if( data.stereoCameraModel().left().D_raw().total()) calibrationDetails << "D=" << data.stereoCameraModel().left().D_raw() << std::endl;
 						if( data.stereoCameraModel().left().R().total()) calibrationDetails << "R=" << data.stereoCameraModel().left().R() << std::endl;
 						if( data.stereoCameraModel().left().P().total()) calibrationDetails << "P=" << data.stereoCameraModel().left().P() << std::endl;
 						calibrationDetails << std::endl;
-						calibrationDetails << "Right:" << " Size=" << data.stereoCameraModel().right().imageWidth() << "x" << data.stereoCameraModel().right().imageWidth() << std::endl;
+						calibrationDetails << "Right:" << " Size=" << data.stereoCameraModel().right().imageWidth() << "x" << data.stereoCameraModel().right().imageHeight() << std::endl;
 						if( data.stereoCameraModel().right().K_raw().total()) calibrationDetails << "K=" << data.stereoCameraModel().right().K_raw() << std::endl;
 						if( data.stereoCameraModel().right().D_raw().total()) calibrationDetails << "D=" << data.stereoCameraModel().right().D_raw() << std::endl;
 						if( data.stereoCameraModel().right().R().total()) calibrationDetails << "R=" << data.stereoCameraModel().right().R() << std::endl;
@@ -4854,7 +4863,7 @@ void DatabaseViewer::update(int value,
 			constraintsViewer_->removeAllClouds();
 
 			Link link = this->findActiveLink(from, to);
-			if(link.isValid())
+			if(link.isValid() && link.type() != Link::kGravity)
 			{
 				this->updateConstraintView(link, false);
 			}

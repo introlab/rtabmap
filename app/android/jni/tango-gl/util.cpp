@@ -238,23 +238,4 @@ glm::vec3 util::ApplyTransform(const glm::mat4& mat, const glm::vec3& vec) {
   return glm::vec3(mat * glm::vec4(vec, 1.0f));
 }
 
-TangoSupportRotation util::GetAndroidRotationFromColorCameraToDisplay(
-    int display_rotation, int color_camera_rotation) {
-  TangoSupportRotation r =
-      static_cast<TangoSupportRotation>(display_rotation);
-  return util::GetAndroidRotationFromColorCameraToDisplay(
-      r, color_camera_rotation);
-}
-
-TangoSupportRotation util::GetAndroidRotationFromColorCameraToDisplay(
-    TangoSupportRotation display_rotation, int color_camera_rotation) {
-  int color_camera_n = NormalizedColorCameraRotation(color_camera_rotation);
-
-  int ret = static_cast<int>(display_rotation) - color_camera_n;
-  if (ret < 0) {
-    ret += 4;
-  }
-  return static_cast<TangoSupportRotation>(ret % 4);
-}
-
 }  // namespace tango_gl

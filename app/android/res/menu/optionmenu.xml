@@ -7,9 +7,12 @@
 		  <item android:id="@+id/mesh" android:title="Mesh" />
 		  <item android:id="@+id/texture_mesh" android:checked="true" android:title="Texture Mesh" />
 	   </group>
-	   <item android:id="@+id/save" android:title="Save" android:showAsAction="ifRoom"/>
+	   
+       <item android:id="@+id/new_scan" android:title="New Scan"/>
+       <item android:id="@+id/open" android:title="Library" android:showAsAction="ifRoom"/>
+	   <item android:id="@+id/save" android:title="Save"/>
                      
-       <item android:id="@+id/export" android:showAsAction="ifRoom" android:title="Export">
+       <item android:id="@+id/export" android:title="Export">
           <menu>
               <item android:id="@+id/export_point_cloud_menu" android:title="Point Cloud">
                   <menu>
@@ -26,7 +29,7 @@
           </menu>
        </item>
        
-        <item android:id="@+id/post_processing" android:title="Optimize" android:showAsAction="ifRoom">
+        <item android:id="@+id/post_processing" android:title="Optimize">
           <menu>
              <item android:id="@+id/post_processing_standard" android:title="Standard Optimization" />
              <item android:id="@+id/post_processing_advanced" android:title="Advanced..." >
@@ -42,8 +45,6 @@
 	         </item>
           </menu>
        </item>
-       
-       <item android:id="@+id/open" android:title="Open" android:showAsAction="ifRoom"/>
        
        <item android:id="@+id/menu_rendering_settings" android:title="Visibility...">
         <menu >
@@ -68,7 +69,7 @@
 	       </menu>
 	   </item>
 	   <item android:id="@+id/settings" android:title="Settings"/>
-       <item android:id="@+id/reset" android:title="Reset"/>
+       <item android:id="@+id/resume" android:title="Resume"/>
        <item android:id="@+id/about" android:title="About"/>
     </group>
 </menu>

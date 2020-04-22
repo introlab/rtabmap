@@ -4005,8 +4005,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 				 data.depthOrRightRaw().type() == CV_8UC1)
 			   &&
 				( (data.imageRaw().empty() && data.depthOrRightRaw().type() != CV_8UC1) ||
-				  (data.imageRaw().rows % data.depthOrRightRaw().rows == 0 && data.imageRaw().cols % data.depthOrRightRaw().cols == 0 &&
-				   data.depthOrRightRaw().rows <= data.imageRaw().rows && data.depthOrRightRaw().cols <= data.imageRaw().cols))),
+				  (data.depthOrRightRaw().rows <= data.imageRaw().rows && data.depthOrRightRaw().cols <= data.imageRaw().cols))),
 				uFormat("image=(%d/%d, type=%d, [accepted=%d,%d]) depth=(%d/%d, type=%d [accepted=%d(depth mm),%d(depth m),%d(stereo)]). "
 						"For stereo, left and right images should be same size. "
 						"For RGB-D, depth can be X times smaller than RGB (where X is an integer).",

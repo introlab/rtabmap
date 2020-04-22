@@ -17,6 +17,7 @@ import android.graphics.Typeface;
 import android.opengl.GLES20;
 import android.opengl.GLUtils;
 import android.text.TextPaint;
+import android.util.Log;
 
 public class TextManager {
 	
@@ -335,6 +336,8 @@ public class TextManager {
 		float x = val.x;
 		float y = val.y;
 		String text = val.text;
+		
+		Log.i("RTABMapActivity", String.format("convertTextToTriangleInfo() set status=%s", text));
 		
 		// Create 
 		for(int j=0; j<text.length(); j++)

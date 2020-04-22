@@ -27,6 +27,26 @@
         android:layout_width="wrap_content"
         android:layout_height="match_parent"
         android:fitsSystemWindows="true">
+        
+    <ImageButton
+        android:id="@+id/start_button"
+        android:layout_width="100dp"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:layout_centerHorizontal="true"
+        android:src="@drawable/start96"
+        android:background="@null"
+        android:layout_marginBottom="10dp" />
+
+    <ImageButton
+        android:id="@+id/stop_button"
+        android:layout_width="100dp"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:layout_centerHorizontal="true"
+        android:src="@drawable/stop96"
+        android:background="@null"
+        android:layout_marginBottom="10dp" />
     
     <ToggleButton
         android:id="@+id/wireframe_button"
@@ -80,16 +100,6 @@
         android:text="@string/camera_button"
         android:spinnerMode="dropdown"/>
 
-    <ToggleButton
-        android:id="@+id/pause_button"
-        android:layout_width="100dp"
-        android:layout_height="wrap_content"
-		android:layout_marginRight="5dp"
-        android:layout_alignParentTop="true"
-        android:layout_marginTop="10dp"
-        android:layout_alignParentRight="true"
-        android:textOff="@string/pause"
-        android:textOn="@string/resume" />
 
     <Button
         android:id="@+id/button_shareToSketchfab"
@@ -138,7 +148,22 @@
         android:paddingBottom="10dp"
         android:progressDrawable="@drawable/custom_seekbar" />
 
+    <Button
+        android:id="@+id/button_library"
+        android:layout_width="match_parent"
+        android:layout_height="100dp"
+        android:layout_centerHorizontal="true"
+        android:layout_gravity="top"
+        android:layout_marginTop="100dp"
+        android:text="@string/library" />
 
+    <Button
+        android:id="@+id/button_new_scan"
+        android:layout_width="match_parent"
+        android:layout_height="100dp"
+        android:layout_alignLeft="@+id/button_library"
+        android:layout_below="@+id/button_library"
+        android:text="@string/new_scan" />
 
 </RelativeLayout>        
 </RelativeLayout>
