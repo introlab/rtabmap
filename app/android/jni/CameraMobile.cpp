@@ -223,7 +223,7 @@ void CameraMobile::mainLoop()
 					model.fx(),
 					model.cy(),
 					model.cx()>0?model.imageWidth()-model.cx():0,
-					model.localTransform()*rtabmap::Transform(0,0,0,0,0,1.57079632679489661923132169163975144));
+					model.localTransform()*rtabmap::Transform(0,-1,0,0, 1,0,0,0, 0,0,1,0));
 			model.setImageSize(sizet);
 			data.setRGBDImage(rgb, depth, model);
 		}
@@ -241,7 +241,7 @@ void CameraMobile::mainLoop()
 					model.fy(),
 					model.cx()>0?model.imageWidth()-model.cx():0,
 					model.cy()>0?model.imageHeight()-model.cy():0,
-					model.localTransform()*rtabmap::Transform(0,0,0,0,0,1.57079632679489661923132169163975144*2.0));
+					model.localTransform()*rtabmap::Transform(0,0,0,0,0,1,0));
 			model.setImageSize(sizet);
 			data.setRGBDImage(rgb, depth, model);
 		}
@@ -260,7 +260,7 @@ void CameraMobile::mainLoop()
 					model.fx(),
 					model.cy()>0?model.imageHeight()-model.cy():0,
 					model.cx(),
-					model.localTransform()*rtabmap::Transform(0,0,0,0,0,-1.57079632679489661923132169163975144));
+					model.localTransform()*rtabmap::Transform(0,1,0,0, -1,0,0,0, 0,0,1,0));
 			model.setImageSize(sizet);
 			data.setRGBDImage(rgb, depth, model);
 		}
