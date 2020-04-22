@@ -2035,7 +2035,7 @@ public class RTABMapActivity extends FragmentActivity implements OnClickListener
 			mItemTrajectoryMode.setEnabled(true);
 			mItemDataRecorderMode.setEnabled(true);
 			mButtonStart.setVisibility(mState == State.STATE_CAMERA?View.VISIBLE:View.INVISIBLE);
-			mButtonStop.setVisibility(mState == State.STATE_MAPPING?View.VISIBLE:View.INVISIBLE);
+			mButtonStop.setVisibility(mHudVisible && mState == State.STATE_MAPPING?View.VISIBLE:View.INVISIBLE);
 			break;
 		case STATE_PROCESSING:
 			mButtonLighting.setVisibility(View.INVISIBLE);
@@ -2077,7 +2077,8 @@ public class RTABMapActivity extends FragmentActivity implements OnClickListener
 			mItemLocalizationMode.setEnabled(true);
 			mItemTrajectoryMode.setEnabled(false);
 			mItemDataRecorderMode.setEnabled(false);
-			mButtonStop.setVisibility(mState == State.STATE_VISUALIZING_CAMERA?View.VISIBLE:View.INVISIBLE);
+			mButtonStart.setVisibility(View.INVISIBLE);
+			mButtonStop.setVisibility(mHudVisible && mState == State.STATE_VISUALIZING_CAMERA?View.VISIBLE:View.INVISIBLE);
 			break;
 		case STATE_VISUALIZING_WHILE_LOADING:
 			mButtonLighting.setVisibility(mHudVisible && !mItemRenderingPointCloud.isChecked()?View.VISIBLE:View.INVISIBLE);
@@ -2705,7 +2706,7 @@ public class RTABMapActivity extends FragmentActivity implements OnClickListener
 
 	private void resumeScan()
 	{
-		setCamera(1);
+		setCamera(mState==State.STATE_VISUALIZING?0:1);
 		startCamera(String.format("Hold Tight! Initializing Camera Service...\n"
 				+ "Tip: If the camera is still drifting just after the mapping has started, do \"Reset\"."));
 	}
