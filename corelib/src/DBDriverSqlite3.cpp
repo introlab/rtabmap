@@ -4702,7 +4702,7 @@ cv::Mat DBDriverSqlite3::loadPreviewImageQuery() const
 
 void DBDriverSqlite3::saveOptimizedPosesQuery(const std::map<int, Transform> & poses, const Transform & lastlocalizationPose) const
 {
-	UDEBUG("");
+	UDEBUG("poses=%d lastlocalizationPose=%s", (int)poses.size(), lastlocalizationPose.prettyPrint().c_str());
 	if(_ppDb && uStrNumCmp(_version, "0.17.0") >= 0)
 	{
 		UTimer timer;

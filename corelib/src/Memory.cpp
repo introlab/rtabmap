@@ -3066,6 +3066,7 @@ Transform Memory::computeIcpTransformMulti(
 		pcl::PointCloud<pcl::PointNormal>::Ptr assembledToNormalClouds(new pcl::PointCloud<pcl::PointNormal>);
 		pcl::PointCloud<pcl::PointXYZI>::Ptr assembledToIClouds(new pcl::PointCloud<pcl::PointXYZI>);
 		pcl::PointCloud<pcl::PointXYZINormal>::Ptr assembledToNormalIClouds(new pcl::PointCloud<pcl::PointXYZINormal>);
+		UDEBUG("maxPoints from(%d) = %d", fromId, maxPoints);
 		for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
 		{
 			if(iter->first != fromId)
@@ -3075,7 +3076,7 @@ Transform Memory::computeIcpTransformMulti(
 				{
 					LaserScan scan;
 					s->sensorData().uncompressData(0, 0, &scan);
-					if(!scan.isEmpty() && scan.format() == fromScan.format())
+					if(!scan.isEmpty() && scan.format() == toScan.format())
 					{
 						if(scan.hasIntensity())
 						{
@@ -3106,12 +3107,13 @@ Transform Memory::computeIcpTransformMulti(
 
 						if(scan.size() > maxPoints)
 						{
+							UDEBUG("maxPoints scan(%d) = %d", iter->first, (int)scan.size());
 							maxPoints = scan.size();
 						}
 					}
 					else if(!scan.isEmpty())
 					{
-						UWARN("Incompatible scan format %d vs %d", (int)fromScan.format(), (int)scan.format());
+						UWARN("Incompatible scan format %s vs %s", toScan.formatName().c_str(), scan.formatName().c_str());
 					}
 				}
 				else
@@ -3138,13 +3140,14 @@ Transform Memory::computeIcpTransformMulti(
 		{
 			assembledScan = fromScan.is2d()?util3d::laserScan2dFromPointCloud(*assembledToIClouds):util3d::laserScanFromPointCloud(*assembledToIClouds);
 		}
+		UDEBUG("assembledScan=%d points", assembledScan.cols);
 
 		// scans are in base frame but for 2d scans, set the height so that correspondences matching works
 		assembledData.setLaserScan(
 				LaserScan(assembledScan,
 					fromScan.maxPoints()?fromScan.maxPoints():maxPoints,
 					fromScan.rangeMax(),
-					fromScan.format(),
+					toScan.format(),
 					fromScan.is2d()?Transform(0,0,fromScan.localTransform().z(),0,0,0):Transform::getIdentity()));
 
 		t = _registrationIcpMulti->computeTransformation(fromS->sensorData(), assembledData, guess, info);

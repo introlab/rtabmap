@@ -3019,6 +3019,11 @@ void DatabaseViewer::regenerateSavedMap()
 		dbDriver_->save2DMap(map, xMin, yMin, grid.getCellSize());
 		Transform lastlocalizationPose;
 		dbDriver_->loadOptimizedPoses(&lastlocalizationPose);
+		if(lastlocalizationPose.isNull() && !graphes_.back().empty())
+		{
+			// use last pose by default
+			lastlocalizationPose = graphes_.back().rbegin()->second;
+		}
 		dbDriver_->saveOptimizedPoses(graphes_.back(), lastlocalizationPose);
 		// reset optimized mesh as poses have changed
 		dbDriver_->saveOptimizedMesh(cv::Mat());
@@ -4345,7 +4350,7 @@ void DatabaseViewer::update(int value,
 				if(data.laserScanRaw().size())
 				{
 					labelScan->setText(tr("Format=%1 Points=%2 [max=%3] Range=[%4->%5 m] Angle=[%6->%7 rad inc=%8] Has [Color=%9 2D=%10 Normals=%11 Intensity=%12]")
-							.arg(data.laserScanRaw().format())
+							.arg(data.laserScanRaw().formatName().c_str())
 							.arg(data.laserScanRaw().size())
 							.arg(data.laserScanRaw().maxPoints())
 							.arg(data.laserScanRaw().rangeMin())

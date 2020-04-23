@@ -318,16 +318,24 @@ void Rtabmap::init(const ParametersMap & parameters, const std::string & databas
 
 	Transform lastPose;
 	_optimizedPoses = _memory->loadOptimizedPoses(&lastPose);
-	UINFO("Loaded optimizedPoses=%d lastPose=%s", _optimizedPoses.size(), lastPose.prettyPrint().c_str());
 	if(!_optimizedPoses.empty())
 	{
-		if(!_savedLocalizationIgnored)
+		if(_savedLocalizationIgnored)
 		{
-			_lastLocalizationPose = lastPose;
+			UDEBUG("lastPose is ignored (%s=true), assuming we start at the origin of the map.", Parameters::kRGBDSavedLocalizationIgnored().c_str());
+			lastPose.setIdentity();
 		}
+		_lastLocalizationPose = lastPose;
+
+		UINFO("Loaded optimizedPoses=%d lastPose=%s", _optimizedPoses.size(), _lastLocalizationPose.prettyPrint().c_str());
+
 		std::map<int, Transform> tmp;
 		// Get just the links
 		_memory->getMetricConstraints(uKeysSet(_optimizedPoses), tmp, _constraints, false, true);
+	}
+	else
+	{
+		UINFO("Loaded optimizedPoses=0, last localization pose is ignored!");
 	}
 
 	if(_databasePath.empty())
@@ -5015,7 +5023,7 @@ bool Rtabmap::computePath(int targetNode, bool global)
 		{
 			if(_lastLocalizationPose.isNull() || _optimizedPoses.empty())
 			{
-				UWARN("Last localization pose is null... cannot compute a path");
+				UWARN("Last localization pose is null or optimized graph is empty... cannot compute a path");
 				return false;
 			}
 			if(_optimizedPoses.begin()->first < 0)

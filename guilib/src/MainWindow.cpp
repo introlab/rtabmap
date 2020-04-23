@@ -1344,7 +1344,6 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 		{
 			_cloudViewer->updateCameraFrustum(_odometryCorrection*odom.pose(), odom.data().stereoCameraModel());
 		}
-		_cloudViewer->updateCameraTargetPosition(_odometryCorrection*odom.pose());
 #if PCL_VERSION_COMPARE(>=, 1, 7, 2)
 		if(_preferencesDialog->isFramesShown())
 		{
@@ -1355,7 +1354,7 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 			_cloudViewer->removeLine("odom_to_base_link");
 		}
 #endif
-
+		_cloudViewer->updateCameraTargetPosition(_odometryCorrection*odom.pose());
 	}
 	_cloudViewer->update();
 
@@ -2041,6 +2040,21 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 
 			UDEBUG("time= %d ms", time.restart());
 
+#if PCL_VERSION_COMPARE(>=, 1, 7, 2)
+			if(_preferencesDialog->isFramesShown())
+			{
+				_cloudViewer->addOrUpdateCoordinate("map_frame", Transform::getIdentity(), 0.5, false);
+				_cloudViewer->addOrUpdateCoordinate("odom_frame", _odometryCorrection, 0.35, false);
+				_cloudViewer->addOrUpdateLine("map_to_odom", Transform::getIdentity(), _odometryCorrection, qRgb(255, 128, 0), false, false);
+			}
+			else
+			{
+				_cloudViewer->removeLine("map_to_odom");
+				_cloudViewer->removeCoordinate("odom_frame");
+				_cloudViewer->removeCoordinate("map_frame");
+			}
+#endif
+
 			if(!_odometryReceived && poses.size() && poses.rbegin()->first == stat.refImageId())
 			{
 				if(poses.rbegin()->first == stat.getLastSignatureData().id())
@@ -2062,21 +2076,6 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 					_ui->graphicsView_graphView->updateReferentialPosition(poses.rbegin()->second);
 				}
 			}
-
-#if PCL_VERSION_COMPARE(>=, 1, 7, 2)
-			if(_preferencesDialog->isFramesShown())
-			{
-				_cloudViewer->addOrUpdateCoordinate("map_frame", Transform::getIdentity(), 0.5, false);
-				_cloudViewer->addOrUpdateCoordinate("odom_frame", _odometryCorrection, 0.35, false);
-				_cloudViewer->addOrUpdateLine("map_to_odom", Transform::getIdentity(), _odometryCorrection, qRgb(255, 128, 0), false, false);
-			}
-			else
-			{
-				_cloudViewer->removeLine("map_to_odom");
-				_cloudViewer->removeCoordinate("odom_frame");
-				_cloudViewer->removeCoordinate("map_frame");
-			}
-#endif
 
 			if(_cachedSignatures.contains(0) && stat.refImageId()>0)
 			{
