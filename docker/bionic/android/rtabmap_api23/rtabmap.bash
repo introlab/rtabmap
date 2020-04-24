@@ -11,7 +11,7 @@ pwd=$(pwd)
 
 
 # get rtabmap
-git clone -b tango_refactoring https://github.com/introlab/rtabmap.git rtabmap-tango
+git clone https://github.com/introlab/rtabmap.git rtabmap-tango
 cd 
 
 # tango
