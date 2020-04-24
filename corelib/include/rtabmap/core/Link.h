@@ -54,6 +54,8 @@ public:
 		kAllWithLandmarks = 98,
 		kAllWithoutLandmarks = 99,
 		kUndef = 99};
+	static std::string typeName(Type type);
+
 	Link();
 	Link(int from,
 			int to,
@@ -68,6 +70,7 @@ public:
 	int to() const {return to_;}
 	const Transform & transform() const {return transform_;}
 	Type type() const {return type_;}
+	std::string typeName() const {return typeName(type_);}
 	const cv::Mat & infMatrix() const {return infMatrix_;}
 	double rotVariance(bool minimum = true) const;
 	double transVariance(bool minimum = true) const;
