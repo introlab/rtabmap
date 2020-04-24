@@ -777,6 +777,7 @@ std::list<int> VWDictionary::addNewWords(
 	cv::Mat dists;
 	std::vector<std::vector<cv::DMatch> > matches;
 	bool bruteForce = false;
+	bool isL2NotSqr = false;
 
 	UTimer timerLocal;
 	timerLocal.start();
@@ -812,6 +813,7 @@ std::list<int> VWDictionary::addNewWords(
 			{
 				cv::gpu::BruteForceMatcher_GPU<cv::L2<float> > gpuMatcher;
 				gpuMatcher.knnMatch(newDescriptorsGpu, lastDescriptorsGpu, matches, k);
+				isL2NotSqr = true;
 			}
 #else
 			UERROR("Cannot use brute Force GPU because OpenCV is not built with gpu module.");
@@ -830,6 +832,7 @@ std::list<int> VWDictionary::addNewWords(
 			{
 				gpuMatcher = cv::cuda::DescriptorMatcher::createBFMatcher(cv::NORM_L2);
 				gpuMatcher->knnMatch(newDescriptorsGpu, lastDescriptorsGpu, matches, k);
+				isL2NotSqr = true;
 			}
 #else
 			UERROR("Cannot use brute Force GPU because OpenCV is not built with cuda module.");
@@ -889,6 +892,11 @@ std::list<int> VWDictionary::addNewWords(
 				int id = uValue(_mapIndexId, matches.at(i).at(j).trainIdx);
 				if(d >= 0.0f && id != 0)
 				{
+					if(isL2NotSqr)
+					{
+						// Make it compatible with L2SQR format of flann
+						d*=d;
+					}
 					fullResults.insert(std::pair<float, int>(d, id));
 				}
 				else
@@ -1097,6 +1105,7 @@ std::vector<int> VWDictionary::findNN(const cv::Mat & queryIn) const
 
 		std::vector<std::vector<cv::DMatch> > matches;
 		bool bruteForce = false;
+		bool isL2NotSqr = false;
 		cv::Mat results;
 		cv::Mat dists;
 
@@ -1131,6 +1140,7 @@ std::vector<int> VWDictionary::findNN(const cv::Mat & queryIn) const
 				{
 					cv::gpu::BruteForceMatcher_GPU<cv::L2<float> > gpuMatcher;
 					gpuMatcher.knnMatch(newDescriptorsGpu, lastDescriptorsGpu, matches, k);
+					isL2NotSqr = true;
 				}
 #else
 			UERROR("Cannot use brute Force GPU because OpenCV is not built with gpu module.");
@@ -1150,6 +1160,7 @@ std::vector<int> VWDictionary::findNN(const cv::Mat & queryIn) const
 				{
 					gpuMatcher = cv::cuda::DescriptorMatcher::createBFMatcher(cv::NORM_L2);
 					gpuMatcher->knnMatchAsync(newDescriptorsGpu, lastDescriptorsGpu, matchesGpu, k);
+					isL2NotSqr = true;
 				}
 				gpuMatcher->knnMatchConvert(matchesGpu, matches);
 #else
@@ -1243,6 +1254,11 @@ std::vector<int> VWDictionary::findNN(const cv::Mat & queryIn) const
 					int id = uValue(_mapIndexId, matches.at(i).at(j).trainIdx);
 					if(d >= 0.0f && id != 0)
 					{
+						if(isL2NotSqr)
+						{
+							// make it compatible with L2SQR from FLANN
+							d*=d;
+						}
 						fullResults.insert(std::pair<float, int>(d, id));
 					}
 				}
