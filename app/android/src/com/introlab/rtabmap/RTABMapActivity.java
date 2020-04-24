@@ -602,11 +602,7 @@ public class RTABMapActivity extends FragmentActivity implements OnClickListener
 		RTABMapLib.openDatabase(nativeApplication, tmpDatabase, databaseInMemory, false);
 		
 		final String[] files = Util.loadFileList(mWorkingDirectory, true);
-		if(files.length > 0)
-		{
-			openDatabase();
-		}
-		else
+		if(files.length == 0)
 		{
 			mButtonLibrary.setVisibility(View.INVISIBLE);
 		}
@@ -1554,7 +1550,7 @@ public class RTABMapActivity extends FragmentActivity implements OnClickListener
 		}
 
 
-		if(mButtonStop!=null && mButtonStop.getVisibility() == View.VISIBLE)
+		if(mState == State.STATE_MAPPING || mState == State.STATE_VISUALIZING_CAMERA)
 		{
 			long currentTime = System.currentTimeMillis()/1000;
 			if(loopClosureId > 0)
@@ -1910,7 +1906,7 @@ public class RTABMapActivity extends FragmentActivity implements OnClickListener
 
 	private RTABMapActivity getActivity() {return this;}
 
-	private void standardOptimization() {
+	private void standardOptimization(final boolean withStandardMeshExport) {
 
 		mExportProgressDialog.setTitle("Post-Processing");
 		mExportProgressDialog.setMessage(String.format("Please wait while optimizing..."));
@@ -1929,9 +1925,21 @@ public class RTABMapActivity extends FragmentActivity implements OnClickListener
 							if(loopDetected >= 0)
 							{
 								mTotalLoopClosures+=loopDetected;
-								mProgressDialog.setTitle("Post-Processing");
-								mProgressDialog.setMessage(String.format("Optimization done! Increasing visual appeal..."));
-								mProgressDialog.show();
+								if(withStandardMeshExport)
+								{
+									export(true, true, false, true, 200000);
+								}
+								else
+								{
+									mProgressDialog.setTitle("Post-Processing");
+									mProgressDialog.setMessage(String.format("Optimization done! Increasing visual appeal..."));
+									mProgressDialog.show();
+									
+									if(mOpenedDatabasePath.isEmpty())
+									{
+										save();
+									}
+								}
 							}
 							else if(loopDetected < 0)
 							{
@@ -2271,16 +2279,24 @@ public class RTABMapActivity extends FragmentActivity implements OnClickListener
 							// Do standard post processing?
 							AlertDialog d2 = new AlertDialog.Builder(getActivity())
 									.setCancelable(false)
-									.setTitle("Mapping Paused! Optimize Now?")
-									.setMessage("Do you want to do standard map optimization now? This can be also done later using \"Optimize\" menu.")
+									.setTitle("Mapping Stopped! Optimize Now?")
+									.setMessage("Do you want to do standard graph and mesh optimizations now? This can be also done later using \"Optimize\" and \"Export\" menus.")
+									.setNeutralButton("Only Graph", new DialogInterface.OnClickListener() {
+										public void onClick(DialogInterface dialog, int which) {
+											standardOptimization(false);
+										}
+									})
 									.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
 										public void onClick(DialogInterface dialog, int which) {
-											standardOptimization();
+											standardOptimization(true);
 										}
 									})
 									.setNegativeButton("No", new DialogInterface.OnClickListener() {
 										public void onClick(DialogInterface dialog, int which) {
-											// do nothing...
+											if(mOpenedDatabasePath.isEmpty())
+											{
+												save();
+											}
 										}
 									})
 									.create();
@@ -2300,7 +2316,7 @@ public class RTABMapActivity extends FragmentActivity implements OnClickListener
 		int itemId = item.getItemId();
 		if (itemId == R.id.post_processing_standard)
 		{
-			standardOptimization();
+			standardOptimization(false);
 		}
 		else if (itemId == R.id.detect_more_loop_closures)
 		{
@@ -2482,67 +2498,7 @@ public class RTABMapActivity extends FragmentActivity implements OnClickListener
 		}
 		else if (itemId == R.id.save)
 		{
-			AlertDialog.Builder builder = new AlertDialog.Builder(this);
-			builder.setCancelable(false);
-			builder.setTitle("RTAB-Map Database Name (*.db):");
-			final EditText input = new EditText(this);
-			input.setInputType(InputType.TYPE_CLASS_TEXT); 
-			if(mOpenedDatabasePath.isEmpty())
-			{
-				String timeStamp = new SimpleDateFormat("yyMMdd-HHmmss").format(mDateOnPause);
-				input.setText(timeStamp);
-			}
-			else
-			{
-				File f = new File(mOpenedDatabasePath);
-				String name = f.getName();
-				input.setText(name.substring(0,name.lastIndexOf(".")));
-			}
-			input.setImeOptions(EditorInfo.IME_FLAG_NO_EXTRACT_UI);
-			input.setSelectAllOnFocus(true);
-			input.selectAll();
-			builder.setView(input);
-			builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
-				@Override
-				public void onClick(DialogInterface dialog, int which)
-				{
-					final String fileName = input.getText().toString();  
-					dialog.dismiss();
-					if(!fileName.isEmpty())
-					{
-						File newFile = new File(mWorkingDirectory + fileName + ".db");
-						if(newFile.exists())
-						{
-							AlertDialog d2 = new AlertDialog.Builder(getActivity())
-									.setCancelable(false)
-									.setTitle("File Already Exists")
-									.setMessage("Do you want to overwrite the existing file?")
-									.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
-										public void onClick(DialogInterface dialog, int which) {
-											saveDatabase(fileName);
-										}
-									})
-									.setNegativeButton("No", new DialogInterface.OnClickListener() {
-										public void onClick(DialogInterface dialog, int which) {
-											dialog.dismiss();
-											resetNoTouchTimer(true);
-										}
-									})
-									.create();
-							d2.setCanceledOnTouchOutside(false);
-							d2.show();
-						}
-						else
-						{
-							saveDatabase(fileName);
-						}
-					}
-				}
-			});
-			AlertDialog alertToShow = builder.create();
-			alertToShow.setCanceledOnTouchOutside(false);
-			alertToShow.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE);
-			alertToShow.show();
+			save();
 		}
 		else if(itemId == R.id.resume)
 		{
@@ -3042,75 +2998,36 @@ public class RTABMapActivity extends FragmentActivity implements OnClickListener
 									notificationManager.notify(0, n); 
 								}
 
-								// Visualize the result?
-								AlertDialog d = new AlertDialog.Builder(getActivity())
-										.setCancelable(false)
-										.setTitle("Export Successful! (" + (endTime-startTime) + " sec)")
-										.setMessage(Html.fromHtml("Do you want visualize the result before saving to file or sharing to <a href=\"https://sketchfab.com/about\">Sketchfab</a>?"))
-										.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
-											public void onClick(DialogInterface dialog, int which) {
-												resetNoTouchTimer(true);
-												mSavedRenderingType = mItemRenderingPointCloud.isChecked()?0:mItemRenderingMesh.isChecked()?1:2;
-												if(!meshing)
-												{
-													mItemRenderingPointCloud.setChecked(true);
-												}
-												else if(!isOBJ)
-												{
-													mItemRenderingMesh.setChecked(true);
-												}
-												else // isOBJ
-												{
-													mItemRenderingTextureMesh.setChecked(true);
-												}
-												if(!optimizedCleanWhitePolygons)
-												{
-													mButtonLighting.setChecked(true);
-													RTABMapLib.setLighting(nativeApplication, true);
-												}
-												updateState(State.STATE_VISUALIZING);
-												RTABMapLib.postExportation(nativeApplication, true);
-												if(mButtonCameraView.getSelectedItemPosition() == 0)
-												{
-													setCamera(2);
-												}
-											}
-										})
-										.setNegativeButton("No", new DialogInterface.OnClickListener() {
-											public void onClick(DialogInterface dialog, int which) {
-												updateState(State.STATE_IDLE);
-												RTABMapLib.postExportation(nativeApplication, false);
-
-												AlertDialog d2 = new AlertDialog.Builder(getActivity())
-														.setCancelable(false)
-														.setTitle("Save to...")
-														.setMessage(Html.fromHtml("Do you want to share to <a href=\"https://sketchfab.com/about\">Sketchfab</a> or save it on device?"))
-														.setPositiveButton("Share to Sketchfab", new DialogInterface.OnClickListener() {
-															public void onClick(DialogInterface dialog, int which) {
-																shareToSketchfab();
-															}
-														})
-														.setNegativeButton("Save on device", new DialogInterface.OnClickListener() {
-															public void onClick(DialogInterface dialog, int which) {
-																saveOnDevice();
-															}
-														})
-														.setNeutralButton("Cancel", new DialogInterface.OnClickListener() {
-															public void onClick(DialogInterface dialog, int which) {
-																resetNoTouchTimer(true);
-															}
-														}).create();
-												d2.setCanceledOnTouchOutside(false);
-												d2.show();
-												// Make the textview clickable. Must be called after show()
-												((TextView)d2.findViewById(android.R.id.message)).setMovementMethod(LinkMovementMethod.getInstance());
-											}
-										})
-										.create();
-								d.setCanceledOnTouchOutside(false);
-								d.show();
-								// Make the textview clickable. Must be called after show()
-								((TextView)d.findViewById(android.R.id.message)).setMovementMethod(LinkMovementMethod.getInstance());
+								// Visualize the result
+								resetNoTouchTimer(true);
+								mSavedRenderingType = mItemRenderingPointCloud.isChecked()?0:mItemRenderingMesh.isChecked()?1:2;
+								if(!meshing)
+								{
+									mItemRenderingPointCloud.setChecked(true);
+								}
+								else if(!isOBJ)
+								{
+									mItemRenderingMesh.setChecked(true);
+								}
+								else // isOBJ
+								{
+									mItemRenderingTextureMesh.setChecked(true);
+								}
+								if(!optimizedCleanWhitePolygons)
+								{
+									mButtonLighting.setChecked(true);
+									RTABMapLib.setLighting(nativeApplication, true);
+								}
+								updateState(State.STATE_VISUALIZING);
+								RTABMapLib.postExportation(nativeApplication, true);
+								if(mButtonCameraView.getSelectedItemPosition() == 0)
+								{
+									setCamera(2);
+								}
+								if(mOpenedDatabasePath.isEmpty())
+								{
+									save();
+								}
 							}
 							else
 							{
@@ -3130,6 +3047,78 @@ public class RTABMapActivity extends FragmentActivity implements OnClickListener
 			} 
 		});
 		exportThread.start();
+	}
+	
+	public void save()
+	{
+		AlertDialog.Builder builder = new AlertDialog.Builder(this);
+		builder.setCancelable(false);
+		builder.setTitle("RTAB-Map Database Name (*.db):");
+		final EditText input = new EditText(this);
+		input.setInputType(InputType.TYPE_CLASS_TEXT); 
+		if(mOpenedDatabasePath.isEmpty())
+		{
+			String timeStamp = new SimpleDateFormat("yyMMdd-HHmmss").format(mDateOnPause);
+			input.setText(timeStamp);
+		}
+		else
+		{
+			File f = new File(mOpenedDatabasePath);
+			String name = f.getName();
+			input.setText(name.substring(0,name.lastIndexOf(".")));
+		}
+		input.setImeOptions(EditorInfo.IME_FLAG_NO_EXTRACT_UI);
+		input.setSelectAllOnFocus(true);
+		input.selectAll();
+		builder.setView(input);
+		builder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+			@Override
+			public void onClick(DialogInterface dialog, int which)
+			{
+				//do nothing
+			}
+		});
+		builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
+			@Override
+			public void onClick(DialogInterface dialog, int which)
+			{
+				final String fileName = input.getText().toString();  
+				dialog.dismiss();
+				if(!fileName.isEmpty())
+				{
+					File newFile = new File(mWorkingDirectory + fileName + ".db");
+					if(newFile.exists())
+					{
+						AlertDialog d2 = new AlertDialog.Builder(getActivity())
+								.setCancelable(false)
+								.setTitle("File Already Exists")
+								.setMessage("Do you want to overwrite the existing file?")
+								.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
+									public void onClick(DialogInterface dialog, int which) {
+										saveDatabase(fileName);
+									}
+								})
+								.setNegativeButton("No", new DialogInterface.OnClickListener() {
+									public void onClick(DialogInterface dialog, int which) {
+										dialog.dismiss();
+										resetNoTouchTimer(true);
+									}
+								})
+								.create();
+						d2.setCanceledOnTouchOutside(false);
+						d2.show();
+					}
+					else
+					{
+						saveDatabase(fileName);
+					}
+				}
+			}
+		});
+		AlertDialog alertToShow = builder.create();
+		alertToShow.setCanceledOnTouchOutside(false);
+		alertToShow.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE);
+		alertToShow.show();
 	}
 
 	/** 
@@ -3202,38 +3191,14 @@ public class RTABMapActivity extends FragmentActivity implements OnClickListener
 						AlertDialog d2 = new AlertDialog.Builder(getActivity())
 								.setCancelable(false)
 								.setTitle("Database saved!")
-								.setMessage(String.format("Database \"%s\" (%d MB) successfully saved on the SD-CARD! Share it?", newDatabasePathHuman, fileSizeMB))
-								.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
+								.setMessage(String.format("Database \"%s\" (%d MB) successfully saved on the SD-CARD!", newDatabasePathHuman, fileSizeMB))
+								.setPositiveButton("OK", new DialogInterface.OnClickListener() {
 									public void onClick(DialogInterface dialog, int which) {
-										// Send to...
-										Intent shareIntent = new Intent();
-										shareIntent.setAction(Intent.ACTION_SEND);
-										shareIntent.putExtra(Intent.EXTRA_STREAM, Uri.fromFile(f));
-										shareIntent.setType("application/octet-stream");
-										startActivity(Intent.createChooser(shareIntent, "Sharing..."));
-
-										resetNoTouchTimer(true);
-										if(!mItemDataRecorderMode.isChecked())
-										{
-											mOpenedDatabasePath = newDatabasePath;
-										}
-										mProgressDialog.dismiss();
-										updateState(previousState);
-									}
-								})
-								.setNegativeButton("No", new DialogInterface.OnClickListener() {
-									public void onClick(DialogInterface dialog, int which) {
-										resetNoTouchTimer(true);
-										if(!mItemDataRecorderMode.isChecked())
-										{
-											mOpenedDatabasePath = newDatabasePath;
-										}
-										mProgressDialog.dismiss();
-										updateState(previousState);
+										// do nothing
 									}
 								})
 								.create();
-						d2.setCanceledOnTouchOutside(false);
+						d2.setCanceledOnTouchOutside(true);
 						d2.show();
 					}
 				});
@@ -3388,7 +3353,7 @@ public class RTABMapActivity extends FragmentActivity implements OnClickListener
 
 							AlertDialog d = new AlertDialog.Builder(getActivity())
 									.setCancelable(false)
-									.setTitle("Database saved!")
+									.setTitle("Mesh Saved!")
 									.setMessage(String.format("Mesh \"%s\" (%d MB) successfully exported on the SD-CARD! Share it?", pathHuman, fileSizeMB))
 									.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
 										public void onClick(DialogInterface dialog, int which) {
