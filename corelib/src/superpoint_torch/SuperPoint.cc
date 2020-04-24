@@ -255,6 +255,10 @@ void NMS(const std::vector<cv::KeyPoint> & ptsIn,
 		pts_raw.push_back(cv::Point2f(u, v));
 	}
 
+    //Grid Value Legend:
+    //    255  : Kept.
+    //     0   : Empty or suppressed.
+    //    100  : To be processed (converted to either kept or suppressed).
     cv::Mat grid = cv::Mat(cv::Size(img_width, img_height), CV_8UC1);
     cv::Mat inds = cv::Mat(cv::Size(img_width, img_height), CV_16UC1);
 
@@ -269,46 +273,61 @@ void NMS(const std::vector<cv::KeyPoint> & ptsIn,
         int uu = (int) pts_raw[i].x;
         int vv = (int) pts_raw[i].y;
 
-        grid.at<char>(vv, uu) = 1;
+        grid.at<unsigned char>(vv, uu) = 100;
         inds.at<unsigned short>(vv, uu) = i;
 
         confidence.at<float>(vv, uu) = conf.at<float>(i, 0);
     }
-    
+
+    // debug
+    //cv::Mat confidenceVis = confidence.clone() * 255;
+    //confidenceVis.convertTo(confidenceVis, CV_8UC1);
+    //cv::imwrite("confidence.bmp", confidenceVis);
+    //cv::imwrite("grid_in.bmp", grid);
+
     cv::copyMakeBorder(grid, grid, dist_thresh, dist_thresh, dist_thresh, dist_thresh, cv::BORDER_CONSTANT, 0);
 
     for (size_t i = 0; i < pts_raw.size(); i++)
     {   
+    	// account for top left padding
         int uu = (int) pts_raw[i].x + dist_thresh;
         int vv = (int) pts_raw[i].y + dist_thresh;
+        float c = confidence.at<float>(vv-dist_thresh, uu-dist_thresh);
 
-        if (grid.at<char>(vv, uu) != 1)
-            continue;
+        if (grid.at<unsigned char>(vv, uu) == 100)  // If not yet suppressed.
+        {
+			for(int k = -dist_thresh; k < (dist_thresh+1); k++)
+			{
+				for(int j = -dist_thresh; j < (dist_thresh+1); j++)
+				{
+					if(j==0 && k==0)
+						continue;
 
-        for(int k = -dist_thresh; k < (dist_thresh+1); k++)
-            for(int j = -dist_thresh; j < (dist_thresh+1); j++)
-            {
-                if(j==0 && k==0) continue;
-
-                if ( conf.at<float>(vv + k, uu + j) < conf.at<float>(vv, uu) )
-                    grid.at<char>(vv + k, uu + j) = 0;
-                
-            }
-        grid.at<char>(vv, uu) = 2;
+					if ( confidence.at<float>(vv + k - dist_thresh, uu + j - dist_thresh) <= c )
+					{
+						grid.at<unsigned char>(vv + k, uu + j) = 0;
+					}
+				}
+			}
+			grid.at<unsigned char>(vv, uu) = 255;
+        }
     }
 
     size_t valid_cnt = 0;
     std::vector<int> select_indice;
 
-    for (int v = 0; v < (img_height + dist_thresh); v++){
-        for (int u = 0; u < (img_width + dist_thresh); u++)
-        {
-            if (u -dist_thresh>= (img_width - border) || u-dist_thresh < border || v-dist_thresh >= (img_height - border) || v-dist_thresh < border)
-            continue;
+    grid = cv::Mat(grid, cv::Rect(dist_thresh, dist_thresh, img_width, img_height));
 
-            if (grid.at<char>(v,u) == 2)
+    //debug
+    //cv::imwrite("grid_nms.bmp", grid);
+
+    for (int v = 0; v < img_height; v++)
+    {
+        for (int u = 0; u < img_width; u++)
+        {
+            if (grid.at<unsigned char>(v,u) == 255)
             {
-                int select_ind = (int) inds.at<unsigned short>(v-dist_thresh, u-dist_thresh);
+                int select_ind = (int) inds.at<unsigned short>(v, u);
                 float response = conf.at<float>(select_ind, 0);
                 ptsOut.push_back(cv::KeyPoint(pts_raw[select_ind], 8.0f, -1, response));
 
