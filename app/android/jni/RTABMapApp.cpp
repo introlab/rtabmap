@@ -3043,6 +3043,10 @@ bool RTABMapApp::postExportation(bool visualize)
 		if(!rtabmap_->getLocalOptimizedPoses().empty())
 		{
 			rtabmap::Statistics stats;
+			for(std::map<std::string, float>::iterator iter=bufferedStatsData_.begin(); iter!=bufferedStatsData_.end(); ++iter)
+			{
+				stats.addStatistic(iter->first, iter->second);
+			}
 			stats.setPoses(rtabmap_->getLocalOptimizedPoses());
 			rtabmapEvents_.push_back(new rtabmap::RtabmapEvent(stats));
 		}
