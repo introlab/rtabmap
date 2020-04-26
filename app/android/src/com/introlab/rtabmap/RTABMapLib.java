@@ -1,6 +1,7 @@
 
 package com.introlab.rtabmap;
 import java.nio.ByteBuffer;
+import java.nio.FloatBuffer;
 
 import android.app.Activity;
 import android.content.Context;
@@ -143,6 +144,7 @@ public class RTABMapLib
     		float fx, float fy, float cx, float cy,
     		double stamp, 
     		ByteBuffer rgb, int rgbLen, int rgbWidth, int rgbHeight, int rgbFormat,
-    		ByteBuffer depth, int depthLen, int depthWidth, int depthHeight, int depthFormat);
+    		ByteBuffer depth, int depthLen, int depthWidth, int depthHeight, int depthFormat,
+    		FloatBuffer points, int pointsLen);
     
 }

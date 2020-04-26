@@ -1,6 +1,7 @@
 package com.introlab.rtabmap;
 
 import java.nio.ByteBuffer;
+import java.nio.FloatBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.EnumSet;
@@ -12,6 +13,7 @@ import com.google.ar.core.CameraIntrinsics;
 import com.google.ar.core.Config;
 import com.google.ar.core.Frame;
 import com.google.ar.core.ImageMetadata;
+import com.google.ar.core.PointCloud;
 import com.google.ar.core.Pose;
 import com.google.ar.core.Session;
 import com.google.ar.core.SharedCamera;
@@ -90,6 +92,8 @@ public class ARCoreSharedCamera {
 	// Image reader that continuously processes CPU images.
 	public TOF_ImageReader mTOFImageReader = new TOF_ImageReader();
 	private boolean mTOFAvailable = false;
+	
+	public boolean isDepthSupported() {return mTOFAvailable;}
 
 	// Camera device state callback.
 	private final CameraDevice.StateCallback cameraDeviceCallback =
@@ -330,11 +334,11 @@ public class ARCoreSharedCamera {
 
 			// Enable auto focus mode while ARCore is running.
 			Config config = sharedSession.getConfig();
-			config.setFocusMode(Config.FocusMode.AUTO);
+			config.setFocusMode(Config.FocusMode.FIXED);
 			config.setUpdateMode(Config.UpdateMode.LATEST_CAMERA_IMAGE);
-			config.setPlaneFindingMode(Config.PlaneFindingMode.HORIZONTAL_AND_VERTICAL);
+			config.setPlaneFindingMode(Config.PlaneFindingMode.DISABLED);
 			config.setLightEstimationMode(Config.LightEstimationMode.DISABLED);
-			config.setCloudAnchorMode(Config.CloudAnchorMode.ENABLED);
+			//config.setCloudAnchorMode(Config.CloudAnchorMode.ENABLED);
 			sharedSession.configure(config);
 
 		}
@@ -351,9 +355,9 @@ public class ARCoreSharedCamera {
 		resolutions = getResolutions(mActivity, cameraId, ImageFormat.DEPTH16);
 		if (resolutions != null) {
 			for( String temp : resolutions) {
-				Log.v(TAG + "DEPTH16 resolution: ", temp);
+				Log.e(TAG + "DEPTH16 resolution: ", temp);
 			};
-			if (resolutions.size() > 0) mTOFAvailable = true;
+			if (resolutions.size()>0) mTOFAvailable = true;
 		}
 
 		// Color CPU Image.
@@ -462,8 +466,8 @@ public class ARCoreSharedCamera {
 		if (frame.getTimestamp() != 0) {
 			
 			Pose pose = camera.getPose();
-			if(!mActivity.DISABLE_LOG) Log.d(TAG, String.format("pose=%f %f %f q=%f %f %f %f", pose.tx(), pose.ty(), pose.tz(), pose.qx(), pose.qy(), pose.qz(), pose.qw()));
-			RTABMapLib.postCameraPoseEvent(mActivity.nativeApplication, pose.tx(), pose.ty(), pose.tz(), pose.qx(), pose.qy(), pose.qz(), pose.qw());
+			if(!RTABMapActivity.DISABLE_LOG) Log.d(TAG, String.format("pose=%f %f %f q=%f %f %f %f", pose.tx(), pose.ty(), pose.tz(), pose.qx(), pose.qy(), pose.qz(), pose.qw()));
+			RTABMapLib.postCameraPoseEvent(RTABMapActivity.nativeApplication, pose.tx(), pose.ty(), pose.tz(), pose.qx(), pose.qy(), pose.qz(), pose.qw());
 			
 			int rateMs = 100; // send images at most 10 Hz
 			if(System. currentTimeMillis() - mPreviousTime < rateMs)
@@ -475,32 +479,58 @@ public class ARCoreSharedCamera {
 			CameraIntrinsics intrinsics = camera.getImageIntrinsics();
 			try{
 				Image image = frame.acquireCameraImage();
+				PointCloud cloud = frame.acquirePointCloud();
+				FloatBuffer points = cloud.getPoints();
 
 				if (image.getFormat() != ImageFormat.YUV_420_888) {
 					throw new IllegalArgumentException(
 							"Expected image in YUV_420_888 format, got format " + image.getFormat());
 				}
-
+				
+				if(!RTABMapActivity.DISABLE_LOG)
+				{
+					for(int i =0;i<image.getPlanes().length;++i)
+					{
+						Log.d(TAG, String.format("Plane[%d] pixel stride = %d,  row stride = %d", i, image.getPlanes()[i].getPixelStride(), image.getPlanes()[i].getRowStride()));
+					}
+				}
+				
 				float[] fl = intrinsics.getFocalLength();
 				float[] pp = intrinsics.getPrincipalPoint();
-				if(!mActivity.DISABLE_LOG) Log.d(TAG, String.format("fx=%f fy=%f cx=%f cy=%f", fl[0], fl[1], pp[0], pp[1]));
+				if(!RTABMapActivity.DISABLE_LOG) Log.d(TAG, String.format("fx=%f fy=%f cx=%f cy=%f", fl[0], fl[1], pp[0], pp[1]));
 				ByteBuffer rgb = image.getPlanes()[0].getBuffer().asReadOnlyBuffer();
 
 				double stamp = (double)image.getTimestamp()/10e8;
-				if(!mActivity.DISABLE_LOG) Log.d(TAG, String.format("RGB %dx%d len=%dbytes format=%d =%f",
+				if(!RTABMapActivity.DISABLE_LOG) Log.d(TAG, String.format("RGB %dx%d len=%dbytes format=%d =%f",
 						image.getWidth(), image.getHeight(), rgb.limit(), image.getFormat(), stamp));
-				if(!mActivity.DISABLE_LOG) Log.d(TAG, String.format("Depth %dx%d len=%dbytes format=%d stamp=%f",
-						mTOFImageReader.WIDTH, mTOFImageReader.HEIGHT, mTOFImageReader.depth16_raw.limit(), ImageFormat.DEPTH16, (double)mTOFImageReader.timestamp/10e9));
 
-				RTABMapLib.postOdometryEvent(
-						mActivity.nativeApplication,
-						pose.tx(), pose.ty(), pose.tz(), pose.qx(), pose.qy(), pose.qz(), pose.qw(), 
-						fl[0], fl[1], pp[0], pp[1], stamp, 
-						rgb, rgb.limit(), image.getWidth(), image.getHeight(), image.getFormat(), 
-						mTOFImageReader.depth16_raw, mTOFImageReader.depth16_raw.limit(), mTOFImageReader.WIDTH, mTOFImageReader.HEIGHT, ImageFormat.DEPTH16);
-				
+				if(mTOFAvailable)
+				{
+					if(!RTABMapActivity.DISABLE_LOG) Log.d(TAG, String.format("Depth %dx%d len=%dbytes format=%d stamp=%f",
+							mTOFImageReader.WIDTH, mTOFImageReader.HEIGHT, mTOFImageReader.depth16_raw.limit(), ImageFormat.DEPTH16, (double)mTOFImageReader.timestamp/10e9));
+					
+					RTABMapLib.postOdometryEvent(
+							RTABMapActivity.nativeApplication,
+							pose.tx(), pose.ty(), pose.tz(), pose.qx(), pose.qy(), pose.qz(), pose.qw(), 
+							fl[0], fl[1], pp[0], pp[1], stamp, 
+							rgb, rgb.limit(), image.getWidth(), image.getHeight(), image.getFormat(), 
+							mTOFImageReader.depth16_raw, mTOFImageReader.depth16_raw.limit(), mTOFImageReader.WIDTH, mTOFImageReader.HEIGHT, ImageFormat.DEPTH16,
+							points, points.limit());
+				}
+				else
+				{
+					ByteBuffer bb = ByteBuffer.allocate(0);
+					RTABMapLib.postOdometryEvent(
+							RTABMapActivity.nativeApplication,
+							pose.tx(), pose.ty(), pose.tz(), pose.qx(), pose.qy(), pose.qz(), pose.qw(), 
+							fl[0], fl[1], pp[0], pp[1], stamp, 
+							rgb, rgb.limit(), image.getWidth(), image.getHeight(), image.getFormat(), 
+							bb, 0, 0, 0, ImageFormat.DEPTH16,
+							points, points.limit()/4);
+				}
 				
 				image.close();
+				cloud.close();
 				
 			} catch (NotYetAvailableException e) {
 

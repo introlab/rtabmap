@@ -451,6 +451,54 @@ void CameraARCore::close()
 	CameraMobile::close();
 }
 
+LaserScan CameraARCore::scanFromPointCloudData(
+		const float * pointCloudData,
+		int points,
+		const Transform & pose,
+		const CameraModel & model,
+		const cv::Mat & rgb,
+		std::vector<cv::KeyPoint> * kpts,
+		std::vector<cv::Point3f> * kpts3D)
+{
+	if(pointCloudData && points>0)
+	{
+		cv::Mat scanData(1, points, CV_32FC4);
+		float * ptr = scanData.ptr<float>();
+		for(unsigned int i=0;i<points; ++i)
+		{
+			cv::Point3f pt(pointCloudData[i*4], pointCloudData[i*4 + 1], pointCloudData[i*4 + 2]);
+			pt = util3d::transformPoint(pt, pose.inverse()*rtabmap_world_T_opengl_world);
+			ptr[i*4] = pt.x;
+			ptr[i*4 + 1] = pt.y;
+			ptr[i*4 + 2] = pt.z;
+
+			//get color from rgb image
+			cv::Point3f org= pt;
+			pt = util3d::transformPoint(pt, opticalRotationInv);
+			int u,v;
+			model.reproject(pt.x, pt.y, pt.z, u, v);
+			unsigned char r=255,g=255,b=255;
+			if(model.inFrame(u, v))
+			{
+				b=rgb.at<cv::Vec3b>(v,u).val[0];
+				g=rgb.at<cv::Vec3b>(v,u).val[1];
+				r=rgb.at<cv::Vec3b>(v,u).val[2];
+				if(kpts)
+					kpts->push_back(cv::KeyPoint(u,v,3));
+				if(kpts3D)
+					kpts3D->push_back(org);
+			}
+			*(int*)&ptr[i*4 + 3] = int(b) | (int(g) << 8) | (int(r) << 16);
+
+			//confidence
+			//*(int*)&ptr[i*4 + 3] = (int(pointCloudData[i*4 + 3] * 255.0f) << 8) | (int(255) << 16);
+
+		}
+		return LaserScan::backwardCompatibility(scanData, 0, 10, rtabmap::Transform::getIdentity());
+	}
+	return LaserScan();
+}
+
 SensorData CameraARCore::captureImage(CameraInfo * info)
 {
 	UScopeMutex lock(arSessionMutex_);
@@ -492,7 +540,9 @@ SensorData CameraARCore::captureImage(CameraInfo * info)
 		ArCameraIntrinsics_getFocalLength(arSession_, arCameraIntrinsics_, &fx, &fy);
 		ArCameraIntrinsics_getPrincipalPoint(arSession_, arCameraIntrinsics_, &cx, &cy);
 		ArCameraIntrinsics_getImageDimensions(arSession_, arCameraIntrinsics_, &width, &height);
-		UINFO("%f %f %f %f %d %d", fx, fy, cx, cy, width, height);
+#ifndef DISABLE_LOG
+		LOGI("%f %f %f %f %d %d", fx, fy, cx, cy, width, height);
+#endif
 
 		if(fx > 0 && fy > 0 && width > 0 && height > 0 && cx > 0 && cy > 0)
 		{
@@ -513,13 +563,17 @@ SensorData CameraARCore::captureImage(CameraInfo * info)
 				{
 					int32_t num_planes;
 					int32_t pixel_stride;
+					int32_t row_stride;
 					const uint8_t * plane_data;
 					int32_t data_length;
 					ArImage_getNumberOfPlanes(arSession_, image, &num_planes);
 					for(int i=0;i<num_planes; ++i)
 					{
-						ArImage_getPlanePixelStride(arSession_, image, 0, &pixel_stride);
-						//LOGI("Plane %d/%d: w=%d h=%d stride=%d", i+1, num_planes, width, height, pixel_stride);
+						ArImage_getPlanePixelStride(arSession_, image, i, &pixel_stride);
+						ArImage_getPlaneRowStride(arSession_, image, i, &row_stride);
+#ifndef DISABLE_LOG
+						LOGI("Plane %d/%d: pixel stride=%d, row stride=%d", i+1, num_planes, pixel_stride, row_stride);
+#endif
 					}
 
 					ArImage_getPlaneData(arSession_, image, 0, &plane_data, &data_length);
@@ -527,10 +581,14 @@ SensorData CameraARCore::captureImage(CameraInfo * info)
 					if(plane_data != nullptr)
 					{
 						double stamp = double(timestamp_ns)/10e8;
-						//LOGI("data_length=%d stamp=%f", data_length, stamp);
+#ifndef DISABLE_LOG
+						LOGI("data_length=%d stamp=%f", data_length, stamp);
+#endif
 						cv::Mat rgb;
 						cv::cvtColor(cv::Mat(height+height/2, width, CV_8UC1, (void*)plane_data), rgb, CV_YUV2BGR_NV21);
 
+						std::vector<cv::KeyPoint> kpts;
+						std::vector<cv::Point3f> kpts3;
 						LaserScan scan;
 						if(pointCloud)
 						{
@@ -538,38 +596,12 @@ SensorData CameraARCore::captureImage(CameraInfo * info)
 							ArPointCloud_getNumberOfPoints(arSession_, pointCloud, &points);
 							const float * pointCloudData = 0;
 							ArPointCloud_getData(arSession_, pointCloud, &pointCloudData);
+#ifndef DISABLE_LOG
 							LOGI("pointCloudData=%d size=%d", pointCloudData?1:0, points);
+#endif
 							if(pointCloudData && points>0)
 							{
-								cv::Mat scanData(1, points, CV_32FC4);
-								float * ptr = scanData.ptr<float>();
-								for(unsigned int i=0;i<points; ++i)
-								{
-									cv::Point3f pt(pointCloudData[i*4], pointCloudData[i*4 + 1], pointCloudData[i*4 + 2]);
-									pt = util3d::transformPoint(pt, pose.inverse()*rtabmap_world_T_opengl_world);
-									ptr[i*4] = pt.x;
-									ptr[i*4 + 1] = pt.y;
-									ptr[i*4 + 2] = pt.z;
-
-									//get color from rgb image
-									cv::Point3f org= pt;
-									pt = util3d::transformPoint(pt, opticalRotationInv);
-									int u,v;
-									model.reproject(pt.x, pt.y, pt.z, u, v);
-									unsigned char r=255,g=255,b=255;
-									if(model.inFrame(u, v))
-									{
-										b=rgb.at<cv::Vec3b>(v,u).val[0];
-										g=rgb.at<cv::Vec3b>(v,u).val[1];
-										r=rgb.at<cv::Vec3b>(v,u).val[2];
-									}
-									*(int*)&ptr[i*4 + 3] = int(b) | (int(g) << 8) | (int(r) << 16);
-
-									//confidence
-									//*(int*)&ptr[i*4 + 3] = (int(pointCloudData[i*4 + 3] * 255.0f) << 8) | (int(255) << 16);
-
-								}
-								scan = LaserScan::backwardCompatibility(scanData, 0, 10, rtabmap::Transform::getIdentity());
+								scan = scanFromPointCloudData(pointCloudData, points, pose, model, rgb, &kpts, &kpts3);
 							}
 						}
 						else
@@ -578,6 +610,7 @@ SensorData CameraARCore::captureImage(CameraInfo * info)
 						}
 
 						data = SensorData(scan, rgb, cv::Mat(), model, 0, stamp);
+						data.setFeatures(kpts,  kpts3, cv::Mat());
 					}
 				}
 				else

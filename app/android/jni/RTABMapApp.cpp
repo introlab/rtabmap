@@ -70,7 +70,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pcl/surface/vtk_smoothing/vtk_mesh_quadric_decimation.h>
 
 #define LOW_RES_PIX 2
-#define DEBUG_RENDERING_PERFORMANCE
+//#define DEBUG_RENDERING_PERFORMANCE
 
 const int g_optMeshId = -100;
 
@@ -1436,7 +1436,7 @@ int RTABMapApp::Render()
 				}
 
 #ifdef DEBUG_RENDERING_PERFORMANCE
-				LOGW("Looking for data to load (%d) %fs", bufferedSensorData.size(), time.ticks());
+				LOGW("Looking for data to load (%d) %fs", (int)bufferedSensorData.size(), time.ticks());
 #endif
 
 				std::map<int, rtabmap::Transform> posesWithMarkers = rtabmapEvents.back()->getStats().poses();
@@ -3282,12 +3282,13 @@ void RTABMapApp::postOdometryEvent(
 		float fx, float fy, float cx, float cy,
 		double stamp,
 		void * rgb, int rgbLen, int rgbWidth, int rgbHeight, int rgbFormat,
-		void * depth, int depthLen, int depthWidth, int depthHeight, int depthFormat)
+		void * depth, int depthLen, int depthWidth, int depthHeight, int depthFormat,
+		float * points, int pointsLen)
 {
 #ifdef RTABMAP_ARCORE
 	if(cameraDriver_ == 3 && camera_)
 	{
-		if(fx > 0.0f && fy > 0.0f && cx > 0.0f && cy > 0.0f && stamp > 0.0f && rgb && depth)
+		if(fx > 0.0f && fy > 0.0f && cx > 0.0f && cy > 0.0f && stamp > 0.0f && rgb)
 		{
 			if(rgbFormat == AR_IMAGE_FORMAT_YUV_420_888 &&
 			   depthFormat == AIMAGE_FORMAT_DEPTH16)
@@ -3295,7 +3296,11 @@ void RTABMapApp::postOdometryEvent(
 				cv::Mat outputRGB;
 				cv::cvtColor(cv::Mat(rgbHeight+rgbHeight/2, rgbWidth, CV_8UC1, rgb), outputRGB, CV_YUV2BGR_NV21);
 
-				cv::Mat outputDepth(depthHeight, depthWidth, CV_16UC1);
+				cv::Mat outputDepth;
+				if(depthHeight>0 && depthWidth>0)
+				{
+					outputDepth = cv::Mat(depthHeight, depthWidth, CV_16UC1);
+				}
 				uint16_t *dataShort = (uint16_t *)depth;
 				for (int y = 0; y < outputDepth.rows; ++y)
 				{
@@ -3307,12 +3312,33 @@ void RTABMapApp::postOdometryEvent(
 					}
 				}
 
-				if(!outputRGB.empty() && !outputDepth.empty())
+				if(!outputRGB.empty())
 				{
 					rtabmap::CameraModel model = rtabmap::CameraModel(fx, fy, cx, cy, camera_->getDeviceTColorCamera(), 0, cv::Size(rgbWidth, rgbHeight));
-					rtabmap::SensorData data(outputRGB, outputDepth, model, 0, stamp);
 					rtabmap::Transform pose(x,y,z,qx,qy,qz,qw);
 					pose = rtabmap::rtabmap_world_T_opengl_world * pose * rtabmap::opengl_world_T_rtabmap_world;
+
+#ifndef DISABLE_LOG
+					LOGI("pointCloudData size=%d", pointsLen);
+#endif
+					std::vector<cv::KeyPoint> kpts;
+					std::vector<cv::Point3f> kpts3;
+					rtabmap::LaserScan scan;
+					if(points && pointsLen>0)
+					{
+						if(outputDepth.empty())
+						{
+							scan = rtabmap::CameraARCore::scanFromPointCloudData(points, pointsLen, pose, model, outputRGB, &kpts, &kpts3);
+						}
+						else
+						{
+							// We will recompute features if depth is available
+							scan = rtabmap::CameraARCore::scanFromPointCloudData(points, pointsLen, pose, model, outputRGB);
+						}
+					}
+
+					rtabmap::SensorData data(scan, outputRGB, outputDepth, model, 0, stamp);
+					data.setFeatures(kpts,  kpts3, cv::Mat());
 					camera_->setData(data, pose);
 					camera_->spinOnce();
 				}

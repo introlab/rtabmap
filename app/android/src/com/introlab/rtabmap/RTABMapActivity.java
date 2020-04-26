@@ -1185,6 +1185,12 @@ public class RTABMapActivity extends FragmentActivity implements OnClickListener
 									else
 									{
 										mRenderer.setCamera(mArCoreCamera);
+										if((mState==State.STATE_IDLE || mState==State.STATE_WELCOME) && !mArCoreCamera.isDepthSupported())
+										{
+											mItemRenderingPointCloud.setChecked(true);
+											RTABMapLib.setMeshRendering(nativeApplication, false, false);
+											mToast.makeText(getApplicationContext(), "Depth camera not found, only poses and RGB images can be recorded.", mToast.LENGTH_LONG).show();
+										}
 									}
 								}
 							}

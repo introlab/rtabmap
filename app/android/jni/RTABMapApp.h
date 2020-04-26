@@ -154,7 +154,8 @@ class RTABMapApp : public UEventsHandler {
   		float fx, float fy, float cx, float cy,
   		double stamp,
   		void * rgb, int rgbLen, int rgbWidth, int rgbHeight, int rgbFormat,
-  		void * depth, int depthLen, int depthWidth, int depthHeight, int depthFormat);
+  		void * depth, int depthLen, int depthWidth, int depthHeight, int depthFormat,
+		float * points, int pointsLen);
 
  protected:
   virtual bool handleEvent(UEvent * event);

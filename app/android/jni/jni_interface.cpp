@@ -862,18 +862,21 @@ Java_com_introlab_rtabmap_RTABMapLib_postOdometryEvent(
 		float fx, float fy, float cx, float cy,
 		double stamp,
 		jobject rgb, int rgbLen, int rgbWidth, int rgbHeight, int rgbFormat,
-		jobject depth, int depthLen, int depthWidth, int depthHeight, int depthFormat)
+		jobject depth, int depthLen, int depthWidth, int depthHeight, int depthFormat,
+		jobject points, int pointsLen)
 {
 	if(native_application)
 	{
 		void *rgbPtr = env->GetDirectBufferAddress(rgb);
 		void *depthPtr = env->GetDirectBufferAddress(depth);
+		float *pointsPtr = (float *)env->GetDirectBufferAddress(points);
 		native(native_application)->postOdometryEvent(
 				x,y,z,qx,qy,qz,qw,
 				fx,fy,cx,cy,
 				stamp,
 				rgbPtr, rgbLen, rgbWidth, rgbHeight, rgbFormat,
-				depthPtr, depthLen, depthWidth, depthHeight, depthFormat);
+				depthPtr, depthLen, depthWidth, depthHeight, depthFormat,
+				pointsPtr, pointsLen);
 	}
 	else
 	{
