@@ -561,21 +561,21 @@ SensorData CameraARCore::captureImage(CameraInfo * info)
 				ArImage_getFormat(arSession_, image, &format);
 				if(format == AR_IMAGE_FORMAT_YUV_420_888)
 				{
+
+#ifndef DISABLE_LOG
 					int32_t num_planes;
-					int32_t pixel_stride;
-					int32_t row_stride;
-					const uint8_t * plane_data;
-					int32_t data_length;
 					ArImage_getNumberOfPlanes(arSession_, image, &num_planes);
 					for(int i=0;i<num_planes; ++i)
 					{
+						int32_t pixel_stride;
+						int32_t row_stride;
 						ArImage_getPlanePixelStride(arSession_, image, i, &pixel_stride);
 						ArImage_getPlaneRowStride(arSession_, image, i, &row_stride);
-#ifndef DISABLE_LOG
 						LOGI("Plane %d/%d: pixel stride=%d, row stride=%d", i+1, num_planes, pixel_stride, row_stride);
-#endif
 					}
-
+#endif
+					const uint8_t * plane_data;
+					int32_t data_length;
 					ArImage_getPlaneData(arSession_, image, 0, &plane_data, &data_length);
 
 					if(plane_data != nullptr)
