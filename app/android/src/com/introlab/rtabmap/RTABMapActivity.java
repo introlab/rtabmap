@@ -3188,13 +3188,20 @@ public class RTABMapActivity extends FragmentActivity implements OnClickListener
 						final File f = new File(newDatabasePath);
 						final int fileSizeMB = (int)f.length()/(1024 * 1024);
 
+						if(!mItemDataRecorderMode.isChecked())
+						{
+							mOpenedDatabasePath = newDatabasePath;
+						}
+						mProgressDialog.dismiss();
+						updateState(previousState);
+						
 						AlertDialog d2 = new AlertDialog.Builder(getActivity())
 								.setCancelable(false)
 								.setTitle("Database saved!")
 								.setMessage(String.format("Database \"%s\" (%d MB) successfully saved on the SD-CARD!", newDatabasePathHuman, fileSizeMB))
 								.setPositiveButton("OK", new DialogInterface.OnClickListener() {
 									public void onClick(DialogInterface dialog, int which) {
-										// do nothing
+										resetNoTouchTimer(true);
 									}
 								})
 								.create();
