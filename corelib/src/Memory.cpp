@@ -5476,8 +5476,9 @@ void Memory::getMetricConstraints(
 			std::multimap<int, Link> tmpLinks = getLinks(*iter, lookInDatabase, true);
 			for(std::multimap<int, Link>::iterator jter=tmpLinks.begin(); jter!=tmpLinks.end(); ++jter)
 			{
+				std::multimap<int, Link>::iterator addedLinksIterator = graph::findLink(links, *iter, jter->first);
 				if(	jter->second.isValid() &&
-					graph::findLink(links, *iter, jter->first) == links.end() &&
+					(addedLinksIterator == links.end() || addedLinksIterator->second.from()==addedLinksIterator->second.to()) &&
 					(uContains(poses, jter->first) || (landmarksAdded && jter->second.type() == Link::kLandmark)))
 				{
 					if(!lookInDatabase &&
