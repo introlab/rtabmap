@@ -169,8 +169,8 @@ public class SketchfabActivity extends Activity implements OnClickListener {
 
 			WebView web;
 			mAuthDialog = new Dialog(this);
-			mAuthDialog.setCancelable(false);
-			mAuthDialog.setCanceledOnTouchOutside(false);
+			mAuthDialog.setCancelable(true);
+			mAuthDialog.setCanceledOnTouchOutside(true);
 			mAuthDialog.setContentView(R.layout.auth_dialog);
 			web = (WebView)mAuthDialog.findViewById(R.id.webv);
 			web.setWebContentsDebuggingEnabled(!RTABMapActivity.DISABLE_LOG);
