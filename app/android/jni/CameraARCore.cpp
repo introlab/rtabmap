@@ -575,17 +575,31 @@ SensorData CameraARCore::captureImage(CameraInfo * info)
 					}
 #endif
 					const uint8_t * plane_data;
+					const uint8_t * plane_uv_data;
 					int32_t data_length;
 					ArImage_getPlaneData(arSession_, image, 0, &plane_data, &data_length);
+					int32_t uv_data_length;
+					ArImage_getPlaneData(arSession_, image, 2, &plane_uv_data, &uv_data_length);
 
-					if(plane_data != nullptr)
+					if(plane_data != nullptr && data_length == height*width)
 					{
 						double stamp = double(timestamp_ns)/10e8;
 #ifndef DISABLE_LOG
 						LOGI("data_length=%d stamp=%f", data_length, stamp);
 #endif
 						cv::Mat rgb;
-						cv::cvtColor(cv::Mat(height+height/2, width, CV_8UC1, (void*)plane_data), rgb, CV_YUV2BGR_NV21);
+						if((long)plane_uv_data-(long)plane_data != data_length)
+						{
+							// The uv-plane is not concatenated to y plane in memory, so concatenate them
+							cv::Mat yuv(height+height/2, width, CV_8UC1);
+							memcpy(yuv.data, plane_data, data_length);
+							memcpy(yuv.data+data_length, plane_uv_data, height/2*width);
+							cv::cvtColor(yuv, rgb, CV_YUV2BGR_NV21);
+						}
+						else
+						{
+							cv::cvtColor(cv::Mat(height+height/2, width, CV_8UC1, (void*)plane_data), rgb, CV_YUV2BGR_NV21);
+						}
 
 						std::vector<cv::KeyPoint> kpts;
 						std::vector<cv::Point3f> kpts3;

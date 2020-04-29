@@ -124,6 +124,20 @@ Java_com_introlab_rtabmap_RTABMapLib_openDatabase2(
 }
 
 JNIEXPORT bool JNICALL
+Java_com_introlab_rtabmap_RTABMapLib_isBuiltWith(
+		JNIEnv* env, jclass, jlong native_application, int cameraDriver) {
+	if(native_application)
+	{
+		return native(native_application)->isBuiltWith(cameraDriver);
+	}
+	else
+	{
+		UERROR("native_application is null!");
+		return false;
+	}
+}
+
+JNIEXPORT bool JNICALL
 Java_com_introlab_rtabmap_RTABMapLib_startCamera(
 		JNIEnv* env, jclass, jlong native_application, jobject iBinder, jobject context, jobject activity, int driver) {
 	if(native_application)
@@ -861,20 +875,22 @@ Java_com_introlab_rtabmap_RTABMapLib_postOdometryEvent(
 		float x, float y, float z, float qx, float qy, float qz, float qw,
 		float fx, float fy, float cx, float cy,
 		double stamp,
-		jobject rgb, int rgbLen, int rgbWidth, int rgbHeight, int rgbFormat,
+		jobject yPlane, jobject uPlane, jobject vPlane, int yPlaneLen, int rgbWidth, int rgbHeight, int rgbFormat,
 		jobject depth, int depthLen, int depthWidth, int depthHeight, int depthFormat,
 		jobject points, int pointsLen)
 {
 	if(native_application)
 	{
-		void *rgbPtr = env->GetDirectBufferAddress(rgb);
+		void *yPtr = env->GetDirectBufferAddress(yPlane);
+		void *uPtr = env->GetDirectBufferAddress(uPlane);
+		void *vPtr = env->GetDirectBufferAddress(vPlane);
 		void *depthPtr = env->GetDirectBufferAddress(depth);
 		float *pointsPtr = (float *)env->GetDirectBufferAddress(points);
 		native(native_application)->postOdometryEvent(
 				x,y,z,qx,qy,qz,qw,
 				fx,fy,cx,cy,
 				stamp,
-				rgbPtr, rgbLen, rgbWidth, rgbHeight, rgbFormat,
+				yPtr, uPtr, vPtr, yPlaneLen, rgbWidth, rgbHeight, rgbFormat,
 				depthPtr, depthLen, depthWidth, depthHeight, depthFormat,
 				pointsPtr, pointsLen);
 	}

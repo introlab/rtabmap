@@ -431,7 +431,6 @@ public class ARCoreSharedCamera {
 
 	/*************************************************** ONDRAWFRAME ARCORE ************************************************************* */
 
-
 	// Draw frame when in AR mode. Called on the GL thread.
 	public void updateGL() throws CameraNotAvailableException {
 
@@ -498,11 +497,14 @@ public class ARCoreSharedCamera {
 				float[] fl = intrinsics.getFocalLength();
 				float[] pp = intrinsics.getPrincipalPoint();
 				if(!RTABMapActivity.DISABLE_LOG) Log.d(TAG, String.format("fx=%f fy=%f cx=%f cy=%f", fl[0], fl[1], pp[0], pp[1]));
-				ByteBuffer rgb = image.getPlanes()[0].getBuffer().asReadOnlyBuffer();
+				
+				ByteBuffer y = image.getPlanes()[0].getBuffer().asReadOnlyBuffer();
+				ByteBuffer u = image.getPlanes()[1].getBuffer().asReadOnlyBuffer();
+				ByteBuffer v = image.getPlanes()[2].getBuffer().asReadOnlyBuffer();
 
 				double stamp = (double)image.getTimestamp()/10e8;
 				if(!RTABMapActivity.DISABLE_LOG) Log.d(TAG, String.format("RGB %dx%d len=%dbytes format=%d =%f",
-						image.getWidth(), image.getHeight(), rgb.limit(), image.getFormat(), stamp));
+						image.getWidth(), image.getHeight(), y.limit(), image.getFormat(), stamp));
 
 				if(mTOFAvailable)
 				{
@@ -513,9 +515,9 @@ public class ARCoreSharedCamera {
 							RTABMapActivity.nativeApplication,
 							pose.tx(), pose.ty(), pose.tz(), pose.qx(), pose.qy(), pose.qz(), pose.qw(), 
 							fl[0], fl[1], pp[0], pp[1], stamp, 
-							rgb, rgb.limit(), image.getWidth(), image.getHeight(), image.getFormat(), 
+							y, u, v, y.limit(), image.getWidth(), image.getHeight(), image.getFormat(), 
 							mTOFImageReader.depth16_raw, mTOFImageReader.depth16_raw.limit(), mTOFImageReader.WIDTH, mTOFImageReader.HEIGHT, ImageFormat.DEPTH16,
-							points, points.limit());
+							points, points.limit()/4);
 				}
 				else
 				{
@@ -524,7 +526,7 @@ public class ARCoreSharedCamera {
 							RTABMapActivity.nativeApplication,
 							pose.tx(), pose.ty(), pose.tz(), pose.qx(), pose.qy(), pose.qz(), pose.qw(), 
 							fl[0], fl[1], pp[0], pp[1], stamp, 
-							rgb, rgb.limit(), image.getWidth(), image.getHeight(), image.getFormat(), 
+							y, u, v, y.limit(), image.getWidth(), image.getHeight(), image.getFormat(), 
 							bb, 0, 0, 0, ImageFormat.DEPTH16,
 							points, points.limit()/4);
 				}

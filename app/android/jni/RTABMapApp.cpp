@@ -620,6 +620,37 @@ int RTABMapApp::openDatabase(const std::string & databasePath, bool databaseInMe
 	return status;
 }
 
+bool RTABMapApp::isBuiltWith(int cameraDriver) const
+{
+	if(cameraDriver == 0)
+	{
+#ifdef RTABMAP_TANGO
+		return true;
+#else
+		return false;
+#endif
+	}
+
+	if(cameraDriver == 1)
+	{
+#ifdef RTABMAP_ARCORE
+		return true;
+#else
+		return false;
+#endif
+	}
+
+	if(cameraDriver == 2)
+	{
+#ifdef RTABMAP_ARENGINE
+		return true;
+#else
+		return false;
+#endif
+	}
+	return false;
+}
+
 bool RTABMapApp::startCamera(JNIEnv* env, jobject iBinder, jobject context, jobject activity, int driver)
 {
 	cameraDriver_ = driver;
@@ -3269,6 +3300,7 @@ int RTABMapApp::postProcessing(int approach)
 void RTABMapApp::postCameraPoseEvent(
 		float x, float y, float z, float qx, float qy, float qz, float qw)
 {
+	boost::mutex::scoped_lock  lock(cameraMutex_);
 	if(cameraDriver_ == 3 && camera_)
 	{
 		rtabmap::Transform pose(x,y,z,qx,qy,qz,qw);
@@ -3281,20 +3313,36 @@ void RTABMapApp::postOdometryEvent(
 		float x, float y, float z, float qx, float qy, float qz, float qw,
 		float fx, float fy, float cx, float cy,
 		double stamp,
-		void * rgb, int rgbLen, int rgbWidth, int rgbHeight, int rgbFormat,
+		void * yPlane, void * uPlane, void * vPlane, int yPlaneLen, int rgbWidth, int rgbHeight, int rgbFormat,
 		void * depth, int depthLen, int depthWidth, int depthHeight, int depthFormat,
 		float * points, int pointsLen)
 {
 #ifdef RTABMAP_ARCORE
+	boost::mutex::scoped_lock  lock(cameraMutex_);
 	if(cameraDriver_ == 3 && camera_)
 	{
-		if(fx > 0.0f && fy > 0.0f && cx > 0.0f && cy > 0.0f && stamp > 0.0f && rgb)
+		if(fx > 0.0f && fy > 0.0f && cx > 0.0f && cy > 0.0f && stamp > 0.0f && yPlane && vPlane && yPlaneLen == rgbWidth*rgbHeight)
 		{
 			if(rgbFormat == AR_IMAGE_FORMAT_YUV_420_888 &&
 			   depthFormat == AIMAGE_FORMAT_DEPTH16)
 			{
 				cv::Mat outputRGB;
-				cv::cvtColor(cv::Mat(rgbHeight+rgbHeight/2, rgbWidth, CV_8UC1, rgb), outputRGB, CV_YUV2BGR_NV21);
+#ifndef DISABLE_LOG
+				LOGD("y=%p u=%p v=%p yLen=%d y->v=%ld", yPlane, uPlane, vPlane, yPlaneLen,  (long)vPlane-(long)yPlane);
+#endif
+				if((long)vPlane-(long)yPlane != yPlaneLen)
+				{
+					// The uv-plane is not concatenated to y plane in memory, so concatenate them
+					cv::Mat yuv(rgbHeight+rgbHeight/2, rgbWidth, CV_8UC1);
+					memcpy(yuv.data, yPlane, yPlaneLen);
+					memcpy(yuv.data+yPlaneLen, vPlane, rgbHeight/2*rgbWidth);
+					cv::cvtColor(yuv, outputRGB, CV_YUV2BGR_NV21);
+				}
+				else
+				{
+					cv::cvtColor(cv::Mat(rgbHeight+rgbHeight/2, rgbWidth, CV_8UC1, yPlane), outputRGB, CV_YUV2BGR_NV21);
+				}
+
 
 				cv::Mat outputDepth;
 				if(depthHeight>0 && depthWidth>0)
@@ -3343,6 +3391,10 @@ void RTABMapApp::postOdometryEvent(
 					camera_->spinOnce();
 				}
 			}
+		}
+		else
+		{
+			UERROR("Missing image information!");
 		}
 	}
 #else

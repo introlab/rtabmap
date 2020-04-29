@@ -17,7 +17,6 @@ import java.util.Timer;
 import java.util.TimerTask;
 
 import android.Manifest;
-import android.app.Activity;
 import android.app.ActivityManager;
 import android.app.ActivityManager.MemoryInfo;
 import android.app.AlertDialog;
@@ -59,9 +58,7 @@ import android.os.Message;
 import android.preference.PreferenceManager;
 import android.support.v4.app.FragmentActivity;
 import android.support.v4.content.FileProvider;
-import android.text.Html;
 import android.text.InputType;
-import android.text.method.LinkMovementMethod;
 import android.util.Log;
 import android.util.TypedValue;
 import android.view.ContextMenu;
@@ -90,7 +87,6 @@ import android.widget.NumberPicker;
 import android.widget.RelativeLayout;
 import android.widget.SeekBar;
 import android.widget.SeekBar.OnSeekBarChangeListener;
-import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.ToggleButton;
 
@@ -586,6 +582,10 @@ public class RTABMapActivity extends FragmentActivity implements OnClickListener
 			postCreate();
 		}
 
+		SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
+		String cameraDriverStr = sharedPref.getString(getString(R.string.pref_key_camera_driver), getString(R.string.pref_default_camera_driver));
+		mCameraDriver = Integer.parseInt(cameraDriverStr);
+		
 		isArCoreAvailable();
 		isArEngineAvailable();
 	}
@@ -607,6 +607,60 @@ public class RTABMapActivity extends FragmentActivity implements OnClickListener
 			mButtonLibrary.setVisibility(View.INVISIBLE);
 		}
 	}
+	
+	private void updateCameraDriverSettings()
+	{		
+		Log.i(TAG, String.format("updateCameraDriverSettings() mCameraDriver=%d RTABMapLib.isBuiltWith(%d)=%d", mCameraDriver, mCameraDriver, RTABMapLib.isBuiltWith(nativeApplication, mCameraDriver)?1:0));
+		
+		SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
+		
+		if(mCameraDriver == 0 && (!CheckTangoCoreVersion(MIN_TANGO_CORE_VERSION) || !RTABMapLib.isBuiltWith(nativeApplication, 0)))
+		{
+			if(mIsAREngineAvailable && RTABMapLib.isBuiltWith(nativeApplication, 2))
+			{		
+				SharedPreferences.Editor editor = sharedPref.edit();
+				editor.putString(getString(R.string.pref_key_camera_driver), "2");
+				editor.commit();
+			}
+			else if(mIsARCoreAvailable)
+			{		
+				SharedPreferences.Editor editor = sharedPref.edit();
+				editor.putString(getString(R.string.pref_key_camera_driver), "3");
+				editor.commit();
+			}
+		}
+		else if(((mCameraDriver == 1 && (!RTABMapLib.isBuiltWith(nativeApplication, 0) || !mIsARCoreAvailable)) ||
+				 (mCameraDriver == 3 && !mIsARCoreAvailable)))
+		{
+			if(CheckTangoCoreVersion(MIN_TANGO_CORE_VERSION) && RTABMapLib.isBuiltWith(nativeApplication, 0))
+			{		
+				SharedPreferences.Editor editor = sharedPref.edit();
+				editor.putString(getString(R.string.pref_key_camera_driver), "0");
+				editor.commit();
+			}
+			else if(mIsAREngineAvailable && RTABMapLib.isBuiltWith(nativeApplication, 2))
+			{		
+				SharedPreferences.Editor editor = sharedPref.edit();
+				editor.putString(getString(R.string.pref_key_camera_driver), "2");
+				editor.commit();
+			}
+		}
+		else if(mCameraDriver == 2 && (!mIsAREngineAvailable || !RTABMapLib.isBuiltWith(nativeApplication, 2)))
+		{
+			if(CheckTangoCoreVersion(MIN_TANGO_CORE_VERSION) && RTABMapLib.isBuiltWith(nativeApplication, 0))
+			{		
+				SharedPreferences.Editor editor = sharedPref.edit();
+				editor.putString(getString(R.string.pref_key_camera_driver), "0");
+				editor.commit();
+			}
+			else if(mIsARCoreAvailable)
+			{		
+				SharedPreferences.Editor editor = sharedPref.edit();
+				editor.putString(getString(R.string.pref_key_camera_driver), "3");
+				editor.commit();
+			}
+		}
+	}
 
 	private void isArCoreAvailable() {
 		ArCoreApk.Availability availability = ArCoreApk.getInstance().checkAvailability(this);
@@ -622,9 +676,11 @@ public class RTABMapActivity extends FragmentActivity implements OnClickListener
 		if (availability.isSupported()) {
 			Log.i(TAG, "ARCore supported");
 			mIsARCoreAvailable = true;
+			updateCameraDriverSettings();
 		} else { // Unsupported or unknown.
 			Log.i(TAG, "ARCore supported");
 			mIsARCoreAvailable = false;
+			updateCameraDriverSettings();
 		}
 	}
 
@@ -643,9 +699,11 @@ public class RTABMapActivity extends FragmentActivity implements OnClickListener
 			if (availability.isSupported()) {
 				Log.i(TAG, "AREngine supported");
 				mIsAREngineAvailable = true;
+				updateCameraDriverSettings();
 			} else { // Unsupported or unknown.
 				Log.i(TAG, "AREngine not supported");
 				mIsAREngineAvailable = false;
+				updateCameraDriverSettings();
 			}
 		}
 		catch(UnsatisfiedLinkError e)
@@ -1069,6 +1127,8 @@ public class RTABMapActivity extends FragmentActivity implements OnClickListener
 			case PermissionHelper.CAMERA_CODE: {
 				if (results.length > 0 && results[0] == PackageManager.PERMISSION_GRANTED) {
 					// permission was granted, yay!
+					startCamera(String.format("Hold Tight! Initializing Camera Service...\n"
+							+ "Tip: If the camera is still drifting just after the mapping has started, do \"Reset\"."));
 				} else {
 					Toast.makeText(this, "Camera permission is needed for scanning and motion tracking.", Toast.LENGTH_LONG).show();
 					if (!PermissionHelper.shouldShowRequestPermissionRationale(this, Manifest.permission.CAMERA)) {

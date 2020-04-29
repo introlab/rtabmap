@@ -55,6 +55,7 @@ class RTABMapApp : public UEventsHandler {
 
   int openDatabase(const std::string & databasePath, bool databaseInMemory, bool optimize, const std::string & databaseSource=std::string());
 
+  bool isBuiltWith(int cameraDriver) const;
   bool startCamera(JNIEnv* env, jobject iBinder, jobject context, jobject activity, int driver);
 
   // Allocate OpenGL resources for rendering, mainly for initializing the Scene.
@@ -153,7 +154,7 @@ class RTABMapApp : public UEventsHandler {
   		float x, float y, float z, float qx, float qy, float qz, float qw,
   		float fx, float fy, float cx, float cy,
   		double stamp,
-  		void * rgb, int rgbLen, int rgbWidth, int rgbHeight, int rgbFormat,
+		void * yPlane, void * uPlane, void * vPlane, int yPlaneLen, int rgbWidth, int rgbHeight, int rgbFormat,
   		void * depth, int depthLen, int depthWidth, int depthHeight, int depthFormat,
 		float * points, int pointsLen);
 

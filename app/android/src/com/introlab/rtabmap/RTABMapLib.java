@@ -37,13 +37,8 @@ public class RTABMapLib
     public static native int openDatabase(long nativeApplication, String databasePath, boolean databaseInMemory, boolean optimize);
     public static native int openDatabase2(long nativeApplication, String databaseSource, String databasePath, boolean databaseInMemory, boolean optimize);
     
-    /*
-     * Called when the camera service is connected.
-     *
-     * @param binder The native binder object.
-     */
+    public static native boolean isBuiltWith(long nativeApplication, int cameraDriver);
     public static native boolean startCamera(long nativeApplication, IBinder binder, Context context, Activity activity, int driver);
-
     public static native void stopCamera(long nativeApplication);
 
     // Allocate OpenGL resources for rendering.
@@ -143,7 +138,7 @@ public class RTABMapLib
     		float x, float y, float z, float qx, float qy, float qz, float qw,
     		float fx, float fy, float cx, float cy,
     		double stamp, 
-    		ByteBuffer rgb, int rgbLen, int rgbWidth, int rgbHeight, int rgbFormat,
+    		ByteBuffer yPlane, ByteBuffer uPlane, ByteBuffer vPlane, int yPlaneLen, int rgbWidth, int rgbHeight, int rgbFormat,
     		ByteBuffer depth, int depthLen, int depthWidth, int depthHeight, int depthFormat,
     		FloatBuffer points, int pointsLen);
     
