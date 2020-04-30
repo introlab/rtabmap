@@ -5303,12 +5303,20 @@ void DatabaseViewer::updateConstraintView(
 		const Signature & signatureFrom,
 		const Signature & signatureTo)
 {
+	UDEBUG("%d -> %d", linkIn.from(), linkIn.to());
 	std::multimap<int, Link>::iterator iterLink = rtabmap::graph::findLink(linksRefined_, linkIn.from(), linkIn.to());
 	rtabmap::Link link = linkIn;
 
 	if(iterLink != linksRefined_.end())
 	{
-		link = iterLink->second;
+		if(iterLink->second.from() == link.to())
+		{
+			link = iterLink->second.inverse();
+		}
+		else
+		{
+			link = iterLink->second;
+		}
 	}
 	else if(ui_->checkBox_ignorePoseCorrection->isChecked())
 	{
@@ -5328,6 +5336,7 @@ void DatabaseViewer::updateConstraintView(
 			}
 		}
 	}
+	UDEBUG("%d -> %d", link.from(), link.to());
 	rtabmap::Transform t = link.transform();
 	if(link.type() == Link::kGravity)
 	{
@@ -6751,6 +6760,7 @@ void DatabaseViewer::refineConstraint()
 
 void DatabaseViewer::refineConstraint(int from, int to, bool silent)
 {
+	UDEBUG("%d -> %d", from, to);
 	bool switchedIds = false;
 	if(from == to)
 	{
@@ -6802,11 +6812,15 @@ void DatabaseViewer::refineConstraint(int from, int to, bool silent)
 
 	Transform transform;
 	RegistrationInfo info;
-	Signature fromS;
-	Signature toS;
+	Signature * fromS = 0;
+	Signature * toS = 0;
 
-	SensorData dataFrom;
-	dbDriver_->getNodeData(currentLink.from(), dataFrom);
+	fromS = dbDriver_->loadSignature(currentLink.from());
+	if(fromS == 0)
+	{
+		UERROR("Signature %d not found!", currentLink.from());
+		return;
+	}
 
 	ParametersMap parameters = ui_->parameters_toolbox->getParameters();
 
@@ -6895,7 +6909,8 @@ void DatabaseViewer::refineConstraint(int from, int to, bool silent)
 
 		Transform toPoseInv = filteredScanPoses.at(currentLink.to()).inverse();
 		LaserScan fromScan;
-		dataFrom.uncompressData(0,0,&fromScan);
+		dbDriver_->loadNodeData(fromS, !silent, true, !silent, !silent);
+		fromS->sensorData().uncompressData();
 		int maxPoints = fromScan.size();
 		pcl::PointCloud<pcl::PointXYZ>::Ptr assembledToClouds(new pcl::PointCloud<pcl::PointXYZ>);
 		pcl::PointCloud<pcl::PointNormal>::Ptr assembledToNormalClouds(new pcl::PointCloud<pcl::PointNormal>);
@@ -6980,7 +6995,7 @@ void DatabaseViewer::refineConstraint(int from, int to, bool silent)
 				fromScan.is2d()?Transform(0,0,fromScan.localTransform().z(),0,0,0):Transform::getIdentity()));
 
 		RegistrationIcp registrationIcp(parameters);
-		transform = registrationIcp.computeTransformation(dataFrom, assembledData, currentLink.transform(), &info);
+		transform = registrationIcp.computeTransformation(fromS->sensorData(), assembledData, currentLink.transform(), &info);
 		if(!transform.isNull())
 		{
 			// local scan matching proximity detection should have higher variance (see Rtabmap::process())
@@ -6989,36 +7004,70 @@ void DatabaseViewer::refineConstraint(int from, int to, bool silent)
 	}
 	else
 	{
-		SensorData dataTo;
-		dbDriver_->getNodeData(currentLink.to(), dataTo);
-		Registration * registration = Registration::create(parameters);
-		if(registration->isScanRequired())
+		toS = dbDriver_->loadSignature(currentLink.to());
+		if(toS == 0)
+		{
+			UERROR("Signature %d not found!", currentLink.to());
+			delete fromS;
+			return;
+		}
+
+		bool reextractVisualFeatures = uStr2Bool(parameters.at(Parameters::kRGBDLoopClosureReextractFeatures()));
+		Registration * reg = Registration::create(parameters);
+		if( reg->isScanRequired() ||
+			reg->isUserDataRequired() ||
+			reextractVisualFeatures ||
+			!silent)
+		{
+			dbDriver_->loadNodeData(fromS, reextractVisualFeatures || !silent, reg->isScanRequired() || !silent, reg->isUserDataRequired() || !silent, !silent);
+			dbDriver_->loadNodeData(toS, reextractVisualFeatures || !silent, reg->isScanRequired() || !silent, reg->isUserDataRequired() || !silent, !silent);
+		
+			if(!silent)
+			{
+				fromS->sensorData().uncompressData();
+				toS->sensorData().uncompressData();
+			}
+		}
+
+		if(reextractVisualFeatures)
+		{
+			fromS->setWords(std::multimap<int, cv::KeyPoint>());
+			fromS->setWords3(std::multimap<int, cv::Point3f>());
+			fromS->setWordsDescriptors(std::multimap<int, cv::Mat>());
+			fromS->sensorData().setFeatures(std::vector<cv::KeyPoint>(), std::vector<cv::Point3f>(), cv::Mat());
+			toS->setWords(std::multimap<int, cv::KeyPoint>());
+			toS->setWords3(std::multimap<int, cv::Point3f>());
+			toS->setWordsDescriptors(std::multimap<int, cv::Mat>());
+			toS->sensorData().setFeatures(std::vector<cv::KeyPoint>(), std::vector<cv::Point3f>(), cv::Mat());
+		}
+
+		if(reg->isScanRequired())
 		{
 			if(ui_->checkBox_icp_from_depth->isChecked())
 			{
 				// generate laser scans from depth image
 				cv::Mat tmpA, tmpB, tmpC, tmpD;
-				dataFrom.uncompressData(&tmpA, &tmpB, 0);
-				dataTo.uncompressData(&tmpC, &tmpD, 0);
+				fromS->sensorData().uncompressData(&tmpA, &tmpB, 0);
+				toS->sensorData().uncompressData(&tmpC, &tmpD, 0);
 				pcl::PointCloud<pcl::PointXYZ>::Ptr cloudFrom = util3d::cloudFromSensorData(
-						dataFrom,
+						fromS->sensorData(),
 						ui_->spinBox_icp_decimation->value()==0?1:ui_->spinBox_icp_decimation->value(),
 						ui_->doubleSpinBox_icp_maxDepth->value(),
 						ui_->doubleSpinBox_icp_minDepth->value(),
 						0,
 						ui_->parameters_toolbox->getParameters());
 				pcl::PointCloud<pcl::PointXYZ>::Ptr cloudTo = util3d::cloudFromSensorData(
-						dataTo,
+						toS->sensorData(),
 						ui_->spinBox_icp_decimation->value()==0?1:ui_->spinBox_icp_decimation->value(),
 						ui_->doubleSpinBox_icp_maxDepth->value(),
 						ui_->doubleSpinBox_icp_minDepth->value(),
 						0,
 						ui_->parameters_toolbox->getParameters());
 				int maxLaserScans = cloudFrom->size();
-				dataFrom.setLaserScan(LaserScan(util3d::laserScanFromPointCloud(*util3d::removeNaNFromPointCloud(cloudFrom), Transform()), maxLaserScans, 0, LaserScan::kXYZ));
-				dataTo.setLaserScan(LaserScan(util3d::laserScanFromPointCloud(*util3d::removeNaNFromPointCloud(cloudTo), Transform()), maxLaserScans, 0, LaserScan::kXYZ));
+				fromS->sensorData().setLaserScan(LaserScan(util3d::laserScanFromPointCloud(*util3d::removeNaNFromPointCloud(cloudFrom), Transform()), maxLaserScans, 0, LaserScan::kXYZ));
+				toS->sensorData().setLaserScan(LaserScan(util3d::laserScanFromPointCloud(*util3d::removeNaNFromPointCloud(cloudTo), Transform()), maxLaserScans, 0, LaserScan::kXYZ));
 
-				if(!dataFrom.laserScanCompressed().isEmpty() || !dataTo.laserScanCompressed().isEmpty())
+				if(!fromS->sensorData().laserScanCompressed().isEmpty() || !toS->sensorData().laserScanCompressed().isEmpty())
 				{
 					UWARN("There are laser scans in data, but generate laser scan from "
 						  "depth image option is activated. Ignoring saved laser scans...");
@@ -7027,34 +7076,31 @@ void DatabaseViewer::refineConstraint(int from, int to, bool silent)
 			else
 			{
 				LaserScan tmpA, tmpB;
-				dataFrom.uncompressData(0, 0, &tmpA);
-				dataTo.uncompressData(0, 0, &tmpB);
+				fromS->sensorData().uncompressData(0, 0, &tmpA);
+				toS->sensorData().uncompressData(0, 0, &tmpB);
 			}
 		}
 
-		if(registration->isImageRequired())
+		if(reg->isImageRequired() && reextractVisualFeatures)
 		{
 			cv::Mat tmpA, tmpB, tmpC, tmpD;
-			dataFrom.uncompressData(&tmpA, &tmpB, 0);
-			dataTo.uncompressData(&tmpC, &tmpD, 0);
+			fromS->sensorData().uncompressData(&tmpA, &tmpB, 0);
+			toS->sensorData().uncompressData(&tmpC, &tmpD, 0);
 		}
 
 		UINFO("Uncompress time: %f s", timer.ticks());
 
-		fromS = Signature(dataFrom);
-		toS = Signature(dataTo);
-
-		if(fromS.id() < toS.id())
+		if(fromS->id() < toS->id())
 		{
-			transform = registration->computeTransformationMod(fromS, toS, t, &info);
+			transform = reg->computeTransformationMod(*fromS, *toS, t, &info);
 		}
 		else
 		{
-			transform = registration->computeTransformationMod(toS, fromS, t.isNull()?t:t.inverse(), &info);
+			transform = reg->computeTransformationMod(*toS, *fromS, t.isNull()?t:t.inverse(), &info);
 			switchedIds = true;
 		}
 
-		delete registration;
+		delete reg;
 	}
 	UINFO("(%d ->%d) Registration time: %f s", currentLink.from(), currentLink.to(), timer.ticks());
 
@@ -7100,11 +7146,21 @@ void DatabaseViewer::refineConstraint(int from, int to, bool silent)
 
 		if(!silent && ui_->dockWidget_constraints->isVisible())
 		{
-			if(fromS.id() > 0 && toS.id() > 0)
+			if(fromS->id() > 0 && toS->id() > 0)
 			{
-				this->updateConstraintView(newLink, true, fromS, toS);
-				ui_->graphicsView_A->setFeatures(fromS.getWords(), fromS.sensorData().depthRaw());
-				ui_->graphicsView_B->setFeatures(toS.getWords(), toS.sensorData().depthRaw());
+				updateLoopClosuresSlider(fromS->id(), toS->id());
+				if(newLink.type() != Link::kNeighbor && fromS->id() < toS->id())
+				{
+					this->updateConstraintView(newLink.inverse(), true, *toS, *fromS);
+					ui_->graphicsView_A->setFeatures(toS->getWords(), toS->sensorData().depthRaw());
+					ui_->graphicsView_B->setFeatures(fromS->getWords(), fromS->sensorData().depthRaw());
+				}
+				else
+				{
+					this->updateConstraintView(newLink, true, *fromS, *toS);
+					ui_->graphicsView_A->setFeatures(fromS->getWords(), fromS->sensorData().depthRaw());
+					ui_->graphicsView_B->setFeatures(toS->getWords(), toS->sensorData().depthRaw());
+				}
 
 				updateWordsMatching();
 			}
@@ -7121,6 +7177,8 @@ void DatabaseViewer::refineConstraint(int from, int to, bool silent)
 				tr("Refine link"),
 				tr("Cannot find a transformation between nodes %1 and %2: %3").arg(currentLink.from()).arg(currentLink.to()).arg(info.rejectedMsg.c_str()));
 	}
+	delete fromS;
+	delete toS;
 }
 
 void DatabaseViewer::addConstraint()
@@ -7179,8 +7237,8 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent)
 			for(std::list<Signature*>::iterator iter=signatures.begin(); iter!=signatures.end(); ++iter)
 			{
 				delete *iter;
-				return false;
 			}
+			return false;
 		}
 		fromS = *signatures.begin();
 		toS = *signatures.rbegin();
@@ -7188,12 +7246,13 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent)
 		bool reextractVisualFeatures = uStr2Bool(parameters.at(Parameters::kRGBDLoopClosureReextractFeatures()));
 		if(reg->isScanRequired() ||
 			reg->isUserDataRequired() ||
-			reextractVisualFeatures)
+			reextractVisualFeatures ||
+			!silent)
 		{
 			// Add sensor data to generate features
-			dbDriver_->getNodeData(from, fromS->sensorData(), reextractVisualFeatures, reg->isScanRequired(), reg->isUserDataRequired(), false);
+			dbDriver_->loadNodeData(fromS, reextractVisualFeatures || !silent, reg->isScanRequired() || !silent, reg->isUserDataRequired() || !silent, !silent);
 			fromS->sensorData().uncompressData();
-			dbDriver_->getNodeData(to, toS->sensorData());
+			dbDriver_->loadNodeData(toS, reextractVisualFeatures || !silent, reg->isScanRequired() || !silent, reg->isUserDataRequired() || !silent, !silent);
 			toS->sensorData().uncompressData();
 			if(reextractVisualFeatures)
 			{
@@ -7622,6 +7681,7 @@ std::multimap<int, rtabmap::Link> DatabaseViewer::updateLinksWithModifications(
 
 void DatabaseViewer::updateLoopClosuresSlider(int from, int to)
 {
+	UDEBUG("%d %d", from, to);
 	int size = loopLinks_.size();
 	loopLinks_.clear();
 	std::multimap<int, Link> links = updateLinksWithModifications(links_);

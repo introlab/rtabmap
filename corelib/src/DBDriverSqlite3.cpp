@@ -1257,7 +1257,8 @@ std::map<int, std::vector<int> > DBDriverSqlite3::getAllStatisticsWmStatesQuery(
 
 void DBDriverSqlite3::loadNodeDataQuery(std::list<Signature *> & signatures, bool images, bool scan, bool userData, bool occupancyGrid) const
 {
-	UDEBUG("load data for %d signatures", (int)signatures.size());
+	UDEBUG("load data for %d signatures images=%d scan=%d userData=%d, grid=%d",
+			(int)signatures.size(), images?1:0, scan?1:0, userData?1:0, occupancyGrid?1:0);
 
 	if(!images && !scan && !userData && !occupancyGrid)
 	{
@@ -3383,7 +3384,7 @@ void DBDriverSqlite3::loadSignaturesQuery(const std::list<int> & ids, std::list<
 
 			ULOGGER_DEBUG("Time load %d calibrations=%fs", (int)nodes.size(), timer.ticks());
 		}
-	if(ids.size() != loaded)
+		if(ids.size() != loaded)
 		{
 			UERROR("Some signatures not found in database");
 		}

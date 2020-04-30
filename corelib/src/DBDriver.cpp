@@ -534,6 +534,23 @@ void DBDriver::loadLastNodes(std::list<Signature *> & signatures) const
 	_dbSafeAccessMutex.unlock();
 }
 
+Signature * DBDriver::loadSignature(int id, bool * loadedFromTrash)
+{
+	std::list<int> ids;
+	ids.push_back(id);
+	std::list<Signature*> signatures;
+	std::set<int> loadedFromTrashSet;
+	loadSignatures(ids, signatures, &loadedFromTrashSet);
+	if(loadedFromTrash && loadedFromTrashSet.size())
+	{
+		*loadedFromTrash = true;
+	}
+	if(!signatures.empty())
+	{
+		return signatures.front();
+	}
+	return 0;
+}
 void DBDriver::loadSignatures(const std::list<int> & signIds,
 		std::list<Signature *> & signatures,
 		std::set<int> * loadedFromTrash)
@@ -626,6 +643,13 @@ void DBDriver::loadWords(const std::set<int> & wordIds, std::list<VisualWord *> 
 	{
 		uAppend(vws, puttedBack);
 	}
+}
+
+void DBDriver::loadNodeData(Signature * signature, bool images, bool scan, bool userData, bool occupancyGrid) const
+{
+	std::list<Signature *> signatures;
+	signatures.push_back(signature);
+	this->loadNodeData(signatures, images, scan, userData, occupancyGrid);
 }
 
 void DBDriver::loadNodeData(std::list<Signature *> & signatures, bool images, bool scan, bool userData, bool occupancyGrid) const
