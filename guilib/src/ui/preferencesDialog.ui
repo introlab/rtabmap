@@ -63,9 +63,9 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-224</y>
+            <y>-250</y>
             <width>680</width>
-            <height>3310</height>
+            <height>3497</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -3109,7 +3109,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                     <item>
                      <widget class="QStackedWidget" name="stackedWidget_src">
                       <property name="currentIndex">
-                       <number>3</number>
+                       <number>1</number>
                       </property>
                       <widget class="QWidget" name="page_41">
                        <layout class="QVBoxLayout" name="verticalLayout_64">
@@ -4596,6 +4596,11 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                  <string>RealSense2</string>
                                 </property>
                                </item>
+                               <item>
+                                <property name="text">
+                                 <string>MyntEyeS</string>
+                                </property>
+                               </item>
                               </widget>
                              </item>
                              <item row="0" column="2">
@@ -4676,7 +4681,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                            <item>
                             <widget class="QStackedWidget" name="stackedWidget_stereo">
                              <property name="currentIndex">
-                              <number>4</number>
+                              <number>8</number>
                              </property>
                              <widget class="QWidget" name="page_49">
                               <layout class="QVBoxLayout" name="verticalLayout_91">
@@ -5288,6 +5293,78 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                   <size>
                                    <width>20</width>
                                    <height>0</height>
+                                  </size>
+                                 </property>
+                                </spacer>
+                               </item>
+                              </layout>
+                             </widget>
+                             <widget class="QWidget" name="page_86">
+                              <layout class="QVBoxLayout" name="verticalLayout_148">
+                               <item>
+                                <widget class="QGroupBox" name="groupBox_cameraMyntEye">
+                                 <property name="sizePolicy">
+                                  <sizepolicy hsizetype="Ignored" vsizetype="Ignored">
+                                   <horstretch>0</horstretch>
+                                   <verstretch>0</verstretch>
+                                  </sizepolicy>
+                                 </property>
+                                 <property name="title">
+                                  <string>MYNT EYE S</string>
+                                 </property>
+                                 <layout class="QGridLayout" name="gridLayout_115" columnstretch="0,1">
+                                  <item row="1" column="0">
+                                   <widget class="QCheckBox" name="checkbox_stereoMyntEye_depth">
+                                    <property name="text">
+                                     <string/>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="1" column="1">
+                                   <widget class="QLabel" name="label_576">
+                                    <property name="text">
+                                     <string>Compute depth image with MYNT EYE S SDK. Ignored if images are not rectified from MYNT EYE S SDK.</string>
+                                    </property>
+                                    <property name="wordWrap">
+                                     <bool>true</bool>
+                                    </property>
+                                    <property name="textInteractionFlags">
+                                     <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="0" column="1">
+                                   <widget class="QLabel" name="label_581">
+                                    <property name="text">
+                                     <string>Rectify images using MYNT EYE S SDK.</string>
+                                    </property>
+                                    <property name="wordWrap">
+                                     <bool>true</bool>
+                                    </property>
+                                    <property name="textInteractionFlags">
+                                     <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="0" column="0">
+                                   <widget class="QCheckBox" name="checkbox_stereoMyntEye_rectify">
+                                    <property name="text">
+                                     <string/>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                 </layout>
+                                </widget>
+                               </item>
+                               <item>
+                                <spacer name="verticalSpacer_85">
+                                 <property name="orientation">
+                                  <enum>Qt::Vertical</enum>
+                                 </property>
+                                 <property name="sizeHint" stdset="0">
+                                  <size>
+                                   <width>20</width>
+                                   <height>596</height>
                                   </size>
                                  </property>
                                 </spacer>

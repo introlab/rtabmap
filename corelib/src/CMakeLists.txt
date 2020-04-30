@@ -35,6 +35,7 @@ SET(SRC_FILES
     camera/CameraStereoZed.cpp
     camera/CameraStereoTara.cpp
     camera/CameraVideo.cpp
+    camera/CameraMyntEye.cpp
     
     EpipolarGeometry.cpp
     VisualWord.cpp
@@ -305,6 +306,13 @@ IF(FlyCapture2_FOUND)
 		${FlyCapture2_LIBRARIES}
 	)
 ENDIF(FlyCapture2_FOUND)
+
+IF(mynteye_FOUND)
+	SET(LIBRARIES
+		${LIBRARIES}
+		mynteye # target
+	)
+ENDIF(mynteye_FOUND)
 
 IF(WITH_TORO)
 	SET(SRC_FILES

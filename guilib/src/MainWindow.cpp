@@ -442,6 +442,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent, bool sh
      connect(_ui->actionStereoTara, SIGNAL(triggered()), this, SLOT(selectStereoTara()));
 	connect(_ui->actionStereoUsb, SIGNAL(triggered()), this, SLOT(selectStereoUsb()));
 	connect(_ui->actionRealSense2_T265, SIGNAL(triggered()), this, SLOT(selectRealSense2Stereo()));
+	connect(_ui->actionMYNT_EYE_S_SDK, SIGNAL(triggered()), this, SLOT(selectMyntEyeS()));
 	_ui->actionFreenect->setEnabled(CameraFreenect::available());
 	_ui->actionOpenNI_CV->setEnabled(CameraOpenNICV::available());
 	_ui->actionOpenNI_CV_ASUS->setEnabled(CameraOpenNICV::available());
@@ -460,6 +461,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent, bool sh
 	_ui->actionStereoFlyCapture2->setEnabled(CameraStereoFlyCapture2::available());
 	_ui->actionStereoZed->setEnabled(CameraStereoZed::available());
     _ui->actionStereoTara->setEnabled(CameraStereoTara::available());
+    _ui->actionMYNT_EYE_S_SDK->setEnabled(CameraMyntEye::available());
 	this->updateSelectSourceMenu();
 
 	connect(_ui->actionPreferences, SIGNAL(triggered()), this, SLOT(openPreferences()));
@@ -6365,6 +6367,11 @@ void MainWindow::selectStereoTara()
 void MainWindow::selectStereoUsb()
 {
 	_preferencesDialog->selectSourceDriver(PreferencesDialog::kSrcStereoUsb);
+}
+
+void MainWindow::selectMyntEyeS()
+{
+	_preferencesDialog->selectSourceDriver(PreferencesDialog::kSrcStereoMyntEye);
 }
 
 void MainWindow::dumpTheMemory()

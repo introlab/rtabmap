@@ -180,6 +180,7 @@ protected Q_SLOTS:
 	void selectStereoZed();
 	void selectStereoTara();
 	void selectStereoUsb();
+	void selectMyntEyeS();
 	void dumpTheMemory();
 	void dumpThePrediction();
 	void sendGoal();

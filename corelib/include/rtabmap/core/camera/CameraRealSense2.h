@@ -83,6 +83,7 @@ public:
 	void setOdomProvided(bool enabled);
 
 #ifdef RTABMAP_REALSENSE2
+private:
 	void imu_callback(rs2::frame frame);
 	void pose_callback(rs2::frame frame);
 	void frame_callback(rs2::frame frame);

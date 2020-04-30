@@ -37,7 +37,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #endif
 #include <opencv2/highgui/highgui.hpp>
 #if CV_MAJOR_VERSION > 2 or (CV_MAJOR_VERSION == 2 and (CV_MINOR_VERSION >4 or (CV_MINOR_VERSION == 4 and CV_SUBMINOR_VERSION >=10)))
-#include "opencv/stereoRectifyFisheye.h"
+#include <rtabmap/core/stereo/stereoRectifyFisheye.h>
 #endif
 
 #include <QFileDialog>

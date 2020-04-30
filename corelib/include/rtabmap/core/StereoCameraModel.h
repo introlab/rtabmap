@@ -126,6 +126,9 @@ public:
 	const std::string & getRightSuffix() const {return rightSuffix_;}
 
 private:
+	void updateStereoRectification();
+
+private:
 	std::string leftSuffix_;
 	std::string rightSuffix_;
 	CameraModel left_;

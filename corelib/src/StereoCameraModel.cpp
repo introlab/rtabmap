@@ -33,6 +33,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UConversion.h>
 #include <opencv2/imgproc/imgproc.hpp>
 
+#if CV_MAJOR_VERSION > 2 or (CV_MAJOR_VERSION == 2 and (CV_MINOR_VERSION >4 or (CV_MINOR_VERSION == 4 and CV_SUBMINOR_VERSION >=10)))
+#include <rtabmap/core/stereo/stereoRectifyFisheye.h>
+#endif
+
 namespace rtabmap {
 
 StereoCameraModel::StereoCameraModel(
@@ -88,17 +92,9 @@ StereoCameraModel::StereoCameraModel(
 	{
 		UASSERT(leftCameraModel.isValidForRectification() && rightCameraModel.isValidForRectification());
 
-		if(left_.imageWidth() == right_.imageHeight())
+		if(left_.imageWidth() == right_.imageWidth() && left_.imageHeight() == right_.imageHeight())
 		{
-			cv::Mat R1,R2,P1,P2,Q;
-			cv::stereoRectify(
-					left_.K_raw(), left_.D_raw(),
-					right_.K_raw(), right_.D_raw(),
-					left_.imageSize(), R_, T_, R1, R2, P1, P2, Q,
-					cv::CALIB_ZERO_DISPARITY, 0, left_.imageSize());
-
-			left_ = CameraModel(left_.name(), left_.imageSize(), left_.K_raw(), left_.D_raw(), R1, P1, left_.localTransform());
-			right_ = CameraModel(right_.name(), right_.imageSize(), right_.K_raw(), right_.D_raw(), R2, P2, right_.localTransform());
+			updateStereoRectification();
 		}
 	}
 }
@@ -124,17 +120,9 @@ StereoCameraModel::StereoCameraModel(
 		extrinsics.rotationMatrix().convertTo(R_, CV_64FC1);
 		extrinsics.translationMatrix().convertTo(T_, CV_64FC1);
 
-		if(left_.imageWidth() == right_.imageHeight())
+		if(left_.imageWidth() == right_.imageWidth() && left_.imageHeight() == right_.imageHeight())
 		{
-			cv::Mat R1,R2,P1,P2,Q;
-			cv::stereoRectify(
-					left_.K_raw(), left_.D_raw(),
-					right_.K_raw(), right_.D_raw(),
-					left_.imageSize(), R_, T_, R1, R2, P1, P2, Q,
-					cv::CALIB_ZERO_DISPARITY, 0, left_.imageSize());
-
-			left_ = CameraModel(left_.name(), left_.imageSize(), left_.K_raw(), left_.D_raw(), R1, P1, left_.localTransform());
-			right_ = CameraModel(right_.name(), right_.imageSize(), right_.K_raw(), right_.D_raw(), R2, P2, right_.localTransform());
+			updateStereoRectification();
 		}
 	}
 }
@@ -179,6 +167,57 @@ void StereoCameraModel::setName(const std::string & name, const std::string & le
 	rightSuffix_ = rightSuffix;
 	left_.setName(name_+"_"+getLeftSuffix());
 	right_.setName(name_+"_"+getRightSuffix());
+}
+
+void StereoCameraModel::updateStereoRectification()
+{
+	cv::Mat R1,R2,P1,P2,Q;
+	#if CV_MAJOR_VERSION > 2 or (CV_MAJOR_VERSION == 2 and (CV_MINOR_VERSION >4 or (CV_MINOR_VERSION == 4 and CV_SUBMINOR_VERSION >=10)))
+	bool fishEye = left_.D_raw().cols == 6;
+	// calibrate extrinsic
+	if(fishEye)
+	{
+		cv::Vec4d D_left(left_.D_raw().at<double>(0,0), left_.D_raw().at<double>(0,1), left_.D_raw().at<double>(0,4), left_.D_raw().at<double>(0,5));
+		cv::Vec4d D_right(right_.D_raw().at<double>(0,0), right_.D_raw().at<double>(0,1), right_.D_raw().at<double>(0,4), right_.D_raw().at<double>(0,5));
+
+		stereoRectifyFisheye(
+				left_.K_raw(), D_left,
+				right_.K_raw(), D_right,
+				left_.imageSize(), R_, T_, R1, R2, P1, P2, Q,
+				cv::CALIB_ZERO_DISPARITY, 0, left_.imageSize());
+
+		// Re-zoom to original focal distance
+		if(P1.at<double>(0,0) < 0)
+		{
+			P1.at<double>(0,0) *= -1;
+			P1.at<double>(1,1) *= -1;
+		}
+		if(P2.at<double>(0,0) < 0)
+		{
+			P2.at<double>(0,0) *= -1;
+			P2.at<double>(1,1) *= -1;
+		}
+		if(P2.at<double>(0,3) > 0)
+		{
+			P2.at<double>(0,3) *= -1;
+		}
+		P2.at<double>(0,3) = P2.at<double>(0,3) * left_.K_raw().at<double>(0,0) / P2.at<double>(0,0);
+		P1.at<double>(0,0) = P1.at<double>(1,1) = left_.K_raw().at<double>(0,0);
+		P2.at<double>(0,0) = P2.at<double>(1,1) = left_.K_raw().at<double>(0,0);
+	}
+	else
+#endif
+	{
+
+		cv::stereoRectify(
+				left_.K_raw(), left_.D_raw(),
+				right_.K_raw(), right_.D_raw(),
+				left_.imageSize(), R_, T_, R1, R2, P1, P2, Q,
+				cv::CALIB_ZERO_DISPARITY, 0, left_.imageSize());
+	}
+
+	left_ = CameraModel(left_.name(), left_.imageSize(), left_.K_raw(), left_.D_raw(), R1, P1, left_.localTransform());
+	right_ = CameraModel(right_.name(), right_.imageSize(), right_.K_raw(), right_.D_raw(), R2, P2, right_.localTransform());
 }
 
 bool StereoCameraModel::load(const std::string & directory, const std::string & cameraName, bool ignoreStereoTransform)
