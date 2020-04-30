@@ -3115,8 +3115,11 @@ bool Rtabmap::process(
 
 				// Map correction (/map -> /odom)
 				statistics_.addStatistic(Statistics::kLoopMap_correction_norm(), _mapCorrection.getNorm());
-				float roll,pitch,yaw;
-				_mapCorrection.getEulerAngles(roll, pitch, yaw);
+				float x,y,z,roll,pitch,yaw;
+				_mapCorrection.getTranslationAndEulerAngles(x, y, z, roll, pitch, yaw);
+				statistics_.addStatistic(Statistics::kLoopMap_correction_x(), x);
+				statistics_.addStatistic(Statistics::kLoopMap_correction_y(), y);
+				statistics_.addStatistic(Statistics::kLoopMap_correction_z(), z);
 				statistics_.addStatistic(Statistics::kLoopMap_correction_roll(),  roll*180/M_PI);
 				statistics_.addStatistic(Statistics::kLoopMap_correction_pitch(),  pitch*180/M_PI);
 				statistics_.addStatistic(Statistics::kLoopMap_correction_yaw(), yaw*180/M_PI);

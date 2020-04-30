@@ -51,6 +51,7 @@ void showUsage()
 			"rtabmap-report [\"Statistic/Id\"] [options] path\n"
 #else
 			"rtabmap-report [options] path\n"
+			"[Not built with Qt, statistics cannot be plotted]\n"
 #endif
 			"  path               Directory containing rtabmap databases or path of a database.\n"
 			"  Options:"
@@ -62,6 +63,9 @@ void showUsage()
 			"                         and compute error based on the scaled path.\n"
 			"    --poses            Export poses to [path]_poses.txt, ground truth to [path]_gt.txt\n"
 			"                         and valid ground truth indices to [path]_indices.txt \n"
+#ifdef WITH_QT
+			"    --stats            Show available statistics to plot (if path is a file). \n"
+#endif
 			"    --report           Export all statistics values in report.txt \n\n");
 	exit(1);
 }
@@ -86,6 +90,7 @@ int main(int argc, char * argv[])
 	bool outputRelativeError = false;
 	bool outputReport = false;
 	bool outputLoopAccuracy = false;
+	bool showAvailableStats = false;
 #ifdef WITH_QT
 	std::map<std::string, UPlot*> figures;
 #endif
@@ -118,6 +123,10 @@ int main(int argc, char * argv[])
 		else if(strcmp(argv[i],"--report") == 0)
 		{
 			outputReport = true;
+		}
+		else if(strcmp(argv[i],"--stats") == 0)
+		{
+			showAvailableStats = true;
 		}
 		else
 		{
@@ -222,6 +231,32 @@ int main(int argc, char * argv[])
 					float maxOdomRAM = -1;
 					float maxMapRAM = -1;
 #ifdef WITH_QT
+					if(currentPathIsDatabase && showAvailableStats)
+					{
+						std::map<std::string, int> availableStats;
+						for(std::set<int>::iterator iter=ids.begin(); iter!=ids.end(); ++iter)
+						{
+							for(std::map<std::string, float>::iterator jter=stats.at(*iter).first.begin(); jter!=stats.at(*iter).first.end(); ++jter)
+							{
+								if(availableStats.find(jter->first) != availableStats.end())
+								{
+									++availableStats.at(jter->first);
+								}
+								else
+								{
+									availableStats.insert(std::make_pair(jter->first, 1));
+								}
+							}
+						}
+						printf("Showing available statistics in \"%s\":\n", filePath.c_str());
+						for(std::map<std::string, int>::iterator iter=availableStats.begin(); iter!=availableStats.end(); ++iter)
+						{
+							printf("%s (%d)\n", iter->first.c_str(), iter->second);
+						}
+						printf("\n");
+						exit(1);
+					}
+
 					std::map<std::string, UPlotCurve*> curves;
 					std::map<std::string, double> firstStamps;
 					for(std::map<std::string, UPlot*>::iterator iter=figures.begin(); iter!=figures.end(); ++iter)
