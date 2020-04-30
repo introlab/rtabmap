@@ -65,6 +65,10 @@ void showUsage()
 			"                         and valid ground truth indices to [path]_indices.txt \n"
 #ifdef WITH_QT
 			"    --stats            Show available statistics to plot (if path is a file). \n"
+			"    --invert           Put all curves from a same database in same figure, \n"
+			"                         instead of all same curves from different database \n"
+			"                         in same figure. \n"
+			"    --ids              Use IDs for x axis instead of time in the figures. \n"
 #endif
 			"    --report           Export all statistics values in report.txt \n\n");
 	exit(1);
@@ -91,6 +95,9 @@ int main(int argc, char * argv[])
 	bool outputReport = false;
 	bool outputLoopAccuracy = false;
 	bool showAvailableStats = false;
+	bool invertFigures = false;
+	bool useIds = false;
+	std::vector<std::string> statsToShow;
 #ifdef WITH_QT
 	std::map<std::string, UPlot*> figures;
 #endif
@@ -128,18 +135,44 @@ int main(int argc, char * argv[])
 		{
 			showAvailableStats = true;
 		}
+		else if(strcmp(argv[i],"--invert") == 0)
+		{
+			invertFigures = true;
+		}
+		else if(strcmp(argv[i],"--ids") == 0)
+		{
+			useIds = true;
+		}
 		else
 		{
 #ifdef WITH_QT
-			std::string figureTitle = argv[i];
-			printf("Plot %s\n", figureTitle.c_str());
-			UPlot * fig = new UPlot();
-			fig->setTitle(figureTitle.c_str());
-			fig->setXLabel("Time (s)");
-			figures.insert(std::make_pair(figureTitle, fig));
+			statsToShow.push_back(argv[i]);
 #endif
 		}
 	}
+
+#ifdef WITH_QT
+	if(!invertFigures)
+	{
+		for(size_t i=0; i<statsToShow.size(); ++i)
+		{
+			std::string figureTitle = statsToShow[i];
+			printf("Plot %s\n", figureTitle.c_str());
+			UPlot * fig = new UPlot();
+			fig->setTitle(figureTitle.c_str());
+			if(useIds)
+			{
+				fig->setXLabel("Node ID");
+			}
+			else
+			{
+				fig->setXLabel("Time (s)");
+			}
+			figures.insert(std::make_pair(figureTitle, fig));
+		}
+		statsToShow.clear();
+	}
+#endif
 
 	std::string path = argv[argc-1];
 	path = uReplaceChar(path, '~', UDirectory::homeDir());
@@ -259,9 +292,37 @@ int main(int argc, char * argv[])
 
 					std::map<std::string, UPlotCurve*> curves;
 					std::map<std::string, double> firstStamps;
-					for(std::map<std::string, UPlot*>::iterator iter=figures.begin(); iter!=figures.end(); ++iter)
+					if(statsToShow.empty())
 					{
-						curves.insert(std::make_pair(iter->first, iter->second->addCurve(filePath.c_str())));
+						for(std::map<std::string, UPlot*>::iterator iter=figures.begin(); iter!=figures.end(); ++iter)
+						{
+							curves.insert(std::make_pair(iter->first, iter->second->addCurve(filePath.c_str())));
+						}
+					}
+					else
+					{
+						UPlot * fig = new UPlot();
+						fig->setTitle(filePath.c_str());
+						if(useIds)
+						{
+							fig->setXLabel("Node ID");
+						}
+						else
+						{
+							fig->setXLabel("Time (s)");
+						}
+						if(!figures.insert(std::make_pair(filePath.c_str(), fig)).second)
+						{
+							delete fig;
+							printf("Figure %s already added!\n", filePath.c_str());
+						}
+						else
+						{
+							for(size_t i=0; i<statsToShow.size(); ++i)
+							{
+								curves.insert(std::make_pair(statsToShow[i], fig->addCurve(statsToShow[i].c_str())));
+							}
+						}
 					}
 #endif
 
@@ -348,6 +409,10 @@ int main(int argc, char * argv[])
 											firstStamps.insert(std::make_pair(jter->first, s));
 										}
 										float x = s - firstStamps.at(jter->first);
+										if(useIds)
+										{
+											x = *iter;
+										}
 										float y = stat.at(jter->first);
 										jter->second->addValue(x,y);
 									}
