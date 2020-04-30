@@ -637,50 +637,13 @@ Transform RegistrationVis::computeTransformationImpl(
 				}
 				kptsFrom3D = _detectorFrom->generateKeypoints3D(fromSignature.sensorData(), kptsFrom);
 				UDEBUG("generated kptsFrom3D=%d", (int)kptsFrom3D.size());
-				if(!kptsFrom3D.empty() && (_detectorFrom->getMinDepth() > 0.0f || _detectorFrom->getMaxDepth() > 0.0f))
-				{
-					//remove all keypoints/descriptors with no valid 3D points
-					UASSERT_MSG((int)kptsFrom.size() == descriptorsFrom.rows &&
-							kptsFrom3D.size() == kptsFrom.size(),
-							uFormat("kptsFrom=%d descriptorsFrom=%d kptsFrom3D=%d",
-									(int)kptsFrom.size(), descriptorsFrom.rows, (int)kptsFrom3D.size()).c_str());
-					std::vector<cv::KeyPoint> validKeypoints(kptsFrom.size());
-					std::vector<cv::Point3f> validKeypoints3D(kptsFrom.size());
-					cv::Mat validDescriptors(descriptorsFrom.size(), descriptorsFrom.type());
-					std::vector<int> validKeypointsIds;
-					if(orignalWordsFromIds.size())
-					{
-						validKeypointsIds.resize(kptsFrom.size());
-					}
+			}
 
-					int oi=0;
-					for(unsigned int i=0; i<kptsFrom3D.size(); ++i)
-					{
-						if(util3d::isFinite(kptsFrom3D[i]))
-						{
-							validKeypoints[oi] = kptsFrom[i];
-							validKeypoints3D[oi] = kptsFrom3D[i];
-							if(orignalWordsFromIds.size())
-							{
-								validKeypointsIds[oi] = orignalWordsFromIds[i];
-							}
-							descriptorsFrom.row(i).copyTo(validDescriptors.row(oi));
-							++oi;
-						}
-					}
-					UDEBUG("Removed %d invalid 3D points", (int)kptsFrom3D.size()-oi);
-					validKeypoints.resize(oi);
-					validKeypoints3D.resize(oi);
-					kptsFrom = validKeypoints;
-					kptsFrom3D = validKeypoints3D;
-					
-					if(orignalWordsFromIds.size())
-					{
-					validKeypointsIds.resize(oi);
-						orignalWordsFromIds = validKeypointsIds;
-					}
-					descriptorsFrom = validDescriptors.rowRange(0, oi).clone();
-				}
+			if(!kptsFrom3D.empty() &&
+			   (_detectorFrom->getMinDepth() > 0.0f || _detectorFrom->getMaxDepth() > 0.0f) &&
+			   (!fromSignature.sensorData().cameraModels().empty() || fromSignature.sensorData().stereoCameraModel().isValidForProjection())) // Ignore local map from OdometryF2M
+			{
+				_detectorFrom->filterKeypointsByDepth(kptsFrom, descriptorsFrom, kptsFrom3D, _detectorFrom->getMinDepth(), _detectorFrom->getMaxDepth());
 			}
 
 			if(kptsTo.size() == toSignature.getWords3().size())
@@ -708,34 +671,13 @@ Transform RegistrationVis::computeTransformationImpl(
 						   (int)toSignature.sensorData().keypoints3D().size());
 				}
 				kptsTo3D = _detectorTo->generateKeypoints3D(toSignature.sensorData(), kptsTo);
-				if(kptsTo3D.size() && (_detectorTo->getMinDepth() > 0.0f || _detectorTo->getMaxDepth() > 0.0f))
-				{
-					UDEBUG("");
-					//remove all keypoints/descriptors with no valid 3D points
-					UASSERT((int)kptsTo.size() == descriptorsTo.rows &&
-							kptsTo3D.size() == kptsTo.size());
-					std::vector<cv::KeyPoint> validKeypoints(kptsTo.size());
-					std::vector<cv::Point3f> validKeypoints3D(kptsTo.size());
-					cv::Mat validDescriptors(descriptorsTo.size(), descriptorsTo.type());
+			}
 
-					int oi=0;
-					for(unsigned int i=0; i<kptsTo3D.size(); ++i)
-					{
-						if(util3d::isFinite(kptsTo3D[i]))
-						{
-							validKeypoints[oi] = kptsTo[i];
-							validKeypoints3D[oi] = kptsTo3D[i];
-							descriptorsTo.row(i).copyTo(validDescriptors.row(oi));
-							++oi;
-						}
-					}
-					UDEBUG("Removed %d invalid 3D points", (int)kptsTo3D.size()-oi);
-					validKeypoints.resize(oi);
-					validKeypoints3D.resize(oi);
-					kptsTo = validKeypoints;
-					kptsTo3D = validKeypoints3D;
-					descriptorsTo = validDescriptors.rowRange(0, oi).clone();
-				}
+			if(kptsTo3D.size() &&
+		       (_detectorTo->getMinDepth() > 0.0f || _detectorTo->getMaxDepth() > 0.0f) &&
+			   (!toSignature.sensorData().cameraModels().empty() || toSignature.sensorData().stereoCameraModel().isValidForProjection())) // Ignore local map from OdometryF2M
+			{
+				_detectorTo->filterKeypointsByDepth(kptsTo, descriptorsTo, kptsTo3D, _detectorTo->getMinDepth(), _detectorTo->getMaxDepth());
 			}
 
 			UASSERT(kptsFrom.empty() || descriptorsFrom.rows == 0 || int(kptsFrom.size()) == descriptorsFrom.rows);

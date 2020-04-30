@@ -147,6 +147,53 @@ void Feature2D::filterKeypointsByDepth(
 	}
 }
 
+void Feature2D::filterKeypointsByDepth(
+		std::vector<cv::KeyPoint> & keypoints,
+		cv::Mat & descriptors,
+		std::vector<cv::Point3f> & keypoints3D,
+		float minDepth,
+		float maxDepth)
+{
+	UDEBUG("");
+	//remove all keypoints/descriptors with no valid 3D points
+	UASSERT(((int)keypoints.size() == descriptors.rows || descriptors.empty()) &&
+			keypoints3D.size() == keypoints.size());
+	std::vector<cv::KeyPoint> validKeypoints(keypoints.size());
+	std::vector<cv::Point3f> validKeypoints3D(keypoints.size());
+	cv::Mat validDescriptors(descriptors.size(), descriptors.type());
+
+	int oi=0;
+	float minDepthSqr = minDepth * minDepth;
+	float maxDepthSqr = maxDepth * maxDepth;
+	for(unsigned int i=0; i<keypoints3D.size(); ++i)
+	{
+		cv::Point3f & pt = keypoints3D[i];
+		if(util3d::isFinite(pt))
+		{
+			float distSqr = pt.x*pt.x+pt.y*pt.y+pt.z*pt.z;
+			if(distSqr >= minDepthSqr && (maxDepthSqr==0.0f || distSqr <= maxDepthSqr))
+			{
+				validKeypoints[oi] = keypoints[i];
+				validKeypoints3D[oi] = pt;
+				if(!descriptors.empty())
+				{
+					descriptors.row(i).copyTo(validDescriptors.row(oi));
+				}
+				++oi;
+			}
+		}
+	}
+	UDEBUG("Removed %d invalid 3D points", (int)keypoints3D.size()-oi);
+	validKeypoints.resize(oi);
+	validKeypoints3D.resize(oi);
+	keypoints = validKeypoints;
+	keypoints3D = validKeypoints3D;
+	if(!descriptors.empty())
+	{
+		descriptors = validDescriptors.rowRange(0, oi).clone();
+	}
+}
+
 void Feature2D::filterKeypointsByDisparity(
 		std::vector<cv::KeyPoint> & keypoints,
 		const cv::Mat & disparity,
