@@ -37,6 +37,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <opencv2/calib3d/calib3d_c.h>
 
 #if CV_MAJOR_VERSION >= 4
+
+#if CV_MINOR_VERSION >= 3
+#include <opencv2/core/core_c.h>
+#endif
+
 // Opencv4 doesn't expose those functions below anymore, we should recopy all of them!
 int cvRodrigues2( const CvMat* src, CvMat* dst, CvMat* jacobian CV_DEFAULT(0))
 {
