@@ -241,12 +241,12 @@ class RTABMAP_EXP Parameters
 #ifndef RTABMAP_NONFREE
 #ifdef RTABMAP_OPENCV3
     // OpenCV 3 without xFeatures2D module doesn't have BRIEF
-    RTABMAP_PARAM(Kp, DetectorStrategy,         int, 8,       "0=SURF 1=SIFT 2=ORB 3=FAST/FREAK 4=FAST/BRIEF 5=GFTT/FREAK 6=GFTT/BRIEF 7=BRISK 8=GFTT/ORB 9=KAZE 10=ORB-OCTREE.");
+    RTABMAP_PARAM(Kp, DetectorStrategy,         int, 8,       "0=SURF 1=SIFT 2=ORB 3=FAST/FREAK 4=FAST/BRIEF 5=GFTT/FREAK 6=GFTT/BRIEF 7=BRISK 8=GFTT/ORB 9=KAZE 10=ORB-OCTREE 11=SuperPoint Torch.");
 #else
-    RTABMAP_PARAM(Kp, DetectorStrategy,         int, 6,       "0=SURF 1=SIFT 2=ORB 3=FAST/FREAK 4=FAST/BRIEF 5=GFTT/FREAK 6=GFTT/BRIEF 7=BRISK 8=GFTT/ORB 9=KAZE 10=ORB-OCTREE.");
+    RTABMAP_PARAM(Kp, DetectorStrategy,         int, 6,       "0=SURF 1=SIFT 2=ORB 3=FAST/FREAK 4=FAST/BRIEF 5=GFTT/FREAK 6=GFTT/BRIEF 7=BRISK 8=GFTT/ORB 9=KAZE 10=ORB-OCTREE 11=SuperPoint Torch.");
 #endif
 #else
-    RTABMAP_PARAM(Kp, DetectorStrategy,         int, 6,       "0=SURF 1=SIFT 2=ORB 3=FAST/FREAK 4=FAST/BRIEF 5=GFTT/FREAK 6=GFTT/BRIEF 7=BRISK 8=GFTT/ORB 9=KAZE 10=ORB-OCTREE.");
+    RTABMAP_PARAM(Kp, DetectorStrategy,         int, 6,       "0=SURF 1=SIFT 2=ORB 3=FAST/FREAK 4=FAST/BRIEF 5=GFTT/FREAK 6=GFTT/BRIEF 7=BRISK 8=GFTT/ORB 9=KAZE 10=ORB-OCTREE 11=SuperPoint Torch.");
 #endif
     RTABMAP_PARAM(Kp, TfIdfLikelihoodUsed,      bool, true,   "Use of the td-idf strategy to compute the likelihood.");
     RTABMAP_PARAM(Kp, Parallelized,             bool, true,   "If the dictionary update and signature creation were parallelized.");
@@ -325,7 +325,7 @@ class RTABMAP_EXP Parameters
     RTABMAP_PARAM(KAZE, Diffusivity,    int, 1,        "Diffusivity type: 0=DIFF_PM_G1, 1=DIFF_PM_G2, 2=DIFF_WEICKERT or 3=DIFF_CHARBONNIER.");
 
     RTABMAP_PARAM_STR(SPTorch, ModelPath,              "", "[Required] Path to pre-trained weights Torch file of SuperPoint (*.pt).");
-    RTABMAP_PARAM(SPTorch, Threshold,         float,  0.2, "Detector response threshold to accept keypoint.");
+    RTABMAP_PARAM(SPTorch, Threshold,         float,  0.200, "Detector response threshold to accept keypoint.");
     RTABMAP_PARAM(SPTorch, NMS,               bool,  true, "If true, non-maximum suppression is applied to detected keypoints.");
     RTABMAP_PARAM(SPTorch, MinDistance,       int,      4, uFormat("[%s=true] Minimum distance (pixels) between keypoints.", kSPTorchNMS().c_str()));
     RTABMAP_PARAM(SPTorch, Cuda,              bool, false, "Use Cuda device for Torch, otherwise CPU device is used by default.");
@@ -586,12 +586,12 @@ class RTABMAP_EXP Parameters
 #ifndef RTABMAP_NONFREE
 #ifdef RTABMAP_OPENCV3
     // OpenCV 3 without xFeatures2D module doesn't have BRIEF
-    RTABMAP_PARAM(Vis, FeatureType, int, 8, "0=SURF 1=SIFT 2=ORB 3=FAST/FREAK 4=FAST/BRIEF 5=GFTT/FREAK 6=GFTT/BRIEF 7=BRISK 8=GFTT/ORB 9=KAZE 10=ORB-OCTREE.");
+    RTABMAP_PARAM(Vis, FeatureType, int, 8, "0=SURF 1=SIFT 2=ORB 3=FAST/FREAK 4=FAST/BRIEF 5=GFTT/FREAK 6=GFTT/BRIEF 7=BRISK 8=GFTT/ORB 9=KAZE 10=ORB-OCTREE 11=SuperPoint Torch.");
 #else
-    RTABMAP_PARAM(Vis, FeatureType, int, 6, "0=SURF 1=SIFT 2=ORB 3=FAST/FREAK 4=FAST/BRIEF 5=GFTT/FREAK 6=GFTT/BRIEF 7=BRISK 8=GFTT/ORB 9=KAZE 10=ORB-OCTREE.");
+    RTABMAP_PARAM(Vis, FeatureType, int, 6, "0=SURF 1=SIFT 2=ORB 3=FAST/FREAK 4=FAST/BRIEF 5=GFTT/FREAK 6=GFTT/BRIEF 7=BRISK 8=GFTT/ORB 9=KAZE 10=ORB-OCTREE 11=SuperPoint Torch.");
 #endif
 #else
-    RTABMAP_PARAM(Vis, FeatureType, int, 6, "0=SURF 1=SIFT 2=ORB 3=FAST/FREAK 4=FAST/BRIEF 5=GFTT/FREAK 6=GFTT/BRIEF 7=BRISK 8=GFTT/ORB 9=KAZE 10=ORB-OCTREE.");
+    RTABMAP_PARAM(Vis, FeatureType, int, 6, "0=SURF 1=SIFT 2=ORB 3=FAST/FREAK 4=FAST/BRIEF 5=GFTT/FREAK 6=GFTT/BRIEF 7=BRISK 8=GFTT/ORB 9=KAZE 10=ORB-OCTREE 11=SuperPoint Torch.");
 #endif
     RTABMAP_PARAM(Vis, MaxFeatures,              int, 1000,   "0 no limits.");
     RTABMAP_PARAM(Vis, MaxDepth,                  float, 0,   "Max depth of the features (0 means no limit).");
