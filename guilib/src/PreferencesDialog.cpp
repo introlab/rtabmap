@@ -1039,6 +1039,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->loopClosure_pnpRefineIterations->setObjectName(Parameters::kVisPnPRefineIterations().c_str());
 	_ui->reextract_nn->setObjectName(Parameters::kVisCorNNType().c_str());
 	_ui->reextract_nndrRatio->setObjectName(Parameters::kVisCorNNDR().c_str());
+	_ui->checkBox__visCorCrossCheck->setObjectName(Parameters::kVisCorCrossCheck().c_str());
 	_ui->spinBox_visCorGuessWinSize->setObjectName(Parameters::kVisCorGuessWinSize().c_str());
 	_ui->checkBox__visCorGuessMatchToProjection->setObjectName(Parameters::kVisCorGuessMatchToProjection().c_str());
 	_ui->vis_feature_detector->setObjectName(Parameters::kVisFeatureType().c_str());

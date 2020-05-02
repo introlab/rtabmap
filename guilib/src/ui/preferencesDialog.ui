@@ -63,7 +63,7 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-250</y>
+            <y>0</y>
             <width>680</width>
             <height>3497</height>
            </rect>
@@ -95,7 +95,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>5</number>
+                <number>21</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,1">
@@ -17056,7 +17056,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                          </property>
                         </widget>
                        </item>
-                       <item row="2" column="0">
+                       <item row="3" column="0">
                         <widget class="QSpinBox" name="spinBox_visCorGuessWinSize">
                          <property name="suffix">
                           <string> pixels</string>
@@ -17129,7 +17129,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                        <item row="1" column="1">
                         <widget class="QLabel" name="label_181">
                          <property name="text">
-                          <string>NNDR ratio
+                          <string>NNDR (Nearest Neighbor Distance Ratio)
 (A matching pair is accepted, if its distance is closer than X times the distance of the second nearest neighbor)
 Lower the ratio -&gt; higher the precision.</string>
                          </property>
@@ -17141,7 +17141,7 @@ Lower the ratio -&gt; higher the precision.</string>
                          </property>
                         </widget>
                        </item>
-                       <item row="2" column="1">
+                       <item row="3" column="1">
                         <widget class="QLabel" name="label_303">
                          <property name="text">
                           <string>Matching window size around projected points when a guess transform is provided to find correspondences. 0 means that global matching will be done.</string>
@@ -17154,7 +17154,7 @@ Lower the ratio -&gt; higher the precision.</string>
                          </property>
                         </widget>
                        </item>
-                       <item row="4" column="1">
+                       <item row="5" column="1">
                         <spacer name="verticalSpacer_44">
                          <property name="orientation">
                           <enum>Qt::Vertical</enum>
@@ -17167,7 +17167,7 @@ Lower the ratio -&gt; higher the precision.</string>
                          </property>
                         </spacer>
                        </item>
-                       <item row="3" column="1">
+                       <item row="4" column="1">
                         <widget class="QLabel" name="label_448">
                          <property name="text">
                           <string>Match frame's corners to source's projected points (when guess transform is provided) instead of projected points to frame's corners.</string>
@@ -17180,8 +17180,28 @@ Lower the ratio -&gt; higher the precision.</string>
                          </property>
                         </widget>
                        </item>
-                       <item row="3" column="0">
+                       <item row="4" column="0">
                         <widget class="QCheckBox" name="checkBox__visCorGuessMatchToProjection">
+                         <property name="text">
+                          <string/>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="2" column="1">
+                        <widget class="QLabel" name="label_582">
+                         <property name="text">
+                          <string>Cross check matching. If enabled, brute force matching with cross check is done instead of one of the nearest neighbor strategy above based on NNDR ratio.</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="2" column="0">
+                        <widget class="QCheckBox" name="checkBox__visCorCrossCheck">
                          <property name="text">
                           <string/>
                          </property>
