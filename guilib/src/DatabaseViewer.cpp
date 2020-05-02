@@ -398,8 +398,8 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 
 	// connect configuration changed
 	connect(ui_->graphViewer, SIGNAL(configChanged()), this, SLOT(configModified()));
-	//connect(ui_->graphicsView_A, SIGNAL(configChanged()), this, SLOT(configModified()));
-	//connect(ui_->graphicsView_B, SIGNAL(configChanged()), this, SLOT(configModified()));
+	connect(ui_->graphicsView_A, SIGNAL(configChanged()), this, SLOT(configModified()));
+	connect(ui_->graphicsView_B, SIGNAL(configChanged()), this, SLOT(configModified()));
 	connect(ui_->comboBox_logger_level, SIGNAL(currentIndexChanged(int)), this, SLOT(configModified()));
 	connect(ui_->actionVertical_Layout, SIGNAL(toggled(bool)), this, SLOT(configModified()));
 	connect(ui_->checkBox_alignPosesWithGroundTruth, SIGNAL(stateChanged(int)), this, SLOT(updateGraphView()));
@@ -561,8 +561,8 @@ void DatabaseViewer::readSettings()
 	settings.endGroup();
 
 	// ImageViews
-	//ui_->graphicsView_A->loadSettings(settings, "ImageViewA");
-	//ui_->graphicsView_B->loadSettings(settings, "ImageViewB");
+	ui_->graphicsView_A->loadSettings(settings, "ImageViewA");
+	ui_->graphicsView_B->loadSettings(settings, "ImageViewB");
 
 	// ICP parameters
 	settings.beginGroup("icp");
@@ -646,8 +646,8 @@ void DatabaseViewer::writeSettings()
 	settings.endGroup();
 
 	// ImageViews
-	//ui_->graphicsView_A->saveSettings(settings, "ImageViewA");
-	//ui_->graphicsView_B->saveSettings(settings, "ImageViewB");
+	ui_->graphicsView_A->saveSettings(settings, "ImageViewA");
+	ui_->graphicsView_B->saveSettings(settings, "ImageViewB");
 
 	// save ICP parameters
 	settings.beginGroup("icp");
@@ -5096,7 +5096,7 @@ void DatabaseViewer::updateStereo(const SensorData * data)
 	}
 }
 
-void DatabaseViewer::updateWordsMatching()
+void DatabaseViewer::updateWordsMatching(const std::vector<int> & inliers)
 {
 	int from = ids_.at(ui_->horizontalSlider_A->value());
 	int to = ids_.at(ui_->horizontalSlider_B->value());
@@ -5109,6 +5109,7 @@ void DatabaseViewer::updateWordsMatching()
 
 		const QMultiMap<int, KeypointItem*> & wordsA = ui_->graphicsView_A->getFeatures();
 		const QMultiMap<int, KeypointItem*> & wordsB = ui_->graphicsView_B->getFeatures();
+		std::set<int> inliersSet(inliers.begin(), inliers.end());
 		if(wordsA.size() && wordsB.size())
 		{
 			QList<int> ids =  wordsA.uniqueKeys();
@@ -5152,19 +5153,27 @@ void DatabaseViewer::updateWordsMatching()
 					const KeypointItem * kptA = wordsA.value(ids[i]);
 					const KeypointItem * kptB = wordsB.value(ids[i]);
 
+					QColor cA = ui_->graphicsView_A->getDefaultMatchingLineColor();
+					QColor cB = ui_->graphicsView_B->getDefaultMatchingLineColor();
+					if(inliersSet.find(ids[i])!=inliersSet.end())
+					{
+						cA = ui_->graphicsView_A->getDefaultMatchingFeatureColor();
+						cB = ui_->graphicsView_B->getDefaultMatchingFeatureColor();
+					}
+
 					ui_->graphicsView_A->addLine(
 							kptA->rect().x()+kptA->rect().width()/2,
 							kptA->rect().y()+kptA->rect().height()/2,
 							kptB->rect().x()/scaleDiff+kptB->rect().width()/scaleDiff/2+deltaAX,
 							kptB->rect().y()/scaleDiff+kptB->rect().height()/scaleDiff/2+deltaAY,
-							ui_->graphicsView_A->getDefaultMatchingLineColor());
+							cA);
 
 					ui_->graphicsView_B->addLine(
 							kptA->rect().x()*scaleDiff+kptA->rect().width()*scaleDiff/2-deltaBX,
 							kptA->rect().y()*scaleDiff+kptA->rect().height()*scaleDiff/2-deltaBY,
 							kptB->rect().x()+kptB->rect().width()/2,
 							kptB->rect().y()+kptB->rect().height()/2,
-							ui_->graphicsView_B->getDefaultMatchingLineColor());
+							cB);
 				}
 			}
 			ui_->graphicsView_A->update();
@@ -7162,7 +7171,7 @@ void DatabaseViewer::refineConstraint(int from, int to, bool silent)
 					ui_->graphicsView_B->setFeatures(toS->getWords(), toS->sensorData().depthRaw());
 				}
 
-				updateWordsMatching();
+				updateWordsMatching(info.inliersIDs);
 			}
 			else
 			{
@@ -7208,6 +7217,7 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent)
 	Signature * toS=0;
 
 	Link newLink;
+	RegistrationInfo info;
 	if(!containsLink(linksAdded_, from, to) &&
 	   !containsLink(links_, from, to))
 	{
@@ -7226,7 +7236,6 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent)
 		}
 
 		Transform t;
-		RegistrationInfo info;
 
 		std::list<int> ids;
 		ids.push_back(from);
@@ -7517,7 +7526,7 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent)
 
 			ui_->graphicsView_A->setFeatures(fromS->getWords(), fromS->sensorData().depthRaw());
 			ui_->graphicsView_B->setFeatures(toS->getWords(), toS->sensorData().depthRaw());
-			updateWordsMatching();
+			updateWordsMatching(info.inliersIDs);
 		}
 		else if(updateConstraints)
 		{

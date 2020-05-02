@@ -66,6 +66,7 @@ RegistrationVis::RegistrationVis(const ParametersMap & parameters, Registration 
 		_flowEps(Parameters::defaultVisCorFlowEps()),
 		_flowMaxLevel(Parameters::defaultVisCorFlowMaxLevel()),
 		_nndr(Parameters::defaultVisCorNNDR()),
+		_bfCrossCheck(Parameters::defaultVisCorCrossCheck()),
 		_guessWinSize(Parameters::defaultVisCorGuessWinSize()),
 		_guessMatchToProjection(Parameters::defaultVisCorGuessMatchToProjection()),
 		_bundleAdjustment(Parameters::defaultVisBundleAdjustment()),
@@ -113,6 +114,7 @@ void RegistrationVis::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kVisCorFlowEps(), _flowEps);
 	Parameters::parse(parameters, Parameters::kVisCorFlowMaxLevel(), _flowMaxLevel);
 	Parameters::parse(parameters, Parameters::kVisCorNNDR(), _nndr);
+	Parameters::parse(parameters, Parameters::kVisCorCrossCheck(), _bfCrossCheck);
 	Parameters::parse(parameters, Parameters::kVisCorGuessWinSize(), _guessWinSize);
 	Parameters::parse(parameters, Parameters::kVisCorGuessMatchToProjection(), _guessMatchToProjection);
 	Parameters::parse(parameters, Parameters::kVisBundleAdjustment(), _bundleAdjustment);
@@ -219,6 +221,8 @@ Transform RegistrationVis::computeTransformationImpl(
 	UDEBUG("%s=%d", Parameters::kVisCorFlowIterations().c_str(), _flowIterations);
 	UDEBUG("%s=%f", Parameters::kVisCorFlowEps().c_str(), _flowEps);
 	UDEBUG("%s=%d", Parameters::kVisCorFlowMaxLevel().c_str(), _flowMaxLevel);
+	UDEBUG("%s=%f", Parameters::kVisCorNNDR().c_str(), _nndr);
+	UDEBUG("%s=%d", Parameters::kVisCorCrossCheck().c_str(), _bfCrossCheck?1:0);
 	UDEBUG("guess=%s", guess.prettyPrint().c_str());
 
 	UDEBUG("Input(%d): from=%d words, %d 3D words, %d words descriptors,  %d kpts, %d kpts3D, %d descriptors, image=%dx%d models=%d stereo=%d",
@@ -757,7 +761,7 @@ Transform RegistrationVis::computeTransformationImpl(
 					{
 						if(_guessMatchToProjection)
 						{
-							// match frame to projected
+							UDEBUG("match frame to projected");
 							// Create kd-tree for projected keypoints
 							rtflann::Matrix<float> cornersProjectedMat((float*)cornersProjected.data(), cornersProjected.size(), 2);
 							rtflann::Index<rtflann::L2_Simple<float> > index(cornersProjectedMat, rtflann::KDTreeIndexParams());
@@ -803,15 +807,29 @@ Transform RegistrationVis::computeTransformationImpl(
 									descriptorsIndices.resize(oi);
 									UASSERT(oi >=2);
 
-									std::vector<std::vector<cv::DMatch> > matches;
-									cv::BFMatcher matcher(descriptors.type()==CV_8U?cv::NORM_HAMMING:cv::NORM_L2SQR);
-									matcher.knnMatch(descriptorsTo.row(i), cv::Mat(descriptors, cv::Range(0, oi)), matches, 2);
-									UASSERT(matches.size() == 1);
-									UASSERT(matches[0].size() == 2);
-									if(matches[0].at(0).distance < _nndr * matches[0].at(1).distance)
+
+									cv::BFMatcher matcher(descriptors.type()==CV_8U?cv::NORM_HAMMING:cv::NORM_L2SQR, _bfCrossCheck);
+									if(_bfCrossCheck)
 									{
-										matchedIndex = descriptorsIndices.at(matches[0].at(0).trainIdx);
+										std::vector<cv::DMatch> matches;
+										matcher.match(descriptorsTo.row(i), cv::Mat(descriptors, cv::Range(0, oi)), matches);
+										if(!matches.empty())
+										{
+											matchedIndex = descriptorsIndices.at(matches.at(0).trainIdx);
+										}
 									}
+									else
+									{
+										std::vector<std::vector<cv::DMatch> > matches;
+										matcher.knnMatch(descriptorsTo.row(i), cv::Mat(descriptors, cv::Range(0, oi)), matches, 2);
+										UASSERT(matches.size() == 1);
+										UASSERT(matches[0].size() == 2);
+										if(matches[0].at(0).distance < _nndr * matches[0].at(1).distance)
+										{
+											matchedIndex = descriptorsIndices.at(matches[0].at(0).trainIdx);
+										}
+									}
+
 								}
 								else if(indices[i].size() == 1)
 								{
@@ -883,7 +901,7 @@ Transform RegistrationVis::computeTransformationImpl(
 						}
 						else
 						{
-							// match projected to frame
+							UDEBUG("match projected to frame");
 							std::vector<cv::Point2f> pointsTo;
 							cv::KeyPoint::convert(kptsTo, pointsTo);
 							rtflann::Matrix<float> pointsToMat((float*)pointsTo.data(), pointsTo.size(), 2);
@@ -939,15 +957,27 @@ Transform RegistrationVis::computeTransformationImpl(
 										bruteForceDescCopy += bruteForceTimer.ticks();
 										UASSERT(oi >=2);
 
-										std::vector<std::vector<cv::DMatch> > matches;
-										cv::BFMatcher matcher(descriptors.type()==CV_8U?cv::NORM_HAMMING:cv::NORM_L2SQR);
-										matcher.knnMatch(descriptorsFrom.row(matchedIndexFrom), cv::Mat(descriptors, cv::Range(0, oi)), matches, 2);
-										UASSERT(matches.size() == 1);
-										UASSERT(matches[0].size() == 2);
-										bruteForceTotalTime+=bruteForceTimer.elapsed();
-										if(matches[0].at(0).distance < _nndr * matches[0].at(1).distance)
+										cv::BFMatcher matcher(descriptors.type()==CV_8U?cv::NORM_HAMMING:cv::NORM_L2SQR, _bfCrossCheck);
+										if(_bfCrossCheck)
 										{
-											matchedIndexTo = descriptorsIndices.at(matches[0].at(0).trainIdx);
+											std::vector<cv::DMatch> matches;
+											matcher.match(descriptorsFrom.row(matchedIndexFrom), cv::Mat(descriptors, cv::Range(0, oi)), matches);
+											if(!matches.empty())
+											{
+												matchedIndexTo = descriptorsIndices.at(matches.at(0).trainIdx);
+											}
+										}
+										else
+										{
+											std::vector<std::vector<cv::DMatch> > matches;
+											matcher.knnMatch(descriptorsFrom.row(matchedIndexFrom), cv::Mat(descriptors, cv::Range(0, oi)), matches, 2);
+											UASSERT(matches.size() == 1);
+											UASSERT(matches[0].size() == 2);
+											bruteForceTotalTime+=bruteForceTimer.elapsed();
+											if(matches[0].at(0).distance < _nndr * matches[0].at(1).distance)
+											{
+												matchedIndexTo = descriptorsIndices.at(matches[0].at(0).trainIdx);
+											}
 										}
 									}
 									else if(indices[i].size() == 1)
@@ -1036,29 +1066,66 @@ Transform RegistrationVis::computeTransformationImpl(
 
 					UDEBUG("");
 					// match between all descriptors
-					VWDictionary dictionary(_featureParameters);
 					std::list<int> fromWordIds;
-					if(orignalWordsFromIds.empty())
+					std::list<int> toWordIds;
+					if(_bfCrossCheck)
 					{
-						fromWordIds = dictionary.addNewWords(descriptorsFrom, 1);
+						std::vector<int> fromWordIdsV(descriptorsFrom.rows);
+						for (int i = 0; i < descriptorsFrom.rows; ++i)
+						{
+							int id = i+1;
+							if(!orignalWordsFromIds.empty())
+							{
+								id = orignalWordsFromIds[i];
+							}
+							fromWordIds.push_back(id);
+							fromWordIdsV[i] = id;
+						}
+						if(descriptorsTo.rows)
+						{
+							cv::BFMatcher matcher(descriptorsFrom.type()==CV_8U?cv::NORM_HAMMING:cv::NORM_L2SQR, true);
+							std::vector<int> toWordIdsV(descriptorsTo.rows, 0);
+							std::vector<cv::DMatch> matches;
+							matcher.match(descriptorsTo, descriptorsFrom, matches);
+							for(size_t i=0; i<matches.size(); ++i)
+							{
+								toWordIdsV[matches[i].queryIdx] = fromWordIdsV[matches[i].trainIdx];
+							}
+							for(size_t i=0; i<toWordIdsV.size(); ++i)
+							{
+								int toId = toWordIdsV[i];
+								if(toId==0)
+								{
+									toId = fromWordIds.back()+i+1;
+								}
+								toWordIds.push_back(toId);
+							}
+						}
 					}
 					else
 					{
-						for (int i = 0; i < descriptorsFrom.rows; ++i)
+						VWDictionary dictionary(_featureParameters);
+						if(orignalWordsFromIds.empty())
 						{
-							int id = orignalWordsFromIds[i];
-							dictionary.addWord(new VisualWord(id, descriptorsFrom.row(i), 1));
-							fromWordIds.push_back(id);
+							fromWordIds = dictionary.addNewWords(descriptorsFrom, 1);
 						}
-					}
+						else
+						{
+							for (int i = 0; i < descriptorsFrom.rows; ++i)
+							{
+								int id = orignalWordsFromIds[i];
+								dictionary.addWord(new VisualWord(id, descriptorsFrom.row(i), 1));
+								fromWordIds.push_back(id);
+							}
+						}
 
-					std::list<int> toWordIds;
-					if(descriptorsTo.rows)
-					{
-						dictionary.update();
-						toWordIds = dictionary.addNewWords(descriptorsTo, 2);
+						if(descriptorsTo.rows)
+						{
+							dictionary.update();
+							toWordIds = dictionary.addNewWords(descriptorsTo, 2);
+						}
+						dictionary.clear(false);
 					}
-					dictionary.clear(false);
 
 					std::multiset<int> fromWordIdsSet(fromWordIds.begin(), fromWordIds.end());
 					std::multiset<int> toWordIdsSet(toWordIds.begin(), toWordIds.end());

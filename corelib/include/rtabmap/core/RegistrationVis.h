@@ -78,6 +78,7 @@ private:
 	int _flowIterations;
 	float _flowEps;
 	int _flowMaxLevel;
+	bool _bfCrossCheck;
 	float _nndr;
 	int _guessWinSize;
 	bool _guessMatchToProjection;
