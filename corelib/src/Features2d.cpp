@@ -68,6 +68,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
   #include <opencv2/xfeatures2d/nonfree.hpp>
   #include <opencv2/xfeatures2d/cuda.hpp>
 #endif
+#ifdef HAVE_OPENCV_CUDAFEATURES2D
+  #include <opencv2/cudafeatures2d.hpp>
+#endif
 
 #ifdef RTABMAP_FASTCV
 #include <fastcv.h>
