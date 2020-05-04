@@ -1140,10 +1140,10 @@ void DBDriver::addInfoAfterRun(
 	}
 }
 
-void DBDriver::addStatistics(const Statistics & statistics) const
+void DBDriver::addStatistics(const Statistics & statistics, bool saveWmState) const
 {
 	_dbSafeAccessMutex.lock();
-	addStatisticsQuery(statistics);
+	addStatisticsQuery(statistics, saveWmState);
 	_dbSafeAccessMutex.unlock();
 }
 

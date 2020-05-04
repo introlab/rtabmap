@@ -2003,11 +2003,11 @@ int Memory::cleanup()
 	return signatureRemoved;
 }
 
-void Memory::saveStatistics(const Statistics & statistics)
+void Memory::saveStatistics(const Statistics & statistics, bool saveWmState)
 {
 	if(_dbDriver)
 	{
-		_dbDriver->addStatistics(statistics);
+		_dbDriver->addStatistics(statistics, saveWmState);
 	}
 }
 
@@ -5060,6 +5060,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 	s->sensorData().setGroundTruth(data.groundTruth());
 	s->sensorData().setGPS(data.gps());
 	s->sensorData().setEnvSensors(data.envSensors());
+	s->sensorData().setGlobalDescriptors(data.globalDescriptors());
 
 	t = timer.ticks();
 	if(stats) stats->addStatistic(Statistics::kTimingMemCompressing_data(), t*1000.0f);

@@ -3384,6 +3384,74 @@ void DBDriverSqlite3::loadSignaturesQuery(const std::list<int> & ids, std::list<
 
 			ULOGGER_DEBUG("Time load %d calibrations=%fs", (int)nodes.size(), timer.ticks());
 		}
+
+		// load global descriptors
+		if(nodes.size() && uStrNumCmp(_version, "0.20.0") >= 0)
+		{
+			std::stringstream query3;
+			query3 << "SELECT type, info, data "
+					 "FROM GlobalDescriptor "
+					 "WHERE node_id = ? ";
+
+			rc = sqlite3_prepare_v2(_ppDb, query3.str().c_str(), -1, &ppStmt, 0);
+			UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+
+			for(std::list<Signature*>::const_iterator iter=nodes.begin(); iter!=nodes.end(); ++iter)
+			{
+				// bind id
+				rc = sqlite3_bind_int(ppStmt, 1, (*iter)->id());
+				UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+
+				std::vector<GlobalDescriptor> globalDescriptors;
+
+				rc = sqlite3_step(ppStmt);
+				while(rc == SQLITE_ROW)
+				{
+					int index=0;
+					const void * data = 0;
+					int dataSize = 0;
+					int type = -1;
+					cv::Mat info;
+					cv::Mat dataMat;
+
+					type = sqlite3_column_int(ppStmt, index++);
+					data = sqlite3_column_blob(ppStmt, index);
+					dataSize = sqlite3_column_bytes(ppStmt, index++);
+					if(dataSize && data)
+					{
+						info = rtabmap::uncompressData(cv::Mat(1, dataSize, CV_8UC1, (void *)data).clone());
+					}
+					data = sqlite3_column_blob(ppStmt, index);
+					dataSize = sqlite3_column_bytes(ppStmt, index++);
+					if(dataSize && data)
+					{
+						dataMat = rtabmap::uncompressData(cv::Mat(1, dataSize, CV_8UC1, (void *)data).clone());
+					}
+
+					UASSERT(!dataMat.empty());
+					globalDescriptors.push_back(GlobalDescriptor(type, dataMat, info));
+
+					rc = sqlite3_step(ppStmt);
+				}
+				UASSERT_MSG(rc == SQLITE_DONE, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+
+				if(!globalDescriptors.empty())
+				{
+					(*iter)->sensorData().setGlobalDescriptors(globalDescriptors);
+					ULOGGER_DEBUG("Add %d global descriptors to node %d", (int)globalDescriptors.size(), (*iter)->id());
+				}
+
+				//reset
+				rc = sqlite3_reset(ppStmt);
+				UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+			}
+			// Finalize (delete) the statement
+			rc = sqlite3_finalize(ppStmt);
+			UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+
+			ULOGGER_DEBUG("Time load %d global descriptors=%fs", (int)nodes.size(), timer.ticks());
+		}
+
 		if(ids.size() != loaded)
 		{
 			UERROR("Some signatures not found in database");
@@ -4235,6 +4303,27 @@ void DBDriverSqlite3::saveQuery(const std::list<Signature *> & signatures)
 		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
 		UDEBUG("Time=%fs", timer.ticks());
 
+		if(uStrNumCmp(_version, "0.20.0") >= 0)
+		{
+			// Global descriptor table
+			std::string query = queryStepGlobalDescriptor();
+			rc = sqlite3_prepare_v2(_ppDb, query.c_str(), -1, &ppStmt, 0);
+			UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+
+			for(std::list<Signature *>::const_iterator i=signatures.begin(); i!=signatures.end(); ++i)
+			{
+				for(size_t d=0; d<(*i)->sensorData().globalDescriptors().size(); ++d)
+				{
+					stepGlobalDescriptor(ppStmt, (*i)->id(), (*i)->sensorData().globalDescriptors()[d]);
+				}
+			}
+			// Finalize (delete) the statement
+			rc = sqlite3_finalize(ppStmt);
+			UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+
+			UDEBUG("Time=%fs", timer.ticks());
+		}
+
 		if(uStrNumCmp(_version, "0.10.0") >= 0)
 		{
 			// Add SensorData
@@ -4519,7 +4608,7 @@ void DBDriverSqlite3::updateLaserScanQuery(
 	}
 }
 
-void DBDriverSqlite3::addStatisticsQuery(const Statistics & statistics) const
+void DBDriverSqlite3::addStatisticsQuery(const Statistics & statistics, bool saveWmState) const
 {
 	UDEBUG("Ref ID = %d", statistics.refImageId());
 	if(_ppDb)
@@ -4570,7 +4659,7 @@ void DBDriverSqlite3::addStatisticsQuery(const Statistics & statistics) const
 				cv::Mat compressedWmState;
 				if(uStrNumCmp(this->getDatabaseVersion(), "0.16.2") >= 0)
 				{
-					if(!statistics.wmState().empty())
+					if(saveWmState && !statistics.wmState().empty())
 					{
 						compressedWmState = compressData2(cv::Mat(1, statistics.wmState().size(), CV_32SC1, (void *)statistics.wmState().data()));
 						rc = sqlite3_bind_blob(ppStmt, index++, compressedWmState.data, compressedWmState.cols, SQLITE_STATIC);
@@ -6356,6 +6445,61 @@ void DBDriverSqlite3::stepKeypoint(sqlite3_stmt * ppStmt,
 		}
 		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
 	}
+
+	rc=sqlite3_step(ppStmt);
+	UASSERT_MSG(rc == SQLITE_DONE, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+
+	rc = sqlite3_reset(ppStmt);
+	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+}
+
+std::string DBDriverSqlite3::queryStepGlobalDescriptor() const
+{
+	UASSERT(uStrNumCmp(_version, "0.20.0") >= 0);
+	return "INSERT INTO GlobalDescriptor(node_id, type, info, data) VALUES(?,?,?,?);";
+}
+void DBDriverSqlite3::stepGlobalDescriptor(sqlite3_stmt * ppStmt,
+		int nodeId,
+		const GlobalDescriptor & descriptor) const
+{
+	if(!ppStmt)
+	{
+		UFATAL("");
+	}
+	int rc = SQLITE_OK;
+	int index = 1;
+
+	//node_if
+	rc = sqlite3_bind_int(ppStmt, index++, nodeId);
+	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+
+	//type
+	rc = sqlite3_bind_int(ppStmt, index++, nodeId);
+	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+
+	//info
+	std::vector<unsigned char> infoBytes = rtabmap::compressData(descriptor.info());
+	if(infoBytes.empty())
+	{
+		rc = sqlite3_bind_null(ppStmt, index++);
+	}
+	else
+	{
+		rc = sqlite3_bind_blob(ppStmt, index++, infoBytes.data(), infoBytes.size(), SQLITE_STATIC);
+	}
+	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+
+	//data
+	std::vector<unsigned char> dataBytes = rtabmap::compressData(descriptor.data());
+	if(infoBytes.empty())
+	{
+		rc = sqlite3_bind_null(ppStmt, index++);
+	}
+	else
+	{
+		rc = sqlite3_bind_blob(ppStmt, index++, dataBytes.data(), dataBytes.size(), SQLITE_STATIC);
+	}
+	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
 
 	rc=sqlite3_step(ppStmt);
 	UASSERT_MSG(rc == SQLITE_DONE, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());

@@ -100,7 +100,7 @@ public:
 
 public:
 	void addInfoAfterRun(int stMemSize, int lastSignAdded, int processMemUsed, int databaseMemUsed, int dictionarySize, const ParametersMap & parameters) const;
-	void addStatistics(const Statistics & statistics) const;
+	void addStatistics(const Statistics & statistics, bool saveWmState) const;
 	void savePreviewImage(const cv::Mat & image) const;
 	cv::Mat loadPreviewImage() const;
 	void saveOptimizedPoses(const std::map<int, Transform> & optimizedPoses, const Transform & lastlocalizationPose) const;
@@ -238,7 +238,7 @@ protected:
 			int nodeId,
 			const LaserScan & scan) const = 0;
 
-	virtual void addStatisticsQuery(const Statistics & statistics) const = 0;
+	virtual void addStatisticsQuery(const Statistics & statistics, bool saveWmState) const = 0;
 	virtual void savePreviewImageQuery(const cv::Mat & image) const = 0;
 	virtual cv::Mat loadPreviewImageQuery() const = 0;
 	virtual void saveOptimizedPosesQuery(const std::map<int, Transform> & optimizedPoses, const Transform & lastlocalizationPose) const = 0;

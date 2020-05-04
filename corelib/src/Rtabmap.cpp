@@ -3535,26 +3535,24 @@ bool Rtabmap::process(
 			UDEBUG("Computing RMSE...done!");
 		}
 
-		if(_saveWMState && _memory->isIncremental())
+		std::vector<int> ids;
+		ids.reserve(_memory->getWorkingMem().size() + _memory->getStMem().size());
+		for(std::set<int>::const_iterator iter=_memory->getStMem().begin(); iter!=_memory->getStMem().end(); ++iter)
 		{
-			std::vector<int> ids = uKeys(_memory->getWorkingMem());
-			if(_memory->getStMem().size())
-			{
-				ids.resize(ids.size() + _memory->getStMem().size());
-				for(std::set<int>::const_iterator iter=_memory->getStMem().begin(); iter!=_memory->getStMem().end(); ++iter)
-				{
-					ids.push_back(*iter);
-				}
-			}
-			statistics_.setWmState(ids);
+			ids.push_back(*iter);
 		}
-		UDEBUG("");
+		for(std::map<int, double>::const_iterator iter=_memory->getWorkingMem().lower_bound(0); iter!=_memory->getWorkingMem().end(); ++iter)
+		{
+			ids.push_back(iter->first);
+		}
+		statistics_.setWmState(ids);
+		UDEBUG("wmState=%d", (int)ids.size());
 	}
 
 	//Save statistics to database
 	if(_memory->isIncremental() || _memory->isLocalizationDataSaved())
 	{
-		_memory->saveStatistics(statistics_);
+		_memory->saveStatistics(statistics_, _saveWMState);
 	}
 
 	//Start trashing

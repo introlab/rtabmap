@@ -87,6 +87,14 @@ CREATE TABLE Feature (
 	FOREIGN KEY (node_id) REFERENCES Node(id)
 );
 
+CREATE TABLE GlobalDescriptor (
+	node_id INTEGER NOT NULL,
+	type INTEGER NOT NULL,
+	info BLOB,
+	data BLOB NOT NULL,
+	FOREIGN KEY (node_id) REFERENCES Node(id)
+);
+
 --
 
 CREATE TABLE Info (
@@ -162,6 +170,7 @@ END;
 -- *******************************************************************
 CREATE UNIQUE INDEX IDX_Node_id on Node (id);
 CREATE INDEX IDX_Feature_node_id on Feature (node_id);
+CREATE INDEX IDX_GlobalDescriptor_node_id on GlobalDescriptor (node_id);
 CREATE INDEX IDX_Link_from_id on Link (from_id);
 CREATE UNIQUE INDEX IDX_node_label on Node (label);
 CREATE UNIQUE INDEX IDX_Statistics_id on Statistics (id);
