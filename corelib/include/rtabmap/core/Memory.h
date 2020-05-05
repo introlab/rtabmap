@@ -197,15 +197,15 @@ public:
 			EnvSensors & sensors,
 			bool lookInDatabase = false) const;
 	cv::Mat getImageCompressed(int signatureId) const;
-	SensorData getNodeData(int nodeId, bool uncompressedData = false) const;
-	void getNodeWords(int nodeId,
+	SensorData getNodeData(int locationId, bool images, bool scan, bool userData, bool occupancyGrid) const;
+	void getNodeWordsAndGlobalDescriptors(int nodeId,
 			std::multimap<int, cv::KeyPoint> & words,
 			std::multimap<int, cv::Point3f> & words3,
-			std::multimap<int, cv::Mat> & wordsDescriptors);
+			std::multimap<int, cv::Mat> & wordsDescriptors,
+			std::vector<GlobalDescriptor> & globalDescriptors) const;
 	void getNodeCalibration(int nodeId,
 			std::vector<CameraModel> & models,
-			StereoCameraModel & stereoModel);
-	SensorData getSignatureDataConst(int locationId, bool images = true, bool scan = true, bool userData = true, bool occupancyGrid = true) const;
+			StereoCameraModel & stereoModel) const;
 	std::set<int> getAllSignatureIds() const;
 	bool memoryChanged() const {return _memoryChanged;}
 	bool isIncremental() const {return _incrementalMemory;}

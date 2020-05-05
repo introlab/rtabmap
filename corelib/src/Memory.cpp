@@ -2698,13 +2698,13 @@ Transform Memory::computeTransform(
 	   (_registrationPipeline->isScanRequired() && fromS.sensorData().imageCompressed().empty() && fromS.sensorData().laserScanCompressed().isEmpty()) ||
 	   (_registrationPipeline->isUserDataRequired() && fromS.sensorData().imageCompressed().empty() && fromS.sensorData().userDataCompressed().empty()))
 	{
-		fromS.sensorData() = getNodeData(fromS.id());
+		fromS.sensorData() = getNodeData(fromS.id(), true, true, true, true);
 	}
 	if(((_reextractLoopClosureFeatures && _registrationPipeline->isImageRequired()) && toS.sensorData().imageCompressed().empty()) ||
 	   (_registrationPipeline->isScanRequired() && toS.sensorData().imageCompressed().empty() && toS.sensorData().laserScanCompressed().isEmpty()) ||
 	   (_registrationPipeline->isUserDataRequired() && toS.sensorData().imageCompressed().empty() && toS.sensorData().userDataCompressed().empty()))
 	{
-		toS.sensorData() = getNodeData(toS.id());
+		toS.sensorData() = getNodeData(toS.id(), true, true, true, true);
 	}
 	// uncompress only what we need
 	cv::Mat imgBuf, depthBuf, userBuf;
@@ -3815,33 +3815,33 @@ cv::Mat Memory::getImageCompressed(int signatureId) const
 	return image;
 }
 
-SensorData Memory::getNodeData(int nodeId, bool uncompressedData) const
+SensorData Memory::getNodeData(int locationId, bool images, bool scan, bool userData, bool occupancyGrid) const
 {
-	//UDEBUG("nodeId=%d", nodeId);
+	//UDEBUG("");
 	SensorData r;
-	Signature * s = this->_getSignature(nodeId);
-	if(s && !s->sensorData().imageCompressed().empty())
+	const Signature * s = this->getSignature(locationId);
+	if(s && (!s->isSaved() ||
+			((!images || !s->sensorData().imageCompressed().empty()) &&
+			 (!scan || !s->sensorData().laserScanCompressed().isEmpty()) &&
+			 (!userData || !s->sensorData().userDataCompressed().empty()) &&
+			 (!occupancyGrid || s->sensorData().gridCellSize() != 0.0f))))
 	{
 		r = s->sensorData();
 	}
 	else if(_dbDriver)
 	{
 		// load from database
-		_dbDriver->getNodeData(nodeId, r);
-	}
-
-	if(uncompressedData)
-	{
-		r.uncompressData();
+		_dbDriver->getNodeData(locationId, r, images, scan, userData, occupancyGrid);
 	}
 
 	return r;
 }
 
-void Memory::getNodeWords(int nodeId,
+void Memory::getNodeWordsAndGlobalDescriptors(int nodeId,
 		std::multimap<int, cv::KeyPoint> & words,
 		std::multimap<int, cv::Point3f> & words3,
-		std::multimap<int, cv::Mat> & wordsDescriptors)
+		std::multimap<int, cv::Mat> & wordsDescriptors,
+		std::vector<GlobalDescriptor> & globalDescriptors) const
 {
 	//UDEBUG("nodeId=%d", nodeId);
 	Signature * s = this->_getSignature(nodeId);
@@ -3850,6 +3850,7 @@ void Memory::getNodeWords(int nodeId,
 		words = s->getWords();
 		words3 = s->getWords3();
 		wordsDescriptors = s->getWordsDescriptors();
+		globalDescriptors = s->sensorData().globalDescriptors();
 	}
 	else if(_dbDriver)
 	{
@@ -3864,6 +3865,7 @@ void Memory::getNodeWords(int nodeId,
 			words = signatures.front()->getWords();
 			words3 = signatures.front()->getWords3();
 			wordsDescriptors = signatures.front()->getWordsDescriptors();
+			globalDescriptors = signatures.front()->sensorData().globalDescriptors();
 			if(loadedFromTrash.size())
 			{
 				//put back
@@ -3879,7 +3881,7 @@ void Memory::getNodeWords(int nodeId,
 
 void Memory::getNodeCalibration(int nodeId,
 		std::vector<CameraModel> & models,
-		StereoCameraModel & stereoModel)
+		StereoCameraModel & stereoModel) const
 {
 	//UDEBUG("nodeId=%d", nodeId);
 	Signature * s = this->_getSignature(nodeId);
@@ -3893,28 +3895,6 @@ void Memory::getNodeCalibration(int nodeId,
 		// load from database
 		_dbDriver->getCalibration(nodeId, models, stereoModel);
 	}
-}
-
-SensorData Memory::getSignatureDataConst(int locationId,
-		bool images, bool scan, bool userData, bool occupancyGrid) const
-{
-	//UDEBUG("");
-	SensorData r;
-	const Signature * s = this->getSignature(locationId);
-	if(s && (!s->sensorData().imageCompressed().empty() ||
-			!s->sensorData().laserScanCompressed().isEmpty() ||
-			!s->sensorData().userDataCompressed().empty() ||
-			s->sensorData().gridCellSize() != 0.0f))
-	{
-		r = s->sensorData();
-	}
-	else if(_dbDriver)
-	{
-		// load from database
-		_dbDriver->getNodeData(locationId, r, images, scan, userData, occupancyGrid);
-	}
-
-	return r;
 }
 
 void Memory::generateGraph(const std::string & fileName, const std::set<int> & ids)

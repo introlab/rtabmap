@@ -156,6 +156,7 @@ public:
 	void rejectLastLoopClosure();
 	void deleteLastLocation();
 	void setOptimizedPoses(const std::map<int, Transform> & poses);
+	Signature getSignatureCopy(int id, bool images, bool scan, bool userData, bool occupancyGrid) const;
 	void get3DMap(std::map<int, Signature> & signatures,
 			std::map<int, Transform> & poses,
 			std::multimap<int, Link> & constraints,

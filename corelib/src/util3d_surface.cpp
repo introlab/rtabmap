@@ -1553,7 +1553,7 @@ cv::Mat mergeTextures(
 					}
 					else if(memory)
 					{
-						SensorData data = memory->getSignatureDataConst(textureId, true, false, false, false);
+						SensorData data = memory->getNodeData(textureId, true, false, false, false);
 						std::vector<CameraModel> models = data.cameraModels();
 						StereoCameraModel stereoModel = data.stereoCameraModel();
 						if(models.size()>=1 &&
@@ -1682,7 +1682,7 @@ cv::Mat mergeTextures(
 								}
 								else if(memory)
 								{
-									SensorData data = memory->getSignatureDataConst(textures[t].first, true, false, false, false);
+									SensorData data = memory->getNodeData(textures[t].first, true, false, false, false);
 									models = data.cameraModels();
 									data.uncompressDataConst(&image, 0);
 								}
@@ -2291,7 +2291,7 @@ bool multiBandTexturing(
 		}
 		else if(memory)
 		{
-			SensorData data = memory->getSignatureDataConst(camId, true, false, false, false);
+			SensorData data = memory->getNodeData(camId, true, false, false, false);
 			models = data.cameraModels();
 			if(models.empty() && data.stereoCameraModel().isValidForProjection())
 			{

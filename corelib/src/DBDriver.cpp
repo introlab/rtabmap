@@ -683,11 +683,11 @@ void DBDriver::getNodeData(
 	if(uContains(_trashSignatures, signatureId))
 	{
 		const Signature * s = _trashSignatures.at(signatureId);
-		if(!s->sensorData().imageCompressed().empty() ||
-			!s->sensorData().laserScanCompressed().isEmpty() ||
-			!s->sensorData().userDataCompressed().empty() ||
-			s->sensorData().gridCellSize() != 0.0f ||
-			!s->isSaved())
+		if((!s->isSaved() ||
+			((!images || !s->sensorData().imageCompressed().empty()) &&
+			 (!scan || !s->sensorData().laserScanCompressed().isEmpty()) &&
+			 (!userData || !s->sensorData().userDataCompressed().empty()) &&
+			 (!occupancyGrid || s->sensorData().gridCellSize() != 0.0f))))
 		{
 			data = (SensorData)s->sensorData();
 			found = true;

@@ -4268,6 +4268,62 @@ void Rtabmap::dumpPrediction() const
 	}
 }
 
+Signature Rtabmap::getSignatureCopy(int id, bool images, bool scan, bool userData, bool occupancyGrid) const
+{
+	Signature s;
+	if(_memory)
+	{
+		Transform odomPoseLocal;
+		int weight = -1;
+		int mapId = -1;
+		std::string label;
+		double stamp = 0;
+		Transform groundTruth;
+		std::vector<float> velocity;
+		GPS gps;
+		EnvSensors sensors;
+		_memory->getNodeInfo(id, odomPoseLocal, mapId, weight, label, stamp, groundTruth, velocity, gps, sensors, true);
+		SensorData data;
+		data.setId(id);
+		if(images || scan || userData || occupancyGrid)
+		{
+			data = _memory->getNodeData(id, images, scan, userData, occupancyGrid);
+		}
+		if(!images)
+		{
+			std::vector<CameraModel> models;
+			StereoCameraModel stereoModel;
+			_memory->getNodeCalibration(id, models, stereoModel);
+			data.setCameraModels(models);
+			data.setStereoCameraModel(stereoModel);
+		}
+		std::multimap<int, cv::KeyPoint> words;
+		std::multimap<int, cv::Point3f> words3;
+		std::multimap<int, cv::Mat> wordsDescriptors;
+		std::vector<rtabmap::GlobalDescriptor> globalDescriptors;
+		_memory->getNodeWordsAndGlobalDescriptors(id, words, words3, wordsDescriptors, globalDescriptors);
+		s=Signature(id,
+					mapId,
+					weight,
+					stamp,
+					label,
+					odomPoseLocal,
+					groundTruth,
+					data);
+		s.setWords(words);
+		s.setWords3(words3);
+		s.setWordsDescriptors(wordsDescriptors);
+		s.sensorData().setGlobalDescriptors(globalDescriptors);
+		if(velocity.size()==6)
+		{
+			s.setVelocity(velocity[0], velocity[1], velocity[2], velocity[3], velocity[4], velocity[5]);
+		}
+		s.sensorData().setGPS(gps);
+		s.sensorData().setEnvSensors(sensors);
+	}
+	return s;
+}
+
 void Rtabmap::get3DMap(
 		std::map<int, Signature> & signatures,
 		std::map<int, Transform> & poses,
@@ -4313,40 +4369,7 @@ void Rtabmap::get3DMap(
 
 		for(std::set<int>::iterator iter = ids.begin(); iter!=ids.end(); ++iter)
 		{
-			Transform odomPoseLocal;
-			int weight = -1;
-			int mapId = -1;
-			std::string label;
-			double stamp = 0;
-			Transform groundTruth;
-			std::vector<float> velocity;
-			GPS gps;
-			EnvSensors sensors;
-			_memory->getNodeInfo(*iter, odomPoseLocal, mapId, weight, label, stamp, groundTruth, velocity, gps, sensors, true);
-			SensorData data = _memory->getNodeData(*iter);
-			data.setId(*iter);
-			std::multimap<int, cv::KeyPoint> words;
-			std::multimap<int, cv::Point3f> words3;
-			std::multimap<int, cv::Mat> wordsDescriptors;
-			_memory->getNodeWords(*iter, words, words3, wordsDescriptors);
-			signatures.insert(std::make_pair(*iter,
-					Signature(*iter,
-							mapId,
-							weight,
-							stamp,
-							label,
-							odomPoseLocal,
-							groundTruth,
-							data)));
-			signatures.at(*iter).setWords(words);
-			signatures.at(*iter).setWords3(words3);
-			signatures.at(*iter).setWordsDescriptors(wordsDescriptors);
-			if(velocity.size()==6)
-			{
-				signatures.at(*iter).setVelocity(velocity[0], velocity[1], velocity[2], velocity[3], velocity[4], velocity[5]);
-			}
-			signatures.at(*iter).sensorData().setGPS(gps);
-			signatures.at(*iter).sensorData().setEnvSensors(sensors);
+			signatures.insert(std::make_pair(*iter, getSignatureCopy(*iter, true, true, true, true)));
 		}
 	}
 	else if(_memory && (_memory->getStMem().size() || _memory->getWorkingMem().size() > 1))
@@ -4393,49 +4416,11 @@ void Rtabmap::getGraph(
 		{
 			for(std::map<int, Transform>::iterator iter=poses.lower_bound(1); iter!=poses.end(); ++iter)
 			{
-				Transform odomPoseLocal;
-				int weight = -1;
-				int mapId = -1;
-				std::string label;
-				double stamp = 0;
-				Transform groundTruth;
-				std::vector<float> velocity;
-				GPS gps;
-				EnvSensors sensors;
-				_memory->getNodeInfo(iter->first, odomPoseLocal, mapId, weight, label, stamp, groundTruth, velocity, gps, sensors, global);
-				signatures->insert(std::make_pair(iter->first,
-						Signature(iter->first,
-							mapId,
-							weight,
-							stamp,
-							label,
-							odomPoseLocal,
-							groundTruth)));
-
-				std::multimap<int, cv::KeyPoint> words;
-				std::multimap<int, cv::Point3f> words3;
-				std::multimap<int, cv::Mat> wordsDescriptors;
-				_memory->getNodeWords(iter->first, words, words3, wordsDescriptors);
-				signatures->at(iter->first).setWords(words);
-				signatures->at(iter->first).setWords3(words3);
-				signatures->at(iter->first).setWordsDescriptors(wordsDescriptors);
-
-				std::vector<CameraModel> models;
-				StereoCameraModel stereoModel;
-				_memory->getNodeCalibration(iter->first, models, stereoModel);
-				signatures->at(iter->first).sensorData().setCameraModels(models);
-				signatures->at(iter->first).sensorData().setStereoCameraModel(stereoModel);
-
-				if(!velocity.empty())
-				{
-					signatures->at(iter->first).setVelocity(velocity[0], velocity[1], velocity[2], velocity[3], velocity[4], velocity[5]);
-				}
-				signatures->at(iter->first).sensorData().setGPS(gps);
-				signatures->at(iter->first).sensorData().setEnvSensors(sensors);
+				signatures->insert(std::make_pair(iter->first, getSignatureCopy(iter->first, false, false, false, false)));
 			}
 		}
 	}
-	else if(_memory && (_memory->getStMem().size() || _memory->getWorkingMem().size()))
+	else if(_memory && (_memory->getStMem().size() || _memory->getWorkingMem().size() > 1))
 	{
 		UERROR("Last working signature is null!?");
 	}
