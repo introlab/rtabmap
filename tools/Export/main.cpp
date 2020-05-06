@@ -282,7 +282,7 @@ int main(int argc, char * argv[])
 	std::map<int, Transform> optimizedPoses;
 	std::multimap<int, Link> links;
 	printf("Optimizing the map...\n");
-	rtabmap.get3DMap(nodes, optimizedPoses, links, true, true);
+	rtabmap.getGraph(optimizedPoses, links, true, true, &nodes, true, true, true, true);
 	printf("Optimizing the map... done (%fs).\n", timer.ticks());
 
 	std::string outputDirectory = UDirectory::getDir(dbPath);

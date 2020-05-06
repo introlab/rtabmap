@@ -138,23 +138,15 @@ void RtabmapThread::publishMap(bool optimized, bool full, bool graphOnly) const
 		std::map<int, std::string> labels;
 		std::map<int, std::vector<unsigned char> > userDatas;
 
-		if(graphOnly)
-		{
-			_rtabmap->getGraph(poses,
-					constraints,
-					optimized,
-					full,
-					&signatures);
-		}
-		else
-		{
-			_rtabmap->get3DMap(
-					signatures,
-					poses,
-					constraints,
-					optimized,
-					full);
-		}
+		_rtabmap->getGraph(poses,
+				constraints,
+				optimized,
+				full,
+				&signatures,
+				!graphOnly,
+				!graphOnly,
+				!graphOnly,
+				!graphOnly);
 
 		this->post(new RtabmapEvent3DMap(
 				signatures,

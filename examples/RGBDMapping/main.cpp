@@ -216,7 +216,7 @@ int main(int argc, char * argv[])
 	std::map<int, Signature> nodes;
 	std::map<int, Transform> optimizedPoses;
 	std::multimap<int, Link> links;
-	rtabmap->get3DMap(nodes, optimizedPoses, links, true, true);
+	rtabmap->getGraph(optimizedPoses, links, true, true, &nodes, true, true, true, true);
 	pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
 	for(std::map<int, Transform>::iterator iter=optimizedPoses.begin(); iter!=optimizedPoses.end(); ++iter)
 	{

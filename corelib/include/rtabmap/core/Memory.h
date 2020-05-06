@@ -206,7 +206,7 @@ public:
 	void getNodeCalibration(int nodeId,
 			std::vector<CameraModel> & models,
 			StereoCameraModel & stereoModel) const;
-	std::set<int> getAllSignatureIds() const;
+	std::set<int> getAllSignatureIds(bool ignoreChildren = true) const;
 	bool memoryChanged() const {return _memoryChanged;}
 	bool isIncremental() const {return _incrementalMemory;}
 	bool isLocalizationDataSaved() const {return _localizationDataSaved;}

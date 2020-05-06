@@ -1631,12 +1631,12 @@ double Memory::getDbSavingTime() const
 	return _dbDriver?_dbDriver->getEmptyTrashesTime():0;
 }
 
-std::set<int> Memory::getAllSignatureIds() const
+std::set<int> Memory::getAllSignatureIds(bool ignoreChildren) const
 {
 	std::set<int> ids;
 	if(_dbDriver)
 	{
-		_dbDriver->getAllNodeIds(ids);
+		_dbDriver->getAllNodeIds(ids, ignoreChildren);
 	}
 	for(std::map<int, Signature*>::const_iterator iter = _signatures.begin(); iter!=_signatures.end(); ++iter)
 	{

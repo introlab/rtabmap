@@ -398,10 +398,14 @@ int RTABMapApp::openDatabase(const std::string & databasePath, bool databaseInMe
 	std::multimap<int, rtabmap::Link> links;
 	LOGI("Loading full map from database...");
 	UEventsManager::post(new rtabmap::RtabmapEventInit(rtabmap::RtabmapEventInit::kInfo, "Loading data from database..."));
-	rtabmap_->get3DMap(
-			signatures,
+	rtabmap_->getGraph(
 			poses,
 			links,
+			true,
+			true,
+			&signatures,
+			true,
+			true,
 			true,
 			true);
 

@@ -4332,54 +4332,7 @@ void Rtabmap::get3DMap(
 		bool global) const
 {
 	UDEBUG("");
-	if(_memory && _memory->getLastWorkingSignature())
-	{
-		if(_rgbdSlamMode)
-		{
-			if(optimized)
-			{
-				poses = _optimizedPoses; // guess
-				cv::Mat covariance;
-				this->optimizeCurrentMap(_memory->getLastWorkingSignature()->id(), global, poses, covariance, &constraints);
-			}
-			else
-			{
-				std::map<int, int> ids = _memory->getNeighborsId(_memory->getLastWorkingSignature()->id(), 0, global?-1:0, true);
-				_memory->getMetricConstraints(uKeysSet(ids), poses, constraints, global);
-			}
-		}
-		else
-		{
-			// no optimization on appearance-only mode
-			std::map<int, int> ids = _memory->getNeighborsId(_memory->getLastWorkingSignature()->id(), 0, global?-1:0, true);
-			_memory->getMetricConstraints(uKeysSet(ids), poses, constraints, global);
-		}
-
-		// Get data
-		std::set<int> ids = uKeysSet(_memory->getWorkingMem()); // WM
-
-		//remove virtual signature
-		ids.erase(Memory::kIdVirtual);
-
-		ids.insert(_memory->getStMem().begin(), _memory->getStMem().end()); // STM + WM
-		if(global)
-		{
-			ids = _memory->getAllSignatureIds(); // STM + WM + LTM
-		}
-
-		for(std::set<int>::iterator iter = ids.begin(); iter!=ids.end(); ++iter)
-		{
-			signatures.insert(std::make_pair(*iter, getSignatureCopy(*iter, true, true, true, true)));
-		}
-	}
-	else if(_memory && (_memory->getStMem().size() || _memory->getWorkingMem().size() > 1))
-	{
-		UERROR("Last working signature is null!?");
-	}
-	else if(_memory == 0)
-	{
-		UWARN("Memory not initialized...");
-	}
+	return getGraph(poses, constraints, optimized, global, &signatures, true, true, true, true);
 }
 
 void Rtabmap::getGraph(
@@ -4387,7 +4340,11 @@ void Rtabmap::getGraph(
 		std::multimap<int, Link> & constraints,
 		bool optimized,
 		bool global,
-		std::map<int, Signature> * signatures)
+		std::map<int, Signature> * signatures,
+		bool withImages,
+		bool withScan,
+		bool withUserData,
+		bool withGrid) const
 {
 	if(_memory && _memory->getLastWorkingSignature())
 	{
@@ -4414,9 +4371,21 @@ void Rtabmap::getGraph(
 
 		if(signatures)
 		{
-			for(std::map<int, Transform>::iterator iter=poses.lower_bound(1); iter!=poses.end(); ++iter)
+			// Get data
+			std::set<int> ids = uKeysSet(_memory->getWorkingMem()); // WM
+
+			//remove virtual signature
+			ids.erase(Memory::kIdVirtual);
+
+			ids.insert(_memory->getStMem().begin(), _memory->getStMem().end()); // STM + WM
+			if(global)
 			{
-				signatures->insert(std::make_pair(iter->first, getSignatureCopy(iter->first, false, false, false, false)));
+				ids = _memory->getAllSignatureIds(); // STM + WM + LTM, ignoreChildren=true
+			}
+
+			for(std::set<int>::iterator iter = ids.begin(); iter!=ids.end(); ++iter)
+			{
+				signatures->insert(std::make_pair(*iter, getSignatureCopy(*iter, withImages, withScan, withUserData, withGrid)));
 			}
 		}
 	}
