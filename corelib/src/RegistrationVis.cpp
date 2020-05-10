@@ -79,8 +79,11 @@ RegistrationVis::RegistrationVis(const ParametersMap & parameters, Registration 
 		_minInliersDistributionThr(Parameters::defaultVisMinInliersDistribution()),
 		_maxInliersMeanDistance(Parameters::defaultVisMeanInliersDistance()),
 		_detectorFrom(0),
-		_detectorTo(0),
+		_detectorTo(0)
+#ifdef RTABMAP_SUPERGLUE_PYTORCH
+		,
 		_superGlueMatcher(0)
+#endif
 {
 	_featureParameters = Parameters::getDefaultParameters();
 	uInsert(_featureParameters, ParametersPair(Parameters::kKpNNStrategy(), _featureParameters.at(Parameters::kVisCorNNType())));

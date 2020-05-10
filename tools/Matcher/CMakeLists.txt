@@ -10,8 +10,6 @@ IF(QT4_FOUND)
     INCLUDE(${QT_USE_FILE})
 ENDIF(QT4_FOUND)
 
-find_package (Python3 COMPONENTS Interpreter Development REQUIRED)
-
 SET(LIBRARIES
 	${OpenCV_LIBRARIES} 
 	${PCL_LIBRARIES}
@@ -23,7 +21,7 @@ add_definitions(${PCL_DEFINITIONS})
 INCLUDE_DIRECTORIES(${INCLUDE_DIRS})
 
 ADD_EXECUTABLE(matcher main.cpp)
-TARGET_LINK_LIBRARIES(matcher Python3::Python rtabmap_core rtabmap_utilite rtabmap_gui ${LIBRARIES})
+TARGET_LINK_LIBRARIES(matcher rtabmap_core rtabmap_utilite rtabmap_gui ${LIBRARIES})
 
 SET_TARGET_PROPERTIES( matcher 
   PROPERTIES OUTPUT_NAME ${PROJECT_PREFIX}-matcher)
