@@ -218,30 +218,35 @@ cv::Mat SPDetector::compute(const std::vector<cv::KeyPoint> &keypoints)
 	{
 		cv::Mat kpt_mat(keypoints.size(), 2, CV_32F);  // [n_keypoints, 2]  (y, x)
 
+		// Based on sample_descriptors() of SuperPoint implementation in SuperGlue:
+		// https://github.com/magicleap/SuperGluePretrainedNetwork/blob/45a750e5707696da49472f1cad35b0b203325417/models/superpoint.py#L80-L92
+		float s = 8;
 		for (size_t i = 0; i < keypoints.size(); i++) {
-			kpt_mat.at<float>(i, 0) = (float)keypoints[i].pt.y;
-			kpt_mat.at<float>(i, 1) = (float)keypoints[i].pt.x;
+			kpt_mat.at<float>(i, 0) = (float)keypoints[i].pt.y - s/2 + 0.5;
+			kpt_mat.at<float>(i, 1) = (float)keypoints[i].pt.x - s/2 + 0.5;
 		}
 
 		auto fkpts = torch::from_blob(kpt_mat.data, {(long int)keypoints.size(), 2}, torch::kFloat);
 
+		float w = desc_.size(3); //W/8
+		float h = desc_.size(2); //H/8
+
 		torch::Device device(cuda_?torch::kCUDA:torch::kCPU);
 		auto grid = torch::zeros({1, 1, fkpts.size(0), 2}).to(device);  // [1, 1, n_keypoints, 2]
-		grid[0][0].slice(1, 0, 1) = 2.0 * fkpts.slice(1, 1, 2) / prob_.size(1) - 1;  // x
-		grid[0][0].slice(1, 1, 2) = 2.0 * fkpts.slice(1, 0, 1) / prob_.size(0) - 1;  // y
+		grid[0][0].slice(1, 0, 1) = 2.0 * fkpts.slice(1, 1, 2) / (w*s - s/2 - 0.5) - 1;  // x
+		grid[0][0].slice(1, 1, 2) = 2.0 * fkpts.slice(1, 0, 1) / (h*s - s/2 - 0.5) - 1;  // y
 
 		auto desc = torch::grid_sampler(desc_, grid, 0, 0, true);  // [1, 256, 1, n_keypoints]
-		desc = desc.squeeze(0).squeeze(1);  // [256, n_keypoints]
 
 		// normalize to 1
-		auto dn = torch::norm(desc, 2, 1);
-		desc = desc.div(torch::unsqueeze(dn, 1));
+		desc = torch::nn::functional::normalize(desc.reshape({1, desc_.size(1), -1})); //[1, 256, n_keypoints]
+		desc = desc.squeeze(); //[256, n_keypoints]
+		desc = desc.transpose(0, 1).contiguous(); //[n_keypoints, 256]
 
-		desc = desc.transpose(0, 1).contiguous();  // [n_keypoints, 256]
 		if(cuda_)
 			desc = desc.to(torch::kCPU);
 
-		cv::Mat desc_mat(cv::Size(desc.size(1), desc.size(0)), CV_32FC1, desc.data<float>());
+		cv::Mat desc_mat(cv::Size(desc.size(1), desc.size(0)), CV_32FC1, desc.data_ptr<float>());
 
 		return desc_mat.clone();
 	}

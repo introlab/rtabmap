@@ -377,7 +377,7 @@ std::map<int, cv::Point3f> generateWords3DMono(
 										errorSqrdDists[j] = uNormSquared(refPt.x-newPt.x, refPt.y-newPt.y, refPt.z-newPt.z);
 									}
 									std::sort(errorSqrdDists.begin(), errorSqrdDists.end());
-									double median_error_sqr = (double)errorSqrdDists[errorSqrdDists.size () >> 1];
+									double median_error_sqr = (double)errorSqrdDists[errorSqrdDists.size () >> 2];
 									float var = 2.1981 * median_error_sqr;
 									//UDEBUG("scale %d = %f variance = %f", (int)i, s, variance);
 
@@ -397,7 +397,7 @@ std::map<int, cv::Point3f> generateWords3DMono(
 									errorSqrdDists[j] = uNormSquared(refPt.x-newPt.x, refPt.y-newPt.y, refPt.z-newPt.z);
 								}
 								std::sort(errorSqrdDists.begin(), errorSqrdDists.end());
-								double median_error_sqr = (double)errorSqrdDists[errorSqrdDists.size () >> 1];
+								double median_error_sqr = (double)errorSqrdDists[errorSqrdDists.size () >> 2];
 								 variance = 2.1981 * median_error_sqr;
 							}
 
@@ -487,7 +487,10 @@ std::map<int, cv::Point3f> generateWords3DMono(
 									R.at<double>(1,0), R.at<double>(1,1), R.at<double>(1,2), T.at<double>(1),
 									R.at<double>(2,0), R.at<double>(2,1), R.at<double>(2,2), T.at<double>(2));
 
-						cameraTransform = (cameraModel.localTransform() * t).inverse() * cameraModel.localTransform();
+						UDEBUG("t (cam frame)=%s", t.prettyPrint().c_str());
+						UDEBUG("base->cam=%s", cameraModel.localTransform().prettyPrint().c_str());
+						cameraTransform = cameraModel.localTransform() * t.inverse() * cameraModel.localTransform().inverse();
+						UDEBUG("t (base frame)=%s", cameraTransform.prettyPrint().c_str());
 					}
 				}
 			}

@@ -247,7 +247,8 @@ int main(int argc, char * argv[])
 		if(fromDepth.empty())
 		{
 			parameters.insert(ParametersPair(Parameters::kVisEstimationType(), "2")); // Set 2D->2D estimation for mono images
-			printf("Calibration not set, setting %s=2 by default (2D->2D estimation)\n", Parameters::kVisEstimationType().c_str());
+			parameters.insert(ParametersPair(Parameters::kVisEpipolarGeometryVar(), "1")); //Unknown scale
+			printf("Calibration not set, setting %s=1 and %s=2 by default (2D->2D estimation)\n", Parameters::kVisEpipolarGeometryVar().c_str(), Parameters::kVisEstimationType().c_str());
 		}
 		RegistrationVis reg(parameters);
 		RegistrationInfo info;
@@ -267,7 +268,9 @@ int main(int argc, char * argv[])
 
 		QApplication app(argc, argv);
 		QDialog dialog;
-		dialog.setWindowTitle(QString("Matches (%1/%2) %3 sec [%4=%5 (%6) %7=%8 (%9)%10 %11=%12 (%13)]")
+		float reprojError = Parameters::defaultVisPnPReprojError();
+		Parameters::parse(parameters, Parameters::kVisPnPReprojError(), reprojError);
+		dialog.setWindowTitle(QString("Matches (%1/%2) %3 sec [%4=%5 (%6) %7=%8 (%9)%10 %11=%12 (%13) %14=%15]")
 				.arg(info.inliers)
 				.arg(info.matches)
 				.arg(matchingTime)
@@ -280,10 +283,12 @@ int main(int argc, char * argv[])
 				.arg(reg.getNNType()<5?QString(" %1=%2").arg(Parameters::kVisCorNNDR().c_str()).arg(reg.getNNDR()):"")
 				.arg(Parameters::kVisEstimationType().c_str())
 				.arg(reg.getEstimationType())
-				.arg(reg.getEstimationType()==0?"3D->3D":reg.getEstimationType()==1?"3D->2D":reg.getEstimationType()==2?"2D->2D":"?"));
+				.arg(reg.getEstimationType()==0?"3D->3D":reg.getEstimationType()==1?"3D->2D":reg.getEstimationType()==2?"2D->2D":"?")
+				.arg(Parameters::kVisPnPReprojError().c_str())
+				.arg(reprojError));
 
 		CloudViewer * viewer = 0;
-		if(!t.isNull() && !fromDepth.empty() && !toDepth.empty())
+		if(!t.isNull())
 		{
 			viewer = new CloudViewer(&dialog);
 			pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudFrom = util3d::cloudRGBFromSensorData(dataFrom.sensorData());
@@ -291,6 +296,7 @@ int main(int argc, char * argv[])
 			viewer->addCloud(uFormat("cloud_%d", dataFrom.id()), cloudFrom, Transform::getIdentity(), Qt::magenta);
 			viewer->addCloud(uFormat("cloud_%d", dataTo.id()), cloudTo, t, Qt::cyan);
 			viewer->addOrUpdateCoordinate(uFormat("frame_%d", dataTo.id()), t, 0.2);
+			viewer->setGridShown(true);
 		}
 
 		QBoxLayout * mainLayout = new QHBoxLayout();
@@ -426,6 +432,10 @@ int main(int argc, char * argv[])
 		printf("Inliers: %d (%s=%d)\n", info.inliers, Parameters::kVisMinInliers().c_str(), reg.getMinInliers());
 		app.exec();
 		delete viewer;
+	}
+	else
+	{
+		printf("Failed loading images %s and %s\n!", argv[argc-2], argv[argc-1]);
 	}
 
 

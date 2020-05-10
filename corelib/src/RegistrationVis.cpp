@@ -1351,7 +1351,7 @@ Transform RegistrationVis::computeTransformationImpl(
 							}
 							else
 							{
-								msg = uFormat("Variance is too high! (max inlier distance=%f, variance=%f)", _epipolarGeometryVar, variance);
+								msg = uFormat("Variance is too high! (Max %s=%f, variance=%f)", Parameters::kVisEpipolarGeometryVar().c_str(), _epipolarGeometryVar, variance);
 								UINFO(msg.c_str());
 							}
 						}
