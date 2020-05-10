@@ -5435,7 +5435,7 @@ void Rtabmap::updateGoalIndex()
 			unsigned int nearestNodeIndex = 0;
 			float distance = -1.0f;
 			bool sameCurrentIndex = false;
-			UASSERT(_pathGoalIndex < _path.size() && _pathGoalIndex >= 0);
+			UASSERT(_pathGoalIndex < _path.size());
 			for(unsigned int i=_pathCurrentIndex; i<=_pathGoalIndex; ++i)
 			{
 				std::map<int, Transform>::iterator iter = _optimizedPoses.find(_path[i].first);

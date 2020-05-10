@@ -63,7 +63,7 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>0</y>
+            <y>-798</y>
             <width>680</width>
             <height>3497</height>
            </rect>
@@ -16830,7 +16830,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                 </layout>
                </widget>
                <widget class="QWidget" name="page_21">
-                <layout class="QVBoxLayout" name="verticalLayout_50">
+                <layout class="QVBoxLayout" name="verticalLayout_50" stretch="0,1">
                  <item>
                   <widget class="QGroupBox" name="groupBox_visualTransform2">
                    <property name="title">
@@ -17056,7 +17056,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                          </property>
                         </widget>
                        </item>
-                       <item row="3" column="0">
+                       <item row="2" column="0">
                         <widget class="QSpinBox" name="spinBox_visCorGuessWinSize">
                          <property name="suffix">
                           <string> pixels</string>
@@ -17094,7 +17094,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                        <item row="0" column="0">
                         <widget class="QComboBox" name="reextract_nn">
                          <property name="currentIndex">
-                          <number>3</number>
+                          <number>0</number>
                          </property>
                          <property name="sizeAdjustPolicy">
                           <enum>QComboBox::AdjustToContents</enum>
@@ -17124,6 +17124,16 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                            <string>Brute Force GPU</string>
                           </property>
                          </item>
+                         <item>
+                          <property name="text">
+                           <string>Brute Force Cross Check</string>
+                          </property>
+                         </item>
+                         <item>
+                          <property name="text">
+                           <string>SuperGlue PyTorch</string>
+                          </property>
+                         </item>
                         </widget>
                        </item>
                        <item row="1" column="1">
@@ -17141,7 +17151,7 @@ Lower the ratio -&gt; higher the precision.</string>
                          </property>
                         </widget>
                        </item>
-                       <item row="3" column="1">
+                       <item row="2" column="1">
                         <widget class="QLabel" name="label_303">
                          <property name="text">
                           <string>Matching window size around projected points when a guess transform is provided to find correspondences. 0 means that global matching will be done.</string>
@@ -17154,7 +17164,7 @@ Lower the ratio -&gt; higher the precision.</string>
                          </property>
                         </widget>
                        </item>
-                       <item row="5" column="1">
+                       <item row="4" column="1">
                         <spacer name="verticalSpacer_44">
                          <property name="orientation">
                           <enum>Qt::Vertical</enum>
@@ -17167,7 +17177,7 @@ Lower the ratio -&gt; higher the precision.</string>
                          </property>
                         </spacer>
                        </item>
-                       <item row="4" column="1">
+                       <item row="3" column="1">
                         <widget class="QLabel" name="label_448">
                          <property name="text">
                           <string>Match frame's corners to source's projected points (when guess transform is provided) instead of projected points to frame's corners.</string>
@@ -17180,28 +17190,8 @@ Lower the ratio -&gt; higher the precision.</string>
                          </property>
                         </widget>
                        </item>
-                       <item row="4" column="0">
+                       <item row="3" column="0">
                         <widget class="QCheckBox" name="checkBox__visCorGuessMatchToProjection">
-                         <property name="text">
-                          <string/>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="2" column="1">
-                        <widget class="QLabel" name="label_582">
-                         <property name="text">
-                          <string>Cross check matching. If enabled, brute force matching with cross check is done instead of one of the nearest neighbor strategy above based on NNDR ratio.</string>
-                         </property>
-                         <property name="wordWrap">
-                          <bool>true</bool>
-                         </property>
-                         <property name="textInteractionFlags">
-                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="2" column="0">
-                        <widget class="QCheckBox" name="checkBox__visCorCrossCheck">
                          <property name="text">
                           <string/>
                          </property>
@@ -17528,7 +17518,7 @@ Lower the ratio -&gt; higher the precision.</string>
                       <property name="checked">
                        <bool>false</bool>
                       </property>
-                      <layout class="QVBoxLayout" name="verticalLayout_46" stretch="0,0,1">
+                      <layout class="QVBoxLayout" name="verticalLayout_46" stretch="0,0,1,0">
                        <item>
                         <widget class="QLabel" name="label_182">
                          <property name="text">
@@ -17903,8 +17893,154 @@ Lower the ratio -&gt; higher the precision.</string>
                             </property>
                             <property name="sizeHint" stdset="0">
                              <size>
-                              <width>20</width>
-                              <height>40</height>
+                              <width>0</width>
+                              <height>0</height>
+                             </size>
+                            </property>
+                           </spacer>
+                          </item>
+                         </layout>
+                        </widget>
+                       </item>
+                       <item>
+                        <widget class="QGroupBox" name="groupBox_32">
+                         <property name="title">
+                          <string>SuperGlue</string>
+                         </property>
+                         <layout class="QVBoxLayout" name="verticalLayout_149">
+                          <item>
+                           <widget class="QLabel" name="label_586">
+                            <property name="text">
+                             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Python wrapper of &lt;a href=&quot;https://github.com/magicleap/SuperGluePretrainedNetwork&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;SuperGlue&lt;/span&gt;&lt;/a&gt; project. Download &lt;a href=&quot;https://github.com/introlab/rtabmap/blob/master/corelib/src/superglue_pytorch/rtabmap_superglue.py&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;rtabmap_superpoint.py&lt;/span&gt;&lt;/a&gt; and copy it at the root folder of SuperGlue git, then set its path below. &lt;span style=&quot; font-weight:600;&quot;&gt;Important&lt;/span&gt;: SuperGlue works only with SuperPoint descriptors!&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                            </property>
+                            <property name="wordWrap">
+                             <bool>true</bool>
+                            </property>
+                            <property name="openExternalLinks">
+                             <bool>true</bool>
+                            </property>
+                            <property name="textInteractionFlags">
+                             <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                            </property>
+                           </widget>
+                          </item>
+                          <item>
+                           <layout class="QGridLayout" name="gridLayout_116" columnstretch="0,0,1">
+                            <item row="0" column="0">
+                             <widget class="QToolButton" name="toolButton_sgpytorch_path">
+                              <property name="text">
+                               <string>...</string>
+                              </property>
+                             </widget>
+                            </item>
+                            <item row="0" column="1">
+                             <widget class="QLineEdit" name="lineEdit_sgpytorch_path"/>
+                            </item>
+                            <item row="2" column="2">
+                             <widget class="QLabel" name="label_585">
+                              <property name="text">
+                               <string>Match threshold.</string>
+                              </property>
+                              <property name="wordWrap">
+                               <bool>true</bool>
+                              </property>
+                              <property name="textInteractionFlags">
+                               <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                              </property>
+                             </widget>
+                            </item>
+                            <item row="2" column="1">
+                             <widget class="QDoubleSpinBox" name="sgpytorch_matchThreshold">
+                              <property name="decimals">
+                               <number>3</number>
+                              </property>
+                              <property name="minimum">
+                               <double>0.001000000000000</double>
+                              </property>
+                              <property name="maximum">
+                               <double>1.000000000000000</double>
+                              </property>
+                              <property name="singleStep">
+                               <double>0.010000000000000</double>
+                              </property>
+                              <property name="value">
+                               <double>0.200000000000000</double>
+                              </property>
+                             </widget>
+                            </item>
+                            <item row="1" column="2">
+                             <widget class="QLabel" name="label_584">
+                              <property name="text">
+                               <string>Iterations.</string>
+                              </property>
+                              <property name="wordWrap">
+                               <bool>true</bool>
+                              </property>
+                              <property name="textInteractionFlags">
+                               <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                              </property>
+                             </widget>
+                            </item>
+                            <item row="0" column="2">
+                             <widget class="QLabel" name="label_583">
+                              <property name="text">
+                               <string>[Required] Path to rtabmap_superpoint.py.</string>
+                              </property>
+                              <property name="wordWrap">
+                               <bool>true</bool>
+                              </property>
+                              <property name="textInteractionFlags">
+                               <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                              </property>
+                             </widget>
+                            </item>
+                            <item row="1" column="1">
+                             <widget class="QSpinBox" name="sgpytorch_iterations">
+                              <property name="minimum">
+                               <number>0</number>
+                              </property>
+                              <property name="maximum">
+                               <number>999999</number>
+                              </property>
+                              <property name="singleStep">
+                               <number>1</number>
+                              </property>
+                              <property name="value">
+                               <number>20</number>
+                              </property>
+                             </widget>
+                            </item>
+                            <item row="3" column="2">
+                             <widget class="QLabel" name="label_587">
+                              <property name="text">
+                               <string>Cuda.</string>
+                              </property>
+                              <property name="wordWrap">
+                               <bool>true</bool>
+                              </property>
+                              <property name="textInteractionFlags">
+                               <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                              </property>
+                             </widget>
+                            </item>
+                            <item row="3" column="1">
+                             <widget class="QCheckBox" name="checkBox_sgpytorch_cuda">
+                              <property name="text">
+                               <string/>
+                              </property>
+                             </widget>
+                            </item>
+                           </layout>
+                          </item>
+                          <item>
+                           <spacer name="verticalSpacer_86">
+                            <property name="orientation">
+                             <enum>Qt::Vertical</enum>
+                            </property>
+                            <property name="sizeHint" stdset="0">
+                             <size>
+                              <width>0</width>
+                              <height>0</height>
                              </size>
                             </property>
                            </spacer>
@@ -17922,8 +18058,8 @@ Lower the ratio -&gt; higher the precision.</string>
                       </property>
                       <property name="sizeHint" stdset="0">
                        <size>
-                        <width>20</width>
-                        <height>40</height>
+                        <width>0</width>
+                        <height>0</height>
                        </size>
                       </property>
                      </spacer>

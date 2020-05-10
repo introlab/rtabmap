@@ -55,6 +55,23 @@ public:
 		kNNUndef};
 	static const int ID_START;
 	static const int ID_INVALID;
+	static std::string nnStrategyName(NNStrategy strategy)
+	{
+		switch(strategy) {
+		case kNNFlannNaive:
+			return "FLANN NAIVE";
+		case kNNFlannKdTree:
+			return "FLANN KD-TREE";
+		case kNNFlannLSH:
+			return "FLANN LSH";
+		case kNNBruteForce:
+			return "BRUTE FORCE";
+		case kNNBruteForceGPU:
+			return "BRUTE FORCE GPU";
+		default:
+			return "Unknown";
+		}
+	}
 
 public:
 	VWDictionary(const ParametersMap & parameters = ParametersMap());

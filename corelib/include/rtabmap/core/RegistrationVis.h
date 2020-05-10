@@ -37,6 +37,10 @@ namespace rtabmap {
 
 class Feature2D;
 
+#ifdef RTABMAP_SUPERGLUE_PYTORCH
+class SuperGlue;
+#endif
+
 // Visual registration
 class RTABMAP_EXP RegistrationVis : public Registration
 {
@@ -50,6 +54,11 @@ public:
 	float getInlierDistance() const {return _inlierDistance;}
 	int getIterations() const {return _iterations;}
 	int getMinInliers() const {return _minInliers;}
+	int getNNType() const {return _nnType;}
+	float getNNDR() const {return _nndr;}
+	int getEstimationType() const {return _estimationType;}
+
+	const Feature2D * getDetector() const {return _detectorFrom;}
 
 protected:
 	virtual Transform computeTransformationImpl(
@@ -78,8 +87,8 @@ private:
 	int _flowIterations;
 	float _flowEps;
 	int _flowMaxLevel;
-	bool _bfCrossCheck;
 	float _nndr;
+	int _nnType;
 	int _guessWinSize;
 	bool _guessMatchToProjection;
 	int _bundleAdjustment;
@@ -92,6 +101,10 @@ private:
 
 	Feature2D * _detectorFrom;
 	Feature2D * _detectorTo;
+
+#ifdef RTABMAP_SUPERGLUE_PYTORCH
+	SuperGlue * _superGlueMatcher;
+#endif
 };
 
 }

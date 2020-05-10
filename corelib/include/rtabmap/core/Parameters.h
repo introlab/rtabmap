@@ -324,11 +324,16 @@ class RTABMAP_EXP Parameters
     RTABMAP_PARAM(KAZE, NOctaveLayers,  int, 4,        "Default number of sublevels per scale level.");
     RTABMAP_PARAM(KAZE, Diffusivity,    int, 1,        "Diffusivity type: 0=DIFF_PM_G1, 1=DIFF_PM_G2, 2=DIFF_WEICKERT or 3=DIFF_CHARBONNIER.");
 
-    RTABMAP_PARAM_STR(SPTorch, ModelPath,              "", "[Required] Path to pre-trained weights Torch file of SuperPoint (*.pt).");
-    RTABMAP_PARAM(SPTorch, Threshold,         float,  0.200, "Detector response threshold to accept keypoint.");
-    RTABMAP_PARAM(SPTorch, NMS,               bool,  true, "If true, non-maximum suppression is applied to detected keypoints.");
-    RTABMAP_PARAM(SPTorch, MinDistance,       int,      4, uFormat("[%s=true] Minimum distance (pixels) between keypoints.", kSPTorchNMS().c_str()));
-    RTABMAP_PARAM(SPTorch, Cuda,              bool, false, "Use Cuda device for Torch, otherwise CPU device is used by default.");
+    RTABMAP_PARAM_STR(SuperPoint, ModelPath, "",           "[Required] Path to pre-trained weights Torch file of SuperPoint (*.pt).");
+    RTABMAP_PARAM(SuperPoint, Threshold,     float, 0.010, "Detector response threshold to accept keypoint.");
+    RTABMAP_PARAM(SuperPoint, NMS,           bool,  true,  "If true, non-maximum suppression is applied to detected keypoints.");
+    RTABMAP_PARAM(SuperPoint, NMSRadius,     int,  4,      uFormat("[%s=true] Minimum distance (pixels) between keypoints.", kSuperPointNMS().c_str()));
+    RTABMAP_PARAM(SuperPoint, Cuda,          bool, true,   "Use Cuda device for Torch, otherwise CPU device is used by default.");
+
+    RTABMAP_PARAM_STR(SuperGlue, Path,       "",           "Path to python script file \"rtabmap_superglue.py\" (rtabmap/corelib/src/superglue_pytorch/rtabmap_superglue.py) copied in SuperGlue's Git folder.");
+    RTABMAP_PARAM(SuperGlue, Iterations,     int, 20,      "Sinkhorn iterations.");
+    RTABMAP_PARAM(SuperGlue, MatchThreshold, float, 0.2,   "");
+    RTABMAP_PARAM(SuperGlue, Cuda,           bool, true,   "");
 
     // BayesFilter
     RTABMAP_PARAM(Bayes, VirtualPlacePriorThr, float, 0.9,  "Virtual place prior");
@@ -604,9 +609,8 @@ class RTABMAP_EXP Parameters
     RTABMAP_PARAM(Vis, GridRows,                 int, 1,      uFormat("Number of rows of the grid used to extract uniformly \"%s / grid cells\" features from each cell.", kVisMaxFeatures().c_str()));
     RTABMAP_PARAM(Vis, GridCols,                 int, 1,      uFormat("Number of columns of the grid used to extract uniformly \"%s / grid cells\" features from each cell.", kVisMaxFeatures().c_str()));
     RTABMAP_PARAM(Vis, CorType,                  int, 0,      "Correspondences computation approach: 0=Features Matching, 1=Optical Flow");
-    RTABMAP_PARAM(Vis, CorNNType,                int, 1,    uFormat("[%s=0] kNNFlannNaive=0, kNNFlannKdTree=1, kNNFlannLSH=2, kNNBruteForce=3, kNNBruteForceGPU=4. Used for features matching approach.", kVisCorType().c_str()));
+    RTABMAP_PARAM(Vis, CorNNType,                int, 1,    uFormat("[%s=0] kNNFlannNaive=0, kNNFlannKdTree=1, kNNFlannLSH=2, kNNBruteForce=3, kNNBruteForceGPU=4, BruteForceCrossCheck=5, SuperGlue=6. Used for features matching approach.", kVisCorType().c_str()));
     RTABMAP_PARAM(Vis, CorNNDR,                  float, 0.6,  uFormat("[%s=0] NNDR: nearest neighbor distance ratio. Used for knn features matching approach.", kVisCorType().c_str()));
-    RTABMAP_PARAM(Vis, CorCrossCheck,            bool, false,  uFormat("[%s=0] If true, brute force crosscheck matching is done instead of knn matching approach (%s).", kVisCorType().c_str(), kVisCorNNDR().c_str()));
     RTABMAP_PARAM(Vis, CorGuessWinSize,          int, 20,     uFormat("[%s=0] Matching window size (pixels) around projected points when a guess transform is provided to find correspondences. 0 means disabled.", kVisCorType().c_str()));
     RTABMAP_PARAM(Vis, CorGuessMatchToProjection, bool, false, uFormat("[%s=0] Match frame's corners to source's projected points (when guess transform is provided) instead of projected points to frame's corners.", kVisCorType().c_str()));
     RTABMAP_PARAM(Vis, CorFlowWinSize,           int, 16,     uFormat("[%s=1] See cv::calcOpticalFlowPyrLK(). Used for optical flow approach.", kVisCorType().c_str()));

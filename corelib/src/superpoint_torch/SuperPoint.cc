@@ -4,6 +4,9 @@
 
 #include <superpoint_torch/SuperPoint.h>
 #include <rtabmap/utilite/ULogger.h>
+#include <rtabmap/utilite/UDirectory.h>
+#include <rtabmap/utilite/UFile.h>
+#include <rtabmap/utilite/UConversion.h>
 
 
 namespace rtabmap
@@ -119,10 +122,17 @@ SPDetector::SPDetector(const std::string & modelPath, float threshold, bool nms,
 	UDEBUG("modelPath=%s thr=%f nms=%d cuda=%d", modelPath.c_str(), threshold, nms?1:0, cuda?1:0);
 	if(modelPath.empty())
 	{
+		UERROR("Model's path is empty!");
+		return;
+	}
+	std::string path = uReplaceChar(modelPath, '~', UDirectory::homeDir());
+	if(!UFile::exists(path))
+	{
+		UERROR("Model's path \"%s\" doesn't exist!", path.c_str());
 		return;
 	}
 	model_ = std::make_shared<SuperPoint>();
-	torch::load(model_, modelPath);
+	torch::load(model_, uReplaceChar(path, '~', UDirectory::homeDir()));
 
 	if(cuda && !torch::cuda::is_available())
 	{
@@ -137,8 +147,10 @@ SPDetector::~SPDetector()
 {
 }
 
-std::vector<cv::KeyPoint> SPDetector::detect(const cv::Mat &img)
+std::vector<cv::KeyPoint> SPDetector::detect(const cv::Mat &img, const cv::Mat & mask)
 {
+	UASSERT(img.type() == CV_8UC1);
+	UASSERT(mask.empty() || (mask.type() == CV_8UC1 && img.cols == mask.cols && img.rows == mask.rows));
 	detected_ = false;
 	if(model_)
 	{
@@ -158,8 +170,11 @@ std::vector<cv::KeyPoint> SPDetector::detect(const cv::Mat &img)
 
 		std::vector<cv::KeyPoint> keypoints_no_nms;
 		for (int i = 0; i < kpts.size(0); i++) {
-			float response = prob_[kpts[i][0]][kpts[i][1]].item<float>();
-			keypoints_no_nms.push_back(cv::KeyPoint(kpts[i][1].item<float>(), kpts[i][0].item<float>(), 8, -1, response));
+			if(mask.empty() || mask.at<unsigned char>(kpts[i][0].item<int>(), kpts[i][1].item<int>()) != 0)
+			{
+				float response = prob_[kpts[i][0]][kpts[i][1]].item<float>();
+				keypoints_no_nms.push_back(cv::KeyPoint(kpts[i][1].item<float>(), kpts[i][0].item<float>(), 8, -1, response));
+			}
 		}
 
 		detected_ = true;

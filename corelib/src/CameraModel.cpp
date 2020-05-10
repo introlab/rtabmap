@@ -37,7 +37,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 namespace rtabmap {
 
-CameraModel::CameraModel()
+CameraModel::CameraModel() :
+	localTransform_(0,0,1,0, -1,0,0,0, 0,-1,0,0)
 {
 
 }

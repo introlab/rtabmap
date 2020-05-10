@@ -215,7 +215,8 @@ std::map<int, cv::Point3f> generateWords3DMono(
 		float ransacParam1,
 		float ransacParam2,
 		const std::map<int, cv::Point3f> & refGuess3D,
-		double * varianceOut)
+		double * varianceOut,
+		std::vector<int> * matchesOut)
 {
 	UASSERT(cameraModel.isValidForProjection());
 	std::map<int, cv::Point3f> words3D;
@@ -238,6 +239,11 @@ std::map<int, cv::Point3f> generateWords3DMono(
 			std::vector<int> indexes(status.size());
 			for(unsigned int i=0; i<status.size(); ++i)
 			{
+				if(matchesOut)
+				{
+					matchesOut->push_back(iter->first);
+				}
+
 				if(status[i])
 				{
 					refCorners[oi] = iter->second.first.pt;

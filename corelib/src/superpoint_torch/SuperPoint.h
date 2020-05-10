@@ -50,7 +50,7 @@ class SPDetector {
 public:
     SPDetector(const std::string & modelPath, float threshold = 0.2f, bool nms = true, int minDistance = 4, bool cuda = false);
     virtual ~SPDetector();
-    std::vector<cv::KeyPoint> detect(const cv::Mat &img);
+    std::vector<cv::KeyPoint> detect(const cv::Mat &img, const cv::Mat & mask = cv::Mat());
     cv::Mat compute(const std::vector<cv::KeyPoint> &keypoints);
 
     void setThreshold(float threshold) {threshold_ = threshold;}

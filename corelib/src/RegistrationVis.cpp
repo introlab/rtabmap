@@ -46,6 +46,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <rtflann/flann.hpp>
 
+
+#ifdef RTABMAP_SUPERGLUE_PYTORCH
+	#include "superglue_pytorch/SuperGlue.h"
+#endif
+
 namespace rtabmap {
 
 RegistrationVis::RegistrationVis(const ParametersMap & parameters, Registration * child) :
@@ -66,7 +71,7 @@ RegistrationVis::RegistrationVis(const ParametersMap & parameters, Registration 
 		_flowEps(Parameters::defaultVisCorFlowEps()),
 		_flowMaxLevel(Parameters::defaultVisCorFlowMaxLevel()),
 		_nndr(Parameters::defaultVisCorNNDR()),
-		_bfCrossCheck(Parameters::defaultVisCorCrossCheck()),
+		_nnType(Parameters::defaultVisCorNNType()),
 		_guessWinSize(Parameters::defaultVisCorGuessWinSize()),
 		_guessMatchToProjection(Parameters::defaultVisCorGuessMatchToProjection()),
 		_bundleAdjustment(Parameters::defaultVisBundleAdjustment()),
@@ -74,7 +79,8 @@ RegistrationVis::RegistrationVis(const ParametersMap & parameters, Registration 
 		_minInliersDistributionThr(Parameters::defaultVisMinInliersDistribution()),
 		_maxInliersMeanDistance(Parameters::defaultVisMeanInliersDistance()),
 		_detectorFrom(0),
-		_detectorTo(0)
+		_detectorTo(0),
+		_superGlueMatcher(0)
 {
 	_featureParameters = Parameters::getDefaultParameters();
 	uInsert(_featureParameters, ParametersPair(Parameters::kKpNNStrategy(), _featureParameters.at(Parameters::kVisCorNNType())));
@@ -114,7 +120,7 @@ void RegistrationVis::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kVisCorFlowEps(), _flowEps);
 	Parameters::parse(parameters, Parameters::kVisCorFlowMaxLevel(), _flowMaxLevel);
 	Parameters::parse(parameters, Parameters::kVisCorNNDR(), _nndr);
-	Parameters::parse(parameters, Parameters::kVisCorCrossCheck(), _bfCrossCheck);
+	Parameters::parse(parameters, Parameters::kVisCorNNType(), _nnType);
 	Parameters::parse(parameters, Parameters::kVisCorGuessWinSize(), _guessWinSize);
 	Parameters::parse(parameters, Parameters::kVisCorGuessMatchToProjection(), _guessMatchToProjection);
 	Parameters::parse(parameters, Parameters::kVisBundleAdjustment(), _bundleAdjustment);
@@ -131,6 +137,38 @@ void RegistrationVis::parseParameters(const ParametersMap & parameters)
 	UASSERT_MSG(_inlierDistance > 0.0f, uFormat("value=%f", _inlierDistance).c_str());
 	UASSERT_MSG(_iterations > 0, uFormat("value=%d", _iterations).c_str());
 
+	if(_nnType == 6)
+	{
+		// verify that we have SuperGlue support
+#ifndef RTABMAP_SUPERGLUE_PYTORCH
+		UWARN("%s is set to 6 but RTAB-MAp is not built with SuperGlue support, using default %d.",
+				Parameters::kVisCorNNType().c_str(), Parameters::defaultVisCorNNType());
+		_nnType = Parameters::defaultVisCorNNType();
+#else
+		int iterations = _superGlueMatcher?_superGlueMatcher->iterations():Parameters::defaultSuperGlueIterations();
+		float matchThr = _superGlueMatcher?_superGlueMatcher->matchThreshold():Parameters::defaultSuperGlueMatchThreshold();
+		std::string path = _superGlueMatcher?_superGlueMatcher->path():Parameters::defaultSuperGluePath();
+		bool cuda = _superGlueMatcher?_superGlueMatcher->cuda():Parameters::defaultSuperGlueCuda();
+		Parameters::parse(parameters, Parameters::kSuperGlueIterations(), iterations);
+		Parameters::parse(parameters, Parameters::kSuperGlueMatchThreshold(), matchThr);
+		Parameters::parse(parameters, Parameters::kSuperGluePath(), path);
+		Parameters::parse(parameters, Parameters::kSuperGlueCuda(), cuda);
+		if(path.empty())
+		{
+			UERROR("%s parameter should be set to use SuperGlue matching (%s=6), using default %d.",
+					Parameters::kSuperGluePath().c_str(),
+					Parameters::kVisCorNNType().c_str(),
+					Parameters::defaultVisCorNNType());
+			_nnType = Parameters::defaultVisCorNNType();
+		}
+		else
+		{
+			delete _superGlueMatcher;
+			_superGlueMatcher = new SuperGlue(path, matchThr, iterations, cuda);
+		}
+#endif
+	}
+
 	// override feature parameters
 	for(ParametersMap::const_iterator iter=parameters.begin(); iter!=parameters.end(); ++iter)
 	{
@@ -143,7 +181,10 @@ void RegistrationVis::parseParameters(const ParametersMap & parameters)
 
 	if(uContains(parameters, Parameters::kVisCorNNType()))
 	{
-		uInsert(_featureParameters, ParametersPair(Parameters::kKpNNStrategy(), parameters.at(Parameters::kVisCorNNType())));
+		if(_nnType<VWDictionary::kNNUndef)
+		{
+			uInsert(_featureParameters, ParametersPair(Parameters::kKpNNStrategy(), uNumber2Str(_nnType)));
+		}
 	}
 	if(uContains(parameters, Parameters::kVisCorNNDR()))
 	{
@@ -200,6 +241,9 @@ RegistrationVis::~RegistrationVis()
 {
 	delete _detectorFrom;
 	delete _detectorTo;
+#ifdef RTABMAP_SUPERGLUE_PYTORCH
+	delete _superGlueMatcher;
+#endif
 }
 
 Transform RegistrationVis::computeTransformationImpl(
@@ -222,7 +266,8 @@ Transform RegistrationVis::computeTransformationImpl(
 	UDEBUG("%s=%f", Parameters::kVisCorFlowEps().c_str(), _flowEps);
 	UDEBUG("%s=%d", Parameters::kVisCorFlowMaxLevel().c_str(), _flowMaxLevel);
 	UDEBUG("%s=%f", Parameters::kVisCorNNDR().c_str(), _nndr);
-	UDEBUG("%s=%d", Parameters::kVisCorCrossCheck().c_str(), _bfCrossCheck?1:0);
+	UDEBUG("%s=%d", Parameters::kVisCorNNType().c_str(), _nnType);
+	UDEBUG("Feature Detector = %d", (int)_detectorFrom->getType());
 	UDEBUG("guess=%s", guess.prettyPrint().c_str());
 
 	UDEBUG("Input(%d): from=%d words, %d 3D words, %d words descriptors,  %d kpts, %d kpts3D, %d descriptors, image=%dx%d models=%d stereo=%d",
@@ -807,9 +852,8 @@ Transform RegistrationVis::computeTransformationImpl(
 									descriptorsIndices.resize(oi);
 									UASSERT(oi >=2);
 
-
-									cv::BFMatcher matcher(descriptors.type()==CV_8U?cv::NORM_HAMMING:cv::NORM_L2SQR, _bfCrossCheck);
-									if(_bfCrossCheck)
+									cv::BFMatcher matcher(descriptors.type()==CV_8U?cv::NORM_HAMMING:cv::NORM_L2SQR, _nnType == 5);
+									if(_nnType == 5) // bruteforce cross check
 									{
 										std::vector<cv::DMatch> matches;
 										matcher.match(descriptorsTo.row(i), cv::Mat(descriptors, cv::Range(0, oi)), matches);
@@ -818,7 +862,7 @@ Transform RegistrationVis::computeTransformationImpl(
 											matchedIndex = descriptorsIndices.at(matches.at(0).trainIdx);
 										}
 									}
-									else
+									else // bruteforce knn
 									{
 										std::vector<std::vector<cv::DMatch> > matches;
 										matcher.knnMatch(descriptorsTo.row(i), cv::Mat(descriptors, cv::Range(0, oi)), matches, 2);
@@ -829,7 +873,6 @@ Transform RegistrationVis::computeTransformationImpl(
 											matchedIndex = descriptorsIndices.at(matches[0].at(0).trainIdx);
 										}
 									}
-
 								}
 								else if(indices[i].size() == 1)
 								{
@@ -957,8 +1000,8 @@ Transform RegistrationVis::computeTransformationImpl(
 										bruteForceDescCopy += bruteForceTimer.ticks();
 										UASSERT(oi >=2);
 
-										cv::BFMatcher matcher(descriptors.type()==CV_8U?cv::NORM_HAMMING:cv::NORM_L2SQR, _bfCrossCheck);
-										if(_bfCrossCheck)
+										cv::BFMatcher matcher(descriptors.type()==CV_8U?cv::NORM_HAMMING:cv::NORM_L2SQR, _nnType==5);
+										if(_nnType==5) // bruteforce cross check
 										{
 											std::vector<cv::DMatch> matches;
 											matcher.match(descriptorsFrom.row(matchedIndexFrom), cv::Mat(descriptors, cv::Range(0, oi)), matches);
@@ -967,7 +1010,7 @@ Transform RegistrationVis::computeTransformationImpl(
 												matchedIndexTo = descriptorsIndices.at(matches.at(0).trainIdx);
 											}
 										}
-										else
+										else // bruteforce knn
 										{
 											std::vector<std::vector<cv::DMatch> > matches;
 											matcher.knnMatch(descriptorsFrom.row(matchedIndexFrom), cv::Mat(descriptors, cv::Range(0, oi)), matches, 2);
@@ -1068,7 +1111,11 @@ Transform RegistrationVis::computeTransformationImpl(
 					// match between all descriptors
 					std::list<int> fromWordIds;
 					std::list<int> toWordIds;
-					if(_bfCrossCheck)
+#ifdef RTABMAP_SUPERGLUE_PYTORCH
+					if(_nnType == 5 || (_nnType == 6 && _superGlueMatcher))
+#else
+					if(_nnType == 5) // bruteforce cross check
+#endif
 					{
 						std::vector<int> fromWordIdsV(descriptorsFrom.rows);
 						for (int i = 0; i < descriptorsFrom.rows; ++i)
@@ -1083,10 +1130,33 @@ Transform RegistrationVis::computeTransformationImpl(
 						}
 						if(descriptorsTo.rows)
 						{
-							cv::BFMatcher matcher(descriptorsFrom.type()==CV_8U?cv::NORM_HAMMING:cv::NORM_L2SQR, true);
 							std::vector<int> toWordIdsV(descriptorsTo.rows, 0);
 							std::vector<cv::DMatch> matches;
-							matcher.match(descriptorsTo, descriptorsFrom, matches);
+#ifdef RTABMAP_SUPERGLUE_PYTORCH
+							if(_nnType == 6 && _superGlueMatcher &&
+								descriptorsTo.cols == descriptorsFrom.cols &&
+								descriptorsTo.rows == (int)kptsTo.size() &&
+								descriptorsTo.type() == CV_32F &&
+								descriptorsFrom.type() == CV_32F &&
+								descriptorsFrom.rows == (int)kptsFrom.size() &&
+								imageSize.width > 0 && imageSize.height > 0)
+							{
+								UDEBUG("SuperGlue matching");
+								matches = _superGlueMatcher->match(descriptorsTo, descriptorsFrom, kptsTo, kptsFrom, imageSize);
+							}
+							else
+							{
+								if(_nnType == 6 && _superGlueMatcher)
+								{
+									UDEBUG("Invalid inputs for SuperGlue (desc type=%d, only float descriptors supported), doing bruteforce matching instead.", descriptorsFrom.type());
+								}
+#else
+							{
+#endif
+								UDEBUG("BruteForce matching with crosscheck");
+								cv::BFMatcher matcher(descriptorsFrom.type()==CV_8U?cv::NORM_HAMMING:cv::NORM_L2SQR, true);
+								matcher.match(descriptorsTo, descriptorsFrom, matches);
+							}
 							for(size_t i=0; i<matches.size(); ++i)
 							{
 								toWordIdsV[matches[i].queryIdx] = fromWordIdsV[matches[i].trainIdx];
@@ -1104,6 +1174,7 @@ Transform RegistrationVis::computeTransformationImpl(
 					}
 					else
 					{
+						UDEBUG("VWDictionary knn matching");
 						VWDictionary dictionary(_featureParameters);
 						if(orignalWordsFromIds.empty())
 						{
@@ -1241,6 +1312,7 @@ Transform RegistrationVis::computeTransformationImpl(
 					// we only need the camera transform, send guess words3 for scale estimation
 					Transform cameraTransform;
 					double variance = 1.0f;
+					std::vector<int> matchesV;
 					std::map<int, cv::Point3f> inliers3D = util3d::generateWords3DMono(
 							uMultimapToMapUnique(signatureA->getWords()),
 							uMultimapToMapUnique(signatureB->getWords()),
@@ -1250,12 +1322,14 @@ Transform RegistrationVis::computeTransformationImpl(
 							_PnPReprojError,
 							_PnPFlags, // cv::SOLVEPNP_ITERATIVE
 							_PnPRefineIterations,
-							1.0f,
+							_PnPReprojError,
 							0.99f,
 							uMultimapToMapUnique(signatureA->getWords3()), // for scale estimation
-							&variance);
+							&variance,
+							&matchesV);
 					covariances[dir] *= variance;
 					inliers[dir] = uKeys(inliers3D);
+					matches[dir] = matchesV;
 
 					if(!cameraTransform.isNull())
 					{
@@ -1763,6 +1837,7 @@ Transform RegistrationVis::computeTransformationImpl(
 	info.rejectedMsg = msg;
 	info.covariance = covariance;
 
+	UDEBUG("inliers=%d/%d", info.inliers, info.matches);
 	UDEBUG("transform=%s", transform.prettyPrint().c_str());
 	return transform;
 }

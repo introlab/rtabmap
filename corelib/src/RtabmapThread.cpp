@@ -209,7 +209,6 @@ void RtabmapThread::mainLoop()
 		Parameters::parse(parameters, Parameters::kRtabmapImageBufferSize(), _dataBufferMaxSize);
 		Parameters::parse(parameters, Parameters::kRtabmapDetectionRate(), _rate);
 		Parameters::parse(parameters, Parameters::kRtabmapCreateIntermediateNodes(), _createIntermediateNodes);
-		UASSERT(_dataBufferMaxSize >= 0);
 		UASSERT(_rate >= 0.0f);
 		_rtabmap->init(parameters, str);
 		break;
@@ -217,7 +216,6 @@ void RtabmapThread::mainLoop()
 		Parameters::parse(parameters, Parameters::kRtabmapImageBufferSize(), _dataBufferMaxSize);
 		Parameters::parse(parameters, Parameters::kRtabmapDetectionRate(), _rate);
 		Parameters::parse(parameters, Parameters::kRtabmapCreateIntermediateNodes(), _createIntermediateNodes);
-		UASSERT(_dataBufferMaxSize >= 0);
 		UASSERT(_rate >= 0.0f);
 		_rtabmap->parseParameters(parameters);
 		break;

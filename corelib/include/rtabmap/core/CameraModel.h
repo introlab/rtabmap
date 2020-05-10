@@ -50,7 +50,7 @@ public:
 			const cv::Mat & D,
 			const cv::Mat & R,
 			const cv::Mat & P,
-			const Transform & localTransform = Transform::getIdentity());
+			const Transform & localTransform = Transform(0,0,1,0, -1,0,0,0, 0,-1,0,0));
 
 	// minimal
 	CameraModel(
@@ -58,7 +58,7 @@ public:
 			double fy,
 			double cx,
 			double cy,
-			const Transform & localTransform = Transform::getIdentity(),
+			const Transform & localTransform = Transform(0,0,1,0, -1,0,0,0, 0,-1,0,0),
 			double Tx = 0.0f,
 			const cv::Size & imageSize = cv::Size(0,0));
 	// minimal to be saved
@@ -68,7 +68,7 @@ public:
 			double fy,
 			double cx,
 			double cy,
-			const Transform & localTransform = Transform::getIdentity(),
+			const Transform & localTransform = Transform(0,0,1,0, -1,0,0,0, 0,-1,0,0),
 			double Tx = 0.0f,
 			const cv::Size & imageSize = cv::Size(0,0));
 

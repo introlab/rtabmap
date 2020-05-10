@@ -159,7 +159,7 @@ QIcon ImageView::createIcon(const QColor & color)
 ImageView::ImageView(QWidget * parent) :
 		QWidget(parent),
 		_savedFileName((QDir::homePath()+ "/") + "picture" + ".png"),
-		_alpha(50),
+		_alpha(100),
 		_featuresSize(0.0f),
 		_defaultBgColor(Qt::black),
 		_defaultFeatureColor(Qt::yellow),

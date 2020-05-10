@@ -205,13 +205,14 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	uInsert(parameters, Parameters::getDefaultParameters("FREAK"));
 	uInsert(parameters, Parameters::getDefaultParameters("BRISK"));
 	uInsert(parameters, Parameters::getDefaultParameters("KAZE"));
-	uInsert(parameters, Parameters::getDefaultParameters("SPTorch"));
+	uInsert(parameters, Parameters::getDefaultParameters("SuperPoint"));
 	uInsert(parameters, Parameters::getDefaultParameters("Optimizer"));
 	uInsert(parameters, Parameters::getDefaultParameters("g2o"));
 	uInsert(parameters, Parameters::getDefaultParameters("GTSAM"));
 	uInsert(parameters, Parameters::getDefaultParameters("Reg"));
 	uInsert(parameters, Parameters::getDefaultParameters("Vis"));
 	uInsert(parameters, Parameters::getDefaultParameters("Icp"));
+	uInsert(parameters, Parameters::getDefaultParameters("SuperGlue"));
 	uInsert(parameters, Parameters::getDefaultParameters("Stereo"));
 	uInsert(parameters, Parameters::getDefaultParameters("StereoBM"));
 	uInsert(parameters, Parameters::getDefaultParameters("Grid"));
@@ -5117,10 +5118,6 @@ void DatabaseViewer::updateWordsMatching(const std::vector<int> & inliers)
 			{
 				if(ids[i] > 0 && wordsA.count(ids[i]) == 1 && wordsB.count(ids[i]) == 1)
 				{
-					// PINK features
-					ui_->graphicsView_A->setFeatureColor(ids[i], ui_->graphicsView_A->getDefaultMatchingFeatureColor());
-					ui_->graphicsView_B->setFeatureColor(ids[i], ui_->graphicsView_B->getDefaultMatchingFeatureColor());
-
 					// Add lines
 					// Draw lines between corresponding features...
 					float scaleAX = ui_->graphicsView_A->viewScale();
@@ -5159,6 +5156,13 @@ void DatabaseViewer::updateWordsMatching(const std::vector<int> & inliers)
 					{
 						cA = ui_->graphicsView_A->getDefaultMatchingFeatureColor();
 						cB = ui_->graphicsView_B->getDefaultMatchingFeatureColor();
+						ui_->graphicsView_A->setFeatureColor(ids[i], ui_->graphicsView_A->getDefaultMatchingFeatureColor());
+						ui_->graphicsView_B->setFeatureColor(ids[i], ui_->graphicsView_B->getDefaultMatchingFeatureColor());
+					}
+					else
+					{
+						ui_->graphicsView_A->setFeatureColor(ids[i], ui_->graphicsView_A->getDefaultMatchingLineColor());
+						ui_->graphicsView_B->setFeatureColor(ids[i], ui_->graphicsView_B->getDefaultMatchingLineColor());
 					}
 
 					ui_->graphicsView_A->addLine(
@@ -7155,7 +7159,7 @@ void DatabaseViewer::refineConstraint(int from, int to, bool silent)
 
 		if(!silent && ui_->dockWidget_constraints->isVisible())
 		{
-			if(fromS->id() > 0 && toS->id() > 0)
+			if(toS && fromS->id() > 0 && toS->id() > 0)
 			{
 				updateLoopClosuresSlider(fromS->id(), toS->id());
 				if(newLink.type() != Link::kNeighbor && fromS->id() < toS->id())
@@ -7179,9 +7183,16 @@ void DatabaseViewer::refineConstraint(int from, int to, bool silent)
 			}
 		}
 	}
-
 	else if(!silent)
 	{
+		if(toS && fromS->id() > 0 && toS->id() > 0)
+		{
+			// just update matches in the views
+			ui_->graphicsView_A->setFeatures(fromS->getWords(), fromS->sensorData().depthRaw());
+			ui_->graphicsView_B->setFeatures(toS->getWords(), toS->sensorData().depthRaw());
+			updateWordsMatching(info.inliersIDs);
+		}
+
 		QMessageBox::warning(this,
 				tr("Refine link"),
 				tr("Cannot find a transformation between nodes %1 and %2: %3").arg(currentLink.from()).arg(currentLink.to()).arg(info.rejectedMsg.c_str()));

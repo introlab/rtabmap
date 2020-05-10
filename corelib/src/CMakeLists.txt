@@ -190,6 +190,24 @@ IF(TORCH_FOUND)
 	)
 ENDIF(TORCH_FOUND)
 
+IF(Python3_FOUND)
+	SET(LIBRARIES
+		${LIBRARIES}
+		Python3::Python
+	)
+	SET(SRC_FILES
+		${SRC_FILES}
+		superglue_pytorch/SuperGlue.cpp
+	)
+	 SET(INCLUDE_DIRS
+	    ${TORCH_INCLUDE_DIRS}
+	    ${CMAKE_CURRENT_SOURCE_DIR}/superglue_pytorch
+		${INCLUDE_DIRS}
+	)
+ENDIF(Python3_FOUND)
+
+
+
 IF(Freenect_FOUND)
 	IF(Freenect_DASH_INCLUDES)
 	   ADD_DEFINITIONS("-DFREENECT_DASH_INCLUDES")

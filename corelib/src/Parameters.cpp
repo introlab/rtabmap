@@ -166,7 +166,7 @@ bool Parameters::isFeatureParameter(const std::string & parameter)
 			group.compare("GFTT") == 0 ||
 			group.compare("BRISK") == 0 ||
 			group.compare("KAZE") == 0 ||
-			group.compare("SPTorch") == 0;
+			group.compare("SuperPoint") == 0;
 }
 
 rtabmap::ParametersMap Parameters::getDefaultOdometryParameters(bool stereo, bool vis, bool icp)
@@ -184,7 +184,7 @@ rtabmap::ParametersMap Parameters::getDefaultOdometryParameters(bool stereo, boo
 			group.compare("Optimizer") == 0 ||
 			group.compare("g2o") == 0 ||
 			group.compare("GTSAM") == 0 ||
-			(vis && group.compare("Vis") == 0) ||
+			(vis && (group.compare("Vis") == 0 || group.compare("SuperGlue") == 0)) ||
 			iter->first.compare(kRtabmapPublishRAMUsage())==0)
 		{
 			if(stereo)
@@ -237,6 +237,14 @@ const std::map<std::string, std::pair<bool, std::string> > & Parameters::getRemo
 	if(removedParameters_.empty())
 	{
 		// removed parameters
+
+		// 0.20.
+		removedParameters_.insert(std::make_pair("Vis/CorCrossCheck",   std::make_pair(false, Parameters::kVisCorNNType())));
+		removedParameters_.insert(std::make_pair("SPTorch/ModelPath",   std::make_pair(true,  Parameters::kSuperPointModelPath())));
+		removedParameters_.insert(std::make_pair("SPTorch/Threshold",   std::make_pair(true,  Parameters::kSuperPointThreshold())));
+		removedParameters_.insert(std::make_pair("SPTorch/NMS",         std::make_pair(true,  Parameters::kSuperPointNMS())));
+		removedParameters_.insert(std::make_pair("SPTorch/MinDistance", std::make_pair(true,  Parameters::kSuperPointNMSRadius())));
+		removedParameters_.insert(std::make_pair("SPTorch/Cuda",        std::make_pair(true,  Parameters::kSuperPointCuda())));
 
 		// 0.19.4
 		removedParameters_.insert(std::make_pair("RGBD/MaxLocalizationDistance", std::make_pair(true,  Parameters::kRGBDMaxLoopClosureDistance())));
@@ -608,7 +616,13 @@ ParametersMap Parameters::parseArguments(int argc, char * argv[], bool onlyParam
 				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
 #endif
 				str = "With SuperPoint Torch:";
-#ifdef RTABMAP_SP_TORCH
+#ifdef RTABMAP_SUPERPOINT_TORCH
+				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
+#else
+				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
+#endif
+				str = "With SuperGlue PyTorch:";
+#ifdef RTABMAP_SUPERGLUE_PYTORCH
 				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
 #else
 				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;

@@ -116,6 +116,37 @@ public:
 		kFeatureKaze=9,     //new 0.13.2
 		kFeatureOrbOctree=10, //new 0.19.2
 		kFeatureSuperPointTorch=11}; //new 0.19.7
+	static std::string typeName(Type type)
+	{
+		switch(type){
+		case kFeatureSurf:
+			return "SURF";
+		case kFeatureSift:
+			return "SIFT";
+		case kFeatureOrb:
+			return "ORB";
+		case kFeatureFastFreak:
+			return "FAST+FREAK";
+		case kFeatureFastBrief:
+			return "FAST+BRIEF";
+		case kFeatureGfttFreak:
+			return "GFTT+Freak";
+		case kFeatureGfttBrief:
+			return "GFTT+Brief";
+		case kFeatureBrisk:
+			return "BRISK";
+		case kFeatureGfttOrb:
+			return "GFTT+ORB";
+		case kFeatureKaze:
+			return "KAZE";
+		case kFeatureOrbOctree:
+			return "ORB-OCTREE";
+		case kFeatureSuperPointTorch:
+			return "SUPERPOINT";
+		default:
+			return "Unknown";
+		}
+	}
 
 	static Feature2D * create(const ParametersMap & parameters = ParametersMap());
 	static Feature2D * create(Feature2D::Type type, const ParametersMap & parameters = ParametersMap()); // for convenience

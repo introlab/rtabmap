@@ -175,8 +175,8 @@ int main(int argc, char** argv)
     cv::Mat image2;
 	if(argc == 3)
 	{
-		image1 = cv::imread(argv[1]);
-		image2 = cv::imread(argv[2]);
+		image1 = cv::imread(argv[1], cv::IMREAD_GRAYSCALE);
+		image2 = cv::imread(argv[2], cv::IMREAD_GRAYSCALE);
 	}
 	else
 	{

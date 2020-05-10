@@ -146,9 +146,9 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 		_ui->checkBox_ORBGpu->setEnabled(false);
 		_ui->label_orbGpu->setEnabled(false);
 
-		// remove BruteForceGPU option
-		_ui->comboBox_dictionary_strategy->removeItem(4);
-		_ui->reextract_nn->removeItem(4);
+		// disable BruteForceGPU option
+		_ui->comboBox_dictionary_strategy->setItemData(4, 0, Qt::UserRole - 1);
+		_ui->reextract_nn->setItemData(4, 0, Qt::UserRole - 1);
 	}
 
 #ifndef RTABMAP_OCTOMAP
@@ -218,9 +218,13 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 		_ui->vis_feature_detector->setItemData(10, 0, Qt::UserRole - 1);
 #endif
 
-#ifndef RTABMAP_SP_TORCH
+#ifndef RTABMAP_SUPERPOINT_TORCH
 		_ui->comboBox_detector_strategy->setItemData(11, 0, Qt::UserRole - 1);
 		_ui->vis_feature_detector->setItemData(11, 0, Qt::UserRole - 1);
+#endif
+
+#ifndef RTABMAP_SUPERGLUE_PYTORCH
+		_ui->reextract_nn->setItemData(6, 0, Qt::UserRole - 1);
 #endif
 
 #if CV_MAJOR_VERSION >= 3
@@ -948,12 +952,19 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->spinBox_kaze_diffusivity->setObjectName(Parameters::kKAZEDiffusivity().c_str());
 
 	// SuperPoint Torch
-	_ui->lineEdit_sptorch_path->setObjectName(Parameters::kSPTorchModelPath().c_str());
-	connect(_ui->toolButton_sptorch_path, SIGNAL(clicked()), this, SLOT(changeSPTorchModelPath()));
-	_ui->doubleSpinBox_sptorch_threshold->setObjectName(Parameters::kSPTorchThreshold().c_str());
-	_ui->checkBox_sptorch_nms->setObjectName(Parameters::kSPTorchNMS().c_str());
-	_ui->spinBox_sptorch_minDistance->setObjectName(Parameters::kSPTorchMinDistance().c_str());
-	_ui->checkBox_sptorch_cuda->setObjectName(Parameters::kSPTorchCuda().c_str());
+	_ui->lineEdit_sptorch_path->setObjectName(Parameters::kSuperPointModelPath().c_str());
+	connect(_ui->toolButton_sptorch_path, SIGNAL(clicked()), this, SLOT(changeSuperPointModelPath()));
+	_ui->doubleSpinBox_sptorch_threshold->setObjectName(Parameters::kSuperPointThreshold().c_str());
+	_ui->checkBox_sptorch_nms->setObjectName(Parameters::kSuperPointNMS().c_str());
+	_ui->spinBox_sptorch_minDistance->setObjectName(Parameters::kSuperPointNMSRadius().c_str());
+	_ui->checkBox_sptorch_cuda->setObjectName(Parameters::kSuperPointCuda().c_str());
+
+	// SuperGlue PyTorch
+	_ui->lineEdit_sgpytorch_path->setObjectName(Parameters::kSuperGluePath().c_str());
+	connect(_ui->toolButton_sgpytorch_path, SIGNAL(clicked()), this, SLOT(changeSuperGluePath()));
+	_ui->sgpytorch_matchThreshold->setObjectName(Parameters::kSuperGlueMatchThreshold().c_str());
+	_ui->sgpytorch_iterations->setObjectName(Parameters::kSuperGlueIterations().c_str());
+	_ui->checkBox_sgpytorch_cuda->setObjectName(Parameters::kSuperGlueCuda().c_str());
 
 	// verifyHypotheses
 	_ui->groupBox_vh_epipolar2->setObjectName(Parameters::kVhEpEnabled().c_str());
@@ -1039,7 +1050,6 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->loopClosure_pnpRefineIterations->setObjectName(Parameters::kVisPnPRefineIterations().c_str());
 	_ui->reextract_nn->setObjectName(Parameters::kVisCorNNType().c_str());
 	_ui->reextract_nndrRatio->setObjectName(Parameters::kVisCorNNDR().c_str());
-	_ui->checkBox__visCorCrossCheck->setObjectName(Parameters::kVisCorCrossCheck().c_str());
 	_ui->spinBox_visCorGuessWinSize->setObjectName(Parameters::kVisCorGuessWinSize().c_str());
 	_ui->checkBox__visCorGuessMatchToProjection->setObjectName(Parameters::kVisCorGuessMatchToProjection().c_str());
 	_ui->vis_feature_detector->setObjectName(Parameters::kVisFeatureType().c_str());
@@ -4711,7 +4721,7 @@ void PreferencesDialog::changeIcpPMConfigPath()
 	}
 }
 
-void PreferencesDialog::changeSPTorchModelPath()
+void PreferencesDialog::changeSuperPointModelPath()
 {
 	QString path;
 	if(_ui->lineEdit_sptorch_path->text().isEmpty())
@@ -4725,6 +4735,23 @@ void PreferencesDialog::changeSPTorchModelPath()
 	if(!path.isEmpty())
 	{
 		_ui->lineEdit_sptorch_path->setText(path);
+	}
+}
+
+void PreferencesDialog::changeSuperGluePath()
+{
+	QString path;
+	if(_ui->lineEdit_sgpytorch_path->text().isEmpty())
+	{
+		path = QFileDialog::getOpenFileName(this, tr("Select file"), this->getWorkingDirectory(), tr("SuperGlue wrapper (*.py)"));
+	}
+	else
+	{
+		path = QFileDialog::getOpenFileName(this, tr("Select file"), _ui->lineEdit_sgpytorch_path->text(), tr("SuperGlue wrapper (*.py)"));
+	}
+	if(!path.isEmpty())
+	{
+		_ui->lineEdit_sgpytorch_path->setText(path);
 	}
 }
 

@@ -44,7 +44,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "opencv/ORBextractor.h"
 #endif
 
-#ifdef RTABMAP_SP_TORCH
+#ifdef RTABMAP_SUPERPOINT_TORCH
 #include "superpoint_torch/SuperPoint.h"
 #endif
 
@@ -472,6 +472,8 @@ Feature2D * Feature2D::create(const ParametersMap & parameters)
 }
 Feature2D * Feature2D::create(Feature2D::Type type, const ParametersMap & parameters)
 {
+
+#if CV_MAJOR_VERSION < 4 || (CV_MAJOR_VERSION == 4 && CV_MINOR_VERSION < 3)
 #ifndef RTABMAP_NONFREE
 	if(type == Feature2D::kFeatureSurf || type == Feature2D::kFeatureSift)
 	{
@@ -494,6 +496,18 @@ Feature2D * Feature2D::create(Feature2D::Type type, const ParametersMap & parame
 #endif
 #endif
 
+#else // >= 4.3.0
+
+#ifndef RTABMAP_NONFREE
+	if(type == Feature2D::kFeatureSurf)
+	{
+		UWARN("SURF features cannot be used because OpenCV was not built with xfeatures2d module. SIFT is used instead.");
+		type = Feature2D::kFeatureSift;
+	}
+#endif
+
+#endif // 4.3.0
+
 #if CV_MAJOR_VERSION < 3
 	if(type == Feature2D::kFeatureKaze)
 	{
@@ -515,7 +529,7 @@ Feature2D * Feature2D::create(Feature2D::Type type, const ParametersMap & parame
 	}
 #endif
 
-#ifndef RTABMAP_SP_TORCH
+#ifndef RTABMAP_SUPERPOINT_TORCH
 	if(type == Feature2D::kFeatureSuperPointTorch)
 	{
 		UWARN("SupertPoint Torch feature cannot be used as RTAB-Map is not built with the option enabled. GFTT/ORB is used instead.");
@@ -559,7 +573,7 @@ Feature2D * Feature2D::create(Feature2D::Type type, const ParametersMap & parame
 	case Feature2D::kFeatureOrbOctree:
 		feature2D = new ORBOctree(parameters);
 		break;
-#ifdef RTABMAP_SP_TORCH
+#ifdef RTABMAP_SUPERPOINT_TORCH
 	case Feature2D::kFeatureSuperPointTorch:
 		feature2D = new SuperPointTorch(parameters);
 		break;
@@ -909,6 +923,7 @@ void SIFT::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kSIFTNOctaveLayers(), nOctaveLayers_);
 	Parameters::parse(parameters, Parameters::kSIFTSigma(), sigma_);
 
+#if CV_MAJOR_VERSION < 4 || (CV_MAJOR_VERSION == 4 && CV_MINOR_VERSION < 3)
 #ifdef RTABMAP_NONFREE
 #if CV_MAJOR_VERSION < 3
 	_sift = cv::Ptr<CV_SIFT>(new CV_SIFT(this->getMaxFeatures(), nOctaveLayers_, contrastThreshold_, edgeThreshold_, sigma_));
@@ -918,13 +933,16 @@ void SIFT::parseParameters(const ParametersMap & parameters)
 #else
 	UWARN("RTAB-Map is not built with OpenCV nonfree module so SIFT cannot be used!");
 #endif
+#else
+	_sift = CV_SIFT::create(this->getMaxFeatures(), nOctaveLayers_, contrastThreshold_, edgeThreshold_, sigma_);
+#endif
 }
 
 std::vector<cv::KeyPoint> SIFT::generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask)
 {
 	UASSERT(!image.empty() && image.channels() == 1 && image.depth() == CV_8U);
 	std::vector<cv::KeyPoint> keypoints;
-#ifdef RTABMAP_NONFREE
+#if defined(RTABMAP_NONFREE) || CV_MAJOR_VERSION > 4 || (CV_MAJOR_VERSION == 4 && CV_MINOR_VERSION >= 3)
 	cv::Mat imgRoi(image, roi);
 	cv::Mat maskRoi;
 	if(!mask.empty())
@@ -942,7 +960,7 @@ cv::Mat SIFT::generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::Key
 {
 	UASSERT(!image.empty() && image.channels() == 1 && image.depth() == CV_8U);
 	cv::Mat descriptors;
-#ifdef RTABMAP_NONFREE
+#if defined(RTABMAP_NONFREE) || CV_MAJOR_VERSION > 4 || (CV_MAJOR_VERSION == 4 && CV_MINOR_VERSION >= 3)
 	_sift->compute(image, keypoints, descriptors);
 #else
 	UWARN("RTAB-Map is not built with OpenCV nonfree module so SIFT cannot be used!");
@@ -1866,11 +1884,11 @@ cv::Mat ORBOctree::generateDescriptorsImpl(const cv::Mat & image, std::vector<cv
 //SuperPointTorch
 //////////////////////////
 SuperPointTorch::SuperPointTorch(const ParametersMap & parameters) :
-		path_(Parameters::defaultSPTorchModelPath()),
-		threshold_(Parameters::defaultSPTorchThreshold()),
-		nms_(Parameters::defaultSPTorchNMS()),
-		minDistance_(Parameters::defaultSPTorchMinDistance()),
-		cuda_(Parameters::defaultSPTorchCuda())
+		path_(Parameters::defaultSuperPointModelPath()),
+		threshold_(Parameters::defaultSuperPointThreshold()),
+		nms_(Parameters::defaultSuperPointNMS()),
+		minDistance_(Parameters::defaultSuperPointNMSRadius()),
+		cuda_(Parameters::defaultSuperPointCuda())
 {
 	parseParameters(parameters);
 }
@@ -1884,14 +1902,16 @@ void SuperPointTorch::parseParameters(const ParametersMap & parameters)
 	Feature2D::parseParameters(parameters);
 
 	std::string previousPath = path_;
+#ifdef RTABMAP_SUPERPOINT_TORCH
 	bool previousCuda = cuda_;
-	Parameters::parse(parameters, Parameters::kSPTorchModelPath(), path_);
-	Parameters::parse(parameters, Parameters::kSPTorchThreshold(), threshold_);
-	Parameters::parse(parameters, Parameters::kSPTorchNMS(), nms_);
-	Parameters::parse(parameters, Parameters::kSPTorchMinDistance(), minDistance_);
-	Parameters::parse(parameters, Parameters::kSPTorchCuda(), cuda_);
+#endif
+	Parameters::parse(parameters, Parameters::kSuperPointModelPath(), path_);
+	Parameters::parse(parameters, Parameters::kSuperPointThreshold(), threshold_);
+	Parameters::parse(parameters, Parameters::kSuperPointNMS(), nms_);
+	Parameters::parse(parameters, Parameters::kSuperPointNMSRadius(), minDistance_);
+	Parameters::parse(parameters, Parameters::kSuperPointCuda(), cuda_);
 
-#ifdef RTABMAP_SP_TORCH
+#ifdef RTABMAP_SUPERPOINT_TORCH
 	if(superPoint_.get() == 0 || path_.compare(previousPath) != 0 || previousCuda != cuda_)
 	{
 		superPoint_ = cv::Ptr<SPDetector>(new SPDetector(path_, threshold_, nms_, minDistance_, cuda_));
@@ -1909,10 +1929,10 @@ void SuperPointTorch::parseParameters(const ParametersMap & parameters)
 
 std::vector<cv::KeyPoint> SuperPointTorch::generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask)
 {
-#ifdef RTABMAP_SP_TORCH
+#ifdef RTABMAP_SUPERPOINT_TORCH
 	UASSERT(!image.empty() && image.channels() == 1 && image.depth() == CV_8U);
 	UASSERT_MSG(roi.x==0 && roi.y ==0, "Not supporting ROI");
-	return superPoint_->detect(image);
+	return superPoint_->detect(image, mask);
 #else
 	UWARN("RTAB-Map is not built with SuperPoint Torch support so SuperPoint Torch feature cannot be used!");
 	return std::vector<cv::KeyPoint>();
@@ -1921,7 +1941,7 @@ std::vector<cv::KeyPoint> SuperPointTorch::generateKeypointsImpl(const cv::Mat &
 
 cv::Mat SuperPointTorch::generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const
 {
-#ifdef RTABMAP_SP_TORCH
+#ifdef RTABMAP_SUPERPOINT_TORCH
 	UASSERT(!image.empty() && image.channels() == 1 && image.depth() == CV_8U);
 	return superPoint_->compute(keypoints);
 #else

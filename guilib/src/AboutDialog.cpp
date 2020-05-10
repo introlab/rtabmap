@@ -66,9 +66,16 @@ AboutDialog::AboutDialog(QWidget * parent) :
 	_ui->label_orboctree->setText("No");
 	_ui->label_orboctree_license->setEnabled(false);
 #endif
-#ifdef RTABMAP_SP_TORCH
+#ifdef RTABMAP_SUPERPOINT_TORCH
 	_ui->label_sptorch->setText("Yes");
 	_ui->label_sptorch_license->setEnabled(true);
+#else
+	_ui->label_sptorch->setText("No");
+	_ui->label_sptorch_license->setEnabled(false);
+#endif
+#ifdef RTABMAP_SUPERGLUE_PYTORCH
+	_ui->label_sgpytorch->setText("Yes");
+	_ui->label_sgpytorch_license->setEnabled(true);
 #else
 	_ui->label_sptorch->setText("No");
 	_ui->label_sptorch_license->setEnabled(false);

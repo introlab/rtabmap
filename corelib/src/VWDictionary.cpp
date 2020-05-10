@@ -279,47 +279,50 @@ void VWDictionary::setFixedDictionary(const std::string & dictionaryPath)
 
 void VWDictionary::setNNStrategy(NNStrategy strategy)
 {
-	if(strategy!=kNNUndef)
-	{
 #if CV_MAJOR_VERSION < 3
 #ifdef HAVE_OPENCV_GPU
-		if(strategy == kNNBruteForceGPU && !cv::gpu::getCudaEnabledDeviceCount())
-		{
-			UERROR("Nearest neighobr strategy \"kNNBruteForceGPU\" chosen but no CUDA devices found! Doing \"kNNBruteForce\" instead.");
-			strategy = kNNBruteForce;
-		}
+	if(strategy == kNNBruteForceGPU && !cv::gpu::getCudaEnabledDeviceCount())
+	{
+		UERROR("Nearest neighobr strategy \"kNNBruteForceGPU\" chosen but no CUDA devices found! Doing \"kNNBruteForce\" instead.");
+		strategy = kNNBruteForce;
+	}
 #else
-		if(strategy == kNNBruteForceGPU)
-		{
-			UERROR("Nearest neighobr strategy \"kNNBruteForceGPU\" chosen but OpenCV is not built with GPU/cuda module! Doing \"kNNBruteForce\" instead.");
-			strategy = kNNBruteForce;
-		}
+	if(strategy == kNNBruteForceGPU)
+	{
+		UERROR("Nearest neighobr strategy \"kNNBruteForceGPU\" chosen but OpenCV is not built with GPU/cuda module! Doing \"kNNBruteForce\" instead.");
+		strategy = kNNBruteForce;
+	}
 #endif
 #else
 #ifdef HAVE_OPENCV_CUDAFEATURES2D
-		if(strategy == kNNBruteForceGPU && !cv::cuda::getCudaEnabledDeviceCount())
-		{
-			UERROR("Nearest neighobr strategy \"kNNBruteForceGPU\" chosen but no CUDA devices found! Doing \"kNNBruteForce\" instead.");
-			strategy = kNNBruteForce;
-		}
+	if(strategy == kNNBruteForceGPU && !cv::cuda::getCudaEnabledDeviceCount())
+	{
+		UERROR("Nearest neighobr strategy \"kNNBruteForceGPU\" chosen but no CUDA devices found! Doing \"kNNBruteForce\" instead.");
+		strategy = kNNBruteForce;
+	}
 #else
-		if(strategy == kNNBruteForceGPU)
-		{
-			UERROR("Nearest neighobr strategy \"kNNBruteForceGPU\" chosen but OpenCV cudafeatures2d module is not found! Doing \"kNNBruteForce\" instead.");
-			strategy = kNNBruteForce;
-		}
+	if(strategy == kNNBruteForceGPU)
+	{
+		UERROR("Nearest neighobr strategy \"kNNBruteForceGPU\" chosen but OpenCV cudafeatures2d module is not found! Doing \"kNNBruteForce\" instead.");
+		strategy = kNNBruteForce;
+	}
 #endif
 #endif
 
-		bool update = _strategy != strategy;
-		_strategy = strategy;
-		if(update)
-		{
-			_dataTree = cv::Mat();
-			_notIndexedWords = uKeysSet(_visualWords);
-			_removedIndexedWords.clear();
-			this->update();
-		}
+	if(strategy>=kNNUndef)
+	{
+		UERROR("Nearest neighobr strategy \"%d\" chosen but this strategy cannot be used with a dictionary! Doing \"kNNBruteForce\" instead.");
+		strategy = kNNBruteForce;
+	}
+
+	bool update = _strategy != strategy;
+	_strategy = strategy;
+	if(update)
+	{
+		_dataTree = cv::Mat();
+		_notIndexedWords = uKeysSet(_visualWords);
+		_removedIndexedWords.clear();
+		this->update();
 	}
 }
 
