@@ -89,6 +89,9 @@ private:
 	int _flowMaxLevel;
 	float _nndr;
 	int _nnType;
+	bool _gmsWithRotation;
+	bool _gmsWithScale;
+	double _gmsThresholdFactor;
 	int _guessWinSize;
 	bool _guessMatchToProjection;
 	int _bundleAdjustment;

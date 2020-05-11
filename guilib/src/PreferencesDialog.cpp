@@ -227,6 +227,10 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 		_ui->reextract_nn->setItemData(6, 0, Qt::UserRole - 1);
 #endif
 
+#if !defined(HAVE_OPENCV_XFEATURES2D) || (CV_MAJOR_VERSION == 3 && (CV_MINOR_VERSION<4 || CV_MINOR_VERSION==4 && CV_SUBMINOR_VERSION<1))
+		_ui->reextract_nn->setItemData(7, 0, Qt::UserRole - 1);
+#endif
+
 #if CV_MAJOR_VERSION >= 3
 	_ui->groupBox_fast_opencv2->setEnabled(false);
 #else
@@ -965,6 +969,12 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->sgpytorch_matchThreshold->setObjectName(Parameters::kSuperGlueMatchThreshold().c_str());
 	_ui->sgpytorch_iterations->setObjectName(Parameters::kSuperGlueIterations().c_str());
 	_ui->checkBox_sgpytorch_cuda->setObjectName(Parameters::kSuperGlueCuda().c_str());
+	_ui->checkBox_sgpytorch_indoor->setObjectName(Parameters::kSuperGlueCuda().c_str());
+
+	// GMS
+	_ui->checkBox_gms_withRotation->setObjectName(Parameters::kGMSWithRotation().c_str());
+	_ui->checkBox_gms_withScale->setObjectName(Parameters::kGMSWithScale().c_str());
+	_ui->gms_thresholdFactor->setObjectName(Parameters::kGMSThresholdFactor().c_str());
 
 	// verifyHypotheses
 	_ui->groupBox_vh_epipolar2->setObjectName(Parameters::kVhEpEnabled().c_str());
@@ -1049,6 +1059,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->loopClosure_pnpFlags->setObjectName(Parameters::kVisPnPFlags().c_str());
 	_ui->loopClosure_pnpRefineIterations->setObjectName(Parameters::kVisPnPRefineIterations().c_str());
 	_ui->reextract_nn->setObjectName(Parameters::kVisCorNNType().c_str());
+	connect(_ui->reextract_nn, SIGNAL(currentIndexChanged(int)), this, SLOT(updateFeatureMatchingVisibility()));
 	_ui->reextract_nndrRatio->setObjectName(Parameters::kVisCorNNDR().c_str());
 	_ui->spinBox_visCorGuessWinSize->setObjectName(Parameters::kVisCorGuessWinSize().c_str());
 	_ui->checkBox__visCorGuessMatchToProjection->setObjectName(Parameters::kVisCorGuessMatchToProjection().c_str());
@@ -4600,6 +4611,12 @@ void PreferencesDialog::updateStereoDisparityVisibility()
 			 _ui->comboBox_cameraStereo->currentIndex() == kSrcStereoRealSense2 - kSrcStereo);
 	_ui->checkBox_stereo_rectify->setVisible(_ui->checkBox_stereo_rectify->isEnabled());
 	_ui->label_stereo_rectify->setVisible(_ui->checkBox_stereo_rectify->isEnabled());
+}
+
+void PreferencesDialog::updateFeatureMatchingVisibility()
+{
+	_ui->groupBox_superglue->setVisible(_ui->reextract_nn->currentIndex() == 6);
+	_ui->groupBox_gms->setVisible(_ui->reextract_nn->currentIndex() == 7);
 }
 
 void PreferencesDialog::useOdomFeatures()

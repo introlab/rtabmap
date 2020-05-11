@@ -17,13 +17,14 @@ namespace rtabmap
 class SuperGlue
 {
 public:
-  SuperGlue(const std::string & supergluePythonPath, float matchThreshold = 0.2f, int iterations = 20, bool cuda = false);
+  SuperGlue(const std::string & supergluePythonPath, float matchThreshold = 0.2f, int iterations = 20, bool cuda = true, bool indoor=true);
   virtual ~SuperGlue();
 
   const std::string & path() const {return path_;}
   float matchThreshold() const {return matchThreshold_;}
   int iterations() const {return iterations_;}
   bool cuda() const {return cuda_;}
+  bool indoor() const {return indoor_;}
 
   std::vector<cv::DMatch> match(
 		  const cv::Mat & descriptorsQuery,
@@ -39,6 +40,7 @@ private:
   float matchThreshold_;
   int iterations_;
   bool cuda_;
+  bool indoor_;
 };
 
 }

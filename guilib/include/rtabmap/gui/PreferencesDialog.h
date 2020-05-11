@@ -329,6 +329,7 @@ private Q_SLOTS:
 	void updatePredictionPlot();
 	void updateKpROI();
 	void updateStereoDisparityVisibility();
+	void updateFeatureMatchingVisibility();
 	void useOdomFeatures();
 	void changeWorkingDirectory();
 	void changeDictionaryPath();

@@ -30,12 +30,13 @@ private:
 
 static PythonSingleTon g_python;
 
-SuperGlue::SuperGlue(const std::string & path, float matchThreshold, int iterations, bool cuda) :
+SuperGlue::SuperGlue(const std::string & path, float matchThreshold, int iterations, bool cuda, bool indoor) :
 		pModule_(0),
 		pFunc_(0),
 		matchThreshold_(matchThreshold),
 		iterations_(iterations),
-		cuda_(cuda)
+		cuda_(cuda),
+		indoor_(indoor)
 {
 	path_ = uReplaceChar(path, '~', UDirectory::homeDir());
 	UINFO("path = %s", path_.c_str());
@@ -117,7 +118,7 @@ std::vector<cv::DMatch> SuperGlue::match(
 			{
 				if(PyCallable_Check(pFunc))
 				{
-					PyObject_CallFunction(pFunc, "ifii", descriptorsQuery.cols, matchThreshold_, iterations_, cuda_?1:0);
+					PyObject_CallFunction(pFunc, "ifiii", descriptorsQuery.cols, matchThreshold_, iterations_, cuda_?1:0, indoor_?1:0);
 
 					pFunc_ = PyObject_GetAttrString(pModule_, "match");
 					if(pFunc_ && PyCallable_Check(pFunc_))

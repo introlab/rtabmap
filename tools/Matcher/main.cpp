@@ -61,6 +61,7 @@ void showUsage()
 			"   rtabmap-matcher --Vis/CorNNDR 0.8 from.png to.png\n"
 			"   rtabmap-matcher --Vis/FeatureType 11 --SuperPoint/ModelPath \"superpoint.pt\" --Vis/CorNNType 6 --SuperGlue/Path \"~/SuperGluePretrainedNetwork/rtabmap_superglue.py\" from.png to.png\n"
 			"   rtabmap-matcher --calibration calib.yaml --from_depth from_depth.png --to_depth to_depth.png from.png to.png\n"
+			"   rtabmap-matcher --calibration calib.yaml --Vis/FeatureType 2 --Vis/MaxFeatures 10000 --Vis/CorNNType 7 from.png to.png\n"
 			"\n"
 			"Note: Use \"Vis/\" parameters for feature stuff.\n"
 			"Options:\n"
@@ -279,7 +280,7 @@ int main(int argc, char * argv[])
 				.arg(reg.getDetector()?Feature2D::typeName(reg.getDetector()->getType()).c_str():"?")
 				.arg(Parameters::kVisCorNNType().c_str())
 				.arg(reg.getNNType())
-				.arg(reg.getNNType()<VWDictionary::kNNUndef?VWDictionary::nnStrategyName((VWDictionary::NNStrategy)reg.getNNType()).c_str():reg.getNNType()==5?"BFCrossCheck":reg.getNNType()==6?"SuperGlue":"?")
+				.arg(reg.getNNType()<VWDictionary::kNNUndef?VWDictionary::nnStrategyName((VWDictionary::NNStrategy)reg.getNNType()).c_str():reg.getNNType()==5?"BFCrossCheck":reg.getNNType()==6?"SuperGlue":reg.getNNType()==7?"GMS":"?")
 				.arg(reg.getNNType()<5?QString(" %1=%2").arg(Parameters::kVisCorNNDR().c_str()).arg(reg.getNNDR()):"")
 				.arg(Parameters::kVisEstimationType().c_str())
 				.arg(reg.getEstimationType())

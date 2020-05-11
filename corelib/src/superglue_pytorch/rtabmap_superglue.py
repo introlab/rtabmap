@@ -21,14 +21,14 @@ torch.set_grad_enabled(False)
 device = 'cpu'
 superglue = []
 
-def init(descriptorDim, matchThreshold, iterations, cuda):
+def init(descriptorDim, matchThreshold, iterations, cuda, indoor):
     print("Python init()")
     # Load the SuperPoint and SuperGlue models.
     global device
     device = 'cuda' if torch.cuda.is_available() and cuda else 'cpu'
     config = {
         'superglue': {
-            'weights': 'indoor',
+            'weights': 'indoor' if indoor else 'outdoor',
             'sinkhorn_iterations': iterations,
             'match_threshold': matchThreshold,
             'descriptor_dim' : descriptorDim
@@ -81,5 +81,5 @@ def match(kptsFrom, kptsTo, scoresFrom, scoresTo, descriptorsFrom, descriptorsTo
 
 if __name__ == '__main__':
     #test
-    init(256, 0.2, 20, True)
+    init(256, 0.2, 20, True, True)
     match([[1, 2], [1,3]], [[1, 3], [1,2]], [1, 3], [1,3], np.full((2, 256), 1),np.full((2, 256), 1), 640, 480)

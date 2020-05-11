@@ -44,6 +44,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UMath.h>
 #include <opencv2/core/core_c.h>
 
+#if defined(HAVE_OPENCV_XFEATURES2D) && (CV_MAJOR_VERSION > 3 || (CV_MAJOR_VERSION==3 && CV_MINOR_VERSION >=4 && CV_SUBMINOR_VERSION >= 1))
+#include <opencv2/xfeatures2d.hpp> // For GMS matcher
+#endif
+
 #include <rtflann/flann.hpp>
 
 
@@ -72,6 +76,9 @@ RegistrationVis::RegistrationVis(const ParametersMap & parameters, Registration 
 		_flowMaxLevel(Parameters::defaultVisCorFlowMaxLevel()),
 		_nndr(Parameters::defaultVisCorNNDR()),
 		_nnType(Parameters::defaultVisCorNNType()),
+		_gmsWithRotation(Parameters::defaultGMSWithRotation()),
+		_gmsWithScale(Parameters::defaultGMSWithScale()),
+		_gmsThresholdFactor(Parameters::defaultGMSThresholdFactor()),
 		_guessWinSize(Parameters::defaultVisCorGuessWinSize()),
 		_guessMatchToProjection(Parameters::defaultVisCorGuessMatchToProjection()),
 		_bundleAdjustment(Parameters::defaultVisBundleAdjustment()),
@@ -124,6 +131,9 @@ void RegistrationVis::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kVisCorFlowMaxLevel(), _flowMaxLevel);
 	Parameters::parse(parameters, Parameters::kVisCorNNDR(), _nndr);
 	Parameters::parse(parameters, Parameters::kVisCorNNType(), _nnType);
+	Parameters::parse(parameters, Parameters::kGMSWithRotation(), _gmsWithRotation);
+	Parameters::parse(parameters, Parameters::kGMSWithScale(), _gmsWithScale);
+	Parameters::parse(parameters, Parameters::kGMSThresholdFactor(), _gmsThresholdFactor);
 	Parameters::parse(parameters, Parameters::kVisCorGuessWinSize(), _guessWinSize);
 	Parameters::parse(parameters, Parameters::kVisCorGuessMatchToProjection(), _guessMatchToProjection);
 	Parameters::parse(parameters, Parameters::kVisBundleAdjustment(), _bundleAdjustment);
@@ -144,7 +154,7 @@ void RegistrationVis::parseParameters(const ParametersMap & parameters)
 	{
 		// verify that we have SuperGlue support
 #ifndef RTABMAP_SUPERGLUE_PYTORCH
-		UWARN("%s is set to 6 but RTAB-MAp is not built with SuperGlue support, using default %d.",
+		UWARN("%s is set to 6 but RTAB-Map is not built with SuperGlue support, using default %d.",
 				Parameters::kVisCorNNType().c_str(), Parameters::defaultVisCorNNType());
 		_nnType = Parameters::defaultVisCorNNType();
 #else
@@ -152,10 +162,12 @@ void RegistrationVis::parseParameters(const ParametersMap & parameters)
 		float matchThr = _superGlueMatcher?_superGlueMatcher->matchThreshold():Parameters::defaultSuperGlueMatchThreshold();
 		std::string path = _superGlueMatcher?_superGlueMatcher->path():Parameters::defaultSuperGluePath();
 		bool cuda = _superGlueMatcher?_superGlueMatcher->cuda():Parameters::defaultSuperGlueCuda();
+		bool indoor = _superGlueMatcher?_superGlueMatcher->indoor():Parameters::defaultSuperGlueIndoor();
 		Parameters::parse(parameters, Parameters::kSuperGlueIterations(), iterations);
 		Parameters::parse(parameters, Parameters::kSuperGlueMatchThreshold(), matchThr);
 		Parameters::parse(parameters, Parameters::kSuperGluePath(), path);
 		Parameters::parse(parameters, Parameters::kSuperGlueCuda(), cuda);
+		Parameters::parse(parameters, Parameters::kSuperGlueIndoor(), indoor);
 		if(path.empty())
 		{
 			UERROR("%s parameter should be set to use SuperGlue matching (%s=6), using default %d.",
@@ -167,10 +179,18 @@ void RegistrationVis::parseParameters(const ParametersMap & parameters)
 		else
 		{
 			delete _superGlueMatcher;
-			_superGlueMatcher = new SuperGlue(path, matchThr, iterations, cuda);
+			_superGlueMatcher = new SuperGlue(path, matchThr, iterations, cuda, indoor);
 		}
 #endif
 	}
+#if !defined(HAVE_OPENCV_XFEATURES2D) || (CV_MAJOR_VERSION == 3 && (CV_MINOR_VERSION<4 || CV_MINOR_VERSION==4 && CV_SUBMINOR_VERSION<1))
+	else if(_nnType == 7)
+	}
+		UWARN("%s is set to 7 but RTAB-Map is not built with OpenCV's xfeatures2d support (OpenCV >= 3.4.1 also required), using default %d.",
+				Parameters::kVisCorNNType().c_str(), Parameters::defaultVisCorNNType());
+		_nnType = Parameters::defaultVisCorNNType();
+	}
+#endif
 
 	// override feature parameters
 	for(ParametersMap::const_iterator iter=parameters.begin(); iter!=parameters.end(); ++iter)
@@ -1115,9 +1135,9 @@ Transform RegistrationVis::computeTransformationImpl(
 					std::list<int> fromWordIds;
 					std::list<int> toWordIds;
 #ifdef RTABMAP_SUPERGLUE_PYTORCH
-					if(_nnType == 5 || (_nnType == 6 && _superGlueMatcher))
+					if(_nnType == 5 || (_nnType == 6 && _superGlueMatcher) || _nnType==7)
 #else
-					if(_nnType == 5) // bruteforce cross check
+					if(_nnType == 5 || _nnType == 7) // bruteforce cross check or GMS
 #endif
 					{
 						std::vector<int> fromWordIdsV(descriptorsFrom.rows);
@@ -1156,9 +1176,42 @@ Transform RegistrationVis::computeTransformationImpl(
 #else
 							{
 #endif
-								UDEBUG("BruteForce matching with crosscheck");
-								cv::BFMatcher matcher(descriptorsFrom.type()==CV_8U?cv::NORM_HAMMING:cv::NORM_L2SQR, true);
+								bool doCrossCheck = true;
+#ifdef HAVE_OPENCV_XFEATURES2D
+#if CV_MAJOR_VERSION > 3 || (CV_MAJOR_VERSION==3 && CV_MINOR_VERSION >=4 && CV_SUBMINOR_VERSION >= 1)
+								cv::Size imageSizeFrom;
+								if(_nnType == 7)
+								{
+									imageSizeFrom = imageFrom.size();
+									if(imageSizeFrom.height == 0 || imageSizeFrom.width == 0)
+									{
+										imageSizeFrom = fromSignature.sensorData().cameraModels().size() == 1?fromSignature.sensorData().cameraModels()[0].imageSize():fromSignature.sensorData().stereoCameraModel().left().imageSize();
+									}
+									if(imageSize.height > 0 && imageSize.width > 0 &&
+									   imageSizeFrom.height > 0 && imageSizeFrom.width > 0)
+									{
+										doCrossCheck = false;
+									}
+									else
+									{
+										UDEBUG("Invalid inputs for GMS matching, image size should be set for both inputs, doing bruteforce matching instead.");
+									}
+								}
+#endif
+#endif
+
+								UDEBUG("BruteForce matching%s", _nnType!=7?" with crosscheck":" with GMS");
+								cv::BFMatcher matcher(descriptorsFrom.type()==CV_8U?cv::NORM_HAMMING:cv::NORM_L2SQR, doCrossCheck);
 								matcher.match(descriptorsTo, descriptorsFrom, matches);
+
+#if defined(HAVE_OPENCV_XFEATURES2D) && (CV_MAJOR_VERSION > 3 || (CV_MAJOR_VERSION==3 && CV_MINOR_VERSION >=4 && CV_SUBMINOR_VERSION >= 1))
+								if(!doCrossCheck)
+								{
+									std::vector<cv::DMatch> matchesGMS;
+									cv::xfeatures2d::matchGMS(imageSize, imageSizeFrom, kptsTo, kptsFrom, matches, matchesGMS, _gmsWithRotation, _gmsWithScale, _gmsThresholdFactor);
+									matches = matchesGMS;
+								}
+#endif
 							}
 							for(size_t i=0; i<matches.size(); ++i)
 							{

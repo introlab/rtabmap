@@ -330,11 +330,6 @@ class RTABMAP_EXP Parameters
     RTABMAP_PARAM(SuperPoint, NMSRadius,     int,  4,      uFormat("[%s=true] Minimum distance (pixels) between keypoints.", kSuperPointNMS().c_str()));
     RTABMAP_PARAM(SuperPoint, Cuda,          bool, true,   "Use Cuda device for Torch, otherwise CPU device is used by default.");
 
-    RTABMAP_PARAM_STR(SuperGlue, Path,       "",           "Path to python script file \"rtabmap_superglue.py\" (rtabmap/corelib/src/superglue_pytorch/rtabmap_superglue.py) copied in SuperGlue's Git folder.");
-    RTABMAP_PARAM(SuperGlue, Iterations,     int, 20,      "Sinkhorn iterations.");
-    RTABMAP_PARAM(SuperGlue, MatchThreshold, float, 0.2,   "");
-    RTABMAP_PARAM(SuperGlue, Cuda,           bool, true,   "");
-
     // BayesFilter
     RTABMAP_PARAM(Bayes, VirtualPlacePriorThr, float, 0.9,  "Virtual place prior");
     RTABMAP_PARAM_STR(Bayes, PredictionLC, "0.1 0.36 0.30 0.16 0.062 0.0151 0.00255 0.000324 2.5e-05 1.3e-06 4.8e-08 1.2e-09 1.9e-11 2.2e-13 1.7e-15 8.5e-18 2.9e-20 6.9e-23", "Prediction of loop closures (Gaussian-like, here with sigma=1.6) - Format: {VirtualPlaceProb, LoopClosureProb, NeighborLvl1, NeighborLvl2, ...}.");
@@ -609,7 +604,7 @@ class RTABMAP_EXP Parameters
     RTABMAP_PARAM(Vis, GridRows,                 int, 1,      uFormat("Number of rows of the grid used to extract uniformly \"%s / grid cells\" features from each cell.", kVisMaxFeatures().c_str()));
     RTABMAP_PARAM(Vis, GridCols,                 int, 1,      uFormat("Number of columns of the grid used to extract uniformly \"%s / grid cells\" features from each cell.", kVisMaxFeatures().c_str()));
     RTABMAP_PARAM(Vis, CorType,                  int, 0,      "Correspondences computation approach: 0=Features Matching, 1=Optical Flow");
-    RTABMAP_PARAM(Vis, CorNNType,                int, 1,    uFormat("[%s=0] kNNFlannNaive=0, kNNFlannKdTree=1, kNNFlannLSH=2, kNNBruteForce=3, kNNBruteForceGPU=4, BruteForceCrossCheck=5, SuperGlue=6. Used for features matching approach.", kVisCorType().c_str()));
+    RTABMAP_PARAM(Vis, CorNNType,                int, 1,    uFormat("[%s=0] kNNFlannNaive=0, kNNFlannKdTree=1, kNNFlannLSH=2, kNNBruteForce=3, kNNBruteForceGPU=4, BruteForceCrossCheck=5, SuperGlue=6, GMS=7. Used for features matching approach.", kVisCorType().c_str()));
     RTABMAP_PARAM(Vis, CorNNDR,                  float, 0.6,  uFormat("[%s=0] NNDR: nearest neighbor distance ratio. Used for knn features matching approach.", kVisCorType().c_str()));
     RTABMAP_PARAM(Vis, CorGuessWinSize,          int, 20,     uFormat("[%s=0] Matching window size (pixels) around projected points when a guess transform is provided to find correspondences. 0 means disabled.", kVisCorType().c_str()));
     RTABMAP_PARAM(Vis, CorGuessMatchToProjection, bool, false, uFormat("[%s=0] Match frame's corners to source's projected points (when guess transform is provided) instead of projected points to frame's corners.", kVisCorType().c_str()));
@@ -622,6 +617,17 @@ class RTABMAP_EXP Parameters
 #else
     RTABMAP_PARAM(Vis, BundleAdjustment,         int, 0,      "Optimization with bundle adjustment: 0=disabled, 1=g2o, 2=cvsba, 3=Ceres.");
 #endif
+
+    // Features matching approaches
+    RTABMAP_PARAM_STR(SuperGlue, Path,       "",           "Path to python script file \"rtabmap_superglue.py\" (rtabmap/corelib/src/superglue_pytorch/rtabmap_superglue.py) copied in SuperGlue's Git folder.");
+	RTABMAP_PARAM(SuperGlue, Iterations,     int, 20,      "Sinkhorn iterations.");
+	RTABMAP_PARAM(SuperGlue, MatchThreshold, float, 0.2,   "");
+	RTABMAP_PARAM(SuperGlue, Cuda,           bool, true,   "");
+	RTABMAP_PARAM(SuperGlue, Indoor,         bool, true,   "Use indoor model, otherwise outdoor model is used.");
+
+	RTABMAP_PARAM(GMS, WithRotation,         bool, false,   "Take rotation transformation into account.");
+	RTABMAP_PARAM(GMS, WithScale,            bool, false,   "Take scale transformation into account.");
+	RTABMAP_PARAM(GMS, ThresholdFactor,      double, 6.0,   "The higher, the less matches.");
 
     // ICP registration parameters
     RTABMAP_PARAM(Icp, MaxTranslation,            float, 0.2,   "Maximum ICP translation correction accepted (m).");

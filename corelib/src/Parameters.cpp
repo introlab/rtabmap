@@ -184,16 +184,9 @@ rtabmap::ParametersMap Parameters::getDefaultOdometryParameters(bool stereo, boo
 			group.compare("Optimizer") == 0 ||
 			group.compare("g2o") == 0 ||
 			group.compare("GTSAM") == 0 ||
-			(vis && (group.compare("Vis") == 0 || group.compare("SuperGlue") == 0)) ||
+			(vis && (group.compare("Vis") == 0 || group.compare("SuperGlue") == 0 || group.compare("GMS") == 0)) ||
 			iter->first.compare(kRtabmapPublishRAMUsage())==0)
 		{
-			if(stereo)
-			{
-				if(iter->first.compare(Parameters::kVisEstimationType()) == 0)
-				{
-					iter->second = "1"; // 3D->2D (PNP)
-				}
-			}
 			odomParameters.insert(*iter);
 		}
 	}
