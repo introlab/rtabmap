@@ -969,7 +969,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->sgpytorch_matchThreshold->setObjectName(Parameters::kSuperGlueMatchThreshold().c_str());
 	_ui->sgpytorch_iterations->setObjectName(Parameters::kSuperGlueIterations().c_str());
 	_ui->checkBox_sgpytorch_cuda->setObjectName(Parameters::kSuperGlueCuda().c_str());
-	_ui->checkBox_sgpytorch_indoor->setObjectName(Parameters::kSuperGlueCuda().c_str());
+	_ui->checkBox_sgpytorch_indoor->setObjectName(Parameters::kSuperGlueIndoor().c_str());
 
 	// GMS
 	_ui->checkBox_gms_withRotation->setObjectName(Parameters::kGMSWithRotation().c_str());
