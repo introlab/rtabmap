@@ -185,7 +185,7 @@ void RegistrationVis::parseParameters(const ParametersMap & parameters)
 	}
 #if !defined(HAVE_OPENCV_XFEATURES2D) || (CV_MAJOR_VERSION == 3 && (CV_MINOR_VERSION<4 || CV_MINOR_VERSION==4 && CV_SUBMINOR_VERSION<1))
 	else if(_nnType == 7)
-	}
+	{
 		UWARN("%s is set to 7 but RTAB-Map is not built with OpenCV's xfeatures2d support (OpenCV >= 3.4.1 also required), using default %d.",
 				Parameters::kVisCorNNType().c_str(), Parameters::defaultVisCorNNType());
 		_nnType = Parameters::defaultVisCorNNType();
