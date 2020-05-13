@@ -47,8 +47,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QHBoxLayout>
 #include <QMultiMap>
 #include <QString>
-#include <opencv2/core.hpp>
-#include <opencv2/imgcodecs.hpp>
+#include <opencv2/core/core.hpp>
 
 using namespace rtabmap;
 

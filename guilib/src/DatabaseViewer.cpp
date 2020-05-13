@@ -7321,8 +7321,8 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent)
 										"the database has images, it is recommended to use %2=2 instead so that "
 										"the guess can be found visually.")
 										.arg(Parameters::kRegStrategy().c_str()).arg(Parameters::kRegStrategy().c_str()),
-										QMessageBox::StandardButton::Yes | QMessageBox::StandardButton::No,
-										QMessageBox::StandardButton::Yes) == QMessageBox::StandardButton::Yes)
+										QMessageBox::Yes | QMessageBox::No,
+										QMessageBox::Yes) == QMessageBox::Yes)
 							{
 								guess = fromIter->second.inverse() * toIter->second;
 							}
@@ -7345,8 +7345,8 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent)
 							"\n\nOtherwise, if the database has images, it is recommended to use %2=2 "
 							"instead so that the guess can be found visually.")
 							.arg(Parameters::kRegStrategy().c_str()).arg(Parameters::kRegStrategy().c_str()),
-							QMessageBox::StandardButton::Yes | QMessageBox::StandardButton::Abort,
-							QMessageBox::StandardButton::Abort) == QMessageBox::StandardButton::Yes)
+							QMessageBox::Yes | QMessageBox::Abort,
+							QMessageBox::Abort) == QMessageBox::Yes)
 				{
 					guess.setIdentity();
 				}

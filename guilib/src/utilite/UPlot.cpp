@@ -48,6 +48,7 @@
 #include <QtSvg/QSvgGenerator>
 #endif
 #include <cmath>
+#include <limits>
 
 #define PRINT_DEBUG 0
 
