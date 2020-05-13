@@ -2395,12 +2395,13 @@ bool RTABMapApp::exportMesh(
 							gains[1] = jter->second.gains[1];
 							gains[2] = jter->second.gains[2];
 
-							rtabmap::SensorData data = rtabmap_->getMemory()->getNodeData(iter->first, false);
+							rtabmap::SensorData data = rtabmap_->getMemory()->getNodeData(iter->first, true, false, false, false);
 							data.uncompressData(0, &depth);
 						}
 						else
 						{
-							rtabmap::SensorData data = rtabmap_->getMemory()->getNodeData(iter->first, true);
+							rtabmap::SensorData data = rtabmap_->getMemory()->getNodeData(iter->first, true, false, false, false);
+							data.uncompressData();
 							if(!data.imageRaw().empty() && !data.depthRaw().empty() && data.cameraModels().size() == 1)
 							{
 								cloud = rtabmap::util3d::cloudRGBFromSensorData(data, meshDecimation_, maxCloudDepth_, minCloudDepth_, indices.get());
@@ -2665,7 +2666,8 @@ bool RTABMapApp::exportMesh(
 						}
 						else
 						{
-							rtabmap::SensorData data = rtabmap_->getMemory()->getNodeData(iter->first, true);
+							rtabmap::SensorData data = rtabmap_->getMemory()->getNodeData(iter->first, true, false, false, false);
+							data.uncompressData();
 							if(!data.imageRaw().empty() && !data.depthRaw().empty() && data.cameraModels().size() == 1)
 							{
 								cloud = rtabmap::util3d::cloudRGBFromSensorData(data, meshDecimation_, maxCloudDepth_, minCloudDepth_);
@@ -2898,7 +2900,8 @@ bool RTABMapApp::exportMesh(
 						gains[1] = jter->second.gains[1];
 						gains[2] = jter->second.gains[2];
 					}
-					rtabmap::SensorData data = rtabmap_->getMemory()->getNodeData(iter->first, true);
+					rtabmap::SensorData data = rtabmap_->getMemory()->getNodeData(iter->first, true, false, false, false);
+					data.uncompressData();
 					if(!data.imageRaw().empty() && !data.depthRaw().empty())
 					{
 						// full resolution
@@ -2917,7 +2920,8 @@ bool RTABMapApp::exportMesh(
 					}
 					else
 					{
-						rtabmap::SensorData data = rtabmap_->getMemory()->getNodeData(iter->first, true);
+						rtabmap::SensorData data = rtabmap_->getMemory()->getNodeData(iter->first, true, false, false, false);
+						data.uncompressData();
 						if(!data.imageRaw().empty() && !data.depthRaw().empty())
 						{
 							cloud = rtabmap::util3d::cloudRGBFromSensorData(data, meshDecimation_, maxCloudDepth_, minCloudDepth_, indices.get());
