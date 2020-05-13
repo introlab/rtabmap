@@ -30,6 +30,38 @@ private:
 
 static PythonSingleTon g_python;
 
+std::string getTraceback()
+{
+	// Author: https://stackoverflow.com/questions/41268061/c-c-python-exception-traceback-not-being-generated
+
+	PyObject* type;
+	PyObject* value;
+	PyObject* traceback;
+
+	PyErr_Fetch(&type, &value, &traceback);
+	PyErr_NormalizeException(&type, &value, &traceback);
+
+	std::string fcn = "";
+	fcn += "def get_pretty_traceback(exc_type, exc_value, exc_tb):\n";
+	fcn += "    import sys, traceback\n";
+	fcn += "    lines = []\n";
+	fcn += "    lines = traceback.format_exception(exc_type, exc_value, exc_tb)\n";
+	fcn += "    output = '\\n'.join(lines)\n";
+	fcn += "    return output\n";
+
+	PyRun_SimpleString(fcn.c_str());
+	PyObject* mod = PyImport_ImportModule("__main__");
+	PyObject* method = PyObject_GetAttrString(mod, "get_pretty_traceback");
+	PyObject* outStr = PyObject_CallObject(method, Py_BuildValue("OOO", type, value, traceback));
+	std::string pretty = PyBytes_AsString(PyUnicode_AsASCIIString(outStr));
+
+	Py_DECREF(method);
+	Py_DECREF(outStr);
+	Py_DECREF(mod);
+
+	return pretty;
+}
+
 SuperGlue::SuperGlue(const std::string & path, float matchThreshold, int iterations, bool cuda, bool indoor) :
 		pModule_(0),
 		pFunc_(0),
@@ -69,6 +101,7 @@ SuperGlue::SuperGlue(const std::string & path, float matchThreshold, int iterati
 	if(!pModule_)
 	{
 		UERROR("Module %s could not be imported!", scriptName.c_str());
+		UERROR("%s", getTraceback().c_str());
 	}
 }
 
@@ -128,6 +161,7 @@ std::vector<cv::DMatch> SuperGlue::match(
 					else
 					{
 						UERROR("Cannot find method \"match(...)\" in %s", path_.c_str());
+						UERROR("%s", getTraceback().c_str());
 						if(pFunc_)
 						{
 							Py_DECREF(pFunc_);
@@ -139,6 +173,7 @@ std::vector<cv::DMatch> SuperGlue::match(
 				else
 				{
 					UERROR("Cannot call method \"init(...)\" in %s", path_.c_str());
+					UERROR("%s", getTraceback().c_str());
 					return matches;
 				}
 				Py_DECREF(pFunc);
@@ -146,6 +181,7 @@ std::vector<cv::DMatch> SuperGlue::match(
 			else
 			{
 				UERROR("Cannot find method \"init(...)\"");
+				UERROR("%s", getTraceback().c_str());
 				return matches;
 			}
 			UDEBUG("init time = %fs", timer.ticks());
@@ -205,23 +241,29 @@ std::vector<cv::DMatch> SuperGlue::match(
 			UDEBUG("Preparing data time = %fs", timer.ticks());
 
 			PyObject *pReturn = PyObject_CallFunctionObjArgs(pFunc_, pKeypointsQuery, pkeypointsTrain, pScoresQuery, pScoresTrain, pDescriptorsQuery, pDescriptorsTrain, pImageWidth, pImageHeight, NULL);
-			UASSERT(pReturn);
-
-			UDEBUG("Python matching time = %fs", timer.ticks());
-
-			PyArrayObject *np_ret = reinterpret_cast<PyArrayObject*>(pReturn);
-
-			// Convert back to C++ array and print.
-			int len1 = PyArray_SHAPE(np_ret)[0];
-			int len2 = PyArray_SHAPE(np_ret)[1];
-			//int type = PyArray_TYPE(np_ret); // Should be long
-			long* c_out = reinterpret_cast<long*>(PyArray_DATA(np_ret));
-			for (int i = 0; i < len1*len2; i+=2)
+			if(pReturn == NULL)
 			{
-				matches.push_back(cv::DMatch(c_out[i], c_out[i+1], 0));
+				UERROR("Failed to call match() function!");
+				UERROR("%s", getTraceback().c_str());
+			}
+			else
+			{
+				UDEBUG("Python matching time = %fs", timer.ticks());
+
+				PyArrayObject *np_ret = reinterpret_cast<PyArrayObject*>(pReturn);
+
+				// Convert back to C++ array and print.
+				int len1 = PyArray_SHAPE(np_ret)[0];
+				int len2 = PyArray_SHAPE(np_ret)[1];
+				//int type = PyArray_TYPE(np_ret); // Should be long
+				long* c_out = reinterpret_cast<long*>(PyArray_DATA(np_ret));
+				for (int i = 0; i < len1*len2; i+=2)
+				{
+					matches.push_back(cv::DMatch(c_out[i], c_out[i+1], 0));
+				}
+				Py_DECREF(pReturn);
 			}
 
-			Py_DECREF(pReturn);
 			Py_DECREF(pDescriptorsQuery);
 			Py_DECREF(pDescriptorsTrain);
 			Py_DECREF(pKeypointsQuery);
