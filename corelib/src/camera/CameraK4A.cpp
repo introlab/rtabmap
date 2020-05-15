@@ -61,6 +61,7 @@ CameraK4A::CameraK4A(
 	previousStamp_(0.0)
 #endif
 {
+#ifdef RTABMAP_K4A
 	device_ = NULL;
 
 	config_ = K4A_DEVICE_CONFIG_INIT_DISABLE_ALL;
@@ -68,8 +69,7 @@ CameraK4A::CameraK4A(
 	config_.depth_mode = K4A_DEPTH_MODE_WFOV_2X2BINNED;
 	config_.color_format = K4A_IMAGE_FORMAT_COLOR_BGRA32;
 	config_.color_resolution = K4A_COLOR_RESOLUTION_720P;
-
-	UWARN("CameraK4A::CameraK4A");
+#endif
 }
 
 CameraK4A::CameraK4A(
@@ -187,7 +187,7 @@ bool CameraK4A::init(const std::string & calibrationFolder, const std::string & 
 			return false;
 		}
 
-	        UWARN("CameraK4A found k4a device attached");
+	        UINFO("CameraK4A found k4a device attached");
 
 		// Open the first plugged in Kinect device
 		if (K4A_FAILED(k4a_device_open(K4A_DEVICE_DEFAULT, &device_)))
@@ -206,7 +206,7 @@ bool CameraK4A::init(const std::string & calibrationFolder, const std::string & 
 		serial_number_.assign(serial, serial_size);
 		free(serial);
 
-		UWARN("Opened device: %s", serial_number_.c_str());
+		UINFO("Opened device: %s", serial_number_.c_str());
 
 		// Start the camera with the given configuration
 		if (K4A_FAILED(k4a_device_start_cameras(device_, &config_)))
@@ -216,7 +216,7 @@ bool CameraK4A::init(const std::string & calibrationFolder, const std::string & 
 			return false;
 		}
 
-		UWARN("Camera started successfully");
+		UINFO("Camera started successfully");
 		return false;
 	}
 	
