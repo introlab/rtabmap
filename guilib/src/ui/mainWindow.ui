@@ -232,6 +232,7 @@
       <addaction name="menuXtion_PRO_LIVE"/>
       <addaction name="menuSense_3D_scanner"/>
       <addaction name="menuKinect_v2"/>
+      <addaction name="menuKinect_K4A"/>
       <addaction name="menuRealSense_R200"/>
       <addaction name="menuRealSense_ZR300"/>
       <addaction name="menuRealSense_SR300"/>
