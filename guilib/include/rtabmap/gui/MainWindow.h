@@ -172,6 +172,7 @@ protected Q_SLOTS:
 	void selectOpenni2();
 	void selectFreenect2();
 	void selectK4W2();
+	void selectK4A();
 	void selectRealSense();
 	void selectRealSense2();
 	void selectRealSense2Stereo();
