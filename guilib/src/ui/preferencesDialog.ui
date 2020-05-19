@@ -63,9 +63,9 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-455</y>
+            <y>0</y>
             <width>680</width>
-            <height>3497</height>
+            <height>3270</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -95,7 +95,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>21</number>
+                <number>19</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,1">
@@ -4951,7 +4951,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                     <property name="sizeHint" stdset="0">
                                      <size>
                                       <width>20</width>
-                                      <height>13</height>
+                                      <height>0</height>
                                      </size>
                                     </property>
                                    </spacer>
@@ -5231,21 +5231,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                               </layout>
                              </widget>
                              <widget class="QWidget" name="page_77">
-                              <layout class="QVBoxLayout" name="verticalLayout_135">
-                               <item>
-                                <spacer name="verticalSpacer_75">
-                                 <property name="orientation">
-                                  <enum>Qt::Vertical</enum>
-                                 </property>
-                                 <property name="sizeHint" stdset="0">
-                                  <size>
-                                   <width>20</width>
-                                   <height>471</height>
-                                  </size>
-                                 </property>
-                                </spacer>
-                               </item>
-                              </layout>
+                              <layout class="QVBoxLayout" name="verticalLayout_135"/>
                              </widget>
                              <widget class="QWidget" name="page_80">
                               <layout class="QVBoxLayout" name="verticalLayout_140">
@@ -5364,7 +5350,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                  <property name="sizeHint" stdset="0">
                                   <size>
                                    <width>20</width>
-                                   <height>596</height>
+                                   <height>0</height>
                                   </size>
                                  </property>
                                 </spacer>
@@ -8631,7 +8617,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                       <layout class="QVBoxLayout" name="verticalLayout_60">
                        <item>
                         <layout class="QGridLayout" name="gridLayout_32" columnstretch="0,1">
-                         <item row="4" column="1">
+                         <item row="5" column="1">
                           <widget class="QLabel" name="label_22">
                            <property name="toolTip">
                             <string>0 means that the response (hessian) threshold 
@@ -8650,7 +8636,7 @@ generate the number of words requested.</string>
                            </property>
                           </widget>
                          </item>
-                         <item row="5" column="1">
+                         <item row="6" column="1">
                           <widget class="QLabel" name="label_81">
                            <property name="toolTip">
                             <string>0 means that the response (hessian) threshold 
@@ -8669,7 +8655,7 @@ generate the number of words requested.</string>
                            </property>
                           </widget>
                          </item>
-                         <item row="9" column="1">
+                         <item row="10" column="1">
                           <widget class="QLabel" name="label_99">
                            <property name="text">
                             <string>Top ROI ratio (0 = no change).</string>
@@ -8682,7 +8668,7 @@ generate the number of words requested.</string>
                            </property>
                           </widget>
                          </item>
-                         <item row="5" column="0">
+                         <item row="6" column="0">
                           <widget class="QDoubleSpinBox" name="surf_doubleSpinBox_ratioBadSign">
                            <property name="decimals">
                             <number>2</number>
@@ -8784,14 +8770,14 @@ generate the number of words requested.</string>
                            </item>
                           </widget>
                          </item>
-                         <item row="6" column="0">
+                         <item row="7" column="0">
                           <widget class="QLineEdit" name="lineEdit_kp_roi">
                            <property name="readOnly">
                             <bool>true</bool>
                            </property>
                           </widget>
                          </item>
-                         <item row="6" column="1">
+                         <item row="7" column="1">
                           <widget class="QLabel" name="label_101">
                            <property name="text">
                             <string>ROI ratios [left, right, top, bottom] between 0 and 1.</string>
@@ -8823,7 +8809,7 @@ generate the number of words requested.</string>
                            </property>
                           </widget>
                          </item>
-                         <item row="8" column="0">
+                         <item row="9" column="0">
                           <widget class="QDoubleSpinBox" name="doubleSpinBox_kp_roi1">
                            <property name="suffix">
                             <string> %</string>
@@ -8868,7 +8854,7 @@ generate the number of words requested.</string>
                            </property>
                           </widget>
                          </item>
-                         <item row="4" column="0">
+                         <item row="5" column="0">
                           <widget class="QSpinBox" name="surf_spinBox_wordsPerImageTarget">
                            <property name="minimum">
                             <number>-1</number>
@@ -8881,7 +8867,7 @@ generate the number of words requested.</string>
                            </property>
                           </widget>
                          </item>
-                         <item row="7" column="0">
+                         <item row="8" column="0">
                           <widget class="QDoubleSpinBox" name="doubleSpinBox_kp_roi0">
                            <property name="suffix">
                             <string> %</string>
@@ -8891,7 +8877,7 @@ generate the number of words requested.</string>
                            </property>
                           </widget>
                          </item>
-                         <item row="7" column="1">
+                         <item row="8" column="1">
                           <widget class="QLabel" name="label_97">
                            <property name="text">
                             <string>Left ROI ratio (0 = no change).</string>
@@ -8904,7 +8890,7 @@ generate the number of words requested.</string>
                            </property>
                           </widget>
                          </item>
-                         <item row="8" column="1">
+                         <item row="9" column="1">
                           <widget class="QLabel" name="label_98">
                            <property name="text">
                             <string>Right ROI ratio (0 = no change).</string>
@@ -8917,7 +8903,7 @@ generate the number of words requested.</string>
                            </property>
                           </widget>
                          </item>
-                         <item row="9" column="0">
+                         <item row="10" column="0">
                           <widget class="QDoubleSpinBox" name="doubleSpinBox_kp_roi2">
                            <property name="suffix">
                             <string> %</string>
@@ -8927,7 +8913,7 @@ generate the number of words requested.</string>
                            </property>
                           </widget>
                          </item>
-                         <item row="10" column="0">
+                         <item row="11" column="0">
                           <widget class="QDoubleSpinBox" name="doubleSpinBox_kp_roi3">
                            <property name="suffix">
                             <string> %</string>
@@ -8937,7 +8923,7 @@ generate the number of words requested.</string>
                            </property>
                           </widget>
                          </item>
-                         <item row="10" column="1">
+                         <item row="11" column="1">
                           <widget class="QLabel" name="label_100">
                            <property name="text">
                             <string>Bottom ROI ratio (0 = no change).</string>
@@ -8972,7 +8958,7 @@ generate the number of words requested.</string>
                            </property>
                           </widget>
                          </item>
-                         <item row="11" column="1">
+                         <item row="12" column="1">
                           <widget class="QLabel" name="label_50">
                            <property name="toolTip">
                             <string>0 means that the response (hessian) threshold 
@@ -8991,7 +8977,7 @@ generate the number of words requested.</string>
                            </property>
                           </widget>
                          </item>
-                         <item row="11" column="0">
+                         <item row="12" column="0">
                           <widget class="QSpinBox" name="spinBox_KPGridRows">
                            <property name="minimum">
                             <number>1</number>
@@ -9004,7 +8990,7 @@ generate the number of words requested.</string>
                            </property>
                           </widget>
                          </item>
-                         <item row="12" column="0">
+                         <item row="13" column="0">
                           <widget class="QSpinBox" name="spinBox_KPGridCols">
                            <property name="minimum">
                             <number>1</number>
@@ -9017,7 +9003,7 @@ generate the number of words requested.</string>
                            </property>
                           </widget>
                          </item>
-                         <item row="12" column="1">
+                         <item row="13" column="1">
                           <widget class="QLabel" name="label_86">
                            <property name="toolTip">
                             <string>0 means that the response (hessian) threshold 
@@ -9057,6 +9043,32 @@ generate the number of words requested.</string>
                          </item>
                          <item row="3" column="0">
                           <widget class="QCheckBox" name="checkBox_memDepthAsMask">
+                           <property name="text">
+                            <string/>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="4" column="1">
+                          <widget class="QLabel" name="label_582">
+                           <property name="toolTip">
+                            <string>0 means that the response (hessian) threshold 
+used for the detector will not be adapted. 
+Otherwise, the threshold is modified to 
+generate the number of words requested.</string>
+                           </property>
+                           <property name="text">
+                            <string>Triangulate features without depth using stereo from motion (odometry). It would be ignored if depth as mask is checked and the feature detector used supports masking.</string>
+                           </property>
+                           <property name="wordWrap">
+                            <bool>true</bool>
+                           </property>
+                           <property name="textInteractionFlags">
+                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="4" column="0">
+                          <widget class="QCheckBox" name="checkBox_memStereoFromMotion">
                            <property name="text">
                             <string/>
                            </property>
@@ -10497,7 +10509,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                        </item>
                        <item>
                         <layout class="QGridLayout" name="gridLayout_50" columnstretch="0,1">
-                         <item row="4" column="0">
+                         <item row="5" column="0">
                           <widget class="QDoubleSpinBox" name="localDetection_pathFilteringRadius">
                            <property name="suffix">
                             <string> m</string>
@@ -10513,7 +10525,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                            </property>
                           </widget>
                          </item>
-                         <item row="5" column="1">
+                         <item row="6" column="1">
                           <widget class="QLabel" name="label_scanMatching_4">
                            <property name="text">
                             <string>When comparing to a local path, merge the laser scans using the odometry poses instead of the ones in the optimized local graph.</string>
@@ -10526,7 +10538,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                            </property>
                           </widget>
                          </item>
-                         <item row="4" column="1">
+                         <item row="5" column="1">
                           <widget class="QLabel" name="label_space3_3">
                            <property name="text">
                             <string>Path filtering radius to avoid merging laser scans which are close. 0 to ignore. A path should also be inside that radius to be considered for proximity detection.</string>
@@ -10539,7 +10551,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                            </property>
                           </widget>
                          </item>
-                         <item row="5" column="0">
+                         <item row="6" column="0">
                           <widget class="QCheckBox" name="checkBox_localSpacePathOdomPosesUsed">
                            <property name="text">
                             <string/>
@@ -10569,7 +10581,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                            </property>
                           </widget>
                          </item>
-                         <item row="7" column="1">
+                         <item row="8" column="1">
                           <widget class="QLabel" name="label_scanMatching_6">
                            <property name="text">
                             <string>Save scan matching IDs in link's user data.</string>
@@ -10582,7 +10594,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                            </property>
                           </widget>
                          </item>
-                         <item row="7" column="0">
+                         <item row="8" column="0">
                           <widget class="QCheckBox" name="checkBox_localSpaceScanMatchingIDsSaved">
                            <property name="text">
                             <string/>
@@ -10661,6 +10673,26 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                            </property>
                            <property name="value">
                             <number>0</number>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="4" column="1">
+                          <widget class="QLabel" name="label_scanMatching_13">
+                           <property name="text">
+                            <string>Use odometry as motion guess for visual proximity detection.</string>
+                           </property>
+                           <property name="wordWrap">
+                            <bool>true</bool>
+                           </property>
+                           <property name="textInteractionFlags">
+                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="4" column="0">
+                          <widget class="QCheckBox" name="checkBox_localSpaceOdomGuess">
+                           <property name="text">
+                            <string/>
                            </property>
                           </widget>
                          </item>
@@ -14901,7 +14933,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                           <property name="sizeHint" stdset="0">
                            <size>
                             <width>20</width>
-                            <height>1029</height>
+                            <height>0</height>
                            </size>
                           </property>
                          </spacer>
@@ -15124,7 +15156,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                           <property name="sizeHint" stdset="0">
                            <size>
                             <width>20</width>
-                            <height>40</height>
+                            <height>0</height>
                            </size>
                           </property>
                          </spacer>
@@ -15193,7 +15225,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                           <property name="sizeHint" stdset="0">
                            <size>
                             <width>20</width>
-                            <height>40</height>
+                            <height>0</height>
                            </size>
                           </property>
                          </spacer>
@@ -15387,7 +15419,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                           <property name="sizeHint" stdset="0">
                            <size>
                             <width>20</width>
-                            <height>961</height>
+                            <height>0</height>
                            </size>
                           </property>
                          </spacer>
@@ -16200,7 +16232,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                           <property name="sizeHint" stdset="0">
                            <size>
                             <width>20</width>
-                            <height>1090</height>
+                            <height>0</height>
                            </size>
                           </property>
                          </spacer>
@@ -16236,7 +16268,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                              <property name="sizeHint" stdset="0">
                               <size>
                                <width>20</width>
-                               <height>40</height>
+                               <height>0</height>
                               </size>
                              </property>
                             </spacer>
@@ -21673,19 +21705,6 @@ Lower the ratio -&gt; higher the precision.</string>
                 </layout>
                </widget>
               </widget>
-             </item>
-             <item>
-              <spacer name="verticalSpacer_42">
-               <property name="orientation">
-                <enum>Qt::Vertical</enum>
-               </property>
-               <property name="sizeHint" stdset="0">
-                <size>
-                 <width>20</width>
-                 <height>40</height>
-                </size>
-               </property>
-              </spacer>
              </item>
             </layout>
            </item>

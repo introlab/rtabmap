@@ -106,11 +106,117 @@ int main(int argc, char * argv[])
 	ParametersMap parameters = driver->getLastParameters();
 	ParametersMap defaultParameters = Parameters::getDefaultParameters();
 	ParametersMap removedParameters = Parameters::getBackwardCompatibilityMap();
+	std::string otherDatabasePathName;
+	if(!otherDatabasePath.empty())
+	{
+		driver->closeConnection(false);
+		if(!driver->openConnection(otherDatabasePath))
+		{
+			printf("Cannot open database \"%s\".\n", otherDatabasePath.c_str());
+			delete driver;
+			return -1;
+		}
+		otherDatabasePathName = UFile::getName(otherDatabasePath);
+		defaultParameters = driver->getLastParameters();
+		removedParameters.clear();
+	}
+
+#ifdef _WIN32
+	HANDLE H = GetStdHandle(STD_OUTPUT_HANDLE);
+#endif
+	int padding = 35;
+	std::cout << ("Parameters (Yellow=modified, Red=old parameter not used anymore):\n");
+	for(ParametersMap::iterator iter=parameters.begin(); iter!=parameters.end(); ++iter)
+	{
+		ParametersMap::const_iterator jter = defaultParameters.find(iter->first);
+		std::string defaultValue;
+		bool defaultValueSet = false;
+		if(jter == defaultParameters.end())
+		{
+			jter = removedParameters.find(iter->first);
+			if(jter != removedParameters.end())
+			{
+				defaultValue = jter->second;
+				defaultValueSet = true;
+			}
+		}
+		else
+		{
+			defaultValue = jter->second;
+			defaultValueSet = true;
+		}
+
+		if(defaultValueSet &&
+		   iter->second.compare(defaultValue) != 0 &&
+		   iter->first.compare(Parameters::kRtabmapWorkingDirectory()) != 0)
+		{
+			bool different = true;
+			if(Parameters::getType(iter->first).compare("double") ==0 ||
+			   Parameters::getType(iter->first).compare("float") == 0)
+			{
+				if(uStr2Double(iter->second) == uStr2Double(defaultValue))
+				{
+					different = false;
+				}
+			}
+
+			if(different)
+			{
+				//yellow
+#ifdef _WIN32
+				SetConsoleTextAttribute(H,COLOR_YELLOW);
+#else
+				printf("%s", COLOR_YELLOW);
+#endif
+				std::cout << (uFormat("%s%s  (%s=%s)\n", pad(iter->first + "=", padding).c_str(), iter->second.c_str(), otherDatabasePath.empty()?"default":otherDatabasePathName.c_str(), defaultValue.c_str()));
+			}
+			else if(!diff)
+			{
+				//green
+#ifdef _WIN32
+				SetConsoleTextAttribute(H,COLOR_NORMAL);
+#else
+				printf("%s", COLOR_NORMAL);
+#endif
+				std::cout << (uFormat("%s%s\n", pad(iter->first + "=", padding).c_str(), iter->second.c_str()));
+			}
+		}
+		else if(!defaultValueSet && otherDatabasePath.empty())
+		{
+			//red
+#ifdef _WIN32
+			SetConsoleTextAttribute(H,COLOR_RED);
+#else
+			printf("%s", COLOR_RED);
+#endif
+			std::cout << (uFormat("%s%s\n", pad(iter->first + "=", padding).c_str(), iter->second.c_str()));
+		}
+		else if(!diff)
+		{
+			//green
+#ifdef _WIN32
+			SetConsoleTextAttribute(H,COLOR_NORMAL);
+#else
+			printf("%s", COLOR_NORMAL);
+#endif
+			std::cout << (uFormat("%s%s\n", pad(iter->first + "=", padding).c_str(), iter->second.c_str()));
+		}
+#ifdef _WIN32
+		SetConsoleTextAttribute(H,COLOR_NORMAL);
+#else
+		printf("%s", COLOR_NORMAL);
+#endif
+	}
+
 	if(otherDatabasePath.empty())
 	{
+		printf("\nInfo:\n\n");
 		std::string info;
 		std::set<int> ids;
 		driver->getAllNodeIds(ids);
+		Transform lastLocalization;
+		std::map<int, Transform> optimizedPoses = driver->loadOptimizedPoses(&lastLocalization);
+		std::set<int> mapsLinkedToLastGraph;
 		int lastMapId=0;
 		double previousStamp = 0.0f;
 		Transform previousPose;
@@ -143,6 +249,10 @@ int main(int argc, char * argv[])
 			if(gps.stamp()>0.0)
 			{
 				++gpsValues;
+			}
+			if(optimizedPoses.find(id) != optimizedPoses.end())
+			{
+				mapsLinkedToLastGraph.insert(mapId);
 			}
 			if(iter!=ids.begin())
 			{
@@ -193,10 +303,23 @@ int main(int argc, char * argv[])
 		{
 			std::cout << (uFormat("%s%f m\n", pad("Total odometry length:").c_str(), infoTotalOdom));
 		}
+
+		std::stringstream sessionsInOptGraphStr;
+		for(std::set<int>::iterator iter=mapsLinkedToLastGraph.begin(); iter!=mapsLinkedToLastGraph.end(); ++iter)
+		{
+			if(iter!=mapsLinkedToLastGraph.begin())
+			{
+				sessionsInOptGraphStr << ", ";
+			}
+			sessionsInOptGraphStr << *iter;
+		}
+
 		std::cout << (uFormat("%s%fs\n", pad("Total time:").c_str(), infoTotalTime));
 		std::cout << (uFormat("%s%d nodes and %d words\n", pad("LTM:").c_str(), (int)ids.size(), driver->getTotalDictionarySize()));
 		std::cout << (uFormat("%s%d nodes and %d words\n", pad("WM:").c_str(), driver->getLastNodesSize(), driver->getLastDictionarySize()));
 		std::cout << (uFormat("%s%d poses and %d links\n", pad("Global graph:").c_str(), odomPoses, links.size()));
+		std::cout << (uFormat("%s%d poses\n", pad("Optimized graph:").c_str(), (int)optimizedPoses.size(), links.size()));
+		std::cout << (uFormat("%s%d/%d [%s]\n", pad("Maps in graph:").c_str(), (int)mapsLinkedToLastGraph.size(), sessions, sessionsInOptGraphStr.str().c_str()));
 		std::cout << (uFormat("%s%d poses\n", pad("Ground truth:").c_str(), gtPoses));
 		std::cout << (uFormat("%s%d poses\n", pad("GPS:").c_str(), gpsValues));
 		std::cout << (uFormat("Links:\n"));
@@ -245,105 +368,6 @@ int main(int argc, char * argv[])
 		mem = dbSize - total;
 		std::cout << (uFormat("%s%d %s\t(%.2f%%)\n", pad("Other (indexing):").c_str(), mem>1000000?mem/1000000:mem>1000?mem/1000:mem, mem>1000000?"MB":mem>1000?"KB":"Bytes", dbSize>0?double(mem)/double(dbSize)*100.0:0.0));
 		std::cout << ("\n");
-		std::cout << ("Parameters (Yellow=modified, Red=old parameter not used anymore):\n");
-	}
-	else
-	{
-		driver->closeConnection(false);
-		if(!driver->openConnection(otherDatabasePath))
-		{
-			printf("Cannot open database \"%s\".\n", otherDatabasePath.c_str());
-			delete driver;
-			return -1;
-		}
-		defaultParameters = driver->getLastParameters();
-		removedParameters.clear();
-	}
-
-#ifdef _WIN32
-	HANDLE H = GetStdHandle(STD_OUTPUT_HANDLE);
-#endif
-	int padding = 35;
-	for(ParametersMap::iterator iter=parameters.begin(); iter!=parameters.end(); ++iter)
-	{
-		ParametersMap::const_iterator jter = defaultParameters.find(iter->first);
-		std::string defaultValue;
-		bool defaultValueSet = false;
-		if(jter == defaultParameters.end())
-		{
-			jter = removedParameters.find(iter->first);
-			if(jter != removedParameters.end())
-			{
-				defaultValue = jter->second;
-				defaultValueSet = true;
-			}
-		}
-		else
-		{
-			defaultValue = jter->second;
-			defaultValueSet = true;
-		}
-
-		if(defaultValueSet &&
-		   iter->second.compare(defaultValue) != 0 &&
-		   iter->first.compare(Parameters::kRtabmapWorkingDirectory()) != 0)
-		{
-			bool different = true;
-			if(Parameters::getType(iter->first).compare("double") ==0 ||
-			   Parameters::getType(iter->first).compare("float") == 0)
-			{
-				if(uStr2Double(iter->second) == uStr2Double(defaultValue))
-				{
-					different = false;
-				}
-			}
-
-			if(different)
-			{
-				//yellow
-#ifdef _WIN32
-				SetConsoleTextAttribute(H,COLOR_YELLOW);
-#else
-				printf("%s", COLOR_YELLOW);
-#endif
-				std::cout << (uFormat("%s%s  (%s=%s)\n", pad(iter->first + "=", padding).c_str(), iter->second.c_str(), otherDatabasePath.empty()?"default":"other", defaultValue.c_str()));
-			}
-			else if(!diff)
-			{
-				//green
-#ifdef _WIN32
-				SetConsoleTextAttribute(H,COLOR_NORMAL);
-#else
-				printf("%s", COLOR_NORMAL);
-#endif
-				std::cout << (uFormat("%s%s\n", pad(iter->first + "=", padding).c_str(), iter->second.c_str()));
-			}
-		}
-		else if(!defaultValueSet && otherDatabasePath.empty())
-		{
-			//red
-#ifdef _WIN32
-			SetConsoleTextAttribute(H,COLOR_RED);
-#else
-			printf("%s", COLOR_RED);
-#endif
-			std::cout << (uFormat("%s%s\n", pad(iter->first + "=", padding).c_str(), iter->second.c_str()));
-		}
-		else if(!diff)
-		{
-			//green
-#ifdef _WIN32
-			SetConsoleTextAttribute(H,COLOR_NORMAL);
-#else
-			printf("%s", COLOR_NORMAL);
-#endif
-			std::cout << (uFormat("%s%s\n", pad(iter->first + "=", padding).c_str(), iter->second.c_str()));
-		}
-#ifdef _WIN32
-		SetConsoleTextAttribute(H,COLOR_NORMAL);
-#else
-		printf("%s", COLOR_NORMAL);
-#endif
 	}
 
 	return 0;

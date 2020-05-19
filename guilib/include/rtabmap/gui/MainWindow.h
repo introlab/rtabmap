@@ -329,6 +329,7 @@ private:
 	QString _newDatabasePath;
 	QString _newDatabasePathOutput;
 	QString _openedDatabasePath;
+	QString _defaultOpenDatabasePath;
 	bool _databaseUpdated;
 	bool _odomImageShow;
 	bool _odomImageDepthShow;

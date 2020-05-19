@@ -31,6 +31,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/Features2d.h>
 #include <rtabmap/core/util3d.h>
 #include <rtabmap/core/VWDictionary.h>
+#include <rtabmap/core/util3d_filtering.h>
+#include <rtabmap/core/util3d_features.h>
 #include <rtabmap/utilite/ULogger.h>
 #include <rtabmap/gui/ImageView.h>
 #include <rtabmap/gui/KeypointItem.h>
@@ -266,6 +268,15 @@ int main(int argc, char * argv[])
 		// Visualization
 		//////////////////
 
+		if(reg.getNNType()==6 &&
+		   !dataFrom.getWordsDescriptors().empty() &&
+		   dataFrom.getWordsDescriptors().begin()->second.type()!=CV_32F)
+		{
+			UWARN("SuperGlue is selected for matching but binary features "
+				  "are not compatible. BruteForce with CrossCheck (%s=5) "
+				  "has been used instead.", Parameters::kVisCorNNType().c_str());
+		}
+
 		QApplication app(argc, argv);
 		QDialog dialog;
 		float reprojError = Parameters::defaultVisPnPReprojError();
@@ -279,7 +290,10 @@ int main(int argc, char * argv[])
 				.arg(reg.getDetector()?Feature2D::typeName(reg.getDetector()->getType()).c_str():"?")
 				.arg(Parameters::kVisCorNNType().c_str())
 				.arg(reg.getNNType())
-				.arg(reg.getNNType()<VWDictionary::kNNUndef?VWDictionary::nnStrategyName((VWDictionary::NNStrategy)reg.getNNType()).c_str():reg.getNNType()==5?"BFCrossCheck":reg.getNNType()==6?"SuperGlue":reg.getNNType()==7?"GMS":"?")
+				.arg(reg.getNNType()<VWDictionary::kNNUndef?VWDictionary::nnStrategyName((VWDictionary::NNStrategy)reg.getNNType()).c_str():
+						reg.getNNType()==5||(reg.getNNType()==6&&!dataFrom.getWordsDescriptors().empty()&& dataFrom.getWordsDescriptors().begin()->second.type()!=CV_32F)?"BFCrossCheck":
+						reg.getNNType()==6?"SuperGlue":
+						reg.getNNType()==7?"GMS":"?")
 				.arg(reg.getNNType()<5?QString(" %1=%2").arg(Parameters::kVisCorNNDR().c_str()).arg(reg.getNNDR()):"")
 				.arg(Parameters::kVisEstimationType().c_str())
 				.arg(reg.getEstimationType())
@@ -297,9 +311,84 @@ int main(int argc, char * argv[])
 			viewer->addCloud(uFormat("cloud_%d", dataTo.id()), cloudTo, t, Qt::cyan);
 			viewer->addOrUpdateCoordinate(uFormat("frame_%d", dataTo.id()), t, 0.2);
 			viewer->setGridShown(true);
+
+			if(reg.getEstimationType() == 2)
+			{
+				// triangulate 3D words based on the transform computed
+				std::map<int, cv::Point3f> points3d = util3d::generateWords3DMono(
+						uMultimapToMapUnique(dataFrom.getWords()),
+						uMultimapToMapUnique(dataTo.getWords()),
+						model.isValidForProjection()?model:stereoModel.left(),
+						t);
+				pcl::PointCloud<pcl::PointXYZ>::Ptr cloudWordsFrom(new pcl::PointCloud<pcl::PointXYZ>);
+				cloudWordsFrom->resize(points3d.size());
+				int i=0;
+				for(std::multimap<int, cv::Point3f>::const_iterator iter=points3d.begin();
+					iter!=points3d.end();
+					++iter)
+				{
+					cloudWordsFrom->at(i++) = pcl::PointXYZ(iter->second.x, iter->second.y, iter->second.z);
+				}
+				if(cloudWordsFrom->size())
+				{
+					cloudWordsFrom = rtabmap::util3d::removeNaNFromPointCloud(cloudWordsFrom);
+				}
+				if(cloudWordsFrom->size())
+				{
+					viewer->addCloud("wordsFrom", cloudWordsFrom, Transform::getIdentity(), Qt::yellow);
+					viewer->setCloudPointSize("wordsFrom", 5);
+				}
+			}
+			else
+			{
+				if(!dataFrom.getWords3().empty())
+				{
+					pcl::PointCloud<pcl::PointXYZ>::Ptr cloudWordsFrom(new pcl::PointCloud<pcl::PointXYZ>);
+					cloudWordsFrom->resize(dataFrom.getWords3().size());
+					int i=0;
+					for(std::multimap<int, cv::Point3f>::const_iterator iter=dataFrom.getWords3().begin();
+						iter!=dataFrom.getWords3().end();
+						++iter)
+					{
+						cloudWordsFrom->at(i++) = pcl::PointXYZ(iter->second.x, iter->second.y, iter->second.z);
+					}
+					if(cloudWordsFrom->size())
+					{
+						cloudWordsFrom = rtabmap::util3d::removeNaNFromPointCloud(cloudWordsFrom);
+					}
+					if(cloudWordsFrom->size())
+					{
+						viewer->addCloud("wordsFrom", cloudWordsFrom, Transform::getIdentity(), Qt::magenta);
+						viewer->setCloudPointSize("wordsFrom", 5);
+					}
+				}
+				if(!dataTo.getWords3().empty())
+				{
+					pcl::PointCloud<pcl::PointXYZ>::Ptr cloudWordsFrom(new pcl::PointCloud<pcl::PointXYZ>);
+					cloudWordsFrom->resize(dataTo.getWords3().size());
+					int i=0;
+					for(std::multimap<int, cv::Point3f>::const_iterator iter=dataTo.getWords3().begin();
+						iter!=dataTo.getWords3().end();
+						++iter)
+					{
+						cloudWordsFrom->at(i++) = pcl::PointXYZ(iter->second.x, iter->second.y, iter->second.z);
+					}
+					if(cloudWordsFrom->size())
+					{
+						cloudWordsFrom = rtabmap::util3d::removeNaNFromPointCloud(cloudWordsFrom);
+					}
+					if(cloudWordsFrom->size())
+					{
+						viewer->addCloud("wordsTo", cloudWordsFrom, t, Qt::cyan);
+						viewer->setCloudPointSize("wordsTo", 5);
+					}
+				}
+			}
 		}
 
 		QBoxLayout * mainLayout = new QHBoxLayout();
+		mainLayout->setContentsMargins(0, 0, 0, 0);
+		mainLayout->setSpacing(0);
 		QBoxLayout * layout;
 		bool vertical=true;
 		if(imageFrom.cols > imageFrom.rows)
@@ -319,6 +408,7 @@ int main(int argc, char * argv[])
 		ImageView * viewA = new ImageView(&dialog);
 		ImageView * viewB = new ImageView(&dialog);
 
+		layout->setSpacing(0);
 		layout->addWidget(viewA, 1);
 		layout->addWidget(viewB, 1);
 

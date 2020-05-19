@@ -113,6 +113,7 @@ Rtabmap::Rtabmap() :
 	_proximityFilteringRadius(Parameters::defaultRGBDProximityPathFilteringRadius()),
 	_proximityRawPosesUsed(Parameters::defaultRGBDProximityPathRawPosesUsed()),
 	_proximityAngle(Parameters::defaultRGBDProximityAngle()*M_PI/180.0f),
+	_proximityOdomGuess(Parameters::defaultRGBDProximityOdomGuess()),
 	_databasePath(""),
 	_optimizeFromGraphEnd(Parameters::defaultRGBDOptimizeFromGraphEnd()),
 	_optimizationMaxError(Parameters::defaultRGBDOptimizeMaxError()),
@@ -476,6 +477,7 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 	{
 		_proximityAngle *= M_PI/180.0f;
 	}
+	Parameters::parse(parameters, Parameters::kRGBDProximityOdomGuess(), _proximityOdomGuess);
 	Parameters::parse(parameters, Parameters::kRGBDOptimizeFromGraphEnd(), _optimizeFromGraphEnd);
 	Parameters::parse(parameters, Parameters::kRGBDOptimizeMaxError(), _optimizationMaxError);
 	if(_optimizationMaxError > 0.0 && _optimizationMaxError < 1.0)
@@ -997,7 +999,7 @@ bool Rtabmap::process(
 	double timeStatsCreation = 0;
 
 	float hypothesisRatio = 0.0f; // Only used for statistics
-	bool rejectedHypothesis = false;
+	bool rejectedGlobalLoopClosure = false;
 
 	std::map<int, float> rawLikelihood;
 	std::map<int, float> adjustedLikelihood;
@@ -1696,7 +1698,7 @@ bool Rtabmap::process(
 				// the virtual (new) place hypothesis.
 				if(_highestHypothesis.second >= loopThr)
 				{
-					rejectedHypothesis = true;
+					rejectedGlobalLoopClosure = true;
 					if(posterior.size() <= 2 && loopThr>0.0f)
 					{
 						// Ignore loop closure if there is only one loop closure hypothesis
@@ -1718,7 +1720,7 @@ bool Rtabmap::process(
 					else
 					{
 						_loopClosureHypothesis = _highestHypothesis;
-						rejectedHypothesis = false;
+						rejectedGlobalLoopClosure = false;
 					}
 
 					timeHypothesesValidation = timer.ticks();
@@ -1729,7 +1731,7 @@ bool Rtabmap::process(
 					// Used for Precision-Recall computation.
 					// When analyzing logs, it's convenient to know
 					// if the hypothesis would be rejected if T_loop would be lower.
-					rejectedHypothesis = true;
+					rejectedGlobalLoopClosure = true;
 					UDEBUG("rejected hypothesis: under loop ratio %f < %f", _highestHypothesis.second, _loopRatio*lastHighestHypothesis.second);
 				}
 
@@ -2130,71 +2132,6 @@ bool Rtabmap::process(
 		ULOGGER_INFO("timeReactivations=%fs", timeReactivations);
 	}
 
-	//=============================================================
-	// Update loop closure links
-	// (updated: place this after retrieval to be sure that neighbors of the loop closure are in RAM)
-	//=============================================================
-	std::list<std::pair<int, int> > loopClosureLinksAdded;
-	int loopClosureVisualInliers = 0; // for statistics
-	int loopClosureVisualMatches = 0;
-	float loopClosureLinearVariance = 0.0f;
-	float loopClosureAngularVariance = 0.0f;
-	float loopClosureVisualInliersMeanDist = 0;
-	float loopClosureVisualInliersDistribution = 0;
-	if(_loopClosureHypothesis.first>0)
-	{
-		//Compute transform if metric data are present
-		Transform transform;
-		RegistrationInfo info;
-		info.covariance = cv::Mat::eye(6,6,CV_64FC1);
-		if(_rgbdSlamMode)
-		{
-			transform = _memory->computeTransform(_loopClosureHypothesis.first, signature->id(), Transform(), &info);
-			loopClosureVisualInliersMeanDist = info.inliersMeanDistance;
-			loopClosureVisualInliersDistribution = info.inliersDistribution;
-
-			loopClosureVisualInliers = info.inliers;
-			loopClosureVisualMatches = info.matches;
-			rejectedHypothesis = transform.isNull();
-			if(rejectedHypothesis)
-			{
-				UWARN("Rejected loop closure %d -> %d: %s",
-						_loopClosureHypothesis.first, signature->id(), info.rejectedMsg.c_str());
-			}
-			else if(_maxLoopClosureDistance>0.0f && transform.getNorm() > _maxLoopClosureDistance)
-			{
-				rejectedHypothesis = true;
-				UWARN("Rejected localization %d -> %d because distance to map (%fm) is over %s=%fm.",
-						_loopClosureHypothesis.first, signature->id(), transform.getNorm(), Parameters::kRGBDMaxLoopClosureDistance().c_str(), _maxLoopClosureDistance);
-			}
-			else
-			{
-				transform = transform.inverse();
-			}
-		}
-		if(!rejectedHypothesis)
-		{
-			// Make the new one the parent of the old one
-			UASSERT(info.covariance.at<double>(0,0) > 0.0 && info.covariance.at<double>(5,5) > 0.0);
-			cv::Mat information = getInformation(info.covariance);
-			loopClosureLinearVariance = 1.0/information.at<double>(0,0);
-			loopClosureAngularVariance = 1.0/information.at<double>(5,5);
-			rejectedHypothesis = !_memory->addLink(Link(signature->id(), _loopClosureHypothesis.first, Link::kGlobalClosure, transform, information));
-			if(!rejectedHypothesis)
-			{
-				loopClosureLinksAdded.push_back(std::make_pair(signature->id(), _loopClosureHypothesis.first));
-			}
-		}
-
-		if(rejectedHypothesis)
-		{
-			_loopClosureHypothesis.first = 0;
-		}
-	}
-
-	timeAddLoopClosureLink = timer.ticks();
-	ULOGGER_INFO("timeAddLoopClosureLink=%fs", timeAddLoopClosureLink);
-
 	//============================================================
 	// Landmark
 	//============================================================
@@ -2215,6 +2152,16 @@ bool Rtabmap::process(
 		}
 	}
 
+	//============================================================
+	// Proximity detections
+	//============================================================
+	std::list<std::pair<int, int> > loopClosureLinksAdded;
+	int loopClosureVisualInliers = 0; // for statistics
+	int loopClosureVisualMatches = 0;
+	float loopClosureLinearVariance = 0.0f;
+	float loopClosureAngularVariance = 0.0f;
+	float loopClosureVisualInliersMeanDist = 0;
+	float loopClosureVisualInliersDistribution = 0;
 
 	int proximityDetectionsAddedVisually = 0;
 	int proximityDetectionsAddedByICPOnly = 0;
@@ -2222,6 +2169,8 @@ bool Rtabmap::process(
 	int proximitySpacePaths = 0;
 	int localVisualPathsChecked = 0;
 	int localScanPathsChecked = 0;
+	int loopIdSuppressedByProximity = 0;
+
 	if(_proximityBySpace &&
 	   _localRadius > 0 &&
 	   _rgbdSlamMode &&
@@ -2231,10 +2180,10 @@ bool Rtabmap::process(
 		{
 			UWARN("Cannot do local loop closure detection in space if graph optimization is disabled!");
 		}
-		else if(_memory->isIncremental() || (_loopClosureHypothesis.first == 0 && landmarkDetected == 0))
+		else if(_memory->isIncremental() || landmarkDetected == 0)
 		{
 			// In localization mode, no need to check local loop
-			// closures if we are already localized by a global closure.
+			// closures if we are already localized by a landmark.
 
 			// don't do it if it is a small displacement unless the previous signature didn't have a loop closure
 			// don't do it if there is a too fast movement
@@ -2278,15 +2227,17 @@ bool Rtabmap::process(
 				{
 					const std::map<int, Transform> & path = iter->second;
 					float highestLikelihood = 0.0f;
+					int highestLikelihoodId = iter->first;
 					for(std::map<int, Transform>::const_iterator jter=path.begin(); jter!=path.end(); ++jter)
 					{
 						float v = uValue(likelihood, jter->first, 0.0f);
 						if(v > highestLikelihood)
 						{
 							highestLikelihood = v;
+							highestLikelihoodId = jter->first;
 						}
 					}
-					nearestPaths.insert(std::make_pair(NearestPathKey(highestLikelihood, iter->first), path));
+					nearestPaths.insert(std::make_pair(NearestPathKey(highestLikelihood, highestLikelihoodId), path));
 				}
 				UDEBUG("nearestPaths=%d proximityMaxPaths=%d", (int)nearestPaths.size(), _proximityMaxPaths);
 
@@ -2328,8 +2279,13 @@ bool Rtabmap::process(
 						{
 							++localVisualPathsChecked;
 							RegistrationInfo info;
-							// guess is null to make sure visual correspondences are globally computed
-							Transform transform = _memory->computeTransform(nearestId, signature->id(), Transform(), &info);
+							Transform guess;
+							if(_proximityOdomGuess)
+							{
+								// Use odometry as guess so that correspondences can be computed by projection
+								guess = _optimizedPoses.at(nearestId).inverse()*_optimizedPoses.at(signature->id());
+							} //else: guess is null to make sure visual correspondences are globally computed
+							Transform transform = _memory->computeTransform(nearestId, signature->id(), guess, &info);
 							if(!transform.isNull())
 							{
 								transform = transform.inverse();
@@ -2341,25 +2297,32 @@ bool Rtabmap::process(
 											transform.prettyPrint().c_str());
 									UASSERT(info.covariance.at<double>(0,0) > 0.0 && info.covariance.at<double>(5,5) > 0.0);
 									cv::Mat information = getInformation(info.covariance);
-									_memory->addLink(Link(signature->id(), nearestId, Link::kGlobalClosure, transform, information));
+									_memory->addLink(Link(signature->id(), nearestId, Link::kLocalSpaceClosure, transform, information));
 									loopClosureLinksAdded.push_back(std::make_pair(signature->id(), nearestId));
 
-									if(_loopClosureHypothesis.first == 0)
+									//for statistics
+									loopClosureVisualInliersMeanDist = info.inliersMeanDistance;
+									loopClosureVisualInliersDistribution = info.inliersDistribution;
+
+									++proximityDetectionsAddedVisually;
+									lastProximitySpaceClosureId = nearestId;
+
+									loopClosureVisualInliers = info.inliers;
+									loopClosureVisualMatches = info.matches;
+
+									loopClosureLinearVariance = 1.0/information.at<double>(0,0);
+									loopClosureAngularVariance = 1.0/information.at<double>(5,5);
+
+									if(_loopClosureHypothesis.first>0 &&
+										nearestIds.find(_loopClosureHypothesis.first)!=nearestIds.end())
 									{
-										if(proximityDetectionsAddedVisually == 0)
-										{
-											loopClosureVisualInliersMeanDist = info.inliersMeanDistance;
-											loopClosureVisualInliersDistribution = info.inliersDistribution;
-										}
-
-										++proximityDetectionsAddedVisually;
-										lastProximitySpaceClosureId = nearestId;
-
-										loopClosureVisualInliers = info.inliers;
-										loopClosureVisualMatches = info.matches;
-
-										loopClosureLinearVariance = 1.0/information.at<double>(0,0);
-										loopClosureAngularVariance = 1.0/information.at<double>(5,5);
+										UDEBUG("Proximity detection on %d is close to loop closure %d, ignoring loop closure transform estimation...",
+												nearestId, _loopClosureHypothesis.first);
+										// In localization mode, avoid transform
+										// computation on the global loop closure if a visual proximity
+										// one has been detected close (inside proximity radius) to that hypothesis.
+										loopIdSuppressedByProximity = _loopClosureHypothesis.first;
+										_loopClosureHypothesis.first = 0;
 									}
 								}
 								else
@@ -2507,7 +2470,7 @@ bool Rtabmap::process(
 										++proximityDetectionsAddedByICPOnly;
 
 										// no local loop closure added visually
-										if(proximityDetectionsAddedVisually == 0 && _loopClosureHypothesis.first == 0)
+										if(proximityDetectionsAddedVisually == 0)
 										{
 											lastProximitySpaceClosureId = nearestId;
 										}
@@ -2530,6 +2493,64 @@ bool Rtabmap::process(
 	}
 	timeProximityBySpaceDetection = timer.ticks();
 	ULOGGER_INFO("timeProximityBySpaceDetection=%fs", timeProximityBySpaceDetection);
+
+	//=============================================================
+	// Global loop closure detection
+	// (updated: place this after retrieval to be sure that neighbors of the loop closure are in RAM)
+	//=============================================================
+	if(_loopClosureHypothesis.first>0)
+	{
+		//Compute transform if metric data are present
+		Transform transform;
+		RegistrationInfo info;
+		info.covariance = cv::Mat::eye(6,6,CV_64FC1);
+		if(_rgbdSlamMode)
+		{
+			transform = _memory->computeTransform(_loopClosureHypothesis.first, signature->id(), Transform(), &info);
+			loopClosureVisualInliersMeanDist = info.inliersMeanDistance;
+			loopClosureVisualInliersDistribution = info.inliersDistribution;
+
+			loopClosureVisualInliers = info.inliers;
+			loopClosureVisualMatches = info.matches;
+			rejectedGlobalLoopClosure = transform.isNull();
+			if(rejectedGlobalLoopClosure)
+			{
+				UWARN("Rejected loop closure %d -> %d: %s",
+						_loopClosureHypothesis.first, signature->id(), info.rejectedMsg.c_str());
+			}
+			else if(_maxLoopClosureDistance>0.0f && transform.getNorm() > _maxLoopClosureDistance)
+			{
+				rejectedGlobalLoopClosure = true;
+				UWARN("Rejected localization %d -> %d because distance to map (%fm) is over %s=%fm.",
+						_loopClosureHypothesis.first, signature->id(), transform.getNorm(), Parameters::kRGBDMaxLoopClosureDistance().c_str(), _maxLoopClosureDistance);
+			}
+			else
+			{
+				transform = transform.inverse();
+			}
+		}
+		if(!rejectedGlobalLoopClosure)
+		{
+			// Make the new one the parent of the old one
+			UASSERT(info.covariance.at<double>(0,0) > 0.0 && info.covariance.at<double>(5,5) > 0.0);
+			cv::Mat information = getInformation(info.covariance);
+			loopClosureLinearVariance = 1.0/information.at<double>(0,0);
+			loopClosureAngularVariance = 1.0/information.at<double>(5,5);
+			rejectedGlobalLoopClosure = !_memory->addLink(Link(signature->id(), _loopClosureHypothesis.first, Link::kGlobalClosure, transform, information));
+			if(!rejectedGlobalLoopClosure)
+			{
+				loopClosureLinksAdded.push_back(std::make_pair(signature->id(), _loopClosureHypothesis.first));
+			}
+		}
+
+		if(rejectedGlobalLoopClosure)
+		{
+			_loopClosureHypothesis.first = 0;
+		}
+	}
+
+	timeAddLoopClosureLink = timer.ticks();
+	ULOGGER_INFO("timeAddLoopClosureLink=%fs", timeAddLoopClosureLink);
 
 	//============================================================
 	// Add virtual links if a path is activated
@@ -2567,6 +2588,7 @@ bool Rtabmap::process(
 	double optimizationError = 0.0;
 	int optimizationIterations = 0;
 	cv::Mat localizationCovariance;
+	Transform previousMapCorrection;
 	if(_rgbdSlamMode
 		&&
 		(_loopClosureHypothesis.first>0 ||
@@ -2837,7 +2859,7 @@ bool Rtabmap::process(
 			{
 				_loopClosureHypothesis.first = 0;
 				lastProximitySpaceClosureId = 0;
-				rejectedHypothesis = true;
+				rejectedGlobalLoopClosure = true;
 			}
 		}
 		else
@@ -2847,8 +2869,8 @@ bool Rtabmap::process(
 
 			// if _optimizeFromGraphEnd parameter just changed state, don't use optimized poses as guess
 			float normMapCorrection = _mapCorrection.getNormSquared(); // use distance for identity detection
-			if((normMapCorrection > 0.000001f && _optimizeFromGraphEnd) ||
-				(normMapCorrection < 0.000001f && !_optimizeFromGraphEnd))
+			if((normMapCorrection > 0.001f && _optimizeFromGraphEnd) ||
+				(normMapCorrection < 0.0001f && !_optimizeFromGraphEnd))
 			{
 				for(std::multimap<int, Link>::iterator iter=_constraints.begin(); iter!=_constraints.end(); ++iter)
 				{
@@ -2883,7 +2905,7 @@ bool Rtabmap::process(
 				updateConstraints = false;
 				_loopClosureHypothesis.first = 0;
 				lastProximitySpaceClosureId = 0;
-				rejectedHypothesis = true;
+				rejectedGlobalLoopClosure = true;
 			}
 			else if(_memory->isIncremental() && // FIXME: not tested in localization mode, so do it only in mapping mode
 			  _optimizationMaxError > 0.0f &&
@@ -2968,7 +2990,7 @@ bool Rtabmap::process(
 					updateConstraints = false;
 					_loopClosureHypothesis.first = 0;
 					lastProximitySpaceClosureId = 0;
-					rejectedHypothesis = true;
+					rejectedGlobalLoopClosure = true;
 				}
 			}
 
@@ -2987,6 +3009,7 @@ bool Rtabmap::process(
 		{
 			_mapCorrectionBackup = _mapCorrection;
 		}
+		previousMapCorrection = _mapCorrection;
 		_mapCorrection = _optimizedPoses.at(signature->id()) * signature->getPose().inverse();
 		_lastLocalizationPose = _optimizedPoses.at(signature->id()); // update
 		if(_mapCorrection.getNormSquared() > 0.001f && _optimizeFromGraphEnd)
@@ -3066,6 +3089,7 @@ bool Rtabmap::process(
 			statistics_.setExtended(1);
 
 			statistics_.addStatistic(Statistics::kLoopAccepted_hypothesis_id(), _loopClosureHypothesis.first);
+			statistics_.addStatistic(Statistics::kLoopSuppressed_hypothesis_id(), loopIdSuppressedByProximity);
 			statistics_.addStatistic(Statistics::kLoopHighest_hypothesis_id(), _highestHypothesis.first);
 			statistics_.addStatistic(Statistics::kLoopHighest_hypothesis_value(), _highestHypothesis.second);
 			statistics_.addStatistic(Statistics::kLoopHypothesis_reactivated(), lcHypothesisReactivated);
@@ -3113,16 +3137,21 @@ bool Rtabmap::process(
 					statistics_.addStatistic(Statistics::kGtLocalization_angular_error(), error.getAngle(1,0,0)*180/M_PI);
 				}
 
-				// Map correction (/map -> /odom)
-				statistics_.addStatistic(Statistics::kLoopMap_correction_norm(), _mapCorrection.getNorm());
-				float x,y,z,roll,pitch,yaw;
-				_mapCorrection.getTranslationAndEulerAngles(x, y, z, roll, pitch, yaw);
-				statistics_.addStatistic(Statistics::kLoopMap_correction_x(), x);
-				statistics_.addStatistic(Statistics::kLoopMap_correction_y(), y);
-				statistics_.addStatistic(Statistics::kLoopMap_correction_z(), z);
-				statistics_.addStatistic(Statistics::kLoopMap_correction_roll(),  roll*180/M_PI);
-				statistics_.addStatistic(Statistics::kLoopMap_correction_pitch(),  pitch*180/M_PI);
-				statistics_.addStatistic(Statistics::kLoopMap_correction_yaw(), yaw*180/M_PI);
+				// Odom correction (actual odometry pose change)
+				if(!previousMapCorrection.isNull() && !odomPose.isNull())
+				{
+					Transform odomCorrection = (previousMapCorrection*odomPose).inverse()*_mapCorrection*odomPose;
+					statistics_.addStatistic(Statistics::kLoopOdom_correction_norm(), odomCorrection.getNorm());
+					statistics_.addStatistic(Statistics::kLoopOdom_correction_angle(), odomCorrection.getAngle()*180.0f/M_PI);
+					float x,y,z,roll,pitch,yaw;
+					odomCorrection.getTranslationAndEulerAngles(x, y, z, roll, pitch, yaw);
+					statistics_.addStatistic(Statistics::kLoopOdom_correction_x(), x);
+					statistics_.addStatistic(Statistics::kLoopOdom_correction_y(), y);
+					statistics_.addStatistic(Statistics::kLoopOdom_correction_z(), z);
+					statistics_.addStatistic(Statistics::kLoopOdom_correction_roll(),  roll*180.0f/M_PI);
+					statistics_.addStatistic(Statistics::kLoopOdom_correction_pitch(),  pitch*180.0f/M_PI);
+					statistics_.addStatistic(Statistics::kLoopOdom_correction_yaw(), yaw*180.0f/M_PI);
+				}
 			}
 			statistics_.setMapCorrection(_mapCorrection);
 			UINFO("Set map correction = %s", _mapCorrection.prettyPrint().c_str());
@@ -3147,13 +3176,14 @@ bool Rtabmap::process(
 			// retrieval
 			statistics_.addStatistic(Statistics::kMemorySignatures_retrieved(), (float)signaturesRetrieved.size());
 
-			// Surf specific parameters
+			// Feature specific parameters
 			statistics_.addStatistic(Statistics::kKeypointDictionary_size(), dictionarySize);
+			statistics_.addStatistic(Statistics::kKeypointCurrent_frame(), refWordsCount);
 			statistics_.addStatistic(Statistics::kKeypointIndexed_words(), _memory->getVWDictionary()->getIndexedWordsCount());
 			statistics_.addStatistic(Statistics::kKeypointIndex_memory_usage(), _memory->getVWDictionary()->getIndexMemoryUsed());
 
 			//Epipolar geometry constraint
-			statistics_.addStatistic(Statistics::kLoopRejectedHypothesis(), rejectedHypothesis?1.0f:0);
+			statistics_.addStatistic(Statistics::kLoopRejectedHypothesis(), rejectedGlobalLoopClosure?1.0f:0);
 
 			statistics_.addStatistic(Statistics::kMemorySmall_movement(), smallDisplacement?1.0f:0);
 			statistics_.addStatistic(Statistics::kMemoryDistance_travelled(), _distanceTravelled);
@@ -3225,7 +3255,7 @@ bool Rtabmap::process(
 		if(_startNewMapOnLoopClosure &&
 			_memory->isIncremental() &&              // only in mapping mode
 			graph::filterLinks(signature->getLinks(), Link::kSelfRefLink).size() == 0 &&      // alone in the current map
-			(landmarkDetected == 0 || rejectedHypothesis) &&      // if we re not seeing a landmark from a previous map
+			(landmarkDetected == 0 || rejectedGlobalLoopClosure) &&      // if we re not seeing a landmark from a previous map
 			_memory->getWorkingMem().size()>=2)       // The working memory should not be empty (beside virtual signature)
 		{
 			UWARN("Ignoring location %d because a global loop closure is required before starting a new map!",
@@ -3599,7 +3629,7 @@ bool Rtabmap::process(
 									refWordsCount,
 									dictionarySize,
 									int(_memory->getWorkingMem().size()),
-									rejectedHypothesis?1:0,
+									rejectedGlobalLoopClosure?1:0,
 									0,
 									0,
 									int(signaturesRetrieved.size()),

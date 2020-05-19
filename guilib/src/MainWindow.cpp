@@ -4817,7 +4817,7 @@ void MainWindow::newDatabase()
 
 void MainWindow::openDatabase()
 {
-	QString path = QFileDialog::getOpenFileName(this, tr("Open database..."), _preferencesDialog->getWorkingDirectory(), tr("RTAB-Map database files (*.db)"));
+	QString path = QFileDialog::getOpenFileName(this, tr("Open database..."), _defaultOpenDatabasePath.isEmpty()?_preferencesDialog->getWorkingDirectory():_defaultOpenDatabasePath, tr("RTAB-Map database files (*.db)"));
 	if(!path.isEmpty())
 	{
 		this->openDatabase(path);
@@ -4843,6 +4843,7 @@ void MainWindow::openDatabase(const QString & path, const ParametersMap & overri
 
 		this->clearTheCache();
 		_openedDatabasePath = path;
+		_defaultOpenDatabasePath = path;
 
 		// look if there are saved parameters
 		DBDriver * driver = DBDriver::create();

@@ -29,11 +29,12 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define ODOMETRYMONO_H_
 
 #include <rtabmap/core/Odometry.h>
+#include <rtabmap/core/Link.h>
 
 namespace rtabmap {
 
 class Memory;
-class Stereo;
+class Feature2D;
 
 class RTABMAP_EXP OdometryMono : public Odometry
 {
@@ -41,6 +42,7 @@ public:
 	OdometryMono(const rtabmap::ParametersMap & parameters = rtabmap::ParametersMap());
 	virtual ~OdometryMono();
 	virtual void reset(const Transform & initialPose);
+	virtual Odometry::Type getType() {return kTypeUndef;}
 
 private:
 	virtual Transform computeTransform(SensorData & data, const Transform & guess = Transform(), OdometryInfo * info = 0);
@@ -56,7 +58,7 @@ private:
 	int pnpFlags_;
 	int pnpRefineIterations_;
 
-	Stereo * stereo_;
+	Feature2D * feature2D_;
 
 	Memory * memory_;
 	int localHistoryMaxSize_;
@@ -66,12 +68,14 @@ private:
 	float fundMatrixReprojError_;
 	float fundMatrixConfidence_;
 
-	cv::Mat refDepthOrRight_;
-	std::map<int, cv::Point2f> cornersMap_;
+	std::map<int, cv::Point2f> firstFrameGuessCorners_;
 	std::map<int, cv::Point3f> localMap_;
 	std::map<int, std::map<int, cv::Point3f> > keyFrameWords3D_;
 	std::map<int, Transform> keyFramePoses_;
+	std::multimap<int, Link> keyFrameLinks_;
+	std::map<int, CameraModel> keyFrameModels_;
 	float maxVariance_;
+	float keyFrameThr_;
 };
 
 }

@@ -90,6 +90,7 @@ Memory::Memory(const ParametersMap & parameters) :
 	_badSignaturesIgnored(Parameters::defaultMemBadSignaturesIgnored()),
 	_mapLabelsAdded(Parameters::defaultMemMapLabelsAdded()),
 	_depthAsMask(Parameters::defaultMemDepthAsMask()),
+	_stereoFromMotion(Parameters::defaultMemStereoFromMotion()),
 	_imagePreDecimation(Parameters::defaultMemImagePreDecimation()),
 	_imagePostDecimation(Parameters::defaultMemImagePostDecimation()),
 	_compressionParallelized(Parameters::defaultMemCompressionParallelized()),
@@ -552,6 +553,7 @@ void Memory::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(params, Parameters::kMemTransferSortingByWeightId(), _transferSortingByWeightId);
 	Parameters::parse(params, Parameters::kMemSTMSize(), _maxStMemSize);
 	Parameters::parse(params, Parameters::kMemDepthAsMask(), _depthAsMask);
+	Parameters::parse(params, Parameters::kMemStereoFromMotion(), _stereoFromMotion);
 	Parameters::parse(params, Parameters::kMemImagePreDecimation(), _imagePreDecimation);
 	Parameters::parse(params, Parameters::kMemImagePostDecimation(), _imagePostDecimation);
 	Parameters::parse(params, Parameters::kMemCompressionParallelized(), _compressionParallelized);
@@ -1080,27 +1082,32 @@ void Memory::moveSignatureToWMFromSTM(int id, int * reducedTo)
 			{
 				for(std::multimap<int, Link>::const_iterator iter=links.begin(); iter!=links.end(); ++iter)
 				{
-					merge = true;
 					Signature * sTo = this->_getSignature(iter->first);
-					UASSERT(sTo!=0);
-					sTo->removeLink(s->id());
-					if(iter->second.type() != Link::kNeighbor &&
-					   iter->second.type() != Link::kNeighborMerged &&
-					   iter->second.type() != Link::kUndef)
+					if(sTo->id()!=s->id()) // Not Prior/Gravity links...
 					{
-						// link to all neighbors
-						for(std::map<int, Link>::iterator jter=neighbors.begin(); jter!=neighbors.end(); ++jter)
+						UASSERT_MSG(sTo!=0, uFormat("id=%d", iter->first).c_str());
+						sTo->removeLink(s->id());
+						if(iter->second.type() != Link::kNeighbor &&
+						   iter->second.type() != Link::kNeighborMerged &&
+						   iter->second.type() != Link::kUndef)
 						{
-							if(!sTo->hasLink(jter->second.to()))
+							// link to all neighbors
+							for(std::map<int, Link>::iterator jter=neighbors.begin(); jter!=neighbors.end(); ++jter)
 							{
-								Link l = iter->second.inverse().merge(
-										jter->second,
-										iter->second.userDataCompressed().empty() && iter->second.type() != Link::kVirtualClosure?Link::kNeighborMerged:iter->second.type());
-								sTo->addLink(l);
-								Signature * sB = this->_getSignature(l.to());
-								UASSERT(sB!=0);
-								UASSERT(!sB->hasLink(l.to()));
-								sB->addLink(l.inverse());
+								if(!sTo->hasLink(jter->second.to()))
+								{
+									UDEBUG("Merging link %d->%d (type=%d) to link %d->%d (type %d)",
+											iter->second.from(), iter->second.to(), iter->second.type(),
+											jter->second.from(), jter->second.to(), jter->second.type());
+									Link l = iter->second.inverse().merge(
+											jter->second,
+											iter->second.userDataCompressed().empty() && iter->second.type() != Link::kVirtualClosure?Link::kNeighborMerged:iter->second.type());
+									sTo->addLink(l);
+									Signature * sB = this->_getSignature(l.to());
+									UASSERT(sB!=0);
+									UASSERT_MSG(!sB->hasLink(l.from()), uFormat("%d->%d", sB->id(), l.to()).c_str());
+									sB->addLink(l.inverse());
+								}
 							}
 						}
 					}
@@ -4557,6 +4564,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 	std::multimap<int, cv::KeyPoint> words;
 	std::multimap<int, cv::Point3f> words3D;
 	std::multimap<int, cv::Mat> wordsDescriptors;
+	int words3DValid = 0;
 	if(wordIds.size() > 0)
 	{
 		UASSERT(wordIds.size() == keypoints.size());
@@ -4580,6 +4588,10 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 			if(keypoints3D.size())
 			{
 				words3D.insert(std::pair<int, cv::Point3f>(*iter, keypoints3D.at(i)));
+				if(util3d::isFinite(keypoints3D.at(i)))
+				{
+					++words3DValid;
+				}
 			}
 			if(_rawDescriptorsKept)
 			{
@@ -4683,16 +4695,17 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 		UDEBUG("time post-decimation = %fs", t);
 	}
 
-	bool triangulateWordsWithoutDepth = !_depthAsMask;
-	if(!pose.isNull() &&
+	if(_stereoFromMotion &&
+		!pose.isNull() &&
 		cameraModels.size() == 1 &&
 		words.size() &&
-		(words3D.size() == 0 || (triangulateWordsWithoutDepth && words.size() == words3D.size())) &&
+		(words3D.size() == 0 || (words.size() == words3D.size() && words3DValid!=(int)words3D.size())) &&
 		_registrationPipeline->isImageRequired() &&
 		_signatures.size() &&
 		_signatures.rbegin()->second->mapId() == _idMapCount) // same map
 	{
-		UDEBUG("Generate 3D words using odometry");
+		UDEBUG("Generate 3D words using odometry (%s=true and words3DValid=%d/%d)",
+				Parameters::kMemStereoFromMotion().c_str(), words3DValid, (int)words3D.size());
 		Signature * previousS = _signatures.rbegin()->second;
 		if(previousS->getWords().size() > 8 && words.size() > 8 && !previousS->getPose().isNull())
 		{
@@ -4715,7 +4728,9 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 			cpCurrent.setWords(std::multimap<int, cv::KeyPoint>(uniqueWords.begin(), uniqueWords.end()));
 			cpCurrent.setWordsDescriptors(std::multimap<int, cv::Mat>(uniqueWordsDescriptors.begin(), uniqueWordsDescriptors.end()));
 
+			// The following is used only to re-estimate the correspondences, the returned transform is ignored
 			Transform tmpt;
+			RegistrationVis reg(parameters_);
 			if(_registrationPipeline->isScanRequired())
 			{
 				// If icp is used, remove it to just do visual registration
@@ -4726,10 +4741,9 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 			{
 				tmpt = _registrationPipeline->computeTransformationMod(cpCurrent, cpPrevious, cameraTransform);
 			}
-
 			UDEBUG("t=%s", tmpt.prettyPrint().c_str());
 
-			// compute 3D words by epipolar geometry with the previous signature
+			// compute 3D words by epipolar geometry with the previous signature using odometry motion
 			std::map<int, cv::Point3f> inliers = util3d::generateWords3DMono(
 					uMultimapToMapUnique(cpCurrent.getWords()),
 					uMultimapToMapUnique(cpPrevious.getWords()),

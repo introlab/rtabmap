@@ -276,7 +276,6 @@ Transform OdometryF2M::computeTransform(
 			std::map<int, Transform> bundlePoses;
 			std::multimap<int, Link> bundleLinks;
 			std::map<int, CameraModel> bundleModels;
-			std::map<int, StereoCameraModel> bundleStereoModels;
 
 			for(int guessIteration=0;
 					guessIteration<(!guess.isNull()&&regPipeline_->isImageRequired()?2:1) && transform.isNull();
@@ -292,7 +291,6 @@ Transform OdometryF2M::computeTransform(
 				bundlePoses.clear();
 				bundleLinks.clear();
 				bundleModels.clear();
-				bundleStereoModels.clear();
 
 				float maxCorrespondenceDistance = 0.0f;
 				float pmOutlierRatio = 0.0f;
