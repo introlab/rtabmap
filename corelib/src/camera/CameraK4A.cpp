@@ -78,7 +78,9 @@ CameraK4A::CameraK4A(
 	const Transform & localTransform) :
 	Camera(imageRate, localTransform)
 #ifdef RTABMAP_K4A
-	,playbackHandle_(NULL),
+	,
+	device_(NULL),
+	playbackHandle_(NULL),
 	transformationHandle_(NULL),
 	deviceId_(-1),
 	fileName_(fileName),
@@ -99,17 +101,20 @@ void CameraK4A::close()
 	if (playbackHandle_ != NULL)
 	{
 		k4a_playback_close((k4a_playback_t)playbackHandle_);
+		playbackHandle_ = NULL;
 	}
 	if (transformationHandle_ != NULL)
 	{
 		k4a_transformation_destroy((k4a_transformation_t)transformationHandle_);
+		transformationHandle_ = NULL;
 	}
 
 	// Shut down the camera when finished with application logic
-        if(device_ != NULL)
+	if(device_ != NULL)
 	{
 		k4a_device_stop_cameras(device_);
 		k4a_device_close(device_);
+		device_ = NULL;
 	}
 #endif
 }
@@ -180,14 +185,14 @@ bool CameraK4A::init(const std::string & calibrationFolder, const std::string & 
 	}
 	else if (deviceId_ >= 0)
 	{
-		device_count_ = k4a_device_get_installed_count();
-		if (device_count_ == 0)
+		int device_count = k4a_device_get_installed_count();
+		if (device_count == 0)
 		{
 			UERROR("No k4a devices attached!");
 			return false;
 		}
 
-	        UINFO("CameraK4A found k4a device attached");
+		UINFO("CameraK4A found k4a device attached");
 
 		// Open the first plugged in Kinect device
 		if (K4A_FAILED(k4a_device_open(K4A_DEVICE_DEFAULT, &device_)))

@@ -71,7 +71,6 @@ private:
 private:
 
 #ifdef RTABMAP_K4A
-	uint32_t device_count_;
 	k4a_device_t device_;
 	k4a_device_configuration_t config_;
 	std::string serial_number_;
