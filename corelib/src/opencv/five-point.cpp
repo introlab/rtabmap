@@ -439,10 +439,13 @@ cv::Mat findEssentialMat( InputArray _points1, InputArray _points2, InputArray _
     threshold /= (fx+fy)/2;
 
     Mat E;
+    Ptr<PointSetRegistrator::Callback> cb; // pointer to callback
+    cb = Ptr<EMEstimatorCallback>(new EMEstimatorCallback());
+
     if( method == RANSAC )
-    	createRANSACPointSetRegistrator(makePtr<EMEstimatorCallback>(), 6, threshold, prob)->run(points1, points2, E, _mask);
+    	createRANSACPointSetRegistrator(cb, 6, threshold, prob)->run(points1, points2, E, _mask);
     else
-        createLMeDSPointSetRegistrator(makePtr<EMEstimatorCallback>(), 6, prob)->run(points1, points2, E, _mask);
+        createLMeDSPointSetRegistrator(cb, 6, prob)->run(points1, points2, E, _mask);
 
     return E;
 }
