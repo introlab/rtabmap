@@ -262,7 +262,7 @@ std::map<int, cv::Point3f> generateWords3DMono(
 		{
 			UDEBUG("essential inliers=%d/%d", essentialInliers, (int)status.size());
 			cv::Mat R,t;
-			cv::recoverPose(E, refCorners, newCorners, cameraModel.K(), R, t, 50, status, pts4D);
+			cv3::recoverPose(E, refCorners, newCorners, cameraModel.K(), R, t, 50, status, pts4D);
 			if(!R.empty() && !t.empty())
 			{
 				cv::Mat P = cv::Mat::zeros(3, 4, CV_64FC1);

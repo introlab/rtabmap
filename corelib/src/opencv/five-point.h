@@ -12,7 +12,11 @@ namespace cv3
 {
 
 cv::Mat findEssentialMat( cv::InputArray _points1, cv::InputArray _points2, cv::InputArray _cameraMatrix,
-                              int method, double prob, double threshold, cv::OutputArray _mask = cv::noArray());
+                          int method, double prob, double threshold, cv::OutputArray _mask = cv::noArray());
+
+int recoverPose( cv::InputArray E, cv::InputArray _points1, cv::InputArray _points2,
+                 cv::InputArray _cameraMatrix, cv::OutputArray _R, cv::OutputArray _t, double distanceThresh,
+                 cv::InputOutputArray _mask, cv::OutputArray triangulatedPoints);
 }
 
 
