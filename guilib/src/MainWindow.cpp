@@ -431,6 +431,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent, bool sh
 	connect(_ui->actionOpenNI2_sense, SIGNAL(triggered()), this, SLOT(selectOpenni2()));
 	connect(_ui->actionFreenect2, SIGNAL(triggered()), this, SLOT(selectFreenect2()));
 	connect(_ui->actionKinect_for_Windows_SDK_v2, SIGNAL(triggered()), this, SLOT(selectK4W2()));
+	connect(_ui->actionKinect_for_Azure, SIGNAL(triggered()), this, SLOT(selectK4A()));
 	connect(_ui->actionRealSense_R200, SIGNAL(triggered()), this, SLOT(selectRealSense()));
 	connect(_ui->actionRealSense_ZR300, SIGNAL(triggered()), this, SLOT(selectRealSense()));
 	connect(_ui->actionRealSense2_SR300, SIGNAL(triggered()), this, SLOT(selectRealSense2()));
@@ -451,6 +452,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent, bool sh
 	_ui->actionOpenNI2_sense->setEnabled(CameraOpenNI2::available());
 	_ui->actionFreenect2->setEnabled(CameraFreenect2::available());
 	_ui->actionKinect_for_Windows_SDK_v2->setEnabled(CameraK4W2::available());
+	_ui->actionKinect_for_Azure->setEnabled(false);
 	_ui->actionRealSense_R200->setEnabled(CameraRealSense::available());
 	_ui->actionRealSense_ZR300->setEnabled(CameraRealSense::available());
 	_ui->actionRealSense2_SR300->setEnabled(CameraRealSense2::available());
@@ -6330,6 +6332,11 @@ void MainWindow::selectFreenect2()
 void MainWindow::selectK4W2()
 {
 	_preferencesDialog->selectSourceDriver(PreferencesDialog::kSrcK4W2);
+}
+
+void MainWindow::selectK4A()
+{
+	_preferencesDialog->selectSourceDriver(PreferencesDialog::kSrcK4A);
 }
 
 void MainWindow::selectRealSense()

@@ -61,7 +61,15 @@ CameraK4A::CameraK4A(
 	previousStamp_(0.0)
 #endif
 {
-	UERROR("CameraK4A: Live camera stream is not yet supported, only recorded mkv files are.");
+#ifdef RTABMAP_K4A
+	device_ = NULL;
+
+	config_ = K4A_DEVICE_CONFIG_INIT_DISABLE_ALL;
+	config_.camera_fps = K4A_FRAMES_PER_SECOND_15;
+	config_.depth_mode = K4A_DEPTH_MODE_WFOV_2X2BINNED;
+	config_.color_format = K4A_IMAGE_FORMAT_COLOR_BGRA32;
+	config_.color_resolution = K4A_COLOR_RESOLUTION_720P;
+#endif
 }
 
 CameraK4A::CameraK4A(
@@ -96,11 +104,13 @@ void CameraK4A::close()
 	{
 		k4a_transformation_destroy((k4a_transformation_t)transformationHandle_);
 	}
-	/*
+
 	// Shut down the camera when finished with application logic
-	k4a_device_stop_cameras(device);
-	k4a_device_close(device);
-	*/
+        if(device_ != NULL)
+	{
+		k4a_device_stop_cameras(device_);
+		k4a_device_close(device_);
+	}
 #endif
 }
 
@@ -170,19 +180,17 @@ bool CameraK4A::init(const std::string & calibrationFolder, const std::string & 
 	}
 	else if (deviceId_ >= 0)
 	{
-		UERROR("CameraK4A: Live camera stream is not yet supported, only recorded mkv files are.");
-		return false;
-
-		/*uint32_t count = k4a_device_get_installed_count();
-		if (count == 0)
+		device_count_ = k4a_device_get_installed_count();
+		if (device_count_ == 0)
 		{
 			UERROR("No k4a devices attached!");
 			return false;
 		}
 
+	        UINFO("CameraK4A found k4a device attached");
+
 		// Open the first plugged in Kinect device
-		k4a_device_t device = NULL;
-		if (K4A_FAILED(k4a_device_open(K4A_DEVICE_DEFAULT, &device)))
+		if (K4A_FAILED(k4a_device_open(K4A_DEVICE_DEFAULT, &device_)))
 		{
 			UERROR("Failed to open k4a device!");
 			return false;
@@ -190,27 +198,26 @@ bool CameraK4A::init(const std::string & calibrationFolder, const std::string & 
 
 		// Get the size of the serial number
 		size_t serial_size = 0;
-		k4a_device_get_serialnum(device, NULL, &serial_size);
+		k4a_device_get_serialnum(device_, NULL, &serial_size);
 
 		// Allocate memory for the serial, then acquire it
 		char *serial = (char*)(malloc(serial_size));
-		k4a_device_get_serialnum(device, serial, &serial_size);
-		UINFO("Opened device: %s", serial);
+		k4a_device_get_serialnum(device_, serial, &serial_size);
+		serial_number_.assign(serial, serial_size);
 		free(serial);
 
-		// Configure a stream of 4096x3072 BRGA color data at 15 frames per second
-		k4a_device_configuration_t config = K4A_DEVICE_CONFIG_INIT_DISABLE_ALL;
-		config.camera_fps = K4A_FRAMES_PER_SECOND_15;
-		config.color_format = K4A_IMAGE_FORMAT_COLOR_BGRA32;
-		config.color_resolution = K4A_COLOR_RESOLUTION_3072P;
+		UINFO("Opened device: %s", serial_number_.c_str());
 
 		// Start the camera with the given configuration
-		if (K4A_FAILED(k4a_device_start_cameras(device, &config)))
+		if (K4A_FAILED(k4a_device_start_cameras(device_, &config_)))
 		{
 			UERROR("Failed to start cameras!");
-			k4a_device_close(device);
+			k4a_device_close(device_);
 			return false;
-		}*/
+		}
+
+		UINFO("Camera started successfully");
+		return false;
 	}
 	
 	return true;
@@ -228,7 +235,10 @@ bool CameraK4A::isCalibrated() const
 std::string CameraK4A::getSerial() const
 {
 #ifdef RTABMAP_K4A
-	return fileName_.empty()?"":fileName_;
+	if(device_ != NULL)
+		return(serial_number_);
+	else
+		return fileName_.empty()?"":fileName_;
 #else
 	return "";
 #endif
@@ -443,7 +453,7 @@ SensorData CameraK4A::captureImage(CameraInfo * info)
 	}
 	else
 	{
-		UERROR("CameraK4A: Live camera stream is not yet supported, only recorded mkv files are.");
+		// Camera stream things here
 	}
 
 #else

@@ -34,6 +34,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/Version.h"
 #include "rtabmap/utilite/UTimer.h"
 
+#ifdef RTABMAP_K4A
+ #include <k4a/k4atypes.h>
+#endif
+
 namespace rtabmap
 {
 
@@ -67,6 +71,11 @@ private:
 private:
 
 #ifdef RTABMAP_K4A
+	uint32_t device_count_;
+	k4a_device_t device_;
+	k4a_device_configuration_t config_;
+	std::string serial_number_;
+
 	void* playbackHandle_;
 	void* transformationHandle_;
 	CameraModel model_;
