@@ -75,8 +75,7 @@ private:
 	k4a_device_configuration_t config_;
 	k4a_calibration_t calibration_;
 	k4a_transformation_t transformation_;
-	k4a_image_t depth_image_;
-	k4a_image_t rgb_image_;
+	k4a_capture_t capture_;
 	std::string serial_number_;
 
 	void* playbackHandle_;

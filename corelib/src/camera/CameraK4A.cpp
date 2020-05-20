@@ -54,22 +54,11 @@ CameraK4A::CameraK4A(
 	const Transform & localTransform) :
 	Camera(imageRate, localTransform)
 #ifdef RTABMAP_K4A
-	,playbackHandle_(NULL),
-	transformationHandle_(NULL),
-	deviceId_(deviceId),
+	,deviceId_(deviceId),
 	ir_(false),
 	previousStamp_(0.0)
 #endif
 {
-#ifdef RTABMAP_K4A
-	device_ = NULL;
-
-	config_ = K4A_DEVICE_CONFIG_INIT_DISABLE_ALL;
-	config_.camera_fps = K4A_FRAMES_PER_SECOND_15;
-	config_.depth_mode = K4A_DEPTH_MODE_WFOV_2X2BINNED;
-	config_.color_format = K4A_IMAGE_FORMAT_COLOR_BGRA32;
-	config_.color_resolution = K4A_COLOR_RESOLUTION_720P;
-#endif
 }
 
 CameraK4A::CameraK4A(
@@ -103,6 +92,7 @@ void CameraK4A::close()
 		k4a_playback_close((k4a_playback_t)playbackHandle_);
 		playbackHandle_ = NULL;
 	}
+
 	if (transformationHandle_ != NULL)
 	{
 		k4a_transformation_destroy((k4a_transformation_t)transformationHandle_);
@@ -110,8 +100,16 @@ void CameraK4A::close()
 	}
 
 	// Shut down the camera when finished with application logic
-	if(device_ != NULL)
+	if (device_ != NULL)
 	{
+		k4a_device_stop_imu(device_);
+
+		if (transformation_ != NULL)
+		{
+			k4a_transformation_destroy(transformation_);
+			transformation_ = NULL;
+		}
+
 		k4a_device_stop_cameras(device_);
 		k4a_device_close(device_);
 		device_ = NULL;
@@ -130,10 +128,10 @@ bool CameraK4A::init(const std::string & calibrationFolder, const std::string & 
 {
 #ifdef RTABMAP_K4A
 	
-	close();
-
 	if (!fileName_.empty())
 	{
+		close();
+
 		if (k4a_playback_open(fileName_.c_str(), (k4a_playback_t*)&playbackHandle_) != K4A_RESULT_SUCCEEDED)
 		{
 			UERROR("Failed to open recording \"%s\"", fileName_.c_str());
@@ -176,6 +174,7 @@ bool CameraK4A::init(const std::string & calibrationFolder, const std::string & 
 		}
 
 		k4a_record_configuration_t config;
+
 		if (k4a_playback_get_record_configuration((k4a_playback_t)playbackHandle_, &config))
 		{
 			UERROR("Failed to getting recording configuration");
@@ -185,7 +184,16 @@ bool CameraK4A::init(const std::string & calibrationFolder, const std::string & 
 	}
 	else if (deviceId_ >= 0)
 	{
+		device_ = NULL;
+
+		config_ = K4A_DEVICE_CONFIG_INIT_DISABLE_ALL;
+		config_.camera_fps = K4A_FRAMES_PER_SECOND_15;
+		config_.depth_mode = K4A_DEPTH_MODE_WFOV_2X2BINNED;
+		config_.color_format = K4A_IMAGE_FORMAT_COLOR_BGRA32;
+		config_.color_resolution = K4A_COLOR_RESOLUTION_720P;
+
 		int device_count = k4a_device_get_installed_count();
+
 		if (device_count == 0)
 		{
 			UERROR("No k4a devices attached!");
@@ -211,7 +219,7 @@ bool CameraK4A::init(const std::string & calibrationFolder, const std::string & 
 		serial_number_.assign(serial, serial_size);
 		free(serial);
 
-		UINFO("Opened device: %s", serial_number_.c_str());
+		UINFO("Opened K4A device: %s", serial_number_.c_str());
 
 		// Start the camera with the given configuration
 		if (K4A_FAILED(k4a_device_start_cameras(device_, &config_)))
@@ -221,7 +229,7 @@ bool CameraK4A::init(const std::string & calibrationFolder, const std::string & 
 			return false;
 		}
 
-		UINFO("Camera started successfully");
+		UINFO("K4A camera started successfully");
 
 		if (K4A_FAILED(k4a_device_get_calibration(device_, config_.depth_mode, config_.color_resolution, &calibration_))
 		{
@@ -229,9 +237,27 @@ bool CameraK4A::init(const std::string & calibrationFolder, const std::string & 
 			k4a_device_close(device_);
 			return false;
 		}
+
+		transformation_ = k4a_transformation_create(&calibration_);
+
+		if (K4A_FAILED(k4a_device_start_imu(device_)))
+		{
+			UERROR("Failed to start K4A IMU");
+			close();
+			return false
+		}
+
+		UINFO("K4a IMU started successfully");
+
+		// Get an initial capture to put the camera in the right state
+		if (K4A_WAIT_RESULT_SUCCEEDED = k4a_device_get_capture(device_, &capture_, K4a_WAIT_INFINITE))
+		{
+			k4a_capture_release(capture_);
+			return true;
+		}
+
 		return false;
 	}
-	
 	return true;
 #else
 	UERROR("CameraK4A: RTAB-Map is not built with Kinect for Azure SDK support!");
@@ -465,7 +491,164 @@ SensorData CameraK4A::captureImage(CameraInfo * info)
 	}
 	else
 	{
-		// Camera stream things here
+		k4a_image_t ir_image_;
+		k4a_image_t depth_image_;
+		k4a_image_t rgb_image_;
+		k4a_imu_sample_t imu_sample_;
+
+		if (K4A_WAIT_RESULT_SUCCEEDED = k4a_device_get_capture(device_, &capture_, K4a_WAIT_INFINITE))
+		{
+			cv::Mat bgrCV;
+			cv::Mat depthCV;
+			IMU imu;
+			double stamp = 0;
+
+			if (ir_)
+			{
+				// Retrieve IR image from capture
+				ir_image_ = k4a_capture_get_ir_image(capture_);
+
+				if(ir_image_ != NULL)
+				{
+					// Convert IR image
+					cv::Mat bgrCV16(k4a_image_get_height_pixels(ir_image_),
+							k4a_image_get_width_pixels(ir_image_),
+							CV_16UC1,
+							(void*)k4a_image_get_buffer(ir_image_));
+
+					bgrCV16.convertTo(bgrCV, CV_8U);
+
+					// Release the image
+					k4a_image_release(ir_image_);
+				}
+			}
+			else
+			{
+				// Retrieve RGB image from capture
+				rgb_image_ = k4a_capture_get_color_image(capture_);
+
+				if(rgb_image_ != NULL)
+				{
+					// Convert RGB image
+					if (k4a_image_get_format(rgb_image_ == K4A_IMAGE_FORMAT_COLOR_MJPG))
+					{
+						bgrCV = uncompressImage(cv::Mat(1, (int)k4a_image_get_size(rgb_image_),
+									CV_8UC1,
+									(void*)k4a_image_get_buffer(rgb_image_)));
+					}
+					else
+					{
+						cv::Mat bgra(k4a_image_get_height_pixels(rgb_image_),
+							     k4a_image_get_width_pixels(rgb_image_),
+							     CV_8UC4,
+							     (void*)k4a_image_get_buffer(rgb_image_));
+
+						cv:cvtColor(bgra, bgrCV, CV_BGRA2BGR);
+					}
+
+					// Release the image
+					k4a_image_release(rgb_image_);
+				}
+			}
+
+			// Retrieve depth image from capture
+			depth_image_ = k4a_capture_get_depth_image(capture_);
+
+			if (depth_image_ != NULL)
+			{
+				if (ir_)
+				{
+					depthCV = cv::Mat(k4a_image_get_height_pixels(depth_image_),
+							  k4a_image_get_width_pixels(depth_image_),
+							  CV_16UC1,
+							  (void*)k4a_image_get_buffer(depth_image_)).clone();
+				}
+				else
+				{
+					k4a_image_t transformedDepth = NULL;
+
+					if (k4a_image_create(k4a_image_get_format(depth_image_),
+							     bgrCV.cols, bgrCV.rows, bgrCV.cols * 2, &transformedDepth) == K4A_RESULT_SUCCEEDED)
+					{
+						if(k4a_transformation_depth_image_to_color_camera(transformation_, depth_image_, transformedDepth) == K4A_RESULT_SUCCEEDED)
+						{
+							depthCV = cv::Mat(k4a_image_get_height_pixels(transformedDepth),
+									  k4a_image_get_width_pixels(transformedDepth),
+									  CV_16UC1,
+									  (void*)k4a_image_get_buffer(transformedDepth)).clone();
+						}
+						else
+						{
+							UERROR("K4A failed to register depth image");
+						}
+
+						k4a_image_release(transformedDepth);
+					}
+					else
+					{
+						UERROR("K4A failed to allocate registered depth image");
+					}
+				}
+				k4a_image_release(depth_image_);
+		 	}
+			k4a_capture_release(capture_);
+
+			// Get IMU sample, clear buffer
+			while(K4A_WAIT_RESULT_SUCCEEDED == k4a_device_get_imu_sample(device_, &imu_sample_, 60))
+			{
+				imu = IMU(cv::Vec3d(-1 * imu_sample_.gyro_sample.xyz.x, imu_sample_.gyro_sample.xyz.y, -1 * imu_sample_.gyro_sample.xyz.z),
+					  cv::Mat::eye(3, 3, CV_64FC1),
+					  cv::Vec3d(-1 * imu_sample_.acc_sample.xyz.x, imu_sample_.acc_sample.xyz.y, -1 * imu_sample_.acc_sample.xyz.z),
+					  cv::Mat::eye(3, 3, CV_64FC1),
+					  Transform::getIdentity());
+
+				UINFO("IMU: %f %f %f %f %f %f", imu_sample_.gyro_sample.xyz.x, imu_sample_.gyro_sample.xyz.y, imu_sample_.gyro_sample.xyz.z,
+								imu_sample_.acc_sample.xyz.x, imu_sample_.acc_sample.xyz.y, imu_sample_.acc_sample.xyz.z);
+			}
+			else
+			{
+				UERROR("IMU data NULL");
+			}
+
+			// Relay the data to rtabmap
+			if (!bgrCV.empty() && !depthCV.empty())
+			{
+				data = SensorData(bgrCV, depthCV, model_, this->getNextSeqID(), stamp);
+				data.setIMU(imu);
+
+                        // Frame rate
+                        if (this->getImageRate() < 0.0f)
+                        {
+                                if (previousStamp_ > 0)
+                                {
+                                        float ratio = -this->getImageRate();
+                                        int sleepTime = 1000.0*(stamp - previousStamp_) / ratio - 1000.0*timer_.getElapsedTime();
+
+                                        if (sleepTime > 10000)
+                                        {
+                                                UWARN("Detected long delay (%d sec, stamps = %f vs %f). Waiting a maximum of 10 seconds.",
+                                                        sleepTime / 1000, previousStamp_, stamp);
+                                                sleepTime = 10000;
+                                        }
+
+                                        if (sleepTime > 2)
+                                        {
+                                                uSleep(sleepTime - 2);
+                                        }
+
+                                        // Add precision at the cost of a small overhead
+                                        while (timer_.getElapsedTime() < (stamp - previousStamp_) / ratio - 0.000001)
+                                        {
+                                                //
+                                        }
+
+                                        double slept = timer_.getElapsedTime();
+                                        timer_.start();
+                                        UDEBUG("slept=%fs vs target=%fs (ratio=%f)", slept, (stamp - previousStamp_) / ratio, ratio);
+                                }
+                                previousStamp_ = stamp;
+			}
+		}
 	}
 
 #else
