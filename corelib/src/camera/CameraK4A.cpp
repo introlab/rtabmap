@@ -55,6 +55,8 @@ CameraK4A::CameraK4A(
 	Camera(imageRate, localTransform)
 #ifdef RTABMAP_K4A
 	,deviceId_(deviceId),
+	playbackHandle_(NULL),
+	transformationHandle_(NULL),
 	ir_(false),
 	previousStamp_(0.0)
 #endif
