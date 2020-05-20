@@ -65,12 +65,15 @@ void showUsage()
 			"                         and valid ground truth indices to [path]_indices.txt \n"
 #ifdef WITH_QT
 			"    --stats            Show available statistics to plot (if path is a file). \n"
-			"    --invert           Put all curves from a same database in same figure, \n"
-			"                         instead of all same curves from different database \n"
-			"                         in same figure. \n"
+			"    --invert           When reading many databases, put all curves from a same \n"
+			"                       database in same figure, instead of all same curves from \n"
+			"                       different database in same figure. When reading a single \n"
+			"                       database, the inverse will be done. \n"
 			"    --ids              Use IDs for x axis instead of time in the figures. \n"
+			"    --start #          Start from this node ID for the figures.\n"
 #endif
-			"    --report           Export all statistics values in report.txt \n\n");
+			"    --report           Export all statistics values in report.txt \n"
+			"    --help             Show usage\n\n");
 	exit(1);
 }
 
@@ -97,13 +100,18 @@ int main(int argc, char * argv[])
 	bool showAvailableStats = false;
 	bool invertFigures = false;
 	bool useIds = false;
+	int startId = 0;
 	std::vector<std::string> statsToShow;
 #ifdef WITH_QT
 	std::map<std::string, UPlot*> figures;
 #endif
 	for(int i=1; i<argc-1; ++i)
 	{
-		if(strcmp(argv[i], "--latex") == 0)
+		if(strcmp(argv[i], "--help") == 0)
+		{
+			showUsage();
+		}
+		else if(strcmp(argv[i], "--latex") == 0)
 		{
 			outputLatex = true;
 		}
@@ -143,15 +151,37 @@ int main(int argc, char * argv[])
 		{
 			useIds = true;
 		}
+#ifdef WITH_QT
+		else if(strcmp(argv[i],"--start") == 0)
+		{
+			++i;
+			if(i<argc-1)
+			{
+				startId = atoi(argv[i]);
+				printf("Figures will be plotted from id=%d (--start)\n", startId);
+			}
+			else
+			{
+				printf("Missing id for \"--start\" option.\n");
+				showUsage();
+			}
+		}
 		else
 		{
-#ifdef WITH_QT
+
 			statsToShow.push_back(argv[i]);
-#endif
 		}
+#endif
 	}
 
+	std::string path = argv[argc-1];
+	path = uReplaceChar(path, '~', UDirectory::homeDir());
+
 #ifdef WITH_QT
+	if(!UDirectory::exists(path) && UFile::getExtension(path).compare("db") == 0)
+	{
+		invertFigures = !invertFigures;
+	}
 	if(!invertFigures)
 	{
 		for(size_t i=0; i<statsToShow.size(); ++i)
@@ -159,7 +189,8 @@ int main(int argc, char * argv[])
 			std::string figureTitle = statsToShow[i];
 			printf("Plot %s\n", figureTitle.c_str());
 			UPlot * fig = new UPlot();
-			fig->setTitle(figureTitle.c_str());
+			fig->resize(QSize(640,480));
+			fig->setWindowTitle(figureTitle.c_str());
 			if(useIds)
 			{
 				fig->setXLabel("Node ID");
@@ -173,9 +204,6 @@ int main(int argc, char * argv[])
 		statsToShow.clear();
 	}
 #endif
-
-	std::string path = argv[argc-1];
-	path = uReplaceChar(path, '~', UDirectory::homeDir());
 
 	std::string fileName;
 	std::list<std::string> paths;
@@ -302,7 +330,7 @@ int main(int argc, char * argv[])
 					else
 					{
 						UPlot * fig = new UPlot();
-						fig->setTitle(filePath.c_str());
+						fig->setWindowTitle(filePath.c_str());
 						if(useIds)
 						{
 							fig->setXLabel("Node ID");
@@ -402,7 +430,7 @@ int main(int argc, char * argv[])
 #ifdef WITH_QT
 								for(std::map<std::string, UPlotCurve*>::iterator jter=curves.begin(); jter!=curves.end(); ++jter)
 								{
-									if(uContains(stat, jter->first))
+									if(uContains(stat, jter->first) && *iter >= startId)
 									{
 										if(!uContains(firstStamps, jter->first))
 										{

@@ -71,9 +71,12 @@ private:
 private:
 
 #ifdef RTABMAP_K4A
-	uint32_t device_count_;
 	k4a_device_t device_;
 	k4a_device_configuration_t config_;
+	k4a_calibration_t calibration_;
+	k4a_transformation_t transformation_;
+	k4a_image_t depth_image_;
+	k4a_image_t rgb_image_;
 	std::string serial_number_;
 
 	void* playbackHandle_;

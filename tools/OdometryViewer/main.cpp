@@ -31,6 +31,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UConversion.h>
 #include <rtabmap/utilite/UStl.h>
 #include <rtabmap/core/Odometry.h>
+#include <rtabmap/core/odometry/OdometryMono.h>
 #include <rtabmap/core/OdometryThread.h>
 #include <rtabmap/gui/OdometryViewer.h>
 #include <rtabmap/core/CameraThread.h>
@@ -47,9 +48,23 @@ void showUsage()
 	printf("\nUsage:\n"
 			"odometryViewer [options]\n"
 			"Options:\n"
-			"  -driver #                 Driver number to use: 0=OpenNI-PCL, 1=OpenNI2, 2=Freenect, 3=OpenNI-CV, 4=OpenNI-CV-ASUS, 5=Freenect2, 6=dc1394, 7=FlyCapture2\n"
+			"  -driver #                 Driver number to use: \n"
+			"                                     0=OpenNI-PCL (Kinect)\n"
+			"                                     1=OpenNI2    (Kinect and Xtion PRO Live)\n"
+			"                                     2=Freenect   (Kinect)\n"
+			"                                     3=OpenNI-CV  (Kinect)\n"
+			"                                     4=OpenNI-CV-ASUS (Xtion PRO Live)\n"
+			"                                     5=Freenect2  (Kinect v2)\n"
+			"                                     6=DC1394     (Bumblebee2)\n"
+			"                                     7=FlyCapture2 (Bumblebee2)\n"
+			"                                     8=ZED stereo\n"
+			"                                     9=RealSense\n"
+			"                                     10=Kinect for Windows 2 SDK\n"
+			"                                     11=RealSense2\n"
+			"                                     12=Kinect for Azure SDK\n"
+			"                                     13=MYNT EYE S\n"
 			"  -hz #.#                   Camera rate (default 0, 0 means as fast as the camera can)\n"
-			"  -db \"input.db\"          Use database instead of camera (recorded with rtabmap-dataRecorder)\n"
+			"  -db \"input.db\"            Use database instead of camera (recorded with rtabmap-dataRecorder)\n"
 			"  -clouds #                 Maximum clouds shown (default 10, zero means inf)\n"
 			"  -sec #.#                  Delay (seconds) before reading the database (if set)\n"
 			"%s\n",
@@ -77,7 +92,7 @@ int main (int argc, char * argv[])
 			if(i < argc)
 			{
 				driver = std::atoi(argv[i]);
-				if(driver < 0 || driver > 7)
+				if(driver < 0 || driver > 13)
 				{
 					showUsage();
 				}
@@ -184,7 +199,9 @@ int main (int argc, char * argv[])
 
 	bool icp = false;
 	int regStrategy = rtabmap::Parameters::defaultRegStrategy();
+	int odomStrategy = rtabmap::Parameters::defaultOdomStrategy();
 	rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kRegStrategy(), regStrategy);
+	rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kOdomStrategy(), odomStrategy);
 	int decimation = 8;
 	float maxDepth = 4.0f;
 	float voxelSize = rtabmap::Parameters::defaultIcpVoxelSize();
@@ -214,7 +231,17 @@ int main (int argc, char * argv[])
 
 	QApplication app(argc, argv);
 
-	rtabmap::Odometry * odom = rtabmap::Odometry::create(parameters);
+	rtabmap::Odometry * odom;
+	if(odomStrategy == -1)
+	{
+		// experimental mono
+		odom = new rtabmap::OdometryMono(parameters);
+	}
+	else
+	{
+		odom = rtabmap::Odometry::create(parameters);
+	}
+
 
 	rtabmap::OdometryThread odomThread(odom);
 	rtabmap::OdometryViewer odomViewer(maxClouds, 2, 0.0, 50);
@@ -297,6 +324,60 @@ int main (int argc, char * argv[])
 			exit(-1);
 		}
 		camera = new rtabmap::CameraStereoFlyCapture2(rate, t);
+	}
+	else if(driver == 8)
+	{
+		if(!rtabmap::CameraStereoZed::available())
+		{
+			UERROR("Not built with ZED sdk support...");
+			exit(-1);
+		}
+		camera = new rtabmap::CameraStereoZed(0,3,1,0,100,false,rate,t);
+	}
+	else if (driver == 9)
+	{
+		if (!rtabmap::CameraRealSense::available())
+		{
+			UERROR("Not built with RealSense support...");
+			exit(-1);
+		}
+		camera = new rtabmap::CameraRealSense(0, 0, 0, false, rate, t);
+	}
+	else if (driver == 10)
+	{
+		if (!rtabmap::CameraK4W2::available())
+		{
+			UERROR("Not built with Kinect for Windows 2 SDK support...");
+			exit(-1);
+		}
+		camera = new rtabmap::CameraK4W2(0, rtabmap::CameraK4W2::kTypeDepth2ColorSD, rate, t);
+	}
+	else if (driver == 11)
+	{
+		if (!rtabmap::CameraRealSense2::available())
+		{
+			UERROR("Not built with RealSense2 SDK support...");
+			exit(-1);
+		}
+		camera = new rtabmap::CameraRealSense2("", rate, t);
+	}
+	else if (driver == 12)
+	{
+		if (!rtabmap::CameraK4A::available())
+		{
+			UERROR("Not built with Kinect for Azure SDK support...");
+			exit(-1);
+		}
+		camera = new rtabmap::CameraK4A();
+	}
+	else if (driver == 13)
+	{
+		if (!rtabmap::CameraMyntEye::available())
+		{
+			UERROR("Not built with Mynt Eye S support...");
+			exit(-1);
+		}
+		camera = new rtabmap::CameraMyntEye("", false, false, rate, t);
 	}
 	else
 	{

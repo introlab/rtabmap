@@ -75,8 +75,8 @@ public:
 	static cv::Mat findFFromWords(
 			const std::list<std::pair<int, std::pair<cv::KeyPoint, cv::KeyPoint> > > & pairs, // id, kpt1, kpt2
 			std::vector<uchar> & status,
-			double ransacParam1 = 3.0,
-			double ransacParam2 = 0.99);
+			double ransacReprojThreshold = 3.0,
+			double ransacConfidence = 0.99);
 
 	// assume a canonical camera (without K)
 	static void findRTFromP(

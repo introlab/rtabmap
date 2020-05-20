@@ -73,7 +73,7 @@ SuperGlue::SuperGlue(const std::string & path, float matchThreshold, int iterati
 	path_ = uReplaceChar(path, '~', UDirectory::homeDir());
 	UINFO("path = %s", path_.c_str());
 
-	if(!UFile::exists(path_))
+	if(!UFile::exists(path_) || UFile::getExtension(path_).compare("py") != 0)
 	{
 		UERROR("Cannot initialize SuperGlue, the path is not valid: \"%s\"", path_.c_str());
 		return;
@@ -100,7 +100,7 @@ SuperGlue::SuperGlue(const std::string & path, float matchThreshold, int iterati
 
 	if(!pModule_)
 	{
-		UERROR("Module %s could not be imported!", scriptName.c_str());
+		UERROR("Module \"%s\" could not be imported! (File=\"%s\")", scriptName.c_str(), path_.c_str());
 		UERROR("%s", getTraceback().c_str());
 	}
 }

@@ -521,7 +521,9 @@ void ParametersToolBox::addParameter(QVBoxLayout * layout, const QString & key, 
 	QString tmp = key.split('/').last();
 	QLabel * label = new QLabel(tmp, this);
 	label->setObjectName(key+"/label");
-	label->setToolTip(QString("<FONT>%1</FONT>").arg(Parameters::getDescription(key.toStdString()).c_str()));
+	label->setToolTip(QString("<FONT>%1 [default=%2]</FONT>")
+			.arg(Parameters::getDescription(key.toStdString()).c_str())
+			.arg(uValue(Parameters::getDefaultParameters(), key.toStdString(), std::string("?")).c_str()));
 	label->setTextInteractionFlags(Qt::TextSelectableByMouse);
 	hLayout->addWidget(label);
 	hLayout->addWidget(widget);

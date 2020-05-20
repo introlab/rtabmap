@@ -302,6 +302,7 @@ private:
 	bool _badSignaturesIgnored;
 	bool _mapLabelsAdded;
 	bool _depthAsMask;
+	bool _stereoFromMotion;
 	int _imagePreDecimation;
 	int _imagePostDecimation;
 	bool _compressionParallelized;
