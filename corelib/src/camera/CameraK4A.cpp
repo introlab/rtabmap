@@ -55,6 +55,8 @@ CameraK4A::CameraK4A(
 	Camera(imageRate, localTransform)
 #ifdef RTABMAP_K4A
 	,deviceId_(deviceId),
+	playbackHandle_(NULL),
+	transformationHandle_(NULL),
 	ir_(false),
 	previousStamp_(0.0)
 #endif
@@ -87,32 +89,36 @@ CameraK4A::~CameraK4A()
 void CameraK4A::close()
 {
 #ifdef RTABMAP_K4A
-	if (playbackHandle_ != NULL)
+	if (!fileName_.empty())
 	{
-		k4a_playback_close((k4a_playback_t)playbackHandle_);
-		playbackHandle_ = NULL;
-	}
-
-	if (transformationHandle_ != NULL)
-	{
-		k4a_transformation_destroy((k4a_transformation_t)transformationHandle_);
-		transformationHandle_ = NULL;
-	}
-
-	// Shut down the camera when finished with application logic
-	if (device_ != NULL)
-	{
-		k4a_device_stop_imu(device_);
-
-		if (transformation_ != NULL)
+		if (playbackHandle_ != NULL)
 		{
-			k4a_transformation_destroy(transformation_);
-			transformation_ = NULL;
+			k4a_playback_close((k4a_playback_t)playbackHandle_);
+			playbackHandle_ = NULL;
 		}
 
-		k4a_device_stop_cameras(device_);
-		k4a_device_close(device_);
-		device_ = NULL;
+		if (transformationHandle_ != NULL)
+		{
+			k4a_transformation_destroy((k4a_transformation_t)transformationHandle_);
+			transformationHandle_ = NULL;
+		}
+	}
+	else
+	{
+		if (device_ != NULL)
+		{
+			k4a_device_stop_imu(device_);
+
+			if (transformation_ != NULL)
+			{
+				k4a_transformation_destroy(transformation_);
+				transformation_ = NULL;
+			}
+
+			k4a_device_stop_cameras(device_);
+			k4a_device_close(device_);
+			device_ = NULL;
+		}
 	}
 #endif
 }
@@ -231,7 +237,7 @@ bool CameraK4A::init(const std::string & calibrationFolder, const std::string & 
 
 		UINFO("K4A camera started successfully");
 
-		if (K4A_FAILED(k4a_device_get_calibration(device_, config_.depth_mode, config_.color_resolution, &calibration_))
+		if (K4A_FAILED(k4a_device_get_calibration(device_, config_.depth_mode, config_.color_resolution, &calibration_)))
 		{
 			UERROR("k4a_device_get_calibration() failed!");
 			k4a_device_close(device_);
@@ -244,13 +250,13 @@ bool CameraK4A::init(const std::string & calibrationFolder, const std::string & 
 		{
 			UERROR("Failed to start K4A IMU");
 			close();
-			return false
+			return false;
 		}
 
 		UINFO("K4a IMU started successfully");
 
 		// Get an initial capture to put the camera in the right state
-		if (K4A_WAIT_RESULT_SUCCEEDED = k4a_device_get_capture(device_, &capture_, K4a_WAIT_INFINITE))
+		if (K4A_WAIT_RESULT_SUCCEEDED == k4a_device_get_capture(device_, &capture_, K4A_WAIT_INFINITE))
 		{
 			k4a_capture_release(capture_);
 			return true;
@@ -496,7 +502,7 @@ SensorData CameraK4A::captureImage(CameraInfo * info)
 		k4a_image_t rgb_image_;
 		k4a_imu_sample_t imu_sample_;
 
-		if (K4A_WAIT_RESULT_SUCCEEDED = k4a_device_get_capture(device_, &capture_, K4a_WAIT_INFINITE))
+		if (K4A_WAIT_RESULT_SUCCEEDED == k4a_device_get_capture(device_, &capture_, K4A_WAIT_INFINITE))
 		{
 			cv::Mat bgrCV;
 			cv::Mat depthCV;
@@ -530,7 +536,7 @@ SensorData CameraK4A::captureImage(CameraInfo * info)
 				if(rgb_image_ != NULL)
 				{
 					// Convert RGB image
-					if (k4a_image_get_format(rgb_image_ == K4A_IMAGE_FORMAT_COLOR_MJPG))
+					if (k4a_image_get_format(rgb_image_) == K4A_IMAGE_FORMAT_COLOR_MJPG)
 					{
 						bgrCV = uncompressImage(cv::Mat(1, (int)k4a_image_get_size(rgb_image_),
 									CV_8UC1,
@@ -543,7 +549,7 @@ SensorData CameraK4A::captureImage(CameraInfo * info)
 							     CV_8UC4,
 							     (void*)k4a_image_get_buffer(rgb_image_));
 
-						cv:cvtColor(bgra, bgrCV, CV_BGRA2BGR);
+						cv::cvtColor(bgra, bgrCV, CV_BGRA2BGR);
 					}
 
 					// Release the image
@@ -594,7 +600,7 @@ SensorData CameraK4A::captureImage(CameraInfo * info)
 			k4a_capture_release(capture_);
 
 			// Get IMU sample, clear buffer
-			while(K4A_WAIT_RESULT_SUCCEEDED == k4a_device_get_imu_sample(device_, &imu_sample_, 60))
+			if(K4A_WAIT_RESULT_SUCCEEDED == k4a_device_get_imu_sample(device_, &imu_sample_, 60))
 			{
 				imu = IMU(cv::Vec3d(-1 * imu_sample_.gyro_sample.xyz.x, imu_sample_.gyro_sample.xyz.y, -1 * imu_sample_.gyro_sample.xyz.z),
 					  cv::Mat::eye(3, 3, CV_64FC1),
@@ -616,37 +622,39 @@ SensorData CameraK4A::captureImage(CameraInfo * info)
 				data = SensorData(bgrCV, depthCV, model_, this->getNextSeqID(), stamp);
 				data.setIMU(imu);
 
-                        // Frame rate
-                        if (this->getImageRate() < 0.0f)
-                        {
-                                if (previousStamp_ > 0)
-                                {
-                                        float ratio = -this->getImageRate();
-                                        int sleepTime = 1000.0*(stamp - previousStamp_) / ratio - 1000.0*timer_.getElapsedTime();
+				// Frame rate
+				if (this->getImageRate() < 0.0f)
+				{
+					if (previousStamp_ > 0)
+					{
+						float ratio = -this->getImageRate();
+						int sleepTime = 1000.0*(stamp - previousStamp_) / ratio - 1000.0*timer_.getElapsedTime();
 
-                                        if (sleepTime > 10000)
-                                        {
-                                                UWARN("Detected long delay (%d sec, stamps = %f vs %f). Waiting a maximum of 10 seconds.",
-                                                        sleepTime / 1000, previousStamp_, stamp);
-                                                sleepTime = 10000;
-                                        }
+						if (sleepTime > 10000)
+						{
+							UWARN("Detected long delay (%d sec, stamps = %f vs %f). Waiting a maximum of 10 seconds.",
+								sleepTime / 1000, previousStamp_, stamp);
 
-                                        if (sleepTime > 2)
-                                        {
-                                                uSleep(sleepTime - 2);
-                                        }
+							sleepTime = 10000;
+						}
 
-                                        // Add precision at the cost of a small overhead
-                                        while (timer_.getElapsedTime() < (stamp - previousStamp_) / ratio - 0.000001)
-                                        {
-                                                //
-                                        }
+						if (sleepTime > 2)
+						{
+							uSleep(sleepTime - 2);
+						}
 
-                                        double slept = timer_.getElapsedTime();
-                                        timer_.start();
-                                        UDEBUG("slept=%fs vs target=%fs (ratio=%f)", slept, (stamp - previousStamp_) / ratio, ratio);
-                                }
-                                previousStamp_ = stamp;
+						// Add precision at the cost of a small overhead
+						while (timer_.getElapsedTime() < (stamp - previousStamp_) / ratio - 0.000001)
+						{
+							//
+						}
+
+						double slept = timer_.getElapsedTime();
+						timer_.start();
+						UDEBUG("slept=%fs vs target=%fs (ratio=%f)", slept, (stamp - previousStamp_) / ratio, ratio);
+					}
+					previousStamp_ = stamp;
+				}
 			}
 		}
 	}
