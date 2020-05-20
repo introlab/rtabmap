@@ -195,11 +195,11 @@ IF(Python3_FOUND)
 	)
 	SET(SRC_FILES
 		${SRC_FILES}
-		superglue_pytorch/SuperGlue.cpp
+		pymatcher/PyMatcher.cpp
 	)
 	 SET(INCLUDE_DIRS
 	    ${TORCH_INCLUDE_DIRS}
-	    ${CMAKE_CURRENT_SOURCE_DIR}/superglue_pytorch
+	    ${CMAKE_CURRENT_SOURCE_DIR}/pymatcher
 		${INCLUDE_DIRS}
 	)
 ENDIF(Python3_FOUND)

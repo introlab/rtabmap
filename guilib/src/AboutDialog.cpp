@@ -73,12 +73,12 @@ AboutDialog::AboutDialog(QWidget * parent) :
 	_ui->label_sptorch->setText("No");
 	_ui->label_sptorch_license->setEnabled(false);
 #endif
-#ifdef RTABMAP_SUPERGLUE_PYTORCH
-	_ui->label_sgpytorch->setText("Yes");
-	_ui->label_sgpytorch_license->setEnabled(true);
+#ifdef RTABMAP_PYMATCHER
+	_ui->label_pymatcher->setText("Yes");
+	_ui->label_pymatcher_license->setEnabled(true);
 #else
-	_ui->label_sptorch->setText("No");
-	_ui->label_sptorch_license->setEnabled(false);
+	_ui->label_pymatcher->setText("No");
+	_ui->label_pymatcher_license->setEnabled(false);
 #endif
 #ifdef RTABMAP_FASTCV
 	_ui->label_fastcv->setText("Yes");

@@ -1,6 +1,6 @@
 #! /usr/bin/env python3
 #
-# Drop this file in the folder of SuperGlue git: https://github.com/magicleap/SuperGluePretrainedNetwork
+# Drop this file in the root folder of SuperGlue git: https://github.com/magicleap/SuperGluePretrainedNetwork
 # To use with rtabmap:
 #   --Vis/CorNNType 6 --SuperGlue/Path "~/SuperGluePretrainedNetwork/rtabmap_superglue.py"
 #
@@ -21,14 +21,15 @@ torch.set_grad_enabled(False)
 device = 'cpu'
 superglue = []
 
-def init(descriptorDim, matchThreshold, iterations, cuda, indoor):
-    print("Python init()")
-    # Load the SuperPoint and SuperGlue models.
+def init(descriptorDim, matchThreshold, iterations, cuda, model):
+    print("SuperGlue python init()")
+    # Load the SuperGlue model.
     global device
     device = 'cuda' if torch.cuda.is_available() and cuda else 'cpu'
+    assert model == "indoor" or model == "outdoor", "Available models for SuperGlue are 'indoor' or 'outdoor'"
     config = {
         'superglue': {
-            'weights': 'indoor' if indoor else 'outdoor',
+            'weights': model,
             'sinkhorn_iterations': iterations,
             'match_threshold': matchThreshold,
             'descriptor_dim' : descriptorDim
@@ -39,7 +40,7 @@ def init(descriptorDim, matchThreshold, iterations, cuda, indoor):
 
 
 def match(kptsFrom, kptsTo, scoresFrom, scoresTo, descriptorsFrom, descriptorsTo, imageWidth, imageHeight):
-    #print("Python match()")
+    #print("SuperGlue python match()")
     global device
     kptsFrom = np.asarray(kptsFrom)
     kptsFrom = kptsFrom[None, :, :]
@@ -81,5 +82,5 @@ def match(kptsFrom, kptsTo, scoresFrom, scoresTo, descriptorsFrom, descriptorsTo
 
 if __name__ == '__main__':
     #test
-    init(256, 0.2, 20, True, True)
+    init(256, 0.2, 20, True, 'indoor')
     match([[1, 2], [1,3]], [[1, 3], [1,2]], [1, 3], [1,3], np.full((2, 256), 1),np.full((2, 256), 1), 640, 480)

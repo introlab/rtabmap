@@ -63,7 +63,7 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>0</y>
+            <y>-279</y>
             <width>680</width>
             <height>3270</height>
            </rect>
@@ -95,7 +95,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>19</number>
+                <number>21</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,1">
@@ -17117,7 +17117,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                            </item>
                            <item>
                             <property name="text">
-                             <string>SuperGlue PyTorch</string>
+                             <string>PyMatcher</string>
                             </property>
                            </item>
                            <item>
@@ -17239,15 +17239,15 @@ Lower the ratio -&gt; higher the precision.</string>
                         </spacer>
                        </item>
                        <item>
-                        <widget class="QGroupBox" name="groupBox_superglue">
+                        <widget class="QGroupBox" name="groupBox_pymatcher">
                          <property name="title">
-                          <string>SuperGlue</string>
+                          <string>PyMatcher</string>
                          </property>
                          <layout class="QVBoxLayout" name="verticalLayout_149">
                           <item>
                            <widget class="QLabel" name="label_586">
                             <property name="text">
-                             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Python wrapper of &lt;a href=&quot;https://github.com/magicleap/SuperGluePretrainedNetwork&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;SuperGlue&lt;/span&gt;&lt;/a&gt; project. Download &lt;a href=&quot;https://github.com/introlab/rtabmap/blob/master/corelib/src/superglue_pytorch/rtabmap_superglue.py&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;rtabmap_superpoint.py&lt;/span&gt;&lt;/a&gt; and copy it at the root folder of SuperGlue git, then set its path below. &lt;span style=&quot; font-weight:600;&quot;&gt;Important&lt;/span&gt;: SuperGlue works only with SuperPoint descriptors!&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Python wrapper for python matcher like &lt;a href=&quot;https://github.com/magicleap/SuperGluePretrainedNetwork&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;SuperGlue&lt;/span&gt;&lt;/a&gt; or &lt;a href=&quot;https://github.com/zjhthu/OANet&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;OANet&lt;/span&gt;&lt;/a&gt;. Download the &lt;a href=&quot;https://github.com/introlab/rtabmap/tree/master/corelib/src/pymatcher&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;scripts&lt;/span&gt;&lt;/a&gt; and copy them at the root folder of SuperGlue git or in demo folder of OANet respectively, then set its path below. &lt;span style=&quot; font-weight:600;&quot;&gt;Important&lt;/span&gt;: Only float descriptors are allowed and SuperGlue works only with SuperPoint descriptors! You may have to train a new model for the feature used.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                             </property>
                             <property name="wordWrap">
                              <bool>true</bool>
@@ -17263,19 +17263,19 @@ Lower the ratio -&gt; higher the precision.</string>
                           <item>
                            <layout class="QGridLayout" name="gridLayout_116" columnstretch="0,0,1">
                             <item row="0" column="0">
-                             <widget class="QToolButton" name="toolButton_sgpytorch_path">
+                             <widget class="QToolButton" name="toolButton_pymatcher_path">
                               <property name="text">
                                <string>...</string>
                               </property>
                              </widget>
                             </item>
                             <item row="0" column="1">
-                             <widget class="QLineEdit" name="lineEdit_sgpytorch_path"/>
+                             <widget class="QLineEdit" name="lineEdit_pymatcher_path"/>
                             </item>
                             <item row="2" column="2">
                              <widget class="QLabel" name="label_585">
                               <property name="text">
-                               <string>Match threshold.</string>
+                               <string>Match threshold. Used by SuperGlue.</string>
                               </property>
                               <property name="wordWrap">
                                <bool>true</bool>
@@ -17286,7 +17286,7 @@ Lower the ratio -&gt; higher the precision.</string>
                              </widget>
                             </item>
                             <item row="2" column="1">
-                             <widget class="QDoubleSpinBox" name="sgpytorch_matchThreshold">
+                             <widget class="QDoubleSpinBox" name="pymatcher_matchThreshold">
                               <property name="decimals">
                                <number>3</number>
                               </property>
@@ -17307,7 +17307,7 @@ Lower the ratio -&gt; higher the precision.</string>
                             <item row="1" column="2">
                              <widget class="QLabel" name="label_584">
                               <property name="text">
-                               <string>Iterations.</string>
+                               <string>Iterations. Used by SuperGlue.</string>
                               </property>
                               <property name="wordWrap">
                                <bool>true</bool>
@@ -17320,7 +17320,7 @@ Lower the ratio -&gt; higher the precision.</string>
                             <item row="0" column="2">
                              <widget class="QLabel" name="label_583">
                               <property name="text">
-                               <string>[Required] Path to rtabmap_superpoint.py.</string>
+                               <string>[Required] Path to rtabmap python script.</string>
                               </property>
                               <property name="wordWrap">
                                <bool>true</bool>
@@ -17331,7 +17331,7 @@ Lower the ratio -&gt; higher the precision.</string>
                              </widget>
                             </item>
                             <item row="1" column="1">
-                             <widget class="QSpinBox" name="sgpytorch_iterations">
+                             <widget class="QSpinBox" name="pymatcher_iterations">
                               <property name="minimum">
                                <number>0</number>
                               </property>
@@ -17349,7 +17349,7 @@ Lower the ratio -&gt; higher the precision.</string>
                             <item row="3" column="2">
                              <widget class="QLabel" name="label_587">
                               <property name="text">
-                               <string>Cuda.</string>
+                               <string>Cuda. Used by SuperGlue.</string>
                               </property>
                               <property name="wordWrap">
                                <bool>true</bool>
@@ -17360,7 +17360,7 @@ Lower the ratio -&gt; higher the precision.</string>
                              </widget>
                             </item>
                             <item row="3" column="1">
-                             <widget class="QCheckBox" name="checkBox_sgpytorch_cuda">
+                             <widget class="QCheckBox" name="checkBox_pymatcher_cuda">
                               <property name="text">
                                <string/>
                               </property>
@@ -17369,7 +17369,7 @@ Lower the ratio -&gt; higher the precision.</string>
                             <item row="4" column="2">
                              <widget class="QLabel" name="label_590">
                               <property name="text">
-                               <string>Indoor model. Uncheck to use outdoor model.</string>
+                               <string>For SuperGlue, set only &quot;indoor&quot; or &quot;outdoor&quot;. For OANet, set path to one of the pth file (e.g., &quot;~/OANet/model/gl3d/sift-4000/model_best.pth&quot;).</string>
                               </property>
                               <property name="wordWrap">
                                <bool>true</bool>
@@ -17380,9 +17380,12 @@ Lower the ratio -&gt; higher the precision.</string>
                              </widget>
                             </item>
                             <item row="4" column="1">
-                             <widget class="QCheckBox" name="checkBox_sgpytorch_indoor">
+                             <widget class="QLineEdit" name="lineEdit_pymatcher_model"/>
+                            </item>
+                            <item row="4" column="0">
+                             <widget class="QToolButton" name="toolButton_pymatcher_model">
                               <property name="text">
-                               <string/>
+                               <string>...</string>
                               </property>
                              </widget>
                             </item>
