@@ -78,16 +78,16 @@ void sighandler(int sig)
 }
 
 int loopCount = 0;
+int proxCount = 0;
 int totalFrames = 0;
 std::vector<float> previousLocalizationDistances;
 std::vector<float> odomDistances;
-std::vector<float> localizationDistances;
+std::vector<float> localizationVariations;
+std::vector<float> localizationAngleVariations;
 std::vector<float> localizationTime;
 void showLocalizationStats()
 {
-	printf("Total localizations on previous session = %d/%d\n", loopCount, totalFrames);
-	loopCount = 0;
-	totalFrames = 0;
+	printf("Total localizations on previous session = %d/%d (Loop=%d, Prox=%d)\n", loopCount+proxCount, totalFrames, loopCount, proxCount);
 	{
 		float m = uMean(localizationTime);
 		float var = uVariance(localizationTime, m);
@@ -98,16 +98,29 @@ void showLocalizationStats()
 		}
 		printf("Average localization time = %f ms (stddev=%f ms)\n", m, stddev);
 	}
-	if(!localizationDistances.empty())
+	if(localizationVariations.size()>=2)
 	{
-		float m = uMean(localizationDistances);
-		float var = uVariance(localizationDistances, m);
+		//ignore first localization
+		localizationVariations = std::vector<float>(++localizationVariations.begin(), localizationVariations.end());
+		localizationAngleVariations = std::vector<float>(++localizationAngleVariations.begin(), localizationAngleVariations.end());
+
+		float m = uMean(localizationVariations);
+		float max = uMax(localizationVariations);
+		float var = uVariance(localizationVariations, m);
 		float stddev = -1;
 		if(var>0)
 		{
 			stddev = sqrt(var);
 		}
-		printf("Average localization distance = %f m (stddev=%f m)\n", m, stddev);
+		float mA = uMean(localizationAngleVariations);
+		float maxA = uMax(localizationAngleVariations);
+		float varA = uVariance(localizationAngleVariations, mA);
+		float stddevA = -1;
+		if(varA>0)
+		{
+			stddevA = sqrt(varA);
+		}
+		printf("Average localization variations = %f m, %f deg (stddev=%f m, %f deg) (max=%f m, %f deg)\n", m, mA, stddev, stddevA, max, maxA);
 	}
 	if(!previousLocalizationDistances.empty())
 	{
@@ -131,6 +144,15 @@ void showLocalizationStats()
 		}
 		printf("Average odometry distances = %f m (stddev=%f m)\n", m, stddev);
 	}
+
+	loopCount = 0;
+	proxCount = 0;
+	totalFrames = 0;
+	previousLocalizationDistances.clear();
+	odomDistances.clear();
+	localizationVariations.clear();
+	localizationAngleVariations.clear();
+	localizationTime.clear();
 }
 
 int main(int argc, char * argv[])
@@ -358,7 +380,7 @@ int main(int argc, char * argv[])
 	int processed = 0;
 	CameraInfo info;
 	SensorData data = dbReader.takeImage(&info);
-	Transform lastLocalizationPose = info.odomPose;
+	Transform lastLocalizationOdomPose = info.odomPose;
 	while(data.isValid() && g_loopForever)
 	{
 		UTimer iterationTime;
@@ -375,7 +397,7 @@ int main(int argc, char * argv[])
 				if(!incrementalMemory && processed>0)
 				{
 					showLocalizationStats();
-					lastLocalizationPose = info.odomPose;
+					lastLocalizationOdomPose = info.odomPose;
 				}
 				if(incrementalMemory)
 				{
@@ -477,9 +499,16 @@ int main(int argc, char * argv[])
 		++totalFrames;
 		if (loopId>0)
 		{
-			++loopCount;
+			if(stats.loopClosureId()>0)
+			{
+				++loopCount;
+			}
+			else
+			{
+				++proxCount;
+			}
 			int loopMapId = stats.loopClosureId() > 0? stats.loopClosureMapId(): stats.proximityDetectionMapId();
-			printf("Processed %d/%d nodes [id=%d map=%d]... %dms Loop on %d [%d]\n", ++processed, totalIds, refId, refMapId, int(iterationTime.ticks() * 1000), loopId, loopMapId);
+			printf("Processed %d/%d nodes [id=%d map=%d]... %dms %s on %d [%d]\n", ++processed, totalIds, refId, refMapId, int(iterationTime.ticks() * 1000), stats.loopClosureId() > 0?"Loop":"Prox", loopId, loopMapId);
 		}
 		else if(landmarkId != 0)
 		{
@@ -492,22 +521,23 @@ int main(int argc, char * argv[])
 
 		// Here we accumulate statistics about distance from last localization
 		if(!incrementalMemory &&
-		   !lastLocalizationPose.isNull() &&
+		   !lastLocalizationOdomPose.isNull() &&
 		   !info.odomPose.isNull())
 		{
 			if(loopId>0 || landmarkId != 0)
 			{
-				previousLocalizationDistances.push_back(lastLocalizationPose.getDistance(info.odomPose));
-				lastLocalizationPose = info.odomPose;
+				previousLocalizationDistances.push_back(lastLocalizationOdomPose.getDistance(info.odomPose));
+				lastLocalizationOdomPose = info.odomPose;
 			}
 		}
 		if(!incrementalMemory)
 		{
 			float totalTime = uValue(stats.data(), rtabmap::Statistics::kTimingTotal(), 0.0f);
 			localizationTime.push_back(totalTime);
-			if(loopId>0)
+			if(stats.data().find(Statistics::kLoopOdom_correction_norm()) != stats.data().end())
 			{
-				localizationDistances.push_back(stats.loopClosureTransform().getNorm());
+				localizationVariations.push_back(stats.data().at(Statistics::kLoopOdom_correction_norm()));
+				localizationAngleVariations.push_back(stats.data().at(Statistics::kLoopOdom_correction_angle()));
 			}
 		}
 
@@ -528,7 +558,7 @@ int main(int argc, char * argv[])
 	}
 	else
 	{
-		printf("Total loop closures = %d\n", loopCount);
+		printf("Total loop closures = %d (Loop=%d, Prox=%d)\n", loopCount+proxCount, loopCount, proxCount);
 	}
 
 	printf("Closing database \"%s\"...\n", outputDatabasePath.c_str());

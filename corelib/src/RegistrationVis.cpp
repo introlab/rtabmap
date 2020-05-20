@@ -290,6 +290,8 @@ Transform RegistrationVis::computeTransformationImpl(
 	UDEBUG("%s=%d", Parameters::kVisCorFlowMaxLevel().c_str(), _flowMaxLevel);
 	UDEBUG("%s=%f", Parameters::kVisCorNNDR().c_str(), _nndr);
 	UDEBUG("%s=%d", Parameters::kVisCorNNType().c_str(), _nnType);
+	UDEBUG("%s=%d", Parameters::kVisCorGuessWinSize().c_str(), _guessWinSize);
+	UDEBUG("%s=%d", Parameters::kVisCorGuessMatchToProjection().c_str(), _guessMatchToProjection?1:0);
 	UDEBUG("Feature Detector = %d", (int)_detectorFrom->getType());
 	UDEBUG("guess=%s", guess.prettyPrint().c_str());
 
@@ -777,7 +779,8 @@ Transform RegistrationVis::computeTransformationImpl(
 				// If guess is set, limit the search of matches using optical flow window size
 				bool guessSet = !guess.isIdentity() && !guess.isNull();
 				if(guessSet && _guessWinSize > 0 && kptsFrom3D.size() &&
-						isCalibrated) // needed for projection
+						isCalibrated &&  // needed for projection
+						_estimationType != 2) // To make sure we match all features for 2D->2D
 				{
 					UDEBUG("");
 					UASSERT((int)kptsTo.size() == descriptorsTo.rows);
@@ -1374,10 +1377,6 @@ Transform RegistrationVis::computeTransformationImpl(
 							uMultimapToMapUnique(signatureB->getWords()),
 							cameraModel,
 							cameraTransform,
-							_iterations,
-							_PnPReprojError,
-							_PnPFlags, // cv::SOLVEPNP_ITERATIVE
-							_PnPRefineIterations,
 							_PnPReprojError,
 							0.99f,
 							uMultimapToMapUnique(signatureA->getWords3()), // for scale estimation

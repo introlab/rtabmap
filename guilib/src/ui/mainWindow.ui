@@ -174,7 +174,7 @@
        </property>
        <property name="icon">
         <iconset resource="../GuiLib.qrc">
-         <normaloff>:/images/kinect_xbox_one.png</normaloff>:/images_kinect_xbox_one.png</iconset>
+         <normaloff>:/images/k4a.png</normaloff>:/images/k4a.png</iconset>
        </property>
        <addaction name="actionKinect_for_Azure"/>
       </widget>

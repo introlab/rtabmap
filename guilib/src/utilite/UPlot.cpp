@@ -36,6 +36,7 @@
 #include <QToolButton>
 #include <QLabel>
 #include <QMenu>
+#include <QStyle>
 #include <QInputDialog>
 #include <QMessageBox>
 #include <QFileDialog>
@@ -1453,18 +1454,7 @@ void UPlotLegendItem::contextMenuEvent(QContextMenuEvent * event)
 	}
 	else if(action == _aShowStdDevMeanMax)
 	{
-		if(_aShowStdDevMeanMax->isChecked())
-		{
-			connect(_curve, SIGNAL(dataChanged(const UPlotCurve *)), this, SLOT(updateStdDevMeanMax()));
-			updateStdDevMeanMax();
-		}
-		else
-		{
-			disconnect(_curve, SIGNAL(dataChanged(const UPlotCurve *)), this, SLOT(updateStdDevMeanMax()));
-			QString nameSpaced = _curve->name();
-			nameSpaced.replace('_', ' ');
-			this->setText(nameSpaced);
-		}
+		showStdDevMeanMax(_aShowStdDevMeanMax->isChecked());
 	}
 	else if(action == _aRemoveCurve)
 	{
@@ -1477,6 +1467,23 @@ void UPlotLegendItem::contextMenuEvent(QContextMenuEvent * event)
 	else if(action == _aMoveDown)
 	{
 		Q_EMIT moveDownRequest(this);
+	}
+}
+
+void UPlotLegendItem::showStdDevMeanMax(bool shown)
+{
+	_aShowStdDevMeanMax->setChecked(shown);
+	if(shown)
+	{
+		connect(_curve, SIGNAL(dataChanged(const UPlotCurve *)), this, SLOT(updateStdDevMeanMax()));
+		updateStdDevMeanMax();
+	}
+	else
+	{
+		disconnect(_curve, SIGNAL(dataChanged(const UPlotCurve *)), this, SLOT(updateStdDevMeanMax()));
+		QString nameSpaced = _curve->name();
+		nameSpaced.replace('_', ' ');
+		this->setText(nameSpaced);
 	}
 }
 
@@ -1501,7 +1508,7 @@ void UPlotLegendItem::updateStdDevMeanMax()
 	float max = uMax(y.data(), y.size());
 	QString nameSpaced = _curve->name();
 	nameSpaced.replace('_', ' ');
-	nameSpaced += QString("\n(%1=%2, %3=%4, max=%5)").arg(QChar(0xbc, 0x03)).arg(mean).arg(QChar(0xc3, 0x03)).arg(stdDev).arg(max);
+	nameSpaced += QString("\n(%1=%2, %3=%4, max=%5, n=%6)").arg(QChar(0xbc, 0x03)).arg(QString::number(mean, 'f', 3)).arg(QChar(0xc3, 0x03)).arg(QString::number(stdDev, 'f', 3)).arg(QString::number(max, 'f', 3)).arg(y.size());
 	this->setText(nameSpaced);
 }
 
@@ -1519,15 +1526,30 @@ UPlotLegend::UPlotLegend(QWidget * parent) :
 	_aUseFlatButtons->setCheckable(true);
 	_aUseFlatButtons->setChecked(_flat);
 	_aCopyAllCurvesToClipboard = new QAction(tr("Copy all curve data to clipboard"), this);
+	_aShowAllStdDevMeanMax = new QAction(tr("Show all %1, %2, max").arg(QChar(0xbc, 0x03)).arg(QChar(0xc3, 0x03)), this);
+	_aShowAllStdDevMeanMax->setCheckable(true);
+	_aShowAllStdDevMeanMax->setChecked(false);
 	_menu = new QMenu(tr("Legend"), this);
 	_menu->addAction(_aUseFlatButtons);
+	_menu->addAction(_aShowAllStdDevMeanMax);
 	_menu->addAction(_aCopyAllCurvesToClipboard);
 
-	QVBoxLayout * vLayout = new QVBoxLayout(this);
-	vLayout->setContentsMargins(0,0,0,0);
-	this->setLayout(vLayout);
-	vLayout->addStretch(0);
-	vLayout->setSpacing(0);
+	_scrollArea = new QScrollArea(this);
+	_scrollArea->setWidgetResizable( true );
+	_scrollArea->setFrameShape(QFrame::NoFrame);
+
+	this->setLayout(new QVBoxLayout());
+	this->layout()->setContentsMargins(0,0,0,0);
+	this->layout()->addWidget(_scrollArea);
+
+	QWidget * _scrollAreaWidgetContent = new QWidget();
+	_scrollArea->setWidget( _scrollAreaWidgetContent );
+
+	_contentLayout = new QVBoxLayout();
+	_scrollAreaWidgetContent->setLayout(_contentLayout);
+	_contentLayout->setContentsMargins(0,0,0,0);
+	((QVBoxLayout*)_contentLayout)->addStretch(0);
+	_contentLayout->setSpacing(0);
 }
 
 UPlotLegend::~UPlotLegend()
@@ -1573,7 +1595,9 @@ void UPlotLegend::addItem(UPlotCurve * curve)
 		hLayout->setMargin(0);
 
 		// add to the legend
-		((QVBoxLayout*)this->layout())->insertLayout(this->layout()->count()-1, hLayout);
+		((QVBoxLayout*)_contentLayout)->insertLayout(_contentLayout->count()-1, hLayout);
+
+		_scrollArea->setMinimumWidth(std::min(480, _scrollArea->widget()->sizeHint().width()+QApplication::style()->pixelMetric(QStyle::PM_ScrollBarExtent)));
 	}
 }
 
@@ -1585,6 +1609,7 @@ bool UPlotLegend::remove(const UPlotCurve * curve)
 		if(items.at(i)->curve() == curve)
 		{
 			delete items.at(i);
+			_scrollArea->setMinimumWidth(std::min(480, _scrollArea->widget()->sizeHint().width()+QApplication::style()->pixelMetric(QStyle::PM_ScrollBarExtent)));
 			return true;
 		}
 	}
@@ -1603,24 +1628,24 @@ void UPlotLegend::moveUp(UPlotLegendItem * item)
 {
 	int index = -1;
 	QLayoutItem * layoutItem = 0;
-	for(int i=0; i<this->layout()->count(); ++i)
+	for(int i=0; i<_contentLayout->count(); ++i)
 	{
-		if(this->layout()->itemAt(i)->layout() &&
-		   this->layout()->itemAt(i)->layout()->indexOf(item) != -1)
+		if(_contentLayout->itemAt(i)->layout() &&
+				_contentLayout->itemAt(i)->layout()->indexOf(item) != -1)
 		{
-			layoutItem = this->layout()->itemAt(i);
+			layoutItem = _contentLayout->itemAt(i);
 			index = i;
 			break;
 		}
 	}
 	if(index > 0 && layoutItem)
 	{
-		this->layout()->removeItem(layoutItem);
+		_contentLayout->removeItem(layoutItem);
 		QHBoxLayout * hLayout = new QHBoxLayout();
 		hLayout->addWidget(layoutItem->layout()->itemAt(0)->widget());
 		hLayout->addStretch(0);
 		hLayout->setMargin(0);
-		((QVBoxLayout*)this->layout())->insertLayout(index-1, hLayout);
+		((QVBoxLayout*)_contentLayout)->insertLayout(index-1, hLayout);
 		delete layoutItem;
 		Q_EMIT legendItemMoved(item->curve(), index-1);
 	}
@@ -1630,24 +1655,24 @@ void UPlotLegend::moveDown(UPlotLegendItem * item)
 {
 	int index = -1;
 	QLayoutItem * layoutItem = 0;
-	for(int i=0; i<this->layout()->count(); ++i)
+	for(int i=0; i<_contentLayout->count(); ++i)
 	{
-		if(this->layout()->itemAt(i)->layout() &&
-		   this->layout()->itemAt(i)->layout()->indexOf(item) != -1)
+		if(_contentLayout->itemAt(i)->layout() &&
+		   _contentLayout->itemAt(i)->layout()->indexOf(item) != -1)
 		{
-			layoutItem = this->layout()->itemAt(i);
+			layoutItem = _contentLayout->itemAt(i);
 			index = i;
 			break;
 		}
 	}
-	if(index < this->layout()->count()-2 && layoutItem)
+	if(index < _contentLayout->count()-2 && layoutItem)
 	{
-		this->layout()->removeItem(layoutItem);
+		_contentLayout->removeItem(layoutItem);
 		QHBoxLayout * hLayout = new QHBoxLayout();
 		hLayout->addWidget(layoutItem->layout()->itemAt(0)->widget());
 		hLayout->addStretch(0);
 		hLayout->setMargin(0);
-		((QVBoxLayout*)this->layout())->insertLayout(index+1, hLayout);
+		((QVBoxLayout*)_contentLayout)->insertLayout(index+1, hLayout);
 		delete layoutItem;
 		Q_EMIT legendItemMoved(item->curve(), index+1);
 	}
@@ -1737,6 +1762,14 @@ void UPlotLegend::contextMenuEvent(QContextMenuEvent * event)
 				QClipboard * clipboard = QApplication::clipboard();
 				clipboard->setText(text);
 			}
+		}
+	}
+	else if(action == _aShowAllStdDevMeanMax)
+	{
+		QList<UPlotLegendItem *> items = this->findChildren<UPlotLegendItem*>();
+		for(int i=0; i<items.size(); ++i)
+		{
+			items.at(i)->showStdDevMeanMax(_aShowAllStdDevMeanMax->isChecked());
 		}
 	}
 }

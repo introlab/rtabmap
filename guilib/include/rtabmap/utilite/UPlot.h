@@ -37,6 +37,7 @@ class QGraphicsView;
 class QGraphicsScene;
 class QGraphicsItem;
 class QFormLayout;
+class QScrollArea;
 
 /**
  * UPlotItem is a QGraphicsEllipseItem and can be inherited to do custom behaviors
@@ -353,6 +354,7 @@ public:
 	virtual ~UPlotLegendItem();
 	const UPlotCurve * curve() const {return _curve;}
 	QPixmap createSymbol(const QPen & pen, const QBrush & brush);
+	void showStdDevMeanMax(bool shown);
 
 Q_SIGNALS:
 	void legendItemRemoved(const UPlotCurve *);
@@ -418,6 +420,9 @@ private:
 	QMenu * _menu;
 	QAction * _aUseFlatButtons;
 	QAction * _aCopyAllCurvesToClipboard;
+	QAction * _aShowAllStdDevMeanMax;
+	QLayout * _contentLayout;
+	QScrollArea * _scrollArea;
 };
 
 

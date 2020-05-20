@@ -452,7 +452,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent, bool sh
 	_ui->actionOpenNI2_sense->setEnabled(CameraOpenNI2::available());
 	_ui->actionFreenect2->setEnabled(CameraFreenect2::available());
 	_ui->actionKinect_for_Windows_SDK_v2->setEnabled(CameraK4W2::available());
-	_ui->actionKinect_for_Azure->setEnabled(false);
+	_ui->actionKinect_for_Azure->setEnabled(CameraK4A::available());
 	_ui->actionRealSense_R200->setEnabled(CameraRealSense::available());
 	_ui->actionRealSense_ZR300->setEnabled(CameraRealSense::available());
 	_ui->actionRealSense2_SR300->setEnabled(CameraRealSense2::available());
@@ -4819,7 +4819,7 @@ void MainWindow::newDatabase()
 
 void MainWindow::openDatabase()
 {
-	QString path = QFileDialog::getOpenFileName(this, tr("Open database..."), _preferencesDialog->getWorkingDirectory(), tr("RTAB-Map database files (*.db)"));
+	QString path = QFileDialog::getOpenFileName(this, tr("Open database..."), _defaultOpenDatabasePath.isEmpty()?_preferencesDialog->getWorkingDirectory():_defaultOpenDatabasePath, tr("RTAB-Map database files (*.db)"));
 	if(!path.isEmpty())
 	{
 		this->openDatabase(path);
@@ -4845,6 +4845,7 @@ void MainWindow::openDatabase(const QString & path, const ParametersMap & overri
 
 		this->clearTheCache();
 		_openedDatabasePath = path;
+		_defaultOpenDatabasePath = path;
 
 		// look if there are saved parameters
 		DBDriver * driver = DBDriver::create();
