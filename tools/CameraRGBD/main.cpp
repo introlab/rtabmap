@@ -303,7 +303,7 @@ int main(int argc, char * argv[])
 			UERROR("Not built with Kinect for Azure SDK support...");
 			exit(-1);
 		}
-		camera = new rtabmap::CameraK4A(deviceId);
+		camera = new rtabmap::CameraK4A(1, 0, rtabmap::Transform::getIdentity());
 	}
 	else if (driver == 13)
 	{
