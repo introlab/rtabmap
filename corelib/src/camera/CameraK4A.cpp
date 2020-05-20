@@ -547,7 +547,7 @@ SensorData CameraK4A::captureImage(CameraInfo * info)
 							     CV_8UC4,
 							     (void*)k4a_image_get_buffer(rgb_image_));
 
-						cv:cvtColor(bgra, bgrCV, CV_BGRA2BGR);
+						cv::cvtColor(bgra, bgrCV, CV_BGRA2BGR);
 					}
 
 					// Release the image
