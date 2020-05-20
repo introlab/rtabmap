@@ -87,32 +87,36 @@ CameraK4A::~CameraK4A()
 void CameraK4A::close()
 {
 #ifdef RTABMAP_K4A
-	if (playbackHandle_ != NULL)
+	if (!fileName_.empty())
 	{
-		k4a_playback_close((k4a_playback_t)playbackHandle_);
-		playbackHandle_ = NULL;
-	}
-
-	if (transformationHandle_ != NULL)
-	{
-		k4a_transformation_destroy((k4a_transformation_t)transformationHandle_);
-		transformationHandle_ = NULL;
-	}
-
-	// Shut down the camera when finished with application logic
-	if (device_ != NULL)
-	{
-		k4a_device_stop_imu(device_);
-
-		if (transformation_ != NULL)
+		if (playbackHandle_ != NULL)
 		{
-			k4a_transformation_destroy(transformation_);
-			transformation_ = NULL;
+			k4a_playback_close((k4a_playback_t)playbackHandle_);
+			playbackHandle_ = NULL;
 		}
 
-		k4a_device_stop_cameras(device_);
-		k4a_device_close(device_);
-		device_ = NULL;
+		if (transformationHandle_ != NULL)
+		{
+			k4a_transformation_destroy((k4a_transformation_t)transformationHandle_);
+			transformationHandle_ = NULL;
+		}
+	}
+	else
+	{
+		if (device_ != NULL)
+		{
+			k4a_device_stop_imu(device_);
+
+			if (transformation_ != NULL)
+			{
+				k4a_transformation_destroy(transformation_);
+				transformation_ = NULL;
+			}
+
+			k4a_device_stop_cameras(device_);
+			k4a_device_close(device_);
+			device_ = NULL;
+		}
 	}
 #endif
 }
