@@ -338,7 +338,8 @@ private Q_SLOTS:
 	void changeOdometryVINSConfigPath();
 	void changeIcpPMConfigPath();
 	void changeSuperPointModelPath();
-	void changeSuperGluePath();
+	void changePyMatcherPath();
+	void changePyMatcherModel();
 	void readSettingsEnd();
 	void setupTreeView();
 	void updateBasicParameter();

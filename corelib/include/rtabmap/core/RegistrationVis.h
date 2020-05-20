@@ -37,8 +37,8 @@ namespace rtabmap {
 
 class Feature2D;
 
-#ifdef RTABMAP_SUPERGLUE_PYTORCH
-class SuperGlue;
+#ifdef RTABMAP_PYMATCHER
+class PyMatcher;
 #endif
 
 // Visual registration
@@ -105,8 +105,8 @@ private:
 	Feature2D * _detectorFrom;
 	Feature2D * _detectorTo;
 
-#ifdef RTABMAP_SUPERGLUE_PYTORCH
-	SuperGlue * _superGlueMatcher;
+#ifdef RTABMAP_PYMATCHER
+	PyMatcher * _pyMatcher;
 #endif
 };
 

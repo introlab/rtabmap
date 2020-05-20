@@ -223,7 +223,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 		_ui->vis_feature_detector->setItemData(11, 0, Qt::UserRole - 1);
 #endif
 
-#ifndef RTABMAP_SUPERGLUE_PYTORCH
+#ifndef RTABMAP_PYMATCHER
 		_ui->reextract_nn->setItemData(6, 0, Qt::UserRole - 1);
 #endif
 
@@ -964,13 +964,14 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->spinBox_sptorch_minDistance->setObjectName(Parameters::kSuperPointNMSRadius().c_str());
 	_ui->checkBox_sptorch_cuda->setObjectName(Parameters::kSuperPointCuda().c_str());
 
-	// SuperGlue PyTorch
-	_ui->lineEdit_sgpytorch_path->setObjectName(Parameters::kSuperGluePath().c_str());
-	connect(_ui->toolButton_sgpytorch_path, SIGNAL(clicked()), this, SLOT(changeSuperGluePath()));
-	_ui->sgpytorch_matchThreshold->setObjectName(Parameters::kSuperGlueMatchThreshold().c_str());
-	_ui->sgpytorch_iterations->setObjectName(Parameters::kSuperGlueIterations().c_str());
-	_ui->checkBox_sgpytorch_cuda->setObjectName(Parameters::kSuperGlueCuda().c_str());
-	_ui->checkBox_sgpytorch_indoor->setObjectName(Parameters::kSuperGlueIndoor().c_str());
+	// PyMatcher
+	_ui->lineEdit_pymatcher_path->setObjectName(Parameters::kPyMatcherPath().c_str());
+	connect(_ui->toolButton_pymatcher_path, SIGNAL(clicked()), this, SLOT(changePyMatcherPath()));
+	_ui->pymatcher_matchThreshold->setObjectName(Parameters::kPyMatcherThreshold().c_str());
+	_ui->pymatcher_iterations->setObjectName(Parameters::kPyMatcherIterations().c_str());
+	_ui->checkBox_pymatcher_cuda->setObjectName(Parameters::kPyMatcherCuda().c_str());
+	_ui->lineEdit_pymatcher_model->setObjectName(Parameters::kPyMatcherModel().c_str());
+	connect(_ui->toolButton_pymatcher_model, SIGNAL(clicked()), this, SLOT(changePyMatcherPath()));
 
 	// GMS
 	_ui->checkBox_gms_withRotation->setObjectName(Parameters::kGMSWithRotation().c_str());
@@ -4617,7 +4618,7 @@ void PreferencesDialog::updateStereoDisparityVisibility()
 
 void PreferencesDialog::updateFeatureMatchingVisibility()
 {
-	_ui->groupBox_superglue->setVisible(_ui->reextract_nn->currentIndex() == 6);
+	_ui->groupBox_pymatcher->setVisible(_ui->reextract_nn->currentIndex() == 6);
 	_ui->groupBox_gms->setVisible(_ui->reextract_nn->currentIndex() == 7);
 }
 
@@ -4757,20 +4758,37 @@ void PreferencesDialog::changeSuperPointModelPath()
 	}
 }
 
-void PreferencesDialog::changeSuperGluePath()
+void PreferencesDialog::changePyMatcherPath()
 {
 	QString path;
-	if(_ui->lineEdit_sgpytorch_path->text().isEmpty())
+	if(_ui->lineEdit_pymatcher_path->text().isEmpty())
 	{
-		path = QFileDialog::getOpenFileName(this, tr("Select file"), this->getWorkingDirectory(), tr("SuperGlue wrapper (*.py)"));
+		path = QFileDialog::getOpenFileName(this, tr("Select file"), this->getWorkingDirectory(), tr("Python wrapper (*.py)"));
 	}
 	else
 	{
-		path = QFileDialog::getOpenFileName(this, tr("Select file"), _ui->lineEdit_sgpytorch_path->text(), tr("SuperGlue wrapper (*.py)"));
+		path = QFileDialog::getOpenFileName(this, tr("Select file"), _ui->lineEdit_pymatcher_path->text(), tr("Python wrapper (*.py)"));
 	}
 	if(!path.isEmpty())
 	{
-		_ui->lineEdit_sgpytorch_path->setText(path);
+		_ui->lineEdit_pymatcher_path->setText(path);
+	}
+}
+
+void PreferencesDialog::changePyMatcherModel()
+{
+	QString path;
+	if(_ui->lineEdit_pymatcher_model->text().isEmpty())
+	{
+		path = QFileDialog::getOpenFileName(this, tr("Select file"), this->getWorkingDirectory(), tr("PyTorch model (*.pth, *.pt)"));
+	}
+	else
+	{
+		path = QFileDialog::getOpenFileName(this, tr("Select file"), _ui->lineEdit_pymatcher_model->text(), tr("PyTorch model (*.pth, *.pt)"));
+	}
+	if(!path.isEmpty())
+	{
+		_ui->lineEdit_pymatcher_model->setText(path);
 	}
 }
 

@@ -2,7 +2,7 @@
  * Python interface for SuperGlue: https://github.com/magicleap/SuperGluePretrainedNetwork
  */
 
-#include <superglue_pytorch/SuperGlue.h>
+#include <pymatcher/PyMatcher.h>
 #include <rtabmap/utilite/ULogger.h>
 #include <rtabmap/utilite/UDirectory.h>
 #include <rtabmap/utilite/UFile.h>
@@ -62,20 +62,26 @@ std::string getTraceback()
 	return pretty;
 }
 
-SuperGlue::SuperGlue(const std::string & path, float matchThreshold, int iterations, bool cuda, bool indoor) :
-		pModule_(0),
-		pFunc_(0),
-		matchThreshold_(matchThreshold),
-		iterations_(iterations),
-		cuda_(cuda),
-		indoor_(indoor)
+PyMatcher::PyMatcher(
+		const std::string & pythonMatcherPath,
+		float matchThreshold,
+		int iterations,
+		bool cuda,
+		const std::string & model) :
+				pModule_(0),
+				pFunc_(0),
+				matchThreshold_(matchThreshold),
+				iterations_(iterations),
+				cuda_(cuda)
 {
-	path_ = uReplaceChar(path, '~', UDirectory::homeDir());
+	path_ = uReplaceChar(pythonMatcherPath, '~', UDirectory::homeDir());
+	model_ = uReplaceChar(model, '~', UDirectory::homeDir());
 	UINFO("path = %s", path_.c_str());
+	UINFO("model = %s", model_.c_str());
 
 	if(!UFile::exists(path_) || UFile::getExtension(path_).compare("py") != 0)
 	{
-		UERROR("Cannot initialize SuperGlue, the path is not valid: \"%s\"", path_.c_str());
+		UERROR("Cannot initialize Python matcher, the path is not valid: \"%s\"", path_.c_str());
 		return;
 	}
 
@@ -84,11 +90,11 @@ SuperGlue::SuperGlue(const std::string & path, float matchThreshold, int iterati
 		g_python.init();
 	}
 
-	std::string superGluePythonDir = UDirectory::getDir(path_);
-	if(!superGluePythonDir.empty())
+	std::string matcherPythonDir = UDirectory::getDir(path_);
+	if(!matcherPythonDir.empty())
 	{
 		PyRun_SimpleString("import sys");
-		PyRun_SimpleString(uFormat("sys.path.append(\"%s\")", superGluePythonDir.c_str()).c_str());
+		PyRun_SimpleString(uFormat("sys.path.append(\"%s\")", matcherPythonDir.c_str()).c_str());
 	}
 
 	_import_array();
@@ -105,7 +111,7 @@ SuperGlue::SuperGlue(const std::string & path, float matchThreshold, int iterati
 	}
 }
 
-SuperGlue::~SuperGlue()
+PyMatcher::~PyMatcher()
 {
 	if(pFunc_)
 	{
@@ -117,7 +123,7 @@ SuperGlue::~SuperGlue()
 	}
 }
 
-std::vector<cv::DMatch> SuperGlue::match(
+std::vector<cv::DMatch> PyMatcher::match(
 		  const cv::Mat & descriptorsQuery,
 		  const cv::Mat & descriptorsTrain,
 		  const std::vector<cv::KeyPoint> & keypointsQuery,
@@ -129,11 +135,11 @@ std::vector<cv::DMatch> SuperGlue::match(
 
 	if(!pModule_)
 	{
-		UERROR("SuperGlue python module not loaded!");
+		UERROR("Python matcher module not loaded!");
 		return matches;
 	}
 
-	if(descriptorsQuery.cols == 256 && // Only SuperPoint is supported!
+	if(!descriptorsQuery.empty() &&
 	   descriptorsQuery.cols == descriptorsTrain.cols &&
 	   descriptorsQuery.type() == CV_32F &&
 	   descriptorsTrain.type() == CV_32F &&
@@ -151,7 +157,15 @@ std::vector<cv::DMatch> SuperGlue::match(
 			{
 				if(PyCallable_Check(pFunc))
 				{
-					PyObject_CallFunction(pFunc, "ifiii", descriptorsQuery.cols, matchThreshold_, iterations_, cuda_?1:0, indoor_?1:0);
+					PyObject * result = PyObject_CallFunction(pFunc, "ifiis", descriptorsQuery.cols, matchThreshold_, iterations_, cuda_?1:0, model_.c_str());
+
+					if(result == NULL)
+					{
+						UERROR("Call to \"init(...)\" in \"%s\" failed!", path_.c_str());
+						UERROR("%s", getTraceback().c_str());
+						return matches;
+					}
+					Py_DECREF(result);
 
 					pFunc_ = PyObject_GetAttrString(pModule_, "match");
 					if(pFunc_ && PyCallable_Check(pFunc_))
@@ -255,11 +269,24 @@ std::vector<cv::DMatch> SuperGlue::match(
 				// Convert back to C++ array and print.
 				int len1 = PyArray_SHAPE(np_ret)[0];
 				int len2 = PyArray_SHAPE(np_ret)[1];
-				//int type = PyArray_TYPE(np_ret); // Should be long
-				long* c_out = reinterpret_cast<long*>(PyArray_DATA(np_ret));
-				for (int i = 0; i < len1*len2; i+=2)
+				int type = PyArray_TYPE(np_ret);
+				UDEBUG("Matches array %dx%d (type=%d)", len1, len2, type);
+				UASSERT_MSG(type == NPY_LONG || type == NPY_INT, uFormat("Returned matches should type INT=5 or LONG=7, received type=%d", type).c_str());
+				if(type == NPY_LONG)
 				{
-					matches.push_back(cv::DMatch(c_out[i], c_out[i+1], 0));
+					long* c_out = reinterpret_cast<long*>(PyArray_DATA(np_ret));
+					for (int i = 0; i < len1*len2; i+=2)
+					{
+						matches.push_back(cv::DMatch(c_out[i], c_out[i+1], 0));
+					}
+				}
+				else // INT
+				{
+					int* c_out = reinterpret_cast<int*>(PyArray_DATA(np_ret));
+					for (int i = 0; i < len1*len2; i+=2)
+					{
+						matches.push_back(cv::DMatch(c_out[i], c_out[i+1], 0));
+					}
 				}
 				Py_DECREF(pReturn);
 			}
@@ -276,15 +303,9 @@ std::vector<cv::DMatch> SuperGlue::match(
 			UDEBUG("Fill matches (%d/%d) and cleanup time = %fs", matches.size(), std::min(descriptorsQuery.rows, descriptorsTrain.rows), timer.ticks());
 		}
 	}
-	else if(descriptorsQuery.cols != 256)
-	{
-		UERROR("Only descriptor size of 256 (SuperPoint) is "
-			   "supported with SuperGlue! Current descriptor size=%d.",
-				descriptorsQuery.cols);
-	}
 	else
 	{
-		UERROR("Invalid inputs! SuperGlue requires SuperPoint descriptors (dim=256).");
+		UERROR("Invalid inputs! Supported python matchers require float descriptors.");
 	}
 	return matches;
 }

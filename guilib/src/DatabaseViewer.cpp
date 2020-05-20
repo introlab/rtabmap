@@ -212,7 +212,7 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	uInsert(parameters, Parameters::getDefaultParameters("Reg"));
 	uInsert(parameters, Parameters::getDefaultParameters("Vis"));
 	uInsert(parameters, Parameters::getDefaultParameters("Icp"));
-	uInsert(parameters, Parameters::getDefaultParameters("SuperGlue"));
+	uInsert(parameters, Parameters::getDefaultParameters("PyMatcher"));
 	uInsert(parameters, Parameters::getDefaultParameters("Stereo"));
 	uInsert(parameters, Parameters::getDefaultParameters("StereoBM"));
 	uInsert(parameters, Parameters::getDefaultParameters("Grid"));

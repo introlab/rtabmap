@@ -579,7 +579,7 @@ class RTABMAP_EXP Parameters
     RTABMAP_PARAM(Vis, PnPRefineIterations,      int, 1,        uFormat("[%s = 1] Refine iterations. Set to 0 if \"%s\" is also used.", kVisEstimationType().c_str(), kVisBundleAdjustment().c_str()));
 #endif
 
-    RTABMAP_PARAM(Vis, EpipolarGeometryVar,      float, 0.05,   uFormat("[%s = 2] Epipolar geometry maximum variance to accept the transformation.", kVisEstimationType().c_str()));
+    RTABMAP_PARAM(Vis, EpipolarGeometryVar,      float, 0.1,    uFormat("[%s = 2] Epipolar geometry maximum variance to accept the transformation.", kVisEstimationType().c_str()));
     RTABMAP_PARAM(Vis, MinInliers,               int, 20,       "Minimum feature correspondences to compute/accept the transformation.");
     RTABMAP_PARAM(Vis, MeanInliersDistance,      float, 0.0,    "Maximum distance (m) of the mean distance of inliers from the camera to accept the transformation. 0 means disabled.");
     RTABMAP_PARAM(Vis, MinInliersDistribution,   float, 0.0,    "Minimum distribution value of the inliers in the image to accept the transformation. The distribution is the second eigen value of the PCA (Principal Component Analysis) on the keypoints of the normalized image [-0.5, 0.5]. The value would be between 0 and 0.5. 0 means disabled.");
@@ -621,11 +621,11 @@ class RTABMAP_EXP Parameters
 #endif
 
     // Features matching approaches
-    RTABMAP_PARAM_STR(SuperGlue, Path,       "",           "Path to python script file \"rtabmap_superglue.py\" (rtabmap/corelib/src/superglue_pytorch/rtabmap_superglue.py) copied in SuperGlue's Git folder.");
-	RTABMAP_PARAM(SuperGlue, Iterations,     int, 20,      "Sinkhorn iterations.");
-	RTABMAP_PARAM(SuperGlue, MatchThreshold, float, 0.2,   "");
-	RTABMAP_PARAM(SuperGlue, Cuda,           bool, true,   "");
-	RTABMAP_PARAM(SuperGlue, Indoor,         bool, true,   "Use indoor model, otherwise outdoor model is used.");
+    RTABMAP_PARAM_STR(PyMatcher, Path,       "",           "Path to python script file (see available ones in rtabmap/corelib/src/pymatcher/*). See the header to see where the script should be copied.");
+	RTABMAP_PARAM(PyMatcher, Iterations,     int, 20,      "Sinkhorn iterations. Used by SuperGlue.");
+	RTABMAP_PARAM(PyMatcher, Threshold,      float, 0.2,   "Used by SuperGlue.");
+	RTABMAP_PARAM(PyMatcher, Cuda,           bool, true,   "Used by SuperGlue.");
+	RTABMAP_PARAM_STR(PyMatcher, Model,        "indoor",   "For SuperGlue, set only \"indoor\" or \"outdoor\". For OANet, set path to one of the pth file (e.g., \"OANet/model/gl3d/sift-4000/model_best.pth\").");
 
 	RTABMAP_PARAM(GMS, WithRotation,         bool, false,   "Take rotation transformation into account.");
 	RTABMAP_PARAM(GMS, WithScale,            bool, false,   "Take scale transformation into account.");

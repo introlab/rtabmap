@@ -1291,9 +1291,9 @@ p, li { white-space: pre-wrap; }
                </widget>
               </item>
               <item row="7" column="2">
-               <widget class="QLabel" name="label_sgpytorch_license">
+               <widget class="QLabel" name="label_pymatcher_license">
                 <property name="text">
-                 <string>GPLv3</string>
+                 <string>PSF</string>
                 </property>
                 <property name="wordWrap">
                  <bool>true</bool>
@@ -1303,7 +1303,7 @@ p, li { white-space: pre-wrap; }
               <item row="7" column="0">
                <widget class="QLabel" name="label_43">
                 <property name="text">
-                 <string>With SuperGlue PyTorch :</string>
+                 <string>With Python3 :</string>
                 </property>
                 <property name="wordWrap">
                  <bool>true</bool>
@@ -1311,7 +1311,7 @@ p, li { white-space: pre-wrap; }
                </widget>
               </item>
               <item row="7" column="1">
-               <widget class="QLabel" name="label_sgpytorch">
+               <widget class="QLabel" name="label_pymatcher">
                 <property name="text">
                  <string/>
                 </property>
