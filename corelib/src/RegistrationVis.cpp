@@ -51,8 +51,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtflann/flann.hpp>
 
 
-#ifdef RTABMAP_SUPERGLUE_PYTORCH
-	#include "superglue_pytorch/SuperGlue.h"
+#ifdef RTABMAP_PYMATCHER
+	#include <pymatcher/PyMatcher.h>
 #endif
 
 namespace rtabmap {
@@ -87,9 +87,9 @@ RegistrationVis::RegistrationVis(const ParametersMap & parameters, Registration 
 		_maxInliersMeanDistance(Parameters::defaultVisMeanInliersDistance()),
 		_detectorFrom(0),
 		_detectorTo(0)
-#ifdef RTABMAP_SUPERGLUE_PYTORCH
+#ifdef RTABMAP_PYMATCHER
 		,
-		_superGlueMatcher(0)
+		_pyMatcher(0)
 #endif
 {
 	_featureParameters = Parameters::getDefaultParameters();
@@ -152,34 +152,34 @@ void RegistrationVis::parseParameters(const ParametersMap & parameters)
 
 	if(_nnType == 6)
 	{
-		// verify that we have SuperGlue support
-#ifndef RTABMAP_SUPERGLUE_PYTORCH
-		UWARN("%s is set to 6 but RTAB-Map is not built with SuperGlue support, using default %d.",
+		// verify that we have Python3 support
+#ifndef RTABMAP_PYMATCHER
+		UWARN("%s is set to 6 but RTAB-Map is not built with Python3 support, using default %d.",
 				Parameters::kVisCorNNType().c_str(), Parameters::defaultVisCorNNType());
 		_nnType = Parameters::defaultVisCorNNType();
 #else
-		int iterations = _superGlueMatcher?_superGlueMatcher->iterations():Parameters::defaultSuperGlueIterations();
-		float matchThr = _superGlueMatcher?_superGlueMatcher->matchThreshold():Parameters::defaultSuperGlueMatchThreshold();
-		std::string path = _superGlueMatcher?_superGlueMatcher->path():Parameters::defaultSuperGluePath();
-		bool cuda = _superGlueMatcher?_superGlueMatcher->cuda():Parameters::defaultSuperGlueCuda();
-		bool indoor = _superGlueMatcher?_superGlueMatcher->indoor():Parameters::defaultSuperGlueIndoor();
-		Parameters::parse(parameters, Parameters::kSuperGlueIterations(), iterations);
-		Parameters::parse(parameters, Parameters::kSuperGlueMatchThreshold(), matchThr);
-		Parameters::parse(parameters, Parameters::kSuperGluePath(), path);
-		Parameters::parse(parameters, Parameters::kSuperGlueCuda(), cuda);
-		Parameters::parse(parameters, Parameters::kSuperGlueIndoor(), indoor);
+		int iterations = _pyMatcher?_pyMatcher->iterations():Parameters::defaultPyMatcherIterations();
+		float matchThr = _pyMatcher?_pyMatcher->matchThreshold():Parameters::defaultPyMatcherThreshold();
+		std::string path = _pyMatcher?_pyMatcher->path():Parameters::defaultPyMatcherPath();
+		bool cuda = _pyMatcher?_pyMatcher->cuda():Parameters::defaultPyMatcherCuda();
+		std::string model = _pyMatcher?_pyMatcher->model():Parameters::defaultPyMatcherModel();
+		Parameters::parse(parameters, Parameters::kPyMatcherIterations(), iterations);
+		Parameters::parse(parameters, Parameters::kPyMatcherThreshold(), matchThr);
+		Parameters::parse(parameters, Parameters::kPyMatcherPath(), path);
+		Parameters::parse(parameters, Parameters::kPyMatcherCuda(), cuda);
+		Parameters::parse(parameters, Parameters::kPyMatcherModel(), model);
 		if(path.empty())
 		{
-			UERROR("%s parameter should be set to use SuperGlue matching (%s=6), using default %d.",
-					Parameters::kSuperGluePath().c_str(),
+			UERROR("%s parameter should be set to use Python3 matching (%s=6), using default %d.",
+					Parameters::kPyMatcherPath().c_str(),
 					Parameters::kVisCorNNType().c_str(),
 					Parameters::defaultVisCorNNType());
 			_nnType = Parameters::defaultVisCorNNType();
 		}
 		else
 		{
-			delete _superGlueMatcher;
-			_superGlueMatcher = new SuperGlue(path, matchThr, iterations, cuda, indoor);
+			delete _pyMatcher;
+			_pyMatcher = new PyMatcher(path, matchThr, iterations, cuda, model);
 		}
 #endif
 	}
@@ -264,8 +264,8 @@ RegistrationVis::~RegistrationVis()
 {
 	delete _detectorFrom;
 	delete _detectorTo;
-#ifdef RTABMAP_SUPERGLUE_PYTORCH
-	delete _superGlueMatcher;
+#ifdef RTABMAP_PYMATCHER
+	delete _pyMatcher;
 #endif
 }
 
@@ -1137,8 +1137,8 @@ Transform RegistrationVis::computeTransformationImpl(
 					// match between all descriptors
 					std::list<int> fromWordIds;
 					std::list<int> toWordIds;
-#ifdef RTABMAP_SUPERGLUE_PYTORCH
-					if(_nnType == 5 || (_nnType == 6 && _superGlueMatcher) || _nnType==7)
+#ifdef RTABMAP_PYMATCHER
+					if(_nnType == 5 || (_nnType == 6 && _pyMatcher) || _nnType==7)
 #else
 					if(_nnType == 5 || _nnType == 7) // bruteforce cross check or GMS
 #endif
@@ -1158,8 +1158,8 @@ Transform RegistrationVis::computeTransformationImpl(
 						{
 							std::vector<int> toWordIdsV(descriptorsTo.rows, 0);
 							std::vector<cv::DMatch> matches;
-#ifdef RTABMAP_SUPERGLUE_PYTORCH
-							if(_nnType == 6 && _superGlueMatcher &&
+#ifdef RTABMAP_PYMATCHER
+							if(_nnType == 6 && _pyMatcher &&
 								descriptorsTo.cols == descriptorsFrom.cols &&
 								descriptorsTo.rows == (int)kptsTo.size() &&
 								descriptorsTo.type() == CV_32F &&
@@ -1167,14 +1167,14 @@ Transform RegistrationVis::computeTransformationImpl(
 								descriptorsFrom.rows == (int)kptsFrom.size() &&
 								imageSize.width > 0 && imageSize.height > 0)
 							{
-								UDEBUG("SuperGlue matching");
-								matches = _superGlueMatcher->match(descriptorsTo, descriptorsFrom, kptsTo, kptsFrom, imageSize);
+								UDEBUG("Python matching");
+								matches = _pyMatcher->match(descriptorsTo, descriptorsFrom, kptsTo, kptsFrom, imageSize);
 							}
 							else
 							{
-								if(_nnType == 6 && _superGlueMatcher)
+								if(_nnType == 6 && _pyMatcher)
 								{
-									UDEBUG("Invalid inputs for SuperGlue (desc type=%d, only float descriptors supported), doing bruteforce matching instead.", descriptorsFrom.type());
+									UDEBUG("Invalid inputs for Python matching (desc type=%d, only float descriptors supported), doing bruteforce matching instead.", descriptorsFrom.type());
 								}
 #else
 							{

@@ -184,7 +184,7 @@ rtabmap::ParametersMap Parameters::getDefaultOdometryParameters(bool stereo, boo
 			group.compare("Optimizer") == 0 ||
 			group.compare("g2o") == 0 ||
 			group.compare("GTSAM") == 0 ||
-			(vis && (group.compare("Vis") == 0 || group.compare("SuperGlue") == 0 || group.compare("GMS") == 0)) ||
+			(vis && (group.compare("Vis") == 0 || group.compare("PyMatcher") == 0 || group.compare("GMS") == 0)) ||
 			iter->first.compare(kRtabmapPublishRAMUsage())==0)
 		{
 			odomParameters.insert(*iter);
@@ -232,6 +232,12 @@ const std::map<std::string, std::pair<bool, std::string> > & Parameters::getRemo
 		// removed parameters
 
 		// 0.20.
+		removedParameters_.insert(std::make_pair("SuperGlue/Path",           std::make_pair(true, Parameters::kPyMatcherPath())));
+		removedParameters_.insert(std::make_pair("SuperGlue/Iterations",     std::make_pair(true, Parameters::kPyMatcherIterations())));
+		removedParameters_.insert(std::make_pair("SuperGlue/MatchThreshold", std::make_pair(true, Parameters::kPyMatcherThreshold())));
+		removedParameters_.insert(std::make_pair("SuperGlue/Cuda",           std::make_pair(true, Parameters::kPyMatcherCuda())));
+		removedParameters_.insert(std::make_pair("SuperGlue/Indoor",         std::make_pair(false, Parameters::kPyMatcherModel())));
+
 		removedParameters_.insert(std::make_pair("Vis/CorCrossCheck",   std::make_pair(false, Parameters::kVisCorNNType())));
 		removedParameters_.insert(std::make_pair("SPTorch/ModelPath",   std::make_pair(true,  Parameters::kSuperPointModelPath())));
 		removedParameters_.insert(std::make_pair("SPTorch/Threshold",   std::make_pair(true,  Parameters::kSuperPointThreshold())));
@@ -614,8 +620,8 @@ ParametersMap Parameters::parseArguments(int argc, char * argv[], bool onlyParam
 #else
 				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
 #endif
-				str = "With SuperGlue PyTorch:";
-#ifdef RTABMAP_SUPERGLUE_PYTORCH
+				str = "With Python3:";
+#ifdef RTABMAP_PYMATCHER
 				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
 #else
 				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
