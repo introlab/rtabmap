@@ -281,6 +281,7 @@ class RTABMAP_EXP Parameters
     RTABMAP_PARAM(SIFT, ContrastThreshold, double, 0.04, "The contrast threshold used to filter out weak features in semi-uniform (low-contrast) regions. The larger the threshold, the less features are produced by the detector.");
     RTABMAP_PARAM(SIFT, EdgeThreshold,     double, 10,   "The threshold used to filter out edge-like features. Note that the its meaning is different from the contrastThreshold, i.e. the larger the edgeThreshold, the less features are filtered out (more features are retained).");
     RTABMAP_PARAM(SIFT, Sigma,             double, 1.6,  "The sigma of the Gaussian applied to the input image at the octave #0. If your image is captured with a weak camera with soft lenses, you might want to reduce the number.");
+    RTABMAP_PARAM(SIFT, RootSIFT,          bool,  false, "Apply RootSIFT normalization of the descriptors.");
 
     RTABMAP_PARAM(BRIEF, Bytes,            int, 32,      "Bytes is a length of descriptor in bytes. It can be equal 16, 32 or 64 bytes.");
 

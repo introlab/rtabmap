@@ -842,22 +842,22 @@ long DBDriverSqlite3::getFeaturesMemoryUsedQuery() const
 		std::string query;
 		if(uStrNumCmp(_version, "0.13.0") >= 0)
 		{
-			query = "SELECT sum(length(word_id) + length(pos_x) + length(pos_y) + length(size) + length(dir) + length(response) + length(octave) + length(depth_x) + length(depth_y) + length(depth_z) + length(descriptor_size) + length(descriptor)) "
+			query = "SELECT sum(length(node_id) + length(word_id) + length(pos_x) + length(pos_y) + length(size) + length(dir) + length(response) + length(octave) + length(depth_x) + length(depth_y) + length(depth_z) + length(descriptor_size) + length(descriptor)) "
 					 "FROM Feature";
 		}
 		else if(uStrNumCmp(_version, "0.12.0") >= 0)
 		{
-			query = "SELECT sum(length(word_id) + length(pos_x) + length(pos_y) + length(size) + length(dir) + length(response) + length(octave) + length(depth_x) + length(depth_y) + length(depth_z) + length(descriptor_size) + length(descriptor)) "
+			query = "SELECT sum(length(node_id) + length(word_id) + length(pos_x) + length(pos_y) + length(size) + length(dir) + length(response) + length(octave) + length(depth_x) + length(depth_y) + length(depth_z) + length(descriptor_size) + length(descriptor)) "
 					 "FROM Map_Node_Word";
 		}
 		else if(uStrNumCmp(_version, "0.11.2") >= 0)
 		{
-			query = "SELECT sum(length(word_id) + length(pos_x) + length(pos_y) + length(size) + length(dir) + length(response) + length(depth_x) + length(depth_y) + length(depth_z) + length(descriptor_size) + length(descriptor)) "
+			query = "SELECT sum(length(node_id) + length(word_id) + length(pos_x) + length(pos_y) + length(size) + length(dir) + length(response) + length(depth_x) + length(depth_y) + length(depth_z) + length(descriptor_size) + length(descriptor)) "
 					 "FROM Map_Node_Word";
 		}
 		else
 		{
-			query = "SELECT sum(length(word_id) + length(pos_x) + length(pos_y) + length(size) + length(dir) + length(response) + length(depth_x) + length(depth_y) + length(depth_z)) "
+			query = "SELECT sum(length(node_id) + length(word_id) + length(pos_x) + length(pos_y) + length(size) + length(dir) + length(response) + length(depth_x) + length(depth_y) + length(depth_z)) "
 					 "FROM Map_Node_Word";
 		}
 
