@@ -1881,7 +1881,7 @@ Transform RegistrationVis::computeTransformationImpl(
 	}
 	else if(toSignature.sensorData().isValid())
 	{
-		UWARN("Missing correspondences for registration (%d->%d). fromWords = %d fromImageEmpty=%d toWords = %d toImageEmpty=%d",
+		msg = uFormat("Missing correspondences for registration (%d->%d). fromWords = %d fromImageEmpty=%d toWords = %d toImageEmpty=%d",
 				fromSignature.id(), toSignature.id(),
 				(int)fromSignature.getWords().size(), fromSignature.sensorData().imageRaw().empty()?1:0,
 				(int)toSignature.getWords().size(), toSignature.sensorData().imageRaw().empty()?1:0);

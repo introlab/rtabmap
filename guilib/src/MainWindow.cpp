@@ -1340,11 +1340,11 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 	{
 		_odometryReceived = true;
 		// update camera position
-		if(odom.data().cameraModels().size() && !odom.data().cameraModels()[0].localTransform().isNull())
+		if(odom.data().cameraModels().size() && odom.data().cameraModels()[0].isValidForProjection())
 		{
 			_cloudViewer->updateCameraFrustums(_odometryCorrection*odom.pose(), odom.data().cameraModels());
 		}
-		else if(!odom.data().stereoCameraModel().localTransform().isNull())
+		else if(odom.data().stereoCameraModel().isValidForProjection())
 		{
 			_cloudViewer->updateCameraFrustum(_odometryCorrection*odom.pose(), odom.data().stereoCameraModel());
 		}
@@ -2063,11 +2063,11 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 			{
 				if(poses.rbegin()->first == stat.getLastSignatureData().id())
 				{
-					if(stat.getLastSignatureData().sensorData().cameraModels().size() && !stat.getLastSignatureData().sensorData().cameraModels()[0].localTransform().isNull())
+					if(stat.getLastSignatureData().sensorData().cameraModels().size() && stat.getLastSignatureData().sensorData().cameraModels()[0].isValidForProjection())
 					{
 						_cloudViewer->updateCameraFrustums(poses.rbegin()->second, stat.getLastSignatureData().sensorData().cameraModels());
 					}
-					else if(!stat.getLastSignatureData().sensorData().stereoCameraModel().localTransform().isNull())
+					else if(stat.getLastSignatureData().sensorData().stereoCameraModel().isValidForProjection())
 					{
 						_cloudViewer->updateCameraFrustum(poses.rbegin()->second, stat.getLastSignatureData().sensorData().stereoCameraModel());
 					}
