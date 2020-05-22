@@ -94,6 +94,11 @@ int main(int argc, char * argv[])
 	}
 
 	std::string databasePath = uReplaceChar(argv[argc-1], '~', UDirectory::homeDir());
+	if(!UFile::exists(databasePath))
+	{
+		printf("Database \"%s\" doesn't exist!\n", databasePath.c_str());
+		return -1;
+	}
 
 	DBDriver * driver = DBDriver::create();
 	if(!driver->openConnection(databasePath))
@@ -110,6 +115,14 @@ int main(int argc, char * argv[])
 	if(!otherDatabasePath.empty())
 	{
 		driver->closeConnection(false);
+
+		if(!UFile::exists(otherDatabasePath))
+		{
+			printf("Database \"%s\" doesn't exist!\n", otherDatabasePath.c_str());
+			delete driver;
+			return -1;
+		}
+
 		if(!driver->openConnection(otherDatabasePath))
 		{
 			printf("Cannot open database \"%s\".\n", otherDatabasePath.c_str());

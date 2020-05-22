@@ -905,6 +905,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->sift_doubleSpinBox_contrastThr->setObjectName(Parameters::kSIFTContrastThreshold().c_str());
 	_ui->sift_doubleSpinBox_edgeThr->setObjectName(Parameters::kSIFTEdgeThreshold().c_str());
 	_ui->sift_doubleSpinBox_sigma->setObjectName(Parameters::kSIFTSigma().c_str());
+	_ui->sift_checkBox_rootsift->setObjectName(Parameters::kSIFTRootSIFT().c_str());
 
 	//BRIEF descriptor
 	_ui->briefBytes->setObjectName(Parameters::kBRIEFBytes().c_str());

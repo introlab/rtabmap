@@ -905,7 +905,8 @@ SIFT::SIFT(const ParametersMap & parameters) :
 	nOctaveLayers_(Parameters::defaultSIFTNOctaveLayers()),
 	contrastThreshold_(Parameters::defaultSIFTContrastThreshold()),
 	edgeThreshold_(Parameters::defaultSIFTEdgeThreshold()),
-	sigma_(Parameters::defaultSIFTSigma())
+	sigma_(Parameters::defaultSIFTSigma()),
+	rootSIFT_(Parameters::defaultSIFTRootSIFT())
 {
 	parseParameters(parameters);
 }
@@ -922,6 +923,7 @@ void SIFT::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kSIFTEdgeThreshold(), edgeThreshold_);
 	Parameters::parse(parameters, Parameters::kSIFTNOctaveLayers(), nOctaveLayers_);
 	Parameters::parse(parameters, Parameters::kSIFTSigma(), sigma_);
+	Parameters::parse(parameters, Parameters::kSIFTRootSIFT(), rootSIFT_);
 
 #if CV_MAJOR_VERSION < 4 || (CV_MAJOR_VERSION == 4 && CV_MINOR_VERSION < 3)
 #ifdef RTABMAP_NONFREE
@@ -962,6 +964,23 @@ cv::Mat SIFT::generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::Key
 	cv::Mat descriptors;
 #if defined(RTABMAP_NONFREE) || CV_MAJOR_VERSION > 4 || (CV_MAJOR_VERSION == 4 && CV_MINOR_VERSION >= 3)
 	_sift->compute(image, keypoints, descriptors);
+
+	if( rootSIFT_ && !descriptors.empty())
+	{
+		UDEBUG("Performing RootSIFT...");
+		// see http://www.pyimagesearch.com/2015/04/13/implementing-rootsift-in-python-and-opencv/
+		// apply the Hellinger kernel by first L1-normalizing and taking the
+		// square-root
+		for(int i=0; i<descriptors.rows; ++i)
+		{
+			// By taking the L1 norm, followed by the square-root, we have
+			// already L2 normalized the feature vector and further normalization
+			// is not needed.
+			descriptors.row(i) = descriptors.row(i) / cv::sum(descriptors.row(i))[0];
+			cv::sqrt(descriptors.row(i), descriptors.row(i));
+		}
+	}
+
 #else
 	UWARN("RTAB-Map is not built with OpenCV nonfree module so SIFT cannot be used!");
 #endif

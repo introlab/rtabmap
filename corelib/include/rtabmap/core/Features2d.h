@@ -276,6 +276,7 @@ private:
 	double contrastThreshold_;
 	double edgeThreshold_;
 	double sigma_;
+	bool rootSIFT_;
 
 	cv::Ptr<CV_SIFT> _sift;
 };
