@@ -113,6 +113,9 @@ public:
 	int imageWidth() const {return imageSize_.width;}
 	int imageHeight() const {return imageSize_.height;}
 
+	double fovX() const {return imageSize_.width>0 && fx()>0?2.0*atan(imageSize_.width/(fx()*2.0)):0.0;}
+	double fovY() const {return imageSize_.height>0 && fy()>0?2.0*atan(imageSize_.height/(fy()*2.0)):0.0;}
+
 	bool load(const std::string & directory, const std::string & cameraName);
 	bool save(const std::string & directory) const;
 	std::vector<unsigned char> serialize() const;

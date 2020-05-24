@@ -1274,7 +1274,7 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 						if(!t.isNull())
 						{
 							QColor color = Qt::yellow;
-							_cloudViewer->addOrUpdateFrustum(frustumId, _odometryCorrection*iter->second, t, _cloudViewer->getFrustumScale(), color);
+							_cloudViewer->addOrUpdateFrustum(frustumId, _odometryCorrection*iter->second, t, _cloudViewer->getFrustumScale(), color, model.fovX(), model.fovY());
 						}
 					}
 				}
@@ -2646,17 +2646,18 @@ void MainWindow::updateMapCloud(
 					// Supporting only one frustum per node
 					if(s.sensorData().cameraModels().size() == 1 || s.sensorData().stereoCameraModel().isValidForProjection())
 					{
-						Transform t = s.sensorData().stereoCameraModel().isValidForProjection()?s.sensorData().stereoCameraModel().localTransform():s.sensorData().cameraModels()[0].localTransform();
+						const CameraModel & model = s.sensorData().stereoCameraModel().isValidForProjection()?s.sensorData().stereoCameraModel().left():s.sensorData().cameraModels()[0];
+						Transform t = model.localTransform();
 						if(!t.isNull())
 						{
 							QColor color = (Qt::GlobalColor)((mapId+3) % 12 + 7 );
-							_cloudViewer->addOrUpdateFrustum(frustumId, iter->second, t, _cloudViewer->getFrustumScale(), color);
+							_cloudViewer->addOrUpdateFrustum(frustumId, iter->second, t, _cloudViewer->getFrustumScale(), color, model.fovX(), model.fovY());
 
 							if(_currentGTPosesMap.find(iter->first)!=_currentGTPosesMap.end())
 							{
 								std::string gtFrustumId = uFormat("f_gt_%d", iter->first);
 								color = Qt::gray;
-								_cloudViewer->addOrUpdateFrustum(gtFrustumId, _currentGTPosesMap.at(iter->first), t, _cloudViewer->getFrustumScale(), color);
+								_cloudViewer->addOrUpdateFrustum(gtFrustumId, _currentGTPosesMap.at(iter->first), t, _cloudViewer->getFrustumScale(), color, model.fovX(), model.fovY());
 							}
 						}
 					}
