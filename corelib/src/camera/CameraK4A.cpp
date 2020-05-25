@@ -244,6 +244,29 @@ bool CameraK4A::init(const std::string & calibrationFolder, const std::string & 
 			return false;
 		}
 
+                if (ir_)
+                {
+                        model_ = CameraModel(
+                                calibration_.depth_camera_calibration.intrinsics.parameters.param.fx,
+                                calibration_.depth_camera_calibration.intrinsics.parameters.param.fy,
+                                calibration_.depth_camera_calibration.intrinsics.parameters.param.cx,
+                                calibration_.depth_camera_calibration.intrinsics.parameters.param.cy,
+                                this->getLocalTransform(),
+                                0,
+                                cv::Size(calibration_.depth_camera_calibration.resolution_width, calibration_.depth_camera_calibration.resolution_height));
+                }
+                else
+                {
+                        model_ = CameraModel(
+                                calibration_.color_camera_calibration.intrinsics.parameters.param.fx,
+                                calibration_.color_camera_calibration.intrinsics.parameters.param.fy,
+                                calibration_.color_camera_calibration.intrinsics.parameters.param.cx,
+                                calibration_.color_camera_calibration.intrinsics.parameters.param.cy,
+                                this->getLocalTransform(),
+                                0,
+                                cv::Size(calibration_.color_camera_calibration.resolution_width, calibration_.color_camera_calibration.resolution_height));
+                }
+
 		transformation_ = k4a_transformation_create(&calibration_);
 
 		if (K4A_FAILED(k4a_device_start_imu(device_)))
@@ -507,7 +530,6 @@ SensorData CameraK4A::captureImage(CameraInfo * info)
 			cv::Mat bgrCV;
 			cv::Mat depthCV;
 			IMU imu;
-			double stamp = 0;
 
 			if (ir_)
 			{
@@ -619,46 +641,11 @@ SensorData CameraK4A::captureImage(CameraInfo * info)
 			// Relay the data to rtabmap
 			if (!bgrCV.empty() && !depthCV.empty())
 			{
-				data = SensorData(bgrCV, depthCV, model_, this->getNextSeqID(), stamp);
+				data = SensorData(bgrCV, depthCV, model_, this->getNextSeqID(), UTimer::now());
 				data.setIMU(imu);
-
-				// Frame rate
-				if (this->getImageRate() < 0.0f)
-				{
-					if (previousStamp_ > 0)
-					{
-						float ratio = -this->getImageRate();
-						int sleepTime = 1000.0*(stamp - previousStamp_) / ratio - 1000.0*timer_.getElapsedTime();
-
-						if (sleepTime > 10000)
-						{
-							UWARN("Detected long delay (%d sec, stamps = %f vs %f). Waiting a maximum of 10 seconds.",
-								sleepTime / 1000, previousStamp_, stamp);
-
-							sleepTime = 10000;
-						}
-
-						if (sleepTime > 2)
-						{
-							uSleep(sleepTime - 2);
-						}
-
-						// Add precision at the cost of a small overhead
-						while (timer_.getElapsedTime() < (stamp - previousStamp_) / ratio - 0.000001)
-						{
-							//
-						}
-
-						double slept = timer_.getElapsedTime();
-						timer_.start();
-						UDEBUG("slept=%fs vs target=%fs (ratio=%f)", slept, (stamp - previousStamp_) / ratio, ratio);
-					}
-					previousStamp_ = stamp;
-				}
 			}
 		}
 	}
-
 #else
 	UERROR("CameraK4A: RTAB-Map is not built with Kinect for Azure SDK support!");
 #endif
