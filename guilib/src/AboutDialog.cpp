@@ -47,11 +47,24 @@ AboutDialog::AboutDialog(QWidget * parent) :
 	version.append(" [DEMO]");
 #endif
 	QString cv_version = CV_VERSION;
-#ifdef RTABMAP_NONFREE
+#if CV_MAJOR_VERSION < 3
+  #ifdef RTABMAP_NONFREE
 	cv_version.append(" [With nonfree]");
 	_ui->label_opencv_license->setText("Not Commercial");
-#else
+  #else
 	cv_version.append(" [Without nonfree]");
+	_ui->label_opencv_license->setText("BSD");
+  #endif
+#elif defined(HAVE_OPENCV_XFEATURES2D)
+  #ifdef RTABMAP_NONFREE
+	cv_version.append(" [With xfeatures2d, nonfree]");
+	_ui->label_opencv_license->setText("Not Commercial");
+  #else
+	cv_version.append(" [With xfeatures2d]");
+	_ui->label_opencv_license->setText("BSD");
+  #endif
+#else
+	cv_version.append(" [Without xfeatures2d and nonfree]");
 	_ui->label_opencv_license->setText("BSD");
 #endif
 	_ui->label_version->setText(version);

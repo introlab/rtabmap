@@ -501,7 +501,7 @@ Feature2D * Feature2D::create(Feature2D::Type type, const ParametersMap & parame
 #ifndef RTABMAP_NONFREE
 	if(type == Feature2D::kFeatureSurf)
 	{
-		UWARN("SURF features cannot be used because OpenCV was not built with xfeatures2d module. SIFT is used instead.");
+		UWARN("SURF features cannot be used because OpenCV was not built with nonfree module. SIFT is used instead.");
 		type = Feature2D::kFeatureSift;
 	}
 #endif

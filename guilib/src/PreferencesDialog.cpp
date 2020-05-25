@@ -191,26 +191,29 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->stereosgbm_mode->setItemData(2, 0, Qt::UserRole - 1);
 #endif
 
+//SURF
 #ifndef RTABMAP_NONFREE
-		_ui->comboBox_detector_strategy->setItemData(0, 0, Qt::UserRole - 1);
-		_ui->comboBox_detector_strategy->setItemData(1, 0, Qt::UserRole - 1);
-		_ui->vis_feature_detector->setItemData(0, 0, Qt::UserRole - 1);
-		_ui->vis_feature_detector->setItemData(1, 0, Qt::UserRole - 1);
-
-#if CV_MAJOR_VERSION >= 3
-		_ui->comboBox_detector_strategy->setItemData(0, 0, Qt::UserRole - 1);
-		_ui->comboBox_detector_strategy->setItemData(1, 0, Qt::UserRole - 1);
-		_ui->comboBox_detector_strategy->setItemData(3, 0, Qt::UserRole - 1);
-		_ui->comboBox_detector_strategy->setItemData(4, 0, Qt::UserRole - 1);
-		_ui->comboBox_detector_strategy->setItemData(5, 0, Qt::UserRole - 1);
-		_ui->comboBox_detector_strategy->setItemData(6, 0, Qt::UserRole - 1);
-		_ui->vis_feature_detector->setItemData(0, 0, Qt::UserRole - 1);
-		_ui->vis_feature_detector->setItemData(1, 0, Qt::UserRole - 1);
-		_ui->vis_feature_detector->setItemData(3, 0, Qt::UserRole - 1);
-		_ui->vis_feature_detector->setItemData(4, 0, Qt::UserRole - 1);
-		_ui->vis_feature_detector->setItemData(5, 0, Qt::UserRole - 1);
-		_ui->vis_feature_detector->setItemData(6, 0, Qt::UserRole - 1);
+	_ui->comboBox_detector_strategy->setItemData(0, 0, Qt::UserRole - 1);
+	_ui->vis_feature_detector->setItemData(0, 0, Qt::UserRole - 1);
 #endif
+
+// SIFT
+#if CV_MAJOR_VERSION < 4 || (CV_MAJOR_VERSION == 4 && CV_MINOR_VERSION < 3)
+#ifndef RTABMAP_NONFREE
+	_ui->comboBox_detector_strategy->setItemData(1, 0, Qt::UserRole - 1);
+	_ui->vis_feature_detector->setItemData(1, 0, Qt::UserRole - 1);
+#endif
+#endif
+
+#if CV_MAJOR_VERSION >= 3 && !defined(HAVE_OPENCV_XFEATURES2D)
+	_ui->comboBox_detector_strategy->setItemData(3, 0, Qt::UserRole - 1);
+	_ui->comboBox_detector_strategy->setItemData(4, 0, Qt::UserRole - 1);
+	_ui->comboBox_detector_strategy->setItemData(5, 0, Qt::UserRole - 1);
+	_ui->comboBox_detector_strategy->setItemData(6, 0, Qt::UserRole - 1);
+	_ui->vis_feature_detector->setItemData(3, 0, Qt::UserRole - 1);
+	_ui->vis_feature_detector->setItemData(4, 0, Qt::UserRole - 1);
+	_ui->vis_feature_detector->setItemData(5, 0, Qt::UserRole - 1);
+	_ui->vis_feature_detector->setItemData(6, 0, Qt::UserRole - 1);
 #endif
 
 #ifndef RTABMAP_ORB_OCTREE
@@ -219,16 +222,16 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 #endif
 
 #ifndef RTABMAP_SUPERPOINT_TORCH
-		_ui->comboBox_detector_strategy->setItemData(11, 0, Qt::UserRole - 1);
-		_ui->vis_feature_detector->setItemData(11, 0, Qt::UserRole - 1);
+	_ui->comboBox_detector_strategy->setItemData(11, 0, Qt::UserRole - 1);
+	_ui->vis_feature_detector->setItemData(11, 0, Qt::UserRole - 1);
 #endif
 
 #ifndef RTABMAP_PYMATCHER
-		_ui->reextract_nn->setItemData(6, 0, Qt::UserRole - 1);
+	_ui->reextract_nn->setItemData(6, 0, Qt::UserRole - 1);
 #endif
 
 #if !defined(HAVE_OPENCV_XFEATURES2D) || (CV_MAJOR_VERSION == 3 && (CV_MINOR_VERSION<4 || CV_MINOR_VERSION==4 && CV_SUBMINOR_VERSION<1))
-		_ui->reextract_nn->setItemData(7, 0, Qt::UserRole - 1);
+	_ui->reextract_nn->setItemData(7, 0, Qt::UserRole - 1);
 #endif
 
 #if CV_MAJOR_VERSION >= 3
@@ -2918,6 +2921,7 @@ void PreferencesDialog::writeCoreSettings(const QString & filePath) const
 
 bool PreferencesDialog::validateForm()
 {
+#if CV_MAJOR_VERSION < 4 || (CV_MAJOR_VERSION == 4 && CV_MINOR_VERSION < 3)
 #ifndef RTABMAP_NONFREE
 	// verify that SURF/SIFT cannot be selected if not built with OpenCV nonfree module
 	// BOW dictionary type
@@ -2937,6 +2941,28 @@ bool PreferencesDialog::validateForm()
 				   "of features on loop closure."));
 		_ui->vis_feature_detector->setCurrentIndex(Feature2D::kFeatureFastBrief);
 	}
+#endif
+#else //>= 4.3.0
+#ifndef RTABMAP_NONFREE
+	// verify that SURF cannot be selected if not built with OpenCV nonfree module
+	// BOW dictionary type
+	if(_ui->comboBox_detector_strategy->currentIndex() <= 1)
+	{
+		QMessageBox::warning(this, tr("Parameter warning"),
+				tr("Selected feature type (SURF) is not available. RTAB-Map is not built "
+				   "with the nonfree module from OpenCV. SIFT is set instead for the bag-of-words dictionary."));
+		_ui->comboBox_detector_strategy->setCurrentIndex(Feature2D::kFeatureSift);
+	}
+	// BOW Reextract features type
+	if(_ui->vis_feature_detector->currentIndex() <= 1)
+	{
+		QMessageBox::warning(this, tr("Parameter warning"),
+				tr("Selected feature type (SURF) is not available. RTAB-Map is not built "
+				   "with the nonfree module from OpenCV. Fast/Brief is set instead for the re-extraction "
+				   "of features on loop closure."));
+		_ui->vis_feature_detector->setCurrentIndex(Feature2D::kFeatureFastBrief);
+	}
+#endif
 #endif
 
 #if CV_MAJOR_VERSION < 3
