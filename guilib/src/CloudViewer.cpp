@@ -1831,18 +1831,20 @@ static const float frustum_vertices[] = {
     0.0f,  0.0f, 0.0f,
 	1.0f, 1.0f, 1.0f,
 	1.0f, -1.0f, 1.0f,
-	1.0f, -1.0f, -1.0f,
-	1.0f, 1.0f, -1.0f};
+	-1.0f, -1.0f, 1.0f,
+	-1.0f, 1.0f, 1.0f};
 
 static const int frustum_indices[] = {
     1, 2, 3, 4, 1, 0, 2, 0, 3, 0, 4};
 
 void CloudViewer::addOrUpdateFrustum(
 			const std::string & id,
-			const Transform & transform,
+			const Transform & pose,
 			const Transform & localTransform,
 			double scale,
-			const QColor & color)
+			const QColor & color,
+			float fovX,
+			float fovY)
 {
 	if(id.empty())
 	{
@@ -1854,7 +1856,7 @@ void CloudViewer::addOrUpdateFrustum(
 	this->removeFrustum(id);
 #endif
 
-	if(!transform.isNull())
+	if(!pose.isNull())
 	{
 		if(_frustums.find(id)==_frustums.end())
 		{
@@ -1865,9 +1867,9 @@ void CloudViewer::addOrUpdateFrustum(
 			frustumSize/=3;
 			pcl::PointCloud<pcl::PointXYZ> frustumPoints;
 			frustumPoints.resize(frustumSize);
-			float scaleX = 0.5f * scale;
-			float scaleY = 0.4f * scale; //4x3 arbitrary ratio
-			float scaleZ = 0.3f * scale;
+			float scaleX = tan((fovX>0?fovX:1.1)/2.0f) * scale;
+			float scaleY = tan((fovY>0?fovY:0.85)/2.0f) * scale;
+			float scaleZ = scale;
 			QColor c = Qt::gray;
 			if(color.isValid())
 			{
@@ -1876,9 +1878,9 @@ void CloudViewer::addOrUpdateFrustum(
 			Transform opticalRotInv(0, -1, 0, 0, 0, 0, -1, 0, 1, 0, 0, 0);
 
 #if PCL_VERSION_COMPARE(<, 1, 7, 2)
-			Eigen::Affine3f t = (transform*localTransform*opticalRotInv).toEigen3f();
+			Eigen::Affine3f t = (pose*localTransform).toEigen3f();
 #else
-			Eigen::Affine3f t = (localTransform*opticalRotInv).toEigen3f();
+			Eigen::Affine3f t = (localTransform).toEigen3f();
 #endif
 			for(int i=0; i<frustumSize; ++i)
 			{
@@ -1902,7 +1904,7 @@ void CloudViewer::addOrUpdateFrustum(
 			_visualizer->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY, c.alphaF(), id);
 		}
 #if PCL_VERSION_COMPARE(>=, 1, 7, 2)
-		if(!this->updateFrustumPose(id, transform))
+		if(!this->updateFrustumPose(id, pose))
 		{
 			UERROR("Failed updating pose of frustum %s!?", id.c_str());
 		}
@@ -2686,7 +2688,7 @@ void CloudViewer::updateCameraFrustums(const Transform & pose, const std::vector
 				}
 				std::string id = uFormat("reference_frustum_%d", i);
 				this->removeFrustum(id);
-				this->addOrUpdateFrustum(id, pose, baseToCamera, _frustumScale, _frustumColor);
+				this->addOrUpdateFrustum(id, pose, baseToCamera, _frustumScale, _frustumColor, models[i].fovX(), models[i].fovY());
 				if(!baseToCamera.isIdentity())
 				{
 					this->addOrUpdateLine(uFormat("reference_frustum_line_%d", i), pose, pose * baseToCamera, _frustumColor);

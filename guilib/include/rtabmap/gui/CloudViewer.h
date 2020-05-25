@@ -256,10 +256,12 @@ public:
 
 	void addOrUpdateFrustum(
 			const std::string & id,
-			const Transform & transform,
+			const Transform & pose,
 			const Transform & localTransform,
 			double scale,
-			const QColor & color = QColor());
+			const QColor & color = QColor(),
+			float fovX=1.1,
+			float fovY=0.85);
 	bool updateFrustumPose(
 			const std::string & id,
 			const Transform & pose);
