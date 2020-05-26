@@ -489,6 +489,13 @@ std::map<int, Transform> Optimizer::optimizeBA(
 						model.localTransform(),
 						-signatures.at(iter->first).sensorData().stereoCameraModel().baseline()*model.fx());
 			}
+			else if(signatures.at(iter->first).sensorData().cameraModels().size() > 1)
+			{
+				UERROR("Multi-cameras (%d) is not supported (id=%d).",
+						signatures.at(iter->first).sensorData().cameraModels().size(),
+						iter->first);
+				return std::map<int, Transform>();
+			}
 			else
 			{
 				UERROR("Missing calibration for node %d", iter->first);
