@@ -1276,7 +1276,7 @@ Transform OdometryF2M::computeTransform(
 						Parameters::parse(parameters_, Parameters::kIcpPointToPlaneMinComplexity(), minComplexity);
 						if(p2n && minComplexity>0.0f)
 						{
-							complexity = util3d::computeNormalsComplexity(*mapCloudNormals);
+							complexity = util3d::computeNormalsComplexity(*mapCloudNormals, Transform::getIdentity(), lastFrame_->sensorData().laserScanRaw().is2d());
 							if(complexity > minComplexity)
 							{
 								frameValid = true;

@@ -2993,7 +2993,7 @@ float computeNormalsComplexity(
 	int oi = 0;
 	bool doTransform = false;
 	Transform tn;
-	if(!t.isIdentity())
+	if(!t.isIdentity() && !t.isNull())
 	{
 		tn = t.rotation();
 		doTransform = true;
