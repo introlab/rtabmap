@@ -76,7 +76,7 @@ CameraOpenni::~CameraOpenni()
 #endif
 }
 #ifdef RTABMAP_OPENNI
-#if PCL_VERSION_COMPARE(>=, 1, 11, 0)
+#if PCL_VERSION_COMPARE(>=, 1, 10, 0)
 void CameraOpenni::image_cb (
 		const std::shared_ptr<openni_wrapper::Image>& rgb,
 		const std::shared_ptr<openni_wrapper::DepthImage>& depth,
@@ -130,7 +130,7 @@ bool CameraOpenni::init(const std::string & calibrationFolder, const std::string
 			interface_ = new pcl::OpenNIGrabber(deviceId_);
 		}
 
-#if PCL_VERSION_COMPARE(>=, 1, 11, 0)
+#if PCL_VERSION_COMPARE(>=, 1, 10, 0)
 		std::function<void (
 				const std::shared_ptr<openni_wrapper::Image>&,
 				const std::shared_ptr<openni_wrapper::DepthImage>&,

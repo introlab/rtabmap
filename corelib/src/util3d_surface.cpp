@@ -1007,7 +1007,7 @@ pcl::TextureMesh::Ptr concatenateTextureMeshes(const std::list<pcl::TextureMesh:
 			// append point cloud
 			int polygonStep = output->cloud.height * output->cloud.width;
 			pcl::PCLPointCloud2 tmp;
-#if PCL_VERSION_COMPARE(>=, 1, 11, 0)
+#if PCL_VERSION_COMPARE(>=, 1, 10, 0)
 			pcl::concatenate(output->cloud, iter->get()->cloud, tmp);
 #else
 			pcl::concatenatePointCloud(output->cloud, iter->get()->cloud, tmp);
@@ -3206,14 +3206,14 @@ pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr mls(
 	mls.setComputeNormals (true);
 	if(polygonialOrder > 0)
 	{
-#if PCL_VERSION_COMPARE(<, 1, 11, 0)
+#if PCL_VERSION_COMPARE(<, 1, 10, 0)
 		mls.setPolynomialFit (true);
 #endif
 		mls.setPolynomialOrder(polygonialOrder);
 	}
 	else
 	{
-#if PCL_VERSION_COMPARE(<, 1, 11, 0)
+#if PCL_VERSION_COMPARE(<, 1, 10, 0)
 		mls.setPolynomialFit (false);
 #else
 		mls.setPolynomialOrder(1);
