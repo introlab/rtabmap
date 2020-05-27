@@ -473,7 +473,7 @@ Feature2D * Feature2D::create(const ParametersMap & parameters)
 Feature2D * Feature2D::create(Feature2D::Type type, const ParametersMap & parameters)
 {
 
-#if CV_MAJOR_VERSION < 4 || (CV_MAJOR_VERSION == 4 && CV_MINOR_VERSION < 3)
+#if CV_MAJOR_VERSION < 4 || (CV_MAJOR_VERSION == 4 && (CV_MINOR_VERSION < 3 || (CV_MINOR_VERSION==3 && !defined(RTABMAP_OPENCV_DEV))))
 #ifndef RTABMAP_NONFREE
 	if(type == Feature2D::kFeatureSurf || type == Feature2D::kFeatureSift)
 	{
@@ -496,7 +496,7 @@ Feature2D * Feature2D::create(Feature2D::Type type, const ParametersMap & parame
 #endif
 #endif
 
-#else // >= 4.3.0
+#else // >= 4.3.0-dev
 
 #ifndef RTABMAP_NONFREE
 	if(type == Feature2D::kFeatureSurf)
@@ -506,7 +506,7 @@ Feature2D * Feature2D::create(Feature2D::Type type, const ParametersMap & parame
 	}
 #endif
 
-#endif // 4.3.0
+#endif // 4.3.0-dev
 
 #if CV_MAJOR_VERSION < 3
 	if(type == Feature2D::kFeatureKaze)
@@ -925,7 +925,7 @@ void SIFT::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kSIFTSigma(), sigma_);
 	Parameters::parse(parameters, Parameters::kSIFTRootSIFT(), rootSIFT_);
 
-#if CV_MAJOR_VERSION < 4 || (CV_MAJOR_VERSION == 4 && CV_MINOR_VERSION < 3)
+#if CV_MAJOR_VERSION < 4 || (CV_MAJOR_VERSION == 4 && (CV_MINOR_VERSION < 3 || (CV_MINOR_VERSION==3 && !defined(RTABMAP_OPENCV_DEV))))
 #ifdef RTABMAP_NONFREE
 #if CV_MAJOR_VERSION < 3
 	_sift = cv::Ptr<CV_SIFT>(new CV_SIFT(this->getMaxFeatures(), nOctaveLayers_, contrastThreshold_, edgeThreshold_, sigma_));

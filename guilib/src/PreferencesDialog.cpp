@@ -198,7 +198,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 #endif
 
 // SIFT
-#if CV_MAJOR_VERSION < 4 || (CV_MAJOR_VERSION == 4 && CV_MINOR_VERSION < 3)
+#if CV_MAJOR_VERSION < 4 || (CV_MAJOR_VERSION == 4 && (CV_MINOR_VERSION < 3 || (CV_MINOR_VERSION==3 && !defined(RTABMAP_OPENCV_DEV))))
 #ifndef RTABMAP_NONFREE
 	_ui->comboBox_detector_strategy->setItemData(1, 0, Qt::UserRole - 1);
 	_ui->vis_feature_detector->setItemData(1, 0, Qt::UserRole - 1);
@@ -2921,7 +2921,7 @@ void PreferencesDialog::writeCoreSettings(const QString & filePath) const
 
 bool PreferencesDialog::validateForm()
 {
-#if CV_MAJOR_VERSION < 4 || (CV_MAJOR_VERSION == 4 && CV_MINOR_VERSION < 3)
+#if CV_MAJOR_VERSION < 4 || (CV_MAJOR_VERSION == 4 && (CV_MINOR_VERSION < 3 || (CV_MINOR_VERSION==3 && !defined(RTABMAP_OPENCV_DEV))))
 #ifndef RTABMAP_NONFREE
 	// verify that SURF/SIFT cannot be selected if not built with OpenCV nonfree module
 	// BOW dictionary type
@@ -2942,7 +2942,7 @@ bool PreferencesDialog::validateForm()
 		_ui->vis_feature_detector->setCurrentIndex(Feature2D::kFeatureFastBrief);
 	}
 #endif
-#else //>= 4.3.0
+#else //>= 4.3.0-dev
 #ifndef RTABMAP_NONFREE
 	// verify that SURF cannot be selected if not built with OpenCV nonfree module
 	// BOW dictionary type
@@ -4141,7 +4141,7 @@ void PreferencesDialog::setParameter(const std::string & key, const std::string 
 						(combo->objectName().toStdString().compare(Parameters::kKpDetectorStrategy()) == 0 ||
 						 combo->objectName().toStdString().compare(Parameters::kVisFeatureType()) == 0))
 				{
-					UWARN("Trying to set \"%s\" to SIFT/SURF but RTAB-Map isn't built "
+					UWARN("Trying to set \"%s\" to SURF but RTAB-Map isn't built "
 						  "with the nonfree module from OpenCV. Keeping default combo value: %s.",
 						  combo->objectName().toStdString().c_str(),
 						  combo->currentText().toStdString().c_str());

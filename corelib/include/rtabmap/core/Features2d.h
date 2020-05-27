@@ -62,7 +62,7 @@ namespace cv{
 namespace xfeatures2d {
 class FREAK;
 class BriefDescriptorExtractor;
-#if CV_MAJOR_VERSION < 4 || (CV_MAJOR_VERSION == 4 and CV_MINOR_VERSION < 3)
+#if CV_MAJOR_VERSION < 4 || (CV_MAJOR_VERSION == 4 && (CV_MINOR_VERSION < 3 || (CV_MINOR_VERSION==3 && !defined(RTABMAP_OPENCV_DEV))))
 class SIFT;
 #endif
 class SURF;
@@ -73,10 +73,10 @@ class ORB;
 class SURF_CUDA;
 }
 }
-#if CV_MAJOR_VERSION < 4 || (CV_MAJOR_VERSION == 4 and CV_MINOR_VERSION < 3)
+#if CV_MAJOR_VERSION < 4 || (CV_MAJOR_VERSION == 4 && (CV_MINOR_VERSION < 3 || (CV_MINOR_VERSION==3 && !defined(RTABMAP_OPENCV_DEV))))
 typedef cv::xfeatures2d::SIFT CV_SIFT;
 #else
-typedef cv::SIFT CV_SIFT; // SIFT is back in features2d since 4.3.0
+typedef cv::SIFT CV_SIFT; // SIFT is back in features2d since 4.3.0-dev
 #endif
 typedef cv::xfeatures2d::SURF CV_SURF;
 typedef cv::FastFeatureDetector CV_FAST;

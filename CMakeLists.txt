@@ -689,6 +689,16 @@ ELSEIF(OpenCV_VERSION VERSION_GREATER "3.4.2")
   ENDIF(${matchres} EQUAL -1)
 ENDIF()
 
+# check if version status is "-dev" (SIFT compatibility issue between 4.3.0 vs 4.3.0-dev)
+FIND_FILE(OpenCV_VERSION_HPP opencv2/core/version.hpp
+  PATHS ${OpenCV_INCLUDE_DIRS}
+  NO_DEFAULT_PATH)
+FILE(READ ${OpenCV_VERSION_HPP} TMPTXT)
+STRING(FIND "${TMPTXT}" "-dev" matchres)
+IF(${matchres} EQUAL -1)
+  SET(OPENCV_DEV "//")
+ENDIF(${matchres} EQUAL -1)
+
 IF(NOT G2O_FOUND)
    SET(G2O "//")
 ELSE()
@@ -856,9 +866,6 @@ IF(NOT WITH_MADGWICK)
    SET(MADGWICK "//")
 ENDIF()
 
-IF(NOT (OpenCV_FOUND AND NOT (OpenCV_VERSION_MAJOR LESS 3)))
-   SET(OPENCV3 "//")
-ENDIF(NOT (OpenCV_FOUND AND NOT (OpenCV_VERSION_MAJOR LESS 3)))
 CONFIGURE_FILE(Version.h.in ${PROJECT_SOURCE_DIR}/corelib/include/${PROJECT_PREFIX}/core/Version.h)
 
 ADD_SUBDIRECTORY( utilite )
