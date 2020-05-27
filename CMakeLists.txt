@@ -1083,7 +1083,7 @@ IF(QT4_FOUND)
 MESSAGE(STATUS "  With Qt4                  = YES (License: Open Source or Commercial)")
 MESSAGE(STATUS "  With VTK ${VTK_MAJOR_VERSION}.${VTK_MINOR_VERSION}              = YES (License: BSD)")
 ELSEIF(Qt5_FOUND)
-MESSAGE(STATUS "  With Qt5                  = YES (License: Open Source or Commercial)")
+MESSAGE(STATUS "  With Qt ${Qt5_VERSION}            = YES (License: Open Source or Commercial)")
 MESSAGE(STATUS "  With VTK ${VTK_MAJOR_VERSION}.${VTK_MINOR_VERSION}              = YES (License: BSD)")
 
 ELSEIF(NOT WITH_QT)

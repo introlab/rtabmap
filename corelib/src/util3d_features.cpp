@@ -41,6 +41,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UMath.h>
 #include <rtabmap/utilite/UStl.h>
 
+#include <pcl/common/point_tests.h>
+
 #include <opencv2/video/tracking.hpp>
 
 namespace rtabmap
