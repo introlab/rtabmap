@@ -57,7 +57,7 @@ inline bool uIsFinite(const T & value)
 #if _MSC_VER
 	return _finite(value) != 0;
 #else
-	return isfinite(value);
+	return std::isfinite(value);
 #endif
 }
 
