@@ -2876,7 +2876,7 @@ bool Rtabmap::process(
 			// if _optimizeFromGraphEnd parameter just changed state, don't use optimized poses as guess
 			float normMapCorrection = _mapCorrection.getNormSquared(); // use distance for identity detection
 			if((normMapCorrection > 0.001f && _optimizeFromGraphEnd) ||
-				(normMapCorrection < 0.0001f && !_optimizeFromGraphEnd))
+				(normMapCorrection < 0.001f && !_optimizeFromGraphEnd))
 			{
 				for(std::multimap<int, Link>::iterator iter=_constraints.begin(); iter!=_constraints.end(); ++iter)
 				{
