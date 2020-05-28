@@ -733,6 +733,10 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 
 	connect(_ui->checkbox_stereoMyntEye_rectify, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->checkbox_stereoMyntEye_depth, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->checkbox_stereoMyntEye_autoExposure, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->spinBox_stereoMyntEye_gain, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->spinBox_stereoMyntEye_brightness, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->spinBox_stereoMyntEye_contrast, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 
 	connect(_ui->checkbox_rgbd_colorOnly, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->spinBox_source_imageDecimation, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
@@ -1910,6 +1914,10 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->checkbox_stereoRealSense2_odom->setChecked(false);
 		_ui->checkbox_stereoMyntEye_rectify->setChecked(false);
 		_ui->checkbox_stereoMyntEye_depth->setChecked(false);
+		_ui->checkbox_stereoMyntEye_autoExposure->setChecked(true);
+		_ui->spinBox_stereoMyntEye_gain->setValue(24);
+		_ui->spinBox_stereoMyntEye_brightness->setValue(120);
+		_ui->spinBox_stereoMyntEye_contrast->setValue(116);
 
 		_ui->checkBox_cameraImages_timestamps->setChecked(false);
 		_ui->checkBox_cameraImages_syncTimeStamps->setChecked(true);
@@ -2358,7 +2366,11 @@ void PreferencesDialog::readCameraSettings(const QString & filePath)
 	settings.beginGroup("MyntEye");
 	_ui->checkbox_stereoMyntEye_rectify->setChecked(settings.value("rectify", _ui->checkbox_stereoMyntEye_rectify->isChecked()).toBool());
 	_ui->checkbox_stereoMyntEye_depth->setChecked(settings.value("depth", _ui->checkbox_stereoMyntEye_depth->isChecked()).toBool());
-	settings.endGroup(); // StereoRealSense2
+	_ui->checkbox_stereoMyntEye_autoExposure->setChecked(settings.value("auto_exposure", _ui->checkbox_stereoMyntEye_autoExposure->isChecked()).toBool());
+	_ui->spinBox_stereoMyntEye_gain->setValue(settings.value("gain", _ui->spinBox_stereoMyntEye_gain->value()).toInt());
+	_ui->spinBox_stereoMyntEye_brightness->setValue(settings.value("brightness", _ui->spinBox_stereoMyntEye_brightness->value()).toInt());
+	_ui->spinBox_stereoMyntEye_contrast->setValue(settings.value("contrast", _ui->spinBox_stereoMyntEye_contrast->value()).toInt());
+	settings.endGroup(); // MyntEye
 
 	settings.beginGroup("Images");
 	_ui->source_images_lineEdit_path->setText(settings.value("path", _ui->source_images_lineEdit_path->text()).toString());
@@ -2828,8 +2840,12 @@ void PreferencesDialog::writeCameraSettings(const QString & filePath) const
 	settings.endGroup(); // StereoRealSense2
 
 	settings.beginGroup("MyntEye");
-	settings.setValue("rectify", _ui->checkbox_stereoMyntEye_rectify->isChecked());
-	settings.setValue("depth", _ui->checkbox_stereoMyntEye_depth->isChecked());
+	settings.setValue("rectify",       _ui->checkbox_stereoMyntEye_rectify->isChecked());
+	settings.setValue("depth",         _ui->checkbox_stereoMyntEye_depth->isChecked());
+	settings.setValue("auto_exposure", _ui->checkbox_stereoMyntEye_autoExposure->isChecked());
+	settings.setValue("gain",          _ui->spinBox_stereoMyntEye_gain->value());
+	settings.setValue("brightness",    _ui->spinBox_stereoMyntEye_brightness->value());
+	settings.setValue("contrast",      _ui->spinBox_stereoMyntEye_contrast->value());
 	settings.endGroup(); // MyntEye
 
 	settings.beginGroup("Images");
@@ -5678,6 +5694,11 @@ Camera * PreferencesDialog::createCamera(bool useRawImages, bool useColor)
 				this->getGeneralInputRate(),
 				this->getSourceLocalTransform());
 			((CameraMyntEye*)camera)->publishInterIMU(_ui->checkbox_publishInterIMU->isChecked());
+			((CameraMyntEye*)camera)->setAutoExposure(
+					_ui->checkbox_stereoMyntEye_autoExposure->isChecked(),
+					_ui->spinBox_stereoMyntEye_gain->value(),
+					_ui->spinBox_stereoMyntEye_brightness->value(),
+					_ui->spinBox_stereoMyntEye_contrast->value());
 		}
 	}
 	else if(driver == kSrcRGBDImages)

@@ -45,13 +45,17 @@ CameraMyntEye::CameraMyntEye(const std::string & device, bool apiRectification, 
 			deviceName_(device),
 			apiRectification_(apiRectification),
 			apiDepth_(apiDepth),
+			autoExposure_(true),
+			gain_(24),
+			brightness_(120),
+			contrast_(116),
 			dataReady_(0),
 			lastFramesStamp_(0.0),
 			stamp_(0),
 			publishInterIMU_(false),
 			softTimeBegin_(0.0),
 			hardTimeBegin_(0),
-			unitHardTime(std::numeric_limits<std::uint32_t>::max()*10)
+			unitHardTime_(std::numeric_limits<std::uint32_t>::max()*10)
 #endif
 {
 #ifdef RTABMAP_MYNTEYE
@@ -133,13 +137,13 @@ inline bool is_overflow(std::uint64_t now, std::uint64_t pre, std::uint64_t unit
 
 double CameraMyntEye::checkUpTimeStamp(std::uint64_t _hard_time, std::uint8_t stream) {
 	UASSERT(stream < (std::uint8_t)mynteye::Stream::LAST+1);
-	if (is_overflow(_hard_time, lastHardTimes_[stream], unitHardTime)) {
+	if (is_overflow(_hard_time, lastHardTimes_[stream], unitHardTime_)) {
 		acc_[stream]++;
 	}
 
 	lastHardTimes_[stream] = _hard_time;
 
-	return hardTimeToSoftTime(acc_[stream] * unitHardTime + _hard_time);
+	return hardTimeToSoftTime(acc_[stream] * unitHardTime_ + _hard_time);
 }
 #endif
 
@@ -147,6 +151,16 @@ void CameraMyntEye::publishInterIMU(bool enabled)
 {
 #ifdef RTABMAP_MYNTEYE
 	publishInterIMU_ = enabled;
+#endif
+}
+
+void CameraMyntEye::setAutoExposure(bool enabled, int manualGain, int manualBrightness, int manualConstrast)
+{
+#ifdef RTABMAP_MYNTEYE
+	autoExposure_ = enabled;
+	gain_ = manualGain;
+	brightness_ = manualBrightness;
+	contrast_ = manualConstrast;
 #endif
 }
 
@@ -429,6 +443,14 @@ bool CameraMyntEye::init(const std::string & calibrationFolder, const std::strin
 			uSleep(1);
 
 		});
+
+		api_->SetOptionValue(mynteye::Option::EXPOSURE_MODE, autoExposure_?0:1);
+		if(!autoExposure_)
+		{
+			api_->SetOptionValue(mynteye::Option::GAIN, gain_);
+			api_->SetOptionValue(mynteye::Option::BRIGHTNESS, brightness_);
+			api_->SetOptionValue(mynteye::Option::CONTRAST, contrast_);
+		}
 
 		api_->Start(mynteye::Source::ALL);
 		uSleep(500); // To buffer some imus before sending images

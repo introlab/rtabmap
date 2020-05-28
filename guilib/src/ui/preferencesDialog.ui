@@ -63,9 +63,9 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>0</y>
+            <y>-687</y>
             <width>680</width>
-            <height>2107</height>
+            <height>3270</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -95,7 +95,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>28</number>
+                <number>5</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,1">
@@ -5336,6 +5336,98 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                    <widget class="QCheckBox" name="checkbox_stereoMyntEye_rectify">
                                     <property name="text">
                                      <string/>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="4" column="0">
+                                   <widget class="QSpinBox" name="spinBox_stereoMyntEye_brightness">
+                                    <property name="maximum">
+                                     <number>240</number>
+                                    </property>
+                                    <property name="value">
+                                     <number>120</number>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="3" column="0">
+                                   <widget class="QSpinBox" name="spinBox_stereoMyntEye_gain">
+                                    <property name="maximum">
+                                     <number>48</number>
+                                    </property>
+                                    <property name="value">
+                                     <number>24</number>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="2" column="0">
+                                   <widget class="QCheckBox" name="checkbox_stereoMyntEye_autoExposure">
+                                    <property name="text">
+                                     <string/>
+                                    </property>
+                                    <property name="checked">
+                                     <bool>true</bool>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="3" column="1">
+                                   <widget class="QLabel" name="label_595">
+                                    <property name="text">
+                                     <string>Image gain, valid if manual-exposure.</string>
+                                    </property>
+                                    <property name="wordWrap">
+                                     <bool>true</bool>
+                                    </property>
+                                    <property name="textInteractionFlags">
+                                     <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="4" column="1">
+                                   <widget class="QLabel" name="label_596">
+                                    <property name="text">
+                                     <string>Image brightness, valid if manual-exposure.</string>
+                                    </property>
+                                    <property name="wordWrap">
+                                     <bool>true</bool>
+                                    </property>
+                                    <property name="textInteractionFlags">
+                                     <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="2" column="1">
+                                   <widget class="QLabel" name="label_594">
+                                    <property name="text">
+                                     <string>Auto-exposure.</string>
+                                    </property>
+                                    <property name="wordWrap">
+                                     <bool>true</bool>
+                                    </property>
+                                    <property name="textInteractionFlags">
+                                     <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="5" column="1">
+                                   <widget class="QLabel" name="label_597">
+                                    <property name="text">
+                                     <string>Image contrast, valid if manual-exposure.</string>
+                                    </property>
+                                    <property name="wordWrap">
+                                     <bool>true</bool>
+                                    </property>
+                                    <property name="textInteractionFlags">
+                                     <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="5" column="0">
+                                   <widget class="QSpinBox" name="spinBox_stereoMyntEye_contrast">
+                                    <property name="maximum">
+                                     <number>254</number>
+                                    </property>
+                                    <property name="value">
+                                     <number>116</number>
                                     </property>
                                    </widget>
                                   </item>

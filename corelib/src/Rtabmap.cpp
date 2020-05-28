@@ -133,6 +133,7 @@ Rtabmap::Rtabmap() :
 	_lastProcessTime(0.0),
 	_someNodesHaveBeenTransferred(false),
 	_distanceTravelled(0.0f),
+	_optimizeFromGraphEndChanged(false),
 	_epipolarGeometry(0),
 	_bayesFilter(0),
 	_graphOptimizer(0),
@@ -375,6 +376,7 @@ void Rtabmap::close(bool databaseSaved, const std::string & ouputDatabasePath)
 	_odomCachePoses.clear();
 	_odomCacheConstraints.clear();
 	_distanceTravelled = 0.0f;
+	_optimizeFromGraphEndChanged = false;
 	this->clearPath(0);
 	_gpsGeocentricCache.clear();
 	_currentSessionHasGPS = false;
@@ -478,7 +480,12 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 		_proximityAngle *= M_PI/180.0f;
 	}
 	Parameters::parse(parameters, Parameters::kRGBDProximityOdomGuess(), _proximityOdomGuess);
+	bool optimizeFromGraphEndPrevious = _optimizeFromGraphEnd;
 	Parameters::parse(parameters, Parameters::kRGBDOptimizeFromGraphEnd(), _optimizeFromGraphEnd);
+	if(optimizeFromGraphEndPrevious != _optimizeFromGraphEnd)
+	{
+		_optimizeFromGraphEndChanged = true;
+	}
 	Parameters::parse(parameters, Parameters::kRGBDOptimizeMaxError(), _optimizationMaxError);
 	if(_optimizationMaxError > 0.0 && _optimizationMaxError < 1.0)
 	{
@@ -887,6 +894,7 @@ void Rtabmap::resetMemory()
 	_odomCachePoses.clear();
 	_odomCacheConstraints.clear();
 	_distanceTravelled = 0.0f;
+	_optimizeFromGraphEndChanged = false;
 	this->clearPath(0);
 
 	if(_memory)
@@ -2874,23 +2882,12 @@ bool Rtabmap::process(
 			std::map<int, Transform> poses = _optimizedPoses;
 
 			// if _optimizeFromGraphEnd parameter just changed state, don't use optimized poses as guess
-			float normMapCorrection = _mapCorrection.getNormSquared(); // use distance for identity detection
-			if((normMapCorrection > 0.001f && _optimizeFromGraphEnd) ||
-				(normMapCorrection < 0.001f && !_optimizeFromGraphEnd))
+			if(_optimizeFromGraphEndChanged)
 			{
-				for(std::multimap<int, Link>::iterator iter=_constraints.begin(); iter!=_constraints.end(); ++iter)
-				{
-					if( iter->second.type() != Link::kNeighbor &&
-						iter->second.type() != Link::kVirtualClosure &&
-						iter->second.type() != Link::kLandmark &&
-						iter->second.type() != Link::kGravity &&
-						iter->second.type() != Link::kPosePrior)
-					{
-						UWARN("Optimization: clearing guess poses as %s may have changed state, now %s (normMapCorrection=%f)", Parameters::kRGBDOptimizeFromGraphEnd().c_str(), _optimizeFromGraphEnd?"true":"false", normMapCorrection);
-						poses.clear();
-						break;
-					}
-				}
+				UWARN("Optimization: clearing guess poses as %s has changed state, now %s",
+						Parameters::kRGBDOptimizeFromGraphEnd().c_str(), _optimizeFromGraphEnd?"true":"false");
+				poses.clear();
+				_optimizeFromGraphEndChanged = false;
 			}
 
 			std::multimap<int, Link> constraints;

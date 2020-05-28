@@ -61,6 +61,7 @@ public:
 	virtual bool odomProvided() const { return false; }
 
 	void publishInterIMU(bool enabled);
+	void setAutoExposure(bool enabled, int manualGain=24, int manualBrightness=120, int manualConstrast=116);
 
 protected:
 	/**
@@ -80,6 +81,10 @@ private:
 	std::string deviceName_;
 	bool apiRectification_;
 	bool apiDepth_;
+	bool autoExposure_;
+	int gain_;
+	int brightness_;
+	int contrast_;
 	USemaphore dataReady_;
 	UMutex dataMutex_;
 	cv::Mat leftFrameBuffer_;
@@ -94,7 +99,7 @@ private:
 
 	double softTimeBegin_;
 	std::uint64_t hardTimeBegin_;
-	std::uint64_t unitHardTime;
+	std::uint64_t unitHardTime_;
 	std::vector<std::uint64_t> lastHardTimes_;
 	std::vector<std::uint64_t> acc_;
 #endif
