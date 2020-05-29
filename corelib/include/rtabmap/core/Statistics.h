@@ -74,6 +74,7 @@ class RTABMAP_EXP Statistics
 	RTABMAP_STATS(Loop, Landmark_detected_node_ref,);
 	RTABMAP_STATS(Loop, Visual_inliers_mean_dist,m);
 	RTABMAP_STATS(Loop, Visual_inliers_distribution,);
+	//Odom correction
 	RTABMAP_STATS(Loop, Odom_correction_norm, m);
 	RTABMAP_STATS(Loop, Odom_correction_angle, deg);
 	RTABMAP_STATS(Loop, Odom_correction_x, m);
@@ -82,6 +83,22 @@ class RTABMAP_EXP Statistics
 	RTABMAP_STATS(Loop, Odom_correction_roll, deg);
 	RTABMAP_STATS(Loop, Odom_correction_pitch, deg);
 	RTABMAP_STATS(Loop, Odom_correction_yaw, deg);
+	// Map to Odom
+	RTABMAP_STATS(Loop, MapToOdom_norm, m);
+	RTABMAP_STATS(Loop, MapToOdom_angle, deg);
+	RTABMAP_STATS(Loop, MapToOdom_x, m);
+	RTABMAP_STATS(Loop, MapToOdom_y, m);
+	RTABMAP_STATS(Loop, MapToOdom_z, m);
+	RTABMAP_STATS(Loop, MapToOdom_roll, deg);
+	RTABMAP_STATS(Loop, MapToOdom_pitch, deg);
+	RTABMAP_STATS(Loop, MapToOdom_yaw, deg);
+	// Map to Base
+	RTABMAP_STATS(Loop, MapToBase_x, m);
+	RTABMAP_STATS(Loop, MapToBase_y, m);
+	RTABMAP_STATS(Loop, MapToBase_z, m);
+	RTABMAP_STATS(Loop, MapToBase_roll, deg);
+	RTABMAP_STATS(Loop, MapToBase_pitch, deg);
+	RTABMAP_STATS(Loop, MapToBase_yaw, deg);
 
 	RTABMAP_STATS(Proximity, Time_detections,);
 	RTABMAP_STATS(Proximity, Space_last_detection_id,);

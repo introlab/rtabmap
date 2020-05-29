@@ -3122,6 +3122,7 @@ bool Rtabmap::process(
 			statistics_.addStatistic(Statistics::kProximitySpace_last_detection_id(), lastProximitySpaceClosureId);
 			statistics_.setProximityDetectionId(lastProximitySpaceClosureId);
 			statistics_.setProximityDetectionMapId(_memory->getMapId(lastProximitySpaceClosureId));
+			float x,y,z,roll,pitch,yaw;
 			if(_loopClosureHypothesis.first || lastProximitySpaceClosureId)
 			{
 				// Loop closure transform
@@ -3140,13 +3141,22 @@ bool Rtabmap::process(
 					statistics_.addStatistic(Statistics::kGtLocalization_angular_error(), error.getAngle(1,0,0)*180/M_PI);
 				}
 
+				statistics_.addStatistic(Statistics::kLoopMapToOdom_norm(), _mapCorrection.getNorm());
+				statistics_.addStatistic(Statistics::kLoopMapToOdom_angle(), _mapCorrection.getAngle()*180.0f/M_PI);
+				_mapCorrection.getTranslationAndEulerAngles(x, y, z, roll, pitch, yaw);
+				statistics_.addStatistic(Statistics::kLoopMapToOdom_x(), x);
+				statistics_.addStatistic(Statistics::kLoopMapToOdom_y(), y);
+				statistics_.addStatistic(Statistics::kLoopMapToOdom_z(), z);
+				statistics_.addStatistic(Statistics::kLoopMapToOdom_roll(),  roll*180.0f/M_PI);
+				statistics_.addStatistic(Statistics::kLoopMapToOdom_pitch(),  pitch*180.0f/M_PI);
+				statistics_.addStatistic(Statistics::kLoopMapToOdom_yaw(), yaw*180.0f/M_PI);
+
 				// Odom correction (actual odometry pose change)
-				if(!previousMapCorrection.isNull() && !odomPose.isNull())
+				if(!odomPose.isNull() && !previousMapCorrection.isNull())
 				{
 					Transform odomCorrection = (previousMapCorrection*odomPose).inverse()*_mapCorrection*odomPose;
 					statistics_.addStatistic(Statistics::kLoopOdom_correction_norm(), odomCorrection.getNorm());
 					statistics_.addStatistic(Statistics::kLoopOdom_correction_angle(), odomCorrection.getAngle()*180.0f/M_PI);
-					float x,y,z,roll,pitch,yaw;
 					odomCorrection.getTranslationAndEulerAngles(x, y, z, roll, pitch, yaw);
 					statistics_.addStatistic(Statistics::kLoopOdom_correction_x(), x);
 					statistics_.addStatistic(Statistics::kLoopOdom_correction_y(), y);
@@ -3156,6 +3166,17 @@ bool Rtabmap::process(
 					statistics_.addStatistic(Statistics::kLoopOdom_correction_yaw(), yaw*180.0f/M_PI);
 				}
 			}
+			if(!_lastLocalizationPose.isNull() && !_lastLocalizationPose.isIdentity())
+			{
+				_lastLocalizationPose.getTranslationAndEulerAngles(x, y, z, roll, pitch, yaw);
+				statistics_.addStatistic(Statistics::kLoopMapToBase_x(), x);
+				statistics_.addStatistic(Statistics::kLoopMapToBase_y(), y);
+				statistics_.addStatistic(Statistics::kLoopMapToBase_z(), z);
+				statistics_.addStatistic(Statistics::kLoopMapToBase_roll(),  roll*180.0f/M_PI);
+				statistics_.addStatistic(Statistics::kLoopMapToBase_pitch(),  pitch*180.0f/M_PI);
+				statistics_.addStatistic(Statistics::kLoopMapToBase_yaw(), yaw*180.0f/M_PI);
+			}
+
 			statistics_.setMapCorrection(_mapCorrection);
 			UINFO("Set map correction = %s", _mapCorrection.prettyPrint().c_str());
 			statistics_.setLocalizationCovariance(localizationCovariance);
