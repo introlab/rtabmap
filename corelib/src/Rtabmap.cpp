@@ -4078,7 +4078,7 @@ void Rtabmap::optimizeCurrentMap(
 		int * iterationsDone) const
 {
 	//Optimize the map
-	UINFO("Optimize map: around location %d", id);
+	UINFO("Optimize map: around location %d (lookInDatabase=%s)", id, lookInDatabase?"true":"false");
 	if(_memory && id > 0)
 	{
 		UTimer timer;

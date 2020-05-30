@@ -128,6 +128,7 @@ void RtabmapThread::close(bool databaseSaved, const std::string & ouputDatabaseP
 
 void RtabmapThread::publishMap(bool optimized, bool full, bool graphOnly) const
 {
+	UDEBUG("optimized=%s, full=%s, graphOnly=%s", optimized?"true":"false", full?"true":"false", graphOnly?"true":"false");
 	if(_rtabmap)
 	{
 		std::map<int, Signature> signatures;
