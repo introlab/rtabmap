@@ -154,13 +154,31 @@ void CameraMyntEye::publishInterIMU(bool enabled)
 #endif
 }
 
-void CameraMyntEye::setAutoExposure(bool enabled, int manualGain, int manualBrightness, int manualConstrast)
+void CameraMyntEye::setAutoExposure()
 {
 #ifdef RTABMAP_MYNTEYE
-	autoExposure_ = enabled;
-	gain_ = manualGain;
-	brightness_ = manualBrightness;
-	contrast_ = manualConstrast;
+	autoExposure_ = true;
+#endif
+}
+
+void CameraMyntEye::setManualExposure(int gain, int brightness, int constrast)
+{
+#ifdef RTABMAP_MYNTEYE
+	UASSERT(gain>=0 && gain<=48);
+	UASSERT(brightness>=0 && brightness<=240);
+	UASSERT(constrast>=0 && constrast<=254);
+	autoExposure_ = false;
+	gain_ = gain;
+	brightness_ = brightness;
+	contrast_ = constrast;
+#endif
+}
+
+void CameraMyntEye::setIrControl(int value)
+{
+#ifdef RTABMAP_MYNTEYE
+	UASSERT(value>=0 && value<=160);
+	irControl_ = value;
 #endif
 }
 
@@ -451,6 +469,7 @@ bool CameraMyntEye::init(const std::string & calibrationFolder, const std::strin
 			api_->SetOptionValue(mynteye::Option::BRIGHTNESS, brightness_);
 			api_->SetOptionValue(mynteye::Option::CONTRAST, contrast_);
 		}
+		api_->SetOptionValue(mynteye::Option::IR_CONTROL, irControl_);
 
 		api_->Start(mynteye::Source::ALL);
 		uSleep(500); // To buffer some imus before sending images

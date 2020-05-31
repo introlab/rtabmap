@@ -61,7 +61,9 @@ public:
 	virtual bool odomProvided() const { return false; }
 
 	void publishInterIMU(bool enabled);
-	void setAutoExposure(bool enabled, int manualGain=24, int manualBrightness=120, int manualConstrast=116);
+	void setAutoExposure();
+	void setManualExposure(int gain=24, int brightness=120, int constrast=116);
+	void setIrControl(int value);
 
 protected:
 	/**
@@ -85,6 +87,7 @@ private:
 	int gain_;
 	int brightness_;
 	int contrast_;
+	int irControl_;
 	USemaphore dataReady_;
 	UMutex dataMutex_;
 	cv::Mat leftFrameBuffer_;

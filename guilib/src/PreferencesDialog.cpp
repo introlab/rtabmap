@@ -738,6 +738,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->spinBox_stereoMyntEye_gain, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->spinBox_stereoMyntEye_brightness, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->spinBox_stereoMyntEye_contrast, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->spinBox_stereoMyntEye_irControl, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 
 	connect(_ui->checkbox_rgbd_colorOnly, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->spinBox_source_imageDecimation, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
@@ -1919,6 +1920,7 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->spinBox_stereoMyntEye_gain->setValue(24);
 		_ui->spinBox_stereoMyntEye_brightness->setValue(120);
 		_ui->spinBox_stereoMyntEye_contrast->setValue(116);
+		_ui->spinBox_stereoMyntEye_irControl->setValue(0);
 
 		_ui->checkBox_cameraImages_timestamps->setChecked(false);
 		_ui->checkBox_cameraImages_syncTimeStamps->setChecked(true);
@@ -2373,6 +2375,7 @@ void PreferencesDialog::readCameraSettings(const QString & filePath)
 	_ui->spinBox_stereoMyntEye_gain->setValue(settings.value("gain", _ui->spinBox_stereoMyntEye_gain->value()).toInt());
 	_ui->spinBox_stereoMyntEye_brightness->setValue(settings.value("brightness", _ui->spinBox_stereoMyntEye_brightness->value()).toInt());
 	_ui->spinBox_stereoMyntEye_contrast->setValue(settings.value("contrast", _ui->spinBox_stereoMyntEye_contrast->value()).toInt());
+	_ui->spinBox_stereoMyntEye_irControl->setValue(settings.value("ir_control", _ui->spinBox_stereoMyntEye_irControl->value()).toInt());
 	settings.endGroup(); // MyntEye
 
 	settings.beginGroup("Images");
@@ -2850,6 +2853,7 @@ void PreferencesDialog::writeCameraSettings(const QString & filePath) const
 	settings.setValue("gain",          _ui->spinBox_stereoMyntEye_gain->value());
 	settings.setValue("brightness",    _ui->spinBox_stereoMyntEye_brightness->value());
 	settings.setValue("contrast",      _ui->spinBox_stereoMyntEye_contrast->value());
+	settings.setValue("ir_control",    _ui->spinBox_stereoMyntEye_irControl->value());
 	settings.endGroup(); // MyntEye
 
 	settings.beginGroup("Images");
@@ -5702,11 +5706,19 @@ Camera * PreferencesDialog::createCamera(bool useRawImages, bool useColor)
 				this->getGeneralInputRate(),
 				this->getSourceLocalTransform());
 			((CameraMyntEye*)camera)->publishInterIMU(_ui->checkbox_publishInterIMU->isChecked());
-			((CameraMyntEye*)camera)->setAutoExposure(
-					_ui->checkbox_stereoMyntEye_autoExposure->isChecked(),
-					_ui->spinBox_stereoMyntEye_gain->value(),
-					_ui->spinBox_stereoMyntEye_brightness->value(),
-					_ui->spinBox_stereoMyntEye_contrast->value());
+			if(_ui->checkbox_stereoMyntEye_autoExposure->isChecked())
+			{
+				((CameraMyntEye*)camera)->setAutoExposure();
+			}
+			else
+			{
+				((CameraMyntEye*)camera)->setManualExposure(
+						_ui->spinBox_stereoMyntEye_gain->value(),
+						_ui->spinBox_stereoMyntEye_brightness->value(),
+						_ui->spinBox_stereoMyntEye_contrast->value());
+			}
+			((CameraMyntEye*)camera)->setIrControl(
+					_ui->spinBox_stereoMyntEye_irControl->value());
 		}
 	}
 	else if(driver == kSrcRGBDImages)
