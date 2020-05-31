@@ -90,7 +90,7 @@ private:
 	bool _force3DoF;
 	bool _holonomic;
 	bool guessFromMotion_;
-	bool guessSmoothingDelay_;
+	float guessSmoothingDelay_;
 	int _filteringStrategy;
 	int _particleSize;
 	float _particleNoiseT;
