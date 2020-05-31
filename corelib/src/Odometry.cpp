@@ -199,6 +199,7 @@ void Odometry::reset(const Transform & initialPose)
 	previousStamp_ = 0;
 	distanceTravelled_ = 0;
 	framesProcessed_ = 0;
+	imuLastTransform_.setNull();
 	if(_force3DoF || particleFilters_.size())
 	{
 		float x,y,z, roll,pitch,yaw;
@@ -423,9 +424,28 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 		}
 	}
 
+	Transform imuCurrentTransform;
 	if(!guessIn.isNull())
 	{
 		guess = guessIn;
+	}
+	else if(!data.imu().empty())
+	{
+		// replace orientation guess with IMU (if available)
+		if(!(data.imu().orientation()[0] == 0.0 && data.imu().orientation()[1] == 0.0 && data.imu().orientation()[2] == 0.0))
+		{
+			Transform orientation(0,0,0, data.imu().orientation()[0], data.imu().orientation()[1], data.imu().orientation()[2], data.imu().orientation()[3]);
+			// orientation includes roll and pitch but not yaw in local transform
+			imuCurrentTransform =  Transform(0,0,data.imu().localTransform().theta()) * orientation*data.imu().localTransform().inverse();
+			if(!imuLastTransform_.isNull())
+			{
+				orientation = imuLastTransform_.inverse() * imuCurrentTransform;
+				guess = Transform(
+						orientation.r11(), orientation.r12(), orientation.r13(), guess.x(),
+						orientation.r21(), orientation.r22(), orientation.r23(), guess.y(),
+						orientation.r31(), orientation.r32(), orientation.r33(), guess.z());
+			}
+		}
 	}
 
 	UTimer time;
@@ -687,6 +707,8 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 			info->guessVelocity = velocityGuess_;
 		}
 		++framesProcessed_;
+
+		imuLastTransform_ = imuCurrentTransform;
 
 		return _pose *= t; // update
 	}

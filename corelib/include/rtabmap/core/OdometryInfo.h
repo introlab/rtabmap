@@ -56,6 +56,8 @@ public:
 		interval(0),
 		distanceTravelled(0.0f),
 		memoryUsage(0),
+		gravityRollError(0.0),
+		gravityPitchError(0.0),
 		type(0)
 	{}
 
@@ -84,6 +86,8 @@ public:
 		output.guessVelocity = guessVelocity;
 		output.distanceTravelled = distanceTravelled;
 		output.memoryUsage = memoryUsage;
+		output.gravityRollError = gravityRollError;
+		output.gravityPitchError = gravityPitchError;
 		output.type = type;
 		return output;
 	}
@@ -110,6 +114,8 @@ public:
 	Transform guessVelocity;
 	float distanceTravelled;
 	int memoryUsage; //MB
+	double gravityRollError;
+	double gravityPitchError;
 
 	int type;
 

@@ -4514,10 +4514,26 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 		if(_feature2D->getMaxFeatures()>0 && descriptors.rows > _feature2D->getMaxFeatures())
 		{
 			UASSERT((int)keypoints.size() == descriptors.rows);
-			Feature2D::limitKeypoints(keypoints, inliers, _feature2D->getMaxFeatures());
+			int inliersCount = 0;
+			if(_feature2D->getGridRows() > 1 || _feature2D->getGridCols() > 1)
+			{
+				Feature2D::limitKeypoints(keypoints, inliers, _feature2D->getMaxFeatures(), decimatedData.imageRaw().size(), _feature2D->getGridRows(), _feature2D->getGridCols());
+				for(size_t i=0; i<inliers.size(); ++i)
+				{
+					if(inliers[i])
+					{
+						++inliersCount;
+					}
+				}
+			}
+			else
+			{
+				Feature2D::limitKeypoints(keypoints, inliers, _feature2D->getMaxFeatures());
+				inliersCount = _feature2D->getMaxFeatures();
+			}
 
-			descriptorsForQuantization = cv::Mat(_feature2D->getMaxFeatures(), descriptors.cols, descriptors.type());
-			quantizedToRawIndices.resize(_feature2D->getMaxFeatures());
+			descriptorsForQuantization = cv::Mat(inliersCount, descriptors.cols, descriptors.type());
+			quantizedToRawIndices.resize(inliersCount);
 			unsigned int oi=0;
 			UASSERT((int)inliers.size() == descriptors.rows);
 			for(int k=0; k < descriptors.rows; ++k)
@@ -4537,7 +4553,9 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 					++oi;
 				}
 			}
-			UASSERT((int)oi == _feature2D->getMaxFeatures());
+			UASSERT_MSG((int)oi == inliersCount,
+					uFormat("oi=%d inliersCount=%d (maxFeatures=%d, grid=%dx%d)",
+							oi, inliersCount, _feature2D->getMaxFeatures(), _feature2D->getGridCols(), _feature2D->getGridRows()).c_str());
 		}
 
 		// Quantization to vocabulary

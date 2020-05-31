@@ -507,6 +507,17 @@ Transform OdometryF2M::computeTransform(
 										std::multimap<int, Link>::iterator iter = graph::findLink(bundleLinks, bundlePoses_.rbegin()->first, lastFrame_->id(), false);
 										UASSERT(iter != bundleLinks.end());
 										iter->second.setTransform(bundlePoses_.rbegin()->second.inverse()*transform);
+
+										iter = graph::findLink(bundleLinks, lastFrame_->id(), lastFrame_->id(), false);
+										if(info && iter!=bundleLinks.end() && iter->second.type() == Link::kGravity)
+										{
+											float rollImu,pitchImu,yaw;
+											iter->second.transform().getEulerAngles(rollImu, pitchImu, yaw);
+											float roll,pitch;
+											transform.getEulerAngles(roll, pitch, yaw);
+											info->gravityRollError = fabs(rollImu - roll);
+											info->gravityPitchError = fabs(pitchImu - pitch);
+										}
 									}
 								}
 								UDEBUG("Local Bundle Adjustment After : %s", transform.prettyPrint().c_str());

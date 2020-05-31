@@ -109,6 +109,7 @@ private:
 	double previousStamp_;
 	std::list<std::pair<std::vector<float>, double> > previousVelocities_;
 	Transform velocityGuess_;
+	Transform imuLastTransform_;
 	Transform previousGroundTruthPose_;
 	float distanceTravelled_;
 	unsigned int framesProcessed_;

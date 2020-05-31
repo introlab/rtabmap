@@ -3345,7 +3345,7 @@ void CloudViewer::handleAction(QAction * a)
 	else if(a == _aSetGridCellSize)
 	{
 		bool ok;
-		double value = QInputDialog::getDouble(this, tr("Set grid cell size"), tr("Size (m)"), _gridCellSize, 0.01, 10, 2, &ok);
+		double value = QInputDialog::getDouble(this, tr("Set grid cell size"), tr("Size (m)"), _gridCellSize, 0.01, 1000, 2, &ok);
 		if(ok)
 		{
 			this->setGridCellSize(value);

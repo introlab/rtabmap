@@ -339,7 +339,7 @@ void Feature2D::limitKeypoints(const std::vector<cv::KeyPoint> & keypoints, std:
 	if(maxKeypoints > 0 && (int)keypoints.size() > maxKeypoints)
 	{
 		UTimer timer;
-		ULOGGER_DEBUG("too much words (%d), removing words with the hessian threshold", keypoints.size());
+		ULOGGER_DEBUG("too much words (%d), removing words with the hessian threshold", (int)keypoints.size());
 		// Remove words under the new hessian threshold
 
 		// Sort words by hessian
@@ -365,7 +365,47 @@ void Feature2D::limitKeypoints(const std::vector<cv::KeyPoint> & keypoints, std:
 	}
 	else
 	{
+		ULOGGER_DEBUG("keeping all %d keypoints", (int)keypoints.size());
 		inliers.resize(keypoints.size(), true);
+	}
+}
+
+void Feature2D::limitKeypoints(const std::vector<cv::KeyPoint> & keypoints, std::vector<bool> & inliers, int maxKeypoints, const cv::Size & imageSize, int gridRows, int gridCols)
+{
+	if(maxKeypoints <= 0 || (int)keypoints.size() <= maxKeypoints)
+	{
+		inliers.resize(keypoints.size(), true);
+		return;
+	}
+	UASSERT(gridCols>=1 && gridRows >=1);
+	UASSERT(imageSize.height>gridRows && imageSize.width>gridCols);
+	int rowSize = imageSize.height / gridRows;
+	int colSize = imageSize.width / gridCols;
+	int maxKeypointsPerCell = maxKeypoints / (gridRows * gridCols);
+	std::vector<std::vector<cv::KeyPoint> > keypointsPerCell(gridRows * gridCols);
+	std::vector<std::vector<int> > indexesPerCell(gridRows * gridCols);
+	for(size_t i=0; i<keypoints.size(); ++i)
+	{
+		int cellRow = int(keypoints[i].pt.y)/rowSize;
+		int cellCol = int(keypoints[i].pt.x)/colSize;
+		UASSERT(cellRow >=0 && cellRow < gridRows);
+		UASSERT(cellCol >=0 && cellCol < gridCols);
+
+		keypointsPerCell[cellRow*gridCols + cellCol].push_back(keypoints[i]);
+		indexesPerCell[cellRow*gridCols + cellCol].push_back(i);
+	}
+	inliers.resize(keypoints.size(), false);
+	for(size_t i=0; i<keypointsPerCell.size(); ++i)
+	{
+		std::vector<bool> inliersCell;
+		limitKeypoints(keypointsPerCell[i], inliersCell, maxKeypointsPerCell);
+		for(size_t j=0; j<inliersCell.size(); ++j)
+		{
+			if(inliersCell[j])
+			{
+				inliers.at(indexesPerCell[i][j]) = true;
+			}
+		}
 	}
 }
 
@@ -414,10 +454,6 @@ void Feature2D::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kKpGridCols(), gridCols_);
 
 	UASSERT(gridRows_ >= 1 && gridCols_>=1);
-	if(maxFeatures_ > 0)
-	{
-		maxFeatures_ =	maxFeatures_ / (gridRows_ * gridCols_);
-	}
 
 	// convert ROI from string to vector
 	ParametersMap::const_iterator iter;
@@ -653,6 +689,7 @@ std::vector<cv::KeyPoint> Feature2D::generateKeypoints(const cv::Mat & image, co
 	// Get keypoints
 	int rowSize = globalRoi.height / gridRows_;
 	int colSize = globalRoi.width / gridCols_;
+	int maxFeatures =	maxFeatures_ / (gridRows_ * gridCols_);
 	for (int i = 0; i<gridRows_; ++i)
 	{
 		for (int j = 0; j<gridCols_; ++j)
@@ -660,7 +697,7 @@ std::vector<cv::KeyPoint> Feature2D::generateKeypoints(const cv::Mat & image, co
 			cv::Rect roi(globalRoi.x + j*colSize, globalRoi.y + i*rowSize, colSize, rowSize);
 			std::vector<cv::KeyPoint> sub_keypoints;
 			sub_keypoints = this->generateKeypointsImpl(image, roi, mask);
-			limitKeypoints(sub_keypoints, maxFeatures_);
+			limitKeypoints(sub_keypoints, maxFeatures);
 			if(roi.x || roi.y)
 			{
 				// Adjust keypoint position to raw image
@@ -673,7 +710,8 @@ std::vector<cv::KeyPoint> Feature2D::generateKeypoints(const cv::Mat & image, co
 			keypoints.insert( keypoints.end(), sub_keypoints.begin(), sub_keypoints.end() );
 		}
 	}
-	UDEBUG("Keypoints extraction time = %f s, keypoints extracted = %d (mask empty=%d)", timer.ticks(), keypoints.size(), mask.empty()?1:0);
+	UDEBUG("Keypoints extraction time = %f s, keypoints extracted = %d (grid=%dx%d, mask empty=%d)",
+			timer.ticks(), keypoints.size(), gridCols_, gridRows_,  mask.empty()?1:0);
 
 	if(keypoints.size() && _subPixWinSize > 0 && _subPixIterations > 0)
 	{

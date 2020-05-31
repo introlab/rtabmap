@@ -161,6 +161,7 @@ public:
 	bool isWordsCountGraphView() const;
 	bool isLocalizationsCountGraphView() const;
 	int getOdomRegistrationApproach() const;
+	double getOdomF2MGravitySigma() const;
 	bool isOdomDisabled() const;
 	bool isGroundTruthAligned() const;
 

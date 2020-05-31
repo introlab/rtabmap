@@ -3132,6 +3132,8 @@ bool Rtabmap::process(
 				UINFO("Set loop closure transform = %s", loopIter->second.transform().prettyPrint().c_str());
 				statistics_.setLoopClosureTransform(loopIter->second.transform());
 
+				statistics_.addStatistic(Statistics::kLoopVisual_words(), sLoop->getWords().size());
+
 				// if ground truth exists, compute localization error
 				if(!sLoop->getGroundTruthPose().isNull() && !signature->getGroundTruthPose().isNull())
 				{

@@ -421,6 +421,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->radioButton_nochangeGraphView, SIGNAL(toggled(bool)), this, SLOT(makeObsoleteGeneralPanel()));
 	connect(_ui->checkbox_odomDisabled, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteGeneralPanel()));
 	connect(_ui->odom_registration, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteGeneralPanel()));
+	connect(_ui->odom_f2m_gravitySigma, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteGeneralPanel()));
 	connect(_ui->checkbox_groundTruthAlign, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteGeneralPanel()));
 
 	// Cloud rendering panel
@@ -2029,6 +2030,7 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		if(groupBox->objectName() == _ui->groupBox_odometry1->objectName())
 		{
 			_ui->odom_registration->setCurrentIndex(3);
+			_ui->odom_f2m_gravitySigma->setValue(-1);
 		}
 	}
 }
@@ -2154,6 +2156,7 @@ void PreferencesDialog::readGuiSettings(const QString & filePath)
 	_ui->radioButton_nochangeGraphView->setChecked(settings.value("nochangeGraphView", _ui->radioButton_nochangeGraphView->isChecked()).toBool());
 	_ui->checkbox_odomDisabled->setChecked(settings.value("odomDisabled", _ui->checkbox_odomDisabled->isChecked()).toBool());
 	_ui->odom_registration->setCurrentIndex(settings.value("odomRegistration", _ui->odom_registration->currentIndex()).toInt());
+	_ui->odom_f2m_gravitySigma->setValue(settings.value("odomF2MGravitySigma", _ui->odom_f2m_gravitySigma->value()).toDouble());
 	_ui->checkbox_groundTruthAlign->setChecked(settings.value("gtAlign", _ui->checkbox_groundTruthAlign->isChecked()).toBool());
 
 	for(int i=0; i<2; ++i)
@@ -2628,6 +2631,7 @@ void PreferencesDialog::writeGuiSettings(const QString & filePath) const
 	settings.setValue("nochangeGraphView",    _ui->radioButton_nochangeGraphView->isChecked());
 	settings.setValue("odomDisabled",         _ui->checkbox_odomDisabled->isChecked());
 	settings.setValue("odomRegistration",     _ui->odom_registration->currentIndex());
+	settings.setValue("odomF2MGravitySigma",  _ui->odom_f2m_gravitySigma->value());
 	settings.setValue("gtAlign",              _ui->checkbox_groundTruthAlign->isChecked());
 
 	for(int i=0; i<2; ++i)
@@ -5008,6 +5012,10 @@ bool PreferencesDialog::isOdomDisabled() const
 int PreferencesDialog::getOdomRegistrationApproach() const
 {
 	return _ui->odom_registration->currentIndex();
+}
+double PreferencesDialog::getOdomF2MGravitySigma() const
+{
+	return _ui->odom_f2m_gravitySigma->value();
 }
 bool PreferencesDialog::isGroundTruthAligned() const
 {
