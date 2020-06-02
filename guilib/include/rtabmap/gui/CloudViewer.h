@@ -88,7 +88,8 @@ public:
 			bool rgb,
 			bool hasNormals,
 			bool hasIntensity,
-			const QColor & color = QColor());
+			const QColor & color = QColor(),
+			int viewport = 1);
 
 	bool addCloud(
 			const std::string & id,
@@ -319,6 +320,7 @@ public:
 	void setBackfaceCulling(bool enabled, bool frontfaceCulling);
 	void setPolygonPicking(bool enabled);
 	void setRenderingRate(double rate);
+	void setEDLShading(bool on);
 	void setLighting(bool on);
 	void setShading(bool on);
 	void setEdgeVisibility(bool visible);
@@ -327,6 +329,7 @@ public:
 	bool isBackfaceCulling() const;
 	bool isFrontfaceCulling() const;
 	bool isPolygonPicking() const;
+	bool isEDLShadingOn() const;
 	bool isLightingOn() const;
 	bool isShadingOn() const;
 	bool isEdgeVisible() const;
@@ -422,6 +425,7 @@ private:
 	QAction * _aSetIntensityMaximum;
     QAction * _aSetBackgroundColor;
     QAction * _aSetRenderingRate;
+    QAction * _aSetEDLShading;
     QAction * _aSetLighting;
     QAction * _aSetFlatShading;
     QAction * _aSetEdgeVisibility;
