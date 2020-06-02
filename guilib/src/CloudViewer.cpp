@@ -161,13 +161,17 @@ CloudViewer::CloudViewer(QWidget *parent, CloudViewerInteractorStyle * style) :
 		renderer->SetLayer(i);
 		if(i==1)
 		{
+#if VTK_MAJOR_VERSION >= 7
 			renderer->PreserveColorBufferOff();
+#endif
 			renderer->PreserveDepthBufferOff();
 			_visualizer->getInteractorStyle()->SetDefaultRenderer(renderer);
 		}
 		else if(i==2)
 		{
+#if VTK_MAJOR_VERSION >= 7
 			renderer->PreserveColorBufferOn();
+#endif
 			renderer->PreserveDepthBufferOn();
 		}
 		++i;
