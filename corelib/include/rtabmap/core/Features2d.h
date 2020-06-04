@@ -62,7 +62,7 @@ namespace cv{
 namespace xfeatures2d {
 class FREAK;
 class BriefDescriptorExtractor;
-#if CV_MAJOR_VERSION < 4 || (CV_MAJOR_VERSION == 4 and CV_MINOR_VERSION < 3)
+#if CV_MAJOR_VERSION < 4 || (CV_MAJOR_VERSION == 4 && (CV_MINOR_VERSION < 3 || (CV_MINOR_VERSION==3 && !defined(RTABMAP_OPENCV_DEV))))
 class SIFT;
 #endif
 class SURF;
@@ -73,10 +73,10 @@ class ORB;
 class SURF_CUDA;
 }
 }
-#if CV_MAJOR_VERSION < 4 || (CV_MAJOR_VERSION == 4 and CV_MINOR_VERSION < 3)
+#if CV_MAJOR_VERSION < 4 || (CV_MAJOR_VERSION == 4 && (CV_MINOR_VERSION < 3 || (CV_MINOR_VERSION==3 && !defined(RTABMAP_OPENCV_DEV))))
 typedef cv::xfeatures2d::SIFT CV_SIFT;
 #else
-typedef cv::SIFT CV_SIFT; // SIFT is back in features2d since 4.3.0
+typedef cv::SIFT CV_SIFT; // SIFT is back in features2d since 4.3.0-dev
 #endif
 typedef cv::xfeatures2d::SURF CV_SURF;
 typedef cv::FastFeatureDetector CV_FAST;
@@ -183,6 +183,7 @@ public:
 	static void limitKeypoints(std::vector<cv::KeyPoint> & keypoints, cv::Mat & descriptors, int maxKeypoints);
 	static void limitKeypoints(std::vector<cv::KeyPoint> & keypoints, std::vector<cv::Point3f> & keypoints3D, cv::Mat & descriptors, int maxKeypoints);
 	static void limitKeypoints(const std::vector<cv::KeyPoint> & keypoints, std::vector<bool> & inliers, int maxKeypoints);
+	static void limitKeypoints(const std::vector<cv::KeyPoint> & keypoints, std::vector<bool> & inliers, int maxKeypoints, const cv::Size & imageSize, int gridRows, int gridCols);
 
 	static cv::Rect computeRoi(const cv::Mat & image, const std::string & roiRatios);
 	static cv::Rect computeRoi(const cv::Mat & image, const std::vector<float> & roiRatios);
@@ -190,6 +191,8 @@ public:
 	int getMaxFeatures() const {return maxFeatures_;}
 	float getMinDepth() const {return _minDepth;}
 	float getMaxDepth() const {return _maxDepth;}
+	int getGridRows() const {return gridRows_;}
+	int getGridCols() const {return gridCols_;}
 
 public:
 	virtual ~Feature2D();

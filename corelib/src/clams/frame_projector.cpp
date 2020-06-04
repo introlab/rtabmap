@@ -33,6 +33,7 @@ RTAB-Map integration: Mathieu Labbe
 #include <rtabmap/core/util3d.h>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
+#include <pcl/common/point_tests.h>
 
 using namespace std;
 using namespace Eigen;

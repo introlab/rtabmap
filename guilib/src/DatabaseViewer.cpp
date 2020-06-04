@@ -215,6 +215,7 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	uInsert(parameters, Parameters::getDefaultParameters("PyMatcher"));
 	uInsert(parameters, Parameters::getDefaultParameters("Stereo"));
 	uInsert(parameters, Parameters::getDefaultParameters("StereoBM"));
+	uInsert(parameters, Parameters::getDefaultParameters("StereoSGBM"));
 	uInsert(parameters, Parameters::getDefaultParameters("Grid"));
 	uInsert(parameters, Parameters::getDefaultParameters("GridGlobal"));
 	uInsert(parameters, Parameters::getDefaultParameters("Marker"));

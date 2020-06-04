@@ -79,7 +79,6 @@ private:
 	Signature * lastFrame_;
 	int lastFrameOldestNewId_;
 	std::vector<std::pair<pcl::PointCloud<pcl::PointNormal>::Ptr, pcl::IndicesPtr> > scansBuffer_;
-	std::map<double, Transform> imus_;
 	bool initGravity_;
 
 	std::map<int, std::map<int, FeatureBA> > bundleWordReferences_; //<WordId, <FrameId, pt2D+depth>>

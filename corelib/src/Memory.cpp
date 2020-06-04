@@ -1354,7 +1354,10 @@ std::map<int, int> Memory::getNeighborsId(
 		) const
 {
 	UASSERT(maxGraphDepth >= 0);
-	//UDEBUG("signatureId=%d, neighborsMargin=%d", signatureId, margin);
+	//DEBUG("signatureId=%d maxGraphDepth=%d maxCheckedInDatabase=%d incrementMarginOnLoop=%d "
+	//		"ignoreLoopIds=%d ignoreIntermediateNodes=%d ignoreLocalSpaceLoopIds=%d",
+	//		signatureId, maxGraphDepth, maxCheckedInDatabase, incrementMarginOnLoop?1:0,
+	//		ignoreLoopIds?1:0, ignoreIntermediateNodes?1:0, ignoreLocalSpaceLoopIds?1:0);
 	if(dbAccessTime)
 	{
 		*dbAccessTime = 0;
@@ -1412,6 +1415,10 @@ std::map<int, int> Memory::getNeighborsId(
 
 					UTimer timer;
 					_dbDriver->loadLinks(*jter, tmpLinks, ignoreLoopIds?Link::kAllWithoutLandmarks:Link::kAllWithLandmarks);
+					if(tmpLinks.empty())
+					{
+						UWARN("No links loaded for %d?!", *jter);
+					}
 					if(!ignoreLoopIds)
 					{
 						for(std::multimap<int, Link>::iterator kter=tmpLinks.begin(); kter!=tmpLinks.end();)
@@ -1419,6 +1426,11 @@ std::map<int, int> Memory::getNeighborsId(
 							if(kter->first < 0)
 							{
 								tmpLandmarks.insert(*kter);
+								tmpLinks.erase(kter++);
+							}
+							else if(kter->second.from() == kter->second.to())
+							{
+								// ignore self-referring links
 								tmpLinks.erase(kter++);
 							}
 							else
@@ -1436,7 +1448,8 @@ std::map<int, int> Memory::getNeighborsId(
 				// links
 				for(std::multimap<int, Link>::const_iterator iter=links->begin(); iter!=links->end(); ++iter)
 				{
-					if( !uContains(ids, iter->first) && ignoredIds.find(iter->first) == ignoredIds.end())
+					if(!uContains(ids, iter->first) &&
+					   ignoredIds.find(iter->first) == ignoredIds.end())
 					{
 						UASSERT(iter->second.type() != Link::kUndef);
 						if(iter->second.type() == Link::kNeighbor ||
@@ -4501,10 +4514,26 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 		if(_feature2D->getMaxFeatures()>0 && descriptors.rows > _feature2D->getMaxFeatures())
 		{
 			UASSERT((int)keypoints.size() == descriptors.rows);
-			Feature2D::limitKeypoints(keypoints, inliers, _feature2D->getMaxFeatures());
+			int inliersCount = 0;
+			if(_feature2D->getGridRows() > 1 || _feature2D->getGridCols() > 1)
+			{
+				Feature2D::limitKeypoints(keypoints, inliers, _feature2D->getMaxFeatures(), decimatedData.imageRaw().size(), _feature2D->getGridRows(), _feature2D->getGridCols());
+				for(size_t i=0; i<inliers.size(); ++i)
+				{
+					if(inliers[i])
+					{
+						++inliersCount;
+					}
+				}
+			}
+			else
+			{
+				Feature2D::limitKeypoints(keypoints, inliers, _feature2D->getMaxFeatures());
+				inliersCount = _feature2D->getMaxFeatures();
+			}
 
-			descriptorsForQuantization = cv::Mat(_feature2D->getMaxFeatures(), descriptors.cols, descriptors.type());
-			quantizedToRawIndices.resize(_feature2D->getMaxFeatures());
+			descriptorsForQuantization = cv::Mat(inliersCount, descriptors.cols, descriptors.type());
+			quantizedToRawIndices.resize(inliersCount);
 			unsigned int oi=0;
 			UASSERT((int)inliers.size() == descriptors.rows);
 			for(int k=0; k < descriptors.rows; ++k)
@@ -4524,7 +4553,9 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 					++oi;
 				}
 			}
-			UASSERT((int)oi == _feature2D->getMaxFeatures());
+			UASSERT_MSG((int)oi == inliersCount,
+					uFormat("oi=%d inliersCount=%d (maxFeatures=%d, grid=%dx%d)",
+							oi, inliersCount, _feature2D->getMaxFeatures(), _feature2D->getGridCols(), _feature2D->getGridRows()).c_str());
 		}
 
 		// Quantization to vocabulary

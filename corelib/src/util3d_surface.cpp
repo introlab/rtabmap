@@ -1007,7 +1007,11 @@ pcl::TextureMesh::Ptr concatenateTextureMeshes(const std::list<pcl::TextureMesh:
 			// append point cloud
 			int polygonStep = output->cloud.height * output->cloud.width;
 			pcl::PCLPointCloud2 tmp;
+#if PCL_VERSION_COMPARE(>=, 1, 10, 0)
+			pcl::concatenate(output->cloud, iter->get()->cloud, tmp);
+#else
 			pcl::concatenatePointCloud(output->cloud, iter->get()->cloud, tmp);
+#endif
 			output->cloud = tmp;
 
 			UASSERT((*iter)->tex_polygons.size() == (*iter)->tex_coordinates.size() &&
@@ -2993,7 +2997,7 @@ float computeNormalsComplexity(
 	int oi = 0;
 	bool doTransform = false;
 	Transform tn;
-	if(!t.isIdentity())
+	if(!t.isIdentity() && !t.isNull())
 	{
 		tn = t.rotation();
 		doTransform = true;
@@ -3202,12 +3206,18 @@ pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr mls(
 	mls.setComputeNormals (true);
 	if(polygonialOrder > 0)
 	{
+#if PCL_VERSION_COMPARE(<, 1, 10, 0)
 		mls.setPolynomialFit (true);
+#endif
 		mls.setPolynomialOrder(polygonialOrder);
 	}
 	else
 	{
+#if PCL_VERSION_COMPARE(<, 1, 10, 0)
 		mls.setPolynomialFit (false);
+#else
+		mls.setPolynomialOrder(1);
+#endif
 	}
 	UASSERT(upsamplingMethod >= mls.NONE &&
 			upsamplingMethod <= mls.VOXEL_GRID_DILATION);

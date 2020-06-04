@@ -3726,7 +3726,7 @@ void DBDriverSqlite3::loadLinksQuery(
 			query << "SELECT to_id, type, transform FROM Link ";
 		}
 		query << "WHERE from_id = " << signatureId;
-		if(typeIn != Link::kUndef)
+		if(typeIn < Link::kEnd)
 		{
 			if(uStrNumCmp(_version, "0.7.4") >= 0)
 			{

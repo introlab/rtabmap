@@ -297,15 +297,18 @@ int main(int argc, char * argv[])
 						std::map<std::string, int> availableStats;
 						for(std::set<int>::iterator iter=ids.begin(); iter!=ids.end(); ++iter)
 						{
-							for(std::map<std::string, float>::iterator jter=stats.at(*iter).first.begin(); jter!=stats.at(*iter).first.end(); ++jter)
+							if(stats.find(*iter) != stats.end())
 							{
-								if(availableStats.find(jter->first) != availableStats.end())
+								for(std::map<std::string, float>::iterator jter=stats.at(*iter).first.begin(); jter!=stats.at(*iter).first.end(); ++jter)
 								{
-									++availableStats.at(jter->first);
-								}
-								else
-								{
-									availableStats.insert(std::make_pair(jter->first, 1));
+									if(availableStats.find(jter->first) != availableStats.end())
+									{
+										++availableStats.at(jter->first);
+									}
+									else
+									{
+										availableStats.insert(std::make_pair(jter->first, 1));
+									}
 								}
 							}
 						}

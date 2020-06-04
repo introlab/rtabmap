@@ -32,6 +32,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
 #include "rtabmap/core/Version.h" // DLL export/import defines
 #include <rtabmap/utilite/UConversion.h>
+#include <opencv2/core/version.hpp>
+#include <opencv2/opencv_modules.hpp>
 #include <string>
 #include <map>
 
@@ -239,13 +241,9 @@ class RTABMAP_EXP Parameters
     RTABMAP_PARAM(Kp, MaxFeatures,              int, 500,     "Maximum features extracted from the images (0 means not bounded, <0 means no extraction).");
     RTABMAP_PARAM(Kp, BadSignRatio,             float, 0.5,   "Bad signature ratio (less than Ratio x AverageWordsPerImage = bad).");
     RTABMAP_PARAM(Kp, NndrRatio,                float, 0.8,   "NNDR ratio (A matching pair is detected, if its distance is closer than X times the distance of the second nearest neighbor.)");
-#ifndef RTABMAP_NONFREE
-#ifdef RTABMAP_OPENCV3
-    // OpenCV 3 without xFeatures2D module doesn't have BRIEF
+#if CV_MAJOR_VERSION > 2 && !defined(HAVE_OPENCV_XFEATURES2D)
+    // OpenCV>2 without xFeatures2D module doesn't have BRIEF
     RTABMAP_PARAM(Kp, DetectorStrategy,         int, 8,       "0=SURF 1=SIFT 2=ORB 3=FAST/FREAK 4=FAST/BRIEF 5=GFTT/FREAK 6=GFTT/BRIEF 7=BRISK 8=GFTT/ORB 9=KAZE 10=ORB-OCTREE 11=SuperPoint Torch.");
-#else
-    RTABMAP_PARAM(Kp, DetectorStrategy,         int, 6,       "0=SURF 1=SIFT 2=ORB 3=FAST/FREAK 4=FAST/BRIEF 5=GFTT/FREAK 6=GFTT/BRIEF 7=BRISK 8=GFTT/ORB 9=KAZE 10=ORB-OCTREE 11=SuperPoint Torch.");
-#endif
 #else
     RTABMAP_PARAM(Kp, DetectorStrategy,         int, 6,       "0=SURF 1=SIFT 2=ORB 3=FAST/FREAK 4=FAST/BRIEF 5=GFTT/FREAK 6=GFTT/BRIEF 7=BRISK 8=GFTT/ORB 9=KAZE 10=ORB-OCTREE 11=SuperPoint Torch.");
 #endif
@@ -586,13 +584,9 @@ class RTABMAP_EXP Parameters
     RTABMAP_PARAM(Vis, MinInliersDistribution,   float, 0.0,    "Minimum distribution value of the inliers in the image to accept the transformation. The distribution is the second eigen value of the PCA (Principal Component Analysis) on the keypoints of the normalized image [-0.5, 0.5]. The value would be between 0 and 0.5. 0 means disabled.");
 
     RTABMAP_PARAM(Vis, Iterations,               int, 300,      "Maximum iterations to compute the transform.");
-#ifndef RTABMAP_NONFREE
-#ifdef RTABMAP_OPENCV3
-    // OpenCV 3 without xFeatures2D module doesn't have BRIEF
+#if CV_MAJOR_VERSION > 2 && !defined(HAVE_OPENCV_XFEATURES2D)
+    // OpenCV>2 without xFeatures2D module doesn't have BRIEF
     RTABMAP_PARAM(Vis, FeatureType, int, 8, "0=SURF 1=SIFT 2=ORB 3=FAST/FREAK 4=FAST/BRIEF 5=GFTT/FREAK 6=GFTT/BRIEF 7=BRISK 8=GFTT/ORB 9=KAZE 10=ORB-OCTREE 11=SuperPoint Torch.");
-#else
-    RTABMAP_PARAM(Vis, FeatureType, int, 6, "0=SURF 1=SIFT 2=ORB 3=FAST/FREAK 4=FAST/BRIEF 5=GFTT/FREAK 6=GFTT/BRIEF 7=BRISK 8=GFTT/ORB 9=KAZE 10=ORB-OCTREE 11=SuperPoint Torch.");
-#endif
 #else
     RTABMAP_PARAM(Vis, FeatureType, int, 6, "0=SURF 1=SIFT 2=ORB 3=FAST/FREAK 4=FAST/BRIEF 5=GFTT/FREAK 6=GFTT/BRIEF 7=BRISK 8=GFTT/ORB 9=KAZE 10=ORB-OCTREE 11=SuperPoint Torch.");
 #endif

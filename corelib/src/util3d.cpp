@@ -1271,7 +1271,11 @@ LaserScan laserScanFromPointCloud(const pcl::PCLPointCloud2 & cloud, bool filter
 	}
 	//determine the output type
 	int fieldStates[8] = {0}; // x,y,z,normal_x,normal_y,normal_z,rgb,intensity
+#if PCL_VERSION_COMPARE(>=, 1, 10, 0)
+	std::uint32_t fieldOffsets[8] = {0};
+#else
 	pcl::uint32_t fieldOffsets[8] = {0};
+#endif
 	for(unsigned int i=0; i<cloud.fields.size(); ++i)
 	{
 		if(cloud.fields[i].name.compare("x") == 0)
@@ -1436,9 +1440,15 @@ LaserScan laserScanFromPointCloud(const pcl::PCLPointCloud2 & cloud, bool filter
 				}
 				else // XYZRGB
 				{
+#if PCL_VERSION_COMPARE(>=, 1, 10, 0)
+					std::uint8_t b=*(msg_data + fieldOffsets[6]);
+					std::uint8_t g=*(msg_data + fieldOffsets[6]+1);
+					std::uint8_t r=*(msg_data + fieldOffsets[6]+2);
+#else
 					pcl::uint8_t b=*(msg_data + fieldOffsets[6]);
 					pcl::uint8_t g=*(msg_data + fieldOffsets[6]+1);
 					pcl::uint8_t r=*(msg_data + fieldOffsets[6]+2);
+#endif
 					int * ptrInt = (int*)ptr;
 					ptrInt[3] = int(b) | (int(g) << 8) | (int(r) << 16);
 				}
@@ -1481,9 +1491,15 @@ LaserScan laserScanFromPointCloud(const pcl::PCLPointCloud2 & cloud, bool filter
 				}
 				else // XYZRGBNormal
 				{
+#if PCL_VERSION_COMPARE(>=, 1, 10, 0)
+					std::uint8_t b=*(msg_data + fieldOffsets[6]);
+					std::uint8_t g=*(msg_data + fieldOffsets[6]+1);
+					std::uint8_t r=*(msg_data + fieldOffsets[6]+2);
+#else
 					pcl::uint8_t b=*(msg_data + fieldOffsets[6]);
 					pcl::uint8_t g=*(msg_data + fieldOffsets[6]+1);
 					pcl::uint8_t r=*(msg_data + fieldOffsets[6]+2);
+#endif
 					int * ptrInt = (int*)ptr;
 					ptrInt[3] = int(b) | (int(g) << 8) | (int(r) << 16);
 				}

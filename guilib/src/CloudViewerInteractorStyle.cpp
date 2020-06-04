@@ -118,76 +118,79 @@ void CloudViewerInteractorStyle::OnMouseMove()
 		{
 			int pickPosition[2];
 			this->GetInteractor()->GetEventPosition(pickPosition);
-			this->Interactor->GetPicker()->Pick(pickPosition[0], pickPosition[1],
+			int result = this->Interactor->GetPicker()->Pick(pickPosition[0], pickPosition[1],
 					0,  // always zero.
 					this->CurrentRenderer);
-			double picked[3];
-			this->Interactor->GetPicker()->GetPickPosition(picked);
-
-			UDEBUG("Control move! Picked value: %f %f %f", picked[0], picked[1], picked[2]);
-
-			float textSize = 0.05;
-
-			viewer_->removeCloud("interactor_points_alt");
-			pointsHolder_->resize(2);
-			pcl::PointXYZRGB pt;
-			pt.r = 255;
-			pt.x = picked[0];
-			pt.y = picked[1];
-			pt.z = picked[2];
-			pointsHolder_->at(0) = pt;
-
-			viewer_->removeLine("interactor_ray_alt");
-			viewer_->removeText("interactor_ray_text_alt");
-
-			// Intersect the locator with the line
-			double length = 5.0;
-			double pickedNormal[3];
-			cellPicker->GetPickNormal(pickedNormal);
-			double lineP0[3] = {picked[0], picked[1], picked[2]};
-			double lineP1[3] = {picked[0]+pickedNormal[0]*length, picked[1]+pickedNormal[1]*length, picked[2]+pickedNormal[2]*length};
-			vtkSmartPointer<vtkPoints> intersectPoints = vtkSmartPointer<vtkPoints>::New();
-
-			viewer_->getLocators().begin()->second->IntersectWithLine(lineP0, lineP1, intersectPoints, NULL);
-
-			// Display list of intersections
-			double intersection[3];
-			double previous[3] = {picked[0], picked[1], picked[2]};
-			for(int i = 0; i < intersectPoints->GetNumberOfPoints(); i++ )
+			if(result)
 			{
-				intersectPoints->GetPoint(i, intersection);
+				double picked[3];
+				this->Interactor->GetPicker()->GetPickPosition(picked);
 
-				Eigen::Vector3f v(intersection[0]-previous[0], intersection[1]-previous[1], intersection[2]-previous[2]);
-				float n = v.norm();
-				if(n  > 0.01f)
+				UDEBUG("Control move! Picked value: %f %f %f", picked[0], picked[1], picked[2]);
+
+				float textSize = 0.05;
+
+				viewer_->removeCloud("interactor_points_alt");
+				pointsHolder_->resize(2);
+				pcl::PointXYZRGB pt;
+				pt.r = 255;
+				pt.x = picked[0];
+				pt.y = picked[1];
+				pt.z = picked[2];
+				pointsHolder_->at(0) = pt;
+
+				viewer_->removeLine("interactor_ray_alt");
+				viewer_->removeText("interactor_ray_text_alt");
+
+				// Intersect the locator with the line
+				double length = 5.0;
+				double pickedNormal[3];
+				cellPicker->GetPickNormal(pickedNormal);
+				double lineP0[3] = {picked[0], picked[1], picked[2]};
+				double lineP1[3] = {picked[0]+pickedNormal[0]*length, picked[1]+pickedNormal[1]*length, picked[2]+pickedNormal[2]*length};
+				vtkSmartPointer<vtkPoints> intersectPoints = vtkSmartPointer<vtkPoints>::New();
+
+				viewer_->getLocators().begin()->second->IntersectWithLine(lineP0, lineP1, intersectPoints, NULL);
+
+				// Display list of intersections
+				double intersection[3];
+				double previous[3] = {picked[0], picked[1], picked[2]};
+				for(int i = 0; i < intersectPoints->GetNumberOfPoints(); i++ )
 				{
-					v/=n;
-					v *= n/2.0f;
-					pt.r = 125;
-					pt.g = 125;
-					pt.b = 125;
-					pt.x = intersection[0];
-					pt.y = intersection[1];
-					pt.z = intersection[2];
-					pointsHolder_->at(1) = pt;
-					viewer_->addOrUpdateText("interactor_ray_text_alt", uFormat("%.2f m", n),
-							Transform(previous[0]+v[0], previous[1]+v[1],previous[2]+v[2], 0, 0, 0),
-							textSize,
-							Qt::gray);
-					viewer_->addOrUpdateLine("interactor_ray_alt",
-							Transform(previous[0], previous[1], previous[2], 0, 0, 0),
-							Transform(intersection[0], intersection[1], intersection[2], 0, 0, 0),
-							Qt::gray);
+					intersectPoints->GetPoint(i, intersection);
 
-					previous[0] = intersection[0];
-					previous[1] = intersection[1];
-					previous[2] = intersection[2];
-					break;
+					Eigen::Vector3f v(intersection[0]-previous[0], intersection[1]-previous[1], intersection[2]-previous[2]);
+					float n = v.norm();
+					if(n  > 0.01f)
+					{
+						v/=n;
+						v *= n/2.0f;
+						pt.r = 125;
+						pt.g = 125;
+						pt.b = 125;
+						pt.x = intersection[0];
+						pt.y = intersection[1];
+						pt.z = intersection[2];
+						pointsHolder_->at(1) = pt;
+						viewer_->addOrUpdateText("interactor_ray_text_alt", uFormat("%.2f m", n),
+								Transform(previous[0]+v[0], previous[1]+v[1],previous[2]+v[2], 0, 0, 0),
+								textSize,
+								Qt::gray);
+						viewer_->addOrUpdateLine("interactor_ray_alt",
+								Transform(previous[0], previous[1], previous[2], 0, 0, 0),
+								Transform(intersection[0], intersection[1], intersection[2], 0, 0, 0),
+								Qt::gray);
+
+						previous[0] = intersection[0];
+						previous[1] = intersection[1];
+						previous[2] = intersection[2];
+						break;
+					}
 				}
+				viewer_->addCloud("interactor_points_alt", pointsHolder_);
+				viewer_->setCloudPointSize("interactor_points_alt", 15);
+				viewer_->setCloudOpacity("interactor_points_alt", 0.5);
 			}
-			viewer_->addCloud("interactor_points_alt", pointsHolder_);
-			viewer_->setCloudPointSize("interactor_points_alt", 15);
-			viewer_->setCloudOpacity("interactor_points_alt", 0.5);
 		}
 	}
 	// Forward events
@@ -220,14 +223,14 @@ void CloudViewerInteractorStyle::OnLeftButtonDown()
 		if(this->NumberOfClicks >= 2)
 		{
 			this->NumberOfClicks = 0;
-			this->Interactor->GetPicker()->Pick(pickPosition[0], pickPosition[1],
+			int result = this->Interactor->GetPicker()->Pick(pickPosition[0], pickPosition[1],
 					0,  // always zero.
 					this->CurrentRenderer);
-			double picked[3];
-			this->Interactor->GetPicker()->GetPickPosition(picked);
-			UDEBUG("Double clicked! Picked value: %f %f %f", picked[0], picked[1], picked[2]);
-			if(this->GetInteractor()->GetControlKey()==0)
+			if(result && this->GetInteractor()->GetControlKey()==0)
 			{
+				double picked[3];
+				this->Interactor->GetPicker()->GetPickPosition(picked);
+				UDEBUG("Double clicked! Picked value: %f %f %f", picked[0], picked[1], picked[2]);
 				vtkCamera *camera = this->CurrentRenderer->GetActiveCamera();
 				UASSERT(camera);
 				double position[3];
@@ -265,61 +268,64 @@ void CloudViewerInteractorStyle::OnLeftButtonDown()
 		}
 		else if(this->GetInteractor()->GetControlKey() && viewer_)
 		{
-			this->Interactor->GetPicker()->Pick(pickPosition[0], pickPosition[1],
+			int result = this->Interactor->GetPicker()->Pick(pickPosition[0], pickPosition[1],
 					0,  // always zero.
 					this->CurrentRenderer);
-			double picked[3];
-			this->Interactor->GetPicker()->GetPickPosition(picked);
-
-			UDEBUG("Shift clicked! Picked value: %f %f %f", picked[0], picked[1], picked[2]);
-
-			float textSize = 0.05;
-
-			viewer_->removeCloud("interactor_points");
-			pointsHolder_->clear();
-			pcl::PointXYZRGB pt;
-			pt.r = 255;
-			pt.x = picked[0];
-			pt.y = picked[1];
-			pt.z = picked[2];
-			pointsHolder_->push_back(pt);
-
-			viewer_->removeLine("interactor_ray");
-			viewer_->removeText("interactor_ray_text");
-
-			if(	PreviousMeasure[0] != 0.0f && PreviousMeasure[1] != 0.0f && PreviousMeasure[2] != 0.0f &&
-				viewer_->getAddedLines().find("interactor_line") == viewer_->getAddedLines().end())
+			if(result)
 			{
-				viewer_->addOrUpdateLine("interactor_line",
-						Transform(PreviousMeasure[0], PreviousMeasure[1], PreviousMeasure[2], 0, 0, 0),
-						Transform(picked[0], picked[1], picked[2], 0, 0, 0),
-						Qt::red);
-				pt.x = PreviousMeasure[0];
-				pt.y = PreviousMeasure[1];
-				pt.z = PreviousMeasure[2];
+				double picked[3];
+				this->Interactor->GetPicker()->GetPickPosition(picked);
+
+				UDEBUG("Shift clicked! Picked value: %f %f %f", picked[0], picked[1], picked[2]);
+
+				float textSize = 0.05;
+
+				viewer_->removeCloud("interactor_points");
+				pointsHolder_->clear();
+				pcl::PointXYZRGB pt;
+				pt.r = 255;
+				pt.x = picked[0];
+				pt.y = picked[1];
+				pt.z = picked[2];
 				pointsHolder_->push_back(pt);
 
-				Eigen::Vector3f v(picked[0]-PreviousMeasure[0], picked[1]-PreviousMeasure[1], picked[2]-PreviousMeasure[2]);
-				float n = v.norm();
-				v/=n;
-				v *= n/2.0f;
-				viewer_->addOrUpdateText("interactor_pose", uFormat("%.2f m", n),
-						Transform(PreviousMeasure[0]+v[0], PreviousMeasure[1]+v[1],PreviousMeasure[2]+v[2], 0, 0, 0),
-						textSize,
-						Qt::red);
-			}
-			else
-			{
-				viewer_->removeText("interactor_pose");
-				viewer_->removeLine("interactor_line");
-			}
-			PreviousMeasure[0] = picked[0];
-			PreviousMeasure[1] = picked[1];
-			PreviousMeasure[2] = picked[2];
+				viewer_->removeLine("interactor_ray");
+				viewer_->removeText("interactor_ray_text");
 
-			viewer_->addCloud("interactor_points", pointsHolder_);
-			viewer_->setCloudPointSize("interactor_points", 15);
-			viewer_->setCloudOpacity("interactor_points", 0.5);
+				if(	PreviousMeasure[0] != 0.0f && PreviousMeasure[1] != 0.0f && PreviousMeasure[2] != 0.0f &&
+					viewer_->getAddedLines().find("interactor_line") == viewer_->getAddedLines().end())
+				{
+					viewer_->addOrUpdateLine("interactor_line",
+							Transform(PreviousMeasure[0], PreviousMeasure[1], PreviousMeasure[2], 0, 0, 0),
+							Transform(picked[0], picked[1], picked[2], 0, 0, 0),
+							Qt::red);
+					pt.x = PreviousMeasure[0];
+					pt.y = PreviousMeasure[1];
+					pt.z = PreviousMeasure[2];
+					pointsHolder_->push_back(pt);
+
+					Eigen::Vector3f v(picked[0]-PreviousMeasure[0], picked[1]-PreviousMeasure[1], picked[2]-PreviousMeasure[2]);
+					float n = v.norm();
+					v/=n;
+					v *= n/2.0f;
+					viewer_->addOrUpdateText("interactor_pose", uFormat("%.2f m", n),
+							Transform(PreviousMeasure[0]+v[0], PreviousMeasure[1]+v[1],PreviousMeasure[2]+v[2], 0, 0, 0),
+							textSize,
+							Qt::red);
+				}
+				else
+				{
+					viewer_->removeText("interactor_pose");
+					viewer_->removeLine("interactor_line");
+				}
+				PreviousMeasure[0] = picked[0];
+				PreviousMeasure[1] = picked[1];
+				PreviousMeasure[2] = picked[2];
+
+				viewer_->addCloud("interactor_points", pointsHolder_);
+				viewer_->setCloudPointSize("interactor_points", 15);
+				viewer_->setCloudOpacity("interactor_points", 0.5);
+			}
 		}
 	}
 

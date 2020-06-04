@@ -63,9 +63,9 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>0</y>
+            <y>-696</y>
             <width>680</width>
-            <height>2107</height>
+            <height>3270</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -95,7 +95,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>28</number>
+                <number>5</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,1">
@@ -5336,6 +5336,121 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                    <widget class="QCheckBox" name="checkbox_stereoMyntEye_rectify">
                                     <property name="text">
                                      <string/>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="4" column="0">
+                                   <widget class="QSpinBox" name="spinBox_stereoMyntEye_brightness">
+                                    <property name="maximum">
+                                     <number>240</number>
+                                    </property>
+                                    <property name="value">
+                                     <number>120</number>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="3" column="0">
+                                   <widget class="QSpinBox" name="spinBox_stereoMyntEye_gain">
+                                    <property name="maximum">
+                                     <number>48</number>
+                                    </property>
+                                    <property name="value">
+                                     <number>24</number>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="2" column="0">
+                                   <widget class="QCheckBox" name="checkbox_stereoMyntEye_autoExposure">
+                                    <property name="text">
+                                     <string/>
+                                    </property>
+                                    <property name="checked">
+                                     <bool>true</bool>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="3" column="1">
+                                   <widget class="QLabel" name="label_595">
+                                    <property name="text">
+                                     <string>Image gain [0-48], valid if manual-exposure.</string>
+                                    </property>
+                                    <property name="wordWrap">
+                                     <bool>true</bool>
+                                    </property>
+                                    <property name="textInteractionFlags">
+                                     <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="4" column="1">
+                                   <widget class="QLabel" name="label_596">
+                                    <property name="text">
+                                     <string>Image brightness [0-240], valid if manual-exposure.</string>
+                                    </property>
+                                    <property name="wordWrap">
+                                     <bool>true</bool>
+                                    </property>
+                                    <property name="textInteractionFlags">
+                                     <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="2" column="1">
+                                   <widget class="QLabel" name="label_594">
+                                    <property name="text">
+                                     <string>Auto-exposure.</string>
+                                    </property>
+                                    <property name="wordWrap">
+                                     <bool>true</bool>
+                                    </property>
+                                    <property name="textInteractionFlags">
+                                     <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="5" column="1">
+                                   <widget class="QLabel" name="label_597">
+                                    <property name="text">
+                                     <string>Image contrast [0-254], valid if manual-exposure.</string>
+                                    </property>
+                                    <property name="wordWrap">
+                                     <bool>true</bool>
+                                    </property>
+                                    <property name="textInteractionFlags">
+                                     <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="5" column="0">
+                                   <widget class="QSpinBox" name="spinBox_stereoMyntEye_contrast">
+                                    <property name="maximum">
+                                     <number>254</number>
+                                    </property>
+                                    <property name="value">
+                                     <number>116</number>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="6" column="1">
+                                   <widget class="QLabel" name="label_599">
+                                    <property name="text">
+                                     <string>IR control [0-160]. 0 means that the IR pattern is not projected.</string>
+                                    </property>
+                                    <property name="wordWrap">
+                                     <bool>true</bool>
+                                    </property>
+                                    <property name="textInteractionFlags">
+                                     <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="6" column="0">
+                                   <widget class="QSpinBox" name="spinBox_stereoMyntEye_irControl">
+                                    <property name="maximum">
+                                     <number>160</number>
+                                    </property>
+                                    <property name="value">
+                                     <number>116</number>
                                     </property>
                                    </widget>
                                   </item>
@@ -10912,7 +11027,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                     <item row="3" column="1">
                      <widget class="QLabel" name="label_527">
                       <property name="text">
-                       <string>Gravity sigma value (&gt;=0, typically between 0.1 and 0.3). Optimization is done while preserving gravity orientation of the poses. This should be used only with visual/lidar inertial odometry approaches, for which we assume that all odometry poses are aligned with gravity. Set to 0 to disable gravity constraints. Currently supported only with GTSAM optimization strategy.</string>
+                       <string>Gravity sigma value (&gt;=0, typically between 0.1 and 0.3). Optimization is done while preserving gravity orientation of the poses. This should be used only with visual/lidar inertial odometry approaches, for which we assume that all odometry poses are aligned with gravity. Set to 0 to disable gravity constraints. Currently supported only with g2o and GTSAM optimization strategies.</string>
                       </property>
                       <property name="wordWrap">
                        <bool>true</bool>
@@ -10928,7 +11043,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                        <string/>
                       </property>
                       <property name="decimals">
-                       <number>2</number>
+                       <number>4</number>
                       </property>
                       <property name="minimum">
                        <double>0.000000000000000</double>
@@ -13371,6 +13486,41 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                                </property>
                                <property name="maximum">
                                 <double>9999.000000000000000</double>
+                               </property>
+                               <property name="value">
+                                <double>0.000000000000000</double>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="9" column="1">
+                              <widget class="QLabel" name="label_598">
+                               <property name="text">
+                                <string>[Visual] Gravity sigma used for bundle adjustment (&lt;0, use same value than Optimizer/GravitySigma parameter)</string>
+                               </property>
+                               <property name="wordWrap">
+                                <bool>true</bool>
+                               </property>
+                               <property name="textInteractionFlags">
+                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="9" column="0">
+                              <widget class="QDoubleSpinBox" name="odom_f2m_gravitySigma">
+                               <property name="suffix">
+                                <string/>
+                               </property>
+                               <property name="decimals">
+                                <number>4</number>
+                               </property>
+                               <property name="minimum">
+                                <double>-1.000000000000000</double>
+                               </property>
+                               <property name="maximum">
+                                <double>10.000000000000000</double>
+                               </property>
+                               <property name="singleStep">
+                                <double>0.100000000000000</double>
                                </property>
                                <property name="value">
                                 <double>0.000000000000000</double>

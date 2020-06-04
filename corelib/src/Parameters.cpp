@@ -40,6 +40,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "SimpleIni.h"
 #include <opencv2/core/version.hpp>
 #include <pcl/pcl_config.h>
+#include <opencv2/opencv_modules.hpp>
 #ifndef DISABLE_VTK
 #include <vtkVersion.h>
 #endif
@@ -602,6 +603,14 @@ ParametersMap Parameters::parseArguments(int argc, char * argv[], bool onlyParam
 #endif
 				str = "OpenCV:";
 				std::cout << str << std::setw(spacing - str.size()) << CV_VERSION << std::endl;
+#if CV_MAJOR_VERSION >= 3
+				str = "With OpenCV xfeatures2d:";
+#ifdef HAVE_OPENCV_XFEATURES2D
+				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
+#else
+				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
+#endif
+#endif
 				str = "With OpenCV nonfree:";
 #ifdef RTABMAP_NONFREE
 				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;

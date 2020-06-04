@@ -186,7 +186,6 @@ Odometry::~Odometry()
 	{
 		delete particleFilters_[i];
 	}
-	particleFilters_.clear();
 }
 
 void Odometry::reset(const Transform & initialPose)
@@ -199,6 +198,8 @@ void Odometry::reset(const Transform & initialPose)
 	previousStamp_ = 0;
 	distanceTravelled_ = 0;
 	framesProcessed_ = 0;
+	imuLastTransform_.setNull();
+	imus_.clear();
 	if(_force3DoF || particleFilters_.size())
 	{
 		float x,y,z, roll,pitch,yaw;
@@ -382,6 +383,21 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 		}
 	}
 
+	// cache imu data
+	if(!data.imu().empty())
+	{
+		if(!(data.imu().orientation()[0] == 0.0 && data.imu().orientation()[1] == 0.0 && data.imu().orientation()[2] == 0.0))
+		{
+			Transform orientation(0,0,0, data.imu().orientation()[0], data.imu().orientation()[1], data.imu().orientation()[2], data.imu().orientation()[3]);
+			// orientation includes roll and pitch but not yaw in local transform
+			imus_.insert(std::make_pair(data.stamp(), Transform(0,0,data.imu().localTransform().theta()) * orientation*data.imu().localTransform().inverse()));
+			if(imus_.size() > 1000)
+			{
+				imus_.erase(imus_.begin());
+			}
+		}
+	}
+
 	// KITTI datasets start with stamp=0
 	double dt = previousStamp_>0.0f || (previousStamp_==0.0f && framesProcessed()==1)?data.stamp() - previousStamp_:0.0;
 	Transform guess = dt>0.0 && guessFromMotion_ && !velocityGuess_.isNull()?Transform::getIdentity():Transform();
@@ -423,9 +439,23 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 		}
 	}
 
+	Transform imuCurrentTransform;
 	if(!guessIn.isNull())
 	{
 		guess = guessIn;
+	}
+	else if(!data.imu().empty() && !imus_.empty())
+	{
+		// replace orientation guess with IMU (if available)
+		imuCurrentTransform = Transform::getTransform(imus_, data.stamp());
+		if(!imuCurrentTransform.isNull() && !imuLastTransform_.isNull())
+		{
+			Transform orientation = imuLastTransform_.inverse() * imuCurrentTransform;
+			guess = Transform(
+					orientation.r11(), orientation.r12(), orientation.r13(), guess.x(),
+					orientation.r21(), orientation.r22(), orientation.r23(), guess.y(),
+					orientation.r31(), orientation.r32(), orientation.r33(), guess.z());
+		}
 	}
 
 	UTimer time;
@@ -687,6 +717,8 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 			info->guessVelocity = velocityGuess_;
 		}
 		++framesProcessed_;
+
+		imuLastTransform_ = imuCurrentTransform;
 
 		return _pose *= t; // update
 	}

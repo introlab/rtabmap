@@ -133,6 +133,7 @@ Rtabmap::Rtabmap() :
 	_lastProcessTime(0.0),
 	_someNodesHaveBeenTransferred(false),
 	_distanceTravelled(0.0f),
+	_optimizeFromGraphEndChanged(false),
 	_epipolarGeometry(0),
 	_bayesFilter(0),
 	_graphOptimizer(0),
@@ -375,6 +376,7 @@ void Rtabmap::close(bool databaseSaved, const std::string & ouputDatabasePath)
 	_odomCachePoses.clear();
 	_odomCacheConstraints.clear();
 	_distanceTravelled = 0.0f;
+	_optimizeFromGraphEndChanged = false;
 	this->clearPath(0);
 	_gpsGeocentricCache.clear();
 	_currentSessionHasGPS = false;
@@ -478,7 +480,12 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 		_proximityAngle *= M_PI/180.0f;
 	}
 	Parameters::parse(parameters, Parameters::kRGBDProximityOdomGuess(), _proximityOdomGuess);
+	bool optimizeFromGraphEndPrevious = _optimizeFromGraphEnd;
 	Parameters::parse(parameters, Parameters::kRGBDOptimizeFromGraphEnd(), _optimizeFromGraphEnd);
+	if(optimizeFromGraphEndPrevious != _optimizeFromGraphEnd)
+	{
+		_optimizeFromGraphEndChanged = true;
+	}
 	Parameters::parse(parameters, Parameters::kRGBDOptimizeMaxError(), _optimizationMaxError);
 	if(_optimizationMaxError > 0.0 && _optimizationMaxError < 1.0)
 	{
@@ -887,6 +894,7 @@ void Rtabmap::resetMemory()
 	_odomCachePoses.clear();
 	_odomCacheConstraints.clear();
 	_distanceTravelled = 0.0f;
+	_optimizeFromGraphEndChanged = false;
 	this->clearPath(0);
 
 	if(_memory)
@@ -2874,23 +2882,12 @@ bool Rtabmap::process(
 			std::map<int, Transform> poses = _optimizedPoses;
 
 			// if _optimizeFromGraphEnd parameter just changed state, don't use optimized poses as guess
-			float normMapCorrection = _mapCorrection.getNormSquared(); // use distance for identity detection
-			if((normMapCorrection > 0.001f && _optimizeFromGraphEnd) ||
-				(normMapCorrection < 0.0001f && !_optimizeFromGraphEnd))
+			if(_optimizeFromGraphEndChanged)
 			{
-				for(std::multimap<int, Link>::iterator iter=_constraints.begin(); iter!=_constraints.end(); ++iter)
-				{
-					if( iter->second.type() != Link::kNeighbor &&
-						iter->second.type() != Link::kVirtualClosure &&
-						iter->second.type() != Link::kLandmark &&
-						iter->second.type() != Link::kGravity &&
-						iter->second.type() != Link::kPosePrior)
-					{
-						UWARN("Optimization: clearing guess poses as %s may have changed state, now %s (normMapCorrection=%f)", Parameters::kRGBDOptimizeFromGraphEnd().c_str(), _optimizeFromGraphEnd?"true":"false", normMapCorrection);
-						poses.clear();
-						break;
-					}
-				}
+				UWARN("Optimization: clearing guess poses as %s has changed state, now %s",
+						Parameters::kRGBDOptimizeFromGraphEnd().c_str(), _optimizeFromGraphEnd?"true":"false");
+				poses.clear();
+				_optimizeFromGraphEndChanged = false;
 			}
 
 			std::multimap<int, Link> constraints;
@@ -3125,6 +3122,7 @@ bool Rtabmap::process(
 			statistics_.addStatistic(Statistics::kProximitySpace_last_detection_id(), lastProximitySpaceClosureId);
 			statistics_.setProximityDetectionId(lastProximitySpaceClosureId);
 			statistics_.setProximityDetectionMapId(_memory->getMapId(lastProximitySpaceClosureId));
+			float x,y,z,roll,pitch,yaw;
 			if(_loopClosureHypothesis.first || lastProximitySpaceClosureId)
 			{
 				// Loop closure transform
@@ -3133,6 +3131,8 @@ bool Rtabmap::process(
 				UASSERT(loopIter!=sLoop->getLinks().end());
 				UINFO("Set loop closure transform = %s", loopIter->second.transform().prettyPrint().c_str());
 				statistics_.setLoopClosureTransform(loopIter->second.transform());
+
+				statistics_.addStatistic(Statistics::kLoopVisual_words(), sLoop->getWords().size());
 
 				// if ground truth exists, compute localization error
 				if(!sLoop->getGroundTruthPose().isNull() && !signature->getGroundTruthPose().isNull())
@@ -3143,13 +3143,22 @@ bool Rtabmap::process(
 					statistics_.addStatistic(Statistics::kGtLocalization_angular_error(), error.getAngle(1,0,0)*180/M_PI);
 				}
 
+				statistics_.addStatistic(Statistics::kLoopMapToOdom_norm(), _mapCorrection.getNorm());
+				statistics_.addStatistic(Statistics::kLoopMapToOdom_angle(), _mapCorrection.getAngle()*180.0f/M_PI);
+				_mapCorrection.getTranslationAndEulerAngles(x, y, z, roll, pitch, yaw);
+				statistics_.addStatistic(Statistics::kLoopMapToOdom_x(), x);
+				statistics_.addStatistic(Statistics::kLoopMapToOdom_y(), y);
+				statistics_.addStatistic(Statistics::kLoopMapToOdom_z(), z);
+				statistics_.addStatistic(Statistics::kLoopMapToOdom_roll(),  roll*180.0f/M_PI);
+				statistics_.addStatistic(Statistics::kLoopMapToOdom_pitch(),  pitch*180.0f/M_PI);
+				statistics_.addStatistic(Statistics::kLoopMapToOdom_yaw(), yaw*180.0f/M_PI);
+
 				// Odom correction (actual odometry pose change)
-				if(!previousMapCorrection.isNull() && !odomPose.isNull())
+				if(!odomPose.isNull() && !previousMapCorrection.isNull())
 				{
 					Transform odomCorrection = (previousMapCorrection*odomPose).inverse()*_mapCorrection*odomPose;
 					statistics_.addStatistic(Statistics::kLoopOdom_correction_norm(), odomCorrection.getNorm());
 					statistics_.addStatistic(Statistics::kLoopOdom_correction_angle(), odomCorrection.getAngle()*180.0f/M_PI);
-					float x,y,z,roll,pitch,yaw;
 					odomCorrection.getTranslationAndEulerAngles(x, y, z, roll, pitch, yaw);
 					statistics_.addStatistic(Statistics::kLoopOdom_correction_x(), x);
 					statistics_.addStatistic(Statistics::kLoopOdom_correction_y(), y);
@@ -3159,6 +3168,17 @@ bool Rtabmap::process(
 					statistics_.addStatistic(Statistics::kLoopOdom_correction_yaw(), yaw*180.0f/M_PI);
 				}
 			}
+			if(!_lastLocalizationPose.isNull() && !_lastLocalizationPose.isIdentity())
+			{
+				_lastLocalizationPose.getTranslationAndEulerAngles(x, y, z, roll, pitch, yaw);
+				statistics_.addStatistic(Statistics::kLoopMapToBase_x(), x);
+				statistics_.addStatistic(Statistics::kLoopMapToBase_y(), y);
+				statistics_.addStatistic(Statistics::kLoopMapToBase_z(), z);
+				statistics_.addStatistic(Statistics::kLoopMapToBase_roll(),  roll*180.0f/M_PI);
+				statistics_.addStatistic(Statistics::kLoopMapToBase_pitch(),  pitch*180.0f/M_PI);
+				statistics_.addStatistic(Statistics::kLoopMapToBase_yaw(), yaw*180.0f/M_PI);
+			}
+
 			statistics_.setMapCorrection(_mapCorrection);
 			UINFO("Set map correction = %s", _mapCorrection.prettyPrint().c_str());
 			statistics_.setLocalizationCovariance(localizationCovariance);
@@ -4060,7 +4080,7 @@ void Rtabmap::optimizeCurrentMap(
 		int * iterationsDone) const
 {
 	//Optimize the map
-	UINFO("Optimize map: around location %d", id);
+	UINFO("Optimize map: around location %d (lookInDatabase=%s)", id, lookInDatabase?"true":"false");
 	if(_memory && id > 0)
 	{
 		UTimer timer;

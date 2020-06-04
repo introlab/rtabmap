@@ -284,6 +284,7 @@ private:
 	double _lastProcessTime;
 	bool _someNodesHaveBeenTransferred;
 	float _distanceTravelled;
+	bool _optimizeFromGraphEndChanged;
 
 	// Abstract classes containing all loop closure
 	// strategies for a type of signature or configuration.

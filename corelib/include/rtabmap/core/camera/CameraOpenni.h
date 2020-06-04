@@ -69,10 +69,17 @@ public:
 			const Transform & localTransform = Transform::getIdentity());
 	virtual ~CameraOpenni();
 #ifdef RTABMAP_OPENNI
+#if PCL_VERSION_COMPARE(>=, 1, 10, 0)
+	void image_cb (
+			const std::shared_ptr<openni_wrapper::Image>& rgb,
+			const std::shared_ptr<openni_wrapper::DepthImage>& depth,
+			float constant);
+#else
     void image_cb (
     		const boost::shared_ptr<openni_wrapper::Image>& rgb,
 			const boost::shared_ptr<openni_wrapper::DepthImage>& depth,
 			float constant);
+#endif
 #endif
 
     virtual bool init(const std::string & calibrationFolder = ".", const std::string & cameraName = "");

@@ -191,26 +191,29 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->stereosgbm_mode->setItemData(2, 0, Qt::UserRole - 1);
 #endif
 
+//SURF
 #ifndef RTABMAP_NONFREE
-		_ui->comboBox_detector_strategy->setItemData(0, 0, Qt::UserRole - 1);
-		_ui->comboBox_detector_strategy->setItemData(1, 0, Qt::UserRole - 1);
-		_ui->vis_feature_detector->setItemData(0, 0, Qt::UserRole - 1);
-		_ui->vis_feature_detector->setItemData(1, 0, Qt::UserRole - 1);
-
-#if CV_MAJOR_VERSION >= 3
-		_ui->comboBox_detector_strategy->setItemData(0, 0, Qt::UserRole - 1);
-		_ui->comboBox_detector_strategy->setItemData(1, 0, Qt::UserRole - 1);
-		_ui->comboBox_detector_strategy->setItemData(3, 0, Qt::UserRole - 1);
-		_ui->comboBox_detector_strategy->setItemData(4, 0, Qt::UserRole - 1);
-		_ui->comboBox_detector_strategy->setItemData(5, 0, Qt::UserRole - 1);
-		_ui->comboBox_detector_strategy->setItemData(6, 0, Qt::UserRole - 1);
-		_ui->vis_feature_detector->setItemData(0, 0, Qt::UserRole - 1);
-		_ui->vis_feature_detector->setItemData(1, 0, Qt::UserRole - 1);
-		_ui->vis_feature_detector->setItemData(3, 0, Qt::UserRole - 1);
-		_ui->vis_feature_detector->setItemData(4, 0, Qt::UserRole - 1);
-		_ui->vis_feature_detector->setItemData(5, 0, Qt::UserRole - 1);
-		_ui->vis_feature_detector->setItemData(6, 0, Qt::UserRole - 1);
+	_ui->comboBox_detector_strategy->setItemData(0, 0, Qt::UserRole - 1);
+	_ui->vis_feature_detector->setItemData(0, 0, Qt::UserRole - 1);
 #endif
+
+// SIFT
+#if CV_MAJOR_VERSION < 4 || (CV_MAJOR_VERSION == 4 && (CV_MINOR_VERSION < 3 || (CV_MINOR_VERSION==3 && !defined(RTABMAP_OPENCV_DEV))))
+#ifndef RTABMAP_NONFREE
+	_ui->comboBox_detector_strategy->setItemData(1, 0, Qt::UserRole - 1);
+	_ui->vis_feature_detector->setItemData(1, 0, Qt::UserRole - 1);
+#endif
+#endif
+
+#if CV_MAJOR_VERSION >= 3 && !defined(HAVE_OPENCV_XFEATURES2D)
+	_ui->comboBox_detector_strategy->setItemData(3, 0, Qt::UserRole - 1);
+	_ui->comboBox_detector_strategy->setItemData(4, 0, Qt::UserRole - 1);
+	_ui->comboBox_detector_strategy->setItemData(5, 0, Qt::UserRole - 1);
+	_ui->comboBox_detector_strategy->setItemData(6, 0, Qt::UserRole - 1);
+	_ui->vis_feature_detector->setItemData(3, 0, Qt::UserRole - 1);
+	_ui->vis_feature_detector->setItemData(4, 0, Qt::UserRole - 1);
+	_ui->vis_feature_detector->setItemData(5, 0, Qt::UserRole - 1);
+	_ui->vis_feature_detector->setItemData(6, 0, Qt::UserRole - 1);
 #endif
 
 #ifndef RTABMAP_ORB_OCTREE
@@ -219,16 +222,16 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 #endif
 
 #ifndef RTABMAP_SUPERPOINT_TORCH
-		_ui->comboBox_detector_strategy->setItemData(11, 0, Qt::UserRole - 1);
-		_ui->vis_feature_detector->setItemData(11, 0, Qt::UserRole - 1);
+	_ui->comboBox_detector_strategy->setItemData(11, 0, Qt::UserRole - 1);
+	_ui->vis_feature_detector->setItemData(11, 0, Qt::UserRole - 1);
 #endif
 
 #ifndef RTABMAP_PYMATCHER
-		_ui->reextract_nn->setItemData(6, 0, Qt::UserRole - 1);
+	_ui->reextract_nn->setItemData(6, 0, Qt::UserRole - 1);
 #endif
 
 #if !defined(HAVE_OPENCV_XFEATURES2D) || (CV_MAJOR_VERSION == 3 && (CV_MINOR_VERSION<4 || CV_MINOR_VERSION==4 && CV_SUBMINOR_VERSION<1))
-		_ui->reextract_nn->setItemData(7, 0, Qt::UserRole - 1);
+	_ui->reextract_nn->setItemData(7, 0, Qt::UserRole - 1);
 #endif
 
 #if CV_MAJOR_VERSION >= 3
@@ -418,6 +421,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->radioButton_nochangeGraphView, SIGNAL(toggled(bool)), this, SLOT(makeObsoleteGeneralPanel()));
 	connect(_ui->checkbox_odomDisabled, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteGeneralPanel()));
 	connect(_ui->odom_registration, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteGeneralPanel()));
+	connect(_ui->odom_f2m_gravitySigma, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteGeneralPanel()));
 	connect(_ui->checkbox_groundTruthAlign, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteGeneralPanel()));
 
 	// Cloud rendering panel
@@ -730,6 +734,11 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 
 	connect(_ui->checkbox_stereoMyntEye_rectify, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->checkbox_stereoMyntEye_depth, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->checkbox_stereoMyntEye_autoExposure, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->spinBox_stereoMyntEye_gain, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->spinBox_stereoMyntEye_brightness, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->spinBox_stereoMyntEye_contrast, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->spinBox_stereoMyntEye_irControl, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 
 	connect(_ui->checkbox_rgbd_colorOnly, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->spinBox_source_imageDecimation, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
@@ -1907,6 +1916,11 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->checkbox_stereoRealSense2_odom->setChecked(false);
 		_ui->checkbox_stereoMyntEye_rectify->setChecked(false);
 		_ui->checkbox_stereoMyntEye_depth->setChecked(false);
+		_ui->checkbox_stereoMyntEye_autoExposure->setChecked(true);
+		_ui->spinBox_stereoMyntEye_gain->setValue(24);
+		_ui->spinBox_stereoMyntEye_brightness->setValue(120);
+		_ui->spinBox_stereoMyntEye_contrast->setValue(116);
+		_ui->spinBox_stereoMyntEye_irControl->setValue(0);
 
 		_ui->checkBox_cameraImages_timestamps->setChecked(false);
 		_ui->checkBox_cameraImages_syncTimeStamps->setChecked(true);
@@ -2018,6 +2032,7 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		if(groupBox->objectName() == _ui->groupBox_odometry1->objectName())
 		{
 			_ui->odom_registration->setCurrentIndex(3);
+			_ui->odom_f2m_gravitySigma->setValue(-1);
 		}
 	}
 }
@@ -2143,6 +2158,7 @@ void PreferencesDialog::readGuiSettings(const QString & filePath)
 	_ui->radioButton_nochangeGraphView->setChecked(settings.value("nochangeGraphView", _ui->radioButton_nochangeGraphView->isChecked()).toBool());
 	_ui->checkbox_odomDisabled->setChecked(settings.value("odomDisabled", _ui->checkbox_odomDisabled->isChecked()).toBool());
 	_ui->odom_registration->setCurrentIndex(settings.value("odomRegistration", _ui->odom_registration->currentIndex()).toInt());
+	_ui->odom_f2m_gravitySigma->setValue(settings.value("odomF2MGravitySigma", _ui->odom_f2m_gravitySigma->value()).toDouble());
 	_ui->checkbox_groundTruthAlign->setChecked(settings.value("gtAlign", _ui->checkbox_groundTruthAlign->isChecked()).toBool());
 
 	for(int i=0; i<2; ++i)
@@ -2355,7 +2371,12 @@ void PreferencesDialog::readCameraSettings(const QString & filePath)
 	settings.beginGroup("MyntEye");
 	_ui->checkbox_stereoMyntEye_rectify->setChecked(settings.value("rectify", _ui->checkbox_stereoMyntEye_rectify->isChecked()).toBool());
 	_ui->checkbox_stereoMyntEye_depth->setChecked(settings.value("depth", _ui->checkbox_stereoMyntEye_depth->isChecked()).toBool());
-	settings.endGroup(); // StereoRealSense2
+	_ui->checkbox_stereoMyntEye_autoExposure->setChecked(settings.value("auto_exposure", _ui->checkbox_stereoMyntEye_autoExposure->isChecked()).toBool());
+	_ui->spinBox_stereoMyntEye_gain->setValue(settings.value("gain", _ui->spinBox_stereoMyntEye_gain->value()).toInt());
+	_ui->spinBox_stereoMyntEye_brightness->setValue(settings.value("brightness", _ui->spinBox_stereoMyntEye_brightness->value()).toInt());
+	_ui->spinBox_stereoMyntEye_contrast->setValue(settings.value("contrast", _ui->spinBox_stereoMyntEye_contrast->value()).toInt());
+	_ui->spinBox_stereoMyntEye_irControl->setValue(settings.value("ir_control", _ui->spinBox_stereoMyntEye_irControl->value()).toInt());
+	settings.endGroup(); // MyntEye
 
 	settings.beginGroup("Images");
 	_ui->source_images_lineEdit_path->setText(settings.value("path", _ui->source_images_lineEdit_path->text()).toString());
@@ -2613,6 +2634,7 @@ void PreferencesDialog::writeGuiSettings(const QString & filePath) const
 	settings.setValue("nochangeGraphView",    _ui->radioButton_nochangeGraphView->isChecked());
 	settings.setValue("odomDisabled",         _ui->checkbox_odomDisabled->isChecked());
 	settings.setValue("odomRegistration",     _ui->odom_registration->currentIndex());
+	settings.setValue("odomF2MGravitySigma",  _ui->odom_f2m_gravitySigma->value());
 	settings.setValue("gtAlign",              _ui->checkbox_groundTruthAlign->isChecked());
 
 	for(int i=0; i<2; ++i)
@@ -2825,8 +2847,13 @@ void PreferencesDialog::writeCameraSettings(const QString & filePath) const
 	settings.endGroup(); // StereoRealSense2
 
 	settings.beginGroup("MyntEye");
-	settings.setValue("rectify", _ui->checkbox_stereoMyntEye_rectify->isChecked());
-	settings.setValue("depth", _ui->checkbox_stereoMyntEye_depth->isChecked());
+	settings.setValue("rectify",       _ui->checkbox_stereoMyntEye_rectify->isChecked());
+	settings.setValue("depth",         _ui->checkbox_stereoMyntEye_depth->isChecked());
+	settings.setValue("auto_exposure", _ui->checkbox_stereoMyntEye_autoExposure->isChecked());
+	settings.setValue("gain",          _ui->spinBox_stereoMyntEye_gain->value());
+	settings.setValue("brightness",    _ui->spinBox_stereoMyntEye_brightness->value());
+	settings.setValue("contrast",      _ui->spinBox_stereoMyntEye_contrast->value());
+	settings.setValue("ir_control",    _ui->spinBox_stereoMyntEye_irControl->value());
 	settings.endGroup(); // MyntEye
 
 	settings.beginGroup("Images");
@@ -2918,6 +2945,7 @@ void PreferencesDialog::writeCoreSettings(const QString & filePath) const
 
 bool PreferencesDialog::validateForm()
 {
+#if CV_MAJOR_VERSION < 4 || (CV_MAJOR_VERSION == 4 && (CV_MINOR_VERSION < 3 || (CV_MINOR_VERSION==3 && !defined(RTABMAP_OPENCV_DEV))))
 #ifndef RTABMAP_NONFREE
 	// verify that SURF/SIFT cannot be selected if not built with OpenCV nonfree module
 	// BOW dictionary type
@@ -2937,6 +2965,28 @@ bool PreferencesDialog::validateForm()
 				   "of features on loop closure."));
 		_ui->vis_feature_detector->setCurrentIndex(Feature2D::kFeatureFastBrief);
 	}
+#endif
+#else //>= 4.3.0-dev
+#ifndef RTABMAP_NONFREE
+	// verify that SURF cannot be selected if not built with OpenCV nonfree module
+	// BOW dictionary type
+	if(_ui->comboBox_detector_strategy->currentIndex() <= 1)
+	{
+		QMessageBox::warning(this, tr("Parameter warning"),
+				tr("Selected feature type (SURF) is not available. RTAB-Map is not built "
+				   "with the nonfree module from OpenCV. SIFT is set instead for the bag-of-words dictionary."));
+		_ui->comboBox_detector_strategy->setCurrentIndex(Feature2D::kFeatureSift);
+	}
+	// BOW Reextract features type
+	if(_ui->vis_feature_detector->currentIndex() <= 1)
+	{
+		QMessageBox::warning(this, tr("Parameter warning"),
+				tr("Selected feature type (SURF) is not available. RTAB-Map is not built "
+				   "with the nonfree module from OpenCV. Fast/Brief is set instead for the re-extraction "
+				   "of features on loop closure."));
+		_ui->vis_feature_detector->setCurrentIndex(Feature2D::kFeatureFastBrief);
+	}
+#endif
 #endif
 
 #if CV_MAJOR_VERSION < 3
@@ -4115,7 +4165,7 @@ void PreferencesDialog::setParameter(const std::string & key, const std::string 
 						(combo->objectName().toStdString().compare(Parameters::kKpDetectorStrategy()) == 0 ||
 						 combo->objectName().toStdString().compare(Parameters::kVisFeatureType()) == 0))
 				{
-					UWARN("Trying to set \"%s\" to SIFT/SURF but RTAB-Map isn't built "
+					UWARN("Trying to set \"%s\" to SURF but RTAB-Map isn't built "
 						  "with the nonfree module from OpenCV. Keeping default combo value: %s.",
 						  combo->objectName().toStdString().c_str(),
 						  combo->currentText().toStdString().c_str());
@@ -4967,6 +5017,10 @@ int PreferencesDialog::getOdomRegistrationApproach() const
 {
 	return _ui->odom_registration->currentIndex();
 }
+double PreferencesDialog::getOdomF2MGravitySigma() const
+{
+	return _ui->odom_f2m_gravitySigma->value();
+}
 bool PreferencesDialog::isGroundTruthAligned() const
 {
 	return _ui->checkbox_groundTruthAlign->isChecked();
@@ -5652,6 +5706,19 @@ Camera * PreferencesDialog::createCamera(bool useRawImages, bool useColor)
 				this->getGeneralInputRate(),
 				this->getSourceLocalTransform());
 			((CameraMyntEye*)camera)->publishInterIMU(_ui->checkbox_publishInterIMU->isChecked());
+			if(_ui->checkbox_stereoMyntEye_autoExposure->isChecked())
+			{
+				((CameraMyntEye*)camera)->setAutoExposure();
+			}
+			else
+			{
+				((CameraMyntEye*)camera)->setManualExposure(
+						_ui->spinBox_stereoMyntEye_gain->value(),
+						_ui->spinBox_stereoMyntEye_brightness->value(),
+						_ui->spinBox_stereoMyntEye_contrast->value());
+			}
+			((CameraMyntEye*)camera)->setIrControl(
+					_ui->spinBox_stereoMyntEye_irControl->value());
 		}
 	}
 	else if(driver == kSrcRGBDImages)

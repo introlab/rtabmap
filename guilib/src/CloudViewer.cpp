@@ -74,6 +74,12 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <vtkQuad.h>
 #include <opencv/vtkImageMatSource.h>
 
+#if VTK_MAJOR_VERSION >= 7
+#include <vtkEDLShading.h>
+#include <vtkRenderStepsPass.h>
+#include <vtkOpenGLRenderer.h>
+#endif
+
 #ifdef RTABMAP_OCTOMAP
 #include <rtabmap/core/OctoMap.h>
 #endif
@@ -102,6 +108,7 @@ CloudViewer::CloudViewer(QWidget *parent, CloudViewerInteractorStyle * style) :
 		_aSetNormalsScale(0),
 		_aSetBackgroundColor(0),
 		_aSetRenderingRate(0),
+		_aSetEDLShading(0),
 		_aSetLighting(0),
 		_aSetFlatShading(0),
 		_aSetEdgeVisibility(0),
@@ -131,6 +138,7 @@ CloudViewer::CloudViewer(QWidget *parent, CloudViewerInteractorStyle * style) :
 	int argc = 0;
 	UASSERT(style!=0);
 	style->setCloudViewer(this);
+	style->AutoAdjustCameraClippingRangeOff();
 	_visualizer = new pcl::visualization::PCLVisualizer(
 		argc, 
 		0, 
@@ -141,8 +149,10 @@ CloudViewer::CloudViewer(QWidget *parent, CloudViewerInteractorStyle * style) :
 	_visualizer->setShowFPS(false);
 	
 	int viewport;
-	_visualizer->createViewPort (0,0,1.0, 1.0, viewport); // all 3d objects here
-	_visualizer->createViewPort (0,0,1.0, 1.0, viewport); // text overlay
+	// Layer 0: unavailable layer, used as "all" by PCLVisualizer
+	_visualizer->createViewPort (0,0,1.0, 1.0, viewport); // Layer 1: all clouds here
+	_visualizer->createViewPort (0,0,1.0, 1.0, viewport); // Layer 2: all 3d objects here
+	_visualizer->createViewPort (0,0,1.0, 1.0, viewport); // Layer 3: text overlay
 	_visualizer->getRendererCollection()->InitTraversal ();
 	vtkRenderer* renderer = NULL;
 	int i =0;
@@ -151,11 +161,22 @@ CloudViewer::CloudViewer(QWidget *parent, CloudViewerInteractorStyle * style) :
 		renderer->SetLayer(i);
 		if(i==1)
 		{
+#if VTK_MAJOR_VERSION >= 7
+			renderer->PreserveColorBufferOff();
+#endif
+			renderer->PreserveDepthBufferOff();
 			_visualizer->getInteractorStyle()->SetDefaultRenderer(renderer);
+		}
+		else if(i==2)
+		{
+#if VTK_MAJOR_VERSION >= 7
+			renderer->PreserveColorBufferOn();
+#endif
+			renderer->PreserveDepthBufferOn();
 		}
 		++i;
 	}
-	_visualizer->getRenderWindow()->SetNumberOfLayers(3);
+	_visualizer->getRenderWindow()->SetNumberOfLayers(4);
 
 	this->SetRenderWindow(_visualizer->getRenderWindow());
 
@@ -171,10 +192,10 @@ CloudViewer::CloudViewer(QWidget *parent, CloudViewerInteractorStyle * style) :
 
 	setRenderingRate(_renderingRate);
 
-	_visualizer->setCameraPosition(
+	this->setCameraPosition(
 				-1, 0, 0,
 				0, 0, 0,
-				0, 0, 1, 1);
+				0, 0, 1);
 #ifndef _WIN32
 	// Crash on startup on Windows (vtk issue)
 	this->addOrUpdateCoordinate("reference", Transform::getIdentity(), 0.2);
@@ -262,6 +283,12 @@ void CloudViewer::createMenu()
 	_aSetIntensityMaximum = new QAction("Set maximum absolute intensity...", this);
 	_aSetBackgroundColor = new QAction("Set background color...", this);	
 	_aSetRenderingRate = new QAction("Set rendering rate...", this);
+	_aSetEDLShading = new QAction("Eye-Dome Lighting Shading", this);
+	_aSetEDLShading->setCheckable(true);
+	_aSetEDLShading->setChecked(false);
+#if VTK_MAJOR_VERSION < 7
+	_aSetEDLShading->setEnabled(false);
+#endif
 	_aSetLighting = new QAction("Lighting", this);
 	_aSetLighting->setCheckable(true);
 	_aSetLighting->setChecked(false);
@@ -326,6 +353,7 @@ void CloudViewer::createMenu()
 	_menu->addMenu(scanMenu);
 	_menu->addAction(_aSetBackgroundColor);
 	_menu->addAction(_aSetRenderingRate);
+	_menu->addAction(_aSetEDLShading);
 	_menu->addAction(_aSetLighting);
 	_menu->addAction(_aSetFlatShading);
 	_menu->addAction(_aSetEdgeVisibility);
@@ -410,6 +438,7 @@ void CloudViewer::loadSettings(QSettings & settings, const QString & group)
 	pose = settings.value("camera_pose", pose).value<QVector3D>();
 	focal = settings.value("camera_focal", focal).value<QVector3D>();
 	up = settings.value("camera_up", up).value<QVector3D>();
+	_lastCameraOrientation= _lastCameraPose= cv::Vec3f(0,0,0);
 	this->setCameraPosition(pose.x(),pose.y(),pose.z(), focal.x(),focal.y(),focal.z(), up.x(),up.y(),up.z());
 
 	this->setGridShown(settings.value("grid", this->isGridShown()).toBool());
@@ -619,7 +648,8 @@ bool CloudViewer::addCloud(
 		bool rgb,
 		bool hasNormals,
 		bool hasIntensity,
-		const QColor & color)
+		const QColor & color,
+		int viewport)
 {
 	int previousColorIndex = -1;
 	if(_addedClouds.contains(id))
@@ -636,7 +666,7 @@ bool CloudViewer::addCloud(
 		pcl::PointCloud<pcl::PointNormal>::Ptr cloud_xyz (new pcl::PointCloud<pcl::PointNormal>);
 		pcl::fromPCLPointCloud2 (*binaryCloud, *cloud_xyz);
 		std::string idNormals = id + "-normals";
-		if(_visualizer->addPointCloudNormals<pcl::PointNormal>(cloud_xyz, _normalsStep, _normalsScale, idNormals, 0))
+		if(_visualizer->addPointCloudNormals<pcl::PointNormal>(cloud_xyz, _normalsStep, _normalsScale, idNormals, viewport))
 		{
 			_visualizer->updatePointCloudPose(idNormals, pose.toEigen3f());
 			_addedClouds.insert(idNormals, pose);
@@ -646,7 +676,7 @@ bool CloudViewer::addCloud(
 	// add random color channel
 	 pcl::visualization::PointCloudColorHandler<pcl::PCLPointCloud2>::Ptr colorHandler;
 	 colorHandler.reset (new pcl::visualization::PointCloudColorHandlerRandom<pcl::PCLPointCloud2> (binaryCloud));
-	 if(_visualizer->addPointCloud (binaryCloud, colorHandler, origin, orientation, id, 1))
+	 if(_visualizer->addPointCloud (binaryCloud, colorHandler, origin, orientation, id, viewport))
 	 {
 		QColor c = Qt::gray;
 		if(color.isValid())
@@ -654,27 +684,27 @@ bool CloudViewer::addCloud(
 			c = color;
 		}
 		colorHandler.reset (new pcl::visualization::PointCloudColorHandlerCustom<pcl::PCLPointCloud2> (binaryCloud, c.red(), c.green(), c.blue()));
-		_visualizer->addPointCloud (binaryCloud, colorHandler, origin, orientation, id, 1);
+		_visualizer->addPointCloud (binaryCloud, colorHandler, origin, orientation, id, viewport);
 
 		// x,y,z
 		colorHandler.reset (new pcl::visualization::PointCloudColorHandlerGenericField<pcl::PCLPointCloud2> (binaryCloud, "x"));
-		_visualizer->addPointCloud (binaryCloud, colorHandler, origin, orientation, id, 1);
+		_visualizer->addPointCloud (binaryCloud, colorHandler, origin, orientation, id, viewport);
 		colorHandler.reset (new pcl::visualization::PointCloudColorHandlerGenericField<pcl::PCLPointCloud2> (binaryCloud, "y"));
-		_visualizer->addPointCloud (binaryCloud, colorHandler, origin, orientation, id, 1);
+		_visualizer->addPointCloud (binaryCloud, colorHandler, origin, orientation, id, viewport);
 		colorHandler.reset (new pcl::visualization::PointCloudColorHandlerGenericField<pcl::PCLPointCloud2> (binaryCloud, "z"));
-		_visualizer->addPointCloud (binaryCloud, colorHandler, origin, orientation, id, 1);
+		_visualizer->addPointCloud (binaryCloud, colorHandler, origin, orientation, id, viewport);
 
 		if(rgb)
 		{
 			//rgb
 			colorHandler.reset(new pcl::visualization::PointCloudColorHandlerRGBField<pcl::PCLPointCloud2>(binaryCloud));
-			_visualizer->addPointCloud (binaryCloud, colorHandler, origin, orientation, id, 1);
+			_visualizer->addPointCloud (binaryCloud, colorHandler, origin, orientation, id, viewport);
 		}
 		else if(hasIntensity)
 		{
 			//intensity
 			colorHandler.reset(new PointCloudColorHandlerIntensityField(binaryCloud, _intensityAbsMax, _aSetIntensityRedColormap->isChecked()));
-			_visualizer->addPointCloud (binaryCloud, colorHandler, origin, orientation, id, 1);
+			_visualizer->addPointCloud (binaryCloud, colorHandler, origin, orientation, id, viewport);
 		}
 		else if(previousColorIndex == 5)
 		{
@@ -685,11 +715,11 @@ bool CloudViewer::addCloud(
 		{
 			//normals
 			colorHandler.reset (new pcl::visualization::PointCloudColorHandlerGenericField<pcl::PCLPointCloud2> (binaryCloud, "normal_x"));
-			_visualizer->addPointCloud (binaryCloud, colorHandler, origin, orientation, id, 1);
+			_visualizer->addPointCloud (binaryCloud, colorHandler, origin, orientation, id, viewport);
 			colorHandler.reset (new pcl::visualization::PointCloudColorHandlerGenericField<pcl::PCLPointCloud2> (binaryCloud, "normal_y"));
-			_visualizer->addPointCloud (binaryCloud, colorHandler, origin, orientation, id, 1);
+			_visualizer->addPointCloud (binaryCloud, colorHandler, origin, orientation, id, viewport);
 			colorHandler.reset (new pcl::visualization::PointCloudColorHandlerGenericField<pcl::PCLPointCloud2> (binaryCloud, "normal_z"));
-			_visualizer->addPointCloud (binaryCloud, colorHandler, origin, orientation, id, 1);
+			_visualizer->addPointCloud (binaryCloud, colorHandler, origin, orientation, id, viewport);
 		}
 		else if(previousColorIndex > 5)
 		{
@@ -1028,11 +1058,11 @@ bool CloudViewer::addOctomap(const OctoMap * octomap, unsigned int treeDepth, bo
 
 			vtkSmartPointer<vtkGlyph3DMapper> mapper = vtkSmartPointer<vtkGlyph3DMapper>::New();
 			mapper->SetSourceConnection(cubeSource->GetOutputPort());
-	#if VTK_MAJOR_VERSION <= 5
+#if VTK_MAJOR_VERSION <= 5
 			mapper->SetInputConnection(polydata->GetProducerPort());
-	#else
+#else
 			mapper->SetInputData(polydata);
-	#endif
+#endif
 			mapper->SetScalarRange(0, obstacles->size() - 1);
 			mapper->SetLookupTable(lut);
 			mapper->ScalingOff();
@@ -1444,7 +1474,7 @@ void CloudViewer::addOrUpdateCoordinate(
 	{
 		_coordinates.insert(id);
 #if PCL_VERSION_COMPARE(>=, 1, 7, 2)
-		_visualizer->addCoordinateSystem(scale, transform.toEigen3f(), id, foreground?2:1);
+		_visualizer->addCoordinateSystem(scale, transform.toEigen3f(), id, foreground?3:2);
 #else
 		// Well, on older versions, just update the main coordinate
 		_visualizer->addCoordinateSystem(scale, transform.toEigen3f(), 0);
@@ -1532,11 +1562,11 @@ void CloudViewer::addOrUpdateLine(
 
 		if(arrow)
 		{
-			_visualizer->addArrow(pt2, pt1, c.redF(), c.greenF(), c.blueF(), false, id, foreground?2:1);
+			_visualizer->addArrow(pt2, pt1, c.redF(), c.greenF(), c.blueF(), false, id, foreground?3:2);
 		}
 		else
 		{
-			_visualizer->addLine(pt2, pt1, c.redF(), c.greenF(), c.blueF(), id, foreground?2:1);
+			_visualizer->addLine(pt2, pt1, c.redF(), c.greenF(), c.blueF(), id, foreground?3:2);
 		}
 		_visualizer->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY, c.alphaF(), id);
 	}
@@ -1593,7 +1623,7 @@ void CloudViewer::addOrUpdateSphere(
 		}
 
 		pcl::PointXYZ center(pose.x(), pose.y(), pose.z());
-		_visualizer->addSphere(center, radius, c.redF(), c.greenF(), c.blueF(), id, foreground?2:1);
+		_visualizer->addSphere(center, radius, c.redF(), c.greenF(), c.blueF(), id, foreground?3:2);
 		_visualizer->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY, c.alphaF(), id);
 	}
 }
@@ -1650,7 +1680,7 @@ void CloudViewer::addOrUpdateCube(
 		{
 			c = color;
 		}
-		_visualizer->addCube(Eigen::Vector3f(pose.x(), pose.y(), pose.z()), pose.getQuaternionf(), width, height, depth, id, foreground?2:1);
+		_visualizer->addCube(Eigen::Vector3f(pose.x(), pose.y(), pose.z()), pose.getQuaternionf(), width, height, depth, id, foreground?3:2);
 		if(wireframe)
 		{
 			_visualizer->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_REPRESENTATION, pcl::visualization::PCL_VISUALIZER_REPRESENTATION_WIREFRAME, id);
@@ -1780,7 +1810,7 @@ void CloudViewer::addOrUpdateQuad(
 		int i = 0;
 		while ((renderer = _visualizer->getRendererCollection()->GetNextItem ()) != NULL)
 		{
-			if ((foreground?2:1) == i)               // add the actor only to the specified viewport
+			if ((foreground?3:2) == i)               // add the actor only to the specified viewport
 			{
 				renderer->AddActor (actor);
 			}
@@ -1899,7 +1929,7 @@ void CloudViewer::addOrUpdateFrustum(
 			}
 			pcl::toPCLPointCloud2(frustumPoints, mesh.cloud);
 			mesh.polygons.push_back(vertices);
-			_visualizer->addPolylineFromPolygonMesh(mesh, id, 1);
+			_visualizer->addPolylineFromPolygonMesh(mesh, id, 2);
 			_visualizer->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR, c.redF(), c.greenF(), c.blueF(), id);
 			_visualizer->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY, c.alphaF(), id);
 		}
@@ -2013,11 +2043,13 @@ void CloudViewer::addOrUpdateGraph(
 		}
 		pcl::toPCLPointCloud2(*graph, mesh.cloud);
 		mesh.polygons.push_back(vertices);
-		_visualizer->addPolylineFromPolygonMesh(mesh, id, 1);
+		_visualizer->addPolylineFromPolygonMesh(mesh, id, 2);
 		_visualizer->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR, color.redF(), color.greenF(), color.blueF(), id);
 		_visualizer->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY, color.alphaF(), id);
 
-		this->addCloud(id+"_nodes", graph, Transform::getIdentity(), color);
+		pcl::PCLPointCloud2Ptr binaryCloud(new pcl::PCLPointCloud2);
+		pcl::toPCLPointCloud2(*graph, *binaryCloud);
+		this->addCloud(id+"_nodes", binaryCloud, Transform::getIdentity(), false, false, false, color, 2);
 		this->setCloudPointSize(id+"_nodes", 5);
 	}
 }
@@ -2075,7 +2107,7 @@ void CloudViewer::addOrUpdateText(
 				color.greenF(),
 				color.blueF(),
 				id,
-				foreground?2:1);
+				foreground?3:2);
 	}
 }
 
@@ -2218,41 +2250,40 @@ void CloudViewer::resetCamera()
 		cv::Point3f pt = util3d::transformPoint(cv::Point3f(_lastPose.x(), _lastPose.y(), _lastPose.z()), ( _lastPose.rotation()*Transform(-1, 0, 0)).translation());
 		if(_aCameraOrtho->isChecked())
 		{
-			_visualizer->setCameraPosition(
+			this->setCameraPosition(
 					_lastPose.x(), _lastPose.y(), _lastPose.z()+5,
 					_lastPose.x(), _lastPose.y(), _lastPose.z(),
-					1, 0, 0, 1);
+					1, 0, 0);
 		}
 		else if(_aLockViewZ->isChecked())
 		{
-			_visualizer->setCameraPosition(
+			this->setCameraPosition(
 					pt.x, pt.y, pt.z,
 					_lastPose.x(), _lastPose.y(), _lastPose.z(),
-					0, 0, 1, 1);
+					0, 0, 1);
 		}
 		else
 		{
-			_visualizer->setCameraPosition(
+			this->setCameraPosition(
 					pt.x, pt.y, pt.z,
 					_lastPose.x(), _lastPose.y(), _lastPose.z(),
-					_lastPose.r31(), _lastPose.r32(), _lastPose.r33(), 1);
+					_lastPose.r31(), _lastPose.r32(), _lastPose.r33());
 		}
 	}
 	else if(_aCameraOrtho->isChecked())
 	{
-		_visualizer->setCameraPosition(
+		this->setCameraPosition(
 				0, 0, 5,
 				0, 0, 0,
-				1, 0, 0, 1);
+				1, 0, 0);
 	}
 	else
 	{
-		_visualizer->setCameraPosition(
+		this->setCameraPosition(
 				-1, 0, 0,
 				0, 0, 0,
-				0, 0, 1, 1);
+				0, 0, 1);
 	}
-	this->update();
 }
 
 void CloudViewer::removeAllClouds()
@@ -2443,6 +2474,41 @@ void CloudViewer::setRenderingRate(double rate)
 	_visualizer->getInteractorStyle()->GetInteractor()->SetDesiredUpdateRate(_renderingRate);
 }
 
+void CloudViewer::setEDLShading(bool on)
+{
+#if VTK_MAJOR_VERSION >= 7
+	_aSetEDLShading->setChecked(on);
+	_visualizer->getRendererCollection()->InitTraversal ();
+	vtkRenderer* renderer = NULL;
+	renderer = _visualizer->getRendererCollection()->GetNextItem ();
+	renderer = _visualizer->getRendererCollection()->GetNextItem (); // Get Layer 1
+	UASSERT(renderer);
+
+	vtkOpenGLRenderer* glrenderer = vtkOpenGLRenderer::SafeDownCast(renderer);
+	UASSERT(glrenderer);
+	if(on)
+	{
+		// EDL shader
+		vtkSmartPointer<vtkRenderStepsPass> basicPasses = vtkSmartPointer<vtkRenderStepsPass>::New ();
+		vtkSmartPointer<vtkEDLShading> edl = vtkSmartPointer<vtkEDLShading>::New ();
+		edl->SetDelegatePass(basicPasses);
+		glrenderer->SetPass(edl);
+	}
+	else if(glrenderer->GetPass())
+	{
+		glrenderer->GetPass()->ReleaseGraphicsResources(NULL);
+		glrenderer->SetPass(NULL);
+	}
+
+	this->update();
+#else
+	if(on)
+	{
+		UERROR("RTAB-Map must be built with VTK>=7 to enable EDL shading!");
+	}
+#endif
+}
+
 void CloudViewer::setLighting(bool on)
 {
 	_aSetLighting->setChecked(on);
@@ -2524,8 +2590,42 @@ void CloudViewer::setCameraPosition(
 		float focalX, float focalY, float focalZ,
 		float upX, float upY, float upZ)
 {
-	_lastCameraOrientation= _lastCameraPose= cv::Vec3f(0,0,0);
-	_visualizer->setCameraPosition(x,y,z, focalX,focalY,focalX, upX,upY,upZ, 1);
+	vtkRenderer* renderer = NULL;
+	double boundingBox[6] = {1, -1, 1, -1, 1, -1};
+
+	// compute global bounding box
+	_visualizer->getRendererCollection()->InitTraversal ();
+	while ((renderer = _visualizer->getRendererCollection()->GetNextItem ()) != NULL)
+	{
+		vtkSmartPointer<vtkCamera> cam = renderer->GetActiveCamera ();
+		cam->SetPosition (x, y, z);
+		cam->SetFocalPoint (focalX, focalY, focalZ);
+		cam->SetViewUp (upX, upY, upZ);
+
+		double BB[6];
+		renderer->ComputeVisiblePropBounds(BB);
+		for (int i = 0; i < 6; i++) {
+			if (i % 2 == 0) {
+				// Even Index is Min
+				if (BB[i] < boundingBox[i]) {
+					boundingBox[i] = BB[i];
+				}
+			} else {
+				// Odd Index is Max
+				if (BB[i] > boundingBox[i]) {
+					boundingBox[i] = BB[i];
+				}
+			}
+		}
+	}
+
+	_visualizer->getRendererCollection()->InitTraversal ();
+	while ((renderer = _visualizer->getRendererCollection()->GetNextItem ()) != NULL)
+	{
+		renderer->ResetCameraClippingRange(boundingBox);
+	}
+
+	_visualizer->getRenderWindow()->Render ();
 }
 
 void CloudViewer::updateCameraTargetPosition(const Transform & pose)
@@ -2563,7 +2663,7 @@ void CloudViewer::updateCameraTargetPosition(const Transform & pose)
 			}
 			pcl::toPCLPointCloud2(*_trajectory, mesh.cloud);
 			mesh.polygons.push_back(vertices);
-			_visualizer->addPolylineFromPolygonMesh(mesh, "trajectory", 1);
+			_visualizer->addPolylineFromPolygonMesh(mesh, "trajectory", 2);
 		}
 
 		if(pose != _lastPose || _lastPose.isNull())
@@ -2642,10 +2742,10 @@ void CloudViewer::updateCameraTargetPosition(const Transform & pose)
 				}
 			}
 
-			_visualizer->setCameraPosition(
+			this->setCameraPosition(
 				cameras.front().pos[0], cameras.front().pos[1], cameras.front().pos[2],
 				cameras.front().focal[0], cameras.front().focal[1], cameras.front().focal[2],
-				cameras.front().view[0], cameras.front().view[1], cameras.front().view[2], 1);
+				cameras.front().view[0], cameras.front().view[1], cameras.front().view[2]);
 		}
 	}
 
@@ -2850,6 +2950,10 @@ bool CloudViewer::isPolygonPicking() const
 {
 	return _aPolygonPicking->isChecked();
 }
+bool CloudViewer::isEDLShadingOn() const
+{
+	return _aSetEDLShading->isChecked();
+}
 bool CloudViewer::isLightingOn() const
 {
 	return _aSetLighting->isChecked();
@@ -2940,16 +3044,26 @@ void CloudViewer::addGrid()
 		{
 			//over x
 			name = uFormat("line%d", ++id);
-			_visualizer->addLine(pcl::PointXYZ(i, min, 0.0f), pcl::PointXYZ(i, max, 0.0f), r, g, b, name, 1);
+			_visualizer->addLine(
+					pcl::PointXYZ(i, min, 0.0f),
+					pcl::PointXYZ(i, max, 0.0f),
+					r, g, b, name, 2);
 			_gridLines.push_back(name);
 			//over y or z
 			name = uFormat("line%d", ++id);
 			_visualizer->addLine(
 					pcl::PointXYZ(min, i, 0),
 					pcl::PointXYZ(max, i, 0),
-					r, g, b, name, 1);
+					r, g, b, name, 2);
 			_gridLines.push_back(name);
 		}
+		// this will update clipping planes
+		std::vector<pcl::visualization::Camera> cameras;
+		_visualizer->getCameras(cameras);
+		this->setCameraPosition(
+				cameras.front().pos[0], cameras.front().pos[1], cameras.front().pos[2],
+				cameras.front().focal[0], cameras.front().focal[1], cameras.front().focal[2],
+				cameras.front().view[0], cameras.front().view[1], cameras.front().view[2]);
 	}
 }
 
@@ -3174,12 +3288,10 @@ void CloudViewer::keyPressEvent(QKeyEvent * event)
 		cameras.front().focal[0] += cummulatedDir[0] + cummulatedFocalDir[0];
 		cameras.front().focal[1] += cummulatedDir[1] + cummulatedFocalDir[1];
 		cameras.front().focal[2] += cummulatedDir[2] + cummulatedFocalDir[2];
-		_visualizer->setCameraPosition(
+		this->setCameraPosition(
 			cameras.front().pos[0], cameras.front().pos[1], cameras.front().pos[2],
 			cameras.front().focal[0], cameras.front().focal[1], cameras.front().focal[2],
-			cameras.front().view[0], cameras.front().view[1], cameras.front().view[2], 1);
-
-		update();
+			cameras.front().view[0], cameras.front().view[1], cameras.front().view[2]);
 
 		Q_EMIT configChanged();
 	}
@@ -3205,12 +3317,12 @@ void CloudViewer::mouseMoveEvent(QMouseEvent * event)
 {
 	QVTKWidget::mouseMoveEvent(event);
 
+	std::vector<pcl::visualization::Camera> cameras;
+	_visualizer->getCameras(cameras);
+
 	// camera view up z locked?
 	if(_aLockViewZ->isChecked() && !_aCameraOrtho->isChecked())
 	{
-		std::vector<pcl::visualization::Camera> cameras;
-		_visualizer->getCameras(cameras);
-
 		cv::Vec3d newCameraOrientation = cv::Vec3d(0,0,1).cross(cv::Vec3d(cameras.front().pos)-cv::Vec3d(cameras.front().focal));
 
 		if(	_lastCameraOrientation!=cv::Vec3d(0,0,0) &&
@@ -3242,14 +3354,12 @@ void CloudViewer::mouseMoveEvent(QMouseEvent * event)
 		cameras.front().view[0] = 0;
 		cameras.front().view[1] = 0;
 		cameras.front().view[2] = 1;
+	}
 
-		_visualizer->setCameraPosition(
+	this->setCameraPosition(
 			cameras.front().pos[0], cameras.front().pos[1], cameras.front().pos[2],
 			cameras.front().focal[0], cameras.front().focal[1], cameras.front().focal[2],
-			cameras.front().view[0], cameras.front().view[1], cameras.front().view[2], 1);
-
-	}
-	this->update();
+			cameras.front().view[0], cameras.front().view[1], cameras.front().view[2]);
 
 	Q_EMIT configChanged();
 }
@@ -3257,12 +3367,20 @@ void CloudViewer::mouseMoveEvent(QMouseEvent * event)
 void CloudViewer::wheelEvent(QWheelEvent * event)
 {
 	QVTKWidget::wheelEvent(event);
+
+	std::vector<pcl::visualization::Camera> cameras;
+	_visualizer->getCameras(cameras);
+
 	if(_aLockViewZ->isChecked() && !_aCameraOrtho->isChecked())
 	{
-		std::vector<pcl::visualization::Camera> cameras;
-		_visualizer->getCameras(cameras);
 		_lastCameraPose = cv::Vec3d(cameras.front().pos);
 	}
+
+	this->setCameraPosition(
+		cameras.front().pos[0], cameras.front().pos[1], cameras.front().pos[2],
+		cameras.front().focal[0], cameras.front().focal[1], cameras.front().focal[2],
+		cameras.front().view[0], cameras.front().view[1], cameras.front().view[2]);
+
 	Q_EMIT configChanged();
 }
 
@@ -3345,7 +3463,7 @@ void CloudViewer::handleAction(QAction * a)
 	else if(a == _aSetGridCellSize)
 	{
 		bool ok;
-		double value = QInputDialog::getDouble(this, tr("Set grid cell size"), tr("Size (m)"), _gridCellSize, 0.01, 10, 2, &ok);
+		double value = QInputDialog::getDouble(this, tr("Set grid cell size"), tr("Size (m)"), _gridCellSize, 0.01, 1000, 2, &ok);
 		if(ok)
 		{
 			this->setGridCellSize(value);
@@ -3416,6 +3534,10 @@ void CloudViewer::handleAction(QAction * a)
 	else if(a == _aCameraOrtho)
 	{
 		this->setCameraOrtho(_aCameraOrtho->isChecked());
+	}
+	else if(a == _aSetEDLShading)
+	{
+		this->setEDLShading(_aSetEDLShading->isChecked());
 	}
 	else if(a == _aSetLighting)
 	{
