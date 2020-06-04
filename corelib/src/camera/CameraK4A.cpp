@@ -69,12 +69,14 @@ CameraK4A::CameraK4A(
 	const Transform & localTransform) :
 	Camera(imageRate, localTransform)
 #ifdef RTABMAP_K4A
-	,
-	device_(NULL),
+	,device_(NULL),
 	playbackHandle_(NULL),
 	transformationHandle_(NULL),
 	deviceId_(-1),
 	fileName_(fileName),
+	rgb_resolution_(1),
+	framerate_(2),
+	depth_resolution_(2),
 	ir_(false),
 	previousStamp_(0.0)
 #endif
@@ -120,6 +122,16 @@ void CameraK4A::close()
 			device_ = NULL;
 		}
 	}
+#endif
+}
+
+void CameraK4A::setPreferences(int rgb_resolution, int framerate, int depth_resolution)
+{
+#ifdef RTABMAP_K4A
+	rgb_resolution_ = rgb_resolution;
+	framerate_ = framerate;
+	depth_resolution_ = depth_resolution;
+	UINFO("setPreferences(): %i %i %i", rgb_resolution, framerate, depth_resolution);
 #endif
 }
 
@@ -193,10 +205,37 @@ bool CameraK4A::init(const std::string & calibrationFolder, const std::string & 
 		device_ = NULL;
 
 		config_ = K4A_DEVICE_CONFIG_INIT_DISABLE_ALL;
-		config_.camera_fps = K4A_FRAMES_PER_SECOND_15;
-		config_.depth_mode = K4A_DEPTH_MODE_WFOV_2X2BINNED;
+
+		switch(rgb_resolution_)
+		{
+			case 0: config_.color_resolution = K4A_COLOR_RESOLUTION_720P; break;
+			case 1: config_.color_resolution = K4A_COLOR_RESOLUTION_1080P; break;
+			case 2: config_.color_resolution = K4A_COLOR_RESOLUTION_1440P; break;
+			case 3: config_.color_resolution = K4A_COLOR_RESOLUTION_1536P; break;
+			case 4: config_.color_resolution = K4A_COLOR_RESOLUTION_2160P; break;
+			case 5:
+			default: config_.color_resolution = K4A_COLOR_RESOLUTION_3072P; break;
+		}
+
+		switch(framerate_)
+		{
+			case 0: config_.camera_fps = K4A_FRAMES_PER_SECOND_5; break;
+			case 1: config_.camera_fps = K4A_FRAMES_PER_SECOND_15; break;
+			case 2:
+			default: config_.camera_fps = K4A_FRAMES_PER_SECOND_30; break;
+		}
+
+		switch(depth_resolution_)
+		{
+			case 0: config_.depth_mode = K4A_DEPTH_MODE_NFOV_2X2BINNED; break;
+			case 1: config_.depth_mode = K4A_DEPTH_MODE_NFOV_UNBINNED; break;
+			case 2: config_.depth_mode = K4A_DEPTH_MODE_WFOV_2X2BINNED; break;
+			case 3:
+			default: config_.depth_mode = K4A_DEPTH_MODE_WFOV_UNBINNED; break;
+		}
+
+		// This is fixed for now
 		config_.color_format = K4A_IMAGE_FORMAT_COLOR_BGRA32;
-		config_.color_resolution = K4A_COLOR_RESOLUTION_720P;
 
 		int device_count = k4a_device_get_installed_count();
 
@@ -629,9 +668,6 @@ SensorData CameraK4A::captureImage(CameraInfo * info)
 					  cv::Vec3d(-1 * imu_sample_.acc_sample.xyz.x, imu_sample_.acc_sample.xyz.y, -1 * imu_sample_.acc_sample.xyz.z),
 					  cv::Mat::eye(3, 3, CV_64FC1),
 					  Transform::getIdentity());
-
-				UINFO("IMU: %f %f %f %f %f %f", imu_sample_.gyro_sample.xyz.x, imu_sample_.gyro_sample.xyz.y, imu_sample_.gyro_sample.xyz.z,
-								imu_sample_.acc_sample.xyz.x, imu_sample_.acc_sample.xyz.y, imu_sample_.acc_sample.xyz.z);
 			}
 			else
 			{

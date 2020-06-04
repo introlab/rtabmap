@@ -61,6 +61,7 @@ public:
 	virtual std::string getSerial() const;
 
 	void setIRDepthFormat(bool enabled);
+	void setPreferences(int rgb_resolution, int framerate, int depth_resolution);
 
 protected:
 	virtual SensorData captureImage(CameraInfo * info = 0);
@@ -83,6 +84,9 @@ private:
 	CameraModel model_;
 	int deviceId_;
 	std::string fileName_;
+	int rgb_resolution_;
+	int framerate_;
+	int depth_resolution_;
 	bool ir_;
 	double previousStamp_;
 	UTimer timer_;
