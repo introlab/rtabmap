@@ -2793,6 +2793,9 @@ void PreferencesDialog::writeCameraSettings(const QString & filePath) const
 	settings.endGroup(); // K4W2
 
 	settings.beginGroup("K4A");
+	settings.setValue("rgb_resolution", _ui->comboBox_k4a_rgb_resolution->currentIndex());
+	settings.setValue("framerate", _ui->comboBox_k4a_framerate->currentIndex());
+	settings.setValue("depth_resolution", _ui->comboBox_k4a_depth_resolution->currentIndex());
 	settings.setValue("ir", _ui->checkbox_k4a_irDepth->isChecked());
 	settings.setValue("mkvPath", _ui->lineEdit_k4a_mkv->text());
 	settings.setValue("useMkvStamps", _ui->source_checkBox_useMKVStamps->isChecked());
@@ -5643,6 +5646,9 @@ Camera * PreferencesDialog::createCamera(bool useRawImages, bool useColor)
 		}
 		
 		((CameraK4A*)camera)->setIRDepthFormat(_ui->checkbox_k4a_irDepth->isChecked());
+		((CameraK4A*)camera)->setPreferences(_ui->comboBox_k4a_rgb_resolution->currentIndex(),
+						     _ui->comboBox_k4a_framerate->currentIndex(),
+						     _ui->comboBox_k4a_depth_resolution->currentIndex());
 	}
 	else if (driver == kSrcRealSense)
 	{
