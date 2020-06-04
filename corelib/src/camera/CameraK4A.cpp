@@ -123,6 +123,15 @@ void CameraK4A::close()
 #endif
 }
 
+void CameraK4A::setPreferences(int rgb_resolution, int framerate, int depth_resolution)
+{
+#ifdef RTABMAP_K4A
+	rgb_resolution_ = rgb_resolution;
+	framerate_ = framerate;
+	depth_resolution_ = depth_resolution;
+#endif
+}
+
 void CameraK4A::setIRDepthFormat(bool enabled)
 {
 #ifdef RTABMAP_K4A

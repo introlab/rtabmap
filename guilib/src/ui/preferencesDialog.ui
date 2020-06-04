@@ -4520,7 +4520,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                       <string>RGB camera resolution</string>
                                      </property>
                                     </widget>
-                                    <widget class="QComboBox" name="comboBox">
+                                    <widget class="QComboBox" name="comboBox_k4a_rgb_resolution">
                                      <property name="geometry">
                                       <rect>
                                        <x>0</x>
@@ -4560,7 +4560,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                       </property>
                                      </item>
                                     </widget>
-                                    <widget class="QComboBox" name="comboBox_2">
+                                    <widget class="QComboBox" name="comboBox_k4a_framerate">
                                      <property name="geometry">
                                       <rect>
                                        <x>0</x>
@@ -4598,7 +4598,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                       <string>Frames per second</string>
                                      </property>
                                     </widget>
-                                    <widget class="QComboBox" name="comboBox_3">
+                                    <widget class="QComboBox" name="comboBox_k4a_depth_resolution">
                                      <property name="geometry">
                                       <rect>
                                        <x>0</x>
