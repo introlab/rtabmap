@@ -2090,7 +2090,7 @@ void DatabaseViewer::updateStatistics()
 		double firstStamp = 0.0;
 		std::map<int, std::pair<std::map<std::string, float>, double> > allStats = dbDriver_->getAllStatistics();
 
-		std::map<std::string, std::pair<std::vector<float>, std::vector<float> > > allData;
+		std::map<std::string, std::pair<std::vector<qreal>, std::vector<qreal> > > allData;
 		std::map<std::string, int > allDataOi;
 
 		for(int i=0; i<ids_.size(); ++i)
@@ -2111,18 +2111,18 @@ void DatabaseViewer::updateStatistics()
 				if(allData.find(iter->first) == allData.end())
 				{
 					//initialize data vectors
-					allData.insert(std::make_pair(iter->first, std::make_pair(std::vector<float>(ids_.size(), 0.0f), std::vector<float>(ids_.size(), 0.0f) )));
+					allData.insert(std::make_pair(iter->first, std::make_pair(std::vector<qreal>(ids_.size(), 0.0f), std::vector<qreal>(ids_.size(), 0.0f) )));
 					allDataOi.insert(std::make_pair(iter->first, 0));
 				}
 
 				int & oi = allDataOi.at(iter->first);
-				allData.at(iter->first).first[oi] = ui_->checkBox_timeStats->isChecked()?float(stamp-firstStamp):ids_[i];
+				allData.at(iter->first).first[oi] = ui_->checkBox_timeStats->isChecked()?qreal(stamp-firstStamp):ids_[i];
 				allData.at(iter->first).second[oi] = iter->second;
 				++oi;
 			}
 		}
 
-		for(std::map<std::string, std::pair<std::vector<float>, std::vector<float> > >::iterator iter=allData.begin(); iter!=allData.end(); ++iter)
+		for(std::map<std::string, std::pair<std::vector<qreal>, std::vector<qreal> > >::iterator iter=allData.begin(); iter!=allData.end(); ++iter)
 		{
 			int oi = allDataOi.at(iter->first);
 			iter->second.first.resize(oi);

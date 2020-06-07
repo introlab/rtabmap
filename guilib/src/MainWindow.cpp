@@ -288,7 +288,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent, bool sh
 	_ui->posteriorPlot->setFixedYAxis(0,1);
 	UPlotCurveThreshold * tc;
 	tc = _ui->posteriorPlot->addThreshold("Loop closure thr", float(_preferencesDialog->getLoopThr()));
-	connect(this, SIGNAL(loopClosureThrChanged(float)), tc, SLOT(setThreshold(float)));
+	connect(this, SIGNAL(loopClosureThrChanged(qreal)), tc, SLOT(setThreshold(qreal)));
 
 	_likelihoodCurve = new PdfPlotCurve("Likelihood", &_cachedSignatures, this);
 	_ui->likelihoodPlot->addCurve(_likelihoodCurve, false);
@@ -1985,9 +1985,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 
 			ULOGGER_DEBUG("");
 			//Adjust thresholds
-			float value;
-			value = float(_preferencesDialog->getLoopThr());
-			Q_EMIT(loopClosureThrChanged(value));
+			Q_EMIT(loopClosureThrChanged(_preferencesDialog->getLoopThr()));
 		}
 		if(!stat.likelihood().empty() && _ui->dockWidget_likelihood->isVisible())
 		{
@@ -4328,9 +4326,7 @@ void MainWindow::applyPrefSettings(const rtabmap::ParametersMap & parameters, bo
 	_ui->doubleSpinBox_stats_timeLimit->setValue(_preferencesDialog->getTimeLimit());
 	_ui->actionSLAM_mode->setChecked(_preferencesDialog->isSLAMMode());
 
-	float value;
-	value = float(_preferencesDialog->getLoopThr());
-	Q_EMIT(loopClosureThrChanged(value));
+	Q_EMIT(loopClosureThrChanged(_preferencesDialog->getLoopThr()));
 }
 
 void MainWindow::drawKeypoints(const std::multimap<int, cv::KeyPoint> & refWords, const std::multimap<int, cv::KeyPoint> & loopWords)

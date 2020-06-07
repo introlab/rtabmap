@@ -280,7 +280,7 @@ UPlotCurve::UPlotCurve(const QString & name, QVector<UPlotItem *> data, QObject 
 	this->setData(data);
 }
 
-UPlotCurve::UPlotCurve(const QString & name, const QVector<float> & x, const QVector<float> & y, QObject * parent) :
+UPlotCurve::UPlotCurve(const QString & name, const QVector<qreal> & x, const QVector<qreal> & y, QObject * parent) :
 	QObject(parent),
 	_plot(0),
 	_name(name),
@@ -338,15 +338,15 @@ void UPlotCurve::detach(UPlot * plot)
 
 void UPlotCurve::updateMinMax()
 {
-	float x,y;
+	qreal x,y;
 	const UPlotItem * item;
 	if(!_items.size())
 	{
-		_minMax = QVector<float>();
+		_minMax = QVector<qreal>();
 	}
 	else
 	{
-		_minMax = QVector<float>(4);
+		_minMax = QVector<qreal>(4);
 	}
 	for(int i=0; i<_items.size(); ++i)
 	{
@@ -378,12 +378,12 @@ void UPlotCurve::_addValue(UPlotItem * data)
 	// add item
 	if(data)
 	{
-		float x = data->data().x();
-		float y = data->data().y();
+		qreal x = data->data().x();
+		qreal y = data->data().y();
 
 		if(_minMax.size() != 4)
 		{
-			_minMax = QVector<float>(4);
+			_minMax = QVector<qreal>(4);
 		}
 		if(_items.size())
 		{
@@ -429,7 +429,7 @@ void UPlotCurve::addValue(UPlotItem * data)
 	}
 }
 
-void UPlotCurve::addValue(float x, float y)
+void UPlotCurve::addValue(qreal x, qreal y)
 {
 	if(_items.size() &&
 		_minMax[0] != _minMax[1] &&
@@ -441,13 +441,13 @@ void UPlotCurve::addValue(float x, float y)
 		this->clear();
 	}
 
-	float width = 2; // TODO warn : hard coded value!
+	qreal width = 2; // TODO warn : hard coded value!
 	this->addValue(new UPlotItem(x,y,width));
 }
 
-void UPlotCurve::addValue(float y)
+void UPlotCurve::addValue(qreal y)
 {
-	float x = 0;
+	qreal x = 0;
 	if(_items.size())
 	{
 		UPlotItem * lastItem = (UPlotItem *)_items.last();
@@ -463,7 +463,7 @@ void UPlotCurve::addValue(float y)
 void UPlotCurve::addValue(const QString & value)
 {
 	bool ok;
-	float v = value.toFloat(&ok);
+	qreal v = value.toDouble(&ok);
 	if(ok)
 	{
 		this->addValue(v);
@@ -483,9 +483,9 @@ void UPlotCurve::addValues(QVector<UPlotItem *> & data)
 	Q_EMIT dataChanged(this);
 }
 
-void UPlotCurve::addValues(const QVector<float> & xs, const QVector<float> & ys)
+void UPlotCurve::addValues(const QVector<qreal> & xs, const QVector<qreal> & ys)
 {
-	float width = 2; // TODO warn : hard coded value!
+	qreal width = 2; // TODO warn : hard coded value!
 	for(int i=0; i<xs.size() && i<ys.size(); ++i)
 	{
 		this->_addValue(new UPlotItem(xs.at(i),ys.at(i),width));
@@ -493,10 +493,10 @@ void UPlotCurve::addValues(const QVector<float> & xs, const QVector<float> & ys)
 	Q_EMIT dataChanged(this);
 }
 
-void UPlotCurve::addValues(const QVector<float> & ys)
+void UPlotCurve::addValues(const QVector<qreal> & ys)
 {
-	float x = 0;
-	float width = 2; // TODO warn : hard coded value!
+	qreal x = 0;
+	qreal width = 2; // TODO warn : hard coded value!
 	for(int i=0; i<ys.size(); ++i)
 	{
 		if(_items.size())
@@ -515,8 +515,8 @@ void UPlotCurve::addValues(const QVector<float> & ys)
 
 void UPlotCurve::addValues(const QVector<int> & ys)
 {
-	float x = 0;
-	float width = 2; // TODO warn : hard coded value!
+	qreal x = 0;
+	qreal width = 2; // TODO warn : hard coded value!
 	for(int i=0; i<ys.size(); ++i)
 	{
 		if(_items.size())
@@ -535,8 +535,8 @@ void UPlotCurve::addValues(const QVector<int> & ys)
 
 void UPlotCurve::addValues(const std::vector<int> & ys)
 {
-	float x = 0;
-	float width = 2; // TODO warn : hard coded value!
+	qreal x = 0;
+	qreal width = 2; // TODO warn : hard coded value!
 	for(unsigned int i=0; i<ys.size(); ++i)
 	{
 		if(_items.size())
@@ -553,10 +553,10 @@ void UPlotCurve::addValues(const std::vector<int> & ys)
 	Q_EMIT dataChanged(this);
 }
 
-void UPlotCurve::addValues(const std::vector<float> & ys)
+void UPlotCurve::addValues(const std::vector<qreal> & ys)
 {
-	float x = 0;
-	float width = 2; // TODO warn : hard coded value!
+	qreal x = 0;
+	qreal width = 2; // TODO warn : hard coded value!
 	for(unsigned int i=0; i<ys.size(); ++i)
 	{
 		if(_items.size())
@@ -596,8 +596,8 @@ int UPlotCurve::removeItem(int index)
 				if(_items.size())
 				{
 					UPlotItem * tmp = (UPlotItem *)_items.at(0);
-					float x = tmp->data().x();
-					float y = tmp->data().y();
+					qreal x = tmp->data().x();
+					qreal y = tmp->data().y();
 					_minMax[0]=x;
 					_minMax[1]=x;
 					_minMax[2]=y;
@@ -615,7 +615,7 @@ int UPlotCurve::removeItem(int index)
 				}
 				else
 				{
-					_minMax = QVector<float>();
+					_minMax = QVector<qreal>();
 				}
 			}
 		}
@@ -687,7 +687,7 @@ void UPlotCurve::setItemsColor(const QColor & color)
 	}
 }
 
-void UPlotCurve::update(float scaleX, float scaleY, float offsetX, float offsetY, float xDir, float yDir, int maxItemsKept)
+void UPlotCurve::update(qreal scaleX, qreal scaleY, qreal offsetX, qreal offsetY, qreal xDir, qreal yDir, int maxItemsKept)
 {
 	//ULOGGER_DEBUG("scaleX=%f, scaleY=%f, offsetX=%f, offsetY=%f, xDir=%d, yDir=%d, _plot->scene()->width()=%f, _plot->scene()->height=%f", scaleX, scaleY, offsetX, offsetY, xDir, yDir,_plot->scene()->width(),_plot->scene()->height());
 	//make sure direction values are 1 or -1
@@ -865,12 +865,12 @@ void UPlotCurve::setVisible(bool visible)
 	}
 }
 
-void UPlotCurve::setXIncrement(float increment)
+void UPlotCurve::setXIncrement(qreal increment)
 {
 	_xIncrement = increment;
 }
 
-void UPlotCurve::setXStart(float val)
+void UPlotCurve::setXStart(qreal val)
 {
 	_xStart = val;
 }
@@ -884,7 +884,7 @@ void UPlotCurve::setData(QVector<UPlotItem*> & data)
 	}
 }
 
-void UPlotCurve::setData(const QVector<float> & x, const QVector<float> & y)
+void UPlotCurve::setData(const QVector<qreal> & x, const QVector<qreal> & y)
 {
 	if(x.size() == y.size())
 	{
@@ -904,8 +904,8 @@ void UPlotCurve::setData(const QVector<float> & x, const QVector<float> & y)
 
 		// update values
 		int index = 0;
-		QVector<float>::const_iterator i=x.begin();
-		QVector<float>::const_iterator j=y.begin();
+		QVector<qreal>::const_iterator i=x.begin();
+		QVector<qreal>::const_iterator j=y.begin();
 		for(; i!=x.end() && j!=y.end(); ++i, ++j, index+=2)
 		{
 			((UPlotItem*)_items[index])->setData(QPointF(*i, *j));
@@ -925,7 +925,7 @@ void UPlotCurve::setData(const QVector<float> & x, const QVector<float> & y)
 	}
 }
 
-void UPlotCurve::setData(const std::vector<float> & x, const std::vector<float> & y)
+void UPlotCurve::setData(const std::vector<qreal> & x, const std::vector<qreal> & y)
 {
 	if(x.size() == y.size())
 	{
@@ -945,8 +945,8 @@ void UPlotCurve::setData(const std::vector<float> & x, const std::vector<float> 
 
 		// update values
 		int index = 0;
-		std::vector<float>::const_iterator i=x.begin();
-		std::vector<float>::const_iterator j=y.begin();
+		std::vector<qreal>::const_iterator i=x.begin();
+		std::vector<qreal>::const_iterator j=y.begin();
 		for(; i!=x.end() && j!=y.end(); ++i, ++j, index+=2)
 		{
 			((UPlotItem*)_items[index])->setData(QPointF(*i, *j));
@@ -966,12 +966,12 @@ void UPlotCurve::setData(const std::vector<float> & x, const std::vector<float> 
 	}
 }
 
-void UPlotCurve::setData(const QVector<float> & y)
+void UPlotCurve::setData(const QVector<qreal> & y)
 {
 	this->setData(y.toStdVector());
 }
 
-void UPlotCurve::setData(const std::vector<float> & y)
+void UPlotCurve::setData(const std::vector<qreal> & y)
 {
 	//match the size of the current data
 	int margin = int((_items.size()+1)/2) - int(y.size());
@@ -989,8 +989,8 @@ void UPlotCurve::setData(const std::vector<float> & y)
 
 	// update values
 	int index = 0;
-	float x = 0;
-	std::vector<float>::const_iterator j=y.begin();
+	qreal x = 0;
+	std::vector<qreal>::const_iterator j=y.begin();
 	for(; j!=y.end(); ++j, index+=2)
 	{
 		((UPlotItem*)_items[index])->setData(QPointF(x++, *j));
@@ -1001,7 +1001,7 @@ void UPlotCurve::setData(const std::vector<float> & y)
 	Q_EMIT dataChanged(this);
 }
 
-void UPlotCurve::getData(QVector<float> & x, QVector<float> & y) const
+void UPlotCurve::getData(QVector<qreal> & x, QVector<qreal> & y) const
 {
 	x.clear();
 	y.clear();
@@ -1018,7 +1018,7 @@ void UPlotCurve::getData(QVector<float> & x, QVector<float> & y) const
 	}
 }
 
-void UPlotCurve::getData(QMap<float,float> & data) const
+void UPlotCurve::getData(QMap<qreal,qreal> & data) const
 {
 	data.clear();
 	if(_items.size())
@@ -1034,7 +1034,7 @@ void UPlotCurve::getData(QMap<float,float> & data) const
 
 
 
-UPlotCurveThreshold::UPlotCurveThreshold(const QString & name, float thesholdValue, Qt::Orientation orientation, QObject * parent) :
+UPlotCurveThreshold::UPlotCurveThreshold(const QString & name, qreal thesholdValue, Qt::Orientation orientation, QObject * parent) :
 	UPlotCurve(name, parent),
 	_orientation(orientation)
 {
@@ -1055,7 +1055,7 @@ UPlotCurveThreshold::~UPlotCurveThreshold()
 
 }
 
-void UPlotCurveThreshold::setThreshold(float threshold)
+void UPlotCurveThreshold::setThreshold(qreal threshold)
 {
 #if PRINT_DEBUG
 	ULOGGER_DEBUG("%f", threshold);
@@ -1104,7 +1104,7 @@ void UPlotCurveThreshold::setOrientation(Qt::Orientation orientation)
 	}
 }
 
-void UPlotCurveThreshold::update(float scaleX, float scaleY, float offsetX, float offsetY, float xDir, float yDir, int maxItemsKept)
+void UPlotCurveThreshold::update(qreal scaleX, qreal scaleY, qreal offsetX, qreal offsetY, qreal xDir, qreal yDir, int maxItemsKept)
 {
 	if(_items.size() == 3)
 	{
@@ -1142,7 +1142,7 @@ void UPlotCurveThreshold::update(float scaleX, float scaleY, float offsetX, floa
 
 
 
-UPlotAxis::UPlotAxis(Qt::Orientation orientation, float min, float max, QWidget * parent) :
+UPlotAxis::UPlotAxis(Qt::Orientation orientation, qreal min, qreal max, QWidget * parent) :
 	QWidget(parent),
 	_orientation(orientation),
 	_min(0),
@@ -1177,14 +1177,14 @@ void UPlotAxis::setReversed(bool reversed)
 {
 	if(_reversed != reversed)
 	{
-		float min = _min;
+		qreal min = _min;
 		_min = _max;
 		_max = min;
 	}
 	_reversed = reversed;
 }
 
-void UPlotAxis::setAxis(float & min, float & max)
+void UPlotAxis::setAxis(qreal & min, qreal & max)
 {
 	int borderMin = 0;
 	int borderMax = 0;
@@ -1241,13 +1241,13 @@ void UPlotAxis::setAxis(float & min, float & max)
 	// Rounding min and max
 	if(min != max)
 	{
-		float mul = 1;
-		float rangef = max - min;
+		qreal mul = 1;
+		qreal rangef = max - min;
 		int countStep = _count/5;
-		float val;
+		qreal val;
 		for(int i=0; i<6; ++i)
 		{
-			val = (rangef/float(countStep)) * mul;
+			val = (rangef/qreal(countStep)) * mul;
 			if( val >= 1.0f && val < 10.0f)
 			{
 				break;
@@ -1264,8 +1264,8 @@ void UPlotAxis::setAxis(float & min, float & max)
 		//ULOGGER_DEBUG("min=%f, max=%f", min, max);
 		int minR = min*mul-0.9;
 		int maxR = max*mul+0.9;
-		min = float(minR)/mul;
-		max = float(maxR)/mul;
+		min = qreal(minR)/mul;
+		max = qreal(maxR)/mul;
 		//ULOGGER_DEBUG("mul=%f, minR=%d, maxR=%d,countStep=%d", mul, minR, maxR, countStep);
 	}
 
@@ -1430,8 +1430,8 @@ void UPlotLegendItem::contextMenuEvent(QContextMenuEvent * event)
 	{
 		if(_curve)
 		{
-			QVector<float> x;
-			QVector<float> y;
+			QVector<qreal> x;
+			QVector<qreal> y;
 			_curve->getData(x, y);
 			QString text;
 			text.append("x");
@@ -1501,11 +1501,11 @@ QPixmap UPlotLegendItem::createSymbol(const QPen & pen, const QBrush & brush)
 
 void UPlotLegendItem::updateStdDevMeanMax()
 {
-	QVector<float> x, y;
+	QVector<qreal> x, y;
 	_curve->getData(x, y);
-	float mean = uMean(y.data(), y.size());
-	float stdDev = std::sqrt(uVariance(y.data(), y.size(), mean));
-	float max = uMax(y.data(), y.size());
+	qreal mean = uMean(y.data(), y.size());
+	qreal stdDev = std::sqrt(uVariance(y.data(), y.size(), mean));
+	qreal max = uMax(y.data(), y.size());
 	QString nameSpaced = _curve->name();
 	nameSpaced.replace('_', ' ');
 	nameSpaced += QString("\n(%1=%2, %3=%4, max=%5, n=%6)").arg(QChar(0xbc, 0x03)).arg(QString::number(mean, 'f', 3)).arg(QChar(0xc3, 0x03)).arg(QString::number(stdDev, 'f', 3)).arg(QString::number(max, 'f', 3)).arg(y.size());
@@ -1691,28 +1691,28 @@ void UPlotLegend::contextMenuEvent(QContextMenuEvent * event)
 		if(items.size())
 		{
 			// create common x-axis
-			QMap<float, float> xAxisMap;
+			QMap<qreal, qreal> xAxisMap;
 			for(int i=0; i<items.size(); ++i)
 			{
-				QMap<float, float> data;
+				QMap<qreal, qreal> data;
 				items.at(i)->curve()->getData(data);
-				for(QMap<float, float>::iterator iter=data.begin(); iter!=data.end(); ++iter)
+				for(QMap<qreal, qreal>::iterator iter=data.begin(); iter!=data.end(); ++iter)
 				{
 					xAxisMap.insert(iter.key(), iter.value());
 				}
 			}
-			QList<float> xAxis = xAxisMap.uniqueKeys();
+			QList<qreal> xAxis = xAxisMap.uniqueKeys();
 
-			QVector<QVector<float> > axes;
+			QVector<QVector<qreal> > axes;
 			for(int i=0; i<items.size(); ++i)
 			{
-				QMap<float, float> data;
+				QMap<qreal, qreal> data;
 				items.at(i)->curve()->getData(data);
 
-				QVector<float> y(xAxis.size(), std::numeric_limits<float>::quiet_NaN());
+				QVector<qreal> y(xAxis.size(), std::numeric_limits<qreal>::quiet_NaN());
 				// just to make sure that we have the same number of data on each curve, set NAN for unknowns
 				int j=0;
-				for(QList<float>::iterator iter=xAxis.begin(); iter!=xAxis.end(); ++iter)
+				for(QList<qreal>::iterator iter=xAxis.begin(); iter!=xAxis.end(); ++iter)
 				{
 					if(data.contains(*iter))
 					{
@@ -2226,7 +2226,7 @@ void UPlot::replot(QPainter * painter)
 		}
 	}
 
-	float axis[4] = {0};
+	qreal axis[4] = {0};
 	for(int i=0; i<4; ++i)
 	{
 		axis[i] = _axisMaximums[i];
@@ -2244,8 +2244,8 @@ void UPlot::replot(QPainter * painter)
 
 	QRectF newRect(0,0, _graphicsViewHolder->size().width(), _graphicsViewHolder->size().height());
 	_view->scene()->setSceneRect(newRect);
-	float borderHor = (float)_horizontalAxis->border();
-	float borderVer = (float)_verticalAxis->border();
+	qreal borderHor = (qreal)_horizontalAxis->border();
+	qreal borderVer = (qreal)_verticalAxis->border();
 
 	//grid
 	qDeleteAll(hGridLines);
@@ -2255,14 +2255,14 @@ void UPlot::replot(QPainter * painter)
 	if(_aShowGrid->isChecked())
 	{
 		// TODO make a PlotGrid class ?
-		float w = newRect.width()-(borderHor*2);
-		float h = newRect.height()-(borderVer*2);
-		float stepH = w / float(_horizontalAxis->count());
-		float stepV = h / float(_verticalAxis->count());
+		qreal w = newRect.width()-(borderHor*2);
+		qreal h = newRect.height()-(borderVer*2);
+		qreal stepH = w / qreal(_horizontalAxis->count());
+		qreal stepV = h / qreal(_verticalAxis->count());
 		QPen dashPen(Qt::DashLine);
 		dashPen.setColor(QColor(255-_bgColor.red(), 255-_bgColor.green(), 255-_bgColor.blue(), 100));
 		QPen pen(dashPen.color());
-		for(float i=0.0f; i*stepV <= h+stepV; i+=5.0f)
+		for(qreal i=0.0f; i*stepV <= h+stepV; i+=5.0f)
 		{
 			//horizontal lines
 			if(!_aGraphicsView->isChecked())
@@ -2291,7 +2291,7 @@ void UPlot::replot(QPainter * painter)
 				hGridLines.last()->setPen(pen);
 			}
 		}
-		for(float i=0; i*stepH < w+stepH; i+=5.0f)
+		for(qreal i=0; i*stepH < w+stepH; i+=5.0f)
 		{
 			//vertical lines
 			if(!_aGraphicsView->isChecked())
@@ -2323,9 +2323,9 @@ void UPlot::replot(QPainter * painter)
 	}
 
 	// curves
-	float scaleX = 1;
-	float scaleY = 1;
-	float den = 0;
+	qreal scaleX = 1;
+	qreal scaleY = 1;
+	qreal den = 0;
 	den = axis[1] - axis[0];
 	if(den != 0)
 	{
@@ -2340,8 +2340,8 @@ void UPlot::replot(QPainter * painter)
 	{
 		if((*i)->isVisible())
 		{
-			float xDir = 1.0f;
-			float yDir = -1.0f;
+			qreal xDir = 1.0f;
+			qreal yDir = -1.0f;
 			(*i)->update(scaleX,
 						scaleY,
 						xDir<0?axis[1]+borderHor/scaleX:-(axis[0]-borderHor/scaleX),
@@ -2359,7 +2359,7 @@ void UPlot::replot(QPainter * painter)
 	// Update refresh rate
 	if(_aShowRefreshRate->isChecked())
 	{
-		int refreshRate = qRound(1000.0f/float(_refreshIntervalTime.restart()));
+		int refreshRate = qRound(1000.0f/qreal(_refreshIntervalTime.restart()));
 		if(refreshRate > 0 && refreshRate < _lowestRefreshRate)
 		{
 			_lowestRefreshRate = refreshRate;
@@ -2374,14 +2374,14 @@ void UPlot::replot(QPainter * painter)
 	}
 }
 
-void UPlot::setFixedXAxis(float x1, float x2)
+void UPlot::setFixedXAxis(qreal x1, qreal x2)
 {
 	_fixedAxis[0] = true;
 	_axisMaximums[0] = x1;
 	_axisMaximums[1] = x2;
 }
 
-void UPlot::setFixedYAxis(float y1, float y2)
+void UPlot::setFixedYAxis(qreal y1, qreal y2)
 {
 	_fixedAxis[1] = true;
 	_axisMaximums[2] = y1;
@@ -2392,7 +2392,7 @@ void UPlot::updateAxis(const UPlotCurve * curve)
 {
 	if(curve && curve->isVisible() && curve->itemsSize() && curve->isMinMaxValid())
 	{
-		const QVector<float> & minMax = curve->getMinMax();
+		const QVector<qreal> & minMax = curve->getMinMax();
 		//ULOGGER_DEBUG("x1=%f, x2=%f, y1=%f, y2=%f", minMax[0], minMax[1], minMax[2], minMax[3]);
 		if(minMax.size() != 4)
 		{
@@ -2404,7 +2404,7 @@ void UPlot::updateAxis(const UPlotCurve * curve)
 	}
 }
 
-bool UPlot::updateAxis(float x1, float x2, float y1, float y2)
+bool UPlot::updateAxis(qreal x1, qreal x2, qreal y1, qreal y2)
 {
 	bool modified = false;
 	modified = updateAxis(x1,y1);
@@ -2419,7 +2419,7 @@ bool UPlot::updateAxis(float x1, float x2, float y1, float y2)
 	return modified;
 }
 
-bool UPlot::updateAxis(float x, float y)
+bool UPlot::updateAxis(qreal x, qreal y)
 {
 	//ULOGGER_DEBUG("x=%f, y=%f", x,y);
 	bool modified = false;
@@ -2470,7 +2470,7 @@ void UPlot::updateAxis()
 	{
 		if(_curves.at(i)->isVisible() && _curves.at(i)->isMinMaxValid())
 		{
-			const QVector<float> & minMax = _curves.at(i)->getMinMax();
+			const QVector<qreal> & minMax = _curves.at(i)->getMinMax();
 			this->updateAxis(minMax[0], minMax[1], minMax[2], minMax[3]);
 		}
 	}
@@ -2561,7 +2561,7 @@ void UPlot::mouseMoveEvent(QMouseEvent * event)
 			_mousePressedPos = _mouseCurrentPos;
 		}
 
-		float x,y;
+		qreal x,y;
 		if(mousePosToValue(event->pos(), x ,y))
 		{
 			if(QApplication::mouseButtons() & Qt::LeftButton)
@@ -2603,7 +2603,7 @@ void UPlot::mouseReleaseEvent(QMouseEvent * event)
 
 		if(right - left > 5 || bottom - top > 5)
 		{
-			float axis[4];
+			qreal axis[4];
 			if(mousePosToValue(QPoint(left, top), axis[0], axis[3]) && mousePosToValue(QPoint(right, bottom), axis[1], axis[2]))
 			{
 #if PRINT_DEBUG
@@ -2631,7 +2631,7 @@ void UPlot::mouseDoubleClickEvent(QMouseEvent * event)
 	QWidget::mouseDoubleClickEvent(event);
 }
 
-bool UPlot::mousePosToValue(const QPoint & pos, float & x, float & y)
+bool UPlot::mousePosToValue(const QPoint & pos, qreal & x, qreal & y)
 {
 	int xPos = pos.x() - _graphicsViewHolder->pos().x() - _horizontalAxis->border();
 	int yPos = pos.y() - _graphicsViewHolder->pos().y() - _verticalAxis->border();
@@ -2662,15 +2662,15 @@ bool UPlot::mousePosToValue(const QPoint & pos, float & x, float & y)
 
 	//UDEBUG("IN");
 	//UDEBUG("x1=%f, x2=%f, y1=%f, y2=%f", _axisMaximums[0], _axisMaximums[1], _axisMaximums[2], _axisMaximums[3]);
-	//UDEBUG("border hor=%f ver=%f", (float)_horizontalAxis->border(), (float)_verticalAxis->border());
+	//UDEBUG("border hor=%f ver=%f", (qreal)_horizontalAxis->border(), (qreal)_verticalAxis->border());
 	//UDEBUG("rect = %d,%d %d,%d", _graphicsViewHolder->pos().x(), _graphicsViewHolder->pos().y(), _graphicsViewHolder->width(), _graphicsViewHolder->height());
 	//UDEBUG("%d,%d", event->pos().x(), event->pos().y());
 	//UDEBUG("x/y %d,%d", x, y);
 	//UDEBUG("max %d,%d", maxX, maxY);
 
 	//UDEBUG("map %f,%f", x, y);
-	x = _axisMaximums[0] + float(xPos)*(_axisMaximums[1] - _axisMaximums[0]) / float(maxX);
-	y = _axisMaximums[2] + float(maxY - yPos)*(_axisMaximums[3] - _axisMaximums[2]) / float(maxY);
+	x = _axisMaximums[0] + qreal(xPos)*(_axisMaximums[1] - _axisMaximums[0]) / qreal(maxX);
+	y = _axisMaximums[2] + qreal(maxY - yPos)*(_axisMaximums[3] - _axisMaximums[2]) / qreal(maxY);
 	return true;
 }
 
@@ -2943,8 +2943,61 @@ void UPlot::clearData()
 	_aGraphicsView->isChecked()?this->replot(0):this->update();
 }
 
+void UPlot::frameData(bool xAxis, bool yAxis)
+{
+	if(!xAxis && !yAxis)
+	{
+		return;
+	}
+	qreal minX = std::numeric_limits<qreal>::max();
+	qreal minY = std::numeric_limits<qreal>::max();
+	for(int i=0; i<_curves.size(); ++i)
+	{
+		if(qobject_cast<UPlotCurveThreshold*>(_curves.at(i)) == 0)
+		{
+			const QVector<qreal> & minMax = _curves.at(i)->getMinMax();
+			if(minMax.size() == 4)
+			{
+				if(minMax[0] < minX)
+				{
+					minX = minMax[0];
+				}
+				if(minMax[2] < minY)
+				{
+					minY = minMax[2];
+				}
+			}
+		}
+	}
+	if(minX != std::numeric_limits<qreal>::max())
+	{
+		for(int i=0; i<_curves.size(); ++i)
+		{
+			if(qobject_cast<UPlotCurveThreshold*>(_curves.at(i)) == 0)
+			{
+				QVector<qreal> x;
+				QVector<qreal> y;
+				_curves.at(i)->getData(x,y);
+				for(int j=0; j<x.size(); ++j)
+				{
+					if(xAxis)
+					{
+						x[j]-=minX;
+					}
+					if(yAxis)
+					{
+						y[j]-=minY;
+					}
+				}
+				_curves.at(i)->setData(x,y);
+			}
+		}
+	}
+	_aGraphicsView->isChecked()?this->replot(0):this->update();
+}
+
 // for convenience...
-UPlotCurveThreshold * UPlot::addThreshold(const QString & name, float value, Qt::Orientation orientation)
+UPlotCurveThreshold * UPlot::addThreshold(const QString & name, qreal value, Qt::Orientation orientation)
 {
 	UPlotCurveThreshold * curve = new UPlotCurveThreshold(name, value, orientation, this);
 	QPen pen = curve->pen();

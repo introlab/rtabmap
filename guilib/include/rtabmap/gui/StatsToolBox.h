@@ -46,14 +46,14 @@ class RTABMAPGUI_EXP StatItem : public QWidget
 	Q_OBJECT;
 
 public:
-	StatItem(const QString & name, bool cacheOn, const std::vector<float> & x, const std::vector<float> & y, const QString & unit = QString(), const QMenu * menu = 0, QGridLayout * grid = 0, QWidget * parent = 0);
+	StatItem(const QString & name, bool cacheOn, const std::vector<qreal> & x, const std::vector<qreal> & y, const QString & unit = QString(), const QMenu * menu = 0, QGridLayout * grid = 0, QWidget * parent = 0);
 	virtual ~StatItem();
-	void addValue(float y);
-	void addValue(float x, float y);
-	void setValues(const std::vector<float> & x, const std::vector<float> & y);
+	void addValue(qreal y);
+	void addValue(qreal x, qreal y);
+	void setValues(const std::vector<qreal> & x, const std::vector<qreal> & y);
 	QString value() const;
-	std::vector<float> xValues() const {return _x;}
-	std::vector<float> yValues() const {return _y;}
+	std::vector<qreal> xValues() const {return _x;}
+	std::vector<qreal> yValues() const {return _y;}
 	void setCacheOn(bool on);
 	void clearCache();
 
@@ -61,9 +61,9 @@ public Q_SLOTS:
 	void updateMenu(const QMenu * menu);
 
 Q_SIGNALS:
-	void valueAdded(float);
-	void valueAdded(float, float);
-	void valuesChanged(const std::vector<float> &, const std::vector<float> &);
+	void valueAdded(qreal);
+	void valueAdded(qreal, qreal);
+	void valuesChanged(const std::vector<qreal> &, const std::vector<qreal> &);
 	void plotRequested(const StatItem *, const QString &);
 
 private Q_SLOTS:
@@ -80,8 +80,8 @@ private:
 	QMenu * _menu;
 
 	bool _cacheOn;
-	std::vector<float> _x;
-	std::vector<float> _y;
+	std::vector<qreal> _x;
+	std::vector<qreal> _y;
 };
 
 
@@ -104,9 +104,9 @@ public:
 
 public Q_SLOTS:
 	void updateStat(const QString & statFullName, bool cacheOn);
-	void updateStat(const QString & statFullName, float y, bool cacheOn);
-	void updateStat(const QString & statFullName, float x, float y, bool cacheOn);
-	void updateStat(const QString & statFullName, const std::vector<float> & x, const std::vector<float> & y, bool cacheOn);
+	void updateStat(const QString & statFullName, qreal y, bool cacheOn);
+	void updateStat(const QString & statFullName, qreal x, qreal y, bool cacheOn);
+	void updateStat(const QString & statFullName, const std::vector<qreal> & x, const std::vector<qreal> & y, bool cacheOn);
 	void clear();
 
 Q_SIGNALS:

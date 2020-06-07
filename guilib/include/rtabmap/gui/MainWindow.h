@@ -246,7 +246,7 @@ Q_SIGNALS:
 	void timeLimitChanged(float);
 	void mappingModeChanged(bool);
 	void noMoreImagesReceived();
-	void loopClosureThrChanged(float);
+	void loopClosureThrChanged(qreal);
 	void twistReceived(float x, float y, float z, float roll, float pitch, float yaw, int row, int col);
 
 private:

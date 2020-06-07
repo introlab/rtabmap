@@ -4576,8 +4576,8 @@ void PreferencesDialog::updatePredictionPlot()
 				_ui->lineEdit_bayes_predictionLC->text().toStdString().c_str());
 		return;
 	}
-	QVector<float> dataX((values.size()-2)*2 + 1);
-	QVector<float> dataY((values.size()-2)*2 + 1);
+	QVector<qreal> dataX((values.size()-2)*2 + 1);
+	QVector<qreal> dataY((values.size()-2)*2 + 1);
 	double value;
 	double sum = 0;
 	int lvl = 1;
