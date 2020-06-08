@@ -34,6 +34,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "rtabmap/core/EpipolarGeometry.h"
 
+#include "rtabmap/core/DBDriver.h"
 #include "rtabmap/core/Memory.h"
 #include "rtabmap/core/VWDictionary.h"
 #include "rtabmap/core/BayesFilter.h"
@@ -286,15 +287,9 @@ void Rtabmap::flushStatisticLogs()
 	}
 }
 
-void Rtabmap::init(const ParametersMap & parameters, const std::string & databasePath)
+void Rtabmap::init(const ParametersMap & parameters, const std::string & databasePath, bool loadDatabaseParameters)
 {
 	UDEBUG("path=%s", databasePath.c_str());
-	ParametersMap::const_iterator iter;
-	if((iter=parameters.find(Parameters::kRtabmapWorkingDirectory())) != parameters.end())
-	{
-		this->setWorkingDirectory(iter->second.c_str());
-	}
-
 	_databasePath = databasePath;
 	if(!_databasePath.empty())
 	{
@@ -308,15 +303,35 @@ void Rtabmap::init(const ParametersMap & parameters, const std::string & databas
 
 	bool newDatabase = _databasePath.empty() || !UFile::exists(_databasePath);
 
-	// If not exist, create a memory
+	ParametersMap allParameters;
+	if(!newDatabase && loadDatabaseParameters)
+	{
+		DBDriver * driver = DBDriver::create();
+		if(driver->openConnection(_databasePath, false))
+		{
+			allParameters = driver->getLastParameters();
+			// ignore working directory (we may be on a different computer)
+			allParameters.erase(Parameters::kRtabmapWorkingDirectory());
+		}
+		delete driver;
+	}
+
+	uInsert(allParameters, parameters);
+	ParametersMap::const_iterator iter;
+	if((iter=allParameters.find(Parameters::kRtabmapWorkingDirectory())) != allParameters.end())
+	{
+		this->setWorkingDirectory(iter->second.c_str());
+	}
+
+	// If doesn't exist, create a memory
 	if(!_memory)
 	{
-		_memory = new Memory(parameters);
-		_memory->init(_databasePath, false, parameters, true);
+		_memory = new Memory(allParameters);
+		_memory->init(_databasePath, false, allParameters, true);
 	}
 
 	// Parse all parameters
-	this->parseParameters(parameters);
+	this->parseParameters(allParameters);
 
 	Transform lastPose;
 	_optimizedPoses = _memory->loadOptimizedPoses(&lastPose);
@@ -347,7 +362,7 @@ void Rtabmap::init(const ParametersMap & parameters, const std::string & databas
 	setupLogFiles(newDatabase);
 }
 
-void Rtabmap::init(const std::string & configFile, const std::string & databasePath)
+void Rtabmap::init(const std::string & configFile, const std::string & databasePath, bool loadDatabaseParameters)
 {
 	// fill ctrl struct with values from the configuration file
 	ParametersMap param;// = Parameters::defaultParameters;
@@ -358,7 +373,7 @@ void Rtabmap::init(const std::string & configFile, const std::string & databaseP
 		Parameters::readINI(configFile, param);
 	}
 
-	this->init(param, databasePath);
+	this->init(param, databasePath, loadDatabaseParameters);
 }
 
 void Rtabmap::close(bool databaseSaved, const std::string & ouputDatabasePath)

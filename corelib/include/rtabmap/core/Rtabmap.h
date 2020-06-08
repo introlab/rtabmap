@@ -86,8 +86,32 @@ public:
 			const cv::Mat & image,
 			int id=0, const std::map<std::string, float> & externalStats = std::map<std::string, float>());
 
-	void init(const ParametersMap & parameters, const std::string & databasePath = "");
-	void init(const std::string & configFile = "", const std::string & databasePath = "");
+	/**
+	 * Initialize Rtabmap with parameters and a database
+	 * @param parameters Parameters overriding default parameters and database parameters
+	 *                   (@see loadDatabaseParameters)
+	 * @param databasePath The database input/output path. If not set, an
+	 *                     empty database is used in RAM. If set and the file doesn't exist,
+	 *                     it will be created empty. If the database exists, nodes and
+	 *                     vocabulary will be loaded in working memory.
+	 * @param loadDatabaseParameters If an existing database is used (@see databasePath),
+	 *                               the parameters inside are loaded and set to current
+	 *                               Rtabmap instance.
+	 */
+	void init(const ParametersMap & parameters, const std::string & databasePath = "", bool loadDatabaseParameters = false);
+	/**
+	 * Initialize Rtabmap with parameters from a configuration file and a database
+	 * @param configFile Configuration file (*.ini) overriding default parameters and database parameters
+	 *                   (@see loadDatabaseParameters)
+	 * @param databasePath The database input/output path. If not set, an
+	 *                     empty database is used in RAM. If set and the file doesn't exist,
+	 *                     it will be created empty. If the database exists, nodes and
+	 *                     vocabulary will be loaded in working memory.
+	 * @param loadDatabaseParameters If an existing database is used (@see databasePath),
+	 *                               the parameters inside are loaded and set to current
+	 *                               Rtabmap instance.
+	 */
+	void init(const std::string & configFile = "", const std::string & databasePath = "", bool loadDatabaseParameters = false);
 
 	/**
 	 * Close rtabmap. This will delete rtabmap object if set.
