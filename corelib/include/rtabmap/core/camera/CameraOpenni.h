@@ -66,7 +66,7 @@ public:
 	// default local transform z in, x right, y down));
 	CameraOpenni(const std::string & deviceId="",
 			float imageRate = 0,
-			const Transform & localTransform = Transform::getIdentity());
+			const Transform & localTransform = CameraModel::opticalRotation());
 	virtual ~CameraOpenni();
 #ifdef RTABMAP_OPENNI
 #if PCL_VERSION_COMPARE(>=, 1, 10, 0)

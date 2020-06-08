@@ -50,10 +50,10 @@ public:
 public:
 	CameraK4A(int deviceId = 0,
 		float imageRate = 0.0f,
-		const Transform & localTransform = Transform::getIdentity());
+		const Transform & localTransform = CameraModel::opticalRotation());
 	CameraK4A(const std::string & fileName,
 		float imageRate = 0.0f,
-		const Transform & localTransform = Transform::getIdentity());
+		const Transform & localTransform = CameraModel::opticalRotation());
 	virtual ~CameraK4A();
 
 	virtual bool init(const std::string & calibrationFolder = ".", const std::string & cameraName = "");

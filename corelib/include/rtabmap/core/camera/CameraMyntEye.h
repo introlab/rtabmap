@@ -52,7 +52,7 @@ public:
 	static bool available();
 
 public:
-	CameraMyntEye(const std::string & device = "", bool apiRectification = false, bool apiDepth = false, float imageRate = 0, const Transform & localTransform = Transform::getIdentity());
+	CameraMyntEye(const std::string & device = "", bool apiRectification = false, bool apiDepth = false, float imageRate = 0, const Transform & localTransform = CameraModel::opticalRotation());
 	virtual ~CameraMyntEye();
 
 	virtual bool init(const std::string & calibrationFolder = ".", const std::string & cameraName = "");

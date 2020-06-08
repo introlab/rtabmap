@@ -38,6 +38,13 @@ namespace rtabmap {
 class RTABMAP_EXP CameraModel
 {
 public:
+	/**
+	 * Optical rotation used to transform image coordinate frame (x->right, y->down, z->forward)
+	 * to robot coordinate frame (x->forward, y->left, z->up).
+	 */
+	static Transform opticalRotation() {return Transform(0,0,1,0, -1,0,0,0, 0,-1,0,0);}
+
+public:
 	CameraModel();
 	// K is the camera intrinsic 3x3 CV_64FC1
 	// D is the distortion coefficients 1x5 CV_64FC1
@@ -50,7 +57,7 @@ public:
 			const cv::Mat & D,
 			const cv::Mat & R,
 			const cv::Mat & P,
-			const Transform & localTransform = Transform(0,0,1,0, -1,0,0,0, 0,-1,0,0));
+			const Transform & localTransform = opticalRotation());
 
 	// minimal
 	CameraModel(
@@ -58,7 +65,7 @@ public:
 			double fy,
 			double cx,
 			double cy,
-			const Transform & localTransform = Transform(0,0,1,0, -1,0,0,0, 0,-1,0,0),
+			const Transform & localTransform = opticalRotation(),
 			double Tx = 0.0f,
 			const cv::Size & imageSize = cv::Size(0,0));
 	// minimal to be saved
@@ -68,7 +75,7 @@ public:
 			double fy,
 			double cx,
 			double cy,
-			const Transform & localTransform = Transform(0,0,1,0, -1,0,0,0, 0,-1,0,0),
+			const Transform & localTransform = opticalRotation(),
 			double Tx = 0.0f,
 			const cv::Size & imageSize = cv::Size(0,0));
 
@@ -113,9 +120,12 @@ public:
 	int imageWidth() const {return imageSize_.width;}
 	int imageHeight() const {return imageSize_.height;}
 
-	double fovX() const {return imageSize_.width>0 && fx()>0?2.0*atan(imageSize_.width/(fx()*2.0)):0.0;}
-	double fovY() const {return imageSize_.height>0 && fy()>0?2.0*atan(imageSize_.height/(fy()*2.0)):0.0;}
+	double fovX() const; // in radians
+	double fovY() const; // in radians
+	double horizontalFOV() const; // in degrees
+	double verticalFOV() const;   // in degrees
 
+	bool load(const std::string & filePath);
 	bool load(const std::string & directory, const std::string & cameraName);
 	bool save(const std::string & directory) const;
 	std::vector<unsigned char> serialize() const;
@@ -124,9 +134,6 @@ public:
 
 	CameraModel scaled(double scale) const;
 	CameraModel roi(const cv::Rect & roi) const;
-
-	double horizontalFOV() const; // in degrees
-	double verticalFOV() const;   // in degrees
 
 	// For depth images, your should use cv::INTER_NEAREST
 	cv::Mat rectifyImage(const cv::Mat & raw, int interpolation = cv::INTER_LINEAR) const;

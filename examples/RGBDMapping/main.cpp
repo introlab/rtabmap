@@ -77,7 +77,6 @@ int main(int argc, char * argv[])
 	// Create the OpenNI camera, it will send a CameraEvent at the rate specified.
 	// Set transform to camera so z is up, y is left and x going forward
 	Camera * camera = 0;
-	Transform opticalRotation(0,0,1,0, -1,0,0,0, 0,-1,0,0);
 	if(driver == 1)
 	{
 		if(!CameraOpenNI2::available())
@@ -85,7 +84,7 @@ int main(int argc, char * argv[])
 			UERROR("Not built with OpenNI2 support...");
 			exit(-1);
 		}
-		camera = new CameraOpenNI2("", CameraOpenNI2::kTypeColorDepth, 0, opticalRotation);
+		camera = new CameraOpenNI2();
 	}
 	else if(driver == 2)
 	{
@@ -94,7 +93,7 @@ int main(int argc, char * argv[])
 			UERROR("Not built with Freenect support...");
 			exit(-1);
 		}
-		camera = new CameraFreenect(0, CameraFreenect::kTypeColorDepth, 0, opticalRotation);
+		camera = new CameraFreenect();
 	}
 	else if(driver == 3)
 	{
@@ -103,7 +102,7 @@ int main(int argc, char * argv[])
 			UERROR("Not built with OpenNI from OpenCV support...");
 			exit(-1);
 		}
-		camera = new CameraOpenNICV(false, 0, opticalRotation);
+		camera = new CameraOpenNICV();
 	}
 	else if(driver == 4)
 	{
@@ -112,7 +111,7 @@ int main(int argc, char * argv[])
 			UERROR("Not built with OpenNI from OpenCV support...");
 			exit(-1);
 		}
-		camera = new CameraOpenNICV(true, 0, opticalRotation);
+		camera = new CameraOpenNICV(true);
 	}
 	else if (driver == 5)
 	{
@@ -121,7 +120,7 @@ int main(int argc, char * argv[])
 			UERROR("Not built with Freenect2 support...");
 			exit(-1);
 		}
-		camera = new CameraFreenect2(0, CameraFreenect2::kTypeColor2DepthSD, 0, opticalRotation);
+		camera = new CameraFreenect2(0, CameraFreenect2::kTypeColor2DepthSD);
 	}
 	else if (driver == 6)
 	{
@@ -130,7 +129,7 @@ int main(int argc, char * argv[])
 			UERROR("Not built with ZED SDK support...");
 			exit(-1);
 		}
-		camera = new CameraStereoZed(0, 2, 1, 1, 100, false, 0, opticalRotation);
+		camera = new CameraStereoZed(0, 2, 1, 1, 100, false);
 	}
 	else if (driver == 7)
 	{
@@ -139,7 +138,7 @@ int main(int argc, char * argv[])
 			UERROR("Not built with RealSense support...");
 			exit(-1);
 		}
-		camera = new CameraRealSense(0, 0, 0, false, 0, opticalRotation);
+		camera = new CameraRealSense();
 	}
 	else if (driver == 8)
 	{
@@ -148,11 +147,11 @@ int main(int argc, char * argv[])
 			UERROR("Not built with RealSense2 support...");
 			exit(-1);
 		}
-		camera = new CameraRealSense2("", 0, opticalRotation);
+		camera = new CameraRealSense2();
 	}
 	else
 	{
-		camera = new rtabmap::CameraOpenni("", 0, opticalRotation);
+		camera = new rtabmap::CameraOpenni();
 	}
 
 	if(!camera->init())

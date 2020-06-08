@@ -303,7 +303,7 @@ int main(int argc, char * argv[])
 			UERROR("Not built with Kinect for Azure SDK support...");
 			exit(-1);
 		}
-		camera = new rtabmap::CameraK4A(1, 0, rtabmap::Transform::getIdentity());
+		camera = new rtabmap::CameraK4A(1);
 	}
 	else if (driver == 13)
 	{
@@ -347,9 +347,6 @@ int main(int argc, char * argv[])
 	{
 		viewer = new pcl::visualization::CloudViewer("cloud");
 	}
-	rtabmap::Transform t(1, 0, 0, 0,
-						 0, -1, 0, 0,
-						 0, 0, -1, 0);
 
 	cv::VideoWriter videoWriter;
 	UDirectory dir;
@@ -418,7 +415,7 @@ int main(int argc, char * argv[])
 				pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = rtabmap::util3d::cloudFromDepthRGB(
 						rgb, depth,
 						data.cameraModels()[0]);
-				cloud = rtabmap::util3d::transformPointCloud(cloud, t);
+				cloud = rtabmap::util3d::transformPointCloud(cloud, rtabmap::Transform::opengl_T_rtabmap()*data.cameraModels()[0].localTransform());
 				if(viewer)
 					viewer->showCloud(cloud, "cloud");
 			}
@@ -429,7 +426,7 @@ int main(int argc, char * argv[])
 				pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = rtabmap::util3d::cloudFromDepth(
 						depth,
 						data.cameraModels()[0]);
-				cloud = rtabmap::util3d::transformPointCloud(cloud, t);
+				cloud = rtabmap::util3d::transformPointCloud(cloud, rtabmap::Transform::opengl_T_rtabmap()*data.cameraModels()[0].localTransform());
 				viewer->showCloud(cloud, "cloud");
 			}
 
@@ -457,7 +454,7 @@ int main(int argc, char * argv[])
 				pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = rtabmap::util3d::cloudFromStereoImages(
 						rgb, right,
 						data.stereoCameraModel());
-				cloud = rtabmap::util3d::transformPointCloud(cloud, t);
+				cloud = rtabmap::util3d::transformPointCloud(cloud, rtabmap::Transform::opengl_T_rtabmap()*data.stereoCameraModel().localTransform());
 				if(viewer)
 					viewer->showCloud(cloud, "cloud");
 			}

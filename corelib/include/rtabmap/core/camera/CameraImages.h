@@ -46,7 +46,7 @@ public:
 	CameraImages(
 			const std::string & path,
 			float imageRate = 0,
-			const Transform & localTransform = Transform::getIdentity());
+			const Transform & localTransform = CameraModel::opticalRotation());
 	virtual ~CameraImages();
 
 	virtual bool init(const std::string & calibrationFolder = ".", const std::string & cameraName = "");
