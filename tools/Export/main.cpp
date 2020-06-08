@@ -169,7 +169,7 @@ int main(int argc, char * argv[])
 #ifdef RTABMAP_ALICE_VISION
 			multiband = true;
 #else
-			printf("\"--multiband\" option cannot be used vecause RTAB-Map is not built with AliceVision support. Ignoring multiband...\n");
+			printf("\"--multiband\" option cannot be used because RTAB-Map is not built with AliceVision support. Ignoring multiband...\n");
 #endif
 		}
 		else if(std::strcmp(argv[i], "--poisson_depth") == 0)

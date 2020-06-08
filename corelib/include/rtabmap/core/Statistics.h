@@ -61,6 +61,7 @@ class RTABMAP_EXP Statistics
 	RTABMAP_STATS(Loop, Reactivate_id,);
 	RTABMAP_STATS(Loop, Hypothesis_ratio,);
 	RTABMAP_STATS(Loop, Hypothesis_reactivated,);
+	RTABMAP_STATS(Loop, Map_id,);
 	RTABMAP_STATS(Loop, Visual_words,);
 	RTABMAP_STATS(Loop, Visual_inliers,);
 	RTABMAP_STATS(Loop, Visual_matches,);

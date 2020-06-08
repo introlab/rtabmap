@@ -415,7 +415,6 @@ void CloudViewer::saveSettings(QSettings & settings, const QString & group) cons
 	settings.setValue("camera_target_follow", this->isCameraTargetFollow());
 	settings.setValue("camera_free", this->isCameraFree());
 	settings.setValue("camera_lockZ", this->isCameraLockZ());
-	settings.setValue("camera_ortho", this->isCameraOrtho());
 
 	settings.setValue("bg_color", this->getDefaultBackgroundColor());
 	settings.setValue("rendering_rate", this->getRenderingRate());
@@ -468,7 +467,6 @@ void CloudViewer::loadSettings(QSettings & settings, const QString & group)
 		this->setCameraFree();
 	}
 	this->setCameraLockZ(settings.value("camera_lockZ", this->isCameraLockZ()).toBool());
-	this->setCameraOrtho(settings.value("camera_ortho", this->isCameraOrtho()).toBool());
 
 	this->setDefaultBackgroundColor(settings.value("bg_color", this->getDefaultBackgroundColor()).value<QColor>());
 	

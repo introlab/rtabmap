@@ -399,10 +399,7 @@ int main(int argc, char * argv[])
 					showLocalizationStats();
 					lastLocalizationOdomPose = info.odomPose;
 				}
-				if(incrementalMemory)
-				{
-					rtabmap.triggerNewMap();
-				}
+				rtabmap.triggerNewMap();
 			}
 			UTimer t;
 			if(!rtabmap.process(data, info.odomPose, info.odomCovariance, info.odomVelocity, globalMapStats))
