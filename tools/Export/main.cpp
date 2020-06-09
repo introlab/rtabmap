@@ -487,7 +487,7 @@ int main(int argc, char * argv[])
 							textureMesh->tex_materials[i].tex_file += ".jpg";
 							printf("Saving texture to %s.\n", textureMesh->tex_materials[i].tex_file.c_str());
 							UASSERT(textures.cols % textures.rows == 0);
-							success = cv::imwrite(textureMesh->tex_materials[i].tex_file, cv::Mat(textures, cv::Range::all(), cv::Range(textures.rows*i, textures.rows*(i+1))));
+							success = cv::imwrite(outputDirectory+"/"+textureMesh->tex_materials[i].tex_file, cv::Mat(textures, cv::Range::all(), cv::Range(textures.rows*i, textures.rows*(i+1))));
 							if(!success)
 							{
 								UERROR("Failed saving %s!", textureMesh->tex_materials[i].tex_file.c_str());
