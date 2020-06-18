@@ -145,6 +145,7 @@ Rtabmap::Rtabmap() :
 	_mapCorrection(Transform::getIdentity()),
 	_lastLocalizationNodeId(0),
 	_currentSessionHasGPS(false),
+	_odomCorrectionAcc(6,0),
 	_pathStatus(0),
 	_pathCurrentIndex(0),
 	_pathGoalIndex(0),
@@ -390,6 +391,7 @@ void Rtabmap::close(bool databaseSaved, const std::string & ouputDatabasePath)
 	_lastLocalizationNodeId = 0;
 	_odomCachePoses.clear();
 	_odomCacheConstraints.clear();
+	_odomCorrectionAcc = std::vector<float>(6,0);
 	_distanceTravelled = 0.0f;
 	_optimizeFromGraphEndChanged = false;
 	this->clearPath(0);
@@ -722,6 +724,7 @@ void Rtabmap::setInitialPose(const Transform & initialPose)
 			_lastLocalizationNodeId = 0;
 			_odomCachePoses.clear();
 			_odomCacheConstraints.clear();
+			_odomCorrectionAcc = std::vector<float>(6,0);
 			_mapCorrection.setIdentity();
 			_mapCorrectionBackup.setNull();
 
@@ -747,6 +750,7 @@ int Rtabmap::triggerNewMap()
 		_lastLocalizationNodeId = 0;
 		_odomCachePoses.clear();
 		_odomCacheConstraints.clear();
+		_odomCorrectionAcc = std::vector<float>(6,0);
 
 		if(!_memory->isIncremental())
 		{
@@ -911,6 +915,7 @@ void Rtabmap::resetMemory()
 	_lastLocalizationNodeId = 0;
 	_odomCachePoses.clear();
 	_odomCacheConstraints.clear();
+	_odomCorrectionAcc = std::vector<float>(6,0);
 	_distanceTravelled = 0.0f;
 	_optimizeFromGraphEndChanged = false;
 	this->clearPath(0);
@@ -3154,6 +3159,9 @@ bool Rtabmap::process(
 			statistics_.addStatistic(Statistics::kProximitySpace_last_detection_id(), lastProximitySpaceClosureId);
 			statistics_.setProximityDetectionId(lastProximitySpaceClosureId);
 			statistics_.setProximityDetectionMapId(_memory->getMapId(lastProximitySpaceClosureId));
+
+			statistics_.addStatistic(Statistics::kLoopId(), _loopClosureHypothesis.first>0?_loopClosureHypothesis.first:lastProximitySpaceClosureId);
+
 			float x,y,z,roll,pitch,yaw;
 			if(_loopClosureHypothesis.first || lastProximitySpaceClosureId)
 			{
@@ -3199,6 +3207,30 @@ bool Rtabmap::process(
 					statistics_.addStatistic(Statistics::kLoopOdom_correction_roll(),  roll*180.0f/M_PI);
 					statistics_.addStatistic(Statistics::kLoopOdom_correction_pitch(),  pitch*180.0f/M_PI);
 					statistics_.addStatistic(Statistics::kLoopOdom_correction_yaw(), yaw*180.0f/M_PI);
+
+					_odomCorrectionAcc[0]+=x;
+					_odomCorrectionAcc[1]+=y;
+					_odomCorrectionAcc[2]+=z;
+					_odomCorrectionAcc[3]+=roll;
+					_odomCorrectionAcc[4]+=pitch;
+					_odomCorrectionAcc[5]+=yaw;
+					Transform odomCorrectionAcc(
+							_odomCorrectionAcc[0],
+							_odomCorrectionAcc[1],
+							_odomCorrectionAcc[2],
+							_odomCorrectionAcc[3],
+							_odomCorrectionAcc[4],
+							_odomCorrectionAcc[5]);
+
+					statistics_.addStatistic(Statistics::kLoopOdom_correction_acc_norm(), odomCorrectionAcc.getNorm());
+					statistics_.addStatistic(Statistics::kLoopOdom_correction_acc_angle(), odomCorrectionAcc.getAngle()*180.0f/M_PI);
+					odomCorrectionAcc.getTranslationAndEulerAngles(x, y, z, roll, pitch, yaw);
+					statistics_.addStatistic(Statistics::kLoopOdom_correction_acc_x(), x);
+					statistics_.addStatistic(Statistics::kLoopOdom_correction_acc_y(), y);
+					statistics_.addStatistic(Statistics::kLoopOdom_correction_acc_z(), z);
+					statistics_.addStatistic(Statistics::kLoopOdom_correction_acc_roll(),  roll*180.0f/M_PI);
+					statistics_.addStatistic(Statistics::kLoopOdom_correction_acc_pitch(),  pitch*180.0f/M_PI);
+					statistics_.addStatistic(Statistics::kLoopOdom_correction_acc_yaw(), yaw*180.0f/M_PI);
 				}
 			}
 			if(!_lastLocalizationPose.isNull() && !_lastLocalizationPose.isIdentity())
@@ -3216,7 +3248,6 @@ bool Rtabmap::process(
 			statistics_.setMapCorrection(_mapCorrection);
 			UINFO("Set map correction = %s", _mapCorrection.prettyPrint().c_str());
 			statistics_.setLocalizationCovariance(localizationCovariance);
-			statistics_.setProximityDetectionId(lastProximitySpaceClosureId);
 
 			// timings...
 			statistics_.addStatistic(Statistics::kTimingMemory_update(), timeMemoryUpdate*1000);

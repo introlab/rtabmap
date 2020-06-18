@@ -52,6 +52,7 @@ namespace rtabmap {
 
 class RTABMAP_EXP Statistics
 {
+	RTABMAP_STATS(Loop, Id,); // Combined loop or proximity detection
 	RTABMAP_STATS(Loop, RejectedHypothesis,);
 	RTABMAP_STATS(Loop, Accepted_hypothesis_id,);
 	RTABMAP_STATS(Loop, Suppressed_hypothesis_id,);
@@ -85,6 +86,15 @@ class RTABMAP_EXP Statistics
 	RTABMAP_STATS(Loop, Odom_correction_roll, deg);
 	RTABMAP_STATS(Loop, Odom_correction_pitch, deg);
 	RTABMAP_STATS(Loop, Odom_correction_yaw, deg);
+	//Odom correction
+	RTABMAP_STATS(Loop, Odom_correction_acc_norm, m);
+	RTABMAP_STATS(Loop, Odom_correction_acc_angle, deg);
+	RTABMAP_STATS(Loop, Odom_correction_acc_x, m);
+	RTABMAP_STATS(Loop, Odom_correction_acc_y, m);
+	RTABMAP_STATS(Loop, Odom_correction_acc_z, m);
+	RTABMAP_STATS(Loop, Odom_correction_acc_roll, deg);
+	RTABMAP_STATS(Loop, Odom_correction_acc_pitch, deg);
+	RTABMAP_STATS(Loop, Odom_correction_acc_yaw, deg);
 	// Map to Odom
 	RTABMAP_STATS(Loop, MapToOdom_norm, m);
 	RTABMAP_STATS(Loop, MapToOdom_angle, deg);
