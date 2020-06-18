@@ -1431,7 +1431,11 @@ bool CloudViewer::addTextureMesh (
   (*_visualizer->getCloudActorMap())[id].viewpoint_transformation_ = transformation;
 #endif
 
+#if VTK_MAJOR_VERSION >= 7
+  actor->GetProperty()->SetAmbient(0.1);
+#else
   actor->GetProperty()->SetAmbient(0.5);
+#endif
   actor->GetProperty()->SetLighting(_aSetLighting->isChecked());
   actor->GetProperty()->SetInterpolation(_aSetFlatShading->isChecked()?VTK_FLAT:VTK_PHONG);
   actor->GetProperty()->SetEdgeVisibility(_aSetEdgeVisibility->isChecked());
