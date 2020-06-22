@@ -90,6 +90,7 @@ private:
 	bool ir_;
 	double previousStamp_;
 	UTimer timer_;
+	Transform imuLocalTransform_;
 #endif
 
 };

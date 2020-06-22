@@ -1555,7 +1555,7 @@
   </action>
   <action name="actionKinect_for_Azure">
    <property name="checkable">
-    <bool>false</bool>
+    <bool>true</bool>
    </property>
    <property name="text">
     <string>Kinect for Azure</string>
