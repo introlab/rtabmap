@@ -6922,10 +6922,14 @@ void DatabaseViewer::refineConstraint(int from, int to, bool silent)
 		}
 
 		Transform toPoseInv = filteredScanPoses.at(currentLink.to()).inverse();
-		LaserScan fromScan;
 		dbDriver_->loadNodeData(fromS, !silent, true, !silent, !silent);
 		fromS->sensorData().uncompressData();
+		LaserScan fromScan = fromS->sensorData().laserScanRaw();
 		int maxPoints = fromScan.size();
+		if(maxPoints == 0)
+		{
+			UWARN("From scan %d is empty!", fromS->id());
+		}
 		pcl::PointCloud<pcl::PointXYZ>::Ptr assembledToClouds(new pcl::PointCloud<pcl::PointXYZ>);
 		pcl::PointCloud<pcl::PointNormal>::Ptr assembledToNormalClouds(new pcl::PointCloud<pcl::PointNormal>);
 		pcl::PointCloud<pcl::PointXYZI>::Ptr assembledToIClouds(new pcl::PointCloud<pcl::PointXYZI>);
@@ -6974,6 +6978,10 @@ void DatabaseViewer::refineConstraint(int from, int to, bool silent)
 							maxPoints = scan.size();
 						}
 					}
+					else
+					{
+						UWARN("scan format of %d is not the same than from scan %d: %d vs %d", data.id(), fromS->id(), scan.format(), fromScan.format());
+					}
 				}
 				else
 				{
@@ -6998,6 +7006,10 @@ void DatabaseViewer::refineConstraint(int from, int to, bool silent)
 		else if(assembledToIClouds->size())
 		{
 			assembledScan = fromScan.is2d()?util3d::laserScan2dFromPointCloud(*assembledToIClouds):util3d::laserScanFromPointCloud(*assembledToIClouds);
+		}
+		else
+		{
+			UWARN("Assembled scan is empty!");
 		}
 		SensorData assembledData;
 		// scans are in base frame but for 2d scans, set the height so that correspondences matching works
