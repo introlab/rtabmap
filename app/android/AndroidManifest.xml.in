@@ -57,7 +57,7 @@
             android:excludeFromRecents="true"
             android:exported="false"
             android:launchMode="singleTop"
-            android:theme="@android:style/Theme.Material.Light.Dialog.Alert" />
+            android:theme="@style/ThemeApp" />
             
         <provider
             android:name="android.support.v4.content.FileProvider"
