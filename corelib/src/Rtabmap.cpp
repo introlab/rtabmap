@@ -5043,7 +5043,7 @@ bool Rtabmap::addLink(const Link & link)
 		}
 		if(_optimizedPoses.find(oldestId) == _optimizedPoses.end())
 		{
-			UERROR("Link's id %d is not in the optimized graph", oldestId);
+			UERROR("Link's id %d is not in the optimized graph (_optimizedPoses=%d)", oldestId, (int)_optimizedPoses.size());
 			return false;
 		}
 		if(_optimizeFromGraphEnd)
@@ -5080,7 +5080,7 @@ bool Rtabmap::addLink(const Link & link)
 		{
 			_lastLocalizationPose = _optimizedPoses.at(link.to()) * link.transform().inverse();
 		}
-		UERROR("Set _lastLocalizationPose=%s", _lastLocalizationPose.prettyPrint().c_str());
+		UINFO("Set _lastLocalizationPose=%s", _lastLocalizationPose.prettyPrint().c_str());
 		if(_graphOptimizer->isSlam2d())
 		{
 			// transform constraint to 2D
