@@ -180,7 +180,7 @@ public:
 	void rejectLastLoopClosure();
 	void deleteLastLocation();
 	void setOptimizedPoses(const std::map<int, Transform> & poses);
-	Signature getSignatureCopy(int id, bool images, bool scan, bool userData, bool occupancyGrid) const;
+	Signature getSignatureCopy(int id, bool images, bool scan, bool userData, bool occupancyGrid, bool withWords, bool withGlobalDescriptors) const;
 	RTABMAP_DEPRECATED(
 		void get3DMap(std::map<int, Signature> & signatures,
 				std::map<int, Transform> & poses,
@@ -195,7 +195,9 @@ public:
 			bool withImages = false,
 			bool withScan = false,
 			bool withUserData = false,
-			bool withGrid = false) const;
+			bool withGrid = false,
+			bool withWords = true,
+			bool withGlobalDescriptors = true) const;
 	int detectMoreLoopClosures(
 			float clusterRadius = 0.5f,
 			float clusterAngle = M_PI/6.0f,

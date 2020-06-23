@@ -4389,7 +4389,7 @@ void Rtabmap::dumpPrediction() const
 	}
 }
 
-Signature Rtabmap::getSignatureCopy(int id, bool images, bool scan, bool userData, bool occupancyGrid) const
+Signature Rtabmap::getSignatureCopy(int id, bool images, bool scan, bool userData, bool occupancyGrid, bool withWords, bool withGlobalDescriptors) const
 {
 	Signature s;
 	if(_memory)
@@ -4410,7 +4410,7 @@ Signature Rtabmap::getSignatureCopy(int id, bool images, bool scan, bool userDat
 		{
 			data = _memory->getNodeData(id, images, scan, userData, occupancyGrid);
 		}
-		if(!images)
+		if(!images && withWords)
 		{
 			std::vector<CameraModel> models;
 			StereoCameraModel stereoModel;
@@ -4418,23 +4418,34 @@ Signature Rtabmap::getSignatureCopy(int id, bool images, bool scan, bool userDat
 			data.setCameraModels(models);
 			data.setStereoCameraModel(stereoModel);
 		}
-		std::multimap<int, cv::KeyPoint> words;
-		std::multimap<int, cv::Point3f> words3;
-		std::multimap<int, cv::Mat> wordsDescriptors;
-		std::vector<rtabmap::GlobalDescriptor> globalDescriptors;
-		_memory->getNodeWordsAndGlobalDescriptors(id, words, words3, wordsDescriptors, globalDescriptors);
+
 		s=Signature(id,
-					mapId,
-					weight,
-					stamp,
-					label,
-					odomPoseLocal,
-					groundTruth,
-					data);
-		s.setWords(words);
-		s.setWords3(words3);
-		s.setWordsDescriptors(wordsDescriptors);
-		s.sensorData().setGlobalDescriptors(globalDescriptors);
+				mapId,
+				weight,
+				stamp,
+				label,
+				odomPoseLocal,
+				groundTruth,
+				data);
+
+		if(withWords || withGlobalDescriptors)
+		{
+			std::multimap<int, cv::KeyPoint> words;
+			std::multimap<int, cv::Point3f> words3;
+			std::multimap<int, cv::Mat> wordsDescriptors;
+			std::vector<rtabmap::GlobalDescriptor> globalDescriptors;
+			_memory->getNodeWordsAndGlobalDescriptors(id, words, words3, wordsDescriptors, globalDescriptors);
+			if(withWords)
+			{
+				s.setWords(words);
+				s.setWords3(words3);
+				s.setWordsDescriptors(wordsDescriptors);
+			}
+			if(withGlobalDescriptors)
+			{
+				s.sensorData().setGlobalDescriptors(globalDescriptors);
+			}
+		}
 		if(velocity.size()==6)
 		{
 			s.setVelocity(velocity[0], velocity[1], velocity[2], velocity[3], velocity[4], velocity[5]);
@@ -4465,7 +4476,9 @@ void Rtabmap::getGraph(
 		bool withImages,
 		bool withScan,
 		bool withUserData,
-		bool withGrid) const
+		bool withGrid,
+		bool withWords,
+		bool withGlobalDescriptors) const
 {
 	if(_memory && _memory->getLastWorkingSignature())
 	{
@@ -4506,7 +4519,7 @@ void Rtabmap::getGraph(
 
 			for(std::set<int>::iterator iter = ids.begin(); iter!=ids.end(); ++iter)
 			{
-				signatures->insert(std::make_pair(*iter, getSignatureCopy(*iter, withImages, withScan, withUserData, withGrid)));
+				signatures->insert(std::make_pair(*iter, getSignatureCopy(*iter, withImages, withScan, withUserData, withGrid, withWords, withGlobalDescriptors)));
 			}
 		}
 	}
