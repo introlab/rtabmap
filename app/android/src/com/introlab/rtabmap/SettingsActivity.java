@@ -361,7 +361,7 @@ public class SettingsActivity extends PreferenceActivity implements OnSharedPref
 		ed.commit(); //save it.
     }
     
-    @Override
+    
 	public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] results) {
 
 		switch (requestCode) {

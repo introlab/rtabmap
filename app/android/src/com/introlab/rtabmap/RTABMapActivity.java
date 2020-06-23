@@ -90,9 +90,9 @@ import android.widget.SeekBar.OnSeekBarChangeListener;
 import android.widget.Toast;
 import android.widget.ToggleButton;
 
-import com.google.ar.core.ArCoreApk;
+//import com.google.ar.core.ArCoreApk;
 import com.google.atap.tangoservice.Tango;
-import com.huawei.hiar.AREnginesApk;
+//import com.huawei.hiar.AREnginesApk;
 
 
 // The main activity of the application. This activity shows debug information
@@ -254,7 +254,7 @@ public class RTABMapActivity extends FragmentActivity implements OnClickListener
 
 	GestureDetector mGesDetect = null;
 
-	ARCoreSharedCamera mArCoreCamera = null;
+	//ARCoreSharedCamera mArCoreCamera = null;
 	int mCameraDriver = 0;
 
 	//Tango Service connection.
@@ -586,8 +586,8 @@ public class RTABMapActivity extends FragmentActivity implements OnClickListener
 		String cameraDriverStr = sharedPref.getString(getString(R.string.pref_key_camera_driver), getString(R.string.pref_default_camera_driver));
 		mCameraDriver = Integer.parseInt(cameraDriverStr);
 		
-		isArCoreAvailable();
-		isArEngineAvailable();
+		//isArCoreAvailable();
+		//isArEngineAvailable();
 	}
 	
 	// Should be called only if read/write permissions are granted!
@@ -613,7 +613,7 @@ public class RTABMapActivity extends FragmentActivity implements OnClickListener
 		Log.i(TAG, String.format("updateCameraDriverSettings() mCameraDriver=%d RTABMapLib.isBuiltWith(%d)=%d", mCameraDriver, mCameraDriver, RTABMapLib.isBuiltWith(nativeApplication, mCameraDriver)?1:0));
 		
 		SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
-		
+		/*
 		if(mCameraDriver == 0 && (!CheckTangoCoreVersion(MIN_TANGO_CORE_VERSION) || !RTABMapLib.isBuiltWith(nativeApplication, 0)))
 		{
 			if(mIsAREngineAvailable && RTABMapLib.isBuiltWith(nativeApplication, 2))
@@ -659,9 +659,9 @@ public class RTABMapActivity extends FragmentActivity implements OnClickListener
 				editor.putString(getString(R.string.pref_key_camera_driver), "3");
 				editor.commit();
 			}
-		}
+		}*/
 	}
-
+/*
 	private void isArCoreAvailable() {
 		ArCoreApk.Availability availability = ArCoreApk.getInstance().checkAvailability(this);
 		if (availability.isTransient()) {
@@ -713,7 +713,7 @@ public class RTABMapActivity extends FragmentActivity implements OnClickListener
 		}
 	}
 
-
+*/
 	@Override
 	public void onDestroy() {
 		super.onDestroy();
@@ -1199,7 +1199,7 @@ public class RTABMapActivity extends FragmentActivity implements OnClickListener
 					mToast.makeText(this, "Current camera driver selected is Tango, but Tango service binding failed. Abort scanning...", mToast.LENGTH_LONG).show();
 				}
 			}
-		}
+		}/*
 		else if(mCameraDriver == 1 || mCameraDriver == 2 || mCameraDriver == 3)
 		{
 			if((mCameraDriver == 1 || mCameraDriver == 3) && !mIsARCoreAvailable)
@@ -1281,7 +1281,7 @@ public class RTABMapActivity extends FragmentActivity implements OnClickListener
 				}
 			});
 			bindThread.start();
-		}
+		}*/
 		else
 		{
 			mToast.makeText(this, "Supported camera driver not found! Cannot start a new scan.", mToast.LENGTH_LONG).show();
@@ -2274,14 +2274,14 @@ public class RTABMapActivity extends FragmentActivity implements OnClickListener
 			}
 		}
 
-		if(mArCoreCamera != null)
+/*		if(mArCoreCamera != null)
 		{
 			synchronized (this) {
 				mRenderer.setCamera(null);
 				mArCoreCamera.close();
 				mArCoreCamera = null;
 			}
-		}
+		}*/
 
 		Thread stopThread = new Thread(new Runnable() {
 			public void run() {
