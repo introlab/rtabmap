@@ -690,6 +690,22 @@ void DBDriver::getNodeData(
 			 (!occupancyGrid || s->sensorData().gridCellSize() != 0.0f))))
 		{
 			data = (SensorData)s->sensorData();
+			if(!images)
+			{
+				data.setRGBDImage(cv::Mat(), cv::Mat(), std::vector<CameraModel>());
+			}
+			if(!scan)
+			{
+				data.setLaserScan(LaserScan());
+			}
+			if(!userData)
+			{
+				data.setUserData(cv::Mat());
+			}
+			if(!occupancyGrid)
+			{
+				data.setOccupancyGrid(cv::Mat(), cv::Mat(), cv::Mat(), 0, cv::Point3f());
+			}
 			found = true;
 		}
 	}

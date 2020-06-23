@@ -3847,6 +3847,22 @@ SensorData Memory::getNodeData(int locationId, bool images, bool scan, bool user
 			 (!occupancyGrid || s->sensorData().gridCellSize() != 0.0f))))
 	{
 		r = s->sensorData();
+		if(!images)
+		{
+			r.setRGBDImage(cv::Mat(), cv::Mat(), std::vector<CameraModel>());
+		}
+		if(!scan)
+		{
+			r.setLaserScan(LaserScan());
+		}
+		if(!userData)
+		{
+			r.setUserData(cv::Mat());
+		}
+		if(!occupancyGrid)
+		{
+			r.setOccupancyGrid(cv::Mat(), cv::Mat(), cv::Mat(), 0, cv::Point3f());
+		}
 	}
 	else if(_dbDriver)
 	{
