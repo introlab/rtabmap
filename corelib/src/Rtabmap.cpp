@@ -4903,145 +4903,129 @@ bool Rtabmap::addLink(const Link & link)
 			return false;
 		}
 
-		std::map<int, Transform> poses;
-		std::multimap<int, Link> links;
-		this->getGraph(poses, links, true, false);
-
-		if(_memory->isIncremental())
+		if(_optimizedPoses.find(link.from()) == _optimizedPoses.end() &&
+		   _optimizedPoses.find(link.to()) == _optimizedPoses.end())
 		{
-			if(poses.find(link.from()) == poses.end())
-			{
-				UERROR("Link's \"from id\" %d is not in the graph", link.from());
-				return false;
-			}
-			if(poses.find(link.to()) == poses.end())
-			{
-				UERROR("Link's \"to id\" %d is not in the graph", link.to());
-				return false;
-			}
+			UERROR("Neither nodes %d or %d are in the local graph (size=%d). One of the 2 nodes should be in the local graph.", (int)_optimizedPoses.size(), link.from(), link.to());
+			return false;
 		}
 
-		int from = link.from();
-		int to = link.to();
-
-		if(_optimizationMaxError > 0.0f)
+		// add temporary the link
+		if(!_memory->addLink(link))
 		{
-			//optimize the graph to see if the new constraint is globally valid
-			std::multimap<int, Link> linksIn = links;
-			linksIn.insert(std::make_pair(link.from(), link));
+			UERROR("Cannot add new link %d->%d to memory", link.from(), link.to());
+			return false;
+		}
+
+		// optimize with new link
+		std::map<int, Transform> poses = _optimizedPoses;
+		std::multimap<int, Link> links;
+		cv::Mat covariance;
+		optimizeCurrentMap(this->getLastLocationId(), false, poses, covariance, &links);
+
+		if(poses.find(link.from()) == poses.end())
+		{
+			UERROR("Link's \"from id\" %d is not in the graph (size=%d)", link.from(), (int)poses.size());
+			_memory->removeLink(link.from(), link.to());
+			return false;
+		}
+		if(poses.find(link.to()) == poses.end())
+		{
+			UERROR("Link's \"to id\" %d is not in the graph (size=%d)", link.to(), (int)poses.size());
+			_memory->removeLink(link.from(), link.to());
+			return false;
+		}
+
+		std::string msg;
+		if(poses.empty())
+		{
+			msg = uFormat("Rejecting edge %d->%d because graph optimization has failed!", link.from(), link.to());
+		}
+		else if(_optimizationMaxError > 0.0f)
+		{
+			float maxLinearError = 0.0f;
+			float maxLinearErrorRatio = 0.0f;
+			float maxAngularError = 0.0f;
+			float maxAngularErrorRatio = 0.0f;
 			const Link * maxLinearLink = 0;
 			const Link * maxAngularLink = 0;
-			float maxLinearError = 0.0f;
-			float maxAngularError = 0.0f;
-			float maxLinearErrorRatio = 0.0f;
-			float maxAngularErrorRatio = 0.0f;
-			std::map<int, Transform> optimizedPoses;
-			UASSERT_MSG(poses.find(from) != poses.end(), uFormat("id=%d poses=%d links=%d", from, (int)poses.size(), (int)links.size()).c_str());
-			UASSERT_MSG(poses.find(to) != poses.end(), uFormat("id=%d poses=%d links=%d", to, (int)poses.size(), (int)links.size()).c_str());
-			_graphOptimizer->getConnectedGraph(from, poses, linksIn, optimizedPoses, links);
-			UASSERT_MSG(optimizedPoses.find(from) != optimizedPoses.end(), uFormat("id=%d poses=%d links=%d", from, (int)optimizedPoses.size(), (int)links.size()).c_str());
-			UASSERT_MSG(optimizedPoses.find(to) != optimizedPoses.end(), uFormat("id=%d poses=%d links=%d", to, (int)optimizedPoses.size(), (int)links.size()).c_str());
-			UASSERT(graph::findLink(links, from, to) != links.end());
-			int fromId = _optimizeFromGraphEnd?poses.rbegin()->first:poses.begin()->first;
-			optimizedPoses = _graphOptimizer->optimize(fromId, optimizedPoses, links);
-			std::string msg;
-			if(optimizedPoses.size())
+
+			graph::computeMaxGraphErrors(
+					poses,
+					links,
+					maxLinearErrorRatio,
+					maxAngularErrorRatio,
+					maxLinearError,
+					maxAngularError,
+					&maxLinearLink,
+					&maxAngularLink);
+			if(maxLinearLink)
 			{
-				graph::computeMaxGraphErrors(
-						optimizedPoses,
-						links,
-						maxLinearErrorRatio,
-						maxAngularErrorRatio,
-						maxLinearError,
-						maxAngularError,
-						&maxLinearLink,
-						&maxAngularLink);
-				if(maxLinearLink)
+				UINFO("Max optimization linear error = %f m (link %d->%d)", maxLinearError, maxLinearLink->from(), maxLinearLink->to());
+				if(maxLinearErrorRatio > _optimizationMaxError)
 				{
-					UINFO("Max optimization linear error = %f m (link %d->%d)", maxLinearError, maxLinearLink->from(), maxLinearLink->to());
-					if(maxLinearErrorRatio > _optimizationMaxError)
-					{
-						msg = uFormat("Rejecting edge %d->%d because "
-								  "graph error is too large after optimization (%f m for edge %d->%d with ratio %f > std=%f m). "
-								  "\"%s\" is %f.",
-								  from,
-								  to,
-								  maxLinearError,
-								  maxLinearLink->from(),
-								  maxLinearLink->to(),
-								  maxLinearErrorRatio,
-								  sqrt(maxLinearLink->transVariance()),
-								  Parameters::kRGBDOptimizeMaxError().c_str(),
-								  _optimizationMaxError);
-					}
-				}
-				else if(maxAngularLink)
-				{
-					UINFO("Max optimization angular error = %f deg (link %d->%d)", maxAngularError*180.0f/M_PI, maxAngularLink->from(), maxAngularLink->to());
-					if(maxAngularErrorRatio > _optimizationMaxError)
-					{
-						msg = uFormat("Rejecting edge %d->%d because "
-								  "graph error is too large after optimization (%f deg for edge %d->%d with ratio %f > std=%f deg). "
-								  "\"%s\" is %f m.",
-								  from,
-								  to,
-								  maxAngularError*180.0f/M_PI,
-								  maxAngularLink->from(),
-								  maxAngularLink->to(),
-								  maxAngularErrorRatio,
-								  sqrt(maxAngularLink->rotVariance()),
-								  Parameters::kRGBDOptimizeMaxError().c_str(),
-								  _optimizationMaxError);
-					}
+					msg = uFormat("Rejecting edge %d->%d because "
+							  "graph error is too large after optimization (%f m for edge %d->%d with ratio %f > std=%f m). "
+							  "\"%s\" is %f.",
+							  link.from(),
+							  link.to(),
+							  maxLinearError,
+							  maxLinearLink->from(),
+							  maxLinearLink->to(),
+							  maxLinearErrorRatio,
+							  sqrt(maxLinearLink->transVariance()),
+							  Parameters::kRGBDOptimizeMaxError().c_str(),
+							  _optimizationMaxError);
 				}
 			}
-			else
+			else if(maxAngularLink)
 			{
-				msg = uFormat("Rejecting edge %d->%d because graph optimization has failed!",
-						  from,
-						  to);
-			}
-			if(!msg.empty())
-			{
-				UERROR("%s", msg.c_str());
-				return false;
+				UINFO("Max optimization angular error = %f deg (link %d->%d)", maxAngularError*180.0f/M_PI, maxAngularLink->from(), maxAngularLink->to());
+				if(maxAngularErrorRatio > _optimizationMaxError)
+				{
+					msg = uFormat("Rejecting edge %d->%d because "
+							  "graph error is too large after optimization (%f deg for edge %d->%d with ratio %f > std=%f deg). "
+							  "\"%s\" is %f m.",
+							  link.from(),
+							  link.to(),
+							  maxAngularError*180.0f/M_PI,
+							  maxAngularLink->from(),
+							  maxAngularLink->to(),
+							  maxAngularErrorRatio,
+							  sqrt(maxAngularLink->rotVariance()),
+							  Parameters::kRGBDOptimizeMaxError().c_str(),
+							  _optimizationMaxError);
+				}
 			}
 		}
-		else
+		if(!msg.empty())
 		{
-			int fromId = _optimizeFromGraphEnd?poses.rbegin()->first:poses.begin()->first;
-			poses = _graphOptimizer->optimize(fromId, poses, links, 0);
-			if(poses.empty())
-			{
-				UERROR("Rejecting edge %d->%d because graph optimization has failed!", from, to);
-				return false;
-			}
+			UERROR("%s", msg.c_str());
+			_memory->removeLink(link.from(), link.to());
+			return false;
 		}
 
-		if(_memory->addLink(link, false))
+		// Update optimized poses
+		for(std::map<int, Transform>::iterator iter=_optimizedPoses.begin(); iter!=_optimizedPoses.end(); ++iter)
 		{
-			// Update optimized poses
-			for(std::map<int, Transform>::iterator iter=_optimizedPoses.begin(); iter!=_optimizedPoses.end(); ++iter)
+			std::map<int, Transform>::iterator jter = poses.find(iter->first);
+			if(jter != poses.end())
 			{
-				std::map<int, Transform>::iterator jter = poses.find(iter->first);
-				if(jter != poses.end())
-				{
-					iter->second = jter->second;
-				}
+				iter->second = jter->second;
 			}
-			if(!_optimizeFromGraphEnd)
-			{
-				_mapCorrection = _optimizedPoses.rbegin()->second * _memory->getSignature(_optimizedPoses.rbegin()->first)->getPose().inverse();
-			}
-
-			std::map<int, Transform> tmp;
-			// Update also the links if some have been added in WM
-			_memory->getMetricConstraints(uKeysSet(_optimizedPoses), tmp, _constraints, false);
-			// This will force rtabmap_ros to regenerate the global occupancy grid if there was one
-			_memory->save2DMap(cv::Mat(), 0, 0, 0);
-
-			return true;
 		}
+		if(!_optimizeFromGraphEnd)
+		{
+			_mapCorrection = _optimizedPoses.rbegin()->second * _memory->getSignature(_optimizedPoses.rbegin()->first)->getPose().inverse();
+		}
+
+		std::map<int, Transform> tmp;
+		// Update also the links if some have been added in WM
+		_memory->getMetricConstraints(uKeysSet(_optimizedPoses), tmp, _constraints, false);
+		// This will force rtabmap_ros to regenerate the global occupancy grid if there was one
+		_memory->save2DMap(cv::Mat(), 0, 0, 0);
+
+		return true;
 	}
 	else // localization mode
 	{
