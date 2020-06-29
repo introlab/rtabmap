@@ -38,14 +38,13 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UEvent.h>
 #include <rtabmap/utilite/UTimer.h>
 #include <boost/thread/mutex.hpp>
+#include <background_renderer.h>
 
 #include <arcore_c_api.h>
-#ifdef DEPTH_TEST
 #include <camera/NdkCameraDevice.h>
 #include <camera/NdkCameraManager.h>
 #include <media/NdkImageReader.h>
 #include <android/native_window.h>
-#endif
 
 namespace rtabmap {
 
@@ -64,16 +63,22 @@ public:
 	CameraARCore(void* env, void* context, void* activity, bool smoothing = false);
 	virtual ~CameraARCore();
 
+	bool uvsInitialized() const {return uvs_initialized_;}
+	const float* uvsTransformed() const {return transformed_uvs_;}
+	void getVPMatrices(glm::mat4 & view, glm::mat4 & projection) const {view=viewMatrix_; projection=projectionMatrix_;}
+
+	virtual void setScreenRotationAndSize(ScreenRotation colorCameraToDisplayRotation, int width, int height);
+
 	virtual bool init(const std::string & calibrationFolder = ".", const std::string & cameraName = "");
+	void setupGL();
 	virtual void close(); // close Tango connection
 	virtual std::string getSerial() const;
+	GLuint getTextureId() const {return textureId_;}
 
-#ifdef DEPTH_TEST
 	void imageCallback(AImageReader *reader);
-#endif // DEPTH_TEST
 
 protected:
-	virtual SensorData captureImage(CameraInfo * info = 0);
+	virtual SensorData captureImage(CameraInfo * info = 0); // should be called in opengl thread
 	virtual void capturePoseOnly();
 
 private:
@@ -92,22 +97,10 @@ private:
 	GLuint textureId_;
 	UMutex arSessionMutex_;
 
-#ifdef DEPTH_TEST
-	// Camera variables
-	ACameraDevice* cameraDevice_ = nullptr;
-	ACaptureRequest* captureRequest_ = nullptr;
-	ACameraOutputTarget* cameraOutputTarget_ = nullptr;
-	ACaptureSessionOutput* sessionOutput_ = nullptr;
-	ACaptureSessionOutputContainer* captureSessionOutputContainer_ = nullptr;
-	ACameraCaptureSession* captureSession_ = nullptr;
-	ANativeWindow *outputNativeWindow_ = nullptr;
-
-	ACameraDevice_StateCallbacks deviceStateCallbacks_;
-	ACameraCaptureSession_stateCallbacks captureSessionStateCallbacks_;
-
-	ACameraManager* cameraManager_ = nullptr;
-	AImageReader* imageReader_ = nullptr;
-#endif // DEPTH_TEST
+	float transformed_uvs_[BackgroundRenderer::kNumVertices*2];
+	bool uvs_initialized_ = false;
+	glm::mat4 viewMatrix_;
+	glm::mat4 projectionMatrix_;
 };
 
 } /* namespace rtabmap */

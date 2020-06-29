@@ -22,6 +22,7 @@ set(sources
   scene.cpp
   point_cloud_drawable.cpp
   graph_drawable.cpp
+  background_renderer.cc
   tango-gl/axis.cpp 
   tango-gl/camera.cpp 
   tango-gl/conversions.cpp 

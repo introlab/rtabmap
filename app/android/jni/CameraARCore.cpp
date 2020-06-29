@@ -34,29 +34,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 namespace rtabmap {
 
-#ifdef DEPTH_TEST
-// Camera Callbacks
-static void CameraDeviceOnDisconnected(void* context, ACameraDevice* device) {
-  LOGE("Camera(id: %s) is disconnected.\n", ACameraDevice_getId(device));
-}
-static void CameraDeviceOnError(void* context, ACameraDevice* device,
-                                int error) {
-  LOGE("Error(code: %d) on Camera(id: %s).\n", error,
-       ACameraDevice_getId(device));
-}
-// Capture Callbacks
-bool g_captureSessionReady = false;
-static void CaptureSessionOnReady(void* context,
-                                  ACameraCaptureSession* session) {
-  LOGI("Session is ready.\n");
-  g_captureSessionReady = true;
-}
-static void CaptureSessionOnActive(void* context,
-                                   ACameraCaptureSession* session) {
-  LOGI("Session is activated.\n");
-}
-#endif // DEPTH_TEST
-
 //////////////////////////////
 // CameraARCore
 //////////////////////////////
@@ -65,16 +42,21 @@ CameraARCore::CameraARCore(void* env, void* context, void* activity, bool smooth
 	env_(env),
 	context_(context),
 	activity_(activity),
-	arInstallRequested_(false)
+	arInstallRequested_(false),
+	textureId_(9999),
+	uvs_initialized_(false)
 {
-	glGenTextures(1, &textureId_);
 }
 
 CameraARCore::~CameraARCore() {
 	// Disconnect ARCore service
 	close();
 
-	glDeleteTextures(1, &textureId_);
+	if(textureId_ != 9999)
+	{
+		glDeleteTextures(1, &textureId_);
+		textureId_ = 9999;
+	}
 }
 
 
@@ -146,131 +128,9 @@ std::string CameraARCore::getSerial() const
 	return "ARCore";
 }
 
-#ifdef DEPTH_TEST
-void OnImageCallback(void *ctx, AImageReader *reader) {
-  reinterpret_cast<CameraARCore *>(ctx)->imageCallback(reader);
-}
-void CameraARCore::imageCallback(AImageReader *reader) {
-	int32_t format;
-	media_status_t status = AImageReader_getFormat(reader, &format);
-	UWARN("format=%d", format);
-	UASSERT_MSG(status == AMEDIA_OK, "Failed to get the media format");
-
-	if (format == AIMAGE_FORMAT_DEPTH16) {
-		// Create a thread and write out the jpeg files
-		AImage *image = nullptr;
-		media_status_t status = AImageReader_acquireNextImage(reader, &image);
-		UASSERT_MSG(status == AMEDIA_OK && image, "Image is not available");
-
-		int planeCount;
-		status = AImage_getNumberOfPlanes(image, &planeCount);
-		UASSERT_MSG(status == AMEDIA_OK && planeCount == 1,
-				uFormat("Error: getNumberOfPlanes() planceCount = %d", planeCount).c_str());
-		uint8_t *data = nullptr;
-		int len = 0;
-		int stride;
-		int width;
-		int height;
-		AImage_getWidth(image, &width);
-		AImage_getHeight(image, &height);
-		AImage_getPlaneRowStride(image, 0, &stride);
-		AImage_getPlaneData(image, 0, &data, &len);
-
-		cv::Mat output(height, width, CV_16UC1);
-		uint16_t *dataShort = (uint16_t *)data;
-		uint16_t max=0x0;
-		for (int y = 0; y < output.rows; ++y)
-		{
-			for (int x = 0; x < output.cols; ++x)
-			{
-				uint16_t depthSample = dataShort[y*output.cols + x];
-				uint16_t depthRange = (depthSample & 0x1FFF); // first 3 bits are confidence
-				output.at<uint16_t>(y,x) = depthRange;
-				if(depthRange > max)
-				{
-					max = depthRange;
-				}
-			}
-		}
-		UWARN("width=%d, height=%d, bytes=%d stride=%d max=%dmm",
-				width, height, len, stride, (int)max);
-
-		std::string path = "/storage/emulated/0/RTAB-Map/depth.png";
-		cv::imwrite(path, output);
-		UWARN("depth image saved to %s", path.c_str());
-
-		AImage_delete(image);
-	}
-}
-#endif // DEPTH_TEST
-
 bool CameraARCore::init(const std::string & calibrationFolder, const std::string & cameraName)
 {
 	close();
-
-#ifdef DEPTH_TEST
-	///////////////////////////
-	// Depth image using camera2 API
-	/////////////////////////////
-	camera_status_t cameraStatus = ACAMERA_OK;
-
-	cameraManager_ = ACameraManager_create();
-
-	deviceStateCallbacks_.onDisconnected = CameraDeviceOnDisconnected;
-	deviceStateCallbacks_.onError = CameraDeviceOnError;
-
-	const char * cameraId = "0";
-	cameraStatus = ACameraManager_openCamera(cameraManager_, cameraId, &deviceStateCallbacks_, &cameraDevice_);
-	UASSERT_MSG(cameraStatus == ACAMERA_OK, uFormat("Failed to open camera device (id: %s)",
-			cameraId).c_str());
-
-	// Currently only working resolution on Huawei P30 Pro
-	cv::Size size(240, 180);
-	int format = AIMAGE_FORMAT_DEPTH16;
-
-	media_status_t mediaStatus = AImageReader_new(size.width, size.height, format, 2, &imageReader_);
-	UASSERT_MSG(imageReader_ && mediaStatus == AMEDIA_OK, uFormat("Failed to create AImageReader %dx%d format=%d",
-			size.width, size.height, format).c_str());
-
-	AImageReader_ImageListener listener{
-	  .context = this,
-	  .onImageAvailable = OnImageCallback,
-	};
-	AImageReader_setImageListener(imageReader_, &listener);
-
-	//
-	ANativeWindow *nativeWindow;
-	mediaStatus = AImageReader_getWindow(imageReader_, &nativeWindow);
-	UASSERT_MSG(mediaStatus == AMEDIA_OK, "Could not get ANativeWindow");
-
-	outputNativeWindow_ = nativeWindow;
-	ACaptureSessionOutputContainer_create(&captureSessionOutputContainer_);
-	ANativeWindow_acquire(outputNativeWindow_);
-	ACaptureSessionOutput_create(outputNativeWindow_, &sessionOutput_);
-	ACaptureSessionOutputContainer_add(captureSessionOutputContainer_, sessionOutput_);
-	ACameraOutputTarget_create(outputNativeWindow_, &cameraOutputTarget_);
-
-	cameraStatus = ACameraDevice_createCaptureRequest(cameraDevice_, TEMPLATE_RECORD, &captureRequest_);
-	UASSERT_MSG(cameraStatus == ACAMERA_OK,
-			uFormat("Failed to create preview capture request (id: %s, status=%d)",
-					cameraId, cameraStatus).c_str());
-
-	ACaptureRequest_addTarget(captureRequest_, cameraOutputTarget_);
-
-	captureSessionStateCallbacks_.onReady = CaptureSessionOnReady;
-	captureSessionStateCallbacks_.onActive = CaptureSessionOnActive;
-	ACameraDevice_createCaptureSession(
-			cameraDevice_,
-			captureSessionOutputContainer_, // outputs
-			&captureSessionStateCallbacks_, // callbacks
-			&captureSession_);
-
-	ACameraCaptureSession_setRepeatingRequest(captureSession_, nullptr, 1,
-			&captureRequest_, nullptr);
-
-	// Don't start ARCore as we cannot use both at the same time
-	return true;
-#endif // DEPTH_TEST
 
 	UScopeMutex lock(arSessionMutex_);
 
@@ -302,10 +162,19 @@ bool CameraARCore::init(const std::string & calibrationFolder, const std::string
 	UASSERT(ArSession_create(env_, context_, &arSession_) == AR_SUCCESS);
 	UASSERT(arSession_);
 
+	int32_t is_depth_supported = 0; // Disabled by default, depth is not super accurate for mapping
+	//ArSession_isDepthModeSupported(arSession_, AR_DEPTH_MODE_AUTOMATIC, &is_depth_supported);
+
 	ArConfig_create(arSession_, &arConfig_);
 	UASSERT(arConfig_);
 
-	ArConfig_setFocusMode(arSession_, arConfig_, AR_FOCUS_MODE_FIXED);
+	if (is_depth_supported!=0) {
+	  ArConfig_setDepthMode(arSession_, arConfig_, AR_DEPTH_MODE_AUTOMATIC);
+	} else {
+	  ArConfig_setDepthMode(arSession_, arConfig_, AR_DEPTH_MODE_DISABLED);
+	}
+
+	ArConfig_setFocusMode(arSession_, arConfig_, AR_FOCUS_MODE_AUTO);
 	UASSERT(ArSession_configure(arSession_, arConfig_) == AR_SUCCESS);
 
 	ArFrame_create(arSession_, &arFrame_);
@@ -361,9 +230,6 @@ bool CameraARCore::init(const std::string & calibrationFolder, const std::string
 
 	deviceTColorCamera_ = opticalRotation;
 
-	// Required as ArSession_update does some off-screen OpenGL stuff...
-	ArSession_setCameraTextureName(arSession_, textureId_);
-
 	if (ArSession_resume(arSession_) != ArStatus::AR_SUCCESS)
 	{
 		UERROR("Cannot resume camera!");
@@ -409,44 +275,6 @@ void CameraARCore::close()
 		ArPose_destroy(arPose_);
 	}
 	arPose_ = nullptr;
-
-#ifdef DEPTH_TEST
-
-	if(captureSession_!=nullptr)
-	{
-		g_captureSessionReady = false;
-		ACameraCaptureSession_stopRepeating(captureSession_);
-		double start = UTimer::now();
-		while(g_captureSessionReady != true && UTimer::now()-start < 2.0){
-			uSleep(100);
-			UWARN("Waiting session to close.... max 2 seconds");
-		}
-		//ACameraCaptureSession_close(captureSession_); // FIXME: this crashes?!
-		captureSession_ = nullptr;
-
-		ACaptureRequest_removeTarget(captureRequest_, cameraOutputTarget_);
-		ACaptureRequest_free(captureRequest_);
-		ACameraOutputTarget_free(cameraOutputTarget_);
-		captureRequest_ = nullptr;
-		cameraOutputTarget_ = nullptr;
-
-		ACaptureSessionOutputContainer_remove(captureSessionOutputContainer_, sessionOutput_);
-		ANativeWindow_release(outputNativeWindow_);
-		ACaptureSessionOutputContainer_free(captureSessionOutputContainer_);
-		ACaptureSessionOutput_free(sessionOutput_);
-		captureSessionOutputContainer_ = nullptr;
-		sessionOutput_ = nullptr;
-
-		ACameraDevice_close(cameraDevice_);
-		cameraDevice_ = nullptr;
-
-		ACameraManager_delete(cameraManager_);
-		cameraManager_ = nullptr;
-
-		AImageReader_delete(imageReader_);
-		imageReader_ = nullptr;
-	}
-#endif
 
 	CameraMobile::close();
 }
@@ -499,6 +327,20 @@ LaserScan CameraARCore::scanFromPointCloudData(
 	return LaserScan();
 }
 
+void CameraARCore::setScreenRotationAndSize(ScreenRotation colorCameraToDisplayRotation, int width, int height)
+{
+	CameraMobile::setScreenRotationAndSize(colorCameraToDisplayRotation, width, height);
+	if(arSession_)
+	{
+		int ret = static_cast<int>(colorCameraToDisplayRotation) + 1; // remove 90deg camera rotation
+		  if (ret > 3) {
+		    ret -= 4;
+		  }
+
+		ArSession_setDisplayGeometry(arSession_, ret, width, height);
+	}
+}
+
 SensorData CameraARCore::captureImage(CameraInfo * info)
 {
 	UScopeMutex lock(arSessionMutex_);
@@ -510,14 +352,43 @@ SensorData CameraARCore::captureImage(CameraInfo * info)
 		return data;
 	}
 
+	if(textureId_ == 9999)
+	{
+		glGenTextures(1, &textureId_);
+		glBindTexture(GL_TEXTURE_EXTERNAL_OES, textureId_);
+		glTexParameteri(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	}
+	ArSession_setCameraTextureName(arSession_, textureId_);
+
 	// Update session to get current frame and render camera background.
 	if (ArSession_update(arSession_, arFrame_) != AR_SUCCESS) {
 		LOGE("CameraARCore::captureImage() ArSession_update error");
 		return data;
 	}
 
+	// If display rotation changed (also includes view size change), we need to
+	// re-query the uv coordinates for the on-screen portion of the camera image.
+	int32_t geometry_changed = 0;
+	ArFrame_getDisplayGeometryChanged(arSession_, arFrame_, &geometry_changed);
+	if (geometry_changed != 0 || !uvs_initialized_) {
+		ArFrame_transformCoordinates2d(
+				arSession_, arFrame_, AR_COORDINATES_2D_OPENGL_NORMALIZED_DEVICE_COORDINATES,
+				BackgroundRenderer::kNumVertices, BackgroundRenderer_kVertices, AR_COORDINATES_2D_TEXTURE_NORMALIZED,
+				transformed_uvs_);
+		UASSERT(transformed_uvs_);
+		uvs_initialized_ = true;
+	}
+
 	ArCamera* ar_camera;
 	ArFrame_acquireCamera(arSession_, arFrame_, &ar_camera);
+
+	ArCamera_getViewMatrix(arSession_, ar_camera, glm::value_ptr(viewMatrix_));
+	ArCamera_getProjectionMatrix(arSession_, ar_camera,
+							   /*near=*/0.1f, /*far=*/100.f,
+							   glm::value_ptr(projectionMatrix_));
 
 	ArTrackingState camera_tracking_state;
 	ArCamera_getTrackingState(arSession_, ar_camera, &camera_tracking_state);
@@ -551,17 +422,68 @@ SensorData CameraARCore::captureImage(CameraInfo * info)
 			ArPointCloud * pointCloud = nullptr;
 			ArFrame_acquirePointCloud(arSession_, arFrame_, &pointCloud);
 
+			int32_t is_depth_supported = 0;
+			ArSession_isDepthModeSupported(arSession_, AR_DEPTH_MODE_AUTOMATIC, &is_depth_supported);
+
 			ArImage * image = nullptr;
 			ArStatus status = ArFrame_acquireCameraImage(arSession_, arFrame_, &image);
 			if(status == AR_SUCCESS)
 			{
+				cv::Mat outputDepth;
+				if(is_depth_supported)
+				{
+					LOGD("Acquire depth image!");
+					ArImage * depthImage = nullptr;
+					ArFrame_acquireDepthImage(arSession_, arFrame_, &depthImage);
+
+					ArImageFormat format;
+					ArImage_getFormat(arSession_, depthImage, &format);
+					if(format == AR_IMAGE_FORMAT_DEPTH16)
+					{
+						LOGD("Depth format detected!");
+						int planeCount;
+						ArImage_getNumberOfPlanes(arSession_, depthImage, &planeCount);
+						LOGD("planeCount=%d", planeCount);
+						UASSERT_MSG(planeCount == 1,
+								uFormat("Error: getNumberOfPlanes() planceCount = %d", planeCount).c_str());
+						const uint8_t *data = nullptr;
+						int len = 0;
+						int stride;
+						int width;
+						int height;
+						ArImage_getWidth(arSession_, depthImage, &width);
+						ArImage_getHeight(arSession_, depthImage, &height);
+						ArImage_getPlaneRowStride(arSession_, depthImage, 0, &stride);
+						ArImage_getPlaneData(arSession_, depthImage, 0, &data, &len);
+
+						LOGD("width=%d, height=%d, bytes=%d stride=%d", width, height, len, stride);
+
+						outputDepth = cv::Mat(height, width, CV_16UC1);
+						uint16_t *dataShort = (uint16_t *)data;
+						uint16_t max=0x0;
+						for (int y = 0; y < outputDepth.rows; ++y)
+						{
+							for (int x = 0; x < outputDepth.cols; ++x)
+							{
+								uint16_t depthSample = dataShort[y*outputDepth.cols + x];
+								uint16_t depthRange = (depthSample & 0x1FFF); // first 3 bits are confidence
+								outputDepth.at<uint16_t>(y,x) = depthRange;
+								if(depthRange > max)
+								{
+									max = depthRange;
+								}
+							}
+						}
+					}
+					ArImage_release(depthImage);
+				}
+
 				int64_t timestamp_ns;
 				ArImageFormat format;
 				ArImage_getTimestamp(arSession_, image, &timestamp_ns);
 				ArImage_getFormat(arSession_, image, &format);
 				if(format == AR_IMAGE_FORMAT_YUV_420_888)
 				{
-
 #ifndef DISABLE_LOG
 					int32_t num_planes;
 					ArImage_getNumberOfPlanes(arSession_, image, &num_planes);
@@ -623,7 +545,7 @@ SensorData CameraARCore::captureImage(CameraInfo * info)
 							LOGI("pointCloud empty");
 						}
 
-						data = SensorData(scan, rgb, cv::Mat(), model, 0, stamp);
+						data = SensorData(scan, rgb, outputDepth, model, 0, stamp);
 						data.setFeatures(kpts,  kpts3, cv::Mat());
 					}
 				}
@@ -662,20 +584,53 @@ void CameraARCore::capturePoseOnly()
 	UScopeMutex lock(arSessionMutex_);
 	//LOGI("Capturing image...");
 
-	SensorData data;
 	if(!arSession_)
 	{
 		return;
 	}
 
+	if(textureId_ == 9999)
+	{
+		glGenTextures(1, &textureId_);
+		glBindTexture(GL_TEXTURE_EXTERNAL_OES, textureId_);
+		glTexParameteri(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	}
+	ArSession_setCameraTextureName(arSession_, textureId_);
+
 	// Update session to get current frame and render camera background.
 	if (ArSession_update(arSession_, arFrame_) != AR_SUCCESS) {
-		LOGE("CameraARCore::captureImage() ArSession_update error");
+		LOGE("CameraARCore::capturePoseOnly() ArSession_update error");
 		return;
 	}
 
+	// If display rotation changed (also includes view size change), we need to
+	// re-query the uv coordinates for the on-screen portion of the camera image.
+	int32_t geometry_changed = 0;
+	ArFrame_getDisplayGeometryChanged(arSession_, arFrame_, &geometry_changed);
+	if (geometry_changed != 0 || !uvs_initialized_) {
+		ArFrame_transformCoordinates2d(
+				arSession_, arFrame_, AR_COORDINATES_2D_OPENGL_NORMALIZED_DEVICE_COORDINATES,
+				BackgroundRenderer::kNumVertices, BackgroundRenderer_kVertices, AR_COORDINATES_2D_TEXTURE_NORMALIZED,
+				transformed_uvs_);
+		UASSERT(transformed_uvs_);
+		uvs_initialized_ = true;
+	}
+
+	/*ArImage* ar_image = nullptr;
+		  ArStatus status =
+		      ArFrame_acquireCameraImage(arSession_, arFrame_, &ar_image);
+		  ArImage_release(ar_image);
+*/
 	ArCamera* ar_camera;
 	ArFrame_acquireCamera(arSession_, arFrame_, &ar_camera);
+
+	ArCamera_getViewMatrix(arSession_, ar_camera, glm::value_ptr(viewMatrix_));
+	ArCamera_getProjectionMatrix(arSession_, ar_camera,
+							   /*near=*/0.1f, /*far=*/100.f,
+							   glm::value_ptr(projectionMatrix_));
 
 	ArTrackingState camera_tracking_state;
 	ArCamera_getTrackingState(arSession_, ar_camera, &camera_tracking_state);

@@ -69,6 +69,7 @@ const std::string kGraphFragmentShader =
 
 
 Scene::Scene() :
+		background_renderer_(0),
 		gesture_camera_(0),
 		axis_(0),
 		frustum_(0),
@@ -160,6 +161,8 @@ void Scene::DeleteResources() {
 		delete trace_;
 		delete grid_;
 		delete box_;
+		delete background_renderer_;
+		background_renderer_ = 0;
 	}
 
 	PointCloudDrawable::releaseShaderPrograms();
@@ -364,7 +367,7 @@ bool intersectFrustumAABB(
 }
 
 //Should only be called in OpenGL thread!
-int Scene::Render() {
+int Scene::Render(const float * uvsTransformed, glm::mat4 arViewMatrix, glm::mat4 arProjectionMatrix) {
 	UASSERT(gesture_camera_ != 0);
 
 	if(currentPose_ == 0)
@@ -394,6 +397,17 @@ int Scene::Render() {
 
 	glm::mat4 projectionMatrix = gesture_camera_->GetProjectionMatrix();
 	glm::mat4 viewMatrix = gesture_camera_->GetViewMatrix();
+
+	bool renderBackgroundCamera =
+			background_renderer_ &&
+			gesture_camera_->GetCameraType() == tango_gl::GestureCamera::kFirstPerson &&
+			!rtabmap::glmToTransform(arProjectionMatrix).isNull() &&
+			uvsTransformed;
+	if(renderBackgroundCamera)
+	{
+		projectionMatrix = arProjectionMatrix;
+		viewMatrix = arViewMatrix;
+	}
 
 	rtabmap::Transform openglCamera = GetOpenGLCameraPose();//*rtabmap::Transform(0.0f, 0.0f, 3.0f, 0.0f, 0.0f, 0.0f);
 	// transform in same coordinate as frustum filtering
@@ -495,6 +509,11 @@ int Scene::Render() {
 	glClearColor(r_, g_, b_, 1.0f);
 	glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 
+	if(renderBackgroundCamera)
+	{
+		background_renderer_->Draw(uvsTransformed);
+	}
+
 	if(!currentPose_->isNull())
 	{
 		if (frustumVisible_ && gesture_camera_->GetCameraType() != tango_gl::GestureCamera::kFirstPerson)
@@ -523,7 +542,7 @@ int Scene::Render() {
 		}
 	}
 
-	if(gridVisible_)
+	if(gridVisible_ && !renderBackgroundCamera)
 	{
 		grid_->Render(projectionMatrix, viewMatrix);
 	}

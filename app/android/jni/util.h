@@ -252,7 +252,7 @@ inline ScreenRotation GetAndroidRotationFromColorCameraToDisplay(
 // @param display: integer value of display orientation, values available
 // are 0, 1, 2 ,3. Followed by Android display orientation standard:
 // https://developer.android.com/reference/android/view/Display.html#getRotation()
-// @param color_camera: integer value of color camera oreintation, values
+// @param color_camera: integer value of color camera orientation, values
 // available are 0, 90, 180, 270. Followed by Android camera orientation
 // standard:
 // https://developer.android.com/reference/android/hardware/Camera.CameraInfo.html#orientation

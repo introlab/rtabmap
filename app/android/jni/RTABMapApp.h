@@ -44,6 +44,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pcl/pcl_base.h>
 #include <pcl/TextureMesh.h>
 
+
 // RTABMapApp handles the application lifecycle and resources.
 class RTABMapApp : public UEventsHandler {
  public:

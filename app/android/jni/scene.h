@@ -38,6 +38,7 @@
 #include <point_cloud_drawable.h>
 #include <graph_drawable.h>
 #include <bounding_box_drawable.h>
+#include <background_renderer.h>
 
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
@@ -71,7 +72,7 @@ class Scene {
   //         frame's timestamp.
   // @param: point_cloud_vertices, point cloud's vertices of the current point
   //         frame.
-  int Render();
+  int Render(const float * uvsTransformed = 0, glm::mat4 arViewMatrix = glm::mat4(0), glm::mat4 arProjectionMatrix=glm::mat4(0));
 
   // Set render camera's viewing angle, first person, third person or top down.
   //
@@ -151,6 +152,8 @@ class Scene {
   float getPointSize() const {return pointSize_;}
   bool isLighting() const {return lighting_;}
   bool isBackfaceCulling() const {return backfaceCulling_;}
+
+  BackgroundRenderer * background_renderer_;
 
  private:
   // Camera object that allows user to use touch input to interact with.

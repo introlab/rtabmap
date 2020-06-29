@@ -69,6 +69,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pcl/surface/poisson.h>
 #include <pcl/surface/vtk_smoothing/vtk_mesh_quadric_decimation.h>
 
+
 #define LOW_RES_PIX 2
 //#define DEBUG_RENDERING_PERFORMANCE
 
@@ -263,7 +264,7 @@ void RTABMapApp::setScreenRotation(int displayRotation, int cameraRotation)
 	boost::mutex::scoped_lock  lock(cameraMutex_);
 	if(camera_)
 	{
-		camera_->setScreenRotation(rotation);
+		camera_->setScreenRotationAndSize(main_scene_.getScreenRotation(), main_scene_.getViewPortWidth(), main_scene_.getViewPortHeight());
 	}
 }
 
@@ -657,6 +658,10 @@ bool RTABMapApp::isBuiltWith(int cameraDriver) const
 
 bool RTABMapApp::startCamera(JNIEnv* env, jobject iBinder, jobject context, jobject activity, int driver)
 {
+	//ccapp = new computer_vision::ComputerVisionApplication();
+	//ccapp->OnResume(env, context, activity);
+	//return true;
+
 	cameraDriver_ = driver;
 	LOGW("startCamera() camera driver=%d", cameraDriver_);
 	boost::mutex::scoped_lock  lock(cameraMutex_);
@@ -686,7 +691,6 @@ bool RTABMapApp::startCamera(JNIEnv* env, jobject iBinder, jobject context, jobj
 	{
 #ifdef RTABMAP_ARCORE
 		camera_ = new rtabmap::CameraARCore(env, context, activity, smoothing_);
-
 #else
 		UERROR("RTAB-Map is not built with ARCore support!");
 #endif
@@ -712,7 +716,7 @@ bool RTABMapApp::startCamera(JNIEnv* env, jobject iBinder, jobject context, jobj
 
 	if(camera_->init())
 	{
-		camera_->setScreenRotation(main_scene_.getScreenRotation());
+		camera_->setScreenRotationAndSize(main_scene_.getScreenRotation(), main_scene_.getViewPortWidth(), main_scene_.getViewPortHeight());
 
 		//update mesh decimation based on camera calibration
 		LOGI("Cloud density level %d", cloudDensityLevel_);
@@ -937,6 +941,11 @@ void RTABMapApp::SetViewPort(int width, int height)
 {
 	UINFO("");
 	main_scene_.SetupViewPort(width, height);
+	boost::mutex::scoped_lock  lock(cameraMutex_);
+	if(camera_)
+	{
+		camera_->setScreenRotationAndSize(main_scene_.getScreenRotation(), main_scene_.getViewPortWidth(), main_scene_.getViewPortHeight());
+	}
 }
 
 class PostRenderEvent : public UEvent
@@ -1101,12 +1110,31 @@ int RTABMapApp::Render()
 		}
 
 		// ARCore and AREngine capture should be done in opengl thread!
+		const float* uvsTransformed = 0;
+		glm::mat4 arProjectionMatrix(0);
+		glm::mat4 arViewMatrix(0);
 		if((cameraDriver_ == 1 || cameraDriver_ == 2) && camera_!=0)
 		{
 			boost::mutex::scoped_lock  lock(cameraMutex_);
 			if(camera_!=0)
 			{
 				camera_->spinOnce();
+				if(cameraDriver_ == 1)
+				{
+#ifdef RTABMAP_ARCORE
+					if(main_scene_.background_renderer_ == 0)
+					{
+						main_scene_.background_renderer_ = new BackgroundRenderer();
+						main_scene_.background_renderer_->InitializeGlContent(((rtabmap::CameraARCore*)camera_)->getTextureId());
+					}
+					if(((rtabmap::CameraARCore*)camera_)->uvsInitialized())
+					{
+						uvsTransformed = ((rtabmap::CameraARCore*)camera_)->uvsTransformed();
+						((rtabmap::CameraARCore*)camera_)->getVPMatrices(arViewMatrix, arProjectionMatrix);
+						//main_scene_.background_renderer_->Draw(uvsTransformed);
+					}
+#endif
+				}
 			}
 		}
 
@@ -1792,7 +1820,7 @@ int RTABMapApp::Render()
 
 			fpsTime.restart();
 			main_scene_.setFrustumVisible(camera_!=0);
-			lastDrawnCloudsCount_ = main_scene_.Render();
+			lastDrawnCloudsCount_ = main_scene_.Render(uvsTransformed, arViewMatrix, arProjectionMatrix);
 			if(renderingTime_ < fpsTime.elapsed())
 			{
 				renderingTime_ = fpsTime.elapsed();

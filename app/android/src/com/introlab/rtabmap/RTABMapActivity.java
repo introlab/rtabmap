@@ -1265,7 +1265,7 @@ public class RTABMapActivity extends FragmentActivity implements OnClickListener
 							{
 								if((mState==State.STATE_IDLE || mState==State.STATE_WELCOME) && mCameraDriver == 1)
 								{
-									mToast.makeText(getApplicationContext(), "Currently ARCore NDK driver doesn't support depth, only poses and RGB images can be recorded.", mToast.LENGTH_LONG).show();
+									mToast.makeText(getApplicationContext(), "Currently ARCore NDK driver doesn't support depth, only poses, RGB images and 3d features can be recorded.", mToast.LENGTH_LONG).show();
 								}
 								updateState(mState==State.STATE_VISUALIZING?State.STATE_VISUALIZING_CAMERA:State.STATE_CAMERA);	
 								if(mState==State.STATE_VISUALIZING_CAMERA && mItemLocalizationMode.isChecked())
