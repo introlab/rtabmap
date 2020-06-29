@@ -4260,29 +4260,48 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 				}
 			}
 
-			int oldMaxFeatures = _feature2D->getMaxFeatures();
-			UDEBUG("rawDescriptorsKept=%d, pose=%d, maxFeatures=%d, visMaxFeatures=%d", _rawDescriptorsKept?1:0, pose.isNull()?0:1, _feature2D->getMaxFeatures(), _visMaxFeatures);
-			ParametersMap tmpMaxFeatureParameter;
-			if(_rawDescriptorsKept&&!pose.isNull()&&_feature2D->getMaxFeatures()>0&&_feature2D->getMaxFeatures()<_visMaxFeatures)
+			bool useProvided3dPoints = false;
+			if(_useOdometryFeatures && !data.keypoints().empty())
 			{
-				// The total extracted features should match the number of features used for transformation estimation
-				UDEBUG("Changing temporary max features from %d to %d", _feature2D->getMaxFeatures(), _visMaxFeatures);
-				tmpMaxFeatureParameter.insert(ParametersPair(Parameters::kKpMaxFeatures(), uNumber2Str(_visMaxFeatures)));
-				_feature2D->parseParameters(tmpMaxFeatureParameter);
+				UDEBUG("Using provided keypoints (%d)", (int)data.keypoints().size());
+				keypoints = data.keypoints();
+
+				// In case we provided corresponding 3D features
+				if(keypoints.size() == data.keypoints3D().size())
+				{
+					for(size_t i=0; i<keypoints.size(); ++i)
+					{
+						keypoints[i].class_id = i;
+					}
+					useProvided3dPoints = true;
+				}
 			}
-
-			keypoints = _feature2D->generateKeypoints(
-					imageMono,
-					depthMask);
-
-			if(tmpMaxFeatureParameter.size())
+			else
 			{
-				tmpMaxFeatureParameter.at(Parameters::kKpMaxFeatures()) = uNumber2Str(oldMaxFeatures);
-				_feature2D->parseParameters(tmpMaxFeatureParameter); // reset back
+				int oldMaxFeatures = _feature2D->getMaxFeatures();
+				UDEBUG("rawDescriptorsKept=%d, pose=%d, maxFeatures=%d, visMaxFeatures=%d", _rawDescriptorsKept?1:0, pose.isNull()?0:1, _feature2D->getMaxFeatures(), _visMaxFeatures);
+				ParametersMap tmpMaxFeatureParameter;
+				if(_rawDescriptorsKept&&!pose.isNull()&&_feature2D->getMaxFeatures()>0&&_feature2D->getMaxFeatures()<_visMaxFeatures)
+				{
+					// The total extracted features should match the number of features used for transformation estimation
+					UDEBUG("Changing temporary max features from %d to %d", _feature2D->getMaxFeatures(), _visMaxFeatures);
+					tmpMaxFeatureParameter.insert(ParametersPair(Parameters::kKpMaxFeatures(), uNumber2Str(_visMaxFeatures)));
+					_feature2D->parseParameters(tmpMaxFeatureParameter);
+				}
+
+				keypoints = _feature2D->generateKeypoints(
+						imageMono,
+						depthMask);
+
+				if(tmpMaxFeatureParameter.size())
+				{
+					tmpMaxFeatureParameter.at(Parameters::kKpMaxFeatures()) = uNumber2Str(oldMaxFeatures);
+					_feature2D->parseParameters(tmpMaxFeatureParameter); // reset back
+				}
+				t = timer.ticks();
+				if(stats) stats->addStatistic(Statistics::kTimingMemKeypoints_detection(), t*1000.0f);
+				UDEBUG("time keypoints (%d) = %fs", (int)keypoints.size(), t);
 			}
-			t = timer.ticks();
-			if(stats) stats->addStatistic(Statistics::kTimingMemKeypoints_detection(), t*1000.0f);
-			UDEBUG("time keypoints (%d) = %fs", (int)keypoints.size(), t);
 
 			descriptors = _feature2D->generateDescriptors(imageMono, keypoints);
 			t = timer.ticks();
@@ -4414,7 +4433,22 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 					UDEBUG("time rectification = %fs", t);
 				}
 
-				if((!decimatedData.depthRaw().empty() && decimatedData.cameraModels().size() && decimatedData.cameraModels()[0].isValidForProjection()) ||
+				if(useProvided3dPoints && keypoints.size() != data.keypoints3D().size())
+				{
+					UDEBUG("Using provided 3d points (%d->%d)", (int)data.keypoints3D().size(), (int)keypoints.size());
+					keypoints3D.resize(keypoints.size());
+					for(size_t i=0; i<keypoints.size(); ++i)
+					{
+						UASSERT(keypoints[i].class_id < data.keypoints3D().size());
+						keypoints3D[i] = data.keypoints3D()[keypoints[i].class_id];
+					}
+				}
+				else if(keypoints.size() == data.keypoints3D().size())
+				{
+					UDEBUG("Using provided 3d points (%d)", (int)data.keypoints3D().size());
+					keypoints3D = data.keypoints3D();
+				}
+				else if((!decimatedData.depthRaw().empty() && decimatedData.cameraModels().size() && decimatedData.cameraModels()[0].isValidForProjection()) ||
 				   (!decimatedData.rightRaw().empty() && decimatedData.stereoCameraModel().isValidForProjection()))
 				{
 					keypoints3D = _feature2D->generateKeypoints3D(decimatedData, keypoints);

@@ -207,6 +207,7 @@ void CameraMobile::mainLoop()
 		// Rotate image depending on the camera orientation
 		if(colorCameraToDisplayRotation_ == ROTATION_90)
 		{
+			UDEBUG("ROTATION_90");
 			cv::Mat rgb, depth;
 			cv::Mat rgbt(data.imageRaw().cols, data.imageRaw().rows, data.imageRaw().type());
 			cv::flip(data.imageRaw(),rgb,1);
@@ -226,9 +227,18 @@ void CameraMobile::mainLoop()
 					model.localTransform()*rtabmap::Transform(0,-1,0,0, 1,0,0,0, 0,0,1,0));
 			model.setImageSize(sizet);
 			data.setRGBDImage(rgb, depth, model);
+
+			std::vector<cv::KeyPoint> keypoints = data.keypoints();
+			for(size_t i=0; i<keypoints.size(); ++i)
+			{
+				keypoints[i].pt.x = data.keypoints()[i].pt.y;
+				keypoints[i].pt.y = rgb.rows - data.keypoints()[i].pt.x;
+			}
+			data.setFeatures(keypoints, data.keypoints3D(), cv::Mat());
 		}
 		else if(colorCameraToDisplayRotation_ == ROTATION_180)
 		{
+			UDEBUG("ROTATION_180");
 			cv::Mat rgb, depth;
 			cv::flip(data.imageRaw(),rgb,1);
 			cv::flip(rgb,rgb,0);
@@ -244,9 +254,18 @@ void CameraMobile::mainLoop()
 					model.localTransform()*rtabmap::Transform(0,0,0,0,0,1,0));
 			model.setImageSize(sizet);
 			data.setRGBDImage(rgb, depth, model);
+
+			std::vector<cv::KeyPoint> keypoints = data.keypoints();
+			for(size_t i=0; i<keypoints.size(); ++i)
+			{
+				keypoints[i].pt.x = rgb.cols - data.keypoints()[i].pt.x;
+				keypoints[i].pt.y = rgb.rows - data.keypoints()[i].pt.y;
+			}
+			data.setFeatures(keypoints, data.keypoints3D(), cv::Mat());
 		}
 		else if(colorCameraToDisplayRotation_ == ROTATION_270)
 		{
+			UDEBUG("ROTATION_270");
 			cv::Mat rgb(data.imageRaw().cols, data.imageRaw().rows, data.imageRaw().type());
 			cv::transpose(data.imageRaw(),rgb);
 			cv::flip(rgb,rgb,1);
@@ -263,6 +282,14 @@ void CameraMobile::mainLoop()
 					model.localTransform()*rtabmap::Transform(0,1,0,0, -1,0,0,0, 0,0,1,0));
 			model.setImageSize(sizet);
 			data.setRGBDImage(rgb, depth, model);
+
+			std::vector<cv::KeyPoint> keypoints = data.keypoints();
+			for(size_t i=0; i<keypoints.size(); ++i)
+			{
+				keypoints[i].pt.x = rgb.cols - data.keypoints()[i].pt.y;
+				keypoints[i].pt.y = data.keypoints()[i].pt.x;
+			}
+			data.setFeatures(keypoints, data.keypoints3D(), cv::Mat());
 		}
 
 		rtabmap::Transform pose = info.odomPose;

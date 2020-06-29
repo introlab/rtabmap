@@ -94,7 +94,7 @@ public:
 	const CameraModel & getCameraModel() const {return model_;}
 	const Transform & getDeviceTColorCamera() const {return deviceTColorCamera_;}
 	void setSmoothing(bool enabled) {smoothing_ = enabled;}
-	void setScreenRotation(ScreenRotation colorCameraToDisplayRotation) {colorCameraToDisplayRotation_ = colorCameraToDisplayRotation;}
+	virtual void setScreenRotation(ScreenRotation colorCameraToDisplayRotation) {colorCameraToDisplayRotation_ = colorCameraToDisplayRotation;}
 	void setGPS(const GPS & gps);
 	void addEnvSensor(int type, float value);
 	void setData(const SensorData & data, const Transform & pose);
