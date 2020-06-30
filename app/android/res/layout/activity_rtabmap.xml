@@ -163,6 +163,7 @@
         android:layout_height="100dp"
         android:layout_alignLeft="@+id/button_library"
         android:layout_below="@+id/button_library"
+        android:layout_marginTop="20dp"
         android:text="@string/new_scan" />
 
 </RelativeLayout>        

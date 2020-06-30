@@ -2314,6 +2314,15 @@ public class RTABMapActivity extends FragmentActivity implements OnClickListener
 
 		updateState(State.STATE_IDLE);
 
+		if(mArCoreCamera != null)
+		{
+			synchronized (this) {
+				mRenderer.setCamera(null);
+				mArCoreCamera.close();
+				mArCoreCamera = null;
+			}
+		}
+		
 		Thread stopThread = new Thread(new Runnable() {
 			public void run() {
 				if(!DISABLE_LOG) Log.i(TAG, String.format("setPausedMapping()"));
