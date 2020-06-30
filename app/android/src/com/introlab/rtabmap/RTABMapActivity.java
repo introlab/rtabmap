@@ -992,6 +992,7 @@ public class RTABMapActivity extends FragmentActivity implements OnClickListener
 			RTABMapLib.setRawScanSaved(nativeApplication, sharedPref.getBoolean(getString(R.string.pref_key_raw_scan_saved), Boolean.parseBoolean(getString(R.string.pref_default_raw_scan_saved))));
 			RTABMapLib.setFullResolution(nativeApplication, sharedPref.getBoolean(getString(R.string.pref_key_resolution), Boolean.parseBoolean(getString(R.string.pref_default_resolution))));
 			RTABMapLib.setSmoothing(nativeApplication, sharedPref.getBoolean(getString(R.string.pref_key_smoothing), Boolean.parseBoolean(getString(R.string.pref_default_smoothing))));
+			RTABMapLib.setDepthFromMotion(nativeApplication, sharedPref.getBoolean(getString(R.string.pref_key_depth_from_motion), Boolean.parseBoolean(getString(R.string.pref_default_depth_from_motion))));
 			RTABMapLib.setCameraColor(nativeApplication, !sharedPref.getBoolean(getString(R.string.pref_key_fisheye), Boolean.parseBoolean(getString(R.string.pref_default_fisheye))));
 			RTABMapLib.setAppendMode(nativeApplication, sharedPref.getBoolean(getString(R.string.pref_key_append), Boolean.parseBoolean(getString(R.string.pref_default_append))));
 			RTABMapLib.setMappingParameter(nativeApplication, "Rtabmap/DetectionRate", mUpdateRate);
@@ -1162,6 +1163,7 @@ public class RTABMapActivity extends FragmentActivity implements OnClickListener
 
 		SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
 		String cameraDriverStr = sharedPref.getString(getString(R.string.pref_key_camera_driver), getString(R.string.pref_default_camera_driver));
+		final boolean depthFromMotion = sharedPref.getBoolean(getString(R.string.pref_key_depth_from_motion), Boolean.parseBoolean(getString(R.string.pref_default_depth_from_motion)));
 		mCameraDriver = Integer.parseInt(cameraDriverStr);
 
 		if(!DISABLE_LOG) Log.i(TAG, String.format("startCamera() driver=%d", mCameraDriver));
@@ -1218,7 +1220,8 @@ public class RTABMapActivity extends FragmentActivity implements OnClickListener
 			}
 			Thread bindThread = new Thread(new Runnable() {
 				public void run() {
-					if(mCameraDriver==1)
+					
+					if(mCameraDriver==1 && !depthFromMotion)
 					{
 						RTABMapLib.setMeshRendering(
 								nativeApplication, 
@@ -1263,7 +1266,7 @@ public class RTABMapActivity extends FragmentActivity implements OnClickListener
 							}
 							else
 							{
-								if((mState==State.STATE_IDLE || mState==State.STATE_WELCOME) && mCameraDriver == 1)
+								if((mState==State.STATE_IDLE || mState==State.STATE_WELCOME) && mCameraDriver == 1 && !depthFromMotion)
 								{
 									mToast.makeText(getApplicationContext(), "Currently ARCore NDK driver doesn't support depth, only poses, RGB images and 3d features can be recorded.", mToast.LENGTH_LONG).show();
 								}

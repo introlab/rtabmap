@@ -512,6 +512,19 @@ Java_com_introlab_rtabmap_RTABMapLib_setSmoothing(
 	}
 }
 JNIEXPORT void JNICALL
+Java_com_introlab_rtabmap_RTABMapLib_setDepthFromMotion(
+		JNIEnv*, jclass, jlong native_application, bool enabled)
+{
+	if(native_application)
+	{
+		return native(native_application)->setDepthFromMotion(enabled);
+	}
+	else
+	{
+		UERROR("native_application is null!");
+	}
+}
+JNIEXPORT void JNICALL
 Java_com_introlab_rtabmap_RTABMapLib_setCameraColor(
 		JNIEnv*, jclass, jlong native_application, bool enabled)
 {

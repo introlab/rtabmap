@@ -7,7 +7,7 @@
    			android:entries="@array/pref_camera_driver_keys"
    			android:entryValues="@array/pref_camera_driver_values"
    			android:defaultValue="@string/pref_default_camera_driver"/>
-    
+        
     <PreferenceCategory
         android:title="@string/pref_title_rendering">
         <ListPreference 
@@ -97,6 +97,11 @@
 	            android:title="@string/pref_title_resolution"
 	            android:summary="@string/pref_summary_resolution"
 	            android:defaultValue="@string/pref_default_resolution"/>
+		     <com.introlab.rtabmap.CustomSwitchPreference
+                android:key="@string/pref_key_depth_from_motion"
+                android:title="@string/pref_title_depth_from_motion"
+                android:summary="@string/pref_summary_depth_from_motion"
+                android:defaultValue="@string/pref_default_depth_from_motion"/>
 		    <com.introlab.rtabmap.CustomSwitchPreference
 		        android:key="@string/pref_key_smoothing"
 		        android:title="@string/pref_title_smoothing"

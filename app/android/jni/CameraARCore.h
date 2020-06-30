@@ -60,12 +60,15 @@ public:
 			std::vector<cv::Point3f> * kpts3D = 0);
 
 public:
-	CameraARCore(void* env, void* context, void* activity, bool smoothing = false);
+	CameraARCore(void* env, void* context, void* activity, bool depthFromMotion = false, bool smoothing = false);
 	virtual ~CameraARCore();
 
 	bool uvsInitialized() const {return uvs_initialized_;}
 	const float* uvsTransformed() const {return transformed_uvs_;}
 	void getVPMatrices(glm::mat4 & view, glm::mat4 & projection) const {view=viewMatrix_; projection=projectionMatrix_;}
+
+	void updateOcclusionImage(bool enabled) {updateOcclusionImage_ = enabled;}
+	const cv::Mat & getOcclusionImage(CameraModel * model=0) const {if(model)*model=occlusionModel_; return occlusionImage_; }
 
 	virtual void setScreenRotationAndSize(ScreenRotation colorCameraToDisplayRotation, int width, int height);
 
@@ -101,6 +104,11 @@ private:
 	bool uvs_initialized_ = false;
 	glm::mat4 viewMatrix_;
 	glm::mat4 projectionMatrix_;
+
+	bool updateOcclusionImage_;
+	cv::Mat occlusionImage_;
+	CameraModel occlusionModel_;
+	bool depthFromMotion_;
 };
 
 } /* namespace rtabmap */

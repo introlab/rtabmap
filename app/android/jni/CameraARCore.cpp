@@ -37,14 +37,16 @@ namespace rtabmap {
 //////////////////////////////
 // CameraARCore
 //////////////////////////////
-CameraARCore::CameraARCore(void* env, void* context, void* activity, bool smoothing):
+CameraARCore::CameraARCore(void* env, void* context, void* activity, bool depthFromMotion, bool smoothing):
 	CameraMobile(smoothing),
 	env_(env),
 	context_(context),
 	activity_(activity),
 	arInstallRequested_(false),
 	textureId_(9999),
-	uvs_initialized_(false)
+	uvs_initialized_(false),
+	updateOcclusionImage_(false),
+	depthFromMotion_(depthFromMotion)
 {
 }
 
@@ -162,8 +164,8 @@ bool CameraARCore::init(const std::string & calibrationFolder, const std::string
 	UASSERT(ArSession_create(env_, context_, &arSession_) == AR_SUCCESS);
 	UASSERT(arSession_);
 
-	int32_t is_depth_supported = 0; // Disabled by default, depth is not super accurate for mapping
-	//ArSession_isDepthModeSupported(arSession_, AR_DEPTH_MODE_AUTOMATIC, &is_depth_supported);
+	int32_t is_depth_supported = 0;
+	ArSession_isDepthModeSupported(arSession_, AR_DEPTH_MODE_AUTOMATIC, &is_depth_supported);
 
 	ArConfig_create(arSession_, &arConfig_);
 	UASSERT(arConfig_);
@@ -277,6 +279,7 @@ void CameraARCore::close()
 	arPose_ = nullptr;
 
 	CameraMobile::close();
+	occlusionImage_ = cv::Mat();
 }
 
 LaserScan CameraARCore::scanFromPointCloudData(
@@ -429,8 +432,7 @@ SensorData CameraARCore::captureImage(CameraInfo * info)
 			ArStatus status = ArFrame_acquireCameraImage(arSession_, arFrame_, &image);
 			if(status == AR_SUCCESS)
 			{
-				cv::Mat outputDepth;
-				if(is_depth_supported)
+				if(is_depth_supported && (updateOcclusionImage_||depthFromMotion_))
 				{
 					LOGD("Acquire depth image!");
 					ArImage * depthImage = nullptr;
@@ -444,36 +446,24 @@ SensorData CameraARCore::captureImage(CameraInfo * info)
 						int planeCount;
 						ArImage_getNumberOfPlanes(arSession_, depthImage, &planeCount);
 						LOGD("planeCount=%d", planeCount);
-						UASSERT_MSG(planeCount == 1,
-								uFormat("Error: getNumberOfPlanes() planceCount = %d", planeCount).c_str());
+						UASSERT_MSG(planeCount == 1, uFormat("Error: getNumberOfPlanes() planceCount = %d", planeCount).c_str());
 						const uint8_t *data = nullptr;
 						int len = 0;
 						int stride;
-						int width;
-						int height;
-						ArImage_getWidth(arSession_, depthImage, &width);
-						ArImage_getHeight(arSession_, depthImage, &height);
+						int depth_width;
+						int depth_height;
+						ArImage_getWidth(arSession_, depthImage, &depth_width);
+						ArImage_getHeight(arSession_, depthImage, &depth_height);
 						ArImage_getPlaneRowStride(arSession_, depthImage, 0, &stride);
 						ArImage_getPlaneData(arSession_, depthImage, 0, &data, &len);
 
-						LOGD("width=%d, height=%d, bytes=%d stride=%d", width, height, len, stride);
+						LOGD("width=%d, height=%d, bytes=%d stride=%d", depth_width, depth_height, len, stride);
 
-						outputDepth = cv::Mat(height, width, CV_16UC1);
-						uint16_t *dataShort = (uint16_t *)data;
-						uint16_t max=0x0;
-						for (int y = 0; y < outputDepth.rows; ++y)
-						{
-							for (int x = 0; x < outputDepth.cols; ++x)
-							{
-								uint16_t depthSample = dataShort[y*outputDepth.cols + x];
-								uint16_t depthRange = (depthSample & 0x1FFF); // first 3 bits are confidence
-								outputDepth.at<uint16_t>(y,x) = depthRange;
-								if(depthRange > max)
-								{
-									max = depthRange;
-								}
-							}
-						}
+						occlusionImage_ = cv::Mat(depth_height, depth_width, CV_16UC1, (void*)data).clone();
+
+						float scaleX = (float)depth_width / (float)width;
+						float scaleY = (float)depth_height / (float)height;
+						occlusionModel_ = CameraModel(fx*scaleX, fy*scaleY, cx*scaleX, cy*scaleY, pose*deviceTColorCamera_, 0, cv::Size(depth_width, depth_height));
 					}
 					ArImage_release(depthImage);
 				}
@@ -545,7 +535,7 @@ SensorData CameraARCore::captureImage(CameraInfo * info)
 							LOGI("pointCloud empty");
 						}
 
-						data = SensorData(scan, rgb, outputDepth, model, 0, stamp);
+						data = SensorData(scan, rgb, depthFromMotion_?occlusionImage_:cv::Mat(), model, 0, stamp);
 						data.setFeatures(kpts,  kpts3, cv::Mat());
 					}
 				}
@@ -619,11 +609,6 @@ void CameraARCore::capturePoseOnly()
 		uvs_initialized_ = true;
 	}
 
-	/*ArImage* ar_image = nullptr;
-		  ArStatus status =
-		      ArFrame_acquireCameraImage(arSession_, arFrame_, &ar_image);
-		  ArImage_release(ar_image);
-*/
 	ArCamera* ar_camera;
 	ArFrame_acquireCamera(arSession_, arFrame_, &ar_camera);
 
@@ -648,6 +633,52 @@ void CameraARCore::capturePoseOnly()
 		{
 			pose = rtabmap::rtabmap_world_T_opengl_world * pose * rtabmap::opengl_world_T_rtabmap_world;
 			this->poseReceived(pose);
+		}
+
+		int32_t is_depth_supported = 0;
+		ArSession_isDepthModeSupported(arSession_, AR_DEPTH_MODE_AUTOMATIC, &is_depth_supported);
+
+		if(is_depth_supported && updateOcclusionImage_)
+		{
+			LOGD("Acquire depth image!");
+			ArImage * depthImage = nullptr;
+			ArFrame_acquireDepthImage(arSession_, arFrame_, &depthImage);
+
+			ArImageFormat format;
+			ArImage_getFormat(arSession_, depthImage, &format);
+			if(format == AR_IMAGE_FORMAT_DEPTH16)
+			{
+				LOGD("Depth format detected!");
+				int planeCount;
+				ArImage_getNumberOfPlanes(arSession_, depthImage, &planeCount);
+				LOGD("planeCount=%d", planeCount);
+				UASSERT_MSG(planeCount == 1, uFormat("Error: getNumberOfPlanes() planceCount = %d", planeCount).c_str());
+				const uint8_t *data = nullptr;
+				int len = 0;
+				int stride;
+				int width;
+				int height;
+				ArImage_getWidth(arSession_, depthImage, &width);
+				ArImage_getHeight(arSession_, depthImage, &height);
+				ArImage_getPlaneRowStride(arSession_, depthImage, 0, &stride);
+				ArImage_getPlaneData(arSession_, depthImage, 0, &data, &len);
+
+				LOGD("width=%d, height=%d, bytes=%d stride=%d", width, height, len, stride);
+
+				occlusionImage_ = cv::Mat(height, width, CV_16UC1, (void*)data).clone();
+
+				float fx,fy, cx, cy;
+				int32_t rgb_width, rgb_height;
+				ArCamera_getImageIntrinsics(arSession_, ar_camera, arCameraIntrinsics_);
+				ArCameraIntrinsics_getFocalLength(arSession_, arCameraIntrinsics_, &fx, &fy);
+				ArCameraIntrinsics_getPrincipalPoint(arSession_, arCameraIntrinsics_, &cx, &cy);
+				ArCameraIntrinsics_getImageDimensions(arSession_, arCameraIntrinsics_, &rgb_width, &rgb_height);
+
+				float scaleX = (float)width / (float)rgb_width;
+				float scaleY = (float)height / (float)rgb_height;
+				occlusionModel_ = CameraModel(fx*scaleX, fy*scaleY, cx*scaleX, cy*scaleY, pose*deviceTColorCamera_, 0, cv::Size(width, height));
+			}
+			ArImage_release(depthImage);
 		}
 	}
 

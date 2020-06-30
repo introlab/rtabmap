@@ -72,6 +72,7 @@ public class RTABMapLib
     public static native void setRawScanSaved(long nativeApplication, boolean enabled);
     public static native void setFullResolution(long nativeApplication, boolean enabled);
     public static native void setSmoothing(long nativeApplication, boolean enabled);
+    public static native void setDepthFromMotion(long nativeApplication, boolean enabled);
     public static native void setCameraColor(long nativeApplication, boolean enabled);
     public static native void setAppendMode(long nativeApplication, boolean enabled);
     public static native void setDataRecorderMode(long nativeApplication, boolean enabled);

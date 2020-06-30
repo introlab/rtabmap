@@ -81,6 +81,8 @@
     
     <string name="pref_key_camera_driver">pref_key_camera_driver</string>
     <string name="pref_default_camera_driver">0</string>
+    <string name="pref_key_depth_from_motion">pref_key_depth_from_motion</string>
+    <string name="pref_default_depth_from_motion">false</string>
     <string name="pref_key_update_rate">pref_key_update_rate</string>
     <string name="pref_default_update_rate">1</string>
     <string name="pref_key_max_speed">pref_key_max_speed</string>
@@ -323,6 +325,8 @@
     <string name="pref_title_mapping_database">Database</string>
     <string name="pref_title_camera_driver">Camera Driver</string>
     <string name="pref_summary_camera_driver">AR sdk use for capturing 6DoF poses and images. A TOF camera is required to record a 3D model.</string>
+    <string name="pref_title_depth_from_motion">Depth From Motion</string>
+    <string name="pref_summary_depth_from_motion">Use ARCore\'s depth API to compute depth image from motion. If the phone has a TOF camera and is supported by ARCore, results should be better. Currently supported only with ARCore NDK driver.</string>
     <string name="pref_title_append">Append Mode</string>
     <string name="pref_summary_append">When resuming mapping, wait for a relocalization on the current map before starting a new map.</string>
     <string name="pref_title_resolution">HD Mode</string>

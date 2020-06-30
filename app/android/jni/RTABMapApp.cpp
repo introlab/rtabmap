@@ -690,7 +690,7 @@ bool RTABMapApp::startCamera(JNIEnv* env, jobject iBinder, jobject context, jobj
 	else if(cameraDriver_ == 1)
 	{
 #ifdef RTABMAP_ARCORE
-		camera_ = new rtabmap::CameraARCore(env, context, activity, smoothing_);
+		camera_ = new rtabmap::CameraARCore(env, context, activity, depthFromMotion_, smoothing_);
 #else
 		UERROR("RTAB-Map is not built with ARCore support!");
 #endif
@@ -1113,15 +1113,24 @@ int RTABMapApp::Render()
 		const float* uvsTransformed = 0;
 		glm::mat4 arProjectionMatrix(0);
 		glm::mat4 arViewMatrix(0);
+		rtabmap::Mesh occlusionMesh;
 		if((cameraDriver_ == 1 || cameraDriver_ == 2) && camera_!=0)
 		{
 			boost::mutex::scoped_lock  lock(cameraMutex_);
 			if(camera_!=0)
 			{
-				camera_->spinOnce();
+#ifdef RTABMAP_ARCORE
 				if(cameraDriver_ == 1)
 				{
+					((rtabmap::CameraARCore*)camera_)->updateOcclusionImage(!visualizingMesh_ && main_scene_.GetCameraType() == tango_gl::GestureCamera::kFirstPerson);
+				}
+#endif
+
+				camera_->spinOnce();
+
 #ifdef RTABMAP_ARCORE
+				if(cameraDriver_ == 1)
+				{
 					if(main_scene_.background_renderer_ == 0)
 					{
 						main_scene_.background_renderer_ = new BackgroundRenderer();
@@ -1131,10 +1140,29 @@ int RTABMapApp::Render()
 					{
 						uvsTransformed = ((rtabmap::CameraARCore*)camera_)->uvsTransformed();
 						((rtabmap::CameraARCore*)camera_)->getVPMatrices(arViewMatrix, arProjectionMatrix);
-						//main_scene_.background_renderer_->Draw(uvsTransformed);
 					}
-#endif
+					if(!visualizingMesh_ && main_scene_.GetCameraType() == tango_gl::GestureCamera::kFirstPerson)
+					{
+						rtabmap::CameraModel occlusionModel;
+						cv::Mat occlusionImage = ((rtabmap::CameraARCore*)camera_)->getOcclusionImage(&occlusionModel);
+
+						if(occlusionModel.isValidForProjection())
+						{
+							pcl::IndicesPtr indices(new std::vector<int>);
+							pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = rtabmap::util3d::cloudFromDepth(occlusionImage, occlusionModel, 1, 0, 0, indices.get());
+							cloud = rtabmap::util3d::transformPointCloud(cloud, rtabmap::opengl_world_T_rtabmap_world*occlusionModel.localTransform());
+							occlusionMesh.cloud.reset(new pcl::PointCloud<pcl::PointXYZRGB>());
+							pcl::copyPointCloud(*cloud, *occlusionMesh.cloud);
+							occlusionMesh.indices = indices;
+							occlusionMesh.polygons = rtabmap::util3d::organizedFastMesh(cloud, 1.0*M_PI/180.0, false, meshTrianglePix_);
+						}
+						else
+						{
+							UERROR("invalid occlusionModel: %f %f %f %f %dx%d", occlusionModel.fx(), occlusionModel.fy(), occlusionModel.cx(), occlusionModel.cy(), occlusionModel.imageWidth(), occlusionModel.imageHeight());
+						}
+					}
 				}
+#endif
 			}
 		}
 
@@ -1820,7 +1848,7 @@ int RTABMapApp::Render()
 
 			fpsTime.restart();
 			main_scene_.setFrustumVisible(camera_!=0);
-			lastDrawnCloudsCount_ = main_scene_.Render(uvsTransformed, arViewMatrix, arProjectionMatrix);
+			lastDrawnCloudsCount_ = main_scene_.Render(uvsTransformed, arViewMatrix, arProjectionMatrix, occlusionMesh);
 			if(renderingTime_ < fpsTime.elapsed())
 			{
 				renderingTime_ = fpsTime.elapsed();
@@ -2103,6 +2131,14 @@ void RTABMapApp::setSmoothing(bool enabled)
 	if(smoothing_ != enabled)
 	{
 		smoothing_ = enabled;
+	}
+}
+
+void RTABMapApp::setDepthFromMotion(bool enabled)
+{
+	if(depthFromMotion_ != enabled)
+	{
+		depthFromMotion_ = enabled;
 	}
 }
 

@@ -110,6 +110,7 @@ class RTABMapApp : public UEventsHandler {
   void setCameraColor(bool enabled);
   void setFullResolution(bool enabled);
   void setSmoothing(bool enabled);
+  void setDepthFromMotion(bool enabled);
   void setAppendMode(bool enabled);
   void setDataRecorderMode(bool enabled);
   void setMaxCloudDepth(float value);
@@ -183,6 +184,7 @@ class RTABMapApp : public UEventsHandler {
   bool trajectoryMode_;
   bool rawScanSaved_;
   bool smoothing_;
+  bool depthFromMotion_;
   bool cameraColor_;
   bool fullResolution_;
   bool appendMode_;
