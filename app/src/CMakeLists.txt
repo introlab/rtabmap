@@ -137,6 +137,16 @@ IF(BUILD_AS_BUNDLE AND (APPLE OR WIN32))
           DESTINATION ${openni2_dest_dir} 
           COMPONENT runtime)
   ENDIF(OpenNI2_FOUND)
+  
+  IF(k4a_FOUND)
+	# Install needed depthengine_2_0.dll
+    IF(WIN32)
+		file(TO_CMAKE_PATH "$ENV{K4A_ROOT_DIR}" ENV_K4A_ROOT_DIR)
+		INSTALL(FILES "${ENV_K4A_ROOT_DIR}/tools/depthengine_2_0.dll" 
+          DESTINATION ${plugin_dest_dir} 
+          COMPONENT runtime)
+	ENDIF(WIN32)
+  ENDIF(k4a_FOUND)
 
   # Install needed Qt plugins by copying directories from the qt installation
   # One can cull what gets copied by using 'REGEX "..." EXCLUDE'
