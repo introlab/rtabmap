@@ -33,6 +33,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <mynteye/api.h>
 #include <mynteye/device.h>
 #include <mynteye/context.h>
+
+#ifndef M_PI
+#define M_PI       3.14159265358979323846
+#endif
 #endif
 
 namespace rtabmap
