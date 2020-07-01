@@ -13676,7 +13676,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                                 <double>0.100000000000000</double>
                                </property>
                                <property name="value">
-                                <double>0.000000000000000</double>
+                                <double>-1.000000000000000</double>
                                </property>
                               </widget>
                              </item>

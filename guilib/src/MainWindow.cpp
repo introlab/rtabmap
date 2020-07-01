@@ -5215,6 +5215,7 @@ void MainWindow::startDetection()
 				int odomStrategy = Parameters::defaultOdomStrategy();
 				Parameters::parse(odomParameters, Parameters::kOdomStrategy(), odomStrategy);
 				double gravitySigma = _preferencesDialog->getOdomF2MGravitySigma();
+				UDEBUG("Odom gravitySigma=%f", gravitySigma);
 				if(gravitySigma >= 0.0)
 				{
 					uInsert(odomParameters, ParametersPair(Parameters::kOptimizerGravitySigma(), uNumber2Str(gravitySigma)));

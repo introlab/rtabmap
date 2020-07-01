@@ -1886,7 +1886,7 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->lineEdit_rs2_jsonFile->clear();
 		_ui->lineEdit_openniOniPath->clear();
 		_ui->lineEdit_openni2OniPath->clear();
-		_ui->comboBox_k4a_rgb_resolution->setCurrentIndex(1);
+		_ui->comboBox_k4a_rgb_resolution->setCurrentIndex(0);
 		_ui->comboBox_k4a_framerate->setCurrentIndex(2);
 		_ui->comboBox_k4a_depth_resolution->setCurrentIndex(2);
 		_ui->checkbox_k4a_irDepth->setChecked(false);
