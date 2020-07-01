@@ -250,7 +250,7 @@ void CameraRealSense2::getPoseAndIMU(
 		{
 			if(maxWaitTimeMs > 0)
 			{
-				UWARN("Could not find poses to interpolate at time %f after waiting %d ms (last is %f)...", stamp, maxWaitTimeMs, poseBuffer_.rbegin()->first);
+				UWARN("Could not find poses to interpolate at image time %f after waiting %d ms (last is %f)...", stamp, maxWaitTimeMs, poseBuffer_.rbegin()->first);
 			}
 		}
 		else
@@ -303,7 +303,7 @@ void CameraRealSense2::getPoseAndIMU(
 		{
 			if(maxWaitTimeMs>0)
 			{
-				UWARN("Could not find acc data to interpolate at time %f after waiting %d ms (last is %f)...", stamp, maxWaitTimeMs, accBuffer_.rbegin()->first);
+				UWARN("Could not find acc data to interpolate at image time %f after waiting %d ms (last is %f)...", stamp, maxWaitTimeMs, accBuffer_.rbegin()->first);
 			}
 			imuMutex_.unlock();
 			return;
@@ -366,7 +366,7 @@ void CameraRealSense2::getPoseAndIMU(
 		{
 			if(maxWaitTimeMs>0)
 			{
-				UWARN("Could not find gyro data to interpolate at time %f after waiting %d ms (last is %f)...", stamp, maxWaitTimeMs, gyroBuffer_.rbegin()->first);
+				UWARN("Could not find gyro data to interpolate at image time %f after waiting %d ms (last is %f)...", stamp, maxWaitTimeMs, gyroBuffer_.rbegin()->first);
 			}
 			imuMutex_.unlock();
 			return;
@@ -1060,7 +1060,6 @@ SensorData CameraRealSense2::captureImage(CameraInfo * info)
 		if (frameset.size() == 2)
 		{
 			double now = UTimer::now();
-			UDEBUG("Frameset arrived.");
 			bool is_rgb_arrived = false;
 			bool is_depth_arrived = false;
 			bool is_left_fisheye_arrived = false;
@@ -1119,6 +1118,7 @@ SensorData CameraRealSense2::captureImage(CameraInfo * info)
 			}
 
 			stamp /= 1000.0; // put in seconds
+			UDEBUG("Frameset arrived. system=%fs frame=%fs", now, stamp);
 			if(stamp - now > 1000000000.0)
 			{
 				if(!clockSyncWarningShown_)

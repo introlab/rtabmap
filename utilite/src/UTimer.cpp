@@ -36,10 +36,17 @@ UTimer::~UTimer() {}
 #ifdef _WIN32
 double UTimer::now()
 {
+#if defined(_WIN32_WINNT) && (_WIN32_WINNT >= _WIN32_WINNT_WIN8)
+	FILETIME ft;
+	GetSystemTimePreciseAsFileTime(&ft);
+	__int64* val = (__int64*)&ft;
+	return static_cast<double>(*val) / 10000000.0 - 11644473600.0; // The Windows epoch is Jan 1 1601, the Unix epoch Jan 1 1970.
+#else
     LARGE_INTEGER count, freq;
     QueryPerformanceFrequency(&freq);
     QueryPerformanceCounter(&count);
     return double(count.QuadPart) / freq.QuadPart;
+#endif
 }
 
 void UTimer::start()
