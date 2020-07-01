@@ -46,7 +46,7 @@ void showUsage()
 {
 	printf("\nUsage:\n"
 			"rtabmap-rgbd_mapping driver\n"
-			"  driver       Driver number to use: 0=OpenNI-PCL, 1=OpenNI2, 2=Freenect, 3=OpenNI-CV, 4=OpenNI-CV-ASUS, 5=Freenect2, 6=ZED SDK, 7=RealSense, 8=RealSense2\n\n");
+			"  driver       Driver number to use: 0=OpenNI-PCL, 1=OpenNI2, 2=Freenect, 3=OpenNI-CV, 4=OpenNI-CV-ASUS, 5=Freenect2, 6=ZED SDK, 7=RealSense, 8=RealSense2 9=Kinect for Azure SDK 10=MYNT EYE S\n\n");
 	exit(1);
 }
 
@@ -64,9 +64,9 @@ int main(int argc, char * argv[])
 	else
 	{
 		driver = atoi(argv[argc-1]);
-		if(driver < 0 || driver > 8)
+		if(driver < 0 || driver > 10)
 		{
-			UERROR("driver should be between 0 and 8.");
+			UERROR("driver should be between 0 and 10.");
 			showUsage();
 		}
 	}
@@ -148,6 +148,24 @@ int main(int argc, char * argv[])
 			exit(-1);
 		}
 		camera = new CameraRealSense2();
+	}
+	else if (driver == 9)
+	{
+		if (!rtabmap::CameraK4A::available())
+		{
+			UERROR("Not built with Kinect for Azure SDK support...");
+			exit(-1);
+		}
+		camera = new rtabmap::CameraK4A(1);
+	}
+	else if (driver == 10)
+	{
+		if (!rtabmap::CameraMyntEye::available())
+		{
+			UERROR("Not built with Mynt Eye S support...");
+			exit(-1);
+		}
+		camera = new rtabmap::CameraMyntEye();
 	}
 	else
 	{

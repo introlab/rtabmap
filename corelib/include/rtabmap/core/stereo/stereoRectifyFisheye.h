@@ -1189,8 +1189,8 @@ void stereoRectifyFisheye( cv::InputArray _cameraMatrix1, cv::InputArray _distCo
     cv::Mat cameraMatrix1 = _cameraMatrix1.getMat(), cameraMatrix2 = _cameraMatrix2.getMat();
     cv::Mat distCoeffs1 = _distCoeffs1.getMat(), distCoeffs2 = _distCoeffs2.getMat();
     cv::Mat Rmat = _Rmat.getMat(), Tmat = _Tmat.getMat();
-
-#if CV_MAJOR_VERSION > 3 or (CV_MAJOR_VERSION >= 3 and (CV_MINOR_VERSION>4 or CV_MINOR_VERSION>=4  and CV_SUBMINOR_VERSION>=4))
+	
+#if CV_MAJOR_VERSION > 3 || (CV_MAJOR_VERSION >= 3 && (CV_MINOR_VERSION>4 || (CV_MINOR_VERSION>=4 && CV_SUBMINOR_VERSION>=4)))
     CvMat c_cameraMatrix1 = cvMat(cameraMatrix1);
     CvMat c_cameraMatrix2 = cvMat(cameraMatrix2);
     CvMat c_distCoeffs1 = cvMat(distCoeffs1);
@@ -1210,7 +1210,7 @@ void stereoRectifyFisheye( cv::InputArray _cameraMatrix1, cv::InputArray _distCo
     _Pmat1.create(3, 4, rtype);
     _Pmat2.create(3, 4, rtype);
     cv::Mat R1 = _Rmat1.getMat(), R2 = _Rmat2.getMat(), P1 = _Pmat1.getMat(), P2 = _Pmat2.getMat(), Q;
-#if CV_MAJOR_VERSION > 3 or (CV_MAJOR_VERSION >= 3 and (CV_MINOR_VERSION>4 or CV_MINOR_VERSION>=4  and CV_SUBMINOR_VERSION>=4))
+#if CV_MAJOR_VERSION > 3 || (CV_MAJOR_VERSION >= 3 && (CV_MINOR_VERSION>4 || (CV_MINOR_VERSION>=4 && CV_SUBMINOR_VERSION>=4)))
     CvMat c_R1 = cvMat(R1), c_R2 = cvMat(R2), c_P1 = cvMat(P1), c_P2 = cvMat(P2);
 #else
     CvMat c_R1 = CvMat(R1), c_R2 = CvMat(R2), c_P1 = CvMat(P1), c_P2 = CvMat(P2);
@@ -1220,7 +1220,7 @@ void stereoRectifyFisheye( cv::InputArray _cameraMatrix1, cv::InputArray _distCo
     if( _Qmat.needed() )
     {
         _Qmat.create(4, 4, rtype);
-#if CV_MAJOR_VERSION > 3 or (CV_MAJOR_VERSION >= 3 and (CV_MINOR_VERSION>4 or CV_MINOR_VERSION>=4  and CV_SUBMINOR_VERSION>=4))
+#if CV_MAJOR_VERSION > 3 || (CV_MAJOR_VERSION >= 3 && (CV_MINOR_VERSION>4 || (CV_MINOR_VERSION>=4 && CV_SUBMINOR_VERSION>=4)))
         p_Q = &(c_Q = cvMat(Q = _Qmat.getMat()));
 #else
         p_Q = &(c_Q = CvMat(Q = _Qmat.getMat()));
@@ -1230,7 +1230,7 @@ void stereoRectifyFisheye( cv::InputArray _cameraMatrix1, cv::InputArray _distCo
     CvMat *p_distCoeffs1 = distCoeffs1.empty() ? NULL : &c_distCoeffs1;
     CvMat *p_distCoeffs2 = distCoeffs2.empty() ? NULL : &c_distCoeffs2;
     cvStereoRectifyFisheye( &c_cameraMatrix1, &c_cameraMatrix2, p_distCoeffs1, p_distCoeffs2,
-#if CV_MAJOR_VERSION > 3 or (CV_MAJOR_VERSION >= 3 and (CV_MINOR_VERSION>4 or CV_MINOR_VERSION>=4  and CV_SUBMINOR_VERSION>=4))
+#if CV_MAJOR_VERSION > 3 || (CV_MAJOR_VERSION >= 3 && (CV_MINOR_VERSION>4 || (CV_MINOR_VERSION>=4 && CV_SUBMINOR_VERSION>=4)))
         cvSize(imageSize), &c_R, &c_T, &c_R1, &c_R2, &c_P1, &c_P2, p_Q, flags, alpha,
         cvSize(newImageSize));
 #else

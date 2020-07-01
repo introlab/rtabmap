@@ -252,15 +252,13 @@ int main (int argc, char * argv[])
 	odomViewer.resize(1280, 480+QPushButton().minimumHeight());
 
 	rtabmap::Camera * camera = 0;
-	rtabmap::Transform t=rtabmap::Transform(0,0,1,0, -1,0,0,0, 0,-1,0,0);
-
 	if(inputDatabase.size())
 	{
 		camera =  new rtabmap::DBReader(inputDatabase, rate, true);
 	}
 	else if(driver == 0)
 	{
-		camera = new rtabmap::CameraOpenni("", rate, t);
+		camera = new rtabmap::CameraOpenni("", rate);
 	}
 	else if(driver == 1)
 	{
@@ -269,7 +267,7 @@ int main (int argc, char * argv[])
 			UERROR("Not built with OpenNI2 support...");
 			exit(-1);
 		}
-		camera = new rtabmap::CameraOpenNI2("", rtabmap::CameraOpenNI2::kTypeColorDepth, rate, t);
+		camera = new rtabmap::CameraOpenNI2("", rtabmap::CameraOpenNI2::kTypeColorDepth, rate);
 	}
 	else if(driver == 2)
 	{
@@ -278,7 +276,7 @@ int main (int argc, char * argv[])
 			UERROR("Not built with Freenect support...");
 			exit(-1);
 		}
-		camera = new rtabmap::CameraFreenect(0, rtabmap::CameraFreenect::kTypeColorDepth, rate, t);
+		camera = new rtabmap::CameraFreenect(0, rtabmap::CameraFreenect::kTypeColorDepth, rate);
 	}
 	else if(driver == 3)
 	{
@@ -287,7 +285,7 @@ int main (int argc, char * argv[])
 			UERROR("Not built with OpenNI from OpenCV support...");
 			exit(-1);
 		}
-		camera = new rtabmap::CameraOpenNICV(false, rate, t);
+		camera = new rtabmap::CameraOpenNICV(false, rate);
 	}
 	else if(driver == 4)
 	{
@@ -296,7 +294,7 @@ int main (int argc, char * argv[])
 			UERROR("Not built with OpenNI from OpenCV support...");
 			exit(-1);
 		}
-		camera = new rtabmap::CameraOpenNICV(true, rate, t);
+		camera = new rtabmap::CameraOpenNICV(true, rate);
 	}
 	else if(driver == 5)
 	{
@@ -305,7 +303,7 @@ int main (int argc, char * argv[])
 			UERROR("Not built with Freenect2 support...");
 			exit(-1);
 		}
-		camera = new rtabmap::CameraFreenect2(0, rtabmap::CameraFreenect2::kTypeColor2DepthSD, rate, t);
+		camera = new rtabmap::CameraFreenect2(0, rtabmap::CameraFreenect2::kTypeColor2DepthSD, rate);
 	}
 	else if(driver == 6)
 	{
@@ -314,7 +312,7 @@ int main (int argc, char * argv[])
 			UERROR("Not built with dc1394 support...");
 			exit(-1);
 		}
-		camera = new rtabmap::CameraStereoDC1394(rate, t);
+		camera = new rtabmap::CameraStereoDC1394(rate);
 	}
 	else if(driver == 7)
 	{
@@ -323,7 +321,7 @@ int main (int argc, char * argv[])
 			UERROR("Not built with FlyCapture2/Triclops support...");
 			exit(-1);
 		}
-		camera = new rtabmap::CameraStereoFlyCapture2(rate, t);
+		camera = new rtabmap::CameraStereoFlyCapture2(rate);
 	}
 	else if(driver == 8)
 	{
@@ -332,7 +330,7 @@ int main (int argc, char * argv[])
 			UERROR("Not built with ZED sdk support...");
 			exit(-1);
 		}
-		camera = new rtabmap::CameraStereoZed(0,3,1,0,100,false,rate,t);
+		camera = new rtabmap::CameraStereoZed(0,3,1,0,100,false,rate);
 	}
 	else if (driver == 9)
 	{
@@ -341,7 +339,7 @@ int main (int argc, char * argv[])
 			UERROR("Not built with RealSense support...");
 			exit(-1);
 		}
-		camera = new rtabmap::CameraRealSense(0, 0, 0, false, rate, t);
+		camera = new rtabmap::CameraRealSense(0, 0, 0, false, rate);
 	}
 	else if (driver == 10)
 	{
@@ -350,7 +348,7 @@ int main (int argc, char * argv[])
 			UERROR("Not built with Kinect for Windows 2 SDK support...");
 			exit(-1);
 		}
-		camera = new rtabmap::CameraK4W2(0, rtabmap::CameraK4W2::kTypeDepth2ColorSD, rate, t);
+		camera = new rtabmap::CameraK4W2(0, rtabmap::CameraK4W2::kTypeDepth2ColorSD, rate);
 	}
 	else if (driver == 11)
 	{
@@ -359,7 +357,7 @@ int main (int argc, char * argv[])
 			UERROR("Not built with RealSense2 SDK support...");
 			exit(-1);
 		}
-		camera = new rtabmap::CameraRealSense2("", rate, t);
+		camera = new rtabmap::CameraRealSense2("", rate);
 	}
 	else if (driver == 12)
 	{
@@ -377,7 +375,7 @@ int main (int argc, char * argv[])
 			UERROR("Not built with Mynt Eye S support...");
 			exit(-1);
 		}
-		camera = new rtabmap::CameraMyntEye("", false, false, rate, t);
+		camera = new rtabmap::CameraMyntEye("", false, false, rate);
 	}
 	else
 	{

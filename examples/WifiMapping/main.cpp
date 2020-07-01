@@ -47,7 +47,7 @@ void showUsage()
 			"Options:\n"
 			"  -i \"name\"            Wifi interface name (e.g. \"eth0\"). Only required on Linux.\n"
 			"  -m                     Enable mirroring of the camera image.\n"
-			"  -d #                   Driver number to use: 0=OpenNI-PCL, 1=OpenNI2, 2=Freenect, 3=OpenNI-CV, 4=OpenNI-CV-ASUS, 5=Freenect2, 6=ZED SDK, 7=RealSense, 8=RealSense2\n\n");
+			"  -d #                   Driver number to use: 0=OpenNI-PCL, 1=OpenNI2, 2=Freenect, 3=OpenNI-CV, 4=OpenNI-CV-ASUS, 5=Freenect2, 6=ZED SDK, 7=RealSense, 8=RealSense2 9=Kinect for Azure SDK 10=MYNT EYE S\n\n");
 	exit(1);
 }
 
@@ -183,6 +183,24 @@ int main(int argc, char * argv[])
 			exit(-1);
 		}
 		camera = new CameraRealSense2("", 0, opticalRotation);
+	}
+	else if (driver == 9)
+	{
+		if (!rtabmap::CameraK4A::available())
+		{
+			UERROR("Not built with Kinect for Azure SDK support...");
+			exit(-1);
+		}
+		camera = new rtabmap::CameraK4A(1);
+	}
+	else if (driver == 10)
+	{
+		if (!rtabmap::CameraMyntEye::available())
+		{
+			UERROR("Not built with Mynt Eye S support...");
+			exit(-1);
+		}
+		camera = new rtabmap::CameraMyntEye();
 	}
 	else
 	{
