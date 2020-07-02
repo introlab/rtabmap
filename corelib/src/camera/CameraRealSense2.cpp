@@ -77,7 +77,8 @@ CameraRealSense2::CameraRealSense2(
 	cameraHeight_(480),
 	cameraFps_(30),
 	publishInterIMU_(false),
-	dualMode_(false)
+	dualMode_(false),
+	closing_(false)
 #endif
 {
 	UDEBUG("");
@@ -86,12 +87,15 @@ CameraRealSense2::CameraRealSense2(
 CameraRealSense2::~CameraRealSense2()
 {
 #ifdef RTABMAP_REALSENSE2
+	closing_ = true;
 	try
 	{
+		UDEBUG("Closing device(s)...");
 		for(size_t i=0; i<dev_.size(); ++i)
 		{
 			if(dev_[i])
 			{
+				UDEBUG("Closing %d sensor(s) from device %d...", (int)dev_[i]->query_sensors().size(), (int)i);
 				for(rs2::sensor _sensor : dev_[i]->query_sensors())
 				{
 					try
@@ -104,6 +108,7 @@ CameraRealSense2::~CameraRealSense2()
 						UWARN("%s", error.what());
 					}
 				}
+				dev_[i]->hardware_reset(); // To avoid freezing on some Windows computers in the following destructor
 				delete dev_[i];
 			}
 		}
@@ -519,7 +524,14 @@ bool CameraRealSense2::init(const std::string & calibrationFolder, const std::st
 			{
 				if (info.was_removed(*dev_[i]))
 				{
-					UERROR("The device has been disconnected!");
+					if (closing_)
+					{
+						UDEBUG("The device %d has been disconnected!", i);
+					}
+					else
+					{
+						UERROR("The device %d has been disconnected!", i);
+					}
 				}
 			}
 		}

@@ -74,7 +74,6 @@ CameraThread::CameraThread(Camera * camera, const ParametersMap & parameters) :
 
 CameraThread::~CameraThread()
 {
-	UDEBUG("");
 	join(true);
 	delete _camera;
 	delete _distortionModel;
@@ -139,7 +138,6 @@ void CameraThread::mainLoopBegin()
 void CameraThread::mainLoop()
 {
 	UTimer totalTime;
-	UDEBUG("");
 	CameraInfo info;
 	SensorData data = _camera->takeImage(&info);
 
@@ -161,7 +159,6 @@ void CameraThread::mainLoop()
 
 void CameraThread::mainLoopKill()
 {
-	UDEBUG("");
 	if(dynamic_cast<CameraFreenect2*>(_camera) != 0)
 	{
 		int i=20;

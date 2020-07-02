@@ -134,6 +134,7 @@ private:
 	bool dualMode_;
 	Transform dualExtrinsics_;
 	std::string jsonConfig_;
+	bool closing_;
 
 	static Transform realsense2PoseRotation_;
 	static Transform realsense2PoseRotationInv_;
