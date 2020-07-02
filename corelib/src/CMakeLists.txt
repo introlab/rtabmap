@@ -293,6 +293,11 @@ IF(realsense2_FOUND)
 			${LIBRARIES}
 			${RealSense2_LIBRARIES}
 		)
+	ELSEIF(APPLE)
+	    SET(LIBRARIES
+			${LIBRARIES}
+			${realsense2_LIBRARIES}
+		)
 	ELSE()
 		SET(LIBRARIES
 			${LIBRARIES}

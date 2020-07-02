@@ -3475,11 +3475,13 @@ bool Rtabmap::process(
 				_optimizedPoses.erase(lastId);
 				for(std::multimap<int, Link>::iterator iter=_constraints.find(lastId); iter!=_constraints.end() && iter->first==lastId;++iter)
 				{
-					iter->second.to();
-					std::multimap<int, Link>::iterator jter = graph::findLink(_constraints, iter->second.to(), iter->second.from(), false);
-					if(jter != _constraints.end())
+					if(iter->second.to() != iter->second.from())
 					{
-						_constraints.erase(jter);
+						std::multimap<int, Link>::iterator jter = graph::findLink(_constraints, iter->second.to(), iter->second.from(), false);
+						if(jter != _constraints.end())
+						{
+							_constraints.erase(jter);
+						}
 					}
 				}
 				_constraints.erase(lastId);
