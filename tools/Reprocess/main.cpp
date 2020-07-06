@@ -308,6 +308,27 @@ int main(int argc, char * argv[])
 			printf("  %s\t= %s\n", iter->first.c_str(), iter->second.c_str());
 		}
 	}
+	if((configParameters.find(Parameters::kKpDetectorStrategy())!=configParameters.end() ||
+		configParameters.find(Parameters::kVisFeatureType())!=configParameters.end() ||
+		customParameters.find(Parameters::kKpDetectorStrategy())!=customParameters.end() ||
+		customParameters.find(Parameters::kVisFeatureType())!=customParameters.end()) &&
+			configParameters.find(Parameters::kMemUseOdomFeatures())==configParameters.end() &&
+			customParameters.find(Parameters::kMemUseOdomFeatures())==customParameters.end())
+	{
+		bool useOdomFeatures = Parameters::defaultMemUseOdomFeatures();
+		Parameters::parse(parameters, Parameters::kMemUseOdomFeatures(), useOdomFeatures);
+		if(useOdomFeatures)
+		{
+			printf("[Warning] %s and/or %s are overwritten but parameter %s is true in the opened database. "
+					"Setting it to false for convenience to use the new selected feature detector. Set %s "
+					"explicitly to suppress this warning.\n",
+					Parameters::kKpDetectorStrategy().c_str(),
+					Parameters::kVisFeatureType().c_str(),
+					Parameters::kMemUseOdomFeatures().c_str(),
+					Parameters::kMemUseOdomFeatures().c_str());
+			uInsert(parameters, ParametersPair(Parameters::kMemUseOdomFeatures(), "false"));
+		}
+	}
 	uInsert(parameters, configParameters);
 	uInsert(parameters, customParameters);
 
