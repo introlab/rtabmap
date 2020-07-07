@@ -69,6 +69,7 @@ const std::string kGraphFragmentShader =
 
 
 Scene::Scene() :
+		background_renderer_(0),
 		gesture_camera_(0),
 		axis_(0),
 		frustum_(0),
@@ -79,7 +80,8 @@ Scene::Scene() :
 		graphVisible_(true),
 		gridVisible_(true),
 		traceVisible_(true),
-		color_camera_to_display_rotation_(ROTATION_0),
+		frustumVisible_(true),
+		color_camera_to_display_rotation_(rtabmap::ROTATION_0),
 		currentPose_(0),
 		graph_shader_program_(0),
 		blending_(true),
@@ -108,6 +110,7 @@ Scene::Scene() :
 Scene::~Scene() {
 	DeleteResources();
 	delete gesture_camera_;
+	delete currentPose_;
 }
 
 //Should only be called in OpenGL thread!
@@ -126,7 +129,6 @@ void Scene::InitGLContent()
 	trace_ = new tango_gl::Trace();
 	grid_ = new tango_gl::Grid();
 	box_ = new BoundingBoxDrawable();
-	currentPose_ = new rtabmap::Transform();
 
 
 	axis_->SetScale(glm::vec3(0.5f,0.5f,0.5f));
@@ -158,8 +160,9 @@ void Scene::DeleteResources() {
 		delete frustum_;
 		delete trace_;
 		delete grid_;
-		delete currentPose_;
 		delete box_;
+		delete background_renderer_;
+		background_renderer_ = 0;
 	}
 
 	PointCloudDrawable::releaseShaderPrograms();
@@ -364,9 +367,13 @@ bool intersectFrustumAABB(
 }
 
 //Should only be called in OpenGL thread!
-int Scene::Render() {
+int Scene::Render(const float * uvsTransformed, glm::mat4 arViewMatrix, glm::mat4 arProjectionMatrix, const rtabmap::Mesh & occlusionMesh) {
 	UASSERT(gesture_camera_ != 0);
 
+	if(currentPose_ == 0)
+	{
+		currentPose_ = new rtabmap::Transform(0,0,0,0,0,-M_PI/2.0f);
+	}
 	glm::vec3 position(currentPose_->x(), currentPose_->y(), currentPose_->z());
 	Eigen::Quaternionf quat = currentPose_->getQuaternionf();
 	glm::quat rotation(quat.w(), quat.x(), quat.y(), quat.z());
@@ -390,6 +397,17 @@ int Scene::Render() {
 
 	glm::mat4 projectionMatrix = gesture_camera_->GetProjectionMatrix();
 	glm::mat4 viewMatrix = gesture_camera_->GetViewMatrix();
+
+	bool renderBackgroundCamera =
+			background_renderer_ &&
+			gesture_camera_->GetCameraType() == tango_gl::GestureCamera::kFirstPerson &&
+			!rtabmap::glmToTransform(arProjectionMatrix).isNull() &&
+			uvsTransformed;
+	if(renderBackgroundCamera)
+	{
+		projectionMatrix = arProjectionMatrix;
+		viewMatrix = arViewMatrix;
+	}
 
 	rtabmap::Transform openglCamera = GetOpenGLCameraPose();//*rtabmap::Transform(0.0f, 0.0f, 3.0f, 0.0f, 0.0f, 0.0f);
 	// transform in same coordinate as frustum filtering
@@ -440,7 +458,7 @@ int Scene::Render() {
 
 	UTimer timer;
 
-	bool onlineBlending = blending_ && gesture_camera_->GetCameraType()!=tango_gl::GestureCamera::kTopOrtho && mapRendering_ && meshRendering_ && cloudsToDraw.size()>1;
+	bool onlineBlending = (renderBackgroundCamera && occlusionMesh.cloud.get() && occlusionMesh.cloud->size()) || (blending_ && gesture_camera_->GetCameraType()!=tango_gl::GestureCamera::kTopOrtho && mapRendering_ && meshRendering_ && cloudsToDraw.size()>1);
 	if(onlineBlending && fboId_)
 	{
 		// set the rendering destination to FBO
@@ -450,11 +468,19 @@ int Scene::Render() {
 		glClearColor(1, 1, 1, 1);
 		glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 
-		// Draw scene
-		for(std::vector<PointCloudDrawable*>::const_iterator iter=cloudsToDraw.begin(); iter!=cloudsToDraw.end(); ++iter)
+		if(renderBackgroundCamera)
 		{
-			// set large distance to cam to use low res polygons for fast processing
-			(*iter)->Render(projectionMatrix, viewMatrix, meshRendering_, pointSize_, false, false, 999.0f);
+			PointCloudDrawable drawable(occlusionMesh);
+			drawable.Render(projectionMatrix, viewMatrix, true, pointSize_, false, false, 999.0f);
+		}
+		else
+		{
+			// Draw scene
+			for(std::vector<PointCloudDrawable*>::const_iterator iter=cloudsToDraw.begin(); iter!=cloudsToDraw.end(); ++iter)
+			{
+				// set large distance to cam to use low res polygons for fast processing
+				(*iter)->Render(projectionMatrix, viewMatrix, meshRendering_, pointSize_, false, false, 999.0f);
+			}
 		}
 
 		// back to normal window-system-provided framebuffer
@@ -491,9 +517,18 @@ int Scene::Render() {
 	glClearColor(r_, g_, b_, 1.0f);
 	glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 
+	if(renderBackgroundCamera)
+	{
+		background_renderer_->Draw(uvsTransformed);
+
+		//To debug occlusion image:
+		//PointCloudDrawable drawable(occlusionMesh);
+		//drawable.Render(projectionMatrix, viewMatrix, true, pointSize_, false, false, 999.0f);
+	}
+
 	if(!currentPose_->isNull())
 	{
-		if (gesture_camera_->GetCameraType() != tango_gl::GestureCamera::kFirstPerson)
+		if (frustumVisible_ && gesture_camera_->GetCameraType() != tango_gl::GestureCamera::kFirstPerson)
 		{
 			frustum_->SetPosition(position);
 			frustum_->SetRotation(rotation);
@@ -502,8 +537,13 @@ int Scene::Render() {
 			frustum_->SetScale(kFrustumScale);
 			frustum_->Render(projectionMatrix, viewMatrix);
 
-			axis_->SetPosition(position);
-			axis_->SetRotation(rotation);
+			rtabmap::Transform cameraFrame = *currentPose_*rtabmap::optical_T_opengl*rtabmap::CameraMobile::opticalRotationInv;
+			glm::vec3 positionCamera(cameraFrame.x(), cameraFrame.y(), cameraFrame.z());
+			Eigen::Quaternionf quatCamera = cameraFrame.getQuaternionf();
+			glm::quat rotationCamera(quatCamera.w(), quatCamera.x(), quatCamera.y(), quatCamera.z());
+
+			axis_->SetPosition(positionCamera);
+			axis_->SetRotation(rotationCamera);
 			axis_->Render(projectionMatrix, viewMatrix);
 		}
 
@@ -512,11 +552,11 @@ int Scene::Render() {
 		{
 			trace_->Render(projectionMatrix, viewMatrix);
 		}
+	}
 
-		if(gridVisible_)
-		{
-			grid_->Render(projectionMatrix, viewMatrix);
-		}
+	if(gridVisible_ && !renderBackgroundCamera)
+	{
+		grid_->Render(projectionMatrix, viewMatrix);
 	}
 
 	if(graphVisible_ && graph_)
@@ -571,8 +611,11 @@ void Scene::SetCameraType(tango_gl::GestureCamera::CameraType camera_type) {
 
 void Scene::SetCameraPose(const rtabmap::Transform & pose)
 {
-	UASSERT(currentPose_ != 0);
 	UASSERT(!pose.isNull());
+	if(currentPose_ ==0)
+	{
+		currentPose_ = new rtabmap::Transform(0,0,0,0,0,-M_PI/2.0f);
+	}
 	*currentPose_ = pose;
 }
 
@@ -600,7 +643,7 @@ rtabmap::Transform Scene::GetOpenGLCameraPose(float * fov) const
 	{
 		*fov = gesture_camera_->getFOV();
 	}
-	return glmToTransform(gesture_camera_->GetTransformationMatrix());
+	return rtabmap::glmToTransform(gesture_camera_->GetTransformationMatrix());
 }
 
 void Scene::OnTouchEvent(int touch_count,
@@ -656,6 +699,11 @@ void Scene::setGridVisible(bool visible)
 void Scene::setTraceVisible(bool visible)
 {
 	traceVisible_ = visible;
+}
+
+void Scene::setFrustumVisible(bool visible)
+{
+	frustumVisible_ = visible;
 }
 
 //Should only be called in OpenGL thread!
@@ -728,7 +776,7 @@ void Scene::addCloud(
 
 void Scene::addMesh(
 		int id,
-		const Mesh & mesh,
+		const rtabmap::Mesh & mesh,
 		const rtabmap::Transform & pose,
 		bool createWireframe)
 {
@@ -847,7 +895,7 @@ void Scene::updateCloudPolygons(int id, const std::vector<pcl::Vertices> & polyg
 	}
 }
 
-void Scene::updateMesh(int id, const Mesh & mesh)
+void Scene::updateMesh(int id, const rtabmap::Mesh & mesh)
 {
 	std::map<int, PointCloudDrawable*>::iterator iter=pointClouds_.find(id);
 	if(iter != pointClouds_.end())

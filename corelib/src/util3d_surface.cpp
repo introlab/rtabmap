@@ -1007,7 +1007,11 @@ pcl::TextureMesh::Ptr concatenateTextureMeshes(const std::list<pcl::TextureMesh:
 			// append point cloud
 			int polygonStep = output->cloud.height * output->cloud.width;
 			pcl::PCLPointCloud2 tmp;
+#if PCL_VERSION_COMPARE(>=, 1, 10, 0)
+			pcl::concatenate(output->cloud, iter->get()->cloud, tmp);
+#else
 			pcl::concatenatePointCloud(output->cloud, iter->get()->cloud, tmp);
+#endif
 			output->cloud = tmp;
 
 			UASSERT((*iter)->tex_polygons.size() == (*iter)->tex_coordinates.size() &&
@@ -1553,7 +1557,7 @@ cv::Mat mergeTextures(
 					}
 					else if(memory)
 					{
-						SensorData data = memory->getSignatureDataConst(textureId, true, false, false, false);
+						SensorData data = memory->getNodeData(textureId, true, false, false, false);
 						std::vector<CameraModel> models = data.cameraModels();
 						StereoCameraModel stereoModel = data.stereoCameraModel();
 						if(models.size()>=1 &&
@@ -1682,7 +1686,7 @@ cv::Mat mergeTextures(
 								}
 								else if(memory)
 								{
-									SensorData data = memory->getSignatureDataConst(textures[t].first, true, false, false, false);
+									SensorData data = memory->getNodeData(textures[t].first, true, false, false, false);
 									models = data.cameraModels();
 									data.uncompressDataConst(&image, 0);
 								}
@@ -2291,7 +2295,7 @@ bool multiBandTexturing(
 		}
 		else if(memory)
 		{
-			SensorData data = memory->getSignatureDataConst(camId, true, false, false, false);
+			SensorData data = memory->getNodeData(camId, true, false, false, false);
 			models = data.cameraModels();
 			if(models.empty() && data.stereoCameraModel().isValidForProjection())
 			{
@@ -2993,7 +2997,7 @@ float computeNormalsComplexity(
 	int oi = 0;
 	bool doTransform = false;
 	Transform tn;
-	if(!t.isIdentity())
+	if(!t.isIdentity() && !t.isNull())
 	{
 		tn = t.rotation();
 		doTransform = true;
@@ -3202,12 +3206,18 @@ pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr mls(
 	mls.setComputeNormals (true);
 	if(polygonialOrder > 0)
 	{
+#if PCL_VERSION_COMPARE(<, 1, 10, 0)
 		mls.setPolynomialFit (true);
+#endif
 		mls.setPolynomialOrder(polygonialOrder);
 	}
 	else
 	{
+#if PCL_VERSION_COMPARE(<, 1, 10, 0)
 		mls.setPolynomialFit (false);
+#else
+		mls.setPolynomialOrder(1);
+#endif
 	}
 	UASSERT(upsamplingMethod >= mls.NONE &&
 			upsamplingMethod <= mls.VOXEL_GRID_DILATION);

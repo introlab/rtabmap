@@ -151,13 +151,6 @@ OdometryF2M::~OdometryF2M()
 {
 	delete map_;
 	delete lastFrame_;
-	scansBuffer_.clear();
-	bundleWordReferences_.clear();
-	bundlePoses_.clear();
-	bundleLinks_.clear();
-	bundleModels_.clear();
-	bundlePoseReferences_.clear();
-	imus_.clear();
 	delete sba_;
 	delete regPipeline_;
 	UDEBUG("");
@@ -181,7 +174,6 @@ void OdometryF2M::reset(const Transform & initialPose)
 		bundlePoseReferences_.clear();
 		bundleSeq_ = 0;
 		lastFrameOldestNewId_ = 0;
-		imus_.clear();
 	}
 	initGravity_ = false;
 }
@@ -206,30 +198,27 @@ Transform OdometryF2M::computeTransform(
 		info->type = 0;
 	}
 
+	Transform imuT;
 	if(sba_ && sba_->gravitySigma() > 0.0f && !data.imu().empty())
 	{
-		if(data.imu().orientation()[0] == 0.0 && data.imu().orientation()[1] == 0.0 && data.imu().orientation()[2] == 0.0)
+		if(imus().empty())
 		{
 			UERROR("IMU received doesn't have orientation set, it is ignored. If you are using RTAB-Map standalone, enable IMU filtering in Preferences->Source panel. On ROS, use \"imu_filter_madgwick\" or \"imu_complementary_filter\" packages to compute the orientation.");
 		}
 		else
 		{
-			Transform orientation(0,0,0, data.imu().orientation()[0], data.imu().orientation()[1], data.imu().orientation()[2], data.imu().orientation()[3]);
-			//UWARN("%fs %s", data.stamp(), orientation.prettyPrint().c_str());
-			imus_.insert(std::make_pair(data.stamp(), orientation*data.imu().localTransform().inverse()));
-			if(imus_.size() > 1000)
-			{
-				imus_.erase(imus_.begin());
-			}
-
+			imuT = Transform::getTransform(imus(), data.stamp());
 			if(this->getPose().r11() == 1.0f && this->getPose().r22() == 1.0f && this->getPose().r33() == 1.0f)
 			{
-				Eigen::Quaterniond imuQuat = imus_.rbegin()->second.getQuaterniond();
-				Transform previous = this->getPose();
-				Transform newFramePose = Transform(previous.x(), previous.y(), previous.z(), imuQuat.x(), imuQuat.y(), imuQuat.z(), imuQuat.w());
-				UWARN("Updated initial pose from %s to %s with IMU orientation", previous.prettyPrint().c_str(), newFramePose.prettyPrint().c_str());
-				initGravity_ = true;
-				this->reset(newFramePose);
+				if(!imuT.isNull())
+				{
+					Eigen::Quaterniond imuQuat = imuT.getQuaterniond();
+					Transform previous = this->getPose();
+					Transform newFramePose = Transform(previous.x(), previous.y(), previous.z(), imuQuat.x(), imuQuat.y(), imuQuat.z(), imuQuat.w());
+					UWARN("Updated initial pose from %s to %s with IMU orientation", previous.prettyPrint().c_str(), newFramePose.prettyPrint().c_str());
+					initGravity_ = true;
+					this->reset(newFramePose);
+				}
 			}
 		}
 
@@ -276,7 +265,6 @@ Transform OdometryF2M::computeTransform(
 			std::map<int, Transform> bundlePoses;
 			std::multimap<int, Link> bundleLinks;
 			std::map<int, CameraModel> bundleModels;
-			std::map<int, StereoCameraModel> bundleStereoModels;
 
 			for(int guessIteration=0;
 					guessIteration<(!guess.isNull()&&regPipeline_->isImageRequired()?2:1) && transform.isNull();
@@ -292,7 +280,6 @@ Transform OdometryF2M::computeTransform(
 				bundlePoses.clear();
 				bundleLinks.clear();
 				bundleModels.clear();
-				bundleStereoModels.clear();
 
 				float maxCorrespondenceDistance = 0.0f;
 				float pmOutlierRatio = 0.0f;
@@ -371,14 +358,9 @@ Transform OdometryF2M::computeTransform(
 							bundleLinks.insert(std::make_pair(bundlePoses_.rbegin()->first, Link(bundlePoses_.rbegin()->first, lastFrame_->id(), Link::kNeighbor, bundlePoses_.rbegin()->second.inverse()*transform, regInfo.covariance.inv())));
 							bundlePoses.insert(std::make_pair(lastFrame_->id(), transform));
 
-							Transform imuT;
-							if(!imus_.empty())
+							if(!imuT.isNull())
 							{
-								imuT = Transform::getTransform(imus_, lastFrame_->getStamp());
-								if(!imuT.isNull())
-								{
-									bundleLinks.insert(std::make_pair(lastFrame_->id(), Link(lastFrame_->id(), lastFrame_->id(), Link::kGravity, imuT)));
-								}
+								bundleLinks.insert(std::make_pair(lastFrame_->id(), Link(lastFrame_->id(), lastFrame_->id(), Link::kGravity, imuT)));
 							}
 
 							CameraModel model;
@@ -509,6 +491,17 @@ Transform OdometryF2M::computeTransform(
 										std::multimap<int, Link>::iterator iter = graph::findLink(bundleLinks, bundlePoses_.rbegin()->first, lastFrame_->id(), false);
 										UASSERT(iter != bundleLinks.end());
 										iter->second.setTransform(bundlePoses_.rbegin()->second.inverse()*transform);
+
+										iter = graph::findLink(bundleLinks, lastFrame_->id(), lastFrame_->id(), false);
+										if(info && iter!=bundleLinks.end() && iter->second.type() == Link::kGravity)
+										{
+											float rollImu,pitchImu,yaw;
+											iter->second.transform().getEulerAngles(rollImu, pitchImu, yaw);
+											float roll,pitch;
+											transform.getEulerAngles(roll, pitch, yaw);
+											info->gravityRollError = fabs(rollImu - roll);
+											info->gravityPitchError = fabs(pitchImu - pitch);
+										}
 									}
 								}
 								UDEBUG("Local Bundle Adjustment After : %s", transform.prettyPrint().c_str());
@@ -952,7 +945,7 @@ Transform OdometryF2M::computeTransform(
 									mapCloudNormals,
 									pcl::IndicesPtr(new std::vector<int>),
 									scanSubtractRadius_,
-									scanSubtractAngle_);
+									lastFrame_->sensorData().laserScanRaw().hasNormals()&&mapScan.hasNormals()?scanSubtractAngle_:0.0f);
 							newPoints = frameCloudNormalsIndices->size();
 						}
 						else
@@ -1247,7 +1240,7 @@ Transform OdometryF2M::computeTransform(
 						bundleModels_.insert(std::make_pair(lastFrame_->id(), model));
 						bundlePoses_.insert(std::make_pair(lastFrame_->id(), newFramePose));
 
-						if(!imus_.empty())
+						if(!imuT.isNull())
 						{
 							bundleIMUOrientations_.insert(std::make_pair(lastFrame_->id(), Link(lastFrame_->id(), lastFrame_->id(), Link::kGravity, newFramePose)));
 						}
@@ -1278,7 +1271,7 @@ Transform OdometryF2M::computeTransform(
 						Parameters::parse(parameters_, Parameters::kIcpPointToPlaneMinComplexity(), minComplexity);
 						if(p2n && minComplexity>0.0f)
 						{
-							complexity = util3d::computeNormalsComplexity(*mapCloudNormals);
+							complexity = util3d::computeNormalsComplexity(*mapCloudNormals, Transform::getIdentity(), lastFrame_->sensorData().laserScanRaw().is2d());
 							if(complexity > minComplexity)
 							{
 								frameValid = true;

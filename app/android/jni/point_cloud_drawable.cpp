@@ -318,7 +318,7 @@ PointCloudDrawable::PointCloudDrawable(
 }
 
 PointCloudDrawable::PointCloudDrawable(
-		const Mesh & mesh,
+		const rtabmap::Mesh & mesh,
 		bool createWireframe) :
 				vertex_buffers_(0),
 				textures_(0),
@@ -525,7 +525,7 @@ void PointCloudDrawable::updateCloud(const pcl::PointCloud<pcl::PointXYZRGB>::Pt
 	nPoints_ = totalPoints;
 }
 
-void PointCloudDrawable::updateMesh(const Mesh & mesh, bool createWireframe)
+void PointCloudDrawable::updateMesh(const rtabmap::Mesh & mesh, bool createWireframe)
 {
 	UASSERT(mesh.cloud.get() && !mesh.cloud->empty());
 	nPoints_ = 0;

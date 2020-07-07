@@ -3,35 +3,41 @@ cmake_minimum_required(VERSION 2.8)
 # inside rtabmap project (see below for external build)
 SET(RTABMap_INCLUDE_DIRS 
     ${PROJECT_SOURCE_DIR}/utilite/include
-	${PROJECT_SOURCE_DIR}/corelib/include
-	${PROJECT_SOURCE_DIR}/guilib/include
+    ${PROJECT_SOURCE_DIR}/corelib/include
+    ${PROJECT_SOURCE_DIR}/guilib/include
 )
 SET(RTABMap_LIBRARIES 
     rtabmap_core
-	rtabmap_utilite
-	rtabmap_gui
+    rtabmap_utilite
 )  
 	
 if(POLICY CMP0020)
-	cmake_policy(SET CMP0020 OLD)
+    cmake_policy(SET CMP0020 OLD)
 endif()
 
 SET(INCLUDE_DIRS
-	${RTABMap_INCLUDE_DIRS}
+    ${RTABMap_INCLUDE_DIRS}
     ${OpenCV_INCLUDE_DIRS}
     ${PCL_INCLUDE_DIRS}
 )
 
-IF(QT4_FOUND)
-    INCLUDE(${QT_USE_FILE})
-ENDIF(QT4_FOUND)
-
 SET(LIBRARIES
-	${RTABMap_LIBRARIES}
-	${OpenCV_LIBRARIES}
-	${PCL_LIBRARIES}
-	${QT_LIBRARIES} 
+    ${RTABMap_LIBRARIES}
+    ${OpenCV_LIBRARIES}
+    ${PCL_LIBRARIES}
 )
+
+IF(QT4_FOUND OR Qt5_FOUND)
+    IF(QT4_FOUND)
+        INCLUDE(${QT_USE_FILE})
+    ENDIF(QT4_FOUND)
+    SET(LIBRARIES
+        ${LIBRARIES}
+        ${QT_LIBRARIES}
+        rtabmap_gui
+    )
+    ADD_DEFINITIONS("-DWITH_QT")
+ENDIF(QT4_FOUND OR Qt5_FOUND)
 
 INCLUDE_DIRECTORIES(${INCLUDE_DIRS})
 

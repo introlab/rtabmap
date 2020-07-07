@@ -473,8 +473,10 @@ SensorData CameraFreenect::captureImage(CameraInfo * info)
 				freenectDevice_->getAccelerometerValues(x,y,z);
 				if(x != 0.0 && y != 0.0 && z != 0.0)
 				{
-					// frame of imu on kinect is x->right, y->down, z->backward
-					data.setIMU(IMU(cv::Vec3d(0,0,0), cv::Mat(), cv::Vec3d(x, y, z), cv::Mat(), Transform(0,0,-1,0, -1,0,0,0, 0,-1,0,0)));
+					 Transform opticalTransform(0,-1,0,0, 0,0,-1,0, 1,0,0,0);
+					 Transform base = this->getLocalTransform()*opticalTransform;
+					// frame of imu on kinect is x->left, y->up, z->forward
+					data.setIMU(IMU(cv::Vec3d(0,0,0), cv::Mat(), cv::Vec3d(x, y, z), cv::Mat(), base*Transform(0,0,1,0, 1,0,0,0, 0,1,0,0)));
 				}
 			}
 		}

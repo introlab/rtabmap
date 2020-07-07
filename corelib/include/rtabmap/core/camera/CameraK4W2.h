@@ -66,7 +66,7 @@ public:
 	CameraK4W2(int deviceId = 0, // not used
 		Type type = kTypeDepth2ColorSD,
 		float imageRate = 0.0f,
-		const Transform & localTransform = Transform::getIdentity());
+		const Transform & localTransform = CameraModel::opticalRotation());
 	virtual ~CameraK4W2();
 
 	virtual bool init(const std::string & calibrationFolder = ".", const std::string & cameraName = "");

@@ -137,6 +137,16 @@ IF(BUILD_AS_BUNDLE AND (APPLE OR WIN32))
           DESTINATION ${openni2_dest_dir} 
           COMPONENT runtime)
   ENDIF(OpenNI2_FOUND)
+  
+  IF(k4a_FOUND)
+	# Install needed depthengine_2_0.dll
+    IF(WIN32)
+		file(TO_CMAKE_PATH "$ENV{K4A_ROOT_DIR}" ENV_K4A_ROOT_DIR)
+		INSTALL(FILES "${ENV_K4A_ROOT_DIR}/tools/depthengine_2_0.dll" 
+          DESTINATION ${plugin_dest_dir} 
+          COMPONENT runtime)
+	ENDIF(WIN32)
+  ENDIF(k4a_FOUND)
 
   # Install needed Qt plugins by copying directories from the qt installation
   # One can cull what gets copied by using 'REGEX "..." EXCLUDE'
@@ -157,25 +167,27 @@ IF(BUILD_AS_BUNDLE AND (APPLE OR WIN32))
 		IF(NOT plugin_root)
 			get_filename_component(plugin_root ${plugin_dir} DIRECTORY)
 		ENDIF(NOT plugin_root)
-	    #MESSAGE(STATUS "Qt5 plugin \"${plugin_loc}\" installed in \"${plugin_dest_dir}/plugins${plugin_type}\"")
+		#MESSAGE(STATUS "Qt5 plugin \"${plugin_loc}\" installed in \"${plugin_dest_dir}/plugins${plugin_type}\"")
 		INSTALL(FILES ${plugin_loc}
           DESTINATION ${plugin_dest_dir}/plugins${plugin_type}
           COMPONENT runtime)
 	endforeach()
-	IF(WIN32)
-		IF(NOT Qt5Widgets_VERSION VERSION_LESS 5.10.0)
+	IF(NOT Qt5Widgets_VERSION VERSION_LESS 5.10.0)
+		IF(WIN32)
 			SET(plugin_loc "${plugin_root}/styles/qwindowsvistastyle.dll")
-			IF(EXISTS ${plugin_loc})
-				get_filename_component(plugin_dir ${plugin_loc} DIRECTORY)
-				string(REPLACE "plugins" ";" loc_list ${plugin_dir})
-				list(GET loc_list 1 plugin_type)
-				INSTALL(FILES ${plugin_loc}
-					DESTINATION ${plugin_dest_dir}/plugins${plugin_type}
-					COMPONENT runtime)
-				#MESSAGE(STATUS "Qt5 plugin \"${plugin_loc}\" installed in \"${plugin_dest_dir}/plugins${plugin_type}\"")
-			ENDIF(EXISTS ${plugin_loc})
-		ENDIF(NOT Qt5Widgets_VERSION VERSION_LESS 5.10.0)
-	ENDIF(WIN32)
+		ELSEIF(APPLE)
+			SET(plugin_loc "${plugin_root}/styles/libqmacstyle.dylib")
+		ENDIF()
+		IF(EXISTS ${plugin_loc})
+			get_filename_component(plugin_dir ${plugin_loc} DIRECTORY)
+			string(REPLACE "plugins" ";" loc_list ${plugin_dir})
+			list(GET loc_list 1 plugin_type)
+			INSTALL(FILES ${plugin_loc}
+				DESTINATION ${plugin_dest_dir}/plugins${plugin_type}
+				COMPONENT runtime)
+			#MESSAGE(STATUS "Qt5 plugin \"${plugin_loc}\" installed in \"${plugin_dest_dir}/plugins${plugin_type}\"")
+		ENDIF(EXISTS ${plugin_loc})
+	ENDIF(NOT Qt5Widgets_VERSION VERSION_LESS 5.10.0)
   ENDIF()
   
   # install a qt.conf file

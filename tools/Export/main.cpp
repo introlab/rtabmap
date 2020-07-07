@@ -169,7 +169,7 @@ int main(int argc, char * argv[])
 #ifdef RTABMAP_ALICE_VISION
 			multiband = true;
 #else
-			printf("\"--multiband\" option cannot be used vecause RTAB-Map is not built with AliceVision support. Ignoring multiband...\n");
+			printf("\"--multiband\" option cannot be used because RTAB-Map is not built with AliceVision support. Ignoring multiband...\n");
 #endif
 		}
 		else if(std::strcmp(argv[i], "--poisson_depth") == 0)
@@ -282,7 +282,7 @@ int main(int argc, char * argv[])
 	std::map<int, Transform> optimizedPoses;
 	std::multimap<int, Link> links;
 	printf("Optimizing the map...\n");
-	rtabmap.get3DMap(nodes, optimizedPoses, links, true, true);
+	rtabmap.getGraph(optimizedPoses, links, true, true, &nodes, true, true, true, true);
 	printf("Optimizing the map... done (%fs).\n", timer.ticks());
 
 	std::string outputDirectory = UDirectory::getDir(dbPath);
@@ -487,7 +487,7 @@ int main(int argc, char * argv[])
 							textureMesh->tex_materials[i].tex_file += ".jpg";
 							printf("Saving texture to %s.\n", textureMesh->tex_materials[i].tex_file.c_str());
 							UASSERT(textures.cols % textures.rows == 0);
-							success = cv::imwrite(textureMesh->tex_materials[i].tex_file, cv::Mat(textures, cv::Range::all(), cv::Range(textures.rows*i, textures.rows*(i+1))));
+							success = cv::imwrite(outputDirectory+"/"+textureMesh->tex_materials[i].tex_file, cv::Mat(textures, cv::Range::all(), cv::Range(textures.rows*i, textures.rows*(i+1))));
 							if(!success)
 							{
 								UERROR("Failed saving %s!", textureMesh->tex_materials[i].tex_file.c_str());

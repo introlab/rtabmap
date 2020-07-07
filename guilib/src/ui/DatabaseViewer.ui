@@ -1514,7 +1514,7 @@
         <property name="geometry">
          <rect>
           <x>0</x>
-          <y>-267</y>
+          <y>0</y>
           <width>519</width>
           <height>831</height>
          </rect>
@@ -2069,7 +2069,7 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>298</width>
+          <width>226</width>
           <height>160</height>
          </rect>
         </property>
@@ -2197,8 +2197,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>432</width>
-          <height>196</height>
+          <width>185</width>
+          <height>485</height>
          </rect>
         </property>
         <attribute name="label">
@@ -2783,7 +2783,7 @@
     <bool>true</bool>
    </property>
    <property name="checked">
-    <bool>true</bool>
+    <bool>false</bool>
    </property>
    <property name="text">
     <string>Vertical Layout</string>

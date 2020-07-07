@@ -36,6 +36,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <librealsense2/rsutil.h>
 #include <librealsense2/hpp/rs_processing.hpp>
 #include <librealsense2/rs_advanced_mode.hpp>
+#include <fstream>
 #endif
 
 namespace rtabmap
@@ -76,7 +77,8 @@ CameraRealSense2::CameraRealSense2(
 	cameraHeight_(480),
 	cameraFps_(30),
 	publishInterIMU_(false),
-	dualMode_(false)
+	dualMode_(false),
+	closing_(false)
 #endif
 {
 	UDEBUG("");
@@ -85,12 +87,15 @@ CameraRealSense2::CameraRealSense2(
 CameraRealSense2::~CameraRealSense2()
 {
 #ifdef RTABMAP_REALSENSE2
+	closing_ = true;
 	try
 	{
+		UDEBUG("Closing device(s)...");
 		for(size_t i=0; i<dev_.size(); ++i)
 		{
 			if(dev_[i])
 			{
+				UDEBUG("Closing %d sensor(s) from device %d...", (int)dev_[i]->query_sensors().size(), (int)i);
 				for(rs2::sensor _sensor : dev_[i]->query_sensors())
 				{
 					try
@@ -103,6 +108,7 @@ CameraRealSense2::~CameraRealSense2()
 						UWARN("%s", error.what());
 					}
 				}
+				dev_[i]->hardware_reset(); // To avoid freezing on some Windows computers in the following destructor
 				delete dev_[i];
 			}
 		}
@@ -249,7 +255,7 @@ void CameraRealSense2::getPoseAndIMU(
 		{
 			if(maxWaitTimeMs > 0)
 			{
-				UWARN("Could not find poses to interpolate at time %f after waiting %d ms (last is %f)...", stamp, maxWaitTimeMs, poseBuffer_.rbegin()->first);
+				UWARN("Could not find poses to interpolate at image time %f after waiting %d ms (last is %f)...", stamp, maxWaitTimeMs, poseBuffer_.rbegin()->first);
 			}
 		}
 		else
@@ -302,7 +308,7 @@ void CameraRealSense2::getPoseAndIMU(
 		{
 			if(maxWaitTimeMs>0)
 			{
-				UWARN("Could not find acc data to interpolate at time %f after waiting %d ms (last is %f)...", stamp, maxWaitTimeMs, accBuffer_.rbegin()->first);
+				UWARN("Could not find acc data to interpolate at image time %f after waiting %d ms (last is %f)...", stamp, maxWaitTimeMs, accBuffer_.rbegin()->first);
 			}
 			imuMutex_.unlock();
 			return;
@@ -365,7 +371,7 @@ void CameraRealSense2::getPoseAndIMU(
 		{
 			if(maxWaitTimeMs>0)
 			{
-				UWARN("Could not find gyro data to interpolate at time %f after waiting %d ms (last is %f)...", stamp, maxWaitTimeMs, gyroBuffer_.rbegin()->first);
+				UWARN("Could not find gyro data to interpolate at image time %f after waiting %d ms (last is %f)...", stamp, maxWaitTimeMs, gyroBuffer_.rbegin()->first);
 			}
 			imuMutex_.unlock();
 			return;
@@ -484,6 +490,32 @@ bool CameraRealSense2::init(const std::string & calibrationFolder, const std::st
 		return false;
 	}
 
+	if (!jsonConfig_.empty())
+	{
+		if (dev_[0]->is<rs400::advanced_mode>())
+		{
+			std::stringstream ss;
+			std::ifstream in(jsonConfig_);
+			if (in.is_open())
+			{
+				ss << in.rdbuf();
+				std::string json_file_content = ss.str();
+
+				auto adv = dev_[0]->as<rs400::advanced_mode>();
+				adv.load_json(json_file_content);
+				UINFO("JSON file is loaded! (%s)", jsonConfig_.c_str());
+			}
+			else
+			{
+				UWARN("JSON file provided doesn't exist! (%s)", jsonConfig_.c_str());
+			}
+		}
+		else
+		{
+			UWARN("A json config file is provided (%s), but device does not support advanced settings!", jsonConfig_.c_str());
+		}
+	}
+
 	ctx_->set_devices_changed_callback([this](rs2::event_information& info)
 	{
 		for(size_t i=0; i<dev_.size(); ++i)
@@ -492,7 +524,14 @@ bool CameraRealSense2::init(const std::string & calibrationFolder, const std::st
 			{
 				if (info.was_removed(*dev_[i]))
 				{
-					UERROR("The device has been disconnected!");
+					if (closing_)
+					{
+						UDEBUG("The device %d has been disconnected!", i);
+					}
+					else
+					{
+						UERROR("The device %d has been disconnected!", i);
+					}
 				}
 			}
 		}
@@ -991,6 +1030,13 @@ void CameraRealSense2::setDualMode(bool enabled, const Transform & extrinsics)
 #endif
 }
 
+void CameraRealSense2::setJsonConfig(const std::string & json)
+{
+#ifdef RTABMAP_REALSENSE2
+	jsonConfig_ = json;
+#endif
+}
+
 void CameraRealSense2::setImagesRectified(bool enabled)
 {
 #ifdef RTABMAP_REALSENSE2
@@ -1026,7 +1072,6 @@ SensorData CameraRealSense2::captureImage(CameraInfo * info)
 		if (frameset.size() == 2)
 		{
 			double now = UTimer::now();
-			UDEBUG("Frameset arrived.");
 			bool is_rgb_arrived = false;
 			bool is_depth_arrived = false;
 			bool is_left_fisheye_arrived = false;
@@ -1085,6 +1130,7 @@ SensorData CameraRealSense2::captureImage(CameraInfo * info)
 			}
 
 			stamp /= 1000.0; // put in seconds
+			UDEBUG("Frameset arrived. system=%fs frame=%fs", now, stamp);
 			if(stamp - now > 1000000000.0)
 			{
 				if(!clockSyncWarningShown_)

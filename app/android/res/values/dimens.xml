@@ -1,4 +1,3 @@
-
-    <resources>
-        <dimen name="image_width">150dp</dimen>
-    </resources>
+<resources>
+    <dimen name="image_width">150dp</dimen>
+</resources>

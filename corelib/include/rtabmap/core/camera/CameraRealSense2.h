@@ -62,7 +62,7 @@ public:
 	CameraRealSense2(
 		const std::string & deviceId = "",
 		float imageRate = 0,
-		const Transform & localTransform = Transform::getIdentity());
+		const Transform & localTransform = CameraModel::opticalRotation());
 	virtual ~CameraRealSense2();
 
 	virtual bool init(const std::string & calibrationFolder = ".", const std::string & cameraName = "");
@@ -77,11 +77,13 @@ public:
 	void setResolution(int width, int height, int fps = 30);
 	void publishInterIMU(bool enabled);
 	void setDualMode(bool enabled, const Transform & extrinsics);
+	void setJsonConfig(const std::string & json);
 	// T265 related parameters
 	void setImagesRectified(bool enabled);
 	void setOdomProvided(bool enabled);
 
 #ifdef RTABMAP_REALSENSE2
+private:
 	void imu_callback(rs2::frame frame);
 	void pose_callback(rs2::frame frame);
 	void frame_callback(rs2::frame frame);
@@ -131,6 +133,8 @@ private:
 	bool publishInterIMU_;
 	bool dualMode_;
 	Transform dualExtrinsics_;
+	std::string jsonConfig_;
+	bool closing_;
 
 	static Transform realsense2PoseRotation_;
 	static Transform realsense2PoseRotationInv_;

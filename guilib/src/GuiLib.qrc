@@ -26,6 +26,7 @@
         <file>images/system-log-out.png</file>
         <file>images/kinect_xbox_360.png</file>
         <file>images/kinect_xbox_one.png</file>
+        <file>images/k4a.png</file>
         <file>images/sense.png</file>
         <file>images/xtion_pro_live.png</file>
         <file>images/bumblebee2.png</file>
@@ -38,5 +39,6 @@
         <file>images/tara.png</file>
         <file>images/t265.png</file>
         <file>images/sr300.png</file>
+        <file>images/mynteyes.png</file>
     </qresource>
 </RCC>

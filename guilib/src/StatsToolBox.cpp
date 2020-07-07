@@ -44,7 +44,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 namespace rtabmap {
 
-StatItem::StatItem(const QString & name, bool cacheOn, const std::vector<float> & x, const std::vector<float> & y, const QString & unit, const QMenu * menu, QGridLayout * grid, QWidget * parent) :
+StatItem::StatItem(const QString & name, bool cacheOn, const std::vector<qreal> & x, const std::vector<qreal> & y, const QString & unit, const QMenu * menu, QGridLayout * grid, QWidget * parent) :
 	QWidget(parent),
 	_button(0),
 	_name(0),
@@ -84,7 +84,7 @@ void StatItem::clearCache()
 	_value->clear();
 }
 
-void StatItem::addValue(float y)
+void StatItem::addValue(qreal y)
 {
 	if(_cacheOn)
 	{
@@ -94,7 +94,7 @@ void StatItem::addValue(float y)
 	Q_EMIT valueAdded(y);
 }
 
-void StatItem::addValue(float x, float y)
+void StatItem::addValue(qreal x, qreal y)
 {
 	if(_cacheOn)
 	{
@@ -111,7 +111,7 @@ void StatItem::addValue(float x, float y)
 	Q_EMIT valueAdded(x,y);
 }
 
-void StatItem::setValues(const std::vector<float> & x, const std::vector<float> & y)
+void StatItem::setValues(const std::vector<qreal> & x, const std::vector<qreal> & y)
 {
 	if(_cacheOn)
 	{
@@ -254,30 +254,30 @@ void StatsToolBox::setCacheOn(bool on)
 
 void StatsToolBox::updateStat(const QString & statFullName, bool cacheOn)
 {
-	std::vector<float> vx,vy;
+	std::vector<qreal> vx,vy;
 	updateStat(statFullName, vx, vy, cacheOn);
 }
 
-void StatsToolBox::updateStat(const QString & statFullName, float y, bool cacheOn)
+void StatsToolBox::updateStat(const QString & statFullName, qreal y, bool cacheOn)
 {
-	std::vector<float> vx,vy(1);
+	std::vector<qreal> vx,vy(1);
 	vy[0] = y;
 	updateStat(statFullName, vx, vy, cacheOn);
 }
 
-void StatsToolBox::updateStat(const QString & statFullName, float x, float y, bool cacheOn)
+void StatsToolBox::updateStat(const QString & statFullName, qreal x, qreal y, bool cacheOn)
 {
-	std::vector<float> vx(1),vy(1);
+	std::vector<qreal> vx(1),vy(1);
 	vx[0] = x;
 	vy[0] = y;
 	updateStat(statFullName, vx, vy, cacheOn);
 }
 
-void StatsToolBox::updateStat(const QString & statFullName, const std::vector<float> & x, const std::vector<float> & y, bool cacheOn)
+void StatsToolBox::updateStat(const QString & statFullName, const std::vector<qreal> & x, const std::vector<qreal> & y, bool cacheOn)
 {
-	// round float to max 2 numbers after the dot
-	//x = (float(int(100*x)))/100;
-	//y = (float(int(100*y)))/100;
+	// round qreal to max 2 numbers after the dot
+	//x = (qreal(int(100*x)))/100;
+	//y = (qreal(int(100*y)))/100;
 
 	StatItem * item = _statBox->findChild<StatItem *>(statFullName);
 	if(item)
@@ -393,9 +393,9 @@ void StatsToolBox::plot(const StatItem * stat, const QString & plotName)
 		{
 			UPlotCurve * curve = new UPlotCurve(stat->objectName(), plot);
 			curve->setPen(plot->getRandomPenColored());
-			connect(stat, SIGNAL(valueAdded(float)), curve, SLOT(addValue(float)));
-			connect(stat, SIGNAL(valueAdded(float, float)), curve, SLOT(addValue(float, float)));
-			connect(stat, SIGNAL(valuesChanged(const std::vector<float> &, const std::vector<float> &)), curve, SLOT(setData(const std::vector<float> &, const std::vector<float> &)));
+			connect(stat, SIGNAL(valueAdded(qreal)), curve, SLOT(addValue(qreal)));
+			connect(stat, SIGNAL(valueAdded(qreal, qreal)), curve, SLOT(addValue(qreal, qreal)));
+			connect(stat, SIGNAL(valuesChanged(const std::vector<qreal> &, const std::vector<qreal> &)), curve, SLOT(setData(const std::vector<qreal> &, const std::vector<qreal> &)));
 			if(stat->value().compare("*") == 0)
 			{
 				plot->setMaxVisibleItems(0);
@@ -453,9 +453,9 @@ void StatsToolBox::plot(const StatItem * stat, const QString & plotName)
 		//Add a new curve linked to the statBox
 		UPlotCurve * curve = new UPlotCurve(stat->objectName(), newPlot);
 		curve->setPen(newPlot->getRandomPenColored());
-		connect(stat, SIGNAL(valueAdded(float)), curve, SLOT(addValue(float)));
-		connect(stat, SIGNAL(valueAdded(float, float)), curve, SLOT(addValue(float, float)));
-		connect(stat, SIGNAL(valuesChanged(const std::vector<float> &, const std::vector<float> &)), curve, SLOT(setData(const std::vector<float> &, const std::vector<float> &)));
+		connect(stat, SIGNAL(valueAdded(qreal)), curve, SLOT(addValue(qreal)));
+		connect(stat, SIGNAL(valueAdded(qreal, qreal)), curve, SLOT(addValue(qreal, qreal)));
+		connect(stat, SIGNAL(valuesChanged(const std::vector<qreal> &, const std::vector<qreal> &)), curve, SLOT(setData(const std::vector<qreal> &, const std::vector<qreal> &)));
 		if(stat->value().compare("*") == 0)
 		{
 			newPlot->setMaxVisibleItems(0);

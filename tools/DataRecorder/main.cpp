@@ -56,6 +56,12 @@ void showUsage()
 			"                                     5=Freenect2  (Kinect v2)\n"
 			"                                     6=DC1394     (Bumblebee2)\n"
 			"                                     7=FlyCapture2 (Bumblebee2)\n"
+			"                                     8=ZED stereo\n"
+			"                                     9=RealSense\n"
+			"                                     10=Kinect for Windows 2 SDK\n"
+			"                                     11=RealSense2\n"
+			"                                     12=Kinect for Azure SDK\n"
+			"                                     13=MYNT EYE S\n"
 			"  -device ""                Device ID (default \"\")\n");
 	exit(1);
 }
@@ -127,7 +133,7 @@ int main (int argc, char * argv[])
 			if(i < argc)
 			{
 				driver = std::atoi(argv[i]);
-				if(driver < 0 || driver > 7)
+				if(driver < 0 || driver > 13)
 				{
 					showUsage();
 				}
@@ -176,10 +182,9 @@ int main (int argc, char * argv[])
 	signal(SIGINT, &sighandler);
 
 	rtabmap::Camera * camera = 0;
-	rtabmap::Transform t=rtabmap::Transform(0,0,1,0, -1,0,0,0, 0,-1,0,0);
 	if(driver == 0)
 	{
-		camera = new rtabmap::CameraOpenni(deviceId, rate, t);
+		camera = new rtabmap::CameraOpenni(deviceId, rate);
 	}
 	else if(driver == 1)
 	{
@@ -188,7 +193,7 @@ int main (int argc, char * argv[])
 			UERROR("Not built with OpenNI2 support...");
 			exit(-1);
 		}
-		camera = new rtabmap::CameraOpenNI2(deviceId, CameraOpenNI2::kTypeColorDepth, rate, t);
+		camera = new rtabmap::CameraOpenNI2(deviceId, CameraOpenNI2::kTypeColorDepth, rate);
 	}
 	else if(driver == 2)
 	{
@@ -197,7 +202,7 @@ int main (int argc, char * argv[])
 			UERROR("Not built with Freenect support...");
 			exit(-1);
 		}
-		camera = new rtabmap::CameraFreenect(deviceId.size()?atoi(deviceId.c_str()):0, CameraFreenect::kTypeColorDepth, rate, t);
+		camera = new rtabmap::CameraFreenect(deviceId.size()?atoi(deviceId.c_str()):0, CameraFreenect::kTypeColorDepth, rate);
 	}
 	else if(driver == 3)
 	{
@@ -206,7 +211,7 @@ int main (int argc, char * argv[])
 			UERROR("Not built with OpenNI from OpenCV support...");
 			exit(-1);
 		}
-		camera = new rtabmap::CameraOpenNICV(false, rate, t);
+		camera = new rtabmap::CameraOpenNICV(false, rate);
 	}
 	else if(driver == 4)
 	{
@@ -215,7 +220,7 @@ int main (int argc, char * argv[])
 			UERROR("Not built with OpenNI from OpenCV support...");
 			exit(-1);
 		}
-		camera = new rtabmap::CameraOpenNICV(true, rate, t);
+		camera = new rtabmap::CameraOpenNICV(true, rate);
 	}
 	else if(driver == 5)
 	{
@@ -224,7 +229,7 @@ int main (int argc, char * argv[])
 			UERROR("Not built with Freenect2 support...");
 			exit(-1);
 		}
-		camera = new rtabmap::CameraFreenect2(deviceId.size()?atoi(deviceId.c_str()):0, rtabmap::CameraFreenect2::kTypeColor2DepthSD, rate, t);
+		camera = new rtabmap::CameraFreenect2(deviceId.size()?atoi(deviceId.c_str()):0, rtabmap::CameraFreenect2::kTypeColor2DepthSD, rate);
 	}
 	else if(driver == 6)
 	{
@@ -233,7 +238,7 @@ int main (int argc, char * argv[])
 			UERROR("Not built with dc1394 support...");
 			exit(-1);
 		}
-		camera = new rtabmap::CameraStereoDC1394(rate, t);
+		camera = new rtabmap::CameraStereoDC1394(rate);
 	}
 	else if(driver == 7)
 	{
@@ -242,7 +247,61 @@ int main (int argc, char * argv[])
 			UERROR("Not built with FlyCapture2/Triclops support...");
 			exit(-1);
 		}
-		camera = new rtabmap::CameraStereoFlyCapture2(rate, t);
+		camera = new rtabmap::CameraStereoFlyCapture2(rate);
+	}
+	else if(driver == 8)
+	{
+		if(!rtabmap::CameraStereoZed::available())
+		{
+			UERROR("Not built with ZED sdk support...");
+			exit(-1);
+		}
+		camera = new rtabmap::CameraStereoZed(uStr2Int(deviceId));
+	}
+	else if (driver == 9)
+	{
+		if (!rtabmap::CameraRealSense::available())
+		{
+			UERROR("Not built with RealSense support...");
+			exit(-1);
+		}
+		camera = new rtabmap::CameraRealSense(uStr2Int(deviceId));
+	}
+	else if (driver == 10)
+	{
+		if (!rtabmap::CameraK4W2::available())
+		{
+			UERROR("Not built with Kinect for Windows 2 SDK support...");
+			exit(-1);
+		}
+		camera = new rtabmap::CameraK4W2(uStr2Int(deviceId));
+	}
+	else if (driver == 11)
+	{
+		if (!rtabmap::CameraRealSense2::available())
+		{
+			UERROR("Not built with RealSense2 SDK support...");
+			exit(-1);
+		}
+		camera = new rtabmap::CameraRealSense2(deviceId);
+	}
+	else if (driver == 12)
+	{
+		if (!rtabmap::CameraK4A::available())
+		{
+			UERROR("Not built with Kinect for Azure SDK support...");
+			exit(-1);
+		}
+		camera = new rtabmap::CameraK4A(1);
+	}
+	else if (driver == 13)
+	{
+		if (!rtabmap::CameraMyntEye::available())
+		{
+			UERROR("Not built with Mynt Eye S support...");
+			exit(-1);
+		}
+		camera = new rtabmap::CameraMyntEye(deviceId);
 	}
 	else
 	{

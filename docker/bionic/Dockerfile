@@ -104,7 +104,7 @@ RUN rm /bin/sh && ln -s /bin/bash /bin/sh
 # Build RTAB-Map project
 RUN source /ros_entrypoint.sh && \
     cd rtabmap/build && \
-    cmake .. && \
+    cmake -DWITH_ALICE_VISION=ON .. && \
     make && \
     make install && \
     cd ../.. && \

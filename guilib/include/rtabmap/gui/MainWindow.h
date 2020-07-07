@@ -172,6 +172,7 @@ protected Q_SLOTS:
 	void selectOpenni2();
 	void selectFreenect2();
 	void selectK4W2();
+	void selectK4A();
 	void selectRealSense();
 	void selectRealSense2();
 	void selectRealSense2Stereo();
@@ -180,6 +181,7 @@ protected Q_SLOTS:
 	void selectStereoZed();
 	void selectStereoTara();
 	void selectStereoUsb();
+	void selectMyntEyeS();
 	void dumpTheMemory();
 	void dumpThePrediction();
 	void sendGoal();
@@ -244,7 +246,7 @@ Q_SIGNALS:
 	void timeLimitChanged(float);
 	void mappingModeChanged(bool);
 	void noMoreImagesReceived();
-	void loopClosureThrChanged(float);
+	void loopClosureThrChanged(qreal);
 	void twistReceived(float x, float y, float z, float roll, float pitch, float yaw, int row, int col);
 
 private:
@@ -328,6 +330,7 @@ private:
 	QString _newDatabasePath;
 	QString _newDatabasePathOutput;
 	QString _openedDatabasePath;
+	QString _defaultOpenDatabasePath;
 	bool _databaseUpdated;
 	bool _odomImageShow;
 	bool _odomImageDepthShow;

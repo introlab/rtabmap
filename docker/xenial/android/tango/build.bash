@@ -31,6 +31,20 @@ rm -r lib_tango_support_api
 wget 'https://docs.google.com/uc?authuser=0&id=1s5iPJ7xiridj9Jj--gCy2XiQFniheVm6&export=download' -O TangoSDK_Ikariotikos_Java.jar
 mv TangoSDK_Ikariotikos_Java.jar rtabmap-tango/app/android/libs/.
 
+# ARCore
+wget 'https://docs.google.com/uc?authuser=0&id=1A4gMviyxHCnA19MTMbitOWoSOyoZcCef&export=download' -O arcore.zip
+unzip -qq arcore.zip
+rm arcore.zip
+cp arcore/*.jar rtabmap-tango/app/android/libs/.
+rm -r arcore
+
+# AREngine
+wget 'https://docs.google.com/uc?authuser=0&id=1rdaD2Z1QBv-SUeUy0oBmg3C2odfxTHgR&export=download' -O arengine.zip
+unzip -qq arengine.zip
+rm arengine.zip
+cp arengine/*.jar rtabmap-tango/app/android/libs/.
+rm -r arengine
+
 # resource tool
 cd rtabmap-tango/build
 cmake -DANDROID_PREBUILD=ON ..

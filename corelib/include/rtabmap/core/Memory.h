@@ -93,7 +93,7 @@ public:
 	std::set<int> reactivateSignatures(const std::list<int> & ids, unsigned int maxLoaded, double & timeDbAccess);
 
 	int cleanup();
-	void saveStatistics(const Statistics & statistics);
+	void saveStatistics(const Statistics & statistics, bool saveWMState);
 	void savePreviewImage(const cv::Mat & image) const;
 	cv::Mat loadPreviewImage() const;
 	void saveOptimizedPoses(const std::map<int, Transform> & optimizedPoses, const Transform & lastlocalizationPose) const;
@@ -197,18 +197,19 @@ public:
 			EnvSensors & sensors,
 			bool lookInDatabase = false) const;
 	cv::Mat getImageCompressed(int signatureId) const;
-	SensorData getNodeData(int nodeId, bool uncompressedData = false) const;
-	void getNodeWords(int nodeId,
+	SensorData getNodeData(int locationId, bool images, bool scan, bool userData, bool occupancyGrid) const;
+	void getNodeWordsAndGlobalDescriptors(int nodeId,
 			std::multimap<int, cv::KeyPoint> & words,
 			std::multimap<int, cv::Point3f> & words3,
-			std::multimap<int, cv::Mat> & wordsDescriptors);
+			std::multimap<int, cv::Mat> & wordsDescriptors,
+			std::vector<GlobalDescriptor> & globalDescriptors) const;
 	void getNodeCalibration(int nodeId,
 			std::vector<CameraModel> & models,
-			StereoCameraModel & stereoModel);
-	SensorData getSignatureDataConst(int locationId, bool images = true, bool scan = true, bool userData = true, bool occupancyGrid = true) const;
-	std::set<int> getAllSignatureIds() const;
+			StereoCameraModel & stereoModel) const;
+	std::set<int> getAllSignatureIds(bool ignoreChildren = true) const;
 	bool memoryChanged() const {return _memoryChanged;}
 	bool isIncremental() const {return _incrementalMemory;}
+	bool isLocalizationDataSaved() const {return _localizationDataSaved;}
 	const Signature * getSignature(int id) const;
 	bool isInSTM(int signatureId) const {return _stMem.find(signatureId) != _stMem.end();}
 	bool isInWM(int signatureId) const {return _workingMem.find(signatureId) != _workingMem.end();}
@@ -291,6 +292,7 @@ private:
 	bool _saveIntermediateNodeData;
 	std::string _rgbCompressionFormat;
 	bool _incrementalMemory;
+	bool _localizationDataSaved;
 	bool _reduceGraph;
 	int _maxStMemSize;
 	float _recentWmRatio;
@@ -300,6 +302,7 @@ private:
 	bool _badSignaturesIgnored;
 	bool _mapLabelsAdded;
 	bool _depthAsMask;
+	bool _stereoFromMotion;
 	int _imagePreDecimation;
 	int _imagePostDecimation;
 	bool _compressionParallelized;

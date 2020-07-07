@@ -64,6 +64,11 @@ void Camera::resetTimer()
 	_frameRateTimer->start();
 }
 
+bool Camera::initFromFile(const std::string & calibrationPath)
+{
+	return init(UDirectory::getDir(calibrationPath), uSplit(UFile::getName(calibrationPath), '.').front());
+}
+
 SensorData Camera::takeImage(CameraInfo * info)
 {
 	bool warnFrameRateTooHigh = false;

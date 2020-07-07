@@ -31,11 +31,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <jni.h>
 #include <memory>
 
-#include <tango_client_api.h>  // NOLINT
 #include <tango-gl/util.h>
 
 #include "scene.h"
-#include "CameraTango.h"
+#include "CameraMobile.h"
 #include "util.h"
 #include "ProgressionStatus.h"
 
@@ -45,43 +44,20 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pcl/pcl_base.h>
 #include <pcl/TextureMesh.h>
 
+
 // RTABMapApp handles the application lifecycle and resources.
 class RTABMapApp : public UEventsHandler {
  public:
   // Constructor and deconstructor.
-  RTABMapApp();
+  RTABMapApp(JNIEnv* env, jobject caller_activity);
   ~RTABMapApp();
-
-  void onCreate(JNIEnv* env, jobject caller_activity);
 
   void setScreenRotation(int displayRotation, int cameraRotation);
 
   int openDatabase(const std::string & databasePath, bool databaseInMemory, bool optimize, const std::string & databaseSource=std::string());
 
-  bool onTangoServiceConnected(JNIEnv* env, jobject iBinder);
-
-  // Explicitly reset motion tracking and restart the pipeline.
-  // Note that this will cause motion tracking to re-initialize.
-  void TangoResetMotionTracking();
-
-  // Tango Service point cloud callback function for depth data. Called when new
-  // new point cloud data is available from the Tango Service.
-  //
-  // @param pose: The current point cloud returned by the service,
-  //              caller allocated.
-  void onPointCloudAvailable(const TangoXYZij* xyz_ij);
-
-  // Tango service pose callback function for pose data. Called when new
-  // information about device pose is available from the Tango Service.
-  //
-  // @param pose: The current pose returned by the service, caller allocated.
-  void onPoseAvailable(const TangoPoseData* pose);
-
-  // Tango service event callback function for event data. Called when new events
-  // are available from the Tango Service.
-  //
-  // @param event: Tango event, caller allocated.
-  void onTangoEventAvailable(const TangoEvent* event);
+  bool isBuiltWith(int cameraDriver) const;
+  bool startCamera(JNIEnv* env, jobject iBinder, jobject context, jobject activity, int driver);
 
   // Allocate OpenGL resources for rendering, mainly for initializing the Scene.
   void InitializeGLContent();
@@ -92,8 +68,7 @@ class RTABMapApp : public UEventsHandler {
   // Main render loop.
   int Render();
 
-  // Release all non-OpenGL allocated resources.
-  void onPause();
+  void stopCamera();
 
   // Set render camera's viewing angle, first person, third person or top down.
   //
@@ -135,6 +110,7 @@ class RTABMapApp : public UEventsHandler {
   void setCameraColor(bool enabled);
   void setFullResolution(bool enabled);
   void setSmoothing(bool enabled);
+  void setDepthFromMotion(bool enabled);
   void setAppendMode(bool enabled);
   void setDataRecorderMode(bool enabled);
   void setMaxCloudDepth(float value);
@@ -150,7 +126,6 @@ class RTABMapApp : public UEventsHandler {
   void setGPS(const rtabmap::GPS & gps);
   void addEnvSensor(int type, float value);
 
-  void resetMapping();
   void save(const std::string & databasePath);
   void cancelProcessing();
   bool exportMesh(
@@ -174,21 +149,33 @@ class RTABMapApp : public UEventsHandler {
   bool writeExportedMesh(const std::string & directory, const std::string & name);
   int postProcessing(int approach);
 
+  void postCameraPoseEvent(
+  		float x, float y, float z, float qx, float qy, float qz, float qw);
+
+  void postOdometryEvent(
+  		float x, float y, float z, float qx, float qy, float qz, float qw,
+  		float fx, float fy, float cx, float cy,
+  		double stamp,
+		void * yPlane, void * uPlane, void * vPlane, int yPlaneLen, int rgbWidth, int rgbHeight, int rgbFormat,
+  		void * depth, int depthLen, int depthWidth, int depthHeight, int depthFormat,
+		float * points, int pointsLen);
+
  protected:
   virtual bool handleEvent(UEvent * event);
 
  private:
   rtabmap::ParametersMap getRtabmapParameters();
-  bool smoothMesh(int id, Mesh & mesh);
+  bool smoothMesh(int id, rtabmap::Mesh & mesh);
   void gainCompensation(bool full = false);
   std::vector<pcl::Vertices> filterOrganizedPolygons(const std::vector<pcl::Vertices> & polygons, int cloudSize) const;
   std::vector<pcl::Vertices> filterPolygons(const std::vector<pcl::Vertices> & polygons, int cloudSize) const;
 
  private:
-  rtabmap::CameraTango * camera_;
+  int cameraDriver_;
+  rtabmap::CameraMobile * camera_;
   rtabmap::RtabmapThread * rtabmapThread_;
   rtabmap::Rtabmap * rtabmap_;
-  LogHandler * logHandler_;
+  rtabmap::LogHandler * logHandler_;
 
   bool odomCloudShown_;
   bool graphOptimization_;
@@ -197,6 +184,7 @@ class RTABMapApp : public UEventsHandler {
   bool trajectoryMode_;
   bool rawScanSaved_;
   bool smoothing_;
+  bool depthFromMotion_;
   bool cameraColor_;
   bool fullResolution_;
   bool appendMode_;
@@ -212,7 +200,6 @@ class RTABMapApp : public UEventsHandler {
 
   rtabmap::ParametersMap mappingParameters_;
 
-  bool paused_;
   bool dataRecorderMode_;
   bool clearSceneOnNextRender_;
   bool openingDatabase_;
@@ -244,14 +231,13 @@ class RTABMapApp : public UEventsHandler {
   Scene main_scene_;
 
 	std::list<rtabmap::RtabmapEvent*> rtabmapEvents_;
-	std::list<rtabmap::RtabmapEvent*> visLocalizationEvents_;
 	std::list<rtabmap::OdometryEvent> odomEvents_;
 	std::list<rtabmap::Transform> poseEvents_;
 
 	rtabmap::Transform mapToOdom_;
 
+	boost::mutex cameraMutex_;
 	boost::mutex rtabmapMutex_;
-	boost::mutex visLocalizationMutex_;
 	boost::mutex meshesMutex_;
 	boost::mutex odomMutex_;
 	boost::mutex poseMutex_;
@@ -259,7 +245,7 @@ class RTABMapApp : public UEventsHandler {
 
 	USemaphore screenshotReady_;
 
-	std::map<int, Mesh> createdMeshes_;
+	std::map<int, rtabmap::Mesh> createdMeshes_;
 	std::map<int, rtabmap::Transform> rawPoses_;
 
 	std::pair<rtabmap::RtabmapEventInit::Status, std::string> status_;

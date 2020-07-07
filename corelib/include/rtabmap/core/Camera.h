@@ -53,6 +53,7 @@ public:
 	virtual ~Camera();
 	SensorData takeImage(CameraInfo * info = 0);
 
+	bool initFromFile(const std::string & calibrationPath);
 	virtual bool init(const std::string & calibrationFolder = ".", const std::string & cameraName = "") = 0;
 	virtual bool isCalibrated() const = 0;
 	virtual std::string getSerial() const = 0;
@@ -73,7 +74,7 @@ protected:
 	 *
 	 * @param imageRate : image/second , 0 for fast as the camera can
 	 */
-	Camera(float imageRate = 0, const Transform & localTransform = Transform::getIdentity());
+	Camera(float imageRate = 0, const Transform & localTransform = CameraModel::opticalRotation());
 
 	/**
 	 * returned rgb and depth images should be already rectified if calibration was loaded

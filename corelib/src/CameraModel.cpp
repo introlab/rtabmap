@@ -37,7 +37,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 namespace rtabmap {
 
-CameraModel::CameraModel()
+CameraModel::CameraModel() :
+	localTransform_(0,0,1,0, -1,0,0,0, 0,-1,0,0)
 {
 
 }
@@ -210,7 +211,7 @@ void CameraModel::setImageSize(const cv::Size & size)
 	}
 }
 
-bool CameraModel::load(const std::string & directory, const std::string & cameraName)
+bool CameraModel::load(const std::string & filePath)
 {
 	K_ = cv::Mat();
 	D_ = cv::Mat();
@@ -221,7 +222,6 @@ bool CameraModel::load(const std::string & directory, const std::string & camera
 	name_.clear();
 	imageSize_ = cv::Size();
 
-	std::string filePath = directory+"/"+cameraName+".yaml";
 	if(UFile::exists(filePath))
 	{
 		try
@@ -358,6 +358,11 @@ bool CameraModel::load(const std::string & directory, const std::string & camera
 		UWARN("Could not load calibration file \"%s\".", filePath.c_str());
 	}
 	return false;
+}
+
+bool CameraModel::load(const std::string & directory, const std::string & cameraName)
+{
+	return load(directory+"/"+cameraName+".yaml");
 }
 
 bool CameraModel::save(const std::string & directory) const
@@ -635,22 +640,23 @@ CameraModel CameraModel::roi(const cv::Rect & roi) const
 	return roiModel;
 }
 
+double CameraModel::fovX() const
+{
+	return imageSize_.width>0 && fx()>0?2.0*atan(imageSize_.width/(fx()*2.0)):0.0;
+}
+double CameraModel::fovY() const
+{
+	return imageSize_.height>0 && fy()>0?2.0*atan(imageSize_.height/(fy()*2.0)):0.0;
+}
+
 double CameraModel::horizontalFOV() const
 {
-	if(imageWidth() > 0 && fx() > 0.0)
-	{
-		return atan((double(imageWidth())/2.0)/fx())*2.0*180.0/CV_PI;
-	}
-	return 0.0;
+	return fovX()*180.0/CV_PI;
 }
 
 double CameraModel::verticalFOV() const
 {
-	if(imageHeight() > 0 && fy() > 0.0)
-	{
-		return atan((double(imageHeight())/2.0)/fy())*2.0*180.0/CV_PI;
-	}
-	return 0.0;
+	return fovY()*180.0/CV_PI;
 }
 
 cv::Mat CameraModel::rectifyImage(const cv::Mat & raw, int interpolation) const

@@ -62,6 +62,7 @@ void showUsage()
 			"                                     10=Kinect for Windows 2 SDK\n"
 			"                                     11=RealSense2\n"
 			"                                     12=Kinect for Azure SDK\n"
+			"                                     13=MYNT EYE S\n"
 			"  Options:\n"
 			"      -rate #.#                      Input rate Hz (default 0=inf)\n"
 			"      -device #                      Device ID (number or string)\n"
@@ -173,9 +174,9 @@ int main(int argc, char * argv[])
 
 			// last
 			driver = atoi(argv[i]);
-			if(driver < 0 || driver > 12)
+			if(driver < 0 || driver > 13)
 			{
-				UERROR("driver should be between 0 and 12.");
+				UERROR("driver should be between 0 and 13.");
 				showUsage();
 			}
 		}
@@ -299,10 +300,19 @@ int main(int argc, char * argv[])
 	{
 		if (!rtabmap::CameraK4A::available())
 		{
-			UERROR("Not built with Kienct for Azure SDK support...");
+			UERROR("Not built with Kinect for Azure SDK support...");
 			exit(-1);
 		}
-		camera = new rtabmap::CameraK4A(deviceId);
+		camera = new rtabmap::CameraK4A(1);
+	}
+	else if (driver == 13)
+	{
+		if (!rtabmap::CameraMyntEye::available())
+		{
+			UERROR("Not built with Mynt Eye S support...");
+			exit(-1);
+		}
+		camera = new rtabmap::CameraMyntEye(deviceId);
 	}
 	else
 	{
@@ -337,9 +347,6 @@ int main(int argc, char * argv[])
 	{
 		viewer = new pcl::visualization::CloudViewer("cloud");
 	}
-	rtabmap::Transform t(1, 0, 0, 0,
-						 0, -1, 0, 0,
-						 0, 0, -1, 0);
 
 	cv::VideoWriter videoWriter;
 	UDirectory dir;
@@ -408,7 +415,7 @@ int main(int argc, char * argv[])
 				pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = rtabmap::util3d::cloudFromDepthRGB(
 						rgb, depth,
 						data.cameraModels()[0]);
-				cloud = rtabmap::util3d::transformPointCloud(cloud, t);
+				cloud = rtabmap::util3d::transformPointCloud(cloud, rtabmap::Transform::opengl_T_rtabmap()*data.cameraModels()[0].localTransform());
 				if(viewer)
 					viewer->showCloud(cloud, "cloud");
 			}
@@ -419,7 +426,7 @@ int main(int argc, char * argv[])
 				pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = rtabmap::util3d::cloudFromDepth(
 						depth,
 						data.cameraModels()[0]);
-				cloud = rtabmap::util3d::transformPointCloud(cloud, t);
+				cloud = rtabmap::util3d::transformPointCloud(cloud, rtabmap::Transform::opengl_T_rtabmap()*data.cameraModels()[0].localTransform());
 				viewer->showCloud(cloud, "cloud");
 			}
 
@@ -447,7 +454,7 @@ int main(int argc, char * argv[])
 				pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = rtabmap::util3d::cloudFromStereoImages(
 						rgb, right,
 						data.stereoCameraModel());
-				cloud = rtabmap::util3d::transformPointCloud(cloud, t);
+				cloud = rtabmap::util3d::transformPointCloud(cloud, rtabmap::Transform::opengl_T_rtabmap()*data.stereoCameraModel().localTransform());
 				if(viewer)
 					viewer->showCloud(cloud, "cloud");
 			}

@@ -534,6 +534,23 @@ void DBDriver::loadLastNodes(std::list<Signature *> & signatures) const
 	_dbSafeAccessMutex.unlock();
 }
 
+Signature * DBDriver::loadSignature(int id, bool * loadedFromTrash)
+{
+	std::list<int> ids;
+	ids.push_back(id);
+	std::list<Signature*> signatures;
+	std::set<int> loadedFromTrashSet;
+	loadSignatures(ids, signatures, &loadedFromTrashSet);
+	if(loadedFromTrash && loadedFromTrashSet.size())
+	{
+		*loadedFromTrash = true;
+	}
+	if(!signatures.empty())
+	{
+		return signatures.front();
+	}
+	return 0;
+}
 void DBDriver::loadSignatures(const std::list<int> & signIds,
 		std::list<Signature *> & signatures,
 		std::set<int> * loadedFromTrash)
@@ -628,6 +645,13 @@ void DBDriver::loadWords(const std::set<int> & wordIds, std::list<VisualWord *> 
 	}
 }
 
+void DBDriver::loadNodeData(Signature * signature, bool images, bool scan, bool userData, bool occupancyGrid) const
+{
+	std::list<Signature *> signatures;
+	signatures.push_back(signature);
+	this->loadNodeData(signatures, images, scan, userData, occupancyGrid);
+}
+
 void DBDriver::loadNodeData(std::list<Signature *> & signatures, bool images, bool scan, bool userData, bool occupancyGrid) const
 {
 	// Don't look in the trash, we assume that if we want to load
@@ -659,13 +683,29 @@ void DBDriver::getNodeData(
 	if(uContains(_trashSignatures, signatureId))
 	{
 		const Signature * s = _trashSignatures.at(signatureId);
-		if(!s->sensorData().imageCompressed().empty() ||
-			!s->sensorData().laserScanCompressed().isEmpty() ||
-			!s->sensorData().userDataCompressed().empty() ||
-			s->sensorData().gridCellSize() != 0.0f ||
-			!s->isSaved())
+		if((!s->isSaved() ||
+			((!images || !s->sensorData().imageCompressed().empty()) &&
+			 (!scan || !s->sensorData().laserScanCompressed().isEmpty()) &&
+			 (!userData || !s->sensorData().userDataCompressed().empty()) &&
+			 (!occupancyGrid || s->sensorData().gridCellSize() != 0.0f))))
 		{
 			data = (SensorData)s->sensorData();
+			if(!images)
+			{
+				data.setRGBDImage(cv::Mat(), cv::Mat(), std::vector<CameraModel>());
+			}
+			if(!scan)
+			{
+				data.setLaserScan(LaserScan());
+			}
+			if(!userData)
+			{
+				data.setUserData(cv::Mat());
+			}
+			if(!occupancyGrid)
+			{
+				data.setOccupancyGrid(cv::Mat(), cv::Mat(), cv::Mat(), 0, cv::Point3f());
+			}
 			found = true;
 		}
 	}
@@ -935,6 +975,21 @@ void DBDriver::getLastNodeId(int & id) const
 	_dbSafeAccessMutex.unlock();
 }
 
+void DBDriver::getLastMapId(int & mapId) const
+{
+	// look in the trash
+	_trashesMutex.lock();
+	if(_trashSignatures.size())
+	{
+		mapId = _trashSignatures.rbegin()->second->mapId();
+	}
+	_trashesMutex.unlock();
+
+	_dbSafeAccessMutex.lock();
+	this->getLastIdQuery("Node", mapId, "map_id");
+	_dbSafeAccessMutex.unlock();
+}
+
 void DBDriver::getLastWordId(int & id) const
 {
 	// look in the trash
@@ -1101,10 +1156,10 @@ void DBDriver::addInfoAfterRun(
 	}
 }
 
-void DBDriver::addStatistics(const Statistics & statistics) const
+void DBDriver::addStatistics(const Statistics & statistics, bool saveWmState) const
 {
 	_dbSafeAccessMutex.lock();
-	addStatisticsQuery(statistics);
+	addStatisticsQuery(statistics, saveWmState);
 	_dbSafeAccessMutex.unlock();
 }
 

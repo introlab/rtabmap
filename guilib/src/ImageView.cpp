@@ -159,7 +159,7 @@ QIcon ImageView::createIcon(const QColor & color)
 ImageView::ImageView(QWidget * parent) :
 		QWidget(parent),
 		_savedFileName((QDir::homePath()+ "/") + "picture" + ".png"),
-		_alpha(50),
+		_alpha(100),
 		_featuresSize(0.0f),
 		_defaultBgColor(Qt::black),
 		_defaultFeatureColor(Qt::yellow),
@@ -467,12 +467,18 @@ void ImageView::setGraphicsViewMode(bool on)
 	{
 		for(QMultiMap<int, KeypointItem*>::iterator iter=_features.begin(); iter!=_features.end(); ++iter)
 		{
-			_graphicsView->scene()->addItem(iter.value());
+			if(iter.value()->scene() != _graphicsView->scene())
+			{
+				_graphicsView->scene()->addItem(iter.value());
+			}
 		}
 
 		for(QList<QGraphicsLineItem*>::iterator iter=_lines.begin(); iter!=_lines.end(); ++iter)
 		{
-			_graphicsView->scene()->addItem(*iter);
+			if((*iter)->scene() != _graphicsView->scene())
+			{
+				_graphicsView->scene()->addItem(*iter);
+			}
 		}
 
 		//update images
@@ -566,15 +572,80 @@ void ImageView::setDefaultBackgroundColor(const QColor & color)
 
 void ImageView::setDefaultFeatureColor(const QColor & color)
 {
+	QColor previousColor = _defaultFeatureColor;
 	_defaultFeatureColor = color;
+	for(QMultiMap<int, KeypointItem*>::iterator iter=_features.begin(); iter!=_features.end(); ++iter)
+	{
+		if(QColor(iter.value()->pen().color().rgb()) == previousColor)
+		{
+			QColor c = _defaultFeatureColor;
+			c.setAlpha(_alpha);
+			iter.value()->setPen(QPen(c));
+			iter.value()->setBrush(QBrush(c));
+		}
+	}
+	if(!_graphicsView->isVisible())
+	{
+		this->update();
+	}
 }
 void ImageView::setDefaultMatchingFeatureColor(const QColor & color)
 {
+	QColor previousColor = _defaultMatchingFeatureColor;
 	_defaultMatchingFeatureColor = color;
+	for(QMultiMap<int, KeypointItem*>::iterator iter=_features.begin(); iter!=_features.end(); ++iter)
+	{
+		if(QColor(iter.value()->pen().color().rgb()) == previousColor)
+		{
+			QColor c = _defaultMatchingFeatureColor;
+			c.setAlpha(_alpha);
+			iter.value()->setPen(QPen(c));
+			iter.value()->setBrush(QBrush(c));
+		}
+	}
+
+	for(QList<QGraphicsLineItem*>::iterator iter=_lines.begin(); iter!=_lines.end(); ++iter)
+	{
+		if(QColor((*iter)->pen().color().rgb()) == previousColor)
+		{
+			QColor c = _defaultMatchingFeatureColor;
+			c.setAlpha(_alpha);
+			(*iter)->setPen(QPen(c));
+		}
+	}
+	if(!_graphicsView->isVisible())
+	{
+		this->update();
+	}
 }
 void ImageView::setDefaultMatchingLineColor(const QColor & color)
 {
+	QColor previousColor = _defaultMatchingLineColor;
 	_defaultMatchingLineColor = color;
+	for(QMultiMap<int, KeypointItem*>::iterator iter=_features.begin(); iter!=_features.end(); ++iter)
+	{
+		if(QColor(iter.value()->pen().color().rgb()) == previousColor)
+		{
+			QColor c = _defaultMatchingLineColor;
+			c.setAlpha(_alpha);
+			iter.value()->setPen(QPen(c));
+			iter.value()->setBrush(QBrush(c));
+		}
+	}
+
+	for(QList<QGraphicsLineItem*>::iterator iter=_lines.begin(); iter!=_lines.end(); ++iter)
+	{
+		if(QColor((*iter)->pen().color().rgb()) == previousColor)
+		{
+			QColor c = _defaultMatchingLineColor;
+			c.setAlpha(_alpha);
+			(*iter)->setPen(QPen(c));
+		}
+	}
+	if(!_graphicsView->isVisible())
+	{
+		this->update();
+	}
 }
 
 void ImageView::setBackgroundColor(const QColor & color)
@@ -1026,9 +1097,7 @@ void ImageView::setImageDepth(const QImage & imageDepth)
 
 	if( _image.width() > 0 &&
 		_image.width() > _imageDepth.width() &&
-		_image.height() > _imageDepth.height() &&
-		_image.width() % _imageDepth.width() == 0 &&
-		_image.height() % _imageDepth.height() == 0)
+		_image.height() > _imageDepth.height())
 	{
 		// scale depth to rgb
 		_imageDepth = _imageDepth.scaled(_image.size());

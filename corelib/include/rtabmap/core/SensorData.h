@@ -40,6 +40,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/GPS.h>
 #include <rtabmap/core/EnvSensor.h>
 #include <rtabmap/core/Landmark.h>
+#include <rtabmap/core/GlobalDescriptor.h>
 
 namespace rtabmap
 {
@@ -249,6 +250,11 @@ public:
 	const std::vector<cv::Point3f> & keypoints3D() const {return _keypoints3D;}
 	const cv::Mat & descriptors() const {return _descriptors;}
 
+	void addGlobalDescriptor(const GlobalDescriptor & descriptor) {_globalDescriptors.push_back(descriptor);}
+	void setGlobalDescriptors(const std::vector<GlobalDescriptor> & descriptors) {_globalDescriptors = descriptors;}
+	void clearGlobalDescriptors() {_globalDescriptors.clear();}
+	const std::vector<GlobalDescriptor> & globalDescriptors() const {return _globalDescriptors;}
+
 	void setGroundTruth(const Transform & pose) {groundTruth_ = pose;}
 	const Transform & groundTruth() const {return groundTruth_;}
 
@@ -322,6 +328,9 @@ private:
 	std::vector<cv::KeyPoint> _keypoints;
 	std::vector<cv::Point3f> _keypoints3D;
 	cv::Mat _descriptors;
+
+	// global descriptors
+	std::vector<GlobalDescriptor> _globalDescriptors;
 
 	Transform groundTruth_;
 

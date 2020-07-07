@@ -52,6 +52,21 @@ matrix:
         - mkdir -p build && cd build
         - cmake .. 
         - make
+        
+    - dist: focal
+      install:
+        - sudo sh -c 'echo "deb http://packages.ros.org/ros/ubuntu focal main" > /etc/apt/sources.list.d/ros-latest.list'
+        - wget http://packages.ros.org/ros.key -O - | sudo apt-key add -
+        - sudo apt-get update
+        - sudo apt-get update && sudo apt-get install dpkg
+        - sudo apt-get -y install ros-noetic-rtabmap-ros
+        - sudo apt-get -y remove ros-noetic-rtabmap
+
+      script: 
+        - source /opt/ros/noetic/setup.bash
+        - mkdir -p build && cd build
+        - cmake .. 
+        - make
 
 notifications:
   email:

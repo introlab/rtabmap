@@ -78,14 +78,11 @@ std::map<int, cv::Point3f> RTABMAP_EXP generateWords3DMono(
 		const std::map<int, cv::KeyPoint> & previousKpts,
 		const CameraModel & cameraModel,
 		Transform & cameraTransform,
-		int pnpIterations = 100,
-		float pnpReprojError = 8.0f,
-		int pnpFlags = 0, // cv::SOLVEPNP_ITERATIVE
-		int pnpRefineIterations = 1,
-		float ransacParam1 = 3.0f,
-		float ransacParam2 = 0.99f,
+		float ransacReprojThreshold = 3.0f,
+		float ransacConfidence = 0.99f,
 		const std::map<int, cv::Point3f> & refGuess3D = std::map<int, cv::Point3f>(),
-		double * variance = 0);
+		double * variance = 0,
+		std::vector<int> * matchesOut = 0);
 
 std::multimap<int, cv::KeyPoint> RTABMAP_EXP aggregate(
 		const std::list<int> & wordIds,

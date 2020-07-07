@@ -33,6 +33,31 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 namespace rtabmap {
 
+std::string Link::typeName(Type type)
+{
+	if(type == Link::kNeighbor)
+		return "Neighbor";
+	if(type == Link::kGlobalClosure)
+		return "GlobalClosure";
+	if(type == Link::kLocalSpaceClosure)
+		return "LocalSpaceClosure";
+	if(type == Link::kLocalTimeClosure)
+		return "LocalTimeClosure";
+	if(type == Link::kUserClosure)
+		return "UserClosure";
+	if(type == Link::kVirtualClosure)
+		return "VirtualClosure";
+	if(type == Link::kNeighborMerged)
+		return "NeighborMerged";
+	if(type == Link::kPosePrior)
+		return "PosePrior";
+	if(type == Link::kLandmark)
+		return "Landmark";
+	if(type == Link::kGravity)
+		return "Gravity";
+	return "Undefined";
+}
+
 Link::Link() :
 	from_(0),
 	to_(0),

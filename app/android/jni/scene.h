@@ -21,7 +21,7 @@
 #include <memory>
 #include <set>
 
-#include <tango_client_api.h>  // NOLINT
+#include "CameraMobile.h"
 #include <tango-gl/axis.h>
 #include <tango-gl/camera.h>
 #include <tango-gl/color.h>
@@ -38,6 +38,7 @@
 #include <point_cloud_drawable.h>
 #include <graph_drawable.h>
 #include <bounding_box_drawable.h>
+#include <background_renderer.h>
 
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
@@ -60,7 +61,8 @@ class Scene {
   int getViewPortWidth() const {return screenWidth_;}
   int getViewPortHeight() const {return screenHeight_;}
 
-  void setScreenRotation(TangoSupportRotation colorCameraToDisplayRotation) {color_camera_to_display_rotation_ = colorCameraToDisplayRotation;}
+  rtabmap::ScreenRotation getScreenRotation() const {return color_camera_to_display_rotation_;}
+  void setScreenRotation(rtabmap::ScreenRotation colorCameraToDisplayRotation) {color_camera_to_display_rotation_ = colorCameraToDisplayRotation;}
 
   void clear(); // removed all point clouds
 
@@ -70,15 +72,16 @@ class Scene {
   //         frame's timestamp.
   // @param: point_cloud_vertices, point cloud's vertices of the current point
   //         frame.
-  int Render();
+  int Render(const float * uvsTransformed = 0, glm::mat4 arViewMatrix = glm::mat4(0), glm::mat4 arProjectionMatrix=glm::mat4(0), const rtabmap::Mesh & occlusionMesh=rtabmap::Mesh());
 
   // Set render camera's viewing angle, first person, third person or top down.
   //
   // @param: camera_type, camera type includes first person, third person and
   //         top down
   void SetCameraType(tango_gl::GestureCamera::CameraType camera_type);
+  tango_gl::GestureCamera::CameraType GetCameraType() const {return gesture_camera_->GetCameraType();}
 
-  void SetCameraPose(const rtabmap::Transform & pose);
+  void SetCameraPose(const rtabmap::Transform & pose); // opengl camera
   rtabmap::Transform GetCameraPose() const {return currentPose_!=0?*currentPose_:rtabmap::Transform();}
   rtabmap::Transform GetOpenGLCameraPose(float * fov = 0) const;
 
@@ -101,6 +104,7 @@ class Scene {
   void setGraphVisible(bool visible);
   void setGridVisible(bool visible);
   void setTraceVisible(bool visible);
+  void setFrustumVisible(bool visible);
 
   void addMarker(int id, const rtabmap::Transform & pose);
   void setMarkerPose(int id, const rtabmap::Transform & pose);
@@ -115,7 +119,7 @@ class Scene {
   		  const rtabmap::Transform & pose);
   void addMesh(
   		int id,
-  		const Mesh & mesh,
+  		const rtabmap::Mesh & mesh,
   		const rtabmap::Transform & pose,
 		bool createWireframe = false);
 
@@ -126,7 +130,7 @@ class Scene {
   bool hasTexture(int id) const;
   std::set<int> getAddedClouds() const;
   void updateCloudPolygons(int id, const std::vector<pcl::Vertices> & polygons);
-  void updateMesh(int id, const Mesh & mesh);
+  void updateMesh(int id, const rtabmap::Mesh & mesh);
   void updateGains(int id, float gainR, float gainG, float gainB);
 
   void setBlending(bool enabled) {blending_ = enabled;}
@@ -150,6 +154,8 @@ class Scene {
   bool isLighting() const {return lighting_;}
   bool isBackfaceCulling() const {return backfaceCulling_;}
 
+  BackgroundRenderer * background_renderer_;
+
  private:
   // Camera object that allows user to use touch input to interact with.
   tango_gl::GestureCamera* gesture_camera_;
@@ -172,10 +178,11 @@ class Scene {
   bool graphVisible_;
   bool gridVisible_;
   bool traceVisible_;
+  bool frustumVisible_;
 
   std::map<int, tango_gl::Axis*> markers_;
 
-  TangoSupportRotation color_camera_to_display_rotation_;
+  rtabmap::ScreenRotation color_camera_to_display_rotation_;
 
   std::map<int, PointCloudDrawable*> pointClouds_;
 

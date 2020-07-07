@@ -86,8 +86,32 @@ public:
 			const cv::Mat & image,
 			int id=0, const std::map<std::string, float> & externalStats = std::map<std::string, float>());
 
-	void init(const ParametersMap & parameters, const std::string & databasePath = "");
-	void init(const std::string & configFile = "", const std::string & databasePath = "");
+	/**
+	 * Initialize Rtabmap with parameters and a database
+	 * @param parameters Parameters overriding default parameters and database parameters
+	 *                   (@see loadDatabaseParameters)
+	 * @param databasePath The database input/output path. If not set, an
+	 *                     empty database is used in RAM. If set and the file doesn't exist,
+	 *                     it will be created empty. If the database exists, nodes and
+	 *                     vocabulary will be loaded in working memory.
+	 * @param loadDatabaseParameters If an existing database is used (@see databasePath),
+	 *                               the parameters inside are loaded and set to current
+	 *                               Rtabmap instance.
+	 */
+	void init(const ParametersMap & parameters, const std::string & databasePath = "", bool loadDatabaseParameters = false);
+	/**
+	 * Initialize Rtabmap with parameters from a configuration file and a database
+	 * @param configFile Configuration file (*.ini) overriding default parameters and database parameters
+	 *                   (@see loadDatabaseParameters)
+	 * @param databasePath The database input/output path. If not set, an
+	 *                     empty database is used in RAM. If set and the file doesn't exist,
+	 *                     it will be created empty. If the database exists, nodes and
+	 *                     vocabulary will be loaded in working memory.
+	 * @param loadDatabaseParameters If an existing database is used (@see databasePath),
+	 *                               the parameters inside are loaded and set to current
+	 *                               Rtabmap instance.
+	 */
+	void init(const std::string & configFile = "", const std::string & databasePath = "", bool loadDatabaseParameters = false);
 
 	/**
 	 * Close rtabmap. This will delete rtabmap object if set.
@@ -156,16 +180,24 @@ public:
 	void rejectLastLoopClosure();
 	void deleteLastLocation();
 	void setOptimizedPoses(const std::map<int, Transform> & poses);
-	void get3DMap(std::map<int, Signature> & signatures,
-			std::map<int, Transform> & poses,
-			std::multimap<int, Link> & constraints,
-			bool optimized,
-			bool global) const;
+	Signature getSignatureCopy(int id, bool images, bool scan, bool userData, bool occupancyGrid, bool withWords, bool withGlobalDescriptors) const;
+	RTABMAP_DEPRECATED(
+		void get3DMap(std::map<int, Signature> & signatures,
+				std::map<int, Transform> & poses,
+				std::multimap<int, Link> & constraints,
+				bool optimized,
+				bool global) const, "Use getGraph() instead with withImages=true, withScan=true, withUserData=true and withGrid=true.");
 	void getGraph(std::map<int, Transform> & poses,
 			std::multimap<int, Link> & constraints,
 			bool optimized,
 			bool global,
-			std::map<int, Signature> * signatures = 0);
+			std::map<int, Signature> * signatures = 0,
+			bool withImages = false,
+			bool withScan = false,
+			bool withUserData = false,
+			bool withGrid = false,
+			bool withWords = true,
+			bool withGlobalDescriptors = true) const;
 	int detectMoreLoopClosures(
 			float clusterRadius = 0.5f,
 			float clusterAngle = M_PI/6.0f,
@@ -257,6 +289,7 @@ private:
 	float _proximityFilteringRadius;
 	bool _proximityRawPosesUsed;
 	float _proximityAngle;
+	bool _proximityOdomGuess;
 	std::string _databasePath;
 	bool _optimizeFromGraphEnd;
 	float _optimizationMaxError;
@@ -277,6 +310,7 @@ private:
 	double _lastProcessTime;
 	bool _someNodesHaveBeenTransferred;
 	float _distanceTravelled;
+	bool _optimizeFromGraphEndChanged;
 
 	// Abstract classes containing all loop closure
 	// strategies for a type of signature or configuration.
@@ -306,6 +340,8 @@ private:
 	bool _currentSessionHasGPS;
 	std::map<int, Transform> _odomCachePoses;       // used in localization mode to reject loop closures
 	std::multimap<int, Link> _odomCacheConstraints; // used in localization mode to reject loop closures
+	std::map<int, Transform> _odomCacheAddLink; // used in localization mode when adding external link
+	std::vector<float> _odomCorrectionAcc;
 
 	// Planning stuff
 	int _pathStatus;

@@ -78,6 +78,9 @@ public:
 	unsigned int framesProcessed() const {return framesProcessed_;}
 	bool imagesAlreadyRectified() const {return _imagesAlreadyRectified;}
 
+protected:
+	const std::map<double, Transform> & imus() const {return imus_;}
+
 private:
 	virtual Transform computeTransform(SensorData & data, const Transform & guess = Transform(), OdometryInfo * info = 0) = 0;
 
@@ -90,7 +93,7 @@ private:
 	bool _force3DoF;
 	bool _holonomic;
 	bool guessFromMotion_;
-	bool guessSmoothingDelay_;
+	float guessSmoothingDelay_;
 	int _filteringStrategy;
 	int _particleSize;
 	float _particleNoiseT;
@@ -109,6 +112,7 @@ private:
 	double previousStamp_;
 	std::list<std::pair<std::vector<float>, double> > previousVelocities_;
 	Transform velocityGuess_;
+	Transform imuLastTransform_;
 	Transform previousGroundTruthPose_;
 	float distanceTravelled_;
 	unsigned int framesProcessed_;
@@ -116,6 +120,7 @@ private:
 	std::vector<ParticleFilter *> particleFilters_;
 	cv::KalmanFilter kalmanFilter_;
 	StereoCameraModel stereoModel_;
+	std::map<double, Transform> imus_;
 
 protected:
 	Odometry(const rtabmap::ParametersMap & parameters);

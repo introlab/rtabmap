@@ -170,7 +170,7 @@ private:
 				QLabel * labelSensors,
 				bool updateConstraintView);
 	void updateStereo(const SensorData * data);
-	void updateWordsMatching();
+	void updateWordsMatching(const std::vector<int> & inliers = std::vector<int>());
 	void updateConstraintView(
 			const rtabmap::Link & link,
 			bool updateImageSliders = true,

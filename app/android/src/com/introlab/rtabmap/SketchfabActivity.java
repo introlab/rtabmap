@@ -169,8 +169,8 @@ public class SketchfabActivity extends Activity implements OnClickListener {
 
 			WebView web;
 			mAuthDialog = new Dialog(this);
-			mAuthDialog.setCancelable(false);
-			mAuthDialog.setCanceledOnTouchOutside(false);
+			mAuthDialog.setCancelable(true);
+			mAuthDialog.setCanceledOnTouchOutside(true);
 			mAuthDialog.setContentView(R.layout.auth_dialog);
 			web = (WebView)mAuthDialog.findViewById(R.id.webv);
 			web.setWebContentsDebuggingEnabled(!RTABMapActivity.DISABLE_LOG);
@@ -245,7 +245,7 @@ public class SketchfabActivity extends Activity implements OnClickListener {
 					File exportDir = new File(mWorkingDirectory + RTABMapActivity.RTABMAP_EXPORT_DIR);
 					exportDir.mkdirs();
 					
-					if(RTABMapLib.writeExportedMesh(mWorkingDirectory + RTABMapActivity.RTABMAP_TMP_DIR, RTABMapActivity.RTABMAP_TMP_FILENAME))
+					if(RTABMapLib.writeExportedMesh(RTABMapActivity.nativeApplication, mWorkingDirectory + RTABMapActivity.RTABMAP_TMP_DIR, RTABMapActivity.RTABMAP_TMP_FILENAME))
 					{
 						String[] files = new String[0];
 						// verify if we have all files

@@ -104,7 +104,7 @@ protected:
 			int nodeId,
 			const LaserScan & scan) const;
 
-	virtual void addStatisticsQuery(const Statistics & statistics) const;
+	virtual void addStatisticsQuery(const Statistics & statistics, bool saveWmState) const;
 	virtual void savePreviewImageQuery(const cv::Mat & image) const;
 	virtual cv::Mat loadPreviewImageQuery() const;
 	virtual void saveOptimizedPosesQuery(const std::map<int, Transform> & optimizedPoses, const Transform & lastlocalizationPose) const;
@@ -143,7 +143,7 @@ protected:
 	virtual void getLastNodeIdsQuery(std::set<int> & ids) const;
 	virtual void getAllNodeIdsQuery(std::set<int> & ids, bool ignoreChildren, bool ignoreBadSignatures) const;
 	virtual void getAllLinksQuery(std::multimap<int, Link> & links, bool ignoreNullLinks, bool withLandmarks) const;
-	virtual void getLastIdQuery(const std::string & tableName, int & id) const;
+	virtual void getLastIdQuery(const std::string & tableName, int & id, const std::string & fieldName="id") const;
 	virtual void getInvertedIndexNiQuery(int signatureId, int & ni) const;
 	virtual void getNodesObservingLandmarkQuery(int landmarkId, std::map<int, Link> & nodes) const;
 	virtual void getNodeIdByLabelQuery(const std::string & label, int & id) const;
@@ -160,6 +160,7 @@ private:
 	std::string queryStepLink() const;
 	std::string queryStepWordsChanged() const;
 	std::string queryStepKeypoint() const;
+	std::string queryStepGlobalDescriptor() const;
 	std::string queryStepOccupancyGridUpdate() const;
 	void stepNode(sqlite3_stmt * ppStmt, const Signature * s) const;
 	void stepImage(sqlite3_stmt * ppStmt, int id, const cv::Mat & imageBytes) const;
@@ -169,7 +170,8 @@ private:
 	void stepSensorData(sqlite3_stmt * ppStmt, const SensorData & sensorData) const;
 	void stepLink(sqlite3_stmt * ppStmt, const Link & link) const;
 	void stepWordsChanged(sqlite3_stmt * ppStmt, int signatureId, int oldWordId, int newWordId) const;
-	void stepKeypoint(sqlite3_stmt * ppStmt, int signatureId, int wordId, const cv::KeyPoint & kp, const cv::Point3f & pt, const cv::Mat & descriptor) const;
+	void stepKeypoint(sqlite3_stmt * ppStmt, int nodeID, int wordId, const cv::KeyPoint & kp, const cv::Point3f & pt, const cv::Mat & descriptor) const;
+	void stepGlobalDescriptor(sqlite3_stmt * ppStmt, int nodeId, const GlobalDescriptor & descriptor) const;
 	void stepOccupancyGridUpdate(sqlite3_stmt * ppStmt,
 			int nodeId,
 			const cv::Mat & ground,

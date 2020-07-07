@@ -53,7 +53,7 @@ public:
 			int device,
 			bool rectifyImages = false,
 			float imageRate = 0.0f,
-			const Transform & localTransform = Transform::getIdentity());
+			const Transform & localTransform = CameraModel::opticalRotation());
 
 	virtual ~CameraStereoTara();
 

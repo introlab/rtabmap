@@ -40,6 +40,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "SimpleIni.h"
 #include <opencv2/core/version.hpp>
 #include <pcl/pcl_config.h>
+#include <opencv2/opencv_modules.hpp>
 #ifndef DISABLE_VTK
 #include <vtkVersion.h>
 #endif
@@ -165,7 +166,8 @@ bool Parameters::isFeatureParameter(const std::string & parameter)
 			group.compare("BRIEF") == 0 ||
 			group.compare("GFTT") == 0 ||
 			group.compare("BRISK") == 0 ||
-			group.compare("KAZE") == 0;
+			group.compare("KAZE") == 0 ||
+			group.compare("SuperPoint") == 0;
 }
 
 rtabmap::ParametersMap Parameters::getDefaultOdometryParameters(bool stereo, bool vis, bool icp)
@@ -183,16 +185,9 @@ rtabmap::ParametersMap Parameters::getDefaultOdometryParameters(bool stereo, boo
 			group.compare("Optimizer") == 0 ||
 			group.compare("g2o") == 0 ||
 			group.compare("GTSAM") == 0 ||
-			(vis && group.compare("Vis") == 0) ||
+			(vis && (group.compare("Vis") == 0 || group.compare("PyMatcher") == 0 || group.compare("GMS") == 0)) ||
 			iter->first.compare(kRtabmapPublishRAMUsage())==0)
 		{
-			if(stereo)
-			{
-				if(iter->first.compare(Parameters::kVisEstimationType()) == 0)
-				{
-					iter->second = "1"; // 3D->2D (PNP)
-				}
-			}
 			odomParameters.insert(*iter);
 		}
 	}
@@ -236,6 +231,20 @@ const std::map<std::string, std::pair<bool, std::string> > & Parameters::getRemo
 	if(removedParameters_.empty())
 	{
 		// removed parameters
+
+		// 0.20.
+		removedParameters_.insert(std::make_pair("SuperGlue/Path",           std::make_pair(true, Parameters::kPyMatcherPath())));
+		removedParameters_.insert(std::make_pair("SuperGlue/Iterations",     std::make_pair(true, Parameters::kPyMatcherIterations())));
+		removedParameters_.insert(std::make_pair("SuperGlue/MatchThreshold", std::make_pair(true, Parameters::kPyMatcherThreshold())));
+		removedParameters_.insert(std::make_pair("SuperGlue/Cuda",           std::make_pair(true, Parameters::kPyMatcherCuda())));
+		removedParameters_.insert(std::make_pair("SuperGlue/Indoor",         std::make_pair(false, Parameters::kPyMatcherModel())));
+
+		removedParameters_.insert(std::make_pair("Vis/CorCrossCheck",   std::make_pair(false, Parameters::kVisCorNNType())));
+		removedParameters_.insert(std::make_pair("SPTorch/ModelPath",   std::make_pair(true,  Parameters::kSuperPointModelPath())));
+		removedParameters_.insert(std::make_pair("SPTorch/Threshold",   std::make_pair(true,  Parameters::kSuperPointThreshold())));
+		removedParameters_.insert(std::make_pair("SPTorch/NMS",         std::make_pair(true,  Parameters::kSuperPointNMS())));
+		removedParameters_.insert(std::make_pair("SPTorch/MinDistance", std::make_pair(true,  Parameters::kSuperPointNMSRadius())));
+		removedParameters_.insert(std::make_pair("SPTorch/Cuda",        std::make_pair(true,  Parameters::kSuperPointCuda())));
 
 		// 0.19.4
 		removedParameters_.insert(std::make_pair("RGBD/MaxLocalizationDistance", std::make_pair(true,  Parameters::kRGBDMaxLoopClosureDistance())));
@@ -594,6 +603,14 @@ ParametersMap Parameters::parseArguments(int argc, char * argv[], bool onlyParam
 #endif
 				str = "OpenCV:";
 				std::cout << str << std::setw(spacing - str.size()) << CV_VERSION << std::endl;
+#if CV_MAJOR_VERSION >= 3
+				str = "With OpenCV xfeatures2d:";
+#ifdef HAVE_OPENCV_XFEATURES2D
+				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
+#else
+				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
+#endif
+#endif
 				str = "With OpenCV nonfree:";
 #ifdef RTABMAP_NONFREE
 				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
@@ -602,6 +619,18 @@ ParametersMap Parameters::parseArguments(int argc, char * argv[], bool onlyParam
 #endif
 				str = "With ORB OcTree:";
 #ifdef RTABMAP_ORB_OCTREE
+				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
+#else
+				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
+#endif
+				str = "With SuperPoint Torch:";
+#ifdef RTABMAP_SUPERPOINT_TORCH
+				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
+#else
+				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
+#endif
+				str = "With Python3:";
+#ifdef RTABMAP_PYMATCHER
 				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
 #else
 				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
@@ -710,6 +739,12 @@ ParametersMap Parameters::parseArguments(int argc, char * argv[], bool onlyParam
 #endif
 				str = "With RealSense2:";
 #ifdef RTABMAP_REALSENSE2
+				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
+#else
+				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
+#endif
+				str = "With MYNT EYE S:";
+#ifdef RTABMAP_MYNTEYE
 				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
 #else
 				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;

@@ -4,12 +4,12 @@ All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
-    * Redistributions of source code must retain the above copyright
+ * Redistributions of source code must retain the above copyright
       notice, this list of conditions and the following disclaimer.
-    * Redistributions in binary form must reproduce the above copyright
+ * Redistributions in binary form must reproduce the above copyright
       notice, this list of conditions and the following disclaimer in the
       documentation and/or other materials provided with the distribution.
-    * Neither the name of the Universite de Sherbrooke nor the
+ * Neither the name of the Universite de Sherbrooke nor the
       names of its contributors may be used to endorse or promote products
       derived from this software without specific prior written permission.
 
@@ -22,7 +22,7 @@ LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
 ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-*/
+ */
 
 #include <rtabmap/core/camera/CameraK4A.h>
 #include <rtabmap/utilite/UTimer.h>
@@ -49,33 +49,47 @@ bool CameraK4A::available()
 }
 
 CameraK4A::CameraK4A(
-	int deviceId,
-	float imageRate,
-	const Transform & localTransform) :
-	Camera(imageRate, localTransform)
+		int deviceId,
+		float imageRate,
+		const Transform & localTransform) :
+			Camera(imageRate, localTransform)
 #ifdef RTABMAP_K4A
-	,playbackHandle_(NULL),
-	transformationHandle_(NULL),
-	deviceId_(deviceId),
-	ir_(false),
-	previousStamp_(0.0)
+			,
+			device_(NULL),
+			config_(K4A_DEVICE_CONFIG_INIT_DISABLE_ALL),
+			transformation_(NULL),
+			capture_(NULL),
+			playbackHandle_(NULL),
+			transformationHandle_(NULL),
+			deviceId_(deviceId),
+			rgb_resolution_(0),
+			framerate_(2),
+			depth_resolution_(2),
+			ir_(false),
+			previousStamp_(0.0)
 #endif
 {
-	UERROR("CameraK4A: Live camera stream is not yet supported, only recorded mkv files are.");
 }
 
 CameraK4A::CameraK4A(
-	const std::string & fileName,
-	float imageRate,
-	const Transform & localTransform) :
-	Camera(imageRate, localTransform)
+		const std::string & fileName,
+		float imageRate,
+		const Transform & localTransform) :
+			Camera(imageRate, localTransform)
 #ifdef RTABMAP_K4A
-	,playbackHandle_(NULL),
-	transformationHandle_(NULL),
-	deviceId_(-1),
-	fileName_(fileName),
-	ir_(false),
-	previousStamp_(0.0)
+			,
+			device_(NULL),
+			transformation_(NULL),
+			capture_(NULL),
+			playbackHandle_(NULL),
+			transformationHandle_(NULL),
+			deviceId_(-1),
+			fileName_(fileName),
+			rgb_resolution_(0),
+			framerate_(2),
+			depth_resolution_(2),
+			ir_(false),
+			previousStamp_(0.0)
 #endif
 {
 }
@@ -88,19 +102,48 @@ CameraK4A::~CameraK4A()
 void CameraK4A::close()
 {
 #ifdef RTABMAP_K4A
-	if (playbackHandle_ != NULL)
+	if (!fileName_.empty())
 	{
-		k4a_playback_close((k4a_playback_t)playbackHandle_);
+		if (playbackHandle_ != NULL)
+		{
+			k4a_playback_close((k4a_playback_t)playbackHandle_);
+			playbackHandle_ = NULL;
+		}
+
+		if (transformationHandle_ != NULL)
+		{
+			k4a_transformation_destroy((k4a_transformation_t)transformationHandle_);
+			transformationHandle_ = NULL;
+		}
 	}
-	if (transformationHandle_ != NULL)
+	else
 	{
-		k4a_transformation_destroy((k4a_transformation_t)transformationHandle_);
+		if (device_ != NULL)
+		{
+			k4a_device_stop_imu(device_);
+
+			if (transformation_ != NULL)
+			{
+				k4a_transformation_destroy(transformation_);
+				transformation_ = NULL;
+			}
+
+			k4a_device_stop_cameras(device_);
+			k4a_device_close(device_);
+			device_ = NULL;
+			config_ = K4A_DEVICE_CONFIG_INIT_DISABLE_ALL;
+		}
 	}
-	/*
-	// Shut down the camera when finished with application logic
-	k4a_device_stop_cameras(device);
-	k4a_device_close(device);
-	*/
+#endif
+}
+
+void CameraK4A::setPreferences(int rgb_resolution, int framerate, int depth_resolution)
+{
+#ifdef RTABMAP_K4A
+	rgb_resolution_ = rgb_resolution;
+	framerate_ = framerate;
+	depth_resolution_ = depth_resolution;
+	UINFO("setPreferences(): %i %i %i", rgb_resolution, framerate, depth_resolution);
 #endif
 }
 
@@ -115,10 +158,10 @@ bool CameraK4A::init(const std::string & calibrationFolder, const std::string & 
 {
 #ifdef RTABMAP_K4A
 	
-	close();
-
 	if (!fileName_.empty())
 	{
+		close();
+
 		if (k4a_playback_open(fileName_.c_str(), (k4a_playback_t*)&playbackHandle_) != K4A_RESULT_SUCCEEDED)
 		{
 			UERROR("Failed to open recording \"%s\"", fileName_.c_str());
@@ -138,29 +181,30 @@ bool CameraK4A::init(const std::string & calibrationFolder, const std::string & 
 		if (ir_)
 		{
 			model_ = CameraModel(
-				calibration.depth_camera_calibration.intrinsics.parameters.param.fx,
-				calibration.depth_camera_calibration.intrinsics.parameters.param.fy,
-				calibration.depth_camera_calibration.intrinsics.parameters.param.cx,
-				calibration.depth_camera_calibration.intrinsics.parameters.param.cy,
-				this->getLocalTransform(),
-				0,
-				cv::Size(calibration.depth_camera_calibration.resolution_width, calibration.depth_camera_calibration.resolution_height));
+					calibration.depth_camera_calibration.intrinsics.parameters.param.fx,
+					calibration.depth_camera_calibration.intrinsics.parameters.param.fy,
+					calibration.depth_camera_calibration.intrinsics.parameters.param.cx,
+					calibration.depth_camera_calibration.intrinsics.parameters.param.cy,
+					this->getLocalTransform(),
+					0,
+					cv::Size(calibration.depth_camera_calibration.resolution_width, calibration.depth_camera_calibration.resolution_height));
 		}
 		else
 		{
 			model_ = CameraModel(
-				calibration.color_camera_calibration.intrinsics.parameters.param.fx,
-				calibration.color_camera_calibration.intrinsics.parameters.param.fy,
-				calibration.color_camera_calibration.intrinsics.parameters.param.cx,
-				calibration.color_camera_calibration.intrinsics.parameters.param.cy,
-				this->getLocalTransform(),
-				0,
-				cv::Size(calibration.color_camera_calibration.resolution_width, calibration.color_camera_calibration.resolution_height));
+					calibration.color_camera_calibration.intrinsics.parameters.param.fx,
+					calibration.color_camera_calibration.intrinsics.parameters.param.fy,
+					calibration.color_camera_calibration.intrinsics.parameters.param.cx,
+					calibration.color_camera_calibration.intrinsics.parameters.param.cy,
+					this->getLocalTransform(),
+					0,
+					cv::Size(calibration.color_camera_calibration.resolution_width, calibration.color_camera_calibration.resolution_height));
 
 			transformationHandle_ = k4a_transformation_create(&calibration);
 		}
 
 		k4a_record_configuration_t config;
+
 		if (k4a_playback_get_record_configuration((k4a_playback_t)playbackHandle_, &config))
 		{
 			UERROR("Failed to getting recording configuration");
@@ -170,19 +214,58 @@ bool CameraK4A::init(const std::string & calibrationFolder, const std::string & 
 	}
 	else if (deviceId_ >= 0)
 	{
-		UERROR("CameraK4A: Live camera stream is not yet supported, only recorded mkv files are.");
-		return false;
+		if(device_!=NULL)
+		{
+			this->close();
+		}
 
-		/*uint32_t count = k4a_device_get_installed_count();
-		if (count == 0)
+		switch(rgb_resolution_)
+		{
+		case 0: config_.color_resolution = K4A_COLOR_RESOLUTION_720P; break;
+		case 1: config_.color_resolution = K4A_COLOR_RESOLUTION_1080P; break;
+		case 2: config_.color_resolution = K4A_COLOR_RESOLUTION_1440P; break;
+		case 3: config_.color_resolution = K4A_COLOR_RESOLUTION_1536P; break;
+		case 4: config_.color_resolution = K4A_COLOR_RESOLUTION_2160P; break;
+		case 5:
+		default: config_.color_resolution = K4A_COLOR_RESOLUTION_3072P; break;
+		}
+
+		switch(framerate_)
+		{
+		case 0: config_.camera_fps = K4A_FRAMES_PER_SECOND_5; break;
+		case 1: config_.camera_fps = K4A_FRAMES_PER_SECOND_15; break;
+		case 2:
+		default: config_.camera_fps = K4A_FRAMES_PER_SECOND_30; break;
+		}
+
+		switch(depth_resolution_)
+		{
+		case 0: config_.depth_mode = K4A_DEPTH_MODE_NFOV_2X2BINNED; break;
+		case 1: config_.depth_mode = K4A_DEPTH_MODE_NFOV_UNBINNED; break;
+		case 2: config_.depth_mode = K4A_DEPTH_MODE_WFOV_2X2BINNED; break;
+		case 3:
+		default: config_.depth_mode = K4A_DEPTH_MODE_WFOV_UNBINNED; break;
+		}
+
+		// This is fixed for now
+		config_.color_format = K4A_IMAGE_FORMAT_COLOR_BGRA32;
+
+		int device_count = k4a_device_get_installed_count();
+
+		if (device_count == 0)
 		{
 			UERROR("No k4a devices attached!");
 			return false;
 		}
+		else if(deviceId_ > device_count)
+		{
+			UERROR("Cannot select device %d, only %d devices detected.", deviceId_, device_count);
+		}
+
+		UINFO("CameraK4A found %d k4a device(s) attached", device_count);
 
 		// Open the first plugged in Kinect device
-		k4a_device_t device = NULL;
-		if (K4A_FAILED(k4a_device_open(K4A_DEVICE_DEFAULT, &device)))
+		if (K4A_FAILED(k4a_device_open(deviceId_, &device_)))
 		{
 			UERROR("Failed to open k4a device!");
 			return false;
@@ -190,29 +273,97 @@ bool CameraK4A::init(const std::string & calibrationFolder, const std::string & 
 
 		// Get the size of the serial number
 		size_t serial_size = 0;
-		k4a_device_get_serialnum(device, NULL, &serial_size);
+		k4a_device_get_serialnum(device_, NULL, &serial_size);
 
 		// Allocate memory for the serial, then acquire it
 		char *serial = (char*)(malloc(serial_size));
-		k4a_device_get_serialnum(device, serial, &serial_size);
-		UINFO("Opened device: %s", serial);
+		k4a_device_get_serialnum(device_, serial, &serial_size);
+		serial_number_.assign(serial, serial_size);
 		free(serial);
 
-		// Configure a stream of 4096x3072 BRGA color data at 15 frames per second
-		k4a_device_configuration_t config = K4A_DEVICE_CONFIG_INIT_DISABLE_ALL;
-		config.camera_fps = K4A_FRAMES_PER_SECOND_15;
-		config.color_format = K4A_IMAGE_FORMAT_COLOR_BGRA32;
-		config.color_resolution = K4A_COLOR_RESOLUTION_3072P;
+		UINFO("Opened K4A device: %s", serial_number_.c_str());
 
 		// Start the camera with the given configuration
-		if (K4A_FAILED(k4a_device_start_cameras(device, &config)))
+		if (K4A_FAILED(k4a_device_start_cameras(device_, &config_)))
 		{
 			UERROR("Failed to start cameras!");
-			k4a_device_close(device);
+			close();
 			return false;
-		}*/
+		}
+
+		UINFO("K4A camera started successfully");
+
+		if (K4A_FAILED(k4a_device_get_calibration(device_, config_.depth_mode, config_.color_resolution, &calibration_)))
+		{
+			UERROR("k4a_device_get_calibration() failed!");
+			close();
+			return false;
+		}
+
+		if (ir_)
+		{
+			model_ = CameraModel(
+					calibration_.depth_camera_calibration.intrinsics.parameters.param.fx,
+					calibration_.depth_camera_calibration.intrinsics.parameters.param.fy,
+					calibration_.depth_camera_calibration.intrinsics.parameters.param.cx,
+					calibration_.depth_camera_calibration.intrinsics.parameters.param.cy,
+					this->getLocalTransform(),
+					0,
+					cv::Size(calibration_.depth_camera_calibration.resolution_width, calibration_.depth_camera_calibration.resolution_height));
+		}
+		else
+		{
+			model_ = CameraModel(
+					calibration_.color_camera_calibration.intrinsics.parameters.param.fx,
+					calibration_.color_camera_calibration.intrinsics.parameters.param.fy,
+					calibration_.color_camera_calibration.intrinsics.parameters.param.cx,
+					calibration_.color_camera_calibration.intrinsics.parameters.param.cy,
+					this->getLocalTransform(),
+					0,
+					cv::Size(calibration_.color_camera_calibration.resolution_width, calibration_.color_camera_calibration.resolution_height));
+		}
+
+		transformation_ = k4a_transformation_create(&calibration_);
+
+		// Get imu transform
+		k4a_calibration_extrinsics_t* imu_extrinsics;
+		if(ir_)
+		{
+			imu_extrinsics = &calibration_.extrinsics[K4A_CALIBRATION_TYPE_ACCEL][K4A_CALIBRATION_TYPE_DEPTH];
+		}
+		else
+		{
+			imu_extrinsics = &calibration_.extrinsics[K4A_CALIBRATION_TYPE_ACCEL][K4A_CALIBRATION_TYPE_COLOR];
+		}
+		imuLocalTransform_ = Transform(
+			imu_extrinsics->rotation[0], imu_extrinsics->rotation[1], imu_extrinsics->rotation[2], imu_extrinsics->translation[0] / 1000.0f,
+			imu_extrinsics->rotation[3], imu_extrinsics->rotation[4], imu_extrinsics->rotation[5], imu_extrinsics->translation[1] / 1000.0f,
+			imu_extrinsics->rotation[6], imu_extrinsics->rotation[7], imu_extrinsics->rotation[8], imu_extrinsics->translation[2] / 1000.0f);
+
+		UINFO("camera to imu=%s", imuLocalTransform_.prettyPrint().c_str());
+		UINFO("base to camera=%s", this->getLocalTransform().prettyPrint().c_str());
+		imuLocalTransform_ = this->getLocalTransform()*imuLocalTransform_;
+		UINFO("base to imu=%s", imuLocalTransform_.prettyPrint().c_str());
+
+		if (K4A_FAILED(k4a_device_start_imu(device_)))
+		{
+			UERROR("Failed to start K4A IMU");
+			close();
+			return false;
+		}
+
+		UINFO("K4a IMU started successfully");
+
+		// Get an initial capture to put the camera in the right state
+		if (K4A_WAIT_RESULT_SUCCEEDED == k4a_device_get_capture(device_, &capture_, K4A_WAIT_INFINITE))
+		{
+			k4a_capture_release(capture_);
+			return true;
+		}
+
+		close();
+		return false;
 	}
-	
 	return true;
 #else
 	UERROR("CameraK4A: RTAB-Map is not built with Kinect for Azure SDK support!");
@@ -228,7 +379,11 @@ bool CameraK4A::isCalibrated() const
 std::string CameraK4A::getSerial() const
 {
 #ifdef RTABMAP_K4A
-	return fileName_.empty()?"":fileName_;
+	if(!fileName_.empty())
+	{
+		return fileName_;
+	}
+	return(serial_number_);
 #else
 	return "";
 #endif
@@ -405,7 +560,7 @@ SensorData CameraK4A::captureImage(CameraInfo * info)
 							if (sleepTime > 10000)
 							{
 								UWARN("Detected long delay (%d sec, stamps = %f vs %f). Waiting a maximum of 10 seconds.",
-									sleepTime / 1000, previousStamp_, stamp);
+										sleepTime / 1000, previousStamp_, stamp);
 								sleepTime = 10000;
 							}
 							if (sleepTime > 2)
@@ -443,9 +598,129 @@ SensorData CameraK4A::captureImage(CameraInfo * info)
 	}
 	else
 	{
-		UERROR("CameraK4A: Live camera stream is not yet supported, only recorded mkv files are.");
-	}
+		k4a_image_t ir_image_ = NULL;
+		k4a_image_t rgb_image_ = NULL;
+		k4a_imu_sample_t imu_sample_;
 
+		double t = UTimer::now();
+		k4a_wait_result_t result = K4A_WAIT_RESULT_FAILED;
+		while((UTimer::now()-t < 5.0) &&
+				(K4A_WAIT_RESULT_SUCCEEDED != (result=k4a_device_get_capture(device_, &capture_, K4A_WAIT_INFINITE)) ||
+				((ir_ && (ir_image_=k4a_capture_get_ir_image(capture_)) == NULL) || (!ir_ && (rgb_image_=k4a_capture_get_color_image(capture_)) == NULL))))
+		{
+			k4a_capture_release(capture_);
+			// the first frame may be null, just retry for 5 seconds
+		}
+
+		if (result == K4A_WAIT_RESULT_SUCCEEDED && (rgb_image_!=NULL || ir_image_!=NULL))
+		{
+			cv::Mat bgrCV;
+			cv::Mat depthCV;
+			IMU imu;
+
+			if (ir_image_ != NULL)
+			{
+				// Convert IR image
+				cv::Mat bgrCV16(k4a_image_get_height_pixels(ir_image_),
+						k4a_image_get_width_pixels(ir_image_),
+						CV_16UC1,
+						(void*)k4a_image_get_buffer(ir_image_));
+
+				bgrCV16.convertTo(bgrCV, CV_8U);
+
+				// Release the image
+				k4a_image_release(ir_image_);
+			}
+			else
+			{
+				// Convert RGB image
+				if (k4a_image_get_format(rgb_image_) == K4A_IMAGE_FORMAT_COLOR_MJPG)
+				{
+					bgrCV = uncompressImage(cv::Mat(1, (int)k4a_image_get_size(rgb_image_),
+							CV_8UC1,
+							(void*)k4a_image_get_buffer(rgb_image_)));
+				}
+				else
+				{
+					cv::Mat bgra(k4a_image_get_height_pixels(rgb_image_),
+							k4a_image_get_width_pixels(rgb_image_),
+							CV_8UC4,
+							(void*)k4a_image_get_buffer(rgb_image_));
+
+					cv::cvtColor(bgra, bgrCV, CV_BGRA2BGR);
+				}
+
+				// Release the image
+				k4a_image_release(rgb_image_);
+			}
+
+			if(!bgrCV.empty())
+			{
+				// Retrieve depth image from capture
+				k4a_image_t depth_image_ = k4a_capture_get_depth_image(capture_);
+
+				if (depth_image_ != NULL)
+				{
+					if (ir_)
+					{
+						depthCV = cv::Mat(k4a_image_get_height_pixels(depth_image_),
+								k4a_image_get_width_pixels(depth_image_),
+								CV_16UC1,
+								(void*)k4a_image_get_buffer(depth_image_)).clone();
+					}
+					else
+					{
+						k4a_image_t transformedDepth = NULL;
+						if (k4a_image_create(k4a_image_get_format(depth_image_),
+								bgrCV.cols, bgrCV.rows, bgrCV.cols * 2, &transformedDepth) == K4A_RESULT_SUCCEEDED)
+						{
+							if(k4a_transformation_depth_image_to_color_camera(transformation_, depth_image_, transformedDepth) == K4A_RESULT_SUCCEEDED)
+							{
+								depthCV = cv::Mat(k4a_image_get_height_pixels(transformedDepth),
+										k4a_image_get_width_pixels(transformedDepth),
+										CV_16UC1,
+										(void*)k4a_image_get_buffer(transformedDepth)).clone();
+							}
+							else
+							{
+								UERROR("K4A failed to register depth image");
+							}
+
+							k4a_image_release(transformedDepth);
+						}
+						else
+						{
+							UERROR("K4A failed to allocate registered depth image");
+						}
+					}
+					k4a_image_release(depth_image_);
+				}
+			}
+
+			k4a_capture_release(capture_);
+
+			// Get IMU sample, clear buffer
+			if(K4A_WAIT_RESULT_SUCCEEDED == k4a_device_get_imu_sample(device_, &imu_sample_, 60))
+			{
+				imu = IMU(cv::Vec3d(imu_sample_.gyro_sample.xyz.x, imu_sample_.gyro_sample.xyz.y, imu_sample_.gyro_sample.xyz.z),
+						cv::Mat::eye(3, 3, CV_64FC1),
+						cv::Vec3d(imu_sample_.acc_sample.xyz.x, imu_sample_.acc_sample.xyz.y, imu_sample_.acc_sample.xyz.z),
+						cv::Mat::eye(3, 3, CV_64FC1),
+						imuLocalTransform_);
+			}
+			else
+			{
+				UERROR("IMU data NULL");
+			}
+
+			// Relay the data to rtabmap
+			if (!bgrCV.empty() && !depthCV.empty())
+			{
+				data = SensorData(bgrCV, depthCV, model_, this->getNextSeqID(), UTimer::now());
+				data.setIMU(imu);
+			}
+		}
+	}
 #else
 	UERROR("CameraK4A: RTAB-Map is not built with Kinect for Azure SDK support!");
 #endif

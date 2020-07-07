@@ -35,6 +35,7 @@ SET(SRC_FILES
     camera/CameraStereoZed.cpp
     camera/CameraStereoTara.cpp
     camera/CameraVideo.cpp
+    camera/CameraMyntEye.cpp
     
     EpipolarGeometry.cpp
     VisualWord.cpp
@@ -116,6 +117,8 @@ SET(SRC_FILES
     clams/slam_calibrator.cpp
     
     opencv/ORBextractor.cc
+    opencv/solvepnp.cpp
+    opencv/five-point.cpp
 )
 
 IF(OpenCV_VERSION_MAJOR EQUAL 2)
@@ -124,10 +127,6 @@ SET(SRC_FILES
     opencv/Orb.cpp
 )
 ENDIF(OpenCV_VERSION_MAJOR EQUAL 2)
-SET(SRC_FILES
-    ${SRC_FILES}
-    opencv/solvepnp.cpp
-)
 
 # to get includes in visual studio
 IF(MSVC)
@@ -172,6 +171,40 @@ ELSE()
 		${INCLUDE_DIRS}
 	)
 ENDIF()
+
+IF(TORCH_FOUND)
+	SET(LIBRARIES
+		${LIBRARIES}
+		${TORCH_LIBRARIES}
+	)
+	SET(SRC_FILES
+		${SRC_FILES}
+		superpoint_torch/SuperPoint.cc
+	)
+	 SET(INCLUDE_DIRS
+	    ${TORCH_INCLUDE_DIRS}
+	    ${CMAKE_CURRENT_SOURCE_DIR}/superpoint_torch
+		${INCLUDE_DIRS}
+	)
+ENDIF(TORCH_FOUND)
+
+IF(Python3_FOUND)
+	SET(LIBRARIES
+		${LIBRARIES}
+		Python3::Python
+	)
+	SET(SRC_FILES
+		${SRC_FILES}
+		pymatcher/PyMatcher.cpp
+	)
+	 SET(INCLUDE_DIRS
+	    ${TORCH_INCLUDE_DIRS}
+	    ${CMAKE_CURRENT_SOURCE_DIR}/pymatcher
+		${INCLUDE_DIRS}
+	)
+ENDIF(Python3_FOUND)
+
+
 
 IF(Freenect_FOUND)
 	IF(Freenect_DASH_INCLUDES)
@@ -260,6 +293,11 @@ IF(realsense2_FOUND)
 			${LIBRARIES}
 			${RealSense2_LIBRARIES}
 		)
+	ELSEIF(APPLE)
+	    SET(LIBRARIES
+			${LIBRARIES}
+			${realsense2_LIBRARIES}
+		)
 	ELSE()
 		SET(LIBRARIES
 			${LIBRARIES}
@@ -289,6 +327,13 @@ IF(FlyCapture2_FOUND)
 		${FlyCapture2_LIBRARIES}
 	)
 ENDIF(FlyCapture2_FOUND)
+
+IF(mynteye_FOUND)
+	SET(LIBRARIES
+		${LIBRARIES}
+		mynteye # target
+	)
+ENDIF(mynteye_FOUND)
 
 IF(WITH_TORO)
 	SET(SRC_FILES
@@ -403,7 +448,7 @@ IF(ZED_FOUND)
 	ENDIF(CUDA_FOUND)
 ENDIF(ZED_FOUND)
 
-IF(OCTOMAP_FOUND)
+IF(octomap_FOUND)
     SET(INCLUDE_DIRS
 		${INCLUDE_DIRS}
 		${OCTOMAP_INCLUDE_DIRS}
@@ -416,7 +461,7 @@ IF(OCTOMAP_FOUND)
     	${SRC_FILES}
 		OctoMap.cpp
 	)
-ENDIF(OCTOMAP_FOUND)
+ENDIF(octomap_FOUND)
 
 IF(AliceVision_FOUND)
   SET(LIBRARIES

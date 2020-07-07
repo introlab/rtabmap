@@ -128,6 +128,7 @@ void RtabmapThread::close(bool databaseSaved, const std::string & ouputDatabaseP
 
 void RtabmapThread::publishMap(bool optimized, bool full, bool graphOnly) const
 {
+	UDEBUG("optimized=%s, full=%s, graphOnly=%s", optimized?"true":"false", full?"true":"false", graphOnly?"true":"false");
 	if(_rtabmap)
 	{
 		std::map<int, Signature> signatures;
@@ -138,23 +139,15 @@ void RtabmapThread::publishMap(bool optimized, bool full, bool graphOnly) const
 		std::map<int, std::string> labels;
 		std::map<int, std::vector<unsigned char> > userDatas;
 
-		if(graphOnly)
-		{
-			_rtabmap->getGraph(poses,
-					constraints,
-					optimized,
-					full,
-					&signatures);
-		}
-		else
-		{
-			_rtabmap->get3DMap(
-					signatures,
-					poses,
-					constraints,
-					optimized,
-					full);
-		}
+		_rtabmap->getGraph(poses,
+				constraints,
+				optimized,
+				full,
+				&signatures,
+				!graphOnly,
+				!graphOnly,
+				!graphOnly,
+				!graphOnly);
 
 		this->post(new RtabmapEvent3DMap(
 				signatures,
@@ -217,7 +210,6 @@ void RtabmapThread::mainLoop()
 		Parameters::parse(parameters, Parameters::kRtabmapImageBufferSize(), _dataBufferMaxSize);
 		Parameters::parse(parameters, Parameters::kRtabmapDetectionRate(), _rate);
 		Parameters::parse(parameters, Parameters::kRtabmapCreateIntermediateNodes(), _createIntermediateNodes);
-		UASSERT(_dataBufferMaxSize >= 0);
 		UASSERT(_rate >= 0.0f);
 		_rtabmap->init(parameters, str);
 		break;
@@ -225,7 +217,6 @@ void RtabmapThread::mainLoop()
 		Parameters::parse(parameters, Parameters::kRtabmapImageBufferSize(), _dataBufferMaxSize);
 		Parameters::parse(parameters, Parameters::kRtabmapDetectionRate(), _rate);
 		Parameters::parse(parameters, Parameters::kRtabmapCreateIntermediateNodes(), _createIntermediateNodes);
-		UASSERT(_dataBufferMaxSize >= 0);
 		UASSERT(_rate >= 0.0f);
 		_rtabmap->parseParameters(parameters);
 		break;

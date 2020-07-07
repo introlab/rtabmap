@@ -80,6 +80,7 @@ Memory::Memory(const ParametersMap & parameters) :
 	_saveIntermediateNodeData(Parameters::defaultMemIntermediateNodeDataKept()),
 	_rgbCompressionFormat(Parameters::defaultMemImageCompressionFormat()),
 	_incrementalMemory(Parameters::defaultMemIncrementalMemory()),
+	_localizationDataSaved(Parameters::defaultMemLocalizationDataSaved()),
 	_reduceGraph(Parameters::defaultMemReduceGraph()),
 	_maxStMemSize(Parameters::defaultMemSTMSize()),
 	_recentWmRatio(Parameters::defaultMemRecentWmRatio()),
@@ -89,6 +90,7 @@ Memory::Memory(const ParametersMap & parameters) :
 	_badSignaturesIgnored(Parameters::defaultMemBadSignaturesIgnored()),
 	_mapLabelsAdded(Parameters::defaultMemMapLabelsAdded()),
 	_depthAsMask(Parameters::defaultMemDepthAsMask()),
+	_stereoFromMotion(Parameters::defaultMemStereoFromMotion()),
 	_imagePreDecimation(Parameters::defaultMemImagePreDecimation()),
 	_imagePostDecimation(Parameters::defaultMemImagePostDecimation()),
 	_compressionParallelized(Parameters::defaultMemCompressionParallelized()),
@@ -345,7 +347,9 @@ void Memory::loadDataFromDb(bool postInitClosingEvents)
 
 		// Last id
 		_dbDriver->getLastNodeId(_idCount);
-		_idMapCount = _lastSignature?_lastSignature->mapId()+1:kIdStart;
+		_idMapCount = -1;
+		_dbDriver->getLastMapId(_idMapCount);
+		++_idMapCount;
 
 		// Now load the dictionary if we have a connection
 		if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit("Loading dictionary..."));
@@ -549,6 +553,7 @@ void Memory::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(params, Parameters::kMemTransferSortingByWeightId(), _transferSortingByWeightId);
 	Parameters::parse(params, Parameters::kMemSTMSize(), _maxStMemSize);
 	Parameters::parse(params, Parameters::kMemDepthAsMask(), _depthAsMask);
+	Parameters::parse(params, Parameters::kMemStereoFromMotion(), _stereoFromMotion);
 	Parameters::parse(params, Parameters::kMemImagePreDecimation(), _imagePreDecimation);
 	Parameters::parse(params, Parameters::kMemImagePostDecimation(), _imagePostDecimation);
 	Parameters::parse(params, Parameters::kMemCompressionParallelized(), _compressionParallelized);
@@ -571,6 +576,7 @@ void Memory::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(params, Parameters::kRGBDMarkerDetection(), _detectMarkers);
 	Parameters::parse(params, Parameters::kMarkerVarianceLinear(), _markerLinVariance);
 	Parameters::parse(params, Parameters::kMarkerVarianceAngular(), _markerAngVariance);
+	Parameters::parse(params, Parameters::kMemLocalizationDataSaved(), _localizationDataSaved);
 
 	UASSERT_MSG(_maxStMemSize >= 0, uFormat("value=%d", _maxStMemSize).c_str());
 	UASSERT_MSG(_similarityThreshold >= 0.0f && _similarityThreshold <= 1.0f, uFormat("value=%f", _similarityThreshold).c_str());
@@ -864,7 +870,7 @@ bool Memory::update(
 	}
 	if(stats) stats->setReducedIds(reducedIds);
 
-	if(!_memoryChanged && _incrementalMemory)
+	if(!_memoryChanged && (_incrementalMemory || _localizationDataSaved))
 	{
 		_memoryChanged = true;
 	}
@@ -1076,27 +1082,32 @@ void Memory::moveSignatureToWMFromSTM(int id, int * reducedTo)
 			{
 				for(std::multimap<int, Link>::const_iterator iter=links.begin(); iter!=links.end(); ++iter)
 				{
-					merge = true;
 					Signature * sTo = this->_getSignature(iter->first);
-					UASSERT(sTo!=0);
-					sTo->removeLink(s->id());
-					if(iter->second.type() != Link::kNeighbor &&
-					   iter->second.type() != Link::kNeighborMerged &&
-					   iter->second.type() != Link::kUndef)
+					if(sTo->id()!=s->id()) // Not Prior/Gravity links...
 					{
-						// link to all neighbors
-						for(std::map<int, Link>::iterator jter=neighbors.begin(); jter!=neighbors.end(); ++jter)
+						UASSERT_MSG(sTo!=0, uFormat("id=%d", iter->first).c_str());
+						sTo->removeLink(s->id());
+						if(iter->second.type() != Link::kNeighbor &&
+						   iter->second.type() != Link::kNeighborMerged &&
+						   iter->second.type() != Link::kUndef)
 						{
-							if(!sTo->hasLink(jter->second.to()))
+							// link to all neighbors
+							for(std::map<int, Link>::iterator jter=neighbors.begin(); jter!=neighbors.end(); ++jter)
 							{
-								Link l = iter->second.inverse().merge(
-										jter->second,
-										iter->second.userDataCompressed().empty() && iter->second.type() != Link::kVirtualClosure?Link::kNeighborMerged:iter->second.type());
-								sTo->addLink(l);
-								Signature * sB = this->_getSignature(l.to());
-								UASSERT(sB!=0);
-								UASSERT(!sB->hasLink(l.to()));
-								sB->addLink(l.inverse());
+								if(!sTo->hasLink(jter->second.to()))
+								{
+									UDEBUG("Merging link %d->%d (type=%d) to link %d->%d (type %d)",
+											iter->second.from(), iter->second.to(), iter->second.type(),
+											jter->second.from(), jter->second.to(), jter->second.type());
+									Link l = iter->second.inverse().merge(
+											jter->second,
+											iter->second.userDataCompressed().empty() && iter->second.type() != Link::kVirtualClosure?Link::kNeighborMerged:iter->second.type());
+									sTo->addLink(l);
+									Signature * sB = this->_getSignature(l.to());
+									UASSERT(sB!=0);
+									UASSERT_MSG(!sB->hasLink(l.from()), uFormat("%d->%d", sB->id(), l.to()).c_str());
+									sB->addLink(l.inverse());
+								}
 							}
 						}
 					}
@@ -1343,7 +1354,10 @@ std::map<int, int> Memory::getNeighborsId(
 		) const
 {
 	UASSERT(maxGraphDepth >= 0);
-	//UDEBUG("signatureId=%d, neighborsMargin=%d", signatureId, margin);
+	//DEBUG("signatureId=%d maxGraphDepth=%d maxCheckedInDatabase=%d incrementMarginOnLoop=%d "
+	//		"ignoreLoopIds=%d ignoreIntermediateNodes=%d ignoreLocalSpaceLoopIds=%d",
+	//		signatureId, maxGraphDepth, maxCheckedInDatabase, incrementMarginOnLoop?1:0,
+	//		ignoreLoopIds?1:0, ignoreIntermediateNodes?1:0, ignoreLocalSpaceLoopIds?1:0);
 	if(dbAccessTime)
 	{
 		*dbAccessTime = 0;
@@ -1401,6 +1415,10 @@ std::map<int, int> Memory::getNeighborsId(
 
 					UTimer timer;
 					_dbDriver->loadLinks(*jter, tmpLinks, ignoreLoopIds?Link::kAllWithoutLandmarks:Link::kAllWithLandmarks);
+					if(tmpLinks.empty())
+					{
+						UWARN("No links loaded for %d?!", *jter);
+					}
 					if(!ignoreLoopIds)
 					{
 						for(std::multimap<int, Link>::iterator kter=tmpLinks.begin(); kter!=tmpLinks.end();)
@@ -1408,6 +1426,11 @@ std::map<int, int> Memory::getNeighborsId(
 							if(kter->first < 0)
 							{
 								tmpLandmarks.insert(*kter);
+								tmpLinks.erase(kter++);
+							}
+							else if(kter->second.from() == kter->second.to())
+							{
+								// ignore self-referring links
 								tmpLinks.erase(kter++);
 							}
 							else
@@ -1425,7 +1448,8 @@ std::map<int, int> Memory::getNeighborsId(
 				// links
 				for(std::multimap<int, Link>::const_iterator iter=links->begin(); iter!=links->end(); ++iter)
 				{
-					if( !uContains(ids, iter->first) && ignoredIds.find(iter->first) == ignoredIds.end())
+					if(!uContains(ids, iter->first) &&
+					   ignoredIds.find(iter->first) == ignoredIds.end())
 					{
 						UASSERT(iter->second.type() != Link::kUndef);
 						if(iter->second.type() == Link::kNeighbor ||
@@ -1627,12 +1651,12 @@ double Memory::getDbSavingTime() const
 	return _dbDriver?_dbDriver->getEmptyTrashesTime():0;
 }
 
-std::set<int> Memory::getAllSignatureIds() const
+std::set<int> Memory::getAllSignatureIds(bool ignoreChildren) const
 {
 	std::set<int> ids;
 	if(_dbDriver)
 	{
-		_dbDriver->getAllNodeIds(ids);
+		_dbDriver->getAllNodeIds(ids, ignoreChildren);
 	}
 	for(std::map<int, Signature*>::const_iterator iter = _signatures.begin(); iter!=_signatures.end(); ++iter)
 	{
@@ -1999,11 +2023,11 @@ int Memory::cleanup()
 	return signatureRemoved;
 }
 
-void Memory::saveStatistics(const Statistics & statistics)
+void Memory::saveStatistics(const Statistics & statistics, bool saveWmState)
 {
 	if(_dbDriver)
 	{
-		_dbDriver->addStatistics(statistics);
+		_dbDriver->addStatistics(statistics, saveWmState);
 	}
 }
 
@@ -2407,7 +2431,7 @@ void Memory::moveToTrash(Signature * s, bool keepLinkedToGraph, std::list<int> *
 		if(	(_notLinkedNodesKeptInDb || keepLinkedToGraph || s->isSaved()) &&
 			_dbDriver &&
 			s->id()>0 &&
-			(_incrementalMemory || s->isSaved()))
+			(_incrementalMemory || s->isSaved() || _localizationDataSaved))
 		{
 			if(keepLinkedToGraph)
 			{
@@ -2694,13 +2718,13 @@ Transform Memory::computeTransform(
 	   (_registrationPipeline->isScanRequired() && fromS.sensorData().imageCompressed().empty() && fromS.sensorData().laserScanCompressed().isEmpty()) ||
 	   (_registrationPipeline->isUserDataRequired() && fromS.sensorData().imageCompressed().empty() && fromS.sensorData().userDataCompressed().empty()))
 	{
-		fromS.sensorData() = getNodeData(fromS.id());
+		fromS.sensorData() = getNodeData(fromS.id(), true, true, true, true);
 	}
 	if(((_reextractLoopClosureFeatures && _registrationPipeline->isImageRequired()) && toS.sensorData().imageCompressed().empty()) ||
 	   (_registrationPipeline->isScanRequired() && toS.sensorData().imageCompressed().empty() && toS.sensorData().laserScanCompressed().isEmpty()) ||
 	   (_registrationPipeline->isUserDataRequired() && toS.sensorData().imageCompressed().empty() && toS.sensorData().userDataCompressed().empty()))
 	{
-		toS.sensorData() = getNodeData(toS.id());
+		toS.sensorData() = getNodeData(toS.id(), true, true, true, true);
 	}
 	// uncompress only what we need
 	cv::Mat imgBuf, depthBuf, userBuf;
@@ -3062,6 +3086,7 @@ Transform Memory::computeIcpTransformMulti(
 		pcl::PointCloud<pcl::PointNormal>::Ptr assembledToNormalClouds(new pcl::PointCloud<pcl::PointNormal>);
 		pcl::PointCloud<pcl::PointXYZI>::Ptr assembledToIClouds(new pcl::PointCloud<pcl::PointXYZI>);
 		pcl::PointCloud<pcl::PointXYZINormal>::Ptr assembledToNormalIClouds(new pcl::PointCloud<pcl::PointXYZINormal>);
+		UDEBUG("maxPoints from(%d) = %d", fromId, maxPoints);
 		for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
 		{
 			if(iter->first != fromId)
@@ -3071,7 +3096,7 @@ Transform Memory::computeIcpTransformMulti(
 				{
 					LaserScan scan;
 					s->sensorData().uncompressData(0, 0, &scan);
-					if(!scan.isEmpty() && scan.format() == fromScan.format())
+					if(!scan.isEmpty() && scan.format() == toScan.format())
 					{
 						if(scan.hasIntensity())
 						{
@@ -3102,12 +3127,13 @@ Transform Memory::computeIcpTransformMulti(
 
 						if(scan.size() > maxPoints)
 						{
+							UDEBUG("maxPoints scan(%d) = %d", iter->first, (int)scan.size());
 							maxPoints = scan.size();
 						}
 					}
 					else if(!scan.isEmpty())
 					{
-						UWARN("Incompatible scan format %d vs %d", (int)fromScan.format(), (int)scan.format());
+						UWARN("Incompatible scan format %s vs %s", toScan.formatName().c_str(), scan.formatName().c_str());
 					}
 				}
 				else
@@ -3134,13 +3160,14 @@ Transform Memory::computeIcpTransformMulti(
 		{
 			assembledScan = fromScan.is2d()?util3d::laserScan2dFromPointCloud(*assembledToIClouds):util3d::laserScanFromPointCloud(*assembledToIClouds);
 		}
+		UDEBUG("assembledScan=%d points", assembledScan.cols);
 
 		// scans are in base frame but for 2d scans, set the height so that correspondences matching works
 		assembledData.setLaserScan(
 				LaserScan(assembledScan,
 					fromScan.maxPoints()?fromScan.maxPoints():maxPoints,
 					fromScan.rangeMax(),
-					fromScan.format(),
+					toScan.format(),
 					fromScan.is2d()?Transform(0,0,fromScan.localTransform().z(),0,0,0):Transform::getIdentity()));
 
 		t = _registrationIcpMulti->computeTransformation(fromS->sensorData(), assembledData, guess, info);
@@ -3808,33 +3835,49 @@ cv::Mat Memory::getImageCompressed(int signatureId) const
 	return image;
 }
 
-SensorData Memory::getNodeData(int nodeId, bool uncompressedData) const
+SensorData Memory::getNodeData(int locationId, bool images, bool scan, bool userData, bool occupancyGrid) const
 {
-	//UDEBUG("nodeId=%d", nodeId);
+	//UDEBUG("");
 	SensorData r;
-	Signature * s = this->_getSignature(nodeId);
-	if(s && !s->sensorData().imageCompressed().empty())
+	const Signature * s = this->getSignature(locationId);
+	if(s && (!s->isSaved() ||
+			((!images || !s->sensorData().imageCompressed().empty()) &&
+			 (!scan || !s->sensorData().laserScanCompressed().isEmpty()) &&
+			 (!userData || !s->sensorData().userDataCompressed().empty()) &&
+			 (!occupancyGrid || s->sensorData().gridCellSize() != 0.0f))))
 	{
 		r = s->sensorData();
+		if(!images)
+		{
+			r.setRGBDImage(cv::Mat(), cv::Mat(), std::vector<CameraModel>());
+		}
+		if(!scan)
+		{
+			r.setLaserScan(LaserScan());
+		}
+		if(!userData)
+		{
+			r.setUserData(cv::Mat());
+		}
+		if(!occupancyGrid)
+		{
+			r.setOccupancyGrid(cv::Mat(), cv::Mat(), cv::Mat(), 0, cv::Point3f());
+		}
 	}
 	else if(_dbDriver)
 	{
 		// load from database
-		_dbDriver->getNodeData(nodeId, r);
-	}
-
-	if(uncompressedData)
-	{
-		r.uncompressData();
+		_dbDriver->getNodeData(locationId, r, images, scan, userData, occupancyGrid);
 	}
 
 	return r;
 }
 
-void Memory::getNodeWords(int nodeId,
+void Memory::getNodeWordsAndGlobalDescriptors(int nodeId,
 		std::multimap<int, cv::KeyPoint> & words,
 		std::multimap<int, cv::Point3f> & words3,
-		std::multimap<int, cv::Mat> & wordsDescriptors)
+		std::multimap<int, cv::Mat> & wordsDescriptors,
+		std::vector<GlobalDescriptor> & globalDescriptors) const
 {
 	//UDEBUG("nodeId=%d", nodeId);
 	Signature * s = this->_getSignature(nodeId);
@@ -3843,6 +3886,7 @@ void Memory::getNodeWords(int nodeId,
 		words = s->getWords();
 		words3 = s->getWords3();
 		wordsDescriptors = s->getWordsDescriptors();
+		globalDescriptors = s->sensorData().globalDescriptors();
 	}
 	else if(_dbDriver)
 	{
@@ -3857,6 +3901,7 @@ void Memory::getNodeWords(int nodeId,
 			words = signatures.front()->getWords();
 			words3 = signatures.front()->getWords3();
 			wordsDescriptors = signatures.front()->getWordsDescriptors();
+			globalDescriptors = signatures.front()->sensorData().globalDescriptors();
 			if(loadedFromTrash.size())
 			{
 				//put back
@@ -3872,7 +3917,7 @@ void Memory::getNodeWords(int nodeId,
 
 void Memory::getNodeCalibration(int nodeId,
 		std::vector<CameraModel> & models,
-		StereoCameraModel & stereoModel)
+		StereoCameraModel & stereoModel) const
 {
 	//UDEBUG("nodeId=%d", nodeId);
 	Signature * s = this->_getSignature(nodeId);
@@ -3886,28 +3931,6 @@ void Memory::getNodeCalibration(int nodeId,
 		// load from database
 		_dbDriver->getCalibration(nodeId, models, stereoModel);
 	}
-}
-
-SensorData Memory::getSignatureDataConst(int locationId,
-		bool images, bool scan, bool userData, bool occupancyGrid) const
-{
-	//UDEBUG("");
-	SensorData r;
-	const Signature * s = this->getSignature(locationId);
-	if(s && (!s->sensorData().imageCompressed().empty() ||
-			!s->sensorData().laserScanCompressed().isEmpty() ||
-			!s->sensorData().userDataCompressed().empty() ||
-			s->sensorData().gridCellSize() != 0.0f))
-	{
-		r = s->sensorData();
-	}
-	else if(_dbDriver)
-	{
-		// load from database
-		_dbDriver->getNodeData(locationId, r, images, scan, userData, occupancyGrid);
-	}
-
-	return r;
 }
 
 void Memory::generateGraph(const std::string & fileName, const std::set<int> & ids)
@@ -4001,8 +4024,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 				 data.depthOrRightRaw().type() == CV_8UC1)
 			   &&
 				( (data.imageRaw().empty() && data.depthOrRightRaw().type() != CV_8UC1) ||
-				  (data.imageRaw().rows % data.depthOrRightRaw().rows == 0 && data.imageRaw().cols % data.depthOrRightRaw().cols == 0 &&
-				   data.depthOrRightRaw().rows <= data.imageRaw().rows && data.depthOrRightRaw().cols <= data.imageRaw().cols))),
+				  (data.depthOrRightRaw().rows <= data.imageRaw().rows && data.depthOrRightRaw().cols <= data.imageRaw().cols))),
 				uFormat("image=(%d/%d, type=%d, [accepted=%d,%d]) depth=(%d/%d, type=%d [accepted=%d(depth mm),%d(depth m),%d(stereo)]). "
 						"For stereo, left and right images should be same size. "
 						"For RGB-D, depth can be X times smaller than RGB (where X is an integer).",
@@ -4238,29 +4260,48 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 				}
 			}
 
-			int oldMaxFeatures = _feature2D->getMaxFeatures();
-			UDEBUG("rawDescriptorsKept=%d, pose=%d, maxFeatures=%d, visMaxFeatures=%d", _rawDescriptorsKept?1:0, pose.isNull()?0:1, _feature2D->getMaxFeatures(), _visMaxFeatures);
-			ParametersMap tmpMaxFeatureParameter;
-			if(_rawDescriptorsKept&&!pose.isNull()&&_feature2D->getMaxFeatures()>0&&_feature2D->getMaxFeatures()<_visMaxFeatures)
+			bool useProvided3dPoints = false;
+			if(_useOdometryFeatures && !data.keypoints().empty())
 			{
-				// The total extracted features should match the number of features used for transformation estimation
-				UDEBUG("Changing temporary max features from %d to %d", _feature2D->getMaxFeatures(), _visMaxFeatures);
-				tmpMaxFeatureParameter.insert(ParametersPair(Parameters::kKpMaxFeatures(), uNumber2Str(_visMaxFeatures)));
-				_feature2D->parseParameters(tmpMaxFeatureParameter);
+				UDEBUG("Using provided keypoints (%d)", (int)data.keypoints().size());
+				keypoints = data.keypoints();
+
+				// In case we provided corresponding 3D features
+				if(keypoints.size() == data.keypoints3D().size())
+				{
+					for(size_t i=0; i<keypoints.size(); ++i)
+					{
+						keypoints[i].class_id = i;
+					}
+					useProvided3dPoints = true;
+				}
 			}
-
-			keypoints = _feature2D->generateKeypoints(
-					imageMono,
-					depthMask);
-
-			if(tmpMaxFeatureParameter.size())
+			else
 			{
-				tmpMaxFeatureParameter.at(Parameters::kKpMaxFeatures()) = uNumber2Str(oldMaxFeatures);
-				_feature2D->parseParameters(tmpMaxFeatureParameter); // reset back
+				int oldMaxFeatures = _feature2D->getMaxFeatures();
+				UDEBUG("rawDescriptorsKept=%d, pose=%d, maxFeatures=%d, visMaxFeatures=%d", _rawDescriptorsKept?1:0, pose.isNull()?0:1, _feature2D->getMaxFeatures(), _visMaxFeatures);
+				ParametersMap tmpMaxFeatureParameter;
+				if(_rawDescriptorsKept&&!pose.isNull()&&_feature2D->getMaxFeatures()>0&&_feature2D->getMaxFeatures()<_visMaxFeatures)
+				{
+					// The total extracted features should match the number of features used for transformation estimation
+					UDEBUG("Changing temporary max features from %d to %d", _feature2D->getMaxFeatures(), _visMaxFeatures);
+					tmpMaxFeatureParameter.insert(ParametersPair(Parameters::kKpMaxFeatures(), uNumber2Str(_visMaxFeatures)));
+					_feature2D->parseParameters(tmpMaxFeatureParameter);
+				}
+
+				keypoints = _feature2D->generateKeypoints(
+						imageMono,
+						depthMask);
+
+				if(tmpMaxFeatureParameter.size())
+				{
+					tmpMaxFeatureParameter.at(Parameters::kKpMaxFeatures()) = uNumber2Str(oldMaxFeatures);
+					_feature2D->parseParameters(tmpMaxFeatureParameter); // reset back
+				}
+				t = timer.ticks();
+				if(stats) stats->addStatistic(Statistics::kTimingMemKeypoints_detection(), t*1000.0f);
+				UDEBUG("time keypoints (%d) = %fs", (int)keypoints.size(), t);
 			}
-			t = timer.ticks();
-			if(stats) stats->addStatistic(Statistics::kTimingMemKeypoints_detection(), t*1000.0f);
-			UDEBUG("time keypoints (%d) = %fs", (int)keypoints.size(), t);
 
 			descriptors = _feature2D->generateDescriptors(imageMono, keypoints);
 			t = timer.ticks();
@@ -4392,7 +4433,22 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 					UDEBUG("time rectification = %fs", t);
 				}
 
-				if((!decimatedData.depthRaw().empty() && decimatedData.cameraModels().size() && decimatedData.cameraModels()[0].isValidForProjection()) ||
+				if(useProvided3dPoints && keypoints.size() != data.keypoints3D().size())
+				{
+					UDEBUG("Using provided 3d points (%d->%d)", (int)data.keypoints3D().size(), (int)keypoints.size());
+					keypoints3D.resize(keypoints.size());
+					for(size_t i=0; i<keypoints.size(); ++i)
+					{
+						UASSERT(keypoints[i].class_id < data.keypoints3D().size());
+						keypoints3D[i] = data.keypoints3D()[keypoints[i].class_id];
+					}
+				}
+				else if(keypoints.size() == data.keypoints3D().size())
+				{
+					UDEBUG("Using provided 3d points (%d)", (int)data.keypoints3D().size());
+					keypoints3D = data.keypoints3D();
+				}
+				else if((!decimatedData.depthRaw().empty() && decimatedData.cameraModels().size() && decimatedData.cameraModels()[0].isValidForProjection()) ||
 				   (!decimatedData.rightRaw().empty() && decimatedData.stereoCameraModel().isValidForProjection()))
 				{
 					keypoints3D = _feature2D->generateKeypoints3D(decimatedData, keypoints);
@@ -4463,34 +4519,10 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 		   (!data.rightRaw().empty() && data.stereoCameraModel().isValidForProjection())))
 		{
 			keypoints3D = _feature2D->generateKeypoints3D(data, keypoints);
-			if(_feature2D->getMinDepth() > 0.0f || _feature2D->getMaxDepth() > 0.0f)
-			{
-				UDEBUG("");
-				//remove all keypoints/descriptors with no valid 3D points
-				UASSERT((int)keypoints.size() == descriptors.rows &&
-						keypoints3D.size() == keypoints.size());
-				std::vector<cv::KeyPoint> validKeypoints(keypoints.size());
-				std::vector<cv::Point3f> validKeypoints3D(keypoints.size());
-				cv::Mat validDescriptors(descriptors.size(), descriptors.type());
-
-				int oi=0;
-				for(unsigned int i=0; i<keypoints3D.size(); ++i)
-				{
-					if(util3d::isFinite(keypoints3D[i]))
-					{
-						validKeypoints[oi] = keypoints[i];
-						validKeypoints3D[oi] = keypoints3D[i];
-						descriptors.row(i).copyTo(validDescriptors.row(oi));
-						++oi;
-					}
-				}
-				UDEBUG("Removed %d invalid 3D points", (int)keypoints3D.size()-oi);
-				validKeypoints.resize(oi);
-				validKeypoints3D.resize(oi);
-				keypoints = validKeypoints;
-				keypoints3D = validKeypoints3D;
-				descriptors = validDescriptors.rowRange(0, oi).clone();
-			}
+		}
+		if(_feature2D->getMinDepth() > 0.0f || _feature2D->getMaxDepth() > 0.0f)
+		{
+			_feature2D->filterKeypointsByDepth(keypoints, descriptors, keypoints3D, _feature2D->getMinDepth(), _feature2D->getMaxDepth());
 		}
 		t = timer.ticks();
 		if(stats) stats->addStatistic(Statistics::kTimingMemKeypoints_3D(), t*1000.0f);
@@ -4532,10 +4564,26 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 		if(_feature2D->getMaxFeatures()>0 && descriptors.rows > _feature2D->getMaxFeatures())
 		{
 			UASSERT((int)keypoints.size() == descriptors.rows);
-			Feature2D::limitKeypoints(keypoints, inliers, _feature2D->getMaxFeatures());
+			int inliersCount = 0;
+			if(_feature2D->getGridRows() > 1 || _feature2D->getGridCols() > 1)
+			{
+				Feature2D::limitKeypoints(keypoints, inliers, _feature2D->getMaxFeatures(), decimatedData.imageRaw().size(), _feature2D->getGridRows(), _feature2D->getGridCols());
+				for(size_t i=0; i<inliers.size(); ++i)
+				{
+					if(inliers[i])
+					{
+						++inliersCount;
+					}
+				}
+			}
+			else
+			{
+				Feature2D::limitKeypoints(keypoints, inliers, _feature2D->getMaxFeatures());
+				inliersCount = _feature2D->getMaxFeatures();
+			}
 
-			descriptorsForQuantization = cv::Mat(_feature2D->getMaxFeatures(), descriptors.cols, descriptors.type());
-			quantizedToRawIndices.resize(_feature2D->getMaxFeatures());
+			descriptorsForQuantization = cv::Mat(inliersCount, descriptors.cols, descriptors.type());
+			quantizedToRawIndices.resize(inliersCount);
 			unsigned int oi=0;
 			UASSERT((int)inliers.size() == descriptors.rows);
 			for(int k=0; k < descriptors.rows; ++k)
@@ -4555,7 +4603,9 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 					++oi;
 				}
 			}
-			UASSERT((int)oi == _feature2D->getMaxFeatures());
+			UASSERT_MSG((int)oi == inliersCount,
+					uFormat("oi=%d inliersCount=%d (maxFeatures=%d, grid=%dx%d)",
+							oi, inliersCount, _feature2D->getMaxFeatures(), _feature2D->getGridCols(), _feature2D->getGridRows()).c_str());
 		}
 
 		// Quantization to vocabulary
@@ -4595,6 +4645,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 	std::multimap<int, cv::KeyPoint> words;
 	std::multimap<int, cv::Point3f> words3D;
 	std::multimap<int, cv::Mat> wordsDescriptors;
+	int words3DValid = 0;
 	if(wordIds.size() > 0)
 	{
 		UASSERT(wordIds.size() == keypoints.size());
@@ -4618,6 +4669,10 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 			if(keypoints3D.size())
 			{
 				words3D.insert(std::pair<int, cv::Point3f>(*iter, keypoints3D.at(i)));
+				if(util3d::isFinite(keypoints3D.at(i)))
+				{
+					++words3DValid;
+				}
 			}
 			if(_rawDescriptorsKept)
 			{
@@ -4721,16 +4776,17 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 		UDEBUG("time post-decimation = %fs", t);
 	}
 
-	bool triangulateWordsWithoutDepth = !_depthAsMask;
-	if(!pose.isNull() &&
+	if(_stereoFromMotion &&
+		!pose.isNull() &&
 		cameraModels.size() == 1 &&
 		words.size() &&
-		(words3D.size() == 0 || (triangulateWordsWithoutDepth && words.size() == words3D.size())) &&
+		(words3D.size() == 0 || (words.size() == words3D.size() && words3DValid!=(int)words3D.size())) &&
 		_registrationPipeline->isImageRequired() &&
 		_signatures.size() &&
 		_signatures.rbegin()->second->mapId() == _idMapCount) // same map
 	{
-		UDEBUG("Generate 3D words using odometry");
+		UDEBUG("Generate 3D words using odometry (%s=true and words3DValid=%d/%d)",
+				Parameters::kMemStereoFromMotion().c_str(), words3DValid, (int)words3D.size());
 		Signature * previousS = _signatures.rbegin()->second;
 		if(previousS->getWords().size() > 8 && words.size() > 8 && !previousS->getPose().isNull())
 		{
@@ -4753,7 +4809,9 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 			cpCurrent.setWords(std::multimap<int, cv::KeyPoint>(uniqueWords.begin(), uniqueWords.end()));
 			cpCurrent.setWordsDescriptors(std::multimap<int, cv::Mat>(uniqueWordsDescriptors.begin(), uniqueWordsDescriptors.end()));
 
+			// The following is used only to re-estimate the correspondences, the returned transform is ignored
 			Transform tmpt;
+			RegistrationVis reg(parameters_);
 			if(_registrationPipeline->isScanRequired())
 			{
 				// If icp is used, remove it to just do visual registration
@@ -4764,10 +4822,9 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 			{
 				tmpt = _registrationPipeline->computeTransformationMod(cpCurrent, cpPrevious, cameraTransform);
 			}
-
 			UDEBUG("t=%s", tmpt.prettyPrint().c_str());
 
-			// compute 3D words by epipolar geometry with the previous signature
+			// compute 3D words by epipolar geometry with the previous signature using odometry motion
 			std::map<int, cv::Point3f> inliers = util3d::generateWords3DMono(
 					uMultimapToMapUnique(cpCurrent.getWords()),
 					uMultimapToMapUnique(cpPrevious.getWords()),
@@ -5078,6 +5135,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 	s->sensorData().setGroundTruth(data.groundTruth());
 	s->sensorData().setGPS(data.gps());
 	s->sensorData().setEnvSensors(data.envSensors());
+	s->sensorData().setGlobalDescriptors(data.globalDescriptors());
 
 	t = timer.ticks();
 	if(stats) stats->addStatistic(Statistics::kTimingMemCompressing_data(), t*1000.0f);
@@ -5163,7 +5221,8 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 
 	{
 		Transform orientation(0,0,0, data.imu().orientation()[0], data.imu().orientation()[1], data.imu().orientation()[2], data.imu().orientation()[3]);
-		orientation*=data.imu().localTransform().rotation().inverse();
+		// orientation includes roll and pitch but not yaw in local transform
+		orientation= Transform(0,0,data.imu().localTransform().theta()) * orientation * data.imu().localTransform().rotation().inverse();
 
 		s->addLink(Link(s->id(), s->id(), Link::kGravity, orientation));
 		UDEBUG("Added gravity constraint: %s", orientation.prettyPrint().c_str());
@@ -5469,8 +5528,9 @@ void Memory::getMetricConstraints(
 			std::multimap<int, Link> tmpLinks = getLinks(*iter, lookInDatabase, true);
 			for(std::multimap<int, Link>::iterator jter=tmpLinks.begin(); jter!=tmpLinks.end(); ++jter)
 			{
+				std::multimap<int, Link>::iterator addedLinksIterator = graph::findLink(links, *iter, jter->first);
 				if(	jter->second.isValid() &&
-					graph::findLink(links, *iter, jter->first) == links.end() &&
+					(addedLinksIterator == links.end() || addedLinksIterator->second.from()==addedLinksIterator->second.to()) &&
 					(uContains(poses, jter->first) || (landmarksAdded && jter->second.type() == Link::kLandmark)))
 				{
 					if(!lookInDatabase &&

@@ -197,7 +197,7 @@ std::map<int, Transform> OptimizerG2O::optimize(
 		// Apply g2o optimization
 
 		g2o::SparseOptimizer optimizer;
-		optimizer.setVerbose(ULogger::level()==ULogger::kDebug);
+		//optimizer.setVerbose(ULogger::level()==ULogger::kDebug);
 		if (isSlam2d())
 		{
 			g2o::ParameterSE2Offset* odomOffset = new g2o::ParameterSE2Offset();
@@ -1260,7 +1260,7 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 	if(poses.size()>=2 && iterations() > 0 && (models.size() == poses.size() || poses.begin()->first < 0))
 	{
 		g2o::SparseOptimizer optimizer;
-		optimizer.setVerbose(ULogger::level()==ULogger::kDebug);
+		//optimizer.setVerbose(ULogger::level()==ULogger::kDebug);
 #if defined(RTABMAP_G2O_CPP11) and not defined(RTABMAP_ORB_SLAM2)
 		std::unique_ptr<g2o::BlockSolver_6_3::LinearSolverType> linearSolver;
 #else

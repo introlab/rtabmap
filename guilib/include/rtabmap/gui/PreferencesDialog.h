@@ -104,6 +104,7 @@ public:
 		kSrcStereoUsb      = 105,
 		kSrcStereoTara 	   = 106,
 		kSrcStereoRealSense2 = 107,
+		kSrcStereoMyntEye  = 108,
 
 		kSrcRGB            = 200,
 		kSrcUsbDevice      = 200,
@@ -160,11 +161,13 @@ public:
 	bool isWordsCountGraphView() const;
 	bool isLocalizationsCountGraphView() const;
 	int getOdomRegistrationApproach() const;
+	double getOdomF2MGravitySigma() const;
 	bool isOdomDisabled() const;
 	bool isGroundTruthAligned() const;
 
 	bool isGraphsShown() const;
 	bool isLabelsShown() const;
+	bool isFramesShown() const;
 	bool isLandmarksShown() const;
 	double landmarkVisSize() const;
 	bool isIMUGravityShown(int index) const;
@@ -327,6 +330,7 @@ private Q_SLOTS:
 	void updatePredictionPlot();
 	void updateKpROI();
 	void updateStereoDisparityVisibility();
+	void updateFeatureMatchingVisibility();
 	void useOdomFeatures();
 	void changeWorkingDirectory();
 	void changeDictionaryPath();
@@ -334,6 +338,9 @@ private Q_SLOTS:
 	void changeOdometryOKVISConfigPath();
 	void changeOdometryVINSConfigPath();
 	void changeIcpPMConfigPath();
+	void changeSuperPointModelPath();
+	void changePyMatcherPath();
+	void changePyMatcherModel();
 	void readSettingsEnd();
 	void setupTreeView();
 	void updateBasicParameter();
@@ -359,6 +366,7 @@ private Q_SLOTS:
 	void selectSourceOni2Path();
 	void selectSourceMKVPath();
 	void selectSourceSvoPath();
+	void selectSourceRealsense2JsonPath();
 	void updateSourceGrpVisibility();
 	void testOdometry();
 	void testCamera();

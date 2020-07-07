@@ -93,13 +93,11 @@ int main(int argc, char * argv[])
 	std::string pathLeftImages = argv[argIndex++];
 	std::string pathRightImages = argv[argIndex++];
 
-	Transform opticalRotation(0,0,1,0, -1,0,0,0, 0,-1,0,0);
 	CameraStereoImages camera(
 			pathLeftImages,
 			pathRightImages,
 			false, // assume that images are already rectified
-			(float)cameraRate,
-			opticalRotation);
+			(float)cameraRate);
 
 	if(camera.init(calibrationDir, calibrationName))
 	{

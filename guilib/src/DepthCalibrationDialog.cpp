@@ -445,7 +445,7 @@ void DepthCalibrationDialog::calibrate(
 				for(std::map<int, SensorData>::iterator iter=sequence.begin(); iter!=sequence.end(); ++iter)
 				{
 					Transform baseToCamera = iter->second.cameraModels()[0].localTransform();
-					viewer->addOrUpdateFrustum(uFormat("frustum%d",iter->first), poses.at(iter->first), baseToCamera, 0.2);
+					viewer->addOrUpdateFrustum(uFormat("frustum%d",iter->first), poses.at(iter->first), baseToCamera, 0.2, QColor(), iter->second.cameraModels()[0].fovX(), iter->second.cameraModels()[0].fovY());
 				}
 				_progressDialog->appendText(tr("Viewing the cloud (%1 points and %2 poses)... done.").arg(map->size()).arg(sequence.size()));
 

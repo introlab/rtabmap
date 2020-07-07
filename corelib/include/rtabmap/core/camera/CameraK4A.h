@@ -34,6 +34,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/Version.h"
 #include "rtabmap/utilite/UTimer.h"
 
+#ifdef RTABMAP_K4A
+ #include <k4a/k4atypes.h>
+#endif
+
 namespace rtabmap
 {
 
@@ -46,10 +50,10 @@ public:
 public:
 	CameraK4A(int deviceId = 0,
 		float imageRate = 0.0f,
-		const Transform & localTransform = Transform::getIdentity());
+		const Transform & localTransform = CameraModel::opticalRotation());
 	CameraK4A(const std::string & fileName,
 		float imageRate = 0.0f,
-		const Transform & localTransform = Transform::getIdentity());
+		const Transform & localTransform = CameraModel::opticalRotation());
 	virtual ~CameraK4A();
 
 	virtual bool init(const std::string & calibrationFolder = ".", const std::string & cameraName = "");
@@ -57,6 +61,7 @@ public:
 	virtual std::string getSerial() const;
 
 	void setIRDepthFormat(bool enabled);
+	void setPreferences(int rgb_resolution, int framerate, int depth_resolution);
 
 protected:
 	virtual SensorData captureImage(CameraInfo * info = 0);
@@ -67,14 +72,25 @@ private:
 private:
 
 #ifdef RTABMAP_K4A
+	k4a_device_t device_;
+	k4a_device_configuration_t config_;
+	k4a_calibration_t calibration_;
+	k4a_transformation_t transformation_;
+	k4a_capture_t capture_;
+	std::string serial_number_;
+
 	void* playbackHandle_;
 	void* transformationHandle_;
 	CameraModel model_;
 	int deviceId_;
 	std::string fileName_;
+	int rgb_resolution_;
+	int framerate_;
+	int depth_resolution_;
 	bool ir_;
 	double previousStamp_;
 	UTimer timer_;
+	Transform imuLocalTransform_;
 #endif
 
 };

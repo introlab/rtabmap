@@ -292,8 +292,8 @@ cv::Mat EpipolarGeometry::findPFromE(const cv::Mat & E,
 cv::Mat EpipolarGeometry::findFFromWords(
 		const std::list<std::pair<int, std::pair<cv::KeyPoint, cv::KeyPoint> > > & pairs, // id, kpt1, kpt2
 		std::vector<uchar> & status,
-		double ransacParam1,
-		double ransacParam2)
+		double ransacReprojThreshold,
+		double ransacConfidence)
 {
 
 	status = std::vector<uchar>(pairs.size(), 0);
@@ -329,8 +329,8 @@ cv::Mat EpipolarGeometry::findFFromWords(
 				points2,
 				status,
 				cv::FM_RANSAC,
-				ransacParam1,
-				ransacParam2);
+				ransacReprojThreshold,
+				ransacConfidence);
 
 	ULOGGER_DEBUG("Find fundamental matrix (OpenCV) time = %fs", timer.ticks());
 

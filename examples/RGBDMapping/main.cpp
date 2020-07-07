@@ -46,7 +46,7 @@ void showUsage()
 {
 	printf("\nUsage:\n"
 			"rtabmap-rgbd_mapping driver\n"
-			"  driver       Driver number to use: 0=OpenNI-PCL, 1=OpenNI2, 2=Freenect, 3=OpenNI-CV, 4=OpenNI-CV-ASUS, 5=Freenect2, 6=ZED SDK, 7=RealSense, 8=RealSense2\n\n");
+			"  driver       Driver number to use: 0=OpenNI-PCL, 1=OpenNI2, 2=Freenect, 3=OpenNI-CV, 4=OpenNI-CV-ASUS, 5=Freenect2, 6=ZED SDK, 7=RealSense, 8=RealSense2 9=Kinect for Azure SDK 10=MYNT EYE S\n\n");
 	exit(1);
 }
 
@@ -64,9 +64,9 @@ int main(int argc, char * argv[])
 	else
 	{
 		driver = atoi(argv[argc-1]);
-		if(driver < 0 || driver > 8)
+		if(driver < 0 || driver > 10)
 		{
-			UERROR("driver should be between 0 and 8.");
+			UERROR("driver should be between 0 and 10.");
 			showUsage();
 		}
 	}
@@ -77,7 +77,6 @@ int main(int argc, char * argv[])
 	// Create the OpenNI camera, it will send a CameraEvent at the rate specified.
 	// Set transform to camera so z is up, y is left and x going forward
 	Camera * camera = 0;
-	Transform opticalRotation(0,0,1,0, -1,0,0,0, 0,-1,0,0);
 	if(driver == 1)
 	{
 		if(!CameraOpenNI2::available())
@@ -85,7 +84,7 @@ int main(int argc, char * argv[])
 			UERROR("Not built with OpenNI2 support...");
 			exit(-1);
 		}
-		camera = new CameraOpenNI2("", CameraOpenNI2::kTypeColorDepth, 0, opticalRotation);
+		camera = new CameraOpenNI2();
 	}
 	else if(driver == 2)
 	{
@@ -94,7 +93,7 @@ int main(int argc, char * argv[])
 			UERROR("Not built with Freenect support...");
 			exit(-1);
 		}
-		camera = new CameraFreenect(0, CameraFreenect::kTypeColorDepth, 0, opticalRotation);
+		camera = new CameraFreenect();
 	}
 	else if(driver == 3)
 	{
@@ -103,7 +102,7 @@ int main(int argc, char * argv[])
 			UERROR("Not built with OpenNI from OpenCV support...");
 			exit(-1);
 		}
-		camera = new CameraOpenNICV(false, 0, opticalRotation);
+		camera = new CameraOpenNICV();
 	}
 	else if(driver == 4)
 	{
@@ -112,7 +111,7 @@ int main(int argc, char * argv[])
 			UERROR("Not built with OpenNI from OpenCV support...");
 			exit(-1);
 		}
-		camera = new CameraOpenNICV(true, 0, opticalRotation);
+		camera = new CameraOpenNICV(true);
 	}
 	else if (driver == 5)
 	{
@@ -121,7 +120,7 @@ int main(int argc, char * argv[])
 			UERROR("Not built with Freenect2 support...");
 			exit(-1);
 		}
-		camera = new CameraFreenect2(0, CameraFreenect2::kTypeColor2DepthSD, 0, opticalRotation);
+		camera = new CameraFreenect2(0, CameraFreenect2::kTypeColor2DepthSD);
 	}
 	else if (driver == 6)
 	{
@@ -130,7 +129,7 @@ int main(int argc, char * argv[])
 			UERROR("Not built with ZED SDK support...");
 			exit(-1);
 		}
-		camera = new CameraStereoZed(0, 2, 1, 1, 100, false, 0, opticalRotation);
+		camera = new CameraStereoZed(0, 2, 1, 1, 100, false);
 	}
 	else if (driver == 7)
 	{
@@ -139,7 +138,7 @@ int main(int argc, char * argv[])
 			UERROR("Not built with RealSense support...");
 			exit(-1);
 		}
-		camera = new CameraRealSense(0, 0, 0, false, 0, opticalRotation);
+		camera = new CameraRealSense();
 	}
 	else if (driver == 8)
 	{
@@ -148,11 +147,29 @@ int main(int argc, char * argv[])
 			UERROR("Not built with RealSense2 support...");
 			exit(-1);
 		}
-		camera = new CameraRealSense2("", 0, opticalRotation);
+		camera = new CameraRealSense2();
+	}
+	else if (driver == 9)
+	{
+		if (!rtabmap::CameraK4A::available())
+		{
+			UERROR("Not built with Kinect for Azure SDK support...");
+			exit(-1);
+		}
+		camera = new rtabmap::CameraK4A(1);
+	}
+	else if (driver == 10)
+	{
+		if (!rtabmap::CameraMyntEye::available())
+		{
+			UERROR("Not built with Mynt Eye S support...");
+			exit(-1);
+		}
+		camera = new rtabmap::CameraMyntEye();
 	}
 	else
 	{
-		camera = new rtabmap::CameraOpenni("", 0, opticalRotation);
+		camera = new rtabmap::CameraOpenni();
 	}
 
 	if(!camera->init())
@@ -216,7 +233,7 @@ int main(int argc, char * argv[])
 	std::map<int, Signature> nodes;
 	std::map<int, Transform> optimizedPoses;
 	std::multimap<int, Link> links;
-	rtabmap->get3DMap(nodes, optimizedPoses, links, true, true);
+	rtabmap->getGraph(optimizedPoses, links, true, true, &nodes, true, true, true, true);
 	pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
 	for(std::map<int, Transform>::iterator iter=optimizedPoses.begin(); iter!=optimizedPoses.end(); ++iter)
 	{

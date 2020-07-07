@@ -62,7 +62,9 @@ namespace cv{
 namespace xfeatures2d {
 class FREAK;
 class BriefDescriptorExtractor;
+#if CV_MAJOR_VERSION < 3 || (CV_MAJOR_VERSION == 4 && CV_MINOR_VERSION <= 3) || (CV_MAJOR_VERSION == 3 && (CV_MINOR_VERSION < 4 || (CV_MINOR_VERSION==4 && CV_SUBMINOR_VERSION<11)))
 class SIFT;
+#endif
 class SURF;
 }
 namespace cuda {
@@ -71,7 +73,11 @@ class ORB;
 class SURF_CUDA;
 }
 }
+#if CV_MAJOR_VERSION < 3 || (CV_MAJOR_VERSION == 4 && CV_MINOR_VERSION <= 3) || (CV_MAJOR_VERSION == 3 && (CV_MINOR_VERSION < 4 || (CV_MINOR_VERSION==4 && CV_SUBMINOR_VERSION<11)))
 typedef cv::xfeatures2d::SIFT CV_SIFT;
+#else
+typedef cv::SIFT CV_SIFT; // SIFT is back in features2d since 4.4.0 / 3.4.11
+#endif
 typedef cv::xfeatures2d::SURF CV_SURF;
 typedef cv::FastFeatureDetector CV_FAST;
 typedef cv::xfeatures2d::FREAK CV_FREAK;
@@ -87,6 +93,7 @@ typedef cv::cuda::FastFeatureDetector CV_FAST_GPU;
 namespace rtabmap {
 
 class ORBextractor;
+class SPDetector;
 
 class Stereo;
 #if CV_MAJOR_VERSION < 3
@@ -107,7 +114,39 @@ public:
 		kFeatureBrisk=7,
 		kFeatureGfttOrb=8,  //new 0.10.11
 		kFeatureKaze=9,     //new 0.13.2
-		kFeatureOrbOctree=10};   //new 0.19.2
+		kFeatureOrbOctree=10, //new 0.19.2
+		kFeatureSuperPointTorch=11}; //new 0.19.7
+	static std::string typeName(Type type)
+	{
+		switch(type){
+		case kFeatureSurf:
+			return "SURF";
+		case kFeatureSift:
+			return "SIFT";
+		case kFeatureOrb:
+			return "ORB";
+		case kFeatureFastFreak:
+			return "FAST+FREAK";
+		case kFeatureFastBrief:
+			return "FAST+BRIEF";
+		case kFeatureGfttFreak:
+			return "GFTT+Freak";
+		case kFeatureGfttBrief:
+			return "GFTT+Brief";
+		case kFeatureBrisk:
+			return "BRISK";
+		case kFeatureGfttOrb:
+			return "GFTT+ORB";
+		case kFeatureKaze:
+			return "KAZE";
+		case kFeatureOrbOctree:
+			return "ORB-OCTREE";
+		case kFeatureSuperPointTorch:
+			return "SUPERPOINT";
+		default:
+			return "Unknown";
+		}
+	}
 
 	static Feature2D * create(const ParametersMap & parameters = ParametersMap());
 	static Feature2D * create(Feature2D::Type type, const ParametersMap & parameters = ParametersMap()); // for convenience
@@ -121,6 +160,12 @@ public:
 			std::vector<cv::KeyPoint> & keypoints,
 			cv::Mat & descriptors,
 			const cv::Mat & depth,
+			float minDepth,
+			float maxDepth);
+	static void filterKeypointsByDepth(
+			std::vector<cv::KeyPoint> & keypoints,
+			cv::Mat & descriptors,
+			std::vector<cv::Point3f> & keypoints3D,
 			float minDepth,
 			float maxDepth);
 
@@ -138,6 +183,7 @@ public:
 	static void limitKeypoints(std::vector<cv::KeyPoint> & keypoints, cv::Mat & descriptors, int maxKeypoints);
 	static void limitKeypoints(std::vector<cv::KeyPoint> & keypoints, std::vector<cv::Point3f> & keypoints3D, cv::Mat & descriptors, int maxKeypoints);
 	static void limitKeypoints(const std::vector<cv::KeyPoint> & keypoints, std::vector<bool> & inliers, int maxKeypoints);
+	static void limitKeypoints(const std::vector<cv::KeyPoint> & keypoints, std::vector<bool> & inliers, int maxKeypoints, const cv::Size & imageSize, int gridRows, int gridCols);
 
 	static cv::Rect computeRoi(const cv::Mat & image, const std::string & roiRatios);
 	static cv::Rect computeRoi(const cv::Mat & image, const std::vector<float> & roiRatios);
@@ -145,6 +191,8 @@ public:
 	int getMaxFeatures() const {return maxFeatures_;}
 	float getMinDepth() const {return _minDepth;}
 	float getMaxDepth() const {return _maxDepth;}
+	int getGridRows() const {return gridRows_;}
+	int getGridCols() const {return gridCols_;}
 
 public:
 	virtual ~Feature2D();
@@ -231,6 +279,7 @@ private:
 	double contrastThreshold_;
 	double edgeThreshold_;
 	double sigma_;
+	bool rootSIFT_;
 
 	cv::Ptr<CV_SIFT> _sift;
 };
@@ -496,6 +545,28 @@ private:
 	cv::Mat descriptors_;
 };
 
+//SuperPointTorch
+class RTABMAP_EXP SuperPointTorch : public Feature2D
+{
+public:
+	SuperPointTorch(const ParametersMap & parameters = ParametersMap());
+	virtual ~SuperPointTorch();
+
+	virtual void parseParameters(const ParametersMap & parameters);
+	virtual Feature2D::Type getType() const { return kFeatureSuperPointTorch; }
+
+private:
+	virtual std::vector<cv::KeyPoint> generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask = cv::Mat());
+	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const;
+
+	cv::Ptr<SPDetector> superPoint_;
+
+	std::string path_;
+	float threshold_;
+	bool nms_;
+	int minDistance_;
+	bool cuda_;
+};
 
 }
 

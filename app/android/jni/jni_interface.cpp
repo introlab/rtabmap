@@ -31,8 +31,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <RTABMapApp.h>
 #include <scene.h>
 
-static RTABMapApp app;
-
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -48,300 +46,661 @@ void GetJStringContent(JNIEnv *AEnv, jstring AStr, std::string &ARes) {
   AEnv->ReleaseStringUTFChars(AStr,s);
 }
 
-JNIEXPORT void JNICALL
-Java_com_introlab_rtabmap_RTABMapLib_onCreate(
-    JNIEnv* env, jobject, jobject activity)
+inline jlong jptr(RTABMapApp *native_computer_vision_application) {
+  return reinterpret_cast<intptr_t>(native_computer_vision_application);
+}
+
+inline RTABMapApp *native(jlong ptr) {
+  return reinterpret_cast<RTABMapApp *>(ptr);
+}
+
+JNIEXPORT jlong JNICALL
+Java_com_introlab_rtabmap_RTABMapLib_createNativeApplication(
+    JNIEnv* env, jclass, jobject activity)
 {
-	return app.onCreate(env, activity);
+	return jptr(new RTABMapApp(env, activity));
+}
+
+JNIEXPORT void Java_com_introlab_rtabmap_RTABMapLib_destroyNativeApplication(
+	JNIEnv *, jclass, jlong native_application) {
+	if(native_application)
+	{
+		delete native(native_application);
+	}
+	else
+	{
+		UERROR("native_application is null!");
+	}
 }
 
 JNIEXPORT void JNICALL
 Java_com_introlab_rtabmap_RTABMapLib_setScreenRotation(
-    JNIEnv* env, jobject, int displayRotation, int cameraRotation)
+    JNIEnv* env, jclass, jlong native_application, int displayRotation, int cameraRotation)
 {
-	return app.setScreenRotation(displayRotation, cameraRotation);
+	if(native_application)
+	{
+		return native(native_application)->setScreenRotation(displayRotation, cameraRotation);
+	}
+	else
+	{
+		UERROR("native_application is null!");
+	}
 }
 
 JNIEXPORT int JNICALL
 Java_com_introlab_rtabmap_RTABMapLib_openDatabase(
-    JNIEnv* env, jobject, jstring databasePath, bool databaseInMemory, bool optimize)
+    JNIEnv* env, jclass, jlong native_application, jstring databasePath, bool databaseInMemory, bool optimize)
 {
 	std::string databasePathC;
 	GetJStringContent(env,databasePath,databasePathC);
-	return app.openDatabase(databasePathC, databaseInMemory, optimize);
+	if(native_application)
+	{
+		return native(native_application)->openDatabase(databasePathC, databaseInMemory, optimize);
+	}
+	else
+	{
+		UERROR("native_application is null!");
+		return -1;
+	}
 }
 
 JNIEXPORT int JNICALL
 Java_com_introlab_rtabmap_RTABMapLib_openDatabase2(
-    JNIEnv* env, jobject, jstring databaseSource, jstring databasePath, bool databaseInMemory, bool optimize)
+    JNIEnv* env, jclass, jlong native_application, jstring databaseSource, jstring databasePath, bool databaseInMemory, bool optimize)
 {
-	std::string databasePathC;
-	GetJStringContent(env,databasePath,databasePathC);
-	std::string databaseSourceC;
-	GetJStringContent(env,databaseSource,databaseSourceC);
-	return app.openDatabase(databasePathC, databaseInMemory, optimize, databaseSourceC);
+	if(native_application)
+	{
+		std::string databasePathC;
+		GetJStringContent(env,databasePath,databasePathC);
+		std::string databaseSourceC;
+		GetJStringContent(env,databaseSource,databaseSourceC);
+		return native(native_application)->openDatabase(databasePathC, databaseInMemory, optimize, databaseSourceC);
+	}
+	else
+	{
+		UERROR("native_application is null!");
+		return -1;
+	}
 }
 
 JNIEXPORT bool JNICALL
-Java_com_introlab_rtabmap_RTABMapLib_onTangoServiceConnected(
-		JNIEnv* env, jobject, jobject iBinder) {
-  return app.onTangoServiceConnected(env, iBinder);
+Java_com_introlab_rtabmap_RTABMapLib_isBuiltWith(
+		JNIEnv* env, jclass, jlong native_application, int cameraDriver) {
+	if(native_application)
+	{
+		return native(native_application)->isBuiltWith(cameraDriver);
+	}
+	else
+	{
+		UERROR("native_application is null!");
+		return false;
+	}
+}
+
+JNIEXPORT bool JNICALL
+Java_com_introlab_rtabmap_RTABMapLib_startCamera(
+		JNIEnv* env, jclass, jlong native_application, jobject iBinder, jobject context, jobject activity, int driver) {
+	if(native_application)
+	{
+		return native(native_application)->startCamera(env, iBinder, context, activity, driver);
+	}
+	else
+	{
+		UERROR("native_application is null!");
+		return false;
+	}
 }
 
 JNIEXPORT void JNICALL
 Java_com_introlab_rtabmap_RTABMapLib_initGlContent(
-    JNIEnv*, jobject) {
-  app.InitializeGLContent();
+    JNIEnv*, jclass, jlong native_application) {
+	if(native_application)
+	{
+		native(native_application)->InitializeGLContent();
+	}
+	else
+	{
+		UERROR("native_application is null!");
+	}
 }
 
 JNIEXPORT void JNICALL
 Java_com_introlab_rtabmap_RTABMapLib_setupGraphic(
-    JNIEnv*, jobject, jint width, jint height) {
-  app.SetViewPort(width, height);
+    JNIEnv*, jclass, jlong native_application, jint width, jint height) {
+	if(native_application)
+	{
+		native(native_application)->SetViewPort(width, height);
+	}
+	else
+	{
+		UERROR("native_application is null!");
+	}
 }
 
 JNIEXPORT int JNICALL
 Java_com_introlab_rtabmap_RTABMapLib_render(
-    JNIEnv*, jobject) {
-  return app.Render();
+    JNIEnv*, jclass, jlong native_application) {
+	if(native_application)
+	{
+		return native(native_application)->Render();
+	}
+	else
+	{
+		UERROR("native_application is null!");
+		return -1;
+	}
 }
 
 JNIEXPORT void JNICALL
-Java_com_introlab_rtabmap_RTABMapLib_onPause(
-    JNIEnv*, jobject) {
-  app.onPause();
+Java_com_introlab_rtabmap_RTABMapLib_stopCamera(
+    JNIEnv*, jclass, jlong native_application) {
+	if(native_application)
+	{
+		native(native_application)->stopCamera();
+	}
+	else
+	{
+		UERROR("native_application is null!");
+	}
 }
 
 JNIEXPORT void JNICALL
 Java_com_introlab_rtabmap_RTABMapLib_setCamera(
-    JNIEnv*, jobject, int camera_index) {
-  using namespace tango_gl;
-  GestureCamera::CameraType cam_type =
-      static_cast<GestureCamera::CameraType>(camera_index);
-  app.SetCameraType(cam_type);
+    JNIEnv*, jclass, jlong native_application, int camera_index) {
+	if(native_application)
+	{
+		using namespace tango_gl;
+		GestureCamera::CameraType cam_type =
+		  static_cast<GestureCamera::CameraType>(camera_index);
+		native(native_application)->SetCameraType(cam_type);
+	}
+	else
+	{
+		UERROR("native_application is null!");
+	}
 }
 
 JNIEXPORT void JNICALL
 Java_com_introlab_rtabmap_RTABMapLib_onTouchEvent(
-    JNIEnv*, jobject, int touch_count, int event, float x0, float y0, float x1,
+    JNIEnv*, jclass, jlong native_application, int touch_count, int event, float x0, float y0, float x1,
     float y1) {
-  using namespace tango_gl;
-  GestureCamera::TouchEvent touch_event =
-      static_cast<GestureCamera::TouchEvent>(event);
-  app.OnTouchEvent(touch_count, touch_event, x0, y0, x1, y1);
+	if(native_application)
+	{
+		using namespace tango_gl;
+		GestureCamera::TouchEvent touch_event =
+		  static_cast<GestureCamera::TouchEvent>(event);
+		native(native_application)->OnTouchEvent(touch_count, touch_event, x0, y0, x1, y1);
+	}
+	else
+	{
+		UERROR("native_application is null!");
+	}
 }
 
 JNIEXPORT void JNICALL
 Java_com_introlab_rtabmap_RTABMapLib_setPausedMapping(
-		JNIEnv*, jobject, bool paused)
+		JNIEnv*, jclass, jlong native_application, bool paused)
 {
-	return app.setPausedMapping(paused);
+	if(native_application)
+	{
+		return native(native_application)->setPausedMapping(paused);
+	}
+	else
+	{
+		UERROR("native_application is null!");
+	}
 }
 JNIEXPORT void JNICALL
 Java_com_introlab_rtabmap_RTABMapLib_setOnlineBlending(
-		JNIEnv*, jobject, bool enabled)
+		JNIEnv*, jclass, jlong native_application, bool enabled)
 {
-	return app.setOnlineBlending(enabled);
+	if(native_application)
+	{
+		return native(native_application)->setOnlineBlending(enabled);
+	}
+	else
+	{
+		UERROR("native_application is null!");
+	}
 }
 JNIEXPORT void JNICALL
 Java_com_introlab_rtabmap_RTABMapLib_setMapCloudShown(
-		JNIEnv*, jobject, bool shown)
+		JNIEnv*, jclass, jlong native_application, bool shown)
 {
-	return app.setMapCloudShown(shown);
+	if(native_application)
+	{
+		return native(native_application)->setMapCloudShown(shown);
+	}
+	else
+	{
+		UERROR("native_application is null!");
+	}
 }
 JNIEXPORT void JNICALL
 Java_com_introlab_rtabmap_RTABMapLib_setOdomCloudShown(
-		JNIEnv*, jobject, bool shown)
+		JNIEnv*, jclass, jlong native_application, bool shown)
 {
-	return app.setOdomCloudShown(shown);
+	if(native_application)
+	{
+		return native(native_application)->setOdomCloudShown(shown);
+	}
+	else
+	{
+		UERROR("native_application is null!");
+	}
 }
 JNIEXPORT void JNICALL
 Java_com_introlab_rtabmap_RTABMapLib_setMeshRendering(
-		JNIEnv*, jobject, bool enabled, bool withTexture)
+		JNIEnv*, jclass, jlong native_application, bool enabled, bool withTexture)
 {
-	return app.setMeshRendering(enabled, withTexture);
+	if(native_application)
+	{
+		return native(native_application)->setMeshRendering(enabled, withTexture);
+	}
+	else
+	{
+		UERROR("native_application is null!");
+	}
 }
 JNIEXPORT void JNICALL
 Java_com_introlab_rtabmap_RTABMapLib_setPointSize(
-		JNIEnv*, jobject, float value)
+		JNIEnv*, jclass, jlong native_application, float value)
 {
-	return app.setPointSize(value);
+	if(native_application)
+	{
+		return native(native_application)->setPointSize(value);
+	}
+	else
+	{
+		UERROR("native_application is null!");
+	}
+
 }
 JNIEXPORT void JNICALL
 Java_com_introlab_rtabmap_RTABMapLib_setFOV(
-		JNIEnv*, jobject, float fov)
+		JNIEnv*, jclass, jlong native_application, float fov)
 {
-	return app.setFOV(fov);
+	if(native_application)
+	{
+		return native(native_application)->setFOV(fov);
+	}
+	else
+	{
+		UERROR("native_application is null!");
+	}
 }
 JNIEXPORT void JNICALL
 Java_com_introlab_rtabmap_RTABMapLib_setOrthoCropFactor(
-		JNIEnv*, jobject, float value)
+		JNIEnv*, jclass, jlong native_application, float value)
 {
-	return app.setOrthoCropFactor(value);
+	if(native_application)
+	{
+		return native(native_application)->setOrthoCropFactor(value);
+	}
+	else
+	{
+		UERROR("native_application is null!");
+	}
 }
 JNIEXPORT void JNICALL
 Java_com_introlab_rtabmap_RTABMapLib_setGridRotation(
-		JNIEnv*, jobject, float value)
+		JNIEnv*, jclass, jlong native_application, float value)
 {
-	return app.setGridRotation(value);
+	if(native_application)
+	{
+		return native(native_application)->setGridRotation(value);
+	}
+	else
+	{
+		UERROR("native_application is null!");
+	}
 }
 JNIEXPORT void JNICALL
 Java_com_introlab_rtabmap_RTABMapLib_setLighting(
-		JNIEnv*, jobject, bool enabled)
+		JNIEnv*, jclass, jlong native_application, bool enabled)
 {
-	return app.setLighting(enabled);
+	if(native_application)
+	{
+		return native(native_application)->setLighting(enabled);
+	}
+	else
+	{
+		UERROR("native_application is null!");
+	}
 }
 JNIEXPORT void JNICALL
 Java_com_introlab_rtabmap_RTABMapLib_setBackfaceCulling(
-		JNIEnv*, jobject, bool enabled)
+		JNIEnv*, jclass, jlong native_application, bool enabled)
 {
-	return app.setBackfaceCulling(enabled);
+	if(native_application)
+	{
+		return native(native_application)->setBackfaceCulling(enabled);
+	}
+	else
+	{
+		UERROR("native_application is null!");
+	}
 }
 JNIEXPORT void JNICALL
 Java_com_introlab_rtabmap_RTABMapLib_setWireframe(
-		JNIEnv*, jobject, bool enabled)
+		JNIEnv*, jclass, jlong native_application, bool enabled)
 {
-	return app.setWireframe(enabled);
+	if(native_application)
+	{
+		return native(native_application)->setWireframe(enabled);
+	}
+	else
+	{
+		UERROR("native_application is null!");
+	}
 }
 JNIEXPORT void JNICALL
 Java_com_introlab_rtabmap_RTABMapLib_setLocalizationMode(
-		JNIEnv*, jobject, bool enabled)
+		JNIEnv*, jclass, jlong native_application, bool enabled)
 {
-	return app.setLocalizationMode(enabled);
+	if(native_application)
+	{
+		return native(native_application)->setLocalizationMode(enabled);
+	}
+	else
+	{
+		UERROR("native_application is null!");
+	}
 }
 JNIEXPORT void JNICALL
 Java_com_introlab_rtabmap_RTABMapLib_setTrajectoryMode(
-		JNIEnv*, jobject, bool enabled)
+		JNIEnv*, jclass, jlong native_application, bool enabled)
 {
-	return app.setTrajectoryMode(enabled);
+	if(native_application)
+	{
+		return native(native_application)->setTrajectoryMode(enabled);
+	}
+	else
+	{
+		UERROR("native_application is null!");
+	}
 }
 JNIEXPORT void JNICALL
 Java_com_introlab_rtabmap_RTABMapLib_setGraphOptimization(
-		JNIEnv*, jobject, bool enabled)
+		JNIEnv*, jclass, jlong native_application, bool enabled)
 {
-	return app.setGraphOptimization(enabled);
+	if(native_application)
+	{
+		return native(native_application)->setGraphOptimization(enabled);
+	}
+	else
+	{
+		UERROR("native_application is null!");
+	}
 }
 JNIEXPORT void JNICALL
 Java_com_introlab_rtabmap_RTABMapLib_setNodesFiltering(
-		JNIEnv*, jobject, bool enabled)
+		JNIEnv*, jclass, jlong native_application, bool enabled)
 {
-	return app.setNodesFiltering(enabled);
+	if(native_application)
+	{
+		return native(native_application)->setNodesFiltering(enabled);
+	}
+	else
+	{
+		UERROR("native_application is null!");
+	}
 }
 JNIEXPORT void JNICALL
 Java_com_introlab_rtabmap_RTABMapLib_setGraphVisible(
-		JNIEnv*, jobject, bool visible)
+		JNIEnv*, jclass, jlong native_application, bool visible)
 {
-	return app.setGraphVisible(visible);
+	if(native_application)
+	{
+		return native(native_application)->setGraphVisible(visible);
+	}
+	else
+	{
+		UERROR("native_application is null!");
+	}
 }
 JNIEXPORT void JNICALL
 Java_com_introlab_rtabmap_RTABMapLib_setGridVisible(
-		JNIEnv*, jobject, bool visible)
+		JNIEnv*, jclass, jlong native_application, bool visible)
 {
-	return app.setGridVisible(visible);
+	if(native_application)
+	{
+		return native(native_application)->setGridVisible(visible);
+	}
+	else
+	{
+		UERROR("native_application is null!");
+	}
 }
 JNIEXPORT void JNICALL
 Java_com_introlab_rtabmap_RTABMapLib_setRawScanSaved(
-		JNIEnv*, jobject, bool enabled)
+		JNIEnv*, jclass, jlong native_application, bool enabled)
 {
-	return app.setRawScanSaved(enabled);
+	if(native_application)
+	{
+		return native(native_application)->setRawScanSaved(enabled);
+	}
+	else
+	{
+		UERROR("native_application is null!");
+	}
 }
 JNIEXPORT void JNICALL
 Java_com_introlab_rtabmap_RTABMapLib_setFullResolution(
-		JNIEnv*, jobject, bool enabled)
+		JNIEnv*, jclass, jlong native_application, bool enabled)
 {
-	return app.setFullResolution(enabled);
+	if(native_application)
+	{
+		return native(native_application)->setFullResolution(enabled);
+	}
+	else
+	{
+		UERROR("native_application is null!");
+	}
 }
 JNIEXPORT void JNICALL
 Java_com_introlab_rtabmap_RTABMapLib_setSmoothing(
-		JNIEnv*, jobject, bool enabled)
+		JNIEnv*, jclass, jlong native_application, bool enabled)
 {
-	return app.setSmoothing(enabled);
+	if(native_application)
+	{
+		return native(native_application)->setSmoothing(enabled);
+	}
+	else
+	{
+		UERROR("native_application is null!");
+	}
+}
+JNIEXPORT void JNICALL
+Java_com_introlab_rtabmap_RTABMapLib_setDepthFromMotion(
+		JNIEnv*, jclass, jlong native_application, bool enabled)
+{
+	if(native_application)
+	{
+		return native(native_application)->setDepthFromMotion(enabled);
+	}
+	else
+	{
+		UERROR("native_application is null!");
+	}
 }
 JNIEXPORT void JNICALL
 Java_com_introlab_rtabmap_RTABMapLib_setCameraColor(
-		JNIEnv*, jobject, bool enabled)
+		JNIEnv*, jclass, jlong native_application, bool enabled)
 {
-	return app.setCameraColor(enabled);
+	if(native_application)
+	{
+		return native(native_application)->setCameraColor(enabled);
+	}
+	else
+	{
+		UERROR("native_application is null!");
+	}
 }
 JNIEXPORT void JNICALL
 Java_com_introlab_rtabmap_RTABMapLib_setAppendMode(
-		JNIEnv*, jobject, bool enabled)
+		JNIEnv*, jclass, jlong native_application, bool enabled)
 {
-	return app.setAppendMode(enabled);
+	if(native_application)
+	{
+		return native(native_application)->setAppendMode(enabled);
+	}
+	else
+	{
+		UERROR("native_application is null!");
+	}
 }
 JNIEXPORT void JNICALL
 Java_com_introlab_rtabmap_RTABMapLib_setDataRecorderMode(
-		JNIEnv*, jobject, bool enabled)
+		JNIEnv*, jclass, jlong native_application, bool enabled)
 {
-	return app.setDataRecorderMode(enabled);
+	if(native_application)
+	{
+		return native(native_application)->setDataRecorderMode(enabled);
+	}
+	else
+	{
+		UERROR("native_application is null!");
+	}
 }
 JNIEXPORT void JNICALL
 Java_com_introlab_rtabmap_RTABMapLib_setMaxCloudDepth(
-		JNIEnv*, jobject, float value)
+		JNIEnv*, jclass, jlong native_application, float value)
 {
-	return app.setMaxCloudDepth(value);
+	if(native_application)
+	{
+		return native(native_application)->setMaxCloudDepth(value);
+	}
+	else
+	{
+		UERROR("native_application is null!");
+	}
 }
 JNIEXPORT void JNICALL
 Java_com_introlab_rtabmap_RTABMapLib_setMinCloudDepth(
-		JNIEnv*, jobject, float value)
+		JNIEnv*, jclass, jlong native_application, float value)
 {
-	return app.setMinCloudDepth(value);
+	if(native_application)
+	{
+		return native(native_application)->setMinCloudDepth(value);
+	}
+	else
+	{
+		UERROR("native_application is null!");
+	}
 }
 JNIEXPORT void JNICALL
 Java_com_introlab_rtabmap_RTABMapLib_setCloudDensityLevel(
-		JNIEnv*, jobject, int value)
+		JNIEnv*, jclass, jlong native_application, int value)
 {
-	return app.setCloudDensityLevel(value);
+	if(native_application)
+	{
+		return native(native_application)->setCloudDensityLevel(value);
+	}
+	else
+	{
+		UERROR("native_application is null!");
+	}
 }
 JNIEXPORT void JNICALL
 Java_com_introlab_rtabmap_RTABMapLib_setMeshAngleTolerance(
-		JNIEnv*, jobject, float value)
+		JNIEnv*, jclass, jlong native_application, float value)
 {
-	return app.setMeshAngleTolerance(value);
+	if(native_application)
+	{
+		return native(native_application)->setMeshAngleTolerance(value);
+	}
+	else
+	{
+		UERROR("native_application is null!");
+	}
 }
 JNIEXPORT void JNICALL
 Java_com_introlab_rtabmap_RTABMapLib_setMeshTriangleSize(
-		JNIEnv*, jobject, int value)
+		JNIEnv*, jclass, jlong native_application, int value)
 {
-	return app.setMeshTriangleSize(value);
+	if(native_application)
+	{
+		return native(native_application)->setMeshTriangleSize(value);
+	}
+	else
+	{
+		UERROR("native_application is null!");
+	}
 }
 JNIEXPORT void JNICALL
 Java_com_introlab_rtabmap_RTABMapLib_setClusterRatio(
-		JNIEnv*, jobject, float value)
+		JNIEnv*, jclass, jlong native_application, float value)
 {
-	return app.setClusterRatio(value);
+	if(native_application)
+	{
+		return native(native_application)->setClusterRatio(value);
+	}
+	else
+	{
+		UERROR("native_application is null!");
+	}
 }
 JNIEXPORT void JNICALL
 Java_com_introlab_rtabmap_RTABMapLib_setMaxGainRadius(
-		JNIEnv*, jobject, float value)
+		JNIEnv*, jclass, jlong native_application, float value)
 {
-	return app.setMaxGainRadius(value);
+	if(native_application)
+	{
+		return native(native_application)->setMaxGainRadius(value);
+	}
+	else
+	{
+		UERROR("native_application is null!");
+	}
 }
 JNIEXPORT void JNICALL
 Java_com_introlab_rtabmap_RTABMapLib_setRenderingTextureDecimation(
-		JNIEnv*, jobject, int value)
+		JNIEnv*, jclass, jlong native_application, int value)
 {
-	return app.setRenderingTextureDecimation(value);
+	if(native_application)
+	{
+		return native(native_application)->setRenderingTextureDecimation(value);
+	}
+	else
+	{
+		UERROR("native_application is null!");
+	}
 }
 JNIEXPORT void JNICALL
 Java_com_introlab_rtabmap_RTABMapLib_setBackgroundColor(
-		JNIEnv*, jobject, float value)
+		JNIEnv*, jclass, jlong native_application, float value)
 {
-	return app.setBackgroundColor(value);
+	if(native_application)
+	{
+		return native(native_application)->setBackgroundColor(value);
+	}
+	else
+	{
+		UERROR("native_application is null!");
+	}
 }
 JNIEXPORT jint JNICALL
 Java_com_introlab_rtabmap_RTABMapLib_setMappingParameter(
-    JNIEnv* env, jobject, jstring key, jstring value)
+    JNIEnv* env, jclass, jlong native_application, jstring key, jstring value)
 {
-	std::string keyC, valueC;
-	GetJStringContent(env,key,keyC);
-	GetJStringContent(env,value,valueC);
-	return app.setMappingParameter(keyC, valueC);
+	if(native_application)
+	{
+		std::string keyC, valueC;
+		GetJStringContent(env,key,keyC);
+		GetJStringContent(env,value,valueC);
+		return native(native_application)->setMappingParameter(keyC, valueC);
+	}
+	else
+	{
+		UERROR("native_application is null!");
+		return -1;
+	}
 }
 
 JNIEXPORT void JNICALL
 Java_com_introlab_rtabmap_RTABMapLib_setGPS(
-		JNIEnv*, jobject,
+		JNIEnv*, jclass, jlong native_application,
 		double stamp,
 		double longitude,
 		double latitude,
@@ -349,49 +708,70 @@ Java_com_introlab_rtabmap_RTABMapLib_setGPS(
 		double accuracy,
 		double bearing)
 {
-	return app.setGPS(rtabmap::GPS(stamp,
-			longitude,
-			latitude,
-			altitude,
-			accuracy,
-			bearing));
+	if(native_application)
+	{
+		return native(native_application)->setGPS(rtabmap::GPS(stamp,
+					longitude,
+					latitude,
+					altitude,
+					accuracy,
+					bearing));
+	}
+	else
+	{
+		UERROR("native_application is null!");
+	}
 }
 
 JNIEXPORT void JNICALL
 Java_com_introlab_rtabmap_RTABMapLib_addEnvSensor(
-		JNIEnv*, jobject,
+		JNIEnv*, jclass, jlong native_application,
 		int type,
 		float value)
 {
-	return app.addEnvSensor(type, value);
-}
-
-JNIEXPORT void JNICALL
-Java_com_introlab_rtabmap_RTABMapLib_resetMapping(
-		JNIEnv*, jobject)
-{
-	return app.resetMapping();
+	if(native_application)
+	{
+		return native(native_application)->addEnvSensor(type, value);
+	}
+	else
+	{
+		UERROR("native_application is null!");
+	}
 }
 
 JNIEXPORT void JNICALL
 Java_com_introlab_rtabmap_RTABMapLib_save(
-		JNIEnv* env, jobject, jstring databasePath)
+		JNIEnv* env, jclass, jlong native_application, jstring databasePath)
 {
-	std::string databasePathC;
-	GetJStringContent(env,databasePath,databasePathC);
-	return app.save(databasePathC);
+	if(native_application)
+	{
+		std::string databasePathC;
+		GetJStringContent(env,databasePath,databasePathC);
+		return native(native_application)->save(databasePathC);
+	}
+	else
+	{
+		UERROR("native_application is null!");
+	}
 }
 
 JNIEXPORT void JNICALL
 Java_com_introlab_rtabmap_RTABMapLib_cancelProcessing(
-		JNIEnv* env, jobject)
+		JNIEnv* env, jclass, jlong native_application)
 {
-	return app.cancelProcessing();
+	if(native_application)
+	{
+		return native(native_application)->cancelProcessing();
+	}
+	else
+	{
+		UERROR("native_application is null!");
+	}
 }
 
 JNIEXPORT bool JNICALL
 Java_com_introlab_rtabmap_RTABMapLib_exportMesh(
-		JNIEnv* env, jobject,
+		JNIEnv* env, jclass, jlong native_application,
 		float cloudVoxelSize,
 		bool regenerateCloud,
 		bool meshing,
@@ -409,49 +789,129 @@ Java_com_introlab_rtabmap_RTABMapLib_exportMesh(
 		int optimizedMinTextureClusterSize,
 		bool blockRendering)
 {
-	return app.exportMesh(
-			cloudVoxelSize,
-			regenerateCloud,
-			meshing,
-			textureSize,
-			textureCount,
-			normalK,
-			optimized,
-			optimizedVoxelSize,
-			optimizedDepth,
-			optimizedMaxPolygons,
-			optimizedColorRadius,
-			optimizedCleanWhitePolygons,
-			optimizedMinClusterSize,
-			optimizedMaxTextureDistance,
-			optimizedMinTextureClusterSize,
-			blockRendering);
+	if(native_application)
+	{
+		return native(native_application)->exportMesh(
+					cloudVoxelSize,
+					regenerateCloud,
+					meshing,
+					textureSize,
+					textureCount,
+					normalK,
+					optimized,
+					optimizedVoxelSize,
+					optimizedDepth,
+					optimizedMaxPolygons,
+					optimizedColorRadius,
+					optimizedCleanWhitePolygons,
+					optimizedMinClusterSize,
+					optimizedMaxTextureDistance,
+					optimizedMinTextureClusterSize,
+					blockRendering);
+	}
+	else
+	{
+		UERROR("native_application is null!");
+		return false;
+	}
 }
 
 JNIEXPORT bool JNICALL
 Java_com_introlab_rtabmap_RTABMapLib_postExportation(
-		JNIEnv* env, jobject, bool visualize)
+		JNIEnv* env, jclass, jlong native_application, bool visualize)
 {
-	return app.postExportation(visualize);
+	if(native_application)
+	{
+		return native(native_application)->postExportation(visualize);
+	}
+	else
+	{
+		UERROR("native_application is null!");
+		return false;
+	}
 }
 
 JNIEXPORT bool JNICALL
 Java_com_introlab_rtabmap_RTABMapLib_writeExportedMesh(
-		JNIEnv* env, jobject, jstring directory, jstring name)
+		JNIEnv* env, jclass, jlong native_application, jstring directory, jstring name)
 {
-	std::string directoryC;
-	GetJStringContent(env,directory,directoryC);
-	std::string nameC;
-	GetJStringContent(env,name,nameC);
-	return app.writeExportedMesh(directoryC, nameC);
+	if(native_application)
+	{
+		std::string directoryC;
+		GetJStringContent(env,directory,directoryC);
+		std::string nameC;
+		GetJStringContent(env,name,nameC);
+		return native(native_application)->writeExportedMesh(directoryC, nameC);
+	}
+	else
+	{
+		UERROR("native_application is null!");
+		return false;
+	}
 }
 
 
 JNIEXPORT int JNICALL
 Java_com_introlab_rtabmap_RTABMapLib_postProcessing(
-		JNIEnv* env, jobject, int approach)
+		JNIEnv* env, jclass, jlong native_application, int approach)
 {
-	return app.postProcessing(approach);
+	if(native_application)
+	{
+		return native(native_application)->postProcessing(approach);
+	}
+	else
+	{
+		UERROR("native_application is null!");
+		return -1;
+	}
+}
+
+JNIEXPORT void JNICALL
+Java_com_introlab_rtabmap_RTABMapLib_postCameraPoseEvent(
+		JNIEnv* env, jclass, jlong native_application,
+		float x, float y, float z, float qx, float qy, float qz, float qw)
+{
+	if(native_application)
+	{
+		native(native_application)->postCameraPoseEvent(x,y,z,qx,qy,qz,qw);
+	}
+	else
+	{
+		UERROR("native_application is null!");
+		return;
+	}
+}
+
+JNIEXPORT void JNICALL
+Java_com_introlab_rtabmap_RTABMapLib_postOdometryEvent(
+		JNIEnv* env, jclass, jlong native_application,
+		float x, float y, float z, float qx, float qy, float qz, float qw,
+		float fx, float fy, float cx, float cy,
+		double stamp,
+		jobject yPlane, jobject uPlane, jobject vPlane, int yPlaneLen, int rgbWidth, int rgbHeight, int rgbFormat,
+		jobject depth, int depthLen, int depthWidth, int depthHeight, int depthFormat,
+		jobject points, int pointsLen)
+{
+	if(native_application)
+	{
+		void *yPtr = env->GetDirectBufferAddress(yPlane);
+		void *uPtr = env->GetDirectBufferAddress(uPlane);
+		void *vPtr = env->GetDirectBufferAddress(vPlane);
+		void *depthPtr = env->GetDirectBufferAddress(depth);
+		float *pointsPtr = (float *)env->GetDirectBufferAddress(points);
+		native(native_application)->postOdometryEvent(
+				x,y,z,qx,qy,qz,qw,
+				fx,fy,cx,cy,
+				stamp,
+				yPtr, uPtr, vPtr, yPlaneLen, rgbWidth, rgbHeight, rgbFormat,
+				depthPtr, depthLen, depthWidth, depthHeight, depthFormat,
+				pointsPtr, pointsLen);
+	}
+	else
+	{
+		UERROR("native_application is null!");
+		return;
+	}
 }
 
 

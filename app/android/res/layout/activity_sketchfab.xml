@@ -62,20 +62,11 @@
         android:checked="true"
         android:text="Draft Mode" />
 
-    <LinearLayout
+    <Button
+        android:id="@+id/button_ok"
         android:layout_width="match_parent"
-        android:layout_height="0dip"
-        android:layout_weight="1"
-        android:gravity="right|bottom"
-        android:orientation="horizontal" >
-
-        <Button
-            android:id="@+id/button_ok"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_weight="0.06"
-            android:text="Upload" />
-    </LinearLayout>
+        android:layout_height="wrap_content"
+        android:text="Upload" />
 
 </LinearLayout>
 </ScrollView>

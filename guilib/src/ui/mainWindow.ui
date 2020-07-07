@@ -168,6 +168,16 @@
        <addaction name="actionFreenect2"/>
        <addaction name="actionKinect_for_Windows_SDK_v2"/>
       </widget>
+      <widget class="QMenu" name="menuKinect_K4A">
+       <property name="title">
+        <string>Kinect for Azure</string>
+       </property>
+       <property name="icon">
+        <iconset resource="../GuiLib.qrc">
+         <normaloff>:/images/k4a.png</normaloff>:/images/k4a.png</iconset>
+       </property>
+       <addaction name="actionKinect_for_Azure"/>
+      </widget>
       <widget class="QMenu" name="menuRealSense_R200">
        <property name="title">
         <string>RealSense R200</string>
@@ -222,6 +232,7 @@
       <addaction name="menuXtion_PRO_LIVE"/>
       <addaction name="menuSense_3D_scanner"/>
       <addaction name="menuKinect_v2"/>
+      <addaction name="menuKinect_K4A"/>
       <addaction name="menuRealSense_R200"/>
       <addaction name="menuRealSense_ZR300"/>
       <addaction name="menuRealSense_SR300"/>
@@ -278,10 +289,21 @@
        </property>
        <addaction name="actionRealSense2_T265"/>
       </widget>
+      <widget class="QMenu" name="menuMynt_Eye_S">
+       <property name="title">
+        <string>Mynt Eye S</string>
+       </property>
+       <property name="icon">
+        <iconset resource="../GuiLib.qrc">
+         <normaloff>:/images/mynteyes.png</normaloff>:/images/mynteyes.png</iconset>
+       </property>
+       <addaction name="actionMYNT_EYE_S_SDK"/>
+      </widget>
       <addaction name="menuBumblebee2_2"/>
       <addaction name="menuZed_camera"/>
       <addaction name="menuTara_Camera"/>
       <addaction name="menuRealSense_T265"/>
+      <addaction name="menuMynt_Eye_S"/>
      </widget>
      <addaction name="menuRGB_D_camera"/>
      <addaction name="menuStereo_camera"/>
@@ -1531,6 +1553,14 @@
     <string>Kinect for Windows SDK v2</string>
    </property>
   </action>
+  <action name="actionKinect_for_Azure">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Kinect for Azure</string>
+   </property>
+  </action>
   <action name="actionRealSense2_D435">
    <property name="checkable">
     <bool>true</bool>
@@ -1577,6 +1607,14 @@
    </property>
    <property name="text">
     <string>RealSense2</string>
+   </property>
+  </action>
+  <action name="actionMYNT_EYE_S_SDK">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>MYNT EYE S SDK</string>
    </property>
   </action>
  </widget>

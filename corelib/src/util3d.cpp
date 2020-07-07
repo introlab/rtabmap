@@ -444,8 +444,8 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudFromDepthRGB(
 	UASSERT_MSG((model.imageHeight() == 0 && model.imageWidth() == 0) ||
 			    (model.imageHeight() == imageRgb.rows && model.imageWidth() == imageRgb.cols),
 				uFormat("model=%dx%d rgb=%dx%d", model.imageWidth(), model.imageHeight(), imageRgb.cols, imageRgb.rows).c_str());
-	UASSERT_MSG(imageRgb.rows % imageDepthIn.rows == 0 && imageRgb.cols % imageDepthIn.cols == 0,
-			uFormat("rgb=%dx%d depth=%dx%d", imageRgb.cols, imageRgb.rows, imageDepthIn.cols, imageDepthIn.rows).c_str());
+	//UASSERT_MSG(imageRgb.rows % imageDepthIn.rows == 0 && imageRgb.cols % imageDepthIn.cols == 0,
+	//		uFormat("rgb=%dx%d depth=%dx%d", imageRgb.cols, imageRgb.rows, imageDepthIn.cols, imageDepthIn.rows).c_str());
 	UASSERT(!imageDepthIn.empty() && (imageDepthIn.type() == CV_16UC1 || imageDepthIn.type() == CV_32FC1));
 	if(decimation < 0)
 	{
@@ -1050,8 +1050,8 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_EXP cloudRGBFromSensorData(
 		UDEBUG("");
 		UASSERT(int((sensorData.imageRaw().cols/sensorData.cameraModels().size())*sensorData.cameraModels().size()) == sensorData.imageRaw().cols);
 		UASSERT(int((sensorData.depthRaw().cols/sensorData.cameraModels().size())*sensorData.cameraModels().size()) == sensorData.depthRaw().cols);
-		UASSERT_MSG(sensorData.imageRaw().cols % sensorData.depthRaw().cols == 0, uFormat("rgb=%d depth=%d", sensorData.imageRaw().cols, sensorData.depthRaw().cols).c_str());
-		UASSERT_MSG(sensorData.imageRaw().rows % sensorData.depthRaw().rows == 0, uFormat("rgb=%d depth=%d", sensorData.imageRaw().rows, sensorData.depthRaw().rows).c_str());
+		//UASSERT_MSG(sensorData.imageRaw().cols % sensorData.depthRaw().cols == 0, uFormat("rgb=%d depth=%d", sensorData.imageRaw().cols, sensorData.depthRaw().cols).c_str());
+		//UASSERT_MSG(sensorData.imageRaw().rows % sensorData.depthRaw().rows == 0, uFormat("rgb=%d depth=%d", sensorData.imageRaw().rows, sensorData.depthRaw().rows).c_str());
 		int subRGBWidth = sensorData.imageRaw().cols/sensorData.cameraModels().size();
 		int subDepthWidth = sensorData.depthRaw().cols/sensorData.cameraModels().size();
 
@@ -1271,7 +1271,11 @@ LaserScan laserScanFromPointCloud(const pcl::PCLPointCloud2 & cloud, bool filter
 	}
 	//determine the output type
 	int fieldStates[8] = {0}; // x,y,z,normal_x,normal_y,normal_z,rgb,intensity
+#if PCL_VERSION_COMPARE(>=, 1, 10, 0)
+	std::uint32_t fieldOffsets[8] = {0};
+#else
 	pcl::uint32_t fieldOffsets[8] = {0};
+#endif
 	for(unsigned int i=0; i<cloud.fields.size(); ++i)
 	{
 		if(cloud.fields[i].name.compare("x") == 0)
@@ -1436,9 +1440,15 @@ LaserScan laserScanFromPointCloud(const pcl::PCLPointCloud2 & cloud, bool filter
 				}
 				else // XYZRGB
 				{
+#if PCL_VERSION_COMPARE(>=, 1, 10, 0)
+					std::uint8_t b=*(msg_data + fieldOffsets[6]);
+					std::uint8_t g=*(msg_data + fieldOffsets[6]+1);
+					std::uint8_t r=*(msg_data + fieldOffsets[6]+2);
+#else
 					pcl::uint8_t b=*(msg_data + fieldOffsets[6]);
 					pcl::uint8_t g=*(msg_data + fieldOffsets[6]+1);
 					pcl::uint8_t r=*(msg_data + fieldOffsets[6]+2);
+#endif
 					int * ptrInt = (int*)ptr;
 					ptrInt[3] = int(b) | (int(g) << 8) | (int(r) << 16);
 				}
@@ -1481,9 +1491,15 @@ LaserScan laserScanFromPointCloud(const pcl::PCLPointCloud2 & cloud, bool filter
 				}
 				else // XYZRGBNormal
 				{
+#if PCL_VERSION_COMPARE(>=, 1, 10, 0)
+					std::uint8_t b=*(msg_data + fieldOffsets[6]);
+					std::uint8_t g=*(msg_data + fieldOffsets[6]+1);
+					std::uint8_t r=*(msg_data + fieldOffsets[6]+2);
+#else
 					pcl::uint8_t b=*(msg_data + fieldOffsets[6]);
 					pcl::uint8_t g=*(msg_data + fieldOffsets[6]+1);
 					pcl::uint8_t r=*(msg_data + fieldOffsets[6]+2);
+#endif
 					int * ptrInt = (int*)ptr;
 					ptrInt[3] = int(b) | (int(g) << 8) | (int(r) << 16);
 				}

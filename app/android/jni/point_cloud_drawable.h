@@ -55,13 +55,13 @@ private:
 		  float gainG = 1.0f,
 		  float gainB = 1.0f);
   PointCloudDrawable(
-    	  const Mesh & mesh,
+    	  const rtabmap::Mesh & mesh,
 		  bool createWireframe = false);
   virtual ~PointCloudDrawable();
 
   void updatePolygons(const std::vector<pcl::Vertices> & polygons, const std::vector<pcl::Vertices> & polygonsLowRes = std::vector<pcl::Vertices>(), bool createWireframe = false);
   void updateCloud(const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud, const pcl::IndicesPtr & indices);
-  void updateMesh(const Mesh & mesh, bool createWireframe = false);
+  void updateMesh(const rtabmap::Mesh & mesh, bool createWireframe = false);
   void setPose(const rtabmap::Transform & pose);
   void setVisible(bool visible) {visible_=visible;}
   void setGains(float gainR, float gainG, float gainB) {gainR_ = gainR; gainG_ = gainG; gainB_ = gainB;}

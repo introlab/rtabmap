@@ -44,6 +44,7 @@ public:
 		icpTranslation(0.0f),
 		icpRotation(0.0f),
 		icpStructuralComplexity(0.0f),
+		icpStructuralDistribution(0.0f),
 		icpCorrespondences(0)
 
 	{
@@ -63,6 +64,7 @@ public:
 		output.icpTranslation = icpTranslation;
 		output.icpRotation = icpRotation;
 		output.icpStructuralComplexity = icpStructuralComplexity;
+		output.icpStructuralDistribution = icpStructuralDistribution;
 		output.icpCorrespondences = icpCorrespondences;
 		return output;
 	}
@@ -85,6 +87,7 @@ public:
 	float icpTranslation;
 	float icpRotation;
 	float icpStructuralComplexity;
+	float icpStructuralDistribution;
 	int   icpCorrespondences;
 };
 

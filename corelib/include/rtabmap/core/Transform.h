@@ -140,6 +140,15 @@ public:
 	static Transform fromEigen3f(const Eigen::Isometry3f & matrix);
 	static Transform fromEigen3d(const Eigen::Isometry3d & matrix);
 
+	static Transform opengl_T_rtabmap() {return Transform(
+			 0.0f, -1.0f, 0.0f, 0.0f,
+			 0.0f,  0.0f, 1.0f, 0.0f,
+			-1.0f,  0.0f, 0.0f, 0.0f);}
+	static Transform rtabmap_T_opengl() {return Transform(
+			 0.0f,  0.0f,-1.0f, 0.0f,
+			-1.0f,  0.0f, 0.0f, 0.0f,
+			 0.0f,  1.0f, 0.0f, 0.0f);}
+
 	/**
 	 * Format (3 values): x y z
 	 * Format (6 values): x y z roll pitch yaw

@@ -58,6 +58,8 @@ void showUsage()
 			"     -c \"path.ini\"   Configuration file, overwriting parameters read \n"
 			"                       from the database. If custom parameters are also set as \n"
 			"                       arguments, they overwrite those in config file and the database.\n"
+			"     -start #    Start from this node ID.\n"
+			"     -stop #     Last node to process.\n"
 			"     -g2         Assemble 2D occupancy grid map and save it to \"[output]_map.pgm\".\n"
 			"     -g3         Assemble 3D cloud map and save it to \"[output]_map.pcd\".\n"
 			"     -o2         Assemble OctoMap 2D projection and save it to \"[output]_octomap.pgm\".\n"
@@ -76,16 +78,16 @@ void sighandler(int sig)
 }
 
 int loopCount = 0;
+int proxCount = 0;
 int totalFrames = 0;
 std::vector<float> previousLocalizationDistances;
 std::vector<float> odomDistances;
-std::vector<float> localizationDistances;
+std::vector<float> localizationVariations;
+std::vector<float> localizationAngleVariations;
 std::vector<float> localizationTime;
 void showLocalizationStats()
 {
-	printf("Total localizations on previous session = %d/%d\n", loopCount, totalFrames);
-	loopCount = 0;
-	totalFrames = 0;
+	printf("Total localizations on previous session = %d/%d (Loop=%d, Prox=%d)\n", loopCount+proxCount, totalFrames, loopCount, proxCount);
 	{
 		float m = uMean(localizationTime);
 		float var = uVariance(localizationTime, m);
@@ -96,16 +98,29 @@ void showLocalizationStats()
 		}
 		printf("Average localization time = %f ms (stddev=%f ms)\n", m, stddev);
 	}
-	if(!localizationDistances.empty())
+	if(localizationVariations.size()>=2)
 	{
-		float m = uMean(localizationDistances);
-		float var = uVariance(localizationDistances, m);
+		//ignore first localization
+		localizationVariations = std::vector<float>(++localizationVariations.begin(), localizationVariations.end());
+		localizationAngleVariations = std::vector<float>(++localizationAngleVariations.begin(), localizationAngleVariations.end());
+
+		float m = uMean(localizationVariations);
+		float max = uMax(localizationVariations);
+		float var = uVariance(localizationVariations, m);
 		float stddev = -1;
 		if(var>0)
 		{
 			stddev = sqrt(var);
 		}
-		printf("Average localization distance = %f m (stddev=%f m)\n", m, stddev);
+		float mA = uMean(localizationAngleVariations);
+		float maxA = uMax(localizationAngleVariations);
+		float varA = uVariance(localizationAngleVariations, mA);
+		float stddevA = -1;
+		if(varA>0)
+		{
+			stddevA = sqrt(varA);
+		}
+		printf("Average localization variations = %f m, %f deg (stddev=%f m, %f deg) (max=%f m, %f deg)\n", m, mA, stddev, stddevA, max, maxA);
 	}
 	if(!previousLocalizationDistances.empty())
 	{
@@ -129,6 +144,15 @@ void showLocalizationStats()
 		}
 		printf("Average odometry distances = %f m (stddev=%f m)\n", m, stddev);
 	}
+
+	loopCount = 0;
+	proxCount = 0;
+	totalFrames = 0;
+	previousLocalizationDistances.clear();
+	odomDistances.clear();
+	localizationVariations.clear();
+	localizationAngleVariations.clear();
+	localizationTime.clear();
 }
 
 int main(int argc, char * argv[])
@@ -152,6 +176,8 @@ int main(int argc, char * argv[])
 	bool assemble2dOctoMap = false;
 	bool assemble3dOctoMap = false;
 	bool useDatabaseRate = false;
+	int startId = 0;
+	int stopId = 0;
 	ParametersMap configParameters;
 	for(int i=1; i<argc-2; ++i)
 	{
@@ -175,6 +201,24 @@ int main(int argc, char * argv[])
 			else
 			{
 				printf("Config file is not set!\n");
+			}
+		}
+		else if (strcmp(argv[i], "-start") == 0 || strcmp(argv[i], "--start") == 0)
+		{
+			++i;
+			if(i < argc - 2)
+			{
+				startId = atoi(argv[i]);
+				printf("Start at node ID = %d.\n", startId);
+			}
+		}
+		else if (strcmp(argv[i], "-stop") == 0 || strcmp(argv[i], "--stop") == 0)
+		{
+			++i;
+			if(i < argc - 2)
+			{
+				stopId = atoi(argv[i]);
+				printf("Stop at node ID = %d.\n", stopId);
 			}
 		}
 		else if(strcmp(argv[i], "-g2") == 0 || strcmp(argv[i], "--g2") == 0)
@@ -264,6 +308,27 @@ int main(int argc, char * argv[])
 			printf("  %s\t= %s\n", iter->first.c_str(), iter->second.c_str());
 		}
 	}
+	if((configParameters.find(Parameters::kKpDetectorStrategy())!=configParameters.end() ||
+		configParameters.find(Parameters::kVisFeatureType())!=configParameters.end() ||
+		customParameters.find(Parameters::kKpDetectorStrategy())!=customParameters.end() ||
+		customParameters.find(Parameters::kVisFeatureType())!=customParameters.end()) &&
+			configParameters.find(Parameters::kMemUseOdomFeatures())==configParameters.end() &&
+			customParameters.find(Parameters::kMemUseOdomFeatures())==customParameters.end())
+	{
+		bool useOdomFeatures = Parameters::defaultMemUseOdomFeatures();
+		Parameters::parse(parameters, Parameters::kMemUseOdomFeatures(), useOdomFeatures);
+		if(useOdomFeatures)
+		{
+			printf("[Warning] %s and/or %s are overwritten but parameter %s is true in the opened database. "
+					"Setting it to false for convenience to use the new selected feature detector. Set %s "
+					"explicitly to suppress this warning.\n",
+					Parameters::kKpDetectorStrategy().c_str(),
+					Parameters::kVisFeatureType().c_str(),
+					Parameters::kMemUseOdomFeatures().c_str(),
+					Parameters::kMemUseOdomFeatures().c_str());
+			uInsert(parameters, ParametersPair(Parameters::kMemUseOdomFeatures(), "false"));
+		}
+	}
 	uInsert(parameters, configParameters);
 	uInsert(parameters, customParameters);
 
@@ -322,7 +387,7 @@ int main(int argc, char * argv[])
 	bool rgbdEnabled = Parameters::defaultRGBDEnabled();
 	Parameters::parse(parameters, Parameters::kRGBDEnabled(), rgbdEnabled);
 	bool odometryIgnored = !rgbdEnabled;
-	DBReader dbReader(inputDatabasePath, useDatabaseRate?-1:0, odometryIgnored);
+	DBReader dbReader(inputDatabasePath, useDatabaseRate?-1:0, odometryIgnored, false, false, startId, -1, stopId);
 	dbReader.init();
 
 	OccupancyGrid grid(parameters);
@@ -336,7 +401,7 @@ int main(int argc, char * argv[])
 	int processed = 0;
 	CameraInfo info;
 	SensorData data = dbReader.takeImage(&info);
-	Transform lastLocalizationPose = info.odomPose;
+	Transform lastLocalizationOdomPose = info.odomPose;
 	while(data.isValid() && g_loopForever)
 	{
 		UTimer iterationTime;
@@ -353,12 +418,9 @@ int main(int argc, char * argv[])
 				if(!incrementalMemory && processed>0)
 				{
 					showLocalizationStats();
-					lastLocalizationPose = info.odomPose;
+					lastLocalizationOdomPose = info.odomPose;
 				}
-				if(incrementalMemory)
-				{
-					rtabmap.triggerNewMap();
-				}
+				rtabmap.triggerNewMap();
 			}
 			UTimer t;
 			if(!rtabmap.process(data, info.odomPose, info.odomCovariance, info.odomVelocity, globalMapStats))
@@ -448,43 +510,52 @@ int main(int argc, char * argv[])
 		}
 
 		const rtabmap::Statistics & stats = rtabmap.getStatistics();
+		int refId = stats.refImageId();
 		int loopId = stats.loopClosureId() > 0? stats.loopClosureId(): stats.proximityDetectionId() > 0?stats.proximityDetectionId() :0;
 		int landmarkId = (int)uValue(stats.data(), rtabmap::Statistics::kLoopLandmark_detected(), 0.0f);
 		int refMapId = stats.refImageMapId();
 		++totalFrames;
 		if (loopId>0)
 		{
-			++loopCount;
+			if(stats.loopClosureId()>0)
+			{
+				++loopCount;
+			}
+			else
+			{
+				++proxCount;
+			}
 			int loopMapId = stats.loopClosureId() > 0? stats.loopClosureMapId(): stats.proximityDetectionMapId();
-			printf("Processed %d/%d nodes [%d]... %dms Loop on %d [%d]\n", ++processed, totalIds, refMapId, int(iterationTime.ticks() * 1000), loopId, loopMapId);
+			printf("Processed %d/%d nodes [id=%d map=%d]... %dms %s on %d [%d]\n", ++processed, totalIds, refId, refMapId, int(iterationTime.ticks() * 1000), stats.loopClosureId() > 0?"Loop":"Prox", loopId, loopMapId);
 		}
 		else if(landmarkId != 0)
 		{
-			printf("Processed %d/%d nodes [%d]... %dms Loop on landmark %d\n", ++processed, totalIds, refMapId, int(iterationTime.ticks() * 1000), landmarkId);
+			printf("Processed %d/%d nodes [id=%d map=%d]... %dms Loop on landmark %d\n", ++processed, totalIds, refId, refMapId, int(iterationTime.ticks() * 1000), landmarkId);
 		}
 		else
 		{
-			printf("Processed %d/%d nodes [%d]... %dms\n", ++processed, totalIds, refMapId, int(iterationTime.ticks() * 1000));
+			printf("Processed %d/%d nodes [id=%d map=%d]... %dms\n", ++processed, totalIds, refId, refMapId, int(iterationTime.ticks() * 1000));
 		}
 
 		// Here we accumulate statistics about distance from last localization
 		if(!incrementalMemory &&
-		   !lastLocalizationPose.isNull() &&
+		   !lastLocalizationOdomPose.isNull() &&
 		   !info.odomPose.isNull())
 		{
 			if(loopId>0 || landmarkId != 0)
 			{
-				previousLocalizationDistances.push_back(lastLocalizationPose.getDistance(info.odomPose));
-				lastLocalizationPose = info.odomPose;
+				previousLocalizationDistances.push_back(lastLocalizationOdomPose.getDistance(info.odomPose));
+				lastLocalizationOdomPose = info.odomPose;
 			}
 		}
 		if(!incrementalMemory)
 		{
 			float totalTime = uValue(stats.data(), rtabmap::Statistics::kTimingTotal(), 0.0f);
 			localizationTime.push_back(totalTime);
-			if(loopId>0)
+			if(stats.data().find(Statistics::kLoopOdom_correction_norm()) != stats.data().end())
 			{
-				localizationDistances.push_back(stats.loopClosureTransform().getNorm());
+				localizationVariations.push_back(stats.data().at(Statistics::kLoopOdom_correction_norm()));
+				localizationAngleVariations.push_back(stats.data().at(Statistics::kLoopOdom_correction_angle()));
 			}
 		}
 
@@ -505,7 +576,7 @@ int main(int argc, char * argv[])
 	}
 	else
 	{
-		printf("Total loop closures = %d\n", loopCount);
+		printf("Total loop closures = %d (Loop=%d, Prox=%d)\n", loopCount+proxCount, loopCount, proxCount);
 	}
 
 	printf("Closing database \"%s\"...\n", outputDatabasePath.c_str());

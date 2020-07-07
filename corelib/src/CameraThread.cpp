@@ -74,7 +74,6 @@ CameraThread::CameraThread(Camera * camera, const ParametersMap & parameters) :
 
 CameraThread::~CameraThread()
 {
-	UDEBUG("");
 	join(true);
 	delete _camera;
 	delete _distortionModel;
@@ -139,7 +138,6 @@ void CameraThread::mainLoopBegin()
 void CameraThread::mainLoop()
 {
 	UTimer totalTime;
-	UDEBUG("");
 	CameraInfo info;
 	SensorData data = _camera->takeImage(&info);
 
@@ -161,7 +159,6 @@ void CameraThread::mainLoop()
 
 void CameraThread::mainLoopKill()
 {
-	UDEBUG("");
 	if(dynamic_cast<CameraFreenect2*>(_camera) != 0)
 	{
 		int i=20;
@@ -189,9 +186,16 @@ void CameraThread::postUpdate(SensorData * dataPtr, CameraInfo * info) const
 {
 	UASSERT(dataPtr!=0);
 	SensorData & data = *dataPtr;
-	if(_colorOnly && !data.depthRaw().empty())
+	if(_colorOnly)
 	{
-		data.setRGBDImage(data.imageRaw(), cv::Mat(), data.cameraModels());
+		if(!data.depthRaw().empty())
+		{
+			data.setRGBDImage(data.imageRaw(), cv::Mat(), data.cameraModels());
+		}
+		else if(!data.rightRaw().empty())
+		{
+			data.setRGBDImage(data.imageRaw(), cv::Mat(), data.stereoCameraModel().left());
+		}
 	}
 
 	if(_distortionModel && !data.depthRaw().empty())

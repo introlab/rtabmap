@@ -100,7 +100,7 @@ public:
 
 public:
 	void addInfoAfterRun(int stMemSize, int lastSignAdded, int processMemUsed, int databaseMemUsed, int dictionarySize, const ParametersMap & parameters) const;
-	void addStatistics(const Statistics & statistics) const;
+	void addStatistics(const Statistics & statistics, bool saveWmState) const;
 	void savePreviewImage(const cv::Mat & image) const;
 	cv::Mat loadPreviewImage() const;
 	void saveOptimizedPoses(const std::map<int, Transform> & optimizedPoses, const Transform & lastlocalizationPose) const;
@@ -157,11 +157,13 @@ public:
 
 	// Load objects
 	void load(VWDictionary * dictionary, bool lastStateOnly = true) const;
-	void loadLastNodes(std::list<Signature *> & signatures) const;
-	void loadSignatures(const std::list<int> & ids, std::list<Signature *> & signatures, std::set<int> * loadedFromTrash = 0);
-	void loadWords(const std::set<int> & wordIds, std::list<VisualWord *> & vws);
+	void loadLastNodes(std::list<Signature *> & signatures) const; // returned signatures must be freed after usage
+	Signature * loadSignature(int id, bool * loadedFromTrash = 0); // returned signature must be freed after usage, call loadSignatures() instead if more than one signature should be loaded
+	void loadSignatures(const std::list<int> & ids, std::list<Signature *> & signatures, std::set<int> * loadedFromTrash = 0); // returned signatures must be freed after usage
+	void loadWords(const std::set<int> & wordIds, std::list<VisualWord *> & vws); // returned words must be freed after usage
 
 	// Specific queries...
+	void loadNodeData(Signature * signature, bool images = true, bool scan = true, bool userData = true, bool occupancyGrid = true) const;
 	void loadNodeData(std::list<Signature *> & signatures, bool images = true, bool scan = true, bool userData = true, bool occupancyGrid = true) const;
 	void getNodeData(int signatureId, SensorData & data, bool images = true, bool scan = true, bool userData = true, bool occupancyGrid = true) const;
 	bool getCalibration(int signatureId, std::vector<CameraModel> & models, StereoCameraModel & stereoModel) const;
@@ -173,6 +175,7 @@ public:
 	void getAllNodeIds(std::set<int> & ids, bool ignoreChildren = false, bool ignoreBadSignatures = false) const;
 	void getAllLinks(std::multimap<int, Link> & links, bool ignoreNullLinks = true, bool withLandmarks = false) const;
 	void getLastNodeId(int & id) const;
+	void getLastMapId(int & mapId) const;
 	void getLastWordId(int & id) const;
 	void getInvertedIndexNi(int signatureId, int & ni) const;
 	void getNodesObservingLandmark(int landmarkId, std::map<int, Link> & nodes) const;
@@ -235,7 +238,7 @@ protected:
 			int nodeId,
 			const LaserScan & scan) const = 0;
 
-	virtual void addStatisticsQuery(const Statistics & statistics) const = 0;
+	virtual void addStatisticsQuery(const Statistics & statistics, bool saveWmState) const = 0;
 	virtual void savePreviewImageQuery(const cv::Mat & image) const = 0;
 	virtual cv::Mat loadPreviewImageQuery() const = 0;
 	virtual void saveOptimizedPosesQuery(const std::map<int, Transform> & optimizedPoses, const Transform & lastlocalizationPose) const = 0;
@@ -274,7 +277,7 @@ protected:
 	virtual void getLastNodeIdsQuery(std::set<int> & ids) const = 0;
 	virtual void getAllNodeIdsQuery(std::set<int> & ids, bool ignoreChildren, bool ignoreBadSignatures) const = 0;
 	virtual void getAllLinksQuery(std::multimap<int, Link> & links, bool ignoreNullLinks, bool withLandmarks) const = 0;
-	virtual void getLastIdQuery(const std::string & tableName, int & id) const = 0;
+	virtual void getLastIdQuery(const std::string & tableName, int & id, const std::string & fieldName="id") const = 0;
 	virtual void getInvertedIndexNiQuery(int signatureId, int & ni) const = 0;
 	virtual void getNodesObservingLandmarkQuery(int landmarkId, std::map<int, Link> & nodes) const = 0;
 	virtual void getNodeIdByLabelQuery(const std::string & label, int & id) const = 0;

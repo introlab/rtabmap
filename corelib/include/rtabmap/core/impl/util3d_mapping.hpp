@@ -97,11 +97,28 @@ void segmentObstaclesFromGround(
 			// cluster all surfaces for which the centroid is in the Z-range of the bigger surface
 			if(clusteredFlatSurfaces.size())
 			{
-				ground = clusteredFlatSurfaces.at(biggestFlatSurfaceIndex);
 				Eigen::Vector4f min,max;
-				pcl::getMinMax3D(*cloud, *clusteredFlatSurfaces.at(biggestFlatSurfaceIndex), min, max);
+				if(maxGroundHeight != 0.0f)
+				{
+					// Search for biggest surface under max ground height
+					size_t points = 0;
+					for(size_t i=0;i<clusteredFlatSurfaces.size();++i)
+					{
+						pcl::getMinMax3D(*cloud, *clusteredFlatSurfaces.at(i), min, max);
+						if(min[2]<maxGroundHeight && clusteredFlatSurfaces.size() > points)
+						{
+							points = clusteredFlatSurfaces.at(i)->size();
+							biggestFlatSurfaceIndex = i;
+						}
+					}
+				}
+				else
+				{
+					pcl::getMinMax3D(*cloud, *clusteredFlatSurfaces.at(biggestFlatSurfaceIndex), min, max);
+				}
+				ground = clusteredFlatSurfaces.at(biggestFlatSurfaceIndex);
 
-				if(maxGroundHeight == 0.0f || min[2] < maxGroundHeight)
+				if(!ground->empty() && (maxGroundHeight == 0.0f || min[2] < maxGroundHeight))
 				{
 					for(unsigned int i=0; i<clusteredFlatSurfaces.size(); ++i)
 					{

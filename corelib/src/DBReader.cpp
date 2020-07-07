@@ -47,25 +47,28 @@ DBReader::DBReader(const std::string & databasePath,
 				   bool odometryIgnored,
 				   bool ignoreGoalDelay,
 				   bool goalsIgnored,
-				   int startIndex,
+				   int stopId,
 				   int cameraIndex,
-				   int maxFrames) :
+				   int endId) :
 	Camera(frameRate),
 	_paths(uSplit(databasePath, ';')),
 	_odometryIgnored(odometryIgnored),
 	_ignoreGoalDelay(ignoreGoalDelay),
 	_goalsIgnored(goalsIgnored),
-	_startIndex(startIndex),
-	_maxFrames(maxFrames),
+	_startId(stopId),
+	_stopId(endId),
 	_cameraIndex(cameraIndex),
 	_dbDriver(0),
 	_currentId(_ids.end()),
 	_previousMapId(-1),
 	_previousStamp(0),
 	_previousMapID(0),
-	_calibrated(false),
-	_framesPublished(0)
+	_calibrated(false)
 {
+	if(_stopId>0 && _stopId<_startId)
+	{
+		_stopId = _startId;
+	}
 }
 
 DBReader::DBReader(const std::list<std::string> & databasePaths,
@@ -73,25 +76,28 @@ DBReader::DBReader(const std::list<std::string> & databasePaths,
 				   bool odometryIgnored,
 				   bool ignoreGoalDelay,
 				   bool goalsIgnored,
-				   int startIndex,
+				   int stopId,
 				   int cameraIndex,
-				   int maxFrames) :
+				   int endId) :
 	Camera(frameRate),
    _paths(databasePaths),
 	_odometryIgnored(odometryIgnored),
 	_ignoreGoalDelay(ignoreGoalDelay),
 	_goalsIgnored(goalsIgnored),
-	_startIndex(startIndex),
-	_maxFrames(maxFrames),
+	_startId(stopId),
+	_stopId(endId),
 	_cameraIndex(cameraIndex),
 	_dbDriver(0),
 	_currentId(_ids.end()),
 	_previousMapId(-1),
 	_previousStamp(0),
 	_previousMapID(0),
-	_calibrated(false),
-	_framesPublished(0)
+	_calibrated(false)
 {
+	if(_stopId>0 && _stopId<_startId)
+	{
+		_stopId = _startId;
+	}
 }
 
 DBReader::~DBReader()
@@ -120,7 +126,6 @@ bool DBReader::init(
 	_previousStamp = 0;
 	_previousMapID = 0;
 	_calibrated = false;
-	_framesPublished = 0;
 
 	if(_paths.size() == 0)
 	{
@@ -153,12 +158,12 @@ bool DBReader::init(
 
 	_dbDriver->getAllNodeIds(_ids);
 	_currentId = _ids.begin();
-	if(_startIndex>0 && _ids.size())
+	if(_startId>0 && _ids.size())
 	{
-		std::set<int>::iterator iter = uIteratorAt(_ids, _startIndex);
+		std::set<int>::iterator iter = _ids.find(_startId);
 		if(iter == _ids.end())
 		{
-			UWARN("Start index is too high (%d), the last in database is %d. Starting from beginning...", _startIndex, _ids.size()-1);
+			UWARN("Start index is too high (%d), the last ID in database is %d. Starting from beginning...", _startId, *_ids.rbegin());
 		}
 		else
 		{
@@ -219,13 +224,12 @@ std::string DBReader::getSerial() const
 
 SensorData DBReader::captureImage(CameraInfo * info)
 {
-	if(_maxFrames>0 && ++_framesPublished > _maxFrames)
+	SensorData data = this->getNextData(info);
+	if(data.id()>0 && _stopId>0 && data.id() > _stopId)
 	{
-		UINFO("Maximum frames (%d) reached!", _maxFrames);
+		UINFO("Last ID %d has been reached! Ignoring", _stopId);
 		return SensorData();
 	}
-
-	SensorData data = this->getNextData(info);
 	if(data.id() == 0)
 	{
 		UINFO("no more images...");

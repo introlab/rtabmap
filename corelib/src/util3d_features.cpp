@@ -34,11 +34,14 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/util3d_motion_estimation.h"
 
 #include "rtabmap/core/EpipolarGeometry.h"
+#include "opencv/five-point.h"
 
 #include <rtabmap/utilite/ULogger.h>
 #include <rtabmap/utilite/UConversion.h>
 #include <rtabmap/utilite/UMath.h>
 #include <rtabmap/utilite/UStl.h>
+
+#include <pcl/common/point_tests.h>
 
 #include <opencv2/video/tracking.hpp>
 
@@ -76,8 +79,8 @@ std::vector<cv::Point3f> generateKeypoints3DDepth(
 		UASSERT(int((depth.cols/cameraModels.size())*cameraModels.size()) == depth.cols);
 		float subImageWidth = depth.cols/cameraModels.size();
 		keypoints3d.resize(keypoints.size());
-		float rgbToDepthFactorX = 1.0f/(cameraModels[0].imageWidth()>0?cameraModels[0].imageWidth()/subImageWidth:1);
-		float rgbToDepthFactorY = 1.0f/(cameraModels[0].imageHeight()>0?cameraModels[0].imageHeight()/depth.rows:1);
+		float rgbToDepthFactorX = 1.0f/(cameraModels[0].imageWidth()>0?float(cameraModels[0].imageWidth())/subImageWidth:1.0f);
+		float rgbToDepthFactorY = 1.0f/(cameraModels[0].imageHeight()>0?float(cameraModels[0].imageHeight())/float(depth.rows):1.0f);
 		float bad_point = std::numeric_limits<float>::quiet_NaN ();
 		for(unsigned int i=0; i<keypoints.size(); ++i)
 		{
@@ -208,14 +211,11 @@ std::map<int, cv::Point3f> generateWords3DMono(
 		const std::map<int, cv::KeyPoint> & nextWords,
 		const CameraModel & cameraModel,
 		Transform & cameraTransform,
-		int pnpIterations,
-		float pnpReprojError,
-		int pnpFlags,
-		int pnpRefineIterations,
-		float ransacParam1,
-		float ransacParam2,
+		float ransacReprojThreshold,
+		float ransacConfidence,
 		const std::map<int, cv::Point3f> & refGuess3D,
-		double * varianceOut)
+		double * varianceOut,
+		std::vector<int> * matchesOut)
 {
 	UASSERT(cameraModel.isValidForProjection());
 	std::map<int, cv::Point3f> words3D;
@@ -224,270 +224,189 @@ std::map<int, cv::Point3f> generateWords3DMono(
 	UDEBUG("pairsFound=%d/%d", pairsFound, int(refWords.size()>nextWords.size()?refWords.size():nextWords.size()));
 	if(pairsFound > 8)
 	{
-		std::vector<unsigned char> status;
-		cv::Mat F = EpipolarGeometry::findFFromWords(pairs, status, ransacParam1, ransacParam2);
-		if(!F.empty())
+		std::list<std::pair<int, std::pair<cv::KeyPoint, cv::KeyPoint> > >::iterator iter=pairs.begin();
+		std::vector<cv::Point2f> refCorners(pairs.size());
+		std::vector<cv::Point2f> newCorners(pairs.size());
+		std::vector<int> indexes(pairs.size());
+		for(unsigned int i=0; i<pairs.size(); ++i)
 		{
-			//get inliers
-			//normalize coordinates
-			int oi = 0;
-			UASSERT(status.size() == pairs.size());
-			std::list<std::pair<int, std::pair<cv::KeyPoint, cv::KeyPoint> > >::iterator iter=pairs.begin();
-			std::vector<cv::Point2f> refCorners(status.size());
-			std::vector<cv::Point2f> newCorners(status.size());
-			std::vector<int> indexes(status.size());
-			for(unsigned int i=0; i<status.size(); ++i)
+			if(matchesOut)
 			{
-				if(status[i])
-				{
-					refCorners[oi] = iter->second.first.pt;
-					newCorners[oi] = iter->second.second.pt;
-					indexes[oi] = iter->first;
-					++oi;
-				}
-				++iter;
+				matchesOut->push_back(iter->first);
 			}
-			refCorners.resize(oi);
-			newCorners.resize(oi);
-			indexes.resize(oi);
 
-			UDEBUG("inliers=%d/%d", oi, pairs.size());
-			if(oi > 3)
+			refCorners[i] = iter->second.first.pt;
+			newCorners[i] = iter->second.second.pt;
+			indexes[i] = iter->first;
+			++iter;
+		}
+
+		std::vector<unsigned char> status;
+		cv::Mat pts4D;
+
+		UDEBUG("Five-point algorithm");
+		/**
+		 * OpenCV five-point algorithm
+		 * David Nistér. An efficient solution to the five-point relative pose problem. Pattern Analysis and Machine Intelligence, IEEE Transactions on, 26(6):756–770, 2004.
+		 */
+		cv::Mat E = cv3::findEssentialMat(refCorners, newCorners, cameraModel.K(), cv::RANSAC, ransacConfidence, ransacReprojThreshold, status);
+
+		int essentialInliers = 0;
+		for(size_t i=0; i<status.size();++i)
+		{
+			if(status[i])
 			{
-				std::vector<cv::Point2f> refCornersRefined;
-				std::vector<cv::Point2f> newCornersRefined;
-				cv::correctMatches(F, refCorners, newCorners, refCornersRefined, newCornersRefined);
-				refCorners = refCornersRefined;
-				newCorners = newCornersRefined;
+				++essentialInliers;
+			}
+		}
+		Transform cameraTransformGuess = cameraTransform;
+		if(!E.empty())
+		{
+			UDEBUG("essential inliers=%d/%d", essentialInliers, (int)status.size());
+			cv::Mat R,t;
+			cv3::recoverPose(E, refCorners, newCorners, cameraModel.K(), R, t, 50, status, pts4D);
+			if(!R.empty() && !t.empty())
+			{
+				cv::Mat P = cv::Mat::zeros(3, 4, CV_64FC1);
+				R.copyTo(cv::Mat(P, cv::Range(0,3), cv::Range(0,3)));
+				P.at<double>(0,3) = t.at<double>(0);
+				P.at<double>(1,3) = t.at<double>(1);
+				P.at<double>(2,3) = t.at<double>(2);
 
-				cv::Mat x(3, (int)refCorners.size(), CV_64FC1);
-				cv::Mat xp(3, (int)refCorners.size(), CV_64FC1);
-				for(unsigned int i=0; i<refCorners.size(); ++i)
+				cameraTransform = Transform(R.at<double>(0,0), R.at<double>(0,1), R.at<double>(0,2), t.at<double>(0),
+						R.at<double>(1,0), R.at<double>(1,1), R.at<double>(1,2), t.at<double>(1),
+						R.at<double>(2,0), R.at<double>(2,1), R.at<double>(2,2), t.at<double>(2));
+				UDEBUG("t (cam frame)=%s", cameraTransform.prettyPrint().c_str());
+				UDEBUG("base->cam=%s", cameraModel.localTransform().prettyPrint().c_str());
+				cameraTransform = cameraModel.localTransform() * cameraTransform.inverse() * cameraModel.localTransform().inverse();
+				UDEBUG("t (base frame)=%s", cameraTransform.prettyPrint().c_str());
+
+				UASSERT((int)indexes.size() == pts4D.cols && pts4D.rows == 4 && status.size() == indexes.size());
+				for(unsigned int i=0; i<indexes.size(); ++i)
 				{
-					x.at<double>(0, i) = refCorners[i].x;
-					x.at<double>(1, i) = refCorners[i].y;
-					x.at<double>(2, i) = 1;
-
-					xp.at<double>(0, i) = newCorners[i].x;
-					xp.at<double>(1, i) = newCorners[i].y;
-					xp.at<double>(2, i) = 1;
-				}
-
-				cv::Mat K = cameraModel.K();
-				cv::Mat Kinv = K.inv();
-				cv::Mat E = K.t()*F*K;
-				cv::Mat x_norm = Kinv * x;
-				cv::Mat xp_norm = Kinv * xp;
-				x_norm = x_norm.rowRange(0,2);
-				xp_norm = xp_norm.rowRange(0,2);
-
-				cv::Mat P = EpipolarGeometry::findPFromE(E, x_norm, xp_norm);
-				if(!P.empty())
-				{
-					cv::Mat P0 = cv::Mat::zeros(3, 4, CV_64FC1);
-					P0.at<double>(0,0) = 1;
-					P0.at<double>(1,1) = 1;
-					P0.at<double>(2,2) = 1;
-
-					bool useCameraTransformGuess = !cameraTransform.isNull();
-					//if camera transform is set, use it instead of the computed one from epipolar geometry
-					if(useCameraTransformGuess)
+					if(status[i])
 					{
-						Transform t = (cameraModel.localTransform().inverse()*cameraTransform*cameraModel.localTransform()).inverse();
-
-						if(ULogger::level() == ULogger::kDebug)
-						{
-							UDEBUG("Guess = %s", t.prettyPrint().c_str());
-							UDEBUG("Epipolar = %s", Transform(P).prettyPrint().c_str());
-							Transform PT = Transform(P);
-							float scale = t.getNorm()/PT.getNorm();
-							UDEBUG("Scale= %f", scale);
-							PT.x()*=scale;
-							PT.y()*=scale;
-							PT.z()*=scale;
-							UDEBUG("Epipolar scaled= %s", PT.prettyPrint().c_str());
-						}
-
-						P = (cv::Mat_<double>(3,4) <<
-								(double)t.r11(), (double)t.r12(), (double)t.r13(), (double)t.x(),
-								(double)t.r21(), (double)t.r22(), (double)t.r23(), (double)t.y(),
-								(double)t.r31(), (double)t.r32(), (double)t.r33(), (double)t.z());
-					}
-
-					// triangulate the points
-					//std::vector<double> reprojErrors;
-					//std::vector<cv::Point3f> cloud;
-					//EpipolarGeometry::triangulatePoints(x_norm, xp_norm, P0, P, cloud, reprojErrors);
-					cv::Mat pts4D;
-					cv::triangulatePoints(P0, P, x_norm, xp_norm, pts4D);
-
-					UASSERT((int)indexes.size() == pts4D.cols && pts4D.rows == 4);
-					for(unsigned int i=0; i<indexes.size(); ++i)
-					{
-						//if(cloud->at(i).z > 0)
-						//{
-						//	words3D.insert(std::make_pair(indexes[i], util3d::transformPoint(cloud->at(i), localTransform)));
-						//}
 						pts4D.col(i) /= pts4D.at<double>(3,i);
 						if(pts4D.at<double>(2,i) > 0)
 						{
 							words3D.insert(std::make_pair(indexes[i], util3d::transformPoint(cv::Point3f(pts4D.at<double>(0,i), pts4D.at<double>(1,i), pts4D.at<double>(2,i)), cameraModel.localTransform())));
 						}
 					}
-
-					UDEBUG("ref guess=%d", (int)refGuess3D.size());
-					if(refGuess3D.size())
-					{
-						// scale estimation
-						std::vector<cv::Point3f> inliersRef;
-						std::vector<cv::Point3f> inliersRefGuess;
-						util3d::findCorrespondences(
-								words3D,
-								refGuess3D,
-								inliersRef,
-								inliersRefGuess,
-								0);
-
-						if(inliersRef.size())
-						{
-							// estimate the scale
-							float scale = 1.0f;
-							float variance = 1.0f;
-							if(!useCameraTransformGuess)
-							{
-								std::multimap<float, float> scales; // <variance, scale>
-								for(unsigned int i=0; i<inliersRef.size(); ++i)
-								{
-									// using x as depth, assuming we are in global referential
-									float s = inliersRefGuess.at(i).x/inliersRef.at(i).x;
-									std::vector<float> errorSqrdDists(inliersRef.size());
-									for(unsigned int j=0; j<inliersRef.size(); ++j)
-									{
-										cv::Point3f refPt = inliersRef.at(j);
-										refPt.x *= s;
-										refPt.y *= s;
-										refPt.z *= s;
-										const cv::Point3f & newPt = inliersRefGuess.at(j);
-										errorSqrdDists[j] = uNormSquared(refPt.x-newPt.x, refPt.y-newPt.y, refPt.z-newPt.z);
-									}
-									std::sort(errorSqrdDists.begin(), errorSqrdDists.end());
-									double median_error_sqr = (double)errorSqrdDists[errorSqrdDists.size () >> 1];
-									float var = 2.1981 * median_error_sqr;
-									//UDEBUG("scale %d = %f variance = %f", (int)i, s, variance);
-
-									scales.insert(std::make_pair(var, s));
-								}
-								scale = scales.begin()->second;
-								variance = scales.begin()->first;;
-							}
-							else
-							{
-								//compute variance at scale=1
-								std::vector<float> errorSqrdDists(inliersRef.size());
-								for(unsigned int j=0; j<inliersRef.size(); ++j)
-								{
-									const cv::Point3f & refPt = inliersRef.at(j);
-									const cv::Point3f & newPt = inliersRefGuess.at(j);
-									errorSqrdDists[j] = uNormSquared(refPt.x-newPt.x, refPt.y-newPt.y, refPt.z-newPt.z);
-								}
-								std::sort(errorSqrdDists.begin(), errorSqrdDists.end());
-								double median_error_sqr = (double)errorSqrdDists[errorSqrdDists.size () >> 1];
-								 variance = 2.1981 * median_error_sqr;
-							}
-
-							UDEBUG("scale used = %f (variance=%f)", scale, variance);
-							if(varianceOut)
-							{
-								*varianceOut = variance;
-							}
-
-							if(!useCameraTransformGuess)
-							{
-								std::vector<cv::Point3f> objectPoints(indexes.size());
-								std::vector<cv::Point2f> imagePoints(indexes.size());
-								int oi2=0;
-								UASSERT(indexes.size() == newCorners.size());
-								for(unsigned int i=0; i<indexes.size(); ++i)
-								{
-									std::map<int, cv::Point3f>::iterator iter = words3D.find(indexes[i]);
-									if(iter!=words3D.end() && util3d::isFinite(iter->second))
-									{
-										iter->second.x *= scale;
-										iter->second.y *= scale;
-										iter->second.z *= scale;
-										objectPoints[oi2].x = iter->second.x;
-										objectPoints[oi2].y = iter->second.y;
-										objectPoints[oi2].z = iter->second.z;
-										imagePoints[oi2] = newCorners[i];
-										++oi2;
-									}
-								}
-								objectPoints.resize(oi2);
-								imagePoints.resize(oi2);
-
-								//PnPRansac
-								Transform guess = cameraModel.localTransform().inverse();
-								cv::Mat R = (cv::Mat_<double>(3,3) <<
-										(double)guess.r11(), (double)guess.r12(), (double)guess.r13(),
-										(double)guess.r21(), (double)guess.r22(), (double)guess.r23(),
-										(double)guess.r31(), (double)guess.r32(), (double)guess.r33());
-								cv::Mat rvec(1,3, CV_64FC1);
-								cv::Rodrigues(R, rvec);
-								cv::Mat tvec = (cv::Mat_<double>(1,3) << (double)guess.x(), (double)guess.y(), (double)guess.z());
-								std::vector<int> inliersV;
-								util3d::solvePnPRansac(
-										objectPoints,
-										imagePoints,
-										K,
-										cv::Mat(),
-										rvec,
-										tvec,
-										true,
-										pnpIterations,
-										pnpReprojError,
-										0, // min inliers
-										inliersV,
-										pnpFlags,
-										pnpRefineIterations);
-
-								UDEBUG("PnP inliers = %d / %d", (int)inliersV.size(), (int)objectPoints.size());
-
-								if(inliersV.size())
-								{
-									cv::Rodrigues(rvec, R);
-									Transform pnp(R.at<double>(0,0), R.at<double>(0,1), R.at<double>(0,2), tvec.at<double>(0),
-												   R.at<double>(1,0), R.at<double>(1,1), R.at<double>(1,2), tvec.at<double>(1),
-												   R.at<double>(2,0), R.at<double>(2,1), R.at<double>(2,2), tvec.at<double>(2));
-
-									cameraTransform = (cameraModel.localTransform() * pnp).inverse();
-								}
-								else
-								{
-									UWARN("No inliers after PnP!");
-								}
-							}
-						}
-						else
-						{
-							UWARN("Cannot compute the scale, no points corresponding between the generated ref words and words guess");
-						}
-					}
-					else if(!useCameraTransformGuess)
-					{
-						cv::Mat R, T;
-						EpipolarGeometry::findRTFromP(P, R, T);
-
-						Transform t(R.at<double>(0,0), R.at<double>(0,1), R.at<double>(0,2), T.at<double>(0),
-									R.at<double>(1,0), R.at<double>(1,1), R.at<double>(1,2), T.at<double>(1),
-									R.at<double>(2,0), R.at<double>(2,1), R.at<double>(2,2), T.at<double>(2));
-
-						cameraTransform = (cameraModel.localTransform() * t).inverse() * cameraModel.localTransform();
-					}
 				}
 			}
 		}
+		else
+		{
+			UDEBUG("Failed to find essential matrix");
+		}
+
+		if(!cameraTransform.isNull())
+		{
+			UDEBUG("words3D=%d refGuess3D=%d cameraGuess=%s", (int)words3D.size(), (int)refGuess3D.size(), cameraTransformGuess.prettyPrint().c_str());
+
+			// estimate the scale and variance
+			float scale = 1.0f;
+			if(!cameraTransformGuess.isNull())
+			{
+				scale = cameraTransformGuess.getNorm()/cameraTransform.getNorm();
+			}
+			float variance = 1.0f;
+
+			std::vector<cv::Point3f> inliersRef;
+			std::vector<cv::Point3f> inliersRefGuess;
+			if(!refGuess3D.empty())
+			{
+				util3d::findCorrespondences(
+						words3D,
+						refGuess3D,
+						inliersRef,
+						inliersRefGuess,
+						0);
+			}
+
+			if(!inliersRef.empty())
+			{
+				UDEBUG("inliersRef=%d", (int)inliersRef.size());
+				if(cameraTransformGuess.isNull())
+				{
+					std::multimap<float, float> scales; // <variance, scale>
+					for(unsigned int i=0; i<inliersRef.size(); ++i)
+					{
+						// using x as depth, assuming we are in global referential
+						float s = inliersRefGuess.at(i).x/inliersRef.at(i).x;
+						std::vector<float> errorSqrdDists(inliersRef.size());
+						for(unsigned int j=0; j<inliersRef.size(); ++j)
+						{
+							cv::Point3f refPt = inliersRef.at(j);
+							refPt.x *= s;
+							refPt.y *= s;
+							refPt.z *= s;
+							const cv::Point3f & newPt = inliersRefGuess.at(j);
+							errorSqrdDists[j] = uNormSquared(refPt.x-newPt.x, refPt.y-newPt.y, refPt.z-newPt.z);
+						}
+						std::sort(errorSqrdDists.begin(), errorSqrdDists.end());
+						double median_error_sqr = (double)errorSqrdDists[errorSqrdDists.size () >> 2];
+						float var = 2.1981 * median_error_sqr;
+						//UDEBUG("scale %d = %f variance = %f", (int)i, s, variance);
+
+						scales.insert(std::make_pair(var, s));
+					}
+					scale = scales.begin()->second;
+					variance = scales.begin()->first;
+				}
+				else if(!cameraTransformGuess.isNull())
+				{
+					// use scale from guess
+					//compute variance
+					std::vector<float> errorSqrdDists(inliersRef.size());
+					for(unsigned int j=0; j<inliersRef.size(); ++j)
+					{
+						cv::Point3f refPt = inliersRef.at(j);
+						refPt.x *= scale;
+						refPt.y *= scale;
+						refPt.z *= scale;
+						const cv::Point3f & newPt = inliersRefGuess.at(j);
+						errorSqrdDists[j] = uNormSquared(refPt.x-newPt.x, refPt.y-newPt.y, refPt.z-newPt.z);
+					}
+					std::sort(errorSqrdDists.begin(), errorSqrdDists.end());
+					double median_error_sqr = (double)errorSqrdDists[errorSqrdDists.size () >> 2];
+					variance = 2.1981 * median_error_sqr;
+				}
+			}
+			else if(!refGuess3D.empty())
+			{
+				UWARN("Cannot compute variance, no points corresponding between "
+						"the generated ref words (%d) and words guess (%d)",
+						(int)words3D.size(), (int)refGuess3D.size());
+			}
+
+			if(scale!=1.0f)
+			{
+				// Adjust output transform and points based on scale found
+				cameraTransform.x()*=scale;
+				cameraTransform.y()*=scale;
+				cameraTransform.z()*=scale;
+
+				UASSERT(indexes.size() == newCorners.size());
+				for(unsigned int i=0; i<indexes.size(); ++i)
+				{
+					std::map<int, cv::Point3f>::iterator iter = words3D.find(indexes[i]);
+					if(iter!=words3D.end() && util3d::isFinite(iter->second))
+					{
+						iter->second.x *= scale;
+						iter->second.y *= scale;
+						iter->second.z *= scale;
+					}
+				}
+			}
+			UDEBUG("scale used = %f (variance=%f)", scale, variance);
+			if(varianceOut)
+			{
+				*varianceOut = variance;
+			}
+		}
 	}
-	UDEBUG("wordsSet=%d / %d", (int)words3D.size(), (int)refWords.size());
+	UDEBUG("wordsSet=%d / %d", (int)words3D.size(), pairsFound);
 
 	return words3D;
 }
