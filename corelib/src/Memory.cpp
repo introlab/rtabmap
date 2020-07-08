@@ -3086,6 +3086,8 @@ Transform Memory::computeIcpTransformMulti(
 		pcl::PointCloud<pcl::PointNormal>::Ptr assembledToNormalClouds(new pcl::PointCloud<pcl::PointNormal>);
 		pcl::PointCloud<pcl::PointXYZI>::Ptr assembledToIClouds(new pcl::PointCloud<pcl::PointXYZI>);
 		pcl::PointCloud<pcl::PointXYZINormal>::Ptr assembledToNormalIClouds(new pcl::PointCloud<pcl::PointXYZINormal>);
+		pcl::PointCloud<pcl::PointXYZRGB>::Ptr assembledToRGBClouds(new pcl::PointCloud<pcl::PointXYZRGB>);
+		pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr assembledToNormalRGBClouds(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
 		UDEBUG("maxPoints from(%d) = %d", fromId, maxPoints);
 		for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
 		{
@@ -3108,6 +3110,19 @@ Transform Memory::computeIcpTransformMulti(
 							else
 							{
 								*assembledToIClouds += *util3d::laserScanToPointCloudI(scan,
+										toPoseInv * iter->second * scan.localTransform());
+							}
+						}
+						else if(scan.hasRGB())
+						{
+							if(scan.hasNormals())
+							{
+								*assembledToNormalRGBClouds += *util3d::laserScanToPointCloudRGBNormal(scan,
+										toPoseInv * iter->second * scan.localTransform());
+							}
+							else
+							{
+								*assembledToRGBClouds += *util3d::laserScanToPointCloudRGB(scan,
 										toPoseInv * iter->second * scan.localTransform());
 							}
 						}
@@ -3159,6 +3174,28 @@ Transform Memory::computeIcpTransformMulti(
 		else if(assembledToIClouds->size())
 		{
 			assembledScan = fromScan.is2d()?util3d::laserScan2dFromPointCloud(*assembledToIClouds):util3d::laserScanFromPointCloud(*assembledToIClouds);
+		}
+		else if(assembledToNormalRGBClouds->size())
+		{
+			if(fromScan.is2d())
+			{
+				UERROR("Cannot handle 2d scan with RGB format.");
+			}
+			else
+			{
+				assembledScan = util3d::laserScanFromPointCloud(*assembledToNormalRGBClouds);
+			}
+		}
+		else if(assembledToRGBClouds->size())
+		{
+			if(fromScan.is2d())
+			{
+				UERROR("Cannot handle 2d scan with RGB format.");
+			}
+			else
+			{
+				assembledScan = util3d::laserScanFromPointCloud(*assembledToRGBClouds);
+			}
 		}
 		UDEBUG("assembledScan=%d points", assembledScan.cols);
 
@@ -4439,7 +4476,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 					keypoints3D.resize(keypoints.size());
 					for(size_t i=0; i<keypoints.size(); ++i)
 					{
-						UASSERT(keypoints[i].class_id < data.keypoints3D().size());
+						UASSERT(keypoints[i].class_id < (int)data.keypoints3D().size());
 						keypoints3D[i] = data.keypoints3D()[keypoints[i].class_id];
 					}
 				}
