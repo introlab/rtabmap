@@ -429,7 +429,7 @@ int main(int argc, char * argv[])
 	float linearUpdate = Parameters::defaultRGBDLinearUpdate();
 	float angularUpdate = Parameters::defaultRGBDAngularUpdate();
 	Parameters::parse(parameters, Parameters::kRGBDLinearUpdate(), linearUpdate);
-	Parameters::parse(parameters, Parameters::defaultRGBDAngularUpdate(), angularUpdate);
+	Parameters::parse(parameters, Parameters::kRGBDAngularUpdate(), angularUpdate);
 
 	printf("Reprocessing data of \"%s\"...\n", inputDatabasePath.c_str());
 	std::map<std::string, float> globalMapStats;
@@ -625,7 +625,7 @@ int main(int argc, char * argv[])
 		   !info.odomPose.isNull())
 		{
 			float distance = odomPose.getDistance(info.odomPose);
-			float angle = odomPose.getAngle(info.odomPose);
+			float angle = (odomPose.inverse()*info.odomPose).getAngle();
 			odomDistances.push_back(distance);
 			if(distance < linearUpdate && angle <= angularUpdate)
 			{
