@@ -32,6 +32,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/OctoMap.h>
 #endif
 #include <rtabmap/core/OccupancyGrid.h>
+#include <rtabmap/core/Graph.h>
 #include <rtabmap/utilite/UFile.h>
 #include <rtabmap/utilite/UDirectory.h>
 #include <rtabmap/utilite/UTimer.h>
@@ -64,6 +65,7 @@ void showUsage()
 			"     -g3         Assemble 3D cloud map and save it to \"[output]_map.pcd\".\n"
 			"     -o2         Assemble OctoMap 2D projection and save it to \"[output]_octomap.pgm\".\n"
 			"     -o3         Assemble OctoMap 3D cloud and save it to \"[output]_octomap.pcd\".\n"
+			"     -p          Save odometry and localization poses (*.g2o).\n"
 			"%s\n"
 			"\n", Parameters::showUsage());
 	exit(1);
@@ -79,15 +81,22 @@ void sighandler(int sig)
 
 int loopCount = 0;
 int proxCount = 0;
+int loopCountMotion = 0;
 int totalFrames = 0;
+int totalFramesMotion = 0;
 std::vector<float> previousLocalizationDistances;
 std::vector<float> odomDistances;
 std::vector<float> localizationVariations;
 std::vector<float> localizationAngleVariations;
 std::vector<float> localizationTime;
-void showLocalizationStats()
+std::map<int, Transform> odomTrajectoryPoses;
+std::multimap<int, Link> odomTrajectoryLinks;
+std::map<int, Transform> localizationPoses;
+bool exportPoses = false;
+int sessionCount = 0;
+void showLocalizationStats(const std::string & outputDatabasePath)
 {
-	printf("Total localizations on previous session = %d/%d (Loop=%d, Prox=%d)\n", loopCount+proxCount, totalFrames, loopCount, proxCount);
+	printf("Total localizations on previous session = %d/%d (Loop=%d, Prox=%d, In Motion=%d/%d)\n", loopCount+proxCount, totalFrames, loopCount, proxCount, loopCountMotion, totalFramesMotion);
 	{
 		float m = uMean(localizationTime);
 		float var = uVariance(localizationTime, m);
@@ -145,14 +154,30 @@ void showLocalizationStats()
 		printf("Average odometry distances = %f m (stddev=%f m)\n", m, stddev);
 	}
 
+	if(exportPoses)
+	{
+		std::string outputPath = outputDatabasePath.substr(0, outputDatabasePath.size()-3);
+		std::string oName = outputPath+uFormat("_session_%d_odom.g2o", sessionCount);
+		std::string lName = outputPath+uFormat("_session_%d_loc.g2o", sessionCount);
+		graph::exportPoses(oName, 4, odomTrajectoryPoses, odomTrajectoryLinks);
+		graph::exportPoses(lName, 4, localizationPoses, odomTrajectoryLinks);
+		printf("Exported %s and %s\n", oName.c_str(), lName.c_str());
+	}
+
 	loopCount = 0;
 	proxCount = 0;
 	totalFrames = 0;
+	loopCountMotion = 0;
+	totalFramesMotion = 0;
 	previousLocalizationDistances.clear();
 	odomDistances.clear();
 	localizationVariations.clear();
 	localizationAngleVariations.clear();
 	localizationTime.clear();
+	odomTrajectoryPoses.clear();
+	odomTrajectoryLinks.clear();
+	localizationPoses.clear();
+	++sessionCount;
 }
 
 int main(int argc, char * argv[])
@@ -220,6 +245,11 @@ int main(int argc, char * argv[])
 				stopId = atoi(argv[i]);
 				printf("Stop at node ID = %d.\n", stopId);
 			}
+		}
+		else if(strcmp(argv[i], "-p") == 0 || strcmp(argv[i], "--p") == 0)
+		{
+			exportPoses = true;
+			printf("Odometry trajectory and localization poses will be exported in g2o format (-p option).\n");
 		}
 		else if(strcmp(argv[i], "-g2") == 0 || strcmp(argv[i], "--g2") == 0)
 		{
@@ -396,12 +426,18 @@ int main(int argc, char * argv[])
 	OctoMap octomap(parameters);
 #endif
 
+	float linearUpdate = Parameters::defaultRGBDLinearUpdate();
+	float angularUpdate = Parameters::defaultRGBDAngularUpdate();
+	Parameters::parse(parameters, Parameters::kRGBDLinearUpdate(), linearUpdate);
+	Parameters::parse(parameters, Parameters::defaultRGBDAngularUpdate(), angularUpdate);
+
 	printf("Reprocessing data of \"%s\"...\n", inputDatabasePath.c_str());
 	std::map<std::string, float> globalMapStats;
 	int processed = 0;
 	CameraInfo info;
 	SensorData data = dbReader.takeImage(&info);
 	Transform lastLocalizationOdomPose = info.odomPose;
+	bool inMotion = true;
 	while(data.isValid() && g_loopForever)
 	{
 		UTimer iterationTime;
@@ -417,10 +453,11 @@ int main(int argc, char * argv[])
 				printf("High variance detected, triggering a new map...\n");
 				if(!incrementalMemory && processed>0)
 				{
-					showLocalizationStats();
+					showLocalizationStats(outputDatabasePath);
 					lastLocalizationOdomPose = info.odomPose;
 				}
 				rtabmap.triggerNewMap();
+				inMotion = true;
 			}
 			UTimer t;
 			if(!rtabmap.process(data, info.odomPose, info.odomCovariance, info.odomVelocity, globalMapStats))
@@ -515,6 +552,11 @@ int main(int argc, char * argv[])
 		int landmarkId = (int)uValue(stats.data(), rtabmap::Statistics::kLoopLandmark_detected(), 0.0f);
 		int refMapId = stats.refImageMapId();
 		++totalFrames;
+
+		if(inMotion)
+		{
+			++totalFramesMotion;
+		}
 		if (loopId>0)
 		{
 			if(stats.loopClosureId()>0)
@@ -524,6 +566,10 @@ int main(int argc, char * argv[])
 			else
 			{
 				++proxCount;
+			}
+			if(inMotion)
+			{
+				++loopCountMotion;
 			}
 			int loopMapId = stats.loopClosureId() > 0? stats.loopClosureMapId(): stats.proximityDetectionMapId();
 			printf("Processed %d/%d nodes [id=%d map=%d]... %dms %s on %d [%d]\n", ++processed, totalIds, refId, refMapId, int(iterationTime.ticks() * 1000), stats.loopClosureId() > 0?"Loop":"Prox", loopId, loopMapId);
@@ -557,26 +603,44 @@ int main(int argc, char * argv[])
 				localizationVariations.push_back(stats.data().at(Statistics::kLoopOdom_correction_norm()));
 				localizationAngleVariations.push_back(stats.data().at(Statistics::kLoopOdom_correction_angle()));
 			}
+
+			if(exportPoses && !info.odomPose.isNull())
+			{
+				if(!odomTrajectoryPoses.empty())
+				{
+					int previousId = odomTrajectoryPoses.rbegin()->first;
+					odomTrajectoryLinks.insert(std::make_pair(previousId, Link(previousId, refId, Link::kNeighbor, odomTrajectoryPoses.rbegin()->second.inverse()*info.odomPose, info.odomCovariance)));
+				}
+				odomTrajectoryPoses.insert(std::make_pair(refId, info.odomPose));
+				localizationPoses.insert(std::make_pair(refId, stats.mapCorrection()*info.odomPose));
+			}
 		}
 
 		Transform odomPose = info.odomPose;
 		data = dbReader.takeImage(&info);
 
+		inMotion = true;
 		if(!incrementalMemory &&
 		   !odomPose.isNull() &&
 		   !info.odomPose.isNull())
 		{
-			odomDistances.push_back(odomPose.getDistance(info.odomPose));
+			float distance = odomPose.getDistance(info.odomPose);
+			float angle = odomPose.getAngle(info.odomPose);
+			odomDistances.push_back(distance);
+			if(distance < linearUpdate && angle <= angularUpdate)
+			{
+				inMotion = false;
+			}
 		}
 	}
 
 	if(!incrementalMemory)
 	{
-		showLocalizationStats();
+		showLocalizationStats(outputDatabasePath);
 	}
 	else
 	{
-		printf("Total loop closures = %d (Loop=%d, Prox=%d)\n", loopCount+proxCount, loopCount, proxCount);
+		printf("Total loop closures = %d (Loop=%d, Prox=%d, In Motion=%d/%d)\n", loopCount+proxCount, loopCount, proxCount, loopCountMotion, totalFramesMotion);
 	}
 
 	printf("Closing database \"%s\"...\n", outputDatabasePath.c_str());
