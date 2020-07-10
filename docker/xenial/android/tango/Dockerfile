@@ -1,6 +1,6 @@
-# Image: introlab3it/rtabmap:tango
+# Image: introlab3it/rtabmap:tango-api19
 
-FROM introlab3it/rtabmap:android-deps
+FROM introlab3it/rtabmap:android-deps-api19
 
 WORKDIR /root/
 
