@@ -32,6 +32,8 @@ wget 'https://docs.google.com/uc?authuser=0&id=1s5iPJ7xiridj9Jj--gCy2XiQFniheVm6
 mv TangoSDK_Ikariotikos_Java.jar rtabmap-tango/app/android/libs/.
 
 # Patch to remove not supported arcore and arengine stuff on API19
+git config --global user.email "you@example.com"
+git config --global user.name "Your Name"
 cd rtabmap-tango
 git pull origin tango-api19
 
