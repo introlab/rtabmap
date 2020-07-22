@@ -2,6 +2,7 @@
  * Python interface for SuperGlue: https://github.com/magicleap/SuperGluePretrainedNetwork
  */
 
+#include <PyUtil.h>
 #include <pymatcher/PyMatcher.h>
 #include <rtabmap/utilite/ULogger.h>
 #include <rtabmap/utilite/UDirectory.h>
@@ -15,52 +16,6 @@
 
 namespace rtabmap
 {
-
-class PythonSingleTon
-{
-public:
-	PythonSingleTon() : initialized_(false) {}
-	void init() {UScopeMutex lock(mutex_); if(!initialized_)Py_Initialize(); initialized_=true;}
-	bool initialized() const {return initialized_;}
-	virtual ~PythonSingleTon() {if(initialized_) Py_Finalize();}
-private:
-	bool initialized_;
-	UMutex mutex_;
-};
-
-static PythonSingleTon g_python;
-
-std::string getTraceback()
-{
-	// Author: https://stackoverflow.com/questions/41268061/c-c-python-exception-traceback-not-being-generated
-
-	PyObject* type;
-	PyObject* value;
-	PyObject* traceback;
-
-	PyErr_Fetch(&type, &value, &traceback);
-	PyErr_NormalizeException(&type, &value, &traceback);
-
-	std::string fcn = "";
-	fcn += "def get_pretty_traceback(exc_type, exc_value, exc_tb):\n";
-	fcn += "    import sys, traceback\n";
-	fcn += "    lines = []\n";
-	fcn += "    lines = traceback.format_exception(exc_type, exc_value, exc_tb)\n";
-	fcn += "    output = '\\n'.join(lines)\n";
-	fcn += "    return output\n";
-
-	PyRun_SimpleString(fcn.c_str());
-	PyObject* mod = PyImport_ImportModule("__main__");
-	PyObject* method = PyObject_GetAttrString(mod, "get_pretty_traceback");
-	PyObject* outStr = PyObject_CallObject(method, Py_BuildValue("OOO", type, value, traceback));
-	std::string pretty = PyBytes_AsString(PyUnicode_AsASCIIString(outStr));
-
-	Py_DECREF(method);
-	Py_DECREF(outStr);
-	Py_DECREF(mod);
-
-	return pretty;
-}
 
 PyMatcher::PyMatcher(
 		const std::string & pythonMatcherPath,
@@ -79,36 +34,7 @@ PyMatcher::PyMatcher(
 	UINFO("path = %s", path_.c_str());
 	UINFO("model = %s", model_.c_str());
 
-	if(!UFile::exists(path_) || UFile::getExtension(path_).compare("py") != 0)
-	{
-		UERROR("Cannot initialize Python matcher, the path is not valid: \"%s\"", path_.c_str());
-		return;
-	}
-
-	if(!g_python.initialized())
-	{
-		g_python.init();
-	}
-
-	std::string matcherPythonDir = UDirectory::getDir(path_);
-	if(!matcherPythonDir.empty())
-	{
-		PyRun_SimpleString("import sys");
-		PyRun_SimpleString(uFormat("sys.path.append(\"%s\")", matcherPythonDir.c_str()).c_str());
-	}
-
-	_import_array();
-
-	std::string scriptName = uSplit(UFile::getName(path_), '.').front();
-	PyObject * pName = PyUnicode_FromString(scriptName.c_str());
-	pModule_ = PyImport_Import(pName);
-	Py_DECREF(pName);
-
-	if(!pModule_)
-	{
-		UERROR("Module \"%s\" could not be imported! (File=\"%s\")", scriptName.c_str(), path_.c_str());
-		UERROR("%s", getTraceback().c_str());
-	}
+	pModule_ = PyUtil::importModule(path_);
 }
 
 PyMatcher::~PyMatcher()
@@ -162,7 +88,7 @@ std::vector<cv::DMatch> PyMatcher::match(
 					if(result == NULL)
 					{
 						UERROR("Call to \"init(...)\" in \"%s\" failed!", path_.c_str());
-						UERROR("%s", getTraceback().c_str());
+						UERROR("%s", PyUtil::getTraceback().c_str());
 						return matches;
 					}
 					Py_DECREF(result);
@@ -175,7 +101,7 @@ std::vector<cv::DMatch> PyMatcher::match(
 					else
 					{
 						UERROR("Cannot find method \"match(...)\" in %s", path_.c_str());
-						UERROR("%s", getTraceback().c_str());
+						UERROR("%s", PyUtil::getTraceback().c_str());
 						if(pFunc_)
 						{
 							Py_DECREF(pFunc_);
@@ -187,7 +113,7 @@ std::vector<cv::DMatch> PyMatcher::match(
 				else
 				{
 					UERROR("Cannot call method \"init(...)\" in %s", path_.c_str());
-					UERROR("%s", getTraceback().c_str());
+					UERROR("%s", PyUtil::getTraceback().c_str());
 					return matches;
 				}
 				Py_DECREF(pFunc);
@@ -195,7 +121,7 @@ std::vector<cv::DMatch> PyMatcher::match(
 			else
 			{
 				UERROR("Cannot find method \"init(...)\"");
-				UERROR("%s", getTraceback().c_str());
+				UERROR("%s", PyUtil::getTraceback().c_str());
 				return matches;
 			}
 			UDEBUG("init time = %fs", timer.ticks());
@@ -258,7 +184,7 @@ std::vector<cv::DMatch> PyMatcher::match(
 			if(pReturn == NULL)
 			{
 				UERROR("Failed to call match() function!");
-				UERROR("%s", getTraceback().c_str());
+				UERROR("%s", PyUtil::getTraceback().c_str());
 			}
 			else
 			{

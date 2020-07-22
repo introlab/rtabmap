@@ -104,6 +104,8 @@ SET(SRC_FILES
     
     MarkerDetector.cpp
     
+    GlobalDescriptorExtractor.cpp
+    
     GainCompensator.cpp
 
     rtflann/ext/lz4.c
@@ -196,10 +198,13 @@ IF(Python3_FOUND)
 	SET(SRC_FILES
 		${SRC_FILES}
 		pymatcher/PyMatcher.cpp
+		pydescriptor/PyDescriptor.cpp
+		PyUtil.cpp
 	)
 	 SET(INCLUDE_DIRS
 	    ${TORCH_INCLUDE_DIRS}
 	    ${CMAKE_CURRENT_SOURCE_DIR}/pymatcher
+	    ${CMAKE_CURRENT_SOURCE_DIR}/pydescriptor
 		${INCLUDE_DIRS}
 	)
 ENDIF(Python3_FOUND)

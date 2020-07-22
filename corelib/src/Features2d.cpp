@@ -617,12 +617,10 @@ Feature2D * Feature2D::create(Feature2D::Type type, const ParametersMap & parame
 #ifdef RTABMAP_NONFREE
 	default:
 		feature2D = new SURF(parameters);
-		type = Feature2D::kFeatureSurf;
 		break;
 #else
 	default:
 		feature2D = new ORB(parameters);
-		type = Feature2D::kFeatureOrb;
 		break;
 #endif
 

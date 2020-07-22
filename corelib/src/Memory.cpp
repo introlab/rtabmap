@@ -40,6 +40,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/EpipolarGeometry.h>
 #include "rtabmap/core/VisualWord.h"
 #include "rtabmap/core/Features2d.h"
+#include "rtabmap/core/GlobalDescriptorExtractor.h"
 #include "rtabmap/core/RegistrationIcp.h"
 #include "rtabmap/core/Registration.h"
 #include "rtabmap/core/RegistrationVis.h"
@@ -121,7 +122,6 @@ Memory::Memory(const ParametersMap & parameters) :
 	_linksChanged(false),
 	_signaturesAdded(0),
 	_allNodesInWM(true),
-
 	_badSignRatio(Parameters::defaultKpBadSignRatio()),
 	_tfIdfLikelihoodUsed(Parameters::defaultKpTfIdfLikelihoodUsed()),
 	_parallelized(Parameters::defaultKpParallelized())
@@ -129,6 +129,7 @@ Memory::Memory(const ParametersMap & parameters) :
 	_feature2D = Feature2D::create(parameters);
 	_vwd = new VWDictionary(parameters);
 	_registrationPipeline = Registration::create(parameters);
+	_globalDescriptorExtractor = GlobalDescriptorExtractor::create(parameters);
 
 	// for local scan matching, correspondences ratio should be two times higher as we expect more matches
 	float corRatio = Parameters::defaultIcpCorrespondenceRatio();
@@ -693,6 +694,14 @@ void Memory::parseParameters(const ParametersMap & parameters)
 	if(_markerDetector)
 	{
 		_markerDetector->parseParameters(params);
+	}
+
+	int globalDescriptorStrategy = -1;
+	Parameters::parse(params, Parameters::kMemGlobalDescriptorStrategy(), globalDescriptorStrategy);
+	if(globalDescriptorStrategy != -1)
+	{
+		delete _globalDescriptorExtractor;
+		_globalDescriptorExtractor = GlobalDescriptorExtractor::create(parameters_);
 	}
 
 	// do this after all params are parsed
@@ -5172,7 +5181,13 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 	s->sensorData().setGroundTruth(data.groundTruth());
 	s->sensorData().setGPS(data.gps());
 	s->sensorData().setEnvSensors(data.envSensors());
-	s->sensorData().setGlobalDescriptors(data.globalDescriptors());
+
+	std::vector<GlobalDescriptor> globalDescriptors = data.globalDescriptors();
+	if(_globalDescriptorExtractor)
+	{
+		globalDescriptors.push_back(_globalDescriptorExtractor->extract(inputData));
+	}
+	s->sensorData().setGlobalDescriptors(globalDescriptors);
 
 	t = timer.ticks();
 	if(stats) stats->addStatistic(Statistics::kTimingMemCompressing_data(), t*1000.0f);

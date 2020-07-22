@@ -226,7 +226,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->vis_feature_detector->setItemData(11, 0, Qt::UserRole - 1);
 #endif
 
-#ifndef RTABMAP_PYMATCHER
+#ifndef RTABMAP_PYTHON3
 	_ui->reextract_nn->setItemData(6, 0, Qt::UserRole - 1);
 #endif
 

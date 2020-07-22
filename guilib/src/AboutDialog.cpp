@@ -86,7 +86,7 @@ AboutDialog::AboutDialog(QWidget * parent) :
 	_ui->label_sptorch->setText("No");
 	_ui->label_sptorch_license->setEnabled(false);
 #endif
-#ifdef RTABMAP_PYMATCHER
+#ifdef RTABMAP_PYTHON3
 	_ui->label_pymatcher->setText("Yes");
 	_ui->label_pymatcher_license->setEnabled(true);
 #else

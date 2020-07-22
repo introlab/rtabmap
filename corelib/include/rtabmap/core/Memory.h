@@ -58,6 +58,7 @@ class RegistrationIcp;
 class Stereo;
 class OccupancyGrid;
 class MarkerDetector;
+class GlobalDescriptorExtractor;
 
 class RTABMAP_EXP Memory
 {
@@ -360,6 +361,8 @@ private:
 	OccupancyGrid * _occupancy;
 
 	MarkerDetector * _markerDetector;
+
+	GlobalDescriptorExtractor * _globalDescriptorExtractor;
 };
 
 } // namespace rtabmap

@@ -51,7 +51,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtflann/flann.hpp>
 
 
-#ifdef RTABMAP_PYMATCHER
+#ifdef RTABMAP_PYTHON3
 	#include <pymatcher/PyMatcher.h>
 #endif
 
@@ -87,7 +87,7 @@ RegistrationVis::RegistrationVis(const ParametersMap & parameters, Registration 
 		_maxInliersMeanDistance(Parameters::defaultVisMeanInliersDistance()),
 		_detectorFrom(0),
 		_detectorTo(0)
-#ifdef RTABMAP_PYMATCHER
+#ifdef RTABMAP_PYTHON3
 		,
 		_pyMatcher(0)
 #endif
@@ -153,7 +153,7 @@ void RegistrationVis::parseParameters(const ParametersMap & parameters)
 	if(_nnType == 6)
 	{
 		// verify that we have Python3 support
-#ifndef RTABMAP_PYMATCHER
+#ifndef RTABMAP_PYTHON3
 		UWARN("%s is set to 6 but RTAB-Map is not built with Python3 support, using default %d.",
 				Parameters::kVisCorNNType().c_str(), Parameters::defaultVisCorNNType());
 		_nnType = Parameters::defaultVisCorNNType();
@@ -264,7 +264,7 @@ RegistrationVis::~RegistrationVis()
 {
 	delete _detectorFrom;
 	delete _detectorTo;
-#ifdef RTABMAP_PYMATCHER
+#ifdef RTABMAP_PYTHON3
 	delete _pyMatcher;
 #endif
 }
@@ -1137,7 +1137,7 @@ Transform RegistrationVis::computeTransformationImpl(
 					// match between all descriptors
 					std::list<int> fromWordIds;
 					std::list<int> toWordIds;
-#ifdef RTABMAP_PYMATCHER
+#ifdef RTABMAP_PYTHON3
 					if(_nnType == 5 || (_nnType == 6 && _pyMatcher) || _nnType==7)
 #else
 					if(_nnType == 5 || _nnType == 7) // bruteforce cross check or GMS
@@ -1158,7 +1158,7 @@ Transform RegistrationVis::computeTransformationImpl(
 						{
 							std::vector<int> toWordIdsV(descriptorsTo.rows, 0);
 							std::vector<cv::DMatch> matches;
-#ifdef RTABMAP_PYMATCHER
+#ifdef RTABMAP_PYTHON3
 							if(_nnType == 6 && _pyMatcher &&
 								descriptorsTo.cols == descriptorsFrom.cols &&
 								descriptorsTo.rows == (int)kptsTo.size() &&
