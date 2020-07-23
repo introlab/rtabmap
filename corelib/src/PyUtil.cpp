@@ -11,19 +11,32 @@
 #include <rtabmap/utilite/UConversion.h>
 #include <rtabmap/utilite/UStl.h>
 
-#define NPY_NO_DEPRECATED_API NPY_API_VERSION
-#include <numpy/arrayobject.h>
-
 namespace rtabmap {
 
-PyUtil PyUtil::instance_;
-bool PyUtil::initialized_ = false;
+size_t PyUtil::references_ = 0;
 UMutex PyUtil::mutex_;
 
-PyUtil::PyUtil() {}
-void PyUtil::init() {UScopeMutex lock(mutex_); if(!initialized_)Py_Initialize(); initialized_=true;}
-bool PyUtil::initialized() {return initialized_;}
-PyUtil::~PyUtil() {if(initialized_) Py_Finalize();}
+void PyUtil::acquire()
+{
+	UScopeMutex lock(mutex_);
+	if(references_ == 0)
+	{
+		Py_Initialize();
+	}
+	++references_;
+}
+void PyUtil::release()
+{
+	UScopeMutex lock(mutex_);
+	if(references_>0)
+	{
+		--references_;
+		if(references_==0)
+		{
+			Py_Finalize();
+		}
+	}
+}
 
 std::string PyUtil::getTraceback()
 {
@@ -65,19 +78,12 @@ PyObject * PyUtil::importModule(const std::string & path)
 		return 0;
 	}
 
-	if(!PyUtil::initialized())
-	{
-		PyUtil::init();
-	}
-
 	std::string matcherPythonDir = UDirectory::getDir(path);
 	if(!matcherPythonDir.empty())
 	{
 		PyRun_SimpleString("import sys");
 		PyRun_SimpleString(uFormat("sys.path.append(\"%s\")", matcherPythonDir.c_str()).c_str());
 	}
-
-	_import_array();
 
 	std::string scriptName = uSplit(UFile::getName(path), '.').front();
 	PyObject * pName = PyUnicode_FromString(scriptName.c_str());

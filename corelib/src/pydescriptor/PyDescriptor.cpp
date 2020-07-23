@@ -25,7 +25,11 @@ PyDescriptor::PyDescriptor(
 	UINFO("path = %s", path_.c_str());
 	UINFO("dim = %d", dim_);
 
+	PyUtil::acquire();
+
 	pModule_ = PyUtil::importModule(path_);
+
+	UASSERT(_import_array()==0);
 }
 
 PyDescriptor::PyDescriptor(
@@ -102,6 +106,7 @@ PyDescriptor::~PyDescriptor()
 	{
 		Py_DECREF(pModule_);
 	}
+	PyUtil::release();
 }
 
 GlobalDescriptor PyDescriptor::extract(

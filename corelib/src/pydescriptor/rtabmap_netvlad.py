@@ -1,13 +1,13 @@
 #! /usr/bin/env python3
 #
-# Drop this file in the "demo" folder of OANet git: https://github.com/zjhthu/OANet
+# Drop this file in the "python" folder of NetVLAD git (tensorflow-v1 used): https://github.com/uzh-rpg/netvlad_tf_open/
 # To use with rtabmap:
-#   --Vis/CorNNType 6 --PyMatcher/Path ~/OANet/demo/rtabmap_oanet.py --PyMatcher/Model ~/OANet/model/gl3d/sift-4000/model_best.pth
+#   --PyDescriptor/Dim 128 --PyDescriptor/Path ~/netvlad_tf_open/python/rtabmap_netvlad.py
 #
 
 import sys    
 import os
-sys.path.append(os.path.dirname(os.path.realpath(__file__))+'/../core')
+sys.path.append(os.path.dirname(os.path.realpath(__file__)))
 if not hasattr(sys, 'argv'):
     sys.argv  = ['']
     
@@ -15,30 +15,56 @@ if not hasattr(sys, 'argv'):
 #print(sys.version)
 
 import numpy as np
-from learnedmatcher import LearnedMatcher
+import tensorflow as tf
+import time
 
-lm = None
+import netvlad_tf.net_from_mat as nfm
+import netvlad_tf.nets as nets
 
-def init(descriptorDim, matchThreshold, iterations, cuda, model_path):
-    print("OANet python init()")
-    global lm
-    lm = LearnedMatcher(model_path, inlier_threshold=1, use_ratio=0, use_mutual=0)
+image_batch = None
+net_out = None
+saver = None
+sess = None
+dim = 4096
 
-
-def match(kptsFrom, kptsTo, scoresFrom, scoresTo, descriptorsFrom, descriptorsTo, imageWidth, imageHeight):
-    #print("OANet python match()")
+def init(descriptorDim):
+    print("NetVLAD python init()")
+    global image_batch
+    global net_out
+    global saver
+    global sess
+    global dim
     
-    kpt1 = np.asarray(kptsFrom)
-    kpt2 = np.asarray(kptsTo)
-    desc1 = np.asarray(descriptorsFrom)
-    desc2 = np.asarray(descriptorsTo)
-      
-    global lm
-    matches, _, _ = lm.infer([kpt1, kpt2], [desc1, desc2])
-    return matches
+    dim = descriptorDim
+
+    tf.reset_default_graph()
+
+    image_batch = tf.placeholder(
+        dtype=tf.float32, shape=[None, None, None, 3])
+
+    net_out = nets.vgg16NetvladPca(image_batch)
+    saver = tf.train.Saver()
+
+    sess = tf.Session()
+    saver.restore(sess, nets.defaultCheckpoint())
+
+
+def extract(image):
+    print("NetVLAD python extract()")
+    global image_batch
+    global net_out
+    global sess
+    global dim
+    
+    batch = np.expand_dims(image, axis=0)
+    result = sess.run(net_out, feed_dict={image_batch: batch})
+    result = result[:,:dim]
+    
+    return result
 
 
 if __name__ == '__main__':
     #test
-    init(128, 0.2, 20, False, True)
-    match([[1, 2], [1,3], [4,6]], [[1, 3], [1,2], [16,2]], [1, 3,6], [1,3,5], np.full((3, 128), 1), np.full((3, 128), 1), 640, 480)
+    img = np.zeros([100,100,3],dtype=np.uint8)
+    img.fill(255)
+    print(extract(img))

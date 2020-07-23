@@ -17,20 +17,19 @@ namespace rtabmap {
 class PyUtil
 {
 public:
-	virtual ~PyUtil();
+	virtual ~PyUtil() {}
 
-	static void init();
-	static bool initialized();
+	static void acquire();
+	static void release();
 
 	static std::string getTraceback();
 	static PyObject* importModule(const std::string & path);
 
 private:
-	PyUtil();
+	PyUtil() {}
 
-	static bool initialized_;
 	static UMutex mutex_;
-	static PyUtil instance_;
+	static size_t references_;
 };
 
 }

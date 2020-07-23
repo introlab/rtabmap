@@ -34,7 +34,11 @@ PyMatcher::PyMatcher(
 	UINFO("path = %s", path_.c_str());
 	UINFO("model = %s", model_.c_str());
 
+	PyUtil::acquire();
+
 	pModule_ = PyUtil::importModule(path_);
+
+	UASSERT(_import_array()==0);
 }
 
 PyMatcher::~PyMatcher()
@@ -47,6 +51,7 @@ PyMatcher::~PyMatcher()
 	{
 		Py_DECREF(pModule_);
 	}
+	PyUtil::release();
 }
 
 std::vector<cv::DMatch> PyMatcher::match(
