@@ -28,7 +28,8 @@ GlobalDescriptorExtractor * GlobalDescriptorExtractor::create(const ParametersMa
 }
 GlobalDescriptorExtractor * GlobalDescriptorExtractor::create(GlobalDescriptorExtractor::Type type, const ParametersMap & parameters)
 {
-#ifdef RTABMAP_PYTHON3
+	UDEBUG("Creating global descriptor of type %d", (int)type);
+#ifndef RTABMAP_PYTHON3
 	if(type == GlobalDescriptorExtractor::kPyDescriptor)
 	{
 		UWARN("PyDescriptor cannot be used as rtabmap is not built with Python3 support.");

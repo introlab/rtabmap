@@ -7,6 +7,8 @@
 
 import sys    
 import os
+import numpy as np
+import time
 sys.path.append(os.path.dirname(os.path.realpath(__file__)))
 if not hasattr(sys, 'argv'):
     sys.argv  = ['']
@@ -14,10 +16,7 @@ if not hasattr(sys, 'argv'):
 #print(os.sys.path)
 #print(sys.version)
 
-import numpy as np
 import tensorflow as tf
-import time
-
 import netvlad_tf.net_from_mat as nfm
 import netvlad_tf.nets as nets
 
@@ -55,6 +54,8 @@ def extract(image):
     global net_out
     global sess
     global dim
+    
+    print(image.shape)
     
     batch = np.expand_dims(image, axis=0)
     result = sess.run(net_out, feed_dict={image_batch: batch})

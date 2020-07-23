@@ -230,7 +230,7 @@ class RTABMAP_EXP Parameters
     RTABMAP_PARAM(Mem, UseOdomFeatures,             bool, true,     "Use odometry features instead of regenerating them.");
     RTABMAP_PARAM(Mem, UseOdomGravity,              bool, false,    uFormat("Use odometry instead of IMU orientation to add gravity links to new nodes created. We assume that odometry is already aligned with gravity (e.g., we are using a VIO approach). Gravity constraints are used by graph optimization only if \"%s\" is not zero.", kOptimizerGravitySigma().c_str()));
     RTABMAP_PARAM(Mem, CovOffDiagIgnored,           bool, true,     "Ignore off diagonal values of the covariance matrix.");
-    RTABMAP_PARAM(Mem, GlobalDescriptorStrategy,    int, -1,        "Extract global descriptor from sensor data. -1=not used, 0=PyDescriptor");
+    RTABMAP_PARAM(Mem, GlobalDescriptorStrategy,    int, 0,        "Extract global descriptor from sensor data. 0=disabled, 1=PyDescriptor");
 
     // KeypointMemory (Keypoint-based)
     RTABMAP_PARAM(Kp, NNStrategy,               int, 1,       "kNNFlannNaive=0, kNNFlannKdTree=1, kNNFlannLSH=2, kNNBruteForce=3, kNNBruteForceGPU=4");

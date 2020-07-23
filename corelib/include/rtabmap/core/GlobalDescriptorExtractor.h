@@ -44,8 +44,8 @@ namespace rtabmap {
 class RTABMAP_EXP GlobalDescriptorExtractor {
 public:
 	enum Type {
-		kUndef=-1,
-		kPyDescriptor=0};
+		kUndef=0,
+		kPyDescriptor=1};
 
 	static std::string typeName(Type type)
 	{

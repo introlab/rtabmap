@@ -15,85 +15,16 @@ namespace rtabmap
 {
 
 PyDescriptor::PyDescriptor(
-		const std::string & pythonDescriptorPath,
-		int dim) :
-				pModule_(0),
-				pFunc_(0),
-				dim_(dim)
-{
-	path_ = uReplaceChar(pythonDescriptorPath, '~', UDirectory::homeDir());
-	UINFO("path = %s", path_.c_str());
-	UINFO("dim = %d", dim_);
-
-	PyUtil::acquire();
-
-	pModule_ = PyUtil::importModule(path_);
-
-	UASSERT(_import_array()==0);
-}
-
-PyDescriptor::PyDescriptor(
 		const ParametersMap & parameters) :
 		GlobalDescriptorExtractor(parameters),
 				pModule_(0),
 				pFunc_(0),
-				dim_(4096)
+				dim_(Parameters::defaultPyDescriptorDim())
 {
-	Parameters::parse(parameters, Parameters::kPyDescriptorPath(), path_);
-	Parameters::parse(parameters, Parameters::kPyDescriptorDim(), dim_);
-	path_ = uReplaceChar(path_, '~', UDirectory::homeDir());
-	UINFO("path = %s", path_.c_str());
-	UINFO("dim = %d", dim_);
-	UTimer timer;
+	PyUtil::acquire();
+	UASSERT(_import_array()==0);
 
-	pModule_ = PyUtil::importModule(path_);
-
-	if(pModule_)
-	{
-		PyObject * pFunc = PyObject_GetAttrString(pModule_, "init");
-		if(pFunc)
-		{
-			if(PyCallable_Check(pFunc))
-			{
-				PyObject * result = PyObject_CallFunction(pFunc, "i", dim_);
-
-				if(result == NULL)
-				{
-					UERROR("Call to \"init(...)\" in \"%s\" failed!", path_.c_str());
-					UERROR("%s", PyUtil::getTraceback().c_str());
-				}
-				Py_DECREF(result);
-
-				pFunc_ = PyObject_GetAttrString(pModule_, "extract");
-				if(pFunc_ && PyCallable_Check(pFunc_))
-				{
-					// we are ready!
-				}
-				else
-				{
-					UERROR("Cannot find method \"extract(...)\" in %s", path_.c_str());
-					UERROR("%s", PyUtil::getTraceback().c_str());
-					if(pFunc_)
-					{
-						Py_DECREF(pFunc_);
-						pFunc_ = 0;
-					}
-				}
-			}
-			else
-			{
-				UERROR("Cannot call method \"init(...)\" in %s", path_.c_str());
-				UERROR("%s", PyUtil::getTraceback().c_str());
-			}
-			Py_DECREF(pFunc);
-		}
-		else
-		{
-			UERROR("Cannot find method \"init(...)\"");
-			UERROR("%s", PyUtil::getTraceback().c_str());
-		}
-		UDEBUG("init time = %fs", timer.ticks());
-	}
+	this->parseParameters(parameters);
 }
 
 PyDescriptor::~PyDescriptor()
@@ -107,6 +38,91 @@ PyDescriptor::~PyDescriptor()
 		Py_DECREF(pModule_);
 	}
 	PyUtil::release();
+}
+
+void PyDescriptor::parseParameters(const ParametersMap & parameters)
+{
+	std::string path;
+	Parameters::parse(parameters, Parameters::kPyDescriptorPath(), path);
+	Parameters::parse(parameters, Parameters::kPyDescriptorDim(), dim_);
+	path = uReplaceChar(path, '~', UDirectory::homeDir());
+	UINFO("path = %s", path.c_str());
+	UINFO("dim = %d", dim_);
+	UTimer timer;
+
+	if(pModule_)
+	{
+		if(!path.empty() && path.compare(path_)!=0)
+		{
+			UDEBUG("we changed script (old=%s), we need to reload (new=%s)",
+					path_.c_str(), path.c_str());
+			if(pFunc_)
+			{
+				Py_DECREF(pFunc_);
+			}
+			pFunc_=0;
+			Py_DECREF(pModule_);
+			pModule_ = 0;
+			path_.clear();
+		}
+	}
+
+	if(pModule_==0)
+	{
+		if(path.empty())
+		{
+			return;
+		}
+		pModule_ = PyUtil::importModule(path);
+
+		if(pModule_)
+		{
+			path_ = path;
+			PyObject * pFunc = PyObject_GetAttrString(pModule_, "init");
+			if(pFunc)
+			{
+				if(PyCallable_Check(pFunc))
+				{
+					PyObject * result = PyObject_CallFunction(pFunc, "i", dim_);
+
+					if(result == NULL)
+					{
+						UERROR("Call to \"init(...)\" in \"%s\" failed!", path_.c_str());
+						UERROR("%s", PyUtil::getTraceback().c_str());
+					}
+					Py_DECREF(result);
+
+					pFunc_ = PyObject_GetAttrString(pModule_, "extract");
+					if(pFunc_ && PyCallable_Check(pFunc_))
+					{
+						// we are ready!
+					}
+					else
+					{
+						UERROR("Cannot find method \"extract(...)\" in %s", path_.c_str());
+						UERROR("%s", PyUtil::getTraceback().c_str());
+						if(pFunc_)
+						{
+							Py_DECREF(pFunc_);
+							pFunc_ = 0;
+						}
+					}
+				}
+				else
+				{
+					UERROR("Cannot call method \"init(...)\" in %s", path_.c_str());
+					UERROR("%s", PyUtil::getTraceback().c_str());
+				}
+				Py_DECREF(pFunc);
+			}
+			else
+			{
+				UERROR("Cannot find method \"init(...)\"");
+				UERROR("%s", PyUtil::getTraceback().c_str());
+			}
+			UDEBUG("init time = %fs", timer.ticks());
+		}
+	}
 }
 
 GlobalDescriptor PyDescriptor::extract(
@@ -131,7 +147,7 @@ GlobalDescriptor PyDescriptor::extract(
 		std::vector<unsigned char> descriptorsQueryV(data.imageRaw().total()*data.imageRaw().channels());
 		memcpy(descriptorsQueryV.data(), data.imageRaw().data, data.imageRaw().total()*data.imageRaw().channels()*sizeof(char));
 		npy_intp dimsFrom[3] = {data.imageRaw().rows, data.imageRaw().cols, data.imageRaw().channels()};
-		PyObject* pImageQuery = PyArray_SimpleNewFromData(3, dimsFrom, NPY_CHAR, (void*)data.imageRaw().data);
+		PyObject* pImageQuery = PyArray_SimpleNewFromData(3, dimsFrom, NPY_BYTE, (void*)data.imageRaw().data);
 		UASSERT(pImageQuery);
 
 		UDEBUG("Preparing data time = %fs", timer.ticks());

@@ -228,6 +228,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 
 #ifndef RTABMAP_PYTHON3
 	_ui->reextract_nn->setItemData(6, 0, Qt::UserRole - 1);
+	_ui->comboBox_globalDescriptorExtractor->setItemData(1, 0, Qt::UserRole - 1);
 #endif
 
 #if !defined(HAVE_OPENCV_XFEATURES2D) || (CV_MAJOR_VERSION == 3 && (CV_MINOR_VERSION<4 || CV_MINOR_VERSION==4 && CV_SUBMINOR_VERSION<1))
@@ -866,6 +867,8 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	// Create hypotheses
 	_ui->general_doubleSpinBox_hardThr->setObjectName(Parameters::kRtabmapLoopThr().c_str());
 	_ui->general_doubleSpinBox_loopRatio->setObjectName(Parameters::kRtabmapLoopRatio().c_str());
+	_ui->comboBox_globalDescriptorExtractor->setObjectName(Parameters::kMemGlobalDescriptorStrategy().c_str());
+	connect(_ui->comboBox_globalDescriptorExtractor, SIGNAL(currentIndexChanged(int)), this, SLOT(updateGlobalDescriptorVisibility()));
 
 	//Bayes
 	_ui->general_doubleSpinBox_vp->setObjectName(Parameters::kBayesVirtualPlacePriorThr().c_str());
@@ -990,6 +993,11 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->checkBox_gms_withRotation->setObjectName(Parameters::kGMSWithRotation().c_str());
 	_ui->checkBox_gms_withScale->setObjectName(Parameters::kGMSWithScale().c_str());
 	_ui->gms_thresholdFactor->setObjectName(Parameters::kGMSThresholdFactor().c_str());
+
+	// PyDescriptor
+	_ui->lineEdit_pydescriptor_path->setObjectName(Parameters::kPyDescriptorPath().c_str());
+	connect(_ui->toolButton_pydescriptor_path, SIGNAL(clicked()), this, SLOT(changePyDescriptorPath()));
+	_ui->pydescriptor_dim->setObjectName(Parameters::kPyDescriptorDim().c_str());
 
 	// verifyHypotheses
 	_ui->groupBox_vh_epipolar2->setObjectName(Parameters::kVhEpEnabled().c_str());
@@ -1393,6 +1401,9 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	this->setupTreeView();
 
 	_obsoletePanels = kPanelAll;
+
+	updateFeatureMatchingVisibility();
+	updateGlobalDescriptorVisibility();
 }
 
 PreferencesDialog::~PreferencesDialog() {
@@ -4685,6 +4696,11 @@ void PreferencesDialog::updateFeatureMatchingVisibility()
 	_ui->groupBox_gms->setVisible(_ui->reextract_nn->currentIndex() == 7);
 }
 
+void PreferencesDialog::updateGlobalDescriptorVisibility()
+{
+	_ui->groupBox_pydescriptor->setVisible(_ui->comboBox_globalDescriptorExtractor->currentIndex() == 1);
+}
+
 void PreferencesDialog::useOdomFeatures()
 {
 	if(this->isVisible() && _ui->checkBox_useOdomFeatures->isChecked())
@@ -4852,6 +4868,23 @@ void PreferencesDialog::changePyMatcherModel()
 	if(!path.isEmpty())
 	{
 		_ui->lineEdit_pymatcher_model->setText(path);
+	}
+}
+
+void PreferencesDialog::changePyDescriptorPath()
+{
+	QString path;
+	if(_ui->lineEdit_pydescriptor_path->text().isEmpty())
+	{
+		path = QFileDialog::getOpenFileName(this, tr("Select file"), this->getWorkingDirectory(), tr("Python wrapper (*.py)"));
+	}
+	else
+	{
+		path = QFileDialog::getOpenFileName(this, tr("Select file"), _ui->lineEdit_pydescriptor_path->text(), tr("Python wrapper (*.py)"));
+	}
+	if(!path.isEmpty())
+	{
+		_ui->lineEdit_pydescriptor_path->setText(path);
 	}
 }
 

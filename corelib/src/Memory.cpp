@@ -698,10 +698,18 @@ void Memory::parseParameters(const ParametersMap & parameters)
 
 	int globalDescriptorStrategy = -1;
 	Parameters::parse(params, Parameters::kMemGlobalDescriptorStrategy(), globalDescriptorStrategy);
-	if(globalDescriptorStrategy != -1)
+	if(globalDescriptorStrategy != -1 &&
+			(_globalDescriptorExtractor==0 || (int)_globalDescriptorExtractor->getType() != globalDescriptorStrategy))
 	{
-		delete _globalDescriptorExtractor;
+		if(_globalDescriptorExtractor)
+		{
+			delete _globalDescriptorExtractor;
+		}
 		_globalDescriptorExtractor = GlobalDescriptorExtractor::create(parameters_);
+	}
+	else if(_globalDescriptorExtractor)
+	{
+		_globalDescriptorExtractor->parseParameters(params);
 	}
 
 	// do this after all params are parsed
@@ -5185,7 +5193,11 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 	std::vector<GlobalDescriptor> globalDescriptors = data.globalDescriptors();
 	if(_globalDescriptorExtractor)
 	{
-		globalDescriptors.push_back(_globalDescriptorExtractor->extract(inputData));
+		GlobalDescriptor gdescriptor = _globalDescriptorExtractor->extract(inputData);
+		if(!gdescriptor.data().empty())
+		{
+			globalDescriptors.push_back(gdescriptor);
+		}
 	}
 	s->sensorData().setGlobalDescriptors(globalDescriptors);
 

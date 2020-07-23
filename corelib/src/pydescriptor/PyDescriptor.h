@@ -18,13 +18,13 @@ namespace rtabmap
 class PyDescriptor : public GlobalDescriptorExtractor
 {
 public:
-  PyDescriptor(const std::string & pythonDescriptorPath, int dim = 4096);
-  PyDescriptor(const ParametersMap & parameters);
+  PyDescriptor(const ParametersMap & parameters = ParametersMap());
   virtual ~PyDescriptor();
 
   const std::string & path() const {return path_;}
   float dim() const {return dim_;}
 
+  virtual void parseParameters(const ParametersMap & parameters);
   virtual GlobalDescriptor extract(const SensorData & data) const;
   virtual GlobalDescriptorExtractor::Type getType() const {return kPyDescriptor;}
 
