@@ -176,24 +176,24 @@ ENDIF()
 
 IF(TORCH_FOUND)
 	SET(LIBRARIES
-		${LIBRARIES}
 		${TORCH_LIBRARIES}
+		${LIBRARIES}
 	)
 	SET(SRC_FILES
 		${SRC_FILES}
 		superpoint_torch/SuperPoint.cc
 	)
 	 SET(INCLUDE_DIRS
-	    ${TORCH_INCLUDE_DIRS}
-	    ${CMAKE_CURRENT_SOURCE_DIR}/superpoint_torch
+		${TORCH_INCLUDE_DIRS}
+		${CMAKE_CURRENT_SOURCE_DIR}/superpoint_torch
 		${INCLUDE_DIRS}
 	)
 ENDIF(TORCH_FOUND)
 
 IF(Python3_FOUND)
 	SET(LIBRARIES
-		${LIBRARIES}
 		Python3::Python
+		${LIBRARIES}
 	)
 	SET(SRC_FILES
 		${SRC_FILES}
@@ -201,10 +201,9 @@ IF(Python3_FOUND)
 		pydescriptor/PyDescriptor.cpp
 		PyUtil.cpp
 	)
-	 SET(INCLUDE_DIRS
-	    ${TORCH_INCLUDE_DIRS}
-	    ${CMAKE_CURRENT_SOURCE_DIR}/pymatcher
-	    ${CMAKE_CURRENT_SOURCE_DIR}/pydescriptor
+	SET(INCLUDE_DIRS
+		${CMAKE_CURRENT_SOURCE_DIR}/pymatcher
+		${CMAKE_CURRENT_SOURCE_DIR}/pydescriptor
 		${INCLUDE_DIRS}
 	)
 ENDIF(Python3_FOUND)

@@ -19,6 +19,7 @@ UMutex PyUtil::mutex_;
 void PyUtil::acquire()
 {
 	UScopeMutex lock(mutex_);
+	UDEBUG("references_=%d", (int)references_);
 	if(references_ == 0)
 	{
 		Py_Initialize();
@@ -28,6 +29,7 @@ void PyUtil::acquire()
 void PyUtil::release()
 {
 	UScopeMutex lock(mutex_);
+	UDEBUG("references_=%d", (int)references_);
 	if(references_>0)
 	{
 		--references_;
