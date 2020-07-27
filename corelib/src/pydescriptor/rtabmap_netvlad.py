@@ -68,4 +68,5 @@ if __name__ == '__main__':
     #test
     img = np.zeros([100,100,3],dtype=np.uint8)
     img.fill(255)
+    init(128)
     print(extract(img))
