@@ -5222,16 +5222,22 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 	}
 	else if(data.gps().stamp() > 0.0)
 	{
-		if(_gpsOrigin.stamp() <= 0.0)
+		if(uIsFinite(data.gps().altitude()) &&
+		   uIsFinite(data.gps().latitude()) &&
+		   uIsFinite(data.gps().longitude()) &&
+		   uIsFinite(data.gps().bearing()) &&
+		   uIsFinite(data.gps().error()) &&
+		   data.gps().error() > 0.0)
 		{
-			_gpsOrigin =  data.gps();
-			UINFO("Added GPS origin: long=%f lat=%f alt=%f bearing=%f error=%f", data.gps().longitude(), data.gps().latitude(), data.gps().altitude(), data.gps().bearing(), data.gps().error());
-		}
-		cv::Point3f pt = data.gps().toGeodeticCoords().toENU_WGS84(_gpsOrigin.toGeodeticCoords());
-		Transform gpsPose(pt.x, pt.y, pose.z(), 0, 0, -(data.gps().bearing()-90.0)*180.0/M_PI);
-		cv::Mat gpsInfMatrix = cv::Mat::eye(6,6,CV_64FC1)/9999.0; // variance not used >= 9999
-		if(data.gps().error() > 0.0)
-		{
+			if(_gpsOrigin.stamp() <= 0.0)
+			{
+				_gpsOrigin =  data.gps();
+				UINFO("Added GPS origin: long=%f lat=%f alt=%f bearing=%f error=%f", data.gps().longitude(), data.gps().latitude(), data.gps().altitude(), data.gps().bearing(), data.gps().error());
+			}
+			cv::Point3f pt = data.gps().toGeodeticCoords().toENU_WGS84(_gpsOrigin.toGeodeticCoords());
+			Transform gpsPose(pt.x, pt.y, pose.z(), 0, 0, -(data.gps().bearing()-90.0)*180.0/M_PI);
+			cv::Mat gpsInfMatrix = cv::Mat::eye(6,6,CV_64FC1)/9999.0; // variance not used >= 9999
+
 			UDEBUG("Added GPS prior: x=%f y=%f z=%f yaw=%f", gpsPose.x(), gpsPose.y(), gpsPose.z(), gpsPose.theta());
 			// only set x, y as we don't know variance for other degrees of freedom.
 			gpsInfMatrix.at<double>(0,0) = gpsInfMatrix.at<double>(1,1) = 1.0/data.gps().error();
@@ -5240,7 +5246,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 		}
 		else
 		{
-			UERROR("Invalid GPS error value (%f m), must be > 0 m.", data.gps().error());
+			UERROR("Invalid GPS value: long=%f lat=%f alt=%f bearing=%f error=%f", data.gps().longitude(), data.gps().latitude(), data.gps().altitude(), data.gps().bearing(), data.gps().error());
 		}
 	}
 
