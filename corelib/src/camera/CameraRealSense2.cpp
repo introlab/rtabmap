@@ -633,12 +633,14 @@ bool CameraRealSense2::init(const std::string & calibrationFolder, const std::st
 			for (auto& profile : profiles)
 			{
 				auto video_profile = profile.as<rs2::video_stream_profile>();
-				UINFO("%s %d %d %d %d", rs2_format_to_string(
+				UINFO("%s %d %d %d %d %s type=%d", rs2_format_to_string(
 						video_profile.format()),
 						video_profile.width(),
 						video_profile.height(),
 						video_profile.fps(),
-						video_profile.stream_index());
+						video_profile.stream_index(),
+						video_profile.stream_name().c_str(),
+						video_profile.stream_type());
 			}
 		}
 		int pi = 0;
@@ -655,7 +657,7 @@ bool CameraRealSense2::init(const std::string & calibrationFolder, const std::st
 					auto intrinsic = video_profile.get_intrinsics();
 
 					// rgb or ir left
-					if((!ir_ && video_profile.format() == RS2_FORMAT_RGB8) ||
+					if((!ir_ && video_profile.format() == RS2_FORMAT_RGB8 && video_profile.stream_type() == RS2_STREAM_COLOR) ||
 					  (ir_ && video_profile.format() == RS2_FORMAT_Y8 && video_profile.stream_index() == 1))
 					{
 						if(!profilesPerSensor[i].empty())
@@ -696,15 +698,35 @@ bool CameraRealSense2::init(const std::string & calibrationFolder, const std::st
 				else if(video_profile.format() == RS2_FORMAT_MOTION_XYZ32F || video_profile.format() == RS2_FORMAT_6DOF)
 				{
 					//D435i:
-					//MOTION_XYZ32F 0 0 200
-					//MOTION_XYZ32F 0 0 400
-					//MOTION_XYZ32F 0 0 63
-					//MOTION_XYZ32F 0 0 250
+					//MOTION_XYZ32F 0 0 200 (gyro)
+					//MOTION_XYZ32F 0 0 400 (gyro)
+					//MOTION_XYZ32F 0 0 63 6 (accel)
+					//MOTION_XYZ32F 0 0 250 6 (accel)
 					// or dualMode_ T265:
-					//MOTION_XYZ32F 0 0 200
-					//MOTION_XYZ32F 0 0 62
-					//6DOF 0 0 200
-					profilesPerSensor[i].push_back(profile);
+					//MOTION_XYZ32F 0 0 200 5 (gyro)
+					//MOTION_XYZ32F 0 0 62 6 (accel)
+					//6DOF 0 0 200 4 (pose)
+					bool modified = false;
+					for (size_t j= 0; j < profilesPerSensor[i].size(); ++j)
+					{
+						if (profilesPerSensor[i][j].stream_type() == profile.stream_type())
+						{
+							if (profile.stream_type() == RS2_STREAM_ACCEL)
+							{
+								if(profile.fps() > profilesPerSensor[i][j].fps())
+									profilesPerSensor[i][j] = profile;
+								modified = true;
+							}
+							else if (profile.stream_type() == RS2_STREAM_GYRO)
+							{
+								if(profile.fps() < profilesPerSensor[i][j].fps())
+									profilesPerSensor[i][j] = profile;
+								modified = true;
+							}
+						}
+					}
+					if(!modified)
+						profilesPerSensor[i].push_back(profile);
 					added = true;
 				}
 			}
@@ -755,12 +777,14 @@ bool CameraRealSense2::init(const std::string & calibrationFolder, const std::st
 			for (auto& profile : profiles)
 			{
 				auto video_profile = profile.as<rs2::video_stream_profile>();
-				UERROR("%s %d %d %d %d", rs2_format_to_string(
+				UERROR("%s %d %d %d %d %s type=%d", rs2_format_to_string(
 						video_profile.format()),
 						video_profile.width(),
 						video_profile.height(),
 						video_profile.fps(),
-						video_profile.stream_index());
+						video_profile.stream_index(),
+						video_profile.stream_name().c_str(),
+						video_profile.stream_type());
 			}
 			return false;
 		}
@@ -936,6 +960,18 @@ bool CameraRealSense2::init(const std::string & calibrationFolder, const std::st
 		 if(profilesPerSensor[i].size())
 		 {
 			 UINFO("Starting sensor %d with %d profiles", (int)i, (int)profilesPerSensor[i].size());
+			 for (size_t j = 0; j < profilesPerSensor[i].size(); ++j)
+			 {
+				 auto video_profile = profilesPerSensor[i][j].as<rs2::video_stream_profile>();
+				 UINFO("Opening: %s %d %d %d %d %s type=%d", rs2_format_to_string(
+					 video_profile.format()),
+					 video_profile.width(),
+					 video_profile.height(),
+					 video_profile.fps(),
+					 video_profile.stream_index(),
+					 video_profile.stream_name().c_str(),
+					 video_profile.stream_type());
+			 }
 			 sensors[i].open(profilesPerSensor[i]);
 			 if(sensors[i].is<rs2::depth_sensor>())
 			 {
@@ -1212,13 +1248,13 @@ SensorData CameraRealSense2::captureImage(CameraInfo * info)
 			IMU imu;
 			unsigned int confidence = 0;
 			double imuStamp = stamp*1000.0;
-			UASSERT(info!=0);
-			getPoseAndIMU(imuStamp, info->odomPose, confidence, imu);
+			Transform pose;
+			getPoseAndIMU(imuStamp, pose, confidence, imu);
 
-			if(odometryProvided_ && !info->odomPose.isNull())
+			if(info && odometryProvided_ && !pose.isNull())
 			{
 				// Transform in base frame (local transform should contain base to pose transform)
-				info->odomPose = this->getLocalTransform() * info->odomPose * this->getLocalTransform().inverse();
+				info->odomPose = this->getLocalTransform() * pose * this->getLocalTransform().inverse();
 
 				info->odomCovariance = cv::Mat::eye(6,6,CV_64FC1) * 0.0001;
 				info->odomCovariance.rowRange(0,3) *= pow(10, 3-(int)confidence);
