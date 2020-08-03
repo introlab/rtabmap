@@ -133,6 +133,18 @@ bool databaseRecovery(
 			*errorMsg = uFormat("Failed renaming database file from \"%s\" to \"%s\". Is it opened by another app?", UFile::getName(databasePath).c_str(), UFile::getName(backupPath).c_str());
 		return false;
 	}
+
+	bool incrementalMemory = true;
+	Parameters::parse(parameters, Parameters::kMemIncrementalMemory(), incrementalMemory);
+	if(!incrementalMemory)
+	{
+		if(progressState)
+		{
+			progressState->callback("Database is in localization mode, setting it to mapping mode to recover...");
+		}
+		uInsert(parameters, ParametersPair(Parameters::kMemIncrementalMemory(), "true"));
+	}
+
 	Rtabmap rtabmap;
 	rtabmap.init(parameters, databasePath);
 
