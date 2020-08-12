@@ -36,13 +36,13 @@ namespace vertigo {
           double m1 = this->noiseModel_->distance(error);
           gtsam::noiseModel::Gaussian::shared_ptr g1 = this->noiseModel_;
           gtsam::Matrix info1(g1->R().transpose()*g1->R());
-          double nu1 = 1.0/sqrt(gtsam::inverse(info1).determinant());
+          double nu1 = 1.0/sqrt(gtsam::cholesky_inverse(info1).determinant());
           double l1 = nu1 * exp(-0.5*m1);
 
           double m2 = nullHypothesisModel->distance(error);
           gtsam::noiseModel::Gaussian::shared_ptr g2 = nullHypothesisModel;
           gtsam::Matrix info2(g2->R().transpose()*g2->R());
-          double nu2 = 1.0/sqrt(gtsam::inverse(info2).determinant());
+          double nu2 = 1.0/sqrt(gtsam::cholesky_inverse(info2).determinant());
           double l2 = nu2 * exp(-0.5*m2);
 
           // if the null hypothesis is more likely, than proceed by applying the weight ...
