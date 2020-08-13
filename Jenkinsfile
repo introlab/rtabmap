@@ -24,7 +24,7 @@ pipeline {
 			steps {
 				echo 'Deploying....'
 				echo 'Run on datasets (can this be done locally with docker?)'
-        echo '... we think so! We're trying to figure this out. Stay tuned.'
+				echo '... we think so! We are trying to figure this out. Stay tuned.'
 			}
 		}
 	}
