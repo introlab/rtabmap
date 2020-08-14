@@ -9,8 +9,11 @@ pipeline {
 		stage('Build') {
 			steps {
 				sh '''#!/bin/bash -l
-				echo 'This is where you write your build code...'
-        echo '... e.g., mkdir build & cd build & cmake .. & etc...'
+        mkdir build
+        cd build
+        cmake ..
+        make -j
+        sudo make install
 				'''
 			}
 		}
@@ -34,4 +37,4 @@ pipeline {
 		}
 	}
 }
-		
+
