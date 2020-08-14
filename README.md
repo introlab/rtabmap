@@ -1,4 +1,7 @@
-rtabmap ![Analytics](https://ga-beacon-279122.nn.r.appspot.com/UA-56986679-3/github-main?pixel) 
+# rtabmap 
+
+[![Build Status](http://mrg-beast.csail.mit.edu:8080/buildStatus/icon?job=rtabmap%2Fmelodic-devel)](http://://mrg-beast.csail.mit.edu:8080/job/rtabmap/job/melodic-devel)
+
 =======
 
 [![RTAB-Map Logo](https://raw.githubusercontent.com/introlab/rtabmap/master/guilib/src/images/RTAB-Map100.png)](http://introlab.github.io/rtabmap)
