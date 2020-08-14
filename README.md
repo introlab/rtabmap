@@ -1,7 +1,7 @@
 rtabmap ![Analytics](https://ga-beacon.appspot.com/UA-56986679-3/github-main?pixel) 
 =======
 
-[![RTAB-Map Logo](https://raw.githubusercontent.com/introlab/rtabmap/master/guilib/src/images/RTAB-Map100.png)](http://introlab.github.io/rtabmap)
+[![Build Status](http://mrg-beast.csail.mit.edu:8080/buildStatus/icon?job=rtabmap%2Ffeat/jenkins_ci)](http://mrg-beast.csail.mit.edu:8080/job/rtabmap_ros/job/feat/jenkins_ci/)
 
 [![Release][release-image]][releases]
 [![License][license-image]][license]
