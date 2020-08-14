@@ -1,6 +1,6 @@
 # rtabmap 
 
-[![Build Status](http://mrg-beast.csail.mit.edu:8080/buildStatus/icon?job=rtabmap%2Fmelodic-devel)](http://://mrg-beast.csail.mit.edu:8080/job/rtabmap/job/melodic-devel)
+[![Build Status](http://mrg-beast.csail.mit.edu:8080/buildStatus/icon?job=rtabmap%2Fmelodic-devel)](http://mrg-beast.csail.mit.edu:8080/job/rtabmap/job/melodic-devel/)
 
 =======
 
