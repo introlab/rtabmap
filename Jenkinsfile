@@ -8,12 +8,13 @@ pipeline {
 	stages {
 		stage('Build') {
 			steps {
-				sh '''#!/bin/bash -l
-        mkdir build
-        cd build
-        cmake ..
-        make -j
-        sudo make install
+				sh '''
+          #!/bin/bash -l
+          mkdir build
+          cd build
+          cmake ..
+          make -j
+          sudo make install
 				'''
 			}
 		}
@@ -21,13 +22,6 @@ pipeline {
 			steps {
 				echo 'Testing...'
 				echo 'Run unit tests here'
-			}
-		}
-		stage('Deploy') {
-			steps {
-				echo 'Deploying....'
-				echo 'Run on datasets (can this be done locally with docker?)'
-				echo '... we think so! We are trying to figure this out. Stay tuned.'
 			}
 		}
 	}
