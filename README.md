@@ -1,7 +1,7 @@
 rtabmap ![Analytics](https://ga-beacon.appspot.com/UA-56986679-3/github-main?pixel) 
 =======
 
-[![Build Status](http://mrg-beast.csail.mit.edu:8080/buildStatus/icon?job=rtabmap%2Ffeat%252Fjenkins_ci)](http://mrg-beast.csail.mit.edu:8080/job/rtabmap_ros/job/feat%252Fjenkins_ci/)
+[![Build Status](http://mrg-beast.csail.mit.edu:8080/buildStatus/icon?job=rtabmap%2Ffeat%252Fjenkins_ci)](http://mrg-beast.csail.mit.edu:8080/job/rtabmap/job/feat%252Fjenkins_ci/)
 
 [![Release][release-image]][releases]
 [![License][license-image]][license]
