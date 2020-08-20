@@ -1,4 +1,4 @@
-rtabmap ![Analytics](https://ga-beacon.appspot.com/UA-56986679-3/github-main?pixel) 
+rtabmap
 =======
 
 [![Build Status](http://mrg-beast.csail.mit.edu:8080/buildStatus/icon?job=rtabmap%2Ffeat%252Fjenkins_ci)](http://mrg-beast.csail.mit.edu:8080/job/rtabmap/job/feat%252Fjenkins_ci/)
