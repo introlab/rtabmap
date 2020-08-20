@@ -33,17 +33,19 @@ RUN cd ~ && \
     git clone --branch 4.0.0 git@github.com:borglab/gtsam.git && \
     cd ~/gtsam/ && \
     mkdir build && \
-    cd build && \
-    cmake -DGTSAM_USE_SYSTEM_EIGEN=ON -DGTSAM_BUILD_WITH_MARCH_NATIVE=OFF -DGTSAM_BUILD_UNSTABLE=ON .. && \
+  cd build
+RUN cmake -DGTSAM_USE_SYSTEM_EIGEN=ON -DGTSAM_BUILD_WITH_MARCH_NATIVE=OFF -DGTSAM_BUILD_UNSTABLE=ON .. && \
     make check -j$(nproc) && \
     make install -j$(nproc)
 
+# RTABMAP
 RUN cd ~ && \
     git clone git@github.com:MarineRoboticsGroup/rtabmap.git rtabmap && \
     cd ~/rtabmap && \
     git checkout melodic-devel && \
-    cd ~/rtabmap/build && \
-    cmake .. && \
+    cd ~/rtabmap/build
+
+RUN cmake .. && \
     make -j$(nproc) && \
     make install
 
