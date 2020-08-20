@@ -24,7 +24,7 @@ RUN apt-get remove -y ros-melodic-libg2o && \
     cd g2o && \
     mkdir build && cd build && \
     cmake -DBUILD_WITH_MARCH_NATIVE=OFF -DG2O_BUILD_APPS=OFF -DG2O_BUILD_EXAMPLES=OFF -DG2O_USE_OPENGL=OFF .. && \
-    make -j$(nproc) && \
+    make -j4 && \
     make install
 
 # GTSAM
@@ -34,8 +34,8 @@ RUN cd ~ && \
     mkdir build && \
     cd build && \
     cmake -DGTSAM_USE_SYSTEM_EIGEN=ON -DGTSAM_BUILD_WITH_MARCH_NATIVE=OFF -DGTSAM_BUILD_UNSTABLE=ON .. && \
-    make check -j$(nproc) && \
-    make install -j$(nproc)
+    make check -j4 && \
+    make install -j4
 
 # RUN cd ~ && \
 #     git clone https://github.com/MarineRoboticsGroup/rtabmap.git rtabmap && \

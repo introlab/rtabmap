@@ -13,7 +13,7 @@ pipeline {
           mkdir build
           cd build
           cmake ..
-          make -j
+          make -j4
 				'''
           // sudo make install
 			}
