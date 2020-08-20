@@ -30,7 +30,7 @@ RUN apt-get remove -y ros-melodic-libg2o && \
 
 # GTSAM
 RUN cd ~ && \
-    git clone --branch release/4.0.0 git@github.com:borglab/gtsam.git && \
+    git clone --branch 4.0.0 git@github.com:borglab/gtsam.git && \
     cd ~/gtsam/ && \
     mkdir build && \
     cd build && \
