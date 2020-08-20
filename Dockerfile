@@ -15,9 +15,8 @@ USER root
 
 # Install build dependencies
 RUN apt-get update && \
-    apt-get install -y ros-melodic-rtabmap-ros && \
-    apt-get remove -y ros-melodic-rtabmap && \
-    rm -rf /var/lib/apt/lists/
+    apt-get install -y ros-melodic-rtabmap ros-melodic-rtabmap-ros && \
+    apt-get remove -y ros-melodic-rtabmap ros-melodic-rtabmap-ros
 
 # g2o from source
 RUN apt-get remove -y ros-melodic-libg2o && \
@@ -38,14 +37,14 @@ RUN cd ~ && \
     make check -j$(nproc) && \
     make install -j$(nproc)
 
-RUN cd ~ && \
-    git clone https://github.com/MarineRoboticsGroup/rtabmap.git rtabmap && \
-    cd ~/rtabmap && \
-    git checkout melodic-devel && \
-    cd ~/rtabmap/build && \
-    cmake .. && \
-    make -j$(nproc) && \
-    make install
+# RUN cd ~ && \
+#     git clone https://github.com/MarineRoboticsGroup/rtabmap.git rtabmap && \
+#     cd ~/rtabmap && \
+#     git checkout master && \
+#     cd ~/rtabmap/build && \
+#     cmake .. && \
+#     make -j$(nproc) && \
+#     make install
 
 
 # RUN git clone https://bitbucket.org/gtborg/gtsam.git
@@ -59,7 +58,7 @@ RUN cd ~ && \
 #     cd && \
 #     rm -r gtsam
 
-# libpointmatcher 
+# libpointmatcher
 # RUN git clone https://github.com/ethz-asl/libnabo.git
 # #commit Apr 25 2018
 # RUN cd libnabo && \
@@ -147,4 +146,3 @@ RUN cd ~ && \
 #     cd ../.. && \
 #     rm -rf rtabmap && \
 #     ldconfig
-
