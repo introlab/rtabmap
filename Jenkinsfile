@@ -14,8 +14,8 @@ pipeline {
           cd build
           cmake ..
           make -j
-          sudo make install
 				'''
+          // sudo make install
 			}
 		}
 		stage('Test') {
