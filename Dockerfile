@@ -20,7 +20,7 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/
 
 # g2o from source
-RUN apt remove ros-melodic-libg2o && \
+RUN apt-get remove -y ros-melodic-libg2o && \
     git clone https://github.com/RainerKuemmerle/g2o.git && \
     cd g2o && \
     mkdir build && cd build && \
