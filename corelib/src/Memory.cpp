@@ -3002,7 +3002,7 @@ Transform Memory::computeTransform(
 			{
 				transform.setNull();
 				std::string msg = uFormat("Too large rotation detected! (pitch=%f, yaw=%f) max is %f",
-						roll, pitch, yaw, CV_PI/2);
+						pitch, yaw, CV_PI/2);
 				UINFO(msg.c_str());
 				if(info)
 				{
