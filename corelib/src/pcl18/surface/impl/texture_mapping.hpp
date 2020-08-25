@@ -41,6 +41,7 @@
 #include <pcl/common/distances.h>
 #include <pcl18/surface/texture_mapping.h>
 #include <pcl/search/octree.h>
+#include <pcl/common/common.h> // for getAngle3D
 
 ///////////////////////////////////////////////////////////////////////////////////////////////
 template<typename PointInT> std::vector<Eigen::Vector2f, Eigen::aligned_allocator<Eigen::Vector2f> >
