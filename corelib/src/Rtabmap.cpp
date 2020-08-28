@@ -4641,9 +4641,15 @@ int Rtabmap::detectMoreLoopClosures(
 						UASSERT(signatures.find(from) != signatures.end());
 						UASSERT(signatures.find(to) != signatures.end());
 
+						Transform guess;
+						if(_proximityOdomGuess && uContains(poses, from) && uContains(poses, to))
+						{
+							guess = poses.at(from).inverse() * poses.at(to);
+						}
+
 						RegistrationInfo info;
 						// use signatures instead of IDs because some signatures may not be in WM
-						Transform t = _memory->computeTransform(signatures.at(from), signatures.at(to), Transform(), &info);
+						Transform t = _memory->computeTransform(signatures.at(from), signatures.at(to), guess, &info);
 
 						if(!t.isNull())
 						{

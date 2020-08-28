@@ -34,6 +34,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/OccupancyGrid.h>
 #include <rtabmap/core/Graph.h>
 #include <rtabmap/core/Memory.h>
+#include <rtabmap/core/CameraThread.h>
 #include <rtabmap/utilite/UFile.h>
 #include <rtabmap/utilite/UDirectory.h>
 #include <rtabmap/utilite/UTimer.h>
@@ -67,6 +68,14 @@ void showUsage()
 			"     -o2         Assemble OctoMap 2D projection and save it to \"[output]_octomap.pgm\".\n"
 			"     -o3         Assemble OctoMap 3D cloud and save it to \"[output]_octomap.pcd\".\n"
 			"     -p          Save odometry and localization poses (*.g2o).\n"
+			"     -scan_from_depth    Generate scans from depth images (overwrite previous\n"
+			"                         scans if they exist).\n"
+			"     -scan_downsample #  Downsample input scans.\n"
+			"     -scan_range_min #.#   Filter input scans with minimum range (m).\n"
+			"     -scan_range_max #.#   Filter input scans with maximum range (m).\n"
+			"     -scan_voxel_size #.#  Voxel filter input scans (m).\n"
+			"     -scan_normal_k #         Compute input scan normals (k-neighbors approach).\n"
+			"     -scan_normal_radius #.#  Compute input scan normals (radius(m)-neighbors approach).\n\n"
 			"%s\n"
 			"\n", Parameters::showUsage());
 	exit(1);
@@ -204,6 +213,13 @@ int main(int argc, char * argv[])
 	bool useDatabaseRate = false;
 	int startId = 0;
 	int stopId = 0;
+	bool scanFromDepth = false;
+	int scanDecimation = 1;
+	float scanRangeMin = 0.0f;
+	float scanRangeMax = 0.0f;
+	float scanVoxelSize = 0;
+	int scanNormalK = 0;
+	float scanNormalRadius = 0.0f;
 	ParametersMap configParameters;
 	for(int i=1; i<argc-2; ++i)
 	{
@@ -223,10 +239,12 @@ int main(int argc, char * argv[])
 			else if(i < argc - 2)
 			{
 				printf("Config file \"%s\" is not valid or doesn't exist!\n", argv[i]);
+				showUsage();
 			}
 			else
 			{
 				printf("Config file is not set!\n");
+				showUsage();
 			}
 		}
 		else if (strcmp(argv[i], "-start") == 0 || strcmp(argv[i], "--start") == 0)
@@ -237,6 +255,11 @@ int main(int argc, char * argv[])
 				startId = atoi(argv[i]);
 				printf("Start at node ID = %d.\n", startId);
 			}
+			else
+			{
+				printf("-start option require a value\n");
+				showUsage();
+			}
 		}
 		else if (strcmp(argv[i], "-stop") == 0 || strcmp(argv[i], "--stop") == 0)
 		{
@@ -245,6 +268,11 @@ int main(int argc, char * argv[])
 			{
 				stopId = atoi(argv[i]);
 				printf("Stop at node ID = %d.\n", stopId);
+			}
+			else
+			{
+				printf("-stop option require a value\n");
+				showUsage();
 			}
 		}
 		else if(strcmp(argv[i], "-p") == 0 || strcmp(argv[i], "--p") == 0)
@@ -279,6 +307,95 @@ int main(int argc, char * argv[])
 #else
 			printf("RTAB-Map is not built with OctoMap support, cannot set -o3 option!\n");
 #endif
+		}
+		else if (strcmp(argv[i], "-scan_from_depth") == 0 || strcmp(argv[i], "--scan_from_depth") == 0)
+		{
+			scanFromDepth = true;
+		}
+		else if (strcmp(argv[i], "-scan_downsample") == 0 || strcmp(argv[i], "--scan_downsample") == 0 ||
+				strcmp(argv[i], "-scan_decimation") == 0 || strcmp(argv[i], "--scan_decimation") == 0)
+		{
+			++i;
+			if(i < argc - 2)
+			{
+				scanDecimation = atoi(argv[i]);
+				printf("Scan from depth decimation = %d.\n", scanDecimation);
+			}
+			else
+			{
+				printf("-scan_downsample option requires 1 value\n");
+				showUsage();
+			}
+		}
+		else if (strcmp(argv[i], "-scan_range_min") == 0 || strcmp(argv[i], "--scan_range_min") == 0)
+		{
+			++i;
+			if(i < argc - 2)
+			{
+				scanRangeMin = atof(argv[i]);
+				printf("Scan range min = %f m.\n", scanRangeMin);
+			}
+			else
+			{
+				printf("-scan_range_min option requires 1 value\n");
+				showUsage();
+			}
+		}
+		else if (strcmp(argv[i], "-scan_range_max") == 0 || strcmp(argv[i], "--scan_range_max") == 0)
+		{
+			++i;
+			if(i < argc - 2)
+			{
+				scanRangeMax = atof(argv[i]);
+				printf("Scan range max = %f m.\n", scanRangeMax);
+			}
+			else
+			{
+				printf("-scan_range_max option requires 1 value\n");
+				showUsage();
+			}
+		}
+		else if (strcmp(argv[i], "-scan_voxel_size") == 0 || strcmp(argv[i], "--scan_voxel_size") == 0)
+		{
+			++i;
+			if(i < argc - 2)
+			{
+				scanVoxelSize = atof(argv[i]);
+				printf("Scan voxel size = %f m.\n", scanVoxelSize);
+			}
+			else
+			{
+				printf("-scan_voxel_size option requires 1 value\n");
+				showUsage();
+			}
+		}
+		else if (strcmp(argv[i], "-scan_normal_k") == 0 || strcmp(argv[i], "--scan_normal_k") == 0)
+		{
+			++i;
+			if(i < argc - 2)
+			{
+				scanNormalK = atoi(argv[i]);
+				printf("Scan normal k = %d.\n", scanNormalK);
+			}
+			else
+			{
+				printf("-scan_normal_k option requires 1 value\n");
+				showUsage();
+			}
+		}
+		else if (strcmp(argv[i], "-scan_normal_radius") == 0 || strcmp(argv[i], "--scan_normal_radius") == 0)
+		{
+			++i;
+			if(i < argc - 2)
+			{
+				scanNormalRadius = atof(argv[i]);
+				printf("Scan normal radius = %f m.\n", scanNormalRadius);
+			}
+			else
+			{
+				printf("-scan_normal_radius option requires 1 value\n");
+				showUsage();
+			}
 		}
 	}
 
@@ -418,8 +535,8 @@ int main(int argc, char * argv[])
 	bool rgbdEnabled = Parameters::defaultRGBDEnabled();
 	Parameters::parse(parameters, Parameters::kRGBDEnabled(), rgbdEnabled);
 	bool odometryIgnored = !rgbdEnabled;
-	DBReader dbReader(inputDatabasePath, useDatabaseRate?-1:0, odometryIgnored, false, false, startId, -1, stopId);
-	dbReader.init();
+	DBReader * dbReader = new DBReader(inputDatabasePath, useDatabaseRate?-1:0, odometryIgnored, false, false, startId, -1, stopId);
+	dbReader->init();
 
 	OccupancyGrid grid(parameters);
 	grid.setCloudAssembling(assemble3dMap);
@@ -436,7 +553,14 @@ int main(int argc, char * argv[])
 	std::map<std::string, float> globalMapStats;
 	int processed = 0;
 	CameraInfo info;
-	SensorData data = dbReader.takeImage(&info);
+	SensorData data = dbReader->takeImage(&info);
+	CameraThread camThread(dbReader, parameters);
+	camThread.setScanParameters(scanFromDepth, scanDecimation, scanRangeMin, scanRangeMax, scanVoxelSize, scanNormalK, scanNormalRadius);
+	if(scanFromDepth)
+	{
+		data.setLaserScan(LaserScan());
+	}
+	camThread.postUpdate(&data, &info);
 	Transform lastLocalizationOdomPose = info.odomPose;
 	bool inMotion = true;
 	while(data.isValid() && g_loopForever)
@@ -618,7 +742,12 @@ int main(int argc, char * argv[])
 		}
 
 		Transform odomPose = info.odomPose;
-		data = dbReader.takeImage(&info);
+		data = dbReader->takeImage(&info);
+		if(scanFromDepth)
+		{
+			data.setLaserScan(LaserScan());
+		}
+		camThread.postUpdate(&data, &info);
 
 		inMotion = true;
 		if(!incrementalMemory &&
