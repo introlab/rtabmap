@@ -66,6 +66,7 @@ void showUsage()
 			"    --decimation    #     Depth image decimation before creating the clouds (default 4).\n"
 			"    --voxel         #     Voxel size of the created clouds (default 0.01 m).\n"
 			"    --color_radius  #     Radius used to colorize polygons (default 0.05 m, set 0 for nearest color).\n"
+			"    --save_in_db          Save resulting assembled point cloud or mesh in the database.\n"
 			"\n%s", Parameters::showUsage());
 	;
 	exit(1);
@@ -93,10 +94,11 @@ int main(int argc, char * argv[])
 	float maxRange = 4.0f;
 	float voxelSize = 0.01f;
 	int textureSize = 4096;
-	int textureCount = 8;
+	int textureCount = 1;
 	int textureRange = 0;
 	bool multiband = false;
 	float colorRadius = 0.05;
+	bool saveInDb = false;
 	for(int i=1; i<argc-1; ++i)
 	{
 		if(std::strcmp(argv[i], "--help") == 0)
@@ -244,7 +246,26 @@ int main(int argc, char * argv[])
 				showUsage();
 			}
 		}
+		else if(std::strcmp(argv[i], "--save_in_db") == 0)
+		{
+			saveInDb = true;
+		}
 	}
+
+	if(saveInDb)
+	{
+		if(multiband)
+		{
+			printf("Option --multiband is not supported with --save_in_db option, disabling multiband...\n");
+			multiband = false;
+		}
+		if(textureCount>1)
+		{
+			printf("Option --texture_count > 1 is not supported with --save_in_db option, setting texture_count to 1...\n");
+			textureCount = 1;
+		}
+	}
+
 	ParametersMap params = Parameters::parseArguments(argc, argv, false);
 
 	std::string dbPath = argv[argc-1];
@@ -263,6 +284,7 @@ int main(int argc, char * argv[])
 		return -1;
 	}
 	delete driver;
+	driver = 0;
 
 	for(ParametersMap::iterator iter=params.begin(); iter!=params.end(); ++iter)
 	{
@@ -363,15 +385,35 @@ int main(int argc, char * argv[])
 
 	if(mergedClouds->size())
 	{
+		if(saveInDb)
+		{
+			driver = DBDriver::create();
+			UASSERT(driver->openConnection(dbPath, false));
+			Transform lastlocalizationPose;
+			driver->loadOptimizedPoses(&lastlocalizationPose);
+			//optimized poses have changed, reset 2d map
+			driver->save2DMap(cv::Mat(), 0, 0, 0);
+			driver->saveOptimizedPoses(optimizedPoses, lastlocalizationPose);
+		}
+
 		if(!(mesh || texture))
 		{
 			printf("Voxel grid filtering of the assembled cloud (voxel=%f, %d points)\n", 0.01f, (int)mergedClouds->size());
 			mergedClouds = util3d::voxelize(mergedClouds, voxelSize);
 
-			std::string outputPath=outputDirectory+"/"+baseName+"_cloud.ply";
-			printf("Saving %s... (%d points)\n", outputPath.c_str(), (int)mergedClouds->size());
-			pcl::io::savePLYFile(outputPath, *mergedClouds);
-			printf("Saving %s... done!\n", outputPath.c_str());
+			if(saveInDb)
+			{
+				printf("Saving in db... (%d points)\n", (int)mergedClouds->size());
+				driver->saveOptimizedMesh(util3d::laserScanFromPointCloud(*mergedClouds, Transform(), false));
+				printf("Saving in db... done!\n");
+			}
+			else
+			{
+				std::string outputPath=outputDirectory+"/"+baseName+"_cloud.ply";
+				printf("Saving %s... (%d points)\n", outputPath.c_str(), (int)mergedClouds->size());
+				pcl::io::savePLYFile(outputPath, *mergedClouds);
+				printf("Saving %s... done!\n", outputPath.c_str());
+			}
 		}
 		else
 		{
@@ -415,10 +457,23 @@ int main(int argc, char * argv[])
 
 				if(!texture)
 				{
-					std::string outputPath=outputDirectory+"/"+baseName+"_mesh.ply";
-					printf("Saving %s...\n", outputPath.c_str());
-					pcl::io::savePLYFile(outputPath, *mesh);
-					printf("Saving %s... done!\n", outputPath.c_str());
+					if(saveInDb)
+					{
+						printf("Saving mesh in db...\n");
+						std::vector<std::vector<std::vector<unsigned int> > > polygons;
+						polygons.push_back(util3d::convertPolygonsFromPCL(mesh->polygons));
+						driver->saveOptimizedMesh(
+								util3d::laserScanFromPointCloud(mesh->cloud, false).data(),
+								polygons);
+						printf("Saving mesh in db... done!\n");
+					}
+					else
+					{
+						std::string outputPath=outputDirectory+"/"+baseName+"_mesh.ply";
+						printf("Saving %s...\n", outputPath.c_str());
+						pcl::io::savePLYFile(outputPath, *mesh);
+						printf("Saving %s... done!\n", outputPath.c_str());
+					}
 				}
 				else
 				{
@@ -479,38 +534,51 @@ int main(int argc, char * argv[])
 								&contrastValues);
 						printf("Merging to %d texture(s)... done (%fs).\n", (int)textureMesh->tex_materials.size(), timer.ticks());
 
-						// TextureMesh OBJ
-						bool success = false;
-						UASSERT(!textures.empty());
-						for(size_t i=0; i<textureMesh->tex_materials.size(); ++i)
+						if(saveInDb)
 						{
-							textureMesh->tex_materials[i].tex_file += ".jpg";
-							printf("Saving texture to %s.\n", textureMesh->tex_materials[i].tex_file.c_str());
-							UASSERT(textures.cols % textures.rows == 0);
-							success = cv::imwrite(outputDirectory+"/"+textureMesh->tex_materials[i].tex_file, cv::Mat(textures, cv::Range::all(), cv::Range(textures.rows*i, textures.rows*(i+1))));
-							if(!success)
-							{
-								UERROR("Failed saving %s!", textureMesh->tex_materials[i].tex_file.c_str());
-							}
-							else
-							{
-								printf("Saved %s.\n", textureMesh->tex_materials[i].tex_file.c_str());
-							}
+							printf("Saving texture mesh in db...\n");
+							driver->saveOptimizedMesh(
+									util3d::laserScanFromPointCloud(textureMesh->cloud, false).data(),
+									util3d::convertPolygonsFromPCL(textureMesh->tex_polygons),
+									textureMesh->tex_coordinates,
+									textures);
+							printf("Saving texture mesh in db... done!\n");
 						}
-						if(success)
+						else
 						{
-
-							std::string outputPath=outputDirectory+"/"+baseName+"_mesh.obj";
-							printf("Saving obj (%d vertices) to %s.\n", (int)textureMesh->cloud.data.size()/textureMesh->cloud.point_step, outputPath.c_str());
-							success = pcl::io::saveOBJFile(outputPath, *textureMesh) == 0;
-
+							// TextureMesh OBJ
+							bool success = false;
+							UASSERT(!textures.empty());
+							for(size_t i=0; i<textureMesh->tex_materials.size(); ++i)
+							{
+								textureMesh->tex_materials[i].tex_file += ".jpg";
+								printf("Saving texture to %s.\n", textureMesh->tex_materials[i].tex_file.c_str());
+								UASSERT(textures.cols % textures.rows == 0);
+								success = cv::imwrite(outputDirectory+"/"+textureMesh->tex_materials[i].tex_file, cv::Mat(textures, cv::Range::all(), cv::Range(textures.rows*i, textures.rows*(i+1))));
+								if(!success)
+								{
+									UERROR("Failed saving %s!", textureMesh->tex_materials[i].tex_file.c_str());
+								}
+								else
+								{
+									printf("Saved %s.\n", textureMesh->tex_materials[i].tex_file.c_str());
+								}
+							}
 							if(success)
 							{
-								printf("Saved obj to %s!\n", outputPath.c_str());
-							}
-							else
-							{
-								UERROR("Failed saving obj to %s!", outputPath.c_str());
+
+								std::string outputPath=outputDirectory+"/"+baseName+"_mesh.obj";
+								printf("Saving obj (%d vertices) to %s.\n", (int)textureMesh->cloud.data.size()/textureMesh->cloud.point_step, outputPath.c_str());
+								success = pcl::io::saveOBJFile(outputPath, *textureMesh) == 0;
+
+								if(success)
+								{
+									printf("Saved obj to %s!\n", outputPath.c_str());
+								}
+								else
+								{
+									UERROR("Failed saving obj to %s!", outputPath.c_str());
+								}
 							}
 						}
 
@@ -549,6 +617,13 @@ int main(int argc, char * argv[])
 	else
 	{
 		printf("Export failed! The cloud is empty.\n");
+	}
+
+	if(driver)
+	{
+		driver->closeConnection();
+		delete driver;
+		driver = 0;
 	}
 
 	return 0;

@@ -33,6 +33,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #endif
 #include <rtabmap/core/OccupancyGrid.h>
 #include <rtabmap/core/Graph.h>
+#include <rtabmap/core/Memory.h>
 #include <rtabmap/utilite/UFile.h>
 #include <rtabmap/utilite/UDirectory.h>
 #include <rtabmap/utilite/UTimer.h>
@@ -634,6 +635,7 @@ int main(int argc, char * argv[])
 		}
 	}
 
+	int databasesMerged = 0;
 	if(!incrementalMemory)
 	{
 		showLocalizationStats(outputDatabasePath);
@@ -641,6 +643,23 @@ int main(int argc, char * argv[])
 	else
 	{
 		printf("Total loop closures = %d (Loop=%d, Prox=%d, In Motion=%d/%d)\n", loopCount+proxCount, loopCount, proxCount, loopCountMotion, totalFramesMotion);
+
+		if(databases.size()>1)
+		{
+			std::map<int, Transform> poses;
+			std::multimap<int, Link> constraints;
+			rtabmap.getGraph(poses, constraints, 0, 1, 0, false, false, false, false, false, false);
+			std::set<int> mapIds;
+			for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter)
+			{
+				int id;
+				if((id=rtabmap.getMemory()->getMapId(iter->first, true))>=0)
+				{
+					mapIds.insert(id);
+				}
+			}
+			databasesMerged = mapIds.size();
+		}
 	}
 
 	printf("Closing database \"%s\"...\n", outputDatabasePath.c_str());
@@ -812,5 +831,5 @@ int main(int argc, char * argv[])
 	}
 #endif
 
-	return 0;
+	return databasesMerged;
 }
