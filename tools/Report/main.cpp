@@ -71,8 +71,9 @@ void showUsage()
 			"    --start #          Start from this node ID for the figures.\n"
 #endif
 			"    --report           Export all evaluation statistics values in report.txt \n"
-			"    --loc #            Show localization statistics for each \"Statistic/Id\" per "
-			"                       session for 1=min,2=max,4=mean,8=stddev,16=total,32=nonnull%% "
+			"    --loc #            Show localization statistics for each \"Statistic/Id\" per\n"
+			"                       session for 1=min,2=max,4=mean,8=stddev,16=total,32=nonnull%%\n"
+			"    --loc_delay #      Delay to split sessions for localization statistics (default 60 seconds)\n"
 			"                       (it is a mask, we can combine those numbers, e.g., 63 for all) \n"
 			"    --help             Show usage\n\n");
 	exit(1);
@@ -134,6 +135,7 @@ int main(int argc, char * argv[])
 	bool useIds = false;
 	int startId = 0;
 	int showLoc = 0;
+	float locDelay = 60;
 	std::vector<std::string> statsToShow;
 #ifdef WITH_QT
 	std::map<std::string, UPlot*> figures;
@@ -276,7 +278,6 @@ int main(int argc, char * argv[])
 			if(UFile::getExtension(currentPath).compare("db") == 0)
 			{
 				currentPathIsDatabase=true;
-				localizationMultiStats.clear();
 				printf("Database: %s\n", currentPath.c_str());
 			}
 			else
@@ -318,6 +319,7 @@ int main(int argc, char * argv[])
 				if(currentPathIsDatabase)
 				{
 					filePath = currentPath;
+					fileName = UFile::getName(currentPath);
 				}
 				else
 				{
@@ -531,7 +533,7 @@ int main(int argc, char * argv[])
 
 											if(!localizationMultiStats.empty())
 											{
-												if(previousStamp > 0 && s - previousStamp > 10 && uContains(localizationSessionStats, jter->first))
+												if(previousStamp > 0 && s - previousStamp > locDelay && uContains(localizationSessionStats, jter->first))
 												{
 													// changed session
 													LocStats values = LocStats::from(localizationSessionStats.at(jter->first));

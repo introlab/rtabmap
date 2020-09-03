@@ -379,7 +379,7 @@ int main(int argc, char * argv[])
 		total+=mem;
 		std::cout << (uFormat("%s%d %s\t(%.2f%%)\n", pad("Statistics size:").c_str(), mem>1000000?mem/1000000:mem>1000?mem/1000:mem, mem>1000000?"MB":mem>1000?"KB":"Bytes", dbSize>0?double(mem)/double(dbSize)*100.0:0.0));
 		mem = dbSize - total;
-		std::cout << (uFormat("%s%d %s\t(%.2f%%)\n", pad("Other (indexing):").c_str(), mem>1000000?mem/1000000:mem>1000?mem/1000:mem, mem>1000000?"MB":mem>1000?"KB":"Bytes", dbSize>0?double(mem)/double(dbSize)*100.0:0.0));
+		std::cout << (uFormat("%s%d %s\t(%.2f%%)\n", pad("Other (indexing, unused):").c_str(), mem>1000000?mem/1000000:mem>1000?mem/1000:mem, mem>1000000?"MB":mem>1000?"KB":"Bytes", dbSize>0?double(mem)/double(dbSize)*100.0:0.0));
 		std::cout << ("\n");
 	}
 
