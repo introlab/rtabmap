@@ -318,7 +318,11 @@ bool CameraK4A::init(const std::string & calibrationFolder, const std::string & 
 				this->getLocalTransform());
 	}
 
-	std::cout << model_ << std::endl;
+	if (ULogger::level() <= ULogger::kInfo)
+	{
+		UINFO("K4A calibration:");
+		std::cout << model_ << std::endl;
+	}
 
 	transformationHandle_ = k4a_transformation_create(&calibration_);
 
@@ -416,12 +420,12 @@ SensorData CameraK4A::captureImage(CameraInfo * info)
 	if(playbackHandle_)
 	{
 		k4a_stream_result_t result = K4A_STREAM_RESULT_FAILED;
-		while((UTimer::now()-t < 5.0) &&
+		while((UTimer::now()-t < 0.1) &&
 				(K4A_STREAM_RESULT_SUCCEEDED != (result=k4a_playback_get_next_capture(playbackHandle_, &captureHandle_)) ||
 				((ir_ && (ir_image_=k4a_capture_get_ir_image(captureHandle_)) == NULL) || (!ir_ && (rgb_image_=k4a_capture_get_color_image(captureHandle_)) == NULL))))
 		{
 			k4a_capture_release(captureHandle_);
-			// the first frame may be null, just retry for 5 seconds
+			// the first frame may be null, just retry for 1 second
 		}
 		if (result == K4A_STREAM_RESULT_EOF)
 		{
@@ -545,14 +549,20 @@ SensorData CameraK4A::captureImage(CameraInfo * info)
 		{
 			// Get IMU sample, clear buffer
 			// FIXME: not tested, uncomment when tested.
-			/*if(K4A_WAIT_RESULT_SUCCEEDED == k4a_playback_get_next_imu_sample(playbackHandle_, imu_sample_))
+			k4a_playback_seek_timestamp(playbackHandle_, stamp* 1000000+1, K4A_PLAYBACK_SEEK_BEGIN);
+			if(K4A_STREAM_RESULT_SUCCEEDED == k4a_playback_get_previous_imu_sample(playbackHandle_, &imu_sample_))
 			{
+				double stmp = ((double)imu_sample_.acc_timestamp_usec) / 1000000;
 				imu = IMU(cv::Vec3d(imu_sample_.gyro_sample.xyz.x, imu_sample_.gyro_sample.xyz.y, imu_sample_.gyro_sample.xyz.z),
 						cv::Mat::eye(3, 3, CV_64FC1),
 						cv::Vec3d(imu_sample_.acc_sample.xyz.x, imu_sample_.acc_sample.xyz.y, imu_sample_.acc_sample.xyz.z),
 						cv::Mat::eye(3, 3, CV_64FC1),
 						imuLocalTransform_);
-			}*/
+			}
+			else
+			{
+				UWARN("IMU data NULL");
+			}
 		}
 		else
 		{

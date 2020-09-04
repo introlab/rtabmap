@@ -146,8 +146,6 @@ public:
 	void reproject(float x, float y, float z, int & u, int & v) const;
 	bool inFrame(int u, int v) const;
 
-	friend std::ostream& operator<<(std::ostream& os, const CameraModel& model);
-
 private:
 	std::string name_;
 	cv::Size imageSize_;
