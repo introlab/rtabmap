@@ -311,14 +311,9 @@ bool Transform::operator!=(const Transform & t) const
 
 std::ostream& operator<<(std::ostream& os, const Transform& s)
 {
-	for(int i = 0; i < 3; ++i)
-	{
-		for(int j = 0; j < 4; ++j)
-		{
-			os << std::left << std::setw(12) << s.data()[i*4 + j] << " ";
-		}
-		os << std::endl;
-	}
+	os << "[" << s.data()[0] << ", " << s.data()[1] << ", " << s.data()[2] << ", " << s.data()[3] << ";" << std::endl
+	   << " " << s.data()[4] << ", " << s.data()[5] << ", " << s.data()[6] << ", " << s.data()[7] << ";" << std::endl
+	   << " " << s.data()[8] << ", " << s.data()[9] << ", " << s.data()[10]<< ", " << s.data()[11] << "]";
 	return os;
 }
 

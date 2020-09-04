@@ -146,6 +146,8 @@ public:
 	void reproject(float x, float y, float z, int & u, int & v) const;
 	bool inFrame(int u, int v) const;
 
+	friend std::ostream& operator<<(std::ostream& os, const CameraModel& model);
+
 private:
 	std::string name_;
 	cv::Size imageSize_;
@@ -157,6 +159,8 @@ private:
 	cv::Mat mapY_;
 	Transform localTransform_;
 };
+
+RTABMAP_EXP std::ostream& operator<<(std::ostream& os, const CameraModel& model);
 
 } /* namespace rtabmap */
 #endif /* CAMERAMODEL_H_ */
