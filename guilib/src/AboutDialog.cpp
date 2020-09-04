@@ -143,6 +143,7 @@ AboutDialog::AboutDialog(QWidget * parent) :
 	_ui->label_zed->setText(CameraStereoZed::available()?"Yes":"No");
 	_ui->label_k4w2->setText(CameraK4W2::available() ? "Yes" : "No");
 	_ui->label_k4a->setText(CameraK4A::available() ? "Yes" : "No");
+	_ui->label_mynteye->setText(CameraMyntEye::available() ? "Yes" : "No");
 
 	_ui->label_toro->setText(Optimizer::isAvailable(Optimizer::kTypeTORO)?"Yes":"No");
 	_ui->label_toro_license->setEnabled(Optimizer::isAvailable(Optimizer::kTypeTORO)?true:false);
