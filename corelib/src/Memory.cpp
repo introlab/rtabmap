@@ -4480,7 +4480,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 						keypoints3D[i] = data.keypoints3D()[keypoints[i].class_id];
 					}
 				}
-				else if(keypoints.size() == data.keypoints3D().size())
+				else if(useProvided3dPoints && keypoints.size() == data.keypoints3D().size())
 				{
 					UDEBUG("Using provided 3d points (%d)", (int)data.keypoints3D().size());
 					keypoints3D = data.keypoints3D();
