@@ -2983,7 +2983,7 @@ bool PreferencesDialog::validateForm()
 #ifndef RTABMAP_NONFREE
 	// verify that SURF cannot be selected if not built with OpenCV nonfree module
 	// BOW dictionary type
-	if(_ui->comboBox_detector_strategy->currentIndex() <= 1)
+	if(_ui->comboBox_detector_strategy->currentIndex() < 1)
 	{
 		QMessageBox::warning(this, tr("Parameter warning"),
 				tr("Selected feature type (SURF) is not available. RTAB-Map is not built "
@@ -2991,7 +2991,7 @@ bool PreferencesDialog::validateForm()
 		_ui->comboBox_detector_strategy->setCurrentIndex(Feature2D::kFeatureSift);
 	}
 	// BOW Reextract features type
-	if(_ui->vis_feature_detector->currentIndex() <= 1)
+	if(_ui->vis_feature_detector->currentIndex() < 1)
 	{
 		QMessageBox::warning(this, tr("Parameter warning"),
 				tr("Selected feature type (SURF) is not available. RTAB-Map is not built "
@@ -4174,7 +4174,7 @@ void PreferencesDialog::setParameter(const std::string & key, const std::string 
 			else
 			{
 #ifndef RTABMAP_NONFREE
-				if(valueInt <= 1 &&
+				if(valueInt == 0 &&
 						(combo->objectName().toStdString().compare(Parameters::kKpDetectorStrategy()) == 0 ||
 						 combo->objectName().toStdString().compare(Parameters::kVisFeatureType()) == 0))
 				{
@@ -4184,6 +4184,18 @@ void PreferencesDialog::setParameter(const std::string & key, const std::string 
 						  combo->currentText().toStdString().c_str());
 					ok = false;
 				}
+#if CV_MAJOR_VERSION < 3 || (CV_MAJOR_VERSION == 4 && CV_MINOR_VERSION <= 3) || (CV_MAJOR_VERSION == 3 && (CV_MINOR_VERSION < 4 || (CV_MINOR_VERSION==4 && CV_SUBMINOR_VERSION<11)))
+				if(valueInt == 1 &&
+						(combo->objectName().toStdString().compare(Parameters::kKpDetectorStrategy()) == 0 ||
+						 combo->objectName().toStdString().compare(Parameters::kVisFeatureType()) == 0))
+				{
+					UWARN("Trying to set \"%s\" to SIFT but RTAB-Map isn't built "
+						  "with the nonfree module from OpenCV. Keeping default combo value: %s.",
+						  combo->objectName().toStdString().c_str(),
+						  combo->currentText().toStdString().c_str());
+					ok = false;
+				}
+#endif
 #endif
 #ifndef RTABMAP_ORB_SLAM2
 				if(!Optimizer::isAvailable(Optimizer::kTypeG2O))
