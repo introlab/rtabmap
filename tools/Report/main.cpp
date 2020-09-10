@@ -196,7 +196,21 @@ int main(int argc, char * argv[])
 			}
 			else
 			{
-				printf("Missing type for \"--showLoc\" option.\n");
+				printf("Missing type for \"--loc\" option.\n");
+				showUsage();
+			}
+		}
+		else if(strcmp(argv[i],"--loc_delay") == 0)
+		{
+			++i;
+			if(i<argc-1)
+			{
+				locDelay = atof(argv[i]);
+				printf("Localization delay=%fs (--loc_delay)\n", locDelay);
+			}
+			else
+			{
+				printf("Missing value for \"--loc_delay\" option.\n");
 				showUsage();
 			}
 		}
@@ -313,6 +327,7 @@ int main(int argc, char * argv[])
 		// For all databases in currentDir
 		while(currentPathIsDatabase || !(fileName = currentDir.getNextFileName()).empty())
 		{
+			int startIdPerDb = startId;
 			if(currentPathIsDatabase || UFile::getExtension(fileName).compare("db") == 0)
 			{
 				std::string filePath;
@@ -424,12 +439,31 @@ int main(int argc, char * argv[])
 #endif
 
 					// Find localization sessions and adjust startId
-					if(!localizationMultiStats.empty() && startId ==0)
+					std::set<int> mappingSessionIds;
+					if(!localizationMultiStats.empty())
 					{
 						std::map<int, Transform> poses = driver->loadOptimizedPoses();
 						if(!poses.empty())
 						{
-							startId = poses.rbegin()->first+1;
+							for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter)
+							{
+								Transform p, gt;
+								GPS gps;
+								int m=-1, w=-1;
+								std::string l;
+								double s;
+								std::vector<float> v;
+								EnvSensors sensors;
+								if(driver->getNodeInfo(iter->first, p, m, w, l, s, gt, v, gps, sensors))
+								{
+									mappingSessionIds.insert(m);
+								}
+							}
+
+							if(startIdPerDb ==0)
+							{
+								startIdPerDb = poses.rbegin()->first+1;
+							}
 						}
 					}
 
@@ -452,7 +486,13 @@ int main(int argc, char * argv[])
 							{
 								gtPoses.insert(std::make_pair(*iter, gt));
 							}
-							if(uContains(stats, *iter))
+
+							if(!localizationMultiStats.empty() && mappingSessionIds.find(m) != mappingSessionIds.end())
+							{
+								continue;
+							}
+
+							if(*iter >= startIdPerDb && uContains(stats, *iter))
 							{
 								const std::map<std::string, float> & stat = stats.at(*iter).first;
 								if(uContains(stat, Statistics::kGtTranslational_rmse()))
@@ -517,36 +557,38 @@ int main(int argc, char * argv[])
 									++jter)
 								{
 #endif
-									if(*iter >= startId)
+									if(uContains(stat, jter->first))
 									{
-										if(uContains(stat, jter->first))
-										{
-											double y = stat.at(jter->first);
+										double y = stat.at(jter->first);
 #ifdef WITH_QT
-											double x = s;
-											if(useIds)
-											{
-												x = *iter;
-											}
-											jter->second->addValue(x,y);
+										double x = s;
+										if(useIds)
+										{
+											x = *iter;
+										}
+										jter->second->addValue(x,y);
 #endif
 
-											if(!localizationMultiStats.empty())
+										if(!localizationMultiStats.empty())
+										{
+											if(previousStamp > 0 && fabs(s - previousStamp) > locDelay && uContains(localizationSessionStats, jter->first))
 											{
-												if(previousStamp > 0 && s - previousStamp > locDelay && uContains(localizationSessionStats, jter->first))
+												// changed session
+												for(std::map<std::string, std::vector<float> >::iterator kter=localizationSessionStats.begin(); kter!=localizationSessionStats.end(); ++kter)
 												{
-													// changed session
-													LocStats values = LocStats::from(localizationSessionStats.at(jter->first));
-													localizationMultiStats.at(jter->first).rbegin()->second.push_back(values);
-													localizationSessionStats.at(jter->first).clear();
+													LocStats values = LocStats::from(localizationSessionStats.at(kter->first));
+													localizationMultiStats.at(kter->first).rbegin()->second.push_back(values);
+													localizationSessionStats.at(kter->first).clear();
 												}
 
-												if(!uContains(localizationSessionStats, jter->first))
-												{
-													localizationSessionStats.insert(std::make_pair(jter->first, std::vector<float>()));
-												}
-												localizationSessionStats.at(jter->first).push_back(y);
+												previousStamp = s;
 											}
+
+											if(!uContains(localizationSessionStats, jter->first))
+											{
+												localizationSessionStats.insert(std::make_pair(jter->first, std::vector<float>()));
+											}
+											localizationSessionStats.at(jter->first).push_back(y);
 										}
 									}
 								}
@@ -894,7 +936,7 @@ int main(int argc, char * argv[])
 							}
 						}
 					}
-					printf("   %s (%d, s=%.3f):\terror lin=%.3fm (max=%.3fm, odom=%.3fm) ang=%.1fdeg%s%s, slam: avg=%dms (max=%dms) loops=%d%s, odom: avg=%dms (max=%dms), camera: avg=%dms, %smap=%dMB\n",
+					printf("   %s (%d, s=%.3f):\terror lin=%.3fm (max=%.3fm, odom=%.3fm) ang=%.1fdeg%s%s, %s: avg=%dms (max=%dms) loops=%d%s, odom: avg=%dms (max=%dms), camera: avg=%dms, %smap=%dMB\n",
 							fileName.c_str(),
 							(int)ids.size(),
 							bestScale,
@@ -904,6 +946,7 @@ int main(int argc, char * argv[])
 							bestRMSEAng,
 							!outputKittiError?"":uFormat(", KITTI: t_err=%.2f%% r_err=%.2f deg/100m", kitti_t_err, kitti_r_err*100).c_str(),
 							!outputRelativeError?"":uFormat(", Relative: t_err=%.3fm r_err=%.2f deg", relative_t_err, relative_r_err).c_str(),
+							!localizationMultiStats.empty()?"loc":"slam",
 							(int)uMean(slamTime), (int)uMax(slamTime),
 							(int)loopClosureLinks.size(),
 							!outputLoopAccuracy?"":uFormat(" (t_err=%.3fm r_err=%.2f deg)", loop_t_err, loop_r_err).c_str(),
@@ -952,21 +995,25 @@ int main(int argc, char * argv[])
 			{
 				if(showLoc & (0x1 << k))
 				{
-					printf("  %s:\n",
+					std::string prefix = uFormat("  %s=[",
 							k==0?"min":
 							k==1?"max":
 							k==2?"mean":
 							k==3?"stddev":
 							k==4?"total":
 							"nonnull%");
-					for(std::map<std::string, std::vector<LocStats> >::iterator jter=iter->second.begin(); jter!=iter->second.end(); ++jter)
+					printf("%s", prefix.c_str());
+					for(std::map<std::string, std::vector<LocStats> >::iterator jter=iter->second.begin(); jter!=iter->second.end();)
 					{
-						printf("    %s ", jter->first.c_str());
+						if(jter!=iter->second.begin())
+						{
+							printf("%s", std::string(prefix.size(), ' ').c_str());
+						}
 						for(size_t j=0; j<jter->second.size(); ++j)
 						{
 							if(k<4)
 							{
-								printf("%f ",
+								printf("%f",
 										k==0?jter->second[j].min:
 										k==1?jter->second[j].max:
 										k==2?jter->second[j].mean:
@@ -974,15 +1021,24 @@ int main(int argc, char * argv[])
 							}
 							else if(k==4)
 							{
-								printf("%d ",jter->second[j].total);
+								printf("%d",jter->second[j].total);
 							}
 							else if(k==5)
 							{
-								printf("%.2f ", (jter->second[j].nonNull*100));
+								printf("%.2f", (jter->second[j].nonNull*100));
+							}
+							if(j+1 < jter->second.size())
+							{
+								printf(" ");
 							}
 						}
-						printf("\n");
+						++jter;
+						if(jter!=iter->second.end())
+						{
+							printf(";\n");
+						}
 					}
+					printf("]\n");
 				}
 			}
 			iter->second.clear();
