@@ -134,6 +134,7 @@ Rtabmap::Rtabmap() :
 	_lastProcessTime(0.0),
 	_someNodesHaveBeenTransferred(false),
 	_distanceTravelled(0.0f),
+	_distanceTravelledSinceLastLocalization(0.0f),
 	_optimizeFromGraphEndChanged(false),
 	_epipolarGeometry(0),
 	_bayesFilter(0),
@@ -393,6 +394,7 @@ void Rtabmap::close(bool databaseSaved, const std::string & ouputDatabasePath)
 	_odomCacheConstraints.clear();
 	_odomCorrectionAcc = std::vector<float>(6,0);
 	_distanceTravelled = 0.0f;
+	_distanceTravelledSinceLastLocalization = 0.0f;
 	_optimizeFromGraphEndChanged = false;
 	this->clearPath(0);
 	_gpsGeocentricCache.clear();
@@ -751,6 +753,8 @@ int Rtabmap::triggerNewMap()
 		_odomCachePoses.clear();
 		_odomCacheConstraints.clear();
 		_odomCorrectionAcc = std::vector<float>(6,0);
+		_distanceTravelled = 0.0f;
+		_distanceTravelledSinceLastLocalization = 0.0f;
 
 		if(!_memory->isIncremental())
 		{
@@ -917,6 +921,7 @@ void Rtabmap::resetMemory()
 	_odomCacheConstraints.clear();
 	_odomCorrectionAcc = std::vector<float>(6,0);
 	_distanceTravelled = 0.0f;
+	_distanceTravelledSinceLastLocalization = 0.0f;
 	_optimizeFromGraphEndChanged = false;
 	this->clearPath(0);
 
@@ -1380,6 +1385,9 @@ bool Rtabmap::process(
 				_constraints.insert(std::make_pair(iter->first, iter->second.inverse()));
 			}
 		}
+
+		float distanceTravelledOld = _distanceTravelled;
+
 		// only in mapping mode we add a neighbor link
 		if(signature->getLinks().size() &&
 		   signature->getLinks().begin()->second.type() == Link::kNeighbor)
@@ -1452,6 +1460,7 @@ bool Rtabmap::process(
 				}
 			}
 		}
+		_distanceTravelledSinceLastLocalization += _distanceTravelled - distanceTravelledOld;
 
 		//============================================================
 		// Reduced graph
@@ -3174,6 +3183,8 @@ bool Rtabmap::process(
 
 				statistics_.addStatistic(Statistics::kLoopMap_id(), sLoop->mapId());
 				statistics_.addStatistic(Statistics::kLoopVisual_words(), sLoop->getWords().size());
+				statistics_.addStatistic(Statistics::kLoopDistance_since_last_loc(), _distanceTravelledSinceLastLocalization);
+				_distanceTravelledSinceLastLocalization = 0.0f;
 
 				// if ground truth exists, compute localization error
 				if(!sLoop->getGroundTruthPose().isNull() && !signature->getGroundTruthPose().isNull())

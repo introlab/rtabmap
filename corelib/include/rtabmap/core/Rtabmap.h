@@ -310,6 +310,7 @@ private:
 	double _lastProcessTime;
 	bool _someNodesHaveBeenTransferred;
 	float _distanceTravelled;
+	float _distanceTravelledSinceLastLocalization;
 	bool _optimizeFromGraphEndChanged;
 
 	// Abstract classes containing all loop closure
