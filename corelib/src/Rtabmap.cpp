@@ -351,6 +351,17 @@ void Rtabmap::init(const ParametersMap & parameters, const std::string & databas
 		std::map<int, Transform> tmp;
 		// Get just the links
 		_memory->getMetricConstraints(uKeysSet(_optimizedPoses), tmp, _constraints, false, true);
+
+		// Initialize Bayes' prediction matrix
+		UTimer time;
+		std::map<int, float> likelihood;
+		likelihood.insert(std::make_pair(Memory::kIdVirtual, 1));
+		for(std::map<int, Transform>::iterator iter=_optimizedPoses.begin(); iter!=_optimizedPoses.end(); ++iter)
+		{
+			likelihood.insert(std::make_pair(iter->first, 0));
+		}
+		_bayesFilter->computePosterior(_memory, likelihood);
+		UINFO("Time initializing Bayes' prediction with %ld nodes: %fs", _optimizedPoses.size(), time.ticks());
 	}
 	else
 	{
