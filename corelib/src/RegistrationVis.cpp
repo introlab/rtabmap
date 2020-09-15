@@ -1671,10 +1671,18 @@ Transform RegistrationVis::computeTransformationImpl(
 			models.insert(std::make_pair(2, cameraModelTo));
 
 			std::map<int, std::map<int, FeatureBA> > wordReferences;
+			std::set<int> sbaOutliers;
 			for(unsigned int i=0; i<allInliers.size(); ++i)
 			{
 				int wordId = allInliers[i];
 				const cv::Point3f & pt3D = fromSignature.getWords3().find(wordId)->second;
+				if(!util3d::isFinite(pt3D))
+				{
+					UASSERT_MSG(!_forwardEstimateOnly, uFormat("3D point %d is not finite!?", wordId).c_str());
+					sbaOutliers.insert(wordId);
+					continue;
+				}
+
 				points3DMap.insert(std::make_pair(wordId, pt3D));
 
 				std::map<int, FeatureBA> ptMap;
@@ -1704,7 +1712,6 @@ Transform RegistrationVis::computeTransformationImpl(
 				//}
 			}
 
-			std::set<int> sbaOutliers;
 			optimizedPoses = sba->optimizeBA(1, poses, links, models, points3DMap, wordReferences, &sbaOutliers);
 			delete sba;
 
