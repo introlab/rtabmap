@@ -242,7 +242,7 @@ int main(int argc, char * argv[])
 	{
 		invertFigures = !invertFigures;
 	}
-	std::map<std::string, std::map<std::string, std::vector<LocStats> > > localizationMultiStats; //<statsName, <Database<Session>> >
+	std::map<std::string, std::vector<std::pair<std::string, std::vector<LocStats> > > > localizationMultiStats; //<statsName, <Database<Session>> >
 	for(size_t i=0; i<statsToShow.size(); ++i)
 	{
 		std::string figureTitle = statsToShow[i];
@@ -266,7 +266,7 @@ int main(int argc, char * argv[])
 		}
 		if(showLoc & 0b111111)
 		{
-			localizationMultiStats.insert(std::make_pair(figureTitle, std::map<std::string, std::vector<LocStats> >()));
+			localizationMultiStats.insert(std::make_pair(figureTitle, std::vector<std::pair<std::string, std::vector<LocStats> > >()));
 		}
 	}
 	if(!invertFigures)
@@ -400,7 +400,7 @@ int main(int argc, char * argv[])
 						{
 							curves.insert(std::make_pair(iter->first, iter->second->addCurve(filePath.c_str())));
 							if(!localizationMultiStats.empty())
-								localizationMultiStats.at(iter->first).insert(std::make_pair(fileName, std::vector<LocStats>()));
+								localizationMultiStats.at(iter->first).push_back(std::make_pair(fileName, std::vector<LocStats>()));
 						}
 					}
 					else
@@ -426,7 +426,7 @@ int main(int argc, char * argv[])
 							{
 								curves.insert(std::make_pair(statsToShow[i], fig->addCurve(statsToShow[i].c_str())));
 								if(!localizationMultiStats.empty())
-									localizationMultiStats.at(statsToShow[i]).insert(std::make_pair(fileName, std::vector<LocStats>()));
+									localizationMultiStats.at(statsToShow[i]).push_back(std::make_pair(fileName, std::vector<LocStats>()));
 							}
 						}
 					}
@@ -434,7 +434,7 @@ int main(int argc, char * argv[])
 					for(size_t i=0; i<statsToShow.size(); ++i)
 					{
 						if(!localizationMultiStats.empty())
-							localizationMultiStats.at(statsToShow[i]).insert(std::make_pair(fileName, std::vector<LocStats>()));
+							localizationMultiStats.at(statsToShow[i]).push_back(std::make_pair(fileName, std::vector<LocStats>()));
 					}
 #endif
 
@@ -552,7 +552,7 @@ int main(int argc, char * argv[])
 								for(std::map<std::string, UPlotCurve*>::iterator jter=curves.begin(); jter!=curves.end(); ++jter)
 								{
 #else
-								for(std::map<std::string, std::map<std::string, std::vector<LocStats> > >::iterator jter=localizationMultiStats.begin();
+								for(std::map<std::string, std::vector<std::pair<std::string, std::vector<LocStats> > > >::iterator jter=localizationMultiStats.begin();
 									jter!=localizationMultiStats.end();
 									++jter)
 								{
@@ -597,7 +597,7 @@ int main(int argc, char * argv[])
 						}
 					}
 
-					for(std::map<std::string, std::map<std::string, std::vector<LocStats> > >::iterator jter=localizationMultiStats.begin();
+					for(std::map<std::string, std::vector<std::pair<std::string, std::vector<LocStats> > > >::iterator jter=localizationMultiStats.begin();
 						jter!=localizationMultiStats.end();
 						++jter)
 					{
@@ -986,7 +986,29 @@ int main(int argc, char * argv[])
 			currentPathIsDatabase = false;
 		}
 
-		for(std::map<std::string, std::map<std::string, std::vector<LocStats> > >::iterator iter=localizationMultiStats.begin();
+		if(!localizationMultiStats.empty())
+		{
+			printf("---Localization results---\n");
+			std::string prefix = "header={";
+			printf("%s", prefix.c_str());
+			for(std::vector<std::pair<std::string, std::vector<LocStats> > >::iterator iter=localizationMultiStats.begin()->second.begin();
+						iter!=localizationMultiStats.begin()->second.end();)
+			{
+				if(iter!=localizationMultiStats.begin()->second.begin())
+				{
+					printf("%s",  std::string(prefix.size(), ' ').c_str());
+				}
+				printf("%s", iter->first.c_str());
+				++iter;
+				if(iter!=localizationMultiStats.begin()->second.end())
+				{
+					printf(";\n");
+				}
+			}
+			printf("}\n");
+		}
+
+		for(std::map<std::string, std::vector<std::pair<std::string, std::vector<LocStats> > > >::iterator iter=localizationMultiStats.begin();
 			iter!=localizationMultiStats.end();
 			++iter)
 		{
@@ -1003,7 +1025,7 @@ int main(int argc, char * argv[])
 							k==4?"total":
 							"nonnull%");
 					printf("%s", prefix.c_str());
-					for(std::map<std::string, std::vector<LocStats> >::iterator jter=iter->second.begin(); jter!=iter->second.end();)
+					for(std::vector<std::pair<std::string, std::vector<LocStats> > >::iterator jter=iter->second.begin(); jter!=iter->second.end();)
 					{
 						if(jter!=iter->second.begin())
 						{
