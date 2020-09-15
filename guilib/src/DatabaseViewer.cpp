@@ -5481,7 +5481,7 @@ void DatabaseViewer::updateConstraintView(
 		{
 			dataTo = signatureTo.sensorData();
 		}
-		else
+		else if(link.to()>0)
 		{
 			dbDriver_->getNodeData(link.to(), dataTo);
 		}
@@ -5569,18 +5569,29 @@ void DatabaseViewer::updateConstraintView(
 		{
 			std::list<int> ids;
 			ids.push_back(link.from());
-			ids.push_back(link.to());
+			if(link.to()>0)
+			{
+				ids.push_back(link.to());
+			}
 			std::list<Signature*> signatures;
 			dbDriver_->loadSignatures(ids, signatures);
-			if(signatures.size() == 2)
+			if(signatures.size() == 2 || (link.to()<0 && signatures.size()==1))
 			{
 				const Signature * sFrom = signatureFrom.id()>0?&signatureFrom:signatures.front();
-				const Signature * sTo = signatureTo.id()>0?&signatureTo:signatures.back();
-				UASSERT(sFrom && sTo);
+				const Signature * sTo = 0;
+				if(signatures.size()==2)
+				{
+					sTo = signatureTo.id()>0?&signatureTo:signatures.back();
+					UASSERT(sTo);
+				}
+				UASSERT(sFrom);
 				pcl::PointCloud<pcl::PointXYZ>::Ptr cloudFrom(new pcl::PointCloud<pcl::PointXYZ>);
 				pcl::PointCloud<pcl::PointXYZ>::Ptr cloudTo(new pcl::PointCloud<pcl::PointXYZ>);
 				cloudFrom->resize(sFrom->getWords3().size());
-				cloudTo->resize(sTo->getWords3().size());
+				if(sTo)
+				{
+					cloudTo->resize(sTo->getWords3().size());
+				}
 				int i=0;
 				for(std::multimap<int, cv::Point3f>::const_iterator iter=sFrom->getWords3().begin();
 					iter!=sFrom->getWords3().end();
@@ -5589,11 +5600,14 @@ void DatabaseViewer::updateConstraintView(
 					cloudFrom->at(i++) = pcl::PointXYZ(iter->second.x, iter->second.y, iter->second.z);
 				}
 				i=0;
-				for(std::multimap<int, cv::Point3f>::const_iterator iter=sTo->getWords3().begin();
-					iter!=sTo->getWords3().end();
-					++iter)
+				if(sTo)
 				{
-					cloudTo->at(i++) = pcl::PointXYZ(iter->second.x, iter->second.y, iter->second.z);
+					for(std::multimap<int, cv::Point3f>::const_iterator iter=sTo->getWords3().begin();
+						iter!=sTo->getWords3().end();
+						++iter)
+					{
+						cloudTo->at(i++) = pcl::PointXYZ(iter->second.x, iter->second.y, iter->second.z);
+					}
 				}
 
 				if(cloudFrom->size())
@@ -5624,7 +5638,10 @@ void DatabaseViewer::updateConstraintView(
 				}
 				else
 				{
-					UWARN("Empty 3D words for node %d", link.to());
+					if(sTo)
+					{
+						UWARN("Empty 3D words for node %d", link.to());
+					}
 					constraintsViewer_->removeCloud("words1");
 				}
 			}
