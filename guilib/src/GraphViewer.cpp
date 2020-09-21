@@ -37,6 +37,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QtGui/QDesktopServices>
 #include <QtGui/QContextMenuEvent>
 #include <QColorDialog>
+#include <QPrinter>
+#include <QFileDialog>
 #ifdef QT_SVG_LIB
 #include <QtSvg/QSvgGenerator>
 #endif
@@ -53,6 +55,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UStl.h>
 #include <rtabmap/utilite/ULogger.h>
 #include <rtabmap/utilite/UTimer.h>
+
+#include <QtGlobal>
+#if QT_VERSION >= 0x050000
+	#include <QStandardPaths>
+#endif
 
 namespace rtabmap {
 
@@ -1540,11 +1547,7 @@ QIcon createIcon(const QColor & color)
 void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 {
 	QMenu menu;
-	QAction * aScreenShotPNG = menu.addAction(tr("Take a screenshot (PNG)"));
-	QAction * aScreenShotSVG = menu.addAction(tr("Take a screenshot (SVG)"));
-#ifndef QT_SVG_LIB
-	aScreenShotSVG->setEnabled(false);
-#endif
+	QAction * aScreenShot = menu.addAction(tr("Take a screenshot..."));
 	menu.addSeparator();
 
 	QAction * aChangeNodeColor = menu.addAction(createIcon(_nodeColor), tr("Set node color..."));
@@ -1710,85 +1713,103 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 	QAction * aRestoreDefaults = menu.addAction(tr("Restore defaults"));
 
 	QAction * r = menu.exec(event->globalPos());
-	if(r == aScreenShotPNG || r == aScreenShotSVG)
+	if(r == aScreenShot)
 	{
 		if(_root)
 		{
-			QString targetDir = _workingDirectory + "/ScreensCaptured";
+			QString filePath;
+#if QT_VERSION >= 0x050000
+			filePath = QStandardPaths::writableLocation(QStandardPaths::PicturesLocation);
+#endif
 			QDir dir;
-			if(!dir.exists(targetDir))
+			if(!dir.exists(filePath))
 			{
-				dir.mkdir(targetDir);
+				filePath = QDir::homePath();
 			}
-			targetDir += "/";
-			targetDir += "Graph_view";
-			if(!dir.exists(targetDir))
-			{
-				dir.mkdir(targetDir);
-			}
-			targetDir += "/";
-			bool isPNG = r == aScreenShotPNG;
-			QString name = (QDateTime::currentDateTime().toString("yyMMddhhmmsszzz") + (isPNG?".png":".svg"));
+			filePath += "/graph.png";
 
-			if(_gridCellSize)
+#ifdef QT_SVG_LIB
+			filePath = QFileDialog::getSaveFileName(this, tr("Save figure to ..."), filePath, "*.png *.xpm *.jpg *.pdf *.svg");
+#else
+			filePath = QFileDialog::getSaveFileName(this, tr("Save figure to ..."), filePath, "*.png *.xpm *.jpg *.pdf");
+#endif
+			if(!filePath.isEmpty())
 			{
-				_root->setScale(1.0f/(_gridCellSize*100.0f)); // grid map precision (for 5cm grid cell, x20 to have 1pix/5cm)
-			}
-			else
-			{
-				_root->setScale(this->transform().m11()); // current view
-			}
-
-			this->scene()->clearSelection();                                  // Selections would also render to the file
-			this->scene()->setSceneRect(this->scene()->itemsBoundingRect());  // Re-shrink the scene to it's bounding contents
-			QSize sceneSize = this->scene()->sceneRect().size().toSize();
-
-			if(isPNG)
-			{
-				QImage image(sceneSize, QImage::Format_ARGB32);  // Create the image with the exact size of the shrunk scene
-				image.fill(Qt::transparent);                     // Start all pixels transparent
-				QPainter painter(&image);
-
-				this->scene()->render(&painter);
-				if(!image.isNull())
+				if(QFileInfo(filePath).suffix() == "")
 				{
-					image.save(targetDir + name);
+					//use png by default
+					filePath += ".png";
+				}
+
+				if(_gridCellSize)
+				{
+					_root->setScale(1.0f/(_gridCellSize*100.0f)); // grid map precision (for 5cm grid cell, x20 to have 1pix/5cm)
 				}
 				else
 				{
-					QMessageBox::warning(this,
-							tr("Save PNG"),
-							tr("Could not export in PNG (the scene may be too large %1x%2), try saving in SVG.").arg(sceneSize.width()).arg(sceneSize.height()));
+					_root->setScale(this->transform().m11()); // current view
 				}
-			}
-			else
-			{
+
+				this->scene()->clearSelection();                                  // Selections would also render to the file
+				this->scene()->setSceneRect(this->scene()->itemsBoundingRect());  // Re-shrink the scene to it's bounding contents
+				QSize sceneSize = this->scene()->sceneRect().size().toSize();
+
+				if(QFileInfo(filePath).suffix().compare("pdf") == 0)
+				{
+					QPrinter printer(QPrinter::HighResolution);
+					printer.setOrientation(QPrinter::Portrait);
+					printer.setOutputFileName( filePath );
+					QPainter p(&printer);
+					scene()->render(&p);
+					p.end();
+				}
+				else if(QFileInfo(filePath).suffix().compare("svg") == 0)
+				{
 #ifdef QT_SVG_LIB
-				QSvgGenerator svgGen;
+					QSvgGenerator svgGen;
 
-				svgGen.setFileName( targetDir + name );
-				svgGen.setSize(sceneSize);
-				// add 1% border to make sure values are not cropped
-				int borderH = sceneSize.width()/100;
-				int borderV = sceneSize.height()/100;
-				svgGen.setViewBox(QRect(-borderH, -borderV, sceneSize.width()+borderH*2, sceneSize.height()+borderV*2));
-				svgGen.setTitle(tr("RTAB-Map graph"));
-				svgGen.setDescription(tr("RTAB-Map map and graph"));
+					svgGen.setFileName( filePath );
+					svgGen.setSize(sceneSize);
+					// add 1% border to make sure values are not cropped
+					int borderH = sceneSize.width()/100;
+					int borderV = sceneSize.height()/100;
+					svgGen.setViewBox(QRect(-borderH, -borderV, sceneSize.width()+borderH*2, sceneSize.height()+borderV*2));
+					svgGen.setTitle(tr("RTAB-Map graph"));
+					svgGen.setDescription(tr("RTAB-Map map and graph"));
 
-				QPainter painter( &svgGen );
+					QPainter painter( &svgGen );
 
-				this->scene()->render(&painter);
+					this->scene()->render(&painter);
 #else
-				UERROR("RTAB-MAp is not built with Qt's SVG library, cannot save picture in svg format.");
+					UERROR("RTAB-MAp is not built with Qt's SVG library, cannot save picture in svg format.");
 #endif
+				}
+				else
+				{
+					QImage image(sceneSize, QImage::Format_ARGB32);  // Create the image with the exact size of the shrunk scene
+					image.fill(Qt::transparent);                     // Start all pixels transparent
+					QPainter painter(&image);
+
+					this->scene()->render(&painter);
+					if(!image.isNull())
+					{
+						image.save(filePath);
+					}
+					else
+					{
+						QMessageBox::warning(this,
+								tr("Save PNG"),
+								tr("Could not export in PNG (the scene may be too large %1x%2), try saving in SVG.").arg(sceneSize.width()).arg(sceneSize.height()));
+					}
+				}
+
+				//reset scale
+				_root->setScale(1.0f);
+				this->scene()->setSceneRect(this->scene()->itemsBoundingRect());  // Re-shrink the scene to it's bounding contents
+
+
+				QDesktopServices::openUrl(QUrl::fromLocalFile(filePath));
 			}
-
-			//reset scale
-			_root->setScale(1.0f);
-			this->scene()->setSceneRect(this->scene()->itemsBoundingRect());  // Re-shrink the scene to it's bounding contents
-
-
-			QDesktopServices::openUrl(QUrl::fromLocalFile(targetDir + name));
 		}
 		return; // without emitting configChanged
 	}

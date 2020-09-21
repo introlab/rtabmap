@@ -1743,7 +1743,7 @@ void UPlotLegend::contextMenuEvent(QContextMenuEvent * event)
 					{
 						if(uIsNan(axes[j][i]))
 						{
-							text.append("NA");
+							text.append("NaN"); // NaN is interpreted by default as NaN in MatLab/Octave
 						}
 						else
 						{

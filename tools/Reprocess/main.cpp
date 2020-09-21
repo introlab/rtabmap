@@ -58,6 +58,7 @@ void showUsage()
 			"   To see warnings when loop closures are rejected, add \"--uwarn\" argument.\n"
 			"  Options:\n"
 			"     -r                Use database stamps as input rate.\n"
+			"     -skip #           Skip # frames after each processed frame (default 0=don't skip any frames).\n"
 			"     -c \"path.ini\"   Configuration file, overwriting parameters read \n"
 			"                       from the database. If custom parameters are also set as \n"
 			"                       arguments, they overwrite those in config file and the database.\n"
@@ -213,6 +214,7 @@ int main(int argc, char * argv[])
 	bool useDatabaseRate = false;
 	int startId = 0;
 	int stopId = 0;
+	int framesToSkip = 0;
 	bool scanFromDepth = false;
 	int scanDecimation = 1;
 	float scanRangeMin = 0.0f;
@@ -257,7 +259,7 @@ int main(int argc, char * argv[])
 			}
 			else
 			{
-				printf("-start option require a value\n");
+				printf("-start option requires a value\n");
 				showUsage();
 			}
 		}
@@ -271,7 +273,21 @@ int main(int argc, char * argv[])
 			}
 			else
 			{
-				printf("-stop option require a value\n");
+				printf("-stop option requires a value\n");
+				showUsage();
+			}
+		}
+		else if (strcmp(argv[i], "-skip") == 0 || strcmp(argv[i], "--skip") == 0)
+		{
+			++i;
+			if(i < argc - 2)
+			{
+				framesToSkip = atoi(argv[i]);
+				printf("Will skip %d frames.\n", framesToSkip);
+			}
+			else
+			{
+				printf("-skip option requires a value\n");
 				showUsage();
 			}
 		}
@@ -516,6 +532,11 @@ int main(int argc, char * argv[])
 	delete dbDriver;
 	dbDriver = 0;
 
+	if(framesToSkip)
+	{
+		totalIds/=framesToSkip+1;
+	}
+
 	std::string workingDirectory = UDirectory::getDir(outputDatabasePath);
 	printf("Set working directory to \"%s\".\n", workingDirectory.c_str());
 	uInsert(parameters, ParametersPair(Parameters::kRtabmapWorkingDirectory(), workingDirectory));
@@ -742,6 +763,26 @@ int main(int argc, char * argv[])
 		}
 
 		Transform odomPose = info.odomPose;
+
+		if(framesToSkip>0)
+		{
+			int skippedFrames = framesToSkip;
+			while(skippedFrames-- > 0)
+			{
+				data = dbReader->takeImage(&info);
+				if(!odometryIgnored && !info.odomCovariance.empty() && info.odomCovariance.at<double>(0,0)>=9999)
+				{
+					printf("High variance detected, triggering a new map...\n");
+					if(!incrementalMemory && processed>0)
+					{
+						showLocalizationStats(outputDatabasePath);
+						lastLocalizationOdomPose = info.odomPose;
+					}
+					rtabmap.triggerNewMap();
+				}
+			}
+		}
+
 		data = dbReader->takeImage(&info);
 		if(scanFromDepth)
 		{

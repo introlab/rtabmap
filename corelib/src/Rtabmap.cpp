@@ -3180,7 +3180,9 @@ bool Rtabmap::process(
 			statistics_.setProximityDetectionId(lastProximitySpaceClosureId);
 			statistics_.setProximityDetectionMapId(_memory->getMapId(lastProximitySpaceClosureId));
 
-			statistics_.addStatistic(Statistics::kLoopId(), _loopClosureHypothesis.first>0?_loopClosureHypothesis.first:lastProximitySpaceClosureId);
+			int loopId = _loopClosureHypothesis.first>0?_loopClosureHypothesis.first:lastProximitySpaceClosureId;
+			statistics_.addStatistic(Statistics::kLoopId(), loopId);
+			statistics_.addStatistic(Statistics::kLoopMap_id(), (loopId>0 && sLoop)?sLoop->mapId():-1);
 
 			float x,y,z,roll,pitch,yaw;
 			if(_loopClosureHypothesis.first || lastProximitySpaceClosureId)
@@ -3192,7 +3194,6 @@ bool Rtabmap::process(
 				UINFO("Set loop closure transform = %s", loopIter->second.transform().prettyPrint().c_str());
 				statistics_.setLoopClosureTransform(loopIter->second.transform());
 
-				statistics_.addStatistic(Statistics::kLoopMap_id(), sLoop->mapId());
 				statistics_.addStatistic(Statistics::kLoopVisual_words(), sLoop->getWords().size());
 				statistics_.addStatistic(Statistics::kLoopDistance_since_last_loc(), _distanceTravelledSinceLastLocalization);
 				_distanceTravelledSinceLastLocalization = 0.0f;

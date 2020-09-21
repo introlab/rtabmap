@@ -37,10 +37,16 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QInputDialog>
 #include <QVBoxLayout>
 #include <QColorDialog>
+#include <QPrinter>
 #include <QGraphicsRectItem>
 #include "rtabmap/utilite/ULogger.h"
 #include "rtabmap/gui/KeypointItem.h"
 #include "rtabmap/core/util2d.h"
+
+#include <QtGlobal>
+#if QT_VERSION >= 0x050000
+	#include <QStandardPaths>
+#endif
 
 namespace rtabmap {
 
@@ -158,7 +164,6 @@ QIcon ImageView::createIcon(const QColor & color)
 
 ImageView::ImageView(QWidget * parent) :
 		QWidget(parent),
-		_savedFileName((QDir::homePath()+ "/") + "picture" + ".png"),
 		_alpha(100),
 		_featuresSize(0.0f),
 		_defaultBgColor(Qt::black),
@@ -168,6 +173,19 @@ ImageView::ImageView(QWidget * parent) :
 		_imageItem(0),
 		_imageDepthItem(0)
 {
+#if QT_VERSION >= 0x050000
+	_savedFileName = QStandardPaths::writableLocation(QStandardPaths::PicturesLocation);
+#endif
+	QDir dir;
+	if(!dir.exists(_savedFileName))
+	{
+		_savedFileName = QDir::homePath()+ "/picture.png";
+	}
+	else
+	{
+		_savedFileName += "/picture.png";
+	}
+
 	_graphicsView = new QGraphicsView(this);
 	_graphicsView->setTransformationAnchor(QGraphicsView::AnchorUnderMouse);
 	_graphicsView->setScene(new QGraphicsScene(this));
@@ -806,11 +824,16 @@ void ImageView::contextMenuEvent(QContextMenuEvent * e)
 		if(!_graphicsView->scene()->sceneRect().isNull())
 		{
 			QString text;
+			QString extensions = "*.png *.xpm *.jpg";
+			if(_graphicsView->isVisible())
+			{
+				extensions += " *.pdf";
+			}
 #ifdef QT_SVG_LIB
-			text = QFileDialog::getSaveFileName(this, tr("Save figure to ..."), _savedFileName, "*.png *.xpm *.jpg *.pdf *.svg");
-#else
-			text = QFileDialog::getSaveFileName(this, tr("Save figure to ..."), _savedFileName, "*.png *.xpm *.jpg *.pdf");
+			extensions += " *.svg";
 #endif
+			text = QFileDialog::getSaveFileName(this, tr("Save figure to ..."), _savedFileName, extensions);
+
 			if(!text.isEmpty())
 			{
 				if(QFileInfo(text).suffix() == "")
@@ -820,17 +843,34 @@ void ImageView::contextMenuEvent(QContextMenuEvent * e)
 				}
 
 				_savedFileName = text;
-				QImage img(_graphicsView->sceneRect().width(), _graphicsView->sceneRect().height(), QImage::Format_ARGB32_Premultiplied);
-				QPainter p(&img);
-				if(_graphicsView->isVisible())
+				if(QFileInfo(text).suffix().compare("pdf") == 0)
 				{
+					QPrinter printer(QPrinter::HighResolution);
+					printer.setOrientation(QPrinter::Portrait);
+					printer.setOutputFileName( text );
+					QPainter p(&printer);
+					p.begin(&printer);
+					double xscale = printer.pageRect().width()/double(_graphicsView->sceneRect().width());
+					double yscale = printer.pageRect().height()/double(_graphicsView->sceneRect().height());
+					double scale = qMin(xscale, yscale);
+					p.scale(scale, scale);
 					_graphicsView->scene()->render(&p, _graphicsView->sceneRect(), _graphicsView->sceneRect());
+					p.end();
 				}
 				else
 				{
-					this->render(&p, QPoint(), _graphicsView->sceneRect().toRect());
+					QImage img(_graphicsView->sceneRect().width(), _graphicsView->sceneRect().height(), QImage::Format_ARGB32_Premultiplied);
+					QPainter p(&img);
+					if(_graphicsView->isVisible())
+					{
+						_graphicsView->scene()->render(&p, _graphicsView->sceneRect(), _graphicsView->sceneRect());
+					}
+					else
+					{
+						this->render(&p, QPoint(), _graphicsView->sceneRect().toRect());
+					}
+					img.save(text);
 				}
-				img.save(text);
 			}
 		}
 	}
