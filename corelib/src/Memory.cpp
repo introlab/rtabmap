@@ -2980,36 +2980,6 @@ Transform Memory::computeTransform(
 		{
 			transform = _registrationPipeline->computeTransformationMod(tmpFrom, tmpTo, guess, info);
 		}
-
-		if(!transform.isNull() &&
-			fromS.sensorData().cameraModels().size()<=1 &&
-			toS.sensorData().cameraModels().size()<=1)
-		{
-			UDEBUG("");
-			// verify if it is a 180 degree transform, well verify > 90
-			float x,y,z, roll,pitch,yaw;
-			if(guess.isNull())
-			{
-				transform.getTranslationAndEulerAngles(x,y,z, roll,pitch,yaw);
-			}
-			else
-			{
-				Transform guessError = guess.inverse() * transform;
-				guessError.getTranslationAndEulerAngles(x,y,z, roll,pitch,yaw);
-			}
-			if(fabs(pitch) > CV_PI/2 ||
-			   fabs(yaw) > CV_PI/2)
-			{
-				transform.setNull();
-				std::string msg = uFormat("Too large rotation detected! (pitch=%f, yaw=%f) max is %f",
-						pitch, yaw, CV_PI/2);
-				UINFO(msg.c_str());
-				if(info)
-				{
-					info->rejectedMsg = msg;
-				}
-			}
-		}
 	}
 	return transform;
 }
