@@ -2318,12 +2318,12 @@ void MainWindow::updateMapCloud(
 	int maxNodes = uStr2Int(_preferencesDialog->getParameter(Parameters::kGridGlobalMaxNodes()));
 	if(maxNodes > 0 && poses.size()>1)
 	{
-		std::vector<int> nodes = graph::findNearestNodes(poses, poses.rbegin()->second, maxNodes);
+		std::map<int, float> nodes = graph::findNearestNodes(poses, poses.rbegin()->second, maxNodes);
 		std::map<int, Transform> nearestPoses;
 		nearestPoses.insert(*poses.rbegin());
-		for(std::vector<int>::iterator iter=nodes.begin(); iter!=nodes.end(); ++iter)
+		for(std::map<int, float>::iterator iter=nodes.begin(); iter!=nodes.end(); ++iter)
 		{
-			std::map<int, Transform>::iterator pter = poses.find(*iter);
+			std::map<int, Transform>::iterator pter = poses.find(iter->first);
 			if(pter != poses.end())
 			{
 				nearestPoses.insert(*pter);

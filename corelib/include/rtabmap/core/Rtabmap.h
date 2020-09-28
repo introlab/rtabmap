@@ -198,6 +198,8 @@ public:
 			bool withGrid = false,
 			bool withWords = true,
 			bool withGlobalDescriptors = true) const;
+	std::map<int, Transform> getNodesInRadius(const Transform & pose, float radius); // If radius=0, RGBD/LocalRadius is used. Can return landmarks.
+	std::map<int, Transform> getNodesInRadius(int nodeId, float radius); // If nodeId==0, return poses around latest node. If radius=0, RGBD/LocalRadius is used. Can return landmarks and use landmark id (negative) as request.
 	int detectMoreLoopClosures(
 			float clusterRadius = 0.5f,
 			float clusterAngle = M_PI/6.0f,

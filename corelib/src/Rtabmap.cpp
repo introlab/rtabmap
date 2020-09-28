@@ -4568,6 +4568,26 @@ void Rtabmap::getGraph(
 	}
 }
 
+std::map<int, Transform> Rtabmap::getNodesInRadius(const Transform & pose, float radius)
+{
+	return graph::getPosesInRadius(pose, _optimizedPoses, radius<=0?_localRadius:radius);
+}
+
+std::map<int, Transform> Rtabmap::getNodesInRadius(int nodeId, float radius)
+{
+	UDEBUG("nodeId=%d, radius=%f", nodeId, radius);
+	std::map<int, Transform> nearNodes;
+	if(nodeId==0 && !_optimizedPoses.empty())
+	{
+		nodeId = _optimizedPoses.rbegin()->first;
+	}
+	if(_optimizedPoses.find(nodeId) != _optimizedPoses.end())
+	{
+		nearNodes = graph::getPosesInRadius(nodeId, _optimizedPoses, radius<=0?_localRadius:radius);
+	}
+	return nearNodes;
+}
+
 int Rtabmap::detectMoreLoopClosures(
 		float clusterRadius,
 		float clusterAngle,

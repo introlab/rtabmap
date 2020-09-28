@@ -255,11 +255,26 @@ std::list<std::pair<int, Transform> > RTABMAP_EXP computePath(
 		float linearVelocity = 0.0f,   // m/sec
 		float angularVelocity = 0.0f); // rad/sec
 
+/**
+ * Get the nearest node of the target pose
+ * @param nodes the nodes to search for
+ * @param targetPose the target pose to search around
+ * @param distance squared distance of the nearest node found (optional)
+ * @return the node id.
+ */
 int RTABMAP_EXP findNearestNode(
 		const std::map<int, rtabmap::Transform> & nodes,
-		const rtabmap::Transform & targetPose);
+		const rtabmap::Transform & targetPose,
+		float * distance = 0);
 
-std::vector<int> RTABMAP_EXP findNearestNodes(
+/**
+ * Get K nearest nodes of the target pose
+ * @param nodes the nodes to search for
+ * @param targetPose the target pose to search around
+ * @param k number of nearest neighbors to search for
+ * @return the node ids with squared distance to target pose.
+ */
+std::map<int, float> RTABMAP_EXP findNearestNodes(
 		const std::map<int, rtabmap::Transform> & nodes,
 		const rtabmap::Transform & targetPose,
 		int k);
@@ -275,8 +290,17 @@ std::map<int, float> RTABMAP_EXP getNodesInRadius(
 		int nodeId,
 		const std::map<int, Transform> & nodes,
 		float radius);
+std::map<int, float> RTABMAP_EXP getNodesInRadius(
+		const Transform & targetPose,
+		const std::map<int, Transform> & nodes,
+		float radius);
 std::map<int, Transform> RTABMAP_EXP getPosesInRadius(
 		int nodeId,
+		const std::map<int, Transform> & nodes,
+		float radius,
+		float angle = 0.0f);
+std::map<int, Transform> RTABMAP_EXP getPosesInRadius(
+		const Transform & targetPose,
 		const std::map<int, Transform> & nodes,
 		float radius,
 		float angle = 0.0f);
