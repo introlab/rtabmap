@@ -63,7 +63,7 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-366</y>
+            <y>-1179</y>
             <width>686</width>
             <height>3236</height>
            </rect>
@@ -95,7 +95,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>5</number>
+                <number>21</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,1">
@@ -8964,6 +8964,11 @@ generate the number of words requested.</string>
                              <string>SuperPoint Torch</string>
                             </property>
                            </item>
+                           <item>
+                            <property name="text">
+                             <string>SURF+FREAK</string>
+                            </property>
+                           </item>
                           </widget>
                          </item>
                          <item row="7" column="0">
@@ -9566,7 +9571,7 @@ When set to false, no new words are added to dictionary, so no more updates are 
                          </property>
                         </widget>
                        </item>
-                       <item row="7" column="2">
+                       <item row="8" column="2">
                         <widget class="QLabel" name="label_260">
                          <property name="text">
                           <string>When using a FLANN-based nearest neighbor strategy, add/remove points to its index without always rebuilding the index (the index is built only when the dictionary increases of the factor below in size).</string>
@@ -9579,7 +9584,7 @@ When set to false, no new words are added to dictionary, so no more updates are 
                          </property>
                         </widget>
                        </item>
-                       <item row="7" column="0">
+                       <item row="8" column="0">
                         <widget class="QCheckBox" name="checkBox_kp_incrementalFlann">
                          <property name="text">
                           <string/>
@@ -9589,7 +9594,7 @@ When set to false, no new words are added to dictionary, so no more updates are 
                          </property>
                         </widget>
                        </item>
-                       <item row="8" column="2">
+                       <item row="9" column="2">
                         <widget class="QLabel" name="label_451">
                          <property name="text">
                           <string>Factor used when rebuilding the incremental FLANN index. Set 1 to disable.</string>
@@ -9602,7 +9607,7 @@ When set to false, no new words are added to dictionary, so no more updates are 
                          </property>
                         </widget>
                        </item>
-                       <item row="8" column="0">
+                       <item row="9" column="0">
                         <widget class="QDoubleSpinBox" name="surf_doubleSpinBox_rebalancingFactor">
                          <property name="decimals">
                           <number>1</number>
@@ -9618,6 +9623,29 @@ When set to false, no new words are added to dictionary, so no more updates are 
                          </property>
                          <property name="value">
                           <double>2.000000000000000</double>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="7" column="2">
+                        <widget class="QLabel" name="label_556">
+                         <property name="text">
+                          <string>For FLANN KdTree, binary descriptors are converted to float by converting each byte to float instead of converting each bit to float. When converting bytes instead of bits, less memory is used and search is faster at the cost of slightly less accurate matching.</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="7" column="0">
+                        <widget class="QCheckBox" name="checkBox_kp_byteToFloat">
+                         <property name="text">
+                          <string/>
+                         </property>
+                         <property name="checked">
+                          <bool>true</bool>
                          </property>
                         </widget>
                        </item>
@@ -18214,6 +18242,11 @@ Lower the ratio -&gt; higher the precision.</string>
                            <item>
                             <property name="text">
                              <string>SuperPoint Torch</string>
+                            </property>
+                           </item>
+                           <item>
+                            <property name="text">
+                             <string>SURF+FREAK</string>
                             </property>
                            </item>
                           </widget>

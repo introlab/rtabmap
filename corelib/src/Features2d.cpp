@@ -511,7 +511,7 @@ Feature2D * Feature2D::create(Feature2D::Type type, const ParametersMap & parame
 
 #if CV_MAJOR_VERSION < 3 || (CV_MAJOR_VERSION == 4 && CV_MINOR_VERSION <= 3) || (CV_MAJOR_VERSION == 3 && (CV_MINOR_VERSION < 4 || (CV_MINOR_VERSION==4 && CV_SUBMINOR_VERSION<11)))
 #ifndef RTABMAP_NONFREE
-	if(type == Feature2D::kFeatureSurf || type == Feature2D::kFeatureSift)
+	if(type == Feature2D::kFeatureSurf || type == Feature2D::kFeatureSift || type == Feature2D::kFeatureSurfFreak)
 	{
 #if CV_MAJOR_VERSION < 3
 		UWARN("SURF and SIFT features cannot be used because OpenCV was not built with nonfree module. GFTT/ORB is used instead.");
@@ -524,7 +524,8 @@ Feature2D * Feature2D::create(Feature2D::Type type, const ParametersMap & parame
 	if(type == Feature2D::kFeatureFastBrief ||
 	   type == Feature2D::kFeatureFastFreak ||
 	   type == Feature2D::kFeatureGfttBrief ||
-	   type == Feature2D::kFeatureGfttFreak)
+	   type == Feature2D::kFeatureGfttFreak ||
+	   type == Feature2D::kFeatureSurfFreak)
 	{
 		UWARN("BRIEF and FREAK features cannot be used because OpenCV was not built with xfeatures2d module. GFTT/ORB is used instead.");
 		type = Feature2D::kFeatureGfttOrb;
@@ -535,7 +536,7 @@ Feature2D * Feature2D::create(Feature2D::Type type, const ParametersMap & parame
 #else // >= 4.4.0 >= 3.4.11
 
 #ifndef RTABMAP_NONFREE
-	if(type == Feature2D::kFeatureSurf)
+	if(type == Feature2D::kFeatureSurf || type == Feature2D::kFeatureSurfFreak)
 	{
 		UWARN("SURF features cannot be used because OpenCV was not built with nonfree module. SIFT is used instead.");
 		type = Feature2D::kFeatureSift;
@@ -614,6 +615,9 @@ Feature2D * Feature2D::create(Feature2D::Type type, const ParametersMap & parame
 		feature2D = new SuperPointTorch(parameters);
 		break;
 #endif
+	case Feature2D::kFeatureSurfFreak:
+		feature2D = new SURF_FREAK(parameters);
+		break;
 #ifdef RTABMAP_NONFREE
 	default:
 		feature2D = new SURF(parameters);
@@ -1709,6 +1713,59 @@ void GFTT_FREAK::parseParameters(const ParametersMap & parameters)
 }
 
 cv::Mat GFTT_FREAK::generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const
+{
+	UASSERT(!image.empty() && image.channels() == 1 && image.depth() == CV_8U);
+	cv::Mat descriptors;
+#if CV_MAJOR_VERSION < 3
+	_freak->compute(image, keypoints, descriptors);
+#else
+#ifdef HAVE_OPENCV_XFEATURES2D
+	_freak->compute(image, keypoints, descriptors);
+#else
+	UWARN("RTAB-Map is not built with OpenCV xfeatures2d module so Freak cannot be used!");
+#endif
+#endif
+	return descriptors;
+}
+
+//////////////////////////
+//SURF-FREAK
+//////////////////////////
+SURF_FREAK::SURF_FREAK(const ParametersMap & parameters) :
+	SURF(parameters),
+	orientationNormalized_(Parameters::defaultFREAKOrientationNormalized()),
+	scaleNormalized_(Parameters::defaultFREAKScaleNormalized()),
+	patternScale_(Parameters::defaultFREAKPatternScale()),
+	nOctaves_(Parameters::defaultFREAKNOctaves())
+{
+	parseParameters(parameters);
+}
+
+SURF_FREAK::~SURF_FREAK()
+{
+}
+
+void SURF_FREAK::parseParameters(const ParametersMap & parameters)
+{
+	SURF::parseParameters(parameters);
+
+	Parameters::parse(parameters, Parameters::kFREAKOrientationNormalized(), orientationNormalized_);
+	Parameters::parse(parameters, Parameters::kFREAKScaleNormalized(), scaleNormalized_);
+	Parameters::parse(parameters, Parameters::kFREAKPatternScale(), patternScale_);
+	Parameters::parse(parameters, Parameters::kFREAKNOctaves(), nOctaves_);
+
+#if CV_MAJOR_VERSION < 3
+	_freak = cv::Ptr<CV_FREAK>(new CV_FREAK(orientationNormalized_, scaleNormalized_, patternScale_, nOctaves_));
+#else
+#ifdef HAVE_OPENCV_XFEATURES2D
+	_freak = CV_FREAK::create(orientationNormalized_, scaleNormalized_, patternScale_, nOctaves_);
+#else
+	UWARN("RTAB-Map is not built with OpenCV xfeatures2d module so Freak cannot be used!");
+#endif
+#endif
+}
+
+cv::Mat SURF_FREAK::generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const
 {
 	UASSERT(!image.empty() && image.channels() == 1 && image.depth() == CV_8U);
 	cv::Mat descriptors;

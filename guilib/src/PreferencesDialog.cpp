@@ -194,7 +194,9 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 //SURF
 #ifndef RTABMAP_NONFREE
 	_ui->comboBox_detector_strategy->setItemData(0, 0, Qt::UserRole - 1);
+	_ui->comboBox_detector_strategy->setItemData(12, 0, Qt::UserRole - 1);
 	_ui->vis_feature_detector->setItemData(0, 0, Qt::UserRole - 1);
+	_ui->vis_feature_detector->setItemData(12, 0, Qt::UserRole - 1);
 #endif
 
 // SIFT
@@ -210,10 +212,12 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->comboBox_detector_strategy->setItemData(4, 0, Qt::UserRole - 1);
 	_ui->comboBox_detector_strategy->setItemData(5, 0, Qt::UserRole - 1);
 	_ui->comboBox_detector_strategy->setItemData(6, 0, Qt::UserRole - 1);
+	_ui->comboBox_detector_strategy->setItemData(12, 0, Qt::UserRole - 1);
 	_ui->vis_feature_detector->setItemData(3, 0, Qt::UserRole - 1);
 	_ui->vis_feature_detector->setItemData(4, 0, Qt::UserRole - 1);
 	_ui->vis_feature_detector->setItemData(5, 0, Qt::UserRole - 1);
 	_ui->vis_feature_detector->setItemData(6, 0, Qt::UserRole - 1);
+	_ui->vis_feature_detector->setItemData(12, 0, Qt::UserRole - 1);
 #endif
 
 #ifndef RTABMAP_ORB_OCTREE
@@ -878,6 +882,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->comboBox_dictionary_strategy->setObjectName(Parameters::kKpNNStrategy().c_str());
 	_ui->checkBox_dictionary_incremental->setObjectName(Parameters::kKpIncrementalDictionary().c_str());
 	_ui->checkBox_kp_incrementalFlann->setObjectName(Parameters::kKpIncrementalFlann().c_str());
+	_ui->checkBox_kp_byteToFloat->setObjectName(Parameters::kKpByteToFloat().c_str());
 	_ui->surf_doubleSpinBox_rebalancingFactor->setObjectName(Parameters::kKpFlannRebalancingFactor().c_str());
 	_ui->comboBox_detector_strategy->setObjectName(Parameters::kKpDetectorStrategy().c_str());
 	_ui->surf_doubleSpinBox_nndrRatio->setObjectName(Parameters::kKpNndrRatio().c_str());
@@ -2962,7 +2967,7 @@ bool PreferencesDialog::validateForm()
 #ifndef RTABMAP_NONFREE
 	// verify that SURF/SIFT cannot be selected if not built with OpenCV nonfree module
 	// BOW dictionary type
-	if(_ui->comboBox_detector_strategy->currentIndex() <= 1)
+	if(_ui->comboBox_detector_strategy->currentIndex() <= 1 || _ui->comboBox_detector_strategy->currentIndex() == 12)
 	{
 		QMessageBox::warning(this, tr("Parameter warning"),
 				tr("Selected feature type (SURF/SIFT) is not available. RTAB-Map is not built "
@@ -2970,7 +2975,7 @@ bool PreferencesDialog::validateForm()
 		_ui->comboBox_detector_strategy->setCurrentIndex(Feature2D::kFeatureOrb);
 	}
 	// BOW Reextract features type
-	if(_ui->vis_feature_detector->currentIndex() <= 1)
+	if(_ui->vis_feature_detector->currentIndex() <= 1 || _ui->vis_feature_detector->currentIndex() == 12)
 	{
 		QMessageBox::warning(this, tr("Parameter warning"),
 				tr("Selected feature type (SURF/SIFT) is not available. RTAB-Map is not built "
@@ -2983,7 +2988,7 @@ bool PreferencesDialog::validateForm()
 #ifndef RTABMAP_NONFREE
 	// verify that SURF cannot be selected if not built with OpenCV nonfree module
 	// BOW dictionary type
-	if(_ui->comboBox_detector_strategy->currentIndex() < 1)
+	if(_ui->comboBox_detector_strategy->currentIndex() < 1 || _ui->comboBox_detector_strategy->currentIndex() == 12)
 	{
 		QMessageBox::warning(this, tr("Parameter warning"),
 				tr("Selected feature type (SURF) is not available. RTAB-Map is not built "
@@ -2991,7 +2996,7 @@ bool PreferencesDialog::validateForm()
 		_ui->comboBox_detector_strategy->setCurrentIndex(Feature2D::kFeatureSift);
 	}
 	// BOW Reextract features type
-	if(_ui->vis_feature_detector->currentIndex() < 1)
+	if(_ui->vis_feature_detector->currentIndex() < 1 || _ui->vis_feature_detector->currentIndex() == 12)
 	{
 		QMessageBox::warning(this, tr("Parameter warning"),
 				tr("Selected feature type (SURF) is not available. RTAB-Map is not built "

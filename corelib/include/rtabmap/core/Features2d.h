@@ -115,7 +115,8 @@ public:
 		kFeatureGfttOrb=8,  //new 0.10.11
 		kFeatureKaze=9,     //new 0.13.2
 		kFeatureOrbOctree=10, //new 0.19.2
-		kFeatureSuperPointTorch=11}; //new 0.19.7
+		kFeatureSuperPointTorch=11, //new 0.19.7
+		kFeatureSurfFreak=12}; //new 0.20.4
 	static std::string typeName(Type type)
 	{
 		switch(type){
@@ -143,6 +144,8 @@ public:
 			return "ORB-OCTREE";
 		case kFeatureSuperPointTorch:
 			return "SUPERPOINT";
+		case kFeatureSurfFreak:
+			return "SURF+Freak";
 		default:
 			return "Unknown";
 		}
@@ -442,6 +445,28 @@ public:
 
 	virtual void parseParameters(const ParametersMap & parameters);
 	virtual Feature2D::Type getType() const {return kFeatureGfttFreak;}
+
+private:
+	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const;
+
+private:
+	bool orientationNormalized_;
+	bool scaleNormalized_;
+	float patternScale_;
+	int nOctaves_;
+
+	cv::Ptr<CV_FREAK> _freak;
+};
+
+//SURF_FREAK
+class RTABMAP_EXP SURF_FREAK : public SURF
+{
+public:
+	SURF_FREAK(const ParametersMap & parameters = ParametersMap());
+	virtual ~SURF_FREAK();
+
+	virtual void parseParameters(const ParametersMap & parameters);
+	virtual Feature2D::Type getType() const {return kFeatureSurfFreak;}
 
 private:
 	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const;

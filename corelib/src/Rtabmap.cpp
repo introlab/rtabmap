@@ -432,6 +432,16 @@ void Rtabmap::close(bool databaseSaved, const std::string & ouputDatabasePath)
 	{
 		if(databaseSaved)
 		{
+			if(_memory->isGraphReduced() && _memory->isIncremental())
+			{
+				// Force reducing graph, then remove filtered nodes from the optimized poses
+				std::map<int, int> reducedIds;
+				_memory->incrementMapId(&reducedIds);
+				for(std::map<int, int>::iterator iter=reducedIds.begin(); iter!=reducedIds.end(); ++iter)
+				{
+					_optimizedPoses.erase(iter->first);
+				}
+			}
 			_memory->saveOptimizedPoses(_optimizedPoses, _lastLocalizationPose);
 		}
 		_memory->close(databaseSaved, true, ouputDatabasePath);

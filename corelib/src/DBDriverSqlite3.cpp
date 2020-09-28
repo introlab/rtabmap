@@ -2377,6 +2377,7 @@ void DBDriverSqlite3::getAllNodeIdsQuery(std::set<int> & ids, bool ignoreChildre
 			query << "INNER JOIN Link ";
 			query << "ON id = to_id "; // use to_id to ignore all children (which don't have link pointing on them)
 			query << "WHERE from_id != to_id "; // ignore self referring links
+			query << "AND weight>-9 "; //ignore invalid nodes
 		}
 
 		if(ignoreBadSignatures)
@@ -3622,6 +3623,7 @@ void DBDriverSqlite3::loadWordsQuery(const std::set<int> & wordIds, std::list<Vi
 		int descriptorSize;
 		const void * descriptor;
 		int dRealSize;
+		unsigned long dRealSizeTotal = 0;
 		for(std::set<int>::const_iterator iter=wordIds.begin(); iter!=wordIds.end(); ++iter)
 		{
 			// bind id
@@ -3654,6 +3656,7 @@ void DBDriverSqlite3::loadWordsQuery(const std::set<int> & wordIds, std::list<Vi
 				}
 
 				memcpy(d.data, descriptor, dRealSize);
+				dRealSizeTotal+=dRealSize;
 				VisualWord * vw = new VisualWord(*iter, d);
 				if(vw)
 				{
@@ -3675,7 +3678,7 @@ void DBDriverSqlite3::loadWordsQuery(const std::set<int> & wordIds, std::list<Vi
 		rc = sqlite3_finalize(ppStmt);
 		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
 
-		ULOGGER_DEBUG("Time=%fs", timer.ticks());
+		UDEBUG("Time=%fs (%d words, %lu MB)", timer.ticks(), (int)vws.size(), dRealSizeTotal/1000000);
 
 		if(wordIds.size() != loaded.size())
 		{

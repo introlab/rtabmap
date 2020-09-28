@@ -213,6 +213,10 @@ void RegistrationVis::parseParameters(const ParametersMap & parameters)
 	{
 		uInsert(_featureParameters, ParametersPair(Parameters::kKpNndrRatio(), parameters.at(Parameters::kVisCorNNDR())));
 	}
+	if(uContains(parameters, Parameters::kKpByteToFloat()))
+	{
+		uInsert(_featureParameters, ParametersPair(Parameters::kKpByteToFloat(), parameters.at(Parameters::kKpByteToFloat())));
+	}
 	if(uContains(parameters, Parameters::kVisFeatureType()))
 	{
 		uInsert(_featureParameters, ParametersPair(Parameters::kKpDetectorStrategy(), parameters.at(Parameters::kVisFeatureType())));

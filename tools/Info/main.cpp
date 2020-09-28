@@ -33,6 +33,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/DBDriver.h>
 #include <rtabmap/utilite/UDirectory.h>
 #include "rtabmap/utilite/UFile.h"
+#include "rtabmap/utilite/UStl.h"
 
 using namespace rtabmap;
 
@@ -229,7 +230,7 @@ int main(int argc, char * argv[])
 		driver->getAllNodeIds(ids);
 		Transform lastLocalization;
 		std::map<int, Transform> optimizedPoses = driver->loadOptimizedPoses(&lastLocalization);
-		std::set<int> mapsLinkedToLastGraph;
+		std::multimap<int, int> mapIdsLinkedToLastGraph;
 		int lastMapId=0;
 		double previousStamp = 0.0f;
 		Transform previousPose;
@@ -265,7 +266,7 @@ int main(int argc, char * argv[])
 			}
 			if(optimizedPoses.find(id) != optimizedPoses.end())
 			{
-				mapsLinkedToLastGraph.insert(mapId);
+				mapIdsLinkedToLastGraph.insert(std::make_pair(mapId, id));
 			}
 			if(iter!=ids.begin())
 			{
@@ -318,13 +319,14 @@ int main(int argc, char * argv[])
 		}
 
 		std::stringstream sessionsInOptGraphStr;
-		for(std::set<int>::iterator iter=mapsLinkedToLastGraph.begin(); iter!=mapsLinkedToLastGraph.end(); ++iter)
+		std::list<int> mapsLinkedToLastGraph = uUniqueKeys(mapIdsLinkedToLastGraph);
+		for(std::list<int>::iterator iter=mapsLinkedToLastGraph.begin(); iter!=mapsLinkedToLastGraph.end(); ++iter)
 		{
 			if(iter!=mapsLinkedToLastGraph.begin())
 			{
 				sessionsInOptGraphStr << ", ";
 			}
-			sessionsInOptGraphStr << *iter;
+			sessionsInOptGraphStr << *iter << "(" << mapIdsLinkedToLastGraph.count(*iter) << ")";
 		}
 
 		std::cout << (uFormat("%s%fs\n", pad("Total time:").c_str(), infoTotalTime));

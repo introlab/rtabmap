@@ -1131,7 +1131,7 @@ void Memory::moveSignatureToWMFromSTM(int id, int * reducedTo)
 					}
 				}
 
-				this->moveToTrash(s, _notLinkedNodesKeptInDb);
+				this->moveToTrash(s, false);
 				s = 0;
 			}
 		}
@@ -2368,7 +2368,7 @@ void Memory::moveToTrash(Signature * s, bool keepLinkedToGraph, std::list<int> *
 			}
 			s->removeLinks(true); // remove all links, but keep self referring link
 			s->removeLandmarks(); // remove all landmarks
-			s->setWeight(0);
+			s->setWeight(-9); // invalid
 			s->setLabel(""); // reset label
 		}
 		else
