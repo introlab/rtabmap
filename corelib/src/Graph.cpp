@@ -1129,19 +1129,22 @@ std::multimap<int, Link> filterDuplicateLinks(
 
 std::multimap<int, Link> filterLinks(
 		const std::multimap<int, Link> & links,
-		Link::Type filteredType)
+		Link::Type filteredType,
+		bool inverted)
 {
 	std::multimap<int, Link> output;
 	for(std::multimap<int, Link>::const_iterator iter=links.begin(); iter!=links.end(); ++iter)
 	{
 		if(filteredType == Link::kSelfRefLink)
 		{
-			if(iter->second.from() != iter->second.to())
+			if((!inverted && iter->second.from() != iter->second.to())||
+			   (inverted && iter->second.from() == iter->second.to()))
 			{
 				output.insert(*iter);
 			}
 		}
-		else if(iter->second.type() != filteredType)
+		else if((!inverted && iter->second.type() != filteredType)||
+				(inverted && iter->second.type() == filteredType))
 		{
 			output.insert(*iter);
 		}
@@ -1151,19 +1154,22 @@ std::multimap<int, Link> filterLinks(
 
 std::map<int, Link> filterLinks(
 		const std::map<int, Link> & links,
-		Link::Type filteredType)
+		Link::Type filteredType,
+		bool inverted)
 {
 	std::map<int, Link> output;
 	for(std::map<int, Link>::const_iterator iter=links.begin(); iter!=links.end(); ++iter)
 	{
 		if(filteredType == Link::kSelfRefLink)
 		{
-			if(iter->second.from() != iter->second.to())
+			if((!inverted && iter->second.from() != iter->second.to())||
+			   (inverted && iter->second.from() == iter->second.to()))
 			{
 				output.insert(*iter);
 			}
 		}
-		else if(iter->second.type() != filteredType)
+		else if((!inverted && iter->second.type() != filteredType)||
+				(inverted && iter->second.type() == filteredType))
 		{
 			output.insert(*iter);
 		}

@@ -275,7 +275,7 @@ int main(int argc, char * argv[])
 
 		if(reg.getNNType()==6 &&
 		   !dataFrom.getWordsDescriptors().empty() &&
-		   dataFrom.getWordsDescriptors().begin()->second.type()!=CV_32F)
+		   dataFrom.getWordsDescriptors().type()!=CV_32F)
 		{
 			UWARN("PyMatcher is selected for matching but binary features "
 				  "are not compatible. BruteForce with CrossCheck (%s=5) "
@@ -298,7 +298,7 @@ int main(int argc, char * argv[])
 				.arg(Parameters::kVisCorNNType().c_str())
 				.arg(reg.getNNType())
 				.arg(reg.getNNType()<VWDictionary::kNNUndef?VWDictionary::nnStrategyName((VWDictionary::NNStrategy)reg.getNNType()).c_str():
-						reg.getNNType()==5||(reg.getNNType()==6&&!dataFrom.getWordsDescriptors().empty()&& dataFrom.getWordsDescriptors().begin()->second.type()!=CV_32F)?"BFCrossCheck":
+						reg.getNNType()==5||(reg.getNNType()==6&&!dataFrom.getWordsDescriptors().empty()&& dataFrom.getWordsDescriptors().type()!=CV_32F)?"BFCrossCheck":
 						reg.getNNType()==6?QString(uSplit(UFile::getName(pyMatcherPath), '.').front().c_str()).replace("rtabmap_", ""):
 						reg.getNNType()==7?"GMS":"?")
 				.arg(reg.getNNType()<5?QString(" %1=%2").arg(Parameters::kVisCorNNDR().c_str()).arg(reg.getNNDR()):"")
@@ -322,9 +322,21 @@ int main(int argc, char * argv[])
 			if(reg.getEstimationType() == 2)
 			{
 				// triangulate 3D words based on the transform computed
+				std::map<int, int> wordsFrom = uMultimapToMapUnique(dataFrom.getWords());
+				std::map<int, int> wordsTo = uMultimapToMapUnique(dataTo.getWords());
+				std::map<int, cv::KeyPoint> kptsFrom;
+				std::map<int, cv::KeyPoint> kptsTo;
+				for(std::map<int, int>::iterator iter=wordsFrom.begin(); iter!=wordsFrom.end(); ++iter)
+				{
+					kptsFrom.insert(std::make_pair(iter->first, dataFrom.getWordsKpts()[iter->second]));
+				}
+				for(std::map<int, int>::iterator iter=wordsTo.begin(); iter!=wordsTo.end(); ++iter)
+				{
+					kptsTo.insert(std::make_pair(iter->first, dataTo.getWordsKpts()[iter->second]));
+				}
 				std::map<int, cv::Point3f> points3d = util3d::generateWords3DMono(
-						uMultimapToMapUnique(dataFrom.getWords()),
-						uMultimapToMapUnique(dataTo.getWords()),
+						kptsFrom,
+						kptsTo,
 						model.isValidForProjection()?model:stereoModel.left(),
 						t);
 				pcl::PointCloud<pcl::PointXYZ>::Ptr cloudWordsFrom(new pcl::PointCloud<pcl::PointXYZ>);
@@ -353,11 +365,12 @@ int main(int argc, char * argv[])
 					pcl::PointCloud<pcl::PointXYZ>::Ptr cloudWordsFrom(new pcl::PointCloud<pcl::PointXYZ>);
 					cloudWordsFrom->resize(dataFrom.getWords3().size());
 					int i=0;
-					for(std::multimap<int, cv::Point3f>::const_iterator iter=dataFrom.getWords3().begin();
-						iter!=dataFrom.getWords3().end();
+					for(std::multimap<int, int>::const_iterator iter=dataFrom.getWords().begin();
+						iter!=dataFrom.getWords().end();
 						++iter)
 					{
-						cloudWordsFrom->at(i++) = pcl::PointXYZ(iter->second.x, iter->second.y, iter->second.z);
+						const cv::Point3f & pt = dataFrom.getWords3()[iter->second];
+						cloudWordsFrom->at(i++) = pcl::PointXYZ(pt.x, pt.y, pt.z);
 					}
 					if(cloudWordsFrom->size())
 					{
@@ -371,22 +384,23 @@ int main(int argc, char * argv[])
 				}
 				if(!dataTo.getWords3().empty())
 				{
-					pcl::PointCloud<pcl::PointXYZ>::Ptr cloudWordsFrom(new pcl::PointCloud<pcl::PointXYZ>);
-					cloudWordsFrom->resize(dataTo.getWords3().size());
+					pcl::PointCloud<pcl::PointXYZ>::Ptr cloudWordsTo(new pcl::PointCloud<pcl::PointXYZ>);
+					cloudWordsTo->resize(dataTo.getWords3().size());
 					int i=0;
-					for(std::multimap<int, cv::Point3f>::const_iterator iter=dataTo.getWords3().begin();
-						iter!=dataTo.getWords3().end();
+					for(std::multimap<int, int>::const_iterator iter=dataTo.getWords().begin();
+						iter!=dataTo.getWords().end();
 						++iter)
 					{
-						cloudWordsFrom->at(i++) = pcl::PointXYZ(iter->second.x, iter->second.y, iter->second.z);
+						const cv::Point3f & pt = dataTo.getWords3()[iter->second];
+						cloudWordsTo->at(i++) = pcl::PointXYZ(pt.x, pt.y, pt.z);
 					}
-					if(cloudWordsFrom->size())
+					if(cloudWordsTo->size())
 					{
-						cloudWordsFrom = rtabmap::util3d::removeNaNFromPointCloud(cloudWordsFrom);
+						cloudWordsTo = rtabmap::util3d::removeNaNFromPointCloud(cloudWordsTo);
 					}
-					if(cloudWordsFrom->size())
+					if(cloudWordsTo->size())
 					{
-						viewer->addCloud("wordsTo", cloudWordsFrom, t, Qt::cyan);
+						viewer->addCloud("wordsTo", cloudWordsTo, t, Qt::cyan);
 						viewer->setCloudPointSize("wordsTo", 5);
 					}
 				}
@@ -443,8 +457,24 @@ int main(int argc, char * argv[])
 			viewB->setImageDepth(uCvMat2QImage(toDepth, false, uCvQtDepthRedToBlue));
 			viewB->setImageDepthShown(true);
 		}
-		viewA->setFeatures(dataFrom.getWords());
-		viewB->setFeatures(dataTo.getWords());
+		std::multimap<int, cv::KeyPoint> keypointsFrom;
+		std::multimap<int, cv::KeyPoint> keypointsTo;
+		if(!dataFrom.getWordsKpts().empty())
+		{
+			for(std::map<int, int>::const_iterator iter=dataFrom.getWords().begin(); iter!=dataFrom.getWords().end(); ++iter)
+			{
+				keypointsFrom.insert(keypointsFrom.end(), std::make_pair(iter->first, dataFrom.getWordsKpts()[iter->second]));
+			}
+		}
+		if(!dataTo.getWordsKpts().empty())
+		{
+			for(std::map<int, int>::const_iterator iter=dataTo.getWords().begin(); iter!=dataTo.getWords().end(); ++iter)
+			{
+				keypointsTo.insert(keypointsTo.end(), std::make_pair(iter->first, dataTo.getWordsKpts()[iter->second]));
+			}
+		}
+		viewA->setFeatures(keypointsFrom);
+		viewB->setFeatures(keypointsTo);
 		std::set<int> inliersSet(info.inliersIDs.begin(), info.inliersIDs.end());
 
 		const QMultiMap<int, KeypointItem*> & wordsA = viewA->getFeatures();

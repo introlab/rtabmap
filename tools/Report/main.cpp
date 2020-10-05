@@ -40,6 +40,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifdef WITH_QT
 #include <rtabmap/utilite/UPlot.h>
 #include <QApplication>
+#include <QFile>
 #endif
 
 using namespace rtabmap;
@@ -69,6 +70,8 @@ void showUsage()
 			"                       database, the inverse will be done. \n"
 			"    --ids              Use IDs for x axis instead of time in the figures. \n"
 			"    --start #          Start from this node ID for the figures.\n"
+			"    --export           Export figures' data to txt files.\n"
+			"    --export_prefix    Prefix to filenames of exported figures' data (default is \"Stat\").\n"
 #endif
 			"    --report           Export all evaluation statistics values in report.txt \n"
 			"    --loc #            Show localization statistics for each \"Statistic/Id\" per\n"
@@ -134,6 +137,8 @@ int main(int argc, char * argv[])
 	bool invertFigures = false;
 	bool useIds = false;
 	int startId = 0;
+	bool exportFigures = false;
+	std::string exportPrefix = "Stat";
 	int showLoc = 0;
 	float locDelay = 60;
 	std::vector<std::string> statsToShow;
@@ -185,6 +190,24 @@ int main(int argc, char * argv[])
 		else if(strcmp(argv[i],"--ids") == 0)
 		{
 			useIds = true;
+		}
+		else if(strcmp(argv[i],"--export") == 0)
+		{
+			exportFigures = true;
+		}
+		else if(strcmp(argv[i],"--export_prefix") == 0)
+		{
+			++i;
+			if(i<argc-1)
+			{
+				exportPrefix = argv[i];
+				printf("Export prefix=%s (--export_prefix)\n", exportPrefix.c_str());
+			}
+			else
+			{
+				printf("Missing value for \"--export_prefix\" option.\n");
+				showUsage();
+			}
 		}
 		else if(strcmp(argv[i],"--loc") == 0)
 		{
@@ -518,14 +541,14 @@ int main(int argc, char * argv[])
 
 								if(uContains(stat, std::string("RtabmapROS/TotalTime/ms")))
 								{
-									if(w>=0)
+									if(w!=-1)
 									{
 										slamTime.push_back(stat.at("RtabmapROS/TotalTime/ms"));
 									}
 								}
 								else if(uContains(stat, Statistics::kTimingTotal()))
 								{
-									if(w>=0)
+									if(w!=-1)
 									{
 										slamTime.push_back(stat.at(Statistics::kTimingTotal()));
 									}
@@ -1171,9 +1194,34 @@ int main(int argc, char * argv[])
 			{
 				iter->second->frameData();
 			}
-			iter->second->show();
+			if(exportFigures)
+			{
+				QString data = iter->second->getAllCurveDataAsText();
+				if(!data.isEmpty())
+				{
+					QString filePath = QString(exportPrefix.c_str()) + (exportPrefix.empty()?"":"-") + iter->second->windowTitle().replace('/', "-") + ".txt";
+					QFile file(filePath);
+					if(file.open(QIODevice::Text | QIODevice::WriteOnly))
+					{
+						file.write(data.toUtf8());
+						file.close();
+						printf("Exported \"%s\".\n", filePath.toStdString().c_str());
+					}
+					else
+					{
+						printf("ERROR: could not open file \"%s\" for writing!\n", filePath.toStdString().c_str());
+					}
+				}
+			}
+			else
+			{
+				iter->second->show();
+			}
 		}
-		return app.exec();
+		if(!exportFigures)
+		{
+			return app.exec();
+		}
 	}
 #endif
 	return 0;

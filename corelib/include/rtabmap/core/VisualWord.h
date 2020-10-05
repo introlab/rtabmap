@@ -43,6 +43,7 @@ public:
 
 	void addRef(int signatureId);
 	int removeAllRef(int signatureId);
+	unsigned long getMemoryUsed() const;
 
 	int getTotalReferences() const {return _totalReferences;}
 	int id() const {return _id;}

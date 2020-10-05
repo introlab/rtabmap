@@ -75,6 +75,7 @@ public:
 
 	// RegistrationVis
 	int inliers;
+	float inliersRatio;
 	float inliersMeanDistance;
 	float inliersDistribution;
 	std::vector<int> inliersIDs;

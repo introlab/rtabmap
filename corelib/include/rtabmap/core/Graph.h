@@ -155,12 +155,20 @@ std::list<Link> RTABMAP_EXP findLinks(
 
 std::multimap<int, Link> RTABMAP_EXP filterDuplicateLinks(
 		const std::multimap<int, Link> & links);
+/**
+ * Return links not of type "filteredType". If inverted=true, return links of of type "filteredType".
+ */
 std::multimap<int, Link> RTABMAP_EXP filterLinks(
 		const std::multimap<int, Link> & links,
-		Link::Type filteredType);
+		Link::Type filteredType,
+		bool inverted = false);
+/**
+ * Return links not of type "filteredType". If inverted=true, return links of of type "filteredType".
+ */
 std::map<int, Link> RTABMAP_EXP filterLinks(
 		const std::map<int, Link> & links,
-		Link::Type filteredType);
+		Link::Type filteredType,
+		bool inverted = false);
 
 //Note: This assumes a coordinate system where X is forward, * Y is up, and Z is right.
 std::map<int, Transform> RTABMAP_EXP frustumPosesFiltering(

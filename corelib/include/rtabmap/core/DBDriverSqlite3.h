@@ -54,7 +54,7 @@ protected:
 	virtual bool connectDatabaseQuery(const std::string & url, bool overwritten = false);
 	virtual void disconnectDatabaseQuery(bool save = true, const std::string & outputUrl = "");
 	virtual bool isConnectedQuery() const;
-	virtual long getMemoryUsedQuery() const; // In bytes
+	virtual unsigned long getMemoryUsedQuery() const; // In bytes
 	virtual bool getDatabaseVersionQuery(std::string & version) const;
 	virtual long getNodesMemoryUsedQuery() const;
 	virtual long getLinksMemoryUsedQuery() const;
@@ -189,7 +189,7 @@ protected:
 	std::string _version;
 
 private:
-	long _memoryUsedEstimate;
+	unsigned long _memoryUsedEstimate;
 	bool _dbInMemory;
 	unsigned int _cacheSize;
 	int _journalMode;

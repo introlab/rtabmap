@@ -1715,11 +1715,14 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 					_cachedSignatures.insert(signature.id(), signature);
 					_cachedMemoryUsage += signature.sensorData().getMemoryUsed();
 					unsigned int count = 0;
-					for(std::multimap<int, cv::Point3f>::const_iterator jter=signature.getWords3().upper_bound(-1); jter!=signature.getWords3().end(); ++jter)
+					if(!signature.getWords3().empty())
 					{
-						if(util3d::isFinite(jter->second))
+						for(std::multimap<int, int>::const_iterator jter=signature.getWords().upper_bound(-1); jter!=signature.getWords().end(); ++jter)
 						{
-							++count;
+							if(util3d::isFinite(signature.getWords3()[jter->second]))
+							{
+								++count;
+							}
 						}
 					}
 					_cachedWordsCount.insert(std::make_pair(signature.id(), (float)count));
@@ -1952,7 +1955,17 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 			UDEBUG("time= %d ms", time.restart());
 
 			// do it after scaling
-			this->drawKeypoints(signature.getWords(), loopSignature.getWords());
+			std::multimap<int, cv::KeyPoint> wordsA;
+			std::multimap<int, cv::KeyPoint> wordsB;
+			for(std::map<int, int>::const_iterator iter=signature.getWords().begin(); iter!=signature.getWords().end(); ++iter)
+			{
+				wordsA.insert(wordsA.end(), std::make_pair(iter->first, signature.getWordsKpts()[iter->second]));
+			}
+			for(std::map<int, int>::const_iterator iter=loopSignature.getWords().begin(); iter!=loopSignature.getWords().end(); ++iter)
+			{
+				wordsB.insert(wordsB.end(), std::make_pair(iter->first, loopSignature.getWordsKpts()[iter->second]));
+			}
+			this->drawKeypoints(wordsA, wordsB);
 
 			UDEBUG("time= %d ms", time.restart());
 
@@ -3706,40 +3719,57 @@ void MainWindow::createAndAddFeaturesToMap(int nodeId, const Transform & pose, i
 		cloud->resize(iter->getWords3().size());
 		int oi=0;
 		UASSERT(iter->getWords().size() == iter->getWords3().size());
-		std::multimap<int, cv::KeyPoint>::const_iterator kter=iter->getWords().begin();
 		float maxDepth = _preferencesDialog->getCloudMaxDepth(0);
 		UDEBUG("rgb.channels()=%d");
-		for(std::multimap<int, cv::Point3f>::const_iterator jter=iter->getWords3().begin();
-				jter!=iter->getWords3().end(); ++jter, ++kter)
+		if(!iter->getWords3().empty() && !iter->getWordsKpts().empty())
 		{
-			if(util3d::isFinite(jter->second) && (maxDepth == 0.0f || jter->second.z < maxDepth))
+			Transform invLocalTransform = Transform::getIdentity();
+			if(iter.value().sensorData().cameraModels().size() == 1 && iter.value().sensorData().cameraModels().at(0).isValidForProjection())
 			{
-				(*cloud)[oi].x = jter->second.x;
-				(*cloud)[oi].y = jter->second.y;
-				(*cloud)[oi].z = jter->second.z;
-				int u = kter->second.pt.x+0.5;
-				int v = kter->second.pt.y+0.5;
-				if(!rgb.empty() &&
-					uIsInBounds(u, 0, rgb.cols-1) &&
-					uIsInBounds(v, 0, rgb.rows-1))
+				invLocalTransform = iter.value().sensorData().cameraModels()[0].localTransform().inverse();
+			}
+			else if(iter.value().sensorData().stereoCameraModel().isValidForProjection())
+			{
+				invLocalTransform = iter.value().sensorData().stereoCameraModel().left().localTransform().inverse();
+			}
+
+			for(std::multimap<int, int>::const_iterator jter=iter->getWords().begin(); jter!=iter->getWords().end(); ++jter)
+			{
+				const cv::Point3f & pt = iter->getWords3()[jter->second];
+				if(util3d::isFinite(pt) &&
+					(maxDepth == 0.0f ||
+							//move back point in camera frame (to get depth along z), ignore for multi-camera
+							(iter.value().sensorData().cameraModels().size()<=1 &&
+							 util3d::transformPoint(pt, invLocalTransform).z < maxDepth)))
 				{
-					if(rgb.channels() == 1)
+					(*cloud)[oi].x = pt.x;
+					(*cloud)[oi].y = pt.y;
+					(*cloud)[oi].z = pt.z;
+					const cv::KeyPoint & kpt = iter->getWordsKpts()[jter->second];
+					int u = kpt.pt.x+0.5;
+					int v = kpt.pt.y+0.5;
+					if(!rgb.empty() &&
+						uIsInBounds(u, 0, rgb.cols-1) &&
+						uIsInBounds(v, 0, rgb.rows-1))
 					{
-						(*cloud)[oi].r = (*cloud)[oi].g = (*cloud)[oi].b = rgb.at<unsigned char>(v, u);
+						if(rgb.channels() == 1)
+						{
+							(*cloud)[oi].r = (*cloud)[oi].g = (*cloud)[oi].b = rgb.at<unsigned char>(v, u);
+						}
+						else
+						{
+							cv::Vec3b bgr = rgb.at<cv::Vec3b>(v, u);
+							(*cloud)[oi].b = bgr.val[0];
+							(*cloud)[oi].g = bgr.val[1];
+							(*cloud)[oi].r = bgr.val[2];
+						}
 					}
 					else
 					{
-						cv::Vec3b bgr = rgb.at<cv::Vec3b>(v, u);
-						(*cloud)[oi].b = bgr.val[0];
-						(*cloud)[oi].g = bgr.val[1];
-						(*cloud)[oi].r = bgr.val[2];
+						(*cloud)[oi].r = (*cloud)[oi].g = (*cloud)[oi].b = 255;
 					}
+					++oi;
 				}
-				else
-				{
-					(*cloud)[oi].r = (*cloud)[oi].g = (*cloud)[oi].b = 255;
-				}
-				++oi;
 			}
 		}
 		cloud->resize(oi);
@@ -4062,11 +4092,14 @@ void MainWindow::processRtabmapEvent3DMap(const rtabmap::RtabmapEvent3DMap & eve
 				_cachedSignatures.insert(iter->first, iter->second);
 				_cachedMemoryUsage += iter->second.sensorData().getMemoryUsed();
 				unsigned int count = 0;
-				for(std::multimap<int, cv::Point3f>::const_iterator jter=iter->second.getWords3().upper_bound(-1); jter!=iter->second.getWords3().end(); ++jter)
+				if(!iter->second.getWords3().empty())
 				{
-					if(util3d::isFinite(jter->second))
+					for(std::multimap<int, int>::const_iterator jter=iter->second.getWords().upper_bound(-1); jter!=iter->second.getWords().end(); ++jter)
 					{
-						++count;
+						if(util3d::isFinite(iter->second.getWords3()[jter->second]))
+						{
+							++count;
+						}
 					}
 				}
 				_cachedWordsCount.insert(std::make_pair(iter->first, (float)count));
@@ -5874,13 +5907,9 @@ void MainWindow::postProcessing()
 										}
 										else
 										{
-											signatureFrom.setWords(std::multimap<int, cv::KeyPoint>());
-											signatureFrom.setWords3(std::multimap<int, cv::Point3f>());
-											signatureFrom.setWordsDescriptors(std::multimap<int, cv::Mat>());
+											signatureFrom.removeAllWords();
 											signatureFrom.sensorData().setFeatures(std::vector<cv::KeyPoint>(), std::vector<cv::Point3f>(), cv::Mat());
-											signatureTo.setWords(std::multimap<int, cv::KeyPoint>());
-											signatureTo.setWords3(std::multimap<int, cv::Point3f>());
-											signatureTo.setWordsDescriptors(std::multimap<int, cv::Mat>());
+											signatureTo.removeAllWords();
 											signatureTo.sensorData().setFeatures(std::vector<cv::KeyPoint>(), std::vector<cv::Point3f>(), cv::Mat());
 										}
 									}

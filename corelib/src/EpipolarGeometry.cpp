@@ -70,13 +70,19 @@ bool EpipolarGeometry::check(const Signature * ssA, const Signature * ssB)
 	}
 	ULOGGER_DEBUG("id(%d,%d)", ssA->id(), ssB->id());
 
-	std::list<std::pair<int, std::pair<cv::KeyPoint, cv::KeyPoint> > > pairs;
+	std::list<std::pair<int, std::pair<int, int> > > pairsId;
 
-	findPairsUnique(ssA->getWords(), ssB->getWords(), pairs);
+	findPairsUnique(ssA->getWords(), ssB->getWords(), pairsId);
 
-	if((int)pairs.size()<_matchCountMinAccepted)
+	if((int)pairsId.size()<_matchCountMinAccepted)
 	{
 		return false;
+	}
+
+	std::list<std::pair<int, std::pair<cv::KeyPoint, cv::KeyPoint> > > pairs;
+	for(std::list<std::pair<int, std::pair<int, int> > >::iterator iter = pairsId.begin(); iter!=pairsId.end(); ++iter)
+	{
+		pairs.push_back(std::make_pair(iter->first, std::make_pair(ssA->getWordsKpts()[iter->second.first], ssB->getWordsKpts()[iter->second.second])));
 	}
 
 	std::vector<uchar> status;
@@ -405,136 +411,6 @@ cv::Mat EpipolarGeometry::findFFromCalibratedStereoCameras(double fx, double fy,
 
 	return K.inv().t()*E*K.inv();
 }
-
-/**
- * if a=[1 2 3 4 6], b=[1 2 4 5 6], results= [(1,1) (2,2) (4,4) (6,6)]
- * realPairsCount = 4
- */
-int EpipolarGeometry::findPairs(
-		const std::map<int, cv::KeyPoint> & wordsA,
-		const std::map<int, cv::KeyPoint> & wordsB,
-		std::list<std::pair<int, std::pair<cv::KeyPoint, cv::KeyPoint> > > & pairs,
-		bool ignoreInvalidIds)
-{
-	int realPairsCount = 0;
-	pairs.clear();
-	for(std::map<int, cv::KeyPoint>::const_iterator i=wordsA.begin(); i!=wordsA.end(); ++i)
-	{
-		if(!ignoreInvalidIds || (ignoreInvalidIds && i->first>=0))
-		{
-			std::map<int, cv::KeyPoint>::const_iterator ptB = wordsB.find(i->first);
-			if(ptB != wordsB.end())
-			{
-				pairs.push_back(std::pair<int, std::pair<cv::KeyPoint, cv::KeyPoint> >(i->first, std::pair<cv::KeyPoint, cv::KeyPoint>(i->second, ptB->second)));
-				++realPairsCount;
-			}
-		}
-	}
-	return realPairsCount;
-}
-
-/**
- * if a=[1 2 3 4 6 6], b=[1 1 2 4 5 6 6], results= [(1,1a) (2,2) (4,4) (6a,6a) (6b,6b)]
- * realPairsCount = 5
- */
-int EpipolarGeometry::findPairs(const std::multimap<int, cv::KeyPoint> & wordsA,
-		const std::multimap<int, cv::KeyPoint> & wordsB,
-		std::list<std::pair<int, std::pair<cv::KeyPoint, cv::KeyPoint> > > & pairs,
-		bool ignoreInvalidIds)
-{
-	const std::list<int> & ids = uUniqueKeys(wordsA);
-	std::multimap<int, cv::KeyPoint>::const_iterator iterA;
-	std::multimap<int, cv::KeyPoint>::const_iterator iterB;
-	pairs.clear();
-	int realPairsCount = 0;
-	for(std::list<int>::const_iterator i=ids.begin(); i!=ids.end(); ++i)
-	{
-		if(!ignoreInvalidIds || (ignoreInvalidIds && *i >= 0))
-		{
-			iterA = wordsA.find(*i);
-			iterB = wordsB.find(*i);
-			while(iterA != wordsA.end() && iterB != wordsB.end() && (*iterA).first == (*iterB).first && (*iterA).first == *i)
-			{
-				pairs.push_back(std::pair<int, std::pair<cv::KeyPoint, cv::KeyPoint> >(*i, std::pair<cv::KeyPoint, cv::KeyPoint>((*iterA).second, (*iterB).second)));
-				++iterA;
-				++iterB;
-				++realPairsCount;
-			}
-		}
-	}
-	return realPairsCount;
-}
-
-/**
- * if a=[1 2 3 4 6 6], b=[1 1 2 4 5 6 6], results= [(2,2) (4,4)]
- * realPairsCount = 5
- */
-int EpipolarGeometry::findPairsUnique(
-		const std::multimap<int, cv::KeyPoint> & wordsA,
-		const std::multimap<int, cv::KeyPoint> & wordsB,
-		std::list<std::pair<int, std::pair<cv::KeyPoint, cv::KeyPoint> > > & pairs,
-		bool ignoreInvalidIds)
-{
-	const std::list<int> & ids = uUniqueKeys(wordsA);
-	int realPairsCount = 0;
-	pairs.clear();
-	for(std::list<int>::const_iterator i=ids.begin(); i!=ids.end(); ++i)
-	{
-		if(!ignoreInvalidIds || (ignoreInvalidIds && *i>=0))
-		{
-			std::list<cv::KeyPoint> ptsA = uValues(wordsA, *i);
-			std::list<cv::KeyPoint> ptsB = uValues(wordsB, *i);
-			if(ptsA.size() == 1 && ptsB.size() == 1)
-			{
-				pairs.push_back(std::pair<int, std::pair<cv::KeyPoint, cv::KeyPoint> >(*i, std::pair<cv::KeyPoint, cv::KeyPoint>(ptsA.front(), ptsB.front())));
-				++realPairsCount;
-			}
-			else if(ptsA.size()>1 && ptsB.size()>1)
-			{
-				// just update the count
-				realPairsCount += ptsA.size() > ptsB.size() ? ptsB.size() : ptsA.size();
-			}
-		}
-	}
-	return realPairsCount;
-}
-
-/**
- * if a=[1 2 3 4 6 6], b=[1 1 2 4 5 6 6], results= [(1,1a) (1,1b) (2,2) (4,4) (6a,6a) (6a,6b) (6b,6a) (6b,6b)]
- * realPairsCount = 5
- */
-int EpipolarGeometry::findPairsAll(const std::multimap<int, cv::KeyPoint> & wordsA,
-		const std::multimap<int, cv::KeyPoint> & wordsB,
-		std::list<std::pair<int, std::pair<cv::KeyPoint, cv::KeyPoint> > > & pairs,
-		bool ignoreInvalidIds)
-{
-	UTimer timer;
-	timer.start();
-	const std::list<int> & ids = uUniqueKeys(wordsA);
-	pairs.clear();
-	int realPairsCount = 0;;
-	for(std::list<int>::const_iterator iter=ids.begin(); iter!=ids.end(); ++iter)
-	{
-		if(!ignoreInvalidIds || (ignoreInvalidIds && *iter>=0))
-		{
-			std::list<cv::KeyPoint> ptsA = uValues(wordsA, *iter);
-			std::list<cv::KeyPoint> ptsB = uValues(wordsB, *iter);
-
-			realPairsCount += ptsA.size() > ptsB.size() ? ptsB.size() : ptsA.size();
-
-			for(std::list<cv::KeyPoint>::iterator jter=ptsA.begin(); jter!=ptsA.end(); ++jter)
-			{
-				for(std::list<cv::KeyPoint>::iterator kter=ptsB.begin(); kter!=ptsB.end(); ++kter)
-				{
-					pairs.push_back(std::pair<int, std::pair<cv::KeyPoint, cv::KeyPoint> >(*iter, std::pair<cv::KeyPoint, cv::KeyPoint>(*jter, *kter)));
-				}
-			}
-		}
-	}
-	ULOGGER_DEBUG("time = %f", timer.ticks());
-	return realPairsCount;
-}
-
 
 
 /**

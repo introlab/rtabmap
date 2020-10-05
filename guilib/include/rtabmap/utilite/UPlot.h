@@ -398,6 +398,7 @@ public:
 	bool isFlat() const {return _flat;}
 	void addItem(UPlotCurve * curve);
 	bool remove(const UPlotCurve * curve);
+	QString getAllCurveDataAsText() const;
 
 private Q_SLOTS:
 	void removeLegendItem(const UPlotCurve * curve);
@@ -510,6 +511,7 @@ public:
 	QStringList curveNames();
 	bool contains(const QString & curveName);
 	void removeCurves();
+	QString getAllCurveDataAsText() const;
 	/**
 	 * Add a threshold to the plot.
 	 */

@@ -104,19 +104,18 @@ public:
 
 	//visual words stuff
 	void removeAllWords();
-	void removeWord(int wordId);
 	void changeWordsRef(int oldWordId, int activeWordId);
-	void setWords(const std::multimap<int, cv::KeyPoint> & words);
+	void setWords(const std::multimap<int, int> & words, const std::vector<cv::KeyPoint> & keypoints, const std::vector<cv::Point3f> & words3, const cv::Mat & descriptors);
 	bool isEnabled() const {return _enabled;}
 	void setEnabled(bool enabled) {_enabled = enabled;}
-	const std::multimap<int, cv::KeyPoint> & getWords() const {return _words;}
+	const std::multimap<int, int> & getWords() const {return _words;}
+	const std::vector<cv::KeyPoint> & getWordsKpts() const {return _wordsKpts;}
 	int getInvalidWordsCount() const {return _invalidWordsCount;}
 	const std::map<int, int> & getWordsChanged() const {return _wordsChanged;}
-	const std::multimap<int, cv::Mat> & getWordsDescriptors() const {return _wordsDescriptors;}
-	void setWordsDescriptors(const std::multimap<int, cv::Mat> & descriptors) {_wordsDescriptors = descriptors;}
+	const cv::Mat & getWordsDescriptors() const {return _wordsDescriptors;}
+	void setWordsDescriptors(const cv::Mat & descriptors);
 
 	//metric stuff
-	void setWords3(const std::multimap<int, cv::Point3f> & words3) {_words3 = words3;}
 	void setPose(const Transform & pose) {_pose = pose;}
 	void setGroundTruthPose(const Transform & pose) {_groundTruthPose = pose;}
 	void setVelocity(float vx, float vy, float vz, float vroll, float vpitch, float vyaw) {
@@ -129,7 +128,7 @@ public:
 		_velocity[5]=vyaw;
 	}
 
-	const std::multimap<int, cv::Point3f> & getWords3() const {return _words3;}
+	const std::vector<cv::Point3f> & getWords3() const {return _words3;}
 	const Transform & getPose() const {return _pose;}
 	cv::Mat getPoseCovariance() const;
 	const Transform & getGroundTruthPose() const {return _groundTruthPose;}
@@ -138,7 +137,7 @@ public:
 	SensorData & sensorData() {return _sensorData;}
 	const SensorData & sensorData() const {return _sensorData;}
 
-	long getMemoryUsed(bool withSensorData=true) const; // Return memory usage in Bytes
+	unsigned long getMemoryUsed(bool withSensorData=true) const; // Return memory usage in Bytes
 
 private:
 	int _id;
@@ -155,9 +154,10 @@ private:
 	// Contains all words (Some can be duplicates -> if a word appears 2
 	// times in the signature, it will be 2 times in this list)
 	// Words match with the CvSeq keypoints and descriptors
-	std::multimap<int, cv::KeyPoint> _words; // word <id, keypoint>
-	std::multimap<int, cv::Point3f> _words3; // word <id, point> // in base_link frame (localTransform applied))
-	std::multimap<int, cv::Mat> _wordsDescriptors;
+	std::multimap<int, int> _words; // word <id, keypoint index>
+	std::vector<cv::KeyPoint> _wordsKpts;
+	std::vector<cv::Point3f> _words3; // in base_link frame (localTransform applied))
+	cv::Mat _wordsDescriptors;
 	std::map<int, int> _wordsChanged; // <oldId, newId>
 	bool _enabled;
 	int _invalidWordsCount;

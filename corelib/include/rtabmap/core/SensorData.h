@@ -275,7 +275,7 @@ public:
 	void setLandmarks(const Landmarks & landmarks) {_landmarks = landmarks;}
 	const Landmarks & landmarks() const {return _landmarks;}
 
-	long getMemoryUsed() const; // Return memory usage in Bytes
+	unsigned long getMemoryUsed() const; // Return memory usage in Bytes
 	/**
 	 * Clear compressed rgb/depth (left/right) images, compressed laser scan and compressed user data.
 	 * Raw data are kept is set.

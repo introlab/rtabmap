@@ -65,6 +65,7 @@ class RTABMAP_EXP Statistics
 	RTABMAP_STATS(Loop, Map_id,);
 	RTABMAP_STATS(Loop, Visual_words,);
 	RTABMAP_STATS(Loop, Visual_inliers,);
+	RTABMAP_STATS(Loop, Visual_inliers_ratio,);
 	RTABMAP_STATS(Loop, Visual_matches,);
 	RTABMAP_STATS(Loop, Distance_since_last_loc,);
 	RTABMAP_STATS(Loop, Last_id,);
@@ -149,6 +150,7 @@ class RTABMAP_EXP Statistics
 	RTABMAP_STATS(Memory, Odometry_variance_lin,);
 	RTABMAP_STATS(Memory, Distance_travelled, m);
 	RTABMAP_STATS(Memory, RAM_usage, MB);
+	RTABMAP_STATS(Memory, RAM_estimated, MB);
 	RTABMAP_STATS(Memory, Triangulated_points, );
 
 	RTABMAP_STATS(Timing, Memory_update, ms);

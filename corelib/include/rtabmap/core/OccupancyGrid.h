@@ -104,6 +104,8 @@ public:
 	const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & getMapObstacles() const {return assembledObstacles_;}
 	const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & getMapEmptyCells() const {return assembledEmptyCells_;}
 
+	unsigned long getMemoryUsed() const;
+
 private:
 	ParametersMap parameters_;
 	int cloudDecimation_;

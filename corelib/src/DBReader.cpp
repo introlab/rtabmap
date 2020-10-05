@@ -510,23 +510,9 @@ SensorData DBReader::getNextData(CameraInfo * info)
 					data.gps().stamp()!=0.0?1:0,
 					gravityTransform.isNull()?0:1);
 
-			cv::Mat descriptors;
-			if(!s->getWordsDescriptors().empty())
-			{
-				descriptors = cv::Mat(
-					s->getWordsDescriptors().size(),
-					s->getWordsDescriptors().begin()->second.cols,
-					s->getWordsDescriptors().begin()->second.type());
-				int i=0;
-				for(std::multimap<int, cv::Mat>::const_iterator iter=s->getWordsDescriptors().begin();
-					iter!=s->getWordsDescriptors().end();
-					++iter, ++i)
-				{
-					iter->second.copyTo(descriptors.row(i));
-				}
-			}
-			std::vector<cv::KeyPoint> keypoints = uValues(s->getWords());
-			std::vector<cv::Point3f> keypoints3D = uValues(s->getWords3());
+			cv::Mat descriptors = s->getWordsDescriptors().clone();
+			const std::vector<cv::KeyPoint> & keypoints = s->getWordsKpts();
+			const std::vector<cv::Point3f> & keypoints3D = s->getWords3();
 			if(!keypoints.empty() &&
 			   (keypoints3D.empty() || keypoints.size() == keypoints3D.size()) &&
 			   (descriptors.empty() || (int)keypoints.size() == descriptors.rows))

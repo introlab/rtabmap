@@ -4163,9 +4163,14 @@ void DatabaseViewer::update(int value,
 				std::list<Signature*> signatures;
 				dbDriver_->loadSignatures(ids, signatures);
 
-				if(signatures.size() && signatures.front()!=0 && signatures.front()->getWords().size())
+				if(signatures.size() && signatures.front()!=0 && !signatures.front()->getWordsKpts().empty())
 				{
-					view->setFeatures(signatures.front()->getWords(), data.depthOrRightRaw().type() == CV_8UC1?cv::Mat():data.depthOrRightRaw(), Qt::yellow);
+					std::multimap<int, cv::KeyPoint> keypoints;
+					for(std::map<int, int>::const_iterator iter=signatures.front()->getWords().begin(); iter!=signatures.front()->getWords().end(); ++iter)
+					{
+						keypoints.insert(std::make_pair(iter->first, signatures.front()->getWordsKpts()[iter->second]));
+					}
+					view->setFeatures(keypoints, data.depthOrRightRaw().type() == CV_8UC1?cv::Mat():data.depthOrRightRaw(), Qt::yellow);
 				}
 
 				Transform odomPose, g;
@@ -4522,16 +4527,19 @@ void DatabaseViewer::update(int value,
 					}
 
 					//words
-					if(ui_->checkBox_showWords->isChecked() && signatures.size())
+					if(ui_->checkBox_showWords->isChecked() &&
+						!signatures.empty() &&
+						!(*signatures.begin())->getWords3().empty())
 					{
 						pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
 						cloud->resize((*signatures.begin())->getWords3().size());
 						int i=0;
-						for(std::multimap<int, cv::Point3f>::const_iterator iter=(*signatures.begin())->getWords3().begin();
-							iter!=(*signatures.begin())->getWords3().end();
+						for(std::multimap<int, int>::const_iterator iter=(*signatures.begin())->getWords().begin();
+							iter!=(*signatures.begin())->getWords().end();
 							++iter)
 						{
-							cloud->at(i++) = pcl::PointXYZ(iter->second.x, iter->second.y, iter->second.z);
+							const cv::Point3f & pt = (*signatures.begin())->getWords3()[iter->second];
+							cloud->at(i++) = pcl::PointXYZ(pt.x, pt.y, pt.z);
 						}
 
 						if(cloud->size())
@@ -5593,20 +5601,25 @@ void DatabaseViewer::updateConstraintView(
 					cloudTo->resize(sTo->getWords3().size());
 				}
 				int i=0;
-				for(std::multimap<int, cv::Point3f>::const_iterator iter=sFrom->getWords3().begin();
-					iter!=sFrom->getWords3().end();
-					++iter)
+				if(!sFrom->getWords3().empty())
 				{
-					cloudFrom->at(i++) = pcl::PointXYZ(iter->second.x, iter->second.y, iter->second.z);
-				}
-				i=0;
-				if(sTo)
-				{
-					for(std::multimap<int, cv::Point3f>::const_iterator iter=sTo->getWords3().begin();
-						iter!=sTo->getWords3().end();
+					for(std::multimap<int, int>::const_iterator iter=sFrom->getWords().begin();
+						iter!=sFrom->getWords().end();
 						++iter)
 					{
-						cloudTo->at(i++) = pcl::PointXYZ(iter->second.x, iter->second.y, iter->second.z);
+						const cv::Point3f & pt = sFrom->getWords3()[iter->second];
+						cloudFrom->at(i++) = pcl::PointXYZ(pt.x, pt.y, pt.z);
+					}
+				}
+				i=0;
+				if(sTo && !sTo->getWords3().empty())
+				{
+					for(std::multimap<int, int>::const_iterator iter=sTo->getWords().begin();
+						iter!=sTo->getWords().end();
+						++iter)
+					{
+						const cv::Point3f & pt = sTo->getWords3()[iter->second];
+						cloudTo->at(i++) = pcl::PointXYZ(pt.x, pt.y, pt.z);
 					}
 				}
 
@@ -7074,13 +7087,9 @@ void DatabaseViewer::refineConstraint(int from, int to, bool silent)
 
 		if(reextractVisualFeatures)
 		{
-			fromS->setWords(std::multimap<int, cv::KeyPoint>());
-			fromS->setWords3(std::multimap<int, cv::Point3f>());
-			fromS->setWordsDescriptors(std::multimap<int, cv::Mat>());
+			fromS->removeAllWords();
 			fromS->sensorData().setFeatures(std::vector<cv::KeyPoint>(), std::vector<cv::Point3f>(), cv::Mat());
-			toS->setWords(std::multimap<int, cv::KeyPoint>());
-			toS->setWords3(std::multimap<int, cv::Point3f>());
-			toS->setWordsDescriptors(std::multimap<int, cv::Mat>());
+			toS->removeAllWords();
 			toS->sensorData().setFeatures(std::vector<cv::KeyPoint>(), std::vector<cv::Point3f>(), cv::Mat());
 		}
 
@@ -7192,17 +7201,33 @@ void DatabaseViewer::refineConstraint(int from, int to, bool silent)
 			if(toS && fromS->id() > 0 && toS->id() > 0)
 			{
 				updateLoopClosuresSlider(fromS->id(), toS->id());
+				std::multimap<int, cv::KeyPoint> keypointsFrom;
+				std::multimap<int, cv::KeyPoint> keypointsTo;
+				if(!fromS->getWordsKpts().empty())
+				{
+					for(std::map<int, int>::const_iterator iter=fromS->getWords().begin(); iter!=fromS->getWords().end(); ++iter)
+					{
+						keypointsFrom.insert(keypointsFrom.end(), std::make_pair(iter->first, fromS->getWordsKpts()[iter->second]));
+					}
+				}
+				if(!toS->getWordsKpts().empty())
+				{
+					for(std::map<int, int>::const_iterator iter=toS->getWords().begin(); iter!=toS->getWords().end(); ++iter)
+					{
+						keypointsTo.insert(keypointsTo.end(), std::make_pair(iter->first, toS->getWordsKpts()[iter->second]));
+					}
+				}
 				if(newLink.type() != Link::kNeighbor && fromS->id() < toS->id())
 				{
 					this->updateConstraintView(newLink.inverse(), true, *toS, *fromS);
-					ui_->graphicsView_A->setFeatures(toS->getWords(), toS->sensorData().depthRaw());
-					ui_->graphicsView_B->setFeatures(fromS->getWords(), fromS->sensorData().depthRaw());
+					ui_->graphicsView_A->setFeatures(keypointsTo, toS->sensorData().depthRaw());
+					ui_->graphicsView_B->setFeatures(keypointsFrom, fromS->sensorData().depthRaw());
 				}
 				else
 				{
 					this->updateConstraintView(newLink, true, *fromS, *toS);
-					ui_->graphicsView_A->setFeatures(fromS->getWords(), fromS->sensorData().depthRaw());
-					ui_->graphicsView_B->setFeatures(toS->getWords(), toS->sensorData().depthRaw());
+					ui_->graphicsView_A->setFeatures(keypointsFrom, fromS->sensorData().depthRaw());
+					ui_->graphicsView_B->setFeatures(keypointsTo, toS->sensorData().depthRaw());
 				}
 
 				updateWordsMatching(info.inliersIDs);
@@ -7218,8 +7243,32 @@ void DatabaseViewer::refineConstraint(int from, int to, bool silent)
 		if(toS && fromS->id() > 0 && toS->id() > 0)
 		{
 			// just update matches in the views
-			ui_->graphicsView_A->setFeatures(fromS->getWords(), fromS->sensorData().depthRaw());
-			ui_->graphicsView_B->setFeatures(toS->getWords(), toS->sensorData().depthRaw());
+			std::multimap<int, cv::KeyPoint> keypointsFrom;
+			std::multimap<int, cv::KeyPoint> keypointsTo;
+			if(!fromS->getWordsKpts().empty())
+			{
+				for(std::map<int, int>::const_iterator iter=fromS->getWords().begin(); iter!=fromS->getWords().end(); ++iter)
+				{
+					keypointsFrom.insert(keypointsFrom.end(), std::make_pair(iter->first, fromS->getWordsKpts()[iter->second]));
+				}
+			}
+			if(!toS->getWordsKpts().empty())
+			{
+				for(std::map<int, int>::const_iterator iter=toS->getWords().begin(); iter!=toS->getWords().end(); ++iter)
+				{
+					keypointsTo.insert(keypointsTo.end(), std::make_pair(iter->first, toS->getWordsKpts()[iter->second]));
+				}
+			}
+			if(currentLink.type() != Link::kNeighbor && fromS->id() < toS->id())
+			{
+				ui_->graphicsView_A->setFeatures(keypointsTo, toS->sensorData().depthRaw());
+				ui_->graphicsView_B->setFeatures(keypointsFrom, fromS->sensorData().depthRaw());
+			}
+			else
+			{
+				ui_->graphicsView_A->setFeatures(keypointsFrom, fromS->sensorData().depthRaw());
+				ui_->graphicsView_B->setFeatures(keypointsTo, toS->sensorData().depthRaw());
+			}
 			updateWordsMatching(info.inliersIDs);
 		}
 
@@ -7306,13 +7355,9 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent)
 			toS->sensorData().uncompressData();
 			if(reextractVisualFeatures)
 			{
-				fromS->setWords(std::multimap<int, cv::KeyPoint>());
-				fromS->setWords3(std::multimap<int, cv::Point3f>());
-				fromS->setWordsDescriptors(std::multimap<int, cv::Mat>());
+				fromS->removeAllWords();
 				fromS->sensorData().setFeatures(std::vector<cv::KeyPoint>(), std::vector<cv::Point3f>(), cv::Mat());
-				toS->setWords(std::multimap<int, cv::KeyPoint>());
-				toS->setWords3(std::multimap<int, cv::Point3f>());
-				toS->setWordsDescriptors(std::multimap<int, cv::Mat>());
+				toS->removeAllWords();
 				toS->sensorData().setFeatures(std::vector<cv::KeyPoint>(), std::vector<cv::Point3f>(), cv::Mat());
 			}
 		}
@@ -7565,8 +7610,24 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent)
 				this->updateConstraintView(newLink, false, *fromS, *toS);
 			}
 
-			ui_->graphicsView_A->setFeatures(fromS->getWords(), fromS->sensorData().depthRaw());
-			ui_->graphicsView_B->setFeatures(toS->getWords(), toS->sensorData().depthRaw());
+			std::multimap<int, cv::KeyPoint> keypointsFrom;
+			std::multimap<int, cv::KeyPoint> keypointsTo;
+			if(!fromS->getWordsKpts().empty())
+			{
+				for(std::map<int, int>::const_iterator iter=fromS->getWords().begin(); iter!=fromS->getWords().end(); ++iter)
+				{
+					keypointsFrom.insert(keypointsFrom.end(), std::make_pair(iter->first, fromS->getWordsKpts()[iter->second]));
+				}
+			}
+			if(!toS->getWordsKpts().empty())
+			{
+				for(std::map<int, int>::const_iterator iter=toS->getWords().begin(); iter!=toS->getWords().end(); ++iter)
+				{
+					keypointsTo.insert(keypointsTo.end(), std::make_pair(iter->first, toS->getWordsKpts()[iter->second]));
+				}
+			}
+			ui_->graphicsView_A->setFeatures(keypointsFrom, fromS->sensorData().depthRaw());
+			ui_->graphicsView_B->setFeatures(keypointsTo, toS->sensorData().depthRaw());
 			updateWordsMatching(info.inliersIDs);
 		}
 		else if(updateConstraints)

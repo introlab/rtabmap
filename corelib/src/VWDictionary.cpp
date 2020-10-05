@@ -331,7 +331,10 @@ bool VWDictionary::setNNStrategy(NNStrategy strategy)
 	_strategy = strategy;
 	if(update)
 	{
-		UINFO("Nearest neighbor strategy has changed, re-initialize search tree.");
+		if(_notIndexedWords.size() != _visualWords.size() || !_dataTree.empty())
+		{
+			UINFO("Nearest neighbor strategy has changed, re-initialize search tree.");
+		}
 		_dataTree = cv::Mat();
 		_notIndexedWords = uKeysSet(_visualWords);
 		_removedIndexedWords.clear();
@@ -361,6 +364,38 @@ unsigned int VWDictionary::getIndexedWordsCount() const
 unsigned int VWDictionary::getIndexMemoryUsed() const
 {
 	return _flannIndex->memoryUsed();
+}
+
+unsigned long VWDictionary::getMemoryUsed(bool estimate) const
+{
+	long memoryUsage = sizeof(VWDictionary);
+	memoryUsage += getIndexMemoryUsed();
+	memoryUsage += _dataTree.total()*_dataTree.elemSize();
+	if(estimate)
+	{
+		if(!_visualWords.empty())
+		{
+			memoryUsage += _visualWords.size()*(sizeof(int) + _visualWords.begin()->second->getMemoryUsed()+sizeof(std::_Rb_tree_node_base)) + sizeof(std::map<int, VisualWord *>);
+		}
+	}
+	else
+	{
+		for(std::map<int, VisualWord *>::const_iterator iter=_visualWords.begin(); iter!=_visualWords.end(); ++iter)
+		{
+			memoryUsage += sizeof(int) + iter->second->getMemoryUsed();
+		}
+		memoryUsage += _visualWords.size()*(sizeof(std::_Rb_tree_node_base)) + sizeof(std::map<int, VisualWord *>);
+	}
+	if(!_unusedWords.empty())
+	{
+		// they are the same words than in _visualWords, so just add the pointer size
+		memoryUsage += _unusedWords.size()*(sizeof(int) + sizeof(VisualWord *)+sizeof(std::_Rb_tree_node_base)) + sizeof(std::map<int, VisualWord *>);
+	}
+	memoryUsage += _mapIndexId.size() * (sizeof(int)*2+sizeof(std::_Rb_tree_node_base)) + sizeof(std::map<int ,int>);
+	memoryUsage += _mapIdIndex.size() * (sizeof(int)*2+sizeof(std::_Rb_tree_node_base)) + sizeof(std::map<int ,int>);
+	memoryUsage += _notIndexedWords.size() * (sizeof(int)+sizeof(std::_Rb_tree_node_base)) + sizeof(std::set<int>);
+	memoryUsage += _removedIndexedWords.size() * (sizeof(int)+sizeof(std::_Rb_tree_node_base)) + sizeof(std::set<int>);
+	return memoryUsage;
 }
 
 cv::Mat VWDictionary::convertBinTo32F(const cv::Mat & descriptorsIn, bool byteToFloat)
@@ -521,7 +556,8 @@ void VWDictionary::update()
 					{
 						UASSERT(descriptor.cols == _flannIndex->featuresDim());
 						UASSERT(descriptor.type() == _flannIndex->featuresType());
-						index = _flannIndex->addPoints(descriptor);
+						UASSERT(descriptor.rows == 1);
+						index = _flannIndex->addPoints(descriptor).front();
 					}
 					std::pair<std::map<int, int>::iterator, bool> inserted;
 					inserted = _mapIndexId.insert(std::pair<int, int>(index, w->id()));
@@ -628,15 +664,15 @@ void VWDictionary::update()
 				switch(_strategy)
 				{
 				case kNNFlannNaive:
-					_flannIndex->buildLinearIndex(_dataTree, useDistanceL1_, _rebalancingFactor);
+					_flannIndex->buildLinearIndex(_dataTree, useDistanceL1_, _incrementalDictionary&&_incrementalFlann?_rebalancingFactor:1);
 					break;
 				case kNNFlannKdTree:
 					UASSERT_MSG(type == CV_32F, "To use KdTree dictionary, float descriptors are required!");
-					_flannIndex->buildKDTreeIndex(_dataTree, KDTREE_SIZE, useDistanceL1_, _rebalancingFactor);
+					_flannIndex->buildKDTreeIndex(_dataTree, KDTREE_SIZE, useDistanceL1_, _incrementalDictionary&&_incrementalFlann?_rebalancingFactor:1);
 					break;
 				case kNNFlannLSH:
 					UASSERT_MSG(type == CV_8U, "To use LSH dictionary, binary descriptors are required!");
-					_flannIndex->buildLSHIndex(_dataTree, 12, 20, 2, _rebalancingFactor);
+					_flannIndex->buildLSHIndex(_dataTree, 12, 20, 2, _incrementalDictionary&&_incrementalFlann?_rebalancingFactor:1);
 					break;
 				default:
 					break;

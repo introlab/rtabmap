@@ -763,9 +763,10 @@ void SensorData::setFeatures(const std::vector<cv::KeyPoint> & keypoints, const 
 	_descriptors = descriptors;
 }
 
-long SensorData::getMemoryUsed() const // Return memory usage in Bytes
+unsigned long SensorData::getMemoryUsed() const // Return memory usage in Bytes
 {
-	return _imageCompressed.total()*_imageCompressed.elemSize() +
+	return sizeof(SensorData) +
+			_imageCompressed.total()*_imageCompressed.elemSize() +
 			_imageRaw.total()*_imageRaw.elemSize() +
 			_depthOrRightCompressed.total()*_depthOrRightCompressed.elemSize() +
 			_depthOrRightRaw.total()*_depthOrRightRaw.elemSize() +
@@ -779,8 +780,8 @@ long SensorData::getMemoryUsed() const // Return memory usage in Bytes
 			_obstacleCellsRaw.total()*_obstacleCellsRaw.elemSize()+
 			_emptyCellsCompressed.total()*_emptyCellsCompressed.elemSize() +
 			_emptyCellsRaw.total()*_emptyCellsRaw.elemSize()+
-			_keypoints.size() * sizeof(float) * 7 +
-			_keypoints3D.size() * sizeof(float)*3 +
+			_keypoints.size() * sizeof(cv::KeyPoint) +
+			_keypoints3D.size() * sizeof(cv::Point3f) +
 			_descriptors.total()*_descriptors.elemSize();
 }
 

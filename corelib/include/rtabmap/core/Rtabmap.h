@@ -136,11 +136,9 @@ public:
 	std::map<int, int> getWeights() const;
 	int getTotalMemSize() const;
 	double getLastProcessTime() const {return _lastProcessTime;};
-	std::multimap<int, cv::KeyPoint> getWords(int locationId) const;
 	bool isInSTM(int locationId) const;
 	bool isIDsGenerated() const;
 	const Statistics & getStatistics() const;
-	//bool getMetricData(int locationId, cv::Mat & rgb, cv::Mat & depth, float & depthConstant, Transform & pose, Transform & localTransform) const;
 	const std::map<int, Transform> & getLocalOptimizedPoses() const {return _optimizedPoses;}
 	const std::multimap<int, Link> & getLocalConstraints() const {return _constraints;}
 	Transform getPose(int locationId) const;

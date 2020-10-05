@@ -678,19 +678,6 @@ int Rtabmap::getTotalMemSize() const
 	return 0;
 }
 
-std::multimap<int, cv::KeyPoint> Rtabmap::getWords(int locationId) const
-{
-	if(_memory)
-	{
-		const Signature * s = _memory->getSignature(locationId);
-		if(s)
-		{
-			return s->getWords();
-		}
-	}
-	return std::multimap<int, cv::KeyPoint>();
-}
-
 bool Rtabmap::isInSTM(int locationId) const
 {
 	if(_memory)
@@ -713,25 +700,7 @@ const Statistics & Rtabmap::getStatistics() const
 {
 	return statistics_;
 }
-/*
-bool Rtabmap::getMetricData(int locationId, cv::Mat & rgb, cv::Mat & depth, float & depthConstant, Transform & pose, Transform & localTransform) const
-{
-	if(_memory)
-	{
-		const Signature * s = _memory->getSignature(locationId);
-		if(s && _optimizedPoses.find(s->id()) != _optimizedPoses.end())
-		{
-			rgb = s->getImage();
-			depth = s->getDepth();
-			depthConstant = s->getDepthConstant();
-			pose = _optimizedPoses.at(s->id());
-			localTransform = s->getLocalTransform();
-			return true;
-		}
-	}
-	return false;
-}
-*/
+
 Transform Rtabmap::getPose(int locationId) const
 {
 	return uValue(_optimizedPoses, locationId, Transform());
@@ -2235,6 +2204,7 @@ bool Rtabmap::process(
 	//============================================================
 	std::list<std::pair<int, int> > loopClosureLinksAdded;
 	int loopClosureVisualInliers = 0; // for statistics
+	float loopClosureVisualInliersRatio = 0.0f;
 	int loopClosureVisualMatches = 0;
 	float loopClosureLinearVariance = 0.0f;
 	float loopClosureAngularVariance = 0.0f;
@@ -2386,6 +2356,7 @@ bool Rtabmap::process(
 									lastProximitySpaceClosureId = nearestId;
 
 									loopClosureVisualInliers = info.inliers;
+									loopClosureVisualInliersRatio = info.inliersRatio;
 									loopClosureVisualMatches = info.matches;
 
 									loopClosureLinearVariance = 1.0/information.at<double>(0,0);
@@ -2589,6 +2560,7 @@ bool Rtabmap::process(
 			loopClosureVisualInliersDistribution = info.inliersDistribution;
 
 			loopClosureVisualInliers = info.inliers;
+			loopClosureVisualInliersRatio = info.inliersRatio;
 			loopClosureVisualMatches = info.matches;
 			rejectedGlobalLoopClosure = transform.isNull();
 			if(rejectedGlobalLoopClosure)
@@ -3167,6 +3139,7 @@ bool Rtabmap::process(
 			statistics_.addStatistic(Statistics::kLoopReactivate_id(), retrievalId);
 			statistics_.addStatistic(Statistics::kLoopHypothesis_ratio(), hypothesisRatio);
 			statistics_.addStatistic(Statistics::kLoopVisual_inliers(), loopClosureVisualInliers);
+			statistics_.addStatistic(Statistics::kLoopVisual_inliers_ratio(), loopClosureVisualInliersRatio);
 			statistics_.addStatistic(Statistics::kLoopVisual_matches(), loopClosureVisualMatches);
 			statistics_.addStatistic(Statistics::kLoopLinear_variance(), loopClosureLinearVariance);
 			statistics_.addStatistic(Statistics::kLoopAngular_variance(), loopClosureAngularVariance);
@@ -3315,6 +3288,13 @@ bool Rtabmap::process(
 			if(_publishRAMUsage)
 			{
 				statistics_.addStatistic(Statistics::kMemoryRAM_usage(), UProcessInfo::getMemoryUsage()/(1024*1024));
+				long estimatedMemoryUsage = sizeof(Rtabmap);
+				estimatedMemoryUsage += _optimizedPoses.size() * (sizeof(int) + sizeof(Transform) + 12 * sizeof(float) + sizeof(std::_Rb_tree_node_base)) + sizeof(std::map<int, Transform>);
+				estimatedMemoryUsage += _constraints.size() * (sizeof(int) + sizeof(Transform) + 12 * sizeof(float) + sizeof(cv::Mat) + 36 * sizeof(double) + sizeof(std::_Rb_tree_node_base)) + sizeof(std::map<int, Link>);
+				estimatedMemoryUsage += _memory->getMemoryUsed();
+				estimatedMemoryUsage += _bayesFilter->getMemoryUsed();
+				estimatedMemoryUsage += _parameters.size()*(sizeof(std::string)*2+sizeof(std::_Rb_tree_node_base)) + sizeof(ParametersMap);
+				statistics_.addStatistic(Statistics::kMemoryRAM_estimated(), (float)(estimatedMemoryUsage/(1024*1024)));//MB
 			}
 
 			if(_publishLikelihood || _publishPdf)
@@ -4463,18 +4443,30 @@ Signature Rtabmap::getSignatureCopy(int id, bool images, bool scan, bool userDat
 				groundTruth,
 				data);
 
+		std::multimap<int, Link> links = _memory->getLinks(id, true, true);
+		for(std::multimap<int, Link>::iterator iter=links.begin(); iter!=links.end(); ++iter)
+		{
+			if(iter->second.type() == Link::kLandmark)
+			{
+				s.addLandmark(iter->second);
+			}
+			else
+			{
+				s.addLink(iter->second);
+			}
+		}
+
 		if(withWords || withGlobalDescriptors)
 		{
-			std::multimap<int, cv::KeyPoint> words;
-			std::multimap<int, cv::Point3f> words3;
-			std::multimap<int, cv::Mat> wordsDescriptors;
+			std::multimap<int, int> words;
+			std::vector<cv::KeyPoint> wordsKpts;
+			std::vector<cv::Point3f> words3;
+			cv::Mat wordsDescriptors;
 			std::vector<rtabmap::GlobalDescriptor> globalDescriptors;
-			_memory->getNodeWordsAndGlobalDescriptors(id, words, words3, wordsDescriptors, globalDescriptors);
+			_memory->getNodeWordsAndGlobalDescriptors(id, words, wordsKpts, words3, wordsDescriptors, globalDescriptors);
 			if(withWords)
 			{
-				s.setWords(words);
-				s.setWords3(words3);
-				s.setWordsDescriptors(wordsDescriptors);
+				s.setWords(words, wordsKpts, words3, wordsDescriptors);
 			}
 			if(withGlobalDescriptors)
 			{
@@ -4620,7 +4612,7 @@ int Rtabmap::detectMoreLoopClosures(
 	std::map<int, Transform> posesToCheckLoopClosures;
 	std::map<int, Transform> poses;
 	std::multimap<int, Link> links;
-	std::map<int, Signature> signatures;
+	std::map<int, Signature> signatures; // some signatures may be in LTM, get them all
 	this->getGraph(poses, links, true, true, &signatures);
 
 	std::map<int, int> mapIds;
@@ -4706,6 +4698,7 @@ int Rtabmap::detectMoreLoopClosures(
 
 						if(!t.isNull())
 						{
+							UWARN(t.prettyPrint().c_str());
 							bool updateConstraints = true;
 							if(_optimizationMaxError > 0.0f)
 							{

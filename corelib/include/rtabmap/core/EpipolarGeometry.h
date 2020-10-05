@@ -29,6 +29,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
 #include "rtabmap/core/Parameters.h"
+#include "rtabmap/utilite/UStl.h"
 #include <opencv2/core/core.hpp>
 #include <opencv2/features2d/features2d.hpp>
 #include <pcl/point_cloud.h>
@@ -91,41 +92,133 @@ public:
 	 * if a=[1 2 3 4 6], b=[1 2 4 5 6], results= [(1,1) (2,2) (4,4) (6,6)]
 	 * realPairsCount = 4
 	 */
+	template<typename T>
 	static int findPairs(
-			const std::map<int, cv::KeyPoint> & wordsA,
-			const std::map<int, cv::KeyPoint> & wordsB,
-			std::list<std::pair<int, std::pair<cv::KeyPoint, cv::KeyPoint> > > & pairs,
-			bool ignoreNegativeIds = true);
+			const std::map<int, T> & wordsA,
+			const std::map<int, T> & wordsB,
+			std::list<std::pair<int, std::pair<T, T> > > & pairs,
+			bool ignoreNegativeIds = true)
+	{
+		int realPairsCount = 0;
+		pairs.clear();
+		for(typename std::map<int, T>::const_iterator i=wordsA.begin(); i!=wordsA.end(); ++i)
+		{
+			if(!ignoreNegativeIds || (ignoreNegativeIds && i->first>=0))
+			{
+				std::map<int, cv::KeyPoint>::const_iterator ptB = wordsB.find(i->first);
+				if(ptB != wordsB.end())
+				{
+					pairs.push_back(std::pair<int, std::pair<T, T> >(i->first, std::make_pair(i->second, ptB->second)));
+					++realPairsCount;
+				}
+			}
+		}
+		return realPairsCount;
+	}
 
 	/**
 	 * if a=[1 2 3 4 6 6], b=[1 1 2 4 5 6 6], results= [(1,1a) (2,2) (4,4) (6a,6a) (6b,6b)]
 	 * realPairsCount = 5
 	 */
+	template<typename T>
 	static int findPairs(
-			const std::multimap<int, cv::KeyPoint> & wordsA,
-			const std::multimap<int, cv::KeyPoint> & wordsB,
-			std::list<std::pair<int, std::pair<cv::KeyPoint, cv::KeyPoint> > > & pairs,
-			bool ignoreNegativeIds = true);
+			const std::multimap<int, T> & wordsA,
+			const std::multimap<int, T> & wordsB,
+			std::list<std::pair<int, std::pair<T, T> > > & pairs,
+			bool ignoreNegativeIds = true)
+	{
+		const std::list<int> & ids = uUniqueKeys(wordsA);
+		typename std::multimap<int, T>::const_iterator iterA;
+		typename std::multimap<int, T>::const_iterator iterB;
+		pairs.clear();
+		int realPairsCount = 0;
+		for(std::list<int>::const_iterator i=ids.begin(); i!=ids.end(); ++i)
+		{
+			if(!ignoreNegativeIds || (ignoreNegativeIds && *i >= 0))
+			{
+				iterA = wordsA.find(*i);
+				iterB = wordsB.find(*i);
+				while(iterA != wordsA.end() && iterB != wordsB.end() && (*iterA).first == (*iterB).first && (*iterA).first == *i)
+				{
+					pairs.push_back(std::pair<int, std::pair<T, T> >(*i, std::make_pair((*iterA).second, (*iterB).second)));
+					++iterA;
+					++iterB;
+					++realPairsCount;
+				}
+			}
+		}
+		return realPairsCount;
+	}
 
 	/**
 	 * if a=[1 2 3 4 6 6], b=[1 1 2 4 5 6 6], results= [(2,2) (4,4)]
 	 * realPairsCount = 5
 	 */
+	template<typename T>
 	static int findPairsUnique(
-			const std::multimap<int, cv::KeyPoint> & wordsA,
-			const std::multimap<int, cv::KeyPoint> & wordsB,
-			std::list<std::pair<int, std::pair<cv::KeyPoint, cv::KeyPoint> > > & pairs,
-			bool ignoreNegativeIds = true);
+			const std::multimap<int, T> & wordsA,
+			const std::multimap<int, T> & wordsB,
+			std::list<std::pair<int, std::pair<T, T> > > & pairs,
+			bool ignoreNegativeIds = true)
+	{
+		const std::list<int> & ids = uUniqueKeys(wordsA);
+		int realPairsCount = 0;
+		pairs.clear();
+		for(std::list<int>::const_iterator i=ids.begin(); i!=ids.end(); ++i)
+		{
+			if(!ignoreNegativeIds || (ignoreNegativeIds && *i>=0))
+			{
+				std::list<T> ptsA = uValues(wordsA, *i);
+				std::list<T> ptsB = uValues(wordsB, *i);
+				if(ptsA.size() == 1 && ptsB.size() == 1)
+				{
+					pairs.push_back(std::pair<int, std::pair<T, T> >(*i, std::pair<T, T>(ptsA.front(), ptsB.front())));
+					++realPairsCount;
+				}
+				else if(ptsA.size()>1 && ptsB.size()>1)
+				{
+					// just update the count
+					realPairsCount += ptsA.size() > ptsB.size() ? ptsB.size() : ptsA.size();
+				}
+			}
+		}
+		return realPairsCount;
+	}
 
 	/**
 	 * if a=[1 2 3 4 6 6], b=[1 1 2 4 5 6 6], results= [(1,1a) (1,1b) (2,2) (4,4) (6a,6a) (6a,6b) (6b,6a) (6b,6b)]
 	 * realPairsCount = 5
 	 */
+	template<typename T>
 	static int findPairsAll(
-			const std::multimap<int, cv::KeyPoint> & wordsA,
-			const std::multimap<int, cv::KeyPoint> & wordsB,
-			std::list<std::pair<int, std::pair<cv::KeyPoint, cv::KeyPoint> > > & pairs,
-			bool ignoreNegativeIds = true);
+			const std::multimap<int, T> & wordsA,
+			const std::multimap<int, T> & wordsB,
+			std::list<std::pair<int, std::pair<T, T> > > & pairs,
+			bool ignoreNegativeIds = true)
+	{
+		const std::list<int> & ids = uUniqueKeys(wordsA);
+		pairs.clear();
+		int realPairsCount = 0;;
+		for(std::list<int>::const_iterator iter=ids.begin(); iter!=ids.end(); ++iter)
+		{
+			if(!ignoreNegativeIds || (ignoreNegativeIds && *iter>=0))
+			{
+				std::list<T> ptsA = uValues(wordsA, *iter);
+				std::list<T> ptsB = uValues(wordsB, *iter);
+
+				realPairsCount += ptsA.size() > ptsB.size() ? ptsB.size() : ptsA.size();
+
+				for(typename std::list<T>::iterator jter=ptsA.begin(); jter!=ptsA.end(); ++jter)
+				{
+					for(typename std::list<T>::iterator kter=ptsB.begin(); kter!=ptsB.end(); ++kter)
+					{
+						pairs.push_back(std::pair<int, std::pair<T, T> >(*iter, std::pair<T, T>(*jter, *kter)));
+					}
+				}
+			}
+		}
+		return realPairsCount;
+	}
 
 	static cv::Mat linearLSTriangulation(
 			cv::Point3d u,    //homogenous image point (u,v,1)

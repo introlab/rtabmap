@@ -100,7 +100,8 @@ public:
 	int getLastIndexedWordId() const;
 	int getTotalActiveReferences() const {return _totalActiveReferences;}
 	unsigned int getIndexedWordsCount() const;
-	unsigned int getIndexMemoryUsed() const;
+	unsigned int getIndexMemoryUsed() const; // KB
+	unsigned long getMemoryUsed(bool estimate = true) const; //Bytes
 	bool setNNStrategy(NNStrategy strategy); // Return true if the search tree has been re-initialized
 	bool isIncremental() const {return _incrementalDictionary;}
 	bool isIncrementalFlann() const {return _incrementalFlann;}
