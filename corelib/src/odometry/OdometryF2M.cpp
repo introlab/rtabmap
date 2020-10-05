@@ -1199,7 +1199,7 @@ Transform OdometryF2M::computeTransform(
 				{
 					frameValid = true;
 					// update local map
-					UASSERT_MSG(lastFrame_->getWordsDescriptors().rows == (int)lastFrame_->getWords3().size(), uFormat("%d vs %d", lastFrame_->getWordsDescriptors().size(), lastFrame_->getWords3().size()).c_str());
+					UASSERT_MSG(lastFrame_->getWordsDescriptors().rows == (int)lastFrame_->getWords3().size(), uFormat("%d vs %d", lastFrame_->getWordsDescriptors().rows, (int)lastFrame_->getWords3().size()).c_str());
 					UASSERT(lastFrame_->getWords3().size() == lastFrame_->getWords().size());
 
 					std::multimap<int, int> words;
