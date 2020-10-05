@@ -4650,7 +4650,7 @@ int Rtabmap::detectMoreLoopClosures(
 
 			int from = iter->first;
 			int to = iter->second;
-			if(iter->first < iter->second)
+			if(from > to)
 			{
 				from = iter->second;
 				to = iter->first;
