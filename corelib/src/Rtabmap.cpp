@@ -4698,7 +4698,6 @@ int Rtabmap::detectMoreLoopClosures(
 
 						if(!t.isNull())
 						{
-							UWARN(t.prettyPrint().c_str());
 							bool updateConstraints = true;
 							if(_optimizationMaxError > 0.0f)
 							{
