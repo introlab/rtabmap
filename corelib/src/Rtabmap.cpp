@@ -3287,6 +3287,7 @@ bool Rtabmap::process(
 			statistics_.addStatistic(Statistics::kMemoryFast_movement(), tooFastMovement?1.0f:0);
 			if(_publishRAMUsage)
 			{
+				UTimer ramTimer;
 				statistics_.addStatistic(Statistics::kMemoryRAM_usage(), UProcessInfo::getMemoryUsage()/(1024*1024));
 				long estimatedMemoryUsage = sizeof(Rtabmap);
 				estimatedMemoryUsage += _optimizedPoses.size() * (sizeof(int) + sizeof(Transform) + 12 * sizeof(float) + sizeof(std::_Rb_tree_node_base)) + sizeof(std::map<int, Transform>);
@@ -3295,6 +3296,7 @@ bool Rtabmap::process(
 				estimatedMemoryUsage += _bayesFilter->getMemoryUsed();
 				estimatedMemoryUsage += _parameters.size()*(sizeof(std::string)*2+sizeof(std::_Rb_tree_node_base)) + sizeof(ParametersMap);
 				statistics_.addStatistic(Statistics::kMemoryRAM_estimated(), (float)(estimatedMemoryUsage/(1024*1024)));//MB
+				statistics_.addStatistic(Statistics::kTimingRAM_estimation(), ramTimer.ticks()*1000);
 			}
 
 			if(_publishLikelihood || _publishPdf)

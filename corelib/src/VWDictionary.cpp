@@ -366,25 +366,21 @@ unsigned int VWDictionary::getIndexMemoryUsed() const
 	return _flannIndex->memoryUsed();
 }
 
-unsigned long VWDictionary::getMemoryUsed(bool estimate) const
+unsigned long VWDictionary::getMemoryUsed() const
 {
 	long memoryUsage = sizeof(VWDictionary);
 	memoryUsage += getIndexMemoryUsed();
 	memoryUsage += _dataTree.total()*_dataTree.elemSize();
-	if(estimate)
+	if(!_visualWords.empty())
 	{
-		if(!_visualWords.empty())
+		memoryUsage += _visualWords.size()*(sizeof(int) + _visualWords.rbegin()->second->getMemoryUsed() + sizeof(std::_Rb_tree_node_base)) + sizeof(std::map<int, VisualWord *>);
+		if(_dataTree.empty() &&
+			_visualWords.begin()->second->getDescriptor().type() == CV_8U &&
+			_strategy == kNNFlannKdTree)
 		{
-			memoryUsage += _visualWords.size()*(sizeof(int) + _visualWords.begin()->second->getMemoryUsed()+sizeof(std::_Rb_tree_node_base)) + sizeof(std::map<int, VisualWord *>);
+			// Binary descriptors were converted to float, and not included in _dataTree
+			memoryUsage += _visualWords.size() * _visualWords.begin()->second->getDescriptor().total() * sizeof(float) * (_byteToFloat?1:8);
 		}
-	}
-	else
-	{
-		for(std::map<int, VisualWord *>::const_iterator iter=_visualWords.begin(); iter!=_visualWords.end(); ++iter)
-		{
-			memoryUsage += sizeof(int) + iter->second->getMemoryUsed();
-		}
-		memoryUsage += _visualWords.size()*(sizeof(std::_Rb_tree_node_base)) + sizeof(std::map<int, VisualWord *>);
 	}
 	if(!_unusedWords.empty())
 	{

@@ -173,6 +173,7 @@ class RTABMAP_EXP Statistics
 	RTABMAP_STATS(Timing, Joining_trash, ms);
 	RTABMAP_STATS(Timing, Emptying_trash, ms);
 	RTABMAP_STATS(Timing, Finalizing_statistics, ms);
+	RTABMAP_STATS(Timing, RAM_estimation, ms);
 
 	RTABMAP_STATS(TimingMem, Pre_update, ms);
 	RTABMAP_STATS(TimingMem, Signature_creation, ms);
