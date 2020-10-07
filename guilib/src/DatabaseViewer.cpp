@@ -1068,6 +1068,9 @@ bool DatabaseViewer::closeDatabase()
 		ui_->label_constraint_opt->clear();
 		ui_->label_variance->clear();
 		ui_->lineEdit_covariance->clear();
+		ui_->label_type->clear();
+		ui_->label_type_name->clear();
+		ui_->checkBox_showOptimized->setEnabled(false);
 
 		ui_->horizontalSlider_A->setEnabled(false);
 		ui_->horizontalSlider_A->setMaximum(0);
@@ -4880,9 +4883,11 @@ void DatabaseViewer::update(int value,
 			constraintsViewer_->removeAllClouds();
 
 			Link link = this->findActiveLink(from, to);
+			bool constraintViewUpdated = false;
 			if(link.isValid() && link.type() != Link::kGravity)
 			{
 				this->updateConstraintView(link, false);
+				constraintViewUpdated = true;
 			}
 			else if(graphes_.size())
 			{
@@ -4897,8 +4902,19 @@ void DatabaseViewer::update(int value,
 					{
 						Link link(from, to, Link::kUndef, fromIter->second.inverse() * toIter->second);
 						this->updateConstraintView(link, false);
+						constraintViewUpdated = true;
 					}
 				}
+			}
+			if(!constraintViewUpdated)
+			{
+				ui_->label_constraint->clear();
+				ui_->label_constraint_opt->clear();
+				ui_->label_variance->clear();
+				ui_->lineEdit_covariance->clear();
+				ui_->label_type->clear();
+				ui_->label_type_name->clear();
+				ui_->checkBox_showOptimized->setEnabled(false);
 			}
 			constraintsViewer_->update();
 
@@ -5259,12 +5275,23 @@ void DatabaseViewer::editConstraint()
 		Link link = this->findActiveLink(ids_.at(ui_->horizontalSlider_A->value()), ids_.at(ui_->horizontalSlider_B->value()));
 		if(link.isValid())
 		{
-			EditConstraintDialog dialog(link.transform());
+			cv::Mat covBefore = link.infMatrix().inv();
+			EditConstraintDialog dialog(link.transform(),
+					covBefore.at<double>(0,0)!=1.0?std::sqrt(covBefore.at<double>(0,0)):0,
+					covBefore.at<double>(5,5)!=1.0?std::sqrt(covBefore.at<double>(5,5)):0);
 			if(dialog.exec() == QDialog::Accepted)
 			{
 				bool updated = false;
-				Link newLink = link;
-				newLink.setTransform(dialog.getTransform());
+				cv::Mat covariance = cv::Mat::eye(6, 6, CV_64FC1);
+				if(dialog.getLinearVariance()>0)
+				{
+					covariance(cv::Range(0,3), cv::Range(0,3)) *= dialog.getLinearVariance()*dialog.getLinearVariance();
+				}
+				if(dialog.getAngularVariance()>0)
+				{
+					covariance(cv::Range(3,6), cv::Range(3,6)) *= dialog.getAngularVariance()*dialog.getAngularVariance();
+				}
+				Link newLink(link.from(), link.to(), link.type(), dialog.getTransform(), covariance.inv());
 				std::multimap<int, Link>::iterator iter = linksRefined_.find(link.from());
 				while(iter != linksRefined_.end() && iter->first == link.from())
 				{
@@ -5285,7 +5312,39 @@ void DatabaseViewer::editConstraint()
 				if(updated)
 				{
 					updateConstraintView();
+					this->updateGraphView();
 				}
+			}
+		}
+		else
+		{
+			EditConstraintDialog dialog(Transform::getIdentity());
+			if(dialog.exec() == QDialog::Accepted)
+			{
+				cv::Mat covariance = cv::Mat::eye(6, 6, CV_64FC1);
+				if(dialog.getLinearVariance()>0)
+				{
+					covariance(cv::Range(0,3), cv::Range(0,3)) *= dialog.getLinearVariance()*dialog.getLinearVariance();
+				}
+				if(dialog.getAngularVariance()>0)
+				{
+					covariance(cv::Range(3,6), cv::Range(3,6)) *= dialog.getAngularVariance()*dialog.getAngularVariance();
+				}
+				int from = ids_.at(ui_->horizontalSlider_A->value());
+				int to = ids_.at(ui_->horizontalSlider_B->value());
+				Link newLink(
+						from,
+						to,
+						Link::kUserClosure,
+						dialog.getTransform(),
+						covariance.inv());
+				if(newLink.from() < newLink.to())
+				{
+					newLink = newLink.inverse();
+				}
+				linksAdded_.insert(std::make_pair(newLink.from(), newLink));
+				updateLoopClosuresSlider(from, to);
+				this->updateGraphView();
 			}
 		}
 	}
@@ -5407,7 +5466,7 @@ void DatabaseViewer::updateConstraintView(
 			Transform v2 = topt.rotation()*Transform(1,0,0,0,0,0);
 			float a = pcl::getAngle3D(Eigen::Vector4f(v1.x(), v1.y(), v1.z(), 0), Eigen::Vector4f(v2.x(), v2.y(), v2.z(), 0));
 			a = (a *180.0f) / CV_PI;
-			ui_->label_constraint_opt->setText(QString("%1\n(error=%2% a=%3)").arg(QString(topt.prettyPrint().c_str()).replace(" ", "\n")).arg((diff/t.getNorm())*100.0f).arg(a));
+			ui_->label_constraint_opt->setText(QString("%1\n(error=%2% a=%3)").arg(QString(topt.prettyPrint().c_str()).replace(" ", "\n")).arg((t.getNorm()>0?diff/t.getNorm():0)*100.0f).arg(a));
 
 			if(ui_->checkBox_showOptimized->isChecked())
 			{
@@ -5885,7 +5944,11 @@ void DatabaseViewer::updateConstraintButtons()
 
 	int from = ids_.at(ui_->horizontalSlider_A->value());
 	int to = ids_.at(ui_->horizontalSlider_B->value());
-	if(from!=to && from && to && odomPoses_.find(from) != odomPoses_.end() && odomPoses_.find(to) != odomPoses_.end())
+	if(from!=to && from && to &&
+	   odomPoses_.find(from) != odomPoses_.end() &&
+	   odomPoses_.find(to) != odomPoses_.end() &&
+	   weights_.find(from) != weights_.end() && weights_.at(from)>=0,
+	   weights_.find(to) != weights_.end() && weights_.at(to)>=0)
 	{
 		if((!containsLink(links_, from ,to) && !containsLink(linksAdded_, from ,to)) ||
 			containsLink(linksRemoved_, from ,to))
@@ -7450,9 +7513,16 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent)
 		}
 		else if(!silent)
 		{
-			QMessageBox::warning(this,
+			QMessageBox::StandardButton button = QMessageBox::warning(this,
 					tr("Add link"),
-					tr("Cannot find a transformation between nodes %1 and %2: %3").arg(from).arg(to).arg(info.rejectedMsg.c_str()));
+					tr("Cannot find a transformation between nodes %1 and %2: %3\n\nDo you want to add it manually?").arg(from).arg(to).arg(info.rejectedMsg.c_str()),
+					QMessageBox::Yes | QMessageBox::No,
+					QMessageBox::No);
+			if(button == QMessageBox::Yes)
+			{
+				editConstraint();
+				silent = true;
+			}
 		}
 	}
 	else if(containsLink(linksRemoved_, from, to))

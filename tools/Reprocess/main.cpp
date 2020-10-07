@@ -575,7 +575,7 @@ int main(int argc, char * argv[])
 	int processed = 0;
 	CameraInfo info;
 	SensorData data = dbReader->takeImage(&info);
-	CameraThread camThread(dbReader, parameters);
+	CameraThread camThread(dbReader, parameters); // take ownership of dbReader
 	camThread.setScanParameters(scanFromDepth, scanDecimation, scanRangeMin, scanRangeMax, scanVoxelSize, scanNormalK, scanNormalRadius);
 	if(scanFromDepth)
 	{

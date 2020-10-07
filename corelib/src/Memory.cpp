@@ -3710,6 +3710,7 @@ bool Memory::rehearsalMerge(int oldId, int newId)
 				{
 					_lastGlobalLoopClosureId = newS->id();
 				}
+				oldS->setWeight(-9);
 			}
 			else
 			{
@@ -3722,6 +3723,7 @@ bool Memory::rehearsalMerge(int oldId, int newId)
 				{
 					_lastSignature = oldS;
 				}
+				newS->setWeight(-9);
 			}
 
 			// remove location
