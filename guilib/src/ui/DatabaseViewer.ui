@@ -61,7 +61,7 @@
           <rect>
            <x>0</x>
            <y>0</y>
-           <width>296</width>
+           <width>306</width>
            <height>311</height>
           </rect>
          </property>
@@ -304,7 +304,7 @@
           <rect>
            <x>0</x>
            <y>0</y>
-           <width>296</width>
+           <width>306</width>
            <height>311</height>
           </rect>
          </property>
@@ -826,7 +826,7 @@
          </property>
          <property name="sizeHint" stdset="0">
           <size>
-           <width>40</width>
+           <width>0</width>
            <height>20</height>
           </size>
          </property>
@@ -1025,6 +1025,16 @@
         </widget>
        </item>
        <item>
+        <widget class="QCheckBox" name="checkBox_enableForAll">
+         <property name="toolTip">
+          <string>Enable &quot;Add&quot; for all nodes (even not in graph)</string>
+         </property>
+         <property name="text">
+          <string/>
+         </property>
+        </widget>
+       </item>
+       <item>
         <widget class="QPushButton" name="pushButton_reject">
          <property name="text">
           <string>Reject</string>
@@ -1038,7 +1048,7 @@
          </property>
          <property name="sizeHint" stdset="0">
           <size>
-           <width>40</width>
+           <width>0</width>
            <height>20</height>
           </size>
          </property>

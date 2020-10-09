@@ -360,6 +360,7 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	connect(ui_->checkBox_odomFrame, SIGNAL(stateChanged(int)), this, SLOT(updateConstraintView()));
 	ui_->checkBox_showOptimized->setEnabled(false);
 	connect(ui_->toolButton_constraint, SIGNAL(clicked(bool)), this, SLOT(editConstraint()));
+	connect(ui_->checkBox_enableForAll, SIGNAL(stateChanged(int)), this, SLOT(updateConstraintButtons()));
 
 	ui_->horizontalSlider_iterations->setTracking(false);
 	ui_->horizontalSlider_iterations->setEnabled(false);
@@ -5946,8 +5947,9 @@ void DatabaseViewer::updateConstraintButtons()
 	if(from!=to && from && to &&
 	   odomPoses_.find(from) != odomPoses_.end() &&
 	   odomPoses_.find(to) != odomPoses_.end() &&
-	   weights_.find(from) != weights_.end() && weights_.at(from)>=0,
-	   weights_.find(to) != weights_.end() && weights_.at(to)>=0)
+	   (ui_->checkBox_enableForAll->isChecked() ||
+	   (weights_.find(from) != weights_.end() && weights_.at(from)>=0 &&
+	   weights_.find(to) != weights_.end() && weights_.at(to)>=0)))
 	{
 		if((!containsLink(links_, from ,to) && !containsLink(linksAdded_, from ,to)) ||
 			containsLink(linksRemoved_, from ,to))

@@ -145,6 +145,7 @@ private Q_SLOTS:
 	void updateStereo();
 	void notifyParametersChanged(const QStringList &);
 	void setupMainLayout(bool vertical);
+	void updateConstraintButtons();
 
 private:
 	QString getIniFilePath() const;
@@ -176,7 +177,6 @@ private:
 			bool updateImageSliders = true,
 			const Signature & signatureFrom = Signature(0),
 			const Signature & signatureTo = Signature(0));
-	void updateConstraintButtons();
 	Link findActiveLink(int from, int to);
 	bool containsLink(
 			std::multimap<int, Link> & links,
