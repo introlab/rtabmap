@@ -4127,7 +4127,6 @@ void DatabaseViewer::update(int value,
 	labelGravity->clear();
 	labelGps->clear();
 	labelSensors->clear();
-	QRectF rect;
 	if(value >= 0 && value < ids_.size())
 	{
 		view->clear();
@@ -4159,6 +4158,35 @@ void DatabaseViewer::update(int value,
 						}
 					}
 					imgDepth = depth;
+				}
+
+				QRectF rect;
+				if(!img.isNull())
+				{
+					view->setImage(img);
+					rect = img.rect();
+				}
+				else
+				{
+					ULOGGER_DEBUG("Image is empty");
+				}
+
+				if(!imgDepth.empty())
+				{
+					view->setImageDepth(imgDepth);
+					if(img.isNull())
+					{
+						rect.setWidth(imgDepth.cols);
+						rect.setHeight(imgDepth.rows);
+					}
+				}
+				else
+				{
+					ULOGGER_DEBUG("Image depth is empty");
+				}
+				if(rect.isValid())
+				{
+					view->setSceneRect(rect);
 				}
 
 				std::list<int> ids;
@@ -4761,30 +4789,6 @@ void DatabaseViewer::update(int value,
 				}
 			}
 
-			if(!img.isNull())
-			{
-				view->setImage(img);
-				rect = img.rect();
-			}
-			else
-			{
-				ULOGGER_DEBUG("Image is empty");
-			}
-
-			if(!imgDepth.empty())
-			{
-				view->setImageDepth(imgDepth);
-				if(img.isNull())
-				{
-					rect.setWidth(imgDepth.cols);
-					rect.setHeight(imgDepth.rows);
-				}
-			}
-			else
-			{
-				ULOGGER_DEBUG("Image depth is empty");
-			}
-
 			// loops
 			std::multimap<int, rtabmap::Link> links;
 			dbDriver_->loadLinks(id, links);
@@ -4919,11 +4923,6 @@ void DatabaseViewer::update(int value,
 			constraintsViewer_->update();
 
 		}
-	}
-
-	if(rect.isValid())
-	{
-		view->setSceneRect(rect);
 	}
 }
 
