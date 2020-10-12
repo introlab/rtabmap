@@ -61,7 +61,7 @@
           <rect>
            <x>0</x>
            <y>0</y>
-           <width>306</width>
+           <width>414</width>
            <height>311</height>
           </rect>
          </property>
@@ -304,7 +304,7 @@
           <rect>
            <x>0</x>
            <y>0</y>
-           <width>306</width>
+           <width>413</width>
            <height>311</height>
           </rect>
          </property>
@@ -1379,7 +1379,7 @@
      <item>
       <widget class="QToolBox" name="toolBox">
        <property name="currentIndex">
-        <number>1</number>
+        <number>0</number>
        </property>
        <widget class="QWidget" name="page_3">
         <property name="geometry">
@@ -1387,7 +1387,7 @@
           <x>0</x>
           <y>0</y>
           <width>318</width>
-          <height>165</height>
+          <height>226</height>
          </rect>
         </property>
         <attribute name="label">
@@ -1455,7 +1455,7 @@
            </property>
           </widget>
          </item>
-         <item row="6" column="0">
+         <item row="7" column="0">
           <spacer name="verticalSpacer_3">
            <property name="orientation">
             <enum>Qt::Vertical</enum>
@@ -1515,6 +1515,23 @@
            </property>
            <property name="value">
             <double>1.000000000000000</double>
+           </property>
+          </widget>
+         </item>
+         <item row="6" column="2">
+          <widget class="QLabel" name="label_58">
+           <property name="text">
+            <string>Ignore landmarks</string>
+           </property>
+          </widget>
+         </item>
+         <item row="6" column="0">
+          <widget class="QCheckBox" name="checkBox_ignoreLandmarks">
+           <property name="text">
+            <string/>
+           </property>
+           <property name="checked">
+            <bool>false</bool>
            </property>
           </widget>
          </item>
@@ -2079,8 +2096,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>226</width>
-          <height>160</height>
+          <width>312</width>
+          <height>226</height>
          </rect>
         </property>
         <attribute name="label">
@@ -2207,8 +2224,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>185</width>
-          <height>485</height>
+          <width>446</width>
+          <height>226</height>
          </rect>
         </property>
         <attribute name="label">

@@ -378,6 +378,7 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	connect(ui_->checkBox_ignoreLocalLoopSpace, SIGNAL(stateChanged(int)), this, SLOT(updateGraphView()));
 	connect(ui_->checkBox_ignoreLocalLoopTime, SIGNAL(stateChanged(int)), this, SLOT(updateGraphView()));
 	connect(ui_->checkBox_ignoreUserLoop, SIGNAL(stateChanged(int)), this, SLOT(updateGraphView()));
+	connect(ui_->checkBox_ignoreLandmarks, SIGNAL(stateChanged(int)), this, SLOT(updateGraphView()));
 	connect(ui_->doubleSpinBox_optimizationScale, SIGNAL(editingFinished()), this, SLOT(updateGraphView()));
 	connect(ui_->checkBox_octomap, SIGNAL(stateChanged(int)), this, SLOT(updateGrid()));
 	connect(ui_->checkBox_grid_2d, SIGNAL(stateChanged(int)), this, SLOT(updateGrid()));
@@ -708,6 +709,7 @@ void DatabaseViewer::restoreDefaultSettings()
 	ui_->checkBox_ignoreLocalLoopSpace->setChecked(false);
 	ui_->checkBox_ignoreLocalLoopTime->setChecked(false);
 	ui_->checkBox_ignoreUserLoop->setChecked(false);
+	ui_->checkBox_ignoreLandmarks->setChecked(false);
 	ui_->doubleSpinBox_optimizationScale->setValue(1.0);
 	ui_->doubleSpinBox_gainCompensationRadius->setValue(0.0);
 	ui_->doubleSpinBox_voxelSize->setValue(0.0);
@@ -5440,7 +5442,7 @@ void DatabaseViewer::updateConstraintView(
 				 link.type()==Link::kLocalSpaceClosure?"Space proximity link":
 				 link.type()==Link::kLocalTimeClosure?"Time proximity link":
 				 link.type()==Link::kUserClosure?"User link":
-				 link.type()==Link::kLandmark?"Landmark link":
+				 link.type()==Link::kLandmark?"Landmark "+QString::number(-link.to()):
 				 link.type()==Link::kVirtualClosure?"Virtual link":
 				 link.type()==Link::kGravity?"Gravity link":"Undefined"));
 	ui_->label_variance->setText(QString("%1, %2")
@@ -6569,6 +6571,11 @@ void DatabaseViewer::updateGraphView()
 			}
 			else if(iter->second.type() == Link::kLandmark)
 			{
+				if(ui_->checkBox_ignoreLandmarks->isChecked())
+				{
+					links.erase(iter++);
+					continue;
+				}
 				UASSERT(iter->second.from() > 0 && iter->second.to() < 0);
 				if(poses.find(iter->second.from()) != poses.end() && poses.find(iter->second.to()) == poses.end())
 				{
