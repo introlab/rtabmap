@@ -2183,6 +2183,7 @@ bool Rtabmap::process(
 	// Landmark
 	//============================================================
 	int landmarkDetected = 0;
+	bool rejectedLandmark = false;
 	std::set<int> landmarkDetectedNodesRef;
 	if(!signature->getLandmarks().empty())
 	{
@@ -2913,6 +2914,7 @@ bool Rtabmap::process(
 				_loopClosureHypothesis.first = 0;
 				lastProximitySpaceClosureId = 0;
 				rejectedGlobalLoopClosure = true;
+				rejectedLandmark = true;
 			}
 		}
 		else
@@ -2948,6 +2950,7 @@ bool Rtabmap::process(
 				_loopClosureHypothesis.first = 0;
 				lastProximitySpaceClosureId = 0;
 				rejectedGlobalLoopClosure = true;
+				rejectedLandmark = true;
 			}
 			else if(_memory->isIncremental() &&
 			  _optimizationMaxError > 0.0f &&
@@ -3033,6 +3036,7 @@ bool Rtabmap::process(
 					_loopClosureHypothesis.first = 0;
 					lastProximitySpaceClosureId = 0;
 					rejectedGlobalLoopClosure = true;
+					rejectedLandmark = true;
 				}
 			}
 
@@ -3361,7 +3365,7 @@ bool Rtabmap::process(
 		if(_startNewMapOnLoopClosure &&
 			_memory->isIncremental() &&              // only in mapping mode
 			graph::filterLinks(signature->getLinks(), Link::kSelfRefLink).size() == 0 &&      // alone in the current map
-			(landmarkDetected == 0 || rejectedGlobalLoopClosure) &&      // if we re not seeing a landmark from a previous map
+			(landmarkDetected == 0 || rejectedLandmark) &&      // if we re not seeing a landmark from a previous map
 			_memory->getWorkingMem().size()>=2)       // The working memory should not be empty (beside virtual signature)
 		{
 			UWARN("Ignoring location %d because a global loop closure is required before starting a new map!",
