@@ -7443,6 +7443,7 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent)
 		}
 
 		Transform guess;
+		bool guessFromGraphRejected = false;
 		if(!reg->isImageRequired())
 		{
 			// make a fake guess using globally optimized poses
@@ -7472,6 +7473,10 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent)
 							{
 								guess = fromIter->second.inverse() * toIter->second;
 							}
+							else
+							{
+								guessFromGraphRejected = true;
+							}
 						}
 						else
 						{
@@ -7480,7 +7485,7 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent)
 					}
 				}
 			}
-			if(guess.isNull() && !silent)
+			if(guess.isNull() && !silent && !guessFromGraphRejected)
 			{
 				if(QMessageBox::question(this,
 						tr("Add constraint without guess"),
@@ -7495,6 +7500,10 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent)
 							QMessageBox::Abort) == QMessageBox::Yes)
 				{
 					guess.setIdentity();
+				}
+				else
+				{
+					guessFromGraphRejected = true;
 				}
 			}
 		}
@@ -7519,7 +7528,7 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent)
 
 			newLink = Link(from, to, Link::kUserClosure, t, information);
 		}
-		else if(!silent)
+		else if(!silent && !guessFromGraphRejected)
 		{
 			QMessageBox::StandardButton button = QMessageBox::warning(this,
 					tr("Add link"),
