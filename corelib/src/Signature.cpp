@@ -345,11 +345,11 @@ cv::Mat Signature::getPoseCovariance() const
 unsigned long Signature::getMemoryUsed(bool withSensorData) const // Return memory usage in Bytes
 {
 	unsigned long total = sizeof(Signature);
-	total += _words.size() * (sizeof(int)*2+sizeof(std::_Rb_tree_node_base)) + sizeof(std::multimap<int, cv::KeyPoint>);
+	total += _words.size() * (sizeof(int)*2+sizeof(std::multimap<int, cv::KeyPoint>::iterator)) + sizeof(std::multimap<int, cv::KeyPoint>);
 	total += _wordsKpts.size() * sizeof(cv::KeyPoint) + sizeof(std::vector<cv::KeyPoint>);
 	total += _words3.size() * sizeof(cv::Point3f) + sizeof(std::vector<cv::Point3f>);
 	total += _wordsDescriptors.total() * _wordsDescriptors.elemSize() + sizeof(cv::Mat);
-	total += _wordsChanged.size() * (sizeof(int)*2+sizeof(std::_Rb_tree_node_base)) + sizeof(std::map<int, int>);
+	total += _wordsChanged.size() * (sizeof(int)*2+sizeof(std::map<int, int>::iterator)) + sizeof(std::map<int, int>);
 	if(withSensorData)
 	{
 		total+=_sensorData.getMemoryUsed();
@@ -357,8 +357,8 @@ unsigned long Signature::getMemoryUsed(bool withSensorData) const // Return memo
 	total += _pose.size() * (sizeof(Transform) + sizeof(float)*12);
 	total += _groundTruthPose.size() * (sizeof(Transform) + sizeof(float)*12);
 	total += _velocity.size() * sizeof(float);
-	total += _links.size() * (sizeof(int) + sizeof(Transform) + 12 * sizeof(float) + sizeof(cv::Mat) + 36 * sizeof(double)+sizeof(std::_Rb_tree_node_base)) + sizeof(std::multimap<int, Link>);
-	total += _landmarks.size() * (sizeof(int) + sizeof(Transform) + 12 * sizeof(float) + sizeof(cv::Mat) + 36 * sizeof(double)+sizeof(std::_Rb_tree_node_base)) + sizeof(std::map<int, Link>);
+	total += _links.size() * (sizeof(int) + sizeof(Transform) + 12 * sizeof(float) + sizeof(cv::Mat) + 36 * sizeof(double)+sizeof(std::multimap<int, Link>::iterator)) + sizeof(std::multimap<int, Link>);
+	total += _landmarks.size() * (sizeof(int) + sizeof(Transform) + 12 * sizeof(float) + sizeof(cv::Mat) + 36 * sizeof(double)+sizeof(std::map<int, Link>::iterator)) + sizeof(std::map<int, Link>);
 	return total;
 }
 

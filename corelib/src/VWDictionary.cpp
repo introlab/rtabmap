@@ -373,7 +373,7 @@ unsigned long VWDictionary::getMemoryUsed() const
 	memoryUsage += _dataTree.total()*_dataTree.elemSize();
 	if(!_visualWords.empty())
 	{
-		memoryUsage += _visualWords.size()*(sizeof(int) + _visualWords.rbegin()->second->getMemoryUsed() + sizeof(std::_Rb_tree_node_base)) + sizeof(std::map<int, VisualWord *>);
+		memoryUsage += _visualWords.size()*(sizeof(int) + _visualWords.rbegin()->second->getMemoryUsed() + sizeof(std::map<int, VisualWord *>::iterator)) + sizeof(std::map<int, VisualWord *>);
 		if(_dataTree.empty() &&
 			_visualWords.begin()->second->getDescriptor().type() == CV_8U &&
 			_strategy == kNNFlannKdTree)
@@ -385,12 +385,12 @@ unsigned long VWDictionary::getMemoryUsed() const
 	if(!_unusedWords.empty())
 	{
 		// they are the same words than in _visualWords, so just add the pointer size
-		memoryUsage += _unusedWords.size()*(sizeof(int) + sizeof(VisualWord *)+sizeof(std::_Rb_tree_node_base)) + sizeof(std::map<int, VisualWord *>);
+		memoryUsage += _unusedWords.size()*(sizeof(int) + sizeof(VisualWord *)+sizeof(std::map<int, VisualWord *>::iterator)) + sizeof(std::map<int, VisualWord *>);
 	}
-	memoryUsage += _mapIndexId.size() * (sizeof(int)*2+sizeof(std::_Rb_tree_node_base)) + sizeof(std::map<int ,int>);
-	memoryUsage += _mapIdIndex.size() * (sizeof(int)*2+sizeof(std::_Rb_tree_node_base)) + sizeof(std::map<int ,int>);
-	memoryUsage += _notIndexedWords.size() * (sizeof(int)+sizeof(std::_Rb_tree_node_base)) + sizeof(std::set<int>);
-	memoryUsage += _removedIndexedWords.size() * (sizeof(int)+sizeof(std::_Rb_tree_node_base)) + sizeof(std::set<int>);
+	memoryUsage += _mapIndexId.size() * (sizeof(int)*2+sizeof(std::map<int ,int>::iterator)) + sizeof(std::map<int ,int>);
+	memoryUsage += _mapIdIndex.size() * (sizeof(int)*2+sizeof(std::map<int ,int>::iterator)) + sizeof(std::map<int ,int>);
+	memoryUsage += _notIndexedWords.size() * (sizeof(int)+sizeof(std::set<int>::iterator)) + sizeof(std::set<int>);
+	memoryUsage += _removedIndexedWords.size() * (sizeof(int)+sizeof(std::set<int>::iterator)) + sizeof(std::set<int>);
 	return memoryUsage;
 }
 

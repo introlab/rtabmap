@@ -1535,9 +1535,9 @@ bool OccupancyGrid::update(const std::map<int, Transform> & posesIn)
 unsigned long OccupancyGrid::getMemoryUsed() const
 {
 	unsigned long memoryUsage = sizeof(OccupancyGrid);
-	memoryUsage += parameters_.size()*(sizeof(std::string)*2+sizeof(std::_Rb_tree_node_base)) + sizeof(ParametersMap);
+	memoryUsage += parameters_.size()*(sizeof(std::string)*2+sizeof(ParametersMap::iterator)) + sizeof(ParametersMap);
 
-	memoryUsage += cache_.size()*(sizeof(int) + sizeof(std::pair<std::pair<cv::Mat, cv::Mat>, cv::Mat>) + sizeof(std::_Rb_tree_node_base)) + sizeof(std::map<int, std::pair<std::pair<cv::Mat, cv::Mat>, cv::Mat> >);
+	memoryUsage += cache_.size()*(sizeof(int) + sizeof(std::pair<std::pair<cv::Mat, cv::Mat>, cv::Mat>) + sizeof(std::map<int, std::pair<std::pair<cv::Mat, cv::Mat>, cv::Mat> >::iterator)) + sizeof(std::map<int, std::pair<std::pair<cv::Mat, cv::Mat>, cv::Mat> >);
 	for(std::map<int, std::pair<std::pair<cv::Mat, cv::Mat>, cv::Mat> >::const_iterator iter=cache_.begin(); iter!=cache_.end(); ++iter)
 	{
 		memoryUsage += iter->second.first.first.total() * iter->second.first.first.elemSize();
@@ -1546,8 +1546,8 @@ unsigned long OccupancyGrid::getMemoryUsed() const
 	}
 	memoryUsage += map_.total() * map_.elemSize();
 	memoryUsage += mapInfo_.total() * mapInfo_.elemSize();
-	memoryUsage += cellCount_.size()*(sizeof(int)*3 + sizeof(std::pair<int, int>) + sizeof(std::_Rb_tree_node_base)) + sizeof(std::map<int, std::pair<int, int> >);
-	memoryUsage += addedNodes_.size()*(sizeof(int) + sizeof(Transform)+ sizeof(float)*12 + sizeof(std::_Rb_tree_node_base)) + sizeof(std::map<int, Transform>);
+	memoryUsage += cellCount_.size()*(sizeof(int)*3 + sizeof(std::pair<int, int>) + sizeof(std::map<int, std::pair<int, int> >::iterator)) + sizeof(std::map<int, std::pair<int, int> >);
+	memoryUsage += addedNodes_.size()*(sizeof(int) + sizeof(Transform)+ sizeof(float)*12 + sizeof(std::map<int, Transform>::iterator)) + sizeof(std::map<int, Transform>);
 
 	if(assembledGround_.get())
 	{

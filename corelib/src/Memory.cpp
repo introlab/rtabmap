@@ -3513,7 +3513,7 @@ void Memory::dumpMemoryTree(const char * fileNameTree) const
 unsigned long Memory::getMemoryUsed() const
 {
 	unsigned long memoryUsage = sizeof(Memory);
-	memoryUsage += _signatures.size() * (sizeof(int)+sizeof(std::_Rb_tree_node_base)) + sizeof(std::map<int, Signature *>);
+	memoryUsage += _signatures.size() * (sizeof(int)+sizeof(std::map<int, Signature *>::iterator)) + sizeof(std::map<int, Signature *>);
 	for(std::map<int, Signature*>::const_iterator iter=_signatures.begin(); iter!=_signatures.end(); ++iter)
 	{
 		memoryUsage += iter->second->getMemoryUsed(true);
@@ -3522,26 +3522,26 @@ unsigned long Memory::getMemoryUsed() const
 	{
 		memoryUsage += _vwd->getMemoryUsed();
 	}
-	memoryUsage += _stMem.size() * (sizeof(int)+sizeof(std::_Rb_tree_node_base)) + sizeof(std::set<int>);
-	memoryUsage += _workingMem.size() * (sizeof(int)+sizeof(double)+sizeof(std::_Rb_tree_node_base)) + sizeof(std::map<int, double>);
-	memoryUsage += _groundTruths.size() * (sizeof(int)+sizeof(Transform)+12*sizeof(float) + sizeof(std::_Rb_tree_node_base)) + sizeof(std::map<int, Transform>);
-	memoryUsage += _labels.size() * (sizeof(int)+sizeof(std::string) + sizeof(std::_Rb_tree_node_base)) + sizeof(std::map<int, std::string>);
+	memoryUsage += _stMem.size() * (sizeof(int)+sizeof(std::set<int>::iterator)) + sizeof(std::set<int>);
+	memoryUsage += _workingMem.size() * (sizeof(int)+sizeof(double)+sizeof(std::map<int, double>::iterator)) + sizeof(std::map<int, double>);
+	memoryUsage += _groundTruths.size() * (sizeof(int)+sizeof(Transform)+12*sizeof(float) + sizeof(std::map<int, Transform>::iterator)) + sizeof(std::map<int, Transform>);
+	memoryUsage += _labels.size() * (sizeof(int)+sizeof(std::string) + sizeof(std::map<int, std::string>::iterator)) + sizeof(std::map<int, std::string>);
 	for(std::map<int, std::string>::const_iterator iter=_labels.begin(); iter!=_labels.end(); ++iter)
 	{
 		memoryUsage+=iter->second.size();
 	}
-	memoryUsage += _landmarksIndex.size() * (sizeof(int)+sizeof(std::set<int>) + sizeof(std::_Rb_tree_node_base)) + sizeof(std::map<int, std::set<int> >);
-	memoryUsage += _landmarksInvertedIndex.size() * (sizeof(int)+sizeof(std::set<int>) + sizeof(std::_Rb_tree_node_base)) + sizeof(std::map<int, std::set<int> >);
+	memoryUsage += _landmarksIndex.size() * (sizeof(int)+sizeof(std::set<int>) + sizeof(std::map<int, std::set<int> >::iterator)) + sizeof(std::map<int, std::set<int> >);
+	memoryUsage += _landmarksInvertedIndex.size() * (sizeof(int)+sizeof(std::set<int>) + sizeof(std::map<int, std::set<int> >::iterator)) + sizeof(std::map<int, std::set<int> >);
 	for(std::map<int, std::set<int>>::const_iterator iter=_landmarksIndex.begin(); iter!=_landmarksIndex.end(); ++iter)
 	{
-		memoryUsage+=iter->second.size()*(sizeof(int)+sizeof(std::_Rb_tree_node_base)) + sizeof(std::set<int>);
+		memoryUsage+=iter->second.size()*(sizeof(int)+sizeof(std::set<int>::iterator)) + sizeof(std::set<int>);
 	}
 	for(std::map<int, std::set<int>>::const_iterator iter=_landmarksInvertedIndex.begin(); iter!=_landmarksInvertedIndex.end(); ++iter)
 	{
-		memoryUsage+=iter->second.size()*(sizeof(int)+sizeof(std::_Rb_tree_node_base)) + sizeof(std::set<int>);
+		memoryUsage+=iter->second.size()*(sizeof(int)+sizeof(std::set<int>::iterator)) + sizeof(std::set<int>);
 	}
-	memoryUsage += parameters_.size()*(sizeof(std::string)*2+sizeof(std::_Rb_tree_node_base)) + sizeof(ParametersMap);
-	memoryUsage += sizeof(Feature2D) + _feature2D->getParameters().size()*(sizeof(std::string)*2+sizeof(std::_Rb_tree_node_base)) + sizeof(ParametersMap);
+	memoryUsage += parameters_.size()*(sizeof(std::string)*2+sizeof(ParametersMap::iterator)) + sizeof(ParametersMap);
+	memoryUsage += sizeof(Feature2D) + _feature2D->getParameters().size()*(sizeof(std::string)*2+sizeof(ParametersMap::iterator)) + sizeof(ParametersMap);
 	memoryUsage += sizeof(Registration);
 	memoryUsage += sizeof(RegistrationIcp);
 	memoryUsage += _occupancy->getMemoryUsed();

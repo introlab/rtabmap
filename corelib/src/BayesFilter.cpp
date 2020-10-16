@@ -420,13 +420,13 @@ cv::Mat BayesFilter::generatePrediction(const Memory * memory, const std::vector
 unsigned long BayesFilter::getMemoryUsed() const
 {
 	long memoryUsage = sizeof(BayesFilter);
-	memoryUsage += _posterior.size() * (sizeof(float)+sizeof(int)+sizeof(std::_Rb_tree_node_base)) + sizeof(std::map<int, float>);
+	memoryUsage += _posterior.size() * (sizeof(float)+sizeof(int)+sizeof(std::map<int, float>::iterator)) + sizeof(std::map<int, float>);
 	memoryUsage += _prediction.total() * _prediction.elemSize();
 	memoryUsage += _predictionLC.size() * sizeof(double);
-	memoryUsage += _neighborsIndex.size() * (sizeof(int)+sizeof(std::map<int, int>)+sizeof(std::_Rb_tree_node_base)) + sizeof(std::map<int, std::map<int, int> >);
+	memoryUsage += _neighborsIndex.size() * (sizeof(int)+sizeof(std::map<int, int>)+sizeof(std::map<int, std::map<int, int> >::iterator)) + sizeof(std::map<int, std::map<int, int> >);
 	for(std::map<int, std::map<int, int> >::const_iterator iter=_neighborsIndex.begin(); iter!=_neighborsIndex.end(); ++iter)
 	{
-		memoryUsage += iter->second.size() * (sizeof(int)*2+sizeof(std::_Rb_tree_node_base)) + sizeof(std::map<int, int>);
+		memoryUsage += iter->second.size() * (sizeof(int)*2+sizeof(std::map<int, int>::iterator)) + sizeof(std::map<int, int>);
 	}
 	return memoryUsage;
 }

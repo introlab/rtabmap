@@ -72,8 +72,8 @@ int VisualWord::removeAllRef(int signatureId)
 unsigned long VisualWord::getMemoryUsed() const
 {
 	unsigned long memoryUsage = sizeof(VisualWord);
-	memoryUsage += _references.size() * (sizeof(int)*2+sizeof(std::_Rb_tree_node_base)) + sizeof(std::map<int ,int>);
-	memoryUsage += _oldReferences.size() * (sizeof(int)*2+sizeof(std::_Rb_tree_node_base)) + sizeof(std::map<int ,int>);
+	memoryUsage += _references.size() * (sizeof(int)*2+sizeof(std::map<int ,int>::iterator)) + sizeof(std::map<int ,int>);
+	memoryUsage += _oldReferences.size() * (sizeof(int)*2+sizeof(std::map<int ,int>::iterator)) + sizeof(std::map<int ,int>);
 	memoryUsage += _descriptor.total() * _descriptor.elemSize();
 	return memoryUsage;
 }

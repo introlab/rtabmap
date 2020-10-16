@@ -115,7 +115,7 @@ unsigned long FlannIndex::memoryUsed() const
 		return 0;
 	}
 	unsigned long memoryUsage = sizeof(FlannIndex);
-	memoryUsage += addedDescriptors_.size() * (sizeof(int) + sizeof(cv::Mat) + sizeof(std::_Rb_tree_node_base)) + sizeof(std::map<int, cv::Mat>);
+	memoryUsage += addedDescriptors_.size() * (sizeof(int) + sizeof(cv::Mat) + sizeof(std::map<int, cv::Mat>::iterator)) + sizeof(std::map<int, cv::Mat>);
 	memoryUsage += sizeof(std::list<int>) + removedIndexes_.size() * sizeof(int);
 	if(featuresType_ == CV_8UC1)
 	{

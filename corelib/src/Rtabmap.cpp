@@ -3294,11 +3294,11 @@ bool Rtabmap::process(
 				UTimer ramTimer;
 				statistics_.addStatistic(Statistics::kMemoryRAM_usage(), UProcessInfo::getMemoryUsage()/(1024*1024));
 				long estimatedMemoryUsage = sizeof(Rtabmap);
-				estimatedMemoryUsage += _optimizedPoses.size() * (sizeof(int) + sizeof(Transform) + 12 * sizeof(float) + sizeof(std::_Rb_tree_node_base)) + sizeof(std::map<int, Transform>);
-				estimatedMemoryUsage += _constraints.size() * (sizeof(int) + sizeof(Transform) + 12 * sizeof(float) + sizeof(cv::Mat) + 36 * sizeof(double) + sizeof(std::_Rb_tree_node_base)) + sizeof(std::map<int, Link>);
+				estimatedMemoryUsage += _optimizedPoses.size() * (sizeof(int) + sizeof(Transform) + 12 * sizeof(float) + sizeof(std::map<int, Transform>::iterator)) + sizeof(std::map<int, Transform>);
+				estimatedMemoryUsage += _constraints.size() * (sizeof(int) + sizeof(Transform) + 12 * sizeof(float) + sizeof(cv::Mat) + 36 * sizeof(double) + sizeof(std::map<int, Link>::iterator)) + sizeof(std::map<int, Link>);
 				estimatedMemoryUsage += _memory->getMemoryUsed();
 				estimatedMemoryUsage += _bayesFilter->getMemoryUsed();
-				estimatedMemoryUsage += _parameters.size()*(sizeof(std::string)*2+sizeof(std::_Rb_tree_node_base)) + sizeof(ParametersMap);
+				estimatedMemoryUsage += _parameters.size()*(sizeof(std::string)*2+sizeof(ParametersMap::iterator)) + sizeof(ParametersMap);
 				statistics_.addStatistic(Statistics::kMemoryRAM_estimated(), (float)(estimatedMemoryUsage/(1024*1024)));//MB
 				statistics_.addStatistic(Statistics::kTimingRAM_estimation(), ramTimer.ticks()*1000);
 			}
