@@ -977,7 +977,7 @@ void SIFT::parseParameters(const ParametersMap & parameters)
 #else
 	UWARN("RTAB-Map is not built with OpenCV nonfree module so SIFT cannot be used!");
 #endif
-#else
+#else // >=4.4, >=3.4.11
 	_sift = CV_SIFT::create(this->getMaxFeatures(), nOctaveLayers_, contrastThreshold_, edgeThreshold_, sigma_);
 #endif
 }
@@ -986,16 +986,20 @@ std::vector<cv::KeyPoint> SIFT::generateKeypointsImpl(const cv::Mat & image, con
 {
 	UASSERT(!image.empty() && image.channels() == 1 && image.depth() == CV_8U);
 	std::vector<cv::KeyPoint> keypoints;
-#if defined(RTABMAP_NONFREE) || CV_MAJOR_VERSION > 4 || (CV_MAJOR_VERSION == 4 && CV_MINOR_VERSION >= 3)
 	cv::Mat imgRoi(image, roi);
 	cv::Mat maskRoi;
 	if(!mask.empty())
 	{
 		maskRoi = cv::Mat(mask, roi);
 	}
+#if CV_MAJOR_VERSION < 3 || (CV_MAJOR_VERSION == 4 && CV_MINOR_VERSION <= 3) || (CV_MAJOR_VERSION == 3 && (CV_MINOR_VERSION < 4 || (CV_MINOR_VERSION==4 && CV_SUBMINOR_VERSION<11)))
+#ifdef RTABMAP_NONFREE
 	_sift->detect(imgRoi, keypoints, maskRoi); // Opencv keypoints
 #else
 	UWARN("RTAB-Map is not built with OpenCV nonfree module so SIFT cannot be used!");
+#endif
+#else // >=4.4, >=3.4.11
+	_sift->detect(imgRoi, keypoints, maskRoi); // Opencv keypoints
 #endif
 	return keypoints;
 }
@@ -1004,9 +1008,15 @@ cv::Mat SIFT::generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::Key
 {
 	UASSERT(!image.empty() && image.channels() == 1 && image.depth() == CV_8U);
 	cv::Mat descriptors;
-#if defined(RTABMAP_NONFREE) || CV_MAJOR_VERSION > 4 || (CV_MAJOR_VERSION == 4 && CV_MINOR_VERSION >= 3)
+#if CV_MAJOR_VERSION < 3 || (CV_MAJOR_VERSION == 4 && CV_MINOR_VERSION <= 3) || (CV_MAJOR_VERSION == 3 && (CV_MINOR_VERSION < 4 || (CV_MINOR_VERSION==4 && CV_SUBMINOR_VERSION<11)))
+#ifdef RTABMAP_NONFREE
 	_sift->compute(image, keypoints, descriptors);
-
+#else
+	UWARN("RTAB-Map is not built with OpenCV nonfree module so SIFT cannot be used!");
+#endif
+#else // >=4.4, >=3.4.11
+	_sift->compute(image, keypoints, descriptors);
+#endif
 	if( rootSIFT_ && !descriptors.empty())
 	{
 		UDEBUG("Performing RootSIFT...");
@@ -1022,10 +1032,6 @@ cv::Mat SIFT::generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::Key
 			cv::sqrt(descriptors.row(i), descriptors.row(i));
 		}
 	}
-
-#else
-	UWARN("RTAB-Map is not built with OpenCV nonfree module so SIFT cannot be used!");
-#endif
 	return descriptors;
 }
 
