@@ -97,28 +97,35 @@ void segmentObstaclesFromGround(
 			// cluster all surfaces for which the centroid is in the Z-range of the bigger surface
 			if(clusteredFlatSurfaces.size())
 			{
-				Eigen::Vector4f min,max;
+				Eigen::Vector4f biggestSurfaceMin,biggestSurfaceMax;
 				if(maxGroundHeight != 0.0f)
 				{
 					// Search for biggest surface under max ground height
 					size_t points = 0;
+					biggestFlatSurfaceIndex = -1;
 					for(size_t i=0;i<clusteredFlatSurfaces.size();++i)
 					{
+						Eigen::Vector4f min,max;
 						pcl::getMinMax3D(*cloud, *clusteredFlatSurfaces.at(i), min, max);
 						if(min[2]<maxGroundHeight && clusteredFlatSurfaces.size() > points)
 						{
 							points = clusteredFlatSurfaces.at(i)->size();
 							biggestFlatSurfaceIndex = i;
+							biggestSurfaceMin = min;
+							biggestSurfaceMax = max;
 						}
 					}
 				}
 				else
 				{
-					pcl::getMinMax3D(*cloud, *clusteredFlatSurfaces.at(biggestFlatSurfaceIndex), min, max);
+					pcl::getMinMax3D(*cloud, *clusteredFlatSurfaces.at(biggestFlatSurfaceIndex), biggestSurfaceMin, biggestSurfaceMax);
 				}
-				ground = clusteredFlatSurfaces.at(biggestFlatSurfaceIndex);
+				if(biggestFlatSurfaceIndex>=0)
+				{
+					ground = clusteredFlatSurfaces.at(biggestFlatSurfaceIndex);
+				}
 
-				if(!ground->empty() && (maxGroundHeight == 0.0f || min[2] < maxGroundHeight))
+				if(!ground->empty() && (maxGroundHeight == 0.0f || biggestSurfaceMin[2] < maxGroundHeight))
 				{
 					for(unsigned int i=0; i<clusteredFlatSurfaces.size(); ++i)
 					{
@@ -126,7 +133,7 @@ void segmentObstaclesFromGround(
 						{
 							Eigen::Vector4f centroid(0,0,0,1);
 							pcl::compute3DCentroid(*cloud, *clusteredFlatSurfaces.at(i), centroid);
-							if(maxGroundHeight==0.0f || centroid[2] <= maxGroundHeight || centroid[2] <= max[2]) // epsilon
+							if(maxGroundHeight==0.0f || centroid[2] <= maxGroundHeight || centroid[2] <= biggestSurfaceMax[2]) // epsilon
 							{
 								ground = util3d::concatenate(ground, clusteredFlatSurfaces.at(i));
 							}
