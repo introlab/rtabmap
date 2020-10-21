@@ -80,8 +80,8 @@ void occupancy2DFromLaserScan(
 }
 
 void occupancy2DFromLaserScan(
-		const cv::Mat & scanHit,
-		const cv::Mat & scanNoHit,
+		const cv::Mat & scanHitIn,
+		const cv::Mat & scanNoHitIn,
 		const cv::Point3f & viewpoint,
 		cv::Mat & empty,
 		cv::Mat & occupied,
@@ -89,9 +89,40 @@ void occupancy2DFromLaserScan(
 		bool unknownSpaceFilled,
 		float scanMaxRange)
 {
-	if(scanHit.empty() && scanNoHit.empty())
+	if(scanHitIn.empty() && scanNoHitIn.empty())
 	{
 		return;
+	}
+	cv::Mat scanHit;
+	cv::Mat scanNoHit;
+	// keep only XY channels
+	if(scanHitIn.channels()>2)
+	{
+		std::vector<cv::Mat> channels;
+		cv::split(scanHitIn,channels);
+		while(channels.size()>2)
+		{
+			channels.pop_back();
+		}
+		cv::merge(channels,scanHit);
+	}
+	else
+	{
+		scanHit = scanHitIn.clone(); // will be returned in occupied matrix
+	}
+	if(scanNoHitIn.channels()>2)
+	{
+		std::vector<cv::Mat> channels;
+		cv::split(scanNoHitIn,channels);
+		while(channels.size()>2)
+		{
+			channels.pop_back();
+		}
+		cv::merge(channels,scanNoHit);
+	}
+	else
+	{
+		scanNoHit = scanHitIn;
 	}
 
 	std::map<int, Transform> poses;
@@ -136,11 +167,11 @@ void occupancy2DFromLaserScan(
 	// copy directly obstacles precise positions
 	if(scanMaxRange > cellSize)
 	{
-		occupied = util3d::rangeFiltering(LaserScan::backwardCompatibility(scanHit), 0.0f, scanMaxRange).data().clone();
+		occupied = util3d::rangeFiltering(LaserScan::backwardCompatibility(scanHit), 0.0f, scanMaxRange).data();
 	}
 	else
 	{
-		occupied = scanHit.clone();
+		occupied = scanHit;
 	}
 }
 
