@@ -982,7 +982,7 @@ std::vector<cv::KeyPoint> SIFT::generateKeypointsImpl(const cv::Mat & image, con
 {
 	UASSERT(!image.empty() && image.channels() == 1 && image.depth() == CV_8U);
 	std::vector<cv::KeyPoint> keypoints;
-#if defined(RTABMAP_NONFREE) || CV_MAJOR_VERSION > 4 || (CV_MAJOR_VERSION == 4 && CV_MINOR_VERSION >= 3)
+#if defined(RTABMAP_NONFREE) && ( CV_MAJOR_VERSION > 4 || (CV_MAJOR_VERSION == 4 && CV_MINOR_VERSION >= 3) )
 	cv::Mat imgRoi(image, roi);
 	cv::Mat maskRoi;
 	if(!mask.empty())
@@ -1000,7 +1000,7 @@ cv::Mat SIFT::generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::Key
 {
 	UASSERT(!image.empty() && image.channels() == 1 && image.depth() == CV_8U);
 	cv::Mat descriptors;
-#if defined(RTABMAP_NONFREE) || CV_MAJOR_VERSION > 4 || (CV_MAJOR_VERSION == 4 && CV_MINOR_VERSION >= 3)
+#if defined(RTABMAP_NONFREE) && ( CV_MAJOR_VERSION > 4 || (CV_MAJOR_VERSION == 4 && CV_MINOR_VERSION >= 3) )
 	_sift->compute(image, keypoints, descriptors);
 
 	if( rootSIFT_ && !descriptors.empty())
