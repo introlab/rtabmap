@@ -28,6 +28,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/gui/EditConstraintDialog.h"
 #include "ui_editConstraintDialog.h"
 
+#ifndef M_PI
+#define M_PI       3.14159265358979323846
+#endif
+
 namespace rtabmap {
 
 EditConstraintDialog::EditConstraintDialog(const Transform & constraint, double linearSigma, double angularSigma, QWidget * parent) :
