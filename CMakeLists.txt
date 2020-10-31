@@ -320,6 +320,9 @@ IF(WITH_QT)
         ENDIF()
         ADD_DEFINITIONS(-DQT_NO_KEYWORDS) # To avoid conflicts with boost signals/foreach and Qt macros
     ENDIF(QT4_FOUND OR Qt5_FOUND)
+ELSE()
+    # Unconditionally disable VTK related features since no visualization tools will be built.
+    ADD_DEFINITIONS("-DDISABLE_VTK")
 ENDIF(WITH_QT)
 
 IF(WITH_SUPERPOINT_TORCH)
