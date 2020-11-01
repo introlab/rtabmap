@@ -2122,14 +2122,10 @@ void GFTT_DAISY::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kFREAKPatternScale(), patternScale_);
 	Parameters::parse(parameters, Parameters::kFREAKNOctaves(), nOctaves_);
 
-#if CV_MAJOR_VERSION < 3
-	_daisy = cv::Ptr<CV_DAISY>(new CV_DAISY());
-#else
 #ifdef HAVE_OPENCV_XFEATURES2D
 	_daisy = CV_DAISY::create();
 #else
 	UWARN("RTAB-Map is not built with OpenCV xfeatures2d module so DAISY cannot be used!");
-#endif
 #endif
 }
 
@@ -2137,14 +2133,10 @@ cv::Mat GFTT_DAISY::generateDescriptorsImpl(const cv::Mat & image, std::vector<c
 {
 	UASSERT(!image.empty() && image.channels() == 1 && image.depth() == CV_8U);
 	cv::Mat descriptors;
-#if CV_MAJOR_VERSION < 3
-	_daisy->compute(image, keypoints, descriptors);
-#else
 #ifdef HAVE_OPENCV_XFEATURES2D
 	_daisy->compute(image, keypoints, descriptors);
 #else
 	UWARN("RTAB-Map is not built with OpenCV xfeatures2d module so DAISY cannot be used!");
-#endif
 #endif
 	return descriptors;
 }
