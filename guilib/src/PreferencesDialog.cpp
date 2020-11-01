@@ -248,7 +248,11 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->groupBox_fast_opencv2->setEnabled(false);
 #else
 	_ui->comboBox_detector_strategy->setItemData(9, 0, Qt::UserRole - 1); // No KAZE
+	_ui->comboBox_detector_strategy->setItemData(13, 0, Qt::UserRole - 1); // No DAISY
+	_ui->comboBox_detector_strategy->setItemData(14, 0, Qt::UserRole - 1); // No DAISY
 	_ui->vis_feature_detector->setItemData(9, 0, Qt::UserRole - 1); // No KAZE
+	_ui->vis_feature_detector->setItemData(13, 0, Qt::UserRole - 1); // No DAISY
+	_ui->vis_feature_detector->setItemData(14, 0, Qt::UserRole - 1); // No DAISY
 #endif
 
 	_ui->comboBox_cameraImages_odomFormat->setItemData(4, 0, Qt::UserRole - 1);
