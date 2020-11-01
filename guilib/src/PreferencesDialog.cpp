@@ -195,8 +195,10 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 #ifndef RTABMAP_NONFREE
 	_ui->comboBox_detector_strategy->setItemData(0, 0, Qt::UserRole - 1);
 	_ui->comboBox_detector_strategy->setItemData(12, 0, Qt::UserRole - 1);
+	_ui->comboBox_detector_strategy->setItemData(14, 0, Qt::UserRole - 1);
 	_ui->vis_feature_detector->setItemData(0, 0, Qt::UserRole - 1);
 	_ui->vis_feature_detector->setItemData(12, 0, Qt::UserRole - 1);
+	_ui->vis_feature_detector->setItemData(14, 0, Qt::UserRole - 1);
 #endif
 
 // SIFT
@@ -213,11 +215,15 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->comboBox_detector_strategy->setItemData(5, 0, Qt::UserRole - 1);
 	_ui->comboBox_detector_strategy->setItemData(6, 0, Qt::UserRole - 1);
 	_ui->comboBox_detector_strategy->setItemData(12, 0, Qt::UserRole - 1);
+	_ui->comboBox_detector_strategy->setItemData(13, 0, Qt::UserRole - 1);
+	_ui->comboBox_detector_strategy->setItemData(14, 0, Qt::UserRole - 1);
 	_ui->vis_feature_detector->setItemData(3, 0, Qt::UserRole - 1);
 	_ui->vis_feature_detector->setItemData(4, 0, Qt::UserRole - 1);
 	_ui->vis_feature_detector->setItemData(5, 0, Qt::UserRole - 1);
 	_ui->vis_feature_detector->setItemData(6, 0, Qt::UserRole - 1);
 	_ui->vis_feature_detector->setItemData(12, 0, Qt::UserRole - 1);
+	_ui->vis_feature_detector->setItemData(13, 0, Qt::UserRole - 1);
+	_ui->vis_feature_detector->setItemData(14, 0, Qt::UserRole - 1);
 #endif
 
 #ifndef RTABMAP_ORB_OCTREE

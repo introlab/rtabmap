@@ -138,6 +138,7 @@ do
        --Mem/UseOdomFeatures false \
        --Mem/BinDataKept false \
        --Rtabmap/CreateIntermediateNodes false\
+       --Vis/CorNNDR 0.6 \
        $V203_params\
        $F2F_params\
        --OdomORBSLAM2/VocPath /root/ORBvoc.txt\

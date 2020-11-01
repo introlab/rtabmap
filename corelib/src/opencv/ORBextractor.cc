@@ -80,24 +80,19 @@ using namespace std;
 namespace rtabmap
 {
 
-const int PATCH_SIZE = 31;
-const int HALF_PATCH_SIZE = 15;
-const int EDGE_THRESHOLD = 19;
-
-
-static float IC_Angle(const Mat& image, Point2f pt,  const vector<int> & u_max)
+static float IC_Angle(const Mat& image, Point2f pt,  const vector<int> & u_max, int halfPatchSize)
 {
     int m_01 = 0, m_10 = 0;
 
     const uchar* center = &image.at<uchar> (cvRound(pt.y), cvRound(pt.x));
 
     // Treat the center line differently, v=0
-    for (int u = -HALF_PATCH_SIZE; u <= HALF_PATCH_SIZE; ++u)
+    for (int u = -halfPatchSize; u <= halfPatchSize; ++u)
         m_10 += u * center[u];
 
     // Go line by line in the circuI853lar patch
     int step = (int)image.step1();
-    for (int v = 1; v <= HALF_PATCH_SIZE; ++v)
+    for (int v = 1; v <= halfPatchSize; ++v)
     {
         // Proceed over the two lines
         int v_sum = 0;
@@ -419,10 +414,11 @@ static int bit_pattern_31_[256*4] =
 };
 
 ORBextractor::ORBextractor(int _nfeatures, float _scaleFactor, int _nlevels,
-         int _iniThFAST, int _minThFAST):
+         int _iniThFAST, int _minThFAST, int _patchSize, int _edgeThreshold):
     nfeatures(_nfeatures), scaleFactor(_scaleFactor), nlevels(_nlevels),
-    iniThFAST(_iniThFAST), minThFAST(_minThFAST)
+    iniThFAST(_iniThFAST), minThFAST(_minThFAST), patchSize(_patchSize), edgeThreshold(_edgeThreshold)
 {
+	halfPatchSize = patchSize/2;
     mvScaleFactor.resize(nlevels);
     mvLevelSigma2.resize(nlevels);
     mvScaleFactor[0]=1.0f;
@@ -462,16 +458,16 @@ ORBextractor::ORBextractor(int _nfeatures, float _scaleFactor, int _nlevels,
 
     //This is for orientation
     // pre-compute the end of a row in a circular patch
-    umax.resize(HALF_PATCH_SIZE + 1);
+    umax.resize(halfPatchSize + 1);
 
-    int v, v0, vmax = cvFloor(HALF_PATCH_SIZE * sqrt(2.f) / 2 + 1);
-    int vmin = cvCeil(HALF_PATCH_SIZE * sqrt(2.f) / 2);
-    const double hp2 = HALF_PATCH_SIZE*HALF_PATCH_SIZE;
+    int v, v0, vmax = cvFloor(float(halfPatchSize) * sqrt(2.f) / 2 + 1);
+    int vmin = cvCeil(float(halfPatchSize) * sqrt(2.f) / 2);
+    const double hp2 = halfPatchSize*halfPatchSize;
     for (v = 0; v <= vmax; ++v)
         umax[v] = cvRound(sqrt(hp2 - v * v));
 
     // Make sure we are symmetric
-    for (v = HALF_PATCH_SIZE, v0 = 0; v >= vmin; --v)
+    for (v = halfPatchSize, v0 = 0; v >= vmin; --v)
     {
         while (umax[v0] == umax[v0 + 1])
             ++v0;
@@ -480,12 +476,12 @@ ORBextractor::ORBextractor(int _nfeatures, float _scaleFactor, int _nlevels,
     }
 }
 
-static void computeOrientation(const Mat& image, vector<KeyPoint>& keypoints, const vector<int>& umax)
+static void computeOrientation(const Mat& image, vector<KeyPoint>& keypoints, const vector<int>& umax, int halfPatchSize)
 {
     for (vector<KeyPoint>::iterator keypoint = keypoints.begin(),
          keypointEnd = keypoints.end(); keypoint != keypointEnd; ++keypoint)
     {
-        keypoint->angle = IC_Angle(image, keypoint->pt, umax);
+        keypoint->angle = IC_Angle(image, keypoint->pt, umax, halfPatchSize);
     }
 }
 
@@ -781,10 +777,10 @@ void ORBextractor::ComputeKeyPointsOctTree(vector<vector<KeyPoint> >& allKeypoin
 
     for (int level = 0; level < nlevels; ++level)
     {
-        const int minBorderX = EDGE_THRESHOLD-3;
+        const int minBorderX = edgeThreshold-3;
         const int minBorderY = minBorderX;
-        const int maxBorderX = mvImagePyramid[level].cols-EDGE_THRESHOLD+3;
-        const int maxBorderY = mvImagePyramid[level].rows-EDGE_THRESHOLD+3;
+        const int maxBorderX = mvImagePyramid[level].cols-edgeThreshold+3;
+        const int maxBorderY = mvImagePyramid[level].rows-edgeThreshold+3;
 
         vector<cv::KeyPoint> vToDistributeKeys;
         vToDistributeKeys.reserve(nfeatures*10);
@@ -845,7 +841,7 @@ void ORBextractor::ComputeKeyPointsOctTree(vector<vector<KeyPoint> >& allKeypoin
         keypoints = DistributeOctTree(vToDistributeKeys, minBorderX, maxBorderX,
                                       minBorderY, maxBorderY,mnFeaturesPerLevel[level], level);
 
-        const int scaledPatchSize = PATCH_SIZE*mvScaleFactor[level];
+        const int scaledPatchSize = patchSize*mvScaleFactor[level];
 
         // Add border to coordinates and scale information
         const int nkps = keypoints.size();
@@ -860,7 +856,7 @@ void ORBextractor::ComputeKeyPointsOctTree(vector<vector<KeyPoint> >& allKeypoin
 
     // compute orientations
     for (int level = 0; level < nlevels; ++level)
-        computeOrientation(mvImagePyramid[level], allKeypoints[level], umax);
+        computeOrientation(mvImagePyramid[level], allKeypoints[level], umax, halfPatchSize);
 }
 
 void ORBextractor::ComputeKeyPointsOld(std::vector<std::vector<KeyPoint> > &allKeypoints)
@@ -876,10 +872,10 @@ void ORBextractor::ComputeKeyPointsOld(std::vector<std::vector<KeyPoint> > &allK
         const int levelCols = sqrt((float)nDesiredFeatures/(5*imageRatio));
         const int levelRows = imageRatio*levelCols;
 
-        const int minBorderX = EDGE_THRESHOLD;
+        const int minBorderX = edgeThreshold;
         const int minBorderY = minBorderX;
-        const int maxBorderX = mvImagePyramid[level].cols-EDGE_THRESHOLD;
-        const int maxBorderY = mvImagePyramid[level].rows-EDGE_THRESHOLD;
+        const int maxBorderX = mvImagePyramid[level].cols-edgeThreshold;
+        const int maxBorderY = mvImagePyramid[level].rows-edgeThreshold;
 
         const int W = maxBorderX - minBorderX;
         const int H = maxBorderY - minBorderY;
@@ -1006,7 +1002,7 @@ void ORBextractor::ComputeKeyPointsOld(std::vector<std::vector<KeyPoint> > &allK
         vector<KeyPoint> & keypoints = allKeypoints[level];
         keypoints.reserve(nDesiredFeatures*2);
 
-        const int scaledPatchSize = PATCH_SIZE*mvScaleFactor[level];
+        const int scaledPatchSize = patchSize*mvScaleFactor[level];
 
         // Retain by score and transform coordinates
         for(int i=0; i<levelRows; i++)
@@ -1039,7 +1035,7 @@ void ORBextractor::ComputeKeyPointsOld(std::vector<std::vector<KeyPoint> > &allK
 
     // and compute orientations
     for (int level = 0; level < nlevels; ++level)
-        computeOrientation(mvImagePyramid[level], allKeypoints[level], umax);
+        computeOrientation(mvImagePyramid[level], allKeypoints[level], umax, halfPatchSize);
 }
 
 static void computeDescriptors(const Mat& image, vector<KeyPoint>& keypoints, Mat& descriptors,
@@ -1121,21 +1117,21 @@ void ORBextractor::ComputePyramid(cv::Mat image)
     {
         float scale = mvInvScaleFactor[level];
         Size sz(cvRound((float)image.cols*scale), cvRound((float)image.rows*scale));
-        Size wholeSize(sz.width + EDGE_THRESHOLD*2, sz.height + EDGE_THRESHOLD*2);
+        Size wholeSize(sz.width + edgeThreshold*2, sz.height + edgeThreshold*2);
         Mat temp(wholeSize, image.type()), masktemp;
-        mvImagePyramid[level] = temp(Rect(EDGE_THRESHOLD, EDGE_THRESHOLD, sz.width, sz.height));
+        mvImagePyramid[level] = temp(Rect(edgeThreshold, edgeThreshold, sz.width, sz.height));
 
         // Compute the resized image
         if( level != 0 )
         {
             resize(mvImagePyramid[level-1], mvImagePyramid[level], sz, 0, 0, INTER_LINEAR);
 
-            copyMakeBorder(mvImagePyramid[level], temp, EDGE_THRESHOLD, EDGE_THRESHOLD, EDGE_THRESHOLD, EDGE_THRESHOLD,
+            copyMakeBorder(mvImagePyramid[level], temp, edgeThreshold, edgeThreshold, edgeThreshold, edgeThreshold,
                            BORDER_REFLECT_101+BORDER_ISOLATED);            
         }
         else
         {
-            copyMakeBorder(image, temp, EDGE_THRESHOLD, EDGE_THRESHOLD, EDGE_THRESHOLD, EDGE_THRESHOLD,
+            copyMakeBorder(image, temp, edgeThreshold, edgeThreshold, edgeThreshold, edgeThreshold,
                            BORDER_REFLECT_101);            
         }
     }

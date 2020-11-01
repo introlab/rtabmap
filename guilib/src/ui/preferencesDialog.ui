@@ -63,7 +63,7 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-1179</y>
+            <y>-27</y>
             <width>686</width>
             <height>3236</height>
            </rect>
@@ -95,7 +95,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>21</number>
+                <number>9</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,1">
@@ -8967,6 +8967,16 @@ generate the number of words requested.</string>
                            <item>
                             <property name="text">
                              <string>SURF+FREAK</string>
+                            </property>
+                           </item>
+                           <item>
+                            <property name="text">
+                             <string>GFTT+DAISY</string>
+                            </property>
+                           </item>
+                           <item>
+                            <property name="text">
+                             <string>SURF+DAISY</string>
                             </property>
                            </item>
                           </widget>
@@ -18247,6 +18257,16 @@ Lower the ratio -&gt; higher the precision.</string>
                            <item>
                             <property name="text">
                              <string>SURF+FREAK</string>
+                            </property>
+                           </item>
+                           <item>
+                            <property name="text">
+                             <string>GFTT+DAISY</string>
+                            </property>
+                           </item>
+                           <item>
+                            <property name="text">
+                             <string>SURF+DAISY</string>
                             </property>
                            </item>
                           </widget>

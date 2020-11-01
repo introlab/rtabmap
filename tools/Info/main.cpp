@@ -31,6 +31,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <signal.h>
 
 #include <rtabmap/core/DBDriver.h>
+#include <rtabmap/core/VisualWord.h>
 #include <rtabmap/utilite/UDirectory.h>
 #include "rtabmap/utilite/UFile.h"
 #include "rtabmap/utilite/UStl.h"
@@ -329,8 +330,27 @@ int main(int argc, char * argv[])
 			sessionsInOptGraphStr << *iter << "(" << mapIdsLinkedToLastGraph.count(*iter) << ")";
 		}
 
+		int lastWordIdId = 0;
+		int wordsDim = 0;
+		int wordsType = 0;
+		driver->getLastWordId(lastWordIdId);
+		if(lastWordIdId>0)
+		{
+			std::set<int> ids;
+			ids.insert(lastWordIdId);
+			std::list<VisualWord *> vws;
+			driver->loadWords(ids, vws);
+			if(!vws.empty())
+			{
+				wordsDim = vws.front()->getDescriptor().cols;
+				wordsType = vws.front()->getDescriptor().type();
+				delete vws.front();
+				vws.clear();
+			}
+		}
+
 		std::cout << (uFormat("%s%fs\n", pad("Total time:").c_str(), infoTotalTime));
-		std::cout << (uFormat("%s%d nodes and %d words\n", pad("LTM:").c_str(), (int)ids.size(), driver->getTotalDictionarySize()));
+		std::cout << (uFormat("%s%d nodes and %d words (dim=%d type=%s)\n", pad("LTM:").c_str(), (int)ids.size(), driver->getTotalDictionarySize(), wordsDim, wordsType==CV_8UC1?"8U":wordsType==CV_32FC1?"32F":uNumber2Str(wordsType).c_str()));
 		std::cout << (uFormat("%s%d nodes and %d words\n", pad("WM:").c_str(), driver->getLastNodesSize(), driver->getLastDictionarySize()));
 		std::cout << (uFormat("%s%d poses and %d links\n", pad("Global graph:").c_str(), odomPoses, links.size()));
 		std::cout << (uFormat("%s%d poses\n", pad("Optimized graph:").c_str(), (int)optimizedPoses.size(), links.size()));

@@ -79,6 +79,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/gui/EditMapArea.h"
 #include "rtabmap/core/SensorData.h"
 #include "rtabmap/core/GainCompensator.h"
+#include "rtabmap/core/VisualWord.h"
 #include "rtabmap/gui/ExportDialog.h"
 #include "rtabmap/gui/EditConstraintDialog.h"
 #include "rtabmap/gui/ProgressDialog.h"
@@ -1999,8 +2000,28 @@ void DatabaseViewer::updateInfo()
 			{
 				ui_->textEdit_info->append(tr("Total odometry length:\t%1 m").arg(infoTotalOdom_));
 			}
+
+			int lastWordIdId = 0;
+			int wordsDim = 0;
+			int wordsType = 0;
+			dbDriver_->getLastWordId(lastWordIdId);
+			if(lastWordIdId>0)
+			{
+				std::set<int> ids;
+				ids.insert(lastWordIdId);
+				std::list<VisualWord *> vws;
+				dbDriver_->loadWords(ids, vws);
+				if(!vws.empty())
+				{
+					wordsDim = vws.front()->getDescriptor().cols;
+					wordsType = vws.front()->getDescriptor().type();
+					delete vws.front();
+					vws.clear();
+				}
+			}
+
 			ui_->textEdit_info->append(tr("Total time:\t\t%1").arg(QDateTime::fromMSecsSinceEpoch(infoTotalTime_*1000).toUTC().toString("hh:mm:ss.zzz")));
-			ui_->textEdit_info->append(tr("LTM:\t\t%1 nodes and %2 words").arg(ids_.size()).arg(dbDriver_->getTotalDictionarySize()));
+			ui_->textEdit_info->append(tr("LTM:\t\t%1 nodes and %2 words (dim=%3 type=%4)").arg(ids_.size()).arg(dbDriver_->getTotalDictionarySize()).arg(wordsDim).arg(wordsType==CV_8UC1?"8U":wordsType==CV_32FC1?"32F":uNumber2Str(wordsType).c_str()));
 			ui_->textEdit_info->append(tr("WM:\t\t%1 nodes and %2 words").arg(dbDriver_->getLastNodesSize()).arg(dbDriver_->getLastDictionarySize()));
 			ui_->textEdit_info->append(tr("Global graph:\t%1 poses and %2 links").arg(odomPoses_.size()).arg(links_.size()));
 			ui_->textEdit_info->append(tr("Ground truth:\t%1 poses").arg(groundTruthPoses_.size()));
