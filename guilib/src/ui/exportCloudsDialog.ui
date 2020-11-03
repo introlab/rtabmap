@@ -23,9 +23,9 @@
       <property name="geometry">
        <rect>
         <x>0</x>
-        <y>-2339</y>
+        <y>-2387</y>
         <width>780</width>
-        <height>4823</height>
+        <height>4880</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_13">
@@ -1595,7 +1595,7 @@ Guidelines: 4 times the voxel size, 0.025 for voxel=0.</string>
             <layout class="QVBoxLayout" name="verticalLayout_16">
              <item>
               <layout class="QGridLayout" name="gridLayout_15" columnstretch="0,1">
-               <item row="12" column="0">
+               <item row="13" column="0">
                 <widget class="QSpinBox" name="spinBox_textureBrightnessContrastRatioHigh">
                  <property name="suffix">
                   <string> %</string>
@@ -1608,7 +1608,7 @@ Guidelines: 4 times the voxel size, 0.025 for voxel=0.</string>
                  </property>
                 </widget>
                </item>
-               <item row="12" column="1">
+               <item row="13" column="1">
                 <widget class="QLabel" name="label_meshingTextureSize_6">
                  <property name="text">
                   <string>Brightness and contrast balance high ratio. Only used when textures are merged.</string>
@@ -1618,7 +1618,7 @@ Guidelines: 4 times the voxel size, 0.025 for voxel=0.</string>
                  </property>
                 </widget>
                </item>
-               <item row="10" column="0">
+               <item row="11" column="0">
                 <widget class="QComboBox" name="comboBox_blendingDecimation">
                  <item>
                   <property name="text">
@@ -1662,14 +1662,14 @@ Guidelines: 4 times the voxel size, 0.025 for voxel=0.</string>
                  </item>
                 </widget>
                </item>
-               <item row="9" column="0">
+               <item row="10" column="0">
                 <widget class="QCheckBox" name="checkBox_blending">
                  <property name="text">
                   <string/>
                  </property>
                 </widget>
                </item>
-               <item row="10" column="1">
+               <item row="11" column="1">
                 <widget class="QLabel" name="label_exposureFusion_3">
                  <property name="text">
                   <string>Blending decimation. </string>
@@ -1699,7 +1699,7 @@ Guidelines: 4 times the voxel size, 0.025 for voxel=0.</string>
                  </property>
                 </widget>
                </item>
-               <item row="9" column="1">
+               <item row="10" column="1">
                 <widget class="QLabel" name="label_exposureFusion_2">
                  <property name="text">
                   <string>Blending. Only used with dense reconstruction flavor and if clouds are assembled.</string>
@@ -1741,7 +1741,7 @@ Guidelines: 4 times the voxel size, 0.025 for voxel=0.</string>
                  </property>
                 </widget>
                </item>
-               <item row="11" column="1">
+               <item row="12" column="1">
                 <widget class="QLabel" name="label_meshingTextureSize_5">
                  <property name="text">
                   <string>Brightness and contrast balance low ratio. Only used when textures are merged.</string>
@@ -1824,7 +1824,7 @@ Guidelines: 4 times the voxel size, 0.025 for voxel=0.</string>
                  </item>
                 </widget>
                </item>
-               <item row="14" column="0">
+               <item row="15" column="0">
                 <widget class="QCheckBox" name="checkBox_exposureFusion">
                  <property name="text">
                   <string/>
@@ -1854,14 +1854,14 @@ Guidelines: 4 times the voxel size, 0.025 for voxel=0.</string>
                  </property>
                 </widget>
                </item>
-               <item row="8" column="0">
+               <item row="9" column="0">
                 <widget class="QCheckBox" name="checkBox_cameraFilter">
                  <property name="text">
                   <string/>
                  </property>
                 </widget>
                </item>
-               <item row="11" column="0">
+               <item row="12" column="0">
                 <widget class="QSpinBox" name="spinBox_textureBrightnessContrastRatioLow">
                  <property name="suffix">
                   <string> %</string>
@@ -1884,7 +1884,7 @@ Guidelines: 4 times the voxel size, 0.025 for voxel=0.</string>
                  </property>
                 </widget>
                </item>
-               <item row="8" column="1">
+               <item row="9" column="1">
                 <widget class="QLabel" name="label_meshingTextureSize_3">
                  <property name="text">
                   <string>Camera filtering. Some criteria to select which cameras are used for texturing.</string>
@@ -1894,7 +1894,7 @@ Guidelines: 4 times the voxel size, 0.025 for voxel=0.</string>
                  </property>
                 </widget>
                </item>
-               <item row="14" column="1">
+               <item row="15" column="1">
                 <widget class="QLabel" name="label_exposureFusion">
                  <property name="text">
                   <string>Exposure fusion. Only used when textures are merged and brightness/contrast balance ratios are used (merging original texture + 1 for each ratios).</string>
@@ -1978,7 +1978,7 @@ Guidelines: 4 times the voxel size, 0.025 for voxel=0.</string>
                  </property>
                 </widget>
                </item>
-               <item row="15" column="1">
+               <item row="16" column="1">
                 <widget class="QLabel" name="label_multiband">
                  <property name="text">
                   <string>MultiBand texturing. Only available on export and RTAB-Map should be built with AliceVision support.</string>
@@ -1988,8 +1988,25 @@ Guidelines: 4 times the voxel size, 0.025 for voxel=0.</string>
                  </property>
                 </widget>
                </item>
-               <item row="15" column="0">
+               <item row="16" column="0">
                 <widget class="QCheckBox" name="checkBox_multiband">
+                 <property name="text">
+                  <string/>
+                 </property>
+                </widget>
+               </item>
+               <item row="8" column="1">
+                <widget class="QLabel" name="label_meshingTextureSize_11">
+                 <property name="text">
+                  <string>Distance to camera policy. The closest camera from a polygon is used to texture the polygon. If disabled, the camera for which the polygon projection is the closest of the image center is used to texture the polygon.</string>
+                 </property>
+                 <property name="wordWrap">
+                  <bool>true</bool>
+                 </property>
+                </widget>
+               </item>
+               <item row="8" column="0">
+                <widget class="QCheckBox" name="checkBox_distanceToCamPolicy">
                  <property name="text">
                   <string/>
                  </property>

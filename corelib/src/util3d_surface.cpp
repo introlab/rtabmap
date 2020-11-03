@@ -676,7 +676,8 @@ pcl::TextureMesh::Ptr createTextureMesh(
 		int minClusterSize,
 		const std::vector<float> & roiRatios,
 		const ProgressState * state,
-		std::vector<std::map<int, pcl::PointXY> > * vertexToPixels)
+		std::vector<std::map<int, pcl::PointXY> > * vertexToPixels,
+		bool distanceToCamPolicy)
 {
 	std::map<int, std::vector<CameraModel> > cameraSubModels;
 	for(std::map<int, CameraModel>::const_iterator iter=cameraModels.begin(); iter!=cameraModels.end(); ++iter)
@@ -697,7 +698,8 @@ pcl::TextureMesh::Ptr createTextureMesh(
 			minClusterSize,
 			roiRatios,
 			state,
-			vertexToPixels);
+			vertexToPixels,
+			distanceToCamPolicy);
 }
 
 pcl::TextureMesh::Ptr createTextureMesh(
@@ -711,7 +713,8 @@ pcl::TextureMesh::Ptr createTextureMesh(
 		int minClusterSize,
 		const std::vector<float> & roiRatios,
 		const ProgressState * state,
-		std::vector<std::map<int, pcl::PointXY> > * vertexToPixels)
+		std::vector<std::map<int, pcl::PointXY> > * vertexToPixels,
+		bool distanceToCamPolicy)
 {
 	UASSERT(mesh->polygons.size());
 	pcl::TextureMesh::Ptr textureMesh(new pcl::TextureMesh);
@@ -776,7 +779,7 @@ pcl::TextureMesh::Ptr createTextureMesh(
 		tm.setMaxDepthError(maxDepthError);
 	}
 	tm.setMinClusterSize(minClusterSize);
-	if(tm.textureMeshwithMultipleCameras2(*textureMesh, cameras, state, vertexToPixels))
+	if(tm.textureMeshwithMultipleCameras2(*textureMesh, cameras, state, vertexToPixels, distanceToCamPolicy))
 	{
 		// compute normals for the mesh if not already here
 		bool hasNormals = false;

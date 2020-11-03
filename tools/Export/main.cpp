@@ -305,7 +305,7 @@ int main(int argc, char * argv[])
 	std::multimap<int, Link> links;
 	printf("Optimizing the map...\n");
 	rtabmap.getGraph(optimizedPoses, links, true, true, &nodes, true, true, true, true);
-	printf("Optimizing the map... done (%fs).\n", timer.ticks());
+	printf("Optimizing the map... done (%fs, poses=%d).\n", timer.ticks(), (int)optimizedPoses.size());
 
 	std::string outputDirectory = UDirectory::getDir(dbPath);
 	std::string baseName = uSplit(UFile::getName(dbPath), '.').front();

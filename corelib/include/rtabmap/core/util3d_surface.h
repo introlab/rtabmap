@@ -148,7 +148,8 @@ pcl::TextureMesh::Ptr RTABMAP_EXP createTextureMesh(
 		int minClusterSize = 50, // minimum size of polygons clusters textured
 		const std::vector<float> & roiRatios = std::vector<float>(), // [left, right, top, bottom] region of interest (in ratios) of the image projected.
 		const ProgressState * state = 0,
-		std::vector<std::map<int, pcl::PointXY> > * vertexToPixels = 0);
+		std::vector<std::map<int, pcl::PointXY> > * vertexToPixels = 0,
+		bool distanceToCamPolicy = false);
 pcl::TextureMesh::Ptr RTABMAP_EXP createTextureMesh(
 		const pcl::PolygonMesh::Ptr & mesh,
 		const std::map<int, Transform> & poses,
@@ -160,7 +161,8 @@ pcl::TextureMesh::Ptr RTABMAP_EXP createTextureMesh(
 		int minClusterSize = 50, // minimum size of polygons clusters textured
 		const std::vector<float> & roiRatios = std::vector<float>(), // [left, right, top, bottom] region of interest (in ratios) of the image projected.
 		const ProgressState * state = 0,
-		std::vector<std::map<int, pcl::PointXY> > * vertexToPixels = 0);
+		std::vector<std::map<int, pcl::PointXY> > * vertexToPixels = 0,
+		bool distanceToCamPolicy = false);
 
 /**
  * Remove not textured polygon clusters. If minClusterSize<0, only the largest cluster is kept.

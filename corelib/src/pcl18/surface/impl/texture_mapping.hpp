@@ -1055,7 +1055,8 @@ pcl::TextureMapping<PointInT>::textureMeshwithMultipleCameras2 (
 		pcl::TextureMesh &mesh,
 		const pcl::texture_mapping::CameraVector &cameras,
 		const rtabmap::ProgressState * state,
-		std::vector<std::map<int, pcl::PointXY> > * vertexToPixels)
+		std::vector<std::map<int, pcl::PointXY> > * vertexToPixels,
+		bool distanceToCamPolicy)
 {
 
 	if (mesh.tex_polygons.size () != 1)
@@ -1386,10 +1387,15 @@ pcl::TextureMapping<PointInT>::textureMeshwithMultipleCameras2 (
 
 				//UDEBUG("Process polygon %d cam =%d distanceToCam=%f", idx_face, current_cam, distanceToCam);
 
-				if(distanceToCenter <= smallestWeight || (!depthSet && currentDepthSet))
+				float distance = distanceToCenter;
+				if(distanceToCamPolicy)
+				{
+					distance = distanceToCam;
+				}
+				if(distance <= smallestWeight || (!depthSet && currentDepthSet))
 				{
 					cameraIndex = current_cam;
-					smallestWeight = distanceToCenter;
+					smallestWeight = distance;
 					uv_coords[0] = iter->second.uv_coord1;
 					uv_coords[1] = iter->second.uv_coord2;
 					uv_coords[2] = iter->second.uv_coord3;

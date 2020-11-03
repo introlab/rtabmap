@@ -366,7 +366,8 @@ namespace pcl
       textureMeshwithMultipleCameras2 (pcl::TextureMesh &mesh,
                                       const pcl::texture_mapping::CameraVector &cameras,
 									  const rtabmap::ProgressState * callback = 0,
-									  std::vector<std::map<int, pcl::PointXY> > * vertexToPixels = 0);
+									  std::vector<std::map<int, pcl::PointXY> > * vertexToPixels = 0,
+									  bool distanceToCamPolicy = false);
 
     protected:
       /** \brief mesh scale control. */
