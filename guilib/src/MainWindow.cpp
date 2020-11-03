@@ -1701,7 +1701,26 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 		if(stat.getLastSignatureData().id() == stat.refImageId())
 		{
 			signature = stat.getLastSignatureData();
-			signature.sensorData().uncompressData(); // make sure data are uncompressed
+
+			// make sure data are uncompressed
+			// We don't need to uncompress images if we don't show them
+			bool uncompressImages =
+					_ui->imageView_source->isVisible() ||
+					(_loopClosureViewer->isVisible() &&
+							!signature.sensorData().depthOrRightCompressed().empty()) ||
+					(_cloudViewer->isVisible() &&
+							_preferencesDialog->isCloudsShown(0) &&
+							!signature.sensorData().depthOrRightCompressed().empty());
+			bool uncompressScan =
+					_loopClosureViewer->isVisible() ||
+					(_cloudViewer->isVisible() && _preferencesDialog->isScansShown(0));
+			cv::Mat tmpRgb, tmpDepth, tmpG, tmpO, tmpE;
+			LaserScan tmpScan;
+			signature.sensorData().uncompressData(
+					uncompressImages?&tmpRgb:0,
+					uncompressImages?&tmpDepth:0,
+					uncompressScan?&tmpScan:0,
+					0, &tmpG, &tmpO, &tmpE);
 
 			if( uStr2Bool(_preferencesDialog->getParameter(Parameters::kMemIncrementalMemory())) &&
 				signature.getWeight()>=0) // ignore intermediate nodes for the cache
@@ -1868,7 +1887,18 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 					{
 						// uncompress after copy to avoid keeping uncompressed data in memory
 						loopSignature = iter.value();
-						loopSignature.sensorData().uncompressData();
+						bool uncompressImages = _ui->imageView_source->isVisible() ||
+							(_loopClosureViewer->isVisible() && !signature.sensorData().depthOrRightCompressed().empty());
+						bool uncompressScan = _loopClosureViewer->isVisible() && !signature.sensorData().laserScanCompressed().isEmpty();
+						if(uncompressImages || uncompressScan)
+						{
+							cv::Mat tmpRGB, tmpDepth;
+							LaserScan tmpScan;
+							loopSignature.sensorData().uncompressData(
+									uncompressImages?&tmpRGB:0,
+									uncompressImages?&tmpDepth:0,
+									uncompressScan?&tmpScan:0);
+						}
 					}
 				}
 			}
