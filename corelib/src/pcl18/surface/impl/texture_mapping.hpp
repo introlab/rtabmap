@@ -1078,7 +1078,14 @@ pcl::TextureMapping<PointInT>::textureMeshwithMultipleCameras2 (
 	std::vector<std::map<int, FaceInfo > > visibleFaces(cameras.size());
 	std::vector<Eigen::Affine3f> invCamTransform(cameras.size());
 	std::vector<std::list<int> > faceCameras(faces.size());
-	UINFO("Precompute visible faces per cam (%d faces, %d cams)", (int)faces.size(), (int)cameras.size());
+	std::string msg = uFormat("Computing visible faces per cam (%d faces, %d cams)", (int)faces.size(), (int)cameras.size());
+	UINFO(msg.c_str());
+	if(state && !state->callback(msg))
+	{
+		//cancelled!
+		UWARN("Texturing cancelled!");
+		return false;
+	}
 	for (unsigned int current_cam = 0; current_cam < cameras.size(); ++current_cam)
 	{
 		UDEBUG("Texture camera %d...", current_cam);
@@ -1274,7 +1281,7 @@ pcl::TextureMapping<PointInT>::textureMeshwithMultipleCameras2 (
 			}
 		}
 
-		std::string msg = uFormat("Processed camera %d/%d: %d occluded and %d spurious polygons out of %d", (int)current_cam+1, (int)cameras.size(), (int)occludedFaces.size(), clusterFaces, (int)visibilityIndices.size());
+		msg = uFormat("Processed camera %d/%d: %d occluded and %d spurious polygons out of %d", (int)current_cam+1, (int)cameras.size(), (int)occludedFaces.size(), clusterFaces, (int)visibilityIndices.size());
 		UINFO(msg.c_str());
 		if(state && !state->callback(msg))
 		{
@@ -1284,7 +1291,7 @@ pcl::TextureMapping<PointInT>::textureMeshwithMultipleCameras2 (
 		}
 	}
 
-	std::string msg = uFormat("Texturing %d polygons...", (int)faces.size());
+	msg = uFormat("Texturing %d polygons...", (int)faces.size());
 	UINFO(msg.c_str());
 	if(state && !state->callback(msg))
 	{

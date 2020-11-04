@@ -55,17 +55,22 @@ void showUsage()
 			"    --texture_size  #     Texture size (default 4096).\n"
 			"    --texture_count #     Maximum textures generated (default 1).\n"
 			"    --texture_range #     Maximum camera range for texturing a polygon (default 0 meters: no limit).\n"
+			"    --texture_d2c         Distance to camera policy.\n"
 			"    --ba                  Do global bundle adjustment before assembling the clouds.\n"
-			"    --no_gain             Disable gain compensation when texturing.\n"
+			"    --gain          #     Gain compensation value (default 1, set 0 to disable).\n"
+			"    --gain_gray           Do gain estimation compensation on gray channel only (default RGB channels).\n"
 			"    --no_blending         Disable blending when texturing.\n"
 			"    --no_clean            Disable cleaning colorless polygons.\n"
+			"    --low_gain      #     Low brightness gain 0-100 (default 0).\n"
+			"    --high_gain     #     High brightness gain 0-100 (default 10).\n"
 			"    --multiband           Enable multiband texturing (AliceVision dependency required).\n"
 			"    --poisson_depth #     Set Poisson depth for mesh reconstruction.\n"
 			"    --max_polygons  #     Maximum polygons when creating a mesh (default 500000, set 0 for no limit).\n"
-			"    --max_range     #     Maximum range of the created clouds (default 4 m).\n"
-			"    --decimation    #     Depth image decimation before creating the clouds (default 4).\n"
-			"    --voxel         #     Voxel size of the created clouds (default 0.01 m).\n"
-			"    --color_radius  #     Radius used to colorize polygons (default 0.05 m, set 0 for nearest color).\n"
+			"    --max_range     #     Maximum range of the created clouds (default 4 m, 0 m with --scan).\n"
+			"    --decimation    #     Depth image decimation before creating the clouds (default 4, 1 with --scan).\n"
+			"    --voxel         #     Voxel size of the created clouds (default 0.01 m, 0 m with --scan).\n"
+			"    --color_radius  #     Radius used to colorize polygons (default 0.05 m, 0 m with --scan). Set 0 for nearest color.\n"
+			"    --scan                Use laser scan for the point cloud.\n"
 			"    --save_in_db          Save resulting assembled point cloud or mesh in the database.\n"
 			"\n%s", Parameters::showUsage());
 	;
@@ -85,21 +90,26 @@ int main(int argc, char * argv[])
 	bool mesh = false;
 	bool texture = false;
 	bool ba = false;
-	bool doGainCompensation = true;
+	bool doGainCompensationRGB = true;
+	float gainValue = 1;
 	bool doBlending = true;
 	bool doClean = true;
 	int poissonDepth = 0;
 	int maxPolygons = 500000;
-	int decimation = 4;
-	float maxRange = 4.0f;
-	float voxelSize = 0.01f;
+	int decimation = -1;
+	float maxRange = -1.0f;
+	float voxelSize = -1.0f;
 	int textureSize = 4096;
 	int textureCount = 1;
 	int textureRange = 0;
+	bool distanceToCamPolicy = false;
 	bool multiband = false;
-	float colorRadius = 0.05;
+	float colorRadius = -1.0f;
+	bool cloudFromScan = false;
 	bool saveInDb = false;
-	for(int i=1; i<argc-1; ++i)
+	int lowBrightnessGain = 0;
+	int highBrightnessGain = 10;
+	for(int i=1; i<argc; ++i)
 	{
 		if(std::strcmp(argv[i], "--help") == 0)
 		{
@@ -150,13 +160,30 @@ int main(int argc, char * argv[])
 				showUsage();
 			}
 		}
+		else if(std::strcmp(argv[i], "--texture_d2c") == 0)
+		{
+			distanceToCamPolicy = true;
+		}
 		else if(std::strcmp(argv[i], "--ba") == 0)
 		{
 			ba = true;
 		}
-		else if(std::strcmp(argv[i], "--no_gain") == 0)
+		else if(std::strcmp(argv[i], "--gain_gray") == 0)
 		{
-			doGainCompensation = false;
+			doGainCompensationRGB = false;
+		}
+		else if(std::strcmp(argv[i], "--gain") == 0)
+		{
+			++i;
+			if(i<argc-1)
+			{
+				gainValue = uStr2Float(argv[i]);
+				UASSERT(gainValue>0.0f);
+			}
+			else
+			{
+				showUsage();
+			}
 		}
 		else if(std::strcmp(argv[i], "--no_blending") == 0)
 		{
@@ -246,10 +273,55 @@ int main(int argc, char * argv[])
 				showUsage();
 			}
 		}
+		else if(std::strcmp(argv[i], "--scan") == 0)
+		{
+			cloudFromScan = true;
+		}
 		else if(std::strcmp(argv[i], "--save_in_db") == 0)
 		{
 			saveInDb = true;
 		}
+		else if(std::strcmp(argv[i], "--low_gain") == 0)
+		{
+			++i;
+			if(i<argc-1)
+			{
+				lowBrightnessGain = uStr2Int(argv[i]);
+			}
+			else
+			{
+				showUsage();
+			}
+		}
+		else if(std::strcmp(argv[i], "--high_gain") == 0)
+		{
+			++i;
+			if(i<argc-1)
+			{
+				highBrightnessGain = uStr2Int(argv[i]);
+			}
+			else
+			{
+				showUsage();
+			}
+		}
+	}
+
+	if(decimation < 1)
+	{
+		decimation = cloudFromScan?1:4;
+	}
+	if(maxRange < 0)
+	{
+		maxRange = cloudFromScan?0:4;
+	}
+	if(voxelSize < 0.0f)
+	{
+		voxelSize = cloudFromScan?0:0.01f;
+	}
+	if(colorRadius < 0.0f)
+	{
+		colorRadius = cloudFromScan?0:0.05f;
 	}
 
 	if(saveInDb)
@@ -307,6 +379,12 @@ int main(int argc, char * argv[])
 	rtabmap.getGraph(optimizedPoses, links, true, true, &nodes, true, true, true, true);
 	printf("Optimizing the map... done (%fs, poses=%d).\n", timer.ticks(), (int)optimizedPoses.size());
 
+	if(optimizedPoses.empty())
+	{
+		printf("The optimized graph is empty!? Aborting...\n");
+		return -1;
+	}
+
 	std::string outputDirectory = UDirectory::getDir(dbPath);
 	std::string baseName = uSplit(UFile::getName(dbPath), '.').front();
 
@@ -340,27 +418,49 @@ int main(int argc, char * argv[])
 		Signature node = nodes.find(iter->first)->second;
 
 		// uncompress data
-		node.sensorData().uncompressData();
 		std::vector<CameraModel> models = node.sensorData().cameraModels();
-		cv::Mat depth = node.sensorData().depthRaw();
+		cv::Mat depth;
 
 		pcl::IndicesPtr indices(new std::vector<int>);
-		pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = util3d::cloudRGBFromSensorData(
-				node.sensorData(),
-				decimation,      // image decimation before creating the clouds
-				maxRange,        // maximum depth of the cloud
-				0.0f,
-				indices.get());
+		pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
+		if(cloudFromScan)
+		{
+			cv::Mat tmpDepth;
+			LaserScan scan;
+			node.sensorData().uncompressData(0, texture&&!node.sensorData().depthOrRightCompressed().empty()?&tmpDepth:0, &scan);
+			if(decimation>1 || maxRange)
+			{
+				scan = util3d::commonFiltering(scan, decimation, 0, maxRange);
+			}
+			cloud = util3d::laserScanToPointCloudRGB(scan, scan.localTransform());
+		}
+		else
+		{
+			cv::Mat tmpRGB;
+			node.sensorData().uncompressData(&tmpRGB, &depth);
+			cloud = util3d::cloudRGBFromSensorData(
+					node.sensorData(),
+					decimation,      // image decimation before creating the clouds
+					maxRange,        // maximum depth of the cloud
+					0.0f,
+					indices.get());
+		}
+		if(voxelSize>0.0f)
+		{
+			cloud = rtabmap::util3d::voxelize(cloud, indices, voxelSize);
+		}
+		cloud = rtabmap::util3d::transformPointCloud(cloud, iter->second);
 
-		pcl::PointCloud<pcl::PointXYZRGB>::Ptr transformedCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
-		transformedCloud = rtabmap::util3d::voxelize(cloud, indices, voxelSize);
-		transformedCloud = rtabmap::util3d::transformPointCloud(transformedCloud, iter->second);
-
-		Eigen::Vector3f viewpoint( iter->second.x(),  iter->second.y(),  iter->second.z());
-		pcl::PointCloud<pcl::Normal>::Ptr normals = rtabmap::util3d::computeNormals(transformedCloud, 10, 0.0f, viewpoint);
+		Eigen::Vector3f viewpoint(iter->second.x(), iter->second.y(), iter->second.z());
+		if(cloudFromScan)
+		{
+			Transform lidarViewpoint = iter->second * node.sensorData().laserScanRaw().localTransform();
+			viewpoint = Eigen::Vector3f(iter->second.x(),  iter->second.y(),  iter->second.z());
+		}
+		pcl::PointCloud<pcl::Normal>::Ptr normals = rtabmap::util3d::computeNormals(cloud, 20, 0.0f, viewpoint);
 
 		pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloudWithNormals(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
-		pcl::concatenateFields(*transformedCloud, *normals, *cloudWithNormals);
+		pcl::concatenateFields(*cloud, *normals, *cloudWithNormals);
 
 		if(mergedClouds->size() == 0)
 		{
@@ -398,8 +498,11 @@ int main(int argc, char * argv[])
 
 		if(!(mesh || texture))
 		{
-			printf("Voxel grid filtering of the assembled cloud (voxel=%f, %d points)\n", 0.01f, (int)mergedClouds->size());
-			mergedClouds = util3d::voxelize(mergedClouds, voxelSize);
+			if(voxelSize>0.0f)
+			{
+				printf("Voxel grid filtering of the assembled cloud (voxel=%f, %d points)\n", voxelSize, (int)mergedClouds->size());
+				mergedClouds = util3d::voxelize(mergedClouds, voxelSize);
+			}
 
 			if(saveInDb)
 			{
@@ -490,7 +593,8 @@ int main(int argc, char * argv[])
 							multiband?0:50, // Min polygons in camera view to be textured by this camera
 							std::vector<float>(),
 							0,
-							&vertexToPixels);
+							&vertexToPixels,
+							distanceToCamPolicy);
 					printf("Texturing... done (%fs).\n", timer.ticks());
 
 					// Remove occluded polygons (polygons with no texture)
@@ -523,9 +627,9 @@ int main(int argc, char * argv[])
 								textureSize,
 								multiband?1:textureCount, // to get contrast values based on all images in multiband mode
 								vertexToPixels,
-								doGainCompensation, 1.0f, true,
+								gainValue>0.0f, gainValue, doGainCompensationRGB,
 								doBlending, 0,
-								0, 10, // low-high brightness/contrast balance
+								lowBrightnessGain, highBrightnessGain, // low-high brightness/contrast balance
 								false, // exposure fusion
 								0,     // state
 								0,     // blank value (0=black)
@@ -600,7 +704,8 @@ int main(int argc, char * argv[])
 									"jpg",
 									gains,
 									blendingGains,
-									contrastValues))
+									contrastValues,
+									doGainCompensationRGB))
 							{
 								printf("MultiBand texturing...done (%fs).\n", timer.ticks());
 							}
