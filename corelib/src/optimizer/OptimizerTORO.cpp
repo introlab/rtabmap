@@ -146,7 +146,14 @@ std::map<int, Transform> OptimizerTORO::optimize(
 						UERROR("Map: Edge already exits between nodes %d and %d, skipping", id1, id2);
 					}
 				}
-				//else // not supporting pose prior and landmarks
+				else if(id1 == id2)
+				{
+					UWARN("TORO optimizer doesn't support prior or gravity links, use GTSAM or g2o optimizers (see parameter %s). Link %d ignored...", Parameters::kOptimizerStrategy().c_str(), id1);
+				}
+				else if(id1 < 0 || id2 < 0)
+				{
+					UWARN("TORO optimizer doesn't support landmark links, use GTSAM or g2o optimizers (see parameter %s). Link %d->%d ignored...", Parameters::kOptimizerStrategy().c_str(), id1, id2);
+				}
 			}
 		}
 		else
@@ -178,7 +185,14 @@ std::map<int, Transform> OptimizerTORO::optimize(
 						UERROR("Map: Edge already exits between nodes %d and %d, skipping", id1, id2);
 					}
 				}
-				//else // not supporting pose prior and landmarks
+				else if(id1 == id2)
+				{
+					UWARN("TORO optimizer doesn't support prior or gravity links, use GTSAM or g2o optimizers (see parameter %s). Link %d ignored...", Parameters::kOptimizerStrategy().c_str(), id1);
+				}
+				else if(id1 < 0 || id2 < 0)
+				{
+					UWARN("TORO optimizer doesn't support landmark links, use GTSAM or g2o optimizers (see parameter %s). Link %d->%d ignored...", Parameters::kOptimizerStrategy().c_str(), id1, id2);
+				}
 			}
 		}
 		UDEBUG("buildMST... root=%d", rootId);

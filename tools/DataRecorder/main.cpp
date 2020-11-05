@@ -308,6 +308,7 @@ int main (int argc, char * argv[])
 		UFATAL("Camera driver (%d) not found!", driver);
 	}
 	cam = new CameraThread(camera);
+	cam->enableIMUFiltering();
 
 	DataRecorder recorder;
 

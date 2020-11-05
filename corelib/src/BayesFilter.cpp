@@ -417,6 +417,20 @@ cv::Mat BayesFilter::generatePrediction(const Memory * memory, const std::vector
 	return prediction;
 }
 
+unsigned long BayesFilter::getMemoryUsed() const
+{
+	long memoryUsage = sizeof(BayesFilter);
+	memoryUsage += _posterior.size() * (sizeof(float)+sizeof(int)+sizeof(std::map<int, float>::iterator)) + sizeof(std::map<int, float>);
+	memoryUsage += _prediction.total() * _prediction.elemSize();
+	memoryUsage += _predictionLC.size() * sizeof(double);
+	memoryUsage += _neighborsIndex.size() * (sizeof(int)+sizeof(std::map<int, int>)+sizeof(std::map<int, std::map<int, int> >::iterator)) + sizeof(std::map<int, std::map<int, int> >);
+	for(std::map<int, std::map<int, int> >::const_iterator iter=_neighborsIndex.begin(); iter!=_neighborsIndex.end(); ++iter)
+	{
+		memoryUsage += iter->second.size() * (sizeof(int)*2+sizeof(std::map<int, int>::iterator)) + sizeof(std::map<int, int>);
+	}
+	return memoryUsage;
+}
+
 void BayesFilter::normalize(cv::Mat & prediction, unsigned int index, float addedProbabilitiesSum, bool virtualPlaceUsed) const
 {
 	UASSERT(index < (unsigned int)prediction.rows && index < (unsigned int)prediction.cols);

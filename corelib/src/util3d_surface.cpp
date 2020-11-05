@@ -676,7 +676,8 @@ pcl::TextureMesh::Ptr createTextureMesh(
 		int minClusterSize,
 		const std::vector<float> & roiRatios,
 		const ProgressState * state,
-		std::vector<std::map<int, pcl::PointXY> > * vertexToPixels)
+		std::vector<std::map<int, pcl::PointXY> > * vertexToPixels,
+		bool distanceToCamPolicy)
 {
 	std::map<int, std::vector<CameraModel> > cameraSubModels;
 	for(std::map<int, CameraModel>::const_iterator iter=cameraModels.begin(); iter!=cameraModels.end(); ++iter)
@@ -697,7 +698,8 @@ pcl::TextureMesh::Ptr createTextureMesh(
 			minClusterSize,
 			roiRatios,
 			state,
-			vertexToPixels);
+			vertexToPixels,
+			distanceToCamPolicy);
 }
 
 pcl::TextureMesh::Ptr createTextureMesh(
@@ -711,7 +713,8 @@ pcl::TextureMesh::Ptr createTextureMesh(
 		int minClusterSize,
 		const std::vector<float> & roiRatios,
 		const ProgressState * state,
-		std::vector<std::map<int, pcl::PointXY> > * vertexToPixels)
+		std::vector<std::map<int, pcl::PointXY> > * vertexToPixels,
+		bool distanceToCamPolicy)
 {
 	UASSERT(mesh->polygons.size());
 	pcl::TextureMesh::Ptr textureMesh(new pcl::TextureMesh);
@@ -776,7 +779,7 @@ pcl::TextureMesh::Ptr createTextureMesh(
 		tm.setMaxDepthError(maxDepthError);
 	}
 	tm.setMinClusterSize(minClusterSize);
-	if(tm.textureMeshwithMultipleCameras2(*textureMesh, cameras, state, vertexToPixels))
+	if(tm.textureMeshwithMultipleCameras2(*textureMesh, cameras, state, vertexToPixels, distanceToCamPolicy))
 	{
 		// compute normals for the mesh if not already here
 		bool hasNormals = false;
@@ -1506,7 +1509,7 @@ cv::Mat mergeTextures(
 	cv::Mat globalTextures;
 	if(mesh.tex_materials.size() > 1)
 	{
-		std::vector<std::pair<int, int> > textures(mesh.tex_materials.size(), std::pair<int, int>(-1,-1));
+		std::vector<std::pair<int, int> > textures(mesh.tex_materials.size(), std::pair<int, int>(-1,0));
 		cv::Size imageSize;
 		const int imageType=CV_8UC3;
 
@@ -2219,7 +2222,8 @@ bool multiBandTexturing(
 		const std::string & textureFormat,
 		const std::map<int, std::map<int, cv::Vec4d> > & gains,       // optional output of util3d::mergeTextures()
 		const std::map<int, std::map<int, cv::Mat> > & blendingGains, // optional output of util3d::mergeTextures()
-		const std::pair<float, float> & contrastValues)               // optional output of util3d::mergeTextures()
+		const std::pair<float, float> & contrastValues,               // optional output of util3d::mergeTextures()
+		bool gainRGB)
 {
 #ifdef RTABMAP_ALICE_VISION
 	if(ULogger::level() == ULogger::kDebug)
@@ -2252,7 +2256,6 @@ bool multiBandTexturing(
 	texturing.texParams.textureSide = 8192;
 	texturing.texParams.downscale = 8192/textureSize;
 
-	std::vector<int> camIndexToId(uKeys(cameraModels));
 	for(size_t i=0;i<cloud2.size();++i)
 	{
 		pcl::PointXYZRGB pt = cloud2.at(i);
@@ -2278,8 +2281,10 @@ bool multiBandTexturing(
 	UTimer timer;
 	std::string outputDirectory = UDirectory::getDir(outputOBJPath);
 	std::string tmpImageDirectory = outputDirectory+"/rtabmap_tmp_textures";
+	UDirectory::removeDir(tmpImageDirectory);
 	UDirectory::makeDir(tmpImageDirectory);
 	UINFO("Temporary saving images in directory \"%s\"...", tmpImageDirectory.c_str());
+	int viewId = 0;
 	for(std::map<int, Transform>::const_iterator iter = cameraPoses.lower_bound(1); iter!=cameraPoses.end(); ++iter)
 	{
 		int camId = iter->first;
@@ -2335,11 +2340,6 @@ bool multiBandTexturing(
 			UERROR("No camera models found for camera %d. Aborting multiband texturing...", iter->first);
 			return false;
 		}
-		else if(models.size() != 1)
-		{
-			UERROR("Unwrapping not supporting multi-camera yet... ignoring %d. Aborting multiband texturing...", iter->first);
-			return false;
-		}
 		if(image.empty())
 		{
 			UERROR("No image found for camera %d. Aborting multiband texturing...", iter->first);
@@ -2355,60 +2355,72 @@ bool multiBandTexturing(
 			image = image.clone();
 		}
 
-		UASSERT(models.size() == 1);
-		const CameraModel & model = models[0];
-		Transform t = iter->second * model.localTransform();
-		Eigen::Matrix<double, 3, 4> m = (t.inverse()).toEigen3d().matrix().block<3,4>(0, 0);
-		sfmData::CameraPose pose(geometry::Pose3(m), true);
-		sfmData.setAbsolutePose((IndexT)camId, pose);
-		cv::Size imageSize = model.imageSize();
-		if(imageSize.height == 0)
+		for(size_t i=0; i<models.size(); ++i)
 		{
-			// backward compatibility
-			imageSize.height = image.rows;
-			imageSize.width = image.cols;
+			const CameraModel & model = models.at(i);
+			cv::Size imageSize = model.imageSize();
+			if(imageSize.height == 0)
+			{
+				// backward compatibility
+				imageSize.height = image.rows;
+				imageSize.width = image.cols;
+			}
+			UASSERT(image.cols % imageSize.width == 0);
+			cv::Mat imageRoi = image.colRange(i*imageSize.width, (i+1)*imageSize.width);
+			if(gains.find(camId) != gains.end() &&
+			   gains.at(camId).find(i) != gains.at(camId).end())
+			{
+				const cv::Vec4d & g = gains.at(camId).at(i);
+				std::vector<cv::Mat> channels;
+				cv::split(imageRoi, channels);
+
+				// assuming BGR
+				cv::multiply(channels[0], g.val[gainRGB?3:0], channels[0]);
+				cv::multiply(channels[1], g.val[gainRGB?2:0], channels[1]);
+				cv::multiply(channels[2], g.val[gainRGB?1:0], channels[2]);
+
+				cv::Mat output;
+				cv::merge(channels, output);
+				imageRoi = output;
+			}
+
+			if(blendingGains.find(camId) != blendingGains.end() &&
+			   blendingGains.at(camId).find(i) != blendingGains.at(camId).end())
+			{
+				cv::Mat g = blendingGains.at(camId).at(i);
+				cv::Mat dst;
+				cv::blur(g, dst, cv::Size(3,3));
+				cv::Mat gResized;
+				cv::resize(dst, gResized, imageRoi.size(), 0, 0, cv::INTER_LINEAR);
+				cv::Mat output;
+				cv::multiply(imageRoi, gResized, output, 1.0, CV_8UC3);
+				imageRoi = output;
+			}
+
+			Transform t = iter->second * model.localTransform();
+			Eigen::Matrix<double, 3, 4> m = (t.inverse()).toEigen3d().matrix().block<3,4>(0, 0);
+			sfmData::CameraPose pose(geometry::Pose3(m), true);
+			sfmData.setAbsolutePose((IndexT)viewId, pose);
+
+			std::shared_ptr<camera::IntrinsicBase> camPtr(new camera::Pinhole(imageSize.width, imageSize.height, model.fx(), model.cx(), model.cy()));
+			sfmData.intrinsics.insert(std::make_pair((IndexT)viewId, camPtr));
+
+			std::string imagePath = tmpImageDirectory+uFormat("/%d.jpg", viewId);
+
+			cv::imwrite(imagePath, imageRoi);
+
+			sfmData.views.insert(std::make_pair((IndexT)viewId,
+					new sfmData::View(
+							imagePath,
+							(IndexT)viewId,
+							(IndexT)viewId,
+							(IndexT)viewId,
+							imageSize.width,
+							imageSize.height)));
+			++viewId;
 		}
-		std::shared_ptr<camera::IntrinsicBase> camPtr(new camera::Pinhole(imageSize.width, imageSize.height, model.fx(), model.cx(), model.cy()));
-		sfmData.intrinsics.insert(std::make_pair((IndexT)camId, camPtr));
-
-		std::string imagePath = tmpImageDirectory+uFormat("/%d.jpg", camId);
-
-		if(gains.find(camId) != gains.end())
-		{
-			UASSERT(gains.at(camId).size() == 1);
-			const cv::Vec4d & g = gains.at(camId).begin()->second;
-			std::vector<cv::Mat> channels;
-			cv::split(image, channels);
-
-			// assuming BGR
-			cv::multiply(channels[0], g.val[3], channels[0]);
-			cv::multiply(channels[1], g.val[2], channels[1]);
-			cv::multiply(channels[2], g.val[1], channels[2]);
-
-			cv::merge(channels, image);
-		}
-		if(blendingGains.find(camId) != blendingGains.end())
-		{
-			UASSERT(blendingGains.at(camId).size() == 1);
-			cv::Mat g = blendingGains.at(camId).begin()->second;
-			cv::Mat dst;
-			cv::blur(g, dst, cv::Size(3,3));
-			cv::Mat gResized;
-			cv::resize(dst, gResized, image.size(), 0, 0, cv::INTER_LINEAR);
-			cv::multiply(image, gResized, image, 1.0, CV_8UC3);
-		}
-		cv::imwrite(imagePath, image);
-
-		sfmData.views.insert(std::make_pair((IndexT)camId,
-				new sfmData::View(
-						imagePath,
-						(IndexT)camId,
-						(IndexT)camId,
-						(IndexT)camId,
-						imageSize.width,
-						imageSize.height)));
 	}
-	UINFO("Temporary saving images in directory \"%s\"... done. %fs", tmpImageDirectory.c_str(), timer.ticks());
+	UINFO("Temporary saving images in directory \"%s\"... done (%d images). %fs", tmpImageDirectory.c_str(), viewId, (int)cameraPoses.size(), timer.ticks());
 
 	mvsUtils::MultiViewParams mp(sfmData);
 
@@ -2455,6 +2467,7 @@ bool multiBandTexturing(
 			{
 				UASSERT(img.channels() == 3);
 				// Re-use same contrast values with all images
+				UINFO("Apply contrast values %f %f", contrastValues.first, contrastValues.second);
 				img.convertTo(img, -1, contrastValues.first, contrastValues.second);
 			}
 			std::string newName = *iter;

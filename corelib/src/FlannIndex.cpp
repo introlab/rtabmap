@@ -107,32 +107,36 @@ unsigned int FlannIndex::indexedFeatures() const
 	}
 }
 
-// return KB
-unsigned int FlannIndex::memoryUsed() const
+// return Bytes
+unsigned long FlannIndex::memoryUsed() const
 {
 	if(!index_)
 	{
 		return 0;
 	}
+	unsigned long memoryUsage = sizeof(FlannIndex);
+	memoryUsage += addedDescriptors_.size() * (sizeof(int) + sizeof(cv::Mat) + sizeof(std::map<int, cv::Mat>::iterator)) + sizeof(std::map<int, cv::Mat>);
+	memoryUsage += sizeof(std::list<int>) + removedIndexes_.size() * sizeof(int);
 	if(featuresType_ == CV_8UC1)
 	{
-		return ((const rtflann::Index<rtflann::Hamming<unsigned char> >*)index_)->usedMemory()/1000;
+		memoryUsage += ((const rtflann::Index<rtflann::Hamming<unsigned char> >*)index_)->usedMemory();
 	}
 	else
 	{
 		if(useDistanceL1_)
 		{
-			return ((const rtflann::Index<rtflann::L1<float> >*)index_)->usedMemory()/1000;
+			memoryUsage += ((const rtflann::Index<rtflann::L1<float> >*)index_)->usedMemory();
 		}
 		else if(featuresDim_ <= 3)
 		{
-			return ((const rtflann::Index<rtflann::L2_Simple<float> >*)index_)->usedMemory()/1000;
+			memoryUsage += ((const rtflann::Index<rtflann::L2_Simple<float> >*)index_)->usedMemory();
 		}
 		else
 		{
-			return ((const rtflann::Index<rtflann::L2<float> >*)index_)->usedMemory()/1000;
+			memoryUsage += ((const rtflann::Index<rtflann::L2<float> >*)index_)->usedMemory();
 		}
 	}
+	return memoryUsage;
 }
 
 void FlannIndex::buildLinearIndex(
@@ -177,10 +181,21 @@ void FlannIndex::buildLinearIndex(
 		}
 	}
 
-	// incremental FLANN
-	addedDescriptors_.insert(std::make_pair(nextIndex_, features));
-
-	nextIndex_ = features.rows;
+	// incremental FLANN: we should add all headers separately in case we remove
+	// some indexes (to keep underlying matrix data allocated)
+	if(rebalancingFactor_ > 1.0f)
+	{
+		for(int i=0; i<features.rows; ++i)
+		{
+			addedDescriptors_.insert(std::make_pair(nextIndex_++, features.row(i)));
+		}
+	}
+	else
+	{
+		// tree won't ever be rebalanced, so just keep only one header for the data
+		addedDescriptors_.insert(std::make_pair(nextIndex_, features));
+		nextIndex_ += features.rows;
+	}
 	UDEBUG("");
 }
 
@@ -227,10 +242,21 @@ void FlannIndex::buildKDTreeIndex(
 		}
 	}
 
-	// incremental FLANN
-	addedDescriptors_.insert(std::make_pair(nextIndex_, features));
-
-	nextIndex_ = features.rows;
+	// incremental FLANN: we should add all headers separately in case we remove
+	// some indexes (to keep underlying matrix data allocated)
+	if(rebalancingFactor_ > 1.0f)
+	{
+		for(int i=0; i<features.rows; ++i)
+		{
+			addedDescriptors_.insert(std::make_pair(nextIndex_++, features.row(i)));
+		}
+	}
+	else
+	{
+		// tree won't ever be rebalanced, so just keep only one header for the data
+		addedDescriptors_.insert(std::make_pair(nextIndex_, features));
+		nextIndex_ += features.rows;
+	}
 	UDEBUG("");
 }
 
@@ -278,10 +304,21 @@ void FlannIndex::buildKDTreeSingleIndex(
 		}
 	}
 
-	// incremental FLANN
-	addedDescriptors_.insert(std::make_pair(nextIndex_, features));
-
-	nextIndex_ = features.rows;
+	// incremental FLANN: we should add all headers separately in case we remove
+	// some indexes (to keep underlying matrix data allocated)
+	if(rebalancingFactor_ > 1.0f)
+	{
+		for(int i=0; i<features.rows; ++i)
+		{
+			addedDescriptors_.insert(std::make_pair(nextIndex_++, features.row(i)));
+		}
+	}
+	else
+	{
+		// tree won't ever be rebalanced, so just keep only one header for the data
+		addedDescriptors_.insert(std::make_pair(nextIndex_, features));
+		nextIndex_ += features.rows;
+	}
 	UDEBUG("");
 }
 
@@ -305,10 +342,21 @@ void FlannIndex::buildLSHIndex(
 	index_ = new rtflann::Index<rtflann::Hamming<unsigned char> >(dataset, rtflann::LshIndexParams(12, 20, 2));
 	((rtflann::Index<rtflann::Hamming<unsigned char> >*)index_)->buildIndex();
 
-	// incremental FLANN
-	addedDescriptors_.insert(std::make_pair(nextIndex_, features));
-
-	nextIndex_ = features.rows;
+	// incremental FLANN: we should add all headers separately in case we remove
+	// some indexes (to keep underlying matrix data allocated)
+	if(rebalancingFactor_ > 1.0f)
+	{
+		for(int i=0; i<features.rows; ++i)
+		{
+			addedDescriptors_.insert(std::make_pair(nextIndex_++, features.row(i)));
+		}
+	}
+	else
+	{
+		// tree won't ever be rebalanced, so just keep only one header for the data
+		addedDescriptors_.insert(std::make_pair(nextIndex_, features));
+		nextIndex_ += features.rows;
+	}
 	UDEBUG("");
 }
 
@@ -317,12 +365,12 @@ bool FlannIndex::isBuilt()
 	return index_!=0;
 }
 
-unsigned int FlannIndex::addPoints(const cv::Mat & features)
+std::vector<unsigned int> FlannIndex::addPoints(const cv::Mat & features)
 {
 	if(!index_)
 	{
 		UERROR("Flann index not yet created!");
-		return 0;
+		return std::vector<unsigned int>();
 	}
 	UASSERT(features.type() == featuresType_);
 	UASSERT(features.cols == featuresDim_);
@@ -401,11 +449,16 @@ unsigned int FlannIndex::addPoints(const cv::Mat & features)
 		removedIndexes_.clear();
 	}
 
-	addedDescriptors_.insert(std::make_pair(nextIndex_, features));
+	// incremental FLANN: we should add all headers separately in case we remove
+	// some indexes (to keep underlying matrix data allocated)
+	std::vector<unsigned int> indexes;
+	for(int i=0; i<features.rows; ++i)
+	{
+		indexes.push_back(nextIndex_);
+		addedDescriptors_.insert(std::make_pair(nextIndex_++, features.row(i)));
+	}
 
-	int r = nextIndex_;
-	nextIndex_ += features.rows;
-	return r;
+	return indexes;
 }
 
 void FlannIndex::removePoint(unsigned int index)

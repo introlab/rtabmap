@@ -24,7 +24,7 @@ else()
 endif()
 
 if(POLICY CMP0020)
-	cmake_policy(SET CMP0020 OLD)
+	cmake_policy(SET CMP0020 NEW)
 endif()
 
 SET(INCLUDE_DIRS

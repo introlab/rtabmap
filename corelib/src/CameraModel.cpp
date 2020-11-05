@@ -765,4 +765,16 @@ bool CameraModel::inFrame(int u, int v) const
 	return uIsInBounds(u, 0, imageWidth()) && uIsInBounds(v, 0, imageHeight());
 }
 
+std::ostream& operator<<(std::ostream& os, const CameraModel& model)
+{
+	os << "Name: " << model.name() << std::endl
+	   << "Size: " << model.imageWidth() << "x" << model.imageHeight() << std::endl
+	   << "K= " << model.K_raw() << std::endl
+	   << "D= " << model.D_raw() << std::endl
+	   << "R= " << model.R() << std::endl
+	   << "P= " << model.P() << std::endl
+	   << "LocalTransform= " << model.localTransform();
+	return os;
+}
+
 } /* namespace rtabmap */

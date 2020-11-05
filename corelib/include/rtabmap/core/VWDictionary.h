@@ -100,8 +100,9 @@ public:
 	int getLastIndexedWordId() const;
 	int getTotalActiveReferences() const {return _totalActiveReferences;}
 	unsigned int getIndexedWordsCount() const;
-	unsigned int getIndexMemoryUsed() const;
-	void setNNStrategy(NNStrategy strategy);
+	unsigned int getIndexMemoryUsed() const; // KB
+	unsigned long getMemoryUsed() const; //Bytes
+	bool setNNStrategy(NNStrategy strategy); // Return true if the search tree has been re-initialized
 	bool isIncremental() const {return _incrementalDictionary;}
 	bool isIncrementalFlann() const {return _incrementalFlann;}
 	void setIncrementalDictionary();
@@ -117,8 +118,8 @@ public:
 	void deleteUnusedWords();
 
 public:
-	static cv::Mat convertBinTo32F(const cv::Mat & descriptorsIn);
-	static cv::Mat convert32FToBin(const cv::Mat & descriptorsIn);
+	static cv::Mat convertBinTo32F(const cv::Mat & descriptorsIn, bool byteToFloat = true);
+	static cv::Mat convert32FToBin(const cv::Mat & descriptorsIn, bool byteToFloat = true);
 
 protected:
 	int getNextId();
@@ -131,6 +132,7 @@ private:
 	bool _incrementalDictionary;
 	bool _incrementalFlann;
 	float _rebalancingFactor;
+	bool _byteToFloat;
 	float _nndrRatio;
 	std::string _dictionaryPath; // a pre-computed dictionary (.txt or .db)
 	std::string _newDictionaryPath; // a pre-computed dictionary (.txt or .db)

@@ -1,4 +1,4 @@
-# Image: introlab3it/rtabmap:android-deps
+# Image: introlab3it/rtabmap:android-deps-api19
 
 FROM ubuntu:16.04
 

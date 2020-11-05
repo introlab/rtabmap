@@ -155,12 +155,20 @@ std::list<Link> RTABMAP_EXP findLinks(
 
 std::multimap<int, Link> RTABMAP_EXP filterDuplicateLinks(
 		const std::multimap<int, Link> & links);
+/**
+ * Return links not of type "filteredType". If inverted=true, return links of of type "filteredType".
+ */
 std::multimap<int, Link> RTABMAP_EXP filterLinks(
 		const std::multimap<int, Link> & links,
-		Link::Type filteredType);
+		Link::Type filteredType,
+		bool inverted = false);
+/**
+ * Return links not of type "filteredType". If inverted=true, return links of of type "filteredType".
+ */
 std::map<int, Link> RTABMAP_EXP filterLinks(
 		const std::map<int, Link> & links,
-		Link::Type filteredType);
+		Link::Type filteredType,
+		bool inverted = false);
 
 //Note: This assumes a coordinate system where X is forward, * Y is up, and Z is right.
 std::map<int, Transform> RTABMAP_EXP frustumPosesFiltering(
@@ -255,11 +263,26 @@ std::list<std::pair<int, Transform> > RTABMAP_EXP computePath(
 		float linearVelocity = 0.0f,   // m/sec
 		float angularVelocity = 0.0f); // rad/sec
 
+/**
+ * Get the nearest node of the target pose
+ * @param nodes the nodes to search for
+ * @param targetPose the target pose to search around
+ * @param distance squared distance of the nearest node found (optional)
+ * @return the node id.
+ */
 int RTABMAP_EXP findNearestNode(
 		const std::map<int, rtabmap::Transform> & nodes,
-		const rtabmap::Transform & targetPose);
+		const rtabmap::Transform & targetPose,
+		float * distance = 0);
 
-std::vector<int> RTABMAP_EXP findNearestNodes(
+/**
+ * Get K nearest nodes of the target pose
+ * @param nodes the nodes to search for
+ * @param targetPose the target pose to search around
+ * @param k number of nearest neighbors to search for
+ * @return the node ids with squared distance to target pose.
+ */
+std::map<int, float> RTABMAP_EXP findNearestNodes(
 		const std::map<int, rtabmap::Transform> & nodes,
 		const rtabmap::Transform & targetPose,
 		int k);
@@ -275,8 +298,17 @@ std::map<int, float> RTABMAP_EXP getNodesInRadius(
 		int nodeId,
 		const std::map<int, Transform> & nodes,
 		float radius);
+std::map<int, float> RTABMAP_EXP getNodesInRadius(
+		const Transform & targetPose,
+		const std::map<int, Transform> & nodes,
+		float radius);
 std::map<int, Transform> RTABMAP_EXP getPosesInRadius(
 		int nodeId,
+		const std::map<int, Transform> & nodes,
+		float radius,
+		float angle = 0.0f);
+std::map<int, Transform> RTABMAP_EXP getPosesInRadius(
+		const Transform & targetPose,
 		const std::map<int, Transform> & nodes,
 		float radius,
 		float angle = 0.0f);

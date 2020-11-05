@@ -592,63 +592,60 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 					updateKalmanFilter(vx,vy,vz,vroll,vpitch,vyaw);
 				}
 			}
-			else if(particleFilters_.size())
+			else
 			{
-				// Particle filtering
-				UASSERT(particleFilters_.size()==6);
-				if(velocityGuess_.isNull())
+				if(particleFilters_.size())
 				{
-					particleFilters_[0]->init(vx);
-					particleFilters_[1]->init(vy);
-					particleFilters_[2]->init(vz);
-					particleFilters_[3]->init(vroll);
-					particleFilters_[4]->init(vpitch);
-					particleFilters_[5]->init(vyaw);
-				}
-				else
-				{
-					vx = particleFilters_[0]->filter(vx);
-					vy = particleFilters_[1]->filter(vy);
-					vyaw = particleFilters_[5]->filter(vyaw);
-
-					if(!_holonomic)
+					// Particle filtering
+					UASSERT(particleFilters_.size()==6);
+					if(velocityGuess_.isNull())
 					{
-						// arc trajectory around ICR
-						float tmpY = vyaw!=0.0f ? vx / tan((CV_PI-vyaw)/2.0f) : 0.0f;
-						if(fabs(tmpY) < fabs(vy) || (tmpY<=0 && vy >=0) || (tmpY>=0 && vy<=0))
+						particleFilters_[0]->init(vx);
+						particleFilters_[1]->init(vy);
+						particleFilters_[2]->init(vz);
+						particleFilters_[3]->init(vroll);
+						particleFilters_[4]->init(vpitch);
+						particleFilters_[5]->init(vyaw);
+					}
+					else
+					{
+						vx = particleFilters_[0]->filter(vx);
+						vy = particleFilters_[1]->filter(vy);
+						vyaw = particleFilters_[5]->filter(vyaw);
+
+						if(!_holonomic)
 						{
-							vy = tmpY;
+							// arc trajectory around ICR
+							float tmpY = vyaw!=0.0f ? vx / tan((CV_PI-vyaw)/2.0f) : 0.0f;
+							if(fabs(tmpY) < fabs(vy) || (tmpY<=0 && vy >=0) || (tmpY>=0 && vy<=0))
+							{
+								vy = tmpY;
+							}
+							else
+							{
+								vyaw = (atan(vx/vy)*2.0f-CV_PI)*-1;
+							}
 						}
-						else
+
+						if(!_force3DoF)
 						{
-							vyaw = (atan(vx/vy)*2.0f-CV_PI)*-1;
+							vz = particleFilters_[2]->filter(vz);
+							vroll = particleFilters_[3]->filter(vroll);
+							vpitch = particleFilters_[4]->filter(vpitch);
 						}
 					}
 
-					if(!_force3DoF)
+					if(info)
 					{
-						vz = particleFilters_[2]->filter(vz);
-						vroll = particleFilters_[3]->filter(vroll);
-						vpitch = particleFilters_[4]->filter(vpitch);
+						info->timeParticleFiltering = time.ticks();
 					}
 				}
-
-				if(info)
+				else if(!_holonomic)
 				{
-					info->timeParticleFiltering = time.ticks();
+					// arc trajectory around ICR
+					vy = vyaw!=0.0f ? vx / tan((CV_PI-vyaw)/2.0f) : 0.0f;
 				}
 
-				if(_force3DoF)
-				{
-					vz = 0.0f;
-					vroll = 0.0f;
-					vpitch = 0.0f;
-				}
-			}
-			else if(!_holonomic)
-			{
-				// arc trajectory around ICR
-				vy = vyaw!=0.0f ? vx / tan((CV_PI-vyaw)/2.0f) : 0.0f;
 				if(_force3DoF)
 				{
 					vz = 0.0f;

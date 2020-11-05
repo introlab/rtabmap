@@ -133,6 +133,27 @@ OdometryF2M::OdometryF2M(const ParametersMap & parameters) :
 	}
 	uInsert(bundleParameters, ParametersPair(Parameters::kVisCorType(), uNumber2Str(corType)));
 
+	int estType = Parameters::defaultVisEstimationType();
+	Parameters::parse(parameters, Parameters::kVisEstimationType(), estType);
+	if(estType > 1)
+	{
+		UWARN("%s=%d is not supported by OdometryF2M, using 2D->3D approach instead (type=1).",
+				Parameters::kVisEstimationType().c_str(),
+				estType);
+		estType = 1;
+	}
+	uInsert(bundleParameters, ParametersPair(Parameters::kVisEstimationType(), uNumber2Str(estType)));
+
+	bool forwardEst = Parameters::defaultVisForwardEstOnly();
+	Parameters::parse(parameters, Parameters::kVisForwardEstOnly(), forwardEst);
+	if(!forwardEst)
+	{
+		UWARN("%s=false is not supported by OdometryF2M, setting to true.",
+				Parameters::kVisForwardEstOnly().c_str());
+		forwardEst = true;
+	}
+	uInsert(bundleParameters, ParametersPair(Parameters::kVisForwardEstOnly(), uBool2Str(forwardEst)));
+
 	regPipeline_ = Registration::create(bundleParameters);
 	if(bundleAdjustment_>0 && regPipeline_->isScanRequired())
 	{
@@ -272,9 +293,7 @@ Transform OdometryF2M::computeTransform(
 			{
 				tmpMap = *map_;
 				// reset matches, but keep already extracted features in lastFrame_->sensorData()
-				lastFrame_->setWords(std::multimap<int, cv::KeyPoint>());
-				lastFrame_->setWords3(std::multimap<int, cv::Point3f>());
-				lastFrame_->setWordsDescriptors(std::multimap<int, cv::Mat>());
+				lastFrame_->removeAllWords();
 
 				points3DMap.clear();
 				bundlePoses.clear();
@@ -393,11 +412,9 @@ Transform OdometryF2M::computeTransform(
 								int wordId =regInfo.inliersIDs[i];
 
 								// 3D point
-								std::multimap<int, cv::Point3f>::const_iterator iter3D = tmpMap.getWords3().find(wordId);
-								UASSERT(iter3D!=tmpMap.getWords3().end());
-								points3DMap.insert(*iter3D);
-
-								std::multimap<int, cv::KeyPoint>::const_iterator iter2D = lastFrame_->getWords().find(wordId);
+								std::multimap<int, int>::const_iterator iter3D = tmpMap.getWords().find(wordId);
+								UASSERT(iter3D!=tmpMap.getWords().end() && !tmpMap.getWords3().empty());
+								points3DMap.insert(std::make_pair(wordId, tmpMap.getWords3()[iter3D->second]));
 
 								// all other references
 								std::map<int, std::map<int, FeatureBA> >::iterator refIter = bundleWordReferences_.find(wordId);
@@ -427,12 +444,19 @@ Transform OdometryF2M::computeTransform(
 									}
 								}
 
+								std::multimap<int, int>::const_iterator iter2D = lastFrame_->getWords().find(wordId);
 								if(iter2D!=lastFrame_->getWords().end())
 								{
-									UASSERT(lastFrame_->getWords3().find(wordId) != lastFrame_->getWords3().end());
-									//move back point in camera frame (to get depth along z)
-									cv::Point3f pt3d = util3d::transformPoint(lastFrame_->getWords3().find(wordId)->second, invLocalTransform);
-									references.insert(std::make_pair(lastFrame_->id(), FeatureBA(iter2D->second, pt3d.z)));
+									UASSERT(!lastFrame_->getWordsKpts().empty());
+									//get depth
+									float d = 0.0f;
+									if( !lastFrame_->getWords3().empty() &&
+										util3d::isFinite(lastFrame_->getWords3()[iter2D->second]))
+									{
+										//move back point in camera frame (to get depth along z)
+										d = util3d::transformPoint(lastFrame_->getWords3()[iter2D->second], invLocalTransform).z;
+									}
+									references.insert(std::make_pair(lastFrame_->id(), FeatureBA(lastFrame_->getWordsKpts()[iter2D->second], d)));
 								}
 								wordReferences.insert(std::make_pair(wordId, references));
 
@@ -557,9 +581,10 @@ Transform OdometryF2M::computeTransform(
 
 				// fields to update
 				LaserScan mapScan = tmpMap.sensorData().laserScanRaw();
-				std::multimap<int, cv::KeyPoint> mapWords = tmpMap.getWords();
-				std::multimap<int, cv::Point3f> mapPoints = tmpMap.getWords3();
-				std::multimap<int, cv::Mat> mapDescriptors = tmpMap.getWordsDescriptors();
+				std::multimap<int, int> mapWords = tmpMap.getWords();
+				std::vector<cv::KeyPoint> mapWordsKpts = tmpMap.getWordsKpts();
+				std::vector<cv::Point3f> mapPoints = tmpMap.getWords3();
+				cv::Mat mapDescriptors = tmpMap.getWordsDescriptors();
 
 				bool addVisualKeyFrame = regPipeline_->isImageRequired() &&
 						 (keyFrameThr_ == 0.0f ||
@@ -590,8 +615,9 @@ Transform OdometryF2M::computeTransform(
 
 					// update local map
 					UASSERT(mapWords.size() == mapPoints.size());
-					UASSERT(mapPoints.size() == mapDescriptors.size());
-					UASSERT_MSG(lastFrame_->getWordsDescriptors().size() == lastFrame_->getWords3().size(), uFormat("%d vs %d", lastFrame_->getWordsDescriptors().size(), lastFrame_->getWords3().size()).c_str());
+					UASSERT(mapWords.size() == mapWordsKpts.size());
+					UASSERT((int)mapPoints.size() == mapDescriptors.rows);
+					UASSERT_MSG(lastFrame_->getWordsDescriptors().rows == (int)lastFrame_->getWords3().size(), uFormat("%d vs %d", lastFrame_->getWordsDescriptors().rows, (int)lastFrame_->getWords3().size()).c_str());
 
 					std::map<int, int>::iterator iterBundlePosesRef = bundlePoseReferences_.end();
 					if(bundleAdjustment_>0)
@@ -613,17 +639,15 @@ Transform OdometryF2M::computeTransform(
 						// update local map 3D points (if bundle adjustment was done)
 						for(std::map<int, cv::Point3f>::iterator iter=points3DMap.begin(); iter!=points3DMap.end(); ++iter)
 						{
-							UASSERT(mapPoints.count(iter->first) == 1);
-							//UDEBUG("Updated %d (%f,%f,%f) -> (%f,%f,%f)", iter->first, mapPoints.find(origin)->second.x, mapPoints.find(origin)->second.y, mapPoints.find(origin)->second.z, iter->second.x, iter->second.y, iter->second.z);
-							mapPoints.find(iter->first)->second = iter->second;
+							UASSERT(mapWords.count(iter->first) == 1);
+							//UDEBUG("Updated %d (%f,%f,%f) -> (%f,%f,%f)", iter->first, mapPoints[mapWords.find(iter->first)->second].x, mapPoints[mapWords.find(iter->first)->second].y, mapPoints[mapWords.find(iter->first)->second].z, iter->second.x, iter->second.y, iter->second.z);
+							mapPoints[mapWords.find(iter->first)->second] = iter->second;
 						}
 					}
 
 					// sort by feature response
 					std::multimap<float, std::pair<int, std::pair<cv::KeyPoint, std::pair<cv::Point3f, cv::Mat> > > > newIds;
 					UASSERT(lastFrame_->getWords3().size() == lastFrame_->getWords().size());
-					std::multimap<int, cv::KeyPoint>::const_iterator iter2D = lastFrame_->getWords().begin();
-					std::multimap<int, cv::Mat>::const_iterator iterDesc = lastFrame_->getWordsDescriptors().begin();
 					UDEBUG("new frame words3=%d", (int)lastFrame_->getWords3().size());
 					std::set<int> seenStatusUpdated;
 					Transform invLocalTransform;
@@ -648,11 +672,11 @@ Transform OdometryF2M::computeTransform(
 					if(!visDepthAsMask && validDepthRatio_ < 1.0f)
 					{
 						int ptsWithDepth = 0;
-						for (std::multimap<int, cv::Point3f>::const_iterator iter = lastFrame_->getWords3().begin();
+						for (std::vector<cv::Point3f>::const_iterator iter = lastFrame_->getWords3().begin();
 							iter != lastFrame_->getWords3().end();
 							++iter)
 						{
-							if(util3d::isFinite(iter->second))
+							if(util3d::isFinite(*iter))
 							{
 								++ptsWithDepth;
 							}
@@ -666,27 +690,29 @@ Transform OdometryF2M::computeTransform(
 						}
 					}
 
-					for(std::multimap<int, cv::Point3f>::const_iterator iter = lastFrame_->getWords3().begin(); iter!=lastFrame_->getWords3().end(); ++iter, ++iter2D, ++iterDesc)
+					for(std::multimap<int, int>::const_iterator iter = lastFrame_->getWords().begin(); iter!=lastFrame_->getWords().end(); ++iter)
 					{
-						if(mapPoints.find(iter->first) == mapPoints.end()) // Point not in map
+						const cv::Point3f & pt = lastFrame_->getWords3()[iter->second];
+						const cv::KeyPoint & kpt = lastFrame_->getWordsKpts()[iter->second];
+						if(mapWords.find(iter->first) == mapWords.end()) // Point not in map
 						{
-							if(util3d::isFinite(iter->second) || addPointsWithoutDepth)
+							if(util3d::isFinite(pt) || addPointsWithoutDepth)
 							{
 								newIds.insert(
-										std::make_pair(iter2D->second.response>0?1.0f/iter2D->second.response:0.0f,
+										std::make_pair(kpt.response>0?1.0f/kpt.response:0.0f,
 												std::make_pair(iter->first,
-														std::make_pair(iter2D->second,
-																std::make_pair(iter->second, iterDesc->second)))));
+														std::make_pair(kpt,
+																std::make_pair(pt, lastFrame_->getWordsDescriptors().row(iter->second))))));
 							}
 						}
 						else if(bundleAdjustment_>0)
 						{
 							if(lastFrame_->getWords().count(iter->first) == 1)
 							{
-								std::multimap<int, cv::KeyPoint>::iterator iterKpts = mapWords.find(iter->first);
-								if(iterKpts!=mapWords.end())
+								std::multimap<int, int>::iterator iterKpts = mapWords.find(iter->first);
+								if(iterKpts!=mapWords.end() && !mapWordsKpts.empty())
 								{
-									iterKpts->second.octave = iter2D->second.octave;
+									mapWordsKpts[iterKpts->second].octave = kpt.octave;
 								}
 
 								UASSERT(iterBundlePosesRef!=bundlePoseReferences_.end());
@@ -694,19 +720,19 @@ Transform OdometryF2M::computeTransform(
 
 								//move back point in camera frame (to get depth along z)
 								float depth = 0.0f;
-								if(util3d::isFinite(iter->second))
+								if(util3d::isFinite(pt))
 								{
-									depth = util3d::transformPoint(iter->second, invLocalTransform).z;
+									depth = util3d::transformPoint(pt, invLocalTransform).z;
 								}
 								if(bundleWordReferences_.find(iter->first) == bundleWordReferences_.end())
 								{
 									std::map<int, FeatureBA> framePt;
-									framePt.insert(std::make_pair(lastFrame_->id(), FeatureBA(iter2D->second, depth)));
+									framePt.insert(std::make_pair(lastFrame_->id(), FeatureBA(kpt, depth)));
 									bundleWordReferences_.insert(std::make_pair(iter->first, framePt));
 								}
 								else
 								{
-									bundleWordReferences_.find(iter->first)->second.insert(std::make_pair(lastFrame_->id(), FeatureBA(iter2D->second, depth)));
+									bundleWordReferences_.find(iter->first)->second.insert(std::make_pair(lastFrame_->id(), FeatureBA(kpt, depth)));
 								}
 							}
 						}
@@ -747,7 +773,8 @@ Transform OdometryF2M::computeTransform(
 								}
 							}
 
-							mapWords.insert(std::make_pair(iter->second.first, iter->second.second.first));
+							mapWords.insert(mapWords.end(), std::make_pair(iter->second.first, mapWords.size()));
+							mapWordsKpts.push_back(iter->second.second.first);
 							cv::Point3f pt = iter->second.second.second.first;
 							if(!util3d::isFinite(pt))
 							{
@@ -783,8 +810,8 @@ Transform OdometryF2M::computeTransform(
 								float scaleInf = (0.05 * model.fx()) / 0.01;
 								pt = util3d::transformPoint(cv::Point3f(ray[0]*scaleInf, ray[1]*scaleInf, ray[2]*scaleInf), model.localTransform()); // in base_link frame
 							}
-							mapPoints.insert(std::make_pair(iter->second.first, util3d::transformPoint(pt, newFramePose)));
-							mapDescriptors.insert(std::make_pair(iter->second.first, iter->second.second.second.second));
+							mapPoints.push_back(util3d::transformPoint(pt, newFramePose));
+							mapDescriptors.push_back(iter->second.second.second.second);
 							if(lastFrameOldestNewId_ > iter->second.first)
 							{
 								lastFrameOldestNewId_ = iter->second.first;
@@ -794,7 +821,7 @@ Transform OdometryF2M::computeTransform(
 					}
 
 					// remove words in map if max size is reached
-					if((int)mapPoints.size() > maximumMapSize_)
+					if((int)mapWords.size() > maximumMapSize_)
 					{
 						// remove oldest outliers first
 						std::set<int> inliers(regInfo.inliersIDs.begin(), regInfo.inliersIDs.end());
@@ -813,7 +840,7 @@ Transform OdometryF2M::computeTransform(
 							ids.resize(regInfo.matchesIDs.size()+oi);
 							UDEBUG("projected added=%d/%d minLastFrameId=%d", oi, (int)regInfo.projectedIDs.size(), lastFrameOldestNewId);
 						}
-						for(unsigned int i=0; i<ids.size() && (int)mapPoints.size() > maximumMapSize_ && mapPoints.size() >= newIds.size(); ++i)
+						for(unsigned int i=0; i<ids.size() && (int)mapWords.size() > maximumMapSize_ && mapWords.size() >= newIds.size(); ++i)
 						{
 							int id = ids.at(i);
 							if(inliers.find(id) == inliers.end())
@@ -831,18 +858,14 @@ Transform OdometryF2M::computeTransform(
 									bundleWordReferences_.erase(iterRef);
 								}
 
-								mapPoints.erase(id);
-								mapDescriptors.erase(id);
 								mapWords.erase(id);
 								++removed;
 							}
 						}
 
 						// remove oldest first
-						std::multimap<int, cv::Mat>::iterator iterMapDescriptors = mapDescriptors.begin();
-						std::multimap<int, cv::KeyPoint>::iterator iterMapWords = mapWords.begin();
-						for(std::multimap<int, cv::Point3f>::iterator iter = mapPoints.begin();
-							iter!=mapPoints.end() && (int)mapPoints.size() > maximumMapSize_ && mapPoints.size() >= newIds.size();)
+						for(std::multimap<int, int>::iterator iter = mapWords.begin();
+							iter!=mapWords.end() && (int)mapWords.size() > maximumMapSize_ && mapWords.size() >= newIds.size();)
 						{
 							if(inliers.find(iter->first) == inliers.end())
 							{
@@ -859,17 +882,34 @@ Transform OdometryF2M::computeTransform(
 									bundleWordReferences_.erase(iterRef);
 								}
 
-								mapPoints.erase(iter++);
-								mapDescriptors.erase(iterMapDescriptors++);
-								mapWords.erase(iterMapWords++);
+								mapWords.erase(iter++);
 								++removed;
 							}
 							else
 							{
 								++iter;
-								++iterMapDescriptors;
-								++iterMapWords;
 							}
+						}
+
+						if(mapWords.size() != mapPoints.size())
+						{
+							UDEBUG("Remove points");
+							std::vector<cv::KeyPoint> mapWordsKptsClean(mapWords.size());
+							std::vector<cv::Point3f> mapPointsClean(mapWords.size());
+							cv::Mat mapDescriptorsClean(mapWords.size(), mapDescriptors.cols, mapDescriptors.type());
+							int index = 0;
+							for(std::multimap<int, int>::iterator iter = mapWords.begin(); iter!=mapWords.end(); ++iter, ++index)
+							{
+								mapWordsKptsClean[index] = mapWordsKpts[iter->second];
+								mapPointsClean[index] = mapPoints[iter->second];
+								mapDescriptors.row(iter->second).copyTo(mapDescriptorsClean.row(index));
+								iter->second = index;
+							}
+							mapWordsKpts = mapWordsKptsClean;
+							mapWordsKptsClean.clear();
+							mapPoints = mapPointsClean;
+							mapPointsClean.clear();
+							mapDescriptors = mapDescriptorsClean;
 						}
 
 						Link * previousLink = 0;
@@ -1099,9 +1139,7 @@ Transform OdometryF2M::computeTransform(
 										newFramePose.translation()));
 					}
 
-					map_->setWords(mapWords);
-					map_->setWords3(mapPoints);
-				 	map_->setWordsDescriptors(mapDescriptors);
+					map_->setWords(mapWords, mapWordsKpts, mapPoints, mapDescriptors);
 				}
 			}
 
@@ -1112,7 +1150,14 @@ Transform OdometryF2M::computeTransform(
 				info->localScanMapSize = tmpMap.sensorData().laserScanRaw().size();
 				if(this->isInfoDataFilled())
 				{
-					info->localMap = uMultimapToMap(tmpMap.getWords3());
+					info->localMap.clear();
+					if(!tmpMap.getWords3().empty())
+					{
+						for(std::multimap<int, int>::const_iterator iter=tmpMap.getWords().begin(); iter!=tmpMap.getWords().end(); ++iter)
+						{
+							info->localMap.insert(std::make_pair(iter->first, tmpMap.getWords3()[iter->second]));
+						}
+					}
 					info->localScanMap = tmpMap.sensorData().laserScanRaw();
 				}
 			}
@@ -1139,11 +1184,12 @@ Transform OdometryF2M::computeTransform(
 			if(regPipeline_->isImageRequired())
 			{
 				int ptsWithDepth = 0;
-				for (std::multimap<int, cv::Point3f>::const_iterator iter = lastFrame_->getWords3().begin();
-					iter != lastFrame_->getWords3().end();
+				for (std::multimap<int, int>::const_iterator iter = lastFrame_->getWords().begin();
+					iter != lastFrame_->getWords().end();
 					++iter)
 				{
-					if(util3d::isFinite(iter->second))
+					if(!lastFrame_->getWords3().empty() && 
+					   util3d::isFinite(lastFrame_->getWords3()[iter->second]))
 					{
 						++ptsWithDepth;
 					}
@@ -1153,26 +1199,29 @@ Transform OdometryF2M::computeTransform(
 				{
 					frameValid = true;
 					// update local map
-					UASSERT_MSG(lastFrame_->getWordsDescriptors().size() == lastFrame_->getWords3().size(), uFormat("%d vs %d", lastFrame_->getWordsDescriptors().size(), lastFrame_->getWords3().size()).c_str());
+					UASSERT_MSG(lastFrame_->getWordsDescriptors().rows == (int)lastFrame_->getWords3().size(), uFormat("%d vs %d", lastFrame_->getWordsDescriptors().rows, (int)lastFrame_->getWords3().size()).c_str());
 					UASSERT(lastFrame_->getWords3().size() == lastFrame_->getWords().size());
 
-					std::multimap<int, cv::KeyPoint> words;
-					std::multimap<int, cv::Point3f> transformedPoints;
+					std::multimap<int, int> words;
+					std::vector<cv::KeyPoint> wordsKpts;
+					std::vector<cv::Point3f> transformedPoints;
 					std::multimap<int, int> mapPointWeights;
-					std::multimap<int, cv::Mat> descriptors;
-					UASSERT(lastFrame_->getWords3().size() == lastFrame_->getWordsDescriptors().size());
-					std::multimap<int, cv::KeyPoint>::const_iterator wordsIter = lastFrame_->getWords().begin();
-					std::multimap<int, cv::Mat>::const_iterator descIter = lastFrame_->getWordsDescriptors().begin();
-					for (std::multimap<int, cv::Point3f>::const_iterator iter = lastFrame_->getWords3().begin();
-						iter != lastFrame_->getWords3().end();
-						++iter, ++descIter, ++wordsIter)
+					cv::Mat descriptors;
+					if(!lastFrame_->getWords3().empty())
 					{
-						if (util3d::isFinite(iter->second))
+						for (std::multimap<int, int>::const_iterator iter = lastFrame_->getWords().begin();
+							iter != lastFrame_->getWords().end();
+							++iter)
 						{
-							words.insert(*wordsIter);
-							transformedPoints.insert(std::make_pair(iter->first, util3d::transformPoint(iter->second, newFramePose)));
-							mapPointWeights.insert(std::make_pair(iter->first, 0));
-							descriptors.insert(*descIter);
+							const cv::Point3f & pt = lastFrame_->getWords3()[iter->second];
+							if (util3d::isFinite(pt))
+							{
+								words.insert(words.end(), std::make_pair(iter->first, words.size()));
+								wordsKpts.push_back(lastFrame_->getWordsKpts()[iter->second]);
+								transformedPoints.push_back(util3d::transformPoint(pt, newFramePose));
+								mapPointWeights.insert(std::make_pair(iter->first, 0));
+								descriptors.push_back(lastFrame_->getWordsDescriptors().row(iter->second));
+							}
 						}
 					}
 
@@ -1193,25 +1242,29 @@ Transform OdometryF2M::computeTransform(
 						}
 
 						// update bundleWordReferences_: used for bundle adjustment
-						for(std::multimap<int, cv::KeyPoint>::const_iterator iter=words.begin(); iter!=words.end(); ++iter)
+						if(!wordsKpts.empty())
 						{
-							if(words.count(iter->first) == 1)
+							for(std::multimap<int, int>::const_iterator iter=words.begin(); iter!=words.end(); ++iter)
 							{
-								UASSERT(bundleWordReferences_.find(iter->first) == bundleWordReferences_.end());
-								std::map<int, FeatureBA> framePt;
-
-								//get depth
-								float d = 0.0f;
-								if(lastFrame_->getWords3().count(iter->first) == 1 &&
-									util3d::isFinite(lastFrame_->getWords3().find(iter->first)->second))
+								if(words.count(iter->first) == 1)
 								{
-									//move back point in camera frame (to get depth along z)
-									d = util3d::transformPoint(lastFrame_->getWords3().find(iter->first)->second, invLocalTransform).z;
+									UASSERT(bundleWordReferences_.find(iter->first) == bundleWordReferences_.end());
+									std::map<int, FeatureBA> framePt;
+
+									//get depth
+									float d = 0.0f;
+									if(lastFrame_->getWords().count(iter->first) == 1 &&
+									  !lastFrame_->getWords3().empty() &&
+										util3d::isFinite(lastFrame_->getWords3()[lastFrame_->getWords().find(iter->first)->second]))
+									{
+										//move back point in camera frame (to get depth along z)
+										d = util3d::transformPoint(lastFrame_->getWords3()[lastFrame_->getWords().find(iter->first)->second], invLocalTransform).z;
+									}
+
+
+									framePt.insert(std::make_pair(lastFrame_->id(), FeatureBA(wordsKpts[iter->second], d)));
+									bundleWordReferences_.insert(std::make_pair(iter->first, framePt));
 								}
-
-
-								framePt.insert(std::make_pair(lastFrame_->id(), FeatureBA(iter->second, d)));
-								bundleWordReferences_.insert(std::make_pair(iter->first, framePt));
 							}
 						}
 
@@ -1246,9 +1299,7 @@ Transform OdometryF2M::computeTransform(
 						}
 					}
 
-					map_->setWords(words);
-					map_->setWords3(transformedPoints);
-					map_->setWordsDescriptors(descriptors);
+					map_->setWords(words, wordsKpts, transformedPoints, descriptors);
 					addKeyFrame = true;
 				}
 				else
@@ -1271,9 +1322,17 @@ Transform OdometryF2M::computeTransform(
 						Parameters::parse(parameters_, Parameters::kIcpPointToPlaneMinComplexity(), minComplexity);
 						if(p2n && minComplexity>0.0f)
 						{
-							complexity = util3d::computeNormalsComplexity(*mapCloudNormals, Transform::getIdentity(), lastFrame_->sensorData().laserScanRaw().is2d());
-							if(complexity > minComplexity)
+							if(lastFrame_->sensorData().laserScanRaw().hasNormals())
 							{
+								complexity = util3d::computeNormalsComplexity(*mapCloudNormals, Transform::getIdentity(), lastFrame_->sensorData().laserScanRaw().is2d());
+								if(complexity > minComplexity)
+								{
+									frameValid = true;
+								}
+							}
+							else
+							{
+								UWARN("Input raw scan doesn't have normals, complexity check on first frame is not done.");
 								frameValid = true;
 							}
 						}
@@ -1339,7 +1398,14 @@ Transform OdometryF2M::computeTransform(
 
 				if(this->isInfoDataFilled())
 				{
-					info->localMap = uMultimapToMap(map_->getWords3());
+					info->localMap.clear();
+					if(!map_->getWords3().empty())
+					{
+						for(std::multimap<int, int>::const_iterator iter=map_->getWords().begin(); iter!=map_->getWords().end(); ++iter)
+						{
+							info->localMap.insert(std::make_pair(iter->first, map_->getWords3()[iter->second]));
+						}
+					}
 					info->localScanMap = map_->sensorData().laserScanRaw();
 				}
 			}
@@ -1352,7 +1418,14 @@ Transform OdometryF2M::computeTransform(
 		{
 			if(regPipeline_->isImageRequired())
 			{
-				info->words = lastFrame_->getWords();
+				info->words.clear();
+				if(!lastFrame_->getWordsKpts().empty())
+				{
+					for(std::multimap<int, int>::const_iterator iter=lastFrame_->getWords().begin(); iter!=lastFrame_->getWords().end(); ++iter)
+					{
+						info->words.insert(std::make_pair(iter->first, lastFrame_->getWordsKpts()[iter->second]));
+					}
+				}
 			}
 		}
 	}

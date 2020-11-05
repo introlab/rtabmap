@@ -107,9 +107,9 @@ bool DBDriver::isConnected() const
 }
 
 // In bytes
-long DBDriver::getMemoryUsed() const
+unsigned long DBDriver::getMemoryUsed() const
 {
-	long bytes;
+	unsigned long bytes;
 	_dbSafeAccessMutex.lock();
 	bytes = getMemoryUsedQuery();
 	_dbSafeAccessMutex.unlock();

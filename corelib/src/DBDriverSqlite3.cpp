@@ -486,7 +486,7 @@ void DBDriverSqlite3::executeNoResultQuery(const std::string & sql) const
 	}
 }
 
-long DBDriverSqlite3::getMemoryUsedQuery() const
+unsigned long DBDriverSqlite3::getMemoryUsedQuery() const
 {
 	if(_dbInMemory)
 	{
@@ -2377,6 +2377,7 @@ void DBDriverSqlite3::getAllNodeIdsQuery(std::set<int> & ids, bool ignoreChildre
 			query << "INNER JOIN Link ";
 			query << "ON id = to_id "; // use to_id to ignore all children (which don't have link pointing on them)
 			query << "WHERE from_id != to_id "; // ignore self referring links
+			query << "AND weight>-9 "; //ignore invalid nodes
 		}
 
 		if(ignoreBadSignatures)
@@ -3078,9 +3079,10 @@ void DBDriverSqlite3::loadSignaturesQuery(const std::list<int> & ids, std::list<
 			const void * descriptor = 0;
 			int dRealSize = 0;
 			cv::KeyPoint kpt;
-			std::multimap<int, cv::KeyPoint> visualWords;
-			std::multimap<int, cv::Point3f> visualWords3;
-			std::multimap<int, cv::Mat> descriptors;
+			std::multimap<int, int> visualWords;
+			std::vector<cv::KeyPoint> visualWordsKpts;
+			std::vector<cv::Point3f> visualWords3;
+			cv::Mat descriptors;
 			bool allWords3NaN = true;
 			cv::Point3f depth(0,0,0);
 
@@ -3130,8 +3132,9 @@ void DBDriverSqlite3::loadSignaturesQuery(const std::list<int> & ids, std::list<
 					depth.z = sqlite3_column_double(ppStmt, index++);
 				}
 
-				visualWords.insert(visualWords.end(), std::make_pair(visualWordId, kpt));
-				visualWords3.insert(visualWords3.end(), std::make_pair(visualWordId, depth));
+				visualWordsKpts.push_back(kpt);
+				visualWords.insert(visualWords.end(), std::make_pair(visualWordId, visualWordsKpts.size()-1));
+				visualWords3.push_back(depth);
 
 				if(allWords3NaN && util3d::isFinite(depth))
 				{
@@ -3164,7 +3167,7 @@ void DBDriverSqlite3::loadSignaturesQuery(const std::list<int> & ids, std::list<
 
 						memcpy(d.data, descriptor, dRealSize);
 
-						descriptors.insert(descriptors.end(), std::make_pair(visualWordId, d));
+						descriptors.push_back(d);
 					}
 				}
 
@@ -3178,13 +3181,12 @@ void DBDriverSqlite3::loadSignaturesQuery(const std::list<int> & ids, std::list<
 			}
 			else
 			{
-				(*iter)->setWords(visualWords);
-				if(!allWords3NaN)
+				if(allWords3NaN)
 				{
-					(*iter)->setWords3(visualWords3);
+					visualWords3.clear();
 				}
-				(*iter)->setWordsDescriptors(descriptors);
-				ULOGGER_DEBUG("Add %d keypoints, %d 3d points and %d descriptors to node %d", (int)visualWords.size(), allWords3NaN?0:(int)visualWords3.size(), (int)descriptors.size(), (*iter)->id());
+				(*iter)->setWords(visualWords, visualWordsKpts, visualWords3, descriptors);
+				ULOGGER_DEBUG("Add %d keypoints, %d 3d points and %d descriptors to node %d", (int)visualWords.size(), allWords3NaN?0:(int)visualWords3.size(), (int)descriptors.rows, (*iter)->id());
 			}
 
 			//reset
@@ -3622,6 +3624,7 @@ void DBDriverSqlite3::loadWordsQuery(const std::set<int> & wordIds, std::list<Vi
 		int descriptorSize;
 		const void * descriptor;
 		int dRealSize;
+		unsigned long dRealSizeTotal = 0;
 		for(std::set<int>::const_iterator iter=wordIds.begin(); iter!=wordIds.end(); ++iter)
 		{
 			// bind id
@@ -3654,6 +3657,7 @@ void DBDriverSqlite3::loadWordsQuery(const std::set<int> & wordIds, std::list<Vi
 				}
 
 				memcpy(d.data, descriptor, dRealSize);
+				dRealSizeTotal+=dRealSize;
 				VisualWord * vw = new VisualWord(*iter, d);
 				if(vw)
 				{
@@ -3675,7 +3679,7 @@ void DBDriverSqlite3::loadWordsQuery(const std::set<int> & wordIds, std::list<Vi
 		rc = sqlite3_finalize(ppStmt);
 		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
 
-		ULOGGER_DEBUG("Time=%fs", timer.ticks());
+		UDEBUG("Time=%fs (%d words, %lu MB)", timer.ticks(), (int)vws.size(), dRealSizeTotal/1000000);
 
 		if(wordIds.size() != loaded.size())
 		{
@@ -4272,30 +4276,25 @@ void DBDriverSqlite3::saveQuery(const std::list<Signature *> & signatures)
 		float nanFloat = std::numeric_limits<float>::quiet_NaN ();
 		for(std::list<Signature *>::const_iterator i=signatures.begin(); i!=signatures.end(); ++i)
 		{
+			UASSERT((*i)->getWords().size() == (*i)->getWordsKpts().size());
 			UASSERT((*i)->getWords3().empty() || (*i)->getWords().size() == (*i)->getWords3().size());
-			UASSERT((*i)->getWordsDescriptors().empty() || (*i)->getWords().size() == (*i)->getWordsDescriptors().size());
+			UASSERT((*i)->getWordsDescriptors().empty() || (int)(*i)->getWords().size() == (*i)->getWordsDescriptors().rows);
 
-			std::multimap<int, cv::Point3f>::const_iterator p=(*i)->getWords3().begin();
-			std::multimap<int, cv::Mat>::const_iterator d=(*i)->getWordsDescriptors().begin();
-			for(std::multimap<int, cv::KeyPoint>::const_iterator w=(*i)->getWords().begin(); w!=(*i)->getWords().end(); ++w)
+			for(std::multimap<int, int>::const_iterator w=(*i)->getWords().begin(); w!=(*i)->getWords().end(); ++w)
 			{
 				cv::Point3f pt(nanFloat,nanFloat,nanFloat);
-				if(p!=(*i)->getWords3().end())
+				if(!(*i)->getWords3().empty())
 				{
-					UASSERT(w->first == p->first); // must be same id!
-					pt = p->second;
-					++p;
+					pt = (*i)->getWords3()[w->second];
 				}
 
 				cv::Mat descriptor;
-				if(d!=(*i)->getWordsDescriptors().end())
+				if(!(*i)->getWordsDescriptors().empty())
 				{
-					UASSERT(w->first == d->first); // must be same id!
-					descriptor = d->second;
-					++d;
+					descriptor = (*i)->getWordsDescriptors().row(w->second);
 				}
 
-				stepKeypoint(ppStmt, (*i)->id(), w->first, w->second, pt, descriptor);
+				stepKeypoint(ppStmt, (*i)->id(), w->first, (*i)->getWordsKpts()[w->second], pt, descriptor);
 			}
 		}
 		// Finalize (delete) the statement

@@ -21,7 +21,6 @@
 #include <GLES2/gl2ext.h>
 #include <cstdlib>
 
-#include <arcore_c_api.h>
 #include "util.h"
 
 static const GLfloat BackgroundRenderer_kVertices[] = {

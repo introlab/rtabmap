@@ -31,36 +31,22 @@ rm -r lib_tango_support_api
 wget 'https://docs.google.com/uc?authuser=0&id=1s5iPJ7xiridj9Jj--gCy2XiQFniheVm6&export=download' -O TangoSDK_Ikariotikos_Java.jar
 mv TangoSDK_Ikariotikos_Java.jar rtabmap-tango/app/android/libs/.
 
-# ARCore
-wget 'https://docs.google.com/uc?authuser=0&id=1A4gMviyxHCnA19MTMbitOWoSOyoZcCef&export=download' -O arcore.zip
-unzip -qq arcore.zip
-rm arcore.zip
-cp arcore/*.jar rtabmap-tango/app/android/libs/.
-rm -r arcore
-
-# AREngine
-wget 'https://docs.google.com/uc?authuser=0&id=1rdaD2Z1QBv-SUeUy0oBmg3C2odfxTHgR&export=download' -O arengine.zip
-unzip -qq arengine.zip
-rm arengine.zip
-cp arengine/*.jar rtabmap-tango/app/android/libs/.
-rm -r arengine
+# Patch to remove not supported arcore and arengine stuff on API19
+git config --global user.email "you@example.com"
+git config --global user.name "Your Name"
+cd rtabmap-tango
+git pull origin tango-api19
 
 # resource tool
-cd rtabmap-tango/build
+cd build
 cmake -DANDROID_PREBUILD=ON ..
 make
 cd ../..
 
-# rtabmap
+# rtabmap (do only 32 bits for api19)
 mkdir rtabmap-tango/build/armeabi-v7a
 cd rtabmap-tango/build/armeabi-v7a
 cmake -DCMAKE_TOOLCHAIN_FILE=../../cmake_modules/android.toolchain.cmake -DANDROID_ABI=armeabi-v7a -DBUILD_SHARED_LIBS=OFF -DBUILD_EXAMPLES=OFF -DBUILD_TOOLS=OFF -DCMAKE_BUILD_TYPE=Release -DOpenCV_DIR=$prefix/armeabi-v7a/sdk/native/jni -DCMAKE_INSTALL_PREFIX=$prefix/armeabi-v7a ../..
-make
-
-cd ../../..
-mkdir rtabmap-tango/build/arm64-v8a
-cd rtabmap-tango/build/arm64-v8a
-cmake -DCMAKE_TOOLCHAIN_FILE=../../cmake_modules/android.toolchain.cmake -DANDROID_ABI=arm64-v8a -DBUILD_SHARED_LIBS=OFF -DBUILD_EXAMPLES=OFF -DBUILD_TOOLS=OFF -DCMAKE_BUILD_TYPE=Release -DOpenCV_DIR=$prefix/arm64-v8a/sdk/native/jni -DCMAKE_INSTALL_PREFIX=$prefix/arm64-v8a ../..
 make
 
 # package with binaries of both architectures

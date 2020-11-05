@@ -707,6 +707,12 @@ ParametersMap Parameters::parseArguments(int argc, char * argv[], bool onlyParam
 #else
 				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
 #endif
+				str = "With K4A:";
+#ifdef RTABMAP_K4A
+				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
+#else
+				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
+#endif
 				str = "With DC1394:";
 #ifdef RTABMAP_DC1394
 				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;

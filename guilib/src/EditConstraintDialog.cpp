@@ -28,9 +28,13 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/gui/EditConstraintDialog.h"
 #include "ui_editConstraintDialog.h"
 
+#ifndef M_PI
+#define M_PI       3.14159265358979323846
+#endif
+
 namespace rtabmap {
 
-EditConstraintDialog::EditConstraintDialog(const Transform & constraint, QWidget * parent) :
+EditConstraintDialog::EditConstraintDialog(const Transform & constraint, double linearSigma, double angularSigma, QWidget * parent) :
 	QDialog(parent)
 {
 	_ui = new Ui_EditConstraintDialog();
@@ -44,6 +48,11 @@ EditConstraintDialog::EditConstraintDialog(const Transform & constraint, QWidget
 	_ui->roll->setValue(roll);
 	_ui->pitch->setValue(pitch);
 	_ui->yaw->setValue(yaw);
+	_ui->linear_sigma->setValue(linearSigma);
+	_ui->angular_sigma->setValue(angularSigma);
+
+	connect(_ui->checkBox_radians, SIGNAL(stateChanged(int)), this, SLOT(switchUnits()));
+	_ui->checkBox_radians->setChecked(false);
 }
 
 EditConstraintDialog::~EditConstraintDialog()
@@ -51,9 +60,67 @@ EditConstraintDialog::~EditConstraintDialog()
 	delete _ui;
 }
 
+void EditConstraintDialog::switchUnits()
+{
+	double conversion = 180.0/M_PI;
+	if(_ui->checkBox_radians->isChecked())
+	{
+		conversion = M_PI/180.0;
+	}
+	QVector<QDoubleSpinBox*> boxes;
+	boxes.push_back(_ui->roll);
+	boxes.push_back(_ui->pitch);
+	boxes.push_back(_ui->yaw);
+	boxes.push_back(_ui->angular_sigma);
+	for(int i=0; i<boxes.size(); ++i)
+	{
+		double value = boxes[i]->value()*conversion;
+		if(_ui->checkBox_radians->isChecked())
+		{
+			if(boxes[i]!=_ui->angular_sigma)
+			{
+				boxes[i]->setMinimum(-M_PI);
+			}
+			boxes[i]->setMaximum(M_PI);
+			boxes[i]->setSuffix(" rad");
+			boxes[i]->setSingleStep(0.01);
+		}
+		else
+		{
+			if(boxes[i]!=_ui->angular_sigma)
+			{
+				boxes[i]->setMinimum(-180);
+			}
+			boxes[i]->setMaximum(180);
+			boxes[i]->setSuffix(" deg");
+			boxes[i]->setSingleStep(1);
+		}
+		boxes[i]->setValue(value);
+	}
+}
+
 Transform EditConstraintDialog::getTransform() const
 {
-	return Transform(_ui->x->value(), _ui->y->value(), _ui->z->value(), _ui->roll->value(), _ui->pitch->value(), _ui->yaw->value());
+	double conversion = 1.0f;
+	if(!_ui->checkBox_radians->isChecked())
+	{
+		conversion = M_PI/180.0;
+	}
+	return Transform(_ui->x->value(), _ui->y->value(), _ui->z->value(), _ui->roll->value()*conversion, _ui->pitch->value()*conversion, _ui->yaw->value()*conversion);
+}
+
+double EditConstraintDialog::getLinearVariance() const
+{
+	return _ui->linear_sigma->value();
+}
+double EditConstraintDialog::getAngularVariance() const
+{
+	double conversion = 1.0f;
+	if(!_ui->checkBox_radians->isChecked())
+	{
+		conversion = M_PI/180.0;
+	}
+	return _ui->angular_sigma->value()*conversion;
 }
 
 }

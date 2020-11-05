@@ -194,7 +194,11 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 //SURF
 #ifndef RTABMAP_NONFREE
 	_ui->comboBox_detector_strategy->setItemData(0, 0, Qt::UserRole - 1);
+	_ui->comboBox_detector_strategy->setItemData(12, 0, Qt::UserRole - 1);
+	_ui->comboBox_detector_strategy->setItemData(14, 0, Qt::UserRole - 1);
 	_ui->vis_feature_detector->setItemData(0, 0, Qt::UserRole - 1);
+	_ui->vis_feature_detector->setItemData(12, 0, Qt::UserRole - 1);
+	_ui->vis_feature_detector->setItemData(14, 0, Qt::UserRole - 1);
 #endif
 
 // SIFT
@@ -210,10 +214,16 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->comboBox_detector_strategy->setItemData(4, 0, Qt::UserRole - 1);
 	_ui->comboBox_detector_strategy->setItemData(5, 0, Qt::UserRole - 1);
 	_ui->comboBox_detector_strategy->setItemData(6, 0, Qt::UserRole - 1);
+	_ui->comboBox_detector_strategy->setItemData(12, 0, Qt::UserRole - 1);
+	_ui->comboBox_detector_strategy->setItemData(13, 0, Qt::UserRole - 1);
+	_ui->comboBox_detector_strategy->setItemData(14, 0, Qt::UserRole - 1);
 	_ui->vis_feature_detector->setItemData(3, 0, Qt::UserRole - 1);
 	_ui->vis_feature_detector->setItemData(4, 0, Qt::UserRole - 1);
 	_ui->vis_feature_detector->setItemData(5, 0, Qt::UserRole - 1);
 	_ui->vis_feature_detector->setItemData(6, 0, Qt::UserRole - 1);
+	_ui->vis_feature_detector->setItemData(12, 0, Qt::UserRole - 1);
+	_ui->vis_feature_detector->setItemData(13, 0, Qt::UserRole - 1);
+	_ui->vis_feature_detector->setItemData(14, 0, Qt::UserRole - 1);
 #endif
 
 #ifndef RTABMAP_ORB_OCTREE
@@ -238,7 +248,11 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->groupBox_fast_opencv2->setEnabled(false);
 #else
 	_ui->comboBox_detector_strategy->setItemData(9, 0, Qt::UserRole - 1); // No KAZE
+	_ui->comboBox_detector_strategy->setItemData(13, 0, Qt::UserRole - 1); // No DAISY
+	_ui->comboBox_detector_strategy->setItemData(14, 0, Qt::UserRole - 1); // No DAISY
 	_ui->vis_feature_detector->setItemData(9, 0, Qt::UserRole - 1); // No KAZE
+	_ui->vis_feature_detector->setItemData(13, 0, Qt::UserRole - 1); // No DAISY
+	_ui->vis_feature_detector->setItemData(14, 0, Qt::UserRole - 1); // No DAISY
 #endif
 
 	_ui->comboBox_cameraImages_odomFormat->setItemData(4, 0, Qt::UserRole - 1);
@@ -751,6 +765,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->comboBox_k4a_rgb_resolution, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->comboBox_k4a_framerate, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->comboBox_k4a_depth_resolution, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->checkbox_k4a_irDepth, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->toolButton_k4a_mkv, SIGNAL(clicked()), this, SLOT(selectSourceMKVPath()));
 	connect(_ui->toolButton_source_distortionModel, SIGNAL(clicked()), this, SLOT(selectSourceDistortionModel()));
 	connect(_ui->toolButton_distortionModel, SIGNAL(clicked()), this, SLOT(visualizeDistortionModel()));
@@ -877,6 +892,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->comboBox_dictionary_strategy->setObjectName(Parameters::kKpNNStrategy().c_str());
 	_ui->checkBox_dictionary_incremental->setObjectName(Parameters::kKpIncrementalDictionary().c_str());
 	_ui->checkBox_kp_incrementalFlann->setObjectName(Parameters::kKpIncrementalFlann().c_str());
+	_ui->checkBox_kp_byteToFloat->setObjectName(Parameters::kKpByteToFloat().c_str());
 	_ui->surf_doubleSpinBox_rebalancingFactor->setObjectName(Parameters::kKpFlannRebalancingFactor().c_str());
 	_ui->comboBox_detector_strategy->setObjectName(Parameters::kKpDetectorStrategy().c_str());
 	_ui->surf_doubleSpinBox_nndrRatio->setObjectName(Parameters::kKpNndrRatio().c_str());
@@ -2961,7 +2977,7 @@ bool PreferencesDialog::validateForm()
 #ifndef RTABMAP_NONFREE
 	// verify that SURF/SIFT cannot be selected if not built with OpenCV nonfree module
 	// BOW dictionary type
-	if(_ui->comboBox_detector_strategy->currentIndex() <= 1)
+	if(_ui->comboBox_detector_strategy->currentIndex() <= 1 || _ui->comboBox_detector_strategy->currentIndex() == 12)
 	{
 		QMessageBox::warning(this, tr("Parameter warning"),
 				tr("Selected feature type (SURF/SIFT) is not available. RTAB-Map is not built "
@@ -2969,7 +2985,7 @@ bool PreferencesDialog::validateForm()
 		_ui->comboBox_detector_strategy->setCurrentIndex(Feature2D::kFeatureOrb);
 	}
 	// BOW Reextract features type
-	if(_ui->vis_feature_detector->currentIndex() <= 1)
+	if(_ui->vis_feature_detector->currentIndex() <= 1 || _ui->vis_feature_detector->currentIndex() == 12)
 	{
 		QMessageBox::warning(this, tr("Parameter warning"),
 				tr("Selected feature type (SURF/SIFT) is not available. RTAB-Map is not built "
@@ -2982,7 +2998,7 @@ bool PreferencesDialog::validateForm()
 #ifndef RTABMAP_NONFREE
 	// verify that SURF cannot be selected if not built with OpenCV nonfree module
 	// BOW dictionary type
-	if(_ui->comboBox_detector_strategy->currentIndex() <= 1)
+	if(_ui->comboBox_detector_strategy->currentIndex() < 1 || _ui->comboBox_detector_strategy->currentIndex() == 12)
 	{
 		QMessageBox::warning(this, tr("Parameter warning"),
 				tr("Selected feature type (SURF) is not available. RTAB-Map is not built "
@@ -2990,7 +3006,7 @@ bool PreferencesDialog::validateForm()
 		_ui->comboBox_detector_strategy->setCurrentIndex(Feature2D::kFeatureSift);
 	}
 	// BOW Reextract features type
-	if(_ui->vis_feature_detector->currentIndex() <= 1)
+	if(_ui->vis_feature_detector->currentIndex() < 1 || _ui->vis_feature_detector->currentIndex() == 12)
 	{
 		QMessageBox::warning(this, tr("Parameter warning"),
 				tr("Selected feature type (SURF) is not available. RTAB-Map is not built "
@@ -4173,7 +4189,7 @@ void PreferencesDialog::setParameter(const std::string & key, const std::string 
 			else
 			{
 #ifndef RTABMAP_NONFREE
-				if(valueInt <= 1 &&
+				if(valueInt == 0 &&
 						(combo->objectName().toStdString().compare(Parameters::kKpDetectorStrategy()) == 0 ||
 						 combo->objectName().toStdString().compare(Parameters::kVisFeatureType()) == 0))
 				{
@@ -4183,6 +4199,18 @@ void PreferencesDialog::setParameter(const std::string & key, const std::string 
 						  combo->currentText().toStdString().c_str());
 					ok = false;
 				}
+#if CV_MAJOR_VERSION < 3 || (CV_MAJOR_VERSION == 4 && CV_MINOR_VERSION <= 3) || (CV_MAJOR_VERSION == 3 && (CV_MINOR_VERSION < 4 || (CV_MINOR_VERSION==4 && CV_SUBMINOR_VERSION<11)))
+				if(valueInt == 1 &&
+						(combo->objectName().toStdString().compare(Parameters::kKpDetectorStrategy()) == 0 ||
+						 combo->objectName().toStdString().compare(Parameters::kVisFeatureType()) == 0))
+				{
+					UWARN("Trying to set \"%s\" to SIFT but RTAB-Map isn't built "
+						  "with the nonfree module from OpenCV. Keeping default combo value: %s.",
+						  combo->objectName().toStdString().c_str(),
+						  combo->currentText().toStdString().c_str());
+					ok = false;
+				}
+#endif
 #endif
 #ifndef RTABMAP_ORB_SLAM2
 				if(!Optimizer::isAvailable(Optimizer::kTypeG2O))

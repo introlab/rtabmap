@@ -371,6 +371,7 @@ void ExportCloudsDialog::saveSettings(QSettings & settings, const QString & grou
 	settings.setValue("mesh_textureMaxAngle", _ui->doubleSpinBox_meshingTextureMaxAngle->value());
 	settings.setValue("mesh_textureMinCluster", _ui->spinBox_mesh_minTextureClusterSize->value());
 	settings.setValue("mesh_textureRoiRatios", _ui->lineEdit_meshingTextureRoiRatios->text());
+	settings.setValue("mesh_textureDistanceToCamPolicy", _ui->checkBox_distanceToCamPolicy->isChecked());
 	settings.setValue("mesh_textureCameraFiltering", _ui->checkBox_cameraFilter->isChecked());
 	settings.setValue("mesh_textureCameraFilteringRadius", _ui->doubleSpinBox_cameraFilterRadius->value());
 	settings.setValue("mesh_textureCameraFilteringAngle", _ui->doubleSpinBox_cameraFilterAngle->value());
@@ -510,6 +511,7 @@ void ExportCloudsDialog::loadSettings(QSettings & settings, const QString & grou
 	_ui->doubleSpinBox_meshingTextureMaxAngle->setValue(settings.value("mesh_textureMaxAngle", _ui->doubleSpinBox_meshingTextureMaxAngle->value()).toDouble());
 	_ui->spinBox_mesh_minTextureClusterSize->setValue(settings.value("mesh_textureMinCluster", _ui->spinBox_mesh_minTextureClusterSize->value()).toDouble());
 	_ui->lineEdit_meshingTextureRoiRatios->setText(settings.value("mesh_textureRoiRatios", _ui->lineEdit_meshingTextureRoiRatios->text()).toString());
+	_ui->checkBox_distanceToCamPolicy->setChecked(settings.value("mesh_textureDistanceToCamPolicy", _ui->checkBox_distanceToCamPolicy->isChecked()).toBool());
 	_ui->checkBox_cameraFilter->setChecked(settings.value("mesh_textureCameraFiltering", _ui->checkBox_cameraFilter->isChecked()).toBool());
 	_ui->doubleSpinBox_cameraFilterRadius->setValue(settings.value("mesh_textureCameraFilteringRadius", _ui->doubleSpinBox_cameraFilterRadius->value()).toDouble());
 	_ui->doubleSpinBox_cameraFilterAngle->setValue(settings.value("mesh_textureCameraFilteringAngle", _ui->doubleSpinBox_cameraFilterAngle->value()).toDouble());
@@ -646,6 +648,7 @@ void ExportCloudsDialog::restoreDefaults()
 	_ui->doubleSpinBox_meshingTextureMaxAngle->setValue(0.0);
 	_ui->spinBox_mesh_minTextureClusterSize->setValue(50);
 	_ui->lineEdit_meshingTextureRoiRatios->setText("0.0 0.0 0.0 0.0");
+	_ui->checkBox_distanceToCamPolicy->setChecked(false);
 	_ui->checkBox_cameraFilter->setChecked(false);
 	_ui->doubleSpinBox_cameraFilterRadius->setValue(0);
 	_ui->doubleSpinBox_cameraFilterAngle->setValue(30);
@@ -2930,7 +2933,8 @@ bool ExportCloudsDialog::getExportedClouds(
 								_ui->spinBox_mesh_minTextureClusterSize->value(),
 								roiRatios,
 								&texturingState,
-								cameraPoses.size()>1?&textureVertexToPixels:0); // only get vertexToPixels if merged clouds with multi textures
+								cameraPoses.size()>1?&textureVertexToPixels:0, // only get vertexToPixels if merged clouds with multi textures
+								_ui->checkBox_distanceToCamPolicy->isChecked());
 
 						if(_canceled)
 						{

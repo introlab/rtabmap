@@ -236,6 +236,7 @@ class RTABMAP_EXP Parameters
     RTABMAP_PARAM(Kp, IncrementalDictionary,    bool, true,   "");
     RTABMAP_PARAM(Kp, IncrementalFlann,         bool, true,   uFormat("When using FLANN based strategy, add/remove points to its index without always rebuilding the index (the index is built only when the dictionary increases of the factor \"%s\" in size).", kKpFlannRebalancingFactor().c_str()));
     RTABMAP_PARAM(Kp, FlannRebalancingFactor,   float, 2.0,   uFormat("Factor used when rebuilding the incremental FLANN index (see \"%s\"). Set <=1 to disable.", kKpIncrementalFlann().c_str()));
+    RTABMAP_PARAM(Kp, ByteToFloat,              bool, false,  uFormat("For %s=1, binary descriptors are converted to float by converting each byte to float instead of converting each bit to float. When converting bytes instead of bits, less memory is used and search is faster at the cost of slightly less accurate matching.", kKpNNStrategy().c_str()));
     RTABMAP_PARAM(Kp, MaxDepth,                 float, 0,     "Filter extracted keypoints by depth (0=inf).");
     RTABMAP_PARAM(Kp, MinDepth,                 float, 0,     "Filter extracted keypoints by depth.");
     RTABMAP_PARAM(Kp, MaxFeatures,              int, 500,     "Maximum features extracted from the images (0 means not bounded, <0 means no extraction).");
@@ -243,9 +244,9 @@ class RTABMAP_EXP Parameters
     RTABMAP_PARAM(Kp, NndrRatio,                float, 0.8,   "NNDR ratio (A matching pair is detected, if its distance is closer than X times the distance of the second nearest neighbor.)");
 #if CV_MAJOR_VERSION > 2 && !defined(HAVE_OPENCV_XFEATURES2D)
     // OpenCV>2 without xFeatures2D module doesn't have BRIEF
-    RTABMAP_PARAM(Kp, DetectorStrategy,         int, 8,       "0=SURF 1=SIFT 2=ORB 3=FAST/FREAK 4=FAST/BRIEF 5=GFTT/FREAK 6=GFTT/BRIEF 7=BRISK 8=GFTT/ORB 9=KAZE 10=ORB-OCTREE 11=SuperPoint Torch.");
+    RTABMAP_PARAM(Kp, DetectorStrategy,         int, 8,       "0=SURF 1=SIFT 2=ORB 3=FAST/FREAK 4=FAST/BRIEF 5=GFTT/FREAK 6=GFTT/BRIEF 7=BRISK 8=GFTT/ORB 9=KAZE 10=ORB-OCTREE 11=SuperPoint 12=SURF/FREAK 13=GFTT/DAISY 14=SURF/DAISY");
 #else
-    RTABMAP_PARAM(Kp, DetectorStrategy,         int, 6,       "0=SURF 1=SIFT 2=ORB 3=FAST/FREAK 4=FAST/BRIEF 5=GFTT/FREAK 6=GFTT/BRIEF 7=BRISK 8=GFTT/ORB 9=KAZE 10=ORB-OCTREE 11=SuperPoint Torch.");
+    RTABMAP_PARAM(Kp, DetectorStrategy,         int, 6,       "0=SURF 1=SIFT 2=ORB 3=FAST/FREAK 4=FAST/BRIEF 5=GFTT/FREAK 6=GFTT/BRIEF 7=BRISK 8=GFTT/ORB 9=KAZE 10=ORB-OCTREE 11=SuperPoint 12=SURF/FREAK 13=GFTT/DAISY 14=SURF/DAISY");
 #endif
     RTABMAP_PARAM(Kp, TfIdfLikelihoodUsed,      bool, true,   "Use of the td-idf strategy to compute the likelihood.");
     RTABMAP_PARAM(Kp, Parallelized,             bool, true,   "If the dictionary update and signature creation were parallelized.");
@@ -299,9 +300,9 @@ class RTABMAP_EXP Parameters
     RTABMAP_PARAM(GFTT, UseHarrisDetector, bool, false,  "");
     RTABMAP_PARAM(GFTT, K,                 double, 0.04, "");
 
-    RTABMAP_PARAM(ORB, ScaleFactor,   float, 1.2,  "Pyramid decimation ratio, greater than 1. scaleFactor==2 means the classical pyramid, where each next level has 4x less pixels than the previous, but such a big scale factor will degrade feature matching scores dramatically. On the other hand, too close to 1 scale factor will mean that to cover certain scale range you will need more pyramid levels and so the speed will suffer.");
-    RTABMAP_PARAM(ORB, NLevels,       int, 8,      "The number of pyramid levels. The smallest level will have linear size equal to input_image_linear_size/pow(scaleFactor, nlevels).");
-    RTABMAP_PARAM(ORB, EdgeThreshold, int, 31,     "This is size of the border where the features are not detected. It should roughly match the patchSize parameter.");
+    RTABMAP_PARAM(ORB, ScaleFactor,   float, 2,  "Pyramid decimation ratio, greater than 1. scaleFactor==2 means the classical pyramid, where each next level has 4x less pixels than the previous, but such a big scale factor will degrade feature matching scores dramatically. On the other hand, too close to 1 scale factor will mean that to cover certain scale range you will need more pyramid levels and so the speed will suffer.");
+    RTABMAP_PARAM(ORB, NLevels,       int, 3,      "The number of pyramid levels. The smallest level will have linear size equal to input_image_linear_size/pow(scaleFactor, nlevels).");
+    RTABMAP_PARAM(ORB, EdgeThreshold, int, 19,     "This is size of the border where the features are not detected. It should roughly match the patchSize parameter.");
     RTABMAP_PARAM(ORB, FirstLevel,    int, 0,      "It should be 0 in the current implementation.");
     RTABMAP_PARAM(ORB, WTA_K,         int, 2,      "The number of points that produce each element of the oriented BRIEF descriptor. The default value 2 means the BRIEF where we take a random point pair and compare their brightnesses, so we get 0/1 response. Other possible values are 3 and 4. For example, 3 means that we take 3 random points (of course, those point coordinates are random, but they are generated from the pre-defined seed, so each element of BRIEF descriptor is computed deterministically from the pixel rectangle), find point of maximum brightness and output index of the winner (0, 1 or 2). Such output will occupy 2 bits, and therefore it will need a special variant of Hamming distance, denoted as NORM_HAMMING2 (2 bits per bin). When WTA_K=4, we take 4 random points to compute each bin (that will also occupy 2 bits with possible values 0, 1, 2 or 3).");
     RTABMAP_PARAM(ORB, ScoreType,     int, 0,      "The default HARRIS_SCORE=0 means that Harris algorithm is used to rank features (the score is written to KeyPoint::score and is used to retain best nfeatures features); FAST_SCORE=1 is alternative value of the parameter that produces slightly less stable keypoints, but it is a little faster to compute.");
@@ -586,9 +587,9 @@ class RTABMAP_EXP Parameters
     RTABMAP_PARAM(Vis, Iterations,               int, 300,      "Maximum iterations to compute the transform.");
 #if CV_MAJOR_VERSION > 2 && !defined(HAVE_OPENCV_XFEATURES2D)
     // OpenCV>2 without xFeatures2D module doesn't have BRIEF
-    RTABMAP_PARAM(Vis, FeatureType, int, 8, "0=SURF 1=SIFT 2=ORB 3=FAST/FREAK 4=FAST/BRIEF 5=GFTT/FREAK 6=GFTT/BRIEF 7=BRISK 8=GFTT/ORB 9=KAZE 10=ORB-OCTREE 11=SuperPoint Torch.");
+    RTABMAP_PARAM(Vis, FeatureType, int, 8, "0=SURF 1=SIFT 2=ORB 3=FAST/FREAK 4=FAST/BRIEF 5=GFTT/FREAK 6=GFTT/BRIEF 7=BRISK 8=GFTT/ORB 9=KAZE 10=ORB-OCTREE 11=SuperPoint 12=SURF/FREAK 13=GFTT/DAISY 14=SURF/DAISY");
 #else
-    RTABMAP_PARAM(Vis, FeatureType, int, 6, "0=SURF 1=SIFT 2=ORB 3=FAST/FREAK 4=FAST/BRIEF 5=GFTT/FREAK 6=GFTT/BRIEF 7=BRISK 8=GFTT/ORB 9=KAZE 10=ORB-OCTREE 11=SuperPoint Torch.");
+    RTABMAP_PARAM(Vis, FeatureType, int, 6, "0=SURF 1=SIFT 2=ORB 3=FAST/FREAK 4=FAST/BRIEF 5=GFTT/FREAK 6=GFTT/BRIEF 7=BRISK 8=GFTT/ORB 9=KAZE 10=ORB-OCTREE 11=SuperPoint 12=SURF/FREAK 13=GFTT/DAISY 14=SURF/DAISY");
 #endif
     RTABMAP_PARAM(Vis, MaxFeatures,              int, 1000,   "0 no limits.");
     RTABMAP_PARAM(Vis, MaxDepth,                  float, 0,   "Max depth of the features (0 means no limit).");
@@ -602,7 +603,7 @@ class RTABMAP_EXP Parameters
     RTABMAP_PARAM(Vis, GridCols,                 int, 1,      uFormat("Number of columns of the grid used to extract uniformly \"%s / grid cells\" features from each cell.", kVisMaxFeatures().c_str()));
     RTABMAP_PARAM(Vis, CorType,                  int, 0,      "Correspondences computation approach: 0=Features Matching, 1=Optical Flow");
     RTABMAP_PARAM(Vis, CorNNType,                int, 1,    uFormat("[%s=0] kNNFlannNaive=0, kNNFlannKdTree=1, kNNFlannLSH=2, kNNBruteForce=3, kNNBruteForceGPU=4, BruteForceCrossCheck=5, SuperGlue=6, GMS=7. Used for features matching approach.", kVisCorType().c_str()));
-    RTABMAP_PARAM(Vis, CorNNDR,                  float, 0.6,  uFormat("[%s=0] NNDR: nearest neighbor distance ratio. Used for knn features matching approach.", kVisCorType().c_str()));
+    RTABMAP_PARAM(Vis, CorNNDR,                  float, 0.8,  uFormat("[%s=0] NNDR: nearest neighbor distance ratio. Used for knn features matching approach.", kVisCorType().c_str()));
     RTABMAP_PARAM(Vis, CorGuessWinSize,          int, 20,     uFormat("[%s=0] Matching window size (pixels) around projected points when a guess transform is provided to find correspondences. 0 means disabled.", kVisCorType().c_str()));
     RTABMAP_PARAM(Vis, CorGuessMatchToProjection, bool, false, uFormat("[%s=0] Match frame's corners to source's projected points (when guess transform is provided) instead of projected points to frame's corners.", kVisCorType().c_str()));
     RTABMAP_PARAM(Vis, CorFlowWinSize,           int, 16,     uFormat("[%s=1] See cv::calcOpticalFlowPyrLK(). Used for optical flow approach.", kVisCorType().c_str()));

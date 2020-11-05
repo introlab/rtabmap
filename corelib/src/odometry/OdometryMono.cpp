@@ -283,15 +283,15 @@ Transform OdometryMono::computeTransform(SensorData & data, const Transform & gu
 						newCorners[oi] = imagePoints[i];
 						if(localMap_.count(ids[i]) == 1)
 						{
-							if(prevS->getWords().count(ids[i]) == 1)
+							if(prevS->getWords().count(ids[i]) == 1 && !prevS->getWordsKpts().empty())
 							{
 								// set guess if unique
-								refCorners[oi] = prevS->getWords().find(ids[i])->second.pt;
+								refCorners[oi] = prevS->getWordsKpts()[prevS->getWords().find(ids[i])->second].pt;
 							}
-							if(newS->getWords().count(ids[i]) == 1)
+							if(newS->getWords().count(ids[i]) == 1 && !newS->getWordsKpts().empty())
 							{
 								// set guess if unique
-								newCorners[oi] = newS->getWords().find(ids[i])->second.pt;
+								newCorners[oi] = newS->getWordsKpts()[newS->getWords().find(ids[i])->second].pt;
 							}
 						}
 						objectPointsTmp[oi] = objectPoints[i];
@@ -338,9 +338,9 @@ Transform OdometryMono::computeTransform(SensorData & data, const Transform & gu
 						if(this->isInfoDataFilled() && info)
 						{
 							cv::KeyPoint kpt;
-							if(newS->getWords().count(matches[i]) == 1)
+							if(newS->getWords().count(matches[i]) == 1 && !newS->getWordsKpts().empty())
 							{
-								kpt = newS->getWords().find(matches[i])->second;
+								kpt = newS->getWordsKpts()[newS->getWords().find(matches[i])->second];
 							}
 							kpt.pt = newCorners[i];
 							info->words.insert(std::make_pair(matches[i], kpt));
@@ -437,9 +437,9 @@ Transform OdometryMono::computeTransform(SensorData & data, const Transform & gu
 							for(std::set<int>::iterator iter = memory_->getStMem().begin(); iter!=memory_->getStMem().end(); ++iter)
 							{
 								const Signature * s = memory_->getSignature(*iter);
-								for(std::multimap<int, cv::KeyPoint>::const_iterator jter=s->getWords().begin(); jter!=s->getWords().end(); ++jter)
+								for(std::multimap<int, int>::const_iterator jter=s->getWords().begin(); jter!=s->getWords().end(); ++jter)
 								{
-									if(s->getWords().count(jter->first) == 1 && localMap_.find(jter->first)!=localMap_.end())
+									if(s->getWords().count(jter->first) == 1 && localMap_.find(jter->first)!=localMap_.end() && !s->getWordsKpts().empty())
 									{
 										if(wordReferences.find(jter->first)==wordReferences.end())
 										{
@@ -451,7 +451,8 @@ Transform OdometryMono::computeTransform(SensorData & data, const Transform & gu
 										{
 											depth = keyFrameWords3D_.at(s->id()).at(jter->first).x;
 										}
-										wordReferences.at(jter->first).insert(std::make_pair(s->id(), FeatureBA(jter->second, depth, cv::Mat())));
+										const cv::KeyPoint & kpts = s->getWordsKpts()[jter->second];
+										wordReferences.at(jter->first).insert(std::make_pair(s->id(), FeatureBA(kpts, depth, cv::Mat())));
 									}
 								}
 							}
@@ -502,9 +503,21 @@ Transform OdometryMono::computeTransform(SensorData & data, const Transform & gu
 							}
 							else if(float(inliers)/float(imagePoints.size()) < keyFrameThr_)
 							{
+								std::map<int, int> uniqueWordsPrevious = uMultimapToMapUnique(previousS->getWords());
+								std::map<int, int> uniqueWordsNew = uMultimapToMapUnique(newS->getWords());
+								std::map<int, cv::KeyPoint> wordsPrevious;
+								std::map<int, cv::KeyPoint> wordsNew;
+								for(std::map<int, int>::iterator iter=uniqueWordsPrevious.begin(); iter!=uniqueWordsPrevious.end(); ++iter)
+								{
+									wordsPrevious.insert(std::make_pair(iter->first, previousS->getWordsKpts()[iter->second]));
+								}
+								for(std::map<int, int>::iterator iter=uniqueWordsNew.begin(); iter!=uniqueWordsNew.end(); ++iter)
+								{
+									wordsNew.insert(std::make_pair(iter->first, newS->getWordsKpts()[iter->second]));
+								}
 								std::map<int, cv::Point3f> inliers3D = util3d::generateWords3DMono(
-										uMultimapToMapUnique(previousS->getWords()),
-										uMultimapToMapUnique(newS->getWords()),
+										wordsPrevious,
+										wordsNew,
 										cameraModel,
 										cameraTransform,
 										fundMatrixReprojError_,
@@ -626,9 +639,9 @@ Transform OdometryMono::computeTransform(SensorData & data, const Transform & gu
 		int ii=0;
 		for(std::map<int, cv::Point2f>::iterator iter=firstFrameGuessCorners_.begin(); iter!=firstFrameGuessCorners_.end(); ++iter)
 		{
-			std::multimap<int, cv::KeyPoint>::const_iterator jter=refS->getWords().find(iter->first);
-			UASSERT(jter != refS->getWords().end());
-			refCorners[ii] = jter->second.pt;
+			std::multimap<int, int>::const_iterator jter=refS->getWords().find(iter->first);
+			UASSERT(jter != refS->getWords().end() && !refS->getWordsKpts().empty());
+			refCorners[ii] = refS->getWordsKpts()[jter->second].pt;
 			refCornersGuess[ii] = iter->second;
 			cornerIds[ii] = iter->first;
 			++ii;
@@ -800,14 +813,15 @@ Transform OdometryMono::computeTransform(SensorData & data, const Transform & gu
 			// generate kpts
 		if(memory_->update(SensorData(data)))
 		{
-			const std::multimap<int, cv::KeyPoint> & words = memory_->getLastWorkingSignature()->getWords();
-			if((int)words.size() > minInliers_)
+			const Signature * s = memory_->getLastWorkingSignature();
+			const std::multimap<int, int> & words = s->getWords();
+			if((int)words.size() > minInliers_ && !s->getWordsKpts().empty())
 			{
-				for(std::multimap<int, cv::KeyPoint>::const_iterator iter=words.begin(); iter!=words.end(); ++iter)
+				for(std::multimap<int, int>::const_iterator iter=words.begin(); iter!=words.end(); ++iter)
 				{
 					if(words.count(iter->first) == 1)
 					{
-						firstFrameGuessCorners_.insert(std::make_pair(iter->first, iter->second.pt));
+						firstFrameGuessCorners_.insert(std::make_pair(iter->first, s->getWordsKpts()[iter->second].pt));
 					}
 				}
 			}

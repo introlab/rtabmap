@@ -136,11 +136,9 @@ public:
 	std::map<int, int> getWeights() const;
 	int getTotalMemSize() const;
 	double getLastProcessTime() const {return _lastProcessTime;};
-	std::multimap<int, cv::KeyPoint> getWords(int locationId) const;
 	bool isInSTM(int locationId) const;
 	bool isIDsGenerated() const;
 	const Statistics & getStatistics() const;
-	//bool getMetricData(int locationId, cv::Mat & rgb, cv::Mat & depth, float & depthConstant, Transform & pose, Transform & localTransform) const;
 	const std::map<int, Transform> & getLocalOptimizedPoses() const {return _optimizedPoses;}
 	const std::multimap<int, Link> & getLocalConstraints() const {return _constraints;}
 	Transform getPose(int locationId) const;
@@ -198,6 +196,8 @@ public:
 			bool withGrid = false,
 			bool withWords = true,
 			bool withGlobalDescriptors = true) const;
+	std::map<int, Transform> getNodesInRadius(const Transform & pose, float radius); // If radius=0, RGBD/LocalRadius is used. Can return landmarks.
+	std::map<int, Transform> getNodesInRadius(int nodeId, float radius); // If nodeId==0, return poses around latest node. If radius=0, RGBD/LocalRadius is used. Can return landmarks and use landmark id (negative) as request.
 	int detectMoreLoopClosures(
 			float clusterRadius = 0.5f,
 			float clusterAngle = M_PI/6.0f,
@@ -310,6 +310,7 @@ private:
 	double _lastProcessTime;
 	bool _someNodesHaveBeenTransferred;
 	float _distanceTravelled;
+	float _distanceTravelledSinceLastLocalization;
 	bool _optimizeFromGraphEndChanged;
 
 	// Abstract classes containing all loop closure

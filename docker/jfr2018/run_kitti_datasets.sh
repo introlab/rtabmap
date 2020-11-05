@@ -124,6 +124,7 @@ do
        --Mem/STMSize 30\
        --Mem/UseOdomFeatures false \
        --Mem/BinDataKept false \
+       --Vis/CorNNDR 0.6 \
        $SCAN \
        --gt $KITTI_ROOT_PATH"/devkit/cpp/data/odometry/poses/$d.txt"\
        --output "$KITTI_RESULTS_PATH/$d"\

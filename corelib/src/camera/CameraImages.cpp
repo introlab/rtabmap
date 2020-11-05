@@ -436,6 +436,11 @@ bool CameraImages::readPoses(std::list<Transform> & outputPoses, std::list<doubl
 			UERROR("With Karlsruhe format, timestamps (%d) and poses (%d) should match!", (int)stamps.size(), (int)poses.size());
 			return false;
 		}
+		else if(!outputPoses.empty() && inOutStamps.empty() && stamps.empty())
+		{
+			UERROR("Timestamps are empty (poses=%d)! Forgot the set a timestamp file?", (int)outputPoses.size());
+			return false;
+		}
 	}
 	UASSERT_MSG(outputPoses.size() == inOutStamps.size(), uFormat("%d vs %d", (int)outputPoses.size(), (int)inOutStamps.size()).c_str());
 	return true;

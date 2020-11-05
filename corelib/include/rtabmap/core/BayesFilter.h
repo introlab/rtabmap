@@ -61,6 +61,8 @@ public:
 
 	cv::Mat generatePrediction(const Memory * memory, const std::vector<int> & ids);
 
+	unsigned long getMemoryUsed() const;
+
 private:
 	cv::Mat updatePrediction(const cv::Mat & oldPrediction,
 			const Memory * memory,

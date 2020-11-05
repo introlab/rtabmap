@@ -132,11 +132,24 @@ bool Signature::hasLink(int idTo, Link::Type type) const
 	{
 		return _links.find(idTo) != _links.end();
 	}
-	for(std::multimap<int, Link>::const_iterator iter=_links.find(idTo); iter!=_links.end() && iter->first == idTo; ++iter)
+	if(idTo==0)
 	{
-		if(type == iter->second.type())
+		for(std::multimap<int, Link>::const_iterator iter=_links.begin(); iter!=_links.end(); ++iter)
 		{
-			return true;
+			if(type == iter->second.type())
+			{
+				return true;
+			}
+		}
+	}
+	else
+	{
+		for(std::multimap<int, Link>::const_iterator iter=_links.find(idTo); iter!=_links.end() && iter->first == idTo; ++iter)
+		{
+			if(type == iter->second.type())
+			{
+				return true;
+			}
 		}
 	}
 	return false;
@@ -209,11 +222,11 @@ void Signature::removeVirtualLinks()
 float Signature::compareTo(const Signature & s) const
 {
 	float similarity = 0.0f;
-	const std::multimap<int, cv::KeyPoint> & words = s.getWords();
+	const std::multimap<int, int> & words = s.getWords();
 
 	if(!s.isBadSignature() && !this->isBadSignature())
 	{
-		std::list<std::pair<int, std::pair<cv::KeyPoint, cv::KeyPoint> > > pairs;
+		std::list<std::pair<int, std::pair<int, int> > > pairs;
 		int totalWords = ((int)_words.size()-_invalidWordsCount)>((int)words.size()-s.getInvalidWordsCount())?((int)_words.size()-_invalidWordsCount):((int)words.size()-s.getInvalidWordsCount());
 		UASSERT(totalWords > 0);
 		EpipolarGeometry::findPairs(words, _words, pairs);
@@ -225,11 +238,9 @@ float Signature::compareTo(const Signature & s) const
 
 void Signature::changeWordsRef(int oldWordId, int activeWordId)
 {
-	std::list<cv::KeyPoint> kps = uValues(_words, oldWordId);
-	if(kps.size())
+	std::list<int> words = uValues(_words, oldWordId);
+	if(words.size())
 	{
-		std::list<cv::Point3f> pts = uValues(_words3, oldWordId);
-		std::list<cv::Mat> descriptors = uValues(_wordsDescriptors, oldWordId);
 		if(oldWordId<=0)
 		{
 			_invalidWordsCount-=(int)_words.erase(oldWordId);
@@ -239,37 +250,41 @@ void Signature::changeWordsRef(int oldWordId, int activeWordId)
 		{
 			_words.erase(oldWordId);
 		}
-		_words3.erase(oldWordId);
-		_wordsDescriptors.erase(oldWordId);
+
 		_wordsChanged.insert(std::make_pair(oldWordId, activeWordId));
-		for(std::list<cv::KeyPoint>::const_iterator iter=kps.begin(); iter!=kps.end(); ++iter)
+		for(std::list<int>::const_iterator iter=words.begin(); iter!=words.end(); ++iter)
 		{
-			_words.insert(std::pair<int, cv::KeyPoint>(activeWordId, (*iter)));
-		}
-		for(std::list<cv::Point3f>::const_iterator iter=pts.begin(); iter!=pts.end(); ++iter)
-		{
-			_words3.insert(std::pair<int, cv::Point3f>(activeWordId, (*iter)));
-		}
-		for(std::list<cv::Mat>::const_iterator iter=descriptors.begin(); iter!=descriptors.end(); ++iter)
-		{
-			_wordsDescriptors.insert(std::pair<int, cv::Mat>(activeWordId, (*iter)));
+			_words.insert(std::pair<int, int>(activeWordId, (*iter)));
 		}
 	}
 }
 
-void Signature::setWords(const std::multimap<int, cv::KeyPoint> & words)
+void Signature::setWords(const std::multimap<int, int> & words,
+		const std::vector<cv::KeyPoint> & keypoints,
+		const std::vector<cv::Point3f> & points,
+		const cv::Mat & descriptors)
 {
+	UASSERT_MSG(descriptors.empty() || descriptors.rows == (int)words.size(), uFormat("words=%d, descriptors=%d", (int)words.size(), descriptors.rows).c_str());
+	UASSERT_MSG(points.empty() || points.size() == words.size(),  uFormat("words=%d, points=%d", (int)words.size(), (int)points.size()).c_str());
+	UASSERT_MSG(keypoints.empty() || keypoints.size() == words.size(),  uFormat("words=%d, descriptors=%d", (int)words.size(), (int)keypoints.size()).c_str());
+	UASSERT(words.empty() || !keypoints.empty() || !points.empty() || !descriptors.empty());
+
+	_invalidWordsCount = 0;
+	for(std::multimap<int, int>::const_iterator iter=words.begin(); iter!=words.end(); ++iter)
+	{
+		if(iter->first<=0)
+		{
+			++_invalidWordsCount;
+		}
+		// make sure indexes are all valid!
+		UASSERT_MSG(iter->second >=0 && iter->second < (int)words.size(), uFormat("iter->second=%d words.size()=%d", iter->second, (int)words.size()).c_str());
+	}
+
 	_enabled = false;
 	_words = words;
-	_invalidWordsCount = 0;
-	for(std::multimap<int, cv::KeyPoint>::iterator iter=_words.begin(); iter!=_words.end(); ++iter)
-	{
-		if(iter->first>0)
-		{
-			break;
-		}
-		++_invalidWordsCount;
-	}
+	_wordsKpts = keypoints;
+	_words3 = points;
+	_wordsDescriptors = descriptors.clone();
 }
 
 bool Signature::isBadSignature() const
@@ -280,24 +295,30 @@ bool Signature::isBadSignature() const
 void Signature::removeAllWords()
 {
 	_words.clear();
+	_wordsKpts.clear();
 	_words3.clear();
-	_wordsDescriptors.clear();
+	_wordsDescriptors = cv::Mat();
 	_invalidWordsCount = 0;
 }
 
-void Signature::removeWord(int wordId)
+void Signature::setWordsDescriptors(const cv::Mat & descriptors)
 {
-	if(wordId<=0)
+	if(descriptors.empty())
 	{
-		_invalidWordsCount-=(int)_words.erase(wordId);
-		UASSERT(_invalidWordsCount>=0);
+		if(_wordsKpts.empty() && _words3.empty())
+		{
+			removeAllWords();
+		}
+		else
+		{
+			_wordsDescriptors = cv::Mat();
+		}
 	}
 	else
 	{
-		_words.erase(wordId);
+		UASSERT(descriptors.rows == (int)_words.size());
+		_wordsDescriptors = descriptors.clone();
 	}
-	_words3.erase(wordId);
-	_wordsDescriptors.clear();
 }
 
 cv::Mat Signature::getPoseCovariance() const
@@ -321,19 +342,23 @@ cv::Mat Signature::getPoseCovariance() const
 	return covariance;
 }
 
-long Signature::getMemoryUsed(bool withSensorData) const // Return memory usage in Bytes
+unsigned long Signature::getMemoryUsed(bool withSensorData) const // Return memory usage in Bytes
 {
-	long total =  _words.size() * sizeof(float) * 8 +
-				  _words3.size() * sizeof(float) * 4;
-	if(!_wordsDescriptors.empty())
-	{
-		total += _wordsDescriptors.size() * sizeof(int);
-		total += _wordsDescriptors.size() * _wordsDescriptors.begin()->second.total() * _wordsDescriptors.begin()->second.elemSize();
-	}
+	unsigned long total = sizeof(Signature);
+	total += _words.size() * (sizeof(int)*2+sizeof(std::multimap<int, cv::KeyPoint>::iterator)) + sizeof(std::multimap<int, cv::KeyPoint>);
+	total += _wordsKpts.size() * sizeof(cv::KeyPoint) + sizeof(std::vector<cv::KeyPoint>);
+	total += _words3.size() * sizeof(cv::Point3f) + sizeof(std::vector<cv::Point3f>);
+	total += _wordsDescriptors.total() * _wordsDescriptors.elemSize() + sizeof(cv::Mat);
+	total += _wordsChanged.size() * (sizeof(int)*2+sizeof(std::map<int, int>::iterator)) + sizeof(std::map<int, int>);
 	if(withSensorData)
 	{
 		total+=_sensorData.getMemoryUsed();
 	}
+	total += _pose.size() * (sizeof(Transform) + sizeof(float)*12);
+	total += _groundTruthPose.size() * (sizeof(Transform) + sizeof(float)*12);
+	total += _velocity.size() * sizeof(float);
+	total += _links.size() * (sizeof(int) + sizeof(Transform) + 12 * sizeof(float) + sizeof(cv::Mat) + 36 * sizeof(double)+sizeof(std::multimap<int, Link>::iterator)) + sizeof(std::multimap<int, Link>);
+	total += _landmarks.size() * (sizeof(int) + sizeof(Transform) + 12 * sizeof(float) + sizeof(cv::Mat) + 36 * sizeof(double)+sizeof(std::map<int, Link>::iterator)) + sizeof(std::map<int, Link>);
 	return total;
 }
 

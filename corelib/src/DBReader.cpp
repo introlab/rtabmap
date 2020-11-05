@@ -47,16 +47,16 @@ DBReader::DBReader(const std::string & databasePath,
 				   bool odometryIgnored,
 				   bool ignoreGoalDelay,
 				   bool goalsIgnored,
-				   int stopId,
+				   int startId,
 				   int cameraIndex,
-				   int endId) :
+				   int stopId) :
 	Camera(frameRate),
 	_paths(uSplit(databasePath, ';')),
 	_odometryIgnored(odometryIgnored),
 	_ignoreGoalDelay(ignoreGoalDelay),
 	_goalsIgnored(goalsIgnored),
-	_startId(stopId),
-	_stopId(endId),
+	_startId(startId),
+	_stopId(stopId),
 	_cameraIndex(cameraIndex),
 	_dbDriver(0),
 	_currentId(_ids.end()),
@@ -76,16 +76,16 @@ DBReader::DBReader(const std::list<std::string> & databasePaths,
 				   bool odometryIgnored,
 				   bool ignoreGoalDelay,
 				   bool goalsIgnored,
-				   int stopId,
+				   int startId,
 				   int cameraIndex,
-				   int endId) :
+				   int stopId) :
 	Camera(frameRate),
    _paths(databasePaths),
 	_odometryIgnored(odometryIgnored),
 	_ignoreGoalDelay(ignoreGoalDelay),
 	_goalsIgnored(goalsIgnored),
-	_startId(stopId),
-	_stopId(endId),
+	_startId(startId),
+	_stopId(stopId),
 	_cameraIndex(cameraIndex),
 	_dbDriver(0),
 	_currentId(_ids.end()),
@@ -510,23 +510,9 @@ SensorData DBReader::getNextData(CameraInfo * info)
 					data.gps().stamp()!=0.0?1:0,
 					gravityTransform.isNull()?0:1);
 
-			cv::Mat descriptors;
-			if(!s->getWordsDescriptors().empty())
-			{
-				descriptors = cv::Mat(
-					s->getWordsDescriptors().size(),
-					s->getWordsDescriptors().begin()->second.cols,
-					s->getWordsDescriptors().begin()->second.type());
-				int i=0;
-				for(std::multimap<int, cv::Mat>::const_iterator iter=s->getWordsDescriptors().begin();
-					iter!=s->getWordsDescriptors().end();
-					++iter, ++i)
-				{
-					iter->second.copyTo(descriptors.row(i));
-				}
-			}
-			std::vector<cv::KeyPoint> keypoints = uValues(s->getWords());
-			std::vector<cv::Point3f> keypoints3D = uValues(s->getWords3());
+			cv::Mat descriptors = s->getWordsDescriptors().clone();
+			const std::vector<cv::KeyPoint> & keypoints = s->getWordsKpts();
+			const std::vector<cv::Point3f> & keypoints3D = s->getWords3();
 			if(!keypoints.empty() &&
 			   (keypoints3D.empty() || keypoints.size() == keypoints3D.size()) &&
 			   (descriptors.empty() || (int)keypoints.size() == descriptors.rows))

@@ -1678,6 +1678,86 @@ void UPlotLegend::moveDown(UPlotLegendItem * item)
 	}
 }
 
+QString UPlotLegend::getAllCurveDataAsText() const
+{
+	QList<UPlotLegendItem *> items = this->findChildren<UPlotLegendItem*>();
+	if(items.size())
+	{
+		// create common x-axis
+		QMap<qreal, qreal> xAxisMap;
+		for(int i=0; i<items.size(); ++i)
+		{
+			QMap<qreal, qreal> data;
+			items.at(i)->curve()->getData(data);
+			for(QMap<qreal, qreal>::iterator iter=data.begin(); iter!=data.end(); ++iter)
+			{
+				xAxisMap.insert(iter.key(), iter.value());
+			}
+		}
+		QList<qreal> xAxis = xAxisMap.uniqueKeys();
+
+		QVector<QVector<qreal> > axes;
+		for(int i=0; i<items.size(); ++i)
+		{
+			QMap<qreal, qreal> data;
+			items.at(i)->curve()->getData(data);
+
+			QVector<qreal> y(xAxis.size(), std::numeric_limits<qreal>::quiet_NaN());
+			// just to make sure that we have the same number of data on each curve, set NAN for unknowns
+			int j=0;
+			for(QList<qreal>::iterator iter=xAxis.begin(); iter!=xAxis.end(); ++iter)
+			{
+				if(data.contains(*iter))
+				{
+					y[j] = data.value(*iter);
+				}
+				++j;
+			}
+			axes.push_back(y);
+		}
+		if(!xAxis.empty())
+		{
+			axes.push_front(xAxis.toVector());
+			QString text;
+			text.append('x');
+			text.append('\t');
+			for(int i=0; i<items.size(); ++i)
+			{
+				text.append(items.at(i)->curve()->name());
+				if(i+1<axes.size())
+				{
+					text.append('\t');
+				}
+			}
+			text.append('\n');
+			for(int i=0; i<axes[0].size(); ++i)
+			{
+				for(int j=0; j<axes.size(); ++j)
+				{
+					if(uIsNan(axes[j][i]))
+					{
+						text.append("NaN"); // NaN is interpreted by default as NaN in MatLab/Octave
+					}
+					else
+					{
+						text.append(QString::number(axes[j][i]));
+					}
+					if(j+1<axes.size())
+					{
+						text.append('\t');
+					}
+				}
+				if(i+1<axes[0].size())
+				{
+					text.append("\n");
+				}
+			}
+			return text;
+		}
+	}
+	return "";
+}
+
 void UPlotLegend::contextMenuEvent(QContextMenuEvent * event)
 {
 	QAction * action = _menu->exec(event->globalPos());
@@ -1687,81 +1767,11 @@ void UPlotLegend::contextMenuEvent(QContextMenuEvent * event)
 	}
 	else if(action == _aCopyAllCurvesToClipboard)
 	{
-		QList<UPlotLegendItem *> items = this->findChildren<UPlotLegendItem*>();
-		if(items.size())
+		QString data = getAllCurveDataAsText();
+		if(!data.isEmpty())
 		{
-			// create common x-axis
-			QMap<qreal, qreal> xAxisMap;
-			for(int i=0; i<items.size(); ++i)
-			{
-				QMap<qreal, qreal> data;
-				items.at(i)->curve()->getData(data);
-				for(QMap<qreal, qreal>::iterator iter=data.begin(); iter!=data.end(); ++iter)
-				{
-					xAxisMap.insert(iter.key(), iter.value());
-				}
-			}
-			QList<qreal> xAxis = xAxisMap.uniqueKeys();
-
-			QVector<QVector<qreal> > axes;
-			for(int i=0; i<items.size(); ++i)
-			{
-				QMap<qreal, qreal> data;
-				items.at(i)->curve()->getData(data);
-
-				QVector<qreal> y(xAxis.size(), std::numeric_limits<qreal>::quiet_NaN());
-				// just to make sure that we have the same number of data on each curve, set NAN for unknowns
-				int j=0;
-				for(QList<qreal>::iterator iter=xAxis.begin(); iter!=xAxis.end(); ++iter)
-				{
-					if(data.contains(*iter))
-					{
-						y[j] = data.value(*iter);
-					}
-					++j;
-				}
-				axes.push_back(y);
-			}
-			if(!xAxis.empty())
-			{
-				axes.push_front(xAxis.toVector());
-				QString text;
-				text.append('x');
-				text.append('\t');
-				for(int i=0; i<items.size(); ++i)
-				{
-					text.append(items.at(i)->curve()->name());
-					if(i+1<axes.size())
-					{
-						text.append('\t');
-					}
-				}
-				text.append('\n');
-				for(int i=0; i<axes[0].size(); ++i)
-				{
-					for(int j=0; j<axes.size(); ++j)
-					{
-						if(uIsNan(axes[j][i]))
-						{
-							text.append("NA");
-						}
-						else
-						{
-							text.append(QString::number(axes[j][i]));
-						}
-						if(j+1<axes.size())
-						{
-							text.append('\t');
-						}
-					}
-					if(i+1<axes[0].size())
-					{
-						text.append("\n");
-					}
-				}
-				QClipboard * clipboard = QApplication::clipboard();
-				clipboard->setText(text);
-			}
+			QClipboard * clipboard = QApplication::clipboard();
+			clipboard->setText(data);
 		}
 	}
 	else if(action == _aShowAllStdDevMeanMax)
@@ -3261,4 +3271,13 @@ void UPlot::moveCurve(const UPlotCurve * curve, int index)
 		}
 		this->update();
 	}
+}
+
+QString UPlot::getAllCurveDataAsText() const
+{
+	if(_legend)
+	{
+		return _legend->getAllCurveDataAsText();
+	}
+	return "";
 }

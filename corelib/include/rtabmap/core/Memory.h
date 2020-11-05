@@ -199,9 +199,10 @@ public:
 	cv::Mat getImageCompressed(int signatureId) const;
 	SensorData getNodeData(int locationId, bool images, bool scan, bool userData, bool occupancyGrid) const;
 	void getNodeWordsAndGlobalDescriptors(int nodeId,
-			std::multimap<int, cv::KeyPoint> & words,
-			std::multimap<int, cv::Point3f> & words3,
-			std::multimap<int, cv::Mat> & wordsDescriptors,
+			std::multimap<int, int> & words,
+			std::vector<cv::KeyPoint> & wordsKpts,
+			std::vector<cv::Point3f> & words3,
+			cv::Mat & wordsDescriptors,
 			std::vector<GlobalDescriptor> & globalDescriptors) const;
 	void getNodeCalibration(int nodeId,
 			std::vector<CameraModel> & models,
@@ -225,6 +226,7 @@ public:
 	virtual void dumpMemory(std::string directory) const;
 	virtual void dumpSignatures(const char * fileNameSign, bool words3D) const;
 	void dumpDictionary(const char * fileNameRef, const char * fileNameDesc) const;
+	unsigned long getMemoryUsed() const; //Bytes
 
 	void generateGraph(const std::string & fileName, const std::set<int> & ids = std::set<int>());
 

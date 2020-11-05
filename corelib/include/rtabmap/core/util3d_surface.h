@@ -148,7 +148,8 @@ pcl::TextureMesh::Ptr RTABMAP_EXP createTextureMesh(
 		int minClusterSize = 50, // minimum size of polygons clusters textured
 		const std::vector<float> & roiRatios = std::vector<float>(), // [left, right, top, bottom] region of interest (in ratios) of the image projected.
 		const ProgressState * state = 0,
-		std::vector<std::map<int, pcl::PointXY> > * vertexToPixels = 0);
+		std::vector<std::map<int, pcl::PointXY> > * vertexToPixels = 0, // For each point, we have a list of cameras with corresponding pixel in it. Beware that the camera ids don't correspond to pose ids, they are indexes from 0 to total camera models and texture's materials.
+		bool distanceToCamPolicy = false);
 pcl::TextureMesh::Ptr RTABMAP_EXP createTextureMesh(
 		const pcl::PolygonMesh::Ptr & mesh,
 		const std::map<int, Transform> & poses,
@@ -160,7 +161,8 @@ pcl::TextureMesh::Ptr RTABMAP_EXP createTextureMesh(
 		int minClusterSize = 50, // minimum size of polygons clusters textured
 		const std::vector<float> & roiRatios = std::vector<float>(), // [left, right, top, bottom] region of interest (in ratios) of the image projected.
 		const ProgressState * state = 0,
-		std::vector<std::map<int, pcl::PointXY> > * vertexToPixels = 0);
+		std::vector<std::map<int, pcl::PointXY> > * vertexToPixels = 0, // For each point, we have a list of cameras with corresponding pixel in it. Beware that the camera ids don't correspond to pose ids, they are indexes from 0 to total camera models and texture's materials.
+		bool distanceToCamPolicy = false);
 
 /**
  * Remove not textured polygon clusters. If minClusterSize<0, only the largest cluster is kept.
@@ -263,8 +265,9 @@ bool RTABMAP_EXP multiBandTexturing(
 		int textureSize = 8192,
 		const std::string & textureFormat = "jpg",    // png, jpg
 		const std::map<int, std::map<int, cv::Vec4d> > & gains = std::map<int, std::map<int, cv::Vec4d> >(),       // optional output of util3d::mergeTextures()
-		const std::map<int, std::map<int, cv::Mat> > & blendingGains = std::map<int, std::map<int, cv::Mat> >(),    // optional output of util3d::mergeTextures()
-		const std::pair<float, float> & contrastValues = std::pair<float, float>(0,0));               // optional output of util3d::mergeTextures()
+		const std::map<int, std::map<int, cv::Mat> > & blendingGains = std::map<int, std::map<int, cv::Mat> >(),   // optional output of util3d::mergeTextures()
+		const std::pair<float, float> & contrastValues = std::pair<float, float>(0,0),                             // optional output of util3d::mergeTextures()
+		bool gainRGB = true);
 
 cv::Mat RTABMAP_EXP computeNormals(
 		const cv::Mat & laserScan,

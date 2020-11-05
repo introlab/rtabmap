@@ -158,5 +158,7 @@ private:
 	Transform localTransform_;
 };
 
+RTABMAP_EXP std::ostream& operator<<(std::ostream& os, const CameraModel& model);
+
 } /* namespace rtabmap */
 #endif /* CAMERAMODEL_H_ */

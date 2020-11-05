@@ -35,7 +35,7 @@ install:
   # OpenCV
   #- ps: wget 'http://kent.dl.sourceforge.net/project/opencvlibrary/opencv-win/3.3.1/opencv-3.3.1-vc14.exe' -outfile opencv-3.3.1-vc14.exe
   #- cmd: opencv-3.3.1-vc14.exe -o"C:\Program Files" -y
-  - ps: wget 'http://kent.dl.sourceforge.net/project/opencvlibrary/opencv-win/2.4.13/opencv-2.4.13.6-vc14.exe' -outfile opencv-2.4.13.6-vc14.exe
+  - ps: $url = "https://downloads.sourceforge.net/project/opencvlibrary/opencv-win/2.4.13/opencv-2.4.13.6-vc14.exe?r=&ts="+([int64](([datetime]::UtcNow)-(get-date "1/1/1970")).TotalSeconds) ; wget $url -outfile opencv-2.4.13.6-vc14.exe
   - cmd: opencv-2.4.13.6-vc14.exe -o"C:\Program Files" -y
   - ECHO "Installed OpenCV:"
   - ps: "ls \"C:/Program Files/opencv/build\""

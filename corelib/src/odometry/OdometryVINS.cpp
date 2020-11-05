@@ -185,7 +185,7 @@ public:
 	        mBuf.unlock();
 	        TicToc processTime;
 	        processMeasurements();
-	        printf("process time: %f\n", processTime.toc());
+	        UDEBUG("VINS process time: %f", processTime.toc());
 	    }
 
 	}

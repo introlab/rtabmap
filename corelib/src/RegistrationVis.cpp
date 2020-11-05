@@ -213,6 +213,10 @@ void RegistrationVis::parseParameters(const ParametersMap & parameters)
 	{
 		uInsert(_featureParameters, ParametersPair(Parameters::kKpNndrRatio(), parameters.at(Parameters::kVisCorNNDR())));
 	}
+	if(uContains(parameters, Parameters::kKpByteToFloat()))
+	{
+		uInsert(_featureParameters, ParametersPair(Parameters::kKpByteToFloat(), parameters.at(Parameters::kKpByteToFloat())));
+	}
 	if(uContains(parameters, Parameters::kVisFeatureType()))
 	{
 		uInsert(_featureParameters, ParametersPair(Parameters::kKpDetectorStrategy(), parameters.at(Parameters::kVisFeatureType())));
@@ -299,7 +303,7 @@ Transform RegistrationVis::computeTransformationImpl(
 			fromSignature.id(),
 			(int)fromSignature.getWords().size(),
 			(int)fromSignature.getWords3().size(),
-			(int)fromSignature.getWordsDescriptors().size(),
+			(int)fromSignature.getWordsDescriptors().rows,
 			(int)fromSignature.sensorData().keypoints().size(),
 			(int)fromSignature.sensorData().keypoints3D().size(),
 			fromSignature.sensorData().descriptors().rows,
@@ -312,7 +316,7 @@ Transform RegistrationVis::computeTransformationImpl(
 			toSignature.id(),
 			(int)toSignature.getWords().size(),
 			(int)toSignature.getWords3().size(),
-			(int)toSignature.getWordsDescriptors().size(),
+			(int)toSignature.getWordsDescriptors().rows,
 			(int)toSignature.sensorData().keypoints().size(),
 			(int)toSignature.sensorData().keypoints3D().size(),
 			toSignature.sensorData().descriptors().rows,
@@ -345,16 +349,16 @@ Transform RegistrationVis::computeTransformationImpl(
 				fromSignature.getWords3().empty() ||
 				(fromSignature.getWords().size() == fromSignature.getWords3().size()));
 		UASSERT((int)fromSignature.sensorData().keypoints().size() == fromSignature.sensorData().descriptors().rows ||
-				fromSignature.getWords().size() == fromSignature.getWordsDescriptors().size() ||
-				fromSignature.sensorData().descriptors().rows == 0 ||
-				fromSignature.getWordsDescriptors().size() == 0);
+				(int)fromSignature.getWords().size() == fromSignature.getWordsDescriptors().rows ||
+				fromSignature.sensorData().descriptors().empty() ||
+				fromSignature.getWordsDescriptors().empty() == 0);
 		UASSERT((toSignature.getWords().empty() && toSignature.getWords3().empty())||
 				(toSignature.getWords().size() && toSignature.getWords3().empty())||
 				(toSignature.getWords().size() == toSignature.getWords3().size()));
 		UASSERT((int)toSignature.sensorData().keypoints().size() == toSignature.sensorData().descriptors().rows ||
-				toSignature.getWords().size() == toSignature.getWordsDescriptors().size() ||
-				toSignature.sensorData().descriptors().rows == 0 ||
-				toSignature.getWordsDescriptors().size() == 0);
+				(int)toSignature.getWords().size() == toSignature.getWordsDescriptors().rows ||
+				toSignature.sensorData().descriptors().empty() ||
+				toSignature.getWordsDescriptors().empty());
 		UASSERT(fromSignature.sensorData().imageRaw().empty() ||
 				fromSignature.sensorData().imageRaw().type() == CV_8UC1 ||
 				fromSignature.sensorData().imageRaw().type() == CV_8UC3);
@@ -367,6 +371,7 @@ Transform RegistrationVis::computeTransformationImpl(
 		cv::Mat imageTo = toSignature.sensorData().imageRaw();
 
 		std::vector<int> orignalWordsFromIds;
+		int kptsFromSource = 0;
 		if(fromSignature.getWords().empty())
 		{
 			if(fromSignature.sensorData().keypoints().empty())
@@ -399,22 +404,26 @@ Transform RegistrationVis::computeTransformationImpl(
 			else
 			{
 				kptsFrom = fromSignature.sensorData().keypoints();
+				kptsFromSource = 1;
 			}
 		}
 		else
 		{
-			kptsFrom.resize(fromSignature.getWords().size());
+			kptsFromSource = 2;
 			orignalWordsFromIds.resize(fromSignature.getWords().size());
 			int i=0;
 			bool allUniques = true;
-			for(std::multimap<int, cv::KeyPoint>::const_iterator iter=fromSignature.getWords().begin(); iter!=fromSignature.getWords().end(); ++iter)
+			int previousIdAdded = 0;
+			kptsFrom = fromSignature.getWordsKpts();
+			for(std::multimap<int, int>::const_iterator iter=fromSignature.getWords().begin(); iter!=fromSignature.getWords().end(); ++iter)
 			{
-				kptsFrom[i] = iter->second;
-				orignalWordsFromIds[i] = iter->first;
-				if(i>0 && iter->first==orignalWordsFromIds[i-1])
+				UASSERT(iter->second>=0 && iter->second<(int)orignalWordsFromIds.size());
+				orignalWordsFromIds[iter->second] = iter->first;
+				if(i>0 && iter->first==previousIdAdded)
 				{
 					allUniques = false;
 				}
+				previousIdAdded = iter->first;
 				++i;
 			}
 			if(!allUniques)
@@ -424,12 +433,14 @@ Transform RegistrationVis::computeTransformationImpl(
 			}
 		}
 
-		std::multimap<int, cv::KeyPoint> wordsFrom;
-		std::multimap<int, cv::KeyPoint> wordsTo;
-		std::multimap<int, cv::Point3f> words3From;
-		std::multimap<int, cv::Point3f> words3To;
-		std::multimap<int, cv::Mat> wordsDescFrom;
-		std::multimap<int, cv::Mat> wordsDescTo;
+		std::multimap<int, int> wordsFrom;
+		std::multimap<int, int> wordsTo;
+		std::vector<cv::KeyPoint> wordsKptsFrom;
+		std::vector<cv::KeyPoint> wordsKptsTo;
+		std::vector<cv::Point3f> words3From;
+		std::vector<cv::Point3f> words3To;
+		cv::Mat wordsDescFrom;
+		cv::Mat wordsDescTo;
 		if(_correspondencesApproach == 1) //Optical Flow
 		{
 			UDEBUG("");
@@ -450,7 +461,7 @@ Transform RegistrationVis::computeTransformationImpl(
 			std::vector<cv::Point3f> kptsFrom3D;
 			if(kptsFrom.size() == fromSignature.getWords3().size())
 			{
-				kptsFrom3D = uValues(fromSignature.getWords3());
+				kptsFrom3D = fromSignature.getWords3();
 			}
 			else if(kptsFrom.size() == fromSignature.sensorData().keypoints3D().size())
 			{
@@ -540,13 +551,16 @@ Transform RegistrationVis::computeTransformationImpl(
 				UASSERT(kptsTo3D.size() == 0 || kptsTo.size() == kptsTo3D.size());
 				for(unsigned int i=0; i< kptsFrom3DKept.size(); ++i)
 				{
-					int id = orignalWordsFromIds.size()?orignalWordsFromIds[i]:i;
-					wordsFrom.insert(std::make_pair(id, kptsFrom[i]));
-					words3From.insert(std::make_pair(id, kptsFrom3DKept[i]));
-					wordsTo.insert(std::make_pair(id, kptsTo[i]));
-					if(kptsTo3D.size())
+					int id = !orignalWordsFromIds.empty()?orignalWordsFromIds[i]:i;
+					wordsFrom.insert(wordsFrom.end(), std::make_pair(id, wordsFrom.size()));
+					wordsKptsFrom.push_back(kptsFrom[i]);
+					words3From.push_back(kptsFrom3DKept[i]);
+
+					wordsTo.insert(wordsTo.end(), std::make_pair(id, wordsTo.size()));
+					wordsKptsTo.push_back(kptsTo[i]);
+					if(!kptsTo3D.empty())
 					{
-						words3To.insert(std::make_pair(id, kptsTo3D[i]));
+						words3To.push_back(kptsTo3D[i]);
 					}
 				}
 				toSignature.sensorData().setFeatures(kptsTo, kptsTo3D, cv::Mat());
@@ -562,9 +576,10 @@ Transform RegistrationVis::computeTransformationImpl(
 				{
 					if(util3d::isFinite(kptsFrom3D[i]))
 					{
-						int id = orignalWordsFromIds.size()?orignalWordsFromIds[i]:i;
-						wordsFrom.insert(std::make_pair(id, kptsFrom[i]));
-						words3From.insert(std::make_pair(id, kptsFrom3D[i]));
+						int id = !orignalWordsFromIds.empty()?orignalWordsFromIds[i]:i;
+						wordsFrom.insert(wordsFrom.end(), std::make_pair(id, wordsFrom.size()));
+						wordsKptsFrom.push_back(kptsFrom[i]);
+						words3From.push_back(kptsFrom3D[i]);
 					}
 				}
 				toSignature.sensorData().setFeatures(std::vector<cv::KeyPoint>(), std::vector<cv::Point3f>(), cv::Mat());
@@ -576,6 +591,7 @@ Transform RegistrationVis::computeTransformationImpl(
 		{
 			UDEBUG("");
 			std::vector<cv::KeyPoint> kptsTo;
+			int kptsToSource = 0;
 			if(toSignature.getWords().empty())
 			{
 				if(toSignature.sensorData().keypoints().empty() &&
@@ -606,33 +622,28 @@ Transform RegistrationVis::computeTransformationImpl(
 				else
 				{
 					kptsTo = toSignature.sensorData().keypoints();
+					kptsToSource = 1;
 				}
 			}
 			else
 			{
-				kptsTo = uValues(toSignature.getWords());
+				kptsTo = toSignature.getWordsKpts();
+				kptsToSource = 2;
 			}
 
 			// extract descriptors
-			UDEBUG("kptsFrom=%d", (int)kptsFrom.size());
-			UDEBUG("kptsTo=%d", (int)kptsTo.size());
+			UDEBUG("kptsFrom=%d kptsFromSource=%d", (int)kptsFrom.size(), kptsFromSource);
+			UDEBUG("kptsTo=%d kptsToSource=%d", (int)kptsTo.size(), kptsToSource);
 			cv::Mat descriptorsFrom;
-			if(fromSignature.getWordsDescriptors().size() &&
-					((kptsFrom.empty() && fromSignature.getWordsDescriptors().size()) ||
-					 fromSignature.getWordsDescriptors().size() == kptsFrom.size()))
+			if(kptsFromSource == 2 &&
+				fromSignature.getWordsDescriptors().rows &&
+				((kptsFrom.empty() && fromSignature.getWordsDescriptors().rows) ||
+				 fromSignature.getWordsDescriptors().rows == (int)kptsFrom.size()))
 			{
-				descriptorsFrom = cv::Mat(fromSignature.getWordsDescriptors().size(),
-						fromSignature.getWordsDescriptors().begin()->second.cols,
-						fromSignature.getWordsDescriptors().begin()->second.type());
-				int i=0;
-				for(std::multimap<int, cv::Mat>::const_iterator iter=fromSignature.getWordsDescriptors().begin();
-					iter!=fromSignature.getWordsDescriptors().end();
-					++iter, ++i)
-				{
-					iter->second.copyTo(descriptorsFrom.row(i));
-				}
+				descriptorsFrom = fromSignature.getWordsDescriptors();
 			}
-			else if(fromSignature.sensorData().descriptors().rows == (int)kptsFrom.size())
+			else if(kptsFromSource == 1 &&
+					fromSignature.sensorData().descriptors().rows == (int)kptsFrom.size())
 			{
 				descriptorsFrom = fromSignature.sensorData().descriptors();
 			}
@@ -652,20 +663,13 @@ Transform RegistrationVis::computeTransformationImpl(
 			cv::Mat descriptorsTo;
 			if(kptsTo.size())
 			{
-				if(toSignature.getWordsDescriptors().size() == kptsTo.size())
+				if(kptsToSource == 2 &&
+					toSignature.getWordsDescriptors().rows == (int)kptsTo.size())
 				{
-					descriptorsTo = cv::Mat(toSignature.getWordsDescriptors().size(),
-							toSignature.getWordsDescriptors().begin()->second.cols,
-							toSignature.getWordsDescriptors().begin()->second.type());
-					int i=0;
-					for(std::multimap<int, cv::Mat>::const_iterator iter=toSignature.getWordsDescriptors().begin();
-						iter!=toSignature.getWordsDescriptors().end();
-						++iter, ++i)
-					{
-						iter->second.copyTo(descriptorsTo.row(i));
-					}
+					descriptorsTo = toSignature.getWordsDescriptors();
 				}
-				else if(toSignature.sensorData().descriptors().rows == (int)kptsTo.size())
+				else if(kptsToSource == 1 &&
+						toSignature.sensorData().descriptors().rows == (int)kptsTo.size())
 				{
 					descriptorsTo = toSignature.sensorData().descriptors();
 				}
@@ -685,11 +689,13 @@ Transform RegistrationVis::computeTransformationImpl(
 			// create 3D keypoints
 			std::vector<cv::Point3f> kptsFrom3D;
 			std::vector<cv::Point3f> kptsTo3D;
-			if(kptsFrom.size() == fromSignature.getWords3().size())
+			if(kptsFromSource == 2 &&
+				kptsFrom.size() == fromSignature.getWords3().size())
 			{
-				kptsFrom3D = uValues(fromSignature.getWords3());
+				kptsFrom3D = fromSignature.getWords3();
 			}
-			else if(kptsFrom.size() == fromSignature.sensorData().keypoints3D().size())
+			else if(kptsFromSource == 1 &&
+					kptsFrom.size() == fromSignature.sensorData().keypoints3D().size())
 			{
 				kptsFrom3D = fromSignature.sensorData().keypoints3D();
 			}
@@ -720,11 +726,12 @@ Transform RegistrationVis::computeTransformationImpl(
 				_detectorFrom->filterKeypointsByDepth(kptsFrom, descriptorsFrom, kptsFrom3D, _detectorFrom->getMinDepth(), _detectorFrom->getMaxDepth());
 			}
 
-			if(kptsTo.size() == toSignature.getWords3().size())
+			if(kptsToSource == 2 && kptsTo.size() == toSignature.getWords3().size())
 			{
-				kptsTo3D = uValues(toSignature.getWords3());
+				kptsTo3D = toSignature.getWords3();
 			}
-			else if(kptsTo.size() == toSignature.sensorData().keypoints3D().size())
+			else if(kptsToSource == 1 &&
+					kptsTo.size() == toSignature.sensorData().keypoints3D().size())
 			{
 				kptsTo3D = toSignature.sensorData().keypoints3D();
 			}
@@ -854,7 +861,7 @@ Transform RegistrationVis::computeTransformationImpl(
 							UDEBUG("radius search done for guess");
 
 							// Process results (Nearest Neighbor Distance Ratio)
-							int newToId = orignalWordsFromIds.size()?orignalWordsFromIds.back():descriptorsFrom.rows;
+							int newToId = !orignalWordsFromIds.empty()?fromSignature.getWords().rbegin()->first+1:descriptorsFrom.rows;
 							std::map<int,int> addedWordsFrom; //<id, index>
 							std::map<int, int> duplicates; //<fromId, toId>
 							int newWords = 0;
@@ -908,7 +915,7 @@ Transform RegistrationVis::computeTransformationImpl(
 								if(matchedIndex >= 0)
 								{
 									matchedIndex = projectedIndexToDescIndex[matchedIndex];
-									int id = orignalWordsFromIds.size()?orignalWordsFromIds[matchedIndex]:matchedIndex;
+									int id = !orignalWordsFromIds.empty()?orignalWordsFromIds[matchedIndex]:matchedIndex;
 
 									if(addedWordsFrom.find(matchedIndex) != addedWordsFrom.end())
 									{
@@ -919,29 +926,32 @@ Transform RegistrationVis::computeTransformationImpl(
 									{
 										addedWordsFrom.insert(std::make_pair(matchedIndex, id));
 
-										if(kptsFrom.size())
+										wordsFrom.insert(wordsFrom.end(), std::make_pair(id, wordsFrom.size()));
+										if(!kptsFrom.empty())
 										{
-											wordsFrom.insert(std::make_pair(id, kptsFrom[matchedIndex]));
+											wordsKptsFrom.push_back(kptsFrom[matchedIndex]);
 										}
-										words3From.insert(std::make_pair(id, kptsFrom3D[matchedIndex]));
-										wordsDescFrom.insert(std::make_pair(id, descriptorsFrom.row(matchedIndex)));
+										words3From.push_back(kptsFrom3D[matchedIndex]);
+										wordsDescFrom.push_back(descriptorsFrom.row(matchedIndex));
 									}
 
-									wordsTo.insert(std::make_pair(id, kptsTo[i]));
-									wordsDescTo.insert(std::make_pair(id, descriptorsTo.row(i)));
-									if(kptsTo3D.size())
+									wordsTo.insert(wordsTo.end(), std::make_pair(id, wordsTo.size()));
+									wordsKptsTo.push_back(kptsTo[i]);
+									wordsDescTo.push_back(descriptorsTo.row(i));
+									if(!kptsTo3D.empty())
 									{
-										words3To.insert(std::make_pair(id, kptsTo3D[i]));
+										words3To.push_back(kptsTo3D[i]);
 									}
 								}
 								else
 								{
 									// gen fake ids
-									wordsTo.insert(wordsTo.end(), std::make_pair(newToId, kptsTo[i]));
-									wordsDescTo.insert(wordsDescTo.end(), std::make_pair(newToId, descriptorsTo.row(i)));
-									if(kptsTo3D.size())
+									wordsTo.insert(wordsTo.end(), std::make_pair(newToId, wordsTo.size()));
+									wordsKptsTo.push_back(kptsTo[i]);
+									wordsDescTo.push_back(descriptorsTo.row(i));
+									if(!kptsTo3D.empty())
 									{
-										words3To.insert(words3To.end(), std::make_pair(newToId, kptsTo3D[i]));
+										words3To.push_back(kptsTo3D[i]);
 									}
 
 									++newToId;
@@ -958,10 +968,11 @@ Transform RegistrationVis::computeTransformationImpl(
 							{
 								if(util3d::isFinite(kptsFrom3D[i]) && addedWordsFrom.find(i) == addedWordsFrom.end())
 								{
-									int id = orignalWordsFromIds.size()?orignalWordsFromIds[i]:i;
-									wordsFrom.insert(wordsFrom.end(), std::make_pair(id, kptsFrom[i]));
-									wordsDescFrom.insert(wordsDescFrom.end(), std::make_pair(id, descriptorsFrom.row(i)));
-									words3From.insert(words3From.end(), std::make_pair(id, kptsFrom3D[i]));
+									int id = !orignalWordsFromIds.empty()?orignalWordsFromIds[i]:i;
+									wordsFrom.insert(wordsFrom.end(), std::make_pair(id, wordsFrom.size()));
+									wordsKptsFrom.push_back(kptsFrom[i]);
+									wordsDescFrom.push_back(descriptorsFrom.row(i));
+									words3From.push_back(kptsFrom3D[i]);
 
 									++addWordsFromNotMatched;
 								}
@@ -1003,7 +1014,7 @@ Transform RegistrationVis::computeTransformationImpl(
 
 								if(indices[i].size())
 								{
-									info.projectedIDs.push_back(orignalWordsFromIds.size()?orignalWordsFromIds[matchedIndexFrom]:matchedIndexFrom);
+									info.projectedIDs.push_back(!orignalWordsFromIds.empty()?orignalWordsFromIds[matchedIndexFrom]:matchedIndexFrom);
 								}
 
 								if(util3d::isFinite(kptsFrom3D[matchedIndexFrom]))
@@ -1054,26 +1065,28 @@ Transform RegistrationVis::computeTransformationImpl(
 										matchedIndexTo = indices[i].at(0);
 									}
 
-									int id = orignalWordsFromIds.size()?orignalWordsFromIds[matchedIndexFrom]:matchedIndexFrom;
+									int id = !orignalWordsFromIds.empty()?orignalWordsFromIds[matchedIndexFrom]:matchedIndexFrom;
 									addedWordsFrom.insert(addedWordsFrom.end(), matchedIndexFrom);
 
-									if(kptsFrom.size())
+									wordsFrom.insert(wordsFrom.end(), std::make_pair(id, wordsFrom.size()));
+									if(!kptsFrom.empty())
 									{
-										wordsFrom.insert(wordsFrom.end(), std::make_pair(id, kptsFrom[matchedIndexFrom]));
+										wordsKptsFrom.push_back(kptsFrom[matchedIndexFrom]);
 									}
-									words3From.insert(words3From.end(), std::make_pair(id, kptsFrom3D[matchedIndexFrom]));
-									wordsDescFrom.insert(wordsDescFrom.end(), std::make_pair(id, descriptorsFrom.row(matchedIndexFrom)));
+									words3From.push_back(kptsFrom3D[matchedIndexFrom]);
+									wordsDescFrom.push_back(descriptorsFrom.row(matchedIndexFrom));
 
 									if(	matchedIndexTo >= 0 &&
 										addedWordsTo.find(matchedIndexTo) == addedWordsTo.end())
 									{
 										addedWordsTo.insert(matchedIndexTo);
 
-										wordsTo.insert(wordsTo.end(), std::make_pair(id, kptsTo[matchedIndexTo]));
-										wordsDescTo.insert(wordsDescTo.end(), std::make_pair(id, descriptorsTo.row(matchedIndexTo)));
-										if(kptsTo3D.size())
+										wordsTo.insert(wordsTo.end(), std::make_pair(id, wordsTo.size()));
+										wordsKptsTo.push_back(kptsTo[matchedIndexTo]);
+										wordsDescTo.push_back(descriptorsTo.row(matchedIndexTo));
+										if(!kptsTo3D.empty())
 										{
-											words3To.insert(words3To.end(), std::make_pair(id, kptsTo3D[matchedIndexTo]));
+											words3To.push_back(kptsTo3D[matchedIndexTo]);
 										}
 									}
 								}
@@ -1085,23 +1098,25 @@ Transform RegistrationVis::computeTransformationImpl(
 							{
 								if(util3d::isFinite(kptsFrom3D[i]) && addedWordsFrom.find(i) == addedWordsFrom.end())
 								{
-									int id = orignalWordsFromIds.size()?orignalWordsFromIds[i]:i;
-									wordsFrom.insert(wordsFrom.end(), std::make_pair(id, kptsFrom[i]));
-									wordsDescFrom.insert(wordsDescFrom.end(), std::make_pair(id, descriptorsFrom.row(i)));
-									words3From.insert(words3From.end(), std::make_pair(id, kptsFrom3D[i]));
+									int id = !orignalWordsFromIds.empty()?orignalWordsFromIds[i]:i;
+									wordsFrom.insert(wordsFrom.end(), std::make_pair(id, wordsFrom.size()));
+									wordsKptsFrom.push_back(kptsFrom[i]);
+									wordsDescFrom.push_back(descriptorsFrom.row(i));
+									words3From.push_back(kptsFrom3D[i]);
 								}
 							}
 
-							int newToId = orignalWordsFromIds.size()?orignalWordsFromIds.back():descriptorsFrom.rows;
+							int newToId = !orignalWordsFromIds.empty()?fromSignature.getWords().rbegin()->first+1:descriptorsFrom.rows;
 							for(unsigned int i = 0; i < kptsTo.size(); ++i)
 							{
 								if(addedWordsTo.find(i) == addedWordsTo.end())
 								{
-									wordsTo.insert(wordsTo.end(), std::make_pair(newToId, kptsTo[i]));
-									wordsDescTo.insert(wordsDescTo.end(), std::make_pair(newToId, descriptorsTo.row(i)));
-									if(kptsTo3D.size())
+									wordsTo.insert(wordsTo.end(), std::make_pair(newToId, wordsTo.size()));
+									wordsKptsTo.push_back(kptsTo[i]);
+									wordsDescTo.push_back(descriptorsTo.row(i));
+									if(!kptsTo3D.empty())
 									{
-										words3To.insert(words3To.end(), std::make_pair(newToId, kptsTo3D[i]));
+										words3To.push_back(kptsTo3D[i]);
 									}
 									++newToId;
 								}
@@ -1267,15 +1282,16 @@ Transform RegistrationVis::computeTransformationImpl(
 					{
 						if(fromWordIdsSet.count(*iter) == 1)
 						{
-							if (kptsFrom.size())
+							wordsFrom.insert(wordsFrom.end(), std::make_pair(*iter, wordsFrom.size()));
+							if (!kptsFrom.empty())
 							{
-								wordsFrom.insert(std::make_pair(*iter, kptsFrom[i]));
+								wordsKptsFrom.push_back(kptsFrom[i]);
 							}
-							if(kptsFrom3D.size())
+							if(!kptsFrom3D.empty())
 							{
-								words3From.insert(std::make_pair(*iter, kptsFrom3D[i]));
+								words3From.push_back(kptsFrom3D[i]);
 							}
-							wordsDescFrom.insert(std::make_pair(*iter, descriptorsFrom.row(i)));
+							wordsDescFrom.push_back(descriptorsFrom.row(i));
 						}
 						++i;
 					}
@@ -1287,11 +1303,12 @@ Transform RegistrationVis::computeTransformationImpl(
 					{
 						if(toWordIdsSet.count(*iter) == 1)
 						{
-							wordsTo.insert(std::make_pair(*iter, kptsTo[i]));
-							wordsDescTo.insert(std::make_pair(*iter, descriptorsTo.row(i)));
-							if(kptsTo3D.size())
+							wordsTo.insert(wordsTo.end(), std::make_pair(*iter, wordsTo.size()));
+							wordsKptsTo.push_back(kptsTo[i]);
+							wordsDescTo.push_back(descriptorsTo.row(i));
+							if(!kptsTo3D.empty())
 							{
-								words3To.insert(std::make_pair(*iter, kptsTo3D[i]));
+								words3To.push_back(kptsTo3D[i]);
 							}
 						}
 						++i;
@@ -1304,21 +1321,19 @@ Transform RegistrationVis::computeTransformationImpl(
 				UASSERT(kptsFrom3D.empty() || int(kptsFrom3D.size()) == descriptorsFrom.rows);
 				for(int i=0; i<descriptorsFrom.rows; ++i)
 				{
-					wordsFrom.insert(std::make_pair(i, kptsFrom[i]));
-					wordsDescFrom.insert(std::make_pair(i, descriptorsFrom.row(i)));
-					if(kptsFrom3D.size())
+					wordsFrom.insert(wordsFrom.end(), std::make_pair(i, wordsFrom.size()));
+					wordsKptsFrom.push_back(kptsFrom[i]);
+					wordsDescFrom.push_back(descriptorsFrom.row(i));
+					if(!kptsFrom3D.empty())
 					{
-						words3From.insert(std::make_pair(i, kptsFrom3D[i]));
+						words3From.push_back(kptsFrom3D[i]);
 					}
 				}
 			}
 		}
-		fromSignature.setWords(wordsFrom);
-		fromSignature.setWords3(words3From);
-		fromSignature.setWordsDescriptors(wordsDescFrom);
-		toSignature.setWords(wordsTo);
-		toSignature.setWords3(words3To);
-		toSignature.setWordsDescriptors(wordsDescTo);
+
+		fromSignature.setWords(wordsFrom, wordsKptsFrom, words3From, wordsDescFrom);
+		toSignature.setWords(wordsTo, wordsKptsTo, words3To, wordsDescTo);
 	}
 
 	/////////////////////
@@ -1372,14 +1387,31 @@ Transform RegistrationVis::computeTransformationImpl(
 					Transform cameraTransform;
 					double variance = 1.0f;
 					std::vector<int> matchesV;
+					std::map<int, int> uniqueWordsA = uMultimapToMapUnique(signatureA->getWords());
+					std::map<int, int> uniqueWordsB = uMultimapToMapUnique(signatureB->getWords());
+					std::map<int, cv::KeyPoint> wordsA;
+					std::map<int, cv::Point3f> words3A;
+					std::map<int, cv::KeyPoint> wordsB;
+					for(std::map<int, int>::iterator iter=uniqueWordsA.begin(); iter!=uniqueWordsA.end(); ++iter)
+					{
+						wordsA.insert(std::make_pair(iter->first, signatureA->getWordsKpts()[iter->second]));
+						if(!signatureA->getWords3().empty())
+						{
+							words3A.insert(std::make_pair(iter->first, signatureA->getWords3()[iter->second]));
+						}
+					}
+					for(std::map<int, int>::iterator iter=uniqueWordsB.begin(); iter!=uniqueWordsB.end(); ++iter)
+					{
+						wordsB.insert(std::make_pair(iter->first, signatureB->getWordsKpts()[iter->second]));
+					}
 					std::map<int, cv::Point3f> inliers3D = util3d::generateWords3DMono(
-							uMultimapToMapUnique(signatureA->getWords()),
-							uMultimapToMapUnique(signatureB->getWords()),
+							wordsA,
+							wordsB,
 							cameraModel,
 							cameraTransform,
 							_PnPReprojError,
 							0.99f,
-							uMultimapToMapUnique(signatureA->getWords3()), // for scale estimation
+							words3A, // for scale estimation
 							&variance,
 							&matchesV);
 					covariances[dir] *= variance;
@@ -1455,9 +1487,26 @@ Transform RegistrationVis::computeTransformationImpl(
 
 						std::vector<int> inliersV;
 						std::vector<int> matchesV;
+						std::map<int, int> uniqueWordsA = uMultimapToMapUnique(signatureA->getWords());
+						std::map<int, int> uniqueWordsB = uMultimapToMapUnique(signatureB->getWords());
+						std::map<int, cv::Point3f> words3A;
+						std::map<int, cv::Point3f> words3B;
+						std::map<int, cv::KeyPoint> wordsB;
+						for(std::map<int, int>::iterator iter=uniqueWordsA.begin(); iter!=uniqueWordsA.end(); ++iter)
+						{
+							words3A.insert(std::make_pair(iter->first, signatureA->getWords3()[iter->second]));
+						}
+						for(std::map<int, int>::iterator iter=uniqueWordsB.begin(); iter!=uniqueWordsB.end(); ++iter)
+						{
+							wordsB.insert(std::make_pair(iter->first, signatureB->getWordsKpts()[iter->second]));
+							if(!signatureB->getWords3().empty())
+							{
+								words3B.insert(std::make_pair(iter->first, signatureB->getWords3()[iter->second]));
+							}
+						}
 						transforms[dir] = util3d::estimateMotion3DTo2D(
-								uMultimapToMapUnique(signatureA->getWords3()),
-								uMultimapToMapUnique(signatureB->getWords()),
+								words3A,
+								wordsB,
 								cameraModel,
 								_minInliers,
 								_iterations,
@@ -1465,7 +1514,7 @@ Transform RegistrationVis::computeTransformationImpl(
 								_PnPFlags,
 								_PnPRefineIterations,
 								dir==0?(!guess.isNull()?guess:Transform::getIdentity()):!transforms[0].isNull()?transforms[0].inverse():(!guess.isNull()?guess.inverse():Transform::getIdentity()),
-								uMultimapToMapUnique(signatureB->getWords3()),
+								words3B,
 								&covariances[dir],
 								&matchesV,
 								&inliersV);
@@ -1501,9 +1550,21 @@ Transform RegistrationVis::computeTransformationImpl(
 				{
 					std::vector<int> inliersV;
 					std::vector<int> matchesV;
+					std::map<int, int> uniqueWordsA = uMultimapToMapUnique(signatureA->getWords());
+					std::map<int, int> uniqueWordsB = uMultimapToMapUnique(signatureB->getWords());
+					std::map<int, cv::Point3f> words3A;
+					std::map<int, cv::Point3f> words3B;
+					for(std::map<int, int>::iterator iter=uniqueWordsA.begin(); iter!=uniqueWordsA.end(); ++iter)
+					{
+						words3A.insert(std::make_pair(iter->first, signatureA->getWords3()[iter->second]));
+					}
+					for(std::map<int, int>::iterator iter=uniqueWordsB.begin(); iter!=uniqueWordsB.end(); ++iter)
+					{
+						words3B.insert(std::make_pair(iter->first, signatureB->getWords3()[iter->second]));
+					}
 					transforms[dir] = util3d::estimateMotion3DTo3D(
-							uMultimapToMapUnique(signatureA->getWords3()),
-							uMultimapToMapUnique(signatureB->getWords3()),
+							words3A,
+							words3B,
 							_minInliers,
 							_inlierDistance,
 							_iterations,
@@ -1671,27 +1732,37 @@ Transform RegistrationVis::computeTransformationImpl(
 			models.insert(std::make_pair(2, cameraModelTo));
 
 			std::map<int, std::map<int, FeatureBA> > wordReferences;
+			std::set<int> sbaOutliers;
 			for(unsigned int i=0; i<allInliers.size(); ++i)
 			{
 				int wordId = allInliers[i];
-				const cv::Point3f & pt3D = fromSignature.getWords3().find(wordId)->second;
+				int indexFrom = fromSignature.getWords().find(wordId)->second;
+				const cv::Point3f & pt3D = fromSignature.getWords3()[indexFrom];
+				if(!util3d::isFinite(pt3D))
+				{
+					UASSERT_MSG(!_forwardEstimateOnly, uFormat("3D point %d is not finite!?", wordId).c_str());
+					sbaOutliers.insert(wordId);
+					continue;
+				}
+
 				points3DMap.insert(std::make_pair(wordId, pt3D));
 
 				std::map<int, FeatureBA> ptMap;
-				if(fromSignature.getWords().size() && cameraModelFrom.isValidForProjection())
+				if(!fromSignature.getWordsKpts().empty() && cameraModelFrom.isValidForProjection())
 				{
 					float depthFrom = util3d::transformPoint(pt3D, invLocalTransformFrom).z;
-					const cv::KeyPoint & kpt = fromSignature.getWords().find(wordId)->second;
+					const cv::KeyPoint & kpt = fromSignature.getWordsKpts()[indexFrom];
 					ptMap.insert(std::make_pair(1,FeatureBA(kpt, depthFrom)));
 				}
-				if(toSignature.getWords().size() && cameraModelTo.isValidForProjection())
+				if(!toSignature.getWordsKpts().empty() && cameraModelTo.isValidForProjection())
 				{
+					int indexTo = toSignature.getWords().find(wordId)->second;
 					float depthTo = 0.0f;
-					if(toSignature.getWords3().find(wordId) != toSignature.getWords3().end())
+					if(!toSignature.getWords3().empty())
 					{
-						depthTo = util3d::transformPoint(toSignature.getWords3().find(wordId)->second, invLocalTransformTo).z;
+						depthTo = util3d::transformPoint(toSignature.getWords3()[indexTo], invLocalTransformTo).z;
 					}
-					const cv::KeyPoint & kpt = toSignature.getWords().find(wordId)->second;
+					const cv::KeyPoint & kpt = toSignature.getWordsKpts()[indexTo];
 					ptMap.insert(std::make_pair(2,FeatureBA(kpt, depthTo)));
 				}
 
@@ -1704,7 +1775,6 @@ Transform RegistrationVis::computeTransformationImpl(
 				//}
 			}
 
-			std::set<int> sbaOutliers;
 			optimizedPoses = sba->optimizeBA(1, poses, links, models, points3DMap, wordReferences, &sbaOutliers);
 			delete sba;
 
@@ -1830,24 +1900,25 @@ Transform RegistrationVis::computeTransformationImpl(
 			{
 				if(_maxInliersMeanDistance>0.0f)
 				{
-					std::multimap<int, cv::Point3f>::const_iterator words3Iter = fromSignature.getWords3().find(allInliers[i]);
-					if(words3Iter != fromSignature.getWords3().end())
+					std::multimap<int, int>::const_iterator wordsIter = fromSignature.getWords().find(allInliers[i]);
+					if(wordsIter != fromSignature.getWords().end() && !fromSignature.getWords3().empty())
 					{
-						if(uIsFinite(words3Iter->second.x))
+						const cv::Point3f & pt = fromSignature.getWords3()[wordsIter->second];
+						if(uIsFinite(pt.x))
 						{
-							cv::Point3f pt = util3d::transformPoint(words3Iter->second, transformInv);
-							distances.push_back(pt.x);
+							distances.push_back(util3d::transformPoint(pt, transformInv).x);
 						}
 					}
 				}
 
 				if(!pcaData.empty())
 				{
-					std::multimap<int, cv::KeyPoint>::const_iterator wordsIter = fromSignature.getWords().find(allInliers[i]);
-					UASSERT(wordsIter != fromSignature.getWords().end());
+					std::multimap<int, int>::const_iterator wordsIter = fromSignature.getWords().find(allInliers[i]);
+					UASSERT(wordsIter != fromSignature.getWords().end() && !fromSignature.getWordsKpts().empty());
 					float * ptr = pcaData.ptr<float>(i, 0);
-					ptr[0] = (wordsIter->second.pt.x-cx) / w;
-					ptr[1] = (wordsIter->second.pt.y-cy) / h;
+					const cv::KeyPoint & kpt = fromSignature.getWordsKpts()[wordsIter->second];
+					ptr[0] = (kpt.pt.x-cx) / w;
+					ptr[1] = (kpt.pt.y-cy) / h;
 				}
 			}
 
@@ -1888,6 +1959,7 @@ Transform RegistrationVis::computeTransformationImpl(
 	}
 
 	info.inliers = inliersCount;
+	info.inliersRatio = !toSignature.getWords().empty()?float(inliersCount)/float(toSignature.getWords().size()):0;
 	info.matches = matchesCount;
 	info.rejectedMsg = msg;
 	info.covariance = covariance;

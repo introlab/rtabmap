@@ -31,8 +31,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <signal.h>
 
 #include <rtabmap/core/DBDriver.h>
+#include <rtabmap/core/VisualWord.h>
 #include <rtabmap/utilite/UDirectory.h>
 #include "rtabmap/utilite/UFile.h"
+#include "rtabmap/utilite/UStl.h"
 
 using namespace rtabmap;
 
@@ -229,7 +231,7 @@ int main(int argc, char * argv[])
 		driver->getAllNodeIds(ids);
 		Transform lastLocalization;
 		std::map<int, Transform> optimizedPoses = driver->loadOptimizedPoses(&lastLocalization);
-		std::set<int> mapsLinkedToLastGraph;
+		std::multimap<int, int> mapIdsLinkedToLastGraph;
 		int lastMapId=0;
 		double previousStamp = 0.0f;
 		Transform previousPose;
@@ -265,7 +267,7 @@ int main(int argc, char * argv[])
 			}
 			if(optimizedPoses.find(id) != optimizedPoses.end())
 			{
-				mapsLinkedToLastGraph.insert(mapId);
+				mapIdsLinkedToLastGraph.insert(std::make_pair(mapId, id));
 			}
 			if(iter!=ids.begin())
 			{
@@ -318,17 +320,37 @@ int main(int argc, char * argv[])
 		}
 
 		std::stringstream sessionsInOptGraphStr;
-		for(std::set<int>::iterator iter=mapsLinkedToLastGraph.begin(); iter!=mapsLinkedToLastGraph.end(); ++iter)
+		std::list<int> mapsLinkedToLastGraph = uUniqueKeys(mapIdsLinkedToLastGraph);
+		for(std::list<int>::iterator iter=mapsLinkedToLastGraph.begin(); iter!=mapsLinkedToLastGraph.end(); ++iter)
 		{
 			if(iter!=mapsLinkedToLastGraph.begin())
 			{
 				sessionsInOptGraphStr << ", ";
 			}
-			sessionsInOptGraphStr << *iter;
+			sessionsInOptGraphStr << *iter << "(" << mapIdsLinkedToLastGraph.count(*iter) << ")";
+		}
+
+		int lastWordIdId = 0;
+		int wordsDim = 0;
+		int wordsType = 0;
+		driver->getLastWordId(lastWordIdId);
+		if(lastWordIdId>0)
+		{
+			std::set<int> ids;
+			ids.insert(lastWordIdId);
+			std::list<VisualWord *> vws;
+			driver->loadWords(ids, vws);
+			if(!vws.empty())
+			{
+				wordsDim = vws.front()->getDescriptor().cols;
+				wordsType = vws.front()->getDescriptor().type();
+				delete vws.front();
+				vws.clear();
+			}
 		}
 
 		std::cout << (uFormat("%s%fs\n", pad("Total time:").c_str(), infoTotalTime));
-		std::cout << (uFormat("%s%d nodes and %d words\n", pad("LTM:").c_str(), (int)ids.size(), driver->getTotalDictionarySize()));
+		std::cout << (uFormat("%s%d nodes and %d words (dim=%d type=%s)\n", pad("LTM:").c_str(), (int)ids.size(), driver->getTotalDictionarySize(), wordsDim, wordsType==CV_8UC1?"8U":wordsType==CV_32FC1?"32F":uNumber2Str(wordsType).c_str()));
 		std::cout << (uFormat("%s%d nodes and %d words\n", pad("WM:").c_str(), driver->getLastNodesSize(), driver->getLastDictionarySize()));
 		std::cout << (uFormat("%s%d poses and %d links\n", pad("Global graph:").c_str(), odomPoses, links.size()));
 		std::cout << (uFormat("%s%d poses\n", pad("Optimized graph:").c_str(), (int)optimizedPoses.size(), links.size()));
@@ -379,7 +401,7 @@ int main(int argc, char * argv[])
 		total+=mem;
 		std::cout << (uFormat("%s%d %s\t(%.2f%%)\n", pad("Statistics size:").c_str(), mem>1000000?mem/1000000:mem>1000?mem/1000:mem, mem>1000000?"MB":mem>1000?"KB":"Bytes", dbSize>0?double(mem)/double(dbSize)*100.0:0.0));
 		mem = dbSize - total;
-		std::cout << (uFormat("%s%d %s\t(%.2f%%)\n", pad("Other (indexing):").c_str(), mem>1000000?mem/1000000:mem>1000?mem/1000:mem, mem>1000000?"MB":mem>1000?"KB":"Bytes", dbSize>0?double(mem)/double(dbSize)*100.0:0.0));
+		std::cout << (uFormat("%s%d %s\t(%.2f%%)\n", pad("Other (indexing, unused):").c_str(), mem>1000000?mem/1000000:mem>1000?mem/1000:mem, mem>1000000?"MB":mem>1000?"KB":"Bytes", dbSize>0?double(mem)/double(dbSize)*100.0:0.0));
 		std::cout << ("\n");
 	}
 

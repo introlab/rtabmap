@@ -162,9 +162,9 @@ p, li { white-space: pre-wrap; }
            <property name="geometry">
             <rect>
              <x>0</x>
-             <y>0</y>
+             <y>-225</y>
              <width>596</width>
-             <height>843</height>
+             <height>866</height>
             </rect>
            </property>
            <layout class="QVBoxLayout" name="verticalLayout_2">
@@ -195,7 +195,7 @@ p, li { white-space: pre-wrap; }
                 </property>
                </widget>
               </item>
-              <item row="29" column="0">
+              <item row="30" column="0">
                <widget class="QLabel" name="label_25">
                 <property name="text">
                  <string>With FOVIS :</string>
@@ -205,7 +205,7 @@ p, li { white-space: pre-wrap; }
                 </property>
                </widget>
               </item>
-              <item row="29" column="2">
+              <item row="30" column="2">
                <widget class="QLabel" name="label_fovis_license">
                 <property name="text">
                  <string>GPLv2</string>
@@ -251,7 +251,7 @@ p, li { white-space: pre-wrap; }
                 </property>
                </widget>
               </item>
-              <item row="33" column="0">
+              <item row="34" column="0">
                <widget class="QLabel" name="label_35">
                 <property name="text">
                  <string>With OKVIS :</string>
@@ -261,7 +261,7 @@ p, li { white-space: pre-wrap; }
                 </property>
                </widget>
               </item>
-              <item row="31" column="1">
+              <item row="32" column="1">
                <widget class="QLabel" name="label_dvo">
                 <property name="text">
                  <string/>
@@ -307,7 +307,7 @@ p, li { white-space: pre-wrap; }
                 </property>
                </widget>
               </item>
-              <item row="33" column="1">
+              <item row="34" column="1">
                <widget class="QLabel" name="label_okvis">
                 <property name="text">
                  <string/>
@@ -320,7 +320,7 @@ p, li { white-space: pre-wrap; }
                 </property>
                </widget>
               </item>
-              <item row="35" column="0">
+              <item row="36" column="0">
                <widget class="QLabel" name="label_34">
                 <property name="text">
                  <string>With MSCKF :</string>
@@ -330,7 +330,7 @@ p, li { white-space: pre-wrap; }
                 </property>
                </widget>
               </item>
-              <item row="25" column="1">
+              <item row="26" column="1">
                <widget class="QLabel" name="label_octomap">
                 <property name="text">
                  <string/>
@@ -343,7 +343,7 @@ p, li { white-space: pre-wrap; }
                 </property>
                </widget>
               </item>
-              <item row="35" column="1">
+              <item row="36" column="1">
                <widget class="QLabel" name="label_msckf">
                 <property name="text">
                  <string/>
@@ -399,7 +399,7 @@ p, li { white-space: pre-wrap; }
                 </property>
                </widget>
               </item>
-              <item row="26" column="0">
+              <item row="27" column="0">
                <widget class="QLabel" name="label_24">
                 <property name="text">
                  <string>With CPU-TSDF :</string>
@@ -419,7 +419,7 @@ p, li { white-space: pre-wrap; }
                 </property>
                </widget>
               </item>
-              <item row="30" column="0">
+              <item row="31" column="0">
                <widget class="QLabel" name="label_26">
                 <property name="text">
                  <string>With Viso2 :</string>
@@ -429,7 +429,7 @@ p, li { white-space: pre-wrap; }
                 </property>
                </widget>
               </item>
-              <item row="32" column="0">
+              <item row="33" column="0">
                <widget class="QLabel" name="label_28">
                 <property name="text">
                  <string>With ORB SLAM 2 :</string>
@@ -449,7 +449,7 @@ p, li { white-space: pre-wrap; }
                 </property>
                </widget>
               </item>
-              <item row="32" column="1">
+              <item row="33" column="1">
                <widget class="QLabel" name="label_orbslam2">
                 <property name="text">
                  <string/>
@@ -472,7 +472,7 @@ p, li { white-space: pre-wrap; }
                 </property>
                </widget>
               </item>
-              <item row="30" column="2">
+              <item row="31" column="2">
                <widget class="QLabel" name="label_viso2_license">
                 <property name="text">
                  <string>GPLv3</string>
@@ -492,7 +492,7 @@ p, li { white-space: pre-wrap; }
                 </property>
                </widget>
               </item>
-              <item row="25" column="0">
+              <item row="26" column="0">
                <widget class="QLabel" name="label_20">
                 <property name="text">
                  <string>With Octomap :</string>
@@ -502,7 +502,7 @@ p, li { white-space: pre-wrap; }
                 </property>
                </widget>
               </item>
-              <item row="19" column="0">
+              <item row="20" column="0">
                <widget class="QLabel" name="label_77">
                 <property name="text">
                  <string>With TORO :</string>
@@ -512,7 +512,7 @@ p, li { white-space: pre-wrap; }
                 </property>
                </widget>
               </item>
-              <item row="29" column="1">
+              <item row="30" column="1">
                <widget class="QLabel" name="label_fovis">
                 <property name="text">
                  <string/>
@@ -525,7 +525,7 @@ p, li { white-space: pre-wrap; }
                 </property>
                </widget>
               </item>
-              <item row="25" column="2">
+              <item row="26" column="2">
                <widget class="QLabel" name="label_octomap_license">
                 <property name="text">
                  <string>BSD</string>
@@ -578,7 +578,7 @@ p, li { white-space: pre-wrap; }
                 </property>
                </widget>
               </item>
-              <item row="26" column="1">
+              <item row="27" column="1">
                <widget class="QLabel" name="label_cputsdf">
                 <property name="text">
                  <string/>
@@ -601,7 +601,7 @@ p, li { white-space: pre-wrap; }
                 </property>
                </widget>
               </item>
-              <item row="22" column="0">
+              <item row="23" column="0">
                <widget class="QLabel" name="label_18">
                 <property name="text">
                  <string>With cvsba :</string>
@@ -611,7 +611,7 @@ p, li { white-space: pre-wrap; }
                 </property>
                </widget>
               </item>
-              <item row="20" column="0">
+              <item row="21" column="0">
                <widget class="QLabel" name="label_14">
                 <property name="text">
                  <string>With g2o :</string>
@@ -621,7 +621,7 @@ p, li { white-space: pre-wrap; }
                 </property>
                </widget>
               </item>
-              <item row="22" column="1">
+              <item row="23" column="1">
                <widget class="QLabel" name="label_cvsba">
                 <property name="text">
                  <string/>
@@ -644,7 +644,7 @@ p, li { white-space: pre-wrap; }
                 </property>
                </widget>
               </item>
-              <item row="21" column="1">
+              <item row="22" column="1">
                <widget class="QLabel" name="label_gtsam">
                 <property name="text">
                  <string/>
@@ -670,7 +670,7 @@ p, li { white-space: pre-wrap; }
                 </property>
                </widget>
               </item>
-              <item row="21" column="0">
+              <item row="22" column="0">
                <widget class="QLabel" name="label_19">
                 <property name="text">
                  <string>With GTSAM :</string>
@@ -736,7 +736,7 @@ p, li { white-space: pre-wrap; }
                 </property>
                </widget>
               </item>
-              <item row="24" column="0">
+              <item row="25" column="0">
                <widget class="QLabel" name="label_29">
                 <property name="text">
                  <string>With libpointmatcher :</string>
@@ -746,7 +746,7 @@ p, li { white-space: pre-wrap; }
                 </property>
                </widget>
               </item>
-              <item row="20" column="1">
+              <item row="21" column="1">
                <widget class="QLabel" name="label_g2o">
                 <property name="text">
                  <string/>
@@ -795,7 +795,7 @@ p, li { white-space: pre-wrap; }
                 </property>
                </widget>
               </item>
-              <item row="35" column="2">
+              <item row="36" column="2">
                <widget class="QLabel" name="label_msckf_license">
                 <property name="text">
                  <string>Penn Software License</string>
@@ -818,7 +818,7 @@ p, li { white-space: pre-wrap; }
                 </property>
                </widget>
               </item>
-              <item row="31" column="2">
+              <item row="32" column="2">
                <widget class="QLabel" name="label_dvo_license">
                 <property name="text">
                  <string>GPLv3</string>
@@ -828,7 +828,7 @@ p, li { white-space: pre-wrap; }
                 </property>
                </widget>
               </item>
-              <item row="34" column="0">
+              <item row="35" column="0">
                <widget class="QLabel" name="label_36">
                 <property name="text">
                  <string>With loam_velodyne :</string>
@@ -861,7 +861,7 @@ p, li { white-space: pre-wrap; }
                 </property>
                </widget>
               </item>
-              <item row="27" column="1">
+              <item row="28" column="1">
                <widget class="QLabel" name="label_openchisel">
                 <property name="text">
                  <string/>
@@ -874,7 +874,7 @@ p, li { white-space: pre-wrap; }
                 </property>
                </widget>
               </item>
-              <item row="21" column="2">
+              <item row="22" column="2">
                <widget class="QLabel" name="label_gtsam_license">
                 <property name="text">
                  <string>BSD</string>
@@ -884,7 +884,7 @@ p, li { white-space: pre-wrap; }
                 </property>
                </widget>
               </item>
-              <item row="24" column="1">
+              <item row="25" column="1">
                <widget class="QLabel" name="label_libpointmatcher">
                 <property name="text">
                  <string/>
@@ -897,7 +897,7 @@ p, li { white-space: pre-wrap; }
                 </property>
                </widget>
               </item>
-              <item row="34" column="1">
+              <item row="35" column="1">
                <widget class="QLabel" name="label_loam">
                 <property name="text">
                  <string/>
@@ -920,7 +920,7 @@ p, li { white-space: pre-wrap; }
                 </property>
                </widget>
               </item>
-              <item row="31" column="0">
+              <item row="32" column="0">
                <widget class="QLabel" name="label_27">
                 <property name="text">
                  <string>With DVO :</string>
@@ -930,7 +930,7 @@ p, li { white-space: pre-wrap; }
                 </property>
                </widget>
               </item>
-              <item row="30" column="1">
+              <item row="31" column="1">
                <widget class="QLabel" name="label_viso2">
                 <property name="text">
                  <string/>
@@ -943,7 +943,7 @@ p, li { white-space: pre-wrap; }
                 </property>
                </widget>
               </item>
-              <item row="32" column="2">
+              <item row="33" column="2">
                <widget class="QLabel" name="label_orbslam2_license">
                 <property name="text">
                  <string>GPLv3</string>
@@ -953,7 +953,7 @@ p, li { white-space: pre-wrap; }
                 </property>
                </widget>
               </item>
-              <item row="27" column="0">
+              <item row="28" column="0">
                <widget class="QLabel" name="label_30">
                 <property name="text">
                  <string>With OpenChisel :</string>
@@ -976,7 +976,7 @@ p, li { white-space: pre-wrap; }
                 </property>
                </widget>
               </item>
-              <item row="19" column="1">
+              <item row="20" column="1">
                <widget class="QLabel" name="label_toro">
                 <property name="text">
                  <string/>
@@ -989,7 +989,7 @@ p, li { white-space: pre-wrap; }
                 </property>
                </widget>
               </item>
-              <item row="20" column="2">
+              <item row="21" column="2">
                <widget class="QLabel" name="label_g2o_license">
                 <property name="text">
                  <string>BSD</string>
@@ -999,7 +999,7 @@ p, li { white-space: pre-wrap; }
                 </property>
                </widget>
               </item>
-              <item row="33" column="2">
+              <item row="34" column="2">
                <widget class="QLabel" name="label_okvis_license">
                 <property name="text">
                  <string>BSD</string>
@@ -1009,7 +1009,7 @@ p, li { white-space: pre-wrap; }
                 </property>
                </widget>
               </item>
-              <item row="34" column="2">
+              <item row="35" column="2">
                <widget class="QLabel" name="label_loam_license">
                 <property name="text">
                  <string>BSD</string>
@@ -1039,7 +1039,7 @@ p, li { white-space: pre-wrap; }
                 </property>
                </widget>
               </item>
-              <item row="24" column="2">
+              <item row="25" column="2">
                <widget class="QLabel" name="label_libpointmatcher_license">
                 <property name="text">
                  <string>BSD</string>
@@ -1049,7 +1049,7 @@ p, li { white-space: pre-wrap; }
                 </property>
                </widget>
               </item>
-              <item row="26" column="2">
+              <item row="27" column="2">
                <widget class="QLabel" name="label_cputsdf_license">
                 <property name="text">
                  <string>BSD</string>
@@ -1069,7 +1069,7 @@ p, li { white-space: pre-wrap; }
                 </property>
                </widget>
               </item>
-              <item row="22" column="2">
+              <item row="23" column="2">
                <widget class="QLabel" name="label_cvsba_license">
                 <property name="text">
                  <string>GPLv2</string>
@@ -1079,7 +1079,7 @@ p, li { white-space: pre-wrap; }
                 </property>
                </widget>
               </item>
-              <item row="19" column="2">
+              <item row="20" column="2">
                <widget class="QLabel" name="label_toro_license">
                 <property name="text">
                  <string>Creative Commons [Attribution-NonCommercial-ShareAlike]</string>
@@ -1191,7 +1191,7 @@ p, li { white-space: pre-wrap; }
                 </property>
                </widget>
               </item>
-              <item row="23" column="0">
+              <item row="24" column="0">
                <widget class="QLabel" name="label_40">
                 <property name="text">
                  <string>With Ceres :</string>
@@ -1201,7 +1201,7 @@ p, li { white-space: pre-wrap; }
                 </property>
                </widget>
               </item>
-              <item row="23" column="2">
+              <item row="24" column="2">
                <widget class="QLabel" name="label_ceres_license">
                 <property name="text">
                  <string>BSD</string>
@@ -1211,7 +1211,7 @@ p, li { white-space: pre-wrap; }
                 </property>
                </widget>
               </item>
-              <item row="23" column="1">
+              <item row="24" column="1">
                <widget class="QLabel" name="label_ceres">
                 <property name="text">
                  <string/>
@@ -1224,7 +1224,7 @@ p, li { white-space: pre-wrap; }
                 </property>
                </widget>
               </item>
-              <item row="28" column="0">
+              <item row="29" column="0">
                <widget class="QLabel" name="label_41">
                 <property name="text">
                  <string>With AliceVision :</string>
@@ -1234,7 +1234,7 @@ p, li { white-space: pre-wrap; }
                 </property>
                </widget>
               </item>
-              <item row="28" column="1">
+              <item row="29" column="1">
                <widget class="QLabel" name="label_aliceVision">
                 <property name="text">
                  <string/>
@@ -1247,7 +1247,7 @@ p, li { white-space: pre-wrap; }
                 </property>
                </widget>
               </item>
-              <item row="28" column="2">
+              <item row="29" column="2">
                <widget class="QLabel" name="label_aliceVision_license">
                 <property name="text">
                  <string>MPL2</string>
@@ -1312,6 +1312,29 @@ p, li { white-space: pre-wrap; }
               </item>
               <item row="7" column="1">
                <widget class="QLabel" name="label_pymatcher">
+                <property name="text">
+                 <string/>
+                </property>
+                <property name="alignment">
+                 <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="19" column="0">
+               <widget class="QLabel" name="label_69">
+                <property name="text">
+                 <string>With MYNTEYE S :</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="19" column="1">
+               <widget class="QLabel" name="label_mynteye">
                 <property name="text">
                  <string/>
                 </property>

@@ -1129,19 +1129,22 @@ std::multimap<int, Link> filterDuplicateLinks(
 
 std::multimap<int, Link> filterLinks(
 		const std::multimap<int, Link> & links,
-		Link::Type filteredType)
+		Link::Type filteredType,
+		bool inverted)
 {
 	std::multimap<int, Link> output;
 	for(std::multimap<int, Link>::const_iterator iter=links.begin(); iter!=links.end(); ++iter)
 	{
 		if(filteredType == Link::kSelfRefLink)
 		{
-			if(iter->second.from() != iter->second.to())
+			if((!inverted && iter->second.from() != iter->second.to())||
+			   (inverted && iter->second.from() == iter->second.to()))
 			{
 				output.insert(*iter);
 			}
 		}
-		else if(iter->second.type() != filteredType)
+		else if((!inverted && iter->second.type() != filteredType)||
+				(inverted && iter->second.type() == filteredType))
 		{
 			output.insert(*iter);
 		}
@@ -1151,19 +1154,22 @@ std::multimap<int, Link> filterLinks(
 
 std::map<int, Link> filterLinks(
 		const std::map<int, Link> & links,
-		Link::Type filteredType)
+		Link::Type filteredType,
+		bool inverted)
 {
 	std::map<int, Link> output;
 	for(std::map<int, Link>::const_iterator iter=links.begin(); iter!=links.end(); ++iter)
 	{
 		if(filteredType == Link::kSelfRefLink)
 		{
-			if(iter->second.from() != iter->second.to())
+			if((!inverted && iter->second.from() != iter->second.to())||
+			   (inverted && iter->second.from() == iter->second.to()))
 			{
 				output.insert(*iter);
 			}
 		}
-		else if(iter->second.type() != filteredType)
+		else if((!inverted && iter->second.type() != filteredType)||
+				(inverted && iter->second.type() == filteredType))
 		{
 			output.insert(*iter);
 		}
@@ -2054,23 +2060,28 @@ std::list<std::pair<int, Transform> > computePath(
 
 int findNearestNode(
 		const std::map<int, rtabmap::Transform> & nodes,
-		const rtabmap::Transform & targetPose)
+		const rtabmap::Transform & targetPose,
+		float * distance)
 {
 	int id = 0;
-	std::vector<int> nearestNodes = findNearestNodes(nodes, targetPose, 1);
-	if(nearestNodes.size())
+	std::map<int, float> nearestNodes = findNearestNodes(nodes, targetPose, 1);
+	if(!nearestNodes.empty())
 	{
-		id = nearestNodes[0];
+		id = nearestNodes.begin()->first;
+		if(distance)
+		{
+			*distance = nearestNodes.begin()->second;
+		}
 	}
 	return id;
 }
 
-std::vector<int> findNearestNodes(
+std::map<int, float> findNearestNodes(
 		const std::map<int, rtabmap::Transform> & nodes,
 		const rtabmap::Transform & targetPose,
 		int k)
 {
-	std::vector<int> nearestIds;
+	std::map<int, float> nearestIds;
 	if(nodes.size() && !targetPose.isNull())
 	{
 		pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
@@ -2090,10 +2101,9 @@ std::vector<int> findNearestNodes(
 		pcl::PointXYZ pt(targetPose.x(), targetPose.y(), targetPose.z());
 		kdTree->nearestKSearch(pt, k, ind, dist);
 
-		nearestIds.resize(ind.size());
 		for(unsigned int i=0; i<ind.size(); ++i)
 		{
-			nearestIds[i] = ids[ind[i]];
+			nearestIds.insert(std::make_pair(ids[ind[i]], dist[i]));
 		}
 	}
 	return nearestIds;
@@ -2106,8 +2116,21 @@ std::map<int, float> getNodesInRadius(
 		float radius)
 {
 	UASSERT(uContains(nodes, nodeId));
+
+	std::map<int, Transform> nodesMinusTarget = nodes;
+	Transform targetPose = nodes.at(nodeId);
+	nodesMinusTarget.erase(nodeId);
+	return getNodesInRadius(targetPose, nodesMinusTarget, radius);
+}
+
+// return <id, sqrd distance>, excluding query
+std::map<int, float> getNodesInRadius(
+		const Transform & targetPose,
+		const std::map<int, Transform> & nodes,
+		float radius)
+{
 	std::map<int, float> foundNodes;
-	if(nodes.size() <= 1)
+	if(nodes.empty())
 	{
 		return foundNodes;
 	}
@@ -2118,18 +2141,13 @@ std::map<int, float> getNodesInRadius(
 	int oi = 0;
 	for(std::map<int, Transform>::const_iterator iter = nodes.begin(); iter!=nodes.end(); ++iter)
 	{
-		if(iter->first != nodeId)
-		{
-			(*cloud)[oi] = pcl::PointXYZ(iter->second.x(), iter->second.y(), iter->second.z());
-			UASSERT_MSG(pcl::isFinite((*cloud)[oi]), uFormat("Invalid pose (%d) %s", iter->first, iter->second.prettyPrint().c_str()).c_str());
-			ids[oi] = iter->first;
-			++oi;
-		}
+		(*cloud)[oi] = pcl::PointXYZ(iter->second.x(), iter->second.y(), iter->second.z());
+		UASSERT_MSG(pcl::isFinite((*cloud)[oi]), uFormat("Invalid pose (%d) %s", iter->first, iter->second.prettyPrint().c_str()).c_str());
+		ids[oi] = iter->first;
+		++oi;
 	}
 	cloud->resize(oi);
 	ids.resize(oi);
-
-	Transform fromT = nodes.at(nodeId);
 
 	if(cloud->size())
 	{
@@ -2137,7 +2155,7 @@ std::map<int, float> getNodesInRadius(
 		kdTree->setInputCloud(cloud);
 		std::vector<int> ind;
 		std::vector<float> sqrdDist;
-		pcl::PointXYZ pt(fromT.x(), fromT.y(), fromT.z());
+		pcl::PointXYZ pt(targetPose.x(), targetPose.y(), targetPose.z());
 		kdTree->radiusSearch(pt, radius, ind, sqrdDist, 0);
 		for(unsigned int i=0; i<ind.size(); ++i)
 		{
@@ -2159,8 +2177,21 @@ std::map<int, Transform> getPosesInRadius(
 		float angle)
 {
 	UASSERT(uContains(nodes, nodeId));
+
+	std::map<int, Transform> nodesMinusTarget = nodes;
+	Transform targetPose = nodes.at(nodeId);
+	nodesMinusTarget.erase(nodeId);
+	return getPosesInRadius(targetPose, nodesMinusTarget, radius, angle);
+}
+// return <id, Transform>, excluding query
+std::map<int, Transform> getPosesInRadius(
+		const Transform & targetPose,
+		const std::map<int, Transform> & nodes,
+		float radius,
+		float angle)
+{
 	std::map<int, Transform> foundNodes;
-	if(nodes.size() <= 1)
+	if(nodes.empty())
 	{
 		return foundNodes;
 	}
@@ -2171,18 +2202,13 @@ std::map<int, Transform> getPosesInRadius(
 	int oi = 0;
 	for(std::map<int, Transform>::const_iterator iter = nodes.begin(); iter!=nodes.end(); ++iter)
 	{
-		if(iter->first != nodeId)
-		{
-			(*cloud)[oi] = pcl::PointXYZ(iter->second.x(), iter->second.y(), iter->second.z());
-			UASSERT_MSG(pcl::isFinite((*cloud)[oi]), uFormat("Invalid pose (%d) %s", iter->first, iter->second.prettyPrint().c_str()).c_str());
-			ids[oi] = iter->first;
-			++oi;
-		}
+		(*cloud)[oi] = pcl::PointXYZ(iter->second.x(), iter->second.y(), iter->second.z());
+		UASSERT_MSG(pcl::isFinite((*cloud)[oi]), uFormat("Invalid pose (%d) %s", iter->first, iter->second.prettyPrint().c_str()).c_str());
+		ids[oi] = iter->first;
+		++oi;
 	}
 	cloud->resize(oi);
 	ids.resize(oi);
-
-	Transform fromT = nodes.at(nodeId);
 
 	if(cloud->size())
 	{
@@ -2190,10 +2216,10 @@ std::map<int, Transform> getPosesInRadius(
 		kdTree->setInputCloud(cloud);
 		std::vector<int> ind;
 		std::vector<float> sqrdDist;
-		pcl::PointXYZ pt(fromT.x(), fromT.y(), fromT.z());
+		pcl::PointXYZ pt(targetPose.x(), targetPose.y(), targetPose.z());
 		kdTree->radiusSearch(pt, radius, ind, sqrdDist, 0);
 
-		Eigen::Vector3f vA = fromT.toEigen3f().linear()*Eigen::Vector3f(1,0,0);
+		Eigen::Vector3f vA = targetPose.toEigen3f().linear()*Eigen::Vector3f(1,0,0);
 
 		for(unsigned int i=0; i<ind.size(); ++i)
 		{

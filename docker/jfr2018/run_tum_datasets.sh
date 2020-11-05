@@ -83,6 +83,7 @@ do
        --Mem/UseOdomFeatures false \
        --Mem/BinDataKept true \
        --Rtabmap/CreateIntermediateNodes false\
+       --Vis/CorNNDR 0.6 \
        $F2F_params\
        --OdomORBSLAM2/VocPath /root/ORBvoc.txt\
        --OdomFovis/MinFeaturesForEstimate 10\

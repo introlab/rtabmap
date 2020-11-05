@@ -32,6 +32,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/OctoMap.h>
 #endif
 #include <rtabmap/core/OccupancyGrid.h>
+#include <rtabmap/core/Graph.h>
+#include <rtabmap/core/Memory.h>
+#include <rtabmap/core/CameraThread.h>
 #include <rtabmap/utilite/UFile.h>
 #include <rtabmap/utilite/UDirectory.h>
 #include <rtabmap/utilite/UTimer.h>
@@ -55,6 +58,7 @@ void showUsage()
 			"   To see warnings when loop closures are rejected, add \"--uwarn\" argument.\n"
 			"  Options:\n"
 			"     -r                Use database stamps as input rate.\n"
+			"     -skip #           Skip # frames after each processed frame (default 0=don't skip any frames).\n"
 			"     -c \"path.ini\"   Configuration file, overwriting parameters read \n"
 			"                       from the database. If custom parameters are also set as \n"
 			"                       arguments, they overwrite those in config file and the database.\n"
@@ -64,6 +68,15 @@ void showUsage()
 			"     -g3         Assemble 3D cloud map and save it to \"[output]_map.pcd\".\n"
 			"     -o2         Assemble OctoMap 2D projection and save it to \"[output]_octomap.pgm\".\n"
 			"     -o3         Assemble OctoMap 3D cloud and save it to \"[output]_octomap.pcd\".\n"
+			"     -p          Save odometry and localization poses (*.g2o).\n"
+			"     -scan_from_depth    Generate scans from depth images (overwrite previous\n"
+			"                         scans if they exist).\n"
+			"     -scan_downsample #  Downsample input scans.\n"
+			"     -scan_range_min #.#   Filter input scans with minimum range (m).\n"
+			"     -scan_range_max #.#   Filter input scans with maximum range (m).\n"
+			"     -scan_voxel_size #.#  Voxel filter input scans (m).\n"
+			"     -scan_normal_k #         Compute input scan normals (k-neighbors approach).\n"
+			"     -scan_normal_radius #.#  Compute input scan normals (radius(m)-neighbors approach).\n\n"
 			"%s\n"
 			"\n", Parameters::showUsage());
 	exit(1);
@@ -79,15 +92,22 @@ void sighandler(int sig)
 
 int loopCount = 0;
 int proxCount = 0;
+int loopCountMotion = 0;
 int totalFrames = 0;
+int totalFramesMotion = 0;
 std::vector<float> previousLocalizationDistances;
 std::vector<float> odomDistances;
 std::vector<float> localizationVariations;
 std::vector<float> localizationAngleVariations;
 std::vector<float> localizationTime;
-void showLocalizationStats()
+std::map<int, Transform> odomTrajectoryPoses;
+std::multimap<int, Link> odomTrajectoryLinks;
+std::map<int, Transform> localizationPoses;
+bool exportPoses = false;
+int sessionCount = 0;
+void showLocalizationStats(const std::string & outputDatabasePath)
 {
-	printf("Total localizations on previous session = %d/%d (Loop=%d, Prox=%d)\n", loopCount+proxCount, totalFrames, loopCount, proxCount);
+	printf("Total localizations on previous session = %d/%d (Loop=%d, Prox=%d, In Motion=%d/%d)\n", loopCount+proxCount, totalFrames, loopCount, proxCount, loopCountMotion, totalFramesMotion);
 	{
 		float m = uMean(localizationTime);
 		float var = uVariance(localizationTime, m);
@@ -145,14 +165,30 @@ void showLocalizationStats()
 		printf("Average odometry distances = %f m (stddev=%f m)\n", m, stddev);
 	}
 
+	if(exportPoses)
+	{
+		std::string outputPath = outputDatabasePath.substr(0, outputDatabasePath.size()-3);
+		std::string oName = outputPath+uFormat("_session_%d_odom.g2o", sessionCount);
+		std::string lName = outputPath+uFormat("_session_%d_loc.g2o", sessionCount);
+		graph::exportPoses(oName, 4, odomTrajectoryPoses, odomTrajectoryLinks);
+		graph::exportPoses(lName, 4, localizationPoses, odomTrajectoryLinks);
+		printf("Exported %s and %s\n", oName.c_str(), lName.c_str());
+	}
+
 	loopCount = 0;
 	proxCount = 0;
 	totalFrames = 0;
+	loopCountMotion = 0;
+	totalFramesMotion = 0;
 	previousLocalizationDistances.clear();
 	odomDistances.clear();
 	localizationVariations.clear();
 	localizationAngleVariations.clear();
 	localizationTime.clear();
+	odomTrajectoryPoses.clear();
+	odomTrajectoryLinks.clear();
+	localizationPoses.clear();
+	++sessionCount;
 }
 
 int main(int argc, char * argv[])
@@ -178,6 +214,14 @@ int main(int argc, char * argv[])
 	bool useDatabaseRate = false;
 	int startId = 0;
 	int stopId = 0;
+	int framesToSkip = 0;
+	bool scanFromDepth = false;
+	int scanDecimation = 1;
+	float scanRangeMin = 0.0f;
+	float scanRangeMax = 0.0f;
+	float scanVoxelSize = 0;
+	int scanNormalK = 0;
+	float scanNormalRadius = 0.0f;
 	ParametersMap configParameters;
 	for(int i=1; i<argc-2; ++i)
 	{
@@ -197,10 +241,12 @@ int main(int argc, char * argv[])
 			else if(i < argc - 2)
 			{
 				printf("Config file \"%s\" is not valid or doesn't exist!\n", argv[i]);
+				showUsage();
 			}
 			else
 			{
 				printf("Config file is not set!\n");
+				showUsage();
 			}
 		}
 		else if (strcmp(argv[i], "-start") == 0 || strcmp(argv[i], "--start") == 0)
@@ -211,6 +257,11 @@ int main(int argc, char * argv[])
 				startId = atoi(argv[i]);
 				printf("Start at node ID = %d.\n", startId);
 			}
+			else
+			{
+				printf("-start option requires a value\n");
+				showUsage();
+			}
 		}
 		else if (strcmp(argv[i], "-stop") == 0 || strcmp(argv[i], "--stop") == 0)
 		{
@@ -220,6 +271,30 @@ int main(int argc, char * argv[])
 				stopId = atoi(argv[i]);
 				printf("Stop at node ID = %d.\n", stopId);
 			}
+			else
+			{
+				printf("-stop option requires a value\n");
+				showUsage();
+			}
+		}
+		else if (strcmp(argv[i], "-skip") == 0 || strcmp(argv[i], "--skip") == 0)
+		{
+			++i;
+			if(i < argc - 2)
+			{
+				framesToSkip = atoi(argv[i]);
+				printf("Will skip %d frames.\n", framesToSkip);
+			}
+			else
+			{
+				printf("-skip option requires a value\n");
+				showUsage();
+			}
+		}
+		else if(strcmp(argv[i], "-p") == 0 || strcmp(argv[i], "--p") == 0)
+		{
+			exportPoses = true;
+			printf("Odometry trajectory and localization poses will be exported in g2o format (-p option).\n");
 		}
 		else if(strcmp(argv[i], "-g2") == 0 || strcmp(argv[i], "--g2") == 0)
 		{
@@ -248,6 +323,95 @@ int main(int argc, char * argv[])
 #else
 			printf("RTAB-Map is not built with OctoMap support, cannot set -o3 option!\n");
 #endif
+		}
+		else if (strcmp(argv[i], "-scan_from_depth") == 0 || strcmp(argv[i], "--scan_from_depth") == 0)
+		{
+			scanFromDepth = true;
+		}
+		else if (strcmp(argv[i], "-scan_downsample") == 0 || strcmp(argv[i], "--scan_downsample") == 0 ||
+				strcmp(argv[i], "-scan_decimation") == 0 || strcmp(argv[i], "--scan_decimation") == 0)
+		{
+			++i;
+			if(i < argc - 2)
+			{
+				scanDecimation = atoi(argv[i]);
+				printf("Scan from depth decimation = %d.\n", scanDecimation);
+			}
+			else
+			{
+				printf("-scan_downsample option requires 1 value\n");
+				showUsage();
+			}
+		}
+		else if (strcmp(argv[i], "-scan_range_min") == 0 || strcmp(argv[i], "--scan_range_min") == 0)
+		{
+			++i;
+			if(i < argc - 2)
+			{
+				scanRangeMin = atof(argv[i]);
+				printf("Scan range min = %f m.\n", scanRangeMin);
+			}
+			else
+			{
+				printf("-scan_range_min option requires 1 value\n");
+				showUsage();
+			}
+		}
+		else if (strcmp(argv[i], "-scan_range_max") == 0 || strcmp(argv[i], "--scan_range_max") == 0)
+		{
+			++i;
+			if(i < argc - 2)
+			{
+				scanRangeMax = atof(argv[i]);
+				printf("Scan range max = %f m.\n", scanRangeMax);
+			}
+			else
+			{
+				printf("-scan_range_max option requires 1 value\n");
+				showUsage();
+			}
+		}
+		else if (strcmp(argv[i], "-scan_voxel_size") == 0 || strcmp(argv[i], "--scan_voxel_size") == 0)
+		{
+			++i;
+			if(i < argc - 2)
+			{
+				scanVoxelSize = atof(argv[i]);
+				printf("Scan voxel size = %f m.\n", scanVoxelSize);
+			}
+			else
+			{
+				printf("-scan_voxel_size option requires 1 value\n");
+				showUsage();
+			}
+		}
+		else if (strcmp(argv[i], "-scan_normal_k") == 0 || strcmp(argv[i], "--scan_normal_k") == 0)
+		{
+			++i;
+			if(i < argc - 2)
+			{
+				scanNormalK = atoi(argv[i]);
+				printf("Scan normal k = %d.\n", scanNormalK);
+			}
+			else
+			{
+				printf("-scan_normal_k option requires 1 value\n");
+				showUsage();
+			}
+		}
+		else if (strcmp(argv[i], "-scan_normal_radius") == 0 || strcmp(argv[i], "--scan_normal_radius") == 0)
+		{
+			++i;
+			if(i < argc - 2)
+			{
+				scanNormalRadius = atof(argv[i]);
+				printf("Scan normal radius = %f m.\n", scanNormalRadius);
+			}
+			else
+			{
+				printf("-scan_normal_radius option requires 1 value\n");
+				showUsage();
+			}
 		}
 	}
 
@@ -368,6 +532,11 @@ int main(int argc, char * argv[])
 	delete dbDriver;
 	dbDriver = 0;
 
+	if(framesToSkip)
+	{
+		totalIds/=framesToSkip+1;
+	}
+
 	std::string workingDirectory = UDirectory::getDir(outputDatabasePath);
 	printf("Set working directory to \"%s\".\n", workingDirectory.c_str());
 	uInsert(parameters, ParametersPair(Parameters::kRtabmapWorkingDirectory(), workingDirectory));
@@ -387,8 +556,8 @@ int main(int argc, char * argv[])
 	bool rgbdEnabled = Parameters::defaultRGBDEnabled();
 	Parameters::parse(parameters, Parameters::kRGBDEnabled(), rgbdEnabled);
 	bool odometryIgnored = !rgbdEnabled;
-	DBReader dbReader(inputDatabasePath, useDatabaseRate?-1:0, odometryIgnored, false, false, startId, -1, stopId);
-	dbReader.init();
+	DBReader * dbReader = new DBReader(inputDatabasePath, useDatabaseRate?-1:0, odometryIgnored, false, false, startId, -1, stopId);
+	dbReader->init();
 
 	OccupancyGrid grid(parameters);
 	grid.setCloudAssembling(assemble3dMap);
@@ -396,12 +565,25 @@ int main(int argc, char * argv[])
 	OctoMap octomap(parameters);
 #endif
 
+	float linearUpdate = Parameters::defaultRGBDLinearUpdate();
+	float angularUpdate = Parameters::defaultRGBDAngularUpdate();
+	Parameters::parse(parameters, Parameters::kRGBDLinearUpdate(), linearUpdate);
+	Parameters::parse(parameters, Parameters::kRGBDAngularUpdate(), angularUpdate);
+
 	printf("Reprocessing data of \"%s\"...\n", inputDatabasePath.c_str());
 	std::map<std::string, float> globalMapStats;
 	int processed = 0;
 	CameraInfo info;
-	SensorData data = dbReader.takeImage(&info);
+	SensorData data = dbReader->takeImage(&info);
+	CameraThread camThread(dbReader, parameters); // take ownership of dbReader
+	camThread.setScanParameters(scanFromDepth, scanDecimation, scanRangeMin, scanRangeMax, scanVoxelSize, scanNormalK, scanNormalRadius);
+	if(scanFromDepth)
+	{
+		data.setLaserScan(LaserScan());
+	}
+	camThread.postUpdate(&data, &info);
 	Transform lastLocalizationOdomPose = info.odomPose;
+	bool inMotion = true;
 	while(data.isValid() && g_loopForever)
 	{
 		UTimer iterationTime;
@@ -417,10 +599,11 @@ int main(int argc, char * argv[])
 				printf("High variance detected, triggering a new map...\n");
 				if(!incrementalMemory && processed>0)
 				{
-					showLocalizationStats();
+					showLocalizationStats(outputDatabasePath);
 					lastLocalizationOdomPose = info.odomPose;
 				}
 				rtabmap.triggerNewMap();
+				inMotion = true;
 			}
 			UTimer t;
 			if(!rtabmap.process(data, info.odomPose, info.odomCovariance, info.odomVelocity, globalMapStats))
@@ -515,6 +698,11 @@ int main(int argc, char * argv[])
 		int landmarkId = (int)uValue(stats.data(), rtabmap::Statistics::kLoopLandmark_detected(), 0.0f);
 		int refMapId = stats.refImageMapId();
 		++totalFrames;
+
+		if(inMotion)
+		{
+			++totalFramesMotion;
+		}
 		if (loopId>0)
 		{
 			if(stats.loopClosureId()>0)
@@ -524,6 +712,10 @@ int main(int argc, char * argv[])
 			else
 			{
 				++proxCount;
+			}
+			if(inMotion)
+			{
+				++loopCountMotion;
 			}
 			int loopMapId = stats.loopClosureId() > 0? stats.loopClosureMapId(): stats.proximityDetectionMapId();
 			printf("Processed %d/%d nodes [id=%d map=%d]... %dms %s on %d [%d]\n", ++processed, totalIds, refId, refMapId, int(iterationTime.ticks() * 1000), stats.loopClosureId() > 0?"Loop":"Prox", loopId, loopMapId);
@@ -557,26 +749,87 @@ int main(int argc, char * argv[])
 				localizationVariations.push_back(stats.data().at(Statistics::kLoopOdom_correction_norm()));
 				localizationAngleVariations.push_back(stats.data().at(Statistics::kLoopOdom_correction_angle()));
 			}
+
+			if(exportPoses && !info.odomPose.isNull())
+			{
+				if(!odomTrajectoryPoses.empty())
+				{
+					int previousId = odomTrajectoryPoses.rbegin()->first;
+					odomTrajectoryLinks.insert(std::make_pair(previousId, Link(previousId, refId, Link::kNeighbor, odomTrajectoryPoses.rbegin()->second.inverse()*info.odomPose, info.odomCovariance)));
+				}
+				odomTrajectoryPoses.insert(std::make_pair(refId, info.odomPose));
+				localizationPoses.insert(std::make_pair(refId, stats.mapCorrection()*info.odomPose));
+			}
 		}
 
 		Transform odomPose = info.odomPose;
-		data = dbReader.takeImage(&info);
 
+		if(framesToSkip>0)
+		{
+			int skippedFrames = framesToSkip;
+			while(skippedFrames-- > 0)
+			{
+				data = dbReader->takeImage(&info);
+				if(!odometryIgnored && !info.odomCovariance.empty() && info.odomCovariance.at<double>(0,0)>=9999)
+				{
+					printf("High variance detected, triggering a new map...\n");
+					if(!incrementalMemory && processed>0)
+					{
+						showLocalizationStats(outputDatabasePath);
+						lastLocalizationOdomPose = info.odomPose;
+					}
+					rtabmap.triggerNewMap();
+				}
+			}
+		}
+
+		data = dbReader->takeImage(&info);
+		if(scanFromDepth)
+		{
+			data.setLaserScan(LaserScan());
+		}
+		camThread.postUpdate(&data, &info);
+
+		inMotion = true;
 		if(!incrementalMemory &&
 		   !odomPose.isNull() &&
 		   !info.odomPose.isNull())
 		{
-			odomDistances.push_back(odomPose.getDistance(info.odomPose));
+			float distance = odomPose.getDistance(info.odomPose);
+			float angle = (odomPose.inverse()*info.odomPose).getAngle();
+			odomDistances.push_back(distance);
+			if(distance < linearUpdate && angle <= angularUpdate)
+			{
+				inMotion = false;
+			}
 		}
 	}
 
+	int databasesMerged = 0;
 	if(!incrementalMemory)
 	{
-		showLocalizationStats();
+		showLocalizationStats(outputDatabasePath);
 	}
 	else
 	{
-		printf("Total loop closures = %d (Loop=%d, Prox=%d)\n", loopCount+proxCount, loopCount, proxCount);
+		printf("Total loop closures = %d (Loop=%d, Prox=%d, In Motion=%d/%d)\n", loopCount+proxCount, loopCount, proxCount, loopCountMotion, totalFramesMotion);
+
+		if(databases.size()>1)
+		{
+			std::map<int, Transform> poses;
+			std::multimap<int, Link> constraints;
+			rtabmap.getGraph(poses, constraints, 0, 1, 0, false, false, false, false, false, false);
+			std::set<int> mapIds;
+			for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter)
+			{
+				int id;
+				if((id=rtabmap.getMemory()->getMapId(iter->first, true))>=0)
+				{
+					mapIds.insert(id);
+				}
+			}
+			databasesMerged = mapIds.size();
+		}
 	}
 
 	printf("Closing database \"%s\"...\n", outputDatabasePath.c_str());
@@ -748,5 +1001,5 @@ int main(int argc, char * argv[])
 	}
 #endif
 
-	return 0;
+	return databasesMerged;
 }

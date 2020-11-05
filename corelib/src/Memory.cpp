@@ -362,7 +362,7 @@ void Memory::loadDataFromDb(bool postInitClosingEvents)
 			const std::map<int, Signature *> & signatures = this->getSignatures();
 			for(std::map<int, Signature *>::const_iterator i=signatures.begin(); i!=signatures.end(); ++i)
 			{
-				const std::multimap<int, cv::KeyPoint> & words = i->second->getWords();
+				const std::multimap<int, int> & words = i->second->getWords();
 				std::list<int> keys = uUniqueKeys(words);
 				for(std::list<int>::iterator iter=keys.begin(); iter!=keys.end(); ++iter)
 				{
@@ -413,11 +413,11 @@ void Memory::loadDataFromDb(bool postInitClosingEvents)
 			Signature * s = this->_getSignature(i->first);
 			UASSERT(s != 0);
 
-			const std::multimap<int, cv::KeyPoint> & words = s->getWords();
+			const std::multimap<int, int> & words = s->getWords();
 			if(words.size())
 			{
 				UDEBUG("node=%d, word references=%d", s->id(), words.size());
-				for(std::multimap<int, cv::KeyPoint>::const_iterator iter = words.begin(); iter!=words.end(); ++iter)
+				for(std::multimap<int, int>::const_iterator iter = words.begin(); iter!=words.end(); ++iter)
 				{
 					if(iter->first > 0)
 					{
@@ -1131,7 +1131,7 @@ void Memory::moveSignatureToWMFromSTM(int id, int * reducedTo)
 					}
 				}
 
-				this->moveToTrash(s, _notLinkedNodesKeptInDb);
+				this->moveToTrash(s, false);
 				s = 0;
 			}
 		}
@@ -2368,7 +2368,7 @@ void Memory::moveToTrash(Signature * s, bool keepLinkedToGraph, std::list<int> *
 			}
 			s->removeLinks(true); // remove all links, but keep self referring link
 			s->removeLandmarks(); // remove all landmarks
-			s->setWeight(0);
+			s->setWeight(-9); // invalid
 			s->setLabel(""); // reset label
 		}
 		else
@@ -2753,20 +2753,16 @@ Transform Memory::computeTransform(
 		if(_reextractLoopClosureFeatures && _registrationPipeline->isImageRequired())
 		{
 			UDEBUG("");
-			tmpFrom.setWords(std::multimap<int, cv::KeyPoint>());
-			tmpFrom.setWords3(std::multimap<int, cv::Point3f>());
-			tmpFrom.setWordsDescriptors(std::multimap<int, cv::Mat>());
+			tmpFrom.removeAllWords();
 			tmpFrom.sensorData().setFeatures(std::vector<cv::KeyPoint>(), std::vector<cv::Point3f>(), cv::Mat());
-			tmpTo.setWords(std::multimap<int, cv::KeyPoint>());
-			tmpTo.setWords3(std::multimap<int, cv::Point3f>());
-			tmpTo.setWordsDescriptors(std::multimap<int, cv::Mat>());
+			tmpTo.removeAllWords();
 			tmpTo.sensorData().setFeatures(std::vector<cv::KeyPoint>(), std::vector<cv::Point3f>(), cv::Mat());
 		}
 		else if(useKnownCorrespondencesIfPossible)
 		{
 			// This will make RegistrationVis bypassing the correspondences computation
-			tmpFrom.setWordsDescriptors(std::multimap<int, cv::Mat>());
-			tmpTo.setWordsDescriptors(std::multimap<int, cv::Mat>());
+			tmpFrom.setWordsDescriptors(cv::Mat());
+			tmpTo.setWordsDescriptors(cv::Mat());
 		}
 
 		bool isNeighborRefining = fromS.getLinks().find(toS.id()) != fromS.getLinks().end() && fromS.getLinks().find(toS.id())->second.type() == Link::kNeighbor;
@@ -2795,23 +2791,28 @@ Transform Memory::computeTransform(
 			   !tmpTo.getWords().empty() &&
 			   !tmpFrom.getWordsDescriptors().empty() &&
 			   !tmpFrom.getWords().empty() &&
-			   !tmpFrom.getWords3().empty())
+			   !tmpFrom.getWords3().empty() &&
+			   fromS.hasLink(0, Link::kNeighbor)) // If doesn't have neighbors, skip bundle
 		{
-			std::multimap<int, cv::Point3f> words3DMap;
-			std::multimap<int, cv::KeyPoint> wordsMap;
-			std::multimap<int, cv::Mat> wordsDescriptorsMap;
+			std::multimap<int, int> words;
+			std::vector<cv::Point3f> words3DMap;
+			std::vector<cv::KeyPoint> wordsMap;
+			cv::Mat wordsDescriptorsMap;
 
 			const std::multimap<int, Link> & links = fromS.getLinks();
+			if(!fromS.getWords3().empty())
 			{
-				const std::map<int, cv::Point3f> & words3 = uMultimapToMapUnique(fromS.getWords3());
-				UDEBUG("fromS.getWords3()=%d  uniques=%d", (int)fromS.getWords3().size(), (int)words3.size());
-				for(std::map<int, cv::Point3f>::const_iterator jter=words3.begin(); jter!=words3.end(); ++jter)
+				const std::map<int, int> & wordsFrom = uMultimapToMapUnique(fromS.getWords());
+				UDEBUG("fromS.getWords()=%d  uniques=%d", (int)fromS.getWords().size(), (int)wordsFrom.size());
+				for(std::map<int, int>::const_iterator jter=wordsFrom.begin(); jter!=wordsFrom.end(); ++jter)
 				{
-					if(util3d::isFinite(jter->second))
+					const cv::Point3f & pt = fromS.getWords3()[jter->second];
+					if(util3d::isFinite(pt))
 					{
-						words3DMap.insert(*jter);
-						wordsMap.insert(*fromS.getWords().find(jter->first));
-						wordsDescriptorsMap.insert(*fromS.getWordsDescriptors().find(jter->first));
+						words.insert(std::make_pair(jter->first, words.size()));
+						words3DMap.push_back(pt);
+						wordsMap.push_back(fromS.getWordsKpts()[jter->second]);
+						wordsDescriptorsMap.push_back(fromS.getWordsDescriptors().row(jter->second));
 					}
 				}
 			}
@@ -2820,21 +2821,23 @@ Transform Memory::computeTransform(
 			for(std::multimap<int, Link>::const_iterator iter=links.begin(); iter!=links.end(); ++iter)
 			{
 				int id = iter->first;
-				if(id != fromS.id())
+				if(id != fromS.id() && iter->second.type() == Link::kNeighbor) // assemble only neighbors for the local feature map
 				{
 					const Signature * s = this->getSignature(id);
-					if(s)
+					if(s && !s->getWords3().empty())
 					{
-						const std::map<int, cv::Point3f> & words3 = uMultimapToMapUnique(s->getWords3());
-						for(std::map<int, cv::Point3f>::const_iterator jter=words3.begin(); jter!=words3.end(); ++jter)
+						const std::map<int, int> & wordsTo = uMultimapToMapUnique(s->getWords());
+						for(std::map<int, int>::const_iterator jter=wordsTo.begin(); jter!=wordsTo.end(); ++jter)
 						{
+							const cv::Point3f & pt = s->getWords3()[jter->second];
 							if( jter->first > 0 &&
-								util3d::isFinite(jter->second) &&
-								words3DMap.find(jter->first) == words3DMap.end())
+								util3d::isFinite(pt) &&
+								words.find(jter->first) == words.end())
 							{
-								words3DMap.insert(std::make_pair(jter->first, util3d::transformPoint(jter->second, iter->second.transform())));
-								wordsMap.insert(*s->getWords().find(jter->first));
-								wordsDescriptorsMap.insert(*s->getWordsDescriptors().find(jter->first));
+								words.insert(words.end(), std::make_pair(jter->first, words.size()));
+								words3DMap.push_back(util3d::transformPoint(pt, iter->second.transform()));
+								wordsMap.push_back(s->getWordsKpts()[jter->second]);
+								wordsDescriptorsMap.push_back(s->getWordsDescriptors().row(jter->second));
 							}
 						}
 					}
@@ -2842,24 +2845,29 @@ Transform Memory::computeTransform(
 			}
 			UDEBUG("words3DMap=%d", (int)words3DMap.size());
 			Signature tmpFrom2(fromS.id());
-			tmpFrom2.setWords3(words3DMap);
-			tmpFrom2.setWords(wordsMap);
-			tmpFrom2.setWordsDescriptors(wordsDescriptorsMap);
+			tmpFrom2.setWords(words, wordsMap, words3DMap, wordsDescriptorsMap);
 
 			transform = _registrationPipeline->computeTransformationMod(tmpFrom2, tmpTo, guess, info);
 
-			if(!transform.isNull() && info)
+			if(!transform.isNull() && info && !tmpFrom2.getWords3().empty())
 			{
-				std::map<int, cv::Point3f> points3DMap = uMultimapToMapUnique(tmpFrom2.getWords3());
+				std::map<int, cv::Point3f> points3DMap;
+				std::map<int, int> wordsMap = uMultimapToMapUnique(tmpFrom2.getWords());
+				for(std::map<int, int>::iterator iter=wordsMap.begin(); iter!=wordsMap.end(); ++iter)
+				{
+					points3DMap.insert(std::make_pair(iter->first, tmpFrom2.getWords3()[iter->second]));
+				}
 				std::map<int, Transform> bundlePoses;
 				std::multimap<int, Link> bundleLinks;
 				std::map<int, CameraModel> bundleModels;
 				std::map<int, std::map<int, FeatureBA> > wordReferences;
 
 				std::multimap<int, Link> links = fromS.getLinks();
+				links = graph::filterLinks(links, Link::kNeighbor, true); // assemble only neighbors for the local feature map
 				links.insert(std::make_pair(toS.id(), Link(fromS.id(), toS.id(), Link::kGlobalClosure, transform, info->covariance.inv())));
 				links.insert(std::make_pair(fromS.id(), Link()));
 
+				int totalWordReferences = 0;
 				for(std::multimap<int, Link>::iterator iter=links.begin(); iter!=links.end(); ++iter)
 				{
 					int id = iter->first;
@@ -2912,33 +2920,41 @@ Transform Memory::computeTransform(
 								bundlePoses.insert(std::make_pair(id, iter->second.transform()));
 							}
 
-							const std::map<int,cv::KeyPoint> & words = uMultimapToMapUnique(s->getWords());
-							for(std::map<int, cv::KeyPoint>::const_iterator jter=words.begin(); jter!=words.end(); ++jter)
+							const std::map<int,int> & words = uMultimapToMapUnique(s->getWords());
+							for(std::map<int, int>::const_iterator jter=words.begin(); jter!=words.end(); ++jter)
 							{
 								if(points3DMap.find(jter->first)!=points3DMap.end() &&
-									(id == tmpTo.id() || jter->first > 0))
+										(id == tmpTo.id() || jter->first > 0)) // Since we added negative words of "from", only accept matches with current frame
 								{
-									std::multimap<int, cv::Point3f>::const_iterator kter = s->getWords3().find(jter->first);
-									cv::Point3f pt3d = util3d::transformPoint(kter->second, invLocalTransform);
+									//get depth
+									float d = 0.0f;
+									if( !s->getWords3().empty() &&
+										util3d::isFinite(s->getWords3()[jter->second]))
+									{
+										//move back point in camera frame (to get depth along z)
+										d = util3d::transformPoint(s->getWords3()[jter->second], invLocalTransform).z;
+									}
 									wordReferences.insert(std::make_pair(jter->first, std::map<int, FeatureBA>()));
-									wordReferences.at(jter->first).insert(std::make_pair(id, FeatureBA(jter->second, pt3d.z)));
+									wordReferences.at(jter->first).insert(std::make_pair(id, FeatureBA(s->getWordsKpts()[jter->second], d)));
+									++totalWordReferences;
 								}
 							}
 						}
 					}
 				}
 
+
 				UDEBUG("sba...start");
 				// set root negative to fix all other poses
 				std::set<int> sbaOutliers;
 				UTimer bundleTimer;
-				OptimizerG2O sba;
+				OptimizerG2O sba(parameters_);
 				sba.setIterations(5);
 				UTimer bundleTime;
 				bundlePoses = sba.optimizeBA(-toS.id(), bundlePoses, bundleLinks, bundleModels, points3DMap, wordReferences, &sbaOutliers);
 				UDEBUG("sba...end");
 
-				UDEBUG("bundleTime=%fs (poses=%d wordRef=%d outliers=%d)", bundleTime.ticks(), (int)bundlePoses.size(), (int)wordReferences.size(), (int)sbaOutliers.size());
+				UDEBUG("bundleTime=%fs (poses=%d wordRef=%d outliers=%d)", bundleTime.ticks(), (int)bundlePoses.size(), totalWordReferences, (int)sbaOutliers.size());
 
 				UDEBUG("Local Bundle Adjustment Before: %s", transform.prettyPrint().c_str());
 				if(!bundlePoses.rbegin()->second.isNull())
@@ -2979,36 +2995,6 @@ Transform Memory::computeTransform(
 		else
 		{
 			transform = _registrationPipeline->computeTransformationMod(tmpFrom, tmpTo, guess, info);
-		}
-
-		if(!transform.isNull() &&
-			fromS.sensorData().cameraModels().size()<=1 &&
-			toS.sensorData().cameraModels().size()<=1)
-		{
-			UDEBUG("");
-			// verify if it is a 180 degree transform, well verify > 90
-			float x,y,z, roll,pitch,yaw;
-			if(guess.isNull())
-			{
-				transform.getTranslationAndEulerAngles(x,y,z, roll,pitch,yaw);
-			}
-			else
-			{
-				Transform guessError = guess.inverse() * transform;
-				guessError.getTranslationAndEulerAngles(x,y,z, roll,pitch,yaw);
-			}
-			if(fabs(pitch) > CV_PI/2 ||
-			   fabs(yaw) > CV_PI/2)
-			{
-				transform.setNull();
-				std::string msg = uFormat("Too large rotation detected! (pitch=%f, yaw=%f) max is %f",
-						roll, pitch, yaw, CV_PI/2);
-				UINFO(msg.c_str());
-				if(info)
-				{
-					info->rejectedMsg = msg;
-				}
-			}
 		}
 	}
 	return transform;
@@ -3086,6 +3072,8 @@ Transform Memory::computeIcpTransformMulti(
 		pcl::PointCloud<pcl::PointNormal>::Ptr assembledToNormalClouds(new pcl::PointCloud<pcl::PointNormal>);
 		pcl::PointCloud<pcl::PointXYZI>::Ptr assembledToIClouds(new pcl::PointCloud<pcl::PointXYZI>);
 		pcl::PointCloud<pcl::PointXYZINormal>::Ptr assembledToNormalIClouds(new pcl::PointCloud<pcl::PointXYZINormal>);
+		pcl::PointCloud<pcl::PointXYZRGB>::Ptr assembledToRGBClouds(new pcl::PointCloud<pcl::PointXYZRGB>);
+		pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr assembledToNormalRGBClouds(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
 		UDEBUG("maxPoints from(%d) = %d", fromId, maxPoints);
 		for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
 		{
@@ -3108,6 +3096,19 @@ Transform Memory::computeIcpTransformMulti(
 							else
 							{
 								*assembledToIClouds += *util3d::laserScanToPointCloudI(scan,
+										toPoseInv * iter->second * scan.localTransform());
+							}
+						}
+						else if(scan.hasRGB())
+						{
+							if(scan.hasNormals())
+							{
+								*assembledToNormalRGBClouds += *util3d::laserScanToPointCloudRGBNormal(scan,
+										toPoseInv * iter->second * scan.localTransform());
+							}
+							else
+							{
+								*assembledToRGBClouds += *util3d::laserScanToPointCloudRGB(scan,
 										toPoseInv * iter->second * scan.localTransform());
 							}
 						}
@@ -3159,6 +3160,28 @@ Transform Memory::computeIcpTransformMulti(
 		else if(assembledToIClouds->size())
 		{
 			assembledScan = fromScan.is2d()?util3d::laserScan2dFromPointCloud(*assembledToIClouds):util3d::laserScanFromPointCloud(*assembledToIClouds);
+		}
+		else if(assembledToNormalRGBClouds->size())
+		{
+			if(fromScan.is2d())
+			{
+				UERROR("Cannot handle 2d scan with RGB format.");
+			}
+			else
+			{
+				assembledScan = util3d::laserScanFromPointCloud(*assembledToNormalRGBClouds);
+			}
+		}
+		else if(assembledToRGBClouds->size())
+		{
+			if(fromScan.is2d())
+			{
+				UERROR("Cannot handle 2d scan with RGB format.");
+			}
+			else
+			{
+				assembledScan = util3d::laserScanFromPointCloud(*assembledToRGBClouds);
+			}
 		}
 		UDEBUG("assembledScan=%d points", assembledScan.cols);
 
@@ -3399,21 +3422,25 @@ void Memory::dumpSignatures(const char * fileNameSign, bool words3D) const
 			{
 				if(words3D)
 				{
-					const std::multimap<int, cv::Point3f> & ref = ss->getWords3();
-					for(std::multimap<int, cv::Point3f>::const_iterator jter=ref.begin(); jter!=ref.end(); ++jter)
+					if(!ss->getWords3().empty())
 					{
-						//show only valid point according to current parameters
-						if(pcl::isFinite(jter->second) &&
-						   (jter->second.x != 0 || jter->second.y != 0 || jter->second.z != 0))
+						const std::multimap<int, int> & ref = ss->getWords();
+						for(std::multimap<int, int>::const_iterator jter=ref.begin(); jter!=ref.end(); ++jter)
 						{
-							fprintf(foutSign, "%d ", (*jter).first);
+							const cv::Point3f & pt = ss->getWords3()[jter->second];
+							//show only valid point according to current parameters
+							if(pcl::isFinite(pt) &&
+							   (pt.x != 0 || pt.y != 0 || pt.z != 0))
+							{
+								fprintf(foutSign, "%d ", (*jter).first);
+							}
 						}
 					}
 				}
 				else
 				{
-					const std::multimap<int, cv::KeyPoint> & ref = ss->getWords();
-					for(std::multimap<int, cv::KeyPoint>::const_iterator jter=ref.begin(); jter!=ref.end(); ++jter)
+					const std::multimap<int, int> & ref = ss->getWords();
+					for(std::multimap<int, int>::const_iterator jter=ref.begin(); jter!=ref.end(); ++jter)
 					{
 						fprintf(foutSign, "%d ", (*jter).first);
 					}
@@ -3481,6 +3508,47 @@ void Memory::dumpMemoryTree(const char * fileNameTree) const
 		fclose(foutTree);
 	}
 
+}
+
+unsigned long Memory::getMemoryUsed() const
+{
+	unsigned long memoryUsage = sizeof(Memory);
+	memoryUsage += _signatures.size() * (sizeof(int)+sizeof(std::map<int, Signature *>::iterator)) + sizeof(std::map<int, Signature *>);
+	for(std::map<int, Signature*>::const_iterator iter=_signatures.begin(); iter!=_signatures.end(); ++iter)
+	{
+		memoryUsage += iter->second->getMemoryUsed(true);
+	}
+	if(_vwd)
+	{
+		memoryUsage += _vwd->getMemoryUsed();
+	}
+	memoryUsage += _stMem.size() * (sizeof(int)+sizeof(std::set<int>::iterator)) + sizeof(std::set<int>);
+	memoryUsage += _workingMem.size() * (sizeof(int)+sizeof(double)+sizeof(std::map<int, double>::iterator)) + sizeof(std::map<int, double>);
+	memoryUsage += _groundTruths.size() * (sizeof(int)+sizeof(Transform)+12*sizeof(float) + sizeof(std::map<int, Transform>::iterator)) + sizeof(std::map<int, Transform>);
+	memoryUsage += _labels.size() * (sizeof(int)+sizeof(std::string) + sizeof(std::map<int, std::string>::iterator)) + sizeof(std::map<int, std::string>);
+	for(std::map<int, std::string>::const_iterator iter=_labels.begin(); iter!=_labels.end(); ++iter)
+	{
+		memoryUsage+=iter->second.size();
+	}
+	memoryUsage += _landmarksIndex.size() * (sizeof(int)+sizeof(std::set<int>) + sizeof(std::map<int, std::set<int> >::iterator)) + sizeof(std::map<int, std::set<int> >);
+	memoryUsage += _landmarksInvertedIndex.size() * (sizeof(int)+sizeof(std::set<int>) + sizeof(std::map<int, std::set<int> >::iterator)) + sizeof(std::map<int, std::set<int> >);
+	for(std::map<int, std::set<int>>::const_iterator iter=_landmarksIndex.begin(); iter!=_landmarksIndex.end(); ++iter)
+	{
+		memoryUsage+=iter->second.size()*(sizeof(int)+sizeof(std::set<int>::iterator)) + sizeof(std::set<int>);
+	}
+	for(std::map<int, std::set<int>>::const_iterator iter=_landmarksInvertedIndex.begin(); iter!=_landmarksInvertedIndex.end(); ++iter)
+	{
+		memoryUsage+=iter->second.size()*(sizeof(int)+sizeof(std::set<int>::iterator)) + sizeof(std::set<int>);
+	}
+	memoryUsage += parameters_.size()*(sizeof(std::string)*2+sizeof(ParametersMap::iterator)) + sizeof(ParametersMap);
+	memoryUsage += sizeof(Feature2D) + _feature2D->getParameters().size()*(sizeof(std::string)*2+sizeof(ParametersMap::iterator)) + sizeof(ParametersMap);
+	memoryUsage += sizeof(Registration);
+	memoryUsage += sizeof(RegistrationIcp);
+	memoryUsage += _occupancy->getMemoryUsed();
+	memoryUsage += sizeof(MarkerDetector);
+	memoryUsage += sizeof(DBDriver);
+
+	return memoryUsage;
 }
 
 void Memory::rehearsal(Signature * signature, Statistics * stats)
@@ -3642,6 +3710,7 @@ bool Memory::rehearsalMerge(int oldId, int newId)
 				{
 					_lastGlobalLoopClosureId = newS->id();
 				}
+				oldS->setWeight(-9);
 			}
 			else
 			{
@@ -3654,6 +3723,7 @@ bool Memory::rehearsalMerge(int oldId, int newId)
 				{
 					_lastSignature = oldS;
 				}
+				newS->setWeight(-9);
 			}
 
 			// remove location
@@ -3874,9 +3944,10 @@ SensorData Memory::getNodeData(int locationId, bool images, bool scan, bool user
 }
 
 void Memory::getNodeWordsAndGlobalDescriptors(int nodeId,
-		std::multimap<int, cv::KeyPoint> & words,
-		std::multimap<int, cv::Point3f> & words3,
-		std::multimap<int, cv::Mat> & wordsDescriptors,
+		std::multimap<int, int> & words,
+		std::vector<cv::KeyPoint> & wordsKpts,
+		std::vector<cv::Point3f> & words3,
+		cv::Mat & wordsDescriptors,
 		std::vector<GlobalDescriptor> & globalDescriptors) const
 {
 	//UDEBUG("nodeId=%d", nodeId);
@@ -3884,6 +3955,7 @@ void Memory::getNodeWordsAndGlobalDescriptors(int nodeId,
 	if(s)
 	{
 		words = s->getWords();
+		wordsKpts = s->getWordsKpts();
 		words3 = s->getWords3();
 		wordsDescriptors = s->getWordsDescriptors();
 		globalDescriptors = s->sensorData().globalDescriptors();
@@ -3899,6 +3971,7 @@ void Memory::getNodeWordsAndGlobalDescriptors(int nodeId,
 		if(signatures.size())
 		{
 			words = signatures.front()->getWords();
+			wordsKpts = signatures.front()->getWordsKpts();
 			words3 = signatures.front()->getWords3();
 			wordsDescriptors = signatures.front()->getWordsDescriptors();
 			globalDescriptors = signatures.front()->sensorData().globalDescriptors();
@@ -3968,7 +4041,7 @@ void Memory::copyData(const Signature * from, Signature * to)
 	{
 		// words 2d
 		this->disableWordsRef(to->id());
-		to->setWords(from->getWords());
+		to->setWords(from->getWords(), from->getWordsKpts(), from->getWords3(), from->getWordsDescriptors());
 		std::list<int> id;
 		id.push_back(to->id());
 		this->enableWordsRef(id);
@@ -3985,8 +4058,6 @@ void Memory::copyData(const Signature * from, Signature * to)
 		to->sensorData().setId(to->id());
 
 		to->setPose(from->getPose());
-		to->setWords3(from->getWords3());
-		to->setWordsDescriptors(from->getWordsDescriptors());
 	}
 	else
 	{
@@ -4439,11 +4510,11 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 					keypoints3D.resize(keypoints.size());
 					for(size_t i=0; i<keypoints.size(); ++i)
 					{
-						UASSERT(keypoints[i].class_id < data.keypoints3D().size());
+						UASSERT(keypoints[i].class_id < (int)data.keypoints3D().size());
 						keypoints3D[i] = data.keypoints3D()[keypoints[i].class_id];
 					}
 				}
-				else if(keypoints.size() == data.keypoints3D().size())
+				else if(useProvided3dPoints && keypoints.size() == data.keypoints3D().size())
 				{
 					UDEBUG("Using provided 3d points (%d)", (int)data.keypoints3D().size());
 					keypoints3D = data.keypoints3D();
@@ -4642,9 +4713,10 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 		UDEBUG("id %d is a bad signature", id);
 	}
 
-	std::multimap<int, cv::KeyPoint> words;
-	std::multimap<int, cv::Point3f> words3D;
-	std::multimap<int, cv::Mat> wordsDescriptors;
+	std::multimap<int, int> words;
+	std::vector<cv::KeyPoint> wordsKpts;
+	std::vector<cv::Point3f> words3D;
+	cv::Mat wordsDescriptors;
 	int words3DValid = 0;
 	if(wordIds.size() > 0)
 	{
@@ -4664,11 +4736,12 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 				kpt.size *= decimationRatio;
 				kpt.octave += log2value;
 			}
-			words.insert(std::pair<int, cv::KeyPoint>(*iter, kpt));
+			words.insert(std::make_pair(*iter, words.size()));
+			wordsKpts.push_back(kpt);
 
 			if(keypoints3D.size())
 			{
-				words3D.insert(std::pair<int, cv::Point3f>(*iter, keypoints3D.at(i)));
+				words3D.push_back(keypoints3D.at(i));
 				if(util3d::isFinite(keypoints3D.at(i)))
 				{
 					++words3DValid;
@@ -4676,7 +4749,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 			}
 			if(_rawDescriptorsKept)
 			{
-				wordsDescriptors.insert(std::pair<int, cv::Mat>(*iter, descriptors.row(i).clone()));
+				wordsDescriptors.push_back(descriptors.row(i));
 			}
 		}
 	}
@@ -4796,18 +4869,32 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 
 			Signature cpPrevious(2);
 			// IDs should be unique so that registration doesn't override them
-			std::map<int, cv::KeyPoint> uniqueWords = uMultimapToMapUnique(previousS->getWords());
-			std::map<int, cv::Mat> uniqueWordsDescriptors = uMultimapToMapUnique(previousS->getWordsDescriptors());
+			std::map<int, int> uniqueWordsOld = uMultimapToMapUnique(previousS->getWords());
+			std::vector<cv::KeyPoint> uniqueWordsKpts;
+			cv::Mat uniqueWordsDescriptors;
+			std::multimap<int, int> uniqueWords;
+			for(std::map<int, int>::iterator iter=uniqueWordsOld.begin(); iter!=uniqueWordsOld.end(); ++iter)
+			{
+				uniqueWords.insert(std::make_pair(iter->first, uniqueWords.size()));
+				uniqueWordsKpts.push_back(previousS->getWordsKpts()[iter->second]);
+				uniqueWordsDescriptors.push_back(previousS->getWordsDescriptors().row(iter->second));
+			}
 			cpPrevious.sensorData().setCameraModels(previousS->sensorData().cameraModels());
-			cpPrevious.setWords(std::multimap<int, cv::KeyPoint>(uniqueWords.begin(), uniqueWords.end()));
-			cpPrevious.setWordsDescriptors(std::multimap<int, cv::Mat>(uniqueWordsDescriptors.begin(), uniqueWordsDescriptors.end()));
+			cpPrevious.setWords(uniqueWords, uniqueWordsKpts, std::vector<cv::Point3f>(), uniqueWordsDescriptors);
 			Signature cpCurrent(1);
-			uniqueWords = uMultimapToMapUnique(words);
-			uniqueWordsDescriptors = uMultimapToMapUnique(wordsDescriptors);
+			uniqueWordsOld = uMultimapToMapUnique(words);
+			uniqueWordsKpts.clear();
+			uniqueWordsDescriptors = cv::Mat();
+			uniqueWords.clear();
+			for(std::map<int, int>::iterator iter=uniqueWordsOld.begin(); iter!=uniqueWordsOld.end(); ++iter)
+			{
+				uniqueWords.insert(std::make_pair(iter->first, uniqueWords.size()));
+				uniqueWordsKpts.push_back(wordsKpts[iter->second]);
+				uniqueWordsDescriptors.push_back(wordsDescriptors.row(iter->second));
+			}
 			cpCurrent.sensorData().setCameraModels(cameraModels);
 			// This will force comparing descriptors between both images directly
-			cpCurrent.setWords(std::multimap<int, cv::KeyPoint>(uniqueWords.begin(), uniqueWords.end()));
-			cpCurrent.setWordsDescriptors(std::multimap<int, cv::Mat>(uniqueWordsDescriptors.begin(), uniqueWordsDescriptors.end()));
+			cpCurrent.setWords(uniqueWords, uniqueWordsKpts, std::vector<cv::Point3f>(), uniqueWordsDescriptors);
 
 			// The following is used only to re-estimate the correspondences, the returned transform is ignored
 			Transform tmpt;
@@ -4825,9 +4912,21 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 			UDEBUG("t=%s", tmpt.prettyPrint().c_str());
 
 			// compute 3D words by epipolar geometry with the previous signature using odometry motion
+			std::map<int, int> currentUniqueWords = uMultimapToMapUnique(cpCurrent.getWords());
+			std::map<int, int> previousUniqueWords = uMultimapToMapUnique(cpPrevious.getWords());
+			std::map<int, cv::KeyPoint> currentWords;
+			std::map<int, cv::KeyPoint> previousWords;
+			for(std::map<int, int>::iterator iter=currentUniqueWords.begin(); iter!=currentUniqueWords.end(); ++iter)
+			{
+				currentWords.insert(std::make_pair(iter->first, cpCurrent.getWordsKpts()[iter->second]));
+			}
+			for(std::map<int, int>::iterator iter=previousUniqueWords.begin(); iter!=previousUniqueWords.end(); ++iter)
+			{
+				previousWords.insert(std::make_pair(iter->first, cpPrevious.getWordsKpts()[iter->second]));
+			}
 			std::map<int, cv::Point3f> inliers = util3d::generateWords3DMono(
-					uMultimapToMapUnique(cpCurrent.getWords()),
-					uMultimapToMapUnique(cpPrevious.getWords()),
+					currentWords,
+					previousWords,
 					cameraModels[0],
 					cameraTransform);
 
@@ -4838,31 +4937,25 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 			UASSERT(words3D.size() == 0 || words.size() == words3D.size());
 			bool words3DWasEmpty = words3D.empty();
 			int added3DPointsWithoutDepth = 0;
-			for(std::multimap<int, cv::KeyPoint>::const_iterator iter=words.begin(); iter!=words.end(); ++iter)
+			for(std::multimap<int, int>::const_iterator iter=words.begin(); iter!=words.end(); ++iter)
 			{
 				std::map<int, cv::Point3f>::iterator jter=inliers.find(iter->first);
-				std::multimap<int, cv::Point3f>::iterator iter3D = words3D.find(iter->first);
-				if(iter3D == words3D.end())
+				if(words3DWasEmpty)
 				{
 					if(jter != inliers.end())
 					{
-						words3D.insert(std::make_pair(iter->first, jter->second));
+						words3D.push_back(jter->second);
 						++added3DPointsWithoutDepth;
 					}
 					else
 					{
-						words3D.insert(std::make_pair(iter->first, cv::Point3f(bad_point,bad_point,bad_point)));
+						words3D.push_back(cv::Point3f(bad_point,bad_point,bad_point));
 					}
 				}
-				else if(!util3d::isFinite(iter3D->second) && jter != inliers.end())
+				else if(!util3d::isFinite(words3D[iter->second]) && jter != inliers.end())
 				{
-					iter3D->second = jter->second;
+					words3D[iter->second] = jter->second;
 					++added3DPointsWithoutDepth;
-				}
-				else if(words3DWasEmpty && jter == inliers.end())
-				{
-					// duplicate
-					words3D.insert(std::make_pair(iter->first, cv::Point3f(bad_point,bad_point,bad_point)));
 				}
 			}
 			UDEBUG("added3DPointsWithoutDepth=%d", added3DPointsWithoutDepth);
@@ -5116,9 +5209,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 						compressedUserData));
 	}
 
-	s->setWords(words);
-	s->setWords3(words3D);
-	s->setWordsDescriptors(wordsDescriptors);
+	s->setWords(words, wordsKpts, words3D, wordsDescriptors);
 
 	// set raw data
 	if(!cameraModels.empty())
@@ -5185,16 +5276,22 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 	}
 	else if(data.gps().stamp() > 0.0)
 	{
-		if(_gpsOrigin.stamp() <= 0.0)
+		if(uIsFinite(data.gps().altitude()) &&
+		   uIsFinite(data.gps().latitude()) &&
+		   uIsFinite(data.gps().longitude()) &&
+		   uIsFinite(data.gps().bearing()) &&
+		   uIsFinite(data.gps().error()) &&
+		   data.gps().error() > 0.0)
 		{
-			_gpsOrigin =  data.gps();
-			UINFO("Added GPS origin: long=%f lat=%f alt=%f bearing=%f error=%f", data.gps().longitude(), data.gps().latitude(), data.gps().altitude(), data.gps().bearing(), data.gps().error());
-		}
-		cv::Point3f pt = data.gps().toGeodeticCoords().toENU_WGS84(_gpsOrigin.toGeodeticCoords());
-		Transform gpsPose(pt.x, pt.y, pose.z(), 0, 0, -(data.gps().bearing()-90.0)*180.0/M_PI);
-		cv::Mat gpsInfMatrix = cv::Mat::eye(6,6,CV_64FC1)/9999.0; // variance not used >= 9999
-		if(data.gps().error() > 0.0)
-		{
+			if(_gpsOrigin.stamp() <= 0.0)
+			{
+				_gpsOrigin =  data.gps();
+				UINFO("Added GPS origin: long=%f lat=%f alt=%f bearing=%f error=%f", data.gps().longitude(), data.gps().latitude(), data.gps().altitude(), data.gps().bearing(), data.gps().error());
+			}
+			cv::Point3f pt = data.gps().toGeodeticCoords().toENU_WGS84(_gpsOrigin.toGeodeticCoords());
+			Transform gpsPose(pt.x, pt.y, pose.z(), 0, 0, -(data.gps().bearing()-90.0)*180.0/M_PI);
+			cv::Mat gpsInfMatrix = cv::Mat::eye(6,6,CV_64FC1)/9999.0; // variance not used >= 9999
+
 			UDEBUG("Added GPS prior: x=%f y=%f z=%f yaw=%f", gpsPose.x(), gpsPose.y(), gpsPose.z(), gpsPose.theta());
 			// only set x, y as we don't know variance for other degrees of freedom.
 			gpsInfMatrix.at<double>(0,0) = gpsInfMatrix.at<double>(1,1) = 1.0/data.gps().error();
@@ -5203,7 +5300,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 		}
 		else
 		{
-			UERROR("Invalid GPS error value (%f m), must be > 0 m.", data.gps().error());
+			UERROR("Invalid GPS value: long=%f lat=%f alt=%f bearing=%f error=%f", data.gps().longitude(), data.gps().latitude(), data.gps().altitude(), data.gps().bearing(), data.gps().error());
 		}
 	}
 
@@ -5277,7 +5374,7 @@ void Memory::disableWordsRef(int signatureId)
 	Signature * ss = this->_getSignature(signatureId);
 	if(ss && ss->isEnabled())
 	{
-		const std::multimap<int, cv::KeyPoint> & words = ss->getWords();
+		const std::multimap<int, int> & words = ss->getWords();
 		const std::list<int> & keys = uUniqueKeys(words);
 		int count = _vwd->getTotalActiveReferences();
 		// First remove all references

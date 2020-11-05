@@ -43,8 +43,8 @@ public:
 	void release();
 	unsigned int indexedFeatures() const;
 
-	// return KB
-	unsigned int memoryUsed() const;
+	// return Bytes
+	unsigned long memoryUsed() const;
 
 	// Note that useDistanceL1 doesn't have any effect if LSH is used
 	void buildLinearIndex(
@@ -74,7 +74,7 @@ public:
 	int featuresType() const {return featuresType_;}
 	int featuresDim() const {return featuresDim_;}
 
-	unsigned int addPoints(const cv::Mat & features);
+	std::vector<unsigned int> addPoints(const cv::Mat & features);
 
 	void removePoint(unsigned int index);
 

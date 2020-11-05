@@ -79,6 +79,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/gui/EditMapArea.h"
 #include "rtabmap/core/SensorData.h"
 #include "rtabmap/core/GainCompensator.h"
+#include "rtabmap/core/VisualWord.h"
 #include "rtabmap/gui/ExportDialog.h"
 #include "rtabmap/gui/EditConstraintDialog.h"
 #include "rtabmap/gui/ProgressDialog.h"
@@ -360,6 +361,7 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	connect(ui_->checkBox_odomFrame, SIGNAL(stateChanged(int)), this, SLOT(updateConstraintView()));
 	ui_->checkBox_showOptimized->setEnabled(false);
 	connect(ui_->toolButton_constraint, SIGNAL(clicked(bool)), this, SLOT(editConstraint()));
+	connect(ui_->checkBox_enableForAll, SIGNAL(stateChanged(int)), this, SLOT(updateConstraintButtons()));
 
 	ui_->horizontalSlider_iterations->setTracking(false);
 	ui_->horizontalSlider_iterations->setEnabled(false);
@@ -377,6 +379,7 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	connect(ui_->checkBox_ignoreLocalLoopSpace, SIGNAL(stateChanged(int)), this, SLOT(updateGraphView()));
 	connect(ui_->checkBox_ignoreLocalLoopTime, SIGNAL(stateChanged(int)), this, SLOT(updateGraphView()));
 	connect(ui_->checkBox_ignoreUserLoop, SIGNAL(stateChanged(int)), this, SLOT(updateGraphView()));
+	connect(ui_->checkBox_ignoreLandmarks, SIGNAL(stateChanged(int)), this, SLOT(updateGraphView()));
 	connect(ui_->doubleSpinBox_optimizationScale, SIGNAL(editingFinished()), this, SLOT(updateGraphView()));
 	connect(ui_->checkBox_octomap, SIGNAL(stateChanged(int)), this, SLOT(updateGrid()));
 	connect(ui_->checkBox_grid_2d, SIGNAL(stateChanged(int)), this, SLOT(updateGrid()));
@@ -707,6 +710,7 @@ void DatabaseViewer::restoreDefaultSettings()
 	ui_->checkBox_ignoreLocalLoopSpace->setChecked(false);
 	ui_->checkBox_ignoreLocalLoopTime->setChecked(false);
 	ui_->checkBox_ignoreUserLoop->setChecked(false);
+	ui_->checkBox_ignoreLandmarks->setChecked(false);
 	ui_->doubleSpinBox_optimizationScale->setValue(1.0);
 	ui_->doubleSpinBox_gainCompensationRadius->setValue(0.0);
 	ui_->doubleSpinBox_voxelSize->setValue(0.0);
@@ -1068,6 +1072,9 @@ bool DatabaseViewer::closeDatabase()
 		ui_->label_constraint_opt->clear();
 		ui_->label_variance->clear();
 		ui_->lineEdit_covariance->clear();
+		ui_->label_type->clear();
+		ui_->label_type_name->clear();
+		ui_->checkBox_showOptimized->setEnabled(false);
 
 		ui_->horizontalSlider_A->setEnabled(false);
 		ui_->horizontalSlider_A->setMaximum(0);
@@ -1993,8 +2000,28 @@ void DatabaseViewer::updateInfo()
 			{
 				ui_->textEdit_info->append(tr("Total odometry length:\t%1 m").arg(infoTotalOdom_));
 			}
+
+			int lastWordIdId = 0;
+			int wordsDim = 0;
+			int wordsType = 0;
+			dbDriver_->getLastWordId(lastWordIdId);
+			if(lastWordIdId>0)
+			{
+				std::set<int> ids;
+				ids.insert(lastWordIdId);
+				std::list<VisualWord *> vws;
+				dbDriver_->loadWords(ids, vws);
+				if(!vws.empty())
+				{
+					wordsDim = vws.front()->getDescriptor().cols;
+					wordsType = vws.front()->getDescriptor().type();
+					delete vws.front();
+					vws.clear();
+				}
+			}
+
 			ui_->textEdit_info->append(tr("Total time:\t\t%1").arg(QDateTime::fromMSecsSinceEpoch(infoTotalTime_*1000).toUTC().toString("hh:mm:ss.zzz")));
-			ui_->textEdit_info->append(tr("LTM:\t\t%1 nodes and %2 words").arg(ids_.size()).arg(dbDriver_->getTotalDictionarySize()));
+			ui_->textEdit_info->append(tr("LTM:\t\t%1 nodes and %2 words (dim=%3 type=%4)").arg(ids_.size()).arg(dbDriver_->getTotalDictionarySize()).arg(wordsDim).arg(wordsType==CV_8UC1?"8U":wordsType==CV_32FC1?"32F":uNumber2Str(wordsType).c_str()));
 			ui_->textEdit_info->append(tr("WM:\t\t%1 nodes and %2 words").arg(dbDriver_->getLastNodesSize()).arg(dbDriver_->getLastDictionarySize()));
 			ui_->textEdit_info->append(tr("Global graph:\t%1 poses and %2 links").arg(odomPoses_.size()).arg(links_.size()));
 			ui_->textEdit_info->append(tr("Ground truth:\t%1 poses").arg(groundTruthPoses_.size()));
@@ -2038,7 +2065,7 @@ void DatabaseViewer::updateInfo()
 			total+=mem;
 			ui_->textEdit_info->append(tr("Statistics size:\t%1 %2\t%3%").arg(mem>1000000?mem/1000000:mem>1000?mem/1000:mem).arg(mem>1000000?"MB":mem>1000?"KB":"Bytes").arg(dbSize>0?QString::number(double(mem)/double(dbSize)*100.0, 'f', 2 ):"0"));
 			mem = dbSize - total;
-			ui_->textEdit_info->append(tr("Other (indexing):\t%1 %2\t%3%").arg(mem>1000000?mem/1000000:mem>1000?mem/1000:mem).arg(mem>1000000?"MB":mem>1000?"KB":"Bytes").arg(dbSize>0?QString::number(double(mem)/double(dbSize)*100.0, 'f', 2 ):"0"));
+			ui_->textEdit_info->append(tr("Other (indexing, unused):\t%1 %2\t%3%").arg(mem>1000000?mem/1000000:mem>1000?mem/1000:mem).arg(mem>1000000?"MB":mem>1000?"KB":"Bytes").arg(dbSize>0?QString::number(double(mem)/double(dbSize)*100.0, 'f', 2 ):"0"));
 			ui_->textEdit_info->append("");
 			std::set<int> idsWithoutBad;
 			dbDriver_->getAllNodeIds(idsWithoutBad, false, true);
@@ -4124,7 +4151,6 @@ void DatabaseViewer::update(int value,
 	labelGravity->clear();
 	labelGps->clear();
 	labelSensors->clear();
-	QRectF rect;
 	if(value >= 0 && value < ids_.size())
 	{
 		view->clear();
@@ -4158,14 +4184,48 @@ void DatabaseViewer::update(int value,
 					imgDepth = depth;
 				}
 
+				QRectF rect;
+				if(!img.isNull())
+				{
+					view->setImage(img);
+					rect = img.rect();
+				}
+				else
+				{
+					ULOGGER_DEBUG("Image is empty");
+				}
+
+				if(!imgDepth.empty())
+				{
+					view->setImageDepth(imgDepth);
+					if(img.isNull())
+					{
+						rect.setWidth(imgDepth.cols);
+						rect.setHeight(imgDepth.rows);
+					}
+				}
+				else
+				{
+					ULOGGER_DEBUG("Image depth is empty");
+				}
+				if(rect.isValid())
+				{
+					view->setSceneRect(rect);
+				}
+
 				std::list<int> ids;
 				ids.push_back(id);
 				std::list<Signature*> signatures;
 				dbDriver_->loadSignatures(ids, signatures);
 
-				if(signatures.size() && signatures.front()!=0 && signatures.front()->getWords().size())
+				if(signatures.size() && signatures.front()!=0 && !signatures.front()->getWordsKpts().empty())
 				{
-					view->setFeatures(signatures.front()->getWords(), data.depthOrRightRaw().type() == CV_8UC1?cv::Mat():data.depthOrRightRaw(), Qt::yellow);
+					std::multimap<int, cv::KeyPoint> keypoints;
+					for(std::map<int, int>::const_iterator iter=signatures.front()->getWords().begin(); iter!=signatures.front()->getWords().end(); ++iter)
+					{
+						keypoints.insert(std::make_pair(iter->first, signatures.front()->getWordsKpts()[iter->second]));
+					}
+					view->setFeatures(keypoints, data.depthOrRightRaw().type() == CV_8UC1?cv::Mat():data.depthOrRightRaw(), Qt::yellow);
 				}
 
 				Transform odomPose, g;
@@ -4522,16 +4582,19 @@ void DatabaseViewer::update(int value,
 					}
 
 					//words
-					if(ui_->checkBox_showWords->isChecked() && signatures.size())
+					if(ui_->checkBox_showWords->isChecked() &&
+						!signatures.empty() &&
+						!(*signatures.begin())->getWords3().empty())
 					{
 						pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
 						cloud->resize((*signatures.begin())->getWords3().size());
 						int i=0;
-						for(std::multimap<int, cv::Point3f>::const_iterator iter=(*signatures.begin())->getWords3().begin();
-							iter!=(*signatures.begin())->getWords3().end();
+						for(std::multimap<int, int>::const_iterator iter=(*signatures.begin())->getWords().begin();
+							iter!=(*signatures.begin())->getWords().end();
 							++iter)
 						{
-							cloud->at(i++) = pcl::PointXYZ(iter->second.x, iter->second.y, iter->second.z);
+							const cv::Point3f & pt = (*signatures.begin())->getWords3()[iter->second];
+							cloud->at(i++) = pcl::PointXYZ(pt.x, pt.y, pt.z);
 						}
 
 						if(cloud->size())
@@ -4750,30 +4813,6 @@ void DatabaseViewer::update(int value,
 				}
 			}
 
-			if(!img.isNull())
-			{
-				view->setImage(img);
-				rect = img.rect();
-			}
-			else
-			{
-				ULOGGER_DEBUG("Image is empty");
-			}
-
-			if(!imgDepth.empty())
-			{
-				view->setImageDepth(imgDepth);
-				if(img.isNull())
-				{
-					rect.setWidth(imgDepth.cols);
-					rect.setHeight(imgDepth.rows);
-				}
-			}
-			else
-			{
-				ULOGGER_DEBUG("Image depth is empty");
-			}
-
 			// loops
 			std::multimap<int, rtabmap::Link> links;
 			dbDriver_->loadLinks(id, links);
@@ -4872,9 +4911,11 @@ void DatabaseViewer::update(int value,
 			constraintsViewer_->removeAllClouds();
 
 			Link link = this->findActiveLink(from, to);
+			bool constraintViewUpdated = false;
 			if(link.isValid() && link.type() != Link::kGravity)
 			{
 				this->updateConstraintView(link, false);
+				constraintViewUpdated = true;
 			}
 			else if(graphes_.size())
 			{
@@ -4889,17 +4930,23 @@ void DatabaseViewer::update(int value,
 					{
 						Link link(from, to, Link::kUndef, fromIter->second.inverse() * toIter->second);
 						this->updateConstraintView(link, false);
+						constraintViewUpdated = true;
 					}
 				}
+			}
+			if(!constraintViewUpdated)
+			{
+				ui_->label_constraint->clear();
+				ui_->label_constraint_opt->clear();
+				ui_->label_variance->clear();
+				ui_->lineEdit_covariance->clear();
+				ui_->label_type->clear();
+				ui_->label_type_name->clear();
+				ui_->checkBox_showOptimized->setEnabled(false);
 			}
 			constraintsViewer_->update();
 
 		}
-	}
-
-	if(rect.isValid())
-	{
-		view->setSceneRect(rect);
 	}
 }
 
@@ -5251,12 +5298,23 @@ void DatabaseViewer::editConstraint()
 		Link link = this->findActiveLink(ids_.at(ui_->horizontalSlider_A->value()), ids_.at(ui_->horizontalSlider_B->value()));
 		if(link.isValid())
 		{
-			EditConstraintDialog dialog(link.transform());
+			cv::Mat covBefore = link.infMatrix().inv();
+			EditConstraintDialog dialog(link.transform(),
+					covBefore.at<double>(0,0)!=1.0?std::sqrt(covBefore.at<double>(0,0)):0,
+					covBefore.at<double>(5,5)!=1.0?std::sqrt(covBefore.at<double>(5,5)):0);
 			if(dialog.exec() == QDialog::Accepted)
 			{
 				bool updated = false;
-				Link newLink = link;
-				newLink.setTransform(dialog.getTransform());
+				cv::Mat covariance = cv::Mat::eye(6, 6, CV_64FC1);
+				if(dialog.getLinearVariance()>0)
+				{
+					covariance(cv::Range(0,3), cv::Range(0,3)) *= dialog.getLinearVariance()*dialog.getLinearVariance();
+				}
+				if(dialog.getAngularVariance()>0)
+				{
+					covariance(cv::Range(3,6), cv::Range(3,6)) *= dialog.getAngularVariance()*dialog.getAngularVariance();
+				}
+				Link newLink(link.from(), link.to(), link.type(), dialog.getTransform(), covariance.inv());
 				std::multimap<int, Link>::iterator iter = linksRefined_.find(link.from());
 				while(iter != linksRefined_.end() && iter->first == link.from())
 				{
@@ -5277,7 +5335,39 @@ void DatabaseViewer::editConstraint()
 				if(updated)
 				{
 					updateConstraintView();
+					this->updateGraphView();
 				}
+			}
+		}
+		else
+		{
+			EditConstraintDialog dialog(Transform::getIdentity());
+			if(dialog.exec() == QDialog::Accepted)
+			{
+				cv::Mat covariance = cv::Mat::eye(6, 6, CV_64FC1);
+				if(dialog.getLinearVariance()>0)
+				{
+					covariance(cv::Range(0,3), cv::Range(0,3)) *= dialog.getLinearVariance()*dialog.getLinearVariance();
+				}
+				if(dialog.getAngularVariance()>0)
+				{
+					covariance(cv::Range(3,6), cv::Range(3,6)) *= dialog.getAngularVariance()*dialog.getAngularVariance();
+				}
+				int from = ids_.at(ui_->horizontalSlider_A->value());
+				int to = ids_.at(ui_->horizontalSlider_B->value());
+				Link newLink(
+						from,
+						to,
+						Link::kUserClosure,
+						dialog.getTransform(),
+						covariance.inv());
+				if(newLink.from() < newLink.to())
+				{
+					newLink = newLink.inverse();
+				}
+				linksAdded_.insert(std::make_pair(newLink.from(), newLink));
+				updateLoopClosuresSlider(from, to);
+				this->updateGraphView();
 			}
 		}
 	}
@@ -5373,7 +5463,7 @@ void DatabaseViewer::updateConstraintView(
 				 link.type()==Link::kLocalSpaceClosure?"Space proximity link":
 				 link.type()==Link::kLocalTimeClosure?"Time proximity link":
 				 link.type()==Link::kUserClosure?"User link":
-				 link.type()==Link::kLandmark?"Landmark link":
+				 link.type()==Link::kLandmark?"Landmark "+QString::number(-link.to()):
 				 link.type()==Link::kVirtualClosure?"Virtual link":
 				 link.type()==Link::kGravity?"Gravity link":"Undefined"));
 	ui_->label_variance->setText(QString("%1, %2")
@@ -5399,7 +5489,7 @@ void DatabaseViewer::updateConstraintView(
 			Transform v2 = topt.rotation()*Transform(1,0,0,0,0,0);
 			float a = pcl::getAngle3D(Eigen::Vector4f(v1.x(), v1.y(), v1.z(), 0), Eigen::Vector4f(v2.x(), v2.y(), v2.z(), 0));
 			a = (a *180.0f) / CV_PI;
-			ui_->label_constraint_opt->setText(QString("%1\n(error=%2% a=%3)").arg(QString(topt.prettyPrint().c_str()).replace(" ", "\n")).arg((diff/t.getNorm())*100.0f).arg(a));
+			ui_->label_constraint_opt->setText(QString("%1\n(error=%2% a=%3)").arg(QString(topt.prettyPrint().c_str()).replace(" ", "\n")).arg((t.getNorm()>0?diff/t.getNorm():0)*100.0f).arg(a));
 
 			if(ui_->checkBox_showOptimized->isChecked())
 			{
@@ -5481,7 +5571,7 @@ void DatabaseViewer::updateConstraintView(
 		{
 			dataTo = signatureTo.sensorData();
 		}
-		else
+		else if(link.to()>0)
 		{
 			dbDriver_->getNodeData(link.to(), dataTo);
 		}
@@ -5569,31 +5659,50 @@ void DatabaseViewer::updateConstraintView(
 		{
 			std::list<int> ids;
 			ids.push_back(link.from());
-			ids.push_back(link.to());
+			if(link.to()>0)
+			{
+				ids.push_back(link.to());
+			}
 			std::list<Signature*> signatures;
 			dbDriver_->loadSignatures(ids, signatures);
-			if(signatures.size() == 2)
+			if(signatures.size() == 2 || (link.to()<0 && signatures.size()==1))
 			{
 				const Signature * sFrom = signatureFrom.id()>0?&signatureFrom:signatures.front();
-				const Signature * sTo = signatureTo.id()>0?&signatureTo:signatures.back();
-				UASSERT(sFrom && sTo);
+				const Signature * sTo = 0;
+				if(signatures.size()==2)
+				{
+					sTo = signatureTo.id()>0?&signatureTo:signatures.back();
+					UASSERT(sTo);
+				}
+				UASSERT(sFrom);
 				pcl::PointCloud<pcl::PointXYZ>::Ptr cloudFrom(new pcl::PointCloud<pcl::PointXYZ>);
 				pcl::PointCloud<pcl::PointXYZ>::Ptr cloudTo(new pcl::PointCloud<pcl::PointXYZ>);
 				cloudFrom->resize(sFrom->getWords3().size());
-				cloudTo->resize(sTo->getWords3().size());
-				int i=0;
-				for(std::multimap<int, cv::Point3f>::const_iterator iter=sFrom->getWords3().begin();
-					iter!=sFrom->getWords3().end();
-					++iter)
+				if(sTo)
 				{
-					cloudFrom->at(i++) = pcl::PointXYZ(iter->second.x, iter->second.y, iter->second.z);
+					cloudTo->resize(sTo->getWords3().size());
+				}
+				int i=0;
+				if(!sFrom->getWords3().empty())
+				{
+					for(std::multimap<int, int>::const_iterator iter=sFrom->getWords().begin();
+						iter!=sFrom->getWords().end();
+						++iter)
+					{
+						const cv::Point3f & pt = sFrom->getWords3()[iter->second];
+						cloudFrom->at(i++) = pcl::PointXYZ(pt.x, pt.y, pt.z);
+					}
 				}
 				i=0;
-				for(std::multimap<int, cv::Point3f>::const_iterator iter=sTo->getWords3().begin();
-					iter!=sTo->getWords3().end();
-					++iter)
+				if(sTo && !sTo->getWords3().empty())
 				{
-					cloudTo->at(i++) = pcl::PointXYZ(iter->second.x, iter->second.y, iter->second.z);
+					for(std::multimap<int, int>::const_iterator iter=sTo->getWords().begin();
+						iter!=sTo->getWords().end();
+						++iter)
+					{
+						const cv::Point3f & pt = sTo->getWords3()[iter->second];
+						cloudTo->at(i++) = pcl::PointXYZ(pt.x, pt.y, pt.z);
+					}
 				}
 
 				if(cloudFrom->size())
@@ -5624,7 +5733,10 @@ void DatabaseViewer::updateConstraintView(
 				}
 				else
 				{
-					UWARN("Empty 3D words for node %d", link.to());
+					if(sTo)
+					{
+						UWARN("Empty 3D words for node %d", link.to());
+					}
 					constraintsViewer_->removeCloud("words1");
 				}
 			}
@@ -5855,7 +5967,12 @@ void DatabaseViewer::updateConstraintButtons()
 
 	int from = ids_.at(ui_->horizontalSlider_A->value());
 	int to = ids_.at(ui_->horizontalSlider_B->value());
-	if(from!=to && from && to && odomPoses_.find(from) != odomPoses_.end() && odomPoses_.find(to) != odomPoses_.end())
+	if(from!=to && from && to &&
+	   odomPoses_.find(from) != odomPoses_.end() &&
+	   odomPoses_.find(to) != odomPoses_.end() &&
+	   (ui_->checkBox_enableForAll->isChecked() ||
+	   (weights_.find(from) != weights_.end() && weights_.at(from)>=0 &&
+	   weights_.find(to) != weights_.end() && weights_.at(to)>=0)))
 	{
 		if((!containsLink(links_, from ,to) && !containsLink(linksAdded_, from ,to)) ||
 			containsLink(linksRemoved_, from ,to))
@@ -6475,6 +6592,11 @@ void DatabaseViewer::updateGraphView()
 			}
 			else if(iter->second.type() == Link::kLandmark)
 			{
+				if(ui_->checkBox_ignoreLandmarks->isChecked())
+				{
+					links.erase(iter++);
+					continue;
+				}
 				UASSERT(iter->second.from() > 0 && iter->second.to() < 0);
 				if(poses.find(iter->second.from()) != poses.end() && poses.find(iter->second.to()) == poses.end())
 				{
@@ -7057,13 +7179,9 @@ void DatabaseViewer::refineConstraint(int from, int to, bool silent)
 
 		if(reextractVisualFeatures)
 		{
-			fromS->setWords(std::multimap<int, cv::KeyPoint>());
-			fromS->setWords3(std::multimap<int, cv::Point3f>());
-			fromS->setWordsDescriptors(std::multimap<int, cv::Mat>());
+			fromS->removeAllWords();
 			fromS->sensorData().setFeatures(std::vector<cv::KeyPoint>(), std::vector<cv::Point3f>(), cv::Mat());
-			toS->setWords(std::multimap<int, cv::KeyPoint>());
-			toS->setWords3(std::multimap<int, cv::Point3f>());
-			toS->setWordsDescriptors(std::multimap<int, cv::Mat>());
+			toS->removeAllWords();
 			toS->sensorData().setFeatures(std::vector<cv::KeyPoint>(), std::vector<cv::Point3f>(), cv::Mat());
 		}
 
@@ -7175,17 +7293,33 @@ void DatabaseViewer::refineConstraint(int from, int to, bool silent)
 			if(toS && fromS->id() > 0 && toS->id() > 0)
 			{
 				updateLoopClosuresSlider(fromS->id(), toS->id());
+				std::multimap<int, cv::KeyPoint> keypointsFrom;
+				std::multimap<int, cv::KeyPoint> keypointsTo;
+				if(!fromS->getWordsKpts().empty())
+				{
+					for(std::map<int, int>::const_iterator iter=fromS->getWords().begin(); iter!=fromS->getWords().end(); ++iter)
+					{
+						keypointsFrom.insert(keypointsFrom.end(), std::make_pair(iter->first, fromS->getWordsKpts()[iter->second]));
+					}
+				}
+				if(!toS->getWordsKpts().empty())
+				{
+					for(std::map<int, int>::const_iterator iter=toS->getWords().begin(); iter!=toS->getWords().end(); ++iter)
+					{
+						keypointsTo.insert(keypointsTo.end(), std::make_pair(iter->first, toS->getWordsKpts()[iter->second]));
+					}
+				}
 				if(newLink.type() != Link::kNeighbor && fromS->id() < toS->id())
 				{
 					this->updateConstraintView(newLink.inverse(), true, *toS, *fromS);
-					ui_->graphicsView_A->setFeatures(toS->getWords(), toS->sensorData().depthRaw());
-					ui_->graphicsView_B->setFeatures(fromS->getWords(), fromS->sensorData().depthRaw());
+					ui_->graphicsView_A->setFeatures(keypointsTo, toS->sensorData().depthRaw());
+					ui_->graphicsView_B->setFeatures(keypointsFrom, fromS->sensorData().depthRaw());
 				}
 				else
 				{
 					this->updateConstraintView(newLink, true, *fromS, *toS);
-					ui_->graphicsView_A->setFeatures(fromS->getWords(), fromS->sensorData().depthRaw());
-					ui_->graphicsView_B->setFeatures(toS->getWords(), toS->sensorData().depthRaw());
+					ui_->graphicsView_A->setFeatures(keypointsFrom, fromS->sensorData().depthRaw());
+					ui_->graphicsView_B->setFeatures(keypointsTo, toS->sensorData().depthRaw());
 				}
 
 				updateWordsMatching(info.inliersIDs);
@@ -7201,8 +7335,32 @@ void DatabaseViewer::refineConstraint(int from, int to, bool silent)
 		if(toS && fromS->id() > 0 && toS->id() > 0)
 		{
 			// just update matches in the views
-			ui_->graphicsView_A->setFeatures(fromS->getWords(), fromS->sensorData().depthRaw());
-			ui_->graphicsView_B->setFeatures(toS->getWords(), toS->sensorData().depthRaw());
+			std::multimap<int, cv::KeyPoint> keypointsFrom;
+			std::multimap<int, cv::KeyPoint> keypointsTo;
+			if(!fromS->getWordsKpts().empty())
+			{
+				for(std::map<int, int>::const_iterator iter=fromS->getWords().begin(); iter!=fromS->getWords().end(); ++iter)
+				{
+					keypointsFrom.insert(keypointsFrom.end(), std::make_pair(iter->first, fromS->getWordsKpts()[iter->second]));
+				}
+			}
+			if(!toS->getWordsKpts().empty())
+			{
+				for(std::map<int, int>::const_iterator iter=toS->getWords().begin(); iter!=toS->getWords().end(); ++iter)
+				{
+					keypointsTo.insert(keypointsTo.end(), std::make_pair(iter->first, toS->getWordsKpts()[iter->second]));
+				}
+			}
+			if(currentLink.type() != Link::kNeighbor && fromS->id() < toS->id())
+			{
+				ui_->graphicsView_A->setFeatures(keypointsTo, toS->sensorData().depthRaw());
+				ui_->graphicsView_B->setFeatures(keypointsFrom, fromS->sensorData().depthRaw());
+			}
+			else
+			{
+				ui_->graphicsView_A->setFeatures(keypointsFrom, fromS->sensorData().depthRaw());
+				ui_->graphicsView_B->setFeatures(keypointsTo, toS->sensorData().depthRaw());
+			}
 			updateWordsMatching(info.inliersIDs);
 		}
 
@@ -7289,13 +7447,9 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent)
 			toS->sensorData().uncompressData();
 			if(reextractVisualFeatures)
 			{
-				fromS->setWords(std::multimap<int, cv::KeyPoint>());
-				fromS->setWords3(std::multimap<int, cv::Point3f>());
-				fromS->setWordsDescriptors(std::multimap<int, cv::Mat>());
+				fromS->removeAllWords();
 				fromS->sensorData().setFeatures(std::vector<cv::KeyPoint>(), std::vector<cv::Point3f>(), cv::Mat());
-				toS->setWords(std::multimap<int, cv::KeyPoint>());
-				toS->setWords3(std::multimap<int, cv::Point3f>());
-				toS->setWordsDescriptors(std::multimap<int, cv::Mat>());
+				toS->removeAllWords();
 				toS->sensorData().setFeatures(std::vector<cv::KeyPoint>(), std::vector<cv::Point3f>(), cv::Mat());
 			}
 		}
@@ -7310,6 +7464,7 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent)
 		}
 
 		Transform guess;
+		bool guessFromGraphRejected = false;
 		if(!reg->isImageRequired())
 		{
 			// make a fake guess using globally optimized poses
@@ -7339,6 +7494,10 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent)
 							{
 								guess = fromIter->second.inverse() * toIter->second;
 							}
+							else
+							{
+								guessFromGraphRejected = true;
+							}
 						}
 						else
 						{
@@ -7347,7 +7506,7 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent)
 					}
 				}
 			}
-			if(guess.isNull() && !silent)
+			if(guess.isNull() && !silent && !guessFromGraphRejected)
 			{
 				if(QMessageBox::question(this,
 						tr("Add constraint without guess"),
@@ -7362,6 +7521,10 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent)
 							QMessageBox::Abort) == QMessageBox::Yes)
 				{
 					guess.setIdentity();
+				}
+				else
+				{
+					guessFromGraphRejected = true;
 				}
 			}
 		}
@@ -7386,11 +7549,18 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent)
 
 			newLink = Link(from, to, Link::kUserClosure, t, information);
 		}
-		else if(!silent)
+		else if(!silent && !guessFromGraphRejected)
 		{
-			QMessageBox::warning(this,
+			QMessageBox::StandardButton button = QMessageBox::warning(this,
 					tr("Add link"),
-					tr("Cannot find a transformation between nodes %1 and %2: %3").arg(from).arg(to).arg(info.rejectedMsg.c_str()));
+					tr("Cannot find a transformation between nodes %1 and %2: %3\n\nDo you want to add it manually?").arg(from).arg(to).arg(info.rejectedMsg.c_str()),
+					QMessageBox::Yes | QMessageBox::No,
+					QMessageBox::No);
+			if(button == QMessageBox::Yes)
+			{
+				editConstraint();
+				silent = true;
+			}
 		}
 	}
 	else if(containsLink(linksRemoved_, from, to))
@@ -7548,8 +7718,24 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent)
 				this->updateConstraintView(newLink, false, *fromS, *toS);
 			}
 
-			ui_->graphicsView_A->setFeatures(fromS->getWords(), fromS->sensorData().depthRaw());
-			ui_->graphicsView_B->setFeatures(toS->getWords(), toS->sensorData().depthRaw());
+			std::multimap<int, cv::KeyPoint> keypointsFrom;
+			std::multimap<int, cv::KeyPoint> keypointsTo;
+			if(!fromS->getWordsKpts().empty())
+			{
+				for(std::map<int, int>::const_iterator iter=fromS->getWords().begin(); iter!=fromS->getWords().end(); ++iter)
+				{
+					keypointsFrom.insert(keypointsFrom.end(), std::make_pair(iter->first, fromS->getWordsKpts()[iter->second]));
+				}
+			}
+			if(!toS->getWordsKpts().empty())
+			{
+				for(std::map<int, int>::const_iterator iter=toS->getWords().begin(); iter!=toS->getWords().end(); ++iter)
+				{
+					keypointsTo.insert(keypointsTo.end(), std::make_pair(iter->first, toS->getWordsKpts()[iter->second]));
+				}
+			}
+			ui_->graphicsView_A->setFeatures(keypointsFrom, fromS->sensorData().depthRaw());
+			ui_->graphicsView_B->setFeatures(keypointsTo, toS->sensorData().depthRaw());
 			updateWordsMatching(info.inliersIDs);
 		}
 		else if(updateConstraints)

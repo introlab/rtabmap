@@ -40,6 +40,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifdef WITH_QT
 #include <rtabmap/utilite/UPlot.h>
 #include <QApplication>
+#include <QFile>
 #endif
 
 using namespace rtabmap;
@@ -69,10 +70,13 @@ void showUsage()
 			"                       database, the inverse will be done. \n"
 			"    --ids              Use IDs for x axis instead of time in the figures. \n"
 			"    --start #          Start from this node ID for the figures.\n"
+			"    --export           Export figures' data to txt files.\n"
+			"    --export_prefix    Prefix to filenames of exported figures' data (default is \"Stat\").\n"
 #endif
 			"    --report           Export all evaluation statistics values in report.txt \n"
-			"    --loc #            Show localization statistics for each \"Statistic/Id\" per "
-			"                       session for 1=min,2=max,4=mean,8=stddev,16=total,32=nonnull%% "
+			"    --loc #            Show localization statistics for each \"Statistic/Id\" per\n"
+			"                       session for 1=min,2=max,4=mean,8=stddev,16=total,32=nonnull%%\n"
+			"    --loc_delay #      Delay to split sessions for localization statistics (default 60 seconds)\n"
 			"                       (it is a mask, we can combine those numbers, e.g., 63 for all) \n"
 			"    --help             Show usage\n\n");
 	exit(1);
@@ -133,7 +137,10 @@ int main(int argc, char * argv[])
 	bool invertFigures = false;
 	bool useIds = false;
 	int startId = 0;
+	bool exportFigures = false;
+	std::string exportPrefix = "Stat";
 	int showLoc = 0;
+	float locDelay = 60;
 	std::vector<std::string> statsToShow;
 #ifdef WITH_QT
 	std::map<std::string, UPlot*> figures;
@@ -184,6 +191,24 @@ int main(int argc, char * argv[])
 		{
 			useIds = true;
 		}
+		else if(strcmp(argv[i],"--export") == 0)
+		{
+			exportFigures = true;
+		}
+		else if(strcmp(argv[i],"--export_prefix") == 0)
+		{
+			++i;
+			if(i<argc-1)
+			{
+				exportPrefix = argv[i];
+				printf("Export prefix=%s (--export_prefix)\n", exportPrefix.c_str());
+			}
+			else
+			{
+				printf("Missing value for \"--export_prefix\" option.\n");
+				showUsage();
+			}
+		}
 		else if(strcmp(argv[i],"--loc") == 0)
 		{
 			++i;
@@ -194,7 +219,21 @@ int main(int argc, char * argv[])
 			}
 			else
 			{
-				printf("Missing type for \"--showLoc\" option.\n");
+				printf("Missing type for \"--loc\" option.\n");
+				showUsage();
+			}
+		}
+		else if(strcmp(argv[i],"--loc_delay") == 0)
+		{
+			++i;
+			if(i<argc-1)
+			{
+				locDelay = atof(argv[i]);
+				printf("Localization delay=%fs (--loc_delay)\n", locDelay);
+			}
+			else
+			{
+				printf("Missing value for \"--loc_delay\" option.\n");
 				showUsage();
 			}
 		}
@@ -226,7 +265,7 @@ int main(int argc, char * argv[])
 	{
 		invertFigures = !invertFigures;
 	}
-	std::map<std::string, std::map<std::string, std::vector<LocStats> > > localizationMultiStats; //<statsName, <Database<Session>> >
+	std::map<std::string, std::vector<std::pair<std::string, std::vector<LocStats> > > > localizationMultiStats; //<statsName, <Database<Session>> >
 	for(size_t i=0; i<statsToShow.size(); ++i)
 	{
 		std::string figureTitle = statsToShow[i];
@@ -250,7 +289,7 @@ int main(int argc, char * argv[])
 		}
 		if(showLoc & 0b111111)
 		{
-			localizationMultiStats.insert(std::make_pair(figureTitle, std::map<std::string, std::vector<LocStats> >()));
+			localizationMultiStats.insert(std::make_pair(figureTitle, std::vector<std::pair<std::string, std::vector<LocStats> > >()));
 		}
 	}
 	if(!invertFigures)
@@ -276,7 +315,6 @@ int main(int argc, char * argv[])
 			if(UFile::getExtension(currentPath).compare("db") == 0)
 			{
 				currentPathIsDatabase=true;
-				localizationMultiStats.clear();
 				printf("Database: %s\n", currentPath.c_str());
 			}
 			else
@@ -312,12 +350,14 @@ int main(int argc, char * argv[])
 		// For all databases in currentDir
 		while(currentPathIsDatabase || !(fileName = currentDir.getNextFileName()).empty())
 		{
+			int startIdPerDb = startId;
 			if(currentPathIsDatabase || UFile::getExtension(fileName).compare("db") == 0)
 			{
 				std::string filePath;
 				if(currentPathIsDatabase)
 				{
 					filePath = currentPath;
+					fileName = UFile::getName(currentPath);
 				}
 				else
 				{
@@ -383,7 +423,7 @@ int main(int argc, char * argv[])
 						{
 							curves.insert(std::make_pair(iter->first, iter->second->addCurve(filePath.c_str())));
 							if(!localizationMultiStats.empty())
-								localizationMultiStats.at(iter->first).insert(std::make_pair(fileName, std::vector<LocStats>()));
+								localizationMultiStats.at(iter->first).push_back(std::make_pair(fileName, std::vector<LocStats>()));
 						}
 					}
 					else
@@ -409,7 +449,7 @@ int main(int argc, char * argv[])
 							{
 								curves.insert(std::make_pair(statsToShow[i], fig->addCurve(statsToShow[i].c_str())));
 								if(!localizationMultiStats.empty())
-									localizationMultiStats.at(statsToShow[i]).insert(std::make_pair(fileName, std::vector<LocStats>()));
+									localizationMultiStats.at(statsToShow[i]).push_back(std::make_pair(fileName, std::vector<LocStats>()));
 							}
 						}
 					}
@@ -417,17 +457,36 @@ int main(int argc, char * argv[])
 					for(size_t i=0; i<statsToShow.size(); ++i)
 					{
 						if(!localizationMultiStats.empty())
-							localizationMultiStats.at(statsToShow[i]).insert(std::make_pair(fileName, std::vector<LocStats>()));
+							localizationMultiStats.at(statsToShow[i]).push_back(std::make_pair(fileName, std::vector<LocStats>()));
 					}
 #endif
 
 					// Find localization sessions and adjust startId
-					if(!localizationMultiStats.empty() && startId ==0)
+					std::set<int> mappingSessionIds;
+					if(!localizationMultiStats.empty())
 					{
 						std::map<int, Transform> poses = driver->loadOptimizedPoses();
 						if(!poses.empty())
 						{
-							startId = poses.rbegin()->first+1;
+							for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter)
+							{
+								Transform p, gt;
+								GPS gps;
+								int m=-1, w=-1;
+								std::string l;
+								double s;
+								std::vector<float> v;
+								EnvSensors sensors;
+								if(driver->getNodeInfo(iter->first, p, m, w, l, s, gt, v, gps, sensors))
+								{
+									mappingSessionIds.insert(m);
+								}
+							}
+
+							if(startIdPerDb ==0)
+							{
+								startIdPerDb = poses.rbegin()->first+1;
+							}
 						}
 					}
 
@@ -450,7 +509,13 @@ int main(int argc, char * argv[])
 							{
 								gtPoses.insert(std::make_pair(*iter, gt));
 							}
-							if(uContains(stats, *iter))
+
+							if(!localizationMultiStats.empty() && mappingSessionIds.find(m) != mappingSessionIds.end())
+							{
+								continue;
+							}
+
+							if(*iter >= startIdPerDb && uContains(stats, *iter))
 							{
 								const std::map<std::string, float> & stat = stats.at(*iter).first;
 								if(uContains(stat, Statistics::kGtTranslational_rmse()))
@@ -476,14 +541,14 @@ int main(int argc, char * argv[])
 
 								if(uContains(stat, std::string("RtabmapROS/TotalTime/ms")))
 								{
-									if(w>=0)
+									if(w!=-1)
 									{
 										slamTime.push_back(stat.at("RtabmapROS/TotalTime/ms"));
 									}
 								}
 								else if(uContains(stat, Statistics::kTimingTotal()))
 								{
-									if(w>=0)
+									if(w!=-1)
 									{
 										slamTime.push_back(stat.at(Statistics::kTimingTotal()));
 									}
@@ -510,41 +575,43 @@ int main(int argc, char * argv[])
 								for(std::map<std::string, UPlotCurve*>::iterator jter=curves.begin(); jter!=curves.end(); ++jter)
 								{
 #else
-								for(std::map<std::string, std::map<std::string, std::vector<LocStats> > >::iterator jter=localizationMultiStats.begin();
+								for(std::map<std::string, std::vector<std::pair<std::string, std::vector<LocStats> > > >::iterator jter=localizationMultiStats.begin();
 									jter!=localizationMultiStats.end();
 									++jter)
 								{
 #endif
-									if(*iter >= startId)
+									if(uContains(stat, jter->first))
 									{
-										if(uContains(stat, jter->first))
-										{
-											double y = stat.at(jter->first);
+										double y = stat.at(jter->first);
 #ifdef WITH_QT
-											double x = s;
-											if(useIds)
-											{
-												x = *iter;
-											}
-											jter->second->addValue(x,y);
+										double x = s;
+										if(useIds)
+										{
+											x = *iter;
+										}
+										jter->second->addValue(x,y);
 #endif
 
-											if(!localizationMultiStats.empty())
+										if(!localizationMultiStats.empty())
+										{
+											if(previousStamp > 0 && fabs(s - previousStamp) > locDelay && uContains(localizationSessionStats, jter->first))
 											{
-												if(previousStamp > 0 && s - previousStamp > 10 && uContains(localizationSessionStats, jter->first))
+												// changed session
+												for(std::map<std::string, std::vector<float> >::iterator kter=localizationSessionStats.begin(); kter!=localizationSessionStats.end(); ++kter)
 												{
-													// changed session
-													LocStats values = LocStats::from(localizationSessionStats.at(jter->first));
-													localizationMultiStats.at(jter->first).rbegin()->second.push_back(values);
-													localizationSessionStats.at(jter->first).clear();
+													LocStats values = LocStats::from(localizationSessionStats.at(kter->first));
+													localizationMultiStats.at(kter->first).rbegin()->second.push_back(values);
+													localizationSessionStats.at(kter->first).clear();
 												}
 
-												if(!uContains(localizationSessionStats, jter->first))
-												{
-													localizationSessionStats.insert(std::make_pair(jter->first, std::vector<float>()));
-												}
-												localizationSessionStats.at(jter->first).push_back(y);
+												previousStamp = s;
 											}
+
+											if(!uContains(localizationSessionStats, jter->first))
+											{
+												localizationSessionStats.insert(std::make_pair(jter->first, std::vector<float>()));
+											}
+											localizationSessionStats.at(jter->first).push_back(y);
 										}
 									}
 								}
@@ -553,7 +620,7 @@ int main(int argc, char * argv[])
 						}
 					}
 
-					for(std::map<std::string, std::map<std::string, std::vector<LocStats> > >::iterator jter=localizationMultiStats.begin();
+					for(std::map<std::string, std::vector<std::pair<std::string, std::vector<LocStats> > > >::iterator jter=localizationMultiStats.begin();
 						jter!=localizationMultiStats.end();
 						++jter)
 					{
@@ -892,7 +959,7 @@ int main(int argc, char * argv[])
 							}
 						}
 					}
-					printf("   %s (%d, s=%.3f):\terror lin=%.3fm (max=%.3fm, odom=%.3fm) ang=%.1fdeg%s%s, slam: avg=%dms (max=%dms) loops=%d%s, odom: avg=%dms (max=%dms), camera: avg=%dms, %smap=%dMB\n",
+					printf("   %s (%d, s=%.3f):\terror lin=%.3fm (max=%.3fm, odom=%.3fm) ang=%.1fdeg%s%s, %s: avg=%dms (max=%dms) loops=%d%s, odom: avg=%dms (max=%dms), camera: avg=%dms, %smap=%dMB\n",
 							fileName.c_str(),
 							(int)ids.size(),
 							bestScale,
@@ -902,6 +969,7 @@ int main(int argc, char * argv[])
 							bestRMSEAng,
 							!outputKittiError?"":uFormat(", KITTI: t_err=%.2f%% r_err=%.2f deg/100m", kitti_t_err, kitti_r_err*100).c_str(),
 							!outputRelativeError?"":uFormat(", Relative: t_err=%.3fm r_err=%.2f deg", relative_t_err, relative_r_err).c_str(),
+							!localizationMultiStats.empty()?"loc":"slam",
 							(int)uMean(slamTime), (int)uMax(slamTime),
 							(int)loopClosureLinks.size(),
 							!outputLoopAccuracy?"":uFormat(" (t_err=%.3fm r_err=%.2f deg)", loop_t_err, loop_r_err).c_str(),
@@ -941,7 +1009,29 @@ int main(int argc, char * argv[])
 			currentPathIsDatabase = false;
 		}
 
-		for(std::map<std::string, std::map<std::string, std::vector<LocStats> > >::iterator iter=localizationMultiStats.begin();
+		if(!localizationMultiStats.empty())
+		{
+			printf("---Localization results---\n");
+			std::string prefix = "header={";
+			printf("%s", prefix.c_str());
+			for(std::vector<std::pair<std::string, std::vector<LocStats> > >::iterator iter=localizationMultiStats.begin()->second.begin();
+						iter!=localizationMultiStats.begin()->second.end();)
+			{
+				if(iter!=localizationMultiStats.begin()->second.begin())
+				{
+					printf("%s",  std::string(prefix.size(), ' ').c_str());
+				}
+				printf("%s", iter->first.c_str());
+				++iter;
+				if(iter!=localizationMultiStats.begin()->second.end())
+				{
+					printf(";\n");
+				}
+			}
+			printf("}\n");
+		}
+
+		for(std::map<std::string, std::vector<std::pair<std::string, std::vector<LocStats> > > >::iterator iter=localizationMultiStats.begin();
 			iter!=localizationMultiStats.end();
 			++iter)
 		{
@@ -950,21 +1040,25 @@ int main(int argc, char * argv[])
 			{
 				if(showLoc & (0x1 << k))
 				{
-					printf("  %s:\n",
+					std::string prefix = uFormat("  %s=[",
 							k==0?"min":
 							k==1?"max":
 							k==2?"mean":
 							k==3?"stddev":
 							k==4?"total":
 							"nonnull%");
-					for(std::map<std::string, std::vector<LocStats> >::iterator jter=iter->second.begin(); jter!=iter->second.end(); ++jter)
+					printf("%s", prefix.c_str());
+					for(std::vector<std::pair<std::string, std::vector<LocStats> > >::iterator jter=iter->second.begin(); jter!=iter->second.end();)
 					{
-						printf("    %s ", jter->first.c_str());
+						if(jter!=iter->second.begin())
+						{
+							printf("%s", std::string(prefix.size(), ' ').c_str());
+						}
 						for(size_t j=0; j<jter->second.size(); ++j)
 						{
 							if(k<4)
 							{
-								printf("%f ",
+								printf("%f",
 										k==0?jter->second[j].min:
 										k==1?jter->second[j].max:
 										k==2?jter->second[j].mean:
@@ -972,15 +1066,24 @@ int main(int argc, char * argv[])
 							}
 							else if(k==4)
 							{
-								printf("%d ",jter->second[j].total);
+								printf("%d",jter->second[j].total);
 							}
 							else if(k==5)
 							{
-								printf("%.2f ", (jter->second[j].nonNull*100));
+								printf("%.2f", (jter->second[j].nonNull*100));
+							}
+							if(j+1 < jter->second.size())
+							{
+								printf(" ");
 							}
 						}
-						printf("\n");
+						++jter;
+						if(jter!=iter->second.end())
+						{
+							printf(";\n");
+						}
 					}
+					printf("]\n");
 				}
 			}
 			iter->second.clear();
@@ -1091,9 +1194,34 @@ int main(int argc, char * argv[])
 			{
 				iter->second->frameData();
 			}
-			iter->second->show();
+			if(exportFigures)
+			{
+				QString data = iter->second->getAllCurveDataAsText();
+				if(!data.isEmpty())
+				{
+					QString filePath = QString(exportPrefix.c_str()) + (exportPrefix.empty()?"":"-") + iter->second->windowTitle().replace('/', "-") + ".txt";
+					QFile file(filePath);
+					if(file.open(QIODevice::Text | QIODevice::WriteOnly))
+					{
+						file.write(data.toUtf8());
+						file.close();
+						printf("Exported \"%s\".\n", filePath.toStdString().c_str());
+					}
+					else
+					{
+						printf("ERROR: could not open file \"%s\" for writing!\n", filePath.toStdString().c_str());
+					}
+				}
+			}
+			else
+			{
+				iter->second->show();
+			}
 		}
-		return app.exec();
+		if(!exportFigures)
+		{
+			return app.exec();
+		}
 	}
 #endif
 	return 0;
