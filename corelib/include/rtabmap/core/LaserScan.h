@@ -97,6 +97,7 @@ public:
 	float angleIncrement() const {return angleIncrement_;}
 	Transform localTransform() const {return localTransform_;}
 
+	bool empty() const {return data_.empty();}
 	bool isEmpty() const {return data_.empty();}
 	int size() const {return data_.cols;}
 	int dataType() const {return data_.type();}

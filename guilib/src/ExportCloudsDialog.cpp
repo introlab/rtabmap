@@ -2603,7 +2603,7 @@ bool ExportCloudsDialog::getExportedClouds(
 
 		// texture mesh
 		UDEBUG("texture mapping=%d", _ui->checkBox_textureMapping->isEnabled() && _ui->checkBox_textureMapping->isChecked()?1:0);
-		if(!has2dScans && _ui->checkBox_textureMapping->isEnabled() && _ui->checkBox_textureMapping->isChecked())
+		if(!has2dScans && !meshes.empty() && _ui->checkBox_textureMapping->isEnabled() && _ui->checkBox_textureMapping->isChecked())
 		{
 			_progressDialog->appendText(tr("Texturing..."));
 			QApplication::processEvents();

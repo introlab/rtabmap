@@ -1704,16 +1704,16 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 
 			// make sure data are uncompressed
 			// We don't need to uncompress images if we don't show them
-			bool uncompressImages =
+			bool uncompressImages = !signature.sensorData().imageCompressed().empty() && (
 					_ui->imageView_source->isVisible() ||
 					(_loopClosureViewer->isVisible() &&
 							!signature.sensorData().depthOrRightCompressed().empty()) ||
 					(_cloudViewer->isVisible() &&
 							_preferencesDialog->isCloudsShown(0) &&
-							!signature.sensorData().depthOrRightCompressed().empty());
-			bool uncompressScan =
+							!signature.sensorData().depthOrRightCompressed().empty()));
+			bool uncompressScan = !signature.sensorData().laserScanCompressed().isEmpty() && (
 					_loopClosureViewer->isVisible() ||
-					(_cloudViewer->isVisible() && _preferencesDialog->isScansShown(0));
+					(_cloudViewer->isVisible() && _preferencesDialog->isScansShown(0)));
 			cv::Mat tmpRgb, tmpDepth, tmpG, tmpO, tmpE;
 			LaserScan tmpScan;
 			signature.sensorData().uncompressData(

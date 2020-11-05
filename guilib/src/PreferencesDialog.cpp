@@ -3291,9 +3291,6 @@ void PreferencesDialog::showEvent ( QShowEvent * event )
 		_ui->groupBox_source0->setEnabled(false);
 		_ui->groupBox_odometry1->setEnabled(false);
 
-		_ui->checkBox_useOdomFeatures->setChecked(false);
-		_ui->checkBox_useOdomFeatures->setEnabled(false);
-
 		this->setWindowTitle(tr("Preferences [Monitoring mode]"));
 	}
 	else
@@ -3304,8 +3301,6 @@ void PreferencesDialog::showEvent ( QShowEvent * event )
 
 		_ui->groupBox_source0->setEnabled(true);
 		_ui->groupBox_odometry1->setEnabled(true);
-
-		_ui->checkBox_useOdomFeatures->setEnabled(true);
 
 		this->setWindowTitle(tr("Preferences"));
 	}

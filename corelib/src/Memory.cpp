@@ -4253,6 +4253,8 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 	int preDecimation = 1;
 	std::vector<cv::Point3f> keypoints3D;
 	SensorData decimatedData;
+	UDEBUG("Received kpts=%d kpts3D=%d, descriptors=%d _useOdometryFeatures=%s",
+			(int)data.keypoints().size(), (int)data.keypoints3D().size(), data.descriptors().rows, _useOdometryFeatures?"true":"false");
 	if(!_useOdometryFeatures ||
 		data.keypoints().empty() ||
 		(int)data.keypoints().size() != data.descriptors().rows ||
