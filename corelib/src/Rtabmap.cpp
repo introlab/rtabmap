@@ -1353,7 +1353,9 @@ bool Rtabmap::process(
 			}
 			else
 			{
-				UWARN("Neighbor link refining is activated but there are intermediate nodes, aborting refining...");
+				UWARN("Neighbor link refining is activated but there are intermediate nodes (%d=%d %d=%d), aborting refining...",
+						signature->id(), signature->getWeight(), oldS->id(), oldS->getWeight());
+				newPose = _mapCorrection * signature->getPose();
 			}
 		}
 		else

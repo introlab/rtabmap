@@ -1009,7 +1009,7 @@ void Memory::addSignatureToStm(Signature * signature, const cv::Mat & covariance
 
 		if(_vwd)
 		{
-			UDEBUG("%d words ref for the signature %d", signature->getWords().size(), signature->id());
+			UDEBUG("%d words ref for the signature %d (weight=%d)", signature->getWords().size(), signature->id(), signature->getWeight());
 		}
 		if(signature->getWords().size())
 		{
@@ -1536,7 +1536,7 @@ std::map<int, float> Memory::getNeighborsIdRadius(
 	nextMargin.insert(signatureId);
 	int m = 0;
 	Transform referential = optimizedPoses.at(signatureId);
-	UASSERT(!referential.isNull());
+	UASSERT_MSG(!referential.isNull(), uFormat("signatureId=%d", signatureId).c_str());
 	float radiusSqrd = radius*radius;
 	while((maxGraphDepth == 0 || m < maxGraphDepth) && nextMargin.size())
 	{
@@ -2357,7 +2357,7 @@ void Memory::moveToTrash(Signature * s, bool keepLinkedToGraph, std::list<int> *
 					}
 
 					// child
-					if(iter->second.type() == Link::kGlobalClosure && s->id() > sTo->id())
+					if(iter->second.type() == Link::kGlobalClosure && s->id() > sTo->id() && s->getWeight()>0)
 					{
 						sTo->setWeight(sTo->getWeight() + s->getWeight()); // copy weight
 					}
@@ -3660,6 +3660,10 @@ bool Memory::rehearsalMerge(int oldId, int newId)
 		{
 			fullMerge = newS->hasLink(oldS->id()) && newS->getLinks().begin()->second.transform().isNull();
 		}
+		UDEBUG("fullMerge=%s intermediateMerge=%s _idUpdatedToNewOneRehearsal=%s",
+				fullMerge?"true":"false",
+				intermediateMerge?"true":"false",
+				_idUpdatedToNewOneRehearsal?"true":"false");
 
 		if(fullMerge)
 		{
@@ -3725,6 +3729,7 @@ bool Memory::rehearsalMerge(int oldId, int newId)
 				}
 				newS->setWeight(-9);
 			}
+			UDEBUG("New weights: %d->%d %d->%d", oldS->id(), oldS->getWeight(), newS->id(), oldS->getWeight());
 
 			// remove location
 			moveToTrash(_idUpdatedToNewOneRehearsal?oldS:newS, _notLinkedNodesKeptInDb);
