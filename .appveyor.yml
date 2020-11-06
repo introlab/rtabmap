@@ -122,6 +122,13 @@ install:
   - ps: "ls \"C:/Program Files (x86)/Intel RealSense SDK 2.0\""
   - set PATH=%PATH%;C:\Program Files (x86)\Intel RealSense SDK 2.0\bin\x64
   - set RealSense2_ROOT_DIR=C:\Program Files (x86)\Intel RealSense SDK 2.0
+  # Kinect 4 Azure
+  - ps: wget 'https://download.microsoft.com/download/3/d/6/3d6d9e99-a251-4cf3-8c6a-8e108e960b4b/Azure%20Kinect%20SDK%201.4.1.exe' -outfile azure.exe
+  - cmd: azure.exe /quiet
+  - ECHO "Installed Kinect For Azure:"
+  - ps: "ls \"C:/Program Files/Azure Kinect SDK v1.4.1\""
+  - set PATH=%PATH%;C:\Program Files\Azure Kinect SDK v1.4.1\tools
+  - set K4A_ROOT_DIR=C:\Program Files\Azure Kinect SDK v1.4.1
   
 before_build:
   - cd c:\projects\rtabmap\build
