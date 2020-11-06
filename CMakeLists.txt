@@ -626,7 +626,8 @@ ELSEIF(G2O_FOUND OR
        okvis_FOUND OR 
        open_chisel_FOUND OR 
        msckf_vio_FOUND OR 
-       vins_FOUND)
+       vins_FOUND OR 
+       libpointmatcher_FOUND)
    #Newest versions require std11
    IF(NOT MSVC)
      include(CheckCXXCompilerFlag)
