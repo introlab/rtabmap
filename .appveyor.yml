@@ -121,6 +121,7 @@ install:
   - ECHO "Installed RealSense2:"
   - ps: "ls \"C:/Program Files (x86)/Intel RealSense SDK 2.0\""
   - set PATH=%PATH%;C:\Program Files (x86)\Intel RealSense SDK 2.0\bin\x64
+  - set RealSense2_ROOT_DIR=C:\Program Files (x86)\Intel RealSense SDK 2.0
   
 before_build:
   - cd c:\projects\rtabmap\build
