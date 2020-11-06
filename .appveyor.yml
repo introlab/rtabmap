@@ -115,6 +115,12 @@ install:
   - cmd: yaml-cpp.exe -o"C:\Program Files" -y
   - ECHO "Installed yaml-cpp:"
   - ps: "ls \"C:/Program Files/yaml-cpp\""
+  # RealSense2
+  - ps: wget 'https://github.com/IntelRealSense/librealsense/releases/download/v2.39.0/Intel.RealSense.SDK-WIN10-2.39.0.2337.exe' -outfile realsense2.exe
+  - cmd: realsense2.exe /VERYSILENT
+  - ECHO "Installed RealSense2:"
+  - ps: "ls \"C:/Program Files (x86)/Intel RealSense SDK 2.0\""
+  - set PATH=%PATH%;C:\Program Files (x86)\Intel RealSense SDK 2.0\bin\x64
   
 before_build:
   - cd c:\projects\rtabmap\build
