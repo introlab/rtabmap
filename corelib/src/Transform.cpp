@@ -166,9 +166,30 @@ float Transform::theta() const
 	return yaw;
 }
 
+bool Transform::isInvertible() const
+{
+	bool invertible = false;
+	Eigen::Matrix4f inverse;
+	Eigen::Matrix4f::RealScalar det;
+	toEigen4f().computeInverseAndDetWithCheck(inverse, det, invertible);
+	return invertible;
+}
+
 Transform Transform::inverse() const
 {
-	return fromEigen4f(toEigen4f().inverse());
+	bool invertible = false;
+	Eigen::Matrix4f inverse;
+	Eigen::Matrix4f::RealScalar det;
+	toEigen4f().computeInverseAndDetWithCheck(inverse, det, invertible);
+	UASSERT_MSG(invertible, uFormat("This transform is not invertible! %s \n"
+			"[%f %f %f %f;\n"
+			" %f %f %f %f;\n"
+			" %f %f %f %f;\n"
+			" 0 0 0 1]", prettyPrint().c_str(),
+			r11(), r12(), r13(), o14(),
+			r21(), r22(), r23(), o24(),
+			r31(), r32(), r33(), o34()).c_str());
+	return fromEigen4f(inverse);
 }
 
 Transform Transform::rotation() const

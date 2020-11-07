@@ -98,6 +98,7 @@ public:
 
 	float theta() const;
 
+	bool isInvertible() const;
 	Transform inverse() const;
 	Transform rotation() const;
 	Transform translation() const;

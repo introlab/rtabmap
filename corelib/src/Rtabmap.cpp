@@ -1071,6 +1071,43 @@ bool Rtabmap::process(
 	bool fakeOdom = false;
 	if(_rgbdSlamMode)
 	{
+		if(!odomPose.isNull())
+		{
+			// this will make sure that all inverse operations will work!
+			if(!odomPose.isInvertible())
+			{
+				UWARN("Input odometry is not invertible! pose = %s\n"
+						"[%f %f %f %f;\n"
+						" %f %f %f %f;\n"
+						" %f %f %f %f;\n"
+						" 0 0 0 1]\n"
+						"Trying to normalize rotation to see if it makes it invertible...",
+						odomPose.prettyPrint().c_str(),
+						odomPose.r11(), odomPose.r12(), odomPose.r13(), odomPose.o14(),
+						odomPose.r21(), odomPose.r22(), odomPose.r23(), odomPose.o24(),
+						odomPose.r31(), odomPose.r32(), odomPose.r33(), odomPose.o34());
+				odomPose.normalizeRotation();
+				UASSERT_MSG(odomPose.isInvertible(), uFormat("Odometry pose is not invertible!\n"
+						"[%f %f %f %f;\n"
+						" %f %f %f %f;\n"
+						" %f %f %f %f;\n"
+						" 0 0 0 1]", odomPose.prettyPrint().c_str(),
+						odomPose.r11(), odomPose.r12(), odomPose.r13(), odomPose.o14(),
+						odomPose.r21(), odomPose.r22(), odomPose.r23(), odomPose.o24(),
+						odomPose.r31(), odomPose.r32(), odomPose.r33(), odomPose.o34()).c_str());
+				UWARN("Normalizing rotation succeeded! fixed pose = %s\n"
+						"[%f %f %f %f;\n"
+						" %f %f %f %f;\n"
+						" %f %f %f %f;\n"
+						" 0 0 0 1]\n"
+						"If the resulting rotation is very different from original one, try to fix the odometry or TF.",
+						odomPose.prettyPrint().c_str(),
+						odomPose.r11(), odomPose.r12(), odomPose.r13(), odomPose.o14(),
+						odomPose.r21(), odomPose.r22(), odomPose.r23(), odomPose.o24(),
+						odomPose.r31(), odomPose.r32(), odomPose.r33(), odomPose.o34());
+			}
+		}
+
 		if(!_memory->isIncremental() &&
 			!odomPose.isNull() &&
 			_optimizedPoses.size() &&
@@ -1238,6 +1275,7 @@ bool Rtabmap::process(
 							// This will disable global loop closure detection, only retrieval will be done.
 							// The location will also be deleted at the end.
 							smallDisplacement = true;
+							UDEBUG("smallDisplacement: %f %f %f %f %f %f", x,y,z, roll,pitch,yaw);
 						}
 					}
 				}

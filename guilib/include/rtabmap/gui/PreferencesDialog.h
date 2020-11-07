@@ -249,6 +249,7 @@ public:
 	QString getSourceDevice() const;
 
 	bool isSourceDatabaseStampsUsed() const;
+	bool isSourceDatabaseStereoToDepth() const;
 	bool isSourceRGBDColorOnly() const;
 	int getIMUFilteringStrategy() const;
 	bool isDepthFilteringAvailable() const;

@@ -63,7 +63,7 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-27</y>
+            <y>-498</y>
             <width>686</width>
             <height>3236</height>
            </rect>
@@ -95,7 +95,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>9</number>
+                <number>5</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,1">
@@ -3109,7 +3109,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                     <item>
                      <widget class="QStackedWidget" name="stackedWidget_src">
                       <property name="currentIndex">
-                       <number>0</number>
+                       <number>3</number>
                       </property>
                       <widget class="QWidget" name="page_41">
                        <layout class="QVBoxLayout" name="verticalLayout_64">
@@ -5877,6 +5877,13 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                              </property>
                             </widget>
                            </item>
+                           <item row="1" column="0">
+                            <widget class="QCheckBox" name="source_checkBox_ignoreOdometry">
+                             <property name="text">
+                              <string/>
+                             </property>
+                            </widget>
+                           </item>
                            <item row="0" column="2">
                             <widget class="QToolButton" name="toolButton_dbViewer">
                              <property name="toolTip">
@@ -5891,13 +5898,6 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                              </property>
                             </widget>
                            </item>
-                           <item row="1" column="0">
-                            <widget class="QCheckBox" name="source_checkBox_ignoreOdometry">
-                             <property name="text">
-                              <string/>
-                             </property>
-                            </widget>
-                           </item>
                            <item row="0" column="0">
                             <widget class="QToolButton" name="source_database_toolButton_selectSource">
                              <property name="text">
@@ -5908,7 +5908,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                            <item row="0" column="1">
                             <widget class="QLineEdit" name="source_database_lineEdit_path"/>
                            </item>
-                           <item row="8" column="1">
+                           <item row="9" column="1">
                             <spacer name="verticalSpacer_35">
                              <property name="orientation">
                               <enum>Qt::Vertical</enum>
@@ -6037,6 +6037,26 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                              </property>
                              <property name="maximum">
                               <number>99999</number>
+                             </property>
+                            </widget>
+                           </item>
+                           <item row="8" column="1">
+                            <widget class="QLabel" name="label_557">
+                             <property name="text">
+                              <string>If the database contains stereo data, generate disparity image and convert it to depth. The resulting output is a RGB-D image instead of stereo images. Dense disparity parameters can be found under StereoBM tab.</string>
+                             </property>
+                             <property name="wordWrap">
+                              <bool>true</bool>
+                             </property>
+                             <property name="textInteractionFlags">
+                              <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                             </property>
+                            </widget>
+                           </item>
+                           <item row="8" column="0">
+                            <widget class="QCheckBox" name="source_checkBox_stereoToDepthDB">
+                             <property name="text">
+                              <string/>
                              </property>
                             </widget>
                            </item>
