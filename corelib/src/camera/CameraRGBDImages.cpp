@@ -70,16 +70,6 @@ bool CameraRGBDImages::init(const std::string & calibrationFolder, const std::st
 	return success;
 }
 
-bool CameraRGBDImages::isCalibrated() const
-{
-	return this->cameraModel().isValidForProjection();
-}
-
-std::string CameraRGBDImages::getSerial() const
-{
-	return this->cameraModel().name();
-}
-
 SensorData CameraRGBDImages::captureImage(CameraInfo * info)
 {
 	SensorData data;

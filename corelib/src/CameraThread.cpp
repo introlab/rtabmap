@@ -237,7 +237,26 @@ void CameraThread::postUpdate(SensorData * dataPtr, CameraInfo * info) const
 		else
 		{
 			cv::Mat image = util2d::decimate(data.imageRaw(), _imageDecimation);
-			cv::Mat depthOrRight = util2d::decimate(data.depthOrRightRaw(), _imageDecimation);
+
+			int depthDecimation = _imageDecimation;
+			if(data.depthOrRightRaw().rows <= image.rows || data.depthOrRightRaw().cols <= image.cols)
+			{
+				depthDecimation = 1;
+			}
+			else
+			{
+				depthDecimation = 2;
+				while(data.depthOrRightRaw().rows / depthDecimation > image.rows ||
+					  data.depthOrRightRaw().cols / depthDecimation > image.cols ||
+					  data.depthOrRightRaw().rows % depthDecimation != 0 ||
+					  data.depthOrRightRaw().cols % depthDecimation != 0)
+				{
+					++depthDecimation;
+				}
+				UDEBUG("depthDecimation=%d", depthDecimation);
+			}
+			cv::Mat depthOrRight = util2d::decimate(data.depthOrRightRaw(), depthDecimation);
+
 			std::vector<CameraModel> models = data.cameraModels();
 			for(unsigned int i=0; i<models.size(); ++i)
 			{

@@ -74,6 +74,11 @@ public:
 		_syncImageRateWithStamps = syncImageRateWithStamps;
 	}
 
+	void setConfigForEachFrame(bool value)
+	{
+		_hasConfigForEachFrame = value;
+	}
+
 	void setScanPath(
 			const std::string & dir,
 			int maxScanPts = 0,
@@ -116,12 +121,14 @@ public:
 
 protected:
 	virtual SensorData captureImage(CameraInfo * info = 0);
+
+private:
 	bool readPoses(
-			std::list<Transform> & outputPoses,
-			std::list<double> & stamps,
-			const std::string & filePath,
-			int format,
-			double maxTimeDiff) const;
+		std::list<Transform> & outputPoses,
+		std::list<double> & stamps,
+		const std::string & filePath,
+		int format,
+		double maxTimeDiff) const;
 
 private:
 	std::string _path;
@@ -151,6 +158,7 @@ private:
 	bool _depthFromScanFillHolesFromBorder;
 
 	bool _filenamesAreTimestamps;
+	bool _hasConfigForEachFrame;
 	std::string _timestampsPath;
 	bool _syncImageRateWithStamps;
 
@@ -162,8 +170,10 @@ private:
 
 	std::list<double> _stamps;
 	std::list<Transform> odometry_;
+	std::list<cv::Mat> covariances_;
 	std::list<Transform> groundTruth_;
 	CameraModel _model;
+	std::list<CameraModel> _models;
 
 	UTimer _captureTimer;
 	double _captureDelay;

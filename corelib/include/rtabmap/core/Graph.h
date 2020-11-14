@@ -35,6 +35,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/Parameters.h>
 #include <rtabmap/core/Link.h>
 #include <rtabmap/core/GPS.h>
+#include <rtabmap/core/CameraModel.h>
 
 namespace rtabmap {
 class Memory;
@@ -55,10 +56,10 @@ namespace graph {
 
 bool RTABMAP_EXP importPoses(
 		const std::string & filePath,
-		int format, // 0=Raw, 1=RGBD-SLAM motion capture (10=without change of coordinate frame), 2=KITTI, 3=TORO, 4=g2o, 5=NewCollege(t,x,y), 6=Malaga Urban GPS, 7=St Lucia INS, 8=Karlsruhe
+		int format, // 0=Raw, 1=RGBD-SLAM motion capture (10=without change of coordinate frame), 2=KITTI, 3=TORO, 4=g2o, 5=NewCollege(t,x,y), 6=Malaga Urban GPS, 7=St Lucia INS, 8=Karlsruhe, 9=EuRoC MAV
 		std::map<int, Transform> & poses,
 		std::multimap<int, Link> * constraints = 0, // optional for formats 3 and 4
-		std::map<int, double> * stamps = 0); // optional for format 1
+		std::map<int, double> * stamps = 0); // optional for format 1 and 9
 
 bool RTABMAP_EXP exportGPS(
 		const std::string & filePath,
