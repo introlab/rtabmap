@@ -221,7 +221,11 @@ bool CameraImages::init(const std::string & calibrationFolder, const std::string
 	{
 		if(_hasConfigForEachFrame)
 		{
-			UDirectory dirJson(_path, "json");
+#if CV_MAJOR_VERSION < 3 || (CV_MAJOR_VERSION == 3 && CV_MAJOR_VERSION < 2)
+			UDirectory dirJson(_path, "yaml xml");
+#else
+			UDirectory dirJson(_path, "yaml xml json");
+#endif
 			if(dirJson.getFileNames().size() == _dir->getFileNames().size())
 			{
 				bool modelsWarned = false;
@@ -254,7 +258,7 @@ bool CameraImages::init(const std::string & calibrationFolder, const std::string
 					}
 					else
 					{
-						_stamps.push_back(timeNode.real());
+						_stamps.push_back((double)timeNode);
 						if(_model.isValidForProjection() && !modelsWarned)
 						{
 							UWARN("Camera model loaded for each frame is overridden by "
@@ -266,17 +270,17 @@ bool CameraImages::init(const std::string & calibrationFolder, const std::string
 						else
 						{
 							_models.push_back(CameraModel(
-									intrinsicsNode[0].real(), //fx
-									intrinsicsNode[4].real(), //fy
-									intrinsicsNode[2].real(), //cx
-									intrinsicsNode[5].real(), //cy
+									(double)intrinsicsNode[0], //fx
+									(double)intrinsicsNode[4], //fy
+									(double)intrinsicsNode[2], //cx
+									(double)intrinsicsNode[5], //cy
 									CameraModel::opticalRotation()));
 						}
 						// we need to rotate from opengl world to rtabmap world
 						Transform pose(
-								poseNode[0].real(), poseNode[1].real(), poseNode[2].real(), poseNode[3].real(),
-								poseNode[4].real(), poseNode[5].real(), poseNode[6].real(), poseNode[7].real(),
-								poseNode[8].real(), poseNode[9].real(), poseNode[10].real(), poseNode[11].real());
+								(float)poseNode[0], (float)poseNode[1], (float)poseNode[2], (float)poseNode[3],
+								(float)poseNode[4], (float)poseNode[5], (float)poseNode[6], (float)poseNode[7],
+								(float)poseNode[8], (float)poseNode[9], (float)poseNode[10], (float)poseNode[11]);
 						pose =  Transform::rtabmap_T_opengl() * pose * Transform::opengl_T_rtabmap();
 						odometry_.push_back(pose);
 						// linear cov = 0.0001
@@ -302,12 +306,17 @@ bool CameraImages::init(const std::string & calibrationFolder, const std::string
 			}
 			else
 			{
+				std::string opencv32warn;
+#if CV_MAJOR_VERSION < 3 || (CV_MAJOR_VERSION == 3 && CV_MAJOR_VERSION < 2)
+				opencv32warn = " RTAB-Map is currently built with OpenCV < 3.2, only xml and yaml files are supported (not json).";
+#endif
 				UERROR("Parameter \"Config for each frame\" is true, but the "
 						"number of config files (%d) is not equal to number "
-						"of images (%d) in this directory \"%s\"",
+						"of images (%d) in this directory \"%s\".%s",
 						(int)dirJson.getFileNames().size(),
 						(int)_dir->getFileNames().size(),
-						_path.c_str());
+						_path.c_str(),
+						opencv32warn.c_str());
 				success = false;
 			}
 		}
