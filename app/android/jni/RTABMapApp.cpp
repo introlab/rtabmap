@@ -308,7 +308,7 @@ int RTABMapApp::openDatabase(const std::string & databasePath, bool databaseInMe
 		optRefPose_ = 0;
 	}
 	cv::Mat cloudMat;
-	std::vector<std::vector<std::vector<unsigned int> > > polygons;
+	std::vector<std::vector<std::vector<RTABMAP_PCL_INDEX> > > polygons;
 #if PCL_VERSION_COMPARE(>=, 1, 8, 0)
 	std::vector<std::vector<Eigen::Vector2f, Eigen::aligned_allocator<Eigen::Vector2f> > > texCoords;
 #else
@@ -2902,7 +2902,7 @@ bool RTABMapApp::exportMesh(
 						pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
 						pcl::fromPCLPointCloud2(polygonMesh->cloud, *cloud);
 						cv::Mat cloudMat = rtabmap::compressData2(rtabmap::util3d::laserScanFromPointCloud(*cloud, rtabmap::Transform(), false)); // for database
-						std::vector<std::vector<std::vector<unsigned int> > > polygons(1);
+						std::vector<std::vector<std::vector<RTABMAP_PCL_INDEX> > > polygons(1);
 						polygons[0].resize(polygonMesh->polygons.size());
 						for(unsigned int p=0; p<polygonMesh->polygons.size(); ++p)
 						{
@@ -2921,7 +2921,7 @@ bool RTABMapApp::exportMesh(
 					cv::Mat cloudMat = rtabmap::compressData2(rtabmap::util3d::laserScanFromPointCloud(*cloud, rtabmap::Transform(), false)); // for database
 
 					// save in database
-					std::vector<std::vector<std::vector<unsigned int> > > polygons(textureMesh->tex_polygons.size());
+					std::vector<std::vector<std::vector<RTABMAP_PCL_INDEX> > > polygons(textureMesh->tex_polygons.size());
 					for(unsigned int t=0; t<textureMesh->tex_polygons.size(); ++t)
 					{
 						polygons[t].resize(textureMesh->tex_polygons[t].size());
@@ -3114,7 +3114,7 @@ bool RTABMapApp::postExportation(bool visualize)
 	{
 		visualizingMesh_ = false;
 		cv::Mat cloudMat;
-		std::vector<std::vector<std::vector<unsigned int> > > polygons;
+		std::vector<std::vector<std::vector<RTABMAP_PCL_INDEX> > > polygons;
 #if PCL_VERSION_COMPARE(>=, 1, 8, 0)
 		std::vector<std::vector<Eigen::Vector2f, Eigen::aligned_allocator<Eigen::Vector2f> > > texCoords;
 #else
@@ -3171,7 +3171,7 @@ bool RTABMapApp::writeExportedMesh(const std::string & directory, const std::str
 	pcl::PolygonMesh::Ptr polygonMesh(new pcl::PolygonMesh);
 	pcl::TextureMesh::Ptr textureMesh(new pcl::TextureMesh);
 	cv::Mat cloudMat;
-	std::vector<std::vector<std::vector<unsigned int> > > polygons;
+	std::vector<std::vector<std::vector<RTABMAP_PCL_INDEX> > > polygons;
 #if PCL_VERSION_COMPARE(>=, 1, 8, 0)
 	std::vector<std::vector<Eigen::Vector2f, Eigen::aligned_allocator<Eigen::Vector2f> > > texCoords;
 #else
@@ -3186,7 +3186,7 @@ bool RTABMapApp::writeExportedMesh(const std::string & directory, const std::str
 			LOGI("writeExportedMesh: Found optimized mesh!");
 			if(textures.empty())
 			{
-				polygonMesh = rtabmap::util3d::assemblePolygonMesh(cloudMat, polygons.size() == 1?polygons[0]:std::vector<std::vector<unsigned int> >());
+				polygonMesh = rtabmap::util3d::assemblePolygonMesh(cloudMat, polygons.size() == 1?polygons[0]:std::vector<std::vector<RTABMAP_PCL_INDEX> >());
 			}
 			else
 			{

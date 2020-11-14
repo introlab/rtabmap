@@ -1389,7 +1389,7 @@ LaserScan laserScanFromPointCloud(const pcl::PCLPointCloud2 & cloud, bool filter
 		}
 	}
 
-	UASSERT(cloud.data.size()/cloud.point_step == cloud.height*cloud.width);
+	UASSERT(cloud.data.size()/cloud.point_step == (uint32_t)cloud.height*cloud.width);
 	cv::Mat laserScan = cv::Mat(1, (int)cloud.data.size()/cloud.point_step, CV_32FC(LaserScan::channels(format)));
 
 	bool transformValid = !transform.isNull() && !transform.isIdentity();
@@ -1399,10 +1399,10 @@ LaserScan laserScanFromPointCloud(const pcl::PCLPointCloud2 & cloud, bool filter
 		transformRot = transform.rotation();
 	}
 	int oi=0;
-	for (uint32_t row = 0; row < cloud.height; ++row)
+	for (uint32_t row = 0; row < (uint32_t)cloud.height; ++row)
 	{
 		const uint8_t* row_data = &cloud.data[row * cloud.row_step];
-		for (uint32_t col = 0; col < cloud.width; ++col)
+		for (uint32_t col = 0; col < (uint32_t)cloud.width; ++col)
 		{
 			const uint8_t* msg_data = row_data + col * cloud.point_step;
 
@@ -2918,10 +2918,10 @@ cv::Mat projectCloudToCamera(
 	int count = 0;
 	if(field_map.size() == 1)
 	{
-		for (uint32_t row = 0; row < laserScan->height; ++row)
+		for (uint32_t row = 0; row < (uint32_t)laserScan->height; ++row)
 		{
 			const uint8_t* row_data = &laserScan->data[row * laserScan->row_step];
-			for (uint32_t col = 0; col < laserScan->width; ++col)
+			for (uint32_t col = 0; col < (uint32_t)laserScan->width; ++col)
 			{
 				const uint8_t* msg_data = row_data + col * laserScan->point_step;
 				pcl::PointXYZ ptScan;

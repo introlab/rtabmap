@@ -43,6 +43,7 @@
 #include <pcl/surface/reconstruction.h>
 #include <pcl/common/transforms.h>
 #include <pcl/TextureMesh.h>
+#include <pcl/octree/octree.h>
 #include <rtabmap/core/ProgressState.h>
 #include <rtabmap/utilite/ULogger.h>
 #include <rtabmap/utilite/UStl.h>

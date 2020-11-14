@@ -113,7 +113,7 @@ protected:
 	virtual cv::Mat load2DMapQuery(float & xMin, float & yMin, float & cellSize) const;
 	virtual void saveOptimizedMeshQuery(
 			const cv::Mat & cloud,
-			const std::vector<std::vector<std::vector<unsigned int> > > & polygons,
+			const std::vector<std::vector<std::vector<RTABMAP_PCL_INDEX> > > & polygons,
 #if PCL_VERSION_COMPARE(>=, 1, 8, 0)
 			const std::vector<std::vector<Eigen::Vector2f, Eigen::aligned_allocator<Eigen::Vector2f> > > & texCoords,
 #else
@@ -121,7 +121,7 @@ protected:
 #endif
 			const cv::Mat & textures) const;
 	virtual cv::Mat loadOptimizedMeshQuery(
-			std::vector<std::vector<std::vector<unsigned int> > > * polygons,
+			std::vector<std::vector<std::vector<RTABMAP_PCL_INDEX> > > * polygons,
 #if PCL_VERSION_COMPARE(>=, 1, 8, 0)
 			std::vector<std::vector<Eigen::Vector2f, Eigen::aligned_allocator<Eigen::Vector2f> > > * texCoords,
 #else

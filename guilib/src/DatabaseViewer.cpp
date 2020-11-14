@@ -3071,7 +3071,7 @@ void DatabaseViewer::viewOptimizedMesh()
 		return;
 	}
 
-	std::vector<std::vector<std::vector<unsigned int> > > polygons;
+	std::vector<std::vector<std::vector<RTABMAP_PCL_INDEX> > > polygons;
 #if PCL_VERSION_COMPARE(>=, 1, 8, 0)
 	std::vector<std::vector<Eigen::Vector2f, Eigen::aligned_allocator<Eigen::Vector2f> > > texCoords;
 #else
@@ -3123,7 +3123,7 @@ void DatabaseViewer::exportOptimizedMesh()
 		return;
 	}
 
-	std::vector<std::vector<std::vector<unsigned int> > > polygons;
+	std::vector<std::vector<std::vector<RTABMAP_PCL_INDEX> > > polygons;
 #if PCL_VERSION_COMPARE(>=, 1, 8, 0)
 	std::vector<std::vector<Eigen::Vector2f, Eigen::aligned_allocator<Eigen::Vector2f> > > texCoords;
 #else
@@ -3331,7 +3331,7 @@ void DatabaseViewer::updateOptimizedMesh()
 			else if(meshes.size())
 			{
 				dbDriver_->saveOptimizedPoses(optimizedPoses, lastlocalizationPose);
-				std::vector<std::vector<std::vector<unsigned int> > > polygons(1);
+				std::vector<std::vector<std::vector<RTABMAP_PCL_INDEX> > > polygons(1);
 				polygons.at(0) = util3d::convertPolygonsFromPCL(meshes.at(0)->polygons);
 				dbDriver_->saveOptimizedMesh(util3d::laserScanFromPointCloud(meshes.at(0)->cloud, false).data(), polygons);
 				QMessageBox::information(this, tr("Update Optimized Mesh"), tr("Updated!"));

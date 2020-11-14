@@ -38,6 +38,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UTimer.h>
 #include <pcl/conversions.h>
 #include <pcl/common/pca.h>
+#include <pcl/common/io.h>
 
 #ifdef RTABMAP_POINTMATCHER
 #include <fstream>

@@ -62,6 +62,9 @@ using namespace aliceVision;
 #include <pcl/surface/vtk_smoothing/vtk_mesh_quadric_decimation.h>
 #endif
 
+#if PCL_VERSION_COMPARE(>, 1, 11, 1)
+#include <pcl/types.h>
+#endif
 #if PCL_VERSION_COMPARE(<, 1, 8, 0)
 #include "pcl18/surface/organized_fast_mesh.h"
 #else
@@ -1217,18 +1220,18 @@ void concatenateTextureMaterials(pcl::TextureMesh & mesh, const cv::Size & image
 	}
 }
 
-std::vector<std::vector<unsigned int> > convertPolygonsFromPCL(const std::vector<pcl::Vertices> & polygons)
+std::vector<std::vector<RTABMAP_PCL_INDEX> > convertPolygonsFromPCL(const std::vector<pcl::Vertices> & polygons)
 {
-	std::vector<std::vector<unsigned int> > polygonsOut(polygons.size());
+	std::vector<std::vector<RTABMAP_PCL_INDEX> > polygonsOut(polygons.size());
 	for(unsigned int p=0; p<polygons.size(); ++p)
 	{
 		polygonsOut[p] = polygons[p].vertices;
 	}
 	return polygonsOut;
 }
-std::vector<std::vector<std::vector<unsigned int> > > convertPolygonsFromPCL(const std::vector<std::vector<pcl::Vertices> > & tex_polygons)
+std::vector<std::vector<std::vector<RTABMAP_PCL_INDEX> > > convertPolygonsFromPCL(const std::vector<std::vector<pcl::Vertices> > & tex_polygons)
 {
-	std::vector<std::vector<std::vector<unsigned int> > > polygonsOut(tex_polygons.size());
+	std::vector<std::vector<std::vector<RTABMAP_PCL_INDEX> > > polygonsOut(tex_polygons.size());
 	for(unsigned int t=0; t<tex_polygons.size(); ++t)
 	{
 		polygonsOut[t].resize(tex_polygons[t].size());
@@ -1239,7 +1242,7 @@ std::vector<std::vector<std::vector<unsigned int> > > convertPolygonsFromPCL(con
 	}
 	return polygonsOut;
 }
-std::vector<pcl::Vertices> convertPolygonsToPCL(const std::vector<std::vector<unsigned int> > & polygons)
+std::vector<pcl::Vertices> convertPolygonsToPCL(const std::vector<std::vector<RTABMAP_PCL_INDEX> > & polygons)
 {
 	std::vector<pcl::Vertices> polygonsOut(polygons.size());
 	for(unsigned int p=0; p<polygons.size(); ++p)
@@ -1248,7 +1251,7 @@ std::vector<pcl::Vertices> convertPolygonsToPCL(const std::vector<std::vector<un
 	}
 	return polygonsOut;
 }
-std::vector<std::vector<pcl::Vertices> > convertPolygonsToPCL(const std::vector<std::vector<std::vector<unsigned int> > > & tex_polygons)
+std::vector<std::vector<pcl::Vertices> > convertPolygonsToPCL(const std::vector<std::vector<std::vector<RTABMAP_PCL_INDEX> > > & tex_polygons)
 {
 	std::vector<std::vector<pcl::Vertices> > polygonsOut(tex_polygons.size());
 	for(unsigned int t=0; t<tex_polygons.size(); ++t)
@@ -1264,7 +1267,7 @@ std::vector<std::vector<pcl::Vertices> > convertPolygonsToPCL(const std::vector<
 
 pcl::TextureMesh::Ptr assembleTextureMesh(
 		const cv::Mat & cloudMat,
-		const std::vector<std::vector<std::vector<unsigned int> > > & polygons,
+		const std::vector<std::vector<std::vector<RTABMAP_PCL_INDEX> > > & polygons,
 #if PCL_VERSION_COMPARE(>=, 1, 8, 0)
 		const std::vector<std::vector<Eigen::Vector2f, Eigen::aligned_allocator<Eigen::Vector2f> > > & texCoords,
 #else
@@ -1387,7 +1390,7 @@ pcl::TextureMesh::Ptr assembleTextureMesh(
 
 pcl::PolygonMesh::Ptr assemblePolygonMesh(
 		const cv::Mat & cloudMat,
-		const std::vector<std::vector<unsigned int> > & polygons)
+		const std::vector<std::vector<RTABMAP_PCL_INDEX> > & polygons)
 {
 	pcl::PolygonMesh::Ptr polygonMesh(new pcl::PolygonMesh);
 
@@ -2197,7 +2200,7 @@ void fixTextureMeshForVisualization(pcl::TextureMesh & textureMesh)
 				for(unsigned int j=0; j<vertices.vertices.size(); ++j)
 				{
 					UASSERT(oi < newCloud->size());
-					UASSERT_MSG(vertices.vertices[j] < originalCloud->size(), uFormat("%d vs %d", vertices.vertices[j], (int)originalCloud->size()).c_str());
+					UASSERT_MSG((size_t)vertices.vertices[j] < originalCloud->size(), uFormat("%d vs %d", vertices.vertices[j], (int)originalCloud->size()).c_str());
 					newCloud->at(oi) = originalCloud->at(vertices.vertices[j]);
 					vertices.vertices[j] = oi; // new vertex index
 					++oi;

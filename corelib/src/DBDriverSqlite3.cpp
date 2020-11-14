@@ -5057,7 +5057,7 @@ cv::Mat DBDriverSqlite3::load2DMapQuery(float & xMin, float & yMin, float & cell
 
 void DBDriverSqlite3::saveOptimizedMeshQuery(
 			const cv::Mat & cloud,
-			const std::vector<std::vector<std::vector<unsigned int> > > & polygons,
+			const std::vector<std::vector<std::vector<RTABMAP_PCL_INDEX> > > & polygons,
 #if PCL_VERSION_COMPARE(>=, 1, 8, 0)
 			const std::vector<std::vector<Eigen::Vector2f, Eigen::aligned_allocator<Eigen::Vector2f> > > & texCoords,
 #else
@@ -5252,7 +5252,7 @@ void DBDriverSqlite3::saveOptimizedMeshQuery(
 }
 
 cv::Mat DBDriverSqlite3::loadOptimizedMeshQuery(
-			std::vector<std::vector<std::vector<unsigned int> > > * polygons,
+			std::vector<std::vector<std::vector<RTABMAP_PCL_INDEX> > > * polygons,
 #if PCL_VERSION_COMPARE(>=, 1, 8, 0)
 			std::vector<std::vector<Eigen::Vector2f, Eigen::aligned_allocator<Eigen::Vector2f> > > * texCoords,
 #else
@@ -5314,7 +5314,7 @@ cv::Mat DBDriverSqlite3::loadOptimizedMeshQuery(
 					for(int t=0; t<serializedPolygons.cols; ++t)
 					{
 						UASSERT(serializedPolygons.at<int>(t) > 0);
-						std::vector<std::vector<unsigned int> > materialPolygons(serializedPolygons.at<int>(t), std::vector<unsigned int>(polygonSize));
+						std::vector<std::vector<RTABMAP_PCL_INDEX> > materialPolygons(serializedPolygons.at<int>(t), std::vector<RTABMAP_PCL_INDEX>(polygonSize));
 						++t;
 						UASSERT(t < serializedPolygons.cols);
 						UDEBUG("materialPolygons=%d", (int)materialPolygons.size());

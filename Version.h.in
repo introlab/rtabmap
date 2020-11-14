@@ -76,6 +76,17 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 @PYMATCHER@#define RTABMAP_PYMATCHER
 @MADGWICK@#define RTABMAP_MADGWICK
 
+#include <pcl/pcl_config.h>
+
+#if PCL_VERSION_COMPARE(>, 1, 11, 1)
+#include <pcl/types.h>
+#define RTABMAP_PCL_INDEX pcl::index_t
+#elif PCL_VERSION_COMPARE(>=, 1, 10, 0)
+#define RTABMAP_PCL_INDEX std::uint32_t
+#else
+#include <pcl/pcl_macros.h>
+#define RTABMAP_PCL_INDEX pcl::uint32_t
+#endif
 
 #endif /* VERSION_H_ */
 

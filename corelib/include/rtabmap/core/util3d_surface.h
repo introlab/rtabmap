@@ -39,6 +39,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/CameraModel.h>
 #include <rtabmap/core/ProgressState.h>
 #include <rtabmap/core/LaserScan.h>
+#include <rtabmap/core/Version.h>
 #include <set>
 #include <list>
 
@@ -177,18 +178,18 @@ pcl::TextureMesh::Ptr RTABMAP_EXP concatenateTextureMeshes(
 void RTABMAP_EXP concatenateTextureMaterials(
 		pcl::TextureMesh & mesh, const cv::Size & imageSize, int textureSize, int maxTextures, float & scale, std::vector<bool> * materialsKept=0);
 
-std::vector<std::vector<unsigned int> > RTABMAP_EXP convertPolygonsFromPCL(
+std::vector<std::vector<RTABMAP_PCL_INDEX> > RTABMAP_EXP convertPolygonsFromPCL(
 		const std::vector<pcl::Vertices> & polygons);
-std::vector<std::vector<std::vector<unsigned int> > > RTABMAP_EXP convertPolygonsFromPCL(
+std::vector<std::vector<std::vector<RTABMAP_PCL_INDEX> > > RTABMAP_EXP convertPolygonsFromPCL(
 		const std::vector<std::vector<pcl::Vertices> > & polygons);
 std::vector<pcl::Vertices> RTABMAP_EXP convertPolygonsToPCL(
-		const std::vector<std::vector<unsigned int> > & polygons);
+		const std::vector<std::vector<RTABMAP_PCL_INDEX> > & polygons);
 std::vector<std::vector<pcl::Vertices> > RTABMAP_EXP convertPolygonsToPCL(
-		const std::vector<std::vector<std::vector<unsigned int> > > & tex_polygons);
+		const std::vector<std::vector<std::vector<RTABMAP_PCL_INDEX> > > & tex_polygons);
 
 pcl::TextureMesh::Ptr RTABMAP_EXP assembleTextureMesh(
 		const cv::Mat & cloudMat,
-		const std::vector<std::vector<std::vector<unsigned int> > > & polygons,
+		const std::vector<std::vector<std::vector<RTABMAP_PCL_INDEX> > > & polygons,
 #if PCL_VERSION_COMPARE(>=, 1, 8, 0)
 		const std::vector<std::vector<Eigen::Vector2f, Eigen::aligned_allocator<Eigen::Vector2f> > > & texCoords,
 #else
@@ -199,7 +200,7 @@ pcl::TextureMesh::Ptr RTABMAP_EXP assembleTextureMesh(
 
 pcl::PolygonMesh::Ptr RTABMAP_EXP assemblePolygonMesh(
 		const cv::Mat & cloudMat,
-		const std::vector<std::vector<unsigned int> > & polygons);
+		const std::vector<std::vector<RTABMAP_PCL_INDEX> > & polygons);
 
 /**
  * Merge all textures in the mesh into "textureCount" textures of size "textureSize".

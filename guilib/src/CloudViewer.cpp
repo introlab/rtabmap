@@ -562,12 +562,16 @@ public:
 	 * \return true if the operation was successful (the handler is capable and
 	 * the input cloud was given as a valid pointer), false otherwise
 	 */
-	virtual bool
-	getColor (vtkSmartPointer<vtkDataArray> &scalars) const
-	{
+#if PCL_VERSION_COMPARE(>, 1, 11, 1)
+	virtual vtkSmartPointer<vtkDataArray> getColor () const {
+		vtkSmartPointer<vtkDataArray> scalars;
+		if (!capable_ || !cloud_)
+			return scalars;
+#else
+	virtual bool getColor (vtkSmartPointer<vtkDataArray> &scalars) const {
 		if (!capable_ || !cloud_)
 			return (false);
-
+#endif
 		if (!scalars)
 			scalars = vtkSmartPointer<vtkUnsignedCharArray>::New ();
 		scalars->SetNumberOfComponents (3);
@@ -645,7 +649,11 @@ public:
 			reinterpret_cast<vtkUnsignedCharArray*>(&(*scalars))->SetNumberOfTuples (0);
 		//delete [] colors;
 		delete [] intensities;
+#if PCL_VERSION_COMPARE(>, 1, 11, 1)
+		return scalars;
+#else
 		return (true);
+#endif
 	}
 
 protected:

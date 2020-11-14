@@ -563,7 +563,7 @@ int main(int argc, char * argv[])
 					if(saveInDb)
 					{
 						printf("Saving mesh in db...\n");
-						std::vector<std::vector<std::vector<unsigned int> > > polygons;
+						std::vector<std::vector<std::vector<RTABMAP_PCL_INDEX> > > polygons;
 						polygons.push_back(util3d::convertPolygonsFromPCL(mesh->polygons));
 						driver->saveOptimizedMesh(
 								util3d::laserScanFromPointCloud(mesh->cloud, false).data(),
