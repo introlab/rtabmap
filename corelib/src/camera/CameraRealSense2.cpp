@@ -656,7 +656,8 @@ bool CameraRealSense2::init(const std::string & calibrationFolder, const std::st
 			auto video_profile = profile.as<rs2::video_stream_profile>();
 			if(!stereo)
 			{
-				if(isL500_)
+				if(isL500_ &&
+				   !(video_profile.format() == RS2_FORMAT_MOTION_XYZ32F || video_profile.format() == RS2_FORMAT_6DOF))
 				{
 					if(video_profile.width()  == 640 &&
 					   video_profile.height() == 480 &&
