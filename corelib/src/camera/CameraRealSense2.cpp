@@ -656,31 +656,33 @@ bool CameraRealSense2::init(const std::string & calibrationFolder, const std::st
 			auto video_profile = profile.as<rs2::video_stream_profile>();
 			if(!stereo)
 			{
-				if(isL500_
-					 && (video_profile.width()  == 640 &&
-						 video_profile.height() == 480 &&
-						 video_profile.fps()    == 30))
+				if(isL500_)
 				{
-					if( i==0 // rgb
-						&& video_profile.format() == RS2_FORMAT_RGB8 && video_profile.stream_type() == RS2_STREAM_COLOR)
+					if(video_profile.width()  == 640 &&
+					   video_profile.height() == 480 &&
+					   video_profile.fps()    == 30)
 					{
-						auto intrinsic = video_profile.get_intrinsics();
-						profilesPerSensor[i].push_back(profile);
-						rgbBuffer_ = cv::Mat(cv::Size(video_profile.width(), video_profile.height()), CV_8UC3, cv::Scalar(0, 0, 0));
-						model_ = CameraModel(camera_name, intrinsic.fx, intrinsic.fy, intrinsic.ppx, intrinsic.ppy, this->getLocalTransform(), 0, cv::Size(intrinsic.width, intrinsic.height));
-						rgbStreamProfile = profile;
-						*rgbIntrinsics_ = intrinsic;
-						added = true;
-					}
-					else if( i==1 // depth
-						 && video_profile.format() == RS2_FORMAT_Z16 && video_profile.stream_type() == RS2_STREAM_DEPTH)
-					{
-						auto intrinsic = video_profile.get_intrinsics();
-						profilesPerSensor[i].push_back(profile);
-						depthBuffer_ = cv::Mat(cv::Size(video_profile.width(), video_profile.height()), CV_16UC1, cv::Scalar(0));
-						depthStreamProfile = profile;
-						*depthIntrinsics_ = intrinsic;
-						added = true;
+						if( i==0 // rgb
+							&& video_profile.format() == RS2_FORMAT_RGB8 && video_profile.stream_type() == RS2_STREAM_COLOR)
+						{
+							auto intrinsic = video_profile.get_intrinsics();
+							profilesPerSensor[i].push_back(profile);
+							rgbBuffer_ = cv::Mat(cv::Size(video_profile.width(), video_profile.height()), CV_8UC3, cv::Scalar(0, 0, 0));
+							model_ = CameraModel(camera_name, intrinsic.fx, intrinsic.fy, intrinsic.ppx, intrinsic.ppy, this->getLocalTransform(), 0, cv::Size(intrinsic.width, intrinsic.height));
+							rgbStreamProfile = profile;
+							*rgbIntrinsics_ = intrinsic;
+							added = true;
+						}
+						else if( i==1 // depth
+							 && video_profile.format() == RS2_FORMAT_Z16 && video_profile.stream_type() == RS2_STREAM_DEPTH)
+						{
+							auto intrinsic = video_profile.get_intrinsics();
+							profilesPerSensor[i].push_back(profile);
+							depthBuffer_ = cv::Mat(cv::Size(video_profile.width(), video_profile.height()), CV_16UC1, cv::Scalar(0));
+							depthStreamProfile = profile;
+							*depthIntrinsics_ = intrinsic;
+							added = true;
+						}
 					}
 				}
 				//D400 series:
@@ -819,6 +821,10 @@ bool CameraRealSense2::init(const std::string & calibrationFolder, const std::st
 						video_profile.stream_index(),
 						video_profile.stream_name().c_str(),
 						video_profile.stream_type());
+			}
+			if(isL500_)
+			{
+				UERROR("L500 sensor is detected, note that only 640x480:30FPS configuration is currently supported.");
 			}
 			return false;
 		}
