@@ -2252,16 +2252,30 @@ bool multiBandTexturing(
 	UASSERT(vertexToPixels.size() == cloud2.size());
 	UINFO("Input mesh: %d points %d polygons", (int)cloud2.size(), (int)polygons.size());
 	mesh::Texturing texturing;
+#if RTABMAP_ALICE_VISION_MAJOR > 2 || (RTABMAP_ALICE_VISION_MAJOR==2 && RTABMAP_ALICE_VISION_MINOR>=3)
+	texturing.mesh = new mesh::Mesh();
+	texturing.mesh->pts.resize(cloud2.size());
+	texturing.mesh->pointsVisibilities.resize(cloud2.size());
+#else
 	texturing.me = new mesh::Mesh();
 	texturing.me->pts = new StaticVector<Point3d>(cloud2.size());
 	texturing.pointsVisibilities = new mesh::PointsVisibility();
 	texturing.pointsVisibilities->reserve(cloud2.size());
+#endif
 	texturing.texParams.textureSide = 8192;
 	texturing.texParams.downscale = 8192/textureSize;
 
 	for(size_t i=0;i<cloud2.size();++i)
 	{
 		pcl::PointXYZRGB pt = cloud2.at(i);
+#if RTABMAP_ALICE_VISION_MAJOR > 2 || (RTABMAP_ALICE_VISION_MAJOR==2 && RTABMAP_ALICE_VISION_MINOR>=3)
+		texturing.mesh->pointsVisibilities[i].reserve(vertexToPixels[i].size());
+		for(std::map<int, pcl::PointXY>::const_iterator iter=vertexToPixels[i].begin(); iter!=vertexToPixels[i].end();++iter)
+		{
+			texturing.mesh->pointsVisibilities[i].push_back(iter->first);
+		}
+		texturing.mesh->pts[i] = Point3d(pt.x, pt.y, pt.z);
+#else
 		mesh::PointVisibility* pointVisibility = new mesh::PointVisibility();
 		pointVisibility->reserve(vertexToPixels[i].size());
 		for(std::map<int, pcl::PointXY>::const_iterator iter=vertexToPixels[i].begin(); iter!=vertexToPixels[i].end();++iter)
@@ -2270,13 +2284,24 @@ bool multiBandTexturing(
 		}
 		texturing.pointsVisibilities->push_back(pointVisibility);
 		(*texturing.me->pts)[i] = Point3d(pt.x, pt.y, pt.z);
+#endif
 	}
 
+#if RTABMAP_ALICE_VISION_MAJOR > 2 || (RTABMAP_ALICE_VISION_MAJOR==2 && RTABMAP_ALICE_VISION_MINOR>=3)
+	texturing.mesh->tris.resize(polygons.size());
+	texturing.mesh->trisMtlIds().resize(polygons.size());
+#else
 	texturing.me->tris = new StaticVector<mesh::Mesh::triangle>(polygons.size());
+#endif
 	for(size_t i=0;i<polygons.size();++i)
 	{
 		UASSERT(polygons[i].vertices.size() == 3);
+#if RTABMAP_ALICE_VISION_MAJOR > 2 || (RTABMAP_ALICE_VISION_MAJOR==2 && RTABMAP_ALICE_VISION_MINOR>=3)
+		texturing.mesh->trisMtlIds()[i] = -1;
+		texturing.mesh->tris[i] = mesh::Mesh::triangle(
+#else
 		(*texturing.me->tris)[i] = mesh::Mesh::triangle(
+#endif
 				polygons[i].vertices[0],
 				polygons[i].vertices[1],
 				polygons[i].vertices[2]);
@@ -2405,21 +2430,22 @@ bool multiBandTexturing(
 			sfmData::CameraPose pose(geometry::Pose3(m), true);
 			sfmData.setAbsolutePose((IndexT)viewId, pose);
 
-			std::shared_ptr<camera::IntrinsicBase> camPtr(new camera::Pinhole(imageSize.width, imageSize.height, model.fx(), model.cx(), model.cy()));
+			std::shared_ptr<camera::IntrinsicBase> camPtr = std::make_shared<camera::Pinhole>(
+					imageSize.width, imageSize.height, model.fx(), model.cx(), model.cy());
 			sfmData.intrinsics.insert(std::make_pair((IndexT)viewId, camPtr));
 
 			std::string imagePath = tmpImageDirectory+uFormat("/%d.jpg", viewId);
 
 			cv::imwrite(imagePath, imageRoi);
 
-			sfmData.views.insert(std::make_pair((IndexT)viewId,
-					new sfmData::View(
-							imagePath,
-							(IndexT)viewId,
-							(IndexT)viewId,
-							(IndexT)viewId,
-							imageSize.width,
-							imageSize.height)));
+			std::shared_ptr<sfmData::View> viewPtr = std::make_shared<sfmData::View>(
+					imagePath,
+					(IndexT)viewId,
+					(IndexT)viewId,
+					(IndexT)viewId,
+					imageSize.width,
+					imageSize.height);
+			sfmData.views.insert(std::make_pair((IndexT)viewId, viewPtr));
 			++viewId;
 		}
 	}
@@ -2494,6 +2520,10 @@ bool multiBandTexturing(
 	fo.write(mtlStr.c_str(), mtlStr.size());
 	fo.close();
 	UINFO("Rename/convert textures... done. %fs", timer.ticks());
+
+	sfmData.clear();
+
+	UINFO("dsadas");
 
 	return true;
 #else

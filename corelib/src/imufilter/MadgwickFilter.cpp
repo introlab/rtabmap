@@ -310,9 +310,11 @@ void MadgwickFilter::updateImpl(
 	  A[0] = ax;
 	  A[1] = ay;
 	  A[2] = az;
-	computeOrientation(A,orientation);
-	reset(orientation.x(), orientation.y(), orientation.z(), orientation.w());
-	initialized_ = true;
+	if(computeOrientation(A,orientation))
+	{
+		reset(orientation.x(), orientation.y(), orientation.z(), orientation.w());
+		initialized_ = true;
+	}
 	return;
   }
 
