@@ -2523,8 +2523,6 @@ bool multiBandTexturing(
 
 	sfmData.clear();
 
-	UINFO("dsadas");
-
 	return true;
 #else
 	UERROR("Cannot unwrap texture mesh. RTAB-Map is not built with Alice Vision support! Returning false.");
