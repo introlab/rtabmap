@@ -845,6 +845,7 @@ bool DatabaseViewer::openDatabase(const QString & path)
 				}
 
 				updateIds();
+				this->setWindowTitle("RTAB-Map Database Viewer - " + path + "[*]");
 				return true;
 			}
 		}
@@ -867,6 +868,7 @@ bool DatabaseViewer::openDatabase(const QString & path)
 
 bool DatabaseViewer::closeDatabase()
 {
+	this->setWindowTitle("RTAB-Map Database Viewer[*]");
 	if(dbDriver_)
 	{
 		if(linksAdded_.size() || linksRefined_.size() || linksRemoved_.size())
