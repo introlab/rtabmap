@@ -4061,14 +4061,21 @@ void DatabaseViewer::refineAllLinks(const QList<Link> & links)
 
 void DatabaseViewer::resetAllChanges()
 {
-	linksAdded_.clear();
-	linksRefined_.clear();
-	linksRemoved_.clear();
-	generatedLocalMaps_.clear();
-	generatedLocalMapsInfo_.clear();
-	modifiedLaserScans_.clear();
-	updateLoopClosuresSlider();
-	this->updateGraphView();
+	if(QMessageBox::question(this,
+			tr("Reset all changes"),
+			tr("You are about to reset all changes you've made so far, do you want to continue?"),
+			QMessageBox::Yes | QMessageBox::No,
+			QMessageBox::No) == QMessageBox::Yes)
+	{
+		linksAdded_.clear();
+		linksRefined_.clear();
+		linksRemoved_.clear();
+		generatedLocalMaps_.clear();
+		generatedLocalMapsInfo_.clear();
+		modifiedLaserScans_.clear();
+		updateLoopClosuresSlider();
+		this->updateGraphView();
+	}
 }
 
 void DatabaseViewer::sliderAValueChanged(int value)
