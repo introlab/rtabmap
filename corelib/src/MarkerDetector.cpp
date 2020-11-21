@@ -197,8 +197,8 @@ std::map<int, Transform> MarkerDetector::detect(const cv::Mat & image, const Cam
 
 			// Limit the detection range to be between the min / max range.
 			// If the ranges are -1, allow any detection within that direction.
-			if((maxRange_ == -1 || tvecs[i].val[2] < maxRange_) &&
-				(minRange_ == -1 || tvecs[i].val[2] > minRange_))
+			if((maxRange_ <= 0 || tvecs[i].val[2] < maxRange_) &&
+				(minRange_ <= 0 || tvecs[i].val[2] > minRange_))
 			{
 				cv::Mat R;
 				cv::Rodrigues(rvecs[i], R);
