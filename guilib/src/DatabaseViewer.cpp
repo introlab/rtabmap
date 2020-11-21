@@ -5334,8 +5334,8 @@ void DatabaseViewer::editConstraint()
 				}
 				if(updated)
 				{
-					updateConstraintView();
 					this->updateGraphView();
+					updateConstraintView();
 				}
 			}
 		}
@@ -5366,8 +5366,8 @@ void DatabaseViewer::editConstraint()
 					newLink = newLink.inverse();
 				}
 				linksAdded_.insert(std::make_pair(newLink.from(), newLink));
-				updateLoopClosuresSlider(from, to);
 				this->updateGraphView();
+				updateLoopClosuresSlider(from, to);
 			}
 		}
 	}
