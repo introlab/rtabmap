@@ -23,9 +23,9 @@
       <property name="geometry">
        <rect>
         <x>0</x>
-        <y>-2387</y>
+        <y>-547</y>
         <width>780</width>
-        <height>4880</height>
+        <height>4944</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_13">
@@ -397,14 +397,14 @@
          <layout class="QVBoxLayout" name="verticalLayout_14">
           <item>
            <layout class="QGridLayout" name="gridLayout" columnstretch="0,0,1">
-            <item row="6" column="0">
+            <item row="8" column="0">
              <widget class="QToolButton" name="toolButton_distortionModel">
               <property name="text">
                <string>...</string>
               </property>
              </widget>
             </item>
-            <item row="4" column="1">
+            <item row="6" column="1">
              <widget class="QSpinBox" name="spinBox_fillDepthHoles">
               <property name="suffix">
                <string> pixels</string>
@@ -430,7 +430,7 @@
                <string> m</string>
               </property>
               <property name="decimals">
-               <number>1</number>
+               <number>2</number>
               </property>
               <property name="maximum">
                <double>100.000000000000000</double>
@@ -453,10 +453,10 @@
               </property>
              </widget>
             </item>
-            <item row="6" column="1">
+            <item row="8" column="1">
              <widget class="QLineEdit" name="lineEdit_distortionModel"/>
             </item>
-            <item row="5" column="1">
+            <item row="7" column="1">
              <widget class="QSpinBox" name="spinBox_fillDepthHolesError">
               <property name="suffix">
                <string> %</string>
@@ -483,7 +483,7 @@
               </property>
              </widget>
             </item>
-            <item row="4" column="2">
+            <item row="6" column="2">
              <widget class="QLabel" name="label_197">
               <property name="text">
                <string>Fill depth hole size (0 means no fill).</string>
@@ -502,7 +502,7 @@
                <string> m</string>
               </property>
               <property name="decimals">
-               <number>1</number>
+               <number>2</number>
               </property>
               <property name="maximum">
                <double>100.000000000000000</double>
@@ -515,7 +515,7 @@
               </property>
              </widget>
             </item>
-            <item row="6" column="2">
+            <item row="8" column="2">
              <widget class="QLabel" name="label_134">
               <property name="text">
                <string>Path to a depth distortion model to apply (output from depth calibration).</string>
@@ -525,7 +525,7 @@
               </property>
              </widget>
             </item>
-            <item row="5" column="2">
+            <item row="7" column="2">
              <widget class="QLabel" name="label_198">
               <property name="text">
                <string>Fill depth hole error.</string>
@@ -538,7 +538,7 @@
               </property>
              </widget>
             </item>
-            <item row="3" column="2">
+            <item row="5" column="2">
              <widget class="QLabel" name="label_135">
               <property name="text">
                <string>ROI ratios [left, right, top, bottom] between 0 and 1. Only generate 3D points for pixels inside the region of interest (RGB image).</string>
@@ -548,17 +548,17 @@
               </property>
              </widget>
             </item>
-            <item row="3" column="1">
+            <item row="5" column="1">
              <widget class="QLineEdit" name="lineEdit_roiRatios"/>
             </item>
-            <item row="7" column="1">
+            <item row="9" column="1">
              <widget class="QCheckBox" name="checkBox_bilateral">
               <property name="text">
                <string/>
               </property>
              </widget>
             </item>
-            <item row="7" column="2">
+            <item row="9" column="2">
              <widget class="QLabel" name="label_136">
               <property name="text">
                <string>Bilateral filtering of the depth image. Reduce noise in depth images.</string>
@@ -568,7 +568,7 @@
               </property>
              </widget>
             </item>
-            <item row="8" column="2">
+            <item row="10" column="2">
              <widget class="QLabel" name="label_137">
               <property name="text">
                <string>Cloud subtraction. Superposed points from different nodes are filtered.</string>
@@ -578,10 +578,68 @@
               </property>
              </widget>
             </item>
-            <item row="8" column="1">
+            <item row="10" column="1">
              <widget class="QCheckBox" name="checkBox_subtraction">
               <property name="text">
                <string/>
+              </property>
+             </widget>
+            </item>
+            <item row="3" column="2">
+             <widget class="QLabel" name="label_140">
+              <property name="text">
+               <string>Ceiling filtering height.</string>
+              </property>
+              <property name="wordWrap">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item row="4" column="2">
+             <widget class="QLabel" name="label_141">
+              <property name="text">
+               <string>Floor filtering height.</string>
+              </property>
+              <property name="wordWrap">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item row="3" column="1">
+             <widget class="QDoubleSpinBox" name="doubleSpinBox_ceilingHeight">
+              <property name="suffix">
+               <string> m</string>
+              </property>
+              <property name="decimals">
+               <number>2</number>
+              </property>
+              <property name="maximum">
+               <double>100.000000000000000</double>
+              </property>
+              <property name="singleStep">
+               <double>0.100000000000000</double>
+              </property>
+              <property name="value">
+               <double>0.000000000000000</double>
+              </property>
+             </widget>
+            </item>
+            <item row="4" column="1">
+             <widget class="QDoubleSpinBox" name="doubleSpinBox_floorHeight">
+              <property name="suffix">
+               <string> m</string>
+              </property>
+              <property name="decimals">
+               <number>2</number>
+              </property>
+              <property name="maximum">
+               <double>100.000000000000000</double>
+              </property>
+              <property name="singleStep">
+               <double>0.100000000000000</double>
+              </property>
+              <property name="value">
+               <double>0.000000000000000</double>
               </property>
              </widget>
             </item>

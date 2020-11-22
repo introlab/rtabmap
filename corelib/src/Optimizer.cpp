@@ -101,15 +101,15 @@ Optimizer * Optimizer::create(Optimizer::Type type, const ParametersMap & parame
 	}
 	if(!OptimizerG2O::available() && type == Optimizer::kTypeG2O)
 	{
-		if(OptimizerTORO::available())
-		{
-			UWARN("g2o optimizer not available. TORO will be used instead.");
-					type = Optimizer::kTypeTORO;
-		}
-		else if(OptimizerGTSAM::available())
+		if(OptimizerGTSAM::available())
 		{
 			UWARN("g2o optimizer not available. GTSAM will be used instead.");
 					type = Optimizer::kTypeGTSAM;
+		}
+		else if(OptimizerTORO::available())
+		{
+			UWARN("g2o optimizer not available. TORO will be used instead.");
+					type = Optimizer::kTypeTORO;
 		}
 		else if(OptimizerCeres::available())
 		{
@@ -119,15 +119,15 @@ Optimizer * Optimizer::create(Optimizer::Type type, const ParametersMap & parame
 	}
 	if(!OptimizerGTSAM::available() && type == Optimizer::kTypeGTSAM)
 	{
-		if(OptimizerTORO::available())
-		{
-			UWARN("GTSAM optimizer not available. TORO will be used instead.");
-					type = Optimizer::kTypeTORO;
-		}
-		else if(OptimizerG2O::available())
+		if(OptimizerG2O::available())
 		{
 			UWARN("GTSAM optimizer not available. g2o will be used instead.");
 					type = Optimizer::kTypeG2O;
+		}
+		else if(OptimizerTORO::available())
+		{
+			UWARN("GTSAM optimizer not available. TORO will be used instead.");
+					type = Optimizer::kTypeTORO;
 		}
 		else if(OptimizerCeres::available())
 		{
@@ -137,25 +137,10 @@ Optimizer * Optimizer::create(Optimizer::Type type, const ParametersMap & parame
 	}
 	if(!OptimizerCVSBA::available() && type == Optimizer::kTypeCVSBA)
 	{
-		if(OptimizerTORO::available())
-		{
-			UWARN("CVSBA optimizer not available. TORO will be used instead.");
-					type = Optimizer::kTypeTORO;
-		}
-		else if(OptimizerGTSAM::available())
-		{
-			UWARN("CVSBA optimizer not available. GTSAM will be used instead.");
-					type = Optimizer::kTypeGTSAM;
-		}
-		else if(OptimizerG2O::available())
+		if(OptimizerG2O::available())
 		{
 			UWARN("CVSBA optimizer not available. g2o will be used instead.");
 					type = Optimizer::kTypeG2O;
-		}
-		else if(OptimizerCeres::available())
-		{
-			UWARN("CVSBA optimizer not available. ceres will be used instead.");
-					type = Optimizer::kTypeCeres;
 		}
 	}
 	if(!OptimizerCeres::available() && type == Optimizer::kTypeCeres)

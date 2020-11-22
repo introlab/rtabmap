@@ -3209,6 +3209,18 @@ std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::Indic
 						UERROR("Cloud %d not found in cache!", iter->first);
 					}
 				}
+				if(!cloud->empty() &&
+				   (_ui->doubleSpinBox_ceilingHeight->value() != 0.0 || _ui->doubleSpinBox_floorHeight->value() != 0.0))
+				{
+					float min = _ui->doubleSpinBox_floorHeight->value();
+					float max = _ui->doubleSpinBox_ceilingHeight->value();
+					indices = util3d::passThrough(
+							util3d::transformPointCloud(cloud, iter->second),
+							indices,
+							"z",
+							min!=0.0f&&min<max?min:std::numeric_limits<float>::lowest(),
+							max!=0.0f?max:std::numeric_limits<float>::max());
+				}
 			}
 			else if(_ui->checkBox_fromDepth->isChecked() && uContains(cachedClouds, iter->first))
 			{
