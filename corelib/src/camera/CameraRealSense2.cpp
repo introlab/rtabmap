@@ -447,8 +447,11 @@ void CameraRealSense2::getPoseAndIMU(
 					gyro[1] = iterC->second[1];
 					gyro[2] = iterC->second[2];
 				}
-				imuMutex_.unlock();
-				return;
+				else
+				{
+					imuMutex_.unlock();
+					return;
+				}
 			}
 		}
 		imuMutex_.unlock();
