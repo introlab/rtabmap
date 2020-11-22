@@ -78,8 +78,8 @@ namespace vertigo {
     inline SwitchVariableLinear between(const SwitchVariableLinear& l2,
         boost::optional<gtsam::Matrix&> H1=boost::none,
         boost::optional<gtsam::Matrix&> H2=boost::none) const {
-      if(H1) *H1 = -gtsam::eye(1);
-      if(H2) *H2 = gtsam::eye(1);
+      if(H1) *H1 = -gtsam::Matrix::Identity(1, 1);
+      if(H2) *H2 = gtsam::Matrix::Identity(1, 1);
       return SwitchVariableLinear(l2.value() - value());
     }
 

@@ -78,8 +78,8 @@ namespace vertigo {
     inline SwitchVariableSigmoid between(const SwitchVariableSigmoid& l2,
         boost::optional<gtsam::Matrix&> H1=boost::none,
         boost::optional<gtsam::Matrix&> H2=boost::none) const {
-      if(H1) *H1 = -gtsam::eye(1);
-      if(H2) *H2 = gtsam::eye(1);
+      if(H1) *H1 = -gtsam::Matrix::Identity(1, 1);
+      if(H2) *H2 = gtsam::Matrix::Identity(1, 1);
       return SwitchVariableSigmoid(l2.value() - value());
     }
 

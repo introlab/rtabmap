@@ -10,6 +10,16 @@
 
 #include <gtsam/linear/NoiseModel.h>
 #include <Eigen/Eigen>
+#include <gtsam/config.h>
+
+#if GTSAM_VERSION_MAJOR > 4 || (GTSAM_VERSION_MAJOR==4 && GTSAM_VERSION_MINOR>=1)
+namespace gtsam {
+gtsam::Matrix inverse(const gtsam::Matrix & matrix)
+{
+	return matrix.inverse();
+}
+}
+#endif
 
 namespace vertigo {
 
@@ -39,7 +49,11 @@ namespace vertigo {
           double nu1 = 1.0/sqrt(gtsam::inverse(info1).determinant());
           double l1 = nu1 * exp(-0.5*m1);
 
+#if GTSAM_VERSION_MAJOR > 4 || (GTSAM_VERSION_MAJOR==4 && GTSAM_VERSION_MINOR>=1)
+          double m2 = nullHypothesisModel->squaredMahalanobisDistance(error);
+#else
           double m2 = nullHypothesisModel->distance(error);
+#endif
           gtsam::noiseModel::Gaussian::shared_ptr g2 = nullHypothesisModel;
           gtsam::Matrix info2(g2->R().transpose()*g2->R());
           double nu2 = 1.0/sqrt(gtsam::inverse(info2).determinant());
