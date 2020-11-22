@@ -107,12 +107,14 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 
 		// detect if there is a global pose prior set, if so remove rootId
 		bool gpsPriorOnly = false;
+		bool hasPriorPoses = false;
 		if(!priorsIgnored())
 		{
 			for(std::multimap<int, Link>::const_iterator iter=edgeConstraints.begin(); iter!=edgeConstraints.end(); ++iter)
 			{
 				if(iter->second.from() == iter->second.to() && iter->second.type() == Link::kPosePrior)
 				{
+					hasPriorPoses = true;
 					if ((isSlam2d() && 1 / static_cast<double>(iter->second.infMatrix().at<double>(5,5)) < 9999) ||
 						(1 / static_cast<double>(iter->second.infMatrix().at<double>(3,3)) < 9999.0 &&
 						 1 / static_cast<double>(iter->second.infMatrix().at<double>(4,4)) < 9999.0 &&
@@ -138,15 +140,15 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 			const Transform & initialPose = poses.at(rootId);
 			if(isSlam2d())
 			{
-				gtsam::noiseModel::Diagonal::shared_ptr priorNoise = gtsam::noiseModel::Diagonal::Variances(gtsam::Vector3(0.01, 0.01, 0.01));
+				gtsam::noiseModel::Diagonal::shared_ptr priorNoise = gtsam::noiseModel::Diagonal::Variances(gtsam::Vector3(0.01, 0.01, hasPriorPoses?1e-2:std::numeric_limits<double>::min()));
 				graph.add(gtsam::PriorFactor<gtsam::Pose2>(rootId, gtsam::Pose2(initialPose.x(), initialPose.y(), initialPose.theta()), priorNoise));
 			}
 			else
 			{
 				gtsam::noiseModel::Diagonal::shared_ptr priorNoise = gtsam::noiseModel::Diagonal::Variances(
 						(gtsam::Vector(6) <<
-								(gpsPriorOnly?2:1e-2), gpsPriorOnly?2:1e-2, gpsPriorOnly?2:1e-2,
-								1e-2, 1e-2, 1e-2
+								1e-2, 1e-2, hasPriorPoses?1e-2:std::numeric_limits<double>::min(), // roll, pitch, fixed yaw if there are no priors
+								(gpsPriorOnly?2:1e-2), gpsPriorOnly?2:1e-2, gpsPriorOnly?2:1e-2 // xyz
 								).finished());
 				graph.add(gtsam::PriorFactor<gtsam::Pose3>(rootId, gtsam::Pose3(initialPose.toEigen4d()), priorNoise));
 			}

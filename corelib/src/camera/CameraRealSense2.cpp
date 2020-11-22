@@ -860,10 +860,6 @@ bool CameraRealSense2::init(const std::string & calibrationFolder, const std::st
 						video_profile.stream_name().c_str(),
 						video_profile.stream_type());
 			}
-			if(isL500_)
-			{
-				UERROR("L500 sensor is detected, note that only 640x480:30FPS configuration is currently supported.");
-			}
 			return false;
 		}
 	 }
