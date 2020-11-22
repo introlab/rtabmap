@@ -2521,7 +2521,9 @@ bool multiBandTexturing(
 	fo.close();
 	UINFO("Rename/convert textures... done. %fs", timer.ticks());
 
+#if RTABMAP_ALICE_VISION_MAJOR > 2 || (RTABMAP_ALICE_VISION_MAJOR==2 && RTABMAP_ALICE_VISION_MINOR>=3)
 	sfmData.clear();
+#endif
 
 	return true;
 #else
