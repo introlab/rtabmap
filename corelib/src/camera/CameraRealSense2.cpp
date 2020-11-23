@@ -299,15 +299,18 @@ void CameraRealSense2::getPoseAndIMU(
 	cv::Vec3d acc;
 	{
 		imuMutex_.lock();
-		int waitTry = 0;
-		while(maxWaitTimeMs > 0 && accBuffer_.rbegin()->first < stamp && waitTry < maxWaitTimeMs)
+		if(globalTimeSync_)
 		{
-			imuMutex_.unlock();
-			++waitTry;
-			uSleep(1);
-			imuMutex_.lock();
+			int waitTry = 0;
+			while(maxWaitTimeMs > 0 && accBuffer_.rbegin()->first < stamp && waitTry < maxWaitTimeMs)
+			{
+				imuMutex_.unlock();
+				++waitTry;
+				uSleep(1);
+				imuMutex_.lock();
+			}
 		}
-		if(accBuffer_.rbegin()->first < stamp)
+		if(globalTimeSync_ && accBuffer_.rbegin()->first < stamp)
 		{
 			if(maxWaitTimeMs>0)
 			{
@@ -380,15 +383,18 @@ void CameraRealSense2::getPoseAndIMU(
 	cv::Vec3d gyro;
 	{
 		imuMutex_.lock();
-		int waitTry = 0;
-		while(maxWaitTimeMs>0 && gyroBuffer_.rbegin()->first < stamp && waitTry < maxWaitTimeMs)
+		if(globalTimeSync_)
 		{
-			imuMutex_.unlock();
-			++waitTry;
-			uSleep(1);
-			imuMutex_.lock();
+			int waitTry = 0;
+			while(maxWaitTimeMs>0 && gyroBuffer_.rbegin()->first < stamp && waitTry < maxWaitTimeMs)
+			{
+				imuMutex_.unlock();
+				++waitTry;
+				uSleep(1);
+				imuMutex_.lock();
+			}
 		}
-		if(gyroBuffer_.rbegin()->first < stamp)
+		if(globalTimeSync_ && gyroBuffer_.rbegin()->first < stamp)
 		{
 			if(maxWaitTimeMs>0)
 			{

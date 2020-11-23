@@ -116,7 +116,7 @@ install:
   - ECHO "Installed yaml-cpp:"
   - ps: "ls \"C:/Program Files/yaml-cpp\""
   # RealSense2
-  - ps: wget 'https://github.com/IntelRealSense/librealsense/releases/download/v2.39.0/Intel.RealSense.SDK-WIN10-2.39.0.2337.exe' -outfile realsense2.exe
+  - ps: wget 'https://github.com/IntelRealSense/librealsense/releases/download/v2.40.0/Intel.RealSense.SDK-WIN10-2.40.0.2482.exe' -outfile realsense2.exe
   - cmd: realsense2.exe /VERYSILENT
   - ECHO "Installed RealSense2:"
   - ps: "ls \"C:/Program Files (x86)/Intel RealSense SDK 2.0\""
