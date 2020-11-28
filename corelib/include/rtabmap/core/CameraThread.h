@@ -74,13 +74,13 @@ public:
 
 	RTABMAP_DEPRECATED(void setScanParameters(
 			bool fromDepth,
-			int downsampleStep=1, // decimation of the depth image in case the scan is from depth image
-			float rangeMin=0.0f,
-			float rangeMax=0.0f,
-			float voxelSize = 0.0f,
-			int normalsK = 0,
-			int normalsRadius = 0.0f,
-			bool forceGroundNormalsUp = false) , "Use new version of this function with groundNormalsUp=0.8 for forceGroundNormalsUp=True and groundNormalsUp=0.0 for forceGroundNormalsUp=False.");
+			int downsampleStep, // decimation of the depth image in case the scan is from depth image
+			float rangeMin,
+			float rangeMax,
+			float voxelSize,
+			int normalsK,
+			int normalsRadius,
+			bool forceGroundNormalsUp) , "Use new version of this function with groundNormalsUp=0.8 for forceGroundNormalsUp=True and groundNormalsUp=0.0 for forceGroundNormalsUp=False.");
 	void setScanParameters(
 			bool fromDepth,
 			int downsampleStep=1, // decimation of the depth image in case the scan is from depth image
