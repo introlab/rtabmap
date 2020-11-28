@@ -130,7 +130,8 @@ CloudViewer::CloudViewer(QWidget *parent, CloudViewerInteractorStyle * style) :
 		_frontfaceCulling(false),
 		_renderingRate(5.0),
 		_octomapActor(0),
-		_intensityAbsMax(0.0f)
+		_intensityAbsMax(0.0f),
+		_coordinateFrameScale(1.0)
 {
 	UDEBUG("");
 	this->setMinimumSize(200, 200);
@@ -264,6 +265,8 @@ void CloudViewer::createMenu()
 	_aShowCameraAxis= new QAction("Show base frame", this);
 	_aShowCameraAxis->setCheckable(true);
 	_aShowCameraAxis->setChecked(true);
+	_aSetFrameScale= new QAction("Set frame scale...", this);
+	_aShowCameraAxis->setChecked(true);
 	_aShowFrustum= new QAction("Show frustum", this);
 	_aShowFrustum->setCheckable(true);
 	_aShowFrustum->setChecked(false);
@@ -280,6 +283,9 @@ void CloudViewer::createMenu()
 	_aSetIntensityRedColormap = new QAction("Red/Yellow Colormap", this);
 	_aSetIntensityRedColormap->setCheckable(true);
 	_aSetIntensityRedColormap->setChecked(false);
+	_aSetIntensityRainbowColormap = new QAction("Rainbow Colormap", this);
+	_aSetIntensityRainbowColormap->setCheckable(true);
+	_aSetIntensityRainbowColormap->setChecked(false);
 	_aSetIntensityMaximum = new QAction("Set maximum absolute intensity...", this);
 	_aSetBackgroundColor = new QAction("Set background color...", this);	
 	_aSetRenderingRate = new QAction("Set rendering rate...", this);
@@ -338,8 +344,9 @@ void CloudViewer::createMenu()
 	normalsMenu->addAction(_aSetNormalsStep);
 	normalsMenu->addAction(_aSetNormalsScale);
 
-	QMenu * scanMenu = new QMenu("Scan", this);
+	QMenu * scanMenu = new QMenu("Scan color", this);
 	scanMenu->addAction(_aSetIntensityRedColormap);
+	scanMenu->addAction(_aSetIntensityRainbowColormap);
 	scanMenu->addAction(_aSetIntensityMaximum);
 
 	//menus
@@ -347,6 +354,7 @@ void CloudViewer::createMenu()
 	_menu->addMenu(cameraMenu);
 	_menu->addMenu(trajectoryMenu);
 	_menu->addAction(_aShowCameraAxis);
+	_menu->addAction(_aSetFrameScale);
 	_menu->addMenu(frustumMenu);
 	_menu->addMenu(gridMenu);
 	_menu->addMenu(normalsMenu);
@@ -400,12 +408,14 @@ void CloudViewer::saveSettings(QSettings & settings, const QString & group) cons
 	settings.setValue("normals_scale", (double)this->getNormalsScale());
 
 	settings.setValue("intensity_red_colormap", this->isIntensityRedColormap());
+	settings.setValue("intensity_rainbow_colormap", this->isIntensityRainbowColormap());
 	settings.setValue("intensity_max", (double)this->getIntensityMax());
 
 	settings.setValue("trajectory_shown", this->isTrajectoryShown());
 	settings.setValue("trajectory_size", this->getTrajectorySize());
 
 	settings.setValue("camera_axis_shown", this->isCameraAxisShown());
+	settings.setValue("coordinate_frame_scale", this->getCoordinateFrameScale());
 
 	settings.setValue("frustum_shown", this->isFrustumShown());
 	settings.setValue("frustum_scale", this->getFrustumScale());
@@ -449,12 +459,14 @@ void CloudViewer::loadSettings(QSettings & settings, const QString & group)
 	this->setNormalsScale(settings.value("normals_scale", this->getNormalsScale()).toFloat());
 
 	this->setIntensityRedColormap(settings.value("intensity_red_colormap", this->isIntensityRedColormap()).toBool());
+	this->setIntensityRainbowColormap(settings.value("intensity_rainbow_colormap", this->isIntensityRainbowColormap()).toBool());
 	this->setIntensityMax(settings.value("intensity_max", this->getIntensityMax()).toFloat());
 
 	this->setTrajectoryShown(settings.value("trajectory_shown", this->isTrajectoryShown()).toBool());
 	this->setTrajectorySize(settings.value("trajectory_size", this->getTrajectorySize()).toUInt());
 
 	this->setCameraAxisShown(settings.value("camera_axis_shown", this->isCameraAxisShown()).toBool());
+	this->setCoordinateFrameScale(settings.value("coordinate_frame_scale", this->getCoordinateFrameScale()).toDouble());
 
 	this->setFrustumShown(settings.value("frustum_shown", this->isFrustumShown()).toBool());
 	this->setFrustumScale(settings.value("frustum_scale", this->getFrustumScale()).toDouble());
@@ -542,10 +554,10 @@ public:
 	typedef boost::shared_ptr<const PointCloudColorHandlerIntensityField > ConstPtr;
 
 	/** \brief Constructor. */
-	PointCloudColorHandlerIntensityField (const PointCloudConstPtr &cloud, float maxAbsIntensity = 0.0f, bool redYellowColormap = true) :
+	PointCloudColorHandlerIntensityField (const PointCloudConstPtr &cloud, float maxAbsIntensity = 0.0f, int colorMap = 0) :
 		pcl::visualization::PointCloudColorHandler<pcl::PCLPointCloud2>::PointCloudColorHandler (cloud),
 		maxAbsIntensity_(maxAbsIntensity),
-		redColormap_(redYellowColormap)
+		colormap_(colorMap)
 		{
 		field_idx_  = pcl::getFieldIndex (*cloud, "intensity");
 		if (field_idx_ != -1)
@@ -636,10 +648,18 @@ public:
 			for(size_t k=0; k<j; ++k)
 			{
 				colors[k*3+0] = colors[k*3+1] = colors[k*3+2] = max>0?(unsigned char)(std::min(intensities[k]/max*255.0f, 255.0f)):255;
-				if(redColormap_)
+				if(colormap_ == 1)
 				{
 					colors[k*3+0] = 255;
 					colors[k*3+2] = 0;
+				}
+				else if(colormap_ == 2)
+				{
+					float r,g,b;
+					OctoMap::HSVtoRGB(&r, &g, &b, colors[k*3+0]*299.0f/255.0f, 1.0f, 1.0f);
+					colors[k*3+0] = r*255.0f;
+					colors[k*3+1] = g*255.0f;
+					colors[k*3+2] = b*255.0f;
 				}
 			}
 			reinterpret_cast<vtkUnsignedCharArray*>(&(*scalars))->SetNumberOfTuples (j);
@@ -667,7 +687,7 @@ protected:
 
 private:
 	float maxAbsIntensity_;
-	bool redColormap_;
+	int colormap_; // 0=grayscale, 1=redYellow, 2=RainbowHSV
 };
 
 bool CloudViewer::addCloud(
@@ -732,7 +752,7 @@ bool CloudViewer::addCloud(
 		else if(hasIntensity)
 		{
 			//intensity
-			colorHandler.reset(new PointCloudColorHandlerIntensityField(binaryCloud, _intensityAbsMax, _aSetIntensityRedColormap->isChecked()));
+			colorHandler.reset(new PointCloudColorHandlerIntensityField(binaryCloud, _intensityAbsMax, _aSetIntensityRedColormap->isChecked()?1:_aSetIntensityRainbowColormap->isChecked()?2:0));
 			_visualizer->addPointCloud (binaryCloud, colorHandler, origin, orientation, id, viewport);
 		}
 		else if(previousColorIndex == 5)
@@ -1550,10 +1570,10 @@ void CloudViewer::addOrUpdateCoordinate(
 	{
 		_coordinates.insert(id);
 #if PCL_VERSION_COMPARE(>=, 1, 7, 2)
-		_visualizer->addCoordinateSystem(scale, transform.toEigen3f(), id, foreground?3:2);
+		_visualizer->addCoordinateSystem(scale*_coordinateFrameScale, transform.toEigen3f(), id, foreground?3:2);
 #else
 		// Well, on older versions, just update the main coordinate
-		_visualizer->addCoordinateSystem(scale, transform.toEigen3f(), 0);
+		_visualizer->addCoordinateSystem(scale*_coordinateFrameScale, transform.toEigen3f(), 0);
 #endif
 	}
 }
@@ -2256,6 +2276,16 @@ void CloudViewer::setCameraAxisShown(bool shown)
 	}
 	this->update();
 	_aShowCameraAxis->setChecked(shown);
+}
+
+double CloudViewer::getCoordinateFrameScale() const
+{
+	return _coordinateFrameScale;
+}
+
+void CloudViewer::setCoordinateFrameScale(double scale)
+{
+	_coordinateFrameScale = std::max(0.1, scale);
 }
 
 bool CloudViewer::isFrustumShown() const
@@ -3304,6 +3334,10 @@ bool CloudViewer::isIntensityRedColormap() const
 {
 	return _aSetIntensityRedColormap->isChecked();
 }
+bool CloudViewer::isIntensityRainbowColormap() const
+{
+	return _aSetIntensityRainbowColormap->isChecked();
+}
 float CloudViewer::getIntensityMax() const
 {
 	return _intensityAbsMax;
@@ -3312,6 +3346,18 @@ float CloudViewer::getIntensityMax() const
 void CloudViewer::setIntensityRedColormap(bool on)
 {
 	_aSetIntensityRedColormap->setChecked(on);
+	if(on)
+	{
+		_aSetIntensityRainbowColormap->setChecked(false);
+	}
+}
+void CloudViewer::setIntensityRainbowColormap(bool on)
+{
+	_aSetIntensityRainbowColormap->setChecked(on);
+	if(on)
+	{
+		_aSetIntensityRedColormap->setChecked(false);
+	}
 }
 void CloudViewer::setIntensityMax(float value)
 {
@@ -3589,6 +3635,15 @@ void CloudViewer::handleAction(QAction * a)
 	{
 		this->setCameraAxisShown(a->isChecked());
 	}
+	else if(a == _aSetFrameScale)
+	{
+		bool ok;
+		double value = QInputDialog::getDouble(this, tr("Set frame scale"), tr("Scale"), _coordinateFrameScale, 0.1, 999.0, 1, &ok);
+		if(ok)
+		{
+			this->setCoordinateFrameScale(value);
+		}
+	}
 	else if(a == _aShowFrustum)
 	{
 		this->setFrustumShown(a->isChecked());
@@ -3677,9 +3732,13 @@ void CloudViewer::handleAction(QAction * a)
 			this->setIntensityMax(value);
 		}
 	}
-	else if(a == _aShowNormals)
+	else if(a == _aSetIntensityRedColormap)
 	{
 		this->setIntensityRedColormap(_aSetIntensityRedColormap->isChecked());
+	}
+	else if(a == _aSetIntensityRainbowColormap)
+	{
+		this->setIntensityRainbowColormap(_aSetIntensityRainbowColormap->isChecked());
 	}
 	else if(a == _aSetBackgroundColor)
 	{

@@ -643,13 +643,15 @@ class RTABMAP_EXP Parameters
     RTABMAP_PARAM(Icp, Epsilon,                   float, 0,     "Set the transformation epsilon (maximum allowable difference between two consecutive transformations) in order for an optimization to be considered as having converged to the final solution.");
     RTABMAP_PARAM(Icp, CorrespondenceRatio,       float, 0.1,   "Ratio of matching correspondences to accept the transform.");
 #ifdef RTABMAP_POINTMATCHER
-    RTABMAP_PARAM(Icp, PointToPlane,              bool, true,   "Use point to plane ICP.");
+    RTABMAP_PARAM(Icp, PointToPlane,                bool, true,   "Use point to plane ICP.");
 #else
-    RTABMAP_PARAM(Icp, PointToPlane,              bool, false,  "Use point to plane ICP.");
+    RTABMAP_PARAM(Icp, PointToPlane,                bool, false,  "Use point to plane ICP.");
 #endif
-    RTABMAP_PARAM(Icp, PointToPlaneK,             int, 5,       "Number of neighbors to compute normals for point to plane if the cloud doesn't have already normals.");
-    RTABMAP_PARAM(Icp, PointToPlaneRadius,        float, 1.0,   "Search radius to compute normals for point to plane if the cloud doesn't have already normals.");
-    RTABMAP_PARAM(Icp, PointToPlaneMinComplexity, float, 0.02,  "Minimum structural complexity (0.0=low, 1.0=high) of the scan to do point to plane registration, otherwise point to point registration is done instead.");
+    RTABMAP_PARAM(Icp, PointToPlaneK,               int, 5,       "Number of neighbors to compute normals for point to plane if the cloud doesn't have already normals.");
+    RTABMAP_PARAM(Icp, PointToPlaneRadius,          float, 1.0,   "Search radius to compute normals for point to plane if the cloud doesn't have already normals.");
+    RTABMAP_PARAM(Icp, PointToPlaneGroundNormalsUp, float, 0.0,   "Invert normals on ground if they are pointing down (useful for ring-like 3D LiDARs). 0 means disabled, 1 means only normals perfectly aligned with -z axis. This is only done with 3D scans.");
+    RTABMAP_PARAM(Icp, PointToPlaneMinComplexity,   float, 0.02,  uFormat("Minimum structural complexity (0.0=low, 1.0=high) of the scan to do PointToPlane registration, otherwise PointToPoint registration is done instead and strategy from %s is used. This check is done only when %s=true.", kIcpPointToPlaneLowComplexityStrategy().c_str(), kIcpPointToPlane().c_str()));
+    RTABMAP_PARAM(Icp, PointToPlaneLowComplexityStrategy, int, 1, uFormat("If structural complexity is below %s: set to 0 to so that the transform is automatically rejected, set to 1 to limit ICP correction in axes with most constraints (e.g., for a corridor-like environment, the resulting transform will be limited in y and yaw, x will taken from the guess), set to 2 to accept \"as is\" the transform computed by PointToPoint.", kIcpPointToPlaneMinComplexity().c_str()));
 
     // libpointmatcher
 #ifdef RTABMAP_POINTMATCHER
@@ -660,6 +662,7 @@ class RTABMAP_EXP Parameters
     RTABMAP_PARAM_STR(Icp, PMConfig,             "",            uFormat("Configuration file (*.yaml) used by libpointmatcher. Note that data filters set for libpointmatcher are done after filtering done by rtabmap (i.e., %s, %s), so make sure to disable those in rtabmap if you want to use only those from libpointmatcher. Parameters %s, %s and %s are also ignored if configuration file is set.", kIcpVoxelSize().c_str(), kIcpDownsamplingStep().c_str(), kIcpIterations().c_str(), kIcpEpsilon().c_str(), kIcpMaxCorrespondenceDistance().c_str()).c_str());
     RTABMAP_PARAM(Icp, PMMatcherKnn,             int, 1,        "KDTreeMatcher/knn: number of nearest neighbors to consider it the reference. For convenience when configuration file is not set.");
     RTABMAP_PARAM(Icp, PMMatcherEpsilon,         float, 0.0,    "KDTreeMatcher/epsilon: approximation to use for the nearest-neighbor search. For convenience when configuration file is not set.");
+    RTABMAP_PARAM(Icp, PMMatcherIntensity,       bool, false,   uFormat("KDTreeMatcher:  among nearest neighbors, keep only the one with the most similar intensity. This only work with %s>1.", kIcpPMMatcherKnn().c_str()));
     RTABMAP_PARAM(Icp, PMOutlierRatio,           float, 0.95,   "TrimmedDistOutlierFilter/ratio: For convenience when configuration file is not set. For kinect-like point cloud, use 0.65.");
 
     // Stereo disparity

@@ -237,9 +237,10 @@ Transform transformFromXYZCorrespondences(
 	return Transform();
 }
 
-void computeVarianceAndCorrespondences(
-		const pcl::PointCloud<pcl::PointNormal>::ConstPtr & cloudA,
-		const pcl::PointCloud<pcl::PointNormal>::ConstPtr & cloudB,
+template<typename PointNormalT>
+void computeVarianceAndCorrespondencesImpl(
+		const typename pcl::PointCloud<PointNormalT>::ConstPtr & cloudA,
+		const typename pcl::PointCloud<PointNormalT>::ConstPtr & cloudB,
 		double maxCorrespondenceDistance,
 		double maxCorrespondenceAngle,
 		double & variance,
@@ -247,10 +248,10 @@ void computeVarianceAndCorrespondences(
 {
 	variance = 1;
 	correspondencesOut = 0;
-	pcl::registration::CorrespondenceEstimation<pcl::PointNormal, pcl::PointNormal>::Ptr est;
-	est.reset(new pcl::registration::CorrespondenceEstimation<pcl::PointNormal, pcl::PointNormal>);
-	const pcl::PointCloud<pcl::PointNormal>::ConstPtr & target = cloudA->size()>cloudB->size()?cloudA:cloudB;
-	const pcl::PointCloud<pcl::PointNormal>::ConstPtr & source = cloudA->size()>cloudB->size()?cloudB:cloudA;
+	typename pcl::registration::CorrespondenceEstimation<PointNormalT, PointNormalT>::Ptr est;
+	est.reset(new pcl::registration::CorrespondenceEstimation<PointNormalT, PointNormalT>);
+	const typename pcl::PointCloud<PointNormalT>::ConstPtr & target = cloudA->size()>cloudB->size()?cloudA:cloudB;
+	const typename pcl::PointCloud<PointNormalT>::ConstPtr & source = cloudA->size()>cloudB->size()?cloudB:cloudA;
 	est->setInputTarget(target);
 	est->setInputSource(source);
 	pcl::Correspondences correspondences;
@@ -299,16 +300,39 @@ void computeVarianceAndCorrespondences(
 }
 
 void computeVarianceAndCorrespondences(
-		const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & cloudA,
-		const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & cloudB,
+		const pcl::PointCloud<pcl::PointNormal>::ConstPtr & cloudA,
+		const pcl::PointCloud<pcl::PointNormal>::ConstPtr & cloudB,
+		double maxCorrespondenceDistance,
+		double maxCorrespondenceAngle,
+		double & variance,
+		int & correspondencesOut)
+{
+	computeVarianceAndCorrespondencesImpl<pcl::PointNormal>(cloudA, cloudB, maxCorrespondenceDistance, maxCorrespondenceAngle, variance, correspondencesOut);
+}
+
+void computeVarianceAndCorrespondences(
+		const pcl::PointCloud<pcl::PointXYZINormal>::ConstPtr & cloudA,
+		const pcl::PointCloud<pcl::PointXYZINormal>::ConstPtr & cloudB,
+		double maxCorrespondenceDistance,
+		double maxCorrespondenceAngle,
+		double & variance,
+		int & correspondencesOut)
+{
+	computeVarianceAndCorrespondencesImpl<pcl::PointXYZINormal>(cloudA, cloudB, maxCorrespondenceDistance, maxCorrespondenceAngle, variance, correspondencesOut);
+}
+
+template<typename PointT>
+void computeVarianceAndCorrespondencesImpl(
+		const typename pcl::PointCloud<PointT>::ConstPtr & cloudA,
+		const typename pcl::PointCloud<PointT>::ConstPtr & cloudB,
 		double maxCorrespondenceDistance,
 		double & variance,
 		int & correspondencesOut)
 {
 	variance = 1;
 	correspondencesOut = 0;
-	pcl::registration::CorrespondenceEstimation<pcl::PointXYZ, pcl::PointXYZ>::Ptr est;
-	est.reset(new pcl::registration::CorrespondenceEstimation<pcl::PointXYZ, pcl::PointXYZ>);
+	typename pcl::registration::CorrespondenceEstimation<PointT, PointT>::Ptr est;
+	est.reset(new pcl::registration::CorrespondenceEstimation<PointT, PointT>);
 	est->setInputTarget(cloudA->size()>cloudB->size()?cloudA:cloudB);
 	est->setInputSource(cloudA->size()>cloudB->size()?cloudB:cloudA);
 	pcl::Correspondences correspondences;
@@ -331,25 +355,46 @@ void computeVarianceAndCorrespondences(
 	correspondencesOut = (int)correspondences.size();
 }
 
+void computeVarianceAndCorrespondences(
+		const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & cloudA,
+		const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & cloudB,
+		double maxCorrespondenceDistance,
+		double & variance,
+		int & correspondencesOut)
+{
+	computeVarianceAndCorrespondencesImpl<pcl::PointXYZ>(cloudA, cloudB, maxCorrespondenceDistance, variance, correspondencesOut);
+}
+
+void computeVarianceAndCorrespondences(
+		const pcl::PointCloud<pcl::PointXYZI>::ConstPtr & cloudA,
+		const pcl::PointCloud<pcl::PointXYZI>::ConstPtr & cloudB,
+		double maxCorrespondenceDistance,
+		double & variance,
+		int & correspondencesOut)
+{
+	computeVarianceAndCorrespondencesImpl<pcl::PointXYZI>(cloudA, cloudB, maxCorrespondenceDistance, variance, correspondencesOut);
+}
+
 // return transform from source to target (All points must be finite!!!)
-Transform icp(const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & cloud_source,
-			  const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & cloud_target,
+template<typename PointT>
+Transform icpImpl(const typename pcl::PointCloud<PointT>::ConstPtr & cloud_source,
+			  const typename pcl::PointCloud<PointT>::ConstPtr & cloud_target,
 			  double maxCorrespondenceDistance,
 			  int maximumIterations,
 			  bool & hasConverged,
-			  pcl::PointCloud<pcl::PointXYZ> & cloud_source_registered,
+			  pcl::PointCloud<PointT> & cloud_source_registered,
 			  float epsilon,
 			  bool icp2D)
 {
-	pcl::IterativeClosestPoint<pcl::PointXYZ, pcl::PointXYZ> icp;
+	pcl::IterativeClosestPoint<PointT, PointT> icp;
 	// Set the input source and target
 	icp.setInputTarget (cloud_target);
 	icp.setInputSource (cloud_source);
 
 	if(icp2D)
 	{
-		pcl::registration::TransformationEstimation2D<pcl::PointXYZ, pcl::PointXYZ>::Ptr est;
-		est.reset(new pcl::registration::TransformationEstimation2D<pcl::PointXYZ, pcl::PointXYZ>);
+		typename pcl::registration::TransformationEstimation2D<PointT, PointT>::Ptr est;
+		est.reset(new pcl::registration::TransformationEstimation2D<PointT, PointT>);
 		icp.setTransformationEstimation(est);
 	}
 
@@ -369,24 +414,51 @@ Transform icp(const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & cloud_source,
 	return Transform::fromEigen4f(icp.getFinalTransformation());
 }
 
+// return transform from source to target (All points must be finite!!!)
+Transform icp(const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & cloud_source,
+			  const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & cloud_target,
+			  double maxCorrespondenceDistance,
+			  int maximumIterations,
+			  bool & hasConverged,
+			  pcl::PointCloud<pcl::PointXYZ> & cloud_source_registered,
+			  float epsilon,
+			  bool icp2D)
+{
+	return icpImpl(cloud_source, cloud_target, maxCorrespondenceDistance, maximumIterations, hasConverged, cloud_source_registered, epsilon, icp2D);
+}
+
+// return transform from source to target (All points must be finite!!!)
+Transform icp(const pcl::PointCloud<pcl::PointXYZI>::ConstPtr & cloud_source,
+			  const pcl::PointCloud<pcl::PointXYZI>::ConstPtr & cloud_target,
+			  double maxCorrespondenceDistance,
+			  int maximumIterations,
+			  bool & hasConverged,
+			  pcl::PointCloud<pcl::PointXYZI> & cloud_source_registered,
+			  float epsilon,
+			  bool icp2D)
+{
+	return icpImpl(cloud_source, cloud_target, maxCorrespondenceDistance, maximumIterations, hasConverged, cloud_source_registered, epsilon, icp2D);
+}
+
 // return transform from source to target (All points/normals must be finite!!!)
-Transform icpPointToPlane(
-		const pcl::PointCloud<pcl::PointNormal>::ConstPtr & cloud_source,
-		const pcl::PointCloud<pcl::PointNormal>::ConstPtr & cloud_target,
+template<typename PointNormalT>
+Transform icpPointToPlaneImpl(
+		const typename pcl::PointCloud<PointNormalT>::ConstPtr & cloud_source,
+		const typename pcl::PointCloud<PointNormalT>::ConstPtr & cloud_target,
 		double maxCorrespondenceDistance,
 		int maximumIterations,
 		bool & hasConverged,
-		pcl::PointCloud<pcl::PointNormal> & cloud_source_registered,
+		pcl::PointCloud<PointNormalT> & cloud_source_registered,
 		float epsilon,
 		bool icp2D)
 {
-	pcl::IterativeClosestPoint<pcl::PointNormal, pcl::PointNormal> icp;
+	pcl::IterativeClosestPoint<PointNormalT, PointNormalT> icp;
 	// Set the input source and target
 	icp.setInputTarget (cloud_target);
 	icp.setInputSource (cloud_source);
 
-	pcl::registration::TransformationEstimationPointToPlaneLLS<pcl::PointNormal, pcl::PointNormal>::Ptr est;
-	est.reset(new pcl::registration::TransformationEstimationPointToPlaneLLS<pcl::PointNormal, pcl::PointNormal>);
+	typename pcl::registration::TransformationEstimationPointToPlaneLLS<PointNormalT, PointNormalT>::Ptr est;
+	est.reset(new pcl::registration::TransformationEstimationPointToPlaneLLS<PointNormalT, PointNormalT>);
 	icp.setTransformationEstimation(est);
 
 	// Set the max correspondence distance to 5cm (e.g., correspondences with higher distances will be ignored)
@@ -411,6 +483,33 @@ Transform icpPointToPlane(
 	}
 
 	return t;
+}
+
+// return transform from source to target (All points/normals must be finite!!!)
+Transform icpPointToPlane(
+		const pcl::PointCloud<pcl::PointNormal>::ConstPtr & cloud_source,
+		const pcl::PointCloud<pcl::PointNormal>::ConstPtr & cloud_target,
+		double maxCorrespondenceDistance,
+		int maximumIterations,
+		bool & hasConverged,
+		pcl::PointCloud<pcl::PointNormal> & cloud_source_registered,
+		float epsilon,
+		bool icp2D)
+{
+	return icpPointToPlaneImpl(cloud_source, cloud_target, maxCorrespondenceDistance, maximumIterations, hasConverged, cloud_source_registered, epsilon, icp2D);
+}
+// return transform from source to target (All points/normals must be finite!!!)
+Transform icpPointToPlane(
+		const pcl::PointCloud<pcl::PointXYZINormal>::ConstPtr & cloud_source,
+		const pcl::PointCloud<pcl::PointXYZINormal>::ConstPtr & cloud_target,
+		double maxCorrespondenceDistance,
+		int maximumIterations,
+		bool & hasConverged,
+		pcl::PointCloud<pcl::PointXYZINormal> & cloud_source_registered,
+		float epsilon,
+		bool icp2D)
+{
+	return icpPointToPlaneImpl(cloud_source, cloud_target, maxCorrespondenceDistance, maximumIterations, hasConverged, cloud_source_registered, epsilon, icp2D);
 }
 
 }

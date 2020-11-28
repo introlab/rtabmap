@@ -359,6 +359,12 @@ float RTABMAP_EXP computeNormalsComplexity(
 		cv::Mat * pcaEigenVectors = 0,
 		cv::Mat * pcaEigenValues = 0);
 float RTABMAP_EXP computeNormalsComplexity(
+		const pcl::PointCloud<pcl::PointXYZINormal> & cloud,
+		const Transform & t = Transform::getIdentity(),
+		bool is2d = false,
+		cv::Mat * pcaEigenVectors = 0,
+		cv::Mat * pcaEigenValues = 0);
+float RTABMAP_EXP computeNormalsComplexity(
 		const pcl::PointCloud<pcl::PointXYZRGBNormal> & cloud,
 		const Transform & t = Transform::getIdentity(),
 		bool is2d = false,
@@ -387,18 +393,39 @@ pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr RTABMAP_EXP mls(
 		float dilationVoxelSize = 1.0f,  // VOXEL_GRID_DILATION
 		int dilationIterations = 0);     // VOXEL_GRID_DILATION
 
-LaserScan RTABMAP_EXP adjustNormalsToViewPoint(
+RTABMAP_DEPRECATED(LaserScan RTABMAP_EXP adjustNormalsToViewPoint(
 		const LaserScan & scan,
 		const Eigen::Vector3f & viewpoint,
-		bool forceGroundNormalsUp);
+		bool forceGroundNormalsUp), "Use version with groundNormalsUp as float. For forceGroundNormalsUp=true, set groundNormalsUp to 0.8f, otherwise set groundNormalsUp to 0.0f.");
+LaserScan RTABMAP_EXP adjustNormalsToViewPoint(
+		const LaserScan & scan,
+		const Eigen::Vector3f & viewpoint = Eigen::Vector3f(0,0,0),
+		float groundNormalsUp = 0.0f);
+RTABMAP_DEPRECATED(void RTABMAP_EXP adjustNormalsToViewPoint(
+		pcl::PointCloud<pcl::PointNormal>::Ptr & cloud,
+		const Eigen::Vector3f & viewpoint,
+		bool forceGroundNormalsUp), "Use version with groundNormalsUp as float. For forceGroundNormalsUp=true, set groundNormalsUp to 0.8f, otherwise set groundNormalsUp to 0.0f.");
 void RTABMAP_EXP adjustNormalsToViewPoint(
 		pcl::PointCloud<pcl::PointNormal>::Ptr & cloud,
 		const Eigen::Vector3f & viewpoint = Eigen::Vector3f(0,0,0),
-		bool forceGroundNormalsUp = false);
+		float groundNormalsUp = 0.0f);
+RTABMAP_DEPRECATED(void RTABMAP_EXP adjustNormalsToViewPoint(
+		pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
+		const Eigen::Vector3f & viewpoint,
+		bool forceGroundNormalsUp), "Use version with groundNormalsUp as float. For forceGroundNormalsUp=true, set groundNormalsUp to 0.8f, otherwise set groundNormalsUp to 0.0f.");
 void RTABMAP_EXP adjustNormalsToViewPoint(
 		pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
 		const Eigen::Vector3f & viewpoint = Eigen::Vector3f(0,0,0),
-		bool forceGroundNormalsUp = false);
+		float groundNormalsUp = 0.0f);
+RTABMAP_DEPRECATED(void RTABMAP_EXP adjustNormalsToViewPoint(
+		pcl::PointCloud<pcl::PointXYZINormal>::Ptr & cloud,
+		const Eigen::Vector3f & viewpoint,
+		bool forceGroundNormalsUp), "Use version with groundNormalsUp as float. For forceGroundNormalsUp=true, set groundNormalsUp to 0.8f, otherwise set groundNormalsUp to 0.0f.");
+void RTABMAP_EXP adjustNormalsToViewPoint(
+		pcl::PointCloud<pcl::PointXYZINormal>::Ptr & cloud,
+		const Eigen::Vector3f & viewpoint = Eigen::Vector3f(0,0,0),
+		float groundNormalsUp = 0.0f);
+
 void RTABMAP_EXP adjustNormalsToViewPoints(
 		const std::map<int, Transform> & poses,
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & rawCloud,

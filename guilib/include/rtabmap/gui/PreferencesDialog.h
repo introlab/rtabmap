@@ -267,7 +267,7 @@ public:
 	double getSourceScanVoxelSize() const;
 	int getSourceScanNormalsK() const;
 	double getSourceScanNormalsRadius() const;
-	bool isSourceScanForceGroundNormalsUp() const;
+	double getSourceScanForceGroundNormalsUp() const;
 	Transform getSourceLocalTransform() const;    //Openni group
 	Transform getLaserLocalTransform() const; // directory images
 	Transform getIMULocalTransform() const; // directory images

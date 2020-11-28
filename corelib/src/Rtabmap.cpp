@@ -3098,7 +3098,7 @@ bool Rtabmap::process(
 		previousMapCorrection = _mapCorrection;
 		_mapCorrection = _optimizedPoses.at(signature->id()) * signature->getPose().inverse();
 		_lastLocalizationPose = _optimizedPoses.at(signature->id()); // update
-		if(_mapCorrection.getNormSquared() > 0.001f && _optimizeFromGraphEnd)
+		if(_mapCorrection.getNormSquared() > 0.1f && _optimizeFromGraphEnd)
 		{
 			bool hasPrior = signature->hasLink(signature->id());
 			if(!_graphOptimizer->priorsIgnored())

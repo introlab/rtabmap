@@ -129,6 +129,39 @@ void CameraThread::disableIMUFiltering()
 	_imuFilter = 0;
 }
 
+void CameraThread::setScanParameters(
+	bool fromDepth,
+	int downsampleStep,
+	float rangeMin,
+	float rangeMax,
+	float voxelSize,
+	int normalsK,
+	int normalsRadius,
+	bool forceGroundNormalsUp)
+{
+	setScanParameters(fromDepth, downsampleStep, rangeMin, rangeMax, voxelSize, normalsK, normalsRadius, forceGroundNormalsUp?0.8f:0.0f);
+}
+
+void CameraThread::setScanParameters(
+			bool fromDepth,
+			int downsampleStep, // decimation of the depth image in case the scan is from depth image
+			float rangeMin,
+			float rangeMax,
+			float voxelSize,
+			int normalsK,
+			int normalsRadius,
+			float groundNormalsUp)
+{
+	_scanFromDepth = fromDepth;
+	_scanDownsampleStep=downsampleStep;
+	_scanRangeMin = rangeMin;
+	_scanRangeMax = rangeMax;
+	_scanVoxelSize = voxelSize;
+	_scanNormalsK = normalsK;
+	_scanNormalsRadius = normalsRadius;
+	_scanForceGroundNormalsUp = groundNormalsUp;
+}
+
 void CameraThread::mainLoopBegin()
 {
 	ULogger::registerCurrentThread("Camera");

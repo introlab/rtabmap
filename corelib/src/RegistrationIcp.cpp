@@ -43,6 +43,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifdef RTABMAP_POINTMATCHER
 #include <fstream>
 #include "pointmatcher/PointMatcher.h"
+#include "nabo/nabo.h"
 typedef PointMatcher<float> PM;
 typedef PM::DataPoints DP;
 
@@ -181,6 +182,7 @@ DP laserScanToDP(const rtabmap::LaserScan & scan)
 	{
 		descLabels.push_back(Label("intensity", 1));
 	}
+
 
 	// create cloud
 	DP cloud(featLabels, descLabels, scan.size());
@@ -360,6 +362,110 @@ typename PointMatcher<T>::TransformationParameters eigenMatrixToDim(const typena
 	return out;
 }
 
+template<typename T>
+struct KDTreeMatcherIntensity : public PointMatcher<T>::Matcher
+{
+	typedef PointMatcherSupport::Parametrizable Parametrizable;
+	typedef PointMatcherSupport::Parametrizable P;
+	typedef Parametrizable::Parameters Parameters;
+	typedef Parametrizable::ParameterDoc ParameterDoc;
+	typedef Parametrizable::ParametersDoc ParametersDoc;
+
+	typedef typename Nabo::NearestNeighbourSearch<T> NNS;
+	typedef typename NNS::SearchType NNSearchType;
+
+	typedef typename PointMatcher<T>::DataPoints DataPoints;
+	typedef typename PointMatcher<T>::Matcher Matcher;
+	typedef typename PointMatcher<T>::Matches Matches;
+	typedef typename PointMatcher<T>::Matrix Matrix;
+
+	inline static const std::string description()
+	{
+		return "This matcher matches a point from the reading to its closest neighbors in the reference.";
+	}
+	inline static const ParametersDoc availableParameters()
+	{
+		return {
+			{"knn", "number of nearest neighbors to consider it the reference", "1", "1", "2147483647", &P::Comp<unsigned>},
+			{"epsilon", "approximation to use for the nearest-neighbor search", "0", "0", "inf", &P::Comp<T>},
+			{"searchType", "Nabo search type. 0: brute force, check distance to every point in the data (very slow), 1: kd-tree with linear heap, good for small knn (~up to 30) and 2: kd-tree with tree heap, good for large knn (~from 30)", "1", "0", "2", &P::Comp<unsigned>},
+			{"maxDist", "maximum distance to consider for neighbors", "inf", "0", "inf", &P::Comp<T>}
+		};
+	}
+
+	const int knn;
+	const T epsilon;
+	const NNSearchType searchType;
+	const T maxDist;
+
+protected:
+	std::shared_ptr<NNS> featureNNS;
+	Matrix filteredReferenceIntensity;
+
+public:
+	KDTreeMatcherIntensity(const Parameters& params = Parameters()) :
+		PointMatcher<T>::Matcher("KDTreeMatcherIntensity", KDTreeMatcherIntensity::availableParameters(), params),
+		knn(Parametrizable::get<int>("knn")),
+		epsilon(Parametrizable::get<T>("epsilon")),
+		searchType(NNSearchType(Parametrizable::get<int>("searchType"))),
+		maxDist(Parametrizable::get<T>("maxDist"))
+	{
+		UINFO("* KDTreeMatcherIntensity: initialized with knn=%d, epsilon=%f, searchType=%d and maxDist=%f", knn, epsilon, searchType, maxDist);
+	}
+	virtual ~KDTreeMatcherIntensity() {}
+	virtual void init(const DataPoints& filteredReference)
+	{
+		// build and populate NNS
+		if(knn>1)
+		{
+			filteredReferenceIntensity = filteredReference.getDescriptorCopyByName("intensity");
+		}
+		else
+		{
+			UWARN("KDTreeMatcherIntensity: knn is not over 1 (%d), intensity re-ordering will be ignored.", knn);
+		}
+		featureNNS.reset( NNS::create(filteredReference.features, filteredReference.features.rows() - 1, searchType, NNS::TOUCH_STATISTICS));
+	}
+	virtual PM::Matches findClosests(const DP& filteredReading)
+	{
+		const int pointsCount(filteredReading.features.cols());
+		Matches matches(
+			typename Matches::Dists(knn, pointsCount),
+			typename Matches::Ids(knn, pointsCount)
+		);
+
+		const BOOST_AUTO(filteredReadingIntensity, filteredReading.getDescriptorViewByName("intensity"));
+
+		static_assert(NNS::InvalidIndex == PM::Matches::InvalidId, "");
+		static_assert(NNS::InvalidValue == PM::Matches::InvalidDist, "");
+		this->visitCounter += featureNNS->knn(filteredReading.features, matches.ids, matches.dists, knn, epsilon, NNS::ALLOW_SELF_MATCH, maxDist);
+
+		if(knn > 1)
+		{
+			Matches matchesOrderedByIntensity(
+				typename Matches::Dists(1, pointsCount),
+				typename Matches::Ids(1, pointsCount)
+			);
+			#pragma omp parallel for
+			for (int i = 0; i < pointsCount; ++i)
+			{
+				float minDistance = std::numeric_limits<float>::max();
+				for(int k=0; k<knn && k<filteredReferenceIntensity.rows(); ++k)
+				{
+					float distIntensity = fabs(filteredReadingIntensity(0,i) - filteredReferenceIntensity(0, matches.ids.coeff(k, i)));
+					if(distIntensity < minDistance)
+					{
+						matchesOrderedByIntensity.ids.coeffRef(0, i) = matches.ids.coeff(k, i);
+						matchesOrderedByIntensity.dists.coeffRef(0, i) = matches.dists.coeff(k, i);
+						minDistance = distIntensity;
+					}
+				}
+			}
+			matches = matchesOrderedByIntensity;
+		}
+		return matches;
+	}
+};
 #endif
 
 namespace rtabmap {
@@ -379,11 +485,14 @@ RegistrationIcp::RegistrationIcp(const ParametersMap & parameters, Registration 
 	_pointToPlane(Parameters::defaultIcpPointToPlane()),
 	_pointToPlaneK(Parameters::defaultIcpPointToPlaneK()),
 	_pointToPlaneRadius(Parameters::defaultIcpPointToPlaneRadius()),
+	_pointToPlaneGroundNormalsUp(Parameters::defaultIcpPointToPlaneGroundNormalsUp()),
 	_pointToPlaneMinComplexity(Parameters::defaultIcpPointToPlaneMinComplexity()),
+	_pointToPlaneLowComplexityStrategy(Parameters::defaultIcpPointToPlaneLowComplexityStrategy()),
 	_libpointmatcher(Parameters::defaultIcpPM()),
 	_libpointmatcherConfig(Parameters::defaultIcpPMConfig()),
 	_libpointmatcherKnn(Parameters::defaultIcpPMMatcherKnn()),
 	_libpointmatcherEpsilon(Parameters::defaultIcpPMMatcherEpsilon()),
+	_libpointmatcherIntensity(Parameters::defaultIcpPMMatcherIntensity()),
 	_libpointmatcherOutlierRatio(Parameters::defaultIcpPMOutlierRatio()),
 	_libpointmatcherICP(0)
 {
@@ -414,7 +523,10 @@ void RegistrationIcp::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kIcpPointToPlane(), _pointToPlane);
 	Parameters::parse(parameters, Parameters::kIcpPointToPlaneK(), _pointToPlaneK);
 	Parameters::parse(parameters, Parameters::kIcpPointToPlaneRadius(), _pointToPlaneRadius);
+	Parameters::parse(parameters, Parameters::kIcpPointToPlaneGroundNormalsUp(), _pointToPlaneGroundNormalsUp);
 	Parameters::parse(parameters, Parameters::kIcpPointToPlaneMinComplexity(), _pointToPlaneMinComplexity);
+	Parameters::parse(parameters, Parameters::kIcpPointToPlaneLowComplexityStrategy(), _pointToPlaneLowComplexityStrategy);
+	UASSERT(_pointToPlaneGroundNormalsUp >= 0.0f && _pointToPlaneGroundNormalsUp <= 1.0f);
 	UASSERT(_pointToPlaneMinComplexity >= 0.0f && _pointToPlaneMinComplexity <= 1.0f);
 
 	Parameters::parse(parameters, Parameters::kIcpPM(), _libpointmatcher);
@@ -422,6 +534,7 @@ void RegistrationIcp::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kIcpPMOutlierRatio(), _libpointmatcherOutlierRatio);
 	Parameters::parse(parameters, Parameters::kIcpPMMatcherKnn(), _libpointmatcherKnn);
 	Parameters::parse(parameters, Parameters::kIcpPMMatcherEpsilon(), _libpointmatcherEpsilon);
+	Parameters::parse(parameters, Parameters::kIcpPMMatcherIntensity(), _libpointmatcherIntensity);
 
 #ifndef RTABMAP_POINTMATCHER
 	if(_libpointmatcher)
@@ -474,11 +587,26 @@ void RegistrationIcp::parseParameters(const ParametersMap & parameters)
 			params["maxDist"] = uNumber2Str(_maxCorrespondenceDistance);
 			params["knn"] = uNumber2Str(_libpointmatcherKnn);
 			params["epsilon"] = uNumber2Str(_libpointmatcherEpsilon);
+
+			if(_libpointmatcherIntensity)
+			{
+				PointMatcher<float> matcher;
+				typedef typename PointMatcherSupport::Registrar< PointMatcher<float>::Matcher >::template GenericClassDescriptor< KDTreeMatcherIntensity<float> > Desc;
+				matcher.MatcherRegistrar.reg("KDTreeMatcherIntensity", std::make_shared<Desc>() );
 #if POINTMATCHER_VERSION_INT >= 10300
-			icp->matcher = PM::get().MatcherRegistrar.create("KDTreeMatcher", params);
+				icp->matcher = matcher.MatcherRegistrar.create("KDTreeMatcherIntensity", params);
 #else
-			icp->matcher.reset(PM::get().MatcherRegistrar.create("KDTreeMatcher", params));
+				icp->matcher.reset(matcher.MatcherRegistrar.create("KDTreeMatcherIntensity", params));
 #endif
+			}
+			else
+			{
+#if POINTMATCHER_VERSION_INT >= 10300
+				icp->matcher = PM::get().MatcherRegistrar.create("KDTreeMatcher", params);
+#else
+				icp->matcher.reset(PM::get().MatcherRegistrar.create("KDTreeMatcher", params));
+#endif
+			}
 			params.clear();
 
 			params["ratio"] = uNumber2Str(_libpointmatcherOutlierRatio);
@@ -638,15 +766,15 @@ Transform RegistrationIcp::computeTransformationImpl(
 				}
 				else
 				{
-					pcl::PointCloud<pcl::PointNormal>::Ptr fromCloudNormals = util3d::laserScanToPointCloudNormal(fromScan, fromScan.localTransform());
-					pcl::PointCloud<pcl::PointNormal>::Ptr toCloudNormals = util3d::laserScanToPointCloudNormal(toScan, guess * toScan.localTransform());
+					pcl::PointCloud<pcl::PointXYZINormal>::Ptr fromCloudNormals = util3d::laserScanToPointCloudINormal(fromScan, fromScan.localTransform());
+					pcl::PointCloud<pcl::PointXYZINormal>::Ptr toCloudNormals = util3d::laserScanToPointCloudINormal(toScan, guess * toScan.localTransform());
 
 					fromCloudNormals = util3d::removeNaNNormalsFromPointCloud(fromCloudNormals);
 					toCloudNormals = util3d::removeNaNNormalsFromPointCloud(toCloudNormals);
 
 					if(fromCloudNormals->size() > 2 && toCloudNormals->size() > 2)
 					{
-						pcl::PCA<pcl::PointNormal> pca;
+						pcl::PCA<pcl::PointXYZINormal> pca;
 						pca.setInputCloud(fromCloudNormals);
 						Eigen::Vector3f valuesFrom = pca.getEigenValues();
 						pca.setInputCloud(toCloudNormals);
@@ -662,7 +790,7 @@ Transform RegistrationIcp::computeTransformationImpl(
 					}
 
 					UDEBUG("Conversion time = %f s", timer.ticks());
-					pcl::PointCloud<pcl::PointNormal>::Ptr fromCloudNormalsRegistered(new pcl::PointCloud<pcl::PointNormal>());
+					pcl::PointCloud<pcl::PointXYZINormal>::Ptr fromCloudNormalsRegistered(new pcl::PointCloud<pcl::PointXYZINormal>());
 #ifdef RTABMAP_POINTMATCHER
 					if(_libpointmatcher)
 					{
@@ -727,13 +855,13 @@ Transform RegistrationIcp::computeTransformationImpl(
 			int maxLaserScansTo = toScan.maxPoints();
 			if(!transformComputed)
 			{
-				pcl::PointCloud<pcl::PointXYZ>::Ptr fromCloud = util3d::laserScanToPointCloud(fromScan, fromScan.localTransform());
-				pcl::PointCloud<pcl::PointXYZ>::Ptr toCloud = util3d::laserScanToPointCloud(toScan, guess * toScan.localTransform());
+				pcl::PointCloud<pcl::PointXYZI>::Ptr fromCloud = util3d::laserScanToPointCloudI(fromScan, fromScan.localTransform());
+				pcl::PointCloud<pcl::PointXYZI>::Ptr toCloud = util3d::laserScanToPointCloudI(toScan, guess * toScan.localTransform());
 				UDEBUG("Conversion time = %f s", timer.ticks());
 
 				if(fromCloud->size() > 2 && toCloud->size() > 2)
 				{
-					pcl::PCA<pcl::PointXYZ> pca;
+					pcl::PCA<pcl::PointXYZI> pca;
 					pca.setInputCloud(fromCloud);
 					Eigen::Vector3f valuesFrom = pca.getEigenValues();
 					pca.setInputCloud(toCloud);
@@ -746,10 +874,11 @@ Transform RegistrationIcp::computeTransformationImpl(
 					{
 						info.icpStructuralDistribution = sqrt(valuesTo[0]/toCloud->size());
 					}
+					UDEBUG("Computed icpStructuralDistribution %f s",timer.ticks());
 				}
 
-				pcl::PointCloud<pcl::PointXYZ>::Ptr fromCloudFiltered = fromCloud;
-				pcl::PointCloud<pcl::PointXYZ>::Ptr toCloudFiltered = toCloud;
+				pcl::PointCloud<pcl::PointXYZI>::Ptr fromCloudFiltered = fromCloud;
+				pcl::PointCloud<pcl::PointXYZI>::Ptr toCloudFiltered = toCloud;
 				if(_voxelSize > 0.0f)
 				{
 					float pointsBeforeFiltering = (float)fromCloudFiltered->size();
@@ -773,7 +902,7 @@ Transform RegistrationIcp::computeTransformationImpl(
 							timer.ticks());
 				}
 
-				pcl::PointCloud<pcl::PointXYZ>::Ptr fromCloudRegistered(new pcl::PointCloud<pcl::PointXYZ>());
+				pcl::PointCloud<pcl::PointXYZI>::Ptr fromCloudRegistered(new pcl::PointCloud<pcl::PointXYZI>());
 				if(_pointToPlane && // ICP Point To Plane
 					!tooLowComplexityForPlaneToPlane && // if previously rejected above
 					!((fromScan.is2d()|| toScan.is2d()) && !_libpointmatcher)) // PCL crashes if 2D
@@ -862,15 +991,30 @@ Transform RegistrationIcp::computeTransformationImpl(
 					}
 					else
 					{
-						pcl::PointCloud<pcl::PointNormal>::Ptr fromCloudNormals(new pcl::PointCloud<pcl::PointNormal>);
+						pcl::PointCloud<pcl::PointXYZINormal>::Ptr fromCloudNormals(new pcl::PointCloud<pcl::PointXYZINormal>);
 						pcl::concatenateFields(*fromCloudFiltered, *normalsFrom, *fromCloudNormals);
 
-						pcl::PointCloud<pcl::PointNormal>::Ptr toCloudNormals(new pcl::PointCloud<pcl::PointNormal>);
+						pcl::PointCloud<pcl::PointXYZINormal>::Ptr toCloudNormals(new pcl::PointCloud<pcl::PointXYZINormal>);
 						pcl::concatenateFields(*toCloudFiltered, *normalsTo, *toCloudNormals);
 
 						std::vector<int> indices;
 						toCloudNormals = util3d::removeNaNNormalsFromPointCloud(toCloudNormals);
 						fromCloudNormals = util3d::removeNaNNormalsFromPointCloud(fromCloudNormals);
+
+						if(!fromCloudNormals->empty() && !fromScan.is2d() && _pointToPlaneGroundNormalsUp>0.0f)
+						{
+							util3d::adjustNormalsToViewPoint(fromCloudNormals,
+									Eigen::Vector3f(fromScan.localTransform().x(),fromScan.localTransform().y(),fromScan.localTransform().z()+10),
+									_pointToPlaneGroundNormalsUp);
+						}
+						if(!toCloudNormals->empty() && !toScan.is2d() && _pointToPlaneGroundNormalsUp>0.0f)
+						{
+							Transform toT = guess * toScan.localTransform();
+							Eigen::Vector3f viewpointTo(toT.x(), toT.y(), toT.z()+10);
+							util3d::adjustNormalsToViewPoint(toCloudNormals,
+									viewpointTo,
+									_pointToPlaneGroundNormalsUp);
+						}
 
 						// update output scans
 						if(fromScan.is2d())
@@ -880,7 +1024,7 @@ Transform RegistrationIcp::computeTransformationImpl(
 											util3d::laserScan2dFromPointCloud(*fromCloudNormals, fromScan.localTransform().inverse()),
 											maxLaserScansFrom,
 											fromScan.rangeMax(),
-											LaserScan::kXYNormal,
+											LaserScan::kXYINormal,
 											fromScan.localTransform()));
 						}
 						else
@@ -890,7 +1034,7 @@ Transform RegistrationIcp::computeTransformationImpl(
 											util3d::laserScanFromPointCloud(*fromCloudNormals, fromScan.localTransform().inverse()),
 											maxLaserScansFrom,
 											fromScan.rangeMax(),
-											LaserScan::kXYZNormal,
+											LaserScan::kXYZINormal,
 											fromScan.localTransform()));
 						}
 						if(toScan.is2d())
@@ -900,7 +1044,7 @@ Transform RegistrationIcp::computeTransformationImpl(
 											util3d::laserScan2dFromPointCloud(*toCloudNormals, (guess*toScan.localTransform()).inverse()),
 											maxLaserScansTo,
 											toScan.rangeMax(),
-											LaserScan::kXYNormal,
+											LaserScan::kXYINormal,
 											toScan.localTransform()));
 						}
 						else
@@ -910,7 +1054,7 @@ Transform RegistrationIcp::computeTransformationImpl(
 											util3d::laserScanFromPointCloud(*toCloudNormals, (guess*toScan.localTransform()).inverse()),
 											maxLaserScansTo,
 											toScan.rangeMax(),
-											LaserScan::kXYZNormal,
+											LaserScan::kXYZINormal,
 											toScan.localTransform()));
 						}
 						UDEBUG("Compute normals (%d,%d) time = %f s", (int)fromCloudNormals->size(), (int)toCloudNormals->size(), timer.ticks());
@@ -919,7 +1063,7 @@ Transform RegistrationIcp::computeTransformationImpl(
 
 						if(toCloudNormals->size() && fromCloudNormals->size())
 						{
-							pcl::PointCloud<pcl::PointNormal>::Ptr fromCloudNormalsRegistered(new pcl::PointCloud<pcl::PointNormal>());
+							pcl::PointCloud<pcl::PointXYZINormal>::Ptr fromCloudNormalsRegistered(new pcl::PointCloud<pcl::PointXYZINormal>());
 
 #ifdef RTABMAP_POINTMATCHER
 							if(_libpointmatcher)
@@ -999,7 +1143,7 @@ Transform RegistrationIcp::computeTransformationImpl(
 											util3d::laserScan2dFromPointCloud(*fromCloudFiltered, fromScan.localTransform().inverse()),
 											maxLaserScansFrom,
 											fromScan.rangeMax(),
-											LaserScan::kXY,
+											LaserScan::kXYI,
 											fromScan.localTransform()));
 						}
 						else
@@ -1009,7 +1153,7 @@ Transform RegistrationIcp::computeTransformationImpl(
 											util3d::laserScanFromPointCloud(*fromCloudFiltered, fromScan.localTransform().inverse()),
 											maxLaserScansFrom,
 											fromScan.rangeMax(),
-											LaserScan::kXYZ,
+											LaserScan::kXYZI,
 											fromScan.localTransform()));
 						}
 						if(toScan.is2d())
@@ -1019,7 +1163,7 @@ Transform RegistrationIcp::computeTransformationImpl(
 											util3d::laserScan2dFromPointCloud(*toCloudFiltered, (guess*toScan.localTransform()).inverse()),
 											maxLaserScansTo,
 											toScan.rangeMax(),
-											LaserScan::kXY,
+											LaserScan::kXYI,
 											toScan.localTransform()));
 						}
 						else
@@ -1029,7 +1173,7 @@ Transform RegistrationIcp::computeTransformationImpl(
 											util3d::laserScanFromPointCloud(*toCloudFiltered, (guess*toScan.localTransform()).inverse()),
 											maxLaserScansTo,
 											toScan.rangeMax(),
-											LaserScan::kXYZ,
+											LaserScan::kXYZI,
 											toScan.localTransform()));
 						}
 						fromScan = fromSignature.sensorData().laserScanRaw();
@@ -1122,73 +1266,86 @@ Transform RegistrationIcp::computeTransformationImpl(
 
 					if(!icpT.isNull() && hasConverged)
 					{
-						if(tooLowComplexityForPlaneToPlane)
+						if(tooLowComplexityForPlaneToPlane && _pointToPlaneLowComplexityStrategy<2)
 						{
-							Transform guessInv = guess.inverse();
-							Transform t = guessInv * icpT.inverse() * guess;
-							Eigen::Vector3f v(t.x(), t.y(), t.z());
-							if(complexityVectors.cols == 2)
+							if(_pointToPlaneLowComplexityStrategy == 0)
 							{
-								// limit translation in direction of the first eigen vector
-								Eigen::Vector3f n(complexityVectors.at<float>(0,0), complexityVectors.at<float>(0,1), 0.0f);
-								float a = v.dot(n);
-								Eigen::Vector3f vp = n*a;
-								UWARN("Normals low complexity: Limiting translation from (%f,%f) to (%f,%f)",
-										v[0], v[1], vp[0], vp[1]);
-								v= vp;
+								msg = uFormat("Rejecting transform because too low complexity (%s=0)", Parameters::kIcpPointToPlaneLowComplexityStrategy().c_str());
+								icpT.setNull();
+								UWARN(msg.c_str());
 							}
-							else if(complexityVectors.rows == 3)
+							else //if(_pointToPlaneLowComplexityStrategy == 1)
 							{
-								// limit translation in direction of the first and second eigen vectors
-								Eigen::Vector3f n1(complexityVectors.at<float>(0,0), complexityVectors.at<float>(0,1), complexityVectors.at<float>(0,2));
-								Eigen::Vector3f n2(complexityVectors.at<float>(1,0), complexityVectors.at<float>(1,1), complexityVectors.at<float>(1,2));
-								float a = v.dot(n1);
-								float b = v.dot(n2);
-								Eigen::Vector3f vp = n1*a;
-								if(secondEigenValue >= _pointToPlaneMinComplexity)
+								Transform guessInv = guess.inverse();
+								Transform t = guessInv * icpT.inverse() * guess;
+								Eigen::Vector3f v(t.x(), t.y(), t.z());
+								if(complexityVectors.cols == 2)
 								{
-									vp += n2*b;
+									// limit translation in direction of the first eigen vector
+									Eigen::Vector3f n(complexityVectors.at<float>(0,0), complexityVectors.at<float>(0,1), 0.0f);
+									float a = v.dot(n);
+									Eigen::Vector3f vp = n*a;
+									UWARN("Normals low complexity: Limiting translation from (%f,%f) to (%f,%f)",
+											v[0], v[1], vp[0], vp[1]);
+									v= vp;
 								}
-								UWARN("Normals low complexity: Limiting translation from (%f,%f,%f) to (%f,%f,%f)",
-										v[0], v[1], v[2], vp[0], vp[1], vp[2]);
-								v = vp;
-							}
-							else
-							{
-								UWARN("not supposed to be here!");
-								v = Eigen::Vector3f(0,0,0);
-							}
-							float roll, pitch, yaw;
-							t.getEulerAngles(roll, pitch, yaw);
-							t = Transform(v[0], v[1], v[2], roll, pitch, yaw);
-							icpT = guess * t.inverse() * guessInv;
+								else if(complexityVectors.rows == 3)
+								{
+									// limit translation in direction of the first and second eigen vectors
+									Eigen::Vector3f n1(complexityVectors.at<float>(0,0), complexityVectors.at<float>(0,1), complexityVectors.at<float>(0,2));
+									Eigen::Vector3f n2(complexityVectors.at<float>(1,0), complexityVectors.at<float>(1,1), complexityVectors.at<float>(1,2));
+									float a = v.dot(n1);
+									float b = v.dot(n2);
+									Eigen::Vector3f vp = n1*a;
+									if(secondEigenValue >= _pointToPlaneMinComplexity)
+									{
+										vp += n2*b;
+									}
+									UWARN("Normals low complexity: Limiting translation from (%f,%f,%f) to (%f,%f,%f)",
+											v[0], v[1], v[2], vp[0], vp[1], vp[2]);
+									v = vp;
+								}
+								else
+								{
+									UWARN("not supposed to be here!");
+									v = Eigen::Vector3f(0,0,0);
+								}
+								float roll, pitch, yaw;
+								t.getEulerAngles(roll, pitch, yaw);
+								t = Transform(v[0], v[1], v[2], roll, pitch, yaw);
+								icpT = guess * t.inverse() * guessInv;
 
-							if(fromScan.hasNormals() && toScan.hasNormals())
-							{
-								// we were using normals, so compute correspondences using normals
-								pcl::PointCloud<pcl::PointNormal>::Ptr fromCloudNormalsRegistered = util3d::laserScanToPointCloudNormal(fromScan, icpT * fromScan.localTransform());
-								pcl::PointCloud<pcl::PointNormal>::Ptr toCloudNormals = util3d::laserScanToPointCloudNormal(toScan, guess * toScan.localTransform());
+								if(fromScan.hasNormals() && toScan.hasNormals())
+								{
+									// we were using normals, so compute correspondences using normals
+									pcl::PointCloud<pcl::PointXYZINormal>::Ptr fromCloudNormalsRegistered = util3d::laserScanToPointCloudINormal(fromScan, icpT * fromScan.localTransform());
+									pcl::PointCloud<pcl::PointXYZINormal>::Ptr toCloudNormals = util3d::laserScanToPointCloudINormal(toScan, guess * toScan.localTransform());
 
-								util3d::computeVarianceAndCorrespondences(
-										fromCloudNormalsRegistered,
-										toCloudNormals,
-										_maxCorrespondenceDistance,
-										_maxRotation,
-										variance,
-										correspondences);
-							}
-							else
-							{
-								util3d::computeVarianceAndCorrespondences(
-										fromCloudRegistered,
-										toCloudFiltered,
-										_maxCorrespondenceDistance,
-										variance,
-										correspondences);
+									util3d::computeVarianceAndCorrespondences(
+											fromCloudNormalsRegistered,
+											toCloudNormals,
+											_maxCorrespondenceDistance,
+											_maxRotation,
+											variance,
+											correspondences);
+								}
+								else
+								{
+									util3d::computeVarianceAndCorrespondences(
+											fromCloudRegistered,
+											toCloudFiltered,
+											_maxCorrespondenceDistance,
+											variance,
+											correspondences);
+								}
 							}
 						}
 						else
 						{
+							if(tooLowComplexityForPlaneToPlane)
+							{
+								UWARN("Even if complexity is low , PointToPoint transformation is accepted \"as is\" (%s=2)", Parameters::kIcpPointToPlaneLowComplexityStrategy().c_str());
+							}
 							util3d::computeVarianceAndCorrespondences(
 									fromCloudRegistered,
 									toCloudFiltered,
@@ -1263,6 +1420,7 @@ Transform RegistrationIcp::computeTransformationImpl(
 					else
 					{
 						info.covariance = cv::Mat::eye(6,6,CV_64FC1)*variance;
+						info.covariance(cv::Range(3,6),cv::Range(3,6))/=10.0; //orientation error
 					}
 					info.icpInliersRatio = correspondencesRatio;
 					info.icpCorrespondences = correspondences;

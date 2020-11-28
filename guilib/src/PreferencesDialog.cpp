@@ -794,7 +794,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->doubleSpinBox_source_scanVoxelSize, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->spinBox_source_scanNormalsK, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->doubleSpinBox_source_scanNormalsRadius, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteSourcePanel()));
-	connect(_ui->checkBox_source_scanForceGroundNormalsUp, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->doubleSpinBox_source_scanNormalsForceGroundUp, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteSourcePanel()));
 
 
 	//Rtabmap basic
@@ -1130,7 +1130,9 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->loopClosure_icpPointToPlane->setObjectName(Parameters::kIcpPointToPlane().c_str());
 	_ui->loopClosure_icpPointToPlaneNormals->setObjectName(Parameters::kIcpPointToPlaneK().c_str());
 	_ui->loopClosure_icpPointToPlaneNormalsRadius->setObjectName(Parameters::kIcpPointToPlaneRadius().c_str());
+	_ui->loopClosure_icpPointToPlaneGroundNormalsUp->setObjectName(Parameters::kIcpPointToPlaneGroundNormalsUp().c_str());
 	_ui->loopClosure_icpPointToPlaneNormalsMinComplexity->setObjectName(Parameters::kIcpPointToPlaneMinComplexity().c_str());
+	_ui->loopClosure_icpPointToPlaneLowComplexityStrategy->setObjectName(Parameters::kIcpPointToPlaneLowComplexityStrategy().c_str());
 
 	_ui->groupBox_libpointmatcher->setObjectName(Parameters::kIcpPM().c_str());
 	_ui->lineEdit_IcpPMConfigPath->setObjectName(Parameters::kIcpPMConfig().c_str());
@@ -1138,6 +1140,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->doubleSpinBox_icpPMOutlierRatio->setObjectName(Parameters::kIcpPMOutlierRatio().c_str());
 	_ui->spinBox_icpPMMatcherKnn->setObjectName(Parameters::kIcpPMMatcherKnn().c_str());
 	_ui->doubleSpinBox_icpPMMatcherEpsilon->setObjectName(Parameters::kIcpPMMatcherEpsilon().c_str());
+	_ui->loopClosure_icpPMMatcherIntensity->setObjectName(Parameters::kIcpPMMatcherIntensity().c_str());
 
 	// Occupancy grid
 	_ui->groupBox_grid_3d->setObjectName(Parameters::kGrid3D().c_str());
@@ -1983,7 +1986,7 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->doubleSpinBox_source_scanVoxelSize->setValue(0.0f);
 		_ui->spinBox_source_scanNormalsK->setValue(0);
 		_ui->doubleSpinBox_source_scanNormalsRadius->setValue(0.0);
-		_ui->checkBox_source_scanForceGroundNormalsUp->setChecked(false);
+		_ui->doubleSpinBox_source_scanNormalsForceGroundUp->setValue(0);
 
 		_ui->groupBox_depthFromScan->setChecked(false);
 		_ui->groupBox_depthFromScan_fillHoles->setChecked(true);
@@ -2464,7 +2467,7 @@ void PreferencesDialog::readCameraSettings(const QString & filePath)
 	_ui->doubleSpinBox_source_scanVoxelSize->setValue(settings.value("voxelSize", _ui->doubleSpinBox_source_scanVoxelSize->value()).toDouble());
 	_ui->spinBox_source_scanNormalsK->setValue(settings.value("normalsK", _ui->spinBox_source_scanNormalsK->value()).toInt());
 	_ui->doubleSpinBox_source_scanNormalsRadius->setValue(settings.value("normalsRadius", _ui->doubleSpinBox_source_scanNormalsRadius->value()).toDouble());
-	_ui->checkBox_source_scanForceGroundNormalsUp->setChecked(settings.value("normalsUp", _ui->checkBox_source_scanForceGroundNormalsUp->isChecked()).toBool());
+	_ui->doubleSpinBox_source_scanNormalsForceGroundUp->setValue(settings.value("normalsUpF", _ui->doubleSpinBox_source_scanNormalsForceGroundUp->value()).toDouble());
 	settings.endGroup();//Scan
 
 	settings.beginGroup("DepthFromScan");
@@ -2945,7 +2948,7 @@ void PreferencesDialog::writeCameraSettings(const QString & filePath) const
 	settings.setValue("voxelSize", 			_ui->doubleSpinBox_source_scanVoxelSize->value());
 	settings.setValue("normalsK", 			_ui->spinBox_source_scanNormalsK->value());
 	settings.setValue("normalsRadius", 		_ui->doubleSpinBox_source_scanNormalsRadius->value());
-	settings.setValue("normalsUp", 	        _ui->checkBox_source_scanForceGroundNormalsUp->isChecked());
+	settings.setValue("normalsUpF", 	    _ui->doubleSpinBox_source_scanNormalsForceGroundUp->value());
 	settings.endGroup();
 
 	settings.beginGroup("DepthFromScan");
@@ -5579,9 +5582,9 @@ double PreferencesDialog::getSourceScanNormalsRadius() const
 {
 	return _ui->doubleSpinBox_source_scanNormalsRadius->value();
 }
-bool PreferencesDialog::isSourceScanForceGroundNormalsUp() const
+double PreferencesDialog::getSourceScanForceGroundNormalsUp() const
 {
-	return _ui->checkBox_source_scanForceGroundNormalsUp->isChecked();
+	return _ui->doubleSpinBox_source_scanNormalsForceGroundUp->value();
 }
 
 Camera * PreferencesDialog::createCamera(bool useRawImages, bool useColor)
@@ -6263,7 +6266,7 @@ void PreferencesDialog::testOdometry()
 			_ui->doubleSpinBox_source_scanVoxelSize->value(),
 			_ui->spinBox_source_scanNormalsK->value(),
 			_ui->doubleSpinBox_source_scanNormalsRadius->value(),
-			_ui->checkBox_source_scanForceGroundNormalsUp->isChecked());
+			(float)_ui->doubleSpinBox_source_scanNormalsForceGroundUp->value());
 	if(_ui->comboBox_imuFilter_strategy->currentIndex()>0 && dynamic_cast<DBReader*>(camera) == 0)
 	{
 		cameraThread.enableIMUFiltering(_ui->comboBox_imuFilter_strategy->currentIndex()-1, this->getAllParameters());
@@ -6334,7 +6337,7 @@ void PreferencesDialog::testCamera()
 				_ui->doubleSpinBox_source_scanVoxelSize->value(),
 				_ui->spinBox_source_scanNormalsK->value(),
 				_ui->doubleSpinBox_source_scanNormalsRadius->value(),
-				_ui->checkBox_source_scanForceGroundNormalsUp->isChecked());
+				(float)_ui->doubleSpinBox_source_scanNormalsForceGroundUp->value());
 		if(_ui->comboBox_imuFilter_strategy->currentIndex()>0 && dynamic_cast<DBReader*>(camera) == 0)
 		{
 			cameraThread.enableIMUFiltering(_ui->comboBox_imuFilter_strategy->currentIndex()-1, this->getAllParameters());

@@ -72,6 +72,15 @@ public:
 	void enableIMUFiltering(int filteringStrategy=1, const ParametersMap & parameters = ParametersMap());
 	void disableIMUFiltering();
 
+	RTABMAP_DEPRECATED(void setScanParameters(
+			bool fromDepth,
+			int downsampleStep=1, // decimation of the depth image in case the scan is from depth image
+			float rangeMin=0.0f,
+			float rangeMax=0.0f,
+			float voxelSize = 0.0f,
+			int normalsK = 0,
+			int normalsRadius = 0.0f,
+			bool forceGroundNormalsUp = false) , "Use new version of this function with groundNormalsUp=0.8 for forceGroundNormalsUp=True and groundNormalsUp=0.0 for forceGroundNormalsUp=False.");
 	void setScanParameters(
 			bool fromDepth,
 			int downsampleStep=1, // decimation of the depth image in case the scan is from depth image
@@ -80,17 +89,7 @@ public:
 			float voxelSize = 0.0f,
 			int normalsK = 0,
 			int normalsRadius = 0.0f,
-			bool forceGroundNormalsUp = false)
-	{
-		_scanFromDepth = fromDepth;
-		_scanDownsampleStep=downsampleStep;
-		_scanRangeMin = rangeMin;
-		_scanRangeMax = rangeMax;
-		_scanVoxelSize = voxelSize;
-		_scanNormalsK = normalsK;
-		_scanNormalsRadius = normalsRadius;
-		_scanForceGroundNormalsUp = forceGroundNormalsUp;
-	}
+			float groundNormalsUp = 0.0f);
 
 	void postUpdate(SensorData * data, CameraInfo * info = 0) const;
 
@@ -119,7 +118,7 @@ private:
 	float _scanVoxelSize;
 	int _scanNormalsK;
 	float _scanNormalsRadius;
-	bool _scanForceGroundNormalsUp;
+	float _scanForceGroundNormalsUp;
 	StereoDense * _stereoDense;
 	clams::DiscreteDepthDistortionModel * _distortionModel;
 	bool _bilateralFiltering;

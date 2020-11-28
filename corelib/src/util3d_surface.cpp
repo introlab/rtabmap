@@ -3143,6 +3143,62 @@ float computeNormalsComplexity(
 }
 
 float computeNormalsComplexity(
+		const pcl::PointCloud<pcl::PointXYZINormal> & cloud,
+		const Transform & t,
+		bool is2d,
+		cv::Mat * pcaEigenVectors,
+		cv::Mat * pcaEigenValues)
+{
+	 //Construct a buffer used by the pca analysis
+	int sz = static_cast<int>(cloud.size()*2);
+	cv::Mat data_normals = cv::Mat::zeros(sz, is2d?2:3, CV_32FC1);
+	int oi = 0;
+	bool doTransform = false;
+	Transform tn;
+	if(!t.isIdentity())
+	{
+		tn = t.rotation();
+		doTransform = true;
+	}
+	for (unsigned int i = 0; i < cloud.size(); ++i)
+	{
+		const pcl::PointXYZINormal & pt = cloud.at(i);
+		cv::Point3f n(pt.normal_x, pt.normal_y, pt.normal_z);
+		if(doTransform)
+		{
+			n = util3d::transformPoint(n, tn);
+		}
+		if(uIsFinite(pt.normal_x) && uIsFinite(pt.normal_y) && uIsFinite(pt.normal_z))
+		{
+			float * ptr = data_normals.ptr<float>(oi++, 0);
+			ptr[0] = n.x;
+			ptr[1] = n.y;
+			if(!is2d)
+			{
+				ptr[2] = n.z;
+			}
+		}
+	}
+	if(oi>1)
+	{
+		cv::PCA pca_analysis(cv::Mat(data_normals, cv::Range(0, oi*2)), cv::Mat(), CV_PCA_DATA_AS_ROW);
+
+		if(pcaEigenVectors)
+		{
+			*pcaEigenVectors = pca_analysis.eigenvectors;
+		}
+		if(pcaEigenValues)
+		{
+			*pcaEigenValues = pca_analysis.eigenvalues;
+		}
+
+		// Get last eigen value, scale between 0 and 1: 0=low complexity, 1=high complexity
+		return pca_analysis.eigenvalues.at<float>(0, is2d?1:2)*(is2d?2.0f:3.0f);
+	}
+	return 0.0f;
+}
+
+float computeNormalsComplexity(
 		const pcl::PointCloud<pcl::PointXYZRGBNormal> & cloud,
 		const Transform & t,
 		bool is2d,
@@ -3302,12 +3358,20 @@ LaserScan adjustNormalsToViewPoint(
 		const Eigen::Vector3f & viewpoint,
 		bool forceGroundNormalsUp)
 {
+	return adjustNormalsToViewPoint(scan, viewpoint, forceGroundNormalsUp?0.8f:0.0f);
+}
+LaserScan adjustNormalsToViewPoint(
+		const LaserScan & scan,
+		const Eigen::Vector3f & viewpoint,
+		float groundNormalsUp)
+{
 	if(scan.size() && !scan.is2d() && scan.hasNormals())
 	{
 		int nx = scan.getNormalsOffset();
 		int ny = nx+1;
 		int nz = ny+1;
 		cv::Mat output = scan.data().clone();
+		#pragma omp parallel for
 		for(int i=0; i<scan.size(); ++i)
 		{
 			float * ptr = output.ptr<float>(0, i);
@@ -3318,7 +3382,7 @@ LaserScan adjustNormalsToViewPoint(
 
 				float result = v.dot(n);
 				if(result < 0
-				 || (forceGroundNormalsUp && ptr[nz] < -0.8 && ptr[2] < viewpoint[3])) // some far velodyne rays on road can have normals toward ground
+				 || (groundNormalsUp>0.0f && ptr[nz] < -groundNormalsUp && ptr[2] < viewpoint[3])) // some far velodyne rays on road can have normals toward ground
 				{
 					//reverse normal
 					ptr[nx] *= -1.0f;
@@ -3339,10 +3403,11 @@ LaserScan adjustNormalsToViewPoint(
 	return scan;
 }
 
-void adjustNormalsToViewPoint(
-		pcl::PointCloud<pcl::PointNormal>::Ptr & cloud,
+template<typename PointNormalT>
+void adjustNormalsToViewPointImpl(
+		typename pcl::PointCloud<PointNormalT>::Ptr & cloud,
 		const Eigen::Vector3f & viewpoint,
-		bool forceGroundNormalsUp)
+		float groundNormalsUp)
 {
 	for(unsigned int i=0; i<cloud->size(); ++i)
 	{
@@ -3354,7 +3419,7 @@ void adjustNormalsToViewPoint(
 
 			float result = v.dot(n);
 			if(result < 0
-			 || (forceGroundNormalsUp && normal.z < -0.8 && cloud->points[i].z < viewpoint[3])) // some far velodyne rays on road can have normals toward ground
+				|| (groundNormalsUp>0.0f && normal.z < -groundNormalsUp && cloud->points[i].z < viewpoint[3])) // some far velodyne rays on road can have normals toward ground
 			{
 				//reverse normal
 				cloud->points[i].normal_x *= -1.0f;
@@ -3366,29 +3431,48 @@ void adjustNormalsToViewPoint(
 }
 
 void adjustNormalsToViewPoint(
+		pcl::PointCloud<pcl::PointNormal>::Ptr & cloud,
+		const Eigen::Vector3f & viewpoint,
+		bool forceGroundNormalsUp)
+{
+	adjustNormalsToViewPoint(cloud, viewpoint, forceGroundNormalsUp?0.8f:0.0f);
+}
+void adjustNormalsToViewPoint(
+		pcl::PointCloud<pcl::PointNormal>::Ptr & cloud,
+		const Eigen::Vector3f & viewpoint,
+		float groundNormalsUp)
+{
+	adjustNormalsToViewPointImpl<pcl::PointNormal>(cloud, viewpoint, groundNormalsUp);
+}
+
+void adjustNormalsToViewPoint(
 		pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
 		const Eigen::Vector3f & viewpoint,
 		bool forceGroundNormalsUp)
 {
-	for(unsigned int i=0; i<cloud->size(); ++i)
-	{
-		pcl::PointXYZ normal(cloud->points[i].normal_x, cloud->points[i].normal_y, cloud->points[i].normal_z);
-		if(pcl::isFinite(normal))
-		{
-			Eigen::Vector3f v = viewpoint - cloud->points[i].getVector3fMap();
-			Eigen::Vector3f n(normal.x, normal.y, normal.z);
+	adjustNormalsToViewPoint(cloud, viewpoint, forceGroundNormalsUp?0.8f:0.0f);
+}
+void adjustNormalsToViewPoint(
+		pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
+		const Eigen::Vector3f & viewpoint,
+		float groundNormalsUp)
+{
+	adjustNormalsToViewPointImpl<pcl::PointXYZRGBNormal>(cloud, viewpoint, groundNormalsUp);
+}
 
-			float result = v.dot(n);
-			if(result < 0
-				|| (forceGroundNormalsUp && normal.z < -0.8 && cloud->points[i].z < viewpoint[3])) // some far velodyne rays on road can have normals toward ground
-			{
-				//reverse normal
-				cloud->points[i].normal_x *= -1.0f;
-				cloud->points[i].normal_y *= -1.0f;
-				cloud->points[i].normal_z *= -1.0f;
-			}
-		}
-	}
+void adjustNormalsToViewPoint(
+		pcl::PointCloud<pcl::PointXYZINormal>::Ptr & cloud,
+		const Eigen::Vector3f & viewpoint,
+		bool forceGroundNormalsUp)
+{
+	adjustNormalsToViewPoint(cloud, viewpoint, forceGroundNormalsUp?0.8f:0.0f);
+}
+void adjustNormalsToViewPoint(
+		pcl::PointCloud<pcl::PointXYZINormal>::Ptr & cloud,
+		const Eigen::Vector3f & viewpoint,
+		float groundNormalsUp)
+{
+	adjustNormalsToViewPointImpl<pcl::PointXYZINormal>(cloud, viewpoint, groundNormalsUp);
 }
 
 void adjustNormalsToViewPoints(

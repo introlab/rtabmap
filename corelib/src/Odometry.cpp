@@ -308,8 +308,11 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 			}
 			if(stereoModel_.isRectificationMapInitialized())
 			{
-				data.setImageRaw(stereoModel_.left().rectifyImage(data.imageRaw()));
-				data.setDepthOrRightRaw(stereoModel_.right().rectifyImage(data.rightRaw()));
+				data.setStereoImage(
+						stereoModel_.left().rectifyImage(data.imageRaw()),
+						stereoModel_.right().rectifyImage(data.rightRaw()),
+						stereoModel_,
+						false);
 			}
 		}
 		else

@@ -67,8 +67,21 @@ void RTABMAP_EXP computeVarianceAndCorrespondences(
 		double & variance,
 		int & correspondencesOut);
 void RTABMAP_EXP computeVarianceAndCorrespondences(
+		const pcl::PointCloud<pcl::PointXYZINormal>::ConstPtr & cloudA,
+		const pcl::PointCloud<pcl::PointXYZINormal>::ConstPtr & cloudB,
+		double maxCorrespondenceDistance,
+		double maxCorrespondenceAngle, // <=0 means that we don't care about normal angle difference
+		double & variance,
+		int & correspondencesOut);
+void RTABMAP_EXP computeVarianceAndCorrespondences(
 		const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & cloudA,
 		const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & cloudB,
+		double maxCorrespondenceDistance,
+		double & variance,
+		int & correspondencesOut);
+void RTABMAP_EXP computeVarianceAndCorrespondences(
+		const pcl::PointCloud<pcl::PointXYZI>::ConstPtr & cloudA,
+		const pcl::PointCloud<pcl::PointXYZI>::ConstPtr & cloudB,
 		double maxCorrespondenceDistance,
 		double & variance,
 		int & correspondencesOut);
@@ -82,6 +95,15 @@ Transform RTABMAP_EXP icp(
 		pcl::PointCloud<pcl::PointXYZ> & cloud_source_registered,
 		float epsilon = 0.0f,
 		bool icp2D = false);
+Transform RTABMAP_EXP icp(
+		const pcl::PointCloud<pcl::PointXYZI>::ConstPtr & cloud_source,
+		const pcl::PointCloud<pcl::PointXYZI>::ConstPtr & cloud_target,
+		double maxCorrespondenceDistance,
+		int maximumIterations,
+		bool & hasConverged,
+		pcl::PointCloud<pcl::PointXYZI> & cloud_source_registered,
+		float epsilon = 0.0f,
+		bool icp2D = false);
 
 Transform RTABMAP_EXP icpPointToPlane(
 		const pcl::PointCloud<pcl::PointNormal>::ConstPtr & cloud_source,
@@ -90,6 +112,15 @@ Transform RTABMAP_EXP icpPointToPlane(
 		int maximumIterations,
 		bool & hasConverged,
 		pcl::PointCloud<pcl::PointNormal> & cloud_source_registered,
+		float epsilon = 0.0f,
+		bool icp2D = false);
+Transform RTABMAP_EXP icpPointToPlane(
+		const pcl::PointCloud<pcl::PointXYZINormal>::ConstPtr & cloud_source,
+		const pcl::PointCloud<pcl::PointXYZINormal>::ConstPtr & cloud_target,
+		double maxCorrespondenceDistance,
+		int maximumIterations,
+		bool & hasConverged,
+		pcl::PointCloud<pcl::PointXYZINormal> & cloud_source_registered,
 		float epsilon = 0.0f,
 		bool icp2D = false);
 

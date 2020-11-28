@@ -5763,7 +5763,6 @@ void DatabaseViewer::updateConstraintView(
 		}
 
 		constraintsViewer_->removeCloud("scan2");
-		constraintsViewer_->removeCloud("scan2normals");
 		constraintsViewer_->removeGraph("scan2graph");
 		constraintsViewer_->removeCloud("scan0");
 		constraintsViewer_->removeCloud("scan1");
@@ -5771,7 +5770,8 @@ void DatabaseViewer::updateConstraintView(
 		{
 			//cloud 2d
 			if(link.type() == Link::kLocalSpaceClosure &&
-			   !link.userDataCompressed().empty())
+			   !link.userDataCompressed().empty() &&
+			   signatureTo.id()==0)
 			{
 				std::vector<int> ids;
 				cv::Mat userData = link.uncompressUserDataConst();
@@ -5857,6 +5857,8 @@ void DatabaseViewer::updateConstraintView(
 						Transform u = t * finalPoses.at(link.to()).inverse();
 						pcl::PointCloud<pcl::PointXYZ>::Ptr assembledScans(new pcl::PointCloud<pcl::PointXYZ>);
 						pcl::PointCloud<pcl::PointNormal>::Ptr assembledNormalScans(new pcl::PointCloud<pcl::PointNormal>);
+						pcl::PointCloud<pcl::PointXYZI>::Ptr assembledIScans(new pcl::PointCloud<pcl::PointXYZI>);
+						pcl::PointCloud<pcl::PointXYZINormal>::Ptr assembledINormalScans(new pcl::PointCloud<pcl::PointXYZINormal>);
 						pcl::PointCloud<pcl::PointXYZ>::Ptr graph(new pcl::PointCloud<pcl::PointXYZ>);
 						for(std::map<int, Transform>::iterator iter=finalPoses.begin(); iter!=finalPoses.end(); ++iter)
 						{
@@ -5870,9 +5872,17 @@ void DatabaseViewer::updateConstraintView(
 								data.uncompressDataConst(0, 0, &scan, 0);
 								if(!scan.isEmpty())
 								{
-									if(scan.hasNormals())
+									if(scan.hasNormals() && scan.hasIntensity())
+									{
+										*assembledINormalScans += *util3d::laserScanToPointCloudINormal(scan, iter->second*scan.localTransform());
+									}
+									else if(scan.hasNormals())
 									{
 										*assembledNormalScans += *util3d::laserScanToPointCloudNormal(scan, iter->second*scan.localTransform());
+									}
+									else if(scan.hasIntensity())
+									{
+										*assembledIScans += *util3d::laserScanToPointCloudI(scan, iter->second*scan.localTransform());
 									}
 									else
 									{
@@ -5880,17 +5890,27 @@ void DatabaseViewer::updateConstraintView(
 									}
 								}
 							}
-							graph->push_back(pcl::PointXYZ(iter->second.x(), iter->second.y(), iter->second.z()));
+							graph->push_back(util3d::transformPoint(pcl::PointXYZ(iter->second.x(), iter->second.y(), iter->second.z()), pose));
 						}
 
 						if(assembledNormalScans->size())
 						{
-							constraintsViewer_->addCloud("scan2normals", assembledNormalScans, pose, Qt::cyan);
-							constraintsViewer_->setCloudColorIndex("scan2normals", 2);
+							constraintsViewer_->addCloud("scan2", assembledNormalScans, pose, Qt::cyan);
+							constraintsViewer_->setCloudColorIndex("scan2", 2);
 						}
 						if(assembledScans->size())
 						{
 							constraintsViewer_->addCloud("scan2", assembledScans, pose, Qt::cyan);
+							constraintsViewer_->setCloudColorIndex("scan2", 2);
+						}
+						if(assembledINormalScans->size())
+						{
+							constraintsViewer_->addCloud("scan2", assembledINormalScans, pose, Qt::cyan);
+							constraintsViewer_->setCloudColorIndex("scan2", 2);
+						}
+						if(assembledIScans->size())
+						{
+							constraintsViewer_->addCloud("scan2", assembledIScans, pose, Qt::cyan);
 							constraintsViewer_->setCloudColorIndex("scan2", 2);
 						}
 						if(graph->size())
@@ -5906,10 +5926,24 @@ void DatabaseViewer::updateConstraintView(
 			constraintsViewer_->removeCloud("scan1");
 			if(!dataFrom.laserScanRaw().isEmpty())
 			{
-				if(dataFrom.laserScanRaw().hasNormals())
+				if(dataFrom.laserScanRaw().hasNormals() && dataFrom.laserScanRaw().hasIntensity())
+				{
+					pcl::PointCloud<pcl::PointXYZINormal>::Ptr scan;
+					scan = rtabmap::util3d::laserScanToPointCloudINormal(dataFrom.laserScanRaw(), dataFrom.laserScanRaw().localTransform());
+					constraintsViewer_->addCloud("scan0", scan, pose, Qt::yellow);
+					constraintsViewer_->setCloudColorIndex("scan0", 2);
+				}
+				else if(dataFrom.laserScanRaw().hasNormals())
 				{
 					pcl::PointCloud<pcl::PointNormal>::Ptr scan;
 					scan = rtabmap::util3d::laserScanToPointCloudNormal(dataFrom.laserScanRaw(), dataFrom.laserScanRaw().localTransform());
+					constraintsViewer_->addCloud("scan0", scan, pose, Qt::yellow);
+					constraintsViewer_->setCloudColorIndex("scan0", 2);
+				}
+				else if(dataFrom.laserScanRaw().hasIntensity())
+				{
+					pcl::PointCloud<pcl::PointXYZI>::Ptr scan;
+					scan = rtabmap::util3d::laserScanToPointCloudI(dataFrom.laserScanRaw(), dataFrom.laserScanRaw().localTransform());
 					constraintsViewer_->addCloud("scan0", scan, pose, Qt::yellow);
 					constraintsViewer_->setCloudColorIndex("scan0", 2);
 				}
@@ -5923,10 +5957,24 @@ void DatabaseViewer::updateConstraintView(
 			}
 			if(!dataTo.laserScanRaw().isEmpty())
 			{
-				if(dataTo.laserScanRaw().hasNormals())
+				if(dataTo.laserScanRaw().hasNormals() && dataTo.laserScanRaw().hasIntensity())
+				{
+					pcl::PointCloud<pcl::PointXYZINormal>::Ptr scan;
+					scan = rtabmap::util3d::laserScanToPointCloudINormal(dataTo.laserScanRaw(), t*dataTo.laserScanRaw().localTransform());
+					constraintsViewer_->addCloud("scan1", scan, pose, Qt::magenta);
+					constraintsViewer_->setCloudColorIndex("scan1", 2);
+				}
+				else if(dataTo.laserScanRaw().hasNormals())
 				{
 					pcl::PointCloud<pcl::PointNormal>::Ptr scan;
 					scan = rtabmap::util3d::laserScanToPointCloudNormal(dataTo.laserScanRaw(), t*dataTo.laserScanRaw().localTransform());
+					constraintsViewer_->addCloud("scan1", scan, pose, Qt::magenta);
+					constraintsViewer_->setCloudColorIndex("scan1", 2);
+				}
+				else if(dataTo.laserScanRaw().hasIntensity())
+				{
+					pcl::PointCloud<pcl::PointXYZI>::Ptr scan;
+					scan = rtabmap::util3d::laserScanToPointCloudI(dataTo.laserScanRaw(), t*dataTo.laserScanRaw().localTransform());
 					constraintsViewer_->addCloud("scan1", scan, pose, Qt::magenta);
 					constraintsViewer_->setCloudColorIndex("scan1", 2);
 				}
@@ -7167,7 +7215,7 @@ void DatabaseViewer::refineConstraint(int from, int to, bool silent)
 		{
 			UWARN("Assembled scan is empty!");
 		}
-		SensorData assembledData;
+		SensorData assembledData(cv::Mat(), to);
 		// scans are in base frame but for 2d scans, set the height so that correspondences matching works
 		assembledData.setLaserScan(LaserScan(
 				assembledScan,
@@ -7176,8 +7224,9 @@ void DatabaseViewer::refineConstraint(int from, int to, bool silent)
 				fromScan.format(),
 				fromScan.is2d()?Transform(0,0,fromScan.localTransform().z(),0,0,0):Transform::getIdentity()));
 
+		toS = new Signature(assembledData);
 		RegistrationIcp registrationIcp(parameters);
-		transform = registrationIcp.computeTransformation(fromS->sensorData(), assembledData, currentLink.transform(), &info);
+		transform = registrationIcp.computeTransformationMod(*fromS, *toS, currentLink.transform(), &info);
 		if(!transform.isNull())
 		{
 			// local scan matching proximity detection should have higher variance (see Rtabmap::process())
@@ -7926,7 +7975,6 @@ std::multimap<int, rtabmap::Link> DatabaseViewer::updateLinksWithModifications(
 void DatabaseViewer::updateLoopClosuresSlider(int from, int to)
 {
 	UDEBUG("%d %d", from, to);
-	int size = loopLinks_.size();
 	loopLinks_.clear();
 	std::multimap<int, Link> links = updateLinksWithModifications(links_);
 	int position = ui_->horizontalSlider_loops->value();
@@ -7977,7 +8025,7 @@ void DatabaseViewer::updateLoopClosuresSlider(int from, int to)
 		{
 			ui_->horizontalSlider_loops->setValue(position);
 		}
-		else if(size != loopLinks_.size())
+		else
 		{
 			this->updateConstraintView(loopLinks_.at(position));
 		}

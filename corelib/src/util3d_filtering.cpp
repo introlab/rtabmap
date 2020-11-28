@@ -79,11 +79,11 @@ LaserScan commonFiltering(
 		float voxelSize,
 		int normalK,
 		float normalRadius,
-		bool forceGroundNormalsUp)
+		float groundNormalsUp)
 {
 	LaserScan scan = scanIn;
-	UDEBUG("scan size=%d format=%d, step=%d, rangeMin=%f, rangeMax=%f, voxel=%f, normalK=%d, normalRadius=%f",
-			scan.size(), (int)scan.format(), downsamplingStep, rangeMin, rangeMax, voxelSize, normalK, normalRadius);
+	UDEBUG("scan size=%d format=%d, step=%d, rangeMin=%f, rangeMax=%f, voxel=%f, normalK=%d, normalRadius=%f, groundNormalsUp=%f",
+			scan.size(), (int)scan.format(), downsamplingStep, rangeMin, rangeMax, voxelSize, normalK, normalRadius, groundNormalsUp);
 	if(!scan.isEmpty())
 	{
 		// combined downsampling and range filtering step
@@ -293,12 +293,25 @@ LaserScan commonFiltering(
 			}
 		}
 
-		if(scan.size() && !scan.is2d() && scan.hasNormals() && forceGroundNormalsUp)
+		if(scan.size() && !scan.is2d() && scan.hasNormals() && groundNormalsUp>0.0f)
 		{
-			scan = util3d::adjustNormalsToViewPoint(scan, Eigen::Vector3f(0,0,0), forceGroundNormalsUp);
+			scan = util3d::adjustNormalsToViewPoint(scan, Eigen::Vector3f(0,0,10), groundNormalsUp);
 		}
 	}
 	return scan;
+}
+
+LaserScan commonFiltering(
+		const LaserScan & scanIn,
+		int downsamplingStep,
+		float rangeMin,
+		float rangeMax,
+		float voxelSize,
+		int normalK,
+		float normalRadius,
+		bool forceGroundNormalsUp)
+{
+	return commonFiltering(scanIn, downsamplingStep, rangeMin, rangeMax, voxelSize, normalK, normalRadius, forceGroundNormalsUp?0.8f:0.0f);
 }
 
 LaserScan rangeFiltering(
@@ -769,6 +782,10 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr cropBox(const pcl::PointCloud<pcl::PointX
 {
 	return cropBoxImpl<pcl::PointXYZRGB>(cloud, min, max, transform, negative);
 }
+pcl::PointCloud<pcl::PointXYZINormal>::Ptr cropBox(const pcl::PointCloud<pcl::PointXYZINormal>::Ptr & cloud, const Eigen::Vector4f & min, const Eigen::Vector4f & max, const Transform & transform, bool negative)
+{
+	return cropBoxImpl<pcl::PointXYZINormal>(cloud, min, max, transform, negative);
+}
 pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cropBox(const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud, const Eigen::Vector4f & min, const Eigen::Vector4f & max, const Transform & transform, bool negative)
 {
 	return cropBoxImpl<pcl::PointXYZRGBNormal>(cloud, min, max, transform, negative);
@@ -1083,6 +1100,19 @@ pcl::PointCloud<pcl::PointNormal>::Ptr subtractFiltering(
 	pcl::copyPointCloud(*cloud, *indicesOut, *out);
 	return out;
 }
+pcl::PointCloud<pcl::PointXYZINormal>::Ptr subtractFiltering(
+		const pcl::PointCloud<pcl::PointXYZINormal>::Ptr & cloud,
+		const pcl::PointCloud<pcl::PointXYZINormal>::Ptr & substractCloud,
+		float radiusSearch,
+		float maxAngle,
+		int minNeighborsInRadius)
+{
+	pcl::IndicesPtr indices(new std::vector<int>);
+	pcl::IndicesPtr indicesOut = subtractFiltering(cloud, indices, substractCloud, indices, radiusSearch, maxAngle, minNeighborsInRadius);
+	pcl::PointCloud<pcl::PointXYZINormal>::Ptr out(new pcl::PointCloud<pcl::PointXYZINormal>);
+	pcl::copyPointCloud(*cloud, *indicesOut, *out);
+	return out;
+}
 pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr subtractFiltering(
 		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
 		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & substractCloud,
@@ -1236,6 +1266,17 @@ pcl::IndicesPtr subtractFiltering(
 		int minNeighborsInRadius)
 {
 	return subtractFilteringImpl<pcl::PointNormal>(cloud, indices, substractCloud, substractIndices, radiusSearch, maxAngle, minNeighborsInRadius);
+}
+pcl::IndicesPtr subtractFiltering(
+		const pcl::PointCloud<pcl::PointXYZINormal>::Ptr & cloud,
+		const pcl::IndicesPtr & indices,
+		const pcl::PointCloud<pcl::PointXYZINormal>::Ptr & substractCloud,
+		const pcl::IndicesPtr & substractIndices,
+		float radiusSearch,
+		float maxAngle,
+		int minNeighborsInRadius)
+{
+	return subtractFilteringImpl<pcl::PointXYZINormal>(cloud, indices, substractCloud, substractIndices, radiusSearch, maxAngle, minNeighborsInRadius);
 }
 pcl::IndicesPtr subtractFiltering(
 		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,

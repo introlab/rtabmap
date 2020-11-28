@@ -56,7 +56,16 @@ LaserScan RTABMAP_EXP commonFiltering(
 		float voxelSize = 0.0f,
 		int normalK = 0,
 		float normalRadius = 0.0f,
-		bool forceGroundNormalsUp = false);
+		float groundNormalsUp = 0.0f);
+RTABMAP_DEPRECATED(LaserScan RTABMAP_EXP commonFiltering(
+		const LaserScan & scan,
+		int downsamplingStep,
+		float rangeMin,
+		float rangeMax,
+		float voxelSize,
+		int normalK,
+		float normalRadius,
+		bool forceGroundNormalsUp), "Use version with groundNormalsUp as float. For forceGroundNormalsUp=true, set groundNormalsUp=0.8, otherwise set groundNormalsUp=0.0.");
 
 LaserScan RTABMAP_EXP rangeFiltering(
 		const LaserScan & scan,
@@ -288,6 +297,12 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_EXP cropBox(
 		const Eigen::Vector4f & max,
 		const Transform & transform = Transform::getIdentity(),
 		bool negative = false);
+pcl::PointCloud<pcl::PointXYZINormal>::Ptr RTABMAP_EXP cropBox(
+		const pcl::PointCloud<pcl::PointXYZINormal>::Ptr & cloud,
+		const Eigen::Vector4f & min,
+		const Eigen::Vector4f & max,
+		const Transform & transform = Transform::getIdentity(),
+		bool negative = false);
 pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr RTABMAP_EXP cropBox(
 		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
 		const Eigen::Vector4f & min,
@@ -451,6 +466,12 @@ pcl::IndicesPtr RTABMAP_EXP subtractFiltering(
 /**
  * For convenience.
  */
+pcl::PointCloud<pcl::PointXYZINormal>::Ptr RTABMAP_EXP subtractFiltering(
+		const pcl::PointCloud<pcl::PointXYZINormal>::Ptr & cloud,
+		const pcl::PointCloud<pcl::PointXYZINormal>::Ptr & substractCloud,
+		float radiusSearch,
+		float maxAngle = M_PI/4.0f,
+		int minNeighborsInRadius = 1);
 pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr RTABMAP_EXP subtractFiltering(
 		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
 		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & substractCloud,
@@ -467,6 +488,14 @@ pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr RTABMAP_EXP subtractFiltering(
  * @param radiusSearch the radius in meter.
  * @return the indices of the points satisfying the parameters.
  */
+pcl::IndicesPtr RTABMAP_EXP subtractFiltering(
+		const pcl::PointCloud<pcl::PointXYZINormal>::Ptr & cloud,
+		const pcl::IndicesPtr & indices,
+		const pcl::PointCloud<pcl::PointXYZINormal>::Ptr & substractCloud,
+		const pcl::IndicesPtr & substractIndices,
+		float radiusSearch,
+		float maxAngle = M_PI/4.0f,
+		int minNeighborsInRadius = 1);
 pcl::IndicesPtr RTABMAP_EXP subtractFiltering(
 		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,

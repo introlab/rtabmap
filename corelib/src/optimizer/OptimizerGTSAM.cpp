@@ -138,6 +138,7 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 		{
 			UASSERT(uContains(poses, rootId));
 			const Transform & initialPose = poses.at(rootId);
+			UDEBUG("hasPriorPoses=%s, gpsPriorOnly=%s", hasPriorPoses?"true":"false", gpsPriorOnly?"true":"false");
 			if(isSlam2d())
 			{
 				gtsam::noiseModel::Diagonal::shared_ptr priorNoise = gtsam::noiseModel::Diagonal::Variances(gtsam::Vector3(0.01, 0.01, hasPriorPoses?1e-2:std::numeric_limits<double>::min()));

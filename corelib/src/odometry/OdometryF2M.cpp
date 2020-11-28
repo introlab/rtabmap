@@ -591,14 +591,9 @@ Transform OdometryF2M::computeTransform(
 						  visKeyFrameThr_ == 0 ||
 						  float(regInfo.inliers) <= (keyFrameThr_*float(lastFrame_->getWords().size())) ||
 						  regInfo.inliers <= visKeyFrameThr_);
-				float minComplexity = Parameters::defaultIcpPointToPlaneMinComplexity();
-				bool p2n = Parameters::defaultIcpPointToPlane();
-				Parameters::parse(parameters_, Parameters::kIcpPointToPlane(), p2n);
-				Parameters::parse(parameters_, Parameters::kIcpPointToPlaneMinComplexity(), minComplexity);
-				bool addGeometricKeyFrame =
-					regPipeline_->isScanRequired() &&
-					(scanKeyFrameThr_==0 || regInfo.icpInliersRatio <= scanKeyFrameThr_) &&
-					(addVisualKeyFrame || !p2n || regInfo.icpStructuralComplexity>=minComplexity);
+
+				bool addGeometricKeyFrame = regPipeline_->isScanRequired() &&
+					(scanKeyFrameThr_==0 || regInfo.icpInliersRatio <= scanKeyFrameThr_);
 
 				addKeyFrame = false;//bundleLinks.rbegin()->second.transform().getNorm() > 5.0f*0.075f;
 				addKeyFrame = addKeyFrame || addVisualKeyFrame || addGeometricKeyFrame;
@@ -955,14 +950,13 @@ Transform OdometryF2M::computeTransform(
 
 					if(lastFrame_->sensorData().laserScanRaw().size())
 					{
-						pcl::PointCloud<pcl::PointNormal>::Ptr mapCloudNormals = util3d::laserScanToPointCloudNormal(mapScan, tmpMap.sensorData().laserScanRaw().localTransform());
+						pcl::PointCloud<pcl::PointXYZINormal>::Ptr mapCloudNormals = util3d::laserScanToPointCloudINormal(mapScan, tmpMap.sensorData().laserScanRaw().localTransform());
 						Transform viewpoint =  newFramePose * lastFrame_->sensorData().laserScanRaw().localTransform();
-						pcl::PointCloud<pcl::PointNormal>::Ptr frameCloudNormals (new pcl::PointCloud<pcl::PointNormal>());
+						pcl::PointCloud<pcl::PointXYZINormal>::Ptr frameCloudNormals (new pcl::PointCloud<pcl::PointXYZINormal>());
 						
 						if(scanMapMaxRange_ > 0)
 						{
-							frameCloudNormals = util3d::laserScanToPointCloudNormal(
-									lastFrame_->sensorData().laserScanRaw());
+							frameCloudNormals = util3d::laserScanToPointCloudINormal(lastFrame_->sensorData().laserScanRaw());
 							frameCloudNormals = util3d::cropBox(frameCloudNormals,
 									Eigen::Vector4f(-scanMapMaxRange_ / 2, -scanMapMaxRange_ / 2,-scanMapMaxRange_ / 2, 0),
 									Eigen::Vector4f(scanMapMaxRange_ / 2,scanMapMaxRange_ / 2,scanMapMaxRange_ / 2, 0)
@@ -970,8 +964,7 @@ Transform OdometryF2M::computeTransform(
 							frameCloudNormals = util3d::transformPointCloud(frameCloudNormals, viewpoint);
 						} else
 						{
-							frameCloudNormals = util3d::laserScanToPointCloudNormal(
-									lastFrame_->sensorData().laserScanRaw(), viewpoint);
+							frameCloudNormals = util3d::laserScanToPointCloudINormal(lastFrame_->sensorData().laserScanRaw(), viewpoint);
 						}
 						
 						pcl::IndicesPtr frameCloudNormalsIndices(new std::vector<int>);
@@ -998,7 +991,7 @@ Transform OdometryF2M::computeTransform(
 							if (scanMapMaxRange_ > 0) {
 								// Copying new points to tmp cloud
 								// These are the points that have no overlap between mapScan and lastFrame
-								pcl::PointCloud<pcl::PointNormal> tmp;
+								pcl::PointCloud<pcl::PointXYZINormal> tmp;
 								pcl::copyPointCloud(*frameCloudNormals, *frameCloudNormalsIndices, tmp);
 
 								if (int(mapCloudNormals->size() + newPoints) > scanMaximumMapSize_) // 20 000 points
@@ -1058,7 +1051,7 @@ Transform OdometryF2M::computeTransform(
 										{
 											if(scansBuffer_[i].second->size())
 											{
-												pcl::PointCloud<pcl::PointNormal> tmp;
+												pcl::PointCloud<pcl::PointXYZINormal> tmp;
 												pcl::copyPointCloud(*scansBuffer_[i].first, *scansBuffer_[i].second, tmp);
 												*mapCloudNormals += tmp;
 											}
@@ -1071,7 +1064,7 @@ Transform OdometryF2M::computeTransform(
 									// remove old clouds
 									if(i > 0)
 									{
-										std::vector<std::pair<pcl::PointCloud<pcl::PointNormal>::Ptr, pcl::IndicesPtr> > scansTmp(scansBuffer_.size()-i);
+										std::vector<std::pair<pcl::PointCloud<pcl::PointXYZINormal>::Ptr, pcl::IndicesPtr> > scansTmp(scansBuffer_.size()-i);
 										int oi = 0;
 										for(; i<(int)scansBuffer_.size(); ++i)
 										{
@@ -1086,7 +1079,7 @@ Transform OdometryF2M::computeTransform(
 									// just append the last cloud
 									if(scansBuffer_.back().second->size())
 									{
-										pcl::PointCloud<pcl::PointNormal> tmp;
+										pcl::PointCloud<pcl::PointXYZINormal> tmp;
 										pcl::copyPointCloud(*scansBuffer_.back().first, *scansBuffer_.back().second, tmp);
 										*mapCloudNormals += tmp;
 									}
@@ -1100,12 +1093,12 @@ Transform OdometryF2M::computeTransform(
 							if(mapScan.is2d())
 							{
 								Transform mapViewpoint(-newFramePose.x(), -newFramePose.y(),0,0,0,0);
-								mapScan = LaserScan(util3d::laserScan2dFromPointCloud(*mapCloudNormals, mapViewpoint), 0, 0.0f, LaserScan::kXYNormal);
+								mapScan = LaserScan(util3d::laserScan2dFromPointCloud(*mapCloudNormals, mapViewpoint), 0, 0.0f, LaserScan::kXYINormal);
 							}
 							else
 							{
 								Transform mapViewpoint(-newFramePose.x(), -newFramePose.y(), -newFramePose.z(),0,0,0);
-								mapScan = LaserScan(util3d::laserScanFromPointCloud(*mapCloudNormals, mapViewpoint), 0, 0.0f, LaserScan::kXYZNormal);
+								mapScan = LaserScan(util3d::laserScanFromPointCloud(*mapCloudNormals, mapViewpoint), 0, 0.0f, LaserScan::kXYZINormal);
 							}
 							modified=true;
 						}
@@ -1311,7 +1304,7 @@ Transform OdometryF2M::computeTransform(
 			{
 				if (lastFrame_->sensorData().laserScanRaw().size())
 				{
-					pcl::PointCloud<pcl::PointNormal>::Ptr mapCloudNormals = util3d::laserScanToPointCloudNormal(lastFrame_->sensorData().laserScanRaw(), newFramePose * lastFrame_->sensorData().laserScanRaw().localTransform());
+					pcl::PointCloud<pcl::PointXYZINormal>::Ptr mapCloudNormals = util3d::laserScanToPointCloudINormal(lastFrame_->sensorData().laserScanRaw(), newFramePose * lastFrame_->sensorData().laserScanRaw().localTransform());
 
 					double complexity = 0.0;;
 					if(!frameValid)
@@ -1357,7 +1350,7 @@ Transform OdometryF2M::computeTransform(
 											util3d::laserScan2dFromPointCloud(*mapCloudNormals, mapViewpoint),
 											0,
 											0.0f,
-											LaserScan::kXYNormal,
+											LaserScan::kXYINormal,
 											Transform(newFramePose.x(), newFramePose.y(), lastFrame_->sensorData().laserScanRaw().localTransform().z(),0,0,0)));
 						}
 						else
@@ -1368,7 +1361,7 @@ Transform OdometryF2M::computeTransform(
 											util3d::laserScanFromPointCloud(*mapCloudNormals, mapViewpoint),
 											0,
 											0.0f,
-											LaserScan::kXYZNormal,
+											LaserScan::kXYZINormal,
 											newFramePose.translation()));
 						}
 

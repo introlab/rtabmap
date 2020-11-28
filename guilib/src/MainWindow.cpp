@@ -1153,17 +1153,42 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 				{
 					if(!lost)
 					{
-						pcl::PointCloud<pcl::PointNormal>::Ptr cloud;
-						cloud = util3d::laserScanToPointCloudNormal(odom.info().localScanMap, odom.info().localScanMap.localTransform());
-						bool scanAdded = _cloudViewer->getAddedClouds().contains("scanMapOdom");
-						if(!_cloudViewer->addCloud("scanMapOdom", cloud, _odometryCorrection, Qt::blue))
+						bool scanAlreadyThere = _cloudViewer->getAddedClouds().contains("scanMapOdom");
+						bool scanAdded = false;
+						if(odom.info().localScanMap.hasIntensity() && odom.info().localScanMap.hasNormals())
+						{
+							scanAdded = _cloudViewer->addCloud("scanMapOdom",
+									util3d::laserScanToPointCloudINormal(odom.info().localScanMap, odom.info().localScanMap.localTransform()),
+									_odometryCorrection, Qt::blue);
+						}
+						else if(odom.info().localScanMap.hasNormals())
+						{
+							scanAdded = _cloudViewer->addCloud("scanMapOdom",
+									util3d::laserScanToPointCloudNormal(odom.info().localScanMap, odom.info().localScanMap.localTransform()),
+									_odometryCorrection, Qt::blue);
+						}
+						else if(odom.info().localScanMap.hasIntensity())
+						{
+							scanAdded = _cloudViewer->addCloud("scanMapOdom",
+									util3d::laserScanToPointCloudI(odom.info().localScanMap, odom.info().localScanMap.localTransform()),
+									_odometryCorrection, Qt::blue);
+						}
+						else
+						{
+							scanAdded = _cloudViewer->addCloud("scanMapOdom",
+									util3d::laserScanToPointCloud(odom.info().localScanMap, odom.info().localScanMap.localTransform()),
+									_odometryCorrection, Qt::blue);
+						}
+
+
+						if(!scanAdded)
 						{
 							UERROR("Adding scanMapOdom to viewer failed!");
 						}
 						else
 						{
 							_cloudViewer->setCloudVisibility("scanMapOdom", true);
-							_cloudViewer->setCloudColorIndex("scanMapOdom", scanAdded && _preferencesDialog->getScanColorScheme(1)==0 && odom.info().localScanMap.is2d()?2:_preferencesDialog->getScanColorScheme(1));
+							_cloudViewer->setCloudColorIndex("scanMapOdom", scanAlreadyThere && _preferencesDialog->getScanColorScheme(1)==0 && odom.info().localScanMap.is2d()?2:_preferencesDialog->getScanColorScheme(1));
 							_cloudViewer->setCloudOpacity("scanMapOdom", _preferencesDialog->getScanOpacity(1));
 							_cloudViewer->setCloudPointSize("scanMapOdom", _preferencesDialog->getScanPointSize(1));
 						}
@@ -1184,23 +1209,58 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 								_preferencesDialog->getScanMinRange(1),
 								_preferencesDialog->getScanMaxRange(1));
 					}
+					bool scanAlreadyThere = _cloudViewer->getAddedClouds().contains("scanOdom");
+					bool scanAdded = false;
 
-					pcl::PointCloud<pcl::PointNormal>::Ptr cloud;
-					cloud = util3d::laserScanToPointCloudNormal(scan, pose*scan.localTransform());
-					if(_preferencesDialog->getCloudVoxelSizeScan(1) > 0.0)
+					if(odom.info().localScanMap.hasIntensity() && odom.info().localScanMap.hasNormals())
 					{
-						cloud = util3d::voxelize(cloud, _preferencesDialog->getCloudVoxelSizeScan(1));
+						pcl::PointCloud<pcl::PointXYZINormal>::Ptr cloud;
+						cloud = util3d::laserScanToPointCloudINormal(scan, pose*scan.localTransform());
+						if(_preferencesDialog->getCloudVoxelSizeScan(1) > 0.0)
+						{
+							cloud = util3d::voxelize(cloud, _preferencesDialog->getCloudVoxelSizeScan(1));
+						}
+						scanAdded = _cloudViewer->addCloud("scanOdom", cloud, _odometryCorrection, Qt::magenta);
+					}
+					else if(odom.info().localScanMap.hasNormals())
+					{
+						pcl::PointCloud<pcl::PointNormal>::Ptr cloud;
+						cloud = util3d::laserScanToPointCloudNormal(scan, pose*scan.localTransform());
+						if(_preferencesDialog->getCloudVoxelSizeScan(1) > 0.0)
+						{
+							cloud = util3d::voxelize(cloud, _preferencesDialog->getCloudVoxelSizeScan(1));
+						}
+						scanAdded = _cloudViewer->addCloud("scanOdom", cloud, _odometryCorrection, Qt::magenta);
+					}
+					else if(odom.info().localScanMap.hasIntensity())
+					{
+						pcl::PointCloud<pcl::PointXYZI>::Ptr cloud;
+						cloud = util3d::laserScanToPointCloudI(scan, pose*scan.localTransform());
+						if(_preferencesDialog->getCloudVoxelSizeScan(1) > 0.0)
+						{
+							cloud = util3d::voxelize(cloud, _preferencesDialog->getCloudVoxelSizeScan(1));
+						}
+						scanAdded = _cloudViewer->addCloud("scanOdom", cloud, _odometryCorrection, Qt::magenta);
+					}
+					else
+					{
+						pcl::PointCloud<pcl::PointXYZ>::Ptr cloud;
+						cloud = util3d::laserScanToPointCloud(scan, pose*scan.localTransform());
+						if(_preferencesDialog->getCloudVoxelSizeScan(1) > 0.0)
+						{
+							cloud = util3d::voxelize(cloud, _preferencesDialog->getCloudVoxelSizeScan(1));
+						}
+						scanAdded = _cloudViewer->addCloud("scanOdom", cloud, _odometryCorrection, Qt::magenta);
 					}
 
-					bool scanAdded = !_cloudViewer->getAddedClouds().contains("scanOdom");
-					if(!_cloudViewer->addCloud("scanOdom", cloud, _odometryCorrection, Qt::magenta))
+					if(!scanAdded)
 					{
 						UERROR("Adding scanOdom to viewer failed!");
 					}
 					else
 					{
 						_cloudViewer->setCloudVisibility("scanOdom", true);
-						_cloudViewer->setCloudColorIndex("scanOdom", scanAdded && _preferencesDialog->getScanColorScheme(1)==0 && scan.is2d()?2:_preferencesDialog->getScanColorScheme(1));
+						_cloudViewer->setCloudColorIndex("scanOdom", scanAlreadyThere && _preferencesDialog->getScanColorScheme(1)==0 && scan.is2d()?2:_preferencesDialog->getScanColorScheme(1));
 						_cloudViewer->setCloudOpacity("scanOdom", _preferencesDialog->getScanOpacity(1));
 						_cloudViewer->setCloudPointSize("scanOdom", _preferencesDialog->getScanPointSize(1));
 						scanUpdated = true;
@@ -5214,7 +5274,7 @@ void MainWindow::startDetection()
 			_preferencesDialog->getSourceScanVoxelSize(),
 			_preferencesDialog->getSourceScanNormalsK(),
 			_preferencesDialog->getSourceScanNormalsRadius(),
-			_preferencesDialog->isSourceScanForceGroundNormalsUp());
+			(float)_preferencesDialog->getSourceScanForceGroundNormalsUp());
 	if(_preferencesDialog->getIMUFilteringStrategy()>0 && dynamic_cast<DBReader*>(camera) == 0)
 	{
 		_camera->enableIMUFiltering(_preferencesDialog->getIMUFilteringStrategy()-1, parameters);

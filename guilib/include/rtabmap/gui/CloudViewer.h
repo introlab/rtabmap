@@ -295,6 +295,8 @@ public:
 	void clearTrajectory();
 	bool isCameraAxisShown() const;
 	void setCameraAxisShown(bool shown);
+	double getCoordinateFrameScale() const;
+	void setCoordinateFrameScale(double scale);
 	bool isFrustumShown() const;
 	float getFrustumScale() const;
 	QColor getFrustumColor() const;
@@ -367,8 +369,10 @@ public:
 	void setNormalsStep(int step);
 	void setNormalsScale(float scale);
 	bool isIntensityRedColormap() const;
+	bool isIntensityRainbowColormap() const;
 	float getIntensityMax() const;
 	void setIntensityRedColormap(bool value);
+	void setIntensityRainbowColormap(bool value);
 	void setIntensityMax(float value);
 	void buildPickingLocator(bool enable);
 	const std::map<std::string, vtkSmartPointer<vtkOBBTree> > & getLocators() const {return _locators;}
@@ -412,6 +416,7 @@ private:
     QAction * _aSetTrajectorySize;
     QAction * _aClearTrajectory;
     QAction * _aShowCameraAxis;
+    QAction * _aSetFrameScale;
     QAction * _aShowFrustum;
     QAction * _aSetFrustumScale;
     QAction * _aSetFrustumColor;
@@ -422,6 +427,7 @@ private:
 	QAction * _aSetNormalsStep;
 	QAction * _aSetNormalsScale;
 	QAction * _aSetIntensityRedColormap;
+	QAction * _aSetIntensityRainbowColormap;
 	QAction * _aSetIntensityMaximum;
     QAction * _aSetBackgroundColor;
     QAction * _aSetRenderingRate;
@@ -462,6 +468,7 @@ private:
     double _renderingRate;
     vtkProp * _octomapActor;
     float _intensityAbsMax;
+    double  _coordinateFrameScale;
 };
 
 } /* namespace rtabmap */
