@@ -23,9 +23,9 @@
       <property name="geometry">
        <rect>
         <x>0</x>
-        <y>-547</y>
+        <y>0</y>
         <width>780</width>
-        <height>4944</height>
+        <height>4975</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_13">
@@ -52,21 +52,21 @@
            </property>
           </widget>
          </item>
-         <item row="9" column="0">
+         <item row="10" column="0">
           <widget class="QCheckBox" name="checkBox_regenerate">
            <property name="text">
             <string/>
            </property>
           </widget>
          </item>
-         <item row="10" column="0">
+         <item row="11" column="0">
           <widget class="QCheckBox" name="checkBox_filtering">
            <property name="text">
             <string/>
            </property>
           </widget>
          </item>
-         <item row="9" column="1">
+         <item row="10" column="1">
           <widget class="QLabel" name="label_regenerate">
            <property name="text">
             <string>Regenerate clouds. This can be used to regenerate the point clouds at higher density than those used for online visualization.</string>
@@ -76,7 +76,7 @@
            </property>
           </widget>
          </item>
-         <item row="12" column="0">
+         <item row="13" column="0">
           <widget class="QCheckBox" name="checkBox_gainCompensation">
            <property name="text">
             <string/>
@@ -103,7 +103,7 @@
            </property>
           </widget>
          </item>
-         <item row="12" column="1">
+         <item row="13" column="1">
           <widget class="QLabel" name="label_gainCompensation">
            <property name="text">
             <string>Gain compensation. Normalize brightness of images.</string>
@@ -133,7 +133,7 @@
            </property>
           </widget>
          </item>
-         <item row="13" column="1">
+         <item row="14" column="1">
           <widget class="QLabel" name="label_binaryFile_12">
            <property name="text">
             <string>Meshing.</string>
@@ -143,14 +143,14 @@
            </property>
           </widget>
          </item>
-         <item row="11" column="0">
+         <item row="12" column="0">
           <widget class="QCheckBox" name="checkBox_smoothing">
            <property name="text">
             <string/>
            </property>
           </widget>
          </item>
-         <item row="10" column="1">
+         <item row="11" column="1">
           <widget class="QLabel" name="label_binaryFile_9">
            <property name="text">
             <string>Cloud filtering. Remove sparse points that are far from surfaces.</string>
@@ -160,7 +160,7 @@
            </property>
           </widget>
          </item>
-         <item row="13" column="0">
+         <item row="14" column="0">
           <widget class="QCheckBox" name="checkBox_meshing">
            <property name="text">
             <string/>
@@ -177,7 +177,7 @@
            </property>
           </widget>
          </item>
-         <item row="11" column="1">
+         <item row="12" column="1">
           <widget class="QLabel" name="label_smoothing">
            <property name="text">
             <string>Cloud smoothing using Moving Least Squares algorithm (MLS).</string>
@@ -292,6 +292,35 @@
            <property name="singleStep">
             <double>0.010000000000000</double>
            </property>
+          </widget>
+         </item>
+         <item row="9" column="1">
+          <widget class="QLabel" name="label_intensityColormap">
+           <property name="text">
+            <string>Intensity colormap.</string>
+           </property>
+           <property name="wordWrap">
+            <bool>true</bool>
+           </property>
+          </widget>
+         </item>
+         <item row="9" column="0">
+          <widget class="QComboBox" name="comboBox_intensityColormap">
+           <item>
+            <property name="text">
+             <string>GrayScale</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>RedYellow</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>Rainbow</string>
+            </property>
+           </item>
           </widget>
          </item>
         </layout>

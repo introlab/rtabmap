@@ -303,6 +303,7 @@ void ExportCloudsDialog::saveSettings(QSettings & settings, const QString & grou
 	settings.setValue("binary", _ui->checkBox_binary->isChecked());
 	settings.setValue("normals_k", _ui->spinBox_normalKSearch->value());
 	settings.setValue("normals_radius", _ui->doubleSpinBox_normalRadiusSearch->value());
+	settings.setValue("intensity_colormap", _ui->comboBox_intensityColormap->currentIndex());
 
 	settings.setValue("regenerate", _ui->checkBox_regenerate->isChecked());
 	settings.setValue("regenerate_decimation", _ui->spinBox_decimation->value());
@@ -440,6 +441,7 @@ void ExportCloudsDialog::loadSettings(QSettings & settings, const QString & grou
 	_ui->checkBox_binary->setChecked(settings.value("binary", _ui->checkBox_binary->isChecked()).toBool());
 	_ui->spinBox_normalKSearch->setValue(settings.value("normals_k", _ui->spinBox_normalKSearch->value()).toInt());
 	_ui->doubleSpinBox_normalRadiusSearch->setValue(settings.value("normals_radius", _ui->doubleSpinBox_normalRadiusSearch->value()).toDouble());
+	_ui->comboBox_intensityColormap->setCurrentIndex(settings.value("intensity_colormap", _ui->comboBox_intensityColormap->currentIndex()).toInt());
 
 	_ui->checkBox_regenerate->setChecked(settings.value("regenerate", _ui->checkBox_regenerate->isChecked()).toBool());
 	_ui->spinBox_decimation->setValue(settings.value("regenerate_decimation", _ui->spinBox_decimation->value()).toInt());
@@ -580,6 +582,7 @@ void ExportCloudsDialog::restoreDefaults()
 	_ui->checkBox_binary->setChecked(true);
 	_ui->spinBox_normalKSearch->setValue(20);
 	_ui->doubleSpinBox_normalRadiusSearch->setValue(0.0);
+	_ui->comboBox_intensityColormap->setCurrentIndex(0);
 
 	_ui->checkBox_regenerate->setChecked(_dbDriver!=0?true:false);
 	_ui->spinBox_decimation->setValue(1);
@@ -756,6 +759,9 @@ void ExportCloudsDialog::updateReconstructionFlavor()
 			_ui->comboBox_frame->setCurrentIndex(0);
 		}
 	}
+	_ui->comboBox_intensityColormap->setVisible(!_ui->checkBox_fromDepth->isChecked() && !_ui->checkBox_binary->isEnabled());
+	_ui->comboBox_intensityColormap->setEnabled(!_ui->checkBox_fromDepth->isChecked() && !_ui->checkBox_binary->isEnabled());
+	_ui->label_intensityColormap->setVisible(!_ui->checkBox_fromDepth->isChecked() && !_ui->checkBox_binary->isEnabled());
 
 	_ui->checkBox_smoothing->setVisible(_ui->comboBox_pipeline->currentIndex() == 1);
 	_ui->checkBox_smoothing->setEnabled(_ui->comboBox_pipeline->currentIndex() == 1);
@@ -1005,6 +1011,14 @@ void ExportCloudsDialog::viewClouds(
 		viewer->setLighting(false);
 		viewer->setDefaultBackgroundColor(QColor(40, 40, 40, 255));
 		viewer->buildPickingLocator(true);
+		if(_ui->comboBox_intensityColormap->currentIndex()==1)
+		{
+			viewer->setIntensityRedColormap(true);
+		}
+		else if(_ui->comboBox_intensityColormap->currentIndex() == 2)
+		{
+			viewer->setIntensityRainbowColormap(true);
+		}
 
 		QVBoxLayout *layout = new QVBoxLayout();
 		layout->addWidget(viewer);
