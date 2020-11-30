@@ -32,6 +32,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/util3d_transforms.h>
 #include <rtabmap/core/util3d_filtering.h>
 #include <rtabmap/core/util3d_mapping.h>
+#include <rtabmap/core/util2d.h>
 #include <pcl/common/transforms.h>
 
 namespace rtabmap {
@@ -886,55 +887,6 @@ void OctoMap::updateMinMax(const octomap::point3d & point)
 	}
 }
 
-void OctoMap::HSVtoRGB( float *r, float *g, float *b, float h, float s, float v )
-{
-	int i;
-	float f, p, q, t;
-	if( s == 0 ) {
-		// achromatic (grey)
-		*r = *g = *b = v;
-		return;
-	}
-	h /= 60;			// sector 0 to 5
-	i = floor( h );
-	f = h - i;			// factorial part of h
-	p = v * ( 1 - s );
-	q = v * ( 1 - s * f );
-	t = v * ( 1 - s * ( 1 - f ) );
-	switch( i ) {
-		case 0:
-			*r = v;
-			*g = t;
-			*b = p;
-			break;
-		case 1:
-			*r = q;
-			*g = v;
-			*b = p;
-			break;
-		case 2:
-			*r = p;
-			*g = v;
-			*b = t;
-			break;
-		case 3:
-			*r = p;
-			*g = q;
-			*b = v;
-			break;
-		case 4:
-			*r = t;
-			*g = p;
-			*b = v;
-			break;
-		default:		// case 5:
-			*r = v;
-			*g = p;
-			*b = q;
-			break;
-	}
-}
-
 pcl::PointCloud<pcl::PointXYZRGB>::Ptr OctoMap::createCloud(
 		unsigned int treeDepth,
 		std::vector<int> * obstacleIndices,
@@ -1003,7 +955,7 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr OctoMap::createCloud(
 				// Gradiant color on z axis
 				float H = (maxZ - pt.z())*299.0f/(maxZ-minZ);
 				float r,g,b;
-				HSVtoRGB(&r, &g, &b, H, 1, 1);
+				util2d::HSVtoRGB(&r, &g, &b, H, 1, 1);
 				(*cloud)[oi].r = r*255.0f;
 				(*cloud)[oi].g = g*255.0f;
 				(*cloud)[oi].b = b*255.0f;

@@ -169,9 +169,6 @@ class RtabmapColorOcTree : public octomap::OccupancyOcTreeBase <RtabmapColorOcTr
 
 class RTABMAP_EXP OctoMap {
 public:
-	static void HSVtoRGB(float *r, float *g, float *b, float h, float s, float v);
-
-public:
 	OctoMap(const ParametersMap & parameters);
 	OctoMap(float cellSize = 0.1f, float occupancyThr = 0.5f, bool fullUpdate = false, float updateError=0.01f);
 

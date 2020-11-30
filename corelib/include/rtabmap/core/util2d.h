@@ -154,6 +154,8 @@ cv::Mat RTABMAP_EXP brightnessAndContrastAuto(
 cv::Mat RTABMAP_EXP exposureFusion(
 	const std::vector<cv::Mat> & images);
 
+void RTABMAP_EXP HSVtoRGB( float *r, float *g, float *b, float h, float s, float v );
+
 } // namespace util3d
 } // namespace rtabmap
 

@@ -35,6 +35,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UMath.h>
 #include <rtabmap/utilite/UConversion.h>
 #include <rtabmap/utilite/UStl.h>
+#include <rtabmap/core/util2d.h>
 #include <pcl/visualization/pcl_visualizer.h>
 #include <pcl/common/transforms.h>
 #include <QMenu>
@@ -656,7 +657,7 @@ public:
 				else if(colormap_ == 2)
 				{
 					float r,g,b;
-					OctoMap::HSVtoRGB(&r, &g, &b, colors[k*3+0]*299.0f/255.0f, 1.0f, 1.0f);
+					util2d::HSVtoRGB(&r, &g, &b, colors[k*3+0]*299.0f/255.0f, 1.0f, 1.0f);
 					colors[k*3+0] = r*255.0f;
 					colors[k*3+1] = g*255.0f;
 					colors[k*3+2] = b*255.0f;
@@ -1207,7 +1208,7 @@ bool CloudViewer::addOctomap(const OctoMap * octomap, unsigned int treeDepth, bo
 							// Gradiant color on z axis
 							float H = (maxZ - pt.z())*299.0f/(maxZ-minZ);
 							float r,g,b;
-							OctoMap::HSVtoRGB(&r, &g, &b, H, 1, 1);
+							util2d::HSVtoRGB(&r, &g, &b, H, 1, 1);
 							pixel[0] = r*255.0f;
 							pixel[1] = g*255.0f;
 							pixel[2] = b*255.0f;
