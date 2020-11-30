@@ -592,10 +592,11 @@ void RegistrationIcp::parseParameters(const ParametersMap & parameters)
 			{
 				PointMatcher<float> matcher;
 				typedef typename PointMatcherSupport::Registrar< PointMatcher<float>::Matcher >::template GenericClassDescriptor< KDTreeMatcherIntensity<float> > Desc;
-				matcher.MatcherRegistrar.reg("KDTreeMatcherIntensity", std::make_shared<Desc>() );
 #if POINTMATCHER_VERSION_INT >= 10300
+				matcher.MatcherRegistrar.reg("KDTreeMatcherIntensity", std::make_shared<Desc>() );
 				icp->matcher = matcher.MatcherRegistrar.create("KDTreeMatcherIntensity", params);
 #else
+				matcher.MatcherRegistrar.reg("KDTreeMatcherIntensity", new Desc() );
 				icp->matcher.reset(matcher.MatcherRegistrar.create("KDTreeMatcherIntensity", params));
 #endif
 			}
