@@ -2421,7 +2421,7 @@ bool ExportCloudsDialog::getExportedClouds(
 					}
 					else
 					{
-						_progressDialog->appendText(tr("No polygons created for cloud %d!").arg(iter->first), Qt::darkYellow);
+						_progressDialog->appendText(tr("No polygons created for cloud %1!").arg(iter->first), Qt::darkYellow);
 						_progressDialog->setAutoClose(false);
 					}
 

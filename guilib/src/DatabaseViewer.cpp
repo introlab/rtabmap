@@ -6019,6 +6019,7 @@ void DatabaseViewer::updateConstraintButtons()
 
 	if(ui_->label_type->text().toInt() == Link::kLandmark)
 	{
+		ui_->pushButton_reject->setEnabled(true);
 		return;
 	}
 
@@ -7868,6 +7869,14 @@ void DatabaseViewer::rejectConstraint()
 {
 	int from = ids_.at(ui_->horizontalSlider_A->value());
 	int to = ids_.at(ui_->horizontalSlider_B->value());
+	if(ui_->label_type->text().toInt() == Link::kLandmark)
+	{
+		int position = ui_->horizontalSlider_loops->value();
+		const rtabmap::Link & link = loopLinks_.at(position);
+		from = link.from();
+		to = link.to();
+	}
+
 	if(from < to)
 	{
 		int tmp = to;
