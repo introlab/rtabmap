@@ -40,7 +40,6 @@ namespace rtabmap {
 
 DBDriver * DBDriver::create(const ParametersMap & parameters)
 {
-	// well, we only have Sqlite3 database type for now :P
 	return new DBDriverSqlite3(parameters);
 }
 
@@ -59,6 +58,7 @@ DBDriver::~DBDriver()
 
 void DBDriver::parseParameters(const ParametersMap & parameters)
 {
+	Parameters::parse(parameters, Parameters::kDbTargetVersion(), _targetVersion);
 }
 
 void DBDriver::closeConnection(bool save, const std::string & outputUrl)

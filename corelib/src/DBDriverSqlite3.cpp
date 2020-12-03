@@ -34,6 +34,14 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/util3d.h"
 #include "rtabmap/core/Compression.h"
 #include "DatabaseSchema_sql.h"
+#include "DatabaseSchema_0_18_3_sql.h"
+#include "DatabaseSchema_0_18_0_sql.h"
+#include "DatabaseSchema_0_17_0_sql.h"
+#include "DatabaseSchema_0_16_2_sql.h"
+#include "DatabaseSchema_0_16_1_sql.h"
+#include "DatabaseSchema_0_16_0_sql.h"
+
+
 #include <set>
 
 #include "rtabmap/utilite/UtiLite.h"
@@ -383,6 +391,34 @@ bool DBDriverSqlite3::connectDatabaseQuery(const std::string & url, bool overwri
 		}
 		// Create the database
 		std::string schema = DATABASESCHEMA_SQL;
+		std::string targetVersion = this->getTargetVersion();
+		if(!targetVersion.empty())
+		{
+			// search for schema with version <= target version
+			std::vector<std::pair<std::string, std::string> > schemas;
+			schemas.push_back(std::make_pair("0.16.0", DATABASESCHEMA_0_16_0_SQL));
+			schemas.push_back(std::make_pair("0.16.1", DATABASESCHEMA_0_16_1_SQL));
+			schemas.push_back(std::make_pair("0.16.2", DATABASESCHEMA_0_16_2_SQL));
+			schemas.push_back(std::make_pair("0.17.0", DATABASESCHEMA_0_17_0_SQL));
+			schemas.push_back(std::make_pair("0.18.0", DATABASESCHEMA_0_18_0_SQL));
+			schemas.push_back(std::make_pair("0.18.3", DATABASESCHEMA_0_18_3_SQL));
+			schemas.push_back(std::make_pair(uNumber2Str(RTABMAP_VERSION_MAJOR)+"."+uNumber2Str(RTABMAP_VERSION_MINOR), DATABASESCHEMA_SQL));
+			for(size_t i=0; i<schemas.size(); ++i)
+			{
+				if(uStrNumCmp(targetVersion, schemas[i].first) < 0)
+				{
+					if(i==0)
+					{
+						UERROR("Cannot create database with target version \"%s\" (not implemented), using latest version.", targetVersion.c_str());
+					}
+					break;
+				}
+				else
+				{
+					schema = schemas[i].second;
+				}
+			}
+		}
 		schema = uHex2Str(schema);
 		this->executeNoResultQuery(schema.c_str());
 	}

@@ -70,6 +70,7 @@ public:
 	virtual void parseParameters(const ParametersMap & parameters);
 	virtual bool isInMemory() const {return _url.empty();}
 	const std::string & getUrl() const {return _url;}
+	const std::string & getTargetVersion() const {return _targetVersion;}
 
 	void beginTransaction() const;
 	void commit() const;
@@ -300,6 +301,7 @@ private:
 	USemaphore _addSem;
 	double _emptyTrashesTime;
 	std::string _url;
+	std::string _targetVersion;
 	bool _timestampUpdate;
 };
 

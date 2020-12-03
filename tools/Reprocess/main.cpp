@@ -460,6 +460,8 @@ int main(int argc, char * argv[])
 	}
 
 	ParametersMap parameters = dbDriver->getLastParameters();
+	std::string targetVersion = dbDriver->getDatabaseVersion();
+	parameters.insert(ParametersPair(Parameters::kDbTargetVersion(), targetVersion));
 	if(parameters.empty())
 	{
 		printf("WARNING: Failed getting parameters from database, reprocessing will be done with default parameters! Database version may be too old (%s).\n", dbDriver->getDatabaseVersion().c_str());
@@ -498,6 +500,7 @@ int main(int argc, char * argv[])
 
 	bool incrementalMemory = Parameters::defaultMemIncrementalMemory();
 	Parameters::parse(parameters, Parameters::kMemIncrementalMemory(), incrementalMemory);
+	Parameters::parse(parameters, Parameters::kDbTargetVersion(), targetVersion);
 
 	int totalIds = 0;
 	std::set<int> ids;
@@ -539,6 +542,10 @@ int main(int argc, char * argv[])
 
 	std::string workingDirectory = UDirectory::getDir(outputDatabasePath);
 	printf("Set working directory to \"%s\".\n", workingDirectory.c_str());
+	if(!targetVersion.empty())
+	{
+		printf("Target database version: \"%s\" (set explicitly --%s \"\" to output with latest version.\n", targetVersion.c_str(), Parameters::kDbTargetVersion().c_str());
+	}
 	uInsert(parameters, ParametersPair(Parameters::kRtabmapWorkingDirectory(), workingDirectory));
 	uInsert(parameters, ParametersPair(Parameters::kRtabmapPublishStats(), "true")); // to log status below
 
