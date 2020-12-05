@@ -63,6 +63,7 @@ void showUsage()
 			"   rtabmap-matcher --Vis/FeatureType 11 --SuperPoint/ModelPath \"superpoint.pt\" --Vis/CorNNType 6 --PyMatcher/Path \"~/SuperGluePretrainedNetwork/rtabmap_superglue.py\" from.png to.png\n"
 			"   rtabmap-matcher --Vis/FeatureType 1 --Vis/CorNNType 6 --PyMatcher/Path \"~/OANet/demo/rtabmap_oanet.py\" --PyMatcher/Model \"~/OANet/model/gl3d/sift-4000/model_best.pth\" from.png to.png\n"
 			"   rtabmap-matcher --calibration calib.yaml --from_depth from_depth.png --to_depth to_depth.png from.png to.png\n"
+			"   rtabmap-matcher --calibration calibFrom.yaml --calibration_to calibTo.yaml --from_depth from_depth.png --to_depth to_depth.png from.png to.png\n"
 			"   rtabmap-matcher --calibration calib.yaml --Vis/FeatureType 2 --Vis/MaxFeatures 10000 --Vis/CorNNType 7 from.png to.png\n"
 			"\n"
 			"Note: Use \"Vis/\" parameters for feature stuff.\n"
@@ -71,7 +72,11 @@ void showUsage()
 			"                                        fake one is created from image's\n"
 			"                                        size (which may not be optimal).\n"
 			"                                        Required if from_depth option is set.\n"
-			"                                        Assuming same calibration for both images.\n"
+			"                                        Assuming same calibration for both images\n"
+			"                                        if --calibration_to is not set.\n"
+			"   --calibration_to \"calibration.yaml\" Calibration file for \"to\" image. If not set,\n"
+			"                                           the same calibration of --calibration option is\n"
+			"                                           used for \"to\" image.\n"
 			"   --from_depth \"from_depth.png\"    Depth or right image file of the first image.\n"
 			"                                        If not set, 2D->2D estimation is done by \n"
 			"                                        default. For 3D->2D estimation, from_depth\n"
@@ -98,6 +103,7 @@ int main(int argc, char * argv[])
 	std::string fromDepthPath;
 	std::string toDepthPath;
 	std::string calibrationPath;
+	std::string calibrationToPath;
 	for(int i=1; i<argc-2; ++i)
 	{
 		if(strcmp(argv[i], "--from_depth") == 0)
@@ -136,6 +142,18 @@ int main(int argc, char * argv[])
 				showUsage();
 			}
 		}
+		else if(strcmp(argv[i], "--calibration_to") == 0)
+		{
+			++i;
+			if(i<argc-2)
+			{
+				calibrationToPath = argv[i];
+			}
+			else
+			{
+				showUsage();
+			}
+		}
 		else if(strcmp(argv[i], "--help") == 0)
 		{
 			showUsage();
@@ -144,6 +162,10 @@ int main(int argc, char * argv[])
 
 	printf("Options\n");
 	printf("  --calibration = \"%s\"\n", calibrationPath.c_str());
+	if(!calibrationToPath.empty())
+	{
+		printf("  --calibration_to = \"%s\"\n", calibrationToPath.c_str());
+	}
 	printf("  --from_depth  = \"%s\"\n", fromDepthPath.c_str());
 	printf("  --to_depth    = \"%s\"\n", toDepthPath.c_str());
 
@@ -197,6 +219,8 @@ int main(int argc, char * argv[])
 
 		CameraModel model;
 		StereoCameraModel stereoModel;
+		CameraModel modelTo;
+		StereoCameraModel stereoModelTo;
 		if(!fromDepth.empty())
 		{
 			if(fromDepth.type() != CV_8UC1)
@@ -206,6 +230,10 @@ int main(int argc, char * argv[])
 					printf("Failed to load calibration file \"%s\"!\n", calibrationPath.c_str());
 					exit(-1);
 				}
+				if(calibrationToPath.empty())
+				{
+					modelTo = model;
+				}
 			}
 			else // fromDepth.type() == CV_8UC1
 			{
@@ -213,6 +241,29 @@ int main(int argc, char * argv[])
 				{
 					printf("Failed to load calibration file \"%s\"!\n", calibrationPath.c_str());
 					exit(-1);
+				}
+				if(calibrationToPath.empty())
+				{
+					stereoModelTo = stereoModel;
+				}
+			}
+			if(!calibrationToPath.empty())
+			{
+				if(toDepth.empty() || toDepth.type() != CV_8UC1)
+				{
+					if(!modelTo.load(UDirectory::getDir(calibrationToPath), uSplit(UFile::getName(calibrationToPath), '.').front()))
+					{
+						printf("Failed to load calibration file \"%s\"!\n", calibrationToPath.c_str());
+						exit(-1);
+					}
+				}
+				else // toDepth.type() == CV_8UC1
+				{
+					if(!stereoModelTo.load(UDirectory::getDir(calibrationToPath), uSplit(UFile::getName(calibrationToPath), '.').front()))
+					{
+						printf("Failed to load calibration file \"%s\"!\n", calibrationToPath.c_str());
+						exit(-1);
+					}
 				}
 			}
 		}
@@ -223,13 +274,29 @@ int main(int argc, char * argv[])
 				printf("Failed to load calibration file \"%s\"!\n", calibrationPath.c_str());
 				exit(-1);
 			}
+			if(!calibrationToPath.empty())
+			{
+				if(!modelTo.load(UDirectory::getDir(calibrationToPath), uSplit(UFile::getName(calibrationToPath), '.').front()))
+				{
+					printf("Failed to load calibration file \"%s\"!\n", calibrationToPath.c_str());
+					exit(-1);
+				}
+			}
+			else
+			{
+				modelTo = model;
+			}
 		}
 		else
 		{
-			printf("Using fake calibration model (image size=%dx%d): fx=%d fy=%d cx=%d cy=%d\n",
+			printf("Using fake calibration model \"from\" (image size=%dx%d): fx=%d fy=%d cx=%d cy=%d\n",
 					imageFrom.cols, imageFrom.rows, imageFrom.cols/2, imageFrom.cols/2, imageFrom.cols/2, imageFrom.rows/2);
 			model = CameraModel(imageFrom.cols/2, imageFrom.cols/2, imageFrom.cols/2, imageFrom.rows/2); // Fake model
 			model.setImageSize(imageFrom.size());
+			printf("Using fake calibration model \"to\" (image size=%dx%d): fx=%d fy=%d cx=%d cy=%d\n",
+					imageTo.cols, imageTo.rows, imageTo.cols/2, imageTo.cols/2, imageTo.cols/2, imageTo.rows/2);
+			modelTo = CameraModel(imageTo.cols/2, imageTo.cols/2, imageTo.cols/2, imageTo.rows/2); // Fake model
+			modelTo.setImageSize(imageTo.size());
 		}
 
 		Signature dataFrom;
@@ -238,13 +305,13 @@ int main(int argc, char * argv[])
 		{
 			printf("Mono calibration model detected.\n");
 			dataFrom = SensorData(imageFrom, fromDepth, model, 1);
-			dataTo = SensorData(imageTo, toDepth, model, 2);
+			dataTo = SensorData(imageTo, toDepth, modelTo, 2);
 		}
 		else //stereo
 		{
 			printf("Stereo calibration model detected.\n");
 			dataFrom = SensorData(imageFrom, fromDepth, stereoModel, 1);
-			dataTo = SensorData(imageTo, toDepth, stereoModel, 2);
+			dataTo = SensorData(imageTo, toDepth, stereoModelTo, 2);
 		}
 
 		//////////////////
