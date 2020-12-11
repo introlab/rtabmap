@@ -39,7 +39,7 @@ SuperPoint::SuperPoint()
 
         convDa(torch::nn::Conv2dOptions(c4, c5, 3).stride(1).padding(1)),
         convDb(torch::nn::Conv2dOptions(c5, d1, 1).stride(1).padding(0))
-        
+
   {
     register_module("conv1a", conv1a);
     register_module("conv1b", conv1b);
@@ -168,12 +168,16 @@ std::vector<cv::KeyPoint> SPDetector::detect(const cv::Mat &img, const cv::Mat &
 		auto kpts = (prob_ > threshold_);
 		kpts = torch::nonzero(kpts);  // [n_keypoints, 2]  (y, x)
 
+    //convert back to cpu if in gpu
+    auto kpts_cpu = kpts.to(torch::kCPU);
+    auto prob_cpu = prob_.to(torch::kCPU);
+
 		std::vector<cv::KeyPoint> keypoints_no_nms;
-		for (int i = 0; i < kpts.size(0); i++) {
-			if(mask.empty() || mask.at<unsigned char>(kpts[i][0].item<int>(), kpts[i][1].item<int>()) != 0)
+		for (int i = 0; i < kpts_cpu.size(0); i++) {
+			if(mask.empty() || mask.at<unsigned char>(kpts_cpu[i][0].item<int>(), kpts_cpu[i][1].item<int>()) != 0)
 			{
-				float response = prob_[kpts[i][0]][kpts[i][1]].item<float>();
-				keypoints_no_nms.push_back(cv::KeyPoint(kpts[i][1].item<float>(), kpts[i][0].item<float>(), 8, -1, response));
+				float response = prob_cpu[kpts_cpu[i][0]][kpts_cpu[i][1]].item<float>();
+				keypoints_no_nms.push_back(cv::KeyPoint(kpts_cpu[i][1].item<float>(), kpts_cpu[i][0].item<float>(), 8, -1, response));
 			}
 		}
 
@@ -183,7 +187,7 @@ std::vector<cv::KeyPoint> SPDetector::detect(const cv::Mat &img, const cv::Mat &
 			for (size_t i = 0; i < keypoints_no_nms.size(); i++) {
 				int x = keypoints_no_nms[i].pt.x;
 				int y = keypoints_no_nms[i].pt.y;
-				conf.at<float>(i, 0) = prob_[y][x].item<float>();
+				conf.at<float>(i, 0) = prob_cpu[y][x].item<float>();
 			}
 
 			int border = 0;
@@ -289,7 +293,7 @@ void NMS(const std::vector<cv::KeyPoint> & ptsIn,
     confidence.setTo(0);
 
     for (size_t i = 0; i < pts_raw.size(); i++)
-    {   
+    {
         int uu = (int) pts_raw[i].x;
         int vv = (int) pts_raw[i].y;
 
@@ -308,7 +312,7 @@ void NMS(const std::vector<cv::KeyPoint> & ptsIn,
     cv::copyMakeBorder(grid, grid, dist_thresh, dist_thresh, dist_thresh, dist_thresh, cv::BORDER_CONSTANT, 0);
 
     for (size_t i = 0; i < pts_raw.size(); i++)
-    {   
+    {
     	// account for top left padding
         int uu = (int) pts_raw[i].x + dist_thresh;
         int vv = (int) pts_raw[i].y + dist_thresh;
@@ -356,7 +360,7 @@ void NMS(const std::vector<cv::KeyPoint> & ptsIn,
             }
         }
     }
-    
+
     if(!descriptorsIn.empty())
     {
     	UASSERT(descriptorsIn.rows == (int)ptsIn.size());
