@@ -1422,9 +1422,13 @@ SensorData CameraRealSense2::captureImage(CameraInfo * info)
 				lastImuStamp_ = imuStamp;
 			}
 		}
+		else if(isL500_ && globalTimeSync_)
+		{
+			UERROR("Missing frames (received %d, needed=%d). L500 camera is used and global time sync is enabled, try disabling global time sync for the RealSense2 driver.", (int)frameset.size(), desiredFramesetSize);
+		}
 		else
 		{
-			UERROR("Missing frames (received %d)", (int)frameset.size());
+			UERROR("Missing frames (received %d, needed=%d)", (int)frameset.size(), desiredFramesetSize);
 		}
 	}
 	catch(const std::exception& ex)

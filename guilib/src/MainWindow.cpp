@@ -437,6 +437,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent, bool sh
 	connect(_ui->actionRealSense2_SR300, SIGNAL(triggered()), this, SLOT(selectRealSense2()));
 	connect(_ui->actionRealSense2_D415, SIGNAL(triggered()), this, SLOT(selectRealSense2()));
 	connect(_ui->actionRealSense2_D435, SIGNAL(triggered()), this, SLOT(selectRealSense2()));
+	connect(_ui->actionRealSense2_L515, SIGNAL(triggered()), this, SLOT(selectRealSense2()));
 	connect(_ui->actionStereoDC1394, SIGNAL(triggered()), this, SLOT(selectStereoDC1394()));
 	connect(_ui->actionStereoFlyCapture2, SIGNAL(triggered()), this, SLOT(selectStereoFlyCapture2()));
 	connect(_ui->actionStereoZed, SIGNAL(triggered()), this, SLOT(selectStereoZed()));
@@ -458,6 +459,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent, bool sh
 	_ui->actionRealSense2_SR300->setEnabled(CameraRealSense2::available());
 	_ui->actionRealSense2_D415->setEnabled(CameraRealSense2::available());
 	_ui->actionRealSense2_D435->setEnabled(CameraRealSense2::available());
+	_ui->actionRealSense2_L515->setEnabled(CameraRealSense2::available());
 	_ui->actionRealSense2_T265->setEnabled(CameraRealSense2::available());
 	_ui->actionStereoDC1394->setEnabled(CameraStereoDC1394::available());
 	_ui->actionStereoFlyCapture2->setEnabled(CameraStereoFlyCapture2::available());
@@ -4731,6 +4733,7 @@ void MainWindow::updateSelectSourceMenu()
 	_ui->actionRealSense2_SR300->setChecked(_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcRealSense2);
 	_ui->actionRealSense2_D415->setChecked(_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcRealSense2);
 	_ui->actionRealSense2_D435->setChecked(_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcRealSense2);
+	_ui->actionRealSense2_L515->setChecked(_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcRealSense2);
 	_ui->actionStereoDC1394->setChecked(_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcDC1394);
 	_ui->actionStereoFlyCapture2->setChecked(_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcFlyCapture2);
 	_ui->actionStereoZed->setChecked(_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcStereoZed);
