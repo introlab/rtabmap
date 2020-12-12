@@ -732,23 +732,29 @@ Transform RegistrationIcp::computeTransformationImpl(
 				if(complexity < _pointToPlaneMinComplexity)
 				{
 					tooLowComplexityForPlaneToPlane = true;
-					complexityVectors = fromComplexity<toComplexity?complexityVectorsFrom:complexityVectorsTo;
+					if(complexity > 0.0f)
+					{
+						complexityVectors = fromComplexity<toComplexity?complexityVectorsFrom:complexityVectorsTo;
 
-					UASSERT((complexityVectors.rows == 2 && complexityVectors.cols == 2)||
-							(complexityVectors.rows == 3 && complexityVectors.cols == 3));
-					secondEigenValue = complexityValuesFrom.at<float>(1,0)<complexityValuesTo.at<float>(1,0)?complexityValuesFrom.at<float>(1,0):complexityValuesTo.at<float>(1,0);
-					UWARN("ICP PointToPlane ignored as structural complexity is too low (corridor-like environment): (from=%f || to=%f) < %f (%s). Second eigen value=%f. "
-						  "PointToPoint is done instead, orientation is still optimized but translation will be limited to "
-						  "direction of normals (%s: %s).",
-						  fromComplexity, toComplexity, _pointToPlaneMinComplexity, Parameters::kIcpPointToPlaneMinComplexity().c_str(),
-						  secondEigenValue,
-						  fromComplexity<toComplexity?"From":"To",
-						  complexityVectors.rows==2?
-								  uFormat("n=%f,%f", complexityVectors.at<float>(0,0), complexityVectors.at<float>(0,1)).c_str():
-								  secondEigenValue<_pointToPlaneMinComplexity?
-								  uFormat("n=%f,%f,%f", complexityVectors.at<float>(0,0), complexityVectors.at<float>(0,1), complexityVectors.at<float>(0,2)).c_str():
-								  uFormat("n1=%f,%f,%f n2=%f,%f,%f", complexityVectors.at<float>(0,0), complexityVectors.at<float>(0,1), complexityVectors.at<float>(0,2), complexityVectors.at<float>(1,0), complexityVectors.at<float>(1,1), complexityVectors.at<float>(1,2)).c_str());
-
+						UASSERT((complexityVectors.rows == 2 && complexityVectors.cols == 2)||
+								(complexityVectors.rows == 3 && complexityVectors.cols == 3));
+						secondEigenValue = complexityValuesFrom.at<float>(1,0)<complexityValuesTo.at<float>(1,0)?complexityValuesFrom.at<float>(1,0):complexityValuesTo.at<float>(1,0);
+						UWARN("ICP PointToPlane ignored as structural complexity is too low (corridor-like environment): (from=%f || to=%f) < %f (%s). Second eigen value=%f. "
+							  "PointToPoint is done instead, orientation is still optimized but translation will be limited to "
+							  "direction of normals (%s: %s).",
+							  fromComplexity, toComplexity, _pointToPlaneMinComplexity, Parameters::kIcpPointToPlaneMinComplexity().c_str(),
+							  secondEigenValue,
+							  fromComplexity<toComplexity?"From":"To",
+							  complexityVectors.rows==2?
+									  uFormat("n=%f,%f", complexityVectors.at<float>(0,0), complexityVectors.at<float>(0,1)).c_str():
+									  secondEigenValue<_pointToPlaneMinComplexity?
+									  uFormat("n=%f,%f,%f", complexityVectors.at<float>(0,0), complexityVectors.at<float>(0,1), complexityVectors.at<float>(0,2)).c_str():
+									  uFormat("n1=%f,%f,%f n2=%f,%f,%f", complexityVectors.at<float>(0,0), complexityVectors.at<float>(0,1), complexityVectors.at<float>(0,2), complexityVectors.at<float>(1,0), complexityVectors.at<float>(1,1), complexityVectors.at<float>(1,2)).c_str());
+					}
+					else
+					{
+						UWARN("ICP PointToPlane ignored as structural complexity cannot be computed (from=%f to=%f)!? PointToPoint is done instead.", fromComplexity, toComplexity);
+					}
 					if(ULogger::level() == ULogger::kDebug)
 					{
 						std::cout << "complexityVectorsFrom = " << std::endl << complexityVectorsFrom << std::endl;
@@ -962,18 +968,24 @@ Transform RegistrationIcp::computeTransformationImpl(
 					if(complexity < _pointToPlaneMinComplexity)
 					{
 						tooLowComplexityForPlaneToPlane = true;
-						complexityVectors = fromComplexity<toComplexity?complexityVectorsFrom:complexityVectorsTo;
-						UASSERT((complexityVectors.rows == 2 && complexityVectors.cols == 2)||
-								(complexityVectors.rows == 3 && complexityVectors.cols == 3));
-						UWARN("ICP PointToPlane ignored as structural complexity is too low (corridor-like environment): (from=%f || to=%f) < %f (%s). "
-							  "PointToPoint is done instead, orientation is still optimized but translation will be limited to "
-							  "direction of normals (%s: %s).",
-							  fromComplexity, toComplexity, _pointToPlaneMinComplexity, Parameters::kIcpPointToPlaneMinComplexity().c_str(),
-							  fromComplexity<toComplexity?"From":"To",
-							  complexityVectors.rows==2?
-									  uFormat("n=%f,%f", complexityVectors.at<float>(0,0), complexityVectors.at<float>(0,1)).c_str():
-									  uFormat("n1=%f,%f,%f n2=%f,%f,%f", complexityVectors.at<float>(0,0), complexityVectors.at<float>(0,1), complexityVectors.at<float>(0,2), complexityVectors.at<float>(1,0), complexityVectors.at<float>(1,1), complexityVectors.at<float>(1,2)).c_str());
-
+						if(complexity > 0.0f)
+						{
+							complexityVectors = fromComplexity<toComplexity?complexityVectorsFrom:complexityVectorsTo;
+							UASSERT((complexityVectors.rows == 2 && complexityVectors.cols == 2)||
+									(complexityVectors.rows == 3 && complexityVectors.cols == 3));
+							UWARN("ICP PointToPlane ignored as structural complexity is too low (corridor-like environment): (from=%f || to=%f) < %f (%s). "
+								  "PointToPoint is done instead, orientation is still optimized but translation will be limited to "
+								  "direction of normals (%s: %s).",
+								  fromComplexity, toComplexity, _pointToPlaneMinComplexity, Parameters::kIcpPointToPlaneMinComplexity().c_str(),
+								  fromComplexity<toComplexity?"From":"To",
+								  complexityVectors.rows==2?
+										  uFormat("n=%f,%f", complexityVectors.at<float>(0,0), complexityVectors.at<float>(0,1)).c_str():
+										  uFormat("n1=%f,%f,%f n2=%f,%f,%f", complexityVectors.at<float>(0,0), complexityVectors.at<float>(0,1), complexityVectors.at<float>(0,2), complexityVectors.at<float>(1,0), complexityVectors.at<float>(1,1), complexityVectors.at<float>(1,2)).c_str());
+						}
+						else
+						{
+							UWARN("ICP PointToPlane ignored as structural complexity cannot be computed (from=%f to=%f)!? PointToPoint is done instead.", fromComplexity, toComplexity);
+						}
 						if(ULogger::level() == ULogger::kDebug)
 						{
 							std::cout << "complexityVectorsFrom = " << std::endl << complexityVectorsFrom << std::endl;
@@ -1261,7 +1273,7 @@ Transform RegistrationIcp::computeTransformationImpl(
 					{
 						if(tooLowComplexityForPlaneToPlane && _pointToPlaneLowComplexityStrategy<2)
 						{
-							if(_pointToPlaneLowComplexityStrategy == 0)
+							if(complexityVectors.empty() || _pointToPlaneLowComplexityStrategy == 0)
 							{
 								msg = uFormat("Rejecting transform because too low complexity (%s=0)", Parameters::kIcpPointToPlaneLowComplexityStrategy().c_str());
 								icpT.setNull();

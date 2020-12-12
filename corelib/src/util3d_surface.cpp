@@ -3018,7 +3018,7 @@ float computeNormalsComplexity(
 			{
 				*pcaEigenValues = pca_analysis.eigenvalues;
 			}
-
+			UASSERT((is2d && pca_analysis.eigenvalues.total()>=2) || (!is2d && pca_analysis.eigenvalues.total()>=3));
 			// Get last eigen value, scale between 0 and 1: 0=low complexity, 1=high complexity
 			return pca_analysis.eigenvalues.at<float>(0, is2d?1:2)*(is2d?2.0f:3.0f);
 		}
