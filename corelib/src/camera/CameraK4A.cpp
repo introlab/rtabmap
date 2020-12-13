@@ -286,8 +286,6 @@ bool CameraK4A::init(const std::string & calibrationFolder, const std::string & 
 				cv::Size(calibration_.depth_camera_calibration.resolution_width, calibration_.depth_camera_calibration.resolution_height),
 				K,D,R,P,
 				this->getLocalTransform());
-		UASSERT(model_.isValidForRectification());
-		model_.initRectificationMap();
 	}
 	else
 	{
@@ -317,6 +315,8 @@ bool CameraK4A::init(const std::string & calibrationFolder, const std::string & 
 				K,D,R,P,
 				this->getLocalTransform());
 	}
+	UASSERT(model_.isValidForRectification());
+	model_.initRectificationMap();
 
 	if (ULogger::level() <= ULogger::kInfo)
 	{
@@ -490,6 +490,7 @@ SensorData CameraK4A::captureImage(CameraInfo * info)
 
 				cv::cvtColor(bgra, bgrCV, CV_BGRA2BGR);
 			}
+			bgrCV = model_.rectifyImage(bgrCV);
 
 			// Release the image
 			k4a_image_release(rgb_image_);
