@@ -7,7 +7,7 @@ rtabmap ![Analytics](https://ga-beacon-279122.nn.r.appspot.com/UA-56986679-3/git
 [![License][license-image]][license]
 Linux: [![Build Status](https://travis-ci.org/introlab/rtabmap.svg?branch=master)](https://travis-ci.org/introlab/rtabmap) Windows: [![Build status](https://ci.appveyor.com/api/projects/status/hr73xspix9oqa26h/branch/master?svg=true)](https://ci.appveyor.com/project/matlabbe/rtabmap/branch/master)
 
-[release-image]: https://img.shields.io/badge/release-0.20.2-green.svg?style=flat
+[release-image]: https://img.shields.io/badge/release-0.20.7-green.svg?style=flat
 [releases]: https://github.com/introlab/rtabmap/releases
 
 [license-image]: https://img.shields.io/badge/license-BSD-green.svg?style=flat
