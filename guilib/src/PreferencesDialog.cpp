@@ -1428,7 +1428,7 @@ PreferencesDialog::~PreferencesDialog() {
 	delete _ui;
 }
 
-void PreferencesDialog::init()
+void PreferencesDialog::init(const QString & iniFilePath)
 {
 	UDEBUG("");
 	//First set all default values
@@ -1438,7 +1438,7 @@ void PreferencesDialog::init()
 		this->setParameter(iter->first, iter->second);
 	}
 
-	this->readSettings();
+	this->readSettings(iniFilePath);
 	this->writeSettings(getTmpIniFilePath());
 
 	_initialized = true;

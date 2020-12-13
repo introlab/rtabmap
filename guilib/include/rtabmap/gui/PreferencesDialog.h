@@ -120,7 +120,7 @@ public:
 
 	virtual QString getIniFilePath() const;
 	virtual QString getTmpIniFilePath() const;
-	void init();
+	void init(const QString & iniFilePath = "");
 	void setCurrentPanelToSource();
 	virtual QString getDefaultWorkingDirectory() const;
 
