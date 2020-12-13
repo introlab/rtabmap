@@ -65,6 +65,15 @@ This website uses Google Analytics. See their Privacy Policy [here](https://supp
 
 ## What's new 
 
+### December 2020
+New release [v0.20.7](https://github.com/introlab/rtabmap/releases/tag/0.20.7)!
+
+### August 2020
+New release [v0.20.3](https://github.com/introlab/rtabmap/releases/tag/0.20.3)!
+
+### July 2020
+New release [v0.20.2](https://github.com/introlab/rtabmap/releases/tag/0.20.2)!
+
 ### November 2019
  * [AliceVision](https://alicevision.org/) library has been integrated to RTAB-Map to provide higher texture quality. Compare the [updated version of the Ski Cottage on Sketchfab](https://skfb.ly/6OyUy) with the [old version](https://skfb.ly/6KBFz). Look at how the edges between camera texures are smoother (thx to multi-band blending), decreasing significantly the sharp edge artifacts. Multi-band blending approach can be enabled in File->Export Clouds dialog under Texturing section. RTAB-Map should be built with AliceVision support (CUDA is not required as only texture pipeline is used). A [patch](https://gist.github.com/matlabbe/469bba5e7733ad6f2e3d7857b84f1f9e) is required to avoid problems with Eigen, refer to Docker file [here](https://github.com/introlab/rtabmap/blob/e7be12e0ff7ae95e492837f0414d553c977d6d4d/docker/bionic/Dockerfile#L69-L116).
  
