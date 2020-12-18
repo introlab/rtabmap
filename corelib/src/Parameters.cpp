@@ -186,7 +186,8 @@ rtabmap::ParametersMap Parameters::getDefaultOdometryParameters(bool stereo, boo
 			group.compare("g2o") == 0 ||
 			group.compare("GTSAM") == 0 ||
 			(vis && (group.compare("Vis") == 0 || group.compare("PyMatcher") == 0 || group.compare("GMS") == 0)) ||
-			iter->first.compare(kRtabmapPublishRAMUsage())==0)
+			iter->first.compare(kRtabmapPublishRAMUsage())==0 ||
+			iter->first.compare(kRtabmapImagesAlreadyRectified())==0)
 		{
 			odomParameters.insert(*iter);
 		}
