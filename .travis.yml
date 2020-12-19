@@ -15,8 +15,9 @@ matrix:
 
     - os: osx
       install:
-        brew update
-        brew install qt sqlite octomap ceres-solver
+        - brew update
+        - brew install qt sqlite octomap ceres-solver
+
       script:
         - mkdir -p build && cd build
         - cmake .. 
