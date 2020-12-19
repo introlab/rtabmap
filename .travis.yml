@@ -2,13 +2,28 @@ sudo: true
 language: cpp
 group: deprecated-2017Q3
 
+os:
+  - linux
+  - osx
+
 compiler:
   - gcc
-
+  - clang
+  
 matrix:
   include:
 
-    - dist: trusty
+    - os: osx
+      install:
+        brew update
+        brew install qt sqlite octomap ceres-solver
+      script:
+        - mkdir -p build && cd build
+        - cmake .. 
+        - make
+
+    - os: linux
+      dist: trusty
       install:
         - sudo sh -c 'echo "deb http://packages.ros.org/ros/ubuntu trusty main" > /etc/apt/sources.list.d/ros-latest.list'
         - wget http://packages.ros.org/ros.key -O - | sudo apt-key add -
@@ -23,7 +38,8 @@ matrix:
         - cmake .. 
         - make
 
-    - dist: xenial
+    - os: linux
+      dist: xenial
       install:
         - sudo sh -c 'echo "deb http://packages.ros.org/ros/ubuntu xenial main" > /etc/apt/sources.list.d/ros-latest.list'
         - wget http://packages.ros.org/ros.key -O - | sudo apt-key add -
@@ -38,7 +54,8 @@ matrix:
         - cmake .. 
         - make
 
-    - dist: bionic
+    - os: linux
+      dist: bionic
       install:
         - sudo sh -c 'echo "deb http://packages.ros.org/ros/ubuntu bionic main" > /etc/apt/sources.list.d/ros-latest.list'
         - wget http://packages.ros.org/ros.key -O - | sudo apt-key add -
@@ -53,7 +70,8 @@ matrix:
         - cmake .. 
         - make
         
-    - dist: focal
+    - os: linux
+      dist: focal
       install:
         - sudo sh -c 'echo "deb http://packages.ros.org/ros/ubuntu focal main" > /etc/apt/sources.list.d/ros-latest.list'
         - wget http://packages.ros.org/ros.key -O - | sudo apt-key add -
