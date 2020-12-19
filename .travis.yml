@@ -1,16 +1,14 @@
 language: cpp
-
-compiler:
-  - gcc
-  - clang
-    
+   
 jobs:
   include:
     - name: osx
+      compiler: clang
       os: osx
       install: brew install pcl sqlite octomap ceres-solver opencv
     
     - name: linux-trusty
+      compiler: gcc
       os: linux
       dist: trusty
       install:
@@ -25,6 +23,7 @@ jobs:
         - source /opt/ros/indigo/setup.bash
 
     - name: linux-xenial
+      compiler: gcc
       os: linux
       dist: xenial
       install:
@@ -39,6 +38,7 @@ jobs:
         - source /opt/ros/kinetic/setup.bash
 
     - name: linux-bionic
+      compiler: gcc
       os: linux
       dist: bionic
       install:
@@ -53,6 +53,7 @@ jobs:
         - source /opt/ros/melodic/setup.bash
 
     - name: linux-focal
+      compiler: gcc
       os: linux
       dist: focal
       install:
