@@ -1,17 +1,21 @@
-sudo: true
 language: cpp
 group: deprecated-2017Q3
+
+os: linux
+dist: bionic
 
 compiler:
   - gcc
   - clang
     
-matrix:
+jobs:
   include:
-    - os: osx
+    - name: osx
+      os: osx
       install: brew install pcl sqlite octomap ceres-solver opencv
     
-    - os: linux
+    - name: linux-trusty
+      os: linux
       dist: trusty
       install:
         - sudo sh -c 'echo "deb http://packages.ros.org/ros/ubuntu trusty main" > /etc/apt/sources.list.d/ros-latest.list'
@@ -24,7 +28,8 @@ matrix:
       before_script: 
         - source /opt/ros/indigo/setup.bash
 
-    - os: linux
+    - name: linux-xenial
+      os: linux
       dist: xenial
       install:
         - sudo sh -c 'echo "deb http://packages.ros.org/ros/ubuntu xenial main" > /etc/apt/sources.list.d/ros-latest.list'
@@ -37,6 +42,7 @@ matrix:
       before_script: 
         - source /opt/ros/kinetic/setup.bash
 
+    - name: linux-bionic
     - os: linux
       dist: bionic
       install:
@@ -49,8 +55,9 @@ matrix:
 
       before_script: 
         - source /opt/ros/melodic/setup.bash
-        
-    - os: linux
+
+    - name: linux-focal
+      os: linux
       dist: focal
       install:
         - sudo sh -c 'echo "deb http://packages.ros.org/ros/ubuntu focal main" > /etc/apt/sources.list.d/ros-latest.list'
