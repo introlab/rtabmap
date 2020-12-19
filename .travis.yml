@@ -2,19 +2,15 @@ sudo: true
 language: cpp
 group: deprecated-2017Q3
 
-os:
-  - linux
-  - osx
-
 compiler:
   - gcc
   - clang
-  
-before_install:
-  - if [ "$TRAVIS_OS_NAME" = "osx" ]; then brew install pcl sqlite octomap ceres-solver; fi
-  
+    
 matrix:
   include:
+    - os: osx
+      install: brew install pcl sqlite octomap ceres-solver opencv
+    
     - os: linux
       dist: trusty
       install:
