@@ -10,19 +10,11 @@ compiler:
   - gcc
   - clang
   
+before_install:
+  - if [ "$TRAVIS_OS_NAME" = "osx" ]; then brew install pcl sqlite octomap ceres-solver; fi
+  
 matrix:
   include:
-
-    - os: osx
-      install:
-        - brew update
-        - brew install qt sqlite octomap ceres-solver
-
-      script:
-        - mkdir -p build && cd build
-        - cmake .. 
-        - make
-
     - os: linux
       dist: trusty
       install:
@@ -33,11 +25,8 @@ matrix:
         - sudo apt-get -y install ros-indigo-rtabmap-ros
         - sudo apt-get -y remove ros-indigo-rtabmap
 
-      script: 
+      before_script: 
         - source /opt/ros/indigo/setup.bash
-        - mkdir -p build && cd build
-        - cmake .. 
-        - make
 
     - os: linux
       dist: xenial
@@ -49,11 +38,8 @@ matrix:
         - sudo apt-get -y install ros-kinetic-rtabmap-ros
         - sudo apt-get -y remove ros-kinetic-rtabmap
 
-      script: 
+      before_script: 
         - source /opt/ros/kinetic/setup.bash
-        - mkdir -p build && cd build
-        - cmake .. 
-        - make
 
     - os: linux
       dist: bionic
@@ -65,11 +51,8 @@ matrix:
         - sudo apt-get -y install ros-melodic-rtabmap-ros
         - sudo apt-get -y remove ros-melodic-rtabmap
 
-      script: 
+      before_script: 
         - source /opt/ros/melodic/setup.bash
-        - mkdir -p build && cd build
-        - cmake .. 
-        - make
         
     - os: linux
       dist: focal
@@ -81,11 +64,13 @@ matrix:
         - sudo apt-get -y install ros-noetic-rtabmap-ros
         - sudo apt-get -y remove ros-noetic-rtabmap
 
-      script: 
+      before_script: 
         - source /opt/ros/noetic/setup.bash
-        - mkdir -p build && cd build
-        - cmake .. 
-        - make
+
+script:
+  - mkdir -p build && cd build
+  - cmake .. 
+  - make
 
 notifications:
   email:
