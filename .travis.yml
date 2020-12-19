@@ -1,8 +1,4 @@
 language: cpp
-group: deprecated-2017Q3
-
-os: linux
-dist: bionic
 
 compiler:
   - gcc
