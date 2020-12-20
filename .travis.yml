@@ -2,13 +2,13 @@ language: cpp
    
 jobs:
   include:
-    - name: osx
-      compiler: clang
-      os: osx
-      install:
-        - brew install sqlite
-        - brew install pcl
-        - brew install opencv@3
+#    - name: osx
+#      compiler: clang
+#      os: osx
+#      install:
+#        - brew install sqlite
+#        - brew install pcl
+#        - brew install opencv@3
     
     - name: linux-trusty
       compiler: gcc
