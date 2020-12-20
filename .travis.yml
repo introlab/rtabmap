@@ -6,10 +6,9 @@ jobs:
       compiler: clang
       os: osx
       install:
-        - travis_wait 40 brew install boost
-        - travis_wait 40 brew install pcl
-        - travis_wait 30 brew install opencv
-        - brew install pcl sqlite
+        - brew install sqlite
+        - brew install pcl
+        - brew install opencv@3
     
     - name: linux-trusty
       compiler: gcc
