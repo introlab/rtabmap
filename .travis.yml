@@ -5,7 +5,7 @@ jobs:
     - name: osx
       compiler: clang
       os: osx
-      install: brew install pcl sqlite octomap ceres-solver opencv
+      install: travis_wait brew install pcl sqlite octomap ceres-solver opencv
     
     - name: linux-trusty
       compiler: gcc
