@@ -97,6 +97,7 @@ Scene::Scene() :
 		g_(0.0f),
 		b_(0.0f),
 		fboId_(0),
+		rboId_(0),
 		depthTexture_(0),
 		screenWidth_(0),
 		screenHeight_(0),
@@ -176,6 +177,8 @@ void Scene::DeleteResources() {
 	{
 		glDeleteFramebuffers(1, &fboId_);
 		fboId_ = 0;
+		glDeleteRenderbuffers(1, &rboId_);
+		rboId_ = 0;
 		glDeleteTextures(1, &depthTexture_);
 		depthTexture_ = 0;
 	}
@@ -220,15 +223,22 @@ void Scene::SetupViewPort(int w, int h) {
 	UASSERT(gesture_camera_ != 0);
 	gesture_camera_->SetWindowSize(static_cast<float>(w), static_cast<float>(h));
 	glViewport(0, 0, w, h);
-	if(screenWidth_ != w || fboId_ == 0)
+	if(screenWidth_ != w || screenHeight_ != h || fboId_ == 0)
 	{
 		if(fboId_>0)
 		{
 			glDeleteFramebuffers(1, &fboId_);
 			fboId_ = 0;
+			glDeleteRenderbuffers(1, &rboId_);
+			rboId_ = 0;
 			glDeleteTextures(1, &depthTexture_);
 			depthTexture_ = 0;
 		}
+
+		// regenerate fbo texture
+		// create a framebuffer object, you need to delete them when program exits.
+		glGenFramebuffers(1, &fboId_);
+		glBindFramebuffer(GL_FRAMEBUFFER, fboId_);
 
 		// Create depth texture
 		glGenTextures(1, &depthTexture_);
@@ -237,16 +247,17 @@ void Scene::SetupViewPort(int w, int h) {
 		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, w, h, 0, GL_DEPTH_COMPONENT, GL_UNSIGNED_INT, NULL);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
 		glBindTexture(GL_TEXTURE_2D, 0);
 
-		// regenerate fbo texture
-		// create a framebuffer object, you need to delete them when program exits.
-		glGenFramebuffers(1, &fboId_);
-		glBindFramebuffer(GL_FRAMEBUFFER, fboId_);
+		glGenRenderbuffers(1, &rboId_);
+		glBindRenderbuffer(GL_RENDERBUFFER, rboId_);
+		glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT16, w, h);
+		glBindRenderbuffer(GL_RENDERBUFFER, 0);
 
-		// Set the texture to be at the depth attachment point of the FBO
-		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depthTexture_, 0);
+		// Set the texture to be at the color attachment point of the FBO (we pack depth 32 bits in color)
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, depthTexture_, 0);
+		glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, rboId_);
 
 		GLuint status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
 		if ( status != GL_FRAMEBUFFER_COMPLETE)
@@ -464,14 +475,13 @@ int Scene::Render(const float * uvsTransformed, glm::mat4 arViewMatrix, glm::mat
 		// set the rendering destination to FBO
 		glBindFramebuffer(GL_FRAMEBUFFER, fboId_);
 
-		glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
-		glClearColor(1, 1, 1, 1);
+		glClearColor(0, 0, 0, 0);
 		glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 
 		if(renderBackgroundCamera)
 		{
 			PointCloudDrawable drawable(occlusionMesh);
-			drawable.Render(projectionMatrix, viewMatrix, true, pointSize_, false, false, 999.0f);
+			drawable.Render(projectionMatrix, viewMatrix, true, pointSize_, false, false, 999.0f, 0, 0, 0, 0, 0, true);
 		}
 		else
 		{
@@ -479,13 +489,12 @@ int Scene::Render(const float * uvsTransformed, glm::mat4 arViewMatrix, glm::mat
 			for(std::vector<PointCloudDrawable*>::const_iterator iter=cloudsToDraw.begin(); iter!=cloudsToDraw.end(); ++iter)
 			{
 				// set large distance to cam to use low res polygons for fast processing
-				(*iter)->Render(projectionMatrix, viewMatrix, meshRendering_, pointSize_, false, false, 999.0f);
+				(*iter)->Render(projectionMatrix, viewMatrix, meshRendering_, pointSize_, false, false, 999.0f, 0, 0, 0, 0, 0, true);
 			}
 		}
 
 		// back to normal window-system-provided framebuffer
 		glBindFramebuffer(GL_FRAMEBUFFER, 0); // unbind
-		glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
 	}
 
 	if(doubleTapOn_ && gesture_camera_->GetCameraType() != tango_gl::GestureCamera::kFirstPerson)
@@ -501,8 +510,7 @@ int Scene::Render(const float * uvsTransformed, glm::mat4 arViewMatrix, glm::mat
 
 		GLubyte zValue[4];
 		glReadPixels(doubleTapPos_.x*screenWidth_, screenHeight_-doubleTapPos_.y*screenHeight_, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, zValue);
-		float fromFixed = 256.0f/255.0f;
-		float zValueF = float(zValue[0]/255.0f)*fromFixed + float(zValue[1]/255.0f)*fromFixed/255.0f + float(zValue[2]/255.0f)*fromFixed/65025.0f + float(zValue[3]/255.0f)*fromFixed/160581375.0f;
+		float zValueF = float(zValue[0]/255.0f) + float(zValue[1]/255.0f)/255.0f + float(zValue[2]/255.0f)/65025.0f + float(zValue[3]/255.0f)/160581375.0f;
 
 		if(zValueF != 0.0f)
 		{

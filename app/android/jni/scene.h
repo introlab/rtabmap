@@ -204,6 +204,7 @@ class Scene {
   float g_;
   float b_;
   GLuint fboId_;
+  GLuint rboId_;
   GLuint depthTexture_;
   GLsizei screenWidth_;
   GLsizei screenHeight_;

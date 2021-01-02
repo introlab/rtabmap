@@ -57,7 +57,7 @@ enum PointCloudShaders
 
 // PointCloud shaders
 const std::string kPointCloudVertexShader =
-    "precision mediump float;\n"
+    "precision highp float;\n"
     "precision mediump int;\n"
     "attribute vec3 aVertex;\n"
     "attribute vec3 aColor;\n"
@@ -75,7 +75,7 @@ const std::string kPointCloudVertexShader =
     "  vColor = aColor;\n"
     "}\n";
 const std::string kPointCloudLightingVertexShader =
-    "precision mediump float;\n"
+    "precision highp float;\n"
     "precision mediump int;\n"
     "attribute vec3 aVertex;\n"
 	"attribute vec3 aNormal;\n"
@@ -100,7 +100,7 @@ const std::string kPointCloudLightingVertexShader =
     "}\n";
 
 const std::string kPointCloudFragmentShader =
-    "precision mediump float;\n"
+    "precision highp float;\n"
     "precision mediump int;\n"
 	"uniform float uGainR;\n"
 	"uniform float uGainG;\n"
@@ -127,7 +127,8 @@ const std::string kPointCloudBlendingFragmentShader =
     "  vec4 textureColor = vec4(vColor.z, vColor.y, vColor.x, 1.0);\n"
 	"  float alpha = 1.0;\n"
 	"  vec2 coord = uScreenScale * gl_FragCoord.xy;\n;"
-	"  float depth = texture2D(uDepthTexture, coord).r;\n"
+	"  vec4 depthPacked = texture2D(uDepthTexture, coord);\n"
+	"  float depth = dot(depthPacked, 1./vec4(1.,255.,65025.,16581375.));\n"
 	"  float num =  (2.0 * uNearZ * uFarZ);\n"
 	"  float diff = (uFarZ - uNearZ);\n"
 	"  float add = (uFarZ + uNearZ);\n"
@@ -141,7 +142,7 @@ const std::string kPointCloudBlendingFragmentShader =
     "}\n";
 
 const std::string kPointCloudDepthPackingVertexShader =
-    "precision mediump float;\n"
+    "precision highp float;\n"
     "precision mediump int;\n"
     "attribute vec3 aVertex;\n"
     "uniform mat4 uMVP;\n"
@@ -154,15 +155,15 @@ const std::string kPointCloudDepthPackingFragmentShader =
     "precision highp float;\n"
     "precision mediump int;\n"
     "void main() {\n"
-	"  float toFixed = 255.0/256.0;\n"
-	"  vec4 enc = vec4(1.0, 255.0, 65025.0, 160581375.0) * toFixed * gl_FragCoord.z;\n"
+	"  vec4 enc = vec4(1.,255.,65025.,16581375.) * gl_FragCoord.z;\n"
 	"  enc = fract(enc);\n"
+	"  enc -= enc.yzww * vec2(1./255., 0.).xxxy;\n"
 	"  gl_FragColor = enc;\n"
     "}\n";
 
 // Texture shaders
 const std::string kTextureMeshVertexShader =
-    "precision mediump float;\n"
+    "precision highp float;\n"
     "precision mediump int;\n"
     "attribute vec3 aVertex;\n"
     "attribute vec2 aTexCoord;\n"
@@ -185,7 +186,7 @@ const std::string kTextureMeshVertexShader =
     "  vLightWeighting = 1.0;\n"
     "}\n";
 const std::string kTextureMeshLightingVertexShader =
-    "precision mediump float;\n"
+    "precision highp float;\n"
     "precision mediump int;\n"
     "attribute vec3 aVertex;\n"
 	"attribute vec3 aNormal;\n"
@@ -214,7 +215,7 @@ const std::string kTextureMeshLightingVertexShader =
     "    vLightWeighting=0.5;\n"
     "}\n";
 const std::string kTextureMeshFragmentShader =
-    "precision mediump float;\n"
+    "precision highp float;\n"
     "precision mediump int;\n"
 	"uniform sampler2D uTexture;\n"
 	"uniform float uGainR;\n"
@@ -245,7 +246,8 @@ const std::string kTextureMeshBlendingFragmentShader =
     "  vec4 textureColor = texture2D(uTexture, vTexCoord);\n"
     "  float alpha = 1.0;\n"
 	"  vec2 coord = uScreenScale * gl_FragCoord.xy;\n;"
-	"  float depth = texture2D(uDepthTexture, coord).r;\n"
+	"  vec4 depthPacked = texture2D(uDepthTexture, coord);\n"
+	"  float depth = dot(depthPacked, 1./vec4(1.,255.,65025.,16581375.));\n"
 	"  float num =  (2.0 * uNearZ * uFarZ);\n"
 	"  float diff = (uFarZ - uNearZ);\n"
 	"  float add = (uFarZ + uNearZ);\n"
