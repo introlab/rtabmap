@@ -207,6 +207,7 @@
          <normaloff>:/images/d435.png</normaloff>:/images/d435.png</iconset>
        </property>
        <addaction name="actionRealSense2_D400"/>
+       <addaction name="actionRealSense2_IMU"/>
       </widget>
       <widget class="QMenu" name="menuRealSense_SR300">
        <property name="title">
@@ -267,6 +268,7 @@
          <normaloff>:/images/zed.png</normaloff>:/images/zed.png</iconset>
        </property>
        <addaction name="actionStereoZed"/>
+       <addaction name="actionZed_sdk_IMU"/>
        <addaction name="actionStereoUsb"/>
       </widget>
       <widget class="QMenu" name="menuTara_Camera">
@@ -1615,6 +1617,22 @@
    </property>
    <property name="text">
     <string>RealSense2</string>
+   </property>
+  </action>
+  <action name="actionZed_sdk_IMU">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Zed sdk (Zedm, Zed2)</string>
+   </property>
+  </action>
+  <action name="actionRealSense2_IMU">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>RealSense2 (D435i)</string>
    </property>
   </action>
  </widget>

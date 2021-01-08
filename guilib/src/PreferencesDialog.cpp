@@ -3723,13 +3723,22 @@ void PreferencesDialog::updateParameters(const ParametersMap & parameters, bool 
 void PreferencesDialog::selectSourceDriver(Src src, int variant)
 {
 	_ui->comboBox_imuFilter_strategy->setCurrentIndex(0);
-	this->setParameter(Parameters::kOptimizerGravitySigma(), uNumber2Str(Parameters::defaultOptimizerGravitySigma()));
+	this->setParameter(Parameters::kOptimizerGravitySigma(), "0.0");
 
 	if(src >= kSrcRGBD && src<kSrcStereo)
 	{
 		_ui->comboBox_sourceType->setCurrentIndex(0);
 		_ui->comboBox_cameraRGBD->setCurrentIndex(src - kSrcRGBD);
-		if(src == kSrcOpenNI_PCL)
+		if(src == kSrcFreenect)
+		{
+			if(Optimizer::isAvailable(Optimizer::kTypeG2O) || Optimizer::isAvailable(Optimizer::kTypeGTSAM))
+			{
+				// enable IMU
+				_ui->comboBox_imuFilter_strategy->setCurrentIndex(1);
+				this->setParameter(Parameters::kOptimizerGravitySigma(), "0.3");
+			}
+		}
+		else if(src == kSrcOpenNI_PCL)
 		{
 			_ui->lineEdit_openniOniPath->clear();
 		}
@@ -3749,7 +3758,7 @@ void PreferencesDialog::selectSourceDriver(Src src, int variant)
 		}
 		else if (src == kSrcRealSense2)
 		{
-			if(variant > 0) // L515
+			if(variant > 1) // L515
 			{
 				_ui->spinBox_rs2_width->setValue(1280);
 				_ui->spinBox_rs2_height->setValue(720);
@@ -3761,7 +3770,7 @@ void PreferencesDialog::selectSourceDriver(Src src, int variant)
 				_ui->spinBox_rs2_height->setValue(480);
 				_ui->spinBox_rs2_rate->setValue(60);
 			}
-			if(Optimizer::isAvailable(Optimizer::kTypeG2O) || Optimizer::isAvailable(Optimizer::kTypeGTSAM))
+			if(variant>0 && (Optimizer::isAvailable(Optimizer::kTypeG2O) || Optimizer::isAvailable(Optimizer::kTypeGTSAM)))
 			{
 				// enable IMU
 				_ui->comboBox_imuFilter_strategy->setCurrentIndex(1);
@@ -3775,7 +3784,7 @@ void PreferencesDialog::selectSourceDriver(Src src, int variant)
 		_ui->comboBox_cameraStereo->setCurrentIndex(src - kSrcStereo);
 		if(Optimizer::isAvailable(Optimizer::kTypeG2O) || Optimizer::isAvailable(Optimizer::kTypeGTSAM))
 		{
-			if(src == kSrcStereoZed) // Zedm, Zed2
+			if(src == kSrcStereoZed && variant>0) // Zedm, Zed2
 			{
 				// enable IMU (zed sends already quaternion)
 				_ui->comboBox_imuFilter_strategy->setCurrentIndex(0);
