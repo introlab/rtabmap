@@ -1978,7 +1978,7 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->lineEdit_cameraImages_imu_transform->setText("0 0 1 0 -1 0 1 0 0");
 		_ui->spinBox_cameraImages_max_imu_rate->setValue(0);
 
-		_ui->comboBox_imuFilter_strategy->setCurrentIndex(0);
+		_ui->comboBox_imuFilter_strategy->setCurrentIndex(1);
 		_ui->doubleSpinBox_imuFilterMadgwickGain->setValue(Parameters::defaultImuFilterMadgwickGain());
 		_ui->doubleSpinBox_imuFilterMadgwickZeta->setValue(Parameters::defaultImuFilterMadgwickZeta());
 		_ui->doubleSpinBox_imuFilterComplementaryGainAcc->setValue(Parameters::defaultImuFilterComplementaryGainAcc());
@@ -3722,23 +3722,15 @@ void PreferencesDialog::updateParameters(const ParametersMap & parameters, bool 
 
 void PreferencesDialog::selectSourceDriver(Src src, int variant)
 {
-	_ui->comboBox_imuFilter_strategy->setCurrentIndex(0);
-	this->setParameter(Parameters::kOptimizerGravitySigma(), "0.0");
+	_ui->comboBox_imuFilter_strategy->setCurrentIndex(1);
+	_3dRenderingRoiRatios[0]->setText("0.0 0.0 0.0 0.0");
+	_3dRenderingRoiRatios[1]->setText("0.0 0.0 0.0 0.0");
 
 	if(src >= kSrcRGBD && src<kSrcStereo)
 	{
 		_ui->comboBox_sourceType->setCurrentIndex(0);
 		_ui->comboBox_cameraRGBD->setCurrentIndex(src - kSrcRGBD);
-		if(src == kSrcFreenect)
-		{
-			if(Optimizer::isAvailable(Optimizer::kTypeG2O) || Optimizer::isAvailable(Optimizer::kTypeGTSAM))
-			{
-				// enable IMU
-				_ui->comboBox_imuFilter_strategy->setCurrentIndex(1);
-				this->setParameter(Parameters::kOptimizerGravitySigma(), "0.3");
-			}
-		}
-		else if(src == kSrcOpenNI_PCL)
+		if(src == kSrcOpenNI_PCL)
 		{
 			_ui->lineEdit_openniOniPath->clear();
 		}
@@ -3749,16 +3741,12 @@ void PreferencesDialog::selectSourceDriver(Src src, int variant)
 		else if (src == kSrcK4A)
 		{
 			_ui->lineEdit_k4a_mkv->clear();
-			if(Optimizer::isAvailable(Optimizer::kTypeG2O) || Optimizer::isAvailable(Optimizer::kTypeGTSAM))
-			{
-				// enable IMU
-				_ui->comboBox_imuFilter_strategy->setCurrentIndex(1);
-				this->setParameter(Parameters::kOptimizerGravitySigma(), "0.3");
-			}
+			_3dRenderingRoiRatios[0]->setText("0.05 0.05 0.05 0.05");
+			_3dRenderingRoiRatios[1]->setText("0.05 0.05 0.05 0.05");
 		}
 		else if (src == kSrcRealSense2)
 		{
-			if(variant > 1) // L515
+			if(variant > 0) // L515
 			{
 				_ui->spinBox_rs2_width->setValue(1280);
 				_ui->spinBox_rs2_height->setValue(720);
@@ -3770,38 +3758,17 @@ void PreferencesDialog::selectSourceDriver(Src src, int variant)
 				_ui->spinBox_rs2_height->setValue(480);
 				_ui->spinBox_rs2_rate->setValue(60);
 			}
-			if(variant>0 && (Optimizer::isAvailable(Optimizer::kTypeG2O) || Optimizer::isAvailable(Optimizer::kTypeGTSAM)))
-			{
-				// enable IMU
-				_ui->comboBox_imuFilter_strategy->setCurrentIndex(1);
-				this->setParameter(Parameters::kOptimizerGravitySigma(), "0.3");
-			}
 		}
 	}
 	else if(src >= kSrcStereo && src<kSrcRGB)
 	{
 		_ui->comboBox_sourceType->setCurrentIndex(1);
 		_ui->comboBox_cameraStereo->setCurrentIndex(src - kSrcStereo);
-		if(Optimizer::isAvailable(Optimizer::kTypeG2O) || Optimizer::isAvailable(Optimizer::kTypeGTSAM))
+
+		if(src == kSrcStereoZed) // Zedm, Zed2
 		{
-			if(src == kSrcStereoZed && variant>0) // Zedm, Zed2
-			{
-				// enable IMU (zed sends already quaternion)
-				_ui->comboBox_imuFilter_strategy->setCurrentIndex(0);
-				this->setParameter(Parameters::kOptimizerGravitySigma(), "0.3");
-			}
-			else if(src == kSrcStereoRealSense2) // T265
-			{
-				// enable IMU
-				_ui->comboBox_imuFilter_strategy->setCurrentIndex(1);
-				this->setParameter(Parameters::kOptimizerGravitySigma(), "0.3");
-			}
-			else if(src == kSrcStereoMyntEye)
-			{
-				// enable IMU
-				_ui->comboBox_imuFilter_strategy->setCurrentIndex(1);
-				this->setParameter(Parameters::kOptimizerGravitySigma(), "0.3");
-			}
+			// disable IMU filtering (zed sends already quaternion)
+			_ui->comboBox_imuFilter_strategy->setCurrentIndex(0);
 		}
 	}
 	else if(src >= kSrcRGB && src<kSrcDatabase)

@@ -78,12 +78,14 @@ do
        --RGBD/AngularUpdate 0\
        --Rtabmap/DetectionRate $DETECTION_RATE\
        --Kp/FlannRebalancingFactor 1.0\
+       --GFTT/MinDistance 3\
        --Odom/Strategy $STRATEGY\
        --Mem/STMSize 30\
        --Mem/UseOdomFeatures false \
        --Mem/BinDataKept true \
        --Rtabmap/CreateIntermediateNodes false\
        --Vis/CorNNDR 0.6 \
+       --Vis/CorGuessWinSize 20 \
        $F2F_params\
        --OdomORBSLAM2/VocPath /root/ORBvoc.txt\
        --OdomFovis/MinFeaturesForEstimate 10\

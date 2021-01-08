@@ -113,7 +113,10 @@ CameraRealSense2::~CameraRealSense2()
 						UWARN("%s", error.what());
 					}
 				}
+#ifdef WIN32
 				dev_[i]->hardware_reset(); // To avoid freezing on some Windows computers in the following destructor
+				// Don't do this on linux (tested on Ubuntu 18.04, realsense v2.41.0): T265 cannot be restarted
+#endif
 				delete dev_[i];
 			}
 		}

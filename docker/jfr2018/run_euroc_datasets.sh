@@ -133,12 +133,14 @@ do
        --RGBD/ProximityBySpace false\
        --Rtabmap/DetectionRate 2\
        --Kp/FlannRebalancingFactor 1.0\
+       --GFTT/MinDistance 3\
        --Odom/Strategy $STRATEGY\
        --Mem/STMSize 30\
        --Mem/UseOdomFeatures false \
        --Mem/BinDataKept false \
        --Rtabmap/CreateIntermediateNodes false\
        --Vis/CorNNDR 0.6 \
+       --Vis/CorGuessWinSize 20 \
        $V203_params\
        $F2F_params\
        --OdomORBSLAM2/VocPath /root/ORBvoc.txt\

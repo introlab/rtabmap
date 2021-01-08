@@ -565,7 +565,22 @@ SensorData CameraStereoZed::captureImage(CameraInfo * info)
 
         if(res==sl::SUCCESS)
 #else
-        sl::ERROR_CODE res = zed_->grab(rparam);
+
+		sl::ERROR_CODE res;
+		bool imuReceived = true;
+		do
+		{
+			res = zed_->grab(rparam);
+
+			// If the sensor supports IMU, wait IMU to be available before sending data.
+			if(imuPublishingThread_ == 0 && !imuLocalTransform_.isNull())
+			{
+				 sl::SensorsData imudatatmp;
+				res = zed_->getSensorsData(imudatatmp, sl::TIME_REFERENCE::IMAGE);
+				imuReceived = res == sl::ERROR_CODE::SUCCESS && imudatatmp.imu.is_available && imudatatmp.imu.timestamp.data_ns != 0;
+			}
+		}
+		while(src_ == CameraVideo::kUsbDevice && (res!=sl::ERROR_CODE::SUCCESS || !imuReceived) && timer.elapsed() < 2.0);
 
         if(res==sl::ERROR_CODE::SUCCESS)
 #endif
