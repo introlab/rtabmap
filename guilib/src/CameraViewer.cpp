@@ -146,7 +146,7 @@ void CameraViewer::showImage(const rtabmap::SensorData & data)
 		showScanCheckbox_->setEnabled(true);
 		if(showScanCheckbox_->isChecked())
 		{
-			cloudView_->addCloud("scan", util3d::downsample(util3d::laserScanToPointCloud(data.laserScanRaw()), decimationSpin_->value()!=0?fabs(decimationSpin_->value()):1), Transform::getIdentity(), Qt::yellow);
+			cloudView_->addCloud("scan", util3d::downsample(util3d::laserScanToPointCloud(data.laserScanRaw()), decimationSpin_->value()!=0?fabs(decimationSpin_->value()):1), data.laserScanRaw().localTransform(), Qt::yellow);
 		}
 	}
 

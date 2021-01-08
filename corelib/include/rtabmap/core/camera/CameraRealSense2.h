@@ -75,6 +75,7 @@ public:
 	void setEmitterEnabled(bool enabled);
 	void setIRFormat(bool enabled, bool useDepthInsteadOfRightImage);
 	void setResolution(int width, int height, int fps = 30);
+	void setDepthResolution(int width, int height, int fps = 30);
 	void setGlobalTimeSync(bool enabled);
 	void publishInterIMU(bool enabled);
 	void setDualMode(bool enabled, const Transform & extrinsics);
@@ -132,13 +133,15 @@ private:
 	int cameraWidth_;
 	int cameraHeight_;
 	int cameraFps_;
+	int cameraDepthWidth_;
+	int cameraDepthHeight_;
+	int cameraDepthFps_;
 	bool globalTimeSync_;
 	bool publishInterIMU_;
 	bool dualMode_;
 	Transform dualExtrinsics_;
 	std::string jsonConfig_;
 	bool closing_;
-	bool isL500_;
 
 	static Transform realsense2PoseRotation_;
 	static Transform realsense2PoseRotationInv_;

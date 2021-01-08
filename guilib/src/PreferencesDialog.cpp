@@ -682,6 +682,9 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->spinBox_rs2_width, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->spinBox_rs2_height, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->spinBox_rs2_rate, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->spinBox_rs2_width_depth, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->spinBox_rs2_height_depth, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->spinBox_rs2_rate_depth, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->checkbox_rs2_globalTimeStync, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->checkbox_rs2_dualMode, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->lineEdit_rs2_dualModeExtrinsics, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
@@ -1908,6 +1911,9 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->spinBox_rs2_width->setValue(848);
 		_ui->spinBox_rs2_height->setValue(480);
 		_ui->spinBox_rs2_rate->setValue(60);
+		_ui->spinBox_rs2_width_depth->setValue(640);
+		_ui->spinBox_rs2_height_depth->setValue(480);
+		_ui->spinBox_rs2_rate_depth->setValue(30);
 		_ui->checkbox_rs2_globalTimeStync->setChecked(true);
 		_ui->checkbox_rs2_dualMode->setChecked(false);
 		_ui->lineEdit_rs2_dualModeExtrinsics->setText("0.009 0.021 0.027 0 -0.018 0.005");
@@ -2364,6 +2370,9 @@ void PreferencesDialog::readCameraSettings(const QString & filePath)
 	_ui->spinBox_rs2_width->setValue(settings.value("width", _ui->spinBox_rs2_width->value()).toInt());
 	_ui->spinBox_rs2_height->setValue(settings.value("height", _ui->spinBox_rs2_height->value()).toInt());
 	_ui->spinBox_rs2_rate->setValue(settings.value("rate", _ui->spinBox_rs2_rate->value()).toInt());
+	_ui->spinBox_rs2_width_depth->setValue(settings.value("width_depth", _ui->spinBox_rs2_width_depth->value()).toInt());
+	_ui->spinBox_rs2_height_depth->setValue(settings.value("height_depth", _ui->spinBox_rs2_height_depth->value()).toInt());
+	_ui->spinBox_rs2_rate_depth->setValue(settings.value("rate_depth", _ui->spinBox_rs2_rate_depth->value()).toInt());
 	_ui->checkbox_rs2_globalTimeStync->setChecked(settings.value("global_time_sync", _ui->checkbox_rs2_globalTimeStync->isChecked()).toBool());
 	_ui->checkbox_rs2_dualMode->setChecked(settings.value("dual_mode", _ui->checkbox_rs2_dualMode->isChecked()).toBool());
 	_ui->lineEdit_rs2_dualModeExtrinsics->setText(settings.value("dual_mode_extrinsics", _ui->lineEdit_rs2_dualModeExtrinsics->text()).toString());
@@ -2847,6 +2856,9 @@ void PreferencesDialog::writeCameraSettings(const QString & filePath) const
 	settings.setValue("width",                  _ui->spinBox_rs2_width->value());
 	settings.setValue("height",                 _ui->spinBox_rs2_height->value());
 	settings.setValue("rate",                   _ui->spinBox_rs2_rate->value());
+	settings.setValue("width_depth",            _ui->spinBox_rs2_width_depth->value());
+	settings.setValue("height_depth",           _ui->spinBox_rs2_height_depth->value());
+	settings.setValue("rate_depth",             _ui->spinBox_rs2_rate_depth->value());
 	settings.setValue("global_time_sync",       _ui->checkbox_rs2_globalTimeStync->isChecked());
 	settings.setValue("dual_mode",              _ui->checkbox_rs2_dualMode->isChecked());
 	settings.setValue("dual_mode_extrinsics",   _ui->lineEdit_rs2_dualModeExtrinsics->text());
@@ -3708,8 +3720,11 @@ void PreferencesDialog::updateParameters(const ParametersMap & parameters, bool 
 	}
 }
 
-void PreferencesDialog::selectSourceDriver(Src src)
+void PreferencesDialog::selectSourceDriver(Src src, int variant)
 {
+	_ui->comboBox_imuFilter_strategy->setCurrentIndex(0);
+	this->setParameter(Parameters::kOptimizerGravitySigma(), uNumber2Str(Parameters::defaultOptimizerGravitySigma()));
+
 	if(src >= kSrcRGBD && src<kSrcStereo)
 	{
 		_ui->comboBox_sourceType->setCurrentIndex(0);
@@ -3725,12 +3740,60 @@ void PreferencesDialog::selectSourceDriver(Src src)
 		else if (src == kSrcK4A)
 		{
 			_ui->lineEdit_k4a_mkv->clear();
+			if(Optimizer::isAvailable(Optimizer::kTypeG2O) || Optimizer::isAvailable(Optimizer::kTypeGTSAM))
+			{
+				// enable IMU
+				_ui->comboBox_imuFilter_strategy->setCurrentIndex(1);
+				this->setParameter(Parameters::kOptimizerGravitySigma(), "0.3");
+			}
+		}
+		else if (src == kSrcRealSense2)
+		{
+			if(variant > 0) // L515
+			{
+				_ui->spinBox_rs2_width->setValue(1280);
+				_ui->spinBox_rs2_height->setValue(720);
+				_ui->spinBox_rs2_rate->setValue(30);
+			}
+			else
+			{
+				_ui->spinBox_rs2_width->setValue(848);
+				_ui->spinBox_rs2_height->setValue(480);
+				_ui->spinBox_rs2_rate->setValue(60);
+			}
+			if(Optimizer::isAvailable(Optimizer::kTypeG2O) || Optimizer::isAvailable(Optimizer::kTypeGTSAM))
+			{
+				// enable IMU
+				_ui->comboBox_imuFilter_strategy->setCurrentIndex(1);
+				this->setParameter(Parameters::kOptimizerGravitySigma(), "0.3");
+			}
 		}
 	}
 	else if(src >= kSrcStereo && src<kSrcRGB)
 	{
 		_ui->comboBox_sourceType->setCurrentIndex(1);
 		_ui->comboBox_cameraStereo->setCurrentIndex(src - kSrcStereo);
+		if(Optimizer::isAvailable(Optimizer::kTypeG2O) || Optimizer::isAvailable(Optimizer::kTypeGTSAM))
+		{
+			if(src == kSrcStereoZed) // Zedm, Zed2
+			{
+				// enable IMU (zed sends already quaternion)
+				_ui->comboBox_imuFilter_strategy->setCurrentIndex(0);
+				this->setParameter(Parameters::kOptimizerGravitySigma(), "0.3");
+			}
+			else if(src == kSrcStereoRealSense2) // T265
+			{
+				// enable IMU
+				_ui->comboBox_imuFilter_strategy->setCurrentIndex(1);
+				this->setParameter(Parameters::kOptimizerGravitySigma(), "0.3");
+			}
+			else if(src == kSrcStereoMyntEye)
+			{
+				// enable IMU
+				_ui->comboBox_imuFilter_strategy->setCurrentIndex(1);
+				this->setParameter(Parameters::kOptimizerGravitySigma(), "0.3");
+			}
+		}
 	}
 	else if(src >= kSrcRGB && src<kSrcDatabase)
 	{
@@ -5738,6 +5801,7 @@ Camera * PreferencesDialog::createCamera(bool useRawImages, bool useColor)
 				((CameraRealSense2*)camera)->setEmitterEnabled(_ui->checkbox_rs2_emitter->isChecked());
 				((CameraRealSense2*)camera)->setIRFormat(_ui->checkbox_rs2_irMode->isChecked(), _ui->checkbox_rs2_irDepth->isChecked());
 				((CameraRealSense2*)camera)->setResolution(_ui->spinBox_rs2_width->value(), _ui->spinBox_rs2_height->value(), _ui->spinBox_rs2_rate->value());
+				((CameraRealSense2*)camera)->setDepthResolution(_ui->spinBox_rs2_width_depth->value(), _ui->spinBox_rs2_height_depth->value(), _ui->spinBox_rs2_rate_depth->value());
 				((CameraRealSense2*)camera)->setGlobalTimeSync(_ui->checkbox_rs2_globalTimeStync->isChecked());
 				((CameraRealSense2*)camera)->setDualMode(_ui->checkbox_rs2_dualMode->isChecked(), Transform::fromString(_ui->lineEdit_rs2_dualModeExtrinsics->text().toStdString()));
 				((CameraRealSense2*)camera)->setJsonConfig(_ui->lineEdit_rs2_jsonFile->text().toStdString());

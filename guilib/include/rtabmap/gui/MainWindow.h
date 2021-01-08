@@ -175,6 +175,7 @@ protected Q_SLOTS:
 	void selectK4A();
 	void selectRealSense();
 	void selectRealSense2();
+	void selectRealSense2L515();
 	void selectRealSense2Stereo();
 	void selectStereoDC1394();
 	void selectStereoFlyCapture2();

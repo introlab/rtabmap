@@ -200,23 +200,13 @@
       </widget>
       <widget class="QMenu" name="menuRealSense_D435">
        <property name="title">
-        <string>RealSense D435</string>
+        <string>RealSense D400</string>
        </property>
        <property name="icon">
         <iconset resource="../GuiLib.qrc">
          <normaloff>:/images/d435.png</normaloff>:/images/d435.png</iconset>
        </property>
-       <addaction name="actionRealSense2_D435"/>
-      </widget>
-      <widget class="QMenu" name="menuRealSense_D415">
-       <property name="title">
-        <string>RealSense D415</string>
-       </property>
-       <property name="icon">
-        <iconset resource="../GuiLib.qrc">
-         <normaloff>:/images/d415.png</normaloff>:/images/d415.png</iconset>
-       </property>
-       <addaction name="actionRealSense2_D415"/>
+       <addaction name="actionRealSense2_D400"/>
       </widget>
       <widget class="QMenu" name="menuRealSense_SR300">
        <property name="title">
@@ -246,7 +236,6 @@
       <addaction name="menuRealSense_R200"/>
       <addaction name="menuRealSense_ZR300"/>
       <addaction name="menuRealSense_SR300"/>
-      <addaction name="menuRealSense_D415"/>
       <addaction name="menuRealSense_D435"/>
       <addaction name="menuRealSense_L515"/>
      </widget>
@@ -1572,15 +1561,7 @@
     <string>Kinect for Azure</string>
    </property>
   </action>
-  <action name="actionRealSense2_D435">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
-   <property name="text">
-    <string>RealSense2</string>
-   </property>
-  </action>
-  <action name="actionRealSense2_D415">
+  <action name="actionRealSense2_D400">
    <property name="checkable">
     <bool>true</bool>
    </property>

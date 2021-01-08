@@ -77,11 +77,13 @@ CameraRealSense2::CameraRealSense2(
 	cameraWidth_(640),
 	cameraHeight_(480),
 	cameraFps_(30),
+	cameraDepthWidth_(640),
+	cameraDepthHeight_(480),
+	cameraDepthFps_(30),
 	globalTimeSync_(true),
 	publishInterIMU_(false),
 	dualMode_(false),
-	closing_(false),
-	isL500_(false)
+	closing_(false)
 #endif
 {
 	UDEBUG("");
@@ -283,13 +285,30 @@ void CameraRealSense2::getPoseAndIMU(
 				pose = iterA->second.first.interpolate((stamp-iterA->first) / (iterB->first-iterA->first), iterB->second.first);
 				poseConfidence = iterA->second.second;
 			}
-			else if(stamp < iterA->first)
-			{
-				UWARN("Could not find poses to interpolate at image time %f (earliest is %f). Are sensors synchronized?", stamp, iterA->first);
-			}
 			else
 			{
-				UWARN("Could not find poses to interpolate at image time %f (between %f and %f), Are sensors synchronized?", stamp, iterA->first, iterB->first);
+				if(!imuGlobalSyncWarningShown_)
+				{
+					if(stamp < iterA->first)
+					{
+						UWARN("Could not find pose data to interpolate at image time %f (earliest is %f). Are sensors synchronized?", stamp, iterA->first);
+					}
+					else
+					{
+						UWARN("Could not find pose data to interpolate at image time %f (between %f and %f). Are sensors synchronized?", stamp, iterA->first, iterB->first);
+					}
+				}
+				if(!globalTimeSync_)
+				{
+					if(!imuGlobalSyncWarningShown_)
+					{
+						UWARN("As globalTimeSync option is off, the received pose, gyro and accelerometer will be re-stamped with image time. This message is only shown once.");
+						imuGlobalSyncWarningShown_ = true;
+					}
+					std::map<double, std::pair<Transform, unsigned int> >::const_reverse_iterator iterC = poseBuffer_.rbegin();
+					pose = iterC->second.first;
+					poseConfidence = iterC->second.second;
+				}
 			}
 		}
 		poseMutex_.unlock();
@@ -606,7 +625,7 @@ bool CameraRealSense2::init(const std::string & calibrationFolder, const std::st
 	UINFO("Device Sensors: ");
 	std::vector<rs2::sensor> sensors(2); //0=rgb 1=depth 2=(pose in dualMode_)
 	bool stereo = false;
-	isL500_ = false;
+	bool isL500 = false;
 	for(auto&& elem : dev_sensors)
 	{
 		std::string module_name = elem.get_info(RS2_CAMERA_INFO_NAME);
@@ -654,7 +673,14 @@ bool CameraRealSense2::init(const std::string & calibrationFolder, const std::st
 		else if ("L500 Depth Sensor" == module_name)
 		{
 			sensors[1] = elem;
-			isL500_ = true;
+			isL500 = true;
+			if(ir_)
+			{
+				cameraWidth_ = cameraDepthWidth_;
+				cameraHeight_ = cameraDepthHeight_;
+				cameraFps_ = cameraDepthFps_;
+			}
+			irDepth_ = true;
 		}
 		else
 		{
@@ -680,7 +706,7 @@ bool CameraRealSense2::init(const std::string & calibrationFolder, const std::st
 		auto profiles = sensors[i].get_stream_profiles();
 		bool added = false;
 		UINFO("profiles=%d", (int)profiles.size());
-		if(ULogger::level()>=ULogger::kInfo)
+		if(ULogger::level()<ULogger::kWarning)
 		{
 			for (auto& profile : profiles)
 			{
@@ -701,44 +727,19 @@ bool CameraRealSense2::init(const std::string & calibrationFolder, const std::st
 			auto video_profile = profile.as<rs2::video_stream_profile>();
 			if(!stereo)
 			{
-				if(isL500_ &&
-						(video_profile.width()  == 640 &&
-						 video_profile.height() == 480 &&
-						 video_profile.fps()    == 30))
-				{
-					if( i==0 // rgb
-						&& video_profile.format() == RS2_FORMAT_RGB8 && video_profile.stream_type() == RS2_STREAM_COLOR)
-					{
-						auto intrinsic = video_profile.get_intrinsics();
-						profilesPerSensor[i].push_back(profile);
-						rgbBuffer_ = cv::Mat(cv::Size(video_profile.width(), video_profile.height()), CV_8UC3, cv::Scalar(0, 0, 0));
-						model_ = CameraModel(camera_name, intrinsic.fx, intrinsic.fy, intrinsic.ppx, intrinsic.ppy, this->getLocalTransform(), 0, cv::Size(intrinsic.width, intrinsic.height));
-						rgbStreamProfile = profile;
-						*rgbIntrinsics_ = intrinsic;
-						added = true;
-					}
-					else if( i==1 // depth
-						 && video_profile.format() == RS2_FORMAT_Z16 && video_profile.stream_type() == RS2_STREAM_DEPTH)
-					{
-						auto intrinsic = video_profile.get_intrinsics();
-						profilesPerSensor[i].push_back(profile);
-						depthBuffer_ = cv::Mat(cv::Size(video_profile.width(), video_profile.height()), CV_16UC1, cv::Scalar(0));
-						depthStreamProfile = profile;
-						*depthIntrinsics_ = intrinsic;
-						added = true;
-					}
-				}
-				//D400 series:
-				else if (!isL500_ &&
-						(video_profile.width()  == cameraWidth_ &&
-						 video_profile.height() == cameraHeight_ &&
-						 video_profile.fps()    == cameraFps_))
+				if( (video_profile.width()  == cameraWidth_ &&
+					 video_profile.height() == cameraHeight_ &&
+					 video_profile.fps()    == cameraFps_) ||
+						(strcmp(sensors[i].get_info(RS2_CAMERA_INFO_NAME), "L500 Depth Sensor")==0 &&
+							video_profile.width()  == cameraDepthWidth_ &&
+							video_profile.height() == cameraDepthHeight_ &&
+							video_profile.fps()    == cameraDepthFps_))
 				{
 					auto intrinsic = video_profile.get_intrinsics();
 
 					// rgb or ir left
 					if((!ir_ && video_profile.format() == RS2_FORMAT_RGB8 && video_profile.stream_type() == RS2_STREAM_COLOR) ||
-					  (ir_ && video_profile.format() == RS2_FORMAT_Y8 && video_profile.stream_index() == 1))
+					  (ir_ && video_profile.format() == RS2_FORMAT_Y8 && (video_profile.stream_index() == 1 || isL500)))
 					{
 						if(!profilesPerSensor[i].empty())
 						{
@@ -752,6 +753,11 @@ bool CameraRealSense2::init(const std::string & calibrationFolder, const std::st
 						}
 						rgbBuffer_ = cv::Mat(cv::Size(cameraWidth_, cameraHeight_), video_profile.format() == RS2_FORMAT_Y8?CV_8UC1:CV_8UC3, ir_?cv::Scalar(0):cv::Scalar(0, 0, 0));
 						model_ = CameraModel(camera_name, intrinsic.fx, intrinsic.fy, intrinsic.ppx, intrinsic.ppy, this->getLocalTransform(), 0, cv::Size(intrinsic.width, intrinsic.height));
+						UINFO("Model: %dx%d fx=%f fy=%f cx=%f cy=%f dist model=%d coeff=%f %f %f %f %f",
+								intrinsic.width, intrinsic.height,
+								intrinsic.fx, intrinsic.fy, intrinsic.ppx, intrinsic.ppy,
+								intrinsic.model,
+								intrinsic.coeffs[0], intrinsic.coeffs[1], intrinsic.coeffs[2], intrinsic.coeffs[3], intrinsic.coeffs[4]);
 						rgbStreamProfile = profile;
 						*rgbIntrinsics_ = intrinsic;
 						added = true;
@@ -875,6 +881,7 @@ bool CameraRealSense2::init(const std::string & calibrationFolder, const std::st
 		 if(!model_.isValidForProjection())
 		 {
 			 UERROR("Calibration info not valid!");
+			 std::cout<< model_ << std::endl;
 			 return false;
 		 }
 		 *depthToRGBExtrinsics_ = depthStreamProfile.get_extrinsics_to(rgbStreamProfile);
@@ -1133,6 +1140,15 @@ void CameraRealSense2::setResolution(int width, int height, int fps)
 #endif
 }
 
+void CameraRealSense2::setDepthResolution(int width, int height, int fps)
+{
+#ifdef RTABMAP_REALSENSE2
+	cameraDepthWidth_ = width;
+	cameraDepthHeight_ = height;
+	cameraDepthFps_ = fps;
+#endif
+}
+
 void CameraRealSense2::setGlobalTimeSync(bool enabled)
 {
 #ifdef RTABMAP_REALSENSE2
@@ -1195,8 +1211,6 @@ SensorData CameraRealSense2::captureImage(CameraInfo * info)
 		auto frameset = syncer_->wait_for_frames(5000);
 		UTimer timer;
 		int desiredFramesetSize = 2;
-		if(isL500_ && globalTimeSync_)
-			desiredFramesetSize = 3;
 		while ((int)frameset.size() != desiredFramesetSize && timer.elapsed() < 2.0)
 		{
 			// maybe there is a latency with the USB, try again in 100 ms (for the next 2 seconds)
@@ -1222,15 +1236,7 @@ SensorData CameraRealSense2::captureImage(CameraInfo * info)
 				auto stream_type = f.get_profile().stream_type();
 				if (stream_type == RS2_STREAM_COLOR || stream_type == RS2_STREAM_INFRARED)
 				{
-					if(isL500_)
-					{
-						if(stream_type == RS2_STREAM_COLOR)
-						{
-							rgb_frame = f;
-							is_rgb_arrived = true;
-						}
-					} 
-					else if(ir_ && !irDepth_)
+					if(ir_ && !irDepth_)
 					{
 						//stereo D435
 						if(!is_depth_arrived)
@@ -1421,10 +1427,6 @@ SensorData CameraRealSense2::captureImage(CameraInfo * info)
 				}
 				lastImuStamp_ = imuStamp;
 			}
-		}
-		else if(isL500_ && globalTimeSync_)
-		{
-			UERROR("Missing frames (received %d, needed=%d). L500 camera is used and global time sync is enabled, try disabling global time sync for the RealSense2 driver.", (int)frameset.size(), desiredFramesetSize);
 		}
 		else
 		{

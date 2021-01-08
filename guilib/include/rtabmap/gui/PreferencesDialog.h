@@ -308,7 +308,7 @@ public Q_SLOTS:
 	void setDetectionRate(double value);
 	void setTimeLimit(float value);
 	void setSLAMMode(bool enabled);
-	void selectSourceDriver(Src src);
+	void selectSourceDriver(Src src, int variant = 0);
 	void calibrate();
 	void calibrateSimple();
 
