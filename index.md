@@ -45,9 +45,8 @@
 
 ## License
 * If OpenCV is built **without the nonfree** module, RTAB-Map can be used under the permissive BSD License.
-* If OpenCV is built **with the nonfree** module, RTAB-Map is free for research only because it depends on **SURF** and **SIFT** features. **SIFT** and **SURF** are not free for commercial use.
+* If OpenCV is built **with the nonfree** module, RTAB-Map is free for research only because it depends on **SURF** features. **SURF** is not free for commercial use. Note that SIFT patent has expired, so it can be a good free equivalent of SURF.
     * SURF noncommercial notice: http://www.vision.ee.ethz.ch/~surf/download.html
-    * SIFT patent: http://www.cs.ubc.ca/~lowe/keypoints/
 
 ## Privacy Policy
 [RTAB-Map Tango](https://play.google.com/store/apps/details?id=com.introlab.rtabmap&hl=en) app on Google Play Store requires access to camera to record images that will be used for creating the map. When saving, a database containing these images is created. That database is saved locally on the device (on the sd-card under RTAB-Map folder). While location permission is required to install RTAB-Map Tango, the GPS coordinates are not saved by default, the option "Settings->Mapping...->Save GPS" should be enabled first. RTAB-Map requires read/write access to RTAB-Map folder only, to save, export and open maps. RTAB-Map doesn't access any other information outside the RTAB-Map folder. RTAB-Map doesn't share information over Internet unless the user explicitly exports a map to Sketchfab, for which RTAB-Map needs the network. If so, the user will be asked for authorization ([oauth2](https://oauth.net/)) by Sketchfab (see their Privacy Policy [here](https://sketchfab.com/privacy)).
