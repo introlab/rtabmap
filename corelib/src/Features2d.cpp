@@ -298,7 +298,11 @@ void Feature2D::limitKeypoints(std::vector<cv::KeyPoint> & keypoints, std::vecto
 		int removed = (int)hessianMap.size()-maxKeypoints;
 		std::multimap<float, int>::reverse_iterator iter = hessianMap.rbegin();
 		std::vector<cv::KeyPoint> kptsTmp(maxKeypoints);
-		std::vector<cv::Point3f> kpts3DTmp(maxKeypoints);
+		std::vector<cv::Point3f> kpts3DTmp;
+		if(!keypoints3D.empty())
+		{
+			kpts3DTmp.resize(maxKeypoints);
+		}
 		cv::Mat descriptorsTmp;
 		if(descriptors.rows)
 		{
