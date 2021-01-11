@@ -88,6 +88,12 @@ typedef g2o::LinearSolverCSparse<SlamBlockSolver::PoseMatrixType> SlamLinearCSpa
 typedef g2o::LinearSolverCholmod<SlamBlockSolver::PoseMatrixType> SlamLinearCholmodSolver;
 #endif
 
+#ifdef G2O_SRC_DIR
+namespace g2o {
+typedef VertexPointXYZ VertexSBAPointXYZ;
+}
+#endif
+
 #if defined(RTABMAP_VERTIGO)
 #include "vertigo/g2o/edge_switchPrior.h"
 #include "vertigo/g2o/edge_se2Switchable.h"
