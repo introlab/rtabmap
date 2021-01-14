@@ -76,6 +76,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <open_chisel/weighting/ConstantWeighter.h>
 #endif
 
+#ifdef RTABMAP_PDAL
+#include <rtabmap/core/PDALWriter.h>
+#endif
+
 namespace rtabmap {
 
 ExportCloudsDialog::ExportCloudsDialog(QWidget *parent) :
@@ -3401,9 +3405,31 @@ void ExportCloudsDialog::saveClouds(
 {
 	if(clouds.size() == 1)
 	{
-		QString path = QFileDialog::getSaveFileName(this, tr("Save cloud to ..."), workingDirectory+QDir::separator()+"cloud.ply", tr("Point cloud data (*.ply *.pcd)"));
+#ifdef RTABMAP_PDAL
+		QString extensions = tr("Point cloud data (*.ply *.pcd");
+		std::list<std::string> pdalFormats = uSplit(getPDALSupportedWriters(), ' ');
+		for(std::list<std::string>::iterator iter=pdalFormats.begin(); iter!=pdalFormats.end(); ++iter)
+		{
+			if(iter->compare("ply") == 0 || iter->compare("pcd") == 0)
+			{
+				continue;
+			}
+			extensions += QString(" *.") + iter->c_str();
+		}
+		extensions += ")";
+#else
+		QString extensions = tr("Point cloud data (*.ply *.pcd)");
+#endif
+		QString path = QFileDialog::getSaveFileName(this, tr("Save cloud to ..."), workingDirectory+QDir::separator()+"cloud.ply", extensions);
+
 		if(!path.isEmpty())
 		{
+			if(QFileInfo(path).suffix().isEmpty())
+			{
+				//use ply by default
+				path += ".ply";
+			}
+
 			if(clouds.begin()->second->size())
 			{
 				pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudRGBWithoutNormals;
@@ -3479,14 +3505,8 @@ void ExportCloudsDialog::saveClouds(
 						success = pcl::io::savePCDFile(path.toStdString(), *clouds.begin()->second, binaryMode) == 0;
 					}
 				}
-				else if(QFileInfo(path).suffix() == "ply" || QFileInfo(path).suffix() == "")
+				else if(QFileInfo(path).suffix() == "ply")
 				{
-					if(QFileInfo(path).suffix() == "")
-					{
-						//use ply by default
-						path += ".ply";
-					}
-
 					if(cloudIWithNormals.get())
 					{
 						success = pcl::io::savePLYFile(path.toStdString(), *cloudIWithNormals, binaryMode) == 0;
@@ -3504,9 +3524,30 @@ void ExportCloudsDialog::saveClouds(
 						success = pcl::io::savePLYFile(path.toStdString(), *clouds.begin()->second, binaryMode) == 0;
 					}
 				}
+#ifdef RTABMAP_PDAL
+				else if(!QFileInfo(path).suffix().isEmpty())
+				{
+					if(cloudIWithNormals.get())
+					{
+						success = savePDALFile(path.toStdString(), *cloudIWithNormals) == 0;
+					}
+					else if(cloudIWithoutNormals.get())
+					{
+						success = savePDALFile(path.toStdString(), *cloudIWithoutNormals) == 0;
+					}
+					else if(cloudRGBWithoutNormals.get())
+					{
+						success = savePDALFile(path.toStdString(), *cloudRGBWithoutNormals) == 0;
+					}
+					else
+					{
+						success = savePDALFile(path.toStdString(), *clouds.begin()->second) == 0;
+					}
+				}
+#endif
 				else
 				{
-					UERROR("Extension not recognized! (%s) Should be one of (*.ply *.pcd).", QFileInfo(path).suffix().toStdString().c_str());
+					UERROR("Extension not recognized! (%s) Should be one of (*.ply *.pcd *.las).", QFileInfo(path).suffix().toStdString().c_str());
 				}
 				if(success)
 				{
@@ -3528,13 +3569,30 @@ void ExportCloudsDialog::saveClouds(
 	}
 	else if(clouds.size())
 	{
-		QString path = QFileDialog::getExistingDirectory(this, tr("Save clouds to (*.ply *.pcd)..."), workingDirectory, 0);
+		QStringList items;
+		items.push_back("ply");
+		items.push_back("pcd");
+#ifdef RTABMAP_PDAL
+		QString extensions = tr("Save clouds to (*.ply *.pcd");
+		std::list<std::string> pdalFormats = uSplit(getPDALSupportedWriters(), ' ');
+		for(std::list<std::string>::iterator iter=pdalFormats.begin(); iter!=pdalFormats.end(); ++iter)
+		{
+			if(iter->compare("ply") == 0 || iter->compare("pcd") == 0)
+			{
+				continue;
+			}
+			extensions += QString(" *.") + iter->c_str();
+
+			items.push_back(iter->c_str());
+		}
+		extensions += ")...";
+#else
+		QString extensions = tr("Save clouds to (*.ply *.pcd)...");
+#endif
+		QString path = QFileDialog::getExistingDirectory(this, extensions, workingDirectory, 0);
 		if(!path.isEmpty())
 		{
 			bool ok = false;
-			QStringList items;
-			items.push_back("ply");
-			items.push_back("pcd");
 			QString suffix = QInputDialog::getItem(this, tr("File format"), tr("Which format?"), items, 0, false, &ok);
 
 			if(ok)
@@ -3641,6 +3699,27 @@ void ExportCloudsDialog::saveClouds(
 									success = pcl::io::savePLYFile(pathFile.toStdString(), *transformedCloud, binaryMode) == 0;
 								}
 							}
+#ifdef RTABMAP_PDAL
+							else if(!suffix.isEmpty())
+							{
+								if(cloudIWithNormals.get())
+								{
+									success = savePDALFile(pathFile.toStdString(), *cloudIWithNormals) == 0;
+								}
+								else if(cloudIWithoutNormals.get())
+								{
+									success = savePDALFile(pathFile.toStdString(), *cloudIWithoutNormals) == 0;
+								}
+								else if(cloudRGBWithoutNormals.get())
+								{
+									success = savePDALFile(pathFile.toStdString(), *cloudRGBWithoutNormals) == 0;
+								}
+								else
+								{
+									success = savePDALFile(pathFile.toStdString(), *transformedCloud) == 0;
+								}
+							}
+#endif
 							else
 							{
 								UFATAL("Extension not recognized! (%s)", suffix.toStdString().c_str());
