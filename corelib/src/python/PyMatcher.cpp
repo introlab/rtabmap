@@ -2,7 +2,7 @@
  * Python interface for SuperGlue: https://github.com/magicleap/SuperGluePretrainedNetwork
  */
 
-#include <pymatcher/PyMatcher.h>
+#include <python/PyMatcher.h>
 #include <rtabmap/utilite/ULogger.h>
 #include <rtabmap/utilite/UDirectory.h>
 #include <rtabmap/utilite/UFile.h>
@@ -15,52 +15,6 @@
 
 namespace rtabmap
 {
-
-class PythonSingleTon
-{
-public:
-	PythonSingleTon() : initialized_(false) {}
-	void init() {UScopeMutex lock(mutex_); if(!initialized_)Py_Initialize(); initialized_=true;}
-	bool initialized() const {return initialized_;}
-	virtual ~PythonSingleTon() {if(initialized_) Py_Finalize();}
-private:
-	bool initialized_;
-	UMutex mutex_;
-};
-
-static PythonSingleTon g_python;
-
-std::string getTraceback()
-{
-	// Author: https://stackoverflow.com/questions/41268061/c-c-python-exception-traceback-not-being-generated
-
-	PyObject* type;
-	PyObject* value;
-	PyObject* traceback;
-
-	PyErr_Fetch(&type, &value, &traceback);
-	PyErr_NormalizeException(&type, &value, &traceback);
-
-	std::string fcn = "";
-	fcn += "def get_pretty_traceback(exc_type, exc_value, exc_tb):\n";
-	fcn += "    import sys, traceback\n";
-	fcn += "    lines = []\n";
-	fcn += "    lines = traceback.format_exception(exc_type, exc_value, exc_tb)\n";
-	fcn += "    output = '\\n'.join(lines)\n";
-	fcn += "    return output\n";
-
-	PyRun_SimpleString(fcn.c_str());
-	PyObject* mod = PyImport_ImportModule("__main__");
-	PyObject* method = PyObject_GetAttrString(mod, "get_pretty_traceback");
-	PyObject* outStr = PyObject_CallObject(method, Py_BuildValue("OOO", type, value, traceback));
-	std::string pretty = PyBytes_AsString(PyUnicode_AsASCIIString(outStr));
-
-	Py_DECREF(method);
-	Py_DECREF(outStr);
-	Py_DECREF(mod);
-
-	return pretty;
-}
 
 PyMatcher::PyMatcher(
 		const std::string & pythonMatcherPath,
@@ -83,11 +37,6 @@ PyMatcher::PyMatcher(
 	{
 		UERROR("Cannot initialize Python matcher, the path is not valid: \"%s\"", path_.c_str());
 		return;
-	}
-
-	if(!g_python.initialized())
-	{
-		g_python.init();
 	}
 
 	std::string matcherPythonDir = UDirectory::getDir(path_);

@@ -37,7 +37,7 @@ namespace rtabmap {
 
 class Feature2D;
 
-#ifdef RTABMAP_PYMATCHER
+#ifdef RTABMAP_PYTHON
 class PyMatcher;
 #endif
 
@@ -105,7 +105,7 @@ private:
 	Feature2D * _detectorFrom;
 	Feature2D * _detectorTo;
 
-#ifdef RTABMAP_PYMATCHER
+#ifdef RTABMAP_PYTHON
 	PyMatcher * _pyMatcher;
 #endif
 };

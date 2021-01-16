@@ -63,7 +63,7 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-687</y>
+            <y>0</y>
             <width>686</width>
             <height>3357</height>
            </rect>
@@ -95,7 +95,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>5</number>
+                <number>37</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,1">
@@ -9159,6 +9159,11 @@ generate the number of words requested.</string>
                              <string>SURF+DAISY</string>
                             </property>
                            </item>
+                           <item>
+                            <property name="text">
+                             <string>PyDetector</string>
+                            </property>
+                           </item>
                           </widget>
                          </item>
                          <item row="7" column="0">
@@ -17786,7 +17791,7 @@ Lower the ratio -&gt; higher the precision.</string>
                           <item>
                            <widget class="QLabel" name="label_586">
                             <property name="text">
-                             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Python wrapper for python matcher like &lt;a href=&quot;https://github.com/magicleap/SuperGluePretrainedNetwork&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;SuperGlue&lt;/span&gt;&lt;/a&gt; or &lt;a href=&quot;https://github.com/zjhthu/OANet&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;OANet&lt;/span&gt;&lt;/a&gt;. Download the &lt;a href=&quot;https://github.com/introlab/rtabmap/tree/master/corelib/src/pymatcher&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;scripts&lt;/span&gt;&lt;/a&gt; and copy them at the root folder of SuperGlue git or in demo folder of OANet respectively, then set its path below. &lt;span style=&quot; font-weight:600;&quot;&gt;Important&lt;/span&gt;: Only float descriptors are allowed and SuperGlue works only with SuperPoint descriptors! You may have to train a new model for the feature used.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Python wrapper for python matcher like &lt;a href=&quot;https://github.com/magicleap/SuperGluePretrainedNetwork&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;SuperGlue&lt;/span&gt;&lt;/a&gt; or &lt;a href=&quot;https://github.com/zjhthu/OANet&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;OANet&lt;/span&gt;&lt;/a&gt;. Download the &lt;a href=&quot;https://github.com/introlab/rtabmap/tree/master/corelib/src/python&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;scripts&lt;/span&gt;&lt;/a&gt; and copy them at the root folder of SuperGlue git or in demo folder of OANet respectively, then set its path below. &lt;span style=&quot; font-weight:600;&quot;&gt;Important&lt;/span&gt;: Only float descriptors are allowed and SuperGlue works only with SuperPoint descriptors! You may have to train a new model for the feature used.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                             </property>
                             <property name="wordWrap">
                              <bool>true</bool>
@@ -18537,6 +18542,11 @@ Lower the ratio -&gt; higher the precision.</string>
                            <item>
                             <property name="text">
                              <string>SURF+DAISY</string>
+                            </property>
+                           </item>
+                           <item>
+                            <property name="text">
+                             <string>PyDetector</string>
                             </property>
                            </item>
                           </widget>
@@ -22349,7 +22359,96 @@ Lower the ratio -&gt; higher the precision.</string>
                    <property name="sizeHint" stdset="0">
                     <size>
                      <width>20</width>
-                     <height>2964</height>
+                     <height>0</height>
+                    </size>
+                   </property>
+                  </spacer>
+                 </item>
+                </layout>
+               </widget>
+               <widget class="QWidget" name="page_87">
+                <layout class="QVBoxLayout" name="verticalLayout_153">
+                 <item>
+                  <widget class="QGroupBox" name="groupBox_pydetector2">
+                   <property name="title">
+                    <string>PyDetector</string>
+                   </property>
+                   <layout class="QVBoxLayout" name="verticalLayout_152">
+                    <item>
+                     <widget class="QLabel" name="label_614">
+                      <property name="text">
+                       <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Python wrapper for python feature detector like &lt;a href=&quot;https://github.com/magicleap/SuperPointPretrainedNetwork&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;SuperPoint&lt;/span&gt;&lt;/a&gt;. Download the &lt;a href=&quot;https://github.com/introlab/rtabmap/tree/master/corelib/src/python&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;script&lt;/span&gt;&lt;/a&gt; and copy it at the root folder of SuperPoint git, then set its path below.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                      </property>
+                      <property name="wordWrap">
+                       <bool>true</bool>
+                      </property>
+                      <property name="openExternalLinks">
+                       <bool>true</bool>
+                      </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <layout class="QGridLayout" name="gridLayout_118" columnstretch="0,0,1">
+                      <item row="0" column="2">
+                       <widget class="QLabel" name="label_615">
+                        <property name="text">
+                         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;[Required] Path to python script file.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="0" column="1">
+                       <widget class="QLineEdit" name="lineEdit_pydetector_path"/>
+                      </item>
+                      <item row="0" column="0">
+                       <widget class="QToolButton" name="toolButton_pydetector_path">
+                        <property name="text">
+                         <string>...</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="1" column="1">
+                       <widget class="QCheckBox" name="checkBox_pydetector_cuda">
+                        <property name="text">
+                         <string/>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="1" column="2">
+                       <widget class="QLabel" name="label_618">
+                        <property name="text">
+                         <string>Use Cuda device for Torch, otherwise CPU device is used by default.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                     </layout>
+                    </item>
+                   </layout>
+                  </widget>
+                 </item>
+                 <item>
+                  <spacer name="verticalSpacer_88">
+                   <property name="orientation">
+                    <enum>Qt::Vertical</enum>
+                   </property>
+                   <property name="sizeHint" stdset="0">
+                    <size>
+                     <width>20</width>
+                     <height>3128</height>
                     </size>
                    </property>
                   </spacer>

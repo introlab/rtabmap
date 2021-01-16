@@ -79,14 +79,14 @@ AboutDialog::AboutDialog(QWidget * parent) :
 	_ui->label_orboctree->setText("No");
 	_ui->label_orboctree_license->setEnabled(false);
 #endif
-#ifdef RTABMAP_SUPERPOINT_TORCH
+#ifdef RTABMAP_TORCH
 	_ui->label_sptorch->setText("Yes");
 	_ui->label_sptorch_license->setEnabled(true);
 #else
 	_ui->label_sptorch->setText("No");
 	_ui->label_sptorch_license->setEnabled(false);
 #endif
-#ifdef RTABMAP_PYMATCHER
+#ifdef RTABMAP_PYTHON
 	_ui->label_pymatcher->setText("Yes");
 	_ui->label_pymatcher_license->setEnabled(true);
 #else

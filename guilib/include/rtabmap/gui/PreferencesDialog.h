@@ -342,6 +342,7 @@ private Q_SLOTS:
 	void changeSuperPointModelPath();
 	void changePyMatcherPath();
 	void changePyMatcherModel();
+	void changePyDetectorPath();
 	void readSettingsEnd();
 	void setupTreeView();
 	void updateBasicParameter();

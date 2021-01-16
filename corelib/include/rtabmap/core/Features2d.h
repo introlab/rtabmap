@@ -120,7 +120,8 @@ public:
 		kFeatureSuperPointTorch=11, //new 0.19.7
 		kFeatureSurfFreak=12, //new 0.20.4
 		kFeatureGfttDaisy=13, //new 0.20.6
-		kFeatureSurfDaisy=14};  //new 0.20.6
+		kFeatureSurfDaisy=14,  //new 0.20.6
+		kFeaturePyDetector=15}; //new 0.20.8
 
 	static std::string typeName(Type type)
 	{

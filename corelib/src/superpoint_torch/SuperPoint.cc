@@ -168,9 +168,9 @@ std::vector<cv::KeyPoint> SPDetector::detect(const cv::Mat &img, const cv::Mat &
 		auto kpts = (prob_ > threshold_);
 		kpts = torch::nonzero(kpts);  // [n_keypoints, 2]  (y, x)
 
-    //convert back to cpu if in gpu
-    auto kpts_cpu = kpts.to(torch::kCPU);
-    auto prob_cpu = prob_.to(torch::kCPU);
+		//convert back to cpu if in gpu
+		auto kpts_cpu = kpts.to(torch::kCPU);
+		auto prob_cpu = prob_.to(torch::kCPU);
 
 		std::vector<cv::KeyPoint> keypoints_no_nms;
 		for (int i = 0; i < kpts_cpu.size(0); i++) {
