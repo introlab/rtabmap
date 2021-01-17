@@ -32,9 +32,8 @@ private:
 
 protected:
 	static PyThreadState * mainThreadState_;
+	static unsigned long mainThreadID_;
 	PyThreadState * threadState_;
-	PyThreadState* interpretor_;
-	PyThreadState* lockedState_;
 };
 
 }
