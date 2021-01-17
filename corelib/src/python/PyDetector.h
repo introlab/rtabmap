@@ -12,7 +12,7 @@
 #include <opencv2/core/mat.hpp>
 #include <vector>
 
-#include "PythonInterface.h"
+#include "rtabmap/core/PythonInterface.h"
 #include <Python.h>
 
 namespace rtabmap

@@ -24,12 +24,16 @@ PyDetector::PyDetector(const ParametersMap & parameters) :
 {
 	this->parseParameters(parameters);
 
+	UDEBUG("path = %s", path_.c_str());
 	if(!UFile::exists(path_) || UFile::getExtension(path_).compare("py") != 0)
 	{
-		UERROR("Cannot initialize Python detector, the path is not valid: \"%s\"", path_.c_str());
+		UERROR("Cannot initialize Python detector, the path is not valid: \"%s\"=\"%s\"",
+				Parameters::kPyDetectorPath().c_str(), path_.c_str());
 		return;
 	}
 
+	lock();
+	
 	std::string matcherPythonDir = UDirectory::getDir(path_);
 	if(!matcherPythonDir.empty())
 	{
@@ -41,7 +45,10 @@ PyDetector::PyDetector(const ParametersMap & parameters) :
 
 	std::string scriptName = uSplit(UFile::getName(path_), '.').front();
 	PyObject * pName = PyUnicode_FromString(scriptName.c_str());
+	UDEBUG("PyImport_Import() beg");
 	pModule_ = PyImport_Import(pName);
+	UDEBUG("PyImport_Import() end");
+
 	Py_DECREF(pName);
 
 	if(!pModule_)
@@ -49,10 +56,14 @@ PyDetector::PyDetector(const ParametersMap & parameters) :
 		UERROR("Module \"%s\" could not be imported! (File=\"%s\")", scriptName.c_str(), path_.c_str());
 		UERROR("%s", getTraceback().c_str());
 	}
+
+	unlock();
 }
 
 PyDetector::~PyDetector()
 {
+	lock();
+
 	if(pFunc_)
 	{
 		Py_DECREF(pFunc_);
@@ -61,6 +72,8 @@ PyDetector::~PyDetector()
 	{
 		Py_DECREF(pModule_);
 	}
+
+	unlock();
 }
 
 void PyDetector::parseParameters(const ParametersMap & parameters)
@@ -71,7 +84,6 @@ void PyDetector::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kPyDetectorCuda(), cuda_);
 
 	path_ = uReplaceChar(path_, '~', UDirectory::homeDir());
-	UDEBUG("path = %s", path_.c_str());
 }
 
 std::vector<cv::KeyPoint> PyDetector::generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask)
@@ -89,6 +101,8 @@ std::vector<cv::KeyPoint> PyDetector::generateKeypointsImpl(const cv::Mat & imag
 		UERROR("Python detector module not loaded!");
 		return keypoints;
 	}
+
+	lock();
 
 	if(!pFunc_)
 	{
@@ -205,6 +219,9 @@ std::vector<cv::KeyPoint> PyDetector::generateKeypointsImpl(const cv::Mat & imag
 		}
 		Py_DECREF(pImageBuffer);
 	}
+
+	unlock();
+
 	return keypoints;
 }
 

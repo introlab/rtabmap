@@ -39,6 +39,8 @@ PyMatcher::PyMatcher(
 		return;
 	}
 
+	lock();
+
 	std::string matcherPythonDir = UDirectory::getDir(path_);
 	if(!matcherPythonDir.empty())
 	{
@@ -50,6 +52,7 @@ PyMatcher::PyMatcher(
 
 	std::string scriptName = uSplit(UFile::getName(path_), '.').front();
 	PyObject * pName = PyUnicode_FromString(scriptName.c_str());
+	UDEBUG("PyImport_Import");
 	pModule_ = PyImport_Import(pName);
 	Py_DECREF(pName);
 
@@ -58,10 +61,13 @@ PyMatcher::PyMatcher(
 		UERROR("Module \"%s\" could not be imported! (File=\"%s\")", scriptName.c_str(), path_.c_str());
 		UERROR("%s", getTraceback().c_str());
 	}
+
+	unlock();
 }
 
 PyMatcher::~PyMatcher()
 {
+	lock();
 	if(pFunc_)
 	{
 		Py_DECREF(pFunc_);
@@ -70,6 +76,7 @@ PyMatcher::~PyMatcher()
 	{
 		Py_DECREF(pModule_);
 	}
+	unlock();
 }
 
 std::vector<cv::DMatch> PyMatcher::match(
@@ -96,6 +103,8 @@ std::vector<cv::DMatch> PyMatcher::match(
 	   descriptorsTrain.rows == (int)keypointsTrain.size() &&
 	   imageSize.width>0 && imageSize.height>0)
 	{
+
+		lock();
 
 		UDEBUG("matchThreshold=%f, iterations=%d, cuda=%d", matchThreshold_, iterations_, cuda_?1:0);
 
@@ -251,6 +260,7 @@ std::vector<cv::DMatch> PyMatcher::match(
 
 			UDEBUG("Fill matches (%d/%d) and cleanup time = %fs", matches.size(), std::min(descriptorsQuery.rows, descriptorsTrain.rows), timer.ticks());
 		}
+		unlock();
 	}
 	else
 	{

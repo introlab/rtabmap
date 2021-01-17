@@ -9,7 +9,7 @@
 
 #include <opencv2/core/types.hpp>
 #include <opencv2/core/mat.hpp>
-#include "PythonInterface.h"
+#include "rtabmap/core/PythonInterface.h"
 #include <vector>
 #include <Python.h>
 
