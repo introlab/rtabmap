@@ -231,12 +231,14 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 		_ui->vis_feature_detector->setItemData(10, 0, Qt::UserRole - 1);
 #endif
 
-#ifndef RTABMAP_SUPERPOINT_TORCH
+#ifndef RTABMAP_TORCH
 	_ui->comboBox_detector_strategy->setItemData(11, 0, Qt::UserRole - 1);
 	_ui->vis_feature_detector->setItemData(11, 0, Qt::UserRole - 1);
 #endif
 
-#ifndef RTABMAP_PYMATCHER
+#ifndef RTABMAP_PYTHON
+	_ui->comboBox_detector_strategy->setItemData(15, 0, Qt::UserRole - 1);
+	_ui->vis_feature_detector->setItemData(15, 0, Qt::UserRole - 1);
 	_ui->reextract_nn->setItemData(6, 0, Qt::UserRole - 1);
 #endif
 
@@ -1009,7 +1011,12 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->pymatcher_iterations->setObjectName(Parameters::kPyMatcherIterations().c_str());
 	_ui->checkBox_pymatcher_cuda->setObjectName(Parameters::kPyMatcherCuda().c_str());
 	_ui->lineEdit_pymatcher_model->setObjectName(Parameters::kPyMatcherModel().c_str());
-	connect(_ui->toolButton_pymatcher_model, SIGNAL(clicked()), this, SLOT(changePyMatcherPath()));
+	connect(_ui->toolButton_pymatcher_model, SIGNAL(clicked()), this, SLOT(changePyMatcherModel()));
+
+	// PyDetector
+	_ui->lineEdit_pydetector_path->setObjectName(Parameters::kPyDetectorPath().c_str());
+	connect(_ui->toolButton_pydetector_path, SIGNAL(clicked()), this, SLOT(changePyDetectorPath()));
+	_ui->checkBox_pydetector_cuda->setObjectName(Parameters::kPyDetectorCuda().c_str());
 
 	// GMS
 	_ui->checkBox_gms_withRotation->setObjectName(Parameters::kGMSWithRotation().c_str());
@@ -4922,15 +4929,32 @@ void PreferencesDialog::changePyMatcherModel()
 	QString path;
 	if(_ui->lineEdit_pymatcher_model->text().isEmpty())
 	{
-		path = QFileDialog::getOpenFileName(this, tr("Select file"), this->getWorkingDirectory(), tr("PyTorch model (*.pth, *.pt)"));
+		path = QFileDialog::getOpenFileName(this, tr("Select file"), this->getWorkingDirectory(), tr("PyTorch model (*.pth *.pt)"));
 	}
 	else
 	{
-		path = QFileDialog::getOpenFileName(this, tr("Select file"), _ui->lineEdit_pymatcher_model->text(), tr("PyTorch model (*.pth, *.pt)"));
+		path = QFileDialog::getOpenFileName(this, tr("Select file"), _ui->lineEdit_pymatcher_model->text(), tr("PyTorch model (*.pth *.pt)"));
 	}
 	if(!path.isEmpty())
 	{
 		_ui->lineEdit_pymatcher_model->setText(path);
+	}
+}
+
+void PreferencesDialog::changePyDetectorPath()
+{
+	QString path;
+	if(_ui->lineEdit_pydetector_path->text().isEmpty())
+	{
+		path = QFileDialog::getOpenFileName(this, tr("Select file"), this->getWorkingDirectory(), tr("Python wrapper (*.py)"));
+	}
+	else
+	{
+		path = QFileDialog::getOpenFileName(this, tr("Select file"), _ui->lineEdit_pydetector_path->text(), tr("Python wrapper (*.py)"));
+	}
+	if(!path.isEmpty())
+	{
+		_ui->lineEdit_pydetector_path->setText(path);
 	}
 }
 

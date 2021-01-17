@@ -2,7 +2,7 @@
  * Python interface for SuperGlue: https://github.com/magicleap/SuperGluePretrainedNetwork
  */
 
-#include <pymatcher/PyMatcher.h>
+#include <python/PyMatcher.h>
 #include <rtabmap/utilite/ULogger.h>
 #include <rtabmap/utilite/UDirectory.h>
 #include <rtabmap/utilite/UFile.h>
@@ -15,52 +15,6 @@
 
 namespace rtabmap
 {
-
-class PythonSingleTon
-{
-public:
-	PythonSingleTon() : initialized_(false) {}
-	void init() {UScopeMutex lock(mutex_); if(!initialized_)Py_Initialize(); initialized_=true;}
-	bool initialized() const {return initialized_;}
-	virtual ~PythonSingleTon() {if(initialized_) Py_Finalize();}
-private:
-	bool initialized_;
-	UMutex mutex_;
-};
-
-static PythonSingleTon g_python;
-
-std::string getTraceback()
-{
-	// Author: https://stackoverflow.com/questions/41268061/c-c-python-exception-traceback-not-being-generated
-
-	PyObject* type;
-	PyObject* value;
-	PyObject* traceback;
-
-	PyErr_Fetch(&type, &value, &traceback);
-	PyErr_NormalizeException(&type, &value, &traceback);
-
-	std::string fcn = "";
-	fcn += "def get_pretty_traceback(exc_type, exc_value, exc_tb):\n";
-	fcn += "    import sys, traceback\n";
-	fcn += "    lines = []\n";
-	fcn += "    lines = traceback.format_exception(exc_type, exc_value, exc_tb)\n";
-	fcn += "    output = '\\n'.join(lines)\n";
-	fcn += "    return output\n";
-
-	PyRun_SimpleString(fcn.c_str());
-	PyObject* mod = PyImport_ImportModule("__main__");
-	PyObject* method = PyObject_GetAttrString(mod, "get_pretty_traceback");
-	PyObject* outStr = PyObject_CallObject(method, Py_BuildValue("OOO", type, value, traceback));
-	std::string pretty = PyBytes_AsString(PyUnicode_AsASCIIString(outStr));
-
-	Py_DECREF(method);
-	Py_DECREF(outStr);
-	Py_DECREF(mod);
-
-	return pretty;
-}
 
 PyMatcher::PyMatcher(
 		const std::string & pythonMatcherPath,
@@ -85,10 +39,7 @@ PyMatcher::PyMatcher(
 		return;
 	}
 
-	if(!g_python.initialized())
-	{
-		g_python.init();
-	}
+	lock();
 
 	std::string matcherPythonDir = UDirectory::getDir(path_);
 	if(!matcherPythonDir.empty())
@@ -101,6 +52,7 @@ PyMatcher::PyMatcher(
 
 	std::string scriptName = uSplit(UFile::getName(path_), '.').front();
 	PyObject * pName = PyUnicode_FromString(scriptName.c_str());
+	UDEBUG("PyImport_Import");
 	pModule_ = PyImport_Import(pName);
 	Py_DECREF(pName);
 
@@ -109,10 +61,13 @@ PyMatcher::PyMatcher(
 		UERROR("Module \"%s\" could not be imported! (File=\"%s\")", scriptName.c_str(), path_.c_str());
 		UERROR("%s", getTraceback().c_str());
 	}
+
+	unlock();
 }
 
 PyMatcher::~PyMatcher()
 {
+	lock();
 	if(pFunc_)
 	{
 		Py_DECREF(pFunc_);
@@ -121,6 +76,7 @@ PyMatcher::~PyMatcher()
 	{
 		Py_DECREF(pModule_);
 	}
+	unlock();
 }
 
 std::vector<cv::DMatch> PyMatcher::match(
@@ -147,6 +103,8 @@ std::vector<cv::DMatch> PyMatcher::match(
 	   descriptorsTrain.rows == (int)keypointsTrain.size() &&
 	   imageSize.width>0 && imageSize.height>0)
 	{
+
+		lock();
 
 		UDEBUG("matchThreshold=%f, iterations=%d, cuda=%d", matchThreshold_, iterations_, cuda_?1:0);
 
@@ -302,6 +260,7 @@ std::vector<cv::DMatch> PyMatcher::match(
 
 			UDEBUG("Fill matches (%d/%d) and cleanup time = %fs", matches.size(), std::min(descriptorsQuery.rows, descriptorsTrain.rows), timer.ticks());
 		}
+		unlock();
 	}
 	else
 	{

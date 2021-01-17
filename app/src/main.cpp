@@ -37,6 +37,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/utilite/UConversion.h"
 #include "ObjDeletionHandler.h"
 
+#ifdef RTABMAP_PYTHON
+#include "rtabmap/core/PythonInterface.h"
+#endif
+
 using namespace rtabmap;
 
 int main(int argc, char* argv[])
@@ -44,6 +48,10 @@ int main(int argc, char* argv[])
 	/* Set logger type */
 	ULogger::setType(ULogger::kTypeConsole);
 	ULogger::setLevel(ULogger::kWarning);
+
+#ifdef RTABMAP_PYTHON
+	PythonInterface python; // Make sure we initialize python in main thread
+#endif
 
 	/* Create tasks */
 	QApplication * app = new QApplication(argc, argv);

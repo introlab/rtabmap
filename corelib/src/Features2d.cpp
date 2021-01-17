@@ -44,8 +44,12 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "opencv/ORBextractor.h"
 #endif
 
-#ifdef RTABMAP_SUPERPOINT_TORCH
+#ifdef RTABMAP_TORCH
 #include "superpoint_torch/SuperPoint.h"
+#endif
+
+#ifdef RTABMAP_PYTHON
+#include "python/PyDetector.h"
 #endif
 
 #if CV_MAJOR_VERSION < 3
@@ -584,7 +588,7 @@ Feature2D * Feature2D::create(Feature2D::Type type, const ParametersMap & parame
 	}
 #endif
 
-#ifndef RTABMAP_SUPERPOINT_TORCH
+#ifndef RTABMAP_TORCH
 	if(type == Feature2D::kFeatureSuperPointTorch)
 	{
 		UWARN("SupertPoint Torch feature cannot be used as RTAB-Map is not built with the option enabled. GFTT/ORB is used instead.");
@@ -628,7 +632,7 @@ Feature2D * Feature2D::create(Feature2D::Type type, const ParametersMap & parame
 	case Feature2D::kFeatureOrbOctree:
 		feature2D = new ORBOctree(parameters);
 		break;
-#ifdef RTABMAP_SUPERPOINT_TORCH
+#ifdef RTABMAP_TORCH
 	case Feature2D::kFeatureSuperPointTorch:
 		feature2D = new SuperPointTorch(parameters);
 		break;
@@ -642,6 +646,11 @@ Feature2D * Feature2D::create(Feature2D::Type type, const ParametersMap & parame
 	case Feature2D::kFeatureSurfDaisy:
 		feature2D = new SURF_DAISY(parameters);
 		break;
+#ifdef RTABMAP_PYTHON
+	case Feature2D::kFeaturePyDetector:
+		feature2D = new PyDetector(parameters);
+		break;
+#endif
 #ifdef RTABMAP_NONFREE
 	default:
 		feature2D = new SURF(parameters);
@@ -2051,7 +2060,7 @@ void SuperPointTorch::parseParameters(const ParametersMap & parameters)
 	Feature2D::parseParameters(parameters);
 
 	std::string previousPath = path_;
-#ifdef RTABMAP_SUPERPOINT_TORCH
+#ifdef RTABMAP_TORCH
 	bool previousCuda = cuda_;
 #endif
 	Parameters::parse(parameters, Parameters::kSuperPointModelPath(), path_);
@@ -2060,7 +2069,7 @@ void SuperPointTorch::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kSuperPointNMSRadius(), minDistance_);
 	Parameters::parse(parameters, Parameters::kSuperPointCuda(), cuda_);
 
-#ifdef RTABMAP_SUPERPOINT_TORCH
+#ifdef RTABMAP_TORCH
 	if(superPoint_.get() == 0 || path_.compare(previousPath) != 0 || previousCuda != cuda_)
 	{
 		superPoint_ = cv::Ptr<SPDetector>(new SPDetector(path_, threshold_, nms_, minDistance_, cuda_));
@@ -2072,29 +2081,29 @@ void SuperPointTorch::parseParameters(const ParametersMap & parameters)
 		superPoint_->setMinDistance(minDistance_);
 	}
 #else
-	UWARN("RTAB-Map is not built with SuperPoint Torch support so SuperPoint Torch feature cannot be used!");
+	UWARN("RTAB-Map is not built with Torch support so SuperPoint Torch feature cannot be used!");
 #endif
 }
 
 std::vector<cv::KeyPoint> SuperPointTorch::generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask)
 {
-#ifdef RTABMAP_SUPERPOINT_TORCH
+#ifdef RTABMAP_TORCH
 	UASSERT(!image.empty() && image.channels() == 1 && image.depth() == CV_8U);
 	UASSERT_MSG(roi.x==0 && roi.y ==0, "Not supporting ROI");
 	return superPoint_->detect(image, mask);
 #else
-	UWARN("RTAB-Map is not built with SuperPoint Torch support so SuperPoint Torch feature cannot be used!");
+	UWARN("RTAB-Map is not built with Torch support so SuperPoint Torch feature cannot be used!");
 	return std::vector<cv::KeyPoint>();
 #endif
 }
 
 cv::Mat SuperPointTorch::generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const
 {
-#ifdef RTABMAP_SUPERPOINT_TORCH
+#ifdef RTABMAP_TORCH
 	UASSERT(!image.empty() && image.channels() == 1 && image.depth() == CV_8U);
 	return superPoint_->compute(keypoints);
 #else
-	UWARN("RTAB-Map is not built with SuperPoint Torch support so SuperPoint Torch feature cannot be used!");
+	UWARN("RTAB-Map is not built with Torch support so SuperPoint Torch feature cannot be used!");
 	return cv::Mat();
 #endif
 }
