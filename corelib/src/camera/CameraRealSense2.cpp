@@ -25,6 +25,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 #include <rtabmap/core/camera/CameraRealSense2.h>
+#include <rtabmap/core/util2d.h>
 #include <rtabmap/utilite/UTimer.h>
 #include <rtabmap/utilite/UThreadC.h>
 #include <rtabmap/utilite/UConversion.h>
@@ -103,14 +104,17 @@ CameraRealSense2::~CameraRealSense2()
 				UDEBUG("Closing %d sensor(s) from device %d...", (int)dev_[i]->query_sensors().size(), (int)i);
 				for(rs2::sensor _sensor : dev_[i]->query_sensors())
 				{
-					try
+					if(!_sensor.get_active_streams().empty())
 					{
-						_sensor.stop();
-						_sensor.close();
-					}
-					catch(const rs2::error & error)
-					{
-						UWARN("%s", error.what());
+						try
+						{
+							_sensor.stop();
+							_sensor.close();
+						}
+						catch(const rs2::error & error)
+						{
+							UWARN("%s", error.what());
+						}
 					}
 				}
 #ifdef WIN32
@@ -1298,7 +1302,7 @@ SensorData CameraRealSense2::captureImage(CameraInfo * info)
 			if(is_rgb_arrived && is_depth_arrived)
 			{
 				cv::Mat depth;
-				if(ir_)
+				if(ir_ && !irDepth_)
 				{
 					depth = cv::Mat(depthBuffer_.size(), depthBuffer_.type(), (void*)depth_frame.get_data()).clone();
 				}
@@ -1307,18 +1311,30 @@ SensorData CameraRealSense2::captureImage(CameraInfo * info)
 					rs2::align align(rgb_frame.get_profile().stream_type());
 					rs2::frameset processed = frameset.apply_filter(align);
 					rs2::depth_frame aligned_depth_frame = processed.get_depth_frame();
-					depth = cv::Mat(depthBuffer_.size(), depthBuffer_.type(), (void*)aligned_depth_frame.get_data()).clone();
+					if(frameset.get_depth_frame().get_width() < aligned_depth_frame.get_width() &&
+						frameset.get_depth_frame().get_height() < aligned_depth_frame.get_height())
+					{
+						int decimationWidth = int(float(aligned_depth_frame.get_width())/float(frameset.get_depth_frame().get_width())+0.5f);
+						int decimationHeight = int(float(aligned_depth_frame.get_height())/float(frameset.get_depth_frame().get_height())+0.5f);
+						if(decimationWidth>1 || decimationHeight>1)
+						{
+							depth = util2d::decimate(cv::Mat(depthBuffer_.size(), depthBuffer_.type(), (void*)aligned_depth_frame.get_data()), decimationWidth>decimationHeight?decimationWidth:decimationHeight);
+						}
+						else
+						{
+							depth = cv::Mat(depthBuffer_.size(), depthBuffer_.type(), (void*)aligned_depth_frame.get_data()).clone();
+						}
+					}
+					else
+					{
+						depth = cv::Mat(depthBuffer_.size(), depthBuffer_.type(), (void*)aligned_depth_frame.get_data()).clone();
+					}
 					if(depth_scale_meters_ != 0.001f)
 					{ // convert to mm
 						if(depth.type() ==  CV_16UC1)
 						{
-							float scale = depth_scale_meters_ / 0.001f;
-							uint16_t *p = depth.ptr<uint16_t>();
-							int buffSize = depth.rows * depth.cols;
-							#pragma omp parallel for
-							for(int i = 0; i < buffSize; ++i) {
-								p[i] *= scale;
-							}
+							float scaleMM = depth_scale_meters_ / 0.001f;
+							depth = scaleMM * depth;
 						}
 					}
 				}
