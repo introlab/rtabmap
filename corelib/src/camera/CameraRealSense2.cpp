@@ -33,7 +33,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <opencv2/imgproc/types_c.h>
 
 #ifdef RTABMAP_REALSENSE2
-#include <librealsense2/rs.hpp>
 #include <librealsense2/rsutil.h>
 #include <librealsense2/hpp/rs_processing.hpp>
 #include <librealsense2/rs_advanced_mode.hpp>
@@ -59,14 +58,8 @@ CameraRealSense2::CameraRealSense2(
 	Camera(imageRate, localTransform)
 #ifdef RTABMAP_REALSENSE2
     ,
-	ctx_(new rs2::context),
-	dev_(2, 0),
 	deviceId_(device),
-	syncer_(new rs2::syncer),
 	depth_scale_meters_(1.0f),
-	depthIntrinsics_(new rs2_intrinsics),
-	rgbIntrinsics_(new rs2_intrinsics),
-	depthToRGBExtrinsics_(new rs2_extrinsics),
 	lastImuStamp_(0.0),
 	clockSyncWarningShown_(false),
 	imuGlobalSyncWarningShown_(false),
@@ -93,63 +86,51 @@ CameraRealSense2::CameraRealSense2(
 CameraRealSense2::~CameraRealSense2()
 {
 #ifdef RTABMAP_REALSENSE2
+	close();
+#endif
+}
+
+#ifdef RTABMAP_REALSENSE2
+void CameraRealSense2::close()
+{
 	closing_ = true;
 	try
 	{
 		UDEBUG("Closing device(s)...");
 		for(size_t i=0; i<dev_.size(); ++i)
 		{
-			if(dev_[i])
+			UDEBUG("Closing %d sensor(s) from device %d...", (int)dev_[i].query_sensors().size(), (int)i);
+			for(rs2::sensor _sensor : dev_[i].query_sensors())
 			{
-				UDEBUG("Closing %d sensor(s) from device %d...", (int)dev_[i]->query_sensors().size(), (int)i);
-				for(rs2::sensor _sensor : dev_[i]->query_sensors())
+				if(!_sensor.get_active_streams().empty())
 				{
-					if(!_sensor.get_active_streams().empty())
+					try
 					{
-						try
-						{
-							_sensor.stop();
-							_sensor.close();
-						}
-						catch(const rs2::error & error)
-						{
-							UWARN("%s", error.what());
-						}
+						_sensor.stop();
+						_sensor.close();
+					}
+					catch(const rs2::error & error)
+					{
+						UWARN("%s", error.what());
 					}
 				}
-#ifdef WIN32
-				dev_[i]->hardware_reset(); // To avoid freezing on some Windows computers in the following destructor
-				// Don't do this on linux (tested on Ubuntu 18.04, realsense v2.41.0): T265 cannot be restarted
-#endif
-				delete dev_[i];
 			}
+#ifdef WIN32
+			dev_[i].hardware_reset(); // To avoid freezing on some Windows computers in the following destructor
+			// Don't do this on linux (tested on Ubuntu 18.04, realsense v2.41.0): T265 cannot be restarted
+#endif
 		}
+		UDEBUG("Clearing devices...");
+		dev_.clear();
 	}
 	catch(const rs2::error & error)
 	{
 		UINFO("%s", error.what());
 	}
-	try {
-		delete ctx_;
-	}
-	catch(const rs2::error & error)
-	{
-		UWARN("%s", error.what());
-	}
-	try {
-		delete syncer_;
-	}
-	catch(const rs2::error & error)
-	{
-		UWARN("%s", error.what());
-	}
-	delete depthIntrinsics_;
-	delete rgbIntrinsics_;
-	delete depthToRGBExtrinsics_;
-#endif
+	
+	closing_ = false;
 }
 
-#ifdef RTABMAP_REALSENSE2
 void CameraRealSense2::imu_callback(rs2::frame frame)
 {
 	auto stream = frame.get_profile().stream_type();
@@ -211,10 +192,14 @@ void CameraRealSense2::pose_callback(rs2::frame frame)
 void CameraRealSense2::frame_callback(rs2::frame frame)
 {
 	UDEBUG("Frame callback! %f", frame.get_timestamp());
-	(*syncer_)(frame);
+	syncer_(frame);
 }
 void CameraRealSense2::multiple_message_callback(rs2::frame frame)
 {
+	if(closing_)
+	{
+		return;
+	}
     auto stream = frame.get_profile().stream_type();
     switch (stream)
     {
@@ -500,15 +485,12 @@ bool CameraRealSense2::init(const std::string & calibrationFolder, const std::st
 
 	UINFO("setupDevice...");
 
-	for(size_t i=0; i<dev_.size(); ++i)
-	{
-		delete dev_[i];
-		dev_[i] = 0;
-	}
+	close();
+	
 	clockSyncWarningShown_ = false;
 	imuGlobalSyncWarningShown_ = false;
 
-	auto list = ctx_->query_devices();
+	rs2::device_list list = ctx_.query_devices();
 	if (0 == list.size())
 	{
 		UERROR("No RealSense2 devices were found!");
@@ -516,7 +498,7 @@ bool CameraRealSense2::init(const std::string & calibrationFolder, const std::st
 	}
 
 	bool found=false;
-	for (auto&& dev : list)
+	for (rs2::device dev : list)
 	{
 		auto sn = dev.get_info(RS2_CAMERA_INFO_SERIAL_NUMBER);
 		auto pid_str = dev.get_info(RS2_CAMERA_INFO_PRODUCT_ID);
@@ -529,24 +511,26 @@ bool CameraRealSense2::init(const std::string & calibrationFolder, const std::st
 		{
 			// Dual setup: device[0] = D400, device[1] = T265
 			// T265
-			dev_[1] = new rs2::device();
-			*dev_[1] = dev;
+			dev_.resize(2);
+			dev_[1] = dev;
 		}
 		else if (!found && (deviceId_.empty() || deviceId_ == sn))
 		{
-			dev_[0] = new rs2::device();
-			*dev_[0] = dev;
+			if(dev_.empty())
+			{
+				dev_.resize(1);
+			}
+			dev_[0] = dev;
 			found=true;
 		}
 	}
 
 	if (!found)
 	{
-		if(dualMode_ && dev_[1]!=0)
+		if(dualMode_ && dev_.size()==2)
 		{
 			UERROR("Dual setup is enabled, but a D400 camera is not detected!");
-			delete dev_[1];
-			dev_[1] = 0;
+			dev_.clear();
 		}
 		else
 		{
@@ -554,17 +538,18 @@ bool CameraRealSense2::init(const std::string & calibrationFolder, const std::st
 		}
 		return false;
 	}
-	else if(dualMode_ && dev_[1] == 0)
+	else if(dualMode_ && dev_.size()!=2)
 	{
 		UERROR("Dual setup is enabled, but a T265 camera is not detected!");
-		delete dev_[0];
-		dev_[0] = 0;
+		dev_.clear();
 		return false;
 	}
+	
+	UASSERT(!dev_.empty());
 
 	if (!jsonConfig_.empty())
 	{
-		if (dev_[0]->is<rs400::advanced_mode>())
+		if (dev_[0].is<rs400::advanced_mode>())
 		{
 			std::stringstream ss;
 			std::ifstream in(jsonConfig_);
@@ -573,7 +558,7 @@ bool CameraRealSense2::init(const std::string & calibrationFolder, const std::st
 				ss << in.rdbuf();
 				std::string json_file_content = ss.str();
 
-				auto adv = dev_[0]->as<rs400::advanced_mode>();
+				auto adv = dev_[0].as<rs400::advanced_mode>();
 				adv.load_json(json_file_content);
 				UINFO("JSON file is loaded! (%s)", jsonConfig_.c_str());
 			}
@@ -588,44 +573,42 @@ bool CameraRealSense2::init(const std::string & calibrationFolder, const std::st
 		}
 	}
 
-	ctx_->set_devices_changed_callback([this](rs2::event_information& info)
+	ctx_.set_devices_changed_callback([this](rs2::event_information& info)
 	{
 		for(size_t i=0; i<dev_.size(); ++i)
 		{
-			if(dev_[i])
+			if (info.was_removed(dev_[i]))
 			{
-				if (info.was_removed(*dev_[i]))
+				if (closing_)
 				{
-					if (closing_)
-					{
-						UDEBUG("The device %d has been disconnected!", i);
-					}
-					else
-					{
-						UERROR("The device %d has been disconnected!", i);
-					}
+					UDEBUG("The device %d has been disconnected!", i);
+				}
+				else
+				{
+					UERROR("The device %d has been disconnected!", i);
 				}
 			}
 		}
 	});
 
 
-	auto camera_name = dev_[0]->get_info(RS2_CAMERA_INFO_NAME);
+	auto camera_name = dev_[0].get_info(RS2_CAMERA_INFO_NAME);
 	UINFO("Device Name: %s", camera_name);
 
-	auto sn = dev_[0]->get_info(RS2_CAMERA_INFO_SERIAL_NUMBER);
+	auto sn = dev_[0].get_info(RS2_CAMERA_INFO_SERIAL_NUMBER);
 	UINFO("Device Serial No: %s", sn);
 
-	auto fw_ver = dev_[0]->get_info(RS2_CAMERA_INFO_FIRMWARE_VERSION);
+	auto fw_ver = dev_[0].get_info(RS2_CAMERA_INFO_FIRMWARE_VERSION);
 	UINFO("Device FW version: %s", fw_ver);
 
-	auto pid = dev_[0]->get_info(RS2_CAMERA_INFO_PRODUCT_ID);
+	auto pid = dev_[0].get_info(RS2_CAMERA_INFO_PRODUCT_ID);
 	UINFO("Device Product ID: 0x%s", pid);
 
-	auto dev_sensors = dev_[0]->query_sensors();
+	auto dev_sensors = dev_[0].query_sensors();
 	if(dualMode_)
 	{
-		auto dev_sensors2 = dev_[1]->query_sensors();
+		UASSERT(dev_.size()>1);
+		auto dev_sensors2 = dev_[1].query_sensors();
 		dev_sensors.insert(dev_sensors.end(), dev_sensors2.begin(), dev_sensors2.end());
 	}
 
@@ -766,7 +749,7 @@ bool CameraRealSense2::init(const std::string & calibrationFolder, const std::st
 								intrinsic.model,
 								intrinsic.coeffs[0], intrinsic.coeffs[1], intrinsic.coeffs[2], intrinsic.coeffs[3], intrinsic.coeffs[4]);
 						rgbStreamProfile = profile;
-						*rgbIntrinsics_ = intrinsic;
+						rgbIntrinsics_ = intrinsic;
 						added = true;
 						if(video_profile.format() == RS2_FORMAT_RGB8 || profilesPerSensor[i].size()==2)
 						{
@@ -780,7 +763,7 @@ bool CameraRealSense2::init(const std::string & calibrationFolder, const std::st
 						profilesPerSensor[i].push_back(profile);
 						depthBuffer_ = cv::Mat(cv::Size(cameraWidth_, cameraHeight_), video_profile.format() == RS2_FORMAT_Y8?CV_8UC1:CV_16UC1, cv::Scalar(0));
 						depthStreamProfile = profile;
-						*depthIntrinsics_ = intrinsic;
+						depthIntrinsics_ = intrinsic;
 						added = true;
 						if(!ir_ || irDepth_ || profilesPerSensor[i].size()==2)
 						{
@@ -840,14 +823,14 @@ bool CameraRealSense2::init(const std::string & calibrationFolder, const std::st
 						// LEFT FISHEYE
 						rgbBuffer_ = cv::Mat(cv::Size(848, 800), CV_8UC1, cv::Scalar(0));
 						rgbStreamProfile = profile;
-						*rgbIntrinsics_ = intrinsic;
+						rgbIntrinsics_ = intrinsic;
 					}
 					else
 					{
 						// RIGHT FISHEYE
 						depthBuffer_ = cv::Mat(cv::Size(848, 800), CV_8UC1, cv::Scalar(0));
 						depthStreamProfile = profile;
-						*depthIntrinsics_ = intrinsic;
+						depthIntrinsics_ = intrinsic;
 					}
 					added = true;
 				}
@@ -891,7 +874,7 @@ bool CameraRealSense2::init(const std::string & calibrationFolder, const std::st
 			 std::cout<< model_ << std::endl;
 			 return false;
 		 }
-		 *depthToRGBExtrinsics_ = depthStreamProfile.get_extrinsics_to(rgbStreamProfile);
+		 depthToRGBExtrinsics_ = depthStreamProfile.get_extrinsics_to(rgbStreamProfile);
 
 		 if(dualMode_)
 		 {
@@ -903,9 +886,9 @@ bool CameraRealSense2::init(const std::string & calibrationFolder, const std::st
 			 if(!ir_)
 			 {
 				 Transform leftIRToRGB(
-						 depthToRGBExtrinsics_->rotation[0], depthToRGBExtrinsics_->rotation[1], depthToRGBExtrinsics_->rotation[2], depthToRGBExtrinsics_->translation[0],
-						 depthToRGBExtrinsics_->rotation[3], depthToRGBExtrinsics_->rotation[4], depthToRGBExtrinsics_->rotation[5], depthToRGBExtrinsics_->translation[1],
-						 depthToRGBExtrinsics_->rotation[6], depthToRGBExtrinsics_->rotation[7], depthToRGBExtrinsics_->rotation[8], depthToRGBExtrinsics_->translation[2]);
+						 depthToRGBExtrinsics_.rotation[0], depthToRGBExtrinsics_.rotation[1], depthToRGBExtrinsics_.rotation[2], depthToRGBExtrinsics_.translation[0],
+						 depthToRGBExtrinsics_.rotation[3], depthToRGBExtrinsics_.rotation[4], depthToRGBExtrinsics_.rotation[5], depthToRGBExtrinsics_.translation[1],
+						 depthToRGBExtrinsics_.rotation[6], depthToRGBExtrinsics_.rotation[7], depthToRGBExtrinsics_.rotation[8], depthToRGBExtrinsics_.translation[2]);
 				 leftIRToRGB = leftIRToRGB.inverse();
 				 UINFO("leftIRToRGB = %s", leftIRToRGB.prettyPrint().c_str());
 				 baseToCam *= leftIRToRGB;
@@ -1106,9 +1089,9 @@ bool CameraRealSense2::isCalibrated() const
 std::string CameraRealSense2::getSerial() const
 {
 #ifdef RTABMAP_REALSENSE2
-	if(dev_[0])
+	if(!dev_.empty())
 	{
-		return dev_[0]->get_info(RS2_CAMERA_INFO_SERIAL_NUMBER);
+		return dev_[0].get_info(RS2_CAMERA_INFO_SERIAL_NUMBER);
 	}
 #endif
 	return "NA";
@@ -1215,13 +1198,13 @@ SensorData CameraRealSense2::captureImage(CameraInfo * info)
 #ifdef RTABMAP_REALSENSE2
 
 	try{
-		auto frameset = syncer_->wait_for_frames(5000);
+		auto frameset = syncer_.wait_for_frames(5000);
 		UTimer timer;
 		int desiredFramesetSize = 2;
 		while ((int)frameset.size() != desiredFramesetSize && timer.elapsed() < 2.0)
 		{
 			// maybe there is a latency with the USB, try again in 100 ms (for the next 2 seconds)
-			frameset = syncer_->wait_for_frames(100);
+			frameset = syncer_.wait_for_frames(100);
 		}
 		if ((int)frameset.size() == desiredFramesetSize)
 		{
