@@ -1,19 +1,6 @@
 
-### Qt Gui stuff ###
-SET(headers_ui 
-	./ObjDeletionHandler.h
-)
-
-#This will generate moc_* for Qt
-IF(QT4_FOUND)
-    QT4_WRAP_CPP(moc_srcs ${headers_ui})
-ELSE()
-    QT5_WRAP_CPP(moc_srcs ${headers_ui})
-ENDIF()
-
 SET(SRC_FILES
     main.cpp
-    ${moc_srcs} 
 )
 
 SET(INCLUDE_DIRS

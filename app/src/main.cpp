@@ -35,7 +35,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/utilite/UObjDeletionThread.h"
 #include "rtabmap/utilite/UFile.h"
 #include "rtabmap/utilite/UConversion.h"
-#include "ObjDeletionHandler.h"
 
 #ifdef RTABMAP_PYTHON
 #include "rtabmap/core/PythonInterface.h"

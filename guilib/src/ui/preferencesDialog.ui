@@ -63,7 +63,7 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>0</y>
+            <y>-678</y>
             <width>686</width>
             <height>3357</height>
            </rect>
@@ -95,7 +95,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>37</number>
+                <number>5</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,1">
@@ -3109,7 +3109,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                     <item>
                      <widget class="QStackedWidget" name="stackedWidget_src">
                       <property name="currentIndex">
-                       <number>0</number>
+                       <number>1</number>
                       </property>
                       <widget class="QWidget" name="page_41">
                        <layout class="QVBoxLayout" name="verticalLayout_64">
@@ -4896,7 +4896,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                            <item>
                             <widget class="QStackedWidget" name="stackedWidget_stereo">
                              <property name="currentIndex">
-                              <number>8</number>
+                              <number>4</number>
                              </property>
                              <widget class="QWidget" name="page_49">
                               <layout class="QVBoxLayout" name="verticalLayout_91">
@@ -5249,11 +5249,6 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                     </item>
                                     <item>
                                      <property name="text">
-                                      <string>MEDIUM</string>
-                                     </property>
-                                    </item>
-                                    <item>
-                                     <property name="text">
                                       <string>QUALITY</string>
                                      </property>
                                     </item>
@@ -5267,7 +5262,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                   <item row="4" column="1">
                                    <widget class="QLabel" name="label_306">
                                     <property name="text">
-                                     <string>Filtering value for the disparity map (and by extension the depth map). A lower value means more confidence and precision (but less density), an upper value reduces the filtering (more density, less certainty).</string>
+                                     <string>Depth confidence. Filtering value for the disparity map (and by extension the depth map). A lower value means more confidence and precision (but less density), an upper value reduces the filtering (more density, less certainty).</string>
                                     </property>
                                     <property name="wordWrap">
                                      <bool>true</bool>
@@ -5371,7 +5366,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                   <item row="5" column="1">
                                    <widget class="QLabel" name="label_570">
                                     <property name="text">
-                                     <string>[SDK3] Threshold to reject depth values based on their textureness confidence. A lower value means more confidence and precision (but less density). An upper value reduces filtering (more density, less certainty.).</string>
+                                     <string>[SDK3] Texture confidence. Threshold to reject depth values based on their textureness confidence. A lower value means more confidence and precision (but less density). An upper value reduces filtering (more density, less certainty.).</string>
                                     </property>
                                     <property name="wordWrap">
                                      <bool>true</bool>
