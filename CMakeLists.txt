@@ -620,19 +620,19 @@ IF(WITH_ORB_SLAM2 AND NOT G2O_FOUND)
     ENDIF(ORB_SLAM2_FOUND)
 ENDIF(WITH_ORB_SLAM2 AND NOT G2O_FOUND)
 
-IF(loam_velodyne_FOUND OR PCL_VERSION VERSION_GREATER "1.9.1" OR TORCH_FOUND)
-   #LOAM and PCL>=1.10 require c++14
+IF(loam_velodyne_FOUND OR PCL_VERSION VERSION_GREATER "1.9.1" OR TORCH_FOUND OR G2O_FOUND)
+   #LOAM, PCL>=1.10 and latest g2o require c++14
    IF(NOT MSVC)
      include(CheckCXXCompilerFlag)
       CHECK_CXX_COMPILER_FLAG("-std=c++14" COMPILER_SUPPORTS_CXX14)
       IF(COMPILER_SUPPORTS_CXX14)
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")
+        set(CMAKE_CXX_STANDARD 14)
       ELSE()
         message(STATUS "The compiler ${CMAKE_CXX_COMPILER} has no C++14 support. Please use a different C++ compiler if you want to use LOAM (set \"-DWITH_LOAM=OFF\" to build without LOAM).")
       ENDIF()
    ENDIF()
-ELSEIF(G2O_FOUND OR 
-       GTSAM_FOUND OR 
+ELSEIF(GTSAM_FOUND OR 
        CERES_FOUND OR
        ZED_FOUND OR 
        ANDROID OR 
