@@ -3532,11 +3532,11 @@ unsigned long Memory::getMemoryUsed() const
 	}
 	memoryUsage += _landmarksIndex.size() * (sizeof(int)+sizeof(std::set<int>) + sizeof(std::map<int, std::set<int> >::iterator)) + sizeof(std::map<int, std::set<int> >);
 	memoryUsage += _landmarksInvertedIndex.size() * (sizeof(int)+sizeof(std::set<int>) + sizeof(std::map<int, std::set<int> >::iterator)) + sizeof(std::map<int, std::set<int> >);
-	for(std::map<int, std::set<int>>::const_iterator iter=_landmarksIndex.begin(); iter!=_landmarksIndex.end(); ++iter)
+	for(std::map<int, std::set<int> >::const_iterator iter=_landmarksIndex.begin(); iter!=_landmarksIndex.end(); ++iter)
 	{
 		memoryUsage+=iter->second.size()*(sizeof(int)+sizeof(std::set<int>::iterator)) + sizeof(std::set<int>);
 	}
-	for(std::map<int, std::set<int>>::const_iterator iter=_landmarksInvertedIndex.begin(); iter!=_landmarksInvertedIndex.end(); ++iter)
+	for(std::map<int, std::set<int> >::const_iterator iter=_landmarksInvertedIndex.begin(); iter!=_landmarksInvertedIndex.end(); ++iter)
 	{
 		memoryUsage+=iter->second.size()*(sizeof(int)+sizeof(std::set<int>::iterator)) + sizeof(std::set<int>);
 	}
