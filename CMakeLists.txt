@@ -620,43 +620,45 @@ IF(WITH_ORB_SLAM2 AND NOT G2O_FOUND)
     ENDIF(ORB_SLAM2_FOUND)
 ENDIF(WITH_ORB_SLAM2 AND NOT G2O_FOUND)
 
-IF(loam_velodyne_FOUND OR PCL_VERSION VERSION_GREATER "1.9.1" OR TORCH_FOUND OR G2O_FOUND)
-   #LOAM, PCL>=1.10 and latest g2o require c++14
-   IF(NOT MSVC)
-     include(CheckCXXCompilerFlag)
-      CHECK_CXX_COMPILER_FLAG("-std=c++14" COMPILER_SUPPORTS_CXX14)
-      IF(COMPILER_SUPPORTS_CXX14)
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")
-        set(CMAKE_CXX_STANDARD 14)
-      ELSE()
-        message(STATUS "The compiler ${CMAKE_CXX_COMPILER} has no C++14 support. Please use a different C++ compiler if you want to use LOAM (set \"-DWITH_LOAM=OFF\" to build without LOAM).")
-      ENDIF()
-   ENDIF()
-ELSEIF(GTSAM_FOUND OR 
-       CERES_FOUND OR
-       ZED_FOUND OR 
-       ANDROID OR 
-       RealSense_FOUND OR 
-       realsense2_FOUND OR 
-       ORB_SLAM2_FOUND OR 
-       okvis_FOUND OR 
-       open_chisel_FOUND OR 
-       msckf_vio_FOUND OR 
-       vins_FOUND OR 
-       libpointmatcher_FOUND)
-   #Newest versions require std11
-   IF(NOT MSVC)
-     include(CheckCXXCompilerFlag)
-      CHECK_CXX_COMPILER_FLAG("-std=c++11" COMPILER_SUPPORTS_CXX11)
-      CHECK_CXX_COMPILER_FLAG("-std=c++0x" COMPILER_SUPPORTS_CXX0X)
-      IF(COMPILER_SUPPORTS_CXX11)
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
-      ELSEIF(COMPILER_SUPPORTS_CXX0X)
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
-      ELSE()
-        message(STATUS "The compiler ${CMAKE_CXX_COMPILER} has no C++11 support. Please use a different C++ compiler.")
-      ENDIF()
-   ENDIF()
+IF(NOT MSVC)
+	IF(loam_velodyne_FOUND OR PCL_VERSION VERSION_GREATER "1.9.1" OR TORCH_FOUND OR G2O_FOUND)
+	 #LOAM, PCL>=1.10 and latest g2o require c++14
+	 include(CheckCXXCompilerFlag)
+	  CHECK_CXX_COMPILER_FLAG("-std=c++14" COMPILER_SUPPORTS_CXX14)
+	  IF(COMPILER_SUPPORTS_CXX14)
+	    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")
+	    set(CMAKE_CXX_STANDARD 14)
+	  ELSE()
+	    message(STATUS "The compiler ${CMAKE_CXX_COMPILER} has no C++14 support. Please use a different C++ compiler if you want to use LOAM, latest PCL or g2o.")
+	  ENDIF()
+	ENDIF(loam_velodyne_FOUND OR PCL_VERSION VERSION_GREATER "1.9.1" OR TORCH_FOUND OR G2O_FOUND)
+
+	IF( (NOT ${CMAKE_CXX_STANDARD} STREQUAL "14") AND (
+	       G2O_FOUND OR
+	       GTSAM_FOUND OR
+	       CERES_FOUND OR
+	       ZED_FOUND OR
+	       ANDROID OR
+	       RealSense_FOUND OR
+	       realsense2_FOUND OR
+	       ORB_SLAM2_FOUND OR
+	       okvis_FOUND OR
+	       open_chisel_FOUND OR
+	       msckf_vio_FOUND OR
+	       vins_FOUND OR
+	       libpointmatcher_FOUND))
+	 #Newest versions require std11
+	 include(CheckCXXCompilerFlag)
+	  CHECK_CXX_COMPILER_FLAG("-std=c++11" COMPILER_SUPPORTS_CXX11)
+	  CHECK_CXX_COMPILER_FLAG("-std=c++0x" COMPILER_SUPPORTS_CXX0X)
+	  IF(COMPILER_SUPPORTS_CXX11)
+	    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+	  ELSEIF(COMPILER_SUPPORTS_CXX0X)
+	    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
+	  ELSE()
+	    message(STATUS "The compiler ${CMAKE_CXX_COMPILER} has no C++11 support. Please use a different C++ compiler.")
+	  ENDIF()
+	ENDIF()
 ENDIF()
 
 ####### OSX BUNDLE CMAKE_INSTALL_PREFIX #######
