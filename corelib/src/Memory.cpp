@@ -4205,6 +4205,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 						"full calibration. If images are already rectified, set %s parameter back to true.",
 						(int)i,
 						Parameters::kRtabmapImagesAlreadyRectified().c_str());
+					std::cout << data.cameraModels()[i] << std::endl;
 					return 0;
 				}
 			}

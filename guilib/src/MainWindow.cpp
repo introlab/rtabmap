@@ -1410,6 +1410,30 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 		{
 			_cloudViewer->updateCameraFrustum(_odometryCorrection*odom.pose(), odom.data().stereoCameraModel());
 		}
+		else if(!odom.data().laserScanRaw().isEmpty() ||
+				!odom.data().laserScanCompressed().isEmpty())
+		{
+			Transform scanLocalTransform;
+			if(!odom.data().laserScanRaw().isEmpty())
+			{
+				scanLocalTransform = odom.data().laserScanRaw().localTransform();
+			}
+			else
+			{
+				scanLocalTransform = odom.data().laserScanCompressed().localTransform();
+			}
+			//fake frustum
+			CameraModel model(
+					2,
+					2,
+					2,
+					1.5,
+					scanLocalTransform*CameraModel::opticalRotation(),
+					0,
+					cv::Size(4,3));
+			_cloudViewer->updateCameraFrustum(_odometryCorrection*odom.pose(), model);
+
+		}
 #if PCL_VERSION_COMPARE(>=, 1, 7, 2)
 		if(_preferencesDialog->isFramesShown())
 		{
@@ -2181,6 +2205,29 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 					else if(stat.getLastSignatureData().sensorData().stereoCameraModel().isValidForProjection())
 					{
 						_cloudViewer->updateCameraFrustum(poses.rbegin()->second, stat.getLastSignatureData().sensorData().stereoCameraModel());
+					}
+					else if(!stat.getLastSignatureData().sensorData().laserScanRaw().isEmpty() ||
+							!stat.getLastSignatureData().sensorData().laserScanCompressed().isEmpty())
+					{
+						Transform scanLocalTransform;
+						if(!stat.getLastSignatureData().sensorData().laserScanRaw().isEmpty())
+						{
+							scanLocalTransform = stat.getLastSignatureData().sensorData().laserScanRaw().localTransform();
+						}
+						else
+						{
+							scanLocalTransform = stat.getLastSignatureData().sensorData().laserScanCompressed().localTransform();
+						}
+						//fake frustum
+						CameraModel model(
+								2,
+								2,
+								2,
+								1.5,
+								scanLocalTransform*CameraModel::opticalRotation(),
+								0,
+								cv::Size(4,3));
+						_cloudViewer->updateCameraFrustum(poses.rbegin()->second, model);
 					}
 				}
 
