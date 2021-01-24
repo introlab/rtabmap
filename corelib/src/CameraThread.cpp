@@ -174,7 +174,7 @@ void CameraThread::mainLoop()
 	CameraInfo info;
 	SensorData data = _camera->takeImage(&info);
 
-	if(!data.imageRaw().empty() || (dynamic_cast<DBReader*>(_camera) != 0 && data.id()>0)) // intermediate nodes could not have image set
+	if(!data.imageRaw().empty() || !data.laserScanRaw().empty() || (dynamic_cast<DBReader*>(_camera) != 0 && data.id()>0)) // intermediate nodes could not have image set
 	{
 		postUpdate(&data, &info);
 

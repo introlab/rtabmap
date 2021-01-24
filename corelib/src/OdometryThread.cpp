@@ -119,7 +119,7 @@ void OdometryThread::mainLoop()
 		OdometryInfo info;
 		UDEBUG("Processing data...");
 		Transform pose = _odometry->process(data, &info);
-		if(!data.imageRaw().empty() || (pose.isNull() && data.imu().empty()))
+		if(!data.imageRaw().empty() || !data.laserScanRaw().empty() || (pose.isNull() && data.imu().empty()))
 		{
 			UDEBUG("Odom pose = %s", pose.prettyPrint().c_str());
 			// a null pose notify that odometry could not be computed
@@ -134,9 +134,10 @@ void OdometryThread::addData(const SensorData & data)
 	{
 		if(dynamic_cast<OdometryMono*>(_odometry) == 0)
 		{
-			if(data.imageRaw().empty() || data.depthOrRightRaw().empty() || (data.cameraModels().size()==0 && !data.stereoCameraModel().isValidForProjection()))
+			if((data.imageRaw().empty() || data.depthOrRightRaw().empty() || (data.cameraModels().size()==0 && !data.stereoCameraModel().isValidForProjection())) &&
+					data.laserScanRaw().empty())
 			{
-				ULOGGER_ERROR("Missing some information (images empty or missing calibration)!?");
+				ULOGGER_ERROR("Missing some information (images/scans empty or missing calibration)!?");
 				return;
 			}
 		}

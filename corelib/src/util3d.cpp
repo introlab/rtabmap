@@ -3239,17 +3239,52 @@ LaserScan loadScan(const std::string & path)
 	{
 		return LaserScan(loadBINScan(path), 0, 0, LaserScan::kXYZI);
 	}
-	else if(UFile::getExtension(fileName).compare("pcd") == 0)
-	{
-		pcl::PCLPointCloud2::Ptr cloud(new pcl::PCLPointCloud2);
-		pcl::io::loadPCDFile(path, *cloud);
-		return laserScanFromPointCloud(*cloud);
-	}
 	else
 	{
 		pcl::PCLPointCloud2::Ptr cloud(new pcl::PCLPointCloud2);
-		pcl::io::loadPLYFile(path, *cloud);
-		return laserScanFromPointCloud(*cloud);
+
+		if(UFile::getExtension(fileName).compare("pcd") == 0)
+		{
+			pcl::io::loadPCDFile(path, *cloud);
+		}
+		else // PLY
+		{
+			pcl::io::loadPLYFile(path, *cloud);
+		}
+
+		bool is2D = false;
+		if(!cloud->data.empty())
+		{
+			// If all z values are zeros, we assume it is a 2D scan
+			int zOffset = -1;
+			for(unsigned int i=0; i<cloud->fields.size(); ++i)
+			{
+				if(cloud->fields[i].name.compare("z") == 0)
+				{
+					zOffset = cloud->fields[i].offset;
+				}
+			}
+			if(zOffset>=0)
+			{
+				is2D = true;
+				for (uint32_t row = 0; row < (uint32_t)cloud->height; ++row)
+				{
+					const uint8_t* row_data = &cloud->data[row * cloud->row_step];
+					for (uint32_t col = 0; col < (uint32_t)cloud->width; ++col)
+					{
+						const uint8_t* msg_data = row_data + col * cloud->point_step;
+						float z = *(float*)(msg_data + zOffset);
+						is2D = z == 0.0f;
+						if(!is2D)
+						{
+							break;
+						}
+					}
+				}
+			}
+		}
+
+		return laserScanFromPointCloud(*cloud, true, is2D);
 	}
 	return LaserScan();
 }

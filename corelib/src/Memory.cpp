@@ -5247,7 +5247,8 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 	// Occupancy grid map stuff
 	if(_createOccupancyGrid && !isIntermediateNode)
 	{
-		if(!data.depthOrRightRaw().empty())
+		if( (_occupancy->isGridFromDepth() && !data.depthOrRightRaw().empty()) ||
+			(!_occupancy->isGridFromDepth() && !data.laserScanRaw().empty()))
 		{
 			cv::Mat ground, obstacles, empty;
 			float cellSize = 0.0f;

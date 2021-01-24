@@ -30,7 +30,7 @@ then
     STRATEGY=$2
     REG=$3
 else
-echo "Usage: run_tum_datasets.sh \"output name\" \"odom strategy: 0=f2m 1=f2f 11=f2f_optflow 2=fovis 3=viso2 4=dvo 5=orbslam2 7=LOAM 9=VINS\" \"reg strategy: 0=vis 1=icp-point2point 11=icp-point2plane\" [sequence]"
+echo "Usage: run_kitti_datasets.sh \"output name\" \"odom strategy: 0=f2m 1=f2f 11=f2f_optflow 2=fovis 3=viso2 4=dvo 5=orbslam2 7=LOAM 9=VINS\" \"reg strategy: 0=vis 1=icp-point2point 11=icp-point2plane\" [sequence]"
 exit
 fi
 

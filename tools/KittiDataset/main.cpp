@@ -61,7 +61,7 @@ void showUsage()
 			"  --height           Add car's height to camera local transform (1.67m).\n"
 			"  --disp             Generate full disparity.\n"
 			"  --exposure_comp    Do exposure compensation between left and right images.\n"
-			"  --scan             Include velodyne scan in node's data.\n"
+			"  --scan             Include velodyne scan in node's data (use --scan_only to ignore image data).\n"
 			"  --scan_step #      Scan downsample step (default=1).\n"
 			"  --scan_voxel #.#   Scan voxel size (default 0.5 m).\n"
 			"  --scan_k           Scan normal K (default 0).\n"
@@ -115,6 +115,7 @@ int main(int argc, char * argv[])
 	float scanVoxel = 0.5f;
 	int scanNormalK = 0;
 	float scanNormalRadius = 0.0f;
+	bool scanOnly = false;
 	std::string gtPath;
 	bool quiet = false;
 	if(argc < 2)
@@ -172,6 +173,10 @@ int main(int argc, char * argv[])
 					printf("scanNormalRadius should be >= 0\n");
 					showUsage();
 				}
+			}
+			else if(std::strcmp(argv[i], "--scan_only") == 0)
+			{
+				scan = scanOnly = true;
 			}
 			else if(std::strcmp(argv[i], "--gt") == 0)
 			{
@@ -264,6 +269,7 @@ int main(int argc, char * argv[])
 	{
 		pathScan = path+"/velodyne";
 		printf("   Scan:               %s\n", pathScan.c_str());
+		printf("   Scan only:          %s\n", scanOnly?"true":"false");
 		printf("   Scan step:          %d\n", scanStep);
 		printf("   Scan voxel:         %fm\n", scanVoxel);
 		printf("   Scan normal k:      %d\n", scanNormalK);
@@ -354,14 +360,22 @@ int main(int argc, char * argv[])
 
 	// We use CameraThread only to use postUpdate() method
 	Transform opticalRotation(0,0,1,0, -1,0,0,color?-0.06:0, 0,-1,0,height?1.67:0.0);
-	CameraThread cameraThread(new
-		CameraStereoImages(
-				pathLeftImages,
-				pathRightImages,
-				false, // assume that images are already rectified
-				0.0f,
-				opticalRotation), parameters);
-	((CameraStereoImages*)cameraThread.camera())->setTimestamps(false, pathTimes, false);
+	Camera * camera = 0;
+	if(scanOnly)
+	{
+		camera = new CameraImages(""); // Scan path is set below
+	}
+	else
+	{
+		camera = new CameraStereoImages(
+					pathLeftImages,
+					pathRightImages,
+					false, // assume that images are already rectified
+					0.0f,
+					opticalRotation);
+	}
+	CameraThread cameraThread(camera, parameters);
+	((CameraImages*)cameraThread.camera())->setTimestamps(false, pathTimes, false);
 	if(exposureCompensation)
 	{
 		cameraThread.setStereoExposureCompensation(true);
@@ -372,11 +386,11 @@ int main(int argc, char * argv[])
 	}
 	if(!gtPath.empty())
 	{
-		((CameraStereoImages*)cameraThread.camera())->setGroundTruthPath(gtPath, 2);
+		((CameraImages*)cameraThread.camera())->setGroundTruthPath(gtPath, 2);
 	}
 	if(!pathScan.empty())
 	{
-		((CameraStereoImages*)cameraThread.camera())->setScanPath(
+		((CameraImages*)cameraThread.camera())->setScanPath(
 						pathScan,
 						130000,
 						Transform(-0.27f, 0.0f, 0.08+(height?1.67f:0.0f), 0.0f, 0.0f, 0.0f));

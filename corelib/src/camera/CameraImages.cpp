@@ -121,27 +121,32 @@ bool CameraImages::init(const std::string & calibrationFolder, const std::string
 	UDEBUG("");
 	if(_dir)
 	{
-		_dir->setPath(_path, "jpg ppm png bmp pnm tiff pgm");
+		delete _dir;
+		_dir = 0;
 	}
-	else
+	if(!_path.empty())
 	{
 		_dir = new UDirectory(_path, "jpg ppm png bmp pnm tiff pgm");
-	}
-	if(_path[_path.size()-1] != '\\' && _path[_path.size()-1] != '/')
-	{
-		_path.append("/");
-	}
-	if(!_dir->isValid())
-	{
-		ULOGGER_ERROR("Directory path is not valid \"%s\"", _path.c_str());
-	}
-	else if(_dir->getFileNames().size() == 0)
-	{
-		UWARN("Directory is empty \"%s\"", _path.c_str());
-	}
-	else
-	{
-		UINFO("path=%s images=%d", _path.c_str(), (int)this->imagesCount());
+		if(_path[_path.size()-1] != '\\' && _path[_path.size()-1] != '/')
+		{
+			_path.append("/");
+		}
+		if(!_dir->isValid())
+		{
+			ULOGGER_ERROR("Directory path is not valid \"%s\"", _path.c_str());
+			delete _dir;
+			_dir = 0;
+		}
+		else if(_dir->getFileNames().size() == 0)
+		{
+			UWARN("Directory is empty \"%s\"", _path.c_str());
+			delete _dir;
+			_dir = 0;
+		}
+		else
+		{
+			UINFO("path=%s images=%d", _path.c_str(), (int)this->imagesCount());
+		}
 	}
 
 	// check for scan directory
@@ -170,7 +175,7 @@ bool CameraImages::init(const std::string & calibrationFolder, const std::string
 			delete _scanDir;
 			_scanDir = 0;
 		}
-		else if(_scanDir->getFileNames().size() != _dir->getFileNames().size())
+		else if(_dir && _scanDir->getFileNames().size() != _dir->getFileNames().size())
 		{
 			UERROR("Scan and image directories should be the same size \"%s\"(%d) vs \"%s\"(%d)",
 					_scanPath.c_str(),
@@ -186,40 +191,49 @@ bool CameraImages::init(const std::string & calibrationFolder, const std::string
 		}
 	}
 
-	// look for calibration files
-	UINFO("calibration folder=%s name=%s", calibrationFolder.c_str(), cameraName.c_str());
-	if(!calibrationFolder.empty() && !cameraName.empty())
+	if(_dir==0 && _scanDir == 0)
 	{
-		if(!_model.load(calibrationFolder, cameraName))
-		{
-			UWARN("Missing calibration files for camera \"%s\" in \"%s\" folder, you should calibrate the camera!",
-					cameraName.c_str(), calibrationFolder.c_str());
-		}
-		else
-		{
-			UINFO("Camera parameters: fx=%f fy=%f cx=%f cy=%f",
-					_model.fx(),
-					_model.fy(),
-					_model.cx(),
-					_model.cy());
-		}
-	}
-	_model.setName(cameraName);
-
-	_model.setLocalTransform(this->getLocalTransform());
-	if(_rectifyImages && !_model.isValidForRectification())
-	{
-		UERROR("Parameter \"rectifyImages\" is set, but no camera model is loaded or valid.");
+		ULOGGER_ERROR("Images path or scans path should be set!");
 		return false;
 	}
 
-	bool success = _dir->isValid();
+	if(_dir)
+	{
+		// look for calibration files
+		UINFO("calibration folder=%s name=%s", calibrationFolder.c_str(), cameraName.c_str());
+		if(!calibrationFolder.empty() && !cameraName.empty())
+		{
+			if(!_model.load(calibrationFolder, cameraName))
+			{
+				UWARN("Missing calibration files for camera \"%s\" in \"%s\" folder, you should calibrate the camera!",
+						cameraName.c_str(), calibrationFolder.c_str());
+			}
+			else
+			{
+				UINFO("Camera parameters: fx=%f fy=%f cx=%f cy=%f",
+						_model.fx(),
+						_model.fy(),
+						_model.cx(),
+						_model.cy());
+			}
+		}
+		_model.setName(cameraName);
+
+		_model.setLocalTransform(this->getLocalTransform());
+		if(_rectifyImages && !_model.isValidForRectification())
+		{
+			UERROR("Parameter \"rectifyImages\" is set, but no camera model is loaded or valid.");
+			return false;
+		}
+	}
+
+	bool success = _dir|| _scanDir;
 	_stamps.clear();
 	odometry_.clear();
 	groundTruth_.clear();
 	if(success)
 	{
-		if(_hasConfigForEachFrame)
+		if(_dir && _hasConfigForEachFrame)
 		{
 #if CV_MAJOR_VERSION < 3 || (CV_MAJOR_VERSION == 3 && CV_MAJOR_VERSION < 2)
 			UDirectory dirJson(_path, "yaml xml");
@@ -322,7 +336,7 @@ bool CameraImages::init(const std::string & calibrationFolder, const std::string
 		}
 		else if(_filenamesAreTimestamps)
 		{
-			const std::list<std::string> & filenames = _dir->getFileNames();
+			std::list<std::string> filenames = _dir?_dir->getFileNames():_scanDir->getFileNames();
 			for(std::list<std::string>::const_iterator iter=filenames.begin(); iter!=filenames.end(); ++iter)
 			{
 				// format is text_1223445645.12334_text.png or text_122344564512334_text.png
@@ -560,7 +574,8 @@ bool CameraImages::readPoses(
 
 bool CameraImages::isCalibrated() const
 {
-	return _model.isValidForProjection() || (_models.size() && _models.front().isValidForProjection());
+	return (_dir && (_model.isValidForProjection() || (_models.size() && _models.front().isValidForProjection()))) ||
+			_scanDir;
 }
 
 std::string CameraImages::getSerial() const
@@ -574,6 +589,10 @@ unsigned int CameraImages::imagesCount() const
 	{
 		return (unsigned int)_dir->getFileNames().size();
 	}
+	else if(_scanDir)
+	{
+		return (unsigned int)_scanDir->getFileNames().size();
+	}
 	return 0;
 }
 
@@ -582,6 +601,10 @@ std::vector<std::string> CameraImages::filenames() const
 	if(_dir)
 	{
 		return uListToVector(_dir->getFileNames());
+	}
+	else if(_scanDir)
+	{
+		return uListToVector(_scanDir->getFileNames());
 	}
 	return std::vector<std::string>();
 }
@@ -628,11 +651,14 @@ SensorData CameraImages::captureImage(CameraInfo * info)
 	cv::Mat depthFromScan;
 	CameraModel model = _model;
 	UDEBUG("");
-	if(_dir->isValid())
+	if(_dir || _scanDir)
 	{
 		if(_refreshDir)
 		{
-			_dir->update();
+			if(_dir)
+			{
+				_dir->update();
+			}
 			if(_scanDir)
 			{
 				_scanDir->update();
@@ -642,13 +668,16 @@ SensorData CameraImages::captureImage(CameraInfo * info)
 		std::string scanFilePath;
 		if(_startAt < 0)
 		{
-			const std::list<std::string> & fileNames = _dir->getFileNames();
-			if(fileNames.size())
+			if(_dir)
 			{
-				if(_lastFileName.empty() || uStrNumCmp(_lastFileName,*fileNames.rbegin()) < 0)
+				const std::list<std::string> & fileNames = _dir->getFileNames();
+				if(fileNames.size())
 				{
-					_lastFileName = *fileNames.rbegin();
-					imageFilePath = _path + _lastFileName;
+					if(_lastFileName.empty() || uStrNumCmp(_lastFileName,*fileNames.rbegin()) < 0)
+					{
+						_lastFileName = *fileNames.rbegin();
+						imageFilePath = _path + _lastFileName;
+					}
 				}
 			}
 			if(_scanDir)
@@ -696,11 +725,12 @@ SensorData CameraImages::captureImage(CameraInfo * info)
 		}
 		else
 		{
-			std::string fileName;
-			fileName = _dir->getNextFileName();
-			if(!fileName.empty())
+			std::string imageFileName = _dir?_dir->getNextFileName():"";
+			std::string scanFileName = _scanDir?_scanDir->getNextFileName():"";
+			if((_dir && !imageFileName.empty()) || (!_dir && !scanFileName.empty()))
 			{
-				imageFilePath = _path + fileName;
+				imageFilePath = _path + imageFileName;
+				scanFilePath = _scanPath + scanFileName;
 				if(_stamps.size())
 				{
 					stamp = _stamps.front();
@@ -731,9 +761,18 @@ SensorData CameraImages::captureImage(CameraInfo * info)
 					_models.pop_front();
 				}
 
-				while(_count++ < _startAt && (fileName = _dir->getNextFileName()).size())
+				while(_count++ < _startAt)
 				{
-					imageFilePath = _path + fileName;
+					imageFileName = _dir?_dir->getNextFileName():"";
+					scanFileName = _scanDir?_scanDir->getNextFileName():"";
+
+					if((_dir && imageFileName.empty()) || (!_dir && scanFileName.empty()))
+					{
+						break;
+					}
+
+					imageFilePath = _path + imageFileName;
+					scanFilePath = _scanPath + scanFileName;
 					if(_stamps.size())
 					{
 						stamp = _stamps.front();
@@ -762,18 +801,6 @@ SensorData CameraImages::captureImage(CameraInfo * info)
 					{
 						model = _models.front();
 						_models.pop_front();
-					}
-				}
-			}
-			if(_scanDir)
-			{
-				fileName = _scanDir->getNextFileName();
-				if(!fileName.empty())
-				{
-					scanFilePath = _scanPath + fileName;
-					while(_countScan++ < _startAt && (fileName = _scanDir->getNextFileName()).size())
-					{
-						scanFilePath = _scanPath + fileName;
 					}
 				}
 			}
@@ -890,8 +917,12 @@ SensorData CameraImages::captureImage(CameraInfo * info)
 		model.setImageSize(img.size());
 	}
 
-	SensorData data(scan, _isDepth?cv::Mat():img, _isDepth?img:depthFromScan, model, this->getNextSeqID(), stamp);
-	data.setGroundTruth(groundTruthPose);
+	SensorData data;
+	if(!img.empty() || !scan.empty())
+	{
+		data = SensorData(scan, _isDepth?cv::Mat():img, _isDepth?img:depthFromScan, model, this->getNextSeqID(), stamp);
+		data.setGroundTruth(groundTruthPose);
+	}
 
 	if(info && !odometryPose.isNull())
 	{
