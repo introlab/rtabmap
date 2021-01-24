@@ -4131,7 +4131,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 	float t;
 	std::vector<cv::KeyPoint> keypoints;
 	cv::Mat descriptors;
-	bool isIntermediateNode = data.id() < 0 || (data.imageRaw().empty() && data.keypoints().empty());
+	bool isIntermediateNode = data.id() < 0 || (data.imageRaw().empty() && data.keypoints().empty() && data.laserScanRaw().empty());
 	int id = data.id();
 	if(_generateIds)
 	{
