@@ -76,6 +76,7 @@ CameraViewer::CameraViewer(QWidget * parent, const ParametersMap & parameters) :
 	showCloudCheckbox_->setChecked(true);
 	showScanCheckbox_ = new QCheckBox("Show scan", this);
 	showScanCheckbox_->setEnabled(false);
+	showScanCheckbox_->setChecked(true);
 
 	imageSizeLabel_ = new QLabel(this);
 
