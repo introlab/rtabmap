@@ -629,7 +629,10 @@ pcl::texture_mapping::CameraVector createTextureCameras(
 			}
 
 			UASSERT(modelIter->second[i].fx()>0 && modelIter->second[i].imageHeight()>0 && modelIter->second[i].imageWidth()>0);
-			cam.focal_length=modelIter->second[i].fx();
+			cam.focal_length_w=modelIter->second[i].fx();
+			cam.focal_length_h=modelIter->second[i].fy();
+			cam.center_w=modelIter->second[i].cx();
+			cam.center_h=modelIter->second[i].cy();
 			cam.height=modelIter->second[i].imageHeight();
 			cam.width=modelIter->second[i].imageWidth();
 			if(modelIter->second.size() == 1)
