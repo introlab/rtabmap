@@ -475,7 +475,7 @@ bool CameraImages::readPoses(
 				(int)poses.size(), this->imagesCount(), filePath.c_str());
 		return false;
 	}
-	else if((format == 1 || format == 10 || format == 5 || format == 6 || format == 7 || format == 9) && inOutStamps.size() == 0)
+	else if((format == 1 || format == 10 || format == 5 || format == 6 || format == 7 || format == 9) && (inOutStamps.empty() && stamps.size()!=poses.size()))
 	{
 		UERROR("When using RGBD-SLAM, GPS, MALAGA, ST LUCIA and EuRoC MAV formats, images must have timestamps!");
 		return false;
@@ -492,6 +492,11 @@ bool CameraImages::readPoses(
 		}
 		std::vector<double> values = uValues(stamps);
 
+		if(inOutStamps.empty())
+		{
+			inOutStamps = uValuesList(stamps);
+		}
+
 		int validPoses = 0;
 		for(std::list<double>::iterator ster=inOutStamps.begin(); ster!=inOutStamps.end(); ++ster)
 		{
@@ -503,6 +508,7 @@ bool CameraImages::readPoses(
 				if(endIter->first == *ster)
 				{
 					pose = poses.at(endIter->second);
+					++validPoses;
 				}
 				else if(endIter != stampsToIds.begin())
 				{
