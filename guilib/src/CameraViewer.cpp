@@ -147,7 +147,33 @@ void CameraViewer::showImage(const rtabmap::SensorData & data)
 		showScanCheckbox_->setEnabled(true);
 		if(showScanCheckbox_->isChecked())
 		{
-			cloudView_->addCloud("scan", util3d::downsample(util3d::laserScanToPointCloud(data.laserScanRaw()), decimationSpin_->value()!=0?fabs(decimationSpin_->value()):1), data.laserScanRaw().localTransform(), Qt::yellow);
+			if(data.laserScanRaw().hasNormals())
+			{
+				if(data.laserScanRaw().hasIntensity())
+				{
+					cloudView_->addCloud("scan", util3d::downsample(util3d::laserScanToPointCloudINormal(data.laserScanRaw()), decimationSpin_->value()!=0?fabs(decimationSpin_->value()):1), data.laserScanRaw().localTransform(), Qt::yellow);
+				}
+				else if(data.laserScanRaw().hasRGB())
+				{
+					cloudView_->addCloud("scan", util3d::downsample(util3d::laserScanToPointCloudRGBNormal(data.laserScanRaw()), decimationSpin_->value()!=0?fabs(decimationSpin_->value()):1), data.laserScanRaw().localTransform(), Qt::yellow);
+				}
+				else
+				{
+					cloudView_->addCloud("scan", util3d::downsample(util3d::laserScanToPointCloudNormal(data.laserScanRaw()), decimationSpin_->value()!=0?fabs(decimationSpin_->value()):1), data.laserScanRaw().localTransform(), Qt::yellow);
+				}
+			}
+			else if(data.laserScanRaw().hasIntensity())
+			{
+				cloudView_->addCloud("scan", util3d::downsample(util3d::laserScanToPointCloudI(data.laserScanRaw()), decimationSpin_->value()!=0?fabs(decimationSpin_->value()):1), data.laserScanRaw().localTransform(), Qt::yellow);
+			}
+			else if(data.laserScanRaw().hasRGB())
+			{
+				cloudView_->addCloud("scan", util3d::downsample(util3d::laserScanToPointCloudRGB(data.laserScanRaw()), decimationSpin_->value()!=0?fabs(decimationSpin_->value()):1), data.laserScanRaw().localTransform(), Qt::yellow);
+			}
+			else
+			{
+				cloudView_->addCloud("scan", util3d::downsample(util3d::laserScanToPointCloud(data.laserScanRaw()), decimationSpin_->value()!=0?fabs(decimationSpin_->value()):1), data.laserScanRaw().localTransform(), Qt::yellow);
+			}
 		}
 	}
 

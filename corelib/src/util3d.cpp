@@ -3262,6 +3262,7 @@ LaserScan loadScan(const std::string & path)
 				if(cloud->fields[i].name.compare("z") == 0)
 				{
 					zOffset = cloud->fields[i].offset;
+					break;
 				}
 			}
 			if(zOffset>=0)
@@ -3283,7 +3284,6 @@ LaserScan loadScan(const std::string & path)
 				}
 			}
 		}
-
 		return laserScanFromPointCloud(*cloud, true, is2D);
 	}
 	return LaserScan();
