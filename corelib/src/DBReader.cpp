@@ -200,6 +200,18 @@ bool DBReader::init(
 			{
 				_calibrated = true;
 			}
+			else
+			{
+				Signature * s = _dbDriver->loadSignature(*_ids.begin());
+				_dbDriver->loadNodeData(s);
+				if( s->sensorData().imageCompressed().empty() &&
+					s->getWords().empty() &&
+					!s->sensorData().laserScanCompressed().empty())
+				{
+					_calibrated = true; // only scans
+				}
+				delete s;
+			}
 		}
 	}
 	else

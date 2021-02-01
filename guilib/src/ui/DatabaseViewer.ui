@@ -61,7 +61,7 @@
           <rect>
            <x>0</x>
            <y>0</y>
-           <width>414</width>
+           <width>419</width>
            <height>311</height>
           </rect>
          </property>
@@ -304,7 +304,7 @@
           <rect>
            <x>0</x>
            <y>0</y>
-           <width>413</width>
+           <width>418</width>
            <height>311</height>
           </rect>
          </property>
@@ -1387,7 +1387,7 @@
           <x>0</x>
           <y>0</y>
           <width>318</width>
-          <height>226</height>
+          <height>188</height>
          </rect>
         </property>
         <attribute name="label">
@@ -1542,8 +1542,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>519</width>
-          <height>831</height>
+          <width>280</width>
+          <height>949</height>
          </rect>
         </property>
         <attribute name="label">
@@ -2096,8 +2096,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>312</width>
-          <height>226</height>
+          <width>226</width>
+          <height>160</height>
          </rect>
         </property>
         <attribute name="label">
@@ -2224,8 +2224,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>446</width>
-          <height>226</height>
+          <width>185</width>
+          <height>485</height>
          </rect>
         </property>
         <attribute name="label">
@@ -2534,6 +2534,16 @@
         <widget class="QCheckBox" name="checkBox_odomFrame_3dview">
          <property name="text">
           <string>Odom Frame</string>
+         </property>
+         <property name="checked">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QCheckBox" name="checkBox_gravity_3dview">
+         <property name="text">
+          <string>Gravity</string>
          </property>
          <property name="checked">
           <bool>true</bool>

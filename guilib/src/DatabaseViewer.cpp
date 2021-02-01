@@ -345,6 +345,7 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	connect(ui_->checkBox_showMap, SIGNAL(toggled(bool)), this, SLOT(update3dView()));
 	connect(ui_->checkBox_showGrid, SIGNAL(toggled(bool)), this, SLOT(update3dView()));
 	connect(ui_->checkBox_odomFrame_3dview, SIGNAL(toggled(bool)), this, SLOT(update3dView()));
+	connect(ui_->checkBox_gravity_3dview, SIGNAL(toggled(bool)), this, SLOT(update3dView()));
 
 	ui_->horizontalSlider_neighbors->setTracking(false);
 	ui_->horizontalSlider_loops->setTracking(false);
@@ -4449,14 +4450,7 @@ void DatabaseViewer::update(int value,
 				// 3d view
 				if(cloudViewer_->isVisible())
 				{
-					Transform pose = Transform::getIdentity();
-					if(signatures.size() && ui_->checkBox_odomFrame_3dview->isChecked())
-					{
-						float x, y, z, roll, pitch, yaw;
-						(*signatures.begin())->getPose().getTranslationAndEulerAngles(x, y, z, roll, pitch, yaw);
-						pose = Transform(0,0,z,roll,pitch,0);
-					}
-
+					cloudViewer_->removeAllLines();
 					cloudViewer_->removeAllFrustums();
 					cloudViewer_->removeCloud("mesh");
 					cloudViewer_->removeCloud("cloud");
@@ -4467,6 +4461,27 @@ void DatabaseViewer::update(int value,
 					cloudViewer_->removeCloud("empty_cells");
 					cloudViewer_->removeCloud("words");
 					cloudViewer_->removeOctomap();
+
+					Transform pose = Transform::getIdentity();
+					if(signatures.size() && ui_->checkBox_odomFrame_3dview->isChecked())
+					{
+						float x, y, z, roll, pitch, yaw;
+						(*signatures.begin())->getPose().getTranslationAndEulerAngles(x, y, z, roll, pitch, yaw);
+						pose = Transform(0,0,z,roll,pitch,0);
+					}
+
+					if(!gravityLink.empty() && ui_->checkBox_gravity_3dview->isChecked())
+					{
+						Transform gravityT = gravityLink.begin()->second.transform();
+						Eigen::Vector3f gravity(0,0,-1);
+						if(pose.isIdentity())
+						{
+							gravityT = gravityT.inverse();
+						}
+						gravity = (gravityT.rotation()*(pose).rotation().inverse()).toEigen3f()*gravity;
+						cloudViewer_->addOrUpdateLine("gravity", pose, (pose).translation()*Transform(gravity[0], gravity[1], gravity[2], 0, 0, 0)*pose.rotation().inverse(), Qt::yellow, true, false);
+					}
+
 					if(ui_->checkBox_showCloud->isChecked() || ui_->checkBox_showMesh->isChecked())
 					{
 						if(!data.depthOrRightRaw().empty())
@@ -4811,6 +4826,8 @@ void DatabaseViewer::update(int value,
 #endif
 						}
 					}
+					cloudViewer_->updateCameraTargetPosition(pose);
+					cloudViewer_->clearTrajectory();
 					cloudViewer_->update();
 				}
 

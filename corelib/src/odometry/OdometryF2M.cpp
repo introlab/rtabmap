@@ -1322,6 +1322,16 @@ Transform OdometryF2M::computeTransform(
 								{
 									frameValid = true;
 								}
+								else if(!guess.isNull() && !guess.isIdentity())
+								{
+									UWARN("Scan complexity too low (%f) to init robustly the first "
+											"keyframe. Make sure the lidar is seeing enough "
+											"geometry in all axes for good initialization. "
+											"Accepting as an initial guess (%s) is provided.",
+											complexity,
+											guess.prettyPrint().c_str());
+									frameValid = true;
+								}
 							}
 							else
 							{

@@ -1209,11 +1209,18 @@ Transform RegistrationIcp::computeTransformationImpl(
 								UWARN("libpointmatcher icp...temporary maxDist=%s (%s=%f, %s=%f)", params["maxDist"].c_str(),  Parameters::kIcpMaxCorrespondenceDistance().c_str(), _maxCorrespondenceDistance, Parameters::kIcpVoxelSize().c_str(), _voxelSize);
 								params["knn"] = uNumber2Str(_libpointmatcherKnn);
 								params["epsilon"] = uNumber2Str(_libpointmatcherEpsilon);
+								if(_libpointmatcherIntensity)
+								{
+									icpTmp.matcher.reset(new KDTreeMatcherIntensity<float>(params));
+								}
+								else
+								{
 #if POINTMATCHER_VERSION_INT >= 10300
-								icpTmp.matcher = PM::get().MatcherRegistrar.create("KDTreeMatcher", params);
+									icpTmp.matcher = PM::get().MatcherRegistrar.create("KDTreeMatcher", params);
 #else
-								icpTmp.matcher.reset(PM::get().MatcherRegistrar.create("KDTreeMatcher", params));
+									icpTmp.matcher.reset(PM::get().MatcherRegistrar.create("KDTreeMatcher", params));
 #endif
+								}
 
 #if POINTMATCHER_VERSION_INT >= 10300
 								icpTmp.errorMinimizer = PM::get().ErrorMinimizerRegistrar.create("PointToPointErrorMinimizer");
