@@ -125,6 +125,12 @@ bool exportPoses(
 					// Format: stamp x y z qx qy qz qw
 					Eigen::Quaternionf q = pose.getQuaternionf();
 
+					if(iter == poses.begin())
+					{
+						// header
+						fprintf(fout, "# timestamp x y z qx qy qz qw\n");
+					}
+
 					UASSERT(uContains(stamps, iter->first));
 					fprintf(fout, "%f %f %f %f %f %f %f %f\n",
 							stamps.at(iter->first),
