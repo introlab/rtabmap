@@ -2059,7 +2059,36 @@ std::map<int, Transform> Memory::loadOptimizedPoses(Transform * lastlocalization
 {
 	if(_dbDriver)
 	{
-		return _dbDriver->loadOptimizedPoses(lastlocalizationPose);
+		bool ok = true;
+		std::map<int, Transform> poses = _dbDriver->loadOptimizedPoses(lastlocalizationPose);
+		// Make sure optimized poses match the working directory! Otherwise return nothing.
+		if(poses.size() == _workingMem.size())
+		{
+			for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end() && ok; ++iter)
+			{
+				if(_workingMem.find(iter->first)==_workingMem.end())
+				{
+					ok = false;
+				}
+			}
+		}
+		else
+		{
+			ok = false;
+		}
+		if(!ok)
+		{
+			UWARN("Optimized poses (%d) and working memory "
+				  "size (%d) don't match. Returning empty optimized "
+				  "poses to force re-update. If you want to use the "
+				  "saved optimized poses, set %s to true",
+				  (int)poses.size(),
+				  (int)_workingMem.size(),
+				  Parameters::kMemInitWMWithAllNodes().c_str());
+			return std::map<int, Transform>();
+		}
+		return poses;
+
 	}
 	return std::map<int, Transform>();
 }
