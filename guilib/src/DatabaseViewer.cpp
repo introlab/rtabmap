@@ -3384,7 +3384,7 @@ void DatabaseViewer::updateOptimizedMesh()
 			else if(clouds.size())
 			{
 				dbDriver_->saveOptimizedPoses(optimizedPoses, lastlocalizationPose);
-				dbDriver_->saveOptimizedMesh(util3d::laserScanFromPointCloud(*clouds.at(0)));
+				dbDriver_->saveOptimizedMesh(util3d::laserScanFromPointCloud(*clouds.at(0)).data());
 				QMessageBox::information(this, tr("Update Optimized PointCloud"), tr("Updated!"));
 				ui_->actionView_optimized_mesh->setEnabled(true);
 				ui_->actionExport_optimized_mesh->setEnabled(true);
@@ -3597,7 +3597,7 @@ void DatabaseViewer::regenerateLocalMaps()
 						viewpoint = cv::Point3f(t.x(), t.y(), t.z());
 					}
 
-					grid.createLocalMap(LaserScan::backwardCompatibility(util3d::laserScanFromPointCloud(*cloud)), s.getPose(), ground, obstacles, empty, viewpoint);
+					grid.createLocalMap(util3d::laserScanFromPointCloud(*cloud), s.getPose(), ground, obstacles, empty, viewpoint);
 				}
 			}
 			else
@@ -3720,7 +3720,7 @@ void DatabaseViewer::regenerateCurrentLocalMaps()
 						viewpoint = cv::Point3f(t.x(), t.y(), t.z());
 					}
 
-					grid.createLocalMap(LaserScan::backwardCompatibility(util3d::laserScanFromPointCloud(*cloud)), s.getPose(), ground, obstacles, empty, viewpoint);
+					grid.createLocalMap(util3d::laserScanFromPointCloud(*cloud), s.getPose(), ground, obstacles, empty, viewpoint);
 				}
 			}
 			else
@@ -7246,7 +7246,7 @@ void DatabaseViewer::refineConstraint(int from, int to, bool silent)
 			}
 		}
 
-		cv::Mat assembledScan;
+		LaserScan assembledScan;
 		if(assembledToNormalClouds->size())
 		{
 			assembledScan = fromScan.is2d()?util3d::laserScan2dFromPointCloud(*assembledToNormalClouds):util3d::laserScanFromPointCloud(*assembledToNormalClouds);
@@ -7283,7 +7283,7 @@ void DatabaseViewer::refineConstraint(int from, int to, bool silent)
 				assembledScan,
 				fromScan.maxPoints()?fromScan.maxPoints():maxPoints,
 				fromScan.rangeMax(),
-				fromScan.format(),
+				assembledScan.format(),
 				fromScan.is2d()?Transform(0,0,fromScan.localTransform().z(),0,0,0):Transform::getIdentity()));
 
 		toS = new Signature(assembledData);

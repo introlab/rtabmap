@@ -71,10 +71,34 @@ public:
 
 public:
 	LaserScan();
+	LaserScan(const LaserScan & data,
+			int maxPoints,
+			float maxRange,
+			const Transform & localTransform = Transform::getIdentity());
+	RTABMAP_DEPRECATED(LaserScan(const LaserScan & data,
+			int maxPoints,
+			float maxRange,
+			Format format,
+			const Transform & localTransform = Transform::getIdentity()), "Use version without \"format\" argument.");
 	LaserScan(const cv::Mat & data,
 			int maxPoints,
 			float maxRange,
 			Format format,
+			const Transform & localTransform = Transform::getIdentity());
+	RTABMAP_DEPRECATED(LaserScan(const LaserScan & data,
+			Format format,
+			float minRange,
+			float maxRange,
+			float angleMin,
+			float angleMax,
+			float angleIncrement,
+			const Transform & localTransform = Transform::getIdentity()), "Use version without \"format\" argument.");
+	LaserScan(const LaserScan & data,
+			float minRange,
+			float maxRange,
+			float angleMin,
+			float angleMax,
+			float angleIncrement,
 			const Transform & localTransform = Transform::getIdentity());
 	LaserScan(const cv::Mat & data,
 			Format format,
@@ -113,6 +137,17 @@ public:
 	int getNormalsOffset() const {return hasNormals()?(2 + (is2d()?0:1) + ((hasRGB() || hasIntensity())?1:0)):-1;}
 
 	void clear() {data_ = cv::Mat();}
+
+private:
+	void init(const cv::Mat & data,
+			Format format,
+			float minRange,
+			float maxRange,
+			float angleMin,
+			float angleMax,
+			float angleIncrement,
+			int maxPoints,
+			const Transform & localTransform = Transform::getIdentity());
 
 private:
 	cv::Mat data_;

@@ -3173,7 +3173,7 @@ Transform Memory::computeIcpTransformMulti(
 			}
 		}
 
-		cv::Mat assembledScan;
+		LaserScan assembledScan;
 		if(assembledToNormalClouds->size())
 		{
 			assembledScan = fromScan.is2d()?util3d::laserScan2dFromPointCloud(*assembledToNormalClouds):util3d::laserScanFromPointCloud(*assembledToNormalClouds);
@@ -3212,14 +3212,13 @@ Transform Memory::computeIcpTransformMulti(
 				assembledScan = util3d::laserScanFromPointCloud(*assembledToRGBClouds);
 			}
 		}
-		UDEBUG("assembledScan=%d points", assembledScan.cols);
+		UDEBUG("assembledScan=%d points", assembledScan.size());
 
 		// scans are in base frame but for 2d scans, set the height so that correspondences matching works
 		assembledData.setLaserScan(
 				LaserScan(assembledScan,
 					fromScan.maxPoints()?fromScan.maxPoints():maxPoints,
 					fromScan.rangeMax(),
-					toScan.format(),
 					fromScan.is2d()?Transform(0,0,fromScan.localTransform().z(),0,0,0):Transform::getIdentity()));
 
 		t = _registrationIcpMulti->computeTransformation(fromS->sensorData(), assembledData, guess, info);

@@ -445,8 +445,8 @@ void OccupancyGrid::createLocalMap(
 			UDEBUG("groundIndices=%d, obstaclesIndices=%d", (int)groundIndices->size(), (int)obstaclesIndices->size());
 			if(grid3D_)
 			{
-				groundCloud = util3d::laserScanFromPointCloud(*cloudSegmented, groundIndices);
-				obstaclesCloud = util3d::laserScanFromPointCloud(*cloudSegmented, obstaclesIndices);
+				groundCloud = util3d::laserScanFromPointCloud(*cloudSegmented, groundIndices).data();
+				obstaclesCloud = util3d::laserScanFromPointCloud(*cloudSegmented, obstaclesIndices).data();
 			}
 			else
 			{
@@ -460,8 +460,8 @@ void OccupancyGrid::createLocalMap(
 			UDEBUG("groundIndices=%d, obstaclesIndices=%d", (int)groundIndices->size(), (int)obstaclesIndices->size());
 			if(grid3D_)
 			{
-				groundCloud = util3d::laserScanFromPointCloud(*cloudSegmented, groundIndices);
-				obstaclesCloud = util3d::laserScanFromPointCloud(*cloudSegmented, obstaclesIndices);
+				groundCloud = util3d::laserScanFromPointCloud(*cloudSegmented, groundIndices).data();
+				obstaclesCloud = util3d::laserScanFromPointCloud(*cloudSegmented, obstaclesIndices).data();
 			}
 			else
 			{
@@ -475,8 +475,8 @@ void OccupancyGrid::createLocalMap(
 			UDEBUG("groundIndices=%d, obstaclesIndices=%d", (int)groundIndices->size(), (int)obstaclesIndices->size());
 			if(grid3D_)
 			{
-				groundCloud = util3d::laserScanFromPointCloud(*cloudSegmented, groundIndices);
-				obstaclesCloud = util3d::laserScanFromPointCloud(*cloudSegmented, obstaclesIndices);
+				groundCloud = util3d::laserScanFromPointCloud(*cloudSegmented, groundIndices).data();
+				obstaclesCloud = util3d::laserScanFromPointCloud(*cloudSegmented, obstaclesIndices).data();
 			}
 			else
 			{
@@ -490,8 +490,8 @@ void OccupancyGrid::createLocalMap(
 			UDEBUG("groundIndices=%d, obstaclesIndices=%d", (int)groundIndices->size(), (int)obstaclesIndices->size());
 			if(grid3D_)
 			{
-				groundCloud = util3d::laserScanFromPointCloud(*cloudSegmented, groundIndices);
-				obstaclesCloud = util3d::laserScanFromPointCloud(*cloudSegmented, obstaclesIndices);
+				groundCloud = util3d::laserScanFromPointCloud(*cloudSegmented, groundIndices).data();
+				obstaclesCloud = util3d::laserScanFromPointCloud(*cloudSegmented, obstaclesIndices).data();
 			}
 			else
 			{
@@ -543,17 +543,17 @@ void OccupancyGrid::createLocalMap(
 					UDEBUG("ground=%d obstacles=%d empty=%d", (int)groundIndices->size(), (int)obstaclesIndices->size(), (int)emptyIndices->size());
 					if(scan.hasRGB())
 					{
-						groundCells = util3d::laserScanFromPointCloud(*cloudWithRayTracing, groundIndices, tinv);
-						obstacleCells = util3d::laserScanFromPointCloud(*cloudWithRayTracing, obstaclesIndices, tinv);
-						emptyCells = util3d::laserScanFromPointCloud(*cloudWithRayTracing, emptyIndices, tinv);
+						groundCells = util3d::laserScanFromPointCloud(*cloudWithRayTracing, groundIndices, tinv).data();
+						obstacleCells = util3d::laserScanFromPointCloud(*cloudWithRayTracing, obstaclesIndices, tinv).data();
+						emptyCells = util3d::laserScanFromPointCloud(*cloudWithRayTracing, emptyIndices, tinv).data();
 					}
 					else
 					{
 						pcl::PointCloud<pcl::PointXYZ>::Ptr cloudWithRayTracing2(new pcl::PointCloud<pcl::PointXYZ>);
 						pcl::copyPointCloud(*cloudWithRayTracing, *cloudWithRayTracing2);
-						groundCells = util3d::laserScanFromPointCloud(*cloudWithRayTracing2, groundIndices, tinv);
-						obstacleCells = util3d::laserScanFromPointCloud(*cloudWithRayTracing2, obstaclesIndices, tinv);
-						emptyCells = util3d::laserScanFromPointCloud(*cloudWithRayTracing2, emptyIndices, tinv);
+						groundCells = util3d::laserScanFromPointCloud(*cloudWithRayTracing2, groundIndices, tinv).data();
+						obstacleCells = util3d::laserScanFromPointCloud(*cloudWithRayTracing2, obstaclesIndices, tinv).data();
+						emptyCells = util3d::laserScanFromPointCloud(*cloudWithRayTracing2, emptyIndices, tinv).data();
 					}
 				}
 			}

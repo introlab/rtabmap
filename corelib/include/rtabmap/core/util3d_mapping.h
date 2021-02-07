@@ -99,6 +99,21 @@ RTABMAP_DEPRECATED(cv::Mat RTABMAP_EXP create2DMap(const std::map<int, Transform
 		float minMapSize = 0.0f,
 		float scanMaxRange = 0.0f), "Use interface with cv::Mat scans.");
 
+/**
+ * Create 2d Occupancy grid (CV_8S)
+ * -1 = unknown
+ * 0 = empty space
+ * 100 = obstacle
+ * @param poses
+ * @param scans, should be CV_32FC2 type!
+ * @param viewpoints
+ * @param cellSize m
+ * @param unknownSpaceFilled if false no fill, otherwise a virtual laser sweeps the unknown space from each pose (stopping on detected obstacle)
+ * @param xMin
+ * @param yMin
+ * @param minMapSize minimum map size in meters
+ * @param scanMaxRange laser scan maximum range, would be set if unknownSpaceFilled=true
+ */
 cv::Mat RTABMAP_EXP create2DMap(const std::map<int, Transform> & poses,
 		const std::map<int, std::pair<cv::Mat, cv::Mat> > & scans, // <id, <hit, no hit> >, in /base_link frame
 		const std::map<int, cv::Point3f > & viewpoints, // /base_link -> /base_scan

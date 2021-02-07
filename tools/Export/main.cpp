@@ -507,7 +507,7 @@ int main(int argc, char * argv[])
 			if(saveInDb)
 			{
 				printf("Saving in db... (%d points)\n", (int)mergedClouds->size());
-				driver->saveOptimizedMesh(util3d::laserScanFromPointCloud(*mergedClouds, Transform(), false));
+				driver->saveOptimizedMesh(util3d::laserScanFromPointCloud(*mergedClouds, Transform(), false).data());
 				printf("Saving in db... done!\n");
 			}
 			else

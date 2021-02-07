@@ -538,7 +538,7 @@ cv::Mat create2DMap(const std::map<int, Transform> & poses,
 	std::map<int, std::pair<cv::Mat, cv::Mat> > scansCv;
 	for(std::map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr >::const_iterator iter = scans.begin(); iter!=scans.end(); ++iter)
 	{
-		scansCv.insert(std::make_pair(iter->first, std::make_pair(util3d::laserScanFromPointCloud(*iter->second), cv::Mat())));
+		scansCv.insert(std::make_pair(iter->first, std::make_pair(util3d::laserScanFromPointCloud(*iter->second).data(), cv::Mat())));
 	}
 	return create2DMap(poses,
 			scansCv,
@@ -564,7 +564,7 @@ cv::Mat create2DMap(const std::map<int, Transform> & poses,
 	std::map<int, std::pair<cv::Mat, cv::Mat> > scansCv;
 	for(std::map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr >::const_iterator iter = scans.begin(); iter!=scans.end(); ++iter)
 	{
-		scansCv.insert(std::make_pair(iter->first, std::make_pair(util3d::laserScanFromPointCloud(*iter->second), cv::Mat())));
+		scansCv.insert(std::make_pair(iter->first, std::make_pair(util3d::laserScanFromPointCloud(*iter->second).data(), cv::Mat())));
 	}
 	return create2DMap(poses,
 			scansCv,
@@ -577,21 +577,6 @@ cv::Mat create2DMap(const std::map<int, Transform> & poses,
 			scanMaxRange);
 }
 
-/**
- * Create 2d Occupancy grid (CV_8S)
- * -1 = unknown
- * 0 = empty space
- * 100 = obstacle
- * @param poses
- * @param scans
- * @param viewpoints
- * @param cellSize m
- * @param unknownSpaceFilled if false no fill, otherwise a virtual laser sweeps the unknown space from each pose (stopping on detected obstacle)
- * @param xMin
- * @param yMin
- * @param minMapSize minimum map size in meters
- * @param scanMaxRange laser scan maximum range, would be set if unknownSpaceFilled=true
- */
 cv::Mat create2DMap(const std::map<int, Transform> & poses,
 		const std::map<int, std::pair<cv::Mat, cv::Mat> > & scans, // <id, <hit, no hit> >
 		const std::map<int, cv::Point3f > & viewpoints,
@@ -616,6 +601,8 @@ cv::Mat create2DMap(const std::map<int, Transform> & poses,
 	for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
 	{
 		std::map<int, std::pair<cv::Mat, cv::Mat> >::const_iterator jter=scans.find(iter->first);
+		UASSERT_MSG(jter->second.first.empty() || jter->second.first.type() == CV_32FC2, "Input scans should be 2D to avoid any confusion.");
+		UASSERT_MSG(jter->second.second.empty() || jter->second.second.type() == CV_32FC2, "Input scans should be 2D to avoid any confusion.");
 		if(jter!=scans.end() && (jter->second.first.cols || jter->second.second.cols))
 		{
 			UASSERT(!iter->second.isNull());

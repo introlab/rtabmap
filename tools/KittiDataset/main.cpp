@@ -402,7 +402,7 @@ int main(int argc, char * argv[])
 								scanVoxel,
 								scanNormalK,
 								scanNormalRadius,
-								true);
+								0.8f);
 	}
 
 	float detectionRate = Parameters::defaultRtabmapDetectionRate();
