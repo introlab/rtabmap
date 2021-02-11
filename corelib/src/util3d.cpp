@@ -3295,6 +3295,10 @@ LaserScan loadScan(const std::string & path)
 		{
 			pcl::io::loadPLYFile(path, *cloud);
 		}
+		if(cloud->height > 1)
+		{
+			cloud->is_dense = false;
+		}
 
 		bool is2D = false;
 		if(!cloud->data.empty())
@@ -3312,22 +3316,19 @@ LaserScan loadScan(const std::string & path)
 			if(zOffset>=0)
 			{
 				is2D = true;
-				for (uint32_t row = 0; row < (uint32_t)cloud->height; ++row)
+				for (uint32_t row = 0; row < (uint32_t)cloud->height && is2D; ++row)
 				{
 					const uint8_t* row_data = &cloud->data[row * cloud->row_step];
-					for (uint32_t col = 0; col < (uint32_t)cloud->width; ++col)
+					for (uint32_t col = 0; col < (uint32_t)cloud->width && is2D; ++col)
 					{
 						const uint8_t* msg_data = row_data + col * cloud->point_step;
 						float z = *(float*)(msg_data + zOffset);
 						is2D = z == 0.0f;
-						if(!is2D)
-						{
-							break;
-						}
 					}
 				}
 			}
 		}
+
 		return laserScanFromPointCloud(*cloud, true, is2D);
 	}
 	return LaserScan();
