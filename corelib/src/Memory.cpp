@@ -2062,19 +2062,12 @@ std::map<int, Transform> Memory::loadOptimizedPoses(Transform * lastlocalization
 		bool ok = true;
 		std::map<int, Transform> poses = _dbDriver->loadOptimizedPoses(lastlocalizationPose);
 		// Make sure optimized poses match the working directory! Otherwise return nothing.
-		if(poses.size() == _workingMem.size())
+		for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end() && ok; ++iter)
 		{
-			for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end() && ok; ++iter)
+			if(_workingMem.find(iter->first)==_workingMem.end())
 			{
-				if(_workingMem.find(iter->first)==_workingMem.end())
-				{
-					ok = false;
-				}
+				ok = false;
 			}
-		}
-		else
-		{
-			ok = false;
 		}
 		if(!ok)
 		{
@@ -3217,7 +3210,7 @@ Transform Memory::computeIcpTransformMulti(
 		// scans are in base frame but for 2d scans, set the height so that correspondences matching works
 		assembledData.setLaserScan(
 				LaserScan(assembledScan,
-					fromScan.maxPoints()?fromScan.maxPoints():maxPoints,
+					maxPoints,
 					fromScan.rangeMax(),
 					fromScan.is2d()?Transform(0,0,fromScan.localTransform().z(),0,0,0):Transform::getIdentity()));
 

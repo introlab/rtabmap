@@ -330,7 +330,7 @@ void LaserScan::init(
 		}
 		else if(!is2D && maxPoints_>0 && data_.cols > maxPoints_)
 		{
-			UWARN("The number of points (%d) in the scan is over the maximum "
+			UDEBUG("The number of points (%d) in the scan is over the maximum "
 				  "points (%d) defined by max points setting.",
 				  data_.cols, maxPoints_);
 		}
