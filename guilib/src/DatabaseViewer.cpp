@@ -1944,7 +1944,7 @@ void DatabaseViewer::updateIds()
 		}
 	}
 
-	ui_->menuExport_poses->setEnabled(false);
+	ui_->menuExport_poses->setEnabled(!odomPoses_.empty());
 	graphes_.clear();
 	graphLinks_.clear();
 	neighborLinks_.clear();
@@ -2286,7 +2286,18 @@ void DatabaseViewer::exportPosesKML()
 
 void DatabaseViewer::exportPoses(int format)
 {
-	if(graphes_.empty())
+	QStringList types;
+	types.push_back("Map's graph (see Graph View)");
+	types.push_back("Odometry");
+	bool ok;
+	QString type = QInputDialog::getItem(this, tr("Which poses?"), tr("Poses:"), types, 0, false, &ok);
+	if(!ok)
+	{
+		return;
+	}
+	bool odometry = type.compare("Odometry") == 0;
+
+	if(!odometry && graphes_.empty())
 	{
 		this->updateGraphView();
 		if(graphes_.empty() || ui_->horizontalSlider_iterations->maximum() != (int)graphes_.size()-1)
@@ -2294,6 +2305,11 @@ void DatabaseViewer::exportPoses(int format)
 			QMessageBox::warning(this, tr("Cannot export poses"), tr("No graph in database?!"));
 			return;
 		}
+	}
+	else if(odometry && odomPoses_.empty())
+	{
+		QMessageBox::warning(this, tr("Cannot export poses"), tr("No odometry poses in database?!"));
+		return;
 	}
 
 	if(format == 5)
@@ -2304,7 +2320,16 @@ void DatabaseViewer::exportPoses(int format)
 		}
 		else
 		{
-			std::map<int, rtabmap::Transform> graph = uValueAt(graphes_, ui_->horizontalSlider_iterations->value());
+			std::map<int, rtabmap::Transform> graph;
+			if(odometry)
+			{
+				graph = odomPoses_;
+			}
+			else
+			{
+				graph = uValueAt(graphes_, ui_->horizontalSlider_iterations->value());
+			}
+
 
 			//align with ground truth for more meaningful results
 			pcl::PointCloud<pcl::PointXYZ> cloud1, cloud2;
@@ -2402,7 +2427,14 @@ void DatabaseViewer::exportPoses(int format)
 	}
 	else
 	{
-		optimizedPoses = uValueAt(graphes_, ui_->horizontalSlider_iterations->value());
+		if(odometry)
+		{
+			optimizedPoses = odomPoses_;
+		}
+		else
+		{
+			optimizedPoses = uValueAt(graphes_, ui_->horizontalSlider_iterations->value());
+		}
 
 		if(ui_->checkBox_alignPosesWithGroundTruth->isChecked())
 		{
@@ -2534,7 +2566,10 @@ void DatabaseViewer::exportPoses(int format)
 		if(localTransforms.empty())
 		{
 			poses = optimizedPoses;
-			links = graphLinks_;
+			if(!odometry)
+			{
+				links = graphLinks_;
+			}
 		}
 		else
 		{
@@ -2543,14 +2578,17 @@ void DatabaseViewer::exportPoses(int format)
 			{
 				poses.insert(std::make_pair(iter->first, optimizedPoses.at(iter->first) * iter->second));
 			}
-			for(std::multimap<int, Link>::iterator iter=graphLinks_.begin(); iter!=graphLinks_.end(); ++iter)
+			if(!odometry)
 			{
-				if(uContains(poses, iter->second.from()) && uContains(poses, iter->second.to()))
+				for(std::multimap<int, Link>::iterator iter=graphLinks_.begin(); iter!=graphLinks_.end(); ++iter)
 				{
-					std::multimap<int, Link>::iterator inserted = links.insert(*iter);
-					int from = iter->second.from();
-					int to = iter->second.to();
-					inserted->second.setTransform(localTransforms.at(from).inverse()*iter->second.transform()*localTransforms.at(to));
+					if(uContains(poses, iter->second.from()) && uContains(poses, iter->second.to()))
+					{
+						std::multimap<int, Link>::iterator inserted = links.insert(*iter);
+						int from = iter->second.from();
+						int to = iter->second.to();
+						inserted->second.setTransform(localTransforms.at(from).inverse()*iter->second.transform()*localTransforms.at(to));
+					}
 				}
 			}
 		}
@@ -2581,7 +2619,9 @@ void DatabaseViewer::exportPoses(int format)
 			}
 		}
 
-		QString output = pathDatabase_ + QDir::separator() + (format==3?"toro.graph":format==4?"poses.g2o":"poses.txt");
+		QString output = pathDatabase_ + QDir::separator() + (format==3?"toro%1.graph":format==4?"poses%1.g2o":"poses%1.txt");
+		QString suffix = odometry?"_odom":"";
+		output = output.arg(suffix);
 
 		QString path = QFileDialog::getSaveFileName(
 				this,
@@ -7283,7 +7323,6 @@ void DatabaseViewer::refineConstraint(int from, int to, bool silent)
 				assembledScan,
 				fromScan.maxPoints()?fromScan.maxPoints():maxPoints,
 				fromScan.rangeMax(),
-				assembledScan.format(),
 				fromScan.is2d()?Transform(0,0,fromScan.localTransform().z(),0,0,0):Transform::getIdentity()));
 
 		toS = new Signature(assembledData);
@@ -7353,8 +7392,8 @@ void DatabaseViewer::refineConstraint(int from, int to, bool silent)
 						0,
 						ui_->parameters_toolbox->getParameters());
 				int maxLaserScans = cloudFrom->size();
-				fromS->sensorData().setLaserScan(LaserScan(util3d::laserScanFromPointCloud(*util3d::removeNaNFromPointCloud(cloudFrom), Transform()), maxLaserScans, 0, LaserScan::kXYZ));
-				toS->sensorData().setLaserScan(LaserScan(util3d::laserScanFromPointCloud(*util3d::removeNaNFromPointCloud(cloudTo), Transform()), maxLaserScans, 0, LaserScan::kXYZ));
+				fromS->sensorData().setLaserScan(LaserScan(util3d::laserScanFromPointCloud(*util3d::removeNaNFromPointCloud(cloudFrom), Transform()), maxLaserScans, 0));
+				toS->sensorData().setLaserScan(LaserScan(util3d::laserScanFromPointCloud(*util3d::removeNaNFromPointCloud(cloudTo), Transform()), maxLaserScans, 0));
 
 				if(!fromS->sensorData().laserScanCompressed().isEmpty() || !toS->sensorData().laserScanCompressed().isEmpty())
 				{
