@@ -299,8 +299,7 @@ void LaserScan::init(
 		// 2D scan
 		is2D = true;
 		UASSERT(rangeMax>rangeMin);
-		UASSERT(angleMax>angleMin);
-		UASSERT(angleIncrement != 0.0f);
+		UASSERT((angleIncrement>0 && angleMax>angleMin) || (angleIncrement<0 && angleMax<angleMin));
 		maxPoints_ = std::ceil((angleMax - angleMin) / angleIncrement)+1;
 	}
 	else

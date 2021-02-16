@@ -122,7 +122,7 @@ void occupancy2DFromLaserScan(
 	}
 	else
 	{
-		scanNoHit = scanHitIn;
+		scanNoHit = scanHit;
 	}
 
 	std::map<int, Transform> poses;

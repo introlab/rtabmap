@@ -286,8 +286,8 @@ void OccupancyGrid::createLocalMap(
 		cv::Mat & emptyCells,
 		cv::Point3f & viewPoint) const
 {
-	UDEBUG("scan format=%d, occupancyFromDepth_=%d normalsSegmentation_=%d grid3D_=%d",
-			node.sensorData().laserScanRaw().isEmpty()?0:node.sensorData().laserScanRaw().format(), occupancyFromDepth_?1:0, normalsSegmentation_?1:0, grid3D_?1:0);
+	UDEBUG("scan format=%s, occupancyFromDepth_=%d normalsSegmentation_=%d grid3D_=%d",
+			node.sensorData().laserScanRaw().isEmpty()?"NA":node.sensorData().laserScanRaw().formatName().c_str(), occupancyFromDepth_?1:0, normalsSegmentation_?1:0, grid3D_?1:0);
 
 	if((node.sensorData().laserScanRaw().is2d()) && !occupancyFromDepth_)
 	{
@@ -407,7 +407,7 @@ void OccupancyGrid::createLocalMap(
 				const Transform & t = node.sensorData().stereoCameraModel().localTransform();
 				viewPoint = cv::Point3f(t.x(), t.y(), t.z());
 			}
-			createLocalMap(LaserScan(util3d::laserScanFromPointCloud(*cloud, indices), 0, 0.0f, LaserScan::kXYZRGB), node.getPose(), groundCells, obstacleCells, emptyCells, viewPoint);
+			createLocalMap(LaserScan(util3d::laserScanFromPointCloud(*cloud, indices), 0, 0.0f), node.getPose(), groundCells, obstacleCells, emptyCells, viewPoint);
 		}
 	}
 }
