@@ -2901,7 +2901,7 @@ bool RTABMapApp::exportMesh(
 						// save in database
 						pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
 						pcl::fromPCLPointCloud2(polygonMesh->cloud, *cloud);
-						cv::Mat cloudMat = rtabmap::compressData2(rtabmap::util3d::laserScanFromPointCloud(*cloud, rtabmap::Transform(), false)); // for database
+						cv::Mat cloudMat = rtabmap::compressData2(rtabmap::util3d::laserScanFromPointCloud(*cloud, rtabmap::Transform(), false).data()); // for database
 						std::vector<std::vector<std::vector<RTABMAP_PCL_INDEX> > > polygons(1);
 						polygons[0].resize(polygonMesh->polygons.size());
 						for(unsigned int p=0; p<polygonMesh->polygons.size(); ++p)
@@ -2918,7 +2918,7 @@ bool RTABMapApp::exportMesh(
 				{
 					pcl::PointCloud<pcl::PointNormal>::Ptr cloud(new pcl::PointCloud<pcl::PointNormal>);
 					pcl::fromPCLPointCloud2(textureMesh->cloud, *cloud);
-					cv::Mat cloudMat = rtabmap::compressData2(rtabmap::util3d::laserScanFromPointCloud(*cloud, rtabmap::Transform(), false)); // for database
+					cv::Mat cloudMat = rtabmap::compressData2(rtabmap::util3d::laserScanFromPointCloud(*cloud, rtabmap::Transform(), false).data()); // for database
 
 					// save in database
 					std::vector<std::vector<std::vector<RTABMAP_PCL_INDEX> > > polygons(textureMesh->tex_polygons.size());
@@ -3054,7 +3054,7 @@ bool RTABMapApp::exportMesh(
 
 				// save in database
 				{
-					cv::Mat cloudMat = rtabmap::compressData2(rtabmap::util3d::laserScanFromPointCloud(*mergedClouds)); // for database
+					cv::Mat cloudMat = rtabmap::compressData2(rtabmap::util3d::laserScanFromPointCloud(*mergedClouds).data()); // for database
 					boost::mutex::scoped_lock  lock(rtabmapMutex_);
 					rtabmap_->getMemory()->saveOptimizedMesh(cloudMat);
 					success = true;
