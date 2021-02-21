@@ -63,7 +63,7 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-678</y>
+            <y>0</y>
             <width>686</width>
             <height>3357</height>
            </rect>
@@ -95,7 +95,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>5</number>
+                <number>16</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,1">
@@ -12238,7 +12238,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                    <layout class="QVBoxLayout" name="verticalLayout_115">
                     <item>
                      <layout class="QGridLayout" name="gridLayout_88" columnstretch="0,1">
-                      <item row="8" column="1">
+                      <item row="9" column="1">
                        <widget class="QLabel" name="label_484">
                         <property name="text">
                          <string>Probability clamping threshold minimum.</string>
@@ -12274,7 +12274,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
-                      <item row="10" column="1">
+                      <item row="11" column="1">
                        <widget class="QLabel" name="label_224">
                         <property name="text">
                          <string>Erode obstacle cells.</string>
@@ -12287,7 +12287,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
-                      <item row="6" column="1">
+                      <item row="7" column="1">
                        <widget class="QLabel" name="label_482">
                         <property name="text">
                          <string>Probability of a hit.</string>
@@ -12300,7 +12300,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
-                      <item row="4" column="1">
+                      <item row="5" column="1">
                        <widget class="QLabel" name="label_319">
                         <property name="text">
                          <string>Footprint radius used to clear all obstacles under the graph.</string>
@@ -12313,7 +12313,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
-                      <item row="10" column="0">
+                      <item row="11" column="0">
                        <widget class="QCheckBox" name="checkBox_grid_erode">
                         <property name="text">
                          <string/>
@@ -12330,7 +12330,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
-                      <item row="4" column="0">
+                      <item row="5" column="0">
                        <widget class="QDoubleSpinBox" name="doubleSpinBox_grid_footprintRadius">
                         <property name="suffix">
                          <string> m</string>
@@ -12432,7 +12432,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
-                      <item row="5" column="1">
+                      <item row="6" column="1">
                        <widget class="QLabel" name="label_457">
                         <property name="text">
                          <string>Occupancy threshold.</string>
@@ -12445,7 +12445,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
-                      <item row="5" column="0">
+                      <item row="6" column="0">
                        <widget class="QDoubleSpinBox" name="doubleSpinBox_grid_occThr">
                         <property name="suffix">
                          <string/>
@@ -12464,7 +12464,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
-                      <item row="7" column="1">
+                      <item row="8" column="1">
                        <widget class="QLabel" name="label_483">
                         <property name="text">
                          <string>Probability of a miss.</string>
@@ -12477,7 +12477,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
-                      <item row="6" column="0">
+                      <item row="7" column="0">
                        <widget class="QDoubleSpinBox" name="doubleSpinBox_grid_probHit">
                         <property name="suffix">
                          <string/>
@@ -12496,7 +12496,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
-                      <item row="7" column="0">
+                      <item row="8" column="0">
                        <widget class="QDoubleSpinBox" name="doubleSpinBox_grid_probMiss">
                         <property name="suffix">
                          <string/>
@@ -12515,7 +12515,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
-                      <item row="9" column="1">
+                      <item row="10" column="1">
                        <widget class="QLabel" name="label_485">
                         <property name="text">
                          <string>Probability clamping threshold maximum.</string>
@@ -12528,7 +12528,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
-                      <item row="8" column="0">
+                      <item row="9" column="0">
                        <widget class="QDoubleSpinBox" name="doubleSpinBox_grid_clampingMin">
                         <property name="suffix">
                          <string/>
@@ -12550,7 +12550,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
-                      <item row="9" column="0">
+                      <item row="10" column="0">
                        <widget class="QDoubleSpinBox" name="doubleSpinBox_grid_clampingMax">
                         <property name="suffix">
                          <string/>
@@ -12569,6 +12569,41 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                         <property name="value">
                          <double>0.500000000000000</double>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="4" column="1">
+                       <widget class="QLabel" name="label_616">
+                        <property name="text">
+                         <string>Altitude delta. Assemble only nodes that have the same altitude of +-delta meters of the current pose (0=disabled). This is used to generate 2D occupancy grid based on the current altitude (e.g., multi-floor building).</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="4" column="0">
+                       <widget class="QDoubleSpinBox" name="doubleSpinBox_grid_altitudeDelta">
+                        <property name="suffix">
+                         <string> m</string>
+                        </property>
+                        <property name="decimals">
+                         <number>2</number>
+                        </property>
+                        <property name="minimum">
+                         <double>0.000000000000000</double>
+                        </property>
+                        <property name="maximum">
+                         <double>99.000000000000000</double>
+                        </property>
+                        <property name="singleStep">
+                         <double>0.100000000000000</double>
+                        </property>
+                        <property name="value">
+                         <double>0.000000000000000</double>
                         </property>
                        </widget>
                       </item>

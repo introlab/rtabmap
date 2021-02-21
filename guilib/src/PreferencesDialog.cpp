@@ -1187,6 +1187,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->doubleSpinBox_grid_updateError->setObjectName(Parameters::kGridGlobalUpdateError().c_str());
 	_ui->doubleSpinBox_grid_minMapSize->setObjectName(Parameters::kGridGlobalMinSize().c_str());
 	_ui->spinBox_grid_maxNodes->setObjectName(Parameters::kGridGlobalMaxNodes().c_str());
+	_ui->doubleSpinBox_grid_altitudeDelta->setObjectName(Parameters::kGridGlobalAltitudeDelta().c_str());
 	_ui->doubleSpinBox_grid_footprintRadius->setObjectName(Parameters::kGridGlobalFootprintRadius().c_str());
 	_ui->doubleSpinBox_grid_occThr->setObjectName(Parameters::kGridGlobalOccupancyThr().c_str());
 	_ui->doubleSpinBox_grid_probHit->setObjectName(Parameters::kGridGlobalProbHit().c_str());

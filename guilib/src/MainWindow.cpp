@@ -258,7 +258,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent, bool sh
 	setupMainLayout(_preferencesDialog->isVerticalLayoutUsed());
 
 	ParametersMap parameters = _preferencesDialog->getAllParameters();
-	_occupancyGrid = new OccupancyGrid();
+	_occupancyGrid = new OccupancyGrid(parameters);
 #ifdef RTABMAP_OCTOMAP
 	_octomap = new OctoMap(parameters);
 #endif
@@ -2466,19 +2466,39 @@ void MainWindow::updateMapCloud(
 	}
 
 	int maxNodes = uStr2Int(_preferencesDialog->getParameter(Parameters::kGridGlobalMaxNodes()));
-	if(maxNodes > 0 && poses.size()>1)
+	int altitudeDelta = uStr2Int(_preferencesDialog->getParameter(Parameters::kGridGlobalAltitudeDelta()));
+	if((maxNodes > 0 || altitudeDelta>0.0) && poses.size()>1)
 	{
-		std::map<int, float> nodes = graph::findNearestNodes(poses, poses.rbegin()->second, maxNodes);
-		std::map<int, Transform> nearestPoses;
-		nearestPoses.insert(*poses.rbegin());
-		for(std::map<int, float>::iterator iter=nodes.begin(); iter!=nodes.end(); ++iter)
+		Transform currentPose = poses.rbegin()->second;
+		if(poses.find(0) != poses.end())
 		{
-			std::map<int, Transform>::iterator pter = poses.find(iter->first);
-			if(pter != poses.end())
+			currentPose = poses.at(0);
+		}
+
+		std::map<int, Transform> nearestPoses;
+		if(maxNodes > 0)
+		{
+			std::map<int, float> nodes = graph::findNearestNodes(poses, currentPose, maxNodes);
+			for(std::map<int, float>::iterator iter=nodes.begin(); iter!=nodes.end(); ++iter)
 			{
-				nearestPoses.insert(*pter);
+				if(altitudeDelta<=0.0 ||
+				   fabs(poses.at(iter->first).z()-currentPose.z())<altitudeDelta)
+				{
+					nearestPoses.insert(*poses.find(iter->first));
+				}
 			}
 		}
+		else // altitudeDelta>0.0
+		{
+			for(std::map<int, Transform>::const_iterator iter=poses.begin(); iter!=poses.end(); ++iter)
+			{
+				if(fabs(iter->second.z()-currentPose.z())<altitudeDelta)
+				{
+					nearestPoses.insert(*iter);
+				}
+			}
+		}
+
 		//add zero...
 		if(poses.find(0) != poses.end())
 		{
