@@ -105,7 +105,6 @@ CalibrationDialog::CalibrationDialog(bool stereo, const QString & savingDirector
 	ui_->checkBox_switchImages->setChecked(switchImages);
 
 	ui_->checkBox_fisheye->setChecked(false);
-	ui_->checkBox_fisheye->setEnabled(false);
 
 	this->setStereoMode(stereo_);
 }
@@ -519,7 +518,11 @@ void CalibrationDialog::processImages(const cv::Mat & imageLeft, const cv::Mat &
 					ui_->progressBar_count_2->setValue((int)imagePoints_[id].size());
 				}
 
-				if(imagePoints_[id].size() >= COUNT_MIN && xGood > 0.5 && yGood > 0.5 && sizeGood > 0.4 && skewGood > 0.5)
+				if(imagePoints_[id].size() >= COUNT_MIN &&
+						xGood > 0.5 &&
+						yGood > 0.5 &&
+						(sizeGood > 0.4 || (ui_->checkBox_fisheye->isChecked() && sizeGood > 0.25)) &&
+						skewGood > 0.5)
 				{
 					readyToCalibrate[id] = true;
 				}
@@ -636,7 +639,6 @@ void CalibrationDialog::restart()
 	maxIrs_[1] = 0x7fff;
 
 	ui_->pushButton_calibrate->setEnabled(ui_->checkBox_unlock->isChecked());
-	ui_->checkBox_fisheye->setEnabled(ui_->checkBox_unlock->isChecked());
 	ui_->pushButton_save->setEnabled(false);
 	ui_->radioButton_raw->setChecked(true);
 	ui_->radioButton_rectified->setEnabled(false);
@@ -680,7 +682,6 @@ void CalibrationDialog::restart()
 void CalibrationDialog::unlock()
 {
 	ui_->pushButton_calibrate->setEnabled(true);
-	ui_->checkBox_fisheye->setEnabled(true);
 }
 
 void CalibrationDialog::calibrate()
