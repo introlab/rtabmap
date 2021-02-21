@@ -173,8 +173,22 @@ ExportCloudsDialog::ExportCloudsDialog(QWidget *parent) :
 	connect(_ui->checkBox_blending, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
 	connect(_ui->comboBox_blendingDecimation, SIGNAL(currentIndexChanged(int)), this, SIGNAL(configChanged()));
 
+	connect(_ui->checkBox_cameraProjection, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
+	connect(_ui->checkBox_cameraProjection, SIGNAL(stateChanged(int)), this, SLOT(updateReconstructionFlavor()));
+	connect(_ui->lineEdit_camProjRoiRatios, SIGNAL(textChanged(const QString &)), this, SIGNAL(configChanged()));
+	connect(_ui->doubleSpinBox_camProjMaxDistance, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
+	connect(_ui->doubleSpinBox_camProjMaxAngle, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
+	connect(_ui->checkBox_camProjDistanceToCamPolicy, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
+	connect(_ui->checkBox_camProjKeepPointsNotSeenByCameras, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
+	connect(_ui->checkBox_camProjRecolorPoints, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
+	connect(_ui->comboBox_camProjExportCamera, SIGNAL(currentIndexChanged(int)), this, SIGNAL(configChanged()));
+#ifndef RTABMAP_PDAL
+	_ui->comboBox_camProjExportCamera->setEnabled(false);
+	_ui->label_camProjExportCamera->setEnabled(false);
+	_ui->label_camProjExportCamera->setText(_ui->label_camProjExportCamera->text() + " (PDAL dependency required)");
+#endif
+
 	connect(_ui->checkBox_meshing, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
-	connect(_ui->checkBox_meshing, SIGNAL(stateChanged(int)), this, SLOT(updateReconstructionFlavor()));
 	connect(_ui->checkBox_meshing, SIGNAL(stateChanged(int)), this, SLOT(updateReconstructionFlavor()));
 	connect(_ui->doubleSpinBox_gp3Radius, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
 	connect(_ui->doubleSpinBox_gp3Mu, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
@@ -356,6 +370,15 @@ void ExportCloudsDialog::saveSettings(QSettings & settings, const QString & grou
 	settings.setValue("gain_rgb", _ui->checkBox_gainRGB->isChecked());
 	settings.setValue("gain_full", _ui->checkBox_gainFull->isChecked());
 
+	settings.setValue("cam_proj", _ui->checkBox_cameraProjection->isChecked());
+	settings.setValue("cam_proj_roi_ratios", _ui->lineEdit_camProjRoiRatios->text());
+	settings.setValue("cam_proj_max_distance", _ui->doubleSpinBox_camProjMaxDistance->value());
+	settings.setValue("cam_proj_max_angle", _ui->doubleSpinBox_camProjMaxAngle->value());
+	settings.setValue("cam_proj_distance_policy", _ui->checkBox_camProjDistanceToCamPolicy->isChecked());
+	settings.setValue("cam_proj_keep_points", _ui->checkBox_camProjKeepPointsNotSeenByCameras->isChecked());
+	settings.setValue("cam_proj_recolor_points", _ui->checkBox_camProjRecolorPoints->isChecked());
+	settings.setValue("cam_proj_export_format", _ui->comboBox_camProjExportCamera->currentIndex());
+
 	settings.setValue("mesh", _ui->checkBox_meshing->isChecked());
 	settings.setValue("mesh_radius", _ui->doubleSpinBox_gp3Radius->value());
 	settings.setValue("mesh_mu", _ui->doubleSpinBox_gp3Mu->value());
@@ -497,6 +520,15 @@ void ExportCloudsDialog::loadSettings(QSettings & settings, const QString & grou
 	_ui->checkBox_gainRGB->setChecked(settings.value("gain_rgb", _ui->checkBox_gainRGB->isChecked()).toBool());
 	_ui->checkBox_gainFull->setChecked(settings.value("gain_full", _ui->checkBox_gainFull->isChecked()).toBool());
 
+	_ui->checkBox_cameraProjection->setChecked(settings.value("cam_proj", _ui->checkBox_cameraProjection->isChecked()).toBool());
+	_ui->lineEdit_camProjRoiRatios->setText(settings.value("cam_proj_roi_ratios", _ui->lineEdit_camProjRoiRatios->text()).toString());
+	_ui->doubleSpinBox_camProjMaxDistance->setValue(settings.value("cam_proj_max_distance", _ui->doubleSpinBox_camProjMaxDistance->value()).toDouble());
+	_ui->doubleSpinBox_camProjMaxAngle->setValue(settings.value("cam_proj_max_angle", _ui->doubleSpinBox_camProjMaxAngle->value()).toDouble());
+	_ui->checkBox_camProjDistanceToCamPolicy->setChecked(settings.value("cam_proj_distance_policy", _ui->checkBox_camProjDistanceToCamPolicy->isChecked()).toBool());
+	_ui->checkBox_camProjKeepPointsNotSeenByCameras->setChecked(settings.value("cam_proj_keep_points", _ui->checkBox_camProjKeepPointsNotSeenByCameras->isChecked()).toBool());
+	_ui->checkBox_camProjRecolorPoints->setChecked(settings.value("cam_proj_recolor_points", _ui->checkBox_camProjRecolorPoints->isChecked()).toBool());
+	_ui->comboBox_camProjExportCamera->setCurrentIndex(settings.value("cam_proj_export_format", _ui->comboBox_camProjExportCamera->currentIndex()).toInt());
+
 	_ui->checkBox_meshing->setChecked(settings.value("mesh", _ui->checkBox_meshing->isChecked()).toBool());
 	_ui->doubleSpinBox_gp3Radius->setValue(settings.value("mesh_radius", _ui->doubleSpinBox_gp3Radius->value()).toDouble());
 	_ui->doubleSpinBox_gp3Mu->setValue(settings.value("mesh_mu", _ui->doubleSpinBox_gp3Mu->value()).toDouble());
@@ -634,6 +666,15 @@ void ExportCloudsDialog::restoreDefaults()
 	_ui->doubleSpinBox_gainBeta->setValue(10);
 	_ui->checkBox_gainRGB->setChecked(true);
 	_ui->checkBox_gainFull->setChecked(false);
+
+	_ui->checkBox_cameraProjection->setChecked(false);
+	_ui->lineEdit_camProjRoiRatios->setText("0.0 0.0 0.0 0.0");
+	_ui->doubleSpinBox_camProjMaxDistance->setValue(0);
+	_ui->doubleSpinBox_camProjMaxAngle->setValue(0);
+	_ui->checkBox_camProjDistanceToCamPolicy->setChecked(true);
+	_ui->checkBox_camProjKeepPointsNotSeenByCameras->setChecked(false);
+	_ui->checkBox_camProjRecolorPoints->setChecked(true);
+	_ui->comboBox_camProjExportCamera->setCurrentIndex(0);
 
 	_ui->checkBox_meshing->setChecked(false);
 	_ui->doubleSpinBox_gp3Radius->setValue(0.2);
@@ -778,11 +819,15 @@ void ExportCloudsDialog::updateReconstructionFlavor()
 	_ui->checkBox_gainCompensation->setVisible(_ui->checkBox_gainCompensation->isEnabled());
 	_ui->label_gainCompensation->setVisible(_ui->checkBox_gainCompensation->isEnabled());
 
+	_ui->checkBox_cameraProjection->setEnabled(_ui->checkBox_assemble->isChecked() && !_ui->checkBox_meshing->isChecked());
+	_ui->label_cameraProjection->setEnabled(_ui->checkBox_cameraProjection->isEnabled());
+
 	_ui->groupBox_regenerate->setVisible(_ui->checkBox_regenerate->isChecked() && _ui->checkBox_fromDepth->isChecked());
 	_ui->groupBox_regenerateScans->setVisible(_ui->checkBox_regenerate->isChecked() && !_ui->checkBox_fromDepth->isChecked());
 	_ui->groupBox_bilateral->setVisible(_ui->checkBox_bilateral->isChecked());
 	_ui->groupBox_filtering->setVisible(_ui->checkBox_filtering->isChecked());
 	_ui->groupBox_gain->setVisible(_ui->checkBox_gainCompensation->isEnabled() && _ui->checkBox_gainCompensation->isChecked());
+	_ui->groupBox_cameraProjection->setVisible(_ui->checkBox_cameraProjection->isEnabled() && _ui->checkBox_cameraProjection->isChecked());
 	_ui->groupBox_mls->setVisible(_ui->checkBox_smoothing->isEnabled() && _ui->checkBox_smoothing->isChecked());
 	_ui->groupBox_meshing->setVisible(_ui->checkBox_meshing->isChecked());
 	_ui->groupBox_subtraction->setVisible(_ui->checkBox_subtraction->isChecked());
@@ -952,7 +997,7 @@ void ExportCloudsDialog::exportClouds(
 		}
 		else
 		{
-			saveClouds(workingDirectory, poses, clouds, _ui->checkBox_binary->isChecked());
+			saveClouds(workingDirectory, poses, clouds, _ui->checkBox_binary->isChecked(), textureVertexToPixels);
 		}
 	}
 	else if(!_canceled)
@@ -1234,16 +1279,13 @@ void ExportCloudsDialog::viewClouds(
 				_progressDialog->appendText(tr("Viewing the cloud %1 (%2 points)...").arg(iter->first).arg(iter->second->size()));
 				_progressDialog->incrementStep();
 
-				QColor color = Qt::gray;
-				int mapId = uValue(mapIds, iter->first, -1);
-				if(mapId >= 0)
+				if(!_ui->checkBox_fromDepth->isChecked() &&
+					!(_ui->checkBox_cameraProjection->isEnabled() &&
+					_ui->checkBox_cameraProjection->isChecked() &&
+					_ui->checkBox_camProjRecolorPoints->isChecked() &&
+					clouds.size()==1 && clouds.begin()->first==0))
 				{
-					color = (Qt::GlobalColor)(mapId % 12 + 7 );
-				}
-
-				if(!_ui->checkBox_fromDepth->isChecked())
-				{
-					// When laser scans are exported, convert RGB to Intensity
+					// When laser scans are exported (and camera RGB was not applied), convert RGB to Intensity
 					if(_ui->spinBox_normalKSearch->value()<=0 && _ui->doubleSpinBox_normalRadiusSearch->value()<=0.0)
 					{
 						// remove normals if not used
@@ -2444,6 +2486,222 @@ bool ExportCloudsDialog::getExportedClouds(
 			_progressDialog->appendText(msg.c_str(), Qt::darkYellow);
 			UWARN(msg.c_str());
 		}
+		else if(_ui->checkBox_cameraProjection->isEnabled() &&
+				_ui->checkBox_cameraProjection->isChecked() &&
+				cloudsWithNormals.size()==1 && cloudsWithNormals.begin()->first==0) // only for assembled point cloud
+		{
+			_progressDialog->appendText(tr("Camera projection..."));
+			QApplication::processEvents();
+			uSleep(100);
+			QApplication::processEvents();
+
+			pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr assembledCloud = cloudsWithNormals.begin()->second;
+
+			std::map<int, Transform> cameraPoses;
+			std::map<int, std::vector<CameraModel> > cameraModels;
+			for(std::map<int, Transform>::const_iterator iter=poses.lower_bound(0); iter!=poses.end(); ++iter)
+			{
+				std::vector<CameraModel> models;
+				StereoCameraModel stereoModel;
+				if(cachedSignatures.contains(iter->first))
+				{
+					const SensorData & data = cachedSignatures.find(iter->first)->sensorData();
+					models = data.cameraModels();
+					stereoModel = data.stereoCameraModel();
+				}
+				else if(_dbDriver)
+				{
+					_dbDriver->getCalibration(iter->first, models, stereoModel);
+				}
+
+				if(stereoModel.isValidForProjection())
+				{
+					models.clear();
+					models.push_back(stereoModel.left());
+				}
+				else if(models.size() == 0 || !models[0].isValidForProjection())
+				{
+					models.clear();
+				}
+
+				if(!models.empty() && models[0].imageWidth() != 0 && models[0].imageHeight() != 0)
+				{
+					cameraPoses.insert(std::make_pair(iter->first, iter->second));
+					cameraModels.insert(std::make_pair(iter->first, models));
+				}
+				else
+				{
+					UWARN("%d node has invalid camera models, ignoring it.", iter->first);
+				}
+			}
+			if(!cameraPoses.empty())
+			{
+				TexturingState texturingState(_progressDialog, true);
+				_progressDialog->setMaximumSteps(_progressDialog->maximumSteps() + assembledCloud->size()/10000+1 + cameraPoses.size());
+				std::vector<float> roiRatios;
+				QStringList strings = _ui->lineEdit_camProjRoiRatios->text().split(' ');
+				if(!_ui->lineEdit_meshingTextureRoiRatios->text().isEmpty())
+				{
+					if(strings.size()==4)
+					{
+						roiRatios.resize(4);
+						roiRatios[0]=strings[0].toDouble();
+						roiRatios[1]=strings[1].toDouble();
+						roiRatios[2]=strings[2].toDouble();
+						roiRatios[3]=strings[3].toDouble();
+						if(!(roiRatios[0]>=0.0f && roiRatios[0]<=1.0f &&
+							roiRatios[1]>=0.0f && roiRatios[1]<=1.0f &&
+							roiRatios[2]>=0.0f && roiRatios[2]<=1.0f &&
+							roiRatios[3]>=0.0f && roiRatios[3]<=1.0f))
+						{
+							roiRatios.clear();
+						}
+					}
+					if(roiRatios.empty())
+					{
+						QString msg = tr("Wrong ROI format. Region of Interest (ROI) must "
+								"have 4 values [left right top bottom] between 0 and 1 "
+								"separated by space (%1), ignoring it for projecting cameras...")
+										.arg(_ui->lineEdit_camProjRoiRatios->text());
+						UWARN(msg.toStdString().c_str());
+						_progressDialog->appendText(msg, Qt::darkYellow);
+						_progressDialog->setAutoClose(false);
+					}
+				}
+				std::vector<std::pair< std::pair<int, int>, pcl::PointXY> > pointToPixel;
+				pointToPixel = util3d::projectCloudToCameras(
+						*assembledCloud,
+						cameraPoses,
+						cameraModels,
+						_ui->doubleSpinBox_camProjMaxDistance->value(),
+						_ui->doubleSpinBox_camProjMaxAngle->value()*M_PI/180.0,
+						roiRatios,
+						_ui->checkBox_camProjDistanceToCamPolicy->isChecked(),
+						&texturingState);
+
+				// color the cloud
+				UASSERT(pointToPixel.empty() || pointToPixel.size() == assembledCloud->size());
+				QMap<int, cv::Mat> cachedImages;
+				pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr assembledCloudValidPoints;
+				if(!_ui->checkBox_camProjKeepPointsNotSeenByCameras->isChecked())
+				{
+					assembledCloudValidPoints.reset(new pcl::PointCloud<pcl::PointXYZRGBNormal>());
+					assembledCloudValidPoints->resize(assembledCloud->size());
+				}
+				if(_ui->comboBox_camProjExportCamera->isEnabled() &&
+				   _ui->comboBox_camProjExportCamera->currentIndex()>0)
+				{
+					textureVertexToPixels.resize(assembledCloud->size());
+				}
+				int oi=0;
+				for(size_t i=0; i<pointToPixel.size(); ++i)
+				{
+					pcl::PointXYZRGBNormal & pt = assembledCloud->at(i);
+					if(_ui->checkBox_camProjRecolorPoints->isChecked() && !_ui->checkBox_fromDepth->isChecked())
+					{
+						pt.r = 255;
+						pt.g = 0;
+						pt.b = 0;
+						pt.a = 255;
+					}
+					int nodeID = pointToPixel[i].first.first;
+					int cameraIndex = pointToPixel[i].first.second;
+					if(nodeID>0 && cameraIndex>=0)
+					{
+						if(_ui->checkBox_camProjRecolorPoints->isChecked())
+						{
+							cv::Mat image;
+							if(cachedImages.contains(nodeID))
+							{
+								image = cachedImages.value(nodeID);
+							}
+							else if(cachedSignatures.contains(nodeID) && !cachedSignatures.value(nodeID).sensorData().imageCompressed().empty())
+							{
+								cachedSignatures.value(nodeID).sensorData().uncompressDataConst(&image, 0);
+								cachedImages.insert(nodeID, image);
+							}
+							else if(_dbDriver)
+							{
+								SensorData data;
+								_dbDriver->getNodeData(nodeID, data, true, false, false, false);
+								data.uncompressDataConst(&image, 0);
+								cachedImages.insert(nodeID, image);
+							}
+
+							if(!image.empty())
+							{
+								int subImageWidth = image.cols / cameraModels.at(nodeID).size();
+								image = image(cv::Range::all(), cv::Range(cameraIndex*subImageWidth, (cameraIndex+1)*subImageWidth));
+
+
+								int x = pointToPixel[i].second.x * (float)image.cols;
+								int y = pointToPixel[i].second.y * (float)image.rows;
+								UASSERT(x>=0 && x<image.cols);
+								UASSERT(y>=0 && y<image.rows);
+
+								if(image.type()==CV_8UC3)
+								{
+									cv::Vec3b bgr = image.at<cv::Vec3b>(y, x);
+									pt.b = bgr[0];
+									pt.g = bgr[1];
+									pt.r = bgr[2];
+								}
+								else
+								{
+									UASSERT(image.type()==CV_8UC1);
+									pt.r = pt.g = pt.b = image.at<unsigned char>(pointToPixel[i].second.y * image.rows, pointToPixel[i].second.x * image.cols);
+								}
+							}
+						}
+
+						int exportedId = nodeID;
+						if(_ui->comboBox_camProjExportCamera->currentIndex() == 2)
+						{
+							exportedId = cameraIndex+1;
+						}
+						else if(_ui->comboBox_camProjExportCamera->currentIndex() == 3)
+						{
+							UASSERT_MSG(cameraIndex<10, "Exporting cam id as NodeId+CamIndex is only supported when the number of cameras per node < 10.");
+							exportedId = nodeID*10 + cameraIndex;
+						}
+
+						if(assembledCloudValidPoints.get())
+						{
+							if(!textureVertexToPixels.empty())
+							{
+								textureVertexToPixels[oi].insert(std::make_pair(exportedId, pointToPixel[i].second));
+							}
+							assembledCloudValidPoints->at(oi++) = pt;
+						}
+						else if(!textureVertexToPixels.empty())
+						{
+							textureVertexToPixels[i].insert(std::make_pair(exportedId, pointToPixel[i].second));
+						}
+					}
+				}
+
+				//[FATAL] (2021-02-17 14:47:28.891) PDALWriter.cpp:140::savePDALFile() Condition (cameraIds.empty() || cameraIds.size() == cloud.size()) not met! [cameraIds=254890 cloud=262366]
+				//terminate called after throwing an instance of 'UException'
+				//  what():  [FATAL] (2021-02-17 14:47:28.891) PDALWriter.cpp:140::savePDALFile() Condition (cameraIds.empty() || cameraIds.size() == cloud.size()) not met! [cameraIds=254890 cloud=262366]
+
+
+				if(assembledCloudValidPoints.get())
+				{
+					assembledCloudValidPoints->resize(oi);
+					assembledCloud = assembledCloudValidPoints;
+
+					if(!textureVertexToPixels.empty())
+					{
+						textureVertexToPixels.resize(oi);
+					}
+				}
+
+				if(_canceled)
+				{
+					return false;
+				}
+			}
+		}
 
 		UDEBUG("");
 #ifdef RTABMAP_CPUTSDF
@@ -2933,7 +3191,10 @@ bool ExportCloudsDialog::getExportedClouds(
 							}
 							if(roiRatios.empty())
 							{
-								QString msg = tr("Wrong ROI format. Region of Interest (ROI) must have 4 values [left right top bottom] between 0 and 1 separated by space (%1), ignoring it for texturing...").arg(_ui->lineEdit_meshingTextureRoiRatios->text());
+								QString msg = tr("Wrong ROI format. Region of Interest (ROI) must have 4 "
+										"values [left right top bottom] between 0 and 1 "
+										"separated by space (%1), ignoring it for texturing...")
+												.arg(_ui->lineEdit_meshingTextureRoiRatios->text());
 								UWARN(msg.toStdString().c_str());
 								_progressDialog->appendText(msg, Qt::darkYellow);
 								_progressDialog->setAutoClose(false);
@@ -3015,8 +3276,8 @@ bool ExportCloudsDialog::getExportedClouds(
 				textureMeshes.clear();
 				textureMeshes.insert(std::make_pair(0, assembledMesh));
 			}
-
 		}
+
 		UDEBUG("");
 		return true;
 	}
@@ -3401,7 +3662,8 @@ void ExportCloudsDialog::saveClouds(
 		const QString & workingDirectory,
 		const std::map<int, Transform> & poses,
 		const std::map<int, pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> & clouds,
-		bool binaryMode)
+		bool binaryMode,
+		const std::vector<std::map<int, pcl::PointXY> > & pointToPixels)
 {
 	if(clouds.size() == 1)
 	{
@@ -3435,9 +3697,13 @@ void ExportCloudsDialog::saveClouds(
 				pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudRGBWithoutNormals;
 				pcl::PointCloud<pcl::PointXYZI>::Ptr cloudIWithoutNormals;
 				pcl::PointCloud<pcl::PointXYZINormal>::Ptr cloudIWithNormals;
-				if(!_ui->checkBox_fromDepth->isChecked())
+				if(!_ui->checkBox_fromDepth->isChecked() &&
+					!(_ui->checkBox_cameraProjection->isEnabled() &&
+					_ui->checkBox_cameraProjection->isChecked() &&
+					_ui->checkBox_camProjRecolorPoints->isChecked() &&
+					clouds.size()==1 && clouds.begin()->first==0))
 				{
-					// When laser scans are exported, convert RGB to Intensity
+					// When laser scans are exported (and camera RGB was not applied), convert RGB to Intensity
 					if(_ui->spinBox_normalKSearch->value()>0 || _ui->doubleSpinBox_normalRadiusSearch->value()>0.0)
 					{
 						cloudIWithNormals.reset(new pcl::PointCloud<pcl::PointXYZINormal>);
@@ -3505,8 +3771,11 @@ void ExportCloudsDialog::saveClouds(
 						success = pcl::io::savePCDFile(path.toStdString(), *clouds.begin()->second, binaryMode) == 0;
 					}
 				}
-				else if(QFileInfo(path).suffix() == "ply")
-				{
+#ifdef RTABMAP_PDAL
+				else if(QFileInfo(path).suffix() == "ply" && pointToPixels.empty()) {
+#else
+				else if(QFileInfo(path).suffix() == "ply") {
+#endif
 					if(cloudIWithNormals.get())
 					{
 						success = pcl::io::savePLYFile(path.toStdString(), *cloudIWithNormals, binaryMode) == 0;
@@ -3527,21 +3796,29 @@ void ExportCloudsDialog::saveClouds(
 #ifdef RTABMAP_PDAL
 				else if(!QFileInfo(path).suffix().isEmpty())
 				{
+					std::vector<int> cameraIds(pointToPixels.size(), 0);
+					for(size_t i=0;i<pointToPixels.size(); ++i)
+					{
+						if(!pointToPixels[i].empty())
+						{
+							cameraIds[i] = pointToPixels[i].begin()->first;
+						}
+					}
 					if(cloudIWithNormals.get())
 					{
-						success = savePDALFile(path.toStdString(), *cloudIWithNormals) == 0;
+						success = savePDALFile(path.toStdString(), *cloudIWithNormals, cameraIds) == 0;
 					}
 					else if(cloudIWithoutNormals.get())
 					{
-						success = savePDALFile(path.toStdString(), *cloudIWithoutNormals) == 0;
+						success = savePDALFile(path.toStdString(), *cloudIWithoutNormals, cameraIds) == 0;
 					}
 					else if(cloudRGBWithoutNormals.get())
 					{
-						success = savePDALFile(path.toStdString(), *cloudRGBWithoutNormals) == 0;
+						success = savePDALFile(path.toStdString(), *cloudRGBWithoutNormals, cameraIds) == 0;
 					}
 					else
 					{
-						success = savePDALFile(path.toStdString(), *clouds.begin()->second) == 0;
+						success = savePDALFile(path.toStdString(), *clouds.begin()->second, cameraIds) == 0;
 					}
 				}
 #endif
