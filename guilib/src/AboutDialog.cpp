@@ -61,11 +61,19 @@ AboutDialog::AboutDialog(QWidget * parent) :
 	_ui->label_opencv_license->setText("Not Commercial");
   #else
 	cv_version.append(" [With xfeatures2d]");
-	_ui->label_opencv_license->setText("BSD");
+    #if CV_MAJOR_VERSION < 4 || (CV_MAJOR_VERSION==4 && CV_MINOR_VERSION<5)
+	  _ui->label_opencv_license->setText("BSD");
+    #else
+	  _ui->label_opencv_license->setText("Apache 3");
+    #endif
   #endif
 #else
 	cv_version.append(" [Without xfeatures2d and nonfree]");
+  #if CV_MAJOR_VERSION < 4 || (CV_MAJOR_VERSION==4 && CV_MINOR_VERSION<5)
 	_ui->label_opencv_license->setText("BSD");
+  #else
+	_ui->label_opencv_license->setText("Apache 3");
+  #endif
 #endif
 	_ui->label_version->setText(version);
 	_ui->label_opencv_version->setText(cv_version);
