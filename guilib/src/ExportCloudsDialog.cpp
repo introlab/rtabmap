@@ -115,6 +115,8 @@ ExportCloudsDialog::ExportCloudsDialog(QWidget *parent) :
 	connect(_ui->spinBox_decimation, SIGNAL(valueChanged(int)), this, SIGNAL(configChanged()));
 	connect(_ui->doubleSpinBox_maxDepth, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
 	connect(_ui->doubleSpinBox_minDepth, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
+	connect(_ui->doubleSpinBox_ceilingHeight, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
+	connect(_ui->doubleSpinBox_floorHeight, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
 	connect(_ui->spinBox_decimation_scan, SIGNAL(valueChanged(int)), this, SIGNAL(configChanged()));
 	connect(_ui->doubleSpinBox_rangeMin, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
 	connect(_ui->doubleSpinBox_rangeMax, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
@@ -327,6 +329,8 @@ void ExportCloudsDialog::saveSettings(QSettings & settings, const QString & grou
 	settings.setValue("regenerate_decimation", _ui->spinBox_decimation->value());
 	settings.setValue("regenerate_max_depth", _ui->doubleSpinBox_maxDepth->value());
 	settings.setValue("regenerate_min_depth", _ui->doubleSpinBox_minDepth->value());
+	settings.setValue("regenerate_ceiling", _ui->doubleSpinBox_ceilingHeight->value());
+	settings.setValue("regenerate_floor", _ui->doubleSpinBox_floorHeight->value());
 	settings.setValue("regenerate_scan_decimation", _ui->spinBox_decimation_scan->value());
 	settings.setValue("regenerate_scan_max_range", _ui->doubleSpinBox_rangeMax->value());
 	settings.setValue("regenerate_scan_min_range", _ui->doubleSpinBox_rangeMin->value());
@@ -474,6 +478,8 @@ void ExportCloudsDialog::loadSettings(QSettings & settings, const QString & grou
 	_ui->spinBox_decimation->setValue(settings.value("regenerate_decimation", _ui->spinBox_decimation->value()).toInt());
 	_ui->doubleSpinBox_maxDepth->setValue(settings.value("regenerate_max_depth", _ui->doubleSpinBox_maxDepth->value()).toDouble());
 	_ui->doubleSpinBox_minDepth->setValue(settings.value("regenerate_min_depth", _ui->doubleSpinBox_minDepth->value()).toDouble());
+	_ui->doubleSpinBox_ceilingHeight->setValue(settings.value("regenerate_ceiling", _ui->doubleSpinBox_ceilingHeight->value()).toDouble());
+	_ui->doubleSpinBox_floorHeight->setValue(settings.value("regenerate_floor", _ui->doubleSpinBox_floorHeight->value()).toDouble());
 	_ui->spinBox_decimation_scan->setValue(settings.value("regenerate_scan_decimation", _ui->spinBox_decimation_scan->value()).toInt());
 	_ui->doubleSpinBox_rangeMax->setValue(settings.value("regenerate_scan_max_range", _ui->doubleSpinBox_rangeMax->value()).toDouble());
 	_ui->doubleSpinBox_rangeMin->setValue(settings.value("regenerate_scan_min_range", _ui->doubleSpinBox_rangeMin->value()).toDouble());
@@ -624,6 +630,8 @@ void ExportCloudsDialog::restoreDefaults()
 	_ui->spinBox_decimation->setValue(1);
 	_ui->doubleSpinBox_maxDepth->setValue(4);
 	_ui->doubleSpinBox_minDepth->setValue(0);
+	_ui->doubleSpinBox_ceilingHeight->setValue(0);
+	_ui->doubleSpinBox_floorHeight->setValue(0);
 	_ui->spinBox_decimation_scan->setValue(1);
 	_ui->doubleSpinBox_rangeMax->setValue(0);
 	_ui->doubleSpinBox_rangeMin->setValue(0);
@@ -1751,6 +1759,11 @@ bool ExportCloudsDialog::getExportedClouds(
 			if(!_ui->checkBox_fromDepth->isChecked() && !has2dScans &&
 					(_ui->spinBox_normalKSearch->value()>0 || _ui->doubleSpinBox_normalRadiusSearch->value()>0.0))
 			{
+				_progressDialog->appendText(tr("Computing normals (%1 points, K=%2, radius=%3 m)...")
+										.arg(assembledCloud->size())
+										.arg(_ui->spinBox_normalKSearch->value())
+										.arg(_ui->doubleSpinBox_normalRadiusSearch->value()));
+
 				// recompute normals
 				pcl::PointCloud<pcl::PointXYZ>::Ptr cloudWithoutNormals(new pcl::PointCloud<pcl::PointXYZ>);
 				pcl::copyPointCloud(*assembledCloud, *cloudWithoutNormals);
