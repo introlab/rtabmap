@@ -2693,15 +2693,10 @@ bool ExportCloudsDialog::getExportedClouds(
 					}
 				}
 
-				//[FATAL] (2021-02-17 14:47:28.891) PDALWriter.cpp:140::savePDALFile() Condition (cameraIds.empty() || cameraIds.size() == cloud.size()) not met! [cameraIds=254890 cloud=262366]
-				//terminate called after throwing an instance of 'UException'
-				//  what():  [FATAL] (2021-02-17 14:47:28.891) PDALWriter.cpp:140::savePDALFile() Condition (cameraIds.empty() || cameraIds.size() == cloud.size()) not met! [cameraIds=254890 cloud=262366]
-
-
 				if(assembledCloudValidPoints.get())
 				{
 					assembledCloudValidPoints->resize(oi);
-					assembledCloud = assembledCloudValidPoints;
+					cloudsWithNormals.begin()->second = assembledCloudValidPoints;
 
 					if(!textureVertexToPixels.empty())
 					{
