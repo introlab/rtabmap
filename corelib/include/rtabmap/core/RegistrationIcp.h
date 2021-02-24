@@ -78,6 +78,7 @@ private:
 	float _libpointmatcherEpsilon;
 	bool _libpointmatcherIntensity;
 	float _libpointmatcherOutlierRatio;
+	bool _libpointmatcherForce4DoF;
 	void * _libpointmatcherICP;
 };
 

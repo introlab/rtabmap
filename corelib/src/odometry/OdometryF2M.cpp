@@ -1093,12 +1093,12 @@ Transform OdometryF2M::computeTransform(
 							if(mapScan.is2d())
 							{
 								Transform mapViewpoint(-newFramePose.x(), -newFramePose.y(),0,0,0,0);
-								mapScan = LaserScan(util3d::laserScan2dFromPointCloud(*mapCloudNormals, mapViewpoint), 0, 0.0f, LaserScan::kXYINormal);
+								mapScan = LaserScan(util3d::laserScan2dFromPointCloud(*mapCloudNormals, mapViewpoint), 0, 0.0f);
 							}
 							else
 							{
 								Transform mapViewpoint(-newFramePose.x(), -newFramePose.y(), -newFramePose.z(),0,0,0);
-								mapScan = LaserScan(util3d::laserScanFromPointCloud(*mapCloudNormals, mapViewpoint), 0, 0.0f, LaserScan::kXYZINormal);
+								mapScan = LaserScan(util3d::laserScanFromPointCloud(*mapCloudNormals, mapViewpoint), 0, 0.0f);
 							}
 							modified=true;
 						}
@@ -1360,7 +1360,6 @@ Transform OdometryF2M::computeTransform(
 											util3d::laserScan2dFromPointCloud(*mapCloudNormals, mapViewpoint),
 											0,
 											0.0f,
-											LaserScan::kXYINormal,
 											Transform(newFramePose.x(), newFramePose.y(), lastFrame_->sensorData().laserScanRaw().localTransform().z(),0,0,0)));
 						}
 						else
@@ -1371,7 +1370,6 @@ Transform OdometryF2M::computeTransform(
 											util3d::laserScanFromPointCloud(*mapCloudNormals, mapViewpoint),
 											0,
 											0.0f,
-											LaserScan::kXYZINormal,
 											newFramePose.translation()));
 						}
 

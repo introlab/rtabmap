@@ -494,6 +494,7 @@ RegistrationIcp::RegistrationIcp(const ParametersMap & parameters, Registration 
 	_libpointmatcherEpsilon(Parameters::defaultIcpPMMatcherEpsilon()),
 	_libpointmatcherIntensity(Parameters::defaultIcpPMMatcherIntensity()),
 	_libpointmatcherOutlierRatio(Parameters::defaultIcpPMOutlierRatio()),
+	_libpointmatcherForce4DoF(Parameters::defaultIcpPMForce4DoF()),
 	_libpointmatcherICP(0)
 {
 	this->parseParameters(parameters);
@@ -535,6 +536,7 @@ void RegistrationIcp::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kIcpPMMatcherKnn(), _libpointmatcherKnn);
 	Parameters::parse(parameters, Parameters::kIcpPMMatcherEpsilon(), _libpointmatcherEpsilon);
 	Parameters::parse(parameters, Parameters::kIcpPMMatcherIntensity(), _libpointmatcherIntensity);
+	Parameters::parse(parameters, Parameters::kIcpPMForce4DoF(), _libpointmatcherForce4DoF);
 
 #ifndef RTABMAP_POINTMATCHER
 	if(_libpointmatcher)
@@ -613,6 +615,7 @@ void RegistrationIcp::parseParameters(const ParametersMap & parameters)
 				params.clear();
 
 				params["force2D"] = force3DoF()?"1":"0";
+				params["force4DOF"] = !force3DoF()&&_libpointmatcherForce4DoF?"1":"0";
 #if POINTMATCHER_VERSION_INT >= 10300
 				icp->errorMinimizer = PM::get().ErrorMinimizerRegistrar.create("PointToPlaneErrorMinimizer", params);
 #else
@@ -1029,7 +1032,6 @@ Transform RegistrationIcp::computeTransformationImpl(
 											util3d::laserScan2dFromPointCloud(*fromCloudNormals, fromScan.localTransform().inverse()),
 											maxLaserScansFrom,
 											fromScan.rangeMax(),
-											LaserScan::kXYINormal,
 											fromScan.localTransform()));
 						}
 						else
@@ -1039,7 +1041,6 @@ Transform RegistrationIcp::computeTransformationImpl(
 											util3d::laserScanFromPointCloud(*fromCloudNormals, fromScan.localTransform().inverse()),
 											maxLaserScansFrom,
 											fromScan.rangeMax(),
-											LaserScan::kXYZINormal,
 											fromScan.localTransform()));
 						}
 						if(toScan.is2d())
@@ -1049,7 +1050,6 @@ Transform RegistrationIcp::computeTransformationImpl(
 											util3d::laserScan2dFromPointCloud(*toCloudNormals, (guess*toScan.localTransform()).inverse()),
 											maxLaserScansTo,
 											toScan.rangeMax(),
-											LaserScan::kXYINormal,
 											toScan.localTransform()));
 						}
 						else
@@ -1059,7 +1059,6 @@ Transform RegistrationIcp::computeTransformationImpl(
 											util3d::laserScanFromPointCloud(*toCloudNormals, (guess*toScan.localTransform()).inverse()),
 											maxLaserScansTo,
 											toScan.rangeMax(),
-											LaserScan::kXYZINormal,
 											toScan.localTransform()));
 						}
 						UDEBUG("Compute normals (%d,%d) time = %f s", (int)fromCloudNormals->size(), (int)toCloudNormals->size(), timer.ticks());
@@ -1148,7 +1147,6 @@ Transform RegistrationIcp::computeTransformationImpl(
 											util3d::laserScan2dFromPointCloud(*fromCloudFiltered, fromScan.localTransform().inverse()),
 											maxLaserScansFrom,
 											fromScan.rangeMax(),
-											LaserScan::kXYI,
 											fromScan.localTransform()));
 						}
 						else
@@ -1158,7 +1156,6 @@ Transform RegistrationIcp::computeTransformationImpl(
 											util3d::laserScanFromPointCloud(*fromCloudFiltered, fromScan.localTransform().inverse()),
 											maxLaserScansFrom,
 											fromScan.rangeMax(),
-											LaserScan::kXYZI,
 											fromScan.localTransform()));
 						}
 						if(toScan.is2d())
@@ -1168,7 +1165,6 @@ Transform RegistrationIcp::computeTransformationImpl(
 											util3d::laserScan2dFromPointCloud(*toCloudFiltered, (guess*toScan.localTransform()).inverse()),
 											maxLaserScansTo,
 											toScan.rangeMax(),
-											LaserScan::kXYI,
 											toScan.localTransform()));
 						}
 						else
@@ -1178,7 +1174,6 @@ Transform RegistrationIcp::computeTransformationImpl(
 											util3d::laserScanFromPointCloud(*toCloudFiltered, (guess*toScan.localTransform()).inverse()),
 											maxLaserScansTo,
 											toScan.rangeMax(),
-											LaserScan::kXYZI,
 											toScan.localTransform()));
 						}
 						fromScan = fromSignature.sensorData().laserScanRaw();
