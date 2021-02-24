@@ -672,6 +672,7 @@ class RTABMAP_EXP Parameters
     RTABMAP_PARAM(Icp, PMMatcherEpsilon,         float, 0.0,    "KDTreeMatcher/epsilon: approximation to use for the nearest-neighbor search. For convenience when configuration file is not set.");
     RTABMAP_PARAM(Icp, PMMatcherIntensity,       bool, false,   uFormat("KDTreeMatcher:  among nearest neighbors, keep only the one with the most similar intensity. This only work with %s>1.", kIcpPMMatcherKnn().c_str()));
     RTABMAP_PARAM(Icp, PMOutlierRatio,           float, 0.85,   "TrimmedDistOutlierFilter/ratio: For convenience when configuration file is not set. For kinect-like point cloud, use 0.65.");
+    RTABMAP_PARAM(Icp, PMForce4DoF,              bool, false,   "Limit ICP to x, y, z and yaw DoF.");
 
     // Stereo disparity
     RTABMAP_PARAM(Stereo, WinWidth,              int, 15,       "Window width.");
