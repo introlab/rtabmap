@@ -27,11 +27,57 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #pragma once
 
-#include <rtabmap/core/camera/CameraStereoDC1394.h>
-#include <rtabmap/core/camera/CameraStereoFlyCapture2.h>
-#include <rtabmap/core/camera/CameraStereoImages.h>
-#include <rtabmap/core/camera/CameraStereoVideo.h>
-#include <rtabmap/core/camera/CameraStereoZed.h>
-#include <rtabmap/core/camera/CameraStereoZedOC.h>
-#include <rtabmap/core/camera/CameraStereoTara.h>
-#include <rtabmap/core/camera/CameraMyntEye.h>
+#include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
+
+#include "rtabmap/core/StereoCameraModel.h"
+#include "rtabmap/core/Camera.h"
+#include "rtabmap/core/Version.h"
+
+namespace sl_oc {
+namespace video {
+class VideoCapture;
+}
+namespace sensors {
+class SensorCapture;
+}
+}
+
+namespace rtabmap
+{
+class ZedOCThread;
+
+class RTABMAP_EXP CameraStereoZedOC :
+	public Camera
+{
+public:
+	static bool available();
+
+public:
+	CameraStereoZedOC(
+			int deviceId,
+			int resolution = 3, // 0=HD2K, 1=HD1080, 2=HD720, 3=VGA
+			float imageRate=0.0f,
+			const Transform & localTransform = CameraModel::opticalRotation());
+	virtual ~CameraStereoZedOC();
+
+	virtual bool init(const std::string & calibrationFolder = ".", const std::string & cameraName = "");
+	virtual bool isCalibrated() const;
+	virtual std::string getSerial() const;
+
+protected:
+	virtual SensorData captureImage(CameraInfo * info = 0);
+
+private:
+#ifdef RTABMAP_ZEDOC
+	sl_oc::video::VideoCapture * zed_;
+	sl_oc::sensors::SensorCapture * sensors_;
+	ZedOCThread * imuThread_;
+	StereoCameraModel stereoModel_;
+	int usbDevice_;
+	int resolution_;
+	uint64_t lastStamp_;
+#endif
+};
+
+
+} // namespace rtabmap

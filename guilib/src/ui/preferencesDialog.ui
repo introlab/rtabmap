@@ -63,7 +63,7 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-673</y>
+            <y>-555</y>
             <width>686</width>
             <height>3357</height>
            </rect>
@@ -4816,6 +4816,11 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                  <string>MyntEyeS</string>
                                 </property>
                                </item>
+                               <item>
+                                <property name="text">
+                                 <string>ZED Open Capture</string>
+                                </property>
+                               </item>
                               </widget>
                              </item>
                              <item row="0" column="2">
@@ -4896,7 +4901,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                            <item>
                             <widget class="QStackedWidget" name="stackedWidget_stereo">
                              <property name="currentIndex">
-                              <number>5</number>
+                              <number>9</number>
                              </property>
                              <widget class="QWidget" name="page_49">
                               <layout class="QVBoxLayout" name="verticalLayout_91">
@@ -5725,6 +5730,75 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                   </size>
                                  </property>
                                 </spacer>
+                               </item>
+                              </layout>
+                             </widget>
+                             <widget class="QWidget" name="page_88">
+                              <layout class="QVBoxLayout" name="verticalLayout_154">
+                               <item>
+                                <widget class="QGroupBox" name="groupBox_cameraStereoZedOC">
+                                 <property name="sizePolicy">
+                                  <sizepolicy hsizetype="Ignored" vsizetype="Ignored">
+                                   <horstretch>0</horstretch>
+                                   <verstretch>0</verstretch>
+                                  </sizepolicy>
+                                 </property>
+                                 <property name="title">
+                                  <string>Zed Open Capture</string>
+                                 </property>
+                                 <layout class="QGridLayout" name="gridLayout_119" columnstretch="0,1">
+                                  <item row="0" column="0">
+                                   <widget class="QComboBox" name="comboBox_stereoZedOC_resolution">
+                                    <item>
+                                     <property name="text">
+                                      <string>HD2K</string>
+                                     </property>
+                                    </item>
+                                    <item>
+                                     <property name="text">
+                                      <string>HD1080</string>
+                                     </property>
+                                    </item>
+                                    <item>
+                                     <property name="text">
+                                      <string>HD720</string>
+                                     </property>
+                                    </item>
+                                    <item>
+                                     <property name="text">
+                                      <string>VGA</string>
+                                     </property>
+                                    </item>
+                                   </widget>
+                                  </item>
+                                  <item row="1" column="0">
+                                   <spacer name="verticalSpacer_70">
+                                    <property name="orientation">
+                                     <enum>Qt::Vertical</enum>
+                                    </property>
+                                    <property name="sizeHint" stdset="0">
+                                     <size>
+                                      <width>20</width>
+                                      <height>0</height>
+                                     </size>
+                                    </property>
+                                   </spacer>
+                                  </item>
+                                  <item row="0" column="1">
+                                   <widget class="QLabel" name="label_624">
+                                    <property name="text">
+                                     <string>Resolution.</string>
+                                    </property>
+                                    <property name="wordWrap">
+                                     <bool>true</bool>
+                                    </property>
+                                    <property name="textInteractionFlags">
+                                     <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                 </layout>
+                                </widget>
                                </item>
                               </layout>
                              </widget>

@@ -75,6 +75,7 @@ public Q_SLOTS:
 	void setBoardWidth(int width);
 	void setBoardHeight(int height);
 	void setSquareSize(double size);
+	void setExpectedStereoBaseline(double length);
 	void setMaxScale(int scale);
 
 	void processImages(const cv::Mat & imageLeft, const cv::Mat & imageRight, const QString & cameraName);
