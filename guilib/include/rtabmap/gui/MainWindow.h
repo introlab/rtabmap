@@ -180,6 +180,7 @@ protected Q_SLOTS:
 	void selectStereoDC1394();
 	void selectStereoFlyCapture2();
 	void selectStereoZed();
+	void selectStereoZedOC();
 	void selectStereoTara();
 	void selectStereoUsb();
 	void selectMyntEyeS();

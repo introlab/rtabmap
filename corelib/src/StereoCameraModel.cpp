@@ -401,7 +401,11 @@ bool StereoCameraModel::saveStereoTransform(const std::string & directory) const
 	}
 	else
 	{
-		UERROR("Failed saving stereo extrinsics (they are null).");
+		UERROR("Failed saving stereo extrinsics (they are null):");
+		std::cout << "R= " << R_ << std::endl;
+		std::cout << "T= " << T_ << std::endl;
+		std::cout << "E= " << T_ << std::endl;
+		std::cout << "F= " << F_ << std::endl;
 	}
 	return false;
 }

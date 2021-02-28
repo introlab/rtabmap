@@ -267,6 +267,7 @@
          <normaloff>:/images/zed.png</normaloff>:/images/zed.png</iconset>
        </property>
        <addaction name="actionStereoZed"/>
+       <addaction name="actionZed_Open_Capture"/>
        <addaction name="actionStereoUsb"/>
       </widget>
       <widget class="QMenu" name="menuTara_Camera">
@@ -1615,6 +1616,14 @@
    </property>
    <property name="text">
     <string>RealSense2</string>
+   </property>
+  </action>
+  <action name="actionZed_Open_Capture">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Zed Open Capture</string>
    </property>
   </action>
  </widget>

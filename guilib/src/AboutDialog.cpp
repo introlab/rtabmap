@@ -43,36 +43,28 @@ AboutDialog::AboutDialog(QWidget * parent) :
 	_ui = new Ui_aboutDialog();
 	_ui->setupUi(this);
 	QString version = Parameters::getVersion().c_str();
-#if DEMO_BUILD
-	version.append(" [DEMO]");
-#endif
 	QString cv_version = CV_VERSION;
 #if CV_MAJOR_VERSION < 3
   #ifdef RTABMAP_NONFREE
-	cv_version.append(" [With nonfree]");
-	_ui->label_opencv_license->setText("Not Commercial");
+	_ui->label_opencv_license->setText("Not Commercial [With nonfree module]");
   #else
-	cv_version.append(" [Without nonfree]");
-	_ui->label_opencv_license->setText("BSD");
+	_ui->label_opencv_license->setText("BSD [Without nonfree module]");
   #endif
 #elif defined(HAVE_OPENCV_XFEATURES2D)
   #ifdef RTABMAP_NONFREE
-	cv_version.append(" [With xfeatures2d, nonfree]");
-	_ui->label_opencv_license->setText("Not Commercial");
+	_ui->label_opencv_license->setText("Not Commercial [With xfeatures2d and nonfree modules]");
   #else
-	cv_version.append(" [With xfeatures2d]");
     #if CV_MAJOR_VERSION < 4 || (CV_MAJOR_VERSION==4 && CV_MINOR_VERSION<5)
-	  _ui->label_opencv_license->setText("BSD");
+	  _ui->label_opencv_license->setText("BSD [With xfeatures2d module]");
     #else
-	  _ui->label_opencv_license->setText("Apache 3");
+	  _ui->label_opencv_license->setText("Apache 3 [With xfeatures2d module]");
     #endif
   #endif
 #else
-	cv_version.append(" [Without xfeatures2d and nonfree]");
   #if CV_MAJOR_VERSION < 4 || (CV_MAJOR_VERSION==4 && CV_MINOR_VERSION<5)
-	_ui->label_opencv_license->setText("BSD");
+	_ui->label_opencv_license->setText("BSD [Without xfeatures2d and nonfree modules]");
   #else
-	_ui->label_opencv_license->setText("Apache 3");
+	_ui->label_opencv_license->setText("Apache 3 [Without xfeatures2d and nonfree modules]");
   #endif
 #endif
 	_ui->label_version->setText(version);
@@ -149,6 +141,7 @@ AboutDialog::AboutDialog(QWidget * parent) :
 	_ui->label_dc1394_license->setEnabled(CameraStereoDC1394::available());
 	_ui->label_flycapture2->setText(CameraStereoFlyCapture2::available()?"Yes":"No");
 	_ui->label_zed->setText(CameraStereoZed::available()?"Yes":"No");
+	_ui->label_zedOC->setText(CameraStereoZedOC::available()?"Yes":"No");
 	_ui->label_k4w2->setText(CameraK4W2::available() ? "Yes" : "No");
 	_ui->label_k4a->setText(CameraK4A::available() ? "Yes" : "No");
 	_ui->label_mynteye->setText(CameraMyntEye::available() ? "Yes" : "No");

@@ -183,6 +183,7 @@ option(WITH_POINTMATCHER  "Include libpointmatcher support"      ON)
 option(WITH_LOAM          "Include LOAM support"                 ON)
 option(WITH_FLYCAPTURE2   "Include FlyCapture2/Triclops support" ON)
 option(WITH_ZED           "Include ZED sdk support"              ON)
+option(WITH_ZEDOC         "Include ZED Open Capture support"     ON)
 option(WITH_REALSENSE     "Include RealSense support"            ON)
 option(WITH_REALSENSE_SLAM "Include RealSenseSlam support"       ON)
 option(WITH_REALSENSE2    "Include RealSense support"            ON)
@@ -474,6 +475,20 @@ IF(WITH_ZED)
     ENDIF(ZED_FOUND)
 ENDIF(WITH_ZED)
 
+IF(WITH_ZEDOC)
+    find_package(ZEDOC QUIET)
+    IF(ZEDOC_FOUND)
+       MESSAGE(STATUS "Found ZED Open Capture: ${ZEDOC_INCLUDE_DIRS}")
+       ## look for HIDAPI
+       find_package(HIDAPI)
+       IF(HIDAPI_FOUND)
+          MESSAGE(STATUS "Found HIDAPI: ${HIDAPI_INCLUDE_DIRS}")
+       ELSE()
+          MESSAGE(FATAL_ERROR "HIDAPI is required to build with Zed Open Capture! Set -DWITH_ZEDOC=OFF if you don't have HIDAPI.")
+       ENDIF()
+    ENDIF(ZEDOC_FOUND)
+ENDIF(WITH_ZEDOC)
+
 IF(WITH_REALSENSE)
     IF(WITH_REALSENSE_SLAM)
        FIND_PACKAGE(RealSense QUIET COMPONENTS slam)
@@ -638,6 +653,7 @@ IF(NOT MSVC)
 	       GTSAM_FOUND OR
 	       CERES_FOUND OR
 	       ZED_FOUND OR
+	       ZEDOC_FOUND OR
 	       ANDROID OR
 	       RealSense_FOUND OR
 	       realsense2_FOUND OR
@@ -790,6 +806,11 @@ IF(NOT ZED_FOUND)
    SET(ZED "//")
 ELSE()
    SET(CONF_DEPENDENCIES ${CONF_DEPENDENCIES} ${ZED_LIBRARIES} ${CUDA_LIBRARIES}) 
+ENDIF()
+IF(NOT ZEDOC_FOUND)
+   SET(ZED OC"//")
+ELSE()
+   SET(CONF_DEPENDENCIES ${CONF_DEPENDENCIES} ${ZEDOC_LIBRARIES}) 
 ENDIF()
 IF(NOT RealSense_FOUND)
    SET(REALSENSE "//")
@@ -1322,6 +1343,14 @@ ELSEIF(NOT WITH_ZED)
 MESSAGE(STATUS "  With ZED                  = NO (WITH_ZED=OFF)")
 ELSE()
 MESSAGE(STATUS "  With ZED                  = NO (ZED sdk and/or cuda not found)")
+ENDIF()
+
+IF(ZEDOC_FOUND)
+MESSAGE(STATUS "  With ZEDOC                = YES")
+ELSEIF(NOT WITH_ZEDOC)
+MESSAGE(STATUS "  With ZEDOC                = NO (WITH_ZEDOC=OFF)")
+ELSE()
+MESSAGE(STATUS "  With ZEDOC                = NO (ZED Open Capture not found)")
 ENDIF()
 
 IF(RealSense_FOUND)
