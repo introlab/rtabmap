@@ -463,7 +463,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent, bool sh
 	_ui->actionStereoDC1394->setEnabled(CameraStereoDC1394::available());
 	_ui->actionStereoFlyCapture2->setEnabled(CameraStereoFlyCapture2::available());
 	_ui->actionStereoZed->setEnabled(CameraStereoZed::available());
-	_ui->actionZed_Open_Capture->setEnabled(CameraStereoZed::available());
+	_ui->actionZed_Open_Capture->setEnabled(CameraStereoZedOC::available());
     _ui->actionStereoTara->setEnabled(CameraStereoTara::available());
     _ui->actionMYNT_EYE_S_SDK->setEnabled(CameraMyntEye::available());
 	this->updateSelectSourceMenu();

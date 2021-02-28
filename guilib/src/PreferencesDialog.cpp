@@ -367,7 +367,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
     {
         _ui->comboBox_cameraStereo->setItemData(kSrcStereoMyntEye - kSrcStereo, 0, Qt::UserRole - 1);
     }
-    if (!CameraMyntEye::available())
+    if (!CameraStereoZedOC::available())
 	{
 		_ui->comboBox_cameraStereo->setItemData(kSrcStereoZedOC - kSrcStereo, 0, Qt::UserRole - 1);
 	}

@@ -142,6 +142,7 @@ AboutDialog::AboutDialog(QWidget * parent) :
 	_ui->label_flycapture2->setText(CameraStereoFlyCapture2::available()?"Yes":"No");
 	_ui->label_zed->setText(CameraStereoZed::available()?"Yes":"No");
 	_ui->label_zedOC->setText(CameraStereoZedOC::available()?"Yes":"No");
+	_ui->label_zedOC_license->setEnabled(CameraStereoZedOC::available());
 	_ui->label_k4w2->setText(CameraK4W2::available() ? "Yes" : "No");
 	_ui->label_k4a->setText(CameraK4A::available() ? "Yes" : "No");
 	_ui->label_mynteye->setText(CameraMyntEye::available() ? "Yes" : "No");

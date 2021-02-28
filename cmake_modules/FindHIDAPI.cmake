@@ -61,17 +61,17 @@ set(HIDAPI_ROOT_DIR
 if("${HIDAPI_FIND_COMPONENTS}")
     if(WIN32 OR APPLE)
         # This makes no sense on Windows or Mac, which have native APIs
-        list(REMOVE "${HIDAPI_FIND_COMPONENTS}" libusb)
+        list(REMOVE HIDAPI_FIND_COMPONENTS libusb)
     endif()
 
     if(NOT ${CMAKE_SYSTEM} MATCHES "Linux")
         # hidraw is only on linux
-        list(REMOVE "${HIDAPI_FIND_COMPONENTS}" hidraw)
+        list(REMOVE HIDAPI_FIND_COMPONENTS hidraw)
     endif()
 endif()
 if(NOT "${HIDAPI_FIND_COMPONENTS}")
     # Default to any
-    set("${HIDAPI_FIND_COMPONENTS}" any)
+    set(HIDAPI_FIND_COMPONENTS any)
 endif()
 
 # Ask pkg-config for hints

@@ -162,7 +162,7 @@ p, li { white-space: pre-wrap; }
            <property name="geometry">
             <rect>
              <x>0</x>
-             <y>-177</y>
+             <y>-239</y>
              <width>596</width>
              <height>906</height>
             </rect>
@@ -1370,7 +1370,7 @@ p, li { white-space: pre-wrap; }
                </widget>
               </item>
               <item row="17" column="2">
-               <widget class="QLabel" name="label_g2o_license_4">
+               <widget class="QLabel" name="label_zedOC_license">
                 <property name="text">
                  <string>MIT</string>
                 </property>

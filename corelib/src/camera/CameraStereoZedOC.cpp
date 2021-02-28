@@ -706,7 +706,7 @@ std::string CameraStereoZedOC::getSerial() const
 SensorData CameraStereoZedOC::captureImage(CameraInfo * info)
 {
 	SensorData data;
-#ifdef RTABMAP_ZED
+#ifdef RTABMAP_ZEDOC
 	// Get a new frame from camera
 	if(zed_)
 	{
