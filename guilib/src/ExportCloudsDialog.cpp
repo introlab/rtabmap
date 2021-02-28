@@ -3814,19 +3814,19 @@ void ExportCloudsDialog::saveClouds(
 					}
 					if(cloudIWithNormals.get())
 					{
-						success = savePDALFile(path.toStdString(), *cloudIWithNormals, cameraIds) == 0;
+						success = savePDALFile(path.toStdString(), *cloudIWithNormals, cameraIds, binaryMode) == 0;
 					}
 					else if(cloudIWithoutNormals.get())
 					{
-						success = savePDALFile(path.toStdString(), *cloudIWithoutNormals, cameraIds) == 0;
+						success = savePDALFile(path.toStdString(), *cloudIWithoutNormals, cameraIds, binaryMode) == 0;
 					}
 					else if(cloudRGBWithoutNormals.get())
 					{
-						success = savePDALFile(path.toStdString(), *cloudRGBWithoutNormals, cameraIds) == 0;
+						success = savePDALFile(path.toStdString(), *cloudRGBWithoutNormals, cameraIds, binaryMode) == 0;
 					}
 					else
 					{
-						success = savePDALFile(path.toStdString(), *clouds.begin()->second, cameraIds) == 0;
+						success = savePDALFile(path.toStdString(), *clouds.begin()->second, cameraIds, binaryMode) == 0;
 					}
 				}
 #endif

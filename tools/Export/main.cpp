@@ -31,7 +31,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/util3d_filtering.h>
 #include <rtabmap/core/util3d_transforms.h>
 #include <rtabmap/core/util3d_surface.h>
+#include <rtabmap/core/util2d.h>
 #include <rtabmap/core/optimizer/OptimizerG2O.h>
+#include <rtabmap/core/Graph.h>
 #include <rtabmap/utilite/UMath.h>
 #include <rtabmap/utilite/UTimer.h>
 #include <rtabmap/utilite/UFile.h>
@@ -43,19 +45,28 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pcl/surface/poisson.h>
 #include <stdio.h>
 
+#ifdef RTABMAP_PDAL
+#include <rtabmap/core/PDALWriter.h>
+#endif
+
 using namespace rtabmap;
 
 void showUsage()
 {
 	printf("\nUsage:\n"
-			"rtabmap-exportCloud [options] database.db\n"
+			"rtabmap-export [options] database.db\n"
 			"Options:\n"
+			"    --bin                 Export PLY in binary format.\n"
+			"    --las                 Export cloud in LAS instead of PLY (PDAL dependency required).\n"
 			"    --mesh                Create a mesh.\n"
 			"    --texture             Create a mesh with texture.\n"
 			"    --texture_size  #     Texture size (default 4096).\n"
 			"    --texture_count #     Maximum textures generated (default 1).\n"
 			"    --texture_range #     Maximum camera range for texturing a polygon (default 0 meters: no limit).\n"
 			"    --texture_d2c         Distance to camera policy.\n"
+			"    --cam_projection      Camera projection on assembled cloud and export node ID on each point (in PointSourceId field).\n"
+			"    --poses               Export optimized poses in RGB-D SLAM dataset format (stamp x y z qx qy qz qw).\n"
+			"    --images              Export images.\n"
 			"    --ba                  Do global bundle adjustment before assembling the clouds.\n"
 			"    --gain          #     Gain compensation value (default 1, set 0 to disable).\n"
 			"    --gain_gray           Do gain estimation compensation on gray channel only (default RGB channels).\n"
@@ -87,6 +98,8 @@ int main(int argc, char * argv[])
 		showUsage();
 	}
 
+	bool binary = false;
+	bool las = false;
 	bool mesh = false;
 	bool texture = false;
 	bool ba = false;
@@ -109,11 +122,27 @@ int main(int argc, char * argv[])
 	bool saveInDb = false;
 	int lowBrightnessGain = 0;
 	int highBrightnessGain = 10;
+	bool camProjection = false;
+	bool exportPoses = false;
+	bool exportImages = false;
 	for(int i=1; i<argc; ++i)
 	{
 		if(std::strcmp(argv[i], "--help") == 0)
 		{
 			showUsage();
+		}
+		else if(std::strcmp(argv[i], "--bin") == 0)
+		{
+			binary = true;
+		}
+		else if(std::strcmp(argv[i], "--las") == 0)
+		{
+#ifdef RTABMAP_PDAL
+			las = true;
+#else
+			printf("\"--las\" option cannot be used because RTAB-Map is not built with PDAL support. Will export in PLY...\n");
+#endif
+
 		}
 		else if(std::strcmp(argv[i], "--mesh") == 0)
 		{
@@ -163,6 +192,18 @@ int main(int argc, char * argv[])
 		else if(std::strcmp(argv[i], "--texture_d2c") == 0)
 		{
 			distanceToCamPolicy = true;
+		}
+		else if(std::strcmp(argv[i], "--cam_projection") == 0)
+		{
+			camProjection = true;
+		}
+		else if(std::strcmp(argv[i], "--poses") == 0)
+		{
+			exportPoses = true;
+		}
+		else if(std::strcmp(argv[i], "--images") == 0)
+		{
+			exportImages = true;
 		}
 		else if(std::strcmp(argv[i], "--ba") == 0)
 		{
@@ -409,35 +450,45 @@ int main(int argc, char * argv[])
 	// Construct the cloud
 	printf("Create and assemble the clouds...\n");
 	pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr mergedClouds(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
+	pcl::PointCloud<pcl::PointXYZINormal>::Ptr mergedCloudsI(new pcl::PointCloud<pcl::PointXYZINormal>);
 	std::map<int, rtabmap::Transform> cameraPoses;
+	std::map<int, double> cameraStamps;
 	std::map<int, std::vector<rtabmap::CameraModel> > cameraModels;
 	std::map<int, cv::Mat> cameraDepths;
-
+	int imagesExported = 0;
 	for(std::map<int, Transform>::iterator iter=optimizedPoses.lower_bound(1); iter!=optimizedPoses.end(); ++iter)
 	{
 		Signature node = nodes.find(iter->first)->second;
 
 		// uncompress data
 		std::vector<CameraModel> models = node.sensorData().cameraModels();
+		cv::Mat rgb;
 		cv::Mat depth;
 
 		pcl::IndicesPtr indices(new std::vector<int>);
 		pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
+		pcl::PointCloud<pcl::PointXYZI>::Ptr cloudI;
 		if(cloudFromScan)
 		{
 			cv::Mat tmpDepth;
 			LaserScan scan;
-			node.sensorData().uncompressData(0, texture&&!node.sensorData().depthOrRightCompressed().empty()?&tmpDepth:0, &scan);
+			node.sensorData().uncompressData(exportImages?&rgb:0, (texture||exportImages)&&!node.sensorData().depthOrRightCompressed().empty()?&tmpDepth:0, &scan);
 			if(decimation>1 || maxRange)
 			{
 				scan = util3d::commonFiltering(scan, decimation, 0, maxRange);
 			}
-			cloud = util3d::laserScanToPointCloudRGB(scan, scan.localTransform());
+			if(scan.hasRGB())
+			{
+				cloud = util3d::laserScanToPointCloudRGB(scan, scan.localTransform());
+			}
+			else
+			{
+				cloudI = util3d::laserScanToPointCloudI(scan, scan.localTransform());
+			}
 		}
 		else
 		{
-			cv::Mat tmpRGB;
-			node.sensorData().uncompressData(&tmpRGB, &depth);
+			node.sensorData().uncompressData(&rgb, &depth);
 			cloud = util3d::cloudRGBFromSensorData(
 					node.sensorData(),
 					decimation,      // image decimation before creating the clouds
@@ -445,11 +496,55 @@ int main(int argc, char * argv[])
 					0.0f,
 					indices.get());
 		}
+
+		if(exportImages && !rgb.empty())
+		{
+			std::string dirSuffix = (depth.type() != CV_16UC1 && depth.type() != CV_32FC1)?"rgb":"left";
+			std::string dir = outputDirectory+"/"+baseName+"_"+dirSuffix;
+			UDirectory::makeDir(dir);
+			std::string outputPath=dir+"/"+uNumber2Str(iter->first)+".jpg";
+			cv::imwrite(outputPath, rgb);
+			++imagesExported;
+			if(!depth.empty())
+			{
+				std::string ext;
+				cv::Mat depthExported = depth;
+				if(depth.type() != CV_16UC1 && depth.type() != CV_32FC1)
+				{
+					ext = ".jpg";
+					dir = outputDirectory+"/"+baseName+"_right";
+				}
+				else
+				{
+					ext = ".png";
+					dir = outputDirectory+"/"+baseName+"_depth";
+					if(depth.type() == CV_32FC1)
+					{
+						depthExported = rtabmap::util2d::cvtDepthFromFloat(depth);
+					}
+				}
+				if(!UDirectory::exists(dir))
+				{
+					UDirectory::makeDir(dir);
+				}
+
+				outputPath=dir+"/"+uNumber2Str(iter->first)+ext;
+				cv::imwrite(outputPath, depthExported);
+			}
+		}
+
 		if(voxelSize>0.0f)
 		{
-			cloud = rtabmap::util3d::voxelize(cloud, indices, voxelSize);
+			if(cloud.get() && !cloud->empty())
+				cloud = rtabmap::util3d::voxelize(cloud, indices, voxelSize);
+			else if(cloudI.get() && !cloudI->empty())
+				cloudI = rtabmap::util3d::voxelize(cloudI, indices, voxelSize);
 		}
-		cloud = rtabmap::util3d::transformPointCloud(cloud, iter->second);
+		if(cloud.get() && !cloud->empty())
+			cloud = rtabmap::util3d::transformPointCloud(cloud, iter->second);
+		else if(cloudI.get() && !cloudI->empty())
+			cloudI = rtabmap::util3d::transformPointCloud(cloudI, iter->second);
+
 
 		Eigen::Vector3f viewpoint(iter->second.x(), iter->second.y(), iter->second.z());
 		if(cloudFromScan)
@@ -457,21 +552,37 @@ int main(int argc, char * argv[])
 			Transform lidarViewpoint = iter->second * node.sensorData().laserScanRaw().localTransform();
 			viewpoint = Eigen::Vector3f(iter->second.x(),  iter->second.y(),  iter->second.z());
 		}
-		pcl::PointCloud<pcl::Normal>::Ptr normals = rtabmap::util3d::computeNormals(cloud, 20, 0.0f, viewpoint);
-
-		pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloudWithNormals(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
-		pcl::concatenateFields(*cloud, *normals, *cloudWithNormals);
-
-		if(mergedClouds->size() == 0)
+		if(cloud.get() && !cloud->empty())
 		{
-			*mergedClouds = *cloudWithNormals;
+			pcl::PointCloud<pcl::Normal>::Ptr normals = rtabmap::util3d::computeNormals(cloud, 20, 0.0f, viewpoint);
+			pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloudWithNormals(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
+			pcl::concatenateFields(*cloud, *normals, *cloudWithNormals);
+			if(mergedClouds->size() == 0)
+			{
+				*mergedClouds = *cloudWithNormals;
+			}
+			else
+			{
+				*mergedClouds += *cloudWithNormals;
+			}
 		}
-		else
+		else if(cloudI.get() && !cloudI->empty())
 		{
-			*mergedClouds += *cloudWithNormals;
+			pcl::PointCloud<pcl::Normal>::Ptr normals = rtabmap::util3d::computeNormals(cloudI, 20, 0.0f, viewpoint);
+			pcl::PointCloud<pcl::PointXYZINormal>::Ptr cloudIWithNormals(new pcl::PointCloud<pcl::PointXYZINormal>);
+			pcl::concatenateFields(*cloudI, *normals, *cloudIWithNormals);
+			if(mergedCloudsI->size() == 0)
+			{
+				*mergedCloudsI = *cloudIWithNormals;
+			}
+			else
+			{
+				*mergedCloudsI += *cloudIWithNormals;
+			}
 		}
 
 		cameraPoses.insert(std::make_pair(iter->first, iter->second));
+		cameraStamps.insert(std::make_pair(iter->first, node.getStamp()));
 		if(!models.empty())
 		{
 			cameraModels.insert(std::make_pair(iter->first, models));
@@ -481,9 +592,12 @@ int main(int argc, char * argv[])
 			cameraDepths.insert(std::make_pair(iter->first, depth));
 		}
 	}
-	printf("Create and assemble the clouds... done (%fs, %d points).\n", timer.ticks(), (int)mergedClouds->size());
+	printf("Create and assemble the clouds... done (%fs, %d points).\n", timer.ticks(), !mergedClouds->empty()?(int)mergedClouds->size():(int)mergedCloudsI->size());
 
-	if(mergedClouds->size())
+	if(imagesExported>0)
+		printf("%d images exported!\n", imagesExported);
+
+	if(!mergedClouds->empty() || !mergedCloudsI->empty())
 	{
 		if(saveInDb)
 		{
@@ -495,31 +609,180 @@ int main(int argc, char * argv[])
 			driver->save2DMap(cv::Mat(), 0, 0, 0);
 			driver->saveOptimizedPoses(optimizedPoses, lastlocalizationPose);
 		}
-
-		if(!(mesh || texture))
+		else if(exportPoses)
 		{
-			if(voxelSize>0.0f)
+			std::string outputPath=outputDirectory+"/"+baseName+"_poses.txt";
+			rtabmap::graph::exportPoses(outputPath, 10, cameraPoses, std::multimap<int, Link>(), cameraStamps);
+			printf("Poses exported to \"%s\".\n", outputPath.c_str());
+		}
+
+		pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloudToExport = mergedClouds;
+		pcl::PointCloud<pcl::PointXYZINormal>::Ptr cloudIToExport = mergedCloudsI;
+		if(voxelSize>0.0f)
+		{
+			printf("Voxel grid filtering of the assembled cloud... (voxel=%f, %d points)\n", voxelSize, !cloudToExport->empty()?(int)cloudToExport->size():(int)cloudIToExport->size());
+			if(!cloudToExport->empty())
 			{
-				printf("Voxel grid filtering of the assembled cloud (voxel=%f, %d points)\n", voxelSize, (int)mergedClouds->size());
-				mergedClouds = util3d::voxelize(mergedClouds, voxelSize);
+				cloudToExport = util3d::voxelize(cloudToExport, voxelSize);
+			}
+			else if(!cloudIToExport->empty())
+			{
+				cloudIToExport = util3d::voxelize(cloudIToExport, voxelSize);
+			}
+			printf("Voxel grid filtering of the assembled cloud.... done! (%fs, %d points)\n", timer.ticks(), !cloudToExport->empty()?(int)cloudToExport->size():(int)cloudIToExport->size());
+		}
+
+		std::vector<int> pointToCamId;
+		if(camProjection && !cameraPoses.empty())
+		{
+			printf("Camera projection...\n");
+			pointToCamId.resize(!cloudToExport->empty()?cloudToExport->size():cloudIToExport->size());
+			std::vector<std::pair< std::pair<int, int>, pcl::PointXY> > pointToPixel;
+			if(!cloudToExport->empty())
+			{
+				pointToPixel = util3d::projectCloudToCameras(
+						*cloudToExport,
+						cameraPoses,
+						cameraModels,
+						textureRange,
+						0,
+						std::vector<float>(),
+						distanceToCamPolicy);
+			}
+			else if(!cloudIToExport->empty())
+			{
+				pointToPixel = util3d::projectCloudToCameras(
+						*cloudIToExport,
+						cameraPoses,
+						cameraModels,
+						textureRange,
+						0,
+						std::vector<float>(),
+						distanceToCamPolicy);
 			}
 
-			if(saveInDb)
+			// color the cloud
+			UASSERT(pointToPixel.empty() || pointToPixel.size() == pointToCamId.size());
+			std::map<int, cv::Mat> cachedImages;
+			pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr assembledCloudValidPoints(new pcl::PointCloud<pcl::PointXYZRGBNormal>());
+			assembledCloudValidPoints->resize(pointToCamId.size());
+
+			int oi=0;
+			for(size_t i=0; i<pointToPixel.size(); ++i)
 			{
-				printf("Saving in db... (%d points)\n", (int)mergedClouds->size());
-				driver->saveOptimizedMesh(util3d::laserScanFromPointCloud(*mergedClouds, Transform(), false).data());
-				printf("Saving in db... done!\n");
+				pcl::PointXYZRGBNormal pt;
+				if(!cloudToExport->empty())
+				{
+					pt = cloudToExport->at(i);
+				}
+				else if(!cloudIToExport->empty())
+				{
+					pt.x = cloudIToExport->at(i).x;
+					pt.y = cloudIToExport->at(i).y;
+					pt.z = cloudIToExport->at(i).z;
+					pt.normal_x = cloudIToExport->at(i).normal_x;
+					pt.normal_y = cloudIToExport->at(i).normal_y;
+					pt.normal_z = cloudIToExport->at(i).normal_z;
+				}
+				int nodeID = pointToPixel[i].first.first;
+				int cameraIndex = pointToPixel[i].first.second;
+				if(nodeID>0 && cameraIndex>=0)
+				{
+					cv::Mat image;
+					if(uContains(cachedImages, nodeID))
+					{
+						image = cachedImages.at(nodeID);
+					}
+					else if(uContains(nodes,nodeID) && !nodes.at(nodeID).sensorData().imageCompressed().empty())
+					{
+						nodes.at(nodeID).sensorData().uncompressDataConst(&image, 0);
+						cachedImages.insert(std::make_pair(nodeID, image));
+					}
+
+					if(!image.empty())
+					{
+						int subImageWidth = image.cols / cameraModels.at(nodeID).size();
+						image = image(cv::Range::all(), cv::Range(cameraIndex*subImageWidth, (cameraIndex+1)*subImageWidth));
+
+
+						int x = pointToPixel[i].second.x * (float)image.cols;
+						int y = pointToPixel[i].second.y * (float)image.rows;
+						UASSERT(x>=0 && x<image.cols);
+						UASSERT(y>=0 && y<image.rows);
+
+						if(image.type()==CV_8UC3)
+						{
+							cv::Vec3b bgr = image.at<cv::Vec3b>(y, x);
+							pt.b = bgr[0];
+							pt.g = bgr[1];
+							pt.r = bgr[2];
+						}
+						else
+						{
+							UASSERT(image.type()==CV_8UC1);
+							pt.r = pt.g = pt.b = image.at<unsigned char>(pointToPixel[i].second.y * image.rows, pointToPixel[i].second.x * image.cols);
+						}
+					}
+
+					int exportedId = nodeID;
+					pointToCamId[oi] = exportedId;
+					assembledCloudValidPoints->at(oi++) = pt;
+				}
 			}
-			else
+
+			assembledCloudValidPoints->resize(oi);
+			cloudToExport = assembledCloudValidPoints;
+			cloudIToExport->clear();
+			pointToCamId.resize(oi);
+
+			printf("Camera projection... done! (%fs)\n", timer.ticks());
+		}
+
+		if(saveInDb)
+		{
+			if(!(mesh || texture))
 			{
-				std::string outputPath=outputDirectory+"/"+baseName+"_cloud.ply";
-				printf("Saving %s... (%d points)\n", outputPath.c_str(), (int)mergedClouds->size());
-				pcl::io::savePLYFile(outputPath, *mergedClouds);
-				printf("Saving %s... done!\n", outputPath.c_str());
+				printf("Saving in db... (%d points)\n", !cloudToExport->empty()?(int)cloudToExport->size():(int)cloudIToExport->size());
+				if(!cloudToExport->empty())
+					driver->saveOptimizedMesh(util3d::laserScanFromPointCloud(*cloudToExport, Transform(), false).data());
+				else if(!cloudIToExport->empty())
+					driver->saveOptimizedMesh(util3d::laserScanFromPointCloud(*cloudIToExport, Transform(), false).data());
+				printf("Saving in db... done!\n");
 			}
 		}
 		else
 		{
+			std::string ext = las?"las":"ply";
+			std::string outputPath=outputDirectory+"/"+baseName+"_cloud."+ext;
+			printf("Saving %s... (%d points)\n", outputPath.c_str(), !cloudToExport->empty()?(int)cloudToExport->size():(int)cloudIToExport->size());
+#ifdef RTABMAP_PDAL
+			if(!cloudToExport->empty())
+				savePDALFile(outputPath, *cloudToExport, pointToCamId, binary);
+			else if(!cloudIToExport->empty())
+				savePDALFile(outputPath, *cloudIToExport, pointToCamId, binary);
+#else
+			if(!pointToCamId.empty())
+			{
+				printf("Option --cam_projection is enabled but rtabmap is not built "
+						"with PDAL support, so camera IDs won't be exported in the output cloud.\n");
+			}
+			if(!cloudToExport->empty())
+				pcl::io::savePLYFile(outputPath, *cloudToExport, binary);
+			else if(!cloudIToExport->empty())
+				pcl::io::savePLYFile(outputPath, *cloudIToExport, binary);
+#endif
+			printf("Saving %s... done!\n", outputPath.c_str());
+		}
+
+		// Meshing...
+		if(mesh || texture)
+		{
+			if(!mergedCloudsI->empty())
+			{
+				pcl::copyPointCloud(*mergedCloudsI, *mergedClouds);
+				mergedCloudsI->clear();
+			}
+
 			Eigen::Vector4f min,max;
 			pcl::getMinMax3D(*mergedClouds, min, max);
 			float mapLength = uMax3(max[0]-min[0], max[1]-min[1], max[2]-min[2]);
@@ -574,7 +837,10 @@ int main(int argc, char * argv[])
 					{
 						std::string outputPath=outputDirectory+"/"+baseName+"_mesh.ply";
 						printf("Saving %s...\n", outputPath.c_str());
-						pcl::io::savePLYFile(outputPath, *mesh);
+						if(binary)
+							pcl::io::savePLYFileBinary(outputPath, *mesh);
+						else
+							pcl::io::savePLYFile(outputPath, *mesh);
 						printf("Saving %s... done!\n", outputPath.c_str());
 					}
 				}

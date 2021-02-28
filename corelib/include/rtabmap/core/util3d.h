@@ -309,11 +309,24 @@ std::vector<std::pair< std::pair<int, int>, pcl::PointXY> > RTABMAP_EXP projectC
 		const pcl::PointCloud<pcl::PointXYZRGBNormal> & cloud,
 		const std::map<int, Transform> & cameraPoses,
 		const std::map<int, std::vector<CameraModel> > & cameraModels,
-		float maxDistance,
-		float maxAngle,
-		const std::vector<float> & roiRatios,
-		bool distanceToCamPolicy,
-		const ProgressState * state);
+		float maxDistance = 0.0f,
+		float maxAngle = 0.0f,
+		const std::vector<float> & roiRatios = std::vector<float>(),
+		bool distanceToCamPolicy = false,
+		const ProgressState * state = 0);
+/**
+ * For each point, return pixel of the best camera (NodeID->CameraIndex)
+ * looking at it based on the policy and parameters
+ */
+std::vector<std::pair< std::pair<int, int>, pcl::PointXY> > RTABMAP_EXP projectCloudToCameras (
+		const pcl::PointCloud<pcl::PointXYZINormal> & cloud,
+		const std::map<int, Transform> & cameraPoses,
+		const std::map<int, std::vector<CameraModel> > & cameraModels,
+		float maxDistance = 0.0f,
+		float maxAngle = 0.0f,
+		const std::vector<float> & roiRatios = std::vector<float>(),
+		bool distanceToCamPolicy = false,
+		const ProgressState * state = 0);
 
 bool RTABMAP_EXP isFinite(const cv::Point3f & pt);
 

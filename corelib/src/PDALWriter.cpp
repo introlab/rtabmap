@@ -73,7 +73,10 @@ std::string getPDALSupportedWriters()
 	return output;
 }
 
-int savePDALFile(const std::string & filePath, const pcl::PointCloud<pcl::PointXYZ> & cloud, const std::vector<int> & cameraIds)
+int savePDALFile(const std::string & filePath,
+		const pcl::PointCloud<pcl::PointXYZ> & cloud,
+		const std::vector<int> & cameraIds,
+		bool binary)
 {
 	UASSERT_MSG(cameraIds.empty() || cameraIds.size() == cloud.size(),
 			uFormat("cameraIds=%d cloud=%d", (int)cameraIds.size(), (int)cloud.size()).c_str());
@@ -111,11 +114,14 @@ int savePDALFile(const std::string & filePath, const pcl::PointCloud<pcl::PointX
 	bufferReader.addView(view);
 
 	pdal::StageFactory factory;
-	pdal::Stage *writer = factory.createStage("writers." + UFile::getExtension(filePath));
+	std::string ext = UFile::getExtension(filePath);
+	pdal::Stage *writer = factory.createStage("writers." + ext);
 	if(writer)
 	{
 		pdal::Options writerOps;
 		writerOps.add("filename", filePath);
+		if(ext.compare("ply")==0) writerOps.add("storage_mode", binary?"little endian":"ascii"); // PLY
+		if(ext.compare("pcd")==0) writerOps.add("compression", binary?"binary":"ascii"); // PCD
 
 		writer->setOptions(writerOps);
 		writer->setInput(bufferReader);
@@ -134,7 +140,10 @@ int savePDALFile(const std::string & filePath, const pcl::PointCloud<pcl::PointX
 	return 0; //success
 }
 
-int savePDALFile(const std::string & filePath, const pcl::PointCloud<pcl::PointXYZRGB> & cloud, const std::vector<int> & cameraIds)
+int savePDALFile(const std::string & filePath,
+		const pcl::PointCloud<pcl::PointXYZRGB> & cloud,
+		const std::vector<int> & cameraIds,
+		bool binary)
 {
 	UASSERT_MSG(cameraIds.empty() || cameraIds.size() == cloud.size(),
 			uFormat("cameraIds=%d cloud=%d", (int)cameraIds.size(), (int)cloud.size()).c_str());
@@ -181,11 +190,14 @@ int savePDALFile(const std::string & filePath, const pcl::PointCloud<pcl::PointX
 	bufferReader.addView(view);
 
 	pdal::StageFactory factory;
-	pdal::Stage *writer = factory.createStage("writers." + UFile::getExtension(filePath));
+	std::string ext = UFile::getExtension(filePath);
+	pdal::Stage *writer = factory.createStage("writers." + ext);
 	if(writer)
 	{
 		pdal::Options writerOps;
 		writerOps.add("filename", filePath);
+		if(ext.compare("ply")==0) writerOps.add("storage_mode", binary?"little endian":"ascii"); // PLY
+		if(ext.compare("pcd")==0) writerOps.add("compression", binary?"binary":"ascii"); // PCD
 
 		writer->setOptions(writerOps);
 		writer->setInput(bufferReader);
@@ -204,7 +216,10 @@ int savePDALFile(const std::string & filePath, const pcl::PointCloud<pcl::PointX
 	return 0; //success
 }
 
-int savePDALFile(const std::string & filePath, const pcl::PointCloud<pcl::PointXYZRGBNormal> & cloud, const std::vector<int> & cameraIds)
+int savePDALFile(const std::string & filePath,
+		const pcl::PointCloud<pcl::PointXYZRGBNormal> & cloud,
+		const std::vector<int> & cameraIds,
+		bool binary)
 {
 	UASSERT_MSG(cameraIds.empty() || cameraIds.size() == cloud.size(),
 			uFormat("cameraIds=%d cloud=%d", (int)cameraIds.size(), (int)cloud.size()).c_str());
@@ -260,11 +275,14 @@ int savePDALFile(const std::string & filePath, const pcl::PointCloud<pcl::PointX
 	bufferReader.addView(view);
 
 	pdal::StageFactory factory;
-	pdal::Stage *writer = factory.createStage("writers." + UFile::getExtension(filePath));
+	std::string ext = UFile::getExtension(filePath);
+	pdal::Stage *writer = factory.createStage("writers." + ext);
 	if(writer)
 	{
 		pdal::Options writerOps;
 		writerOps.add("filename", filePath);
+		if(ext.compare("ply")==0) writerOps.add("storage_mode", binary?"little endian":"ascii"); // PLY
+		if(ext.compare("pcd")==0) writerOps.add("compression", binary?"binary":"ascii"); // PCD
 
 		writer->setOptions(writerOps);
 		writer->setInput(bufferReader);
@@ -283,7 +301,10 @@ int savePDALFile(const std::string & filePath, const pcl::PointCloud<pcl::PointX
 	return 0; //success
 }
 
-int savePDALFile(const std::string & filePath, const pcl::PointCloud<pcl::PointXYZI> & cloud, const std::vector<int> & cameraIds)
+int savePDALFile(const std::string & filePath,
+		const pcl::PointCloud<pcl::PointXYZI> & cloud,
+		const std::vector<int> & cameraIds,
+		bool binary)
 {
 	UASSERT_MSG(cameraIds.empty() || cameraIds.size() == cloud.size(),
 			uFormat("cameraIds=%d cloud=%d", (int)cameraIds.size(), (int)cloud.size()).c_str());
@@ -324,11 +345,14 @@ int savePDALFile(const std::string & filePath, const pcl::PointCloud<pcl::PointX
 	bufferReader.addView(view);
 
 	pdal::StageFactory factory;
-	pdal::Stage *writer = factory.createStage("writers." + UFile::getExtension(filePath));
+	std::string ext = UFile::getExtension(filePath);
+	pdal::Stage *writer = factory.createStage("writers." + ext);
 	if(writer)
 	{
 		pdal::Options writerOps;
 		writerOps.add("filename", filePath);
+		if(ext.compare("ply")==0) writerOps.add("storage_mode", binary?"little endian":"ascii"); // PLY
+		if(ext.compare("pcd")==0) writerOps.add("compression", binary?"binary":"ascii"); // PCD
 
 		writer->setOptions(writerOps);
 		writer->setInput(bufferReader);
@@ -347,7 +371,10 @@ int savePDALFile(const std::string & filePath, const pcl::PointCloud<pcl::PointX
 	return 0; //success
 }
 
-int savePDALFile(const std::string & filePath, const pcl::PointCloud<pcl::PointXYZINormal> & cloud, const std::vector<int> & cameraIds)
+int savePDALFile(const std::string & filePath,
+		const pcl::PointCloud<pcl::PointXYZINormal> & cloud,
+		const std::vector<int> & cameraIds,
+		bool binary)
 {
 	UASSERT_MSG(cameraIds.empty() || cameraIds.size() == cloud.size(),
 			uFormat("cameraIds=%d cloud=%d", (int)cameraIds.size(), (int)cloud.size()).c_str());
@@ -397,11 +424,14 @@ int savePDALFile(const std::string & filePath, const pcl::PointCloud<pcl::PointX
 	bufferReader.addView(view);
 
 	pdal::StageFactory factory;
-	pdal::Stage *writer = factory.createStage("writers." + UFile::getExtension(filePath));
+	std::string ext = UFile::getExtension(filePath);
+	pdal::Stage *writer = factory.createStage("writers." + ext);
 	if(writer)
 	{
 		pdal::Options writerOps;
 		writerOps.add("filename", filePath);
+		if(ext.compare("ply")==0) writerOps.add("storage_mode", binary?"little endian":"ascii"); // PLY
+		if(ext.compare("pcd")==0) writerOps.add("compression", binary?"binary":"ascii"); // PCD
 
 		writer->setOptions(writerOps);
 		writer->setInput(bufferReader);

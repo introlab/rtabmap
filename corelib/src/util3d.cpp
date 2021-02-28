@@ -3115,8 +3115,9 @@ struct ProjectionInfo {
  * For each point, return pixel of the best camera (NodeID->CameraIndex)
  * looking at it based on the policy and parameters
  */
-std::vector<std::pair< std::pair<int, int>, pcl::PointXY> > projectCloudToCameras (
-		const pcl::PointCloud<pcl::PointXYZRGBNormal> & cloud,
+template<class PointT>
+std::vector<std::pair< std::pair<int, int>, pcl::PointXY> > projectCloudToCamerasImpl (
+		const typename pcl::PointCloud<PointT> & cloud,
 		const std::map<int, Transform> & cameraPoses,
 		const std::map<int, std::vector<CameraModel> > & cameraModels,
 		float maxDistance,
@@ -3173,7 +3174,7 @@ std::vector<std::pair< std::pair<int, int>, pcl::PointXY> > projectCloudToCamera
 				for(size_t i=0; i<cloud.size(); ++i)
 				{
 					// Get 3D from laser scan
-					pcl::PointXYZRGBNormal ptScan = cloud.at(i);
+					PointT ptScan = cloud.at(i);
 					ptScan = util3d::transformPoint(ptScan, t);
 
 					// re-project in camera frame
@@ -3283,7 +3284,7 @@ std::vector<std::pair< std::pair<int, int>, pcl::PointXY> > projectCloudToCamera
 			}
 		}
 
-		const pcl::PointXYZRGBNormal & pt = cloud.at(i);
+		const PointT & pt = cloud.at(i);
 		int nodeID = -1;
 		int cameraIndex = -1;
 		float smallestWeight = std::numeric_limits<float>::max();
@@ -3330,6 +3331,46 @@ std::vector<std::pair< std::pair<int, int>, pcl::PointXY> > projectCloudToCamera
 	UINFO("Process %d points...done! (%d [%d%%] projected in cameras)", (int)cloud.size(), colorized, colorized*100/cloud.size());
 
 	return pointToPixel;
+}
+
+std::vector<std::pair< std::pair<int, int>, pcl::PointXY> > projectCloudToCameras (
+		const typename pcl::PointCloud<pcl::PointXYZRGBNormal> & cloud,
+		const std::map<int, Transform> & cameraPoses,
+		const std::map<int, std::vector<CameraModel> > & cameraModels,
+		float maxDistance,
+		float maxAngle,
+		const std::vector<float> & roiRatios,
+		bool distanceToCamPolicy,
+		const ProgressState * state)
+{
+	return projectCloudToCamerasImpl(cloud,
+			cameraPoses,
+			cameraModels,
+			maxDistance,
+			maxAngle,
+			roiRatios,
+			distanceToCamPolicy,
+			state);
+}
+
+std::vector<std::pair< std::pair<int, int>, pcl::PointXY> > projectCloudToCameras (
+		const typename pcl::PointCloud<pcl::PointXYZINormal> & cloud,
+		const std::map<int, Transform> & cameraPoses,
+		const std::map<int, std::vector<CameraModel> > & cameraModels,
+		float maxDistance,
+		float maxAngle,
+		const std::vector<float> & roiRatios,
+		bool distanceToCamPolicy,
+		const ProgressState * state)
+{
+	return projectCloudToCamerasImpl(cloud,
+			cameraPoses,
+			cameraModels,
+			maxDistance,
+			maxAngle,
+			roiRatios,
+			distanceToCamPolicy,
+			state);
 }
 
 bool isFinite(const cv::Point3f & pt)
