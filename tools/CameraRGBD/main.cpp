@@ -63,6 +63,7 @@ void showUsage()
 			"                                     11=RealSense2\n"
 			"                                     12=Kinect for Azure SDK\n"
 			"                                     13=MYNT EYE S\n"
+			"                                     14=ZED Open Capture\n"
 			"  Options:\n"
 			"      -rate #.#                      Input rate Hz (default 0=inf)\n"
 			"      -device #                      Device ID (number or string)\n"
@@ -174,9 +175,9 @@ int main(int argc, char * argv[])
 
 			// last
 			driver = atoi(argv[i]);
-			if(driver < 0 || driver > 13)
+			if(driver < 0 || driver > 14)
 			{
-				UERROR("driver should be between 0 and 13.");
+				UERROR("driver should be between 0 and 14.");
 				showUsage();
 			}
 		}
@@ -313,6 +314,15 @@ int main(int argc, char * argv[])
 			exit(-1);
 		}
 		camera = new rtabmap::CameraMyntEye(deviceId);
+	}
+	else if (driver == 14)
+	{
+		if (!rtabmap::CameraStereoZedOC::available())
+		{
+			UERROR("Not built with Zed Open Capture support...");
+			exit(-1);
+		}
+		camera = new rtabmap::CameraStereoZedOC(uStr2Int(deviceId));
 	}
 	else
 	{

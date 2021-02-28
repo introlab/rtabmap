@@ -31,6 +31,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <opencv2/imgproc/types_c.h>
 #if CV_MAJOR_VERSION > 3
 #include <opencv2/videoio/videoio_c.h>
+#if CV_MAJOR_VERSION > 4
+#include <opencv2/videoio/legacy/constants_c.h>
+#endif
 #endif
 
 namespace rtabmap
@@ -51,7 +54,9 @@ CameraStereoVideo::CameraStereoVideo(
 		rectifyImages_(rectifyImages),
 		src_(CameraVideo::kVideoFile),
 		usbDevice_(0),
-		usbDevice2_(-1)
+		usbDevice2_(-1),
+		_width(0),
+		_height(0)
 {
 }
 
@@ -67,7 +72,9 @@ CameraStereoVideo::CameraStereoVideo(
 		rectifyImages_(rectifyImages),
 		src_(CameraVideo::kVideoFile),
 		usbDevice_(0),
-		usbDevice2_(-1)
+		usbDevice2_(-1),
+		_width(0),
+		_height(0)
 {
 }
 
@@ -80,7 +87,9 @@ CameraStereoVideo::CameraStereoVideo(
 	rectifyImages_(rectifyImages),
 	src_(CameraVideo::kUsbDevice),
 	usbDevice_(device),
-	usbDevice2_(-1)
+	usbDevice2_(-1),
+	_width(0),
+	_height(0)
 {
 }
 
@@ -94,7 +103,9 @@ CameraStereoVideo::CameraStereoVideo(
 	rectifyImages_(rectifyImages),
 	src_(CameraVideo::kUsbDevice),
 	usbDevice_(deviceLeft),
-	usbDevice2_(deviceRight)
+	usbDevice2_(deviceRight),
+	_width(0),
+	_height(0)
 {
 }
 
@@ -183,6 +194,37 @@ bool CameraStereoVideo::init(const std::string & calibrationFolder, const std::s
 	}
 
 	stereoModel_.setLocalTransform(this->getLocalTransform());
+
+	if(src_ == CameraVideo::kUsbDevice)
+	{
+		if(stereoModel_.isValidForProjection())
+		{
+			if(capture_.isOpened())
+			{
+				capture_.set(CV_CAP_PROP_FRAME_WIDTH, stereoModel_.left().imageWidth()*(capture2_.isOpened()?1:2));
+				capture_.set(CV_CAP_PROP_FRAME_HEIGHT, stereoModel_.left().imageHeight());
+				if(capture2_.isOpened())
+				{
+					capture2_.set(CV_CAP_PROP_FRAME_WIDTH, stereoModel_.right().imageWidth());
+					capture2_.set(CV_CAP_PROP_FRAME_HEIGHT, stereoModel_.right().imageHeight());
+				}
+			}
+		}
+		else if(_width > 0 && _height > 0)
+		{
+			if(capture_.isOpened())
+			{
+				capture_.set(CV_CAP_PROP_FRAME_WIDTH, _width*(capture2_.isOpened()?1:2));
+				capture_.set(CV_CAP_PROP_FRAME_HEIGHT, _height);
+				if(capture2_.isOpened())
+				{
+					capture2_.set(CV_CAP_PROP_FRAME_WIDTH, _width);
+					capture2_.set(CV_CAP_PROP_FRAME_HEIGHT, _height);
+				}
+			}
+		}
+	}
+
 	if(rectifyImages_ && !stereoModel_.isValidForRectification())
 	{
 		UERROR("Parameter \"rectifyImages\" is set, but no stereo model is loaded or valid.");

@@ -89,6 +89,7 @@ CalibrationDialog::CalibrationDialog(bool stereo, const QString & savingDirector
 	connect(ui_->spinBox_boardWidth, SIGNAL(valueChanged(int)), this, SLOT(setBoardWidth(int)));
 	connect(ui_->spinBox_boardHeight, SIGNAL(valueChanged(int)), this, SLOT(setBoardHeight(int)));
 	connect(ui_->doubleSpinBox_squareSize, SIGNAL(valueChanged(double)), this, SLOT(setSquareSize(double)));
+	connect(ui_->doubleSpinBox_stereoBaseline, SIGNAL(valueChanged(double)), this, SLOT(setExpectedStereoBaseline(double)));
 	connect(ui_->spinBox_maxScale, SIGNAL(valueChanged(int)), this, SLOT(setMaxScale(int)));
 
 	connect(ui_->buttonBox, SIGNAL(rejected()), this, SLOT(close()));
@@ -208,6 +209,8 @@ void CalibrationDialog::setStereoMode(bool stereo, const QString & leftSuffix, c
 	ui_->lineEdit_P_2->setVisible(stereo_);
 	ui_->radioButton_stereoRectified->setVisible(stereo_);
 	ui_->checkBox_switchImages->setVisible(stereo_);
+	ui_->doubleSpinBox_stereoBaseline->setVisible(stereo_);
+	ui_->label_stereoBaseline->setVisible(stereo_);
 }
 
 void CalibrationDialog::setBoardWidth(int width)
@@ -234,6 +237,14 @@ void CalibrationDialog::setSquareSize(double size)
 	{
 		ui_->doubleSpinBox_squareSize->setValue(size);
 		this->restart();
+	}
+}
+
+void CalibrationDialog::setExpectedStereoBaseline(double length)
+{
+	if(length != ui_->doubleSpinBox_stereoBaseline->value())
+	{
+		ui_->doubleSpinBox_stereoBaseline->setValue(length);
 	}
 }
 
@@ -854,6 +865,22 @@ void CalibrationDialog::calibrate()
 	if(stereo_ && models_[0].isValidForRectification() && models_[1].isValidForRectification())
 	{
 		stereoModel_ = stereoCalibration(models_[0], models_[1], false);
+
+		if(stereoModel_.isValidForProjection()  &&
+			ui_->doubleSpinBox_stereoBaseline->value() > 0 &&
+		   stereoModel_.baseline() != ui_->doubleSpinBox_stereoBaseline->value())
+		{
+			UWARN("Expected stereo baseline is set to %f m, but computed baseline is %f m. Rescaling baseline...",
+					stereoModel_.baseline(), ui_->doubleSpinBox_stereoBaseline->value());
+			cv::Mat P = stereoModel_.right().P().clone();
+			P.at<double>(0,3) = -P.at<double>(0,0)*ui_->doubleSpinBox_stereoBaseline->value();
+			stereoModel_ = StereoCameraModel(
+					stereoModel_.name(),
+					stereoModel_.left().imageSize(),stereoModel_.left().K_raw(), stereoModel_.left().D_raw(), stereoModel_.left().R(), stereoModel_.left().P(),
+					stereoModel_.right().imageSize(), stereoModel_.right().K_raw(), stereoModel_.right().D_raw(), stereoModel_.right().R(), P,
+					stereoModel_.R(), stereoModel_.T(), stereoModel_.E(), stereoModel_.F(), stereoModel_.localTransform());
+		}
+
 		std::stringstream strR1, strP1, strR2, strP2;
 		strR1 << stereoModel_.left().R();
 		strP1 << stereoModel_.left().P();
@@ -866,6 +893,18 @@ void CalibrationDialog::calibrate()
 
 		ui_->label_baseline->setNum(stereoModel_.baseline());
 		//ui_->label_error_stereo->setNum(totalAvgErr);
+
+		if(!stereoModel_.left().P().empty() &&
+		   !stereoModel_.left().K_raw().empty() &&
+		   fabs(stereoModel_.left().P().at<double>(0,0) - stereoModel_.left().K_raw().at<double>(0,0)) > 5)
+		{
+			QMessageBox::warning(this, tr("Stereo Calibration"),
+					tr("\"fx\" after stereo rectification (%1) is not close from original "
+					   "calibration (%2), the difference would have to be under 5. You may "
+					   "restart the calibration.")
+					   .arg(stereoModel_.left().P().at<double>(0,0))
+					   .arg(stereoModel_.left().K_raw().at<double>(0,0)));
+		}
 	}
 
 	if(stereo_)

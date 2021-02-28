@@ -70,6 +70,8 @@ public:
 	virtual bool isCalibrated() const;
 	virtual std::string getSerial() const;
 
+	void setResolution(int width, int height) {_width=width, _height=height;}
+
 protected:
 	virtual SensorData captureImage(CameraInfo * info = 0);
 
@@ -84,6 +86,8 @@ private:
 	CameraVideo::Source src_;
 	int usbDevice_;
 	int usbDevice2_;
+	int _width;
+	int _height;
 };
 
 } // namespace rtabmap

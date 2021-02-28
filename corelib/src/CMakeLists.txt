@@ -33,6 +33,7 @@ SET(SRC_FILES
     camera/CameraStereoImages.cpp
     camera/CameraStereoVideo.cpp
     camera/CameraStereoZed.cpp
+    camera/CameraStereoZedOC.cpp
     camera/CameraStereoTara.cpp
     camera/CameraVideo.cpp
     camera/CameraMyntEye.cpp
@@ -468,6 +469,19 @@ IF(ZED_FOUND)
 		)
 	ENDIF(CUDA_FOUND)
 ENDIF(ZED_FOUND)
+
+IF(ZEDOC_FOUND)
+	SET(INCLUDE_DIRS
+		${INCLUDE_DIRS}
+		${ZEDOC_INCLUDE_DIRS}
+		${HIDAPI_INCLUDE_DIRS}
+	)
+	SET(LIBRARIES
+		${LIBRARIES}
+		${ZEDOC_LIBRARIES}
+		${HIDAPI_LIBRARIES}
+	)
+ENDIF(ZEDOC_FOUND)
 
 IF(octomap_FOUND)
     SET(INCLUDE_DIRS

@@ -440,6 +440,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent, bool sh
 	connect(_ui->actionStereoDC1394, SIGNAL(triggered()), this, SLOT(selectStereoDC1394()));
 	connect(_ui->actionStereoFlyCapture2, SIGNAL(triggered()), this, SLOT(selectStereoFlyCapture2()));
 	connect(_ui->actionStereoZed, SIGNAL(triggered()), this, SLOT(selectStereoZed()));
+	connect(_ui->actionZed_Open_Capture, SIGNAL(triggered()), this, SLOT(selectStereoZedOC()));
     connect(_ui->actionStereoTara, SIGNAL(triggered()), this, SLOT(selectStereoTara()));
 	connect(_ui->actionStereoUsb, SIGNAL(triggered()), this, SLOT(selectStereoUsb()));
 	connect(_ui->actionRealSense2_T265, SIGNAL(triggered()), this, SLOT(selectRealSense2Stereo()));
@@ -462,6 +463,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent, bool sh
 	_ui->actionStereoDC1394->setEnabled(CameraStereoDC1394::available());
 	_ui->actionStereoFlyCapture2->setEnabled(CameraStereoFlyCapture2::available());
 	_ui->actionStereoZed->setEnabled(CameraStereoZed::available());
+	_ui->actionZed_Open_Capture->setEnabled(CameraStereoZedOC::available());
     _ui->actionStereoTara->setEnabled(CameraStereoTara::available());
     _ui->actionMYNT_EYE_S_SDK->setEnabled(CameraMyntEye::available());
 	this->updateSelectSourceMenu();
@@ -4801,6 +4803,7 @@ void MainWindow::updateSelectSourceMenu()
 	_ui->actionStereoDC1394->setChecked(_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcDC1394);
 	_ui->actionStereoFlyCapture2->setChecked(_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcFlyCapture2);
 	_ui->actionStereoZed->setChecked(_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcStereoZed);
+	_ui->actionZed_Open_Capture->setChecked(_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcStereoZedOC);
     _ui->actionStereoTara->setChecked(_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcStereoTara);
 	_ui->actionStereoUsb->setChecked(_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcStereoUsb);
 	_ui->actionRealSense2_T265->setChecked(_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcStereoRealSense2);
@@ -6570,6 +6573,10 @@ void MainWindow::selectStereoFlyCapture2()
 void MainWindow::selectStereoZed()
 {
 	_preferencesDialog->selectSourceDriver(PreferencesDialog::kSrcStereoZed);
+}
+void MainWindow::selectStereoZedOC()
+{
+	_preferencesDialog->selectSourceDriver(PreferencesDialog::kSrcStereoZedOC);
 }
 
 void MainWindow::selectStereoTara()

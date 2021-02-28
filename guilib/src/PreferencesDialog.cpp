@@ -367,6 +367,10 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
     {
         _ui->comboBox_cameraStereo->setItemData(kSrcStereoMyntEye - kSrcStereo, 0, Qt::UserRole - 1);
     }
+    if (!CameraStereoZedOC::available())
+	{
+		_ui->comboBox_cameraStereo->setItemData(kSrcStereoZedOC - kSrcStereo, 0, Qt::UserRole - 1);
+	}
 	_ui->openni2_exposure->setEnabled(CameraOpenNI2::exposureGainAvailable());
 	_ui->openni2_gain->setEnabled(CameraOpenNI2::exposureGainAvailable());
 
@@ -740,6 +744,8 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->lineEdit_cameraStereoVideo_path_2, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
 
 	connect(_ui->spinBox_stereo_right_device, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->spinBox_stereousbcam_streamWidth, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->spinBox_stereousbcam_streamHeight, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 
 	connect(_ui->comboBox_stereoZed_resolution, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->comboBox_stereoZed_quality, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
@@ -1954,6 +1960,8 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->lineEdit_cameraStereoVideo_path->setText("");
 		_ui->lineEdit_cameraStereoVideo_path_2->setText("");
 		_ui->spinBox_stereo_right_device->setValue(-1);
+		_ui->spinBox_stereousbcam_streamWidth->setValue(0);
+		_ui->spinBox_stereousbcam_streamHeight->setValue(0);
 		_ui->comboBox_stereoZed_resolution->setCurrentIndex(2);
 		_ui->comboBox_stereoZed_quality->setCurrentIndex(1);
 		_ui->checkbox_stereoZed_selfCalibration->setChecked(true);
@@ -1962,6 +1970,7 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->spinBox_stereoZed_texturenessConfidenceThr->setValue(90);
 		_ui->checkbox_stereoZed_odom->setChecked(false);
 		_ui->lineEdit_zedSvoPath->clear();
+		_ui->comboBox_stereoZedOC_resolution->setCurrentIndex(3);
 		_ui->checkbox_stereoRealSense2_odom->setChecked(false);
 		_ui->checkbox_stereoMyntEye_rectify->setChecked(false);
 		_ui->checkbox_stereoMyntEye_depth->setChecked(false);
@@ -2408,6 +2417,8 @@ void PreferencesDialog::readCameraSettings(const QString & filePath)
 	_ui->lineEdit_cameraStereoVideo_path->setText(settings.value("path", _ui->lineEdit_cameraStereoVideo_path->text()).toString());
 	_ui->lineEdit_cameraStereoVideo_path_2->setText(settings.value("path2", _ui->lineEdit_cameraStereoVideo_path_2->text()).toString());
 	_ui->spinBox_stereo_right_device->setValue(settings.value("device2", _ui->spinBox_stereo_right_device->value()).toInt());
+	_ui->spinBox_stereousbcam_streamWidth->setValue(settings.value("width", _ui->spinBox_stereousbcam_streamWidth->value()).toInt());
+	_ui->spinBox_stereousbcam_streamHeight->setValue(settings.value("height", _ui->spinBox_stereousbcam_streamHeight->value()).toInt());
 	settings.endGroup(); // StereoVideo
 
 	settings.beginGroup("StereoZed");
@@ -2894,6 +2905,8 @@ void PreferencesDialog::writeCameraSettings(const QString & filePath) const
 	settings.setValue("path", 			_ui->lineEdit_cameraStereoVideo_path->text());
 	settings.setValue("path2", 			_ui->lineEdit_cameraStereoVideo_path_2->text());
 	settings.setValue("device2",		_ui->spinBox_stereo_right_device->value());
+	settings.setValue("width",		    _ui->spinBox_stereousbcam_streamWidth->value());
+	settings.setValue("height",		    _ui->spinBox_stereousbcam_streamHeight->value());
 	settings.endGroup(); // StereoVideo
 
 	settings.beginGroup("StereoZed");
@@ -4994,13 +5007,15 @@ void PreferencesDialog::updateSourceGrpVisibility()
 		 _ui->comboBox_cameraStereo->currentIndex() == kSrcStereoZed - kSrcStereo ||
 		 _ui->comboBox_cameraStereo->currentIndex() == kSrcStereoUsb - kSrcStereo ||
 		 _ui->comboBox_cameraStereo->currentIndex() == kSrcStereoRealSense2 - kSrcStereo ||
-		 _ui->comboBox_cameraStereo->currentIndex() == kSrcStereoMyntEye - kSrcStereo));
+		 _ui->comboBox_cameraStereo->currentIndex() == kSrcStereoMyntEye - kSrcStereo ||
+		 _ui->comboBox_cameraStereo->currentIndex() == kSrcStereoZedOC - kSrcStereo));
 	_ui->groupBox_cameraStereoImages->setVisible(_ui->comboBox_sourceType->currentIndex() == 1 && _ui->comboBox_cameraStereo->currentIndex() == kSrcStereoImages-kSrcStereo);
 	_ui->groupBox_cameraStereoVideo->setVisible(_ui->comboBox_sourceType->currentIndex() == 1 && _ui->comboBox_cameraStereo->currentIndex() == kSrcStereoVideo - kSrcStereo);
 	_ui->groupBox_cameraStereoUsb->setVisible(_ui->comboBox_sourceType->currentIndex() == 1 && _ui->comboBox_cameraStereo->currentIndex() == kSrcStereoUsb - kSrcStereo);
 	_ui->groupBox_cameraStereoZed->setVisible(_ui->comboBox_sourceType->currentIndex() == 1 && _ui->comboBox_cameraStereo->currentIndex() == kSrcStereoZed - kSrcStereo);
 	_ui->groupBox_cameraStereoRealSense2->setVisible(_ui->comboBox_sourceType->currentIndex() == 1 && _ui->comboBox_cameraStereo->currentIndex() == kSrcStereoRealSense2 - kSrcStereo);
 	_ui->groupBox_cameraMyntEye->setVisible(_ui->comboBox_sourceType->currentIndex() == 1 && _ui->comboBox_cameraStereo->currentIndex() == kSrcStereoMyntEye - kSrcStereo);
+	_ui->groupBox_cameraStereoZedOC->setVisible(_ui->comboBox_sourceType->currentIndex() == 1 && _ui->comboBox_cameraStereo->currentIndex() == kSrcStereoZedOC - kSrcStereo);
 
 	_ui->stackedWidget_image->setVisible(_ui->comboBox_sourceType->currentIndex() == 2 &&
 			(_ui->source_comboBox_image_type->currentIndex() == kSrcImages-kSrcRGB ||
@@ -5029,7 +5044,8 @@ void PreferencesDialog::updateSourceGrpVisibility()
 			(_ui->comboBox_sourceType->currentIndex() == 0 && _ui->comboBox_cameraRGBD->currentIndex() == kSrcRealSense2 - kSrcRGBD) || //D435i
 			(_ui->comboBox_sourceType->currentIndex() == 1 && _ui->comboBox_cameraStereo->currentIndex() == kSrcStereoRealSense2 - kSrcStereo) || //T265
 			(_ui->comboBox_sourceType->currentIndex() == 1 && _ui->comboBox_cameraStereo->currentIndex() == kSrcStereoZed - kSrcStereo) || // ZEDm, ZED2
-			(_ui->comboBox_sourceType->currentIndex() == 1 && _ui->comboBox_cameraStereo->currentIndex() == kSrcStereoMyntEye - kSrcStereo));  // MYNT EYE S
+			(_ui->comboBox_sourceType->currentIndex() == 1 && _ui->comboBox_cameraStereo->currentIndex() == kSrcStereoMyntEye - kSrcStereo) || // MYNT EYE S
+			(_ui->comboBox_sourceType->currentIndex() == 1 && _ui->comboBox_cameraStereo->currentIndex() == kSrcStereoZedOC - kSrcStereo));
 	_ui->stackedWidget_imuFilter->setVisible(_ui->comboBox_imuFilter_strategy->currentIndex() > 0);
 	_ui->groupBox_madgwickfilter->setVisible(_ui->comboBox_imuFilter_strategy->currentIndex() == 1);
 	_ui->groupBox_complementaryfilter->setVisible(_ui->comboBox_imuFilter_strategy->currentIndex() == 2);
@@ -5933,6 +5949,7 @@ Camera * PreferencesDialog::createCamera(bool useRawImages, bool useColor)
 				this->getGeneralInputRate(),
 				this->getSourceLocalTransform());
 		}
+		((CameraStereoVideo*)camera)->setResolution(_ui->spinBox_stereousbcam_streamWidth->value(), _ui->spinBox_stereousbcam_streamHeight->value());
 	}
 	else if(driver == kSrcStereoVideo)
 	{
@@ -5967,7 +5984,6 @@ Camera * PreferencesDialog::createCamera(bool useRawImages, bool useColor)
                 this->getSourceLocalTransform());
 
     }
-
 	else if (driver == kSrcStereoZed)
 	{
 		UDEBUG("ZED");
@@ -6001,6 +6017,15 @@ Camera * PreferencesDialog::createCamera(bool useRawImages, bool useColor)
 				_ui->spinBox_stereoZed_texturenessConfidenceThr->value());
 		}
 		((CameraStereoZed*)camera)->publishInterIMU(_ui->checkbox_publishInterIMU->isChecked());
+	}
+	else if (driver == kSrcStereoZedOC)
+	{
+		UDEBUG("ZEDOC");
+		camera = new CameraStereoZedOC(
+			this->getSourceDevice().isEmpty()?0:atoi(this->getSourceDevice().toStdString().c_str()),
+			_ui->comboBox_stereoZedOC_resolution->currentIndex(),
+			this->getGeneralInputRate(),
+			this->getSourceLocalTransform());
 	}
 	else if(driver == kSrcUsbDevice)
 	{
