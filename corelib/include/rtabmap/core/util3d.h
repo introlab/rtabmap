@@ -38,6 +38,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/SensorData.h>
 #include <rtabmap/core/Parameters.h>
 #include <opencv2/core/core.hpp>
+#include <rtabmap/core/ProgressState.h>
 #include <map>
 #include <list>
 
@@ -299,6 +300,33 @@ void RTABMAP_EXP fillProjectedCloudHoles(
 		cv::Mat & depthRegistered,
 		bool verticalDirection,
 		bool fillToBorder);
+
+/**
+ * For each point, return pixel of the best camera (NodeID->CameraIndex)
+ * looking at it based on the policy and parameters
+ */
+std::vector<std::pair< std::pair<int, int>, pcl::PointXY> > RTABMAP_EXP projectCloudToCameras (
+		const pcl::PointCloud<pcl::PointXYZRGBNormal> & cloud,
+		const std::map<int, Transform> & cameraPoses,
+		const std::map<int, std::vector<CameraModel> > & cameraModels,
+		float maxDistance = 0.0f,
+		float maxAngle = 0.0f,
+		const std::vector<float> & roiRatios = std::vector<float>(),
+		bool distanceToCamPolicy = false,
+		const ProgressState * state = 0);
+/**
+ * For each point, return pixel of the best camera (NodeID->CameraIndex)
+ * looking at it based on the policy and parameters
+ */
+std::vector<std::pair< std::pair<int, int>, pcl::PointXY> > RTABMAP_EXP projectCloudToCameras (
+		const pcl::PointCloud<pcl::PointXYZINormal> & cloud,
+		const std::map<int, Transform> & cameraPoses,
+		const std::map<int, std::vector<CameraModel> > & cameraModels,
+		float maxDistance = 0.0f,
+		float maxAngle = 0.0f,
+		const std::vector<float> & roiRatios = std::vector<float>(),
+		bool distanceToCamPolicy = false,
+		const ProgressState * state = 0);
 
 bool RTABMAP_EXP isFinite(const cv::Point3f & pt);
 

@@ -1235,6 +1235,7 @@ bool Rtabmap::process(
 	bool smallDisplacement = false;
 	bool tooFastMovement = false;
 	std::list<int> signaturesRemoved;
+	bool neighborLinkRefined = false;
 	if(_rgbdSlamMode)
 	{
 		statistics_.addStatistic(Statistics::kMemoryOdometry_variance_lin(), odomCovariance.empty()?1.0f:(float)odomCovariance.at<double>(0,0));
@@ -1363,7 +1364,8 @@ bool Rtabmap::process(
 							_memory->updateLink(Link(oldId, signature->id(), signature->getLinks().begin()->second.type(), guess, (info.covariance*100.0).inv()));
 						}
 					}
-					statistics_.addStatistic(Statistics::kNeighborLinkRefiningAccepted(), !t.isNull()?1.0f:0);
+					neighborLinkRefined = !t.isNull();
+					statistics_.addStatistic(Statistics::kNeighborLinkRefiningAccepted(),neighborLinkRefined?1.0f:0);
 					statistics_.addStatistic(Statistics::kNeighborLinkRefiningInliers(), info.inliers);
 					statistics_.addStatistic(Statistics::kNeighborLinkRefiningICP_inliers_ratio(), info.icpInliersRatio);
 					statistics_.addStatistic(Statistics::kNeighborLinkRefiningICP_rotation(), info.icpRotation);
@@ -2686,7 +2688,7 @@ bool Rtabmap::process(
 	     lastProximitySpaceClosureId>0 || // can be different map of the current one
 	     statistics_.reducedIds().size() ||
 		 (signature->hasLink(signature->id(), Link::kPosePrior) && !_graphOptimizer->priorsIgnored()) || // prior edge
-		 (signature->hasLink(signature->id(), Link::kGravity) && _graphOptimizer->gravitySigma()>0.0f && !_memory->isOdomGravityUsed()) || // gravity edge
+		 (signature->hasLink(signature->id(), Link::kGravity) && _graphOptimizer->gravitySigma()>0.0f && (!_memory->isOdomGravityUsed() || neighborLinkRefined)) || // gravity edge
 	     proximityDetectionsInTimeFound>0 ||
 		 landmarkDetected!=0 ||
 		 signaturesRetrieved.size()) // can be different map of the current one
