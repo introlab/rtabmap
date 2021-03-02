@@ -351,14 +351,29 @@ IF(WITH_TORO)
 ENDIF(WITH_TORO)
 
 IF(G2O_FOUND)
-	SET(INCLUDE_DIRS 
+	IF(g2o_FOUND)
+	  SET(LIBRARIES
+             ${LIBRARIES}
+	     g2o::core
+	     g2o::solver_cholmod
+	     g2o::solver_eigen
+	     g2o::solver_pcg
+	     g2o::solver_csparse
+	     g2o::csparse_extension
+	     g2o::types_slam2d
+	     g2o::types_slam3d
+	     g2o::types_sba
+	  )
+	ELSE()
+	  SET(INCLUDE_DIRS 
 		${INCLUDE_DIRS} 
 		${G2O_INCLUDE_DIRS}
-	)
-	SET(LIBRARIES
+	  )
+	  SET(LIBRARIES
 		${LIBRARIES}
 		${G2O_LIBRARIES}
-	)
+	  )
+	ENDIF()
 	SET(SRC_FILES
     		${SRC_FILES}
 		optimizer/g2o/edge_se3_xyzprior.cpp
