@@ -330,59 +330,57 @@ int main(int argc, char * argv[])
 		Odometry * odom = Odometry::create(odomParameters);
 
 		std::ifstream imu_file;
-		if(odom->canProcessIMU())
-		{
-			// open the IMU file
-			std::string line;
-			imu_file.open(pathImu.c_str());
-			if (!imu_file.good()) {
-				UERROR("no imu file found at %s",pathImu.c_str());
-				return -1;
-			}
-			int number_of_lines = 0;
-			while (std::getline(imu_file, line))
-				++number_of_lines;
-			printf("No. IMU measurements: %d\n", number_of_lines-1);
-			if (number_of_lines - 1 <= 0) {
-				UERROR("no imu messages present in %s", pathImu.c_str());
-				return -1;
-			}
-			// set reading position to second line
-			imu_file.clear();
-			imu_file.seekg(0, std::ios::beg);
-			std::getline(imu_file, line);
 
-			if(odomStrategy == Odometry::kTypeMSCKF)
-			{
-				if(seq.compare("MH_01_easy") == 0)
-				{
-					printf("MH_01_easy detected with MSCFK odometry, ignoring first moving 440 images...\n");
-					((CameraStereoImages*)cameraThread.camera())->setStartIndex(440);
-				}
-				else if(seq.compare("MH_02_easy") == 0)
-				{
-					printf("MH_02_easy detected with MSCFK odometry, ignoring first moving 525 images...\n");
-					((CameraStereoImages*)cameraThread.camera())->setStartIndex(525);
-				}
-				else if(seq.compare("MH_03_medium") == 0)
-				{
-					printf("MH_03_medium detected with MSCFK odometry, ignoring first moving 210 images...\n");
-					((CameraStereoImages*)cameraThread.camera())->setStartIndex(210);
-				}
-				else if(seq.compare("MH_04_difficult") == 0)
-				{
-					printf("MH_04_difficult detected with MSCFK odometry, ignoring first moving 250 images...\n");
-					((CameraStereoImages*)cameraThread.camera())->setStartIndex(250);
-				}
-				else if(seq.compare("MH_05_difficult") == 0)
-				{
-					printf("MH_05_difficult detected with MSCFK odometry, ignoring first moving 310 images...\n");
-					((CameraStereoImages*)cameraThread.camera())->setStartIndex(310);
-				}
-			}
-
-			cameraThread.enableIMUFiltering(imuFilter, parameters);
+		// open the IMU file
+		std::string line;
+		imu_file.open(pathImu.c_str());
+		if (!imu_file.good()) {
+			UERROR("no imu file found at %s",pathImu.c_str());
+			return -1;
 		}
+		int number_of_lines = 0;
+		while (std::getline(imu_file, line))
+			++number_of_lines;
+		printf("No. IMU measurements: %d\n", number_of_lines-1);
+		if (number_of_lines - 1 <= 0) {
+			UERROR("no imu messages present in %s", pathImu.c_str());
+			return -1;
+		}
+		// set reading position to second line
+		imu_file.clear();
+		imu_file.seekg(0, std::ios::beg);
+		std::getline(imu_file, line);
+
+		if(odomStrategy == Odometry::kTypeMSCKF)
+		{
+			if(seq.compare("MH_01_easy") == 0)
+			{
+				printf("MH_01_easy detected with MSCFK odometry, ignoring first moving 440 images...\n");
+				((CameraStereoImages*)cameraThread.camera())->setStartIndex(440);
+			}
+			else if(seq.compare("MH_02_easy") == 0)
+			{
+				printf("MH_02_easy detected with MSCFK odometry, ignoring first moving 525 images...\n");
+				((CameraStereoImages*)cameraThread.camera())->setStartIndex(525);
+			}
+			else if(seq.compare("MH_03_medium") == 0)
+			{
+				printf("MH_03_medium detected with MSCFK odometry, ignoring first moving 210 images...\n");
+				((CameraStereoImages*)cameraThread.camera())->setStartIndex(210);
+			}
+			else if(seq.compare("MH_04_difficult") == 0)
+			{
+				printf("MH_04_difficult detected with MSCFK odometry, ignoring first moving 250 images...\n");
+				((CameraStereoImages*)cameraThread.camera())->setStartIndex(250);
+			}
+			else if(seq.compare("MH_05_difficult") == 0)
+			{
+				printf("MH_05_difficult detected with MSCFK odometry, ignoring first moving 310 images...\n");
+				((CameraStereoImages*)cameraThread.camera())->setStartIndex(310);
+			}
+		}
+
+		cameraThread.enableIMUFiltering(imuFilter, parameters);
 
 		Rtabmap rtabmap;
 		rtabmap.init(parameters, databasePath);
@@ -404,46 +402,43 @@ int main(int argc, char * argv[])
 		while(data.isValid() && g_forever)
 		{
 			UDEBUG("");
-			if(odom->canProcessIMU())
-			{
-				// get all IMU measurements till then
-				double t_imu = start;
-				do {
-					std::string line;
-					if (!std::getline(imu_file, line)) {
-						std::cout << std::endl << "Finished parsing IMU." << std::endl << std::flush;
-						break;
-					}
+			// get all IMU measurements till then
+			double t_imu = start;
+			do {
+				std::string line;
+				if (!std::getline(imu_file, line)) {
+					std::cout << std::endl << "Finished parsing IMU." << std::endl << std::flush;
+					break;
+				}
 
-					std::stringstream stream(line);
-					std::string s;
+				std::stringstream stream(line);
+				std::string s;
+				std::getline(stream, s, ',');
+				std::string nanoseconds = s.substr(s.size() - 9, 9);
+				std::string seconds = s.substr(0, s.size() - 9);
+
+				cv::Vec3d gyr;
+				for (int j = 0; j < 3; ++j) {
 					std::getline(stream, s, ',');
-					std::string nanoseconds = s.substr(s.size() - 9, 9);
-					std::string seconds = s.substr(0, s.size() - 9);
+					gyr[j] = uStr2Double(s);
+				}
 
-					cv::Vec3d gyr;
-					for (int j = 0; j < 3; ++j) {
-						std::getline(stream, s, ',');
-						gyr[j] = uStr2Double(s);
-					}
+				cv::Vec3d acc;
+				for (int j = 0; j < 3; ++j) {
+					std::getline(stream, s, ',');
+					acc[j] = uStr2Double(s);
+				}
 
-					cv::Vec3d acc;
-					for (int j = 0; j < 3; ++j) {
-						std::getline(stream, s, ',');
-						acc[j] = uStr2Double(s);
-					}
+				t_imu = double(uStr2Int(seconds)) + double(uStr2Int(nanoseconds))*1e-9;
 
-					t_imu = double(uStr2Int(seconds)) + double(uStr2Int(nanoseconds))*1e-9;
+				if (t_imu - start + 1 > 0) {
 
-					if (t_imu - start + 1 > 0) {
+					SensorData dataImu(IMU(gyr, cv::Mat(3,3,CV_64FC1), acc, cv::Mat(3,3,CV_64FC1), baseToImu), 0, t_imu);
+					cameraThread.postUpdate(&dataImu);
+					odom->process(dataImu);
+				}
 
-						SensorData dataImu(IMU(gyr, cv::Mat(3,3,CV_64FC1), acc, cv::Mat(3,3,CV_64FC1), baseToImu), 0, t_imu);
-						cameraThread.postUpdate(&dataImu);
-						odom->process(dataImu);
-					}
-
-				} while (t_imu <= data.stamp());
-			}
+			} while (t_imu <= data.stamp());
 
 
 			cameraThread.postUpdate(&data, &cameraInfo);

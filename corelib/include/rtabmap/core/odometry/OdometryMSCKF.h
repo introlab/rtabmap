@@ -44,7 +44,7 @@ public:
 	virtual void reset(const Transform & initialPose = Transform::getIdentity());
 	virtual Odometry::Type getType() {return Odometry::kTypeMSCKF;}
 	virtual bool canProcessRawImages() const {return true;}
-	virtual bool canProcessIMU() const {return true;}
+	virtual bool canProcessAsyncIMU() const {return true;}
 
 private:
 	virtual Transform computeTransform(SensorData & image, const Transform & guess = Transform(), OdometryInfo * info = 0);

@@ -213,7 +213,7 @@ int main(int argc, char * argv[])
 				UERROR("Not built with Freenect support...");
 				exit(-1);
 			}
-			camera = new rtabmap::CameraFreenect(uStr2Int(deviceId));
+			camera = new rtabmap::CameraFreenect(deviceId.empty()?0:uStr2Int(deviceId));
 		}
 		else if(driver == 3)
 		{
@@ -240,7 +240,7 @@ int main(int argc, char * argv[])
 				UERROR("Not built with Freenect2 support...");
 				exit(-1);
 			}
-			camera = new rtabmap::CameraFreenect2(uStr2Int(deviceId), rtabmap::CameraFreenect2::kTypeColor2DepthSD);
+			camera = new rtabmap::CameraFreenect2(deviceId.empty()?0:uStr2Int(deviceId), rtabmap::CameraFreenect2::kTypeColor2DepthSD);
 		}
 	}
 	else if(driver == 6)
@@ -268,7 +268,7 @@ int main(int argc, char * argv[])
 			UERROR("Not built with ZED sdk support...");
 			exit(-1);
 		}
-		camera = new rtabmap::CameraStereoZed(uStr2Int(deviceId));
+		camera = new rtabmap::CameraStereoZed(deviceId.empty()?0:uStr2Int(deviceId));
 	}
 	else if (driver == 9)
 	{
@@ -277,7 +277,7 @@ int main(int argc, char * argv[])
 			UERROR("Not built with RealSense support...");
 			exit(-1);
 		}
-		camera = new rtabmap::CameraRealSense(uStr2Int(deviceId));
+		camera = new rtabmap::CameraRealSense(deviceId.empty()?0:uStr2Int(deviceId));
 	}
 	else if (driver == 10)
 	{
@@ -286,7 +286,7 @@ int main(int argc, char * argv[])
 			UERROR("Not built with Kinect for Windows 2 SDK support...");
 			exit(-1);
 		}
-		camera = new rtabmap::CameraK4W2(uStr2Int(deviceId));
+		camera = new rtabmap::CameraK4W2(deviceId.empty()?0:uStr2Int(deviceId));
 	}
 	else if (driver == 11)
 	{
@@ -322,7 +322,7 @@ int main(int argc, char * argv[])
 			UERROR("Not built with Zed Open Capture support...");
 			exit(-1);
 		}
-		camera = new rtabmap::CameraStereoZedOC(uStr2Int(deviceId));
+		camera = new rtabmap::CameraStereoZedOC(deviceId.empty()?-1:uStr2Int(deviceId));
 	}
 	else
 	{

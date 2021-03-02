@@ -307,7 +307,7 @@ bool initCalibration(std::string calibration_file, cv::Size image_size, rtabmap:
     // (Linux only) Safety check A: Wrong "." or "," reading in file conf.
 #ifndef _WIN32
     if (right_cam_k1 == 0 && left_cam_k1 == 0 && left_cam_k2 == 0 && right_cam_k2 == 0) {
-        std::cout << "ZED File invalid" << std::endl;
+        UERROR("ZED File invalid");
 
         std::string cmd = "rm " + calibration_file;
         int res = system(cmd.c_str());
@@ -596,15 +596,14 @@ bool CameraStereoZedOC::init(const std::string & calibrationFolder, const std::s
 	zed_ = new sl_oc::video::VideoCapture(params);
 	if( !zed_->initializeVideo(usbDevice_) )
 	{
-		std::cerr << "Cannot open camera video capture" << std::endl;
-		std::cerr << "See verbosity level for more details." << std::endl;
+		UERROR("Cannot open camera video capture. Set log level <= info for more details.");
 
 		delete zed_;
 		zed_ = 0;
 		return false;
 	}
 	int sn = zed_->getSerialNumber();
-	std::cout << "Connected to camera sn: " << sn << std::endl;
+	UINFO("Connected to camera sn: %d", sn);
 	// <---- Create Video Capture
 
 	// ----> Retrieve calibration file from Stereolabs server
@@ -614,12 +613,12 @@ bool CameraStereoZedOC::init(const std::string & calibrationFolder, const std::s
 	// Download camera calibration file
 	if( !downloadCalibrationFile(serial_number, calibration_file) )
 	{
-		std::cerr << "Could not load calibration file from Stereolabs servers" << std::endl;
+		UERROR("Could not load calibration file from Stereolabs servers");
 		delete zed_;
 		zed_ = 0;
 		return false;
 	}
-	std::cout << "Calibration file found. Loading..." << std::endl;
+	UINFO("Calibration file found. Loading...");
 
 	// ----> Frame size
 	int w,h;
@@ -629,8 +628,11 @@ bool CameraStereoZedOC::init(const std::string & calibrationFolder, const std::s
 	 // ----> Initialize calibration
 	if(initCalibration(calibration_file, cv::Size(w/2,h), stereoModel_, this->getLocalTransform()))
 	{
-		std::cout << "Calibration left:" << std::endl << stereoModel_.left() << std::endl;
-		std::cout << "Calibration right:" << std::endl << stereoModel_.right() << std::endl;
+		if(ULogger::level() <= ULogger::kInfo)
+		{
+			std::cout << "Calibration left:" << std::endl << stereoModel_.left() << std::endl;
+			std::cout << "Calibration right:" << std::endl << stereoModel_.right() << std::endl;
+		}
 		stereoModel_.initRectificationMap();
 	}
 
@@ -638,37 +640,42 @@ bool CameraStereoZedOC::init(const std::string & calibrationFolder, const std::s
 	sensors_ = new sl_oc::sensors::SensorCapture((sl_oc::VERBOSITY)params.verbose);
 	if( !sensors_->initializeSensors(serial_number) ) // Note: we use the serial number acquired by the VideoCapture object
 	{
-		std::cerr << "Cannot open sensors capture" << std::endl;
-		std::cerr << "Try to enable verbose to get more info" << std::endl;
+		UERROR("Cannot open sensors capture. Set log level <= info for more details.");
 		delete sensors_;
 		sensors_ = 0;
 	}
 	else
 	{
-		std::cout << "Sensors Capture connected to camera sn: " << sensors_->getSerialNumber() << std::endl;
-
+		UINFO("Sensors Capture connected to camera sn: %d", sensors_->getSerialNumber());
+		UINFO("Wait max 5 sec to see if the camera has imu...");
 		// Check is IMU data is available
-		const sl_oc::sensors::data::Imu& imu = sensors_->getLastIMUData();
-		if(imu.valid != sl_oc::sensors::data::Imu::NEW_VAL)
+		UTimer timer;
+		while(timer.elapsed() < 5 &&
+			  sensors_->getLastIMUData().valid != sl_oc::sensors::data::Imu::NEW_VAL)
 		{
-			UINFO("CameraStereoZEDOC: Camera doesn't have IMU sensor");
-			delete sensors_;
-			sensors_ = 0;
+			// wait 5 sec to see if we can get an imu stream...
+			uSleep(100);
+		}
+		if(timer.elapsed() > 5)
+		{
+			UINFO("Camera doesn't have IMU sensor");
 		}
 		else
 		{
+			UINFO("Camera has IMU");
+
 			// Start the sensor capture thread. Note: since sensor data can be retrieved at 400Hz and video data frequency is
 			// minor (max 100Hz), we use a separated thread for sensors.
 			// Transform based on ZED2: x->down, y->right, z->backward
 			Transform imuLocalTransform_ = this->getLocalTransform() * Transform(0,1,0,0, 1,0,0,0, 0,0,-1,0);
-			std::cout << imuLocalTransform_ << std::endl;
+			//std::cout << imuLocalTransform_ << std::endl;
 			imuThread_ = new ZedOCThread(sensors_, imuLocalTransform_);
 			// <---- Create Sensors Capture
 
 			// ----> Enable video/sensors synchronization
 			if(!zed_->enableSensorSync(sensors_))
 			{
-				UWARN("CameraStereoZEDOC: Failed to start synchronization");
+				UWARN("Failed to enable image/imu synchronization");
 			}
 			// <---- Enable video/sensors synchronization
 
@@ -712,7 +719,8 @@ SensorData CameraStereoZedOC::captureImage(CameraInfo * info)
 	{
 		UTimer timer;
 
-		bool imuReceived = true;
+		bool imuReceived = imuThread_!=0;
+		bool warned = false;
 		do
 		{
 			const sl_oc::video::Frame frame = zed_->getLastFrame();
@@ -729,6 +737,11 @@ SensorData CameraStereoZedOC::captureImage(CameraInfo * info)
 				{
 					imuThread_->getIMU(stamp, imu, 10);
 					imuReceived = !imu.empty();
+					if(!imuReceived && !warned && timer.elapsed() > 1.0)
+					{
+						UWARN("Waiting for synchronized imu (this can take several seconds when camera has been just started)...");
+						warned = true;
+					}
 				}
 
 				if(imuReceived)

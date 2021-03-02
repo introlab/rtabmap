@@ -6022,7 +6022,7 @@ Camera * PreferencesDialog::createCamera(bool useRawImages, bool useColor)
 	{
 		UDEBUG("ZEDOC");
 		camera = new CameraStereoZedOC(
-			this->getSourceDevice().isEmpty()?0:atoi(this->getSourceDevice().toStdString().c_str()),
+			this->getSourceDevice().isEmpty()?-1:atoi(this->getSourceDevice().toStdString().c_str()),
 			_ui->comboBox_stereoZedOC_resolution->currentIndex(),
 			this->getGeneralInputRate(),
 			this->getSourceLocalTransform());
