@@ -615,7 +615,11 @@ void RegistrationIcp::parseParameters(const ParametersMap & parameters)
 				params.clear();
 
 				params["force2D"] = force3DoF()?"1":"0";
-				params["force4DOF"] = !force3DoF()&&_libpointmatcherForce4DoF?"1":"0";
+
+				if(!force3DoF()&&_libpointmatcherForce4DoF)
+				{
+					params["force4DOF"] = "1";
+				}
 #if POINTMATCHER_VERSION_INT >= 10300
 				icp->errorMinimizer = PM::get().ErrorMinimizerRegistrar.create("PointToPlaneErrorMinimizer", params);
 #else
