@@ -281,6 +281,7 @@ private:
 	bool _proximityByTime;
 	bool _proximityBySpace;
 	bool _scanMatchingIdsSavedInLinks;
+	bool _loopClosureIdentityGuess;
 	float _localRadius;
 	float _localImmunizationRatio;
 	int _proximityMaxGraphDepth;

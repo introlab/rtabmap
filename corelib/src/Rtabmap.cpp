@@ -106,6 +106,7 @@ Rtabmap::Rtabmap() :
 	_proximityByTime(Parameters::defaultRGBDProximityByTime()),
 	_proximityBySpace(Parameters::defaultRGBDProximityBySpace()),
 	_scanMatchingIdsSavedInLinks(Parameters::defaultRGBDScanMatchingIdsSavedInLinks()),
+	_loopClosureIdentityGuess(Parameters::defaultRGBDLoopClosureIdentityGuess()),
 	_localRadius(Parameters::defaultRGBDLocalRadius()),
 	_localImmunizationRatio(Parameters::defaultRGBDLocalImmunizationRatio()),
 	_proximityMaxGraphDepth(Parameters::defaultRGBDProximityMaxGraphDepth()),
@@ -508,6 +509,7 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kRGBDProximityByTime(), _proximityByTime);
 	Parameters::parse(parameters, Parameters::kRGBDProximityBySpace(), _proximityBySpace);
 	Parameters::parse(parameters, Parameters::kRGBDScanMatchingIdsSavedInLinks(), _scanMatchingIdsSavedInLinks);
+	Parameters::parse(parameters, Parameters::kRGBDLoopClosureIdentityGuess(), _loopClosureIdentityGuess);
 	Parameters::parse(parameters, Parameters::kRGBDLocalRadius(), _localRadius);
 	Parameters::parse(parameters, Parameters::kRGBDLocalImmunizationRatio(), _localImmunizationRatio);
 	Parameters::parse(parameters, Parameters::kRGBDProximityMaxGraphDepth(), _proximityMaxGraphDepth);
@@ -1113,7 +1115,6 @@ bool Rtabmap::process(
 			_optimizedPoses.size() &&
 			_mapCorrection.isIdentity() &&
 			!_lastLocalizationPose.isNull() &&
-			!_lastLocalizationPose.isIdentity() &&
 			_lastLocalizationNodeId == 0)
 		{
 			// Localization mode
@@ -2598,7 +2599,12 @@ bool Rtabmap::process(
 		info.covariance = cv::Mat::eye(6,6,CV_64FC1);
 		if(_rgbdSlamMode)
 		{
-			transform = _memory->computeTransform(_loopClosureHypothesis.first, signature->id(), Transform(), &info);
+			transform = _memory->computeTransform(
+					_loopClosureHypothesis.first,
+					signature->id(),
+					_loopClosureIdentityGuess?Transform::getIdentity():Transform(),
+					&info);
+
 			loopClosureVisualInliersMeanDist = info.inliersMeanDistance;
 			loopClosureVisualInliersDistribution = info.inliersDistribution;
 
