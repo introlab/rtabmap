@@ -443,6 +443,8 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	connect(ui_->toolButton_groundColor, SIGNAL(clicked(bool)), this, SLOT(selectGroundColor()));
 	connect(ui_->toolButton_emptyColor, SIGNAL(clicked(bool)), this, SLOT(selectEmptyColor()));
 	connect(ui_->spinBox_cropRadius, SIGNAL(valueChanged(int)), this, SLOT(configModified()));
+	connect(ui_->checkBox_grid_showProbMap, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
+	connect(ui_->checkBox_grid_showProbMap, SIGNAL(stateChanged(int)), this, SLOT(updateGraphView()));
 
 	connect(exportDialog_, SIGNAL(configChanged()), this, SLOT(configModified()));
 
@@ -555,6 +557,7 @@ void DatabaseViewer::readSettings()
 	ui_->lineEdit_groundColor->setText(settings.value("colorGround", ui_->lineEdit_groundColor->text()).toString());
 	ui_->lineEdit_emptyColor->setText(settings.value("colorEmpty", ui_->lineEdit_emptyColor->text()).toString());
 	ui_->spinBox_cropRadius->setValue(settings.value("cropRadius", ui_->spinBox_cropRadius->value()).toInt());
+	ui_->checkBox_grid_showProbMap->setChecked(settings.value("probMap", ui_->checkBox_grid_showProbMap->isChecked()).toBool());
 	settings.endGroup();
 
 	settings.beginGroup("mesh");
@@ -640,6 +643,7 @@ void DatabaseViewer::writeSettings()
 	settings.setValue("colorGround", ui_->lineEdit_groundColor->text());
 	settings.setValue("colorEmpty", ui_->lineEdit_emptyColor->text());
 	settings.setValue("cropRadius", ui_->spinBox_cropRadius->value());
+	settings.setValue("probMap", ui_->checkBox_grid_showProbMap->isChecked());
 	settings.endGroup();
 
 	settings.beginGroup("mesh");
@@ -726,6 +730,7 @@ void DatabaseViewer::restoreDefaultSettings()
 	ui_->lineEdit_groundColor->setText(QColor(Qt::green).name());
 	ui_->lineEdit_emptyColor->setText(QColor(Qt::yellow).name());
 	ui_->spinBox_cropRadius->setValue(1);
+	ui_->checkBox_grid_showProbMap->setChecked(false);
 
 	ui_->checkBox_mesh_quad->setChecked(true);
 	ui_->spinBox_mesh_angleTolerance->setValue(15);
@@ -6411,7 +6416,14 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 						grid.addToCache(iter->first, iter->second.first.first, iter->second.first.second, iter->second.second);
 					}
 					grid.update(graphFiltered);
-					map = grid.getMap(xMin, yMin);
+					if(ui_->checkBox_grid_showProbMap->isChecked())
+					{
+						map = grid.getProbMap(xMin, yMin);
+					}
+					else
+					{
+						map = grid.getMap(xMin, yMin);
+					}
 				}
 
 				ui_->label_timeGrid->setNum(double(time.elapsed())/1000.0);

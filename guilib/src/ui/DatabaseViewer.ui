@@ -61,7 +61,7 @@
           <rect>
            <x>0</x>
            <y>0</y>
-           <width>419</width>
+           <width>311</width>
            <height>311</height>
           </rect>
          </property>
@@ -304,7 +304,7 @@
           <rect>
            <x>0</x>
            <y>0</y>
-           <width>418</width>
+           <width>311</width>
            <height>311</height>
           </rect>
          </property>
@@ -1379,7 +1379,7 @@
      <item>
       <widget class="QToolBox" name="toolBox">
        <property name="currentIndex">
-        <number>0</number>
+        <number>1</number>
        </property>
        <widget class="QWidget" name="page_3">
         <property name="geometry">
@@ -1541,9 +1541,9 @@
         <property name="geometry">
          <rect>
           <x>0</x>
-          <y>0</y>
-          <width>280</width>
-          <height>949</height>
+          <y>-330</y>
+          <width>519</width>
+          <height>871</height>
          </rect>
         </property>
         <attribute name="label">
@@ -1552,6 +1552,16 @@
         <layout class="QVBoxLayout" name="verticalLayout_16">
          <item>
           <layout class="QGridLayout" name="gridLayout_9" columnstretch="0,0">
+           <item row="7" column="1">
+            <widget class="QLabel" name="label_octomap_cubes">
+             <property name="text">
+              <string>OctoMap: Rendering type</string>
+             </property>
+             <property name="wordWrap">
+              <bool>true</bool>
+             </property>
+            </widget>
+           </item>
            <item row="10" column="1">
             <widget class="QLabel" name="label_51">
              <property name="text">
@@ -1662,16 +1672,6 @@
               <string/>
              </property>
              <property name="checked">
-              <bool>true</bool>
-             </property>
-            </widget>
-           </item>
-           <item row="7" column="1">
-            <widget class="QLabel" name="label_octomap_cubes">
-             <property name="text">
-              <string>OctoMap: Rendering type</string>
-             </property>
-             <property name="wordWrap">
               <bool>true</bool>
              </property>
             </widget>
@@ -1852,6 +1852,26 @@
              </property>
              <property name="value">
               <number>1</number>
+             </property>
+            </widget>
+           </item>
+           <item row="14" column="1">
+            <widget class="QLabel" name="label_59">
+             <property name="text">
+              <string>Show probabilistic occupancy grid in Graph View.</string>
+             </property>
+             <property name="wordWrap">
+              <bool>true</bool>
+             </property>
+            </widget>
+           </item>
+           <item row="14" column="0">
+            <widget class="QCheckBox" name="checkBox_grid_showProbMap">
+             <property name="text">
+              <string/>
+             </property>
+             <property name="checked">
+              <bool>false</bool>
              </property>
             </widget>
            </item>

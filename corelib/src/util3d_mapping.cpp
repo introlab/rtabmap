@@ -932,9 +932,17 @@ cv::Mat convertMap2Image8U(const cv::Mat & map8S, bool pgmFormat)
 			{
 				gray = pgmFormat?254:200;
 			}
-			else // -1
+			else if(pgmFormat || v == -1)// -1
 			{
 				gray = pgmFormat?205:89;
+			}
+			else if(v>50)
+			{
+				gray = double(100-v)*2/100.0*double(89);
+			}
+			else // v<50
+			{
+				gray = double(50-v)*2/100.0*double(178-89)+89;
 			}
 			map8U.at<unsigned char>(i, j) = gray;
 		}

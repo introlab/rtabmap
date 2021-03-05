@@ -669,6 +669,10 @@ cv::Mat OccupancyGrid::getProbMap(float & xMin, float & yMin) const
 			}
 		}
 	}
+	else
+	{
+		UWARN("Map info is empty, cannot generate probabilistic occupancy grid");
+	}
 	return map;
 }
 
@@ -1244,6 +1248,7 @@ bool OccupancyGrid::update(const std::map<int, Transform> & posesIn)
 							ptBegin.y = 0;
 						if(ptEnd.y >= map.rows)
 							ptEnd.y = map.rows-1;
+
 						for(int i=ptBegin.x; i<ptEnd.x; ++i)
 						{
 							for(int j=ptBegin.y; j<ptEnd.y; ++j)
@@ -1282,6 +1287,7 @@ bool OccupancyGrid::update(const std::map<int, Transform> & posesIn)
 									info[0] = (float)kter->first;
 									info[1] = float(i) * cellSize_ + xMin;
 									info[2] = float(j) * cellSize_ + yMin;
+									info[3] = probClampingMin_;
 									cter->second.first+=1;
 								}
 								value = -2; // free space (footprint)
