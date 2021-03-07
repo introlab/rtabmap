@@ -64,6 +64,7 @@ void showUsage()
 			"                                     12=Kinect for Azure SDK\n"
 			"                                     13=MYNT EYE S\n"
 			"                                     14=ZED Open Capture\n"
+			"                                     15=depthai-core\n"
 			"  Options:\n"
 			"      -rate #.#                      Input rate Hz (default 0=inf)\n"
 			"      -device #                      Device ID (number or string)\n"
@@ -175,9 +176,9 @@ int main(int argc, char * argv[])
 
 			// last
 			driver = atoi(argv[i]);
-			if(driver < 0 || driver > 14)
+			if(driver < 0 || driver > 15)
 			{
-				UERROR("driver should be between 0 and 14.");
+				UERROR("driver should be between 0 and 15.");
 				showUsage();
 			}
 		}
@@ -323,6 +324,15 @@ int main(int argc, char * argv[])
 			exit(-1);
 		}
 		camera = new rtabmap::CameraStereoZedOC(deviceId.empty()?-1:uStr2Int(deviceId));
+	}
+	else if (driver == 15)
+	{
+		if (!rtabmap::CameraDepthAI::available())
+		{
+			UERROR("Not built with depthai-core support...");
+			exit(-1);
+		}
+		camera = new rtabmap::CameraDepthAI(deviceId);
 	}
 	else
 	{

@@ -63,7 +63,7 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>0</y>
+            <y>-265</y>
             <width>686</width>
             <height>3357</height>
            </rect>
@@ -95,7 +95,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>12</number>
+                <number>5</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,1">
@@ -4821,6 +4821,11 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                  <string>ZED Open Capture</string>
                                 </property>
                                </item>
+                               <item>
+                                <property name="text">
+                                 <string>DepthAI</string>
+                                </property>
+                               </item>
                               </widget>
                              </item>
                              <item row="0" column="2">
@@ -4901,7 +4906,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                            <item>
                             <widget class="QStackedWidget" name="stackedWidget_stereo">
                              <property name="currentIndex">
-                              <number>9</number>
+                              <number>10</number>
                              </property>
                              <widget class="QWidget" name="page_49">
                               <layout class="QVBoxLayout" name="verticalLayout_91">
@@ -5481,7 +5486,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                     <property name="sizeHint" stdset="0">
                                      <size>
                                       <width>20</width>
-                                      <height>40</height>
+                                      <height>0</height>
                                      </size>
                                     </property>
                                    </spacer>
@@ -5771,19 +5776,6 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                     </item>
                                    </widget>
                                   </item>
-                                  <item row="1" column="0">
-                                   <spacer name="verticalSpacer_70">
-                                    <property name="orientation">
-                                     <enum>Qt::Vertical</enum>
-                                    </property>
-                                    <property name="sizeHint" stdset="0">
-                                     <size>
-                                      <width>20</width>
-                                      <height>0</height>
-                                     </size>
-                                    </property>
-                                   </spacer>
-                                  </item>
                                   <item row="0" column="1">
                                    <widget class="QLabel" name="label_624">
                                     <property name="text">
@@ -5799,6 +5791,135 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                   </item>
                                  </layout>
                                 </widget>
+                               </item>
+                               <item>
+                                <spacer name="verticalSpacer_70">
+                                 <property name="orientation">
+                                  <enum>Qt::Vertical</enum>
+                                 </property>
+                                 <property name="sizeHint" stdset="0">
+                                  <size>
+                                   <width>20</width>
+                                   <height>0</height>
+                                  </size>
+                                 </property>
+                                </spacer>
+                               </item>
+                              </layout>
+                             </widget>
+                             <widget class="QWidget" name="page_89">
+                              <layout class="QVBoxLayout" name="verticalLayout_155">
+                               <item>
+                                <widget class="QGroupBox" name="groupBox_cameraDepthAI">
+                                 <property name="sizePolicy">
+                                  <sizepolicy hsizetype="Ignored" vsizetype="Ignored">
+                                   <horstretch>0</horstretch>
+                                   <verstretch>0</verstretch>
+                                  </sizepolicy>
+                                 </property>
+                                 <property name="title">
+                                  <string>DepthAI</string>
+                                 </property>
+                                 <layout class="QGridLayout" name="gridLayout_120" columnstretch="0,1">
+                                  <item row="0" column="1">
+                                   <widget class="QLabel" name="label_626">
+                                    <property name="text">
+                                     <string>Resolution.</string>
+                                    </property>
+                                    <property name="wordWrap">
+                                     <bool>true</bool>
+                                    </property>
+                                    <property name="textInteractionFlags">
+                                     <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="1" column="1">
+                                   <widget class="QLabel" name="label_625">
+                                    <property name="text">
+                                     <string>Output depth.</string>
+                                    </property>
+                                    <property name="wordWrap">
+                                     <bool>true</bool>
+                                    </property>
+                                    <property name="textInteractionFlags">
+                                     <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="1" column="0">
+                                   <widget class="QCheckBox" name="checkBox_depthai_depth">
+                                    <property name="text">
+                                     <string/>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="0" column="0">
+                                   <widget class="QComboBox" name="comboBox_depthai_resolution">
+                                    <property name="currentIndex">
+                                     <number>1</number>
+                                    </property>
+                                    <property name="sizeAdjustPolicy">
+                                     <enum>QComboBox::AdjustToContents</enum>
+                                    </property>
+                                    <item>
+                                     <property name="text">
+                                      <string>720p</string>
+                                     </property>
+                                    </item>
+                                    <item>
+                                     <property name="text">
+                                      <string>800p</string>
+                                     </property>
+                                    </item>
+                                    <item>
+                                     <property name="text">
+                                      <string>400p</string>
+                                     </property>
+                                    </item>
+                                   </widget>
+                                  </item>
+                                  <item row="2" column="1">
+                                   <widget class="QLabel" name="label_627">
+                                    <property name="text">
+                                     <string>Depth confidence.</string>
+                                    </property>
+                                    <property name="wordWrap">
+                                     <bool>true</bool>
+                                    </property>
+                                    <property name="textInteractionFlags">
+                                     <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="2" column="0">
+                                   <widget class="QSpinBox" name="spinBox_depthai_confidence">
+                                    <property name="minimum">
+                                     <number>0</number>
+                                    </property>
+                                    <property name="maximum">
+                                     <number>255</number>
+                                    </property>
+                                    <property name="value">
+                                     <number>200</number>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                 </layout>
+                                </widget>
+                               </item>
+                               <item>
+                                <spacer name="verticalSpacer_72">
+                                 <property name="orientation">
+                                  <enum>Qt::Vertical</enum>
+                                 </property>
+                                 <property name="sizeHint" stdset="0">
+                                  <size>
+                                   <width>20</width>
+                                   <height>0</height>
+                                  </size>
+                                 </property>
+                                </spacer>
                                </item>
                               </layout>
                              </widget>

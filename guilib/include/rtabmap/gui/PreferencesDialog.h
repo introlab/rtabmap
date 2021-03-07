@@ -106,6 +106,7 @@ public:
 		kSrcStereoRealSense2 = 107,
 		kSrcStereoMyntEye  = 108,
 		kSrcStereoZedOC    = 109,
+		kSrcStereoDepthAI  = 110,
 
 		kSrcRGB            = 200,
 		kSrcUsbDevice      = 200,

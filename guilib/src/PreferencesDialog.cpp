@@ -371,6 +371,10 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	{
 		_ui->comboBox_cameraStereo->setItemData(kSrcStereoZedOC - kSrcStereo, 0, Qt::UserRole - 1);
 	}
+    if (!CameraDepthAI::available())
+	{
+		_ui->comboBox_cameraStereo->setItemData(kSrcStereoDepthAI - kSrcStereo, 0, Qt::UserRole - 1);
+	}
 	_ui->openni2_exposure->setEnabled(CameraOpenNI2::exposureGainAvailable());
 	_ui->openni2_gain->setEnabled(CameraOpenNI2::exposureGainAvailable());
 
@@ -768,6 +772,10 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->spinBox_stereoMyntEye_brightness, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->spinBox_stereoMyntEye_contrast, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->spinBox_stereoMyntEye_irControl, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+
+	connect(_ui->comboBox_depthai_resolution, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->checkBox_depthai_depth, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->spinBox_depthai_confidence, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 
 	connect(_ui->checkbox_rgbd_colorOnly, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->spinBox_source_imageDecimation, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
@@ -1980,6 +1988,9 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->spinBox_stereoMyntEye_brightness->setValue(120);
 		_ui->spinBox_stereoMyntEye_contrast->setValue(116);
 		_ui->spinBox_stereoMyntEye_irControl->setValue(0);
+		_ui->comboBox_depthai_resolution->setCurrentIndex(1);
+		_ui->checkBox_depthai_depth->setChecked(false);
+		_ui->spinBox_depthai_confidence->setValue(200);
 
 		_ui->checkBox_cameraImages_configForEachFrame->setChecked(false);
 		_ui->checkBox_cameraImages_timestamps->setChecked(false);
@@ -2446,6 +2457,12 @@ void PreferencesDialog::readCameraSettings(const QString & filePath)
 	_ui->spinBox_stereoMyntEye_contrast->setValue(settings.value("contrast", _ui->spinBox_stereoMyntEye_contrast->value()).toInt());
 	_ui->spinBox_stereoMyntEye_irControl->setValue(settings.value("ir_control", _ui->spinBox_stereoMyntEye_irControl->value()).toInt());
 	settings.endGroup(); // MyntEye
+
+	settings.beginGroup("DepthAI");
+	_ui->comboBox_depthai_resolution->setCurrentIndex(settings.value("resolution", _ui->comboBox_depthai_resolution->currentIndex()).toInt());
+	_ui->checkBox_depthai_depth->setChecked(settings.value("depth", _ui->checkBox_depthai_depth->isChecked()).toBool());
+	_ui->spinBox_depthai_confidence->setValue(settings.value("confidence", _ui->spinBox_depthai_confidence->value()).toInt());
+	settings.endGroup(); // DepthAI
 
 	settings.beginGroup("Images");
 	_ui->source_images_lineEdit_path->setText(settings.value("path", _ui->source_images_lineEdit_path->text()).toString());
@@ -2934,6 +2951,12 @@ void PreferencesDialog::writeCameraSettings(const QString & filePath) const
 	settings.setValue("contrast",      _ui->spinBox_stereoMyntEye_contrast->value());
 	settings.setValue("ir_control",    _ui->spinBox_stereoMyntEye_irControl->value());
 	settings.endGroup(); // MyntEye
+
+	settings.beginGroup("DepthAI");
+	settings.setValue("resolution",    _ui->comboBox_depthai_resolution->currentIndex());
+	settings.setValue("depth",         _ui->checkBox_depthai_depth->isChecked());
+	settings.setValue("confidence",    _ui->spinBox_depthai_confidence->value());
+	settings.endGroup(); // DepthAI
 
 	settings.beginGroup("Images");
 	settings.setValue("path", 			_ui->source_images_lineEdit_path->text());
@@ -5009,7 +5032,8 @@ void PreferencesDialog::updateSourceGrpVisibility()
 		 _ui->comboBox_cameraStereo->currentIndex() == kSrcStereoUsb - kSrcStereo ||
 		 _ui->comboBox_cameraStereo->currentIndex() == kSrcStereoRealSense2 - kSrcStereo ||
 		 _ui->comboBox_cameraStereo->currentIndex() == kSrcStereoMyntEye - kSrcStereo ||
-		 _ui->comboBox_cameraStereo->currentIndex() == kSrcStereoZedOC - kSrcStereo));
+		 _ui->comboBox_cameraStereo->currentIndex() == kSrcStereoZedOC - kSrcStereo ||
+		 _ui->comboBox_cameraStereo->currentIndex() == kSrcStereoDepthAI - kSrcStereo));
 	_ui->groupBox_cameraStereoImages->setVisible(_ui->comboBox_sourceType->currentIndex() == 1 && _ui->comboBox_cameraStereo->currentIndex() == kSrcStereoImages-kSrcStereo);
 	_ui->groupBox_cameraStereoVideo->setVisible(_ui->comboBox_sourceType->currentIndex() == 1 && _ui->comboBox_cameraStereo->currentIndex() == kSrcStereoVideo - kSrcStereo);
 	_ui->groupBox_cameraStereoUsb->setVisible(_ui->comboBox_sourceType->currentIndex() == 1 && _ui->comboBox_cameraStereo->currentIndex() == kSrcStereoUsb - kSrcStereo);
@@ -5017,6 +5041,7 @@ void PreferencesDialog::updateSourceGrpVisibility()
 	_ui->groupBox_cameraStereoRealSense2->setVisible(_ui->comboBox_sourceType->currentIndex() == 1 && _ui->comboBox_cameraStereo->currentIndex() == kSrcStereoRealSense2 - kSrcStereo);
 	_ui->groupBox_cameraMyntEye->setVisible(_ui->comboBox_sourceType->currentIndex() == 1 && _ui->comboBox_cameraStereo->currentIndex() == kSrcStereoMyntEye - kSrcStereo);
 	_ui->groupBox_cameraStereoZedOC->setVisible(_ui->comboBox_sourceType->currentIndex() == 1 && _ui->comboBox_cameraStereo->currentIndex() == kSrcStereoZedOC - kSrcStereo);
+	_ui->groupBox_cameraDepthAI->setVisible(_ui->comboBox_sourceType->currentIndex() == 1 && _ui->comboBox_cameraStereo->currentIndex() == kSrcStereoDepthAI - kSrcStereo);
 
 	_ui->stackedWidget_image->setVisible(_ui->comboBox_sourceType->currentIndex() == 2 &&
 			(_ui->source_comboBox_image_type->currentIndex() == kSrcImages-kSrcRGB ||
@@ -6027,6 +6052,16 @@ Camera * PreferencesDialog::createCamera(bool useRawImages, bool useColor)
 			_ui->comboBox_stereoZedOC_resolution->currentIndex(),
 			this->getGeneralInputRate(),
 			this->getSourceLocalTransform());
+	}
+	else if (driver == kSrcStereoDepthAI)
+	{
+		UDEBUG("DepthAI");
+		camera = new CameraDepthAI(
+			this->getSourceDevice().toStdString().c_str(),
+			_ui->comboBox_depthai_resolution->currentIndex(),
+			this->getGeneralInputRate(),
+			this->getSourceLocalTransform());
+		((CameraDepthAI*)camera)->setOutputDepth(_ui->checkBox_depthai_depth->isChecked(), _ui->spinBox_depthai_confidence->value());
 	}
 	else if(driver == kSrcUsbDevice)
 	{

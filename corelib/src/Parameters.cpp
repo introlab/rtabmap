@@ -733,6 +733,12 @@ ParametersMap Parameters::parseArguments(int argc, char * argv[], bool onlyParam
 #else
 				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
 #endif
+				str = "With ZED Open Capture:";
+#ifdef RTABMAP_ZEDOC
+				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
+#else
+				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
+#endif
 				str = "With RealSense:";
 #ifdef RTABMAP_REALSENSE
 				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
@@ -753,6 +759,12 @@ ParametersMap Parameters::parseArguments(int argc, char * argv[], bool onlyParam
 #endif
 				str = "With MYNT EYE S:";
 #ifdef RTABMAP_MYNTEYE
+				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
+#else
+				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
+#endif
+				str = "With DepthAI:";
+#ifdef RTABMAP_DEPTHAI
 				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
 #else
 				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;

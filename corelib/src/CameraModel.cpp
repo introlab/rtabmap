@@ -233,7 +233,7 @@ bool CameraModel::load(const std::string & filePath)
 			n = fs["camera_name"];
 			if(n.type() != cv::FileNode::NONE)
 			{
-				name_ = (int)n;
+				name_ = (std::string)n;
 			}
 			else
 			{
@@ -766,7 +766,7 @@ bool CameraModel::inFrame(int u, int v) const
 
 std::ostream& operator<<(std::ostream& os, const CameraModel& model)
 {
-	os << "Name: " << model.name() << std::endl
+	os << "Name: " << model.name().c_str() << std::endl
 	   << "Size: " << model.imageWidth() << "x" << model.imageHeight() << std::endl
 	   << "K= " << model.K_raw() << std::endl
 	   << "D= " << model.D_raw() << std::endl
