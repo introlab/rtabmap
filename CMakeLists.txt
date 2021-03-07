@@ -530,7 +530,7 @@ IF(WITH_MYNTEYE)
 ENDIF(WITH_MYNTEYE)
 
 IF(WITH_DEPTHAI)
-    FIND_PACKAGE(depthai QUIET)
+    FIND_PACKAGE(depthai 2 QUIET)
     IF(depthai_FOUND)
        MESSAGE(STATUS "Found depthai-core (targets)")
     ENDIF(depthai_FOUND)
