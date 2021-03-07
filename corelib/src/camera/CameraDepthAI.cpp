@@ -69,12 +69,15 @@ CameraDepthAI::~CameraDepthAI()
 
 void CameraDepthAI::setOutputDepth(bool enabled, int confidence)
 {
+#ifdef RTABMAP_DEPTHAI
 	outputDepth_ = enabled;
 	if(outputDepth_)
 	{
-		resolution_ = 1; // For hard coded calibration in depth mode
 		depthConfidence_ = confidence;
 	}
+#else
+	UERROR("CameraDepthAI: RTAB-Map is not built with depthai-core support!");
+#endif
 }
 
 std::vector<unsigned char> convertCalibration(const StereoCameraModel & stereoModel)
