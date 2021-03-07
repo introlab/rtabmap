@@ -37,6 +37,7 @@ SET(SRC_FILES
     camera/CameraStereoTara.cpp
     camera/CameraVideo.cpp
     camera/CameraMyntEye.cpp
+    camera/CameraDepthAI.cpp
     
     EpipolarGeometry.cpp
     VisualWord.cpp
@@ -337,6 +338,14 @@ IF(mynteye_FOUND)
 		mynteye # target
 	)
 ENDIF(mynteye_FOUND)
+
+IF(depthai_FOUND)
+	SET(LIBRARIES
+		${LIBRARIES}
+		depthai::depthai-core
+		depthai::depthai-opencv
+	)
+ENDIF(depthai_FOUND)
 
 IF(WITH_TORO)
 	SET(SRC_FILES

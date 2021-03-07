@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2010-2016, Mathieu Labbe - IntRoLab - Universite de Sherbrooke
+Copyright (c) 2010-2021, Mathieu Labbe - IntRoLab - Universite de Sherbrooke
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -27,12 +27,57 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #pragma once
 
-#include <rtabmap/core/camera/CameraStereoDC1394.h>
-#include <rtabmap/core/camera/CameraStereoFlyCapture2.h>
-#include <rtabmap/core/camera/CameraStereoImages.h>
-#include <rtabmap/core/camera/CameraStereoVideo.h>
-#include <rtabmap/core/camera/CameraStereoZed.h>
-#include <rtabmap/core/camera/CameraStereoZedOC.h>
-#include <rtabmap/core/camera/CameraStereoTara.h>
-#include <rtabmap/core/camera/CameraMyntEye.h>
-#include <rtabmap/core/camera/CameraDepthAI.h>
+#include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
+
+#include "rtabmap/core/StereoCameraModel.h"
+#include "rtabmap/core/Camera.h"
+#include "rtabmap/core/Version.h"
+
+#ifdef RTABMAP_DEPTHAI
+#ifndef DEPTHAI_OPENCV_SUPPORT
+#define DEPTHAI_OPENCV_SUPPORT
+#endif
+#include <depthai/depthai.hpp>
+#endif
+
+namespace rtabmap
+{
+
+class RTABMAP_EXP CameraDepthAI :
+	public Camera
+{
+public:
+	static bool available();
+
+public:
+	CameraDepthAI(
+			const std::string & deviceSerial = "",
+			int resolution = 1, // 0=720p, 1=800p, 2=400p
+			float imageRate=0.0f,
+			const Transform & localTransform = CameraModel::opticalRotation());
+	virtual ~CameraDepthAI();
+
+	void setOutputDepth(bool enabled, int confidence = 200);
+
+	virtual bool init(const std::string & calibrationFolder = ".", const std::string & cameraName = "");
+	virtual bool isCalibrated() const;
+	virtual std::string getSerial() const;
+
+protected:
+	virtual SensorData captureImage(CameraInfo * info = 0);
+
+private:
+#ifdef RTABMAP_DEPTHAI
+	StereoCameraModel stereoModel_;
+	std::string deviceSerial_;
+	bool outputDepth_;
+	int depthConfidence_;
+	int resolution_;
+	std::shared_ptr<dai::Device> device_;
+	std::shared_ptr<dai::DataOutputQueue> leftQueue_;
+	std::shared_ptr<dai::DataOutputQueue> rightOrDepthQueue_;
+#endif
+};
+
+
+} // namespace rtabmap

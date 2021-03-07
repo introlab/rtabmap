@@ -874,11 +874,12 @@ void CalibrationDialog::calibrate()
 					stereoModel_.baseline(), ui_->doubleSpinBox_stereoBaseline->value());
 			cv::Mat P = stereoModel_.right().P().clone();
 			P.at<double>(0,3) = -P.at<double>(0,0)*ui_->doubleSpinBox_stereoBaseline->value();
+			double scale = ui_->doubleSpinBox_stereoBaseline->value() / stereoModel_.baseline();
 			stereoModel_ = StereoCameraModel(
 					stereoModel_.name(),
 					stereoModel_.left().imageSize(),stereoModel_.left().K_raw(), stereoModel_.left().D_raw(), stereoModel_.left().R(), stereoModel_.left().P(),
 					stereoModel_.right().imageSize(), stereoModel_.right().K_raw(), stereoModel_.right().D_raw(), stereoModel_.right().R(), P,
-					stereoModel_.R(), stereoModel_.T(), stereoModel_.E(), stereoModel_.F(), stereoModel_.localTransform());
+					stereoModel_.R(), stereoModel_.T()*scale, stereoModel_.E(), stereoModel_.F(), stereoModel_.localTransform());
 		}
 
 		std::stringstream strR1, strP1, strR2, strP2;
@@ -901,7 +902,7 @@ void CalibrationDialog::calibrate()
 			QMessageBox::warning(this, tr("Stereo Calibration"),
 					tr("\"fx\" after stereo rectification (%1) is not close from original "
 					   "calibration (%2), the difference would have to be under 5. You may "
-					   "restart the calibration.")
+					   "restart the calibration or keep it as is.")
 					   .arg(stereoModel_.left().P().at<double>(0,0))
 					   .arg(stereoModel_.left().K_raw().at<double>(0,0)));
 		}

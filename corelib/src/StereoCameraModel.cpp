@@ -602,4 +602,17 @@ Transform StereoCameraModel::stereoTransform() const
 	return Transform();
 }
 
+std::ostream& operator<<(std::ostream& os, const StereoCameraModel& model)
+{
+	os << "Left Camera " << model.left() << std::endl
+	   << "Right Camera " << model.right() << std::endl
+	   << "Stereo Extrinsics:" << std::endl
+	   << "R= " << model.R() << std::endl
+	   << "T= " << model.T() << std::endl
+	   << "E= " << model.E() << std::endl
+	   << "F= "<< model.F() << std::endl
+	   << "baseline= " << model.baseline() << std::endl;
+	return os;
+}
+
 } /* namespace rtabmap */

@@ -300,11 +300,22 @@
        </property>
        <addaction name="actionMYNT_EYE_S_SDK"/>
       </widget>
+      <widget class="QMenu" name="menuOAK_D">
+       <property name="title">
+        <string>OAK-D</string>
+       </property>
+       <property name="icon">
+        <iconset resource="../GuiLib.qrc">
+         <normaloff>:/images/oakd.png</normaloff>:/images/oakd.png</iconset>
+       </property>
+       <addaction name="actionDepthAI"/>
+      </widget>
       <addaction name="menuBumblebee2_2"/>
       <addaction name="menuZed_camera"/>
       <addaction name="menuTara_Camera"/>
       <addaction name="menuRealSense_T265"/>
       <addaction name="menuMynt_Eye_S"/>
+      <addaction name="menuOAK_D"/>
      </widget>
      <addaction name="menuRGB_D_camera"/>
      <addaction name="menuStereo_camera"/>
@@ -1624,6 +1635,14 @@
    </property>
    <property name="text">
     <string>Zed Open Capture</string>
+   </property>
+  </action>
+  <action name="actionDepthAI">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>DepthAI</string>
    </property>
   </action>
  </widget>

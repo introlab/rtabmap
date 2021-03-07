@@ -140,6 +140,8 @@ private:
 	cv::Mat F_;
 };
 
+RTABMAP_EXP std::ostream& operator<<(std::ostream& os, const StereoCameraModel& model);
+
 } // rtabmap
 
 #endif /* STEREOCAMERAMODEL_H_ */
