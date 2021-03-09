@@ -63,9 +63,9 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-265</y>
+            <y>-2259</y>
             <width>686</width>
-            <height>3397</height>
+            <height>3414</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -7230,6 +7230,9 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                            <property name="wordWrap">
                             <bool>true</bool>
                            </property>
+                           <property name="textInteractionFlags">
+                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                           </property>
                           </widget>
                          </item>
                          <item row="1" column="1">
@@ -7239,6 +7242,9 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                            </property>
                            <property name="wordWrap">
                             <bool>true</bool>
+                           </property>
+                           <property name="textInteractionFlags">
+                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                            </property>
                           </widget>
                          </item>
