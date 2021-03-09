@@ -189,12 +189,17 @@ AboutDialog::AboutDialog(QWidget * parent) :
 	_ui->label_dvo->setText("No");
 	_ui->label_dvo_license->setEnabled(false);
 #endif
-#ifdef RTABMAP_ORB_SLAM2
-	_ui->label_orbslam2->setText("Yes");
-	_ui->label_orbslam2_license->setEnabled(true);
+#ifdef RTABMAP_ORB_SLAM
+#if RTABMAP_ORB_SLAM == 3
+	_ui->label_orbslam_title->setText("With ORB SLAM3 :");
+#elif RTABMAP_ORB_SLAM == 2
+	_ui->label_orbslam_title->setText("With ORB SLAM2 :");
+#endif
+	_ui->label_orbslam->setText("Yes");
+	_ui->label_orbslam_license->setEnabled(true);
 #else
-	_ui->label_orbslam2->setText("No");
-	_ui->label_orbslam2_license->setEnabled(false);
+	_ui->label_orbslam->setText("No");
+	_ui->label_orbslam_license->setEnabled(false);
 #endif
 
 #ifdef RTABMAP_OKVIS

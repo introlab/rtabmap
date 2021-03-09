@@ -162,9 +162,9 @@ p, li { white-space: pre-wrap; }
            <property name="geometry">
             <rect>
              <x>0</x>
-             <y>-228</y>
+             <y>-567</y>
              <width>596</width>
-             <height>929</height>
+             <height>912</height>
             </rect>
            </property>
            <layout class="QVBoxLayout" name="verticalLayout_2">
@@ -430,7 +430,7 @@ p, li { white-space: pre-wrap; }
                </widget>
               </item>
               <item row="35" column="0">
-               <widget class="QLabel" name="label_28">
+               <widget class="QLabel" name="label_orbslam_title">
                 <property name="text">
                  <string>With ORB SLAM 2 :</string>
                 </property>
@@ -450,7 +450,7 @@ p, li { white-space: pre-wrap; }
                </widget>
               </item>
               <item row="35" column="1">
-               <widget class="QLabel" name="label_orbslam2">
+               <widget class="QLabel" name="label_orbslam">
                 <property name="text">
                  <string/>
                 </property>
@@ -944,7 +944,7 @@ p, li { white-space: pre-wrap; }
                </widget>
               </item>
               <item row="35" column="2">
-               <widget class="QLabel" name="label_orbslam2_license">
+               <widget class="QLabel" name="label_orbslam_license">
                 <property name="text">
                  <string>GPLv3</string>
                 </property>

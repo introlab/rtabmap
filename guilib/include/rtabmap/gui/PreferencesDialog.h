@@ -254,6 +254,7 @@ public:
 	bool isSourceDatabaseStereoToDepth() const;
 	bool isSourceRGBDColorOnly() const;
 	int getIMUFilteringStrategy() const;
+	bool getIMUFilteringBaseFrameConversion() const;
 	bool isDepthFilteringAvailable() const;
 	QString getSourceDistortionModel() const;
 	bool isBilateralFiltering() const;
@@ -337,7 +338,7 @@ private Q_SLOTS:
 	void useOdomFeatures();
 	void changeWorkingDirectory();
 	void changeDictionaryPath();
-	void changeOdometryORBSLAM2Vocabulary();
+	void changeOdometryORBSLAMVocabulary();
 	void changeOdometryOKVISConfigPath();
 	void changeOdometryVINSConfigPath();
 	void changeIcpPMConfigPath();

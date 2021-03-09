@@ -395,7 +395,7 @@ void OdometryViewer::processData(const rtabmap::OdometryEvent & odom)
 
 	if(!odom.data().imageRaw().empty())
 	{
-		if(odom.info().type == (int)Odometry::kTypeF2M || odom.info().type == (int)Odometry::kTypeORBSLAM2)
+		if(odom.info().type == (int)Odometry::kTypeF2M || odom.info().type == (int)Odometry::kTypeORBSLAM)
 		{
 			imageView_->setFeatures(odom.info().words, odom.data().depthRaw(), Qt::yellow);
 		}
@@ -438,7 +438,7 @@ void OdometryViewer::processData(const rtabmap::OdometryEvent & odom)
 			}
 
 			if( odom.info().type == Odometry::kTypeF2M ||
-				odom.info().type == (int)Odometry::kTypeORBSLAM2 ||
+				odom.info().type == (int)Odometry::kTypeORBSLAM ||
 				odom.info().type == (int)Odometry::kTypeMSCKF)
 			{
 				if(imageView_->isFeaturesShown())

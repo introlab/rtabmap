@@ -234,6 +234,14 @@ const std::map<std::string, std::pair<bool, std::string> > & Parameters::getRemo
 	{
 		// removed parameters
 
+		// 0.20.9
+		removedParameters_.insert(std::make_pair("OdomORBSLAM2/VocPath",     std::make_pair(true, Parameters::kOdomORBSLAMVocPath())));
+		removedParameters_.insert(std::make_pair("OdomORBSLAM2/Bf",          std::make_pair(true, Parameters::kOdomORBSLAMBf())));
+		removedParameters_.insert(std::make_pair("OdomORBSLAM2/ThDepth",     std::make_pair(true, Parameters::kOdomORBSLAMThDepth())));
+		removedParameters_.insert(std::make_pair("OdomORBSLAM2/Fps",         std::make_pair(true, Parameters::kOdomORBSLAMFps())));
+		removedParameters_.insert(std::make_pair("OdomORBSLAM2/MaxFeatures", std::make_pair(true, Parameters::kOdomORBSLAMMaxFeatures())));
+		removedParameters_.insert(std::make_pair("OdomORBSLAM2/MapSize",     std::make_pair(true, Parameters::kOdomORBSLAMMapSize())));
+
 		// 0.20.
 		removedParameters_.insert(std::make_pair("SuperGlue/Path",           std::make_pair(true, Parameters::kPyMatcherPath())));
 		removedParameters_.insert(std::make_pair("SuperGlue/Iterations",     std::make_pair(true, Parameters::kPyMatcherIterations())));
@@ -823,8 +831,14 @@ ParametersMap Parameters::parseArguments(int argc, char * argv[], bool onlyParam
 #else
 				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
 #endif
+#if RTABMAP_ORB_SLAM == 3
+				str = "With ORB_SLAM3:";
+#elif RTABMAP_ORB_SLAM == 2
 				str = "With ORB_SLAM2:";
-#ifdef RTABMAP_ORB_SLAM2
+#else
+				str = "With ORB_SLAM:";
+#endif
+#ifdef RTABMAP_ORB_SLAM
 				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
 #else
 				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;

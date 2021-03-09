@@ -65,7 +65,7 @@
             <x>0</x>
             <y>-265</y>
             <width>686</width>
-            <height>3357</height>
+            <height>3397</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -7212,7 +7212,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                            </property>
                           </widget>
                          </item>
-                         <item row="1" column="0">
+                         <item row="2" column="0">
                           <widget class="QCheckBox" name="checkbox_publishInterIMU">
                            <property name="text">
                             <string/>
@@ -7222,13 +7222,33 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                            </property>
                           </widget>
                          </item>
-                         <item row="1" column="1">
+                         <item row="2" column="1">
                           <widget class="QLabel" name="label_563">
                            <property name="text">
-                            <string>Publish inter IMU messages from the camera. IMU received between images will be published as separate topic.</string>
+                            <string>Publish inter IMU messages from the camera. IMU received between images will be published as separate topic. IMU filtering strategy will be ignored.</string>
                            </property>
                            <property name="wordWrap">
                             <bool>true</bool>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="1" column="1">
+                          <widget class="QLabel" name="label_621">
+                           <property name="text">
+                            <string>Convert IMU in base frame before filtering. This can help to initialize correctly the yaw.</string>
+                           </property>
+                           <property name="wordWrap">
+                            <bool>true</bool>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="1" column="0">
+                          <widget class="QCheckBox" name="checkBox_imuFilter_baseFrameConversion">
+                           <property name="text">
+                            <string/>
+                           </property>
+                           <property name="checked">
+                            <bool>false</bool>
                            </property>
                           </widget>
                          </item>
@@ -13572,7 +13592,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </item>
                         <item>
                          <property name="text">
-                          <string>ORB SLAM 2</string>
+                          <string>ORB SLAM</string>
                          </property>
                         </item>
                         <item>
@@ -13898,7 +13918,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                     <item>
                      <widget class="QStackedWidget" name="stackedWidget_odometryType">
                       <property name="currentIndex">
-                       <number>0</number>
+                       <number>5</number>
                       </property>
                       <widget class="QWidget" name="page_52">
                        <layout class="QVBoxLayout" name="verticalLayout_77">
@@ -15778,15 +15798,15 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                       <widget class="QWidget" name="page_70">
                        <layout class="QVBoxLayout" name="verticalLayout_125">
                         <item>
-                         <widget class="QGroupBox" name="groupBox_odomORBSLAM2">
+                         <widget class="QGroupBox" name="groupBox_odomORBSLAM">
                           <property name="title">
-                           <string>ORB SLAM 2</string>
+                           <string>ORB SLAM</string>
                           </property>
                           <layout class="QVBoxLayout" name="verticalLayout_124">
                            <item>
                             <widget class="QLabel" name="label_412">
                              <property name="text">
-                              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;ORB SLAM 2: &lt;a href=&quot;https://github.com/raulmur/ORB_SLAM2&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;https://github.com/raulmur/ORB_SLAM2&lt;/span&gt;&lt;/a&gt;&lt;/p&gt;&lt;p&gt;Tracking and local mapping from ORB SLAM 2 is done but loop closure detection is disabled, using RTAB-Map loop closure detection instead. See ORB panel for ORB parameters (pyramid scale and number of pyramids). See FAST panel for FAST parameters (init and min thresholds). Vis/MaxFeatures (see Visual Registration panel) is used as the number of ORB features extracted.&lt;br/&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;ORB SLAM2: &lt;a href=&quot;https://github.com/raulmur/ORB_SLAM2&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;https://github.com/UZ-SLAMLab/ORB_SLAM3&lt;/span&gt;&lt;/a&gt;&lt;br/&gt;ORB SLAM3: &lt;a href=&quot;https://github.com/UZ-SLAMLab/ORB_SLAM3&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;https://github.com/raulmur/ORB_SLAM2&lt;/span&gt;&lt;/a&gt;&lt;/p&gt;&lt;p&gt;Tracking and local mapping from ORB SLAM is done but loop closure detection is disabled, using RTAB-Map loop closure detection instead. See ORB panel for ORB parameters (pyramid scale and number of pyramids). See FAST panel for FAST parameters (init and min thresholds). Vis/MaxFeatures (see Visual Registration panel) is used as the number of ORB features extracted.&lt;br/&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                              </property>
                              <property name="wordWrap">
                               <bool>true</bool>
@@ -15802,7 +15822,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                            <item>
                             <layout class="QGridLayout" name="gridLayout_93" columnstretch="0,0,1">
                              <item row="1" column="1">
-                              <widget class="QDoubleSpinBox" name="doubleSpinBox_OdomORBSLAM2Bf">
+                              <widget class="QDoubleSpinBox" name="doubleSpinBox_OdomORBSLAMBf">
                                <property name="suffix">
                                 <string> m</string>
                                </property>
@@ -15837,7 +15857,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                               </widget>
                              </item>
                              <item row="2" column="1">
-                              <widget class="QDoubleSpinBox" name="doubleSpinBox_OdomORBSLAM2ThDepth">
+                              <widget class="QDoubleSpinBox" name="doubleSpinBox_OdomORBSLAMThDepth">
                                <property name="suffix">
                                 <string/>
                                </property>
@@ -15872,7 +15892,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                               </widget>
                              </item>
                              <item row="0" column="1">
-                              <widget class="QLineEdit" name="lineEdit_OdomORBSLAM2VocPath"/>
+                              <widget class="QLineEdit" name="lineEdit_OdomORBSLAMVocPath"/>
                              </item>
                              <item row="0" column="2">
                               <widget class="QLabel" name="label_415">
@@ -15888,7 +15908,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                               </widget>
                              </item>
                              <item row="0" column="0">
-                              <widget class="QToolButton" name="toolButton_OdomORBSLAM2VocPath">
+                              <widget class="QToolButton" name="toolButton_OdomORBSLAMVocPath">
                                <property name="text">
                                 <string>...</string>
                                </property>
@@ -15908,7 +15928,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                               </widget>
                              </item>
                              <item row="3" column="1">
-                              <widget class="QDoubleSpinBox" name="doubleSpinBox_OdomORBSLAM2Fps">
+                              <widget class="QDoubleSpinBox" name="doubleSpinBox_OdomORBSLAMFps">
                                <property name="enabled">
                                 <bool>false</bool>
                                </property>
@@ -15946,7 +15966,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                               </widget>
                              </item>
                              <item row="4" column="1">
-                              <widget class="QSpinBox" name="spinBox_OdomORBSLAM2MaxFeatures">
+                              <widget class="QSpinBox" name="spinBox_OdomORBSLAMMaxFeatures">
                                <property name="maximum">
                                 <number>99999</number>
                                </property>
@@ -15969,7 +15989,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                               </widget>
                              </item>
                              <item row="5" column="1">
-                              <widget class="QSpinBox" name="spinBox_OdomORBSLAM2MapSize">
+                              <widget class="QSpinBox" name="spinBox_OdomORBSLAMMapSize">
                                <property name="maximum">
                                 <number>999999</number>
                                </property>

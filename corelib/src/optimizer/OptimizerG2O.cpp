@@ -40,7 +40,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/util3d.h>
 
 
-#if defined(RTABMAP_G2O) || defined(RTABMAP_ORB_SLAM2)
+#if defined(RTABMAP_G2O) || defined(RTABMAP_ORB_SLAM)
 #include "g2o/core/sparse_optimizer.h"
 #include "g2o/core/block_solver.h"
 #include "g2o/core/factory.h"
@@ -71,7 +71,7 @@ typedef Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic,Eigen::ColMajor> Matr
 #endif
 #endif // RTABMAP_G2O
 
-#ifdef RTABMAP_ORB_SLAM2
+#ifdef RTABMAP_ORB_SLAM
 #include "g2o/types/types_sba.h"
 #include "g2o/types/types_six_dof_expmap.h"
 #include "g2o/solvers/linear_solver_eigen.h"
@@ -102,7 +102,7 @@ typedef VertexPointXYZ VertexSBAPointXYZ;
 #endif
 #endif
 
-#endif // end defined(RTABMAP_G2O) || defined(RTABMAP_ORB_SLAM2)
+#endif // end defined(RTABMAP_G2O) || defined(RTABMAP_ORB_SLAM)
 
 enum {
     PARAM_OFFSET=0,
@@ -112,7 +112,7 @@ namespace rtabmap {
 
 bool OptimizerG2O::available()
 {
-#if defined(RTABMAP_G2O) || defined(RTABMAP_ORB_SLAM2)
+#if defined(RTABMAP_G2O) || defined(RTABMAP_ORB_SLAM)
 	return true;
 #else
 	return false;
@@ -149,10 +149,10 @@ void OptimizerG2O::parseParameters(const ParametersMap & parameters)
 	UASSERT(pixelVariance_ > 0.0);
 	UASSERT(baseline_ >= 0.0);
 
-#ifdef RTABMAP_ORB_SLAM2
+#ifdef RTABMAP_ORB_SLAM
 	if(solver_ != 3)
 	{
-		UWARN("g2o built with ORB_SLAM2 has only Eigen solver available, using Eigen=3 instead of %d.", solver_);
+		UWARN("g2o built with ORB_SLAM has only Eigen solver available, using Eigen=3 instead of %d.", solver_);
 		solver_ = 3;
 	}
 #else
@@ -1165,8 +1165,8 @@ std::map<int, Transform> OptimizerG2O::optimize(
 	}
 	UDEBUG("Optimizing graph...end!");
 #else
-#ifdef RTABMAP_ORB_SLAM2
-	UERROR("G2O graph optimization cannot be used with g2o built from ORB_SLAM2, only SBA is available.");
+#ifdef RTABMAP_ORB_SLAM
+	UERROR("G2O graph optimization cannot be used with g2o built from ORB_SLAM, only SBA is available.");
 #else
 	UERROR("Not built with G2O support!");
 #endif
@@ -1174,7 +1174,7 @@ std::map<int, Transform> OptimizerG2O::optimize(
 	return optimizedPoses;
 }
 
-#ifdef RTABMAP_ORB_SLAM2
+#ifdef RTABMAP_ORB_SLAM
 /**
  * \brief 3D edge between two SBAcam
  */
@@ -1259,7 +1259,7 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 		std::set<int> * outliers)
 {
 	std::map<int, Transform> optimizedPoses;
-#if defined(RTABMAP_G2O) || defined(RTABMAP_ORB_SLAM2)
+#if defined(RTABMAP_G2O) || defined(RTABMAP_ORB_SLAM)
 	UDEBUG("Optimizing graph...");
 
 	optimizedPoses.clear();
@@ -1267,13 +1267,13 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 	{
 		g2o::SparseOptimizer optimizer;
 		//optimizer.setVerbose(ULogger::level()==ULogger::kDebug);
-#if defined(RTABMAP_G2O_CPP11) and not defined(RTABMAP_ORB_SLAM2)
+#if defined(RTABMAP_G2O_CPP11) and not defined(RTABMAP_ORB_SLAM)
 		std::unique_ptr<g2o::BlockSolver_6_3::LinearSolverType> linearSolver;
 #else
 		g2o::BlockSolver_6_3::LinearSolverType * linearSolver = 0;
 #endif
 
-#ifdef RTABMAP_ORB_SLAM2
+#ifdef RTABMAP_ORB_SLAM
 		linearSolver = new g2o::LinearSolverEigen<g2o::BlockSolver_6_3::PoseMatrixType>();
 #else
 		if(solver_ == 3)
@@ -1316,9 +1316,9 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 			linearSolver = new g2o::LinearSolverPCG<g2o::BlockSolver_6_3::PoseMatrixType>();
 #endif
 		}
-#endif // RTABMAP_ORB_SLAM2
+#endif // RTABMAP_ORB_SLAM
 
-#ifndef RTABMAP_ORB_SLAM2
+#ifndef RTABMAP_ORB_SLAM
 		if(optimizer_ == 1)
 		{
 #ifdef RTABMAP_G2O_CPP11
@@ -1331,7 +1331,7 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 		else
 #endif
 		{
-#if defined(RTABMAP_G2O_CPP11) and not defined(RTABMAP_ORB_SLAM2)
+#if defined(RTABMAP_G2O_CPP11) and not defined(RTABMAP_ORB_SLAM)
 			optimizer.setAlgorithm(new g2o::OptimizationAlgorithmLevenberg(
 					g2o::make_unique<g2o::BlockSolver_6_3>(std::move(linearSolver))));
 #else
@@ -1353,14 +1353,14 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 
 				// Add node's pose
 				UASSERT(!camPose.isNull());
-#ifdef RTABMAP_ORB_SLAM2
+#ifdef RTABMAP_ORB_SLAM
 				g2o::VertexSE3Expmap * vCam = new g2o::VertexSE3Expmap();
 #else
 				g2o::VertexCam * vCam = new g2o::VertexCam();
 #endif
 
 				Eigen::Affine3d a = camPose.toEigen3d();
-#ifdef RTABMAP_ORB_SLAM2
+#ifdef RTABMAP_ORB_SLAM
 				a = a.inverse();
 				vCam->setEstimate(g2o::SE3Quat(a.linear(), a.translation()));
 #else
@@ -1407,7 +1407,7 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 
 				if(id1 == id2)
 				{
-#ifndef RTABMAP_ORB_SLAM2
+#ifndef RTABMAP_ORB_SLAM
 					g2o::HyperGraph::Edge * edge = 0;
 					if(gravitySigma() > 0 && iter->second.type() == Link::kGravity && poses.find(iter->first) != poses.end())
 					{
@@ -1455,7 +1455,7 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 					//		id1,
 					//		id2,
 					//		camLink.prettyPrint().c_str());
-#ifdef RTABMAP_ORB_SLAM2
+#ifdef RTABMAP_ORB_SLAM
 					EdgeSE3Expmap * e = new EdgeSE3Expmap();
 					g2o::VertexSE3Expmap* v1 = (g2o::VertexSE3Expmap*)optimizer.vertex(id1);
 					g2o::VertexSE3Expmap* v2 = (g2o::VertexSE3Expmap*)optimizer.vertex(id2);
@@ -1537,7 +1537,7 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 
 						g2o::OptimizableGraph::Edge * e;
 						double baseline = 0.0;
-#ifdef RTABMAP_ORB_SLAM2
+#ifdef RTABMAP_ORB_SLAM
 						g2o::VertexSE3Expmap* vcam = dynamic_cast<g2o::VertexSE3Expmap*>(optimizer.vertex(camId));
 						std::map<int, CameraModel>::const_iterator iterModel = models.find(camId);
 
@@ -1551,7 +1551,7 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 						if(uIsFinite(depth) && depth > 0.0 && baseline > 0.0)
 						{
 							// stereo edge
-#ifdef RTABMAP_ORB_SLAM2
+#ifdef RTABMAP_ORB_SLAM
 							g2o::EdgeStereoSE3ProjectXYZ* es = new g2o::EdgeStereoSE3ProjectXYZ();
 							float disparity = baseline * iterModel->second.fx() / depth;
 							Eigen::Vector3d obs( pt.kpt.pt.x, pt.kpt.pt.y, pt.kpt.pt.x-disparity);
@@ -1584,7 +1584,7 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 										vpt3d->id()-stepVertexId, camId, (int)pt.kpt.pt.x, (int)pt.kpt.pt.y, depth);
 							}
 							// mono edge
-#ifdef RTABMAP_ORB_SLAM2
+#ifdef RTABMAP_ORB_SLAM
 							g2o::EdgeSE3ProjectXYZ* em = new g2o::EdgeSE3ProjectXYZ();
 							Eigen::Vector2d obs( pt.kpt.pt.x, pt.kpt.pt.y);
 							em->setMeasurement(obs);
@@ -1662,7 +1662,7 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 						(*iter)->setLevel(1);
 						++outliersCount;
 						double d = 0.0;
-#ifdef RTABMAP_ORB_SLAM2
+#ifdef RTABMAP_ORB_SLAM
 						if(dynamic_cast<g2o::EdgeStereoSE3ProjectXYZ*>(*iter) != 0)
 						{
 							d = ((g2o::EdgeStereoSE3ProjectXYZ*)(*iter))->measurement()[0]-((g2o::EdgeStereoSE3ProjectXYZ*)(*iter))->measurement()[2];
@@ -1716,7 +1716,7 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 		{
 			if(iter->first > 0)
 			{
-#ifdef RTABMAP_ORB_SLAM2
+#ifdef RTABMAP_ORB_SLAM
 				const g2o::VertexSE3Expmap* v = (const g2o::VertexSE3Expmap*)optimizer.vertex(iter->first);
 #else
 				const g2o::VertexCam* v = (const g2o::VertexCam*)optimizer.vertex(iter->first);
@@ -1725,7 +1725,7 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 				{
 					Transform t = Transform::fromEigen3d(v->estimate());
 
-#ifdef RTABMAP_ORB_SLAM2
+#ifdef RTABMAP_ORB_SLAM
 					t=t.inverse();
 #endif
 
