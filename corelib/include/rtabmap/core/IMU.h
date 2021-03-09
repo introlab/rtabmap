@@ -9,7 +9,8 @@
 #define IMU_H_
 
 #include <opencv2/core/core.hpp>
-#include <rtabmap/utilite/ULogger.h>
+#include <rtabmap/utilite/UEvent.h>
+#include <rtabmap/core/Transform.h>
 
 namespace rtabmap {
 
@@ -59,6 +60,9 @@ public:
 	const cv::Mat & linearAccelerationCovariance() const {return linearAccelerationCovariance_;} // 3x3 double Row major x, y z, empty if linearAcceleration is not set
 
 	const Transform & localTransform() const {return localTransform_;}
+
+	// apply local transform rotation to data, and set Identity rotation for local transform
+	void convertToBaseFrame();
 
 	bool empty() const
 	{

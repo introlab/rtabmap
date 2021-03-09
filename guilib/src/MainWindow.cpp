@@ -1466,7 +1466,7 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 	{
 		if(_ui->imageView_odometry->isFeaturesShown())
 		{
-			if(odom.info().type == (int)Odometry::kTypeF2M || odom.info().type == (int)Odometry::kTypeORBSLAM2)
+			if(odom.info().type == (int)Odometry::kTypeF2M || odom.info().type == (int)Odometry::kTypeORBSLAM)
 			{
 				if(_preferencesDialog->isOdomOnlyInliersShown())
 				{
@@ -1539,7 +1539,7 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 			}
 
 			if( odom.info().type == (int)Odometry::kTypeF2M ||
-				odom.info().type == (int)Odometry::kTypeORBSLAM2 ||
+				odom.info().type == (int)Odometry::kTypeORBSLAM ||
 				odom.info().type == (int)Odometry::kTypeMSCKF ||
 				odom.info().type == (int)Odometry::kTypeVINS)
 			{
@@ -5350,7 +5350,7 @@ void MainWindow::startDetection()
 			(float)_preferencesDialog->getSourceScanForceGroundNormalsUp());
 	if(_preferencesDialog->getIMUFilteringStrategy()>0 && dynamic_cast<DBReader*>(camera) == 0)
 	{
-		_camera->enableIMUFiltering(_preferencesDialog->getIMUFilteringStrategy()-1, parameters);
+		_camera->enableIMUFiltering(_preferencesDialog->getIMUFilteringStrategy()-1, parameters, _preferencesDialog->getIMUFilteringBaseFrameConversion());
 	}
 	if(_preferencesDialog->isDepthFilteringAvailable())
 	{

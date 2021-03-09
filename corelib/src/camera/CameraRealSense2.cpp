@@ -127,7 +127,7 @@ void CameraRealSense2::close()
 	{
 		UINFO("%s", error.what());
 	}
-	
+
 	closing_ = false;
 }
 
@@ -179,7 +179,7 @@ void CameraRealSense2::pose_callback(rs2::frame frame)
 				pose.rotation.y,
 				pose.rotation.w);
 
-	UDEBUG("POSE callback! %f %s (confidence=%d)", frame.get_timestamp(), poseT.prettyPrint().c_str(), (int)pose.tracker_confidence);
+	//UDEBUG("POSE callback! %f %s (confidence=%d)", frame.get_timestamp(), poseT.prettyPrint().c_str(), (int)pose.tracker_confidence);
 
 	UScopeMutex sm(poseMutex_);
 	poseBuffer_.insert(poseBuffer_.end(), std::make_pair(frame.get_timestamp(), std::make_pair(poseT, pose.tracker_confidence)));
@@ -191,7 +191,7 @@ void CameraRealSense2::pose_callback(rs2::frame frame)
 
 void CameraRealSense2::frame_callback(rs2::frame frame)
 {
-	UDEBUG("Frame callback! %f", frame.get_timestamp());
+	//UDEBUG("Frame callback! %f", frame.get_timestamp());
 	syncer_(frame);
 }
 void CameraRealSense2::multiple_message_callback(rs2::frame frame)
@@ -486,7 +486,7 @@ bool CameraRealSense2::init(const std::string & calibrationFolder, const std::st
 	UINFO("setupDevice...");
 
 	close();
-	
+
 	clockSyncWarningShown_ = false;
 	imuGlobalSyncWarningShown_ = false;
 
@@ -498,31 +498,39 @@ bool CameraRealSense2::init(const std::string & calibrationFolder, const std::st
 	}
 
 	bool found=false;
-	for (rs2::device dev : list)
+	try
 	{
-		auto sn = dev.get_info(RS2_CAMERA_INFO_SERIAL_NUMBER);
-		auto pid_str = dev.get_info(RS2_CAMERA_INFO_PRODUCT_ID);
-		uint16_t pid;
-		std::stringstream ss;
-		ss << std::hex << pid_str;
-		ss >> pid;
-		UINFO("Device with serial number %s was found with product ID=%d.", sn, (int)pid);
-		if(dualMode_ && pid == 0x0B37)
+		for (rs2::device dev : list)
 		{
-			// Dual setup: device[0] = D400, device[1] = T265
-			// T265
-			dev_.resize(2);
-			dev_[1] = dev;
-		}
-		else if (!found && (deviceId_.empty() || deviceId_ == sn))
-		{
-			if(dev_.empty())
+			auto sn = dev.get_info(RS2_CAMERA_INFO_SERIAL_NUMBER);
+			auto pid_str = dev.get_info(RS2_CAMERA_INFO_PRODUCT_ID);
+
+			uint16_t pid;
+			std::stringstream ss;
+			ss << std::hex << pid_str;
+			ss >> pid;
+			UINFO("Device with serial number %s was found with product ID=%d.", sn, (int)pid);
+			if(dualMode_ && pid == 0x0B37)
 			{
-				dev_.resize(1);
+				// Dual setup: device[0] = D400, device[1] = T265
+				// T265
+				dev_.resize(2);
+				dev_[1] = dev;
 			}
-			dev_[0] = dev;
-			found=true;
+			else if (!found && (deviceId_.empty() || deviceId_ == sn))
+			{
+				if(dev_.empty())
+				{
+					dev_.resize(1);
+				}
+				dev_[0] = dev;
+				found=true;
+			}
 		}
+	}
+	catch(const rs2::error & error)
+	{
+		UWARN("%s. Is the camera already used with another app?", error.what());
 	}
 
 	if (!found)
@@ -1405,27 +1413,37 @@ SensorData CameraRealSense2::captureImage(CameraInfo * info)
 					{
 						++iterB;
 					}
-					if(iterA != iterB)
+					std::vector<double> stamps;
+					for(;iterA != iterB;++iterA)
 					{
-						int pub = 0;
-						for(;iterA != iterB;++iterA)
-						{
-							Transform tmp;
-							IMU imuTmp;
-							getPoseAndIMU(iterA->first, tmp, confidence, imuTmp);
-							if(!imuTmp.empty())
-							{
-								UEventsManager::post(new IMUEvent(imuTmp, iterA->first/1000.0));
-								pub++;
-							}
-							else
-							{
-								break;
-							}
-						}
-						UDEBUG("inter imu published=%d, %f -> %f", pub, lastImuStamp_, imuStamp);
+						stamps.push_back(iterA->first);
 					}
 					imuMutex_.unlock();
+
+					int pub = 0;
+					for(size_t i=0; i<stamps.size(); ++i)
+					{
+						Transform tmp;
+						IMU imuTmp;
+						getPoseAndIMU(stamps[i], tmp, confidence, imuTmp);
+						if(!imuTmp.empty())
+						{
+							UEventsManager::post(new IMUEvent(imuTmp, iterA->first/1000.0));
+							pub++;
+						}
+						else
+						{
+							break;
+						}
+					}
+					if(stamps.size())
+					{
+						UDEBUG("inter imu published=%d (rate=%fHz), %f -> %f", pub, double(pub)/((stamps.back()-stamps.front())/1000.0), stamps.front()/1000.0, stamps.back()/1000.0);
+					}
+					else
+					{
+						UWARN("No inter imu published!?");
+					}
 				}
 				lastImuStamp_ = imuStamp;
 			}

@@ -418,7 +418,7 @@ class RTABMAP_EXP Parameters
     RTABMAP_PARAM(Optimizer, GravitySigma,    float, 0.0,      uFormat("Gravity sigma value (>=0, typically between 0.1 and 0.3). Optimization is done while preserving gravity orientation of the poses. This should be used only with visual/lidar inertial odometry approaches, for which we assume that all odometry poses are aligned with gravity. Set to 0 to disable gravity constraints. Currently supported only with g2o and GTSAM optimization strategies (see %s).", kOptimizerStrategy().c_str()));
 #endif
 
-#ifdef RTABMAP_ORB_SLAM2
+#ifdef RTABMAP_ORB_SLAM
     RTABMAP_PARAM(g2o, Solver,            int, 3,          "0=csparse 1=pcg 2=cholmod 3=Eigen");
 #else
     RTABMAP_PARAM(g2o, Solver,            int, 0,          "0=csparse 1=pcg 2=cholmod 3=Eigen");
@@ -460,7 +460,7 @@ class RTABMAP_EXP Parameters
     RTABMAP_PARAM(OdomF2M, ScanSubtractAngle,   float, 45,    uFormat("[Geometry] Max angle (degrees) used to filter points of a new added scan to local map (when \"%s\">0). 0 means any angle.", kOdomF2MScanSubtractRadius().c_str()).c_str());
     RTABMAP_PARAM(OdomF2M, ScanRange,           float, 0,     "[Geometry] Distance Range used to filter points of local map (when > 0). 0 means local map is updated using time and not range.");
     RTABMAP_PARAM(OdomF2M, ValidDepthRatio,     float, 0.75,  "If a new frame has points without valid depth, they are added to local feature map only if points with valid depth on total points is over this ratio. Setting to 1 means no points without valid depth are added to local feature map.");
-#if defined(RTABMAP_G2O) || defined(RTABMAP_ORB_SLAM2)
+#if defined(RTABMAP_G2O) || defined(RTABMAP_ORB_SLAM)
     RTABMAP_PARAM(OdomF2M, BundleAdjustment,          int, 1, "Local bundle adjustment: 0=disabled, 1=g2o, 2=cvsba, 3=Ceres.");
 #else
     RTABMAP_PARAM(OdomF2M, BundleAdjustment,          int, 0, "Local bundle adjustment: 0=disabled, 1=g2o, 2=cvsba, 3=Ceres.");
@@ -521,12 +521,12 @@ class RTABMAP_EXP Parameters
     RTABMAP_PARAM(OdomViso2, BucketHeight,              double, 50,  "Height of bucket.");
 
     // Odometry ORB_SLAM2
-    RTABMAP_PARAM_STR(OdomORBSLAM2, VocPath,             "",    "Path to ORB vocabulary (*.txt).");
-    RTABMAP_PARAM(OdomORBSLAM2, Bf,              double, 0.076, "Fake IR projector baseline (m) used only when stereo is not used.");
-    RTABMAP_PARAM(OdomORBSLAM2, ThDepth,         double, 40.0,  "Close/Far threshold. Baseline times.");
-    RTABMAP_PARAM(OdomORBSLAM2, Fps,             float,  0.0,   "Camera FPS.");
-    RTABMAP_PARAM(OdomORBSLAM2, MaxFeatures,     int,    1000,  "Maximum ORB features extracted per frame.");
-    RTABMAP_PARAM(OdomORBSLAM2, MapSize,         int,    3000,  "Maximum size of the feature map (0 means infinite).");
+    RTABMAP_PARAM_STR(OdomORBSLAM, VocPath,             "",    "Path to ORB vocabulary (*.txt).");
+    RTABMAP_PARAM(OdomORBSLAM, Bf,              double, 0.076, "Fake IR projector baseline (m) used only when stereo is not used.");
+    RTABMAP_PARAM(OdomORBSLAM, ThDepth,         double, 40.0,  "Close/Far threshold. Baseline times.");
+    RTABMAP_PARAM(OdomORBSLAM, Fps,             float,  0.0,   "Camera FPS.");
+    RTABMAP_PARAM(OdomORBSLAM, MaxFeatures,     int,    1000,  "Maximum ORB features extracted per frame.");
+    RTABMAP_PARAM(OdomORBSLAM, MapSize,         int,    3000,  "Maximum size of the feature map (0 means infinite).");
 
     // Odometry OKVIS
     RTABMAP_PARAM_STR(OdomOKVIS, ConfigPath,     "",  "Path of OKVIS config file.");
@@ -582,7 +582,7 @@ class RTABMAP_EXP Parameters
     RTABMAP_PARAM(Vis, RefineIterations,         int, 5,        uFormat("[%s = 0] Number of iterations used to refine the transformation found by RANSAC. 0 means that the transformation is not refined.", kVisEstimationType().c_str()));
     RTABMAP_PARAM(Vis, PnPReprojError,           float, 2,      uFormat("[%s = 1] PnP reprojection error.", kVisEstimationType().c_str()));
     RTABMAP_PARAM(Vis, PnPFlags,                 int, 0,        uFormat("[%s = 1] PnP flags: 0=Iterative, 1=EPNP, 2=P3P", kVisEstimationType().c_str()));
-#if defined(RTABMAP_G2O) || defined(RTABMAP_ORB_SLAM2)
+#if defined(RTABMAP_G2O) || defined(RTABMAP_ORB_SLAM)
     RTABMAP_PARAM(Vis, PnPRefineIterations,      int, 0,        uFormat("[%s = 1] Refine iterations. Set to 0 if \"%s\" is also used.", kVisEstimationType().c_str(), kVisBundleAdjustment().c_str()));
 #else
     RTABMAP_PARAM(Vis, PnPRefineIterations,      int, 1,        uFormat("[%s = 1] Refine iterations. Set to 0 if \"%s\" is also used.", kVisEstimationType().c_str(), kVisBundleAdjustment().c_str()));
@@ -619,7 +619,7 @@ class RTABMAP_EXP Parameters
     RTABMAP_PARAM(Vis, CorFlowIterations,        int, 30,     uFormat("[%s=1] See cv::calcOpticalFlowPyrLK(). Used for optical flow approach.", kVisCorType().c_str()));
     RTABMAP_PARAM(Vis, CorFlowEps,               float, 0.01, uFormat("[%s=1] See cv::calcOpticalFlowPyrLK(). Used for optical flow approach.", kVisCorType().c_str()));
     RTABMAP_PARAM(Vis, CorFlowMaxLevel,          int, 3,      uFormat("[%s=1] See cv::calcOpticalFlowPyrLK(). Used for optical flow approach.", kVisCorType().c_str()));
-#if defined(RTABMAP_G2O) || defined(RTABMAP_ORB_SLAM2)
+#if defined(RTABMAP_G2O) || defined(RTABMAP_ORB_SLAM)
     RTABMAP_PARAM(Vis, BundleAdjustment,         int, 1,      "Optimization with bundle adjustment: 0=disabled, 1=g2o, 2=cvsba, 3=Ceres.");
 #else
     RTABMAP_PARAM(Vis, BundleAdjustment,         int, 0,      "Optimization with bundle adjustment: 0=disabled, 1=g2o, 2=cvsba, 3=Ceres.");

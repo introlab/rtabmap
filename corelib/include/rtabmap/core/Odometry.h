@@ -49,7 +49,7 @@ public:
 		kTypeFovis = 2,
 		kTypeViso2 = 3,
 		kTypeDVO = 4,
-		kTypeORBSLAM2 = 5,
+		kTypeORBSLAM = 5,
 		kTypeOkvis = 6,
 		kTypeLOAM = 7,
 		kTypeMSCKF = 8,

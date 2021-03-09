@@ -32,7 +32,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/odometry/OdometryViso2.h"
 #include "rtabmap/core/odometry/OdometryDVO.h"
 #include "rtabmap/core/odometry/OdometryOkvis.h"
-#include "rtabmap/core/odometry/OdometryORBSLAM2.h"
+#include "rtabmap/core/odometry/OdometryORBSLAM.h"
 #include "rtabmap/core/odometry/OdometryLOAM.h"
 #include "rtabmap/core/odometry/OdometryMSCKF.h"
 #include "rtabmap/core/odometry/OdometryVINS.h"
@@ -80,8 +80,8 @@ Odometry * Odometry::create(Odometry::Type & type, const ParametersMap & paramet
 	case Odometry::kTypeDVO:
 		odometry = new OdometryDVO(parameters);
 		break;
-	case Odometry::kTypeORBSLAM2:
-		odometry = new OdometryORBSLAM2(parameters);
+	case Odometry::kTypeORBSLAM:
+		odometry = new OdometryORBSLAM(parameters);
 		break;
 	case Odometry::kTypeOkvis:
 		odometry = new OdometryOkvis(parameters);
@@ -291,7 +291,12 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 		{
 			Transform orientation(0,0,0, data.imu().orientation()[0], data.imu().orientation()[1], data.imu().orientation()[2], data.imu().orientation()[3]);
 			// orientation includes roll and pitch but not yaw in local transform
-			Transform imuT = Transform(0,0,data.imu().localTransform().theta()) * orientation*data.imu().localTransform().inverse();
+			Transform imuT = Transform(data.imu().localTransform().x(),data.imu().localTransform().y(),data.imu().localTransform().z(), 0,0,data.imu().localTransform().theta()) *
+					orientation*
+					data.imu().localTransform().rotation().inverse();
+
+			IMU imu2 = data.imu();
+			imu2.convertToBaseFrame();
 
 			if(	this->getPose().r11() == 1.0f && this->getPose().r22() == 1.0f && this->getPose().r33() == 1.0f &&
 				this->framesProcessed() == 0)

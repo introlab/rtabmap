@@ -87,11 +87,12 @@ SET(SRC_FILES
     odometry/OdometryViso2.cpp
     odometry/OdometryDVO.cpp
     odometry/OdometryOkvis.cpp
-    odometry/OdometryORBSLAM2.cpp
+    odometry/OdometryORBSLAM.cpp
     odometry/OdometryLOAM.cpp
     odometry/OdometryMSCKF.cpp
     odometry/OdometryVINS.cpp
     
+    IMU.cpp
     IMUThread.cpp
     IMUFilter.cpp
     imufilter/ComplementaryFilter.cpp
@@ -601,16 +602,16 @@ IF(vins_FOUND)
 	)
 ENDIF(vins_FOUND)
 
-IF(ORB_SLAM2_FOUND)
+IF(ORB_SLAM_FOUND)
     SET(INCLUDE_DIRS
-        ${ORB_SLAM2_INCLUDE_DIRS} #before so that g2o includes are taken from ORB_SLAM2 directory before the official g2o one
+        ${ORB_SLAM_INCLUDE_DIRS} #before so that g2o includes are taken from ORB_SLAM directory before the official g2o one
 		${INCLUDE_DIRS}
 	)
 	SET(LIBRARIES
-	    ${ORB_SLAM2_LIBRARIES}
+	    ${ORB_SLAM_LIBRARIES}
 		${LIBRARIES}
 	)
-ENDIF(ORB_SLAM2_FOUND)
+ENDIF(ORB_SLAM_FOUND)
 
 IF(GTSAM_FOUND)
 	# Make sure GTSAM is built with system Eigen, not the included one in its package

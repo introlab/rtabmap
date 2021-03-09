@@ -161,7 +161,7 @@ int main (int argc, char * argv[])
 			(float)dialog.getSourceScanForceGroundNormalsUp());
 	if(dialog.getIMUFilteringStrategy()>0 && dynamic_cast<DBReader*>(camera) == 0)
 	{
-		cam->enableIMUFiltering(dialog.getIMUFilteringStrategy()-1, parameters);
+		cam->enableIMUFiltering(dialog.getIMUFilteringStrategy()-1, parameters, dialog.getIMUFilteringBaseFrameConversion());
 	}
 	if(dialog.isDepthFilteringAvailable())
 	{

@@ -217,14 +217,14 @@ static inline bool computeOrientation(
   // magnetic Field E must not be parallel to A,
   // choose an arbitrary orthogonal vector
   Eigen::Vector3f E;
-  if (fabs(A[0]) > 0.1 || fabs(A[1]) > 0.1) {
+  if (fabs(A[2]) > 0.1) {
+  	  E[0] = 0.0;
+  	  E[1] = A[2];
+  	  E[2] = -A[1];
+  } else if (fabs(A[0]) > 0.1 || fabs(A[1]) > 0.1) {
 	  E[0] = A[1];
 	  E[1] = A[0];
 	  E[2] = 0.0;
-  } else if (fabs(A[2]) > 0.1) {
-	  E[0] = 0.0;
-	  E[1] = A[2];
-	  E[2] = A[1];
   } else {
 	  // free fall
 	  return false;

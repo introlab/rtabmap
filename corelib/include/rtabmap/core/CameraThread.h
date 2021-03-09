@@ -69,7 +69,7 @@ public:
 	void setDistortionModel(const std::string & path);
 	void enableBilateralFiltering(float sigmaS, float sigmaR);
 	void disableBilateralFiltering() {_bilateralFiltering = false;}
-	void enableIMUFiltering(int filteringStrategy=1, const ParametersMap & parameters = ParametersMap());
+	void enableIMUFiltering(int filteringStrategy=1, const ParametersMap & parameters = ParametersMap(), bool baseFrameConversion = false);
 	void disableIMUFiltering();
 
 	RTABMAP_DEPRECATED(void setScanParameters(
@@ -125,6 +125,7 @@ private:
 	float _bilateralSigmaS;
 	float _bilateralSigmaR;
 	IMUFilter * _imuFilter;
+	bool _imuBaseFrameConversion;
 };
 
 } // namespace rtabmap

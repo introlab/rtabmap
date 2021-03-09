@@ -171,8 +171,14 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 #ifndef RTABMAP_DVO
 	_ui->odom_strategy->setItemData(4, 0, Qt::UserRole - 1);
 #endif
-#ifndef RTABMAP_ORB_SLAM2
+#ifndef RTABMAP_ORB_SLAM
 	_ui->odom_strategy->setItemData(5, 0, Qt::UserRole - 1);
+#elif RTABMAP_ORB_SLAM == 3
+	_ui->odom_strategy->setItemText(5, "ORB SLAM 3");
+	_ui->groupBox_odomORBSLAM->setTitle("ORB SLAM 3");
+#else
+	_ui->odom_strategy->setItemText(5, "ORB SLAM 2");
+	_ui->groupBox_odomORBSLAM->setTitle("ORB SLAM 2");
 #endif
 #ifndef RTABMAP_OKVIS
 	_ui->odom_strategy->setItemData(6, 0, Qt::UserRole - 1);
@@ -266,7 +272,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 		_ui->loopClosure_bundle->setItemData(1, 0, Qt::UserRole - 1);
 		_ui->groupBoxx_g2o->setEnabled(false);
 	}
-#ifdef RTABMAP_ORB_SLAM2
+#ifdef RTABMAP_ORB_SLAM
 	else
 	{
 		// only graph optimization is disabled, g2o (from ORB_SLAM2) is valid only for SBA
@@ -616,7 +622,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 
 	//Source panel
 	connect(_ui->general_doubleSpinBox_imgRate, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteSourcePanel()));
-	connect(_ui->general_doubleSpinBox_imgRate, SIGNAL(valueChanged(double)), _ui->doubleSpinBox_OdomORBSLAM2Fps, SLOT(setValue(double)));
+	connect(_ui->general_doubleSpinBox_imgRate, SIGNAL(valueChanged(double)), _ui->doubleSpinBox_OdomORBSLAMFps, SLOT(setValue(double)));
 	connect(_ui->source_mirroring, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->toolButton_source_path_calibration, SIGNAL(clicked()), this, SLOT(selectCalibrationPath()));
 	connect(_ui->lineEdit_calibrationFile, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
@@ -804,6 +810,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->comboBox_imuFilter_strategy, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->comboBox_imuFilter_strategy, SIGNAL(currentIndexChanged(int)), _ui->stackedWidget_imuFilter, SLOT(setCurrentIndex(int)));
 	_ui->stackedWidget_imuFilter->setCurrentIndex(_ui->comboBox_imuFilter_strategy->currentIndex());
+	connect(_ui->checkBox_imuFilter_baseFrameConversion, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->checkbox_publishInterIMU, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 
 	connect(_ui->checkBox_source_scanFromDepth, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
@@ -1312,14 +1319,14 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->doubleSpinBox_OdomViso2BucketWidth->setObjectName(Parameters::kOdomViso2BucketWidth().c_str());
 	_ui->doubleSpinBox_OdomViso2BucketHeight->setObjectName(Parameters::kOdomViso2BucketHeight().c_str());
 
-	// Odometry ORBSLAM2
-	_ui->lineEdit_OdomORBSLAM2VocPath->setObjectName(Parameters::kOdomORBSLAM2VocPath().c_str());
-	connect(_ui->toolButton_OdomORBSLAM2VocPath, SIGNAL(clicked()), this, SLOT(changeOdometryORBSLAM2Vocabulary()));
-	_ui->doubleSpinBox_OdomORBSLAM2Bf->setObjectName(Parameters::kOdomORBSLAM2Bf().c_str());
-	_ui->doubleSpinBox_OdomORBSLAM2ThDepth->setObjectName(Parameters::kOdomORBSLAM2ThDepth().c_str());
-	_ui->doubleSpinBox_OdomORBSLAM2Fps->setObjectName(Parameters::kOdomORBSLAM2Fps().c_str());
-	_ui->spinBox_OdomORBSLAM2MaxFeatures->setObjectName(Parameters::kOdomORBSLAM2MaxFeatures().c_str());
-	_ui->spinBox_OdomORBSLAM2MapSize->setObjectName(Parameters::kOdomORBSLAM2MapSize().c_str());
+	// Odometry ORBSLAM
+	_ui->lineEdit_OdomORBSLAMVocPath->setObjectName(Parameters::kOdomORBSLAMVocPath().c_str());
+	connect(_ui->toolButton_OdomORBSLAMVocPath, SIGNAL(clicked()), this, SLOT(changeOdometryORBSLAMVocabulary()));
+	_ui->doubleSpinBox_OdomORBSLAMBf->setObjectName(Parameters::kOdomORBSLAMBf().c_str());
+	_ui->doubleSpinBox_OdomORBSLAMThDepth->setObjectName(Parameters::kOdomORBSLAMThDepth().c_str());
+	_ui->doubleSpinBox_OdomORBSLAMFps->setObjectName(Parameters::kOdomORBSLAMFps().c_str());
+	_ui->spinBox_OdomORBSLAMMaxFeatures->setObjectName(Parameters::kOdomORBSLAMMaxFeatures().c_str());
+	_ui->spinBox_OdomORBSLAMMapSize->setObjectName(Parameters::kOdomORBSLAMMapSize().c_str());
 
 	// Odometry Okvis
 	_ui->lineEdit_OdomOkvisPath->setObjectName(Parameters::kOdomOKVISConfigPath().c_str());
@@ -2008,13 +2015,14 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->lineEdit_cameraImages_imu_transform->setText("0 0 1 0 -1 0 1 0 0");
 		_ui->spinBox_cameraImages_max_imu_rate->setValue(0);
 
-		_ui->comboBox_imuFilter_strategy->setCurrentIndex(1);
+		_ui->comboBox_imuFilter_strategy->setCurrentIndex(2);
 		_ui->doubleSpinBox_imuFilterMadgwickGain->setValue(Parameters::defaultImuFilterMadgwickGain());
 		_ui->doubleSpinBox_imuFilterMadgwickZeta->setValue(Parameters::defaultImuFilterMadgwickZeta());
 		_ui->doubleSpinBox_imuFilterComplementaryGainAcc->setValue(Parameters::defaultImuFilterComplementaryGainAcc());
 		_ui->doubleSpinBox_imuFilterComplementaryBiasAlpha->setValue(Parameters::defaultImuFilterComplementaryBiasAlpha());
 		_ui->checkBox_imuFilterComplementaryDoAdaptiveGain->setChecked(Parameters::defaultImuFilterComplementaryDoAdpativeGain());
 		_ui->checkBox_imuFilterComplementaryDoBiasEstimation->setChecked(Parameters::defaultImuFilterComplementaryDoBiasEstimation());
+		_ui->checkBox_imuFilter_baseFrameConversion->setChecked(true);
 		_ui->checkbox_publishInterIMU->setChecked(false);
 
 		_ui->checkBox_source_scanFromDepth->setChecked(false);
@@ -2505,6 +2513,7 @@ void PreferencesDialog::readCameraSettings(const QString & filePath)
 	_ui->doubleSpinBox_imuFilterComplementaryBiasAlpha->setValue(settings.value("complementary_bias_alpha", _ui->doubleSpinBox_imuFilterComplementaryBiasAlpha->value()).toDouble());
 	_ui->checkBox_imuFilterComplementaryDoAdaptiveGain->setChecked(settings.value("complementary_adaptive_gain", _ui->checkBox_imuFilterComplementaryDoAdaptiveGain->isChecked()).toBool());
 	_ui->checkBox_imuFilterComplementaryDoBiasEstimation->setChecked(settings.value("complementary_biais_estimation", _ui->checkBox_imuFilterComplementaryDoBiasEstimation->isChecked()).toBool());
+	_ui->checkBox_imuFilter_baseFrameConversion->setChecked(settings.value("base_frame_conversion", _ui->checkBox_imuFilter_baseFrameConversion->isChecked()).toBool());
 	_ui->checkbox_publishInterIMU->setChecked(settings.value("publish_inter_imu", _ui->checkbox_publishInterIMU->isChecked()).toBool());
 	settings.endGroup();//IMU
 
@@ -2997,6 +3006,7 @@ void PreferencesDialog::writeCameraSettings(const QString & filePath) const
 	settings.setValue("complementary_bias_alpha",       _ui->doubleSpinBox_imuFilterComplementaryBiasAlpha->value());
 	settings.setValue("complementary_adaptive_gain",    _ui->checkBox_imuFilterComplementaryDoAdaptiveGain->isChecked());
 	settings.setValue("complementary_biais_estimation", _ui->checkBox_imuFilterComplementaryDoBiasEstimation->isChecked());
+	settings.setValue("base_frame_conversion",          _ui->checkBox_imuFilter_baseFrameConversion->isChecked());
 	settings.setValue("publish_inter_imu",              _ui->checkbox_publishInterIMU->isChecked());
 	settings.endGroup();//IMU
 
@@ -3150,7 +3160,7 @@ bool PreferencesDialog::validateForm()
 					   "with TORO. GTSAM is set instead for graph optimization strategy."));
 			_ui->graphOptimization_type->setCurrentIndex(Optimizer::kTypeGTSAM);
 		}
-#ifndef RTABMAP_ORB_SLAM2
+#ifndef RTABMAP_ORB_SLAM
 		else if(Optimizer::isAvailable(Optimizer::kTypeG2O))
 		{
 			QMessageBox::warning(this, tr("Parameter warning"),
@@ -3160,7 +3170,7 @@ bool PreferencesDialog::validateForm()
 		}
 #endif
 	}
-#ifdef RTABMAP_ORB_SLAM2
+#ifdef RTABMAP_ORB_SLAM
 	if(_ui->graphOptimization_type->currentIndex() == 1)
 #else
 	if(_ui->graphOptimization_type->currentIndex() == 1 && !Optimizer::isAvailable(Optimizer::kTypeG2O))
@@ -3183,7 +3193,7 @@ bool PreferencesDialog::validateForm()
 	}
 	if(_ui->graphOptimization_type->currentIndex() == 2 && !Optimizer::isAvailable(Optimizer::kTypeGTSAM))
 	{
-#ifndef RTABMAP_ORB_SLAM2
+#ifndef RTABMAP_ORB_SLAM
 		if(Optimizer::isAvailable(Optimizer::kTypeG2O))
 		{
 			QMessageBox::warning(this, tr("Parameter warning"),
@@ -3768,7 +3778,10 @@ void PreferencesDialog::updateParameters(const ParametersMap & parameters, bool 
 
 void PreferencesDialog::selectSourceDriver(Src src, int variant)
 {
-	_ui->comboBox_imuFilter_strategy->setCurrentIndex(1);
+	if(_ui->comboBox_imuFilter_strategy->currentIndex()==0)
+	{
+		_ui->comboBox_imuFilter_strategy->setCurrentIndex(2);
+	}
 	_3dRenderingRoiRatios[0]->setText("0.0 0.0 0.0 0.0");
 	_3dRenderingRoiRatios[1]->setText("0.0 0.0 0.0 0.0");
 
@@ -4309,7 +4322,7 @@ void PreferencesDialog::setParameter(const std::string & key, const std::string 
 				}
 #endif
 #endif
-#ifndef RTABMAP_ORB_SLAM2
+#ifndef RTABMAP_ORB_SLAM
 				if(!Optimizer::isAvailable(Optimizer::kTypeG2O))
 #endif
 				{
@@ -4861,20 +4874,20 @@ void PreferencesDialog::changeDictionaryPath()
 	}
 }
 
-void PreferencesDialog::changeOdometryORBSLAM2Vocabulary()
+void PreferencesDialog::changeOdometryORBSLAMVocabulary()
 {
 	QString path;
-	if(_ui->lineEdit_OdomORBSLAM2VocPath->text().isEmpty())
+	if(_ui->lineEdit_OdomORBSLAMVocPath->text().isEmpty())
 	{
-		path = QFileDialog::getOpenFileName(this, tr("ORBSLAM2 Vocabulary"), this->getWorkingDirectory(), tr("Vocabulary (*.txt)"));
+		path = QFileDialog::getOpenFileName(this, tr("ORBSLAM Vocabulary"), this->getWorkingDirectory(), tr("Vocabulary (*.txt)"));
 	}
 	else
 	{
-		path = QFileDialog::getOpenFileName(this, tr("ORBSLAM2 Vocabulary"), _ui->lineEdit_OdomORBSLAM2VocPath->text(),  tr("Vocabulary (*.txt)"));
+		path = QFileDialog::getOpenFileName(this, tr("ORBSLAM Vocabulary"), _ui->lineEdit_OdomORBSLAMVocPath->text(),  tr("Vocabulary (*.txt)"));
 	}
 	if(!path.isEmpty())
 	{
-		_ui->lineEdit_OdomORBSLAM2VocPath->setText(path);
+		_ui->lineEdit_OdomORBSLAMVocPath->setText(path);
 	}
 }
 
@@ -5630,6 +5643,10 @@ bool PreferencesDialog::isSourceRGBDColorOnly() const
 int PreferencesDialog::getIMUFilteringStrategy() const
 {
 	return _ui->comboBox_imuFilter_strategy->currentIndex();
+}
+bool PreferencesDialog::getIMUFilteringBaseFrameConversion() const
+{
+	return _ui->checkBox_imuFilter_baseFrameConversion->isChecked();
 }
 bool PreferencesDialog::isDepthFilteringAvailable() const
 {
@@ -6398,7 +6415,7 @@ void PreferencesDialog::testOdometry()
 			(float)_ui->doubleSpinBox_source_scanNormalsForceGroundUp->value());
 	if(_ui->comboBox_imuFilter_strategy->currentIndex()>0 && dynamic_cast<DBReader*>(camera) == 0)
 	{
-		cameraThread.enableIMUFiltering(_ui->comboBox_imuFilter_strategy->currentIndex()-1, this->getAllParameters());
+		cameraThread.enableIMUFiltering(_ui->comboBox_imuFilter_strategy->currentIndex()-1, this->getAllParameters(), _ui->checkBox_imuFilter_baseFrameConversion->isChecked());
 	}
 	if(isDepthFilteringAvailable())
 	{
@@ -6469,7 +6486,7 @@ void PreferencesDialog::testCamera()
 				(float)_ui->doubleSpinBox_source_scanNormalsForceGroundUp->value());
 		if(_ui->comboBox_imuFilter_strategy->currentIndex()>0 && dynamic_cast<DBReader*>(camera) == 0)
 		{
-			cameraThread.enableIMUFiltering(_ui->comboBox_imuFilter_strategy->currentIndex()-1, this->getAllParameters());
+			cameraThread.enableIMUFiltering(_ui->comboBox_imuFilter_strategy->currentIndex()-1, this->getAllParameters(), _ui->checkBox_imuFilter_baseFrameConversion->isChecked());
 		}
 		if(isDepthFilteringAvailable())
 		{
