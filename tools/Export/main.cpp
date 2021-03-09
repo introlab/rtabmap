@@ -383,6 +383,12 @@ int main(int argc, char * argv[])
 
 	std::string dbPath = argv[argc-1];
 
+	if(!UFile::exists(dbPath))
+	{
+		UERROR("File \"%s\" doesn't exist!", dbPath.c_str());
+		return -1;
+	}
+
 	// Get parameters
 	ParametersMap parameters;
 	DBDriver * driver = DBDriver::create();
