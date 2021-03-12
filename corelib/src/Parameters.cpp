@@ -242,6 +242,8 @@ const std::map<std::string, std::pair<bool, std::string> > & Parameters::getRemo
 		removedParameters_.insert(std::make_pair("OdomORBSLAM2/MaxFeatures", std::make_pair(true, Parameters::kOdomORBSLAMMaxFeatures())));
 		removedParameters_.insert(std::make_pair("OdomORBSLAM2/MapSize",     std::make_pair(true, Parameters::kOdomORBSLAMMapSize())));
 
+		removedParameters_.insert(std::make_pair("RGBD/SavedLocalizationIgnored", std::make_pair(true, Parameters::kRGBDStartAtOrigin())));
+
 		// 0.20.
 		removedParameters_.insert(std::make_pair("SuperGlue/Path",           std::make_pair(true, Parameters::kPyMatcherPath())));
 		removedParameters_.insert(std::make_pair("SuperGlue/Iterations",     std::make_pair(true, Parameters::kPyMatcherIterations())));

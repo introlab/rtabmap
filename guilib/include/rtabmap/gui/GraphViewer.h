@@ -53,6 +53,9 @@ class RTABMAPGUI_EXP GraphViewer : public QGraphicsView {
 	Q_OBJECT;
 
 public:
+	enum ViewPlane {XY, XZ, YZ};
+
+public:
 	GraphViewer(QWidget * parent = 0);
 	virtual ~GraphViewer();
 
@@ -114,6 +117,7 @@ public:
 	bool isGtGraphVisible() const;
 	bool isGPSGraphVisible() const;
 	bool isOrientationENU() const;
+	ViewPlane getViewPlane() const;
 
 	// setters
 	void setWorkingDirectory(const QString & path);
@@ -149,6 +153,7 @@ public:
 	void setGtGraphVisible(bool visible);
 	void setGPSGraphVisible(bool visible);
 	void setOrientationENU(bool enabled);
+	void setViewPlane(ViewPlane plane);
 
 Q_SIGNALS:
 	void configChanged();
@@ -201,12 +206,19 @@ private:
 	float _linkWidth;
 	QGraphicsPixmapItem * _gridMap;
 	QGraphicsItemGroup * _referential;
+	QGraphicsItemGroup * _referentialXY;
+	QGraphicsItemGroup * _referentialXZ;
+	QGraphicsItemGroup * _referentialYZ;
 	QGraphicsItemGroup * _originReferential;
+	QGraphicsItemGroup * _originReferentialXY;
+	QGraphicsItemGroup * _originReferentialXZ;
+	QGraphicsItemGroup * _originReferentialYZ;
 	float _gridCellSize;
 	QGraphicsEllipseItem * _localRadius;
 	float _loopClosureOutlierThr;
 	float _maxLinkLength;
 	bool _orientationENU;
+	ViewPlane _viewPlane;
 };
 
 } /* namespace rtabmap */

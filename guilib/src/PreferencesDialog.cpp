@@ -1056,7 +1056,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->rgdb_angularUpdate->setObjectName(Parameters::kRGBDAngularUpdate().c_str());
 	_ui->rgdb_linearSpeedUpdate->setObjectName(Parameters::kRGBDLinearSpeedUpdate().c_str());
 	_ui->rgdb_angularSpeedUpdate->setObjectName(Parameters::kRGBDAngularSpeedUpdate().c_str());
-	_ui->rgbd_savedLocalizationIgnored->setObjectName(Parameters::kRGBDSavedLocalizationIgnored().c_str());
+	_ui->rgbd_savedLocalizationIgnored->setObjectName(Parameters::kRGBDStartAtOrigin().c_str());
 	_ui->rgdb_rehearsalWeightIgnoredWhileMoving->setObjectName(Parameters::kMemRehearsalWeightIgnoredWhileMoving().c_str());
 	_ui->rgdb_newMapOdomChange->setObjectName(Parameters::kRGBDNewMapOdomChangeDistance().c_str());
 	_ui->odomScanHistory->setObjectName(Parameters::kRGBDNeighborLinkRefining().c_str());
@@ -1781,10 +1781,10 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 			_3dRenderingVoxelSizeScan[i]->setValue(0.0);
 			_3dRenderingColorScheme[i]->setValue(0);
 			_3dRenderingOpacity[i]->setValue(i==0?1.0:0.75);
-			_3dRenderingPtSize[i]->setValue(2);
+			_3dRenderingPtSize[i]->setValue(i==0?1:2);
 			_3dRenderingColorSchemeScan[i]->setValue(0);
 			_3dRenderingOpacityScan[i]->setValue(i==0?1.0:0.5);
-			_3dRenderingPtSizeScan[i]->setValue(2);
+			_3dRenderingPtSizeScan[i]->setValue(i==0?1:2);
 			_3dRenderingPtSizeFeatures[i]->setValue(3);
 			_3dRenderingGravity[i]->setChecked(false);
 			_3dRenderingGravityLength[i]->setValue(1);

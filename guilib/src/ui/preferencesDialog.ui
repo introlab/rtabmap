@@ -63,7 +63,7 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-2259</y>
+            <y>0</y>
             <width>686</width>
             <height>3414</height>
            </rect>
@@ -95,7 +95,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>5</number>
+                <number>12</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,1">
@@ -11004,7 +11004,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                        <item row="4" column="1">
                         <widget class="QLabel" name="label_scanMatching_2">
                          <property name="text">
-                          <string>Ignore last saved localization pose from previous session. If true, RTAB-Map won't assume it is restarting from the same place than where it shut down previously. In localization mode, the robot will assume that it is starting from the origin of the map.</string>
+                          <string>If true, rtabmap will assume the robot is restarting from origin of the map. If false, rtabmap will assume the robot is restarting from the last saved localization pose from previous session (the place where it shut down previously). Used only in localization mode.</string>
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>

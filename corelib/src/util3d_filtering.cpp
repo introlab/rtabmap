@@ -226,7 +226,7 @@ LaserScan commonFiltering(
 					{
 						if(scan.hasNormals())
 						{
-							UWARN("Voxel filter i applied, but normal parameters are not set and input scan has normals. The returned scan has no normals.");
+							UWARN("Voxel filter is applied, but normal parameters are not set and input scan has normals. The returned scan has no normals.");
 						}
 						if(scan.is2d())
 						{

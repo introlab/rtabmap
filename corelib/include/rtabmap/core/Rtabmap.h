@@ -301,7 +301,7 @@ private:
 	int _pathStuckIterations;
 	float _pathLinearVelocity;
 	float _pathAngularVelocity;
-	bool _savedLocalizationIgnored;
+	bool _restartAtOrigin;
 	bool _loopCovLimited;
 	bool _loopGPS;
 	int _maxOdomCacheSize;

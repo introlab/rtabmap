@@ -1432,6 +1432,15 @@ Transform RegistrationIcp::computeTransformationImpl(
 					{
 						info.covariance = cv::Mat::eye(6,6,CV_64FC1)*variance;
 						info.covariance(cv::Range(3,6),cv::Range(3,6))/=10.0; //orientation error
+						if(_libpointmatcher &&
+							_pointToPlane &&
+							!force3DoF() &&
+							_libpointmatcherForce4DoF &&
+							!tooLowComplexityForPlaneToPlane)
+						{
+							// Force4DoF: Assume roll and pitch more accurate (IMU)
+							info.covariance(cv::Range(3,5),cv::Range(3,5))/=10.0;
+						}
 					}
 					info.icpInliersRatio = correspondencesRatio;
 					info.icpCorrespondences = correspondences;

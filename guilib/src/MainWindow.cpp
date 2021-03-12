@@ -1806,7 +1806,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 			LaserScan tmpScan;
 			signature.sensorData().uncompressData(
 					uncompressImages?&tmpRgb:0,
-					uncompressImages?&tmpDepth:0,
+					uncompressImages && !signature.sensorData().depthOrRightCompressed().empty()?&tmpDepth:0,
 					uncompressScan?&tmpScan:0,
 					0, &tmpG, &tmpO, &tmpE);
 

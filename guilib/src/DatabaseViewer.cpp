@@ -428,6 +428,7 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	connect(ui_->checkBox_icp_from_depth, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
 	
 	connect(ui_->doubleSpinBox_detectMore_radius, SIGNAL(valueChanged(double)), this, SLOT(configModified()));
+	connect(ui_->doubleSpinBox_detectMore_radiusMin, SIGNAL(valueChanged(double)), this, SLOT(configModified()));
 	connect(ui_->doubleSpinBox_detectMore_angle, SIGNAL(valueChanged(double)), this, SLOT(configModified()));
 	connect(ui_->spinBox_detectMore_iterations, SIGNAL(valueChanged(int)), this, SLOT(configModified()));
 	connect(ui_->checkBox_detectMore_intraSession, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
@@ -588,6 +589,7 @@ void DatabaseViewer::readSettings()
 	exportDialog_->loadSettings(settings, exportDialog_->objectName());
 	settings.beginGroup("PostProcessingDialog");
 	ui_->doubleSpinBox_detectMore_radius->setValue(settings.value("cluster_radius", ui_->doubleSpinBox_detectMore_radius->value()).toDouble());
+	ui_->doubleSpinBox_detectMore_radiusMin->setValue(settings.value("cluster_radius_min", ui_->doubleSpinBox_detectMore_radiusMin->value()).toDouble());
 	ui_->doubleSpinBox_detectMore_angle->setValue(settings.value("cluster_angle", ui_->doubleSpinBox_detectMore_angle->value()).toDouble());
 	ui_->spinBox_detectMore_iterations->setValue(settings.value("iterations", ui_->spinBox_detectMore_iterations->value()).toInt());
 	ui_->checkBox_detectMore_intraSession->setChecked(settings.value("intra_session", ui_->checkBox_detectMore_intraSession->isChecked()).toBool());
@@ -674,6 +676,7 @@ void DatabaseViewer::writeSettings()
 	exportDialog_->saveSettings(settings, exportDialog_->objectName());
 	settings.beginGroup("PostProcessingDialog");
 	settings.setValue("cluster_radius",  ui_->doubleSpinBox_detectMore_radius->value());
+	settings.setValue("cluster_radius_min",  ui_->doubleSpinBox_detectMore_radiusMin->value());
 	settings.setValue("cluster_angle", ui_->doubleSpinBox_detectMore_angle->value());
 	settings.setValue("iterations", ui_->spinBox_detectMore_iterations->value());
 	settings.setValue("intra_session", ui_->checkBox_detectMore_intraSession->isChecked());
@@ -745,6 +748,7 @@ void DatabaseViewer::restoreDefaultSettings()
 	ui_->checkBox_icp_from_depth->setChecked(false);
 
 	ui_->doubleSpinBox_detectMore_radius->setValue(1.0);
+	ui_->doubleSpinBox_detectMore_radiusMin->setValue(0.0);
 	ui_->doubleSpinBox_detectMore_angle->setValue(30.0);
 	ui_->spinBox_detectMore_iterations->setValue(5);
 	ui_->checkBox_detectMore_intraSession->setChecked(true);
@@ -3910,7 +3914,7 @@ void DatabaseViewer::detectMoreLoopClosures()
 		}
 	}
 
-	const std::map<int, Transform> & optimizedPoses = graphes_.back();
+	std::map<int, Transform> optimizedPoses = graphes_.back();
 
 	rtabmap::ProgressDialog * progressDialog = new rtabmap::ProgressDialog(this);
 	progressDialog->setAttribute(Qt::WA_DeleteOnClose);
@@ -3939,6 +3943,7 @@ void DatabaseViewer::detectMoreLoopClosures()
 		QMessageBox::warning(this, tr("Cannot detect more loop closures"), tr("Intra and inter session parameters are disabled! Enable one or both."));
 		return;
 	}
+
 	for(int n=0; n<iterations; ++n)
 	{
 		UINFO("iteration %d/%d", n+1, iterations);
@@ -3948,7 +3953,7 @@ void DatabaseViewer::detectMoreLoopClosures()
 				ui_->doubleSpinBox_detectMore_angle->value()*CV_PI/180.0);
 
 		progressDialog->setMaximumSteps(progressDialog->maximumSteps()+(int)clusters.size());
-		progressDialog->appendText(tr("Looking for more loop closures, clusters found %1 clusters.").arg(clusters.size()));
+		progressDialog->appendText(tr("Looking for more loop closures, %1 clusters found.").arg(clusters.size()));
 		QApplication::processEvents();
 		if(progressDialog->isCanceled())
 		{
@@ -3980,18 +3985,26 @@ void DatabaseViewer::detectMoreLoopClosures()
 					   addedLinks.find(from) == addedLinks.end() &&
 					   addedLinks.find(to) == addedLinks.end())
 					{
-						checkedLoopClosures.insert(std::make_pair(from, to));
-						if(addConstraint(from, to, true))
+						// Reverify if in the bounds with the current optimized graph
+						Transform delta = optimizedPoses.at(from).inverse() * optimizedPoses.at(to);
+						if(delta.getNorm() < ui_->doubleSpinBox_detectMore_radius->value() &&
+						   delta.getNorm() >= ui_->doubleSpinBox_detectMore_radiusMin->value())
 						{
-							UINFO("Added new loop closure between %d and %d.", from, to);
-							++added;
-							addedLinks.insert(from);
-							addedLinks.insert(to);
-							lastAdded.first = from;
-							lastAdded.second = to;
+							checkedLoopClosures.insert(std::make_pair(from, to));
+							if(addConstraint(from, to, true))
+							{
+								UINFO("Added new loop closure between %d and %d.", from, to);
+								++added;
+								addedLinks.insert(from);
+								addedLinks.insert(to);
+								lastAdded.first = from;
+								lastAdded.second = to;
 
-							progressDialog->appendText(tr("Detected loop closure %1->%2! (%3/%4)").arg(from).arg(to).arg(i+1).arg(clusters.size()));
-							QApplication::processEvents();
+								progressDialog->appendText(tr("Detected loop closure %1->%2! (%3/%4)").arg(from).arg(to).arg(i+1).arg(clusters.size()));
+								QApplication::processEvents();
+
+								optimizedPoses = graphes_.back();
+							}
 						}
 					}
 				}
@@ -4007,6 +4020,12 @@ void DatabaseViewer::detectMoreLoopClosures()
 		if(addedLinks.size() == 0)
 		{
 			break;
+		}
+		if(n+1<iterations)
+		{
+			// Re-optimize the map before doing next iterations
+			this->updateGraphView();
+			optimizedPoses = graphes_.back();
 		}
 	}
 
@@ -7666,7 +7685,7 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent)
 			// make a fake guess using globally optimized poses
 			if(graphes_.size())
 			{
-				std::map<int, Transform> optimizedPoses = uValueAt(graphes_, ui_->horizontalSlider_iterations->value());
+				std::map<int, Transform> optimizedPoses = graphes_.back();
 				if(optimizedPoses.size() > 0)
 				{
 					std::map<int, Transform>::iterator fromIter = optimizedPoses.find(from);
@@ -7876,6 +7895,11 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent)
 			}
 
 			updateConstraints = false;
+		}
+
+		if(updateConstraints && silent && !graphes_.empty() && graphes_.back().size() == poses.size())
+		{
+			graphes_.back() = poses;
 		}
 	}
 

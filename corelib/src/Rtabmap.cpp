@@ -126,7 +126,7 @@ Rtabmap::Rtabmap() :
 	_pathStuckIterations(Parameters::defaultRGBDPlanStuckIterations()),
 	_pathLinearVelocity(Parameters::defaultRGBDPlanLinearVelocity()),
 	_pathAngularVelocity(Parameters::defaultRGBDPlanAngularVelocity()),
-	_savedLocalizationIgnored(Parameters::defaultRGBDSavedLocalizationIgnored()),
+	_restartAtOrigin(Parameters::defaultRGBDStartAtOrigin()),
 	_loopCovLimited(Parameters::defaultRGBDLoopCovLimited()),
 	_loopGPS(Parameters::defaultRtabmapLoopGPS()),
 	_maxOdomCacheSize(Parameters::defaultRGBDMaxOdomCacheSize()),
@@ -337,36 +337,43 @@ void Rtabmap::init(const ParametersMap & parameters, const std::string & databas
 	this->parseParameters(allParameters);
 
 	Transform lastPose;
-	_optimizedPoses = _memory->loadOptimizedPoses(&lastPose);
-	if(!_optimizedPoses.empty())
+	_optimizedPoses.clear();
+	if(!_memory->isIncremental())
 	{
-		if(_savedLocalizationIgnored)
+		_optimizedPoses = _memory->loadOptimizedPoses(&lastPose);
+		if(!_optimizedPoses.empty())
 		{
-			UDEBUG("lastPose is ignored (%s=true), assuming we start at the origin of the map.", Parameters::kRGBDSavedLocalizationIgnored().c_str());
-			lastPose.setIdentity();
+			if(_restartAtOrigin)
+			{
+				UINFO("lastPose is ignored (%s=true), assuming we start at the origin of the map.", Parameters::kRGBDStartAtOrigin().c_str());
+				lastPose.setIdentity();
+			}
+			_lastLocalizationPose = lastPose;
+
+			UINFO("Loaded optimizedPoses=%d lastPose=%s", _optimizedPoses.size(), _lastLocalizationPose.prettyPrint().c_str());
+
+			std::map<int, Transform> tmp;
+			// Get just the links
+			_memory->getMetricConstraints(uKeysSet(_optimizedPoses), tmp, _constraints, false, true);
+
+			// Initialize Bayes' prediction matrix
+			UTimer time;
+			std::map<int, float> likelihood;
+			likelihood.insert(std::make_pair(Memory::kIdVirtual, 1));
+			for(std::map<int, Transform>::iterator iter=_optimizedPoses.begin(); iter!=_optimizedPoses.end(); ++iter)
+			{
+				if(_memory->getSignature(iter->first))
+				{
+					likelihood.insert(std::make_pair(iter->first, 0));
+				}
+			}
+			_bayesFilter->computePosterior(_memory, likelihood);
+			UINFO("Time initializing Bayes' prediction with %ld nodes: %fs", _optimizedPoses.size(), time.ticks());
 		}
-		_lastLocalizationPose = lastPose;
-
-		UINFO("Loaded optimizedPoses=%d lastPose=%s", _optimizedPoses.size(), _lastLocalizationPose.prettyPrint().c_str());
-
-		std::map<int, Transform> tmp;
-		// Get just the links
-		_memory->getMetricConstraints(uKeysSet(_optimizedPoses), tmp, _constraints, false, true);
-
-		// Initialize Bayes' prediction matrix
-		UTimer time;
-		std::map<int, float> likelihood;
-		likelihood.insert(std::make_pair(Memory::kIdVirtual, 1));
-		for(std::map<int, Transform>::iterator iter=_optimizedPoses.begin(); iter!=_optimizedPoses.end(); ++iter)
+		else
 		{
-			likelihood.insert(std::make_pair(iter->first, 0));
+			UINFO("Loaded optimizedPoses=0, last localization pose is ignored!");
 		}
-		_bayesFilter->computePosterior(_memory, likelihood);
-		UINFO("Time initializing Bayes' prediction with %ld nodes: %fs", _optimizedPoses.size(), time.ticks());
-	}
-	else
-	{
-		UINFO("Loaded optimizedPoses=0, last localization pose is ignored!");
 	}
 
 	if(_databasePath.empty())
@@ -543,7 +550,7 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kRGBDPlanStuckIterations(), _pathStuckIterations);
 	Parameters::parse(parameters, Parameters::kRGBDPlanLinearVelocity(), _pathLinearVelocity);
 	Parameters::parse(parameters, Parameters::kRGBDPlanAngularVelocity(), _pathAngularVelocity);
-	Parameters::parse(parameters, Parameters::kRGBDSavedLocalizationIgnored(), _savedLocalizationIgnored);
+	Parameters::parse(parameters, Parameters::kRGBDStartAtOrigin(), _restartAtOrigin);
 	Parameters::parse(parameters, Parameters::kRGBDLoopCovLimited(), _loopCovLimited);
 	Parameters::parse(parameters, Parameters::kRtabmapLoopGPS(), _loopGPS);
 	Parameters::parse(parameters, Parameters::kRGBDMaxOdomCacheSize(), _maxOdomCacheSize);
@@ -750,7 +757,7 @@ int Rtabmap::triggerNewMap()
 
 		if(!_memory->isIncremental())
 		{
-			if(_savedLocalizationIgnored)
+			if(_restartAtOrigin)
 			{
 				_mapCorrection.setIdentity();
 				_lastLocalizationPose.setIdentity();
@@ -2268,7 +2275,15 @@ bool Rtabmap::process(
 	   _rgbdSlamMode &&
 	   signature->getWeight() >= 0) // not an intermediate node
 	{
-		if(_graphOptimizer->iterations() == 0)
+		if(_startNewMapOnLoopClosure &&
+			_memory->getWorkingMem().size()>=2 && // must have an old map (+1 virtual place)
+			graph::filterLinks(signature->getLinks(), Link::kSelfRefLink).size() == 0) // alone in new session)
+		{
+			UINFO("Proximity detection by space disabled as if we force to have a global loop "
+					"closure with previous map before doing proximity detections (%s=true).",
+					Parameters::kRtabmapStartNewMapOnLoopClosure().c_str());
+		}
+		else if(_graphOptimizer->iterations() == 0)
 		{
 			UWARN("Cannot do local loop closure detection in space if graph optimization is disabled!");
 		}
