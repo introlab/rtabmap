@@ -481,6 +481,10 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 				guess = guess.to3DoF();
 			}
 		}
+		else if(!imuLastTransform_.isNull())
+		{
+			UWARN("Could not find imu transform at %f", data.stamp());
+		}
 	}
 
 	UTimer time;
@@ -562,6 +566,7 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 		info->stamp = data.stamp();
 		info->interval = dt;
 		info->transform = t;
+		info->guess = guess;
 		if(_publishRAMUsage)
 		{
 			info->memoryUsage = UProcessInfo::getMemoryUsage()/(1024*1024);

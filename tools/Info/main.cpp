@@ -32,6 +32,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <rtabmap/core/DBDriver.h>
 #include <rtabmap/core/VisualWord.h>
+#include <rtabmap/core/Graph.h>
 #include <rtabmap/utilite/UDirectory.h>
 #include "rtabmap/utilite/UFile.h"
 #include "rtabmap/utilite/UStl.h"
@@ -231,6 +232,11 @@ int main(int argc, char * argv[])
 		driver->getAllNodeIds(ids);
 		Transform lastLocalization;
 		std::map<int, Transform> optimizedPoses = driver->loadOptimizedPoses(&lastLocalization);
+		cv::Vec3f min, max;
+		if(!optimizedPoses.empty())
+		{
+			graph::computeMinMax(optimizedPoses, min, max);
+		}
 		std::multimap<int, int> mapIdsLinkedToLastGraph;
 		int lastMapId=0;
 		double previousStamp = 0.0f;
@@ -353,7 +359,7 @@ int main(int argc, char * argv[])
 		std::cout << (uFormat("%s%d nodes and %d words (dim=%d type=%s)\n", pad("LTM:").c_str(), (int)ids.size(), driver->getTotalDictionarySize(), wordsDim, wordsType==CV_8UC1?"8U":wordsType==CV_32FC1?"32F":uNumber2Str(wordsType).c_str()));
 		std::cout << (uFormat("%s%d nodes and %d words\n", pad("WM:").c_str(), driver->getLastNodesSize(), driver->getLastDictionarySize()));
 		std::cout << (uFormat("%s%d poses and %d links\n", pad("Global graph:").c_str(), odomPoses, links.size()));
-		std::cout << (uFormat("%s%d poses\n", pad("Optimized graph:").c_str(), (int)optimizedPoses.size(), links.size()));
+		std::cout << (uFormat("%s%d poses (x=%d->%d, y=%d->%d, z=%d->%d)\n", pad("Optimized graph:").c_str(), (int)optimizedPoses.size(), links.size(), (int)min[0], (int)max[0], (int)min[1], (int)max[1], min[2], (int)max[2]));
 		std::cout << (uFormat("%s%d/%d [%s]\n", pad("Maps in graph:").c_str(), (int)mapsLinkedToLastGraph.size(), sessions, sessionsInOptGraphStr.str().c_str()));
 		std::cout << (uFormat("%s%d poses\n", pad("Ground truth:").c_str(), gtPoses));
 		std::cout << (uFormat("%s%d poses\n", pad("GPS:").c_str(), gpsValues));

@@ -199,12 +199,13 @@ public:
 	std::map<int, Transform> getNodesInRadius(const Transform & pose, float radius); // If radius=0, RGBD/LocalRadius is used. Can return landmarks.
 	std::map<int, Transform> getNodesInRadius(int nodeId, float radius); // If nodeId==0, return poses around latest node. If radius=0, RGBD/LocalRadius is used. Can return landmarks and use landmark id (negative) as request.
 	int detectMoreLoopClosures(
-			float clusterRadius = 0.5f,
+			float clusterRadiusMax = 0.5f,
 			float clusterAngle = M_PI/6.0f,
 			int iterations = 1,
 			bool intraSession = true,
 			bool interSession = true,
-			const ProgressState * state = 0);
+			const ProgressState * state = 0,
+			float clusterRadiusMin = 0.0f);
 	int refineLinks();
 	bool addLink(const Link & link);
 	cv::Mat getInformation(const cv::Mat & covariance) const;

@@ -4650,12 +4650,13 @@ std::map<int, Transform> Rtabmap::getNodesInRadius(int nodeId, float radius)
 }
 
 int Rtabmap::detectMoreLoopClosures(
-		float clusterRadius,
+		float clusterRadiusMax,
 		float clusterAngle,
 		int iterations,
 		bool intraSession,
 		bool interSession,
-		const ProgressState * processState)
+		const ProgressState * processState,
+		float clusterRadiusMin)
 {
 	UASSERT(iterations>0);
 
@@ -4698,11 +4699,11 @@ int Rtabmap::detectMoreLoopClosures(
 	for(int n=0; n<iterations; ++n)
 	{
 		UINFO("Looking for more loop closures, clustering poses... (iteration=%d/%d, radius=%f m angle=%f rad)",
-				n+1, iterations, clusterRadius, clusterAngle);
+				n+1, iterations, clusterRadiusMax, clusterAngle);
 
 		std::multimap<int, int> clusters = graph::radiusPosesClustering(
 				posesToCheckLoopClosures,
-				clusterRadius,
+				clusterRadiusMax,
 				clusterAngle);
 
 		UINFO("Looking for more loop closures, clustering poses... found %d clusters.", (int)clusters.size());
@@ -4750,138 +4751,148 @@ int Rtabmap::detectMoreLoopClosures(
 					   addedLinks.find(to) == addedLinks.end() &&
 					   rtabmap::graph::findLink(links, from, to) == links.end())
 					{
-						checkedLoopClosures.insert(std::make_pair(from, to));
-
-						UASSERT(signatures.find(from) != signatures.end());
-						UASSERT(signatures.find(to) != signatures.end());
-
-						Transform guess;
-						if(_proximityOdomGuess && uContains(poses, from) && uContains(poses, to))
+						// Reverify if in the bounds with the current optimized graph
+						Transform delta = poses.at(from).inverse() * poses.at(to);
+						if(delta.getNorm() < clusterRadiusMax &&
+						   delta.getNorm() >= clusterRadiusMin)
 						{
-							guess = poses.at(from).inverse() * poses.at(to);
-						}
+							checkedLoopClosures.insert(std::make_pair(from, to));
 
-						RegistrationInfo info;
-						// use signatures instead of IDs because some signatures may not be in WM
-						Transform t = _memory->computeTransform(signatures.at(from), signatures.at(to), guess, &info);
+							UASSERT(signatures.find(from) != signatures.end());
+							UASSERT(signatures.find(to) != signatures.end());
 
-						if(!t.isNull())
-						{
-							bool updateConstraints = true;
-							if(_optimizationMaxError > 0.0f)
+							Transform guess;
+							if(_proximityOdomGuess && uContains(poses, from) && uContains(poses, to))
 							{
-								//optimize the graph to see if the new constraint is globally valid
-
-								int fromId = from;
-								int mapId = signatures.at(from).mapId();
-								// use first node of the map containing from
-								for(std::map<int, Signature>::iterator ster=signatures.begin(); ster!=signatures.end(); ++ster)
-								{
-									if(ster->second.mapId() == mapId)
-									{
-										fromId = ster->first;
-										break;
-									}
-								}
-								std::multimap<int, Link> linksIn = links;
-								linksIn.insert(std::make_pair(from, Link(from, to, Link::kUserClosure, t, getInformation(info.covariance))));
-								const Link * maxLinearLink = 0;
-								const Link * maxAngularLink = 0;
-								float maxLinearError = 0.0f;
-								float maxAngularError = 0.0f;
-								float maxLinearErrorRatio = 0.0f;
-								float maxAngularErrorRatio = 0.0f;
-								std::map<int, Transform> optimizedPoses;
-								std::multimap<int, Link> links;
-								UASSERT(poses.find(fromId) != poses.end());
-								UASSERT_MSG(poses.find(from) != poses.end(), uFormat("id=%d poses=%d links=%d", from, (int)poses.size(), (int)links.size()).c_str());
-								UASSERT_MSG(poses.find(to) != poses.end(), uFormat("id=%d poses=%d links=%d", to, (int)poses.size(), (int)links.size()).c_str());
-								_graphOptimizer->getConnectedGraph(fromId, poses, linksIn, optimizedPoses, links);
-								UASSERT(optimizedPoses.find(fromId) != optimizedPoses.end());
-								UASSERT_MSG(optimizedPoses.find(from) != optimizedPoses.end(), uFormat("id=%d poses=%d links=%d", from, (int)optimizedPoses.size(), (int)links.size()).c_str());
-								UASSERT_MSG(optimizedPoses.find(to) != optimizedPoses.end(), uFormat("id=%d poses=%d links=%d", to, (int)optimizedPoses.size(), (int)links.size()).c_str());
-								UASSERT(graph::findLink(links, from, to) != links.end());
-								optimizedPoses = _graphOptimizer->optimize(fromId, optimizedPoses, links);
-								std::string msg;
-								if(optimizedPoses.size())
-								{
-									graph::computeMaxGraphErrors(
-											optimizedPoses,
-											links,
-											maxLinearErrorRatio,
-											maxAngularErrorRatio,
-											maxLinearError,
-											maxAngularError,
-											&maxLinearLink,
-											&maxAngularLink);
-									if(maxLinearLink)
-									{
-										UINFO("Max optimization linear error = %f m (link %d->%d)", maxLinearError, maxLinearLink->from(), maxLinearLink->to());
-										if(maxLinearErrorRatio > _optimizationMaxError)
-										{
-											msg = uFormat("Rejecting edge %d->%d because "
-													  "graph error is too large after optimization (%f m for edge %d->%d with ratio %f > std=%f m). "
-													  "\"%s\" is %f.",
-													  from,
-													  to,
-													  maxLinearError,
-													  maxLinearLink->from(),
-													  maxLinearLink->to(),
-													  maxLinearErrorRatio,
-													  sqrt(maxLinearLink->transVariance()),
-													  Parameters::kRGBDOptimizeMaxError().c_str(),
-													  _optimizationMaxError);
-										}
-									}
-									else if(maxAngularLink)
-									{
-										UINFO("Max optimization angular error = %f deg (link %d->%d)", maxAngularError*180.0f/M_PI, maxAngularLink->from(), maxAngularLink->to());
-										if(maxAngularErrorRatio > _optimizationMaxError)
-										{
-											msg = uFormat("Rejecting edge %d->%d because "
-													  "graph error is too large after optimization (%f deg for edge %d->%d with ratio %f > std=%f deg). "
-													  "\"%s\" is %f m.",
-													  from,
-													  to,
-													  maxAngularError*180.0f/M_PI,
-													  maxAngularLink->from(),
-													  maxAngularLink->to(),
-													  maxAngularErrorRatio,
-													  sqrt(maxAngularLink->rotVariance()),
-													  Parameters::kRGBDOptimizeMaxError().c_str(),
-													  _optimizationMaxError);
-										}
-									}
-								}
-								else
-								{
-									msg = uFormat("Rejecting edge %d->%d because graph optimization has failed!",
-											  from,
-											  to);
-								}
-								if(!msg.empty())
-								{
-									UWARN("%s", msg.c_str());
-									updateConstraints = false;
-								}
+								guess = poses.at(from).inverse() * poses.at(to);
 							}
 
-							if(updateConstraints)
-							{
-								addedLinks.insert(from);
-								addedLinks.insert(to);
-								cv::Mat inf = getInformation(info.covariance);
-								links.insert(std::make_pair(from, Link(from, to, Link::kUserClosure, t, inf)));
-								loopClosuresAdded.push_back(Link(from, to, Link::kUserClosure, t, inf));
-								std::string msg = uFormat("Iteration %d/%d: Added loop closure %d->%d! (%d/%d)", n+1, iterations, from, to, i+1, (int)clusters.size());
-								UINFO(msg.c_str());
+							RegistrationInfo info;
+							// use signatures instead of IDs because some signatures may not be in WM
+							Transform t = _memory->computeTransform(signatures.at(from), signatures.at(to), guess, &info);
 
-								if(processState)
+							if(!t.isNull())
+							{
+								bool updateConstraints = true;
+								if(_optimizationMaxError > 0.0f)
 								{
-									UINFO(msg.c_str());
-									if(!processState->callback(msg))
+									//optimize the graph to see if the new constraint is globally valid
+
+									int fromId = from;
+									int mapId = signatures.at(from).mapId();
+									// use first node of the map containing from
+									for(std::map<int, Signature>::iterator ster=signatures.begin(); ster!=signatures.end(); ++ster)
 									{
-										return -1;
+										if(ster->second.mapId() == mapId)
+										{
+											fromId = ster->first;
+											break;
+										}
+									}
+									std::multimap<int, Link> linksIn = links;
+									linksIn.insert(std::make_pair(from, Link(from, to, Link::kUserClosure, t, getInformation(info.covariance))));
+									const Link * maxLinearLink = 0;
+									const Link * maxAngularLink = 0;
+									float maxLinearError = 0.0f;
+									float maxAngularError = 0.0f;
+									float maxLinearErrorRatio = 0.0f;
+									float maxAngularErrorRatio = 0.0f;
+									std::map<int, Transform> optimizedPoses;
+									std::multimap<int, Link> links;
+									UASSERT(poses.find(fromId) != poses.end());
+									UASSERT_MSG(poses.find(from) != poses.end(), uFormat("id=%d poses=%d links=%d", from, (int)poses.size(), (int)links.size()).c_str());
+									UASSERT_MSG(poses.find(to) != poses.end(), uFormat("id=%d poses=%d links=%d", to, (int)poses.size(), (int)links.size()).c_str());
+									_graphOptimizer->getConnectedGraph(fromId, poses, linksIn, optimizedPoses, links);
+									UASSERT(optimizedPoses.find(fromId) != optimizedPoses.end());
+									UASSERT_MSG(optimizedPoses.find(from) != optimizedPoses.end(), uFormat("id=%d poses=%d links=%d", from, (int)optimizedPoses.size(), (int)links.size()).c_str());
+									UASSERT_MSG(optimizedPoses.find(to) != optimizedPoses.end(), uFormat("id=%d poses=%d links=%d", to, (int)optimizedPoses.size(), (int)links.size()).c_str());
+									UASSERT(graph::findLink(links, from, to) != links.end());
+									optimizedPoses = _graphOptimizer->optimize(fromId, optimizedPoses, links);
+									std::string msg;
+									if(optimizedPoses.size())
+									{
+										graph::computeMaxGraphErrors(
+												optimizedPoses,
+												links,
+												maxLinearErrorRatio,
+												maxAngularErrorRatio,
+												maxLinearError,
+												maxAngularError,
+												&maxLinearLink,
+												&maxAngularLink);
+										if(maxLinearLink)
+										{
+											UINFO("Max optimization linear error = %f m (link %d->%d)", maxLinearError, maxLinearLink->from(), maxLinearLink->to());
+											if(maxLinearErrorRatio > _optimizationMaxError)
+											{
+												msg = uFormat("Rejecting edge %d->%d because "
+														  "graph error is too large after optimization (%f m for edge %d->%d with ratio %f > std=%f m). "
+														  "\"%s\" is %f.",
+														  from,
+														  to,
+														  maxLinearError,
+														  maxLinearLink->from(),
+														  maxLinearLink->to(),
+														  maxLinearErrorRatio,
+														  sqrt(maxLinearLink->transVariance()),
+														  Parameters::kRGBDOptimizeMaxError().c_str(),
+														  _optimizationMaxError);
+											}
+										}
+										else if(maxAngularLink)
+										{
+											UINFO("Max optimization angular error = %f deg (link %d->%d)", maxAngularError*180.0f/M_PI, maxAngularLink->from(), maxAngularLink->to());
+											if(maxAngularErrorRatio > _optimizationMaxError)
+											{
+												msg = uFormat("Rejecting edge %d->%d because "
+														  "graph error is too large after optimization (%f deg for edge %d->%d with ratio %f > std=%f deg). "
+														  "\"%s\" is %f m.",
+														  from,
+														  to,
+														  maxAngularError*180.0f/M_PI,
+														  maxAngularLink->from(),
+														  maxAngularLink->to(),
+														  maxAngularErrorRatio,
+														  sqrt(maxAngularLink->rotVariance()),
+														  Parameters::kRGBDOptimizeMaxError().c_str(),
+														  _optimizationMaxError);
+											}
+										}
+									}
+									else
+									{
+										msg = uFormat("Rejecting edge %d->%d because graph optimization has failed!",
+												  from,
+												  to);
+									}
+									if(!msg.empty())
+									{
+										UWARN("%s", msg.c_str());
+										updateConstraints = false;
+									}
+									else
+									{
+										poses = optimizedPoses;
+									}
+								}
+
+								if(updateConstraints)
+								{
+									addedLinks.insert(from);
+									addedLinks.insert(to);
+									cv::Mat inf = getInformation(info.covariance);
+									links.insert(std::make_pair(from, Link(from, to, Link::kUserClosure, t, inf)));
+									loopClosuresAdded.push_back(Link(from, to, Link::kUserClosure, t, inf));
+									std::string msg = uFormat("Iteration %d/%d: Added loop closure %d->%d! (%d/%d)", n+1, iterations, from, to, i+1, (int)clusters.size());
+									UINFO(msg.c_str());
+
+									if(processState)
+									{
+										UINFO(msg.c_str());
+										if(!processState->callback(msg))
+										{
+											return -1;
+										}
 									}
 								}
 							}

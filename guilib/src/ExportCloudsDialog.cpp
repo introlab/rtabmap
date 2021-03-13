@@ -110,6 +110,15 @@ ExportCloudsDialog::ExportCloudsDialog(QWidget *parent) :
 	connect(_ui->comboBox_meshingApproach, SIGNAL(currentIndexChanged(int)), this, SIGNAL(configChanged()));
 	connect(_ui->comboBox_meshingApproach, SIGNAL(currentIndexChanged(int)), this, SLOT(updateReconstructionFlavor()));
 
+	connect(_ui->checkBox_nodes_filtering, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
+	connect(_ui->checkBox_nodes_filtering, SIGNAL(stateChanged(int)), this, SLOT(updateReconstructionFlavor()));
+	connect(_ui->doubleSpinBox_nodes_filtering_xmin, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
+	connect(_ui->doubleSpinBox_nodes_filtering_xmax, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
+	connect(_ui->doubleSpinBox_nodes_filtering_ymin, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
+	connect(_ui->doubleSpinBox_nodes_filtering_ymax, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
+	connect(_ui->doubleSpinBox_nodes_filtering_zmin, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
+	connect(_ui->doubleSpinBox_nodes_filtering_zmax, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
+
 	connect(_ui->checkBox_regenerate, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
 	connect(_ui->checkBox_regenerate, SIGNAL(stateChanged(int)), this, SLOT(updateReconstructionFlavor()));
 	connect(_ui->spinBox_decimation, SIGNAL(valueChanged(int)), this, SIGNAL(configChanged()));
@@ -325,6 +334,14 @@ void ExportCloudsDialog::saveSettings(QSettings & settings, const QString & grou
 	settings.setValue("normals_radius", _ui->doubleSpinBox_normalRadiusSearch->value());
 	settings.setValue("intensity_colormap", _ui->comboBox_intensityColormap->currentIndex());
 
+	settings.setValue("nodes_filtering", _ui->checkBox_nodes_filtering->isChecked());
+	settings.setValue("nodes_filtering_xmin", _ui->doubleSpinBox_nodes_filtering_xmin->value());
+	settings.setValue("nodes_filtering_xmax", _ui->doubleSpinBox_nodes_filtering_xmax->value());
+	settings.setValue("nodes_filtering_ymin", _ui->doubleSpinBox_nodes_filtering_ymin->value());
+	settings.setValue("nodes_filtering_ymax", _ui->doubleSpinBox_nodes_filtering_ymax->value());
+	settings.setValue("nodes_filtering_zmin", _ui->doubleSpinBox_nodes_filtering_zmin->value());
+	settings.setValue("nodes_filtering_zmax", _ui->doubleSpinBox_nodes_filtering_zmax->value());
+
 	settings.setValue("regenerate", _ui->checkBox_regenerate->isChecked());
 	settings.setValue("regenerate_decimation", _ui->spinBox_decimation->value());
 	settings.setValue("regenerate_max_depth", _ui->doubleSpinBox_maxDepth->value());
@@ -473,6 +490,14 @@ void ExportCloudsDialog::loadSettings(QSettings & settings, const QString & grou
 	_ui->spinBox_normalKSearch->setValue(settings.value("normals_k", _ui->spinBox_normalKSearch->value()).toInt());
 	_ui->doubleSpinBox_normalRadiusSearch->setValue(settings.value("normals_radius", _ui->doubleSpinBox_normalRadiusSearch->value()).toDouble());
 	_ui->comboBox_intensityColormap->setCurrentIndex(settings.value("intensity_colormap", _ui->comboBox_intensityColormap->currentIndex()).toInt());
+
+	_ui->checkBox_nodes_filtering->setChecked(settings.value("nodes_filtering", _ui->checkBox_nodes_filtering->isChecked()).toBool());
+	_ui->doubleSpinBox_nodes_filtering_xmin->setValue(settings.value("nodes_filtering_xmin", _ui->doubleSpinBox_nodes_filtering_xmin->value()).toInt());
+	_ui->doubleSpinBox_nodes_filtering_xmax->setValue(settings.value("nodes_filtering_xmax", _ui->doubleSpinBox_nodes_filtering_xmax->value()).toInt());
+	_ui->doubleSpinBox_nodes_filtering_ymin->setValue(settings.value("nodes_filtering_ymin", _ui->doubleSpinBox_nodes_filtering_ymin->value()).toInt());
+	_ui->doubleSpinBox_nodes_filtering_ymax->setValue(settings.value("nodes_filtering_ymax", _ui->doubleSpinBox_nodes_filtering_ymax->value()).toInt());
+	_ui->doubleSpinBox_nodes_filtering_zmin->setValue(settings.value("nodes_filtering_zmin", _ui->doubleSpinBox_nodes_filtering_zmin->value()).toInt());
+	_ui->doubleSpinBox_nodes_filtering_zmax->setValue(settings.value("nodes_filtering_zmax", _ui->doubleSpinBox_nodes_filtering_zmax->value()).toInt());
 
 	_ui->checkBox_regenerate->setChecked(settings.value("regenerate", _ui->checkBox_regenerate->isChecked()).toBool());
 	_ui->spinBox_decimation->setValue(settings.value("regenerate_decimation", _ui->spinBox_decimation->value()).toInt());
@@ -625,6 +650,14 @@ void ExportCloudsDialog::restoreDefaults()
 	_ui->spinBox_normalKSearch->setValue(20);
 	_ui->doubleSpinBox_normalRadiusSearch->setValue(0.0);
 	_ui->comboBox_intensityColormap->setCurrentIndex(0);
+
+	_ui->checkBox_nodes_filtering->setChecked(false);
+	_ui->doubleSpinBox_nodes_filtering_xmin->setValue(0);
+	_ui->doubleSpinBox_nodes_filtering_xmax->setValue(0);
+	_ui->doubleSpinBox_nodes_filtering_ymin->setValue(0);
+	_ui->doubleSpinBox_nodes_filtering_ymax->setValue(0);
+	_ui->doubleSpinBox_nodes_filtering_zmin->setValue(0);
+	_ui->doubleSpinBox_nodes_filtering_zmax->setValue(0);
 
 	_ui->checkBox_regenerate->setChecked(_dbDriver!=0?true:false);
 	_ui->spinBox_decimation->setValue(1);
@@ -830,6 +863,7 @@ void ExportCloudsDialog::updateReconstructionFlavor()
 	_ui->checkBox_cameraProjection->setEnabled(_ui->checkBox_assemble->isChecked() && !_ui->checkBox_meshing->isChecked());
 	_ui->label_cameraProjection->setEnabled(_ui->checkBox_cameraProjection->isEnabled());
 
+	_ui->groupBox_nodes_filtering->setVisible(_ui->checkBox_nodes_filtering->isChecked());
 	_ui->groupBox_regenerate->setVisible(_ui->checkBox_regenerate->isChecked() && _ui->checkBox_fromDepth->isChecked());
 	_ui->groupBox_regenerateScans->setVisible(_ui->checkBox_regenerate->isChecked() && !_ui->checkBox_fromDepth->isChecked());
 	_ui->groupBox_bilateral->setVisible(_ui->checkBox_bilateral->isChecked());
@@ -951,6 +985,42 @@ void ExportCloudsDialog::setOkButton()
 	_ui->checkBox_mesh_quad->setEnabled(true);
 	_ui->label_quad->setVisible(true);
 	updateReconstructionFlavor();
+}
+
+std::map<int, Transform> ExportCloudsDialog::filterNodes(const std::map<int, Transform> & poses)
+{
+	if(_ui->checkBox_nodes_filtering->isChecked())
+	{
+		std::map<int, Transform> posesFiltered;
+		for(std::map<int, Transform>::const_iterator iter=poses.begin(); iter!=poses.end(); ++iter)
+		{
+			bool ignore = false;
+			if(_ui->doubleSpinBox_nodes_filtering_xmin->value() != _ui->doubleSpinBox_nodes_filtering_xmax->value() &&
+				(iter->second.x() < _ui->doubleSpinBox_nodes_filtering_xmin->value() ||
+				 iter->second.x() > _ui->doubleSpinBox_nodes_filtering_xmax->value()))
+			{
+				ignore = true;
+			}
+			if(_ui->doubleSpinBox_nodes_filtering_ymin->value() != _ui->doubleSpinBox_nodes_filtering_ymax->value() &&
+				(iter->second.y() < _ui->doubleSpinBox_nodes_filtering_ymin->value() ||
+				 iter->second.y() > _ui->doubleSpinBox_nodes_filtering_ymax->value()))
+			{
+				ignore = true;
+			}
+			if(_ui->doubleSpinBox_nodes_filtering_zmin->value() != _ui->doubleSpinBox_nodes_filtering_zmax->value() &&
+				(iter->second.z() < _ui->doubleSpinBox_nodes_filtering_zmin->value() ||
+				 iter->second.z() > _ui->doubleSpinBox_nodes_filtering_zmax->value()))
+			{
+				ignore = true;
+			}
+			if(!ignore)
+			{
+				posesFiltered.insert(*iter);
+			}
+		}
+		return posesFiltered;
+	}
+	return poses;
 }
 
 void ExportCloudsDialog::exportClouds(
@@ -1432,7 +1502,7 @@ bool ExportCloudsDialog::removeDirRecursively(const QString & dirName)
 }
 
 bool ExportCloudsDialog::getExportedClouds(
-		const std::map<int, Transform> & poses,
+		const std::map<int, Transform> & posesIn,
 		const std::multimap<int, Link> & links,
 		const std::map<int, int> & mapIds,
 		const QMap<int, Signature> & cachedSignatures,
@@ -1460,9 +1530,11 @@ bool ExportCloudsDialog::getExportedClouds(
 	}
 	if(this->exec() == QDialog::Accepted)
 	{
+		std::map<int, Transform> poses = filterNodes(posesIn);
+
 		if(poses.empty())
 		{
-			QMessageBox::critical(this, tr("Creating clouds..."), tr("Poses are null! Cannot export/view clouds."));
+			QMessageBox::critical(this, tr("Creating clouds..."), tr("Poses are empty! Cannot export/view clouds."));
 			return false;
 		}
 		_progressDialog->resetProgress();

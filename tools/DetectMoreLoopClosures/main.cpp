@@ -51,6 +51,7 @@ void showUsage()
 			"rtabmap-detectMoreLoopClosures [options] database.db\n"
 			"Options:\n"
 			"    -r #          Cluster radius (default 1 m).\n"
+			"    -rx #         Cluster radius min (default 0 m).\n"
 			"    -a #          Cluster angle (default 30 deg).\n"
 			"    -i #          Iterations (default 1).\n"
 			"    --intra       Add only intra-session loop closures.\n"
@@ -92,7 +93,8 @@ int main(int argc, char * argv[])
 		showUsage();
 	}
 
-	float clusterRadius = 1.0f;
+	float clusterRadiusMin = 0.0f;
+	float clusterRadiusMax = 1.0f;
 	float clusterAngle = CV_PI/6.0f;
 	int iterations = 1;
 	bool intraSession = false;
@@ -124,7 +126,19 @@ int main(int argc, char * argv[])
 			++i;
 			if(i<argc-1)
 			{
-				clusterRadius = uStr2Float(argv[i]);
+				clusterRadiusMax = uStr2Float(argv[i]);
+			}
+			else
+			{
+				showUsage();
+			}
+		}
+		else if(std::strcmp(argv[i], "-rx") == 0)
+		{
+			++i;
+			if(i<argc-1)
+			{
+				clusterRadiusMin = uStr2Float(argv[i]);
 			}
 			else
 			{
@@ -165,7 +179,8 @@ int main(int argc, char * argv[])
 	}
 
 	printf("\nDatabase: %s\n", dbPath.c_str());
-	printf("Cluster radius = %f m\n", clusterRadius);
+	printf("Cluster radius min = %f m\n", clusterRadiusMin);
+	printf("Cluster radius max = %f m\n", clusterRadiusMax);
 	printf("Cluster angle = %f deg\n", clusterAngle*180.0f/CV_PI);
 	if(intraSession)
 	{
@@ -204,7 +219,7 @@ int main(int argc, char * argv[])
 
 	PrintProgressState progress;
 	printf("Detecting...\n");
-	int detected = rtabmap.detectMoreLoopClosures(clusterRadius, clusterAngle, iterations, intraSession, interSession, &progress);
+	int detected = rtabmap.detectMoreLoopClosures(clusterRadiusMax, clusterAngle, iterations, intraSession, interSession, &progress, clusterRadiusMin);
 	if(detected < 0)
 	{
 		if(!g_loopForever)

@@ -84,6 +84,7 @@ public:
 		output.transformFiltered = transformFiltered;
 		output.transformGroundTruth = transformGroundTruth;
 		output.guessVelocity = guessVelocity;
+		output.guess = guess;
 		output.distanceTravelled = distanceTravelled;
 		output.memoryUsage = memoryUsage;
 		output.gravityRollError = gravityRollError;
@@ -111,7 +112,8 @@ public:
 	Transform transform;
 	Transform transformFiltered;
 	Transform transformGroundTruth;
-	Transform guessVelocity;
+	Transform guessVelocity; // deprecated, will be removed. Use guess and interval instead.
+	Transform guess;
 	float distanceTravelled;
 	int memoryUsage; //MB
 	double gravityRollError;

@@ -83,6 +83,12 @@ void showUsage()
 			"    --color_radius  #     Radius used to colorize polygons (default 0.05 m, 0 m with --scan). Set 0 for nearest color.\n"
 			"    --scan                Use laser scan for the point cloud.\n"
 			"    --save_in_db          Save resulting assembled point cloud or mesh in the database.\n"
+			"    --xmin #              Minimum range on X axis to keep nodes to export.\n"
+			"    --xmax #              Maximum range on X axis to keep nodes to export.\n"
+			"    --ymin #              Minimum range on Y axis to keep nodes to export.\n"
+			"    --ymax #              Maximum range on Y axis to keep nodes to export.\n"
+			"    --zmin #              Minimum range on Z axis to keep nodes to export.\n"
+			"    --zmax #              Maximum range on Z axis to keep nodes to export.\n"
 			"\n%s", Parameters::showUsage());
 	;
 	exit(1);
@@ -125,6 +131,7 @@ int main(int argc, char * argv[])
 	bool camProjection = false;
 	bool exportPoses = false;
 	bool exportImages = false;
+	cv::Vec3f min, max;
 	for(int i=1; i<argc; ++i)
 	{
 		if(std::strcmp(argv[i], "--help") == 0)
@@ -346,6 +353,78 @@ int main(int argc, char * argv[])
 				showUsage();
 			}
 		}
+		else if(std::strcmp(argv[i], "--xmin") == 0)
+		{
+			++i;
+			if(i<argc-1)
+			{
+				min[0] = uStr2Float(argv[i]);
+			}
+			else
+			{
+				showUsage();
+			}
+		}
+		else if(std::strcmp(argv[i], "--xmax") == 0)
+		{
+			++i;
+			if(i<argc-1)
+			{
+				max[0] = uStr2Float(argv[i]);
+			}
+			else
+			{
+				showUsage();
+			}
+		}
+		else if(std::strcmp(argv[i], "--ymin") == 0)
+		{
+			++i;
+			if(i<argc-1)
+			{
+				min[1] = uStr2Float(argv[i]);
+			}
+			else
+			{
+				showUsage();
+			}
+		}
+		else if(std::strcmp(argv[i], "--ymax") == 0)
+		{
+			++i;
+			if(i<argc-1)
+			{
+				max[1] = uStr2Float(argv[i]);
+			}
+			else
+			{
+				showUsage();
+			}
+		}
+		else if(std::strcmp(argv[i], "--zmin") == 0)
+		{
+			++i;
+			if(i<argc-1)
+			{
+				min[2] = uStr2Float(argv[i]);
+			}
+			else
+			{
+				showUsage();
+			}
+		}
+		else if(std::strcmp(argv[i], "--zmax") == 0)
+		{
+			++i;
+			if(i<argc-1)
+			{
+				max[2] = uStr2Float(argv[i]);
+			}
+			else
+			{
+				showUsage();
+			}
+		}
 	}
 
 	if(decimation < 1)
@@ -430,6 +509,43 @@ int main(int argc, char * argv[])
 	{
 		printf("The optimized graph is empty!? Aborting...\n");
 		return -1;
+	}
+
+	if(min[0] != max[0] || min[1] != max[1] || min[2] != max[2])
+	{
+		cv::Vec3f minP,maxP;
+		graph::computeMinMax(optimizedPoses, minP, maxP);
+		printf("Filtering poses (range: x=%f<->%f, y=%f<->%f, z=%f<->%f, map size=%f x %f x %f)...\n",
+				min[0],max[0],min[1],max[1],min[2],max[2],
+				maxP[0]-minP[0],maxP[1]-minP[1],maxP[2]-minP[2]);
+		std::map<int, Transform> posesFiltered;
+		for(std::map<int, Transform>::const_iterator iter=optimizedPoses.begin(); iter!=optimizedPoses.end(); ++iter)
+		{
+			bool ignore = false;
+			if(min[0] != max[0] && (iter->second.x() < min[0] || iter->second.x() > max[0]))
+			{
+				ignore = true;
+			}
+			if(min[1] != max[1] && (iter->second.y() < min[1] || iter->second.y() > max[1]))
+			{
+				ignore = true;
+			}
+			if(min[2] != max[2] && (iter->second.z() < min[2] || iter->second.z() > max[2]))
+			{
+				ignore = true;
+			}
+			if(!ignore)
+			{
+				posesFiltered.insert(*iter);
+			}
+		}
+		graph::computeMinMax(posesFiltered, minP, maxP);
+		printf("Filtering poses... done! %d/%d remaining (new map size=%f x %f x %f).\n", (int)posesFiltered.size(), (int)optimizedPoses.size(), maxP[0]-minP[0],maxP[1]-minP[1],maxP[2]-minP[2]);
+		optimizedPoses = posesFiltered;
+		if(optimizedPoses.empty())
+		{
+			return -1;
+		}
 	}
 
 	std::string outputDirectory = UDirectory::getDir(dbPath);

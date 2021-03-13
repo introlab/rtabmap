@@ -327,6 +327,9 @@ std::list<std::map<int, Transform> > RTABMAP_EXP getPaths(
 		std::map<int, Transform> poses,
 		const std::multimap<int, Link> & links);
 
+void RTABMAP_EXP computeMinMax(const std::map<int, Transform> & poses,
+		cv::Vec3f & min,
+		cv::Vec3f & max);
 
 } /* namespace graph */
 

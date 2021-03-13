@@ -23,9 +23,9 @@
       <property name="geometry">
        <rect>
         <x>0</x>
-        <y>-584</y>
+        <y>-148</y>
         <width>780</width>
-        <height>5347</height>
+        <height>5569</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_13">
@@ -52,21 +52,21 @@
            </property>
           </widget>
          </item>
-         <item row="10" column="0">
+         <item row="11" column="0">
           <widget class="QCheckBox" name="checkBox_regenerate">
            <property name="text">
             <string/>
            </property>
           </widget>
          </item>
-         <item row="11" column="0">
+         <item row="12" column="0">
           <widget class="QCheckBox" name="checkBox_filtering">
            <property name="text">
             <string/>
            </property>
           </widget>
          </item>
-         <item row="10" column="1">
+         <item row="11" column="1">
           <widget class="QLabel" name="label_regenerate">
            <property name="text">
             <string>Regenerate clouds. This can be used to regenerate the point clouds at higher density than those used for online visualization.</string>
@@ -116,14 +116,14 @@
            </property>
           </widget>
          </item>
-         <item row="12" column="0">
+         <item row="13" column="0">
           <widget class="QCheckBox" name="checkBox_smoothing">
            <property name="text">
             <string/>
            </property>
           </widget>
          </item>
-         <item row="11" column="1">
+         <item row="12" column="1">
           <widget class="QLabel" name="label_binaryFile_9">
            <property name="text">
             <string>Cloud filtering. Remove sparse points that are far from surfaces.</string>
@@ -143,7 +143,7 @@
            </property>
           </widget>
          </item>
-         <item row="12" column="1">
+         <item row="13" column="1">
           <widget class="QLabel" name="label_smoothing">
            <property name="text">
             <string>Cloud smoothing using Moving Least Squares algorithm (MLS).</string>
@@ -289,7 +289,7 @@
            </item>
           </widget>
          </item>
-         <item row="13" column="1">
+         <item row="14" column="1">
           <widget class="QLabel" name="label_gainCompensation">
            <property name="text">
             <string>Gain compensation. Normalize brightness of images.</string>
@@ -299,7 +299,7 @@
            </property>
           </widget>
          </item>
-         <item row="14" column="1">
+         <item row="15" column="1">
           <widget class="QLabel" name="label_cameraProjection">
            <property name="text">
             <string>Camera projection. This can be used to colorize point cloud created from scans and/or export camera IDs for each point of the cloud.</string>
@@ -309,21 +309,21 @@
            </property>
           </widget>
          </item>
-         <item row="13" column="0">
+         <item row="14" column="0">
           <widget class="QCheckBox" name="checkBox_gainCompensation">
            <property name="text">
             <string/>
            </property>
           </widget>
          </item>
-         <item row="14" column="0">
+         <item row="15" column="0">
           <widget class="QCheckBox" name="checkBox_cameraProjection">
            <property name="text">
             <string/>
            </property>
           </widget>
          </item>
-         <item row="15" column="1">
+         <item row="16" column="1">
           <widget class="QLabel" name="label_binaryFile_12">
            <property name="text">
             <string>Meshing.</string>
@@ -333,14 +333,235 @@
            </property>
           </widget>
          </item>
-         <item row="15" column="0">
+         <item row="16" column="0">
           <widget class="QCheckBox" name="checkBox_meshing">
            <property name="text">
             <string/>
            </property>
           </widget>
          </item>
+         <item row="10" column="1">
+          <widget class="QLabel" name="label_binaryFile_10">
+           <property name="text">
+            <string>Nodes filtering. Filter nodes to be exported in a specified region .</string>
+           </property>
+           <property name="wordWrap">
+            <bool>true</bool>
+           </property>
+          </widget>
+         </item>
+         <item row="10" column="0">
+          <widget class="QCheckBox" name="checkBox_nodes_filtering">
+           <property name="text">
+            <string/>
+           </property>
+          </widget>
+         </item>
         </layout>
+       </item>
+       <item>
+        <widget class="QGroupBox" name="groupBox_nodes_filtering">
+         <property name="title">
+          <string>Nodes Filtering</string>
+         </property>
+         <layout class="QVBoxLayout" name="verticalLayout_19">
+          <item>
+           <widget class="QLabel" name="label_114">
+            <property name="text">
+             <string>Set min and max range values on each axis. Nodes inside those ranges will be exported. If the min and max are equals, there is no filtering on that axis. For example for 2D map, set Z min and Z max to 0. To filter just in altitude, set only Z ranges.</string>
+            </property>
+            <property name="wordWrap">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <layout class="QGridLayout" name="gridLayout_21">
+            <item row="0" column="2">
+             <widget class="QLabel" name="label_113">
+              <property name="text">
+               <string>X max</string>
+              </property>
+              <property name="wordWrap">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item row="1" column="0">
+             <widget class="QLabel" name="label_142">
+              <property name="toolTip">
+               <string>Length along X-Axis</string>
+              </property>
+              <property name="text">
+               <string>Y min</string>
+              </property>
+              <property name="wordWrap">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item row="1" column="1">
+             <widget class="QDoubleSpinBox" name="doubleSpinBox_nodes_filtering_ymin">
+              <property name="suffix">
+               <string> m</string>
+              </property>
+              <property name="decimals">
+               <number>0</number>
+              </property>
+              <property name="minimum">
+               <double>-9999999.000000000000000</double>
+              </property>
+              <property name="maximum">
+               <double>9999999.000000000000000</double>
+              </property>
+             </widget>
+            </item>
+            <item row="1" column="2">
+             <widget class="QLabel" name="label_115">
+              <property name="toolTip">
+               <string>Width along Y-Axis</string>
+              </property>
+              <property name="text">
+               <string>Y max</string>
+              </property>
+              <property name="wordWrap">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item row="2" column="0">
+             <widget class="QLabel" name="label_116">
+              <property name="toolTip">
+               <string>Height along Z-Axis</string>
+              </property>
+              <property name="text">
+               <string>Z min</string>
+              </property>
+              <property name="wordWrap">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item row="2" column="2">
+             <widget class="QLabel" name="label_119">
+              <property name="toolTip">
+               <string>Width along Y-Axis</string>
+              </property>
+              <property name="text">
+               <string>Z max</string>
+              </property>
+              <property name="wordWrap">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item row="0" column="0">
+             <widget class="QLabel" name="label_111">
+              <property name="text">
+               <string>X min</string>
+              </property>
+              <property name="wordWrap">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item row="1" column="4">
+             <spacer name="horizontalSpacer">
+              <property name="orientation">
+               <enum>Qt::Horizontal</enum>
+              </property>
+              <property name="sizeHint" stdset="0">
+               <size>
+                <width>40</width>
+                <height>20</height>
+               </size>
+              </property>
+             </spacer>
+            </item>
+            <item row="0" column="1">
+             <widget class="QDoubleSpinBox" name="doubleSpinBox_nodes_filtering_xmin">
+              <property name="suffix">
+               <string> m</string>
+              </property>
+              <property name="decimals">
+               <number>0</number>
+              </property>
+              <property name="minimum">
+               <double>-9999999.000000000000000</double>
+              </property>
+              <property name="maximum">
+               <double>9999999.000000000000000</double>
+              </property>
+             </widget>
+            </item>
+            <item row="0" column="3">
+             <widget class="QDoubleSpinBox" name="doubleSpinBox_nodes_filtering_xmax">
+              <property name="suffix">
+               <string> m</string>
+              </property>
+              <property name="decimals">
+               <number>0</number>
+              </property>
+              <property name="minimum">
+               <double>-9999999.000000000000000</double>
+              </property>
+              <property name="maximum">
+               <double>9999999.000000000000000</double>
+              </property>
+             </widget>
+            </item>
+            <item row="2" column="1">
+             <widget class="QDoubleSpinBox" name="doubleSpinBox_nodes_filtering_zmin">
+              <property name="suffix">
+               <string> m</string>
+              </property>
+              <property name="decimals">
+               <number>0</number>
+              </property>
+              <property name="minimum">
+               <double>-9999999.000000000000000</double>
+              </property>
+              <property name="maximum">
+               <double>9999999.000000000000000</double>
+              </property>
+             </widget>
+            </item>
+            <item row="1" column="3">
+             <widget class="QDoubleSpinBox" name="doubleSpinBox_nodes_filtering_ymax">
+              <property name="suffix">
+               <string> m</string>
+              </property>
+              <property name="decimals">
+               <number>0</number>
+              </property>
+              <property name="minimum">
+               <double>-9999999.000000000000000</double>
+              </property>
+              <property name="maximum">
+               <double>9999999.000000000000000</double>
+              </property>
+             </widget>
+            </item>
+            <item row="2" column="3">
+             <widget class="QDoubleSpinBox" name="doubleSpinBox_nodes_filtering_zmax">
+              <property name="suffix">
+               <string> m</string>
+              </property>
+              <property name="decimals">
+               <number>0</number>
+              </property>
+              <property name="minimum">
+               <double>-9999999.000000000000000</double>
+              </property>
+              <property name="maximum">
+               <double>9999999.000000000000000</double>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+         </layout>
+        </widget>
        </item>
        <item>
         <widget class="QGroupBox" name="groupBox_regenerateScans">

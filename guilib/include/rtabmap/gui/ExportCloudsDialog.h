@@ -131,6 +131,7 @@ private Q_SLOTS:
 	void cancel();
 
 private:
+	std::map<int, Transform> filterNodes(const std::map<int, Transform> & poses);
 	std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::IndicesPtr> > getClouds(
 			const std::map<int, Transform> & poses,
 			const QMap<int, Signature> & cachedSignatures,

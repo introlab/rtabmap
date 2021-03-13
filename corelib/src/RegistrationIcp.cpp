@@ -547,7 +547,7 @@ void RegistrationIcp::parseParameters(const ParametersMap & parameters)
 #else
 	if(_libpointmatcher)
 	{
-		UINFO("libpointmatcher enabled! config=\"%s\"", _libpointmatcherConfig.c_str());
+		UDEBUG("libpointmatcher enabled! config=\"%s\"", _libpointmatcherConfig.c_str());
 		if(_libpointmatcherICP!=0)
 		{
 			delete (PM::ICP*)_libpointmatcherICP;
