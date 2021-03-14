@@ -231,6 +231,7 @@ ExportCloudsDialog::ExportCloudsDialog(QWidget *parent) :
 	connect(_ui->checkBox_poisson_outputPolygons, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
 	connect(_ui->checkBox_poisson_manifold, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
 	connect(_ui->spinBox_poisson_depth, SIGNAL(valueChanged(int)), this, SIGNAL(configChanged()));
+	connect(_ui->doubleSpinBox_poisson_targetPolygonSize, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
 	connect(_ui->spinBox_poisson_iso, SIGNAL(valueChanged(int)), this, SIGNAL(configChanged()));
 	connect(_ui->spinBox_poisson_solver, SIGNAL(valueChanged(int)), this, SIGNAL(configChanged()));
 	connect(_ui->spinBox_poisson_minDepth, SIGNAL(valueChanged(int)), this, SIGNAL(configChanged()));
@@ -442,6 +443,7 @@ void ExportCloudsDialog::saveSettings(QSettings & settings, const QString & grou
 	settings.setValue("poisson_outputPolygons", _ui->checkBox_poisson_outputPolygons->isChecked());
 	settings.setValue("poisson_manifold", _ui->checkBox_poisson_manifold->isChecked());
 	settings.setValue("poisson_depth", _ui->spinBox_poisson_depth->value());
+	settings.setValue("poisson_polygon_size", _ui->doubleSpinBox_poisson_targetPolygonSize->value());
 	settings.setValue("poisson_iso", _ui->spinBox_poisson_iso->value());
 	settings.setValue("poisson_solver", _ui->spinBox_poisson_solver->value());
 	settings.setValue("poisson_minDepth", _ui->spinBox_poisson_minDepth->value());
@@ -604,6 +606,7 @@ void ExportCloudsDialog::loadSettings(QSettings & settings, const QString & grou
 	_ui->checkBox_poisson_outputPolygons->setChecked(settings.value("poisson_outputPolygons", _ui->checkBox_poisson_outputPolygons->isChecked()).toBool());
 	_ui->checkBox_poisson_manifold->setChecked(settings.value("poisson_manifold", _ui->checkBox_poisson_manifold->isChecked()).toBool());
 	_ui->spinBox_poisson_depth->setValue(settings.value("poisson_depth", _ui->spinBox_poisson_depth->value()).toInt());
+	_ui->doubleSpinBox_poisson_targetPolygonSize->setValue(settings.value("poisson_polygon_size", _ui->doubleSpinBox_poisson_targetPolygonSize->value()).toDouble());
 	_ui->spinBox_poisson_iso->setValue(settings.value("poisson_iso", _ui->spinBox_poisson_iso->value()).toInt());
 	_ui->spinBox_poisson_solver->setValue(settings.value("poisson_solver", _ui->spinBox_poisson_solver->value()).toInt());
 	_ui->spinBox_poisson_minDepth->setValue(settings.value("poisson_minDepth", _ui->spinBox_poisson_minDepth->value()).toInt());
@@ -758,6 +761,7 @@ void ExportCloudsDialog::restoreDefaults()
 	_ui->checkBox_poisson_outputPolygons->setChecked(false);
 	_ui->checkBox_poisson_manifold->setChecked(true);
 	_ui->spinBox_poisson_depth->setValue(0);
+	_ui->doubleSpinBox_poisson_targetPolygonSize->setValue(0.03);
 	_ui->spinBox_poisson_iso->setValue(8);
 	_ui->spinBox_poisson_solver->setValue(8);
 	_ui->spinBox_poisson_minDepth->setValue(5);
@@ -2473,7 +2477,7 @@ bool ExportCloudsDialog::getExportedClouds(
 							depth = 12;
 							for(int i=6; i<12; ++i)
 							{
-								if(mapLength/float(1<<i) < 0.03f)
+								if(mapLength/float(1<<i) < _ui->doubleSpinBox_poisson_targetPolygonSize->value())
 								{
 									depth = i;
 									break;

@@ -76,6 +76,7 @@ void showUsage()
 			"    --high_gain     #     High brightness gain 0-100 (default 10).\n"
 			"    --multiband           Enable multiband texturing (AliceVision dependency required).\n"
 			"    --poisson_depth #     Set Poisson depth for mesh reconstruction.\n"
+			"    --poisson_size  #     Set target polygon size when computing Poisson's depth for mesh reconstruction (default 0.03 m).\n"
 			"    --max_polygons  #     Maximum polygons when creating a mesh (default 500000, set 0 for no limit).\n"
 			"    --max_range     #     Maximum range of the created clouds (default 4 m, 0 m with --scan).\n"
 			"    --decimation    #     Depth image decimation before creating the clouds (default 4, 1 with --scan).\n"
@@ -114,6 +115,7 @@ int main(int argc, char * argv[])
 	bool doBlending = true;
 	bool doClean = true;
 	int poissonDepth = 0;
+	float poissonSize = 0.03;
 	int maxPolygons = 500000;
 	int decimation = -1;
 	float maxRange = -1.0f;
@@ -255,6 +257,18 @@ int main(int argc, char * argv[])
 			if(i<argc-1)
 			{
 				poissonDepth = uStr2Int(argv[i]);
+			}
+			else
+			{
+				showUsage();
+			}
+		}
+		else if(std::strcmp(argv[i], "--poisson_size") == 0)
+		{
+			++i;
+			if(i<argc-1)
+			{
+				poissonSize = uStr2Float(argv[i]);
 			}
 			else
 			{
@@ -911,7 +925,7 @@ int main(int argc, char * argv[])
 			int optimizedDepth = 12;
 			for(int i=6; i<12; ++i)
 			{
-				if(mapLength/float(1<<i) < 0.03f)
+				if(mapLength/float(1<<i) < poissonSize)
 				{
 					optimizedDepth = i;
 					break;
