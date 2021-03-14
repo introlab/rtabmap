@@ -56,6 +56,7 @@ void showUsage()
 	printf("\nUsage:\n"
 			"rtabmap-export [options] database.db\n"
 			"Options:\n"
+			"    --output              Output name (default: name of the database is used).\n"
 			"    --bin                 Export PLY in binary format.\n"
 			"    --las                 Export cloud in LAS instead of PLY (PDAL dependency required).\n"
 			"    --mesh                Create a mesh.\n"
@@ -133,12 +134,25 @@ int main(int argc, char * argv[])
 	bool camProjection = false;
 	bool exportPoses = false;
 	bool exportImages = false;
+	std::string outputName;
 	cv::Vec3f min, max;
 	for(int i=1; i<argc; ++i)
 	{
 		if(std::strcmp(argv[i], "--help") == 0)
 		{
 			showUsage();
+		}
+		else if(std::strcmp(argv[i], "--output") == 0)
+		{
+			++i;
+			if(i<argc-1)
+			{
+				outputName = argv[i];
+			}
+			else
+			{
+				showUsage();
+			}
 		}
 		else if(std::strcmp(argv[i], "--bin") == 0)
 		{
@@ -563,7 +577,7 @@ int main(int argc, char * argv[])
 	}
 
 	std::string outputDirectory = UDirectory::getDir(dbPath);
-	std::string baseName = uSplit(UFile::getName(dbPath), '.').front();
+	std::string baseName = outputName.empty()?uSplit(UFile::getName(dbPath), '.').front():outputName;
 
 	if(ba)
 	{
@@ -874,9 +888,9 @@ int main(int argc, char * argv[])
 			printf("Camera projection... done! (%fs)\n", timer.ticks());
 		}
 
-		if(saveInDb)
+		if(!(mesh || texture))
 		{
-			if(!(mesh || texture))
+			if(saveInDb)
 			{
 				printf("Saving in db... (%d points)\n", !cloudToExport->empty()?(int)cloudToExport->size():(int)cloudIToExport->size());
 				if(!cloudToExport->empty())
@@ -885,29 +899,29 @@ int main(int argc, char * argv[])
 					driver->saveOptimizedMesh(util3d::laserScanFromPointCloud(*cloudIToExport, Transform(), false).data());
 				printf("Saving in db... done!\n");
 			}
-		}
-		else
-		{
-			std::string ext = las?"las":"ply";
-			std::string outputPath=outputDirectory+"/"+baseName+"_cloud."+ext;
-			printf("Saving %s... (%d points)\n", outputPath.c_str(), !cloudToExport->empty()?(int)cloudToExport->size():(int)cloudIToExport->size());
-#ifdef RTABMAP_PDAL
-			if(!cloudToExport->empty())
-				savePDALFile(outputPath, *cloudToExport, pointToCamId, binary);
-			else if(!cloudIToExport->empty())
-				savePDALFile(outputPath, *cloudIToExport, pointToCamId, binary);
-#else
-			if(!pointToCamId.empty())
+			else
 			{
-				printf("Option --cam_projection is enabled but rtabmap is not built "
-						"with PDAL support, so camera IDs won't be exported in the output cloud.\n");
-			}
-			if(!cloudToExport->empty())
-				pcl::io::savePLYFile(outputPath, *cloudToExport, binary);
-			else if(!cloudIToExport->empty())
-				pcl::io::savePLYFile(outputPath, *cloudIToExport, binary);
+				std::string ext = las?"las":"ply";
+				std::string outputPath=outputDirectory+"/"+baseName+"_cloud."+ext;
+				printf("Saving %s... (%d points)\n", outputPath.c_str(), !cloudToExport->empty()?(int)cloudToExport->size():(int)cloudIToExport->size());
+#ifdef RTABMAP_PDAL
+				if(!cloudToExport->empty())
+					savePDALFile(outputPath, *cloudToExport, pointToCamId, binary);
+				else if(!cloudIToExport->empty())
+					savePDALFile(outputPath, *cloudIToExport, pointToCamId, binary);
+#else
+				if(!pointToCamId.empty())
+				{
+					printf("Option --cam_projection is enabled but rtabmap is not built "
+							"with PDAL support, so camera IDs won't be exported in the output cloud.\n");
+				}
+				if(!cloudToExport->empty())
+					pcl::io::savePLYFile(outputPath, *cloudToExport, binary);
+				else if(!cloudIToExport->empty())
+					pcl::io::savePLYFile(outputPath, *cloudIToExport, binary);
 #endif
-			printf("Saving %s... done!\n", outputPath.c_str());
+				printf("Saving %s... done!\n", outputPath.c_str());
+			}
 		}
 
 		// Meshing...
