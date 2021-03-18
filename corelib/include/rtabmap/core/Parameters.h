@@ -347,7 +347,7 @@ class RTABMAP_EXP Parameters
     RTABMAP_PARAM(VhEp, RansacParam2,  float, 0.99, "Fundamental matrix (see cvFindFundamentalMat()): Performance of RANSAC.");
 
     // RGB-D SLAM
-    RTABMAP_PARAM(RGBD, Enabled,                  bool, true,  "");
+    RTABMAP_PARAM(RGBD, Enabled,                  bool, true,  "Activate metric SLAM. If set to false, classic RTAB-Map loop closure detection is done using only images and without any metric information.");
     RTABMAP_PARAM(RGBD, LinearUpdate,             float, 0.1,  "Minimum linear displacement (m) to update the map. Rehearsal is done prior to this, so weights are still updated.");
     RTABMAP_PARAM(RGBD, AngularUpdate,            float, 0.1,  "Minimum angular displacement (rad) to update the map. Rehearsal is done prior to this, so weights are still updated.");
     RTABMAP_PARAM(RGBD, LinearSpeedUpdate,        float, 0.0,  "Maximum linear speed (m/s) to update the map (0 means not limit).");
