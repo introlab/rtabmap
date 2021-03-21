@@ -66,8 +66,11 @@ void showUsage()
 			"    --texture_range #     Maximum camera range for texturing a polygon (default 0 meters: no limit).\n"
 			"    --texture_d2c         Distance to camera policy.\n"
 			"    --cam_projection      Camera projection on assembled cloud and export node ID on each point (in PointSourceId field).\n"
-			"    --poses               Export optimized poses in RGB-D SLAM dataset format (stamp x y z qx qy qz qw).\n"
-			"    --images              Export images.\n"
+			"    --poses               Export optimized poses of the robot frame (e.g., base_link) in RGB-D SLAM dataset format (stamp x y z qx qy qz qw).\n"
+			"    --poses_camera        Export optimized poses of the camera frame (e.g., optical frame) in RGB-D SLAM dataset format (stamp x y z qx qy qz qw).\n"
+			"    --poses_scan          Export optimized poses of the scan frame in RGB-D SLAM dataset format (stamp x y z qx qy qz qw).\n"
+			"    --images              Export images with stamp as file name.\n"
+			"    --images_id           Export images with node id as file name.\n"
 			"    --ba                  Do global bundle adjustment before assembling the clouds.\n"
 			"    --gain          #     Gain compensation value (default 1, set 0 to disable).\n"
 			"    --gain_gray           Do gain estimation compensation on gray channel only (default RGB channels).\n"
@@ -133,7 +136,10 @@ int main(int argc, char * argv[])
 	int highBrightnessGain = 10;
 	bool camProjection = false;
 	bool exportPoses = false;
+	bool exportPosesCamera = false;
+	bool exportPosesScan = false;
 	bool exportImages = false;
+	bool exportImagesId = false;
 	std::string outputName;
 	cv::Vec3f min, max;
 	for(int i=1; i<argc; ++i)
@@ -224,9 +230,22 @@ int main(int argc, char * argv[])
 		{
 			exportPoses = true;
 		}
+		else if(std::strcmp(argv[i], "--poses_camera") == 0)
+		{
+			exportPosesCamera = true;
+		}
+		else if(std::strcmp(argv[i], "--poses_scan") == 0)
+		{
+			exportPosesScan = true;
+		}
 		else if(std::strcmp(argv[i], "--images") == 0)
 		{
 			exportImages = true;
+		}
+		else if(std::strcmp(argv[i], "--images_id") == 0)
+		{
+			exportImages = true;
+			exportImagesId = true;
 		}
 		else if(std::strcmp(argv[i], "--ba") == 0)
 		{
@@ -601,11 +620,14 @@ int main(int argc, char * argv[])
 	printf("Create and assemble the clouds...\n");
 	pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr mergedClouds(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
 	pcl::PointCloud<pcl::PointXYZINormal>::Ptr mergedCloudsI(new pcl::PointCloud<pcl::PointXYZINormal>);
+	std::map<int, rtabmap::Transform> robotPoses;
 	std::map<int, rtabmap::Transform> cameraPoses;
+	std::map<int, rtabmap::Transform> scanPoses;
 	std::map<int, double> cameraStamps;
 	std::map<int, std::vector<rtabmap::CameraModel> > cameraModels;
 	std::map<int, cv::Mat> cameraDepths;
 	int imagesExported = 0;
+	bool calibSaved = false;
 	for(std::map<int, Transform>::iterator iter=optimizedPoses.lower_bound(1); iter!=optimizedPoses.end(); ++iter)
 	{
 		Signature node = nodes.find(iter->first)->second;
@@ -652,7 +674,7 @@ int main(int argc, char * argv[])
 			std::string dirSuffix = (depth.type() != CV_16UC1 && depth.type() != CV_32FC1)?"rgb":"left";
 			std::string dir = outputDirectory+"/"+baseName+"_"+dirSuffix;
 			UDirectory::makeDir(dir);
-			std::string outputPath=dir+"/"+uNumber2Str(iter->first)+".jpg";
+			std::string outputPath=dir+"/"+(exportImagesId?uNumber2Str(iter->first):uFormat("%f",node.getStamp()))+".jpg";
 			cv::imwrite(outputPath, rgb);
 			++imagesExported;
 			if(!depth.empty())
@@ -678,8 +700,21 @@ int main(int argc, char * argv[])
 					UDirectory::makeDir(dir);
 				}
 
-				outputPath=dir+"/"+uNumber2Str(iter->first)+ext;
+				outputPath=dir+"/"+(exportImagesId?uNumber2Str(iter->first):uFormat("%f",node.getStamp()))+ext;
 				cv::imwrite(outputPath, depthExported);
+			}
+			if(!calibSaved)
+			{
+				for(size_t i=0; i<models.size(); ++i)
+				{
+					models[i].save(outputDirectory);
+				}
+				calibSaved = !models.empty();
+				if(node.sensorData().stereoCameraModel().isValidForProjection())
+				{
+					node.sensorData().stereoCameraModel().save(outputDirectory);
+					calibSaved = true;
+				}
 			}
 		}
 
@@ -731,15 +766,35 @@ int main(int argc, char * argv[])
 			}
 		}
 
-		cameraPoses.insert(std::make_pair(iter->first, iter->second));
+		if(models.empty() && node.sensorData().stereoCameraModel().isValidForProjection())
+		{
+			models.push_back(node.sensorData().stereoCameraModel().left());
+		}
+
+		robotPoses.insert(std::make_pair(iter->first, iter->second));
 		cameraStamps.insert(std::make_pair(iter->first, node.getStamp()));
 		if(!models.empty())
 		{
 			cameraModels.insert(std::make_pair(iter->first, models));
+			if(exportPosesCamera)
+			{
+				if(models.size() == 1)
+				{
+					cameraPoses.insert(std::make_pair(iter->first, iter->second*models[0].localTransform()));
+				}
+				else
+				{
+					printf("--poses_camera cannot be used with multi-camera data. Ignoring camera pose for node %d.\n", iter->first);
+				}
+			}
 		}
 		if(!depth.empty())
 		{
 			cameraDepths.insert(std::make_pair(iter->first, depth));
+		}
+		if(exportPosesScan && !node.sensorData().laserScanCompressed().empty())
+		{
+			scanPoses.insert(std::make_pair(iter->first, iter->second*node.sensorData().laserScanCompressed().localTransform()));
 		}
 	}
 	printf("Create and assemble the clouds... done (%fs, %d points).\n", timer.ticks(), !mergedClouds->empty()?(int)mergedClouds->size():(int)mergedCloudsI->size());
@@ -759,11 +814,26 @@ int main(int argc, char * argv[])
 			driver->save2DMap(cv::Mat(), 0, 0, 0);
 			driver->saveOptimizedPoses(optimizedPoses, lastlocalizationPose);
 		}
-		else if(exportPoses)
+		else
 		{
-			std::string outputPath=outputDirectory+"/"+baseName+"_poses.txt";
-			rtabmap::graph::exportPoses(outputPath, 10, cameraPoses, std::multimap<int, Link>(), cameraStamps);
-			printf("Poses exported to \"%s\".\n", outputPath.c_str());
+			if(exportPoses)
+			{
+				std::string outputPath=outputDirectory+"/"+baseName+"_poses.txt";
+				rtabmap::graph::exportPoses(outputPath, 10, robotPoses, std::multimap<int, Link>(), cameraStamps);
+				printf("Poses exported to \"%s\".\n", outputPath.c_str());
+			}
+			else if(exportPosesCamera)
+			{
+				std::string outputPath=outputDirectory+"/"+baseName+"_camera_poses.txt";
+				rtabmap::graph::exportPoses(outputPath, 10, cameraPoses, std::multimap<int, Link>(), cameraStamps);
+				printf("Camera poses exported to \"%s\".\n", outputPath.c_str());
+			}
+			else if(exportPosesScan)
+			{
+				std::string outputPath=outputDirectory+"/"+baseName+"_scan_poses.txt";
+				rtabmap::graph::exportPoses(outputPath, 10, scanPoses, std::multimap<int, Link>(), cameraStamps);
+				printf("Scan poses exported to \"%s\".\n", outputPath.c_str());
+			}
 		}
 
 		pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloudToExport = mergedClouds;
@@ -783,7 +853,7 @@ int main(int argc, char * argv[])
 		}
 
 		std::vector<int> pointToCamId;
-		if(camProjection && !cameraPoses.empty())
+		if(camProjection && !robotPoses.empty())
 		{
 			printf("Camera projection...\n");
 			pointToCamId.resize(!cloudToExport->empty()?cloudToExport->size():cloudIToExport->size());
@@ -792,7 +862,7 @@ int main(int argc, char * argv[])
 			{
 				pointToPixel = util3d::projectCloudToCameras(
 						*cloudToExport,
-						cameraPoses,
+						robotPoses,
 						cameraModels,
 						textureRange,
 						0,
@@ -803,7 +873,7 @@ int main(int argc, char * argv[])
 			{
 				pointToPixel = util3d::projectCloudToCameras(
 						*cloudIToExport,
-						cameraPoses,
+						robotPoses,
 						cameraModels,
 						textureRange,
 						0,
@@ -996,11 +1066,11 @@ int main(int argc, char * argv[])
 				}
 				else
 				{
-					printf("Texturing %d polygons... cameraPoses=%d, cameraDepths=%d\n", (int)mesh->polygons.size(), (int)cameraPoses.size(), (int)cameraDepths.size());
+					printf("Texturing %d polygons... robotPoses=%d, cameraDepths=%d\n", (int)mesh->polygons.size(), (int)robotPoses.size(), (int)cameraDepths.size());
 					std::vector<std::map<int, pcl::PointXY> > vertexToPixels;
 					pcl::TextureMeshPtr textureMesh = rtabmap::util3d::createTextureMesh(
 							mesh,
-							cameraPoses,
+							robotPoses,
 							cameraModels,
 							cameraDepths,
 							textureRange,
@@ -1110,7 +1180,7 @@ int main(int argc, char * argv[])
 							if(util3d::multiBandTexturing(outputPath,
 									textureMesh->cloud,
 									textureMesh->tex_polygons[0],
-									cameraPoses,
+									robotPoses,
 									vertexToPixels,
 									std::map<int, cv::Mat >(),
 									std::map<int, std::vector<CameraModel> >(),
