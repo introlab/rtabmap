@@ -609,6 +609,8 @@ void RegistrationIcp::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kIcpPMMatcherIntensity(), _libpointmatcherIntensity);
 	Parameters::parse(parameters, Parameters::kIcpPMForce4DoF(), _libpointmatcherForce4DoF);
 
+	bool pointToPlane = _pointToPlane;
+
 #ifndef RTABMAP_POINTMATCHER
 	if(_libpointmatcher)
 	{
@@ -620,7 +622,6 @@ void RegistrationIcp::parseParameters(const ParametersMap & parameters)
 	delete (PM::ICP*)_libpointmatcherICPFilters;
 	_libpointmatcherICP = 0;
 	_libpointmatcherICPFilters = 0;
-	bool pointToPlane = _pointToPlane;
 	if(_libpointmatcher)
 	{
 		_libpointmatcherConfig = uReplaceChar(_libpointmatcherConfig, '~', UDirectory::homeDir());
@@ -1286,7 +1287,7 @@ Transform RegistrationIcp::computeTransformationImpl(
 						info.covariance = cv::Mat::eye(6,6,CV_64FC1)*variance;
 						info.covariance(cv::Range(3,6),cv::Range(3,6))/=10.0; //orientation error
 						if(_libpointmatcher &&
-							_pointToPlane &&
+							pointToPlane &&
 							!force3DoF() &&
 							_libpointmatcherForce4DoF &&
 							!tooLowComplexityForPlaneToPlane)
