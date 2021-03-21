@@ -307,6 +307,7 @@ Transform OdometryF2M::computeTransform(
 				}
 
 				data.setFeatures(lastFrame_->sensorData().keypoints(), lastFrame_->sensorData().keypoints3D(), lastFrame_->sensorData().descriptors());
+				data.setLaserScan(lastFrame_->sensorData().laserScanRaw());
 
 				UDEBUG("Registration time = %fs", regInfo.totalTime);
 				if(!transform.isNull())
@@ -950,7 +951,7 @@ Transform OdometryF2M::computeTransform(
 						}
 						else
 						{
-							newPoints = mapCloudNormals->size();
+							newPoints = frameCloudNormals->size();
 						}
 
 						if(newPoints)
@@ -1124,16 +1125,18 @@ Transform OdometryF2M::computeTransform(
 		}
 		else
 		{
-			// just generate keypoints for the new signature
-			if(regPipeline_->isImageRequired())
-			{
-				Signature dummy;
-				regPipeline_->computeTransformationMod(
-						*lastFrame_,
-						dummy);
-			}
+			// Just generate keypoints for the new signature
+			// For scan, we want to use reading filters, so set dummy's scan and set back to reference afterwards
+			Signature dummy;
+			dummy.sensorData().setLaserScan(lastFrame_->sensorData().laserScanRaw());
+			lastFrame_->sensorData().setLaserScan(LaserScan());
+			regPipeline_->computeTransformationMod(
+					*lastFrame_,
+					dummy);
+			lastFrame_->sensorData().setLaserScan(dummy.sensorData().laserScanRaw());
 
 			data.setFeatures(lastFrame_->sensorData().keypoints(), lastFrame_->sensorData().keypoints3D(), lastFrame_->sensorData().descriptors());
+			data.setLaserScan(lastFrame_->sensorData().laserScanRaw());
 
 			// a very high variance tells that the new pose is not linked with the previous one
 			regInfo.covariance = cv::Mat::eye(6,6,CV_64FC1)*9999.0;

@@ -240,15 +240,19 @@ Transform OdometryF2F::computeTransform(
 		{
 			UDEBUG("Update key frame");
 			int features = newFrame.getWordsDescriptors().rows;
-			if(registrationPipeline_->isImageRequired() && features == 0)
+			if(!refFrame_.sensorData().isValid())
 			{
 				newFrame = Signature(data);
 				// this will generate features only for the first frame or if optical flow was used (no 3d words)
+				// For scan, we want to use reading filters, so set dummy's scan and set back to reference afterwards
 				Signature dummy;
+				dummy.sensorData().setLaserScan(newFrame.sensorData().laserScanRaw());
+				newFrame.sensorData().setLaserScan(LaserScan());
 				registrationPipeline_->computeTransformationMod(
 						newFrame,
 						dummy);
 				features = (int)newFrame.sensorData().keypoints().size();
+				newFrame.sensorData().setLaserScan(dummy.sensorData().laserScanRaw(), true);
 			}
 
 			if((features >= registrationPipeline_->getMinVisualCorrespondences()) &&
@@ -295,6 +299,7 @@ Transform OdometryF2F::computeTransform(
 	}
 
 	data.setFeatures(newFrame.sensorData().keypoints(), newFrame.sensorData().keypoints3D(), newFrame.sensorData().descriptors());
+	data.setLaserScan(newFrame.sensorData().laserScanRaw());
 
 	if(info)
 	{

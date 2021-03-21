@@ -3075,7 +3075,7 @@ Transform Memory::computeIcpTransformMulti(
 	Transform t;
 	if(!fromScan.isEmpty() && !toScan.isEmpty())
 	{
-		Transform guess = poses.at(fromId).inverse() * poses.at(toId);
+		Transform guess = poses.at(toId).inverse() * poses.at(fromId);
 		float guessNorm = guess.getNorm();
 		if(fromScan.rangeMax() > 0.0f && toScan.rangeMax() > 0.0f &&
 			guessNorm > fromScan.rangeMax() + toScan.rangeMax())
@@ -3214,7 +3214,11 @@ Transform Memory::computeIcpTransformMulti(
 					fromScan.rangeMax(),
 					fromScan.is2d()?Transform(0,0,fromScan.localTransform().z(),0,0,0):Transform::getIdentity()));
 
-		t = _registrationIcpMulti->computeTransformation(fromS->sensorData(), assembledData, guess, info);
+		t = _registrationIcpMulti->computeTransformation(assembledData, fromS->sensorData(), guess, info);
+		if(!t.isNull())
+		{
+			t = t.inverse();
+		}
 	}
 
 	return t;

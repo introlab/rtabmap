@@ -80,6 +80,7 @@ private:
 	float _libpointmatcherOutlierRatio;
 	bool _libpointmatcherForce4DoF;
 	void * _libpointmatcherICP;
+	void * _libpointmatcherICPFilters;
 };
 
 }
