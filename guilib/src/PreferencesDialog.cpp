@@ -313,7 +313,10 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 		_ui->graphOptimization_robust->setEnabled(false);
 	}
 #ifndef RTABMAP_POINTMATCHER
-	_ui->groupBox_libpointmatcher->setEnabled(false);
+	_ui->comboBox_icpStrategy->setItemData(1, 0, Qt::UserRole - 1);
+#endif
+#ifndef RTABMAP_CCCORELIB
+	_ui->comboBox_icpStrategy->setItemData(2, 0, Qt::UserRole - 1);
 #endif
 	if(!CameraOpenni::available())
 	{
@@ -1151,6 +1154,9 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->loopClosure_bundle->setObjectName(Parameters::kVisBundleAdjustment().c_str());
 
 	//RegistrationIcp
+	_ui->comboBox_icpStrategy->setObjectName(Parameters::kIcpStrategy().c_str());
+	connect(_ui->comboBox_icpStrategy, SIGNAL(currentIndexChanged(int)), _ui->stackedWidget_icpStrategy, SLOT(setCurrentIndex(int)));
+	_ui->comboBox_icpStrategy->setCurrentIndex(Parameters::defaultIcpStrategy());
 	_ui->globalDetection_icpMaxTranslation->setObjectName(Parameters::kIcpMaxTranslation().c_str());
 	_ui->globalDetection_icpMaxRotation->setObjectName(Parameters::kIcpMaxRotation().c_str());
 	_ui->loopClosure_icpVoxelSize->setObjectName(Parameters::kIcpVoxelSize().c_str());
@@ -1161,6 +1167,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->loopClosure_icpIterations->setObjectName(Parameters::kIcpIterations().c_str());
 	_ui->loopClosure_icpEpsilon->setObjectName(Parameters::kIcpEpsilon().c_str());
 	_ui->loopClosure_icpRatio->setObjectName(Parameters::kIcpCorrespondenceRatio().c_str());
+	_ui->doubleSpinBox_icpOutlierRatio->setObjectName(Parameters::kIcpOutlierRatio().c_str());
 	_ui->loopClosure_icpPointToPlane->setObjectName(Parameters::kIcpPointToPlane().c_str());
 	_ui->loopClosure_icpPointToPlaneNormals->setObjectName(Parameters::kIcpPointToPlaneK().c_str());
 	_ui->loopClosure_icpPointToPlaneNormalsRadius->setObjectName(Parameters::kIcpPointToPlaneRadius().c_str());
@@ -1168,14 +1175,17 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->loopClosure_icpPointToPlaneNormalsMinComplexity->setObjectName(Parameters::kIcpPointToPlaneMinComplexity().c_str());
 	_ui->loopClosure_icpPointToPlaneLowComplexityStrategy->setObjectName(Parameters::kIcpPointToPlaneLowComplexityStrategy().c_str());
 
-	_ui->groupBox_libpointmatcher->setObjectName(Parameters::kIcpPM().c_str());
 	_ui->lineEdit_IcpPMConfigPath->setObjectName(Parameters::kIcpPMConfig().c_str());
 	connect(_ui->toolButton_IcpConfigPath, SIGNAL(clicked()), this, SLOT(changeIcpPMConfigPath()));
-	_ui->doubleSpinBox_icpPMOutlierRatio->setObjectName(Parameters::kIcpPMOutlierRatio().c_str());
 	_ui->spinBox_icpPMMatcherKnn->setObjectName(Parameters::kIcpPMMatcherKnn().c_str());
 	_ui->doubleSpinBox_icpPMMatcherEpsilon->setObjectName(Parameters::kIcpPMMatcherEpsilon().c_str());
 	_ui->loopClosure_icpPMMatcherIntensity->setObjectName(Parameters::kIcpPMMatcherIntensity().c_str());
-	_ui->loopClosure_icpPMForce4DoF->setObjectName(Parameters::kIcpPMForce4DoF().c_str());
+	_ui->loopClosure_icpForce4DoF->setObjectName(Parameters::kIcpForce4DoF().c_str());
+
+	_ui->spinBox_icpCCSamplingLimit->setObjectName(Parameters::kIcpCCSamplingLimit().c_str());
+	_ui->checkBox_icpCCFilterOutFarthestPoints->setObjectName(Parameters::kIcpCCFilterOutFarthestPoints().c_str());
+	_ui->doubleSpinBox_icpCCMaxFinalRMS->setObjectName(Parameters::kIcpCCMaxFinalRMS().c_str());
+
 
 	// Occupancy grid
 	_ui->groupBox_grid_3d->setObjectName(Parameters::kGrid3D().c_str());
@@ -2601,6 +2611,20 @@ bool PreferencesDialog::readCoreSettings(const QString & filePath)
 				}
 			}
 		}
+
+		//backward compatibility
+		if(iter->first.compare(Parameters::kIcpStrategy()) == 0)
+		{
+			if(value.compare("true") == 0)
+			{
+				value =  "1";
+			}
+			else if(value.compare("false") == 0)
+			{
+				value =  "0";
+			}
+		}
+
 		this->setParameter(iter->first, value);
 	}
 

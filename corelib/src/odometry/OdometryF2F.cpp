@@ -99,7 +99,7 @@ Transform OdometryF2F::computeTransform(
 	if(refFrame_.sensorData().isValid())
 	{
 		float maxCorrespondenceDistance = 0.0f;
-		float pmOutlierRatio = 0.0f;
+		float outlierRatio = 0.0f;
 		if(guess.isNull() &&
 			!registrationPipeline_->isImageRequired() &&
 			registrationPipeline_->isScanRequired() &&
@@ -107,12 +107,12 @@ Transform OdometryF2F::computeTransform(
 		{
 			// only on initialization (first frame to register), increase icp max correspondences in case the robot is already moving
 			maxCorrespondenceDistance = Parameters::defaultIcpMaxCorrespondenceDistance();
-			pmOutlierRatio = Parameters::defaultIcpPMOutlierRatio();
+			outlierRatio = Parameters::defaultIcpOutlierRatio();
 			Parameters::parse(parameters_, Parameters::kIcpMaxCorrespondenceDistance(), maxCorrespondenceDistance);
-			Parameters::parse(parameters_, Parameters::kIcpPMOutlierRatio(), pmOutlierRatio);
+			Parameters::parse(parameters_, Parameters::kIcpOutlierRatio(), outlierRatio);
 			ParametersMap params;
 			params.insert(ParametersPair(Parameters::kIcpMaxCorrespondenceDistance(), uNumber2Str(maxCorrespondenceDistance*3.0f)));
-			params.insert(ParametersPair(Parameters::kIcpPMOutlierRatio(), uNumber2Str(0.95f)));
+			params.insert(ParametersPair(Parameters::kIcpOutlierRatio(), uNumber2Str(0.95f)));
 			registrationPipeline_->parseParameters(params);
 		}
 
@@ -129,7 +129,7 @@ Transform OdometryF2F::computeTransform(
 			// set it back
 			ParametersMap params;
 			params.insert(ParametersPair(Parameters::kIcpMaxCorrespondenceDistance(), uNumber2Str(maxCorrespondenceDistance)));
-			params.insert(ParametersPair(Parameters::kIcpPMOutlierRatio(), uNumber2Str(pmOutlierRatio)));
+			params.insert(ParametersPair(Parameters::kIcpOutlierRatio(), uNumber2Str(outlierRatio)));
 			registrationPipeline_->parseParameters(params);
 		}
 
@@ -240,15 +240,19 @@ Transform OdometryF2F::computeTransform(
 		{
 			UDEBUG("Update key frame");
 			int features = newFrame.getWordsDescriptors().rows;
-			if(registrationPipeline_->isImageRequired() && features == 0)
+			if(!refFrame_.sensorData().isValid())
 			{
 				newFrame = Signature(data);
 				// this will generate features only for the first frame or if optical flow was used (no 3d words)
+				// For scan, we want to use reading filters, so set dummy's scan and set back to reference afterwards
 				Signature dummy;
+				dummy.sensorData().setLaserScan(newFrame.sensorData().laserScanRaw());
+				newFrame.sensorData().setLaserScan(LaserScan());
 				registrationPipeline_->computeTransformationMod(
 						newFrame,
 						dummy);
 				features = (int)newFrame.sensorData().keypoints().size();
+				newFrame.sensorData().setLaserScan(dummy.sensorData().laserScanRaw(), true);
 			}
 
 			if((features >= registrationPipeline_->getMinVisualCorrespondences()) &&
@@ -295,6 +299,7 @@ Transform OdometryF2F::computeTransform(
 	}
 
 	data.setFeatures(newFrame.sensorData().keypoints(), newFrame.sensorData().keypoints3D(), newFrame.sensorData().descriptors());
+	data.setLaserScan(newFrame.sensorData().laserScanRaw());
 
 	if(info)
 	{

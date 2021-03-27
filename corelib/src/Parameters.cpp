@@ -244,6 +244,10 @@ const std::map<std::string, std::pair<bool, std::string> > & Parameters::getRemo
 
 		removedParameters_.insert(std::make_pair("RGBD/SavedLocalizationIgnored", std::make_pair(true, Parameters::kRGBDStartAtOrigin())));
 
+		removedParameters_.insert(std::make_pair("Icp/PMForce4DoF", std::make_pair(true, Parameters::kIcpForce4DoF())));
+		removedParameters_.insert(std::make_pair("Icp/PM",          std::make_pair(true, Parameters::kIcpStrategy()))); // convert "true" to "1"
+		removedParameters_.insert(std::make_pair("Icp/PMOutlierRatio",   std::make_pair(true, Parameters::kIcpOutlierRatio())));
+
 		// 0.20.
 		removedParameters_.insert(std::make_pair("SuperGlue/Path",           std::make_pair(true, Parameters::kPyMatcherPath())));
 		removedParameters_.insert(std::make_pair("SuperGlue/Iterations",     std::make_pair(true, Parameters::kPyMatcherIterations())));
@@ -781,6 +785,12 @@ ParametersMap Parameters::parseArguments(int argc, char * argv[], bool onlyParam
 #endif
 				str = "With libpointmatcher:";
 #ifdef RTABMAP_POINTMATCHER
+				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
+#else
+				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
+#endif
+				str = "With CCCoreLib:";
+#ifdef RTABMAP_CCCORELIB
 				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
 #else
 				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;

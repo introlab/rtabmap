@@ -433,6 +433,13 @@ IF(libpointmatcher_FOUND)
 	)
 ENDIF(libpointmatcher_FOUND)
 
+IF(CCCoreLib_FOUND)
+	SET(LIBRARIES
+		${LIBRARIES}
+		CCCoreLib::CCCoreLib
+	)
+ENDIF(CCCoreLib_FOUND)
+
 IF(FastCV_FOUND)
 	SET(INCLUDE_DIRS 
 		${INCLUDE_DIRS} 

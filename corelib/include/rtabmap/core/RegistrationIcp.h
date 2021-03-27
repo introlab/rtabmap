@@ -56,6 +56,7 @@ protected:
 	virtual float getMinGeometryCorrespondencesRatioImpl() const {return _correspondenceRatio;}
 
 private:
+	int _strategy;
 	float _maxTranslation;
 	float _maxRotation;
 	float _voxelSize;
@@ -66,20 +67,24 @@ private:
 	int _maxIterations;
 	float _epsilon;
 	float _correspondenceRatio;
+	bool _force4DoF;
 	bool _pointToPlane;
 	int _pointToPlaneK;
 	float _pointToPlaneRadius;
 	float _pointToPlaneGroundNormalsUp;
 	float _pointToPlaneMinComplexity;
 	int _pointToPlaneLowComplexityStrategy;
-	bool _libpointmatcher;
 	std::string _libpointmatcherConfig;
 	int _libpointmatcherKnn;
 	float _libpointmatcherEpsilon;
 	bool _libpointmatcherIntensity;
-	float _libpointmatcherOutlierRatio;
-	bool _libpointmatcherForce4DoF;
+	float _outlierRatio;
+	unsigned int _ccSamplingLimit;
+	bool _ccFilterOutFarthestPoints;
+	double _ccMaxFinalRMS;
+
 	void * _libpointmatcherICP;
+	void * _libpointmatcherICPFilters;
 };
 
 }

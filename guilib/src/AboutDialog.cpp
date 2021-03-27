@@ -168,6 +168,14 @@ AboutDialog::AboutDialog(QWidget * parent) :
 	_ui->label_libpointmatcher_license->setEnabled(false);
 #endif
 
+#ifdef RTABMAP_CCCORELIB
+	_ui->label_cccorelib->setText("Yes");
+	_ui->label_cccorelib_license->setEnabled(true);
+#else
+	_ui->label_cccorelib->setText("No");
+	_ui->label_cccorelib_license->setEnabled(false);
+#endif
+
 #ifdef RTABMAP_FOVIS
 	_ui->label_fovis->setText("Yes");
 	_ui->label_fovis_license->setEnabled(true);
