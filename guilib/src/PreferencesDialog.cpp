@@ -2608,6 +2608,20 @@ bool PreferencesDialog::readCoreSettings(const QString & filePath)
 				}
 			}
 		}
+
+		//backward compatibility
+		if(iter->first.compare(Parameters::kIcpStrategy()) == 0)
+		{
+			if(value.compare("true") == 0)
+			{
+				value =  "1";
+			}
+			else if(value.compare("false") == 0)
+			{
+				value =  "0";
+			}
+		}
+
 		this->setParameter(iter->first, value);
 	}
 
