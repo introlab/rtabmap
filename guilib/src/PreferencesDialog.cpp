@@ -313,7 +313,10 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 		_ui->graphOptimization_robust->setEnabled(false);
 	}
 #ifndef RTABMAP_POINTMATCHER
-	_ui->groupBox_libpointmatcher->setEnabled(false);
+	_ui->comboBox_icpStrategy->setItemData(1, 0, Qt::UserRole - 1);
+#endif
+#ifndef RTABMAP_CCCORELIB
+	_ui->comboBox_icpStrategy->setItemData(2, 0, Qt::UserRole - 1);
 #endif
 	if(!CameraOpenni::available())
 	{
