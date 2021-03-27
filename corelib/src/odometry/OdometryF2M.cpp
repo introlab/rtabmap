@@ -268,7 +268,7 @@ Transform OdometryF2M::computeTransform(
 				bundleModels.clear();
 
 				float maxCorrespondenceDistance = 0.0f;
-				float pmOutlierRatio = 0.0f;
+				float outlierRatio = 0.0f;
 				if(guess.isNull() &&
 					!regPipeline_->isImageRequired() &&
 					regPipeline_->isScanRequired() &&
@@ -276,12 +276,12 @@ Transform OdometryF2M::computeTransform(
 				{
 					// only on initialization (first frame to register), increase icp max correspondences in case the robot is already moving
 					maxCorrespondenceDistance = Parameters::defaultIcpMaxCorrespondenceDistance();
-					pmOutlierRatio = Parameters::defaultIcpPMOutlierRatio();
+					outlierRatio = Parameters::defaultIcpOutlierRatio();
 					Parameters::parse(parameters_, Parameters::kIcpMaxCorrespondenceDistance(), maxCorrespondenceDistance);
-					Parameters::parse(parameters_, Parameters::kIcpPMOutlierRatio(), pmOutlierRatio);
+					Parameters::parse(parameters_, Parameters::kIcpOutlierRatio(), outlierRatio);
 					ParametersMap params;
 					params.insert(ParametersPair(Parameters::kIcpMaxCorrespondenceDistance(), uNumber2Str(maxCorrespondenceDistance*3.0f)));
-					params.insert(ParametersPair(Parameters::kIcpPMOutlierRatio(), uNumber2Str(0.95f)));
+					params.insert(ParametersPair(Parameters::kIcpOutlierRatio(), uNumber2Str(0.95f)));
 					regPipeline_->parseParameters(params);
 				}
 
@@ -302,7 +302,7 @@ Transform OdometryF2M::computeTransform(
 					// set it back
 					ParametersMap params;
 					params.insert(ParametersPair(Parameters::kIcpMaxCorrespondenceDistance(), uNumber2Str(maxCorrespondenceDistance)));
-					params.insert(ParametersPair(Parameters::kIcpPMOutlierRatio(), uNumber2Str(pmOutlierRatio)));
+					params.insert(ParametersPair(Parameters::kIcpOutlierRatio(), uNumber2Str(outlierRatio)));
 					regPipeline_->parseParameters(params);
 				}
 

@@ -41,6 +41,153 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pcl/common/pca.h>
 #include <pcl/common/io.h>
 
+#ifdef RTABMAP_CCCORELIB
+#include <CCCoreLib/RegistrationTools.h>
+
+rtabmap::Transform icpCC(
+		const pcl::PointCloud<pcl::PointXYZI>::Ptr & fromCloud,
+		pcl::PointCloud<pcl::PointXYZI>::Ptr & toCloud,
+		int maxIterations = 150,
+		double minRMSDecrease = 0.00001,
+		bool force3DoF = false,
+		bool force4DoF = false,
+		int samplingLimit = 50000,
+		double finalOverlapRatio = 0.85,
+		bool filterOutFarthestPoints = false,
+		double maxFinalRMS = 0.2,
+		std::string * errorMsg = 0)
+{
+	UDEBUG("maxIterations=%d", maxIterations);
+	UDEBUG("minRMSDecrease=%f", minRMSDecrease);
+	UDEBUG("samplingLimit=%d", samplingLimit);
+	UDEBUG("finalOverlapRatio=%f", finalOverlapRatio);
+	UDEBUG("filterOutFarthestPoints=%s", filterOutFarthestPoints?"true":"false");
+	UDEBUG("force 3DoF=%s 4DoF=%s", force3DoF?"true":"false", force4DoF?"true":"false");
+	UDEBUG("maxFinalRMS=%f", maxFinalRMS);
+
+	rtabmap::Transform icpTransformation;
+
+	CCCoreLib::ICPRegistrationTools::RESULT_TYPE result;
+	CCCoreLib::PointProjectionTools::Transformation transform;
+	CCCoreLib::ICPRegistrationTools::Parameters params;
+	{
+		if(minRMSDecrease > 0.0)
+		{
+			params.convType = CCCoreLib::ICPRegistrationTools::MAX_ERROR_CONVERGENCE;
+			params.minRMSDecrease = minRMSDecrease; //! The minimum error (RMS) reduction between two consecutive steps to continue process (ignored if convType is not MAX_ERROR_CONVERGENCE)
+		}
+		else
+		{
+			params.convType = CCCoreLib::ICPRegistrationTools::MAX_ITER_CONVERGENCE;
+			params.nbMaxIterations = maxIterations; //! The maximum number of iteration (ignored if convType is not MAX_ITER_CONVERGENCE)
+		}
+		params.adjustScale = false;             //! Whether to release the scale parameter during the registration procedure or not
+		params.filterOutFarthestPoints = filterOutFarthestPoints; //! If true, the algorithm will automatically ignore farthest points from the reference, for better convergence
+		params.samplingLimit = samplingLimit; //! Maximum number of points per cloud (they are randomly resampled below this limit otherwise)
+		params.finalOverlapRatio = finalOverlapRatio;  //! Theoretical overlap ratio (at each iteration, only this percentage (between 0 and 1) will be used for registration
+		params.modelWeights = nullptr;          //! Weights for model points (i.e. only if the model entity is a cloud) (optional)
+		params.dataWeights = nullptr;           //! Weights for data points (optional)
+		params.transformationFilters = force3DoF?33:force4DoF?1:0;  //! Filters to be applied on the resulting transformation at each step (experimental) - see RegistrationTools::TRANSFORMATION_FILTERS flags
+		params.maxThreadCount = 0;              //! Maximum number of threads to use (0 = max)
+	}
+
+	double finalError = 0.0;
+	unsigned finalPointCount = 0;
+
+	CCCoreLib::PointCloud toPointCloud = CCCoreLib::PointCloud();
+	CCCoreLib::PointCloud fromPointCloud = CCCoreLib::PointCloud();
+
+	fromPointCloud.reserve(fromCloud->points.size());
+	for(uint nIndex=0; nIndex < fromCloud->points.size(); nIndex++)
+	{
+		CCVector3 P;
+		P.x = fromCloud->points[nIndex].x;
+		P.y = fromCloud->points[nIndex].y;
+		P.z = fromCloud->points[nIndex].z;
+		fromPointCloud.addPoint(P);
+	}
+	toPointCloud.reserve(toCloud->points.size());
+	for(uint nIndex=0; nIndex < toCloud->points.size(); nIndex++)
+	{
+		CCVector3 P;
+		P.x = toCloud->points[nIndex].x;
+		P.y = toCloud->points[nIndex].y;
+		P.z = toCloud->points[nIndex].z;
+		toPointCloud.addPoint(P);
+	}
+
+	UDEBUG("CCCoreLib: start ICP");
+	result = CCCoreLib::ICPRegistrationTools::Register(
+			&fromPointCloud,
+			nullptr,
+			&toPointCloud,
+			params,
+			transform,
+			finalError,
+			finalPointCount);
+	UDEBUG("CCCoreLib: ICP done!");
+
+	UDEBUG("CC ICP result: %d", result);
+	UDEBUG("CC Final error: %f . Finall Pointcount: %d", finalError, finalPointCount);
+	UDEBUG("CC ICP success Trans: %f %f %f", transform.T.x,transform.T.y,transform.T.z);
+
+	if(result != 1)
+	{
+		std::string msg = uFormat("CCCoreLib has failed: Rejecting transform as result %d !=1", result);
+		UDEBUG(msg.c_str());
+		if(errorMsg)
+		{
+			*errorMsg = msg;
+		}
+
+		icpTransformation.setNull();
+		return icpTransformation;
+	}
+	else if(finalPointCount <10)
+	{
+		std::string msg = uFormat("CCCoreLib has failed: Rejecting transform as finalPointCount %d < 10 ", finalPointCount);
+		UDEBUG(msg.c_str());
+		if(errorMsg)
+		{
+			*errorMsg = msg;
+		}
+
+		icpTransformation.setNull();
+		return icpTransformation;
+	}
+	//CC transform to EIgen4f
+	Eigen::Matrix4f matrix;
+	matrix.setIdentity();
+	for(int i=0;i<3;i++)
+	{
+		for(int j=0;j<3;j++)
+		{
+			matrix(i,j)=transform.R.getValue(i,j);
+		}
+	}
+	for(int i=0;i<3;i++)
+	{
+		matrix(i,3)=transform.T[i];
+	}
+
+	icpTransformation = rtabmap::Transform::fromEigen4f(matrix);
+	icpTransformation = icpTransformation.inverse();
+	UDEBUG("CC ICP result: %s", icpTransformation.prettyPrint().c_str());
+
+	if(finalError > maxFinalRMS)
+	{
+		std::string msg = uFormat("CCCoreLib has failed: Rejecting transform as RMS %f > %f (%s) ", finalError, maxFinalRMS, rtabmap::Parameters::kIcpCCMaxFinalRMS().c_str());
+		UDEBUG(msg.c_str());
+		if(errorMsg)
+		{
+			*errorMsg = msg;
+		}
+		icpTransformation.setNull();
+	}
+	return icpTransformation;
+}
+#endif
+
 #ifdef RTABMAP_POINTMATCHER
 #include <fstream>
 #include "pointmatcher/PointMatcher.h"
@@ -541,6 +688,7 @@ namespace rtabmap {
 
 RegistrationIcp::RegistrationIcp(const ParametersMap & parameters, Registration * child) :
 	Registration(parameters, child),
+	_strategy(Parameters::defaultIcpStrategy()),
 	_maxTranslation(Parameters::defaultIcpMaxTranslation()),
 	_maxRotation(Parameters::defaultIcpMaxRotation()),
 	_voxelSize(Parameters::defaultIcpVoxelSize()),
@@ -551,19 +699,21 @@ RegistrationIcp::RegistrationIcp(const ParametersMap & parameters, Registration 
 	_maxIterations(Parameters::defaultIcpIterations()),
 	_epsilon(Parameters::defaultIcpEpsilon()),
 	_correspondenceRatio(Parameters::defaultIcpCorrespondenceRatio()),
+	_force4DoF(Parameters::defaultIcpForce4DoF()),
 	_pointToPlane(Parameters::defaultIcpPointToPlane()),
 	_pointToPlaneK(Parameters::defaultIcpPointToPlaneK()),
 	_pointToPlaneRadius(Parameters::defaultIcpPointToPlaneRadius()),
 	_pointToPlaneGroundNormalsUp(Parameters::defaultIcpPointToPlaneGroundNormalsUp()),
 	_pointToPlaneMinComplexity(Parameters::defaultIcpPointToPlaneMinComplexity()),
 	_pointToPlaneLowComplexityStrategy(Parameters::defaultIcpPointToPlaneLowComplexityStrategy()),
-	_libpointmatcher(Parameters::defaultIcpPM()),
 	_libpointmatcherConfig(Parameters::defaultIcpPMConfig()),
 	_libpointmatcherKnn(Parameters::defaultIcpPMMatcherKnn()),
 	_libpointmatcherEpsilon(Parameters::defaultIcpPMMatcherEpsilon()),
 	_libpointmatcherIntensity(Parameters::defaultIcpPMMatcherIntensity()),
-	_libpointmatcherOutlierRatio(Parameters::defaultIcpPMOutlierRatio()),
-	_libpointmatcherForce4DoF(Parameters::defaultIcpPMForce4DoF()),
+	_outlierRatio(Parameters::defaultIcpOutlierRatio()),
+	_ccSamplingLimit (Parameters::defaultIcpCCSamplingLimit()),
+	_ccFilterOutFarthestPoints (Parameters::defaultIcpCCFilterOutFarthestPoints()),
+	_ccMaxFinalRMS (Parameters::defaultIcpCCMaxFinalRMS()),
 	_libpointmatcherICP(0),
 	_libpointmatcherICPFilters(0)
 {
@@ -582,6 +732,7 @@ void RegistrationIcp::parseParameters(const ParametersMap & parameters)
 {
 	Registration::parseParameters(parameters);
 
+	Parameters::parse(parameters, Parameters::kIcpStrategy(), _strategy);
 	Parameters::parse(parameters, Parameters::kIcpMaxTranslation(), _maxTranslation);
 	Parameters::parse(parameters, Parameters::kIcpMaxRotation(), _maxRotation);
 	Parameters::parse(parameters, Parameters::kIcpVoxelSize(), _voxelSize);
@@ -592,6 +743,8 @@ void RegistrationIcp::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kIcpIterations(), _maxIterations);
 	Parameters::parse(parameters, Parameters::kIcpEpsilon(), _epsilon);
 	Parameters::parse(parameters, Parameters::kIcpCorrespondenceRatio(), _correspondenceRatio);
+	Parameters::parse(parameters, Parameters::kIcpForce4DoF(), _force4DoF);
+	Parameters::parse(parameters, Parameters::kIcpOutlierRatio(), _outlierRatio);
 	Parameters::parse(parameters, Parameters::kIcpPointToPlane(), _pointToPlane);
 	Parameters::parse(parameters, Parameters::kIcpPointToPlaneK(), _pointToPlaneK);
 	Parameters::parse(parameters, Parameters::kIcpPointToPlaneRadius(), _pointToPlaneRadius);
@@ -601,28 +754,29 @@ void RegistrationIcp::parseParameters(const ParametersMap & parameters)
 	UASSERT(_pointToPlaneGroundNormalsUp >= 0.0f && _pointToPlaneGroundNormalsUp <= 1.0f);
 	UASSERT(_pointToPlaneMinComplexity >= 0.0f && _pointToPlaneMinComplexity <= 1.0f);
 
-	Parameters::parse(parameters, Parameters::kIcpPM(), _libpointmatcher);
 	Parameters::parse(parameters, Parameters::kIcpPMConfig(), _libpointmatcherConfig);
-	Parameters::parse(parameters, Parameters::kIcpPMOutlierRatio(), _libpointmatcherOutlierRatio);
 	Parameters::parse(parameters, Parameters::kIcpPMMatcherKnn(), _libpointmatcherKnn);
 	Parameters::parse(parameters, Parameters::kIcpPMMatcherEpsilon(), _libpointmatcherEpsilon);
 	Parameters::parse(parameters, Parameters::kIcpPMMatcherIntensity(), _libpointmatcherIntensity);
-	Parameters::parse(parameters, Parameters::kIcpPMForce4DoF(), _libpointmatcherForce4DoF);
+
+	Parameters::parse(parameters, Parameters::kIcpCCSamplingLimit(), _ccSamplingLimit);
+	Parameters::parse(parameters, Parameters::kIcpCCFilterOutFarthestPoints(), _ccFilterOutFarthestPoints);
+	Parameters::parse(parameters, Parameters::kIcpCCMaxFinalRMS(), _ccMaxFinalRMS);
 
 	bool pointToPlane = _pointToPlane;
 
 #ifndef RTABMAP_POINTMATCHER
 	if(_libpointmatcher)
 	{
-		UWARN("Parameter %s is set to true but RTAB-Map has not been built with libpointmatcher support. Setting to false.", Parameters::kIcpPM().c_str());
-		_libpointmatcher = false;
+		UWARN("Parameter %s is set to 1 but RTAB-Map has not been built with libpointmatcher support. Setting to 0.", Parameters::kIcpStrategy().c_str());
+		_strategy = 0;
 	}
 #else
 	delete (PM::ICP*)_libpointmatcherICP;
 	delete (PM::ICP*)_libpointmatcherICPFilters;
 	_libpointmatcherICP = 0;
 	_libpointmatcherICPFilters = 0;
-	if(_libpointmatcher)
+	if(_strategy==1)
 	{
 		_libpointmatcherConfig = uReplaceChar(_libpointmatcherConfig, '~', UDirectory::homeDir());
 		UDEBUG("libpointmatcher enabled! config=\"%s\"", _libpointmatcherConfig.c_str());
@@ -692,7 +846,7 @@ void RegistrationIcp::parseParameters(const ParametersMap & parameters)
 			}
 			params.clear();
 
-			params["ratio"] = uNumber2Str(_libpointmatcherOutlierRatio);
+			params["ratio"] = uNumber2Str(_outlierRatio);
 			icp->outlierFilters.clear();
 			icp->outlierFilters.push_back(PM::get().OutlierFilterRegistrar.create("TrimmedDistOutlierFilter", params));
 			params.clear();
@@ -704,7 +858,7 @@ void RegistrationIcp::parseParameters(const ParametersMap & parameters)
 
 				params["force2D"] = force3DoF()?"1":"0";
 
-				if(!force3DoF()&&_libpointmatcherForce4DoF)
+				if(!force3DoF()&&_force4DoF)
 				{
 					params["force4DOF"] = "1";
 				}
@@ -744,6 +898,26 @@ void RegistrationIcp::parseParameters(const ParametersMap & parameters)
 	}
 #endif
 
+#ifndef RTABMAP_CCCORELIB
+	if(_strategy==2)
+	{
+		UWARN("Parameter %s is set to true but RTAB-Map has not been built with CCCoreLib support. Setting to 0.", Parameters::kIcpStrategy().c_str());
+		_strategy = 0;
+	}
+#else
+	if(_strategy==2 && _pointToPlane)
+	{
+		UWARN("%s cannot be used with %s=2 (CCCoreLib), setting %s to false", Parameters::kIcpPointToPlane().c_str(), Parameters::kIcpStrategy().c_str(), Parameters::kIcpPointToPlane().c_str());
+		_pointToPlane = false;
+	}
+#endif
+
+	if(_force4DoF && _strategy == 0)
+	{
+		UWARN("%s cannot be used with %s == 0.", Parameters::kIcpForce4DoF().c_str(), Parameters::kIcpStrategy().c_str());
+		_force4DoF = false;
+	}
+
 	UASSERT_MSG(_voxelSize >= 0, uFormat("value=%d", _voxelSize).c_str());
 	UASSERT_MSG(_downsamplingStep >= 0, uFormat("value=%d", _downsamplingStep).c_str());
 	UASSERT_MSG(_maxCorrespondenceDistance > 0.0f, uFormat("value=%f", _maxCorrespondenceDistance).c_str());
@@ -761,7 +935,7 @@ Transform RegistrationIcp::computeTransformationImpl(
 {
 	bool pointToPlane = _pointToPlane;
 #ifdef RTABMAP_POINTMATCHER
-	if(_libpointmatcher)
+	if(_strategy==1)
 	{
 		PM::ICP * icp = (PM::ICP*)_libpointmatcherICP;
 		pointToPlane = icp->errorMinimizer->className.compare("PointToPlaneErrorMinimizer")==0;
@@ -779,7 +953,10 @@ Transform RegistrationIcp::computeTransformationImpl(
 	UDEBUG("Max translation=%f", _maxTranslation);
 	UDEBUG("Max rotation=%f", _maxRotation);
 	UDEBUG("Downsampling step=%d", _downsamplingStep);
-	UDEBUG("libpointmatcher=%d (knn=%d, outlier ratio=%f)", _libpointmatcher?1:0, _libpointmatcherKnn, _libpointmatcherOutlierRatio);
+	UDEBUG("Force 4DoF=%s", _force4DoF?"true":"false");
+	UDEBUG("Min Complexity=%f", _pointToPlaneMinComplexity);
+	UDEBUG("libpointmatcher (knn=%d, outlier ratio=%f)", _libpointmatcherKnn, _outlierRatio);
+	UDEBUG("Strategy=%d", _strategy);
 
 	UTimer timer;
 	std::string msg;
@@ -812,7 +989,7 @@ Transform RegistrationIcp::computeTransformationImpl(
 				pointToPlane?_pointToPlaneRadius:0.0f,
 				pointToPlane?_pointToPlaneGroundNormalsUp:0.0f);
 #ifdef RTABMAP_POINTMATCHER
-		if(_libpointmatcher && _libpointmatcherICPFilters)
+		if(_strategy==1 && _libpointmatcherICPFilters)
 		{
 			PM::ICP & filters = *((PM::ICP*)_libpointmatcherICPFilters);
 			UDEBUG("icp.referenceDataPointsFilters.size()=%d", (int)filters.referenceDataPointsFilters.size());
@@ -853,7 +1030,7 @@ Transform RegistrationIcp::computeTransformationImpl(
 				pointToPlane?_pointToPlaneRadius:0.0f,
 				pointToPlane?_pointToPlaneGroundNormalsUp:0.0f);
 #ifdef RTABMAP_POINTMATCHER
-		if(_libpointmatcher && _libpointmatcherICPFilters)
+		if(_strategy == 1 && _libpointmatcherICPFilters)
 		{
 			PM::ICP & filters = *((PM::ICP*)_libpointmatcherICPFilters);
 			UDEBUG("icp.readingDataPointsFilters.size()=%d", (int)filters.readingDataPointsFilters.size());
@@ -914,7 +1091,7 @@ Transform RegistrationIcp::computeTransformationImpl(
 			if( pointToPlane &&
 				fromScan.hasNormals() &&
 				toScan.hasNormals() &&
-				!((fromScan.is2d() || toScan.is2d()) && !_libpointmatcher)) // PCL crashes if 2D)
+				!((fromScan.is2d() || toScan.is2d()) && _strategy==0)) // PCL crashes if 2D)
 			{
 				cv::Mat complexityVectorsFrom, complexityVectorsTo;
 				cv::Mat complexityValuesFrom, complexityValuesTo;
@@ -967,7 +1144,7 @@ Transform RegistrationIcp::computeTransformationImpl(
 					UDEBUG("Conversion time = %f s", timer.ticks());
 					pcl::PointCloud<pcl::PointXYZINormal>::Ptr fromCloudNormalsRegistered(new pcl::PointCloud<pcl::PointXYZINormal>());
 #ifdef RTABMAP_POINTMATCHER
-					if(_libpointmatcher)
+					if(_strategy==1)
 					{
 						// Load point clouds
 						DP data = laserScanToDP(fromScan);
@@ -1034,13 +1211,13 @@ Transform RegistrationIcp::computeTransformationImpl(
 
 				pcl::PointCloud<pcl::PointXYZI>::Ptr fromCloudRegistered(new pcl::PointCloud<pcl::PointXYZI>());
 
-				if(pointToPlane && !tooLowComplexityForPlaneToPlane && ((fromScan.is2d() || toScan.is2d()) && !_libpointmatcher))
+				if(pointToPlane && !tooLowComplexityForPlaneToPlane && ((fromScan.is2d() || toScan.is2d()) && _strategy==0))
 				{
-					UWARN("ICP PointToPlane ignored for 2d scans with PCL registration (some crash issues). Use libpointmatcher (%s) or disable %s to avoid this warning.", Parameters::kIcpPM().c_str(), Parameters::kIcpPointToPlane().c_str());
+					UWARN("ICP PointToPlane ignored for 2d scans with PCL registration (some crash issues). Use libpointmatcher (%s) or disable %s to avoid this warning.", Parameters::kIcpStrategy().c_str(), Parameters::kIcpPointToPlane().c_str());
 				}
 
 #ifdef RTABMAP_POINTMATCHER
-				if(_libpointmatcher)
+				if(_strategy==1)
 				{
 					// Load point clouds
 					DP data = laserScanToDP(fromScan);
@@ -1119,15 +1296,37 @@ Transform RegistrationIcp::computeTransformationImpl(
 				else
 #endif
 				{
-					icpT = util3d::icp(
-							fromCloud,
-							toCloud,
-						   _maxCorrespondenceDistance,
-						   _maxIterations,
-						   hasConverged,
-						   *fromCloudRegistered,
-						   _epsilon,
-						   this->force3DoF()); // icp2D
+#ifdef RTABMAP_CCCORELIB
+					if(_strategy==2)
+					{
+						icpT = icpCC(
+								fromCloud,
+								toCloud,
+								_maxIterations,
+								_epsilon,
+								 this->force3DoF(),
+								 _force4DoF,
+								 _ccSamplingLimit,
+								 _outlierRatio,
+								 _ccFilterOutFarthestPoints,
+								 _ccMaxFinalRMS,
+								 &msg);
+						fromCloudRegistered = util3d::transformPointCloud(fromCloud, icpT);
+						hasConverged = !icpT.isNull();
+					}
+					else
+#endif
+					{
+						icpT = util3d::icp(
+								fromCloud,
+								toCloud,
+							   _maxCorrespondenceDistance,
+							   _maxIterations,
+							   hasConverged,
+							   *fromCloudRegistered,
+							   _epsilon,
+							   this->force3DoF()); // icp2D
+					}
 				}
 
 				if(!icpT.isNull() && hasConverged)
@@ -1286,10 +1485,9 @@ Transform RegistrationIcp::computeTransformationImpl(
 					{
 						info.covariance = cv::Mat::eye(6,6,CV_64FC1)*variance;
 						info.covariance(cv::Range(3,6),cv::Range(3,6))/=10.0; //orientation error
-						if(_libpointmatcher &&
-							pointToPlane &&
+						if(	((_strategy == 1 && pointToPlane) || _strategy==2) &&
+							_force4DoF &&
 							!force3DoF() &&
-							_libpointmatcherForce4DoF &&
 							!tooLowComplexityForPlaneToPlane)
 						{
 							// Force4DoF: Assume roll and pitch more accurate (IMU)

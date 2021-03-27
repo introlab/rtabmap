@@ -117,6 +117,14 @@ std::string uNumber2Str(double number)
 
 int uStr2Int(const std::string & str)
 {
+	if(uStrContains(uToLowerCase(str), "true"))
+	{
+		return 1;
+	}
+	else if(uStrContains(uToLowerCase(str), "false"))
+	{
+		return 0;
+	}
 	return atoi(str.c_str());
 }
 
