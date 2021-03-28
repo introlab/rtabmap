@@ -91,7 +91,7 @@ rtabmap::Transform icpCC(
 		CCVector3 P;
 		P.x = fromCloud->points[nIndex].x;
 		P.y = fromCloud->points[nIndex].y;
-		P.z = fromCloud->points[nIndex].z;
+		P.z = force3DoF?0:fromCloud->points[nIndex].z;
 		fromPointCloud.addPoint(P);
 	}
 	toPointCloud.reserve(toCloud->points.size());
@@ -100,7 +100,7 @@ rtabmap::Transform icpCC(
 		CCVector3 P;
 		P.x = toCloud->points[nIndex].x;
 		P.y = toCloud->points[nIndex].y;
-		P.z = toCloud->points[nIndex].z;
+		P.z = force3DoF?0:toCloud->points[nIndex].z;
 		toPointCloud.addPoint(P);
 	}
 
