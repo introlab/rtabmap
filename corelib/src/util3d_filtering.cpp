@@ -901,6 +901,52 @@ pcl::PointCloud<pcl::PointXYZI>::Ptr removeNaNFromPointCloud(const pcl::PointClo
 	return removeNaNFromPointCloudImpl<pcl::PointXYZI>(cloud);
 }
 
+pcl::PCLPointCloud2::Ptr RTABMAP_EXP removeNaNFromPointCloud(const pcl::PCLPointCloud2::Ptr & cloud)
+{
+	pcl::PCLPointCloud2::Ptr output(new pcl::PCLPointCloud2);
+	output->fields = cloud->fields;
+	output->header = cloud->header;
+	output->height = 1;
+	output->point_step = cloud->point_step;
+	output->is_dense = true;
+	output->data.resize(cloud->row_step*cloud->height);
+
+	bool is3D = false;
+	for(size_t i=0; i<cloud->fields.size(); ++i)
+	{
+		if(cloud->fields[i].name.compare("z") == 0)
+		{
+			is3D = true;
+			break;
+		}
+	}
+
+	std::uint8_t* output_data = reinterpret_cast<std::uint8_t*>(&output->data[0]);
+
+	size_t oi = 0;
+	for (size_t row = 0; row < cloud->height; ++row)
+	{
+		const std::uint8_t* row_data = &cloud->data[row * cloud->row_step];
+		for (size_t col = 0; col < cloud->width; ++col)
+		{
+			const std::uint8_t* msg_data = row_data + col * cloud->point_step;
+			const float * x = (const float*)&msg_data[0];
+			const float * y = (const float*)&msg_data[4];
+			const float * z = (const float*)&msg_data[is3D?8:4];
+			if(uIsFinite(*x) && uIsFinite(*y) && uIsFinite(*z))
+			{
+				memcpy (output_data, msg_data, cloud->point_step);
+				output_data += cloud->point_step;
+				++oi;
+			}
+		}
+	}
+	output->width = oi;
+	output->row_step = output->width*output->point_step;
+	output->data.resize(output->row_step);
+	return output;
+}
+
 template<typename PointT>
 typename pcl::PointCloud<PointT>::Ptr removeNaNNormalsFromPointCloudImpl(
 		const typename pcl::PointCloud<PointT>::Ptr & cloud)
