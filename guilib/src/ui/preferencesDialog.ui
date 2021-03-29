@@ -63,7 +63,7 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-1011</y>
+            <y>-120</y>
             <width>686</width>
             <height>3414</height>
            </rect>
@@ -95,7 +95,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>22</number>
+                <number>19</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,1">
@@ -13621,6 +13621,11 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                           <string>VINS-Fusion</string>
                          </property>
                         </item>
+                        <item>
+                         <property name="text">
+                          <string>OpenVINS</string>
+                         </property>
+                        </item>
                        </widget>
                       </item>
                       <item row="2" column="1">
@@ -13924,7 +13929,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                     <item>
                      <widget class="QStackedWidget" name="stackedWidget_odometryType">
                       <property name="currentIndex">
-                       <number>5</number>
+                       <number>10</number>
                       </property>
                       <widget class="QWidget" name="page_52">
                        <layout class="QVBoxLayout" name="verticalLayout_77">
@@ -17094,6 +17099,48 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                            <size>
                             <width>20</width>
                             <height>0</height>
+                           </size>
+                          </property>
+                         </spacer>
+                        </item>
+                       </layout>
+                      </widget>
+                      <widget class="QWidget" name="page_93">
+                       <layout class="QVBoxLayout" name="verticalLayout_162">
+                        <item>
+                         <widget class="QGroupBox" name="groupBox_odomVINS_2">
+                          <property name="title">
+                           <string>VINS-Fusion</string>
+                          </property>
+                          <layout class="QVBoxLayout" name="verticalLayout_161" stretch="0">
+                           <item>
+                            <widget class="QLabel" name="label_632">
+                             <property name="text">
+                              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;OpenVINS: &lt;a href=&quot;https://github.com/rpng/open_vins&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;https://github.com/rpng/open_vins&lt;/span&gt;&lt;/a&gt;&lt;/p&gt;&lt;p&gt;Currently tested only with EuRoC data set.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                             </property>
+                             <property name="wordWrap">
+                              <bool>true</bool>
+                             </property>
+                             <property name="openExternalLinks">
+                              <bool>true</bool>
+                             </property>
+                             <property name="textInteractionFlags">
+                              <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                             </property>
+                            </widget>
+                           </item>
+                          </layout>
+                         </widget>
+                        </item>
+                        <item>
+                         <spacer name="verticalSpacer_89">
+                          <property name="orientation">
+                           <enum>Qt::Vertical</enum>
+                          </property>
+                          <property name="sizeHint" stdset="0">
+                           <size>
+                            <width>20</width>
+                            <height>1049</height>
                            </size>
                           </property>
                          </spacer>

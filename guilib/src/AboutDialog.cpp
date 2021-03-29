@@ -234,6 +234,22 @@ AboutDialog::AboutDialog(QWidget * parent) :
 	_ui->label_msckf_license->setEnabled(false);
 #endif
 
+#ifdef RTABMAP_VINS
+	_ui->label_vins_fusion->setText("Yes");
+	_ui->label_vins_fusion_license->setEnabled(true);
+#else
+	_ui->label_vins_fusion->setText("No");
+	_ui->label_vins_fusion_license->setEnabled(false);
+#endif
+
+#ifdef RTABMAP_OPENVINS
+	_ui->label_openvins->setText("Yes");
+	_ui->label_openvins_license->setEnabled(true);
+#else
+	_ui->label_openvins->setText("No");
+	_ui->label_openvins_license->setEnabled(false);
+#endif
+
 }
 
 AboutDialog::~AboutDialog()

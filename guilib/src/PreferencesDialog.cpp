@@ -192,6 +192,9 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 #ifndef RTABMAP_VINS
 	_ui->odom_strategy->setItemData(9, 0, Qt::UserRole - 1);
 #endif
+#ifndef RTABMAP_OPENVINS
+	_ui->odom_strategy->setItemData(10, 0, Qt::UserRole - 1);
+#endif
 
 #if CV_MAJOR_VERSION < 3
 	_ui->stereosgbm_mode->setItemData(2, 0, Qt::UserRole - 1);
@@ -6371,7 +6374,8 @@ void PreferencesDialog::testOdometry()
 	{
 		if(this->getOdomStrategy() != Odometry::kTypeOkvis &&
 		   this->getOdomStrategy() != Odometry::kTypeMSCKF &&
-		   this->getOdomStrategy() != Odometry::kTypeVINS)
+		   this->getOdomStrategy() != Odometry::kTypeVINS &&
+		   this->getOdomStrategy() != Odometry::kTypeOpenVINS)
 		{
 			QMessageBox::warning(this, tr("Source IMU Path"),
 					tr("IMU path is set but odometry chosen doesn't support IMU, ignoring IMU..."), QMessageBox::Ok);

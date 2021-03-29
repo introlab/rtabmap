@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2010-2016, Mathieu Labbe - IntRoLab - Universite de Sherbrooke
+Copyright (c) 2010-2021, Mathieu Labbe - IntRoLab - Universite de Sherbrooke
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -25,23 +25,25 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef ODOMETRYVINS_H_
-#define ODOMETRYVINS_H_
+#ifndef ODOMETRYOPENVINS_H_
+#define ODOMETRYOPENVINS_H_
 
 #include <rtabmap/core/Odometry.h>
 
+namespace ov_msckf {
+class VioManager;
+}
+
 namespace rtabmap {
 
-class VinsEstimator;
-
-class RTABMAP_EXP OdometryVINS : public Odometry
+class RTABMAP_EXP OdometryOpenVINS : public Odometry
 {
 public:
-	OdometryVINS(const rtabmap::ParametersMap & parameters = rtabmap::ParametersMap());
-	virtual ~OdometryVINS();
+	OdometryOpenVINS(const rtabmap::ParametersMap & parameters = rtabmap::ParametersMap());
+	virtual ~OdometryOpenVINS();
 
 	virtual void reset(const Transform & initialPose = Transform::getIdentity());
-	virtual Odometry::Type getType() {return Odometry::kTypeVINS;}
+	virtual Odometry::Type getType() {return Odometry::kTypeOpenVINS;}
 	virtual bool canProcessRawImages() const {return true;}
 	virtual bool canProcessAsyncIMU() const {return true;}
 
@@ -49,15 +51,16 @@ private:
 	virtual Transform computeTransform(SensorData & image, const Transform & guess = Transform(), OdometryInfo * info = 0);
 
 private:
-#ifdef RTABMAP_VINS
-	VinsEstimator * vinsEstimator_;
+#ifdef RTABMAP_OPENVINS
+	ov_msckf::VioManager * vioManager_;
 	bool initGravity_;
 	Transform previousPose_;
 	Transform previousLocalTransform_;
-	IMU lastImu_;
+	Transform imuLocalTransform_;
+	std::map<double, IMU> imuBuffer_;
 #endif
 };
 
 }
 
-#endif /* ODOMETRYVINS_H_ */
+#endif /* ODOMETRYOPENVINS_H_ */

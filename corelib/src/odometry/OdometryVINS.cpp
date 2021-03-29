@@ -288,7 +288,6 @@ OdometryVINS::OdometryVINS(const ParametersMap & parameters) :
 #ifdef RTABMAP_VINS
     ,
 	vinsEstimator_(0),
-	imagesProcessed_(0),
 	initGravity_(false),
 	previousPose_(Transform::getIdentity())
 #endif
@@ -431,7 +430,7 @@ Transform OdometryVINS::computeTransform(
 			{
 				if(!lastImu_.localTransform().isNull())
 				{
-					p = Transform(0,1,0,0,-1,0,0,0, 0,0,1,0) * p * lastImu_.localTransform().inverse();
+					p = p * lastImu_.localTransform().inverse();
 				}
 
 				if(this->getPose().rotation().isIdentity())
@@ -457,7 +456,7 @@ Transform OdometryVINS::computeTransform(
 					info->reg.covariance *= this->framesProcessed() == 0?9999:0.0001;
 
 					// feature map
-					Transform fixT = this->getPose()*previousPoseInv*Transform(0,1,0,0,-1,0,0,0, 0,0,1,0);
+					Transform fixT = this->getPose()*previousPoseInv;
 					for (auto &it_per_id : vinsEstimator_->f_manager.feature)
 					{
 						int used_num;
@@ -467,7 +466,7 @@ Transform OdometryVINS::computeTransform(
 						if (it_per_id.start_frame > WINDOW_SIZE * 3.0 / 4.0 || it_per_id.solve_flag != 1)
 							continue;
 						int imu_i = it_per_id.start_frame;
-						Vector3d pts_i = it_per_id.feature_per_frame[0].point * it_per_id.estimated_depth;
+						Vector3d pts_i = it_per_id.feature_per_frame[it_per_id.feature_per_frame.size()-1].point * it_per_id.estimated_depth;
 						Vector3d w_pts_i = vinsEstimator_->Rs[imu_i] * (vinsEstimator_->ric[0] * pts_i + vinsEstimator_->tic[0]) + vinsEstimator_->Ps[imu_i];
 
 						cv::Point3f p;

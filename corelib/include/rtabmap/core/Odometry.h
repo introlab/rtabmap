@@ -53,7 +53,8 @@ public:
 		kTypeOkvis = 6,
 		kTypeLOAM = 7,
 		kTypeMSCKF = 8,
-		kTypeVINS = 9
+		kTypeVINS = 9,
+		kTypeOpenVINS = 10
 	};
 
 public:

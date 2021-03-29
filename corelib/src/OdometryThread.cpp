@@ -191,10 +191,19 @@ bool OdometryThread::getData(SensorData & data)
 	{
 		if(!_dataBuffer.empty())
 		{
-			while(!_imuBuffer.empty() && _imuBuffer.front().stamp() <= _dataBuffer.front().stamp())
+			if(!_imuBuffer.empty())
 			{
-				_odometry->process(_imuBuffer.front());
-				_imuBuffer.pop_front();
+				// Send IMU up to stamp greater than image (OpenVINS needs this).
+				while(!_imuBuffer.empty())
+				{
+					_odometry->process(_imuBuffer.front());
+					double stamp = _imuBuffer.front().stamp();
+					_imuBuffer.pop_front();
+					if(stamp > _dataBuffer.front().stamp())
+					{
+						break;
+					}
+				}
 			}
 
 			data = _dataBuffer.front();

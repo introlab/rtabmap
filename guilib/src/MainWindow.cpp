@@ -1492,7 +1492,8 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 					odom.info().type == (int)Odometry::kTypeViso2 ||
 					odom.info().type == (int)Odometry::kTypeFovis ||
 					odom.info().type == (int)Odometry::kTypeMSCKF ||
-					odom.info().type == (int)Odometry::kTypeVINS)
+					odom.info().type == (int)Odometry::kTypeVINS ||
+					odom.info().type == (int)Odometry::kTypeOpenVINS)
 			{
 				std::vector<cv::KeyPoint> kpts;
 				cv::KeyPoint::convert(odom.info().newCorners, kpts, 7);
@@ -1541,7 +1542,8 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 			if( odom.info().type == (int)Odometry::kTypeF2M ||
 				odom.info().type == (int)Odometry::kTypeORBSLAM ||
 				odom.info().type == (int)Odometry::kTypeMSCKF ||
-				odom.info().type == (int)Odometry::kTypeVINS)
+				odom.info().type == (int)Odometry::kTypeVINS ||
+				odom.info().type == (int)Odometry::kTypeOpenVINS)
 			{
 				if(_ui->imageView_odometry->isFeaturesShown() && !_preferencesDialog->isOdomOnlyInliersShown())
 				{
@@ -5427,7 +5429,10 @@ void MainWindow::startDetection()
 					_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcImages) &&
 				   !_preferencesDialog->getIMUPath().isEmpty())
 				{
-					if(odomStrategy != Odometry::kTypeOkvis && odomStrategy != Odometry::kTypeMSCKF && odomStrategy != Odometry::kTypeVINS)
+					if( odomStrategy != Odometry::kTypeOkvis &&
+						odomStrategy != Odometry::kTypeMSCKF &&
+						odomStrategy != Odometry::kTypeVINS &&
+						odomStrategy != Odometry::kTypeOpenVINS)
 					{
 						QMessageBox::warning(this, tr("Source IMU Path"),
 								tr("IMU path is set but odometry chosen doesn't support IMU, ignoring IMU..."), QMessageBox::Ok);

@@ -36,6 +36,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/odometry/OdometryLOAM.h"
 #include "rtabmap/core/odometry/OdometryMSCKF.h"
 #include "rtabmap/core/odometry/OdometryVINS.h"
+#include "rtabmap/core/odometry/OdometryOpenVINS.h"
 #include "rtabmap/core/OdometryInfo.h"
 #include "rtabmap/core/util3d.h"
 #include "rtabmap/core/util3d_mapping.h"
@@ -94,6 +95,9 @@ Odometry * Odometry::create(Odometry::Type & type, const ParametersMap & paramet
 		break;
 	case Odometry::kTypeVINS:
 		odometry = new OdometryVINS(parameters);
+		break;
+	case Odometry::kTypeOpenVINS:
+		odometry = new OdometryOpenVINS(parameters);
 		break;
 	default:
 		UERROR("Unknown odometry type %d, using F2M instead...", (int)type);

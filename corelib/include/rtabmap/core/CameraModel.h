@@ -124,6 +124,7 @@ public:
 	double fovY() const; // in radians
 	double horizontalFOV() const; // in degrees
 	double verticalFOV() const;   // in degrees
+	bool isFisheye() const {return D_.cols == 6;}
 
 	bool load(const std::string & filePath);
 	bool load(const std::string & directory, const std::string & cameraName);

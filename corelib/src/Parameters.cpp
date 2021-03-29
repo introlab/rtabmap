@@ -873,6 +873,12 @@ ParametersMap Parameters::parseArguments(int argc, char * argv[], bool onlyParam
 #else
 				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
 #endif
+				str = "With OpenVINS:";
+#ifdef RTABMAP_OPENVINS
+				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
+#else
+				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
+#endif
 				exit(0);
 			}
 			else if(strcmp(argv[i], "--nolog") == 0)
