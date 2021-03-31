@@ -4318,10 +4318,24 @@ void PreferencesDialog::setParameter(const std::string & key, const std::string 
 		}
 		else if(combo)
 		{
-			int valueInt = QString(value.c_str()).toInt(&ok);
+			//backward compatibility
+			std::string valueCpy = value;
+			if(key.compare(Parameters::kIcpStrategy()) == 0)
+			{
+				if(value.compare("true") == 0)
+				{
+					valueCpy =  "1";
+				}
+				else if(value.compare("false") == 0)
+				{
+					valueCpy =  "0";
+				}
+			}
+
+			int valueInt = QString(valueCpy.c_str()).toInt(&ok);
 			if(!ok)
 			{
-				UERROR("Conversion failed from \"%s\" for parameter %s", value.c_str(), key.c_str());
+				UERROR("Conversion failed from \"%s\" for parameter %s", valueCpy.c_str(), key.c_str());
 			}
 			else
 			{
