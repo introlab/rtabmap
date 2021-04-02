@@ -4145,6 +4145,10 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 		!pose.isNull())
 	{
 		UERROR("Camera calibration not valid, calibrate your camera!");
+		if(data.cameraModels().empty())
+			std::cout << data.stereoCameraModel() << std::endl;
+		else
+			std::cout << data.cameraModels()[0] << std::endl;
 		return 0;
 	}
 	UASSERT(_feature2D != 0);

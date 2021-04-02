@@ -341,6 +341,7 @@ private:
 	QStringList _waypoints;
 	int _waypointsIndex;
 	std::vector<CameraModel> _rectCameraModels;
+	std::vector<CameraModel> _rectCameraModelsOdom;
 
 	QMap<int, Signature> _cachedSignatures;
 	long _cachedMemoryUsage;
