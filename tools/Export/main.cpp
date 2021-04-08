@@ -621,7 +621,7 @@ int main(int argc, char * argv[])
 	pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr mergedClouds(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
 	pcl::PointCloud<pcl::PointXYZINormal>::Ptr mergedCloudsI(new pcl::PointCloud<pcl::PointXYZINormal>);
 	std::map<int, rtabmap::Transform> robotPoses;
-	std::map<int, rtabmap::Transform> cameraPoses;
+	std::vector<std::map<int, rtabmap::Transform> > cameraPoses;
 	std::map<int, rtabmap::Transform> scanPoses;
 	std::map<int, double> cameraStamps;
 	std::map<int, std::vector<rtabmap::CameraModel> > cameraModels;
@@ -778,13 +778,14 @@ int main(int argc, char * argv[])
 			cameraModels.insert(std::make_pair(iter->first, models));
 			if(exportPosesCamera)
 			{
-				if(models.size() == 1)
+				if(cameraPoses.empty())
 				{
-					cameraPoses.insert(std::make_pair(iter->first, iter->second*models[0].localTransform()));
+					cameraPoses.resize(models.size());
 				}
-				else
+				UASSERT_MSG(models.size() == cameraPoses.size(), "Not all nodes have same number of cameras to export camera poses.");
+				for(size_t i=0; i<models.size(); ++i)
 				{
-					printf("--poses_camera cannot be used with multi-camera data. Ignoring camera pose for node %d.\n", iter->first);
+					cameraPoses[i].insert(std::make_pair(iter->first, iter->second*models[i].localTransform()));
 				}
 			}
 		}
@@ -822,13 +823,20 @@ int main(int argc, char * argv[])
 				rtabmap::graph::exportPoses(outputPath, 10, robotPoses, std::multimap<int, Link>(), cameraStamps);
 				printf("Poses exported to \"%s\".\n", outputPath.c_str());
 			}
-			else if(exportPosesCamera)
+			if(exportPosesCamera)
 			{
-				std::string outputPath=outputDirectory+"/"+baseName+"_camera_poses.txt";
-				rtabmap::graph::exportPoses(outputPath, 10, cameraPoses, std::multimap<int, Link>(), cameraStamps);
-				printf("Camera poses exported to \"%s\".\n", outputPath.c_str());
+				for(size_t i=0; i<cameraPoses.size(); ++i)
+				{
+					std::string outputPath;
+					if(cameraPoses.size()==1)
+						outputPath = outputDirectory+"/"+baseName+"_camera_poses.txt";
+					else
+						outputPath = outputDirectory+"/"+baseName+"_camera_poses_"+uNumber2Str((int)i)+".txt";
+					rtabmap::graph::exportPoses(outputPath, 10, cameraPoses[i], std::multimap<int, Link>(), cameraStamps);
+					printf("Camera poses exported to \"%s\".\n", outputPath.c_str());
+				}
 			}
-			else if(exportPosesScan)
+			if(exportPosesScan)
 			{
 				std::string outputPath=outputDirectory+"/"+baseName+"_scan_poses.txt";
 				rtabmap::graph::exportPoses(outputPath, 10, scanPoses, std::multimap<int, Link>(), cameraStamps);
