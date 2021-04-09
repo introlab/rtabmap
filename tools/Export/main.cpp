@@ -671,7 +671,7 @@ int main(int argc, char * argv[])
 
 		if(exportImages && !rgb.empty())
 		{
-			std::string dirSuffix = (depth.type() != CV_16UC1 && depth.type() != CV_32FC1)?"rgb":"left";
+			std::string dirSuffix = (depth.type() != CV_16UC1 && depth.type() != CV_32FC1)?"left":"rgb";
 			std::string dir = outputDirectory+"/"+baseName+"_"+dirSuffix;
 			UDirectory::makeDir(dir);
 			std::string outputPath=dir+"/"+(exportImagesId?uNumber2Str(iter->first):uFormat("%f",node.getStamp()))+".jpg";
@@ -707,7 +707,14 @@ int main(int argc, char * argv[])
 			{
 				for(size_t i=0; i<models.size(); ++i)
 				{
-					models[i].save(outputDirectory);
+					CameraModel model = models[i];
+					if(models.size() > 1) {
+						std::string prefix = model.name();
+						if(prefix.empty())
+							prefix = "camera";
+						model.setName(prefix + "_" + uNumber2Str((int)i));
+					}
+					model.save(outputDirectory);
 				}
 				calibSaved = !models.empty();
 				if(node.sensorData().stereoCameraModel().isValidForProjection())

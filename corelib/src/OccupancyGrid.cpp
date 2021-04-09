@@ -354,7 +354,7 @@ void OccupancyGrid::createLocalMap(
 			}
 			else
 			{
-				UWARN("Cannot create local map, scan is empty (node=%d).", node.id());
+				UWARN("Cannot create local map, scan is empty (node=%d, %s=false).", node.id(), Parameters::kGridFromDepth().c_str());
 			}
 		}
 		else

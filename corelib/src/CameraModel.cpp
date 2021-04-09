@@ -366,7 +366,11 @@ bool CameraModel::load(const std::string & directory, const std::string & camera
 
 bool CameraModel::save(const std::string & directory) const
 {
-	std::string filePath = directory+"/"+name_+".yaml";
+	if(name_.empty())
+	{
+		UWARN("Camera name is empty, will use general \"camera\" as name.");
+	}
+	std::string filePath = directory+"/"+(name_.empty()?"camera":name_)+".yaml";
 	if(!filePath.empty() && (!K_.empty() || !D_.empty() || !R_.empty() || !P_.empty()))
 	{
 		UINFO("Saving calibration to file \"%s\"", filePath.c_str());
