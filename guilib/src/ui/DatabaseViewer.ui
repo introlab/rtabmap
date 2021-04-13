@@ -61,7 +61,7 @@
           <rect>
            <x>0</x>
            <y>0</y>
-           <width>422</width>
+           <width>417</width>
            <height>311</height>
           </rect>
          </property>
@@ -304,7 +304,7 @@
           <rect>
            <x>0</x>
            <y>0</y>
-           <width>421</width>
+           <width>416</width>
            <height>311</height>
           </rect>
          </property>
@@ -694,6 +694,7 @@
      </property>
      <addaction name="actionRaw_format_txt"/>
      <addaction name="actionRGBD_SLAM_format_txt"/>
+     <addaction name="actionRGBD_SLAM_ID_format_txt"/>
      <addaction name="actionRGBD_SLAM_motion_capture_format_txt"/>
      <addaction name="actionKITTI_format_txt"/>
      <addaction name="actionTORO_graph"/>
@@ -1542,8 +1543,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>519</width>
-          <height>871</height>
+          <width>280</width>
+          <height>1006</height>
          </rect>
         </property>
         <attribute name="label">
@@ -2116,8 +2117,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>312</width>
-          <height>243</height>
+          <width>298</width>
+          <height>192</height>
          </rect>
         </property>
         <attribute name="label">
@@ -2987,6 +2988,11 @@
   <action name="actionRegenerate_optimized_2D_map">
    <property name="text">
     <string>Regenerate optimized 2D map...</string>
+   </property>
+  </action>
+  <action name="actionRGBD_SLAM_ID_format_txt">
+   <property name="text">
+    <string>RGBD-SLAM ID format (*.txt)</string>
    </property>
   </action>
  </widget>

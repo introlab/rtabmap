@@ -363,6 +363,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent, bool sh
 	connect(_ui->actionRaw_format_txt, SIGNAL(triggered()), this , SLOT(exportPosesRaw()));
 	connect(_ui->actionRGBD_SLAM_format_txt, SIGNAL(triggered()), this , SLOT(exportPosesRGBDSLAM()));
 	connect(_ui->actionRGBD_SLAM_motion_capture_format_txt, SIGNAL(triggered()), this , SLOT(exportPosesRGBDSLAMMotionCapture()));
+	connect(_ui->actionRGBD_SLAM_ID_format_txt, SIGNAL(triggered()), this , SLOT(exportPosesRGBDSLAMID()));
 	connect(_ui->actionKITTI_format_txt, SIGNAL(triggered()), this , SLOT(exportPosesKITTI()));
 	connect(_ui->actionTORO_graph, SIGNAL(triggered()), this , SLOT(exportPosesTORO()));
 	connect(_ui->actionG2o_g2o, SIGNAL(triggered()), this , SLOT(exportPosesG2O()));
@@ -5765,6 +5766,10 @@ void MainWindow::exportPosesRGBDSLAM()
 {
 	exportPoses(10);
 }
+void MainWindow::exportPosesRGBDSLAMID()
+{
+	exportPoses(11);
+}
 void MainWindow::exportPosesKITTI()
 {
 	exportPoses(2);
@@ -5886,7 +5891,7 @@ void MainWindow::exportPoses(int format)
 		}
 
 		std::map<int, double> stamps;
-		if(format == 1 || format == 10)
+		if(format == 1 || format == 10 || format == 11)
 		{
 			for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter)
 			{

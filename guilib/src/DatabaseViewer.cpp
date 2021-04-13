@@ -272,6 +272,7 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	connect(ui_->actionGenerate_local_graph_dot, SIGNAL(triggered()), this, SLOT(generateLocalGraph()));
 	connect(ui_->actionRaw_format_txt, SIGNAL(triggered()), this , SLOT(exportPosesRaw()));
 	connect(ui_->actionRGBD_SLAM_format_txt, SIGNAL(triggered()), this , SLOT(exportPosesRGBDSLAM()));
+	connect(ui_->actionRGBD_SLAM_ID_format_txt, SIGNAL(triggered()), this , SLOT(exportPosesRGBDSLAMID()));
 	connect(ui_->actionRGBD_SLAM_motion_capture_format_txt, SIGNAL(triggered()), this , SLOT(exportPosesRGBDSLAMMotionCapture()));
 	connect(ui_->actionKITTI_format_txt, SIGNAL(triggered()), this , SLOT(exportPosesKITTI()));
 	connect(ui_->actionTORO_graph, SIGNAL(triggered()), this , SLOT(exportPosesTORO()));
@@ -2276,6 +2277,10 @@ void DatabaseViewer::exportPosesRGBDSLAM()
 {
 	exportPoses(10);
 }
+void DatabaseViewer::exportPosesRGBDSLAMID()
+{
+	exportPoses(11);
+}
 void DatabaseViewer::exportPosesKITTI()
 {
 	exportPoses(2);
@@ -2603,7 +2608,7 @@ void DatabaseViewer::exportPoses(int format)
 		}
 
 		std::map<int, double> stamps;
-		if(format == 1 || format == 10)
+		if(format == 1 || format == 10 || format == 11)
 		{
 			for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter)
 			{

@@ -40,6 +40,7 @@
      </property>
      <addaction name="actionRaw_format_txt"/>
      <addaction name="actionRGBD_SLAM_format_txt"/>
+     <addaction name="actionRGBD_SLAM_ID_format_txt"/>
      <addaction name="actionRGBD_SLAM_motion_capture_format_txt"/>
      <addaction name="actionKITTI_format_txt"/>
      <addaction name="actionTORO_graph"/>
@@ -1643,6 +1644,11 @@
    </property>
    <property name="text">
     <string>DepthAI</string>
+   </property>
+  </action>
+  <action name="actionRGBD_SLAM_ID_format_txt">
+   <property name="text">
+    <string>RGBD-SLAM + ID format (*.txt)</string>
    </property>
   </action>
  </widget>

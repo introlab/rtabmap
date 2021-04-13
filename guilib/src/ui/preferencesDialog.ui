@@ -63,7 +63,7 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-120</y>
+            <y>-1483</y>
             <width>686</width>
             <height>3414</height>
            </rect>
@@ -95,7 +95,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>19</number>
+                <number>5</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,1">
@@ -6643,7 +6643,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                          <item row="9" column="1">
                           <widget class="QComboBox" name="comboBox_cameraImages_gtFormat">
                            <property name="toolTip">
-                            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Raw Format (3 values): x y z&lt;br/&gt;Raw Format (6 values): x y z roll pitch yaw&lt;br/&gt;Raw Format (7 values): x y z qx qy qz qw&lt;br/&gt;Raw Format (9 values, 3x3 rotation): r11 r12 r13 r21 r22 r23 r31 r32 r33&lt;br/&gt;Raw Format (12 values, 3x4 transform): r11 r12 r13 tx r21 r22 r23 ty r31 r32 r33 tz&lt;/p&gt;&lt;p&gt;RGBD-SLAM (stamp tx ty tz qx qy qz qw)&lt;br/&gt;KITTI (stamp + 12 values transform)&lt;br/&gt;TORO&lt;br/&gt;g2o&lt;br/&gt;NewCollege (stamp x y)&lt;br/&gt;Malaga Urban (GPS)&lt;br/&gt;St Lucia Stereo (INS)&lt;br/&gt;EuRoC MAV (stamp,tx,ty,tz,qw,qx,qy,qz...)&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Raw Format (3 values): x y z&lt;br/&gt;Raw Format (6 values): x y z roll pitch yaw&lt;br/&gt;Raw Format (7 values): x y z qx qy qz qw&lt;br/&gt;Raw Format (9 values, 3x3 rotation): r11 r12 r13 r21 r22 r23 r31 r32 r33&lt;br/&gt;Raw Format (12 values, 3x4 transform): r11 r12 r13 tx r21 r22 r23 ty r31 r32 r33 tz&lt;/p&gt;&lt;p&gt;RGBD-SLAM (stamp tx ty tz qx qy qz qw)&lt;br/&gt;RGBD-SLAM + ID (stamp id tx ty tz qx qy qz qw)&lt;br/&gt;KITTI (stamp + 12 values transform)&lt;br/&gt;TORO&lt;br/&gt;g2o&lt;br/&gt;NewCollege (stamp x y)&lt;br/&gt;Malaga Urban (GPS)&lt;br/&gt;St Lucia Stereo (INS)&lt;br/&gt;EuRoC MAV (stamp,tx,ty,tz,qw,qx,qy,qz...)&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                            </property>
                            <property name="sizeAdjustPolicy">
                             <enum>QComboBox::AdjustToContents</enum>
@@ -6701,6 +6701,11 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                            <item>
                             <property name="text">
                              <string>RGBD-SLAM</string>
+                            </property>
+                           </item>
+                           <item>
+                            <property name="text">
+                             <string>RGBD-SLAM + ID</string>
                             </property>
                            </item>
                           </widget>
@@ -6783,7 +6788,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                          <item row="7" column="1">
                           <widget class="QComboBox" name="comboBox_cameraImages_odomFormat">
                            <property name="toolTip">
-                            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Raw Format (3 values): x y z&lt;br/&gt;Raw Format (6 values): x y z roll pitch yaw&lt;br/&gt;Raw Format (7 values): x y z qx qy qz qw&lt;br/&gt;Raw Format (9 values, 3x3 rotation): r11 r12 r13 r21 r22 r23 r31 r32 r33&lt;br/&gt;Raw Format (12 values, 3x4 transform): r11 r12 r13 tx r21 r22 r23 ty r31 r32 r33 tz&lt;/p&gt;&lt;p&gt;RGBD-SLAM (stamp tx ty tz qx qy qz qw)&lt;br/&gt;KITTI (stamp + 12 values transform)&lt;br/&gt;TORO&lt;br/&gt;g2o&lt;br/&gt;NewCollege (stamp x y)&lt;br/&gt;Malaga Urban (GPS)&lt;br/&gt;St Lucia Stereo (INS)&lt;br/&gt;EuRoC MAV (stamp,tx,ty,tz,qw,qx,qy,qz...)&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Raw Format (3 values): x y z&lt;br/&gt;Raw Format (6 values): x y z roll pitch yaw&lt;br/&gt;Raw Format (7 values): x y z qx qy qz qw&lt;br/&gt;Raw Format (9 values, 3x3 rotation): r11 r12 r13 r21 r22 r23 r31 r32 r33&lt;br/&gt;Raw Format (12 values, 3x4 transform): r11 r12 r13 tx r21 r22 r23 ty r31 r32 r33 tz&lt;/p&gt;&lt;p&gt;RGBD-SLAM (stamp tx ty tz qx qy qz qw)&lt;br/&gt;RGBD-SLAM + ID (stamp id tx ty tz qx qy qz qw)&lt;br/&gt;KITTI (stamp + 12 values transform)&lt;br/&gt;TORO&lt;br/&gt;g2o&lt;br/&gt;NewCollege (stamp x y)&lt;br/&gt;Malaga Urban (GPS)&lt;br/&gt;St Lucia Stereo (INS)&lt;br/&gt;EuRoC MAV (stamp,tx,ty,tz,qw,qx,qy,qz...)&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                            </property>
                            <property name="sizeAdjustPolicy">
                             <enum>QComboBox::AdjustToContents</enum>
@@ -6841,6 +6846,11 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                            <item>
                             <property name="text">
                              <string>RGBD-SLAM</string>
+                            </property>
+                           </item>
+                           <item>
+                            <property name="text">
+                             <string>RGBD-SLAM + ID</string>
                             </property>
                            </item>
                           </widget>

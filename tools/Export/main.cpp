@@ -66,9 +66,17 @@ void showUsage()
 			"    --texture_range #     Maximum camera range for texturing a polygon (default 0 meters: no limit).\n"
 			"    --texture_d2c         Distance to camera policy.\n"
 			"    --cam_projection      Camera projection on assembled cloud and export node ID on each point (in PointSourceId field).\n"
-			"    --poses               Export optimized poses of the robot frame (e.g., base_link) in RGB-D SLAM dataset format (stamp x y z qx qy qz qw).\n"
-			"    --poses_camera        Export optimized poses of the camera frame (e.g., optical frame) in RGB-D SLAM dataset format (stamp x y z qx qy qz qw).\n"
-			"    --poses_scan          Export optimized poses of the scan frame in RGB-D SLAM dataset format (stamp x y z qx qy qz qw).\n"
+			"    --poses               Export optimized poses of the robot frame (e.g., base_link).\n"
+			"    --poses_camera        Export optimized poses of the camera frame (e.g., optical frame).\n"
+			"    --poses_scan          Export optimized poses of the scan frame.\n"
+			"    --poses_format #      Format used for exported poses (default is 10):\n"
+			"                              0=Raw 3x4 transformation matrix (r11 r12 r13 tx r21 r22 r23 ty r31 r32 r33 tz)\n"
+			"                              1=RGBD-SLAM (in motion capture coordinate frame)\n"
+			"                              2=KITTI (same as raw but in optical frame)\n"
+			"                              3=TORO\n"
+			"                              4=g2o\n"
+			"                              10=RGBD-SLAM in ROS coordinate frame (stamp x y z qx qy qz qw)\n"
+			"                              11=RGBD-SLAM in ROS coordinate frame + ID (stamp x y z qx qy qz qw id)\n"
 			"    --images              Export images with stamp as file name.\n"
 			"    --images_id           Export images with node id as file name.\n"
 			"    --ba                  Do global bundle adjustment before assembling the clouds.\n"
@@ -138,6 +146,7 @@ int main(int argc, char * argv[])
 	bool exportPoses = false;
 	bool exportPosesCamera = false;
 	bool exportPosesScan = false;
+	int exportPosesFormat = 10;
 	bool exportImages = false;
 	bool exportImagesId = false;
 	std::string outputName;
@@ -237,6 +246,18 @@ int main(int argc, char * argv[])
 		else if(std::strcmp(argv[i], "--poses_scan") == 0)
 		{
 			exportPosesScan = true;
+		}
+		else if(std::strcmp(argv[i], "--poses_format") == 0)
+		{
+			++i;
+			if(i<argc-1)
+			{
+				exportPosesFormat = uStr2Int(argv[i]);
+			}
+			else
+			{
+				showUsage();
+			}
 		}
 		else if(std::strcmp(argv[i], "--images") == 0)
 		{
@@ -824,10 +845,11 @@ int main(int argc, char * argv[])
 		}
 		else
 		{
+			std::string posesExt = (exportPosesFormat==3?"toro":exportPosesFormat==4?"g2o":"txt");
 			if(exportPoses)
 			{
-				std::string outputPath=outputDirectory+"/"+baseName+"_poses.txt";
-				rtabmap::graph::exportPoses(outputPath, 10, robotPoses, std::multimap<int, Link>(), cameraStamps);
+				std::string outputPath=outputDirectory+"/"+baseName+"_poses." + posesExt;
+				rtabmap::graph::exportPoses(outputPath, exportPosesFormat, robotPoses, links, cameraStamps);
 				printf("Poses exported to \"%s\".\n", outputPath.c_str());
 			}
 			if(exportPosesCamera)
@@ -836,17 +858,17 @@ int main(int argc, char * argv[])
 				{
 					std::string outputPath;
 					if(cameraPoses.size()==1)
-						outputPath = outputDirectory+"/"+baseName+"_camera_poses.txt";
+						outputPath = outputDirectory+"/"+baseName+"_camera_poses." + posesExt;
 					else
-						outputPath = outputDirectory+"/"+baseName+"_camera_poses_"+uNumber2Str((int)i)+".txt";
-					rtabmap::graph::exportPoses(outputPath, 10, cameraPoses[i], std::multimap<int, Link>(), cameraStamps);
+						outputPath = outputDirectory+"/"+baseName+"_camera_poses_"+uNumber2Str((int)i)+"." + posesExt;
+					rtabmap::graph::exportPoses(outputPath, exportPosesFormat, cameraPoses[i], std::multimap<int, Link>(), cameraStamps);
 					printf("Camera poses exported to \"%s\".\n", outputPath.c_str());
 				}
 			}
 			if(exportPosesScan)
 			{
-				std::string outputPath=outputDirectory+"/"+baseName+"_scan_poses.txt";
-				rtabmap::graph::exportPoses(outputPath, 10, scanPoses, std::multimap<int, Link>(), cameraStamps);
+				std::string outputPath=outputDirectory+"/"+baseName+"_scan_poses." + posesExt;
+				rtabmap::graph::exportPoses(outputPath, exportPosesFormat, scanPoses, std::multimap<int, Link>(), cameraStamps);
 				printf("Scan poses exported to \"%s\".\n", outputPath.c_str());
 			}
 		}

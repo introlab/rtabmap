@@ -53,7 +53,7 @@ namespace graph {
 
 bool exportPoses(
 		const std::string & filePath,
-		int format, // 0=Raw, 1=RGBD-SLAM motion capture (10=without change of coordinate frame), 2=KITTI, 3=TORO, 4=g2o
+		int format, // 0=Raw, 1=RGBD-SLAM motion capture (10=without change of coordinate frame, 11=10+ID), 2=KITTI, 3=TORO, 4=g2o
 		const std::map<int, Transform> & poses,
 		const std::multimap<int, Link> & constraints, // required for formats 3 and 4
 		const std::map<int, double> & stamps, // required for format 1
@@ -86,11 +86,11 @@ bool exportPoses(
 			tmpPath+=".txt";
 		}
 
-		if(format == 1 || format == 10)
+		if(format == 1 || format == 10 || format == 11)
 		{
 			if(stamps.size() != poses.size())
 			{
-				UERROR("When exporting poses to format 1 (RGBD-SLAM), stamps and poses maps should have the same size! stamps=%d psoes=%d",
+				UERROR("When exporting poses to format 1 (RGBD-SLAM), stamps and poses maps should have the same size! stamps=%d poses=%d",
 						(int)stamps.size(), (int)poses.size());
 				return false;
 			}
@@ -106,7 +106,7 @@ bool exportPoses(
 		{
 			for(std::map<int, Transform>::const_iterator iter=poses.begin(); iter!=poses.end(); ++iter)
 			{
-				if(format == 1 || format == 10) // rgbd-slam format
+				if(format == 1 || format == 10 || format == 11) // rgbd-slam format
 				{
 					Transform pose = iter->second;
 					if(format == 1)
@@ -128,11 +128,18 @@ bool exportPoses(
 					if(iter == poses.begin())
 					{
 						// header
-						fprintf(fout, "# timestamp x y z qx qy qz qw\n");
+						if(format == 11)
+						{
+							fprintf(fout, "# timestamp x y z qx qy qz qw id\n");
+						}
+						else
+						{
+							fprintf(fout, "# timestamp x y z qx qy qz qw\n");
+						}
 					}
 
 					UASSERT(uContains(stamps, iter->first));
-					fprintf(fout, "%f %f %f %f %f %f %f %f\n",
+					fprintf(fout, "%f %f %f %f %f %f %f %f%s\n",
 							stamps.at(iter->first),
 							pose.x(),
 							pose.y(),
@@ -140,7 +147,8 @@ bool exportPoses(
 							q.x(),
 							q.y(),
 							q.z(),
-							q.w());
+							q.w(),
+							format == 11?(" "+uNumber2Str(iter->first)).c_str():"");
 				}
 				else // default / KITTI format
 				{
@@ -175,7 +183,7 @@ bool exportPoses(
 
 bool importPoses(
 		const std::string & filePath,
-		int format, // 0=Raw, 1=RGBD-SLAM motion capture (10=without change of coordinate frame), 2=KITTI, 3=TORO, 4=g2o, 5=NewCollege(t,x,y), 6=Malaga Urban GPS, 7=St Lucia INS, 8=Karlsruhe, 9=EuRoC MAV
+		int format, // 0=Raw, 1=RGBD-SLAM motion capture (10=without change of coordinate frame, 11=10+ID), 2=KITTI, 3=TORO, 4=g2o, 5=NewCollege(t,x,y), 6=Malaga Urban GPS, 7=St Lucia INS, 8=Karlsruhe, 9=EuRoC MAV
 		std::map<int, Transform> & poses,
 		std::multimap<int, Link> * constraints, // optional for formats 3 and 4
 		std::map<int, double> * stamps) // optional for format 1 and 9
@@ -419,13 +427,18 @@ bool importPoses(
 					UERROR("Error parsing \"%s\" with NewCollege format (should have 3 values: stamp x y, found %d)", str.c_str(), (int)strList.size());
 				}
 			}
-			else if(format == 1 || format==10) // rgbd-slam format
+			else if(format == 1 || format==10 || format==11) // rgbd-slam format
 			{
 				std::list<std::string> strList = uSplit(str);
-				if(strList.size() ==  8)
+				if((strList.size() ==  8 && format!=11) || (strList.size() ==  9 && format==11))
 				{
 					double stamp = uStr2Double(strList.front());
 					strList.pop_front();
+					if(format==11)
+					{
+						id = uStr2Int(strList.back());
+						strList.pop_back();
+					}
 					str = uJoin(strList, " ");
 					Transform pose = Transform::fromString(str);
 					if(pose.isNull())
@@ -456,7 +469,7 @@ bool importPoses(
 				}
 				else
 				{
-					UERROR("Error parsing \"%s\" with RGBD-SLAM format (should have 8 values: stamp x y z qw qx qy qz)", str.c_str());
+					UERROR("Error parsing \"%s\" with RGBD-SLAM format (should have 8 values (or 9 with id): stamp x y z qw qx qy qz [id])", str.c_str());
 				}
 			}
 			else // default / KITTI format

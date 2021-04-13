@@ -155,6 +155,7 @@ protected Q_SLOTS:
 	void exportPosesRaw();
 	void exportPosesRGBDSLAM();
 	void exportPosesRGBDSLAMMotionCapture();
+	void exportPosesRGBDSLAMID();
 	void exportPosesKITTI();
 	void exportPosesTORO();
 	void exportPosesG2O();

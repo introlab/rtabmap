@@ -107,6 +107,7 @@ private Q_SLOTS:
 	void exportPosesRaw();
 	void exportPosesRGBDSLAMMotionCapture();
 	void exportPosesRGBDSLAM();
+	void exportPosesRGBDSLAMID();
 	void exportPosesKITTI();
 	void exportPosesTORO();
 	void exportPosesG2O();
