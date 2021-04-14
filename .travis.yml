@@ -10,20 +10,20 @@ jobs:
 #        - brew install pcl
 #        - brew install opencv@3
     
-    - name: linux-trusty
-      compiler: gcc
-      os: linux
-      dist: trusty
-      install:
-        - sudo sh -c 'echo "deb http://packages.ros.org/ros/ubuntu trusty main" > /etc/apt/sources.list.d/ros-latest.list'
-        - wget http://packages.ros.org/ros.key -O - | sudo apt-key add -
-        - sudo apt-get update
-        - sudo apt-get update && sudo apt-get install dpkg
-        - sudo apt-get -y install ros-indigo-rtabmap-ros
-        - sudo apt-get -y remove ros-indigo-rtabmap
-
-      before_script: 
-        - source /opt/ros/indigo/setup.bash
+#    - name: linux-trusty
+#      compiler: gcc
+#      os: linux
+#      dist: trusty
+#      install:
+#        - sudo sh -c 'echo "deb http://packages.ros.org/ros/ubuntu trusty main" > /etc/apt/sources.list.d/ros-latest.list'
+#        - wget http://packages.ros.org/ros.key -O - | sudo apt-key add -
+#        - sudo apt-get update
+#        - sudo apt-get update && sudo apt-get install dpkg
+#        - sudo apt-get -y install ros-indigo-rtabmap-ros
+#        - sudo apt-get -y remove ros-indigo-rtabmap
+#
+#      before_script: 
+#        - source /opt/ros/indigo/setup.bash
 
     - name: linux-xenial
       compiler: gcc
