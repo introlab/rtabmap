@@ -391,6 +391,7 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	connect(ui_->doubleSpinBox_gainCompensationRadius, SIGNAL(valueChanged(double)), this, SLOT(updateConstraintView()));
 	connect(ui_->doubleSpinBox_voxelSize, SIGNAL(valueChanged(double)), this, SLOT(updateConstraintView()));
 	connect(ui_->doubleSpinBox_voxelSize, SIGNAL(valueChanged(double)), this, SLOT(update3dView()));
+	connect(ui_->checkBox_cameraProjection, SIGNAL(stateChanged(int)), this, SLOT(update3dView()));
 	connect(ui_->spinBox_decimation, SIGNAL(valueChanged(int)), this, SLOT(updateConstraintView()));
 	connect(ui_->spinBox_decimation, SIGNAL(valueChanged(int)), this, SLOT(update3dView()));
 	connect(ui_->groupBox_posefiltering, SIGNAL(clicked(bool)), this, SLOT(updateGraphView()));
@@ -418,6 +419,7 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	// Graph view
 	connect(ui_->doubleSpinBox_gainCompensationRadius, SIGNAL(valueChanged(double)), this, SLOT(configModified()));
 	connect(ui_->doubleSpinBox_voxelSize, SIGNAL(valueChanged(double)), this, SLOT(configModified()));
+	connect(ui_->checkBox_cameraProjection, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
 	connect(ui_->spinBox_decimation, SIGNAL(valueChanged(int)), this, SLOT(configModified()));
 	connect(ui_->groupBox_posefiltering, SIGNAL(clicked(bool)), this, SLOT(configModified()));
 	connect(ui_->doubleSpinBox_posefilteringRadius, SIGNAL(valueChanged(double)), this, SLOT(configModified()));
@@ -549,6 +551,8 @@ void DatabaseViewer::readSettings()
 	ui_->doubleSpinBox_gainCompensationRadius->setValue(settings.value("gainCompensationRadius", ui_->doubleSpinBox_gainCompensationRadius->value()).toDouble());
 	ui_->doubleSpinBox_voxelSize->setValue(settings.value("voxelSize", ui_->doubleSpinBox_voxelSize->value()).toDouble());
 	ui_->spinBox_decimation->setValue(settings.value("decimation", ui_->spinBox_decimation->value()).toInt());
+	ui_->checkBox_cameraProjection->setChecked(settings.value("camProj", ui_->checkBox_cameraProjection->isChecked()).toBool());
+
 	settings.endGroup();
 
 	settings.beginGroup("grid");
@@ -635,6 +639,7 @@ void DatabaseViewer::writeSettings()
 	settings.setValue("gainCompensationRadius", ui_->doubleSpinBox_gainCompensationRadius->value());
 	settings.setValue("voxelSize", ui_->doubleSpinBox_voxelSize->value());
 	settings.setValue("decimation", ui_->spinBox_decimation->value());
+	settings.setValue("camProj", ui_->checkBox_cameraProjection->isChecked());
 	settings.endGroup();
 
 	// save Grid settings
@@ -724,6 +729,7 @@ void DatabaseViewer::restoreDefaultSettings()
 	ui_->doubleSpinBox_gainCompensationRadius->setValue(0.0);
 	ui_->doubleSpinBox_voxelSize->setValue(0.0);
 	ui_->spinBox_decimation->setValue(1);
+	ui_->checkBox_cameraProjection->setChecked(false);
 
 	ui_->groupBox_posefiltering->setChecked(false);
 	ui_->doubleSpinBox_posefilteringRadius->setValue(0.1);
@@ -4590,7 +4596,138 @@ void DatabaseViewer::update(int value,
 						cloudViewer_->addOrUpdateLine("gravity", pose, (pose).translation()*Transform(gravity[0], gravity[1], gravity[2], 0, 0, 0)*pose.rotation().inverse(), Qt::yellow, true, false);
 					}
 
-					if(ui_->checkBox_showCloud->isChecked() || ui_->checkBox_showMesh->isChecked())
+					//add scan
+					LaserScan laserScanRaw = data.laserScanRaw();
+					if(modifiedLaserScans_.find(id)!=modifiedLaserScans_.end())
+					{
+						laserScanRaw = modifiedLaserScans_.at(id);
+					}
+					if(ui_->checkBox_showScan->isChecked() && laserScanRaw.size())
+					{
+						if(laserScanRaw.hasRGB() && laserScanRaw.hasNormals())
+						{
+							pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr scan = util3d::laserScanToPointCloudRGBNormal(laserScanRaw, laserScanRaw.localTransform());
+							cloudViewer_->addCloud("scan", scan, pose, Qt::yellow);
+						}
+						else if(laserScanRaw.hasIntensity() && laserScanRaw.hasNormals())
+						{
+							pcl::PointCloud<pcl::PointXYZINormal>::Ptr scan = util3d::laserScanToPointCloudINormal(laserScanRaw, laserScanRaw.localTransform());
+							cloudViewer_->addCloud("scan", scan, pose, Qt::yellow);
+						}
+						else if(laserScanRaw.hasNormals())
+						{
+							pcl::PointCloud<pcl::PointNormal>::Ptr scan = util3d::laserScanToPointCloudNormal(laserScanRaw, laserScanRaw.localTransform());
+							cloudViewer_->addCloud("scan", scan, pose, Qt::yellow);
+						}
+						else if(laserScanRaw.hasRGB())
+						{
+							pcl::PointCloud<pcl::PointXYZRGB>::Ptr scan = util3d::laserScanToPointCloudRGB(laserScanRaw, laserScanRaw.localTransform());
+							cloudViewer_->addCloud("scan", scan, pose, Qt::yellow);
+						}
+						else if(laserScanRaw.hasIntensity())
+						{
+							pcl::PointCloud<pcl::PointXYZI>::Ptr scan = util3d::laserScanToPointCloudI(laserScanRaw, laserScanRaw.localTransform());
+							cloudViewer_->addCloud("scan", scan, pose, Qt::yellow);
+						}
+						else
+						{
+							pcl::PointCloud<pcl::PointXYZ>::Ptr scan = util3d::laserScanToPointCloud(laserScanRaw, laserScanRaw.localTransform());
+							cloudViewer_->addCloud("scan", scan, pose, Qt::yellow);
+						}
+					}
+
+					// add RGB-D cloud
+					if(ui_->checkBox_showCloud->isChecked() && ui_->checkBox_cameraProjection->isChecked() &&
+							!data.imageRaw().empty() && !laserScanRaw.empty() && !laserScanRaw.is2d())
+					{
+						pcl::PointCloud<pcl::PointXYZINormal>::Ptr cloud = util3d::laserScanToPointCloudINormal(laserScanRaw, laserScanRaw.localTransform());
+						std::vector<CameraModel> models = data.cameraModels();
+						if(data.stereoCameraModel().isValidForProjection())
+						{
+							models.clear();
+							models.push_back(data.stereoCameraModel().left());
+						}
+						else if(!models.empty() && !models[0].isValidForProjection())
+						{
+							models.clear();
+						}
+
+						if(!models.empty() && models[0].imageWidth() != 0 && models[0].imageHeight() != 0)
+						{
+							std::map<int, Transform> cameraPoses;
+							std::map<int, std::vector<CameraModel> > cameraModels;
+							cameraPoses.insert(std::make_pair(data.id(), Transform::getIdentity()));
+							cameraModels.insert(std::make_pair(data.id(), models));
+
+							std::vector<std::pair< std::pair<int, int>, pcl::PointXY> > pointToPixel;
+							pointToPixel = util3d::projectCloudToCameras(
+									*cloud,
+									cameraPoses,
+									cameraModels);
+							// color the cloud
+							UASSERT(pointToPixel.empty() || pointToPixel.size() == cloud->size());
+							pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudValidPoints(new pcl::PointCloud<pcl::PointXYZRGB>);
+							cloudValidPoints->resize(cloud->size());
+							int oi=0;
+							for(size_t i=0; i<pointToPixel.size(); ++i)
+							{
+								pcl::PointXYZINormal & pt = cloud->at(i);
+								pcl::PointXYZRGB ptColor;
+								int nodeID = pointToPixel[i].first.first;
+								int cameraIndex = pointToPixel[i].first.second;
+								if(nodeID>0 && cameraIndex>=0)
+								{
+									cv::Mat image = data.imageRaw();
+
+									int subImageWidth = image.cols / cameraModels.at(nodeID).size();
+									image = image(cv::Range::all(), cv::Range(cameraIndex*subImageWidth, (cameraIndex+1)*subImageWidth));
+
+
+									int x = pointToPixel[i].second.x * (float)image.cols;
+									int y = pointToPixel[i].second.y * (float)image.rows;
+									UASSERT(x>=0 && x<image.cols);
+									UASSERT(y>=0 && y<image.rows);
+
+									if(image.type()==CV_8UC3)
+									{
+										cv::Vec3b bgr = image.at<cv::Vec3b>(y, x);
+										ptColor.b = bgr[0];
+										ptColor.g = bgr[1];
+										ptColor.r = bgr[2];
+									}
+									else
+									{
+										UASSERT(image.type()==CV_8UC1);
+										ptColor.r = ptColor.g = ptColor.b = image.at<unsigned char>(pointToPixel[i].second.y * image.rows, pointToPixel[i].second.x * image.cols);
+									}
+
+									ptColor.x = pt.x;
+									ptColor.y = pt.y;
+									ptColor.z = pt.z;
+									cloudValidPoints->at(oi++) = ptColor;
+								}
+							}
+							cloudValidPoints->resize(oi);
+							if(!cloudValidPoints->empty())
+							{
+								if(ui_->doubleSpinBox_voxelSize->value() > 0.0)
+								{
+									cloudValidPoints = util3d::voxelize(cloudValidPoints, ui_->doubleSpinBox_voxelSize->value());
+								}
+
+								cloudViewer_->addCloud("cloud", cloudValidPoints, pose);
+							}
+							else
+							{
+								UWARN("Camera projection to scan returned an empty cloud, no visible points from cameras...");
+							}
+						}
+						else
+						{
+							UERROR("Node has invalid camera models, camera projection on scan cannot be done!.");
+						}
+					}
+					else if(ui_->checkBox_showCloud->isChecked() || ui_->checkBox_showMesh->isChecked())
 					{
 						if(!data.depthOrRightRaw().empty())
 						{
@@ -4737,46 +4874,6 @@ void DatabaseViewer::update(int value,
 						if(cloud->size())
 						{
 							cloudViewer_->addCloud("words", cloud, pose, Qt::red);
-						}
-					}
-
-					//add scan
-					LaserScan laserScanRaw = data.laserScanRaw();
-					if(modifiedLaserScans_.find(id)!=modifiedLaserScans_.end())
-					{
-						laserScanRaw = modifiedLaserScans_.at(id);
-					}
-					if(ui_->checkBox_showScan->isChecked() && laserScanRaw.size())
-					{
-						if(laserScanRaw.hasRGB() && laserScanRaw.hasNormals())
-						{
-							pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr scan = util3d::laserScanToPointCloudRGBNormal(laserScanRaw, laserScanRaw.localTransform());
-							cloudViewer_->addCloud("scan", scan, pose, Qt::yellow);
-						}
-						else if(laserScanRaw.hasIntensity() && laserScanRaw.hasNormals())
-						{
-							pcl::PointCloud<pcl::PointXYZINormal>::Ptr scan = util3d::laserScanToPointCloudINormal(laserScanRaw, laserScanRaw.localTransform());
-							cloudViewer_->addCloud("scan", scan, pose, Qt::yellow);
-						}
-						else if(laserScanRaw.hasNormals())
-						{
-							pcl::PointCloud<pcl::PointNormal>::Ptr scan = util3d::laserScanToPointCloudNormal(laserScanRaw, laserScanRaw.localTransform());
-							cloudViewer_->addCloud("scan", scan, pose, Qt::yellow);
-						}
-						else if(laserScanRaw.hasRGB())
-						{
-							pcl::PointCloud<pcl::PointXYZRGB>::Ptr scan = util3d::laserScanToPointCloudRGB(laserScanRaw, laserScanRaw.localTransform());
-							cloudViewer_->addCloud("scan", scan, pose, Qt::yellow);
-						}
-						else if(laserScanRaw.hasIntensity())
-						{
-							pcl::PointCloud<pcl::PointXYZI>::Ptr scan = util3d::laserScanToPointCloudI(laserScanRaw, laserScanRaw.localTransform());
-							cloudViewer_->addCloud("scan", scan, pose, Qt::yellow);
-						}
-						else
-						{
-							pcl::PointCloud<pcl::PointXYZ>::Ptr scan = util3d::laserScanToPointCloud(laserScanRaw, laserScanRaw.localTransform());
-							cloudViewer_->addCloud("scan", scan, pose, Qt::yellow);
 						}
 					}
 

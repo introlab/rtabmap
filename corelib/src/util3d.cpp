@@ -3294,10 +3294,9 @@ std::vector<std::pair< std::pair<int, int>, pcl::PointXY> > projectCloudToCamera
 			const Transform & cam = cameraPoses.at(invertedIndex[i][j].nodeID);
 			Eigen::Vector4f camDir(cam.x()-pt.x, cam.y()-pt.y, cam.z()-pt.z, 0);
 			Eigen::Vector4f normal(pt.normal_x, pt.normal_y, pt.normal_z, 0);
-			float angleToCam = pcl::getAngle3D(normal, camDir);
+			float angleToCam = maxAngle<=0?0:pcl::getAngle3D(normal, camDir);
 			float distanceToCam = invertedIndex[i][j].distance;
-			if(camDir.dot(normal) > 0 &&                       // is facing camera?
-				(maxAngle<=0 || angleToCam < maxAngle) &&      // is point normal perpendicular to camera?
+			if( (maxAngle<=0 || (camDir.dot(normal) > 0 && angleToCam < maxAngle)) && // is facing camera? is point normal perpendicular to camera?
 				(maxDistance<=0 || distanceToCam<maxDistance)) // is point not too far from camera?
 			{
 				float vx = invertedIndex[i][j].uv.x-0.5f;
