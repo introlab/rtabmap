@@ -11,8 +11,8 @@ RUN apt-get update && \
 WORKDIR /root/
 
 # GTSAM
-RUN add-apt-repository ppa:joseluisblancoc/gtsam-develop -y
-RUN apt install libgtsam-dev
+RUN add-apt-repository ppa:borglab/gtsam-release-4.0 -y
+RUN apt install libgtsam-dev libgtsam-unstable-dev -y
 
 # libpointmatcher 
 RUN git clone https://github.com/ethz-asl/libnabo.git
