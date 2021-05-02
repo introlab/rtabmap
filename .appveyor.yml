@@ -33,10 +33,8 @@ install:
   - set OPENNI2_LIB64=C:\Program Files\OpenNI2\Lib
   - set OPENNI2_REDIST64=C:\Program Files\OpenNI2\Redist
   # OpenCV
-  #- ps: wget 'http://kent.dl.sourceforge.net/project/opencvlibrary/opencv-win/3.3.1/opencv-3.3.1-vc14.exe' -outfile opencv-3.3.1-vc14.exe
-  #- cmd: opencv-3.3.1-vc14.exe -o"C:\Program Files" -y
-  - ps: $url = "https://downloads.sourceforge.net/project/opencvlibrary/opencv-win/2.4.13/opencv-2.4.13.6-vc14.exe?r=&ts="+([int64](([datetime]::UtcNow)-(get-date "1/1/1970")).TotalSeconds) ; wget $url -outfile opencv-2.4.13.6-vc14.exe
-  - cmd: opencv-2.4.13.6-vc14.exe -o"C:\Program Files" -y
+  - ps: $url = "https://downloads.sourceforge.net/project/opencvlibrary/opencv-win/4.5.2/opencv-4.5.2-vc14_vc15.exe?r=&ts="+([int64](([datetime]::UtcNow)-(get-date "1/1/1970")).TotalSeconds) ; wget $url -outfile opencv-4.5.2-vc14_vc15.exe
+  - cmd: opencv-4.5.2-vc14_vc15.exe -o"C:\Program Files" -y
   - ECHO "Installed OpenCV:"
   - ps: "ls \"C:/Program Files/opencv/build\""
   - set PATH=%PATH%;C:\Program Files\opencv\build\x64\vc14\bin
@@ -105,12 +103,7 @@ install:
   - ECHO "Installed Open Chisel:"
   - ps: "ls \"C:/Program Files/open_chisel\""
   - set PATH=%PATH%;C:\Program Files\open_chisel\bin
-  # cvsba
-  - ps: wget 'https://dl.dropboxusercontent.com/s/4ey8ergerx46zvj/cvsba_x64_vc14.exe?dl=0' -outfile cvsba.exe
-  - cmd: cvsba.exe -o"C:\Program Files" -y
-  - ECHO "Installed cvsba:"
-  - ps: "ls \"C:/Program Files/cvsba\""
-  - set PATH=%PATH%;C:\Program Files\cvsba\bin
+  # yaml-cpp
   - ps: wget 'https://dl.dropboxusercontent.com/s/22qfvftwj6zq8tj/yaml-cpp_x64_vc14.exe?dl=0' -outfile yaml-cpp.exe
   - cmd: yaml-cpp.exe -o"C:\Program Files" -y
   - ECHO "Installed yaml-cpp:"
@@ -134,7 +127,7 @@ before_build:
   - cd c:\projects\rtabmap\build
   - ECHO %PROGRAMFILES%
   - ECHO %PATH%
-  - cmake -G "Visual Studio 14 2015 Win64" -DOpenCV_DIR="C:\Program Files\opencv\build" -DPCL_DIR="C:\Program Files\PCL\cmake" -DCPUTSDF_DIR="C:\Program Files\cpu_tsdf\share\cpu_tsdf" -Dcvsba_DIR="C:\Program Files\cvsba\lib\cmake" -Dyaml-cpp_DIR="C:\Program Files\yaml-cpp\CMake" -DBUILD_AS_BUNDLE=ON ..
+  - cmake -G "Visual Studio 14 2015 Win64" -DOpenCV_DIR="C:\Program Files\opencv\build" -DPCL_DIR="C:\Program Files\PCL\cmake" -DCPUTSDF_DIR="C:\Program Files\cpu_tsdf\share\cpu_tsdf" -Dyaml-cpp_DIR="C:\Program Files\yaml-cpp\CMake" -DBUILD_AS_BUNDLE=ON ..
   
 after_build :
   - cmake --build . --config Release --target package
