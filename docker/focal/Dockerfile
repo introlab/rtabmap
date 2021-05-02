@@ -70,6 +70,7 @@ RUN dpkg -i /tmp/libk4abt1.0_1.0.0_amd64.deb
 RUN dpkg -i /tmp/libk4abt1.0-dev_1.0.0_amd64.deb
 RUN apt-get install -y libsoundio1
 RUN dpkg -i /tmp/k4a-tools_1.3.0_amd64.deb
+RUN rm /tmp/libk4a* /tmp/k4a*
 
 # zed open capture
 RUN apt install libusb-1.0-0-dev libhidapi-libusb0 libhidapi-dev wget
@@ -93,7 +94,7 @@ RUN rm /bin/sh && ln -s /bin/bash /bin/sh
 RUN source /ros_entrypoint.sh && \
     cd rtabmap/build && \
     cmake .. && \
-    make && \
+    make -j2 && \
     make install && \
     cd ../.. && \
     rm -rf rtabmap && \
