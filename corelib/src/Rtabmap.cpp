@@ -2900,9 +2900,10 @@ bool Rtabmap::process(
 
 							u  = signature->getPose() * transform;
 						}
-						else
+						else if(iterGravityLoop!=loopS->getLinks().end() ||
+								iterGravitySign!=signature->getLinks().end())
 						{
-							UWARN("Gravity link not found for %d and/or %d, localization won't be corrected with gravity.", loopId, signature->id());
+							UWARN("Gravity link not found for %d or %d, localization won't be corrected with gravity.", loopId, signature->id());
 						}
 					}
 					Transform up = u * oldPose.inverse();
@@ -2955,9 +2956,10 @@ bool Rtabmap::process(
 							newPose  = _optimizedPoses.at(loopId) * transform.inverse();
 							UDEBUG("newPose gravity=%s", newPose.prettyPrint().c_str());
 						}
-						else
+						else if(iterGravityLoop!=loopS->getLinks().end() ||
+								iterGravitySign!=signature->getLinks().end())
 						{
-							UWARN("Gravity link not found for %d and/or %d, localization won't be corrected with gravity.", loopId, signature->id());
+							UWARN("Gravity link not found for %d or %d, localization won't be corrected with gravity.", loopId, signature->id());
 						}
 					}
 					_optimizedPoses.at(signature->id()) = newPose;
