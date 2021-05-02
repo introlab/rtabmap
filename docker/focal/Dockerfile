@@ -37,6 +37,51 @@ RUN cd libpointmatcher && \
     make install && \
     cd && \
     rm -r libpointmatcher
+    
+# libfreenect2 
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get install -y mesa-utils xserver-xorg-video-all libusb-1.0-0-dev libturbojpeg0-dev libglfw3-dev
+RUN git clone https://github.com/OpenKinect/libfreenect2
+RUN cd libfreenect2 && \
+    mkdir build && \
+    cd build && \
+    cmake .. && \
+    make -j$(nproc) && \
+    make install && \
+    cd && \
+    rm -r libfreenect2
+    
+# RealSense2
+RUN apt-get install -y ros-noetic-realsense2-camera
+
+# Azure Kinect DK
+# Taken from https://github.com/microsoft/Azure-Kinect-Sensor-SDK/issues/1190#issuecomment-822772494
+# K4A binaries on 20.04 not released yet, we should take those from 18.04
+RUN curl -sSL https://packages.microsoft.com/ubuntu/18.04/prod/pool/main/libk/libk4a1.3/libk4a1.3_1.3.0_amd64.deb > /tmp/libk4a1.3_1.3.0_amd64.deb
+RUN curl -sSL https://packages.microsoft.com/ubuntu/18.04/prod/pool/main/libk/libk4a1.3-dev/libk4a1.3-dev_1.3.0_amd64.deb > /tmp/libk4a1.3-dev_1.3.0_amd64.deb
+RUN curl -sSL https://packages.microsoft.com/ubuntu/18.04/prod/pool/main/libk/libk4abt1.0/libk4abt1.0_1.0.0_amd64.deb > /tmp/libk4abt1.0_1.0.0_amd64.deb
+RUN curl -sSL https://packages.microsoft.com/ubuntu/18.04/prod/pool/main/libk/libk4abt1.0-dev/libk4abt1.0-dev_1.0.0_amd64.deb > /tmp/libk4abt1.0-dev_1.0.0_amd64.deb
+RUN curl -sSL https://packages.microsoft.com/ubuntu/18.04/prod/pool/main/k/k4a-tools/k4a-tools_1.3.0_amd64.deb > /tmp/k4a-tools_1.3.0_amd64.deb
+RUN echo 'libk4a1.3 libk4a1.3/accepted-eula-hash string 0f5d5c5de396e4fee4c0753a21fee0c1ed726cf0316204edda484f08cb266d76' | debconf-set-selections
+RUN echo 'libk4abt1.0	libk4abt1.0/accepted-eula-hash	string	03a13b63730639eeb6626d24fd45cf25131ee8e8e0df3f1b63f552269b176e38' | debconf-set-selections
+RUN dpkg -i /tmp/libk4a1.3_1.3.0_amd64.deb
+RUN dpkg -i /tmp/libk4a1.3-dev_1.3.0_amd64.deb
+RUN dpkg -i /tmp/libk4abt1.0_1.0.0_amd64.deb
+RUN dpkg -i /tmp/libk4abt1.0-dev_1.0.0_amd64.deb
+RUN apt-get install -y libsoundio1
+RUN dpkg -i /tmp/k4a-tools_1.3.0_amd64.deb
+
+# zed open capture
+RUN apt install libusb-1.0-0-dev libhidapi-libusb0 libhidapi-dev wget
+RUN git clone https://github.com/stereolabs/zed-open-capture.git
+RUN cd zed-open-capture && \
+    mkdir build && \
+    cd build && \
+    cmake .. && \
+    make -j$(nproc) && \
+    make install && \
+    cd && \
+    rm -r zed-open-capture
 
 # Clone source code
 ARG CACHE_DATE=2016-01-01
