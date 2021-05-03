@@ -33,11 +33,16 @@ install:
   - set OPENNI2_LIB64=C:\Program Files\OpenNI2\Lib
   - set OPENNI2_REDIST64=C:\Program Files\OpenNI2\Redist
   # OpenCV
-  - appveyor-retry appveyor DownloadFile http://downloads.sourceforge.net/project/opencvlibrary/4.5.2/opencv-4.5.2-vc14_vc15.exe
-  - cmd: opencv-4.5.2-vc14_vc15.exe -o"C:\Program Files" -y
+  #- appveyor-retry appveyor DownloadFile http://downloads.sourceforge.net/project/opencvlibrary/4.5.2/opencv-4.5.2-vc14_vc15.exe
+  #- cmd: opencv-4.5.2-vc14_vc15.exe -o"C:\Program Files" -y
+  #- ECHO "Installed OpenCV:"
+  #- ps: "ls \"C:/Program Files/opencv/build\""
+  #- set PATH=%PATH%;C:\Program Files\opencv\build\x64\vc14\bin
+  - ps: wget 'https://dl.dropboxusercontent.com/s/o6ofn491bc0jso1/opencv450_vc14.exe?dl=0' -outfile opencv.exe
+  - cmd: opencv.exe -o"C:\Program Files" -y
   - ECHO "Installed OpenCV:"
-  - ps: "ls \"C:/Program Files/opencv/build\""
-  - set PATH=%PATH%;C:\Program Files\opencv\build\x64\vc14\bin
+  - ps: "ls \"C:/Program Files/opencv\""
+  - set PATH=%PATH%;C:\Program Files\opencv\x64\vc14\bin
   # VTK (including QVTK)
   - ps: wget 'https://dl.dropboxusercontent.com/s/1l33b5l3f3y52gf/VTK-6_3-msvc140.exe?dl=0' -outfile VTK-6_3.exe
   - cmd: VTK-6_3.exe -o"C:\Program Files" -y
