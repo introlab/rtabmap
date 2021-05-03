@@ -33,7 +33,7 @@ install:
   - set OPENNI2_LIB64=C:\Program Files\OpenNI2\Lib
   - set OPENNI2_REDIST64=C:\Program Files\OpenNI2\Redist
   # OpenCV
-  - ps: $url = "https://downloads.sourceforge.net/project/opencvlibrary/opencv-win/4.5.2/opencv-4.5.2-vc14_vc15.exe?r=&ts="+([int64](([datetime]::UtcNow)-(get-date "1/1/1970")).TotalSeconds) ; wget $url -outfile opencv-4.5.2-vc14_vc15.exe
+  - ps: $url = "https://downloads.sourceforge.net/project/opencvlibrary/4.5.2/opencv-4.5.2-vc14_vc15.exe?r=&ts="+([int64](([datetime]::UtcNow)-(get-date "1/1/1970")).TotalSeconds) ; wget $url -outfile opencv-4.5.2-vc14_vc15.exe
   - cmd: opencv-4.5.2-vc14_vc15.exe -o"C:\Program Files" -y
   - ECHO "Installed OpenCV:"
   - ps: "ls \"C:/Program Files/opencv/build\""
