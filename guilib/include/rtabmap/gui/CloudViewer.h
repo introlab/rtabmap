@@ -34,7 +34,13 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/StereoCameraModel.h"
 #include "rtabmap/gui/CloudViewerInteractorStyle.h"
 
+#if VTK_MAJOR_VERSION > 8
+#include <QVTKOpenGLNativeWidget.h>
+using PCLQVTKWidget = QVTKOpenGLNativeWidget;
+#else
 #include <QVTKWidget.h>
+using PCLQVTKWidget = QVTKWidget;
+#endif
 #include <pcl/pcl_base.h>
 #include <pcl/point_types.h>
 #include <pcl/point_cloud.h>
@@ -66,7 +72,7 @@ namespace rtabmap {
 
 class OctoMap;
 
-class RTABMAPGUI_EXP CloudViewer : public QVTKWidget
+class RTABMAPGUI_EXP CloudViewer : public PCLQVTKWidget
 {
 	Q_OBJECT
 
