@@ -35,6 +35,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/util2d.h>
 #include <pcl/common/transforms.h>
 #include <map>
+#include <unordered_set>
 
 namespace rtabmap {
 
@@ -889,11 +890,11 @@ void OctoMap::updateMinMax(const octomap::point3d & point)
 }
 
 
-bool isNodeVisited(std::unordered_multimap<octomap::OcTreeKey, octomap::OcTreeKey,octomap::OcTreeKey::KeyHash> const & EmptyNodes,octomap::OcTreeKey const key)
+bool isNodeVisited(std::unordered_multiset<octomap::OcTreeKey,octomap::OcTreeKey::KeyHash> const & EmptyNodes,octomap::OcTreeKey const key)
 {
     for(auto it = EmptyNodes.find(key);it != EmptyNodes.end();it++)
     { 
-        if(it->first == key)
+        if(*it == key)
         {
             return true;
         }
@@ -902,7 +903,7 @@ bool isNodeVisited(std::unordered_multimap<octomap::OcTreeKey, octomap::OcTreeKe
     return false;
 }
 
-void floodFill(RtabmapColorOcTree* octree_, unsigned int treeDepth,octomap::point3d startPosition, std::unordered_multimap<octomap::OcTreeKey, octomap::OcTreeKey,octomap::OcTreeKey::KeyHash> & EmptyNodes)
+void floodFill(RtabmapColorOcTree* octree_, unsigned int treeDepth,octomap::point3d startPosition, std::unordered_multiset<octomap::OcTreeKey, octomap::OcTreeKey::KeyHash> & EmptyNodes)
 {
     auto key = octree_->coordToKey(startPosition,treeDepth);
     if(!isNodeVisited(EmptyNodes,key))
@@ -926,9 +927,9 @@ void floodFill(RtabmapColorOcTree* octree_, unsigned int treeDepth,octomap::poin
 }
 
 
-std::unordered_multimap<octomap::OcTreeKey, octomap::OcTreeKey, octomap::OcTreeKey::KeyHash> findEmptyNode(RtabmapColorOcTree* octree_, unsigned int treeDepth, octomap::point3d startPosition)
+std::unordered_multiset<octomap::OcTreeKey, octomap::OcTreeKey::KeyHash> findEmptyNode(RtabmapColorOcTree* octree_, unsigned int treeDepth, octomap::point3d startPosition)
 {
-    std::unordered_multimap<octomap::OcTreeKey, octomap::OcTreeKey, octomap::OcTreeKey::KeyHash> EmptyNodes;
+    std::unordered_multiset<octomap::OcTreeKey, octomap::OcTreeKey::KeyHash> EmptyNodes;
     floodFill(octree_,treeDepth,startPosition,EmptyNodes);
     return EmptyNodes;
 }
@@ -986,7 +987,7 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr OctoMap::createCloud(
 	int gi=0;
 	float halfCellSize = octree_->getNodeSize(treeDepth)/2.0f;
 
-    std::unordered_multimap<octomap::OcTreeKey, octomap::OcTreeKey, octomap::OcTreeKey::KeyHash> EmptyNodes;
+    std::unordered_multiset<octomap::OcTreeKey, octomap::OcTreeKey::KeyHash> EmptyNodes;
 
     if(applyFloodFill)
     {
