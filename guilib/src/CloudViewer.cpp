@@ -1285,7 +1285,7 @@ bool CloudViewer::addOctomap(const OctoMap * octomap, unsigned int treeDepth, bo
 			renderer->AddViewProp(volume);
 
 			// 3D texture mode. For coverage.
-#if !defined(VTK_LEGACY_REMOVE) && !defined(VTK_OPENGL2)
+#if !defined(VTK_LEGACY_REMOVE) && !defined(VTK_OPENGL2) && VTK_MAJOR_VERSION < 9
 			volumeMapper->SetRequestedRenderModeToRayCastAndTexture();
 #endif // VTK_LEGACY_REMOVE
 
