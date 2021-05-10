@@ -1108,6 +1108,7 @@ int main(int argc, char * argv[])
 
 			if(mesh->polygons.size())
 			{
+				printf("Mesh color transfer...\n");
 				rtabmap::util3d::denseMeshPostProcessing<pcl::PointXYZRGBNormal>(
 						mesh,
 						0.0f,
@@ -1117,6 +1118,7 @@ int main(int argc, char * argv[])
 						!texture,
 						doClean,
 						200);
+				printf("Mesh color transfer... done (%fs).\n", timer.ticks());
 
 				if(!texture)
 				{
