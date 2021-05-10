@@ -993,6 +993,16 @@ pcl::IndicesPtr radiusFiltering(const pcl::PointCloud<pcl::PointXYZRGBNormal>::P
 	pcl::IndicesPtr indices(new std::vector<int>);
 	return radiusFiltering(cloud, indices, radiusSearch, minNeighborsInRadius);
 }
+pcl::IndicesPtr radiusFiltering(const pcl::PointCloud<pcl::PointXYZI>::Ptr & cloud, float radiusSearch, int minNeighborsInRadius)
+{
+	pcl::IndicesPtr indices(new std::vector<int>);
+	return radiusFiltering(cloud, indices, radiusSearch, minNeighborsInRadius);
+}
+pcl::IndicesPtr radiusFiltering(const pcl::PointCloud<pcl::PointXYZINormal>::Ptr & cloud, float radiusSearch, int minNeighborsInRadius)
+{
+	pcl::IndicesPtr indices(new std::vector<int>);
+	return radiusFiltering(cloud, indices, radiusSearch, minNeighborsInRadius);
+}
 
 template<typename PointT>
 pcl::IndicesPtr radiusFilteringImpl(

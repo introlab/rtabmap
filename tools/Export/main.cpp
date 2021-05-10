@@ -93,6 +93,8 @@ void showUsage()
 			"    --max_range     #     Maximum range of the created clouds (default 4 m, 0 m with --scan).\n"
 			"    --decimation    #     Depth image decimation before creating the clouds (default 4, 1 with --scan).\n"
 			"    --voxel         #     Voxel size of the created clouds (default 0.01 m, 0 m with --scan).\n"
+			"    --noise_radius  #     Noise filtering search radius (default 0, 0=disabled).\n"
+			"    --noise_k       #     Noise filtering minimum neighbors in search radius (default 5, 0=disabled)."
 			"    --color_radius  #     Radius used to colorize polygons (default 0.05 m, 0 m with --scan). Set 0 for nearest color.\n"
 			"    --scan                Use laser scan for the point cloud.\n"
 			"    --save_in_db          Save resulting assembled point cloud or mesh in the database.\n"
@@ -132,6 +134,8 @@ int main(int argc, char * argv[])
 	int decimation = -1;
 	float maxRange = -1.0f;
 	float voxelSize = -1.0f;
+	float noiseRadius = 0.0f;
+	int noiseMinNeighbors = 5;
 	int textureSize = 4096;
 	int textureCount = 1;
 	int textureRange = 0;
@@ -371,6 +375,30 @@ int main(int argc, char * argv[])
 			if(i<argc-1)
 			{
 				voxelSize = uStr2Float(argv[i]);
+			}
+			else
+			{
+				showUsage();
+			}
+		}
+		else if(std::strcmp(argv[i], "--noise_radius") == 0)
+		{
+			++i;
+			if(i<argc-1)
+			{
+				noiseRadius = uStr2Float(argv[i]);
+			}
+			else
+			{
+				showUsage();
+			}
+		}
+		else if(std::strcmp(argv[i], "--noise_k") == 0)
+		{
+			++i;
+			if(i<argc-1)
+			{
+				noiseMinNeighbors = uStr2Int(argv[i]);
 			}
 			else
 			{
@@ -673,10 +701,18 @@ int main(int argc, char * argv[])
 			if(scan.hasRGB())
 			{
 				cloud = util3d::laserScanToPointCloudRGB(scan, scan.localTransform());
+				if(noiseRadius>0.0f && noiseMinNeighbors>0)
+				{
+					indices = util3d::radiusFiltering(cloud, noiseRadius, noiseMinNeighbors);
+				}
 			}
 			else
 			{
 				cloudI = util3d::laserScanToPointCloudI(scan, scan.localTransform());
+				if(noiseRadius>0.0f && noiseMinNeighbors>0)
+				{
+					indices = util3d::radiusFiltering(cloudI, noiseRadius, noiseMinNeighbors);
+				}
 			}
 		}
 		else
@@ -688,6 +724,10 @@ int main(int argc, char * argv[])
 					maxRange,        // maximum depth of the cloud
 					0.0f,
 					indices.get());
+			if(noiseRadius>0.0f && noiseMinNeighbors>0)
+			{
+				indices = util3d::radiusFiltering(cloud, indices, noiseRadius, noiseMinNeighbors);
+			}
 		}
 
 		if(exportImages && !rgb.empty())
