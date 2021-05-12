@@ -64,6 +64,7 @@ void showUsage()
 			"    --texture_size  #     Texture size (default 4096).\n"
 			"    --texture_count #     Maximum textures generated (default 1).\n"
 			"    --texture_range #     Maximum camera range for texturing a polygon (default 0 meters: no limit).\n"
+			"    --texture_depth_error # Maximum depth error between reprojected mesh and depth image to texture a face (-1=disabled, 0=edge length is used, default=0).\n"
 			"    --texture_d2c         Distance to camera policy.\n"
 			"    --cam_projection      Camera projection on assembled cloud and export node ID on each point (in PointSourceId field).\n"
 			"    --poses               Export optimized poses of the robot frame (e.g., base_link).\n"
@@ -139,6 +140,7 @@ int main(int argc, char * argv[])
 	int textureSize = 4096;
 	int textureCount = 1;
 	int textureRange = 0;
+	float textureDepthError = 0;
 	bool distanceToCamPolicy = false;
 	bool multiband = false;
 	float colorRadius = -1.0f;
@@ -225,6 +227,18 @@ int main(int argc, char * argv[])
 			if(i<argc-1)
 			{
 				textureRange = uStr2Int(argv[i]);
+			}
+			else
+			{
+				showUsage();
+			}
+		}
+		else if(std::strcmp(argv[i], "--texture_depth_error") == 0)
+		{
+			++i;
+			if(i<argc-1)
+			{
+				textureDepthError = uStr2Float(argv[i]);
 			}
 			else
 			{
@@ -1153,7 +1167,7 @@ int main(int argc, char * argv[])
 							cameraModels,
 							cameraDepths,
 							textureRange,
-							0.0f,
+							textureDepthError,
 							0.0f,
 							multiband?0:50, // Min polygons in camera view to be textured by this camera
 							std::vector<float>(),
