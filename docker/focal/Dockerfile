@@ -123,7 +123,7 @@ RUN cd geogram && \
     rm -r geogram
 RUN git clone -b v2.2.0 https://github.com/alicevision/AliceVision.git --recursive
 RUN cd AliceVision && \
-    wget https://gist.githubusercontent.com/matlabbe/469bba5e7733ad6f2e3d7857b84f1f9e/raw/0c272d73527a0a04aa63e27a8fc355118bcb26d5/alice_vision_eigen.patch && \
+    wget https://gist.githubusercontent.com/matlabbe/469bba5e7733ad6f2e3d7857b84f1f9e/raw/f0545b36028a1156e857ed433547fdade0cbf53f/alice_vision_eigen.patch && \
     git apply alice_vision_eigen.patch && \
     mkdir build && \
     cd build && \
