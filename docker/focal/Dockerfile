@@ -16,9 +16,9 @@ RUN apt install libgtsam-dev libgtsam-unstable-dev -y
 
 # libpointmatcher 
 RUN git clone https://github.com/ethz-asl/libnabo.git
-#commit Apr 25 2018
+#commit February 13 2021
 RUN cd libnabo && \
-    git checkout 7e378f6765393462357b8b74d8dc8c5554542ae6 && \
+    git checkout 3cab7eed92bd5d4aed997347b8c8a2692a83a532 && \
     mkdir build && \
     cd build && \
     cmake -DCMAKE_BUILD_TYPE=Release .. && \
@@ -27,9 +27,9 @@ RUN cd libnabo && \
     cd && \
     rm -r libnabo
 RUN git clone https://github.com/ethz-asl/libpointmatcher.git
-#commit Jan 19 2018
+#commit April 6 2021
 RUN cd libpointmatcher && \
-    git checkout 00004bd41e44a1cf8de24ad87e4914760717cbcc && \
+    git checkout 76f99fce0fe69e6384102a0343fdf8d262626e1f && \
     mkdir build && \
     cd build && \
     cmake -DCMAKE_BUILD_TYPE=Release .. && \
