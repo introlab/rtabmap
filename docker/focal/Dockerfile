@@ -16,9 +16,9 @@ RUN apt install libgtsam-dev libgtsam-unstable-dev -y
 
 # libpointmatcher 
 RUN git clone https://github.com/ethz-asl/libnabo.git
-#commit Apr 25 2018
+#commit February 13 2021
 RUN cd libnabo && \
-    git checkout 7e378f6765393462357b8b74d8dc8c5554542ae6 && \
+    git checkout 3cab7eed92bd5d4aed997347b8c8a2692a83a532 && \
     mkdir build && \
     cd build && \
     cmake -DCMAKE_BUILD_TYPE=Release .. && \
@@ -27,9 +27,9 @@ RUN cd libnabo && \
     cd && \
     rm -r libnabo
 RUN git clone https://github.com/ethz-asl/libpointmatcher.git
-#commit Jan 19 2018
+#commit April 6 2021
 RUN cd libpointmatcher && \
-    git checkout 00004bd41e44a1cf8de24ad87e4914760717cbcc && \
+    git checkout 76f99fce0fe69e6384102a0343fdf8d262626e1f && \
     mkdir build && \
     cd build && \
     cmake -DCMAKE_BUILD_TYPE=Release .. && \
@@ -84,6 +84,55 @@ RUN cd zed-open-capture && \
     cd && \
     rm -r zed-open-capture
 
+# AliceVision
+# Issue: It could be possible to use version >2.2, but there is a seg fault after texturing the mesh (see #564).
+RUN apt-get update && apt-get install -y \
+      libsuitesparse-dev \
+      libceres-dev \
+      xorg-dev \
+      libglu1-mesa-dev \
+      wget \
+      python-is-python3
+RUN git clone https://github.com/OpenImageIO/oiio.git
+RUN cd oiio && \
+    git checkout Release-2.0.12 && \
+    mkdir build && \
+    cd build && \
+    cmake .. && \
+    make -j$(nproc) && \
+    make install && \
+    cd && \
+    rm -r oiio
+RUN git clone https://github.com/alembic/alembic.git
+RUN cd alembic && \
+    git checkout 1.7.12 && \
+    mkdir build && \
+    cd build && \
+    cmake .. && \
+    make -j$(nproc) && \
+    make install && \
+    cd && \
+    rm -r alembic
+RUN git clone -b v1.7.1 https://github.com/alicevision/geogram.git
+RUN cd geogram && \
+    ./configure.sh && \
+    cd build/Linux64-gcc-dynamic-Release && \
+    make -j$(nproc) && \
+    make install && \
+    cd && \
+    rm -r geogram
+RUN git clone -b v2.2.0 https://github.com/alicevision/AliceVision.git --recursive
+RUN cd AliceVision && \
+    wget https://gist.githubusercontent.com/matlabbe/469bba5e7733ad6f2e3d7857b84f1f9e/raw/f0545b36028a1156e857ed433547fdade0cbf53f/alice_vision_eigen.patch && \
+    git apply alice_vision_eigen.patch && \
+    mkdir build && \
+    cd build && \
+    cmake -DALICEVISION_USE_CUDA=OFF .. && \
+    make -j$(nproc) && \
+    make install && \
+    cd && \
+    rm -r AliceVision
+
 # Clone source code
 ARG CACHE_DATE=2016-01-01
 RUN git clone https://github.com/introlab/rtabmap.git
@@ -93,7 +142,7 @@ RUN rm /bin/sh && ln -s /bin/bash /bin/sh
 # Build RTAB-Map project
 RUN source /ros_entrypoint.sh && \
     cd rtabmap/build && \
-    cmake .. && \
+    cmake -DWITH_ALICE_VISION=ON .. && \
     make -j2 && \
     make install && \
     cd ../.. && \

@@ -494,20 +494,80 @@ template<typename PointT>
 typename pcl::PointCloud<PointT>::Ptr voxelizeImpl(
 		const typename pcl::PointCloud<PointT>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
-		float voxelSize)
+		float voxelSize,
+		int level = 0)
 {
 	UASSERT(voxelSize > 0.0f);
 	typename pcl::PointCloud<PointT>::Ptr output(new pcl::PointCloud<PointT>);
-	if((cloud->is_dense && cloud->size()) || (!cloud->is_dense && indices->size()))
+	if((cloud->is_dense && cloud->size()) || (!cloud->is_dense && !indices->empty()))
 	{
-		pcl::VoxelGrid<PointT> filter;
-		filter.setLeafSize(voxelSize, voxelSize, voxelSize);
-		filter.setInputCloud(cloud);
-		if(indices->size())
+		Eigen::Vector4f min_p, max_p;
+		// Get the minimum and maximum dimensions
+		if(indices->empty())
+			pcl::getMinMax3D<PointT>(*cloud, min_p, max_p);
+		else
+			pcl::getMinMax3D<PointT>(*cloud, *indices, min_p, max_p);
+
+		// Check that the leaf size is not too small, given the size of the data
+		float inverseVoxelSize = 1.0f/voxelSize;
+		std::int64_t dx = static_cast<std::int64_t>((max_p[0] - min_p[0]) * inverseVoxelSize)+1;
+		std::int64_t dy = static_cast<std::int64_t>((max_p[1] - min_p[1]) * inverseVoxelSize)+1;
+		std::int64_t dz = static_cast<std::int64_t>((max_p[2] - min_p[2]) * inverseVoxelSize)+1;
+
+		if ((dx*dy*dz) > static_cast<std::int64_t>(std::numeric_limits<std::int32_t>::max()))
 		{
-			filter.setIndices(indices);
+			UWARN("Leaf size is too small for the input dataset. Integer indices would overflow. "
+				  "We will split space to be able to voxelize (lvl=%d cloud=%d min=[%f %f %f] max=[%f %f %f] voxel=%f).",
+				  level,
+				  (int)(indices->empty()?cloud->size():indices->size()),
+				  min_p[0], min_p[1], min_p[2],
+				  max_p[0], max_p[1], max_p[2],
+				  voxelSize);
+			pcl::IndicesPtr denseIndices;
+			if(indices->empty())
+			{
+				denseIndices.reset(new std::vector<int>(cloud->size()));
+				for(size_t i=0; i<cloud->size(); ++i)
+				{
+					denseIndices->at(i) = i;
+				}
+			}
+
+			Eigen::Vector4f mid = (max_p-min_p)/2.0f;
+			int zMax = max_p[2]-min_p[2] < 10?1:2; // do quad tree for 2D maps
+			for(int x=0; x<2; ++x)
+			{
+				for(int y=0; y<2; ++y)
+				{
+					for(int z=0; z<zMax; ++z)
+					{
+						Eigen::Vector4f m = min_p+Eigen::Vector4f(mid[0]*x,mid[1]*y,mid[2]*z,0);
+						Eigen::Vector4f mx = m+mid;
+						if(zMax==1)
+						{
+							mx[2] = max_p[2];
+						}
+						pcl::IndicesPtr ind = util3d::cropBox(cloud, denseIndices.get()?denseIndices:indices, m, mx);
+						if(!ind->empty())
+						{
+							// extract indices to avoid high memory usage
+							*output+=*voxelizeImpl<PointT>(cloud, ind, voxelSize, level+1);
+						}
+					}
+				}
+			}
 		}
-		filter.filter(*output);
+		else
+		{
+			pcl::VoxelGrid<PointT> filter;
+			filter.setLeafSize(voxelSize, voxelSize, voxelSize);
+			filter.setInputCloud(cloud);
+			if(!indices->empty())
+			{
+				filter.setIndices(indices);
+			}
+			filter.filter(*output);
+		}
 	}
 	else if(cloud->size() && !cloud->is_dense && indices->size() == 0)
 	{
@@ -989,6 +1049,16 @@ pcl::IndicesPtr radiusFiltering(const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & c
 	return radiusFiltering(cloud, indices, radiusSearch, minNeighborsInRadius);
 }
 pcl::IndicesPtr radiusFiltering(const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud, float radiusSearch, int minNeighborsInRadius)
+{
+	pcl::IndicesPtr indices(new std::vector<int>);
+	return radiusFiltering(cloud, indices, radiusSearch, minNeighborsInRadius);
+}
+pcl::IndicesPtr radiusFiltering(const pcl::PointCloud<pcl::PointXYZI>::Ptr & cloud, float radiusSearch, int minNeighborsInRadius)
+{
+	pcl::IndicesPtr indices(new std::vector<int>);
+	return radiusFiltering(cloud, indices, radiusSearch, minNeighborsInRadius);
+}
+pcl::IndicesPtr radiusFiltering(const pcl::PointCloud<pcl::PointXYZINormal>::Ptr & cloud, float radiusSearch, int minNeighborsInRadius)
 {
 	pcl::IndicesPtr indices(new std::vector<int>);
 	return radiusFiltering(cloud, indices, radiusSearch, minNeighborsInRadius);

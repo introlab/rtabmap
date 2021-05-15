@@ -34,6 +34,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/util3d_mapping.h>
 #include <rtabmap/core/util2d.h>
 #include <pcl/common/transforms.h>
+#include <map>
+#include <unordered_set>
 
 namespace rtabmap {
 
@@ -887,6 +889,52 @@ void OctoMap::updateMinMax(const octomap::point3d & point)
 	}
 }
 
+
+bool isNodeVisited(std::unordered_multiset<octomap::OcTreeKey,octomap::OcTreeKey::KeyHash> const & EmptyNodes,octomap::OcTreeKey const key)
+{
+    for(auto it = EmptyNodes.find(key);it != EmptyNodes.end();it++)
+    { 
+        if(*it == key)
+        {
+            return true;
+        }
+                
+    }        
+    return false;
+}
+
+void floodFill(RtabmapColorOcTree* octree_, unsigned int treeDepth,octomap::point3d startPosition, std::unordered_multiset<octomap::OcTreeKey, octomap::OcTreeKey::KeyHash> & EmptyNodes)
+{
+    auto key = octree_->coordToKey(startPosition,treeDepth);
+    if(!isNodeVisited(EmptyNodes,key))
+    {
+        auto nodePtr = octree_->search(startPosition.x(), startPosition.y(), startPosition.z(), treeDepth);
+        if(nodePtr)
+        {
+            if(!octree_->isNodeOccupied(*nodePtr))
+            {
+                EmptyNodes.insert({key,key});
+                                
+                floodFill(octree_,treeDepth,octomap::point3d(startPosition.x()+octree_->getNodeSize(treeDepth), startPosition.y(), startPosition.z()),EmptyNodes);
+                floodFill(octree_,treeDepth,octomap::point3d(startPosition.x()-octree_->getNodeSize(treeDepth), startPosition.y(), startPosition.z()),EmptyNodes);
+                floodFill(octree_,treeDepth,octomap::point3d(startPosition.x(), startPosition.y()+octree_->getNodeSize(treeDepth), startPosition.z()),EmptyNodes);
+                floodFill(octree_,treeDepth,octomap::point3d(startPosition.x(), startPosition.y()-octree_->getNodeSize(treeDepth), startPosition.z()),EmptyNodes);
+                floodFill(octree_,treeDepth,octomap::point3d(startPosition.x(), startPosition.y(), startPosition.z()+octree_->getNodeSize(treeDepth)),EmptyNodes);
+                floodFill(octree_,treeDepth,octomap::point3d(startPosition.x(), startPosition.y(), startPosition.z()-octree_->getNodeSize(treeDepth)),EmptyNodes);
+            }
+        }
+    }
+}
+
+
+std::unordered_multiset<octomap::OcTreeKey, octomap::OcTreeKey::KeyHash> findEmptyNode(RtabmapColorOcTree* octree_, unsigned int treeDepth, octomap::point3d startPosition)
+{
+    std::unordered_multiset<octomap::OcTreeKey, octomap::OcTreeKey::KeyHash> EmptyNodes;
+    floodFill(octree_,treeDepth,startPosition,EmptyNodes);
+    return EmptyNodes;
+}
+
+
 pcl::PointCloud<pcl::PointXYZRGB>::Ptr OctoMap::createCloud(
 		unsigned int treeDepth,
 		std::vector<int> * obstacleIndices,
@@ -894,7 +942,8 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr OctoMap::createCloud(
 		std::vector<int> * groundIndices,
 		bool originalRefPoints,
 		std::vector<int> * frontierIndices,
-		std::vector<double> * cloudProb) const
+		std::vector<double> * cloudProb, 
+        bool applyFloodFill) const
 {
 	UASSERT(treeDepth <= octree_->getTreeDepth());
 	pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
@@ -937,6 +986,18 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr OctoMap::createCloud(
 	int fi=0;
 	int gi=0;
 	float halfCellSize = octree_->getNodeSize(treeDepth)/2.0f;
+
+    std::unordered_multiset<octomap::OcTreeKey, octomap::OcTreeKey::KeyHash> EmptyNodes;
+
+    if(applyFloodFill)
+    {
+        auto key = octree_->coordToKey(0, 0, 1, treeDepth);
+        auto pos = octree_->keyToCoord(key);
+
+        EmptyNodes = findEmptyNode(octree_,treeDepth, pos);
+    }
+
+
 	for (RtabmapColorOcTree::iterator it = octree_->begin(treeDepth); it != octree_->end(); ++it)
 	{
 		if(octree_->isNodeOccupied(*it) && (obstacleIndices != 0 || groundIndices != 0 || addAllPoints))
@@ -997,25 +1058,30 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr OctoMap::createCloud(
 				(*cloudProb)[oi] = it->getOccupancy();
 			}
 
-			if(frontierIndices !=0 &&
-				(!octree_->search( pt.x()+octree_->getNodeSize(treeDepth), pt.y(), pt.z(), treeDepth) || !octree_->search( pt.x()-octree_->getNodeSize(treeDepth), pt.y(), pt.z(), treeDepth) ||
-				 !octree_->search( pt.x(), pt.y()+octree_->getNodeSize(treeDepth), pt.z(), treeDepth) || !octree_->search( pt.x(), pt.y()-octree_->getNodeSize(treeDepth), pt.z(), treeDepth) ||
-				 !octree_->search( pt.x(), pt.y(), pt.z()+octree_->getNodeSize(treeDepth), treeDepth) || !octree_->search( pt.x(), pt.y(), pt.z()-octree_->getNodeSize(treeDepth), treeDepth) )) //ajouter 1 au key ?
-			{
-				//unknown neighbor FACE cell
-				frontierIndices->at(fi++) = oi;
-			}
+            if(!applyFloodFill || isNodeVisited(EmptyNodes,it.getKey()))
+            {
+            
+                if(frontierIndices !=0 &&
+                    (!octree_->search( pt.x()+octree_->getNodeSize(treeDepth), pt.y(), pt.z(), treeDepth) || !octree_->search( pt.x()-octree_->getNodeSize(treeDepth), pt.y(), pt.z(), treeDepth) ||
+                    !octree_->search( pt.x(), pt.y()+octree_->getNodeSize(treeDepth), pt.z(), treeDepth) || !octree_->search( pt.x(), pt.y()-octree_->getNodeSize(treeDepth), pt.z(), treeDepth) ||
+                    !octree_->search( pt.x(), pt.y(), pt.z()+octree_->getNodeSize(treeDepth), treeDepth) || !octree_->search( pt.x(), pt.y(), pt.z()-octree_->getNodeSize(treeDepth), treeDepth) )) //ajouter 1 au key ?
+                {
+                    //unknown neighbor FACE cell
+                    frontierIndices->at(fi++) = oi;
+                }
+            
+			
+                (*cloud)[oi]  = pcl::PointXYZRGB(it->getColor().r, it->getColor().g, it->getColor().b);
+                (*cloud)[oi].x = pt.x()-halfCellSize;
+                (*cloud)[oi].y = pt.y()-halfCellSize;
+                (*cloud)[oi].z = pt.z();
+          
+                if(emptyIndices)
+                {
+                    emptyIndices->at(ei++) = oi;
+                }
 
-			
-			(*cloud)[oi]  = pcl::PointXYZRGB(it->getColor().r, it->getColor().g, it->getColor().b);
-			(*cloud)[oi].x = pt.x()-halfCellSize;
-			(*cloud)[oi].y = pt.y()-halfCellSize;
-			(*cloud)[oi].z = pt.z();
-			if(emptyIndices)
-			{
-				emptyIndices->at(ei++) = oi;
-			}
-			
+            }
 			++oi;
 		}	
 	}
