@@ -81,6 +81,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <vtkOpenGLRenderer.h>
 #endif
 
+
+#if VTK_MAJOR_VERSION >= 8
+#include <vtkGenericOpenGLRenderWindow.h>
+#endif
+
 #ifdef RTABMAP_OCTOMAP
 #include <rtabmap/core/OctoMap.h>
 #endif
@@ -88,7 +93,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 namespace rtabmap {
 
 CloudViewer::CloudViewer(QWidget *parent, CloudViewerInteractorStyle * style) :
-		QVTKWidget(parent),
+		PCLQVTKWidget(parent),
 		_aLockCamera(0),
 		_aFollowCamera(0),
 		_aResetCamera(0),
@@ -144,12 +149,26 @@ CloudViewer::CloudViewer(QWidget *parent, CloudViewerInteractorStyle * style) :
 	UASSERT(style!=0);
 	style->setCloudViewer(this);
 	style->AutoAdjustCameraClippingRangeOff();
+#if VTK_MAJOR_VERSION > 8
+	auto renderer1 = vtkSmartPointer<vtkRenderer>::New();
+	auto renderWindow1 = vtkSmartPointer<vtkGenericOpenGLRenderWindow>::New();
+	renderWindow1->AddRenderer(renderer1);
 	_visualizer = new pcl::visualization::PCLVisualizer(
+		argc, 
+		0, 
+		renderer1,
+		renderWindow1,
+		"PCLVisualizer", 
+		style,
+		false);
+#else
+		_visualizer = new pcl::visualization::PCLVisualizer(
 		argc, 
 		0, 
 		"PCLVisualizer", 
 		style,
 		false);
+#endif
 
 	_visualizer->setShowFPS(false);
 	
@@ -183,17 +202,29 @@ CloudViewer::CloudViewer(QWidget *parent, CloudViewerInteractorStyle * style) :
 	}
 	_visualizer->getRenderWindow()->SetNumberOfLayers(4);
 
+#if VTK_MAJOR_VERSION > 8
+	this->setRenderWindow(_visualizer->getRenderWindow());
+#else
 	this->SetRenderWindow(_visualizer->getRenderWindow());
+#endif
 
 	// Replaced by the second line, to avoid a crash in Mac OS X on close, as well as
 	// the "Invalid drawable" warning when the view is not visible.
 	//_visualizer->setupInteractor(this->GetInteractor(), this->GetRenderWindow());
+#if VTK_MAJOR_VERSION > 8
+	this->interactor()->SetInteractorStyle (_visualizer->getInteractorStyle());
+#else
 	this->GetInteractor()->SetInteractorStyle (_visualizer->getInteractorStyle());
+#endif
 	// setup a simple point picker
 	vtkSmartPointer<vtkPointPicker> pp = vtkSmartPointer<vtkPointPicker>::New ();
 	UDEBUG("pick tolerance=%f", pp->GetTolerance());
 	pp->SetTolerance (pp->GetTolerance()/2.0);
+#if VTK_MAJOR_VERSION > 8
+	this->interactor()->SetPicker (pp);
+#else
 	this->GetInteractor()->SetPicker (pp);
+#endif
 
 	setRenderingRate(_renderingRate);
 
@@ -1254,7 +1285,7 @@ bool CloudViewer::addOctomap(const OctoMap * octomap, unsigned int treeDepth, bo
 			renderer->AddViewProp(volume);
 
 			// 3D texture mode. For coverage.
-#if !defined(VTK_LEGACY_REMOVE) && !defined(VTK_OPENGL2)
+#if !defined(VTK_LEGACY_REMOVE) && !defined(VTK_OPENGL2) && VTK_MAJOR_VERSION < 9
 			volumeMapper->SetRequestedRenderModeToRayCastAndTexture();
 #endif // VTK_LEGACY_REMOVE
 
@@ -2587,14 +2618,22 @@ void CloudViewer::setPolygonPicking(bool enabled)
 	{
 		vtkSmartPointer<vtkPointPicker> pp = vtkSmartPointer<vtkPointPicker>::New ();
 		pp->SetTolerance (pp->GetTolerance());
+		#if VTK_MAJOR_VERSION > 8
+		this->interactor()->SetPicker (pp);
+#else
 		this->GetInteractor()->SetPicker (pp);
+#endif
 		setMouseTracking(false);
 	}
 	else
 	{
 		vtkSmartPointer<CloudViewerCellPicker> pp = vtkSmartPointer<CloudViewerCellPicker>::New ();
 		pp->SetTolerance (pp->GetTolerance());
+#if VTK_MAJOR_VERSION > 8
+		this->interactor()->SetPicker (pp);
+#else
 		this->GetInteractor()->SetPicker (pp);
+#endif
 		setMouseTracking(true);
 	}
 }
@@ -3120,7 +3159,11 @@ void CloudViewer::setCameraLockZ(bool enabled)
 void CloudViewer::setCameraOrtho(bool enabled)
 {
 	_lastCameraOrientation= _lastCameraPose = cv::Vec3f(0,0,0);
+#if VTK_MAJOR_VERSION > 8
+	CloudViewerInteractorStyle * interactor = CloudViewerInteractorStyle::SafeDownCast(this->interactor()->GetInteractorStyle());
+#else
 	CloudViewerInteractorStyle * interactor = CloudViewerInteractorStyle::SafeDownCast(this->GetInteractor()->GetInteractorStyle());
+#endif
 	if(interactor)
 	{
 		interactor->setOrthoMode(enabled);
@@ -3425,7 +3468,7 @@ void CloudViewer::keyReleaseEvent(QKeyEvent * event) {
 	}
 	else
 	{
-		QVTKWidget::keyPressEvent(event);
+		PCLQVTKWidget::keyPressEvent(event);
 	}
 }
 
@@ -3523,7 +3566,7 @@ void CloudViewer::keyPressEvent(QKeyEvent * event)
 	}
 	else
 	{
-		QVTKWidget::keyPressEvent(event);
+		PCLQVTKWidget::keyPressEvent(event);
 	}
 }
 
@@ -3535,13 +3578,13 @@ void CloudViewer::mousePressEvent(QMouseEvent * event)
 	}
 	else
 	{
-		QVTKWidget::mousePressEvent(event);
+		PCLQVTKWidget::mousePressEvent(event);
 	}
 }
 
 void CloudViewer::mouseMoveEvent(QMouseEvent * event)
 {
-	QVTKWidget::mouseMoveEvent(event);
+	PCLQVTKWidget::mouseMoveEvent(event);
 
 	std::vector<pcl::visualization::Camera> cameras;
 	_visualizer->getCameras(cameras);
@@ -3592,7 +3635,7 @@ void CloudViewer::mouseMoveEvent(QMouseEvent * event)
 
 void CloudViewer::wheelEvent(QWheelEvent * event)
 {
-	QVTKWidget::wheelEvent(event);
+	PCLQVTKWidget::wheelEvent(event);
 
 	std::vector<pcl::visualization::Camera> cameras;
 	_visualizer->getCameras(cameras);
