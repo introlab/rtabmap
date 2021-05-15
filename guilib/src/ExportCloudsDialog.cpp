@@ -126,6 +126,9 @@ ExportCloudsDialog::ExportCloudsDialog(QWidget *parent) :
 	connect(_ui->doubleSpinBox_minDepth, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
 	connect(_ui->doubleSpinBox_ceilingHeight, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
 	connect(_ui->doubleSpinBox_floorHeight, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
+	connect(_ui->doubleSpinBox_footprintWidth, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
+	connect(_ui->doubleSpinBox_footprintLength, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
+	connect(_ui->doubleSpinBox_footprintHeight, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
 	connect(_ui->spinBox_decimation_scan, SIGNAL(valueChanged(int)), this, SIGNAL(configChanged()));
 	connect(_ui->doubleSpinBox_rangeMin, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
 	connect(_ui->doubleSpinBox_rangeMax, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
@@ -349,6 +352,9 @@ void ExportCloudsDialog::saveSettings(QSettings & settings, const QString & grou
 	settings.setValue("regenerate_min_depth", _ui->doubleSpinBox_minDepth->value());
 	settings.setValue("regenerate_ceiling", _ui->doubleSpinBox_ceilingHeight->value());
 	settings.setValue("regenerate_floor", _ui->doubleSpinBox_floorHeight->value());
+	settings.setValue("regenerate_footprint_height", _ui->doubleSpinBox_footprintHeight->value());
+	settings.setValue("regenerate_footprint_width", _ui->doubleSpinBox_footprintWidth->value());
+	settings.setValue("regenerate_footprint_length", _ui->doubleSpinBox_footprintLength->value());
 	settings.setValue("regenerate_scan_decimation", _ui->spinBox_decimation_scan->value());
 	settings.setValue("regenerate_scan_max_range", _ui->doubleSpinBox_rangeMax->value());
 	settings.setValue("regenerate_scan_min_range", _ui->doubleSpinBox_rangeMin->value());
@@ -507,6 +513,9 @@ void ExportCloudsDialog::loadSettings(QSettings & settings, const QString & grou
 	_ui->doubleSpinBox_minDepth->setValue(settings.value("regenerate_min_depth", _ui->doubleSpinBox_minDepth->value()).toDouble());
 	_ui->doubleSpinBox_ceilingHeight->setValue(settings.value("regenerate_ceiling", _ui->doubleSpinBox_ceilingHeight->value()).toDouble());
 	_ui->doubleSpinBox_floorHeight->setValue(settings.value("regenerate_floor", _ui->doubleSpinBox_floorHeight->value()).toDouble());
+	_ui->doubleSpinBox_footprintHeight->setValue(settings.value("regenerate_footprint_height", _ui->doubleSpinBox_footprintHeight->value()).toDouble());
+	_ui->doubleSpinBox_footprintWidth->setValue(settings.value("regenerate_footprint_width", _ui->doubleSpinBox_footprintWidth->value()).toDouble());
+	_ui->doubleSpinBox_footprintLength->setValue(settings.value("regenerate_footprint_length", _ui->doubleSpinBox_footprintLength->value()).toDouble());
 	_ui->spinBox_decimation_scan->setValue(settings.value("regenerate_scan_decimation", _ui->spinBox_decimation_scan->value()).toInt());
 	_ui->doubleSpinBox_rangeMax->setValue(settings.value("regenerate_scan_max_range", _ui->doubleSpinBox_rangeMax->value()).toDouble());
 	_ui->doubleSpinBox_rangeMin->setValue(settings.value("regenerate_scan_min_range", _ui->doubleSpinBox_rangeMin->value()).toDouble());
@@ -668,6 +677,9 @@ void ExportCloudsDialog::restoreDefaults()
 	_ui->doubleSpinBox_minDepth->setValue(0);
 	_ui->doubleSpinBox_ceilingHeight->setValue(0);
 	_ui->doubleSpinBox_floorHeight->setValue(0);
+	_ui->doubleSpinBox_footprintHeight->setValue(0);
+	_ui->doubleSpinBox_footprintLength->setValue(0);
+	_ui->doubleSpinBox_footprintWidth->setValue(0);
 	_ui->spinBox_decimation_scan->setValue(1);
 	_ui->doubleSpinBox_rangeMax->setValue(0);
 	_ui->doubleSpinBox_rangeMin->setValue(0);
@@ -681,8 +693,8 @@ void ExportCloudsDialog::restoreDefaults()
 	_ui->doubleSpinBox_bilateral_sigmaR->setValue(0.1);
 
 	_ui->checkBox_filtering->setChecked(false);
-	_ui->doubleSpinBox_filteringRadius->setValue(0.02);
-	_ui->spinBox_filteringMinNeighbors->setValue(2);
+	_ui->doubleSpinBox_filteringRadius->setValue(0.00);
+	_ui->spinBox_filteringMinNeighbors->setValue(5);
 
 	_ui->checkBox_assemble->setChecked(true);
 	_ui->doubleSpinBox_voxelSize_assembled->setValue(0.01);
@@ -3572,18 +3584,6 @@ std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::Indic
 						UERROR("Cloud %d not found in cache!", iter->first);
 					}
 				}
-				if(!cloud->empty() &&
-				   (_ui->doubleSpinBox_ceilingHeight->value() != 0.0 || _ui->doubleSpinBox_floorHeight->value() != 0.0))
-				{
-					float min = _ui->doubleSpinBox_floorHeight->value();
-					float max = _ui->doubleSpinBox_ceilingHeight->value();
-					indices = util3d::passThrough(
-							util3d::transformPointCloud(cloud, iter->second),
-							indices,
-							"z",
-							min!=0.0f&&min<max?min:std::numeric_limits<int>::min(),
-							max!=0.0f?max:std::numeric_limits<int>::max());
-				}
 			}
 			else if(_ui->checkBox_fromDepth->isChecked() && uContains(cachedClouds, iter->first))
 			{
@@ -3689,15 +3689,58 @@ std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::Indic
 				}
 			}
 
-			if(indices->size())
+			if(_ui->checkBox_filtering->isChecked())
 			{
-				if(_ui->checkBox_filtering->isChecked() &&
+				if(!indices->empty() &&
+				   (_ui->doubleSpinBox_ceilingHeight->value() != 0.0 ||
+					_ui->doubleSpinBox_floorHeight->value() != 0.0))
+				{
+					float min = _ui->doubleSpinBox_floorHeight->value();
+					float max = _ui->doubleSpinBox_ceilingHeight->value();
+					indices = util3d::passThrough(
+							util3d::transformPointCloud(cloud, iter->second),
+							indices,
+							"z",
+							min!=0.0f&&min<max?min:std::numeric_limits<int>::min(),
+							max!=0.0f?max:std::numeric_limits<int>::max());
+				}
+				if(!indices->empty() &&
+				   ( _ui->doubleSpinBox_footprintHeight->value() != 0.0 &&
+					 _ui->doubleSpinBox_footprintWidth->value() != 0.0 &&
+					 _ui->doubleSpinBox_footprintLength->value() != 0.0))
+				{
+					// filter footprint
+					float h = _ui->doubleSpinBox_footprintHeight->value();
+					float w = _ui->doubleSpinBox_footprintWidth->value();
+					float l = _ui->doubleSpinBox_footprintLength->value();
+					int before=  indices->size();
+					indices = util3d::cropBox(
+							cloud,
+							indices,
+							Eigen::Vector4f(
+									-l/2.0f,
+									-w/2.0f,
+									h<0.0f?h:0,
+									1),
+							Eigen::Vector4f(
+									l/2.0f,
+									w/2.0f,
+									h<0.0f?-h:h,
+									1),
+							Transform::getIdentity(),
+							true);
+				}
+
+				if( !indices->empty() &&
 					_ui->doubleSpinBox_filteringRadius->value() > 0.0f &&
 					_ui->spinBox_filteringMinNeighbors->value() > 0)
 				{
 					indices = util3d::radiusFiltering(cloud, indices, _ui->doubleSpinBox_filteringRadius->value(), _ui->spinBox_filteringMinNeighbors->value());
 				}
+			}
 
+			if(!indices->empty())
+			{
 				if((_ui->comboBox_frame->isEnabled() && _ui->comboBox_frame->currentIndex()==2) && cloud->isOrganized())
 				{
 					cloud = util3d::transformPointCloud(cloud, localTransform.inverse()); // put back in camera frame
