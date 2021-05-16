@@ -176,6 +176,10 @@ LaserScan commonFiltering(
 						pcl::PointCloud<pcl::Normal>::Ptr normals = util3d::computeNormals(cloud, normalK, normalRadius);
 						scan = LaserScan(laserScanFromPointCloud(*cloud, *normals), scanMaxPts, scan.rangeMax(), scan.localTransform());
 						UDEBUG("Normals computed (k=%d radius=%f)", normalK, normalRadius);
+						if(scan.empty())
+						{
+							UWARN("Only NaNs returned after normals estimation! The returned point cloud is empty. Normal k (%d) and/or radius (%f) may be too small.", normalK, normalRadius);
+						}
 					}
 					else
 					{
@@ -214,11 +218,19 @@ LaserScan commonFiltering(
 							{
 								scan = LaserScan(laserScan2dFromPointCloud(*cloud, *normals), scanMaxPts, scan.rangeMax(), scan.localTransform());
 							}
+							if(scan.empty())
+							{
+								UWARN("Only NaNs returned after normals estimation! The returned point cloud is empty. Normal k (%d) and/or radius (%f) may be too small.", normalK, normalRadius);
+							}
 						}
 						else
 						{
 							normals = util3d::computeNormals(cloud, normalK, normalRadius);
 							scan = LaserScan(laserScanFromPointCloud(*cloud, *normals), scanMaxPts, scan.rangeMax(), scan.localTransform());
+							if(scan.empty())
+							{
+								UWARN("Only NaNs returned after normals estimation! The returned point cloud is empty. Normal k (%d) and/or radius (%f) may be too small.", normalK, normalRadius);
+							}
 						}
 						UDEBUG("Normals computed (k=%d radius=%f)", normalK, normalRadius);
 					}
@@ -266,11 +278,19 @@ LaserScan commonFiltering(
 							{
 								scan = LaserScan(laserScan2dFromPointCloud(*cloud, *normals), scanMaxPts, scan.rangeMax(), scan.localTransform());
 							}
+							if(scan.empty())
+							{
+								UWARN("Only NaNs returned after normals estimation! The returned point cloud is empty. Normal k (%d) and/or radius (%f) may be too small.", normalK, normalRadius);
+							}
 						}
 						else
 						{
 							normals = util3d::computeNormals(cloud, normalK, normalRadius);
 							scan = LaserScan(laserScanFromPointCloud(*cloud, *normals), scanMaxPts, scan.rangeMax(), scan.localTransform());
+							if(scan.empty())
+							{
+								UWARN("Only NaNs returned after normals estimation! The returned point cloud is empty. Normal k (%d) and/or radius (%f) may be too small.", normalK, normalRadius);
+							}
 						}
 						UDEBUG("Normals computed (k=%d radius=%f)", normalK, normalRadius);
 					}
