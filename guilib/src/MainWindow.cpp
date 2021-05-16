@@ -1931,11 +1931,16 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 		}
 
 		// For intermediate empty nodes, keep latest image shown
-		if(signature.getWeight() >= 0 &&
-		(!signature.sensorData().imageRaw().empty() || signature.getWords().size()))
+		if(signature.getWeight() >= 0)
 		{
 			_ui->imageView_source->clear();
 			_ui->imageView_loopClosure->clear();
+
+			if(signature.sensorData().imageRaw().empty() && signature.getWords().empty())
+			{
+				// To see colors
+				_ui->imageView_source->setSceneRect(QRect(0,0,640,480));
+			}
 
 			_ui->imageView_source->setBackgroundColor(_ui->imageView_source->getDefaultBackgroundColor());
 			_ui->imageView_loopClosure->setBackgroundColor(_ui->imageView_loopClosure->getDefaultBackgroundColor());
@@ -2091,6 +2096,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 			}
 
 			//update image views
+			if(!signature.sensorData().imageRaw().empty() || signature.getWords().size())
 			{
 				cv::Mat refImage = signature.sensorData().imageRaw();
 				cv::Mat loopImage = loopSignature.sensorData().imageRaw();
@@ -2161,6 +2167,11 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 				{
 					_ui->imageView_loopClosure->setSceneRect(_ui->imageView_source->sceneRect());
 				}
+			}
+			else if(_ui->imageView_loopClosure->sceneRect().isNull() &&
+					!_ui->imageView_source->sceneRect().isNull())
+			{
+				_ui->imageView_loopClosure->setSceneRect(_ui->imageView_source->sceneRect());
 			}
 
 			UDEBUG("time= %d ms", time.restart());
