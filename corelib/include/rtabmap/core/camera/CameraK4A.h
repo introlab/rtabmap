@@ -89,6 +89,7 @@ private:
 	int depth_resolution_;
 	bool ir_;
 	double previousStamp_;
+	double timestampOffset_;
 	UTimer timer_;
 	Transform imuLocalTransform_;
 #endif

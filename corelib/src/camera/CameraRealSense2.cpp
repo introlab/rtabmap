@@ -68,6 +68,7 @@ CameraRealSense2::CameraRealSense2(
 	irDepth_(true),
 	rectifyImages_(true),
 	odometryProvided_(false),
+	odometryImagesDisabled_(false),
 	cameraWidth_(640),
 	cameraHeight_(480),
 	cameraFps_(30),
@@ -231,10 +232,6 @@ void CameraRealSense2::getPoseAndIMU(
 	pose.setNull();
 	imu = IMU();
 	poseConfidence = 0;
-	if(accBuffer_.empty() || gyroBuffer_.empty())
-	{
-		return;
-	}
 
 	// Interpolate pose
 	if(!poseBuffer_.empty())
@@ -304,6 +301,11 @@ void CameraRealSense2::getPoseAndIMU(
 			}
 		}
 		poseMutex_.unlock();
+	}
+
+	if(accBuffer_.empty() || gyroBuffer_.empty())
+	{
+		return;
 	}
 
 	// Interpolate acc
@@ -882,25 +884,13 @@ bool CameraRealSense2::init(const std::string & calibrationFolder, const std::st
 			 std::cout<< model_ << std::endl;
 			 return false;
 		 }
-		 depthToRGBExtrinsics_ = depthStreamProfile.get_extrinsics_to(rgbStreamProfile);
 
 		 if(dualMode_)
 		 {
-			 Transform opticalTransform(0, 0, 1, 0, -1, 0, 0, 0, 0, -1, 0, 0);
 			 UINFO("Set base to pose");
-			 this->setLocalTransform(this->getLocalTransform()*opticalTransform.inverse());
-			 UINFO("poseToLeftIR = %s", dualExtrinsics_.prettyPrint().c_str());
-			 Transform baseToCam = this->getLocalTransform()*dualExtrinsics_*opticalTransform;
-			 if(!ir_)
-			 {
-				 Transform leftIRToRGB(
-						 depthToRGBExtrinsics_.rotation[0], depthToRGBExtrinsics_.rotation[1], depthToRGBExtrinsics_.rotation[2], depthToRGBExtrinsics_.translation[0],
-						 depthToRGBExtrinsics_.rotation[3], depthToRGBExtrinsics_.rotation[4], depthToRGBExtrinsics_.rotation[5], depthToRGBExtrinsics_.translation[1],
-						 depthToRGBExtrinsics_.rotation[6], depthToRGBExtrinsics_.rotation[7], depthToRGBExtrinsics_.rotation[8], depthToRGBExtrinsics_.translation[2]);
-				 leftIRToRGB = leftIRToRGB.inverse();
-				 UINFO("leftIRToRGB = %s", leftIRToRGB.prettyPrint().c_str());
-				 baseToCam *= leftIRToRGB;
-			 }
+			 this->setLocalTransform(this->getLocalTransform()*CameraModel::opticalRotation().inverse());
+			 UINFO("dualExtrinsics_ = %s", dualExtrinsics_.prettyPrint().c_str());
+			 Transform baseToCam = this->getLocalTransform()*dualExtrinsics_;
 			 UASSERT(profilesPerSensor.size()>=2);
 			 UASSERT(profilesPerSensor.back().size() == 3);
 			 rs2_extrinsics poseToIMU = profilesPerSensor.back()[0].get_extrinsics_to(profilesPerSensor.back()[2]);
@@ -1012,11 +1002,18 @@ bool CameraRealSense2::init(const std::string & calibrationFolder, const std::st
 			poseToIMUT = realsense2PoseRotation_ * poseToIMUT;
 			UINFO("poseToIMU = %s", poseToIMUT.prettyPrint().c_str());
 
-			UINFO("Set base to pose");
 			Transform opticalTransform(0, 0, 1, 0, -1, 0, 0, 0, 0, -1, 0, 0);
 			this->setLocalTransform(this->getLocalTransform() * opticalTransform.inverse());
 			stereoModel_.setLocalTransform(this->getLocalTransform()*poseToLeftT);
 			imuLocalTransform_ = this->getLocalTransform()* poseToIMUT;
+
+			if(odometryImagesDisabled_)
+			{
+				// keep only pose stream
+				std::vector<rs2::stream_profile> profiles;
+				profiles.push_back(profilesPerSensor[0][4]);
+				profilesPerSensor[0] = profiles;
+			}
 		}
 		else
 		{
@@ -1114,6 +1111,29 @@ bool CameraRealSense2::odomProvided() const
 #endif
 }
 
+bool CameraRealSense2::getPose(double stamp, Transform & pose, cv::Mat & covariance)
+{
+#ifdef RTABMAP_REALSENSE2
+	IMU imu;
+	unsigned int confidence = 0;
+	double rsStamp = stamp*1000.0;
+	Transform p;
+	getPoseAndIMU(rsStamp, p, confidence, imu);
+
+	if(!p.isNull())
+	{
+		// Transform in base frame
+		pose = this->getLocalTransform() * p * this->getLocalTransform().inverse();
+
+		covariance = cv::Mat::eye(6,6,CV_64FC1) * 0.0001;
+		covariance.rowRange(0,3) *= pow(10, 3-(int)confidence);
+		covariance.rowRange(3,6) *= pow(10, 1-(int)confidence);
+		return true;
+	}
+#endif
+	return false;
+}
+
 void CameraRealSense2::setEmitterEnabled(bool enabled)
 {
 #ifdef RTABMAP_REALSENSE2
@@ -1170,6 +1190,7 @@ void CameraRealSense2::setDualMode(bool enabled, const Transform & extrinsics)
 	if(dualMode_)
 	{
 		odometryProvided_ = true;
+		odometryImagesDisabled_ = false;
 	}
 #endif
 }
@@ -1188,7 +1209,7 @@ void CameraRealSense2::setImagesRectified(bool enabled)
 #endif
 }
 
-void CameraRealSense2::setOdomProvided(bool enabled)
+void CameraRealSense2::setOdomProvided(bool enabled, bool imageStreamsDisabled)
 {
 #ifdef RTABMAP_REALSENSE2
 	if(dualMode_ && !enabled)
@@ -1197,6 +1218,7 @@ void CameraRealSense2::setOdomProvided(bool enabled)
 		dualMode_ = false;
 	}
 	odometryProvided_ = enabled;
+	odometryImagesDisabled_ = enabled && imageStreamsDisabled;
 #endif
 }
 

@@ -902,7 +902,7 @@ bool MainWindow::handleEvent(UEvent* anEvent)
 		else
 		{
 			Q_EMIT cameraInfoReceived(cameraEvent->info());
-			if (_odomThread == 0 && _camera->camera()->odomProvided() && _preferencesDialog->isRGBDMode())
+			if (_odomThread == 0 && (_camera->odomProvided()) && _preferencesDialog->isRGBDMode())
 			{
 				OdometryInfo odomInfo;
 				odomInfo.reg.covariance = cameraEvent->info().odomCovariance;
@@ -5436,8 +5436,27 @@ void MainWindow::startDetection()
 		Q_EMIT stateChanged(kInitialized);
 		return;
 	}
+	Transform extrinsics;
+	Camera * odomSensor = 0;
+	if(_preferencesDialog->getOdomSourceDriver() != PreferencesDialog::kSrcUndef &&
+	   _preferencesDialog->getOdomSourceDriver() != _preferencesDialog->getSourceDriver() &&
+	    !(_preferencesDialog->getOdomSourceDriver() == PreferencesDialog::kSrcStereoRealSense2 &&
+		  _preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcRealSense2))
+	{
+		UINFO("Create Odom Sensor %d (camera = %d)",
+				_preferencesDialog->getOdomSourceDriver(),
+				_preferencesDialog->getSourceDriver());
+		odomSensor = _preferencesDialog->createOdomSensor(&extrinsics);
+	}
 
-	_camera = new CameraThread(camera, parameters);
+	if(odomSensor)
+	{
+		_camera = new CameraThread(camera, odomSensor, extrinsics, parameters);
+	}
+	else
+	{
+		_camera = new CameraThread(camera, parameters);
+	}
 	_camera->setMirroringEnabled(_preferencesDialog->isSourceMirroring());
 	_camera->setColorOnly(_preferencesDialog->isSourceRGBDColorOnly());
 	_camera->setImageDecimation(_preferencesDialog->getSourceImageDecimation());
@@ -5504,7 +5523,7 @@ void MainWindow::startDetection()
 				_imuThread = 0;
 			}
 
-			if(!camera->odomProvided() && !_preferencesDialog->isOdomDisabled())
+			if(!_camera->odomProvided() && !_preferencesDialog->isOdomDisabled())
 			{
 				ParametersMap odomParameters = parameters;
 				if(_preferencesDialog->getOdomRegistrationApproach() < 3)

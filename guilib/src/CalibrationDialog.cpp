@@ -213,6 +213,19 @@ void CalibrationDialog::setStereoMode(bool stereo, const QString & leftSuffix, c
 	ui_->label_stereoBaseline->setVisible(stereo_);
 }
 
+int CalibrationDialog::boardWidth() const
+{
+	return ui_->spinBox_boardWidth->value();
+}
+int CalibrationDialog::boardHeight() const
+{
+	return ui_->spinBox_boardHeight->value();
+}
+double CalibrationDialog::squareSize() const
+{
+	return ui_->doubleSpinBox_squareSize->value();
+}
+
 void CalibrationDialog::setBoardWidth(int width)
 {
 	if(width != ui_->spinBox_boardWidth->value())
@@ -875,6 +888,8 @@ void CalibrationDialog::calibrate()
 			cv::Mat P = stereoModel_.right().P().clone();
 			P.at<double>(0,3) = -P.at<double>(0,0)*ui_->doubleSpinBox_stereoBaseline->value();
 			double scale = ui_->doubleSpinBox_stereoBaseline->value() / stereoModel_.baseline();
+			UWARN("Scale %f (setting square size from %f to %f)", scale, ui_->doubleSpinBox_squareSize->value(), ui_->doubleSpinBox_squareSize->value()*scale);
+			ui_->doubleSpinBox_squareSize->setValue(ui_->doubleSpinBox_squareSize->value()*scale);
 			stereoModel_ = StereoCameraModel(
 					stereoModel_.name(),
 					stereoModel_.left().imageSize(),stereoModel_.left().K_raw(), stereoModel_.left().D_raw(), stereoModel_.left().R(), stereoModel_.left().P(),
