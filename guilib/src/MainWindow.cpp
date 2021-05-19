@@ -1138,8 +1138,7 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 		if(!pose.isNull())
 		{
 			// 3d cloud
-			if(data->depthOrRightRaw().cols == data->imageRaw().cols &&
-			   data->depthOrRightRaw().rows == data->imageRaw().rows &&
+			if(!data->imageRaw().empty() &&
 			   !data->depthOrRightRaw().empty() &&
 			   (data->cameraModels().size() || data->stereoCameraModel().isValidForProjection()) &&
 			   _preferencesDialog->isCloudsShown(1))

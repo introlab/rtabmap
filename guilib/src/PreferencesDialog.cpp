@@ -5803,7 +5803,10 @@ Camera * PreferencesDialog::createCamera(bool useRawImages, bool useColor)
 		this->getSourceDriver(), 
 		_ui->lineEdit_sourceDevice->text(), 
 		_ui->lineEdit_calibrationFile->text(), 
-		!_ui->checkBox_stereo_rectify->isChecked() || useRawImages, 
+		(this->getSourceDriver()>=kSrcStereo && 
+		 this->getSourceDriver()<kSrcRGB && 
+		 !_ui->checkBox_stereo_rectify->isChecked()) || 
+		useRawImages, 
 		useColor, 
 		false);
 }
