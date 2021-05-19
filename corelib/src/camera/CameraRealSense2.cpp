@@ -249,7 +249,7 @@ void CameraRealSense2::getPoseAndIMU(
 		{
 			if(maxWaitTimeMs > 0)
 			{
-				UWARN("Could not find poses to interpolate at image time %f after waiting %d ms (last is %f)...", stamp, maxWaitTimeMs, poseBuffer_.rbegin()->first);
+				UWARN("Could not find poses to interpolate at image time %f after waiting %d ms (last is %f)...", stamp/1000.0, maxWaitTimeMs, poseBuffer_.rbegin()->first/1000.0);
 			}
 		}
 		else
@@ -280,11 +280,11 @@ void CameraRealSense2::getPoseAndIMU(
 				{
 					if(stamp < iterA->first)
 					{
-						UWARN("Could not find pose data to interpolate at image time %f (earliest is %f). Are sensors synchronized?", stamp, iterA->first);
+						UWARN("Could not find pose data to interpolate at image time %f (earliest is %f). Are sensors synchronized?", stamp/1000.0, iterA->first/1000.0);
 					}
 					else
 					{
-						UWARN("Could not find pose data to interpolate at image time %f (between %f and %f). Are sensors synchronized?", stamp, iterA->first, iterB->first);
+						UWARN("Could not find pose data to interpolate at image time %f (between %f and %f). Are sensors synchronized?", stamp/1000.0, iterA->first/1000.0, iterB->first/1000.0);
 					}
 				}
 				if(!globalTimeSync_)
@@ -327,7 +327,7 @@ void CameraRealSense2::getPoseAndIMU(
 		{
 			if(maxWaitTimeMs>0)
 			{
-				UWARN("Could not find acc data to interpolate at image time %f after waiting %d ms (last is %f)...", stamp, maxWaitTimeMs, accBuffer_.rbegin()->first);
+				UWARN("Could not find acc data to interpolate at image time %f after waiting %d ms (last is %f)...", stamp/1000.0, maxWaitTimeMs, accBuffer_.rbegin()->first/1000.0);
 			}
 			imuMutex_.unlock();
 			return;
@@ -363,11 +363,11 @@ void CameraRealSense2::getPoseAndIMU(
 				{
 					if(stamp < iterA->first)
 					{
-						UWARN("Could not find acc data to interpolate at image time %f (earliest is %f). Are sensors synchronized?", stamp, iterA->first);
+						UWARN("Could not find acc data to interpolate at image time %f (earliest is %f). Are sensors synchronized?", stamp/1000.0, iterA->first/1000.0);
 					}
 					else
 					{
-						UWARN("Could not find acc data to interpolate at image time %f (between %f and %f). Are sensors synchronized?", stamp, iterA->first, iterB->first);
+						UWARN("Could not find acc data to interpolate at image time %f (between %f and %f). Are sensors synchronized?", stamp/1000.0, iterA->first/1000.0, iterB->first/1000.0);
 					}
 				}
 				if(!globalTimeSync_)
@@ -411,7 +411,7 @@ void CameraRealSense2::getPoseAndIMU(
 		{
 			if(maxWaitTimeMs>0)
 			{
-				UWARN("Could not find gyro data to interpolate at image time %f after waiting %d ms (last is %f)...", stamp, maxWaitTimeMs, gyroBuffer_.rbegin()->first);
+				UWARN("Could not find gyro data to interpolate at image time %f after waiting %d ms (last is %f)...", stamp/1000.0, maxWaitTimeMs, gyroBuffer_.rbegin()->first/1000.0);
 			}
 			imuMutex_.unlock();
 			return;
@@ -447,11 +447,11 @@ void CameraRealSense2::getPoseAndIMU(
 				{
 					if(stamp < iterA->first)
 					{
-						UWARN("Could not find gyro data to interpolate at image time %f (earliest is %f). Are sensors synchronized?", stamp, iterA->first);
+						UWARN("Could not find gyro data to interpolate at image time %f (earliest is %f). Are sensors synchronized?", stamp/1000.0, iterA->first/1000.0);
 					}
 					else
 					{
-						UWARN("Could not find gyro data to interpolate at image time %f (between %f and %f). Are sensors synchronized?", stamp, iterA->first, iterB->first);
+						UWARN("Could not find gyro data to interpolate at image time %f (between %f and %f). Are sensors synchronized?", stamp/1000.0, iterA->first/1000.0, iterB->first/1000.0);
 					}
 				}
 				if(!globalTimeSync_)

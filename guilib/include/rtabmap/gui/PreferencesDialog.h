@@ -278,7 +278,7 @@ public:
 	QString getIMUPath() const;
 	int getIMURate() const;
 	Camera * createCamera(bool useRawImages = false, bool useColor = true); // return camera should be deleted if not null
-	Camera * createOdomSensor(Transform * extrinsics = 0); // return camera should be deleted if not null
+	Camera * createOdomSensor(Transform * extrinsics = 0, double * timeOffset = 0); // return camera should be deleted if not null
 
 	int getIgnoredDCComponents() const;
 

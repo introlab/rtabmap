@@ -5436,6 +5436,7 @@ void MainWindow::startDetection()
 		Q_EMIT stateChanged(kInitialized);
 		return;
 	}
+	double poseTimeOffset = 0.0;
 	Transform extrinsics;
 	Camera * odomSensor = 0;
 	if(_preferencesDialog->getOdomSourceDriver() != PreferencesDialog::kSrcUndef &&
@@ -5446,12 +5447,12 @@ void MainWindow::startDetection()
 		UINFO("Create Odom Sensor %d (camera = %d)",
 				_preferencesDialog->getOdomSourceDriver(),
 				_preferencesDialog->getSourceDriver());
-		odomSensor = _preferencesDialog->createOdomSensor(&extrinsics);
+		odomSensor = _preferencesDialog->createOdomSensor(&extrinsics, &poseTimeOffset);
 	}
 
 	if(odomSensor)
 	{
-		_camera = new CameraThread(camera, odomSensor, extrinsics, parameters);
+		_camera = new CameraThread(camera, odomSensor, extrinsics, poseTimeOffset, parameters);
 	}
 	else
 	{

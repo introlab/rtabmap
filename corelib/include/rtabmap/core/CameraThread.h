@@ -64,7 +64,7 @@ public:
 	 * @param odomSensor an odometry sensor to get a pose
 	 * @param extrinsics the static transform between odometry sensor's left lens frame to camera's left lens frame
 	 */
-	CameraThread(Camera * camera, Camera * odomSensor, const Transform & extrinsics, const ParametersMap & parameters = ParametersMap());
+	CameraThread(Camera * camera, Camera * odomSensor, const Transform & extrinsics, double poseTimeOffset = 0.0, const ParametersMap & parameters = ParametersMap());
 	virtual ~CameraThread();
 
 	void setMirroringEnabled(bool enabled) {_mirroring = enabled;}
@@ -117,6 +117,7 @@ private:
 	Camera * _camera;
 	Camera * _odomSensor;
 	Transform _extrinsicsOdomToCamera;
+	double _poseTimeOffset;
 	bool _mirroring;
 	bool _stereoExposureCompensation;
 	bool _colorOnly;

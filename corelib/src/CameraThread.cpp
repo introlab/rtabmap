@@ -50,6 +50,7 @@ namespace rtabmap
 CameraThread::CameraThread(Camera * camera, const ParametersMap & parameters) :
 		_camera(camera),
 		_odomSensor(0),
+		_poseTimeOffset(0.0),
 		_mirroring(false),
 		_stereoExposureCompensation(false),
 		_colorOnly(false),
@@ -75,10 +76,11 @@ CameraThread::CameraThread(Camera * camera, const ParametersMap & parameters) :
 }
 
 // ownership transferred
-CameraThread::CameraThread(Camera * camera, Camera * odomSensor, const Transform & extrinsics, const ParametersMap & parameters) :
+CameraThread::CameraThread(Camera * camera, Camera * odomSensor, const Transform & extrinsics, double poseTimeOffset, const ParametersMap & parameters) :
 		_camera(camera),
 		_odomSensor(odomSensor),
 		_extrinsicsOdomToCamera(extrinsics),
+		_poseTimeOffset(poseTimeOffset),
 		_mirroring(false),
 		_stereoExposureCompensation(false),
 		_colorOnly(false),
@@ -217,7 +219,7 @@ void CameraThread::mainLoop()
 		Transform pose;
 		Transform poseToLeftCam;
 		cv::Mat covariance;
-		if(_odomSensor->getPose(data.stamp(), pose, covariance))
+		if(_odomSensor->getPose(data.stamp()+_poseTimeOffset, pose, covariance))
 		{
 			info.odomPose = pose;
 			info.odomCovariance = covariance;

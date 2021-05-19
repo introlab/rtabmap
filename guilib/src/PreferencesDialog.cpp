@@ -815,6 +815,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->pushButton_odom_sensor_calibrate, SIGNAL(clicked()), this, SLOT(calibrateOdomSensorExtrinsics()));
 	connect(_ui->lineEdit_odom_sensor_path_calibration, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->lineEdit_odomSourceDevice, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->doubleSpinBox_odom_sensor_time_offset, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteSourcePanel()));
 
 	connect(_ui->comboBox_imuFilter_strategy, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->comboBox_imuFilter_strategy, SIGNAL(currentIndexChanged(int)), _ui->stackedWidget_imuFilter, SLOT(setCurrentIndex(int)));
@@ -2031,6 +2032,7 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->lineEdit_odom_sensor_extrinsics->setText("0.006977 -0.042236 0.004599 -0.012436 -0.002432 -0.004827");
 		_ui->lineEdit_odom_sensor_path_calibration->setText("");
 		_ui->lineEdit_odomSourceDevice->setText("");
+		_ui->doubleSpinBox_odom_sensor_time_offset->setValue(0.0);
 
 		_ui->comboBox_imuFilter_strategy->setCurrentIndex(2);
 		_ui->doubleSpinBox_imuFilterMadgwickGain->setValue(Parameters::defaultImuFilterMadgwickGain());
@@ -2511,6 +2513,7 @@ void PreferencesDialog::readCameraSettings(const QString & filePath)
 	_ui->lineEdit_odom_sensor_extrinsics->setText(settings.value("odom_sensor_extrinsics", _ui->lineEdit_odom_sensor_extrinsics->text()).toString());
 	_ui->lineEdit_odom_sensor_path_calibration->setText(settings.value("odom_sensor_calibration_path", _ui->lineEdit_odom_sensor_path_calibration->text()).toString());
 	_ui->lineEdit_odomSourceDevice->setText(settings.value("odom_sensor_device", _ui->lineEdit_odomSourceDevice->text()).toString());
+	_ui->doubleSpinBox_odom_sensor_time_offset->setValue(settings.value("odom_sensor_offset_time", _ui->doubleSpinBox_odom_sensor_time_offset->value()).toDouble());
 	settings.endGroup(); // OdomSensor
 
 	settings.beginGroup("UsbCam");
@@ -3018,6 +3021,7 @@ void PreferencesDialog::writeCameraSettings(const QString & filePath) const
 	settings.setValue("odom_sensor_extrinsics", _ui->lineEdit_odom_sensor_extrinsics->text());
 	settings.setValue("odom_sensor_calibration_path", _ui->lineEdit_odom_sensor_path_calibration->text());
 	settings.setValue("odom_sensor_device",     _ui->lineEdit_odomSourceDevice->text());
+	settings.setValue("odom_sensor_offset_time", _ui->doubleSpinBox_odom_sensor_time_offset->value());
 	settings.endGroup(); // OdomSensor
 
 	settings.beginGroup("UsbCam");
@@ -5795,7 +5799,13 @@ double PreferencesDialog::getSourceScanForceGroundNormalsUp() const
 
 Camera * PreferencesDialog::createCamera(bool useRawImages, bool useColor)
 {
-	return createCamera(this->getSourceDriver(), _ui->lineEdit_sourceDevice->text(), _ui->lineEdit_calibrationFile->text(), useRawImages, useColor, false);
+	return createCamera(
+		this->getSourceDriver(), 
+		_ui->lineEdit_sourceDevice->text(), 
+		_ui->lineEdit_calibrationFile->text(), 
+		!_ui->checkBox_stereo_rectify->isChecked() || useRawImages, 
+		useColor, 
+		false);
 }
 
 Camera * PreferencesDialog::createCamera(
@@ -5951,7 +5961,7 @@ Camera * PreferencesDialog::createCamera(
 			((CameraRealSense2*)camera)->publishInterIMU(_ui->checkbox_publishInterIMU->isChecked());
 			if(driver == kSrcStereoRealSense2)
 			{
-				((CameraRealSense2*)camera)->setImagesRectified(_ui->checkBox_stereo_rectify->isChecked() && !useRawImages);
+				((CameraRealSense2*)camera)->setImagesRectified(!useRawImages);
 				((CameraRealSense2*)camera)->setOdomProvided(_ui->comboBox_odom_sensor->currentIndex() == 1 || odomOnly, odomOnly);
 			}
 			else
@@ -6050,7 +6060,7 @@ Camera * PreferencesDialog::createCamera(
 		camera = new CameraStereoImages(
 			_ui->lineEdit_cameraStereoImages_path_left->text().append(QDir::separator()).toStdString(),
 			_ui->lineEdit_cameraStereoImages_path_right->text().append(QDir::separator()).toStdString(),
-			_ui->checkBox_stereo_rectify->isChecked() && !useRawImages,
+			!useRawImages,
 			this->getGeneralInputRate(),
 			this->getSourceLocalTransform());
 		((CameraStereoImages*)camera)->setStartIndex(_ui->spinBox_cameraStereoImages_startIndex->value());
@@ -6077,7 +6087,7 @@ Camera * PreferencesDialog::createCamera(
 			camera = new CameraStereoVideo(
 				device.isEmpty() ? 0 : atoi(device.toStdString().c_str()),
 				_ui->spinBox_stereo_right_device->value(),
-				_ui->checkBox_stereo_rectify->isChecked() && !useRawImages,
+				!useRawImages,
 				this->getGeneralInputRate(),
 				this->getSourceLocalTransform());
 		}
@@ -6085,7 +6095,7 @@ Camera * PreferencesDialog::createCamera(
 		{
 			camera = new CameraStereoVideo(
 				device.isEmpty() ? 0 : atoi(device.toStdString().c_str()),
-				_ui->checkBox_stereo_rectify->isChecked() && !useRawImages,
+				!useRawImages,
 				this->getGeneralInputRate(),
 				this->getSourceLocalTransform());
 		}
@@ -6099,7 +6109,7 @@ Camera * PreferencesDialog::createCamera(
 			camera = new CameraStereoVideo(
 					_ui->lineEdit_cameraStereoVideo_path->text().toStdString(),
 					_ui->lineEdit_cameraStereoVideo_path_2->text().toStdString(),
-					_ui->checkBox_stereo_rectify->isChecked() && !useRawImages,
+					!useRawImages,
 					this->getGeneralInputRate(),
 					this->getSourceLocalTransform());
 		}
@@ -6108,7 +6118,7 @@ Camera * PreferencesDialog::createCamera(
 			// side-by-side video
 			camera = new CameraStereoVideo(
 					_ui->lineEdit_cameraStereoVideo_path->text().toStdString(),
-					_ui->checkBox_stereo_rectify->isChecked() && !useRawImages,
+					!useRawImages,
 					this->getGeneralInputRate(),
 					this->getSourceLocalTransform());
 		}
@@ -6119,7 +6129,7 @@ Camera * PreferencesDialog::createCamera(
 
             camera = new CameraStereoTara(
                 device.isEmpty()?0:atoi(device.toStdString().c_str()),
-                _ui->checkBox_stereo_rectify->isChecked() && !useRawImages,
+                !useRawImages,
                 this->getGeneralInputRate(),
                 this->getSourceLocalTransform());
 
@@ -6181,7 +6191,7 @@ Camera * PreferencesDialog::createCamera(
 	{
 		camera = new CameraVideo(
 			device.isEmpty()?0:atoi(device.toStdString().c_str()),
-			_ui->checkBox_rgb_rectify->isChecked() && !useRawImages,
+			!useRawImages,
 			this->getGeneralInputRate(),
 			this->getSourceLocalTransform());
 		((CameraVideo*)camera)->setResolution(_ui->spinBox_usbcam_streamWidth->value(), _ui->spinBox_usbcam_streamHeight->value());
@@ -6190,7 +6200,7 @@ Camera * PreferencesDialog::createCamera(
 	{
 		camera = new CameraVideo(
 			_ui->source_video_lineEdit_path->text().toStdString(),
-			_ui->checkBox_rgb_rectify->isChecked() && !useRawImages,
+			!useRawImages,
 			this->getGeneralInputRate(),
 			this->getSourceLocalTransform());
 	}
@@ -6203,7 +6213,7 @@ Camera * PreferencesDialog::createCamera(
 
 		((CameraImages*)camera)->setStartIndex(_ui->source_images_spinBox_startPos->value());
 		((CameraImages*)camera)->setMaxFrames(_ui->source_images_spinBox_maxFrames->value());
-		((CameraImages*)camera)->setImagesRectified(_ui->checkBox_rgb_rectify->isChecked() && !useRawImages);
+		((CameraImages*)camera)->setImagesRectified(!useRawImages);
 
 		((CameraImages*)camera)->setBayerMode(_ui->comboBox_cameraImages_bayerMode->currentIndex()-1);
 		((CameraImages*)camera)->setOdometryPath(
@@ -6297,7 +6307,7 @@ Camera * PreferencesDialog::createCamera(
 	return camera;
 }
 
-Camera * PreferencesDialog::createOdomSensor(Transform * extrinsics)
+Camera * PreferencesDialog::createOdomSensor(Transform * extrinsics, double * timeOffset)
 {
 	Src driver = getOdomSourceDriver();
 	if(driver != kSrcUndef)
@@ -6316,6 +6326,10 @@ Camera * PreferencesDialog::createOdomSensor(Transform * extrinsics)
 		if(extrinsics)
 		{
 			*extrinsics = Transform::fromString(_ui->lineEdit_odom_sensor_extrinsics->text().replace("PI_2", QString::number(3.141592/2.0)).toStdString());
+		}
+		if(timeOffset)
+		{
+			*timeOffset = _ui->doubleSpinBox_odom_sensor_time_offset->value()/1000.0;
 		}
 
 		return createCamera(driver, _ui->lineEdit_odomSourceDevice->text(), _ui->lineEdit_odom_sensor_path_calibration->text(), false, true, true);
@@ -6999,6 +7013,13 @@ void PreferencesDialog::calibrateOdomSensorExtrinsics()
 				{
 					return;
 				}
+				else if(!camera->isCalibrated())
+				{
+					QMessageBox::warning(_calibrationDialog, tr("Calibration"),
+							tr("Odom sensor is not calibrated. Camera and odometry sensor should be individually calibrated (intrinsics) before calibrating the extrinsics between them. Aborting..."), QMessageBox::Ok);
+					delete camera;
+					return;
+				}
 				SensorData odomSensorData = camera->takeImage();
 				if(odomSensorData.cameraModels().size() == 1) {
 					odomSensorModel = odomSensorData.cameraModels()[0];
@@ -7007,12 +7028,20 @@ void PreferencesDialog::calibrateOdomSensorExtrinsics()
 					odomSensorModel = odomSensorData.stereoCameraModel().left();
 				}
 				delete camera;
+
 				int currentIndex = _ui->comboBox_odom_sensor->currentIndex();
 				_ui->comboBox_odom_sensor->setCurrentIndex(0);
 				camera = this->createCamera(false, true); // Camera
 				_ui->comboBox_odom_sensor->setCurrentIndex(currentIndex);
 				if(!camera)
 				{
+					return;
+				}
+				else if(!camera->isCalibrated())
+				{
+					QMessageBox::warning(_calibrationDialog, tr("Calibration"),
+							tr("Odom sensor is not calibrated. Camera and odometry sensor should be individually calibrated (intrinsics) before calibrating the extrinsics between them. Aborting..."), QMessageBox::Ok);
+					delete camera;
 					return;
 				}
 				SensorData camData = camera->takeImage();
