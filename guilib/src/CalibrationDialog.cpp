@@ -327,10 +327,13 @@ void CalibrationDialog::processImages(const cv::Mat & imageLeft, const cv::Mat &
 {
 	UDEBUG("Processing images");
 	processingData_ = true;
-	cameraName_ = "0000";
-	if(!cameraName.isEmpty())
+	if(cameraName_.isEmpty())
 	{
 		cameraName_ = cameraName;
+	}
+	else if(cameraName.isEmpty())
+	{
+		cameraName_ = "0000";
 	}
 
 	if(ui_->label_serial->text().compare(cameraName_)!=0)

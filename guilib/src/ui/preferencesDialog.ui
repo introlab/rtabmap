@@ -63,9 +63,9 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-1909</y>
-            <width>675</width>
-            <height>3317</height>
+            <y>-525</y>
+            <width>686</width>
+            <height>3723</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -3109,7 +3109,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                     <item>
                      <widget class="QStackedWidget" name="stackedWidget_src">
                       <property name="currentIndex">
-                       <number>1</number>
+                       <number>0</number>
                       </property>
                       <widget class="QWidget" name="page_41">
                        <layout class="QVBoxLayout" name="verticalLayout_64">
@@ -3220,7 +3220,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                            <item>
                             <widget class="QStackedWidget" name="stackedWidget_rgbd">
                              <property name="currentIndex">
-                              <number>10</number>
+                              <number>4</number>
                              </property>
                              <widget class="QWidget" name="page_32">
                               <layout class="QVBoxLayout" name="verticalLayout_63">
@@ -3349,7 +3349,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                   <item row="7" column="1">
                                    <widget class="QLabel" name="label_435">
                                     <property name="text">
-                                     <string>IR-Depth horizontal shift. Only used when custom calibration is done.</string>
+                                     <string>IR-Depth horizontal shift.</string>
                                     </property>
                                     <property name="wordWrap">
                                      <bool>true</bool>
@@ -3358,6 +3358,9 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                   </item>
                                   <item row="7" column="0">
                                    <widget class="QSpinBox" name="openni2_hshift">
+                                    <property name="suffix">
+                                     <string> pix</string>
+                                    </property>
                                     <property name="maximum">
                                      <number>65535</number>
                                     </property>
@@ -3520,7 +3523,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                   <item row="8" column="1">
                                    <widget class="QLabel" name="label_436">
                                     <property name="text">
-                                     <string>IR-Depth vertical shift. Only used when custom calibration is done.</string>
+                                     <string>IR-Depth vertical shift.</string>
                                     </property>
                                     <property name="wordWrap">
                                      <bool>true</bool>
@@ -3529,6 +3532,9 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                   </item>
                                   <item row="8" column="0">
                                    <widget class="QSpinBox" name="openni2_vshift">
+                                    <property name="suffix">
+                                     <string> pix</string>
+                                    </property>
                                     <property name="maximum">
                                      <number>65535</number>
                                     </property>
@@ -4857,7 +4863,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                            <item>
                             <widget class="QStackedWidget" name="stackedWidget_stereo">
                              <property name="currentIndex">
-                              <number>9</number>
+                              <number>3</number>
                              </property>
                              <widget class="QWidget" name="page_49">
                               <layout class="QVBoxLayout" name="verticalLayout_91"/>
