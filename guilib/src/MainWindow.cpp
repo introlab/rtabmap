@@ -5446,16 +5446,16 @@ void MainWindow::startDetection()
 		UINFO("Create Odom Sensor %d (camera = %d)",
 				_preferencesDialog->getOdomSourceDriver(),
 				_preferencesDialog->getSourceDriver());
-		odomSensor = _preferencesDialog->createOdomSensor(&extrinsics, &poseTimeOffset);
+		odomSensor = _preferencesDialog->createOdomSensor(extrinsics, poseTimeOffset);
 	}
 
 	if(odomSensor)
 	{
-		_camera = new CameraThread(camera, odomSensor, extrinsics, poseTimeOffset, parameters);
+		_camera = new CameraThread(camera, odomSensor, extrinsics, poseTimeOffset, _preferencesDialog->getOdomSensorScaleFactor(), _preferencesDialog->isOdomSensorAsGt(), parameters);
 	}
 	else
 	{
-		_camera = new CameraThread(camera, parameters);
+		_camera = new CameraThread(camera, _preferencesDialog->getOdomSensorScaleFactor(), _preferencesDialog->isOdomSensorAsGt(), parameters);
 	}
 	_camera->setMirroringEnabled(_preferencesDialog->isSourceMirroring());
 	_camera->setColorOnly(_preferencesDialog->isSourceRGBDColorOnly());
@@ -5523,7 +5523,7 @@ void MainWindow::startDetection()
 				_imuThread = 0;
 			}
 
-			if(!_camera->odomProvided() && !_preferencesDialog->isOdomDisabled())
+			if((!_camera->odomProvided() || _preferencesDialog->isOdomSensorAsGt()) && !_preferencesDialog->isOdomDisabled())
 			{
 				ParametersMap odomParameters = parameters;
 				if(_preferencesDialog->getOdomRegistrationApproach() < 3)

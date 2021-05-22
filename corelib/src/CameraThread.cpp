@@ -50,7 +50,9 @@ namespace rtabmap
 CameraThread::CameraThread(Camera * camera, const ParametersMap & parameters) :
 		_camera(camera),
 		_odomSensor(0),
+		_odomAsGt(false),
 		_poseTimeOffset(0.0),
+		_poseScaleFactor(1.0f),
 		_mirroring(false),
 		_stereoExposureCompensation(false),
 		_colorOnly(false),
@@ -76,33 +78,83 @@ CameraThread::CameraThread(Camera * camera, const ParametersMap & parameters) :
 }
 
 // ownership transferred
-CameraThread::CameraThread(Camera * camera, Camera * odomSensor, const Transform & extrinsics, double poseTimeOffset, const ParametersMap & parameters) :
-		_camera(camera),
-		_odomSensor(odomSensor),
-		_extrinsicsOdomToCamera(extrinsics),
-		_poseTimeOffset(poseTimeOffset),
-		_mirroring(false),
-		_stereoExposureCompensation(false),
-		_colorOnly(false),
-		_imageDecimation(1),
-		_stereoToDepth(false),
-		_scanFromDepth(false),
-		_scanDownsampleStep(1),
-		_scanRangeMin(0.0f),
-		_scanRangeMax(0.0f),
-		_scanVoxelSize(0.0f),
-		_scanNormalsK(0),
-		_scanNormalsRadius(0.0f),
-		_scanForceGroundNormalsUp(false),
-		_stereoDense(StereoDense::create(parameters)),
-		_distortionModel(0),
-		_bilateralFiltering(false),
-		_bilateralSigmaS(10),
-		_bilateralSigmaR(0.1),
-		_imuFilter(0),
-		_imuBaseFrameConversion(false)
+CameraThread::CameraThread(
+		Camera * camera,
+		Camera * odomSensor,
+		const Transform & extrinsics,
+		double poseTimeOffset,
+		float poseScaleFactor,
+		bool odomAsGt,
+		const ParametersMap & parameters) :
+			_camera(camera),
+			_odomSensor(odomSensor),
+			_extrinsicsOdomToCamera(extrinsics),
+			_odomAsGt(odomAsGt),
+			_poseTimeOffset(poseTimeOffset),
+			_poseScaleFactor(poseScaleFactor),
+			_mirroring(false),
+			_stereoExposureCompensation(false),
+			_colorOnly(false),
+			_imageDecimation(1),
+			_stereoToDepth(false),
+			_scanFromDepth(false),
+			_scanDownsampleStep(1),
+			_scanRangeMin(0.0f),
+			_scanRangeMax(0.0f),
+			_scanVoxelSize(0.0f),
+			_scanNormalsK(0),
+			_scanNormalsRadius(0.0f),
+			_scanForceGroundNormalsUp(false),
+			_stereoDense(StereoDense::create(parameters)),
+			_distortionModel(0),
+			_bilateralFiltering(false),
+			_bilateralSigmaS(10),
+			_bilateralSigmaR(0.1),
+			_imuFilter(0),
+			_imuBaseFrameConversion(false)
 {
 	UASSERT(_camera != 0 && _odomSensor != 0 && !_extrinsicsOdomToCamera.isNull());
+	UDEBUG("_extrinsicsOdomToCamera=%s", _extrinsicsOdomToCamera.prettyPrint().c_str());
+	UDEBUG("_poseTimeOffset        =%f", _poseTimeOffset);
+	UDEBUG("_poseScaleFactor       =%f", _poseScaleFactor);
+	UDEBUG("_odomAsGt              =%s", _odomAsGt?"true":"false");
+}
+
+// ownership transferred
+CameraThread::CameraThread(
+		Camera * camera,
+		float poseScaleFactor,
+		bool odomAsGt,
+		const ParametersMap & parameters) :
+			_camera(camera),
+			_odomSensor(0),
+			_odomAsGt(odomAsGt),
+			_poseTimeOffset(0.0),
+			_poseScaleFactor(poseScaleFactor),
+			_mirroring(false),
+			_stereoExposureCompensation(false),
+			_colorOnly(false),
+			_imageDecimation(1),
+			_stereoToDepth(false),
+			_scanFromDepth(false),
+			_scanDownsampleStep(1),
+			_scanRangeMin(0.0f),
+			_scanRangeMax(0.0f),
+			_scanVoxelSize(0.0f),
+			_scanNormalsK(0),
+			_scanNormalsRadius(0.0f),
+			_scanForceGroundNormalsUp(false),
+			_stereoDense(StereoDense::create(parameters)),
+			_distortionModel(0),
+			_bilateralFiltering(false),
+			_bilateralSigmaS(10),
+			_bilateralSigmaR(0.1),
+			_imuFilter(0),
+			_imuBaseFrameConversion(false)
+{
+	UASSERT(_camera != 0);
+	UDEBUG("_poseScaleFactor       =%f", _poseScaleFactor);
+	UDEBUG("_odomAsGt              =%s", _odomAsGt?"true":"false");
 }
 
 CameraThread::~CameraThread()
@@ -223,6 +275,12 @@ void CameraThread::mainLoop()
 		{
 			info.odomPose = pose;
 			info.odomCovariance = covariance;
+			if(_poseScaleFactor>0 && _poseScaleFactor!=1.0f)
+			{
+				info.odomPose.x() *= _poseScaleFactor;
+				info.odomPose.y() *= _poseScaleFactor;
+				info.odomPose.z() *= _poseScaleFactor;
+			}
 			// Adjust local transform of the camera based on the pose frame
 			if(!data.cameraModels().empty())
 			{
@@ -244,10 +302,15 @@ void CameraThread::mainLoop()
 		}
 	}
 
+	if(_odomAsGt && !info.odomPose.isNull())
+	{
+		data.setGroundTruth(info.odomPose);
+		info.odomPose.setNull();
+	}
+
 	if(!data.imageRaw().empty() || !data.laserScanRaw().empty() || (dynamic_cast<DBReader*>(_camera) != 0 && data.id()>0)) // intermediate nodes could not have image set
 	{
 		postUpdate(&data, &info);
-
 		info.cameraName = _camera->getSerial();
 		info.timeTotal = totalTime.ticks();
 		this->post(new CameraEvent(data, info));

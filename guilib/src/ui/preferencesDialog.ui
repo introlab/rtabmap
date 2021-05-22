@@ -63,9 +63,9 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-525</y>
+            <y>-2147</y>
             <width>686</width>
-            <height>3723</height>
+            <height>3905</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -6909,10 +6909,107 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                        <string>Odometry Sensor</string>
                       </property>
                       <layout class="QGridLayout" name="gridLayout_122" columnstretch="0,1">
+                       <item row="2" column="0">
+                        <widget class="QDoubleSpinBox" name="doubleSpinBox_odom_sensor_time_offset">
+                         <property name="suffix">
+                          <string> ms</string>
+                         </property>
+                         <property name="decimals">
+                          <number>1</number>
+                         </property>
+                         <property name="minimum">
+                          <double>-999.000000000000000</double>
+                         </property>
+                         <property name="maximum">
+                          <double>999.000000000000000</double>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="1" column="0">
+                        <widget class="QLineEdit" name="lineEdit_odomSourceDevice">
+                         <property name="text">
+                          <string/>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="7" column="1">
+                        <widget class="QLabel" name="label_638">
+                         <property name="text">
+                          <string>Use as ground truth. The odometry poses will be saved in ground truth field of sensor data instead of being used as odometry. The actual odometry will be computed by rtabmap using the camera sensor. This can be useful to compare rtabmap odometry versus odometry sensor, and to estimate a scale factor between the sensors (using &quot;rtabmap-report -- scale&quot;) that can be used above.</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
+                        </widget>
+                       </item>
                        <item row="3" column="1">
                         <widget class="QLabel" name="label_634">
                          <property name="text">
                           <string>Extrinsics between odometry sensor's left lens and camera's left lens. Default extrinsics match the 3D printed bracket &lt;a href=&quot; https://www.intelrealsense.com/depth-and-tracking-combined-get-started/&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;here&lt;/span&gt;&lt;/a&gt; for T265+D400 setup. (&lt;a href=&quot;https://github.com/IntelRealSense/realsense-ros/blob/occupancy-mapping/realsense2_camera/meshes/mount_t265_d435.stl&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;stl&lt;/span&gt;&lt;/a&gt;). Not used if camera and odometry sensors are the same sensor.</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="0" column="0">
+                        <widget class="QComboBox" name="comboBox_odom_sensor">
+                         <property name="sizeAdjustPolicy">
+                          <enum>QComboBox::AdjustToContents</enum>
+                         </property>
+                         <item>
+                          <property name="text">
+                           <string>None</string>
+                          </property>
+                         </item>
+                         <item>
+                          <property name="text">
+                           <string>RealSense2 (T265)</string>
+                          </property>
+                         </item>
+                         <item>
+                          <property name="text">
+                           <string>ZED sdk</string>
+                          </property>
+                         </item>
+                        </widget>
+                       </item>
+                       <item row="4" column="0">
+                        <widget class="QPushButton" name="pushButton_odom_sensor_calibrate">
+                         <property name="sizePolicy">
+                          <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                           <horstretch>0</horstretch>
+                           <verstretch>0</verstretch>
+                          </sizepolicy>
+                         </property>
+                         <property name="text">
+                          <string>Calibrate Extrinsics</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="4" column="1">
+                        <widget class="QLabel" name="label_635">
+                         <property name="text">
+                          <string>Calibrate extrinsics between odometry sensor and camera. Both sensors should be already calibrated. See Calibrate button above to calibrate them individually.</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="2" column="1">
+                        <widget class="QLabel" name="label_637">
+                         <property name="text">
+                          <string>Time offset between camera and odometry sensors.</string>
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>
@@ -6935,17 +7032,17 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                          </property>
                         </widget>
                        </item>
-                       <item row="1" column="0">
-                        <widget class="QLineEdit" name="lineEdit_odomSourceDevice">
+                       <item row="7" column="0">
+                        <widget class="QCheckBox" name="checkBox_odom_sensor_use_as_gt">
                          <property name="text">
                           <string/>
                          </property>
                         </widget>
                        </item>
-                       <item row="4" column="1">
-                        <widget class="QLabel" name="label_635">
+                       <item row="5" column="1">
+                        <widget class="QLabel" name="label_636">
                          <property name="text">
-                          <string>Calibrate extrinsics between odometry sensor and camera. Both sensors should be already calibrated. See Calibrate button above to calibrate them individually.</string>
+                          <string>Calibration file path (*.yaml) for the odometry sensor. If empty, the GUID of the camera is used (for those having one). Only required to calibrate extrinsics.</string>
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>
@@ -6965,6 +7062,16 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                          </property>
                          <property name="textInteractionFlags">
                           <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="3" column="0">
+                        <widget class="QLineEdit" name="lineEdit_odom_sensor_extrinsics">
+                         <property name="toolTip">
+                          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Format (3 values): x y z&lt;br/&gt;Format (6 values): x y z roll pitch yaw&lt;br/&gt;Format (7 values): x y z qx qy qz qw&lt;br/&gt;Format (9 values, 3x3 rotation): r11 r12 r13 r21 r22 r23 r31 r32 r33&lt;br/&gt;Format (12 values, 3x4 transform): r11 r12 r13 tx r21 r22 r23 ty r31 r32 r33 tz&lt;/p&gt;&lt;p&gt;EuRoC: /base_link to /imu = 0 0 1 0 -1 0 1 0 0&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                         </property>
+                         <property name="text">
+                          <string>0.009 0.021 0.027 0.000 -0.018 0.005</string>
                          </property>
                         </widget>
                        </item>
@@ -6992,55 +7099,10 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                          </item>
                         </layout>
                        </item>
-                       <item row="3" column="0">
-                        <widget class="QLineEdit" name="lineEdit_odom_sensor_extrinsics">
-                         <property name="toolTip">
-                          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Format (3 values): x y z&lt;br/&gt;Format (6 values): x y z roll pitch yaw&lt;br/&gt;Format (7 values): x y z qx qy qz qw&lt;br/&gt;Format (9 values, 3x3 rotation): r11 r12 r13 r21 r22 r23 r31 r32 r33&lt;br/&gt;Format (12 values, 3x4 transform): r11 r12 r13 tx r21 r22 r23 ty r31 r32 r33 tz&lt;/p&gt;&lt;p&gt;EuRoC: /base_link to /imu = 0 0 1 0 -1 0 1 0 0&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                         </property>
+                       <item row="6" column="1">
+                        <widget class="QLabel" name="label_639">
                          <property name="text">
-                          <string>0.009 0.021 0.027 0.000 -0.018 0.005</string>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="4" column="0">
-                        <widget class="QPushButton" name="pushButton_odom_sensor_calibrate">
-                         <property name="sizePolicy">
-                          <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-                           <horstretch>0</horstretch>
-                           <verstretch>0</verstretch>
-                          </sizepolicy>
-                         </property>
-                         <property name="text">
-                          <string>Calibrate Extrinsics</string>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="0" column="0">
-                        <widget class="QComboBox" name="comboBox_odom_sensor">
-                         <property name="sizeAdjustPolicy">
-                          <enum>QComboBox::AdjustToContents</enum>
-                         </property>
-                         <item>
-                          <property name="text">
-                           <string>None</string>
-                          </property>
-                         </item>
-                         <item>
-                          <property name="text">
-                           <string>RealSense2 (T265)</string>
-                          </property>
-                         </item>
-                         <item>
-                          <property name="text">
-                           <string>ZED sdk</string>
-                          </property>
-                         </item>
-                        </widget>
-                       </item>
-                       <item row="5" column="1">
-                        <widget class="QLabel" name="label_636">
-                         <property name="text">
-                          <string>Calibration file path (*.yaml) for the odometry sensor. If empty, the GUID of the camera is used (for those having one). Only required to calibrate extrinsics.</string>
+                          <string>Scale factor between camera and odometry sensor. This factor is multiplied to translation components of each pose in the odometry trajectory.</string>
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>
@@ -7050,32 +7112,25 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                          </property>
                         </widget>
                        </item>
-                       <item row="2" column="1">
-                        <widget class="QLabel" name="label_637">
-                         <property name="text">
-                          <string>Time offset between camera and odometry sensors.</string>
-                         </property>
-                         <property name="wordWrap">
-                          <bool>true</bool>
-                         </property>
-                         <property name="textInteractionFlags">
-                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="2" column="0">
-                        <widget class="QDoubleSpinBox" name="doubleSpinBox_odom_sensor_time_offset">
+                       <item row="6" column="0">
+                        <widget class="QDoubleSpinBox" name="doubleSpinBox_odom_sensor_scale_factor">
                          <property name="suffix">
-                          <string> ms</string>
+                          <string/>
                          </property>
                          <property name="decimals">
-                          <number>1</number>
+                          <number>4</number>
                          </property>
                          <property name="minimum">
-                          <double>-999.000000000000000</double>
+                          <double>0.000100000000000</double>
                          </property>
                          <property name="maximum">
                           <double>999.000000000000000</double>
+                         </property>
+                         <property name="singleStep">
+                          <double>0.100000000000000</double>
+                         </property>
+                         <property name="value">
+                          <double>1.000000000000000</double>
                          </property>
                         </widget>
                        </item>

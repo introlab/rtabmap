@@ -359,6 +359,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	{
 		_ui->comboBox_cameraRGBD->setItemData(kSrcRealSense2 - kSrcRGBD, 0, Qt::UserRole - 1);
 		_ui->comboBox_cameraStereo->setItemData(kSrcStereoRealSense2 - kSrcStereo, 0, Qt::UserRole - 1);
+		_ui->comboBox_odom_sensor->setItemData(1, 0, Qt::UserRole - 1);
 	}
 	if(!CameraStereoDC1394::available())
 	{
@@ -371,6 +372,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	if (!CameraStereoZed::available())
 	{
 		_ui->comboBox_cameraStereo->setItemData(kSrcStereoZed - kSrcStereo, 0, Qt::UserRole - 1);
+		_ui->comboBox_odom_sensor->setItemData(2, 0, Qt::UserRole - 1);
 	}
     if (!CameraStereoTara::available())
     {
@@ -816,6 +818,8 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->lineEdit_odom_sensor_path_calibration, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->lineEdit_odomSourceDevice, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->doubleSpinBox_odom_sensor_time_offset, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->doubleSpinBox_odom_sensor_scale_factor, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->checkBox_odom_sensor_use_as_gt, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 
 	connect(_ui->comboBox_imuFilter_strategy, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->comboBox_imuFilter_strategy, SIGNAL(currentIndexChanged(int)), _ui->stackedWidget_imuFilter, SLOT(setCurrentIndex(int)));
@@ -2033,6 +2037,8 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->lineEdit_odom_sensor_path_calibration->setText("");
 		_ui->lineEdit_odomSourceDevice->setText("");
 		_ui->doubleSpinBox_odom_sensor_time_offset->setValue(0.0);
+		_ui->doubleSpinBox_odom_sensor_scale_factor->setValue(1);
+		_ui->checkBox_odom_sensor_use_as_gt->setChecked(false);
 
 		_ui->comboBox_imuFilter_strategy->setCurrentIndex(2);
 		_ui->doubleSpinBox_imuFilterMadgwickGain->setValue(Parameters::defaultImuFilterMadgwickGain());
@@ -2514,6 +2520,8 @@ void PreferencesDialog::readCameraSettings(const QString & filePath)
 	_ui->lineEdit_odom_sensor_path_calibration->setText(settings.value("odom_sensor_calibration_path", _ui->lineEdit_odom_sensor_path_calibration->text()).toString());
 	_ui->lineEdit_odomSourceDevice->setText(settings.value("odom_sensor_device", _ui->lineEdit_odomSourceDevice->text()).toString());
 	_ui->doubleSpinBox_odom_sensor_time_offset->setValue(settings.value("odom_sensor_offset_time", _ui->doubleSpinBox_odom_sensor_time_offset->value()).toDouble());
+	_ui->doubleSpinBox_odom_sensor_scale_factor->setValue(settings.value("odom_sensor_scale_factor", _ui->doubleSpinBox_odom_sensor_scale_factor->value()).toDouble());
+	_ui->checkBox_odom_sensor_use_as_gt->setChecked(settings.value("odom_sensor_odom_as_gt", _ui->checkBox_odom_sensor_use_as_gt->isChecked()).toBool());
 	settings.endGroup(); // OdomSensor
 
 	settings.beginGroup("UsbCam");
@@ -3022,6 +3030,8 @@ void PreferencesDialog::writeCameraSettings(const QString & filePath) const
 	settings.setValue("odom_sensor_calibration_path", _ui->lineEdit_odom_sensor_path_calibration->text());
 	settings.setValue("odom_sensor_device",     _ui->lineEdit_odomSourceDevice->text());
 	settings.setValue("odom_sensor_offset_time", _ui->doubleSpinBox_odom_sensor_time_offset->value());
+	settings.setValue("odom_sensor_scale_factor", _ui->doubleSpinBox_odom_sensor_scale_factor->value());
+	settings.setValue("odom_sensor_odom_as_gt", _ui->checkBox_odom_sensor_use_as_gt->isChecked());
 	settings.endGroup(); // OdomSensor
 
 	settings.beginGroup("UsbCam");
@@ -5250,6 +5260,14 @@ bool PreferencesDialog::isOdomDisabled() const
 {
 	return _ui->checkbox_odomDisabled->isChecked();
 }
+bool PreferencesDialog::isOdomSensorAsGt() const
+{
+	return _ui->checkBox_odom_sensor_use_as_gt->isChecked();
+}
+double PreferencesDialog::getOdomSensorScaleFactor() const
+{
+	return _ui->doubleSpinBox_odom_sensor_scale_factor->value();
+}
 int PreferencesDialog::getOdomRegistrationApproach() const
 {
 	return _ui->odom_registration->currentIndex();
@@ -6310,7 +6328,7 @@ Camera * PreferencesDialog::createCamera(
 	return camera;
 }
 
-Camera * PreferencesDialog::createOdomSensor(Transform * extrinsics, double * timeOffset)
+Camera * PreferencesDialog::createOdomSensor(Transform & extrinsics, double & timeOffset)
 {
 	Src driver = getOdomSourceDriver();
 	if(driver != kSrcUndef)
@@ -6326,14 +6344,8 @@ Camera * PreferencesDialog::createOdomSensor(Transform * extrinsics, double * ti
 			return 0;
 		}
 
-		if(extrinsics)
-		{
-			*extrinsics = Transform::fromString(_ui->lineEdit_odom_sensor_extrinsics->text().replace("PI_2", QString::number(3.141592/2.0)).toStdString());
-		}
-		if(timeOffset)
-		{
-			*timeOffset = _ui->doubleSpinBox_odom_sensor_time_offset->value()/1000.0;
-		}
+		extrinsics = Transform::fromString(_ui->lineEdit_odom_sensor_extrinsics->text().replace("PI_2", QString::number(3.141592/2.0)).toStdString());
+		timeOffset = _ui->doubleSpinBox_odom_sensor_time_offset->value()/1000.0;
 
 		return createCamera(driver, _ui->lineEdit_odomSourceDevice->text(), _ui->lineEdit_odom_sensor_path_calibration->text(), false, true, true);
 	}

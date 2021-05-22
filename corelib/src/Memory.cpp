@@ -5260,6 +5260,10 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 	s->sensorData().setLaserScan(laserScan, false);
 	s->sensorData().setUserData(data.userDataRaw(), false);
 
+	UDEBUG("data.groundTruth()      =%s", data.groundTruth().prettyPrint().c_str());
+	UDEBUG("data.gps()              =%s", data.gps().stamp()?"true":"false");
+	UDEBUG("data.envSensors()       =%d", (int)data.envSensors().size());
+	UDEBUG("data.globalDescriptors()=%d", (int)data.globalDescriptors().size());
 	s->sensorData().setGroundTruth(data.groundTruth());
 	s->sensorData().setGPS(data.gps());
 	s->sensorData().setEnvSensors(data.envSensors());
