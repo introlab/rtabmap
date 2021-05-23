@@ -1,5 +1,5 @@
 #Pre-requisites: Look for csparse
-FIND_PATH(CSPARSE_INCLUDE_DIR NAMES cs.h PATH_SUFFIXES suitesparse csparse EXTERNAL/suitesparse EXTERNAL/csparse
+FIND_PATH(CSPARSE_INCLUDE_DIR NAMES cs.h PATH_SUFFIXES suitesparse csparse EXTERNAL/suitesparse EXTERNAL/csparse g2o/EXTERNAL/suitesparse g2o/EXTERNAL/csparse
   PATHS "C:\\Program Files\\g2o\\include\\EXTERNAL")
 FIND_LIBRARY(CSPARSE_LIBRARY NAMES cxsparse g2o_ext_csparse 
   PATHS "C:\\Program Files\\g2o\\lib")
