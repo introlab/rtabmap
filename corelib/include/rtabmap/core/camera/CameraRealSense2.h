@@ -69,7 +69,8 @@ public:
 	virtual bool init(const std::string & calibrationFolder = ".", const std::string & cameraName = "");
 	virtual bool isCalibrated() const;
 	virtual std::string getSerial() const;
-	bool odomProvided() const;
+	virtual bool odomProvided() const;
+	virtual bool getPose(double stamp, Transform & pose, cv::Mat & covariance);
 
 	// parameters are set during initialization
 	// D400 series
@@ -83,7 +84,7 @@ public:
 	void setJsonConfig(const std::string & json);
 	// T265 related parameters
 	void setImagesRectified(bool enabled);
-	void setOdomProvided(bool enabled);
+	void setOdomProvided(bool enabled, bool imageStreamsDisabled=false);
 
 #ifdef RTABMAP_REALSENSE2
 private:
@@ -112,7 +113,6 @@ private:
 	float depth_scale_meters_;
 	rs2_intrinsics depthIntrinsics_;
 	rs2_intrinsics rgbIntrinsics_;
-	rs2_extrinsics depthToRGBExtrinsics_;
 	cv::Mat depthBuffer_;
 	cv::Mat rgbBuffer_;
 	CameraModel model_;
@@ -132,6 +132,7 @@ private:
 	bool irDepth_;
 	bool rectifyImages_;
 	bool odometryProvided_;
+	bool odometryImagesDisabled_;
 	int cameraWidth_;
 	int cameraHeight_;
 	int cameraFps_;

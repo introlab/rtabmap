@@ -4210,7 +4210,7 @@ std::map<int, std::map<int, Transform> > Rtabmap::getPaths(const std::map<int, T
 			}
 			else
 			{
-				UWARN(uFormat("path.size()=0!? nearestId=%d ids=%d, aborting...", (int)path.size(), nearestId, (int)ids.size()).c_str());
+				UWARN("path.size()=0!? nearestId=%d ids=%d, aborting...", nearestId, (int)ids.size());
 				break;
 			}
 

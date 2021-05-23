@@ -58,6 +58,7 @@ public:
 	virtual bool isCalibrated() const = 0;
 	virtual std::string getSerial() const = 0;
 	virtual bool odomProvided() const { return false; }
+	virtual bool getPose(double stamp, Transform & pose, cv::Mat & covariance) { return false; }
 
 	//getters
 	float getImageRate() const {return _imageRate;}

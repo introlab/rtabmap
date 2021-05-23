@@ -57,6 +57,9 @@ public:
 	const rtabmap::StereoCameraModel & getStereoCameraModel() const {return stereoModel_;}
 	bool isProcessing() const {return processingData_;}
 	int getStereoPairs() const {return (int)stereoImagePoints_[0].size();}
+	int boardWidth() const;
+	int boardHeight() const;
+	double squareSize() const;
 
 	void saveSettings(QSettings & settings, const QString & group = "") const;
 	void loadSettings(QSettings & settings, const QString & group = "");

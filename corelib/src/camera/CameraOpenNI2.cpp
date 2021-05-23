@@ -529,6 +529,13 @@ SensorData CameraOpenNI2::captureImage(CameraInfo * info)
 
 				if(_type==kTypeColorDepth)
 				{
+					if (_depthHShift > 0 || _depthVShift > 0)
+					{
+						cv::Mat out = cv::Mat::zeros(depth.size(), depth.type());
+						depth(cv::Rect(_depthHShift, _depthVShift, depth.cols - _depthHShift, depth.rows - _depthVShift)).copyTo(out(cv::Rect(0, 0, depth.cols - _depthHShift, depth.rows - _depthVShift)));
+						depth = out;
+					}
+
 					if(_stereoModel.right().isValidForRectification())
 					{
 						rgb = _stereoModel.right().rectifyImage(rgb);
@@ -536,12 +543,6 @@ SensorData CameraOpenNI2::captureImage(CameraInfo * info)
 
 						if(_stereoModel.left().isValidForRectification() && !_stereoModel.stereoTransform().isNull())
 						{
-							if (_depthHShift > 0 || _depthVShift > 0)
-							{
-								cv::Mat out = cv::Mat::zeros(depth.size(), depth.type());
-								depth(cv::Rect(_depthHShift, _depthVShift, depth.cols - _depthHShift, depth.rows - _depthVShift)).copyTo(out(cv::Rect(0, 0, depth.cols - _depthHShift, depth.rows - _depthVShift)));
-								depth = out;
-							}
 							depth = _stereoModel.left().rectifyImage(depth, 0);
 							depth = util2d::registerDepth(depth, _stereoModel.left().K(), rgb.size(), _stereoModel.right().K(), _stereoModel.stereoTransform());
 						}
