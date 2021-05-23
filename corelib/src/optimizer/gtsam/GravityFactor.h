@@ -78,7 +78,7 @@ public:
  * Version of GravityFactor for Rot3
  * @addtogroup Navigation
  */
-class GTSAM_EXPORT Rot3GravityFactor: public NoiseModelFactor1<Rot3>, public GravityFactor {
+class Rot3GravityFactor: public NoiseModelFactor1<Rot3>, public GravityFactor {
 
   typedef NoiseModelFactor1<Rot3> Base;
 
@@ -155,7 +155,7 @@ public:
  * Version of GravityFactor for Pose3
  * @addtogroup Navigation
  */
-class GTSAM_EXPORT Pose3GravityFactor: public NoiseModelFactor1<Pose3>,
+class Pose3GravityFactor: public NoiseModelFactor1<Pose3>,
     public GravityFactor {
 
   typedef NoiseModelFactor1<Pose3> Base;
