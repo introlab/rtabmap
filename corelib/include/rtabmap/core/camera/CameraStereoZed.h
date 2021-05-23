@@ -78,6 +78,7 @@ public:
 	virtual bool isCalibrated() const;
 	virtual std::string getSerial() const;
 	virtual bool odomProvided() const;
+	virtual bool getPose(double stamp, Transform & pose, cv::Mat & covariance);
 
 	void publishInterIMU(bool enabled);
 

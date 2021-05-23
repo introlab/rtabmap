@@ -6177,7 +6177,8 @@ Camera * PreferencesDialog::createCamera(
 			camera = new CameraStereoZed(
 				device.isEmpty()?0:atoi(device.toStdString().c_str()),
 				_ui->comboBox_stereoZed_resolution->currentIndex(),
-				_ui->comboBox_stereoZed_quality->currentIndex(),
+				// depth should be enabled for zed vo to work
+				_ui->comboBox_stereoZed_quality->currentIndex()==0&&odomOnly?1:_ui->comboBox_stereoZed_quality->currentIndex(),
 				_ui->comboBox_stereoZed_sensingMode->currentIndex(),
 				_ui->spinBox_stereoZed_confidenceThr->value(),
 				_ui->comboBox_odom_sensor->currentIndex() == 2 || odomOnly,

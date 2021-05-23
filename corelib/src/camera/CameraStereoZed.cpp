@@ -541,6 +541,82 @@ bool CameraStereoZed::odomProvided() const
 #endif
 }
 
+bool CameraStereoZed::getPose(double stamp, Transform & pose, cv::Mat & covariance)
+{
+#ifdef RTABMAP_ZED
+
+	if (computeOdometry_ && zed_)
+	{
+		sl::Pose p;
+
+#if ZED_SDK_MAJOR_VERSION < 3
+		if(!zed_->grab())
+		{
+			return false;
+		}
+		sl::TRACKING_STATE tracking_state = zed_->getPosition(p);
+		if (tracking_state == sl::TRACKING_STATE_OK)
+#else
+		if(zed_->grab()!=sl::ERROR_CODE::SUCCESS)
+		{
+			return false;
+		}
+		 sl::POSITIONAL_TRACKING_STATE tracking_state = zed_->getPosition(p);
+		if (tracking_state == sl::POSITIONAL_TRACKING_STATE::OK)
+#endif
+		{
+			int trackingConfidence = p.pose_confidence;
+			// FIXME What does pose_confidence == -1 mean?
+			if (trackingConfidence>0)
+			{
+				pose = zedPoseToTransform(p);
+				if (!pose.isNull())
+				{
+					//transform from:
+					// x->right, y->down, z->forward
+					//to:
+					// x->forward, y->left, z->up
+					pose = this->getLocalTransform() * pose * this->getLocalTransform().inverse();
+					if(force3DoF_)
+					{
+						pose = pose.to3DoF();
+					}
+					if (lost_)
+					{
+						covariance = cv::Mat::eye(6, 6, CV_64FC1) * 9999.0f; // don't know transform with previous pose
+						lost_ = false;
+						UDEBUG("Init %s (var=%f)", pose.prettyPrint().c_str(), 9999.0f);
+					}
+					else
+					{
+						covariance = cv::Mat::eye(6, 6, CV_64FC1) * 1.0f / float(trackingConfidence);
+						UDEBUG("Run %s (var=%f)", pose.prettyPrint().c_str(), 1.0f / float(trackingConfidence));
+					}
+					return true;
+				}
+				else
+				{
+					covariance = cv::Mat::eye(6, 6, CV_64FC1) * 9999.0f; // lost
+					lost_ = true;
+					UWARN("ZED lost! (trackingConfidence=%d)", trackingConfidence);
+				}
+			}
+			else
+			{
+				covariance = cv::Mat::eye(6, 6, CV_64FC1) * 9999.0f; // lost
+				lost_ = true;
+				UWARN("ZED lost! (trackingConfidence=%d)", trackingConfidence);
+			}
+		}
+		else
+		{
+			UWARN("Tracking not ok: state=\"%s\"", toString(tracking_state).c_str());
+		}
+	}
+#endif
+	return false;
+}
+
 SensorData CameraStereoZed::captureImage(CameraInfo * info)
 {
 	SensorData data;
