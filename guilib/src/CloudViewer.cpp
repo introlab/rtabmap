@@ -141,9 +141,6 @@ CloudViewer::CloudViewer(QWidget *parent, CloudViewerInteractorStyle * style) :
 {
 	UDEBUG("");
 	this->setMinimumSize(200, 200);
-#if VTK_MAJOR_VERSION >= 8
-	vtkObject::GlobalWarningDisplayOff();
-#endif
 	
 	int argc = 0;
 	UASSERT(style!=0);
