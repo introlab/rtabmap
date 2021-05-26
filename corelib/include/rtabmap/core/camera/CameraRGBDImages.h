@@ -44,7 +44,7 @@ public:
 			const std::string & pathDepthImages,
 			float depthScaleFactor = 1.0f,
 			float imageRate=0.0f,
-			const Transform & localTransform = CameraModel::opticalRotation());
+			const Transform & localTransform = Transform::getIdentity());
 	virtual ~CameraRGBDImages();
 
 	virtual bool init(const std::string & calibrationFolder = ".", const std::string & cameraName = "");

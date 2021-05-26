@@ -47,7 +47,7 @@ public:
 	static bool available();
 
 public:
-	CameraStereoFlyCapture2( float imageRate=0.0f, const Transform & localTransform = CameraModel::opticalRotation());
+	CameraStereoFlyCapture2( float imageRate=0.0f, const Transform & localTransform = Transform::getIdentity());
 	virtual ~CameraStereoFlyCapture2();
 
 	virtual bool init(const std::string & calibrationFolder = ".", const std::string & cameraName = "");

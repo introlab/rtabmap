@@ -286,10 +286,10 @@ int main(int argc, char * argv[])
 				pathRightImages,
 				!raw,
 				0.0f,
-				baseToImu*models[0].localTransform()), parameters);
+				baseToImu*models[0].localTransform()*CameraModel::opticalRotation().inverse()), parameters);
 	printf("baseToImu=%s\n", baseToImu.prettyPrint().c_str());
-	std::cout<<"baseToCam0:\n" << baseToImu*models[0].localTransform() << std::endl;
-	printf("baseToCam0=%s\n", (baseToImu*models[0].localTransform()).prettyPrint().c_str());
+	std::cout<<"baseToCam0:\n" << baseToImu*models[0].localTransform()*CameraModel::opticalRotation().inverse() << std::endl;
+	printf("baseToCam0=%s\n", (baseToImu*models[0].localTransform()*CameraModel::opticalRotation().inverse()).prettyPrint().c_str());
 	printf("imuToCam0=%s\n", models[0].localTransform().prettyPrint().c_str());
 	printf("imuToCam1=%s\n", models[1].localTransform().prettyPrint().c_str());
 	((CameraStereoImages*)cameraThread.camera())->setTimestamps(true, "", false);

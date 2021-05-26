@@ -30,6 +30,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
 
 #include <rtabmap/core/Parameters.h>
+#include <rtabmap/core/Transform.h>
 #include <rtabmap/utilite/UThread.h>
 #include <rtabmap/utilite/UEventsSender.h>
 
@@ -58,6 +59,21 @@ class RTABMAP_EXP CameraThread :
 public:
 	// ownership transferred
 	CameraThread(Camera * camera, const ParametersMap & parameters = ParametersMap());
+	/**
+	 * @param camera the camera to take images from
+	 * @param odomSensor an odometry sensor to get a pose
+	 * @param extrinsics the static transform between odometry sensor's left lens frame to camera's left lens frame
+	 */
+	CameraThread(Camera * camera,
+			Camera * odomSensor,
+			const Transform & extrinsics,
+			double poseTimeOffset = 0.0,
+			float poseScaleFactor = 1.0f,
+			bool odomAsGt = false,
+			const ParametersMap & parameters = ParametersMap());
+	CameraThread(Camera * camera,
+				bool odomAsGt,
+				const ParametersMap & parameters = ParametersMap());
 	virtual ~CameraThread();
 
 	void setMirroringEnabled(bool enabled) {_mirroring = enabled;}
@@ -96,8 +112,10 @@ public:
 	//getters
 	bool isPaused() const {return !this->isRunning();}
 	bool isCapturing() const {return this->isRunning();}
+	bool odomProvided() const;
 
 	Camera * camera() {return _camera;} // return null if not set, valid until CameraThread is deleted
+	Camera * odomSensor() {return _odomSensor;} // return null if not set, valid until CameraThread is deleted
 
 private:
 	virtual void mainLoopBegin();
@@ -106,6 +124,11 @@ private:
 
 private:
 	Camera * _camera;
+	Camera * _odomSensor;
+	Transform _extrinsicsOdomToCamera;
+	bool _odomAsGt;
+	double _poseTimeOffset;
+	float _poseScaleFactor;
 	bool _mirroring;
 	bool _stereoExposureCompensation;
 	bool _colorOnly;

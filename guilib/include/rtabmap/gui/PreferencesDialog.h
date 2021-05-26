@@ -165,6 +165,7 @@ public:
 	int getOdomRegistrationApproach() const;
 	double getOdomF2MGravitySigma() const;
 	bool isOdomDisabled() const;
+	bool isOdomSensorAsGt() const;
 	bool isGroundTruthAligned() const;
 
 	bool isGraphsShown() const;
@@ -249,6 +250,7 @@ public:
 	PreferencesDialog::Src getSourceDriver() const;
 	QString getSourceDriverStr() const;
 	QString getSourceDevice() const;
+	PreferencesDialog::Src getOdomSourceDriver() const;
 
 	bool isSourceDatabaseStampsUsed() const;
 	bool isSourceDatabaseStereoToDepth() const;
@@ -277,6 +279,7 @@ public:
 	QString getIMUPath() const;
 	int getIMURate() const;
 	Camera * createCamera(bool useRawImages = false, bool useColor = true); // return camera should be deleted if not null
+	Camera * createOdomSensor(Transform & extrinsics, double & timeOffset, float & scaleFactor); // return camera should be deleted if not null
 
 	int getIgnoredDCComponents() const;
 
@@ -314,6 +317,7 @@ public Q_SLOTS:
 	void selectSourceDriver(Src src, int variant = 0);
 	void calibrate();
 	void calibrateSimple();
+	void calibrateOdomSensorExtrinsics();
 
 private Q_SLOTS:
 	void closeDialog ( QAbstractButton * button );
@@ -353,6 +357,7 @@ private Q_SLOTS:
 	void visualizeDistortionModel();
 	void selectSourceDatabase();
 	void selectCalibrationPath();
+	void selectOdomSensorCalibrationPath();
 	void selectSourceImagesStamps();
 	void selectSourceRGBDImagesPathRGB();
 	void selectSourceRGBDImagesPathDepth();
@@ -409,6 +414,7 @@ private:
 	void addParameters(const QGroupBox * box);
 	QList<QGroupBox*> getGroupBoxes();
 	void readSettingsBegin();
+	Camera * createCamera(Src driver, const QString & device, const QString & calibrationPath, bool useRawImages, bool useColor, bool odomOnly); // return camera should be deleted if not null
 
 protected:
 	PANEL_FLAGS _obsoletePanels;

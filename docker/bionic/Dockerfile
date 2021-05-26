@@ -4,29 +4,21 @@ FROM ros:melodic-perception
 
 # Install build dependencies
 RUN apt-get update && \
-    apt-get install -y ros-melodic-rtabmap-ros && \
+    apt-get install -y git software-properties-common ros-melodic-rtabmap-ros && \
     apt-get remove -y ros-melodic-rtabmap && \
     rm -rf /var/lib/apt/lists/
 
 WORKDIR /root/
 
 # GTSAM
-RUN git clone https://bitbucket.org/gtborg/gtsam.git
-RUN cd gtsam && \
-    git checkout 4.0.0-alpha2 && \
-    mkdir build && \
-    cd build && \
-    cmake -DMETIS_SHARED=ON -DGTSAM_BUILD_STATIC_LIBRARY=OFF -DGTSAM_USE_SYSTEM_EIGEN=ON -DGTSAM_BUILD_TESTS=OFF -DGTSAM_BUILD_EXAMPLES_ALWAYS=OFF -DCMAKE_BUILD_TYPE=Release .. && \
-    make -j$(nproc) && \
-    make install && \
-    cd && \
-    rm -r gtsam
+RUN add-apt-repository ppa:borglab/gtsam-release-4.0 -y
+RUN apt install libgtsam-dev libgtsam-unstable-dev -y
 
 # libpointmatcher 
 RUN git clone https://github.com/ethz-asl/libnabo.git
-#commit Apr 25 2018
+#commit February 13 2021
 RUN cd libnabo && \
-    git checkout 7e378f6765393462357b8b74d8dc8c5554542ae6 && \
+    git checkout 3cab7eed92bd5d4aed997347b8c8a2692a83a532 && \
     mkdir build && \
     cd build && \
     cmake -DCMAKE_BUILD_TYPE=Release .. && \
@@ -35,9 +27,9 @@ RUN cd libnabo && \
     cd && \
     rm -r libnabo
 RUN git clone https://github.com/ethz-asl/libpointmatcher.git
-#commit Jan 19 2018
+#commit April 6 2021
 RUN cd libpointmatcher && \
-    git checkout 00004bd41e44a1cf8de24ad87e4914760717cbcc && \
+    git checkout 76f99fce0fe69e6384102a0343fdf8d262626e1f && \
     mkdir build && \
     cd build && \
     cmake -DCMAKE_BUILD_TYPE=Release .. && \
@@ -105,7 +97,7 @@ RUN rm /bin/sh && ln -s /bin/bash /bin/sh
 RUN source /ros_entrypoint.sh && \
     cd rtabmap/build && \
     cmake -DWITH_ALICE_VISION=ON .. && \
-    make && \
+    make -j2 && \
     make install && \
     cd ../.. && \
     rm -rf rtabmap && \

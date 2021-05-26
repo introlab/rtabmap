@@ -205,8 +205,7 @@ int main(int argc, char * argv[])
 				pathRgbImages,
 				pathDepthImages,
 				depthFactor,
-				0.0f,
-				opticalRotation), parameters);
+				0.0f), parameters);
 	((CameraRGBDImages*)cameraThread.camera())->setTimestamps(true, "", false);
 	if(!pathGt.empty())
 	{

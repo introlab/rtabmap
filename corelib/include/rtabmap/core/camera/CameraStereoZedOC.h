@@ -57,7 +57,7 @@ public:
 			int deviceId,
 			int resolution = 3, // 0=HD2K, 1=HD1080, 2=HD720, 3=VGA
 			float imageRate=0.0f,
-			const Transform & localTransform = CameraModel::opticalRotation());
+			const Transform & localTransform = Transform::getIdentity());
 	virtual ~CameraStereoZedOC();
 
 	virtual bool init(const std::string & calibrationFolder = ".", const std::string & cameraName = "");

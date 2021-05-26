@@ -65,7 +65,7 @@ public:
 	CameraFreenect2(int deviceId= 0,
 					Type type = kTypeDepth2ColorSD,
 					float imageRate=0.0f,
-					const Transform & localTransform = CameraModel::opticalRotation(),
+					const Transform & localTransform = Transform::getIdentity(),
 					float minDepth = 0.3f,
 					float maxDepth = 12.0f,
 					bool bilateralFiltering = true,

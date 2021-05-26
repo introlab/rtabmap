@@ -45,7 +45,7 @@ namespace rtabmap
 
 Camera::Camera(float imageRate, const Transform & localTransform) :
 	_imageRate(imageRate),
-	_localTransform(localTransform),
+	_localTransform(localTransform*CameraModel::opticalRotation()),
 	_targetImageSize(0,0),
 	_frameRateTimer(new UTimer()),
 	_seq(0)

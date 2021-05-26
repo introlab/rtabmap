@@ -45,11 +45,11 @@ public:
 	CameraVideo(int usbDevice = 0,
 			bool rectifyImages = false,
 			float imageRate = 0,
-			const Transform & localTransform = CameraModel::opticalRotation());
+			const Transform & localTransform = Transform::getIdentity());
 	CameraVideo(const std::string & filePath,
 			bool rectifyImages = false,
 			float imageRate = 0,
-			const Transform & localTransform = CameraModel::opticalRotation());
+			const Transform & localTransform = Transform::getIdentity());
 	virtual ~CameraVideo();
 
 	virtual bool init(const std::string & calibrationFolder = ".", const std::string & cameraName = "");

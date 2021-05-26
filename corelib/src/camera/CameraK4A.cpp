@@ -65,7 +65,8 @@ CameraK4A::CameraK4A(
 			framerate_(2),
 			depth_resolution_(2),
 			ir_(false),
-			previousStamp_(0.0)
+			previousStamp_(0.0),
+			timestampOffset_(0.0)
 #endif
 {
 }
@@ -87,7 +88,8 @@ CameraK4A::CameraK4A(
 			framerate_(2),
 			depth_resolution_(2),
 			ir_(false),
-			previousStamp_(0.0)
+			previousStamp_(0.0),
+			timestampOffset_(0.0)
 #endif
 {
 }
@@ -120,6 +122,8 @@ void CameraK4A::close()
 		k4a_transformation_destroy((k4a_transformation_t)transformationHandle_);
 		transformationHandle_ = NULL;
 	}
+	previousStamp_ = 0.0;
+	timestampOffset_ = 0.0;
 #endif
 }
 
@@ -504,7 +508,14 @@ SensorData CameraK4A::captureImage(CameraInfo * info)
 
 			if (depth_image_ != NULL)
 			{
-				stamp = ((double)k4a_image_get_timestamp_usec(depth_image_)) / 1000000;
+				double stampDevice = ((double)k4a_image_get_device_timestamp_usec(depth_image_)) / 1000000.0;
+
+				if(timestampOffset_ == 0.0)
+				{
+					timestampOffset_ = stamp - stampDevice;
+				}
+				if(!playbackHandle_)
+					stamp = stampDevice + timestampOffset_;
 
 				if (ir_)
 				{
@@ -553,7 +564,6 @@ SensorData CameraK4A::captureImage(CameraInfo * info)
 			k4a_playback_seek_timestamp(playbackHandle_, stamp* 1000000+1, K4A_PLAYBACK_SEEK_BEGIN);
 			if(K4A_STREAM_RESULT_SUCCEEDED == k4a_playback_get_previous_imu_sample(playbackHandle_, &imu_sample_))
 			{
-				double stmp = ((double)imu_sample_.acc_timestamp_usec) / 1000000;
 				imu = IMU(cv::Vec3d(imu_sample_.gyro_sample.xyz.x, imu_sample_.gyro_sample.xyz.y, imu_sample_.gyro_sample.xyz.z),
 						cv::Mat::eye(3, 3, CV_64FC1),
 						cv::Vec3d(imu_sample_.acc_sample.xyz.x, imu_sample_.acc_sample.xyz.y, imu_sample_.acc_sample.xyz.z),

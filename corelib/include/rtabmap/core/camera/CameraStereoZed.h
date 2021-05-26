@@ -57,7 +57,7 @@ public:
 			int confidenceThr = 100,
 			bool computeOdometry = false,
 			float imageRate=0.0f,
-			const Transform & localTransform = CameraModel::opticalRotation(),
+			const Transform & localTransform = Transform::getIdentity(),
 			bool selfCalibration = true,
 			bool odomForce3DoF = false,
 			int texturenessConfidenceThr = 90); // introduced with ZED SDK 3
@@ -68,7 +68,7 @@ public:
 			int confidenceThr = 100,
 			bool computeOdometry = false,
 			float imageRate=0.0f,
-			const Transform & localTransform = CameraModel::opticalRotation(),
+			const Transform & localTransform = Transform::getIdentity(),
 			bool selfCalibration = true,
 			bool odomForce3DoF = false,
 			int texturenessConfidenceThr = 90); // introduced with ZED SDK 3
@@ -78,6 +78,7 @@ public:
 	virtual bool isCalibrated() const;
 	virtual std::string getSerial() const;
 	virtual bool odomProvided() const;
+	virtual bool getPose(double stamp, Transform & pose, cv::Mat & covariance);
 
 	void publishInterIMU(bool enabled);
 

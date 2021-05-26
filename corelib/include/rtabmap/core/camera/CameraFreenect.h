@@ -53,7 +53,7 @@ public:
 	CameraFreenect(int deviceId= 0,
 					Type type = kTypeColorDepth,
 					float imageRate=0.0f,
-					const Transform & localTransform = CameraModel::opticalRotation());
+					const Transform & localTransform = Transform::getIdentity());
 	virtual ~CameraFreenect();
 
 	virtual bool init(const std::string & calibrationFolder = ".", const std::string & cameraName = "");

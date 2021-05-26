@@ -63,13 +63,14 @@ public:
 	CameraRealSense2(
 		const std::string & deviceId = "",
 		float imageRate = 0,
-		const Transform & localTransform = CameraModel::opticalRotation());
+		const Transform & localTransform = Transform::getIdentity());
 	virtual ~CameraRealSense2();
 
 	virtual bool init(const std::string & calibrationFolder = ".", const std::string & cameraName = "");
 	virtual bool isCalibrated() const;
 	virtual std::string getSerial() const;
-	bool odomProvided() const;
+	virtual bool odomProvided() const;
+	virtual bool getPose(double stamp, Transform & pose, cv::Mat & covariance);
 
 	// parameters are set during initialization
 	// D400 series
@@ -79,11 +80,16 @@ public:
 	void setDepthResolution(int width, int height, int fps = 30);
 	void setGlobalTimeSync(bool enabled);
 	void publishInterIMU(bool enabled);
+	/**
+	 * Dual mode (D400+T265 or L500+T265)
+	 * @param enabled enable dual mode
+	 * @param extrinsics the extrinsics between T265 pose frame (middle of the camera) to D400/L500 main camera (without optical rotation).
+	 */
 	void setDualMode(bool enabled, const Transform & extrinsics);
 	void setJsonConfig(const std::string & json);
 	// T265 related parameters
 	void setImagesRectified(bool enabled);
-	void setOdomProvided(bool enabled);
+	void setOdomProvided(bool enabled, bool imageStreamsDisabled=false);
 
 #ifdef RTABMAP_REALSENSE2
 private:
@@ -112,7 +118,6 @@ private:
 	float depth_scale_meters_;
 	rs2_intrinsics depthIntrinsics_;
 	rs2_intrinsics rgbIntrinsics_;
-	rs2_extrinsics depthToRGBExtrinsics_;
 	cv::Mat depthBuffer_;
 	cv::Mat rgbBuffer_;
 	CameraModel model_;
@@ -132,6 +137,7 @@ private:
 	bool irDepth_;
 	bool rectifyImages_;
 	bool odometryProvided_;
+	bool odometryImagesDisabled_;
 	int cameraWidth_;
 	int cameraHeight_;
 	int cameraFps_;
