@@ -166,7 +166,6 @@ public:
 	double getOdomF2MGravitySigma() const;
 	bool isOdomDisabled() const;
 	bool isOdomSensorAsGt() const;
-	double getOdomSensorScaleFactor() const;
 	bool isGroundTruthAligned() const;
 
 	bool isGraphsShown() const;
@@ -280,7 +279,7 @@ public:
 	QString getIMUPath() const;
 	int getIMURate() const;
 	Camera * createCamera(bool useRawImages = false, bool useColor = true); // return camera should be deleted if not null
-	Camera * createOdomSensor(Transform & extrinsics, double & timeOffset); // return camera should be deleted if not null
+	Camera * createOdomSensor(Transform & extrinsics, double & timeOffset, float & scaleFactor); // return camera should be deleted if not null
 
 	int getIgnoredDCComponents() const;
 

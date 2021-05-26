@@ -54,7 +54,7 @@ public:
 			const std::string & deviceSerial = "",
 			int resolution = 1, // 0=720p, 1=800p, 2=400p
 			float imageRate=0.0f,
-			const Transform & localTransform = CameraModel::opticalRotation());
+			const Transform & localTransform = Transform::getIdentity());
 	virtual ~CameraDepthAI();
 
 	void setOutputDepth(bool enabled, int confidence = 200);

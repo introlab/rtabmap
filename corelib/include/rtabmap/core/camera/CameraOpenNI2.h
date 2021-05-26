@@ -54,7 +54,7 @@ public:
 	CameraOpenNI2(const std::string & deviceId = "",
 					Type type = kTypeColorDepth,
 					float imageRate = 0,
-					const Transform & localTransform = CameraModel::opticalRotation());
+					const Transform & localTransform = Transform::getIdentity());
 	virtual ~CameraOpenNI2();
 
 	virtual bool init(const std::string & calibrationFolder = ".", const std::string & cameraName = "");

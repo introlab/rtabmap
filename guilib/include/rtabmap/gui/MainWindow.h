@@ -305,7 +305,11 @@ protected:
 	const QString & newDatabasePathOutput() const { return _newDatabasePathOutput; }
 
 	virtual ParametersMap getCustomParameters() {return ParametersMap();}
-	virtual Camera* createCamera();
+	virtual Camera * createCamera(
+			Camera ** odomSensor,
+			Transform & odomSensorExtrinsics,
+			double odomSensorTimeOffset,
+			float odomSensorScaleFactor);
 
 private:
 	Ui_mainWindow * _ui;

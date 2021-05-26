@@ -63,7 +63,7 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-2147</y>
+            <y>0</y>
             <width>686</width>
             <height>3905</height>
            </rect>
@@ -2955,10 +2955,10 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                       <item row="3" column="0">
                        <widget class="QLineEdit" name="lineEdit_sourceLocalTransform">
                         <property name="toolTip">
-                         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Format (3 values): x y z&lt;br/&gt;Format (6 values): x y z roll pitch yaw&lt;br/&gt;Format (7 values): x y z qx qy qz qw&lt;br/&gt;Format (9 values, 3x3 rotation): r11 r12 r13 r21 r22 r23 r31 r32 r33&lt;br/&gt;Format (12 values, 3x4 transform): r11 r12 r13 tx r21 r22 r23 ty r31 r32 r33 tz&lt;/p&gt;&lt;p&gt;KITTI: /base_link to /gray_camera = 0 0 1 -1 0 0 0 -1 0&lt;br/&gt;KITTI: /base_link to /color_camera = 0 0 1 0 -1 0 0 -0.06 0 -1 0 0&lt;br/&gt;KITTI: /base_footprint to /gray_camera = 0 0 1 0 -1 0 0 0 0 -1 0 1.67&lt;br/&gt;KITTI: /base_footprint to /color_camera = 0 0 1 0 -1 0 0 -0.06 0 -1 0 1.67&lt;/p&gt;&lt;p&gt;EuRoC MAV: /base_link to /cam0 = T_BS*T_SC0 = -0.0257742 0.00375623 0.999661 0.00981073 -0.999557 -0.0149672 -0.0257155 0.064677 0.0148655 -0.999881 0.00414038 -0.0216401&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Format (3 values): x y z&lt;br/&gt;Format (6 values): x y z roll pitch yaw&lt;br/&gt;Format (7 values): x y z qx qy qz qw&lt;br/&gt;Format (9 values, 3x3 rotation): r11 r12 r13 r21 r22 r23 r31 r32 r33&lt;br/&gt;Format (12 values, 3x4 transform): r11 r12 r13 tx r21 r22 r23 ty r31 r32 r33 tz&lt;/p&gt;&lt;p&gt;KITTI: /base_link to /gray_camera = 0 0 0 0 0 0&lt;br/&gt;KITTI: /base_link to /color_camera = 0 -0.06 0 0 0 0&lt;br/&gt;KITTI: /base_footprint to /gray_camera = 0 0 1.67 0 0 0&lt;br/&gt;KITTI: /base_footprint to /color_camera = 0 -0.06 1.67 0 0 0&lt;/p&gt;&lt;p&gt;EuRoC MAV: /base_link to /cam0 = T_BS*T_SC0 = 0.999661 0.0257743 -0.00375625 0.00981073 -0.0257154 0.999557 0.0149672 0.064677 0.00414035 -0.0148655 0.999881 -0.0216401&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                         </property>
                         <property name="text">
-                         <string>0 0 1 -1 0 0 0 -1 0</string>
+                         <string>0 0 0 0 0 0</string>
                         </property>
                        </widget>
                       </item>
@@ -6948,7 +6948,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                        <item row="3" column="1">
                         <widget class="QLabel" name="label_634">
                          <property name="text">
-                          <string>Extrinsics between odometry sensor's left lens and camera's left lens. Default extrinsics match the 3D printed bracket &lt;a href=&quot; https://www.intelrealsense.com/depth-and-tracking-combined-get-started/&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;here&lt;/span&gt;&lt;/a&gt; for T265+D400 setup. (&lt;a href=&quot;https://github.com/IntelRealSense/realsense-ros/blob/occupancy-mapping/realsense2_camera/meshes/mount_t265_d435.stl&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;stl&lt;/span&gt;&lt;/a&gt;). Not used if camera and odometry sensors are the same sensor.</string>
+                          <string>Extrinsics between pose frame and camera's left lens (without optical rotation). Default extrinsics match the 3D printed bracket &lt;a href=&quot; https://www.intelrealsense.com/depth-and-tracking-combined-get-started/&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;here&lt;/span&gt;&lt;/a&gt; for T265+D400 setup. (&lt;a href=&quot;https://github.com/IntelRealSense/realsense-ros/blob/occupancy-mapping/realsense2_camera/meshes/mount_t265_d435.stl&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;stl&lt;/span&gt;&lt;/a&gt;). Not used if camera and odometry sensors are the same sensor.</string>
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>
@@ -7068,7 +7068,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                        <item row="3" column="0">
                         <widget class="QLineEdit" name="lineEdit_odom_sensor_extrinsics">
                          <property name="toolTip">
-                          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Format (3 values): x y z&lt;br/&gt;Format (6 values): x y z roll pitch yaw&lt;br/&gt;Format (7 values): x y z qx qy qz qw&lt;br/&gt;Format (9 values, 3x3 rotation): r11 r12 r13 r21 r22 r23 r31 r32 r33&lt;br/&gt;Format (12 values, 3x4 transform): r11 r12 r13 tx r21 r22 r23 ty r31 r32 r33 tz&lt;/p&gt;&lt;p&gt;EuRoC: /base_link to /imu = 0 0 1 0 -1 0 1 0 0&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Format (3 values): x y z&lt;br/&gt;Format (6 values): x y z roll pitch yaw&lt;br/&gt;Format (7 values): x y z qx qy qz qw&lt;br/&gt;Format (9 values, 3x3 rotation): r11 r12 r13 r21 r22 r23 r31 r32 r33&lt;br/&gt;Format (12 values, 3x4 transform): r11 r12 r13 tx r21 r22 r23 ty r31 r32 r33 tz&lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                          </property>
                          <property name="text">
                           <string>0.009 0.021 0.027 0.000 -0.018 0.005</string>

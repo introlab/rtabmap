@@ -72,7 +72,6 @@ public:
 			bool odomAsGt = false,
 			const ParametersMap & parameters = ParametersMap());
 	CameraThread(Camera * camera,
-				float poseScaleFactor,
 				bool odomAsGt,
 				const ParametersMap & parameters = ParametersMap());
 	virtual ~CameraThread();

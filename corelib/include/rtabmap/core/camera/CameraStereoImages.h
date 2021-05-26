@@ -49,12 +49,12 @@ public:
 			const std::string & pathRightImages,
 			bool rectifyImages = false,
 			float imageRate=0.0f,
-			const Transform & localTransform = CameraModel::opticalRotation());
+			const Transform & localTransform = Transform::getIdentity());
 	CameraStereoImages(
 			const std::string & pathLeftRightImages,
 			bool rectifyImages = false,
 			float imageRate=0.0f,
-			const Transform & localTransform = CameraModel::opticalRotation());
+			const Transform & localTransform = Transform::getIdentity());
 	virtual ~CameraStereoImages();
 
 	virtual bool init(const std::string & calibrationFolder = ".", const std::string & cameraName = "");

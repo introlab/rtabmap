@@ -64,7 +64,7 @@ public:
 		int presetDepth = 0, // 0=best quality, 1=largest image, 2=highest framerate
 		bool computeOdometry = false,
 		float imageRate = 0,
-		const Transform & localTransform = CameraModel::opticalRotation());
+		const Transform & localTransform = Transform::getIdentity());
 	virtual ~CameraRealSense();
 
 	void setDepthScaledToRGBSize(bool enabled);

@@ -88,7 +88,7 @@ CameraThread::CameraThread(
 		const ParametersMap & parameters) :
 			_camera(camera),
 			_odomSensor(odomSensor),
-			_extrinsicsOdomToCamera(extrinsics),
+			_extrinsicsOdomToCamera(extrinsics * CameraModel::opticalRotation()),
 			_odomAsGt(odomAsGt),
 			_poseTimeOffset(poseTimeOffset),
 			_poseScaleFactor(poseScaleFactor),
@@ -123,14 +123,13 @@ CameraThread::CameraThread(
 // ownership transferred
 CameraThread::CameraThread(
 		Camera * camera,
-		float poseScaleFactor,
 		bool odomAsGt,
 		const ParametersMap & parameters) :
 			_camera(camera),
 			_odomSensor(0),
 			_odomAsGt(odomAsGt),
 			_poseTimeOffset(0.0),
-			_poseScaleFactor(poseScaleFactor),
+			_poseScaleFactor(1.0f),
 			_mirroring(false),
 			_stereoExposureCompensation(false),
 			_colorOnly(false),
@@ -153,7 +152,6 @@ CameraThread::CameraThread(
 			_imuBaseFrameConversion(false)
 {
 	UASSERT(_camera != 0);
-	UDEBUG("_poseScaleFactor       =%f", _poseScaleFactor);
 	UDEBUG("_odomAsGt              =%s", _odomAsGt?"true":"false");
 }
 

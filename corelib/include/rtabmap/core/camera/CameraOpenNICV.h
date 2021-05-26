@@ -45,7 +45,7 @@ public:
 public:
 	CameraOpenNICV(bool asus = false,
 					float imageRate = 0,
-					const Transform & localTransform = CameraModel::opticalRotation());
+					const Transform & localTransform = Transform::getIdentity());
 	virtual ~CameraOpenNICV();
 
 	virtual bool init(const std::string & calibrationFolder = ".", const std::string & cameraName = "");

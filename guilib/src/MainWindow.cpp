@@ -5353,9 +5353,27 @@ void MainWindow::editDatabase()
 	}
 }
 
-Camera * MainWindow::createCamera()
+Camera * MainWindow::createCamera(
+		Camera ** odomSensor,
+		Transform & odomSensorExtrinsics,
+		double odomSensorTimeOffset,
+		float odomSensorScaleFactor)
 {
-	return _preferencesDialog->createCamera();
+	Camera * camera = _preferencesDialog->createCamera();
+
+	if(camera &&
+	   _preferencesDialog->getOdomSourceDriver() != PreferencesDialog::kSrcUndef &&
+	   _preferencesDialog->getOdomSourceDriver() != _preferencesDialog->getSourceDriver() &&
+		!(_preferencesDialog->getOdomSourceDriver() == PreferencesDialog::kSrcStereoRealSense2 &&
+		  _preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcRealSense2))
+	{
+		UINFO("Create Odom Sensor %d (camera = %d)",
+				_preferencesDialog->getOdomSourceDriver(),
+				_preferencesDialog->getSourceDriver());
+		*odomSensor = _preferencesDialog->createOdomSensor(odomSensorExtrinsics, odomSensorTimeOffset, odomSensorScaleFactor);
+	}
+
+	return camera;
 }
 
 void MainWindow::startDetection()
@@ -5457,33 +5475,24 @@ void MainWindow::startDetection()
 	}
 
 
-	Camera * camera = this->createCamera();
+	double poseTimeOffset = 0.0;
+	float scaleFactor = 0.0f;
+	Transform extrinsics;
+	Camera * odomSensor = 0;
+	Camera * camera = this->createCamera(&odomSensor, extrinsics, poseTimeOffset, scaleFactor);
 	if(!camera)
 	{
 		Q_EMIT stateChanged(kInitialized);
 		return;
 	}
-	double poseTimeOffset = 0.0;
-	Transform extrinsics;
-	Camera * odomSensor = 0;
-	if(_preferencesDialog->getOdomSourceDriver() != PreferencesDialog::kSrcUndef &&
-	   _preferencesDialog->getOdomSourceDriver() != _preferencesDialog->getSourceDriver() &&
-	    !(_preferencesDialog->getOdomSourceDriver() == PreferencesDialog::kSrcStereoRealSense2 &&
-		  _preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcRealSense2))
-	{
-		UINFO("Create Odom Sensor %d (camera = %d)",
-				_preferencesDialog->getOdomSourceDriver(),
-				_preferencesDialog->getSourceDriver());
-		odomSensor = _preferencesDialog->createOdomSensor(extrinsics, poseTimeOffset);
-	}
 
 	if(odomSensor)
 	{
-		_camera = new CameraThread(camera, odomSensor, extrinsics, poseTimeOffset, _preferencesDialog->getOdomSensorScaleFactor(), _preferencesDialog->isOdomSensorAsGt(), parameters);
+		_camera = new CameraThread(camera, odomSensor, extrinsics, poseTimeOffset, scaleFactor, _preferencesDialog->isOdomSensorAsGt(), parameters);
 	}
 	else
 	{
-		_camera = new CameraThread(camera, _preferencesDialog->getOdomSensorScaleFactor(), _preferencesDialog->isOdomSensorAsGt(), parameters);
+		_camera = new CameraThread(camera, _preferencesDialog->isOdomSensorAsGt(), parameters);
 	}
 	_camera->setMirroringEnabled(_preferencesDialog->isSourceMirroring());
 	_camera->setColorOnly(_preferencesDialog->isSourceRGBDColorOnly());
@@ -5584,7 +5593,7 @@ void MainWindow::startDetection()
 						odomStrategy != Odometry::kTypeOpenVINS)
 					{
 						QMessageBox::warning(this, tr("Source IMU Path"),
-								tr("IMU path is set but odometry chosen doesn't support IMU, ignoring IMU..."), QMessageBox::Ok);
+								tr("IMU path is set but odometry chosen doesn't support asynchronous IMU, ignoring IMU..."), QMessageBox::Ok);
 					}
 					else
 					{

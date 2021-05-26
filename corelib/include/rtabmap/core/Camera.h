@@ -73,9 +73,10 @@ protected:
 	/**
 	 * Constructor
 	 *
-	 * @param imageRate : image/second , 0 for fast as the camera can
+	 * @param imageRate the frame rate (Hz), 0 for fast as the camera can
+	 * @param localTransform the transform from base frame to camera frame (without optical rotation)
 	 */
-	Camera(float imageRate = 0, const Transform & localTransform = CameraModel::opticalRotation());
+	Camera(float imageRate = 0, const Transform & localTransform = Transform::getIdentity());
 
 	/**
 	 * returned rgb and depth images should be already rectified if calibration was loaded

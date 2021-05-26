@@ -45,7 +45,7 @@ public:
 	static bool available();
 
 public:
-	CameraStereoDC1394( float imageRate=0.0f, const Transform & localTransform = CameraModel::opticalRotation());
+	CameraStereoDC1394( float imageRate=0.0f, const Transform & localTransform = Transform::getIdentity());
 	virtual ~CameraStereoDC1394();
 
 	virtual bool init(const std::string & calibrationFolder = ".", const std::string & cameraName = "");

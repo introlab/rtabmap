@@ -1885,7 +1885,7 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->lineEdit_calibrationFile->clear();
 		_ui->comboBox_sourceType->setCurrentIndex(kSrcRGBD);
 		_ui->lineEdit_sourceDevice->setText("");
-		_ui->lineEdit_sourceLocalTransform->setText("0 0 1 -1 0 0 0 -1 0");
+		_ui->lineEdit_sourceLocalTransform->setText("0 0 0 0 0 0");
 
 		_ui->source_comboBox_image_type->setCurrentIndex(kSrcUsbDevice-kSrcUsbDevice);
 		_ui->source_images_spinBox_startPos->setValue(0);
@@ -2033,7 +2033,7 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->spinBox_cameraImages_max_imu_rate->setValue(0);
 
 		_ui->comboBox_odom_sensor->setCurrentIndex(0);
-		_ui->lineEdit_odom_sensor_extrinsics->setText("0.006977 -0.042236 0.004599 -0.012436 -0.002432 -0.004827");
+		_ui->lineEdit_odom_sensor_extrinsics->setText("-0.000622602 0.0303752 0.031389 -0.00272485 0.00749254 0.0");
 		_ui->lineEdit_odom_sensor_path_calibration->setText("");
 		_ui->lineEdit_odomSourceDevice->setText("");
 		_ui->doubleSpinBox_odom_sensor_time_offset->setValue(0.0);
@@ -2358,6 +2358,12 @@ void PreferencesDialog::readCameraSettings(const QString & filePath)
 	_ui->lineEdit_sourceDevice->setText(settings.value("device",_ui->lineEdit_sourceDevice->text()).toString());
 	_ui->lineEdit_sourceLocalTransform->setText(settings.value("localTransform",_ui->lineEdit_sourceLocalTransform->text()).toString());
 	_ui->spinBox_source_imageDecimation->setValue(settings.value("imageDecimation",_ui->spinBox_source_imageDecimation->value()).toInt());
+	// Backward compatibility
+	if(_ui->lineEdit_sourceLocalTransform->text().compare("0 0 1 -1 0 0 0 -1 0") == 0)
+	{
+		UWARN("From 0.20.11, the local transform of the camera should not contain optical rotation (read=\"%s\"). Resetting to default Identity for convenience.", _ui->lineEdit_sourceLocalTransform->text().toStdString().c_str());
+		_ui->lineEdit_sourceLocalTransform->setText("0 0 0 0 0 0");
+	}
 
 	settings.beginGroup("rgbd");
 	_ui->comboBox_cameraRGBD->setCurrentIndex(settings.value("driver", _ui->comboBox_cameraRGBD->currentIndex()).toInt());
@@ -5264,10 +5270,6 @@ bool PreferencesDialog::isOdomSensorAsGt() const
 {
 	return _ui->checkBox_odom_sensor_use_as_gt->isChecked();
 }
-double PreferencesDialog::getOdomSensorScaleFactor() const
-{
-	return _ui->doubleSpinBox_odom_sensor_scale_factor->value();
-}
 int PreferencesDialog::getOdomRegistrationApproach() const
 {
 	return _ui->odom_registration->currentIndex();
@@ -6329,7 +6331,7 @@ Camera * PreferencesDialog::createCamera(
 	return camera;
 }
 
-Camera * PreferencesDialog::createOdomSensor(Transform & extrinsics, double & timeOffset)
+Camera * PreferencesDialog::createOdomSensor(Transform & extrinsics, double & timeOffset, float & scaleFactor)
 {
 	Src driver = getOdomSourceDriver();
 	if(driver != kSrcUndef)
@@ -6347,6 +6349,7 @@ Camera * PreferencesDialog::createOdomSensor(Transform & extrinsics, double & ti
 
 		extrinsics = Transform::fromString(_ui->lineEdit_odom_sensor_extrinsics->text().replace("PI_2", QString::number(3.141592/2.0)).toStdString());
 		timeOffset = _ui->doubleSpinBox_odom_sensor_time_offset->value()/1000.0;
+		scaleFactor = (float)_ui->doubleSpinBox_odom_sensor_scale_factor->value();
 
 		return createCamera(driver, _ui->lineEdit_odomSourceDevice->text(), _ui->lineEdit_odom_sensor_path_calibration->text(), false, true, true);
 	}
@@ -6505,7 +6508,7 @@ void PreferencesDialog::testOdometry()
 		   this->getOdomStrategy() != Odometry::kTypeOpenVINS)
 		{
 			QMessageBox::warning(this, tr("Source IMU Path"),
-					tr("IMU path is set but odometry chosen doesn't support IMU, ignoring IMU..."), QMessageBox::Ok);
+					tr("IMU path is set but odometry chosen doesn't support asynchronous IMU, ignoring IMU..."), QMessageBox::Ok);
 		}
 		else
 		{
@@ -7121,7 +7124,7 @@ void PreferencesDialog::calibrateOdomSensorExtrinsics()
 					UINFO("Odom sensor local transform (pose to left cam): %s", odomSensorModel.localTransform().prettyPrint().c_str());
 					UINFO("Extrinsics (odom left cam to camera left cam): %s", stereoModel.stereoTransform().prettyPrint().c_str());
 
-					Transform t = odomSensorModel.localTransform() * stereoModel.stereoTransform();
+					Transform t = odomSensorModel.localTransform() * stereoModel.stereoTransform() * CameraModel::opticalRotation().inverse();
 					UINFO("Odom sensor frame to camera frame: %s", t.prettyPrint().c_str());
 
 					float x,y,z,roll,pitch,yaw;

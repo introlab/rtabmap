@@ -1186,7 +1186,7 @@ void CameraRealSense2::setDualMode(bool enabled, const Transform & extrinsics)
 #ifdef RTABMAP_REALSENSE2
 	UASSERT(!enabled || !extrinsics.isNull());
 	dualMode_ = enabled;
-	dualExtrinsics_ =  extrinsics;
+	dualExtrinsics_ =  extrinsics*CameraModel::opticalRotation();
 	if(dualMode_)
 	{
 		odometryProvided_ = true;

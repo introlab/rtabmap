@@ -371,8 +371,7 @@ int main(int argc, char * argv[])
 					pathLeftImages,
 					pathRightImages,
 					false, // assume that images are already rectified
-					0.0f,
-					opticalRotation);
+					0.0f);
 	}
 	CameraThread cameraThread(camera, parameters);
 	((CameraImages*)cameraThread.camera())->setTimestamps(false, pathTimes, false);
