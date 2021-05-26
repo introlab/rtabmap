@@ -817,7 +817,7 @@ bool OctoMap::update(const std::map<int, Transform> & poses)
 
 								updateMinMax(point);
 
-								RtabmapColorOcTreeNode * n = octree_->updateNode(key, false);
+								RtabmapColorOcTreeNode * n = octree_->updateNode(key, false, true);
 								if(n && n->getOccupancyType() == RtabmapColorOcTreeNode::kTypeUnknown)
 								{
 									n->setOccupancyType(RtabmapColorOcTreeNode::kTypeEmpty);
@@ -829,7 +829,7 @@ bool OctoMap::update(const std::map<int, Transform> & poses)
 							}
 						}
 					}
-					//octree_->updateInnerOccupancy();
+					octree_->updateInnerOccupancy();
 				}
 
 				// compress map
