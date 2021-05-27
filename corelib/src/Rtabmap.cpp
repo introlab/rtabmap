@@ -3215,6 +3215,8 @@ bool Rtabmap::process(
 			statistics_.addStatistic(Statistics::kLoopLast_id(), _memory->getLastGlobalLoopClosureId());
 			statistics_.addStatistic(Statistics::kLoopOptimization_max_error(), maxLinearError);
 			statistics_.addStatistic(Statistics::kLoopOptimization_max_error_ratio(), maxLinearErrorRatio);
+			statistics_.addStatistic(Statistics::kLoopOptimization_max_ang_error(), maxAngularError*180.0f/M_PI);
+			statistics_.addStatistic(Statistics::kLoopOptimization_max_ang_error_ratio(), maxAngularErrorRatio);
 			statistics_.addStatistic(Statistics::kLoopOptimization_error(), optimizationError);
 			statistics_.addStatistic(Statistics::kLoopOptimization_iterations(), optimizationIterations);
 			statistics_.addStatistic(Statistics::kLoopLandmark_detected(), -landmarkDetected);
