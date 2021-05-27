@@ -5356,8 +5356,8 @@ void MainWindow::editDatabase()
 Camera * MainWindow::createCamera(
 		Camera ** odomSensor,
 		Transform & odomSensorExtrinsics,
-		double odomSensorTimeOffset,
-		float odomSensorScaleFactor)
+		double & odomSensorTimeOffset,
+		float & odomSensorScaleFactor)
 {
 	Camera * camera = _preferencesDialog->createCamera();
 
