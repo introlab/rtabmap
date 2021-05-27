@@ -34,8 +34,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/util3d_mapping.h>
 #include <rtabmap/core/util2d.h>
 #include <pcl/common/transforms.h>
-#include <map>
-#include <unordered_set>
+
 
 namespace rtabmap {
 
@@ -275,7 +274,9 @@ OctoMap::OctoMap(const ParametersMap & parameters) :
 		fullUpdate_(Parameters::defaultGridGlobalFullUpdate()),
 		updateError_(Parameters::defaultGridGlobalUpdateError()),
 		rangeMax_(Parameters::defaultGridRangeMax()),
-		rayTracing_(Parameters::defaultGridRayTracing())
+		rayTracing_(Parameters::defaultGridRayTracing()),
+        applyFloodFill_(Parameters::defaultGridApplyFloodFill()),
+        floodFillDepth_(Parameters::defaultGridFloodFillDepth())
 {
 	float cellSize = Parameters::defaultGridCellSize();
 	Parameters::parse(parameters, Parameters::kGridCellSize(), cellSize);
@@ -309,18 +310,23 @@ OctoMap::OctoMap(const ParametersMap & parameters) :
 	octree_->setClampingThresMin(clampingMin);
 	octree_->setClampingThresMax(clampingMax);
 	Parameters::parse(parameters, Parameters::kGridGlobalFullUpdate(), fullUpdate_);
+   
 	Parameters::parse(parameters, Parameters::kGridGlobalUpdateError(), updateError_);
 	Parameters::parse(parameters, Parameters::kGridRangeMax(), rangeMax_);
 	Parameters::parse(parameters, Parameters::kGridRayTracing(), rayTracing_);
+    Parameters::parse(parameters, Parameters::kGridApplyFloodFill(), applyFloodFill_);
+    Parameters::parse(parameters, Parameters::kGridFloodFillDepth(), floodFillDepth_);
 }
 
-OctoMap::OctoMap(float cellSize, float occupancyThr, bool fullUpdate, float updateError) :
+OctoMap::OctoMap(float cellSize, float occupancyThr, bool fullUpdate, float updateError, bool  applyFloodFill, unsigned int floodFillDepth) :
 		octree_(new RtabmapColorOcTree(cellSize)),
 		hasColor_(false),
 		fullUpdate_(fullUpdate),
 		updateError_(updateError),
 		rangeMax_(0.0f),
-		rayTracing_(true)
+		rayTracing_(true),
+        applyFloodFill_(applyFloodFill),
+        floodFillDepth_(floodFillDepth)
 {
 	minValues_[0] = minValues_[1] = minValues_[2] = 0.0;
 	maxValues_[0] = maxValues_[1] = maxValues_[2] = 0.0;
@@ -380,6 +386,122 @@ void OctoMap::addToCache(int nodeId,
 	uInsert(cache_, std::make_pair(nodeId==0?-1:nodeId, std::make_pair(std::make_pair(ground, obstacles), empty)));
 	uInsert(cacheViewPoints_, std::make_pair(nodeId==0?-1:nodeId, viewPoint));
 }
+
+bool OctoMap::isValidEmpty(RtabmapColorOcTree* octree_, unsigned int treeDepth,octomap::point3d startPosition)
+{
+    auto nodePtr = octree_->search(startPosition.x(), startPosition.y(), startPosition.z(), treeDepth);
+    if(nodePtr != NULL)
+    {
+            if(!octree_->isNodeOccupied(*nodePtr))
+            {
+                return true;
+            }
+    }
+
+    return false;
+}
+
+octomap::point3d OctoMap::findCloseEmpty(RtabmapColorOcTree* octree_, unsigned int treeDepth,octomap::point3d startPosition)
+{
+
+    //try current position
+    if(isValidEmpty(octree_,treeDepth,startPosition))
+    {
+        return startPosition;
+    }
+
+    //x pos
+    if(isValidEmpty(octree_,treeDepth,octomap::point3d(startPosition.x()+octree_->getNodeSize(treeDepth), startPosition.y(), startPosition.z())))
+    {
+        return octomap::point3d(startPosition.x()+octree_->getNodeSize(treeDepth), startPosition.y(), startPosition.z());
+    }
+     
+    //x neg 
+    if(isValidEmpty(octree_,treeDepth,octomap::point3d(startPosition.x()-octree_->getNodeSize(treeDepth), startPosition.y(), startPosition.z())))
+    {
+        return octomap::point3d(startPosition.x()-octree_->getNodeSize(treeDepth), startPosition.y(), startPosition.z());
+    }
+
+    //y pos
+    if(isValidEmpty(octree_,treeDepth,octomap::point3d(startPosition.x(), startPosition.y()+octree_->getNodeSize(treeDepth), startPosition.z())))
+    {
+        return octomap::point3d(startPosition.x(), startPosition.y()+octree_->getNodeSize(treeDepth), startPosition.z());
+    }
+
+
+    //y neg
+    if(isValidEmpty(octree_,treeDepth,octomap::point3d(startPosition.x()-octree_->getNodeSize(treeDepth), startPosition.y(), startPosition.z())))
+    {
+        return octomap::point3d(startPosition.x(), startPosition.y()-octree_->getNodeSize(treeDepth), startPosition.z());
+    }
+
+    //z pos
+    if(isValidEmpty(octree_,treeDepth,octomap::point3d(startPosition.x(), startPosition.y(), startPosition.z()+octree_->getNodeSize(treeDepth))))
+    {
+        return octomap::point3d(startPosition.x(), startPosition.y(), startPosition.z()+octree_->getNodeSize(treeDepth));
+    }
+
+    //z neg
+    if(isValidEmpty(octree_,treeDepth,octomap::point3d(startPosition.x(), startPosition.y(), startPosition.z()-octree_->getNodeSize(treeDepth))))
+    {
+        return octomap::point3d(startPosition.x(), startPosition.y(), startPosition.z()-octree_->getNodeSize(treeDepth));
+    }
+
+    //no valid position
+    return startPosition;
+}
+
+bool OctoMap::isNodeVisited(std::unordered_set<octomap::OcTreeKey,octomap::OcTreeKey::KeyHash> const & EmptyNodes,octomap::OcTreeKey const key)
+{
+    for(auto it = EmptyNodes.find(key);it != EmptyNodes.end();it++)
+    { 
+        if(*it == key)
+        {
+            return true;
+        }
+                
+    }        
+    return false;
+}
+
+void OctoMap::floodFill(RtabmapColorOcTree* octree_, unsigned int treeDepth,octomap::point3d startPosition, std::unordered_set<octomap::OcTreeKey, octomap::OcTreeKey::KeyHash> & EmptyNodes,std::queue<octomap::point3d>& positionToExplore)
+{
+    
+    auto key = octree_->coordToKey(startPosition,treeDepth);
+    if(!isNodeVisited(EmptyNodes,key))
+    {
+        auto nodePtr = octree_->search(startPosition.x(), startPosition.y(), startPosition.z(), treeDepth);
+        if(isValidEmpty(octree_,treeDepth,startPosition))
+        {
+            EmptyNodes.insert(key);
+            positionToExplore.push(octomap::point3d(startPosition.x()+octree_->getNodeSize(treeDepth), startPosition.y(), startPosition.z()));
+            positionToExplore.push(octomap::point3d(startPosition.x()-octree_->getNodeSize(treeDepth), startPosition.y(), startPosition.z()));
+            positionToExplore.push(octomap::point3d(startPosition.x(), startPosition.y()+octree_->getNodeSize(treeDepth), startPosition.z()));
+            positionToExplore.push(octomap::point3d(startPosition.x(), startPosition.y()-octree_->getNodeSize(treeDepth), startPosition.z()));
+            positionToExplore.push(octomap::point3d(startPosition.x(), startPosition.y(), startPosition.z()+octree_->getNodeSize(treeDepth)));
+            positionToExplore.push(octomap::point3d(startPosition.x(), startPosition.y(), startPosition.z()-octree_->getNodeSize(treeDepth)));
+        }         
+    }
+}
+
+
+std::unordered_set<octomap::OcTreeKey, octomap::OcTreeKey::KeyHash> OctoMap::findEmptyNode(RtabmapColorOcTree* octree_, unsigned int treeDepth, octomap::point3d startPosition)
+{
+    std::unordered_set<octomap::OcTreeKey, octomap::OcTreeKey::KeyHash> exploreNode;
+    std::queue<octomap::point3d> positionToExplore;
+    
+    startPosition = findCloseEmpty(octree_,treeDepth, startPosition);
+    
+    floodFill(octree_, treeDepth, startPosition, exploreNode, positionToExplore);
+    while(!positionToExplore.empty())
+    {    
+        floodFill(octree_, treeDepth, positionToExplore.front(), exploreNode, positionToExplore);
+        positionToExplore.pop();
+    }
+
+    return exploreNode;
+}
+
 
 bool OctoMap::update(const std::map<int, Transform> & poses)
 {
@@ -851,6 +973,32 @@ bool OctoMap::update(const std::map<int, Transform> & poses)
 			}
 		}
 	}
+    
+    if(applyFloodFill_)
+    { 
+        auto key = octree_->coordToKey(0, 0, 0, floodFillDepth_);
+        auto pos = octree_->keyToCoord(key);
+       
+        std::unordered_set<octomap::OcTreeKey, octomap::OcTreeKey::KeyHash> EmptyNodes = findEmptyNode(octree_,floodFillDepth_, pos);
+        std::vector<octomap::OcTreeKey> nodeToDelete;
+        
+        for (RtabmapColorOcTree::iterator it = octree_->begin_leafs(floodFillDepth_); it != octree_->end_leafs(); ++it)
+	    {
+            if(!octree_->isNodeOccupied(*it))
+            {
+                if(!isNodeVisited(EmptyNodes,it.getKey()))
+                {   
+                    nodeToDelete.push_back(it.getKey());            
+                }
+            }
+        }
+
+        for(unsigned int y=0; y < nodeToDelete.size(); y++)
+        {
+            octree_->deleteNode(nodeToDelete[y],floodFillDepth_);             
+        }
+        
+    }
 
 	if(!fullUpdate_)
 	{
@@ -858,7 +1006,7 @@ bool OctoMap::update(const std::map<int, Transform> & poses)
 		cacheClouds_.clear();
 		cacheViewPoints_.clear();
 	}
-	return !orderedPoses.empty() || graphOptimized || graphChanged;
+	return !orderedPoses.empty() || graphOptimized || graphChanged || applyFloodFill_;
 }
 
 void OctoMap::updateMinMax(const octomap::point3d & point)
@@ -890,51 +1038,6 @@ void OctoMap::updateMinMax(const octomap::point3d & point)
 }
 
 
-bool isNodeVisited(std::unordered_multiset<octomap::OcTreeKey,octomap::OcTreeKey::KeyHash> const & EmptyNodes,octomap::OcTreeKey const key)
-{
-    for(auto it = EmptyNodes.find(key);it != EmptyNodes.end();it++)
-    { 
-        if(*it == key)
-        {
-            return true;
-        }
-                
-    }        
-    return false;
-}
-
-void floodFill(RtabmapColorOcTree* octree_, unsigned int treeDepth,octomap::point3d startPosition, std::unordered_multiset<octomap::OcTreeKey, octomap::OcTreeKey::KeyHash> & EmptyNodes)
-{
-    auto key = octree_->coordToKey(startPosition,treeDepth);
-    if(!isNodeVisited(EmptyNodes,key))
-    {
-        auto nodePtr = octree_->search(startPosition.x(), startPosition.y(), startPosition.z(), treeDepth);
-        if(nodePtr)
-        {
-            if(!octree_->isNodeOccupied(*nodePtr))
-            {
-                EmptyNodes.insert({key,key});
-                                
-                floodFill(octree_,treeDepth,octomap::point3d(startPosition.x()+octree_->getNodeSize(treeDepth), startPosition.y(), startPosition.z()),EmptyNodes);
-                floodFill(octree_,treeDepth,octomap::point3d(startPosition.x()-octree_->getNodeSize(treeDepth), startPosition.y(), startPosition.z()),EmptyNodes);
-                floodFill(octree_,treeDepth,octomap::point3d(startPosition.x(), startPosition.y()+octree_->getNodeSize(treeDepth), startPosition.z()),EmptyNodes);
-                floodFill(octree_,treeDepth,octomap::point3d(startPosition.x(), startPosition.y()-octree_->getNodeSize(treeDepth), startPosition.z()),EmptyNodes);
-                floodFill(octree_,treeDepth,octomap::point3d(startPosition.x(), startPosition.y(), startPosition.z()+octree_->getNodeSize(treeDepth)),EmptyNodes);
-                floodFill(octree_,treeDepth,octomap::point3d(startPosition.x(), startPosition.y(), startPosition.z()-octree_->getNodeSize(treeDepth)),EmptyNodes);
-            }
-        }
-    }
-}
-
-
-std::unordered_multiset<octomap::OcTreeKey, octomap::OcTreeKey::KeyHash> findEmptyNode(RtabmapColorOcTree* octree_, unsigned int treeDepth, octomap::point3d startPosition)
-{
-    std::unordered_multiset<octomap::OcTreeKey, octomap::OcTreeKey::KeyHash> EmptyNodes;
-    floodFill(octree_,treeDepth,startPosition,EmptyNodes);
-    return EmptyNodes;
-}
-
-
 pcl::PointCloud<pcl::PointXYZRGB>::Ptr OctoMap::createCloud(
 		unsigned int treeDepth,
 		std::vector<int> * obstacleIndices,
@@ -942,8 +1045,7 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr OctoMap::createCloud(
 		std::vector<int> * groundIndices,
 		bool originalRefPoints,
 		std::vector<int> * frontierIndices,
-		std::vector<double> * cloudProb, 
-        bool applyFloodFill) const
+		std::vector<double> * cloudProb) const
 {
 	UASSERT(treeDepth <= octree_->getTreeDepth());
 	pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
@@ -987,15 +1089,6 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr OctoMap::createCloud(
 	int gi=0;
 	float halfCellSize = octree_->getNodeSize(treeDepth)/2.0f;
 
-    std::unordered_multiset<octomap::OcTreeKey, octomap::OcTreeKey::KeyHash> EmptyNodes;
-
-    if(applyFloodFill)
-    {
-        auto key = octree_->coordToKey(0, 0, 1, treeDepth);
-        auto pos = octree_->keyToCoord(key);
-
-        EmptyNodes = findEmptyNode(octree_,treeDepth, pos);
-    }
 
 
 	for (RtabmapColorOcTree::iterator it = octree_->begin(treeDepth); it != octree_->end(); ++it)
@@ -1057,31 +1150,26 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr OctoMap::createCloud(
 			{
 				(*cloudProb)[oi] = it->getOccupancy();
 			}
-
-            if(!applyFloodFill || isNodeVisited(EmptyNodes,it.getKey()))
+            if(frontierIndices !=0 &&
+                (!octree_->search( pt.x()+octree_->getNodeSize(treeDepth), pt.y(), pt.z(), treeDepth) || !octree_->search( pt.x()-octree_->getNodeSize(treeDepth), pt.y(), pt.z(), treeDepth) ||
+                !octree_->search( pt.x(), pt.y()+octree_->getNodeSize(treeDepth), pt.z(), treeDepth) || !octree_->search( pt.x(), pt.y()-octree_->getNodeSize(treeDepth), pt.z(), treeDepth) ||
+                !octree_->search( pt.x(), pt.y(), pt.z()+octree_->getNodeSize(treeDepth), treeDepth) || !octree_->search( pt.x(), pt.y(), pt.z()-octree_->getNodeSize(treeDepth), treeDepth) )) //ajouter 1 au key ?
             {
-            
-                if(frontierIndices !=0 &&
-                    (!octree_->search( pt.x()+octree_->getNodeSize(treeDepth), pt.y(), pt.z(), treeDepth) || !octree_->search( pt.x()-octree_->getNodeSize(treeDepth), pt.y(), pt.z(), treeDepth) ||
-                    !octree_->search( pt.x(), pt.y()+octree_->getNodeSize(treeDepth), pt.z(), treeDepth) || !octree_->search( pt.x(), pt.y()-octree_->getNodeSize(treeDepth), pt.z(), treeDepth) ||
-                    !octree_->search( pt.x(), pt.y(), pt.z()+octree_->getNodeSize(treeDepth), treeDepth) || !octree_->search( pt.x(), pt.y(), pt.z()-octree_->getNodeSize(treeDepth), treeDepth) )) //ajouter 1 au key ?
-                {
-                    //unknown neighbor FACE cell
-                    frontierIndices->at(fi++) = oi;
-                }
+                //unknown neighbor FACE cell
+                frontierIndices->at(fi++) = oi;
+            }
             
 			
-                (*cloud)[oi]  = pcl::PointXYZRGB(it->getColor().r, it->getColor().g, it->getColor().b);
-                (*cloud)[oi].x = pt.x()-halfCellSize;
-                (*cloud)[oi].y = pt.y()-halfCellSize;
-                (*cloud)[oi].z = pt.z();
+            (*cloud)[oi]  = pcl::PointXYZRGB(it->getColor().r, it->getColor().g, it->getColor().b);
+            (*cloud)[oi].x = pt.x()-halfCellSize;
+            (*cloud)[oi].y = pt.y()-halfCellSize;
+            (*cloud)[oi].z = pt.z();
           
-                if(emptyIndices)
-                {
-                    emptyIndices->at(ei++) = oi;
-                }
-
+            if(emptyIndices)
+            {
+                emptyIndices->at(ei++) = oi;
             }
+            
 			++oi;
 		}	
 	}

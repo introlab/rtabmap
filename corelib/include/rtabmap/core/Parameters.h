@@ -751,6 +751,8 @@ class RTABMAP_EXP Parameters
     RTABMAP_PARAM(Grid, NoiseFilteringMinNeighbors, int,     5,      "Noise filtering minimum neighbors.");
     RTABMAP_PARAM(Grid, Scan2dUnknownSpaceFilled,   bool,    false,  uFormat("Unknown space filled. Only used with 2D laser scans. Use %s to set maximum range if laser scan max range is to set.", kGridRangeMax().c_str()));
     RTABMAP_PARAM(Grid, RayTracing,                 bool,   false,   uFormat("Ray tracing is done for each occupied cell, filling unknown space between the sensor and occupied cells. If %s=true, RTAB-Map should be built with OctoMap support, otherwise 3D ray tracing is ignored.", kGrid3D().c_str()));
+    RTABMAP_PARAM(Grid, ApplyFloodFill,            bool,   false,   "define if we apply flood fill filter");
+    RTABMAP_PARAM(Grid, FloodFillDepth,            unsigned int,   16,   "define the depth of the flood fill filter");
 
     RTABMAP_PARAM(GridGlobal, FullUpdate,           bool,   true,    "When the graph is changed, the whole map will be reconstructed instead of moving individually each cells of the map. Also, data added to cache won't be released after updating the map. This process is longer but more robust to drift that would erase some parts of the map when it should not.");
     RTABMAP_PARAM(GridGlobal, UpdateError,          float,  0.01,    "Graph changed detection error (m). Update map only if poses in new optimized graph have moved more than this value.");
