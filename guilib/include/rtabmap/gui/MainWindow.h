@@ -308,8 +308,8 @@ protected:
 	virtual Camera * createCamera(
 			Camera ** odomSensor,
 			Transform & odomSensorExtrinsics,
-			double odomSensorTimeOffset,
-			float odomSensorScaleFactor);
+			double & odomSensorTimeOffset,
+			float & odomSensorScaleFactor);
 
 private:
 	Ui_mainWindow * _ui;

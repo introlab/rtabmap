@@ -749,10 +749,10 @@ cv::Mat create2DMap(const std::map<int, Transform> & poses,
 		if(unknownSpaceFilled && scanMaxRange > 0)
 		{
 			j=0;
-			float a = CV_PI/256.0f; // angle increment
+			float angleIncrement = CV_PI/90.0f; // angle increment
 			for(std::map<int, std::pair<cv::Mat, cv::Mat> >::iterator iter = localScans.begin(); iter!=localScans.end(); ++iter)
 			{
-				if(iter->second.first.cols > 1)
+				if(iter->second.first.cols > 2)
 				{
 					if(scanMaxRange > cellSize)
 					{
@@ -765,36 +765,39 @@ cv::Mat create2DMap(const std::map<int, Transform> & poses,
 						}
 						cv::Point2i start(((pose.x()+viewpoint.x)-xMin)/cellSize, ((pose.y()+viewpoint.y)-yMin)/cellSize);
 
-						//UWARN("maxLength = %f", maxLength);
-						//rotate counterclockwise from the first point until we pass the last point
-						// Note: assuming that first laser scan is negative y
-						cv::Mat rotation = (cv::Mat_<float>(2,2) << cos(a), -sin(a),
-																	 sin(a), cos(a));
-						cv::Mat origin(2,1,CV_32F), endFirst(2,1,CV_32F), endLast(2,1,CV_32F);
+						// As we don't know the angle_min or angle_max, ray trace between
+						// the first and last obstacle (counterclockwise).
+						cv::Mat rotation = (cv::Mat_<float>(2,2) << cos(angleIncrement), -sin(angleIncrement),
+																	 sin(angleIncrement), cos(angleIncrement));
+						cv::Mat origin(2,1,CV_32F), obsFirst(2,1,CV_32F), obsLast(2,1,CV_32F);
 						origin.at<float>(0) = pose.x()+viewpoint.x;
 						origin.at<float>(1) = pose.y()+viewpoint.y;
-						endFirst.at<float>(0) = iter->second.first.ptr<float>(0,0)[0];
-						endFirst.at<float>(1) = iter->second.first.ptr<float>(0,0)[1];
-						endLast.at<float>(0) = iter->second.first.ptr<float>(0,iter->second.first.cols-1)[0];
-						endLast.at<float>(1) = iter->second.first.ptr<float>(0,iter->second.first.cols-1)[1];
-						//UWARN("origin = %f %f", origin.at<float>(0), origin.at<float>(1));
-						//UWARN("endFirst = %f %f", endFirst.at<float>(0), endFirst.at<float>(1));
-						//UWARN("endLast = %f %f", endLast.at<float>(0), endLast.at<float>(1));
-						cv::Mat tmp = (endFirst - origin);
+						obsFirst.at<float>(0) = iter->second.first.ptr<float>(0,0)[0];
+						obsFirst.at<float>(1) = iter->second.first.ptr<float>(0,0)[1];
+						obsLast.at<float>(0) = iter->second.first.ptr<float>(0,iter->second.first.cols-2)[0];
+						obsLast.at<float>(1) = iter->second.first.ptr<float>(0,iter->second.first.cols-2)[1];
+						cv::Mat firstVector(3,1,CV_32F), lastVector(3,1,CV_32F);
+						firstVector.at<float>(0) = obsFirst.at<float>(0) - origin.at<float>(0);
+						firstVector.at<float>(1) = obsFirst.at<float>(1) - origin.at<float>(1);
+						firstVector.at<float>(2) = 0.0f;
+						firstVector = firstVector/cv::norm(firstVector);
+						lastVector.at<float>(0) = obsLast.at<float>(0) - origin.at<float>(0);
+						lastVector.at<float>(1) = obsLast.at<float>(1) - origin.at<float>(1);
+						lastVector.at<float>(2) = 0.0f;
+						lastVector = lastVector / cv::norm(lastVector);
+						float maxAngle = acos(firstVector.dot(lastVector));
+						if(firstVector.cross(lastVector).at<float>(2) < 0)
+						{
+							maxAngle = 2*M_PI-maxAngle;
+						}
+						//UWARN("angle=%f v1=[%f %f 0];v2=[%f %f 0];",
+						//		maxAngle,
+						//		firstVector.at<float>(0), firstVector.at<float>(1),
+						//		lastVector.at<float>(0), lastVector.at<float>(1));
+						float angle = angleIncrement;
+						cv::Mat tmp = (obsFirst - origin);
 						cv::Mat endRotated = rotation*((tmp/cv::norm(tmp))*scanMaxRange) + origin;
-						cv::Mat endLastVector(3,1,CV_32F), endRotatedVector(3,1,CV_32F);
-						endLastVector.at<float>(0) = endLast.at<float>(0) - origin.at<float>(0);
-						endLastVector.at<float>(1) = endLast.at<float>(1) - origin.at<float>(1);
-						endLastVector.at<float>(2) = 0.0f;
-						endRotatedVector.at<float>(0) = endRotated.at<float>(0) - origin.at<float>(0);
-						endRotatedVector.at<float>(1) = endRotated.at<float>(1) - origin.at<float>(1);
-						endRotatedVector.at<float>(2) = 0.0f;
-						//UWARN("endRotated = %f %f", endRotated.at<float>(0), endRotated.at<float>(1));
-						float normEndRotatedVector = cv::norm(endRotatedVector);
-						endLastVector = endLastVector / cv::norm(endLastVector);
-						float angle = (endRotatedVector/normEndRotatedVector).dot(endLastVector);
-						angle = angle<-1.0f?-1.0f:angle>1.0f?1.0f:angle;
-						while(acos(angle) > M_PI_4 || endRotatedVector.cross(endLastVector).at<float>(2) > 0.0f)
+						while(angle < maxAngle-angleIncrement)
 						{
 							cv::Point2i end((endRotated.at<float>(0)-xMin)/cellSize, (endRotated.at<float>(1)-yMin)/cellSize);
 							//end must be inside the grid
@@ -805,16 +808,8 @@ cv::Mat create2DMap(const std::map<int, Transform> & poses,
 							rayTrace(start, end, map, true); // trace free space
 							// next point
 							endRotated = rotation*(endRotated - origin) + origin;
-							endRotatedVector.at<float>(0) = endRotated.at<float>(0) - origin.at<float>(0);
-							endRotatedVector.at<float>(1) = endRotated.at<float>(1) - origin.at<float>(1);
-							angle = (endRotatedVector/normEndRotatedVector).dot(endLastVector);
-							angle = angle<-1.0f?-1.0f:angle>1.0f?1.0f:angle;
 
-							//UWARN("endRotated = %f %f (%f %f %f)",
-							//		endRotated.at<float>(0), endRotated.at<float>(1),
-							//		acos(angle),
-							//		angle,
-							//		endRotatedVector.cross(endLastVector).at<float>(2));
+							angle+=angleIncrement;
 						}
 					}
 				}
