@@ -1239,6 +1239,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->doubleSpinBox_grid_clampingMin->setObjectName(Parameters::kGridGlobalProbClampingMin().c_str());
 	_ui->doubleSpinBox_grid_clampingMax->setObjectName(Parameters::kGridGlobalProbClampingMax().c_str());
 	_ui->checkBox_grid_erode->setObjectName(Parameters::kGridGlobalEroded().c_str());
+	_ui->spinBox_grid_floodfilldepth->setObjectName(Parameters::kGridGlobalFloodFillDepth().c_str());
 
 	//Odometry
 	_ui->odom_strategy->setObjectName(Parameters::kOdomStrategy().c_str());

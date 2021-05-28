@@ -171,8 +171,7 @@ class RtabmapColorOcTree : public octomap::OccupancyOcTreeBase <RtabmapColorOcTr
 
 class RTABMAP_EXP OctoMap {
 public:
-	OctoMap(const ParametersMap & parameters);
-	OctoMap(float cellSize = 0.1f, float occupancyThr = 0.5f, bool fullUpdate = false, float updateError=0.01f,bool applyFloodFill=false,unsigned int floodFillDepth=16);
+	OctoMap(const ParametersMap & parameters = ParametersMap());
 
 	const std::map<int, Transform> & addedNodes() const {return addedNodes_;}
 	void addToCache(int nodeId,
@@ -236,8 +235,7 @@ private:
 	float updateError_;
 	float rangeMax_;
 	bool rayTracing_;
-    bool applyFloodFill_;
-    unsigned int floodFillDepth_;
+    unsigned int emptyFloodFillDepth_;
 	double minValues_[3];
 	double maxValues_[3];
 };

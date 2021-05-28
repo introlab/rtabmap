@@ -275,8 +275,7 @@ OctoMap::OctoMap(const ParametersMap & parameters) :
 		updateError_(Parameters::defaultGridGlobalUpdateError()),
 		rangeMax_(Parameters::defaultGridRangeMax()),
 		rayTracing_(Parameters::defaultGridRayTracing()),
-        applyFloodFill_(Parameters::defaultGridApplyFloodFill()),
-        floodFillDepth_(Parameters::defaultGridFloodFillDepth())
+		emptyFloodFillDepth_(Parameters::defaultGridGlobalFloodFillDepth())
 {
 	float cellSize = Parameters::defaultGridCellSize();
 	Parameters::parse(parameters, Parameters::kGridCellSize(), cellSize);
@@ -314,25 +313,8 @@ OctoMap::OctoMap(const ParametersMap & parameters) :
 	Parameters::parse(parameters, Parameters::kGridGlobalUpdateError(), updateError_);
 	Parameters::parse(parameters, Parameters::kGridRangeMax(), rangeMax_);
 	Parameters::parse(parameters, Parameters::kGridRayTracing(), rayTracing_);
-    Parameters::parse(parameters, Parameters::kGridApplyFloodFill(), applyFloodFill_);
-    Parameters::parse(parameters, Parameters::kGridFloodFillDepth(), floodFillDepth_);
-}
-
-OctoMap::OctoMap(float cellSize, float occupancyThr, bool fullUpdate, float updateError, bool  applyFloodFill, unsigned int floodFillDepth) :
-		octree_(new RtabmapColorOcTree(cellSize)),
-		hasColor_(false),
-		fullUpdate_(fullUpdate),
-		updateError_(updateError),
-		rangeMax_(0.0f),
-		rayTracing_(true),
-        applyFloodFill_(applyFloodFill),
-        floodFillDepth_(floodFillDepth)
-{
-	minValues_[0] = minValues_[1] = minValues_[2] = 0.0;
-	maxValues_[0] = maxValues_[1] = maxValues_[2] = 0.0;
-
-	octree_->setOccupancyThres(occupancyThr);
-	UASSERT(cellSize>0.0f);
+	Parameters::parse(parameters, Parameters::kGridGlobalFloodFillDepth(), emptyFloodFillDepth_);
+	UASSERT(emptyFloodFillDepth_>=0 && emptyFloodFillDepth_<=16);
 }
 
 OctoMap::~OctoMap()
@@ -470,7 +452,6 @@ void OctoMap::floodFill(RtabmapColorOcTree* octree_, unsigned int treeDepth,octo
     auto key = octree_->coordToKey(startPosition,treeDepth);
     if(!isNodeVisited(EmptyNodes,key))
     {
-        auto nodePtr = octree_->search(startPosition.x(), startPosition.y(), startPosition.z(), treeDepth);
         if(isValidEmpty(octree_,treeDepth,startPosition))
         {
             EmptyNodes.insert(key);
@@ -973,16 +954,18 @@ bool OctoMap::update(const std::map<int, Transform> & poses)
 			}
 		}
 	}
-    
-    if(applyFloodFill_)
+
+    if(emptyFloodFillDepth_>0)
     { 
-        auto key = octree_->coordToKey(0, 0, 0, floodFillDepth_);
+    	UTimer t;
+
+        auto key = octree_->coordToKey(0, 0, 0, emptyFloodFillDepth_);
         auto pos = octree_->keyToCoord(key);
        
-        std::unordered_set<octomap::OcTreeKey, octomap::OcTreeKey::KeyHash> EmptyNodes = findEmptyNode(octree_,floodFillDepth_, pos);
+        std::unordered_set<octomap::OcTreeKey, octomap::OcTreeKey::KeyHash> EmptyNodes = findEmptyNode(octree_,emptyFloodFillDepth_, pos);
         std::vector<octomap::OcTreeKey> nodeToDelete;
         
-        for (RtabmapColorOcTree::iterator it = octree_->begin_leafs(floodFillDepth_); it != octree_->end_leafs(); ++it)
+        for (RtabmapColorOcTree::iterator it = octree_->begin_leafs(emptyFloodFillDepth_); it != octree_->end_leafs(); ++it)
 	    {
             if(!octree_->isNodeOccupied(*it))
             {
@@ -993,11 +976,12 @@ bool OctoMap::update(const std::map<int, Transform> & poses)
             }
         }
 
+
         for(unsigned int y=0; y < nodeToDelete.size(); y++)
         {
-            octree_->deleteNode(nodeToDelete[y],floodFillDepth_);             
+            octree_->deleteNode(nodeToDelete[y],emptyFloodFillDepth_);
         }
-        
+        UDEBUG("Flood Fill: deleted %d empty cells (%fs)", (int)nodeToDelete.size(), t.ticks());
     }
 
 	if(!fullUpdate_)
@@ -1006,7 +990,7 @@ bool OctoMap::update(const std::map<int, Transform> & poses)
 		cacheClouds_.clear();
 		cacheViewPoints_.clear();
 	}
-	return !orderedPoses.empty() || graphOptimized || graphChanged || applyFloodFill_;
+	return !orderedPoses.empty() || graphOptimized || graphChanged || emptyFloodFillDepth_>0;
 }
 
 void OctoMap::updateMinMax(const octomap::point3d & point)
@@ -1088,8 +1072,6 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr OctoMap::createCloud(
 	int fi=0;
 	int gi=0;
 	float halfCellSize = octree_->getNodeSize(treeDepth)/2.0f;
-
-
 
 	for (RtabmapColorOcTree::iterator it = octree_->begin(treeDepth); it != octree_->end(); ++it)
 	{

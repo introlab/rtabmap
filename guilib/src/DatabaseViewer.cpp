@@ -4907,7 +4907,9 @@ void DatabaseViewer::update(int value,
 								localMapsInfo.begin()->second.first > 0.0f)
 							{
 								//create local octomap
-								octomap = new OctoMap(localMapsInfo.begin()->second.first);
+								ParametersMap params;
+								params.insert(ParametersPair(Parameters::kGridCellSize(), uNumber2Str(localMapsInfo.begin()->second.first)));
+								octomap = new OctoMap(params);
 								octomap->addToCache(data.id(), localMaps.begin()->second.first.first, localMaps.begin()->second.first.second, localMaps.begin()->second.second, localMapsInfo.begin()->second.second);
 								octomap->update(poses);
 							}
