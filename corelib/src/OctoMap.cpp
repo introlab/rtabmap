@@ -315,6 +315,12 @@ OctoMap::OctoMap(const ParametersMap & parameters) :
 	Parameters::parse(parameters, Parameters::kGridRayTracing(), rayTracing_);
 	Parameters::parse(parameters, Parameters::kGridGlobalFloodFillDepth(), emptyFloodFillDepth_);
 	UASSERT(emptyFloodFillDepth_>=0 && emptyFloodFillDepth_<=16);
+
+	UDEBUG("fullUpdate_         =%s", fullUpdate_?"true":"false");
+	UDEBUG("updateError_        =%f", updateError_);
+	UDEBUG("rangeMax_           =%f", rangeMax_);
+	UDEBUG("rayTracing_         =%s", rayTracing_?"true":"false");
+	UDEBUG("emptyFloodFillDepth_=%d", emptyFloodFillDepth_);
 }
 
 OctoMap::~OctoMap()

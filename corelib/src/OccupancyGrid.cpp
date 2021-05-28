@@ -532,6 +532,7 @@ void OccupancyGrid::createLocalMap(
 					ParametersMap params;
 					params.insert(ParametersPair(Parameters::kGridCellSize(), uNumber2Str(cellSize_)));
 					params.insert(ParametersPair(Parameters::kGridRangeMax(), uNumber2Str(cloudMaxDepth_)));
+					params.insert(ParametersPair(Parameters::kGridRayTracing(), uNumber2Str(rayTracing_)));
 					OctoMap octomap(params);
 					octomap.addToCache(1, groundCloud, obstaclesCloud, cv::Mat(), cv::Point3f(viewPointInOut.x, viewPointInOut.y, viewPointInOut.z));
 					std::map<int, Transform> poses;
