@@ -40,7 +40,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/Parameters.h>
 
 #include <map>
+#include <unordered_set>
 #include <string>
+#include <queue>
 
 namespace rtabmap {
 
@@ -169,8 +171,7 @@ class RtabmapColorOcTree : public octomap::OccupancyOcTreeBase <RtabmapColorOcTr
 
 class RTABMAP_EXP OctoMap {
 public:
-	OctoMap(const ParametersMap & parameters);
-	OctoMap(float cellSize = 0.1f, float occupancyThr = 0.5f, bool fullUpdate = false, float updateError=0.01f);
+	OctoMap(const ParametersMap & parameters = ParametersMap());
 
 	const std::map<int, Transform> & addedNodes() const {return addedNodes_;}
 	void addToCache(int nodeId,
@@ -193,8 +194,7 @@ public:
 			std::vector<int> * groundIndices = 0,
 			bool originalRefPoints = true,
 			std::vector<int> * frontierIndices = 0,
-			std::vector<double> * cloudProb = 0,
-            bool applyFloodFill = false ) const;
+			std::vector<double> * cloudProb = 0) const;
 
 	cv::Mat createProjectionMap(
 			float & xMin,
@@ -215,6 +215,12 @@ public:
 	void setRayTracing(bool enabled) {rayTracing_ = enabled;}
 	bool hasColor() const {return hasColor_;}
 
+    static std::unordered_set<octomap::OcTreeKey, octomap::OcTreeKey::KeyHash> findEmptyNode(RtabmapColorOcTree* octree_, unsigned int treeDepth, octomap::point3d startPosition);
+    static void floodFill(RtabmapColorOcTree* octree_, unsigned int treeDepth,octomap::point3d startPosition, std::unordered_set<octomap::OcTreeKey, octomap::OcTreeKey::KeyHash> & EmptyNodes,std::queue<octomap::point3d>& positionToExplore);
+    static bool isNodeVisited(std::unordered_set<octomap::OcTreeKey,octomap::OcTreeKey::KeyHash> const & EmptyNodes,octomap::OcTreeKey const key);
+    static octomap::point3d findCloseEmpty(RtabmapColorOcTree* octree_, unsigned int treeDepth,octomap::point3d startPosition);
+    static bool isValidEmpty(RtabmapColorOcTree* octree_, unsigned int treeDepth,octomap::point3d startPosition);
+
 private:
 	void updateMinMax(const octomap::point3d & point);
 
@@ -229,6 +235,7 @@ private:
 	float updateError_;
 	float rangeMax_;
 	bool rayTracing_;
+    unsigned int emptyFloodFillDepth_;
 	double minValues_[3];
 	double maxValues_[3];
 };
