@@ -152,7 +152,7 @@ CameraModel::CameraModel(
 	K_.at<double>(1,2) = cy;
 }
 
-void CameraModel::initRectificationMap()
+bool CameraModel::initRectificationMap()
 {
 	UASSERT(imageSize_.height > 0 && imageSize_.width > 0);
 	UASSERT(D_.rows == 1 && (D_.cols == 4 || D_.cols == 5 || D_.cols == 6 || D_.cols == 8));
@@ -182,6 +182,7 @@ void CameraModel::initRectificationMap()
 		// RadialTangential
 		cv::initUndistortRectifyMap(K_, D_, R_, P_, imageSize_, CV_32FC1, mapX_, mapY_);
 	}
+	return isRectificationMapInitialized();
 }
 
 void CameraModel::setImageSize(const cv::Size & size)

@@ -81,7 +81,7 @@ public:
 
 	virtual ~CameraModel() {}
 
-	void initRectificationMap();
+	bool initRectificationMap();
 	bool isRectificationMapInitialized() const {return !mapX_.empty() && !mapY_.empty();}
 
 	bool isValidForProjection() const {return fx()>0.0 && fy()>0.0 && cx()>0.0 && cy()>0.0;}

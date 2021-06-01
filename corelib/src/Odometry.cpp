@@ -338,8 +338,10 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 				}
 				else
 				{
-					UERROR("Odometry approach chosen cannot process raw images (not rectified images) and we cannot rectify them. "
-							"Make sure images are rectified, and set %s parameter back to true.",
+					UERROR("Odometry approach chosen cannot process raw images (not rectified images) "
+							"and we cannot rectify them as the rectification map failed to initialize (valid calibration?). "
+							"Make sure images are rectified and set %s parameter back to true, or make sure "
+							"calibration is valid for rectification.",
 							Parameters::kRtabmapImagesAlreadyRectified().c_str());
 				}
 			}
@@ -352,10 +354,74 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 						false);
 			}
 		}
+		else if(!data.cameraModels().empty())
+		{
+			bool valid = true;
+			if(data.cameraModels().size() != models_.size())
+			{
+				models_.clear();
+				valid = false;
+			}
+			else
+			{
+				for(size_t i=0; i<data.cameraModels().size() && valid; ++i)
+				{
+					valid = models_[i].isRectificationMapInitialized() &&
+							models_[i].imageSize() == data.cameraModels()[i].imageSize();
+				}
+			}
+
+			if(!valid)
+			{
+				models_ = data.cameraModels();
+				valid = true;
+				for(size_t i=0; i<models_.size() && valid; ++i)
+				{
+					valid = models_[i].initRectificationMap();
+				}
+				if(valid)
+				{
+					UWARN("%s parameter is set to false but the selected odometry approach cannot "
+							"process raw images. We will rectify them for convenience (only "
+							"rgb is rectified, we assume depth image is already rectified!).",
+							Parameters::kRtabmapImagesAlreadyRectified().c_str());
+				}
+				else
+				{
+					UERROR("Odometry approach chosen cannot process raw images (not rectified images) "
+							"and we cannot rectify them as the rectification map failed to initialize (valid calibration?). "
+							"Make sure images are rectified and set %s parameter back to true, or "
+							"make sure calibration is valid for rectification",
+							Parameters::kRtabmapImagesAlreadyRectified().c_str());
+					models_.clear();
+				}
+			}
+			if(valid)
+			{
+				// Note that only RGB image is rectified, the depth image is assumed to be already registered to rectified RGB camera.
+				if(models_.size()==1)
+				{
+					data.setRGBDImage(models_[0].rectifyImage(data.imageRaw()), data.depthRaw(), models_, false);
+				}
+				else
+				{
+					UASSERT(int((data.imageRaw().cols/data.cameraModels().size())*data.cameraModels().size()) == data.imageRaw().cols);
+					int subImageWidth = data.imageRaw().cols/data.cameraModels().size();
+					cv::Mat rectifiedImages = data.imageRaw().clone();
+					for(size_t i=0; i<models_.size() && valid; ++i)
+					{
+						cv::Mat rectifiedImage = models_[i].rectifyImage(cv::Mat(data.imageRaw(), cv::Rect(subImageWidth*i, 0, subImageWidth, data.imageRaw().rows)));
+						rectifiedImage.copyTo(cv::Mat(rectifiedImages, cv::Rect(subImageWidth*i, 0, subImageWidth, data.imageRaw().rows)));
+					}
+					data.setRGBDImage(rectifiedImages, data.depthRaw(), models_, false);
+				}
+			}
+		}
 		else
 		{
 			UERROR("Odometry approach chosen cannot process raw images (not rectified images). Make sure images "
-					"are rectified, and set %s parameter back to true.",
+					"are rectified, and set %s parameter back to true, or make sure that calibration is valid "
+					"for rectification so we can rectifiy them for convenience",
 					Parameters::kRtabmapImagesAlreadyRectified().c_str());
 		}
 	}
