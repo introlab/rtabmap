@@ -30,6 +30,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UThreadC.h>
 #include <rtabmap/utilite/UConversion.h>
 #include <rtabmap/utilite/UEventsManager.h>
+#include <rtabmap/utilite/UStl.h>
 #include <opencv2/imgproc/types_c.h>
 
 #ifdef RTABMAP_REALSENSE2
@@ -506,12 +507,13 @@ bool CameraRealSense2::init(const std::string & calibrationFolder, const std::st
 		{
 			auto sn = dev.get_info(RS2_CAMERA_INFO_SERIAL_NUMBER);
 			auto pid_str = dev.get_info(RS2_CAMERA_INFO_PRODUCT_ID);
+			auto name = dev.get_info(RS2_CAMERA_INFO_NAME);
 
 			uint16_t pid;
 			std::stringstream ss;
 			ss << std::hex << pid_str;
 			ss >> pid;
-			UINFO("Device with serial number %s was found with product ID=%d.", sn, (int)pid);
+			UINFO("Device \"%s\" with serial number %s was found with product ID=%d.", name, sn, (int)pid);
 			if(dualMode_ && pid == 0x0B37)
 			{
 				// Dual setup: device[0] = D400, device[1] = T265
@@ -519,7 +521,7 @@ bool CameraRealSense2::init(const std::string & calibrationFolder, const std::st
 				dev_.resize(2);
 				dev_[1] = dev;
 			}
-			else if (!found && (deviceId_.empty() || deviceId_ == sn))
+			else if (!found && (deviceId_.empty() || deviceId_ == sn || uStrContains(name, uToUpperCase(deviceId_))))
 			{
 				if(dev_.empty())
 				{
@@ -601,12 +603,11 @@ bool CameraRealSense2::init(const std::string & calibrationFolder, const std::st
 		}
 	});
 
+	auto sn = dev_[0].get_info(RS2_CAMERA_INFO_SERIAL_NUMBER);
+	UINFO("Using device with Serial No: %s", sn);
 
 	auto camera_name = dev_[0].get_info(RS2_CAMERA_INFO_NAME);
 	UINFO("Device Name: %s", camera_name);
-
-	auto sn = dev_[0].get_info(RS2_CAMERA_INFO_SERIAL_NUMBER);
-	UINFO("Device Serial No: %s", sn);
 
 	auto fw_ver = dev_[0].get_info(RS2_CAMERA_INFO_FIRMWARE_VERSION);
 	UINFO("Device FW version: %s", fw_ver);

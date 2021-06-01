@@ -5979,7 +5979,7 @@ Camera * PreferencesDialog::createCamera(
 		else
 		{
 			camera = new CameraRealSense2(
-				device.toStdString(),
+				device.isEmpty()&&driver == kSrcStereoRealSense2?"T265":device.toStdString(),
 				this->getGeneralInputRate(),
 				this->getSourceLocalTransform());
 			((CameraRealSense2*)camera)->publishInterIMU(_ui->checkbox_publishInterIMU->isChecked());
