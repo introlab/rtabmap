@@ -177,7 +177,7 @@ public:
 	void setWorkingDirectory(std::string path);
 	void rejectLastLoopClosure();
 	void deleteLastLocation();
-	void setOptimizedPoses(const std::map<int, Transform> & poses);
+	void setOptimizedPoses(const std::map<int, Transform> & poses, const std::multimap<int, Link> & constraints);
 	Signature getSignatureCopy(int id, bool images, bool scan, bool userData, bool occupancyGrid, bool withWords, bool withGlobalDescriptors) const;
 	RTABMAP_DEPRECATED(
 		void get3DMap(std::map<int, Signature> & signatures,

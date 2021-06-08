@@ -165,7 +165,6 @@ public:
 	bool labelSignature(int id, const std::string & label);
 	const std::map<int, std::string> & getAllLabels() const {return _labels;}
 	const std::map<int, std::set<int> > & getLandmarksIndex() const {return _landmarksIndex;}
-	const std::map<int, std::set<int> > & getLandmarksInvertedIndex() const {return _landmarksInvertedIndex;}
 	bool allNodesInWM() const {return _allNodesInWM;}
 
 	/**
@@ -346,8 +345,8 @@ private:
 	std::map<int, double> _workingMem; // id,age
 	std::map<int, Transform> _groundTruths;
 	std::map<int, std::string> _labels;
-	std::map<int, std::set<int> > _landmarksIndex;         // <nodeId, landmarkIds>
-	std::map<int, std::set<int> > _landmarksInvertedIndex; // <landmarkId, nodeIds>
+	std::map<int, std::set<int> > _landmarksIndex; // < -landmarkId, nodeIds >
+    std::map<int, float> _landmarksSize;           // +landmarkId
 
 	//Keypoint stuff
 	VWDictionary * _vwd;

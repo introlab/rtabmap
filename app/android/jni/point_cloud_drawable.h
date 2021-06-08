@@ -28,7 +28,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef TANGO_POINT_CLOUD_POINT_CLOUD_DRAWABLE_H_
 #define TANGO_POINT_CLOUD_POINT_CLOUD_DRAWABLE_H_
 
+#ifdef __ANDROID__
 #include <jni.h>
+#endif
 
 #include <tango-gl/util.h>
 #include <vector>

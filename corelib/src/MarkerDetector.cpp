@@ -114,7 +114,29 @@ void MarkerDetector::parseParameters(const ParametersMap & parameters)
 
 std::map<int, Transform> MarkerDetector::detect(const cv::Mat & image, const CameraModel & model, const cv::Mat & depth, float * markerLengthOut, cv::Mat * imageWithDetections)
 {
-	std::map<int, Transform> detections;
+    std::map<int, Transform> detections;
+    std::map<int, MarkerInfo> infos = detect(image, model, depth, std::map<int, float>(), imageWithDetections);
+    
+    for(std::map<int, MarkerInfo>::iterator iter=infos.begin(); iter!=infos.end(); ++iter)
+    {
+        detections.insert(std::make_pair(iter->first, iter->second.pose()));
+        
+        if(markerLengthOut)
+        {
+            *markerLengthOut = iter->second.length();
+        }
+    }
+    
+    return detections;
+}
+
+std::map<int, MarkerInfo> MarkerDetector::detect(const cv::Mat & image,
+                           const CameraModel & model,
+                           const cv::Mat & depth,
+                           const std::map<int, float> & markerLengths,
+                           cv::Mat * imageWithDetections)
+{
+    std::map<int, MarkerInfo> detections;
 
 #ifdef HAVE_OPENCV_ARUCO
 
@@ -133,23 +155,29 @@ std::map<int, Transform> MarkerDetector::detect(const cv::Mat & image, const Cam
 	{
 		float rgbToDepthFactorX = 1.0f;
 		float rgbToDepthFactorY = 1.0f;
-		if(markerLength_ == 0)
+		if(!depth.empty())
 		{
-			if(depth.empty())
-			{
-				UERROR("Depth image is empty, please set %s parameter to non-null.", Parameters::kMarkerLength().c_str());
-				return detections;
-			}
 			rgbToDepthFactorX = 1.0f/(model.imageWidth()>0?model.imageWidth()/depth.cols:1);
 			rgbToDepthFactorY = 1.0f/(model.imageHeight()>0?model.imageHeight()/depth.rows:1);
 		}
+        else if(markerLength_ == 0)
+        {
+            if(depth.empty())
+            {
+                UERROR("Depth image is empty, please set %s parameter to non-null.", Parameters::kMarkerLength().c_str());
+                return detections;
+            }
+        }
 
-		cv::aruco::estimatePoseSingleMarkers(corners, markerLength_==0?1.0f:markerLength_, model.K(), model.D(), rvecs, tvecs);
+		cv::aruco::estimatePoseSingleMarkers(corners, markerLength_<=0.0?1.0f:markerLength_, model.K(), model.D(), rvecs, tvecs);
 		std::vector<float> scales;
 		for(size_t i=0; i<ids.size(); ++i)
 		{
-			if(markerLength_ == 0)
+            float length = 0.0f;
+            std::map<int, float>::const_iterator findIter = markerLengths.find(ids[i]);
+            if(!depth.empty() && (markerLength_ == 0 || (markerLength_<0 && findIter==markerLengths.end())))
 			{
+                float d = util2d::getDepth(depth, (corners[i][0].x + (corners[i][2].x-corners[i][0].x)/2.0f)*rgbToDepthFactorX, (corners[i][0].y + (corners[i][2].y-corners[i][0].y)/2.0f)*rgbToDepthFactorY, true, 0.02f, true);
 				float d1 = util2d::getDepth(depth, corners[i][0].x*rgbToDepthFactorX, corners[i][0].y*rgbToDepthFactorY, true, 0.02f, true);
 				float d2 = util2d::getDepth(depth, corners[i][1].x*rgbToDepthFactorX, corners[i][1].y*rgbToDepthFactorY, true, 0.02f, true);
 				float d3 = util2d::getDepth(depth, corners[i][2].x*rgbToDepthFactorX, corners[i][2].y*rgbToDepthFactorY, true, 0.02f, true);
@@ -157,43 +185,65 @@ std::map<int, Transform> MarkerDetector::detect(const cv::Mat & image, const Cam
 				// Accept measurement only if all 4 depth values are valid and
 				// they are at the same depth (camera should be perpendicular to marker for
 				// best depth estimation)
-				if(d1>0 && d2>0 && d3>0 && d4>0)
+				if(d>0 && d1>0 && d2>0 && d3>0 && d4>0)
 				{
-					if( fabs(d1-d2) < maxDepthError_ &&
-						fabs(d1-d3) < maxDepthError_ &&
-						fabs(d1-d4) < maxDepthError_)
+                    float scale = d/tvecs[i].val[2];
+                    
+					if( fabs(d-d1) < maxDepthError_ &&
+                        fabs(d-d2) < maxDepthError_ &&
+						fabs(d-d3) < maxDepthError_ &&
+						fabs(d-d4) < maxDepthError_)
 					{
-						float depth = (d1+d2+d3+d4)/4.0f;
-						scales.push_back(depth/tvecs[i].val[2]);
+                        length = scale;
+						scales.push_back(length);
 						tvecs[i] *= scales.back();
-						UWARN("Automatic marker length estimation: id=%d depth=%fm length=%fm", ids[i], depth, scales.back());
+						UWARN("Automatic marker length estimation: id=%d depth=%fm length=%fm", ids[i], d, scales.back());
 					}
 					else
 					{
 						UWARN("The four marker's corners should be "
 							  "perpendicular to camera to estimate correctly "
-							  "the marker's length. Errors: %f, %f, %f > %fm (%s). Four corners: %f %f %f %f. "
+							  "the marker's length. Errors: %f, %f, %f > %fm (%s). Four corners: %f %f %f %f (middle=%f). "
 							  "Parameter %s can be set to non-null to skip automatic "
 							  "marker length estimation. Detections are ignored.",
 							  fabs(d1-d2), fabs(d1-d3), fabs(d1-d4), maxDepthError_, Parameters::kMarkerMaxDepthError().c_str(),
-							  d1, d2, d3, d4,
+							  d1, d2, d3, d4, d,
 								Parameters::kMarkerLength().c_str());
-						detections.clear();
-						return detections;
+                        continue;
 					}
 				}
 				else
 				{
-					UWARN("Some depth values (%f,%f,%f,%f) cannot be detected on the "
+					UWARN("Some depth values (%f,%f,%f,%f, middle=%f) cannot be detected on the "
 						  "marker's corners, cannot initialize marker length. "
 						  "Parameter %s can be set to non-null to skip automatic "
 						  "marker length estimation. Detections are ignored.",
-						  d1,d2,d3,d4,
+						  d1,d2,d3,d4,d,
 						  Parameters::kMarkerLength().c_str());
-					detections.clear();
-					return detections;
+                    continue;
 				}
 			}
+            else if(markerLength_ < 0)
+            {
+                if(findIter!=markerLengths.end())
+                {
+                    length = findIter->second;
+                    tvecs[i] *= length;
+                }
+                else
+                {
+                    UWARN("Cannot find marker length for marker %d, ignoring this marker (count=%d)", ids[i], (int)markerLengths.size());
+                    continue;
+                }
+            }
+            else if(markerLength_ > 0)
+            {
+                length = markerLength_;
+            }
+            else
+            {
+                continue;
+            }
 
 			// Limit the detection range to be between the min / max range.
 			// If the ranges are -1, allow any detection within that direction.
@@ -206,11 +256,11 @@ std::map<int, Transform> MarkerDetector::detect(const cv::Mat & image, const Cam
 								 R.at<double>(1,0), R.at<double>(1,1), R.at<double>(1,2), tvecs[i].val[1],
 								 R.at<double>(2,0), R.at<double>(2,1), R.at<double>(2,2), tvecs[i].val[2]);
 				Transform pose = model.localTransform() * t;
-				detections.insert(std::make_pair(ids[i], pose));
+				detections.insert(std::make_pair(ids[i], MarkerInfo(ids[i], length, pose)));
 				UDEBUG("Marker %d detected at %s (%s)", ids[i], pose.prettyPrint().c_str(), t.prettyPrint().c_str());
 			}
 		}
-		if(markerLength_ == 0)
+		if(markerLength_ == 0 && !scales.empty())
 		{
 			float sum = 0.0f;
 			float maxError = 0.0f;
@@ -222,10 +272,10 @@ std::map<int, Transform> MarkerDetector::detect(const cv::Mat & image, const Cam
 					if(error > 0.001f)
 					{
 						UWARN("The marker's length detected between 2 of the "
-							  "markers doesn't match (%d->%fm vs %d->%fm)."
+							  "markers doesn't match (%fm vs %fm)."
 							  "Parameter %s can be set to non-null to skip automatic "
 							  "marker length estimation. Detections are ignored.",
-							  ids[i], scales[i], ids[0], scales[0],
+							  scales[i], scales[0],
 							  Parameters::kMarkerLength().c_str());
 						detections.clear();
 						return detections;
@@ -242,21 +292,20 @@ std::map<int, Transform> MarkerDetector::detect(const cv::Mat & image, const Cam
 		}
 	}
 
-	if(markerLengthOut)
-	{
-		*markerLengthOut = markerLength_;
-	}
-
 	if(imageWithDetections)
 	{
 		image.copyTo(*imageWithDetections);
-		if(ids.size() > 0)
+		if(!ids.empty())
 		{
 			cv::aruco::drawDetectedMarkers(*imageWithDetections, corners, ids);
 
 			for(unsigned int i = 0; i < ids.size(); i++)
 			{
-				cv::aruco::drawAxis(*imageWithDetections, model.K(), model.D(), rvecs[i], tvecs[i], markerLength_ * 0.5f);
+                std::map<int, MarkerInfo>::iterator iter = detections.find(ids[i]);
+                if(iter!=detections.end())
+                {
+                    cv::aruco::drawAxis(*imageWithDetections, model.K(), model.D(), rvecs[i], tvecs[i], iter->second.length() * 0.5f);
+                }
 			}
 		}
 	}

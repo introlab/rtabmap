@@ -43,9 +43,11 @@ const float kCamViewMaxDist = 100.f;
 
 // FOV set up values.
 // Third and top down camera's FOV is 65 degrees.
-// First person camera's FOV is 45 degrees.
-const float kHighFov = 65.0f;
+// First person camera's FOV is 85 degrees.
+const float kHighestFov = 120.0f;
+const float kHighFov = 85.0f;
 const float kLowFov = 65.0f;
+const float kLowestFov = 40.0f;
 }
 
 namespace tango_gl {
@@ -111,7 +113,7 @@ void GestureCamera::OnTouchEvent(int touch_count, TouchEvent event, float x0,
 
 			if(camera_type_ == kFirstPerson)
 			{
-				this->SetFieldOfView(tango_gl::util::Clamp(cam_start_fov_ + dist * kZoomSpeed*10.0f, 45, 90));
+				this->SetFieldOfView(tango_gl::util::Clamp(cam_start_fov_ + dist * kZoomSpeed*10.0f, kLowestFov, kHighestFov));
 			}
 			else
 			{
@@ -179,8 +181,9 @@ void GestureCamera::SetCameraType(CameraType camera_index) {
   camera_type_ = camera_index;
   switch (camera_index) {
     case kFirstPerson:
-    	SetOrthoMode(false);
-      SetFieldOfView(kLowFov);
+      SetOrthoMode(false);
+      SetFieldOfView(kLowestFov);
+      SetNearFarClipPlanes(0.5, 50);
       SetPosition(glm::vec3(0.0f, 0.0f, 0.0f));
       SetRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
       cam_cur_dist_ = 0.0f;
@@ -193,11 +196,12 @@ void GestureCamera::SetCameraType(CameraType camera_index) {
       break;
     case kThirdPerson:
     case kThirdPersonFollow:
-    	SetOrthoMode(false);
-    	SetFieldOfView(kHighFov);
+      SetOrthoMode(false);
+      SetFieldOfView(kLowFov);
+      SetNearFarClipPlanes(0.5, 50);
       SetPosition(glm::vec3(0.0f, 0.0f, 0.0f));
       SetRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
-      cam_cur_dist_ = kThirdPersonFollow?kThirdPersonFollowCameraDist:kThirdPersonCameraDist;
+      cam_cur_dist_ = camera_index==kThirdPersonFollow?kThirdPersonFollowCameraDist:kThirdPersonCameraDist;
       anchor_offset_ = glm::vec3(0.0f,0.0f,0.0f);
       cam_cur_angle_.x = -M_PI / 12.0f;
       cam_cur_angle_.y = kThirdPersonFollow?0:M_PI / 2.0f;
@@ -208,7 +212,8 @@ void GestureCamera::SetCameraType(CameraType camera_index) {
       SetPosition(glm::vec3(0.0f, 0.0f, 0.0f));
       SetRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
       SetOrthoMode(false);
-      SetFieldOfView(kHighFov);
+      SetFieldOfView(kLowFov);
+      SetNearFarClipPlanes(0.5, 50);
       cam_cur_dist_ = kTopDownCameraDist;
       anchor_offset_ = glm::vec3(0.0f,0.0f,0.0f);
       cam_cur_angle_.x = -M_PI / 2.0f;
@@ -222,6 +227,8 @@ void GestureCamera::SetCameraType(CameraType camera_index) {
 	  SetOrthoMode(true);
 	  SetOrthoScale(kTopDownCameraDist);
 	  SetOrthoCropFactor(-1.0f);
+      SetFieldOfView(kLowFov);
+      SetNearFarClipPlanes(0.5, 50);
 	  cam_cur_dist_ = kTopDownCameraDist;
 	  anchor_offset_ = glm::vec3(0.0f,0.0f,0.0f);
 	  cam_cur_angle_.x = -M_PI / 2.0f;

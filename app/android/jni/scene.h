@@ -17,7 +17,9 @@
 #ifndef TANGO_POINT_CLOUD_SCENE_H_
 #define TANGO_POINT_CLOUD_SCENE_H_
 
+#ifdef __ANDROID__
 #include <jni.h>
+#endif
 #include <memory>
 #include <set>
 
@@ -35,10 +37,10 @@
 #include <rtabmap/core/Transform.h>
 #include <rtabmap/core/Link.h>
 
-#include <point_cloud_drawable.h>
-#include <graph_drawable.h>
-#include <bounding_box_drawable.h>
-#include <background_renderer.h>
+#include "point_cloud_drawable.h"
+#include "graph_drawable.h"
+#include "bounding_box_drawable.h"
+#include "background_renderer.h"
 
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>

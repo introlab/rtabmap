@@ -1513,7 +1513,7 @@ cv::Mat mergeTextures(
 	UASSERT(textureSize%256 == 0);
 	UDEBUG("textureSize = %d", textureSize);
 	cv::Mat globalTextures;
-	if(mesh.tex_materials.size() > 1)
+	if(!mesh.tex_materials.empty())
 	{
 		std::vector<std::pair<int, int> > textures(mesh.tex_materials.size(), std::pair<int, int>(-1,0));
 		cv::Size imageSize;

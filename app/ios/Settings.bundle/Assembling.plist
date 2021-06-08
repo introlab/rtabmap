@@ -1,0 +1,351 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>StringsTable</key>
+	<string>Assembling</string>
+	<key>PreferenceSpecifiers</key>
+	<array>
+		<dict>
+			<key>Type</key>
+			<string>PSGroupSpecifier</string>
+			<key>FooterText</key>
+			<string>If you don&apos;t need a very precise point cloud, you can set this to reduce the output point cloud size. This is also used for optimized mesh.</string>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSMultiValueSpecifier</string>
+			<key>Title</key>
+			<string>Voxel Size</string>
+			<key>Key</key>
+			<string>VoxelSize</string>
+			<key>DefaultValue</key>
+			<real>0.01</real>
+			<key>Titles</key>
+			<array>
+				<string>20 cm</string>
+				<string>10 cm</string>
+				<string>5 cm</string>
+				<string>2 cm</string>
+				<string>1 cm</string>
+				<string>0.5 cm</string>
+				<string>Disabled</string>
+			</array>
+			<key>Values</key>
+			<array>
+				<real>0.2</real>
+				<real>0.1</real>
+				<real>0.05</real>
+				<real>0.02</real>
+				<real>0.01</real>
+				<real>0.005</real>
+				<real>0</real>
+			</array>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSGroupSpecifier</string>
+			<key>FooterText</key>
+			<string>If the map is large, you may want to increase this to maximize the texture resolution.</string>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSMultiValueSpecifier</string>
+			<key>Title</key>
+			<string>Texture Size</string>
+			<key>Key</key>
+			<string>TextureSize</string>
+			<key>DefaultValue</key>
+			<integer>4096</integer>
+			<key>Titles</key>
+			<array>
+				<string>16384x16384</string>
+				<string>8192x8192</string>
+				<string>4096x4096</string>
+				<string>2048x2048</string>
+				<string>1024x1024</string>
+			</array>
+			<key>Values</key>
+			<array>
+				<integer>16384</integer>
+				<integer>8192</integer>
+				<integer>4096</integer>
+				<integer>2048</integer>
+				<integer>1024</integer>
+			</array>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSGroupSpecifier</string>
+			<key>FooterText</key>
+			<string>Note that all textures are still merged into one for visualization, but exported in multiple files.</string>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSMultiValueSpecifier</string>
+			<key>Title</key>
+			<string>Maximum Output Textures</string>
+			<key>Key</key>
+			<string>MaximumOutputTextures</string>
+			<key>DefaultValue</key>
+			<integer>1</integer>
+			<key>Titles</key>
+			<array>
+				<string>8</string>
+				<string>7</string>
+				<string>6</string>
+				<string>5</string>
+				<string>4</string>
+				<string>3</string>
+				<string>2</string>
+				<string>1</string>
+			</array>
+			<key>Values</key>
+			<array>
+				<integer>8</integer>
+				<integer>7</integer>
+				<integer>6</integer>
+				<integer>5</integer>
+				<integer>4</integer>
+				<integer>3</integer>
+				<integer>2</integer>
+				<integer>1</integer>
+			</array>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSGroupSpecifier</string>
+			<key>FooterText</key>
+			<string>K-nearest neighbors used for normal computation when a mesh is created.</string>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSMultiValueSpecifier</string>
+			<key>Title</key>
+			<string>Normal K</string>
+			<key>Key</key>
+			<string>NormalK</string>
+			<key>DefaultValue</key>
+			<integer>18</integer>
+			<key>Titles</key>
+			<array>
+				<string>30</string>
+				<string>24</string>
+				<string>18</string>
+				<string>12</string>
+				<string>6</string>
+			</array>
+			<key>Values</key>
+			<array>
+				<integer>30</integer>
+				<integer>24</integer>
+				<integer>18</integer>
+				<integer>12</integer>
+				<integer>6</integer>
+			</array>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSGroupSpecifier</string>
+			<key>FooterText</key>
+			<string>Maximum distance from a camera for polygons to be textured by this camera.</string>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSMultiValueSpecifier</string>
+			<key>Title</key>
+			<string>Max Texture Distance</string>
+			<key>Key</key>
+			<string>MaxTextureDistance</string>
+			<key>DefaultValue</key>
+			<real>3</real>
+			<key>Titles</key>
+			<array>
+				<string>No Limit</string>
+				<string>5 m</string>
+				<string>4.5 m</string>
+				<string>4 m</string>
+				<string>3.5 m</string>
+				<string>3 m</string>
+				<string>2.5 m</string>
+				<string>2 m</string>
+			</array>
+			<key>Values</key>
+			<array>
+				<real>0</real>
+				<real>5</real>
+				<real>4.5</real>
+				<real>4</real>
+				<real>3.5</real>
+				<real>3</real>
+				<real>2.5</real>
+				<real>2</real>
+			</array>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSGroupSpecifier</string>
+			<key>FooterText</key>
+			<string>Minimum polygon cluster size to be textured by a camera. This helps to filter sparse textured polygons.</string>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSMultiValueSpecifier</string>
+			<key>Title</key>
+			<string>Min Texture Cluster Size</string>
+			<key>Key</key>
+			<string>MinTextureClusterSize</string>
+			<key>DefaultValue</key>
+			<integer>50</integer>
+			<key>Titles</key>
+			<array>
+				<string>1000</string>
+				<string>500</string>
+				<string>200</string>
+				<string>100</string>
+				<string>50</string>
+				<string>10</string>
+				<string>Disabled</string>
+			</array>
+			<key>Values</key>
+			<array>
+				<integer>1000</integer>
+				<integer>500</integer>
+				<integer>200</integer>
+				<integer>100</integer>
+				<integer>50</integer>
+				<integer>10</integer>
+				<integer>0</integer>
+			</array>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSGroupSpecifier</string>
+			<key>Title</key>
+			<string>Optimized</string>
+			<key>FooterText</key>
+			<string>Lowering this parameter decreases reconstruction time, but geometry precision is lower. Minimum polygon size: map length / 2^depth). &quot;Auto&quot; means that depth is chosen so that polygon size is just under 3 cm.</string>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSMultiValueSpecifier</string>
+			<key>Title</key>
+			<string>Reconstruction Depth</string>
+			<key>Key</key>
+			<string>ReconstructionDepth</string>
+			<key>DefaultValue</key>
+			<integer>0</integer>
+			<key>Titles</key>
+			<array>
+				<string>Auto</string>
+				<string>12</string>
+				<string>11</string>
+				<string>10</string>
+				<string>9</string>
+				<string>8</string>
+				<string>7</string>
+				<string>6</string>
+			</array>
+			<key>Values</key>
+			<array>
+				<integer>0</integer>
+				<integer>12</integer>
+				<integer>11</integer>
+				<integer>10</integer>
+				<integer>9</integer>
+				<integer>8</integer>
+				<integer>7</integer>
+				<integer>6</integer>
+			</array>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSGroupSpecifier</string>
+			<key>FooterText</key>
+			<string>Radius used to transfer nearest color from the point cloud to reconstructed mesh. When exporting with texture, if Clean Mesh is also enabled, this will limit the number of polygons textured in holes.</string>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSMultiValueSpecifier</string>
+			<key>Title</key>
+			<string>Color Radius</string>
+			<key>Key</key>
+			<string>ColorRadius</string>
+			<key>DefaultValue</key>
+			<real>0.05</real>
+			<key>Titles</key>
+			<array>
+				<string>Nearest</string>
+				<string>2 m</string>
+				<string>1 m</string>
+				<string>0.5 m</string>
+				<string>0.2 m</string>
+				<string>0.1 m</string>
+				<string>0.05 m</string>
+				<string>0.025 m</string>
+				<string>0.02 m</string>
+				<string>0.015 m</string>
+				<string>0.01 m</string>
+				<string>Disabled</string>
+			</array>
+			<key>Values</key>
+			<array>
+				<real>0</real>
+				<real>2</real>
+				<real>1</real>
+				<real>0.5</real>
+				<real>0.2</real>
+				<real>0.1</real>
+				<real>0.05</real>
+				<real>0.025</real>
+				<real>0.02</real>
+				<real>0.015</real>
+				<real>0.01</real>
+				<real>-1</real>
+			</array>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSGroupSpecifier</string>
+			<key>FooterText</key>
+			<string>Clean mesh from textureless or colorless reconstructed polygons.</string>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSToggleSwitchSpecifier</string>
+			<key>Title</key>
+			<string>Clean Mesh</string>
+			<key>Key</key>
+			<string>CleanMesh</string>
+			<key>DefaultValue</key>
+			<true/>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSGroupSpecifier</string>
+			<key>FooterText</key>
+			<string>This can be used to filter polygons before texturing.</string>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSMultiValueSpecifier</string>
+			<key>Title</key>
+			<string>Polygon Filtering</string>
+			<key>Key</key>
+			<string>PolygonFiltering</string>
+			<key>DefaultValue</key>
+			<integer>0</integer>
+			<key>Titles</key>
+			<array>
+				<string>Only biggest cluster kept</string>
+				<string>Keep all polygons</string>
+			</array>
+			<key>Values</key>
+			<array>
+				<integer>-1</integer>
+				<integer>0</integer>
+			</array>
+		</dict>
+	</array>
+</dict>
+</plist>

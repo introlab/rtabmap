@@ -324,7 +324,7 @@
     <string name="pref_title_mapping_core">Core</string>
     <string name="pref_title_mapping_database">Database</string>
     <string name="pref_title_camera_driver">Camera Driver</string>
-    <string name="pref_summary_camera_driver">AR sdk use for capturing 6DoF poses and images. A TOF camera is required to record a 3D model.</string>
+    <string name="pref_summary_camera_driver">AR sdk used for capturing 6DoF poses and images. A TOF camera is required to record a 3D model.</string>
     <string name="pref_title_depth_from_motion">Depth From Motion</string>
     <string name="pref_summary_depth_from_motion">Use ARCore\'s depth API to compute depth image from motion. If the phone has a TOF camera and is supported by ARCore, results should be better. Currently supported only with ARCore NDK driver.</string>
     <string name="pref_title_append">Append Mode</string>
@@ -373,7 +373,7 @@
     <string name="pref_summary_gps_saved">Save GPS to database.</string>
     <string name="pref_title_env_sensors_saved">Save Environmental Sensors</string>
     <string name="pref_summary_env_sensors_saved">Save Wifi strength, temperature, air pressure, light intensity and relative humidity to database.</string>
-    <string name="pref_title_db_in_memory">Database In Memory</string>
+    <string name="pref_title_db_in_memory">Database in Memory</string>
     <string name="pref_summary_db_in_memory">The database is kept in RAM for fast access. Set to false to reduce RAM used at the cost of slower access. This parameter is applied on reset or when a database is opened.</string>
 
     <string-array name="pref_camera_driver_keys">
@@ -433,7 +433,7 @@
         <item>"700 ms"</item>
         <item>"600 ms"</item>
         <item>"500 ms"</item>
-        <item>"400"</item>
+        <item>"400 ms"</item>
     </string-array>
     <string-array name="pref_time_thr_values">
         <item>"0"</item>
@@ -868,10 +868,10 @@
         <item>"0.2 m"</item>
         <item>"0.1 m"</item>
         <item>"0.05 m"</item>
-        <item>"0.025"</item>
-        <item>"0.02"</item>
-        <item>"0.015"</item>
-        <item>"0.01"</item>
+        <item>"0.025 m"</item>
+        <item>"0.02 m"</item>
+        <item>"0.015 m"</item>
+        <item>"0.01 m"</item>
         <item>"Disabled"</item>
     </string-array>
     <string-array name="pref_opt_color_radius_values">

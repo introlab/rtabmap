@@ -24,8 +24,8 @@ Camera::Camera() {
   aspect_ratio_ = 4.0f / 3.0f;
   width_ = 800.0f;
   height_ = 600.0f;
-  near_clip_plane_ = 0.2f;
-  far_clip_plane_ = 1000.0f;
+  near_clip_plane_ = 0.5f;
+  far_clip_plane_ = 50.0f;
   ortho_ = false;
   orthoScale_ = 2.0f;
   orthoCropFactor_ = -1.0f;

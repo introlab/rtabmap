@@ -28,7 +28,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef RTABMAP_APP_H_
 #define RTABMAP_APP_H_
 
+#ifdef __ANDROID__
 #include <jni.h>
+#endif
 #include <memory>
 
 #include <tango-gl/util.h>
@@ -49,7 +51,26 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 class RTABMapApp : public UEventsHandler {
  public:
   // Constructor and deconstructor.
+#ifdef __ANDROID__
   RTABMapApp(JNIEnv* env, jobject caller_activity);
+#else // __APPLE__
+  RTABMapApp();
+  void setupSwiftCallbacks(void * classPtr,
+                           void(*progressCallback)(void *, int, int),
+                           void(*initCallback)(void *, int, const char*),
+                           void(*statsUpdatedCallback)(void *,
+                                                    int, int, int, int,
+                                                    float,
+                                                    int, int, int, int, int ,int,
+                                                    float,
+                                                    int,
+                                                    float,
+                                                    int,
+                                                    float, float, float, float,
+                                                    int, int,
+                                                    float, float, float, float, float, float));
+    
+#endif
   ~RTABMapApp();
 
   void setScreenRotation(int displayRotation, int cameraRotation);
@@ -57,8 +78,11 @@ class RTABMapApp : public UEventsHandler {
   int openDatabase(const std::string & databasePath, bool databaseInMemory, bool optimize, const std::string & databaseSource=std::string());
 
   bool isBuiltWith(int cameraDriver) const;
+#ifdef __ANDROID__
   bool startCamera(JNIEnv* env, jobject iBinder, jobject context, jobject activity, int driver);
-
+#else // __APPLE__
+    bool startCamera();
+#endif
   // Allocate OpenGL resources for rendering, mainly for initializing the Scene.
   void InitializeGLContent();
 
@@ -117,11 +141,13 @@ class RTABMapApp : public UEventsHandler {
   void setMinCloudDepth(float value);
   void setCloudDensityLevel(int value);
   void setMeshAngleTolerance(float value);
+  void setMeshDecimationFactor(float value);
   void setMeshTriangleSize(int value);
   void setClusterRatio(float value);
   void setMaxGainRadius(float value);
   void setRenderingTextureDecimation(int value);
   void setBackgroundColor(float gray);
+  void setDepthConfidence(int value);
   int setMappingParameter(const std::string & key, const std::string & value);
   void setGPS(const rtabmap::GPS & gps);
   void addEnvSensor(int type, float value);
@@ -156,14 +182,19 @@ class RTABMapApp : public UEventsHandler {
   		float x, float y, float z, float qx, float qy, float qz, float qw,
   		float fx, float fy, float cx, float cy,
   		double stamp,
-		void * yPlane, void * uPlane, void * vPlane, int yPlaneLen, int rgbWidth, int rgbHeight, int rgbFormat,
-  		void * depth, int depthLen, int depthWidth, int depthHeight, int depthFormat,
-		float * points, int pointsLen);
+        const void * yPlane, const void * uPlane, const void * vPlane, int yPlaneLen, int rgbWidth, int rgbHeight, int rgbFormat,
+        const void * depth, int depthLen, int depthWidth, int depthHeight, int depthFormat,
+        const void * conf, int confLen, int confWidth, int confHeight, int confFormat,
+        const float * points, int pointsLen, int pointsChannels,
+        float vx, float vy, float vz, float vqx, float vqy, float vqz, float vqw, //view matrix
+        float p00, float p11, float p02, float p12, float p22, float p32, float p23, // projection matrix
+        float t0, float t1, float t2, float t3, float t4, float t5, float t6, float t7); // tex coord
 
  protected:
   virtual bool handleEvent(UEvent * event);
 
  private:
+  int updateMeshDecimation(int width, int height);
   rtabmap::ParametersMap getRtabmapParameters();
   bool smoothMesh(int id, rtabmap::Mesh & mesh);
   void gainCompensation(bool full = false);
@@ -188,15 +219,18 @@ class RTABMapApp : public UEventsHandler {
   bool cameraColor_;
   bool fullResolution_;
   bool appendMode_;
+  bool proximityDetection_;
   float maxCloudDepth_;
   float minCloudDepth_;
   int cloudDensityLevel_;
   int meshTrianglePix_;
   float meshAngleToleranceDeg_;
+  float meshDecimationFactor_;
   float clusterRatio_;
   float maxGainRadius_;
   int renderingTextureDecimation_;
   float backgroundColor_;
+  int depthConfidence_;
 
   rtabmap::ParametersMap mappingParameters_;
 
@@ -210,7 +244,6 @@ class RTABMapApp : public UEventsHandler {
   bool bilateralFilteringOnNextRender_;
   bool takeScreenshotOnNextRender_;
   bool cameraJustInitialized_;
-  int meshDecimation_;
   int totalPoints_;
   int totalPolygons_;
   int lastDrawnCloudsCount_;
@@ -251,6 +284,23 @@ class RTABMapApp : public UEventsHandler {
 	std::pair<rtabmap::RtabmapEventInit::Status, std::string> status_;
 
 	rtabmap::ProgressionStatus progressionStatus_;
+    
+#ifndef __ANDROID__
+    void * swiftClassPtr_;
+    void(*swiftInitCallback)(void *, int, const char *);
+    void(*swiftStatsUpdatedCallback)(void *,
+                             int, int, int, int,
+                             float,
+                             int, int, int, int, int ,int,
+                             float,
+                             int,
+                             float,
+                             int,
+                             float, float, float, float,
+                             int, int,
+                             float, float, float, float, float, float);
+    
+#endif
 };
 
 #endif  // TANGO_POINT_CLOUD_POINT_CLOUD_APP_H_

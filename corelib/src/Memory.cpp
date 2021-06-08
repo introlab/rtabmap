@@ -91,7 +91,7 @@ Memory::Memory(const ParametersMap & parameters) :
 	_mapLabelsAdded(Parameters::defaultMemMapLabelsAdded()),
 	_depthAsMask(Parameters::defaultMemDepthAsMask()),
 	_stereoFromMotion(Parameters::defaultMemStereoFromMotion()),
-	_imagePreDecimation(Parameters::defaultMemImagePreDecimation()),
+    _imagePreDecimation(Parameters::defaultMemImagePreDecimation()),
 	_imagePostDecimation(Parameters::defaultMemImagePostDecimation()),
 	_compressionParallelized(Parameters::defaultMemCompressionParallelized()),
 	_laserScanDownsampleStepSize(Parameters::defaultMemLaserScanDownsampleStepSize()),
@@ -259,20 +259,24 @@ void Memory::loadDataFromDb(bool postInitClosingEvents)
 					{
 						int landmarkId = jter->first;
 						UASSERT(landmarkId < 0);
+                        
+                        cv::Mat landmarkSize = jter->second.uncompressUserDataConst();
+                        if(!landmarkSize.empty() && landmarkSize.type() == CV_32FC1 && landmarkSize.total()==1)
+                        {
+                            std::pair<std::map<int, float>::iterator, bool> inserted=_landmarksSize.insert(std::make_pair(-landmarkId, landmarkSize.at<float>(0,0)));
+                            if(!inserted.second)
+                            {
+                                if(inserted.first->second != landmarkSize.at<float>(0,0))
+                                {
+                                    UWARN("Trying to update landmark size buffer for landmark %d with size=%f but "
+                                          "it has already a different size set. Keeping old size (%f).",
+                                          -landmarkId, inserted.first->second, landmarkSize.at<float>(0,0));
+                                }
+                            }
+                        }
 
-						std::map<int, std::set<int> >::iterator nter = _landmarksIndex.find((*iter)->id());
+                        std::map<int, std::set<int> >::iterator nter = _landmarksIndex.find(landmarkId);
 						if(nter!=_landmarksIndex.end())
-						{
-							nter->second.insert(landmarkId);
-						}
-						else
-						{
-							std::set<int> tmp;
-							tmp.insert(landmarkId);
-							_landmarksIndex.insert(std::make_pair((*iter)->id(), tmp));
-						}
-						nter = _landmarksInvertedIndex.find(landmarkId);
-						if(nter!=_landmarksInvertedIndex.end())
 						{
 							nter->second.insert((*iter)->id());
 						}
@@ -280,7 +284,7 @@ void Memory::loadDataFromDb(bool postInitClosingEvents)
 						{
 							std::set<int> tmp;
 							tmp.insert((*iter)->id());
-							_landmarksInvertedIndex.insert(std::make_pair(landmarkId, tmp));
+							_landmarksIndex.insert(std::make_pair(landmarkId, tmp));
 						}
 					}
 				}
@@ -1269,8 +1273,8 @@ std::multimap<int, Link> Memory::getLinks(
 	else if(signatureId < 0) //landmark
 	{
 		int landmarkId = signatureId;
-		std::map<int, std::set<int> >::const_iterator iter = _landmarksInvertedIndex.find(landmarkId);
-		if(iter != _landmarksInvertedIndex.end())
+		std::map<int, std::set<int> >::const_iterator iter = _landmarksIndex.find(landmarkId);
+		if(iter != _landmarksIndex.end())
 		{
 			for(std::set<int>::const_iterator jter=iter->second.begin(); jter!=iter->second.end(); ++jter)
 			{
@@ -1488,8 +1492,8 @@ std::map<int, int> Memory::getNeighborsId(
 				// landmarks
 				for(std::map<int, Link>::const_iterator iter=landmarks->begin(); iter!=landmarks->end(); ++iter)
 				{
-					const std::map<int, std::set<int> >::const_iterator kter = _landmarksInvertedIndex.find(iter->first);
-					if(kter != _landmarksInvertedIndex.end())
+					const std::map<int, std::set<int> >::const_iterator kter = _landmarksIndex.find(iter->first);
+					if(kter != _landmarksIndex.end())
 					{
 						for(std::set<int>::const_iterator nter=kter->second.begin(); nter!=kter->second.end(); ++nter)
 						{
@@ -1767,7 +1771,7 @@ void Memory::clear()
 	_groundTruths.clear();
 	_labels.clear();
 	_landmarksIndex.clear();
-	_landmarksInvertedIndex.clear();
+    _landmarksSize.clear();
 	_allNodesInWM = true;
 
 	if(_dbDriver)
@@ -2326,22 +2330,13 @@ void Memory::moveToTrash(Signature * s, bool keepLinkedToGraph, std::list<int> *
 			for(std::map<int, Link>::const_iterator iter=s->getLandmarks().begin(); iter!=s->getLandmarks().end(); ++iter)
 			{
 				int landmarkId = iter->first;
-				std::map<int, std::set<int> >::iterator nter = _landmarksIndex.find(s->id());
+                std::map<int, std::set<int> >::iterator nter = _landmarksIndex.find(landmarkId);
 				if(nter!=_landmarksIndex.end())
-				{
-					nter->second.erase(landmarkId);
-					if(nter->second.empty())
-					{
-						_landmarksIndex.erase(nter);
-					}
-				}
-				nter = _landmarksInvertedIndex.find(landmarkId);
-				if(nter!=_landmarksInvertedIndex.end())
 				{
 					nter->second.erase(s->id());
 					if(nter->second.empty())
 					{
-						_landmarksInvertedIndex.erase(nter);
+						_landmarksIndex.erase(nter);
 					}
 				}
 			}
@@ -2485,8 +2480,8 @@ std::map<int, Link> Memory::getNodesObservingLandmark(int landmarkId, bool lookI
 	std::map<int, Link> nodes;
 	if(landmarkId < 0)
 	{
-		std::map<int, std::set<int> >::const_iterator iter = _landmarksInvertedIndex.find(landmarkId);
-		if(iter != _landmarksInvertedIndex.end())
+		std::map<int, std::set<int> >::const_iterator iter = _landmarksIndex.find(landmarkId);
+		if(iter != _landmarksIndex.end())
 		{
 			for(std::set<int>::const_iterator jter=iter->second.begin(); jter!=iter->second.end(); ++jter)
 			{
@@ -3556,12 +3551,7 @@ unsigned long Memory::getMemoryUsed() const
 		memoryUsage+=iter->second.size();
 	}
 	memoryUsage += _landmarksIndex.size() * (sizeof(int)+sizeof(std::set<int>) + sizeof(std::map<int, std::set<int> >::iterator)) + sizeof(std::map<int, std::set<int> >);
-	memoryUsage += _landmarksInvertedIndex.size() * (sizeof(int)+sizeof(std::set<int>) + sizeof(std::map<int, std::set<int> >::iterator)) + sizeof(std::map<int, std::set<int> >);
 	for(std::map<int, std::set<int> >::const_iterator iter=_landmarksIndex.begin(); iter!=_landmarksIndex.end(); ++iter)
-	{
-		memoryUsage+=iter->second.size()*(sizeof(int)+sizeof(std::set<int>::iterator)) + sizeof(std::set<int>);
-	}
-	for(std::map<int, std::set<int> >::const_iterator iter=_landmarksInvertedIndex.begin(); iter!=_landmarksInvertedIndex.end(); ++iter)
 	{
 		memoryUsage+=iter->second.size()*(sizeof(int)+sizeof(std::set<int>::iterator)) + sizeof(std::set<int>);
 	}
@@ -4373,16 +4363,31 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 			{
 				UDEBUG("Using provided keypoints (%d)", (int)data.keypoints().size());
 				keypoints = data.keypoints();
-
-				// In case we provided corresponding 3D features
-				if(keypoints.size() == data.keypoints3D().size())
-				{
-					for(size_t i=0; i<keypoints.size(); ++i)
-					{
-						keypoints[i].class_id = i;
-					}
-					useProvided3dPoints = true;
-				}
+                
+                useProvided3dPoints = keypoints.size() == data.keypoints3D().size();
+                
+                // A: Adjust keypoint position so that descriptors are correctly extracted
+                // B: In case we provided corresponding 3D features
+                if(preDecimation > 1 || useProvided3dPoints)
+                {
+                    float decimationRatio = 1.0f / float(preDecimation);
+                    double log2value = log(double(preDecimation))/log(2.0);
+                    for(unsigned int i=0; i < keypoints.size(); ++i)
+                    {
+                        cv::KeyPoint & kpt = keypoints[i];
+                        if(preDecimation > 1)
+                        {
+                            kpt.pt.x *= decimationRatio;
+                            kpt.pt.y *= decimationRatio;
+                            kpt.size *= decimationRatio;
+                            kpt.octave += log2value;
+                        }
+                        if(useProvided3dPoints)
+                        {
+                            keypoints[i].class_id = i;
+                        }
+                    }
+                }
 			}
 			else
 			{
@@ -4797,7 +4802,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 		UDEBUG("Detecting markers...");
 		if(landmarks.empty())
 		{
-			std::map<int, Transform> markers;
+			std::map<int, MarkerInfo> markers;
 			if(!data.cameraModels().empty() && data.cameraModels()[0].isValidForProjection())
 			{
 				if(data.cameraModels().size() > 1)
@@ -4811,14 +4816,14 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 				}
 				else
 				{
-					markers = _markerDetector->detect(data.imageRaw(), data.cameraModels()[0], data.depthRaw());
+					markers = _markerDetector->detect(data.imageRaw(), data.cameraModels()[0], data.depthRaw(), _landmarksSize);
 				}
 			}
 			else if(data.stereoCameraModel().isValidForProjection())
 			{
-				markers = _markerDetector->detect(data.imageRaw(), data.stereoCameraModel().left());
+				markers = _markerDetector->detect(data.imageRaw(), data.stereoCameraModel().left(), cv::Mat(), _landmarksSize);
 			}
-			for(std::map<int, Transform>::iterator iter=markers.begin(); iter!=markers.end(); ++iter)
+			for(std::map<int, MarkerInfo>::iterator iter=markers.begin(); iter!=markers.end(); ++iter)
 			{
 				if(iter->first <= 0)
 				{
@@ -4828,7 +4833,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 				cv::Mat covariance = cv::Mat::eye(6,6,CV_64FC1);
 				covariance(cv::Range(0,3), cv::Range(0,3)) *= _markerLinVariance;
 				covariance(cv::Range(3,6), cv::Range(3,6)) *= _markerAngVariance;
-				landmarks.insert(std::make_pair(iter->first, Landmark(iter->first, iter->second, covariance)));
+				landmarks.insert(std::make_pair(iter->first, Landmark(iter->first, iter->second.length(), iter->second.pose(), covariance)));
 			}
 			UDEBUG("Markers detected = %d", (int)markers.size());
 		}
@@ -5373,23 +5378,30 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 		if(iter->second.id() > 0)
 		{
 			int landmarkId = -iter->first;
-			Link landmark(s->id(), landmarkId, Link::kLandmark, iter->second.pose(), iter->second.covariance().inv());
+            cv::Mat landmarkSize;
+            if(iter->second.size() > 0.0f)
+            {
+                landmarkSize = cv::Mat(1,1,CV_32FC1);
+                landmarkSize.at<float>(0,0) = iter->second.size();
+                
+                std::pair<std::map<int, float>::iterator, bool> inserted=_landmarksSize.insert(std::make_pair(iter->first, iter->second.size()));
+                if(!inserted.second)
+                {
+                    if(inserted.first->second != landmarkSize.at<float>(0,0))
+                    {
+                        UWARN("Trying to update landmark size buffer for landmark %d with size=%f but "
+                              "it has already a different size set. Keeping old size (%f).",
+                              -landmarkId, inserted.first->second, landmarkSize.at<float>(0,0));
+                    }
+                }
+                
+            }
+			Link landmark(s->id(), landmarkId, Link::kLandmark, iter->second.pose(), iter->second.covariance().inv(), landmarkSize);
 			s->addLandmark(landmark);
 
-			// Update landmark indexes
-			std::map<int, std::set<int> >::iterator nter = _landmarksIndex.find(s->id());
+			// Update landmark index
+			std::map<int, std::set<int> >::iterator nter = _landmarksIndex.find(landmarkId);
 			if(nter!=_landmarksIndex.end())
-			{
-				nter->second.insert(landmarkId);
-			}
-			else
-			{
-				std::set<int> tmp;
-				tmp.insert(landmarkId);
-				_landmarksIndex.insert(std::make_pair(s->id(), tmp));
-			}
-			nter = _landmarksInvertedIndex.find(landmarkId);
-			if(nter!=_landmarksInvertedIndex.end())
 			{
 				nter->second.insert(s->id());
 			}
@@ -5397,7 +5409,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 			{
 				std::set<int> tmp;
 				tmp.insert(s->id());
-				_landmarksInvertedIndex.insert(std::make_pair(landmarkId, tmp));
+				_landmarksIndex.insert(std::make_pair(landmarkId, tmp));
 			}
 		}
 		else
@@ -5606,20 +5618,24 @@ std::set<int> Memory::reactivateSignatures(const std::list<int> & ids, unsigned 
 			{
 				int landmarkId = iter->first;
 				UASSERT(landmarkId < 0);
+                
+                cv::Mat landmarkSize = iter->second.uncompressUserDataConst();
+                if(!landmarkSize.empty() && landmarkSize.type() == CV_32FC1 && landmarkSize.total()==1)
+                {
+                    std::pair<std::map<int, float>::iterator, bool> inserted=_landmarksSize.insert(std::make_pair(-landmarkId, landmarkSize.at<float>(0,0)));
+                    if(!inserted.second)
+                    {
+                        if(inserted.first->second != landmarkSize.at<float>(0,0))
+                        {
+                            UWARN("Trying to update landmark size buffer for landmark %d with size=%f but "
+                                  "it has already a different size set. Keeping old size (%f).",
+                                  -landmarkId, inserted.first->second, landmarkSize.at<float>(0,0));
+                        }
+                    }
+                }
 
-				std::map<int, std::set<int> >::iterator nter = _landmarksIndex.find((*i)->id());
+				std::map<int, std::set<int> >::iterator nter = _landmarksIndex.find(landmarkId);
 				if(nter!=_landmarksIndex.end())
-				{
-					nter->second.insert(landmarkId);
-				}
-				else
-				{
-					std::set<int> tmp;
-					tmp.insert(landmarkId);
-					_landmarksIndex.insert(std::make_pair((*i)->id(), tmp));
-				}
-				nter = _landmarksInvertedIndex.find(landmarkId);
-				if(nter!=_landmarksInvertedIndex.end())
 				{
 					nter->second.insert((*i)->id());
 				}
@@ -5627,7 +5643,7 @@ std::set<int> Memory::reactivateSignatures(const std::list<int> & ids, unsigned 
 				{
 					std::set<int> tmp;
 					tmp.insert((*i)->id());
-					_landmarksInvertedIndex.insert(std::make_pair(landmarkId, tmp));
+					_landmarksIndex.insert(std::make_pair(landmarkId, tmp));
 				}
 			}
 		}

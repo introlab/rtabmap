@@ -2239,11 +2239,11 @@ bool Rtabmap::process(
 	{
 		for(std::map<int, Link>::const_iterator iter=signature->getLandmarks().begin(); iter!=signature->getLandmarks().end(); ++iter)
 		{
-			if(uContains(_memory->getLandmarksInvertedIndex(), iter->first) &&
-				_memory->getLandmarksInvertedIndex().find(iter->first)->second.size()>1)
+			if(uContains(_memory->getLandmarksIndex(), iter->first) &&
+				_memory->getLandmarksIndex().find(iter->first)->second.size()>1)
 			{
 				landmarkDetected = iter->first;
-				landmarkDetectedNodesRef = _memory->getLandmarksInvertedIndex().find(iter->first)->second;
+				landmarkDetectedNodesRef = _memory->getLandmarksIndex().find(iter->first)->second;
 				UINFO("Landmark %d observed again! Seen the first time by node %d.", -iter->first, *landmarkDetectedNodesRef.begin());
 				break;
 			}
@@ -3146,8 +3146,8 @@ bool Rtabmap::process(
 	_lastLocalizationNodeId = newLocId!=0?newLocId:_lastLocalizationNodeId;
 	if(newLocId==0 && landmarkDetected!=0)
 	{
-		std::map<int, std::set<int> >::const_iterator iter = _memory->getLandmarksInvertedIndex().find(landmarkDetected);
-		if(iter!=_memory->getLandmarksInvertedIndex().end())
+		std::map<int, std::set<int> >::const_iterator iter = _memory->getLandmarksIndex().find(landmarkDetected);
+		if(iter!=_memory->getLandmarksIndex().end())
 		{
 			if(iter->second.size() && *iter->second.begin()!=signature->id())
 			{
@@ -4002,9 +4002,10 @@ void Rtabmap::deleteLastLocation()
 	}
 }
 
-void Rtabmap::setOptimizedPoses(const std::map<int, Transform> & poses)
+void Rtabmap::setOptimizedPoses(const std::map<int, Transform> & poses, const std::multimap<int, Link> & constraints)
 {
 	_optimizedPoses = poses;
+    _constraints = constraints;
 }
 
 void Rtabmap::dumpData() const

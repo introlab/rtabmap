@@ -57,7 +57,7 @@ Quad::Quad() {
 
 Quad::~Quad() { glDeleteShader(shader_program_); }
 
-void Quat::SetTextureId(GLuint texture_id) { texture_id_ = texture_id; }
+void Quad::SetTextureId(GLuint texture_id) { texture_id_ = texture_id; }
 
 void Quad::Render(const glm::mat4& projection_mat,
                   const glm::mat4& view_mat) const {

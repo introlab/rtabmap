@@ -31,6 +31,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/util3d_transforms.h"
 #include "rtabmap/core/OdometryEvent.h"
 #include "rtabmap/core/util2d.h"
+#include <glm/gtx/transform.hpp>
 
 namespace rtabmap {
 
@@ -59,13 +60,22 @@ CameraMobile::CameraMobile(bool smoothing) :
 		stampEpochOffset_(0.0),
 		smoothing_(smoothing),
 		colorCameraToDisplayRotation_(ROTATION_0),
-		originUpdate_(false)
+		originUpdate_(false),
+        textureId_(9999),
+        uvs_initialized_(false)
 {
+    glGenTextures(1, &textureId_);
 }
 
 CameraMobile::~CameraMobile() {
 	// Disconnect camera service
 	close();
+    
+    if(textureId_ != 9999)
+    {
+        glDeleteTextures(1, &textureId_);
+        textureId_ = 9999;
+    }
 }
 
 bool CameraMobile::init(const std::string &, const std::string &)
@@ -124,11 +134,53 @@ void CameraMobile::setGPS(const GPS & gps)
 	lastKnownGPS_ = gps;
 }
 
-void CameraMobile::setData(const SensorData & data, const Transform & pose)
+void CameraMobile::setData(const SensorData & data, const Transform & pose, const glm::mat4 & viewMatrix, const glm::mat4 & projectionMatrix, const float * texCoord)
 {
 	LOGD("CameraMobile::setData pose=%s stamp=%f", pose.prettyPrint().c_str(), data.stamp());
 	data_ = data;
 	pose_ = pose;
+
+    viewMatrix_ = viewMatrix;
+    projectionMatrix_ = projectionMatrix;
+    
+    if(textureId_ == 9999)
+    {
+        glGenTextures(1, &textureId_);
+    }
+    
+    if(texCoord)
+    {
+        memcpy(transformed_uvs_, texCoord, 8*sizeof(float));
+        uvs_initialized_ = true;
+    }
+    
+    LOGD("CameraMobile::setData textureId_=%d", (int)textureId_);
+    
+    if(textureId_ != 0)
+    {
+        cv::Mat rgbImage;
+        cv::cvtColor(data.imageRaw(), rgbImage, CV_BGR2RGBA);
+        
+        glBindTexture(GL_TEXTURE_2D, textureId_);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        
+        glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+        //glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+        //glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
+        //glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, rgbImage.cols, rgbImage.rows, 0, GL_RGBA, GL_UNSIGNED_BYTE, rgbImage.data);
+
+        GLint error = glGetError();
+        if(error != GL_NO_ERROR)
+        {
+            LOGE("OpenGL: Could not allocate texture (0x%x)\n", error);
+            textureId_ = 0;
+            return;
+        }
+    }
 }
 
 void CameraMobile::addEnvSensor(int type, float value)
@@ -336,6 +388,62 @@ SensorData CameraMobile::captureImage(CameraInfo * info)
 		info->odomPose = pose_;
 	}
 	return data_;
+}
+
+LaserScan CameraMobile::scanFromPointCloudData(
+        const cv::Mat & pointCloudData,
+        int points,
+        const Transform & pose,
+        const CameraModel & model,
+        const cv::Mat & rgb,
+        std::vector<cv::KeyPoint> * kpts,
+        std::vector<cv::Point3f> * kpts3D,
+        int kptsSize)
+{
+    if(!pointCloudData.empty())
+    {
+        cv::Mat scanData(1, pointCloudData.cols, CV_32FC4);
+        float * ptr = scanData.ptr<float>();
+        const float * inPtr = pointCloudData.ptr<float>();
+        int ic = pointCloudData.channels();
+        UASSERT(pointCloudData.depth() == CV_32F && ic >= 3);
+        
+        int oi = 0;
+        for(unsigned int i=0;i<points; ++i)
+        {
+            cv::Point3f pt(inPtr[i*ic], inPtr[i*ic + 1], inPtr[i*ic + 2]);
+            pt = util3d::transformPoint(pt, pose.inverse()*rtabmap_world_T_opengl_world);
+            ptr[oi*4] = pt.x;
+            ptr[oi*4 + 1] = pt.y;
+            ptr[oi*4 + 2] = pt.z;
+
+            //get color from rgb image
+            cv::Point3f org= pt;
+            pt = util3d::transformPoint(pt, opticalRotationInv);
+            int u,v;
+            model.reproject(pt.x, pt.y, pt.z, u, v);
+            unsigned char r=255,g=255,b=255;
+            if(model.inFrame(u, v))
+            {
+                b=rgb.at<cv::Vec3b>(v,u).val[0];
+                g=rgb.at<cv::Vec3b>(v,u).val[1];
+                r=rgb.at<cv::Vec3b>(v,u).val[2];
+                if(kpts)
+                    kpts->push_back(cv::KeyPoint(u,v,kptsSize));
+                if(kpts3D)
+                    kpts3D->push_back(org);
+                
+                *(int*)&ptr[oi*4 + 3] = int(b) | (int(g) << 8) | (int(r) << 16);
+                ++oi;
+            }
+
+            //confidence
+            //*(int*)&ptr[i*4 + 3] = (int(pointCloudData[i*4 + 3] * 255.0f) << 8) | (int(255) << 16);
+
+        }
+        return LaserScan::backwardCompatibility(scanData.colRange(0, oi), 0, 10, rtabmap::Transform::getIdentity());
+    }
+    return LaserScan();
 }
 
 } /* namespace rtabmap */

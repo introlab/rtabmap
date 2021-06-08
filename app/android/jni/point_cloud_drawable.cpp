@@ -35,7 +35,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "util.h"
 #include "pcl/common/transforms.h"
 
+#ifdef __ANDROID__
 #include <GLES2/gl2.h>
+#else // __APPLE__
+#include <OpenGLES/ES2/gl.h>
+#endif
 
 #define LOW_DEC 2
 #define LOWLOW_DEC 4
@@ -257,7 +261,7 @@ const std::string kTextureMeshBlendingFragmentShader =
 	"  float linearFragz = num / (add - ndcFragz * diff);\n" // inverse projection matrix
 	"  if(linearFragz > linearDepth + 0.05)\n"
 	"    alpha=0.0;\n"
-	"  gl_FragColor = vec4(textureColor.r * uGainR * vLightWeighting, textureColor.g * uGainG * vLightWeighting, textureColor.b * uGainB * vLightWeighting, alpha);\n"
+    "  gl_FragColor = vec4(textureColor.r * uGainR * vLightWeighting, textureColor.g * uGainG * vLightWeighting, textureColor.b * uGainB * vLightWeighting, alpha);\n"
     "}\n";
 
 std::vector<GLuint> PointCloudDrawable::shaderPrograms_;
@@ -356,7 +360,7 @@ PointCloudDrawable::~PointCloudDrawable()
 
 void PointCloudDrawable::updatePolygons(const std::vector<pcl::Vertices> & polygons, const std::vector<pcl::Vertices> & polygonsLowRes, bool createWireframe)
 {
-	LOGD("Update polygons");
+	//LOGD("Update polygons");
 	polygons_.clear();
 	polygonLines_.clear();
 	polygonsLowRes_.clear();
@@ -580,13 +584,13 @@ void PointCloudDrawable::updateMesh(const rtabmap::Mesh & mesh, bool createWiref
 	int totalPoints = 0;
 	std::vector<pcl::Vertices> polygons = mesh.polygons;
 	std::vector<pcl::Vertices> polygonsLowRes;
-	hasNormals_ = mesh.normals.get() && mesh.normals->size() == mesh.cloud->size();
+    hasNormals_ = mesh.normals.get() && mesh.normals->size() == mesh.cloud->size();
 	UASSERT(!hasNormals_ || mesh.cloud->size() == mesh.normals->size());
 	if(mesh.cloud->isOrganized()) // assume organized mesh
 	{
 		polygonsLowRes = mesh.polygonsLowRes; // only in organized we keep the low res
 		organizedToDenseIndices_ = std::vector<unsigned int>(mesh.cloud->width*mesh.cloud->height, -1);
-		totalPoints = mesh.indices->size();
+		totalPoints = (int)mesh.indices->size();
 		verticesLowRes_.resize(totalPoints);
 		verticesLowLowRes_.resize(totalPoints);
 		int oi_low = 0;
@@ -672,7 +676,7 @@ void PointCloudDrawable::updateMesh(const rtabmap::Mesh & mesh, bool createWiref
 	}
 	else // assume dense mesh with texCoords set to polygons
 	{
-		if(textures_ && polygons.size() && mesh.normals->size())
+		if(textures_ && polygons.size())
 		{
 			//LOGD("Dense mesh with texture (%d texCoords %d points %d polygons %dx%d)",
 			//		(int)mesh.texCoords.size(), (int)mesh.cloud->size(), (int)mesh.polygons.size(), texture.cols, texture.rows);
@@ -681,14 +685,14 @@ void PointCloudDrawable::updateMesh(const rtabmap::Mesh & mesh, bool createWiref
 			//  tex_coordinates should be linked to points, not
 			//  polygon vertices. Points linked to multiple different texCoords (different textures) should
 			//  be duplicated.
-			totalPoints = mesh.texCoords.size();
-			vertices = std::vector<float>(mesh.texCoords.size()*9);
+			totalPoints = (int)mesh.texCoords.size();
+            int items = hasNormals_?9:6;
+			vertices = std::vector<float>(mesh.texCoords.size()*items);
 			organizedToDenseIndices_ = std::vector<unsigned int>(totalPoints, -1);
 
 			UASSERT_MSG(mesh.texCoords.size() == polygons[0].vertices.size()*polygons.size(),
 					uFormat("%d vs %d x %d", (int)mesh.texCoords.size(), (int)polygons[0].vertices.size(), (int)polygons.size()).c_str());
 
-			int items = hasNormals_?9:6;
 			unsigned int oi=0;
 			for(unsigned int i=0; i<polygons.size(); ++i)
 			{

@@ -88,7 +88,7 @@ Scene::Scene() :
 		mapRendering_(true),
 		meshRendering_(true),
 		meshRenderingTexture_(true),
-		pointSize_(5.0f),
+		pointSize_(10.0f),
 		boundingBoxRendering_(false),
 		lighting_(false),
 		backfaceCulling_(true),
@@ -220,11 +220,14 @@ void Scene::SetupViewPort(int w, int h) {
 	if (h == 0) {
 		LOGE("Setup graphic height not valid");
 	}
+    
 	UASSERT(gesture_camera_ != 0);
 	gesture_camera_->SetWindowSize(static_cast<float>(w), static_cast<float>(h));
 	glViewport(0, 0, w, h);
 	if(screenWidth_ != w || screenHeight_ != h || fboId_ == 0)
 	{
+        UINFO("Setup viewport OpenGL: %dx%d", w, h);
+        
 		if(fboId_>0)
 		{
 			glDeleteFramebuffers(1, &fboId_);
@@ -235,6 +238,9 @@ void Scene::SetupViewPort(int w, int h) {
 			depthTexture_ = 0;
 		}
 
+        GLint originid = 0;
+        glGetIntegerv(GL_FRAMEBUFFER_BINDING, &originid);
+        
 		// regenerate fbo texture
 		// create a framebuffer object, you need to delete them when program exits.
 		glGenFramebuffers(1, &fboId_);
@@ -260,12 +266,9 @@ void Scene::SetupViewPort(int w, int h) {
 		glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, rboId_);
 
 		GLuint status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
-		if ( status != GL_FRAMEBUFFER_COMPLETE)
-		{
-			LOGE("Frame buffer cannot be generated! Status: %in", status);
-		}
-		glBindFramebuffer(GL_FRAMEBUFFER,0);
-	}
+        UASSERT ( status == GL_FRAMEBUFFER_COMPLETE);
+		glBindFramebuffer(GL_FRAMEBUFFER, originid);
+    }
 	screenWidth_ = w;
 	screenHeight_ = h;
 }
@@ -411,13 +414,21 @@ int Scene::Render(const float * uvsTransformed, glm::mat4 arViewMatrix, glm::mat
 
 	bool renderBackgroundCamera =
 			background_renderer_ &&
-			gesture_camera_->GetCameraType() == tango_gl::GestureCamera::kFirstPerson &&
-			!rtabmap::glmToTransform(arProjectionMatrix).isNull() &&
-			uvsTransformed;
+            gesture_camera_->GetCameraType() == tango_gl::GestureCamera::kFirstPerson &&
+            !rtabmap::glmToTransform(arProjectionMatrix).isNull() &&
+            uvsTransformed;
+
 	if(renderBackgroundCamera)
 	{
-		projectionMatrix = arProjectionMatrix;
-		viewMatrix = arViewMatrix;
+        if(projectionMatrix[0][0] > arProjectionMatrix[0][0]-0.2)
+        {
+            projectionMatrix = arProjectionMatrix;
+            viewMatrix = arViewMatrix;
+        }
+        else
+        {
+            renderBackgroundCamera = false;
+        }
 	}
 
 	rtabmap::Transform openglCamera = GetOpenGLCameraPose();//*rtabmap::Transform(0.0f, 0.0f, 3.0f, 0.0f, 0.0f, 0.0f);
@@ -472,13 +483,16 @@ int Scene::Render(const float * uvsTransformed, glm::mat4 arViewMatrix, glm::mat
 	bool onlineBlending = (renderBackgroundCamera && occlusionMesh.cloud.get() && occlusionMesh.cloud->size()) || (blending_ && gesture_camera_->GetCameraType()!=tango_gl::GestureCamera::kTopOrtho && mapRendering_ && meshRendering_ && cloudsToDraw.size()>1);
 	if(onlineBlending && fboId_)
 	{
+        GLint originid = 0;
+        glGetIntegerv(GL_FRAMEBUFFER_BINDING, &originid);
+        
 		// set the rendering destination to FBO
 		glBindFramebuffer(GL_FRAMEBUFFER, fboId_);
 
 		glClearColor(0, 0, 0, 0);
 		glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 
-		if(renderBackgroundCamera)
+		if(renderBackgroundCamera && occlusionMesh.cloud.get() && occlusionMesh.cloud->size())
 		{
 			PointCloudDrawable drawable(occlusionMesh);
 			drawable.Render(projectionMatrix, viewMatrix, true, pointSize_, false, false, 999.0f, 0, 0, 0, 0, 0, true);
@@ -488,13 +502,17 @@ int Scene::Render(const float * uvsTransformed, glm::mat4 arViewMatrix, glm::mat
 			// Draw scene
 			for(std::vector<PointCloudDrawable*>::const_iterator iter=cloudsToDraw.begin(); iter!=cloudsToDraw.end(); ++iter)
 			{
-				// set large distance to cam to use low res polygons for fast processing
-				(*iter)->Render(projectionMatrix, viewMatrix, meshRendering_, pointSize_, false, false, 999.0f, 0, 0, 0, 0, 0, true);
+                Eigen::Vector3f cloudToCamera(
+                          (*iter)->getPose().x() - openglCamera.x(),
+                          (*iter)->getPose().y() - openglCamera.y(),
+                          (*iter)->getPose().z() - openglCamera.z());
+                float distanceToCameraSqr = cloudToCamera[0]*cloudToCamera[0] + cloudToCamera[1]*cloudToCamera[1] + cloudToCamera[2]*cloudToCamera[2];
+				(*iter)->Render(projectionMatrix, viewMatrix, meshRendering_, pointSize_, false, false, distanceToCameraSqr, 0, 0, 0, 0, 0, true);
 			}
 		}
 
 		// back to normal window-system-provided framebuffer
-		glBindFramebuffer(GL_FRAMEBUFFER, 0); // unbind
+		glBindFramebuffer(GL_FRAMEBUFFER, originid); // unbind
 	}
 
 	if(doubleTapOn_ && gesture_camera_->GetCameraType() != tango_gl::GestureCamera::kFirstPerson)
@@ -502,10 +520,16 @@ int Scene::Render(const float * uvsTransformed, glm::mat4 arViewMatrix, glm::mat
 		glClearColor(0, 0, 0, 0);
 		glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 
+        // FIXME: we could use the depthTexture if already computed!
 		for(std::vector<PointCloudDrawable*>::const_iterator iter=cloudsToDraw.begin(); iter!=cloudsToDraw.end(); ++iter)
 		{
-			// set large distance to cam to use low res polygons for fast processing
-			(*iter)->Render(projectionMatrix, viewMatrix, meshRendering_, pointSize_*10.0f, false, false, 999.0f, 0, 0, 0, 0, 0, true);
+            Eigen::Vector3f cloudToCamera(
+                      (*iter)->getPose().x() - openglCamera.x(),
+                      (*iter)->getPose().y() - openglCamera.y(),
+                      (*iter)->getPose().z() - openglCamera.z());
+            float distanceToCameraSqr = cloudToCamera[0]*cloudToCamera[0] + cloudToCamera[1]*cloudToCamera[1] + cloudToCamera[2]*cloudToCamera[2];
+            
+            (*iter)->Render(projectionMatrix, viewMatrix, meshRendering_, pointSize_*10.0f, false, false, distanceToCameraSqr, 0, 0, 0, 0, 0, true);
 		}
 
 		GLubyte zValue[4];
@@ -680,18 +704,10 @@ void Scene::updateGraph(
 		const std::multimap<int, rtabmap::Link> & links)
 {
 	LOGI("updateGraph");
-	if(graph_)
-	{
-		delete graph_;
-		graph_ = 0;
-	}
-
 	//create
-	if(graphVisible_)
-	{
-		UASSERT(graph_shader_program_ != 0);
-		graph_ = new GraphDrawable(graph_shader_program_, poses, links);
-	}
+    UASSERT(graph_shader_program_ != 0);
+    delete graph_;
+    graph_ = new GraphDrawable(graph_shader_program_, poses, links);
 }
 
 void Scene::setGraphVisible(bool visible)

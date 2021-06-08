@@ -85,6 +85,7 @@ Link::Link(int from,
 	else
 	{
 		_userDataRaw = userData;
+        _userDataCompressed = compressData2(_userDataRaw);
 	}
 }
 

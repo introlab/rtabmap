@@ -21,10 +21,16 @@
 #define GL_VERTEX_PROGRAM_POINT_SIZE 0x8642
 
 #include <stdlib.h>
+#ifdef __ANDROID__
 #include <jni.h>
 #include <android/log.h>
 #include <GLES2/gl2.h>
 #include <GLES2/gl2ext.h>
+#else // __APPLE__
+#include <OpenGLES/ES2/gl.h>
+#include <OpenGLES/ES2/glext.h>
+#include <syslog.h>
+#endif
 
 #include "glm/glm.hpp"
 #include "glm/gtc/matrix_transform.hpp"
@@ -33,17 +39,28 @@
 #include "glm/gtx/matrix_decompose.hpp"
 
 #define LOG_TAG "rtabmap"
-#ifdef DISABLE_LOG
+#if defined(DISABLE_LOG)
 #define LOGD(...) ;
 #define LOGI(...) ;
 #define LOGW(...) ;
+#else
+#ifdef __APPLE__
+#define LOGD(...) fprintf(stderr, __VA_ARGS__); fprintf(stderr, "\n")
+#define LOGI(...) fprintf(stderr, __VA_ARGS__); fprintf(stderr, "\n")
+#define LOGW(...) fprintf(stderr, __VA_ARGS__); fprintf(stderr, "\n")
 #else
 #define LOGD(...) __android_log_print(ANDROID_LOG_DEBUG,LOG_TAG,__VA_ARGS__)
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO,LOG_TAG,__VA_ARGS__)
 #define LOGW(...) __android_log_print(ANDROID_LOG_WARN,LOG_TAG,__VA_ARGS__)
 #endif
+#endif
+#ifdef __APPLE__
+#define LOGE(...) fprintf(stderr, __VA_ARGS__); fprintf(stderr, "\n")
+#define LOGF(...) fprintf(stderr, __VA_ARGS__); fprintf(stderr, "\n")
+#else
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR,LOG_TAG,__VA_ARGS__)
 #define LOGF(...) __android_log_print(ANDROID_LOG_FATAL,LOG_TAG,__VA_ARGS__)
+#endif
 
 #ifndef M_PI
 #define M_PI 3.1415926f

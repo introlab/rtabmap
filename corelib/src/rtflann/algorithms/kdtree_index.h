@@ -362,7 +362,7 @@ public:
 			size_t knn,
 			const SearchParams& params) const
 	{
-		assert(queries.cols == veclen());
+		assert(queries.cols == veclen_);
 		assert(indices.rows >= queries.rows);
 		assert(dists.rows >= queries.rows);
 		assert(indices.cols >= knn);
@@ -430,7 +430,7 @@ public:
 					size_t knn,
 					const SearchParams& params) const
 	{
-		assert(queries.cols == veclen());
+		assert(queries.cols == veclen_);
 		bool use_heap;
 		if (params.use_heap==FLANN_Undefined) {
 			use_heap = (knn>KNN_HEAP_THRESHOLD)?true:false;
@@ -503,7 +503,7 @@ public:
 			float radius,
 			const SearchParams& params) const
 	{
-		assert(queries.cols == veclen());
+		assert(queries.cols == veclen);
 		int count = 0;
 		size_t num_neighbors = std::min(indices.cols, dists.cols);
 		int max_neighbors = params.max_neighbors;
@@ -588,7 +588,7 @@ public:
 			float radius,
 			const SearchParams& params) const
 	{
-		assert(queries.cols == veclen());
+		assert(queries.cols == veclen_);
 		int count = 0;
 
 		Heap<BranchSt>* heap = new Heap<BranchSt>((int)size_);

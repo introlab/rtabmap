@@ -13315,7 +13315,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                          <number>4</number>
                         </property>
                         <property name="minimum">
-                         <double>0.000000000000000</double>
+                         <double>-1.0</double>
                         </property>
                         <property name="singleStep">
                          <double>0.010000000000000</double>

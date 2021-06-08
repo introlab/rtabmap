@@ -35,17 +35,41 @@ const std::string kVertexShader =
 		"}\n";
 
 const std::string kFragmentShader =
+#ifdef __ANDROID__
 	"#extension GL_OES_EGL_image_external : require\n"
-
+#endif
 	"precision mediump float;\n"
 	"varying vec2 v_TexCoord;\n"
+#ifdef __ANDROID__
 	"uniform samplerExternalOES sTexture;\n"
-
+#else
+    "uniform sampler2D sTexture;\n"
+#endif
 	"void main() {\n"
 	"    vec4 sample = texture2D(sTexture, v_TexCoord);\n"
 	"    float grey = 0.21 * sample.r + 0.71 * sample.g + 0.07 * sample.b;\n"
 	"    gl_FragColor = vec4(grey, grey, grey, 0.5);\n"
 	"}\n";
+
+/* To debug depth texture
+ const std::string kFragmentShader =
+     "precision mediump float;\n"
+     "varying vec2 v_TexCoord;\n"
+     "uniform sampler2D sTexture;\n"
+
+     "void main() {\n"
+     "  float uNearZ = 0.2;\n"
+     "  float uFarZ = 1000.0;\n"
+     "  float depth = texture2D(sTexture, v_TexCoord).r;\n"
+     "  float num =  (2.0 * uNearZ * uFarZ);\n"
+     "  float diff = (uFarZ - uNearZ);\n"
+     "  float add = (uFarZ + uNearZ);\n"
+     "  float ndcDepth = depth * 2.0 - 1.0;\n" // Back to NDC
+     "  float linearDepth = num / (add - ndcDepth * diff);\n" // inverse projection matrix
+     "  float grey = linearDepth/3.0;\n"
+     "  gl_FragColor = vec4(grey, grey, grey, 0.5);\n"
+     "}\n";
+ */
 
 }  // namespace
 
@@ -71,10 +95,14 @@ void BackgroundRenderer::Draw(const float * transformed_uvs) {
   glEnable (GL_BLEND);
 
   glActiveTexture(GL_TEXTURE0);
+#ifdef __ANDROID__
   glBindTexture(GL_TEXTURE_EXTERNAL_OES, texture_id_);
+#else
+  glBindTexture(GL_TEXTURE_2D, texture_id_);
+#endif
 
   glVertexAttribPointer(attribute_vertices_, 2, GL_FLOAT, GL_FALSE, 0, BackgroundRenderer_kVertices);
-  glVertexAttribPointer(attribute_uvs_, 2, GL_FLOAT, GL_FALSE, 0, transformed_uvs);
+  glVertexAttribPointer(attribute_uvs_, 2, GL_FLOAT, GL_FALSE, 0, transformed_uvs?transformed_uvs:BackgroundRenderer_kTexCoord);
 
   glEnableVertexAttribArray(attribute_vertices_);
   glEnableVertexAttribArray(attribute_uvs_);
