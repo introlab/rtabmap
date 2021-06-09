@@ -905,7 +905,11 @@ Java_com_introlab_rtabmap_RTABMapLib_postOdometryEvent(
 				stamp,
 				yPtr, uPtr, vPtr, yPlaneLen, rgbWidth, rgbHeight, rgbFormat,
 				depthPtr, depthLen, depthWidth, depthHeight, depthFormat,
-				pointsPtr, pointsLen);
+				0,0,0,0,0,
+				pointsPtr, pointsLen, 4,
+				0,0,0,0,0,0,0,
+				0,0,0,0,0,0,0,
+				0,0,0,0,0,0,0,0);
 	}
 	else
 	{

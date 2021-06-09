@@ -219,7 +219,6 @@ class RTABMapApp : public UEventsHandler {
   bool cameraColor_;
   bool fullResolution_;
   bool appendMode_;
-  bool proximityDetection_;
   float maxCloudDepth_;
   float minCloudDepth_;
   int cloudDensityLevel_;

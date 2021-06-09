@@ -174,6 +174,7 @@ RTABMapApp::RTABMapApp() :
 		trajectoryMode_(false),
 		rawScanSaved_(false),
 		smoothing_(true),
+		depthFromMotion_(false),
 		cameraColor_(true),
 		fullResolution_(false),
 		appendMode_(true),
@@ -565,7 +566,7 @@ int RTABMapApp::openDatabase(const std::string & databasePath, bool databaseInMe
                                             polygonsLowRes = rtabmap::util3d::organizedFastMesh(cloud, meshAngleToleranceDeg_*M_PI/180.0, false, meshTrianglePix_+LOW_RES_PIX);
                                         }
 #ifdef DEBUG_RENDERING_PERFORMANCE
-                                        LOGW("Mesh simplication, %d polygons, %d points (%fs)", (int)polygons.size(), (int)cloud->size(), time.ticks());
+                                        LOGW("Mesh simplication, %d polygons, %d points (%fs)", (int)polygons.size(), (int)cloud->size(), timer.ticks());
 #endif
                                     }
                                     else
