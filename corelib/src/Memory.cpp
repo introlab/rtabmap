@@ -4368,7 +4368,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
                 
                 // A: Adjust keypoint position so that descriptors are correctly extracted
                 // B: In case we provided corresponding 3D features
-                if(preDecimation > 1 || useProvided3dPoints)
+                if(preDecimation > 1 || useProvided3dPoints)
                 {
                     float decimationRatio = 1.0f / float(preDecimation);
                     double log2value = log(double(preDecimation))/log(2.0);
