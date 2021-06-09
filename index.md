@@ -49,7 +49,7 @@
     * SURF noncommercial notice: http://www.vision.ee.ethz.ch/~surf/download.html
 
 ## Privacy Policy
-RTAB-Map App on [Google Play Store](https://play.google.com/store/apps/details?id=com.introlab.rtabmap&hl=en) or Apple Store requires access to camera to record images that will be used for creating the map. When saving, a database containing these images is created. That database is saved locally on the device (on the sd-card under RTAB-Map folder). While location permission is required to install RTAB-Map Tango, the GPS coordinates are not saved by default, the option "Settings->Mapping...->Save GPS" should be enabled first. RTAB-Map requires read/write access to RTAB-Map folder only, to save, export and open maps. RTAB-Map doesn't access any other information outside the RTAB-Map folder. RTAB-Map doesn't share information over Internet unless the user explicitly exports a map to Sketchfab or anywhere else, for which RTAB-Map needs the network. If so, the user will be asked for authorization ([oauth2](https://oauth.net/)) by Sketchfab (see their Privacy Policy [here](https://sketchfab.com/privacy)).
+RTAB-Map App on [Google Play Store](https://play.google.com/store/apps/details?id=com.introlab.rtabmap&hl=en) or [Apple Store](https://apps.apple.com/ca/app/rtab-map-3d-lidar-scanner/id1564774365) requires access to camera to record images that will be used for creating the map. When saving, a database containing these images is created. That database is saved locally on the device (on the sd-card under RTAB-Map folder). While location permission is required to install RTAB-Map Tango, the GPS coordinates are not saved by default, the option "Settings->Mapping...->Save GPS" should be enabled first. RTAB-Map requires read/write access to RTAB-Map folder only, to save, export and open maps. RTAB-Map doesn't access any other information outside the RTAB-Map folder. RTAB-Map doesn't share information over Internet unless the user explicitly exports a map to Sketchfab or anywhere else, for which RTAB-Map needs the network. If so, the user will be asked for authorization ([oauth2](https://oauth.net/)) by Sketchfab (see their Privacy Policy [here](https://sketchfab.com/privacy)).
 
 This website uses Google Analytics. See their Privacy Policy [here](https://support.google.com/analytics/answer/6004245?hl=en).
 
@@ -63,6 +63,11 @@ This website uses Google Analytics. See their Privacy Policy [here](https://supp
     [![paypal](https://www.paypalobjects.com/en_US/i/btn/btn_donate_LG.gif)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=X8TCXXHHDL62Q)
 
 ## What's new 
+
+### June 2021
+* I'm pleased to announce that RTAB-Map is now on **iOS** (iPhone/iPad with LiDAR required). The app is [available](https://apps.apple.com/ca/app/rtab-map-3d-lidar-scanner/id1564774365) on App Store.
+
+    <a href="https://youtu.be/rVpIcrgD5c0"><img src="https://raw.githubusercontent.com/wiki/introlab/rtabmap/doc/video_screenshots/rtabmap-ios.jpg" alt="video" title="video"></a>
 
 ### December 2020
 New release [v0.20.7](https://github.com/introlab/rtabmap/releases/tag/0.20.7)!
