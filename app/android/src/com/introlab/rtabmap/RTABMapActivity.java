@@ -104,7 +104,7 @@ public class RTABMapActivity extends FragmentActivity implements OnClickListener
 
 	// Tag for debug logging.
 	public static final String TAG = RTABMapActivity.class.getSimpleName();
-	public static boolean DISABLE_LOG = true;
+	public static boolean DISABLE_LOG = false;
 
 	// The minimum Tango Core version required from this application.
 	private static final int  MIN_TANGO_CORE_VERSION = 9377;

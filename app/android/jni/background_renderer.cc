@@ -34,17 +34,21 @@ const std::string kVertexShader =
 		"   v_TexCoord = a_TexCoord;\n"
 		"}\n";
 
-const std::string kFragmentShader =
-#ifdef __ANDROID__
+const std::string kFragmentShaderOES =
 	"#extension GL_OES_EGL_image_external : require\n"
-#endif
 	"precision mediump float;\n"
 	"varying vec2 v_TexCoord;\n"
-#ifdef __ANDROID__
 	"uniform samplerExternalOES sTexture;\n"
-#else
+	"void main() {\n"
+	"    vec4 sample = texture2D(sTexture, v_TexCoord);\n"
+	"    float grey = 0.21 * sample.r + 0.71 * sample.g + 0.07 * sample.b;\n"
+	"    gl_FragColor = vec4(grey, grey, grey, 0.5);\n"
+	"}\n";
+
+const std::string kFragmentShader =
+	"precision mediump float;\n"
+	"varying vec2 v_TexCoord;\n"
     "uniform sampler2D sTexture;\n"
-#endif
 	"void main() {\n"
 	"    vec4 sample = texture2D(sTexture, v_TexCoord);\n"
 	"    float grey = 0.21 * sample.r + 0.71 * sample.g + 0.07 * sample.b;\n"
@@ -73,11 +77,14 @@ const std::string kFragmentShader =
 
 }  // namespace
 
-void BackgroundRenderer::InitializeGlContent(GLuint textureId)
+void BackgroundRenderer::InitializeGlContent(GLuint textureId, bool oes)
 {
   texture_id_ = textureId;
+  oes_ = oes;
 
-  shader_program_ = tango_gl::util::CreateProgram(kVertexShader.c_str(), kFragmentShader.c_str());
+  shader_program_ = tango_gl::util::CreateProgram(
+		  kVertexShader.c_str(),
+		  oes_?kFragmentShaderOES.c_str():kFragmentShader.c_str());
   if (!shader_program_) {
     LOGE("Could not create program.");
   }
@@ -95,11 +102,10 @@ void BackgroundRenderer::Draw(const float * transformed_uvs) {
   glEnable (GL_BLEND);
 
   glActiveTexture(GL_TEXTURE0);
-#ifdef __ANDROID__
-  glBindTexture(GL_TEXTURE_EXTERNAL_OES, texture_id_);
-#else
-  glBindTexture(GL_TEXTURE_2D, texture_id_);
-#endif
+  if(oes_)
+    glBindTexture(GL_TEXTURE_EXTERNAL_OES, texture_id_);
+  else
+    glBindTexture(GL_TEXTURE_2D, texture_id_);
 
   glVertexAttribPointer(attribute_vertices_, 2, GL_FLOAT, GL_FALSE, 0, BackgroundRenderer_kVertices);
   glVertexAttribPointer(attribute_uvs_, 2, GL_FLOAT, GL_FALSE, 0, transformed_uvs?transformed_uvs:BackgroundRenderer_kTexCoord);

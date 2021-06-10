@@ -55,7 +55,7 @@ public:
 
   // Sets up OpenGL state.  Must be called on the OpenGL thread and before any
   // other methods below.
-  void InitializeGlContent(GLuint textureId);
+  void InitializeGlContent(GLuint textureId, bool oes);
 
   // Draws the background image.  This methods must be called for every ArFrame
   // returned by ArSession_update() to catch display geometry change events.
@@ -65,6 +65,7 @@ public:
 
   GLuint shader_program_;
   GLuint texture_id_;
+  bool oes_ = false;
 
   GLuint attribute_vertices_;
   GLuint attribute_uvs_;

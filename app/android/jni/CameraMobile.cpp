@@ -56,13 +56,13 @@ CameraMobile::CameraMobile(bool smoothing) :
 		Camera(10),
 		deviceTColorCamera_(Transform::getIdentity()),
 		spinOncePreviousStamp_(0.0),
+		textureId_(9999),
+		uvs_initialized_(false),
 		previousStamp_(0.0),
 		stampEpochOffset_(0.0),
 		smoothing_(smoothing),
 		colorCameraToDisplayRotation_(ROTATION_0),
-		originUpdate_(false),
-        textureId_(9999),
-        uvs_initialized_(false)
+		originUpdate_(false)
 {
     glGenTextures(1, &textureId_);
 }
@@ -156,7 +156,7 @@ void CameraMobile::setData(const SensorData & data, const Transform & pose, cons
     
     LOGD("CameraMobile::setData textureId_=%d", (int)textureId_);
     
-    if(textureId_ != 0)
+    if(textureId_ != 0 && texCoord != 0)
     {
         cv::Mat rgbImage;
         cv::cvtColor(data.imageRaw(), rgbImage, CV_BGR2RGBA);

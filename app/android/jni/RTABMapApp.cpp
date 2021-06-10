@@ -916,6 +916,7 @@ void RTABMapApp::stopCamera()
 			camera_->close();
 			delete camera_;
 			camera_ = 0;
+			poseBuffer_.clear();
 		}
 	}
     {
@@ -1243,7 +1244,7 @@ int RTABMapApp::Render()
 					if(main_scene_.background_renderer_ == 0)
 					{
 						main_scene_.background_renderer_ = new BackgroundRenderer();
-						main_scene_.background_renderer_->InitializeGlContent(((rtabmap::CameraARCore*)camera_)->getTextureId());
+						main_scene_.background_renderer_->InitializeGlContent(((rtabmap::CameraARCore*)camera_)->getTextureId(), true);
 					}
 					if(((rtabmap::CameraARCore*)camera_)->uvsInitialized())
 					{
@@ -1277,7 +1278,7 @@ int RTABMapApp::Render()
                     if(main_scene_.background_renderer_ == 0)
                     {
                         main_scene_.background_renderer_ = new BackgroundRenderer();
-                        main_scene_.background_renderer_->InitializeGlContent(((rtabmap::CameraMobile*)camera_)->getTextureId());
+                        main_scene_.background_renderer_->InitializeGlContent(((rtabmap::CameraMobile*)camera_)->getTextureId(), false);
                     }
                     if(((rtabmap::CameraMobile*)camera_)->uvsInitialized())
                     {
@@ -3657,7 +3658,7 @@ int RTABMapApp::postProcessing(int approach)
 }
 
 void RTABMapApp::postCameraPoseEvent(
-		float x, float y, float z, float qx, float qy, float qz, float qw)
+		float x, float y, float z, float qx, float qy, float qz, float qw, double stamp)
 {
 	boost::mutex::scoped_lock  lock(cameraMutex_);
 	if(cameraDriver_ == 3 && camera_)
@@ -3665,18 +3666,28 @@ void RTABMapApp::postCameraPoseEvent(
 		rtabmap::Transform pose(x,y,z,qx,qy,qz,qw);
 		pose = rtabmap::rtabmap_world_T_opengl_world * pose * rtabmap::opengl_world_T_rtabmap_world;
 		camera_->poseReceived(pose);
+
+		poseBuffer_.insert(std::make_pair(stamp, pose));
+		if(poseBuffer_.size() > 1000)
+		{
+			poseBuffer_.erase(poseBuffer_.begin());
+		}
 	}
 }
 
 void RTABMapApp::postOdometryEvent(
-		float x, float y, float z, float qx, float qy, float qz, float qw,
-		float fx, float fy, float cx, float cy,
+		rtabmap::Transform pose,
+		float rgb_fx, float rgb_fy, float rgb_cx, float rgb_cy,
+		float depth_fx, float depth_fy, float depth_cx, float depth_cy,
+		const rtabmap::Transform & rgbFrame,
+		const rtabmap::Transform & depthFrame,
 		double stamp,
+		double depthStamp,
         const void * yPlane, const void * uPlane, const void * vPlane, int yPlaneLen, int rgbWidth, int rgbHeight, int rgbFormat,
         const void * depth, int depthLen, int depthWidth, int depthHeight, int depthFormat,
         const void * conf, int confLen, int confWidth, int confHeight, int confFormat,
         const float * points, int pointsLen, int pointsChannels,
-        float vx, float vy, float vz, float vqx, float vqy, float vqz, float vqw,
+        const rtabmap::Transform & viewMatrix,
         float p00, float p11, float p02, float p12, float p22, float p32, float p23,
         float t0, float t1, float t2, float t3, float t4, float t5, float t6, float t7)
 {
@@ -3684,7 +3695,7 @@ void RTABMapApp::postOdometryEvent(
 	boost::mutex::scoped_lock  lock(cameraMutex_);
 	if(cameraDriver_ == 3 && camera_)
 	{
-		if(fx > 0.0f && fy > 0.0f && cx > 0.0f && cy > 0.0f && stamp > 0.0f && yPlane && vPlane && yPlaneLen == rgbWidth*rgbHeight)
+		if(rgb_fx > 0.0f && rgb_fy > 0.0f && rgb_cx > 0.0f && rgb_cy > 0.0f && stamp > 0.0f && yPlane && vPlane && yPlaneLen == rgbWidth*rgbHeight)
 		{
 #ifndef DISABLE_LOG
             //LOGD("rgb format = %d depth format =%d ", rgbFormat, depthFormat);
@@ -3770,10 +3781,87 @@ void RTABMapApp::postOdometryEvent(
 
 				if(!outputRGB.empty())
 				{
-					rtabmap::CameraModel model = rtabmap::CameraModel(fx, fy, cx, cy, camera_->getDeviceTColorCamera(), 0, cv::Size(rgbWidth, rgbHeight));
-					rtabmap::Transform pose(x,y,z,qx,qy,qz,qw);
 					pose = rtabmap::rtabmap_world_T_opengl_world * pose * rtabmap::opengl_world_T_rtabmap_world;
 
+					// Registration depth to rgb
+					if(!outputDepth.empty() && !depthFrame.isNull() && depth_fx!=0 && (rgbFrame != depthFrame || depthStamp!=stamp))
+					{
+						UTimer time;
+						rtabmap::Transform motion = rtabmap::Transform::getIdentity();
+						if(depthStamp != stamp && !poseBuffer_.empty())
+						{
+							// Interpolate pose
+							if(!poseBuffer_.empty())
+							{
+								if(poseBuffer_.rbegin()->first < depthStamp)
+								{
+									UWARN("Could not find poses to interpolate at time %f (last is %f)...", depthStamp, poseBuffer_.rbegin()->first);
+								}
+								else
+								{
+									std::map<double, rtabmap::Transform >::const_iterator iterB = poseBuffer_.lower_bound(depthStamp);
+									std::map<double, rtabmap::Transform >::const_iterator iterA = iterB;
+									rtabmap::Transform poseDepth;
+									if(iterA != poseBuffer_.begin())
+									{
+										iterA = --iterA;
+									}
+									if(iterB == poseBuffer_.end())
+									{
+										iterB = --iterB;
+									}
+									if(iterA == iterB && depthStamp == iterA->first)
+									{
+										poseDepth = iterA->second;
+									}
+									else if(depthStamp >= iterA->first && depthStamp <= iterB->first)
+									{
+										poseDepth = iterA->second.interpolate((depthStamp-iterA->first) / (iterB->first-iterA->first), iterB->second);
+									}
+									else if(depthStamp < iterA->first)
+									{
+										UERROR("Could not find poses to interpolate at image time %f (earliest is %f). Are sensors synchronized?", depthStamp, iterA->first);
+									}
+									else
+									{
+										UERROR("Could not find poses to interpolate at image time %f (between %f and %f), Are sensors synchronized?", depthStamp, iterA->first, iterB->first);
+									}
+									if(!poseDepth.isNull())
+									{
+#ifndef DISABLE_LOG
+										UDEBUG("poseRGB  =%s (stamp=%f)", pose.prettyPrint().c_str(), depthStamp);
+										UDEBUG("poseDepth=%s (stamp=%f)", poseDepth.prettyPrint().c_str(), depthStamp);
+#endif
+										motion = pose.inverse()*poseDepth;
+										// transform in camera frame
+#ifndef DISABLE_LOG
+										UDEBUG("motion=%s", motion.prettyPrint().c_str());
+#endif
+										motion = rtabmap::CameraModel::opticalRotation().inverse() * motion * rtabmap::CameraModel::opticalRotation();
+#ifndef DISABLE_LOG
+										UDEBUG("motion=%s", motion.prettyPrint().c_str());
+#endif
+									}
+								}
+							}
+						}
+						rtabmap::Transform rgbToDepth = motion*rgbFrame.inverse()*depthFrame;
+						float scale = (float)outputDepth.cols/(float)outputRGB.cols;
+						cv::Mat colorK = (cv::Mat_<double>(3,3) <<
+								rgb_fx*scale, 0, rgb_cx*scale,
+								0, rgb_fy*scale, rgb_cy*scale,
+								0, 0, 1);
+						cv::Mat depthK = (cv::Mat_<double>(3,3) <<
+								depth_fx, 0, depth_cx,
+								0, depth_fy, depth_cy,
+								0, 0, 1);
+						outputDepth = rtabmap::util2d::registerDepth(outputDepth, depthK, outputDepth.size(), colorK, rgbToDepth);
+#ifndef DISABLE_LOG
+						UDEBUG("Depth registration time: %fs", time.elapsed());
+#endif
+					}
+
+					rtabmap::CameraModel model = rtabmap::CameraModel(rgb_fx, rgb_fy, rgb_cx, rgb_cy, camera_->getDeviceTColorCamera(), 0, cv::Size(rgbWidth, rgbHeight));
 #ifndef DISABLE_LOG
 					//LOGI("pointCloudData size=%d", pointsLen);
 #endif
@@ -3818,7 +3906,7 @@ void RTABMapApp::postOdometryEvent(
                     projectionMatrix[2][2] = p22;
                     projectionMatrix[2][3] = p32;
                     projectionMatrix[3][2] = p23;
-                    glm::mat4 viewMatrix = rtabmap::glmFromTransform(rtabmap::Transform(vx, vy, vz, vqx, vqy, vqz, vqw));
+                    glm::mat4 viewMatrixMat = rtabmap::glmFromTransform(viewMatrix);
                     float texCoords[8];
                     texCoords[0] = t0;
                     texCoords[1] = t1;
@@ -3828,7 +3916,7 @@ void RTABMapApp::postOdometryEvent(
                     texCoords[5] = t5;
                     texCoords[6] = t6;
                     texCoords[7] = t7;
-					camera_->setData(data, pose, viewMatrix, projectionMatrix, texCoords);
+					camera_->setData(data, pose, viewMatrixMat, projectionMatrix, main_scene_.GetCameraType() == tango_gl::GestureCamera::kFirstPerson?texCoords:0);
 					camera_->spinOnce();
 				}
 			}
@@ -3836,7 +3924,7 @@ void RTABMapApp::postOdometryEvent(
 		else
 		{
 			UERROR("Missing image information! fx=%f fy=%f cx=%f cy=%f stamp=%f yPlane=%d vPlane=%d yPlaneLen=%d rgbWidth=%d rgbHeight=%d",
-                   fx, fy, cx, cy, stamp, yPlane?1:0, vPlane?1:0, yPlaneLen, rgbWidth, rgbHeight);
+                   rgb_fx, rgb_fy, rgb_cx, rgb_cy, stamp, yPlane?1:0, vPlane?1:0, yPlaneLen, rgbWidth, rgbHeight);
 		}
 	}
 #else

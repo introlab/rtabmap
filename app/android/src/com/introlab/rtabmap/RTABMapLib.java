@@ -134,13 +134,30 @@ public class RTABMapLib
     public static native float getUpdateTime(long nativeApplication);
     public static native int getLoopClosureId(long nativeApplication);
     
-    public static native void postCameraPoseEvent(long nativeApplication, float x, float y, float z, float qx, float qy, float qz, float qw);
+    public static native void postCameraPoseEvent(long nativeApplication, float x, float y, float z, float qx, float qy, float qz, float qw, double stamp);
     public static native void postOdometryEvent(long nativeApplication,
     		float x, float y, float z, float qx, float qy, float qz, float qw,
-    		float fx, float fy, float cx, float cy,
+    		float rgb_fx, float rgb_fy, float rgb_cx, float rgb_cy,
+    		float rgbFrameX, float rgbFrameY, float rgbFrameZ, float rgbFrameQX, float rgbFrameQY, float rgbFrameQZ, float rgbFrameQW,
     		double stamp, 
     		ByteBuffer yPlane, ByteBuffer uPlane, ByteBuffer vPlane, int yPlaneLen, int rgbWidth, int rgbHeight, int rgbFormat,
+    		FloatBuffer points, int pointsLen,
+    		float vx, float vy, float vz, float vqx, float vqy, float vqz, float vqw, //view matrix
+            float p00, float p11, float p02, float p12, float p22, float p32, float p23, // projection matrix
+            float t0, float t1, float t2, float t3, float t4, float t5, float t6, float t7); // tex coord
+    public static native void postOdometryEventDepth(long nativeApplication,
+    		float x, float y, float z, float qx, float qy, float qz, float qw,
+    		float rgb_fx, float rgb_fy, float rgb_cx, float rgb_cy,
+    		float depth_fx, float depth_fy, float depth_cx, float depth_cy,
+    		float rgbFrameX, float rgbFrameY, float rgbFrameZ, float rgbFrameQX, float rgbFrameQY, float rgbFrameQZ, float rgbFrameQW,
+    		float depthFrameX, float depthFrameY, float depthFrameZ, float depthFrameQX, float depthFrameQY, float depthFrameQZ, float depthFrameQW,
+    		double rgbStamp,
+    		double depthStamp,
+    		ByteBuffer yPlane, ByteBuffer uPlane, ByteBuffer vPlane, int yPlaneLen, int rgbWidth, int rgbHeight, int rgbFormat,
     		ByteBuffer depth, int depthLen, int depthWidth, int depthHeight, int depthFormat,
-    		FloatBuffer points, int pointsLen);
+    		FloatBuffer points, int pointsLen,
+    		float vx, float vy, float vz, float vqx, float vqy, float vqz, float vqw, //view matrix
+            float p00, float p11, float p02, float p12, float p22, float p32, float p23, // projection matrix
+            float t0, float t1, float t2, float t3, float t4, float t5, float t6, float t7); // tex coord
     
 }

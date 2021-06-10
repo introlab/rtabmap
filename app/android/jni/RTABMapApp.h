@@ -176,17 +176,21 @@ class RTABMapApp : public UEventsHandler {
   int postProcessing(int approach);
 
   void postCameraPoseEvent(
-  		float x, float y, float z, float qx, float qy, float qz, float qw);
+  		float x, float y, float z, float qx, float qy, float qz, float qw, double stamp);
 
   void postOdometryEvent(
-  		float x, float y, float z, float qx, float qy, float qz, float qw,
-  		float fx, float fy, float cx, float cy,
-  		double stamp,
+		rtabmap::Transform pose,
+		float rgb_fx, float rgb_fy, float rgb_cx, float rgb_cy,
+		float depth_fx, float depth_fy, float depth_cx, float depth_cy,
+		const rtabmap::Transform & rgbFrame,
+		const rtabmap::Transform & depthFrame,
+		double stamp,
+		double depthStamp,
         const void * yPlane, const void * uPlane, const void * vPlane, int yPlaneLen, int rgbWidth, int rgbHeight, int rgbFormat,
         const void * depth, int depthLen, int depthWidth, int depthHeight, int depthFormat,
         const void * conf, int confLen, int confWidth, int confHeight, int confFormat,
         const float * points, int pointsLen, int pointsChannels,
-        float vx, float vy, float vz, float vqx, float vqy, float vqz, float vqw, //view matrix
+		const rtabmap::Transform & viewMatrix, //view matrix
         float p00, float p11, float p02, float p12, float p22, float p32, float p23, // projection matrix
         float t0, float t1, float t2, float t3, float t4, float t5, float t6, float t7); // tex coord
 
@@ -265,6 +269,7 @@ class RTABMapApp : public UEventsHandler {
 	std::list<rtabmap::RtabmapEvent*> rtabmapEvents_;
 	std::list<rtabmap::OdometryEvent> odomEvents_;
 	std::list<rtabmap::Transform> poseEvents_;
+	std::map<double, rtabmap::Transform> poseBuffer_;
 
 	rtabmap::Transform mapToOdom_;
 

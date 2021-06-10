@@ -51,7 +51,7 @@
     <string name="pref_key_remove_button">pref_key_remove_button</string>
     <string name="pref_key_reset_button">pref_key_reset_button</string>
     <string name="pref_key_density">pref_key_density</string>
-    <string name="pref_default_density">1</string>
+    <string name="pref_default_density">2</string>
     <string name="pref_key_min_depth">pref_key_min_depth</string>
     <string name="pref_default_min_depth">0</string>
     <string name="pref_key_depth">pref_key_depth</string>

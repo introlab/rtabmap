@@ -869,11 +869,11 @@ Java_com_introlab_rtabmap_RTABMapLib_postProcessing(
 JNIEXPORT void JNICALL
 Java_com_introlab_rtabmap_RTABMapLib_postCameraPoseEvent(
 		JNIEnv* env, jclass, jlong native_application,
-		float x, float y, float z, float qx, float qy, float qz, float qw)
+		float x, float y, float z, float qx, float qy, float qz, float qw, double stamp)
 {
 	if(native_application)
 	{
-		native(native_application)->postCameraPoseEvent(x,y,z,qx,qy,qz,qw);
+		native(native_application)->postCameraPoseEvent(x,y,z,qx,qy,qz,qw, stamp);
 	}
 	else
 	{
@@ -886,30 +886,36 @@ JNIEXPORT void JNICALL
 Java_com_introlab_rtabmap_RTABMapLib_postOdometryEvent(
 		JNIEnv* env, jclass, jlong native_application,
 		float x, float y, float z, float qx, float qy, float qz, float qw,
-		float fx, float fy, float cx, float cy,
+		float rgb_fx, float rgb_fy, float rgb_cx, float rgb_cy,
+		float rgbFrameX, float rgbFrameY, float rgbFrameZ, float rgbFrameQX, float rgbFrameQY, float rgbFrameQZ, float rgbFrameQW,
 		double stamp,
 		jobject yPlane, jobject uPlane, jobject vPlane, int yPlaneLen, int rgbWidth, int rgbHeight, int rgbFormat,
-		jobject depth, int depthLen, int depthWidth, int depthHeight, int depthFormat,
-		jobject points, int pointsLen)
+		jobject points, int pointsLen,
+		float vx, float vy, float vz, float vqx, float vqy, float vqz, float vqw, //view matrix
+		float p00, float p11, float p02, float p12, float p22, float p32, float p23, // projection matrix
+		float t0, float t1, float t2, float t3, float t4, float t5, float t6, float t7) // tex coord
 {
 	if(native_application)
 	{
 		void *yPtr = env->GetDirectBufferAddress(yPlane);
 		void *uPtr = env->GetDirectBufferAddress(uPlane);
 		void *vPtr = env->GetDirectBufferAddress(vPlane);
-		void *depthPtr = env->GetDirectBufferAddress(depth);
 		float *pointsPtr = (float *)env->GetDirectBufferAddress(points);
 		native(native_application)->postOdometryEvent(
-				x,y,z,qx,qy,qz,qw,
-				fx,fy,cx,cy,
+				rtabmap::Transform(x,y,z,qx,qy,qz,qw),
+				rgb_fx,rgb_fy,rgb_cx,rgb_cy,
+				0,0,0,0,
+				rtabmap::Transform(rgbFrameX, rgbFrameY, rgbFrameZ, rgbFrameQX, rgbFrameQY, rgbFrameQZ, rgbFrameQW),
+				rtabmap::Transform(),
 				stamp,
+				0,
 				yPtr, uPtr, vPtr, yPlaneLen, rgbWidth, rgbHeight, rgbFormat,
-				depthPtr, depthLen, depthWidth, depthHeight, depthFormat,
-				0,0,0,0,0,
+				0,0,0,0,0, //depth
+				0,0,0,0,0, //conf
 				pointsPtr, pointsLen, 4,
-				0,0,0,0,0,0,0,
-				0,0,0,0,0,0,0,
-				0,0,0,0,0,0,0,0);
+				rtabmap::Transform(vx, vy, vz, vqx, vqy, vqz, vqw),
+				p00, p11, p02, p12, p22, p32, p23,
+				t0, t1, t2, t3, t4, t5, t6, t7);
 	}
 	else
 	{
@@ -918,6 +924,44 @@ Java_com_introlab_rtabmap_RTABMapLib_postOdometryEvent(
 	}
 }
 
+JNIEXPORT void JNICALL
+Java_com_introlab_rtabmap_RTABMapLib_postOdometryEventDepth(
+		JNIEnv* env, jclass, jlong native_application,
+		float x, float y, float z, float qx, float qy, float qz, float qw,
+		float rgb_fx, float rgb_fy, float rgb_cx, float rgb_cy,
+		float depth_fx, float depth_fy, float depth_cx, float depth_cy,
+		float rgbFrameX, float rgbFrameY, float rgbFrameZ, float rgbFrameQX, float rgbFrameQY, float rgbFrameQZ, float rgbFrameQW,
+		float depthFrameX, float depthFrameY, float depthFrameZ, float depthFrameQX, float depthFrameQY, float depthFrameQZ, float depthFrameQW,
+		double rgbStamp,
+		double depthStamp,
+		jobject yPlane, jobject uPlane, jobject vPlane, int yPlaneLen, int rgbWidth, int rgbHeight, int rgbFormat,
+ 		jobject depth, int depthLen, int depthWidth, int depthHeight, int depthFormat,
+ 		jobject points, int pointsLen,
+		float vx, float vy, float vz, float vqx, float vqy, float vqz, float vqw, //view matrix
+		float p00, float p11, float p02, float p12, float p22, float p32, float p23, // projection matrix
+		float t0, float t1, float t2, float t3, float t4, float t5, float t6, float t7) // tex coord)
+ {
+		void *yPtr = env->GetDirectBufferAddress(yPlane);
+		void *uPtr = env->GetDirectBufferAddress(uPlane);
+		void *vPtr = env->GetDirectBufferAddress(vPlane);
+ 		void *depthPtr = env->GetDirectBufferAddress(depth);
+ 		float *pointsPtr = (float *)env->GetDirectBufferAddress(points);
+ 		native(native_application)->postOdometryEvent(
+				rtabmap::Transform(x,y,z,qx,qy,qz,qw),
+				rgb_fx,rgb_fy,rgb_cx,rgb_cy,
+				depth_fx,depth_fy,depth_cx,depth_cy,
+				rtabmap::Transform(rgbFrameX, rgbFrameY, rgbFrameZ, rgbFrameQX, rgbFrameQY, rgbFrameQZ, rgbFrameQW),
+				rtabmap::Transform(depthFrameX, depthFrameY, depthFrameZ, depthFrameQX, depthFrameQY, depthFrameQZ, depthFrameQW),
+				rgbStamp,
+				depthStamp,
+ 				yPtr, uPtr, vPtr, yPlaneLen, rgbWidth, rgbHeight, rgbFormat,
+ 				depthPtr, depthLen, depthWidth, depthHeight, depthFormat,
+				0,0,0,0,0, // conf
+ 				pointsPtr, pointsLen, 4,
+				rtabmap::Transform(vx, vy, vz, vqx, vqy, vqz, vqw),
+				p00, p11, p02, p12, p22, p32, p23,
+				t0, t1, t2, t3, t4, t5, t6, t7);
+ }
 
 
 #ifdef __cplusplus

@@ -44,12 +44,14 @@ public class Renderer implements GLSurfaceView.Renderer {
 	private float mTextColor = 1.0f;
 	private int mOffset = 0;
 	private ARCoreSharedCamera mCamera = null;
+	private DisplayRotationHelper mDisplayRotationHelper = null;
 	
 	private Vector<TextObject> mTexts;
 
 	private static RTABMapActivity mActivity;
 	public Renderer(RTABMapActivity c) {
 		mActivity = c;
+		mDisplayRotationHelper = new DisplayRotationHelper(/*context=*/ c);
 	}
 
 	private ProgressDialog mProgressDialog = null;
@@ -76,6 +78,11 @@ public class Renderer implements GLSurfaceView.Renderer {
 	public void setCamera(ARCoreSharedCamera camera)
 	{
 		mCamera = camera;
+		if(mCamera!=null)
+		{
+			mDisplayRotationHelper.onDisplayChanged(0);
+			mDisplayRotationHelper.updateSessionIfNeeded(mCamera);
+		}
 	}
 
 	// Render loop of the Gl context.
@@ -174,6 +181,12 @@ public class Renderer implements GLSurfaceView.Renderer {
 		if(mActivity.nativeApplication!=0)
 		{
 			RTABMapLib.setupGraphic(mActivity.nativeApplication, width, height);
+		}
+		
+		mDisplayRotationHelper.onSurfaceChanged(width, height);
+		if(mCamera!=null)
+		{
+			mDisplayRotationHelper.updateSessionIfNeeded(mCamera);
 		}
 		
 		mSurfaceHeight = (float)height;
