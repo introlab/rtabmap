@@ -368,33 +368,29 @@
 			<key>Key</key>
 			<string>MaxOptimizationError</string>
 			<key>DefaultValue</key>
-			<real>3</real>
+			<real>1.5</real>
 			<key>Titles</key>
 			<array>
-				<string>10x</string>
-				<string>9x</string>
-				<string>8x</string>
-				<string>7x</string>
-				<string>6x</string>
-				<string>5x</string>
 				<string>4x</string>
+				<string>3.5x</string>
 				<string>3x</string>
+				<string>2.5x</string>
 				<string>2x</string>
+				<string>1.5x</string>
 				<string>1x</string>
+				<string>0.5x</string>
 				<string>Disabled</string>
 			</array>
 			<key>Values</key>
 			<array>
-				<real>10</real>
-				<real>9</real>
-				<real>8</real>
-				<real>7</real>
-				<real>6</real>
-				<real>5</real>
 				<real>4</real>
+				<real>3.5</real>
 				<real>3</real>
+				<real>2.5</real>
 				<real>2</real>
+				<real>1.5</real>
 				<real>1</real>
+				<real>0.5</real>
 				<real>0</real>
 			</array>
 		</dict>

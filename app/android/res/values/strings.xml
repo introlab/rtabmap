@@ -106,7 +106,7 @@
     <string name="pref_key_features_type">pref_key_features_type</string>
     <string name="pref_default_features_type">6</string>
     <string name="pref_key_optimizer">pref_key_optimizer</string>
-    <string name="pref_default_optimizer">2</string>
+    <string name="pref_default_optimizer">1.5</string>
     <string name="pref_key_optimize_end">pref_key_optimize_end</string>
     <string name="pref_default_optimize_end">true</string>
     <string name="pref_key_marker_detection">pref_key_marker_detection</string>
@@ -529,29 +529,25 @@
         <item>"10"</item>
     </string-array>
     <string-array name="pref_opt_error_keys">
-        <item>"10x"</item>
-        <item>"9x"</item>
-        <item>"8x"</item>
-        <item>"7x"</item>
-        <item>"6x"</item>
-        <item>"5x"</item>
         <item>"4x"</item>
+        <item>"3.5x"</item>
         <item>"3x"</item>
+        <item>"2.5x"</item>
         <item>"2x"</item>
+        <item>"1.5x"</item>
         <item>"1x"</item>
+        <item>"0.5x"</item>
         <item>"Disabled"</item>
     </string-array>
     <string-array name="pref_opt_error_values">
-        <item>"10"</item>
-        <item>"9"</item>
-        <item>"8"</item>
-        <item>"7"</item>
-        <item>"6"</item>
-        <item>"5"</item>
         <item>"4"</item>
+        <item>"3.5"</item>
         <item>"3"</item>
+        <item>"2.5"</item>
         <item>"2"</item>
+        <item>"1.5"</item>
         <item>"1"</item>
+        <item>"0.5"</item>
         <item>"0"</item>
     </string-array>
     <string-array name="pref_features_voc_keys">
