@@ -368,7 +368,7 @@
 			<key>Key</key>
 			<string>MaxOptimizationError</string>
 			<key>DefaultValue</key>
-			<real>1.5</real>
+			<integer>1</integer>
 			<key>Titles</key>
 			<array>
 				<string>4x</string>
@@ -408,7 +408,7 @@
 			<key>Key</key>
 			<string>MaxFeaturesExtractedVocabulary</string>
 			<key>DefaultValue</key>
-			<string>200</string>
+			<string>400</string>
 			<key>Titles</key>
 			<array>
 				<string>No Limit</string>
