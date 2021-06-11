@@ -276,7 +276,7 @@ void postCameraPoseEventNative(const void *object,
 {
     if(object)
     {
-        native(object)->postCameraPoseEvent(x,y,z,qx,qy,qz,qw);
+        native(object)->postCameraPoseEvent(x,y,z,qx,qy,qz,qw,0.0);
     }
     else
     {
@@ -300,14 +300,15 @@ void postOdometryEventNative(const void *object,
     if(object)
     {
         native(object)->postOdometryEvent(
-                x,y,z,qx,qy,qz,qw,
-                fx,fy,cx,cy,
-                stamp,
+                rtabmap::Transform(x,y,z,qx,qy,qz,qw),
+                fx,fy,cx,cy, 0,0,0,0,
+                rtabmap::Transform(), rtabmap::Transform(),
+                stamp, 0,
                 yPlane, uPlane, vPlane, yPlaneLen, rgbWidth, rgbHeight, rgbFormat,
                 depth, depthLen, depthWidth, depthHeight, depthFormat,
                 conf, confLen, confWidth, confHeight, confFormat,
                 (const float *)points, pointsLen, pointsChannels,
-                vx, vy, vz, vqx, vqy, vqz, vqw,
+                rtabmap::Transform(vx, vy, vz, vqx, vqy, vqz, vqw),
                 p00, p11, p02, p12, p22, p32, p23,
                 t0, t1, t2, t3, t4, t5, t6, t7);
     }

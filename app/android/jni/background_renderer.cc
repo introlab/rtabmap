@@ -80,7 +80,9 @@ const std::string kFragmentShader =
 void BackgroundRenderer::InitializeGlContent(GLuint textureId, bool oes)
 {
   texture_id_ = textureId;
+#ifdef __ANDROID__
   oes_ = oes;
+#endif
 
   shader_program_ = tango_gl::util::CreateProgram(
 		  kVertexShader.c_str(),
@@ -102,9 +104,11 @@ void BackgroundRenderer::Draw(const float * transformed_uvs) {
   glEnable (GL_BLEND);
 
   glActiveTexture(GL_TEXTURE0);
+#ifdef __ANDROID__
   if(oes_)
     glBindTexture(GL_TEXTURE_EXTERNAL_OES, texture_id_);
   else
+#endif
     glBindTexture(GL_TEXTURE_2D, texture_id_);
 
   glVertexAttribPointer(attribute_vertices_, 2, GL_FLOAT, GL_FALSE, 0, BackgroundRenderer_kVertices);
