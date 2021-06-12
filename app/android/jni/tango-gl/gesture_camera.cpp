@@ -183,7 +183,7 @@ void GestureCamera::SetCameraType(CameraType camera_index) {
     case kFirstPerson:
       SetOrthoMode(false);
       SetFieldOfView(kLowestFov);
-      SetNearFarClipPlanes(0.5, 50);
+      SetNearFarClipPlanes(0.3, 50);
       SetPosition(glm::vec3(0.0f, 0.0f, 0.0f));
       SetRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
       cam_cur_dist_ = 0.0f;
@@ -198,7 +198,7 @@ void GestureCamera::SetCameraType(CameraType camera_index) {
     case kThirdPersonFollow:
       SetOrthoMode(false);
       SetFieldOfView(kLowFov);
-      SetNearFarClipPlanes(0.5, 50);
+      SetNearFarClipPlanes(1, 50);
       SetPosition(glm::vec3(0.0f, 0.0f, 0.0f));
       SetRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
       cam_cur_dist_ = camera_index==kThirdPersonFollow?kThirdPersonFollowCameraDist:kThirdPersonCameraDist;
@@ -213,7 +213,7 @@ void GestureCamera::SetCameraType(CameraType camera_index) {
       SetRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
       SetOrthoMode(false);
       SetFieldOfView(kLowFov);
-      SetNearFarClipPlanes(0.5, 50);
+      SetNearFarClipPlanes(1, 50);
       cam_cur_dist_ = kTopDownCameraDist;
       anchor_offset_ = glm::vec3(0.0f,0.0f,0.0f);
       cam_cur_angle_.x = -M_PI / 2.0f;
@@ -228,7 +228,7 @@ void GestureCamera::SetCameraType(CameraType camera_index) {
 	  SetOrthoScale(kTopDownCameraDist);
 	  SetOrthoCropFactor(-1.0f);
       SetFieldOfView(kLowFov);
-      SetNearFarClipPlanes(0.5, 50);
+      SetNearFarClipPlanes(1, 50);
 	  cam_cur_dist_ = kTopDownCameraDist;
 	  anchor_offset_ = glm::vec3(0.0f,0.0f,0.0f);
 	  cam_cur_angle_.x = -M_PI / 2.0f;

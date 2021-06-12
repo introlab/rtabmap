@@ -59,16 +59,12 @@ public:
 
   // Draws the background image.  This methods must be called for every ArFrame
   // returned by ArSession_update() to catch display geometry change events.
-  void Draw(const float * transformed_uvs);
+  void Draw(const float * transformed_uvs, const GLuint & depthTexture, int screenWidth, int screenHeight, bool redUnknown);
 
- private:
-
-  GLuint shader_program_;
+private:
+  static std::vector<GLuint> shaderPrograms_;
   GLuint texture_id_;
   bool oes_ = false;
-
-  GLuint attribute_vertices_;
-  GLuint attribute_uvs_;
 };
 
 #endif  // C_ARCORE_AUGMENTED_IMAGE_BACKGROUND_RENDERER_H_

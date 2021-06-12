@@ -74,7 +74,7 @@ class Scene {
   //         frame's timestamp.
   // @param: point_cloud_vertices, point cloud's vertices of the current point
   //         frame.
-  int Render(const float * uvsTransformed = 0, glm::mat4 arViewMatrix = glm::mat4(0), glm::mat4 arProjectionMatrix=glm::mat4(0), const rtabmap::Mesh & occlusionMesh=rtabmap::Mesh());
+  int Render(const float * uvsTransformed = 0, glm::mat4 arViewMatrix = glm::mat4(0), glm::mat4 arProjectionMatrix=glm::mat4(0), const rtabmap::Mesh & occlusionMesh=rtabmap::Mesh(), bool mapping=false);
 
   // Set render camera's viewing angle, first person, third person or top down.
   //
@@ -155,6 +155,7 @@ class Scene {
   float getPointSize() const {return pointSize_;}
   bool isLighting() const {return lighting_;}
   bool isBackfaceCulling() const {return backfaceCulling_;}
+  bool isWireframe() const {return wireFrame_;}
 
   BackgroundRenderer * background_renderer_;
 

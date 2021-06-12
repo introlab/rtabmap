@@ -105,7 +105,7 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
     @IBOutlet weak var exportOBJPLYButton: UIButton!
     @IBOutlet weak var orthoDistanceSlider: UISlider!{
         didSet{
-            orthoDistanceSlider.transform = CGAffineTransform(rotationAngle: CGFloat(-M_PI_2))
+            orthoDistanceSlider.transform = CGAffineTransform(rotationAngle: CGFloat(-Double.pi/2))
         }
     }
     @IBOutlet weak var orthoGridSlider: UISlider!
@@ -275,11 +275,10 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
                 self.showToast(message: "Optimized mesh detected in the database, it is shown while the database is loading...", seconds: 3)
             }
 
-            let (usedMem, freeMem) = self.getMemoryUsage()
+            let usedMem = self.getMemoryUsage()
             self.statusLabel.text =
                 "Status: " + (status == 1 && msg.isEmpty ? self.mState == State.STATE_CAMERA ? "Camera Preview" : "Idle" : msg) + "\n" +
-                "Used Memory: \(usedMem) MB\n" +
-                "Free Memory: \(freeMem) MB"
+                "Memory Usage: \(usedMem) MB"
         }
     }
         
@@ -312,7 +311,7 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
                            pitch: Float,
                            yaw: Float)
     {
-        let (usedMem, freeMem) = self.getMemoryUsage()
+        let usedMem = self.getMemoryUsage()
         
         if(loopClosureId > 0)
         {
@@ -335,8 +334,7 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
                 self.statusLabel.text =
                     self.statusLabel.text! +
                     "Status: \(self.getStateString(state: self.mState))\n" +
-                    "Used Memory (MB): \(usedMem)\n" +
-                    "Free Memory (MB): \(freeMem)"
+                    "Memory Usage : \(usedMem) MB"
             }
             if self.debugShown {
                 self.statusLabel.text =
@@ -403,29 +401,23 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
         }
     }
     
-    func getMemoryUsage() -> (UInt64, UInt64) {
-        var pagesize: vm_size_t = 0
-
-        let host_port: mach_port_t = mach_host_self()
-        var host_size: mach_msg_type_number_t = mach_msg_type_number_t(MemoryLayout<vm_statistics_data_t>.stride / MemoryLayout<integer_t>.stride)
-        host_page_size(host_port, &pagesize)
-
-        var vm_stat: vm_statistics = vm_statistics_data_t()
-        withUnsafeMutablePointer(to: &vm_stat) { (vmStatPointer) -> Void in
-            vmStatPointer.withMemoryRebound(to: integer_t.self, capacity: Int(host_size)) {
-                if (host_statistics(host_port, HOST_VM_INFO, $0, &host_size) != KERN_SUCCESS) {
-                    NSLog("Error: Failed to fetch vm statistics")
-                }
+    func getMemoryUsage() -> UInt64 {
+        var taskInfo = mach_task_basic_info()
+        var count = mach_msg_type_number_t(MemoryLayout<mach_task_basic_info>.size)/4
+        let kerr: kern_return_t = withUnsafeMutablePointer(to: &taskInfo) {
+            $0.withMemoryRebound(to: integer_t.self, capacity: 1) {
+                task_info(mach_task_self_, task_flavor_t(MACH_TASK_BASIC_INFO), $0, &count)
             }
         }
 
-        /* Stats in bytes */
-        let mem_used: UInt64 = UInt64(vm_stat.active_count +
-                vm_stat.inactive_count +
-                vm_stat.wire_count) * UInt64(pagesize)
-        let mem_free: UInt64 = UInt64(vm_stat.free_count) * UInt64(pagesize)
-        
-        return (mem_used/(1024*1024), mem_free/(1024*1024))
+        if kerr == KERN_SUCCESS {
+            return taskInfo.resident_size / (1024*1024)
+        }
+        else {
+            print("Error with task_info(): " +
+                (String(cString: mach_error_string(kerr), encoding: String.Encoding.ascii) ?? "unknown error"))
+            return 0
+        }
     }
     
     @objc func appMovedToBackground() {

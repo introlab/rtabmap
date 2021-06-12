@@ -381,7 +381,7 @@ bool intersectFrustumAABB(
 }
 
 //Should only be called in OpenGL thread!
-int Scene::Render(const float * uvsTransformed, glm::mat4 arViewMatrix, glm::mat4 arProjectionMatrix, const rtabmap::Mesh & occlusionMesh) {
+int Scene::Render(const float * uvsTransformed, glm::mat4 arViewMatrix, glm::mat4 arProjectionMatrix, const rtabmap::Mesh & occlusionMesh, bool mapping) {
 	UASSERT(gesture_camera_ != 0);
 
 	if(currentPose_ == 0)
@@ -492,7 +492,7 @@ int Scene::Render(const float * uvsTransformed, glm::mat4 arViewMatrix, glm::mat
 		glClearColor(0, 0, 0, 0);
 		glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 
-		if(renderBackgroundCamera && occlusionMesh.cloud.get() && occlusionMesh.cloud->size())
+		if(renderBackgroundCamera && !meshRendering_ && occlusionMesh.cloud.get() && occlusionMesh.cloud->size())
 		{
 			PointCloudDrawable drawable(occlusionMesh);
 			drawable.Render(projectionMatrix, viewMatrix, true, pointSize_, false, false, 999.0f, 0, 0, 0, 0, 0, true);
@@ -548,15 +548,15 @@ int Scene::Render(const float * uvsTransformed, glm::mat4 arViewMatrix, glm::mat
 
 	glClearColor(r_, g_, b_, 1.0f);
 	glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
+    
+    if(renderBackgroundCamera && (!onlineBlending || !meshRendering_))
+    {
+        background_renderer_->Draw(uvsTransformed, 0, screenWidth_, screenHeight_, false);
 
-	if(renderBackgroundCamera)
-	{
-		background_renderer_->Draw(uvsTransformed);
-
-		//To debug occlusion image:
-		//PointCloudDrawable drawable(occlusionMesh);
-		//drawable.Render(projectionMatrix, viewMatrix, true, pointSize_, false, false, 999.0f);
-	}
+        //To debug occlusion image:
+        //PointCloudDrawable drawable(occlusionMesh);
+        //drawable.Render(projectionMatrix, viewMatrix, true, pointSize_, false, false, 999.0f);
+    }
 
 	if(!currentPose_->isNull())
 	{
@@ -624,10 +624,15 @@ int Scene::Render(const float * uvsTransformed, glm::mat4 arViewMatrix, glm::mat
 
 	if(onlineBlending)
 	{
+        if(renderBackgroundCamera && meshRendering_)
+        {
+            background_renderer_->Draw(uvsTransformed, depthTexture_, screenWidth_, screenHeight_, mapping);
+        }
+        
 		glDisable (GL_BLEND);
 		glDepthMask(GL_TRUE);
 	}
-
+    
 	//draw markers on foreground
 	for(std::map<int, tango_gl::Axis*>::const_iterator iter=markers_.begin(); iter!=markers_.end(); ++iter)
 	{

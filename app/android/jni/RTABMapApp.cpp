@@ -1290,7 +1290,7 @@ int RTABMapApp::Render()
                             arViewMatrix = glm::inverse(rtabmap::glmFromTransform(mapCorrection)*glm::inverse(arViewMatrix));
                         }
                     }
-                    if(!visualizingMesh_ && main_scene_.GetCameraType() == tango_gl::GestureCamera::kFirstPerson && !main_scene_.isMeshRendering())
+                    if(!visualizingMesh_ && main_scene_.GetCameraType() == tango_gl::GestureCamera::kFirstPerson)
                     {
                         rtabmap::CameraModel occlusionModel;
                         cv::Mat occlusionImage = ((rtabmap::CameraMobile*)camera_)->getOcclusionImage(&occlusionModel);
@@ -2069,7 +2069,7 @@ int RTABMapApp::Render()
 
 			fpsTime.restart();
 			main_scene_.setFrustumVisible(camera_!=0);
-			lastDrawnCloudsCount_ = main_scene_.Render(uvsTransformed, arViewMatrix, arProjectionMatrix, occlusionMesh);
+			lastDrawnCloudsCount_ = main_scene_.Render(uvsTransformed, arViewMatrix, arProjectionMatrix, occlusionMesh, true);
 			if(renderingTime_ < fpsTime.elapsed())
 			{
 				renderingTime_ = fpsTime.elapsed();

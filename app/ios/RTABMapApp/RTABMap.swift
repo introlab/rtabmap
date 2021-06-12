@@ -248,6 +248,12 @@ class RTABMap {
             
             let quatv = GLKQuaternionMakeWithMatrix3(rotation)
             
+            let texX1 = (1-(2*frame.camera.intrinsics[0,0]/Float(frame.camera.imageResolution.width)) / p[0,0])/2
+            let texY1 = (1-(2*frame.camera.intrinsics[1,1]/Float(frame.camera.imageResolution.height)) / p[1,1])/2
+            
+            let texX2 = (1-(2*frame.camera.intrinsics[0,0]/Float(frame.camera.imageResolution.width)) / p[1,1])/2
+            let texY2 = (1-(2*frame.camera.intrinsics[1,1]/Float(frame.camera.imageResolution.height)) / p[0,0])/2
+            
             //11 10 01 00 // portrait
             //01 11 00 10 // right
             //10 00 11 01 // left
@@ -255,13 +261,13 @@ class RTABMap {
             var texCoord: [Float]
             switch orientation {
             case .portrait:
-                texCoord = [1, 1, 1, 0, 0, 1, 0, 0]
+                texCoord = [1-texX2, 1-texY2, 1-texX2,texY2, texX2, 1-texY2, texX2, texY2]
             case .landscapeRight:
-                texCoord = [0, 1, 1, 1, 0, 0, 1, 0]
+                texCoord = [texX1, 1-texY1, 1-texX1, 1-texY1, texX1, texY1, 1-texX1, texY1]
             case .landscapeLeft:
-                texCoord = [1, 0, 0, 0, 1, 1, 0, 1]
+                texCoord = [1-texX1, texY1, texX1, texY1, 1-texX1, 1-texY1, texX1, 1-texY1]
             default: // down
-                texCoord = [0, 0, 0, 1, 1, 0, 1, 1]
+                texCoord = [texX2, texY2, texX2, 1-texY2, 1-texX2, texY2, 1-texX2, 1-texY2]
             }
             
             frame.rawFeaturePoints?.points.withUnsafeBufferPointer { bufferPoints in
