@@ -138,10 +138,17 @@ void CameraMobile::setData(const SensorData & data, const Transform & pose, cons
 {
 	LOGD("CameraMobile::setData pose=%s stamp=%f", pose.prettyPrint().c_str(), data.stamp());
 	data_ = data;
-	pose_ = pose;
+    pose_ = pose;
 
     viewMatrix_ = viewMatrix;
     projectionMatrix_ = projectionMatrix;
+    
+    // adjust origin
+    if(!originOffset_.isNull())
+    {
+        pose_ = originOffset_ * pose_;
+        viewMatrix_ = glm::inverse(rtabmap::glmFromTransform(rtabmap::opengl_world_T_rtabmap_world * originOffset_ *rtabmap::rtabmap_world_T_opengl_world)*glm::inverse(viewMatrix_));
+    }
     
     if(textureId_ == 9999)
     {

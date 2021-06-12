@@ -676,7 +676,7 @@
 			<key>Type</key>
 			<string>PSGroupSpecifier</string>
 			<key>FooterText</key>
-			<string>If marker size is 0, marker size is estimated using depth camera, it is then assumed that for next detections, all markers should have the same size (markers could then be detected farther from the camera). When the marker size is set &gt;0, all markers are estimated with this parameter (this can be useful on devices without depth camera). Finally, if marker size is &lt;0, the size of each marker is estimated the first time they are detected using the depth camera (thus markers can have different size). Note that if the marker is already in the database with a known size, the size contained in the database is used directly.</string>
+			<string>If marker size is 0, marker size is estimated using depth camera on first detection, then the same size is assumed for next detections, thus all markers should have the same size (markers could then be detected farther from the camera). When the marker size is set &gt;0, all markers are estimated with this parameter (this can be useful on devices without depth camera). Finally, if marker size is &lt;0, the size of each marker is estimated the first time they are detected using the depth camera (thus markers can have different size). Note that if the marker is already in the database with a known size, the size contained in the database is used directly.</string>
 		</dict>
 		<dict>
 			<key>Type</key>

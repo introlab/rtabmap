@@ -531,7 +531,7 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kRGBDProximityOdomGuess(), _proximityOdomGuess);
 	bool optimizeFromGraphEndPrevious = _optimizeFromGraphEnd;
 	Parameters::parse(parameters, Parameters::kRGBDOptimizeFromGraphEnd(), _optimizeFromGraphEnd);
-	if(optimizeFromGraphEndPrevious != _optimizeFromGraphEnd)
+	if(optimizeFromGraphEndPrevious != _optimizeFromGraphEnd && !_optimizedPoses.empty())
 	{
 		_optimizeFromGraphEndChanged = true;
 	}
@@ -2879,7 +2879,7 @@ bool Rtabmap::process(
 							UASSERT(!landmarkDetectedNodesRef.empty());
 							loopId = *landmarkDetectedNodesRef.begin();
 							const Signature * loopS = _memory->getSignature(loopId);
-							transform = transform * loopS->getLandmarks().at(landmarkId).transform().inverse();
+                            transform = transform * _optimizedPoses.at(landmarkId).inverse()*_optimizedPoses.at(loopS->id());
 							UASSERT(_optimizedPoses.find(loopId) != _optimizedPoses.end());
 							oldPose = _optimizedPoses.at(loopId);
 						}
@@ -2897,7 +2897,6 @@ bool Rtabmap::process(
 							targetRotation = Transform(0,0,0,roll,pitch,targetRotation.theta());
 							Transform error = transform.rotation().inverse() * iterGravitySign->second.transform().rotation().inverse() * targetRotation;
 							transform *= error;
-
 							u  = signature->getPose() * transform;
 						}
 						else if(iterGravityLoop!=loopS->getLinks().end() ||
@@ -2936,7 +2935,7 @@ bool Rtabmap::process(
 							UASSERT(!landmarkDetectedNodesRef.empty());
 							loopId = *landmarkDetectedNodesRef.begin();
 							const Signature * loopS = _memory->getSignature(loopId);
-							transform = transform * loopS->getLandmarks().at(landmarkId).transform().inverse();
+                            transform = transform * _optimizedPoses.at(landmarkId).inverse()*_optimizedPoses.at(loopS->id());
 						}
 
 						const Signature * loopS = _memory->getSignature(loopId);

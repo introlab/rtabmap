@@ -221,6 +221,10 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 		{
 			int id1 = iter->second.from();
 			int id2 = iter->second.to();
+
+            UASSERT_MSG(initialEstimate.find(id1)!=initialEstimate.end(), uFormat("id1=%d", id1).c_str());
+            UASSERT_MSG(initialEstimate.find(id2)!=initialEstimate.end(), uFormat("id2=%d", id2).c_str());
+
 			UASSERT(!iter->second.transform().isNull());
 			if(id1 == id2)
 			{
@@ -404,7 +408,6 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 					graph.add(gtsam::PriorFactor<vertigo::SwitchVariableLinear> (gtsam::Symbol('s',switchCounter), vertigo::SwitchVariableLinear(prior), switchPriorModel));
 				}
 #endif
-
 				if(isSlam2d())
 				{
 					Eigen::Matrix<double, 3, 3> information = Eigen::Matrix<double, 3, 3>::Identity();

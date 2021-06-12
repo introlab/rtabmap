@@ -300,6 +300,11 @@ SensorData CameraAREngine::captureImage(CameraInfo * info)
 	{
 		pose = rtabmap::rtabmap_world_T_opengl_world * pose * rtabmap::opengl_world_T_rtabmap_world;
 		this->poseReceived(pose);
+        // adjust origin
+        if(!getOriginOffset().isNull())
+        {
+            pose = getOriginOffset() * pose;
+        }
 		info->odomPose = pose;
 	}
 	return data;

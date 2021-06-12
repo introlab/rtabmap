@@ -563,6 +563,11 @@ SensorData CameraARCore::captureImage(CameraInfo * info)
 	else
 	{
 		this->poseReceived(pose);
+        // adjust origin
+        if(!getOriginOffset().isNull())
+        {
+            pose = getOriginOffset() * pose;
+        }
 		info->odomPose = pose;
 	}
 	return data;

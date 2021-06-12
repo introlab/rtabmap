@@ -1259,7 +1259,8 @@ int RTABMapApp::Render()
 						if(occlusionModel.isValidForProjection())
 						{
 							pcl::IndicesPtr indices(new std::vector<int>);
-							pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = rtabmap::util3d::cloudFromDepth(occlusionImage, occlusionModel, 1, 0, 0, indices.get());
+                            int meshDecimation = updateMeshDecimation(occlusionImage.cols, occlusionImage.rows);
+							pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = rtabmap::util3d::cloudFromDepth(occlusionImage, occlusionModel, meshDecimation, 0, 0, indices.get());
 							cloud = rtabmap::util3d::transformPointCloud(cloud, rtabmap::opengl_world_T_rtabmap_world*occlusionModel.localTransform());
 							occlusionMesh.cloud.reset(new pcl::PointCloud<pcl::PointXYZRGB>());
 							pcl::copyPointCloud(*cloud, *occlusionMesh.cloud);
@@ -1298,7 +1299,8 @@ int RTABMapApp::Render()
                         if(occlusionModel.isValidForProjection())
                         {
                             pcl::IndicesPtr indices(new std::vector<int>);
-                            pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = rtabmap::util3d::cloudFromDepth(occlusionImage, occlusionModel, 1, 0, 0, indices.get());
+                            int meshDecimation = updateMeshDecimation(occlusionImage.cols, occlusionImage.rows);
+                            pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = rtabmap::util3d::cloudFromDepth(occlusionImage, occlusionModel, meshDecimation, 0, 0, indices.get());
                             cloud = rtabmap::util3d::transformPointCloud(cloud, rtabmap::opengl_world_T_rtabmap_world*occlusionModel.localTransform());
                             occlusionMesh.cloud.reset(new pcl::PointCloud<pcl::PointXYZRGB>());
                             pcl::copyPointCloud(*cloud, *occlusionMesh.cloud);
@@ -1451,6 +1453,23 @@ int RTABMapApp::Render()
 					{
 						main_scene_.setBackgroundColor(backgroundColor_, backgroundColor_, backgroundColor_);
 					}
+                    
+                    // Update markers
+                    for(std::map<int, rtabmap::Transform>::const_iterator iter=stats.poses().begin();
+                        iter!=stats.poses().end() && iter->first<0;
+                        ++iter)
+                    {
+                        int id = iter->first;
+                        if(main_scene_.hasMarker(id))
+                        {
+                            //just update pose
+                            main_scene_.setMarkerPose(id, rtabmap::opengl_world_T_rtabmap_world*iter->second);
+                        }
+                        else
+                        {
+                            main_scene_.addMarker(id, rtabmap::opengl_world_T_rtabmap_world*iter->second);
+                        }
+                    }
 				}
 			}
 
@@ -3892,7 +3911,7 @@ void RTABMapApp::postOdometryEvent(
                     if(!outputDepth.empty())
                     {
                         rtabmap::CameraModel depthModel = model.scaled(float(outputDepth.cols) / float(model.imageWidth()));
-                        depthModel.setLocalTransform(pose*model.localTransform());
+                        depthModel.setLocalTransform(mapToOdom_*pose*model.localTransform());
                         camera_->setOcclusionImage(outputDepth, depthModel);
                     }
                     

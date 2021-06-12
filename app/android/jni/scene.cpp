@@ -98,11 +98,11 @@ Scene::Scene() :
 		b_(0.0f),
 		fboId_(0),
 		rboId_(0),
-		depthTexture_(0),
 		screenWidth_(0),
 		screenHeight_(0),
 		doubleTapOn_(false)
 {
+    depthTextures_[0] = depthTextures_[1] = 0;
 	gesture_camera_ = new tango_gl::GestureCamera();
 	gesture_camera_->SetCameraType(
 	      tango_gl::GestureCamera::kThirdPersonFollow);
@@ -179,8 +179,8 @@ void Scene::DeleteResources() {
 		fboId_ = 0;
 		glDeleteRenderbuffers(1, &rboId_);
 		rboId_ = 0;
-		glDeleteTextures(1, &depthTexture_);
-		depthTexture_ = 0;
+        glDeleteTextures(2, depthTextures_);
+        depthTextures_[0] = depthTextures_[1] = 0;
 	}
 
 	clear();
@@ -234,8 +234,8 @@ void Scene::SetupViewPort(int w, int h) {
 			fboId_ = 0;
 			glDeleteRenderbuffers(1, &rboId_);
 			rboId_ = 0;
-			glDeleteTextures(1, &depthTexture_);
-			depthTexture_ = 0;
+			glDeleteTextures(2, depthTextures_);
+            depthTextures_[0] = depthTextures_[1] = 0;
 		}
 
         GLint originid = 0;
@@ -247,14 +247,22 @@ void Scene::SetupViewPort(int w, int h) {
 		glBindFramebuffer(GL_FRAMEBUFFER, fboId_);
 
 		// Create depth texture
-		glGenTextures(1, &depthTexture_);
-		glBindTexture(GL_TEXTURE_2D, depthTexture_);
+		glGenTextures(2, depthTextures_);
+		glBindTexture(GL_TEXTURE_2D, depthTextures_[0]);
 		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
 		glBindTexture(GL_TEXTURE_2D, 0);
+        
+        glBindTexture(GL_TEXTURE_2D, depthTextures_[1]);
+        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+        glBindTexture(GL_TEXTURE_2D, 0);
 
 		glGenRenderbuffers(1, &rboId_);
 		glBindRenderbuffer(GL_RENDERBUFFER, rboId_);
@@ -262,7 +270,7 @@ void Scene::SetupViewPort(int w, int h) {
 		glBindRenderbuffer(GL_RENDERBUFFER, 0);
 
 		// Set the texture to be at the color attachment point of the FBO (we pack depth 32 bits in color)
-		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, depthTexture_, 0);
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, depthTextures_[0], 0);
 		glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, rboId_);
 
 		GLuint status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
@@ -480,7 +488,7 @@ int Scene::Render(const float * uvsTransformed, glm::mat4 arViewMatrix, glm::mat
 
 	UTimer timer;
 
-	bool onlineBlending = (renderBackgroundCamera && occlusionMesh.cloud.get() && occlusionMesh.cloud->size()) || (blending_ && gesture_camera_->GetCameraType()!=tango_gl::GestureCamera::kTopOrtho && mapRendering_ && meshRendering_ && cloudsToDraw.size()>1);
+	bool onlineBlending = (!meshRendering_ && occlusionMesh.cloud.get() && occlusionMesh.cloud->size()) || (blending_ && gesture_camera_->GetCameraType()!=tango_gl::GestureCamera::kTopOrtho && mapRendering_ && meshRendering_);
 	if(onlineBlending && fboId_)
 	{
         GLint originid = 0;
@@ -492,24 +500,26 @@ int Scene::Render(const float * uvsTransformed, glm::mat4 arViewMatrix, glm::mat
 		glClearColor(0, 0, 0, 0);
 		glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 
-		if(renderBackgroundCamera && !meshRendering_ && occlusionMesh.cloud.get() && occlusionMesh.cloud->size())
-		{
-			PointCloudDrawable drawable(occlusionMesh);
-			drawable.Render(projectionMatrix, viewMatrix, true, pointSize_, false, false, 999.0f, 0, 0, 0, 0, 0, true);
-		}
-		else
-		{
-			// Draw scene
-			for(std::vector<PointCloudDrawable*>::const_iterator iter=cloudsToDraw.begin(); iter!=cloudsToDraw.end(); ++iter)
-			{
-                Eigen::Vector3f cloudToCamera(
-                          (*iter)->getPose().x() - openglCamera.x(),
-                          (*iter)->getPose().y() - openglCamera.y(),
-                          (*iter)->getPose().z() - openglCamera.z());
-                float distanceToCameraSqr = cloudToCamera[0]*cloudToCamera[0] + cloudToCamera[1]*cloudToCamera[1] + cloudToCamera[2]*cloudToCamera[2];
-				(*iter)->Render(projectionMatrix, viewMatrix, meshRendering_, pointSize_, false, false, distanceToCameraSqr, 0, 0, 0, 0, 0, true);
-			}
-		}
+        // Draw scene
+        for(std::vector<PointCloudDrawable*>::const_iterator iter=cloudsToDraw.begin(); iter!=cloudsToDraw.end(); ++iter)
+        {
+            Eigen::Vector3f cloudToCamera(
+                      (*iter)->getPose().x() - openglCamera.x(),
+                      (*iter)->getPose().y() - openglCamera.y(),
+                      (*iter)->getPose().z() - openglCamera.z());
+            float distanceToCameraSqr = cloudToCamera[0]*cloudToCamera[0] + cloudToCamera[1]*cloudToCamera[1] + cloudToCamera[2]*cloudToCamera[2];
+            (*iter)->Render(projectionMatrix, viewMatrix, meshRendering_, pointSize_, false, false, distanceToCameraSqr, 0, 0, 0, 0, 0, true);
+        }
+        
+        glBindTexture(GL_TEXTURE_2D, depthTextures_[1]);
+        glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, screenWidth_, screenHeight_);
+        glBindTexture(GL_TEXTURE_2D, 0);
+        
+        if(!meshRendering_ && occlusionMesh.cloud.get() && occlusionMesh.cloud->size())
+        {
+            PointCloudDrawable drawable(occlusionMesh);
+            drawable.Render(projectionMatrix, viewMatrix, true, pointSize_, false, false, 0, 0, 0, 0, 0, 0, true);
+        }
 
 		// back to normal window-system-provided framebuffer
 		glBindFramebuffer(GL_FRAMEBUFFER, originid); // unbind
@@ -549,7 +559,7 @@ int Scene::Render(const float * uvsTransformed, glm::mat4 arViewMatrix, glm::mat
 	glClearColor(r_, g_, b_, 1.0f);
 	glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
     
-    if(renderBackgroundCamera && (!onlineBlending || !meshRendering_))
+    if(renderBackgroundCamera && !onlineBlending)
     {
         background_renderer_->Draw(uvsTransformed, 0, screenWidth_, screenHeight_, false);
 
@@ -619,14 +629,14 @@ int Scene::Render(const float * uvsTransformed, glm::mat4 arViewMatrix, glm::mat
 				cloud->getPose().z() - openglCamera.z());
 		float distanceToCameraSqr = cloudToCamera[0]*cloudToCamera[0] + cloudToCamera[1]*cloudToCamera[1] + cloudToCamera[2]*cloudToCamera[2];
 
-		cloud->Render(projectionMatrix, viewMatrix, meshRendering_, pointSize_, meshRenderingTexture_, lighting_, distanceToCameraSqr, onlineBlending?depthTexture_:0, screenWidth_, screenHeight_, gesture_camera_->getNearClipPlane(), gesture_camera_->getFarClipPlane(), false, wireFrame_);
+		cloud->Render(projectionMatrix, viewMatrix, meshRendering_, pointSize_, meshRenderingTexture_, lighting_, distanceToCameraSqr, onlineBlending?depthTextures_[0]:0, screenWidth_, screenHeight_, gesture_camera_->getNearClipPlane(), gesture_camera_->getFarClipPlane(), false, wireFrame_);
 	}
 
 	if(onlineBlending)
 	{
-        if(renderBackgroundCamera && meshRendering_)
+        if(renderBackgroundCamera)
         {
-            background_renderer_->Draw(uvsTransformed, depthTexture_, screenWidth_, screenHeight_, mapping);
+            background_renderer_->Draw(uvsTransformed, depthTextures_[1], screenWidth_, screenHeight_, meshRendering_?mapping:false);
         }
         
 		glDisable (GL_BLEND);

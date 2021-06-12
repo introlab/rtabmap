@@ -79,6 +79,7 @@ public:
 	void setTo(int to) {to_ = to;}
 	void setTransform(const Transform & transform) {transform_ = transform;}
 	void setType(Type type) {type_ = type;}
+    void setInfMatrix(const cv::Mat & infMatrix);
 
 	const cv::Mat & userDataRaw() const {return _userDataRaw;}
 	const cv::Mat & userDataCompressed() const {return _userDataCompressed;}
@@ -87,9 +88,6 @@ public:
 
 	Link merge(const Link & link, Type outputType) const;
 	Link inverse() const;
-
-private:
-	void setInfMatrix(const cv::Mat & infMatrix);
 
 private:
 	int from_;
