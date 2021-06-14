@@ -393,6 +393,12 @@ SensorData CameraARCore::captureImage(CameraInfo * info)
 							   /*near=*/0.1f, /*far=*/100.f,
 							   glm::value_ptr(projectionMatrix_));
 
+	// adjust origin
+	if(!getOriginOffset().isNull())
+	{
+		viewMatrix_ = glm::inverse(rtabmap::glmFromTransform(rtabmap::opengl_world_T_rtabmap_world * getOriginOffset() *rtabmap::rtabmap_world_T_opengl_world)*glm::inverse(viewMatrix_));
+	}
+
 	ArTrackingState camera_tracking_state;
 	ArCamera_getTrackingState(arSession_, ar_camera, &camera_tracking_state);
 
@@ -406,6 +412,22 @@ SensorData CameraARCore::captureImage(CameraInfo * info)
 		ArPose_getPoseRaw(arSession_, arPose_, pose_raw);
 		pose = Transform(pose_raw[4], pose_raw[5], pose_raw[6], pose_raw[0], pose_raw[1], pose_raw[2], pose_raw[3]);
 		pose = rtabmap::rtabmap_world_T_opengl_world * pose * rtabmap::opengl_world_T_rtabmap_world;
+
+		Transform poseArCore = pose;
+		if(pose.isNull())
+		{
+			LOGE("CameraARCore: Pose is null");
+		}
+		else
+		{
+			this->poseReceived(pose);
+			// adjust origin
+			if(!getOriginOffset().isNull())
+			{
+				pose = getOriginOffset() * pose;
+			}
+			info->odomPose = pose;
+		}
 
 		// Get calibration parameters
 		float fx,fy, cx, cy;
@@ -527,7 +549,7 @@ SensorData CameraARCore::captureImage(CameraInfo * info)
 #endif
 							if(pointCloudData && points>0)
 							{
-								scan = scanFromPointCloudData(pointCloudData, points, pose, model, rgb, &kpts, &kpts3);
+								scan = scanFromPointCloudData(pointCloudData, points, poseArCore, model, rgb, &kpts, &kpts3);
 							}
 						}
 						else
@@ -556,20 +578,6 @@ SensorData CameraARCore::captureImage(CameraInfo * info)
 
 	ArCamera_release(ar_camera);
 
-	if(pose.isNull())
-	{
-		LOGE("CameraARCore: Pose is null");
-	}
-	else
-	{
-		this->poseReceived(pose);
-        // adjust origin
-        if(!getOriginOffset().isNull())
-        {
-            pose = getOriginOffset() * pose;
-        }
-		info->odomPose = pose;
-	}
 	return data;
 
 }
@@ -622,6 +630,12 @@ void CameraARCore::capturePoseOnly()
 							   /*near=*/0.1f, /*far=*/100.f,
 							   glm::value_ptr(projectionMatrix_));
 
+	// adjust origin
+	if(!getOriginOffset().isNull())
+	{
+		viewMatrix_ = glm::inverse(rtabmap::glmFromTransform(rtabmap::opengl_world_T_rtabmap_world * getOriginOffset() *rtabmap::rtabmap_world_T_opengl_world)*glm::inverse(viewMatrix_));
+	}
+
 	ArTrackingState camera_tracking_state;
 	ArCamera_getTrackingState(arSession_, ar_camera, &camera_tracking_state);
 
@@ -638,6 +652,11 @@ void CameraARCore::capturePoseOnly()
 		{
 			pose = rtabmap::rtabmap_world_T_opengl_world * pose * rtabmap::opengl_world_T_rtabmap_world;
 			this->poseReceived(pose);
+
+			if(!getOriginOffset().isNull())
+			{
+				pose = getOriginOffset() * pose;
+			}
 		}
 
 		int32_t is_depth_supported = 0;

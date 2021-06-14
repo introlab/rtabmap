@@ -504,7 +504,7 @@ int RTABMapApp::openDatabase(const std::string & databasePath, bool databaseInMe
 							else
 							{
 								//scan
-								cloud = rtabmap::util3d::laserScanToPointCloudRGB(data.laserScanRaw(), data.laserScanRaw().localTransform(), 255, 255, 255);
+								cloud = rtabmap::util3d::laserScanToPointCloudRGB(rtabmap::util3d::commonFiltering(data.laserScanRaw(), 1, minCloudDepth_, maxCloudDepth_), data.laserScanRaw().localTransform(), 255, 255, 255);
 								indices->resize(cloud->size());
 								for(unsigned int i=0; i<cloud->size(); ++i)
 								{
@@ -1241,7 +1241,9 @@ int RTABMapApp::Render()
 #ifdef RTABMAP_ARCORE
 				if(cameraDriver_ == 1)
 				{
-					if(main_scene_.background_renderer_ == 0)
+					if(main_scene_.background_renderer_ == 0 &&
+							((rtabmap::CameraARCore*)camera_)->getTextureId() != 9999 &&
+							((rtabmap::CameraARCore*)camera_)->getTextureId() != 0)
 					{
 						main_scene_.background_renderer_ = new BackgroundRenderer();
 						main_scene_.background_renderer_->InitializeGlContent(((rtabmap::CameraARCore*)camera_)->getTextureId(), true);
@@ -1250,6 +1252,11 @@ int RTABMapApp::Render()
 					{
 						uvsTransformed = ((rtabmap::CameraARCore*)camera_)->uvsTransformed();
 						((rtabmap::CameraARCore*)camera_)->getVPMatrices(arViewMatrix, arProjectionMatrix);
+						if(graphOptimization_ && !mapToOdom_.isIdentity())
+						{
+							rtabmap::Transform mapCorrection = rtabmap::opengl_world_T_rtabmap_world * mapToOdom_ *rtabmap::rtabmap_world_T_opengl_world;
+							arViewMatrix = glm::inverse(rtabmap::glmFromTransform(mapCorrection)*glm::inverse(arViewMatrix));
+						}
 					}
 					if(!visualizingMesh_ && main_scene_.GetCameraType() == tango_gl::GestureCamera::kFirstPerson)
 					{
@@ -1261,7 +1268,7 @@ int RTABMapApp::Render()
 							pcl::IndicesPtr indices(new std::vector<int>);
                             int meshDecimation = updateMeshDecimation(occlusionImage.cols, occlusionImage.rows);
 							pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = rtabmap::util3d::cloudFromDepth(occlusionImage, occlusionModel, meshDecimation, 0, 0, indices.get());
-							cloud = rtabmap::util3d::transformPointCloud(cloud, rtabmap::opengl_world_T_rtabmap_world*occlusionModel.localTransform());
+							cloud = rtabmap::util3d::transformPointCloud(cloud, rtabmap::opengl_world_T_rtabmap_world*mapToOdom_*occlusionModel.localTransform());
 							occlusionMesh.cloud.reset(new pcl::PointCloud<pcl::PointXYZRGB>());
 							pcl::copyPointCloud(*cloud, *occlusionMesh.cloud);
 							occlusionMesh.indices = indices;
@@ -1276,7 +1283,9 @@ int RTABMapApp::Render()
 #endif
                 if(cameraDriver_ == 3)
                 {
-                    if(main_scene_.background_renderer_ == 0)
+                    if(main_scene_.background_renderer_ == 0 &&
+                    		((rtabmap::CameraMobile*)camera_)->getTextureId() != 9999 &&
+                    		((rtabmap::CameraMobile*)camera_)->getTextureId() != 0)
                     {
                         main_scene_.background_renderer_ = new BackgroundRenderer();
                         main_scene_.background_renderer_->InitializeGlContent(((rtabmap::CameraMobile*)camera_)->getTextureId(), false);
@@ -1301,7 +1310,7 @@ int RTABMapApp::Render()
                             pcl::IndicesPtr indices(new std::vector<int>);
                             int meshDecimation = updateMeshDecimation(occlusionImage.cols, occlusionImage.rows);
                             pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = rtabmap::util3d::cloudFromDepth(occlusionImage, occlusionModel, meshDecimation, 0, 0, indices.get());
-                            cloud = rtabmap::util3d::transformPointCloud(cloud, rtabmap::opengl_world_T_rtabmap_world*occlusionModel.localTransform());
+                            cloud = rtabmap::util3d::transformPointCloud(cloud, rtabmap::opengl_world_T_rtabmap_world*mapToOdom_*occlusionModel.localTransform());
                             occlusionMesh.cloud.reset(new pcl::PointCloud<pcl::PointXYZRGB>());
                             pcl::copyPointCloud(*cloud, *occlusionMesh.cloud);
                             occlusionMesh.indices = indices;
@@ -1794,7 +1803,7 @@ int RTABMapApp::Render()
 										else
 										{
 											//scan
-											cloud = rtabmap::util3d::laserScanToPointCloudRGB(data.laserScanRaw(), data.laserScanRaw().localTransform(), 255, 255, 255);
+											cloud = rtabmap::util3d::laserScanToPointCloudRGB(rtabmap::util3d::commonFiltering(data.laserScanRaw(), 1, minCloudDepth_, maxCloudDepth_), data.laserScanRaw().localTransform(), 255, 255, 255);
 											indices->resize(cloud->size());
 											for(unsigned int i=0; i<cloud->size(); ++i)
 											{
@@ -2009,7 +2018,7 @@ int RTABMapApp::Render()
 							else
 							{
 								//scan
-								cloud = rtabmap::util3d::laserScanToPointCloudRGB(odomEvent.data().laserScanRaw(), odomEvent.data().laserScanRaw().localTransform(), 255, 255, 255);
+								cloud = rtabmap::util3d::laserScanToPointCloudRGB(rtabmap::util3d::commonFiltering(odomEvent.data().laserScanRaw(), 1, minCloudDepth_, maxCloudDepth_), odomEvent.data().laserScanRaw().localTransform(), 255, 255, 255);
 								indices->resize(cloud->size());
 								for(unsigned int i=0; i<cloud->size(); ++i)
 								{
@@ -3241,7 +3250,7 @@ bool RTABMapApp::exportMesh(
                     else if(!data.laserScanRaw().empty())
                     {
                         //scan
-                        cloud = rtabmap::util3d::laserScanToPointCloudRGB(data.laserScanRaw(), data.laserScanRaw().localTransform(), 255, 255, 255);
+                        cloud = rtabmap::util3d::laserScanToPointCloudRGB(rtabmap::util3d::commonFiltering(data.laserScanRaw(), 1, minCloudDepth_, maxCloudDepth_), data.laserScanRaw().localTransform(), 255, 255, 255);
                         indices->resize(cloud->size());
                         for(unsigned int i=0; i<cloud->size(); ++i)
                         {
@@ -3271,7 +3280,7 @@ bool RTABMapApp::exportMesh(
                         else if(!data.laserScanRaw().empty())
                         {
                             //scan
-                            cloud = rtabmap::util3d::laserScanToPointCloudRGB(data.laserScanRaw(), data.laserScanRaw().localTransform(), 255, 255, 255);
+                            cloud = rtabmap::util3d::laserScanToPointCloudRGB(rtabmap::util3d::commonFiltering(data.laserScanRaw(), 1, minCloudDepth_, maxCloudDepth_), data.laserScanRaw().localTransform(), 255, 255, 255);
                             indices->resize(cloud->size());
                             for(unsigned int i=0; i<cloud->size(); ++i)
                             {
@@ -3910,8 +3919,13 @@ void RTABMapApp::postOdometryEvent(
                     
                     if(!outputDepth.empty())
                     {
+                    	rtabmap::Transform poseWithOriginOffset = pose;
+                    	if(!camera_->getOriginOffset().isNull())
+                    	{
+                    		poseWithOriginOffset = camera_->getOriginOffset() * pose;
+                    	}
                         rtabmap::CameraModel depthModel = model.scaled(float(outputDepth.cols) / float(model.imageWidth()));
-                        depthModel.setLocalTransform(mapToOdom_*pose*model.localTransform());
+                        depthModel.setLocalTransform(poseWithOriginOffset*model.localTransform());
                         camera_->setOcclusionImage(outputDepth, depthModel);
                     }
                     

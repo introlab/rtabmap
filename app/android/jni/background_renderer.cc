@@ -51,6 +51,8 @@ const std::string kFragmentShaderBlendingOES =
     "precision mediump float;\n"
     "varying vec2 v_TexCoord;\n"
     "uniform samplerExternalOES sTexture;\n"
+	"uniform sampler2D uDepthTexture;\n"
+	"uniform vec2 uScreenScale;\n"
     "uniform bool uRedUnknown;\n"
     "void main() {\n"
     "    vec4 sample = texture2D(sTexture, v_TexCoord);\n"
@@ -120,8 +122,19 @@ const std::string kFragmentShaderBlending =
 
 std::vector<GLuint> BackgroundRenderer::shaderPrograms_;
 
+BackgroundRenderer::~BackgroundRenderer()
+{
+	for(unsigned int i=0; i<shaderPrograms_.size(); ++i)
+	{
+		glDeleteShader(shaderPrograms_[i]);
+	}
+	shaderPrograms_.clear();
+}
+
 void BackgroundRenderer::InitializeGlContent(GLuint textureId, bool oes)
 {
+	LOGI("textureId=%d", textureId);
+
   texture_id_ = textureId;
 #ifdef __ANDROID__
   oes_ = oes;
@@ -175,19 +188,19 @@ void BackgroundRenderer::Draw(const float * transformed_uvs, const GLuint & dept
   GLuint screenScale_handle = glGetUniformLocation(program, "uRedUnknown");
   glUniform1i(screenScale_handle, redUnknown);
 
-  GLuint attribute_vertices_ = glGetAttribLocation(program, "a_Position");
-  GLuint attribute_uvs_ = glGetAttribLocation(program, "a_TexCoord");
-    
-  glVertexAttribPointer(attribute_vertices_, 2, GL_FLOAT, GL_FALSE, 0, BackgroundRenderer_kVertices);
-  glVertexAttribPointer(attribute_uvs_, 2, GL_FLOAT, GL_FALSE, 0, transformed_uvs?transformed_uvs:BackgroundRenderer_kTexCoord);
+  GLuint attributeVertices = glGetAttribLocation(program, "a_Position");
+  GLuint attributeUvs = glGetAttribLocation(program, "a_TexCoord");
 
-  glEnableVertexAttribArray(attribute_vertices_);
-  glEnableVertexAttribArray(attribute_uvs_);
+  glVertexAttribPointer(attributeVertices, 2, GL_FLOAT, GL_FALSE, 0, BackgroundRenderer_kVertices);
+  glVertexAttribPointer(attributeUvs, 2, GL_FLOAT, GL_FALSE, 0, transformed_uvs?transformed_uvs:BackgroundRenderer_kTexCoord);
+
+  glEnableVertexAttribArray(attributeVertices);
+  glEnableVertexAttribArray(attributeUvs);
 
   glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 
-  glDisableVertexAttribArray(attribute_vertices_);
-  glDisableVertexAttribArray(attribute_uvs_);
+  glDisableVertexAttribArray(attributeVertices);
+  glDisableVertexAttribArray(attributeUvs);
 
   glUseProgram(0);
   glDepthMask(GL_TRUE);

@@ -307,8 +307,6 @@ public class ARCoreSharedCamera {
 		}
 		mTOFImageReader.stopBackgroundThread();
 	}
-	
-	private long mPreviousTime = 0;
 
     /**
      * Return true if the given array contains the given integer.
@@ -335,8 +333,6 @@ public class ARCoreSharedCamera {
 		close();
 		
 		startBackgroundThread();
-		
-		mPreviousTime = System.currentTimeMillis();
 
 		if(cameraTextureId == -1)
 		{
@@ -641,13 +637,6 @@ public class ARCoreSharedCamera {
 			if(!RTABMapActivity.DISABLE_LOG) Log.d(TAG, String.format("pose=%f %f %f q=%f %f %f %f stamp=%f", pose.tx(), pose.ty(), pose.tz(), pose.qx(), pose.qy(), pose.qz(), pose.qw(), stamp));
 			RTABMapLib.postCameraPoseEvent(RTABMapActivity.nativeApplication, pose.tx(), pose.ty(), pose.tz(), pose.qx(), pose.qy(), pose.qz(), pose.qw(), stamp);
 			
-			int rateMs = 100; // send images at most 10 Hz (to save battery)
-			if(System. currentTimeMillis() - mPreviousTime < rateMs)
-			{
-				return;
-			}
-			mPreviousTime = System. currentTimeMillis();
-			
 			CameraIntrinsics intrinsics = camera.getImageIntrinsics();
 			try{
 				Image image = frame.acquireCameraImage();
@@ -683,7 +672,7 @@ public class ARCoreSharedCamera {
 				frame.transformCoordinates2d(
 				        Coordinates2d.OPENGL_NORMALIZED_DEVICE_COORDINATES,
 				        QUAD_COORDS,
-				        Coordinates2d.TEXTURE_NORMALIZED,
+				        Coordinates2d.IMAGE_NORMALIZED,
 				        texCoord);
 				
 				float[] p = new float[16];

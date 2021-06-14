@@ -154,7 +154,7 @@ void CameraMobile::setData(const SensorData & data, const Transform & pose, cons
     {
         glGenTextures(1, &textureId_);
     }
-    
+
     if(texCoord)
     {
         memcpy(transformed_uvs_, texCoord, 8*sizeof(float));
@@ -162,7 +162,7 @@ void CameraMobile::setData(const SensorData & data, const Transform & pose, cons
     }
     
     LOGD("CameraMobile::setData textureId_=%d", (int)textureId_);
-    
+
     if(textureId_ != 0 && texCoord != 0)
     {
         cv::Mat rgbImage;
@@ -200,16 +200,16 @@ void CameraMobile::spinOnce()
 	if(!this->isRunning())
 	{
 		bool ignoreFrame = false;
-		float rate = 10.0f; // maximum 10 FPS for image data
+		//float rate = 10.0f; // maximum 10 FPS for image data
 		double now = UTimer::now();
-		if(rate>0.0f)
+		/*if(rate>0.0f)
 		{
 			if((spinOncePreviousStamp_>=0.0 && now>spinOncePreviousStamp_ && now - spinOncePreviousStamp_ < 1.0f/rate) ||
 				((spinOncePreviousStamp_<=0.0 || now<=spinOncePreviousStamp_) && spinOnceFrameRateTimer_.getElapsedTime() < 1.0f/rate))
 			{
 				ignoreFrame = true;
 			}
-		}
+		}*/
 
 		if(!ignoreFrame)
 		{

@@ -1075,6 +1075,7 @@ public class RTABMapActivity extends FragmentActivity implements OnClickListener
 
 		setAndroidOrientation();
 
+		updateCameraDriverSettings();
 		updatePreferences();
 
 		if(mState == State.STATE_MAPPING || mState == State.STATE_CAMERA)

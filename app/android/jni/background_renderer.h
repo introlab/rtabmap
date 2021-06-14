@@ -51,7 +51,7 @@ public:
 
  public:
   BackgroundRenderer() = default;
-  ~BackgroundRenderer() = default;
+  ~BackgroundRenderer();
 
   // Sets up OpenGL state.  Must be called on the OpenGL thread and before any
   // other methods below.
