@@ -73,7 +73,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
 #define LOW_RES_PIX 2
-#define DEBUG_RENDERING_PERFORMANCE
+//#define DEBUG_RENDERING_PERFORMANCE
 
 const int g_optMeshId = -100;
 
@@ -894,10 +894,6 @@ bool RTABMapApp::startCamera()
 		LOGI("Cloud density level %d", cloudDensityLevel_);
 
 		LOGI("Start camera thread");
-		if(cameraDriver_ == 0)
-		{
-			camera_->start();
-		}
 		cameraJustInitialized_ = true;
 		return true;
 	}
@@ -1222,36 +1218,30 @@ int RTABMapApp::Render()
 		glm::mat4 arProjectionMatrix(0);
 		glm::mat4 arViewMatrix(0);
 		rtabmap::Mesh occlusionMesh;
-		if((cameraDriver_ == 1 || cameraDriver_ == 2 || cameraDriver_ == 3) && camera_!=0)
+
 		{
 			boost::mutex::scoped_lock  lock(cameraMutex_);
 			if(camera_!=0)
 			{
-#ifdef RTABMAP_ARCORE
-				if(cameraDriver_ == 1)
+				if(cameraDriver_ <= 2)
 				{
-					((rtabmap::CameraARCore*)camera_)->updateOcclusionImage(!visualizingMesh_ && main_scene_.GetCameraType() == tango_gl::GestureCamera::kFirstPerson);
+					camera_->spinOnce();
 				}
+#ifdef DEBUG_RENDERING_PERFORMANCE
+				LOGW("Camera spinOnce %fs", time.ticks());
 #endif
-                if(cameraDriver_ == 1 || cameraDriver_ == 2)
-                {
-                    camera_->spinOnce();
-                }
 
-#ifdef RTABMAP_ARCORE
-				if(cameraDriver_ == 1)
+				if(cameraDriver_ != 2)
 				{
-					if(main_scene_.background_renderer_ == 0 &&
-							((rtabmap::CameraARCore*)camera_)->getTextureId() != 9999 &&
-							((rtabmap::CameraARCore*)camera_)->getTextureId() != 0)
+					if(main_scene_.background_renderer_ == 0 && camera_->getTextureId() != 0)
 					{
 						main_scene_.background_renderer_ = new BackgroundRenderer();
-						main_scene_.background_renderer_->InitializeGlContent(((rtabmap::CameraARCore*)camera_)->getTextureId(), true);
+						main_scene_.background_renderer_->InitializeGlContent(((rtabmap::CameraMobile*)camera_)->getTextureId(), cameraDriver_ == 0 || cameraDriver_ == 1);
 					}
-					if(((rtabmap::CameraARCore*)camera_)->uvsInitialized())
+					if(camera_->uvsInitialized())
 					{
-						uvsTransformed = ((rtabmap::CameraARCore*)camera_)->uvsTransformed();
-						((rtabmap::CameraARCore*)camera_)->getVPMatrices(arViewMatrix, arProjectionMatrix);
+						uvsTransformed = ((rtabmap::CameraMobile*)camera_)->uvsTransformed();
+						((rtabmap::CameraMobile*)camera_)->getVPMatrices(arViewMatrix, arProjectionMatrix);
 						if(graphOptimization_ && !mapToOdom_.isIdentity())
 						{
 							rtabmap::Transform mapCorrection = rtabmap::opengl_world_T_rtabmap_world * mapToOdom_ *rtabmap::rtabmap_world_T_opengl_world;
@@ -1261,12 +1251,12 @@ int RTABMapApp::Render()
 					if(!visualizingMesh_ && main_scene_.GetCameraType() == tango_gl::GestureCamera::kFirstPerson)
 					{
 						rtabmap::CameraModel occlusionModel;
-						cv::Mat occlusionImage = ((rtabmap::CameraARCore*)camera_)->getOcclusionImage(&occlusionModel);
+						cv::Mat occlusionImage = ((rtabmap::CameraMobile*)camera_)->getOcclusionImage(&occlusionModel);
 
 						if(occlusionModel.isValidForProjection())
 						{
 							pcl::IndicesPtr indices(new std::vector<int>);
-                            int meshDecimation = updateMeshDecimation(occlusionImage.cols, occlusionImage.rows);
+							int meshDecimation = updateMeshDecimation(occlusionImage.cols, occlusionImage.rows);
 							pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = rtabmap::util3d::cloudFromDepth(occlusionImage, occlusionModel, meshDecimation, 0, 0, indices.get());
 							cloud = rtabmap::util3d::transformPointCloud(cloud, rtabmap::opengl_world_T_rtabmap_world*mapToOdom_*occlusionModel.localTransform());
 							occlusionMesh.cloud.reset(new pcl::PointCloud<pcl::PointXYZRGB>());
@@ -1274,54 +1264,15 @@ int RTABMapApp::Render()
 							occlusionMesh.indices = indices;
 							occlusionMesh.polygons = rtabmap::util3d::organizedFastMesh(cloud, 1.0*M_PI/180.0, false, meshTrianglePix_);
 						}
-						else
+						else if(!occlusionImage.empty())
 						{
 							UERROR("invalid occlusionModel: %f %f %f %f %dx%d", occlusionModel.fx(), occlusionModel.fy(), occlusionModel.cx(), occlusionModel.cy(), occlusionModel.imageWidth(), occlusionModel.imageHeight());
 						}
 					}
 				}
+#ifdef DEBUG_RENDERING_PERFORMANCE
+				LOGW("Update background and occlusion mesh %fs", time.ticks());
 #endif
-                if(cameraDriver_ == 3)
-                {
-                    if(main_scene_.background_renderer_ == 0 &&
-                    		((rtabmap::CameraMobile*)camera_)->getTextureId() != 9999 &&
-                    		((rtabmap::CameraMobile*)camera_)->getTextureId() != 0)
-                    {
-                        main_scene_.background_renderer_ = new BackgroundRenderer();
-                        main_scene_.background_renderer_->InitializeGlContent(((rtabmap::CameraMobile*)camera_)->getTextureId(), false);
-                    }
-                    if(((rtabmap::CameraMobile*)camera_)->uvsInitialized())
-                    {
-                        uvsTransformed = ((rtabmap::CameraMobile*)camera_)->uvsTransformed();
-                        ((rtabmap::CameraMobile*)camera_)->getVPMatrices(arViewMatrix, arProjectionMatrix);
-                        if(graphOptimization_ && !mapToOdom_.isIdentity())
-                        {
-                            rtabmap::Transform mapCorrection = rtabmap::opengl_world_T_rtabmap_world * mapToOdom_ *rtabmap::rtabmap_world_T_opengl_world;
-                            arViewMatrix = glm::inverse(rtabmap::glmFromTransform(mapCorrection)*glm::inverse(arViewMatrix));
-                        }
-                    }
-                    if(!visualizingMesh_ && main_scene_.GetCameraType() == tango_gl::GestureCamera::kFirstPerson)
-                    {
-                        rtabmap::CameraModel occlusionModel;
-                        cv::Mat occlusionImage = ((rtabmap::CameraMobile*)camera_)->getOcclusionImage(&occlusionModel);
-
-                        if(occlusionModel.isValidForProjection())
-                        {
-                            pcl::IndicesPtr indices(new std::vector<int>);
-                            int meshDecimation = updateMeshDecimation(occlusionImage.cols, occlusionImage.rows);
-                            pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = rtabmap::util3d::cloudFromDepth(occlusionImage, occlusionModel, meshDecimation, 0, 0, indices.get());
-                            cloud = rtabmap::util3d::transformPointCloud(cloud, rtabmap::opengl_world_T_rtabmap_world*mapToOdom_*occlusionModel.localTransform());
-                            occlusionMesh.cloud.reset(new pcl::PointCloud<pcl::PointXYZRGB>());
-                            pcl::copyPointCloud(*cloud, *occlusionMesh.cloud);
-                            occlusionMesh.indices = indices;
-                            occlusionMesh.polygons = rtabmap::util3d::organizedFastMesh(cloud, 1.0*M_PI/180.0, false, meshTrianglePix_);
-                        }
-                        else if(!occlusionImage.empty())
-                        {
-                            UERROR("invalid occlusionModel: %f %f %f %f %dx%d", occlusionModel.fx(), occlusionModel.fy(), occlusionModel.cx(), occlusionModel.cy(), occlusionModel.imageWidth(), occlusionModel.imageHeight());
-                        }
-                    }
-                }
 			}
 		}
 
@@ -3691,6 +3642,13 @@ void RTABMapApp::postCameraPoseEvent(
 	boost::mutex::scoped_lock  lock(cameraMutex_);
 	if(cameraDriver_ == 3 && camera_)
 	{
+		if(qx==0 && qy==0 && qz==0 && qw==0)
+		{
+			// Lost! clear buffer
+			poseBuffer_.clear();
+			camera_->resetOrigin(); // we are lost, create new session on next valid frame
+			return;
+		}
 		rtabmap::Transform pose(x,y,z,qx,qy,qz,qw);
 		pose = rtabmap::rtabmap_world_T_opengl_world * pose * rtabmap::opengl_world_T_rtabmap_world;
 		camera_->poseReceived(pose);

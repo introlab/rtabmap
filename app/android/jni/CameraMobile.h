@@ -116,6 +116,7 @@ public:
     bool uvsInitialized() const {return uvs_initialized_;}
     const float* uvsTransformed() const {return transformed_uvs_;}
     void getVPMatrices(glm::mat4 & view, glm::mat4 & projection) const {view=viewMatrix_; projection=projectionMatrix_;}
+    ScreenRotation getScreenRotation() const {return colorCameraToDisplayRotation_;}
     
     void setOcclusionImage(const cv::Mat & image, const CameraModel & model) {occlusionModel_ = model; occlusionImage_ = image;}
     const cv::Mat & getOcclusionImage(CameraModel * model=0) const {if(model)*model=occlusionModel_; return occlusionImage_; }

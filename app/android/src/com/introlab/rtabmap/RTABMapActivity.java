@@ -1236,7 +1236,10 @@ public class RTABMapActivity extends FragmentActivity implements OnClickListener
 							if(cameraStartSucess && mCameraDriver == 3)
 							{
 								synchronized (this) {
-									mArCoreCamera = new ARCoreSharedCamera(getActivity());
+									SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(getActivity());
+									String arCoreLocalizationFiltering = sharedPref.getString(getString(R.string.pref_key_arcore_localization_filtering_speed), getString(R.string.pref_default_arcore_localization_filtering_speed));
+									mArCoreCamera = new ARCoreSharedCamera(getActivity(), Float.parseFloat(arCoreLocalizationFiltering));
+									mArCoreCamera.setToast(mToast);
 									mProgressDialog.setTitle("");
 									mProgressDialog.setMessage(message);
 									mProgressDialog.show();

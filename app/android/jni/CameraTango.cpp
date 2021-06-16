@@ -33,6 +33,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/util2d.h"
 #include <tango_client_api.h>
 #include <tango_support_api.h>
+#include "tango-gl/camera.h"
 
 namespace rtabmap {
 
@@ -42,11 +43,22 @@ const int holeSize = 5;
 const float maxDepthError = 0.10;
 const int scanDownsampling = 1;
 
+//android phone
+//11 10 01 00 // portrait
+//01 11 00 10 // left
+//10 00 11 01 // right
+//00 01 10 11 // down
+
+const float kTextureCoords0[] = {1.0, 1.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0};
+const float kTextureCoords90[] = {0.0, 1.0, 1.0, 1.0, 0.0, 0.0, 1.0, 0.0};
+const float kTextureCoords180[] = {0.0, 0.0, 0.0, 1.0, 1.0, 0.0, 1.0, 1.0};
+const float kTextureCoords270[] = {1.0, 0.0, 0.0, 0.0, 1.0, 1.0, 0.0, 1.0};
+
 // Callbacks
 void onPointCloudAvailableRouter(void* context, const TangoPointCloud* point_cloud)
 {
 	CameraTango* app = static_cast<CameraTango*>(context);
-	if(app->isRunning() && point_cloud->num_points>0)
+	if(point_cloud->num_points>0)
 	{
 		app->cloudReceived(cv::Mat(1, point_cloud->num_points, CV_32FC4, point_cloud->points[0]), point_cloud->timestamp);
 	}
@@ -55,34 +67,32 @@ void onPointCloudAvailableRouter(void* context, const TangoPointCloud* point_clo
 void onFrameAvailableRouter(void* context, TangoCameraId id, const TangoImageBuffer* color)
 {
 	CameraTango* app = static_cast<CameraTango*>(context);
-	if(app->isRunning())
-	{
-		cv::Mat tangoImage;
-		if(color->format == TANGO_HAL_PIXEL_FORMAT_RGBA_8888)
-		{
-			tangoImage = cv::Mat(color->height, color->width, CV_8UC4, color->data);
-		}
-		else if(color->format == TANGO_HAL_PIXEL_FORMAT_YV12)
-		{
-			tangoImage = cv::Mat(color->height+color->height/2, color->width, CV_8UC1, color->data);
-		}
-		else if(color->format == TANGO_HAL_PIXEL_FORMAT_YCrCb_420_SP)
-		{
-			tangoImage = cv::Mat(color->height+color->height/2, color->width, CV_8UC1, color->data);
-		}
-		else if(color->format == 35)
-		{
-			tangoImage = cv::Mat(color->height+color->height/2, color->width, CV_8UC1, color->data);
-		}
-		else
-		{
-			LOGE("Not supported color format : %d.", color->format);
-		}
 
-		if(!tangoImage.empty())
-		{
-			app->rgbReceived(tangoImage, (unsigned int)color->format, color->timestamp);
-		}
+	cv::Mat tangoImage;
+	if(color->format == TANGO_HAL_PIXEL_FORMAT_RGBA_8888)
+	{
+		tangoImage = cv::Mat(color->height, color->width, CV_8UC4, color->data);
+	}
+	else if(color->format == TANGO_HAL_PIXEL_FORMAT_YV12)
+	{
+		tangoImage = cv::Mat(color->height+color->height/2, color->width, CV_8UC1, color->data);
+	}
+	else if(color->format == TANGO_HAL_PIXEL_FORMAT_YCrCb_420_SP)
+	{
+		tangoImage = cv::Mat(color->height+color->height/2, color->width, CV_8UC1, color->data);
+	}
+	else if(color->format == 35)
+	{
+		tangoImage = cv::Mat(color->height+color->height/2, color->width, CV_8UC1, color->data);
+	}
+	else
+	{
+		LOGE("Not supported color format : %d.", color->format);
+	}
+
+	if(!tangoImage.empty())
+	{
+		app->rgbReceived(tangoImage, (unsigned int)color->format, color->timestamp);
 	}
 }
 
@@ -110,7 +120,6 @@ CameraTango::CameraTango(bool colorCamera, int decimation, bool publishRawScan, 
 		colorCamera_(colorCamera),
 		decimation_(decimation),
 		rawScanPublished_(publishRawScan),
-		cloudStamp_(0),
 		tangoColorType_(0),
 		tangoColorStamp_(0)
 {
@@ -430,7 +439,7 @@ void CameraTango::close()
 
 void CameraTango::cloudReceived(const cv::Mat & cloud, double timestamp)
 {
-	if(this->isRunning() && !cloud.empty())
+	if(!cloud.empty())
 	{
 		//LOGD("Depth received! %fs (%d points)", timestamp, cloud.cols);
 
@@ -447,20 +456,248 @@ void CameraTango::cloudReceived(const cv::Mat & cloud, double timestamp)
 		//  So, synchronize with the last RGB frame before the Depth is acquired
 		if(!tangoColor_.empty())
 		{
+			UTimer timer;
 			double dt = fabs(timestamp - tangoColorStamp_);
 
 			//LOGD("Depth: %f vs %f = %f", tangoColorStamp_, timestamp, dt);
 
 			if(dt >= 0.0 && dt < 0.5)
 			{
-				bool notify = cloud_.empty();
-				cloud_ = cloud.clone();
-				cloudStamp_ = timestamp;
+				bool notify = !data_.isValid();
+
+				cv::Mat tangoImage = tangoColor_;
+				cv::Mat rgb;
+				double cloudStamp = timestamp;
+				double rgbStamp = tangoColorStamp_;
+				int tangoColorType = tangoColorType_;
+
+				tangoColor_ = cv::Mat();
+				tangoColorStamp_ = 0.0;
+				tangoColorType_ = 0;
+
+				LOGD("tangoColorType=%d", tangoColorType);
+				if(tangoColorType == TANGO_HAL_PIXEL_FORMAT_RGBA_8888)
+				{
+					cv::cvtColor(tangoImage, rgb, CV_RGBA2BGR);
+				}
+				else if(tangoColorType == TANGO_HAL_PIXEL_FORMAT_YV12)
+				{
+					cv::cvtColor(tangoImage, rgb, CV_YUV2BGR_YV12);
+				}
+				else if(tangoColorType == TANGO_HAL_PIXEL_FORMAT_YCrCb_420_SP)
+				{
+					cv::cvtColor(tangoImage, rgb, CV_YUV2BGR_NV21);
+				}
+				else if(tangoColorType == 35)
+				{
+					cv::cvtColor(tangoImage, rgb, cv::COLOR_YUV420sp2GRAY);
+				}
+				else
+				{
+					LOGE("Not supported color format : %d.", tangoColorType);
+					data_ = SensorData();
+					return;
+				}
+
+				//for(int i=0; i<rgb.cols; ++i)
+				//{
+				//	UERROR("%d,%d,%d", (int)rgb.at<cv::Vec3b>(i)[0], (int)rgb.at<cv::Vec3b>(i)[1], (int)rgb.at<cv::Vec3b>(i)[2]);
+				//}
+
+				CameraModel model = model_;
+
+				if(colorCamera_)
+				{
+					if(decimation_ > 1)
+					{
+						rgb = util2d::decimate(rgb, decimation_);
+						model = model.scaled(1.0/double(decimation_));
+					}
+				}
+				else
+				{
+					//UTimer t;
+					cv::Mat rgbRect;
+					cv::remap(rgb, rgbRect, fisheyeRectifyMapX_, fisheyeRectifyMapY_, cv::INTER_LINEAR, cv::BORDER_CONSTANT, 0);
+					rgb = rgbRect;
+					//LOGD("Rectification time=%fs", t.ticks());
+				}
+
+				// Querying the depth image's frame transformation based on the depth image's
+				// timestamp.
+				cv::Mat depth;
+
+				// Calculate the relative pose from color camera frame at timestamp
+				// color_timestamp t1 and depth
+				// camera frame at depth_timestamp t0.
+				Transform colorToDepth;
+				TangoPoseData pose_color_image_t1_T_depth_image_t0;
+				if (TangoSupport_calculateRelativePose(
+						rgbStamp, colorCamera_?TANGO_COORDINATE_FRAME_CAMERA_COLOR:TANGO_COORDINATE_FRAME_CAMERA_FISHEYE, cloudStamp,
+					  TANGO_COORDINATE_FRAME_CAMERA_DEPTH,
+					  &pose_color_image_t1_T_depth_image_t0) == TANGO_SUCCESS)
+				{
+					colorToDepth = tangoPoseToTransform(&pose_color_image_t1_T_depth_image_t0);
+				}
+				else
+				{
+					LOGE(
+						"SynchronizationApplication: Could not find a valid relative pose at "
+						"time for color and "
+						" depth cameras.");
+				}
+
+				if(colorToDepth.getNormSquared() > 100000)
+				{
+					LOGE("Very large color to depth error detected (%s)! Ignoring this frame!", colorToDepth.prettyPrint().c_str());
+					colorToDepth.setNull();
+				}
+				cv::Mat scan;
+				if(!colorToDepth.isNull())
+				{
+					// The Color Camera frame at timestamp t0 with respect to Depth
+					// Camera frame at timestamp t1.
+					//LOGD("colorToDepth=%s", colorToDepth.prettyPrint().c_str());
+					LOGD("rgb=%dx%d cloud size=%d", rgb.cols, rgb.rows, (int)cloud.total());
+
+					int pixelsSet = 0;
+					int depthSizeDec = colorCamera_?8:1;
+					depth = cv::Mat::zeros(model_.imageHeight()/depthSizeDec, model_.imageWidth()/depthSizeDec, CV_16UC1); // mm
+					CameraModel depthModel = model_.scaled(1.0f/float(depthSizeDec));
+					std::vector<cv::Point3f> scanData(rawScanPublished_?cloud.total():0);
+					int oi=0;
+					int closePoints = 0;
+					float closeROI[4];
+					closeROI[0] = depth.cols/4;
+					closeROI[1] = 3*(depth.cols/4);
+					closeROI[2] = depth.rows/4;
+					closeROI[3] = 3*(depth.rows/4);
+					unsigned short minDepthValue=10000;
+					for(unsigned int i=0; i<cloud.total(); ++i)
+					{
+						const float * p = cloud.ptr<float>(0,i);
+						cv::Point3f pt = util3d::transformPoint(cv::Point3f(p[0], p[1], p[2]), colorToDepth);
+
+						if(pt.z > 0.0f && i%scanDownsampling == 0 && rawScanPublished_)
+						{
+							scanData.at(oi++) = pt;
+						}
+
+						int pixel_x_l, pixel_y_l, pixel_x_h, pixel_y_h;
+						// get the coordinate on image plane.
+						pixel_x_l = static_cast<int>((depthModel.fx()) * (pt.x / pt.z) + depthModel.cx());
+						pixel_y_l = static_cast<int>((depthModel.fy()) * (pt.y / pt.z) + depthModel.cy());
+						pixel_x_h = static_cast<int>((depthModel.fx()) * (pt.x / pt.z) + depthModel.cx() + 0.5f);
+						pixel_y_h = static_cast<int>((depthModel.fy()) * (pt.y / pt.z) + depthModel.cy() + 0.5f);
+						unsigned short depth_value(pt.z * 1000.0f);
+
+						if(pixel_x_l>=closeROI[0] && pixel_x_l<closeROI[1] &&
+						   pixel_y_l>closeROI[2] && pixel_y_l<closeROI[3] &&
+						   depth_value < 600)
+						{
+							++closePoints;
+							if(depth_value < minDepthValue)
+							{
+								minDepthValue = depth_value;
+							}
+						}
+
+						bool pixelSet = false;
+						if(pixel_x_l>=0 && pixel_x_l<depth.cols &&
+						   pixel_y_l>0 && pixel_y_l<depth.rows && // ignore first line
+						   depth_value)
+						{
+							unsigned short & depthPixel = depth.at<unsigned short>(pixel_y_l, pixel_x_l);
+							if(depthPixel == 0 || depthPixel > depth_value)
+							{
+								depthPixel = depth_value;
+								pixelSet = true;
+							}
+						}
+						if(pixel_x_h>=0 && pixel_x_h<depth.cols &&
+						   pixel_y_h>0 && pixel_y_h<depth.rows && // ignore first line
+						   depth_value)
+						{
+							unsigned short & depthPixel = depth.at<unsigned short>(pixel_y_h, pixel_x_h);
+							if(depthPixel == 0 || depthPixel > depth_value)
+							{
+								depthPixel = depth_value;
+								pixelSet = true;
+							}
+						}
+						if(pixelSet)
+						{
+							pixelsSet += 1;
+						}
+					}
+
+					if(closePoints > 100)
+					{
+						this->post(new CameraInfoEvent(0, "TooClose", ""));
+					}
+
+					if(oi)
+					{
+						scan = cv::Mat(1, oi, CV_32FC3, scanData.data()).clone();
+					}
+					//LOGD("pixels depth set= %d", pixelsSet);
+				}
+				else
+				{
+					LOGE("color to depth pose is null?!? (rgb stamp=%f) (depth stamp=%f)", rgbStamp, cloudStamp);
+				}
+
+				if(!rgb.empty() && !depth.empty())
+				{
+					depth = rtabmap::util2d::fillDepthHoles(depth, holeSize, maxDepthError);
+
+					Transform odom = getPoseAtTimestamp(rgbStamp);
+
+					//LOGD("Local    = %s", model.localTransform().prettyPrint().c_str());
+					//LOGD("tango    = %s", poseDevice.prettyPrint().c_str());
+					//LOGD("opengl(t)= %s", (opengl_world_T_tango_world * poseDevice).prettyPrint().c_str());
+
+					// adjust origin
+					if(!getOriginOffset().isNull())
+					{
+						odom = getOriginOffset() * odom;
+					}
+
+					// occlusion depth
+					if(!depth.empty())
+					{
+						rtabmap::CameraModel depthModel = model.scaled(float(depth.cols) / float(model.imageWidth()));
+						depthModel.setLocalTransform(odom*model.localTransform());
+						this->setOcclusionImage(depth, depthModel);
+					}
+
+					//LOGD("rtabmap  = %s", odom.prettyPrint().c_str());
+					//LOGD("opengl(r)= %s", (opengl_world_T_rtabmap_world * odom * rtabmap_device_T_opengl_device).prettyPrint().c_str());
+
+					Transform scanLocalTransform = model.localTransform();
+
+					if(rawScanPublished_)
+					{
+						data_ = SensorData(LaserScan::backwardCompatibility(scan, cloud.total()/scanDownsampling, 0, scanLocalTransform), rgb, depth, model, this->getNextSeqID(), rgbStamp);
+					}
+					else
+					{
+						data_ = SensorData(rgb, depth, model, this->getNextSeqID(), rgbStamp);
+					}
+					data_.setGroundTruth(odom);
+				}
+				else
+				{
+					LOGE("Could not get depth and rgb images!?!");
+					data_ = SensorData();
+					return;
+				}
+
 				if(notify)
 				{
-					//LOGD("Cloud: Release semaphore");
 					dataReady_.release();
 				}
+				LOGD("process cloud received %fs", timer.ticks());
 			}
 		}
 	}
@@ -468,7 +705,7 @@ void CameraTango::cloudReceived(const cv::Mat & cloud, double timestamp)
 
 void CameraTango::rgbReceived(const cv::Mat & tangoImage, int type, double timestamp)
 {
-	if(this->isRunning() && !tangoImage.empty())
+	if(!tangoImage.empty())
 	{
 		//LOGD("RGB received! %fs", timestamp);
 
@@ -532,7 +769,6 @@ rtabmap::Transform CameraTango::getPoseAtTimestamp(double timestamp)
 	}
 	else
 	{
-
 		pose = rtabmap_world_T_tango_world * tangoPoseToTransform(&pose_start_service_T_device) * tango_device_T_rtabmap_world;
 	}
 
@@ -543,254 +779,112 @@ SensorData CameraTango::captureImage(CameraInfo * info)
 {
 	//LOGI("Capturing image...");
 
-	SensorData data;
-	if(!dataReady_.acquire(1, 2000))
+	if(textureId_ == 0)
 	{
-		if(this->isRunning())
-		{
-			LOGE("Not received any frames since 2 seconds, try to restart the camera again.");
-			this->post(new CameraInfoEvent(0, "CameraTango", "No frames received since 2 seconds."));
-
-			boost::mutex::scoped_lock  lock(dataMutex_);
-			if(!cloud_.empty() && !tangoColor_.empty())
-			{
-				UERROR("cloud and image were set!?");
-			}
-		}
-		cloud_ = cv::Mat();
-		cloudStamp_ = 0.0;
-		tangoColor_ = cv::Mat();
-		tangoColorStamp_ = 0.0;
-		tangoColorType_ = 0;
+		glGenTextures(1, &textureId_);
+		glBindTexture(GL_TEXTURE_EXTERNAL_OES, textureId_);
+		glTexParameteri(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	}
-	else
+
+	// Update Texture (optional, just for first-view rendering)
+	if(colorCamera_ && textureId_)
 	{
-		cv::Mat cloud;
-		cv::Mat tangoImage;
-		cv::Mat rgb;
-		double cloudStamp = 0.0;
-		double rgbStamp = 0.0;
-		int tangoColorType = 0;
+		double video_overlay_timestamp;
+		TangoErrorType status = TangoService_updateTextureExternalOes(TANGO_CAMERA_COLOR, textureId_, &video_overlay_timestamp);
 
+		if (status == TANGO_SUCCESS)
 		{
-			boost::mutex::scoped_lock  lock(dataMutex_);
-			cloud = cloud_;
-			cloudStamp = cloudStamp_;
-			cloud_ = cv::Mat();
-			cloudStamp_ = 0.0;
-			tangoImage = tangoColor_;
-			rgbStamp = tangoColorStamp_;
-			tangoColorType = tangoColorType_;
-			tangoColor_ = cv::Mat();
-			tangoColorStamp_ = 0.0;
-			tangoColorType_ = 0;
-		}
-
-		LOGD("tangoColorType=%d", tangoColorType);
-		if(tangoColorType == TANGO_HAL_PIXEL_FORMAT_RGBA_8888)
-		{
-			cv::cvtColor(tangoImage, rgb, CV_RGBA2BGR);
-		}
-		else if(tangoColorType == TANGO_HAL_PIXEL_FORMAT_YV12)
-		{
-			cv::cvtColor(tangoImage, rgb, CV_YUV2BGR_YV12);
-		}
-		else if(tangoColorType == TANGO_HAL_PIXEL_FORMAT_YCrCb_420_SP)
-		{
-			cv::cvtColor(tangoImage, rgb, CV_YUV2BGR_NV21);
-		}
-		else if(tangoColorType == 35)
-		{
-			cv::cvtColor(tangoImage, rgb, cv::COLOR_YUV420sp2GRAY);
-		}
-		else
-		{
-			LOGE("Not supported color format : %d.", tangoColorType);
-			return data;
-		}
-
-		//for(int i=0; i<rgb.cols; ++i)
-		//{
-		//	UERROR("%d,%d,%d", (int)rgb.at<cv::Vec3b>(i)[0], (int)rgb.at<cv::Vec3b>(i)[1], (int)rgb.at<cv::Vec3b>(i)[2]);
-		//}
-
-		CameraModel model = model_;
-
-		if(colorCamera_)
-		{
-			if(decimation_ > 1)
+			if(info)
 			{
-				rgb = util2d::decimate(rgb, decimation_);
-				model = model.scaled(1.0/double(decimation_));
+				info->odomPose = getPoseAtTimestamp(video_overlay_timestamp);
 			}
-		}
-		else
-		{
-			//UTimer t;
-			cv::Mat rgbRect;
-			cv::remap(rgb, rgbRect, fisheyeRectifyMapX_, fisheyeRectifyMapY_, cv::INTER_LINEAR, cv::BORDER_CONSTANT, 0);
-			rgb = rgbRect;
-			//LOGD("Rectification time=%fs", t.ticks());
-		}
 
-		// Querying the depth image's frame transformation based on the depth image's
-		// timestamp.
-		cv::Mat depth;
+			int rotation = static_cast<int>(getScreenRotation()) + 1; // remove 90deg camera rotation
+			  if (rotation > 3) {
+				  rotation -= 4;
+			  }
 
-		// Calculate the relative pose from color camera frame at timestamp
-		// color_timestamp t1 and depth
-		// camera frame at depth_timestamp t0.
-		Transform colorToDepth;
-		TangoPoseData pose_color_image_t1_T_depth_image_t0;
-		if (TangoSupport_calculateRelativePose(
-				rgbStamp, colorCamera_?TANGO_COORDINATE_FRAME_CAMERA_COLOR:TANGO_COORDINATE_FRAME_CAMERA_FISHEYE, cloudStamp,
-			  TANGO_COORDINATE_FRAME_CAMERA_DEPTH,
-			  &pose_color_image_t1_T_depth_image_t0) == TANGO_SUCCESS)
-		{
-			colorToDepth = tangoPoseToTransform(&pose_color_image_t1_T_depth_image_t0);
-		}
-		else
-		{
-			LOGE(
-				"SynchronizationApplication: Could not find a valid relative pose at "
-				"time for color and "
-				" depth cameras.");
-		}
-
-		if(colorToDepth.getNormSquared() > 100000)
-		{
-			LOGE("Very large color to depth error detected (%s)! Ignoring this frame!", colorToDepth.prettyPrint().c_str());
-			colorToDepth.setNull();
-		}
-		cv::Mat scan;
-		if(!colorToDepth.isNull())
-		{
-			// The Color Camera frame at timestamp t0 with respect to Depth
-			// Camera frame at timestamp t1.
-			//LOGD("colorToDepth=%s", colorToDepth.prettyPrint().c_str());
-			LOGD("rgb=%dx%d cloud size=%d", rgb.cols, rgb.rows, (int)cloud.total());
-
-			int pixelsSet = 0;
-			int depthSizeDec = colorCamera_?8:1;
-			depth = cv::Mat::zeros(model_.imageHeight()/depthSizeDec, model_.imageWidth()/depthSizeDec, CV_16UC1); // mm
-			CameraModel depthModel = model_.scaled(1.0f/float(depthSizeDec));
-			std::vector<cv::Point3f> scanData(rawScanPublished_?cloud.total():0);
-			int oi=0;
-			int closePoints = 0;
-			float closeROI[4];
-			closeROI[0] = depth.cols/4;
-			closeROI[1] = 3*(depth.cols/4);
-			closeROI[2] = depth.rows/4;
-			closeROI[3] = 3*(depth.rows/4);
-			unsigned short minDepthValue=10000;
-			for(unsigned int i=0; i<cloud.total(); ++i)
+			TangoDoubleMatrixTransformData matrix_transform;
+			status = TangoSupport_getDoubleMatrixTransformAtTime(
+					video_overlay_timestamp,
+					TANGO_COORDINATE_FRAME_CAMERA_COLOR,
+					TANGO_COORDINATE_FRAME_START_OF_SERVICE,
+					TANGO_SUPPORT_ENGINE_OPENGL,
+					TANGO_SUPPORT_ENGINE_OPENGL,
+					static_cast<TangoSupportRotation>(rotation),
+					&matrix_transform);
+			if (matrix_transform.status_code == TANGO_POSE_VALID)
 			{
-				float * p = cloud.ptr<float>(0,i);
-				cv::Point3f pt = util3d::transformPoint(cv::Point3f(p[0], p[1], p[2]), colorToDepth);
+				// Get projection matrix
+				TangoCameraIntrinsics color_camera_intrinsics;
+				int ret = TangoSupport_getCameraIntrinsicsBasedOnDisplayRotation(
+						TANGO_CAMERA_COLOR,
+						static_cast<TangoSupportRotation>(rotation),
+						&color_camera_intrinsics);
 
-				if(pt.z > 0.0f && i%scanDownsampling == 0 && rawScanPublished_)
-				{
-					scanData.at(oi++) = pt;
-				}
+				if (ret == TANGO_SUCCESS) {
+					float image_width = static_cast<float>(color_camera_intrinsics.width);
+					float image_height = static_cast<float>(color_camera_intrinsics.height);
+					float fx = static_cast<float>(color_camera_intrinsics.fx);
+					float fy = static_cast<float>(color_camera_intrinsics.fy);
+					float cx = static_cast<float>(color_camera_intrinsics.cx);
+					float cy = static_cast<float>(color_camera_intrinsics.cy);
 
-				int pixel_x_l, pixel_y_l, pixel_x_h, pixel_y_h;
-				// get the coordinate on image plane.
-				pixel_x_l = static_cast<int>((depthModel.fx()) * (pt.x / pt.z) + depthModel.cx());
-				pixel_y_l = static_cast<int>((depthModel.fy()) * (pt.y / pt.z) + depthModel.cy());
-				pixel_x_h = static_cast<int>((depthModel.fx()) * (pt.x / pt.z) + depthModel.cx() + 0.5f);
-				pixel_y_h = static_cast<int>((depthModel.fy()) * (pt.y / pt.z) + depthModel.cy() + 0.5f);
-				unsigned short depth_value(pt.z * 1000.0f);
-
-				if(pixel_x_l>=closeROI[0] && pixel_x_l<closeROI[1] &&
-				   pixel_y_l>closeROI[2] && pixel_y_l<closeROI[3] &&
-				   depth_value < 600)
-				{
-					++closePoints;
-					if(depth_value < minDepthValue)
+					viewMatrix_ = glm::make_mat4(matrix_transform.matrix);
+					if(!getOriginOffset().isNull())
 					{
-						minDepthValue = depth_value;
+						viewMatrix_ = glm::inverse(rtabmap::glmFromTransform(rtabmap::opengl_world_T_rtabmap_world * getOriginOffset() *rtabmap::rtabmap_world_T_opengl_world)*glm::inverse(viewMatrix_));
 					}
-				}
 
-				bool pixelSet = false;
-				if(pixel_x_l>=0 && pixel_x_l<depth.cols &&
-				   pixel_y_l>0 && pixel_y_l<depth.rows && // ignore first line
-				   depth_value)
-				{
-					unsigned short & depthPixel = depth.at<unsigned short>(pixel_y_l, pixel_x_l);
-					if(depthPixel == 0 || depthPixel > depth_value)
+					projectionMatrix_ = tango_gl::Camera::ProjectionMatrixForCameraIntrinsics(
+							image_width, image_height, fx, fy, cx, cy, 0.3, 50);
+
+					switch(rotation)
 					{
-						depthPixel = depth_value;
-						pixelSet = true;
+					case ROTATION_90:
+						memcpy(transformed_uvs_, kTextureCoords90, 8*sizeof(float));
+						break;
+					case ROTATION_180:
+						memcpy(transformed_uvs_, kTextureCoords180, 8*sizeof(float));
+						break;
+					case ROTATION_270:
+						memcpy(transformed_uvs_, kTextureCoords270, 8*sizeof(float));
+						break;
+					case ROTATION_0:
+					default:
+						memcpy(transformed_uvs_, kTextureCoords0, 8*sizeof(float));
 					}
+					uvs_initialized_ = true;
 				}
-				if(pixel_x_h>=0 && pixel_x_h<depth.cols &&
-				   pixel_y_h>0 && pixel_y_h<depth.rows && // ignore first line
-				   depth_value)
+				else
 				{
-					unsigned short & depthPixel = depth.at<unsigned short>(pixel_y_h, pixel_x_h);
-					if(depthPixel == 0 || depthPixel > depth_value)
-					{
-						depthPixel = depth_value;
-						pixelSet = true;
-					}
+					UERROR("TangoSupport_getCameraIntrinsicsBasedOnDisplayRotation failed!");
 				}
-				if(pixelSet)
-				{
-					pixelsSet += 1;
-				}
-			}
-
-			if(closePoints > 100)
-			{
-				this->post(new CameraInfoEvent(0, "TooClose", ""));
-			}
-
-			if(oi)
-			{
-				scan = cv::Mat(1, oi, CV_32FC3, scanData.data()).clone();
-			}
-			//LOGD("pixels depth set= %d", pixelsSet);
-		}
-		else
-		{
-			LOGE("color to depth pose is null?!? (rgb stamp=%f) (depth stamp=%f)", rgbStamp, cloudStamp);
-		}
-
-		if(!rgb.empty() && !depth.empty())
-		{
-			depth = rtabmap::util2d::fillDepthHoles(depth, holeSize, maxDepthError);
-
-			Transform odom = getPoseAtTimestamp(rgbStamp);
-
-			//LOGD("Local    = %s", model.localTransform().prettyPrint().c_str());
-			//LOGD("tango    = %s", poseDevice.prettyPrint().c_str());
-			//LOGD("opengl(t)= %s", (opengl_world_T_tango_world * poseDevice).prettyPrint().c_str());
-
-			// adjust origin
-			if(!getOriginOffset().isNull())
-			{
-				odom = getOriginOffset() * odom;
-			}
-
-			//LOGD("rtabmap  = %s", odom.prettyPrint().c_str());
-			//LOGD("opengl(r)= %s", (opengl_world_T_rtabmap_world * odom * rtabmap_device_T_opengl_device).prettyPrint().c_str());
-
-			Transform scanLocalTransform = model.localTransform();
-
-			if(rawScanPublished_)
-			{
-				data = SensorData(LaserScan::backwardCompatibility(scan, cloud.total()/scanDownsampling, 0, scanLocalTransform), rgb, depth, model, this->getNextSeqID(), rgbStamp);
 			}
 			else
 			{
-				data = SensorData(rgb, depth, model, this->getNextSeqID(), rgbStamp);
+				UERROR("TangoSupport_getDoubleMatrixTransformAtTime failed!");
 			}
-			info->odomPose = odom;
 		}
 		else
 		{
-			LOGE("Could not get depth and rgb images!?!");
+			UERROR("TangoService_updateTextureExternalOes failed!");
+		}
+	}
+
+	SensorData data;
+	if(dataReady_.acquireTry(1))
+	{
+		boost::mutex::scoped_lock  lock(dataMutex_);
+		data = data_;
+		data_ = SensorData();
+		if(info)
+		{
+			info->odomPose = data.groundTruth();
+			data.setGroundTruth(Transform());
 		}
 	}
 	return data;

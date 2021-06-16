@@ -97,11 +97,18 @@
 	            android:title="@string/pref_title_resolution"
 	            android:summary="@string/pref_summary_resolution"
 	            android:defaultValue="@string/pref_default_resolution"/>
-		     <com.introlab.rtabmap.CustomSwitchPreference
+		    <com.introlab.rtabmap.CustomSwitchPreference
                 android:key="@string/pref_key_depth_from_motion"
                 android:title="@string/pref_title_depth_from_motion"
                 android:summary="@string/pref_summary_depth_from_motion"
                 android:defaultValue="@string/pref_default_depth_from_motion"/>
+             <ListPreference
+		        android:key="@string/pref_key_arcore_localization_filtering_speed"
+		        android:title="@string/pref_title_arcore_localization_filtering_speed"
+		        android:summary="@string/pref_summary_arcore_localization_filtering_speed"
+		        android:entries="@array/pref_arcore_localization_filtering_speed_keys"
+		   	    android:entryValues="@array/pref_arcore_localization_filtering_speed_values"
+		   		android:defaultValue="@string/pref_default_arcore_localization_filtering_speed"/>
 		    <com.introlab.rtabmap.CustomSwitchPreference
 		        android:key="@string/pref_key_smoothing"
 		        android:title="@string/pref_title_smoothing"

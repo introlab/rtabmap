@@ -56,7 +56,7 @@ CameraMobile::CameraMobile(bool smoothing) :
 		Camera(10),
 		deviceTColorCamera_(Transform::getIdentity()),
 		spinOncePreviousStamp_(0.0),
-		textureId_(9999),
+		textureId_(0),
 		uvs_initialized_(false),
 		previousStamp_(0.0),
 		stampEpochOffset_(0.0),
@@ -64,18 +64,11 @@ CameraMobile::CameraMobile(bool smoothing) :
 		colorCameraToDisplayRotation_(ROTATION_0),
 		originUpdate_(false)
 {
-    glGenTextures(1, &textureId_);
 }
 
 CameraMobile::~CameraMobile() {
 	// Disconnect camera service
 	close();
-    
-    if(textureId_ != 9999)
-    {
-        glDeleteTextures(1, &textureId_);
-        textureId_ = 9999;
-    }
 }
 
 bool CameraMobile::init(const std::string &, const std::string &)
@@ -94,10 +87,22 @@ void CameraMobile::close()
 	originUpdate_ = false;
 	pose_ = Transform();
 	data_ = SensorData();
+
+    if(textureId_ != 0)
+    {
+        glDeleteTextures(1, &textureId_);
+        textureId_ = 0;
+    }
 }
 
 void CameraMobile::resetOrigin()
 {
+	previousPose_.setNull();
+	previousStamp_ = 0.0;
+	lastKnownGPS_ = GPS();
+	lastEnvSensors_.clear();
+	pose_ = Transform();
+	data_ = SensorData();
 	originUpdate_ = true;
 }
 
@@ -150,9 +155,9 @@ void CameraMobile::setData(const SensorData & data, const Transform & pose, cons
         viewMatrix_ = glm::inverse(rtabmap::glmFromTransform(rtabmap::opengl_world_T_rtabmap_world * originOffset_ *rtabmap::rtabmap_world_T_opengl_world)*glm::inverse(viewMatrix_));
     }
     
-    if(textureId_ == 9999)
+    if(textureId_ == 0)
     {
-        glGenTextures(1, &textureId_);
+    	glGenTextures(1, &textureId_);
     }
 
     if(texCoord)
@@ -381,7 +386,7 @@ void CameraMobile::mainLoop()
 		previousPose_ = pose;
 		previousStamp_ = data.stamp();
 	}
-	else if(!this->isKilled())
+	else if(!this->isKilled() && info.odomPose.isNull())
 	{
 		LOGW("Odometry lost");
 		this->post(new OdometryEvent());

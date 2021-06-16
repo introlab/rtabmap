@@ -11,23 +11,6 @@
        <item android:id="@+id/new_scan" android:title="New Scan"/>
        <item android:id="@+id/open" android:title="Library" android:showAsAction="ifRoom"/>
 	   <item android:id="@+id/save" android:title="Save"/>
-                     
-       <item android:id="@+id/export" android:title="Export">
-          <menu>
-              <item android:id="@+id/export_point_cloud_menu" android:title="Point Cloud">
-                  <menu>
-                  	<item android:id="@+id/export_point_cloud" android:title="Current Density" />
-                  	<item android:id="@+id/export_point_cloud_highrez" android:title="Max Density" />
-                  </menu>
-              </item>
-	          <item android:id="@+id/export_optimized_mesh_menu" android:title="Optimized Mesh..." >
-	              <menu>
-		              <item android:id="@+id/export_optimized_mesh" android:title="Colored Mesh" />
-			          <item android:id="@+id/export_optimized_mesh_texture" android:title="Textured Mesh" />
-		          </menu>
-	          </item>
-          </menu>
-       </item>
        
         <item android:id="@+id/post_processing" android:title="Optimize">
           <menu>
@@ -43,6 +26,23 @@
 	              <item android:id="@+id/polygons_filtering" android:title="Noise Filtering" />
 	            </menu>  
 	         </item>
+          </menu>
+       </item>
+       
+       <item android:id="@+id/export" android:title="Assemble">
+          <menu>
+              <item android:id="@+id/export_point_cloud_menu" android:title="Point Cloud">
+                  <menu>
+                  	<item android:id="@+id/export_point_cloud" android:title="Current Density" />
+                  	<item android:id="@+id/export_point_cloud_highrez" android:title="Max Density" />
+                  </menu>
+              </item>
+	          <item android:id="@+id/export_optimized_mesh_menu" android:title="Optimized Mesh..." >
+	              <menu>
+		              <item android:id="@+id/export_optimized_mesh" android:title="Colored Mesh" />
+			          <item android:id="@+id/export_optimized_mesh_texture" android:title="Textured Mesh" />
+		          </menu>
+	          </item>
           </menu>
        </item>
        

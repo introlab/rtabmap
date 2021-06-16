@@ -71,8 +71,7 @@ private:
 	bool colorCamera_;
 	int decimation_;
 	bool rawScanPublished_;
-	cv::Mat cloud_;
-	double cloudStamp_;
+	SensorData data_;
 	cv::Mat tangoColor_;
 	int tangoColorType_;
 	double tangoColorStamp_;

@@ -8,7 +8,10 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import com.google.ar.core.Anchor;
 import com.google.ar.core.Camera;
+import com.google.ar.core.CameraConfig;
+import com.google.ar.core.CameraConfigFilter;
 import com.google.ar.core.CameraIntrinsics;
 import com.google.ar.core.Config;
 import com.google.ar.core.Coordinates2d;
@@ -41,6 +44,7 @@ import android.os.HandlerThread;
 import android.support.annotation.NonNull;
 import android.util.Log;
 import android.view.Surface;
+import android.widget.Toast;
 
 public class ARCoreSharedCamera {
 
@@ -52,8 +56,9 @@ public class ARCoreSharedCamera {
       };
 	
 	private static RTABMapActivity mActivity;
-	public ARCoreSharedCamera(RTABMapActivity c) {
+	public ARCoreSharedCamera(RTABMapActivity c, float arCoreLocalizationFilteringSpeed) {
 		mActivity = c;
+		mARCoreLocalizationFilteringSpeed = arCoreLocalizationFilteringSpeed;
 	}
 
 	// Depth TOF Image.
@@ -66,6 +71,12 @@ public class ARCoreSharedCamera {
 
 	// ARCore session that supports camera sharing.
 	private Session sharedSession;
+	
+	private Pose previousAnchorPose = null;
+	private long previousAnchorTimeStamp;
+	private Pose arCoreCorrection = Pose.IDENTITY;
+	private Pose odomPose = Pose.IDENTITY;
+	private float mARCoreLocalizationFilteringSpeed = 1.0f;
 
 	// Camera capture session. Used by both non-AR and AR modes.
 	private CameraCaptureSession captureSession;
@@ -83,6 +94,8 @@ public class ARCoreSharedCamera {
 
 	// ARCore shared camera instance, obtained from ARCore session that supports sharing.
 	private SharedCamera sharedCamera;
+	
+	private Toast mToast = null;
 
 	// Camera ID for the camera used by ARCore.
 	private String cameraId;
@@ -105,6 +118,10 @@ public class ARCoreSharedCamera {
 	
 	public boolean isDepthSupported() {return mTOFAvailable;}
 
+	public void setToast(Toast toast)
+	{
+		mToast = toast;
+	}
 	
 	// Camera device state callback.
 	private final CameraDevice.StateCallback cameraDeviceCallback =
@@ -355,6 +372,32 @@ public class ARCoreSharedCamera {
 				Log.e(TAG, "Failed to create ARCore session that supports camera sharing", e);
 				return false;
 			}
+			
+			// First obtain the session handle before getting the list of various camera configs.
+			// Create filter here with desired fps filters.
+			CameraConfigFilter cameraConfigFilter = new CameraConfigFilter(sharedSession);
+			CameraConfig[] cameraConfigs = sharedSession.getSupportedCameraConfigs(cameraConfigFilter).toArray(new CameraConfig[0]);
+			Log.i(TAG, "Size of supported CameraConfigs list is " + cameraConfigs.length);
+
+			// Determine the highest and lowest CPU resolutions.
+			int highestResolutionIndex=-1;
+			int highestResolution = 0;
+			for(int i=0; i<cameraConfigs.length; ++i)
+			{
+				Log.i(TAG, "Camera ID: " + cameraConfigs[i].getCameraId());
+				Log.i(TAG, "Resolution: " + cameraConfigs[i].getImageSize().getWidth() + "x" + cameraConfigs[i].getImageSize().getHeight());
+				if(highestResolution == 0 || highestResolution < cameraConfigs[i].getImageSize().getWidth())
+				{
+					highestResolutionIndex = i;
+					highestResolution = cameraConfigs[i].getImageSize().getWidth();
+				}
+			}
+			if(highestResolutionIndex>=0)
+			{
+				//Log.i(TAG, "Setting camera resolution to " + cameraConfigs[highestResolutionIndex].getImageSize().getWidth() + "x" + cameraConfigs[highestResolutionIndex].getImageSize().getHeight());
+				//FIXME: Can we make it work to use HD rgb images? To avoid this error "CaptureRequest contains unconfigured Input/Output Surface!"
+				//sharedSession.setCameraConfig(cameraConfigs[highestResolutionIndex]);
+			}
 
 			// Enable auto focus mode while ARCore is running.
 			Config config = sharedSession.getConfig();
@@ -371,11 +414,11 @@ public class ARCoreSharedCamera {
 		sharedCamera = sharedSession.getSharedCamera();
 		// Store the ID of the camera used by ARCore.
 		cameraId = sharedSession.getCameraConfig().getCameraId();
-	
+
 		Log.d(TAG, "Shared camera ID: " + cameraId);
 
 		mTOFAvailable = false;
-		
+
 		// Store a reference to the camera system service.
 		cameraManager = (CameraManager) mActivity.getSystemService(Context.CAMERA_SERVICE);
 		
@@ -573,7 +616,8 @@ public class ARCoreSharedCamera {
 		Log.w(TAG, "close()");
 		
 		if (sharedSession != null)  {
-			sharedSession.pause();
+			sharedSession.close();
+			sharedSession = null;
 		}
 
 		if (captureSession != null) {
@@ -582,6 +626,7 @@ public class ARCoreSharedCamera {
 		}
 		if (cameraDevice != null) {
 			cameraDevice.close();
+			cameraDevice = null;
 		}
 		
 		mTOFImageReader.close();
@@ -596,14 +641,15 @@ public class ARCoreSharedCamera {
 
 	public void setDisplayGeometry(int rotation, int width, int height)
 	{
-		sharedSession.setDisplayGeometry(rotation, width, height);
+		if(sharedSession!=null)
+			sharedSession.setDisplayGeometry(rotation, width, height);
 	}
 	
 	/*************************************************** ONDRAWFRAME ARCORE ************************************************************* */	
 	// Draw frame when in AR mode. Called on the GL thread.
 	public void updateGL() throws CameraNotAvailableException {
 
-		if(!mReady.get())
+		if(!mReady.get() || sharedSession == null)
 		{
 			return;
 		}
@@ -624,18 +670,93 @@ public class ARCoreSharedCamera {
 			camera = frame.getCamera();
 		}else
 		{
+			Log.e(TAG, String.format("frame.getCamera() null!"));
 			return;
 		}
 
-		if (camera == null) return;
-		// If not tracking, don't draw 3D objects.
-		if (camera.getTrackingState() == TrackingState.PAUSED) return;
+		if (camera == null) { 
+			Log.e(TAG, String.format("camera is null!"));
+			return;
+		}
+		if (camera.getTrackingState() != TrackingState.TRACKING) {
+			final String trackingState = camera.getTrackingState().toString();
+			Log.e(TAG, String.format("Tracking lost! state=%s", trackingState));
+			// This will force a new session on the next frame received
+			RTABMapLib.postCameraPoseEvent(RTABMapActivity.nativeApplication, 0,0,0,0,0,0,0,0);
+			mActivity.runOnUiThread(new Runnable() {
+				public void run() {
+					if(mToast!=null && previousAnchorPose != null)
+					{
+						String msg = "Tracking lost! If you are mapping, you will need to relocalize before continuing.";
+						if(!mToast.getView().isShown())
+						{
+							mToast.makeText(mActivity.getApplicationContext(), 
+									msg, Toast.LENGTH_LONG).show();
+						}
+						else
+						{
+							mToast.setText(msg);
+						}
+						previousAnchorPose = null;
+					}
+				}
+			});
+			return;
+		}
 
 		if (frame.getTimestamp() != 0) {
 			Pose pose = camera.getPose();
+			
+			// Remove ARCore SLAM corrections by integrating pose from previous frame anchor
+			if(previousAnchorPose == null || mARCoreLocalizationFilteringSpeed==0)
+			{
+				odomPose = pose;
+			}
+			else
+			{
+				float[] t = previousAnchorPose.inverse().compose(pose).getTranslation();
+				final double speed = Math.sqrt(t[0]*t[0]+t[1]*t[1]+t[2]*t[2])/((double)(frame.getTimestamp()-previousAnchorTimeStamp)/10e8);
+				if(speed>=mARCoreLocalizationFilteringSpeed)
+				{
+					arCoreCorrection = arCoreCorrection.compose(previousAnchorPose).compose(pose.inverse());
+					t = arCoreCorrection.getTranslation();
+					Log.e(TAG, String.format("POTENTIAL TELEPORTATION!!!!!!!!!!!!!! previous anchor moved (speed=%f), new arcorrection: %f %f %f", speed, t[0], t[1], t[2]));
+					
+					t = odomPose.getTranslation();
+					float[] t2 = (arCoreCorrection.compose(pose)).getTranslation();
+					float[] t3 = previousAnchorPose.getTranslation();
+					float[] t4 = pose.getTranslation();
+					Log.e(TAG, String.format("Odom = %f %f %f -> %f %f %f ArCore= %f %f %f -> %f %f %f", t[0], t[1], t[2], t2[0], t2[1], t2[2], t3[0], t3[1], t3[2], t4[0], t4[1], t4[2]));
+				
+					mActivity.runOnUiThread(new Runnable() {
+						public void run() {
+							if(mToast!=null)
+							{
+								String msg = String.format("ARCore localization has been suppressed "
+										+ "because of high speed detected (%f m/s) causing a jump! You can change "
+										+ "ARCore localization filtering speed in Settings->Mapping if you are "
+										+ "indeed moving as fast.", speed);
+								if(!mToast.getView().isShown())
+								{
+									mToast.makeText(mActivity.getApplicationContext(), msg, Toast.LENGTH_LONG).show();
+								}
+								else
+								{
+									mToast.setText(msg);
+								}
+								previousAnchorPose = null;
+							}
+						}
+					});
+				}
+				odomPose = arCoreCorrection.compose(pose);
+			}
+			previousAnchorPose = pose;
+			previousAnchorTimeStamp = frame.getTimestamp();
+			
 			double stamp = (double)frame.getTimestamp()/10e8;
-			if(!RTABMapActivity.DISABLE_LOG) Log.d(TAG, String.format("pose=%f %f %f q=%f %f %f %f stamp=%f", pose.tx(), pose.ty(), pose.tz(), pose.qx(), pose.qy(), pose.qz(), pose.qw(), stamp));
-			RTABMapLib.postCameraPoseEvent(RTABMapActivity.nativeApplication, pose.tx(), pose.ty(), pose.tz(), pose.qx(), pose.qy(), pose.qz(), pose.qw(), stamp);
+			if(!RTABMapActivity.DISABLE_LOG) Log.d(TAG, String.format("pose=%f %f %f q=%f %f %f %f stamp=%f", odomPose.tx(), odomPose.ty(), odomPose.tz(), odomPose.qx(), odomPose.qy(), odomPose.qz(), odomPose.qw(), stamp));
+			RTABMapLib.postCameraPoseEvent(RTABMapActivity.nativeApplication, odomPose.tx(), odomPose.ty(), odomPose.tz(), odomPose.qx(), odomPose.qy(), odomPose.qz(), odomPose.qw(), stamp);
 			
 			CameraIntrinsics intrinsics = camera.getImageIntrinsics();
 			try{
@@ -679,7 +800,7 @@ public class ARCoreSharedCamera {
 		        camera.getProjectionMatrix(p, 0, 0.1f, 100.0f);
    
 		        float[] viewMatrix = new float[16];
-		        camera.getViewMatrix(viewMatrix, 0);
+		        arCoreCorrection.compose(camera.getDisplayOrientedPose()).inverse().toMatrix(viewMatrix, 0);
 		        float[] quat = new float[4];
 		        rotationMatrixToQuaternion(viewMatrix, quat);
 
@@ -698,7 +819,7 @@ public class ARCoreSharedCamera {
 
 					RTABMapLib.postOdometryEventDepth(
 							RTABMapActivity.nativeApplication,
-							pose.tx(), pose.ty(), pose.tz(), pose.qx(), pose.qy(), pose.qz(), pose.qw(), 
+							odomPose.tx(), odomPose.ty(), odomPose.tz(), odomPose.qx(), odomPose.qy(), odomPose.qz(), odomPose.qw(), 
 							fl[0], fl[1], pp[0], pp[1], 
 							depthIntrinsics[0], depthIntrinsics[1], depthIntrinsics[2], depthIntrinsics[3],
 							rgbExtrinsics.tx(), rgbExtrinsics.ty(), rgbExtrinsics.tz(), rgbExtrinsics.qx(), rgbExtrinsics.qy(), rgbExtrinsics.qz(), rgbExtrinsics.qw(),
@@ -716,7 +837,7 @@ public class ARCoreSharedCamera {
 				{
 					RTABMapLib.postOdometryEvent(
 							RTABMapActivity.nativeApplication,
-							pose.tx(), pose.ty(), pose.tz(), pose.qx(), pose.qy(), pose.qz(), pose.qw(), 
+							odomPose.tx(), odomPose.ty(), odomPose.tz(), odomPose.qx(), odomPose.qy(), odomPose.qz(), odomPose.qw(), 
 							fl[0], fl[1], pp[0], pp[1], 
 							rgbExtrinsics.tx(), rgbExtrinsics.ty(), rgbExtrinsics.tz(), rgbExtrinsics.qx(), rgbExtrinsics.qy(), rgbExtrinsics.qz(), rgbExtrinsics.qw(),
 							stamp, 
