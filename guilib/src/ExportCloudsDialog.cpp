@@ -1431,7 +1431,7 @@ void ExportCloudsDialog::viewClouds(
 				_progressDialog->appendText(tr("Viewing the cloud %1 (%2 points)... done.").arg(iter->first).arg(iter->second->size()));
 			}
 		}
-		viewer->update();
+		viewer->refreshView();
 	}
 	else
 	{

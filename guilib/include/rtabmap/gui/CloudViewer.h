@@ -86,6 +86,8 @@ public:
 	void saveSettings(QSettings & settings, const QString & group = "") const;
 	void loadSettings(QSettings & settings, const QString & group = "");
 
+	void refreshView();
+
 	bool updateCloudPose(
 		const std::string & id,
 		const Transform & pose); //including mesh

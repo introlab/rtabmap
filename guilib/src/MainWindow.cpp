@@ -1544,7 +1544,7 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 		_cloudViewer->updateCameraTargetPosition(_odometryCorrection*odom.pose());
 		UDEBUG("Time Update Pose: %fs", time.ticks());
 	}
-	_cloudViewer->update();
+	_cloudViewer->refreshView();
 
 	if(_ui->graphicsView_graphView->isVisible())
 	{
@@ -3275,7 +3275,7 @@ void MainWindow::updateMapCloud(
 	}
 
 	UDEBUG("");
-	_cloudViewer->update();
+	_cloudViewer->refreshView();
 	UDEBUG("");
 }
 
@@ -4189,7 +4189,7 @@ void MainWindow::updateNodeVisibility(int nodeId, bool visible)
 			}
 		}
 
-		_cloudViewer->update();
+		_cloudViewer->refreshView();
 	}
 }
 
