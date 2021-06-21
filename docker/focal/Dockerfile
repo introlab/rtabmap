@@ -132,6 +132,9 @@ RUN cd AliceVision && \
     make install && \
     cd && \
     rm -r AliceVision
+    
+# PDAL
+RUN apt-get install -y libpdal-dev
 
 # Clone source code
 ARG CACHE_DATE=2016-01-01

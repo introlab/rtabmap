@@ -181,7 +181,7 @@ void CameraViewer::showImage(const rtabmap::SensorData & data)
 						   (showScanCheckbox_->isEnabled() && showScanCheckbox_->isChecked()));
 	if(cloudView_->isVisible())
 	{
-		cloudView_->update();
+		cloudView_->refreshView();
 	}
 	if(cloudView_->getAddedClouds().contains("cloud"))
 	{

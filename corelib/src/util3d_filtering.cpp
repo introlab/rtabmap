@@ -582,6 +582,10 @@ typename pcl::PointCloud<PointT>::Ptr voxelizeImpl(
 			pcl::VoxelGrid<PointT> filter;
 			filter.setLeafSize(voxelSize, voxelSize, voxelSize);
 			filter.setInputCloud(cloud);
+#ifdef WIN32
+			// Pre-allocating the cloud helps to avoid crash when freeing memory allocated inside pcl library
+			output->resize(cloud->size());
+#endif
 			if(!indices->empty())
 			{
 				filter.setIndices(indices);

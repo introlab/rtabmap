@@ -151,43 +151,45 @@ bool databaseRecovery(
 	bool rgbdEnabled = Parameters::defaultRGBDEnabled();
 	Parameters::parse(parameters, Parameters::kRGBDEnabled(), rgbdEnabled);
 	bool odometryIgnored = !rgbdEnabled;
-	DBReader dbReader(backupPath, 0, odometryIgnored);
-	dbReader.init();
-
-	CameraInfo info;
-	SensorData data = dbReader.takeImage(&info);
-	int processed = 0;
-	if(progressState)
-		progressState->callback(uFormat("Recovering data of \"%s\"...", backupPath.c_str()));
-	while(data.isValid() && (progressState==0 || !progressState->isCanceled()))
 	{
-		std::string status;
-		if(!odometryIgnored && info.odomPose.isNull())
-		{
-			status = uFormat("Skipping node %d as it doesn't have odometry pose set.", data.id());
-		}
-		else
-		{
-			if(!odometryIgnored && !info.odomCovariance.empty() && info.odomCovariance.at<double>(0,0)>=9999)
-			{
-				status = uFormat("High variance detected, triggering a new map...");
-				rtabmap.triggerNewMap();
-			}
-			if(!rtabmap.process(data, info.odomPose, info.odomCovariance, info.odomVelocity))
-			{
-				status = uFormat("Failed processing node %d.", data.id());
-			}
-		}
-		if(status.empty())
-		{
-			if(progressState)
-				progressState->callback(status);
-		}
+		DBReader dbReader(backupPath, 0, odometryIgnored);
+		dbReader.init();
 
-		data = dbReader.takeImage(&info);
+		CameraInfo info;
+		SensorData data = dbReader.takeImage(&info);
+		int processed = 0;
+		if (progressState)
+			progressState->callback(uFormat("Recovering data of \"%s\"...", backupPath.c_str()));
+		while (data.isValid() && (progressState == 0 || !progressState->isCanceled()))
+		{
+			std::string status;
+			if (!odometryIgnored && info.odomPose.isNull())
+			{
+				status = uFormat("Skipping node %d as it doesn't have odometry pose set.", data.id());
+			}
+			else
+			{
+				if (!odometryIgnored && !info.odomCovariance.empty() && info.odomCovariance.at<double>(0, 0) >= 9999)
+				{
+					status = uFormat("High variance detected, triggering a new map...");
+					rtabmap.triggerNewMap();
+				}
+				if (!rtabmap.process(data, info.odomPose, info.odomCovariance, info.odomVelocity))
+				{
+					status = uFormat("Failed processing node %d.", data.id());
+				}
+			}
+			if (status.empty())
+			{
+				if (progressState)
+					progressState->callback(status);
+			}
 
-		if(progressState)
-			progressState->callback(uFormat("Processed %d/%d nodes...", ++processed, (int)ids.size()));
+			data = dbReader.takeImage(&info);
+
+			if (progressState)
+				progressState->callback(uFormat("Processed %d/%d nodes...", ++processed, (int)ids.size()));
+		}
 	}
 
 	if(progressState)

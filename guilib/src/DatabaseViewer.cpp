@@ -1105,13 +1105,13 @@ bool DatabaseViewer::closeDatabase()
 		sliderBValueChanged(0);
 
 		constraintsViewer_->clear();
-		constraintsViewer_->update();
+		constraintsViewer_->refreshView();
 
 		cloudViewer_->clear();
-		cloudViewer_->update();
+		cloudViewer_->refreshView();
 
 		occupancyGridViewer_->clear();
-		occupancyGridViewer_->update();
+		occupancyGridViewer_->refreshView();
 
 		ui_->graphViewer->clearAll();
 		ui_->label_loopClosures->clear();
@@ -1126,7 +1126,7 @@ bool DatabaseViewer::closeDatabase()
 
 		ui_->graphicsView_stereo->clear();
 		stereoViewer_->clear();
-		stereoViewer_->update();
+		stereoViewer_->refreshView();
 
 		ui_->toolBox_statistics->clear();
 	}
@@ -5040,7 +5040,7 @@ void DatabaseViewer::update(int value,
 					}
 					cloudViewer_->updateCameraTargetPosition(pose);
 					cloudViewer_->clearTrajectory();
-					cloudViewer_->update();
+					cloudViewer_->refreshView();
 				}
 
 				if(signatures.size())
@@ -5182,7 +5182,7 @@ void DatabaseViewer::update(int value,
 				ui_->label_type_name->clear();
 				ui_->checkBox_showOptimized->setEnabled(false);
 			}
-			constraintsViewer_->update();
+			constraintsViewer_->refreshView();
 
 		}
 	}
@@ -5311,7 +5311,7 @@ void DatabaseViewer::updateStereo(const SensorData * data)
 
 		stereoViewer_->updateCameraTargetPosition(Transform::getIdentity());
 		stereoViewer_->addCloud("stereo", cloud);
-		stereoViewer_->update();
+		stereoViewer_->refreshView();
 
 		ui_->label_stereo_inliers->setNum(inliers);
 		ui_->label_stereo_flowOutliers->setNum(flowOutliers);
@@ -6231,7 +6231,7 @@ void DatabaseViewer::updateConstraintView(
 
 		constraintsViewer_->clearTrajectory();
 
-		constraintsViewer_->update();
+		constraintsViewer_->refreshView();
 	}
 
 	// update buttons
@@ -6561,7 +6561,7 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 					if(ui_->dockWidget_occupancyGridView->isVisible() && ui_->checkBox_grid_2d->isChecked())
 					{
 						occupancyGridViewer_->addOccupancyGridMap(map8U, cellSize, xMin, yMin, 1.0f);
-						occupancyGridViewer_->update();
+						occupancyGridViewer_->refreshView();
 					}
 				}
 			}
@@ -6684,7 +6684,7 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 						occupancyGridViewer_->setCloudPointSize("emptyCellsXYZ", 5);
 						occupancyGridViewer_->setCloudOpacity("emptyCellsXYZ", 0.5);
 					}
-					occupancyGridViewer_->update();
+					occupancyGridViewer_->refreshView();
 				}
 			}
 		}
@@ -7029,7 +7029,7 @@ void DatabaseViewer::updateGrid()
 	{
 		//just remove map in occupancy grid view
 		occupancyGridViewer_->removeOccupancyGridMap();
-		occupancyGridViewer_->update();
+		occupancyGridViewer_->refreshView();
 	}
 	else
 	{
@@ -7139,7 +7139,7 @@ void DatabaseViewer::updateOctomapView()
 						}
 					}
 				}
-				occupancyGridViewer_->update();
+				occupancyGridViewer_->refreshView();
 			}
 			if(ui_->dockWidget_view3d->isVisible() && ui_->checkBox_showGrid->isChecked())
 			{
@@ -8283,7 +8283,7 @@ void DatabaseViewer::updateLoopClosuresSlider(int from, int to)
 	{
 		ui_->horizontalSlider_loops->setEnabled(false);
 		constraintsViewer_->removeAllClouds();
-		constraintsViewer_->update();
+		constraintsViewer_->refreshView();
 		updateConstraintButtons();
 	}
 }

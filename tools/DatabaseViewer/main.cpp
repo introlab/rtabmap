@@ -36,6 +36,10 @@ int main(int argc, char * argv[])
 	ULogger::setType(ULogger::kTypeConsole);
 	ULogger::setLevel(ULogger::kInfo);
 
+#ifdef WIN32
+	CoInitialize(nullptr);
+#endif
+
 #if VTK_MAJOR_VERSION >= 8
 	vtkObject::GlobalWarningDisplayOff();
 #endif
