@@ -221,6 +221,11 @@ class RTABMap {
         postCameraPoseEventNative(native_rtabmap, pose[3,0], pose[3,1], pose[3,2], quat.x, quat.y, quat.z, quat.w)
     }
     
+    func notifyLost() {
+        // a null transform will make rtabmap creating a new session
+        postCameraPoseEventNative(native_rtabmap, 0,0,0,0,0,0,0)
+    }
+    
     func postOdometryEvent(frame: ARFrame, orientation: UIInterfaceOrientation, viewport: CGSize) {
         let pose = frame.camera.transform   // ViewMatrix
         let rotation = GLKMatrix3(

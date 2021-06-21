@@ -953,7 +953,7 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
         case .normal:
             accept = true
         case .notAvailable:
-            status = ""
+            status = "Tracking not available"
         case .limited(.excessiveMotion):
             accept = true
             status = "Please Slow Your Movement"
@@ -965,12 +965,12 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
         case .limited(.relocalizing):
             status = "Relocalizing"
         default:
-            status = ""
+            status = "Unknown tracking state"
         }
         
         mLastLightEstimate = frame.lightEstimate?.ambientIntensity
         
-        if mLastLightEstimate != nil && mLastLightEstimate! < 100 && accept {
+        if !status.isEmpty && mLastLightEstimate != nil && mLastLightEstimate! < 100 && accept {
             status = "Camera Is Occluded Or Lighting Is Too Dark"
         }
 
@@ -980,6 +980,10 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
             {
                 rtabmap?.postOdometryEvent(frame: frame, orientation: rotation, viewport: self.view.frame.size)
             }
+        }
+        else
+        {
+            rtabmap?.notifyLost();
         }
         
         if !status.isEmpty {
