@@ -873,7 +873,7 @@ void DBDriver::getLastNodeIds(std::set<int> & ids) const
 	_dbSafeAccessMutex.unlock();
 }
 
-void DBDriver::getAllNodeIds(std::set<int> & ids, bool ignoreChildren, bool ignoreBadSignatures) const
+void DBDriver::getAllNodeIds(std::set<int> & ids, bool ignoreChildren, bool ignoreBadSignatures, bool ignoreIntermediateNodes) const
 {
 	// look in the trash
 	_trashesMutex.lock();
@@ -896,7 +896,7 @@ void DBDriver::getAllNodeIds(std::set<int> & ids, bool ignoreChildren, bool igno
 					}
 				}
 			}
-			if(hasNeighbors)
+			if(hasNeighbors && (!ignoreIntermediateNodes || sIter->second->getWeight() != -1))
 			{
 				ids.insert(sIter->first);
 			}
@@ -908,7 +908,7 @@ void DBDriver::getAllNodeIds(std::set<int> & ids, bool ignoreChildren, bool igno
 	_trashesMutex.unlock();
 
 	_dbSafeAccessMutex.lock();
-	this->getAllNodeIdsQuery(ids, ignoreChildren, ignoreBadSignatures);
+	this->getAllNodeIdsQuery(ids, ignoreChildren, ignoreBadSignatures, ignoreIntermediateNodes);
 	_dbSafeAccessMutex.unlock();
 }
 

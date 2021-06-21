@@ -136,7 +136,7 @@ CloudViewer::CloudViewer(QWidget *parent, CloudViewerInteractorStyle * style) :
 		_frontfaceCulling(false),
 		_renderingRate(5.0),
 		_octomapActor(0),
-		_intensityAbsMax(0.0f),
+		_intensityAbsMax(100.0f),
 		_coordinateFrameScale(1.0)
 {
 	UDEBUG("");

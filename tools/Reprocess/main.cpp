@@ -505,10 +505,12 @@ int main(int argc, char * argv[])
 	bool incrementalMemory = Parameters::defaultMemIncrementalMemory();
 	Parameters::parse(parameters, Parameters::kMemIncrementalMemory(), incrementalMemory);
 	Parameters::parse(parameters, Parameters::kDbTargetVersion(), targetVersion);
+	bool intermediateNodes = Parameters::defaultRtabmapCreateIntermediateNodes();
+	Parameters::parse(parameters, Parameters::kRtabmapCreateIntermediateNodes(), intermediateNodes);
 
 	int totalIds = 0;
 	std::set<int> ids;
-	dbDriver->getAllNodeIds(ids);
+	dbDriver->getAllNodeIds(ids, false, false, !intermediateNodes);
 	if(ids.empty())
 	{
 		printf("Input database doesn't have any nodes saved in it.\n");
@@ -532,7 +534,7 @@ int main(int argc, char * argv[])
 			return -1;
 		}
 		ids.clear();
-		dbDriver->getAllNodeIds(ids);
+		dbDriver->getAllNodeIds(ids, false, false, !intermediateNodes);
 		totalIds += ids.size();
 		dbDriver->closeConnection(false);
 	}
@@ -567,7 +569,7 @@ int main(int argc, char * argv[])
 	bool rgbdEnabled = Parameters::defaultRGBDEnabled();
 	Parameters::parse(parameters, Parameters::kRGBDEnabled(), rgbdEnabled);
 	bool odometryIgnored = !rgbdEnabled;
-	DBReader * dbReader = new DBReader(inputDatabasePath, useDatabaseRate?-1:0, odometryIgnored, false, false, startId, -1, stopId);
+	DBReader * dbReader = new DBReader(inputDatabasePath, useDatabaseRate?-1:0, odometryIgnored, false, false, startId, -1, stopId, !intermediateNodes);
 	dbReader->init();
 
 	OccupancyGrid grid(parameters);

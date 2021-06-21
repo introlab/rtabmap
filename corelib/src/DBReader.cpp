@@ -49,7 +49,8 @@ DBReader::DBReader(const std::string & databasePath,
 				   bool goalsIgnored,
 				   int startId,
 				   int cameraIndex,
-				   int stopId) :
+				   int stopId,
+				   bool intermediateNodesIgnored) :
 	Camera(frameRate),
 	_paths(uSplit(databasePath, ';')),
 	_odometryIgnored(odometryIgnored),
@@ -58,6 +59,7 @@ DBReader::DBReader(const std::string & databasePath,
 	_startId(startId),
 	_stopId(stopId),
 	_cameraIndex(cameraIndex),
+	_intermediateNodesIgnored(intermediateNodesIgnored),
 	_dbDriver(0),
 	_currentId(_ids.end()),
 	_previousMapId(-1),
@@ -78,7 +80,8 @@ DBReader::DBReader(const std::list<std::string> & databasePaths,
 				   bool goalsIgnored,
 				   int startId,
 				   int cameraIndex,
-				   int stopId) :
+				   int stopId,
+				   bool intermediateNodesIgnored) :
 	Camera(frameRate),
    _paths(databasePaths),
 	_odometryIgnored(odometryIgnored),
@@ -87,6 +90,7 @@ DBReader::DBReader(const std::list<std::string> & databasePaths,
 	_startId(startId),
 	_stopId(stopId),
 	_cameraIndex(cameraIndex),
+	_intermediateNodesIgnored(intermediateNodesIgnored),
 	_dbDriver(0),
 	_currentId(_ids.end()),
 	_previousMapId(-1),
@@ -341,7 +345,7 @@ SensorData DBReader::getNextData(CameraInfo * info)
 	SensorData data;
 	if(_dbDriver)
 	{
-		if(_currentId != _ids.end())
+		while(_currentId != _ids.end())
 		{
 			std::list<int> signIds;
 			signIds.push_back(*_currentId);
@@ -353,6 +357,14 @@ SensorData DBReader::getNextData(CameraInfo * info)
 			}
 			_dbDriver->loadNodeData(signatures);
 			Signature * s  = signatures.front();
+
+			if(_intermediateNodesIgnored && s->getWeight() == -1)
+			{
+				++_currentId;
+				delete s;
+				continue;
+			}
+
 			data = s->sensorData();
 
 			// info
@@ -558,6 +570,7 @@ SensorData DBReader::getNextData(CameraInfo * info)
 				}
 			}
 			delete s;
+			break;
 		}
 	}
 	else

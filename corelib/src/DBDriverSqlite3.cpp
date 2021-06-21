@@ -2396,7 +2396,7 @@ void DBDriverSqlite3::getLastNodeIdsQuery(std::set<int> & ids) const
 	}
 }
 
-void DBDriverSqlite3::getAllNodeIdsQuery(std::set<int> & ids, bool ignoreChildren, bool ignoreBadSignatures) const
+void DBDriverSqlite3::getAllNodeIdsQuery(std::set<int> & ids, bool ignoreChildren, bool ignoreBadSignatures, bool ignoreIntermediateNodes) const
 {
 	if(_ppDb)
 	{
@@ -2414,11 +2414,19 @@ void DBDriverSqlite3::getAllNodeIdsQuery(std::set<int> & ids, bool ignoreChildre
 			query << "ON id = to_id "; // use to_id to ignore all children (which don't have link pointing on them)
 			query << "WHERE from_id != to_id "; // ignore self referring links
 			query << "AND weight>-9 "; //ignore invalid nodes
+			if(ignoreIntermediateNodes)
+			{
+				query << "AND weight!=-1 "; //ignore intermediate nodes
+			}
+		}
+		else if(ignoreIntermediateNodes)
+		{
+			query << "WHERE weight!=-1 "; //ignore intermediate nodes
 		}
 
 		if(ignoreBadSignatures)
 		{
-			if(ignoreChildren)
+			if(ignoreChildren || ignoreIntermediateNodes)
 			{
 				query << "AND ";
 			}
@@ -2435,6 +2443,7 @@ void DBDriverSqlite3::getAllNodeIdsQuery(std::set<int> & ids, bool ignoreChildre
 				query << " id in (select node_id from Map_Node_Word) ";
 			}
 		}
+
 		query  << "ORDER BY id";
 
 		rc = sqlite3_prepare_v2(_ppDb, query.str().c_str(), -1, &ppStmt, 0);

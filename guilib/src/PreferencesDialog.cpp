@@ -6271,7 +6271,8 @@ Camera * PreferencesDialog::createCamera(
 				_ui->source_checkBox_ignoreGoals->isChecked(),
 				_ui->source_spinBox_databaseStartId->value(),
 				_ui->source_spinBox_database_cameraIndex->value(),
-				_ui->source_spinBox_databaseStopId->value());
+				_ui->source_spinBox_databaseStopId->value(),
+				!_ui->general_checkBox_createIntermediateNodes->isChecked());
 	}
 	else
 	{

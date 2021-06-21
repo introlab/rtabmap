@@ -3736,6 +3736,10 @@ std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::Indic
 					_ui->spinBox_filteringMinNeighbors->value() > 0)
 				{
 					indices = util3d::radiusFiltering(cloud, indices, _ui->doubleSpinBox_filteringRadius->value(), _ui->spinBox_filteringMinNeighbors->value());
+					if(indices->empty())
+					{
+						UWARN("Point cloud %d doesn't have anymore points (had %d points) after radius filtering.", iter->first, (int)cloud->size());
+					}
 				}
 			}
 

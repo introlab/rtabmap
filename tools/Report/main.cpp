@@ -78,6 +78,7 @@ void showUsage()
 			"                       session for 1=min,2=max,4=mean,8=stddev,16=total,32=nonnull%%\n"
 			"    --loc_delay #      Delay to split sessions for localization statistics (default 60 seconds)\n"
 			"                       (it is a mask, we can combine those numbers, e.g., 63 for all) \n"
+			"    --ignore_inter_nodes  Ignore intermediate poses and statistics.\n"
 			"    --help             Show usage\n\n");
 	exit(1);
 }
@@ -135,6 +136,7 @@ int main(int argc, char * argv[])
 	bool outputLoopAccuracy = false;
 	bool showAvailableStats = false;
 	bool invertFigures = false;
+	bool ignoreInterNodes = false;
 	bool useIds = false;
 	int startId = 0;
 	bool exportFigures = false;
@@ -190,6 +192,10 @@ int main(int argc, char * argv[])
 		else if(strcmp(argv[i],"--ids") == 0)
 		{
 			useIds = true;
+		}
+		else if(strcmp(argv[i],"--ignore_inter_nodes") == 0)
+		{
+			ignoreInterNodes = true;
 		}
 		else if(strcmp(argv[i],"--export") == 0)
 		{
@@ -372,7 +378,7 @@ int main(int argc, char * argv[])
 					params = driver->getLastParameters();
 					ULogger::setLevel(ULogger::kWarning);
 					std::set<int> ids;
-					driver->getAllNodeIds(ids);
+					driver->getAllNodeIds(ids, false, false, ignoreInterNodes);
 					std::map<int, std::pair<std::map<std::string, float>, double> > stats = driver->getAllStatistics();
 					std::map<int, Transform> odomPoses, gtPoses;
 					std::map<int, double> odomStamps;
