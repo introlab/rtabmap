@@ -700,6 +700,11 @@ void MainWindow::setupMainLayout(bool vertical)
 	}
 }
 
+const std::map<int, Transform>& MainWindow::currentVisiblePosesMap() const
+{
+	return _ui->widget_mapVisibility->getVisiblePoses();
+}
+
 void MainWindow::setCloudViewer(rtabmap::CloudViewer * cloudViewer)
 {
 	UASSERT(cloudViewer);
