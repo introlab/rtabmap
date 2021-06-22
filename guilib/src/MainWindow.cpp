@@ -700,7 +700,7 @@ void MainWindow::setupMainLayout(bool vertical)
 	}
 }
 
-const std::map<int, Transform>& MainWindow::currentVisiblePosesMap() const
+std::map<int, Transform> MainWindow::currentVisiblePosesMap() const
 {
 	return _ui->widget_mapVisibility->getVisiblePoses();
 }
