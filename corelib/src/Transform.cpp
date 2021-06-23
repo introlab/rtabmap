@@ -214,6 +214,13 @@ Transform Transform::to3DoF() const
 	return Transform(x,y,0, 0,0,yaw);
 }
 
+Transform Transform::to4DoF() const
+{
+	float x,y,z,roll,pitch,yaw;
+	this->getTranslationAndEulerAngles(x,y,z,roll,pitch,yaw);
+	return Transform(x,y,z, 0,0,yaw);
+}
+
 cv::Mat Transform::rotationMatrix() const
 {
 	return data_.colRange(0, 3).clone();

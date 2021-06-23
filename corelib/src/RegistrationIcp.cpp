@@ -701,6 +701,7 @@ Transform RegistrationIcp::computeTransformationImpl(
 								 _outlierRatio,
 								 _ccFilterOutFarthestPoints,
 								 _ccMaxFinalRMS,
+								 &info.icpRMS,
 								 &msg);
 						hasConverged = !icpT.isNull();
 					}

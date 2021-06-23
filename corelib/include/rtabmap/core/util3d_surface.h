@@ -437,6 +437,12 @@ void RTABMAP_EXP adjustNormalsToViewPoints(
 		const std::vector<int> & rawCameraIndices,
 		pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud);
 
+void RTABMAP_EXP adjustNormalsToViewPoints(
+		const std::map<int, Transform> & viewpoints,
+		const LaserScan & rawScan,
+		const std::vector<int> & viewpointIds,
+		LaserScan & scan);
+
 pcl::PolygonMesh::Ptr RTABMAP_EXP meshDecimation(const pcl::PolygonMesh::Ptr & mesh, float factor);
 
 template<typename pointT>

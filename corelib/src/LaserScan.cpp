@@ -366,4 +366,42 @@ LaserScan LaserScan::clone() const
 	return LaserScan(data_.clone(), maxPoints_, rangeMax_, format_, localTransform_.clone());
 }
 
+float & LaserScan::field(unsigned int pointIndex, unsigned int channelOffset)
+{
+	UASSERT(pointIndex < data_.cols);
+	UASSERT(channelOffset < data_.channels());
+	return data_.ptr<float>(0, pointIndex)[channelOffset];
+}
+
+LaserScan & LaserScan::operator+=(const LaserScan & scan)
+{
+	*this = *this+scan;
+	return *this;
+}
+
+LaserScan LaserScan::operator+(const LaserScan & scan)
+{
+	UASSERT(this->empty() || scan.empty() || this->format() == scan.format());
+	LaserScan dest;
+	if(!scan.empty())
+	{
+		if(this->empty())
+		{
+			dest = LaserScan(scan.data().clone(), 0, 0, this->format());
+		}
+		else
+		{
+			cv::Mat destData(1, data_.cols + scan.data().cols, data_.type());
+			data_.copyTo(destData(cv::Range::all(), cv::Range(0,data_.cols)));
+			scan.data().copyTo(destData(cv::Range::all(), cv::Range(data_.cols, data_.cols+scan.data().cols)));
+			dest = LaserScan(destData, 0, 0, this->format());
+		}
+	}
+	else
+	{
+		dest = this->clone();
+	}
+	return dest;
+}
+
 }

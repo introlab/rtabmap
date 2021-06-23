@@ -103,6 +103,7 @@ public:
 	Transform rotation() const;
 	Transform translation() const;
 	Transform to3DoF() const;
+	Transform to4DoF() const;
 
 	cv::Mat rotationMatrix() const;
 	cv::Mat translationMatrix() const;

@@ -3017,6 +3017,19 @@ Transform Memory::computeTransform(
 	return transform;
 }
 
+Transform Memory::computeIcpTransform(
+		const Signature & fromS,
+		const Signature & toS,
+		Transform guess,
+		RegistrationInfo * info) const
+{
+	UDEBUG("%d -> %d, Guess=%s", fromS.id(), toS.id(), guess.prettyPrint().c_str());
+
+	Signature tmpFrom = fromS;
+	Signature tmpTo = toS;
+	return _registrationIcpMulti->computeTransformation(tmpFrom.sensorData(), tmpTo.sensorData(), guess, info);
+}
+
 // compute transform fromId -> multiple toId
 Transform Memory::computeIcpTransformMulti(
 		int fromId,
@@ -3042,7 +3055,7 @@ Transform Memory::computeIcpTransformMulti(
 	}
 
 	// make sure that all laser scans are loaded
-	std::list<Signature*> depthToLoad;
+	std::list<Signature*> scansToLoad;
 	for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
 	{
 		Signature * s = _getSignature(iter->first);
@@ -3051,12 +3064,12 @@ Transform Memory::computeIcpTransformMulti(
 		if(s->sensorData().imageCompressed().empty() &&
 		   s->sensorData().laserScanCompressed().isEmpty())
 		{
-			depthToLoad.push_back(s);
+			scansToLoad.push_back(s);
 		}
 	}
-	if(depthToLoad.size() && _dbDriver)
+	if(scansToLoad.size() && _dbDriver)
 	{
-		_dbDriver->loadNodeData(depthToLoad, false, true, false, false);
+		_dbDriver->loadNodeData(scansToLoad, false, true, false, false);
 	}
 
 	Signature * fromS = _getSignature(fromId);
@@ -3081,7 +3094,6 @@ Transform Memory::computeIcpTransformMulti(
 		}
 
 		// Create a fake signature with all scans merged in oldId referential
-		SensorData assembledData;
 		Transform toPoseInv = poses.at(toId).inverse();
 		std::string msg;
 		int maxPoints = fromScan.size();
@@ -3203,6 +3215,7 @@ Transform Memory::computeIcpTransformMulti(
 		UDEBUG("assembledScan=%d points", assembledScan.size());
 
 		// scans are in base frame but for 2d scans, set the height so that correspondences matching works
+		SensorData assembledData;
 		assembledData.setLaserScan(
 				LaserScan(assembledScan,
 					maxPoints,

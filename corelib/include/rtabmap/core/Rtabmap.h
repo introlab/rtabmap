@@ -248,6 +248,8 @@ private:
 	void updateGoalIndex();
 	bool computePath(int targetNode, std::map<int, Transform> nodes, const std::multimap<int, rtabmap::Link> & constraints);
 
+	void createGlobalScanMap();
+
 	void setupLogFiles(bool overwrite = false);
 	void flushStatisticLogs();
 
@@ -306,6 +308,7 @@ private:
 	bool _loopCovLimited;
 	bool _loopGPS;
 	int _maxOdomCacheSize;
+	bool _createGlobalScanMap;
 
 	std::pair<int, float> _loopClosureHypothesis;
 	std::pair<int, float> _highestHypothesis;
@@ -341,6 +344,8 @@ private:
 	int _lastLocalizationNodeId; // for localization mode
 	std::map<int, std::pair<cv::Point3d, Transform> > _gpsGeocentricCache;
 	bool _currentSessionHasGPS;
+	LaserScan _globalScanMap;
+	std::map<int, Transform> _globalScanMapPoses;
 	std::map<int, Transform> _odomCachePoses;       // used in localization mode to reject loop closures
 	std::multimap<int, Link> _odomCacheConstraints; // used in localization mode to reject loop closures
 	std::map<int, Transform> _odomCacheAddLink; // used in localization mode when adding external link

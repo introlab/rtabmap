@@ -242,6 +242,7 @@ public:
 
 	Transform computeTransform(Signature & fromS, Signature & toS, Transform guess, RegistrationInfo * info = 0, bool useKnownCorrespondencesIfPossible = false) const;
 	Transform computeTransform(int fromId, int toId, Transform guess, RegistrationInfo * info = 0, bool useKnownCorrespondencesIfPossible = false);
+	Transform computeIcpTransform(const Signature & fromS, const Signature & toS, Transform guess, RegistrationInfo * info = 0) const;
 	Transform computeIcpTransformMulti(
 			int newId,
 			int oldId,

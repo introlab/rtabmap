@@ -604,6 +604,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent, bool sh
 	_ui->statsToolBox->updateStat("Odometry/ICPStructuralComplexity/", false);
 	_ui->statsToolBox->updateStat("Odometry/ICPStructuralDistribution/", false);
 	_ui->statsToolBox->updateStat("Odometry/ICPCorrespondences/", false);
+	_ui->statsToolBox->updateStat("Odometry/ICPRMS/", false);
 	_ui->statsToolBox->updateStat("Odometry/StdDevLin/", false);
 	_ui->statsToolBox->updateStat("Odometry/StdDevAng/", false);
 	_ui->statsToolBox->updateStat("Odometry/VarianceLin/", false);
@@ -1441,33 +1442,32 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 						}
 					}
 				}
-
-				if(  _preferencesDialog->isIMUGravityShown(1) &&
-					(data->imu().orientation().val[0]!=0 ||
-					data->imu().orientation().val[1]!=0 ||
-					data->imu().orientation().val[2]!=0 ||
-					data->imu().orientation().val[3]!=0))
-				{
-					Eigen::Vector3f gravity(0,0,-_preferencesDialog->getIMUGravityLength(1));
-					Transform orientation(0,0,0, data->imu().orientation()[0], data->imu().orientation()[1], data->imu().orientation()[2], data->imu().orientation()[3]);
-					gravity = (orientation* data->imu().localTransform().inverse()*(_odometryCorrection*pose).rotation().inverse()).toEigen3f()*gravity;
-					_cloudViewer->addOrUpdateLine("odom_imu_orientation", _odometryCorrection*pose, (_odometryCorrection*pose).translation()*Transform(gravity[0], gravity[1], gravity[2], 0, 0, 0)*pose.rotation().inverse(), Qt::yellow, true, true);
-					filteredGravityUpdated = true;
-				}
-				if( _preferencesDialog->isIMUAccShown() &&
-					(data->imu().linearAcceleration().val[0]!=0 ||
-					data->imu().linearAcceleration().val[1]!=0 ||
-					data->imu().linearAcceleration().val[2]!=0))
-				{
-					Eigen::Vector3f gravity(
-							-data->imu().linearAcceleration().val[0],
-							-data->imu().linearAcceleration().val[1],
-							-data->imu().linearAcceleration().val[2]);
-					gravity = gravity.normalized() * _preferencesDialog->getIMUGravityLength(1);
-					gravity = data->imu().localTransform().toEigen3f()*gravity;
-					_cloudViewer->addOrUpdateLine("odom_imu_acc", _odometryCorrection*pose, _odometryCorrection*pose*Transform(gravity[0], gravity[1], gravity[2], 0, 0, 0), Qt::red, true, true);
-					accelerationUpdated = true;
-				}
+			}
+			if(  _preferencesDialog->isIMUGravityShown(1) &&
+				(data->imu().orientation().val[0]!=0 ||
+				data->imu().orientation().val[1]!=0 ||
+				data->imu().orientation().val[2]!=0 ||
+				data->imu().orientation().val[3]!=0))
+			{
+				Eigen::Vector3f gravity(0,0,-_preferencesDialog->getIMUGravityLength(1));
+				Transform orientation(0,0,0, data->imu().orientation()[0], data->imu().orientation()[1], data->imu().orientation()[2], data->imu().orientation()[3]);
+				gravity = (orientation* data->imu().localTransform().inverse()*(_odometryCorrection*pose).rotation().inverse()).toEigen3f()*gravity;
+				_cloudViewer->addOrUpdateLine("odom_imu_orientation", _odometryCorrection*pose, (_odometryCorrection*pose).translation()*Transform(gravity[0], gravity[1], gravity[2], 0, 0, 0)*pose.rotation().inverse(), Qt::yellow, true, true);
+				filteredGravityUpdated = true;
+			}
+			if( _preferencesDialog->isIMUAccShown() &&
+				(data->imu().linearAcceleration().val[0]!=0 ||
+				data->imu().linearAcceleration().val[1]!=0 ||
+				data->imu().linearAcceleration().val[2]!=0))
+			{
+				Eigen::Vector3f gravity(
+						-data->imu().linearAcceleration().val[0],
+						-data->imu().linearAcceleration().val[1],
+						-data->imu().linearAcceleration().val[2]);
+				gravity = gravity.normalized() * _preferencesDialog->getIMUGravityLength(1);
+				gravity = data->imu().localTransform().toEigen3f()*gravity;
+				_cloudViewer->addOrUpdateLine("odom_imu_acc", _odometryCorrection*pose, _odometryCorrection*pose*Transform(gravity[0], gravity[1], gravity[2], 0, 0, 0), Qt::red, true, true);
+				accelerationUpdated = true;
 			}
 		}
 		if(!dataIgnored)
@@ -1713,6 +1713,7 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 		_ui->statsToolBox->updateStat("Odometry/ICPStructuralComplexity/", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), (float)odom.info().reg.icpStructuralComplexity, _preferencesDialog->isCacheSavedInFigures());
 		_ui->statsToolBox->updateStat("Odometry/ICPStructuralDistribution/", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), (float)odom.info().reg.icpStructuralDistribution, _preferencesDialog->isCacheSavedInFigures());
 		_ui->statsToolBox->updateStat("Odometry/ICPCorrespondences/", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), (float)odom.info().reg.icpCorrespondences, _preferencesDialog->isCacheSavedInFigures());
+		_ui->statsToolBox->updateStat("Odometry/ICPRMS/", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), (float)odom.info().reg.icpRMS, _preferencesDialog->isCacheSavedInFigures());
 		_ui->statsToolBox->updateStat("Odometry/Matches/", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), (float)odom.info().reg.matches, _preferencesDialog->isCacheSavedInFigures());
 		_ui->statsToolBox->updateStat("Odometry/MatchesRatio/", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), odom.info().features<=0?0.0f:float(odom.info().reg.matches)/float(odom.info().features), _preferencesDialog->isCacheSavedInFigures());
 		_ui->statsToolBox->updateStat("Odometry/StdDevLin/", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), sqrt((float)odom.info().reg.covariance.at<double>(0,0)), _preferencesDialog->isCacheSavedInFigures());

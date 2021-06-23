@@ -3572,6 +3572,55 @@ void adjustNormalsToViewPoints(
 	}
 }
 
+void adjustNormalsToViewPoints(
+		const std::map<int, Transform> & viewpoints,
+		const LaserScan & rawScan,
+		const std::vector<int> & viewpointIds,
+		LaserScan & scan)
+{
+	UDEBUG("poses=%d, rawCloud=%d, rawCameraIndices=%d, cloud=%d", (int)viewpoints.size(), (int)rawScan.size(), (int)viewpointIds.size(), (int)scan.size());
+	if(viewpoints.size() && rawScan.size() && rawScan.size() == (int)viewpointIds.size() && scan.size() && scan.hasNormals())
+	{
+		pcl::PointCloud<pcl::PointXYZ>::Ptr rawCloud = util3d::laserScanToPointCloud(rawScan);
+		pcl::search::KdTree<pcl::PointXYZ>::Ptr rawTree (new pcl::search::KdTree<pcl::PointXYZ>);
+		rawTree->setInputCloud (rawCloud);
+		for(int i=0; i<scan.size(); ++i)
+		{
+			pcl::PointNormal point = util3d::laserScanToPointNormal(scan, i);
+			pcl::PointXYZ normal(point.normal_x, point.normal_y, point.normal_z);
+			if(pcl::isFinite(normal))
+			{
+				std::vector<int> indices;
+				std::vector<float> dist;
+				rawTree->nearestKSearch(pcl::PointXYZ(point.x, point.y, point.z), 1, indices, dist);
+				if(indices.size() && indices[0]>=0)
+				{
+					UASSERT_MSG(indices[0]<(int)viewpointIds.size(), uFormat("indices[0]=%d rawCameraIndices.size()=%d", indices[0], (int)viewpointIds.size()).c_str());
+					UASSERT(uContains(viewpoints, viewpointIds[indices[0]]));
+					Transform p = viewpoints.at(viewpointIds[indices[0]]);
+					pcl::PointXYZ viewpoint(p.x(), p.y(), p.z());
+					Eigen::Vector3f v = viewpoint.getVector3fMap() - point.getVector3fMap();
+
+					Eigen::Vector3f n(normal.x, normal.y, normal.z);
+
+					float result = v.dot(n);
+					if(result < 0)
+					{
+						//reverse normal
+						scan.field(i, scan.getNormalsOffset()) *= -1.0f;
+						scan.field(i, scan.getNormalsOffset()+1) *= -1.0f;
+						scan.field(i, scan.getNormalsOffset()+2) *= -1.0f;
+					}
+				}
+				else
+				{
+					UWARN("Not found camera viewpoint for point %d!?", i);
+				}
+			}
+		}
+	}
+}
+
 pcl::PolygonMesh::Ptr meshDecimation(const pcl::PolygonMesh::Ptr & mesh, float factor)
 {
 	pcl::PolygonMesh::Ptr output(new pcl::PolygonMesh);

@@ -43,6 +43,7 @@ rtabmap::Transform icpCC(
 		double finalOverlapRatio = 0.85,
 		bool filterOutFarthestPoints = false,
 		double maxFinalRMS = 0.2,
+		float * finalRMS = 0,
 		std::string * errorMsg = 0)
 {
 	UDEBUG("maxIterations=%d", maxIterations);
@@ -119,6 +120,11 @@ rtabmap::Transform icpCC(
 	UDEBUG("CC Final error: %f . Finall Pointcount: %d", finalError, finalPointCount);
 	UDEBUG("CC ICP success Trans: %f %f %f", transform.T.x,transform.T.y,transform.T.z);
 
+	if(finalRMS)
+	{
+		*finalRMS = (float)finalError;
+	}
+
 	if(result != 1)
 	{
 		std::string msg = uFormat("CCCoreLib has failed: Rejecting transform as result %d !=1", result);
@@ -131,9 +137,9 @@ rtabmap::Transform icpCC(
 		icpTransformation.setNull();
 		return icpTransformation;
 	}
-	else if(finalPointCount <10)
+	else if(finalPointCount < 50)
 	{
-		std::string msg = uFormat("CCCoreLib has failed: Rejecting transform as finalPointCount %d < 10 ", finalPointCount);
+		std::string msg = uFormat("CCCoreLib has failed: Rejecting transform as finalPointCount %d < 50 ", finalPointCount);
 		UDEBUG(msg.c_str());
 		if(errorMsg)
 		{

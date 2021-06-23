@@ -136,7 +136,18 @@ public:
 	int getRGBOffset() const {return hasRGB()?(is2d()?2:3):-1;}
 	int getNormalsOffset() const {return hasNormals()?(2 + (is2d()?0:1) + ((hasRGB() || hasIntensity())?1:0)):-1;}
 
+	float & field(unsigned int pointIndex, unsigned int channelOffset);
+
 	void clear() {data_ = cv::Mat();}
+
+	/**
+	 * Concatenate scan's data, localTransform is ignored.
+	 */
+	LaserScan & operator+=(const LaserScan &);
+	/**
+	 * Concatenate scan's data, localTransform is ignored.
+	 */
+	LaserScan operator+(const LaserScan &);
 
 private:
 	void init(const cv::Mat & data,

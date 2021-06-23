@@ -122,7 +122,8 @@ class RTABMAP_EXP Statistics
 	RTABMAP_STATS(Proximity, Space_visual_paths_checked,);
 	RTABMAP_STATS(Proximity, Space_scan_paths_checked,);
 	RTABMAP_STATS(Proximity, Space_detections_added_visually,);
-	RTABMAP_STATS(Proximity, Space_detections_added_icp_only,);
+	RTABMAP_STATS(Proximity, Space_detections_added_icp_multi,);
+	RTABMAP_STATS(Proximity, Space_detections_added_icp_global,);
 
 	RTABMAP_STATS(NeighborLinkRefining, Accepted,);
 	RTABMAP_STATS(NeighborLinkRefining, Inliers,);
