@@ -623,13 +623,16 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 
 		if(info)
 		{
-			UASSERT(info->newCorners.size() == info->refCorners.size());
+			UASSERT(info->newCorners.size() == info->refCorners.size() || info->refCorners.empty());
 			for(unsigned int i=0; i<info->newCorners.size(); ++i)
 			{
 				info->refCorners[i].x *= decimationRgb;
 				info->refCorners[i].y *= decimationRgb;
-				info->newCorners[i].x *= decimationRgb;
-				info->newCorners[i].y *= decimationRgb;
+				if(!info->refCorners.empty())
+				{
+					info->newCorners[i].x *= decimationRgb;
+					info->newCorners[i].y *= decimationRgb;
+				}
 			}
 			for(std::multimap<int, cv::KeyPoint>::iterator iter=info->words.begin(); iter!=info->words.end(); ++iter)
 			{
@@ -849,6 +852,11 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 		{
 			UWARN("Odometry automatically reset to latest pose!");
 			this->reset(_pose);
+			if(info)
+			{
+				*info = OdometryInfo();
+			}
+			return this->computeTransform(data, Transform(), info);
 		}
 	}
 
