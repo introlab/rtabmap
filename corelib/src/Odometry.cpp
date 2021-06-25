@@ -559,19 +559,17 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 
 	UTimer time;
 	Transform t;
-	int decimationRgb = abs(_imageDecimation);
-	if((_imageDecimation > 1 || _imageDecimation < -1) && !data.imageRaw().empty())
+	if(_imageDecimation > 1 && !data.imageRaw().empty())
 	{
 		// Decimation of images with calibrations
 		SensorData decimatedData = data;
-		int decimationDepth = abs(_imageDecimation);
-		if(_imageDecimation<0 &&
-			!data.cameraModels().empty() &&
+		int decimationDepth = _imageDecimation;
+		if(	!data.cameraModels().empty() &&
 			data.cameraModels()[0].imageHeight()>0 &&
 			data.cameraModels()[0].imageWidth()>0)
 		{
 			// decimate from RGB image size
-			int targetSize = data.cameraModels()[0].imageHeight() / decimationRgb;
+			int targetSize = data.cameraModels()[0].imageHeight() / _imageDecimation;
 			if(targetSize >= data.depthRaw().rows)
 			{
 				decimationDepth = 1;
@@ -581,14 +579,14 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 				decimationDepth = (int)ceil(float(data.depthRaw().rows) / float(targetSize));
 			}
 		}
-		UDEBUG("decimation rgbOrLeft(rows=%d)=%d, depthOrRight(rows=%d)=%d", data.imageRaw().rows, decimationRgb, data.depthOrRightRaw().rows, decimationDepth);
+		UDEBUG("decimation rgbOrLeft(rows=%d)=%d, depthOrRight(rows=%d)=%d", data.imageRaw().rows, _imageDecimation, data.depthOrRightRaw().rows, decimationDepth);
 
-		cv::Mat rgbLeft = util2d::decimate(decimatedData.imageRaw(), decimationRgb);
+		cv::Mat rgbLeft = util2d::decimate(decimatedData.imageRaw(), _imageDecimation);
 		cv::Mat depthRight = util2d::decimate(decimatedData.depthOrRightRaw(), decimationDepth);
 		std::vector<CameraModel> cameraModels = decimatedData.cameraModels();
 		for(unsigned int i=0; i<cameraModels.size(); ++i)
 		{
-			cameraModels[i] = cameraModels[i].scaled(1.0/double(decimationRgb));
+			cameraModels[i] = cameraModels[i].scaled(1.0/double(_imageDecimation));
 		}
 		if(!cameraModels.empty())
 		{
@@ -599,7 +597,7 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 			StereoCameraModel stereoModel = decimatedData.stereoCameraModel();
 			if(stereoModel.isValidForProjection())
 			{
-				stereoModel.scale(1.0/double(decimationRgb));
+				stereoModel.scale(1.0/double(_imageDecimation));
 			}
 			decimatedData.setStereoImage(rgbLeft, depthRight, stereoModel);
 		}
@@ -610,12 +608,12 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 
 		// transform back the keypoints in the original image
 		std::vector<cv::KeyPoint> kpts = decimatedData.keypoints();
-		double log2value = log(double(decimationRgb))/log(2.0);
+		double log2value = log(double(_imageDecimation))/log(2.0);
 		for(unsigned int i=0; i<kpts.size(); ++i)
 		{
-			kpts[i].pt.x *= decimationRgb;
-			kpts[i].pt.y *= decimationRgb;
-			kpts[i].size *= decimationRgb;
+			kpts[i].pt.x *= _imageDecimation;
+			kpts[i].pt.y *= _imageDecimation;
+			kpts[i].size *= _imageDecimation;
 			kpts[i].octave += log2value;
 		}
 		data.setFeatures(kpts, decimatedData.keypoints3D(), decimatedData.descriptors());
@@ -626,19 +624,19 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 			UASSERT(info->newCorners.size() == info->refCorners.size() || info->refCorners.empty());
 			for(unsigned int i=0; i<info->newCorners.size(); ++i)
 			{
-				info->refCorners[i].x *= decimationRgb;
-				info->refCorners[i].y *= decimationRgb;
+				info->refCorners[i].x *= _imageDecimation;
+				info->refCorners[i].y *= _imageDecimation;
 				if(!info->refCorners.empty())
 				{
-					info->newCorners[i].x *= decimationRgb;
-					info->newCorners[i].y *= decimationRgb;
+					info->newCorners[i].x *= _imageDecimation;
+					info->newCorners[i].y *= _imageDecimation;
 				}
 			}
 			for(std::multimap<int, cv::KeyPoint>::iterator iter=info->words.begin(); iter!=info->words.end(); ++iter)
 			{
-				iter->second.pt.x *= decimationRgb;
-				iter->second.pt.y *= decimationRgb;
-				iter->second.size *= decimationRgb;
+				iter->second.pt.x *= _imageDecimation;
+				iter->second.pt.y *= _imageDecimation;
+				iter->second.size *= _imageDecimation;
 				iter->second.octave += log2value;
 			}
 		}
