@@ -394,6 +394,13 @@ Transform RegistrationVis::computeTransformationImpl(
 						{
 							depthMask = util2d::interpolate(fromSignature.sensorData().depthRaw(), fromSignature.sensorData().imageRaw().rows/fromSignature.sensorData().depthRaw().rows, 0.1f);
 						}
+						else
+						{
+							UWARN("%s is true, but RGB size (%dx%d) modulo depth size (%dx%d) is not 0. Ignoring depth mask for feature detection.",
+									Parameters::kVisDepthAsMask().c_str(),
+									fromSignature.sensorData().imageRaw().rows, fromSignature.sensorData().imageRaw().cols,
+									fromSignature.sensorData().depthRaw().rows, fromSignature.sensorData().depthRaw().cols);
+						}
 					}
 
 					kptsFrom = _detectorFrom->generateKeypoints(
@@ -612,6 +619,13 @@ Transform RegistrationVis::computeTransformationImpl(
 						   imageTo.rows/toSignature.sensorData().depthRaw().rows == imageTo.cols/toSignature.sensorData().depthRaw().cols)
 						{
 							depthMask = util2d::interpolate(toSignature.sensorData().depthRaw(), imageTo.rows/toSignature.sensorData().depthRaw().rows, 0.1f);
+						}
+						else
+						{
+							UWARN("%s is true, but RGB size (%dx%d) modulo depth size (%dx%d) is not 0. Ignoring depth mask for feature detection.",
+									Parameters::kVisDepthAsMask().c_str(),
+									toSignature.sensorData().imageRaw().rows, toSignature.sensorData().imageRaw().cols,
+									toSignature.sensorData().depthRaw().rows, toSignature.sensorData().depthRaw().cols);
 						}
 					}
 

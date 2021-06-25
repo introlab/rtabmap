@@ -104,7 +104,7 @@ private:
 	bool _fillInfoData;
 	float _kalmanProcessNoise;
 	float _kalmanMeasurementNoise;
-	int _imageDecimation;
+	unsigned int _imageDecimation;
 	bool _alignWithGround;
 	bool _publishRAMUsage;
 	bool _imagesAlreadyRectified;

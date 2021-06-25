@@ -1893,12 +1893,23 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 
 		bool fastMovement = (bool)uValue(stat.data(), Statistics::kMemoryFast_movement(), 0.0f);
 
+		int rehearsalMerged = (int)uValue(stat.data(), Statistics::kMemoryRehearsal_merged(), 0.0f);
+
 		// update cache
 		Signature signature;
 		if(stat.getLastSignatureData().id() == stat.refImageId())
 		{
 			signature = stat.getLastSignatureData();
+		}
+		else if(rehearsalMerged>0 &&
+				rehearsalMerged == stat.getLastSignatureData().id() &&
+				_cachedSignatures.contains(rehearsalMerged))
+		{
+			signature = _cachedSignatures.value(rehearsalMerged);
+		}
 
+		if(signature.id()!=0)
+		{
 			// make sure data are uncompressed
 			// We don't need to uncompress images if we don't show them
 			bool uncompressImages = !signature.sensorData().imageCompressed().empty() && (
@@ -1919,7 +1930,8 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 					uncompressScan?&tmpScan:0,
 					0, &tmpG, &tmpO, &tmpE);
 
-			if( uStr2Bool(_preferencesDialog->getParameter(Parameters::kMemIncrementalMemory())) &&
+			if( stat.getLastSignatureData().id() == stat.refImageId() &&
+				uStr2Bool(_preferencesDialog->getParameter(Parameters::kMemIncrementalMemory())) &&
 				signature.getWeight()>=0) // ignore intermediate nodes for the cache
 			{
 				if(smallMovement || fastMovement)
@@ -1963,8 +1975,6 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 
 			_ui->label_matchId->clear();
 
-
-			int rehearsalMerged = (int)uValue(stat.data(), Statistics::kMemoryRehearsal_merged(), 0.0f);
 			bool rehearsedSimilarity = (float)uValue(stat.data(), Statistics::kMemoryRehearsal_id(), 0.0f) != 0.0f;
 			int proximityTimeDetections = (int)uValue(stat.data(), Statistics::kProximityTime_detections(), 0.0f);
 			bool scanMatchingSuccess = (bool)uValue(stat.data(), Statistics::kNeighborLinkRefiningAccepted(), 0.0f);

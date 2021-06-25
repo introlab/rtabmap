@@ -305,8 +305,8 @@ private:
 	bool _mapLabelsAdded;
 	bool _depthAsMask;
 	bool _stereoFromMotion;
-	int _imagePreDecimation;
-	int _imagePostDecimation;
+	unsigned int _imagePreDecimation;
+	unsigned int _imagePostDecimation;
 	bool _compressionParallelized;
 	float _laserScanDownsampleStepSize;
 	float _laserScanVoxelSize;

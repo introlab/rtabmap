@@ -108,7 +108,7 @@ public:
 
 private:
 	ParametersMap parameters_;
-	int cloudDecimation_;
+	unsigned int cloudDecimation_;
 	float cloudMaxDepth_;
 	float cloudMinDepth_;
 	std::vector<float> roiRatios_;

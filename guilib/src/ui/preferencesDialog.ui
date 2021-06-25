@@ -95,7 +95,11 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
+<<<<<<< HEAD
                 <number>13</number>
+=======
+                <number>19</number>
+>>>>>>> eabf3e3d57572b30878512e47b051986c3592cea
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,1">
@@ -8906,7 +8910,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                       <item row="14" column="1">
                        <widget class="QLabel" name="label_retrieved_13">
                         <property name="text">
-                         <string>Image pre decimation. This option can be used to reduce image size before features extraction.</string>
+                         <string>Image pre decimation. Decimation of the RGB image before visual feature detection. If depth size is larger than decimated RGB size, depth is decimated to be always at most equal to RGB size. If Vocabulary-&gt;Depth As Mask is true and if depth is smaller than decimated RGB, depth may be interpolated to match RGB size for feature detection.</string>
                         </property>
                         <property name="wordWrap">
                          <bool>true</bool>
@@ -9024,7 +9028,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                       <item row="15" column="1">
                        <widget class="QLabel" name="label_retrieved_6">
                         <property name="text">
-                         <string>Image post decimation. This option can be used to save images in lower resolution (size/decimation). It is done on the original image.</string>
+                         <string>Image post decimation. Decimation of the RGB image before saving it to database. If depth size is larger than decimated RGB size, depth is decimated to be always at most equal to RGB size. Decimation is done from the original image. If set to same value than Pre Decimation, data already decimated is saved (no need to re-decimate the image).</string>
                         </property>
                         <property name="wordWrap">
                          <bool>true</bool>
@@ -12278,7 +12282,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                          <item row="0" column="0">
                           <widget class="QSpinBox" name="spinBox_grid_decimation">
                            <property name="minimum">
-                            <number>-32</number>
+                            <number>1</number>
                            </property>
                            <property name="maximum">
                             <number>32</number>
@@ -12291,7 +12295,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                          <item row="0" column="1">
                           <widget class="QLabel" name="label_322">
                            <property name="text">
-                            <string>Image Decimation (1-2-4-8-...). Negative decimation is done from RGB size instead of depth size (if depth is smaller than RGB, it may be interpolated depending of the decimation value).</string>
+                            <string>Decimation of the depth image before creating cloud.</string>
                            </property>
                            <property name="wordWrap">
                             <bool>true</bool>
@@ -13855,7 +13859,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                       <item row="9" column="0">
                        <widget class="QSpinBox" name="odom_imageDecimation">
                         <property name="minimum">
-                         <number>-32</number>
+                         <number>1</number>
                         </property>
                         <property name="maximum">
                          <number>32</number>
@@ -13878,7 +13882,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                       <item row="9" column="1">
                        <widget class="QLabel" name="label_248">
                         <property name="text">
-                         <string>Decimation of images before features extraction. Negative decimation is done from RGB size instead of depth size (if depth is smaller than RGB, it may be interpolated depending of the decimation value).</string>
+                         <string>Decimation of the RGB image before registration. If depth size is larger than decimated RGB size, depth is decimated to be always at most equal to RGB size. If Visual Registration -&gt; Visual Feature -&gt; Depth as Mask is true and if depth is smaller than decimated RGB, depth may be interpolated to match RGB size for feature detection.</string>
                         </property>
                         <property name="wordWrap">
                          <bool>true</bool>

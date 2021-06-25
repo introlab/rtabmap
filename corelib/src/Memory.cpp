@@ -585,11 +585,11 @@ void Memory::parseParameters(const ParametersMap & parameters)
 	UASSERT_MSG(_maxStMemSize >= 0, uFormat("value=%d", _maxStMemSize).c_str());
 	UASSERT_MSG(_similarityThreshold >= 0.0f && _similarityThreshold <= 1.0f, uFormat("value=%f", _similarityThreshold).c_str());
 	UASSERT_MSG(_recentWmRatio >= 0.0f && _recentWmRatio <= 1.0f, uFormat("value=%f", _recentWmRatio).c_str());
-	if(_imagePreDecimation <= 0)
+	if(_imagePreDecimation == 0)
 	{
 		_imagePreDecimation = 1;
 	}
-	if(_imagePostDecimation <= 0)
+	if(_imagePostDecimation == 0)
 	{
 		_imagePostDecimation = 1;
 	}
@@ -4304,6 +4304,24 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 			if(_imagePreDecimation > 1)
 			{
 				preDecimation = _imagePreDecimation;
+				int decimationDepth = _imagePreDecimation;
+				if(	!data.cameraModels().empty() &&
+					data.cameraModels()[0].imageHeight()>0 &&
+					data.cameraModels()[0].imageWidth()>0)
+				{
+					// decimate from RGB image size
+					int targetSize = data.cameraModels()[0].imageHeight() / _imagePreDecimation;
+					if(targetSize >= data.depthRaw().rows)
+					{
+						decimationDepth = 1;
+					}
+					else
+					{
+						decimationDepth = (int)ceil(float(data.depthRaw().rows) / float(targetSize));
+					}
+				}
+				UDEBUG("decimation rgbOrLeft(rows=%d)=%d, depthOrRight(rows=%d)=%d", data.imageRaw().rows, _imagePreDecimation, data.depthOrRightRaw().rows, decimationDepth);
+
 				std::vector<CameraModel> cameraModels = decimatedData.cameraModels();
 				for(unsigned int i=0; i<cameraModels.size(); ++i)
 				{
@@ -4311,21 +4329,10 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 				}
 				if(!cameraModels.empty())
 				{
-					if(decimatedData.depthRaw().rows == decimatedData.imageRaw().rows &&
-					   decimatedData.depthRaw().cols == decimatedData.imageRaw().cols)
-					{
-						decimatedData.setRGBDImage(
-								util2d::decimate(decimatedData.imageRaw(), _imagePreDecimation),
-								util2d::decimate(decimatedData.depthOrRightRaw(), _imagePreDecimation),
-								cameraModels);
-					}
-					else
-					{
-						decimatedData.setRGBDImage(
-								util2d::decimate(decimatedData.imageRaw(), _imagePreDecimation),
-								decimatedData.depthOrRightRaw(),
-								cameraModels);
-					}
+					decimatedData.setRGBDImage(
+							util2d::decimate(decimatedData.imageRaw(), _imagePreDecimation),
+							util2d::decimate(decimatedData.depthOrRightRaw(), decimationDepth),
+							cameraModels);
 				}
 				else
 				{
@@ -4361,13 +4368,13 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 				{
 					depthMask = util2d::interpolate(decimatedData.depthRaw(), imageMono.rows/decimatedData.depthRaw().rows, 0.1f);
 				}
-				else if(_imagePreDecimation > 1)
+				else
 				{
-					UWARN("%s=%d is not compatible between RGB and depth images, the depth mask cannot be used! (decimated RGB=%dx%d, depth=%dx%d)",
-							Parameters::kMemImagePreDecimation().c_str(),
-							_imagePreDecimation,
+					UWARN("%s is true, but RGB size (%dx%d) modulo depth size (%dx%d) is not 0. Ignoring depth mask for feature detection (%s=%d).",
+							Parameters::kMemDepthAsMask().c_str(),
 							imageMono.cols, imageMono.rows,
-							decimatedData.depthRaw().cols, decimatedData.depthRaw().rows);
+							decimatedData.depthRaw().cols, decimatedData.depthRaw().rows,
+							Parameters::kMemImagePreDecimation().c_str(), _imagePreDecimation);
 				}
 			}
 
@@ -4381,14 +4388,14 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
                 
                 // A: Adjust keypoint position so that descriptors are correctly extracted
                 // B: In case we provided corresponding 3D features
-                if(preDecimation > 1 || useProvided3dPoints)
+                if(_imagePreDecimation > 1 || useProvided3dPoints)
                 {
-                    float decimationRatio = 1.0f / float(preDecimation);
-                    double log2value = log(double(preDecimation))/log(2.0);
+                    float decimationRatio = 1.0f / float(_imagePreDecimation);
+                    double log2value = log(double(_imagePreDecimation))/log(2.0);
                     for(unsigned int i=0; i < keypoints.size(); ++i)
                     {
                         cv::KeyPoint & kpt = keypoints[i];
-                        if(preDecimation > 1)
+                        if(_imagePreDecimation > 1)
                         {
                             kpt.pt.x *= decimationRatio;
                             kpt.pt.y *= decimationRatio;
@@ -4876,11 +4883,25 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 		}
 		else
 		{
-			if(!data.rightRaw().empty() ||
-				(data.depthRaw().rows == image.rows && data.depthRaw().cols == image.cols))
+			int decimationDepth = _imagePreDecimation;
+			if(	!data.cameraModels().empty() &&
+				data.cameraModels()[0].imageHeight()>0 &&
+				data.cameraModels()[0].imageWidth()>0)
 			{
-				depthOrRightImage = util2d::decimate(depthOrRightImage, _imagePostDecimation);
+				// decimate from RGB image size
+				int targetSize = data.cameraModels()[0].imageHeight() / _imagePreDecimation;
+				if(targetSize >= data.depthRaw().rows)
+				{
+					decimationDepth = 1;
+				}
+				else
+				{
+					decimationDepth = (int)ceil(float(data.depthRaw().rows) / float(targetSize));
+				}
 			}
+			UDEBUG("decimation rgbOrLeft(rows=%d)=%d, depthOrRight(rows=%d)=%d", data.imageRaw().rows, _imagePostDecimation, data.depthOrRightRaw().rows, decimationDepth);
+
+			depthOrRightImage = util2d::decimate(depthOrRightImage, decimationDepth);
 			image = util2d::decimate(image, _imagePostDecimation);
 			for(unsigned int i=0; i<cameraModels.size(); ++i)
 			{
