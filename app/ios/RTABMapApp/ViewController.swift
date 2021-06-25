@@ -389,12 +389,35 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
                     String(format: "Travelled distance: %.2f m\n", distanceTravelled) +
                     String(format: "Pose (x,y,z): %.2f %.2f %.2f", x, y, z)
             }
-            if(self.mState == .STATE_MAPPING)
+            if(self.mState == .STATE_MAPPING || self.mState == .STATE_VISUALIZING_CAMERA)
             {
                 if(loopClosureId > 0) {
-                    self.showToast(message: "Loop closure detected!", seconds: 1);
+                    if(self.mState == .STATE_VISUALIZING_CAMERA) {
+                        self.showToast(message: "Localized!", seconds: 1);
+                    }
+                    else {
+                        self.showToast(message: "Loop closure detected!", seconds: 1);
+                    }
                 }
-                if(landmarkDetected > 0) {
+                else if(rejected > 0)
+                {
+                    if(inliers >= UserDefaults.standard.integer(forKey: "MinInliers"))
+                    {
+                        if(optimizationMaxError > 0.0)
+                        {
+                            self.showToast(message: String(format: "Loop closure rejected, too high graph optimization error (%.3fm: ratio=%.3f < factor=%.1fx).", optimizationMaxError, optimizationMaxErrorRatio, UserDefaults.standard.float(forKey: "MaxOptimizationError")), seconds: 1);
+                        }
+                        else
+                        {
+                            self.showToast(message: String(format: "Loop closure rejected, graph optimization failed! You may try a different Graph Optimizer (see Mapping options)."), seconds: 1);
+                        }
+                    }
+                    else
+                    {
+                        self.showToast(message: String(format: "Loop closure rejected, not enough inliers (%d/%d < %d).", inliers, matches, UserDefaults.standard.integer(forKey: "MinInliers")), seconds: 1);
+                    }
+                }
+                else if(landmarkDetected > 0) {
                     self.showToast(message: "Landmark \(landmarkDetected) detected!", seconds: 1);
                 }
             }
