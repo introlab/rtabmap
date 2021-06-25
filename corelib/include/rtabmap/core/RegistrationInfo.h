@@ -68,6 +68,7 @@ public:
 		output.icpStructuralComplexity = icpStructuralComplexity;
 		output.icpStructuralDistribution = icpStructuralDistribution;
 		output.icpCorrespondences = icpCorrespondences;
+        output.icpRMS = icpRMS;
 		return output;
 	}
 
