@@ -82,6 +82,7 @@ private:
 	unsigned int _ccSamplingLimit;
 	bool _ccFilterOutFarthestPoints;
 	double _ccMaxFinalRMS;
+	std::string _debugExportFormat;
 
 	void * _libpointmatcherICP;
 	void * _libpointmatcherICPFilters;
