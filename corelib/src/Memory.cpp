@@ -4288,7 +4288,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 		preUpdateThread.start();
 	}
 
-	int preDecimation = 1;
+	unsigned int preDecimation = 1;
 	std::vector<cv::Point3f> keypoints3D;
 	SensorData decimatedData;
 	UDEBUG("Received kpts=%d kpts3D=%d, descriptors=%d _useOdometryFeatures=%s",

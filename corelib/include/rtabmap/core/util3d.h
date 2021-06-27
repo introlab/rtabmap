@@ -197,7 +197,8 @@ pcl::PointCloud<pcl::PointXYZ> RTABMAP_EXP laserScanFromDepthImages(
 		float maxDepth,
 		float minDepth);
 
-LaserScan RTABMAP_EXP laserScanFromPointCloud(const pcl::PCLPointCloud2 & cloud, bool filterNaNs = true, bool is2D = false, const Transform & transform = Transform());
+template<typename PointCloud2T>
+LaserScan laserScanFromPointCloud(const PointCloud2T & cloud, bool filterNaNs = true, bool is2D = false, const Transform & transform = Transform());
 // return CV_32FC3  (x,y,z)
 LaserScan RTABMAP_EXP laserScanFromPointCloud(const pcl::PointCloud<pcl::PointXYZ> & cloud, const Transform & transform = Transform(), bool filterNaNs = true);
 LaserScan RTABMAP_EXP laserScanFromPointCloud(const pcl::PointCloud<pcl::PointXYZ> & cloud, const pcl::IndicesPtr & indices, const Transform & transform = Transform(), bool filterNaNs = true);
@@ -390,5 +391,7 @@ RTABMAP_DEPRECATED(pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP loadCloud(
 
 } // namespace util3d
 } // namespace rtabmap
+
+#include "rtabmap/core/impl/util3d.hpp"
 
 #endif /* UTIL3D_H_ */
