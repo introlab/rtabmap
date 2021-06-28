@@ -6045,9 +6045,17 @@ void Rtabmap::createGlobalScanMap()
 		//for debugging...
 		if(!_globalScanMap.empty() && ULogger::level() == ULogger::kDebug)
 		{
-			UWARN("Saving rtabmap_global_scan_map.pcd (only saved when logger level is debug)");
-			pcl::PCLPointCloud2::Ptr cloud2 = util3d::laserScanToPointCloud2(_globalScanMap);
-			pcl::io::savePCDFile("rtabmap_global_scan_map.pcd", *cloud2);
+			if(!_wDir.empty())
+			{
+				UWARN("Saving %s/rtabmap_global_scan_map.pcd (only saved when logger level is debug)", _wDir.c_str());
+				pcl::PCLPointCloud2::Ptr cloud2 = util3d::laserScanToPointCloud2(_globalScanMap);
+				pcl::io::savePCDFile(_wDir+"/rtabmap_global_scan_map.pcd", *cloud2);
+			}
+			else
+			{
+				UWARN("%s is enabled and logger is debug, but %s is not set, cannot save global scan map for debugging.",
+						Parameters::kRGBDProximityGlobalScanMap().c_str(), Parameters::kRtabmapWorkingDirectory().c_str());
+			}
 		}
 	}
 	if(!_globalScanMap.empty() && _globalScanMap.size()<100)

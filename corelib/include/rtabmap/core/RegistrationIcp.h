@@ -83,6 +83,7 @@ private:
 	bool _ccFilterOutFarthestPoints;
 	double _ccMaxFinalRMS;
 	std::string _debugExportFormat;
+	std::string _workingDir;
 
 	void * _libpointmatcherICP;
 	void * _libpointmatcherICPFilters;

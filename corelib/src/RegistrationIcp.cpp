@@ -133,6 +133,11 @@ void RegistrationIcp::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kIcpCCMaxFinalRMS(), _ccMaxFinalRMS);
 
 	Parameters::parse(parameters, Parameters::kIcpDebugExportFormat(), _debugExportFormat);
+	ParametersMap::const_iterator iter;
+	if((iter=parameters.find(Parameters::kRtabmapWorkingDirectory())) != parameters.end())
+	{
+		_workingDir = iter->second;
+	}
 
 	bool pointToPlane = _pointToPlane;
 
@@ -451,7 +456,7 @@ Transform RegistrationIcp::computeTransformationImpl(
 		{
 			std::string toPrefix = "rtabmap_icp_scan";
 			double now = UTimer::now();
-			if(!_debugExportFormat.empty())
+			if(!_workingDir.empty() && !_debugExportFormat.empty())
 			{
 				std::string fromPrefix = "rtabmap_icp_scan";
 				if(ULogger::level() == ULogger::kDebug)
@@ -466,22 +471,26 @@ Transform RegistrationIcp::computeTransformationImpl(
 				}
 				if(_debugExportFormat.compare("vtk")==0)
 				{
-					pcl::io::saveVTKFile(fromPrefix+".vtk", *util3d::laserScanToPointCloud2(fromScan, fromScan.localTransform()));
-					pcl::io::saveVTKFile(toPrefix+".vtk", *util3d::laserScanToPointCloud2(toScan, guess*toScan.localTransform()));
-					UWARN("Saved %s.vtk and %s.vtk (%s=\"%s\")", fromPrefix.c_str(), toPrefix.c_str(), Parameters::kIcpDebugExportFormat().c_str(), _debugExportFormat.c_str());
+					pcl::io::saveVTKFile(_workingDir+"/"+fromPrefix+".vtk", *util3d::laserScanToPointCloud2(fromScan, fromScan.localTransform()));
+					pcl::io::saveVTKFile(_workingDir+"/"+toPrefix+".vtk", *util3d::laserScanToPointCloud2(toScan, guess*toScan.localTransform()));
+					UWARN("Saved %s.vtk and %s.vtk (%s=\"%s\") to working directory (%s=%s)", fromPrefix.c_str(), toPrefix.c_str(), Parameters::kIcpDebugExportFormat().c_str(), _debugExportFormat.c_str(), Parameters::kRtabmapWorkingDirectory().c_str(), _workingDir.c_str());
 				}
 				else if(_debugExportFormat.compare("ply")==0)
 				{
-					pcl::io::savePLYFile(fromPrefix+".ply", *util3d::laserScanToPointCloud2(fromScan, fromScan.localTransform()), Eigen::Vector4f::Zero (), Eigen::Quaternionf::Identity (), true);
-					pcl::io::savePLYFile(toPrefix+".ply", *util3d::laserScanToPointCloud2(toScan, guess*toScan.localTransform()), Eigen::Vector4f::Zero (), Eigen::Quaternionf::Identity (), true);
-					UWARN("Saved %s.ply and %s.ply (%s=\"%s\")", fromPrefix.c_str(), toPrefix.c_str(), Parameters::kIcpDebugExportFormat().c_str(), _debugExportFormat.c_str());
+					pcl::io::savePLYFile(_workingDir+"/"+fromPrefix+".ply", *util3d::laserScanToPointCloud2(fromScan, fromScan.localTransform()), Eigen::Vector4f::Zero (), Eigen::Quaternionf::Identity (), true);
+					pcl::io::savePLYFile(_workingDir+"/"+toPrefix+".ply", *util3d::laserScanToPointCloud2(toScan, guess*toScan.localTransform()), Eigen::Vector4f::Zero (), Eigen::Quaternionf::Identity (), true);
+					UWARN("Saved %s.ply and %s.ply (%s=\"%s\") to directory (%s=%s)", fromPrefix.c_str(), toPrefix.c_str(), Parameters::kIcpDebugExportFormat().c_str(), _debugExportFormat.c_str(), Parameters::kRtabmapWorkingDirectory().c_str(), _workingDir.c_str());
 				}
 				else //pcd
 				{
-					pcl::io::savePCDFile(fromPrefix+".pcd", *util3d::laserScanToPointCloud2(fromScan, fromScan.localTransform()), Eigen::Vector4f::Zero (), Eigen::Quaternionf::Identity (), true);
-					pcl::io::savePCDFile(toPrefix+".pcd", *util3d::laserScanToPointCloud2(toScan, guess*toScan.localTransform()), Eigen::Vector4f::Zero (), Eigen::Quaternionf::Identity (), true);
-					UWARN("Saved %s.pcd and %s.pcd (%s=\"%s\")", fromPrefix.c_str(), toPrefix.c_str(), Parameters::kIcpDebugExportFormat().c_str(), _debugExportFormat.c_str());
+					pcl::io::savePCDFile(_workingDir+"/"+fromPrefix+".pcd", *util3d::laserScanToPointCloud2(fromScan, fromScan.localTransform()), Eigen::Vector4f::Zero (), Eigen::Quaternionf::Identity (), true);
+					pcl::io::savePCDFile(_workingDir+"/"+toPrefix+".pcd", *util3d::laserScanToPointCloud2(toScan, guess*toScan.localTransform()), Eigen::Vector4f::Zero (), Eigen::Quaternionf::Identity (), true);
+					UWARN("Saved %s.pcd and %s.pcd (%s=\"%s\") to working directory (%s=%s)", fromPrefix.c_str(), toPrefix.c_str(), Parameters::kIcpDebugExportFormat().c_str(), _debugExportFormat.c_str(), Parameters::kRtabmapWorkingDirectory().c_str(), _workingDir.c_str());
 				}
+			}
+			else if(!_debugExportFormat.empty())
+			{
+				UWARN("%s is enabled but %s is not, cannot export debug scans.", Parameters::kIcpDebugExportFormat().c_str(), Parameters::kRtabmapWorkingDirectory().c_str());
 			}
 
 			bool tooLowComplexityForPlaneToPlane = false;
@@ -915,23 +924,23 @@ Transform RegistrationIcp::computeTransformationImpl(
 					{
 						transform = icpT.inverse()*guess;
 
-						if(!_debugExportFormat.empty())
+						if(!_workingDir.empty() && !_debugExportFormat.empty())
 						{
 							toPrefix+="_registered";
 							if(_debugExportFormat.compare("vtk")==0)
 							{
-								pcl::io::saveVTKFile(toPrefix+".vtk", *util3d::laserScanToPointCloud2(toScan, transform*toScan.localTransform()));
-								UWARN("Saved %s.vtk (%s=\"%s\")", toPrefix.c_str(), Parameters::kIcpDebugExportFormat().c_str(), _debugExportFormat.c_str());
+								pcl::io::saveVTKFile(_workingDir+"/"+toPrefix+".vtk", *util3d::laserScanToPointCloud2(toScan, transform*toScan.localTransform()));
+								UWARN("Saved %s/%s.vtk (%s=\"%s\")", _workingDir.c_str(), toPrefix.c_str(), Parameters::kIcpDebugExportFormat().c_str(), _debugExportFormat.c_str());
 							}
 							else if(_debugExportFormat.compare("ply")==0)
 							{
-								pcl::io::savePLYFile(toPrefix+".ply", *util3d::laserScanToPointCloud2(toScan, transform*toScan.localTransform()), Eigen::Vector4f::Zero (), Eigen::Quaternionf::Identity (), true);
-								UWARN("Saved %s.ply (%s=\"%s\")", toPrefix.c_str(), Parameters::kIcpDebugExportFormat().c_str(), _debugExportFormat.c_str());
+								pcl::io::savePLYFile(_workingDir+"/"+toPrefix+".ply", *util3d::laserScanToPointCloud2(toScan, transform*toScan.localTransform()), Eigen::Vector4f::Zero (), Eigen::Quaternionf::Identity (), true);
+								UWARN("Saved %s/%s.ply (%s=\"%s\")", _workingDir.c_str(), toPrefix.c_str(), Parameters::kIcpDebugExportFormat().c_str(), _debugExportFormat.c_str());
 							}
 							else //pcd
 							{
-								pcl::io::savePCDFile(toPrefix+".pcd", *util3d::laserScanToPointCloud2(toScan, transform*toScan.localTransform()), Eigen::Vector4f::Zero (), Eigen::Quaternionf::Identity (), true);
-								UWARN("Saved %s.pcd (%s=\"%s\")", toPrefix.c_str(), Parameters::kIcpDebugExportFormat().c_str(), _debugExportFormat.c_str());
+								pcl::io::savePCDFile(_workingDir+"/"+toPrefix+".pcd", *util3d::laserScanToPointCloud2(toScan, transform*toScan.localTransform()), Eigen::Vector4f::Zero (), Eigen::Quaternionf::Identity (), true);
+								UWARN("Saved %s/%s.pcd (%s=\"%s\")", _workingDir.c_str(), toPrefix.c_str(), Parameters::kIcpDebugExportFormat().c_str(), _debugExportFormat.c_str());
 							}
 						}
 					}
