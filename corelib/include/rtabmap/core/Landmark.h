@@ -59,7 +59,7 @@ public:
         UASSERT_MSG(uIsFinite(covariance_.at<double>(4,4)) && covariance_.at<double>(4,4)>0, uFormat("Angular covariance should not be null! Value=%f (set to 9999 if unknown).", covariance_.at<double>(4,4)).c_str());
         UASSERT_MSG(uIsFinite(covariance_.at<double>(5,5)) && covariance_.at<double>(5,5)>0, uFormat("Angular covariance should not be null! Value=%f (set to 9999 if unknown).", covariance_.at<double>(5,5)).c_str());
     }
-    RTABMAP_DEPRECATED(Landmark(const int & id, const Transform & pose, const cv::Mat & covariance), "Use constructor with size instead.");
+    RTABMAP_DEPRECATED(Landmark(const int & id, const Transform & pose, const cv::Mat & covariance), "Use constructor with size=0 instead.");
 
 	virtual ~Landmark() {}
 

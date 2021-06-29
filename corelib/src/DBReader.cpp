@@ -50,7 +50,8 @@ DBReader::DBReader(const std::string & databasePath,
 				   int startId,
 				   int cameraIndex,
 				   int stopId,
-				   bool intermediateNodesIgnored) :
+				   bool intermediateNodesIgnored,
+				   bool landmarksIgnored) :
 	Camera(frameRate),
 	_paths(uSplit(databasePath, ';')),
 	_odometryIgnored(odometryIgnored),
@@ -60,6 +61,7 @@ DBReader::DBReader(const std::string & databasePath,
 	_stopId(stopId),
 	_cameraIndex(cameraIndex),
 	_intermediateNodesIgnored(intermediateNodesIgnored),
+	_landmarksIgnored(landmarksIgnored),
 	_dbDriver(0),
 	_currentId(_ids.end()),
 	_previousMapId(-1),
@@ -81,7 +83,8 @@ DBReader::DBReader(const std::list<std::string> & databasePaths,
 				   int startId,
 				   int cameraIndex,
 				   int stopId,
-				   bool intermediateNodesIgnored) :
+				   bool intermediateNodesIgnored,
+				   bool landmarksIgnored) :
 	Camera(frameRate),
    _paths(databasePaths),
 	_odometryIgnored(odometryIgnored),
@@ -91,6 +94,7 @@ DBReader::DBReader(const std::list<std::string> & databasePaths,
 	_stopId(stopId),
 	_cameraIndex(cameraIndex),
 	_intermediateNodesIgnored(intermediateNodesIgnored),
+	_landmarksIgnored(landmarksIgnored),
 	_dbDriver(0),
 	_currentId(_ids.end()),
 	_previousMapId(-1),
@@ -402,6 +406,22 @@ SensorData DBReader::getNextData(CameraInfo * info)
 				gravityTransform = gravityLinks.begin()->second.transform();
 			}
 
+			Landmarks landmarks;
+			if(!_landmarksIgnored)
+			{
+				std::multimap<int, Link> landmarkLinks;
+				_dbDriver->loadLinks(*_currentId, landmarkLinks, Link::kLandmark);
+				for(std::multimap<int, Link>::iterator iter=landmarkLinks.begin(); iter!=landmarkLinks.end(); ++iter)
+				{
+					 cv::Mat landmarkSize = iter->second.uncompressUserDataConst();
+					landmarks.insert(std::make_pair(-iter->first,
+							Landmark(-iter->first,
+									!landmarkSize.empty() && landmarkSize.type() == CV_32FC1 && landmarkSize.total()==1?landmarkSize.at<float>(0,0):0.0f,
+									iter->second.transform(),
+									iter->second.infMatrix().inv())));
+				}
+			}
+
 			cv::Mat infMatrix = cv::Mat::eye(6,6,CV_64FC1);
 			if(!_odometryIgnored)
 			{
@@ -523,6 +543,7 @@ SensorData DBReader::getNextData(CameraInfo * info)
 						cv::Vec3d(), cv::Mat(),
 						Transform::getIdentity())); // we assume that gravity links are already transformed in base_link
 			}
+			data.setLandmarks(landmarks);
 
 			UDEBUG("Laser=%d RGB/Left=%d Depth/Right=%d, Grid=%d, UserData=%d, GlobalPose=%d, GPS=%d, IMU=%d",
 					data.laserScanRaw().isEmpty()?0:1,
