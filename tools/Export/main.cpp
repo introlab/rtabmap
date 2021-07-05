@@ -56,7 +56,8 @@ void showUsage()
 	printf("\nUsage:\n"
 			"rtabmap-export [options] database.db\n"
 			"Options:\n"
-			"    --output              Output name (default: name of the database is used).\n"
+			"    --output \"\"           Output name (default: name of the database is used).\n"
+			"    --output_dir \"\"       Output directory (default: same directory than the database).\n"
 			"    --bin                 Export PLY in binary format.\n"
 			"    --las                 Export cloud in LAS instead of PLY (PDAL dependency required).\n"
 			"    --mesh                Create a mesh.\n"
@@ -70,7 +71,7 @@ void showUsage()
 			"    --poses               Export optimized poses of the robot frame (e.g., base_link).\n"
 			"    --poses_camera        Export optimized poses of the camera frame (e.g., optical frame).\n"
 			"    --poses_scan          Export optimized poses of the scan frame.\n"
-			"    --poses_format #      Format used for exported poses (default is 10):\n"
+			"    --poses_format #      Format used for exported poses (default is 11):\n"
 			"                              0=Raw 3x4 transformation matrix (r11 r12 r13 tx r21 r22 r23 ty r31 r32 r33 tz)\n"
 			"                              1=RGBD-SLAM (in motion capture coordinate frame)\n"
 			"                              2=KITTI (same as raw but in optical frame)\n"
@@ -156,6 +157,7 @@ int main(int argc, char * argv[])
 	bool exportImages = false;
 	bool exportImagesId = false;
 	std::string outputName;
+	std::string outputDir;
 	cv::Vec3f min, max;
 	for(int i=1; i<argc; ++i)
 	{
@@ -169,6 +171,18 @@ int main(int argc, char * argv[])
 			if(i<argc-1)
 			{
 				outputName = argv[i];
+			}
+			else
+			{
+				showUsage();
+			}
+		}
+		else if(std::strcmp(argv[i], "--output_dir") == 0)
+		{
+			++i;
+			if(i<argc-1)
+			{
+				outputDir = argv[i];
 			}
 			else
 			{
@@ -658,7 +672,11 @@ int main(int argc, char * argv[])
 		}
 	}
 
-	std::string outputDirectory = UDirectory::getDir(dbPath);
+	std::string outputDirectory = outputDir.empty()?UDirectory::getDir(dbPath):outputDir;
+	if(!UDirectory::exists(outputDirectory))
+	{
+		UDirectory::makeDir(outputDirectory);
+	}
 	std::string baseName = outputName.empty()?uSplit(UFile::getName(dbPath), '.').front():outputName;
 
 	if(ba)
@@ -690,7 +708,6 @@ int main(int argc, char * argv[])
 	std::map<int, std::vector<rtabmap::CameraModel> > cameraModels;
 	std::map<int, cv::Mat> cameraDepths;
 	int imagesExported = 0;
-	bool calibSaved = false;
 	for(std::map<int, Transform>::iterator iter=optimizedPoses.lower_bound(1); iter!=optimizedPoses.end(); ++iter)
 	{
 		Signature node = nodes.find(iter->first)->second;
@@ -746,9 +763,11 @@ int main(int argc, char * argv[])
 
 		if(exportImages && !rgb.empty())
 		{
-			std::string dirSuffix = (depth.type() != CV_16UC1 && depth.type() != CV_32FC1)?"left":"rgb";
+			std::string dirSuffix = (depth.type() != CV_16UC1 && depth.type() != CV_32FC1 && !depth.empty())?"left":"rgb";
 			std::string dir = outputDirectory+"/"+baseName+"_"+dirSuffix;
-			UDirectory::makeDir(dir);
+			if(!UDirectory::exists(dir)) {
+				UDirectory::makeDir(dir);
+			}
 			std::string outputPath=dir+"/"+(exportImagesId?uNumber2Str(iter->first):uFormat("%f",node.getStamp()))+".jpg";
 			cv::imwrite(outputPath, rgb);
 			++imagesExported;
@@ -770,33 +789,39 @@ int main(int argc, char * argv[])
 						depthExported = rtabmap::util2d::cvtDepthFromFloat(depth);
 					}
 				}
-				if(!UDirectory::exists(dir))
-				{
+				if(!UDirectory::exists(dir)) {
 					UDirectory::makeDir(dir);
 				}
 
 				outputPath=dir+"/"+(exportImagesId?uNumber2Str(iter->first):uFormat("%f",node.getStamp()))+ext;
 				cv::imwrite(outputPath, depthExported);
 			}
-			if(!calibSaved)
+
+			// save calibration per image (calibration can change over time, e.g. camera has auto focus)
+			for(size_t i=0; i<models.size(); ++i)
 			{
-				for(size_t i=0; i<models.size(); ++i)
-				{
-					CameraModel model = models[i];
-					if(models.size() > 1) {
-						std::string prefix = model.name();
-						if(prefix.empty())
-							prefix = "camera";
-						model.setName(prefix + "_" + uNumber2Str((int)i));
-					}
-					model.save(outputDirectory);
+				CameraModel model = models[i];
+				std::string modelName = (exportImagesId?uNumber2Str(iter->first):uFormat("%f",node.getStamp()));
+				if(models.size() > 1) {
+					modelName += "_" + uNumber2Str((int)i);
 				}
-				calibSaved = !models.empty();
-				if(node.sensorData().stereoCameraModel().isValidForProjection())
-				{
-					node.sensorData().stereoCameraModel().save(outputDirectory);
-					calibSaved = true;
+				model.setName(modelName);
+				std::string dir = outputDirectory+"/"+baseName+"_calib";
+				if(!UDirectory::exists(dir)) {
+					UDirectory::makeDir(dir);
 				}
+				model.save(dir);
+			}
+			if(node.sensorData().stereoCameraModel().isValidForProjection())
+			{
+				StereoCameraModel model = node.sensorData().stereoCameraModel();
+				std::string modelName = (exportImagesId?uNumber2Str(iter->first):uFormat("%f",node.getStamp()));
+				model.setName(modelName, "left", "right");
+				std::string dir = outputDirectory+"/"+baseName+"_calib";
+				if(!UDirectory::exists(dir)) {
+					UDirectory::makeDir(dir);
+				}
+				node.sensorData().stereoCameraModel().save(dir);
 			}
 		}
 
