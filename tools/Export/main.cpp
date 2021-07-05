@@ -1091,21 +1091,26 @@ int main(int argc, char * argv[])
 				std::string outputPath=outputDirectory+"/"+baseName+"_cloud."+ext;
 				printf("Saving %s... (%d points)\n", outputPath.c_str(), !cloudToExport->empty()?(int)cloudToExport->size():(int)cloudIToExport->size());
 #ifdef RTABMAP_PDAL
-				if(!cloudToExport->empty())
-					savePDALFile(outputPath, *cloudToExport, pointToCamId, binary);
-				else if(!cloudIToExport->empty())
-					savePDALFile(outputPath, *cloudIToExport, pointToCamId, binary);
-#else
-				if(!pointToCamId.empty())
+				if(las || !pointToCamId.empty())
 				{
-					printf("Option --cam_projection is enabled but rtabmap is not built "
-							"with PDAL support, so camera IDs won't be exported in the output cloud.\n");
+					if(!cloudToExport->empty())
+						savePDALFile(outputPath, *cloudToExport, pointToCamId, binary);
+					else if(!cloudIToExport->empty())
+						savePDALFile(outputPath, *cloudIToExport, pointToCamId, binary);
 				}
-				if(!cloudToExport->empty())
-					pcl::io::savePLYFile(outputPath, *cloudToExport, binary);
-				else if(!cloudIToExport->empty())
-					pcl::io::savePLYFile(outputPath, *cloudIToExport, binary);
+				else
 #endif
+				{
+					if(!pointToCamId.empty())
+					{
+						printf("Option --cam_projection is enabled but rtabmap is not built "
+								"with PDAL support, so camera IDs won't be exported in the output cloud.\n");
+					}
+					if(!cloudToExport->empty())
+						pcl::io::savePLYFile(outputPath, *cloudToExport, binary);
+					else if(!cloudIToExport->empty())
+						pcl::io::savePLYFile(outputPath, *cloudIToExport, binary);
+				}
 				printf("Saving %s... done!\n", outputPath.c_str());
 			}
 		}
