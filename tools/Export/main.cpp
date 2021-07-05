@@ -153,7 +153,7 @@ int main(int argc, char * argv[])
 	bool exportPoses = false;
 	bool exportPosesCamera = false;
 	bool exportPosesScan = false;
-	int exportPosesFormat = 10;
+	int exportPosesFormat = 11;
 	bool exportImages = false;
 	bool exportImagesId = false;
 	std::string outputName;
