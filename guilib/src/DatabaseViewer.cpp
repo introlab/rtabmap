@@ -1457,12 +1457,18 @@ void DatabaseViewer::extractImages()
 
 	QString ext = format.split('.').back();
 	bool useStamp = format.split('.').front().compare("timestamp") == 0;
-
+	bool directoriesCreated = false;
 	QString path = QFileDialog::getExistingDirectory(this, tr("Select directory where to save images..."), QDir::homePath());
 	if(!path.isEmpty())
 	{
+		rtabmap::ProgressDialog * progressDialog = new rtabmap::ProgressDialog(this);
+		progressDialog->setAttribute(Qt::WA_DeleteOnClose);
+		progressDialog->setMaximumSteps(ids_.size());
+		progressDialog->setCancelButtonVisible(true);
+		progressDialog->appendText(tr("Saving %1 images to %2...").arg(ids_.size()).arg(path));
+		progressDialog->show();
+
 		int imagesExported = 0;
-		bool calibrationSaved = false;
 		for(int i=0; i<ids_.size(); ++i)
 		{
 			QString id = QString::number(ids_.at(i));
@@ -1471,7 +1477,7 @@ void DatabaseViewer::extractImages()
 			dbDriver_->getNodeData(ids_.at(i), data);
 			data.uncompressData();
 
-			if(!calibrationSaved)
+			if(!directoriesCreated)
 			{
 				//stereo
 				if(!data.imageRaw().empty() && !data.rightRaw().empty())
@@ -1479,40 +1485,8 @@ void DatabaseViewer::extractImages()
 					QDir dir;
 					dir.mkdir(QString("%1/left").arg(path));
 					dir.mkdir(QString("%1/right").arg(path));
-					if(databaseFileName_.empty())
-					{
-						UERROR("Cannot save calibration file, database name is empty!");
-					}
-					else if(data.stereoCameraModel().isValidForProjection())
-					{
-						std::string cameraName = uSplit(databaseFileName_, '.').front();
-						StereoCameraModel model(
-								cameraName,
-								data.imageRaw().size(),
-								data.stereoCameraModel().left().K(),
-								data.stereoCameraModel().left().D(),
-								data.stereoCameraModel().left().R(),
-								data.stereoCameraModel().left().P(),
-								data.rightRaw().size(),
-								data.stereoCameraModel().right().K(),
-								data.stereoCameraModel().right().D(),
-								data.stereoCameraModel().right().R(),
-								data.stereoCameraModel().right().P(),
-								data.stereoCameraModel().R(),
-								data.stereoCameraModel().T(),
-								data.stereoCameraModel().E(),
-								data.stereoCameraModel().F(),
-								data.stereoCameraModel().left().localTransform());
-						if(model.save(path.toStdString()))
-						{
-							calibrationSaved = true;
-							UINFO("Saved stereo calibration \"%s\"", (path.toStdString()+"/"+cameraName).c_str());
-						}
-						else
-						{
-							UERROR("Failed saving calibration \"%s\"", (path.toStdString()+"/"+cameraName).c_str());
-						}
-					}
+					dir.mkdir(QString("%1/calib").arg(path));
+					directoriesCreated = true;
 				}
 				else if(!data.imageRaw().empty())
 				{
@@ -1521,35 +1495,8 @@ void DatabaseViewer::extractImages()
 						QDir dir;
 						dir.mkdir(QString("%1/rgb").arg(path));
 						dir.mkdir(QString("%1/depth").arg(path));
-					}
-
-					if(databaseFileName_.empty())
-					{
-						UERROR("Cannot save calibration file, database name is empty!");
-					}
-					else if(data.cameraModels().size() > 1)
-					{
-						UERROR("Only one camera calibration can be saved at this time (%d detected)", (int)data.cameraModels().size());
-					}
-					else if(data.cameraModels().size() == 1 && data.cameraModels().front().isValidForProjection())
-					{
-						std::string cameraName = uSplit(databaseFileName_, '.').front();
-						CameraModel model(cameraName,
-								data.imageRaw().size(),
-								data.cameraModels().front().K(),
-								data.cameraModels().front().D(),
-								data.cameraModels().front().R(),
-								data.cameraModels().front().P(),
-								data.cameraModels().front().localTransform());
-						if(model.save(path.toStdString()))
-						{
-							calibrationSaved = true;
-							UINFO("Saved calibration \"%s\"", (path.toStdString()+"/"+cameraName).c_str());
-						}
-						else
-						{
-							UERROR("Failed saving calibration \"%s\"", (path.toStdString()+"/"+cameraName).c_str());
-						}
+						dir.mkdir(QString("%1/calib").arg(path));
+						directoriesCreated = true;
 					}
 				}
 			}
@@ -1574,38 +1521,116 @@ void DatabaseViewer::extractImages()
 				}
 			}
 
-			if(!data.imageRaw().empty() && !data.rightRaw().empty())
+			if(!data.imageRaw().empty())
 			{
-				if(!cv::imwrite(QString("%1/left/%2.%3").arg(path).arg(id).arg(ext).toStdString(), data.imageRaw()))
-					UWARN("Failed saving \"%s\"", QString("%1/left/%2.%3").arg(path).arg(id).arg(ext).toStdString().c_str());
-				if(!cv::imwrite(QString("%1/right/%2.%3").arg(path).arg(id).arg(ext).toStdString(), data.rightRaw()))
-					UWARN("Failed saving \"%s\"", QString("%1/right/%2.%3").arg(path).arg(id).arg(ext).toStdString().c_str());
-				UINFO(QString("Saved left/%1.%2 and right/%1.%2").arg(id).arg(ext).toStdString().c_str());
-				++imagesExported;
-			}
-			else if(!data.imageRaw().empty() && !data.depthRaw().empty())
-			{
-				if(!cv::imwrite(QString("%1/rgb/%2.%3").arg(path).arg(id).arg(ext).toStdString(), data.imageRaw()))
-					UWARN("Failed saving \"%s\"", QString("%1/rgb/%2.%3").arg(path).arg(id).arg(ext).toStdString().c_str());
-				if(!cv::imwrite(QString("%1/depth/%2.png").arg(path).arg(id).toStdString(), data.depthRaw().type()==CV_32FC1?util2d::cvtDepthFromFloat(data.depthRaw()):data.depthRaw()))
-					UWARN("Failed saving \"%s\"", QString("%1/depth/%2.png").arg(path).arg(id).toStdString().c_str());
-				UINFO(QString("Saved rgb/%1.%2 and depth/%1.png").arg(id).arg(ext).toStdString().c_str());
-				++imagesExported;
-			}
-			else if(!data.imageRaw().empty())
-			{
-				if(!cv::imwrite(QString("%1/%2.%3").arg(path).arg(id).arg(ext).toStdString(), data.imageRaw()))
-					UWARN("Failed saving \"%s\"", QString("%1/%2.%3").arg(path).arg(id).arg(ext).toStdString().c_str());
-				else
-					UINFO(QString("Saved %1.%2").arg(id).arg(ext).toStdString().c_str());
-				++imagesExported;
-			}
-		}
+				if(!data.rightRaw().empty())
+				{
+					if(!cv::imwrite(QString("%1/left/%2.%3").arg(path).arg(id).arg(ext).toStdString(), data.imageRaw()))
+						UWARN("Failed saving \"%s\"", QString("%1/left/%2.%3").arg(path).arg(id).arg(ext).toStdString().c_str());
+					if(!cv::imwrite(QString("%1/right/%2.%3").arg(path).arg(id).arg(ext).toStdString(), data.rightRaw()))
+						UWARN("Failed saving \"%s\"", QString("%1/right/%2.%3").arg(path).arg(id).arg(ext).toStdString().c_str());
+					UINFO(QString("Saved left/%1.%2 and right/%1.%2").arg(id).arg(ext).toStdString().c_str());
 
-		if(!calibrationSaved)
-		{
-			UWARN("no calibration exported...");
+					if(databaseFileName_.empty())
+					{
+						UERROR("Cannot save calibration file, database name is empty!");
+					}
+					else if(data.stereoCameraModel().isValidForProjection())
+					{
+						std::string cameraName = id.toStdString();
+						StereoCameraModel model(
+								cameraName,
+								data.imageRaw().size(),
+								data.stereoCameraModel().left().K(),
+								data.stereoCameraModel().left().D(),
+								data.stereoCameraModel().left().R(),
+								data.stereoCameraModel().left().P(),
+								data.rightRaw().size(),
+								data.stereoCameraModel().right().K(),
+								data.stereoCameraModel().right().D(),
+								data.stereoCameraModel().right().R(),
+								data.stereoCameraModel().right().P(),
+								data.stereoCameraModel().R(),
+								data.stereoCameraModel().T(),
+								data.stereoCameraModel().E(),
+								data.stereoCameraModel().F(),
+								data.stereoCameraModel().left().localTransform());
+						if(model.save(path.toStdString() + "/calib"))
+						{
+							UINFO("Saved stereo calibration \"%s\"", (path.toStdString()+"/calib/"+cameraName+".yaml").c_str());
+						}
+						else
+						{
+							UERROR("Failed saving calibration \"%s\"", (path.toStdString()+"/calib/"+cameraName+".yaml").c_str());
+						}
+					}
+				}
+				else
+				{
+					if(!data.depthRaw().empty())
+					{
+						if(!cv::imwrite(QString("%1/rgb/%2.%3").arg(path).arg(id).arg(ext).toStdString(), data.imageRaw()))
+							UWARN("Failed saving \"%s\"", QString("%1/rgb/%2.%3").arg(path).arg(id).arg(ext).toStdString().c_str());
+						if(!cv::imwrite(QString("%1/depth/%2.png").arg(path).arg(id).toStdString(), data.depthRaw().type()==CV_32FC1?util2d::cvtDepthFromFloat(data.depthRaw()):data.depthRaw()))
+							UWARN("Failed saving \"%s\"", QString("%1/depth/%2.png").arg(path).arg(id).toStdString().c_str());
+						UINFO(QString("Saved rgb/%1.%2 and depth/%1.png").arg(id).arg(ext).toStdString().c_str());
+					}
+					else
+					{
+						if(!cv::imwrite(QString("%1/%2.%3").arg(path).arg(id).arg(ext).toStdString(), data.imageRaw()))
+							UWARN("Failed saving \"%s\"", QString("%1/%2.%3").arg(path).arg(id).arg(ext).toStdString().c_str());
+						else
+							UINFO(QString("Saved %1.%2").arg(id).arg(ext).toStdString().c_str());
+					}
+
+					if(databaseFileName_.empty())
+					{
+						UERROR("Cannot save calibration file, database name is empty!");
+					}
+					else if(data.cameraModels().size() >= 1 && data.cameraModels().front().isValidForProjection())
+					{
+						for(size_t i=0; i<data.cameraModels().size(); ++i)
+						{
+							std::string cameraName = id.toStdString();
+							if(data.cameraModels().size()>1)
+							{
+								cameraName+="_"+uNumber2Str((int)i);
+							}
+							CameraModel model(cameraName,
+									data.imageRaw().size(),
+									data.cameraModels()[i].K(),
+									data.cameraModels()[i].D(),
+									data.cameraModels()[i].R(),
+									data.cameraModels()[i].P(),
+									data.cameraModels()[i].localTransform());
+							std::string dirPrefix = "";
+							if(!data.depthRaw().empty())
+							{
+								dirPrefix = "/calib";
+							}
+							if(model.save(path.toStdString()+dirPrefix))
+							{
+								UINFO("Saved calibration \"%s\"", (path.toStdString()+dirPrefix+"/"+cameraName+".yaml").c_str());
+							}
+							else
+							{
+								UERROR("Failed saving calibration \"%s\"", (path.toStdString()+"/"+cameraName+".yaml").c_str());
+							}
+						}
+					}
+				}
+				++imagesExported;
+			}
+			progressDialog->incrementStep();
+			QApplication::processEvents();
+			if(progressDialog->isCanceled())
+			{
+				progressDialog->appendText("Cancel!");
+				break;
+			}
 		}
+		progressDialog->appendText("Done!");
+		progressDialog->setValue(progressDialog->maximumSteps());
 
 		QMessageBox::information(this, tr("Exporting"), tr("%1 images exported!").arg(imagesExported));
 	}
