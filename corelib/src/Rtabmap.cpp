@@ -357,19 +357,23 @@ void Rtabmap::init(const ParametersMap & parameters, const std::string & databas
 		{
 			cv::Mat cov;
 			this->optimizeCurrentMap(
-					_optimizeFromGraphEnd?_memory->getWorkingMem().lower_bound(1)->first:_memory->getWorkingMem().rbegin()->first,
+					!_optimizeFromGraphEnd?_memory->getWorkingMem().lower_bound(1)->first:_memory->getWorkingMem().rbegin()->first,
 					false, _optimizedPoses, cov, &_constraints);
 		}
 		if(!_optimizedPoses.empty())
 		{
 			if(_restartAtOrigin)
 			{
-				UINFO("lastPose is ignored (%s=true), assuming we start at the origin of the map.", Parameters::kRGBDStartAtOrigin().c_str());
+				UWARN("last localization pose is ignored (%s=true), assuming we start at the origin of the map.", Parameters::kRGBDStartAtOrigin().c_str());
 				lastPose.setIdentity();
 			}
 			_lastLocalizationPose = lastPose;
 
-			UINFO("Loaded optimizedPoses=%d lastPose=%s", _optimizedPoses.size(), _lastLocalizationPose.prettyPrint().c_str());
+			UINFO("Loaded optimizedPoses=%d firstPose %d=%s lastLocalizationPose=%s",
+					_optimizedPoses.size(),
+					_optimizedPoses.begin()->first,
+					_optimizedPoses.begin()->second.prettyPrint().c_str(),
+					_lastLocalizationPose.prettyPrint().c_str());
 
 			if(_constraints.empty())
 			{
