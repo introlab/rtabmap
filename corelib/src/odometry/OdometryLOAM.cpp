@@ -283,7 +283,7 @@ Transform OdometryLOAM::computeTransform(
 					Transform rot(0,0,1,0,1,0,0,0,0,1,0,0);
 					pcl::PointCloud<pcl::PointXYZI> out;
 					pcl::transformPointCloud(laserMapping_->laserCloudSurroundDS(), out, rot.toEigen3f());
-					info->localScanMap = LaserScan::backwardCompatibility(util3d::laserScanFromPointCloud(out), 0, data.laserScanRaw().rangeMax(), data.laserScanRaw().localTransform());
+					info->localScanMap = LaserScan(util3d::laserScanFromPointCloud(out), 0, data.laserScanRaw().rangeMax(), data.laserScanRaw().localTransform());
 				}
 			}
 		}
