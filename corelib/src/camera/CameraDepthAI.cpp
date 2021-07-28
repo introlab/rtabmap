@@ -65,10 +65,12 @@ CameraDepthAI::CameraDepthAI(
 
 CameraDepthAI::~CameraDepthAI()
 {
+#ifdef RTABMAP_DEPTHAI
 	if(device_.get())
 	{
 		device_->close();
 	}
+#endif
 }
 
 void CameraDepthAI::setOutputDepth(bool enabled, int confidence)
