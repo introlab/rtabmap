@@ -5285,7 +5285,9 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 						compressedUserData));
 	}
 
-	s->setWords(words, wordsKpts, words3D, wordsDescriptors);
+	s->setWords(words, wordsKpts,
+			_reextractLoopClosureFeatures?std::vector<cv::Point3f>():words3D,
+			_reextractLoopClosureFeatures?cv::Mat():wordsDescriptors);
 
 	// set raw data
 	if(!cameraModels.empty())
