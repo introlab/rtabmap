@@ -5172,7 +5172,8 @@ void PreferencesDialog::updateSourceGrpVisibility()
 			(_ui->comboBox_sourceType->currentIndex() == 1 && _ui->comboBox_cameraStereo->currentIndex() == kSrcStereoRealSense2 - kSrcStereo) || //T265
 			(_ui->comboBox_sourceType->currentIndex() == 1 && _ui->comboBox_cameraStereo->currentIndex() == kSrcStereoZed - kSrcStereo) || // ZEDm, ZED2
 			(_ui->comboBox_sourceType->currentIndex() == 1 && _ui->comboBox_cameraStereo->currentIndex() == kSrcStereoMyntEye - kSrcStereo) || // MYNT EYE S
-			(_ui->comboBox_sourceType->currentIndex() == 1 && _ui->comboBox_cameraStereo->currentIndex() == kSrcStereoZedOC - kSrcStereo));
+			(_ui->comboBox_sourceType->currentIndex() == 1 && _ui->comboBox_cameraStereo->currentIndex() == kSrcStereoZedOC - kSrcStereo) ||
+			(_ui->comboBox_sourceType->currentIndex() == 1 && _ui->comboBox_cameraStereo->currentIndex() == kSrcStereoDepthAI - kSrcStereo));
 	_ui->stackedWidget_imuFilter->setVisible(_ui->comboBox_imuFilter_strategy->currentIndex() > 0);
 	_ui->groupBox_madgwickfilter->setVisible(_ui->comboBox_imuFilter_strategy->currentIndex() == 1);
 	_ui->groupBox_complementaryfilter->setVisible(_ui->comboBox_imuFilter_strategy->currentIndex() == 2);

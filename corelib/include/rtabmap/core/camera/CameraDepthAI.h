@@ -69,6 +69,7 @@ protected:
 private:
 #ifdef RTABMAP_DEPTHAI
 	StereoCameraModel stereoModel_;
+	Transform imuLocalTransform_;
 	std::string deviceSerial_;
 	bool outputDepth_;
 	int depthConfidence_;
@@ -76,6 +77,9 @@ private:
 	std::shared_ptr<dai::Device> device_;
 	std::shared_ptr<dai::DataOutputQueue> leftQueue_;
 	std::shared_ptr<dai::DataOutputQueue> rightOrDepthQueue_;
+	std::shared_ptr<dai::DataOutputQueue> imuQueue_;
+	std::map<double, cv::Vec3f> accBuffer_;
+	std::map<double, cv::Vec3f> gyroBuffer_;
 #endif
 };
 

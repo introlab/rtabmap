@@ -81,6 +81,9 @@ endif()
 if(@CONF_VTK_QT@ AND ${WITH_GUI})
    find_package(VTK COMPONENTS vtkGUISupportQt NO_MODULE) # to define vtkGUISupportQt target
 endif(@CONF_VTK_QT@ AND ${WITH_GUI})
+if(@CONF_DEPTH_AI@)
+   FIND_PACKAGE(depthai 2 QUIET REQUIRED)
+endif(@CONF_DEPTH_AI@)
 SET(RTABMap_LIBRARIES ${RTABMap_LIBRARIES} "@CONF_DEPENDENCIES@")
 
 #backward compatibilities

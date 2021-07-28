@@ -65,6 +65,10 @@ CameraDepthAI::CameraDepthAI(
 
 CameraDepthAI::~CameraDepthAI()
 {
+	if(device_.get())
+	{
+		device_->close();
+	}
 }
 
 void CameraDepthAI::setOutputDepth(bool enabled, int confidence)
@@ -80,91 +84,6 @@ void CameraDepthAI::setOutputDepth(bool enabled, int confidence)
 #endif
 }
 
-std::vector<unsigned char> convertCalibration(const StereoCameraModel & stereoModel)
-{
-	UDEBUG("");
-	// Calibration
-	// https://github.com/luxonis/depthai/blob/39852dcb9fe349476c30d0ed90d3750bb2a53e26/depthai_helpers/calibration_utils.py#L97-L109
-	std::vector<unsigned char> data;
-	cv::Mat tmp;
-	int ptr;
-	// R1_fp32
-	stereoModel.left().R().convertTo(tmp, CV_32FC1);
-	ptr = data.size();
-	data.resize(data.size() + tmp.total()*tmp.elemSize());
-	memcpy(data.data()+ptr, tmp.data, tmp.total()*tmp.elemSize());
-
-	// R2_fp32
-	stereoModel.right().R().convertTo(tmp, CV_32FC1);
-	ptr = data.size();
-	data.resize(data.size() + tmp.total()*tmp.elemSize());
-	memcpy(data.data()+ptr, tmp.data, tmp.total()*tmp.elemSize());
-
-	// M1_fp32
-	stereoModel.left().K_raw().convertTo(tmp, CV_32FC1);
-	ptr = data.size();
-	data.resize(data.size() + tmp.total()*tmp.elemSize());
-	memcpy(data.data()+ptr, tmp.data, tmp.total()*tmp.elemSize());
-
-	// M2_fp32
-	stereoModel.right().K_raw().convertTo(tmp, CV_32FC1);
-	ptr = data.size();
-	data.resize(data.size() + tmp.total()*tmp.elemSize());
-	memcpy(data.data()+ptr, tmp.data, tmp.total()*tmp.elemSize());
-
-	// R_fp32
-	stereoModel.R().convertTo(tmp, CV_32FC1);
-	ptr = data.size();
-	data.resize(data.size() + tmp.total()*tmp.elemSize());
-	memcpy(data.data()+ptr, tmp.data, tmp.total()*tmp.elemSize());
-
-	// T_fp32
-	stereoModel.T().convertTo(tmp, CV_32FC1);
-	ptr = data.size();
-	data.resize(data.size() + tmp.total()*tmp.elemSize());
-	memcpy(data.data()+ptr, tmp.data, tmp.total()*tmp.elemSize());
-
-	// M3_fp32
-	tmp = cv::Mat::zeros(3,3,CV_32FC1);
-	ptr = data.size();
-	data.resize(data.size() + tmp.total()*tmp.elemSize());
-	memcpy(data.data()+ptr, tmp.data, tmp.total()*tmp.elemSize());
-
-	// R_rgb_fp32
-	tmp = cv::Mat::eye(3,3,CV_32FC1);
-	ptr = data.size();
-	data.resize(data.size() + tmp.total()*tmp.elemSize());
-	memcpy(data.data()+ptr, tmp.data, tmp.total()*tmp.elemSize());
-
-	// T_rgb_fp32
-	tmp = cv::Mat::zeros(1,3,CV_32FC1);
-	ptr = data.size();
-	data.resize(data.size() + tmp.total()*tmp.elemSize());
-	memcpy(data.data()+ptr, tmp.data, tmp.total()*tmp.elemSize());
-
-	// d1_coeff_fp32
-	stereoModel.left().D_raw().convertTo(tmp, CV_32FC1);
-	ptr = data.size();
-	data.resize(data.size() + tmp.total()*tmp.elemSize());
-	memcpy(data.data()+ptr, tmp.data, tmp.total()*tmp.elemSize());
-	data.resize(data.size() + (14-tmp.total())*sizeof(float), 0); // padding
-
-	// d2_coeff_fp32
-	stereoModel.right().D_raw().convertTo(tmp, CV_32FC1);
-	ptr = data.size();
-	data.resize(data.size() + tmp.total()*tmp.elemSize());
-	memcpy(data.data()+ptr, tmp.data, tmp.total()*tmp.elemSize());
-	data.resize(data.size() + (14-tmp.total())*sizeof(float), 0); // padding
-
-	// d3_coeff_fp32
-	tmp = cv::Mat::zeros(1,14,CV_32FC1);
-	ptr = data.size();
-	data.resize(data.size() + tmp.total()*tmp.elemSize());
-	memcpy(data.data()+ptr, tmp.data, tmp.total()*tmp.elemSize());
-
-	return data;
-}
-
 bool CameraDepthAI::init(const std::string & calibrationFolder, const std::string & cameraName)
 {
 	UDEBUG("");
@@ -175,6 +94,13 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 	{
 		return false;
 	}
+
+	if(device_.get())
+	{
+		device_->close();
+	}
+	accBuffer_.clear();
+	gyroBuffer_.clear();
 
 	dai::DeviceInfo deviceToUse;
 	if(deviceSerial_.empty())
@@ -201,77 +127,21 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 
 	// look for calibration files
 	stereoModel_ = StereoCameraModel();
-	if(!calibrationFolder.empty())
-	{
-		std::string name = cameraName.empty()?deviceSerial_:cameraName;
-		if(!stereoModel_.load(calibrationFolder, name, false))
-		{
-			UWARN("Missing calibration files for camera \"%s\" in \"%s\" folder, you should calibrate the camera!",
-					name.c_str(), calibrationFolder.c_str());
-			outputDepth_ = false;
-		}
-		else
-		{
-			UINFO("Stereo parameters: fx=%f cx=%f cy=%f baseline=%f",
-					stereoModel_.left().fx(),
-					stereoModel_.left().cx(),
-					stereoModel_.left().cy(),
-					stereoModel_.baseline());
-			stereoModel_.setLocalTransform(this->getLocalTransform());
-
-			cv::Size target(resolution_<2?1280:640, resolution_==0?720:resolution_==1?800:400);
-
-			if(stereoModel_.left().imageWidth() != target.width)
-			{
-				//adjust scale if resolution is not the same used than in calibration
-				UWARN("Loaded calibration has different resolution (%dx%d) than "
-					  "the selected device resolution (%dx%d). We will scale the calibration "
-					  "for convenience.",
-					  stereoModel_.left().imageWidth(), stereoModel_.left().imageHeight(),
-					  target.width, target.height);
-				stereoModel_.scale(double(target.width)/double(stereoModel_.left().imageWidth()));
-			}
-
-			if(stereoModel_.left().imageHeight() != target.height)
-			{
-				// Ratio not the same, adjust cy
-				cv::Rect roi(0, (stereoModel_.left().imageHeight()-target.height)/2, target.width, target.height);
-				UWARN("Loaded calibration has different height (%dx%d) than "
-					  "the selected device resolution (%dx%d). We will crop the calibration "
-					  "for convenience.",
-					  stereoModel_.left().imageWidth(), stereoModel_.left().imageHeight(),
-					  target.width, target.height);
-				stereoModel_.roi(roi);
-			}
-
-			if(ULogger::level() <= ULogger::kInfo)
-			{
-				UINFO("Calibration:");
-				std::cout << stereoModel_ << std::endl;
-			}
-		}
-	}
-
-	if(!stereoModel_.isValidForRectification())
-	{
-		UINFO("Disabling outputDepth as no valid calibration has been loaded.");
-		outputDepth_ = false;
-	}
-	else
-	{
-		stereoModel_.initRectificationMap();
-	}
+	cv::Size targetSize(resolution_<2?1280:640, resolution_==0?720:resolution_==1?800:400);
 
 	dai::Pipeline p;
 	auto monoLeft  = p.create<dai::node::MonoCamera>();
 	auto monoRight = p.create<dai::node::MonoCamera>();
 	auto stereo    = p.create<dai::node::StereoDepth>();
+	auto imu       = p.create<dai::node::IMU>();
 	auto xoutLeft = p.create<dai::node::XLinkOut>();
 	auto xoutDepthOrRight = p.create<dai::node::XLinkOut>();
+	auto xoutIMU = p.create<dai::node::XLinkOut>();
 
 	 // XLinkOut
-	xoutLeft->setStreamName(outputDepth_/*stereoModel_.isValidForRectification()*/?"rectified_left":"left");
-	xoutDepthOrRight->setStreamName(outputDepth_?"depth"/*:stereoModel_.isValidForRectification()?"rectified_right"*/:"right");
+	xoutLeft->setStreamName("rectified_left");
+	xoutDepthOrRight->setStreamName(outputDepth_?"depth":"rectified_right");
+	xoutIMU->setStreamName("imu");
 
 	// MonoCamera
 	monoLeft->setResolution((dai::MonoCameraProperties::SensorResolution)resolution_);
@@ -285,9 +155,7 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 	}
 
 	// StereoDepth
-	stereo->setOutputDepth(outputDepth_);
-	stereo->setOutputRectified(stereoModel_.isValidForRectification());
-	stereo->setConfidenceThreshold(depthConfidence_);
+	stereo->initialConfig.setConfidenceThreshold(depthConfidence_);
 	stereo->setRectifyEdgeFillColor(0); // black, to better see the cutout
 	stereo->setRectifyMirrorFrame(false);
 	stereo->setLeftRightCheck(false);
@@ -303,42 +171,55 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 		stereo->rectifiedLeft.link(xoutLeft->input);
 		stereo->depth.link(xoutDepthOrRight->input);
 	}
-	/*else if(stereoModel_.isValidForRectification())
+	else
 	{
 		stereo->rectifiedLeft.link(xoutLeft->input);
 		stereo->rectifiedRight.link(xoutDepthOrRight->input);
-	}*/
-	else
-	{
-		stereo->syncedLeft.link(xoutLeft->input);
-		stereo->syncedRight.link(xoutDepthOrRight->input);
 	}
 
+	// enable ACCELEROMETER_RAW and GYROSCOPE_RAW at 200 hz rate
+	imu->enableIMUSensor({dai::IMUSensor::ACCELEROMETER_RAW, dai::IMUSensor::GYROSCOPE_RAW}, 200);
+	// above this threshold packets will be sent in batch of X, if the host is not blocked and USB bandwidth is available
+	imu->setBatchReportThreshold(1);
+	// maximum number of IMU packets in a batch, if it's reached device will block sending until host can receive it
+	// if lower or equal to batchReportThreshold then the sending is always blocking on device
+	// useful to reduce device's CPU load  and number of lost packets, if CPU load is high on device side due to multiple nodes
+	imu->setMaxBatchReports(10);
 
-	if(stereoModel_.isValidForRectification())
-	{
-		// FIXME: What is the exact format for the calibration stream?
-		//std::vector<unsigned char> data = convertCalibration(stereoModel_);
-		//stereo->loadCalibrationData(data);
-	}
+	// Link plugins IMU -> XLINK
+	imu->out.link(xoutIMU->input);
+
 	device_.reset(new dai::Device(p, deviceToUse));
 
-	UDEBUG("");
-	if(outputDepth_)
-	{
-		leftQueue_ = device_->getOutputQueue("rectified_left", 8, false);
-		rightOrDepthQueue_ = device_->getOutputQueue("depth", 8, false);
-	}
-	else
-	{
-		UDEBUG("");
-		leftQueue_ = device_->getOutputQueue(/*stereoModel_.isValidForRectification()?"rectified_left":*/"left", 8, false);
-		UDEBUG("");
-		rightOrDepthQueue_ = device_->getOutputQueue(/*stereoModel_.isValidForRectification()?"rectified_right":*/"right", 8, false);
-		UDEBUG("");
-	}
+	UINFO("Loading eeprom calibration data");
+	dai::CalibrationHandler calibHandler = device_->readCalibration();
+	std::vector<std::vector<float> > matrix = calibHandler.getCameraIntrinsics(dai::CameraBoardSocket::LEFT, dai::Size2f(targetSize.width, targetSize.height));
+	double fx = matrix[0][0];
+	double fy = matrix[1][1];
+	double cx = matrix[0][2];
+	double cy = matrix[1][2];
+	matrix = calibHandler.getCameraExtrinsics(dai::CameraBoardSocket::RIGHT, dai::CameraBoardSocket::LEFT);
+	double baseline = matrix[0][3]/100.0;
+	UINFO("left: fx=%f fy=%f cx=%f cy=%f baseline=%f", fx, fy, cx, cy, baseline);
+	stereoModel_ = StereoCameraModel(device_->getMxId(), fx, fy, cx, cy, baseline, this->getLocalTransform(), targetSize);
 
-	device_->startPipeline();
+	// Cannot test the following, I get "IMU calibration data is not available on device yet." with my camera
+	//matrix = calibHandler.getImuToCameraExtrinsics(dai::CameraBoardSocket::LEFT);
+	//imuLocalTransform_ = Transform(
+	//		matrix[0][0], matrix[0][1], matrix[0][2], matrix[0][3],
+	//		matrix[1][0], matrix[1][1], matrix[1][2], matrix[1][3],
+	//		matrix[2][0], matrix[2][1], matrix[2][2], matrix[2][3]);
+	// Hard-coded acc: x->left, y->up, z->forward
+	// Hard-coded gyro: x->down, y->left, z->forward
+	imuLocalTransform_ = Transform(
+			0, 0, 1, 0,
+			1, 0, 0, 0,
+			0 ,1, 0, 0);
+	UINFO("IMU local transform = %s", imuLocalTransform_.prettyPrint().c_str());
+
+	leftQueue_ = device_->getOutputQueue("rectified_left", 8, false);
+	rightOrDepthQueue_ = device_->getOutputQueue(outputDepth_?"depth":"rectified_right", 8, false);
+	imuQueue_ = device_->getOutputQueue("imu", 50, false);
 
 	uSleep(2000); // avoid bad frames on start
 
@@ -374,6 +255,7 @@ SensorData CameraDepthAI::captureImage(CameraInfo * info)
 	cv::Mat left, depthOrRight;
 	auto rectifL = leftQueue_->get<dai::ImgFrame>();
 	auto rectifRightOrDepth = rightOrDepthQueue_->get<dai::ImgFrame>();
+
 	if(rectifL.get() && rectifRightOrDepth.get())
 	{
 		auto stampLeft = rectifL->getTimestamp().time_since_epoch().count();
@@ -399,9 +281,140 @@ SensorData CameraDepthAI::captureImage(CameraInfo * info)
 				data = SensorData(left, depthOrRight, stereoModel_.left(), this->getNextSeqID(), stamp);
 			}
 
-			if(stampLeft != stampRight)
+			if(fabs(double(stampLeft)/10e8 - double(stampRight)/10e8) >= 0.0001) //0.1 ms
 			{
 				UWARN("Frames are not synchronized! %f vs %f", double(stampLeft)/10e8, double(stampRight)/10e8);
+			}
+
+			//get imu
+			int added=  0;
+			while(1)
+			{
+				auto imuData = imuQueue_->get<dai::IMUData>();
+
+				auto imuPackets = imuData->packets;
+				double accStamp = 0.0;
+				double gyroStamp = 0.0;
+				for(auto& imuPacket : imuPackets) {
+					auto& acceleroValues = imuPacket.acceleroMeter;
+					auto& gyroValues = imuPacket.gyroscope;
+
+					accStamp = double(acceleroValues.timestamp.get().time_since_epoch().count())/10e8;
+					gyroStamp = double(gyroValues.timestamp.get().time_since_epoch().count())/10e8;
+					accBuffer_.insert(accBuffer_.end(), std::make_pair(accStamp, cv::Vec3f(acceleroValues.x, acceleroValues.y, acceleroValues.z)));
+					gyroBuffer_.insert(gyroBuffer_.end(), std::make_pair(gyroStamp, cv::Vec3f(gyroValues.x, gyroValues.y, gyroValues.z)));
+					if(accBuffer_.size() > 1000)
+					{
+						accBuffer_.erase(accBuffer_.begin());
+					}
+					if(gyroBuffer_.size() > 1000)
+					{
+						gyroBuffer_.erase(gyroBuffer_.begin());
+					}
+					++added;
+				}
+				if(accStamp >= stamp && gyroStamp >= stamp)
+				{
+					break;
+				}
+			}
+
+			cv::Vec3d acc, gyro;
+			bool valid = !accBuffer_.empty() && !gyroBuffer_.empty();
+			//acc
+			if(!accBuffer_.empty())
+			{
+				std::map<double, cv::Vec3f>::const_iterator iterB = accBuffer_.lower_bound(stamp);
+				std::map<double, cv::Vec3f>::const_iterator iterA = iterB;
+				if(iterA != accBuffer_.begin())
+				{
+					iterA = --iterA;
+				}
+				if(iterB == accBuffer_.end())
+				{
+					iterB = --iterB;
+				}
+				if(iterA == iterB && stamp == iterA->first)
+				{
+					acc[0] = iterA->second[0];
+					acc[1] = iterA->second[1];
+					acc[2] = iterA->second[2];
+				}
+				else if(stamp >= iterA->first && stamp <= iterB->first)
+				{
+					float t = (stamp-iterA->first) / (iterB->first-iterA->first);
+					acc[0] = iterA->second[0] + t*(iterB->second[0] - iterA->second[0]);
+					acc[1] = iterA->second[1] + t*(iterB->second[1] - iterA->second[1]);
+					acc[2] = iterA->second[2] + t*(iterB->second[2] - iterA->second[2]);
+				}
+				else
+				{
+					valid = false;
+					if(stamp < iterA->first)
+					{
+						UWARN("Could not find acc data to interpolate at image time %f (earliest is %f). Are sensors synchronized?", stamp, iterA->first);
+					}
+					else if(stamp > iterB->first)
+					{
+						UWARN("Could not find acc data to interpolate at image time %f (latest is %f). Are sensors synchronized?", stamp, iterB->first);
+					}
+					else
+					{
+						UWARN("Could not find acc data to interpolate at image time %f (between %f and %f). Are sensors synchronized?", stamp, iterA->first, iterB->first);
+					}
+				}
+			}
+			//gyro
+			if(!gyroBuffer_.empty())
+			{
+				std::map<double, cv::Vec3f>::const_iterator iterB = gyroBuffer_.lower_bound(stamp);
+				std::map<double, cv::Vec3f>::const_iterator iterA = iterB;
+				if(iterA != gyroBuffer_.begin())
+				{
+					iterA = --iterA;
+				}
+				if(iterB == gyroBuffer_.end())
+				{
+					iterB = --iterB;
+				}
+				if(iterA == iterB && stamp == iterA->first)
+				{
+					gyro[0] = iterA->second[0];
+					gyro[1] = iterA->second[1];
+					gyro[2] = iterA->second[2];
+				}
+				else if(stamp >= iterA->first && stamp <= iterB->first)
+				{
+					float t = (stamp-iterA->first) / (iterB->first-iterA->first);
+					gyro[0] = iterA->second[0] + t*(iterB->second[0] - iterA->second[0]);
+					gyro[1] = iterA->second[1] + t*(iterB->second[1] - iterA->second[1]);
+					gyro[2] = iterA->second[2] + t*(iterB->second[2] - iterA->second[2]);
+				}
+				else
+				{
+					valid = false;
+					if(stamp < iterA->first)
+					{
+						UWARN("Could not find gyro data to interpolate at image time %f (earliest is %f). Are sensors synchronized?", stamp, iterA->first);
+					}
+					else if(stamp > iterB->first)
+					{
+						UWARN("Could not find gyro data to interpolate at image time %f (latest is %f). Are sensors synchronized?", stamp, iterB->first);
+					}
+					else
+					{
+						UWARN("Could not find gyro data to interpolate at image time %f (between %f and %f). Are sensors synchronized?", stamp, iterA->first, iterB->first);
+					}
+				}
+				// Rotate gyro frame (x->down, y->left, z->forward) in acc frame (x->left, y->up, z->forward)
+				double tmp = gyro[0];
+				gyro[0] = gyro[1];
+				gyro[1] = -tmp;
+			}
+
+			if(valid)
+			{
+				data.setIMU(IMU(gyro, cv::Mat::eye(3, 3, CV_64FC1), acc, cv::Mat::eye(3, 3, CV_64FC1), imuLocalTransform_));
 			}
 		}
 	}

@@ -344,8 +344,8 @@ ENDIF(mynteye_FOUND)
 IF(depthai_FOUND)
 	SET(LIBRARIES
 		${LIBRARIES}
-		depthai::depthai-core
-		depthai::depthai-opencv
+		depthai::core
+		depthai::opencv
 	)
 ENDIF(depthai_FOUND)
 
