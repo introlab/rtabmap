@@ -68,6 +68,7 @@ void showUsage()
 			"    --texture_depth_error # Maximum depth error between reprojected mesh and depth image to texture a face (-1=disabled, 0=edge length is used, default=0).\n"
 			"    --texture_d2c         Distance to camera policy.\n"
 			"    --cam_projection      Camera projection on assembled cloud and export node ID on each point (in PointSourceId field).\n"
+			"    --cam_projection_keep_all  Keep not colored points from cameras (node ID will be 0 and color will be red).\n"
 			"    --poses               Export optimized poses of the robot frame (e.g., base_link).\n"
 			"    --poses_camera        Export optimized poses of the camera frame (e.g., optical frame).\n"
 			"    --poses_scan          Export optimized poses of the scan frame.\n"
@@ -150,6 +151,7 @@ int main(int argc, char * argv[])
 	int lowBrightnessGain = 0;
 	int highBrightnessGain = 10;
 	bool camProjection = false;
+	bool camProjectionKeepAll = false;
 	bool exportPoses = false;
 	bool exportPosesCamera = false;
 	bool exportPosesScan = false;
@@ -266,6 +268,10 @@ int main(int argc, char * argv[])
 		else if(std::strcmp(argv[i], "--cam_projection") == 0)
 		{
 			camProjection = true;
+		}
+		else if(std::strcmp(argv[i], "--cam_projection_keep_all") == 0)
+		{
+			camProjectionKeepAll = true;
 		}
 		else if(std::strcmp(argv[i], "--poses") == 0)
 		{
@@ -1063,6 +1069,14 @@ int main(int argc, char * argv[])
 					int exportedId = nodeID;
 					pointToCamId[oi] = exportedId;
 					assembledCloudValidPoints->at(oi++) = pt;
+				}
+				else if(camProjectionKeepAll)
+				{
+					pointToCamId[oi] = 0; // invalid
+					pt.b = 0;
+					pt.g = 0;
+					pt.r = 255;
+					assembledCloudValidPoints->at(oi++) = pt; // red
 				}
 			}
 
