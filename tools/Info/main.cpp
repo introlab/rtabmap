@@ -141,7 +141,7 @@ int main(int argc, char * argv[])
 	HANDLE H = GetStdHandle(STD_OUTPUT_HANDLE);
 #endif
 	int padding = 35;
-	std::cout << ("Parameters (Yellow=modified, Red=old parameter not used anymore):\n");
+	std::cout << ("Parameters (Yellow=modified, Red=old parameter not used anymore, NA=not in database):\n");
 	for(ParametersMap::iterator iter=parameters.begin(); iter!=parameters.end(); ++iter)
 	{
 		ParametersMap::const_iterator jter = defaultParameters.find(iter->first);
@@ -197,7 +197,7 @@ int main(int argc, char * argv[])
 				std::cout << (uFormat("%s%s\n", pad(iter->first + "=", padding).c_str(), iter->second.c_str()));
 			}
 		}
-		else if(!defaultValueSet && otherDatabasePath.empty())
+		else if(!defaultValueSet)
 		{
 			//red
 #ifdef _WIN32
@@ -205,7 +205,7 @@ int main(int argc, char * argv[])
 #else
 			printf("%s", COLOR_RED);
 #endif
-			std::cout << (uFormat("%s%s\n", pad(iter->first + "=", padding).c_str(), iter->second.c_str()));
+			std::cout << (uFormat("%s%s  (%s=NA)\n", pad(iter->first + "=", padding).c_str(), iter->second.c_str(), otherDatabasePath.empty()?"default":otherDatabasePathName.c_str()));
 		}
 		else if(!diff)
 		{
@@ -222,6 +222,27 @@ int main(int argc, char * argv[])
 #else
 		printf("%s", COLOR_NORMAL);
 #endif
+	}
+
+	for(ParametersMap::iterator iter=defaultParameters.begin(); iter!=defaultParameters.end(); ++iter)
+	{
+		ParametersMap::const_iterator jter = parameters.find(iter->first);
+		if(jter == parameters.end())
+		{
+			//red
+#ifdef _WIN32
+			SetConsoleTextAttribute(H,COLOR_RED);
+#else
+			printf("%s", COLOR_RED);
+#endif
+			std::cout << (uFormat("%sNA  (%s=\"%s\")\n", pad(iter->first + "=", padding).c_str(), otherDatabasePath.empty()?"default":otherDatabasePathName.c_str(), iter->second.c_str()));
+		
+#ifdef _WIN32
+			SetConsoleTextAttribute(H,COLOR_NORMAL);
+#else
+			printf("%s", COLOR_NORMAL);
+#endif
+		}
 	}
 
 	if(otherDatabasePath.empty())
