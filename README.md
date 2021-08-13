@@ -1,4 +1,4 @@
-rtabmap ![Analytics](https://ga-beacon-279122.nn.r.appspot.com/UA-56986679-3/github-main?pixel) 
+rtabmap ![.](https://ga-beacon-279122.nn.r.appspot.com/UA-56986679-3/github-main?pixel) 
 =======
 
 [![RTAB-Map Logo](https://raw.githubusercontent.com/introlab/rtabmap/master/guilib/src/images/RTAB-Map100.png)](http://introlab.github.io/rtabmap)
