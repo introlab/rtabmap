@@ -62,7 +62,7 @@ void showUsage()
 			"    --las                 Export cloud in LAS instead of PLY (PDAL dependency required).\n"
 			"    --mesh                Create a mesh.\n"
 			"    --texture             Create a mesh with texture.\n"
-			"    --texture_size  #     Texture size (default 4096).\n"
+			"    --texture_size  #     Texture size 1024, 2048, 4096, 8192, 16384 (default 8192).\n"
 			"    --texture_count #     Maximum textures generated (default 1).\n"
 			"    --texture_range #     Maximum camera range for texturing a polygon (default 0 meters: no limit).\n"
 			"    --texture_depth_error # Maximum depth error between reprojected mesh and depth image to texture a face (-1=disabled, 0=edge length is used, default=0).\n"
@@ -89,10 +89,17 @@ void showUsage()
 			"    --no_clean            Disable cleaning colorless polygons.\n"
 			"    --low_gain      #     Low brightness gain 0-100 (default 0).\n"
 			"    --high_gain     #     High brightness gain 0-100 (default 10).\n"
-			"    --multiband           Enable multiband texturing (AliceVision dependency required).\n"
+			"    --multiband               Enable multiband texturing (AliceVision dependency required).\n"
+			"    --multiband_downscale #   Downscaling reduce the texture quality but speed up the computation time (default 2).\n"
+			"    --multiband_unwrap #      Method to unwrap input mesh: 0=basic (default, >600k faces, fast), 1=LSCM (<=600k faces, optimize space), 2=ABF (<=300k faces, generate 1 atlas).\n"
+			"    --multiband_fillholes     Fill Texture holes with plausible values.\n"
+			"    --multiband_padding #     Texture edge padding size in pixel (0-100) (default 5).\n"
+			"    --multiband_scorethr #    0 to disable filtering based on threshold to relative best score (0.0-1.0). (default 0.1).\n"
+			"    --multiband_anglethr #    0 to disable angle hard threshold filtering (0.0, 180.0) (default 90.0).\n"
+			"    --multiband_forcevisible  Triangle visibility is based on the union of vertices visibility.\n"
 			"    --poisson_depth #     Set Poisson depth for mesh reconstruction.\n"
 			"    --poisson_size  #     Set target polygon size when computing Poisson's depth for mesh reconstruction (default 0.03 m).\n"
-			"    --max_polygons  #     Maximum polygons when creating a mesh (default 500000, set 0 for no limit).\n"
+			"    --max_polygons  #     Maximum polygons when creating a mesh (default 300000, set 0 for no limit).\n"
 			"    --max_range     #     Maximum range of the created clouds (default 4 m, 0 m with --scan).\n"
 			"    --decimation    #     Depth image decimation before creating the clouds (default 4, 1 with --scan).\n"
 			"    --voxel         #     Voxel size of the created clouds (default 0.01 m, 0 m with --scan).\n"
@@ -133,18 +140,25 @@ int main(int argc, char * argv[])
 	bool doClean = true;
 	int poissonDepth = 0;
 	float poissonSize = 0.03;
-	int maxPolygons = 500000;
+	int maxPolygons = 300000;
 	int decimation = -1;
 	float maxRange = -1.0f;
 	float voxelSize = -1.0f;
 	float noiseRadius = 0.0f;
 	int noiseMinNeighbors = 5;
-	int textureSize = 4096;
+	int textureSize = 8192;
 	int textureCount = 1;
 	int textureRange = 0;
 	float textureDepthError = 0;
 	bool distanceToCamPolicy = false;
 	bool multiband = false;
+	int multibandDownScale = 2;
+	int multibandUnwrap = 0;
+	bool multibandFillHoles = false;
+	int multibandPadding = 5;
+	double multibandBestScoreThr = 0.1;
+	double multibandAngleHardthr = 90;
+	bool multibandForceVisible = false;
 	float colorRadius = -1.0f;
 	bool cloudFromScan = false;
 	bool saveInDb = false;
@@ -342,6 +356,74 @@ int main(int argc, char * argv[])
 #else
 			printf("\"--multiband\" option cannot be used because RTAB-Map is not built with AliceVision support. Ignoring multiband...\n");
 #endif
+		}
+		else if(std::strcmp(argv[i], "--multiband_fillholes") == 0)
+		{
+			multibandFillHoles = true;
+		}
+		else if(std::strcmp(argv[i], "--multiband_downscale") == 0)
+		{
+			++i;
+			if(i<argc-1)
+			{
+				multibandDownScale = uStr2Int(argv[i]);
+			}
+			else
+			{
+				showUsage();
+			}
+		}
+		else if(std::strcmp(argv[i], "--multiband_unwrap") == 0)
+		{
+			++i;
+			if(i<argc-1)
+			{
+				multibandUnwrap = uStr2Int(argv[i]);
+			}
+			else
+			{
+				showUsage();
+			}
+		}
+		else if(std::strcmp(argv[i], "--multiband_padding") == 0)
+		{
+			++i;
+			if(i<argc-1)
+			{
+				multibandPadding = uStr2Int(argv[i]);
+			}
+			else
+			{
+				showUsage();
+			}
+		}
+		else if(std::strcmp(argv[i], "--multiband_forcevisible") == 0)
+		{
+			multibandForceVisible = true;
+		}
+		else if(std::strcmp(argv[i], "--multiband_scorethr") == 0)
+		{
+			++i;
+			if(i<argc-1)
+			{
+				multibandBestScoreThr = uStr2Float(argv[i]);
+			}
+			else
+			{
+				showUsage();
+			}
+		}
+		else if(std::strcmp(argv[i], "--multiband_anglethr") == 0)
+		{
+			++i;
+			if(i<argc-1)
+			{
+				multibandAngleHardthr = uStr2Float(argv[i]);
+			}
+			else
+			{
+				showUsage();
+			}
 		}
 		else if(std::strcmp(argv[i], "--poisson_depth") == 0)
 		{
@@ -1166,7 +1248,10 @@ int main(int argc, char * argv[])
 
 			if(mesh->polygons.size())
 			{
-				printf("Mesh color transfer...\n");
+				printf("Mesh color transfer (max polygons=%d, color radius=%f, clean=%s)...\n",
+						maxPolygons,
+						colorRadius,
+						doClean?"true":"false");
 				rtabmap::util3d::denseMeshPostProcessing<pcl::PointXYZRGBNormal>(
 						mesh,
 						0.0f,
@@ -1313,7 +1398,16 @@ int main(int argc, char * argv[])
 						{
 							timer.restart();
 							std::string outputPath=outputDirectory+"/"+baseName+"_mesh_multiband.obj";
-							printf("MultiBand texturing... \"%s\"\n", outputPath.c_str());
+							printf("MultiBand texturing (size=%d, downscale=%d, unwrap method=%s, fill holes=%s, padding=%d, best score thr=%f, angle thr=%f, force visible=%s)... \"%s\"\n",
+									textureSize,
+									multibandDownScale,
+									multibandUnwrap==2?"ABF":multibandUnwrap==1?"LSCM":"Basic",
+									multibandFillHoles?"true":"false",
+									multibandPadding,
+									multibandBestScoreThr,
+									multibandAngleHardthr,
+									multibandForceVisible?"false":"true",
+									outputPath.c_str());
 							if(util3d::multiBandTexturing(outputPath,
 									textureMesh->cloud,
 									textureMesh->tex_polygons[0],
@@ -1324,11 +1418,18 @@ int main(int argc, char * argv[])
 									rtabmap.getMemory(),
 									0,
 									textureSize,
+									multibandDownScale,
 									"jpg",
 									gains,
 									blendingGains,
 									contrastValues,
-									doGainCompensationRGB))
+									doGainCompensationRGB,
+									multibandUnwrap,
+									multibandFillHoles,
+									multibandPadding,
+									multibandBestScoreThr,
+									multibandAngleHardthr,
+									multibandForceVisible))
 							{
 								printf("MultiBand texturing...done (%fs).\n", timer.ticks());
 							}

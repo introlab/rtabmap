@@ -253,7 +253,7 @@ cv::Mat RTABMAP_EXP mergeTextures(
 
 void RTABMAP_EXP fixTextureMeshForVisualization(pcl::TextureMesh & textureMesh);
 
-bool RTABMAP_EXP multiBandTexturing(
+RTABMAP_DEPRECATED(bool RTABMAP_EXP multiBandTexturing(
 		const std::string & outputOBJPath,
 		const pcl::PCLPointCloud2 & cloud,
 		const std::vector<pcl::Vertices> & polygons,
@@ -268,7 +268,56 @@ bool RTABMAP_EXP multiBandTexturing(
 		const std::map<int, std::map<int, cv::Vec4d> > & gains = std::map<int, std::map<int, cv::Vec4d> >(),       // optional output of util3d::mergeTextures()
 		const std::map<int, std::map<int, cv::Mat> > & blendingGains = std::map<int, std::map<int, cv::Mat> >(),   // optional output of util3d::mergeTextures()
 		const std::pair<float, float> & contrastValues = std::pair<float, float>(0,0),                             // optional output of util3d::mergeTextures()
-		bool gainRGB = true);
+		bool gainRGB = true), "Use the same method with 22 parameters instead.");
+
+/**
+ * Texture mesh with AliceVision's multiband texturing approach. See also https://meshroom-manual.readthedocs.io/en/bibtex1/node-reference/nodes/Texturing.html.
+ * @param outputOBJPath Output OBJ path
+ * @param cloud input Cloud of the mesh.
+ * @param polygons Input polygons of the mesh.
+ * @param cameraPoses Poses of the cameras.
+ * @param vertexToPixels Output from {@link #createTextureMesh()}.
+ * @param images Images corresponding to cameraPoses, raw or compressed, can be empty if memory or dbDriver should be used.
+ * @param cameraModels Camera calibrations corresponding to cameraPoses.
+ * @param memory Should be set if images and dbDriver are not set.
+ * @param dbDriver Should be set if images and memory are not set.
+ * @param textureSize Output texture size 1024, 2048, 4096, 8192, 16384.
+ * @param textureDownscale Downscaling to 4 or 8 will reduce the texture quality but speed up the computation time. Set Texture Downscale to 1 instead of 2 to get the maximum possible resolution with the resolution of your images. The output texture size will be divided by this value, e.g., with texture size of 8192 and downscale value of 2, the output will be 4096.
+ * @param textureFormat Output texture format: "png" or "jpg".
+ * @param gains Optional output of {@link #mergeTextures()}.
+ * @param blendingGains Optional output of {@link #mergeTextures()}.
+ * @param contrastValues Optional output of {@link #mergeTextures()}.
+ * @param gainRGB Apply gain compensation on each RGB channels separately, otherwise it is apply equally to all channels.
+ * @param unwrapMethod Method to unwrap input mesh if it does not have UV coordinates Basic (> 600k faces) fast and simple. Can generate multiple atlases LSCM (<= 600k faces): optimize space. Generates one atlas ABF (<= 300k faces): optimize space and stretch. Generates one atlas.
+ * @param fillHoles Fill Texture holes with plausible values True/False.
+ * @param padding Texture edge padding size in pixel (0-100).
+ * @param bestScoreThreshold 0.0 to disable filtering based on threshold to relative best score (0.0-1.0).
+ * @param angleHardThreshold 0.0 to disable angle hard threshold filtering (0.0, 180.0).
+ * @param forceVisibleByAllVertices Triangle visibility is based on the union of vertices visibility.
+ */
+bool RTABMAP_EXP multiBandTexturing(
+		const std::string & outputOBJPath,
+		const pcl::PCLPointCloud2 & cloud,
+		const std::vector<pcl::Vertices> & polygons,
+		const std::map<int, Transform> & cameraPoses,
+		const std::vector<std::map<int, pcl::PointXY> > & vertexToPixels,
+		const std::map<int, cv::Mat> & images,
+		const std::map<int, std::vector<CameraModel> > & cameraModels,
+		const Memory * memory = 0,
+		const DBDriver * dbDriver = 0,
+		unsigned int textureSize = 8192,
+		unsigned int textureDownscale = 2,
+		const std::string & textureFormat = "jpg",
+		const std::map<int, std::map<int, cv::Vec4d> > & gains = std::map<int, std::map<int, cv::Vec4d> >(),
+		const std::map<int, std::map<int, cv::Mat> > & blendingGains = std::map<int, std::map<int, cv::Mat> >(),
+		const std::pair<float, float> & contrastValues = std::pair<float, float>(0,0),
+		bool gainRGB = true,
+		unsigned int unwrapMethod = 0,
+		bool fillHoles = false,
+		unsigned int padding = 5,
+		double bestScoreThreshold = 0.1,
+		double angleHardThreshold = 90.0,
+		bool forceVisibleByAllVertices = false);
 
 cv::Mat RTABMAP_EXP computeNormals(
 		const cv::Mat & laserScan,

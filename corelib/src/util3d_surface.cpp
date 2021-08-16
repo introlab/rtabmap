@@ -2231,6 +2231,50 @@ bool multiBandTexturing(
 		const std::pair<float, float> & contrastValues,               // optional output of util3d::mergeTextures()
 		bool gainRGB)
 {
+	return multiBandTexturing(
+			outputOBJPath,
+			cloud,
+			polygons,
+			cameraPoses,
+			vertexToPixels,
+			images,
+			cameraModels,
+			memory,
+			dbDriver,
+			textureSize,
+			2,
+			textureFormat,
+			gains,
+			blendingGains,
+			contrastValues,
+			gainRGB);
+}
+
+bool multiBandTexturing(
+		const std::string & outputOBJPath,
+		const pcl::PCLPointCloud2 & cloud,
+		const std::vector<pcl::Vertices> & polygons,
+		const std::map<int, Transform> & cameraPoses,
+		const std::vector<std::map<int, pcl::PointXY> > & vertexToPixels,
+		const std::map<int, cv::Mat> & images,
+		const std::map<int, std::vector<CameraModel> > & cameraModels,
+		const Memory * memory,
+		const DBDriver * dbDriver,
+		unsigned int textureSize,
+		unsigned int textureDownScale,
+		const std::string & textureFormat,
+		const std::map<int, std::map<int, cv::Vec4d> > & gains,
+		const std::map<int, std::map<int, cv::Mat> > & blendingGains,
+		const std::pair<float, float> & contrastValues,
+		bool gainRGB,
+		unsigned int unwrapMethod,
+		bool fillHoles,
+		unsigned int padding,
+		double bestScoreThreshold,
+		double angleHardThreshold,
+		bool forceVisibleByAllVertices)
+{
+
 #ifdef RTABMAP_ALICE_VISION
 	if(ULogger::level() == ULogger::kDebug)
 	{
@@ -2265,8 +2309,14 @@ bool multiBandTexturing(
 	texturing.pointsVisibilities = new mesh::PointsVisibility();
 	texturing.pointsVisibilities->reserve(cloud2.size());
 #endif
-	texturing.texParams.textureSide = 8192;
-	texturing.texParams.downscale = 8192/textureSize;
+	texturing.texParams.textureSide = textureSize;
+	texturing.texParams.downscale = textureDownScale;
+	texturing.texParams.padding = padding;
+	texturing.texParams.fillHoles = fillHoles;
+	texturing.texParams.bestScoreThreshold = bestScoreThreshold;
+	texturing.texParams.angleHardThreshold = angleHardThreshold;
+	texturing.texParams.forceVisibleByAllVertices = forceVisibleByAllVertices;
+
 
 	for(size_t i=0;i<cloud2.size();++i)
 	{
@@ -2457,7 +2507,7 @@ bool multiBandTexturing(
 	mvsUtils::MultiViewParams mp(sfmData);
 
 	UINFO("Unwrapping...");
-	texturing.unwrap(mp, mesh::EUnwrapMethod::Basic);
+	texturing.unwrap(mp, (mesh::EUnwrapMethod)unwrapMethod);
 	UINFO("Unwrapping done. %fs", timer.ticks());
 
 	// save final obj file
