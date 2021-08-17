@@ -334,7 +334,7 @@ int main(int argc, char * argv[])
 			if(i<argc-1)
 			{
 				gainValue = uStr2Float(argv[i]);
-				UASSERT(gainValue>0.0f);
+				UASSERT(gainValue>=0.0f);
 			}
 			else
 			{
