@@ -813,6 +813,10 @@ public:
 			Verbose::SetTh(Verbose::VERBOSITY_QUIET);
 #endif
 
+		// Reset all static variables
+		Frame::mbInitialComputations = true;
+		mpTracker->Reset(true);
+
 		return true;
 	}
 

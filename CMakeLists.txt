@@ -1306,7 +1306,7 @@ ENDIF()
 
 IF(CCCoreLib_FOUND)
 MESSAGE(STATUS "  With CCCoreLib            = YES (License: GPLv2)")
-ELSEIF(NOT WITH_POINTMATCHER)
+ELSEIF(NOT WITH_CCCORELIB)
 MESSAGE(STATUS "  With CCCoreLib            = NO (WITH_CCCORELIB=OFF)")
 ELSE()
 MESSAGE(STATUS "  With CCCoreLib            = NO (CCCoreLib not found)")
