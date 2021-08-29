@@ -1757,6 +1757,7 @@ void DatabaseViewer::updateIds()
 	uSleep(100);
 	QApplication::processEvents();
 
+	int lastValidNodeId = 0;
 	for(int i=0; i<ids_.size(); ++i)
 	{
 		idToIndex_.insert(ids_[i], i);
@@ -1772,6 +1773,10 @@ void DatabaseViewer::updateIds()
 		dbDriver_->getNodeInfo(ids_[i], p, mapId, w, l, s, g, v, gps, sensors);
 		mapIds_.insert(std::make_pair(ids_[i], mapId));
 		weights_.insert(std::make_pair(ids_[i], w));
+		if(w>=0)
+		{
+			lastValidNodeId = ids_[i];
+		}
 		if(wmStates.find(ids_[i]) != wmStates.end())
 		{
 			wmStates_.insert(std::make_pair(ids_[i], wmStates.at(ids_[i])));
@@ -1982,6 +1987,38 @@ void DatabaseViewer::updateIds()
 				ui_->spinBox_optimizationsFrom->setValue(odomPoses_.begin()->first);
 				ui_->label_optimizeFrom->setText(tr("Root [%1, %2]").arg(odomPoses_.begin()->first).arg(odomPoses_.rbegin()->first));
 			}
+		}
+
+		if(lastValidNodeId>0)
+		{
+			// find full connected graph from last node in working memory
+			Optimizer * optimizer = Optimizer::create(ui_->parameters_toolbox->getParameters());
+
+			std::map<int, rtabmap::Transform> posesOut;
+			std::multimap<int, rtabmap::Link> linksOut;
+			UINFO("Get connected graph from %d (%d poses, %d links)", lastValidNodeId, (int)odomPoses_.size(), (int)links_.size());
+			optimizer->getConnectedGraph(
+					lastValidNodeId,
+					odomPoses_,
+					links_,
+					posesOut,
+					linksOut);
+
+			if(!posesOut.empty())
+			{
+				bool optimizeFromGraphEnd = Parameters::defaultRGBDOptimizeFromGraphEnd();
+				Parameters::parse(ui_->parameters_toolbox->getParameters(), Parameters::kRGBDOptimizeFromGraphEnd(), optimizeFromGraphEnd);
+				if(optimizeFromGraphEnd)
+				{
+					ui_->spinBox_optimizationsFrom->setValue(posesOut.rbegin()->first);
+				}
+				else
+				{
+					ui_->spinBox_optimizationsFrom->setValue(posesOut.upper_bound(1)->first);
+				}
+			}
+
+			delete optimizer;
 		}
 	}
 
