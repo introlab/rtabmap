@@ -240,7 +240,7 @@ Transform OdometryF2F::computeTransform(
 		{
 			UDEBUG("Update key frame");
 			int features = newFrame.getWordsDescriptors().rows;
-			if(!refFrame_.sensorData().isValid())
+			if(!refFrame_.sensorData().isValid() || (features==0 && registrationPipeline_->isImageRequired()))
 			{
 				newFrame = Signature(data);
 				// this will generate features only for the first frame or if optical flow was used (no 3d words)
