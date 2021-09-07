@@ -601,71 +601,72 @@ pcl::texture_mapping::CameraVector createTextureCameras(
 		const std::map<int, cv::Mat> & cameraDepths,
 		const std::vector<float> & roiRatios)
 {
-	UASSERT_MSG(poses.size() == cameraModels.size(), uFormat("%d vs %d", (int)poses.size(), (int)cameraModels.size()).c_str());
 	UASSERT(roiRatios.empty() || roiRatios.size() == 4);
 	pcl::texture_mapping::CameraVector cameras;
-	std::map<int, Transform>::const_iterator poseIter=poses.begin();
-	std::map<int, std::vector<CameraModel> >::const_iterator modelIter=cameraModels.begin();
-	for(; poseIter!=poses.end(); ++poseIter, ++modelIter)
+
+	for(std::map<int, Transform>::const_iterator poseIter=poses.begin(); poseIter!=poses.end(); ++poseIter)
 	{
-		UASSERT(poseIter->first == modelIter->first);
+		std::map<int, std::vector<CameraModel> >::const_iterator modelIter=cameraModels.find(poseIter->first);
 
-		std::map<int, cv::Mat>::const_iterator depthIter = cameraDepths.find(poseIter->first);
-
-		// for each sub camera
-		for(unsigned int i=0; i<modelIter->second.size(); ++i)
+		if(modelIter!=cameraModels.end())
 		{
-			pcl::TextureMapping<pcl::PointXYZ>::Camera cam;
-			// should be in camera frame
-			UASSERT(!modelIter->second[i].localTransform().isNull() && !poseIter->second.isNull());
-			Transform t = poseIter->second*modelIter->second[i].localTransform();
+			std::map<int, cv::Mat>::const_iterator depthIter = cameraDepths.find(poseIter->first);
 
-			cam.pose = t.toEigen3f();
-
-			if(modelIter->second[i].imageHeight() <=0 || modelIter->second[i].imageWidth() <=0)
+			// for each sub camera
+			for(unsigned int i=0; i<modelIter->second.size(); ++i)
 			{
-				UERROR("Should have camera models with width/height set to create texture cameras!");
-				return pcl::texture_mapping::CameraVector();
-			}
+				pcl::TextureMapping<pcl::PointXYZ>::Camera cam;
+				// should be in camera frame
+				UASSERT(!modelIter->second[i].localTransform().isNull() && !poseIter->second.isNull());
+				Transform t = poseIter->second*modelIter->second[i].localTransform();
 
-			UASSERT(modelIter->second[i].fx()>0 && modelIter->second[i].imageHeight()>0 && modelIter->second[i].imageWidth()>0);
-			cam.focal_length_w=modelIter->second[i].fx();
-			cam.focal_length_h=modelIter->second[i].fy();
-			cam.center_w=modelIter->second[i].cx();
-			cam.center_h=modelIter->second[i].cy();
-			cam.height=modelIter->second[i].imageHeight();
-			cam.width=modelIter->second[i].imageWidth();
-			if(modelIter->second.size() == 1)
-			{
-				cam.texture_file = uFormat("%d", poseIter->first); // camera index
-			}
-			else
-			{
-				cam.texture_file = uFormat("%d_%d", poseIter->first, (int)i); // camera index, sub camera model index
-			}
-			if(!roiRatios.empty())
-			{
-				cam.roi.resize(4);
-				cam.roi[0] = cam.width * roiRatios[0]; // left -> x
-				cam.roi[1] = cam.height * roiRatios[2]; // top -> y
-				cam.roi[2] = cam.width * (1.0 - roiRatios[1]) - cam.roi[0]; // right -> width
-				cam.roi[3] = cam.height * (1.0 - roiRatios[3]) - cam.roi[1]; // bottom -> height
-			}
+				cam.pose = t.toEigen3f();
 
-			if(depthIter != cameraDepths.end() && !depthIter->second.empty())
-			{
-				UASSERT(depthIter->second.type() == CV_32FC1 || depthIter->second.type() == CV_16UC1);
-				UASSERT(depthIter->second.cols % modelIter->second.size() == 0);
-				int subWidth = depthIter->second.cols/(modelIter->second.size());
-				cam.depth = cv::Mat(depthIter->second, cv::Range(0, depthIter->second.rows), cv::Range(subWidth*i, subWidth*(i+1)));
+				if(modelIter->second[i].imageHeight() <=0 || modelIter->second[i].imageWidth() <=0)
+				{
+					UERROR("Should have camera models with width/height set to create texture cameras!");
+					return pcl::texture_mapping::CameraVector();
+				}
+
+				UASSERT(modelIter->second[i].fx()>0 && modelIter->second[i].imageHeight()>0 && modelIter->second[i].imageWidth()>0);
+				cam.focal_length_w=modelIter->second[i].fx();
+				cam.focal_length_h=modelIter->second[i].fy();
+				cam.center_w=modelIter->second[i].cx();
+				cam.center_h=modelIter->second[i].cy();
+				cam.height=modelIter->second[i].imageHeight();
+				cam.width=modelIter->second[i].imageWidth();
+				if(modelIter->second.size() == 1)
+				{
+					cam.texture_file = uFormat("%d", poseIter->first); // camera index
+				}
+				else
+				{
+					cam.texture_file = uFormat("%d_%d", poseIter->first, (int)i); // camera index, sub camera model index
+				}
+				if(!roiRatios.empty())
+				{
+					cam.roi.resize(4);
+					cam.roi[0] = cam.width * roiRatios[0]; // left -> x
+					cam.roi[1] = cam.height * roiRatios[2]; // top -> y
+					cam.roi[2] = cam.width * (1.0 - roiRatios[1]) - cam.roi[0]; // right -> width
+					cam.roi[3] = cam.height * (1.0 - roiRatios[3]) - cam.roi[1]; // bottom -> height
+				}
+
+				if(depthIter != cameraDepths.end() && !depthIter->second.empty())
+				{
+					UASSERT(depthIter->second.type() == CV_32FC1 || depthIter->second.type() == CV_16UC1);
+					UASSERT(depthIter->second.cols % modelIter->second.size() == 0);
+					int subWidth = depthIter->second.cols/(modelIter->second.size());
+					cam.depth = cv::Mat(depthIter->second, cv::Range(0, depthIter->second.rows), cv::Range(subWidth*i, subWidth*(i+1)));
+				}
+
+				UDEBUG("%f", cam.focal_length);
+				UDEBUG("%f", cam.height);
+				UDEBUG("%f", cam.width);
+				UDEBUG("cam.pose=%s", t.prettyPrint().c_str());
+
+				cameras.push_back(cam);
 			}
-
-			UDEBUG("%f", cam.focal_length);
-			UDEBUG("%f", cam.height);
-			UDEBUG("%f", cam.width);
-			UDEBUG("cam.pose=%s", t.prettyPrint().c_str());
-
-			cameras.push_back(cam);
 		}
 	}
 	return cameras;
