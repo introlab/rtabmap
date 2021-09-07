@@ -143,14 +143,40 @@ int savePDALFile(const std::string & filePath,
 int savePDALFile(const std::string & filePath,
 		const pcl::PointCloud<pcl::PointXYZRGB> & cloud,
 		const std::vector<int> & cameraIds,
-		bool binary)
+		bool binary,
+		const std::vector<float> & intensities)
 {
 	UASSERT_MSG(cameraIds.empty() || cameraIds.size() == cloud.size(),
 			uFormat("cameraIds=%d cloud=%d", (int)cameraIds.size(), (int)cloud.size()).c_str());
+	UASSERT_MSG(intensities.empty() || intensities.size() == cloud.size(),
+				uFormat("intensities=%d cloud=%d", (int)intensities.size(), (int)cloud.size()).c_str());
 
 	pdal::PointTable table;
 
-	if(!cameraIds.empty())
+	if(!intensities.empty() && !cameraIds.empty())
+	{
+		table.layout()->registerDims({
+			pdal::Dimension::Id::X,
+			pdal::Dimension::Id::Y,
+			pdal::Dimension::Id::Z,
+			pdal::Dimension::Id::Red,
+			pdal::Dimension::Id::Green,
+			pdal::Dimension::Id::Blue,
+			pdal::Dimension::Id::PointSourceId,
+			pdal::Dimension::Id::Intensity});
+	}
+	else if(!intensities.empty())
+	{
+		table.layout()->registerDims({
+			pdal::Dimension::Id::X,
+			pdal::Dimension::Id::Y,
+			pdal::Dimension::Id::Z,
+			pdal::Dimension::Id::Red,
+			pdal::Dimension::Id::Green,
+			pdal::Dimension::Id::Blue,
+			pdal::Dimension::Id::Intensity});
+	}
+	else if(!cameraIds.empty())
 	{
 		table.layout()->registerDims({
 			pdal::Dimension::Id::X,
@@ -186,6 +212,10 @@ int savePDALFile(const std::string & filePath,
 		{
 			view->setField(pdal::Dimension::Id::PointSourceId, i, cameraIds.at(i));
 		}
+		if(!intensities.empty())
+		{
+			view->setField(pdal::Dimension::Id::Intensity, i, (unsigned short)intensities.at(i));
+		}
 	}
 	bufferReader.addView(view);
 
@@ -219,14 +249,46 @@ int savePDALFile(const std::string & filePath,
 int savePDALFile(const std::string & filePath,
 		const pcl::PointCloud<pcl::PointXYZRGBNormal> & cloud,
 		const std::vector<int> & cameraIds,
-		bool binary)
+		bool binary,
+		const std::vector<float> & intensities)
 {
 	UASSERT_MSG(cameraIds.empty() || cameraIds.size() == cloud.size(),
 			uFormat("cameraIds=%d cloud=%d", (int)cameraIds.size(), (int)cloud.size()).c_str());
+	UASSERT_MSG(intensities.empty() || intensities.size() == cloud.size(),
+			uFormat("intensities=%d cloud=%d", (int)intensities.size(), (int)cloud.size()).c_str());
 
 	pdal::PointTable table;
 
-	if(!cameraIds.empty())
+	if(!intensities.empty() && !cameraIds.empty())
+	{
+		table.layout()->registerDims({
+			pdal::Dimension::Id::X,
+			pdal::Dimension::Id::Y,
+			pdal::Dimension::Id::Z,
+			pdal::Dimension::Id::Red,
+			pdal::Dimension::Id::Green,
+			pdal::Dimension::Id::Blue,
+			pdal::Dimension::Id::NormalX,
+			pdal::Dimension::Id::NormalY,
+			pdal::Dimension::Id::NormalZ,
+			pdal::Dimension::Id::PointSourceId,
+			pdal::Dimension::Id::Intensity});
+	}
+	else if(!intensities.empty())
+	{
+		table.layout()->registerDims({
+			pdal::Dimension::Id::X,
+			pdal::Dimension::Id::Y,
+			pdal::Dimension::Id::Z,
+			pdal::Dimension::Id::Red,
+			pdal::Dimension::Id::Green,
+			pdal::Dimension::Id::Blue,
+			pdal::Dimension::Id::NormalX,
+			pdal::Dimension::Id::NormalY,
+			pdal::Dimension::Id::NormalZ,
+			pdal::Dimension::Id::Intensity});
+	}
+	else if(!cameraIds.empty())
 	{
 		table.layout()->registerDims({
 			pdal::Dimension::Id::X,
@@ -270,6 +332,10 @@ int savePDALFile(const std::string & filePath,
 		if(!cameraIds.empty())
 		{
 			view->setField(pdal::Dimension::Id::PointSourceId, i, cameraIds.at(i));
+		}
+		if(!intensities.empty())
+		{
+			view->setField(pdal::Dimension::Id::Intensity, i, (unsigned short)intensities.at(i));
 		}
 	}
 	bufferReader.addView(view);

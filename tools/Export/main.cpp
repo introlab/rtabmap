@@ -1057,6 +1057,7 @@ int main(int argc, char * argv[])
 		}
 
 		std::vector<int> pointToCamId;
+		std::vector<float> pointToCamIntensity;
 		if(camProjection && !robotPoses.empty())
 		{
 			printf("Camera projection...\n");
@@ -1083,6 +1084,7 @@ int main(int argc, char * argv[])
 						0,
 						std::vector<float>(),
 						distanceToCamPolicy);
+				pointToCamIntensity.resize(pointToPixel.size());
 			}
 
 			// color the cloud
@@ -1095,6 +1097,7 @@ int main(int argc, char * argv[])
 			for(size_t i=0; i<pointToPixel.size(); ++i)
 			{
 				pcl::PointXYZRGBNormal pt;
+				float intensity = 0;
 				if(!cloudToExport->empty())
 				{
 					pt = cloudToExport->at(i);
@@ -1107,6 +1110,7 @@ int main(int argc, char * argv[])
 					pt.normal_x = cloudIToExport->at(i).normal_x;
 					pt.normal_y = cloudIToExport->at(i).normal_y;
 					pt.normal_z = cloudIToExport->at(i).normal_z;
+					intensity = cloudIToExport->at(i).intensity;
 				}
 				int nodeID = pointToPixel[i].first.first;
 				int cameraIndex = pointToPixel[i].first.second;
@@ -1150,6 +1154,10 @@ int main(int argc, char * argv[])
 
 					int exportedId = nodeID;
 					pointToCamId[oi] = exportedId;
+					if(!pointToCamIntensity.empty())
+					{
+						pointToCamIntensity[oi] = intensity;
+					}
 					assembledCloudValidPoints->at(oi++) = pt;
 				}
 				else if(camProjectionKeepAll)
@@ -1158,6 +1166,10 @@ int main(int argc, char * argv[])
 					pt.b = 0;
 					pt.g = 0;
 					pt.r = 255;
+					if(!pointToCamIntensity.empty())
+					{
+						pointToCamIntensity[oi] = intensity;
+					}
 					assembledCloudValidPoints->at(oi++) = pt; // red
 				}
 			}
@@ -1166,6 +1178,10 @@ int main(int argc, char * argv[])
 			cloudToExport = assembledCloudValidPoints;
 			cloudIToExport->clear();
 			pointToCamId.resize(oi);
+			if(!pointToCamIntensity.empty())
+			{
+				pointToCamIntensity.resize(oi);
+			}
 
 			printf("Camera projection... done! (%fs)\n", timer.ticks());
 		}
@@ -1187,10 +1203,19 @@ int main(int argc, char * argv[])
 				std::string outputPath=outputDirectory+"/"+baseName+"_cloud."+ext;
 				printf("Saving %s... (%d points)\n", outputPath.c_str(), !cloudToExport->empty()?(int)cloudToExport->size():(int)cloudIToExport->size());
 #ifdef RTABMAP_PDAL
-				if(las || !pointToCamId.empty())
+				if(las || !pointToCamId.empty() || !pointToCamIntensity.empty())
 				{
 					if(!cloudToExport->empty())
-						savePDALFile(outputPath, *cloudToExport, pointToCamId, binary);
+					{
+						if(!pointToCamIntensity.empty())
+						{
+							savePDALFile(outputPath, *cloudToExport, pointToCamId, binary, pointToCamIntensity);
+						}
+						else
+						{
+							savePDALFile(outputPath, *cloudToExport, pointToCamId, binary);
+						}
+					}
 					else if(!cloudIToExport->empty())
 						savePDALFile(outputPath, *cloudIToExport, pointToCamId, binary);
 				}
@@ -1199,8 +1224,16 @@ int main(int argc, char * argv[])
 				{
 					if(!pointToCamId.empty())
 					{
-						printf("Option --cam_projection is enabled but rtabmap is not built "
-								"with PDAL support, so camera IDs won't be exported in the output cloud.\n");
+						if(!pointToCamIntensity.empty())
+						{
+							printf("Option --cam_projection is enabled but rtabmap is not built "
+									"with PDAL support, so camera IDs and lidar intensities won't be exported in the output cloud.\n");
+						}
+						else
+						{
+							printf("Option --cam_projection is enabled but rtabmap is not built "
+									"with PDAL support, so camera IDs won't be exported in the output cloud.\n");
+						}
 					}
 					if(!cloudToExport->empty())
 						pcl::io::savePLYFile(outputPath, *cloudToExport, binary);

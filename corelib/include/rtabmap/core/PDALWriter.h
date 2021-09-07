@@ -36,8 +36,8 @@ namespace rtabmap {
 std::string getPDALSupportedWriters();
 
 int savePDALFile(const std::string & filePath, const pcl::PointCloud<pcl::PointXYZ> & cloud,          const std::vector<int> & cameraIds = std::vector<int>(), bool binary = false);
-int savePDALFile(const std::string & filePath, const pcl::PointCloud<pcl::PointXYZRGB> & cloud,       const std::vector<int> & cameraIds = std::vector<int>(), bool binary = false);
-int savePDALFile(const std::string & filePath, const pcl::PointCloud<pcl::PointXYZRGBNormal> & cloud, const std::vector<int> & cameraIds = std::vector<int>(), bool binary = false);
+int savePDALFile(const std::string & filePath, const pcl::PointCloud<pcl::PointXYZRGB> & cloud,       const std::vector<int> & cameraIds = std::vector<int>(), bool binary = false, const std::vector<float> & intensities = std::vector<float>());
+int savePDALFile(const std::string & filePath, const pcl::PointCloud<pcl::PointXYZRGBNormal> & cloud, const std::vector<int> & cameraIds = std::vector<int>(), bool binary = false, const std::vector<float> & intensities = std::vector<float>());
 int savePDALFile(const std::string & filePath, const pcl::PointCloud<pcl::PointXYZI> & cloud,         const std::vector<int> & cameraIds = std::vector<int>(), bool binary = false);
 int savePDALFile(const std::string & filePath, const pcl::PointCloud<pcl::PointXYZINormal> & cloud,   const std::vector<int> & cameraIds = std::vector<int>(), bool binary = false);
 
