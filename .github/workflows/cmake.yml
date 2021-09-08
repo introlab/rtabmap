@@ -53,7 +53,9 @@ jobs:
 
     - name: Info
       working-directory: ${{github.workspace}}/bin
-      run: ./rtabmap-console --version
+      run: |
+        source /opt/ros/${{ matrix.ros_distro }}/setup.bash
+        ./rtabmap-console --version
 
 #    - name: Test
 #      working-directory: ${{github.workspace}}/build
