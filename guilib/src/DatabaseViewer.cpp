@@ -1775,7 +1775,14 @@ void DatabaseViewer::updateIds()
 		weights_.insert(std::make_pair(ids_[i], w));
 		if(w>=0)
 		{
-			lastValidNodeId = ids_[i];
+			for(std::multimap<int, Link>::iterator iter=links.find(ids_[i]); iter!=links.end() && iter->first==ids_[i]; ++iter)
+			{
+				// Make compatible with old databases, when "weight=-1" was not yet introduced to identify ignored nodes
+				if(iter->second.type() == Link::kNeighbor || iter->second.type() == Link::kNeighborMerged)
+				{
+					lastValidNodeId = ids_[i];
+				}
+			}
 		}
 		if(wmStates.find(ids_[i]) != wmStates.end())
 		{
@@ -2007,14 +2014,14 @@ void DatabaseViewer::updateIds()
 			if(!posesOut.empty())
 			{
 				bool optimizeFromGraphEnd = Parameters::defaultRGBDOptimizeFromGraphEnd();
-				Parameters::parse(ui_->parameters_toolbox->getParameters(), Parameters::kRGBDOptimizeFromGraphEnd(), optimizeFromGraphEnd);
+				Parameters::parse(dbDriver_->getLastParameters(), Parameters::kRGBDOptimizeFromGraphEnd(), optimizeFromGraphEnd);
 				if(optimizeFromGraphEnd)
 				{
 					ui_->spinBox_optimizationsFrom->setValue(posesOut.rbegin()->first);
 				}
 				else
 				{
-					ui_->spinBox_optimizationsFrom->setValue(posesOut.upper_bound(1)->first);
+					ui_->spinBox_optimizationsFrom->setValue(posesOut.lower_bound(1)->first);
 				}
 			}
 
