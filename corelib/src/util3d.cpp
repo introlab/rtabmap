@@ -2868,8 +2868,6 @@ std::vector<std::pair< std::pair<int, int>, pcl::PointXY> > projectCloudToCamera
 		{
 			for(size_t i=0; i<iter->second.size(); ++i)
 			{
-				UWARN("%d/%d: %s %s", pter->first, i, pter->second.prettyPrint().c_str(), iter->second[i].localTransform().prettyPrint().c_str());
-
 				Transform cameraTransform = (pter->second * iter->second[i].localTransform());
 				UASSERT(!cameraTransform.isNull());
 				cv::Mat cameraMatrixK = iter->second[i].K();
