@@ -51,6 +51,10 @@ jobs:
       # Build your program with the given configuration
       run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
 
+    - name: Info
+      working-directory: ${{github.workspace}}/bin
+      run: ./rtabmap-console --version
+
 #    - name: Test
 #      working-directory: ${{github.workspace}}/build
 #      # Execute tests defined by the CMake configuration.  
