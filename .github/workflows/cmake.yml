@@ -28,17 +28,16 @@ jobs:
           ros_distro: 'melodic'
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: ros-tooling/setup-ros@v0.2
+      with:
+        required-ros-distributions: ${{ matrix.ros_distro }}
+    - uses: ros-tooling/action-ros-ci@v0.2
+      with:
+        package-name: ros-${{ matrix.ros_distro }}-rtabmap-ros
+        target-ros1-distro: ${{ matrix.ros_distro }}
 
-    - name: Install dependencies
-      run: |
-        sudo sh -c 'echo "deb http://packages.ros.org/ros/ubuntu $(lsb_release -sc) main" > /etc/apt/sources.list.d/ros-latest.list'
-        wget http://packages.ros.org/ros.key -O - | sudo apt-key add -
-        sudo apt-get update
-        sudo apt-get update && sudo apt-get install dpkg
-        sudo apt-get -y install ros-${{ matrix.ros_distro }}-rtabmap-ros
-        sudo apt-get -y remove ros-${{ matrix.ros_distro }}-rtabmap
-        source /opt/ros/${{ matrix.ros_distro }}/setup.bash
+    - name: Post-install dependencies
+      run: sudo apt-get -y remove ros-${{ matrix.ros_distro }}-rtabmap
 
     - name: Configure CMake
       # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
