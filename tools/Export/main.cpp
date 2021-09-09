@@ -771,17 +771,7 @@ int main(int argc, char * argv[])
 	{
 		printf("Global bundle adjustment...\n");
 		OptimizerG2O g2o(parameters);
-		std::map<int, cv::Point3f> points3DMap;
-		std::map<int, std::map<int, FeatureBA> > wordReferences;
-		g2o.computeBACorrespondences(optimizedPoses, links, nodes, points3DMap, wordReferences, true);
-		std::map<int, rtabmap::CameraModel> cameraSingleModels;
-		for(std::map<int, Transform>::iterator iter=optimizedPoses.lower_bound(1); iter!=optimizedPoses.end(); ++iter)
-		{
-			Signature node = nodes.find(iter->first)->second;
-			UASSERT(node.sensorData().cameraModels().size()==1);
-			cameraSingleModels.insert(std::make_pair(iter->first, node.sensorData().cameraModels().front()));
-		}
-		optimizedPoses = g2o.optimizeBA(optimizedPoses.begin()->first, optimizedPoses, links, cameraSingleModels, points3DMap, wordReferences);
+		optimizedPoses = ((Optimizer*)&g2o)->optimizeBA(optimizedPoses.lower_bound(1)->first, optimizedPoses, links, nodes, true);
 		printf("Global bundle adjustment... done (%fs).\n", timer.ticks());
 	}
 
