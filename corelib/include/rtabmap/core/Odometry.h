@@ -54,7 +54,8 @@ public:
 		kTypeLOAM = 7,
 		kTypeMSCKF = 8,
 		kTypeVINS = 9,
-		kTypeOpenVINS = 10
+		kTypeOpenVINS = 10,
+		kTypeFLOAM = 11
 	};
 
 public:

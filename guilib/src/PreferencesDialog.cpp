@@ -1246,9 +1246,9 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 
 	//Odometry
 	_ui->odom_strategy->setObjectName(Parameters::kOdomStrategy().c_str());
-	connect(_ui->odom_strategy, SIGNAL(currentIndexChanged(int)), _ui->stackedWidget_odometryType, SLOT(setCurrentIndex(int)));
+	connect(_ui->odom_strategy, SIGNAL(currentIndexChanged(int)), this, SLOT(updateOdometryStackedIndex(int)));
 	_ui->odom_strategy->setCurrentIndex(Parameters::defaultOdomStrategy());
-	_ui->stackedWidget_odometryType->setCurrentIndex(Parameters::defaultOdomStrategy());
+	updateOdometryStackedIndex(Parameters::defaultOdomStrategy());
 	_ui->odom_countdown->setObjectName(Parameters::kOdomResetCountdown().c_str());
 	_ui->odom_holonomic->setObjectName(Parameters::kOdomHolonomic().c_str());
 	_ui->odom_fillInfoData->setObjectName(Parameters::kOdomFillInfoData().c_str());
@@ -4911,6 +4911,18 @@ void PreferencesDialog::updateFeatureMatchingVisibility()
 {
 	_ui->groupBox_pymatcher->setVisible(_ui->reextract_nn->currentIndex() == 6);
 	_ui->groupBox_gms->setVisible(_ui->reextract_nn->currentIndex() == 7);
+}
+
+void PreferencesDialog::updateOdometryStackedIndex(int index)
+{
+	if(index == 11) // FLOAM -> LOAM
+	{
+		_ui->stackedWidget_odometryType->setCurrentIndex(7);
+	}
+	else
+	{
+		_ui->stackedWidget_odometryType->setCurrentIndex(index);
+	}
 }
 
 void PreferencesDialog::useOdomFeatures()

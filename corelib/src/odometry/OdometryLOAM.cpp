@@ -34,8 +34,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/util3d.h"
 #include <pcl/common/transforms.h>
 
-float SCAN_PERIOD = 0.1f;
-
 namespace rtabmap {
 
 /**
@@ -177,7 +175,7 @@ std::vector<pcl::PointCloud<pcl::PointXYZI> > OdometryLOAM::segmentScanRings(con
 		}
 
 		// calculate relative scan time based on point orientation
-		float relTime = SCAN_PERIOD * (ori - startOri) / (endOri - startOri);
+		float relTime = scanPeriod_ * (ori - startOri) / (endOri - startOri);
 		point.intensity = scanID + relTime;
 
 		// imu not used...

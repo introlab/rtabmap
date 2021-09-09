@@ -314,7 +314,7 @@ void CloudViewer::createMenu()
 	_aSetNormalsScale = new QAction("Set normals scale...", this);
 	_aSetIntensityRedColormap = new QAction("Red/Yellow Colormap", this);
 	_aSetIntensityRedColormap->setCheckable(true);
-	_aSetIntensityRedColormap->setChecked(false);
+	_aSetIntensityRedColormap->setChecked(true);
 	_aSetIntensityRainbowColormap = new QAction("Rainbow Colormap", this);
 	_aSetIntensityRainbowColormap->setCheckable(true);
 	_aSetIntensityRainbowColormap->setChecked(false);

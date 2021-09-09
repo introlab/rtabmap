@@ -63,7 +63,7 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>0</y>
+            <y>-727</y>
             <width>686</width>
             <height>3905</height>
            </rect>
@@ -95,7 +95,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>12</number>
+                <number>19</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,1">
@@ -13790,6 +13790,11 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                           <string>OpenVINS</string>
                          </property>
                         </item>
+                        <item>
+                         <property name="text">
+                          <string>FLOAM</string>
+                         </property>
+                        </item>
                        </widget>
                       </item>
                       <item row="2" column="1">
@@ -14093,7 +14098,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                     <item>
                      <widget class="QStackedWidget" name="stackedWidget_odometryType">
                       <property name="currentIndex">
-                       <number>10</number>
+                       <number>7</number>
                       </property>
                       <widget class="QWidget" name="page_52">
                        <layout class="QVBoxLayout" name="verticalLayout_77">
@@ -16267,13 +16272,13 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         <item>
                          <widget class="QGroupBox" name="groupBox_odomLOAM">
                           <property name="title">
-                           <string>LOAM</string>
+                           <string>LOAM - FLOAM</string>
                           </property>
                           <layout class="QVBoxLayout" name="verticalLayout_129" stretch="0,1">
                            <item>
                             <widget class="QLabel" name="label_472">
                              <property name="text">
-                              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;LOAM: &lt;a href=&quot;https://github.com/laboshinl/loam_velodyne&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;https://github.com/laboshinl/loam_velodyne&lt;/span&gt;&lt;/a&gt;&lt;/p&gt;&lt;p&gt;Velodyne input required. Currently tested only with KITTI data set and with pull request #66.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;LOAM: &lt;a href=&quot;https://github.com/laboshinl/loam_velodyne&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;https://github.com/laboshinl/loam_velodyne&lt;/span&gt;&lt;/a&gt;&lt;/p&gt;&lt;p&gt;Velodyne input required. Currently tested only with KITTI data set.&lt;/p&gt;&lt;p&gt;FLOAM: &lt;a href=&quot;https://github.com/wh200720041/floam&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;https://github.com/wh200720041/floam&lt;/span&gt;&lt;/a&gt;&lt;/p&gt;&lt;p&gt;Other remapped parameters for FLOAM:&lt;ul&gt;&lt;li&gt;Icp/VoxelSize -&amp;gt; Resolution of the map&lt;/li&gt;&lt;li&gt;Icp/RangeMax (Max distance: set to 200 if 0)&lt;/li&gt;&lt;li&gt;Icp/RangeMin (Min distance)&lt;/li&gt;&lt;/p&gt;&lt;/ul&gt;&lt;/body&gt;&lt;/html&gt;</string>
                              </property>
                              <property name="wordWrap">
                               <bool>true</bool>

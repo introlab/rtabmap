@@ -89,6 +89,7 @@ SET(SRC_FILES
     odometry/OdometryOkvis.cpp
     odometry/OdometryORBSLAM.cpp
     odometry/OdometryLOAM.cpp
+    odometry/OdometryFLOAM.cpp
     odometry/OdometryMSCKF.cpp
     odometry/OdometryVINS.cpp
     odometry/OdometryOpenVINS.cpp
@@ -488,6 +489,17 @@ IF(loam_velodyne_FOUND)
 		${loam_velodyne_LIBRARIES}
 	)
 ENDIF(loam_velodyne_FOUND)
+
+IF(floam_FOUND)
+    SET(INCLUDE_DIRS 
+        ${INCLUDE_DIRS} 
+        ${floam_INCLUDE_DIRS}
+    )
+    SET(LIBRARIES
+        ${LIBRARIES}
+        ${floam_LIBRARIES}
+    )
+ENDIF(floam_FOUND)
 
 IF(ZED_FOUND)
 	SET(INCLUDE_DIRS
