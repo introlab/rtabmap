@@ -2066,10 +2066,11 @@ std::map<int, Transform> Memory::loadOptimizedPoses(Transform * lastlocalization
 		bool ok = true;
 		std::map<int, Transform> poses = _dbDriver->loadOptimizedPoses(lastlocalizationPose);
 		// Make sure optimized poses match the working directory! Otherwise return nothing.
-		for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end() && ok; ++iter)
+		for(std::map<int, Transform>::iterator iter=poses.lower_bound(1); iter!=poses.end() && ok; ++iter)
 		{
 			if(_workingMem.find(iter->first)==_workingMem.end())
 			{
+				UWARN("Node %d not found in working memory", iter->first);
 				ok = false;
 			}
 		}
@@ -2080,7 +2081,7 @@ std::map<int, Transform> Memory::loadOptimizedPoses(Transform * lastlocalization
 				  "poses to force re-update. If you want to use the "
 				  "saved optimized poses, set %s to true",
 				  (int)poses.size(),
-				  (int)_workingMem.size(),
+				  (int)_workingMem.size()-1, // less virtual place
 				  Parameters::kMemInitWMWithAllNodes().c_str());
 			return std::map<int, Transform>();
 		}
@@ -4048,6 +4049,221 @@ void Memory::generateGraph(const std::string & fileName, const std::set<int> & i
 	}
 
 	_dbDriver->generateGraph(fileName, ids, _signatures);
+}
+
+int Memory::cleanupLocalGrids(
+		const std::map<int, Transform> & poses,
+		const cv::Mat & map,
+		float xMin,
+		float yMin,
+		float cellSize,
+		int cropRadius,
+		bool filterScans)
+{
+	if(!_dbDriver)
+	{
+		UERROR("A database must be loaded first...");
+		return -1;
+	}
+
+	if(poses.empty() || poses.lower_bound(1) == poses.end())
+	{
+		UERROR("Empty poses?!");
+		return -1;
+	}
+	if(map.empty())
+	{
+		UERROR("Map is empty!");
+		return -1;
+	}
+	UASSERT(cropRadius>=0);
+	UASSERT(cellSize>0.0f);
+
+	int maxPoses = 0;
+	for(std::map<int, Transform>::const_iterator iter=poses.lower_bound(1); iter!=poses.end(); ++iter)
+	{
+		++maxPoses;
+	}
+
+	UINFO("Processing %d grids...", maxPoses);
+	int processedGrids = 1;
+	int gridsScansModified = 0;
+	for(std::map<int, Transform>::const_iterator iter=poses.lower_bound(1); iter!=poses.end(); ++iter, ++processedGrids)
+	{
+		// local grid
+		cv::Mat gridGround;
+		cv::Mat gridObstacles;
+		cv::Mat gridEmpty;
+
+		// scan
+		SensorData data = this->getNodeData(iter->first, false, true, false, true);
+		LaserScan scan;
+		data.uncompressData(0,0,&scan,0,&gridGround,&gridObstacles,&gridEmpty);
+
+		if(!gridObstacles.empty())
+		{
+			UASSERT(data.gridCellSize() == cellSize);
+			cv::Mat filtered = cv::Mat(1, gridObstacles.cols, gridObstacles.type());
+			int oi = 0;
+			for(int i=0; i<gridObstacles.cols; ++i)
+			{
+				const float * ptr = gridObstacles.ptr<float>(0, i);
+				cv::Point3f pt(ptr[0], ptr[1], gridObstacles.channels()==2?0:ptr[2]);
+				pt = util3d::transformPoint(pt, iter->second);
+
+				int x = int((pt.x - xMin) / cellSize + 0.5f);
+				int y = int((pt.y - yMin) / cellSize + 0.5f);
+
+				if(x>=0 && x<map.cols &&
+				   y>=0 && y<map.rows)
+				{
+					bool obstacleDetected = false;
+
+					for(int j=-cropRadius; j<=cropRadius && !obstacleDetected; ++j)
+					{
+						for(int k=-cropRadius; k<=cropRadius && !obstacleDetected; ++k)
+						{
+							if(x+j>=0 && x+j<map.cols &&
+							   y+k>=0 && y+k<map.rows &&
+							   map.at<unsigned char>(y+k,x+j) == 100)
+							{
+								obstacleDetected = true;
+							}
+						}
+					}
+
+					if(map.at<unsigned char>(y,x) != 0 || obstacleDetected)
+					{
+						// Verify that we don't have an obstacle on neighbor cells
+						cv::Mat(gridObstacles, cv::Range::all(), cv::Range(i,i+1)).copyTo(cv::Mat(filtered, cv::Range::all(), cv::Range(oi,oi+1)));
+						++oi;
+					}
+				}
+			}
+
+			if(oi != gridObstacles.cols)
+			{
+				UINFO("Grid id=%d (%d/%d) filtered %d -> %d", iter->first, processedGrids, maxPoses, gridObstacles.cols, oi);
+				gridsScansModified += 1;
+
+				// update
+				Signature * s = this->_getSignature(iter->first);
+				cv::Mat newObstacles = cv::Mat(filtered, cv::Range::all(), cv::Range(0, oi));
+				bool modifyDb = true;
+				if(s)
+				{
+					s->sensorData().setOccupancyGrid(gridGround, newObstacles, gridEmpty, cellSize, data.gridViewPoint());
+					if(!s->isSaved())
+					{
+						// not saved in database yet
+						modifyDb = false;
+					}
+				}
+				if(modifyDb)
+				{
+					_dbDriver->updateOccupancyGrid(iter->first,
+							gridGround,
+							newObstacles,
+							gridEmpty,
+							cellSize,
+							data.gridViewPoint());
+				}
+			}
+		}
+
+		if(filterScans && !scan.isEmpty())
+		{
+			Transform mapToScan = iter->second * scan.localTransform();
+
+			cv::Mat filtered = cv::Mat(1, scan.size(), scan.dataType());
+			int oi = 0;
+			for(int i=0; i<scan.size(); ++i)
+			{
+				const float * ptr = scan.data().ptr<float>(0, i);
+				cv::Point3f pt(ptr[0], ptr[1], scan.is2d()?0:ptr[2]);
+				pt = util3d::transformPoint(pt, mapToScan);
+
+				int x = int((pt.x - xMin) / cellSize + 0.5f);
+				int y = int((pt.y - yMin) / cellSize + 0.5f);
+
+				if(x>=0 && x<map.cols &&
+				   y>=0 && y<map.rows)
+				{
+					bool obstacleDetected = false;
+
+					for(int j=-cropRadius; j<=cropRadius && !obstacleDetected; ++j)
+					{
+						for(int k=-cropRadius; k<=cropRadius && !obstacleDetected; ++k)
+						{
+							if(x+j>=0 && x+j<map.cols &&
+							   y+k>=0 && y+k<map.rows &&
+							   map.at<unsigned char>(y+k,x+j) == 100)
+							{
+								obstacleDetected = true;
+							}
+						}
+					}
+
+					if(map.at<unsigned char>(y,x) != 0 || obstacleDetected)
+					{
+						// Verify that we don't have an obstacle on neighbor cells
+						cv::Mat(scan.data(), cv::Range::all(), cv::Range(i,i+1)).copyTo(cv::Mat(filtered, cv::Range::all(), cv::Range(oi,oi+1)));
+						++oi;
+					}
+				}
+			}
+
+			if(oi != scan.size())
+			{
+				UINFO("Scan id=%d (%d/%d) filtered %d -> %d", iter->first, processedGrids, maxPoses, (int)scan.size(), oi);
+				gridsScansModified += 1;
+
+				// update
+				if(scan.angleIncrement()!=0)
+				{
+					// copy meta data
+					scan = LaserScan(
+							cv::Mat(filtered, cv::Range::all(), cv::Range(0, oi)),
+							scan.format(),
+							scan.rangeMin(),
+							scan.rangeMax(),
+							scan.angleMin(),
+							scan.angleMax(),
+							scan.angleIncrement(),
+							scan.localTransform());
+				}
+				else
+				{
+					// copy meta data
+					scan = LaserScan(
+							cv::Mat(filtered, cv::Range::all(), cv::Range(0, oi)),
+							scan.maxPoints(),
+							scan.rangeMax(),
+							scan.format(),
+							scan.localTransform());
+				}
+
+				// update
+				Signature * s = this->_getSignature(iter->first);
+				bool modifyDb = true;
+				if(s)
+				{
+					s->sensorData().setLaserScan(scan, true);
+					if(!s->isSaved())
+					{
+						// not saved in database yet
+						modifyDb = false;
+					}
+				}
+				if(modifyDb)
+				{
+					_dbDriver->updateLaserScan(iter->first, scan);
+				}
+
+			}
+		}
+	}
+	return gridsScansModified;
 }
 
 int Memory::getNi(int signatureId) const

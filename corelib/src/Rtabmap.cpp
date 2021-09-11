@@ -348,9 +348,9 @@ void Rtabmap::init(const ParametersMap & parameters, const std::string & databas
 	this->parseParameters(allParameters);
 
 	Transform lastPose;
+	_optimizedPoses = _memory->loadOptimizedPoses(&lastPose);
 	if(!_memory->isIncremental())
 	{
-		_optimizedPoses = _memory->loadOptimizedPoses(&lastPose);
 		if(_optimizedPoses.empty() &&
 			_memory->getWorkingMem().size()>1 &&
 			_memory->getWorkingMem().lower_bound(1)!=_memory->getWorkingMem().end())
@@ -402,6 +402,16 @@ void Rtabmap::init(const ParametersMap & parameters, const std::string & databas
 		else
 		{
 			UINFO("Loaded optimizedPoses=0, last localization pose is ignored!");
+		}
+	}
+	else
+	{
+		_lastLocalizationPose = lastPose;
+		if(!_optimizedPoses.empty())
+		{
+			std::map<int, Transform> tmp;
+			// Get just the links
+			_memory->getMetricConstraints(uKeysSet(_optimizedPoses), tmp, _constraints, false, true);
 		}
 	}
 
@@ -4706,6 +4716,12 @@ void Rtabmap::getGraph(
 				poses = _optimizedPoses; // guess
 				cv::Mat covariance;
 				this->optimizeCurrentMap(_memory->getLastWorkingSignature()->id(), global, poses, covariance, &constraints);
+				if(!global && !_optimizedPoses.empty())
+				{
+					// We send directly the already optimized poses if they are set
+					UDEBUG("_optimizedPoses=%ld poses=%ld", _optimizedPoses.size(), poses.size());
+					poses = _optimizedPoses;
+				}
 			}
 			else
 			{
@@ -5078,6 +5094,88 @@ int Rtabmap::detectMoreLoopClosures(
 		_memory->save2DMap(cv::Mat(), 0, 0, 0);
 	}
 	return (int)loopClosuresAdded.size();
+}
+
+bool Rtabmap::globalBundleAdjustment(
+		int optimizerType,
+		bool rematchFeatures,
+		int iterations,
+		float pixelVariance)
+{
+	if(!_optimizedPoses.empty() && !_constraints.empty())
+	{
+		int iterations = Parameters::defaultOptimizerIterations();
+		float pixelVariance = Parameters::defaultg2oPixelVariance();
+		ParametersMap params = _parameters;
+		Parameters::parse(params, Parameters::kOptimizerIterations(), iterations);
+		Parameters::parse(params, Parameters::kg2oPixelVariance(), pixelVariance);
+		if(iterations > 0)
+		{
+			uInsert(params, ParametersPair(Parameters::kOptimizerIterations(), uNumber2Str(iterations)));
+		}
+		if(pixelVariance > 0.0f)
+		{
+			uInsert(params, ParametersPair(Parameters::kg2oPixelVariance(), uNumber2Str(pixelVariance)));
+		}
+
+		std::map<int, Signature> signatures;
+		for(std::map<int, Transform>::iterator iter=_optimizedPoses.lower_bound(1); iter!=_optimizedPoses.end(); ++iter)
+		{
+			if(_memory->getSignature(iter->first))
+			{
+				signatures.insert(std::make_pair(iter->first, *_memory->getSignature(iter->first)));
+			}
+		}
+
+		Optimizer * optimizer = Optimizer::create((Optimizer::Type)optimizerType, params);
+		std::map<int, Transform> poses = optimizer->optimizeBA(
+				_optimizeFromGraphEnd?_optimizedPoses.lower_bound(1)->first:_optimizedPoses.rbegin()->first,
+				_optimizedPoses,
+				_constraints,
+				signatures,
+				rematchFeatures);
+		delete optimizer;
+
+		if(poses.empty())
+		{
+			UERROR("Optimization failed!");
+		}
+		else
+		{
+			_optimizedPoses = poses;
+			// This will force rtabmap_ros to regenerate the global occupancy grid if there was one
+			_memory->save2DMap(cv::Mat(), 0, 0, 0);
+			return true;
+		}
+	}
+	else
+	{
+		UERROR("Optimized poses (%ld) or constraints (%ld) are empty!", _optimizedPoses.size(), _constraints.size());
+	}
+	return false;
+}
+
+int Rtabmap::cleanupLocalGrids(
+		const std::map<int, Transform> & poses,
+		const cv::Mat & map,
+		float xMin,
+		float yMin,
+		float cellSize,
+		int cropRadius,
+		bool filterScans)
+{
+	if(_memory)
+	{
+		return _memory->cleanupLocalGrids(
+				poses,
+				map,
+				xMin,
+				yMin,
+				cellSize,
+				cropRadius,
+				filterScans);
+	}
+	return -1;
 }
 
 int Rtabmap::refineLinks()

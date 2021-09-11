@@ -206,6 +206,19 @@ public:
 			bool interSession = true,
 			const ProgressState * state = 0,
 			float clusterRadiusMin = 0.0f);
+	bool globalBundleAdjustment(
+			int optimizerType = 1 /*g2o*/,
+			bool rematchFeatures = true,
+			int iterations = 0,
+			float pixelVariance = 0.0f);
+	int cleanupLocalGrids(
+			const std::map<int, Transform> & mapPoses,
+			const cv::Mat & map,
+			float xMin,
+			float yMin,
+			float cellSize,
+			int cropRadius = 1,
+			bool filterScans = false);
 	int refineLinks();
 	bool addLink(const Link & link);
 	cv::Mat getInformation(const cv::Mat & covariance) const;

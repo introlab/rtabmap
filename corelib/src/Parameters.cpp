@@ -1053,7 +1053,7 @@ ParametersMap Parameters::parseArguments(int argc, char * argv[], bool onlyParam
 						ignore = true;
 					}
 #endif
-#ifndef RTABMAP_LOAM
+#if not defined(RTABMAP_LOAM) and not defined(RTABMAP_FLOAM)
 					if(group.compare("OdomLOAM") == 0)
 					{
 						ignore = true;

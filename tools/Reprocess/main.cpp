@@ -68,10 +68,11 @@ void showUsage()
 			"                       arguments, they overwrite those in config file and the database.\n"
 			"     -start #    Start from this node ID.\n"
 			"     -stop #     Last node to process.\n"
-			"     -g2         Assemble 2D occupancy grid map and save it to \"[output]_map.pgm\".\n"
+			"     -g2         Assemble 2D occupancy grid map and save it to \"[output]_map.pgm\". Use with -db to save in database.\n"
 			"     -g3         Assemble 3D cloud map and save it to \"[output]_map.pcd\".\n"
-			"     -o2         Assemble OctoMap 2D projection and save it to \"[output]_octomap.pgm\".\n"
+			"     -o2         Assemble OctoMap 2D projection and save it to \"[output]_octomap.pgm\". Use with -db to save in database.\n"
 			"     -o3         Assemble OctoMap 3D cloud and save it to \"[output]_octomap.pcd\".\n"
+			"     -db         Save assembled 2D occupancy grid in database instead of a file.\n"
 			"     -p          Save odometry and localization poses (*.g2o).\n"
 			"     -scan_from_depth    Generate scans from depth images (overwrite previous\n"
 			"                         scans if they exist).\n"
@@ -211,6 +212,7 @@ int main(int argc, char * argv[])
 		showUsage();
 	}
 
+	bool save2DMap = false;
 	bool assemble2dMap = false;
 	bool assemble3dMap = false;
 	bool assemble2dOctoMap = false;
@@ -299,6 +301,11 @@ int main(int argc, char * argv[])
 		{
 			exportPoses = true;
 			printf("Odometry trajectory and localization poses will be exported in g2o format (-p option).\n");
+		}
+		else if(strcmp(argv[i], "-db") == 0 || strcmp(argv[i], "--db") == 0)
+		{
+			save2DMap = true;
+			printf("2D occupancy grid will be saved in database (-db option).\n");
 		}
 		else if(strcmp(argv[i], "-g2") == 0 || strcmp(argv[i], "--g2") == 0)
 		{
@@ -856,36 +863,50 @@ int main(int argc, char * argv[])
 		cv::Mat map = grid.getMap(xMin, yMin);
 		if(!map.empty())
 		{
-			cv::Mat map8U(map.rows, map.cols, CV_8U);
-			//convert to gray scaled map
-			for (int i = 0; i < map.rows; ++i)
+			if(save2DMap)
 			{
-				for (int j = 0; j < map.cols; ++j)
+				DBDriver * driver = DBDriver::create();
+				if(driver->openConnection(outputDatabasePath))
 				{
-					char v = map.at<char>(i, j);
-					unsigned char gray;
-					if(v == 0)
-					{
-						gray = 178;
-					}
-					else if(v == 100)
-					{
-						gray = 0;
-					}
-					else // -1
-					{
-						gray = 89;
-					}
-					map8U.at<unsigned char>(i, j) = gray;
+					driver->save2DMap(map, xMin, yMin, grid.getCellSize());
+					printf("Saving occupancy grid to database... done!\n");
 				}
-			}
-			if(cv::imwrite(outputPath, map8U))
-			{
-				printf("Saving occupancy grid \"%s\"... done!\n", outputPath.c_str());
+				delete driver;
 			}
 			else
 			{
-				printf("Saving occupancy grid \"%s\"... failed!\n", outputPath.c_str());
+				cv::Mat map8U(map.rows, map.cols, CV_8U);
+				//convert to gray scaled map
+				for (int i = 0; i < map.rows; ++i)
+				{
+					for (int j = 0; j < map.cols; ++j)
+					{
+						char v = map.at<char>(i, j);
+						unsigned char gray;
+						if(v == 0)
+						{
+							gray = 178;
+						}
+						else if(v == 100)
+						{
+							gray = 0;
+						}
+						else // -1
+						{
+							gray = 89;
+						}
+						map8U.at<unsigned char>(i, j) = gray;
+					}
+				}
+
+				if(cv::imwrite(outputPath, map8U))
+				{
+					printf("Saving occupancy grid \"%s\"... done!\n", outputPath.c_str());
+				}
+				else
+				{
+					printf("Saving occupancy grid \"%s\"... failed!\n", outputPath.c_str());
+				}
 			}
 		}
 		else
@@ -937,36 +958,49 @@ int main(int argc, char * argv[])
 		cv::Mat map = octomap.createProjectionMap(xMin, yMin, cellSize);
 		if(!map.empty())
 		{
-			cv::Mat map8U(map.rows, map.cols, CV_8U);
-			//convert to gray scaled map
-			for (int i = 0; i < map.rows; ++i)
+			if(save2DMap)
 			{
-				for (int j = 0; j < map.cols; ++j)
+				DBDriver * driver = DBDriver::create();
+				if(driver->openConnection(outputDatabasePath))
 				{
-					char v = map.at<char>(i, j);
-					unsigned char gray;
-					if(v == 0)
-					{
-						gray = 178;
-					}
-					else if(v == 100)
-					{
-						gray = 0;
-					}
-					else // -1
-					{
-						gray = 89;
-					}
-					map8U.at<unsigned char>(i, j) = gray;
+					driver->save2DMap(map, xMin, yMin, cellSize);
+					printf("Saving occupancy grid to database... done!\n");
 				}
-			}
-			if(cv::imwrite(outputPath, map8U))
-			{
-				printf("Saving octomap 2D projection \"%s\"... done!\n", outputPath.c_str());
+				delete driver;
 			}
 			else
 			{
-				printf("Saving octomap 2D projection \"%s\"... failed!\n", outputPath.c_str());
+				cv::Mat map8U(map.rows, map.cols, CV_8U);
+				//convert to gray scaled map
+				for (int i = 0; i < map.rows; ++i)
+				{
+					for (int j = 0; j < map.cols; ++j)
+					{
+						char v = map.at<char>(i, j);
+						unsigned char gray;
+						if(v == 0)
+						{
+							gray = 178;
+						}
+						else if(v == 100)
+						{
+							gray = 0;
+						}
+						else // -1
+						{
+							gray = 89;
+						}
+						map8U.at<unsigned char>(i, j) = gray;
+					}
+				}
+				if(cv::imwrite(outputPath, map8U))
+				{
+					printf("Saving octomap 2D projection \"%s\"... done!\n", outputPath.c_str());
+				}
+				else
+				{
+					printf("Saving octomap 2D projection \"%s\"... failed!\n", outputPath.c_str());
+				}
 			}
 		}
 		else

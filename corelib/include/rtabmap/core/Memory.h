@@ -228,6 +228,14 @@ public:
 	unsigned long getMemoryUsed() const; //Bytes
 
 	void generateGraph(const std::string & fileName, const std::set<int> & ids = std::set<int>());
+	int cleanupLocalGrids(
+			const std::map<int, Transform> & poses,
+			const cv::Mat & map,
+			float xMin,
+			float yMin,
+			float cellSize,
+			int cropRadius = 1,
+			bool filterScans = false);
 
 	//keypoint stuff
 	const VWDictionary * getVWDictionary() const;

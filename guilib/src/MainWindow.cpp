@@ -6931,7 +6931,7 @@ void MainWindow::downloadAllClouds()
 	items.append("Global map not optimized");
 
 	bool ok;
-	QString item = QInputDialog::getItem(this, tr("Download map"), tr("Options:"), items, 2, false, &ok);
+	QString item = QInputDialog::getItem(this, tr("Download map"), tr("Options:"), items, 0, false, &ok);
 	if(ok)
 	{
 		bool optimized=false, global=false;
@@ -6975,7 +6975,7 @@ void MainWindow::downloadPoseGraph()
 	items.append("Global map not optimized");
 
 	bool ok;
-	QString item = QInputDialog::getItem(this, tr("Download graph"), tr("Options:"), items, 2, false, &ok);
+	QString item = QInputDialog::getItem(this, tr("Download graph"), tr("Options:"), items, 0, false, &ok);
 	if(ok)
 	{
 		bool optimized=false, global=false;

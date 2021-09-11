@@ -25,8 +25,10 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include <rtabmap/core/DBDriver.h>
+#include <rtabmap/core/Rtabmap.h>
+#include <rtabmap/core/Memory.h>
 #include <rtabmap/utilite/UFile.h>
+#include <rtabmap/utilite/UTimer.h>
 #include <rtabmap/core/util3d_transforms.h>
 
 using namespace rtabmap;
@@ -57,7 +59,7 @@ void showUsage()
 int main(int argc, char * argv[])
 {
 	ULogger::setType(ULogger::kTypeConsole);
-	ULogger::setLevel(ULogger::kError);
+	ULogger::setLevel(ULogger::kInfo);
 
 	if(argc < 2)
 	{
@@ -102,187 +104,34 @@ int main(int argc, char * argv[])
 
 	// Get parameters
 	ParametersMap parameters;
-	DBDriver * driver = DBDriver::create();
-	if(driver->openConnection(dbPath))
+	Rtabmap rtabmap;
+	rtabmap.init(ParametersMap(), dbPath, true);
+
+	float xMin, yMin, cellSize;
+	cv::Mat map = rtabmap.getMemory()->load2DMap(xMin, yMin, cellSize);
+	if(map.empty())
 	{
-		float xMin, yMin, cellSize;
-		cv::Mat map = driver->load2DMap(xMin, yMin, cellSize);
-		if(map.empty())
-		{
-			UERROR("Database %s doesn't have optimized 2d map saved in it!", dbPath.c_str());
-			return -1;
-		}
-
-		printf("Options:\n");
-		printf("  --radius:  %d cell(s) (cell size=%.3fm)\n", cropRadius, cellSize);
-		printf("  --scan: %s\n", filterScans?"true":"false");
-
-		Transform lastLocalizationPose;
-		std::map<int, Transform> poses = driver->loadOptimizedPoses(&lastLocalizationPose);
-		if(poses.empty() || poses.lower_bound(1) == poses.end())
-		{
-			UERROR("Database %s doesn't have optimized poses saved in it!", dbPath.c_str());
-			return -1;
-		}
-
-		int maxPoses = 0;
-		for(std::map<int, Transform>::iterator iter=poses.lower_bound(1); iter!=poses.end(); ++iter)
-		{
-			++maxPoses;
-		}
-
-		printf("Processing %d grids...\n", maxPoses);
-		int processedGrids = 1;
-		for(std::map<int, Transform>::iterator iter=poses.lower_bound(1); iter!=poses.end(); ++iter, ++processedGrids)
-		{
-			// local grid
-			cv::Mat gridGround;
-			cv::Mat gridObstacles;
-			cv::Mat gridEmpty;
-
-			// scan
-			SensorData data;
-			driver->getNodeData(iter->first, data);
-			LaserScan scan;
-			data.uncompressData(0,0,&scan,0,&gridGround,&gridObstacles,&gridEmpty);
-
-			if(!gridObstacles.empty())
-			{
-				cv::Mat filtered = cv::Mat(1, gridObstacles.cols, gridObstacles.type());
-				int oi = 0;
-				for(int i=0; i<gridObstacles.cols; ++i)
-				{
-					const float * ptr = gridObstacles.ptr<float>(0, i);
-					cv::Point3f pt(ptr[0], ptr[1], gridObstacles.channels()==2?0:ptr[2]);
-					pt = util3d::transformPoint(pt, iter->second);
-
-					int x = int((pt.x - xMin) / cellSize + 0.5f);
-					int y = int((pt.y - yMin) / cellSize + 0.5f);
-
-					if(x>=0 && x<map.cols &&
-					   y>=0 && y<map.rows)
-					{
-						bool obstacleDetected = false;
-
-						for(int j=-cropRadius; j<=cropRadius && !obstacleDetected; ++j)
-						{
-							for(int k=-cropRadius; k<=cropRadius && !obstacleDetected; ++k)
-							{
-								if(x+j>=0 && x+j<map.cols &&
-								   y+k>=0 && y+k<map.rows &&
-								   map.at<unsigned char>(y+k,x+j) == 100)
-								{
-									obstacleDetected = true;
-								}
-							}
-						}
-
-						if(map.at<unsigned char>(y,x) != 0 || obstacleDetected)
-						{
-							// Verify that we don't have an obstacle on neighbor cells
-							cv::Mat(gridObstacles, cv::Range::all(), cv::Range(i,i+1)).copyTo(cv::Mat(filtered, cv::Range::all(), cv::Range(oi,oi+1)));
-							++oi;
-						}
-					}
-				}
-
-				if(oi != gridObstacles.cols)
-				{
-					printf("Grid id=%d (%d/%d) filtered %d -> %d\n", iter->first, processedGrids, maxPoses, gridObstacles.cols, oi);
-
-					// update
-					driver->updateOccupancyGrid(iter->first,
-							gridGround,
-							cv::Mat(filtered, cv::Range::all(), cv::Range(0, oi)),
-							gridEmpty,
-							cellSize,
-							data.gridViewPoint());
-				}
-			}
-
-			if(filterScans && !scan.isEmpty())
-			{
-				Transform mapToScan = iter->second * scan.localTransform();
-
-				cv::Mat filtered = cv::Mat(1, scan.size(), scan.dataType());
-				int oi = 0;
-				for(int i=0; i<scan.size(); ++i)
-				{
-					const float * ptr = scan.data().ptr<float>(0, i);
-					cv::Point3f pt(ptr[0], ptr[1], scan.is2d()?0:ptr[2]);
-					pt = util3d::transformPoint(pt, mapToScan);
-
-					int x = int((pt.x - xMin) / cellSize + 0.5f);
-					int y = int((pt.y - yMin) / cellSize + 0.5f);
-
-					if(x>=0 && x<map.cols &&
-					   y>=0 && y<map.rows)
-					{
-						bool obstacleDetected = false;
-
-						for(int j=-cropRadius; j<=cropRadius && !obstacleDetected; ++j)
-						{
-							for(int k=-cropRadius; k<=cropRadius && !obstacleDetected; ++k)
-							{
-								if(x+j>=0 && x+j<map.cols &&
-								   y+k>=0 && y+k<map.rows &&
-								   map.at<unsigned char>(y+k,x+j) == 100)
-								{
-									obstacleDetected = true;
-								}
-							}
-						}
-
-						if(map.at<unsigned char>(y,x) != 0 || obstacleDetected)
-						{
-							// Verify that we don't have an obstacle on neighbor cells
-							cv::Mat(scan.data(), cv::Range::all(), cv::Range(i,i+1)).copyTo(cv::Mat(filtered, cv::Range::all(), cv::Range(oi,oi+1)));
-							++oi;
-						}
-					}
-				}
-
-				if(oi != scan.size())
-				{
-					printf("Scan id=%d (%d/%d) filtered %d -> %d\n", iter->first, processedGrids, maxPoses, (int)scan.size(), oi);
-
-					// update
-					if(scan.angleIncrement()!=0)
-					{
-						// copy meta data
-						scan = LaserScan(
-								cv::Mat(filtered, cv::Range::all(), cv::Range(0, oi)),
-								scan.format(),
-								scan.rangeMin(),
-								scan.rangeMax(),
-								scan.angleMin(),
-								scan.angleMax(),
-								scan.angleIncrement(),
-								scan.localTransform());
-					}
-					else
-					{
-						// copy meta data
-						scan = LaserScan(
-								cv::Mat(filtered, cv::Range::all(), cv::Range(0, oi)),
-								scan.maxPoints(),
-								scan.rangeMax(),
-								scan.format(),
-								scan.localTransform());
-					}
-					driver->updateLaserScan(iter->first, scan);
-				}
-			}
-		}
-	}
-	else
-	{
-		UERROR("Cannot open database %s!", dbPath.c_str());
+		UERROR("Database %s doesn't have optimized 2d map saved in it!", dbPath.c_str());
 		return -1;
 	}
-	driver->closeConnection();
-	delete driver;
-	driver = 0;
+
+	printf("Options:\n");
+	printf("  --radius:  %d cell(s) (cell size=%.3fm)\n", cropRadius, cellSize);
+	printf("  --scan: %s\n", filterScans?"true":"false");
+
+	std::map<int, Transform> poses = rtabmap.getLocalOptimizedPoses();
+	if(poses.empty() || poses.lower_bound(1) == poses.end())
+	{
+		UERROR("Database %s doesn't have optimized poses saved in it!", dbPath.c_str());
+		return -1;
+	}
+
+	UTimer timer;
+	printf("Cleaning grids...\n");
+	int modifiedCells = rtabmap.cleanupLocalGrids(poses, map, xMin, yMin, cellSize, cropRadius, filterScans);
+	printf("Cleanup %d cells! (%fs)\n", modifiedCells, timer.ticks());
+
+	rtabmap.close();
 
 	printf("Done!\n");
 	return 0;
