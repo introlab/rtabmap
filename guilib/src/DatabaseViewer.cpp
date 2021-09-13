@@ -7555,8 +7555,8 @@ void DatabaseViewer::refineConstraint(int from, int to, bool silent)
 			reextractVisualFeatures ||
 			!silent)
 		{
-			dbDriver_->loadNodeData(fromS, reextractVisualFeatures || !silent, reg->isScanRequired() || !silent, reg->isUserDataRequired() || !silent, !silent);
-			dbDriver_->loadNodeData(toS, reextractVisualFeatures || !silent, reg->isScanRequired() || !silent, reg->isUserDataRequired() || !silent, !silent);
+			dbDriver_->loadNodeData(fromS, reextractVisualFeatures || !silent || (reg->isScanRequired() && ui_->checkBox_icp_from_depth->isChecked()), reg->isScanRequired() || !silent, reg->isUserDataRequired() || !silent, !silent);
+			dbDriver_->loadNodeData(toS, reextractVisualFeatures || !silent || (reg->isScanRequired() && ui_->checkBox_icp_from_depth->isChecked()), reg->isScanRequired() || !silent, reg->isUserDataRequired() || !silent, !silent);
 		
 			if(!silent)
 			{
@@ -7829,9 +7829,9 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent)
 			!silent)
 		{
 			// Add sensor data to generate features
-			dbDriver_->loadNodeData(fromS, reextractVisualFeatures || !silent, reg->isScanRequired() || !silent, reg->isUserDataRequired() || !silent, !silent);
+			dbDriver_->loadNodeData(fromS, reextractVisualFeatures || !silent || (reg->isScanRequired() && ui_->checkBox_icp_from_depth->isChecked()), reg->isScanRequired() || !silent, reg->isUserDataRequired() || !silent, !silent);
 			fromS->sensorData().uncompressData();
-			dbDriver_->loadNodeData(toS, reextractVisualFeatures || !silent, reg->isScanRequired() || !silent, reg->isUserDataRequired() || !silent, !silent);
+			dbDriver_->loadNodeData(toS, reextractVisualFeatures || !silent || (reg->isScanRequired() && ui_->checkBox_icp_from_depth->isChecked()), reg->isScanRequired() || !silent, reg->isUserDataRequired() || !silent, !silent);
 			toS->sensorData().uncompressData();
 			if(reextractVisualFeatures)
 			{
@@ -7839,6 +7839,33 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent)
 				fromS->sensorData().setFeatures(std::vector<cv::KeyPoint>(), std::vector<cv::Point3f>(), cv::Mat());
 				toS->removeAllWords();
 				toS->sensorData().setFeatures(std::vector<cv::KeyPoint>(), std::vector<cv::Point3f>(), cv::Mat());
+			}
+			if(reg->isScanRequired() && ui_->checkBox_icp_from_depth->isChecked())
+			{
+				// generate laser scans from depth image
+				pcl::PointCloud<pcl::PointXYZ>::Ptr cloudFrom = util3d::cloudFromSensorData(
+						fromS->sensorData(),
+						ui_->spinBox_icp_decimation->value()==0?1:ui_->spinBox_icp_decimation->value(),
+						ui_->doubleSpinBox_icp_maxDepth->value(),
+						ui_->doubleSpinBox_icp_minDepth->value(),
+						0,
+						ui_->parameters_toolbox->getParameters());
+				pcl::PointCloud<pcl::PointXYZ>::Ptr cloudTo = util3d::cloudFromSensorData(
+						toS->sensorData(),
+						ui_->spinBox_icp_decimation->value()==0?1:ui_->spinBox_icp_decimation->value(),
+						ui_->doubleSpinBox_icp_maxDepth->value(),
+						ui_->doubleSpinBox_icp_minDepth->value(),
+						0,
+						ui_->parameters_toolbox->getParameters());
+				int maxLaserScans = cloudFrom->size();
+				fromS->sensorData().setLaserScan(LaserScan(util3d::laserScanFromPointCloud(*util3d::removeNaNFromPointCloud(cloudFrom), Transform()), maxLaserScans, 0));
+				toS->sensorData().setLaserScan(LaserScan(util3d::laserScanFromPointCloud(*util3d::removeNaNFromPointCloud(cloudTo), Transform()), maxLaserScans, 0));
+
+				if(!fromS->sensorData().laserScanCompressed().isEmpty() || !toS->sensorData().laserScanCompressed().isEmpty())
+				{
+					UWARN("There are laser scans in data, but generate laser scan from "
+						  "depth image option is activated. Ignoring saved laser scans...");
+				}
 			}
 		}
 		else if(!reextractVisualFeatures && fromS->getWords().empty() && toS->getWords().empty())
