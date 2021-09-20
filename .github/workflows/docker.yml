@@ -29,6 +29,11 @@ jobs:
             introlab3it/rtabmap:20.04
             introlab3it/rtabmap:latest
           docker_path: 'focal'
+        - docker_tag: android23
+          docker_tags: |
+            introlab3it/rtabmap:android23
+            introlab3it/rtabmap:tango
+          docker_path: 'bionic/android/rtabmap_api23'
         - docker_tag: android24
           docker_tags: |
             introlab3it/rtabmap:android24
