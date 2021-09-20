@@ -76,6 +76,10 @@ RUN cd geogram && \
     make install && \
     cd && \
     rm -r geogram
+# cmake >=3.11 required
+RUN wget -nv https://github.com/Kitware/CMake/releases/download/v3.17.0/cmake-3.17.0-Linux-x86_64.tar.gz && \
+    tar -xzf cmake-3.17.0-Linux-x86_64.tar.gz && \
+    rm cmake-3.17.0-Linux-x86_64.tar.gz
 RUN git clone https://github.com/alicevision/AliceVision.git --recursive
 RUN cd AliceVision && \
     git checkout 0f6115b6af6183c524aa7fcf26141337c1cf3872 && \
@@ -83,7 +87,7 @@ RUN cd AliceVision && \
     git apply alicevision_0f6115b.patch && \
     mkdir build && \
     cd build && \
-    cmake -DALICEVISION_USE_CUDA=OFF -DALICEVISION_USE_APRILTAG=OFF -DALICEVISION_BUILD_SOFTWARE=OFF .. && \
+    ../../cmake-3.17.0-Linux-x86_64/bin/cmake -DALICEVISION_USE_CUDA=OFF -DALICEVISION_USE_APRILTAG=OFF -DALICEVISION_BUILD_SOFTWARE=OFF .. && \
     make -j$(nproc) && \
     make install && \
     cd && \
@@ -98,7 +102,7 @@ RUN rm /bin/sh && ln -s /bin/bash /bin/sh
 # Build RTAB-Map project
 RUN source /ros_entrypoint.sh && \
     cd rtabmap/build && \
-    cmake -DWITH_ALICE_VISION=ON .. && \
+    ../../cmake-3.17.0-Linux-x86_64/bin/cmake -DWITH_ALICE_VISION=ON .. && \
     make -j2 && \
     make install && \
     cd ../.. && \
