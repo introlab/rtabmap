@@ -14,14 +14,28 @@ jobs:
         docker_tag: [xenial, bionic, focal, android24, android26]
         include:
         - docker_tag: xenial
+          docker_tags: |
+            introlab3it/rtabmap:xenial
+            introlab3it/rtabmap:16.04
           docker_path: 'xenial'
         - docker_tag: bionic
+          docker_tags: |
+            introlab3it/rtabmap:bionic
+            introlab3it/rtabmap:18.04
           docker_path: 'bionic'
         - docker_tag: focal
+          docker_tags: |
+            introlab3it/rtabmap:focal
+            introlab3it/rtabmap:20.04
+            introlab3it/rtabmap:latest
           docker_path: 'focal'
         - docker_tag: android24
+          docker_tags: |
+            introlab3it/rtabmap:android24
           docker_path: 'bionic/android/rtabmap_api24'
         - docker_tag: android26
+          docker_tags: |
+            introlab3it/rtabmap:android26
           docker_path: 'bionic/android/rtabmap_api26'
     
     steps:
@@ -43,7 +57,9 @@ jobs:
         with:
           context: ./docker/${{ matrix.docker_path }}
           push: true
-          tags: introlab3it/rtabmap:${{ matrix.docker_tag }}
-          cache-from: type=registry,ref=introlab3it/rtabmap:buildcache_${{ matrix.docker_tag }}
-          cache-to: type=registry,ref=introlab3it/rtabmap:buildcache_${{ matrix.docker_tag }},mode=max
+          build-args: |
+            CACHE_DATE=${{ github.head_ref }}.${{ github.sha }}
+          tags: ${{ matrix.docker_tags }}
+          cache-from: type=registry,ref=introlab3it/rtabmap:${{ matrix.docker_tag }}
+          cache-to: type=inline
 
