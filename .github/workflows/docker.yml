@@ -11,8 +11,18 @@ jobs:
     
     strategy:
       matrix:
-        docker_path: [xenial, bionic, focal, bionic/android/rtabmap_api24, bionic/android/rtabmap_api26]
         docker_tag: [xenial, bionic, focal, android24, android26]
+        include:
+        - docker_tag: xenial
+          docker_path: 'xenial'
+        - docker_tag: bionic
+          docker_path: 'bionic'
+        - docker_tag: focal
+          docker_path: 'focal'
+        - docker_tag: android24
+          docker_path: 'bionic/android/rtabmap_api24'
+        - docker_tag: android26
+          docker_path: 'bionic/android/rtabmap_api26'
     
     steps:
       -
