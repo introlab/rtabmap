@@ -233,6 +233,7 @@ ExportCloudsDialog::ExportCloudsDialog(QWidget *parent) :
 	connect(_ui->checkBox_multiband, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
 	connect(_ui->checkBox_multiband, SIGNAL(stateChanged(int)), this, SLOT(updateReconstructionFlavor()));
 	connect(_ui->spinBox_multiband_downscale, SIGNAL(valueChanged(int)), this, SIGNAL(configChanged()));
+	connect(_ui->lineEdit_multiband_nbcontrib, SIGNAL(textChanged(const QString &)), this, SIGNAL(configChanged()));
 	connect(_ui->comboBox_multiband_unwrap, SIGNAL(currentIndexChanged(int)), this, SIGNAL(configChanged()));
 	connect(_ui->checkBox_multiband_fillholes, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
 	connect(_ui->spinBox_multiband_padding, SIGNAL(valueChanged(int)), this, SIGNAL(configChanged()));
@@ -450,6 +451,7 @@ void ExportCloudsDialog::saveSettings(QSettings & settings, const QString & grou
 	settings.setValue("mesh_textureBlendingDecimation", _ui->comboBox_blendingDecimation->currentIndex());
 	settings.setValue("mesh_textureMultiband", _ui->checkBox_multiband->isChecked());
 	settings.setValue("mesh_textureMultibandDownScale", _ui->spinBox_multiband_downscale->value());
+	settings.setValue("mesh_textureMultibandNbContrib", _ui->lineEdit_multiband_nbcontrib->text());
 	settings.setValue("mesh_textureMultibandUnwrap", _ui->comboBox_multiband_unwrap->currentIndex());
 	settings.setValue("mesh_textureMultibandFillHoles", _ui->checkBox_multiband_fillholes->isChecked());
 	settings.setValue("mesh_textureMultibandPadding", _ui->spinBox_multiband_padding->value());
@@ -624,6 +626,7 @@ void ExportCloudsDialog::loadSettings(QSettings & settings, const QString & grou
 	_ui->comboBox_blendingDecimation->setCurrentIndex(settings.value("mesh_textureBlendingDecimation", _ui->comboBox_blendingDecimation->currentIndex()).toInt());
 	_ui->checkBox_multiband->setChecked(settings.value("mesh_textureMultiband", _ui->checkBox_multiband->isChecked()).toBool());
 	_ui->spinBox_multiband_downscale->setValue(settings.value("mesh_textureMultibandDownScale", _ui->spinBox_multiband_downscale->value()).toInt());
+	_ui->lineEdit_multiband_nbcontrib->setText(settings.value("mesh_textureMultibandNbContrib", _ui->lineEdit_multiband_nbcontrib->text()).toString());
 	_ui->comboBox_multiband_unwrap->setCurrentIndex(settings.value("mesh_textureMultibandUnwrap", _ui->comboBox_multiband_unwrap->currentIndex()).toInt());
 	_ui->checkBox_multiband_fillholes->setChecked(settings.value("mesh_textureMultibandFillHoles", _ui->checkBox_multiband_fillholes->isChecked()).toBool());
 	_ui->spinBox_multiband_padding->setValue(settings.value("mesh_textureMultibandPadding", _ui->spinBox_multiband_padding->value()).toInt());
@@ -789,6 +792,7 @@ void ExportCloudsDialog::restoreDefaults()
 	_ui->comboBox_blendingDecimation->setCurrentIndex(0);
 	_ui->checkBox_multiband->setChecked(false);
 	_ui->spinBox_multiband_downscale->setValue(2);
+	_ui->lineEdit_multiband_nbcontrib->setText("1 5 10 0");
 	_ui->comboBox_multiband_unwrap->setCurrentIndex(0);
 	_ui->checkBox_multiband_fillholes->setChecked(false);
 	_ui->spinBox_multiband_padding->setValue(5);
@@ -4476,6 +4480,7 @@ void ExportCloudsDialog::saveTextureMeshes(
 								_dbDriver,
 								textureSize,
 								_ui->spinBox_multiband_downscale->value(),
+								_ui->lineEdit_multiband_nbcontrib->text().toStdString(),
 								_ui->comboBox_meshingTextureFormat->currentText().toStdString(),
 								gains,
 								blendingGains,

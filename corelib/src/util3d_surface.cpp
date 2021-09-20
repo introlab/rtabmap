@@ -2244,6 +2244,7 @@ bool multiBandTexturing(
 			dbDriver,
 			textureSize,
 			2,
+			"1 5 10 0",
 			textureFormat,
 			gains,
 			blendingGains,
@@ -2263,6 +2264,7 @@ bool multiBandTexturing(
 		const DBDriver * dbDriver,
 		unsigned int textureSize,
 		unsigned int textureDownScale,
+		const std::string & nbContrib,
 		const std::string & textureFormat,
 		const std::map<int, std::map<int, cv::Vec4d> > & gains,
 		const std::map<int, std::map<int, cv::Mat> > & blendingGains,
@@ -2312,11 +2314,26 @@ bool multiBandTexturing(
 #endif
 	texturing.texParams.textureSide = textureSize;
 	texturing.texParams.downscale = textureDownScale;
+	std::vector<int> multiBandNbContrib;
+	std::list<std::string> values = uSplit(nbContrib, ' ');
+	for(std::list<std::string>::iterator iter=values.begin(); iter!=values.end(); ++iter)
+	{
+		multiBandNbContrib.push_back(uStr2Int(*iter));
+	}
+	if(multiBandNbContrib.size() != 4)
+	{
+		UERROR("multiband: Wrong number of nb of contribution (vaue=\"%s\", should be 4), using default values instead.", nbContrib.c_str());
+	}
+	else
+	{
+		texturing.texParams.multiBandNbContrib = multiBandNbContrib;
+	}
 	texturing.texParams.padding = padding;
 	texturing.texParams.fillHoles = fillHoles;
 	texturing.texParams.bestScoreThreshold = bestScoreThreshold;
 	texturing.texParams.angleHardThreshold = angleHardThreshold;
 	texturing.texParams.forceVisibleByAllVertices = forceVisibleByAllVertices;
+	texturing.texParams.visibilityRemappingMethod = mesh::EVisibilityRemappingMethod::Pull;
 
 
 	for(size_t i=0;i<cloud2.size();++i)
@@ -2479,13 +2496,20 @@ bool multiBandTexturing(
 				imageRoi = output;
 			}
 
-			Transform t = iter->second * model.localTransform();
-			Eigen::Matrix<double, 3, 4> m = (t.inverse()).toEigen3d().matrix().block<3,4>(0, 0);
+			Transform t = (iter->second * model.localTransform()).inverse();
+			Eigen::Matrix<double, 3, 4> m = t.toEigen3d().matrix().block<3,4>(0, 0);
 			sfmData::CameraPose pose(geometry::Pose3(m), true);
 			sfmData.setAbsolutePose((IndexT)viewId, pose);
 
+			UDEBUG("%d %d %f %f %f %f", imageSize.width, imageSize.height, model.fx(), model.fy(), model.cx(), model.cy());
 			std::shared_ptr<camera::IntrinsicBase> camPtr = std::make_shared<camera::Pinhole>(
+#if RTABMAP_ALICE_VISION_MAJOR > 2 || (RTABMAP_ALICE_VISION_MAJOR==2 && RTABMAP_ALICE_VISION_MINOR>=4)
+					//https://github.com/alicevision/AliceVision/commit/9fab5c79a1c65595fe5c5001267e1c5212bc93f0#diff-b0c0a3c30de50be8e4ed283dfe4c8ae4a9bc861aa9a83bd8bfda8182e9d67c08
+					// [all] the camera principal point is now defined as an offset relative to the image center
+					imageSize.width, imageSize.height, model.fx(), model.fy(), model.cx() - double(imageSize.width) * 0.5, model.cy() - double(imageSize.height) * 0.5);
+#else
 					imageSize.width, imageSize.height, model.fx(), model.cx(), model.cy());
+#endif
 			sfmData.intrinsics.insert(std::make_pair((IndexT)viewId, camPtr));
 
 			std::string imagePath = tmpImageDirectory+uFormat("/%d.jpg", viewId);
@@ -2507,14 +2531,18 @@ bool multiBandTexturing(
 
 	mvsUtils::MultiViewParams mp(sfmData);
 
-	UINFO("Unwrapping...");
+	UINFO("Unwrapping (method=%d=%s)...", unwrapMethod, mesh::EUnwrapMethod_enumToString((mesh::EUnwrapMethod)unwrapMethod).c_str());
 	texturing.unwrap(mp, (mesh::EUnwrapMethod)unwrapMethod);
 	UINFO("Unwrapping done. %fs", timer.ticks());
 
 	// save final obj file
 	std::string baseName = uSplit(UFile::getName(outputOBJPath), '.').front();
+#if RTABMAP_ALICE_VISION_MAJOR > 2 || (RTABMAP_ALICE_VISION_MAJOR==2 && RTABMAP_ALICE_VISION_MINOR>=4)
+	texturing.saveAs(outputDirectory, baseName, aliceVision::mesh::EFileType::OBJ, imageIO::EImageFileType::PNG);
+#else
 	texturing.saveAsOBJ(outputDirectory, baseName);
-	UINFO("Saved %s. %fs", outputOBJPath, timer.ticks());
+#endif
+	UINFO("Saved %s. %fs", outputOBJPath.c_str(), timer.ticks());
 
 	// generate textures
 	UINFO("Generating textures...");
@@ -2576,7 +2604,9 @@ bool multiBandTexturing(
 	UINFO("Rename/convert textures... done. %fs", timer.ticks());
 
 #if RTABMAP_ALICE_VISION_MAJOR > 2 || (RTABMAP_ALICE_VISION_MAJOR==2 && RTABMAP_ALICE_VISION_MINOR>=3)
+	UINFO("Cleanup sfmdata...");
 	sfmData.clear();
+	UINFO("Cleanup sfmdata... done. %fs", timer.ticks());
 #endif
 
 	return true;

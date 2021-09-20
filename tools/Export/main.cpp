@@ -63,7 +63,7 @@ void showUsage()
 			"    --mesh                Create a mesh.\n"
 			"    --texture             Create a mesh with texture.\n"
 			"    --texture_size  #     Texture size 1024, 2048, 4096, 8192, 16384 (default 8192).\n"
-			"    --texture_count #     Maximum textures generated (default 1).\n"
+			"    --texture_count #     Maximum textures generated (default 1). Ignored by --multiband option (adjust --multiband_contrib instead).\n"
 			"    --texture_range #     Maximum camera range for texturing a polygon (default 0 meters: no limit).\n"
 			"    --texture_depth_error # Maximum depth error between reprojected mesh and depth image to texture a face (-1=disabled, 0=edge length is used, default=0).\n"
 			"    --texture_d2c         Distance to camera policy.\n"
@@ -91,7 +91,8 @@ void showUsage()
 			"    --high_gain     #     High brightness gain 0-100 (default 10).\n"
 			"    --multiband               Enable multiband texturing (AliceVision dependency required).\n"
 			"    --multiband_downscale #   Downscaling reduce the texture quality but speed up the computation time (default 2).\n"
-			"    --multiband_unwrap #      Method to unwrap input mesh: 0=basic (default, >600k faces, fast), 1=LSCM (<=600k faces, optimize space), 2=ABF (<=300k faces, generate 1 atlas).\n"
+			"    --multiband_contrib \"# # # # \"  Number of contributions per frequency band for the multi-band blending, should be 4 values! (default \"1 5 10 0\").\n"
+			"    --multiband_unwrap #      Method to unwrap input mesh: 0=basic (default, >600k faces, fast), 1=ABF (<=300k faces, generate 1 atlas), 2=LSCM (<=600k faces, optimize space).\n"
 			"    --multiband_fillholes     Fill Texture holes with plausible values.\n"
 			"    --multiband_padding #     Texture edge padding size in pixel (0-100) (default 5).\n"
 			"    --multiband_scorethr #    0 to disable filtering based on threshold to relative best score (0.0-1.0). (default 0.1).\n"
@@ -153,6 +154,7 @@ int main(int argc, char * argv[])
 	bool distanceToCamPolicy = false;
 	bool multiband = false;
 	int multibandDownScale = 2;
+	std::string multibandNbContrib = "1 5 10 0";
 	int multibandUnwrap = 0;
 	bool multibandFillHoles = false;
 	int multibandPadding = 5;
@@ -367,6 +369,23 @@ int main(int argc, char * argv[])
 			if(i<argc-1)
 			{
 				multibandDownScale = uStr2Int(argv[i]);
+			}
+			else
+			{
+				showUsage();
+			}
+		}
+		else if(std::strcmp(argv[i], "--multiband_contrib") == 0)
+		{
+			++i;
+			if(i<argc-1)
+			{
+				if(uSplit(argv[i], ' ').size() != 4)
+				{
+					printf("--multiband_contrib has wrong format! value=\"%s\"\n", argv[i]);
+					showUsage();
+				}
+				multibandNbContrib = argv[i];
 			}
 			else
 			{
@@ -1424,7 +1443,7 @@ int main(int argc, char * argv[])
 							printf("MultiBand texturing (size=%d, downscale=%d, unwrap method=%s, fill holes=%s, padding=%d, best score thr=%f, angle thr=%f, force visible=%s)... \"%s\"\n",
 									textureSize,
 									multibandDownScale,
-									multibandUnwrap==2?"ABF":multibandUnwrap==1?"LSCM":"Basic",
+									multibandUnwrap==1?"ABF":multibandUnwrap==2?"LSCM":"Basic",
 									multibandFillHoles?"true":"false",
 									multibandPadding,
 									multibandBestScoreThr,
@@ -1442,6 +1461,7 @@ int main(int argc, char * argv[])
 									0,
 									textureSize,
 									multibandDownScale,
+									multibandNbContrib,
 									"jpg",
 									gains,
 									blendingGains,
