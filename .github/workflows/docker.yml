@@ -28,10 +28,7 @@ jobs:
       -
         name: Checkout
         uses: actions/checkout@v2
-      -
-        name: Set up QEMU
-        uses: docker/setup-qemu-action@v1
-      -
+      -      -
         name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v1
       -
@@ -47,4 +44,6 @@ jobs:
           context: ./docker/${{ matrix.docker_path }}
           push: true
           tags: introlab3it/rtabmap:${{ matrix.docker_tag }}
+          cache-from: type=registry,ref=introlab3it/rtabmap:buildcache_${{ matrix.docker_tag }}
+          cache-to: type=registry,ref=introlab3it/rtabmap:buildcache_${{ matrix.docker_tag }},mode=max
 
