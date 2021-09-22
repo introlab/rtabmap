@@ -79,7 +79,7 @@ OdometryFLOAM::OdometryFLOAM(const ParametersMap & parameters) :
 	lidar::Lidar lidar_param;
 	lidar_param.setScanPeriod(scan_period);
 	lidar_param.setVerticalAngle(vertical_angle);
-	lidar_param.setLines(sensor==2?64:sensor==1?32:sensor);
+	lidar_param.setLines(sensor==2?64:sensor==1?32:16);
 	lidar_param.setMaxDistance(max_dis<=0?200:max_dis);
 	lidar_param.setMinDistance(min_dis);
 
