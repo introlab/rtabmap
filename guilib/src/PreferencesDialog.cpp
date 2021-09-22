@@ -196,6 +196,9 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 #ifndef RTABMAP_OPENVINS
 	_ui->odom_strategy->setItemData(10, 0, Qt::UserRole - 1);
 #endif
+#ifndef RTABMAP_FLOAM
+	_ui->odom_strategy->setItemData(11, 0, Qt::UserRole - 1);
+#endif
 
 #if CV_MAJOR_VERSION < 3
 	_ui->stereosgbm_mode->setItemData(2, 0, Qt::UserRole - 1);
@@ -1360,6 +1363,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	// Odometry LOAM
 	_ui->odom_loam_sensor->setObjectName(Parameters::kOdomLOAMSensor().c_str());
 	_ui->odom_loam_scan_period->setObjectName(Parameters::kOdomLOAMScanPeriod().c_str());
+	_ui->odom_loam_resolution->setObjectName(Parameters::kOdomLOAMResolution().c_str());
 	_ui->odom_loam_linvar->setObjectName(Parameters::kOdomLOAMLinVar().c_str());
 	_ui->odom_loam_angvar->setObjectName(Parameters::kOdomLOAMAngVar().c_str());
 	_ui->odom_loam_localMapping->setObjectName(Parameters::kOdomLOAMLocalMapping().c_str());

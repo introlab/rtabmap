@@ -52,10 +52,13 @@ OdometryLOAM::OdometryLOAM(const ParametersMap & parameters) :
 #endif
 {
 #ifdef RTABMAP_LOAM
-	int velodyneType = 0;
+	int velodyneType = Parameters::defaultOdomLOAMSensor();
+	float mapResolution  = Parameters::defaultOdomLOAMResolution();
 	Parameters::parse(parameters, Parameters::kOdomLOAMSensor(), velodyneType);
 	Parameters::parse(parameters, Parameters::kOdomLOAMScanPeriod(), scanPeriod_);
 	UASSERT(scanPeriod_>0.0f);
+	Parameters::parse(parameters, Parameters::kOdomLOAMResolution(), mapResolution);
+	UASSERT(mapResolution>0.0f);
 	Parameters::parse(parameters, Parameters::kOdomLOAMLinVar(), linVar_);
 	UASSERT(linVar_>0.0f);
 	Parameters::parse(parameters, Parameters::kOdomLOAMAngVar(), angVar_);
@@ -75,6 +78,8 @@ OdometryLOAM::OdometryLOAM(const ParametersMap & parameters) :
 	}
 	laserOdometry_ =  new loam::BasicLaserOdometry(scanPeriod_);
 	laserMapping_ = new loam::BasicLaserMapping(scanPeriod_);
+	laserMapping_->downSizeFilterCorner().setLeafSize(mapResolution, mapResolution, mapResolution);
+	laserMapping_->downSizeFilterSurf().setLeafSize(mapResolution*2.0f, mapResolution*2.0f, mapResolution*2.0f);
 #endif
 }
 

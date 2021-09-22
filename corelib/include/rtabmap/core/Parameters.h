@@ -535,6 +535,7 @@ class RTABMAP_EXP Parameters
     // Odometry LOAM
     RTABMAP_PARAM(OdomLOAM, Sensor,     int,    2,    "Velodyne sensor: 0=VLP-16, 1=HDL-32, 2=HDL-64E");
     RTABMAP_PARAM(OdomLOAM, ScanPeriod, float,  0.1,  "Scan period (s)");
+    RTABMAP_PARAM(OdomLOAM, Resolution, float,  0.2,   "Map resolution");
     RTABMAP_PARAM(OdomLOAM, LinVar,     float,  0.01,  "Linear output variance.");
     RTABMAP_PARAM(OdomLOAM, AngVar,     float,  0.01,  "Angular output variance.");
     RTABMAP_PARAM(OdomLOAM, LocalMapping, bool,  true,  "Local mapping. It adds more time to compute odometry, but accuracy is significantly improved.");

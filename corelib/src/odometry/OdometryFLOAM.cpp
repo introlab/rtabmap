@@ -60,7 +60,7 @@ OdometryFLOAM::OdometryFLOAM(const ParametersMap & parameters) :
 	float scan_period= Parameters::defaultOdomLOAMScanPeriod();
 	float max_dis = Parameters::defaultIcpRangeMax();
 	float min_dis = Parameters::defaultIcpRangeMin();
-	float map_resolution = Parameters::defaultIcpVoxelSize();
+	float map_resolution = Parameters::defaultOdomLOAMResolution();
 	linVar_ = Parameters::defaultOdomLOAMLinVar();
 	angVar_ = Parameters::defaultOdomLOAMAngVar();
 
@@ -68,7 +68,7 @@ OdometryFLOAM::OdometryFLOAM(const ParametersMap & parameters) :
 	Parameters::parse(parameters, Parameters::kOdomLOAMScanPeriod(), scan_period);
 	Parameters::parse(parameters, Parameters::kIcpRangeMax(), max_dis);
 	Parameters::parse(parameters, Parameters::kIcpRangeMin(), min_dis);
-	Parameters::parse(parameters, Parameters::kIcpVoxelSize(), map_resolution);
+	Parameters::parse(parameters, Parameters::kOdomLOAMResolution(), map_resolution);
 
 	UASSERT(scan_period>0.0f);
 	Parameters::parse(parameters, Parameters::kOdomLOAMLinVar(), linVar_);
