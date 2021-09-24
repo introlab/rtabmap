@@ -68,6 +68,7 @@ public:
 	bool setMirroring(bool enabled);
 	void setOpenNI2StampsAndIDsUsed(bool used);
 	void setIRDepthShift(int horizontal, int vertical);
+	void setDepthDecimation(int decimation);
 
 protected:
 	virtual SensorData captureImage(CameraInfo * info = 0);
@@ -85,6 +86,7 @@ private:
 	StereoCameraModel _stereoModel;
 	int _depthHShift;
 	int _depthVShift;
+	int _depthDecimation;
 #endif
 };
 

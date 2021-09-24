@@ -74,7 +74,8 @@ CameraOpenNI2::CameraOpenNI2(
 	_deviceId(deviceId),
 	_openNI2StampsAndIDsUsed(false),
 	_depthHShift(0),
-	_depthVShift(0)
+	_depthVShift(0),
+	_depthDecimation(1)
 #endif
 {
 }
@@ -181,6 +182,14 @@ void CameraOpenNI2::setIRDepthShift(int horizontal, int vertical)
 	UASSERT(vertical >= 0);
 	_depthHShift = horizontal;
 	_depthVShift = vertical;
+#endif
+}
+
+void CameraOpenNI2::setDepthDecimation(int decimation)
+{
+#ifdef RTABMAP_OPENNI2
+	UASSERT(decimation >= 1);
+	_depthDecimation = decimation;
 #endif
 }
 
@@ -544,8 +553,18 @@ SensorData CameraOpenNI2::captureImage(CameraInfo * info)
 						if(_stereoModel.left().isValidForRectification() && !_stereoModel.stereoTransform().isNull())
 						{
 							depth = _stereoModel.left().rectifyImage(depth, 0);
-							depth = util2d::registerDepth(depth, _stereoModel.left().K(), rgb.size(), _stereoModel.right().K(), _stereoModel.stereoTransform());
+							CameraModel depthModel = _stereoModel.left().scaled(1.0 / double(_depthDecimation));
+							depth = util2d::decimate(depth, _depthDecimation);
+							depth = util2d::registerDepth(depth, depthModel.K(), rgb.size()/_depthDecimation, _stereoModel.right().scaled(1.0/double(_depthDecimation)).K(), _stereoModel.stereoTransform());
 						}
+						else if (_depthDecimation > 1)
+						{
+							depth = util2d::decimate(depth, _depthDecimation);
+						}
+					}
+					else if (_depthDecimation > 1)
+					{
+						depth = util2d::decimate(depth, _depthDecimation);
 					}
 				}
 				else // IR

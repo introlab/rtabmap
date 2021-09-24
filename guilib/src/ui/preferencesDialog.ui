@@ -63,9 +63,9 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-573</y>
-            <width>686</width>
-            <height>3905</height>
+            <y>-466</y>
+            <width>675</width>
+            <height>3499</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -95,7 +95,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>19</number>
+                <number>5</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,1">
@@ -3109,7 +3109,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                     <item>
                      <widget class="QStackedWidget" name="stackedWidget_src">
                       <property name="currentIndex">
-                       <number>3</number>
+                       <number>0</number>
                       </property>
                       <widget class="QWidget" name="page_41">
                        <layout class="QVBoxLayout" name="verticalLayout_64">
@@ -3346,28 +3346,35 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                   <string>OpenNI 2</string>
                                  </property>
                                  <layout class="QGridLayout" name="gridLayout_54" columnstretch="0,1,0">
-                                  <item row="7" column="1">
-                                   <widget class="QLabel" name="label_435">
+                                  <item row="1" column="0">
+                                   <widget class="QCheckBox" name="openni2_autoWhiteBalance">
                                     <property name="text">
-                                     <string>IR-Depth horizontal shift.</string>
+                                     <string/>
+                                    </property>
+                                    <property name="checked">
+                                     <bool>true</bool>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="2" column="1">
+                                   <widget class="QLabel" name="label_218">
+                                    <property name="text">
+                                     <string>Auto exposure.</string>
                                     </property>
                                     <property name="wordWrap">
                                      <bool>true</bool>
                                     </property>
                                    </widget>
                                   </item>
-                                  <item row="7" column="0">
-                                   <widget class="QSpinBox" name="openni2_hshift">
-                                    <property name="suffix">
-                                     <string> pix</string>
-                                    </property>
-                                    <property name="maximum">
-                                     <number>65535</number>
+                                  <item row="0" column="1">
+                                   <widget class="QLineEdit" name="lineEdit_openni2OniPath">
+                                    <property name="text">
+                                     <string/>
                                     </property>
                                    </widget>
                                   </item>
-                                  <item row="1" column="0">
-                                   <widget class="QCheckBox" name="openni2_autoWhiteBalance">
+                                  <item row="2" column="0">
+                                   <widget class="QCheckBox" name="openni2_autoExposure">
                                     <property name="text">
                                      <string/>
                                     </property>
@@ -3393,54 +3400,20 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                     </property>
                                    </widget>
                                   </item>
-                                  <item row="5" column="0">
-                                   <widget class="QCheckBox" name="openni2_stampsIdsUsed">
-                                    <property name="text">
-                                     <string/>
-                                    </property>
-                                    <property name="checked">
-                                     <bool>false</bool>
-                                    </property>
-                                   </widget>
-                                  </item>
-                                  <item row="0" column="2">
-                                   <widget class="QLabel" name="label_231">
-                                    <property name="text">
-                                     <string>Path to a *.ONI file.</string>
-                                    </property>
-                                    <property name="wordWrap">
-                                     <bool>true</bool>
-                                    </property>
-                                   </widget>
-                                  </item>
-                                  <item row="4" column="1">
-                                   <widget class="QLabel" name="label_220">
-                                    <property name="text">
-                                     <string>Gain.</string>
-                                    </property>
-                                    <property name="wordWrap">
-                                     <bool>true</bool>
-                                    </property>
-                                   </widget>
-                                  </item>
-                                  <item row="0" column="1">
-                                   <widget class="QLineEdit" name="lineEdit_openni2OniPath">
-                                    <property name="text">
-                                     <string/>
-                                    </property>
-                                   </widget>
-                                  </item>
-                                  <item row="0" column="0">
-                                   <widget class="QToolButton" name="toolButton_openni2OniPath">
-                                    <property name="text">
-                                     <string>...</string>
-                                    </property>
-                                   </widget>
-                                  </item>
                                   <item row="1" column="1">
                                    <widget class="QLabel" name="label_217">
                                     <property name="text">
                                      <string>Auto white balance.</string>
+                                    </property>
+                                    <property name="wordWrap">
+                                     <bool>true</bool>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="8" column="1">
+                                   <widget class="QLabel" name="label_436">
+                                    <property name="text">
+                                     <string>IR-Depth vertical shift.</string>
                                     </property>
                                     <property name="wordWrap">
                                      <bool>true</bool>
@@ -3467,46 +3440,13 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                     </property>
                                    </widget>
                                   </item>
-                                  <item row="4" column="0">
-                                   <widget class="QSpinBox" name="openni2_gain">
+                                  <item row="8" column="0">
+                                   <widget class="QSpinBox" name="openni2_vshift">
+                                    <property name="suffix">
+                                     <string> pix</string>
+                                    </property>
                                     <property name="maximum">
-                                     <number>1000</number>
-                                    </property>
-                                    <property name="value">
-                                     <number>100</number>
-                                    </property>
-                                   </widget>
-                                  </item>
-                                  <item row="9" column="0">
-                                   <spacer name="verticalSpacer_33">
-                                    <property name="orientation">
-                                     <enum>Qt::Vertical</enum>
-                                    </property>
-                                    <property name="sizeHint" stdset="0">
-                                     <size>
-                                      <width>20</width>
-                                      <height>0</height>
-                                     </size>
-                                    </property>
-                                   </spacer>
-                                  </item>
-                                  <item row="2" column="0">
-                                   <widget class="QCheckBox" name="openni2_autoExposure">
-                                    <property name="text">
-                                     <string/>
-                                    </property>
-                                    <property name="checked">
-                                     <bool>true</bool>
-                                    </property>
-                                   </widget>
-                                  </item>
-                                  <item row="2" column="1">
-                                   <widget class="QLabel" name="label_218">
-                                    <property name="text">
-                                     <string>Auto exposure.</string>
-                                    </property>
-                                    <property name="wordWrap">
-                                     <bool>true</bool>
+                                     <number>65535</number>
                                     </property>
                                    </widget>
                                   </item>
@@ -3520,20 +3460,103 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                     </property>
                                    </widget>
                                   </item>
-                                  <item row="8" column="1">
-                                   <widget class="QLabel" name="label_436">
+                                  <item row="4" column="0">
+                                   <widget class="QSpinBox" name="openni2_gain">
+                                    <property name="maximum">
+                                     <number>1000</number>
+                                    </property>
+                                    <property name="value">
+                                     <number>100</number>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="4" column="1">
+                                   <widget class="QLabel" name="label_220">
                                     <property name="text">
-                                     <string>IR-Depth vertical shift.</string>
+                                     <string>Gain.</string>
                                     </property>
                                     <property name="wordWrap">
                                      <bool>true</bool>
                                     </property>
                                    </widget>
                                   </item>
-                                  <item row="8" column="0">
-                                   <widget class="QSpinBox" name="openni2_vshift">
+                                  <item row="0" column="2">
+                                   <widget class="QLabel" name="label_231">
+                                    <property name="text">
+                                     <string>Path to a *.ONI file.</string>
+                                    </property>
+                                    <property name="wordWrap">
+                                     <bool>true</bool>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="0" column="0">
+                                   <widget class="QToolButton" name="toolButton_openni2OniPath">
+                                    <property name="text">
+                                     <string>...</string>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="5" column="0">
+                                   <widget class="QCheckBox" name="openni2_stampsIdsUsed">
+                                    <property name="text">
+                                     <string/>
+                                    </property>
+                                    <property name="checked">
+                                     <bool>false</bool>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="7" column="1">
+                                   <widget class="QLabel" name="label_435">
+                                    <property name="text">
+                                     <string>IR-Depth horizontal shift.</string>
+                                    </property>
+                                    <property name="wordWrap">
+                                     <bool>true</bool>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="10" column="0">
+                                   <spacer name="verticalSpacer_33">
+                                    <property name="orientation">
+                                     <enum>Qt::Vertical</enum>
+                                    </property>
+                                    <property name="sizeHint" stdset="0">
+                                     <size>
+                                      <width>20</width>
+                                      <height>0</height>
+                                     </size>
+                                    </property>
+                                   </spacer>
+                                  </item>
+                                  <item row="7" column="0">
+                                   <widget class="QSpinBox" name="openni2_hshift">
                                     <property name="suffix">
                                      <string> pix</string>
+                                    </property>
+                                    <property name="maximum">
+                                     <number>65535</number>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="9" column="1">
+                                   <widget class="QLabel" name="label_641">
+                                    <property name="text">
+                                     <string>Depth decimation.</string>
+                                    </property>
+                                    <property name="wordWrap">
+                                     <bool>true</bool>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="9" column="0">
+                                   <widget class="QSpinBox" name="openni2_depth_decimation">
+                                    <property name="suffix">
+                                     <string/>
+                                    </property>
+                                    <property name="minimum">
+                                     <number>1</number>
                                     </property>
                                     <property name="maximum">
                                      <number>65535</number>

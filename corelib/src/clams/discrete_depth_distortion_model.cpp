@@ -275,19 +275,21 @@ namespace clams
 
   void DiscreteDepthDistortionModel::undistort(cv::Mat & depth) const
   {
-    UASSERT(width_ == depth.cols);
-    UASSERT(height_ ==depth.rows);
+    UASSERT(width_ >= depth.cols && width_ % depth.cols == 0);
+    UASSERT(height_ >=depth.rows && height_ % depth.rows == 0);
+    UASSERT(height_ >= depth.rows && height_ % depth.rows == 0);
     UASSERT(depth.type() == CV_16UC1 || depth.type() == CV_32FC1);
+    int factor = width_ / depth.cols;
     if(depth.type() == CV_32FC1)
     {
 		#pragma omp parallel for
-		for(int v = 0; v < height_; ++v) {
-		  for(int u = 0; u < width_; ++u) {
+		for(int v = 0; v < depth.rows; ++v) {
+		  for(int u = 0; u < depth.cols; ++u) {
 			 float & z = depth.at<float>(v, u);
 			if(uIsNan(z) || z == 0.0f)
 			  continue;
 			double zf = z;
-			frustum(v, u).interpolatedUndistort(&zf);
+			frustum(v * factor, u * factor).interpolatedUndistort(&zf);
 			z = zf;
 		  }
 		}
@@ -295,13 +297,13 @@ namespace clams
     else
     {
 		#pragma omp parallel for
-		for(int v = 0; v < height_; ++v) {
-		  for(int u = 0; u < width_; ++u) {
+		for(int v = 0; v < depth.rows; ++v) {
+		  for(int u = 0; u < depth.cols; ++u) {
 		    unsigned short & z = depth.at<unsigned short>(v, u);
 			if(uIsNan(z) || z == 0)
 			  continue;
 			double zf = z * 0.001;
-			frustum(v, u).interpolatedUndistort(&zf);
+			frustum(v * factor, u * factor).interpolatedUndistort(&zf);
 			z = zf*1000;
 		  }
 		}

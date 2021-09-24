@@ -365,8 +365,10 @@ void CameraThread::postUpdate(SensorData * dataPtr, CameraInfo * info) const
 	if(_distortionModel && !data.depthRaw().empty())
 	{
 		UTimer timer;
-		if(_distortionModel->getWidth() == data.depthRaw().cols &&
-		   _distortionModel->getHeight() == data.depthRaw().rows	)
+		if(_distortionModel->getWidth() >= data.depthRaw().cols &&
+		   _distortionModel->getHeight() >= data.depthRaw().rows &&
+		   _distortionModel->getWidth() % data.depthRaw().cols == 0 &&
+		   _distortionModel->getHeight() % data.depthRaw().rows == 0)
 		{
 			cv::Mat depth = data.depthRaw().clone();// make sure we are not modifying data in cached signatures.
 			_distortionModel->undistort(depth);
@@ -374,7 +376,7 @@ void CameraThread::postUpdate(SensorData * dataPtr, CameraInfo * info) const
 		}
 		else
 		{
-			UERROR("Distortion model size is %dx%d but dpeth image is %dx%d!",
+			UERROR("Distortion model size is %dx%d but depth image is %dx%d!",
 					_distortionModel->getWidth(), _distortionModel->getHeight(),
 					data.depthRaw().cols, data.depthRaw().rows);
 		}

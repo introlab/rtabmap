@@ -99,7 +99,7 @@ SensorData Camera::takeImage(CameraInfo * info)
 	}
 
 	UTimer timer;
-	SensorData data  = this->captureImage(info);
+	SensorData data = this->captureImage(info);
 	double captureTime = timer.ticks();
 	if(warnFrameRateTooHigh)
 	{
