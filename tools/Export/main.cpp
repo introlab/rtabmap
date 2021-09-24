@@ -105,7 +105,7 @@ void showUsage()
 			"    --decimation    #     Depth image decimation before creating the clouds (default 4, 1 with --scan).\n"
 			"    --voxel         #     Voxel size of the created clouds (default 0.01 m, 0 m with --scan).\n"
 			"    --noise_radius  #     Noise filtering search radius (default 0, 0=disabled).\n"
-			"    --noise_k       #     Noise filtering minimum neighbors in search radius (default 5, 0=disabled)."
+			"    --noise_k       #     Noise filtering minimum neighbors in search radius (default 5, 0=disabled).\n"
 			"    --color_radius  #     Radius used to colorize polygons (default 0.05 m, 0 m with --scan). Set 0 for nearest color.\n"
 			"    --scan                Use laser scan for the point cloud.\n"
 			"    --save_in_db          Save resulting assembled point cloud or mesh in the database.\n"

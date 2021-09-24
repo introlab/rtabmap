@@ -114,6 +114,7 @@ Transform OdometryFLOAM::computeTransform(
 	Transform t;
 #ifdef RTABMAP_FLOAM
 	UTimer timer;
+	UTimer timerTotal;
 
 	if(data.laserScanRaw().isEmpty())
 	{
@@ -131,16 +132,20 @@ Transform OdometryFLOAM::computeTransform(
 	{
 		pcl::PointCloud<pcl::PointXYZI>::Ptr laserCloudInPtr = util3d::laserScanToPointCloudI(data.laserScanRaw(), data.laserScanRaw().localTransform());
 
+		UDEBUG("Scan conversion: %fs", timer.ticks());
+
 		pcl::PointCloud<pcl::PointXYZI>::Ptr pointcloud_edge(new pcl::PointCloud<pcl::PointXYZI>());
 		pcl::PointCloud<pcl::PointXYZI>::Ptr pointcloud_surf(new pcl::PointCloud<pcl::PointXYZI>());
 
 		laserProcessing_->featureExtraction(laserCloudInPtr,pointcloud_edge,pointcloud_surf);
+		UDEBUG("Feature extraction: %fs", timer.ticks());
 
 		if(this->framesProcessed() == 0){
 			odomEstimation_->initMapWithPoints(pointcloud_edge, pointcloud_surf);
 		}else{
 			odomEstimation_->updatePointsToMap(pointcloud_edge, pointcloud_surf);
 		}
+		UDEBUG("Update: %fs", timer.ticks());
 
 		Transform pose = Transform::fromEigen3d(odomEstimation_->odom);
 
@@ -174,6 +179,7 @@ Transform OdometryFLOAM::computeTransform(
 					odomEstimation_->getMap(localMap);
 					info->localScanMapSize = localMap->size();
 					info->localScanMap = LaserScan(util3d::laserScanFromPointCloud(*localMap), 0, data.laserScanRaw().rangeMax());
+					UDEBUG("Fill info data: %fs", timer.ticks());
 				}
 			}
 		}
@@ -183,7 +189,7 @@ Transform OdometryFLOAM::computeTransform(
 			UWARN("FLOAM failed to register the latest scan, odometry should be reset.");
 		}
 	}
-	UINFO("Odom update time = %fs, lost=%s", timer.elapsed(), lost_?"true":"false");
+	UINFO("Odom update time = %fs, lost=%s", timerTotal.elapsed(), lost_?"true":"false");
 
 #else
 	UERROR("RTAB-Map is not built with FLOAM support! Select another odometry approach.");
