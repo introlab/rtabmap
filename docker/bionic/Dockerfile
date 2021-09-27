@@ -68,7 +68,7 @@ RUN cd assimp && \
 RUN git clone https://github.com/alicevision/geogram.git
 RUN cd geogram && \
     git checkout v1.7.6 && \
-    wget https://gist.githubusercontent.com/matlabbe/1df724465106c056ca4cc195c81d8cf0/raw/346304b279c3e9dd59e75dd31155eb1aff91785e/geogram_8b2ae61.patch && \
+    wget https://gist.githubusercontent.com/matlabbe/1df724465106c056ca4cc195c81d8cf0/raw/b3ed4cb8f9b270833a40d57d870a259eabfa4415/geogram_8b2ae61.patch && \
     git apply geogram_8b2ae61.patch && \
     ./configure.sh && \
     cd build/Linux64-gcc-dynamic-Release && \
@@ -83,7 +83,7 @@ RUN wget -nv https://github.com/Kitware/CMake/releases/download/v3.17.0/cmake-3.
 RUN git clone https://github.com/alicevision/AliceVision.git --recursive
 RUN cd AliceVision && \
     git checkout 0f6115b6af6183c524aa7fcf26141337c1cf3872 && \
-    wget https://gist.githubusercontent.com/matlabbe/1df724465106c056ca4cc195c81d8cf0/raw/346304b279c3e9dd59e75dd31155eb1aff91785e/alicevision_0f6115b.patch && \
+    wget https://gist.githubusercontent.com/matlabbe/1df724465106c056ca4cc195c81d8cf0/raw/b3ed4cb8f9b270833a40d57d870a259eabfa4415/alicevision_0f6115b.patch && \
     git apply alicevision_0f6115b.patch && \
     mkdir build && \
     cd build && \
