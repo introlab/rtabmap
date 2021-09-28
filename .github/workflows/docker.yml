@@ -11,7 +11,7 @@ jobs:
     
     strategy:
       matrix:
-        docker_tag: [xenial, bionic, focal, android24, android26]
+        docker_tag: [xenial, bionic, focal, android23, android24, android26]
         include:
         - docker_tag: xenial
           docker_tags: |
