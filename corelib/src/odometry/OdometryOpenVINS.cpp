@@ -130,9 +130,6 @@ Transform OdometryOpenVINS::computeTransform(
 			params.state_options.num_cameras = 2;
 			//params.dt_slam_delay = 2;
 
-			params.stereo_pairs.emplace_back(0, 1);
-			params.state_options.num_unique_cameras = 1;
-
 			// Set what representation we should be using
 			//params.state_options.feat_rep_msckf = LandmarkRepresentation::from_string("ANCHORED_MSCKF_INVERSE_DEPTH"); // default GLOBAL_3D
 			//params.state_options.feat_rep_slam = LandmarkRepresentation::from_string("ANCHORED_MSCKF_INVERSE_DEPTH");  // default GLOBAL_3D
@@ -339,6 +336,8 @@ Transform OdometryOpenVINS::computeTransform(
 		message.sensor_ids.push_back(1);
 		message.images.push_back(left);
 		message.images.push_back(right);
+		message.masks.push_back(cv::Mat::zeros(left.size(), CV_8UC1));
+		message.masks.push_back(cv::Mat::zeros(right.size(), CV_8UC1));
 
 		// send it to our VIO system
 		vioManager_->feed_measurement_camera(message);
