@@ -38,60 +38,22 @@ RUN cd libpointmatcher && \
     cd && \
     rm -r libpointmatcher
 
-# AliceVision v2.4.0 modified (Sept 13 2021)
-RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
-      libsuitesparse-dev \
-      libceres-dev \
-      xorg-dev \
-      libglu1-mesa-dev \
-      wget
-RUN git clone https://github.com/OpenImageIO/oiio.git
-RUN cd oiio && \
-    git checkout Release-2.0.12 && \
-    mkdir build && \
-    cd build && \
-    cmake -DUSE_PYTHON=OFF -DOIIO_BUILD_TESTS=OFF -DOIIO_BUILD_TOOLS=OFF .. && \
-    make -j$(nproc) && \
-    make install && \
-    cd && \
-    rm -r oiio
-RUN git clone https://github.com/assimp/assimp.git
-RUN cd assimp && \
-    git checkout 71a87b653cd4b5671104fe49e2e38cf5dd4d8675 && \
-    mkdir build && \
-    cd build && \
-    cmake .. && \
-    make -j$(nproc) && \
-    make install && \
-    cd && \
-    rm -r assimp
-RUN git clone https://github.com/alicevision/geogram.git
-RUN cd geogram && \
-    git checkout v1.7.6 && \
-    wget https://gist.githubusercontent.com/matlabbe/1df724465106c056ca4cc195c81d8cf0/raw/b3ed4cb8f9b270833a40d57d870a259eabfa4415/geogram_8b2ae61.patch && \
-    git apply geogram_8b2ae61.patch && \
-    ./configure.sh && \
-    cd build/Linux64-gcc-dynamic-Release && \
-    make -j$(nproc) && \
-    make install && \
-    cd && \
-    rm -r geogram
-# cmake >=3.11 required
-RUN wget -nv https://github.com/Kitware/CMake/releases/download/v3.17.0/cmake-3.17.0-Linux-x86_64.tar.gz && \
+ARG TARGETPLATFORM
+ENV TARGETPLATFORM=${TARGETPLATFORM:-linux/amd64}
+RUN echo "I am building for $TARGETPLATFORM"
+
+# cmake >=3.11 required for amd64 dependencies
+RUN if [ "$TARGETPLATFORM" = "linux/amd64" ]; then apt install -y wget && \
+    wget -nv https://github.com/Kitware/CMake/releases/download/v3.17.0/cmake-3.17.0-Linux-x86_64.tar.gz && \
     tar -xzf cmake-3.17.0-Linux-x86_64.tar.gz && \
-    rm cmake-3.17.0-Linux-x86_64.tar.gz
-RUN git clone https://github.com/alicevision/AliceVision.git --recursive
-RUN cd AliceVision && \
-    git checkout 0f6115b6af6183c524aa7fcf26141337c1cf3872 && \
-    wget https://gist.githubusercontent.com/matlabbe/1df724465106c056ca4cc195c81d8cf0/raw/b3ed4cb8f9b270833a40d57d870a259eabfa4415/alicevision_0f6115b.patch && \
-    git apply alicevision_0f6115b.patch && \
-    mkdir build && \
-    cd build && \
-    ../../cmake-3.17.0-Linux-x86_64/bin/cmake -DALICEVISION_USE_CUDA=OFF -DALICEVISION_USE_APRILTAG=OFF -DALICEVISION_BUILD_SOFTWARE=OFF .. && \
-    make -j$(nproc) && \
-    make install && \
-    cd && \
-    rm -r AliceVision
+    rm cmake-3.17.0-Linux-x86_64.tar.gz &&\
+    ln -s ~/cmake-3.17.0-Linux-x86_64/bin/cmake ~/cmake; fi
+
+# amd64-only dependencies
+ADD amd64.bash /root/amd64.bash
+RUN chmod +x amd64.bash
+RUN if [ "$TARGETPLATFORM" = "linux/amd64" ]; then /bin/bash -c "./amd64.bash"; fi
+RUN if [ "$TARGETPLATFORM" = "linux/arm64" ]; then ln -s /usr/bin/cmake ~/cmake; fi
 
 # Clone source code
 ARG CACHE_DATE=2016-01-01
@@ -102,7 +64,7 @@ RUN rm /bin/sh && ln -s /bin/bash /bin/sh
 # Build RTAB-Map project
 RUN source /ros_entrypoint.sh && \
     cd rtabmap/build && \
-    ../../cmake-3.17.0-Linux-x86_64/bin/cmake -DWITH_ALICE_VISION=ON .. && \
+    ~/cmake -DWITH_ALICE_VISION=ON .. && \
     make -j2 && \
     make install && \
     cd ../.. && \
