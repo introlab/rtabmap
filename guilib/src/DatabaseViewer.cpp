@@ -7599,10 +7599,27 @@ void DatabaseViewer::refineConstraint(int from, int to, bool silent)
 				fromS->sensorData().setLaserScan(LaserScan(util3d::laserScanFromPointCloud(*util3d::removeNaNFromPointCloud(cloudFrom), Transform()), maxLaserScans, 0));
 				toS->sensorData().setLaserScan(LaserScan(util3d::laserScanFromPointCloud(*util3d::removeNaNFromPointCloud(cloudTo), Transform()), maxLaserScans, 0));
 
-				if(!fromS->sensorData().laserScanCompressed().isEmpty() || !toS->sensorData().laserScanCompressed().isEmpty())
+				if(!fromS->sensorData().laserScanCompressed().isEmpty() && !toS->sensorData().laserScanCompressed().isEmpty())
 				{
 					UWARN("There are laser scans in data, but generate laser scan from "
-						  "depth image option is activated. Ignoring saved laser scans...");
+						  "depth image option is activated (GUI Parameters->Refine). "
+						  "Ignoring saved laser scans...");
+				}
+				else
+				{
+					QString msg = tr("Generating laser scan from depth image is checked "
+							"(GUI Parameters->Refine), but selected nodes don't contain "
+							"depth data. Empty laser scans are generated, so transform "
+							"estimation will likely fail. Uncheck to use laser scans instead "
+							"(if there are some).");
+					if(!silent)
+					{
+
+						QMessageBox::warning(this,
+								tr("Refine a link"),
+								msg);
+					}
+					UWARN(msg.toStdString().c_str());
 				}
 			}
 			else

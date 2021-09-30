@@ -130,7 +130,7 @@ Transform OdometryFLOAM::computeTransform(
 	cv::Mat covariance = cv::Mat::eye(6,6,CV_64FC1)*9999;
 	if(!lost_)
 	{
-		pcl::PointCloud<pcl::PointXYZI>::Ptr laserCloudInPtr = util3d::laserScanToPointCloudI(data.laserScanRaw(), data.laserScanRaw().localTransform());
+		pcl::PointCloud<pcl::PointXYZI>::Ptr laserCloudInPtr = util3d::laserScanToPointCloudI(data.laserScanRaw());
 
 		UDEBUG("Scan conversion: %fs", timer.ticks());
 
@@ -152,8 +152,8 @@ Transform OdometryFLOAM::computeTransform(
 		if(!pose.isNull())
 		{
 			covariance = cv::Mat::eye(6,6,CV_64FC1);
-			covariance(cv::Range(0,3), cv::Range(0,3)) *= 0.01;
-			covariance(cv::Range(3,6), cv::Range(3,6)) *= 0.01;
+			covariance(cv::Range(0,3), cv::Range(0,3)) *= linVar_;
+			covariance(cv::Range(3,6), cv::Range(3,6)) *= angVar_;
 
 			t = lastPose_.inverse() * pose; // incremental
 			lastPose_ = pose;
