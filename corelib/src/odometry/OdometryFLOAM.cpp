@@ -178,7 +178,7 @@ Transform OdometryFLOAM::computeTransform(
 					pcl::PointCloud<pcl::PointXYZI>::Ptr localMap(new pcl::PointCloud<pcl::PointXYZI>());
 					odomEstimation_->getMap(localMap);
 					info->localScanMapSize = localMap->size();
-					info->localScanMap = LaserScan(util3d::laserScanFromPointCloud(*localMap), 0, data.laserScanRaw().rangeMax());
+					info->localScanMap = LaserScan(util3d::laserScanFromPointCloud(*localMap), 0, data.laserScanRaw().rangeMax(), data.laserScanRaw().localTransform());
 					UDEBUG("Fill info data: %fs", timer.ticks());
 				}
 			}
