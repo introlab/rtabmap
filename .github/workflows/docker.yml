@@ -17,36 +17,57 @@ jobs:
           docker_tags: |
             introlab3it/rtabmap:xenial
             introlab3it/rtabmap:16.04
+          docker_platforms: |
+            linux/amd64
           docker_path: 'xenial'
         - docker_tag: bionic
           docker_tags: |
             introlab3it/rtabmap:bionic
             introlab3it/rtabmap:18.04
+          docker_platforms: |
+            linux/amd64
+            linux/arm64
+            linux/arm/v7
           docker_path: 'bionic'
         - docker_tag: focal
           docker_tags: |
             introlab3it/rtabmap:focal
             introlab3it/rtabmap:20.04
             introlab3it/rtabmap:latest
+          docker_platforms: |
+            linux/amd64
+            linux/arm64
+            linux/arm/v7
           docker_path: 'focal'
         - docker_tag: android23
           docker_tags: |
             introlab3it/rtabmap:android23
             introlab3it/rtabmap:tango
+          docker_platforms: |
+            linux/amd64
           docker_path: 'bionic/android/rtabmap_api23'
         - docker_tag: android24
           docker_tags: |
             introlab3it/rtabmap:android24
+          docker_platforms: |
+            linux/amd64
           docker_path: 'bionic/android/rtabmap_api24'
         - docker_tag: android26
           docker_tags: |
             introlab3it/rtabmap:android26
+          docker_platforms: |
+            linux/amd64
           docker_path: 'bionic/android/rtabmap_api26'
     
     steps:
       -
         name: Checkout
         uses: actions/checkout@v2
+      - 
+        name: Set up QEMU
+        uses: docker/setup-qemu-action@v1
+        with:
+          platforms: all
       -
         name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v1
@@ -62,6 +83,7 @@ jobs:
         with:
           context: ./docker/${{ matrix.docker_path }}
           push: true
+          platforms: ${{ matrix.docker_platforms }}
           build-args: |
             CACHE_DATE=${{ github.head_ref }}.${{ github.sha }}
           tags: ${{ matrix.docker_tags }}
