@@ -663,6 +663,12 @@ ParametersMap Parameters::parseArguments(int argc, char * argv[], bool onlyParam
 #else
 				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
 #endif
+				str = "With PDAL:";
+#ifdef RTABMAP_PDAL
+				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
+#else
+				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
+#endif
 				str = "With TORO:";
 #ifdef RTABMAP_TORO
 				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
