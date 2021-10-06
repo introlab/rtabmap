@@ -122,6 +122,7 @@ private Q_SLOTS:
 	void detectMoreLoopClosures();
 	void updateAllNeighborCovariances();
 	void updateAllLoopClosureCovariances();
+	void updateAllLandmarkCovariances();
 	void refineAllNeighborLinks();
 	void refineAllLoopClosureLinks();
 	void resetAllChanges();

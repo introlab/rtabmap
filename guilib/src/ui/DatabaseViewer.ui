@@ -745,6 +745,7 @@
     <addaction name="actionRefine_all_loop_closure_links"/>
     <addaction name="actionUpdate_all_neighbor_covariances"/>
     <addaction name="actionUpdate_all_loop_closure_covariances"/>
+    <addaction name="actionUpdate_all_landmark_covariances"/>
     <addaction name="separator"/>
     <addaction name="actionRegenerate_local_grid_maps"/>
     <addaction name="actionRegenerate_local_grid_maps_selected"/>
@@ -1542,7 +1543,7 @@
         <property name="geometry">
          <rect>
           <x>0</x>
-          <y>-322</y>
+          <y>0</y>
           <width>518</width>
           <height>911</height>
          </rect>
@@ -2137,7 +2138,7 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>298</width>
+          <width>226</width>
           <height>192</height>
          </rect>
         </property>
@@ -3013,6 +3014,11 @@
   <action name="actionRGBD_SLAM_ID_format_txt">
    <property name="text">
     <string>RGBD-SLAM ID format (*.txt)</string>
+   </property>
+  </action>
+  <action name="actionUpdate_all_landmark_covariances">
+   <property name="text">
+    <string>Update all landmark covariances...</string>
    </property>
   </action>
  </widget>

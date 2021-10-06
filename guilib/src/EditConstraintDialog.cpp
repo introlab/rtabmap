@@ -48,11 +48,12 @@ EditConstraintDialog::EditConstraintDialog(const Transform & constraint, double 
 	_ui->roll->setValue(roll);
 	_ui->pitch->setValue(pitch);
 	_ui->yaw->setValue(yaw);
+
+	_ui->checkBox_radians->setChecked(true);
 	_ui->linear_sigma->setValue(linearSigma);
 	_ui->angular_sigma->setValue(angularSigma);
 
 	connect(_ui->checkBox_radians, SIGNAL(stateChanged(int)), this, SLOT(switchUnits()));
-	_ui->checkBox_radians->setChecked(false);
 }
 
 EditConstraintDialog::~EditConstraintDialog()
@@ -111,7 +112,7 @@ Transform EditConstraintDialog::getTransform() const
 
 double EditConstraintDialog::getLinearVariance() const
 {
-	return _ui->linear_sigma->value();
+	return _ui->linear_sigma->value()*_ui->linear_sigma->value();
 }
 double EditConstraintDialog::getAngularVariance() const
 {
@@ -120,7 +121,8 @@ double EditConstraintDialog::getAngularVariance() const
 	{
 		conversion = M_PI/180.0;
 	}
-	return _ui->angular_sigma->value()*conversion;
+	double value = _ui->angular_sigma->value()*conversion;
+	return value*value;
 }
 
 }

@@ -42,7 +42,7 @@ class RTABMAPGUI_EXP EditConstraintDialog : public QDialog
 	Q_OBJECT
 
 public:
-	EditConstraintDialog(const Transform & constraint, double linearSigma = 0, double angularSigma = 0, QWidget * parent = 0);
+	EditConstraintDialog(const Transform & constraint, double linearSigma = 1, double angularSigma = 1, QWidget * parent = 0);
 
 	virtual ~EditConstraintDialog();
 	Transform getTransform() const;
