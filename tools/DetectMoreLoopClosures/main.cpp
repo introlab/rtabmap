@@ -211,6 +211,11 @@ int main(int argc, char * argv[])
 	}
 	delete driver;
 
+	for(ParametersMap::iterator iter=inputParams.begin(); iter!=inputParams.end(); ++iter)
+	{
+		printf(" Using parameter \"%s=%s\" from arguments\n", iter->first.c_str(), iter->second.c_str());
+	}
+
 	// Get the global optimized map
 	Rtabmap rtabmap;
 	printf("Initialization...\n");
