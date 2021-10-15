@@ -26,7 +26,7 @@ jobs:
             introlab3it/rtabmap:18.04
           docker_platforms: |
             linux/amd64
-            linux/arm64
+          #  linux/arm64
           docker_path: 'bionic'
         - docker_tag: focal
           docker_tags: |
@@ -35,7 +35,7 @@ jobs:
             introlab3it/rtabmap:latest
           docker_platforms: |
             linux/amd64
-            linux/arm64
+          #  linux/arm64
           docker_path: 'focal'
         - docker_tag: android23
           docker_tags: |
