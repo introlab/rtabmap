@@ -102,17 +102,17 @@ RUN if [ "$TARGETPLATFORM" = "linux/amd64" ]; then git clone https://github.com/
     cd && \
     rm -r AliceVision; fi
 
+RUN rm /bin/sh && ln -s /bin/bash /bin/sh
+
 # Clone source code
 ARG CACHE_DATE=2016-01-01
-RUN git clone https://github.com/introlab/rtabmap.git
-
-RUN rm /bin/sh && ln -s /bin/bash /bin/sh
 
 # Build RTAB-Map project
 RUN source /ros_entrypoint.sh && \
+    git clone https://github.com/introlab/rtabmap.git && \
     cd rtabmap/build && \
     ~/cmake -DWITH_ALICE_VISION=ON .. && \
-    make -j2 && \
+    make -j$(nproc) && \
     make install && \
     cd ../.. && \
     rm -rf rtabmap && \
