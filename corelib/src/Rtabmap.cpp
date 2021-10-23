@@ -4418,9 +4418,9 @@ std::map<int, Transform> Rtabmap::optimizeGraph(
 	{
 		for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter)
 		{
-			// Apply guess poses (if some)
+			// Apply guess poses (if some), ignore for rootid to avoid origin drifting
 			std::map<int, Transform>::const_iterator foundGuess = guessPoses.find(iter->first);
-			if(foundGuess!=guessPoses.end())
+			if(foundGuess!=guessPoses.end() && iter->first != fromId)
 			{
 				iter->second = foundGuess->second;
 			}

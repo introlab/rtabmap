@@ -55,7 +55,8 @@ void showUsage()
 			"   rtabmap-reprocess [options] \"input1.db;input2.db;input3.db\" \"output.db\"\n"
 			"\n"
 			"   For the second example, only parameters from the first database are used.\n"
-			"   If Mem/IncrementalMemory is false, RTAB-Map is initialized with the first input database.\n"
+			"   If Mem/IncrementalMemory is false, RTAB-Map is initialized with the first input database,\n"
+			"   then localization-only is done with next databases against the first one.\n"
 			"   To see warnings when loop closures are rejected, add \"--uwarn\" argument.\n"
 			"   To upgrade version of an old database to newest version:\n"
 			"      rtabmap-reprocess --Db/TargetVersion \"\" \"input.db\" \"output.db\"\n"
@@ -68,6 +69,9 @@ void showUsage()
 			"                       arguments, they overwrite those in config file and the database.\n"
 			"     -start #    Start from this node ID.\n"
 			"     -stop #     Last node to process.\n"
+			"     -loc_null   On localization mode, reset localization pose to null and map correction to identity between sessions.\n"
+			"     -gt         When reprocessing a single database, load its original optimized graph, then \n"
+			"                 set it as ground truth for output database. If there was a ground truth in the input database, it will be ignored.\n"
 			"     -g2         Assemble 2D occupancy grid map and save it to \"[output]_map.pgm\". Use with -db to save in database.\n"
 			"     -g3         Assemble 3D cloud map and save it to \"[output]_map.pcd\".\n"
 			"     -o2         Assemble OctoMap 2D projection and save it to \"[output]_octomap.pgm\". Use with -db to save in database.\n"
@@ -221,6 +225,8 @@ int main(int argc, char * argv[])
 	int startId = 0;
 	int stopId = 0;
 	int framesToSkip = 0;
+	bool locNull = false;
+	bool originalGraphAsGT = false;
 	bool scanFromDepth = false;
 	int scanDecimation = 1;
 	float scanRangeMin = 0.0f;
@@ -296,6 +302,16 @@ int main(int argc, char * argv[])
 				printf("-skip option requires a value\n");
 				showUsage();
 			}
+		}
+		else if(strcmp(argv[i], "-loc_null") == 0 || strcmp(argv[i], "--loc_null") == 0)
+		{
+			locNull = true;
+			printf("In localization mode, when restarting a new session, the current localization pose is set to null (-loc_null option).\n");
+		}
+		else if(strcmp(argv[i], "-gt") == 0 || strcmp(argv[i], "--gt") == 0)
+		{
+			originalGraphAsGT = true;
+			printf("Original graph is used as ground truth for output database (-gt option).\n");
 		}
 		else if(strcmp(argv[i], "-p") == 0 || strcmp(argv[i], "--p") == 0)
 		{
@@ -529,6 +545,13 @@ int main(int argc, char * argv[])
 	{
 		totalIds = ids.size();
 	}
+
+	std::map<int, Transform> gt;
+	if(databases.size() == 1 && originalGraphAsGT)
+	{
+		gt = dbDriver->loadOptimizedPoses();
+	}
+
 	dbDriver->closeConnection(false);
 
 	// Count remaining ids in the other databases
@@ -572,6 +595,11 @@ int main(int argc, char * argv[])
 
 	Rtabmap rtabmap;
 	rtabmap.init(parameters, outputDatabasePath);
+
+	if(!incrementalMemory && locNull)
+	{
+		rtabmap.setInitialPose(Transform());
+	}
 
 	bool rgbdEnabled = Parameters::defaultRGBDEnabled();
 	Parameters::parse(parameters, Parameters::kRGBDEnabled(), rgbdEnabled);
@@ -623,8 +651,18 @@ int main(int argc, char * argv[])
 					lastLocalizationOdomPose = info.odomPose;
 				}
 				rtabmap.triggerNewMap();
+				if(!incrementalMemory && locNull)
+				{
+					rtabmap.setInitialPose(Transform());
+				}
 				inMotion = true;
 			}
+
+			if(originalGraphAsGT)
+			{
+				data.setGroundTruth(gt.find(data.id()) != gt.end()?gt.at(data.id()):Transform());
+			}
+
 			UTimer t;
 			if(!rtabmap.process(data, info.odomPose, info.odomCovariance, info.odomVelocity, globalMapStats))
 			{

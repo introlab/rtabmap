@@ -67,7 +67,7 @@ class NodeItem: public QGraphicsEllipseItem
 {
 public:
 	// in meter
-	NodeItem(int id, int mapId, const Transform & pose, float radius, int weight, GraphViewer::ViewPlane plane) :
+	NodeItem(int id, int mapId, const Transform & pose, float radius, int weight, GraphViewer::ViewPlane plane, float linkWidth) :
 		QGraphicsEllipseItem(QRectF(-radius*100.0f,-radius*100.0f,radius*100.0f*2.0f,radius*100.0f*2.0f)),
 		_id(id),
 		_mapId(mapId),
@@ -82,6 +82,9 @@ public:
 		pose.getEulerAngles(r, p, yaw);
 		radius*=100.0f;
 		_line = new QGraphicsLineItem(0,0,-radius*sin(yaw),-radius*cos(yaw), this);
+		QPen pen = _line->pen();
+		pen.setWidth(linkWidth*100.0f);
+		_line->setPen(pen);
 	}
 	virtual ~NodeItem() {}
 
@@ -94,7 +97,9 @@ public:
 		b.setColor(color);
 		this->setBrush(b);
 
-		_line->setPen(QPen(QColor(255-color.red(), 255-color.green(), 255-color.blue())));
+		QPen pen = _line->pen();
+		pen.setColor(QColor(255-color.red(), 255-color.green(), 255-color.blue()));
+		_line->setPen(pen);
 	}
 
 	void setRadius(float radius)
@@ -157,8 +162,8 @@ private:
 class NodeGPSItem: public NodeItem
 {
 public:
-	NodeGPSItem(int id, int mapId, const Transform & pose, float radius, const GPS & gps, GraphViewer::ViewPlane plane) :
-		NodeItem(id, mapId, pose, radius, -1, plane),
+	NodeGPSItem(int id, int mapId, const Transform & pose, float radius, const GPS & gps, GraphViewer::ViewPlane plane, float linkWidth) :
+		NodeItem(id, mapId, pose, radius, -1, plane, linkWidth),
 		_gps(gps)
 	{
 	}
@@ -490,7 +495,7 @@ void GraphViewer::updateGraph(const std::map<int, Transform> & poses,
 			{
 				// create node item
 				const Transform & pose = iter->second;
-				NodeItem * item = new NodeItem(iter->first, uContains(mapIds, iter->first)?mapIds.at(iter->first):-1, pose, _nodeRadius, uContains(weights, iter->first)?weights.at(iter->first):-1, _viewPlane);
+				NodeItem * item = new NodeItem(iter->first, uContains(mapIds, iter->first)?mapIds.at(iter->first):-1, pose, _nodeRadius, uContains(weights, iter->first)?weights.at(iter->first):-1, _viewPlane, _linkWidth);
 				this->scene()->addItem(item);
 				item->setZValue(iter->first<0?21:20);
 				item->setColor(iter->first<0?QColor(255-_nodeColor.red(), 255-_nodeColor.green(), 255-_nodeColor.blue()):_nodeColor);
@@ -710,7 +715,7 @@ void GraphViewer::updateGTGraph(const std::map<int, Transform> & poses)
 			{
 				// create node item
 				const Transform & pose = iter->second;
-				NodeItem * item = new NodeItem(iter->first, -1, pose, _nodeRadius, -1, _viewPlane);
+				NodeItem * item = new NodeItem(iter->first, -1, pose, _nodeRadius, -1, _viewPlane, _linkWidth);
 				this->scene()->addItem(item);
 				item->setZValue(20);
 				item->setColor(_gtPathColor);
@@ -745,15 +750,29 @@ void GraphViewer::updateGTGraph(const std::map<int, Transform> & poses)
 				}
 				if(linkItem == 0)
 				{
-					//create a link item
-					linkItem = new LinkItem(iterPrevious->first, iter->first, previousPose, currentPose, Link(), 1, _viewPlane);
-					QPen p = linkItem->pen();
-					p.setWidthF(_linkWidth*100.0f);
-					linkItem->setPen(p);
-					linkItem->setZValue(10);
-					this->scene()->addItem(linkItem);
-					linkItem->setParentItem(_gtGraphRoot);
-					_gtLinkItems.insert(iterPrevious->first, linkItem);
+					bool linkFound = iter->first - iterPrevious->first == 1; // if consecutive, add link
+					for(QMultiMap<int, LinkItem*>::iterator kter = _linkItems.find(iterPrevious->first);
+							kter!=_linkItems.end() && kter.key()==iterPrevious->first && !linkFound;
+							++kter)
+					{
+						if(kter.value()->from() == iterPrevious->first && kter.value()->to() == iter->first)
+						{
+							linkFound = true;
+						}
+					}
+
+					if(linkFound)
+					{
+						//create a link item
+						linkItem = new LinkItem(iterPrevious->first, iter->first, previousPose, currentPose, Link(), 1, _viewPlane);
+						QPen p = linkItem->pen();
+						p.setWidthF(_linkWidth*100.0f);
+						linkItem->setPen(p);
+						linkItem->setZValue(10);
+						this->scene()->addItem(linkItem);
+						linkItem->setParentItem(_gtGraphRoot);
+						_gtLinkItems.insert(iterPrevious->first, linkItem);
+					}
 				}
 				if(linkItem)
 				{
@@ -840,7 +859,7 @@ void GraphViewer::updateGPSGraph(
 				// create node item
 				const Transform & pose = iter->second;
 				UASSERT(gpsValues.find(iter->first) != gpsValues.end());
-				NodeItem * item = new NodeGPSItem(iter->first, -1, pose, _nodeRadius, gpsValues.at(iter->first), _viewPlane);
+				NodeItem * item = new NodeGPSItem(iter->first, -1, pose, _nodeRadius, gpsValues.at(iter->first), _viewPlane, _linkWidth);
 				this->scene()->addItem(item);
 				item->setZValue(20);
 				item->setColor(_gpsPathColor);

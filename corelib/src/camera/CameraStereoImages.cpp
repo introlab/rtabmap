@@ -166,6 +166,7 @@ SensorData CameraStereoImages::captureImage(CameraInfo * info)
 	{
 		if(camera2_)
 		{
+			camera2_->setBayerMode(this->getBayerMode());
 			right = camera2_->takeImage(info);
 		}
 		else

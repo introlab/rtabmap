@@ -303,9 +303,6 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 					orientation*
 					data.imu().localTransform().rotation().inverse();
 
-			IMU imu2 = data.imu();
-			imu2.convertToBaseFrame();
-
 			if(	this->getPose().r11() == 1.0f && this->getPose().r22() == 1.0f && this->getPose().r33() == 1.0f &&
 				this->framesProcessed() == 0)
 			{

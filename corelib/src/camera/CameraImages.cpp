@@ -862,7 +862,7 @@ SensorData CameraImages::captureImage(CameraInfo * info)
 						cv::cvtColor(img, out, CV_BGRA2BGR);
 						img = out;
 					}
-					else if(_bayerMode >= 0 && _bayerMode <=3)
+					else if(!img.empty() && _bayerMode >= 0 && _bayerMode <=3)
 					{
 						cv::Mat debayeredImg;
 						try
