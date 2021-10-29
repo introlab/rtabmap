@@ -115,6 +115,8 @@ void showUsage()
 			"    --ymax #              Maximum range on Y axis to keep nodes to export.\n"
 			"    --zmin #              Minimum range on Z axis to keep nodes to export.\n"
 			"    --zmax #              Maximum range on Z axis to keep nodes to export.\n"
+			"    --filter_ceiling #    Filter points over a custom height (dafault 2 m, 0=disabled).\n"
+
 			"\n%s", Parameters::showUsage());
 	;
 	exit(1);
@@ -177,6 +179,7 @@ int main(int argc, char * argv[])
 	std::string outputName;
 	std::string outputDir;
 	cv::Vec3f min, max;
+	float filter_ceiling;
 	for(int i=1; i<argc; ++i)
 	{
 		if(std::strcmp(argv[i], "--help") == 0)
@@ -656,6 +659,19 @@ int main(int argc, char * argv[])
 				showUsage();
 			}
 		}
+		else if(std::strcmp(argv[i], "--filter_ceiling") == 0)
+		{
+			++i;
+			if(i<argc-1)
+			{
+				filter_ceiling = uStr2Float(argv[i]);
+			}
+			else
+			{
+				showUsage();
+			}
+		}
+
 	}
 
 	if(decimation < 1)
@@ -1051,6 +1067,13 @@ int main(int argc, char * argv[])
 
 		pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloudToExport = mergedClouds;
 		pcl::PointCloud<pcl::PointXYZINormal>::Ptr cloudIToExport = mergedCloudsI;
+
+		if(filter_ceiling != 0.0)
+		{
+			cloudToExport = util3d::passThrough(cloudToExport, "z", -1, filter_ceiling);
+			cloudIToExport = util3d::passThrough(cloudIToExport, "z", -1, filter_ceiling);
+		}
+
 		if(voxelSize>0.0f)
 		{
 			printf("Voxel grid filtering of the assembled cloud... (voxel=%f, %d points)\n", voxelSize, !cloudToExport->empty()?(int)cloudToExport->size():(int)cloudIToExport->size());
