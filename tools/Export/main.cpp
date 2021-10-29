@@ -115,7 +115,8 @@ void showUsage()
 			"    --ymax #              Maximum range on Y axis to keep nodes to export.\n"
 			"    --zmin #              Minimum range on Z axis to keep nodes to export.\n"
 			"    --zmax #              Maximum range on Z axis to keep nodes to export.\n"
-			"    --filter_ceiling #    Filter points over a custom height (dafault 2 m, 0=disabled).\n"
+			"    --filter_ceiling #    Filter points over a custom height (default 0 m, 0=disabled).\n"
+			"    --filter_floor #      Filter points below a custom height (default 0 m, 0=disabled).\n"
 
 			"\n%s", Parameters::showUsage());
 	;
@@ -179,7 +180,8 @@ int main(int argc, char * argv[])
 	std::string outputName;
 	std::string outputDir;
 	cv::Vec3f min, max;
-	float filter_ceiling;
+	float filter_ceiling = 0.0f;
+	float filter_floor = 0.0f;
 	for(int i=1; i<argc; ++i)
 	{
 		if(std::strcmp(argv[i], "--help") == 0)
@@ -665,6 +667,28 @@ int main(int argc, char * argv[])
 			if(i<argc-1)
 			{
 				filter_ceiling = uStr2Float(argv[i]);
+				if(filter_floor!=0.0f && filter_ceiling != 0.0f && filter_ceiling<filter_floor)
+				{
+					printf("Option --filter_ceiling (%f) should be higher than --filter_floor option (%f)!\n", filter_ceiling, filter_floor);
+					showUsage();
+				}
+			}
+			else
+			{
+				showUsage();
+			}
+		}
+		else if(std::strcmp(argv[i], "--filter_floor") == 0)
+		{
+			++i;
+			if(i<argc-1)
+			{
+				filter_floor = uStr2Float(argv[i]);
+				if(filter_floor!=0.0f && filter_ceiling != 0.0f && filter_ceiling<filter_floor)
+				{
+					printf("Option --filter_ceiling (%f) should be higher than --filter_floor option (%f)!\n", filter_ceiling, filter_floor);
+					showUsage();
+				}
 			}
 			else
 			{
@@ -1068,10 +1092,18 @@ int main(int argc, char * argv[])
 		pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloudToExport = mergedClouds;
 		pcl::PointCloud<pcl::PointXYZINormal>::Ptr cloudIToExport = mergedCloudsI;
 
-		if(filter_ceiling != 0.0)
+		if(filter_ceiling != 0.0 || filter_floor != 0.0f)
 		{
-			cloudToExport = util3d::passThrough(cloudToExport, "z", -1, filter_ceiling);
-			cloudIToExport = util3d::passThrough(cloudIToExport, "z", -1, filter_ceiling);
+			printf("Passthrough filtering of the assembled cloud along z axis... (min=%f, max=%f, %d points)\n", filter_floor, filter_ceiling, !cloudToExport->empty()?(int)cloudToExport->size():(int)cloudIToExport->size());
+			if(!cloudToExport->empty())
+			{
+				cloudToExport = util3d::passThrough(cloudToExport, "z", filter_floor!=0.0f?filter_floor:(float)std::numeric_limits<int>::min(), filter_ceiling!=0.0f?filter_ceiling:(float)std::numeric_limits<int>::max());
+			}
+			if(!cloudIToExport->empty())
+			{
+				cloudIToExport = util3d::passThrough(cloudIToExport, "z", filter_floor!=0.0f?filter_floor:(float)std::numeric_limits<int>::min(), filter_ceiling!=0.0f?filter_ceiling:(float)std::numeric_limits<int>::max());
+			}
+			printf("Passthrough filtering of the assembled cloud alog z axis.... done! (%fs, %d points)\n", timer.ticks(), !cloudToExport->empty()?(int)cloudToExport->size():(int)cloudIToExport->size());
 		}
 
 		if(voxelSize>0.0f)
