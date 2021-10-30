@@ -1219,7 +1219,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->doubleSpinBox_grid_footprintWidth->setObjectName(Parameters::kGridFootprintWidth().c_str());
 	_ui->doubleSpinBox_grid_footprintHeight->setObjectName(Parameters::kGridFootprintHeight().c_str());
 	_ui->checkBox_grid_flatObstaclesDetected->setObjectName(Parameters::kGridFlatObstacleDetected().c_str());
-	_ui->groupBox_grid_fromDepthImage->setObjectName(Parameters::kGridFromDepth().c_str());
+	_ui->comboBox_grid_sensor->setObjectName(Parameters::kGridSensor().c_str());
 	_ui->checkBox_grid_projMapFrame->setObjectName(Parameters::kGridMapFrameProjection().c_str());
 	_ui->doubleSpinBox_grid_maxGroundAngle->setObjectName(Parameters::kGridMaxGroundAngle().c_str());
 	_ui->spinBox_grid_normalK->setObjectName(Parameters::kGridNormalK().c_str());
@@ -4377,7 +4377,8 @@ void PreferencesDialog::setParameter(const std::string & key, const std::string 
 		{
 			//backward compatibility
 			std::string valueCpy = value;
-			if(key.compare(Parameters::kIcpStrategy()) == 0)
+			if( key.compare(Parameters::kIcpStrategy()) == 0 ||
+				key.compare(Parameters::kGridSensor()) == 0)
 			{
 				if(value.compare("true") == 0)
 				{
@@ -5595,9 +5596,9 @@ bool PreferencesDialog::getGridMapShown() const
 {
 	return _ui->checkBox_map_shown->isChecked();
 }
-bool PreferencesDialog::isGridMapFrom3DCloud() const
+int PreferencesDialog::getGridMapSensor() const
 {
-	return _ui->groupBox_grid_fromDepthImage->isChecked();
+	return _ui->comboBox_grid_sensor->currentIndex();
 }
 bool PreferencesDialog::projMapFrame() const
 {

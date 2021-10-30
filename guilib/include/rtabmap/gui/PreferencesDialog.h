@@ -226,7 +226,7 @@ public:
 	double getSubtractFilteringAngle() const;
 
 	bool getGridMapShown() const;
-	bool isGridMapFrom3DCloud() const;
+	int getGridMapSensor() const;
 	bool projMapFrame() const;
 	double projMaxGroundAngle() const;
 	double projMaxGroundHeight() const;

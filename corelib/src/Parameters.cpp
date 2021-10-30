@@ -234,6 +234,9 @@ const std::map<std::string, std::pair<bool, std::string> > & Parameters::getRemo
 	{
 		// removed parameters
 
+		// 0.20.15
+		removedParameters_.insert(std::make_pair("Grid/FromDepth",           std::make_pair(true, Parameters::kGridSensor())));
+
 		// 0.20.9
 		removedParameters_.insert(std::make_pair("OdomORBSLAM2/VocPath",     std::make_pair(true, Parameters::kOdomORBSLAMVocPath())));
 		removedParameters_.insert(std::make_pair("OdomORBSLAM2/Bf",          std::make_pair(true, Parameters::kOdomORBSLAMBf())));

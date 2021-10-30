@@ -58,7 +58,7 @@ public:
 	float getCellSize() const {return cellSize_;}
 	void setCloudAssembling(bool enabled);
 	float getMinMapSize() const {return minMapSize_;}
-	bool isGridFromDepth() const {return occupancyFromDepth_;}
+	bool isGridFromDepth() const {return occupancySensor_;}
 	bool isFullUpdate() const {return fullUpdate_;}
 	float getUpdateError() const {return updateError_;}
 	bool isMapFrameProjection() const {return projMapFrame_;}
@@ -81,7 +81,7 @@ public:
 			cv::Mat & groundCells,
 			cv::Mat & obstacleCells,
 			cv::Mat & emptyCells,
-			cv::Point3f & viewPoint) const;
+			cv::Point3f & viewPoint);
 
 	void createLocalMap(
 			const LaserScan & cloud,
@@ -118,7 +118,7 @@ private:
 	int scanDecimation_;
 	float cellSize_;
 	bool preVoxelFiltering_;
-	bool occupancyFromDepth_;
+	int occupancySensor_;
 	bool projMapFrame_;
 	float maxObstacleHeight_;
 	int normalKSearch_;

@@ -52,7 +52,7 @@ OccupancyGrid::OccupancyGrid(const ParametersMap & parameters) :
 	scanDecimation_(Parameters::defaultGridScanDecimation()),
 	cellSize_(Parameters::defaultGridCellSize()),
 	preVoxelFiltering_(Parameters::defaultGridPreVoxelFiltering()),
-	occupancyFromDepth_(Parameters::defaultGridFromDepth()),
+	occupancySensor_(Parameters::defaultGridSensor()),
 	projMapFrame_(Parameters::defaultGridMapFrameProjection()),
 	maxObstacleHeight_(Parameters::defaultGridMaxObstacleHeight()),
 	normalKSearch_(Parameters::defaultGridNormalK()),
@@ -91,7 +91,7 @@ OccupancyGrid::OccupancyGrid(const ParametersMap & parameters) :
 
 void OccupancyGrid::parseParameters(const ParametersMap & parameters)
 {
-	Parameters::parse(parameters, Parameters::kGridFromDepth(), occupancyFromDepth_);
+	Parameters::parse(parameters, Parameters::kGridSensor(), occupancySensor_);
 	Parameters::parse(parameters, Parameters::kGridDepthDecimation(), cloudDecimation_);
 	if(cloudDecimation_ == 0)
 	{
@@ -284,12 +284,12 @@ void OccupancyGrid::createLocalMap(
 		cv::Mat & groundCells,
 		cv::Mat & obstacleCells,
 		cv::Mat & emptyCells,
-		cv::Point3f & viewPoint) const
+		cv::Point3f & viewPoint)
 {
-	UDEBUG("scan format=%s, occupancyFromDepth_=%d normalsSegmentation_=%d grid3D_=%d",
-			node.sensorData().laserScanRaw().isEmpty()?"NA":node.sensorData().laserScanRaw().formatName().c_str(), occupancyFromDepth_?1:0, normalsSegmentation_?1:0, grid3D_?1:0);
+	UDEBUG("scan format=%s, occupancySensor_=%d normalsSegmentation_=%d grid3D_=%d",
+			node.sensorData().laserScanRaw().isEmpty()?"NA":node.sensorData().laserScanRaw().formatName().c_str(), occupancySensor_, normalsSegmentation_?1:0, grid3D_?1:0);
 
-	if((node.sensorData().laserScanRaw().is2d()) && !occupancyFromDepth_)
+	if((node.sensorData().laserScanRaw().is2d()) && occupancySensor_ == 0)
 	{
 		UDEBUG("2D laser scan");
 		//2D
@@ -328,7 +328,7 @@ void OccupancyGrid::createLocalMap(
 	else
 	{
 		// 3D
-		if(!occupancyFromDepth_)
+		if(occupancySensor_ == 0 || occupancySensor_ == 2)
 		{
 			if(!node.sensorData().laserScanRaw().isEmpty())
 			{
@@ -350,14 +350,35 @@ void OccupancyGrid::createLocalMap(
 				viewPoint = cv::Point3f(t.x(), t.y(), t.z());
 
 				UDEBUG("scan format=%d", scan.format());
+
+				bool normalSegmentationTmp = normalsSegmentation_;
+				float minGroundHeightTmp = minGroundHeight_;
+				float maxGroundHeightTmp = maxGroundHeight_;
+				if(scan.is2d())
+				{
+					// if 2D, assume the whole scan is obstacle
+					normalsSegmentation_ = false;
+					minGroundHeight_ = std::numeric_limits<int>::min();
+					maxGroundHeight_ = std::numeric_limits<int>::min()+100;
+				}
+
 				createLocalMap(scan, node.getPose(), groundCells, obstacleCells, emptyCells, viewPoint);
+
+				if(scan.is2d())
+				{
+					// restore
+					normalsSegmentation_ = normalSegmentationTmp;
+					minGroundHeight_ = minGroundHeightTmp;
+					maxGroundHeight_ = maxGroundHeightTmp;
+				}
 			}
 			else
 			{
-				UWARN("Cannot create local map, scan is empty (node=%d, %s=false).", node.id(), Parameters::kGridFromDepth().c_str());
+				UWARN("Cannot create local map, scan is empty (node=%d, %s=0).", node.id(), Parameters::kGridSensor().c_str());
 			}
 		}
-		else
+
+		if(occupancySensor_ >= 1)
 		{
 			pcl::IndicesPtr indices(new std::vector<int>);
 			pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
@@ -407,7 +428,49 @@ void OccupancyGrid::createLocalMap(
 				const Transform & t = node.sensorData().stereoCameraModel().localTransform();
 				viewPoint = cv::Point3f(t.x(), t.y(), t.z());
 			}
+
+			cv::Mat scanGroundCells;
+			cv::Mat scanObstacleCells;
+			cv::Mat scanEmptyCells;
+			if(occupancySensor_ == 2)
+			{
+				// backup
+				scanGroundCells = groundCells.clone();
+				scanObstacleCells = obstacleCells.clone();
+				scanEmptyCells = emptyCells.clone();
+			}
+
 			createLocalMap(LaserScan(util3d::laserScanFromPointCloud(*cloud, indices), 0, 0.0f), node.getPose(), groundCells, obstacleCells, emptyCells, viewPoint);
+
+			if(occupancySensor_ == 2)
+			{
+				if(grid3D_)
+				{
+					// We should convert scans to 4 channels (XYZRGB) to be compatible
+					scanGroundCells = util3d::laserScanFromPointCloud(*util3d::laserScanToPointCloudRGB(LaserScan::backwardCompatibility(scanGroundCells), Transform::getIdentity(), 255, 255, 255)).data();
+					scanObstacleCells = util3d::laserScanFromPointCloud(*util3d::laserScanToPointCloudRGB(LaserScan::backwardCompatibility(scanObstacleCells), Transform::getIdentity(), 255, 255, 255)).data();
+					scanEmptyCells = util3d::laserScanFromPointCloud(*util3d::laserScanToPointCloudRGB(LaserScan::backwardCompatibility(scanEmptyCells), Transform::getIdentity(), 255, 255, 255)).data();
+				}
+
+				UDEBUG("groundCells, depth: size=%d channels=%d vs scan: size=%d channels=%d", groundCells.cols, groundCells.channels(), scanGroundCells.cols, scanGroundCells.channels());
+				UDEBUG("obstacleCells, depth: size=%d channels=%d vs scan: size=%d channels=%d", obstacleCells.cols, obstacleCells.channels(), scanObstacleCells.cols, scanObstacleCells.channels());
+				UDEBUG("emptyCells, depth: size=%d channels=%d vs scan: size=%d channels=%d", emptyCells.cols, emptyCells.channels(), scanEmptyCells.cols, scanEmptyCells.channels());
+
+				if(!groundCells.empty() && !scanGroundCells.empty())
+					cv::hconcat(groundCells, scanGroundCells, groundCells);
+				else if(!scanGroundCells.empty())
+					groundCells = scanGroundCells;
+
+				if(!obstacleCells.empty() && !scanObstacleCells.empty())
+					cv::hconcat(obstacleCells, scanObstacleCells, obstacleCells);
+				else if(!scanObstacleCells.empty())
+					obstacleCells = scanObstacleCells;
+
+				if(!emptyCells.empty() && !scanEmptyCells.empty())
+					cv::hconcat(emptyCells, scanEmptyCells, emptyCells);
+				else if(!scanEmptyCells.empty())
+					emptyCells = scanEmptyCells;
+			}
 		}
 	}
 }
