@@ -983,7 +983,8 @@ void GraphViewer::updateMap(const cv::Mat & map8U, float resolution, float xMin,
 		_gridMap->setRotation(90);
 		_gridMap->setPixmap(QPixmap::fromImage(image));
 		_gridMap->setPos(-yMin*100.0f, -xMin*100.0f);
-		this->scene()->setSceneRect(this->scene()->itemsBoundingRect());  // Re-shrink the scene to it's bounding contents
+		// Re-shrink the scene to it's bounding contents
+		this->scene()->setSceneRect(this->scene()->itemsBoundingRect());
 	}
 	else
 	{

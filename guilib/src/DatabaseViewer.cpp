@@ -1831,7 +1831,8 @@ void DatabaseViewer::updateIds()
 				ids.find(jter->second.from()) != ids.end() &&
 				(ids.find(jter->second.to()) != ids.end() || jter->second.to()<0) && // to add landmark links
 				graph::findLink(links_, jter->second.from(), jter->second.to()) == links_.end() &&
-				invertedLinkIter != links.end())
+				invertedLinkIter != links.end() &&
+				w != -9)
 			{
 				// check if user_data is set in opposite direction
 				if(jter->second.userDataCompressed().cols == 0 &&
@@ -6608,6 +6609,7 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 				ui_->graphViewer->updatePosterior(colors, 1, 1);
 			}
 		}
+		QGraphicsRectItem * rectScaleItem = 0;
 		ui_->graphViewer->clearMap();
 		occupancyGridViewer_->clear();
 		if(graph.size() && localMaps.size() &&
@@ -6692,6 +6694,70 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 					{
 						occupancyGridViewer_->addOccupancyGridMap(map8U, cellSize, xMin, yMin, 1.0f);
 						occupancyGridViewer_->refreshView();
+					}
+
+					// Zoom to ignore unknowns
+					int xFirst = 0;
+					int yFirst = 0;
+					int xLast = map.cols;
+					int yLast = map.rows;
+					bool firstSet = false;
+					bool lastSet = false;
+					for(int x=0; x<map.cols && (!firstSet || !lastSet); ++x)
+					{
+						for(int y=0; y<map.rows; ++y)
+						{
+							// check for first
+							if(!firstSet && map.at<char>(y, x) != -1)
+							{
+								xFirst = x;
+								firstSet = true;
+							}
+							// check for last
+							int opp = map.cols-(x+1);
+							if(!lastSet && map.at<char>(y, opp) != -1)
+							{
+								xLast = opp;
+								lastSet = true;
+							}
+						}
+					}
+					firstSet = false;
+					lastSet = false;
+					for(int y=0; y<map.rows && (!firstSet || !lastSet); ++y)
+					{
+						for(int x=0; x<map.cols; ++x)
+						{
+							// check for first
+							if(!firstSet && map.at<char>(y, x) != -1)
+							{
+								yFirst = y;
+								firstSet = true;
+							}
+							// check for last
+							int opp = map.rows-(y+1);
+							if(!lastSet && map.at<char>(map.rows-(y+1), x) != -1)
+							{
+								yLast = opp;
+								lastSet = true;
+							}
+						}
+					}
+					// Only zoom if there are significant unknowns
+					if( (xLast > xFirst && yLast > yFirst) &&
+						(xFirst > 50 ||
+						 xLast < map.cols-50 ||
+						 yFirst > 50 ||
+						 yLast < map.rows-50))
+					{
+						rectScaleItem = ui_->graphViewer->scene()->addRect(
+								xFirst-25,
+								yFirst-25,
+								xLast-xFirst+50,
+								yLast-yFirst+50);
+						rectScaleItem->setTransform(QTransform::fromScale(cellSize*100.0f, -cellSize*100.0f), true);
+						rectScaleItem->setRotation(90);
+						rectScaleItem->setPos(-yMin*100.0f, -xMin*100.0f);
 					}
 				}
 			}
@@ -6819,6 +6885,13 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 			}
 		}
 		ui_->graphViewer->fitInView(ui_->graphViewer->scene()->itemsBoundingRect(), Qt::KeepAspectRatio);
+		if(rectScaleItem != 0)
+		{
+			ui_->graphViewer->fitInView(rectScaleItem, Qt::KeepAspectRatio);
+			ui_->graphViewer->scene()->removeItem(rectScaleItem);
+			delete rectScaleItem;
+		}
+
 		ui_->graphViewer->update();
 		ui_->label_iterations->setNum(value);
 
