@@ -5857,6 +5857,7 @@ Camera * PreferencesDialog::createCamera(bool useRawImages, bool useColor)
 		 !_ui->checkBox_stereo_rectify->isChecked()) || 
 		useRawImages, 
 		useColor, 
+		false,
 		false);
 }
 
@@ -5866,7 +5867,8 @@ Camera * PreferencesDialog::createCamera(
 		const QString & calibrationPath,
 		bool useRawImages,
 		bool useColor,
-		bool odomOnly)
+		bool odomOnly,
+		bool odomSensorExtrinsicsCalib)
 {
 	if(odomOnly && !(driver == kSrcStereoRealSense2 || driver == kSrcStereoZed))
 	{
@@ -6014,7 +6016,7 @@ Camera * PreferencesDialog::createCamera(
 			if(driver == kSrcStereoRealSense2)
 			{
 				((CameraRealSense2*)camera)->setImagesRectified(!useRawImages);
-				((CameraRealSense2*)camera)->setOdomProvided(_ui->comboBox_odom_sensor->currentIndex() == 1 || odomOnly, odomOnly);
+				((CameraRealSense2*)camera)->setOdomProvided(_ui->comboBox_odom_sensor->currentIndex() == 1 || odomOnly, odomOnly, odomSensorExtrinsicsCalib);
 			}
 			else
 			{
@@ -6383,7 +6385,7 @@ Camera * PreferencesDialog::createOdomSensor(Transform & extrinsics, double & ti
 		timeOffset = _ui->doubleSpinBox_odom_sensor_time_offset->value()/1000.0;
 		scaleFactor = (float)_ui->doubleSpinBox_odom_sensor_scale_factor->value();
 
-		return createCamera(driver, _ui->lineEdit_odomSourceDevice->text(), _ui->lineEdit_odom_sensor_path_calibration->text(), false, true, true);
+		return createCamera(driver, _ui->lineEdit_odomSourceDevice->text(), _ui->lineEdit_odom_sensor_path_calibration->text(), false, true, true, false);
 	}
 	return 0;
 }
@@ -7060,7 +7062,7 @@ void PreferencesDialog::calibrateOdomSensorExtrinsics()
 						odomDriver,
 						_ui->lineEdit_odomSourceDevice->text(),
 						_ui->lineEdit_odom_sensor_path_calibration->text(),
-						false, true, false); // Odom sensor
+						false, true, false, true); // Odom sensor
 				if(!camera)
 				{
 					return;

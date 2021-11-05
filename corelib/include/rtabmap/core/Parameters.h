@@ -830,7 +830,11 @@ public:
     static bool isFeatureParameter(const std::string & param);
     static ParametersMap getDefaultOdometryParameters(bool stereo = false, bool vis = true, bool icp = false);
     static ParametersMap getDefaultParameters(const std::string & group);
-    static ParametersMap filterParameters(const ParametersMap & parameters, const std::string & group);
+    /**
+     * If remove=false: keep only parameters of the specified group.
+     * If remove=true: remove parameters of the specified group.
+     */
+    static ParametersMap filterParameters(const ParametersMap & parameters, const std::string & group, bool remove = false);
 
     static void readINI(const std::string & configFile, ParametersMap & parameters, bool modifiedOnly = false);
     static void writeINI(const std::string & configFile, const ParametersMap & parameters);

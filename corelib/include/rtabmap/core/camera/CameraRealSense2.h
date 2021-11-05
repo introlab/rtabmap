@@ -89,7 +89,7 @@ public:
 	void setJsonConfig(const std::string & json);
 	// T265 related parameters
 	void setImagesRectified(bool enabled);
-	void setOdomProvided(bool enabled, bool imageStreamsDisabled=false);
+	void setOdomProvided(bool enabled, bool imageStreamsDisabled=false, bool onlyLeftStream = false);
 
 #ifdef RTABMAP_REALSENSE2
 private:
@@ -116,8 +116,6 @@ private:
 	std::string deviceId_;
 	rs2::syncer syncer_;
 	float depth_scale_meters_;
-	rs2_intrinsics depthIntrinsics_;
-	rs2_intrinsics rgbIntrinsics_;
 	cv::Mat depthBuffer_;
 	cv::Mat rgbBuffer_;
 	CameraModel model_;
@@ -138,6 +136,7 @@ private:
 	bool rectifyImages_;
 	bool odometryProvided_;
 	bool odometryImagesDisabled_;
+	bool odometryOnlyLeftStream_;
 	int cameraWidth_;
 	int cameraHeight_;
 	int cameraFps_;

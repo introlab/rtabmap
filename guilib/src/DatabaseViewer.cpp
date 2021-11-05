@@ -5025,6 +5025,7 @@ void DatabaseViewer::update(int value,
 								float xMin=0.0f, yMin=0.0f;
 								cv::Mat map8S;
 								ParametersMap parameters = ui_->parameters_toolbox->getParameters();
+								parameters = Parameters::filterParameters(parameters, "GridGlobal", true);
 								float gridCellSize = Parameters::defaultGridCellSize();
 								Parameters::parse(parameters, Parameters::kGridCellSize(), gridCellSize);
 #ifdef RTABMAP_OCTOMAP
@@ -5035,7 +5036,7 @@ void DatabaseViewer::update(int value,
 								else
 #endif
 								{
-									OccupancyGrid grid(ui_->parameters_toolbox->getParameters());
+									OccupancyGrid grid(parameters);
 									grid.setCellSize(gridCellSize);
 									grid.addToCache(data.id(), localMaps.begin()->second.first.first, localMaps.begin()->second.first.second, localMaps.begin()->second.second);
 									grid.update(poses);

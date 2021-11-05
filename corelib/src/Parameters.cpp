@@ -213,14 +213,15 @@ ParametersMap Parameters::getDefaultParameters(const std::string & groupIn)
 	return parameters;
 }
 
-ParametersMap Parameters::filterParameters(const ParametersMap & parameters, const std::string & groupIn)
+ParametersMap Parameters::filterParameters(const ParametersMap & parameters, const std::string & group, bool remove)
 {
 	ParametersMap output;
 	for(rtabmap::ParametersMap::const_iterator iter=parameters.begin(); iter!=parameters.end(); ++iter)
 	{
 		UASSERT(uSplit(iter->first, '/').size()  == 2);
 		std::string group = uSplit(iter->first, '/').front();
-		if(group.compare(groupIn) == 0)
+		bool sameGroup = group.compare(group) == 0;
+		if((!remove && sameGroup) || (remove && !sameGroup))
 		{
 			output.insert(*iter);
 		}

@@ -415,7 +415,7 @@ private:
 	void addParameters(const QGroupBox * box);
 	QList<QGroupBox*> getGroupBoxes();
 	void readSettingsBegin();
-	Camera * createCamera(Src driver, const QString & device, const QString & calibrationPath, bool useRawImages, bool useColor, bool odomOnly); // return camera should be deleted if not null
+	Camera * createCamera(Src driver, const QString & device, const QString & calibrationPath, bool useRawImages, bool useColor, bool odomOnly, bool odomSensorExtrinsicsCalib); // return camera should be deleted if not null
 
 protected:
 	PANEL_FLAGS _obsoletePanels;

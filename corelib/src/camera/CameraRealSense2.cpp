@@ -70,6 +70,7 @@ CameraRealSense2::CameraRealSense2(
 	rectifyImages_(true),
 	odometryProvided_(false),
 	odometryImagesDisabled_(false),
+	odometryOnlyLeftStream_(false),
 	cameraWidth_(640),
 	cameraHeight_(480),
 	cameraFps_(30),
@@ -193,7 +194,7 @@ void CameraRealSense2::pose_callback(rs2::frame frame)
 
 void CameraRealSense2::frame_callback(rs2::frame frame)
 {
-	//UDEBUG("Frame callback! %f", frame.get_timestamp());
+	UDEBUG("Frame callback! %f", frame.get_timestamp());
 	syncer_(frame);
 }
 void CameraRealSense2::multiple_message_callback(rs2::frame frame)
@@ -694,8 +695,6 @@ bool CameraRealSense2::init(const std::string & calibrationFolder, const std::st
 	UDEBUG("");
 
 	model_ = CameraModel();
-	rs2::stream_profile depthStreamProfile;
-	rs2::stream_profile rgbStreamProfile;
 	std::vector<std::vector<rs2::stream_profile> > profilesPerSensor(sensors.size());
 	 for (unsigned int i=0; i<sensors.size(); ++i)
 	 {
@@ -759,8 +758,6 @@ bool CameraRealSense2::init(const std::string & calibrationFolder, const std::st
 								intrinsic.fx, intrinsic.fy, intrinsic.ppx, intrinsic.ppy,
 								intrinsic.model,
 								intrinsic.coeffs[0], intrinsic.coeffs[1], intrinsic.coeffs[2], intrinsic.coeffs[3], intrinsic.coeffs[4]);
-						rgbStreamProfile = profile;
-						rgbIntrinsics_ = intrinsic;
 						added = true;
 						if(video_profile.format() == RS2_FORMAT_RGB8 || profilesPerSensor[i].size()==2)
 						{
@@ -773,8 +770,6 @@ bool CameraRealSense2::init(const std::string & calibrationFolder, const std::st
 					{
 						profilesPerSensor[i].push_back(profile);
 						depthBuffer_ = cv::Mat(cv::Size(cameraWidth_, cameraHeight_), video_profile.format() == RS2_FORMAT_Y8?CV_8UC1:CV_16UC1, cv::Scalar(0));
-						depthStreamProfile = profile;
-						depthIntrinsics_ = intrinsic;
 						added = true;
 						if(!ir_ || irDepth_ || profilesPerSensor[i].size()==2)
 						{
@@ -828,20 +823,44 @@ bool CameraRealSense2::init(const std::string & calibrationFolder, const std::st
 				{
 					UASSERT(i<2);
 					profilesPerSensor[i].push_back(profile);
-					auto intrinsic = video_profile.get_intrinsics();
 					if(pi==0)
 					{
 						// LEFT FISHEYE
 						rgbBuffer_ = cv::Mat(cv::Size(848, 800), CV_8UC1, cv::Scalar(0));
-						rgbStreamProfile = profile;
-						rgbIntrinsics_ = intrinsic;
+						if(odometryOnlyLeftStream_)
+						{
+							auto intrinsic = video_profile.get_intrinsics();
+							UINFO("Model: %dx%d fx=%f fy=%f cx=%f cy=%f dist model=%d coeff=%f %f %f %f",
+									intrinsic.width, intrinsic.height,
+									intrinsic.fx, intrinsic.fy, intrinsic.ppx, intrinsic.ppy,
+									intrinsic.model,
+									intrinsic.coeffs[0], intrinsic.coeffs[1], intrinsic.coeffs[2], intrinsic.coeffs[3]);
+							cv::Mat K = cv::Mat::eye(3,3,CV_64FC1);
+							K.at<double>(0,0) = intrinsic.fx;
+							K.at<double>(1,1) = intrinsic.fy;
+							K.at<double>(0,2) = intrinsic.ppx;
+							K.at<double>(1,2) = intrinsic.ppy;
+							UASSERT(intrinsic.model == RS2_DISTORTION_KANNALA_BRANDT4); // we expect fisheye 4 values
+							cv::Mat D = cv::Mat::zeros(1,6,CV_64FC1);
+							D.at<double>(0,0) = intrinsic.coeffs[0];
+							D.at<double>(0,1) = intrinsic.coeffs[1];
+							D.at<double>(0,4) = intrinsic.coeffs[2];
+							D.at<double>(0,5) = intrinsic.coeffs[3];
+							cv::Mat P = cv::Mat::eye(3, 4, CV_64FC1);
+							P.at<double>(0,0) = intrinsic.fx;
+							P.at<double>(1,1) = intrinsic.fy;
+							P.at<double>(0,2) = intrinsic.ppx;
+							P.at<double>(1,2) = intrinsic.ppy;
+							cv::Mat R = cv::Mat::eye(3, 3, CV_64FC1);
+							model_ = CameraModel(camera_name, cv::Size(intrinsic.width, intrinsic.height), K, D, R, P, this->getLocalTransform());
+							if(rectifyImages_)
+								model_.initRectificationMap();
+						}
 					}
-					else
+					else if(!odometryOnlyLeftStream_)
 					{
 						// RIGHT FISHEYE
 						depthBuffer_ = cv::Mat(cv::Size(848, 800), CV_8UC1, cv::Scalar(0));
-						depthStreamProfile = profile;
-						depthIntrinsics_ = intrinsic;
 					}
 					added = true;
 				}
@@ -961,7 +980,9 @@ bool CameraRealSense2::init(const std::string & calibrationFolder, const std::st
 		 {
 			 serial = cameraName;
 		 }
-		if(!calibrationFolder.empty() && !serial.empty())
+		if(!odometryImagesDisabled_ &&
+		   !odometryOnlyLeftStream_ &&
+		   !calibrationFolder.empty() && !serial.empty())
 		{
 			if(!stereoModel_.load(calibrationFolder, serial, false))
 			{
@@ -1005,7 +1026,10 @@ bool CameraRealSense2::init(const std::string & calibrationFolder, const std::st
 
 			Transform opticalTransform(0, 0, 1, 0, -1, 0, 0, 0, 0, -1, 0, 0);
 			this->setLocalTransform(this->getLocalTransform() * opticalTransform.inverse());
-			stereoModel_.setLocalTransform(this->getLocalTransform()*poseToLeftT);
+			if(odometryOnlyLeftStream_)
+				model_.setLocalTransform(this->getLocalTransform()*poseToLeftT);
+			else
+				stereoModel_.setLocalTransform(this->getLocalTransform()*poseToLeftT);
 			imuLocalTransform_ = this->getLocalTransform()* poseToIMUT;
 
 			if(odometryImagesDisabled_)
@@ -1027,9 +1051,12 @@ bool CameraRealSense2::init(const std::string & calibrationFolder, const std::st
 			 UINFO("leftToIMU = %s", leftToIMUT.prettyPrint().c_str());
 			 imuLocalTransform_ = this->getLocalTransform() * leftToIMUT;
 			 UINFO("imu local transform = %s", imuLocalTransform_.prettyPrint().c_str());
-			 stereoModel_.setLocalTransform(this->getLocalTransform());
+			 if(odometryOnlyLeftStream_)
+				 model_.setLocalTransform(this->getLocalTransform());
+			 else
+				 stereoModel_.setLocalTransform(this->getLocalTransform());
 		}
-		if(rectifyImages_ && !stereoModel_.isValidForRectification())
+		if(!odometryImagesDisabled_ && rectifyImages_ && !model_.isValidForRectification() && !stereoModel_.isValidForRectification())
 		{
 			UERROR("Parameter \"rectifyImages\" is set, but no stereo model is loaded or valid.");
 			return false;
@@ -1192,6 +1219,7 @@ void CameraRealSense2::setDualMode(bool enabled, const Transform & extrinsics)
 	{
 		odometryProvided_ = true;
 		odometryImagesDisabled_ = false;
+		odometryOnlyLeftStream_ = false;
 	}
 #endif
 }
@@ -1210,7 +1238,7 @@ void CameraRealSense2::setImagesRectified(bool enabled)
 #endif
 }
 
-void CameraRealSense2::setOdomProvided(bool enabled, bool imageStreamsDisabled)
+void CameraRealSense2::setOdomProvided(bool enabled, bool imageStreamsDisabled, bool onlyLeftStream)
 {
 #ifdef RTABMAP_REALSENSE2
 	if(dualMode_ && !enabled)
@@ -1220,6 +1248,7 @@ void CameraRealSense2::setOdomProvided(bool enabled, bool imageStreamsDisabled)
 	}
 	odometryProvided_ = enabled;
 	odometryImagesDisabled_ = enabled && imageStreamsDisabled;
+	odometryOnlyLeftStream_ = enabled && !imageStreamsDisabled && onlyLeftStream;
 #endif
 }
 
@@ -1374,27 +1403,48 @@ SensorData CameraRealSense2::captureImage(CameraInfo * info)
 					data = SensorData(bgr, depth, model_, this->getNextSeqID(), stamp);
 				}
 			}
-			else if(is_left_fisheye_arrived && is_right_fisheye_arrived)
+			else if(is_left_fisheye_arrived)
 			{
-				auto from_image_frame = depth_frame.as<rs2::video_frame>();
-				cv::Mat left,right;
-				if(rectifyImages_ && stereoModel_.left().isValidForRectification() && stereoModel_.right().isValidForRectification())
+				if(odometryOnlyLeftStream_)
 				{
-					left = stereoModel_.left().rectifyImage(cv::Mat(rgbBuffer_.size(), rgbBuffer_.type(), (void*)rgb_frame.get_data()));
-					right = stereoModel_.right().rectifyImage(cv::Mat(depthBuffer_.size(), depthBuffer_.type(), (void*)depth_frame.get_data()));
-				}
-				else
-				{
-					left = cv::Mat(rgbBuffer_.size(), rgbBuffer_.type(), (void*)rgb_frame.get_data()).clone();
-					right = cv::Mat(depthBuffer_.size(), depthBuffer_.type(), (void*)depth_frame.get_data()).clone();
-				}
+					cv::Mat left;
+					if(rectifyImages_ && model_.isValidForRectification())
+					{
+						left = model_.rectifyImage(cv::Mat(rgbBuffer_.size(), rgbBuffer_.type(), (void*)rgb_frame.get_data()));
+					}
+					else
+					{
+						left = cv::Mat(rgbBuffer_.size(), rgbBuffer_.type(), (void*)rgb_frame.get_data()).clone();
+					}
 
-				if(stereoModel_.left().imageHeight() == 0 || stereoModel_.left().imageWidth() == 0)
-				{
-					stereoModel_.setImageSize(left.size());
-				}
+					if(model_.imageHeight() == 0 || model_.imageWidth() == 0)
+					{
+						model_.setImageSize(left.size());
+					}
 
-				data = SensorData(left, right, stereoModel_, this->getNextSeqID(), stamp);
+					data = SensorData(left, cv::Mat(), model_, this->getNextSeqID(), stamp);
+				}
+				else if(is_right_fisheye_arrived)
+				{
+					cv::Mat left,right;
+					if(rectifyImages_ && stereoModel_.left().isValidForRectification() && stereoModel_.right().isValidForRectification())
+					{
+						left = stereoModel_.left().rectifyImage(cv::Mat(rgbBuffer_.size(), rgbBuffer_.type(), (void*)rgb_frame.get_data()));
+						right = stereoModel_.right().rectifyImage(cv::Mat(depthBuffer_.size(), depthBuffer_.type(), (void*)depth_frame.get_data()));
+					}
+					else
+					{
+						left = cv::Mat(rgbBuffer_.size(), rgbBuffer_.type(), (void*)rgb_frame.get_data()).clone();
+						right = cv::Mat(depthBuffer_.size(), depthBuffer_.type(), (void*)depth_frame.get_data()).clone();
+					}
+
+					if(stereoModel_.left().imageHeight() == 0 || stereoModel_.left().imageWidth() == 0)
+					{
+						stereoModel_.setImageSize(left.size());
+					}
+
+					data = SensorData(left, right, stereoModel_, this->getNextSeqID(), stamp);
+				}
 			}
 			else
 			{
@@ -1470,6 +1520,13 @@ SensorData CameraRealSense2::captureImage(CameraInfo * info)
 				}
 				lastImuStamp_ = imuStamp;
 			}
+		}
+		else if(frameset.size()==1 && frameset[0].get_profile().stream_type() == RS2_STREAM_FISHEYE)
+		{
+			UERROR("Missing frames (received %d, needed=%d). For T265 camera, "
+					"either use realsense sdk v2.42.0, or apply "
+					"this patch (https://github.com/IntelRealSense/librealsense/issues/9030#issuecomment-962223017) "
+					"to fix this problem.", (int)frameset.size(), desiredFramesetSize);
 		}
 		else
 		{
