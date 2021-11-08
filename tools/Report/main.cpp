@@ -49,7 +49,7 @@ void showUsage()
 {
 	printf("\nUsage:\n"
 			"rtabmap-report [\"Statistic/Id\"] [options] path\n"
-#ifdef WITH_QT
+#ifndef WITH_QT
 			"[Not built with Qt, statistics cannot be plotted]\n"
 #endif
 			"  path               Directory containing rtabmap databases or path of a database.\n"
