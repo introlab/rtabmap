@@ -102,7 +102,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/util3d_mapping.h"
 #include "rtabmap/core/util3d_surface.h"
 #include "rtabmap/core/util3d_registration.h"
-#include "rtabmap/core/Optimizer.h"
 #include "rtabmap/core/optimizer/OptimizerCVSBA.h"
 #include "rtabmap/core/Graph.h"
 #include "rtabmap/core/RegistrationIcp.h"
@@ -394,7 +393,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent, bool sh
 	connect(_ui->actionReset_Odometry, SIGNAL(triggered()), this, SLOT(resetOdometry()));
 	connect(_ui->actionTrigger_a_new_map, SIGNAL(triggered()), this, SLOT(triggerNewMap()));
 	connect(_ui->actionData_recorder, SIGNAL(triggered()), this, SLOT(dataRecorder()));
-	connect(_ui->actionPost_processing, SIGNAL(triggered()), this, SLOT(postProcessing()));
+	connect(_ui->actionPost_processing, SIGNAL(triggered()), this, SLOT(showPostProcessingDialog()));
 	connect(_ui->actionDepth_Calibration, SIGNAL(triggered()), this, SLOT(depthCalibration()));
 
 	_ui->actionPause->setShortcut(Qt::Key_Space);
@@ -6043,7 +6042,44 @@ void MainWindow::exportPoses(int format)
 	}
 }
 
-void MainWindow::postProcessing()
+void MainWindow::showPostProcessingDialog()
+{
+	if(_postProcessingDialog->exec() != QDialog::Accepted)
+	{
+		return;
+	}
+
+	postProcessing(
+			_postProcessingDialog->isRefineNeighborLinks(),
+			_postProcessingDialog->isRefineLoopClosureLinks(),
+			_postProcessingDialog->isDetectMoreLoopClosures(),
+			_postProcessingDialog->clusterRadius(),
+			_postProcessingDialog->clusterAngle(),
+			_postProcessingDialog->iterations(),
+			_postProcessingDialog->interSession(),
+			_postProcessingDialog->intraSession(),
+			_postProcessingDialog->isSBA(),
+			_postProcessingDialog->sbaIterations(),
+			_postProcessingDialog->sbaVariance(),
+			_postProcessingDialog->sbaType(),
+			_postProcessingDialog->sbaRematchFeatures());
+}
+
+void MainWindow::postProcessing(
+		bool refineNeighborLinks,
+		bool refineLoopClosureLinks,
+		bool detectMoreLoopClosures,
+		double clusterRadius,
+		double clusterAngle,
+		int iterations,
+		bool interSession,
+		bool intraSession,
+		bool sba,
+		int sbaIterations,
+		double sbaVariance,
+		Optimizer::Type sbaType,
+		double sbaRematchFeatures,
+		bool abortIfDataMissing)
 {
 	if(_cachedSignatures.size() == 0)
 	{
@@ -6054,22 +6090,6 @@ void MainWindow::postProcessing()
 				   "refresh the cache."));
 		return;
 	}
-	if(_postProcessingDialog->exec() != QDialog::Accepted)
-	{
-		return;
-	}
-
-	bool detectMoreLoopClosures = _postProcessingDialog->isDetectMoreLoopClosures();
-	bool refineNeighborLinks = _postProcessingDialog->isRefineNeighborLinks();
-	bool refineLoopClosureLinks = _postProcessingDialog->isRefineLoopClosureLinks();
-	double clusterRadius = _postProcessingDialog->clusterRadius();
-	double clusterAngle = _postProcessingDialog->clusterAngle();
-	int detectLoopClosureIterations = _postProcessingDialog->iterations();
-	bool sba = _postProcessingDialog->isSBA();
-	int sbaIterations = _postProcessingDialog->sbaIterations();
-	double sbaVariance = _postProcessingDialog->sbaVariance();
-	Optimizer::Type sbaType = _postProcessingDialog->sbaType();
-	double sbaRematchFeatures = _postProcessingDialog->sbaRematchFeatures();
 
 	if(!detectMoreLoopClosures && !refineNeighborLinks && !refineLoopClosureLinks && !sba)
 	{
@@ -6104,10 +6124,14 @@ void MainWindow::postProcessing()
 
 	if(!allDataAvailable)
 	{
-		QMessageBox::warning(this, tr("Not all data available in the GUI..."),
-				tr("Some data missing in the cache to respect the constraints chosen. "
-				   "Try \"Edit->Download all clouds\" to update the cache and try again."));
-		return;
+		QString msg = tr("Some data missing in the cache to respect the constraints chosen. "
+				   "Try \"Edit->Download all clouds\" to update the cache and try again.");
+		UWARN(msg.toStdString().c_str());
+		if(abortIfDataMissing)
+		{
+			QMessageBox::warning(this, tr("Not all data available in the GUI..."), msg);
+			return;
+		}
 	}
 
 	_progressDialog->resetProgress();
@@ -6159,13 +6183,11 @@ void MainWindow::postProcessing()
 			odomMaxInf = graph::getMaxOdomInf(_currentLinksMap);
 		}
 
-		UASSERT(detectLoopClosureIterations>0);
-		bool interSession = _postProcessingDialog->interSession();
-		bool intraSession = _postProcessingDialog->intraSession();
-		for(int n=0; n<detectLoopClosureIterations && !_progressCanceled; ++n)
+		UASSERT(iterations>0);
+		for(int n=0; n<iterations && !_progressCanceled; ++n)
 		{
 			_progressDialog->appendText(tr("Looking for more loop closures, clustering poses... (iteration=%1/%2, radius=%3 m angle=%4 degrees)")
-					.arg(n+1).arg(detectLoopClosureIterations).arg(clusterRadius).arg(clusterAngle));
+					.arg(n+1).arg(iterations).arg(clusterRadius).arg(clusterAngle));
 
 			std::multimap<int, int> clusters = graph::radiusPosesClustering(
 					std::map<int, Transform>(_currentPosesMap.upper_bound(0), _currentPosesMap.end()),
@@ -6411,13 +6433,13 @@ void MainWindow::postProcessing()
 				QApplication::processEvents();
 				_progressDialog->incrementStep();
 			}
-			_progressDialog->appendText(tr("Iteration %1/%2: Detected %3 loop closures!").arg(n+1).arg(detectLoopClosureIterations).arg(addedLinks.size()/2));
+			_progressDialog->appendText(tr("Iteration %1/%2: Detected %3 loop closures!").arg(n+1).arg(iterations).arg(addedLinks.size()/2));
 			if(addedLinks.size() == 0)
 			{
 				break;
 			}
 
-			if(n+1 < detectLoopClosureIterations)
+			if(n+1 < iterations)
 			{
 				_progressDialog->appendText(tr("Optimizing graph with new links (%1 nodes, %2 constraints)...")
 						.arg(_currentPosesMap.size()).arg(_currentLinksMap.size()));
