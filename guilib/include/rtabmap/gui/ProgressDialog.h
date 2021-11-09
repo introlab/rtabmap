@@ -52,7 +52,7 @@ public:
 	void setValue(int value);
 	int maximumSteps() const;
 	void setMaximumSteps(int steps);
-	void setAutoClose(bool on, int delayedClosingTimeMsec = -1);
+	void setAutoClose(bool on, int delayedClosingTimeSec = -1);
 	void setCancelButtonVisible(bool visible);
 	bool isCanceled() const {return _canceled;}
 
