@@ -62,6 +62,7 @@ void showUsage()
 			"                         and compute error based on the scaled path.\n"
 			"    --poses            Export poses to [path]_poses.txt, ground truth to [path]_gt.txt\n"
 			"                         and valid ground truth indices to [path]_indices.txt \n"
+			"    --inc              Incremental optimization. \n"
 			"    --stats            Show available statistics \"Statistic/Id\" to plot or get localization statistics (if path is a file). \n"
 #ifdef WITH_QT
 			"    --invert           When reading many databases, put all curves from a same \n"
@@ -79,7 +80,8 @@ void showUsage()
 			"    --loc_delay #      Delay to split sessions for localization statistics (default 60 seconds)\n"
 			"                       (it is a mask, we can combine those numbers, e.g., 63 for all) \n"
 			"    --ignore_inter_nodes  Ignore intermediate poses and statistics.\n"
-			"    --help             Show usage\n\n");
+			"    --udebug           Show debug log.\n"
+			"    --help,-h          Show usage\n\n");
 	exit(1);
 }
 
@@ -134,6 +136,7 @@ int main(int argc, char * argv[])
 	bool outputRelativeError = false;
 	bool outputReport = false;
 	bool outputLoopAccuracy = false;
+	bool incrementalOptimization = false;
 	bool showAvailableStats = false;
 	bool invertFigures = false;
 	bool ignoreInterNodes = false;
@@ -147,11 +150,15 @@ int main(int argc, char * argv[])
 #ifdef WITH_QT
 	std::map<std::string, UPlot*> figures;
 #endif
-	for(int i=1; i<argc-1; ++i)
+	for(int i=1; i<argc; ++i)
 	{
-		if(strcmp(argv[i], "--help") == 0)
+		if(strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "--h") == 0)
 		{
 			showUsage();
+		}
+		else if(strcmp(argv[i], "--udebug") == 0)
+		{
+			ULogger::setLevel(ULogger::kDebug);
 		}
 		else if(strcmp(argv[i], "--latex") == 0)
 		{
@@ -180,6 +187,10 @@ int main(int argc, char * argv[])
 		else if(strcmp(argv[i],"--report") == 0)
 		{
 			outputReport = true;
+		}
+		else if(strcmp(argv[i],"--inc") == 0)
+		{
+			incrementalOptimization = true;
 		}
 		else if(strcmp(argv[i],"--stats") == 0)
 		{
@@ -257,7 +268,7 @@ int main(int argc, char * argv[])
 				showUsage();
 			}
 		}
-		else
+		else if(i<argc-1)
 		{
 
 			statsToShow.push_back(argv[i]);
@@ -374,9 +385,13 @@ int main(int argc, char * argv[])
 				ParametersMap params;
 				if(driver->openConnection(filePath))
 				{
-					ULogger::setLevel(ULogger::kError); // to suppress parameter warnings
+					ULogger::Level logLevel = ULogger::level();
+					if(ULogger::level() == ULogger::kWarning)
+					{
+						ULogger::setLevel(ULogger::kError); // to suppress parameter warnings
+					}
 					params = driver->getLastParameters();
-					ULogger::setLevel(ULogger::kWarning);
+					ULogger::setLevel(logLevel);
 					std::set<int> ids;
 					driver->getAllNodeIds(ids, false, false, ignoreInterNodes);
 					std::map<int, std::pair<std::map<std::string, float>, double> > stats = driver->getAllStatistics();
@@ -684,9 +699,22 @@ int main(int argc, char * argv[])
 								links.insert(std::make_pair(iter->first, Link(iter->first, iter->first, Link::kGravity, iter->second)));
 							}
 						}
-						optimizer->getConnectedGraph(firstId, odomPoses, links, posesOut, linksOut);
-
-						std::map<int, Transform> poses = optimizer->optimize(firstId, posesOut, linksOut);
+						std::map<int, Transform> posesWithLandmarks = odomPoses;
+						// Added landmark poses if there are some
+						for(std::multimap<int, Link>::iterator iter=links.begin(); iter!=links.end(); ++iter)
+						{
+							if(iter->second.type() == Link::kLandmark)
+							{
+								UASSERT(iter->second.from() > 0 && iter->second.to() < 0);
+								if(posesWithLandmarks.find(iter->second.from()) != posesWithLandmarks.end() && posesWithLandmarks.find(iter->second.to()) == posesWithLandmarks.end())
+								{
+									posesWithLandmarks.insert(std::make_pair(iter->second.to(), posesWithLandmarks.at(iter->second.from())*iter->second.transform()));
+								}
+							}
+						}
+						optimizer->getConnectedGraph(firstId, posesWithLandmarks, links, posesOut, linksOut);
+						std::list<std::map<int, Transform> > intermediateGraphes;
+						std::map<int, Transform> poses = optimizer->optimize(firstId, posesOut, linksOut, incrementalOptimization?&intermediateGraphes:0);
 						if(poses.empty())
 						{
 							// try incremental optimization
@@ -880,7 +908,7 @@ int main(int argc, char * argv[])
 								}
 								if(!graph::exportPoses(path, outputKittiError?2:10, odomPoses, dummyLinks, stamps))
 								{
-									printf("Could not export the ground truth to \"%s\"!?!\n", path.c_str());
+									printf("Could not export the odometry to \"%s\"!?!\n", path.c_str());
 								}
 
 								//export ground truth

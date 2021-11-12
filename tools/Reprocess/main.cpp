@@ -69,6 +69,7 @@ void showUsage()
 			"                       arguments, they overwrite those in config file and the database.\n"
 			"     -start #    Start from this node ID.\n"
 			"     -stop #     Last node to process.\n"
+			"     -nolandmark Don't republish landmarks contained in input database.\n"
 			"     -loc_null   On localization mode, reset localization pose to null and map correction to identity between sessions.\n"
 			"     -gt         When reprocessing a single database, load its original optimized graph, then \n"
 			"                 set it as ground truth for output database. If there was a ground truth in the input database, it will be ignored.\n"
@@ -225,6 +226,7 @@ int main(int argc, char * argv[])
 	int startId = 0;
 	int stopId = 0;
 	int framesToSkip = 0;
+	bool ignoreLandmarks = false;
 	bool locNull = false;
 	bool originalGraphAsGT = false;
 	bool scanFromDepth = false;
@@ -302,6 +304,11 @@ int main(int argc, char * argv[])
 				printf("-skip option requires a value\n");
 				showUsage();
 			}
+		}
+		else if(strcmp(argv[i], "-nolandmark") == 0 || strcmp(argv[i], "--nolandmark") == 0)
+		{
+			ignoreLandmarks = true;
+			printf("Ignoring landmarks from input database (-nolandmark option).\n");
 		}
 		else if(strcmp(argv[i], "-loc_null") == 0 || strcmp(argv[i], "--loc_null") == 0)
 		{
@@ -604,7 +611,7 @@ int main(int argc, char * argv[])
 	bool rgbdEnabled = Parameters::defaultRGBDEnabled();
 	Parameters::parse(parameters, Parameters::kRGBDEnabled(), rgbdEnabled);
 	bool odometryIgnored = !rgbdEnabled;
-	DBReader * dbReader = new DBReader(inputDatabasePath, useDatabaseRate?-1:0, odometryIgnored, false, false, startId, -1, stopId, !intermediateNodes);
+	DBReader * dbReader = new DBReader(inputDatabasePath, useDatabaseRate?-1:0, odometryIgnored, false, false, startId, -1, stopId, !intermediateNodes, ignoreLandmarks);
 	dbReader->init();
 
 	OccupancyGrid grid(parameters);
