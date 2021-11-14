@@ -52,7 +52,7 @@ jobs:
       run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
 
     - name: Info
-      working-directory: ${{github.workspace}}/bin
+      working-directory: ${{github.workspace}}/build/bin
       run: |
         source /opt/ros/${{ matrix.ros_distro }}/setup.bash
         ./rtabmap-console --version
