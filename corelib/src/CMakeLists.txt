@@ -143,6 +143,7 @@ IF(MSVC)
 ENDIF(MSVC)
 
 SET(INCLUDE_DIRS
+    ${CMAKE_CURRENT_BINARY_DIR}/../include
     ${PROJECT_SOURCE_DIR}/utilite/include
 	${CMAKE_CURRENT_SOURCE_DIR}/../include
 	${CMAKE_CURRENT_SOURCE_DIR}
@@ -773,4 +774,11 @@ install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/../include/
 		COMPONENT devel 
 		FILES_MATCHING PATTERN "*.h" PATTERN "*.hpp" 
 		PATTERN ".svn" EXCLUDE)
+		
+# For generated Version.h
+install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/../include/ 
+        DESTINATION "${INSTALL_INCLUDE_DIR}"
+        COMPONENT devel 
+        FILES_MATCHING PATTERN "*.h" PATTERN "*.hpp" 
+        PATTERN ".svn" EXCLUDE)
 

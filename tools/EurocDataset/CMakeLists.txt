@@ -20,6 +20,7 @@ IF(yaml-cpp_FOUND)
 SET(RTABMap_INCLUDE_DIRS 
     ${PROJECT_SOURCE_DIR}/utilite/include
 	${PROJECT_SOURCE_DIR}/corelib/include
+	${PROJECT_BINARY_DIR}/corelib/include
 )
 SET(RTABMap_LIBRARIES 
     rtabmap_core
