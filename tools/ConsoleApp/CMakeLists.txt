@@ -4,9 +4,9 @@ SET(SRC_FILES
 )
 
 SET(INCLUDE_DIRS
+    ${PROJECT_BINARY_DIR}/corelib/include
 	${PROJECT_SOURCE_DIR}/utilite/include
 	${PROJECT_SOURCE_DIR}/corelib/include
-	${PROJECT_BINARY_DIR}/corelib/include
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${OpenCV_INCLUDE_DIRS}
 	${CMAKE_CURRENT_SOURCE_DIR}/../include

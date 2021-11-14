@@ -18,9 +18,9 @@ IF(yaml-cpp_FOUND)
 
 # inside rtabmap project (see below for external build)
 SET(RTABMap_INCLUDE_DIRS 
+    ${PROJECT_BINARY_DIR}/corelib/include
     ${PROJECT_SOURCE_DIR}/utilite/include
 	${PROJECT_SOURCE_DIR}/corelib/include
-	${PROJECT_BINARY_DIR}/corelib/include
 )
 SET(RTABMap_LIBRARIES 
     rtabmap_core

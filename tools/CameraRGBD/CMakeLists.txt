@@ -5,9 +5,9 @@ IF(NOT WITH_QT)
 ENDIF(NOT WITH_QT)
 
 SET(INCLUDE_DIRS
+    ${PROJECT_BINARY_DIR}/corelib/include
 	${PROJECT_SOURCE_DIR}/corelib/include
 	${PROJECT_SOURCE_DIR}/utilite/include
-	${PROJECT_BINARY_DIR}/corelib/include
     ${OpenCV_INCLUDE_DIRS}
     ${PCL_INCLUDE_DIRS}
 )

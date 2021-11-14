@@ -1,8 +1,8 @@
 SET(INCLUDE_DIRS
+    ${PROJECT_BINARY_DIR}/corelib/include
 	${PROJECT_SOURCE_DIR}/corelib/include
 	${PROJECT_SOURCE_DIR}/utilite/include
 	${PROJECT_SOURCE_DIR}/guilib/include
-	${PROJECT_BINARY_DIR}/corelib/include
     ${OpenCV_INCLUDE_DIRS}
     ${PCL_INCLUDE_DIRS}
 )
