@@ -199,6 +199,9 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 #ifndef RTABMAP_FLOAM
 	_ui->odom_strategy->setItemData(11, 0, Qt::UserRole - 1);
 #endif
+#ifndef RTABMAP_OPEN3D
+	_ui->odom_strategy->setItemData(12, 0, Qt::UserRole - 1);
+#endif
 
 #if CV_MAJOR_VERSION < 3
 	_ui->stereosgbm_mode->setItemData(2, 0, Qt::UserRole - 1);
@@ -1412,6 +1415,10 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->stereo_ssd->setObjectName(Parameters::kStereoSSD().c_str());
 	_ui->stereo_flow_eps->setObjectName(Parameters::kStereoEps().c_str());
 	_ui->stereo_opticalFlow->setObjectName(Parameters::kStereoOpticalFlow().c_str());
+
+	// Odometry Open3D
+	_ui->odom_open3d_method->setObjectName(Parameters::kOdomOpen3DMethod().c_str());
+	_ui->odom_open3d_max_depth->setObjectName(Parameters::kOdomOpen3DMaxDepth().c_str());
 
 	//StereoDense
 	_ui->comboBox_stereoDense_strategy->setObjectName(Parameters::kStereoDenseStrategy().c_str());
@@ -4932,6 +4939,18 @@ void PreferencesDialog::updateOdometryStackedIndex(int index)
 	{
 		_ui->stackedWidget_odometryType->setCurrentIndex(index);
 	}
+	_ui->groupBox_odomF2M->setVisible(index==0);
+	_ui->groupBox_odomF2F->setVisible(index==1);
+	_ui->groupBox_odomFovis->setVisible(index==2);
+	_ui->groupBox_odomViso2->setVisible(index==3);
+	_ui->groupBox_odomDVO->setVisible(index==4);
+	_ui->groupBox_odomORBSLAM->setVisible(index==5);
+	_ui->groupBox_odomOKVIS->setVisible(index==6);
+	_ui->groupBox_odomLOAM->setVisible(index==7);
+	_ui->groupBox_odomMSCKF->setVisible(index==8);
+	_ui->groupBox_odomVINS->setVisible(index==9);
+	_ui->groupBox_odomOpenVINS->setVisible(index==10);
+	_ui->groupBox_odomOpen3D->setVisible(index==12);
 }
 
 void PreferencesDialog::useOdomFeatures()

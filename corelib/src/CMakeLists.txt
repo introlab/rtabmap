@@ -93,6 +93,7 @@ SET(SRC_FILES
     odometry/OdometryMSCKF.cpp
     odometry/OdometryVINS.cpp
     odometry/OdometryOpenVINS.cpp
+    odometry/OdometryOpen3D.cpp
     
     IMU.cpp
     IMUThread.cpp
@@ -448,6 +449,13 @@ IF(CCCoreLib_FOUND)
 		CCCoreLib::CCCoreLib
 	)
 ENDIF(CCCoreLib_FOUND)
+
+IF(Open3D_FOUND)
+    SET(LIBRARIES
+        ${LIBRARIES}
+        Open3D::Open3D
+    )
+ENDIF(Open3D_FOUND)
 
 IF(FastCV_FOUND)
 	SET(INCLUDE_DIRS 

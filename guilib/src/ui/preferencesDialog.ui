@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>982</width>
-    <height>820</height>
+    <width>1052</width>
+    <height>925</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -63,9 +63,9 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-595</y>
-            <width>686</width>
-            <height>3905</height>
+            <y>-218</y>
+            <width>756</width>
+            <height>3623</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -95,10 +95,10 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>5</number>
+                <number>19</number>
                </property>
                <widget class="QWidget" name="page_22">
-                <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,1">
+                <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,0">
                  <item>
                   <widget class="QGroupBox" name="groupBox_generalSettingsGui0">
                    <property name="title">
@@ -13843,6 +13843,11 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                           <string>FLOAM</string>
                          </property>
                         </item>
+                        <item>
+                         <property name="text">
+                          <string>Open3D</string>
+                         </property>
+                        </item>
                        </widget>
                       </item>
                       <item row="2" column="1">
@@ -14146,7 +14151,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                     <item>
                      <widget class="QStackedWidget" name="stackedWidget_odometryType">
                       <property name="currentIndex">
-                       <number>7</number>
+                       <number>12</number>
                       </property>
                       <widget class="QWidget" name="page_52">
                        <layout class="QVBoxLayout" name="verticalLayout_77">
@@ -17357,9 +17362,9 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                       <widget class="QWidget" name="page_93">
                        <layout class="QVBoxLayout" name="verticalLayout_162">
                         <item>
-                         <widget class="QGroupBox" name="groupBox_odomVINS_2">
+                         <widget class="QGroupBox" name="groupBox_odomOpenVINS">
                           <property name="title">
-                           <string>VINS-Fusion</string>
+                           <string>OpenVINS</string>
                           </property>
                           <layout class="QVBoxLayout" name="verticalLayout_161" stretch="0">
                            <item>
@@ -17390,6 +17395,128 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                            <size>
                             <width>20</width>
                             <height>1049</height>
+                           </size>
+                          </property>
+                         </spacer>
+                        </item>
+                       </layout>
+                      </widget>
+                      <widget class="QWidget" name="page_95">
+                       <layout class="QVBoxLayout" name="verticalLayout_166">
+                        <item>
+                         <widget class="QGroupBox" name="groupBox_odomFLOAM">
+                          <property name="title">
+                           <string>Dummy-FLOAM</string>
+                          </property>
+                          <layout class="QVBoxLayout" name="verticalLayout_165"/>
+                         </widget>
+                        </item>
+                       </layout>
+                      </widget>
+                      <widget class="QWidget" name="page_94">
+                       <layout class="QVBoxLayout" name="verticalLayout_164">
+                        <item>
+                         <widget class="QGroupBox" name="groupBox_odomOpen3D">
+                          <property name="title">
+                           <string>Open3D</string>
+                          </property>
+                          <layout class="QVBoxLayout" name="verticalLayout_163" stretch="0,0">
+                           <item>
+                            <widget class="QLabel" name="label_643">
+                             <property name="text">
+                              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Open3D: &lt;a href=&quot;https://github.com/isl-org/Open3D&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;https://github.com/isl-org/Open3D&lt;/span&gt;&lt;/a&gt;&lt;/p&gt;&lt;p&gt;Working only with RGB-D cameras, preferably with TOF sensors. Note that visual keyframe threshold ratio parameter above is used with this odometry strategy.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                             </property>
+                             <property name="wordWrap">
+                              <bool>true</bool>
+                             </property>
+                             <property name="openExternalLinks">
+                              <bool>true</bool>
+                             </property>
+                             <property name="textInteractionFlags">
+                              <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                             </property>
+                            </widget>
+                           </item>
+                           <item>
+                            <layout class="QGridLayout" name="gridLayout_108" columnstretch="0,1">
+                             <item row="1" column="0">
+                              <widget class="QDoubleSpinBox" name="odom_open3d_max_depth">
+                               <property name="minimum">
+                                <double>0.000000000000000</double>
+                               </property>
+                               <property name="maximum">
+                                <double>9999.000000000000000</double>
+                               </property>
+                               <property name="singleStep">
+                                <double>1.000000000000000</double>
+                               </property>
+                               <property name="value">
+                                <double>3.000000000000000</double>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="0" column="1">
+                              <widget class="QLabel" name="label_647">
+                               <property name="text">
+                                <string>Method.</string>
+                               </property>
+                               <property name="wordWrap">
+                                <bool>true</bool>
+                               </property>
+                               <property name="textInteractionFlags">
+                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="0" column="0">
+                              <widget class="QComboBox" name="odom_open3d_method">
+                               <property name="sizeAdjustPolicy">
+                                <enum>QComboBox::AdjustToContents</enum>
+                               </property>
+                               <item>
+                                <property name="text">
+                                 <string>PointToPlane</string>
+                                </property>
+                               </item>
+                               <item>
+                                <property name="text">
+                                 <string>Intensity</string>
+                                </property>
+                               </item>
+                               <item>
+                                <property name="text">
+                                 <string>Hybrid</string>
+                                </property>
+                               </item>
+                              </widget>
+                             </item>
+                             <item row="1" column="1">
+                              <widget class="QLabel" name="label_645">
+                               <property name="text">
+                                <string>Max depth.</string>
+                               </property>
+                               <property name="wordWrap">
+                                <bool>true</bool>
+                               </property>
+                               <property name="textInteractionFlags">
+                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                               </property>
+                              </widget>
+                             </item>
+                            </layout>
+                           </item>
+                          </layout>
+                         </widget>
+                        </item>
+                        <item>
+                         <spacer name="verticalSpacer_30">
+                          <property name="orientation">
+                           <enum>Qt::Vertical</enum>
+                          </property>
+                          <property name="sizeHint" stdset="0">
+                           <size>
+                            <width>20</width>
+                            <height>984</height>
                            </size>
                           </property>
                          </spacer>
@@ -17579,7 +17706,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                     <item>
                      <widget class="QStackedWidget" name="stackedWidget_odometryFiltering">
                       <property name="currentIndex">
-                       <number>1</number>
+                       <number>0</number>
                       </property>
                       <widget class="QWidget" name="page_31">
                        <layout class="QVBoxLayout" name="verticalLayout_84"/>
