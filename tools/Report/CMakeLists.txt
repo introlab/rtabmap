@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 2.8)
 
 # inside rtabmap project (see below for external build)
 SET(RTABMap_INCLUDE_DIRS 
+    ${PROJECT_BINARY_DIR}/corelib/include
     ${PROJECT_SOURCE_DIR}/utilite/include
     ${PROJECT_SOURCE_DIR}/corelib/include
     ${PROJECT_SOURCE_DIR}/guilib/include

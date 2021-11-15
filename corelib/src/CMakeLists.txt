@@ -143,6 +143,7 @@ IF(MSVC)
 ENDIF(MSVC)
 
 SET(INCLUDE_DIRS
+    ${CMAKE_CURRENT_BINARY_DIR}/../include
     ${PROJECT_SOURCE_DIR}/utilite/include
 	${CMAKE_CURRENT_SOURCE_DIR}/../include
 	${CMAKE_CURRENT_SOURCE_DIR}
@@ -720,7 +721,7 @@ endforeach(arg ${RESOURCES})
 IF(ANDROID)
 
    IF(NOT RTABMAP_RES_TOOL)
-      find_host_program(RTABMAP_RES_TOOL rtabmap-res_tool PATHS ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
+      find_host_program(RTABMAP_RES_TOOL rtabmap-res_tool PATHS ${PROJECT_BINARY_DIR}/../bin)
       IF(NOT RTABMAP_RES_TOOL)
          MESSAGE( FATAL_ERROR "RTABMAP_RES_TOOL is not defined (it is the path to \"rtabmap-res_tool\" application created by a non-Android build)." )
       ENDIF(NOT RTABMAP_RES_TOOL)
@@ -773,4 +774,11 @@ install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/../include/
 		COMPONENT devel 
 		FILES_MATCHING PATTERN "*.h" PATTERN "*.hpp" 
 		PATTERN ".svn" EXCLUDE)
+		
+# For generated Version.h
+install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/../include/ 
+        DESTINATION "${INSTALL_INCLUDE_DIR}"
+        COMPONENT devel 
+        FILES_MATCHING PATTERN "*.h" PATTERN "*.hpp" 
+        PATTERN ".svn" EXCLUDE)
 

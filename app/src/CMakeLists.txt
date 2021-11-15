@@ -4,6 +4,7 @@ SET(SRC_FILES
 )
 
 SET(INCLUDE_DIRS
+    ${PROJECT_BINARY_DIR}/corelib/include
 	${PROJECT_SOURCE_DIR}/utilite/include
 	${PROJECT_SOURCE_DIR}/corelib/include
 	${PROJECT_SOURCE_DIR}/guilib/include
