@@ -2089,7 +2089,18 @@ std::vector<cv::KeyPoint> SuperPointTorch::generateKeypointsImpl(const cv::Mat &
 {
 #ifdef RTABMAP_TORCH
 	UASSERT(!image.empty() && image.channels() == 1 && image.depth() == CV_8U);
-	UASSERT_MSG(roi.x==0 && roi.y ==0, "Not supporting ROI");
+	if(roi.x!=0 || roi.y !=0)
+	{
+		UERROR("SuperPoint: Not supporting ROI (%d,%d,%d,%d). Make sure %s, %s, %s, %s, %s, %s are all set to default values.",
+				roi.x, roi.y, roi.width, roi.height,
+				Parameters::kKpRoiRatios().c_str(),
+				Parameters::kVisRoiRatios().c_str(),
+				Parameters::kVisGridRows().c_str(),
+				Parameters::kVisGridCols().c_str(),
+				Parameters::kKpGridRows().c_str(),
+				Parameters::kKpGridCols().c_str());
+		return std::vector<cv::KeyPoint>();
+	}
 	return superPoint_->detect(image, mask);
 #else
 	UWARN("RTAB-Map is not built with Torch support so SuperPoint Torch feature cannot be used!");
