@@ -55,9 +55,11 @@ cd $pwd
 
 # FLANN
 echo "wget flann..."
-curl -L http://www.cs.ubc.ca/research/flann/uploads/FLANN/flann-1.8.4-src.zip -o flann-1.8.4-src.zip
-unzip -qq flann-1.8.4-src.zip
-cd flann-1.8.4-src
+git clone https://github.com/flann-lib/flann.git
+cd flann
+git checkout 1.8.4
+curl -L https://gist.githubusercontent.com/matlabbe/c858ba36fb85d5e44d8667dfb3543e12/raw/8fc40aa9bc3267604869444020476a49f14ab424/flann_ios.patch  -o flann_ios.patch
+git apply flann_ios.patch
 mkdir build
 cd build
 # comment "add_subdirectory( test )" in top CMakeLists.txt
@@ -66,7 +68,7 @@ cmake -G Xcode -DCMAKE_SYSTEM_NAME=iOS -DCMAKE_OSX_ARCHITECTURES=arm64 -DCMAKE_O
 cmake --build . --config Release -- CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED="NO" CODE_SIGN_ENTITLEMENTS=""  CODE_SIGNING_ALLOWED="NO"
 cmake --build . --config Release --target install -- CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED="NO" CODE_SIGN_ENTITLEMENTS=""  CODE_SIGNING_ALLOWED="NO"
 cd $pwd
-#rm -r flann-1.8.4-src.zip flann-1.8.4-src
+#rm -r flann
 
 # GTSAM
 git clone https://bitbucket.org/gtborg/gtsam.git
@@ -134,6 +136,8 @@ cd $pwd
 git clone https://github.com/opencv/opencv.git
 cd opencv
 git checkout tags/3.4.2
+curl -L https://gist.githubusercontent.com/matlabbe/fdc3ab4854f3a68fbde7277f543b4e5b/raw/f340839c09165056d3845645df24b76507542fd2/opencv_ios.patch -o opencv_ios.patch
+git apply opencv_ios.patch
 mkdir build
 cd build
 # add "add_definitions(-DPNG_ARM_NEON_OPT=0)" in 3rdparty/libpng/CMakeLists.txt
@@ -145,6 +149,10 @@ cd $pwd
 
 mkdir rtabmap
 cd rtabmap
-cmake -G Xcode -DCMAKE_SYSTEM_NAME=iOS -DCMAKE_OSX_ARCHITECTURES=arm64 -DCMAKE_OSX_SYSROOT=$sysroot -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0 -DCMAKE_C_FLAGS=-fembed-bitcode -DCMAKE_CXX_FLAGS=-fembed-bitcode -DCMAKE_INSTALL_PREFIX=$prefix -DCMAKE_FIND_ROOT_PATH=$prefix -DWITH_QT=OFF -DBUILD_APP=OFF -DBUILD_TOOLS=OFF -DWITH_TORO=OFF -DWITH_VERTIGO=OFF -DWITH_MADGWICK=OFF -DWITH_ORB_OCTREE=OFF  -DBUILD_EXAMPLES=OFF ../../../../..
+cmake -DANDROID_PREBUILD=ON ../../../../..
+cmake --build . --config Release
+mkdir ios
+cd ios
+cmake -G Xcode -DCMAKE_SYSTEM_NAME=iOS -DCMAKE_OSX_ARCHITECTURES=arm64 -DCMAKE_OSX_SYSROOT=$sysroot -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0 -DCMAKE_C_FLAGS=-fembed-bitcode -DCMAKE_CXX_FLAGS=-fembed-bitcode -DCMAKE_INSTALL_PREFIX=$prefix -DCMAKE_FIND_ROOT_PATH=$prefix -DWITH_QT=OFF -DBUILD_APP=OFF -DBUILD_TOOLS=OFF -DWITH_TORO=OFF -DWITH_VERTIGO=OFF -DWITH_MADGWICK=OFF -DWITH_ORB_OCTREE=OFF  -DBUILD_EXAMPLES=OFF ../../../../../..
 cmake --build . --config Release
 cmake --build . --config Release --target install
