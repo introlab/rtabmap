@@ -87,6 +87,7 @@ void showUsage()
 			"    --gain_gray           Do gain estimation compensation on gray channel only (default RGB channels).\n"
 			"    --no_blending         Disable blending when texturing.\n"
 			"    --no_clean            Disable cleaning colorless polygons.\n"
+			"    --min_cluster   #     When meshing, filter clusters of polygons with size less than this threshold (default 200, -1 means keep only biggest contiguous surface).\n"
 			"    --low_gain      #     Low brightness gain 0-100 (default 0).\n"
 			"    --high_gain     #     High brightness gain 0-100 (default 10).\n"
 			"    --multiband               Enable multiband texturing (AliceVision dependency required).\n"
@@ -142,6 +143,7 @@ int main(int argc, char * argv[])
 	float gainValue = 1;
 	bool doBlending = true;
 	bool doClean = true;
+	int minCluster = 200;
 	int poissonDepth = 0;
 	float poissonSize = 0.03;
 	int maxPolygons = 300000;
@@ -355,6 +357,18 @@ int main(int argc, char * argv[])
 		else if(std::strcmp(argv[i], "--no_clean") == 0)
 		{
 			doClean = false;
+		}
+		else if(std::strcmp(argv[i], "--min_cluster") == 0)
+		{
+			++i;
+			if(i<argc-1)
+			{
+				minCluster = uStr2Int(argv[i]);
+			}
+			else
+			{
+				showUsage();
+			}
 		}
 		else if(std::strcmp(argv[i], "--multiband") == 0)
 		{
@@ -1357,7 +1371,7 @@ int main(int argc, char * argv[])
 						colorRadius,
 						!texture,
 						doClean,
-						200);
+						minCluster);
 				printf("Mesh color transfer... done (%fs).\n", timer.ticks());
 
 				if(!texture)
