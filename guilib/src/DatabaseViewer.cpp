@@ -67,6 +67,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/Compression.h"
 #include "rtabmap/core/Graph.h"
 #include "rtabmap/core/Stereo.h"
+#include "rtabmap/core/StereoDense.h"
 #include "rtabmap/core/Optimizer.h"
 #include "rtabmap/core/RegistrationVis.h"
 #include "rtabmap/core/RegistrationIcp.h"
@@ -393,6 +394,7 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	connect(ui_->doubleSpinBox_voxelSize, SIGNAL(valueChanged(double)), this, SLOT(updateConstraintView()));
 	connect(ui_->doubleSpinBox_voxelSize, SIGNAL(valueChanged(double)), this, SLOT(update3dView()));
 	connect(ui_->checkBox_cameraProjection, SIGNAL(stateChanged(int)), this, SLOT(update3dView()));
+	connect(ui_->checkBox_showDisparityInsteadOfRight, SIGNAL(stateChanged(int)), this, SLOT(update3dView()));
 	connect(ui_->spinBox_decimation, SIGNAL(valueChanged(int)), this, SLOT(updateConstraintView()));
 	connect(ui_->spinBox_decimation, SIGNAL(valueChanged(int)), this, SLOT(update3dView()));
 	connect(ui_->groupBox_posefiltering, SIGNAL(clicked(bool)), this, SLOT(updateGraphView()));
@@ -421,6 +423,7 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	connect(ui_->doubleSpinBox_gainCompensationRadius, SIGNAL(valueChanged(double)), this, SLOT(configModified()));
 	connect(ui_->doubleSpinBox_voxelSize, SIGNAL(valueChanged(double)), this, SLOT(configModified()));
 	connect(ui_->checkBox_cameraProjection, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
+	connect(ui_->checkBox_showDisparityInsteadOfRight, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
 	connect(ui_->spinBox_decimation, SIGNAL(valueChanged(int)), this, SLOT(configModified()));
 	connect(ui_->groupBox_posefiltering, SIGNAL(clicked(bool)), this, SLOT(configModified()));
 	connect(ui_->doubleSpinBox_posefilteringRadius, SIGNAL(valueChanged(double)), this, SLOT(configModified()));
@@ -553,7 +556,7 @@ void DatabaseViewer::readSettings()
 	ui_->doubleSpinBox_voxelSize->setValue(settings.value("voxelSize", ui_->doubleSpinBox_voxelSize->value()).toDouble());
 	ui_->spinBox_decimation->setValue(settings.value("decimation", ui_->spinBox_decimation->value()).toInt());
 	ui_->checkBox_cameraProjection->setChecked(settings.value("camProj", ui_->checkBox_cameraProjection->isChecked()).toBool());
-
+	ui_->checkBox_showDisparityInsteadOfRight->setChecked(settings.value("showDisp", ui_->checkBox_showDisparityInsteadOfRight->isChecked()).toBool());
 	settings.endGroup();
 
 	settings.beginGroup("grid");
@@ -641,6 +644,7 @@ void DatabaseViewer::writeSettings()
 	settings.setValue("voxelSize", ui_->doubleSpinBox_voxelSize->value());
 	settings.setValue("decimation", ui_->spinBox_decimation->value());
 	settings.setValue("camProj", ui_->checkBox_cameraProjection->isChecked());
+	settings.setValue("showDisp", ui_->checkBox_showDisparityInsteadOfRight->isChecked());
 	settings.endGroup();
 
 	// save Grid settings
@@ -731,6 +735,7 @@ void DatabaseViewer::restoreDefaultSettings()
 	ui_->doubleSpinBox_voxelSize->setValue(0.0);
 	ui_->spinBox_decimation->setValue(1);
 	ui_->checkBox_cameraProjection->setChecked(false);
+	ui_->checkBox_showDisparityInsteadOfRight->setChecked(false);
 
 	ui_->groupBox_posefiltering->setChecked(false);
 	ui_->doubleSpinBox_posefilteringRadius->setValue(0.1);
@@ -4398,7 +4403,7 @@ void DatabaseViewer::update(int value,
 				data.uncompressData();
 				if(!data.imageRaw().empty())
 				{
-					img = uCvMat2QImage(ui_->label_indexB==labelIndex?data.imageRaw():data.imageRaw());
+					img = uCvMat2QImage(data.imageRaw());
 				}
 				if(!data.depthOrRightRaw().empty())
 				{
@@ -4409,6 +4414,15 @@ void DatabaseViewer::update(int value,
 						{
 							depth = util2d::fillDepthHoles(depth, ui_->spinBox_mesh_fillDepthHoles->value(), float(ui_->spinBox_mesh_depthError->value())/100.0f);
 						}
+					}
+					if( !data.imageRaw().empty() &&
+						!data.rightRaw().empty() &&
+						data.stereoCameraModel().isValidForProjection() &&
+						ui_->checkBox_showDisparityInsteadOfRight->isChecked())
+					{
+						rtabmap::StereoDense * denseStereo = rtabmap::StereoDense::create(ui_->parameters_toolbox->getParameters());
+						depth = util2d::depthFromDisparity(denseStereo->computeDisparity(data.imageRaw(), data.rightRaw()), data.stereoCameraModel().left().fx(), data.stereoCameraModel().baseline(), CV_32FC1);
+						delete denseStereo;
 					}
 					imgDepth = depth;
 				}
@@ -5606,16 +5620,13 @@ void DatabaseViewer::sliderBMoved(int value)
 
 void DatabaseViewer::update3dView()
 {
-	if(ui_->dockWidget_view3d->isVisible())
+	if(lastSliderIndexBrowsed_ == ui_->horizontalSlider_B->value())
 	{
-		if(lastSliderIndexBrowsed_ == ui_->horizontalSlider_B->value())
-		{
-			sliderBValueChanged(ui_->horizontalSlider_B->value());
-		}
-		else
-		{
-			sliderAValueChanged(ui_->horizontalSlider_A->value());
-		}
+		sliderBValueChanged(ui_->horizontalSlider_B->value());
+	}
+	else
+	{
+		sliderAValueChanged(ui_->horizontalSlider_A->value());
 	}
 }
 
