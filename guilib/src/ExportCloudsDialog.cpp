@@ -2718,7 +2718,6 @@ bool ExportCloudsDialog::getExportedClouds(
 
 				// color the cloud
 				UASSERT(pointToPixel.empty() || pointToPixel.size() == assembledCloud->size());
-				QMap<int, cv::Mat> cachedImages;
 				pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr assembledCloudValidPoints;
 				if(!_ui->checkBox_camProjKeepPointsNotSeenByCameras->isChecked())
 				{
@@ -2730,67 +2729,84 @@ bool ExportCloudsDialog::getExportedClouds(
 				{
 					textureVertexToPixels.resize(assembledCloud->size());
 				}
-				int oi=0;
-				for(size_t i=0; i<pointToPixel.size(); ++i)
+
+				if(_ui->checkBox_camProjRecolorPoints->isChecked())
 				{
-					pcl::PointXYZRGBNormal & pt = assembledCloud->at(i);
-					if(_ui->checkBox_camProjRecolorPoints->isChecked() && !_ui->checkBox_fromDepth->isChecked())
+					int imagesDone = 1;
+					for(std::map<int, rtabmap::Transform>::iterator iter=cameraPoses.begin(); iter!=cameraPoses.end(); ++iter)
 					{
-						pt.r = 255;
-						pt.g = 0;
-						pt.b = 0;
-						pt.a = 255;
-					}
-					int nodeID = pointToPixel[i].first.first;
-					int cameraIndex = pointToPixel[i].first.second;
-					if(nodeID>0 && cameraIndex>=0)
-					{
-						if(_ui->checkBox_camProjRecolorPoints->isChecked())
+						int nodeID = iter->first;
+
+						cv::Mat image;
+						if(cachedSignatures.contains(nodeID) && !cachedSignatures.value(nodeID).sensorData().imageCompressed().empty())
 						{
-							cv::Mat image;
-							if(cachedImages.contains(nodeID))
+							cachedSignatures.value(nodeID).sensorData().uncompressDataConst(&image, 0);
+						}
+						else if(_dbDriver)
+						{
+							SensorData data;
+							_dbDriver->getNodeData(nodeID, data, true, false, false, false);
+							data.uncompressDataConst(&image, 0);
+						}
+						if(!image.empty())
+						{
+							UASSERT(cameraModels.find(nodeID) != cameraModels.end());
+							int modelsSize = cameraModels.at(nodeID).size();
+							for(size_t i=0; i<pointToPixel.size(); ++i)
 							{
-								image = cachedImages.value(nodeID);
-							}
-							else if(cachedSignatures.contains(nodeID) && !cachedSignatures.value(nodeID).sensorData().imageCompressed().empty())
-							{
-								cachedSignatures.value(nodeID).sensorData().uncompressDataConst(&image, 0);
-								cachedImages.insert(nodeID, image);
-							}
-							else if(_dbDriver)
-							{
-								SensorData data;
-								_dbDriver->getNodeData(nodeID, data, true, false, false, false);
-								data.uncompressDataConst(&image, 0);
-								cachedImages.insert(nodeID, image);
-							}
-
-							if(!image.empty())
-							{
-								int subImageWidth = image.cols / cameraModels.at(nodeID).size();
-								image = image(cv::Range::all(), cv::Range(cameraIndex*subImageWidth, (cameraIndex+1)*subImageWidth));
-
-
-								int x = pointToPixel[i].second.x * (float)image.cols;
-								int y = pointToPixel[i].second.y * (float)image.rows;
-								UASSERT(x>=0 && x<image.cols);
-								UASSERT(y>=0 && y<image.rows);
-
-								if(image.type()==CV_8UC3)
+								int cameraIndex = pointToPixel[i].first.second;
+								if(nodeID == pointToPixel[i].first.first && cameraIndex>=0)
 								{
-									cv::Vec3b bgr = image.at<cv::Vec3b>(y, x);
-									pt.b = bgr[0];
-									pt.g = bgr[1];
-									pt.r = bgr[2];
-								}
-								else
-								{
-									UASSERT(image.type()==CV_8UC1);
-									pt.r = pt.g = pt.b = image.at<unsigned char>(pointToPixel[i].second.y * image.rows, pointToPixel[i].second.x * image.cols);
+									pcl::PointXYZRGBNormal & pt = assembledCloud->at(i);
+
+									int subImageWidth = image.cols / modelsSize;
+									cv::Mat subImage = image(cv::Range::all(), cv::Range(cameraIndex*subImageWidth, (cameraIndex+1)*subImageWidth));
+
+									int x = pointToPixel[i].second.x * (float)subImage.cols;
+									int y = pointToPixel[i].second.y * (float)subImage.rows;
+									UASSERT(x>=0 && x<subImage.cols);
+									UASSERT(y>=0 && y<subImage.rows);
+
+									if(subImage.type()==CV_8UC3)
+									{
+										cv::Vec3b bgr = subImage.at<cv::Vec3b>(y, x);
+										pt.b = bgr[0];
+										pt.g = bgr[1];
+										pt.r = bgr[2];
+									}
+									else
+									{
+										UASSERT(subImage.type()==CV_8UC1);
+										pt.r = pt.g = pt.b = subImage.at<unsigned char>(pointToPixel[i].second.y * subImage.rows, pointToPixel[i].second.x * subImage.cols);
+									}
 								}
 							}
 						}
+						QString msg = tr("Processed %1/%2 images").arg(imagesDone++).arg(cameraPoses.size());
+						UINFO(msg.toStdString().c_str());
+						_progressDialog->appendText(msg);
+					}
+				}
 
+				pcl::IndicesPtr validIndices(new std::vector<int>(pointToPixel.size()));
+				size_t oi = 0;
+				for(size_t i=0; i<pointToPixel.size(); ++i)
+				{
+					pcl::PointXYZRGBNormal & pt = assembledCloud->at(i);
+					if(pointToPixel[i].first.first <=0)
+					{
+						if(_ui->checkBox_camProjRecolorPoints->isChecked() && !_ui->checkBox_fromDepth->isChecked())
+						{
+							pt.r = 255;
+							pt.g = 0;
+							pt.b = 0;
+							pt.a = 255;
+						}
+					}
+					else
+					{
+						int nodeID = pointToPixel[i].first.first;
+						int cameraIndex = pointToPixel[i].first.second;
 						int exportedId = nodeID;
 						if(_ui->comboBox_camProjExportCamera->currentIndex() == 2)
 						{
