@@ -347,7 +347,9 @@ IF(WITH_QT)
         ENDIF()
         ADD_DEFINITIONS(-DQT_NO_KEYWORDS) # To avoid conflicts with boost signals/foreach and Qt macros
     ENDIF(QT4_FOUND OR Qt5_FOUND)
-ENDIF(WITH_QT)
+ELSE()
+    ADD_DEFINITIONS(-DDISABLE_VTK)
+ENDIF()
 
 IF(WITH_TORCH)
     FIND_PACKAGE(Torch QUIET)
