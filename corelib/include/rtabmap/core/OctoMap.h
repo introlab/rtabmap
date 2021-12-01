@@ -74,6 +74,8 @@ public:
 	void expandNode();
 	bool createChild(unsigned int i);
 
+	void updateOccupancyTypeChildren();
+
 private:
 	int nodeRefId_;
 	int type_; // -1=undefined, 0=empty, 100=obstacle, 1=ground

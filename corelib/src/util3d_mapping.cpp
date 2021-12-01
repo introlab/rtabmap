@@ -330,8 +330,8 @@ cv::Mat create2DMapFromOccupancyLocalMaps(
 	{
 		//Get map size
 		float margin = cellSize*10.0f;
-		xMin = minX-margin;
-		yMin = minY-margin;
+		xMin = minX-margin-cellSize/2.0f;
+		yMin = minY-margin-cellSize/2.0f;
 		float xMax = maxX+margin;
 		float yMax = maxY+margin;
 		if(fabs((yMax - yMin) / cellSize) > 30000 || // Max 1.5Km/1.5Km at 5 cm/cell -> 900MB
