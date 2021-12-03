@@ -1910,7 +1910,6 @@ void DatabaseViewer::updateIds()
 	if(!gpsValues_.empty())
 	{
 		ui_->menuExport_GPS->setEnabled(true);
-		ui_->actionPoses_KML->setEnabled(groundTruthPoses_.empty());
 	}
 
 	float xMin, yMin, cellSize;
@@ -2385,6 +2384,10 @@ void DatabaseViewer::exportPoses(int format)
 	QStringList types;
 	types.push_back("Map's graph (see Graph View)");
 	types.push_back("Odometry");
+	if(!groundTruthPoses_.empty())
+	{
+		types.push_back("Ground Truth");
+	}
 	bool ok;
 	QString type = QInputDialog::getItem(this, tr("Which poses?"), tr("Poses:"), types, 0, false, &ok);
 	if(!ok)
@@ -2392,8 +2395,14 @@ void DatabaseViewer::exportPoses(int format)
 		return;
 	}
 	bool odometry = type.compare("Odometry") == 0;
+	bool groundTruth = type.compare("Ground Truth") == 0;
 
-	if(!odometry && graphes_.empty())
+	if(groundTruth && groundTruthPoses_.empty())
+	{
+		QMessageBox::warning(this, tr("Cannot export poses"), tr("No ground truth poses in database?!"));
+		return;
+	}
+	else if(!odometry && graphes_.empty())
 	{
 		this->updateGraphView();
 		if(graphes_.empty() || ui_->horizontalSlider_iterations->maximum() != (int)graphes_.size()-1)
@@ -2417,7 +2426,11 @@ void DatabaseViewer::exportPoses(int format)
 		else
 		{
 			std::map<int, rtabmap::Transform> graph;
-			if(odometry)
+			if(groundTruth)
+			{
+				graph = groundTruthPoses_;
+			}
+			else if(odometry)
 			{
 				graph = odomPoses_;
 			}
@@ -2517,7 +2530,7 @@ void DatabaseViewer::exportPoses(int format)
 	}
 
 	std::map<int, Transform> optimizedPoses;
-	if(ui_->checkBox_alignScansCloudsWithGroundTruth->isChecked() && !groundTruthPoses_.empty())
+	if(groundTruth)
 	{
 		optimizedPoses = groundTruthPoses_;
 	}
