@@ -106,28 +106,23 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 		gtsam::NonlinearFactorGraph graph;
 
 		// detect if there is a global pose prior set, if so remove rootId
-		bool gpsPriorOnly = false;
-		bool hasPriorPoses = false;
+		bool hasGPSPrior = false;
 		if(!priorsIgnored())
 		{
 			for(std::multimap<int, Link>::const_iterator iter=edgeConstraints.begin(); iter!=edgeConstraints.end(); ++iter)
 			{
 				if(iter->second.from() == iter->second.to() && iter->second.type() == Link::kPosePrior)
 				{
-					hasPriorPoses = true;
+					hasGPSPrior = true;
 					if ((isSlam2d() && 1 / static_cast<double>(iter->second.infMatrix().at<double>(5,5)) < 9999) ||
 						(1 / static_cast<double>(iter->second.infMatrix().at<double>(3,3)) < 9999.0 &&
 						 1 / static_cast<double>(iter->second.infMatrix().at<double>(4,4)) < 9999.0 &&
 						 1 / static_cast<double>(iter->second.infMatrix().at<double>(5,5)) < 9999.0))
 					{
-						// orientation is set, don't set root prior
-						gpsPriorOnly = false;
+						// orientation is set, don't set root prior (it is no GPS)
 						rootId = 0;
+						hasGPSPrior = false;
 						break;
-					}
-					else if(gravitySigma()<=0)
-					{
-						gpsPriorOnly = true;
 					}
 				}
 			}
@@ -138,25 +133,25 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 		{
 			UASSERT(uContains(poses, rootId));
 			const Transform & initialPose = poses.at(rootId);
-			UDEBUG("hasPriorPoses=%s, gpsPriorOnly=%s", hasPriorPoses?"true":"false", gpsPriorOnly?"true":"false");
+			UDEBUG("hasGPSPrior=%s", hasGPSPrior?"true":"false");
 			if(isSlam2d())
 			{
-				gtsam::noiseModel::Diagonal::shared_ptr priorNoise = gtsam::noiseModel::Diagonal::Variances(gtsam::Vector3(0.01, 0.01, hasPriorPoses?1e-2:std::numeric_limits<double>::min()));
+				gtsam::noiseModel::Diagonal::shared_ptr priorNoise = gtsam::noiseModel::Diagonal::Variances(gtsam::Vector3(0.01, 0.01, hasGPSPrior?1e-2:std::numeric_limits<double>::min()));
 				graph.add(gtsam::PriorFactor<gtsam::Pose2>(rootId, gtsam::Pose2(initialPose.x(), initialPose.y(), initialPose.theta()), priorNoise));
 			}
 			else
 			{
 				gtsam::noiseModel::Diagonal::shared_ptr priorNoise = gtsam::noiseModel::Diagonal::Variances(
 						(gtsam::Vector(6) <<
-								1e-2, 1e-2, hasPriorPoses?1e-2:std::numeric_limits<double>::min(), // roll, pitch, fixed yaw if there are no priors
-								(gpsPriorOnly?2:1e-2), gpsPriorOnly?2:1e-2, gpsPriorOnly?2:1e-2 // xyz
+								1e-2, 1e-2, hasGPSPrior?1e-2:std::numeric_limits<double>::min(), // roll, pitch, fixed yaw if there are no priors
+								(hasGPSPrior?2:1e-2), hasGPSPrior?2:1e-2, hasGPSPrior?2:1e-2 // xyz
 								).finished());
 				graph.add(gtsam::PriorFactor<gtsam::Pose3>(rootId, gtsam::Pose3(initialPose.toEigen4d()), priorNoise));
 			}
 		}
 
-		UDEBUG("fill poses to gtsam... rootId=%d (priorsIgnored=%d gpsPriorOnly=%d landmarksIgnored=%d)",
-				rootId, priorsIgnored()?1:0, gpsPriorOnly?1:0, landmarksIgnored()?1:0);
+		UDEBUG("fill poses to gtsam... rootId=%d (priorsIgnored=%d landmarksIgnored=%d)",
+				rootId, priorsIgnored()?1:0, landmarksIgnored()?1:0);
 		gtsam::Values initialEstimate;
 		std::map<int, bool> isLandmarkWithRotation;
 		for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)

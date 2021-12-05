@@ -989,12 +989,13 @@ std::multimap<int, Link>::iterator findLink(
 		std::multimap<int, Link> & links,
 		int from,
 		int to,
-		bool checkBothWays)
+		bool checkBothWays,
+		Link::Type type)
 {
 	std::multimap<int, Link>::iterator iter = links.find(from);
 	while(iter != links.end() && iter->first == from)
 	{
-		if(iter->second.to() == to)
+		if(iter->second.to() == to && (type==Link::kUndef || type == iter->second.type()))
 		{
 			return iter;
 		}
@@ -1007,7 +1008,7 @@ std::multimap<int, Link>::iterator findLink(
 		iter = links.find(to);
 		while(iter != links.end() && iter->first == to)
 		{
-			if(iter->second.to() == from)
+			if(iter->second.to() == from && (type==Link::kUndef || type == iter->second.type()))
 			{
 				return iter;
 			}

@@ -1831,11 +1831,11 @@ void DatabaseViewer::updateIds()
 				infoReducedGraph_ = true;
 			}
 
-			std::multimap<int, Link>::iterator invertedLinkIter = graph::findLink(links, jter->second.to(), jter->second.from(), false);
+			std::multimap<int, Link>::iterator invertedLinkIter = graph::findLink(links, jter->second.to(), jter->second.from(), false, jter->second.type());
 			if(	jter->second.isValid() && // null transform means a rehearsed location
 				ids.find(jter->second.from()) != ids.end() &&
 				(ids.find(jter->second.to()) != ids.end() || jter->second.to()<0) && // to add landmark links
-				graph::findLink(links_, jter->second.from(), jter->second.to()) == links_.end() &&
+				graph::findLink(links_, jter->second.from(), jter->second.to(), false, jter->second.type()) == links_.end() &&
 				invertedLinkIter != links.end() &&
 				w != -9)
 			{
@@ -6218,24 +6218,27 @@ void DatabaseViewer::updateConstraintView(
 						if(poses.size() != posesOut.size())
 						{
 							UWARN("Scan poses input and output are different! %d vs %d", (int)poses.size(), (int)posesOut.size());
-							UWARN("Input poses: ");
-							for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter)
-							{
-								UWARN(" %d", iter->first);
-							}
-							UWARN("Input links: ");
-							std::multimap<int, Link> modifiedLinks = updateLinksWithModifications(links_);
-							for(std::multimap<int, Link>::iterator iter=modifiedLinks.begin(); iter!=modifiedLinks.end(); ++iter)
-							{
-								UWARN(" %d->%d", iter->second.from(), iter->second.to());
-							}
 						}
 
+						UDEBUG("Input poses: ");
+						for(std::map<int, Transform>::iterator iter=posesOut.begin(); iter!=posesOut.end(); ++iter)
+						{
+							UDEBUG(" %d=%s", iter->first, iter->second.prettyPrint().c_str());
+						}
+						UDEBUG("Input links: ");
+						for(std::multimap<int, Link>::iterator iter=linksOut.begin(); iter!=linksOut.end(); ++iter)
+						{
+							UDEBUG(" %d->%d (type=%s) %s", iter->second.from(), iter->second.to(), iter->second.typeName().c_str(), iter->second.transform().prettyPrint().c_str());
+						}
 
-						QTime time;
-						time.start();
 						std::map<int, rtabmap::Transform> finalPoses = optimizer->optimize(link.to(), posesOut, linksOut);
 						delete optimizer;
+
+						UDEBUG("Output poses: ");
+						for(std::map<int, Transform>::iterator iter=finalPoses.begin(); iter!=finalPoses.end(); ++iter)
+						{
+							UDEBUG(" %d=%s", iter->first, iter->second.prettyPrint().c_str());
+						}
 
 						// transform local poses in loop referential
 						Transform u = t * finalPoses.at(link.to()).inverse();

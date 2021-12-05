@@ -118,7 +118,7 @@ void Signature::addLinks(const std::map<int, Link> & links)
 }
 void Signature::addLink(const Link & link)
 {
-	UDEBUG("Add link %d to %d (type=%d var=%f,%f)", link.to(), this->id(), (int)link.type(), link.transVariance(), link.rotVariance());
+	UDEBUG("Add link %d to %d (type=%d/%s var=%f,%f)", link.to(), this->id(), (int)link.type(), link.typeName().c_str(), link.transVariance(), link.rotVariance());
 	UASSERT_MSG(link.from() == this->id(), uFormat("%d->%d for signature %d (type=%d)", link.from(), link.to(), this->id(), link.type()).c_str());
 	UASSERT_MSG((link.to() != this->id()) || link.type()==Link::kPosePrior || link.type()==Link::kGravity, uFormat("%d->%d for signature %d (type=%d)", link.from(), link.to(), this->id(), link.type()).c_str());
 	UASSERT_MSG(link.to() == this->id() || _links.find(link.to()) == _links.end(), uFormat("Link %d (type=%d) already added to signature %d!", link.to(), link.type(), this->id()).c_str());

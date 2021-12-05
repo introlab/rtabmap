@@ -2732,13 +2732,13 @@ Transform Memory::computeTransform(
 
 	// make sure we have all data needed
 	// load binary data from database if not in RAM (if image is already here, scan and userData should be or they are null)
-	if(((_reextractLoopClosureFeatures && _registrationPipeline->isImageRequired()) && fromS.sensorData().imageCompressed().empty()) ||
+	if(((_reextractLoopClosureFeatures && (_registrationPipeline->isImageRequired() || guess.isNull())) && fromS.sensorData().imageCompressed().empty()) ||
 	   (_registrationPipeline->isScanRequired() && fromS.sensorData().imageCompressed().empty() && fromS.sensorData().laserScanCompressed().isEmpty()) ||
 	   (_registrationPipeline->isUserDataRequired() && fromS.sensorData().imageCompressed().empty() && fromS.sensorData().userDataCompressed().empty()))
 	{
 		fromS.sensorData() = getNodeData(fromS.id(), true, true, true, true);
 	}
-	if(((_reextractLoopClosureFeatures && _registrationPipeline->isImageRequired()) && toS.sensorData().imageCompressed().empty()) ||
+	if(((_reextractLoopClosureFeatures && (_registrationPipeline->isImageRequired() || guess.isNull())) && toS.sensorData().imageCompressed().empty()) ||
 	   (_registrationPipeline->isScanRequired() && toS.sensorData().imageCompressed().empty() && toS.sensorData().laserScanCompressed().isEmpty()) ||
 	   (_registrationPipeline->isUserDataRequired() && toS.sensorData().imageCompressed().empty() && toS.sensorData().userDataCompressed().empty()))
 	{
@@ -2748,27 +2748,27 @@ Transform Memory::computeTransform(
 	cv::Mat imgBuf, depthBuf, userBuf;
 	LaserScan laserBuf;
 	fromS.sensorData().uncompressData(
-			(_reextractLoopClosureFeatures && _registrationPipeline->isImageRequired())?&imgBuf:0,
-			(_reextractLoopClosureFeatures && _registrationPipeline->isImageRequired())?&depthBuf:0,
+			(_reextractLoopClosureFeatures && (_registrationPipeline->isImageRequired() || guess.isNull()))?&imgBuf:0,
+			(_reextractLoopClosureFeatures && (_registrationPipeline->isImageRequired() || guess.isNull()))?&depthBuf:0,
 			_registrationPipeline->isScanRequired()?&laserBuf:0,
 			_registrationPipeline->isUserDataRequired()?&userBuf:0);
 	toS.sensorData().uncompressData(
-			(_reextractLoopClosureFeatures && _registrationPipeline->isImageRequired())?&imgBuf:0,
-			(_reextractLoopClosureFeatures && _registrationPipeline->isImageRequired())?&depthBuf:0,
+			(_reextractLoopClosureFeatures && (_registrationPipeline->isImageRequired() || guess.isNull()))?&imgBuf:0,
+			(_reextractLoopClosureFeatures && (_registrationPipeline->isImageRequired() || guess.isNull()))?&depthBuf:0,
 			_registrationPipeline->isScanRequired()?&laserBuf:0,
 			_registrationPipeline->isUserDataRequired()?&userBuf:0);
 
 
 	// compute transform fromId -> toId
 	std::vector<int> inliersV;
-	if((_reextractLoopClosureFeatures && _registrationPipeline->isImageRequired()) ||
+	if((_reextractLoopClosureFeatures && (_registrationPipeline->isImageRequired() || guess.isNull())) ||
 		(fromS.getWords().size() && toS.getWords().size()) ||
 		(!guess.isNull() && !_registrationPipeline->isImageRequired()))
 	{
 		Signature tmpFrom = fromS;
 		Signature tmpTo = toS;
 
-		if(_reextractLoopClosureFeatures && _registrationPipeline->isImageRequired())
+		if(_reextractLoopClosureFeatures && (_registrationPipeline->isImageRequired() || guess.isNull()))
 		{
 			UDEBUG("");
 			tmpFrom.removeAllWords();
