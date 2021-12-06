@@ -4666,6 +4666,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 			{
 				if(!imagesRectified && decimatedData.cameraModels().size())
 				{
+					UASSERT_MSG((int)keypoints.size() == descriptors.rows, uFormat("%d vs %d", (int)keypoints.size(), descriptors.rows).c_str());
 					std::vector<cv::KeyPoint> keypointsValid;
 					keypointsValid.reserve(keypoints.size());
 					cv::Mat descriptorsValid;
@@ -4858,6 +4859,144 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 
 			UASSERT_MSG(imagesRectified, "Cannot extract descriptors on not rectified image from keypoints which assumed to be undistorted");
 			descriptors = _feature2D->generateDescriptors(imageMono, keypoints);
+		}
+		else if(!imagesRectified && !data.cameraModels().empty())
+		{
+			std::vector<cv::KeyPoint> keypointsValid;
+			keypointsValid.reserve(keypoints.size());
+			cv::Mat descriptorsValid;
+			descriptorsValid.reserve(descriptors.rows);
+			std::vector<cv::Point3f> keypoints3DValid;
+			keypoints3DValid.reserve(keypoints3D.size());
+
+			//undistort keypoints before projection (RGB-D)
+			if(data.cameraModels().size() == 1)
+			{
+				std::vector<cv::Point2f> pointsIn, pointsOut;
+				cv::KeyPoint::convert(keypoints,pointsIn);
+				if(data.cameraModels()[0].D_raw().cols == 6)
+				{
+#if CV_MAJOR_VERSION > 2 or (CV_MAJOR_VERSION == 2 and (CV_MINOR_VERSION >4 or (CV_MINOR_VERSION == 4 and CV_SUBMINOR_VERSION >=10)))
+					// Equidistant / FishEye
+					// get only k parameters (k1,k2,p1,p2,k3,k4)
+					cv::Mat D(1, 4, CV_64FC1);
+					D.at<double>(0,0) = data.cameraModels()[0].D_raw().at<double>(0,0);
+					D.at<double>(0,1) = data.cameraModels()[0].D_raw().at<double>(0,1);
+					D.at<double>(0,2) = data.cameraModels()[0].D_raw().at<double>(0,4);
+					D.at<double>(0,3) = data.cameraModels()[0].D_raw().at<double>(0,5);
+					cv::fisheye::undistortPoints(pointsIn, pointsOut,
+							data.cameraModels()[0].K_raw(),
+							D,
+							data.cameraModels()[0].R(),
+							data.cameraModels()[0].P());
+				}
+				else
+#else
+					UWARN("Too old opencv version (%d,%d,%d) to support fisheye model (min 2.4.10 required)!",
+							CV_MAJOR_VERSION, CV_MINOR_VERSION, CV_SUBMINOR_VERSION);
+				}
+#endif
+				{
+					//RadialTangential
+					cv::undistortPoints(pointsIn, pointsOut,
+							data.cameraModels()[0].K_raw(),
+							data.cameraModels()[0].D_raw(),
+							data.cameraModels()[0].R(),
+							data.cameraModels()[0].P());
+				}
+				UASSERT(pointsOut.size() == keypoints.size());
+				for(unsigned int i=0; i<pointsOut.size(); ++i)
+				{
+					if(pointsOut.at(i).x>=0 && pointsOut.at(i).x<data.cameraModels()[0].imageWidth() &&
+					   pointsOut.at(i).y>=0 && pointsOut.at(i).y<data.cameraModels()[0].imageHeight())
+					{
+						keypointsValid.push_back(keypoints.at(i));
+						keypointsValid.back().pt.x = pointsOut.at(i).x;
+						keypointsValid.back().pt.y = pointsOut.at(i).y;
+						descriptorsValid.push_back(descriptors.row(i));
+						if(!keypoints3D.empty())
+						{
+							keypoints3DValid.push_back(keypoints3D.at(i));
+						}
+					}
+				}
+			}
+			else
+			{
+				float subImageWidth;
+				if(!data.imageRaw().empty())
+				{
+					UASSERT(int((data.imageRaw().cols/data.cameraModels().size())*data.cameraModels().size()) == data.imageRaw().cols);
+					subImageWidth = data.imageRaw().cols/data.cameraModels().size();
+				}
+				else
+				{
+					UASSERT(data.cameraModels()[0].imageWidth()>0);
+					subImageWidth = data.cameraModels()[0].imageWidth();
+				}
+
+				for(unsigned int i=0; i<keypoints.size(); ++i)
+				{
+					int cameraIndex = int(keypoints.at(i).pt.x / subImageWidth);
+					UASSERT_MSG(cameraIndex >= 0 && cameraIndex < (int)data.cameraModels().size(),
+							uFormat("cameraIndex=%d, models=%d, kpt.x=%f, subImageWidth=%f (Camera model image width=%d)",
+									cameraIndex, (int)data.cameraModels().size(), keypoints[i].pt.x, subImageWidth, data.cameraModels()[0].imageWidth()).c_str());
+
+					std::vector<cv::Point2f> pointsIn, pointsOut;
+					pointsIn.push_back(cv::Point2f(keypoints.at(i).pt.x-subImageWidth*cameraIndex, keypoints.at(i).pt.y));
+					if(data.cameraModels()[cameraIndex].D_raw().cols == 6)
+					{
+#if CV_MAJOR_VERSION > 2 or (CV_MAJOR_VERSION == 2 and (CV_MINOR_VERSION >4 or (CV_MINOR_VERSION == 4 and CV_SUBMINOR_VERSION >=10)))
+						// Equidistant / FishEye
+						// get only k parameters (k1,k2,p1,p2,k3,k4)
+						cv::Mat D(1, 4, CV_64FC1);
+						D.at<double>(0,0) = data.cameraModels()[cameraIndex].D_raw().at<double>(0,0);
+						D.at<double>(0,1) = data.cameraModels()[cameraIndex].D_raw().at<double>(0,1);
+						D.at<double>(0,2) = data.cameraModels()[cameraIndex].D_raw().at<double>(0,4);
+						D.at<double>(0,3) = data.cameraModels()[cameraIndex].D_raw().at<double>(0,5);
+						cv::fisheye::undistortPoints(pointsIn, pointsOut,
+								data.cameraModels()[cameraIndex].K_raw(),
+								D,
+								data.cameraModels()[cameraIndex].R(),
+								data.cameraModels()[cameraIndex].P());
+					}
+					else
+#else
+						UWARN("Too old opencv version (%d,%d,%d) to support fisheye model (min 2.4.10 required)!",
+								CV_MAJOR_VERSION, CV_MINOR_VERSION, CV_SUBMINOR_VERSION);
+					}
+#endif
+					{
+						//RadialTangential
+						cv::undistortPoints(pointsIn, pointsOut,
+								data.cameraModels()[cameraIndex].K_raw(),
+								data.cameraModels()[cameraIndex].D_raw(),
+								data.cameraModels()[cameraIndex].R(),
+								data.cameraModels()[cameraIndex].P());
+					}
+
+					if(pointsOut[0].x>=0 && pointsOut[0].x<data.cameraModels()[cameraIndex].imageWidth() &&
+					   pointsOut[0].y>=0 && pointsOut[0].y<data.cameraModels()[cameraIndex].imageHeight())
+					{
+						keypointsValid.push_back(keypoints.at(i));
+						keypointsValid.back().pt.x = pointsOut[0].x + subImageWidth*cameraIndex;
+						keypointsValid.back().pt.y = pointsOut[0].y;
+						descriptorsValid.push_back(descriptors.row(i));
+						if(!keypoints3D.empty())
+						{
+							keypoints3DValid.push_back(keypoints3D.at(i));
+						}
+					}
+				}
+			}
+
+			keypoints = keypointsValid;
+			descriptors = descriptorsValid;
+			keypoints3D = keypoints3DValid;
+
+			t = timer.ticks();
+			if(stats) stats->addStatistic(Statistics::kTimingMemRectification(), t*1000.0f);
+			UDEBUG("time rectification = %fs", t);
 		}
 		t = timer.ticks();
 		if(stats) stats->addStatistic(Statistics::kTimingMemDescriptors_extraction(), t*1000.0f);
