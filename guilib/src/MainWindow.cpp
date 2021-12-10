@@ -2065,9 +2065,22 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 				}
 				else if(landmarkId!=0)
 				{
-					_ui->imageView_loopClosure->setBackgroundColor(QColor("orange"));
-					_ui->label_matchId->setText(QString("Landmark match = %1 with %2").arg(landmarkId).arg(landmarkNodeRef));
-					matchId = landmarkNodeRef;
+					if(rejectedHyp)
+					{
+						show = _preferencesDialog->imageRejectedShown();
+						if(show)
+						{
+							_ui->imageView_loopClosure->setBackgroundColor(Qt::red);
+							_ui->label_stats_loopClosuresRejected->setText(QString::number(_ui->label_stats_loopClosuresRejected->text().toInt() + 1));
+							_ui->label_matchId->setText(QString("Landmark rejected = %1 with %2").arg(landmarkId).arg(landmarkNodeRef));
+						}
+					}
+					else
+					{
+						_ui->imageView_loopClosure->setBackgroundColor(QColor("orange"));
+						_ui->label_matchId->setText(QString("Landmark match = %1 with %2").arg(landmarkId).arg(landmarkNodeRef));
+						matchId = landmarkNodeRef;
+					}
 				}
 				else if(rejectedHyp && highestHypothesisValue >= _preferencesDialog->getLoopThr())
 				{
