@@ -1566,13 +1566,13 @@ bool Rtabmap::process(
 				}
 				if(!_odomCachePoses.empty())
 				{
-					_odomCacheConstraints.insert(
-							std::make_pair(_odomCachePoses.rbegin()->first,
-									Link(_odomCachePoses.rbegin()->first,
-											signature->id(),
-											Link::kNeighbor,
-											_odomCachePoses.rbegin()->second.inverse() * signature->getPose(),
-											odomCovariance.inv())));
+					Link odomLink(_odomCachePoses.rbegin()->first,
+							signature->id(),
+							Link::kNeighbor,
+							_odomCachePoses.rbegin()->second.inverse() * signature->getPose(),
+							odomCovariance.inv());
+					_odomCacheConstraints.insert(std::make_pair(_odomCachePoses.rbegin()->first, odomLink));
+					UDEBUG("Added odom cov = %f %f", odomLink.transVariance(), odomLink.rotVariance());
 				}
 			}
 
@@ -2884,10 +2884,10 @@ bool Rtabmap::process(
 					{
 						poses.insert(*iterPose);
 						// make the poses in the map fixed
-						constraints.insert(std::make_pair(iterPose->first, Link(iterPose->first, iterPose->first, Link::kPosePrior, iterPose->second, cv::Mat::eye(6,6, CV_64FC1)*100000)));
+						constraints.insert(std::make_pair(iterPose->first, Link(iterPose->first, iterPose->first, Link::kPosePrior, iterPose->second, cv::Mat::eye(6,6, CV_64FC1)*1000000)));
 						UDEBUG("Constraint %d->%d (type=%s)", iterPose->first, iterPose->first, Link::typeName(Link::kPosePrior).c_str());
 					}
-					UDEBUG("Constraint %d->%d (type=%s)", iter->second.from(), iter->second.to(), iter->second.typeName().c_str());
+					UDEBUG("Constraint %d->%d (type=%s, var = %f %f)", iter->second.from(), iter->second.to(), iter->second.typeName().c_str(), iter->second.transVariance(), iter->second.rotVariance());
 				}
 				for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter)
 				{
@@ -2930,6 +2930,7 @@ bool Rtabmap::process(
 					if(maxLinearLink == 0 && maxAngularLink==0)
 					{
 						UWARN("Could not compute graph errors! Wrong loop closures could be accepted!");
+						optPoses = posesOut;
 					}
 
 					if(maxLinearLink)
@@ -3374,27 +3375,30 @@ bool Rtabmap::process(
 			statistics_.addStatistic(Statistics::kLoopMap_id(), (loopId>0 && sLoop)?sLoop->mapId():-1);
 
 			float x,y,z,roll,pitch,yaw;
-			if(_loopClosureHypothesis.first || lastProximitySpaceClosureId)
+			if(_loopClosureHypothesis.first || lastProximitySpaceClosureId || (!rejectedLandmark && !landmarksDetected.empty()))
 			{
-				// Loop closure transform
-				UASSERT(sLoop);
-				std::multimap<int, Link>::const_iterator loopIter =  sLoop->getLinks().find(signature->id());
-				UASSERT(loopIter!=sLoop->getLinks().end());
-				UINFO("Set loop closure transform = %s", loopIter->second.transform().prettyPrint().c_str());
-				statistics_.setLoopClosureTransform(loopIter->second.transform());
+				if(_loopClosureHypothesis.first || lastProximitySpaceClosureId)
+				{
+					// Loop closure transform
+					UASSERT(sLoop);
+					std::multimap<int, Link>::const_iterator loopIter =  sLoop->getLinks().find(signature->id());
+					UASSERT(loopIter!=sLoop->getLinks().end());
+					UINFO("Set loop closure transform = %s", loopIter->second.transform().prettyPrint().c_str());
+					statistics_.setLoopClosureTransform(loopIter->second.transform());
 
-				statistics_.addStatistic(Statistics::kLoopVisual_words(), sLoop->getWords().size());
+					statistics_.addStatistic(Statistics::kLoopVisual_words(), sLoop->getWords().size());
+
+					// if ground truth exists, compute localization error
+					if(!sLoop->getGroundTruthPose().isNull() && !signature->getGroundTruthPose().isNull())
+					{
+						Transform transformGT = sLoop->getGroundTruthPose().inverse() * signature->getGroundTruthPose();
+						Transform error = loopIter->second.transform().inverse() * transformGT;
+						statistics_.addStatistic(Statistics::kGtLocalization_linear_error(), error.getNorm());
+						statistics_.addStatistic(Statistics::kGtLocalization_angular_error(), error.getAngle(1,0,0)*180/M_PI);
+					}
+				}
 				statistics_.addStatistic(Statistics::kLoopDistance_since_last_loc(), _distanceTravelledSinceLastLocalization);
 				_distanceTravelledSinceLastLocalization = 0.0f;
-
-				// if ground truth exists, compute localization error
-				if(!sLoop->getGroundTruthPose().isNull() && !signature->getGroundTruthPose().isNull())
-				{
-					Transform transformGT = sLoop->getGroundTruthPose().inverse() * signature->getGroundTruthPose();
-					Transform error = loopIter->second.transform().inverse() * transformGT;
-					statistics_.addStatistic(Statistics::kGtLocalization_linear_error(), error.getNorm());
-					statistics_.addStatistic(Statistics::kGtLocalization_angular_error(), error.getAngle(1,0,0)*180/M_PI);
-				}
 
 				statistics_.addStatistic(Statistics::kLoopMapToOdom_norm(), _mapCorrection.getNorm());
 				statistics_.addStatistic(Statistics::kLoopMapToOdom_angle(), _mapCorrection.getAngle()*180.0f/M_PI);

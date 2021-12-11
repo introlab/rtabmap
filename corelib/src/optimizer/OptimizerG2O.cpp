@@ -325,7 +325,7 @@ std::map<int, Transform> OptimizerG2O::optimize(
 		int landmarkVertexOffset = poses.rbegin()->first+1;
 		std::map<int, bool> isLandmarkWithRotation;
 
-		UDEBUG("fill poses to g2o...");
+		UDEBUG("fill poses to g2o... (rootId=%d)", rootId);
 		for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
 		{
 			UASSERT(!iter->second.isNull());
@@ -339,6 +339,7 @@ std::map<int, Transform> OptimizerG2O::optimize(
 					v2->setEstimate(g2o::SE2(iter->second.x(), iter->second.y(), iter->second.theta()));
 					if(id == rootId)
 					{
+						UDEBUG("Set %d fixed", id);
 						v2->setFixed(true);
 					}
 					vertex = v2;
@@ -361,6 +362,11 @@ std::map<int, Transform> OptimizerG2O::optimize(
 					{
 						g2o::VertexSE2 * v2 = new g2o::VertexSE2();
 						v2->setEstimate(g2o::SE2(iter->second.x(), iter->second.y(), iter->second.theta()));
+						if(id == rootId)
+						{
+							UDEBUG("Set %d fixed", id);
+							v2->setFixed(true);
+						}
 						vertex = v2;
 						isLandmarkWithRotation.insert(std::make_pair(id, true));
 						id = landmarkVertexOffset - id;
@@ -384,6 +390,7 @@ std::map<int, Transform> OptimizerG2O::optimize(
 					v3->setEstimate(pose);
 					if(id == rootId)
 					{
+						UDEBUG("Set %d fixed", id);
 						v3->setFixed(true);
 					}
 					vertex = v3;
@@ -412,6 +419,11 @@ std::map<int, Transform> OptimizerG2O::optimize(
 						pose = a.linear();
 						pose.translation() = a.translation();
 						v3->setEstimate(pose);
+						if(id == rootId)
+						{
+							UDEBUG("Set %d fixed", id);
+							v3->setFixed(true);
+						}
 						vertex = v3;
 						isLandmarkWithRotation.insert(std::make_pair(id, true));
 						id = landmarkVertexOffset - id;
