@@ -2815,6 +2815,19 @@ bool Rtabmap::process(
 	cv::Mat localizationCovariance;
 	Transform previousMapCorrection;
 	bool rejectedLandmark = false;
+	UDEBUG("RGB-D SLAM mode: %d", _rgbdSlamMode?1:0);
+	UDEBUG("Incremental: %d", _memory->isIncremental());
+	UDEBUG("Loop hyp: %d", _loopClosureHypothesis.first);
+	UDEBUG("Last prox: %d", lastProximitySpaceClosureId);
+	UDEBUG("Reduced ids: %d", (int)statistics_.reducedIds().size());
+	UDEBUG("Has prior: %d (prior ignored=%d)", signature->hasLink(signature->id(), Link::kPosePrior)?1:0, _graphOptimizer->priorsIgnored()?1:0);
+	UDEBUG("Has gravity: %d (sigma=%f, odomGravity=%d, refined=%d)", signature->hasLink(signature->id(), Link::kGravity)?1:0, _graphOptimizer->gravitySigma(), _memory->isOdomGravityUsed()?1:0, neighborLinkRefined?1:0);
+	UDEBUG("Has virtual link: %d", (int)graph::filterLinks(signature->getLinks(), Link::kVirtualClosure, true).size());
+	UDEBUG("Prox Time: %d", proximityDetectionsInTimeFound);
+	UDEBUG("Landmarks: %d", (int)landmarksDetected.size());
+	UDEBUG("Retrieved: %d", (int)signaturesRetrieved.size());
+	UDEBUG("Not self ref links: %d", (int)graph::filterLinks(signature->getLinks(), Link::kSelfRefLink).size());
+
 	if(_rgbdSlamMode
 		&&
 		(_loopClosureHypothesis.first>0 ||
@@ -2828,7 +2841,7 @@ bool Rtabmap::process(
 		 &&
 		 (_memory->isIncremental() ||
 		  // In localization mode, the new node should be linked to another node or a landmark already in the working memory
-		  graph::filterLinks(signature->getLinks(), Link::kSelfRefLink).size() ||
+		  graph::filterLinks(graph::filterLinks(signature->getLinks(), Link::kVirtualClosure), Link::kSelfRefLink).size() ||
 		  !landmarksDetected.empty()))
 	{
 		UASSERT(uContains(_optimizedPoses, signature->id()));
