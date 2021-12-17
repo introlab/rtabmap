@@ -5787,7 +5787,24 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
                 }
                 
             }
-			Link landmark(s->id(), landmarkId, Link::kLandmark, iter->second.pose(), iter->second.covariance().inv(), landmarkSize);
+
+			Transform landmarkPose = iter->second.pose();
+			if(_registrationPipeline->force3DoF())
+			{
+				// For 2D slam, make sure the landmark z axis is up
+				rtabmap::Transform tx = landmarkPose.rotation() * rtabmap::Transform(1,0,0,0,0,0);
+				rtabmap::Transform ty = landmarkPose.rotation() * rtabmap::Transform(0,1,0,0,0,0);
+				if(fabs(tx.z()) > 0.9)
+				{
+					landmarkPose*=rtabmap::Transform(0,0,0,0,(tx.z()>0?1:-1)*M_PI/2,0);
+				}
+				else if(fabs(ty.z()) > 0.9)
+				{
+					landmarkPose*=rtabmap::Transform(0,0,0,(ty.z()>0?-1:1)*M_PI/2,0,0);
+				}
+			}
+
+			Link landmark(s->id(), landmarkId, Link::kLandmark, landmarkPose, iter->second.covariance().inv(), landmarkSize);
 			s->addLandmark(landmark);
 
 			// Update landmark index

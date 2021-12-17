@@ -3008,6 +3008,23 @@ bool Rtabmap::process(
 
 				if(!rejectLocalization)
 				{
+					// Count how many localization links are in the constraints
+					bool hadAlreadyLocalizationLinks = false;
+					for(std::multimap<int, Link>::iterator iter=_odomCacheConstraints.begin();
+							iter!=_odomCacheConstraints.end(); ++iter)
+					{
+						if(iter->second.type() == Link::kGlobalClosure ||
+						   iter->second.type() == Link::kLocalSpaceClosure ||
+						   iter->second.type() == Link::kLocalTimeClosure ||
+						   iter->second.type() == Link::kUserClosure ||
+						   iter->second.type() == Link::kNeighborMerged ||
+						   iter->second.type() == Link::kLandmark)
+						{
+							hadAlreadyLocalizationLinks = true;
+							break;
+						}
+					}
+
 					// update localization links
 					Transform newOptPoseInv = optPoses.at(signature->id()).inverse();
 					for(std::multimap<int, Link>::iterator iter=localizationLinks.begin(); iter!=localizationLinks.end(); ++iter)
@@ -3022,103 +3039,112 @@ bool Rtabmap::process(
 					}
 					_odomCacheConstraints.insert(selfLinks.begin(), selfLinks.end());
 
-					// If there are no signatures retrieved, we don't
-					// need to re-optimize the graph. Just update the last
-					// position if OptimizeFromGraphEnd=false or transform the
-					// whole graph if OptimizeFromGraphEnd=true
-					UINFO("Localization without map optimization");
-					if(_optimizeFromGraphEnd)
+					// At least 2 localizations at 2 different time required
+					if(hadAlreadyLocalizationLinks || _maxOdomCacheSize == 0)
 					{
-						// update all previous nodes
-						// Normally _mapCorrection should be identity, but if _optimizeFromGraphEnd
-						// parameters just changed state, we should put back all poses without map correction.
-						Transform oldPose = _optimizedPoses.at(localizationLinks.rbegin()->first);
-						Transform mapCorrectionInv = _mapCorrection.inverse();
-						Transform u = signature->getPose() * localizationLinks.rbegin()->second.transform();
-						if(_graphOptimizer->isSlam2d())
+						// If there are no signatures retrieved, we don't
+						// need to re-optimize the graph. Just update the last
+						// position if OptimizeFromGraphEnd=false or transform the
+						// whole graph if OptimizeFromGraphEnd=true
+						UINFO("Localization without map optimization");
+						if(_optimizeFromGraphEnd)
 						{
-							// in case of 3d landmarks, transform constraint to 2D
-							u = u.to3DoF();
-						}
-						else if(_graphOptimizer->gravitySigma() > 0)
-						{
-							// Adjust transform with gravity
-							Transform transform = localizationLinks.rbegin()->second.transform();
-							int loopId = localizationLinks.rbegin()->first;
-							if(loopId < 0)
+							// update all previous nodes
+							// Normally _mapCorrection should be identity, but if _optimizeFromGraphEnd
+							// parameters just changed state, we should put back all poses without map correction.
+							Transform oldPose = _optimizedPoses.at(localizationLinks.rbegin()->first);
+							Transform mapCorrectionInv = _mapCorrection.inverse();
+							Transform u = signature->getPose() * localizationLinks.rbegin()->second.transform();
+							if(_graphOptimizer->isSlam2d())
 							{
-								//For landmarks, use transform against other node looking the landmark
-								// (because we don't assume that landmarks are aligned with gravity)
-								int landmarkId = loopId;
-								UASSERT(landmarksDetected.find(landmarkId) != landmarksDetected.end() &&
-										!landmarksDetected.at(landmarkId).empty());
-								loopId = *landmarksDetected.at(landmarkId).begin();
-								const Signature * loopS = _memory->getSignature(loopId);
-								transform = transform * _optimizedPoses.at(landmarkId).inverse()*_optimizedPoses.at(loopS->id());
-								UASSERT(_optimizedPoses.find(loopId) != _optimizedPoses.end());
-								oldPose = _optimizedPoses.at(loopId);
+								// in case of 3d landmarks, transform constraint to 2D
+								u = u.to3DoF();
 							}
+							else if(_graphOptimizer->gravitySigma() > 0)
+							{
+								// Adjust transform with gravity
+								Transform transform = localizationLinks.rbegin()->second.transform();
+								int loopId = localizationLinks.rbegin()->first;
+								if(loopId < 0)
+								{
+									//For landmarks, use transform against other node looking the landmark
+									// (because we don't assume that landmarks are aligned with gravity)
+									int landmarkId = loopId;
+									UASSERT(landmarksDetected.find(landmarkId) != landmarksDetected.end() &&
+											!landmarksDetected.at(landmarkId).empty());
+									loopId = *landmarksDetected.at(landmarkId).begin();
+									const Signature * loopS = _memory->getSignature(loopId);
+									transform = transform * _optimizedPoses.at(landmarkId).inverse()*_optimizedPoses.at(loopS->id());
+									UASSERT(_optimizedPoses.find(loopId) != _optimizedPoses.end());
+									oldPose = _optimizedPoses.at(loopId);
+								}
 
-							const Signature * loopS = _memory->getSignature(loopId);
-							UASSERT(loopS !=0);
-							std::multimap<int, Link>::const_iterator iterGravityLoop = graph::findLink(loopS->getLinks(), loopS->id(), loopS->id(), false, Link::kGravity);
-							std::multimap<int, Link>::const_iterator iterGravitySign = graph::findLink(signature->getLinks(), signature->id(), signature->id(), false, Link::kGravity);
-							if(iterGravityLoop!=loopS->getLinks().end() &&
-									iterGravitySign!=signature->getLinks().end())
-							{
-								float roll,pitch,yaw;
-								iterGravityLoop->second.transform().getEulerAngles(roll, pitch, yaw);
-								Transform targetRotation = iterGravitySign->second.transform().rotation()*transform.rotation();
-								targetRotation = Transform(0,0,0,roll,pitch,targetRotation.theta());
-								Transform error = transform.rotation().inverse() * iterGravitySign->second.transform().rotation().inverse() * targetRotation;
-								transform *= error;
-								u  = signature->getPose() * transform;
+								const Signature * loopS = _memory->getSignature(loopId);
+								UASSERT(loopS !=0);
+								std::multimap<int, Link>::const_iterator iterGravityLoop = graph::findLink(loopS->getLinks(), loopS->id(), loopS->id(), false, Link::kGravity);
+								std::multimap<int, Link>::const_iterator iterGravitySign = graph::findLink(signature->getLinks(), signature->id(), signature->id(), false, Link::kGravity);
+								if(iterGravityLoop!=loopS->getLinks().end() &&
+										iterGravitySign!=signature->getLinks().end())
+								{
+									float roll,pitch,yaw;
+									iterGravityLoop->second.transform().getEulerAngles(roll, pitch, yaw);
+									Transform targetRotation = iterGravitySign->second.transform().rotation()*transform.rotation();
+									targetRotation = Transform(0,0,0,roll,pitch,targetRotation.theta());
+									Transform error = transform.rotation().inverse() * iterGravitySign->second.transform().rotation().inverse() * targetRotation;
+									transform *= error;
+									u  = signature->getPose() * transform;
+								}
+								else if(iterGravityLoop!=loopS->getLinks().end() ||
+										iterGravitySign!=signature->getLinks().end())
+								{
+									UWARN("Gravity link not found for %d or %d, localization won't be corrected with gravity.", loopId, signature->id());
+								}
 							}
-							else if(iterGravityLoop!=loopS->getLinks().end() ||
-									iterGravitySign!=signature->getLinks().end())
+							Transform up = u * oldPose.inverse();
+							for(std::map<int, Transform>::iterator iter=_optimizedPoses.begin(); iter!=_optimizedPoses.end(); ++iter)
 							{
-								UWARN("Gravity link not found for %d or %d, localization won't be corrected with gravity.", loopId, signature->id());
+								iter->second = mapCorrectionInv * up * iter->second;
 							}
+							_optimizedPoses.at(signature->id()) = signature->getPose();
 						}
-						Transform up = u * oldPose.inverse();
-						for(std::map<int, Transform>::iterator iter=_optimizedPoses.begin(); iter!=_optimizedPoses.end(); ++iter)
+						else
 						{
-							iter->second = mapCorrectionInv * up * iter->second;
+							Transform newPose = _optimizedPoses.at(localizationLinks.rbegin()->first) * localizationLinks.rbegin()->second.transform().inverse();
+							UDEBUG("newPose=%s", newPose.prettyPrint().c_str());
+							if(_graphOptimizer->isSlam2d())
+							{
+								// in case of 3d landmarks, transform constraint to 2D
+								newPose = newPose.to3DoF();
+								UDEBUG("newPose 2D=%s", newPose.prettyPrint().c_str());
+							}
+							else if(_graphOptimizer->gravitySigma() > 0)
+							{
+								// Adjust transform with gravity
+								std::multimap<int, Link>::const_iterator iterGravitySign = graph::findLink(signature->getLinks(), signature->id(), signature->id(), false, Link::kGravity);
+								if(iterGravitySign!=signature->getLinks().end())
+								{
+									float roll,pitch,yaw;
+									float tmp1,tmp2;
+									UDEBUG("Gravity link = %s", iterGravitySign->second.transform().prettyPrint().c_str());
+									iterGravitySign->second.transform().getEulerAngles(roll, pitch, tmp1);
+									newPose.getEulerAngles(tmp1, tmp2, yaw);
+									newPose = Transform(newPose.x(), newPose.y(), newPose.z(), roll, pitch, yaw);
+									UDEBUG("newPose gravity=%s", newPose.prettyPrint().c_str());
+								}
+								else if(iterGravitySign!=signature->getLinks().end())
+								{
+									UWARN("Gravity link not found for %d, localization won't be corrected with gravity.", signature->id());
+								}
+							}
+							_optimizedPoses.at(signature->id()) = newPose;
 						}
-						_optimizedPoses.at(signature->id()) = signature->getPose();
+						localizationCovariance = localizationLinks.rbegin()->second.infMatrix().inv();
 					}
-					else
+					else //delayed localization (wait for more than 1 link)
 					{
-						Transform newPose = _optimizedPoses.at(localizationLinks.rbegin()->first) * localizationLinks.rbegin()->second.transform().inverse();
-						UDEBUG("newPose=%s", newPose.prettyPrint().c_str());
-						if(_graphOptimizer->isSlam2d())
-						{
-							// in case of 3d landmarks, transform constraint to 2D
-							newPose = newPose.to3DoF();
-							UDEBUG("newPose 2D=%s", newPose.prettyPrint().c_str());
-						}
-						else if(_graphOptimizer->gravitySigma() > 0)
-						{
-							// Adjust transform with gravity
-							std::multimap<int, Link>::const_iterator iterGravitySign = graph::findLink(signature->getLinks(), signature->id(), signature->id(), false, Link::kGravity);
-							if(iterGravitySign!=signature->getLinks().end())
-							{
-								float roll,pitch,yaw;
-								float tmp1,tmp2;
-								UDEBUG("Gravity link = %s", iterGravitySign->second.transform().prettyPrint().c_str());
-								iterGravitySign->second.transform().getEulerAngles(roll, pitch, tmp1);
-								newPose.getEulerAngles(tmp1, tmp2, yaw);
-								newPose = Transform(newPose.x(), newPose.y(), newPose.z(), roll, pitch, yaw);
-								UDEBUG("newPose gravity=%s", newPose.prettyPrint().c_str());
-							}
-							else if(iterGravitySign!=signature->getLinks().end())
-							{
-								UWARN("Gravity link not found for %d, localization won't be corrected with gravity.", signature->id());
-							}
-						}
-						_optimizedPoses.at(signature->id()) = newPose;
+						UWARN("Localization was good, but waiting for another one to be more accurate (%s>0)", Parameters::kRGBDMaxOdomCacheSize().c_str());
+						rejectLocalization = true;
 					}
-					localizationCovariance = localizationLinks.rbegin()->second.infMatrix().inv();
 				}
 			}
 
