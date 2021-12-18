@@ -448,7 +448,7 @@ int RTABMapApp::openDatabase(const std::string & databasePath, bool databaseInMe
 			poses,
 			links,
 			true,
-			true,
+			false, // Make sure poses are the same than optimized mesh (in case we switched RGBD/OptimizedFromGraphEnd)
 			&signatures,
 			true,
 			true,
@@ -1399,7 +1399,14 @@ int RTABMapApp::Render()
                     }
 					else if(rtabmapThread_ && rtabmapThread_->isRunning() && landmark!=0)
 					{
-						main_scene_.setBackgroundColor(1, 0.65f, 0); // orange
+                        if(rejected)
+                        {
+                            main_scene_.setBackgroundColor(0.5, 0.325f, 0); // dark orange
+                        }
+                        else
+                        {
+                            main_scene_.setBackgroundColor(1, 0.65f, 0); // orange
+                        }
 					}
 					else if(rtabmapThread_ && rtabmapThread_->isRunning() && rejected>0)
 					{

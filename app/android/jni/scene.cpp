@@ -594,6 +594,10 @@ int Scene::Render(const float * uvsTransformed, glm::mat4 arViewMatrix, glm::mat
 		{
 			trace_->Render(projectionMatrix, viewMatrix);
 		}
+        else
+        {
+            trace_->ClearVertexArray();
+        }
 	}
 
 	if(gridVisible_ && !renderBackgroundCamera)

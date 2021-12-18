@@ -3062,43 +3062,52 @@ bool Rtabmap::process(
 							}
 							else if(_graphOptimizer->gravitySigma() > 0)
 							{
-								// Adjust transform with gravity
-								Transform transform = localizationLinks.rbegin()->second.transform();
-								int loopId = localizationLinks.rbegin()->first;
-								if(loopId < 0)
-								{
-									//For landmarks, use transform against other node looking the landmark
-									// (because we don't assume that landmarks are aligned with gravity)
-									int landmarkId = loopId;
-									UASSERT(landmarksDetected.find(landmarkId) != landmarksDetected.end() &&
-											!landmarksDetected.at(landmarkId).empty());
-									loopId = *landmarksDetected.at(landmarkId).begin();
-									const Signature * loopS = _memory->getSignature(loopId);
-									transform = transform * _optimizedPoses.at(landmarkId).inverse()*_optimizedPoses.at(loopS->id());
-									UASSERT(_optimizedPoses.find(loopId) != _optimizedPoses.end());
-									oldPose = _optimizedPoses.at(loopId);
-								}
-
-								const Signature * loopS = _memory->getSignature(loopId);
-								UASSERT(loopS !=0);
-								std::multimap<int, Link>::const_iterator iterGravityLoop = graph::findLink(loopS->getLinks(), loopS->id(), loopS->id(), false, Link::kGravity);
-								std::multimap<int, Link>::const_iterator iterGravitySign = graph::findLink(signature->getLinks(), signature->id(), signature->id(), false, Link::kGravity);
-								if(iterGravityLoop!=loopS->getLinks().end() &&
-										iterGravitySign!=signature->getLinks().end())
-								{
-									float roll,pitch,yaw;
-									iterGravityLoop->second.transform().getEulerAngles(roll, pitch, yaw);
-									Transform targetRotation = iterGravitySign->second.transform().rotation()*transform.rotation();
-									targetRotation = Transform(0,0,0,roll,pitch,targetRotation.theta());
-									Transform error = transform.rotation().inverse() * iterGravitySign->second.transform().rotation().inverse() * targetRotation;
-									transform *= error;
-									u  = signature->getPose() * transform;
-								}
-								else if(iterGravityLoop!=loopS->getLinks().end() ||
-										iterGravitySign!=signature->getLinks().end())
-								{
-									UWARN("Gravity link not found for %d or %d, localization won't be corrected with gravity.", loopId, signature->id());
-								}
+                                // Adjust transform with gravity
+                                Transform transform = localizationLinks.rbegin()->second.transform();
+                                int loopId = localizationLinks.rbegin()->first;
+                                int landmarkId = 0;
+                                if(loopId<0)
+                                {
+                                    //For landmarks, use transform against other node looking the landmark
+                                    // (because we don't assume that landmarks are aligned with gravity)
+                                    landmarkId = loopId;
+                                    UASSERT(landmarksDetected.find(landmarkId) != landmarksDetected.end() &&
+                                            !landmarksDetected.at(landmarkId).empty());
+                                    loopId = *landmarksDetected.at(landmarkId).begin();
+                                }
+                                
+                                const Signature * loopS = _memory->getSignature(loopId);
+                                UASSERT(loopS !=0);
+                                std::multimap<int, Link>::const_iterator iterGravityLoop = graph::findLink(loopS->getLinks(), loopS->id(), loopS->id(), false, Link::kGravity);
+                                std::multimap<int, Link>::const_iterator iterGravitySign = graph::findLink(signature->getLinks(), signature->id(), signature->id(), false, Link::kGravity);
+                                if(iterGravityLoop!=loopS->getLinks().end() &&
+                                   iterGravitySign!=signature->getLinks().end())
+                                {
+                                    float roll,pitch,yaw;
+                                    if(landmarkId < 0)
+                                    {
+                                        iterGravityLoop->second.transform().getEulerAngles(roll, pitch, yaw);
+                                        Transform gravityCorr = Transform(_optimizedPoses.at(loopS->id()).x(),
+                                                                              _optimizedPoses.at(loopS->id()).y(),
+                                                                              _optimizedPoses.at(loopS->id()).z(),
+                                                                              roll, pitch, _optimizedPoses.at(loopS->id()).theta()) * _optimizedPoses.at(loopS->id()).inverse();
+                                        (gravityCorr * _optimizedPoses.at(landmarkId)).getEulerAngles(roll,pitch,yaw);
+                                    }
+                                    else
+                                    {
+                                        iterGravityLoop->second.transform().getEulerAngles(roll, pitch, yaw);
+                                    }
+                                    Transform targetRotation = iterGravitySign->second.transform().rotation()*transform.rotation();
+                                    targetRotation = Transform(0,0,0,roll,pitch,targetRotation.theta());
+                                    Transform error = transform.rotation().inverse() * iterGravitySign->second.transform().rotation().inverse() * targetRotation;
+                                    transform *= error;
+                                    u  = signature->getPose() * transform;
+                                }
+                                else if(iterGravityLoop!=loopS->getLinks().end() ||
+                                        iterGravitySign!=signature->getLinks().end())
+                                {
+                                    UWARN("Gravity link not found for %d or %d, localization won't be corrected with gravity.", loopId, signature->id());
+                                }
 							}
 							Transform up = u * oldPose.inverse();
 							for(std::map<int, Transform>::iterator iter=_optimizedPoses.begin(); iter!=_optimizedPoses.end(); ++iter)
@@ -3123,12 +3132,19 @@ bool Rtabmap::process(
 								std::multimap<int, Link>::const_iterator iterGravitySign = graph::findLink(signature->getLinks(), signature->id(), signature->id(), false, Link::kGravity);
 								if(iterGravitySign!=signature->getLinks().end())
 								{
+                                    Transform transform = localizationLinks.rbegin()->second.transform();
 									float roll,pitch,yaw;
 									float tmp1,tmp2;
 									UDEBUG("Gravity link = %s", iterGravitySign->second.transform().prettyPrint().c_str());
-									iterGravitySign->second.transform().getEulerAngles(roll, pitch, tmp1);
-									newPose.getEulerAngles(tmp1, tmp2, yaw);
-									newPose = Transform(newPose.x(), newPose.y(), newPose.z(), roll, pitch, yaw);
+                                    _optimizedPoses.at(localizationLinks.rbegin()->first).getEulerAngles(roll, pitch, yaw);
+                                    Transform targetRotation = iterGravitySign->second.transform().rotation()*transform.rotation();
+                                    targetRotation = Transform(0,0,0,roll,pitch,targetRotation.theta());
+                                    Transform error = transform.rotation().inverse() * iterGravitySign->second.transform().rotation().inverse() * targetRotation;
+                                    transform *= error;
+                                    newPose = _optimizedPoses.at(localizationLinks.rbegin()->first) * transform.inverse();
+                                    iterGravitySign->second.transform().getEulerAngles(roll, pitch, tmp1);
+                                    newPose.getEulerAngles(tmp1, tmp2, yaw);
+                                    newPose = Transform(newPose.x(), newPose.y(), newPose.z(), roll, pitch, yaw);
 									UDEBUG("newPose gravity=%s", newPose.prettyPrint().c_str());
 								}
 								else if(iterGravitySign!=signature->getLinks().end())
