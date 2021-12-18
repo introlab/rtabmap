@@ -147,6 +147,8 @@ class RTABMAP_EXP Statistics
 	RTABMAP_STATS(Memory, Rehearsal_id,);
 	RTABMAP_STATS(Memory, Rehearsal_merged,);
 	RTABMAP_STATS(Memory, Local_graph_size,);
+	RTABMAP_STATS(Memory, Odom_cache_poses,);
+	RTABMAP_STATS(Memory, Odom_cache_links,);
 	RTABMAP_STATS(Memory, Small_movement,);
 	RTABMAP_STATS(Memory, Fast_movement,);
 	RTABMAP_STATS(Memory, Odometry_variance_ang,);
@@ -254,6 +256,8 @@ public:
 	void setCurrentGoalId(int goal) {_currentGoalId=goal;}
 	void setReducedIds(const std::map<int, int> & reducedIds) {_reducedIds = reducedIds;}
 	void setWmState(const std::vector<int> & state) {_wmState = state;}
+	void setOdomCachePoses(const std::map<int, Transform> & poses) {_odomCachePoses = poses;}
+	void setOdomCacheConstraints(const std::multimap<int, Link> & constraints) {_odomCacheConstraints = constraints;}
 
 	// getters
 	bool extended() const {return _extended;}
@@ -281,6 +285,8 @@ public:
 	int currentGoalId() const {return _currentGoalId;}
 	const std::map<int, int> & reducedIds() const {return _reducedIds;}
 	const std::vector<int> & wmState() const {return _wmState;}
+	const std::map<int, Transform> & odomCachePoses() const {return _odomCachePoses;}
+	const std::multimap<int, Link> & odomCacheConstraints() const {return _odomCacheConstraints;}
 
 	const std::map<std::string, float> & data() const {return _data;}
 
@@ -315,6 +321,9 @@ private:
 	std::map<int, int> _reducedIds;
 
 	std::vector<int> _wmState;
+
+	std::map<int, Transform> _odomCachePoses;
+	std::multimap<int, Link> _odomCacheConstraints;
 
 	// Format for statistics (Plottable statistics must go in that map) :
 	// {"Group/Name/Unit", value}

@@ -3900,6 +3900,11 @@ bool Rtabmap::process(
 
 		statistics_.addStatistic(Statistics::kMemoryLocal_graph_size(), poses.size());
 
+		statistics_.setOdomCachePoses(_odomCachePoses);
+		statistics_.setOdomCacheConstraints(_odomCacheConstraints);
+		statistics_.addStatistic(Statistics::kMemoryOdom_cache_poses(), _odomCachePoses.size());
+		statistics_.addStatistic(Statistics::kMemoryOdom_cache_links(), _odomCacheConstraints.size());
+
 		if(_computeRMSE && _memory->getGroundTruths().size())
 		{
 			UDEBUG("Computing RMSE...");

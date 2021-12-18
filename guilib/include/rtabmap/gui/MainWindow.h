@@ -262,6 +262,8 @@ private:
 			const std::map<int, int> & mapIds,
 			const std::map<int, std::string> & labels,
 			const std::map<int, Transform> & groundTruths,
+			const std::map<int, Transform> & odomCachePoses = std::map<int, Transform>(),
+			const std::multimap<int, Link> & odomCacheConstraints = std::multimap<int, Link>(),
 			bool verboseProgress = false,
 			std::map<std::string, float> * stats = 0);
 	std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr, pcl::IndicesPtr> createAndAddCloudToMap(int nodeId,	const Transform & pose, int mapId);

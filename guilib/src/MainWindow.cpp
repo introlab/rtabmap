@@ -2412,6 +2412,8 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 					mapIds,
 					labels,
 					groundTruth,
+					stat.odomCachePoses(),
+					stat.odomCacheConstraints(),
 					false,
 					&updateCloudSats);
 
@@ -2531,6 +2533,8 @@ void MainWindow::updateMapCloud(
 		const std::map<int, int> & mapIdsIn,
 		const std::map<int, std::string> & labels,
 		const std::map<int, Transform> & groundTruths, // ground truth should contain only valid transforms
+		const std::map<int, Transform> & odomCachePoses,
+		const std::multimap<int, Link> & odomCacheConstraints,
 		bool verboseProgress,
 		std::map<std::string, float> * stats)
 {
@@ -2950,12 +2954,24 @@ void MainWindow::updateMapCloud(
 		mapToGt = alignPosesToGroundTruth(_currentPosesMap, _currentGTPosesMap).inverse();
 	}
 
+	std::map<int, Transform> posesWithOdomCache;
+
+	if(_ui->graphicsView_graphView->isVisible() ||
+	   ((_preferencesDialog->isGraphsShown() || _preferencesDialog->isFrustumsShown(0)) && _currentPosesMap.size()))
+	{
+		posesWithOdomCache = posesIn;
+		for(std::map<int, Transform>::const_iterator iter=odomCachePoses.begin(); iter!=odomCachePoses.end(); ++iter)
+		{
+			posesWithOdomCache.insert(std::make_pair(iter->first, _odometryCorrection*iter->second));
+		}
+	}
+
 	if((_preferencesDialog->isGraphsShown() || _preferencesDialog->isFrustumsShown(0)) && _currentPosesMap.size())
 	{
 		UTimer timerGraph;
 		// Find all graphs
 		std::map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr > graphs;
-		for(std::map<int, Transform>::iterator iter=_currentPosesMap.lower_bound(1); iter!=_currentPosesMap.end(); ++iter)
+		for(std::map<int, Transform>::iterator iter=posesWithOdomCache.lower_bound(1); iter!=posesWithOdomCache.end(); ++iter)
 		{
 			int mapId = uValue(_currentMapIds, iter->first, -1);
 
@@ -3045,7 +3061,7 @@ void MainWindow::updateMapCloud(
 				{
 					int id = std::atoi(splitted.back().c_str());
 					if((splitted.front().compare("f_") == 0 || splitted.front().compare("f_gt_") == 0) &&
-						_currentPosesMap.find(id) == _currentPosesMap.end())
+						posesWithOdomCache.find(id) == posesWithOdomCache.end())
 					{
 						_cloudViewer->removeFrustum(iter.key());
 					}
@@ -3156,7 +3172,10 @@ void MainWindow::updateMapCloud(
 	// Update occupancy grid map in 3D map view and graph view
 	if(_ui->graphicsView_graphView->isVisible())
 	{
-		_ui->graphicsView_graphView->updateGraph(posesIn, constraints, mapIdsIn);
+		std::multimap<int, Link> constraintsWithOdomCache;
+		constraintsWithOdomCache = constraints;
+		constraintsWithOdomCache.insert(odomCacheConstraints.begin(), odomCacheConstraints.end());
+		_ui->graphicsView_graphView->updateGraph(posesWithOdomCache, constraintsWithOdomCache, mapIdsIn);
 		if(_preferencesDialog->isGroundTruthAligned() && !mapToGt.isIdentity())
 		{
 			std::map<int, Transform> gtPoses = _currentGTPosesMap;
@@ -4440,7 +4459,7 @@ void MainWindow::processRtabmapEvent3DMap(const rtabmap::RtabmapEvent3DMap & eve
 			_progressCanceled = false;
 			QApplication::processEvents();
 			std::map<int, Transform> poses = event.getPoses();
-			this->updateMapCloud(poses, event.getConstraints(), mapIds, labels, groundTruth, true);
+			this->updateMapCloud(poses, event.getConstraints(), mapIds, labels, groundTruth, std::map<int, Transform>(), std::multimap<int, Link>(), true);
 
 			if( _ui->graphicsView_graphView->isVisible() &&
 			    _preferencesDialog->isWordsCountGraphView() &&
@@ -6618,6 +6637,8 @@ void MainWindow::postProcessing(
 			std::map<int, int>(_currentMapIds),
 			std::map<int, std::string>(_currentLabels),
 			std::map<int, Transform>(_currentGTPosesMap),
+			std::map<int, Transform>(),
+			std::multimap<int, Link>(),
 			false);
 	_progressDialog->appendText(tr("Updating map... done!"));
 
