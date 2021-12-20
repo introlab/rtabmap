@@ -343,6 +343,8 @@ void Rtabmap::init(const ParametersMap & parameters, const std::string & databas
 	_constraints.clear();
 	_globalScanMap.clear();
 	_globalScanMapPoses.clear();
+	_odomCachePoses.clear();
+	_odomCacheConstraints.clear();
 
 	// Parse all parameters
 	this->parseParameters(allParameters);
@@ -365,7 +367,7 @@ void Rtabmap::init(const ParametersMap & parameters, const std::string & databas
 			if(_restartAtOrigin)
 			{
 				UWARN("last localization pose is ignored (%s=true), assuming we start at the origin of the map.", Parameters::kRGBDStartAtOrigin().c_str());
-				lastPose.setIdentity();
+				lastPose = _optimizedPoses.begin()->second;
 			}
 			_lastLocalizationPose = lastPose;
 
@@ -653,6 +655,12 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 		if(_createGlobalScanMap && !_memory->isIncremental() && _globalScanMap.empty() && !_optimizedPoses.empty())
 		{
 			this->createGlobalScanMap();
+		}
+
+		if(_memory->isIncremental())
+		{
+			_odomCachePoses.clear();
+			_odomCacheConstraints.clear();
 		}
 	}
 
