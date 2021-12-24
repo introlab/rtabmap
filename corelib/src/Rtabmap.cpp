@@ -2948,7 +2948,7 @@ bool Rtabmap::process(
 							maxAngularError,
 							&maxLinearLink,
 							&maxAngularLink);
-					if(maxLinearLink == 0 && maxAngularLink==0)
+					if(maxLinearLink == 0 && maxAngularLink==0 && _maxOdomCacheSize>0)
 					{
 						UWARN("Could not compute graph errors! Wrong loop closures could be accepted!");
 						optPoses = posesOut;
@@ -4085,6 +4085,7 @@ void Rtabmap::setTimeThreshold(float maxTimeAllowed)
 
 void Rtabmap::setWorkingDirectory(std::string path)
 {
+	path = uReplaceChar(path, '~', UDirectory::homeDir());
 	if(!path.empty() && UDirectory::exists(path))
 	{
 		ULOGGER_DEBUG("Comparing new working directory path \"%s\" with \"%s\"", path.c_str(), _wDir.c_str());
