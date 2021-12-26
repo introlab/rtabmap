@@ -2592,7 +2592,11 @@ bool Rtabmap::process(
 								cv::Mat covariance;
 								path = optimizeGraph(nearestId, uKeysSet(path), std::map<int, Transform>(), false, covariance);
 								// transform local poses in optimized graph referential
-								UASSERT(uContains(path, nearestId));
+								if(!uContains(path, nearestId))
+								{
+									UERROR("Proximity path not containing nearest ID ?! Skipping this path.");
+									continue;
+								}
 								Transform t = _optimizedPoses.at(nearestId) * path.at(nearestId).inverse();
 
 								for(std::map<int, Transform>::iterator jter=path.lower_bound(1); jter!=path.end(); ++jter)
