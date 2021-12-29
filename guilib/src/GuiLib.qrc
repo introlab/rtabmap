@@ -42,5 +42,6 @@
         <file>images/mynteyes.png</file>
         <file>images/l515.png</file>
         <file>images/oakd.png</file>
+		<file>images/astra.png</file>
     </qresource>
 </RCC>
