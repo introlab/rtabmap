@@ -5873,7 +5873,7 @@ Camera * PreferencesDialog::createCamera(bool useRawImages, bool useColor)
 		_ui->lineEdit_calibrationFile->text(), 
 		(this->getSourceDriver()>=kSrcStereo && 
 		 this->getSourceDriver()<kSrcRGB && 
-		 !_ui->checkBox_stereo_rectify->isChecked()) || 
+		 _ui->checkBox_stereo_rectify->isEnabled() && !_ui->checkBox_stereo_rectify->isChecked()) || 
 		useRawImages, 
 		useColor, 
 		false,
@@ -6054,8 +6054,8 @@ Camera * PreferencesDialog::createCamera(
 		if(driver == kSrcStereoMyntEye && useRawImages)
 		{
 			QMessageBox::warning(this, tr("Calibration"),
-					tr("Using raw images for \"RealSense\" driver is not yet supported. "
-						"Factory calibration loaded from RealSense2 is used."), QMessageBox::Ok);
+					tr("Using raw images for \"MyntEye\" driver is not yet supported. "
+						"Factory calibration loaded from MyntEye is used."), QMessageBox::Ok);
 			return 0;
 		}
 		else
