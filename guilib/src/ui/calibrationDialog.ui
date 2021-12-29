@@ -30,7 +30,7 @@
     <number>0</number>
    </property>
    <item>
-    <layout class="QHBoxLayout" name="horizontalLayout_4" stretch="1,0">
+    <layout class="QHBoxLayout" name="horizontalLayout_4" stretch="1,1">
      <item>
       <layout class="QVBoxLayout" name="verticalLayout_4">
        <property name="spacing">
@@ -146,6 +146,15 @@
      </item>
      <item>
       <widget class="QScrollArea" name="scrollArea">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Fixed" vsizetype="Expanding">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="verticalScrollBarPolicy">
+        <enum>Qt::ScrollBarAlwaysOff</enum>
+       </property>
        <property name="widgetResizable">
         <bool>true</bool>
        </property>
@@ -154,8 +163,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>387</width>
-          <height>826</height>
+          <width>357</width>
+          <height>820</height>
          </rect>
         </property>
         <layout class="QVBoxLayout" name="verticalLayout">

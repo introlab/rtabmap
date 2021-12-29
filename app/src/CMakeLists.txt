@@ -135,6 +135,24 @@ IF(BUILD_AS_BUNDLE AND (APPLE OR WIN32))
           COMPONENT runtime)
 	ENDIF(WIN32)
   ENDIF(k4a_FOUND)
+  
+  IF(Torch_FOUND)
+	# Install needed cudnn_ops_infer64_8.dll and cudnn_cnn_infer64_8.dll
+	# TODO: should be a more general way to include them if version is different
+    IF(WIN32 AND CUDA_FOUND)
+		find_file(CUDNN_OPS_DLL NAMES cudnn_ops_infer64_8.dll)
+		find_file(CUDNN_CNN_DLL NAMES cudnn_cnn_infer64_8.dll)
+		IF(CUDNN_OPS_DLL AND CUDNN_CNN_DLL)
+			MESSAGE(STATUS "Found ${CUDNN_OPS_DLL}")
+			MESSAGE(STATUS "Found ${CUDNN_CNN_DLL}")
+			INSTALL(FILES ${CUDNN_OPS_DLL} ${CUDNN_CNN_DLL}
+			  DESTINATION ${plugin_dest_dir} 
+			  COMPONENT runtime)
+		ELSE()
+			MESSAGE(AUTHOR_WARNING "Using Torch with CUDA, but cudnn_ops_infer64_8.dll and cudnn_cnn_infer64_8.dll are not found on the PATH, so it won't be added to package.")
+		ENDIF()
+	ENDIF(WIN32 AND CUDA_FOUND)
+  ENDIF(Torch_FOUND)
 
   # Install needed Qt plugins by copying directories from the qt installation
   # One can cull what gets copied by using 'REGEX "..." EXCLUDE'
