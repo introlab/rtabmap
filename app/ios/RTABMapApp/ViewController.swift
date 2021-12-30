@@ -1414,7 +1414,7 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
         
         present(alertController, animated: true)
         
-        setGLCamera(type: 1);
+        setGLCamera(type: 0);
         startCamera();
     }
     
@@ -1434,7 +1434,7 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
 
         if(!(self.mState == State.STATE_CAMERA || self.mState == State.STATE_MAPPING))
         {
-            self.setGLCamera(type: 1);
+            self.setGLCamera(type: 0);
             self.startCamera();
         }
     }
