@@ -75,7 +75,7 @@ class RTABMapApp : public UEventsHandler {
 
   void setScreenRotation(int displayRotation, int cameraRotation);
 
-  int openDatabase(const std::string & databasePath, bool databaseInMemory, bool optimize, const std::string & databaseSource=std::string());
+  int openDatabase(const std::string & databasePath, bool databaseInMemory, bool optimize, bool clearDatabase);
 
   bool isBuiltWith(int cameraDriver) const;
 #ifdef __ANDROID__
@@ -153,6 +153,7 @@ class RTABMapApp : public UEventsHandler {
   void addEnvSensor(int type, float value);
 
   void save(const std::string & databasePath);
+  bool recover(const std::string & from, const std::string & to);
   void cancelProcessing();
   bool exportMesh(
 		  float cloudVoxelSize,

@@ -64,6 +64,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/Memory.h>
 #include <rtabmap/core/GainCompensator.h>
 #include <rtabmap/core/DBDriver.h>
+#include <rtabmap/core/Recovery.h>
 #include <pcl/common/common.h>
 #include <pcl/filters/extract_indices.h>
 #include <pcl/io/ply_io.h>
@@ -305,9 +306,9 @@ void RTABMapApp::setScreenRotation(int displayRotation, int cameraRotation)
 	}
 }
 
-int RTABMapApp::openDatabase(const std::string & databasePath, bool databaseInMemory, bool optimize, const std::string & databaseSource)
+int RTABMapApp::openDatabase(const std::string & databasePath, bool databaseInMemory, bool optimize, bool clearDatabase)
 {
-	LOGW("Opening database %s (inMemory=%d, optimize=%d)", databasePath.c_str(), databaseInMemory?1:0, optimize?1:0);
+	LOGW("Opening database %s (inMemory=%d, optimize=%d, clearDatabase=%d)", databasePath.c_str(), databaseInMemory?1:0, optimize?1:0, clearDatabase?1:0);
 	this->unregisterFromEventsManager(); // to ignore published init events when closing rtabmap
 	status_.first = rtabmap::RtabmapEventInit::kInitializing;
 	rtabmapMutex_.lock();
@@ -360,11 +361,11 @@ int RTABMapApp::openDatabase(const std::string & databasePath, bool databaseInMe
 	std::vector<std::vector<Eigen::Vector2f> > texCoords;
 #endif
 	cv::Mat textures;
-	if(!databaseSource.empty())
+	if(!databasePath.empty() && UFile::exists(databasePath) && !clearDatabase)
 	{
 		UEventsManager::post(new rtabmap::RtabmapEventInit(rtabmap::RtabmapEventInit::kInfo, "Loading optimized cloud/mesh..."));
 		rtabmap::DBDriver * driver = rtabmap::DBDriver::create();
-		if(driver->openConnection(databaseSource))
+		if(driver->openConnection(databasePath))
 		{
 			cloudMat = driver->loadOptimizedMesh(&polygons, &texCoords, &textures);
 			if(!cloudMat.empty())
@@ -416,13 +417,11 @@ int RTABMapApp::openDatabase(const std::string & databasePath, bool databaseInMe
 	}
 
 	UEventsManager::post(new rtabmap::RtabmapEventInit(rtabmap::RtabmapEventInit::kInfo, "Loading database..."));
-	LOGI("Erasing database \"%s\"...", databasePath.c_str());
-	UFile::erase(databasePath);
-	if(!databaseSource.empty())
-	{
-		LOGI("Copying database source \"%s\" to \"%s\"...", databaseSource.c_str(), databasePath.c_str());
-		UFile::copy(databaseSource, databasePath);
-	}
+	if(clearDatabase)
+    {
+        LOGI("Erasing database \"%s\"...", databasePath.c_str());
+        UFile::erase(databasePath);
+    }
 
 	//Rtabmap
 	mapToOdom_.setIdentity();
@@ -2555,6 +2554,26 @@ void RTABMapApp::save(const std::string & databasePath)
 	{
 		clearSceneOnNextRender_ = true;
 	}
+}
+
+bool RTABMapApp::recover(const std::string & from, const std::string & to)
+{
+    std::string errorMsg;
+    if(!databaseRecovery(from, false, &errorMsg, &progressionStatus_))
+    {
+        LOGE("Recovery Error: %s", errorMsg.c_str());
+        return false;
+    }
+    else
+    {
+        LOGI("Renaming %s to %s", from.c_str(), to.c_str());
+        if(UFile::rename(from, to) != 0)
+        {
+            LOGE("Failed renaming %s to %s", from.c_str(), to.c_str());
+            return false;
+        }
+        return true;
+    }
 }
 
 void RTABMapApp::cancelProcessing()

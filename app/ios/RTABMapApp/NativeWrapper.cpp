@@ -69,24 +69,11 @@ void setScreenRotationNative(const void *object, int displayRotation)
     }
 }
 
-int openDatabaseNative(const void *object, const char * databasePath, bool databaseInMemory, bool optimize)
+int openDatabaseNative(const void *object, const char * databasePath, bool databaseInMemory, bool optimize, bool clearDatabase)
 {
     if(object)
     {
-        return native(object)->openDatabase(databasePath, databaseInMemory, optimize);
-    }
-    else
-    {
-        UERROR("object is null!");
-        return -1;
-    }
-}
-
-int openDatabase2Native(const void *object, const char * databaseSource, const char * databasePath, bool databaseInMemory, bool optimize)
-{
-    if(object)
-    {
-        return native(object)->openDatabase(databasePath, databaseInMemory, optimize, databaseSource);
+        return native(object)->openDatabase(databasePath, databaseInMemory, optimize, clearDatabase);
     }
     else
     {
@@ -100,6 +87,31 @@ void saveNative(const void *object, const char * databasePath)
     if(object)
     {
         return native(object)->save(databasePath);
+    }
+    else
+    {
+        UERROR("object is null!");
+    }
+}
+
+bool recoverNative(const void *object, const char * from, const char * to)
+{
+    if(object)
+    {
+        return native(object)->recover(from, to);
+    }
+    else
+    {
+        UERROR("object is null!");
+    }
+    return false;
+}
+
+void cancelProcessingNative(const void *object)
+{
+    if(object)
+    {
+        native(object)->cancelProcessing();
     }
     else
     {

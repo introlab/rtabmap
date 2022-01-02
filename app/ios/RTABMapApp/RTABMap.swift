@@ -113,17 +113,9 @@ class RTABMap {
         setupGraphicNative(native_rtabmap, Int32(size.width), Int32(size.height));
     }
     
-    func openDatabase(databasePath:String, databaseInMemory:Bool, optimize:Bool) -> Int {
+    func openDatabase(databasePath:String, databaseInMemory:Bool, optimize:Bool, clearDatabase: Bool) -> Int {
         databasePath.utf8CString.withUnsafeBufferPointer { buffer -> Int in
-            return Int(openDatabaseNative(native_rtabmap, buffer.baseAddress, databaseInMemory, optimize))
-        }
-    }
-    
-    func openDatabase(databaseSource:String, databasePath:String, databaseInMemory:Bool, optimize:Bool) -> Int {
-        databasePath.utf8CString.withUnsafeBufferPointer { buffer -> Int in
-            databaseSource.utf8CString.withUnsafeBufferPointer { bufferSource -> Int in
-                return Int(openDatabase2Native(native_rtabmap, bufferSource.baseAddress, buffer.baseAddress, databaseInMemory, optimize))
-            }
+            return Int(openDatabaseNative(native_rtabmap, buffer.baseAddress, databaseInMemory, optimize, clearDatabase))
         }
     }
     
@@ -131,6 +123,18 @@ class RTABMap {
         databasePath.utf8CString.withUnsafeBufferPointer { buffer in
             saveNative(native_rtabmap, databasePath)
         }
+    }
+    
+    func recover(from: String, to: String) -> Bool {
+        from.utf8CString.withUnsafeBufferPointer { bufferFrom -> Bool in
+            to.utf8CString.withUnsafeBufferPointer { bufferTo -> Bool in
+                return recoverNative(native_rtabmap, bufferFrom.baseAddress, bufferTo.baseAddress)
+            }
+        }
+    }
+    
+    func cancelProcessing() {
+        cancelProcessingNative(native_rtabmap);
     }
     
     func postProcessing(approach: Int) -> Int {

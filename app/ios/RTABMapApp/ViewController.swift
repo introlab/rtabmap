@@ -1428,14 +1428,120 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
         mMapNodes = 0;
         self.openedDatabasePath = nil
         let tmpDatabase = self.getTmpDirectory().appendingPathComponent(self.RTABMAP_TMP_DB)
-        
         let inMemory = UserDefaults.standard.bool(forKey: "DatabaseInMemory")
-        self.rtabmap!.openDatabase(databasePath: tmpDatabase.path, databaseInMemory: inMemory, optimize: false)
-
-        if(!(self.mState == State.STATE_CAMERA || self.mState == State.STATE_MAPPING))
+        if(!(self.mState == State.STATE_CAMERA || self.mState == State.STATE_MAPPING) &&
+           FileManager.default.fileExists(atPath: tmpDatabase.path) &&
+           tmpDatabase.fileSize > 1024*1024) // > 1MB
         {
-            self.setGLCamera(type: 0);
-            self.startCamera();
+            dismiss(animated: true, completion: {
+                let msg = "The previous session (\(tmpDatabase.fileSizeString)) was not correctly saved, do you want to recover it?"
+                let alert = UIAlertController(title: "Recovery", message: msg, preferredStyle: .alert)
+                let alertActionNo = UIAlertAction(title: "Ignore", style: .destructive) {
+                    (UIAlertAction) -> Void in
+                    do {
+                        try FileManager.default.removeItem(at: tmpDatabase)
+                    }
+                    catch {
+                        print("Could not clear tmp database: \(error)")
+                    }
+                    self.newScan()
+                }
+                alert.addAction(alertActionNo)
+                let alertActionCancel = UIAlertAction(title: "Cancel", style: .cancel) {
+                    (UIAlertAction) -> Void in
+                    // do nothing
+                }
+                alert.addAction(alertActionCancel)
+                let alertActionYes = UIAlertAction(title: "Yes", style: .default) {
+                    (UIAlertAction2) -> Void in
+
+                    let fileName = Date().getFormattedDate(format: "yyMMdd-HHmmss") + ".db"
+                    let outputDbPath = self.getDocumentDirectory().appendingPathComponent(fileName).path
+                    
+                    var indicator: UIActivityIndicatorView?
+                    
+                    let alertView = UIAlertController(title: "Recovering", message: "Please wait while recovering data...", preferredStyle: .alert)
+                    let alertViewActionCancel = UIAlertAction(title: "Cancel", style: .cancel) {
+                        (UIAlertAction) -> Void in
+                        self.dismiss(animated: true, completion: {
+                            self.progressView = nil
+                            
+                            indicator = UIActivityIndicatorView(style: .large)
+                            indicator?.frame = CGRect(x: 0.0, y: 0.0, width: 60.0, height: 60.0)
+                            indicator?.center = self.view.center
+                            self.view.addSubview(indicator!)
+                            indicator?.bringSubviewToFront(self.view)
+                            
+                            indicator?.startAnimating()
+                            self.rtabmap!.cancelProcessing();
+                        })
+                    }
+                    alertView.addAction(alertViewActionCancel)
+                    
+                    let previousState = self.mState
+                    self.updateState(state: .STATE_PROCESSING);
+                    
+                    self.present(alertView, animated: true, completion: {
+                        //  Add your progressbar after alert is shown (and measured)
+                        let margin:CGFloat = 8.0
+                        let rect = CGRect(x: margin, y: 84.0, width: alertView.view.frame.width - margin * 2.0 , height: 2.0)
+                        self.progressView = UIProgressView(frame: rect)
+                        self.progressView!.progress = 0
+                        self.progressView!.tintColor = self.view.tintColor
+                        alertView.view.addSubview(self.progressView!)
+                        
+                        var success : Bool = false
+                        DispatchQueue.background(background: {
+                            
+                            success = self.rtabmap!.recover(from: tmpDatabase.path, to: outputDbPath)
+                            
+                        }, completion:{
+                            if(indicator != nil)
+                            {
+                                indicator!.stopAnimating()
+                                indicator!.removeFromSuperview()
+                            }
+                            if self.progressView != nil
+                            {
+                                self.dismiss(animated: self.openedDatabasePath == nil, completion: {
+                                    if(success)
+                                    {
+                                        let alertSaved = UIAlertController(title: "Database saved!", message: String(format: "Database \"%@\" successfully recovered!", fileName), preferredStyle: .alert)
+                                        let yes = UIAlertAction(title: "OK", style: .default) {
+                                            (UIAlertAction) -> Void in
+                                            self.openDatabase(fileUrl: URL(fileURLWithPath: outputDbPath))
+                                        }
+                                        alertSaved.addAction(yes)
+                                        self.present(alertSaved, animated: true, completion: nil)
+                                    }
+                                    else
+                                    {
+                                        self.updateState(state: previousState);
+                                        self.showToast(message: "Recovery failed!", seconds: 4)
+                                    }
+                                })
+                            }
+                            else
+                            {
+                                self.showToast(message: "Recovery canceled", seconds: 2)
+                                self.updateState(state: previousState);
+                            }
+                        })
+                    })
+                }
+                alert.addAction(alertActionYes)
+                self.present(alert, animated: true, completion: nil)
+            })
+        }
+        else
+        {
+            self.rtabmap!.openDatabase(databasePath: tmpDatabase.path, databaseInMemory: inMemory, optimize: false, clearDatabase: true)
+
+            if(!(self.mState == State.STATE_CAMERA || self.mState == State.STATE_MAPPING))
+            {
+                self.setGLCamera(type: 0);
+                self.startCamera();
+            }
         }
     }
     
@@ -1519,12 +1625,19 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
             
             self.openedDatabasePath = URL(fileURLWithPath: filePath)
             
-            let alert = UIAlertController(title: "Database saved!", message: String(format: "Database \"%@\" successfully saved on the SD-CARD!", fileName), preferredStyle: .alert)
+            let alert = UIAlertController(title: "Database saved!", message: String(format: "Database \"%@\" successfully saved!", fileName), preferredStyle: .alert)
             let yes = UIAlertAction(title: "OK", style: .default) {
                 (UIAlertAction) -> Void in
             }
             alert.addAction(yes)
             self.present(alert, animated: true, completion: nil)
+            do {
+                let tmpDatabase = self.getTmpDirectory().appendingPathComponent(self.RTABMAP_TMP_DB)
+                try FileManager.default.removeItem(at: tmpDatabase)
+            }
+            catch {
+                print("Could not clear tmp database: \(error)")
+            }
             self.updateDatabases()
             self.updateState(state: previousState)
         })
@@ -1560,6 +1673,8 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
                 indicator?.bringSubviewToFront(self.view)
                 
                 indicator?.startAnimating()
+                
+                self.rtabmap!.cancelProcessing()
             })
             
         }))
@@ -1664,6 +1779,7 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
         alertView.addAction(UIAlertAction(title: "Cancel", style: .cancel, handler: { _ in
             self.dismiss(animated: true)
             self.progressView = nil
+            self.rtabmap!.cancelProcessing()
         }))
 
         let previousState = mState
@@ -1800,7 +1916,6 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
             stopMapping(ignoreSaving: true)
         }
         
-        let tmpDatabase = self.getTmpDirectory().appendingPathComponent(self.RTABMAP_TMP_DB)
         openedDatabasePath = fileUrl;
         let fileName: String = self.openedDatabasePath!.lastPathComponent
         
@@ -1812,7 +1927,7 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
         updateState(state: .STATE_PROCESSING);
         var status = 0
         DispatchQueue.background(background: {
-            status = self.rtabmap!.openDatabase(databaseSource: self.openedDatabasePath!.path, databasePath: tmpDatabase.path, databaseInMemory: true, optimize: false)
+            status = self.rtabmap!.openDatabase(databasePath: self.openedDatabasePath!.path, databaseInMemory: true, optimize: false, clearDatabase: false)
         }, completion:{
             // main thread
             if(status == -1) {
@@ -1974,6 +2089,7 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
         alertView.addAction(UIAlertAction(title: "Cancel", style: .cancel, handler: { _ in
             self.dismiss(animated: true)
             self.progressView = nil
+            self.rtabmap!.cancelProcessing()
         }))
         
         let previousState = mState;

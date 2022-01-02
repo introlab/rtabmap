@@ -32,9 +32,10 @@ void setupCallbacksNative(const void *object, void * classPtr,
                                                    float, float, float, float, float, float));
 void destroyNativeApplication(const void *object);
 void setScreenRotationNative(const void *object, int displayRotation);
-int openDatabaseNative(const void *object, const char * databasePath, bool databaseInMemory, bool optimize);
-int openDatabase2Native(const void *object, const char * databaseSource, const char * databasePath, bool databaseInMemory, bool optimize);
+int openDatabaseNative(const void *object, const char * databasePath, bool databaseInMemory, bool optimize, bool clearDatabase);
 void saveNative(const void *object, const char * databasePath);
+bool recoverNative(const void *object, const char * from, const char * to);
+void cancelProcessingNative(const void * object);
 int postProcessingNative(const void *object, int approach);
 bool exportMeshNative(
             const void *object,
