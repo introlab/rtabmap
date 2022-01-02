@@ -108,7 +108,7 @@
     <string name="pref_key_features_type">pref_key_features_type</string>
     <string name="pref_default_features_type">6</string>
     <string name="pref_key_optimizer">pref_key_optimizer</string>
-    <string name="pref_default_optimizer">1</string>
+    <string name="pref_default_optimizer">2</string>
     <string name="pref_key_optimize_end">pref_key_optimize_end</string>
     <string name="pref_default_optimize_end">true</string>
     <string name="pref_key_marker_detection">pref_key_marker_detection</string>

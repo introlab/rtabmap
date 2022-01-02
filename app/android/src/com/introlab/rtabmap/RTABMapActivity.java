@@ -595,12 +595,6 @@ public class RTABMapActivity extends FragmentActivity implements OnClickListener
 	{
 		Log.i(TAG, "postCreate()");
 		
-		String tmpDatabase = mWorkingDirectory+RTABMAP_TMP_DB;
-		(new File(tmpDatabase)).delete();
-		SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
-		boolean databaseInMemory = sharedPref.getBoolean(getString(R.string.pref_key_db_in_memory), Boolean.parseBoolean(getString(R.string.pref_default_db_in_memory)));
-		RTABMapLib.openDatabase(nativeApplication, tmpDatabase, databaseInMemory, false);
-		
 		final String[] files = Util.loadFileList(mWorkingDirectory, true);
 		if(files.length == 0)
 		{
@@ -2626,7 +2620,7 @@ public class RTABMapActivity extends FragmentActivity implements OnClickListener
 							SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(getActivity());
 							boolean databaseInMemory = sharedPref.getBoolean(getString(R.string.pref_key_db_in_memory), Boolean.parseBoolean(getString(R.string.pref_default_db_in_memory)));
 							String tmpDatabase = mWorkingDirectory+RTABMAP_TMP_DB;
-							RTABMapLib.openDatabase(nativeApplication, tmpDatabase, databaseInMemory, false);
+							RTABMapLib.openDatabase(nativeApplication, tmpDatabase, databaseInMemory, false, true);
 
 							mItemLocalizationMode.setEnabled(!mItemDataRecorderMode.isChecked());		   
 
@@ -2780,16 +2774,110 @@ public class RTABMapActivity extends FragmentActivity implements OnClickListener
 		mOpenedDatabasePath = "";
 		SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
 		boolean databaseInMemory = sharedPref.getBoolean(getString(R.string.pref_key_db_in_memory), Boolean.parseBoolean(getString(R.string.pref_default_db_in_memory)));
-		String tmpDatabase = mWorkingDirectory+RTABMAP_TMP_DB;
-		RTABMapLib.openDatabase(nativeApplication, tmpDatabase, databaseInMemory, false);
-
-		if(!(mState == State.STATE_CAMERA || mState ==State.STATE_MAPPING))
+		final String tmpDatabase = mWorkingDirectory+RTABMAP_TMP_DB;
+		
+		File newFile = new File(tmpDatabase);
+		final int fileSizeMB = (int)newFile.length()/(1024 * 1024);
+		if(!(mState == State.STATE_CAMERA || mState ==State.STATE_MAPPING) &&
+			newFile.exists() && 
+			fileSizeMB>1) // >1MB
 		{
-			setCamera(1);
-			startCamera(String.format("Hold Tight! Initializing Camera Service...\n"
-					+ "Tip: If the camera is still drifting just after the mapping has started, do \"Reset\"."));
+			AlertDialog d2 = new AlertDialog.Builder(getActivity())
+					.setCancelable(false)
+					.setTitle("Recovery")
+					.setMessage(String.format("The previous session (%d MB) was not correctly saved, do you want to recover it?", fileSizeMB))
+					.setNegativeButton("Ignore", new DialogInterface.OnClickListener() {
+						public void onClick(DialogInterface dialog, int which) {
+							(new File(tmpDatabase)).delete();
+							newScan();
+						}
+					})
+					.setNeutralButton("Cancel", new DialogInterface.OnClickListener() {
+						public void onClick(DialogInterface dialog, int which) {
+							// do nothing
+						}
+					})
+					.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
+						public void onClick(DialogInterface dialog, int which) {
+							final String fileName = new SimpleDateFormat("yyMMdd-HHmmss").format(new Date()) + ".db";
+							final String outputDbPath = mWorkingDirectory + fileName;
+							
+							mExportProgressDialog.setTitle("Recovering");
+							mExportProgressDialog.setMessage(String.format("Please wait while recovering data..."));
+							mExportProgressDialog.setProgress(0);
+
+							final State previousState = mState;
+
+							mExportProgressDialog.show();
+							updateState(State.STATE_PROCESSING);
+
+							Thread exportThread = new Thread(new Runnable() {
+								public void run() {
+
+									final long startTime = System.currentTimeMillis()/1000;
+
+									final boolean success = RTABMapLib.recover(
+											nativeApplication, 
+											tmpDatabase,
+											outputDbPath);
+									runOnUiThread(new Runnable() {
+										public void run() {
+											if(mExportProgressDialog.isShowing())
+											{							
+												if(success)
+												{								
+													AlertDialog d2 = new AlertDialog.Builder(getActivity())
+															.setCancelable(false)
+															.setTitle("Database saved!")
+															.setMessage(String.format("Database \"%s\" (%d MB) successfully saved!", fileName, fileSizeMB))
+															.setPositiveButton("OK", new DialogInterface.OnClickListener() {
+																public void onClick(DialogInterface dialog, int which) {
+																	openDatabase(fileName, false);
+																}
+															})
+															.create();
+													d2.setCanceledOnTouchOutside(true);
+													d2.show();
+												}
+												else
+												{
+													updateState(previousState);
+													mToast.makeText(getActivity(), String.format("Recovery failed!"), mToast.LENGTH_LONG).show();
+												}
+												mExportProgressDialog.dismiss();
+											}
+											else
+											{
+												mToast.makeText(getActivity(), String.format("Recovery canceled"), mToast.LENGTH_LONG).show();
+												updateState(previousState);
+											}
+										}
+									});
+								} 
+							});
+							exportThread.start();
+							
+							refreshSystemMediaScanDataBase(getActivity(), outputDbPath);
+						}
+					})
+					.create();
+			d2.setCanceledOnTouchOutside(false);
+			d2.show();
+		}
+		else
+		{
+		
+			RTABMapLib.openDatabase(nativeApplication, tmpDatabase, databaseInMemory, false, true);
+	
+			if(!(mState == State.STATE_CAMERA || mState ==State.STATE_MAPPING))
+			{
+				setCamera(0);
+				startCamera(String.format("Hold Tight! Initializing Camera Service...\n"
+						+ "Tip: If the camera is still drifting just after the mapping has started, do \"Reset\"."));
+			}
 		}
 	}
+		
 
 	private void openDatabase()
 	{
@@ -3280,7 +3368,7 @@ public class RTABMapActivity extends FragmentActivity implements OnClickListener
 						AlertDialog d2 = new AlertDialog.Builder(getActivity())
 								.setCancelable(false)
 								.setTitle("Database saved!")
-								.setMessage(String.format("Database \"%s\" (%d MB) successfully saved on the SD-CARD!", newDatabasePathHuman, fileSizeMB))
+								.setMessage(String.format("Database \"%s\" (%d MB) successfully saved!", newDatabasePathHuman, fileSizeMB))
 								.setPositiveButton("OK", new DialogInterface.OnClickListener() {
 									public void onClick(DialogInterface dialog, int which) {
 										resetNoTouchTimer(true);
@@ -3371,7 +3459,7 @@ public class RTABMapActivity extends FragmentActivity implements OnClickListener
 	{		
 		Log.i(TAG, String.format("Write exported mesh to \"%s\"", fileName));
 
-		mProgressDialog.setTitle("Saving to sd-card");
+		mProgressDialog.setTitle("Exporting");
 		mProgressDialog.setMessage(String.format("Compressing the files..."));
 		mProgressDialog.show();
 
@@ -3443,7 +3531,7 @@ public class RTABMapActivity extends FragmentActivity implements OnClickListener
 							AlertDialog d = new AlertDialog.Builder(getActivity())
 									.setCancelable(false)
 									.setTitle("Mesh Saved!")
-									.setMessage(String.format("Mesh \"%s\" (%d MB) successfully exported on the SD-CARD! Share it?", pathHuman, fileSizeMB))
+									.setMessage(String.format("Mesh \"%s\" (%d MB) successfully exported! Share it?", pathHuman, fileSizeMB))
 									.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
 										public void onClick(DialogInterface dialog, int which) {
 											// Send to...
@@ -3498,8 +3586,7 @@ public class RTABMapActivity extends FragmentActivity implements OnClickListener
 		Thread openThread = new Thread(new Runnable() {
 			public void run() {
 
-				final String tmpDatabase = mWorkingDirectory+RTABMAP_TMP_DB;				
-				final int status = RTABMapLib.openDatabase2(nativeApplication, mOpenedDatabasePath, tmpDatabase, databaseInMemory, optimize);
+				final int status = RTABMapLib.openDatabase(nativeApplication, mOpenedDatabasePath, databaseInMemory, optimize, false);
 
 				runOnUiThread(new Runnable() {
 					public void run() {

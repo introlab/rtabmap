@@ -34,9 +34,10 @@ public class RTABMapLib
     
     public static native void setScreenRotation(long nativeApplication, int displayRotation, int cameraRotation);
     
-    public static native int openDatabase(long nativeApplication, String databasePath, boolean databaseInMemory, boolean optimize);
-    public static native int openDatabase2(long nativeApplication, String databaseSource, String databasePath, boolean databaseInMemory, boolean optimize);
+    public static native int openDatabase(long nativeApplication, String databasePath, boolean databaseInMemory, boolean optimize, boolean clearDatabase);
     
+    public static native boolean recover(long nativeApplication, String from, String to);
+
     public static native boolean isBuiltWith(long nativeApplication, int cameraDriver);
     public static native boolean startCamera(long nativeApplication, IBinder binder, Context context, Activity activity, int driver);
     public static native void stopCamera(long nativeApplication);
