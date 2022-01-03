@@ -373,28 +373,22 @@ ENDIF(WITH_TORO)
 
 IF(G2O_FOUND)
 	IF(g2o_FOUND)
-	  SET(LIBRARIES
-             ${LIBRARIES}
+	  SET(LIBRARIES ${LIBRARIES}
 	     g2o::core
 	     g2o::solver_eigen
 	     g2o::solver_pcg
 	     g2o::types_slam2d
 	     g2o::types_slam3d
-	     g2o::types_sba
-	  )
+	     g2o::types_sba)
 	  IF(TARGET g2o::solver_csparse)
-	    SET(LIBRARIES
-             ${LIBRARIES}
-         g2o::solver_csparse
-         g2o::csparse_extension
-        )
+	    SET(LIBRARIES ${LIBRARIES}
+          g2o::solver_csparse
+          g2o::csparse_extension)
       ENDIF(TARGET g2o::solver_csparse)
       IF(TARGET g2o::solver_cholmod)
-        SET(LIBRARIES
-             ${LIBRARIES}
-         g2o::solver_cholmod
-        )
-      ENDIF(TARGET g2o::solver_csparse)
+        SET(LIBRARIES ${LIBRARIES} 
+          g2o::solver_cholmod)
+      ENDIF(TARGET g2o::solver_cholmod)
 	ELSE()
 	  SET(INCLUDE_DIRS 
 		${INCLUDE_DIRS} 
@@ -405,13 +399,11 @@ IF(G2O_FOUND)
 		${G2O_LIBRARIES}
 	  )
 	ENDIF()
-	SET(SRC_FILES
-    		${SRC_FILES}
+	SET(SRC_FILES ${SRC_FILES}
 		optimizer/g2o/edge_se3_xyzprior.cpp
 	)
 	IF(WITH_VERTIGO)
-		SET(SRC_FILES
-    			${SRC_FILES}
+		SET(SRC_FILES ${SRC_FILES}
 			optimizer/vertigo/g2o/edge_se2Switchable.cpp
 			optimizer/vertigo/g2o/edge_se3Switchable.cpp
 			optimizer/vertigo/g2o/edge_switchPrior.cpp
