@@ -607,6 +607,8 @@ public class RTABMapActivity extends FragmentActivity implements OnClickListener
 		Log.i(TAG, String.format("updateCameraDriverSettings() mCameraDriver=%d RTABMapLib.isBuiltWith(%d)=%d", mCameraDriver, mCameraDriver, RTABMapLib.isBuiltWith(nativeApplication, mCameraDriver)?1:0));
 		
 		SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
+		String cameraDriverStr = sharedPref.getString(getString(R.string.pref_key_camera_driver), getString(R.string.pref_default_camera_driver));
+		mCameraDriver = Integer.parseInt(cameraDriverStr);
 		
 		if(mCameraDriver == 0 && (!CheckTangoCoreVersion(MIN_TANGO_CORE_VERSION) || !RTABMapLib.isBuiltWith(nativeApplication, 0)))
 		{
@@ -1161,7 +1163,7 @@ public class RTABMapActivity extends FragmentActivity implements OnClickListener
 		final boolean depthFromMotion = sharedPref.getBoolean(getString(R.string.pref_key_depth_from_motion), Boolean.parseBoolean(getString(R.string.pref_default_depth_from_motion)));
 		mCameraDriver = Integer.parseInt(cameraDriverStr);
 
-		if(!DISABLE_LOG) Log.i(TAG, String.format("startCamera() driver=%d", mCameraDriver));
+		Log.i(TAG, String.format("startCamera() driver=%d", mCameraDriver));
 		if(mCameraDriver == 0) // Tango
 		{
 			// Check if the Tango Core is out dated.
@@ -3536,7 +3538,8 @@ public class RTABMapActivity extends FragmentActivity implements OnClickListener
 											// Send to...
 											Intent shareIntent = new Intent();
 											shareIntent.setAction(Intent.ACTION_SEND);
-											shareIntent.putExtra(Intent.EXTRA_STREAM, Uri.fromFile(f));
+											shareIntent.putExtra(Intent.EXTRA_STREAM, FileProvider.getUriForFile(getActivity(), getActivity().getApplicationContext().getPackageName() + ".provider", f));
+											shareIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
 											shareIntent.setType("application/zip");
 											startActivity(Intent.createChooser(shareIntent, "Sharing..."));
 

@@ -80,7 +80,7 @@
     <string name="pref_default_fisheye">false</string>
     
     <string name="pref_key_camera_driver">pref_key_camera_driver</string>
-    <string name="pref_default_camera_driver">0</string>
+    <string name="pref_default_camera_driver">3</string>
     <string name="pref_key_depth_from_motion">pref_key_depth_from_motion</string>
     <string name="pref_default_depth_from_motion">false</string>
     <string name="pref_key_arcore_localization_filtering_speed">pref_key_arcore_localization_filtering_speed</string>
