@@ -490,7 +490,7 @@ func getPreviewImage(databasePath: String) -> UIImage?
             let bitmap = CIImage(bitmapData: data, bytesPerRow: Int(image.width*image.channels), size: CGSize(width: Int(image.width), height: Int(image.height)), format: CIFormat.BGRA8, colorSpace: nil)
             return UIImage(ciImage: bitmap)
         }
-        return nil
+        return UIImage(named: "RTAB-Map1024")
     }
     return imageOut
 }
