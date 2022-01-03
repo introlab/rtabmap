@@ -42,16 +42,7 @@ public:
 	static bool isCholmodAvailable();
 
 public:
-	OptimizerG2O(const ParametersMap & parameters = ParametersMap()) :
-		Optimizer(parameters),
-		solver_(Parameters::defaultg2oSolver()),
-		optimizer_(Parameters::defaultg2oOptimizer()),
-		pixelVariance_(Parameters::defaultg2oPixelVariance()),
-		robustKernelDelta_(Parameters::defaultg2oRobustKernelDelta()),
-		baseline_(Parameters::defaultg2oBaseline())
-	{
-		parseParameters(parameters);
-	}
+	OptimizerG2O(const ParametersMap & parameters = ParametersMap());
 	virtual ~OptimizerG2O() {}
 
 	virtual Type type() const {return kTypeG2O;}

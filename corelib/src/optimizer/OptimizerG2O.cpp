@@ -137,6 +137,26 @@ bool OptimizerG2O::isCholmodAvailable()
 #endif
 }
 
+OptimizerG2O::OptimizerG2O(const ParametersMap & parameters) :
+		Optimizer(parameters),
+		solver_(Parameters::defaultg2oSolver()),
+		optimizer_(Parameters::defaultg2oOptimizer()),
+		pixelVariance_(Parameters::defaultg2oPixelVariance()),
+		robustKernelDelta_(Parameters::defaultg2oRobustKernelDelta()),
+		baseline_(Parameters::defaultg2oBaseline())
+{
+	// Issue on android, have to explicitly register this type when using fixed root prior below
+	if(!g2o::Factory::instance()->knowsTag("CACHE_SE3_OFFSET"))
+	{
+#if defined(RTABMAP_G2O_CPP11) and RTABMAP_G2O_CPP11 == 1
+		g2o::Factory::instance()->registerType("CACHE_SE3_OFFSET", g2o::make_unique<g2o::HyperGraphElementCreator<g2o::CacheSE3Offset> >());
+#else
+		g2o::Factory::instance()->registerType("CACHE_SE3_OFFSET", new g2o::HyperGraphElementCreator<g2o::CacheSE3Offset>);
+#endif
+	}
+	parseParameters(parameters);
+}
+
 void OptimizerG2O::parseParameters(const ParametersMap & parameters)
 {
 	Optimizer::parseParameters(parameters);
@@ -148,16 +168,6 @@ void OptimizerG2O::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kg2oBaseline(), baseline_);
 	UASSERT(pixelVariance_ > 0.0);
 	UASSERT(baseline_ >= 0.0);
-
-	// Issue on android, have to explicitly register this type when using fixed root prior below
-	if(!g2o::Factory::instance()->knowsTag("CACHE_SE3_OFFSET"))
-	{
-#ifdef RTABMAP_G2O_CPP11
-		g2o::Factory::instance()->registerType("CACHE_SE3_OFFSET", g2o::make_unique<g2o::HyperGraphElementCreator<g2o::CacheSE3Offset> >());
-#else
-		g2o::Factory::instance()->registerType("CACHE_SE3_OFFSET", new g2o::HyperGraphElementCreator<g2o::CacheSE3Offset>);
-#endif
-	}
 
 #ifdef RTABMAP_ORB_SLAM
 	if(solver_ != 3)
