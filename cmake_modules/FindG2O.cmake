@@ -131,7 +131,7 @@ IF(G2O_STUFF_LIBRARY AND G2O_CORE_LIBRARY AND G2O_INCLUDE_DIR AND G2O_CONFIG_FIL
       MESSAGE(STATUS "Old g2o factory version detected without shared ptr (factory file: ${G2O_FACTORY_FILE}).")
       SET(G2O_CPP11 2)
     ELSE()
-      MESSAGE(WARNING "Latest g2o factory version detected with shared ptr (factory file: ${G2O_FACTORY_FILE}).")
+      MESSAGE(STATUS "Latest g2o factory version detected with shared ptr (factory file: ${G2O_FACTORY_FILE}).")
       SET(G2O_CPP11 1)
     ENDIF()
   ENDIF()
