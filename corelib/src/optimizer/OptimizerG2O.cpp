@@ -149,6 +149,16 @@ void OptimizerG2O::parseParameters(const ParametersMap & parameters)
 	UASSERT(pixelVariance_ > 0.0);
 	UASSERT(baseline_ >= 0.0);
 
+	// Issue on android, have to explicitly register this type when using fixed root prior below
+	if(!g2o::Factory::instance()->knowsTag("CACHE_SE3_OFFSET"))
+	{
+#ifdef RTABMAP_G2O_CPP11
+		g2o::Factory::instance()->registerType("CACHE_SE3_OFFSET", g2o::make_unique<g2o::HyperGraphElementCreator<g2o::CacheSE3Offset> >());
+#else
+		g2o::Factory::instance()->registerType("CACHE_SE3_OFFSET", new g2o::HyperGraphElementCreator<g2o::CacheSE3Offset>);
+#endif
+	}
+
 #ifdef RTABMAP_ORB_SLAM
 	if(solver_ != 3)
 	{
@@ -322,7 +332,9 @@ std::map<int, Transform> OptimizerG2O::optimize(
 						rootId = 0;
 						break;
 					}
-					else if(iter->second.type() == Link::kGravity)
+					else if(!isSlam2d() &&
+							gravitySigma() > 0 &&
+							iter->second.type() == Link::kGravity)
 					{
 						hasGravityConstraints = true;
 						if(priorsIgnored())
@@ -454,32 +466,41 @@ std::map<int, Transform> OptimizerG2O::optimize(
 			{
 				vertex->setId(id);
 				UASSERT_MSG(optimizer.addVertex(vertex), uFormat("cannot insert vertex %d!?", iter->first).c_str());
-				if(!isSlam2d() && id == rootId && hasGravityConstraints)
+			}
+		}
+
+		// Setup root prior (fixed x,y,z,yaw)
+		if(!isSlam2d() && rootId !=0 && hasGravityConstraints)
+		{
+			g2o::VertexSE3* v1 = dynamic_cast<g2o::VertexSE3*>(optimizer.vertex(rootId));
+			if(v1)
+			{
+				g2o::EdgeSE3Prior * e = new g2o::EdgeSE3Prior();
+				e->setVertex(0, v1);
+				Eigen::Affine3d a = poses.at(rootId).toEigen3d();
+				Eigen::Isometry3d pose;
+				pose = a.linear();
+				pose.translation() = a.translation();
+				e->setMeasurement(pose);
+				e->setParameterId(0, PARAM_OFFSET);
+				Eigen::Matrix<double, 6, 6> information = Eigen::Matrix<double, 6, 6>::Identity()*10e6;
+				// pitch and roll not fixed
+				information(3,3) = information(4,4) = 1;
+				e->setInformation(information);
+				if (!optimizer.addEdge(e))
 				{
-					g2o::EdgeSE3Prior * priorEdge = new g2o::EdgeSE3Prior();
-					g2o::VertexSE3* v1 = (g2o::VertexSE3*)vertex;
-					priorEdge->setVertex(0, v1);
-					Eigen::Affine3d a = iter->second.toEigen3d();
-					Eigen::Isometry3d pose;
-					pose = a.linear();
-					pose.translation() = a.translation();
-					priorEdge->setMeasurement(pose);
-					priorEdge->setParameterId(0, PARAM_OFFSET);
-					Eigen::Matrix<double, 6, 6> information = Eigen::Matrix<double, 6, 6>::Identity()*10e6;
-					// pitch and roll not fixed
-					information(3,3) = information(4,4) = 1;
-					priorEdge->setInformation(information);
-					if (priorEdge && !optimizer.addEdge(priorEdge))
-					{
-						delete priorEdge;
-						UERROR("Map: Failed adding fixed constraint of rootid %d, set as fixed instead", id);
-						v1->setFixed(true);
-					}
-					else
-					{
-						UDEBUG("Set %d fixed with prior (have gravity constraints)", id);
-					}
+					delete e;
+					UERROR("Map: Failed adding fixed constraint of rootid %d, set as fixed instead", rootId);
+					v1->setFixed(true);
 				}
+				else
+				{
+					UDEBUG("Set %d fixed with prior (have gravity constraints)", rootId);
+				}
+			}
+			else
+			{
+				UERROR("Map: Failed adding fixed constraint of rootid %d (not found in added vertices)", rootId);
 			}
 		}
 

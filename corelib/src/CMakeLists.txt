@@ -376,15 +376,25 @@ IF(G2O_FOUND)
 	  SET(LIBRARIES
              ${LIBRARIES}
 	     g2o::core
-	     g2o::solver_cholmod
 	     g2o::solver_eigen
 	     g2o::solver_pcg
-	     g2o::solver_csparse
-	     g2o::csparse_extension
 	     g2o::types_slam2d
 	     g2o::types_slam3d
 	     g2o::types_sba
 	  )
+	  IF(TARGET g2o::solver_csparse)
+	    SET(LIBRARIES
+             ${LIBRARIES}
+         g2o::solver_csparse
+         g2o::csparse_extension
+        )
+      ENDIF(TARGET g2o::solver_csparse)
+      IF(TARGET g2o::solver_cholmod)
+        SET(LIBRARIES
+             ${LIBRARIES}
+         g2o::solver_cholmod
+        )
+      ENDIF(TARGET g2o::solver_csparse)
 	ELSE()
 	  SET(INCLUDE_DIRS 
 		${INCLUDE_DIRS} 

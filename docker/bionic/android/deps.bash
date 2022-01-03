@@ -16,7 +16,7 @@ wget -nv https://github.com/Kitware/CMake/releases/download/v3.17.0/cmake-3.17.0
 echo "Downloading boost... (2/10)"
 wget -nv https://downloads.sourceforge.net/project/boost/boost/1.59.0/boost_1_59_0.tar.gz
 echo "Downloading eigen... (3/10)"
-wget -nv http://bitbucket.org/eigen/eigen/get/3.2.7.tar.gz
+curl -L https://gitlab.com/libeigen/eigen/-/archive/3.3.9/eigen-3.3.9.tar.gz -o 3.3.9.tar.gz
 echo "Downloading flann... (4/10)"
 git clone -b 1.8.4 https://github.com/mariusmuja/flann.git
 echo "Downloading gtsam... (5/10)"
@@ -31,7 +31,7 @@ echo "Downloading opencv_contrib... (9/10)"
 git clone https://github.com/opencv/opencv_contrib.git
 echo "Downloading opencv... (10/10)"
 git clone https://github.com/opencv/opencv.git
-
+-DG2O_USE_OPENGL=OFF
 
 # Install directory for all dependencies
 mkdir -p $prefix/arm64-v8a
@@ -57,15 +57,15 @@ rm -r boost_1_59_0.tar.gz boost_1_59_0
 
 # eigen
 echo "Install eigen..."
-tar -xzf 3.2.7.tar.gz
-cd eigen-eigen-b30b87236a1b
+tar -xzf 3.3.9.tar.gz
+cd eigen-3.3.9
 mkdir build
 cd build
 $pwd/cmake-3.17.0-Linux-x86_64/bin/cmake -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK/build/cmake/android.toolchain.cmake -DANDROID_ABI=arm64-v8a -DANDROID_NDK=$ANDROID_NDK -DANDROID_NATIVE_API_LEVEL=$ANDROID_NATIVE_API_LEVEL -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$prefix/arm64-v8a -DCMAKE_FIND_ROOT_PATH="$prefix/arm64-v8a/bin;$prefix/arm64-v8a;$prefix/arm64-v8a/share" ..
 make $cpus
 make install
 cd $pwd
-rm -r 3.2.7.tar.gz eigen-eigen-b30b87236a1b
+rm -r 3.3.9.tar.gz eigen-3.3.9
 
 # FLANN
 echo "Install flann..."
@@ -101,7 +101,7 @@ cd g2o
 git checkout a3f7706bdbb849b2808dc3e1b7aee189f63b498e
 mkdir build
 cd build
-$pwd/cmake-3.17.0-Linux-x86_64/bin/cmake -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK/build/cmake/android.toolchain.cmake -DANDROID_ABI=arm64-v8a -DANDROID_NDK=$ANDROID_NDK -DANDROID_NATIVE_API_LEVEL=$ANDROID_NATIVE_API_LEVEL -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$prefix/arm64-v8a -DCMAKE_FIND_ROOT_PATH="$prefix/arm64-v8a/bin;$prefix/arm64-v8a;$prefix/arm64-v8a/share" -DBUILD_LGPL_SHARED_LIBS=OFF -DG2O_BUILD_APPS=OFF -DG2O_BUILD_EXAMPLES=OFF ..
+$pwd/cmake-3.17.0-Linux-x86_64/bin/cmake -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK/build/cmake/android.toolchain.cmake -DANDROID_ABI=arm64-v8a -DANDROID_NDK=$ANDROID_NDK -DANDROID_NATIVE_API_LEVEL=$ANDROID_NATIVE_API_LEVEL -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$prefix/arm64-v8a -DCMAKE_FIND_ROOT_PATH="$prefix/arm64-v8a/bin;$prefix/arm64-v8a;$prefix/arm64-v8a/share" -DBUILD_LGPL_SHARED_LIBS=OFF -DG2O_BUILD_APPS=OFF -DG2O_BUILD_EXAMPLES=OFF -DG2O_USE_OPENGL=OFF ..
 make $cpus
 make install
 cd $pwd

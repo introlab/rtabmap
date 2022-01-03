@@ -1986,6 +1986,7 @@ public class RTABMapActivity extends FragmentActivity implements OnClickListener
 				final int loopDetected = RTABMapLib.postProcessing(nativeApplication, -1);
 				runOnUiThread(new Runnable() {
 					public void run() {
+						updateState(State.STATE_IDLE);
 						if(mExportProgressDialog.isShowing())
 						{
 							mExportProgressDialog.dismiss();
@@ -2018,8 +2019,6 @@ public class RTABMapActivity extends FragmentActivity implements OnClickListener
 							mProgressDialog.dismiss();
 							mToast.makeText(getActivity(), String.format("Optimization canceled"), mToast.LENGTH_LONG).show();
 						}
-
-						updateState(State.STATE_IDLE);
 					}
 				});
 			} 
