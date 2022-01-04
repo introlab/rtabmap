@@ -478,15 +478,15 @@ void CameraTango::cloudReceived(const cv::Mat & cloud, double timestamp)
 				LOGD("tangoColorType=%d", tangoColorType);
 				if(tangoColorType == TANGO_HAL_PIXEL_FORMAT_RGBA_8888)
 				{
-					cv::cvtColor(tangoImage, rgb, CV_RGBA2BGR);
+					cv::cvtColor(tangoImage, rgb, cv::COLOR_RGBA2BGR);
 				}
 				else if(tangoColorType == TANGO_HAL_PIXEL_FORMAT_YV12)
 				{
-					cv::cvtColor(tangoImage, rgb, CV_YUV2BGR_YV12);
+					cv::cvtColor(tangoImage, rgb, cv::COLOR_YUV2BGR_YV12);
 				}
 				else if(tangoColorType == TANGO_HAL_PIXEL_FORMAT_YCrCb_420_SP)
 				{
-					cv::cvtColor(tangoImage, rgb, CV_YUV2BGR_NV21);
+					cv::cvtColor(tangoImage, rgb, cv::COLOR_YUV2BGR_NV21);
 				}
 				else if(tangoColorType == 35)
 				{
