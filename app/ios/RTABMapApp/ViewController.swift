@@ -8,6 +8,7 @@
 import GLKit
 import ARKit
 import Zip
+import StoreKit
 
 extension Array {
     func size() -> Int {
@@ -40,6 +41,8 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
     private var mTimeThr: Int = 0
     private var mMaxFeatures: Int = 0
     private var mLoopThr = 0.11
+    
+    private var mReviewRequested = false
     
     // UI states
     private enum State {
@@ -1420,6 +1423,13 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
     
     func newScan()
     {
+        print("databases.size() = \(databases.size())")
+        if(databases.count >= 10 && !mReviewRequested)
+        {
+            SKStoreReviewController.requestReviewInCurrentScene()
+            mReviewRequested = true
+        }
+        
         if(mState == State.STATE_VISUALIZING)
         {
             closeVisualization()
@@ -2437,5 +2447,13 @@ extension UserDefaults {
         defaults.dictionaryRepresentation().keys.forEach(defaults.removeObject(forKey:))
         
         setDefaultsFromSettingsBundle()
+    }
+}
+
+extension SKStoreReviewController {
+    public static func requestReviewInCurrentScene() {
+        if let scene = UIApplication.shared.connectedScenes.first(where: { $0.activationState == .foregroundActive }) as? UIWindowScene {
+            requestReview(in: scene)
+        }
     }
 }
