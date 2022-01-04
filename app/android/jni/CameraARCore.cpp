@@ -520,11 +520,11 @@ SensorData CameraARCore::captureImage(CameraInfo * info)
 							cv::Mat yuv(height+height/2, width, CV_8UC1);
 							memcpy(yuv.data, plane_data, data_length);
 							memcpy(yuv.data+data_length, plane_uv_data, height/2*width);
-							cv::cvtColor(yuv, rgb, CV_YUV2BGR_NV21);
+							cv::cvtColor(yuv, rgb, cv::COLOR_YUV2BGR_NV21);
 						}
 						else
 						{
-							cv::cvtColor(cv::Mat(height+height/2, width, CV_8UC1, (void*)plane_data), rgb, CV_YUV2BGR_NV21);
+							cv::cvtColor(cv::Mat(height+height/2, width, CV_8UC1, (void*)plane_data), rgb, cv::COLOR_YUV2BGR_NV21);
 						}
 
 						std::vector<cv::KeyPoint> kpts;

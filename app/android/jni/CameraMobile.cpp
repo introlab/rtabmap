@@ -171,7 +171,7 @@ void CameraMobile::setData(const SensorData & data, const Transform & pose, cons
     if(textureId_ != 0 && texCoord != 0)
     {
         cv::Mat rgbImage;
-        cv::cvtColor(data.imageRaw(), rgbImage, CV_BGR2RGBA);
+        cv::cvtColor(data.imageRaw(), rgbImage, cv::COLOR_BGR2RGBA);
         
         glBindTexture(GL_TEXTURE_2D, textureId_);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);

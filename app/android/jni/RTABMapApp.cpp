@@ -635,7 +635,7 @@ int RTABMapApp::openDatabase(const std::string & databasePath, bool databaseInMe
                                     if(renderingTextureDecimation_>1)
                                     {
                                         cv::Size reducedSize(data.imageRaw().cols/renderingTextureDecimation_, data.imageRaw().rows/renderingTextureDecimation_);
-                                        cv::resize(data.imageRaw(), inserted.first->second.texture, reducedSize, 0, 0, CV_INTER_LINEAR);
+                                        cv::resize(data.imageRaw(), inserted.first->second.texture, reducedSize, 0, 0, cv::INTER_LINEAR);
                                     }
                                     else
                                     {
@@ -1620,7 +1620,7 @@ int RTABMapApp::Render()
 									{
 										cv::Size reducedSize(textureRaw.cols/renderingTextureDecimation_, textureRaw.rows/renderingTextureDecimation_);
 										LOGD("resize image from %dx%d to %dx%d", textureRaw.cols, textureRaw.rows, reducedSize.width, reducedSize.height);
-										cv::resize(textureRaw, iter->second.texture, reducedSize, 0, 0, CV_INTER_LINEAR);
+										cv::resize(textureRaw, iter->second.texture, reducedSize, 0, 0, cv::INTER_LINEAR);
 									}
 									else
 									{
@@ -1905,7 +1905,7 @@ int RTABMapApp::Render()
                                                 if(renderingTextureDecimation_ > 1)
                                                 {
                                                     cv::Size reducedSize(data.imageRaw().cols/renderingTextureDecimation_, data.imageRaw().rows/renderingTextureDecimation_);
-                                                    cv::resize(data.imageRaw(), inserted.first->second.texture, reducedSize, 0, 0, CV_INTER_LINEAR);
+                                                    cv::resize(data.imageRaw(), inserted.first->second.texture, reducedSize, 0, 0, cv::INTER_LINEAR);
 #ifdef DEBUG_RENDERING_PERFORMANCE
                                                     LOGW("resize image from %dx%d to %dx%d (%fs)", data.imageRaw().cols, data.imageRaw().rows, reducedSize.width, reducedSize.height, time.ticks());
 #endif
@@ -2138,7 +2138,7 @@ int RTABMapApp::Render()
 			cv::Mat image(h, w, CV_8UC4);
 			glReadPixels(0, 0, w, h, GL_RGBA, GL_UNSIGNED_BYTE, image.data);
 			cv::flip(image, image, 0);
-			cv::cvtColor(image, image, CV_RGBA2BGRA);
+			cv::cvtColor(image, image, cv::COLOR_RGBA2BGRA);
 			cv::Mat roi;
 			if(w>h)
 			{
@@ -3773,14 +3773,14 @@ void RTABMapApp::postOdometryEvent(
 					cv::Mat yuv(rgbHeight+rgbHeight/2, rgbWidth, CV_8UC1);
 					memcpy(yuv.data, yPlane, yPlaneLen);
 					memcpy(yuv.data+yPlaneLen, vPlane, rgbHeight/2*rgbWidth);
-					cv::cvtColor(yuv, outputRGB, CV_YUV2BGR_NV21);
+					cv::cvtColor(yuv, outputRGB, cv::COLOR_YUV2BGR_NV21);
 				}
 				else
 				{
 #ifdef __ANDROID__
-					cv::cvtColor(cv::Mat(rgbHeight+rgbHeight/2, rgbWidth, CV_8UC1, (void*)yPlane), outputRGB, CV_YUV2BGR_NV21);
+					cv::cvtColor(cv::Mat(rgbHeight+rgbHeight/2, rgbWidth, CV_8UC1, (void*)yPlane), outputRGB, cv::COLOR_YUV2BGR_NV21);
 #else // __APPLE__
-                    cv::cvtColor(cv::Mat(rgbHeight+rgbHeight/2, rgbWidth, CV_8UC1, (void*)yPlane), outputRGB, CV_YUV2RGB_NV21);
+					cv::cvtColor(cv::Mat(rgbHeight+rgbHeight/2, rgbWidth, CV_8UC1, (void*)yPlane), outputRGB, cv::COLOR_YUV2RGB_NV21);
 #endif
 				}
 

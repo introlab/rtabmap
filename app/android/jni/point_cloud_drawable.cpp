@@ -799,7 +799,7 @@ void PointCloudDrawable::updateMesh(const rtabmap::Mesh & mesh, bool createWiref
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 		cv::Mat rgbImage;
-		cv::cvtColor(mesh.texture, rgbImage, CV_BGR2RGBA);
+		cv::cvtColor(mesh.texture, rgbImage, cv::COLOR_BGR2RGBA);
 
 		glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
 		//glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
