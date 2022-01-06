@@ -688,7 +688,7 @@ public class ARCoreSharedCamera {
 					if(mToast!=null && previousAnchorPose != null)
 					{
 						String msg = "Tracking lost! If you are mapping, you will need to relocalize before continuing.";
-						if(!mToast.getView().isShown())
+						if(mToast.getView() == null || !mToast.getView().isShown())
 						{
 							mToast.makeText(mActivity.getApplicationContext(), 
 									msg, Toast.LENGTH_LONG).show();
@@ -736,7 +736,7 @@ public class ARCoreSharedCamera {
 										+ "because of high speed detected (%f m/s) causing a jump! You can change "
 										+ "ARCore localization filtering speed in Settings->Mapping if you are "
 										+ "indeed moving as fast.", speed);
-								if(!mToast.getView().isShown())
+								if(mToast.getView() == null || !mToast.getView().isShown())
 								{
 									mToast.makeText(mActivity.getApplicationContext(), msg, Toast.LENGTH_LONG).show();
 								}

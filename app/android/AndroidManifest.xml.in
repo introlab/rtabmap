@@ -8,6 +8,7 @@
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.ACCESS_MEDIA_LOCATION" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
@@ -17,6 +18,11 @@
 
     <!-- This is the platform API where depth16 support in android was introduced. -->
     <uses-sdk android:minSdkVersion="@ANDROID_NATIVE_API_LEVEL@" />
+    
+    <queries>
+        <package android:name="com.google.ar.core" />
+        <package android:name="com.huawei.ar.engine" /> 
+    </queries>
 
     <!-- This .apk has no Java code itself, so set hasCode to false. -->
     <application 
@@ -42,7 +48,16 @@
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
+		    </intent-filter>
+		    <intent-filter>
+		        <action android:name="android.intent.action.SEND" />
+		        <action android:name="android.intent.action.SEND_MULTIPLE" />
+		        <action android:name="android.intent.action.OPEN_DOCUMENT" />
+		        <category android:name="android.intent.category.DEFAULT" />
+		        <data android:mimeType="application/octet-stream" />
+		        <data android:pathPattern=".*\.db" />
+		    </intent-filter>
+		    
         </activity>
 
         <activity android:name="SettingsActivity" android:label="@string/settings" android:screenOrientation="fullSensor"/>

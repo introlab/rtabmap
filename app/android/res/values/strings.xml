@@ -19,7 +19,7 @@
     <string name="light_off">Lighting</string>
     <string name="wireframe">Wireframe</string>
     <string name="close_visualization">Close Visualization</string>
-    <string name="save_to_file">Export to File&#8230;</string>
+    <string name="save_to_file">Export OBJ/PLY&#8230;</string>
     <string name="share_to_sketchfab">Share to Sketchfab&#8230;</string>
     <string name="start">Start</string>
     <string name="nodes">"Nodes (WM): "</string>
@@ -80,7 +80,7 @@
     <string name="pref_default_fisheye">false</string>
     
     <string name="pref_key_camera_driver">pref_key_camera_driver</string>
-    <string name="pref_default_camera_driver">3</string>
+    <string name="pref_default_camera_driver">-1</string>
     <string name="pref_key_depth_from_motion">pref_key_depth_from_motion</string>
     <string name="pref_default_depth_from_motion">false</string>
     <string name="pref_key_arcore_localization_filtering_speed">pref_key_arcore_localization_filtering_speed</string>
@@ -381,12 +381,14 @@
     <string name="pref_summary_db_in_memory">The database is kept in RAM for fast access. Set to false to reduce RAM used at the cost of slower access. This parameter is applied on reset or when a database is opened.</string>
 
     <string-array name="pref_camera_driver_keys">
+        <item>"Auto"</item>
         <item>"Google Tango NDK"</item>
         <item>"ARCore NDK"</item>
         <item>"AREngine NDK"</item>
         <item>"ARCore Java"</item>
     </string-array>
     <string-array name="pref_camera_driver_values">
+        <item>"-1"</item>
         <item>"0"</item>
         <item>"1"</item>
         <item>"2"</item>
