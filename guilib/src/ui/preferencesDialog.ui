@@ -21284,7 +21284,7 @@ Lower the ratio -&gt; higher the precision.</string>
                            <item row="2" column="0">
                             <widget class="QSpinBox" name="stereobm_minDisparity">
                              <property name="minimum">
-                              <number>0</number>
+                              <number>-999999</number>
                              </property>
                              <property name="maximum">
                               <number>999999</number>
@@ -21600,7 +21600,7 @@ Lower the ratio -&gt; higher the precision.</string>
                            <item row="2" column="0">
                             <widget class="QSpinBox" name="stereosgbm_minDisparity">
                              <property name="minimum">
-                              <number>0</number>
+                              <number>-999999</number>
                              </property>
                              <property name="maximum">
                               <number>999999</number>
