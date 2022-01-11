@@ -387,7 +387,7 @@ LaserScan LaserScan::operator+(const LaserScan & scan)
 	{
 		if(this->empty())
 		{
-			dest = LaserScan(scan.data().clone(), 0, 0, this->format());
+			dest = scan.clone();
 		}
 		else
 		{

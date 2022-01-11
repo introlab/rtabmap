@@ -6300,6 +6300,7 @@ void Rtabmap::createGlobalScanMap()
 			data.uncompressDataConst(0, 0, &scan, 0, 0, 0, 0);
 			if(!scan.empty())
 			{
+				UDEBUG("Adding scan %d (format=%s, points=%d)", iter->first, scan.formatName().c_str(), scan.size());
 				scan = util3d::transformLaserScan(scan, iter->second*scan.localTransform());
 				if(_globalScanMap.empty() || _globalScanMap.format() == scan.format())
 				{
