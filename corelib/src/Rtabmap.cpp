@@ -6346,11 +6346,11 @@ void Rtabmap::createGlobalScanMap()
 		}
 
 		UINFO("Global scan map has been assembled (size=%d points, %d poses) "
-				"for proximity detection (only in localization mode %s=false and with %s=false)",
+				"for proximity detection (only in localization mode %s=false and with %s=true)",
 				(int)_globalScanMap.size(),
 				(int)_globalScanMapPoses.size(),
 				Parameters::kMemIncrementalMemory().c_str(),
-				Parameters::kRGBDProximityPathRawPosesUsed().c_str());
+				Parameters::kRGBDProximityGlobalScanMap().c_str());
 
 		//for debugging...
 		if(!_globalScanMap.empty() && ULogger::level() == ULogger::kDebug)
