@@ -2348,6 +2348,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 			}
 #endif
 
+			UDEBUG("%d %d %d", poses.size(), poses.size()?poses.rbegin()->first:0, stat.refImageId());
 			if(!_odometryReceived && poses.size() && poses.rbegin()->first == stat.refImageId())
 			{
 				if(poses.rbegin()->first == stat.getLastSignatureData().id())

@@ -359,7 +359,7 @@ std::map<int, Transform> OptimizerG2O::optimize(
 		int landmarkVertexOffset = poses.rbegin()->first+1;
 		std::map<int, bool> isLandmarkWithRotation;
 
-		UDEBUG("fill poses to g2o... (rootId=%d hasGravityConstraints=%d)", rootId, hasGravityConstraints?1:0);
+		UDEBUG("fill poses to g2o... (rootId=%d hasGravityConstraints=%d isSlam2d=%d)", rootId, hasGravityConstraints?1:0, isSlam2d()?1:0);
 		for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
 		{
 			UASSERT(!iter->second.isNull());

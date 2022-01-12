@@ -136,7 +136,7 @@ void RegistrationIcp::parseParameters(const ParametersMap & parameters)
 	ParametersMap::const_iterator iter;
 	if((iter=parameters.find(Parameters::kRtabmapWorkingDirectory())) != parameters.end())
 	{
-		_workingDir = iter->second;
+		_workingDir = uReplaceChar(iter->second, '~', UDirectory::homeDir());
 	}
 
 	bool pointToPlane = _pointToPlane;

@@ -75,7 +75,8 @@ public:
 			const std::map<int, Transform> & posesIn,
 			const std::multimap<int, Link> & linksIn,
 			std::map<int, Transform> & posesOut,
-			std::multimap<int, Link> & linksOut) const;
+			std::multimap<int, Link> & linksOut,
+			bool adjustPosesWithConstraints = true) const;
 
 public:
 	virtual ~Optimizer() {}

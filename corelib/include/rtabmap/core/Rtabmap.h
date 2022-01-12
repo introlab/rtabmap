@@ -307,6 +307,7 @@ private:
 	bool _proximityRawPosesUsed;
 	float _proximityAngle;
 	bool _proximityOdomGuess;
+	double _proximityMergedScanCovFactor;
 	std::string _databasePath;
 	bool _optimizeFromGraphEnd;
 	float _optimizationMaxError;

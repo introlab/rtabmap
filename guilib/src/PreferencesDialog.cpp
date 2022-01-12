@@ -1121,6 +1121,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->localDetection_maxPaths->setObjectName(Parameters::kRGBDProximityMaxPaths().c_str());
 	_ui->localDetection_pathFilteringRadius->setObjectName(Parameters::kRGBDProximityPathFilteringRadius().c_str());
 	_ui->localDetection_angle->setObjectName(Parameters::kRGBDProximityAngle().c_str());
+	_ui->localDetection_mergedScanCovFactor->setObjectName(Parameters::kRGBDProximityMergedScanCovFactor().c_str());
 	_ui->checkBox_localSpaceOdomGuess->setObjectName(Parameters::kRGBDProximityOdomGuess().c_str());
 	_ui->checkBox_localSpacePathOdomPosesUsed->setObjectName(Parameters::kRGBDProximityPathRawPosesUsed().c_str());
 	_ui->rgdb_localImmunizationRatio->setObjectName(Parameters::kRGBDLocalImmunizationRatio().c_str());

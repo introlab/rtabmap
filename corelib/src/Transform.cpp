@@ -221,6 +221,20 @@ Transform Transform::to4DoF() const
 	return Transform(x,y,z, 0,0,yaw);
 }
 
+bool Transform::is3DoF() const
+{
+	return is4DoF() && z() == 0.0;
+}
+
+bool Transform::is4DoF() const
+{
+	return r13() == 0.0 &&
+		   r23() == 0.0 &&
+		   r31() == 0.0 &&
+		   r32() == 0.0 &&
+		   r33() == 0.0;
+}
+
 cv::Mat Transform::rotationMatrix() const
 {
 	return data_.colRange(0, 3).clone();

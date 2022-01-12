@@ -104,6 +104,8 @@ public:
 	Transform translation() const;
 	Transform to3DoF() const;
 	Transform to4DoF() const;
+	bool is3DoF() const;
+	bool is4DoF() const;
 
 	cv::Mat rotationMatrix() const;
 	cv::Mat translationMatrix() const;

@@ -386,6 +386,7 @@ class RTABMAP_EXP Parameters
     RTABMAP_PARAM(RGBD, ProximityAngle,               float, 45,   "Maximum angle (degrees) for one-to-one proximity detection.");
     RTABMAP_PARAM(RGBD, ProximityOdomGuess,           bool, false, "Use odometry as motion guess for one-to-one proximity detection.");
     RTABMAP_PARAM(RGBD, ProximityGlobalScanMap,       bool, false, uFormat("Create a global assembled map from laser scans for one-to-many proximity detection, replacing the original one-to-many proximity detection (i.e., detection against local paths). Only used in localization mode (%s=false), otherwise original one-to-many proximity detection is done. Note also that if graph is modified (i.e., memory management is enabled or robot jumps from one disjoint session to another in same database), the global scan map is cleared and one-to-many proximity detection is reverted to original approach.", kMemIncrementalMemory().c_str()));
+    RTABMAP_PARAM(RGBD, ProximityMergedScanCovFactor, double, 100.0, uFormat("Covariance factor for one-to-many proximity detection (when %s>0 and scans are used).", kRGBDProximityPathMaxNeighbors().c_str()));
 
     // Graph optimization
 #ifdef RTABMAP_GTSAM

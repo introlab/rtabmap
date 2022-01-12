@@ -121,6 +121,7 @@ Rtabmap::Rtabmap() :
 	_proximityRawPosesUsed(Parameters::defaultRGBDProximityPathRawPosesUsed()),
 	_proximityAngle(Parameters::defaultRGBDProximityAngle()*M_PI/180.0f),
 	_proximityOdomGuess(Parameters::defaultRGBDProximityOdomGuess()),
+	_proximityMergedScanCovFactor(Parameters::defaultRGBDProximityMergedScanCovFactor()),
 	_databasePath(""),
 	_optimizeFromGraphEnd(Parameters::defaultRGBDOptimizeFromGraphEnd()),
 	_optimizationMaxError(Parameters::defaultRGBDOptimizeMaxError()),
@@ -573,6 +574,9 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 		_proximityAngle *= M_PI/180.0f;
 	}
 	Parameters::parse(parameters, Parameters::kRGBDProximityOdomGuess(), _proximityOdomGuess);
+	Parameters::parse(parameters, Parameters::kRGBDProximityMergedScanCovFactor(), _proximityMergedScanCovFactor);
+	UASSERT(_proximityMergedScanCovFactor>0.0);
+
 	bool optimizeFromGraphEndPrevious = _optimizeFromGraphEnd;
 	Parameters::parse(parameters, Parameters::kRGBDOptimizeFromGraphEnd(), _optimizeFromGraphEnd);
 	if(optimizeFromGraphEndPrevious != _optimizeFromGraphEnd && !_optimizedPoses.empty())
@@ -2586,7 +2590,7 @@ bool Rtabmap::process(
 
 							// Assemble scans in the path and do ICP only
 							std::map<int, Transform> optimizedLocalPath;
-							if(_proximityRawPosesUsed)
+							if(_globalScanMap.empty() && _proximityRawPosesUsed)
 							{
 								//optimize the path's poses locally
 								cv::Mat covariance;
@@ -2610,7 +2614,7 @@ bool Rtabmap::process(
 							}
 
 							std::map<int, Transform> filteredPath;
-							if(optimizedLocalPath.size() > 2 && proximityFilteringRadius > 0.0f)
+							if(_globalScanMap.empty() && optimizedLocalPath.size() > 2 && proximityFilteringRadius > 0.0f)
 							{
 								// path filtering
 								filteredPath = graph::radiusPosesFiltering(optimizedLocalPath, proximityFilteringRadius, 0, true);
@@ -2639,6 +2643,7 @@ bool Rtabmap::process(
 									}
 									else
 									{
+										UASSERT_MSG(_globalScanMapPoses.find(nearestId) != _globalScanMapPoses.end(), uFormat("Pose of %d not found in global scan poses", nearestId).c_str());
 										icpMulti = false;
 										// use pre-assembled scan map
 										SensorData assembledData;
@@ -2684,7 +2689,7 @@ bool Rtabmap::process(
 
 										// set Identify covariance for laser scan matching only
 										UASSERT(info.covariance.at<double>(0,0) > 0.0 && info.covariance.at<double>(5,5) > 0.0);
-										_memory->addLink(Link(signature->id(), nearestId, Link::kLocalSpaceClosure, transform, getInformation(info.covariance)/100.0, scanMatchingIds));
+										_memory->addLink(Link(signature->id(), nearestId, Link::kLocalSpaceClosure, transform, getInformation(info.covariance)/_proximityMergedScanCovFactor, scanMatchingIds));
 										loopClosureLinksAdded.push_back(std::make_pair(signature->id(), nearestId));
 
 										if(icpMulti)
@@ -2925,7 +2930,8 @@ bool Rtabmap::process(
 				bool priorsIgnored = _graphOptimizer->priorsIgnored();
 				UDEBUG("priorsIgnored was %s", priorsIgnored?"true":"false");
 				_graphOptimizer->setPriorsIgnored(false); //temporary set false to use priors above to fix nodes of the map
-				_graphOptimizer->getConnectedGraph(signature->id(), poses, constraints, posesOut, edgeConstraintsOut);
+				// If slam2d: get connected graph while keeping original roll,pitch,z values.
+				_graphOptimizer->getConnectedGraph(signature->id(), poses, constraints, posesOut, edgeConstraintsOut, !_graphOptimizer->isSlam2d());
 				std::map<int, Transform> optPoses = _graphOptimizer->optimize(poses.begin()->first, posesOut, edgeConstraintsOut);
 				_graphOptimizer->setPriorsIgnored(priorsIgnored); // set back
 				for(std::map<int, Transform>::iterator iter=optPoses.begin(); iter!=optPoses.end(); ++iter)
@@ -3067,12 +3073,7 @@ bool Rtabmap::process(
 							Transform oldPose = _optimizedPoses.at(localizationLinks.rbegin()->first);
 							Transform mapCorrectionInv = _mapCorrection.inverse();
 							Transform u = signature->getPose() * localizationLinks.rbegin()->second.transform();
-							if(_graphOptimizer->isSlam2d())
-							{
-								// in case of 3d landmarks, transform constraint to 2D
-								u = u.to3DoF();
-							}
-							else if(_graphOptimizer->gravitySigma() > 0)
+							if(_graphOptimizer->gravitySigma() > 0)
 							{
                                 // Adjust transform with gravity
                                 Transform transform = localizationLinks.rbegin()->second.transform();
@@ -3122,6 +3123,11 @@ bool Rtabmap::process(
                                 }
 							}
 							Transform up = u * oldPose.inverse();
+							if(_graphOptimizer->isSlam2d())
+							{
+								// in case of 3d landmarks, transform constraint to 2D
+								up.to3DoF();
+							}
 							for(std::map<int, Transform>::iterator iter=_optimizedPoses.begin(); iter!=_optimizedPoses.end(); ++iter)
 							{
 								iter->second = mapCorrectionInv * up * iter->second;
@@ -3132,7 +3138,7 @@ bool Rtabmap::process(
 						{
 							Transform newPose = _optimizedPoses.at(localizationLinks.rbegin()->first) * localizationLinks.rbegin()->second.transform().inverse();
 							UDEBUG("newPose=%s", newPose.prettyPrint().c_str());
-							if(_graphOptimizer->isSlam2d())
+							if(_graphOptimizer->isSlam2d() && signature->getPose().is3DoF())
 							{
 								// in case of 3d landmarks, transform constraint to 2D
 								newPose = newPose.to3DoF();
@@ -3607,10 +3613,8 @@ bool Rtabmap::process(
 
 	Signature lastSignatureData(signature->id());
 	Transform lastSignatureLocalizedPose;
-	if(_optimizedPoses.find(signature->id()) != _optimizedPoses.end() &&
-		graph::filterLinks(signature->getLinks(), Link::kSelfRefLink).size())
+	if(_optimizedPoses.find(signature->id()) != _optimizedPoses.end())
 	{
-		// only if localized set it
 		lastSignatureLocalizedPose = _optimizedPoses.at(signature->id());
 	}
 	if(_publishLastSignatureData)
@@ -3762,8 +3766,8 @@ bool Rtabmap::process(
 
 			if(signaturesRemoved.size() == 1 && signaturesRemoved.front() == lastSignatureData.id())
 			{
-				UDEBUG("Detected that only last signature has been removed");
 				int lastId = signaturesRemoved.front();
+				UDEBUG("Detected that only last signature has been removed (lastId=%d)", lastId);
 				_optimizedPoses.erase(lastId);
 				for(std::multimap<int, Link>::iterator iter=_constraints.find(lastId); iter!=_constraints.end() && iter->first==lastId;++iter)
 				{
@@ -6319,6 +6323,16 @@ void Rtabmap::createGlobalScanMap()
 					break;
 				}
 			}
+			else
+			{
+				UDEBUG("Ignored %d (scan is empty), pose still added.", iter->first);
+				_globalScanMapPoses.insert(*iter);
+			}
+		}
+		else
+		{
+			UDEBUG("Ignored %d (no scan), pose still added.", iter->first);
+			_globalScanMapPoses.insert(*iter);
 		}
 	}
 	if(_globalScanMap.size() > 3)
