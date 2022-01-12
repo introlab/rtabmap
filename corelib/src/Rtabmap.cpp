@@ -2957,7 +2957,8 @@ bool Rtabmap::process(
 							maxLinearError,
 							maxAngularError,
 							&maxLinearLink,
-							&maxAngularLink);
+							&maxAngularLink,
+							_graphOptimizer->isSlam2d());
 					if(maxLinearLink == 0 && maxAngularLink==0 && _maxOdomCacheSize>0)
 					{
 						UWARN("Could not compute graph errors! Wrong loop closures could be accepted!");
@@ -5568,7 +5569,8 @@ bool Rtabmap::addLink(const Link & link)
 					maxLinearError,
 					maxAngularError,
 					&maxLinearLink,
-					&maxAngularLink);
+					&maxAngularLink,
+					_graphOptimizer->isSlam2d());
 			if(maxLinearLink == 0 && maxAngularLink==0)
 			{
 				UWARN("Could not compute graph errors! Wrong loop closures could be accepted!");

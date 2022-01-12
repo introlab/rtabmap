@@ -898,7 +898,8 @@ void computeMaxGraphErrors(
 		float & maxLinearError,
 		float & maxAngularError,
 		const Link ** maxLinearErrorLink,
-		const Link ** maxAngularErrorLink)
+		const Link ** maxAngularErrorLink,
+		bool for3DoF)
 {
 	maxLinearErrorRatio = -1;
 	maxAngularErrorRatio = -1;
@@ -918,7 +919,7 @@ void computeMaxGraphErrors(
 			float linearError = uMax3(
 					fabs(iter->second.transform().x() - t.x()),
 					fabs(iter->second.transform().y() - t.y()),
-					fabs(iter->second.transform().z() - t.z()));
+					for3DoF?0:fabs(iter->second.transform().z() - t.z()));
 			UASSERT(iter->second.transVariance(false)>0.0);
 			float stddevLinear = sqrt(iter->second.transVariance(false));
 			float linearErrorRatio = linearError/stddevLinear;
@@ -937,8 +938,8 @@ void computeMaxGraphErrors(
 			t.getEulerAngles(opt_roll, opt_pitch, opt_yaw);
 			iter->second.transform().getEulerAngles(link_roll, link_pitch, link_yaw);
 			float angularError = uMax3(
-					fabs(opt_roll - link_roll),
-					fabs(opt_pitch - link_pitch),
+					for3DoF?0:fabs(opt_roll - link_roll),
+					for3DoF?0:fabs(opt_pitch - link_pitch),
 					fabs(opt_yaw - link_yaw));
 			angularError = angularError>M_PI?2*M_PI-angularError:angularError;
 			UASSERT(iter->second.rotVariance(false)>0.0);

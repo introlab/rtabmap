@@ -329,6 +329,7 @@ Transform RegistrationIcp::computeTransformationImpl(
 	UDEBUG("Max translation=%f", _maxTranslation);
 	UDEBUG("Max rotation=%f", _maxRotation);
 	UDEBUG("Downsampling step=%d", _downsamplingStep);
+	UDEBUG("Force 3DoF=%s", this->force3DoF()?"true":"false");
 	UDEBUG("Force 4DoF=%s", _force4DoF?"true":"false");
 	UDEBUG("Min Complexity=%f", _pointToPlaneMinComplexity);
 	UDEBUG("libpointmatcher (knn=%d, outlier ratio=%f)", _libpointmatcherKnn, _outlierRatio);

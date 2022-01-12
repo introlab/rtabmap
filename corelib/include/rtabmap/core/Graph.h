@@ -125,7 +125,8 @@ void RTABMAP_EXP computeMaxGraphErrors(
 		float & maxLinearError,
 		float & maxAngularError,
 		const Link ** maxLinearErrorLink = 0,
-		const Link ** maxAngularErrorLink = 0);
+		const Link ** maxAngularErrorLink = 0,
+		bool for3DoF = false);
 
 std::vector<double> RTABMAP_EXP getMaxOdomInf(const std::multimap<int, Link> & links);
 
