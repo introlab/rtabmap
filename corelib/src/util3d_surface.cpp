@@ -3493,6 +3493,7 @@ void adjustNormalsToViewPointImpl(
 		const Eigen::Vector3f & viewpoint,
 		float groundNormalsUp)
 {
+	#pragma omp parallel for
 	for(unsigned int i=0; i<cloud->size(); ++i)
 	{
 		pcl::PointXYZ normal(cloud->points[i].normal_x, cloud->points[i].normal_y, cloud->points[i].normal_z);
@@ -3559,17 +3560,20 @@ void adjustNormalsToViewPoint(
 	adjustNormalsToViewPointImpl<pcl::PointXYZINormal>(cloud, viewpoint, groundNormalsUp);
 }
 
-void adjustNormalsToViewPoints(
+
+template<typename PointT>
+void adjustNormalsToViewPointsImpl(
 		const std::map<int, Transform> & poses,
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & rawCloud,
 		const std::vector<int> & rawCameraIndices,
-		pcl::PointCloud<pcl::PointNormal>::Ptr & cloud)
+		typename pcl::PointCloud<PointT>::Ptr & cloud)
 {
 	if(poses.size() && rawCloud->size() && rawCloud->size() == rawCameraIndices.size() && cloud->size())
 	{
 		pcl::search::KdTree<pcl::PointXYZ>::Ptr rawTree (new pcl::search::KdTree<pcl::PointXYZ>);
 		rawTree->setInputCloud (rawCloud);
 
+		#pragma omp parallel for
 		for(unsigned int i=0; i<cloud->size(); ++i)
 		{
 			pcl::PointXYZ normal(cloud->points[i].normal_x, cloud->points[i].normal_y, cloud->points[i].normal_z);
@@ -3581,7 +3585,7 @@ void adjustNormalsToViewPoints(
 				UASSERT(indices.size() == 1);
 				if(indices.size() && indices[0]>=0)
 				{
-					Transform p = poses.at(rawCameraIndices[indices[0]]);
+					const Transform & p = poses.at(rawCameraIndices[indices[0]]);
 					pcl::PointXYZ viewpoint(p.x(), p.y(), p.z());
 					Eigen::Vector3f v = viewpoint.getVector3fMap() - cloud->points[i].getVector3fMap();
 
@@ -3609,48 +3613,27 @@ void adjustNormalsToViewPoints(
 		const std::map<int, Transform> & poses,
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & rawCloud,
 		const std::vector<int> & rawCameraIndices,
+		pcl::PointCloud<pcl::PointNormal>::Ptr & cloud)
+{
+	adjustNormalsToViewPointsImpl<pcl::PointNormal>(poses, rawCloud, rawCameraIndices, cloud);
+}
+
+void adjustNormalsToViewPoints(
+		const std::map<int, Transform> & poses,
+		const pcl::PointCloud<pcl::PointXYZ>::Ptr & rawCloud,
+		const std::vector<int> & rawCameraIndices,
 		pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud)
 {
-	UASSERT(rawCloud.get() && cloud.get());
-	UDEBUG("poses=%d, rawCloud=%d, rawCameraIndices=%d, cloud=%d", (int)poses.size(), (int)rawCloud->size(), (int)rawCameraIndices.size(), (int)cloud->size());
-	if(poses.size() && rawCloud->size() && rawCloud->size() == rawCameraIndices.size() && cloud->size())
-	{
-		pcl::search::KdTree<pcl::PointXYZ>::Ptr rawTree (new pcl::search::KdTree<pcl::PointXYZ>);
-		rawTree->setInputCloud (rawCloud);
-		for(unsigned int i=0; i<cloud->size(); ++i)
-		{
-			pcl::PointXYZ normal(cloud->points[i].normal_x, cloud->points[i].normal_y, cloud->points[i].normal_z);
-			if(pcl::isFinite(normal))
-			{
-				std::vector<int> indices;
-				std::vector<float> dist;
-				rawTree->nearestKSearch(pcl::PointXYZ(cloud->points[i].x, cloud->points[i].y, cloud->points[i].z), 1, indices, dist);
-				if(indices.size() && indices[0]>=0)
-				{
-					UASSERT_MSG(indices[0]<(int)rawCameraIndices.size(), uFormat("indices[0]=%d rawCameraIndices.size()=%d", indices[0], (int)rawCameraIndices.size()).c_str());
-					UASSERT(uContains(poses, rawCameraIndices[indices[0]]));
-					Transform p = poses.at(rawCameraIndices[indices[0]]);
-					pcl::PointXYZ viewpoint(p.x(), p.y(), p.z());
-					Eigen::Vector3f v = viewpoint.getVector3fMap() - cloud->points[i].getVector3fMap();
+	adjustNormalsToViewPointsImpl<pcl::PointXYZRGBNormal>(poses, rawCloud, rawCameraIndices, cloud);
+}
 
-					Eigen::Vector3f n(normal.x, normal.y, normal.z);
-
-					float result = v.dot(n);
-					if(result < 0)
-					{
-						//reverse normal
-						cloud->points[i].normal_x *= -1.0f;
-						cloud->points[i].normal_y *= -1.0f;
-						cloud->points[i].normal_z *= -1.0f;
-					}
-				}
-				else
-				{
-					UWARN("Not found camera viewpoint for point %d!?", i);
-				}
-			}
-		}
-	}
+void adjustNormalsToViewPoints(
+		const std::map<int, Transform> & poses,
+		const pcl::PointCloud<pcl::PointXYZ>::Ptr & rawCloud,
+		const std::vector<int> & rawCameraIndices,
+		pcl::PointCloud<pcl::PointXYZINormal>::Ptr & cloud)
+{
+	adjustNormalsToViewPointsImpl<pcl::PointXYZINormal>(poses, rawCloud, rawCameraIndices, cloud);
 }
 
 void adjustNormalsToViewPoints(
@@ -3665,6 +3648,7 @@ void adjustNormalsToViewPoints(
 		pcl::PointCloud<pcl::PointXYZ>::Ptr rawCloud = util3d::laserScanToPointCloud(rawScan);
 		pcl::search::KdTree<pcl::PointXYZ>::Ptr rawTree (new pcl::search::KdTree<pcl::PointXYZ>);
 		rawTree->setInputCloud (rawCloud);
+		#pragma omp parallel for
 		for(int i=0; i<scan.size(); ++i)
 		{
 			pcl::PointNormal point = util3d::laserScanToPointNormal(scan, i);

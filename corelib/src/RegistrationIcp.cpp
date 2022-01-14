@@ -277,8 +277,12 @@ void RegistrationIcp::parseParameters(const ParametersMap & parameters)
 #ifndef RTABMAP_CCCORELIB
 	if(_strategy==2)
 	{
-		UWARN("Parameter %s is set to true but RTAB-Map has not been built with CCCoreLib support. Setting to 0.", Parameters::kIcpStrategy().c_str());
+#ifdef RTABMAP_POINTMATCHER
+		_strategy = 1;
+#else
 		_strategy = 0;
+#endif
+		UWARN("Parameter %s is set to 2 but RTAB-Map has not been built with CCCoreLib support. Setting to %d.", Parameters::kIcpStrategy().c_str(), _strategy);
 	}
 #else
 	if(_strategy==2 && _pointToPlane)

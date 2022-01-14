@@ -151,6 +151,7 @@ ExportCloudsDialog::ExportCloudsDialog(QWidget *parent) :
 	connect(_ui->checkBox_assemble, SIGNAL(clicked(bool)), this, SIGNAL(configChanged()));
 	connect(_ui->checkBox_assemble, SIGNAL(clicked(bool)), this, SLOT(updateReconstructionFlavor()));
 	connect(_ui->doubleSpinBox_voxelSize_assembled, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
+	connect(_ui->spinBox_randomSamples_assembled, SIGNAL(valueChanged(int)), this, SIGNAL(configChanged()));
 	connect(_ui->comboBox_frame, SIGNAL(currentIndexChanged(int)), this, SIGNAL(configChanged()));
 	connect(_ui->comboBox_frame, SIGNAL(currentIndexChanged(int)), this, SLOT(updateReconstructionFlavor()));
 
@@ -383,6 +384,7 @@ void ExportCloudsDialog::saveSettings(QSettings & settings, const QString & grou
 
 	settings.setValue("assemble", _ui->checkBox_assemble->isChecked());
 	settings.setValue("assemble_voxel",_ui->doubleSpinBox_voxelSize_assembled->value());
+	settings.setValue("assemble_samples",_ui->spinBox_randomSamples_assembled->value());
 	settings.setValue("frame",_ui->comboBox_frame->currentIndex());
 
 	settings.setValue("subtract",_ui->checkBox_subtraction->isChecked());
@@ -555,6 +557,7 @@ void ExportCloudsDialog::loadSettings(QSettings & settings, const QString & grou
 		_ui->checkBox_assemble->setChecked(settings.value("assemble", _ui->checkBox_assemble->isChecked()).toBool());
 	}
 	_ui->doubleSpinBox_voxelSize_assembled->setValue(settings.value("assemble_voxel", _ui->doubleSpinBox_voxelSize_assembled->value()).toDouble());
+	_ui->spinBox_randomSamples_assembled->setValue(settings.value("assemble_samples", _ui->spinBox_randomSamples_assembled->value()).toInt());
 	_ui->comboBox_frame->setCurrentIndex(settings.value("frame", _ui->comboBox_frame->currentIndex()).toInt());
 
 	_ui->checkBox_subtraction->setChecked(settings.value("subtract",_ui->checkBox_subtraction->isChecked()).toBool());
@@ -724,6 +727,7 @@ void ExportCloudsDialog::restoreDefaults()
 
 	_ui->checkBox_assemble->setChecked(true);
 	_ui->doubleSpinBox_voxelSize_assembled->setValue(0.01);
+	_ui->spinBox_randomSamples_assembled->setValue(0);
 	_ui->comboBox_frame->setCurrentIndex(0);
 
 	_ui->checkBox_subtraction->setChecked(false);
@@ -1900,6 +1904,7 @@ bool ExportCloudsDialog::getExportedClouds(
 					assembledCloud->points[i].normal_y = normals->points[i].normal_y;
 					assembledCloud->points[i].normal_z = normals->points[i].normal_z;
 				}
+				_progressDialog->appendText(tr("Adjusting normals to viewpoints (%1 points)...").arg(assembledCloud->size()));
 
 				// adjust with point of views
 				util3d::adjustNormalsToViewPoints(
@@ -1907,6 +1912,18 @@ bool ExportCloudsDialog::getExportedClouds(
 											rawAssembledCloud,
 											rawCameraIndices,
 											assembledCloud);
+			}
+
+			if(_ui->spinBox_randomSamples_assembled->value()>0 &&
+			   (int)assembledCloud->size() > _ui->spinBox_randomSamples_assembled->value())
+			{
+				_progressDialog->appendText(tr("Random samples filtering (in=%1 points, samples=%2)...")
+														.arg(assembledCloud->size())
+														.arg(_ui->spinBox_randomSamples_assembled->value()));
+				assembledCloud = util3d::randomSampling(assembledCloud, _ui->spinBox_randomSamples_assembled->value());
+				_progressDialog->appendText(tr("Random samples filtering (out=%1 points, samples=%2)... done!")
+																		.arg(assembledCloud->size())
+																		.arg(_ui->spinBox_randomSamples_assembled->value()));
 			}
 
 			clouds.insert(std::make_pair(0, std::make_pair(assembledCloud, indices)));

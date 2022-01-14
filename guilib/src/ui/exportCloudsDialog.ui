@@ -23,83 +23,25 @@
       <property name="geometry">
        <rect>
         <x>0</x>
-        <y>-3537</y>
+        <y>0</y>
         <width>998</width>
-        <height>5673</height>
+        <height>5713</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_13">
        <item>
         <layout class="QGridLayout" name="gridLayout_8" columnstretch="0,1">
-         <item row="1" column="0">
-          <widget class="QComboBox" name="comboBox_pipeline">
-           <item>
-            <property name="text">
-             <string>Organized Point Cloud</string>
-            </property>
-           </item>
-           <item>
-            <property name="text">
-             <string>Dense Point Cloud</string>
-            </property>
-           </item>
-          </widget>
-         </item>
-         <item row="1" column="1">
-          <widget class="QLabel" name="label_12">
-           <property name="text">
-            <string>Reconstruction flavor.</string>
-           </property>
-          </widget>
-         </item>
-         <item row="11" column="0">
-          <widget class="QCheckBox" name="checkBox_regenerate">
+         <item row="17" column="0">
+          <widget class="QCheckBox" name="checkBox_meshing">
            <property name="text">
             <string/>
            </property>
           </widget>
          </item>
-         <item row="12" column="0">
-          <widget class="QCheckBox" name="checkBox_filtering">
+         <item row="17" column="1">
+          <widget class="QLabel" name="label_binaryFile_12">
            <property name="text">
-            <string/>
-           </property>
-          </widget>
-         </item>
-         <item row="11" column="1">
-          <widget class="QLabel" name="label_regenerate">
-           <property name="text">
-            <string>Regenerate clouds. This can be used to regenerate the point clouds at higher density than those used for online visualization.</string>
-           </property>
-           <property name="wordWrap">
-            <bool>true</bool>
-           </property>
-          </widget>
-         </item>
-         <item row="8" column="1">
-          <widget class="QLabel" name="label_voxel">
-           <property name="text">
-            <string>Voxel size. Set 0 to disable. When organized meshes are assembled, this is the radius in which the vertices of the polygons are merged.</string>
-           </property>
-           <property name="wordWrap">
-            <bool>true</bool>
-           </property>
-          </widget>
-         </item>
-         <item row="4" column="1">
-          <widget class="QLabel" name="label_binaryFile_2">
-           <property name="text">
-            <string>Assemble clouds/meshes to a single output cloud/mesh.</string>
-           </property>
-           <property name="wordWrap">
-            <bool>true</bool>
-           </property>
-          </widget>
-         </item>
-         <item row="5" column="1">
-          <widget class="QLabel" name="label_frame">
-           <property name="text">
-            <string>Output frame.</string>
+            <string>Meshing.</string>
            </property>
            <property name="wordWrap">
             <bool>true</bool>
@@ -116,17 +58,37 @@
            </property>
           </widget>
          </item>
-         <item row="13" column="0">
+         <item row="5" column="1">
+          <widget class="QLabel" name="label_frame">
+           <property name="text">
+            <string>Output frame.</string>
+           </property>
+           <property name="wordWrap">
+            <bool>true</bool>
+           </property>
+          </widget>
+         </item>
+         <item row="11" column="1">
+          <widget class="QLabel" name="label_binaryFile_10">
+           <property name="text">
+            <string>Nodes filtering. Filter nodes to be exported in a specified region .</string>
+           </property>
+           <property name="wordWrap">
+            <bool>true</bool>
+           </property>
+          </widget>
+         </item>
+         <item row="14" column="0">
           <widget class="QCheckBox" name="checkBox_smoothing">
            <property name="text">
             <string/>
            </property>
           </widget>
          </item>
-         <item row="12" column="1">
-          <widget class="QLabel" name="label_binaryFile_9">
+         <item row="14" column="1">
+          <widget class="QLabel" name="label_smoothing">
            <property name="text">
-            <string>Cloud filtering.</string>
+            <string>Cloud smoothing using Moving Least Squares algorithm (MLS).</string>
            </property>
            <property name="wordWrap">
             <bool>true</bool>
@@ -143,37 +105,25 @@
            </property>
           </widget>
          </item>
-         <item row="13" column="1">
-          <widget class="QLabel" name="label_smoothing">
+         <item row="16" column="0">
+          <widget class="QCheckBox" name="checkBox_cameraProjection">
            <property name="text">
-            <string>Cloud smoothing using Moving Least Squares algorithm (MLS).</string>
+            <string/>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="1">
+          <widget class="QLabel" name="label_binaryFile_11">
+           <property name="text">
+            <string>From RGB-D images. If not checked, clouds will be generated from laser scans.</string>
            </property>
            <property name="wordWrap">
             <bool>true</bool>
            </property>
           </widget>
          </item>
-         <item row="8" column="0">
-          <widget class="QDoubleSpinBox" name="doubleSpinBox_voxelSize_assembled">
-           <property name="suffix">
-            <string> m</string>
-           </property>
-           <property name="decimals">
-            <number>3</number>
-           </property>
-           <property name="maximum">
-            <double>1.000000000000000</double>
-           </property>
-           <property name="singleStep">
-            <double>0.010000000000000</double>
-           </property>
-           <property name="value">
-            <double>0.005000000000000</double>
-           </property>
-          </widget>
-         </item>
-         <item row="4" column="0">
-          <widget class="QCheckBox" name="checkBox_assemble">
+         <item row="11" column="0">
+          <widget class="QCheckBox" name="checkBox_nodes_filtering">
            <property name="text">
             <string/>
            </property>
@@ -187,6 +137,56 @@
            <property name="wordWrap">
             <bool>true</bool>
            </property>
+          </widget>
+         </item>
+         <item row="12" column="0">
+          <widget class="QCheckBox" name="checkBox_regenerate">
+           <property name="text">
+            <string/>
+           </property>
+          </widget>
+         </item>
+         <item row="15" column="1">
+          <widget class="QLabel" name="label_gainCompensation">
+           <property name="text">
+            <string>Gain compensation. Normalize brightness of images.</string>
+           </property>
+           <property name="wordWrap">
+            <bool>true</bool>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="0">
+          <widget class="QComboBox" name="comboBox_pipeline">
+           <item>
+            <property name="text">
+             <string>Organized Point Cloud</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>Dense Point Cloud</string>
+            </property>
+           </item>
+          </widget>
+         </item>
+         <item row="10" column="0">
+          <widget class="QComboBox" name="comboBox_intensityColormap">
+           <item>
+            <property name="text">
+             <string>GrayScale</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>RedYellow</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>Rainbow</string>
+            </property>
+           </item>
           </widget>
          </item>
          <item row="5" column="0">
@@ -213,6 +213,100 @@
            </item>
           </widget>
          </item>
+         <item row="4" column="0">
+          <widget class="QCheckBox" name="checkBox_assemble">
+           <property name="text">
+            <string/>
+           </property>
+          </widget>
+         </item>
+         <item row="10" column="1">
+          <widget class="QLabel" name="label_intensityColormap">
+           <property name="text">
+            <string>Intensity colormap.</string>
+           </property>
+           <property name="wordWrap">
+            <bool>true</bool>
+           </property>
+          </widget>
+         </item>
+         <item row="8" column="0">
+          <widget class="QDoubleSpinBox" name="doubleSpinBox_voxelSize_assembled">
+           <property name="suffix">
+            <string> m</string>
+           </property>
+           <property name="decimals">
+            <number>3</number>
+           </property>
+           <property name="maximum">
+            <double>1.000000000000000</double>
+           </property>
+           <property name="singleStep">
+            <double>0.010000000000000</double>
+           </property>
+           <property name="value">
+            <double>0.005000000000000</double>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="0">
+          <widget class="QCheckBox" name="checkBox_fromDepth">
+           <property name="text">
+            <string/>
+           </property>
+           <property name="checked">
+            <bool>true</bool>
+           </property>
+          </widget>
+         </item>
+         <item row="7" column="0">
+          <widget class="QDoubleSpinBox" name="doubleSpinBox_normalRadiusSearch">
+           <property name="singleStep">
+            <double>0.010000000000000</double>
+           </property>
+          </widget>
+         </item>
+         <item row="15" column="0">
+          <widget class="QCheckBox" name="checkBox_gainCompensation">
+           <property name="text">
+            <string/>
+           </property>
+          </widget>
+         </item>
+         <item row="12" column="1">
+          <widget class="QLabel" name="label_regenerate">
+           <property name="text">
+            <string>Regenerate clouds. This can be used to regenerate the point clouds at higher density than those used for online visualization.</string>
+           </property>
+           <property name="wordWrap">
+            <bool>true</bool>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="1">
+          <widget class="QLabel" name="label_12">
+           <property name="text">
+            <string>Reconstruction flavor.</string>
+           </property>
+          </widget>
+         </item>
+         <item row="13" column="0">
+          <widget class="QCheckBox" name="checkBox_filtering">
+           <property name="text">
+            <string/>
+           </property>
+          </widget>
+         </item>
+         <item row="4" column="1">
+          <widget class="QLabel" name="label_binaryFile_2">
+           <property name="text">
+            <string>Assemble clouds/meshes to a single output cloud/mesh.</string>
+           </property>
+           <property name="wordWrap">
+            <bool>true</bool>
+           </property>
+          </widget>
+         </item>
          <item row="3" column="0">
           <widget class="QCheckBox" name="checkBox_binary">
            <property name="text">
@@ -223,22 +317,22 @@
            </property>
           </widget>
          </item>
-         <item row="0" column="1">
-          <widget class="QLabel" name="label_binaryFile_11">
+         <item row="8" column="1">
+          <widget class="QLabel" name="label_voxel">
            <property name="text">
-            <string>From RGB-D images. If not checked, clouds will be generated from laser scans.</string>
+            <string>Voxel size. Set 0 to disable. When organized meshes are assembled, this is the radius in which the vertices of the polygons are merged.</string>
            </property>
            <property name="wordWrap">
             <bool>true</bool>
            </property>
           </widget>
          </item>
-         <item row="0" column="0">
-          <widget class="QCheckBox" name="checkBox_fromDepth">
+         <item row="13" column="1">
+          <widget class="QLabel" name="label_binaryFile_9">
            <property name="text">
-            <string/>
+            <string>Cloud filtering.</string>
            </property>
-           <property name="checked">
+           <property name="wordWrap">
             <bool>true</bool>
            </property>
           </widget>
@@ -253,53 +347,7 @@
            </property>
           </widget>
          </item>
-         <item row="7" column="0">
-          <widget class="QDoubleSpinBox" name="doubleSpinBox_normalRadiusSearch">
-           <property name="singleStep">
-            <double>0.010000000000000</double>
-           </property>
-          </widget>
-         </item>
-         <item row="9" column="1">
-          <widget class="QLabel" name="label_intensityColormap">
-           <property name="text">
-            <string>Intensity colormap.</string>
-           </property>
-           <property name="wordWrap">
-            <bool>true</bool>
-           </property>
-          </widget>
-         </item>
-         <item row="9" column="0">
-          <widget class="QComboBox" name="comboBox_intensityColormap">
-           <item>
-            <property name="text">
-             <string>GrayScale</string>
-            </property>
-           </item>
-           <item>
-            <property name="text">
-             <string>RedYellow</string>
-            </property>
-           </item>
-           <item>
-            <property name="text">
-             <string>Rainbow</string>
-            </property>
-           </item>
-          </widget>
-         </item>
-         <item row="14" column="1">
-          <widget class="QLabel" name="label_gainCompensation">
-           <property name="text">
-            <string>Gain compensation. Normalize brightness of images.</string>
-           </property>
-           <property name="wordWrap">
-            <bool>true</bool>
-           </property>
-          </widget>
-         </item>
-         <item row="15" column="1">
+         <item row="16" column="1">
           <widget class="QLabel" name="label_cameraProjection">
            <property name="text">
             <string>Camera projection. This can be used to colorize point cloud created from scans and/or export camera IDs for each point of the cloud.</string>
@@ -309,51 +357,29 @@
            </property>
           </widget>
          </item>
-         <item row="14" column="0">
-          <widget class="QCheckBox" name="checkBox_gainCompensation">
+         <item row="9" column="1">
+          <widget class="QLabel" name="label_voxel_2">
            <property name="text">
-            <string/>
-           </property>
-          </widget>
-         </item>
-         <item row="15" column="0">
-          <widget class="QCheckBox" name="checkBox_cameraProjection">
-           <property name="text">
-            <string/>
-           </property>
-          </widget>
-         </item>
-         <item row="16" column="1">
-          <widget class="QLabel" name="label_binaryFile_12">
-           <property name="text">
-            <string>Meshing.</string>
+            <string>Number of samples to keep, done with a random sample filter. Only used when clouds are assembled. Set 0 to disable.</string>
            </property>
            <property name="wordWrap">
             <bool>true</bool>
            </property>
           </widget>
          </item>
-         <item row="16" column="0">
-          <widget class="QCheckBox" name="checkBox_meshing">
-           <property name="text">
-            <string/>
+         <item row="9" column="0">
+          <widget class="QSpinBox" name="spinBox_randomSamples_assembled">
+           <property name="minimum">
+            <number>0</number>
            </property>
-          </widget>
-         </item>
-         <item row="10" column="1">
-          <widget class="QLabel" name="label_binaryFile_10">
-           <property name="text">
-            <string>Nodes filtering. Filter nodes to be exported in a specified region .</string>
+           <property name="maximum">
+            <number>99999999</number>
            </property>
-           <property name="wordWrap">
-            <bool>true</bool>
+           <property name="singleStep">
+            <number>10000</number>
            </property>
-          </widget>
-         </item>
-         <item row="10" column="0">
-          <widget class="QCheckBox" name="checkBox_nodes_filtering">
-           <property name="text">
-            <string/>
+           <property name="value">
+            <number>0</number>
            </property>
           </widget>
          </item>
