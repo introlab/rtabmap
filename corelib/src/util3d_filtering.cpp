@@ -1305,7 +1305,7 @@ pcl::IndicesPtr proportionalRadiusFilteringImpl(
 		std::vector<bool> kept(cloud->size());
 		tree->setInputCloud(cloud);
 		#pragma omp parallel for
-		for(size_t i=0; i<cloud->size(); ++i)
+		for(int i=0; i<(int)cloud->size(); ++i)
 		{
 			std::vector<int> kIndices;
 			std::vector<float> kDistances;

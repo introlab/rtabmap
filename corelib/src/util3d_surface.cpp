@@ -3494,7 +3494,7 @@ void adjustNormalsToViewPointImpl(
 		float groundNormalsUp)
 {
 	#pragma omp parallel for
-	for(unsigned int i=0; i<cloud->size(); ++i)
+	for(int i=0; i<(int)cloud->size(); ++i)
 	{
 		pcl::PointXYZ normal(cloud->points[i].normal_x, cloud->points[i].normal_y, cloud->points[i].normal_z);
 		if(pcl::isFinite(normal))
@@ -3574,7 +3574,7 @@ void adjustNormalsToViewPointsImpl(
 		rawTree->setInputCloud (rawCloud);
 
 		#pragma omp parallel for
-		for(unsigned int i=0; i<cloud->size(); ++i)
+		for(int i=0; i<(int)cloud->size(); ++i)
 		{
 			pcl::PointXYZ normal(cloud->points[i].normal_x, cloud->points[i].normal_y, cloud->points[i].normal_z);
 			if(pcl::isFinite(normal))
