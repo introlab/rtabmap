@@ -1407,6 +1407,7 @@ bool Rtabmap::process(
 
 		// Update optimizedPoses with the newly added node
 		Transform newPose;
+		bool intermediateNodeRefining = false;
 		if(_neighborLinkRefining &&
 			signature->getLinks().size() &&
 			signature->getLinks().begin()->second.type() == Link::kNeighbor &&
@@ -1507,9 +1508,8 @@ bool Rtabmap::process(
 			}
 			else
 			{
-				UWARN("Neighbor link refining is activated but there are intermediate nodes (%d=%d %d=%d), aborting refining...",
-						signature->id(), signature->getWeight(), oldS->id(), oldS->getWeight());
 				newPose = _mapCorrection * signature->getPose();
+				intermediateNodeRefining = true;
 			}
 		}
 		else
@@ -1633,7 +1633,7 @@ bool Rtabmap::process(
 		//============================================================
 		// Local loop closure in TIME
 		//============================================================
-		if(_proximityByTime &&
+		if((_proximityByTime || intermediateNodeRefining) &&
 		   rehearsedId == 0 && // don't do it if rehearsal happened
 		   _memory->isIncremental() && // don't do it in localization mode
 		   signature->getWeight()>=0)
@@ -1683,6 +1683,12 @@ bool Rtabmap::process(
 					{
 						UINFO("Local loop closure (time) between %d and %d rejected: %s",
 								*iter, signature->id(), rejectedMsg.c_str());
+					}
+
+					if(!_proximityByTime && intermediateNodeRefining)
+					{
+						// Do it only with the latest non-intermediate node
+						break;
 					}
 				}
 			}

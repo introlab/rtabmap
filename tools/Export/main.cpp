@@ -110,7 +110,7 @@ void showUsage()
 			"    --noise_radius  #     Noise filtering search radius (default 0, 0=disabled).\n"
 			"    --noise_k       #     Noise filtering minimum neighbors in search radius (default 5, 0=disabled).\n"
 			"    --prop_radius_factor #  Proportional radius filter factor (default 0, 0=disabled). Start tuning from 0.01.\n"
-			"    --prop_radius_scale  #  Proportional radius filter neighbor scale (default 1).\n"
+			"    --prop_radius_scale  #  Proportional radius filter neighbor scale (default 2).\n"
 			"    --random_samples #    Number of output samples using a random filter (default 0, 0=disabled).\n"
 			"    --color_radius  #     Radius used to colorize polygons (default 0.05 m, 0 m with --scan). Set 0 for nearest color.\n"
 			"    --scan                Use laser scan for the point cloud.\n"
@@ -168,7 +168,7 @@ int main(int argc, char * argv[])
 	float noiseRadius = 0.0f;
 	int noiseMinNeighbors = 5;
 	float proportionalRadiusFactor = 0.0f;
-	float proportionalRadiusScale = 1.0f;
+	float proportionalRadiusScale = 2.0f;
 	int randomSamples = 0;
 	int textureSize = 8192;
 	int textureCount = 1;
@@ -626,6 +626,7 @@ int main(int argc, char * argv[])
 			if(i<argc-1)
 			{
 				proportionalRadiusScale = uStr2Float(argv[i]);
+				UASSERT_MSG(proportionalRadiusScale>=1.0f, "--prop_radius_scale should be >= 1.0");
 			}
 			else
 			{
@@ -1225,7 +1226,7 @@ int main(int argc, char * argv[])
 			}
 		}
 
-		if(proportionalRadiusFactor>0.0f)
+		if(proportionalRadiusFactor>0.0f && proportionalRadiusScale>=1.0f)
 		{
 			printf("Proportional radius filtering of the assembled cloud... (factor=%f scale=%f, %d points)\n", proportionalRadiusFactor, proportionalRadiusScale, !assembledCloud->empty()?(int)assembledCloud->size():(int)assembledCloudI->size());
 			pcl::IndicesPtr indices;

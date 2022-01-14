@@ -1123,7 +1123,7 @@ pcl::IndicesPtr radiusFilteringImpl(
 		{
 			std::vector<int> kIndices;
 			std::vector<float> kDistances;
-			int k = tree->radiusSearch(cloud->at(indices->at(i)), radiusSearch, kIndices, kDistances);
+			int k = tree->radiusSearch(cloud->at(indices->at(i)), radiusSearch, kIndices, kDistances, minNeighborsInRadius+1);
 			if(k > minNeighborsInRadius)
 			{
 				output->at(oi++) = indices->at(i);
@@ -1141,7 +1141,7 @@ pcl::IndicesPtr radiusFilteringImpl(
 		{
 			std::vector<int> kIndices;
 			std::vector<float> kDistances;
-			int k = tree->radiusSearch(cloud->at(i), radiusSearch, kIndices, kDistances);
+			int k = tree->radiusSearch(cloud->at(i), radiusSearch, kIndices, kDistances, minNeighborsInRadius+1);
 			if(k > minNeighborsInRadius)
 			{
 				output->at(oi++) = i;
