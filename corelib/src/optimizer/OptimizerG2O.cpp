@@ -145,6 +145,7 @@ OptimizerG2O::OptimizerG2O(const ParametersMap & parameters) :
 		robustKernelDelta_(Parameters::defaultg2oRobustKernelDelta()),
 		baseline_(Parameters::defaultg2oBaseline())
 {
+#ifdef RTABMAP_G2O
 	// Issue on android, have to explicitly register this type when using fixed root prior below
 	if(!g2o::Factory::instance()->knowsTag("CACHE_SE3_OFFSET"))
 	{
@@ -154,6 +155,7 @@ OptimizerG2O::OptimizerG2O(const ParametersMap & parameters) :
 		g2o::Factory::instance()->registerType("CACHE_SE3_OFFSET", new g2o::HyperGraphElementCreator<g2o::CacheSE3Offset>);
 #endif
 	}
+#endif
 	parseParameters(parameters);
 }
 
