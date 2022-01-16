@@ -670,7 +670,7 @@ class RTABMAP_EXP Parameters
     RTABMAP_PARAM(Icp, PointToPlane,                bool, false,  "Use point to plane ICP.");
 #endif
     RTABMAP_PARAM(Icp, PointToPlaneK,               int, 5,       "Number of neighbors to compute normals for point to plane if the cloud doesn't have already normals.");
-    RTABMAP_PARAM(Icp, PointToPlaneRadius,          float, 1.0,   "Search radius to compute normals for point to plane if the cloud doesn't have already normals.");
+    RTABMAP_PARAM(Icp, PointToPlaneRadius,          float, 0.0,   "Search radius to compute normals for point to plane if the cloud doesn't have already normals.");
     RTABMAP_PARAM(Icp, PointToPlaneGroundNormalsUp, float, 0.0,   "Invert normals on ground if they are pointing down (useful for ring-like 3D LiDARs). 0 means disabled, 1 means only normals perfectly aligned with -z axis. This is only done with 3D scans.");
     RTABMAP_PARAM(Icp, PointToPlaneMinComplexity,   float, 0.02,  uFormat("Minimum structural complexity (0.0=low, 1.0=high) of the scan to do PointToPlane registration, otherwise PointToPoint registration is done instead and strategy from %s is used. This check is done only when %s=true.", kIcpPointToPlaneLowComplexityStrategy().c_str(), kIcpPointToPlane().c_str()));
     RTABMAP_PARAM(Icp, PointToPlaneLowComplexityStrategy, int, 1, uFormat("If structural complexity is below %s: set to 0 to so that the transform is automatically rejected, set to 1 to limit ICP correction in axes with most constraints (e.g., for a corridor-like environment, the resulting transform will be limited in y and yaw, x will taken from the guess), set to 2 to accept \"as is\" the transform computed by PointToPoint.", kIcpPointToPlaneMinComplexity().c_str()));
