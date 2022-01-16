@@ -2702,6 +2702,16 @@ void DatabaseViewer::exportPoses(int format)
 			}
 		}
 
+		if(format != 4 && !poses.empty() && poses.begin()->first<0) // not g2o, landmark not supported
+		{
+			UWARN("Only g2o format (4) can export landmarks, they are ignored with format %d", format);
+			std::map<int, Transform>::iterator iter=poses.begin();
+			while(iter!=poses.end() && iter->first < 0)
+			{
+				poses.erase(iter++);
+			}
+		}
+
 		std::map<int, double> stamps;
 		if(format == 1 || format == 10 || format == 11)
 		{
@@ -2729,7 +2739,7 @@ void DatabaseViewer::exportPoses(int format)
 		}
 
 		QString output = pathDatabase_ + QDir::separator() + (format==3?"toro%1.graph":format==4?"poses%1.g2o":"poses%1.txt");
-		QString suffix = odometry?"_odom":"";
+		QString suffix = odometry?"_odom":groundTruth?"_gt":"";
 		output = output.arg(suffix);
 
 		QString path = QFileDialog::getSaveFileName(

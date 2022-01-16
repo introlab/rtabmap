@@ -6008,6 +6008,16 @@ void MainWindow::exportPoses(int format)
 			}
 		}
 
+		if(format != 4 && !poses.empty() && poses.begin()->first<0) // not g2o, landmark not supported
+		{
+			UWARN("Only g2o format (4) can export landmarks, they are ignored with format %d", format);
+			std::map<int, Transform>::iterator iter=poses.begin();
+			while(iter!=poses.end() && iter->first < 0)
+			{
+				poses.erase(iter++);
+			}
+		}
+
 		std::map<int, double> stamps;
 		if(format == 1 || format == 10 || format == 11)
 		{
