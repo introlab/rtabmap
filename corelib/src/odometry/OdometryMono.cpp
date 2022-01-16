@@ -205,7 +205,14 @@ Transform OdometryMono::computeTransform(SensorData & data, const Transform & gu
 	{
 		cv::Mat newFrame;
 		cv::cvtColor(data.imageRaw(), newFrame, cv::COLOR_BGR2GRAY);
-		data.setImageRaw(newFrame);
+		if(data.stereoCameraModel().isValidForProjection())
+		{
+			data.setStereoImage(newFrame, data.rightRaw(), data.stereoCameraModel());
+		}
+		else
+		{
+			data.setRGBDImage(newFrame, data.depthRaw(), data.cameraModels());
+		}
 	}
 
 	if(!localMap_.empty())
