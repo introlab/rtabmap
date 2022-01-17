@@ -336,10 +336,11 @@ void OccupancyGrid::createLocalMap(
 				const Transform & t = node.sensorData().laserScanRaw().localTransform();
 				LaserScan scan = util3d::downsample(node.sensorData().laserScanRaw(), scanDecimation_);
 #ifdef RTABMAP_OCTOMAP
-				// clipping will be done in OctoMap
-				float maxRange = grid3D_&&rayTracing_?0.0f:cloudMaxDepth_;
+				// If ray tracing enabled, clipping will be done in OctoMap or in occupancy2DFromLaserScan()
+				float maxRange = rayTracing_?0.0f:cloudMaxDepth_;
 #else
-				float maxRange = cloudMaxDepth_;
+				// If ray tracing enabled, clipping will be done in occupancy2DFromLaserScan()
+				float maxRange = !grid3d_ && rayTracing_?0.0f:cloudMaxDepth_;
 #endif
 				if(cloudMinDepth_ > 0.0f || maxRange > 0.0f)
 				{
@@ -390,10 +391,11 @@ void OccupancyGrid::createLocalMap(
 					node.sensorData(),
 					cloudDecimation_,
 #ifdef RTABMAP_OCTOMAP
-					// clipping will be done in OctoMap
-					grid3D_&&rayTracing_?0.0f:cloudMaxDepth_,
+					// If ray tracing enabled, clipping will be done in OctoMap or in occupancy2DFromLaserScan()
+					rayTracing_?0.0f:cloudMaxDepth_,
 #else
-					cloudMaxDepth_,
+					// If ray tracing enabled, clipping will be done in occupancy2DFromLaserScan()
+					!grid3D_&&rayTracing_?0.0f:cloudMaxDepth_,
 #endif
 					cloudMinDepth_,
 					indices.get(),
