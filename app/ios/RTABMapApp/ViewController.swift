@@ -1424,7 +1424,7 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
     func newScan()
     {
         print("databases.size() = \(databases.size())")
-        if(databases.count >= 10 && !mReviewRequested)
+        if(databases.count >= 5 && !mReviewRequested && self.depthSupported)
         {
             SKStoreReviewController.requestReviewInCurrentScene()
             mReviewRequested = true

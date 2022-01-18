@@ -428,7 +428,7 @@ int Scene::Render(const float * uvsTransformed, glm::mat4 arViewMatrix, glm::mat
 
 	if(renderBackgroundCamera)
 	{
-        if(projectionMatrix[0][0] > arProjectionMatrix[0][0]-0.2)
+        if(projectionMatrix[0][0] > arProjectionMatrix[0][0]-0.3)
         {
             projectionMatrix = arProjectionMatrix;
             viewMatrix = arViewMatrix;
