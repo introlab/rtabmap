@@ -208,7 +208,7 @@ class Scene {
   float b_;
   GLuint fboId_;
   GLuint rboId_;
-  GLuint depthTextures_[2]; // 0=objects+occlusion 1=objects only
+  GLuint depthTexture_; // 0=objects+occlusion
   GLsizei screenWidth_;
   GLsizei screenHeight_;
   bool doubleTapOn_;

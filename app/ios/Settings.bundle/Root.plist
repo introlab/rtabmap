@@ -14,7 +14,7 @@
 		</dict>
 		<dict>
 			<key>DefaultValue</key>
-			<integer>2</integer>
+			<integer>1</integer>
 			<key>Key</key>
 			<string>PointCloudDensity</string>
 			<key>Title</key>

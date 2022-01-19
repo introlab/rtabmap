@@ -70,8 +70,8 @@ private:
   rtabmap::Transform getPose() const {return pose_;}
   const glm::mat4 & getPoseGl() const {return poseGl_;}
   bool isVisible() const {return visible_;}
-  bool hasMesh() const {return polygons_.size()!=0;}
-  bool hasTexture() const {return textures_ != 0;}
+  bool hasMesh() const {return index_buffers_[0] != 0;}
+  bool hasTexture() const {return texture_ != 0;}
   float getMinHeight() const {return minHeight_;}
   const pcl::PointXYZ & aabbMinModel() const {return aabbMinModel_;}
   const pcl::PointXYZ & aabbMaxModel() const {return aabbMaxModel_;}
@@ -115,14 +115,10 @@ private:
 
  private:
   // Vertex buffer of the point cloud geometry.
-  GLuint vertex_buffers_;
-  GLuint textures_;
-  std::vector<GLuint> polygons_;
-  std::vector<GLuint> polygonsLowRes_;
-  std::vector<GLuint> polygonLines_;
-  std::vector<GLuint> polygonLinesLowRes_;
-  std::vector<GLuint> verticesLowRes_;
-  std::vector<GLuint> verticesLowLowRes_;
+  GLuint vertex_buffer_;
+  GLuint texture_;
+  std::vector<GLuint> index_buffers_;
+  std::vector<int> index_buffers_count_;
   int nPoints_;
   rtabmap::Transform pose_;
   glm::mat4 poseGl_;

@@ -1241,7 +1241,12 @@ int RTABMapApp::Render()
 	std::list<rtabmap::RtabmapEvent*> rtabmapEvents;
 	try
 	{
-		UTimer fpsTime;
+        if(camera_ == 0)
+        {
+            // We are not doing continous drawing, just measure single draw
+            fpsTime_.restart();
+        }
+        
 #ifdef DEBUG_RENDERING_PERFORMANCE
 		UTimer time;
 #endif
@@ -1488,12 +1493,12 @@ int RTABMapApp::Render()
 
 			main_scene_.setMeshRendering(main_scene_.hasMesh(g_optMeshId), main_scene_.hasTexture(g_optMeshId));
 
-			fpsTime.restart();
 			main_scene_.setFrustumVisible(camera_!=0);
 			lastDrawnCloudsCount_ = main_scene_.Render(uvsTransformed, arViewMatrix, arProjectionMatrix);
-			if(renderingTime_ < fpsTime.elapsed())
+            double fpsTime = fpsTime_.ticks();
+			if(renderingTime_ < fpsTime)
 			{
-				renderingTime_ = fpsTime.elapsed();
+				renderingTime_ = fpsTime;
 			}
 
 			// revert state
@@ -2095,13 +2100,13 @@ int RTABMapApp::Render()
 				notifyDataLoaded = true;
 			}
 
-			fpsTime.restart();
-			main_scene_.setFrustumVisible(camera_!=0);
+            main_scene_.setFrustumVisible(camera_!=0);
 			lastDrawnCloudsCount_ = main_scene_.Render(uvsTransformed, arViewMatrix, arProjectionMatrix, occlusionMesh, true);
-			if(renderingTime_ < fpsTime.elapsed())
+            double fpsTime = fpsTime_.ticks();
+            if(renderingTime_ < fpsTime)
 			{
-				renderingTime_ = fpsTime.elapsed();
-			}
+				renderingTime_ = fpsTime;
+            }
 
 			if(rtabmapEvents.size())
 			{
@@ -2155,16 +2160,6 @@ int RTABMapApp::Render()
 			rtabmap_->getMemory()->savePreviewImage(roi);
 			rtabmapMutex_.unlock();
 			screenshotReady_.release();
-		}
-
-		if((openingDatabase_ && !visualizingMesh_) || exporting_ || postProcessing_)
-		{
-			// throttle rendering max 5Hz if we are doing some processing
-			double renderTime = fpsTime.elapsed();
-			if(0.2 - renderTime > 0.0)
-			{
-				uSleep((0.2 - renderTime)*1000);
-			}
 		}
 
 		if((rtabmapThread_==0 || !rtabmapThread_->isRunning()) && lastPostRenderEventTime_ > 0.0)
