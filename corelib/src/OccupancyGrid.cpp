@@ -403,6 +403,7 @@ void OccupancyGrid::createLocalMap(
 					roiRatios_);
 
 			// update viewpoint
+			viewPoint = cv::Point3f(0,0,0);
 			if(node.sensorData().cameraModels().size())
 			{
 				// average of all local transforms
