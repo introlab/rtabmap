@@ -734,7 +734,7 @@ public class RTABMapActivity extends FragmentActivity implements OnClickListener
 		String cameraDriverStr = sharedPref.getString(getString(R.string.pref_key_camera_driver), getString(R.string.pref_default_camera_driver));
 		mCameraDriver = Integer.parseInt(cameraDriverStr);
 		
-		if(mCameraDriver == -1 && CheckTangoCoreVersion(MIN_TANGO_CORE_VERSION) && RTABMapLib.isBuiltWith(nativeApplication, 0))
+		if(mCameraDriver == -1)
 		{
 			// Prioritize tango if available
 			mCameraDriver = 0;
