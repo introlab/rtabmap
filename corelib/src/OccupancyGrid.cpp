@@ -340,7 +340,7 @@ void OccupancyGrid::createLocalMap(
 				float maxRange = rayTracing_?0.0f:cloudMaxDepth_;
 #else
 				// If ray tracing enabled, clipping will be done in occupancy2DFromLaserScan()
-				float maxRange = !grid3d_ && rayTracing_?0.0f:cloudMaxDepth_;
+				float maxRange = !grid3D_ && rayTracing_?0.0f:cloudMaxDepth_;
 #endif
 				if(cloudMinDepth_ > 0.0f || maxRange > 0.0f)
 				{
