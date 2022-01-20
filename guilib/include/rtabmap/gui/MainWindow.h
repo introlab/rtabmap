@@ -194,6 +194,7 @@ protected Q_SLOTS:
 	void postGoal(const QString & goal);
 	void cancelGoal();
 	void label();
+	void removeLabel();
 	void updateCacheFromDatabase();
 	void anchorCloudsToGroundTruth();
 	void selectScreenCaptureFormat(bool checked);

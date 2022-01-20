@@ -873,9 +873,25 @@ bool Rtabmap::labelLocation(int id, const std::string & label)
 		{
 			return _memory->labelSignature(id, label);
 		}
-		else if(_memory->getLastWorkingSignature())
+		else if(_memory->isIncremental() && _memory->getLastWorkingSignature())
 		{
 			return _memory->labelSignature(_memory->getLastWorkingSignature()->id(), label);
+		}
+		else if(!_memory->isIncremental() && !_lastLocalizationPose.isNull() && !_lastLocalizationPose.isIdentity())
+		{
+			std::map<int, Transform> nearestNodes = getNodesInRadius(_lastLocalizationPose, _localRadius, 1);
+			if(!nearestNodes.empty())
+			{
+				return _memory->labelSignature(nearestNodes.begin()->first, label);
+			}
+			else
+			{
+				UERROR("No nodes found inside %s=%fm of the current pose (%s). Cannot set label \"%s\"",
+						Parameters::kRGBDLocalRadius().c_str(),
+						_localRadius,
+						_lastLocalizationPose.prettyPrint().c_str(),
+						label.c_str());
+			}
 		}
 		else
 		{
@@ -1729,7 +1745,7 @@ bool Rtabmap::process(
 					if(_optimizedPoses.size() && _memory->isIncremental())
 					{
 						//Search for latest node having GPS linked to current signature not too far.
-						std::map<int, float> nearestIds = graph::getNodesInRadius(signature->id(), _optimizedPoses, _localRadius);
+						std::map<int, float> nearestIds = graph::findNearestNodes(signature->id(), _optimizedPoses, _localRadius);
 						for(std::map<int, float>::reverse_iterator iter=nearestIds.rbegin(); iter!=nearestIds.rend() && iter->first>0; ++iter)
 						{
 							const Signature * s = _memory->getSignature(iter->first);
@@ -2225,7 +2241,7 @@ bool Rtabmap::process(
 
 			// retrieval based on the nodes close the the nearest pose in WM
 			// immunize closest nodes
-			std::map<int, float> nearNodes = graph::getNodesInRadius(signature->id(), _optimizedPoses, _localRadius);
+			std::map<int, float> nearNodes = graph::findNearestNodes(signature->id(), _optimizedPoses, _localRadius);
 			// sort by distance
 			std::multimap<float, int> nearNodesByDist;
 			for(std::map<int, float>::iterator iter=nearNodes.lower_bound(1); iter!=nearNodes.end(); ++iter)
@@ -2412,7 +2428,7 @@ bool Rtabmap::process(
 				}
 				else
 				{
-					nearestIds = graph::getNodesInRadius(signature->id(), _optimizedPoses, _localRadius);
+					nearestIds = graph::findNearestNodes(signature->id(), _optimizedPoses, _localRadius);
 				}
 				UDEBUG("nearestIds=%d/%d", (int)nearestIds.size(), (int)_optimizedPoses.size());
 				std::map<int, Transform> nearestPoses;
@@ -2463,7 +2479,7 @@ bool Rtabmap::process(
 
 					//find the nearest pose on the path looking in the same direction
 					path.insert(std::make_pair(signature->id(), _optimizedPoses.at(signature->id())));
-					path = graph::getPosesInRadius(signature->id(), path, _localRadius, _proximityAngle);
+					path = graph::findNearestPoses(signature->id(), path, _localRadius, _proximityAngle);
 					//take the one with highest likelihood if not null
 					int nearestId = 0;
 					if(iter->first.likelihood > 0.0f &&
@@ -4286,7 +4302,7 @@ std::map<int, Transform> Rtabmap::getForwardWMPoses(
 		}
 		else
 		{
-			foundIds = graph::getNodesInRadius(fromId, _optimizedPoses, radius);
+			foundIds = graph::findNearestNodes(fromId, _optimizedPoses, radius);
 		}
 
 		float radiusSqrd = radius * radius;
@@ -4872,24 +4888,48 @@ void Rtabmap::getGraph(
 	}
 }
 
-std::map<int, Transform> Rtabmap::getNodesInRadius(const Transform & pose, float radius)
+std::map<int, Transform> Rtabmap::getNodesInRadius(const Transform & pose, float radius, int k, std::map<int, float> * distsSqr)
 {
-	return graph::getPosesInRadius(pose, _optimizedPoses, radius<=0?_localRadius:radius);
+	std::map<int, float> nearestNodesTmp;
+	std::map<int, float> * nearestNodesPtr = distsSqr == 0? &nearestNodesTmp : distsSqr;
+	*nearestNodesPtr = graph::findNearestNodes(pose, _optimizedPoses, radius<=0?_localRadius:radius, 0, k);
+	std::map<int, Transform> nearestPoses;
+	for(std::map<int, float>::iterator iter=nearestNodesPtr->begin(); iter!=nearestNodesPtr->end(); ++iter)
+	{
+		nearestPoses.insert(*_optimizedPoses.find(iter->first));
+	}
+	return nearestPoses;
 }
 
-std::map<int, Transform> Rtabmap::getNodesInRadius(int nodeId, float radius)
+std::map<int, Transform> Rtabmap::getNodesInRadius(int nodeId, float radius, int k, std::map<int, float> * distsSqr)
 {
 	UDEBUG("nodeId=%d, radius=%f", nodeId, radius);
-	std::map<int, Transform> nearNodes;
-	if(nodeId==0 && !_optimizedPoses.empty())
+	std::map<int, float> nearestNodesTmp;
+	std::map<int, float> * nearestNodesPtr = distsSqr == 0? &nearestNodesTmp : distsSqr;
+	if(nodeId==0 && !_lastLocalizationPose.isNull() && !_lastLocalizationPose.isIdentity())
 	{
-		nodeId = _optimizedPoses.rbegin()->first;
+		*nearestNodesPtr = graph::findNearestNodes(_lastLocalizationPose, _optimizedPoses, radius<=0?_localRadius:radius, 0, k);
 	}
-	if(_optimizedPoses.find(nodeId) != _optimizedPoses.end())
+	else
 	{
-		nearNodes = graph::getPosesInRadius(nodeId, _optimizedPoses, radius<=0?_localRadius:radius);
+		if(nodeId==0 && !_optimizedPoses.empty())
+		{
+			nodeId = _optimizedPoses.rbegin()->first;
+		}
+
+		if(_optimizedPoses.find(nodeId) != _optimizedPoses.end())
+		{
+			*nearestNodesPtr = graph::findNearestNodes(nodeId, _optimizedPoses, radius<=0?_localRadius:radius, 0, k);
+		}
 	}
-	return nearNodes;
+
+	std::map<int, Transform> nearestPoses;
+	for(std::map<int, float>::iterator iter=nearestNodesPtr->begin(); iter!=nearestNodesPtr->end(); ++iter)
+	{
+		nearestPoses.insert(*_optimizedPoses.find(iter->first));
+	}
+
+	return nearestPoses;
 }
 
 int Rtabmap::detectMoreLoopClosures(

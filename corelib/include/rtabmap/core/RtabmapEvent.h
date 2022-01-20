@@ -73,7 +73,8 @@ public:
 			kCmdResume,
 			kCmdGoal,             // params: [string] label or [int] location ID
 			kCmdCancelGoal,
-			kCmdLabel             // params: [string] label, [int] location ID
+			kCmdLabel,            // params: [string] label, [int] location ID
+			kCmdRemoveLabel       // params: [string] label
 	};
 public:
 	RtabmapEventCmd(Cmd cmd, const ParametersMap & parameters = ParametersMap()) :

@@ -68,7 +68,8 @@ public:
 		kStateTriggeringMap,
 		kStateSettingGoal,
 		kStateCancellingGoal,
-		kStateLabelling
+		kStateLabelling,
+		kStateRemovingLabel
 	};
 
 public:
