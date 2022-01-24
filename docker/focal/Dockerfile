@@ -54,6 +54,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 # Taken from https://github.com/microsoft/Azure-Kinect-Sensor-SDK/issues/1190#issuecomment-822772494
 # K4A binaries on 20.04 not released yet, we should take those from 18.04
 RUN if [ "$TARGETPLATFORM" = "linux/amd64" ]; then echo "Installing k4a..." && \
+    apt-get update && apt-get install -y curl && \
     echo "Download libk4a1.3_1.3.0_amd64.deb..." && \
     curl -sSL https://packages.microsoft.com/ubuntu/18.04/prod/pool/main/libk/libk4a1.3/libk4a1.3_1.3.0_amd64.deb > /tmp/libk4a1.3_1.3.0_amd64.deb && \
     echo "Download libk4a1.3-dev_1.3.0_amd64.deb..." && \
@@ -77,7 +78,7 @@ RUN if [ "$TARGETPLATFORM" = "linux/amd64" ]; then echo "Installing k4a..." && \
 
 # libfreenect2 
 RUN if [ "$TARGETPLATFORM" = "linux/amd64" ]; then echo "Installing libfreenect2..." && \
-    apt-get install -y mesa-utils xserver-xorg-video-all libusb-1.0-0-dev libturbojpeg0-dev libglfw3-dev && \
+    apt-get update && apt-get install -y mesa-utils xserver-xorg-video-all libusb-1.0-0-dev libturbojpeg0-dev libglfw3-dev && \
     git clone https://github.com/OpenKinect/libfreenect2 && \
     cd libfreenect2 && \
     mkdir build && \
@@ -90,7 +91,7 @@ RUN if [ "$TARGETPLATFORM" = "linux/amd64" ]; then echo "Installing libfreenect2
 
 # zed open capture
 RUN if [ "$TARGETPLATFORM" = "linux/amd64" ]; then echo "Installing zed-open-capture..." && \
-    apt install libusb-1.0-0-dev libhidapi-libusb0 libhidapi-dev wget && \
+    apt-get update && apt install libusb-1.0-0-dev libhidapi-libusb0 libhidapi-dev wget && \
     git clone https://github.com/stereolabs/zed-open-capture.git && \
     cd zed-open-capture && \
     mkdir build && \
@@ -103,7 +104,7 @@ RUN if [ "$TARGETPLATFORM" = "linux/amd64" ]; then echo "Installing zed-open-cap
 
 # AliceVision v2.4.0 modified (Sept 13 2021)
 RUN if [ "$TARGETPLATFORM" = "linux/amd64" ]; then echo "Installing AliceVision..." && \
-apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
+      apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
       libsuitesparse-dev \
       libceres-dev \
       xorg-dev \
