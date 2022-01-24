@@ -54,6 +54,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 # Taken from https://github.com/microsoft/Azure-Kinect-Sensor-SDK/issues/1190#issuecomment-822772494
 # K4A binaries on 20.04 not released yet, we should take those from 18.04
 RUN if [ "$TARGETPLATFORM" = "linux/amd64" ]; then echo "Installing k4a..." && \
+    apt-get install -y curl && \
     echo "Download libk4a1.3_1.3.0_amd64.deb..." && \
     curl -sSL https://packages.microsoft.com/ubuntu/18.04/prod/pool/main/libk/libk4a1.3/libk4a1.3_1.3.0_amd64.deb > /tmp/libk4a1.3_1.3.0_amd64.deb && \
     echo "Download libk4a1.3-dev_1.3.0_amd64.deb..." && \
