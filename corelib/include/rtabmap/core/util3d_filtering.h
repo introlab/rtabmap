@@ -160,8 +160,20 @@ inline pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr uniformSampling(
 pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP randomSampling(
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
 		int samples);
+pcl::PointCloud<pcl::PointNormal>::Ptr RTABMAP_EXP randomSampling(
+		const pcl::PointCloud<pcl::PointNormal>::Ptr & cloud,
+		int samples);
 pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_EXP randomSampling(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
+		int samples);
+pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr RTABMAP_EXP randomSampling(
+		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
+		int samples);
+pcl::PointCloud<pcl::PointXYZI>::Ptr RTABMAP_EXP randomSampling(
+		const pcl::PointCloud<pcl::PointXYZI>::Ptr & cloud,
+		int samples);
+pcl::PointCloud<pcl::PointXYZINormal>::Ptr RTABMAP_EXP randomSampling(
+		const pcl::PointCloud<pcl::PointXYZINormal>::Ptr & cloud,
 		int samples);
 
 
@@ -448,6 +460,99 @@ pcl::IndicesPtr RTABMAP_EXP radiusFiltering(
 		const pcl::IndicesPtr & indices,
 		float radiusSearch,
 		int minNeighborsInRadius);
+
+/* for convenience */
+pcl::IndicesPtr RTABMAP_EXP proportionalRadiusFiltering(
+		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
+		const std::vector<int> & viewpointIndices,
+		const std::map<int, Transform> & viewpoints,
+		float factor=0.01f,
+		float neighborScale=2.0f);
+pcl::IndicesPtr RTABMAP_EXP proportionalRadiusFiltering(
+		const pcl::PointCloud<pcl::PointNormal>::Ptr & cloud,
+		const std::vector<int> & viewpointIndices,
+		const std::map<int, Transform> & viewpoints,
+		float factor=0.01f,
+		float neighborScale=2.0f);
+pcl::IndicesPtr RTABMAP_EXP proportionalRadiusFiltering(
+		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
+		const std::vector<int> & viewpointIndices,
+		const std::map<int, Transform> & viewpoints,
+		float factor=0.01f,
+		float neighborScale=2.0f);
+pcl::IndicesPtr RTABMAP_EXP proportionalRadiusFiltering(
+		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
+		const std::vector<int> & viewpointIndices,
+		const std::map<int, Transform> & viewpoints,
+		float factor=0.01f,
+		float neighborScale=2.0f);
+pcl::IndicesPtr RTABMAP_EXP proportionalRadiusFiltering(
+		const pcl::PointCloud<pcl::PointXYZI>::Ptr & cloud,
+		const std::vector<int> & viewpointIndices,
+		const std::map<int, Transform> & viewpoints,
+		float factor=0.01f,
+		float neighborScale=2.0f);
+pcl::IndicesPtr RTABMAP_EXP proportionalRadiusFiltering(
+		const pcl::PointCloud<pcl::PointXYZINormal>::Ptr & cloud,
+		const std::vector<int> & viewpointIndices,
+		const std::map<int, Transform> & viewpoints,
+		float factor=0.01f,
+		float neighborScale=2.0f);
+
+/**
+ * @brief Filter points based on distance from their viewpoint.
+ *
+ * @param cloud the input cloud.
+ * @param indices the input indices of the cloud to check, if empty, all points in the cloud are checked.
+ * @param viewpointIndices should be same size than the input cloud, it tells the viewpoint index in viewpoints for each point.
+ * @param viewpoints the viewpoints.
+ * @param factor will determine the search radius based on the distance from a point and its viewpoint. Setting it higher will filter points farther from accurate points (but processing time will be also higher).
+ * @param neighborScale will scale the search radius of neighbors found around a point. Setting it higher will accept more noisy points close to accurate points (but processing time will be also higher).
+ * @return the indices of the points satisfying the parameters.
+ */
+
+pcl::IndicesPtr RTABMAP_EXP proportionalRadiusFiltering(
+		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
+		const pcl::IndicesPtr & indices,
+		const std::vector<int> & viewpointIndices,
+		const std::map<int, Transform> & viewpoints,
+		float factor=0.01f,
+		float neighborScale=2.0f);
+pcl::IndicesPtr RTABMAP_EXP proportionalRadiusFiltering(
+		const pcl::PointCloud<pcl::PointNormal>::Ptr & cloud,
+		const pcl::IndicesPtr & indices,
+		const std::vector<int> & viewpointIndices,
+		const std::map<int, Transform> & viewpoints,
+		float factor=0.01f,
+		float neighborScale=2.0f);
+pcl::IndicesPtr RTABMAP_EXP proportionalRadiusFiltering(
+		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
+		const pcl::IndicesPtr & indices,
+		const std::vector<int> & viewpointIndices,
+		const std::map<int, Transform> & viewpoints,
+		float factor=0.01f,
+		float neighborScale=2.0f);
+pcl::IndicesPtr RTABMAP_EXP proportionalRadiusFiltering(
+		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
+		const pcl::IndicesPtr & indices,
+		const std::vector<int> & viewpointIndices,
+		const std::map<int, Transform> & viewpoints,
+		float factor=0.01f,
+		float neighborScale=2.0f);
+pcl::IndicesPtr RTABMAP_EXP proportionalRadiusFiltering(
+		const pcl::PointCloud<pcl::PointXYZI>::Ptr & cloud,
+		const pcl::IndicesPtr & indices,
+		const std::vector<int> & viewpointIndices,
+		const std::map<int, Transform> & viewpoints,
+		float factor=0.01f,
+		float neighborScale=2.0f);
+pcl::IndicesPtr RTABMAP_EXP proportionalRadiusFiltering(
+		const pcl::PointCloud<pcl::PointXYZINormal>::Ptr & cloud,
+		const pcl::IndicesPtr & indices,
+		const std::vector<int> & viewpointIndices,
+		const std::map<int, Transform> & viewpoints,
+		float factor=0.01f,
+		float neighborScale=2.0f);
 
 /**
  * For convenience.

@@ -136,7 +136,7 @@ void RegistrationIcp::parseParameters(const ParametersMap & parameters)
 	ParametersMap::const_iterator iter;
 	if((iter=parameters.find(Parameters::kRtabmapWorkingDirectory())) != parameters.end())
 	{
-		_workingDir = iter->second;
+		_workingDir = uReplaceChar(iter->second, '~', UDirectory::homeDir());
 	}
 
 	bool pointToPlane = _pointToPlane;
@@ -277,8 +277,12 @@ void RegistrationIcp::parseParameters(const ParametersMap & parameters)
 #ifndef RTABMAP_CCCORELIB
 	if(_strategy==2)
 	{
-		UWARN("Parameter %s is set to true but RTAB-Map has not been built with CCCoreLib support. Setting to 0.", Parameters::kIcpStrategy().c_str());
+#ifdef RTABMAP_POINTMATCHER
+		_strategy = 1;
+#else
 		_strategy = 0;
+#endif
+		UWARN("Parameter %s is set to 2 but RTAB-Map has not been built with CCCoreLib support. Setting to %d.", Parameters::kIcpStrategy().c_str(), _strategy);
 	}
 #else
 	if(_strategy==2 && _pointToPlane)
@@ -329,6 +333,7 @@ Transform RegistrationIcp::computeTransformationImpl(
 	UDEBUG("Max translation=%f", _maxTranslation);
 	UDEBUG("Max rotation=%f", _maxRotation);
 	UDEBUG("Downsampling step=%d", _downsamplingStep);
+	UDEBUG("Force 3DoF=%s", this->force3DoF()?"true":"false");
 	UDEBUG("Force 4DoF=%s", _force4DoF?"true":"false");
 	UDEBUG("Min Complexity=%f", _pointToPlaneMinComplexity);
 	UDEBUG("libpointmatcher (knn=%d, outlier ratio=%f)", _libpointmatcherKnn, _outlierRatio);

@@ -625,8 +625,9 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 				{
 					if(key > 0)
 					{
+						poses.at(key).getTranslationAndEulerAngles(x,y,z,roll,pitch,yaw);
 						gtsam::Pose2 p = iter->value.cast<gtsam::Pose2>();
-						optimizedPoses.insert(std::make_pair(key, Transform(p.x(), p.y(), p.theta())));
+						optimizedPoses.insert(std::make_pair(key, Transform(p.x(), p.y(), z, roll, pitch, p.theta())));
 					}
 					else if(!landmarksIgnored() && isLandmarkWithRotation.find(key)!=isLandmarkWithRotation.end())
 					{

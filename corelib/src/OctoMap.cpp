@@ -891,7 +891,7 @@ bool OctoMap::update(const std::map<int, Transform> & poses)
 						}
 					}
 
-					RtabmapColorOcTreeNode * n = octree_->updateNode(*it, false, orderedPoses.size() == 1);
+					RtabmapColorOcTreeNode * n = octree_->updateNode(*it, false,  true);
 					if(n && n->getOccupancyType() == RtabmapColorOcTreeNode::kTypeUnknown)
 					{
 						n->setOccupancyType(RtabmapColorOcTreeNode::kTypeEmpty);
@@ -957,6 +957,10 @@ bool OctoMap::update(const std::map<int, Transform> & poses)
 							}
 						}
 					}
+				}
+
+				if((occupancyIter != cache_.end() && occupancyIter->second.second.cols) || !free_cells.empty())
+				{
 					octree_->updateInnerOccupancy();
 				}
 

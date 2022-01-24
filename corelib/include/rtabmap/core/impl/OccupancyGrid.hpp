@@ -166,7 +166,11 @@ typename pcl::PointCloud<PointT>::Ptr OccupancyGrid::segmentCloud(
 		// Do radius filtering after voxel filtering ( a lot faster)
 		if(noiseFilteringRadius_ > 0.0 && noiseFilteringMinNeighbors_ > 0)
 		{
-			UDEBUG("");
+			UDEBUG("Radius filtering (%ld ground %ld obstacles, radius=%f k=%d)",
+					groundIndices->size(),
+					obstaclesIndices->size()+(flatObstacles?(*flatObstacles)->size():0),
+					noiseFilteringRadius_,
+					noiseFilteringMinNeighbors_);
 			if(groundIndices->size())
 			{
 				groundIndices = rtabmap::util3d::radiusFiltering(cloud, groundIndices, noiseFilteringRadius_, noiseFilteringMinNeighbors_);
@@ -179,6 +183,9 @@ typename pcl::PointCloud<PointT>::Ptr OccupancyGrid::segmentCloud(
 			{
 				*flatObstacles = rtabmap::util3d::radiusFiltering(cloud, *flatObstacles, noiseFilteringRadius_, noiseFilteringMinNeighbors_);
 			}
+			UDEBUG("Radius filtering end (%ld ground %ld obstacles)",
+					groundIndices->size(),
+					obstaclesIndices->size()+(flatObstacles?(*flatObstacles)->size():0));
 
 			if(groundIndices->empty() && obstaclesIndices->empty())
 			{

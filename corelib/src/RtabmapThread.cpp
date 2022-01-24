@@ -292,9 +292,16 @@ void RtabmapThread::mainLoop()
 		_rtabmap->clearPath(0);
 		break;
 	case kStateLabelling:
-		if(!_rtabmap->labelLocation(atoi(parameters.at("id").c_str()), parameters.at("label").c_str()))
+		if(!_rtabmap->labelLocation(atoi(parameters.at("id").c_str()), parameters.at("label")))
 		{
-			this->post(new RtabmapLabelErrorEvent(atoi(parameters.at("id").c_str()), parameters.at("label").c_str()));
+			this->post(new RtabmapLabelErrorEvent(atoi(parameters.at("id").c_str()), parameters.at("label")));
+		}
+		break;
+	case kStateRemovingLabel:
+		id = _rtabmap->getMemory()->getSignatureIdByLabel(parameters.at("label"), true);
+		if(!_rtabmap->labelLocation(id, ""))
+		{
+			this->post(new RtabmapLabelErrorEvent(id, parameters.at("label")));
 		}
 		break;
 	default:

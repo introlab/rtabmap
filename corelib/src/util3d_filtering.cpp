@@ -664,6 +664,7 @@ typename pcl::PointCloud<PointT>::Ptr randomSamplingImpl(
 	typename pcl::PointCloud<PointT>::Ptr output(new pcl::PointCloud<PointT>);
 	pcl::RandomSample<PointT> filter;
 	filter.setSample(samples);
+	filter.setSeed (std::rand ());
 	filter.setInputCloud(cloud);
 	filter.filter(*output);
 	return output;
@@ -672,9 +673,25 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr randomSampling(const pcl::PointCloud<pcl::Po
 {
 	return randomSamplingImpl<pcl::PointXYZ>(cloud, samples);
 }
+pcl::PointCloud<pcl::PointNormal>::Ptr randomSampling(const pcl::PointCloud<pcl::PointNormal>::Ptr & cloud, int samples)
+{
+	return randomSamplingImpl<pcl::PointNormal>(cloud, samples);
+}
 pcl::PointCloud<pcl::PointXYZRGB>::Ptr randomSampling(const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud, int samples)
 {
 	return randomSamplingImpl<pcl::PointXYZRGB>(cloud, samples);
+}
+pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr randomSampling(const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud, int samples)
+{
+	return randomSamplingImpl<pcl::PointXYZRGBNormal>(cloud, samples);
+}
+pcl::PointCloud<pcl::PointXYZI>::Ptr randomSampling(const pcl::PointCloud<pcl::PointXYZI>::Ptr & cloud, int samples)
+{
+	return randomSamplingImpl<pcl::PointXYZI>(cloud, samples);
+}
+pcl::PointCloud<pcl::PointXYZINormal>::Ptr randomSampling(const pcl::PointCloud<pcl::PointXYZINormal>::Ptr & cloud, int samples)
+{
+	return randomSamplingImpl<pcl::PointXYZINormal>(cloud, samples);
 }
 
 template<typename PointT>
@@ -1106,7 +1123,7 @@ pcl::IndicesPtr radiusFilteringImpl(
 		{
 			std::vector<int> kIndices;
 			std::vector<float> kDistances;
-			int k = tree->radiusSearch(cloud->at(indices->at(i)), radiusSearch, kIndices, kDistances);
+			int k = tree->radiusSearch(cloud->at(indices->at(i)), radiusSearch, kIndices, kDistances, minNeighborsInRadius+1);
 			if(k > minNeighborsInRadius)
 			{
 				output->at(oi++) = indices->at(i);
@@ -1124,7 +1141,7 @@ pcl::IndicesPtr radiusFilteringImpl(
 		{
 			std::vector<int> kIndices;
 			std::vector<float> kDistances;
-			int k = tree->radiusSearch(cloud->at(i), radiusSearch, kIndices, kDistances);
+			int k = tree->radiusSearch(cloud->at(i), radiusSearch, kIndices, kDistances, minNeighborsInRadius+1);
 			if(k > minNeighborsInRadius)
 			{
 				output->at(oi++) = i;
@@ -1158,6 +1175,239 @@ pcl::IndicesPtr radiusFiltering(const pcl::PointCloud<pcl::PointXYZI>::Ptr & clo
 pcl::IndicesPtr radiusFiltering(const pcl::PointCloud<pcl::PointXYZINormal>::Ptr & cloud, const pcl::IndicesPtr & indices, float radiusSearch, int minNeighborsInRadius)
 {
 	return radiusFilteringImpl<pcl::PointXYZINormal>(cloud, indices, radiusSearch, minNeighborsInRadius);
+}
+
+pcl::IndicesPtr proportionalRadiusFiltering(
+		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
+		const std::vector<int> & viewpointIndices,
+		const std::map<int, Transform> & viewpoints,
+		float factor,
+		float neighborScale)
+{
+	pcl::IndicesPtr indices(new std::vector<int>);
+	return proportionalRadiusFiltering(cloud, indices, viewpointIndices, viewpoints, factor, neighborScale);
+}
+pcl::IndicesPtr proportionalRadiusFiltering(
+		const pcl::PointCloud<pcl::PointNormal>::Ptr & cloud,
+		const std::vector<int> & viewpointIndices,
+		const std::map<int, Transform> & viewpoints,
+		float factor,
+		float neighborScale)
+{
+	pcl::IndicesPtr indices(new std::vector<int>);
+	return proportionalRadiusFiltering(cloud, indices, viewpointIndices, viewpoints, factor, neighborScale);
+}
+pcl::IndicesPtr proportionalRadiusFiltering(
+		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
+		const std::vector<int> & viewpointIndices,
+		const std::map<int, Transform> & viewpoints,
+		float factor,
+		float neighborScale)
+{
+	pcl::IndicesPtr indices(new std::vector<int>);
+	return proportionalRadiusFiltering(cloud, indices, viewpointIndices, viewpoints, factor, neighborScale);
+}
+pcl::IndicesPtr proportionalRadiusFiltering(
+		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
+		const std::vector<int> & viewpointIndices,
+		const std::map<int, Transform> & viewpoints,
+		float factor,
+		float neighborScale)
+{
+	pcl::IndicesPtr indices(new std::vector<int>);
+	return proportionalRadiusFiltering(cloud, indices, viewpointIndices, viewpoints, factor, neighborScale);
+}
+pcl::IndicesPtr proportionalRadiusFiltering(
+		const pcl::PointCloud<pcl::PointXYZI>::Ptr & cloud,
+		const std::vector<int> & viewpointIndices,
+		const std::map<int, Transform> & viewpoints,
+		float factor,
+		float neighborScale)
+{
+	pcl::IndicesPtr indices(new std::vector<int>);
+	return proportionalRadiusFiltering(cloud, indices, viewpointIndices, viewpoints, factor, neighborScale);
+}
+pcl::IndicesPtr proportionalRadiusFiltering(
+		const pcl::PointCloud<pcl::PointXYZINormal>::Ptr & cloud,
+		const std::vector<int> & viewpointIndices,
+		const std::map<int, Transform> & viewpoints,
+		float factor,
+		float neighborScale)
+{
+	pcl::IndicesPtr indices(new std::vector<int>);
+	return proportionalRadiusFiltering(cloud, indices, viewpointIndices, viewpoints, factor, neighborScale);
+}
+
+template<typename PointT>
+pcl::IndicesPtr proportionalRadiusFilteringImpl(
+		const typename pcl::PointCloud<PointT>::Ptr & cloud,
+		const pcl::IndicesPtr & indices,
+		const std::vector<int> & viewpointIndices,
+		const std::map<int, Transform> & viewpoints,
+		float factor,
+		float neighborScale)
+{
+	typename pcl::search::KdTree<PointT>::Ptr tree (new pcl::search::KdTree<PointT>(false));
+
+	UASSERT(cloud->size() == viewpointIndices.size());
+	UASSERT(factor>0.0f);
+	UASSERT(neighborScale>=1.0f);
+
+	if(!indices->empty())
+	{
+		std::vector<bool> kept(indices->size());
+		tree->setInputCloud(cloud, indices);
+		for(size_t i=0; i<indices->size(); ++i)
+		{
+			int index = indices->at(i);
+			std::vector<int> kIndices;
+			std::vector<float> kDistances;
+			std::map<int, Transform>::const_iterator viewpointIter = viewpoints.find(viewpointIndices[index]);
+			UASSERT(viewpointIter != viewpoints.end());
+			cv::Point3f viewpoint(viewpointIter->second.x(), viewpointIter->second.y(), viewpointIter->second.z());
+			cv::Point3f point = cv::Point3f(cloud->at(index).x,cloud->at(index).y, cloud->at(index).z);
+			float radiusSearch = factor * cv::norm(viewpoint-point);
+			int k = tree->radiusSearch(cloud->at(index), radiusSearch, kIndices, kDistances);
+			bool keep = k>0;
+			for(int j=0; j<k && keep; ++j)
+			{
+				if(kIndices[j] != index)
+				{
+					cv::Point3f pointTmp(cloud->at(kIndices[j]).x,cloud->at(kIndices[j]).y, cloud->at(kIndices[j]).z);
+					cv::Point3f tmp = pointTmp - point;
+					float distPtSqr = tmp.dot(tmp); // L2sqr
+					viewpointIter = viewpoints.find(viewpointIndices[kIndices[j]]);
+					UASSERT(viewpointIter != viewpoints.end());
+					viewpoint = cv::Point3f(viewpointIter->second.x(), viewpointIter->second.y(), viewpointIter->second.z());
+					float radiusSearchTmp = factor * cv::norm(viewpoint-pointTmp) * neighborScale;
+					if(distPtSqr > radiusSearchTmp*radiusSearchTmp)
+					{
+						keep = false;
+					}
+				}
+			}
+			kept[i] = keep;
+		}
+		pcl::IndicesPtr output(new std::vector<int>(indices->size()));
+		int oi = 0;
+		for(size_t i=0; i<indices->size(); ++i)
+		{
+			if(kept[i])
+			{
+				output->at(oi++) = indices->at(i);
+			}
+		}
+		output->resize(oi);
+		return output;
+	}
+	else
+	{
+		std::vector<bool> kept(cloud->size());
+		tree->setInputCloud(cloud);
+		#pragma omp parallel for
+		for(int i=0; i<(int)cloud->size(); ++i)
+		{
+			std::vector<int> kIndices;
+			std::vector<float> kDistances;
+			std::map<int, Transform>::const_iterator viewpointIter = viewpoints.find(viewpointIndices[i]);
+			UASSERT(viewpointIter != viewpoints.end());
+			cv::Point3f viewpoint(viewpointIter->second.x(), viewpointIter->second.y(), viewpointIter->second.z());
+			cv::Point3f point = cv::Point3f(cloud->at(i).x,cloud->at(i).y, cloud->at(i).z);
+			float radiusSearch = factor * cv::norm(viewpoint-point);
+			int k = tree->radiusSearch(cloud->at(i), radiusSearch, kIndices, kDistances);
+			bool keep = k>0;
+			for(int j=0; j<k && keep; ++j)
+			{
+				if(kIndices[j] != (int)i)
+				{
+					cv::Point3f pointTmp(cloud->at(kIndices[j]).x,cloud->at(kIndices[j]).y, cloud->at(kIndices[j]).z);
+					cv::Point3f tmp = pointTmp - point;
+					float distPtSqr = tmp.dot(tmp); // L2sqr
+					viewpointIter = viewpoints.find(viewpointIndices[kIndices[j]]);
+					UASSERT(viewpointIter != viewpoints.end());
+					viewpoint = cv::Point3f(viewpointIter->second.x(), viewpointIter->second.y(), viewpointIter->second.z());
+					float radiusSearchTmp = factor * cv::norm(viewpoint-pointTmp) * neighborScale;
+					if(distPtSqr > radiusSearchTmp*radiusSearchTmp)
+					{
+						keep = false;
+					}
+				}
+			}
+			kept[i] = keep;
+		}
+		pcl::IndicesPtr output(new std::vector<int>(cloud->size()));
+		int oi = 0;
+		for(size_t i=0; i<cloud->size(); ++i)
+		{
+			if(kept[i])
+			{
+				output->at(oi++) = i;
+			}
+		}
+		output->resize(oi);
+		return output;
+	}
+}
+
+pcl::IndicesPtr proportionalRadiusFiltering(
+		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
+		const pcl::IndicesPtr & indices,
+		const std::vector<int> & viewpointIndices,
+		const std::map<int, Transform> & viewpoints,
+		float factor,
+		float neighborScale)
+{
+	return proportionalRadiusFilteringImpl<pcl::PointXYZ>(cloud, indices, viewpointIndices, viewpoints, factor, neighborScale);
+}
+pcl::IndicesPtr proportionalRadiusFiltering(
+		const pcl::PointCloud<pcl::PointNormal>::Ptr & cloud,
+		const pcl::IndicesPtr & indices,
+		const std::vector<int> & viewpointIndices,
+		const std::map<int, Transform> & viewpoints,
+		float factor,
+		float neighborScale)
+{
+	return proportionalRadiusFilteringImpl<pcl::PointNormal>(cloud, indices, viewpointIndices, viewpoints, factor, neighborScale);
+}
+pcl::IndicesPtr proportionalRadiusFiltering(
+		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
+		const pcl::IndicesPtr & indices,
+		const std::vector<int> & viewpointIndices,
+		const std::map<int, Transform> & viewpoints,
+		float factor,
+		float neighborScale)
+{
+	return proportionalRadiusFilteringImpl<pcl::PointXYZRGB>(cloud, indices, viewpointIndices, viewpoints, factor, neighborScale);
+}
+pcl::IndicesPtr proportionalRadiusFiltering(
+		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
+		const pcl::IndicesPtr & indices,
+		const std::vector<int> & viewpointIndices,
+		const std::map<int, Transform> & viewpoints,
+		float factor,
+		float neighborScale)
+{
+	return proportionalRadiusFilteringImpl<pcl::PointXYZRGBNormal>(cloud, indices, viewpointIndices, viewpoints, factor, neighborScale);
+}
+pcl::IndicesPtr proportionalRadiusFiltering(
+		const pcl::PointCloud<pcl::PointXYZI>::Ptr & cloud,
+		const pcl::IndicesPtr & indices,
+		const std::vector<int> & viewpointIndices,
+		const std::map<int, Transform> & viewpoints,
+		float factor,
+		float neighborScale)
+{
+	return proportionalRadiusFilteringImpl<pcl::PointXYZI>(cloud, indices, viewpointIndices, viewpoints, factor, neighborScale);
+}
+pcl::IndicesPtr proportionalRadiusFiltering(
+		const pcl::PointCloud<pcl::PointXYZINormal>::Ptr & cloud,
+		const pcl::IndicesPtr & indices,
+		const std::vector<int> & viewpointIndices,
+		const std::map<int, Transform> & viewpoints,
+		float factor,
+		float neighborScale)
+{
+	return proportionalRadiusFilteringImpl<pcl::PointXYZINormal>(cloud, indices, viewpointIndices, viewpoints, factor, neighborScale);
 }
 
 pcl::PointCloud<pcl::PointXYZRGB>::Ptr subtractFiltering(

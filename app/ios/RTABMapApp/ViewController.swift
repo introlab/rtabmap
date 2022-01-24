@@ -1424,7 +1424,7 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
     func newScan()
     {
         print("databases.size() = \(databases.size())")
-        if(databases.count >= 10 && !mReviewRequested)
+        if(databases.count >= 5 && !mReviewRequested && self.depthSupported)
         {
             SKStoreReviewController.requestReviewInCurrentScene()
             mReviewRequested = true
@@ -2336,6 +2336,14 @@ extension Date {
         let dateformat = DateFormatter()
         dateformat.dateFormat = format
         return dateformat.string(from: self)
+    }
+    
+    var millisecondsSince1970:Int64 {
+        Int64((self.timeIntervalSince1970 * 1000.0).rounded())
+    }
+    
+    init(milliseconds:Int64) {
+        self = Date(timeIntervalSince1970: TimeInterval(milliseconds) / 1000)
     }
 }
 

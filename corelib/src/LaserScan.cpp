@@ -368,8 +368,8 @@ LaserScan LaserScan::clone() const
 
 float & LaserScan::field(unsigned int pointIndex, unsigned int channelOffset)
 {
-	UASSERT(pointIndex < data_.cols);
-	UASSERT(channelOffset < data_.channels());
+	UASSERT(pointIndex < (unsigned int)data_.cols);
+	UASSERT(channelOffset < (unsigned int)data_.channels());
 	return data_.ptr<float>(0, pointIndex)[channelOffset];
 }
 
@@ -387,7 +387,7 @@ LaserScan LaserScan::operator+(const LaserScan & scan)
 	{
 		if(this->empty())
 		{
-			dest = LaserScan(scan.data().clone(), 0, 0, this->format());
+			dest = scan.clone();
 		}
 		else
 		{

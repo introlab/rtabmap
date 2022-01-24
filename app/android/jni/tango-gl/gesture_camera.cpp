@@ -183,7 +183,7 @@ void GestureCamera::SetCameraType(CameraType camera_index) {
     case kFirstPerson:
       SetOrthoMode(false);
       SetFieldOfView(kLowestFov);
-      SetNearFarClipPlanes(0.1, 50);
+      SetNearFarClipPlanes(0.25, 25);
       SetPosition(glm::vec3(0.0f, 0.0f, 0.0f));
       SetRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
       cam_cur_dist_ = 0.0f;

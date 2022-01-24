@@ -86,7 +86,8 @@ ExportCloudsDialog::ExportCloudsDialog(QWidget *parent) :
 	QDialog(parent),
 	_canceled(false),
 	_compensator(0),
-	_dbDriver(0)
+	_dbDriver(0),
+	_scansHaveRGB(false)
 {
 	_ui = new Ui_ExportCloudsDialog();
 	_ui->setupUi(this);
@@ -151,6 +152,7 @@ ExportCloudsDialog::ExportCloudsDialog(QWidget *parent) :
 	connect(_ui->checkBox_assemble, SIGNAL(clicked(bool)), this, SIGNAL(configChanged()));
 	connect(_ui->checkBox_assemble, SIGNAL(clicked(bool)), this, SLOT(updateReconstructionFlavor()));
 	connect(_ui->doubleSpinBox_voxelSize_assembled, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
+	connect(_ui->spinBox_randomSamples_assembled, SIGNAL(valueChanged(int)), this, SIGNAL(configChanged()));
 	connect(_ui->comboBox_frame, SIGNAL(currentIndexChanged(int)), this, SIGNAL(configChanged()));
 	connect(_ui->comboBox_frame, SIGNAL(currentIndexChanged(int)), this, SLOT(updateReconstructionFlavor()));
 
@@ -383,6 +385,7 @@ void ExportCloudsDialog::saveSettings(QSettings & settings, const QString & grou
 
 	settings.setValue("assemble", _ui->checkBox_assemble->isChecked());
 	settings.setValue("assemble_voxel",_ui->doubleSpinBox_voxelSize_assembled->value());
+	settings.setValue("assemble_samples",_ui->spinBox_randomSamples_assembled->value());
 	settings.setValue("frame",_ui->comboBox_frame->currentIndex());
 
 	settings.setValue("subtract",_ui->checkBox_subtraction->isChecked());
@@ -555,6 +558,7 @@ void ExportCloudsDialog::loadSettings(QSettings & settings, const QString & grou
 		_ui->checkBox_assemble->setChecked(settings.value("assemble", _ui->checkBox_assemble->isChecked()).toBool());
 	}
 	_ui->doubleSpinBox_voxelSize_assembled->setValue(settings.value("assemble_voxel", _ui->doubleSpinBox_voxelSize_assembled->value()).toDouble());
+	_ui->spinBox_randomSamples_assembled->setValue(settings.value("assemble_samples", _ui->spinBox_randomSamples_assembled->value()).toInt());
 	_ui->comboBox_frame->setCurrentIndex(settings.value("frame", _ui->comboBox_frame->currentIndex()).toInt());
 
 	_ui->checkBox_subtraction->setChecked(settings.value("subtract",_ui->checkBox_subtraction->isChecked()).toBool());
@@ -724,6 +728,7 @@ void ExportCloudsDialog::restoreDefaults()
 
 	_ui->checkBox_assemble->setChecked(true);
 	_ui->doubleSpinBox_voxelSize_assembled->setValue(0.01);
+	_ui->spinBox_randomSamples_assembled->setValue(0);
 	_ui->comboBox_frame->setCurrentIndex(0);
 
 	_ui->checkBox_subtraction->setChecked(false);
@@ -1319,7 +1324,7 @@ void ExportCloudsDialog::viewClouds(
 							for(unsigned int j=0; j<vertices.vertices.size(); ++j)
 							{
 								UASSERT(oi < cloud->size());
-								UASSERT_MSG(vertices.vertices[j] < originalCloud->size(), uFormat("%d vs %d", vertices.vertices[j], (int)originalCloud->size()).c_str());
+								UASSERT_MSG((int)vertices.vertices[j] < (int)originalCloud->size(), uFormat("%d vs %d", vertices.vertices[j], (int)originalCloud->size()).c_str());
 								cloud->at(oi) = originalCloud->at(vertices.vertices[j]);
 								vertices.vertices[j] = oi; // new vertice index
 								++oi;
@@ -1409,7 +1414,7 @@ void ExportCloudsDialog::viewClouds(
 				_progressDialog->appendText(tr("Viewing the cloud %1 (%2 points)...").arg(iter->first).arg(iter->second->size()));
 				_progressDialog->incrementStep();
 
-				if(!_ui->checkBox_fromDepth->isChecked() &&
+				if(!_ui->checkBox_fromDepth->isChecked() && !_scansHaveRGB &&
 					!(_ui->checkBox_cameraProjection->isEnabled() &&
 					_ui->checkBox_cameraProjection->isChecked() &&
 					_ui->checkBox_camProjRecolorPoints->isChecked() &&
@@ -1637,7 +1642,8 @@ bool ExportCloudsDialog::getExportedClouds(
 					cachedClouds,
 					cachedScans,
 					parameters,
-					has2dScans);
+					has2dScans,
+					_scansHaveRGB);
 		}
 		else
 		{
@@ -1900,6 +1906,7 @@ bool ExportCloudsDialog::getExportedClouds(
 					assembledCloud->points[i].normal_y = normals->points[i].normal_y;
 					assembledCloud->points[i].normal_z = normals->points[i].normal_z;
 				}
+				_progressDialog->appendText(tr("Adjusting normals to viewpoints (%1 points)...").arg(assembledCloud->size()));
 
 				// adjust with point of views
 				util3d::adjustNormalsToViewPoints(
@@ -1907,6 +1914,18 @@ bool ExportCloudsDialog::getExportedClouds(
 											rawAssembledCloud,
 											rawCameraIndices,
 											assembledCloud);
+			}
+
+			if(_ui->spinBox_randomSamples_assembled->value()>0 &&
+			   (int)assembledCloud->size() > _ui->spinBox_randomSamples_assembled->value())
+			{
+				_progressDialog->appendText(tr("Random samples filtering (in=%1 points, samples=%2)...")
+														.arg(assembledCloud->size())
+														.arg(_ui->spinBox_randomSamples_assembled->value()));
+				assembledCloud = util3d::randomSampling(assembledCloud, _ui->spinBox_randomSamples_assembled->value());
+				_progressDialog->appendText(tr("Random samples filtering (out=%1 points, samples=%2)... done!")
+																		.arg(assembledCloud->size())
+																		.arg(_ui->spinBox_randomSamples_assembled->value()));
 			}
 
 			clouds.insert(std::make_pair(0, std::make_pair(assembledCloud, indices)));
@@ -2557,7 +2576,7 @@ bool ExportCloudsDialog::getExportedClouds(
 					{
 						TexturingState texturingState(_progressDialog, false);
 
-						if(!_ui->checkBox_fromDepth->isChecked())
+						if(!_ui->checkBox_fromDepth->isChecked() && !_scansHaveRGB)
 						{
 							// When laser scans are exported, convert Intensity to GrayScale
 							int maxIntensity = 1;
@@ -2795,7 +2814,7 @@ bool ExportCloudsDialog::getExportedClouds(
 					pcl::PointXYZRGBNormal & pt = assembledCloud->at(i);
 					if(pointToPixel[i].first.first <=0)
 					{
-						if(_ui->checkBox_camProjRecolorPoints->isChecked() && !_ui->checkBox_fromDepth->isChecked())
+						if(_ui->checkBox_camProjRecolorPoints->isChecked() && !_ui->checkBox_fromDepth->isChecked() && !_scansHaveRGB)
 						{
 							pt.r = 255;
 							pt.g = 0;
@@ -3253,7 +3272,7 @@ bool ExportCloudsDialog::getExportedClouds(
 								for(int k=0; k<polygonSize; ++k)
 								{
 									//uv
-									UASSERT(vertices.vertices[k] < oter->second.size());
+									UASSERT((int)vertices.vertices[k] < (int)oter->second.size());
 									int originalVertex = oter->second[vertices.vertices[k]];
 									textureMesh->tex_coordinates[0][i*polygonSize+k] = Eigen::Vector2f(
 											float(originalVertex % w) / float(w),      // u
@@ -3438,8 +3457,10 @@ std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::Indic
 		const std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr, pcl::IndicesPtr> > & cachedClouds,
 		const std::map<int, LaserScan> & cachedScans,
 		const ParametersMap & parameters,
-		bool & has2dScans) const
+		bool & has2dScans,
+		bool & scansHaveRGB) const
 {
+	scansHaveRGB = false;
 	has2dScans = false;
 	std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::IndicesPtr> > clouds;
 	int index=1;
@@ -3611,6 +3632,10 @@ std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::Indic
 							_ui->spinBox_normalKSearch->value(),
 							_ui->doubleSpinBox_normalRadiusSearch->value());
 
+					if(!scan.empty())
+					{
+						scansHaveRGB = scan.hasRGB();
+					}
 					localTransform = scan.localTransform();
 					cloud = util3d::laserScanToPointCloudRGBNormal(scan, localTransform); // put in base frame by default
 					indices->resize(cloud->size());
@@ -3715,6 +3740,10 @@ std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::Indic
 							_ui->spinBox_normalKSearch->value(),
 							_ui->doubleSpinBox_normalRadiusSearch->value());
 
+				if(!scan.empty())
+				{
+					scansHaveRGB = scan.hasRGB();
+				}
 				localTransform = scan.localTransform();
 				cloud = util3d::laserScanToPointCloudRGBNormal(scan, localTransform); // put in base frame by default
 				indices->resize(cloud->size());
@@ -3879,7 +3908,7 @@ void ExportCloudsDialog::saveClouds(
 				pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudRGBWithoutNormals;
 				pcl::PointCloud<pcl::PointXYZI>::Ptr cloudIWithoutNormals;
 				pcl::PointCloud<pcl::PointXYZINormal>::Ptr cloudIWithNormals;
-				if(!_ui->checkBox_fromDepth->isChecked() &&
+				if(!_ui->checkBox_fromDepth->isChecked() && !_scansHaveRGB &&
 					!(_ui->checkBox_cameraProjection->isEnabled() &&
 					_ui->checkBox_cameraProjection->isChecked() &&
 					_ui->checkBox_camProjRecolorPoints->isChecked() &&
@@ -4070,7 +4099,7 @@ void ExportCloudsDialog::saveClouds(
 							pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudRGBWithoutNormals;
 							pcl::PointCloud<pcl::PointXYZI>::Ptr cloudIWithoutNormals;
 							pcl::PointCloud<pcl::PointXYZINormal>::Ptr cloudIWithNormals;
-							if(!_ui->checkBox_fromDepth->isChecked())
+							if(!_ui->checkBox_fromDepth->isChecked() && !_scansHaveRGB)
 							{
 								// When laser scans are exported, convert RGB to Intensity
 								if(_ui->spinBox_normalKSearch->value()>0 || _ui->doubleSpinBox_normalRadiusSearch->value()>0.0)

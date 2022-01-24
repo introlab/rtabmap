@@ -145,6 +145,7 @@ OptimizerG2O::OptimizerG2O(const ParametersMap & parameters) :
 		robustKernelDelta_(Parameters::defaultg2oRobustKernelDelta()),
 		baseline_(Parameters::defaultg2oBaseline())
 {
+#ifdef RTABMAP_G2O
 	// Issue on android, have to explicitly register this type when using fixed root prior below
 	if(!g2o::Factory::instance()->knowsTag("CACHE_SE3_OFFSET"))
 	{
@@ -154,6 +155,7 @@ OptimizerG2O::OptimizerG2O(const ParametersMap & parameters) :
 		g2o::Factory::instance()->registerType("CACHE_SE3_OFFSET", new g2o::HyperGraphElementCreator<g2o::CacheSE3Offset>);
 #endif
 	}
+#endif
 	parseParameters(parameters);
 }
 
@@ -359,7 +361,7 @@ std::map<int, Transform> OptimizerG2O::optimize(
 		int landmarkVertexOffset = poses.rbegin()->first+1;
 		std::map<int, bool> isLandmarkWithRotation;
 
-		UDEBUG("fill poses to g2o... (rootId=%d hasGravityConstraints=%d)", rootId, hasGravityConstraints?1:0);
+		UDEBUG("fill poses to g2o... (rootId=%d hasGravityConstraints=%d isSlam2d=%d)", rootId, hasGravityConstraints?1:0, isSlam2d()?1:0);
 		for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
 		{
 			UASSERT(!iter->second.isNull());

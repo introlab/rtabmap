@@ -733,6 +733,13 @@ int main(int argc, char * argv[])
 
 						if(poses.size())
 						{
+							//remove landmarks
+							std::map<int, Transform>::iterator iter=poses.begin();
+							while(iter!=poses.end() && iter->first < 0)
+							{
+								poses.erase(iter++);
+							}
+
 							std::map<int, Transform> groundTruth;
 							for(std::map<int, Transform>::const_iterator iter=poses.begin(); iter!=poses.end(); ++iter)
 							{

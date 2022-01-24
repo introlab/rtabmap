@@ -2523,6 +2523,14 @@ int Memory::getSignatureIdByLabel(const std::string & label, bool lookInDatabase
 		if(id == 0 && _dbDriver && lookInDatabase)
 		{
 			_dbDriver->getNodeIdByLabel(label, id);
+			if(_signatures.find(id) != _signatures.end())
+			{
+				// The signature is already in WM, but label was not
+				// found above. It means the label has been cleared in
+				// current session (not yet saved to database), so return
+				// not found.
+				id = 0;
+			}
 		}
 	}
 	return id;
@@ -2532,15 +2540,35 @@ bool Memory::labelSignature(int id, const std::string & label)
 {
 	// verify that this label is not used
 	int idFound=getSignatureIdByLabel(label);
+	if(idFound == 0 && label.empty() && _labels.find(id)==_labels.end())
+	{
+		UWARN("Trying to remove label from node %d but it has already no label", id);
+		return false;
+	}
 	if(idFound == 0 || idFound == id)
 	{
 		Signature * s  = this->_getSignature(id);
 		if(s)
 		{
-			uInsert(_labels, std::make_pair(s->id(), label));
+			if(label.empty())
+			{
+				UWARN("Label \"%s\" removed from node %d", _labels.at(id).c_str(), id);
+				_labels.erase(id);
+			}
+			else
+			{
+				if(_labels.find(id)!=_labels.end())
+				{
+					UWARN("Label \"%s\" set to node %d (previously labeled \"%s\")", label.c_str(), id, _labels.at(id).c_str());
+				}
+				else
+				{
+					UWARN("Label \"%s\" set to node %d", label.c_str(), id);
+				}
+				uInsert(_labels, std::make_pair(s->id(), label));
+			}
 			s->setLabel(label);
 			_linksChanged = s->isSaved(); // HACK to get label updated in Localization mode
-			UWARN("Label \"%s\" set to node %d", label.c_str(), id);
 			return true;
 		}
 		else if(_dbDriver)
@@ -2551,9 +2579,25 @@ bool Memory::labelSignature(int id, const std::string & label)
 			_dbDriver->loadSignatures(ids,signatures);
 			if(signatures.size())
 			{
-				uInsert(_labels, std::make_pair(signatures.front()->id(), label));
+				if(label.empty())
+				{
+					UWARN("Label \"%s\" removed from node %d", _labels.at(id).c_str(), id);
+					_labels.erase(id);
+				}
+				else
+				{
+					if(_labels.find(id)!=_labels.end())
+					{
+						UWARN("Label \"%s\" set to node %d (previously labeled \"%s\")", label.c_str(), id, _labels.at(id).c_str());
+					}
+					else
+					{
+						UWARN("Label \"%s\" set to node %d", label.c_str(), id);
+					}
+					uInsert(_labels, std::make_pair(id, label));
+				}
+
 				signatures.front()->setLabel(label);
-				UWARN("Label \"%s\" set to node %d", label.c_str(), id);
 				_dbDriver->asyncSave(signatures.front()); // move it again to trash
 				return true;
 			}
@@ -2565,7 +2609,7 @@ bool Memory::labelSignature(int id, const std::string & label)
 	}
 	else if(idFound)
 	{
-		UWARN("Node %d has already label \"%s\"", idFound, label.c_str());
+		UWARN("Another node %d has already label \"%s\", cannot set it to node %d", idFound, label.c_str(), id);
 	}
 	return false;
 }

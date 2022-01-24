@@ -27,7 +27,7 @@
      <x>0</x>
      <y>0</y>
      <width>1012</width>
-     <height>21</height>
+     <height>22</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -351,6 +351,7 @@
     <addaction name="actionTrigger_a_new_map"/>
     <addaction name="separator"/>
     <addaction name="actionLabel_current_location"/>
+    <addaction name="actionRemove_label"/>
     <addaction name="actionSend_waypoints"/>
     <addaction name="actionSend_goal"/>
     <addaction name="actionCancel_goal"/>
@@ -1668,6 +1669,11 @@
    </property>
    <property name="text">
     <string>OpenNI2</string>
+   </property>
+  </action>
+  <action name="actionRemove_label">
+   <property name="text">
+    <string>Remove label...</string>
    </property>
   </action>
  </widget>

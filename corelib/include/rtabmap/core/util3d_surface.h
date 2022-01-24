@@ -487,6 +487,11 @@ void RTABMAP_EXP adjustNormalsToViewPoints(
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & rawCloud,
 		const std::vector<int> & rawCameraIndices,
 		pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud);
+void RTABMAP_EXP adjustNormalsToViewPoints(
+		const std::map<int, Transform> & poses,
+		const pcl::PointCloud<pcl::PointXYZ>::Ptr & rawCloud,
+		const std::vector<int> & rawCameraIndices,
+		pcl::PointCloud<pcl::PointXYZINormal>::Ptr & cloud);
 
 void RTABMAP_EXP adjustNormalsToViewPoints(
 		const std::map<int, Transform> & viewpoints,

@@ -125,7 +125,8 @@ void RTABMAP_EXP computeMaxGraphErrors(
 		float & maxLinearError,
 		float & maxAngularError,
 		const Link ** maxLinearErrorLink = 0,
-		const Link ** maxAngularErrorLink = 0);
+		const Link ** maxAngularErrorLink = 0,
+		bool for3DoF = false);
 
 std::vector<double> RTABMAP_EXP getMaxOdomInf(const std::multimap<int, Link> & links);
 
@@ -266,54 +267,58 @@ std::list<std::pair<int, Transform> > RTABMAP_EXP computePath(
 		float angularVelocity = 0.0f); // rad/sec
 
 /**
- * Get the nearest node of the target pose
+ * Find the nearest node of the target pose
  * @param nodes the nodes to search for
  * @param targetPose the target pose to search around
  * @param distance squared distance of the nearest node found (optional)
  * @return the node id.
  */
 int RTABMAP_EXP findNearestNode(
-		const std::map<int, rtabmap::Transform> & nodes,
+		const std::map<int, rtabmap::Transform> & poses,
 		const rtabmap::Transform & targetPose,
 		float * distance = 0);
 
 /**
- * Get K nearest nodes of the target pose
- * @param nodes the nodes to search for
- * @param targetPose the target pose to search around
- * @param k number of nearest neighbors to search for
- * @return the node ids with squared distance to target pose.
- */
-std::map<int, float> RTABMAP_EXP findNearestNodes(
-		const std::map<int, rtabmap::Transform> & nodes,
-		const rtabmap::Transform & targetPose,
-		int k);
-
-/**
- * Get nodes near the query
+ * Find the nearest nodes of the query pose or node
  * @param nodeId the query id
  * @param nodes the nodes to search for
- * @param radius radius to search for (m)
+ * @param radius radius to search for (m), if 0, k should be > 0.
+ * @param k max nearest neighbors (0=all inside the radius)
  * @return the nodes with squared distance to query node.
  */
-std::map<int, float> RTABMAP_EXP getNodesInRadius(
+std::map<int, float> RTABMAP_EXP findNearestNodes(
 		int nodeId,
-		const std::map<int, Transform> & nodes,
-		float radius);
-std::map<int, float> RTABMAP_EXP getNodesInRadius(
+		const std::map<int, Transform> & poses,
+		float radius,
+		float angle = 0.0f,
+		int k=0);
+std::map<int, float> RTABMAP_EXP findNearestNodes(
 		const Transform & targetPose,
-		const std::map<int, Transform> & nodes,
-		float radius);
-std::map<int, Transform> RTABMAP_EXP getPosesInRadius(
+		const std::map<int, Transform> & poses,
+		float radius,
+		float angle = 0.0f,
+		int k=0);
+std::map<int, Transform> RTABMAP_EXP findNearestPoses(
 		int nodeId,
-		const std::map<int, Transform> & nodes,
+		const std::map<int, Transform> & poses,
 		float radius,
-		float angle = 0.0f);
-std::map<int, Transform> RTABMAP_EXP getPosesInRadius(
+		float angle = 0.0f,
+		int k=0);
+std::map<int, Transform> RTABMAP_EXP findNearestPoses(
 		const Transform & targetPose,
-		const std::map<int, Transform> & nodes,
+		const std::map<int, Transform> & poses,
 		float radius,
-		float angle = 0.0f);
+		float angle = 0.0f,
+		int k=0);
+
+// typedef hack to avoid error with RTABMAP_DEPRECATED
+typedef std::map<int, float> _mapIntFloat;
+typedef std::map<int, Transform> _mapIntTransform;
+RTABMAP_DEPRECATED(_mapIntFloat RTABMAP_EXP findNearestNodes(const std::map<int, rtabmap::Transform> & nodes, const rtabmap::Transform & targetPose, int k), "Use new findNearestNodes() interface with radius=0, angle=0.");
+RTABMAP_DEPRECATED(_mapIntFloat RTABMAP_EXP getNodesInRadius(int nodeId, const std::map<int, Transform> & nodes, float radius), "Renamed to findNearestNodes()");
+RTABMAP_DEPRECATED(_mapIntFloat RTABMAP_EXP getNodesInRadius(const Transform & targetPose, const std::map<int, Transform> & nodes, float radius), "Renamed to findNearestNodes()");
+RTABMAP_DEPRECATED(_mapIntTransform RTABMAP_EXP getPosesInRadius(int nodeId, const std::map<int, Transform> & nodes, float radius, float angle = 0.0f), "Renamed to findNearestNodes()");
+RTABMAP_DEPRECATED(_mapIntTransform RTABMAP_EXP getPosesInRadius(const Transform & targetPose, const std::map<int, Transform> & nodes, float radius, float angle = 0.0f), "Renamed to findNearestNodes()");
 
 float RTABMAP_EXP computePathLength(
 		const std::vector<std::pair<int, Transform> > & path,

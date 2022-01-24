@@ -63,7 +63,7 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-650</y>
+            <y>0</y>
             <width>756</width>
             <height>3623</height>
            </rect>
@@ -95,7 +95,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>12</number>
+                <number>13</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,0">
@@ -11396,7 +11396,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                            </property>
                           </widget>
                          </item>
-                         <item row="4" column="1">
+                         <item row="5" column="1">
                           <widget class="QLabel" name="label_scanMatching_13">
                            <property name="text">
                             <string>Use odometry as motion guess for one-to-one proximity detection.</string>
@@ -11419,7 +11419,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                            </property>
                           </widget>
                          </item>
-                         <item row="3" column="0">
+                         <item row="4" column="0">
                           <widget class="QDoubleSpinBox" name="localDetection_angle">
                            <property name="suffix">
                             <string> deg</string>
@@ -11435,14 +11435,14 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                            </property>
                           </widget>
                          </item>
-                         <item row="4" column="0">
+                         <item row="5" column="0">
                           <widget class="QCheckBox" name="checkBox_localSpaceOdomGuess">
                            <property name="text">
                             <string/>
                            </property>
                           </widget>
                          </item>
-                         <item row="5" column="1">
+                         <item row="6" column="1">
                           <widget class="QLabel" name="label_space3_3">
                            <property name="text">
                             <string>Path filtering radius to reduce the number of nodes to compare in a path in one-to-many proximity detection. The nearest node in a path should be inside that radius to be considered for one-to-one proximity detection.</string>
@@ -11478,7 +11478,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                            </property>
                           </widget>
                          </item>
-                         <item row="6" column="1">
+                         <item row="7" column="1">
                           <widget class="QLabel" name="label_scanMatching_4">
                            <property name="text">
                             <string>When comparing to a local path for one-to-many proximity detection, merge the scans using the odometry poses (with neighbor link optimizations) instead of the ones in the optimized local graph.</string>
@@ -11504,7 +11504,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                            </property>
                           </widget>
                          </item>
-                         <item row="5" column="0">
+                         <item row="6" column="0">
                           <widget class="QDoubleSpinBox" name="localDetection_pathFilteringRadius">
                            <property name="suffix">
                             <string> m</string>
@@ -11530,14 +11530,14 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                            </property>
                           </widget>
                          </item>
-                         <item row="6" column="0">
+                         <item row="7" column="0">
                           <widget class="QCheckBox" name="checkBox_localSpacePathOdomPosesUsed">
                            <property name="text">
                             <string/>
                            </property>
                           </widget>
                          </item>
-                         <item row="8" column="1">
+                         <item row="9" column="1">
                           <widget class="QLabel" name="label_scanMatching_6">
                            <property name="text">
                             <string>Save scan matching IDs from one-to-many proximity detection in link's user data.</string>
@@ -11550,7 +11550,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                            </property>
                           </widget>
                          </item>
-                         <item row="3" column="1">
+                         <item row="4" column="1">
                           <widget class="QLabel" name="label_scanMatching_8">
                            <property name="text">
                             <string>Maximum angle (degrees) for one-to-one proximity detection.</string>
@@ -11563,14 +11563,14 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                            </property>
                           </widget>
                          </item>
-                         <item row="8" column="0">
+                         <item row="9" column="0">
                           <widget class="QCheckBox" name="checkBox_localSpaceScanMatchingIDsSaved">
                            <property name="text">
                             <string/>
                            </property>
                           </widget>
                          </item>
-                         <item row="9" column="1">
+                         <item row="10" column="1">
                           <widget class="QLabel" name="label_scanMatching_15">
                            <property name="text">
                             <string>Create a global assembled map from laser scans for one-to-many proximity detection, replacing the original one-to-many proximity detection (i.e., detection against local paths). Only used in localization mode, otherwise original one-to-many proximity detection is done. Note also that if graph is modified (i.e., memory management is enabled or robot jumps from one disjoint session to another in same database), the global scan map is cleared and one-to-many proximity detection is reverted to original approach.</string>
@@ -11583,10 +11583,45 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                            </property>
                           </widget>
                          </item>
-                         <item row="9" column="0">
+                         <item row="10" column="0">
                           <widget class="QCheckBox" name="checkBox_localSpaceCreateGlobalScanMap">
                            <property name="text">
                             <string/>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="3" column="1">
+                          <widget class="QLabel" name="label_space3_9">
+                           <property name="text">
+                            <string>Covariance factor for one-to-many proximity detection (when Maximum neighbor nodes&gt;0 and scans are used).</string>
+                           </property>
+                           <property name="wordWrap">
+                            <bool>true</bool>
+                           </property>
+                           <property name="textInteractionFlags">
+                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="3" column="0">
+                          <widget class="QDoubleSpinBox" name="localDetection_mergedScanCovFactor">
+                           <property name="suffix">
+                            <string/>
+                           </property>
+                           <property name="decimals">
+                            <number>0</number>
+                           </property>
+                           <property name="minimum">
+                            <double>1.000000000000000</double>
+                           </property>
+                           <property name="maximum">
+                            <double>10000.000000000000000</double>
+                           </property>
+                           <property name="singleStep">
+                            <double>10.000000000000000</double>
+                           </property>
+                           <property name="value">
+                            <double>100.000000000000000</double>
                            </property>
                           </widget>
                          </item>
