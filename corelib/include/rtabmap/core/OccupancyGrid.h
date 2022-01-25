@@ -122,6 +122,7 @@ private:
 	bool projMapFrame_;
 	float maxObstacleHeight_;
 	int normalKSearch_;
+	float groundNormalsUp_;
 	float maxGroundAngle_;
 	float clusterRadius_;
 	int minClusterSize_;

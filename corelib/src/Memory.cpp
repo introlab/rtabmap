@@ -98,6 +98,7 @@ Memory::Memory(const ParametersMap & parameters) :
 	_laserScanVoxelSize(Parameters::defaultMemLaserScanVoxelSize()),
 	_laserScanNormalK(Parameters::defaultMemLaserScanNormalK()),
 	_laserScanNormalRadius(Parameters::defaultMemLaserScanNormalRadius()),
+	_laserScanGroundNormalsUp(Parameters::defaultIcpPointToPlaneGroundNormalsUp()),
 	_reextractLoopClosureFeatures(Parameters::defaultRGBDLoopClosureReextractFeatures()),
 	_localBundleOnLoopClosure(Parameters::defaultRGBDLocalBundleOnLoopClosure()),
 	_rehearsalMaxDistance(Parameters::defaultRGBDLinearUpdate()),
@@ -565,6 +566,7 @@ void Memory::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(params, Parameters::kMemLaserScanVoxelSize(), _laserScanVoxelSize);
 	Parameters::parse(params, Parameters::kMemLaserScanNormalK(), _laserScanNormalK);
 	Parameters::parse(params, Parameters::kMemLaserScanNormalRadius(), _laserScanNormalRadius);
+	Parameters::parse(params, Parameters::kIcpPointToPlaneGroundNormalsUp(), _laserScanGroundNormalsUp);
 	Parameters::parse(params, Parameters::kRGBDLoopClosureReextractFeatures(), _reextractLoopClosureFeatures);
 	Parameters::parse(params, Parameters::kRGBDLocalBundleOnLoopClosure(), _localBundleOnLoopClosure);
 	Parameters::parse(params, Parameters::kRGBDLinearUpdate(), _rehearsalMaxDistance);
@@ -5480,7 +5482,8 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 				0,
 				_laserScanVoxelSize,
 				_laserScanNormalK,
-				_laserScanNormalRadius);
+				_laserScanNormalRadius,
+				_laserScanGroundNormalsUp);
 		t = timer.ticks();
 		if(stats) stats->addStatistic(Statistics::kTimingMemScan_filtering(), t*1000.0f);
 		UDEBUG("time normals scan = %fs", t);

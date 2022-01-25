@@ -126,6 +126,7 @@ typename pcl::PointCloud<PointT>::Ptr OccupancyGrid::segmentCloud(
 			UDEBUG("Cluster radius=%f", clusterRadius_);
 			UDEBUG("flatObstaclesDetected=%d", flatObstaclesDetected_?1:0);
 			UDEBUG("maxGroundHeight=%f", maxGroundHeight_);
+			UDEBUG("groundNormalsUp=%f", groundNormalsUp_);
 			util3d::segmentObstaclesFromGround<PointT>(
 					cloud,
 					indices,
@@ -138,7 +139,8 @@ typename pcl::PointCloud<PointT>::Ptr OccupancyGrid::segmentCloud(
 					flatObstaclesDetected_,
 					maxGroundHeight_,
 					flatObstacles,
-					Eigen::Vector4f(viewPoint.x, viewPoint.y, viewPoint.z+(projMapFrame_?pose.z():0), 1));
+					Eigen::Vector4f(viewPoint.x, viewPoint.y, viewPoint.z+(projMapFrame_?pose.z():0), 1),
+					groundNormalsUp_);
 			UDEBUG("viewPoint=%f,%f,%f", viewPoint.x, viewPoint.y, viewPoint.z+(projMapFrame_?pose.z():0));
 			//UWARN("Saving ground.pcd and obstacles.pcd");
 			//pcl::io::savePCDFile("ground.pcd", *cloud, *groundIndices);

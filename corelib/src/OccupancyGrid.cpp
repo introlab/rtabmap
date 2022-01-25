@@ -56,6 +56,7 @@ OccupancyGrid::OccupancyGrid(const ParametersMap & parameters) :
 	projMapFrame_(Parameters::defaultGridMapFrameProjection()),
 	maxObstacleHeight_(Parameters::defaultGridMaxObstacleHeight()),
 	normalKSearch_(Parameters::defaultGridNormalK()),
+	groundNormalsUp_(Parameters::defaultIcpPointToPlaneGroundNormalsUp()),
 	maxGroundAngle_(Parameters::defaultGridMaxGroundAngle()*M_PI/180.0f),
 	clusterRadius_(Parameters::defaultGridClusterRadius()),
 	minClusterSize_(Parameters::defaultGridMinClusterSize()),
@@ -115,6 +116,7 @@ void OccupancyGrid::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kGridMinGroundHeight(), minGroundHeight_);
 	Parameters::parse(parameters, Parameters::kGridMaxGroundHeight(), maxGroundHeight_);
 	Parameters::parse(parameters, Parameters::kGridNormalK(), normalKSearch_);
+	Parameters::parse(parameters, Parameters::kIcpPointToPlaneGroundNormalsUp(), groundNormalsUp_);
 	if(Parameters::parse(parameters, Parameters::kGridMaxGroundAngle(), maxGroundAngle_))
 	{
 		maxGroundAngle_ *= M_PI/180.0f;

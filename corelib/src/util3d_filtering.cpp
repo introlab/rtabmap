@@ -1930,20 +1930,22 @@ pcl::IndicesPtr normalFiltering(
 		float angleMax,
 		const Eigen::Vector4f & normal,
 		int normalKSearch,
-		const Eigen::Vector4f & viewpoint)
+		const Eigen::Vector4f & viewpoint,
+		float groundNormalsUp)
 {
 	pcl::IndicesPtr indices(new std::vector<int>);
-	return normalFiltering(cloud, indices, angleMax, normal, normalKSearch, viewpoint);
+	return normalFiltering(cloud, indices, angleMax, normal, normalKSearch, viewpoint, groundNormalsUp);
 }
 pcl::IndicesPtr normalFiltering(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 		float angleMax,
 		const Eigen::Vector4f & normal,
 		int normalKSearch,
-		const Eigen::Vector4f & viewpoint)
+		const Eigen::Vector4f & viewpoint,
+		float groundNormalsUp)
 {
 	pcl::IndicesPtr indices(new std::vector<int>);
-	return normalFiltering(cloud, indices, angleMax, normal, normalKSearch, viewpoint);
+	return normalFiltering(cloud, indices, angleMax, normal, normalKSearch, viewpoint, groundNormalsUp);
 }
 
 
@@ -1954,7 +1956,8 @@ pcl::IndicesPtr normalFilteringImpl(
 		float angleMax,
 		const Eigen::Vector4f & normal,
 		int normalKSearch,
-		const Eigen::Vector4f & viewpoint)
+		const Eigen::Vector4f & viewpoint,
+		float groundNormalsUp)
 {
 	pcl::IndicesPtr output(new std::vector<int>());
 
@@ -1994,6 +1997,12 @@ pcl::IndicesPtr normalFilteringImpl(
 		for(unsigned int i=0; i<cloud_normals->size(); ++i)
 		{
 			Eigen::Vector4f v(cloud_normals->at(i).normal_x, cloud_normals->at(i).normal_y, cloud_normals->at(i).normal_z, 0.0f);
+			if(groundNormalsUp>0.0f && v[2] < -groundNormalsUp && cloud->at(indices->size()!=0?indices->at(i):i).z < viewpoint[3]) // some far velodyne rays on road can have normals toward ground
+			{
+				//reverse normal
+				v *= -1.0f;
+			}
+
 			float angle = pcl::getAngle3D(normal, v);
 			if(angle < angleMax)
 			{
@@ -2011,10 +2020,10 @@ pcl::IndicesPtr normalFiltering(
 		float angleMax,
 		const Eigen::Vector4f & normal,
 		int normalKSearch,
-		const Eigen::Vector4f & viewpoint)
-
+		const Eigen::Vector4f & viewpoint,
+		float groundNormalsUp)
 {
-	return normalFilteringImpl<pcl::PointXYZ>(cloud, indices, angleMax, normal, normalKSearch, viewpoint);
+	return normalFilteringImpl<pcl::PointXYZ>(cloud, indices, angleMax, normal, normalKSearch, viewpoint, groundNormalsUp);
 }
 pcl::IndicesPtr normalFiltering(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
@@ -2022,9 +2031,10 @@ pcl::IndicesPtr normalFiltering(
 		float angleMax,
 		const Eigen::Vector4f & normal,
 		int normalKSearch,
-		const Eigen::Vector4f & viewpoint)
+		const Eigen::Vector4f & viewpoint,
+		float groundNormalsUp)
 {
-	return normalFilteringImpl<pcl::PointXYZRGB>(cloud, indices, angleMax, normal, normalKSearch, viewpoint);
+	return normalFilteringImpl<pcl::PointXYZRGB>(cloud, indices, angleMax, normal, normalKSearch, viewpoint, groundNormalsUp);
 }
 pcl::IndicesPtr normalFiltering(
 		const pcl::PointCloud<pcl::PointXYZI>::Ptr & cloud,
@@ -2032,17 +2042,20 @@ pcl::IndicesPtr normalFiltering(
 		float angleMax,
 		const Eigen::Vector4f & normal,
 		int normalKSearch,
-		const Eigen::Vector4f & viewpoint)
+		const Eigen::Vector4f & viewpoint,
+		float groundNormalsUp)
 {
-	return normalFilteringImpl<pcl::PointXYZI>(cloud, indices, angleMax, normal, normalKSearch, viewpoint);
+	return normalFilteringImpl<pcl::PointXYZI>(cloud, indices, angleMax, normal, normalKSearch, viewpoint, groundNormalsUp);
 }
 
-template<typename PointT>
+template<typename PointNormalT>
 pcl::IndicesPtr normalFilteringImpl(
-		const typename pcl::PointCloud<PointT>::Ptr & cloud,
+		const typename pcl::PointCloud<PointNormalT>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
 		float angleMax,
-		const Eigen::Vector4f & normal)
+		const Eigen::Vector4f & normal,
+		const Eigen::Vector4f & viewpoint,
+		float groundNormalsUp)
 {
 	pcl::IndicesPtr output(new std::vector<int>());
 
@@ -2055,6 +2068,11 @@ pcl::IndicesPtr normalFilteringImpl(
 			for(unsigned int i=0; i<indices->size(); ++i)
 			{
 				Eigen::Vector4f v(cloud->at(indices->at(i)).normal_x, cloud->at(indices->at(i)).normal_y, cloud->at(indices->at(i)).normal_z, 0.0f);
+				if(groundNormalsUp>0.0f && v[2] < -groundNormalsUp && cloud->at(indices->at(i)).z < viewpoint[3]) // some far velodyne rays on road can have normals toward ground
+				{
+					//reverse normal
+					v *= -1.0f;
+				}
 				float angle = pcl::getAngle3D(normal, v);
 				if(angle < angleMax)
 				{
@@ -2068,6 +2086,11 @@ pcl::IndicesPtr normalFilteringImpl(
 			for(unsigned int i=0; i<cloud->size(); ++i)
 			{
 				Eigen::Vector4f v(cloud->at(i).normal_x, cloud->at(i).normal_y, cloud->at(i).normal_z, 0.0f);
+				if(groundNormalsUp>0.0f && v[2] < -groundNormalsUp && cloud->at(i).z < viewpoint[3]) // some far velodyne rays on road can have normals toward ground
+				{
+					//reverse normal
+					v *= -1.0f;
+				}
 				float angle = pcl::getAngle3D(normal, v);
 				if(angle < angleMax)
 				{
@@ -2086,30 +2109,33 @@ pcl::IndicesPtr normalFiltering(
 		const pcl::IndicesPtr & indices,
 		float angleMax,
 		const Eigen::Vector4f & normal,
-		int normalKSearch,
-		const Eigen::Vector4f & viewpoint)
+		int,
+		const Eigen::Vector4f & viewpoint,
+		float groundNormalsUp)
 {
-	return normalFilteringImpl<pcl::PointNormal>(cloud, indices, angleMax, normal);
+	return normalFilteringImpl<pcl::PointNormal>(cloud, indices, angleMax, normal, viewpoint, groundNormalsUp);
 }
 pcl::IndicesPtr normalFiltering(
 		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
 		float angleMax,
 		const Eigen::Vector4f & normal,
-		int normalKSearch,
-		const Eigen::Vector4f & viewpoint)
+		int,
+		const Eigen::Vector4f & viewpoint,
+		float groundNormalsUp)
 {
-	return normalFilteringImpl<pcl::PointXYZRGBNormal>(cloud, indices, angleMax, normal);
+	return normalFilteringImpl<pcl::PointXYZRGBNormal>(cloud, indices, angleMax, normal, viewpoint, groundNormalsUp);
 }
 pcl::IndicesPtr normalFiltering(
 		const pcl::PointCloud<pcl::PointXYZINormal>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
 		float angleMax,
 		const Eigen::Vector4f & normal,
-		int normalKSearch,
-		const Eigen::Vector4f & viewpoint)
+		int,
+		const Eigen::Vector4f & viewpoint,
+		float groundNormalsUp)
 {
-	return normalFilteringImpl<pcl::PointXYZINormal>(cloud, indices, angleMax, normal);
+	return normalFilteringImpl<pcl::PointXYZINormal>(cloud, indices, angleMax, normal, viewpoint, groundNormalsUp);
 }
 
 std::vector<pcl::IndicesPtr> extractClusters(

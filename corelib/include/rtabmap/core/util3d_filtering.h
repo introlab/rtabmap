@@ -697,13 +697,15 @@ pcl::IndicesPtr RTABMAP_EXP normalFiltering(
 		float angleMax,
 		const Eigen::Vector4f & normal,
 		int normalKSearch,
-		const Eigen::Vector4f & viewpoint);
+		const Eigen::Vector4f & viewpoint,
+		float groundNormalsUp = 0.0f);
 pcl::IndicesPtr RTABMAP_EXP normalFiltering(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 		float angleMax,
 		const Eigen::Vector4f & normal,
 		int normalKSearch,
-		const Eigen::Vector4f & viewpoint);
+		const Eigen::Vector4f & viewpoint,
+		float groundNormalsUp = 0.0f);
 
 /**
  * @brief Given a normal and a maximum angle error, keep all points of the cloud
@@ -727,42 +729,48 @@ pcl::IndicesPtr RTABMAP_EXP normalFiltering(
 		float angleMax,
 		const Eigen::Vector4f & normal,
 		int normalKSearch,
-		const Eigen::Vector4f & viewpoint);
+		const Eigen::Vector4f & viewpoint,
+		float groundNormalsUp = 0.0f);
 pcl::IndicesPtr RTABMAP_EXP normalFiltering(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
 		float angleMax,
 		const Eigen::Vector4f & normal,
 		int normalKSearch,
-		const Eigen::Vector4f & viewpoint);
+		const Eigen::Vector4f & viewpoint,
+		float groundNormalsUp = 0.0f);
 pcl::IndicesPtr RTABMAP_EXP normalFiltering(
 		const pcl::PointCloud<pcl::PointXYZI>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
 		float angleMax,
 		const Eigen::Vector4f & normal,
 		int normalKSearch,
-		const Eigen::Vector4f & viewpoint);
+		const Eigen::Vector4f & viewpoint,
+		float groundNormalsUp = 0.0f);
 pcl::IndicesPtr RTABMAP_EXP normalFiltering(
 		const pcl::PointCloud<pcl::PointNormal>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
 		float angleMax,
 		const Eigen::Vector4f & normal,
 		int normalKSearch,
-		const Eigen::Vector4f & viewpoint);
+		const Eigen::Vector4f & viewpoint,
+		float groundNormalsUp = 0.0f);
 pcl::IndicesPtr RTABMAP_EXP normalFiltering(
 		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
 		float angleMax,
 		const Eigen::Vector4f & normal,
 		int normalKSearch,
-		const Eigen::Vector4f & viewpoint);
+		const Eigen::Vector4f & viewpoint,
+		float groundNormalsUp = 0.0f);
 pcl::IndicesPtr RTABMAP_EXP normalFiltering(
 		const pcl::PointCloud<pcl::PointXYZINormal>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
 		float angleMax,
 		const Eigen::Vector4f & normal,
 		int normalKSearch,
-		const Eigen::Vector4f & viewpoint);
+		const Eigen::Vector4f & viewpoint,
+		float groundNormalsUp = 0.0f);
 
 /**
  * For convenience.

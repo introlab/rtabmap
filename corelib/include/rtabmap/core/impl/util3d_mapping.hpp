@@ -63,7 +63,8 @@ void segmentObstaclesFromGround(
 		bool segmentFlatObstacles,
 		float maxGroundHeight,
 		pcl::IndicesPtr * flatObstacles,
-		const Eigen::Vector4f & viewPoint)
+		const Eigen::Vector4f & viewPoint,
+		float groundNormalsUp)
 {
 	ground.reset(new std::vector<int>);
 	obstacles.reset(new std::vector<int>);
@@ -81,7 +82,8 @@ void segmentObstaclesFromGround(
 				groundNormalAngle,
 				Eigen::Vector4f(0,0,1,0),
 				normalKSearch,
-				viewPoint);
+				viewPoint,
+				groundNormalsUp);
 
 		if(segmentFlatObstacles && flatSurfaces->size())
 		{
@@ -205,7 +207,8 @@ void segmentObstaclesFromGround(
 		bool segmentFlatObstacles,
 		float maxGroundHeight,
 		pcl::IndicesPtr * flatObstacles,
-		const Eigen::Vector4f & viewPoint)
+		const Eigen::Vector4f & viewPoint,
+		float groundNormalsUp)
 {
 	pcl::IndicesPtr indices(new std::vector<int>);
 	segmentObstaclesFromGround<PointT>(
@@ -220,7 +223,8 @@ void segmentObstaclesFromGround(
 			segmentFlatObstacles,
 			maxGroundHeight,
 			flatObstacles,
-			viewPoint);
+			viewPoint,
+			groundNormalsUp);
 }
 
 template<typename PointT>

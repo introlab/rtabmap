@@ -5062,9 +5062,9 @@ void DatabaseViewer::update(int value,
 								float xMin=0.0f, yMin=0.0f;
 								cv::Mat map8S;
 								ParametersMap parameters = ui_->parameters_toolbox->getParameters();
-								parameters = Parameters::filterParameters(parameters, "GridGlobal", true);
 								float gridCellSize = Parameters::defaultGridCellSize();
 								Parameters::parse(parameters, Parameters::kGridCellSize(), gridCellSize);
+								parameters = Parameters::filterParameters(parameters, "GridGlobal", true);
 #ifdef RTABMAP_OCTOMAP
 								if(octomap)
 								{
