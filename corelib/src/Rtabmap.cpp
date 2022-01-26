@@ -2518,9 +2518,6 @@ bool Rtabmap::process(
 											nearestId,
 											transform.prettyPrint().c_str());
 									UASSERT(info.covariance.at<double>(0,0) > 0.0 && info.covariance.at<double>(5,5) > 0.0);
-									cv::Mat information = getInformation(info.covariance);
-									_memory->addLink(Link(signature->id(), nearestId, Link::kLocalSpaceClosure, transform, information));
-									loopClosureLinksAdded.push_back(std::make_pair(signature->id(), nearestId));
 
 									//for statistics
 									loopClosureVisualInliersMeanDist = info.inliersMeanDistance;
@@ -2533,20 +2530,29 @@ bool Rtabmap::process(
 									loopClosureVisualInliersRatio = info.inliersRatio;
 									loopClosureVisualMatches = info.matches;
 
+									cv::Mat information = getInformation(info.covariance);
 									loopClosureLinearVariance = 1.0/information.at<double>(0,0);
 									loopClosureAngularVariance = 1.0/information.at<double>(5,5);
 
+									Link::Type type = Link::kLocalSpaceClosure;
 									if(_loopClosureHypothesis.first>0 &&
 										nearestIds.find(_loopClosureHypothesis.first)!=nearestIds.end())
 									{
 										UDEBUG("Proximity detection on %d is close to loop closure %d, ignoring loop closure transform estimation...",
 												nearestId, _loopClosureHypothesis.first);
+										if(nearestId == _loopClosureHypothesis.first)
+										{
+											type = Link::kGlobalClosure;
+										}
 										// In localization mode, avoid transform
 										// computation on the global loop closure if a visual proximity
 										// one has been detected close (inside proximity radius) to that hypothesis.
 										loopIdSuppressedByProximity = _loopClosureHypothesis.first;
 										_loopClosureHypothesis.first = 0;
 									}
+
+									_memory->addLink(Link(signature->id(), nearestId, type, transform, information));
+									loopClosureLinksAdded.push_back(std::make_pair(signature->id(), nearestId));
 								}
 								else
 								{
@@ -3047,8 +3053,141 @@ bool Rtabmap::process(
 					}
 				}
 
+				bool hasGlobalLoopClosuresOrLandmarks = false;
+				if(rejectLocalization)
+				{
+					// Let's try again without local loop closures
+					localizationLinks = graph::filterLinks(localizationLinks, Link::kLocalSpaceClosure);
+					constraints = graph::filterLinks(constraints, Link::kLocalSpaceClosure);
+					for(std::multimap<int, Link>::iterator iter=constraints.begin(); iter!=constraints.end() && !hasGlobalLoopClosuresOrLandmarks; ++iter)
+					{
+						hasGlobalLoopClosuresOrLandmarks =
+								iter->second.type() == Link::kGlobalClosure ||
+								iter->second.type() == Link::kLandmark;
+					}
+					if(hasGlobalLoopClosuresOrLandmarks && !localizationLinks.empty())
+					{
+						rejectLocalization = false;
+						UWARN("Global and loop closures seem not tallying together, try again to optimize without local loop closures...");
+						priorsIgnored = _graphOptimizer->priorsIgnored();
+						UDEBUG("priorsIgnored was %s", priorsIgnored?"true":"false");
+						_graphOptimizer->setPriorsIgnored(false); //temporary set false to use priors above to fix nodes of the map
+						// If slam2d: get connected graph while keeping original roll,pitch,z values.
+						_graphOptimizer->getConnectedGraph(signature->id(), poses, constraints, posesOut, edgeConstraintsOut, !_graphOptimizer->isSlam2d());
+						optPoses = _graphOptimizer->optimize(poses.begin()->first, posesOut, edgeConstraintsOut);
+						_graphOptimizer->setPriorsIgnored(priorsIgnored); // set back
+						for(std::map<int, Transform>::iterator iter=optPoses.begin(); iter!=optPoses.end(); ++iter)
+						{
+							UDEBUG("Opt2  %d %s", iter->first, iter->second.prettyPrint().c_str());
+						}
+
+						if(optPoses.empty())
+						{
+							UWARN("Optimization failed, rejecting localization!");
+							rejectLocalization = true;
+						}
+						else if(_optimizationMaxError > 0.0f)
+						{
+							UINFO("Compute max graph errors...");
+							const Link * maxLinearLink = 0;
+							const Link * maxAngularLink = 0;
+							graph::computeMaxGraphErrors(
+									optPoses,
+									edgeConstraintsOut,
+									maxLinearErrorRatio,
+									maxAngularErrorRatio,
+									maxLinearError,
+									maxAngularError,
+									&maxLinearLink,
+									&maxAngularLink,
+									_graphOptimizer->isSlam2d());
+							if(maxLinearLink == 0 && maxAngularLink==0 && _maxOdomCacheSize>0)
+							{
+								UWARN("Could not compute graph errors! Wrong loop closures could be accepted!");
+								optPoses = posesOut;
+							}
+
+							if(maxLinearLink)
+							{
+								UINFO("Max optimization linear error = %f m (link %d->%d, var=%f, ratio error/std=%f, thr=%f)",
+										maxLinearError,
+										maxLinearLink->from(),
+										maxLinearLink->to(),
+										maxLinearLink->transVariance(),
+										maxLinearError/sqrt(maxLinearLink->transVariance()),
+										_optimizationMaxError);
+								if(maxLinearErrorRatio > _optimizationMaxError)
+								{
+									UWARN("Rejecting localization (%d <-> %d) in this "
+											"iteration because a wrong loop closure has been "
+											"detected after graph optimization, resulting in "
+											"a maximum graph error ratio of %f (edge %d->%d, type=%d, abs error=%f m, stddev=%f). The "
+											"maximum error ratio parameter \"%s\" is %f of std deviation.",
+											localizationLinks.rbegin()->second.from(),
+											localizationLinks.rbegin()->second.to(),
+											maxLinearErrorRatio,
+											maxLinearLink->from(),
+											maxLinearLink->to(),
+											maxLinearLink->type(),
+											maxLinearError,
+											sqrt(maxLinearLink->transVariance()),
+											Parameters::kRGBDOptimizeMaxError().c_str(),
+											_optimizationMaxError);
+									rejectLocalization = true;
+								}
+							}
+							if(maxAngularLink)
+							{
+								UINFO("Max optimization angular error = %f deg (link %d->%d, var=%f, ratio error/std=%f, thr=%f)",
+										maxAngularError*180.0f/CV_PI,
+										maxAngularLink->from(),
+										maxAngularLink->to(),
+										maxAngularLink->rotVariance(),
+										maxAngularError/sqrt(maxAngularLink->rotVariance()),
+										_optimizationMaxError);
+								if(maxAngularErrorRatio > _optimizationMaxError)
+								{
+									UWARN("Rejecting localization (%d <-> %d) in this "
+											"iteration because a wrong loop closure has been "
+											"detected after graph optimization, resulting in "
+											"a maximum graph error ratio of %f (edge %d->%d, type=%d, abs error=%f deg, stddev=%f). The "
+											"maximum error ratio parameter \"%s\" is %f of std deviation.",
+											localizationLinks.rbegin()->second.from(),
+											localizationLinks.rbegin()->second.to(),
+											maxAngularErrorRatio,
+											maxAngularLink->from(),
+											maxAngularLink->to(),
+											maxAngularLink->type(),
+											maxAngularError*180.0f/CV_PI,
+											sqrt(maxAngularLink->rotVariance()),
+											Parameters::kRGBDOptimizeMaxError().c_str(),
+											_optimizationMaxError);
+									rejectLocalization = true;
+								}
+							}
+						}
+					}
+				}
+
 				if(!rejectLocalization)
 				{
+					if(hasGlobalLoopClosuresOrLandmarks)
+					{
+						// We successfully optimize the graph without local loop closures,
+						// clear them as some of them may be wrong.
+						size_t before = _odomCacheConstraints.size();
+						_odomCacheConstraints = graph::filterLinks(_odomCacheConstraints, Link::kLocalSpaceClosure);
+						if(before != _odomCacheConstraints.size())
+						{
+							UWARN("Successfully optimized without local loop closures! Clear them from local odometry cache. %ld/%ld have been removed.",
+									before - _odomCacheConstraints.size(), before);
+						}
+						else
+						{
+							UWARN("Successfully optimized without local loop closures!");
+						}
+					}
+
 					// Count how many localization links are in the constraints
 					bool hadAlreadyLocalizationLinks = false;
 					for(std::multimap<int, Link>::iterator iter=_odomCacheConstraints.begin();
@@ -3083,11 +3222,7 @@ bool Rtabmap::process(
 					// At least 2 localizations at 2 different time required
 					if(hadAlreadyLocalizationLinks || _maxOdomCacheSize == 0)
 					{
-						// If there are no signatures retrieved, we don't
-						// need to re-optimize the graph. Just update the last
-						// position if OptimizeFromGraphEnd=false or transform the
-						// whole graph if OptimizeFromGraphEnd=true
-						UINFO("Localization without map optimization");
+						UINFO("Update localization");
 						if(_optimizeFromGraphEnd)
 						{
 							// update all previous nodes
