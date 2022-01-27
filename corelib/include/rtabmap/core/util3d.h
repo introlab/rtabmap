@@ -313,6 +313,7 @@ std::vector<std::pair< std::pair<int, int>, pcl::PointXY> > RTABMAP_EXP projectC
 		float maxDistance = 0.0f,
 		float maxAngle = 0.0f,
 		const std::vector<float> & roiRatios = std::vector<float>(),
+		const cv::Mat & projMask = cv::Mat(),
 		bool distanceToCamPolicy = false,
 		const ProgressState * state = 0);
 /**
@@ -326,6 +327,7 @@ std::vector<std::pair< std::pair<int, int>, pcl::PointXY> > RTABMAP_EXP projectC
 		float maxDistance = 0.0f,
 		float maxAngle = 0.0f,
 		const std::vector<float> & roiRatios = std::vector<float>(),
+		const cv::Mat & projMask = cv::Mat(),
 		bool distanceToCamPolicy = false,
 		const ProgressState * state = 0);
 

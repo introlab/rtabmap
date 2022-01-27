@@ -481,23 +481,27 @@ void RTABMAP_EXP adjustNormalsToViewPoints(
 		const std::map<int, Transform> & poses,
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & rawCloud,
 		const std::vector<int> & rawCameraIndices,
-		pcl::PointCloud<pcl::PointNormal>::Ptr & cloud);
+		pcl::PointCloud<pcl::PointNormal>::Ptr & cloud,
+		float groundNormalsUp = 0.0f);
 void RTABMAP_EXP adjustNormalsToViewPoints(
 		const std::map<int, Transform> & poses,
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & rawCloud,
 		const std::vector<int> & rawCameraIndices,
-		pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud);
+		pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
+		float groundNormalsUp = 0.0f);
 void RTABMAP_EXP adjustNormalsToViewPoints(
 		const std::map<int, Transform> & poses,
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & rawCloud,
 		const std::vector<int> & rawCameraIndices,
-		pcl::PointCloud<pcl::PointXYZINormal>::Ptr & cloud);
+		pcl::PointCloud<pcl::PointXYZINormal>::Ptr & cloud,
+		float groundNormalsUp = 0.0f);
 
 void RTABMAP_EXP adjustNormalsToViewPoints(
 		const std::map<int, Transform> & viewpoints,
 		const LaserScan & rawScan,
 		const std::vector<int> & viewpointIds,
-		LaserScan & scan);
+		LaserScan & scan,
+		float groundNormalsUp = 0.0f);
 
 pcl::PolygonMesh::Ptr RTABMAP_EXP meshDecimation(const pcl::PolygonMesh::Ptr & mesh, float factor);
 

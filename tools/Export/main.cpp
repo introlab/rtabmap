@@ -58,7 +58,7 @@ void showUsage()
 			"Options:\n"
 			"    --output \"\"           Output name (default: name of the database is used).\n"
 			"    --output_dir \"\"       Output directory (default: same directory than the database).\n"
-			"    --bin                 Export PLY in binary format.\n"
+			"    --ascii               Export PLY in ascii format.\n"
 			"    --las                 Export cloud in LAS instead of PLY (PDAL dependency required).\n"
 			"    --mesh                Create a mesh.\n"
 			"    --texture             Create a mesh with texture.\n"
@@ -67,11 +67,12 @@ void showUsage()
 			"    --texture_range #     Maximum camera range for texturing a polygon (default 0 meters: no limit).\n"
 			"    --texture_angle #     Maximum camera angle for texturing a polygon (default 0 deg: no limit).\n"
 			"    --texture_depth_error # Maximum depth error between reprojected mesh and depth image to texture a face (-1=disabled, 0=edge length is used, default=0).\n"
-			"    --texture_roi_ratios \"# # # #\" Region of interest from images to texture or to color scans. Format is \"left right top bottom\" (e.g. \"0 0 0 0.1\" means 10% of the image bottom not used).\n"
+			"    --texture_roi_ratios \"# # # #\" Region of interest from images to texture or to color scans. Format is \"left right top bottom\" (e.g. \"0 0 0 0.1\" means 10%% of the image bottom not used).\n"
 			"    --texture_d2c         Distance to camera policy.\n"
 			"    --cam_projection      Camera projection on assembled cloud and export node ID on each point (in PointSourceId field).\n"
 			"    --cam_projection_keep_all  Keep not colored points from cameras (node ID will be 0 and color will be red).\n"
 			"    --cam_projection_decimation  Decimate images before projecting the points.\n"
+			"    --cam_projection_mask \"\"  File path for a mask. Format should be 8-bits grayscale. The mask should cover all cameras in case multi-camera is used and have the same resolution.\n"
 			"    --poses               Export optimized poses of the robot frame (e.g., base_link).\n"
 			"    --poses_camera        Export optimized poses of the camera frame (e.g., optical frame).\n"
 			"    --poses_scan          Export optimized poses of the scan frame.\n"
@@ -108,6 +109,7 @@ void showUsage()
 			"    --max_range     #     Maximum range of the created clouds (default 4 m, 0 m with --scan).\n"
 			"    --decimation    #     Depth image decimation before creating the clouds (default 4, 1 with --scan).\n"
 			"    --voxel         #     Voxel size of the created clouds (default 0.01 m, 0 m with --scan).\n"
+			"    --ground_normals_up  #  Flip ground normals up if close to -z axis (default 0, 0=disabled, value should be >0 and <1, typical 0.9).\n"
 			"    --noise_radius  #     Noise filtering search radius (default 0, 0=disabled).\n"
 			"    --noise_k       #     Noise filtering minimum neighbors in search radius (default 5, 0=disabled).\n"
 			"    --prop_radius_factor #  Proportional radius filter factor (default 0, 0=disabled). Start tuning from 0.01.\n"
@@ -150,7 +152,7 @@ int main(int argc, char * argv[])
 		showUsage();
 	}
 
-	bool binary = false;
+	bool binary = true;
 	bool las = false;
 	bool mesh = false;
 	bool texture = false;
@@ -166,6 +168,7 @@ int main(int argc, char * argv[])
 	int decimation = -1;
 	float maxRange = -1.0f;
 	float voxelSize = -1.0f;
+	float groundNormalsUp = 0.0f;
 	float noiseRadius = 0.0f;
 	int noiseMinNeighbors = 5;
 	float proportionalRadiusFactor = 0.0f;
@@ -195,6 +198,7 @@ int main(int argc, char * argv[])
 	bool camProjection = false;
 	bool camProjectionKeepAll = false;
 	int cameraProjDecimation = 1;
+	std::string cameraProjMask;
 	bool exportPoses = false;
 	bool exportPosesCamera = false;
 	bool exportPosesScan = false;
@@ -238,7 +242,11 @@ int main(int argc, char * argv[])
 		}
 		else if(std::strcmp(argv[i], "--bin") == 0)
 		{
-			binary = true;
+			printf("No need to set --bin anymore, ply are now automatically exported in binary by default. Set --ascii to export as text.\n")
+		}
+		else if(std::strcmp(argv[i], "--ascii") == 0)
+		{
+			binary = false;
 		}
 		else if(std::strcmp(argv[i], "--las") == 0)
 		{
@@ -379,6 +387,23 @@ int main(int argc, char * argv[])
 				if(cameraProjDecimation<1)
 				{
 					printf("--cam_projection_decimation cannot be <1! value=\"%s\"\n", argv[i]);
+					showUsage();
+				}
+			}
+			else
+			{
+				showUsage();
+			}
+		}
+		else if(std::strcmp(argv[i], "--cam_projection_mask") == 0)
+		{
+			++i;
+			if(i<argc-1)
+			{
+				cameraProjMask = argv[i];
+				if(!UFile::exists(cameraProjMask))
+				{
+					printf("--cam_projection_mask is set with a file not existing or don't have permissions to open it. Path=\"%s\"\n", argv[i]);
 					showUsage();
 				}
 			}
@@ -620,6 +645,18 @@ int main(int argc, char * argv[])
 			if(i<argc-1)
 			{
 				voxelSize = uStr2Float(argv[i]);
+			}
+			else
+			{
+				showUsage();
+			}
+		}
+		else if(std::strcmp(argv[i], "--ground_normals_up") == 0)
+		{
+			++i;
+			if(i<argc-1)
+			{
+				groundNormalsUp = uStr2Float(argv[i]);
 			}
 			else
 			{
@@ -1340,7 +1377,8 @@ int main(int argc, char * argv[])
 										rawViewpoints,
 										rawAssembledCloud,
 										rawViewpointIndices,
-										cloudToExport);
+										cloudToExport,
+										groundNormalsUp);
 			printf("Adjust normals to viewpoints of the assembled cloud... (%fs, %d points)\n", timer.ticks(), (int)cloudToExport->size());
 		}
 		else if(!assembledCloudI->empty())
@@ -1356,7 +1394,8 @@ int main(int argc, char * argv[])
 										rawViewpoints,
 										rawAssembledCloud,
 										rawViewpointIndices,
-										cloudIToExport);
+										cloudIToExport,
+										groundNormalsUp);
 			printf("Adjust normals to viewpoints of the assembled cloud... (%fs, %d points)\n", timer.ticks(), (int)cloudIToExport->size());
 		}
 		cloudWithoutNormals->clear();
@@ -1400,6 +1439,19 @@ int main(int argc, char * argv[])
 			{
 				cameraModelsProj = cameraModels;
 			}
+
+			cv::Mat projMask;
+			if(!cameraProjMask.empty())
+			{
+				projMask = cv::imread(cameraProjMask, cv::IMREAD_GRAYSCALE);
+				if(cameraProjDecimation>1)
+				{
+					cv::Mat out = projMask;
+					cv::resize(projMask, out, cv::Size(), 1.0f/float(cameraProjDecimation), 1.0f/float(cameraProjDecimation), cv::INTER_NEAREST);
+					projMask = out;
+				}
+			}
+
 			pointToCamId.resize(!cloudToExport->empty()?cloudToExport->size():cloudIToExport->size());
 			std::vector<std::pair< std::pair<int, int>, pcl::PointXY> > pointToPixel;
 			if(!cloudToExport->empty())
@@ -1411,6 +1463,7 @@ int main(int argc, char * argv[])
 						textureRange,
 						textureAngle,
 						textureRoiRatios,
+						projMask,
 						distanceToCamPolicy,
 						&progressState);
 			}
@@ -1423,6 +1476,7 @@ int main(int argc, char * argv[])
 						textureRange,
 						textureAngle,
 						textureRoiRatios,
+						projMask,
 						distanceToCamPolicy,
 						&progressState);
 				pointToCamIntensity.resize(pointToPixel.size());

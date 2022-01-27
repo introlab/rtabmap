@@ -127,6 +127,7 @@ private Q_SLOTS:
 	void saveSettings();
 	void updateReconstructionFlavor();
 	void selectDistortionModel();
+	void selectCamProjMask();
 	void updateMLSGrpVisibility();
 	void cancel();
 

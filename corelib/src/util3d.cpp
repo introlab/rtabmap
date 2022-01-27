@@ -2848,6 +2848,7 @@ std::vector<std::pair< std::pair<int, int>, pcl::PointXY> > projectCloudToCamera
 		float maxDistance,
 		float maxAngle,
 		const std::vector<float> & roiRatios,
+		const cv::Mat & projMask,
 		bool distanceToCamPolicy,
 		const ProgressState * state)
 {
@@ -2857,6 +2858,8 @@ std::vector<std::pair< std::pair<int, int>, pcl::PointXY> > projectCloudToCamera
 	UINFO("maxDistance=%f", maxDistance);
 	UINFO("maxAngle=%f", maxAngle);
 	UINFO("distanceToCamPolicy=%s", distanceToCamPolicy?"true":"false");
+	UINFO("roiRatios=%s", roiRatios.size() == 4?uFormat("%f %f %f %f", roiRatios[0], roiRatios[1], roiRatios[2], roiRatios[3]):"");
+	UINFO("projMask=%dx%d", projMask.cols, projMask.rows);
 	std::vector<std::pair< std::pair<int, int>, pcl::PointXY> > pointToPixel;
 
 	if (cloud.empty() || cameraPoses.empty() || cameraModels.empty())
@@ -2873,18 +2876,46 @@ std::vector<std::pair< std::pair<int, int>, pcl::PointXY> > projectCloudToCamera
 
 	std::vector<ProjectionInfo> invertedIndex(cloud.size()); // For each point: list of cameras
 	int cameraProcessed = 0;
+	bool wrongMaskFormatWarned = false;
 	for(std::map<int, Transform>::const_iterator pter = cameraPoses.lower_bound(0); pter!=cameraPoses.end(); ++pter)
 	{
 		std::map<int, std::vector<CameraModel> >::const_iterator iter=cameraModels.find(pter->first);
 		if(iter!=cameraModels.end() && !iter->second.empty())
 		{
-			for(size_t i=0; i<iter->second.size(); ++i)
+			cv::Mat validProjMask;
+			if(!projMask.empty())
 			{
-				Transform cameraTransform = (pter->second * iter->second[i].localTransform());
+				if(projMask.type() != CV_8UC1)
+				{
+					if(!wrongMaskFormatWarned)
+						UERROR("Wrong camera projection mask type %d, should be CV_8UC1", projMask.type());
+					wrongMaskFormatWarned = true;
+				}
+				else if(projMask.cols == iter->second[0].imageWidth() * (int)iter->second.size() &&
+				        projMask.rows == iter->second[0].imageHeight())
+				{
+					validProjMask = projMask;
+				}
+				else
+				{
+					UWARN("Camera projection mask (%dx%d) is not valid for current "
+						   "camera model(s) (count=%ld, image size=%dx%d). It will be "
+						   "ignored for node %d",
+						   projMask.cols, projMask.rows,
+						   iter->second.size(),
+						   iter->second[0].imageWidth(),
+						   iter->second[0].imageHeight(),
+						   pter->first);
+				}
+			}
+
+			for(size_t camIndex=0; camIndex<iter->second.size(); ++camIndex)
+			{
+				Transform cameraTransform = (pter->second * iter->second[camIndex].localTransform());
 				UASSERT(!cameraTransform.isNull());
-				cv::Mat cameraMatrixK = iter->second[i].K();
+				cv::Mat cameraMatrixK = iter->second[camIndex].K();
 				UASSERT(cameraMatrixK.type() == CV_64FC1 && cameraMatrixK.cols == 3 && cameraMatrixK.cols == 3);
-				const cv::Size & imageSize = iter->second[i].imageSize();
+				const cv::Size & imageSize = iter->second[camIndex].imageSize();
 
 				float fx = cameraMatrixK.at<double>(0,0);
 				float fy = cameraMatrixK.at<double>(1,1);
@@ -2921,7 +2952,8 @@ std::vector<std::pair< std::pair<int, int>, pcl::PointXY> > projectCloudToCamera
 						int dx_high = dx + 0.5f;
 						int dy_high = dy + 0.5f;
 						int zMM = z * 1000;
-						if(uIsInBounds(dx_low, roi.x, roi.x+roi.width) && uIsInBounds(dy_low, roi.y, roi.y+roi.height))
+						if(uIsInBounds(dx_low, roi.x, roi.x+roi.width) && uIsInBounds(dy_low, roi.y, roi.y+roi.height) &&
+						   (validProjMask.empty() || validProjMask.at<unsigned char>(dy_low, imageSize.width*camIndex+dx_low) > 0))
 						{
 							set = true;
 							cv::Vec2i &zReg = registered.at<cv::Vec2i>(dy_low, dx_low);
@@ -2932,7 +2964,8 @@ std::vector<std::pair< std::pair<int, int>, pcl::PointXY> > projectCloudToCamera
 							}
 						}
 						if((dx_low != dx_high || dy_low != dy_high) &&
-							uIsInBounds(dx_high, roi.x, roi.x+roi.width) && uIsInBounds(dy_high, roi.y, roi.y+roi.height))
+							uIsInBounds(dx_high, roi.x, roi.x+roi.width) && uIsInBounds(dy_high, roi.y, roi.y+roi.height) &&
+							(validProjMask.empty() || validProjMask.at<unsigned char>(dy_high, imageSize.width*camIndex+dx_high) > 0))
 						{
 							set = true;
 							cv::Vec2i &zReg = registered.at<cv::Vec2i>(dy_high, dx_high);
@@ -2951,11 +2984,11 @@ std::vector<std::pair< std::pair<int, int>, pcl::PointXY> > projectCloudToCamera
 				if(count == 0)
 				{
 					registered = cv::Mat();
-					UINFO("No points projected in camera %d/%d", pter->first, i);
+					UINFO("No points projected in camera %d/%d", pter->first, camIndex);
 				}
 				else
 				{
-					UDEBUG("%d points projected in camera %d/%d", count, pter->first, i);
+					UDEBUG("%d points projected in camera %d/%d", count, pter->first, camIndex);
 				}
 				for(int u=0; u<registered.cols; ++u)
 				{
@@ -2966,7 +2999,7 @@ std::vector<std::pair< std::pair<int, int>, pcl::PointXY> > projectCloudToCamera
 						{
 							ProjectionInfo info;
 							info.nodeID = pter->first;
-							info.cameraIndex = i;
+							info.cameraIndex = camIndex;
 							info.uv.x = float(u)/float(imageSize.width);
 							info.uv.y = float(v)/float(imageSize.height);
 							const Transform & cam = cameraPoses.at(info.nodeID);
@@ -3070,6 +3103,7 @@ std::vector<std::pair< std::pair<int, int>, pcl::PointXY> > projectCloudToCamera
 		float maxDistance,
 		float maxAngle,
 		const std::vector<float> & roiRatios,
+		const cv::Mat & projMask,
 		bool distanceToCamPolicy,
 		const ProgressState * state)
 {
@@ -3079,6 +3113,7 @@ std::vector<std::pair< std::pair<int, int>, pcl::PointXY> > projectCloudToCamera
 			maxDistance,
 			maxAngle,
 			roiRatios,
+			projMask,
 			distanceToCamPolicy,
 			state);
 }
@@ -3090,6 +3125,7 @@ std::vector<std::pair< std::pair<int, int>, pcl::PointXY> > projectCloudToCamera
 		float maxDistance,
 		float maxAngle,
 		const std::vector<float> & roiRatios,
+		const cv::Mat & projMask,
 		bool distanceToCamPolicy,
 		const ProgressState * state)
 {
@@ -3099,6 +3135,7 @@ std::vector<std::pair< std::pair<int, int>, pcl::PointXY> > projectCloudToCamera
 			maxDistance,
 			maxAngle,
 			roiRatios,
+			projMask,
 			distanceToCamPolicy,
 			state);
 }

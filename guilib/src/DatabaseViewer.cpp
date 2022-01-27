@@ -7767,32 +7767,30 @@ void DatabaseViewer::refineConstraint(int from, int to, bool silent)
 						ui_->doubleSpinBox_icp_minDepth->value(),
 						0,
 						ui_->parameters_toolbox->getParameters());
-				int maxLaserScans = cloudFrom->size();
-				fromS->sensorData().setLaserScan(LaserScan(util3d::laserScanFromPointCloud(*util3d::removeNaNFromPointCloud(cloudFrom), Transform()), maxLaserScans, 0));
-				toS->sensorData().setLaserScan(LaserScan(util3d::laserScanFromPointCloud(*util3d::removeNaNFromPointCloud(cloudTo), Transform()), maxLaserScans, 0));
 
-				if(!fromS->sensorData().laserScanCompressed().isEmpty() && !toS->sensorData().laserScanCompressed().isEmpty())
+				if(cloudFrom->empty() && cloudTo->empty())
+				{
+					std::string msg = "Option to generate scan from depth is checked (GUI Parameters->Refine), but "
+									  "resulting clouds from depth are empty. Transformation estimation will likely "
+									  "fails. Uncheck the parameter to use laser scans.";
+					UWARN(msg.c_str());
+					if(!silent)
+					{
+						QMessageBox::warning(this,
+											tr("Refine link"),
+											tr("%1").arg(msg.c_str()));
+					}
+				}
+				else if(!fromS->sensorData().laserScanCompressed().isEmpty() || !toS->sensorData().laserScanCompressed().isEmpty())
 				{
 					UWARN("There are laser scans in data, but generate laser scan from "
 						  "depth image option is activated (GUI Parameters->Refine). "
 						  "Ignoring saved laser scans...");
 				}
-				else
-				{
-					QString msg = tr("Generating laser scan from depth image is checked "
-							"(GUI Parameters->Refine), but selected nodes don't contain "
-							"depth data. Empty laser scans are generated, so transform "
-							"estimation will likely fail. Uncheck to use laser scans instead "
-							"(if there are some).");
-					if(!silent)
-					{
 
-						QMessageBox::warning(this,
-								tr("Refine a link"),
-								msg);
-					}
-					UWARN(msg.toStdString().c_str());
-				}
+				int maxLaserScans = cloudFrom->size();
+				fromS->sensorData().setLaserScan(LaserScan(util3d::laserScanFromPointCloud(*util3d::removeNaNFromPointCloud(cloudFrom), Transform()), maxLaserScans, 0));
+				toS->sensorData().setLaserScan(LaserScan(util3d::laserScanFromPointCloud(*util3d::removeNaNFromPointCloud(cloudTo), Transform()), maxLaserScans, 0));
 			}
 			else
 			{
@@ -8046,25 +8044,46 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent)
 						ui_->doubleSpinBox_icp_minDepth->value(),
 						0,
 						ui_->parameters_toolbox->getParameters());
+
+				if(cloudFrom->empty() && cloudTo->empty())
+				{
+					std::string msg = "Option to generate scan from depth is checked (GUI Parameters->Refine), but "
+									  "resulting clouds from depth are empty. Transformation estimation will likely "
+									  "fails. Uncheck the parameter to use laser scans.";
+					UWARN(msg.c_str());
+					if(!silent)
+					{
+						QMessageBox::warning(this,
+											tr("Add link"),
+											tr("%1").arg(msg.c_str()));
+					}
+				}
+				else if(!fromS->sensorData().laserScanCompressed().isEmpty() || !toS->sensorData().laserScanCompressed().isEmpty())
+				{
+					UWARN("There are laser scans in data, but generate laser scan from "
+						  "depth image option is activated (GUI Parameters->Refine). Ignoring saved laser scans...");
+				}
+
 				int maxLaserScans = cloudFrom->size();
 				fromS->sensorData().setLaserScan(LaserScan(util3d::laserScanFromPointCloud(*util3d::removeNaNFromPointCloud(cloudFrom), Transform()), maxLaserScans, 0));
 				toS->sensorData().setLaserScan(LaserScan(util3d::laserScanFromPointCloud(*util3d::removeNaNFromPointCloud(cloudTo), Transform()), maxLaserScans, 0));
-
-				if(!fromS->sensorData().laserScanCompressed().isEmpty() || !toS->sensorData().laserScanCompressed().isEmpty())
-				{
-					UWARN("There are laser scans in data, but generate laser scan from "
-						  "depth image option is activated. Ignoring saved laser scans...");
-				}
 			}
 		}
 		else if(!reextractVisualFeatures && fromS->getWords().empty() && toS->getWords().empty())
 		{
-			UWARN("\"%s\" is false and signatures (%d and %d) don't have words, "
+			std::string msg = uFormat("\"%s\" is false and signatures (%d and %d) don't have words, "
 					"registration will not be possible. Set \"%s\" to true.",
 					Parameters::kRGBDLoopClosureReextractFeatures().c_str(),
 					fromS->id(),
 					toS->id(),
 					Parameters::kRGBDLoopClosureReextractFeatures().c_str());
+			UWARN(msg.c_str());
+			if(!silent)
+			{
+				QMessageBox::warning(this,
+									tr("Add link"),
+									tr("%1").arg(msg.c_str()));
+			}
 		}
 
 		Transform guess;

@@ -3566,7 +3566,8 @@ void adjustNormalsToViewPointsImpl(
 		const std::map<int, Transform> & poses,
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & rawCloud,
 		const std::vector<int> & rawCameraIndices,
-		typename pcl::PointCloud<PointT>::Ptr & cloud)
+		typename pcl::PointCloud<PointT>::Ptr & cloud,
+		float groundNormalsUp)
 {
 	if(poses.size() && rawCloud->size() && rawCloud->size() == rawCameraIndices.size() && cloud->size())
 	{
@@ -3592,7 +3593,8 @@ void adjustNormalsToViewPointsImpl(
 					Eigen::Vector3f n(normal.x, normal.y, normal.z);
 
 					float result = v.dot(n);
-					if(result < 0)
+					if(result < 0 ||
+					   (groundNormalsUp>0.0f && normal.z < -groundNormalsUp && cloud->points[i].z < viewpoint.z)) // some far velodyne rays on road can have normals toward ground)
 					{
 						//reverse normal
 						cloud->points[i].normal_x *= -1.0f;
@@ -3613,34 +3615,38 @@ void adjustNormalsToViewPoints(
 		const std::map<int, Transform> & poses,
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & rawCloud,
 		const std::vector<int> & rawCameraIndices,
-		pcl::PointCloud<pcl::PointNormal>::Ptr & cloud)
+		pcl::PointCloud<pcl::PointNormal>::Ptr & cloud,
+		float groundNormalsUp)
 {
-	adjustNormalsToViewPointsImpl<pcl::PointNormal>(poses, rawCloud, rawCameraIndices, cloud);
+	adjustNormalsToViewPointsImpl<pcl::PointNormal>(poses, rawCloud, rawCameraIndices, cloud, groundNormalsUp);
 }
 
 void adjustNormalsToViewPoints(
 		const std::map<int, Transform> & poses,
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & rawCloud,
 		const std::vector<int> & rawCameraIndices,
-		pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud)
+		pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
+		float groundNormalsUp)
 {
-	adjustNormalsToViewPointsImpl<pcl::PointXYZRGBNormal>(poses, rawCloud, rawCameraIndices, cloud);
+	adjustNormalsToViewPointsImpl<pcl::PointXYZRGBNormal>(poses, rawCloud, rawCameraIndices, cloud, groundNormalsUp);
 }
 
 void adjustNormalsToViewPoints(
 		const std::map<int, Transform> & poses,
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & rawCloud,
 		const std::vector<int> & rawCameraIndices,
-		pcl::PointCloud<pcl::PointXYZINormal>::Ptr & cloud)
+		pcl::PointCloud<pcl::PointXYZINormal>::Ptr & cloud,
+		float groundNormalsUp)
 {
-	adjustNormalsToViewPointsImpl<pcl::PointXYZINormal>(poses, rawCloud, rawCameraIndices, cloud);
+	adjustNormalsToViewPointsImpl<pcl::PointXYZINormal>(poses, rawCloud, rawCameraIndices, cloud, groundNormalsUp);
 }
 
 void adjustNormalsToViewPoints(
 		const std::map<int, Transform> & viewpoints,
 		const LaserScan & rawScan,
 		const std::vector<int> & viewpointIds,
-		LaserScan & scan)
+		LaserScan & scan,
+		float groundNormalsUp)
 {
 	UDEBUG("poses=%d, rawCloud=%d, rawCameraIndices=%d, cloud=%d", (int)viewpoints.size(), (int)rawScan.size(), (int)viewpointIds.size(), (int)scan.size());
 	if(viewpoints.size() && rawScan.size() && rawScan.size() == (int)viewpointIds.size() && scan.size() && scan.hasNormals())
@@ -3669,7 +3675,8 @@ void adjustNormalsToViewPoints(
 					Eigen::Vector3f n(normal.x, normal.y, normal.z);
 
 					float result = v.dot(n);
-					if(result < 0)
+					if(result < 0 ||
+					   (groundNormalsUp>0.0f && normal.z < -groundNormalsUp && point.z < viewpoint.z)) // some far velodyne rays on road can have normals toward ground))
 					{
 						//reverse normal
 						scan.field(i, scan.getNormalsOffset()) *= -1.0f;
