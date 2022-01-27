@@ -67,6 +67,7 @@ void showUsage()
 			"    --texture_range #     Maximum camera range for texturing a polygon (default 0 meters: no limit).\n"
 			"    --texture_angle #     Maximum camera angle for texturing a polygon (default 0 deg: no limit).\n"
 			"    --texture_depth_error # Maximum depth error between reprojected mesh and depth image to texture a face (-1=disabled, 0=edge length is used, default=0).\n"
+			"    --texture_roi_ratios \"# # # #\" Region of interest from images to texture or to color scans. Format is \"left right top bottom\" (e.g. \"0 0 0 0.1\" means 10% of the image bottom not used).\n"
 			"    --texture_d2c         Distance to camera policy.\n"
 			"    --cam_projection      Camera projection on assembled cloud and export node ID on each point (in PointSourceId field).\n"
 			"    --cam_projection_keep_all  Keep not colored points from cameras (node ID will be 0 and color will be red).\n"
@@ -175,6 +176,7 @@ int main(int argc, char * argv[])
 	float textureRange = 0;
 	float textureAngle = 0;
 	float textureDepthError = 0;
+	std::vector<float> textureRoiRatios;
 	bool distanceToCamPolicy = false;
 	bool multiband = false;
 	int multibandDownScale = 2;
@@ -310,6 +312,46 @@ int main(int argc, char * argv[])
 			if(i<argc-1)
 			{
 				textureDepthError = uStr2Float(argv[i]);
+			}
+			else
+			{
+				showUsage();
+			}
+		}
+		else if(std::strcmp(argv[i], "--texture_roi_ratios") == 0)
+		{
+			++i;
+			if(i<argc-1)
+			{
+				std::list<std::string> strValues = uSplit(argv[i], ' ');
+				if(strValues.size() != 4)
+				{
+					printf("The number of values must be 4 (roi=\"%s\")\n", argv[i]);
+					showUsage();
+				}
+				else
+				{
+					std::vector<float> tmpValues(4);
+					unsigned int i=0;
+					for(std::list<std::string>::iterator jter = strValues.begin(); jter!=strValues.end(); ++jter)
+					{
+						tmpValues[i] = uStr2Float(*jter);
+						++i;
+					}
+
+					if(tmpValues[0] >= 0 && tmpValues[0] < 1 && tmpValues[0] < 1.0f-tmpValues[1] &&
+						tmpValues[1] >= 0 && tmpValues[1] < 1 && tmpValues[1] < 1.0f-tmpValues[0] &&
+						tmpValues[2] >= 0 && tmpValues[2] < 1 && tmpValues[2] < 1.0f-tmpValues[3] &&
+						tmpValues[3] >= 0 && tmpValues[3] < 1 && tmpValues[3] < 1.0f-tmpValues[2])
+					{
+						textureRoiRatios = tmpValues;
+					}
+					else
+					{
+						printf("The roi ratios are not valid (roi=\"%s\")\n", argv[i]);
+						showUsage();
+					}
+				}
 			}
 			else
 			{
@@ -1368,7 +1410,7 @@ int main(int argc, char * argv[])
 						cameraModelsProj,
 						textureRange,
 						textureAngle,
-						std::vector<float>(),
+						textureRoiRatios,
 						distanceToCamPolicy,
 						&progressState);
 			}
@@ -1380,7 +1422,7 @@ int main(int argc, char * argv[])
 						cameraModelsProj,
 						textureRange,
 						textureAngle,
-						std::vector<float>(),
+						textureRoiRatios,
 						distanceToCamPolicy,
 						&progressState);
 				pointToCamIntensity.resize(pointToPixel.size());
@@ -1677,7 +1719,7 @@ int main(int argc, char * argv[])
 							textureDepthError,
 							textureAngle,
 							multiband?0:50, // Min polygons in camera view to be textured by this camera
-							std::vector<float>(),
+							textureRoiRatios,
 							&progressState,
 							&vertexToPixels,
 							distanceToCamPolicy);
