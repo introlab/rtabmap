@@ -1579,7 +1579,7 @@ bool Rtabmap::process(
 		}
 		// Localization mode stuff
 		_lastLocalizationPose = newPose; // keep in cache the latest corrected pose
-		if(!_memory->isIncremental())
+		if(!_memory->isIncremental() && signature->getWeight() >= 0)
 		{
 			UDEBUG("Update odometry localization cache (size=%d/%d)", (int)_odomCachePoses.size(), _maxOdomCacheSize);
 			if(!_odomCachePoses.empty())

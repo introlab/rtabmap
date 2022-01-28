@@ -137,15 +137,14 @@ rtabmap::Transform icpCC(
 		icpTransformation.setNull();
 		return icpTransformation;
 	}
-	else if(finalPointCount < 50)
+	else if(!transform.R.isValid())
 	{
-		std::string msg = uFormat("CCCoreLib has failed: Rejecting transform as finalPointCount %d < 50 ", finalPointCount);
+		std::string msg = uFormat("CCCoreLib has failed: Rotation matrix is invalid");
 		UDEBUG(msg.c_str());
 		if(errorMsg)
 		{
 			*errorMsg = msg;
 		}
-
 		icpTransformation.setNull();
 		return icpTransformation;
 	}
