@@ -242,7 +242,7 @@ int main(int argc, char * argv[])
 		}
 		else if(std::strcmp(argv[i], "--bin") == 0)
 		{
-			printf("No need to set --bin anymore, ply are now automatically exported in binary by default. Set --ascii to export as text.\n")
+			printf("No need to set --bin anymore, ply are now automatically exported in binary by default. Set --ascii to export as text.\n");
 		}
 		else if(std::strcmp(argv[i], "--ascii") == 0)
 		{
