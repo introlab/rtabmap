@@ -64,6 +64,16 @@ This website uses Google Analytics. See their Privacy Policy [here](https://supp
 
 ## What's new 
 
+### January 2022
+Added demo for car mapping with CitySim simulator:
+[![Watch the video](https://img.youtube.com/vi/vKCTg4plPkw/maxresdefault.jpg)](https://youtu.be/vKCTg4plPkw)
+
+### December 2021
+Added indoor drone visual navigation example using [move_base](http://wiki.ros.org/move_base), [PX4](https://github.com/PX4/PX4-Autopilot) and [mavros](http://wiki.ros.org/mavros):
+[![Watch the video](https://img.youtube.com/vi/A487ybS7E4E/maxresdefault.jpg)](https://youtu.be/A487ybS7E4E)
+
+More info on the [rtabmap-drone-example](https://github.com/matlabbe/rtabmap_drone_example) github repo.
+
 ### June 2021
 * I'm pleased to announce that RTAB-Map is now on **iOS** (iPhone/iPad with LiDAR required). The app is [available](https://apps.apple.com/ca/app/rtab-map-3d-lidar-scanner/id1564774365) on App Store.
 
