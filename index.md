@@ -65,7 +65,7 @@ This website uses Google Analytics. See their Privacy Policy [here](https://supp
 ## What's new 
 
 ### January 2022
-Added [demo](https://github.com/introlab/rtabmap_ros/blob/master/launch/demo/demo_catvehicle_mapping.launch) for car mapping with CitySim simulator:
+Added [demo](https://github.com/introlab/rtabmap_ros/blob/master/launch/demo/demo_catvehicle_mapping.launch) for car mapping and localization with [CitySim](https://github.com/osrf/citysim) simulator and [CAT Vehicle](https://github.com/jmscslgroup/catvehicle):
 [![Watch the video](https://img.youtube.com/vi/vKCTg4plPkw/maxresdefault.jpg)](https://youtu.be/vKCTg4plPkw)
 
 ### December 2021
