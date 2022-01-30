@@ -2858,7 +2858,7 @@ std::vector<std::pair< std::pair<int, int>, pcl::PointXY> > projectCloudToCamera
 	UINFO("maxDistance=%f", maxDistance);
 	UINFO("maxAngle=%f", maxAngle);
 	UINFO("distanceToCamPolicy=%s", distanceToCamPolicy?"true":"false");
-	UINFO("roiRatios=%s", roiRatios.size() == 4?uFormat("%f %f %f %f", roiRatios[0], roiRatios[1], roiRatios[2], roiRatios[3]):"");
+	UINFO("roiRatios=%s", roiRatios.size() == 4?uFormat("%f %f %f %f", roiRatios[0], roiRatios[1], roiRatios[2], roiRatios[3]).c_str():"");
 	UINFO("projMask=%dx%d", projMask.cols, projMask.rows);
 	std::vector<std::pair< std::pair<int, int>, pcl::PointXY> > pointToPixel;
 
