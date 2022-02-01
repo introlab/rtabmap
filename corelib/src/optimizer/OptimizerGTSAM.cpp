@@ -55,10 +55,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "gtsam/GPSPose3XYZFactor.h"
 
 #ifdef RTABMAP_VERTIGO
-#include "vertigo/gtsam/betweenFactorMaxMix.h"
 #include "vertigo/gtsam/betweenFactorSwitchable.h"
 #include "vertigo/gtsam/switchVariableLinear.h"
-#include "vertigo/gtsam/switchVariableSigmoid.h"
 #endif
 #endif // end RTABMAP_GTSAM
 
