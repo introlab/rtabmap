@@ -125,7 +125,7 @@ public class RTABMapActivity extends FragmentActivity implements OnClickListener
 	public static final String RTABMAP_TMP_DB = "rtabmap.tmp.db";
 	public static final String RTABMAP_TMP_DIR = "tmp";
 	public static final String RTABMAP_TMP_FILENAME = "map";
-	public static final String RTABMAP_SDCARD_PATH = "/sdcard/";
+	public static final String RTABMAP_SDCARD_PATH = "/Internal storage/";
 	public static final String RTABMAP_EXPORT_DIR = "Export/";
 
 	public static final String RTABMAP_AUTH_TOKEN_KEY = "com.introlab.rtabmap.AUTH_TOKEN";
@@ -3621,22 +3621,7 @@ public class RTABMapActivity extends FragmentActivity implements OnClickListener
 				File exportDir = new File(mWorkingDirectory + RTABMAP_EXPORT_DIR);
 				exportDir.mkdirs();
 				
-				// cleanup old zip
-				fileNames = Util.loadFileList(mWorkingDirectory + RTABMAP_EXPORT_DIR, false);
-				if(!DISABLE_LOG) Log.i(TAG, String.format("Deleting %d files in \"%s\"", fileNames.length, mWorkingDirectory + RTABMAP_EXPORT_DIR));
-				for(int i=0; i<fileNames.length; ++i)
-				{
-					File f = new File(mWorkingDirectory + RTABMAP_EXPORT_DIR + "/" + fileNames[i]);
-					if(f.delete())
-					{
-						if(!DISABLE_LOG) Log.i(TAG, String.format("Deleted \"%s\"", f.getPath()));
-					}
-					else
-					{
-						if(!DISABLE_LOG) Log.i(TAG, String.format("Failed deleting \"%s\"", f.getPath()));
-					}
-				}
-
+				final String pathHuman = mWorkingDirectoryHuman + RTABMAP_EXPORT_DIR + fileName + ".zip";
 				final String zipOutput = mWorkingDirectory+RTABMAP_EXPORT_DIR+fileName+".zip";
 				if(RTABMapLib.writeExportedMesh(nativeApplication, mWorkingDirectory + RTABMAP_TMP_DIR, RTABMAP_TMP_FILENAME))
 				{							
@@ -3678,15 +3663,30 @@ public class RTABMapActivity extends FragmentActivity implements OnClickListener
 							final File f = new File(zipOutput);
 							final int fileSizeMB = (int)f.length()/(1024 * 1024);
 
-							// Send to...
-							Intent shareIntent = new Intent();
-							shareIntent.setAction(Intent.ACTION_SEND);
-							shareIntent.putExtra(Intent.EXTRA_STREAM, FileProvider.getUriForFile(getActivity(), getActivity().getApplicationContext().getPackageName() + ".provider", f));
-							shareIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-							shareIntent.setType("application/zip");
-							startActivity(Intent.createChooser(shareIntent, "Sharing..."));
+							AlertDialog d = new AlertDialog.Builder(getActivity())
+									.setCancelable(false)
+									.setTitle("Mesh Saved!")
+									.setMessage(String.format("Mesh \"%s\" (%d MB) successfully exported! Share it?", pathHuman, fileSizeMB))
+									.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
+										public void onClick(DialogInterface dialog, int which) {
+											// Send to...
+											Intent shareIntent = new Intent();
+											shareIntent.setAction(Intent.ACTION_SEND);
+											shareIntent.putExtra(Intent.EXTRA_STREAM, FileProvider.getUriForFile(getActivity(), getActivity().getApplicationContext().getPackageName() + ".provider", f));
+											shareIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+											shareIntent.setType("application/zip");
+											startActivity(Intent.createChooser(shareIntent, "Sharing..."));
 
-							resetNoTouchTimer(true);
+											resetNoTouchTimer(true);
+										}
+									})
+									.setNegativeButton("No", new DialogInterface.OnClickListener() {
+										public void onClick(DialogInterface dialog, int which) {
+											resetNoTouchTimer(true);
+										}
+									}).create();
+							d.setCanceledOnTouchOutside(false);
+							d.show();
 						}
 					});
 				}
