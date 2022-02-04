@@ -2538,17 +2538,20 @@ bool Rtabmap::process(
 									if(_loopClosureHypothesis.first>0 &&
 										nearestIds.find(_loopClosureHypothesis.first)!=nearestIds.end())
 									{
+										// Avoid transform computation on the global loop closure if a visual proximity
+										// one has been detected close (inside proximity radius) to that hypothesis.
 										UDEBUG("Proximity detection on %d is close to loop closure %d, ignoring loop closure transform estimation...",
 												nearestId, _loopClosureHypothesis.first);
+
 										if(nearestId == _loopClosureHypothesis.first)
 										{
 											type = Link::kGlobalClosure;
+											loopIdSuppressedByProximity = nearestId;
 										}
-										// In localization mode, avoid transform
-										// computation on the global loop closure if a visual proximity
-										// one has been detected close (inside proximity radius) to that hypothesis.
-										loopIdSuppressedByProximity = _loopClosureHypothesis.first;
-										_loopClosureHypothesis.first = 0;
+										else if(loopIdSuppressedByProximity == 0)
+										{
+											loopIdSuppressedByProximity = nearestId;
+										}
 									}
 
 									_memory->addLink(Link(signature->id(), nearestId, type, transform, information));
@@ -2764,56 +2767,63 @@ bool Rtabmap::process(
 	//=============================================================
 	if(_loopClosureHypothesis.first>0)
 	{
-		//Compute transform if metric data are present
-		Transform transform;
-		RegistrationInfo info;
-		info.covariance = cv::Mat::eye(6,6,CV_64FC1);
-		if(_rgbdSlamMode)
+		if(loopIdSuppressedByProximity==0)
 		{
-			transform = _memory->computeTransform(
-					_loopClosureHypothesis.first,
-					signature->id(),
-					_loopClosureIdentityGuess?Transform::getIdentity():Transform(),
-					&info);
+			//Compute transform if metric data are present
+			Transform transform;
+			RegistrationInfo info;
+			info.covariance = cv::Mat::eye(6,6,CV_64FC1);
+			if(_rgbdSlamMode)
+			{
+				transform = _memory->computeTransform(
+						_loopClosureHypothesis.first,
+						signature->id(),
+						_loopClosureIdentityGuess?Transform::getIdentity():Transform(),
+						&info);
 
-			loopClosureVisualInliersMeanDist = info.inliersMeanDistance;
-			loopClosureVisualInliersDistribution = info.inliersDistribution;
+				loopClosureVisualInliersMeanDist = info.inliersMeanDistance;
+				loopClosureVisualInliersDistribution = info.inliersDistribution;
 
-			loopClosureVisualInliers = info.inliers;
-			loopClosureVisualInliersRatio = info.inliersRatio;
-			loopClosureVisualMatches = info.matches;
-			rejectedGlobalLoopClosure = transform.isNull();
-			if(rejectedGlobalLoopClosure)
-			{
-				UWARN("Rejected loop closure %d -> %d: %s",
-						_loopClosureHypothesis.first, signature->id(), info.rejectedMsg.c_str());
+				loopClosureVisualInliers = info.inliers;
+				loopClosureVisualInliersRatio = info.inliersRatio;
+				loopClosureVisualMatches = info.matches;
+				rejectedGlobalLoopClosure = transform.isNull();
+				if(rejectedGlobalLoopClosure)
+				{
+					UWARN("Rejected loop closure %d -> %d: %s",
+							_loopClosureHypothesis.first, signature->id(), info.rejectedMsg.c_str());
+				}
+				else if(_maxLoopClosureDistance>0.0f && transform.getNorm() > _maxLoopClosureDistance)
+				{
+					rejectedGlobalLoopClosure = true;
+					UWARN("Rejected localization %d -> %d because distance to map (%fm) is over %s=%fm.",
+							_loopClosureHypothesis.first, signature->id(), transform.getNorm(), Parameters::kRGBDMaxLoopClosureDistance().c_str(), _maxLoopClosureDistance);
+				}
+				else
+				{
+					transform = transform.inverse();
+				}
 			}
-			else if(_maxLoopClosureDistance>0.0f && transform.getNorm() > _maxLoopClosureDistance)
-			{
-				rejectedGlobalLoopClosure = true;
-				UWARN("Rejected localization %d -> %d because distance to map (%fm) is over %s=%fm.",
-						_loopClosureHypothesis.first, signature->id(), transform.getNorm(), Parameters::kRGBDMaxLoopClosureDistance().c_str(), _maxLoopClosureDistance);
-			}
-			else
-			{
-				transform = transform.inverse();
-			}
-		}
-		if(!rejectedGlobalLoopClosure)
-		{
-			// Make the new one the parent of the old one
-			UASSERT(info.covariance.at<double>(0,0) > 0.0 && info.covariance.at<double>(5,5) > 0.0);
-			cv::Mat information = getInformation(info.covariance);
-			loopClosureLinearVariance = 1.0/information.at<double>(0,0);
-			loopClosureAngularVariance = 1.0/information.at<double>(5,5);
-			rejectedGlobalLoopClosure = !_memory->addLink(Link(signature->id(), _loopClosureHypothesis.first, Link::kGlobalClosure, transform, information));
 			if(!rejectedGlobalLoopClosure)
 			{
-				loopClosureLinksAdded.push_back(std::make_pair(signature->id(), _loopClosureHypothesis.first));
+				// Make the new one the parent of the old one
+				UASSERT(info.covariance.at<double>(0,0) > 0.0 && info.covariance.at<double>(5,5) > 0.0);
+				cv::Mat information = getInformation(info.covariance);
+				loopClosureLinearVariance = 1.0/information.at<double>(0,0);
+				loopClosureAngularVariance = 1.0/information.at<double>(5,5);
+				rejectedGlobalLoopClosure = !_memory->addLink(Link(signature->id(), _loopClosureHypothesis.first, Link::kGlobalClosure, transform, information));
+				if(!rejectedGlobalLoopClosure)
+				{
+					loopClosureLinksAdded.push_back(std::make_pair(signature->id(), _loopClosureHypothesis.first));
+				}
+			}
+
+			if(rejectedGlobalLoopClosure)
+			{
+				_loopClosureHypothesis.first = 0;
 			}
 		}
-
-		if(rejectedGlobalLoopClosure)
+		else if(loopIdSuppressedByProximity != _loopClosureHypothesis.first)
 		{
 			_loopClosureHypothesis.first = 0;
 		}

@@ -31,6 +31,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QVBoxLayout>
 #include <QGraphicsScene>
 #include <QGraphicsEllipseItem>
+#include <QGraphicsRectItem>
 #include <QtGui/QWheelEvent>
 #include <QGraphicsSceneHoverEvent>
 #include <QMenu>
@@ -273,6 +274,7 @@ private:
 GraphViewer::GraphViewer(QWidget * parent) :
 		QGraphicsView(parent),
 		_nodeColor(Qt::blue),
+		_nodeOdomCacheColor(Qt::darkGreen),
 		_currentGoalColor(Qt::darkMagenta),
 		_neighborColor(Qt::blue),
 		_loopClosureColor(Qt::red),
@@ -443,6 +445,12 @@ GraphViewer::GraphViewer(QWidget * parent) :
 	_gpsGraphRoot->setZValue(3);
 	_gpsGraphRoot->setParentItem(_root);
 
+	_odomCacheOverlay = this->scene()->addRect(0,0,0,0);
+	_odomCacheOverlay->setZValue(21); // just under odom cache nodes and links
+	_odomCacheOverlay->setParentItem(_graphRoot);
+	_odomCacheOverlay->setBrush(QBrush(QColor(255, 255, 255, 150)));
+	_odomCacheOverlay->setPen(QPen(Qt::NoPen));
+
 	this->restoreDefaults();
 
 	this->fitInView(this->sceneRect(), Qt::KeepAspectRatio);
@@ -461,7 +469,8 @@ void GraphViewer::setWorldMapRotation(const float & theta)
 void GraphViewer::updateGraph(const std::map<int, Transform> & poses,
 				 const std::multimap<int, Link> & constraints,
 				 const std::map<int, int> & mapIds,
-				 const std::map<int, int> & weights)
+				 const std::map<int, int> & weights,
+				 const std::set<int> & odomCacheIds)
 {
 	UTimer timer;
 	bool wasVisible = _graphRoot->isVisible();
@@ -472,8 +481,18 @@ void GraphViewer::updateGraph(const std::map<int, Transform> & poses,
 	//Hide nodes and links
 	for(QMap<int, NodeItem*>::iterator iter = _nodeItems.begin(); iter!=_nodeItems.end(); ++iter)
 	{
+		QColor color = _nodeColor;
+		bool isOdomCache = odomCacheIds.find(iter.key()) != odomCacheIds.end();
+		if(iter.key()<0)
+		{
+			color = QColor(255-color.red(), 255-color.green(), 255-color.blue());
+		}
+		else if(isOdomCache)
+		{
+			color = _nodeOdomCacheColor;
+		}
 		iter.value()->hide();
-		iter.value()->setColor(iter.key()<0?QColor(255-_nodeColor.red(), 255-_nodeColor.green(), 255-_nodeColor.blue()):_nodeColor); // reset color
+		iter.value()->setColor(color); // reset color
 		iter.value()->setZValue(iter.key()<0?21:20);
 	}
 	for(QMultiMap<int, LinkItem*>::iterator iter = _linkItems.begin(); iter!=_linkItems.end(); ++iter)
@@ -494,11 +513,21 @@ void GraphViewer::updateGraph(const std::map<int, Transform> & poses,
 			else
 			{
 				// create node item
+				QColor color = _nodeColor;
+				bool isOdomCache = odomCacheIds.find(iter->first) != odomCacheIds.end();
+				if(iter->first<0)
+				{
+					color = QColor(255-color.red(), 255-color.green(), 255-color.blue());
+				}
+				else if(isOdomCache)
+				{
+					color = _nodeOdomCacheColor;
+				}
 				const Transform & pose = iter->second;
 				NodeItem * item = new NodeItem(iter->first, uContains(mapIds, iter->first)?mapIds.at(iter->first):-1, pose, _nodeRadius, uContains(weights, iter->first)?weights.at(iter->first):-1, _viewPlane, _linkWidth);
 				this->scene()->addItem(item);
 				item->setZValue(iter->first<0?21:20);
-				item->setColor(iter->first<0?QColor(255-_nodeColor.red(), 255-_nodeColor.green(), 255-_nodeColor.blue()):_nodeColor);
+				item->setColor(color);
 				item->setParentItem(_graphRoot);
 				item->setVisible(_nodeVisible);
 				_nodeItems.insert(iter->first, item);
@@ -544,6 +573,16 @@ void GraphViewer::updateGraph(const std::map<int, Transform> & poses,
 				interSessionClosure = mapIds.at(jterA->first) != mapIds.at(jterB->first);
 			}
 
+			bool isLinkedToOdomCachePoses =
+					odomCacheIds.find(idFrom)!=odomCacheIds.end() ||
+					odomCacheIds.find(idTo)!=odomCacheIds.end();
+
+			if(isLinkedToOdomCachePoses)
+			{
+				_nodeItems.value(idFrom)->setZValue(odomCacheIds.find(idFrom)!=odomCacheIds.end()?24:23);
+				_nodeItems.value(idTo)->setZValue(odomCacheIds.find(idTo)!=odomCacheIds.end()?24:23);
+			}
+
 			if(poseA.getDistance(poseB) > _maxLinkLength)
 			{
 				if(linkItem == 0)
@@ -553,7 +592,7 @@ void GraphViewer::updateGraph(const std::map<int, Transform> & poses,
 					QPen p = linkItem->pen();
 					p.setWidthF(_linkWidth*100.0f);
 					linkItem->setPen(p);
-					linkItem->setZValue(10);
+					linkItem->setZValue(isLinkedToOdomCachePoses?22:10);
 					this->scene()->addItem(linkItem);
 					linkItem->setParentItem(_graphRoot);
 					_linkItems.insert(idFrom, linkItem);
@@ -595,12 +634,12 @@ void GraphViewer::updateGraph(const std::map<int, Transform> & poses,
 					if(_intraInterSessionColors)
 					{
 						linkItem->setColor(interSessionClosure?_loopInterSessionColor:_loopIntraSessionColor);
-						linkItem->setZValue(interSessionClosure?6:7);
+						linkItem->setZValue(isLinkedToOdomCachePoses?22:interSessionClosure?6:7);
 					}
 					else
 					{
 						linkItem->setColor(_loopClosureLocalColor);
-						linkItem->setZValue(7);
+						linkItem->setZValue(isLinkedToOdomCachePoses?22:7);
 					}
 				}
 				else
@@ -608,12 +647,12 @@ void GraphViewer::updateGraph(const std::map<int, Transform> & poses,
 					if(_intraInterSessionColors)
 					{
 						linkItem->setColor(interSessionClosure?_loopInterSessionColor:_loopIntraSessionColor);
-						linkItem->setZValue(interSessionClosure?8:9);
+						linkItem->setZValue(isLinkedToOdomCachePoses?22:interSessionClosure?8:9);
 					}
 					else
 					{
 						linkItem->setColor(_loopClosureColor);
-						linkItem->setZValue(9);
+						linkItem->setZValue(isLinkedToOdomCachePoses?22:9);
 					}
 				}
 
@@ -671,6 +710,11 @@ void GraphViewer::updateGraph(const std::map<int, Transform> & poses,
 	}
 
 	this->scene()->setSceneRect(this->scene()->itemsBoundingRect());  // Re-shrink the scene to it's bounding contents
+
+	if(!odomCacheIds.empty())
+		_odomCacheOverlay->setRect(this->scene()->itemsBoundingRect());
+	else
+		_odomCacheOverlay->setRect(0, 0, 0, 0);
 
 	if(wasEmpty)
 	{
@@ -1202,6 +1246,7 @@ void GraphViewer::saveSettings(QSettings & settings, const QString & group) cons
 	settings.setValue("node_radius", (double)this->getNodeRadius());
 	settings.setValue("link_width", (double)this->getLinkWidth());
 	settings.setValue("node_color", this->getNodeColor());
+	settings.setValue("node_odom_cache_color", this->getNodeOdomCacheColor());
 	settings.setValue("current_goal_color", this->getCurrentGoalColor());
 	settings.setValue("neighbor_color", this->getNeighborColor());
 	settings.setValue("global_color", this->getGlobalLoopClosureColor());
@@ -1228,6 +1273,7 @@ void GraphViewer::saveSettings(QSettings & settings, const QString & group) cons
 	settings.setValue("local_path_visible", this->isLocalPathVisible());
 	settings.setValue("gt_graph_visible", this->isGtGraphVisible());
 	settings.setValue("gps_graph_visible", this->isGPSGraphVisible());
+	settings.setValue("odom_cache_overlay", this->isOdomCacheOverlayVisible());
 	settings.setValue("orientation_ENU", this->isOrientationENU());
 	settings.setValue("view_plane", (int)this->getViewPlane());
 	if(!group.isEmpty())
@@ -1245,6 +1291,7 @@ void GraphViewer::loadSettings(QSettings & settings, const QString & group)
 	this->setNodeRadius(settings.value("node_radius", this->getNodeRadius()).toDouble());
 	this->setLinkWidth(settings.value("link_width", this->getLinkWidth()).toDouble());
 	this->setNodeColor(settings.value("node_color", this->getNodeColor()).value<QColor>());
+	this->setNodeOdomCacheColor(settings.value("node_odom_cache_color", this->getNodeOdomCacheColor()).value<QColor>());
 	this->setCurrentGoalColor(settings.value("current_goal_color", this->getCurrentGoalColor()).value<QColor>());
 	this->setNeighborColor(settings.value("neighbor_color", this->getNeighborColor()).value<QColor>());
 	this->setGlobalLoopClosureColor(settings.value("global_color", this->getGlobalLoopClosureColor()).value<QColor>());
@@ -1271,6 +1318,7 @@ void GraphViewer::loadSettings(QSettings & settings, const QString & group)
 	this->setLocalPathVisible(settings.value("local_path_visible", this->isLocalPathVisible()).toBool());
 	this->setGtGraphVisible(settings.value("gt_graph_visible", this->isGtGraphVisible()).toBool());
 	this->setGPSGraphVisible(settings.value("gps_graph_visible", this->isGPSGraphVisible()).toBool());
+	this->setOdomCacheOverlayVisible(settings.value("odom_cache_overlay", this->isOdomCacheOverlayVisible()).toBool());
 	this->setOrientationENU(settings.value("orientation_ENU", this->isOrientationENU()).toBool());
 	this->setViewPlane((ViewPlane)settings.value("view_plane", (int)this->getViewPlane()).toInt());
 	if(!group.isEmpty())
@@ -1314,6 +1362,10 @@ bool GraphViewer::isGtGraphVisible() const
 bool GraphViewer::isGPSGraphVisible() const
 {
 	return _gpsGraphRoot->isVisible();
+}
+bool GraphViewer::isOdomCacheOverlayVisible() const
+{
+	return _odomCacheOverlay->isVisible();
 }
 bool GraphViewer::isOrientationENU() const
 {
@@ -1381,6 +1433,17 @@ void GraphViewer::setNodeColor(const QColor & color)
 	for(QMap<int, NodeItem*>::iterator iter=_nodeItems.begin(); iter!=_nodeItems.end(); ++iter)
 	{
 		iter.value()->setColor(_nodeColor);
+	}
+}
+void GraphViewer::setNodeOdomCacheColor(const QColor & color)
+{
+	_nodeOdomCacheColor = color;
+	for(QMap<int, NodeItem*>::iterator iter=_nodeItems.begin(); iter!=_nodeItems.end(); ++iter)
+	{
+		if(iter.value()->zValue() == 24)
+		{
+			iter.value()->setColor(_nodeOdomCacheColor);
+		}
 	}
 }
 void GraphViewer::setCurrentGoalColor(const QColor & color)
@@ -1609,6 +1672,10 @@ void GraphViewer::setGPSGraphVisible(bool visible)
 {
 	_gpsGraphRoot->setVisible(visible);
 }
+void GraphViewer::setOdomCacheOverlayVisible(bool visible)
+{
+	_odomCacheOverlay->setVisible(visible);
+}
 void GraphViewer::setOrientationENU(bool enabled)
 {
 	if(enabled && _viewPlane!=XY)
@@ -1713,8 +1780,10 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 	menu.addSeparator();
 
 	QAction * aChangeNodeColor = menu.addAction(createIcon(_nodeColor), tr("Set node color..."));
+	QAction * aChangeNodeOdomCacheColor = menu.addAction(createIcon(_nodeOdomCacheColor), tr("Set node odom cache color..."));
 	QAction * aChangeCurrentGoalColor = menu.addAction(createIcon(_currentGoalColor), tr("Set current goal color..."));
 	aChangeNodeColor->setIconVisibleInMenu(true);
+	aChangeNodeOdomCacheColor->setIconVisibleInMenu(true);
 	aChangeCurrentGoalColor->setIconVisibleInMenu(true);
 
 	// Links
@@ -1781,6 +1850,7 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 	QAction * aShowHideLocalPath;
 	QAction * aShowHideGtGraph;
 	QAction * aShowHideGPSGraph;
+	QAction * aShowHideOdomCacheOverlay;
 	QAction * aOrientationENU;
 	QAction * aViewPlaneXY;
 	QAction * aViewPlaneXZ;
@@ -1866,6 +1936,14 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 	{
 		aShowHideGPSGraph = menu.addAction(tr("Show GPS graph"));
 	}
+	if(_odomCacheOverlay->isVisible())
+	{
+		aShowHideOdomCacheOverlay = menu.addAction(tr("Hide odom cache overlay"));
+	}
+	else
+	{
+		aShowHideOdomCacheOverlay = menu.addAction(tr("Show odom cache overlay"));
+	}
 	aOrientationENU = menu.addAction(tr("ENU Orientation"));
 	aOrientationENU->setCheckable(true);
 	aOrientationENU->setChecked(_orientationENU);
@@ -1875,6 +1953,7 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 	aShowHideLocalPath->setEnabled(_localPathLinkItems.size());
 	aShowHideGtGraph->setEnabled(_gtNodeItems.size());
 	aShowHideGPSGraph->setEnabled(_gpsNodeItems.size());
+	aShowHideOdomCacheOverlay->setEnabled(_odomCacheOverlay->rect().width()>0);
 
 	QMenu * viewPlaneMenu = menu.addMenu("View Plane...");
 	aViewPlaneXY = viewPlaneMenu->addAction("XY");
@@ -2014,6 +2093,7 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 		}
 	}
 	else if(r == aChangeNodeColor ||
+			r == aChangeNodeOdomCacheColor ||
 			r == aChangeCurrentGoalColor ||
 			r == aChangeNeighborColor ||
 			r == aChangeGlobalLoopColor ||
@@ -2033,6 +2113,10 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 		if(r == aChangeNodeColor)
 		{
 			color = _nodeColor;
+		}
+		else if(r == aChangeNodeOdomCacheColor)
+		{
+			color = _nodeOdomCacheColor;
 		}
 		else if(r == aChangeCurrentGoalColor)
 		{
@@ -2101,6 +2185,10 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 			if(r == aChangeNodeColor)
 			{
 				this->setNodeColor(color);
+			}
+			else if(r == aChangeNodeOdomCacheColor)
+			{
+				this->setNodeOdomCacheColor(color);
 			}
 			else if(r == aChangeCurrentGoalColor)
 			{
@@ -2233,6 +2321,10 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 	else if(r == aShowHideGPSGraph)
 	{
 		this->setGPSGraphVisible(!this->isGPSGraphVisible());
+	}
+	else if(r == aShowHideOdomCacheOverlay)
+	{
+		this->setOdomCacheOverlayVisible(!this->isOdomCacheOverlayVisible());
 	}
 	else if(r == aOrientationENU)
 	{

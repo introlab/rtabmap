@@ -65,7 +65,8 @@ public:
 	void updateGraph(const std::map<int, Transform> & poses,
 					 const std::multimap<int, Link> & constraints,
 					 const std::map<int, int> & mapIds,
-					 const std::map<int, int> & weights = std::map<int, int>());
+					 const std::map<int, int> & weights = std::map<int, int>(),
+					 const std::set<int> & odomCacheIds = std::set<int>());
 	void updateGTGraph(const std::map<int, Transform> & poses);
 	void updateGPSGraph(
 			const std::map<int, Transform> & gpsMapPoses,
@@ -90,6 +91,7 @@ public:
 	float getNodeRadius() const {return _nodeRadius;}
 	float getLinkWidth() const {return _linkWidth;}
 	const QColor & getNodeColor() const {return _nodeColor;}
+	const QColor & getNodeOdomCacheColor() const {return _nodeOdomCacheColor;}
 	const QColor & getCurrentGoalColor() const {return _currentGoalColor;}
 	const QColor & getNeighborColor() const {return _neighborColor;}
 	const QColor & getGlobalLoopClosureColor() const {return _loopClosureColor;}
@@ -116,6 +118,7 @@ public:
 	bool isLocalPathVisible() const;
 	bool isGtGraphVisible() const;
 	bool isGPSGraphVisible() const;
+	bool isOdomCacheOverlayVisible() const;
 	bool isOrientationENU() const;
 	ViewPlane getViewPlane() const;
 
@@ -125,6 +128,7 @@ public:
 	void setNodeRadius(float radius);
 	void setLinkWidth(float width);
 	void setNodeColor(const QColor & color);
+	void setNodeOdomCacheColor(const QColor & color);
 	void setCurrentGoalColor(const QColor & color);
 	void setNeighborColor(const QColor & color);
 	void setGlobalLoopClosureColor(const QColor & color);
@@ -152,6 +156,7 @@ public:
 	void setLocalPathVisible(bool visible);
 	void setGtGraphVisible(bool visible);
 	void setGPSGraphVisible(bool visible);
+	void setOdomCacheOverlayVisible(bool visible);
 	void setOrientationENU(bool enabled);
 	void setViewPlane(ViewPlane plane);
 
@@ -169,6 +174,7 @@ protected:
 private:
 	QString _workingDirectory;
 	QColor _nodeColor;
+	QColor _nodeOdomCacheColor;
 	QColor _currentGoalColor;
 	QColor _neighborColor;
 	QColor _loopClosureColor;
@@ -215,6 +221,7 @@ private:
 	QGraphicsItemGroup * _originReferentialYZ;
 	float _gridCellSize;
 	QGraphicsEllipseItem * _localRadius;
+	QGraphicsRectItem * _odomCacheOverlay;
 	float _loopClosureOutlierThr;
 	float _maxLinkLength;
 	bool _orientationENU;

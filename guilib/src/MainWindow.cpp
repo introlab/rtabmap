@@ -3174,7 +3174,7 @@ void MainWindow::updateMapCloud(
 		std::multimap<int, Link> constraintsWithOdomCache;
 		constraintsWithOdomCache = constraints;
 		constraintsWithOdomCache.insert(odomCacheConstraints.begin(), odomCacheConstraints.end());
-		_ui->graphicsView_graphView->updateGraph(posesWithOdomCache, constraintsWithOdomCache, mapIdsIn);
+		_ui->graphicsView_graphView->updateGraph(posesWithOdomCache, constraintsWithOdomCache, mapIdsIn, std::map<int, int>(), uKeysSet(odomCachePoses));
 		if(_preferencesDialog->isGroundTruthAligned() && !mapToGt.isIdentity())
 		{
 			std::map<int, Transform> gtPoses = _currentGTPosesMap;
