@@ -139,18 +139,43 @@ Transform estimateMotion3DTo2D(
 			transform = (cameraModel.localTransform() * pnp).inverse();
 
 			// compute variance (like in PCL computeVariance() method of sac_model.h)
-			if(covariance && words3B.size())
+			if(covariance && (!words3B.empty() || cameraModel.imageSize() != cv::Size()))
 			{
 				std::vector<float> errorSqrdDists(inliers.size());
 				std::vector<float> errorSqrdAngles(inliers.size());
 				oi = 0;
+				Transform transformCameraFrame = transform * cameraModel.localTransform();
+				Transform transformCameraFrameInv = transformCameraFrame.inverse();
 				for(unsigned int i=0; i<inliers.size(); ++i)
 				{
 					std::map<int, cv::Point3f>::const_iterator iter = words3B.find(matches[inliers[i]]);
-					if(iter != words3B.end() && util3d::isFinite(iter->second))
+					if(words3B.empty() || (iter != words3B.end() && util3d::isFinite(iter->second)))
 					{
 						const cv::Point3f & objPt = objectPoints[inliers[i]];
-						cv::Point3f newPt = util3d::transformPoint(iter->second, transform);
+
+						cv::Point3f newPt;
+						if(iter!=words3B.end())
+						{
+							newPt = util3d::transformPoint(iter->second, transform);
+						}
+						else
+						{
+							//compute from projection
+							Eigen::Vector3f ray = projectDepthTo3DRay(
+									cameraModel.imageSize(),
+									imagePoints.at(inliers[i]).x,
+									imagePoints.at(inliers[i]).y,
+									cameraModel.cx(),
+									cameraModel.cy(),
+									cameraModel.fx(),
+									cameraModel.fy());
+							// transform in camera B frame
+							newPt = util3d::transformPoint(objPt, transformCameraFrameInv);
+							newPt = cv::Point3f(ray.x(), ray.y(), ray.z()) * newPt.z*1.1; // Add 10 % error
+							// put back in frame of camera A
+							newPt = util3d::transformPoint(newPt, transformCameraFrame);
+						}
+
 						errorSqrdDists[oi] = uNormSquared(objPt.x-newPt.x, objPt.y-newPt.y, objPt.z-newPt.z);
 
 						Eigen::Vector4f v1(objPt.x - transform.x(), objPt.y - transform.y(), objPt.z - transform.z(), 0);
