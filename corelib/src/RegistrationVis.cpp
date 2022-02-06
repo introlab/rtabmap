@@ -1668,18 +1668,18 @@ Transform RegistrationVis::computeTransformationImpl(
 			for(int i=0;i<2;++i)
 			{
 				UASSERT(covariances[i].cols==6 && covariances[i].rows == 6 && covariances[i].type() == CV_64FC1);
-				if(covariances[i].at<double>(0,0)<=COVARIANCE_EPSILON)
-					covariances[i].at<double>(0,0) = COVARIANCE_EPSILON; // epsilon if exact transform
-				if(covariances[i].at<double>(1,1)<=COVARIANCE_EPSILON)
-					covariances[i].at<double>(1,1) = COVARIANCE_EPSILON; // epsilon if exact transform
-				if(covariances[i].at<double>(2,2)<=COVARIANCE_EPSILON)
-					covariances[i].at<double>(2,2) = COVARIANCE_EPSILON; // epsilon if exact transform
-				if(covariances[i].at<double>(3,3)<=COVARIANCE_EPSILON)
-					covariances[i].at<double>(3,3) = COVARIANCE_EPSILON; // epsilon if exact transform
-				if(covariances[i].at<double>(4,4)<=COVARIANCE_EPSILON)
-					covariances[i].at<double>(4,4) = COVARIANCE_EPSILON; // epsilon if exact transform
-				if(covariances[i].at<double>(5,5)<=COVARIANCE_EPSILON)
-					covariances[i].at<double>(5,5) = COVARIANCE_EPSILON; // epsilon if exact transform
+				if(covariances[i].at<double>(0,0)<=COVARIANCE_LINEAR_EPSILON)
+					covariances[i].at<double>(0,0) = COVARIANCE_LINEAR_EPSILON; // epsilon if exact transform
+				if(covariances[i].at<double>(1,1)<=COVARIANCE_LINEAR_EPSILON)
+					covariances[i].at<double>(1,1) = COVARIANCE_LINEAR_EPSILON; // epsilon if exact transform
+				if(covariances[i].at<double>(2,2)<=COVARIANCE_LINEAR_EPSILON)
+					covariances[i].at<double>(2,2) = COVARIANCE_LINEAR_EPSILON; // epsilon if exact transform
+				if(covariances[i].at<double>(3,3)<=COVARIANCE_ANGULAR_EPSILON)
+					covariances[i].at<double>(3,3) = COVARIANCE_ANGULAR_EPSILON; // epsilon if exact transform
+				if(covariances[i].at<double>(4,4)<=COVARIANCE_ANGULAR_EPSILON)
+					covariances[i].at<double>(4,4) = COVARIANCE_ANGULAR_EPSILON; // epsilon if exact transform
+				if(covariances[i].at<double>(5,5)<=COVARIANCE_ANGULAR_EPSILON)
+					covariances[i].at<double>(5,5) = COVARIANCE_ANGULAR_EPSILON; // epsilon if exact transform
 			}
 
 			cv::Mat cov = covariances[0].clone();

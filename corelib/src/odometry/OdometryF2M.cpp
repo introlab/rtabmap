@@ -494,6 +494,23 @@ Transform OdometryF2M::computeTransform(
 											info->gravityRollError = fabs(rollImu - roll);
 											info->gravityPitchError = fabs(pitchImu - pitch);
 										}
+
+										// With bundle adjustment, scale down covariance by 10
+										UASSERT(regInfo.covariance.cols==6 && regInfo.covariance.rows == 6 && regInfo.covariance.type() == CV_64FC1);
+										double thrLin = Registration::COVARIANCE_LINEAR_EPSILON*10.0;
+										double thrAng = Registration::COVARIANCE_ANGULAR_EPSILON*10.0;
+										if(regInfo.covariance.at<double>(0,0)>thrLin)
+											regInfo.covariance.at<double>(0,0) *= 0.1;
+										if(regInfo.covariance.at<double>(1,1)>thrLin)
+											regInfo.covariance.at<double>(1,1) *= 0.1;
+										if(regInfo.covariance.at<double>(2,2)>thrLin)
+											regInfo.covariance.at<double>(2,2) *= 0.1;
+										if(regInfo.covariance.at<double>(3,3)>thrAng)
+											regInfo.covariance.at<double>(3,3) *= 0.1;
+										if(regInfo.covariance.at<double>(4,4)>thrAng)
+											regInfo.covariance.at<double>(4,4) *= 0.1;
+										if(regInfo.covariance.at<double>(5,5)>thrAng)
+											regInfo.covariance.at<double>(5,5) *= 0.1;
 									}
 								}
 								UDEBUG("Local Bundle Adjustment After : %s", transform.prettyPrint().c_str());

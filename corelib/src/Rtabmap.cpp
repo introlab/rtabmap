@@ -3225,6 +3225,10 @@ bool Rtabmap::process(
 						UDEBUG("  to %s", newT.prettyPrint().c_str());
 						iter->second.setTransform(newT);
 
+						// Update link in the referred signatures
+						if(iter->first > 0)
+							_memory->updateLink(iter->second, false);
+
 						_odomCacheConstraints.insert(std::make_pair(signature->id(), iter->second));
 					}
 					_odomCacheConstraints.insert(selfLinks.begin(), selfLinks.end());

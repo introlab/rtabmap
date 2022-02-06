@@ -45,7 +45,8 @@ public:
 		kTypeIcp = 1,
 		kTypeVisIcp = 2
 	};
-	static double COVARIANCE_EPSILON;
+	static double COVARIANCE_LINEAR_EPSILON;
+	static double COVARIANCE_ANGULAR_EPSILON;
 
 public:
 	static Registration * create(const ParametersMap & parameters);
