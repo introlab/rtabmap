@@ -433,20 +433,31 @@ SensorData DBReader::getNextData(CameraInfo * info)
 					infMatrix = links.begin()->second.infMatrix();
 					_previousInfMatrix = infMatrix;
 				}
-				else if(_previousMapId != s->mapId())
-				{
-					// first node, set high variance to make rtabmap trigger a new map
-					infMatrix /= 9999.0;
-					UDEBUG("First node of map %d, variance set to 9999", s->mapId());
-				}
 				else
 				{
-					if(_previousInfMatrix.empty())
+					// if localization data saved in database, covariance will be set in a prior link
+					_dbDriver->loadLinks(*_currentId, links, Link::kPosePrior);
+					if(links.size())
 					{
-						_previousInfMatrix = cv::Mat::eye(6,6,CV_64FC1);
+						// assume the first is the backward neighbor, take its variance
+						infMatrix = links.begin()->second.infMatrix();
+						_previousInfMatrix = infMatrix;
 					}
-					// we have a node not linked to map, use last variance
-					infMatrix = _previousInfMatrix;
+					else if(_previousMapId != s->mapId())
+					{
+						// first node, set high variance to make rtabmap trigger a new map
+						infMatrix /= 9999.0;
+						UDEBUG("First node of map %d, variance set to 9999", s->mapId());
+					}
+					else
+					{
+						if(_previousInfMatrix.empty())
+						{
+							_previousInfMatrix = cv::Mat::eye(6,6,CV_64FC1);
+						}
+						// we have a node not linked to map, use last variance
+						infMatrix = _previousInfMatrix;
+					}
 				}
 				_previousMapId = s->mapId();
 			}
