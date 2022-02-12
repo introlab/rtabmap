@@ -37,7 +37,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 namespace rtabmap {
 
-CameraModel::CameraModel()
+CameraModel::CameraModel() :
+		localTransform_(opticalRotation())
 {
 
 }
@@ -339,6 +340,25 @@ bool CameraModel::load(const std::string & filePath)
 				UWARN("Missing \"projection_matrix\" field in \"%s\"", filePath.c_str());
 			}
 
+			n = fs["local_transform"];
+			if(n.type() != cv::FileNode::NONE)
+			{
+				int rows = (int)n["rows"];
+				int cols = (int)n["cols"];
+				std::vector<float> data;
+				n["data"] >> data;
+				UASSERT(rows*cols == (int)data.size());
+				UASSERT(rows == 3 && cols == 4);
+				localTransform_ = Transform(
+						data[0], data[1], data[2], data[3],
+						data[4], data[5], data[6], data[7],
+						data[8], data[9], data[10], data[11]);
+			}
+			else
+			{
+				UWARN("Missing \"local_transform\" field in \"%s\"", filePath.c_str());
+			}
+
 			fs.release();
 
 			if(isValidForRectification())
@@ -445,6 +465,15 @@ bool CameraModel::save(const std::string & directory) const
 			fs << "rows" << P_.rows;
 			fs << "cols" << P_.cols;
 			fs << "data" << std::vector<double>((double*)P_.data, ((double*)P_.data)+(P_.rows*P_.cols));
+			fs << "}";
+		}
+
+		if(!localTransform_.isNull())
+		{
+			fs << "local_transform" << "{";
+			fs << "rows" << 3;
+			fs << "cols" << 4;
+			fs << "data" << std::vector<float>((float*)localTransform_.data(), ((float*)localTransform_.data())+12);
 			fs << "}";
 		}
 

@@ -61,6 +61,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/gui/PostProcessingDialog.h"
 #include "rtabmap/gui/DepthCalibrationDialog.h"
 #include "rtabmap/gui/RecoveryState.h"
+#include "rtabmap/gui/MultiSessionLocWidget.h"
 
 #include <rtabmap/utilite/UStl.h>
 #include <rtabmap/utilite/ULogger.h>
@@ -297,6 +298,9 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent, bool sh
 	_ui->rawLikelihoodPlot->addCurve(_rawLikelihoodCurve, false);
 	_ui->rawLikelihoodPlot->showLegend(false);
 
+	_multiSessionLocWidget = new MultiSessionLocWidget(&_cachedSignatures, &_currentMapIds, this);
+	_ui->layout_multiSessionLoc->layout()->addWidget(_multiSessionLocWidget);
+
 	_progressDialog = new ProgressDialog(this);
 	_progressDialog->setMinimumWidth(800);
 	connect(_progressDialog, SIGNAL(canceled()), this, SLOT(cancelProgress()));
@@ -327,6 +331,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent, bool sh
 	_ui->menuShow_view->addAction(_ui->dockWidget_mapVisibility->toggleViewAction());
 	_ui->menuShow_view->addAction(_ui->dockWidget_graphViewer->toggleViewAction());
 	_ui->menuShow_view->addAction(_ui->dockWidget_odometry->toggleViewAction());
+	_ui->menuShow_view->addAction(_ui->dockWidget_multiSessionLoc->toggleViewAction());
 	_ui->menuShow_view->addAction(_ui->toolBar->toggleViewAction());
 	_ui->toolBar->setWindowTitle(tr("File toolbar"));
 	_ui->menuShow_view->addAction(_ui->toolBar_2->toggleViewAction());
@@ -504,6 +509,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent, bool sh
 	connect(_exportBundlerDialog, SIGNAL(configChanged()), this, SLOT(configGUIModified()));
 	connect(_postProcessingDialog, SIGNAL(configChanged()), this, SLOT(configGUIModified()));
 	connect(_depthCalibrationDialog, SIGNAL(configChanged()), this, SLOT(configGUIModified()));
+	connect(_multiSessionLocWidget->getImageView(), SIGNAL(configChanged()), this, SLOT(configGUIModified()));
 	connect(_ui->toolBar->toggleViewAction(), SIGNAL(toggled(bool)), this, SLOT(configGUIModified()));
 	connect(_ui->toolBar, SIGNAL(orientationChanged(Qt::Orientation)), this, SLOT(configGUIModified()));
 	connect(statusBarAction, SIGNAL(toggled(bool)), this, SLOT(configGUIModified()));
@@ -526,6 +532,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent, bool sh
 	_ui->dockWidget_odometry->installEventFilter(this);
 	_ui->dockWidget_cloudViewer->installEventFilter(this);
 	_ui->dockWidget_imageView->installEventFilter(this);
+	_ui->dockWidget_multiSessionLoc->installEventFilter(this);
 
 	// more connects...
 	_ui->doubleSpinBox_stats_imgRate->setValue(_preferencesDialog->getGeneralInputRate());
@@ -560,6 +567,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent, bool sh
 	_exportBundlerDialog->setWorkingDirectory(_preferencesDialog->getWorkingDirectory());
 	_cloudViewer->setBackfaceCulling(true, false);
 	_preferencesDialog->loadWidgetState(_cloudViewer);
+	_preferencesDialog->loadWidgetState(_multiSessionLocWidget->getImageView());
 
 	//dialog states
 	_preferencesDialog->loadWidgetState(_exportCloudsDialog);
@@ -799,6 +807,7 @@ void MainWindow::closeEvent(QCloseEvent* event)
 		_ui->dockWidget_mapVisibility->close();
 		_ui->dockWidget_graphViewer->close();
 		_ui->dockWidget_odometry->close();
+		_ui->dockWidget_multiSessionLoc->close();
 
 		if(_camera)
 		{
@@ -2295,6 +2304,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 		//======================
 		// RGB-D Mapping stuff
 		//======================
+		_odometryCorrection = stat.mapCorrection();
 		// update clouds
 		if(stat.poses().size())
 		{
@@ -2428,7 +2438,6 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 				}
 			}
 		}
-		_odometryCorrection = stat.mapCorrection();
 
 		if( _ui->graphicsView_graphView->isVisible())
 		{
@@ -2464,6 +2473,11 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 				_ui->graphicsView_graphView->setCurrentGoalID(stat.currentGoalId(), uValue(stat.poses(), stat.currentGoalId(), Transform()));
 			}
 			UDEBUG("time= %d ms (update graph view)", time.restart());
+		}
+
+		if(_multiSessionLocWidget->isVisible())
+		{
+			_multiSessionLocWidget->updateView(signature, stat);
 		}
 
 		_cachedSignatures.remove(0); // remove tmp negative ids
@@ -5106,6 +5120,7 @@ void MainWindow::saveConfigGUI()
 	_preferencesDialog->saveWidgetState(_postProcessingDialog);
 	_preferencesDialog->saveWidgetState(_depthCalibrationDialog);
 	_preferencesDialog->saveWidgetState(_ui->graphicsView_graphView);
+	_preferencesDialog->saveWidgetState(_multiSessionLocWidget->getImageView());
 	_preferencesDialog->saveSettings();
 	this->saveFigures();
 	this->setWindowModified(false);
@@ -7154,6 +7169,7 @@ void MainWindow::clearTheCache()
 	_ui->imageView_source->setBackgroundColor(_ui->imageView_source->getDefaultBackgroundColor());
 	_ui->imageView_loopClosure->setBackgroundColor(_ui->imageView_loopClosure->getDefaultBackgroundColor());
 	_ui->imageView_odometry->setBackgroundColor(_ui->imageView_odometry->getDefaultBackgroundColor());
+	_multiSessionLocWidget->clear();
 #ifdef RTABMAP_OCTOMAP
 	// re-create one if the resolution has changed
 	UASSERT(_octomap != 0);
@@ -7264,6 +7280,7 @@ void MainWindow::setDefaultViews()
 	_ui->dockWidget_odometry->setVisible(true);
 	_ui->dockWidget_cloudViewer->setVisible(true);
 	_ui->dockWidget_imageView->setVisible(true);
+	_ui->dockWidget_multiSessionLoc->setVisible(false);
 	_ui->toolBar->setVisible(_state != kMonitoring && _state != kMonitoringPaused);
 	_ui->toolBar_2->setVisible(true);
 	_ui->statusbar->setVisible(false);

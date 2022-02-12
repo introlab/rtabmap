@@ -328,13 +328,13 @@ int main(int argc, char * argv[])
 		RegistrationInfo info;
 
 
-		// Do it one time before to make sure everything is loaded to get realistic timing.
+		// Do it one time before to make sure everything is loaded to get realistic timing for matching only.
 		reg.computeTransformationMod(dataFrom, dataTo, Transform(), &info);
 
 		UTimer timer;
 		Transform t = reg.computeTransformationMod(dataFrom, dataTo, Transform(), &info);
 		double matchingTime = timer.ticks();
-		printf("Time matching and motion estimation: %fs\n", matchingTime);
+		printf("Time matching and motion estimation (excluding feature detection): %fs\n", matchingTime);
 
 		//////////////////
 		// Visualization

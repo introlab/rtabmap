@@ -2349,23 +2349,6 @@ bool Rtabmap::process(
 	}
 
 	//============================================================
-	// Landmark
-	//============================================================
-	std::map<int, std::set<int> > landmarksDetected; // <Landmark ID, list of nodes that saw this landmark>
-	if(!signature->getLandmarks().empty())
-	{
-		for(std::map<int, Link>::const_iterator iter=signature->getLandmarks().begin(); iter!=signature->getLandmarks().end(); ++iter)
-		{
-			if(uContains(_memory->getLandmarksIndex(), iter->first) &&
-					_memory->getLandmarksIndex().find(iter->first)->second.size()>1)
-			{
-				UINFO("Landmark %d observed again! Seen the first time by node %d.", -iter->first, *_memory->getLandmarksIndex().find(iter->first)->second.begin());
-				landmarksDetected.insert(std::make_pair(iter->first, _memory->getLandmarksIndex().find(iter->first)->second));
-			}
-		}
-	}
-
-	//============================================================
 	// Proximity detections
 	//============================================================
 	std::list<std::pair<int, int> > loopClosureLinksAdded;
@@ -2833,6 +2816,41 @@ bool Rtabmap::process(
 	ULOGGER_INFO("timeAddLoopClosureLink=%fs", timeAddLoopClosureLink);
 
 	//============================================================
+	// Landmark
+	//============================================================
+	std::map<int, std::set<int> > landmarksDetected; // <Landmark ID, list of nodes that saw this landmark>
+	if(!signature->getLandmarks().empty())
+	{
+		bool hasGlobalLoopClosuresInOdomCache = !graph::filterLinks(_odomCacheConstraints, Link::kGlobalClosure, true).empty() || _loopClosureHypothesis.first != 0;
+		UDEBUG("hasGlobalLoopClosuresInOdomCache=%d", hasGlobalLoopClosuresInOdomCache?1:0);
+		for(std::map<int, Link>::const_iterator iter=signature->getLandmarks().begin(); iter!=signature->getLandmarks().end(); ++iter)
+		{
+			if(uContains(_memory->getLandmarksIndex(), iter->first) &&
+					_memory->getLandmarksIndex().find(iter->first)->second.size()>1)
+			{
+				if(!_memory->isIncremental() &&          // In localization mode
+					!hasGlobalLoopClosuresInOdomCache && // If there are global loop closures in odom cache, we can keep far landmarks
+					_localRadius>0.0 &&
+					iter->second.transform().getNormSquared() > _localRadius*_localRadius)
+				{
+					// Ignore landmark detections over local radius
+					UWARN("Ignoring landmark %d for localization as it is too far (%fm > %s=%f) "
+							"and odom cache doesn't contain global loop closure(s).",
+							iter->first,
+							iter->second.transform().getNorm(),
+							Parameters::kRGBDLocalRadius().c_str(),
+							_localRadius);
+				}
+				else
+				{
+					UINFO("Landmark %d observed again! Seen the first time by node %d.", -iter->first, *_memory->getLandmarksIndex().find(iter->first)->second.begin());
+					landmarksDetected.insert(std::make_pair(iter->first, _memory->getLandmarksIndex().find(iter->first)->second));
+				}
+			}
+		}
+	}
+
+	//============================================================
 	// Add virtual links if a path is activated
 	//============================================================
 	if(_path.size())
@@ -3064,7 +3082,7 @@ bool Rtabmap::process(
 				}
 
 				bool hasGlobalLoopClosuresOrLandmarks = false;
-				if(rejectLocalization)
+				if(rejectLocalization && !graph::filterLinks(constraints, Link::kLocalSpaceClosure, true).empty())
 				{
 					// Let's try again without local loop closures
 					localizationLinks = graph::filterLinks(localizationLinks, Link::kLocalSpaceClosure);

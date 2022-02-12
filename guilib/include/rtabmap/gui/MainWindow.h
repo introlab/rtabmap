@@ -74,6 +74,7 @@ class PostProcessingDialog;
 class DepthCalibrationDialog;
 class DataRecorder;
 class OctoMap;
+class MultiSessionLocWidget;
 
 class RTABMAPGUI_EXP MainWindow : public QMainWindow, public UEventsHandler
 {
@@ -403,6 +404,8 @@ private:
 	PdfPlotCurve * _posteriorCurve;
 	PdfPlotCurve * _likelihoodCurve;
 	PdfPlotCurve * _rawLikelihoodCurve;
+
+	MultiSessionLocWidget * _multiSessionLocWidget;
 
 	ProgressDialog * _progressDialog;
 

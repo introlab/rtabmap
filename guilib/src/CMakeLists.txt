@@ -34,6 +34,8 @@ SET(headers_ui
 	../include/${PROJECT_PREFIX}/gui/RecoveryState.h
 	../include/${PROJECT_PREFIX}/gui/EditDepthArea.h
 	../include/${PROJECT_PREFIX}/gui/EditMapArea.h
+	../include/${PROJECT_PREFIX}/gui/MultiSessionLocWidget.h
+	../include/${PROJECT_PREFIX}/gui/MultiSessionLocSubView.h
 )
 
 SET(uis
@@ -51,6 +53,7 @@ SET(uis
     ./ui/depthCalibrationDialog.ui
     ./ui/exportBundlerDialog.ui
     ./ui/editConstraintDialog.ui
+    ./ui/multiSessionLocSubView.ui
 )
 
 SET(qrc 
@@ -103,6 +106,8 @@ SET(SRC_FILES
 	./GraphViewer.cpp
 	./EditDepthArea.cpp
 	./EditMapArea.cpp
+	./MultiSessionLocWidget.cpp
+	./MultiSessionLocSubView.cpp
 	./CreateSimpleCalibrationDialog.cpp
 	./ParametersToolBox.cpp
 	./DepthCalibrationDialog.cpp

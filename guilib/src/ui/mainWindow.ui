@@ -1044,6 +1044,33 @@
    <addaction name="actionPause"/>
    <addaction name="actionStop"/>
   </widget>
+  <widget class="QDockWidget" name="dockWidget_multiSessionLoc">
+   <property name="windowTitle">
+    <string>Multi-Session Localization</string>
+   </property>
+   <attribute name="dockWidgetArea">
+    <number>2</number>
+   </attribute>
+   <widget class="QWidget" name="layout_multiSessionLoc">
+    <layout class="QVBoxLayout" name="verticalLayout_12">
+     <property name="spacing">
+      <number>0</number>
+     </property>
+     <property name="leftMargin">
+      <number>0</number>
+     </property>
+     <property name="topMargin">
+      <number>0</number>
+     </property>
+     <property name="rightMargin">
+      <number>0</number>
+     </property>
+     <property name="bottomMargin">
+      <number>0</number>
+     </property>
+    </layout>
+   </widget>
+  </widget>
   <action name="actionExit">
    <property name="icon">
     <iconset resource="../GuiLib.qrc">

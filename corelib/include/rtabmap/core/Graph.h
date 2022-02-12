@@ -159,14 +159,14 @@ std::list<Link> RTABMAP_EXP findLinks(
 std::multimap<int, Link> RTABMAP_EXP filterDuplicateLinks(
 		const std::multimap<int, Link> & links);
 /**
- * Return links not of type "filteredType". If inverted=true, return links of of type "filteredType".
+ * Return links not of type "filteredType". If inverted=true, return links of type "filteredType".
  */
 std::multimap<int, Link> RTABMAP_EXP filterLinks(
 		const std::multimap<int, Link> & links,
 		Link::Type filteredType,
 		bool inverted = false);
 /**
- * Return links not of type "filteredType". If inverted=true, return links of of type "filteredType".
+ * Return links not of type "filteredType". If inverted=true, return links of type "filteredType".
  */
 std::map<int, Link> RTABMAP_EXP filterLinks(
 		const std::map<int, Link> & links,
