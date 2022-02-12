@@ -1038,23 +1038,32 @@ void Rtabmap::resetMemory()
 class NearestPathKey
 {
 public:
-	NearestPathKey(float l, int i) :
+	NearestPathKey(float l, int i, float d) :
 		likelihood(l),
-		id(i){}
+		id(i),
+		distance(d){}
 	bool operator<(const NearestPathKey & k) const
 	{
 		if(likelihood < k.likelihood)
 		{
 			return true;
 		}
-		else if(likelihood == k.likelihood && id < k.id)
+		else if(likelihood == k.likelihood)
 		{
-			return true;
+			if(distance > k.distance)
+			{
+				return true;
+			}
+			else if(distance == k.distance && id < k.id)
+			{
+				return true;
+			}
 		}
 		return false;
 	}
 	float likelihood;
 	int id;
+	float distance;
 };
 
 //============================================================
@@ -1952,6 +1961,11 @@ bool Rtabmap::process(
 	else if(!signature->isBadSignature() && (smallDisplacement || tooFastMovement))
 	{
 		_highestHypothesis = lastHighestHypothesis;
+		UDEBUG("smallDisplacement=%d tooFastMovement=%d", smallDisplacement?1:0, tooFastMovement?1:0);
+	}
+	else
+	{
+		UDEBUG("Ignoring likelihood and loop closure hypotheses as current signature doesn't have enough visual features.");
 	}
 
 	//============================================================
@@ -2429,21 +2443,25 @@ bool Rtabmap::process(
 				UDEBUG("got %d paths", (int)nearestPathsNotSorted.size());
 				// sort nearest paths by highest likelihood (if two have same likelihood, sort by id)
 				std::map<NearestPathKey, std::map<int, Transform> > nearestPaths;
+				Transform currentPoseInv = _optimizedPoses.at(signature->id());
 				for(std::map<int, std::map<int, Transform> >::const_iterator iter=nearestPathsNotSorted.begin();iter!=nearestPathsNotSorted.end(); ++iter)
 				{
 					const std::map<int, Transform> & path = iter->second;
 					float highestLikelihood = 0.0f;
 					int highestLikelihoodId = iter->first;
+					float smallestDistanceSqr = -1;
 					for(std::map<int, Transform>::const_iterator jter=path.begin(); jter!=path.end(); ++jter)
 					{
 						float v = uValue(likelihood, jter->first, 0.0f);
-						if(v > highestLikelihood)
+						float distance = (currentPoseInv * jter->second).getNormSquared();
+						if(v > highestLikelihood || (v == highestLikelihood && (smallestDistanceSqr < 0 || distance < smallestDistanceSqr)))
 						{
 							highestLikelihood = v;
 							highestLikelihoodId = jter->first;
+							smallestDistanceSqr = distance;
 						}
 					}
-					nearestPaths.insert(std::make_pair(NearestPathKey(highestLikelihood, highestLikelihoodId), path));
+					nearestPaths.insert(std::make_pair(NearestPathKey(highestLikelihood, highestLikelihoodId, smallestDistanceSqr), path));
 				}
 				UDEBUG("nearestPaths=%d proximityMaxPaths=%d", (int)nearestPaths.size(), _proximityMaxPaths);
 

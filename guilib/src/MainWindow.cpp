@@ -962,7 +962,7 @@ bool MainWindow::handleEvent(UEvent* anEvent)
 		{
 			QMetaObject::invokeMethod(_ui->dockWidget_console, "show");
 			// The timer prevents multiple calls to pauseDetection() before the state can be changed
-			if(_state != kPaused && _state != kMonitoringPaused && _logEventTime->elapsed() > 1000)
+			if(_state != kPaused && _state != kMonitoringPaused && _state != kMonitoring && _logEventTime->elapsed() > 1000)
 			{
 				_logEventTime->start();
 				if(_preferencesDialog->beepOnPause())

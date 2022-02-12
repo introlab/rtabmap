@@ -4677,7 +4677,7 @@ void DatabaseViewer::update(int value,
 
 				if(data.laserScanRaw().size())
 				{
-					labelScan->setText(tr("Format=%1 Points=%2 [max=%3] Range=[%4->%5 m] Angle=[%6->%7 rad inc=%8] Has [Color=%9 2D=%10 Normals=%11 Intensity=%12]")
+					labelScan->setText(tr("Format=%1 Points=%2 [max=%3] Range=[%4->%5 m] Angle=[%6->%7 rad inc=%8] Has [Color=%9 2D=%10 Normals=%11 Intensity=%12] %13")
 							.arg(data.laserScanRaw().formatName().c_str())
 							.arg(data.laserScanRaw().size())
 							.arg(data.laserScanRaw().maxPoints())
@@ -4689,7 +4689,8 @@ void DatabaseViewer::update(int value,
 							.arg(data.laserScanRaw().hasRGB()?1:0)
 							.arg(data.laserScanRaw().is2d()?1:0)
 							.arg(data.laserScanRaw().hasNormals()?1:0)
-							.arg(data.laserScanRaw().hasIntensity()?1:0));
+							.arg(data.laserScanRaw().hasIntensity()?1:0)
+							.arg(data.laserScanRaw().localTransform().prettyPrint().c_str()));
 				}
 
 				//stereo
