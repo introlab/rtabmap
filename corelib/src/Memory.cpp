@@ -122,14 +122,22 @@ Memory::Memory(const ParametersMap & parameters) :
 	_linksChanged(false),
 	_signaturesAdded(0),
 	_allNodesInWM(true),
-
 	_badSignRatio(Parameters::defaultKpBadSignRatio()),
 	_tfIdfLikelihoodUsed(Parameters::defaultKpTfIdfLikelihoodUsed()),
-	_parallelized(Parameters::defaultKpParallelized())
+	_parallelized(Parameters::defaultKpParallelized()),
+	_registrationVis(0)
 {
 	_feature2D = Feature2D::create(parameters);
 	_vwd = new VWDictionary(parameters);
 	_registrationPipeline = Registration::create(parameters);
+	if(!_registrationPipeline->isImageRequired())
+	{
+		// make sure feature matching is used instead of optical flow to compute the guess
+		ParametersMap tmp = parameters;
+		uInsert(tmp, ParametersPair(Parameters::kVisCorType(), "0"));
+		uInsert(tmp, ParametersPair(Parameters::kRegRepeatOnce(), "false"));
+		_registrationVis = new RegistrationVis(tmp);
+	}
 
 	// for local scan matching, correspondences ratio should be two times higher as we expect more matches
 	float corRatio = Parameters::defaultIcpCorrespondenceRatio();
@@ -531,6 +539,7 @@ Memory::~Memory()
 	delete _vwd;
 	delete _registrationPipeline;
 	delete _registrationIcpMulti;
+	delete _registrationVis;
 	delete _occupancy;
 }
 
@@ -647,12 +656,28 @@ void Memory::parseParameters(const ParametersMap & parameters)
 	uInsert(parameters_, ParametersPair(Parameters::kVisCorType(), "0"));
 	uInsert(params, ParametersPair(Parameters::kVisCorType(), "0"));
 
+	Registration::Type currentStrategy = Registration::kTypeUndef;
+	if(_registrationPipeline)
+	{
+		if(_registrationPipeline->isImageRequired() && _registrationPipeline->isScanRequired())
+		{
+			currentStrategy = Registration::kTypeVisIcp;
+		}
+		else if(_registrationPipeline->isImageRequired())
+		{
+			currentStrategy = Registration::kTypeVis;
+		}
+		else if(_registrationPipeline->isScanRequired())
+		{
+			currentStrategy = Registration::kTypeIcp;
+		}
+	}
 	Registration::Type regStrategy = Registration::kTypeUndef;
 	if((iter=params.find(Parameters::kRegStrategy())) != params.end())
 	{
 		regStrategy = (Registration::Type)std::atoi((*iter).second.c_str());
 	}
-	if(regStrategy!=Registration::kTypeUndef)
+	if(regStrategy!=Registration::kTypeUndef && regStrategy != currentStrategy)
 	{
 		UDEBUG("new registration strategy %d", int(regStrategy));
 		if(_registrationPipeline)
@@ -662,10 +687,29 @@ void Memory::parseParameters(const ParametersMap & parameters)
 		}
 
 		_registrationPipeline = Registration::create(regStrategy, parameters_);
+
+		if(!_registrationPipeline->isImageRequired() && _registrationVis == 0)
+		{
+			ParametersMap tmp = params;
+			uInsert(tmp, ParametersPair(Parameters::kRegRepeatOnce(), "false"));
+			_registrationVis = new RegistrationVis(tmp);
+		}
+		else if(_registrationPipeline->isImageRequired() && _registrationVis)
+		{
+			delete _registrationVis;
+			_registrationVis = 0;
+		}
 	}
 	else if(_registrationPipeline)
 	{
 		_registrationPipeline->parseParameters(params);
+
+		if(_registrationVis)
+		{
+			ParametersMap tmp = params;
+			uInsert(tmp, ParametersPair(Parameters::kRegRepeatOnce(), "false"));
+			_registrationVis->parseParameters(tmp);
+		}
 	}
 
 	if(_registrationIcpMulti)
@@ -2835,12 +2879,8 @@ Transform Memory::computeTransform(
 		{
 			UDEBUG("");
 			// no visual in the pipeline, make visual registration for guess
-			// make sure feature matching is used instead of optical flow to compute the guess
-			ParametersMap parameters = parameters_;
-			uInsert(parameters, ParametersPair(Parameters::kVisCorType(), "0"));
-			uInsert(parameters, ParametersPair(Parameters::kRegRepeatOnce(), "false"));
-			RegistrationVis regVis(parameters);
-			guess = regVis.computeTransformation(tmpFrom, tmpTo, guess, info);
+			UASSERT(_registrationVis!=0);
+			guess = _registrationVis->computeTransformation(tmpFrom, tmpTo, guess, info);
 			if(!guess.isNull())
 			{
 				transform = _registrationPipeline->computeTransformationMod(tmpFrom, tmpTo, guess, info);

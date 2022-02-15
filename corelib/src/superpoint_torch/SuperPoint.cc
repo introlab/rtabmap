@@ -198,10 +198,19 @@ std::vector<cv::KeyPoint> SPDetector::detect(const cv::Mat &img, const cv::Mat &
 			std::vector<cv::KeyPoint> keypoints;
 			cv::Mat descEmpty;
 			NMS(keypoints_no_nms, conf, descEmpty, keypoints, descEmpty, border, dist_thresh, width, height);
-			return keypoints;
+			if(keypoints.size()>1)
+			{
+				return keypoints;
+			}
+			return std::vector<cv::KeyPoint>();
 		}
-		else {
+		else if(keypoints_no_nms.size()>1)
+		{
 			return keypoints_no_nms;
+		}
+		else
+		{
+			return std::vector<cv::KeyPoint>();
 		}
 	}
 	else
@@ -216,6 +225,10 @@ cv::Mat SPDetector::compute(const std::vector<cv::KeyPoint> &keypoints)
 	if(!detected_)
 	{
 		UERROR("SPDetector has been reset before extracting the descriptors! detect() should be called before compute().");
+		return cv::Mat();
+	}
+	if(keypoints.empty())
+	{
 		return cv::Mat();
 	}
 	if(model_.get())

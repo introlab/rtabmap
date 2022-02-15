@@ -38,10 +38,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <vtkObject.h>
 
-#ifdef RTABMAP_PYTHON
-#include "rtabmap/core/PythonInterface.h"
-#endif
-
 using namespace rtabmap;
 
 int main(int argc, char* argv[])
@@ -52,10 +48,6 @@ int main(int argc, char* argv[])
 
 #ifdef WIN32
 	CoInitialize(nullptr);
-#endif
-
-#ifdef RTABMAP_PYTHON
-	PythonInterface python; // Make sure we initialize python in main thread
 #endif
 
 #if VTK_MAJOR_VERSION >= 8

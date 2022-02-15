@@ -53,6 +53,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UMath.h>
 #include <rtabmap/utilite/UProcessInfo.h>
 
+#ifdef RTABMAP_PYTHON
+#include "rtabmap/core/PythonInterface.h"
+#endif
+
 #include <pcl/search/kdtree.h>
 #include <pcl/filters/crop_box.h>
 #include <pcl/io/pcd_io.h>
@@ -161,6 +165,9 @@ Rtabmap::Rtabmap() :
 	_pathTransformToGoal(Transform::getIdentity()),
 	_pathStuckCount(0),
 	_pathStuckDistance(0.0f)
+#ifdef RTABMAP_PYTHON
+	,_python(new PythonInterface())
+#endif
 {
 }
 

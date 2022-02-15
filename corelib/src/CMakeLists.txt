@@ -199,6 +199,7 @@ IF(WITH_PYTHON AND Python3_FOUND)
 	SET(LIBRARIES
 		${LIBRARIES}
 		Python3::Python
+		Python3::NumPy
 	)
 	SET(SRC_FILES
 		${SRC_FILES}

@@ -22,6 +22,7 @@ PythonInterface::PythonInterface() :
 	UScopeMutex lockM(mutex_);
 	if(refCount_ == 0)
 	{
+		UINFO("Py_Initialize() with thread = %d", UThread::currentThreadId());
 		// initialize Python
 		Py_Initialize();
 
@@ -44,6 +45,7 @@ PythonInterface::~PythonInterface()
 	if(refCount_>0 && --refCount_==0)
 	{
 		// shut down the interpreter
+		UINFO("Py_Finalize() with thread = %d", UThread::currentThreadId());
 		PyEval_RestoreThread(mainThreadState_);
 		Py_Finalize();
 	}
@@ -53,6 +55,7 @@ void PythonInterface::lock()
 {
 	mutex_.lock();
 
+	UDEBUG("Lock: Current thread=%d (main=%d)", UThread::currentThreadId(), mainThreadID_);
 	if(UThread::currentThreadId() == mainThreadID_)
 	{
 		PyEval_RestoreThread(mainThreadState_);
@@ -77,6 +80,7 @@ void PythonInterface::unlock()
 		PyThreadState_Clear(threadState_);
 		PyThreadState_DeleteCurrent();
 	}
+	UDEBUG("Unlock: Current thread=%d (main=%d)", UThread::currentThreadId(), mainThreadID_);
 	mutex_.unlock();
 }
 

@@ -49,6 +49,7 @@ class Memory;
 class BayesFilter;
 class Signature;
 class Optimizer;
+class PythonInterface;
 
 class RTABMAP_EXP Rtabmap
 {
@@ -373,6 +374,10 @@ private:
 	Transform _pathTransformToGoal;
 	int _pathStuckCount;
 	float _pathStuckDistance;
+
+#ifdef RTABMAP_PYTHON
+	PythonInterface * _python;
+#endif
 
 };
 

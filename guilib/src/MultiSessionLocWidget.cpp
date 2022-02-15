@@ -57,9 +57,9 @@ MultiSessionLocWidget::MultiSessionLocWidget(
 
 	// setup layout
 	this->setLayout(new QHBoxLayout());
-	QVBoxLayout * vLayout = new QVBoxLayout(this);
+	QVBoxLayout * vLayout = new QVBoxLayout();
 	vLayout->addWidget(imageView_, 1);
-	QHBoxLayout * hLayout = new QHBoxLayout(this);
+	QHBoxLayout * hLayout = new QHBoxLayout();
 	hLayout->addWidget(resetbutton_, 0);
 	hLayout->addWidget(totalLocProgressBar_, 1);
 	vLayout->addLayout(hLayout, 0);

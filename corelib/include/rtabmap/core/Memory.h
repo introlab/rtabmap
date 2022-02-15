@@ -55,6 +55,7 @@ class Statistics;
 class Registration;
 class RegistrationInfo;
 class RegistrationIcp;
+class RegistrationVis;
 class Stereo;
 class OccupancyGrid;
 class MarkerDetector;
@@ -367,6 +368,7 @@ private:
 
 	Registration * _registrationPipeline;
 	RegistrationIcp * _registrationIcpMulti;
+	RegistrationVis * _registrationVis;
 
 	OccupancyGrid * _occupancy;
 
