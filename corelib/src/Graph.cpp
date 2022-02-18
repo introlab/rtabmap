@@ -130,11 +130,11 @@ bool exportPoses(
 						// header
 						if(format == 11)
 						{
-							fprintf(fout, "# timestamp x y z qx qy qz qw id\n");
+							fprintf(fout, "#timestamp x y z qx qy qz qw id\n");
 						}
 						else
 						{
-							fprintf(fout, "# timestamp x y z qx qy qz qw\n");
+							fprintf(fout, "#timestamp x y z qx qy qz qw\n");
 						}
 					}
 
