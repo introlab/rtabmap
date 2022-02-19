@@ -2121,9 +2121,12 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 					{
 						// uncompress after copy to avoid keeping uncompressed data in memory
 						loopSignature = iter.value();
-						bool uncompressImages = _ui->imageView_source->isVisible() ||
-							(_loopClosureViewer->isVisible() && !signature.sensorData().depthOrRightCompressed().empty());
-						bool uncompressScan = _loopClosureViewer->isVisible() && !signature.sensorData().laserScanCompressed().isEmpty();
+						bool uncompressImages = !loopSignature.sensorData().imageCompressed().empty() && (
+								_ui->imageView_source->isVisible() ||
+								(_loopClosureViewer->isVisible() &&
+										!loopSignature.sensorData().depthOrRightCompressed().empty()));
+						bool uncompressScan = _loopClosureViewer->isVisible() &&
+								!loopSignature.sensorData().laserScanCompressed().isEmpty();
 						if(uncompressImages || uncompressScan)
 						{
 							cv::Mat tmpRGB, tmpDepth;

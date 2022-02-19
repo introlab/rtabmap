@@ -307,7 +307,8 @@ GraphViewer::GraphViewer(QWidget * parent) :
 		_loopClosureOutlierThr(0),
 		_maxLinkLength(0.02f),
 		_orientationENU(false),
-		_viewPlane(XY)
+		_viewPlane(XY),
+		_ensureFrameVisible(true)
 {
 	this->setScene(new QGraphicsScene(this));
 	this->setDragMode(QGraphicsView::ScrollHandDrag);
@@ -1008,10 +1009,13 @@ void GraphViewer::updateReferentialPosition(const Transform & t)
 	_referential->setTransform(qt);
 	_localRadius->setTransform(qt);
 
-	this->ensureVisible(_referential);
-	if(_localRadius->isVisible())
+	if(_ensureFrameVisible)
 	{
-		this->ensureVisible(_localRadius, 0, 0);
+		this->ensureVisible(_referential);
+		if(_localRadius->isVisible())
+		{
+			this->ensureVisible(_localRadius, 0, 0);
+		}
 	}
 }
 
@@ -1276,6 +1280,7 @@ void GraphViewer::saveSettings(QSettings & settings, const QString & group) cons
 	settings.setValue("odom_cache_overlay", this->isOdomCacheOverlayVisible());
 	settings.setValue("orientation_ENU", this->isOrientationENU());
 	settings.setValue("view_plane", (int)this->getViewPlane());
+	settings.setValue("ensure_frame_visible", (int)this->isEnsureFrameVisible());
 	if(!group.isEmpty())
 	{
 		settings.endGroup();
@@ -1321,6 +1326,7 @@ void GraphViewer::loadSettings(QSettings & settings, const QString & group)
 	this->setOdomCacheOverlayVisible(settings.value("odom_cache_overlay", this->isOdomCacheOverlayVisible()).toBool());
 	this->setOrientationENU(settings.value("orientation_ENU", this->isOrientationENU()).toBool());
 	this->setViewPlane((ViewPlane)settings.value("view_plane", (int)this->getViewPlane()).toInt());
+	this->setEnsureFrameVisible(settings.value("ensure_frame_visible", this->isEnsureFrameVisible()).toBool());
 	if(!group.isEmpty())
 	{
 		settings.endGroup();
@@ -1374,6 +1380,10 @@ bool GraphViewer::isOrientationENU() const
 GraphViewer::ViewPlane GraphViewer::getViewPlane() const
 {
 	return _viewPlane;
+}
+bool GraphViewer::isEnsureFrameVisible() const
+{
+	return _ensureFrameVisible;
 }
 
 void GraphViewer::setWorkingDirectory(const QString & path)
@@ -1734,6 +1744,11 @@ void GraphViewer::setViewPlane(ViewPlane plane)
 		this->scene()->setSceneRect(this->scene()->itemsBoundingRect());  // Re-shrink the scene to it's bounding contents
 	}
 }
+void GraphViewer::setEnsureFrameVisible(bool visible)
+{
+	_ensureFrameVisible = visible;
+}
+
 
 void GraphViewer::restoreDefaults()
 {
@@ -1840,6 +1855,7 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 	QAction * aSetLinkSize = menu.addAction(tr("Set link width..."));
 	QAction * aChangeMaxLinkLength = menu.addAction(tr("Set maximum link length..."));
 	menu.addSeparator();
+	QAction * aEnsureFrameVisible;
 	QAction * aShowHideGridMap;
 	QAction * aShowHideGraph;
 	QAction * aShowHideGraphNodes;
@@ -1855,6 +1871,9 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 	QAction * aViewPlaneXY;
 	QAction * aViewPlaneXZ;
 	QAction * aViewPlaneYZ;
+	aEnsureFrameVisible = menu.addAction(tr("Ensure Frame Visible"));
+	aEnsureFrameVisible->setCheckable(true);
+	aEnsureFrameVisible->setChecked(_ensureFrameVisible);
 	if(_gridMap->isVisible())
 	{
 		aShowHideGridMap = menu.addAction(tr("Hide grid map"));
@@ -2273,6 +2292,10 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 		{
 			setLinkWidth(value);
 		}
+	}
+	else if(r == aEnsureFrameVisible)
+	{
+		this->setEnsureFrameVisible(!this->isEnsureFrameVisible());
 	}
 	else if(r == aShowHideGridMap)
 	{

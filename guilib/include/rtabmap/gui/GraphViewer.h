@@ -121,6 +121,7 @@ public:
 	bool isOdomCacheOverlayVisible() const;
 	bool isOrientationENU() const;
 	ViewPlane getViewPlane() const;
+	bool isEnsureFrameVisible() const;
 
 	// setters
 	void setWorkingDirectory(const QString & path);
@@ -159,6 +160,7 @@ public:
 	void setOdomCacheOverlayVisible(bool visible);
 	void setOrientationENU(bool enabled);
 	void setViewPlane(ViewPlane plane);
+	void setEnsureFrameVisible(bool visible);
 
 Q_SIGNALS:
 	void configChanged();
@@ -226,6 +228,7 @@ private:
 	float _maxLinkLength;
 	bool _orientationENU;
 	ViewPlane _viewPlane;
+	bool _ensureFrameVisible;
 };
 
 } /* namespace rtabmap */
