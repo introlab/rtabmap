@@ -1437,7 +1437,8 @@ bool Rtabmap::process(
 			signature->getLinks().size() &&
 			signature->getLinks().begin()->second.type() == Link::kNeighbor &&
 		   _memory->isIncremental() && // ignore pose matching in localization mode
-		   rehearsedId == 0) // don't do it if rehearsal happened
+		   rehearsedId == 0 && // don't do it if rehearsal happened
+		   !tooFastMovement) // ignore if too fast movement has been detected
 		{
 			int oldId = signature->getLinks().begin()->first;
 			const Signature * oldS = _memory->getSignature(oldId);
