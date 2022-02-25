@@ -1231,14 +1231,19 @@ int main(int argc, char * argv[])
 
 		robotPoses.insert(std::make_pair(iter->first, iter->second));
 		cameraStamps.insert(std::make_pair(iter->first, node.getStamp()));
+		bool intermediateNode = false;
 		if(models.empty() && node.getWeight() == -1 && !cameraModels.empty())
 		{
 			// For intermediate nodes, use latest models
 			models = cameraModels.rbegin()->second;
+			intermediateNode = true;
 		}
 		if(!models.empty())
 		{
-			cameraModels.insert(std::make_pair(iter->first, models));
+			if(!intermediateNode)
+			{
+				cameraModels.insert(std::make_pair(iter->first, models));
+			}
 			if(exportPosesCamera)
 			{
 				if(cameraPoses.empty())
