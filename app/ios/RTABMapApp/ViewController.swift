@@ -115,6 +115,7 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
     @IBOutlet weak var toastLabel: UILabel!
     
     let RTABMAP_TMP_DB = "rtabmap.tmp.db"
+    let RTABMAP_RECOVERY_DB = "rtabmap.tmp.recovery.db"
     let RTABMAP_EXPORT_DIR = "Export"
 
     func getDocumentDirectory() -> URL {
@@ -1437,7 +1438,7 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
         
         mMapNodes = 0;
         self.openedDatabasePath = nil
-        let tmpDatabase = self.getTmpDirectory().appendingPathComponent(self.RTABMAP_TMP_DB)
+        let tmpDatabase = self.getDocumentDirectory().appendingPathComponent(self.RTABMAP_TMP_DB)
         let inMemory = UserDefaults.standard.bool(forKey: "DatabaseInMemory")
         if(!(self.mState == State.STATE_CAMERA || self.mState == State.STATE_MAPPING) &&
            FileManager.default.fileExists(atPath: tmpDatabase.path) &&
@@ -1642,7 +1643,7 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
             alert.addAction(yes)
             self.present(alert, animated: true, completion: nil)
             do {
-                let tmpDatabase = self.getTmpDirectory().appendingPathComponent(self.RTABMAP_TMP_DB)
+                let tmpDatabase = self.getDocumentDirectory().appendingPathComponent(self.RTABMAP_TMP_DB)
                 try FileManager.default.removeItem(at: tmpDatabase)
             }
             catch {
@@ -2199,7 +2200,7 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
                     }
                     .sorted(by: { $0.1 > $1.1 }) // sort descending modification dates
                     .map { $0.0 } // extract file names
-            databases = data.filter{ $0.pathExtension == "db" }
+            databases = data.filter{ $0.pathExtension == "db" && $0.lastPathComponent != RTABMAP_TMP_DB && $0.lastPathComponent != RTABMAP_RECOVERY_DB }
             
         } catch {
             print("Error while enumerating files : \(error.localizedDescription)")

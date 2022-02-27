@@ -462,7 +462,7 @@
 		</dict>
 		<dict>
 			<key>DefaultValue</key>
-			<string>0.20.17</string>
+			<string>0.20.19</string>
 			<key>Key</key>
 			<string>Version</string>
 			<key>Title</key>
