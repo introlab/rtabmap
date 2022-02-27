@@ -52,7 +52,6 @@ bool databaseRecovery(
 		return false;
 	}
 
-	std::string backupPath;
 	if(UFile::getExtension(databasePath).compare("db") != 0)
 	{
 		if(errorMsg)
@@ -61,12 +60,17 @@ bool databaseRecovery(
 	}
 	std::list<std::string> strList = uSplit(databasePath, '.');
 	strList.pop_back();
-	backupPath = uJoin(strList, ".") + ".backup.db";
-	if(UFile::exists(backupPath))
+
+	std::string recoveryPath;
+	recoveryPath = uJoin(strList, ".") + ".recovery.db";
+	if(UFile::exists(recoveryPath))
 	{
-		if(errorMsg)
-			*errorMsg = uFormat("Backup file \"%s\" already exists!", backupPath.c_str());
-		return false;
+		if(UFile::erase(recoveryPath) != 0)
+		{
+			if(errorMsg)
+				*errorMsg = uFormat("Failed to remove temporary recovery database \"%s\", is it opened by another app?", recoveryPath.c_str());
+			return false;
+		}
 	}
 
 	DBDriver * dbDriver = DBDriver::create();
@@ -125,41 +129,42 @@ bool databaseRecovery(
 	dbDriver->closeConnection(false);
 	delete dbDriver;
 
-	if(progressState)
-		progressState->callback(uFormat("Renaming \"%s\" to \"%s\"...", UFile::getName(databasePath).c_str(), UFile::getName(backupPath).c_str()));
-	if(UFile::rename(databasePath, backupPath) != 0)
-	{
-		if(errorMsg)
-			*errorMsg = uFormat("Failed renaming database file from \"%s\" to \"%s\". Is it opened by another app?", UFile::getName(databasePath).c_str(), UFile::getName(backupPath).c_str());
-		return false;
-	}
-
 	bool incrementalMemory = true;
+	bool dbInMemory = false;
 	Parameters::parse(parameters, Parameters::kMemIncrementalMemory(), incrementalMemory);
+	Parameters::parse(parameters, Parameters::kDbSqlite3InMemory(), dbInMemory);
 	if(!incrementalMemory)
 	{
 		if(progressState)
 		{
-			progressState->callback("Database is in localization mode, setting it to mapping mode to recover...");
+			progressState->callback("Database is in localization mode, setting it to mapping mode to recover.");
 		}
 		uInsert(parameters, ParametersPair(Parameters::kMemIncrementalMemory(), "true"));
 	}
+	if(dbInMemory)
+	{
+		if(progressState)
+		{
+			progressState->callback(uFormat("Database has %s=true, setting it to false to avoid RAM problems during recovery.", Parameters::kDbSqlite3InMemory().c_str()));
+		}
+		uInsert(parameters, ParametersPair(Parameters::kDbSqlite3InMemory(), "false"));
+	}
 
 	Rtabmap rtabmap;
-	rtabmap.init(parameters, databasePath);
+	rtabmap.init(parameters, recoveryPath);
 
 	bool rgbdEnabled = Parameters::defaultRGBDEnabled();
 	Parameters::parse(parameters, Parameters::kRGBDEnabled(), rgbdEnabled);
 	bool odometryIgnored = !rgbdEnabled;
 	{
-		DBReader dbReader(backupPath, 0, odometryIgnored);
+		DBReader dbReader(databasePath, 0, odometryIgnored);
 		dbReader.init();
 
 		CameraInfo info;
 		SensorData data = dbReader.takeImage(&info);
 		int processed = 0;
 		if (progressState)
-			progressState->callback(uFormat("Recovering data of \"%s\"...", backupPath.c_str()));
+			progressState->callback(uFormat("Recovering data of \"%s\"...", databasePath.c_str()));
 		while (data.isValid() && (progressState == 0 || !progressState->isCanceled()))
 		{
 			std::string status;
@@ -198,25 +203,60 @@ bool databaseRecovery(
 		{
 			rtabmap.close(false);
 			if(errorMsg)
-				*errorMsg = uFormat("Recovery canceled, renaming back \"%s\" to \"%s\".", backupPath.c_str(), databasePath.c_str());
+				*errorMsg = uFormat("Recovery canceled, removing temporary recovery database \"%s\".", recoveryPath.c_str());
 
-			// put back the file as before
-			UFile::erase(databasePath);
-			UFile::rename(backupPath, databasePath);
+			UFile::erase(recoveryPath);
 			return false;
 		}
 	}
 
 	if(progressState)
-		progressState->callback(uFormat("Closing database \"%s\"...", databasePath.c_str()));
+		progressState->callback(uFormat("Closing database \"%s\"...", recoveryPath.c_str()));
 	rtabmap.close(true);
 	if(progressState)
-		progressState->callback(uFormat("Closing database \"%s\"... done!", databasePath.c_str()));
+		progressState->callback(uFormat("Closing database \"%s\"... done!", recoveryPath.c_str()));
 
-	if(!keepCorruptedDatabase)
+	if(keepCorruptedDatabase)
 	{
-		UFile::erase(backupPath);
+		std::string backupPath;
+		backupPath = uJoin(strList, ".") + ".backup.db";
+
+		if(!UFile::exists(backupPath))
+		{
+			if(progressState)
+				progressState->callback(uFormat("Renaming \"%s\" to \"%s\"... (keep corrupted database backup option is enabled).", UFile::getName(databasePath).c_str(), UFile::getName(backupPath).c_str()));
+			if(UFile::rename(databasePath, backupPath) != 0)
+			{
+				if(errorMsg)
+					*errorMsg = uFormat("Failed renaming database file from \"%s\" to \"%s\". Is it opened by another app?", UFile::getName(databasePath).c_str(), UFile::getName(backupPath).c_str());
+				return false;
+			}
+			if(progressState)
+				progressState->callback(uFormat("Renaming \"%s\" to \"%s\"... done!", UFile::getName(databasePath).c_str(), UFile::getName(backupPath).c_str()));
+		}
+		else
+		{
+			if(progressState)
+				progressState->callback(uFormat("Backup \"%s\" already exists, won't copy again.", UFile::getName(backupPath).c_str()));
+		}
 	}
+	else if(UFile::erase(databasePath) != 0)
+	{
+		if(errorMsg)
+			*errorMsg = uFormat("Failed remove original database file \"%s\". Is it opened by another app? The recovered database cannot be copied back to original name.", UFile::getName(databasePath).c_str(), UFile::getName(recoveryPath).c_str());
+		return false;
+	}
+
+	if(progressState)
+		progressState->callback(uFormat("Renaming \"%s\" to \"%s\"...", UFile::getName(recoveryPath).c_str(), UFile::getName(databasePath).c_str()));
+	if(UFile::rename(recoveryPath, databasePath) != 0)
+	{
+		if(errorMsg)
+			*errorMsg = uFormat("Failed renaming database file from \"%s\" to \"%s\". Is it opened by another app?", UFile::getName(recoveryPath).c_str(), UFile::getName(databasePath).c_str());
+		return false;
+	}
+	if(progressState)
+		progressState->callback(uFormat("Renaming \"%s\" to \"%s\"... done!", UFile::getName(recoveryPath).c_str(), UFile::getName(databasePath).c_str()));
 
 	return true;
 }
