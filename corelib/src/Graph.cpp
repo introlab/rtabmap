@@ -523,7 +523,10 @@ bool exportGPS(
 			std::string values;
 			for(std::map<int, GPS>::const_iterator iter=gpsValues.begin(); iter!=gpsValues.end(); ++iter)
 			{
-				values += uFormat("%f,%f,%f ", iter->second.longitude(), iter->second.latitude(), iter->second.altitude());
+				values += uFormat("%s,%s,%s ",
+                                  uReplaceChar(uNumber2Str(iter->second.longitude()), ',', '.').c_str(),
+                                  uReplaceChar(uNumber2Str(iter->second.latitude()), ',', '.').c_str(),
+                                  uReplaceChar(uNumber2Str(iter->second.altitude()), ',', '.').c_str());
 			}
 
 			// switch argb (Qt format) -> abgr

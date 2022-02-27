@@ -1910,6 +1910,7 @@ void DatabaseViewer::updateIds()
 	if(!gpsValues_.empty())
 	{
 		ui_->menuExport_GPS->setEnabled(true);
+        ui_->actionPoses_KML->setEnabled(true);
 	}
 
 	float xMin, yMin, cellSize;
@@ -3066,7 +3067,8 @@ void DatabaseViewer::editSaved2DMap()
 						if(scan.angleIncrement()!=0)
 						{
 							// copy meta data
-							scan = LaserScan(									cv::Mat(filtered, cv::Range::all(), cv::Range(0, oi)),
+							scan = LaserScan(
+									cv::Mat(filtered, cv::Range::all(), cv::Range(0, oi)),
 									scan.format(),
 									scan.rangeMin(),
 									scan.rangeMax(),
@@ -3078,7 +3080,8 @@ void DatabaseViewer::editSaved2DMap()
 						else
 						{
 							// copy meta data
-							scan = LaserScan(									cv::Mat(filtered, cv::Range::all(), cv::Range(0, oi)),
+							scan = LaserScan(
+									cv::Mat(filtered, cv::Range::all(), cv::Range(0, oi)),
 									scan.maxPoints(),
 									scan.rangeMax(),
 									scan.format(),
