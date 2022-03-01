@@ -1231,16 +1231,14 @@ int main(int argc, char * argv[])
 
 		robotPoses.insert(std::make_pair(iter->first, iter->second));
 		cameraStamps.insert(std::make_pair(iter->first, node.getStamp()));
-		bool intermediateNode = false;
 		if(models.empty() && node.getWeight() == -1 && !cameraModels.empty())
 		{
 			// For intermediate nodes, use latest models
 			models = cameraModels.rbegin()->second;
-			intermediateNode = true;
 		}
 		if(!models.empty())
 		{
-			if(!intermediateNode)
+			if(!node.sensorData().imageCompressed().empty())
 			{
 				cameraModels.insert(std::make_pair(iter->first, models));
 			}
@@ -1772,7 +1770,7 @@ int main(int argc, char * argv[])
 				}
 				else
 				{
-					printf("Texturing %d polygons... robotPoses=%d, cameraDepths=%d\n", (int)mesh->polygons.size(), (int)robotPoses.size(), (int)cameraDepths.size());
+					printf("Texturing %d polygons... robotPoses=%d, cameraModels=%d, cameraDepths=%d\n", (int)mesh->polygons.size(), (int)robotPoses.size(), (int)cameraModels.size(), (int)cameraDepths.size());
 					std::vector<std::map<int, pcl::PointXY> > vertexToPixels;
 					pcl::TextureMeshPtr textureMesh = rtabmap::util3d::createTextureMesh(
 							mesh,

@@ -2413,6 +2413,22 @@ bool multiBandTexturing(
 			{
 				image = data.imageRaw();
 			}
+
+			if(models.empty() || image.empty())
+			{
+				Transform odomPose;
+				int mapId;
+				int weight=0;
+				std::string label;
+				double stamp;
+				Transform gt;
+				std::vector<float> vel;
+				GPS gps;
+				EnvSensors envs;
+				memory->getNodeInfo(camId, odomPose, mapId, weight, label, stamp, gt, vel, gps, envs, true);
+				if(weight == -1) // just ignore intermediate nodes if their data is not set
+					continue;
+			}
 		}
 		else if(dbDriver)
 		{
@@ -2432,6 +2448,14 @@ bool multiBandTexturing(
 			else
 			{
 				image = data.imageRaw();
+			}
+
+			if(models.empty() || image.empty())
+			{
+				int weight=0;
+				dbDriver->getWeight(camId, weight);
+				if(weight == -1) // just ignore intermediate nodes if their data is not set
+					continue;
 			}
 		}
 		if(models.empty())
