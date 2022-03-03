@@ -19,7 +19,7 @@
   <depend>libopenni-dev</depend>
   <!-- <depend>libopenni2-dev</depend> --> <!-- not available on Jessie -->
   <depend>libpcl-all-dev</depend> <!--  include libvtk-qt -->
-  <depend>libpointmatcher</depend>
+  <depend>libpointmatcher</depend> <!-- optional but recommended if lidar is used, also not available on 32 bits system, but rtabmap can be built without it -->
   <!-- <depend>libproj-dev</depend> needed due to error in vtk6 (kinetic)-->
   <depend>libsqlite3-dev</depend>
   <depend>octomap</depend>
