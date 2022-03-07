@@ -140,7 +140,7 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 	auto xoutDepthOrRight = p.create<dai::node::XLinkOut>();
 	auto xoutIMU = p.create<dai::node::XLinkOut>();
 
-	 // XLinkOut
+	// XLinkOut
 	xoutLeft->setStreamName("rectified_left");
 	xoutDepthOrRight->setStreamName(outputDepth_?"depth":"rectified_right");
 	xoutIMU->setStreamName("imu");
@@ -158,9 +158,9 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 
 	// StereoDepth
 	stereo->initialConfig.setConfidenceThreshold(depthConfidence_);
+	stereo->initialConfig.setLeftRightCheckThreshold(5);
 	stereo->setRectifyEdgeFillColor(0); // black, to better see the cutout
-	stereo->setRectifyMirrorFrame(false);
-	stereo->setLeftRightCheck(false);
+	stereo->setLeftRightCheck(true);
 	stereo->setSubpixel(false);
 	stereo->setExtendedDisparity(false);
 
@@ -170,7 +170,11 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 
 	if(outputDepth_)
 	{
-		stereo->rectifiedLeft.link(xoutLeft->input);
+		// Depth is registered to right image by default, so subscribe to right image when depth is used
+		if(outputDepth_)
+			stereo->rectifiedRight.link(xoutLeft->input);
+		else
+			stereo->rectifiedLeft.link(xoutLeft->input);
 		stereo->depth.link(xoutDepthOrRight->input);
 	}
 	else
@@ -206,17 +210,17 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 	stereoModel_ = StereoCameraModel(device_->getMxId(), fx, fy, cx, cy, baseline, this->getLocalTransform(), targetSize);
 
 	// Cannot test the following, I get "IMU calibration data is not available on device yet." with my camera
+	// Update: now (as March 6, 2022) it crashes in "dai::CalibrationHandler::getImuToCameraExtrinsics(dai::CameraBoardSocket, bool)"
 	//matrix = calibHandler.getImuToCameraExtrinsics(dai::CameraBoardSocket::LEFT);
 	//imuLocalTransform_ = Transform(
 	//		matrix[0][0], matrix[0][1], matrix[0][2], matrix[0][3],
 	//		matrix[1][0], matrix[1][1], matrix[1][2], matrix[1][3],
 	//		matrix[2][0], matrix[2][1], matrix[2][2], matrix[2][3]);
-	// Hard-coded acc: x->left, y->up, z->forward
-	// Hard-coded gyro: x->down, y->left, z->forward
+	// Hard-coded: x->down, y->left, z->forward
 	imuLocalTransform_ = Transform(
-			0, 0, 1, 0,
-			1, 0, 0, 0,
-			0 ,1, 0, 0);
+			 0, 0, 1, 0,
+			 0, 1, 0, 0,
+			-1 ,0, 0, 0);
 	UINFO("IMU local transform = %s", imuLocalTransform_.prettyPrint().c_str());
 
 	leftQueue_ = device_->getOutputQueue("rectified_left", 8, false);
@@ -279,7 +283,6 @@ SensorData CameraDepthAI::captureImage(CameraInfo * info)
 			}
 			else
 			{
-				cv::flip(depthOrRight, depthOrRight, 1);
 				data = SensorData(left, depthOrRight, stereoModel_.left(), this->getNextSeqID(), stamp);
 			}
 
@@ -408,10 +411,6 @@ SensorData CameraDepthAI::captureImage(CameraInfo * info)
 						UWARN("Could not find gyro data to interpolate at image time %f (between %f and %f). Are sensors synchronized?", stamp, iterA->first, iterB->first);
 					}
 				}
-				// Rotate gyro frame (x->down, y->left, z->forward) in acc frame (x->left, y->up, z->forward)
-				double tmp = gyro[0];
-				gyro[0] = gyro[1];
-				gyro[1] = -tmp;
 			}
 
 			if(valid)
