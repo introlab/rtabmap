@@ -6389,6 +6389,32 @@ void DatabaseViewer::updateConstraintView(
 			}
 		}
 
+		//frustums
+		constraintsViewer_->removeAllFrustums();
+		if(constraintsViewer_->isFrustumShown())
+		{
+			CameraModel model;
+			if(dataFrom.cameraModels().size())
+			{
+				model = dataFrom.cameraModels()[0];
+			}
+			else
+			{
+				model = dataFrom.stereoCameraModel().left();
+			}
+			constraintsViewer_->addOrUpdateFrustum("frustum_from", pose, model.localTransform(), constraintsViewer_->getFrustumScale(), constraintsViewer_->getFrustumColor(), model.fovX(), model.fovY());
+			model = CameraModel();
+			if(dataTo.cameraModels().size())
+			{
+				model = dataTo.cameraModels()[0];
+			}
+			else
+			{
+				model = dataTo.stereoCameraModel().left();
+			}
+			constraintsViewer_->addOrUpdateFrustum("frustum_to", pose*t, model.localTransform(), constraintsViewer_->getFrustumScale(), constraintsViewer_->getFrustumColor(), model.fovX(), model.fovY());
+		}
+
 		//update coordinate
 		constraintsViewer_->addOrUpdateCoordinate("from_coordinate", pose, 0.2);
 #if PCL_VERSION_COMPARE(>=, 1, 7, 2)
