@@ -364,6 +364,7 @@ private:
 	std::map<int, Transform> _odomCachePoses;       // used in localization mode to reject loop closures
 	std::multimap<int, Link> _odomCacheConstraints; // used in localization mode to reject loop closures
 	std::vector<float> _odomCorrectionAcc;
+	std::map<int, Transform> _markerPriors;
 
 	// Planning stuff
 	int _pathStatus;

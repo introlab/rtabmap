@@ -20,7 +20,8 @@
 
 namespace rtabmap {
 
-class GPSPose2XYFactor: public gtsam::NoiseModelFactor1<gtsam::Pose2> {
+template<class VALUE>
+class XYFactor: public gtsam::NoiseModelFactor1<VALUE> {
 
 private:
   // measurement information
@@ -34,13 +35,13 @@ public:
    * @param model      noise model for GPS snesor, in X-Y
    * @param m          Point2 measurement
    */
-  GPSPose2XYFactor(gtsam::Key poseKey, const gtsam::Point2 m, gtsam::SharedNoiseModel model) :
-      gtsam::NoiseModelFactor1<gtsam::Pose2>(model, poseKey), mx_(m.x()), my_(m.y()) {}
+  XYFactor(gtsam::Key poseKey, const gtsam::Point2 m, gtsam::SharedNoiseModel model) :
+      gtsam::NoiseModelFactor1<VALUE>(model, poseKey), mx_(m.x()), my_(m.y()) {}
 
   // error function
   // @param p    the pose in Pose2
   // @param H    the optional Jacobian matrix, which use boost optional and has default null pointer
-  gtsam::Vector evaluateError(const gtsam::Pose2& p, boost::optional<gtsam::Matrix&> H = boost::none) const {
+  gtsam::Vector evaluateError(const VALUE& p, boost::optional<gtsam::Matrix&> H = boost::none) const {
 
     // note that use boost optional like a pointer
     // only calculate jacobian matrix when non-null pointer exists

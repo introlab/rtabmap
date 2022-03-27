@@ -95,7 +95,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>13</number>
+                <number>18</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,0">
@@ -13329,6 +13329,54 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                    <layout class="QVBoxLayout" name="verticalLayout_136">
                     <item>
                      <layout class="QGridLayout" name="gridLayout_63" columnstretch="0,1">
+                      <item row="0" column="0">
+                       <widget class="QCheckBox" name="RGBDMarkerDetection">
+                        <property name="text">
+                         <string/>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="1" column="0">
+                       <widget class="QDoubleSpinBox" name="ArucoMarkerLength">
+                        <property name="suffix">
+                         <string> m</string>
+                        </property>
+                        <property name="decimals">
+                         <number>4</number>
+                        </property>
+                        <property name="minimum">
+                         <double>-1.000000000000000</double>
+                        </property>
+                        <property name="singleStep">
+                         <double>0.010000000000000</double>
+                        </property>
+                        <property name="value">
+                         <double>0.100000000000000</double>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="5" column="0">
+                       <widget class="QDoubleSpinBox" name="ArucoMarkerRangeMin">
+                        <property name="suffix">
+                         <string> m</string>
+                        </property>
+                        <property name="decimals">
+                         <number>2</number>
+                        </property>
+                        <property name="minimum">
+                         <double>0.000000000000000</double>
+                        </property>
+                        <property name="maximum">
+                         <double>999.000000000000000</double>
+                        </property>
+                        <property name="singleStep">
+                         <double>1.000000000000000</double>
+                        </property>
+                        <property name="value">
+                         <double>0.000000000000000</double>
+                        </property>
+                       </widget>
+                      </item>
                       <item row="4" column="1">
                        <widget class="QLabel" name="label_space2_9">
                         <property name="text">
@@ -13361,90 +13409,25 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
-                      <item row="0" column="1">
-                       <widget class="QLabel" name="label_markerDetection">
-                        <property name="text">
-                         <string>Detect static markers to be added as landmarks for graph optimization. If input data have already landmarks, this will be ignored.</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                        <property name="textInteractionFlags">
-                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="3" column="1">
-                       <widget class="QLabel" name="label_space2_6">
-                        <property name="text">
-                         <string>Linear variance to set on marker detections.</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                        <property name="textInteractionFlags">
-                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="1" column="1">
-                       <widget class="QLabel" name="label_space2_7">
-                        <property name="text">
-                         <string>Marker length. The length (m) of the markers' side. 0 means automatic marker length estimation using the depth image (the camera should look at the marker perpendicularly for initialization).</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                        <property name="textInteractionFlags">
-                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="0" column="0">
-                       <widget class="QCheckBox" name="RGBDMarkerDetection">
-                        <property name="text">
-                         <string/>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="4" column="0">
-                       <widget class="QDoubleSpinBox" name="ArucoVarianceAngular">
-                        <property name="suffix">
-                         <string/>
-                        </property>
-                        <property name="decimals">
-                         <number>6</number>
-                        </property>
-                        <property name="minimum">
-                         <double>0.000001000000000</double>
-                        </property>
-                        <property name="maximum">
-                         <double>9999.000000000000000</double>
-                        </property>
-                        <property name="singleStep">
-                         <double>0.001000000000000</double>
-                        </property>
-                        <property name="value">
-                         <double>0.001000000000000</double>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="1" column="0">
-                       <widget class="QDoubleSpinBox" name="ArucoMarkerLength">
+                      <item row="6" column="0">
+                       <widget class="QDoubleSpinBox" name="ArucoMarkerRangeMax">
                         <property name="suffix">
                          <string> m</string>
                         </property>
                         <property name="decimals">
-                         <number>4</number>
+                         <number>2</number>
                         </property>
                         <property name="minimum">
-                         <double>-1.000000000000000</double>
+                         <double>0.000000000000000</double>
+                        </property>
+                        <property name="maximum">
+                         <double>999.000000000000000</double>
                         </property>
                         <property name="singleStep">
-                         <double>0.010000000000000</double>
+                         <double>1.000000000000000</double>
                         </property>
                         <property name="value">
-                         <double>0.100000000000000</double>
+                         <double>0.000000000000000</double>
                         </property>
                        </widget>
                       </item>
@@ -13480,19 +13463,6 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
-                      <item row="5" column="1">
-                       <widget class="QLabel" name="label_space2_13">
-                        <property name="text">
-                         <string>Minimum detection range (0=disabled).</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                        <property name="textInteractionFlags">
-                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                        </property>
-                       </widget>
-                      </item>
                       <item row="6" column="1">
                        <widget class="QLabel" name="label_space2_14">
                         <property name="text">
@@ -13506,47 +13476,97 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
-                      <item row="5" column="0">
-                       <widget class="QDoubleSpinBox" name="ArucoMarkerRangeMin">
-                        <property name="suffix">
-                         <string> m</string>
+                      <item row="5" column="1">
+                       <widget class="QLabel" name="label_space2_13">
+                        <property name="text">
+                         <string>Minimum detection range (0=disabled).</string>
                         </property>
-                        <property name="decimals">
-                         <number>2</number>
+                        <property name="wordWrap">
+                         <bool>true</bool>
                         </property>
-                        <property name="minimum">
-                         <double>0.000000000000000</double>
-                        </property>
-                        <property name="maximum">
-                         <double>999.000000000000000</double>
-                        </property>
-                        <property name="singleStep">
-                         <double>1.000000000000000</double>
-                        </property>
-                        <property name="value">
-                         <double>0.000000000000000</double>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                         </property>
                        </widget>
                       </item>
-                      <item row="6" column="0">
-                       <widget class="QDoubleSpinBox" name="ArucoMarkerRangeMax">
+                      <item row="3" column="1">
+                       <widget class="QLabel" name="label_space2_6">
+                        <property name="text">
+                         <string>Linear variance to set on marker detections.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="0" column="1">
+                       <widget class="QLabel" name="label_markerDetection">
+                        <property name="text">
+                         <string>Detect static markers to be added as landmarks for graph optimization. If input data have already landmarks, this will be ignored.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="1" column="1">
+                       <widget class="QLabel" name="label_space2_7">
+                        <property name="text">
+                         <string>Marker length. The length (m) of the markers' side. 0 means automatic marker length estimation using the depth image (the camera should look at the marker perpendicularly for initialization).</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="4" column="0">
+                       <widget class="QDoubleSpinBox" name="ArucoVarianceAngular">
                         <property name="suffix">
-                         <string> m</string>
+                         <string/>
                         </property>
                         <property name="decimals">
-                         <number>2</number>
+                         <number>6</number>
                         </property>
                         <property name="minimum">
-                         <double>0.000000000000000</double>
+                         <double>0.000001000000000</double>
                         </property>
                         <property name="maximum">
-                         <double>999.000000000000000</double>
+                         <double>9999.000000000000000</double>
                         </property>
                         <property name="singleStep">
-                         <double>1.000000000000000</double>
+                         <double>0.001000000000000</double>
                         </property>
                         <property name="value">
-                         <double>0.000000000000000</double>
+                         <double>0.001000000000000</double>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="7" column="1">
+                       <widget class="QLabel" name="label_space2_15">
+                        <property name="text">
+                         <string>World prior locations of the markers. The map will be transformed in marker's world frame when a tag is detected. Format is the marker's ID followed by its position (angles in rad), each marker separated with semi-colons (&quot;id1 x y z roll pitch yaw;id2 x y z roll pitch yaw&quot;). Example:  &quot;1 0 0 1 0 0 0;2 1 0 1 0 0 1.57&quot; (marker 2 is 1 meter forward than marker 1 with 90 deg yaw rotation).</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="7" column="0">
+                       <widget class="QLineEdit" name="ArucoMarkerPriors">
+                        <property name="placeholderText">
+                         <string/>
                         </property>
                        </widget>
                       </item>

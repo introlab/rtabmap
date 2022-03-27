@@ -604,6 +604,39 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kRGBDMaxOdomCacheSize(), _maxOdomCacheSize);
 	Parameters::parse(parameters, Parameters::kRGBDProximityGlobalScanMap(), _createGlobalScanMap);
 
+	std::string markerPriorsStr;
+	if(Parameters::parse(parameters, Parameters::kMarkerPriors(), markerPriorsStr))
+	{
+		_markerPriors.clear();
+		std::list<std::string> strList = uSplit(markerPriorsStr, ';');
+		for(std::list<std::string>::iterator iter=strList.begin(); iter!=strList.end(); ++iter)
+		{
+			std::string markerStr = *iter;
+			while(!markerStr.empty() && uIsDigit(markerStr[0]))
+			{
+				markerStr.erase(markerStr.begin());
+			}
+			if(!markerStr.empty())
+			{
+				std::string idStr = uSplitNumChar(markerStr).front();
+				int id = uStr2Int(idStr);
+				Transform prior = Transform::fromString(markerStr.substr(idStr.size()));
+				if(!prior.isNull() && id>0)
+				{
+					_markerPriors.insert(std::make_pair(id, prior));
+				}
+				else
+				{
+					UERROR("Failed to parse element \"%s\" in parameter %s", markerStr.c_str(), Parameters::kMarkerPriors().c_str());
+				}
+			}
+			else if(!iter->empty())
+			{
+				UERROR("Failed to parse parameter %s, value=\"%s\"", Parameters::kMarkerPriors().c_str(), iter->c_str());
+			}
+		}
+	}
+
 	UASSERT(_rgbdLinearUpdate >= 0.0f);
 	UASSERT(_rgbdAngularUpdate >= 0.0f);
 	UASSERT(_rgbdLinearSpeedUpdate >= 0.0f);
@@ -1553,6 +1586,11 @@ bool Rtabmap::process(
 				if(_optimizedPoses.find(iter->first) == _optimizedPoses.end())
 				{
 					_optimizedPoses.insert(std::make_pair(iter->first, newPose*iter->second.transform()));
+					if(_markerPriors.find(iter->first) != _markerPriors.end())
+					{
+						cv::Mat infMatrix = cv::Mat::eye(6, 6, CV_64FC1)*10000; // cov 0.0001
+						_constraints.insert(std::make_pair(iter->first, Link(iter->first, iter->first, Link::kPosePrior, _markerPriors.at(iter->first), infMatrix)));
+					}
 				}
 				_constraints.insert(std::make_pair(iter->first, iter->second.inverse()));
 			}
