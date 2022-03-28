@@ -608,11 +608,11 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 	if(Parameters::parse(parameters, Parameters::kMarkerPriors(), markerPriorsStr))
 	{
 		_markerPriors.clear();
-		std::list<std::string> strList = uSplit(markerPriorsStr, ';');
+		std::list<std::string> strList = uSplit(markerPriorsStr, '|');
 		for(std::list<std::string>::iterator iter=strList.begin(); iter!=strList.end(); ++iter)
 		{
 			std::string markerStr = *iter;
-			while(!markerStr.empty() && uIsDigit(markerStr[0]))
+			while(!markerStr.empty() && !uIsDigit(markerStr[0]))
 			{
 				markerStr.erase(markerStr.begin());
 			}
@@ -623,7 +623,8 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 				Transform prior = Transform::fromString(markerStr.substr(idStr.size()));
 				if(!prior.isNull() && id>0)
 				{
-					_markerPriors.insert(std::make_pair(id, prior));
+					_markerPriors.insert(std::make_pair(-id, prior));
+					UDEBUG("Added landmark prior %d: %s", id, prior.prettyPrint().c_str());
 				}
 				else
 				{
@@ -1586,11 +1587,7 @@ bool Rtabmap::process(
 				if(_optimizedPoses.find(iter->first) == _optimizedPoses.end())
 				{
 					_optimizedPoses.insert(std::make_pair(iter->first, newPose*iter->second.transform()));
-					if(_markerPriors.find(iter->first) != _markerPriors.end())
-					{
-						cv::Mat infMatrix = cv::Mat::eye(6, 6, CV_64FC1)*10000; // cov 0.0001
-						_constraints.insert(std::make_pair(iter->first, Link(iter->first, iter->first, Link::kPosePrior, _markerPriors.at(iter->first), infMatrix)));
-					}
+					UDEBUG("Added landmark %d : %s", iter->first, (newPose*iter->second.transform()).prettyPrint().c_str());
 				}
 				_constraints.insert(std::make_pair(iter->first, iter->second.inverse()));
 			}
@@ -4766,6 +4763,17 @@ std::map<int, Transform> Rtabmap::optimizeGraph(
 	UDEBUG("ids=%d", (int)ids.size());
 	_memory->getMetricConstraints(ids, poses, edgeConstraints, lookInDatabase, !_graphOptimizer->landmarksIgnored());
 	UINFO("get constraints (ids=%d, %d poses, %d edges) time %f s", (int)ids.size(), (int)poses.size(), (int)edgeConstraints.size(), timer.ticks());
+
+	// add landmark priors if there are some
+	for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end() && iter->first < 0; ++iter)
+	{
+		if(_markerPriors.find(iter->first) != _markerPriors.end())
+		{
+			cv::Mat infMatrix = cv::Mat::eye(6, 6, CV_64FC1)*1000; // cov 0.001
+			edgeConstraints.insert(std::make_pair(iter->first, Link(iter->first, iter->first, Link::kPosePrior, _markerPriors.at(iter->first), infMatrix)));
+			UDEBUG("Added prior %d : %s", iter->first, _markerPriors.at(iter->first).prettyPrint().c_str());
+		}
+	}
 
 	if(_graphOptimizer->iterations() > 0)
 	{
