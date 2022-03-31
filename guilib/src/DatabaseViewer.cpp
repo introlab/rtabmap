@@ -4349,6 +4349,7 @@ void DatabaseViewer::sliderAValueChanged(int value)
 			ui_->label_scanA,
 			ui_->label_gravityA,
 			ui_->label_gpsA,
+			ui_->label_gtA,
 			ui_->label_sensorsA,
 			true);
 }
@@ -4371,6 +4372,7 @@ void DatabaseViewer::sliderBValueChanged(int value)
 			ui_->label_scanB,
 			ui_->label_gravityB,
 			ui_->label_gpsB,
+			ui_->label_gtB,
 			ui_->label_sensorsB,
 			true);
 }
@@ -4391,6 +4393,7 @@ void DatabaseViewer::update(int value,
 						QLabel * labelScan,
 						QLabel * labelGravity,
 						QLabel * labelGps,
+						QLabel * labelGt,
 						QLabel * labelSensors,
 						bool updateConstraintView)
 {
@@ -4410,6 +4413,7 @@ void DatabaseViewer::update(int value,
 	labelScan ->clear();
 	labelGravity->clear();
 	labelGps->clear();
+	labelGt->clear();
 	labelSensors->clear();
 	if(value >= 0 && value < ids_.size())
 	{
@@ -4540,6 +4544,10 @@ void DatabaseViewer::update(int value,
 				{
 					labelGps->setText(QString("stamp=%1 longitude=%2 latitude=%3 altitude=%4m error=%5m bearing=%6deg").arg(QString::number(gps.stamp(), 'f')).arg(gps.longitude()).arg(gps.latitude()).arg(gps.altitude()).arg(gps.error()).arg(gps.bearing()));
 					labelGps->setToolTip(QDateTime::fromMSecsSinceEpoch(gps.stamp()*1000.0).toString("dd.MM.yyyy hh:mm:ss.zzz"));
+				}
+				if(!g.isNull())
+				{
+					labelGt->setText(QString("%1").arg(g.prettyPrint().c_str()));
 				}
 				if(sensors.size())
 				{
@@ -5933,6 +5941,7 @@ void DatabaseViewer::updateConstraintView(
 						ui_->label_scanA,
 						ui_->label_gravityA,
 						ui_->label_gpsA,
+						ui_->label_gtA,
 						ui_->label_sensorsA,
 						false); // don't update constraints view!
 		if(link.to()>0)
@@ -5953,6 +5962,7 @@ void DatabaseViewer::updateConstraintView(
 						ui_->label_scanB,
 						ui_->label_gravityB,
 						ui_->label_gpsB,
+						ui_->label_gtB,
 						ui_->label_sensorsB,
 						false); // don't update constraints view!
 		}
