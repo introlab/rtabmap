@@ -75,8 +75,9 @@ void showUsage()
 			"    --export_prefix    Prefix to filenames of exported figures' data (default is \"Stat\").\n"
 #endif
 			"    --report           Export all evaluation statistics values in report.txt \n"
-			"    --loc #            Show localization statistics for each \"Statistic/Id\" per\n"
-			"                       session for 1=min,2=max,4=mean,8=stddev,16=total,32=nonnull%%\n"
+			"    --loc [#]          Show localization statistics for each \"Statistic/Id\" per\n"
+			"                       session. Optionally set number 1=min,2=max,4=mean,8=stddev,16=total,32=nonnull%%\n"
+			"                       to show cumulative results on console.\n"
 			"    --loc_delay #      Delay to split sessions for localization statistics (default 60 seconds)\n"
 			"                       (it is a mask, we can combine those numbers, e.g., 63 for all) \n"
 			"    --ignore_inter_nodes  Ignore intermediate poses and statistics.\n"
@@ -231,8 +232,17 @@ int main(int argc, char * argv[])
 			++i;
 			if(i<argc-1)
 			{
-				showLoc = atoi(argv[i]);
-				printf("Localization statistics=%d (--loc)\n", showLoc);
+				if(uIsNumber(argv[i]))
+				{
+					showLoc = atoi(argv[i]);
+					printf("Localization statistics=%d (--loc)\n", showLoc);
+				}
+				else
+				{
+					showLoc = -1;
+					--i; // reset
+					printf("Localization statistics (--loc)\n");
+				}
 			}
 			else
 			{
@@ -1050,7 +1060,7 @@ int main(int argc, char * argv[])
 			currentPathIsDatabase = false;
 		}
 
-		if(!localizationMultiStats.empty())
+		if(!localizationMultiStats.empty() && showLoc!=-1)
 		{
 			printf("---Localization results---\n");
 			std::string prefix = "header={";
@@ -1070,64 +1080,65 @@ int main(int argc, char * argv[])
 				}
 			}
 			printf("}\n");
-		}
 
-		for(std::map<std::string, std::vector<std::pair<std::string, std::vector<LocStats> > > >::iterator iter=localizationMultiStats.begin();
-			iter!=localizationMultiStats.end();
-			++iter)
-		{
-			printf("%s\n", iter->first.c_str());
-			for(int k=0; k<6; ++k)
+
+			for(std::map<std::string, std::vector<std::pair<std::string, std::vector<LocStats> > > >::iterator iter=localizationMultiStats.begin();
+				iter!=localizationMultiStats.end();
+				++iter)
 			{
-				if(showLoc & (0x1 << k))
+				printf("%s\n", iter->first.c_str());
+				for(int k=0; k<6; ++k)
 				{
-					std::string prefix = uFormat("  %s=[",
-							k==0?"min":
-							k==1?"max":
-							k==2?"mean":
-							k==3?"stddev":
-							k==4?"total":
-							"nonnull%");
-					printf("%s", prefix.c_str());
-					for(std::vector<std::pair<std::string, std::vector<LocStats> > >::iterator jter=iter->second.begin(); jter!=iter->second.end();)
+					if(showLoc & (0x1 << k))
 					{
-						if(jter!=iter->second.begin())
+						std::string prefix = uFormat("  %s=[",
+								k==0?"min":
+								k==1?"max":
+								k==2?"mean":
+								k==3?"stddev":
+								k==4?"total":
+								"nonnull%");
+						printf("%s", prefix.c_str());
+						for(std::vector<std::pair<std::string, std::vector<LocStats> > >::iterator jter=iter->second.begin(); jter!=iter->second.end();)
 						{
-							printf("%s", std::string(prefix.size(), ' ').c_str());
+							if(jter!=iter->second.begin())
+							{
+								printf("%s", std::string(prefix.size(), ' ').c_str());
+							}
+							for(size_t j=0; j<jter->second.size(); ++j)
+							{
+								if(k<4)
+								{
+									printf("%f",
+											k==0?jter->second[j].min:
+											k==1?jter->second[j].max:
+											k==2?jter->second[j].mean:
+											jter->second[j].stddev);
+								}
+								else if(k==4)
+								{
+									printf("%d",jter->second[j].total);
+								}
+								else if(k==5)
+								{
+									printf("%.2f", (jter->second[j].nonNull*100));
+								}
+								if(j+1 < jter->second.size())
+								{
+									printf(" ");
+								}
+							}
+							++jter;
+							if(jter!=iter->second.end())
+							{
+								printf(";\n");
+							}
 						}
-						for(size_t j=0; j<jter->second.size(); ++j)
-						{
-							if(k<4)
-							{
-								printf("%f",
-										k==0?jter->second[j].min:
-										k==1?jter->second[j].max:
-										k==2?jter->second[j].mean:
-										jter->second[j].stddev);
-							}
-							else if(k==4)
-							{
-								printf("%d",jter->second[j].total);
-							}
-							else if(k==5)
-							{
-								printf("%.2f", (jter->second[j].nonNull*100));
-							}
-							if(j+1 < jter->second.size())
-							{
-								printf(" ");
-							}
-						}
-						++jter;
-						if(jter!=iter->second.end())
-						{
-							printf(";\n");
-						}
+						printf("]\n");
 					}
-					printf("]\n");
 				}
+				iter->second.clear();
 			}
-			iter->second.clear();
 		}
 
 		for(std::list<std::string>::iterator iter=subDirs.begin(); iter!=subDirs.end(); ++iter)
