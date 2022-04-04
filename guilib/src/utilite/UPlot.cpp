@@ -1740,7 +1740,7 @@ QString UPlotLegend::getAllCurveDataAsText() const
 					}
 					else
 					{
-						text.append(QString::number(axes[j][i]));
+						text.append(QString::number(axes[j][i], 'f'));
 					}
 					if(j+1<axes.size())
 					{
