@@ -69,6 +69,7 @@ void showUsage()
 			"                       arguments, they overwrite those in config file and the database.\n"
 			"     -start #    Start from this node ID.\n"
 			"     -stop #     Last node to process.\n"
+			"     -cam #      Camera index to stream. Ignored if a database doesn't contain multi-camera data.\n"
 			"     -nolandmark Don't republish landmarks contained in input database.\n"
 			"     -loc_null   On localization mode, reset localization pose to null and map correction to identity between sessions.\n"
 			"     -gt         When reprocessing a single database, load its original optimized graph, then \n"
@@ -225,6 +226,7 @@ int main(int argc, char * argv[])
 	bool useDatabaseRate = false;
 	int startId = 0;
 	int stopId = 0;
+	int cameraIndex = -1;
 	int framesToSkip = 0;
 	bool ignoreLandmarks = false;
 	bool locNull = false;
@@ -288,6 +290,20 @@ int main(int argc, char * argv[])
 			else
 			{
 				printf("-stop option requires a value\n");
+				showUsage();
+			}
+		}
+		else if (strcmp(argv[i], "-cam") == 0 || strcmp(argv[i], "--cam") == 0)
+		{
+			++i;
+			if(i < argc - 2)
+			{
+				cameraIndex = atoi(argv[i]);
+				printf("Camera index = %d.\n", cameraIndex);
+			}
+			else
+			{
+				printf("-cam option requires a value\n");
 				showUsage();
 			}
 		}
@@ -611,7 +627,7 @@ int main(int argc, char * argv[])
 	bool rgbdEnabled = Parameters::defaultRGBDEnabled();
 	Parameters::parse(parameters, Parameters::kRGBDEnabled(), rgbdEnabled);
 	bool odometryIgnored = !rgbdEnabled;
-	DBReader * dbReader = new DBReader(inputDatabasePath, useDatabaseRate?-1:0, odometryIgnored, false, false, startId, -1, stopId, !intermediateNodes, ignoreLandmarks);
+	DBReader * dbReader = new DBReader(inputDatabasePath, useDatabaseRate?-1:0, odometryIgnored, false, false, startId, cameraIndex, stopId, !intermediateNodes, ignoreLandmarks);
 	dbReader->init();
 
 	OccupancyGrid grid(parameters);
