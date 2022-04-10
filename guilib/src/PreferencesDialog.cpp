@@ -2636,6 +2636,13 @@ bool PreferencesDialog::readCoreSettings(const QString & filePath)
 		std::string value = iter->second;
 		if(iter->first.compare(Parameters::kRtabmapWorkingDirectory()) == 0)
 		{
+			if(value.empty())
+			{
+				UWARN("Reading config: Working directory is empty. Keeping old one (\"%s\").",
+					this->getWorkingDirectory().toStdString().c_str());
+				value = this->getWorkingDirectory().toStdString();
+			}
+
 			// The directory should exist if not the default one
 			if(!QDir(value.c_str()).exists() && value.compare(getDefaultWorkingDirectory().toStdString()) != 0)
 			{
