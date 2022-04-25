@@ -151,6 +151,7 @@ class RTABMAP_EXP Statistics
 	RTABMAP_STATS(Memory, Odom_cache_links,);
 	RTABMAP_STATS(Memory, Small_movement,);
 	RTABMAP_STATS(Memory, Fast_movement,);
+	RTABMAP_STATS(Memory, New_landmark,);
 	RTABMAP_STATS(Memory, Odometry_variance_ang,);
 	RTABMAP_STATS(Memory, Odometry_variance_lin,);
 	RTABMAP_STATS(Memory, Distance_travelled, m);

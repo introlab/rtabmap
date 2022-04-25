@@ -1375,6 +1375,7 @@ bool Rtabmap::process(
 	bool tooFastMovement = false;
 	std::list<int> signaturesRemoved;
 	bool neighborLinkRefined = false;
+	bool addedNewLandmark = false;
 	if(_rgbdSlamMode)
 	{
 		statistics_.addStatistic(Statistics::kMemoryOdometry_variance_lin(), odomCovariance.empty()?1.0f:(float)odomCovariance.at<double>(0,0));
@@ -1553,6 +1554,7 @@ bool Rtabmap::process(
 				if(_optimizedPoses.find(iter->first) == _optimizedPoses.end())
 				{
 					_optimizedPoses.insert(std::make_pair(iter->first, newPose*iter->second.transform()));
+					addedNewLandmark = true;
 				}
 				_constraints.insert(std::make_pair(iter->first, iter->second.inverse()));
 			}
@@ -3777,6 +3779,8 @@ bool Rtabmap::process(
 			statistics_.addStatistic(Statistics::kMemorySmall_movement(), smallDisplacement?1.0f:0);
 			statistics_.addStatistic(Statistics::kMemoryDistance_travelled(), _distanceTravelled);
 			statistics_.addStatistic(Statistics::kMemoryFast_movement(), tooFastMovement?1.0f:0);
+			statistics_.addStatistic(Statistics::kMemoryNew_landmark(), addedNewLandmark?1.0f:0);
+
 			if(_publishRAMUsage)
 			{
 				UTimer ramTimer;
@@ -3875,7 +3879,11 @@ bool Rtabmap::process(
 			signaturesRemoved.push_back(signature->id());
 			_memory->deleteLocation(signature->id());
 		}
-		else if((smallDisplacement || tooFastMovement) && _loopClosureHypothesis.first == 0 && lastProximitySpaceClosureId == 0)
+		else if((smallDisplacement || tooFastMovement) &&
+				_loopClosureHypothesis.first == 0 &&
+				lastProximitySpaceClosureId == 0 &&
+				(rejectedLandmark || landmarksDetected.empty()) &&
+				!addedNewLandmark)
 		{
 			// Don't delete the location if a loop closure is detected
 			UINFO("Ignoring location %d because the displacement is too small! (d=%f a=%f)",
@@ -3892,7 +3900,8 @@ bool Rtabmap::process(
 	else if(!_memory->isIncremental() &&
 			(smallDisplacement || tooFastMovement) &&
 			_loopClosureHypothesis.first == 0 &&
-			lastProximitySpaceClosureId == 0)
+			lastProximitySpaceClosureId == 0 &&
+			(rejectedLandmark || landmarksDetected.empty()))
 	{
 		_odomCachePoses.erase(signatureRemoved);
 		_odomCacheConstraints.erase(signatureRemoved);
