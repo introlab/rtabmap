@@ -604,6 +604,10 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kRGBDMaxOdomCacheSize(), _maxOdomCacheSize);
 	Parameters::parse(parameters, Parameters::kRGBDProximityGlobalScanMap(), _createGlobalScanMap);
 
+	Parameters::parse(parameters, Parameters::kMarkerPriorsVarianceLinear(), _markerPriorsLinearVariance);
+	UASSERT(_markerPriorsLinearVariance>0.0f);
+	Parameters::parse(parameters, Parameters::kMarkerPriorsVarianceAngular(), _markerPriorsAngularVariance);
+	UASSERT(_markerPriorsAngularVariance>0.0f);
 	std::string markerPriorsStr;
 	if(Parameters::parse(parameters, Parameters::kMarkerPriors(), markerPriorsStr))
 	{
@@ -4778,9 +4782,12 @@ std::map<int, Transform> Rtabmap::optimizeGraph(
 	{
 		if(_markerPriors.find(iter->first) != _markerPriors.end())
 		{
-			cv::Mat infMatrix = cv::Mat::eye(6, 6, CV_64FC1)*1000; // cov 0.001
+			cv::Mat infMatrix = cv::Mat::eye(6, 6, CV_64FC1);
+			infMatrix(cv::Range(0,3), cv::Range(0,3)) /= _markerPriorsLinearVariance;
+			infMatrix(cv::Range(3,6), cv::Range(3,6)) /= _markerPriorsAngularVariance;
 			edgeConstraints.insert(std::make_pair(iter->first, Link(iter->first, iter->first, Link::kPosePrior, _markerPriors.at(iter->first), infMatrix)));
-			UDEBUG("Added prior %d : %s", iter->first, _markerPriors.at(iter->first).prettyPrint().c_str());
+			UDEBUG("Added prior %d : %s (variance: lin=%f ang=%f)", iter->first, _markerPriors.at(iter->first).prettyPrint().c_str(),
+					_markerPriorsLinearVariance, _markerPriorsAngularVariance);
 		}
 	}
 

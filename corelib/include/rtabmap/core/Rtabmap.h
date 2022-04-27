@@ -324,6 +324,8 @@ private:
 	bool _loopGPS;
 	int _maxOdomCacheSize;
 	bool _createGlobalScanMap;
+	float _markerPriorsLinearVariance;
+	float _markerPriorsAngularVariance;
 
 	std::pair<int, float> _loopClosureHypothesis;
 	std::pair<int, float> _highestHypothesis;
