@@ -2254,15 +2254,10 @@ void DatabaseViewer::updateStatistics()
 		std::map<std::string, std::pair<std::vector<qreal>, std::vector<qreal> > > allData;
 		std::map<std::string, int > allDataOi;
 
-		for(int i=0; i<ids_.size(); ++i)
+		for(std::map<int, std::pair<std::map<std::string, float>, double> >::iterator jter=allStats.begin(); jter!=allStats.end(); ++jter)
 		{
-			double stamp=0.0;
-			std::map<std::string, float> statistics;
-			if(allStats.find(ids_[i]) != allStats.end())
-			{
-				statistics = allStats.at(ids_[i]).first;
-				stamp = allStats.at(ids_[i]).second;
-			}
+			double stamp=jter->second.second;
+			std::map<std::string, float> & statistics = jter->second.first;
 			if(firstStamp==0.0)
 			{
 				firstStamp = stamp;
@@ -2272,12 +2267,12 @@ void DatabaseViewer::updateStatistics()
 				if(allData.find(iter->first) == allData.end())
 				{
 					//initialize data vectors
-					allData.insert(std::make_pair(iter->first, std::make_pair(std::vector<qreal>(ids_.size(), 0.0f), std::vector<qreal>(ids_.size(), 0.0f) )));
+					allData.insert(std::make_pair(iter->first, std::make_pair(std::vector<qreal>(allStats.size(), 0.0f), std::vector<qreal>(allStats.size(), 0.0f) )));
 					allDataOi.insert(std::make_pair(iter->first, 0));
 				}
 
 				int & oi = allDataOi.at(iter->first);
-				allData.at(iter->first).first[oi] = ui_->checkBox_timeStats->isChecked()?qreal(stamp-firstStamp):ids_[i];
+				allData.at(iter->first).first[oi] = ui_->checkBox_timeStats->isChecked()?qreal(stamp-firstStamp):jter->first;
 				allData.at(iter->first).second[oi] = iter->second;
 				++oi;
 			}
@@ -4349,6 +4344,7 @@ void DatabaseViewer::sliderAValueChanged(int value)
 			ui_->label_scanA,
 			ui_->label_gravityA,
 			ui_->label_gpsA,
+			ui_->label_gtA,
 			ui_->label_sensorsA,
 			true);
 }
@@ -4371,6 +4367,7 @@ void DatabaseViewer::sliderBValueChanged(int value)
 			ui_->label_scanB,
 			ui_->label_gravityB,
 			ui_->label_gpsB,
+			ui_->label_gtB,
 			ui_->label_sensorsB,
 			true);
 }
@@ -4391,6 +4388,7 @@ void DatabaseViewer::update(int value,
 						QLabel * labelScan,
 						QLabel * labelGravity,
 						QLabel * labelGps,
+						QLabel * labelGt,
 						QLabel * labelSensors,
 						bool updateConstraintView)
 {
@@ -4410,6 +4408,7 @@ void DatabaseViewer::update(int value,
 	labelScan ->clear();
 	labelGravity->clear();
 	labelGps->clear();
+	labelGt->clear();
 	labelSensors->clear();
 	if(value >= 0 && value < ids_.size())
 	{
@@ -4540,6 +4539,10 @@ void DatabaseViewer::update(int value,
 				{
 					labelGps->setText(QString("stamp=%1 longitude=%2 latitude=%3 altitude=%4m error=%5m bearing=%6deg").arg(QString::number(gps.stamp(), 'f')).arg(gps.longitude()).arg(gps.latitude()).arg(gps.altitude()).arg(gps.error()).arg(gps.bearing()));
 					labelGps->setToolTip(QDateTime::fromMSecsSinceEpoch(gps.stamp()*1000.0).toString("dd.MM.yyyy hh:mm:ss.zzz"));
+				}
+				if(!g.isNull())
+				{
+					labelGt->setText(QString("%1").arg(g.prettyPrint().c_str()));
 				}
 				if(sensors.size())
 				{
@@ -5933,6 +5936,7 @@ void DatabaseViewer::updateConstraintView(
 						ui_->label_scanA,
 						ui_->label_gravityA,
 						ui_->label_gpsA,
+						ui_->label_gtA,
 						ui_->label_sensorsA,
 						false); // don't update constraints view!
 		if(link.to()>0)
@@ -5953,6 +5957,7 @@ void DatabaseViewer::updateConstraintView(
 						ui_->label_scanB,
 						ui_->label_gravityB,
 						ui_->label_gpsB,
+						ui_->label_gtB,
 						ui_->label_sensorsB,
 						false); // don't update constraints view!
 		}

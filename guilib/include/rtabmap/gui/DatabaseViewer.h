@@ -170,6 +170,7 @@ private:
 				QLabel * labelScan,
 				QLabel * labelGravity,
 				QLabel * labelGps,
+				QLabel * labelGt,
 				QLabel * labelSensors,
 				bool updateConstraintView);
 	void updateStereo(const SensorData * data);

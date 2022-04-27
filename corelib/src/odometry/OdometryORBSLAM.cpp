@@ -808,14 +808,16 @@ public:
 
 		mpLoopCloser->SetTracker(mpTracker);
 		mpLoopCloser->SetLocalMapper(mpLocalMapper);
-#if RTABMAP_ORB_SLAM == 3
-		if(ULogger::level() > ULogger::kInfo)
-			Verbose::SetTh(Verbose::VERBOSITY_QUIET);
-#endif
 
 		// Reset all static variables
 		Frame::mbInitialComputations = true;
+
+#if RTABMAP_ORB_SLAM == 3
+		if(ULogger::level() > ULogger::kInfo)
+			Verbose::SetTh(Verbose::VERBOSITY_QUIET);
+
 		mpTracker->Reset(true);
+#endif
 
 		return true;
 	}
