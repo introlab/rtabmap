@@ -400,9 +400,6 @@ IF(G2O_FOUND)
 		${G2O_LIBRARIES}
 	  )
 	ENDIF()
-	SET(SRC_FILES ${SRC_FILES}
-		optimizer/g2o/edge_se3_xyzprior.cpp
-	)
 	IF(WITH_VERTIGO)
 		SET(SRC_FILES ${SRC_FILES}
 			optimizer/vertigo/g2o/edge_se2Switchable.cpp

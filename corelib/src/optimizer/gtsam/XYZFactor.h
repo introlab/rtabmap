@@ -20,7 +20,8 @@
 
 namespace rtabmap {
 
-class GPSPose3XYZFactor: public gtsam::NoiseModelFactor1<gtsam::Pose3> {
+template<class VALUE>
+class XYZFactor: public gtsam::NoiseModelFactor1<VALUE> {
 
 private:
   // measurement information
@@ -34,8 +35,8 @@ public:
    * @param model      noise model for GPS sensor, in X-Y
    * @param m          Point2 measurement
    */
-  GPSPose3XYZFactor(gtsam::Key poseKey, const gtsam::Point3 m, gtsam::SharedNoiseModel model) :
-      gtsam::NoiseModelFactor1<gtsam::Pose3>(model, poseKey), mx_(m.x()), my_(m.y()), mz_(m.z()) {}
+  XYZFactor(gtsam::Key poseKey, const gtsam::Point3 m, gtsam::SharedNoiseModel model) :
+      gtsam::NoiseModelFactor1<VALUE>(model, poseKey), mx_(m.x()), my_(m.y()), mz_(m.z()) {}
 
   // error function
   // @param p    the pose in Pose
@@ -45,6 +46,9 @@ public:
     {
 	  p.translation(H);
     }
+    return (gtsam::Vector3() << p.x() - mx_, p.y() - my_, p.z() - mz_).finished();
+  }
+  gtsam::Vector evaluateError(const gtsam::Point3& p, boost::optional<gtsam::Matrix&> H = boost::none) const {
     return (gtsam::Vector3() << p.x() - mx_, p.y() - my_, p.z() - mz_).finished();
   }
 };

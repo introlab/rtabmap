@@ -24,36 +24,38 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#ifndef RTAB_G2O_EDGE_SE3_PRIOR_XYZ_H
-#define RTAB_G2O_EDGE_SE3_PRIOR_XYZ_H
+#ifndef G2O_EDGE_SE3_PRIOR_XYZ_H
+#define G2O_EDGE_SE3_PRIOR_XYZ_H
 
 #include "g2o/types/slam3d/vertex_se3.h"
 #include "g2o/core/base_unary_edge.h"
 #include "g2o/types/slam3d/parameter_se3_offset.h"
 
-namespace rtabmap {
+namespace g2o {
+
+using namespace Eigen;
 
 /**
 * \brief Prior for a 3D pose with constraints only in xyz direction
 */
-class EdgeSE3XYZPrior : public g2o::BaseUnaryEdge<3, Eigen::Vector3d, g2o::VertexSE3>
+class EdgeSE3XYZPrior : public BaseUnaryEdge<3, Vector3d, VertexSE3>
 {
 public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
   EdgeSE3XYZPrior();
 
-  virtual void setMeasurement(const Eigen::Vector3d& m) {
+  virtual void setMeasurement(const Vector3d& m) {
     _measurement = m;
   }
 
   virtual bool setMeasurementData(const double * d) {
-    Eigen::Map<const Eigen::Vector3d> v(d);
+    Map<const Vector3d> v(d);
     _measurement = v;
     return true;
   }
 
   virtual bool getMeasurementData(double* d) const {
-    Eigen::Map<Eigen::Vector3d> v(d);
+    Map<Vector3d> v(d);
     v = _measurement;
     return true;
   }
@@ -65,16 +67,92 @@ public:
   virtual void computeError();
   virtual bool setMeasurementFromState();
 
-  virtual double initialEstimatePossible(const g2o::OptimizableGraph::VertexSet& /*from*/, g2o::OptimizableGraph::Vertex* /*to*/) {return 1.;}
-  virtual void initialEstimate(const g2o::OptimizableGraph::VertexSet& /*from_*/, g2o::OptimizableGraph::Vertex* /*to_*/);
+  virtual double initialEstimatePossible(const OptimizableGraph::VertexSet& /*from*/, OptimizableGraph::Vertex* /*to*/) {return 1.;}
+  virtual void initialEstimate(const OptimizableGraph::VertexSet& /*from_*/, OptimizableGraph::Vertex* /*to_*/);
 
-  const g2o::ParameterSE3Offset* offsetParameter() { return _offsetParam; }
+  const ParameterSE3Offset* offsetParameter() { return _offsetParam; }
 
 protected:
   virtual bool resolveCaches();
-  g2o::ParameterSE3Offset* _offsetParam;
-  g2o::CacheSE3Offset* _cache;
+  ParameterSE3Offset* _offsetParam;
+  CacheSE3Offset* _cache;
 };
+
+EdgeSE3XYZPrior::EdgeSE3XYZPrior() : BaseUnaryEdge<3, Vector3d, VertexSE3>()
+{
+  information().setIdentity();
+  setMeasurement(Vector3d::Zero());
+  _cache = 0;
+  _offsetParam = 0;
+  resizeParameters(1);
+  installParameter(_offsetParam, 0);
+}
+
+bool EdgeSE3XYZPrior::resolveCaches(){
+  assert(_offsetParam);
+  ParameterVector pv(1);
+  pv[0] = _offsetParam;
+  resolveCache(_cache, (OptimizableGraph::Vertex*)_vertices[0], "CACHE_SE3_OFFSET", pv);
+  return _cache != 0;
+}
+
+bool EdgeSE3XYZPrior::read(std::istream& is)
+{
+  int pid;
+  is >> pid;
+  if (!setParameterId(0, pid))
+  return false;
+
+  // measured keypoint
+  Vector3d meas;
+  for (int i = 0; i < 3; i++) is >> meas[i];
+  setMeasurement(meas);
+
+  // read covariance matrix (upper triangle)
+  if (is.good()) {
+    for (int i = 0; i < 3; i++) {
+      for (int j = i; j < 3; j++) {
+        is >> information()(i,j);
+        if (i != j)
+        information()(j,i) = information()(i,j);
+      }
+    }
+  }
+  return !is.fail();
+}
+
+bool EdgeSE3XYZPrior::write(std::ostream& os) const {
+  os << _offsetParam->id() <<  " ";
+  for (int i = 0; i < 3; i++) os << measurement()[i] << " ";
+  for (int i = 0; i < 3; i++) {
+    for (int j = i; j < 3; j++) {
+      os << information()(i,j) << " ";
+    }
+  }
+  return os.good();
+}
+
+void EdgeSE3XYZPrior::computeError() {
+  const VertexSE3* v = static_cast<const VertexSE3*>(_vertices[0]);
+  _error = v->estimate().translation() - _measurement;
+}
+
+bool EdgeSE3XYZPrior::setMeasurementFromState() {
+  const VertexSE3* v = static_cast<const VertexSE3*>(_vertices[0]);
+  _measurement = v->estimate().translation();
+  return true;
+}
+
+void EdgeSE3XYZPrior::initialEstimate(const OptimizableGraph::VertexSet& /*from_*/, OptimizableGraph::Vertex* /*to_*/) {
+  VertexSE3 *v = static_cast<VertexSE3*>(_vertices[0]);
+  assert(v && "Vertex for the Prior edge is not set");
+
+  Isometry3d newEstimate = _offsetParam->offset().inverse() * Translation3d(measurement());
+  if (_information.block<3,3>(0,0).array().abs().sum() == 0){ // do not set translation, as that part of the information is all zero
+    newEstimate.translation() = v->estimate().translation();
+  }
+  v->setEstimate(newEstimate);
+}
 
 }
 

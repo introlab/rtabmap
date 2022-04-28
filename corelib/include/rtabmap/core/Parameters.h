@@ -780,8 +780,11 @@ class RTABMAP_EXP Parameters
     RTABMAP_PARAM(Marker, VarianceLinear,         float, 0.001, "Linear variance to set on marker detections.");
     RTABMAP_PARAM(Marker, VarianceAngular,        float, 0.01,  "Angular variance to set on marker detections. Set to >=9999 to use only position (xyz) constraint in graph optimization.");
     RTABMAP_PARAM(Marker, CornerRefinementMethod, int,   0,     "Corner refinement method (0: None, 1: Subpixel, 2:contour, 3: AprilTag2). For OpenCV <3.3.0, this is \"doCornerRefinement\" parameter: set 0 for false and 1 for true.");
-    RTABMAP_PARAM(Marker, MaxRange,               float, 0.0,    "Maximum range in which markers will be detected. <=0 for unlimited range.");
-    RTABMAP_PARAM(Marker, MinRange,               float, 0.0,    "Miniminum range in which markers will be detected. <=0 for unlimited range.");
+    RTABMAP_PARAM(Marker, MaxRange,               float, 0.0,   "Maximum range in which markers will be detected. <=0 for unlimited range.");
+    RTABMAP_PARAM(Marker, MinRange,               float, 0.0,   "Miniminum range in which markers will be detected. <=0 for unlimited range.");
+    RTABMAP_PARAM_STR(Marker, Priors,             "",           "World prior locations of the markers. The map will be transformed in marker's world frame when a tag is detected. Format is the marker's ID followed by its position (angles in rad), markers are separated by vertical line (\"id1 x y z roll pitch yaw|id2 x y z roll pitch yaw\"). Example:  \"1 0 0 1 0 0 0|2 1 0 1 0 0 1.57\" (marker 2 is 1 meter forward than marker 1 with 90 deg yaw rotation).");
+    RTABMAP_PARAM(Marker, PriorsVarianceLinear,   float, 0.001, "Linear variance to set on marker priors.");
+    RTABMAP_PARAM(Marker, PriorsVarianceAngular,  float, 0.001, "Angular variance to set on marker priors.");
 
     RTABMAP_PARAM(ImuFilter, MadgwickGain,                  double, 0.1,  "Gain of the filter. Higher values lead to faster convergence but more noise. Lower values lead to slower convergence but smoother signal, belongs in [0, 1].");
     RTABMAP_PARAM(ImuFilter, MadgwickZeta,                  double, 0.0,  "Gyro drift gain (approx. rad/s), belongs in [-1, 1].");

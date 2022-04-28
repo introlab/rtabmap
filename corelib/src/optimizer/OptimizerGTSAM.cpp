@@ -51,8 +51,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <gtsam/nonlinear/Marginals.h>
 #include <gtsam/nonlinear/Values.h>
 #include "gtsam/GravityFactor.h"
-#include "gtsam/GPSPose2XYFactor.h"
-#include "gtsam/GPSPose3XYZFactor.h"
+#include <optimizer/gtsam/XYFactor.h>
+#include <optimizer/gtsam/XYZFactor.h>
 
 #ifdef RTABMAP_VERTIGO
 #include "vertigo/gtsam/betweenFactorSwitchable.h"
@@ -233,16 +233,24 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 			UASSERT(!iter->second.transform().isNull());
 			if(id1 == id2)
 			{
-				if(iter->second.type() == Link::kPosePrior && !priorsIgnored())
+				if(iter->second.type() == Link::kPosePrior && !priorsIgnored() &&
+				  (!landmarksIgnored() || id1>0))
 				{
 					if(isSlam2d())
 					{
-						if (1 / static_cast<double>(iter->second.infMatrix().at<double>(5,5)) >= 9999.0)
+						if(id1 < 0 && !isLandmarkWithRotation.at(id1))
 						{
 							noiseModel::Diagonal::shared_ptr model = noiseModel::Diagonal::Variances(Vector2(
 									1/iter->second.infMatrix().at<double>(0,0),
 									1/iter->second.infMatrix().at<double>(1,1)));
-							graph.add(GPSPose2XYFactor(id1, gtsam::Point2(iter->second.transform().x(), iter->second.transform().y()), model));
+							graph.add(XYFactor<gtsam::Point2>(id1, gtsam::Point2(iter->second.transform().x(), iter->second.transform().y()), model));
+						}
+						else if (1 / static_cast<double>(iter->second.infMatrix().at<double>(5,5)) >= 9999.0)
+						{
+							noiseModel::Diagonal::shared_ptr model = noiseModel::Diagonal::Variances(Vector2(
+									1/iter->second.infMatrix().at<double>(0,0),
+									1/iter->second.infMatrix().at<double>(1,1)));
+							graph.add(XYFactor<gtsam::Pose2>(id1, gtsam::Point2(iter->second.transform().x(), iter->second.transform().y()), model));
 						}
 						else
 						{
@@ -266,7 +274,15 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 					}
 					else
 					{
-						if (1 / static_cast<double>(iter->second.infMatrix().at<double>(3,3)) >= 9999.0 ||
+						if(id1 < 0 && !isLandmarkWithRotation.at(id1))
+						{
+							noiseModel::Diagonal::shared_ptr model = noiseModel::Diagonal::Precisions(Vector3(
+										iter->second.infMatrix().at<double>(0,0),
+										iter->second.infMatrix().at<double>(1,1),
+										iter->second.infMatrix().at<double>(2,2)));
+							graph.add(XYZFactor<gtsam::Point3>(id1, gtsam::Point3(iter->second.transform().x(), iter->second.transform().y(), iter->second.transform().z()), model));
+						}
+						else if (1 / static_cast<double>(iter->second.infMatrix().at<double>(3,3)) >= 9999.0 ||
 							1 / static_cast<double>(iter->second.infMatrix().at<double>(4,4)) >= 9999.0 ||
 							1 / static_cast<double>(iter->second.infMatrix().at<double>(5,5)) >= 9999.0)
 						{
@@ -274,7 +290,7 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 										iter->second.infMatrix().at<double>(0,0),
 										iter->second.infMatrix().at<double>(1,1),
 										iter->second.infMatrix().at<double>(2,2)));
-							graph.add(GPSPose3XYZFactor(id1, gtsam::Point3(iter->second.transform().x(), iter->second.transform().y(), iter->second.transform().z()), model));
+							graph.add(XYZFactor<gtsam::Pose3>(id1, gtsam::Point3(iter->second.transform().x(), iter->second.transform().y(), iter->second.transform().z()), model));
 						}
 						else
 						{

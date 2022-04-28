@@ -59,9 +59,11 @@ typedef Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic,Eigen::ColMajor> Matr
 #include "g2o/config.h"
 #include "g2o/types/slam2d/types_slam2d.h"
 #include "g2o/types/slam3d/types_slam3d.h"
-#include "g2o/edge_se3_xyzprior.h"
+#include "g2o/edge_se3_xyzprior.h" // Include after types_slam3d.h to be ignored on newest g2o versions
 #include "g2o/edge_se3_gravity.h"
 #include "g2o/edge_sbacam_gravity.h"
+#include "g2o/edge_xy_prior.h"  // Include after types_slam2d.h to be ignored on newest g2o versions
+#include "g2o/edge_xyz_prior.h" // Include after types_slam3d.h to be ignored on newest g2o versions
 #ifdef G2O_HAVE_CSPARSE
 #include "g2o/solvers/csparse/linear_solver_csparse.h"
 #endif
@@ -531,11 +533,37 @@ std::map<int, Transform> OptimizerG2O::optimize(
 
 			if(id1 == id2)
 			{
-				if(iter->second.type() == Link::kPosePrior && !priorsIgnored())
+				if(iter->second.type() == Link::kPosePrior && !priorsIgnored() &&
+				   (!landmarksIgnored() || id1>0))
 				{
+					int idTag= id1;
+					if(id1<0)
+					{
+						// landmark prior, offset ids
+						id1 = landmarkVertexOffset - id1;
+						id2 = landmarkVertexOffset - id2;
+					}
+
 					if(isSlam2d())
 					{
-						if (1 / static_cast<double>(iter->second.infMatrix().at<double>(5,5)) >= 9999.0)
+						if(idTag < 0 && !isLandmarkWithRotation.at(idTag))
+						{
+							g2o::EdgeXYPrior * priorEdge = new g2o::EdgeXYPrior();
+							g2o::VertexPointXY* v1 = (g2o::VertexPointXY*)optimizer.vertex(id1);
+							priorEdge->setVertex(0, v1);
+							priorEdge->setMeasurement(Eigen::Vector2d(iter->second.transform().x(), iter->second.transform().y()));
+							Eigen::Matrix<double, 2, 2> information = Eigen::Matrix<double, 2, 2>::Identity();
+							if(!isCovarianceIgnored())
+							{
+								information(0,0) = iter->second.infMatrix().at<double>(0,0); // x-x
+								information(0,1) = iter->second.infMatrix().at<double>(0,1); // x-y
+								information(1,0) = iter->second.infMatrix().at<double>(1,0); // y-x
+								information(1,1) = iter->second.infMatrix().at<double>(1,1); // y-y
+							}
+							priorEdge->setInformation(information);
+							edge = priorEdge;
+						}
+						else if (1 / static_cast<double>(iter->second.infMatrix().at<double>(5,5)) >= 9999.0)
 						{
 							g2o::EdgeSE2XYPrior * priorEdge = new g2o::EdgeSE2XYPrior();
 							g2o::VertexSE2* v1 = (g2o::VertexSE2*)optimizer.vertex(id1);
@@ -578,12 +606,36 @@ std::map<int, Transform> OptimizerG2O::optimize(
 					}
 					else
 					{
-						if (1 / static_cast<double>(iter->second.infMatrix().at<double>(3,3)) >= 9999.0 ||
+						if(idTag < 0 && !isLandmarkWithRotation.at(idTag))
+						{
+							//XYZ case
+							g2o::EdgeXYZPrior * priorEdge = new g2o::EdgeXYZPrior();
+							g2o::VertexPointXYZ* v1 = (g2o::VertexPointXYZ*)optimizer.vertex(id1);
+							priorEdge->setVertex(0, v1);
+							priorEdge->setMeasurement(Eigen::Vector3d(iter->second.transform().x(), iter->second.transform().y(), iter->second.transform().z()));
+							priorEdge->setParameterId(0, PARAM_OFFSET);
+							Eigen::Matrix<double, 3, 3> information = Eigen::Matrix<double, 3, 3>::Identity();
+							if(!isCovarianceIgnored())
+							{
+								information(0,0) = iter->second.infMatrix().at<double>(0,0); // x-x
+								information(0,1) = iter->second.infMatrix().at<double>(0,1); // x-y
+								information(0,2) = iter->second.infMatrix().at<double>(0,2); // x-z
+								information(1,0) = iter->second.infMatrix().at<double>(1,0); // y-x
+								information(1,1) = iter->second.infMatrix().at<double>(1,1); // y-y
+								information(1,2) = iter->second.infMatrix().at<double>(1,2); // y-z
+								information(2,0) = iter->second.infMatrix().at<double>(2,0); // z-x
+								information(2,1) = iter->second.infMatrix().at<double>(2,1); // z-y
+								information(2,2) = iter->second.infMatrix().at<double>(2,2); // z-z
+							}
+							priorEdge->setInformation(information);
+							edge = priorEdge;
+						}
+						else if (1 / static_cast<double>(iter->second.infMatrix().at<double>(3,3)) >= 9999.0 ||
 						    1 / static_cast<double>(iter->second.infMatrix().at<double>(4,4)) >= 9999.0 ||
 							1 / static_cast<double>(iter->second.infMatrix().at<double>(5,5)) >= 9999.0)
 						{
 							//GPS XYZ case
-							EdgeSE3XYZPrior * priorEdge = new EdgeSE3XYZPrior();
+							g2o::EdgeSE3XYZPrior * priorEdge = new g2o::EdgeSE3XYZPrior();
 							g2o::VertexSE3* v1 = (g2o::VertexSE3*)optimizer.vertex(id1);
 							priorEdge->setVertex(0, v1);
 							priorEdge->setMeasurement(Eigen::Vector3d(iter->second.transform().x(), iter->second.transform().y(), iter->second.transform().z()));
