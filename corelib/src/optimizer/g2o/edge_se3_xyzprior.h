@@ -33,6 +33,8 @@
 
 namespace g2o {
 
+using namespace Eigen;
+
 /**
 * \brief Prior for a 3D pose with constraints only in xyz direction
 */

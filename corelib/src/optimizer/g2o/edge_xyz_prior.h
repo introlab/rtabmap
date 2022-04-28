@@ -36,13 +36,16 @@
 #include "g2o/types/slam3d/vertex_pointxyz.h"
 
 namespace g2o {
+
+using namespace Eigen;
+
   /**
    * \brief prior for an XYZ vertex (VertexPointXYZ)
    *
    * Provides a prior for a 3d point vertex. The measurement is represented by a
-   * Vector3 with a corresponding 3x3 upper triangle covariance matrix (upper triangle only).
+   * Vector3d with a corresponding 3x3 upper triangle covariance matrix (upper triangle only).
    */
-  class EdgeXYZPrior : public BaseUnaryEdge<3, Vector3, VertexPointXYZ> {
+  class EdgeXYZPrior : public BaseUnaryEdge<3, Vector3d, VertexPointXYZ> {
   public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
     EdgeXYZPrior();
@@ -54,18 +57,18 @@ namespace g2o {
     // jacobian
     virtual void linearizeOplus();
 
-    virtual void setMeasurement(const Vector3& m){
+    virtual void setMeasurement(const Vector3d& m){
       _measurement = m;
     }
 
-    virtual bool setMeasurementData(const number_t* d){
-        Eigen::Map<const Vector3> v(d);
+    virtual bool setMeasurementData(const double* d){
+        Eigen::Map<const Vector3d> v(d);
         _measurement = v;
         return true;
     }
 
-    virtual bool getMeasurementData(number_t* d) const{
-        Eigen::Map<Vector3> v(d);
+    virtual bool getMeasurementData(double* d) const{
+        Eigen::Map<Vector3d> v(d);
         v = _measurement;
         return true;
     }
@@ -74,19 +77,19 @@ namespace g2o {
 
     virtual bool setMeasurementFromState() ;
 
-    virtual number_t initialEstimatePossible(const OptimizableGraph::VertexSet& /*from*/,
+    virtual double initialEstimatePossible(const OptimizableGraph::VertexSet& /*from*/,
     		OptimizableGraph::Vertex* /*to*/) {
       return 0;
     }
   };
 
-    EdgeXYZPrior::EdgeXYZPrior() : BaseUnaryEdge<3, Vector3, VertexPointXYZ>() {
+    EdgeXYZPrior::EdgeXYZPrior() : BaseUnaryEdge<3, Vector3d, VertexPointXYZ>() {
       information().setIdentity();
     }
 
     bool EdgeXYZPrior::read(std::istream& is) {
       // read measurement
-  	Vector3 meas;
+  	Vector3d meas;
       for (int i=0; i<3; i++) is >> meas[i];
       setMeasurement(meas);
       // read covariance matrix (upper triangle)
@@ -116,7 +119,7 @@ namespace g2o {
     }
 
     void EdgeXYZPrior::linearizeOplus(){
-        _jacobianOplusXi = Matrix3::Identity();
+        _jacobianOplusXi = Matrix3d::Identity();
     }
 
     bool EdgeXYZPrior::setMeasurementFromState(){

@@ -37,7 +37,9 @@
 
 namespace g2o {
 
-  class EdgeXYPrior : public BaseUnaryEdge<2, Vector2, VertexPointXY>
+using namespace Eigen;
+
+  class EdgeXYPrior : public BaseUnaryEdge<2, Vector2d, VertexPointXY>
   {
     public:
       EIGEN_MAKE_ALIGNED_OPERATOR_NEW
@@ -51,17 +53,17 @@ namespace g2o {
       virtual bool read(std::istream& is);
       virtual bool write(std::ostream& os) const;
 
-      virtual void setMeasurement(const Vector2& m){
+      virtual void setMeasurement(const Vector2d& m){
         _measurement = m;
       }
 
-      virtual bool setMeasurementData(const number_t* d){
-        _measurement=Vector2(d[0], d[1]);
+      virtual bool setMeasurementData(const double* d){
+        _measurement=Vector2d(d[0], d[1]);
         return true;
       }
 
-      virtual bool getMeasurementData(number_t* d) const {
-        Eigen::Map<Vector2> m(d);
+      virtual bool getMeasurementData(double* d) const {
+        Eigen::Map<Vector2d> m(d);
         m=_measurement;
         return true;
       }
@@ -75,14 +77,14 @@ namespace g2o {
       }
 
 
-      virtual number_t initialEstimatePossible(const OptimizableGraph::VertexSet& , OptimizableGraph::Vertex* ) { return 0.;}
+      virtual double initialEstimatePossible(const OptimizableGraph::VertexSet& , OptimizableGraph::Vertex* ) { return 0.;}
 #ifndef NUMERIC_JACOBIAN_TWO_D_TYPES
       virtual void linearizeOplus();
 #endif
   };
 
   EdgeXYPrior::EdgeXYPrior() :
-      BaseUnaryEdge<2, Vector2, VertexPointXY>()
+      BaseUnaryEdge<2, Vector2d, VertexPointXY>()
     {
       _information.setIdentity();
       _error.setZero();
@@ -90,7 +92,7 @@ namespace g2o {
 
     bool EdgeXYPrior::read(std::istream& is)
     {
-  	Vector2 p;
+  	Vector2d p;
       is >> p[0] >> p[1];
       setMeasurement(p);
       for (int i = 0; i < 2; ++i)
@@ -104,7 +106,7 @@ namespace g2o {
 
     bool EdgeXYPrior::write(std::ostream& os) const
     {
-  	Vector2 p = measurement();
+  	Vector2d p = measurement();
       os << p.x() << " " << p.y();
       for (int i = 0; i < 2; ++i)
         for (int j = i; j < 2; ++j)
@@ -116,7 +118,7 @@ namespace g2o {
   #ifndef NUMERIC_JACOBIAN_TWO_D_TYPES
     void EdgeXYPrior::linearizeOplus()
     {
-      _jacobianOplusXi=Matrix2::Identity();
+      _jacobianOplusXi=Matrix2d::Identity();
     }
   #endif
 
