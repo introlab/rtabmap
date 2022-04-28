@@ -59,9 +59,11 @@ typedef Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic,Eigen::ColMajor> Matr
 #include "g2o/config.h"
 #include "g2o/types/slam2d/types_slam2d.h"
 #include "g2o/types/slam3d/types_slam3d.h"
-#include "g2o/edge_se3_xyzprior.h"
+#include "g2o/edge_se3_xyzprior.h" // Include after types_slam3d.h to be ignored on newest g2o versions
 #include "g2o/edge_se3_gravity.h"
 #include "g2o/edge_sbacam_gravity.h"
+#include "g2o/edge_xy_prior.h"  // Include after types_slam2d.h to be ignored on newest g2o versions
+#include "g2o/edge_xyz_prior.h" // Include after types_slam3d.h to be ignored on newest g2o versions
 #ifdef G2O_HAVE_CSPARSE
 #include "g2o/solvers/csparse/linear_solver_csparse.h"
 #endif
@@ -633,7 +635,7 @@ std::map<int, Transform> OptimizerG2O::optimize(
 							1 / static_cast<double>(iter->second.infMatrix().at<double>(5,5)) >= 9999.0)
 						{
 							//GPS XYZ case
-							EdgeSE3XYZPrior * priorEdge = new EdgeSE3XYZPrior();
+							g2o::EdgeSE3XYZPrior * priorEdge = new g2o::EdgeSE3XYZPrior();
 							g2o::VertexSE3* v1 = (g2o::VertexSE3*)optimizer.vertex(id1);
 							priorEdge->setVertex(0, v1);
 							priorEdge->setMeasurement(Eigen::Vector3d(iter->second.transform().x(), iter->second.transform().y(), iter->second.transform().z()));
