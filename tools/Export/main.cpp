@@ -106,6 +106,7 @@ void showUsage()
 			"    --poisson_depth #     Set Poisson depth for mesh reconstruction.\n"
 			"    --poisson_size  #     Set target polygon size when computing Poisson's depth for mesh reconstruction (default 0.03 m).\n"
 			"    --max_polygons  #     Maximum polygons when creating a mesh (default 300000, set 0 for no limit).\n"
+			"    --min_range     #     Minimum range of the created clouds (default 0 m).\n"
 			"    --max_range     #     Maximum range of the created clouds (default 4 m, 0 m with --scan).\n"
 			"    --decimation    #     Depth image decimation before creating the clouds (default 4, 1 with --scan).\n"
 			"    --voxel         #     Voxel size of the created clouds (default 0.01 m, 0 m with --scan).\n"
@@ -166,6 +167,7 @@ int main(int argc, char * argv[])
 	float poissonSize = 0.03;
 	int maxPolygons = 300000;
 	int decimation = -1;
+	float minRange = 0.0f;
 	float maxRange = -1.0f;
 	float voxelSize = -1.0f;
 	float groundNormalsUp = 0.0f;
@@ -615,6 +617,18 @@ int main(int argc, char * argv[])
 				showUsage();
 			}
 		}
+		else if(std::strcmp(argv[i], "--min_range") == 0)
+		{
+			++i;
+			if(i<argc-1)
+			{
+				minRange = uStr2Float(argv[i]);
+			}
+			else
+			{
+				showUsage();
+			}
+		}
 		else if(std::strcmp(argv[i], "--max_range") == 0)
 		{
 			++i;
@@ -1049,9 +1063,9 @@ int main(int argc, char * argv[])
 				{
 					printf("Node %d doesn't have scan data, empty cloud is created.\n", iter->first);
 				}
-				if(decimation>1 || maxRange)
+				if(decimation>1 || minRange>0.0f || maxRange)
 				{
-					scan = util3d::commonFiltering(scan, decimation, 0, maxRange);
+					scan = util3d::commonFiltering(scan, decimation, minRange, maxRange);
 				}
 				if(scan.hasRGB())
 				{
@@ -1082,7 +1096,7 @@ int main(int argc, char * argv[])
 						node.sensorData(),
 						decimation,      // image decimation before creating the clouds
 						maxRange,        // maximum depth of the cloud
-						0.0f,
+						minRange,
 						indices.get());
 				if(noiseRadius>0.0f && noiseMinNeighbors>0)
 				{
