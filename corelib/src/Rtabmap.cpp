@@ -141,6 +141,8 @@ Rtabmap::Rtabmap() :
 	_loopGPS(Parameters::defaultRtabmapLoopGPS()),
 	_maxOdomCacheSize(Parameters::defaultRGBDMaxOdomCacheSize()),
 	_createGlobalScanMap(Parameters::defaultRGBDProximityGlobalScanMap()),
+	_markerPriorsLinearVariance(Parameters::defaultMarkerPriorsVarianceLinear()),
+	_markerPriorsAngularVariance(Parameters::defaultMarkerPriorsVarianceAngular()),
 	_loopClosureHypothesis(0,0.0f),
 	_highestHypothesis(0,0.0f),
 	_lastProcessTime(0.0),
