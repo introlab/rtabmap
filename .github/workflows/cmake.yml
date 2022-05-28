@@ -1,4 +1,4 @@
-name: CMake Minimal
+name: CMake
 
 on:
   push:
