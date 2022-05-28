@@ -10,9 +10,8 @@ RUN apt-get update && \
 
 WORKDIR /root/
 
-# Clone source code
-ARG CACHE_DATE=2016-01-01
-RUN git clone https://github.com/introlab/rtabmap.git
+# Copy current source code
+COPY . /root/rtabmap
 
 RUN rm /bin/sh && ln -s /bin/bash /bin/sh
 

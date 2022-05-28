@@ -156,12 +156,11 @@ RUN if [ "$TARGETPLATFORM" = "linux/amd64" ]; then git clone https://github.com/
 
 RUN rm /bin/sh && ln -s /bin/bash /bin/sh
 
-# Clone source code
-ARG CACHE_DATE=2016-01-01
+# Copy current source code
+COPY . /root/rtabmap
 
 # Build RTAB-Map project
 RUN source /ros_entrypoint.sh && \
-    git clone https://github.com/introlab/rtabmap.git && \
     cd rtabmap/build && \
     cmake -DWITH_ALICE_VISION=ON .. && \
     make -j$(nproc) && \

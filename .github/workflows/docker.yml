@@ -41,27 +41,35 @@ jobs:
           docker_tags: |
             introlab3it/rtabmap:android23
             introlab3it/rtabmap:tango
+          docker_args: |
+            API_VERSION=23
           docker_platforms: |
             linux/amd64
-          docker_path: 'bionic/android/rtabmap_api23'
+          docker_path: 'bionic/android/rtabmap_apiXX'
         - docker_tag: android24
           docker_tags: |
             introlab3it/rtabmap:android24
+          docker_args: |
+            API_VERSION=24
           docker_platforms: |
             linux/amd64
-          docker_path: 'bionic/android/rtabmap_api24'
+          docker_path: 'bionic/android/rtabmap_apiXX'
         - docker_tag: android26
           docker_tags: |
             introlab3it/rtabmap:android26
+          docker_args: |
+            API_VERSION=26
           docker_platforms: |
             linux/amd64
-          docker_path: 'bionic/android/rtabmap_api26'
+          docker_path: 'bionic/android/rtabmap_apiXX'
         - docker_tag: android30
           docker_tags: |
             introlab3it/rtabmap:android30
+          docker_args: |
+            API_VERSION=30
           docker_platforms: |
             linux/amd64
-          docker_path: 'bionic/android/rtabmap_api30'
+          docker_path: 'bionic/android/rtabmap_apiXX'
     
     steps:
       -
@@ -85,11 +93,12 @@ jobs:
         name: Build and push
         uses: docker/build-push-action@v2
         with:
-          context: ./docker/${{ matrix.docker_path }}
+          context: .
           push: true
           platforms: ${{ matrix.docker_platforms }}
+          file: ./docker/${{ matrix.docker_path }}/Dockerfile
           build-args: |
-            CACHE_DATE=${{ github.head_ref }}.${{ github.sha }}
+            ${{ matrix.docker_args }}
           tags: ${{ matrix.docker_tags }}
           cache-from: type=registry,ref=introlab3it/rtabmap:${{ matrix.docker_tag }}
           cache-to: type=inline

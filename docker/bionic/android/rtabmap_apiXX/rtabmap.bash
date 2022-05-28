@@ -10,10 +10,6 @@ api=$2
 pwd=$(pwd)
 
 
-# get rtabmap
-git clone https://github.com/introlab/rtabmap.git rtabmap-tango
-cd 
-
 # tango
 wget 'https://docs.google.com/uc?authuser=0&id=12rHHkYM5k-UnQn-xGXs9JqYWhSXrgJr3&export=download' -O TangoSDK_Ikariotikos_C.zip
 unzip -qq TangoSDK_Ikariotikos_C.zip
