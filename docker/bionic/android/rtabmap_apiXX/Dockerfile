@@ -9,5 +9,5 @@ WORKDIR /root/
 # Copy current source code
 COPY . /root/rtabmap-tango
 
-RUN /bin/bash -c "./docker/bionic/android/rtabmap_apiXX/rtabmap.bash /opt/android $API_VERSION"
+RUN /bin/bash -c "./rtabmap-tango/docker/bionic/android/rtabmap_apiXX/rtabmap.bash /opt/android $API_VERSION"
 
