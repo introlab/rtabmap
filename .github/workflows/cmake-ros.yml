@@ -1,4 +1,4 @@
-name: CMake
+name: CMake-ROS
 
 on:
   push:
