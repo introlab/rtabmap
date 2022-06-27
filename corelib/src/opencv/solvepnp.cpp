@@ -137,9 +137,6 @@ bool solvePnPRansac(InputArray _opoints, InputArray _ipoints,
     CV_Assert(ipoints.depth() == CV_32F || ipoints.depth() == CV_64F);
     CV_Assert((ipoints.rows == 1 && ipoints.channels() == 2) || ipoints.cols*ipoints.channels() == 2);
 
-    _rvec.create(3, 1, CV_64FC1);
-    _tvec.create(3, 1, CV_64FC1);
-
     Mat rvec = useExtrinsicGuess ? _rvec.getMat() : Mat(3, 1, CV_64FC1);
     Mat tvec = useExtrinsicGuess ? _tvec.getMat() : Mat(3, 1, CV_64FC1);
     Mat cameraMatrix = _cameraMatrix.getMat(), distCoeffs = _distCoeffs.getMat();
@@ -181,7 +178,7 @@ bool solvePnPRansac(InputArray _opoints, InputArray _ipoints,
         opoints_inliers.resize(npoints1);
         ipoints_inliers.resize(npoints1);
         result = solvePnP(opoints_inliers, ipoints_inliers, cameraMatrix,
-                          distCoeffs, rvec, tvec, false, flags == CV_P3P ? CV_EPNP : flags) ? 1 : -1;
+                          distCoeffs, rvec, tvec, useExtrinsicGuess, flags == CV_P3P ? CV_EPNP : flags) ? 1 : -1;
     }
 
     if( result <= 0 || _local_model.rows <= 0)

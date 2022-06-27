@@ -442,6 +442,19 @@ Transform Transform::fromEigen3d(const Eigen::Isometry3d & matrix)
 					 matrix(2,0), matrix(2,1), matrix(2,2), matrix(2,3));
 }
 
+Transform Transform::fromEigen3f(const Eigen::Matrix<float, 3, 4> & matrix)
+{
+	return Transform(matrix(0,0), matrix(0,1), matrix(0,2), matrix(0,3),
+					 matrix(1,0), matrix(1,1), matrix(1,2), matrix(1,3),
+					 matrix(2,0), matrix(2,1), matrix(2,2), matrix(2,3));
+}
+Transform Transform::fromEigen3d(const Eigen::Matrix<double, 3, 4> & matrix)
+{
+	return Transform(matrix(0,0), matrix(0,1), matrix(0,2), matrix(0,3),
+					 matrix(1,0), matrix(1,1), matrix(1,2), matrix(1,3),
+					 matrix(2,0), matrix(2,1), matrix(2,2), matrix(2,3));
+}
+
 /**
  * Format (3 values): x y z
  * Format (6 values): x y z roll pitch yaw

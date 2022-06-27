@@ -1480,15 +1480,22 @@ Transform RegistrationVis::computeTransformationImpl(
 			{
 				UDEBUG("");
 				if(!signatureB->sensorData().stereoCameraModel().isValidForProjection() &&
-				   (signatureB->sensorData().cameraModels().size() != 1 ||
+				   (signatureB->sensorData().cameraModels().size() == 0 ||
 					!signatureB->sensorData().cameraModels()[0].isValidForProjection()))
 				{
-					UERROR("Calibrated camera required (multi-cameras not supported). Id=%d Models=%d StereoModel=%d weight=%d",
+					UERROR("Calibrated camera required. Id=%d Models=%d StereoModel=%d weight=%d",
 							signatureB->id(),
 							(int)signatureB->sensorData().cameraModels().size(),
 							signatureB->sensorData().stereoCameraModel().isValidForProjection()?1:0,
 							signatureB->getWeight());
 				}
+#ifndef RTABMAP_OPENGV
+				else if(signatureB->sensorData().cameraModels().size() > 1)
+				{
+					UERROR("Multi-camera 2D-3D PnP registration is only available if rtabmap is built "
+							"with OpenGV dependency. Use 3D-3D registration approach instead for multi-camera.");
+				}
+#endif
 				else
 				{
 					UDEBUG("words from3D=%d to2D=%d", (int)signatureA->getWords3().size(), (int)signatureB->getWords().size());
@@ -1496,9 +1503,6 @@ Transform RegistrationVis::computeTransformationImpl(
 					if((int)signatureA->getWords3().size() >= _minInliers &&
 					   (int)signatureB->getWords().size() >= _minInliers)
 					{
-						UASSERT(signatureB->sensorData().stereoCameraModel().isValidForProjection() || (signatureB->sensorData().cameraModels().size() == 1 && signatureB->sensorData().cameraModels()[0].isValidForProjection()));
-						const CameraModel & cameraModel = signatureB->sensorData().stereoCameraModel().isValidForProjection()?signatureB->sensorData().stereoCameraModel().left():signatureB->sensorData().cameraModels()[0];
-
 						std::vector<int> inliersV;
 						std::vector<int> matchesV;
 						std::map<int, int> uniqueWordsA = uMultimapToMapUnique(signatureA->getWords());
@@ -1518,22 +1522,52 @@ Transform RegistrationVis::computeTransformationImpl(
 								words3B.insert(std::make_pair(iter->first, signatureB->getWords3()[iter->second]));
 							}
 						}
-						transforms[dir] = util3d::estimateMotion3DTo2D(
-								words3A,
-								wordsB,
-								cameraModel,
-								_minInliers,
-								_iterations,
-								_PnPReprojError,
-								_PnPFlags,
-								_PnPRefineIterations,
-								dir==0?(!guess.isNull()?guess:Transform::getIdentity()):!transforms[0].isNull()?transforms[0].inverse():(!guess.isNull()?guess.inverse():Transform::getIdentity()),
-								words3B,
-								&covariances[dir],
-								&matchesV,
-								&inliersV);
-						inliers[dir] = inliersV;
-						matches[dir] = matchesV;
+
+						if(signatureB->sensorData().cameraModels().size()>1)
+						{
+							// Multi-Camera
+							UASSERT(signatureB->sensorData().cameraModels()[0].isValidForProjection());
+							std::vector<CameraModel> models = signatureB->sensorData().cameraModels();
+
+							transforms[dir] = util3d::estimateMotion3DTo2D(
+									words3A,
+									wordsB,
+									models,
+									_minInliers,
+									_iterations,
+									_PnPReprojError,
+									_PnPFlags,
+									_PnPRefineIterations,
+									dir==0?(!guess.isNull()?guess:Transform::getIdentity()):!transforms[0].isNull()?transforms[0].inverse():(!guess.isNull()?guess.inverse():Transform::getIdentity()),
+									words3B,
+									&covariances[dir],
+									&matchesV,
+									&inliersV);
+							inliers[dir] = inliersV;
+							matches[dir] = matchesV;
+						}
+						else
+						{
+							UASSERT(signatureB->sensorData().stereoCameraModel().isValidForProjection() || (signatureB->sensorData().cameraModels().size() == 1 && signatureB->sensorData().cameraModels()[0].isValidForProjection()));
+							const CameraModel & cameraModel = signatureB->sensorData().stereoCameraModel().isValidForProjection()?signatureB->sensorData().stereoCameraModel().left():signatureB->sensorData().cameraModels()[0];
+
+							transforms[dir] = util3d::estimateMotion3DTo2D(
+									words3A,
+									wordsB,
+									cameraModel,
+									_minInliers,
+									_iterations,
+									_PnPReprojError,
+									_PnPFlags,
+									_PnPRefineIterations,
+									dir==0?(!guess.isNull()?guess:Transform::getIdentity()):!transforms[0].isNull()?transforms[0].inverse():(!guess.isNull()?guess.inverse():Transform::getIdentity()),
+									words3B,
+									&covariances[dir],
+									&matchesV,
+									&inliersV);
+							inliers[dir] = inliersV;
+							matches[dir] = matchesV;
+						}
 						UDEBUG("inliers: %d/%d", (int)inliersV.size(), (int)matchesV.size());
 						if(transforms[dir].isNull())
 						{
