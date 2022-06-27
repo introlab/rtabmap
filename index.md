@@ -4,11 +4,11 @@
 
 ## Overview 
 <img src="https://raw.githubusercontent.com/introlab/rtabmap/master/guilib/src/images/RTAB-Map.png" alt="RTAB-Map logo" title="RTAB-Map" align="left" width="120">
+
 **RTAB-Map** (Real-Time Appearance-Based Mapping) is a RGB-D, Stereo and Lidar Graph-Based SLAM approach based on an incremental appearance-based loop closure detector. The loop closure detector uses a bag-of-words approach to determinate how likely a new image comes from a previous location or a new location. When a loop closure hypothesis is accepted, a new constraint is added to the map's graph, then a graph optimizer minimizes the errors in the map. A memory management approach is used to limit the number of locations used for loop closure detection and graph optimization, so that real-time constraints on large-scale environnements are always respected. RTAB-Map can be used alone with a handheld Kinect, a stereo camera or a 3D lidar for 6DoF mapping, or on a robot equipped with a laser rangefinder for 3DoF mapping.
 
 #### Illumination-Invariant Visual Re-Localization
-* M. Labbé and F. Michaud, “[Multi-Session Visual SLAM for Illumination-Invariant Re-Localization in Indoor Environments](https://arxiv.org/abs/2103.03827),” in ''Frontiers in Robotics and AI'', vol. 9, 2022. ([Frontiers](https://doi.org/10.3389/frobt.2022.801886))
-    * [Dataset link](https://github.com/introlab/rtabmap/tree/master/archive/2022-IlluminationInvariant)
+* M. Labbé and F. Michaud, “[Multi-Session Visual SLAM for Illumination-Invariant Re-Localization in Indoor Environments](https://arxiv.org/abs/2103.03827),” in ''Frontiers in Robotics and AI'', vol. 9, 2022. ([Frontiers](https://doi.org/10.3389/frobt.2022.801886)) ([Dataset link](https://github.com/introlab/rtabmap/tree/master/archive/2022-IlluminationInvariant))
 
 #### Lidar and Visual SLAM
 * M. Labbé and F. Michaud, “[RTAB-Map as an Open-Source Lidar and Visual SLAM Library for Large-Scale and Long-Term Online Operation](https://introlab.3it.usherbrooke.ca/mediawiki-introlab/images/7/7a/Labbe18JFR_preprint.pdf),” in _Journal of Field Robotics_, vol. 36, no. 2, pp. 416–446, 2019.  ([Wiley](https://doi.org/10.1002/rob.21831))
