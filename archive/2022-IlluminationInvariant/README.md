@@ -29,8 +29,8 @@ We provide two formats: the first one is more general and the second one is used
   * `rgb`: folder containing *.jpg color camera images
   * `depth`: folder containing *.png 16bits mm depth images
   * `calib`: folder containing calibration for each color image. Each calibration contains also the transform between `device` and `camera` frames as `local_transform`.
-  * `device_poses.txt`: poses of of each image in `device` frame
-  * `camera_poses.txt`: poses of of each image in `camera` frame
+  * `device_poses.txt`: VIO poses of of each image in `device` frame
+  * `camera_poses.txt`: VIO poses of of each image in `camera` frame
 * [RTAB-Map Databases](https://usherbrooke-my.sharepoint.com/:u:/g/personal/labm2414_usherbrooke_ca/EU5fb0jEKzlGhPK3OWjMGLUBnDo1BRAoZwtB2czyeVLE_A?e=Y0JyXY)
 
 
