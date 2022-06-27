@@ -8,7 +8,7 @@
 
 #### Illumination-Invariant Visual Re-Localization
 * M. Labbé and F. Michaud, “[Multi-Session Visual SLAM for Illumination-Invariant Re-Localization in Indoor Environments](https://arxiv.org/abs/2103.03827),” in ''Frontiers in Robotics and AI'', vol. 9, 2022. ([Frontiers](https://doi.org/10.3389/frobt.2022.801886))
-    * Dataset: [archive/2022-IlluminationInvariant](https://github.com/introlab/rtabmap/tree/master/archive/2022-IlluminationInvariant)
+    * [Dataset link](https://github.com/introlab/rtabmap/tree/master/archive/2022-IlluminationInvariant)
 
 #### Lidar and Visual SLAM
 * M. Labbé and F. Michaud, “[RTAB-Map as an Open-Source Lidar and Visual SLAM Library for Large-Scale and Long-Term Online Operation](https://introlab.3it.usherbrooke.ca/mediawiki-introlab/images/7/7a/Labbe18JFR_preprint.pdf),” in _Journal of Field Robotics_, vol. 36, no. 2, pp. 416–446, 2019.  ([Wiley](https://doi.org/10.1002/rob.21831))
