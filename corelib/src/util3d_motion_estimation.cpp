@@ -263,7 +263,7 @@ Transform estimateMotion3DTo2D(
 			std::vector<int> * inliersOut)
 {
 	Transform transform;
-#ifdef RTABMAP_OPENGV
+#ifndef RTABMAP_OPENGV
 	UERROR("This function is only available if rtabmap is built with OpenGV dependency.");
 #else
 	UASSERT(!cameraModels.empty() && cameraModels[0].imageWidth() > 0);
