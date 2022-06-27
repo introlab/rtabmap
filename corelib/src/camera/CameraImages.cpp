@@ -215,6 +215,16 @@ bool CameraImages::init(const std::string & calibrationFolder, const std::string
 						_model.fy(),
 						_model.cx(),
 						_model.cy());
+
+				cv::FileStorage fs(calibrationFolder+"/"+cameraName+".yaml", 0);
+				cv::FileNode poseNode = fs["local_transform"];
+				if(!poseNode.isNone())
+				{
+					UWARN("Using local transform from calibration file (%s) instead of the parameter one (%s).",
+							_model.localTransform().prettyPrint().c_str(),
+							this->getLocalTransform().prettyPrint().c_str());
+					this->setLocalTransform(_model.localTransform());
+				}
 			}
 		}
 		_model.setName(cameraName);
@@ -243,36 +253,18 @@ bool CameraImages::init(const std::string & calibrationFolder, const std::string
 			if(dirJson.getFileNames().size() == _dir->getFileNames().size())
 			{
 				bool modelsWarned = false;
-				bool firstFrame = true;
+				bool localTWarned = false;
 				for(std::list<std::string>::const_iterator iter=dirJson.getFileNames().begin(); iter!=dirJson.getFileNames().end() && success; ++iter)
 				{
-					// Assuming 3DScannerApp(iOS) format (only this one supported...)
 					std::string filePath = _path+"/"+*iter;
 					cv::FileStorage fs(filePath, 0);
-					cv::FileNode poseNode = fs["cameraPoseARFrame"];
-					cv::FileNode timeNode = fs["time"];
-					cv::FileNode intrinsicsNode = fs["intrinsics"];
-					if(poseNode.isNone() || poseNode.size() != 16)
+					cv::FileNode poseNode = fs["cameraPoseARFrame"]; // Check if it is 3DScannerApp(iOS) format
+					if(poseNode.isNone())
 					{
-						UERROR("Failed reading \"cameraPoseARFrame\" parameter, it should have 16 values (file=%s)", filePath.c_str());
-						success = false;
-						break;
-					}
-					else if(timeNode.isNone() || !timeNode.isReal())
-					{
-						UERROR("Failed reading \"time\" parameter (file=%s)", filePath.c_str());
-						success = false;
-						break;
-					}
-					else if(intrinsicsNode.isNone() || intrinsicsNode.size()!=9)
-					{
-						UERROR("Failed reading \"intrinsics\" parameter (file=%s)", filePath.c_str());
-						success = false;
-						break;
-					}
-					else
-					{
-						_stamps.push_back((double)timeNode);
+						cv::FileNode n = fs["local_transform"];
+						bool hasLocalTransform = !n.isNone();
+
+						fs.release();
 						if(_model.isValidForProjection() && !modelsWarned)
 						{
 							UWARN("Camera model loaded for each frame is overridden by "
@@ -283,31 +275,74 @@ bool CameraImages::init(const std::string & calibrationFolder, const std::string
 						}
 						else
 						{
-							_models.push_back(CameraModel(
-									(double)intrinsicsNode[0], //fx
-									(double)intrinsicsNode[4], //fy
-									(double)intrinsicsNode[2], //cx
-									(double)intrinsicsNode[5], //cy
-									CameraModel::opticalRotation()));
+							CameraModel model;
+							model.load(filePath);
+
+							if(!hasLocalTransform)
+							{
+								if(!localTWarned)
+								{
+									UWARN("Loaded calibration file doesn't have local_transform field, "
+											"the global local_transform parameter is used by default (%s).",
+											this->getLocalTransform().prettyPrint().c_str());
+									localTWarned = true;
+								}
+								model.setLocalTransform(this->getLocalTransform());
+							}
+
+							_models.push_back(model);
 						}
-						// we need to rotate from opengl world to rtabmap world
-						Transform pose(
-								(float)poseNode[0], (float)poseNode[1], (float)poseNode[2], (float)poseNode[3],
-								(float)poseNode[4], (float)poseNode[5], (float)poseNode[6], (float)poseNode[7],
-								(float)poseNode[8], (float)poseNode[9], (float)poseNode[10], (float)poseNode[11]);
-						pose =  Transform::rtabmap_T_opengl() * pose * Transform::opengl_T_rtabmap();
-						odometry_.push_back(pose);
-						// linear cov = 0.0001
-						cv::Mat covariance = cv::Mat::eye(6,6,CV_64FC1) * (firstFrame?9999.0:0.0001);
-						if(!firstFrame)
+					}
+					else
+					{
+						cv::FileNode timeNode = fs["time"];
+						cv::FileNode intrinsicsNode = fs["intrinsics"];
+						if(poseNode.isNone() || poseNode.size() != 16)
 						{
-							// angular cov = 0.000001
-							covariance.at<double>(3,3) *= 0.01;
-							covariance.at<double>(4,4) *= 0.01;
-							covariance.at<double>(5,5) *= 0.01;
+							UERROR("Failed reading \"cameraPoseARFrame\" parameter, it should have 16 values (file=%s)", filePath.c_str());
+							success = false;
+							break;
 						}
-						firstFrame = false;
-						covariances_.push_back(covariance);
+						else if(timeNode.isNone() || !timeNode.isReal())
+						{
+							UERROR("Failed reading \"time\" parameter (file=%s)", filePath.c_str());
+							success = false;
+							break;
+						}
+						else if(intrinsicsNode.isNone() || intrinsicsNode.size()!=9)
+						{
+							UERROR("Failed reading \"intrinsics\" parameter (file=%s)", filePath.c_str());
+							success = false;
+							break;
+						}
+						else
+						{
+							_stamps.push_back((double)timeNode);
+							if(_model.isValidForProjection() && !modelsWarned)
+							{
+								UWARN("Camera model loaded for each frame is overridden by "
+										"general calibration file provided. Remove general calibration "
+										"file to use camera model of each frame. This warning will "
+										"be shown only one time.");
+								modelsWarned = true;
+							}
+							else
+							{
+								_models.push_back(CameraModel(
+										(double)intrinsicsNode[0], //fx
+										(double)intrinsicsNode[4], //fy
+										(double)intrinsicsNode[2], //cx
+										(double)intrinsicsNode[5], //cy
+										CameraModel::opticalRotation()));
+							}
+							// we need to rotate from opengl world to rtabmap world
+							Transform pose(
+									(float)poseNode[0], (float)poseNode[1], (float)poseNode[2], (float)poseNode[3],
+									(float)poseNode[4], (float)poseNode[5], (float)poseNode[6], (float)poseNode[7],
+									(float)poseNode[8], (float)poseNode[9], (float)poseNode[10], (float)poseNode[11]);
+							pose =  Transform::rtabmap_T_opengl() * pose * Transform::opengl_T_rtabmap();
+							odometry_.push_back(pose);
+						}
 					}
 				}
 				if(!success)
@@ -315,7 +350,6 @@ bool CameraImages::init(const std::string & calibrationFolder, const std::string
 					odometry_.clear();
 					_stamps.clear();
 					_models.clear();
-					covariances_.clear();
 				}
 			}
 			else
@@ -334,106 +368,110 @@ bool CameraImages::init(const std::string & calibrationFolder, const std::string
 				success = false;
 			}
 		}
-		else if(_filenamesAreTimestamps)
+
+		if(_stamps.empty())
 		{
-			std::list<std::string> filenames = _dir?_dir->getFileNames():_scanDir->getFileNames();
-			for(std::list<std::string>::const_iterator iter=filenames.begin(); iter!=filenames.end(); ++iter)
+			if(_filenamesAreTimestamps)
 			{
-				// format is text_1223445645.12334_text.png or text_122344564512334_text.png
-				// If no decimals, 10 first number are the seconds
-				std::list<std::string> list = uSplit(*iter, '.');
-				if(list.size() == 3 || list.size() == 2)
+				std::list<std::string> filenames = _dir?_dir->getFileNames():_scanDir->getFileNames();
+				for(std::list<std::string>::const_iterator iter=filenames.begin(); iter!=filenames.end(); ++iter)
 				{
-					list.pop_back(); // remove extension
-					double stamp = 0.0;
-					if(list.size() == 1)
+					// format is text_1223445645.12334_text.png or text_122344564512334_text.png
+					// If no decimals, 10 first number are the seconds
+					std::list<std::string> list = uSplit(*iter, '.');
+					if(list.size() == 3 || list.size() == 2)
 					{
-						std::list<std::string> numberList = uSplitNumChar(list.front());
-						for(std::list<std::string>::iterator iter=numberList.begin(); iter!=numberList.end(); ++iter)
+						list.pop_back(); // remove extension
+						double stamp = 0.0;
+						if(list.size() == 1)
 						{
-							if(uIsNumber(*iter))
+							std::list<std::string> numberList = uSplitNumChar(list.front());
+							for(std::list<std::string>::iterator iter=numberList.begin(); iter!=numberList.end(); ++iter)
 							{
-								std::string decimals;
-								std::string sec;
-								if(iter->length()>10)
+								if(uIsNumber(*iter))
 								{
-									decimals = iter->substr(10, iter->size()-10);
-									sec = iter->substr(0, 10);
+									std::string decimals;
+									std::string sec;
+									if(iter->length()>10)
+									{
+										decimals = iter->substr(10, iter->size()-10);
+										sec = iter->substr(0, 10);
+									}
+									else
+									{
+										sec = *iter;
+									}
+									stamp = uStr2Double(sec + "." + decimals);
+									break;
 								}
-								else
-								{
-									sec = *iter;
-								}
-								stamp = uStr2Double(sec + "." + decimals);
-								break;
 							}
 						}
-					}
-					else
-					{
-						std::string decimals = uSplitNumChar(list.back()).front();
-						list.pop_back();
-						std::string sec = uSplitNumChar(list.back()).back();
-						stamp = uStr2Double(sec + "." + decimals);
-					}
-					if(stamp > 0.0)
-					{
-						_stamps.push_back(stamp);
-					}
-					else
-					{
-						UERROR("Conversion filename to timestamp failed! (filename=%s)", iter->c_str());
+						else
+						{
+							std::string decimals = uSplitNumChar(list.back()).front();
+							list.pop_back();
+							std::string sec = uSplitNumChar(list.back()).back();
+							stamp = uStr2Double(sec + "." + decimals);
+						}
+						if(stamp > 0.0)
+						{
+							_stamps.push_back(stamp);
+						}
+						else
+						{
+							UERROR("Conversion filename to timestamp failed! (filename=%s)", iter->c_str());
+						}
 					}
 				}
-			}
-			if(_stamps.size() != this->imagesCount())
-			{
-				UERROR("The stamps count is not the same as the images (%d vs %d)! "
-					   "Converting filenames to timestamps is activated.",
-						(int)_stamps.size(), this->imagesCount());
-				_stamps.clear();
-				success = false;
-			}
-		}
-		else if(_timestampsPath.size())
-		{
-			std::ifstream file;
-			file.open(_timestampsPath.c_str(), std::ifstream::in);
-			while(file.good())
-			{
-				std::string str;
-				std::getline(file, str);
-
-				if(str.empty() || str.at(0) == '#' || str.at(0) == '%')
+				if(_stamps.size() != this->imagesCount())
 				{
-					continue;
+					UERROR("The stamps count is not the same as the images (%d vs %d)! "
+						   "Converting filenames to timestamps is activated.",
+							(int)_stamps.size(), this->imagesCount());
+					_stamps.clear();
+					success = false;
 				}
-
-				std::list<std::string> strList = uSplit(str, ' ');
-				std::string stampStr = strList.front();
-				if(strList.size() == 2)
-				{
-					// format "seconds millisec"
-					// the millisec str needs 0-padding if size < 6
-					std::string millisecStr = strList.back();
-					while(millisecStr.size() < 6)
-					{
-						millisecStr = "0" + millisecStr;
-					}
-					stampStr = stampStr+'.'+millisecStr;
-				}
-				_stamps.push_back(uStr2Double(stampStr));
 			}
-
-			file.close();
-
-			if(_stamps.size() != this->imagesCount())
+			else if(_timestampsPath.size())
 			{
-				UERROR("The stamps count (%d) is not the same as the images (%d)! Please remove "
-						"the timestamps file path if you don't want to use them (current file path=%s).",
-						(int)_stamps.size(), this->imagesCount(), _timestampsPath.c_str());
-				_stamps.clear();
-				success = false;
+				std::ifstream file;
+				file.open(_timestampsPath.c_str(), std::ifstream::in);
+				while(file.good())
+				{
+					std::string str;
+					std::getline(file, str);
+
+					if(str.empty() || str.at(0) == '#' || str.at(0) == '%')
+					{
+						continue;
+					}
+
+					std::list<std::string> strList = uSplit(str, ' ');
+					std::string stampStr = strList.front();
+					if(strList.size() == 2)
+					{
+						// format "seconds millisec"
+						// the millisec str needs 0-padding if size < 6
+						std::string millisecStr = strList.back();
+						while(millisecStr.size() < 6)
+						{
+							millisecStr = "0" + millisecStr;
+						}
+						stampStr = stampStr+'.'+millisecStr;
+					}
+					_stamps.push_back(uStr2Double(stampStr));
+				}
+
+				file.close();
+
+				if(_stamps.size() != this->imagesCount())
+				{
+					UERROR("The stamps count (%d) is not the same as the images (%d)! Please remove "
+							"the timestamps file path if you don't want to use them (current file path=%s).",
+							(int)_stamps.size(), this->imagesCount(), _timestampsPath.c_str());
+					_stamps.clear();
+					success = false;
+				}
 			}
 		}
 
@@ -445,6 +483,23 @@ bool CameraImages::init(const std::string & calibrationFolder, const std::string
 		if(success && _groundTruthPath.size())
 		{
 			success = readPoses(groundTruth_, _stamps, _groundTruthPath, _groundTruthFormat, _maxPoseTimeDiff);
+		}
+
+		if(!odometry_.empty())
+		{
+			for(size_t i=0; i<odometry_.size(); ++i)
+			{
+				// linear cov = 0.0001
+				cv::Mat covariance = cv::Mat::eye(6,6,CV_64FC1) * (i==0?9999.0:0.0001);
+				if(i!=0)
+				{
+					// angular cov = 0.000001
+					covariance.at<double>(3,3) *= 0.01;
+					covariance.at<double>(4,4) *= 0.01;
+					covariance.at<double>(5,5) *= 0.01;
+				}
+				covariances_.push_back(covariance);
+			}
 		}
 	}
 

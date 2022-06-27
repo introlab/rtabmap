@@ -1464,7 +1464,7 @@ void DatabaseViewer::extractImages()
 	QString ext = format.split('.').back();
 	bool useStamp = format.split('.').front().compare("timestamp") == 0;
 	bool directoriesCreated = false;
-	QString path = QFileDialog::getExistingDirectory(this, tr("Select directory where to save images..."), QDir::homePath());
+	QString path = QFileDialog::getExistingDirectory(this, tr("Select directory where to save images..."), pathDatabase_);
 	if(!path.isEmpty())
 	{
 		rtabmap::ProgressDialog * progressDialog = new rtabmap::ProgressDialog(this);

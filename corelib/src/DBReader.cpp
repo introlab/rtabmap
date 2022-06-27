@@ -51,7 +51,8 @@ DBReader::DBReader(const std::string & databasePath,
 				   int cameraIndex,
 				   int stopId,
 				   bool intermediateNodesIgnored,
-				   bool landmarksIgnored) :
+				   bool landmarksIgnored,
+				   bool featuresIgnored) :
 	Camera(frameRate),
 	_paths(uSplit(databasePath, ';')),
 	_odometryIgnored(odometryIgnored),
@@ -62,6 +63,7 @@ DBReader::DBReader(const std::string & databasePath,
 	_cameraIndex(cameraIndex),
 	_intermediateNodesIgnored(intermediateNodesIgnored),
 	_landmarksIgnored(landmarksIgnored),
+	_featuresIgnored(featuresIgnored),
 	_dbDriver(0),
 	_currentId(_ids.end()),
 	_previousMapId(-1),
@@ -84,7 +86,8 @@ DBReader::DBReader(const std::list<std::string> & databasePaths,
 				   int cameraIndex,
 				   int stopId,
 				   bool intermediateNodesIgnored,
-				   bool landmarksIgnored) :
+				   bool landmarksIgnored,
+				   bool featuresIgnored) :
 	Camera(frameRate),
    _paths(databasePaths),
 	_odometryIgnored(odometryIgnored),
@@ -95,6 +98,7 @@ DBReader::DBReader(const std::list<std::string> & databasePaths,
 	_cameraIndex(cameraIndex),
 	_intermediateNodesIgnored(intermediateNodesIgnored),
 	_landmarksIgnored(landmarksIgnored),
+	_featuresIgnored(featuresIgnored),
 	_dbDriver(0),
 	_currentId(_ids.end()),
 	_previousMapId(-1),
@@ -569,13 +573,14 @@ SensorData DBReader::getNextData(CameraInfo * info)
 			cv::Mat descriptors = s->getWordsDescriptors().clone();
 			const std::vector<cv::KeyPoint> & keypoints = s->getWordsKpts();
 			const std::vector<cv::Point3f> & keypoints3D = s->getWords3();
-			if(!keypoints.empty() &&
+			if(!_featuresIgnored &&
+				!keypoints.empty() &&
 			   (keypoints3D.empty() || keypoints.size() == keypoints3D.size()) &&
 			   (descriptors.empty() || (int)keypoints.size() == descriptors.rows))
 			{
 				data.setFeatures(keypoints, keypoints3D, descriptors);
 			}
-			else if(!keypoints.empty() && (!keypoints3D.empty() || !descriptors.empty()))
+			else if(!_featuresIgnored && !keypoints.empty() && (!keypoints3D.empty() || !descriptors.empty()))
 			{
 				UERROR("Missing feature data, features won't be published.");
 			}
