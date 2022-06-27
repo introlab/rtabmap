@@ -68,6 +68,10 @@ This website uses Google Analytics. See their Privacy Policy [here](https://supp
 
 ## What's new 
 
+### June 2022
+A new paper has been published: **Multi-Session Visual SLAM for Illumination-Invariant Re-Localization in Indoor Environments**. The general idea is to remap multiple times the same environment to capture multiple illumination variations caused by natural and artificial lighting, then the robot would be able to localize afterwards at any hour of the day. For more details, see this [page](https://github.com/introlab/rtabmap/tree/master/archive/2022-IlluminationInvariant). 
+![Illumination-invariant](https://github.com/introlab/rtabmap/raw/master/archive/2022-IlluminationInvariant/images/fig_overview.jpg)
+
 ### January 2022
 Added [demo](https://github.com/introlab/rtabmap_ros/blob/master/launch/demo/demo_catvehicle_mapping.launch) for car mapping and localization with [CitySim](https://github.com/osrf/citysim) simulator and [CAT Vehicle](https://github.com/jmscslgroup/catvehicle):
 [![Watch the video](https://img.youtube.com/vi/vKCTg4plPkw/maxresdefault.jpg)](https://youtu.be/vKCTg4plPkw)
