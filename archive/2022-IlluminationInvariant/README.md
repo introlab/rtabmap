@@ -39,7 +39,7 @@ We provide two formats: the first one is more general and the second one is used
 
 1. RTAB-Map should be built from source with those dependencies (don't need to "install" it, we will launch it from build directory in the scripts below to avoid conflicting with another rtabmap already installed): 
     * OpenCV built with **xfeatures2d** and **nonfree** modules
-    * torchlib c++ (tested on v1.10.2) to enable [SuperPoint](https://github.com/magicleap/SuperPointPretrainedNetwork) (superpoint.pt can be downloaded [here](https://github.com/KinglittleQ/SuperPoint_SLAM/blob/master/superpoint.pt))
+    * [torchlib c++](https://pytorch.org/get-started/locally/) (tested on v1.10.2) to enable [SuperPoint](https://github.com/magicleap/SuperPointPretrainedNetwork) (superpoint.pt can be downloaded [here](https://github.com/KinglittleQ/SuperPoint_SLAM/blob/master/superpoint.pt))
     * Python3 to use [SuperGlue](https://github.com/magicleap/SuperGluePretrainedNetwork)
 
 2. Download database version of the dataset and extract the databases in the `script` directory.
