@@ -45,8 +45,8 @@ public:
 
     // note that use boost optional like a pointer
     // only calculate jacobian matrix when non-null pointer exists
-    if (H) *H = (gtsam::Matrix23() << 1.0, 0.0, 0.0,
-                                      0.0, 1.0, 0.0).finished();
+    if (H) *H = (gtsam::Matrix23() << p.rotation().c(),-p.rotation().s(), 0.0,
+                                      p.rotation().s(), p.rotation().c(), 0.0).finished();
 
     // return error vector
     return (gtsam::Vector2() << p.x() - mx_, p.y() - my_).finished();
