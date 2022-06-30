@@ -69,7 +69,7 @@ This website uses Google Analytics. See their Privacy Policy [here](https://supp
 ## What's new 
 
 ### June 2022
-A new paper has been published: **Multi-Session Visual SLAM for Illumination-Invariant Re-Localization in Indoor Environments**. The general idea is to remap multiple times the same environment to capture multiple illumination variations caused by natural and artificial lighting, then the robot would be able to localize afterwards at any hour of the day. For more details, see this [page](https://github.com/introlab/rtabmap/tree/master/archive/2022-IlluminationInvariant) and the linked paper. Some great comparisons about robustness to illumination variations between binary descriptions (BRIEF/ORB, BRISK), float descriptions (SURF/SIFT/KAZE/DAISY) and learned descriptors (SuperPoint).
+A new paper has been published: **Multi-Session Visual SLAM for Illumination-Invariant Re-Localization in Indoor Environments**. The general idea is to remap multiple times the same environment to capture multiple illumination variations caused by natural and artificial lighting, then the robot would be able to localize afterwards at any hour of the day. For more details, see this [page](https://github.com/introlab/rtabmap/tree/master/archive/2022-IlluminationInvariant) and the linked paper. Some great comparisons about robustness to illumination variations between binary descriptors (BRIEF/ORB, BRISK), float descriptors (SURF/SIFT/KAZE/DAISY) and learned descriptors (SuperPoint).
 ![Illumination-invariant](https://github.com/introlab/rtabmap/raw/master/archive/2022-IlluminationInvariant/images/fig_overview.jpg)
 
 ### January 2022
