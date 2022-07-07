@@ -263,7 +263,7 @@ Transform estimateMotion3DTo2D(
 			std::vector<int> * inliersOut)
 {
 	Transform transform;
-#ifdef RTABMAP_OPENGV
+#ifndef RTABMAP_OPENGV
 	UERROR("This function is only available if rtabmap is built with OpenGV dependency.");
 #else
 	UASSERT(!cameraModels.empty() && cameraModels[0].imageWidth() > 0);
@@ -322,9 +322,6 @@ Transform estimateMotion3DTo2D(
 
 	if((int)matches.size() >= minInliers)
 	{
-		//PnPRansac
-		Transform pnp = guess;
-
 		// convert cameras
 		opengv::translations_t camOffsets;
 		opengv::rotations_t camRotations;
@@ -380,7 +377,7 @@ Transform estimateMotion3DTo2D(
 		//Run the experiment
 		ransac.computeModel();
 
-		pnp = Transform::fromEigen3d(ransac.model_coefficients_);
+		Transform pnp = Transform::fromEigen3d(ransac.model_coefficients_);
 
 		UDEBUG("Ransac result: %s", pnp.prettyPrint().c_str());
 		UDEBUG("Ransac iterations done: %d", ransac.iterations_);
@@ -391,9 +388,9 @@ Transform estimateMotion3DTo2D(
 		    for(size_t j = 0; j < ransac.inliers_[i].size(); j++)
 		    {
 		          inliers.push_back(bearingIndexes[i][ransac.inliers_[i][j]]);
-		          std::cout << matches[cameraIndexes[bearingIndexes[i][ransac.inliers_[i][j]]]] << " ";
+		          //std::cout << matches[bearingIndexes[i][ransac.inliers_[i][j]]] << " ";
 		    }
-		    std::cout << std::endl;
+		    //std::cout << std::endl;
 		}
 		UDEBUG("Ransac inliers: %ld", numberInliers);
 

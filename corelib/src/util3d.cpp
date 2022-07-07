@@ -953,18 +953,8 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP cloudFromSensorData(
 				UERROR("Camera model %d is invalid", i);
 			}
 		}
-
-		if(cloud->is_dense && validIndices)
-		{
-			//generate indices for all points (they are all valid)
-			validIndices->resize(cloud->size());
-			for(unsigned int i=0; i<cloud->size(); ++i)
-			{
-				validIndices->at(i) = i;
-			}
-		}
 	}
-	else if(!sensorData.imageRaw().empty() && !sensorData.rightRaw().empty() && sensorData.stereoCameraModel().isValidForProjection())
+	else if(!sensorData.imageRaw().empty() && !sensorData.rightRaw().empty() && !sensorData.stereoCameraModels().empty())
 	{
 		//stereo
 		UASSERT(sensorData.rightRaw().type() == CV_8UC1);
@@ -979,51 +969,85 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP cloudFromSensorData(
 			leftMono = sensorData.imageRaw();
 		}
 
-		cv::Mat right(sensorData.rightRaw());
-		StereoCameraModel model = sensorData.stereoCameraModel();
-		if( roiRatios.size() == 4 &&
-			((roiRatios[0] > 0.0f && roiRatios[0] <= 1.0f) ||
-			 (roiRatios[1] > 0.0f && roiRatios[1] <= 1.0f) ||
-			 (roiRatios[2] > 0.0f && roiRatios[2] <= 1.0f) ||
-			 (roiRatios[3] > 0.0f && roiRatios[3] <= 1.0f)))
+		UASSERT(int((sensorData.imageRaw().cols/sensorData.stereoCameraModels().size())*sensorData.stereoCameraModels().size()) == sensorData.imageRaw().cols);
+		UASSERT(int((sensorData.rightRaw().cols/sensorData.stereoCameraModels().size())*sensorData.stereoCameraModels().size()) == sensorData.rightRaw().cols);
+		int subImageWidth = sensorData.rightRaw().cols/sensorData.stereoCameraModels().size();
+		for(unsigned int i=0; i<sensorData.stereoCameraModels().size(); ++i)
 		{
-			cv::Rect roi = util2d::computeRoi(leftMono, roiRatios);
-			if(	roi.width%decimation==0 &&
-				roi.height%decimation==0)
+			if(sensorData.stereoCameraModels()[i].isValidForProjection())
 			{
-				leftMono = cv::Mat(leftMono, roi);
-				right = cv::Mat(right, roi);
-				model.roi(roi);
+				cv::Mat left(leftMono, cv::Rect(subImageWidth*i, 0, subImageWidth, leftMono.rows));
+				cv::Mat right(sensorData.rightRaw(), cv::Rect(subImageWidth*i, 0, subImageWidth, sensorData.rightRaw().rows));
+				StereoCameraModel model = sensorData.stereoCameraModels()[i];
+				if( roiRatios.size() == 4 &&
+					((roiRatios[0] > 0.0f && roiRatios[0] <= 1.0f) ||
+					 (roiRatios[1] > 0.0f && roiRatios[1] <= 1.0f) ||
+					 (roiRatios[2] > 0.0f && roiRatios[2] <= 1.0f) ||
+					 (roiRatios[3] > 0.0f && roiRatios[3] <= 1.0f)))
+				{
+					cv::Rect roi = util2d::computeRoi(left, roiRatios);
+					if(	roi.width%decimation==0 &&
+						roi.height%decimation==0)
+					{
+						left = cv::Mat(left, roi);
+						right = cv::Mat(right, roi);
+						model.roi(roi);
+					}
+					else
+					{
+						UERROR("Cannot apply ROI ratios [%f,%f,%f,%f] because resulting "
+							  "dimension (left=%dx%d) cannot be divided exactly "
+							  "by decimation parameter (%d). Ignoring ROI ratios...",
+							  roiRatios[0],
+							  roiRatios[1],
+							  roiRatios[2],
+							  roiRatios[3],
+							  roi.width,
+							  roi.height,
+							  decimation);
+					}
+				}
+
+				pcl::PointCloud<pcl::PointXYZ>::Ptr tmp = cloudFromDisparity(
+						util2d::disparityFromStereoImages(left, right, stereoParameters),
+						model,
+						decimation,
+						maxDepth,
+						minDepth,
+						validIndices);
+
+				if(tmp->size())
+				{
+					if(!model.localTransform().isNull() && !model.localTransform().isIdentity())
+					{
+						tmp = util3d::transformPointCloud(tmp, model.localTransform());
+					}
+
+					if(sensorData.stereoCameraModels().size() > 1)
+					{
+						tmp = util3d::removeNaNFromPointCloud(tmp);
+						*cloud += *tmp;
+					}
+					else
+					{
+						cloud = tmp;
+					}
+				}
 			}
 			else
 			{
-				UERROR("Cannot apply ROI ratios [%f,%f,%f,%f] because resulting "
-					  "dimension (left=%dx%d) cannot be divided exactly "
-					  "by decimation parameter (%d). Ignoring ROI ratios...",
-					  roiRatios[0],
-					  roiRatios[1],
-					  roiRatios[2],
-					  roiRatios[3],
-					  roi.width,
-					  roi.height,
-					  decimation);
+				UERROR("Stereo camera model %d is invalid", i);
 			}
 		}
+	}
 
-		cloud = cloudFromDisparity(
-				util2d::disparityFromStereoImages(leftMono, right, stereoParameters),
-				model,
-				decimation,
-				maxDepth,
-				minDepth,
-				validIndices);
-
-		if(cloud->size())
+	if(!cloud->empty() && cloud->is_dense && validIndices)
+	{
+		//generate indices for all points (they are all valid)
+		validIndices->resize(cloud->size());
+		for(unsigned int i=0; i<cloud->size(); ++i)
 		{
-			if(cloud->size() && !sensorData.stereoCameraModel().left().localTransform().isNull() && !sensorData.stereoCameraModel().left().localTransform().isIdentity())
-			{
-				cloud = util3d::transformPointCloud(cloud, sensorData.stereoCameraModel().left().localTransform());
-			}
+			validIndices->at(i) = i;
 		}
 	}
 	return cloud;
@@ -1129,69 +1153,96 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_EXP cloudRGBFromSensorData(
 				UERROR("Camera model %d is invalid", i);
 			}
 		}
-
-		if(cloud->is_dense && validIndices)
-		{
-			//generate indices for all points (they are all valid)
-			validIndices->resize(cloud->size());
-			for(unsigned int i=0; i<cloud->size(); ++i)
-			{
-				validIndices->at(i) = i;
-			}
-		}
 	}
-	else if(!sensorData.imageRaw().empty() && !sensorData.rightRaw().empty() && sensorData.stereoCameraModel().isValidForProjection())
+	else if(!sensorData.imageRaw().empty() && !sensorData.rightRaw().empty() && !sensorData.stereoCameraModels().empty())
 	{
 		//stereo
 		UDEBUG("");
 
-		cv::Mat left(sensorData.imageRaw());
-		cv::Mat right(sensorData.rightRaw());
-		StereoCameraModel model = sensorData.stereoCameraModel();
-		if( roiRatios.size() == 4 &&
-			((roiRatios[0] > 0.0f && roiRatios[0] <= 1.0f) ||
-			 (roiRatios[1] > 0.0f && roiRatios[1] <= 1.0f) ||
-			 (roiRatios[2] > 0.0f && roiRatios[2] <= 1.0f) ||
-			 (roiRatios[3] > 0.0f && roiRatios[3] <= 1.0f)))
+		UASSERT(int((sensorData.imageRaw().cols/sensorData.stereoCameraModels().size())*sensorData.stereoCameraModels().size()) == sensorData.imageRaw().cols);
+		UASSERT(int((sensorData.rightRaw().cols/sensorData.stereoCameraModels().size())*sensorData.stereoCameraModels().size()) == sensorData.rightRaw().cols);
+		int subImageWidth = sensorData.rightRaw().cols/sensorData.stereoCameraModels().size();
+		for(unsigned int i=0; i<sensorData.stereoCameraModels().size(); ++i)
 		{
-			cv::Rect roi = util2d::computeRoi(left, roiRatios);
-			if(	roi.width%decimation==0 &&
-				roi.height%decimation==0)
+			if(sensorData.stereoCameraModels()[i].isValidForProjection())
 			{
-				left = cv::Mat(left, roi);
-				right = cv::Mat(right, roi);
-				model.roi(roi);
+				cv::Mat left(sensorData.imageRaw(), cv::Rect(subImageWidth*i, 0, subImageWidth, sensorData.imageRaw().rows));
+				cv::Mat right(sensorData.rightRaw(), cv::Rect(subImageWidth*i, 0, subImageWidth, sensorData.rightRaw().rows));
+				StereoCameraModel model = sensorData.stereoCameraModels()[i];
+				if( roiRatios.size() == 4 &&
+					((roiRatios[0] > 0.0f && roiRatios[0] <= 1.0f) ||
+					 (roiRatios[1] > 0.0f && roiRatios[1] <= 1.0f) ||
+					 (roiRatios[2] > 0.0f && roiRatios[2] <= 1.0f) ||
+					 (roiRatios[3] > 0.0f && roiRatios[3] <= 1.0f)))
+				{
+					cv::Rect roi = util2d::computeRoi(left, roiRatios);
+					if(	roi.width%decimation==0 &&
+						roi.height%decimation==0)
+					{
+						left = cv::Mat(left, roi);
+						right = cv::Mat(right, roi);
+						model.roi(roi);
+					}
+					else
+					{
+						UERROR("Cannot apply ROI ratios [%f,%f,%f,%f] because resulting "
+							  "dimension (left=%dx%d) cannot be divided exactly "
+							  "by decimation parameter (%d). Ignoring ROI ratios...",
+							  roiRatios[0],
+							  roiRatios[1],
+							  roiRatios[2],
+							  roiRatios[3],
+							  roi.width,
+							  roi.height,
+							  decimation);
+					}
+				}
+
+				pcl::PointCloud<pcl::PointXYZRGB>::Ptr tmp = cloudFromStereoImages(
+						left,
+						right,
+						model,
+						decimation,
+						maxDepth,
+						minDepth,
+						validIndices,
+						stereoParameters);
+
+				if(tmp->size())
+				{
+					if(!model.localTransform().isNull() && !model.localTransform().isIdentity())
+					{
+						tmp = util3d::transformPointCloud(tmp, model.localTransform());
+					}
+
+					if(sensorData.stereoCameraModels().size() > 1)
+					{
+						tmp = util3d::removeNaNFromPointCloud(tmp);
+						*cloud += *tmp;
+					}
+					else
+					{
+						cloud = tmp;
+					}
+				}
 			}
 			else
 			{
-				UERROR("Cannot apply ROI ratios [%f,%f,%f,%f] because resulting "
-					  "dimension (left=%dx%d) cannot be divided exactly "
-					  "by decimation parameter (%d). Ignoring ROI ratios...",
-					  roiRatios[0],
-					  roiRatios[1],
-					  roiRatios[2],
-					  roiRatios[3],
-					  roi.width,
-					  roi.height,
-					  decimation);
+				UERROR("Stereo camera model %d is invalid", i);
 			}
 		}
+	}
 
-		cloud = cloudFromStereoImages(
-				left,
-				right,
-				model,
-				decimation,
-				maxDepth,
-				minDepth,
-				validIndices,
-				stereoParameters);
-
-		if(cloud->size() && !sensorData.stereoCameraModel().left().localTransform().isNull() && !sensorData.stereoCameraModel().left().localTransform().isIdentity())
+	if(cloud->is_dense && validIndices)
+	{
+		//generate indices for all points (they are all valid)
+		validIndices->resize(cloud->size());
+		for(unsigned int i=0; i<cloud->size(); ++i)
 		{
-			cloud = util3d::transformPointCloud(cloud, sensorData.stereoCameraModel().left().localTransform());
+			validIndices->at(i) = i;
 		}
 	}
+
 	return cloud;
 }
 

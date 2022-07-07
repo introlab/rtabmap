@@ -792,7 +792,9 @@ std::vector<cv::Point3f> Feature2D::generateKeypoints3D(
 	std::vector<cv::Point3f> keypoints3D;
 	if(keypoints.size())
 	{
-		if(!data.rightRaw().empty() && !data.imageRaw().empty() && data.stereoCameraModel().isValidForProjection())
+		if(!data.rightRaw().empty() && !data.imageRaw().empty() &&
+			!data.stereoCameraModels().empty() &&
+			data.stereoCameraModels()[0].isValidForProjection())
 		{
 			//stereo
 			cv::Mat imageMono;
@@ -811,19 +813,60 @@ std::vector<cv::Point3f> Feature2D::generateKeypoints3D(
 			std::vector<unsigned char> status;
 
 			std::vector<cv::Point2f> rightCorners;
-			rightCorners = _stereo->computeCorrespondences(
-					imageMono,
-					data.rightRaw(),
-					leftCorners,
-					status);
 
-			keypoints3D = util3d::generateKeypoints3DStereo(
-					leftCorners,
-					rightCorners,
-					data.stereoCameraModel(),
-					status,
-					_minDepth,
-					_maxDepth);
+			if(data.stereoCameraModels().size() == 1)
+			{
+				rightCorners = _stereo->computeCorrespondences(
+						imageMono,
+						data.rightRaw(),
+						leftCorners,
+						status);
+
+				keypoints3D = util3d::generateKeypoints3DStereo(
+						leftCorners,
+						rightCorners,
+						data.stereoCameraModels()[0],
+						status,
+						_minDepth,
+						_maxDepth);
+			}
+			else
+			{
+				int subImageWith = imageMono.cols / data.stereoCameraModels().size();
+				UASSERT(imageMono.cols % subImageWith == 0);
+				std::vector<std::vector<cv::Point2f> > subLeftCorners(data.stereoCameraModels().size());
+				// Assign keypoints per camera
+				for(size_t i=0; i<leftCorners.size(); ++i)
+				{
+					int cameraIndex = int(leftCorners[i].x / subImageWith);
+					leftCorners[i].x -= cameraIndex*subImageWith;
+					subLeftCorners[cameraIndex].push_back(leftCorners[i]);
+				}
+
+				for(size_t i=0; i<data.stereoCameraModels().size(); ++i)
+				{
+					if(!subLeftCorners[i].empty())
+					{
+						rightCorners = _stereo->computeCorrespondences(
+								imageMono.colRange(cv::Range(subImageWith*i, subImageWith*(i+1))),
+								data.rightRaw().colRange(cv::Range(subImageWith*i, subImageWith*(i+1))),
+								subLeftCorners[i],
+								status);
+
+						std::vector<cv::Point3f> subKeypoints3D = util3d::generateKeypoints3DStereo(
+								subLeftCorners[i],
+								rightCorners,
+								data.stereoCameraModels()[i],
+								status,
+								_minDepth,
+								_maxDepth);
+
+						keypoints3D.insert(keypoints3D.end(), subKeypoints3D.begin(), subKeypoints3D.end());
+					}
+				}
+			}
+
+
 		}
 		else if(!data.depthRaw().empty() && data.cameraModels().size())
 		{

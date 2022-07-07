@@ -328,35 +328,73 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 
 	if(!_imagesAlreadyRectified && !this->canProcessRawImages() && !data.imageRaw().empty())
 	{
-		if(data.stereoCameraModel().isValidForRectification())
+		if(!data.stereoCameraModels().empty())
 		{
-			if(!stereoModel_.isRectificationMapInitialized() ||
-				stereoModel_.left().imageSize() != data.stereoCameraModel().left().imageSize())
+			bool valid = true;
+			if(data.stereoCameraModels().size() != stereoModels_.size())
 			{
-				stereoModel_ = data.stereoCameraModel();
-				stereoModel_.initRectificationMap();
-				if(stereoModel_.isRectificationMapInitialized())
+				stereoModels_.clear();
+				valid = false;
+			}
+			else
+			{
+				for(size_t i=0; i<data.stereoCameraModels().size() && valid; ++i)
+				{
+					valid = stereoModels_[i].isRectificationMapInitialized() &&
+							stereoModels_[i].left().imageSize() == data.stereoCameraModels()[i].left().imageSize();
+				}
+			}
+
+			if(!valid)
+			{
+				stereoModels_ = data.stereoCameraModels();
+				valid = true;
+				for(size_t i=0; i<stereoModels_.size() && valid; ++i)
+				{
+					stereoModels_[i].initRectificationMap();
+					valid = stereoModels_[i].isRectificationMapInitialized();
+				}
+				if(valid)
 				{
 					UWARN("%s parameter is set to false but the selected odometry approach cannot "
-							"process raw images. We will rectify them for convenience.",
+							"process raw stereo images. We will rectify them for convenience.",
 							Parameters::kRtabmapImagesAlreadyRectified().c_str());
 				}
 				else
 				{
-					UERROR("Odometry approach chosen cannot process raw images (not rectified images) "
+					UERROR("Odometry approach chosen cannot process raw stereo images (not rectified images) "
 							"and we cannot rectify them as the rectification map failed to initialize (valid calibration?). "
-							"Make sure images are rectified and set %s parameter back to true, or make sure "
-							"calibration is valid for rectification.",
+							"Make sure images are rectified and set %s parameter back to true, or "
+							"make sure calibration is valid for rectification",
 							Parameters::kRtabmapImagesAlreadyRectified().c_str());
+					stereoModels_.clear();
 				}
 			}
-			if(stereoModel_.isRectificationMapInitialized())
+			if(valid)
 			{
-				data.setStereoImage(
-						stereoModel_.left().rectifyImage(data.imageRaw()),
-						stereoModel_.right().rectifyImage(data.rightRaw()),
-						stereoModel_,
-						false);
+				if(stereoModels_.size()==1)
+				{
+					data.setStereoImage(
+							stereoModels_[0].left().rectifyImage(data.imageRaw()),
+							stereoModels_[0].right().rectifyImage(data.rightRaw()),
+							stereoModels_,
+							false);
+				}
+				else
+				{
+					UASSERT(int((data.imageRaw().cols/data.stereoCameraModels().size())*data.stereoCameraModels().size()) == data.imageRaw().cols);
+					int subImageWidth = data.imageRaw().cols/data.stereoCameraModels().size();
+					cv::Mat rectifiedLeftImages = data.imageRaw().clone();
+					cv::Mat rectifiedRightImages = data.imageRaw().clone();
+					for(size_t i=0; i<stereoModels_.size() && valid; ++i)
+					{
+						cv::Mat rectifiedLeft = stereoModels_[i].left().rectifyImage(cv::Mat(data.imageRaw(), cv::Rect(subImageWidth*i, 0, subImageWidth, data.imageRaw().rows)));
+						cv::Mat rectifiedRight = stereoModels_[i].right().rectifyImage(cv::Mat(data.rightRaw(), cv::Rect(subImageWidth*i, 0, subImageWidth, data.rightRaw().rows)));
+						rectifiedLeft.copyTo(cv::Mat(rectifiedLeftImages, cv::Rect(subImageWidth*i, 0, subImageWidth, data.imageRaw().rows)));
+						rectifiedRight.copyTo(cv::Mat(rectifiedRightImages, cv::Rect(subImageWidth*i, 0, subImageWidth, data.imageRaw().rows)));
+					}
+					data.setStereoImage(rectifiedLeftImages, rectifiedRightImages, stereoModels_, false);
+				}
 			}
 		}
 		else if(!data.cameraModels().empty())
@@ -599,12 +637,15 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 		}
 		else
 		{
-			StereoCameraModel stereoModel = decimatedData.stereoCameraModel();
-			if(stereoModel.isValidForProjection())
+			std::vector<StereoCameraModel> stereoModels = decimatedData.stereoCameraModels();
+			for(unsigned int i=0; i<stereoModels.size(); ++i)
 			{
-				stereoModel.scale(1.0/double(_imageDecimation));
+				stereoModels[i].scale(1.0/double(_imageDecimation));
 			}
-			decimatedData.setStereoImage(rgbLeft, depthRight, stereoModel);
+			if(!stereoModels.empty())
+			{
+				decimatedData.setStereoImage(rgbLeft, depthRight, stereoModels);
+			}
 		}
 
 

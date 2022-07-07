@@ -1046,6 +1046,7 @@ int main(int argc, char * argv[])
 
 		// uncompress data
 		std::vector<CameraModel> models = node.sensorData().cameraModels();
+		std::vector<StereoCameraModel> stereoModels = node.sensorData().stereoCameraModels();
 		cv::Mat rgb;
 		cv::Mat depth;
 
@@ -1156,16 +1157,19 @@ int main(int argc, char * argv[])
 				}
 				model.save(dir);
 			}
-			if(node.sensorData().stereoCameraModel().isValidForProjection())
+			for(size_t i=0; i<stereoModels.size(); ++i)
 			{
-				StereoCameraModel model = node.sensorData().stereoCameraModel();
+				StereoCameraModel model = stereoModels[i];
 				std::string modelName = (exportImagesId?uNumber2Str(iter->first):uFormat("%f",node.getStamp()));
+				if(stereoModels.size() > 1) {
+					modelName += "_" + uNumber2Str((int)i);
+				}
 				model.setName(modelName, "left", "right");
 				std::string dir = outputDirectory+"/"+baseName+"_calib";
 				if(!UDirectory::exists(dir)) {
 					UDirectory::makeDir(dir);
 				}
-				node.sensorData().stereoCameraModel().save(dir);
+				model.save(dir);
 			}
 		}
 
@@ -1203,9 +1207,9 @@ int main(int argc, char * argv[])
 			Transform cameraViewpoint = iter->second * node.sensorData().cameraModels()[0].localTransform(); // take the first camera
 			rawViewpoints.insert(std::make_pair(iter->first, cameraViewpoint));
 		}
-		else if(!node.sensorData().stereoCameraModel().localTransform().isNull())
+		else if(!node.sensorData().stereoCameraModels().empty() && !node.sensorData().stereoCameraModels()[0].localTransform().isNull())
 		{
-			Transform cameraViewpoint = iter->second * node.sensorData().stereoCameraModel().localTransform();
+			Transform cameraViewpoint = iter->second * node.sensorData().stereoCameraModels()[0].localTransform();
 			rawViewpoints.insert(std::make_pair(iter->first, cameraViewpoint));
 		}
 		else
@@ -1238,9 +1242,12 @@ int main(int argc, char * argv[])
 			rawViewpointIndices.resize(assembledCloudI->size(), iter->first);
 		}
 
-		if(models.empty() && node.sensorData().stereoCameraModel().isValidForProjection())
+		if(models.empty())
 		{
-			models.push_back(node.sensorData().stereoCameraModel().left());
+			for(size_t i=0; i<node.sensorData().stereoCameraModels().size(); ++i)
+			{
+				models.push_back(node.sensorData().stereoCameraModels()[i].left());
+			}
 		}
 
 		robotPoses.insert(std::make_pair(iter->first, iter->second));

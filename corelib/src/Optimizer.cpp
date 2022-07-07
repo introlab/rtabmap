@@ -438,7 +438,7 @@ std::map<int, Transform> Optimizer::optimizeBA(
 		int rootId,
 		const std::map<int, Transform> & poses,
 		const std::multimap<int, Link> & links,
-		const std::map<int, CameraModel> & models,
+		const std::map<int, std::vector<CameraModel> > & models,
 		std::map<int, cv::Point3f> & points3DMap,
 		const std::map<int, std::map<int, FeatureBA> > & wordReferences,
 		std::set<int> * outliers)
@@ -457,37 +457,34 @@ std::map<int, Transform> Optimizer::optimizeBA(
 		bool rematchFeatures)
 {
 	UDEBUG("");
-	std::map<int, CameraModel> models;
+	std::map<int, std::vector<CameraModel> > multiModels;
 	std::map<int, Transform> poses;
 	for(std::map<int, Transform>::const_iterator iter=posesIn.lower_bound(1); iter!=posesIn.end(); ++iter)
 	{
 		// Get camera model
-		CameraModel model;
+		std::vector<CameraModel> models;
 		if(uContains(signatures, iter->first))
 		{
-			if(signatures.at(iter->first).sensorData().cameraModels().size() == 1 && signatures.at(iter->first).sensorData().cameraModels().at(0).isValidForProjection())
+			const SensorData & s = signatures.at(iter->first).sensorData();
+			if(s.cameraModels().size() >= 1 && s.cameraModels().at(0).isValidForProjection())
 			{
-				model = signatures.at(iter->first).sensorData().cameraModels()[0];
+				models = s.cameraModels();
 			}
-			else if(signatures.at(iter->first).sensorData().stereoCameraModel().isValidForProjection())
+			else if(!s.stereoCameraModels().empty() && s.stereoCameraModels()[0].isValidForProjection())
 			{
-				model = signatures.at(iter->first).sensorData().stereoCameraModel().left();
+				for(size_t i=0; i<s.stereoCameraModels().size(); ++i)
+				{
+					CameraModel model = s.stereoCameraModels()[i].left();
 
-				// Set Tx = -baseline*fx for stereo BA
-				model = CameraModel(
-						model.fx(),
-						model.fy(),
-						model.cx(),
-						model.cy(),
-						model.localTransform(),
-						-signatures.at(iter->first).sensorData().stereoCameraModel().baseline()*model.fx());
-			}
-			else if(signatures.at(iter->first).sensorData().cameraModels().size() > 1)
-			{
-				UERROR("Multi-cameras (%d) is not supported (id=%d).",
-						signatures.at(iter->first).sensorData().cameraModels().size(),
-						iter->first);
-				return std::map<int, Transform>();
+					// Set Tx = -baseline*fx for stereo BA
+					models.push_back(CameraModel(
+							model.fx(),
+							model.fy(),
+							model.cx(),
+							model.cy(),
+							model.localTransform(),
+							-s.stereoCameraModels()[i].baseline()*model.fx()));
+				}
 			}
 			else
 			{
@@ -501,16 +498,14 @@ std::map<int, Transform> Optimizer::optimizeBA(
 			return std::map<int, Transform>();
 		}
 
-		UASSERT(model.isValidForProjection());
-
-		models.insert(std::make_pair(iter->first, model));
+		multiModels.insert(std::make_pair(iter->first, models));
 		poses.insert(*iter);
 	}
 
 	// compute correspondences
 	this->computeBACorrespondences(poses, links, signatures, points3DMap, wordReferences, rematchFeatures);
 
-	return optimizeBA(rootId, poses, links, models, points3DMap, wordReferences);
+	return optimizeBA(rootId, poses, links, multiModels, points3DMap, wordReferences);
 }
 
 std::map<int, Transform> Optimizer::optimizeBA(
@@ -537,9 +532,11 @@ Transform Optimizer::optimizeBA(
 	poses.insert(std::make_pair(link.to(), link.transform()));
 	std::multimap<int, Link> links;
 	links.insert(std::make_pair(link.from(), link));
-	std::map<int, CameraModel> models;
-	models.insert(std::make_pair(link.from(), model));
-	models.insert(std::make_pair(link.to(), model));
+	std::map<int, std::vector<CameraModel> > models;
+	std::vector<CameraModel> tmp;
+	tmp.push_back(model);
+	models.insert(std::make_pair(link.from(), tmp));
+	models.insert(std::make_pair(link.to(), tmp));
 	poses = optimizeBA(link.from(), poses, links, models, points3DMap, wordReferences, outliers);
 	if(poses.size() == 2)
 	{
@@ -587,6 +584,13 @@ void Optimizer::computeBACorrespondences(
 			if(sFrom.getWeight() >= 0) // ignore intermediate links
 			{
 				Signature sTo = signatures.at(link.to());
+
+				if(sFrom.sensorData().cameraModels().empty() || sTo.sensorData().cameraModels().empty())
+				{
+					UERROR("No camera models found (stereo not implemented)");
+					continue;
+				}
+
 				if(sTo.getWeight() < 0)
 				{
 					for(std::multimap<int, Link>::const_iterator jter=links.find(sTo.id());
@@ -675,8 +679,7 @@ void Optimizer::computeBACorrespondences(
 									wordId = ++wordCount;
 									wordReferences.insert(std::make_pair(wordId, std::map<int, FeatureBA>()));
 
-									p = util3d::transformPoint(p, pose);
-									points3DMap.insert(std::make_pair(wordId, p));
+									points3DMap.insert(std::make_pair(wordId, util3d::transformPoint(p, pose)));
 								}
 								else
 								{
@@ -692,7 +695,18 @@ void Optimizer::computeBACorrespondences(
 										UASSERT(indexFrom < sFrom.getWordsDescriptors().rows);
 										descriptorFrom = sFrom.getWordsDescriptors().row(indexFrom);
 									}
-									wordReferences.at(wordId).insert(std::make_pair(sFrom.id(), FeatureBA(ptFrom, p.x, descriptorFrom)));
+									int cameraIndex = 0;
+									if(sFrom.sensorData().cameraModels().size()>1)
+									{
+										float subImageWidth = sFrom.sensorData().cameraModels()[0].imageWidth();
+										cameraIndex = int(ptFrom.pt.x / subImageWidth);
+										ptFrom.pt.x = ptFrom.pt.x - (subImageWidth*float(cameraIndex));
+									}
+									
+									float depth = 0.0f;
+									depth = util3d::transformPoint(p, sFrom.sensorData().cameraModels()[cameraIndex].localTransform().inverse()).z;
+
+									wordReferences.at(wordId).insert(std::make_pair(sFrom.id(), FeatureBA(ptFrom, depth, descriptorFrom, cameraIndex)));
 									frameToWordMap.insert(std::make_pair(sFrom.id(), std::map<cv::KeyPoint, int, KeyPointCompare>()));
 									frameToWordMap.at(sFrom.id()).insert(std::make_pair(ptFrom, wordId));
 								}
@@ -705,17 +719,24 @@ void Optimizer::computeBACorrespondences(
 										UASSERT(indexTo < sTo.getWordsDescriptors().rows);
 										descriptorTo = sTo.getWordsDescriptors().row(indexTo);
 									}
+
+									int cameraIndex = 0;
+									if(sTo.sensorData().cameraModels().size()>1)
+									{
+										float subImageWidth = sTo.sensorData().cameraModels()[0].imageWidth();
+										cameraIndex = int(ptTo.pt.x / subImageWidth);
+										ptTo.pt.x = ptTo.pt.x - (subImageWidth*float(cameraIndex));
+									}
+
 									float depth = 0.0f;
 									if(!sTo.getWords3().empty())
 									{
 										UASSERT(indexTo < (int)sTo.getWords3().size());
 										const cv::Point3f & pt = sTo.getWords3()[indexTo];
-										if( pt.x > 0)
-										{
-											depth = pt.x;
-										}
+										depth = util3d::transformPoint(pt, sTo.sensorData().cameraModels()[cameraIndex].localTransform().inverse()).z;
 									}
-									wordReferences.at(wordId).insert(std::make_pair(sTo.id(), FeatureBA(ptTo, depth, descriptorTo)));
+
+									wordReferences.at(wordId).insert(std::make_pair(sTo.id(), FeatureBA(ptTo, depth, descriptorTo, cameraIndex)));
 									frameToWordMap.insert(std::make_pair(sTo.id(), std::map<cv::KeyPoint, int, KeyPointCompare>()));
 									frameToWordMap.at(sTo.id()).insert(std::make_pair(ptTo, wordId));
 								}

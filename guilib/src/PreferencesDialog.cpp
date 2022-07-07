@@ -7113,8 +7113,8 @@ void PreferencesDialog::calibrateOdomSensorExtrinsics()
 				if(odomSensorData.cameraModels().size() == 1) {
 					odomSensorModel = odomSensorData.cameraModels()[0];
 				}
-				else {
-					odomSensorModel = odomSensorData.stereoCameraModel().left();
+				else if(odomSensorData.stereoCameraModels().size() == 1) {
+					odomSensorModel = odomSensorData.stereoCameraModels()[0].left();
 				}
 				delete camera;
 
@@ -7138,8 +7138,8 @@ void PreferencesDialog::calibrateOdomSensorExtrinsics()
 				if(camData.cameraModels().size() == 1) {
 					cameraModel = camData.cameraModels()[0];
 				}
-				else {
-					cameraModel = camData.stereoCameraModel().left();
+				else if(camData.stereoCameraModels().size() == 1) {
+					cameraModel = camData.stereoCameraModels()[0].left();
 				}
 				delete camera;
 

@@ -122,7 +122,7 @@ private:
 
 	std::vector<ParticleFilter *> particleFilters_;
 	cv::KalmanFilter kalmanFilter_;
-	StereoCameraModel stereoModel_;
+	std::vector<StereoCameraModel> stereoModels_;
 	std::vector<CameraModel> models_;
 	std::map<double, Transform> imus_;
 

@@ -359,7 +359,8 @@ int main(int argc, char * argv[])
 				data.imageRaw().cols, data.imageRaw().rows, data.depthOrRightRaw().cols, data.depthOrRightRaw().rows);
 	}
 	pcl::visualization::CloudViewer * viewer = 0;
-	if(!data.stereoCameraModel().isValidForProjection() && (data.cameraModels().size() == 0 || !data.cameraModels()[0].isValidForProjection()))
+	if((data.stereoCameraModels().empty() || data.stereoCameraModels()[0].isValidForProjection()) &&
+	   (data.cameraModels().empty() || !data.cameraModels()[0].isValidForProjection()))
 	{
 		UWARN("Camera not calibrated! The registered cloud cannot be shown.");
 	}
@@ -465,7 +466,7 @@ int main(int argc, char * argv[])
 			cv::imshow("Left", rgb); // show frame
 			cv::imshow("Right", right);
 
-			if(rgb.cols == right.cols && rgb.rows == right.rows && data.stereoCameraModel().isValidForProjection())
+			if(rgb.cols == right.cols && rgb.rows == right.rows && data.stereoCameraModels().size()==1 && data.stereoCameraModels()[0].isValidForProjection())
 			{
 				if(right.channels() == 3)
 				{
@@ -473,8 +474,8 @@ int main(int argc, char * argv[])
 				}
 				pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = rtabmap::util3d::cloudFromStereoImages(
 						rgb, right,
-						data.stereoCameraModel());
-				cloud = rtabmap::util3d::transformPointCloud(cloud, rtabmap::Transform::opengl_T_rtabmap()*data.stereoCameraModel().localTransform());
+						data.stereoCameraModels()[0]);
+				cloud = rtabmap::util3d::transformPointCloud(cloud, rtabmap::Transform::opengl_T_rtabmap()*data.stereoCameraModels()[0].localTransform());
 				if(viewer)
 					viewer->showCloud(cloud, "cloud");
 			}

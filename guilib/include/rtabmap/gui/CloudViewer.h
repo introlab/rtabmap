@@ -200,6 +200,10 @@ public:
 			const Transform & pose,
 			const std::vector<CameraModel> & models);
 
+	void updateCameraFrustums(
+			const Transform & pose,
+			const std::vector<StereoCameraModel> & models);
+
 	void addOrUpdateCoordinate(
 			const std::string & id,
 			const Transform & transform,

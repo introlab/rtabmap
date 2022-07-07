@@ -73,7 +73,7 @@ private:
 	std::map<int, std::map<int, cv::Point3f> > keyFrameWords3D_;
 	std::map<int, Transform> keyFramePoses_;
 	std::multimap<int, Link> keyFrameLinks_;
-	std::map<int, CameraModel> keyFrameModels_;
+	std::map<int, std::vector<CameraModel> > keyFrameModels_;
 	float maxVariance_;
 	float keyFrameThr_;
 };
