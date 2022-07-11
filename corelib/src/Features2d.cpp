@@ -835,14 +835,17 @@ std::vector<cv::Point3f> Feature2D::generateKeypoints3D(
 				int subImageWith = imageMono.cols / data.stereoCameraModels().size();
 				UASSERT(imageMono.cols % subImageWith == 0);
 				std::vector<std::vector<cv::Point2f> > subLeftCorners(data.stereoCameraModels().size());
+				std::vector<std::vector<int> > subIndex(data.stereoCameraModels().size());
 				// Assign keypoints per camera
 				for(size_t i=0; i<leftCorners.size(); ++i)
 				{
 					int cameraIndex = int(leftCorners[i].x / subImageWith);
 					leftCorners[i].x -= cameraIndex*subImageWith;
 					subLeftCorners[cameraIndex].push_back(leftCorners[i]);
+					subIndex[cameraIndex].push_back(i);
 				}
 
+				keypoints3D.resize(keypoints.size());
 				for(size_t i=0; i<data.stereoCameraModels().size(); ++i)
 				{
 					if(!subLeftCorners[i].empty())
@@ -861,12 +864,14 @@ std::vector<cv::Point3f> Feature2D::generateKeypoints3D(
 								_minDepth,
 								_maxDepth);
 
-						keypoints3D.insert(keypoints3D.end(), subKeypoints3D.begin(), subKeypoints3D.end());
+						UASSERT(subIndex[i].size() == subKeypoints3D.size());
+						for(size_t j=0; j<subKeypoints3D.size(); ++j)
+						{
+							keypoints3D[subIndex[i][j]] = subKeypoints3D[j];
+						}
 					}
 				}
 			}
-
-
 		}
 		else if(!data.depthRaw().empty() && data.cameraModels().size())
 		{

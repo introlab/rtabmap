@@ -47,7 +47,7 @@ public:
 		descriptor(descriptorIn),
 		cameraIndex(cameraIndexIn)
 	{
-		UDEBUG("kpt=(%f,%f) depth=%f, camIndex=%d", kpt.pt.x, kpt.pt.y, depth, cameraIndex);
+		//UDEBUG("kpt=(%f,%f) depth=%f, camIndex=%d", kpt.pt.x, kpt.pt.y, depth, cameraIndex);
 	}
 	cv::KeyPoint kpt;
 	float depth;

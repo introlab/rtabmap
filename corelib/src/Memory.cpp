@@ -3005,7 +3005,8 @@ Transform Memory::computeTransform(
 											model.cx(),
 											model.cy(),
 											model.localTransform(),
-											-s->sensorData().stereoCameraModels()[i].baseline()*model.fx());
+											-s->sensorData().stereoCameraModels()[i].baseline()*model.fx(),
+											model.imageSize());
 									models.push_back(model);
 								}
 							}

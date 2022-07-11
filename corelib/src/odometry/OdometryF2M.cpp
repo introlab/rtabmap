@@ -367,7 +367,8 @@ Transform OdometryF2M::computeTransform(
 											model.cx(),
 											model.cy(),
 											model.localTransform(),
-											-lastFrame_->sensorData().stereoCameraModels()[i].baseline()*model.fx());
+											-lastFrame_->sensorData().stereoCameraModels()[i].baseline()*model.fx(),
+											model.imageSize());
 									models.push_back(model);
 								}
 							}
@@ -1246,7 +1247,8 @@ Transform OdometryF2M::computeTransform(
 										model.cx(),
 										model.cy(),
 										model.localTransform(),
-										-lastFrame_->sensorData().stereoCameraModels()[i].baseline()*model.fx());
+										-lastFrame_->sensorData().stereoCameraModels()[i].baseline()*model.fx(),
+										model.imageSize());
 								models.push_back(model);
 							}
 						}

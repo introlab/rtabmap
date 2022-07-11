@@ -188,7 +188,8 @@ Transform OdometryMono::computeTransform(SensorData & data, const Transform & gu
 				cameraModel.cx(),
 				cameraModel.cy(),
 				cameraModel.localTransform(),
-				-data.stereoCameraModels()[0].baseline()*cameraModel.fx());
+				-data.stereoCameraModels()[0].baseline()*cameraModel.fx(),
+				cameraModel.imageSize());
 	}
 	else
 	{

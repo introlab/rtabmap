@@ -1539,11 +1539,23 @@ Transform RegistrationVis::computeTransformationImpl(
 							}
 						}
 
-						if(signatureB->sensorData().cameraModels().size()>1)
+						std::vector<CameraModel> models;
+						if(signatureB->sensorData().stereoCameraModels().size())
+						{
+							for(size_t i=0; i<signatureB->sensorData().stereoCameraModels().size(); ++i)
+							{
+								models.push_back(signatureB->sensorData().stereoCameraModels()[i].left());
+							}
+						}
+						else
+						{
+							models = signatureB->sensorData().cameraModels();
+						}
+
+						if(models.size()>1)
 						{
 							// Multi-Camera
-							UASSERT(signatureB->sensorData().cameraModels()[0].isValidForProjection());
-							std::vector<CameraModel> models = signatureB->sensorData().cameraModels();
+							UASSERT(models[0].isValidForProjection());
 
 							transforms[dir] = util3d::estimateMotion3DTo2D(
 									words3A,
@@ -1564,14 +1576,12 @@ Transform RegistrationVis::computeTransformationImpl(
 						}
 						else
 						{
-							UASSERT((signatureB->sensorData().stereoCameraModels().size() == 1 && signatureB->sensorData().stereoCameraModels()[0].isValidForProjection()) ||
-									(signatureB->sensorData().cameraModels().size() == 1 && signatureB->sensorData().cameraModels()[0].isValidForProjection()));
-							const CameraModel & cameraModel = signatureB->sensorData().stereoCameraModels().size()?signatureB->sensorData().stereoCameraModels()[0].left():signatureB->sensorData().cameraModels()[0];
+							UASSERT(models.size() == 1 && models[0].isValidForProjection());
 
 							transforms[dir] = util3d::estimateMotion3DTo2D(
 									words3A,
 									wordsB,
-									cameraModel,
+									models[0],
 									_minInliers,
 									_iterations,
 									_PnPReprojError,
@@ -1754,14 +1764,15 @@ Transform RegistrationVis::computeTransformationImpl(
 			{
 				for(size_t i=0; i<fromSignature.sensorData().stereoCameraModels().size(); ++i)
 				{
-					CameraModel cameraModel = fromSignature.sensorData().stereoCameraModels()[0].left();
+					CameraModel cameraModel = fromSignature.sensorData().stereoCameraModels()[i].left();
 					// Set Tx=-baseline*fx for Stereo BA
 					cameraModel = CameraModel(cameraModel.fx(),
 							cameraModel.fy(),
 							cameraModel.cx(),
 							cameraModel.cy(),
 							cameraModel.localTransform(),
-							-fromSignature.sensorData().stereoCameraModels()[0].baseline()*cameraModel.fy());
+							-fromSignature.sensorData().stereoCameraModels()[0].baseline()*cameraModel.fx(),
+							cameraModel.imageSize());
 					cameraModelsFrom.push_back(cameraModel);
 				}
 			}
@@ -1775,14 +1786,15 @@ Transform RegistrationVis::computeTransformationImpl(
 			{
 				for(size_t i=0; i<toSignature.sensorData().stereoCameraModels().size(); ++i)
 				{
-					CameraModel cameraModel = toSignature.sensorData().stereoCameraModels()[0].left();
+					CameraModel cameraModel = toSignature.sensorData().stereoCameraModels()[i].left();
 					// Set Tx=-baseline*fx for Stereo BA
 					cameraModel = CameraModel(cameraModel.fx(),
 							cameraModel.fy(),
 							cameraModel.cx(),
 							cameraModel.cy(),
 							cameraModel.localTransform(),
-							-toSignature.sensorData().stereoCameraModels()[0].baseline()*cameraModel.fy());
+							-toSignature.sensorData().stereoCameraModels()[0].baseline()*cameraModel.fx(),
+							cameraModel.imageSize());
 					cameraModelsTo.push_back(cameraModel);
 				}
 			}

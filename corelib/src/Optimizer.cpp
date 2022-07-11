@@ -483,7 +483,8 @@ std::map<int, Transform> Optimizer::optimizeBA(
 							model.cx(),
 							model.cy(),
 							model.localTransform(),
-							-s.stereoCameraModels()[i].baseline()*model.fx()));
+							-s.stereoCameraModels()[i].baseline()*model.fx(),
+							model.imageSize()));
 				}
 			}
 			else
