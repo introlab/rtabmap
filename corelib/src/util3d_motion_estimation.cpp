@@ -41,9 +41,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #ifdef RTABMAP_OPENGV
 #include <opengv/absolute_pose/methods.hpp>
-#include <opengv/absolute_pose/NoncentralAbsoluteMultiAdapter.hpp>
-#include <opengv/sac/MultiRansac.hpp>
-#include <opengv/sac_problems/absolute_pose/MultiNoncentralAbsolutePoseSacProblem.hpp>
+#include <opengv/absolute_pose/NoncentralAbsoluteAdapter.hpp>
+#include <opengv/sac/Ransac.hpp>
+#include <opengv/sac_problems/absolute_pose/AbsolutePoseSacProblem.hpp>
 #endif
 
 namespace rtabmap
@@ -325,10 +325,6 @@ Transform estimateMotion3DTo2D(
 		// convert cameras
 		opengv::translations_t camOffsets;
 		opengv::rotations_t camRotations;
-		// convert 3d points
-		std::vector<std::shared_ptr<opengv::points_t> > multiPoints;
-		// convert 2d-3d correspondences into bearing vectors
-		std::vector<std::shared_ptr<opengv::bearingVectors_t> > multiBearingVectors;
 		for(size_t i=0; i<cameraModels.size(); ++i)
 		{
 			camOffsets.push_back(opengv::translation_t(
@@ -336,27 +332,29 @@ Transform estimateMotion3DTo2D(
 					cameraModels[i].localTransform().y(),
 					cameraModels[i].localTransform().z()));
 			camRotations.push_back(cameraModels[i].localTransform().toEigen4d().block<3,3>(0, 0));
-
-			multiPoints.push_back(std::make_shared<opengv::points_t>());
-			multiBearingVectors.push_back(std::make_shared<opengv::bearingVectors_t>());
 		}
 
-		std::vector<std::vector<int> > bearingIndexes(cameraModels.size());
+		// convert 3d points
+		opengv::points_t points;
+		// convert 2d-3d correspondences into bearing vectors
+		opengv::bearingVectors_t bearingVectors;
+		opengv::absolute_pose::NoncentralAbsoluteAdapter::camCorrespondences_t camCorrespondences;
 		for(size_t i=0; i<objectPoints.size(); ++i)
 		{
 			int cameraIndex = cameraIndexes[i];
-			multiPoints[cameraIndex]->push_back(opengv::point_t(objectPoints[i].x,objectPoints[i].y,objectPoints[i].z));
+			points.push_back(opengv::point_t(objectPoints[i].x,objectPoints[i].y,objectPoints[i].z));
 			cv::Vec3f pt;
 			cameraModels[cameraIndex].project(imagePoints[i].x, imagePoints[i].y, 1, pt[0], pt[1], pt[2]);
 			pt = cv::normalize(pt);
-			multiBearingVectors[cameraIndex]->push_back(opengv::bearingVector_t(pt[0], pt[1], pt[2]));
-			bearingIndexes[cameraIndex].push_back(i);
+			bearingVectors.push_back(opengv::bearingVector_t(pt[0], pt[1], pt[2]));
+			camCorrespondences.push_back(cameraIndex);
 		}
 
 		//create a non-central absolute adapter
-		opengv::absolute_pose::NoncentralAbsoluteMultiAdapter adapter(
-				multiBearingVectors,
-				multiPoints,
+		opengv::absolute_pose::NoncentralAbsoluteAdapter adapter(
+				bearingVectors,
+				camCorrespondences,
+				points,
 				camOffsets,
 				camRotations );
 
@@ -365,14 +363,14 @@ Transform estimateMotion3DTo2D(
 
 		//Create a AbsolutePoseSacProblem and Ransac
 		//The method is set to GP3P
-		opengv::sac::MultiRansac<opengv::sac_problems::absolute_pose::MultiNoncentralAbsolutePoseSacProblem> ransac;
-		std::shared_ptr<opengv::sac_problems::absolute_pose::MultiNoncentralAbsolutePoseSacProblem> absposeproblem_ptr(
-				new opengv::sac_problems::absolute_pose::MultiNoncentralAbsolutePoseSacProblem(adapter));
+		opengv::sac::Ransac<opengv::sac_problems::absolute_pose::AbsolutePoseSacProblem> ransac;
+		std::shared_ptr<opengv::sac_problems::absolute_pose::AbsolutePoseSacProblem> absposeproblem_ptr(
+				new opengv::sac_problems::absolute_pose::AbsolutePoseSacProblem(adapter, opengv::sac_problems::absolute_pose::AbsolutePoseSacProblem::GP3P));
 
 		ransac.sac_model_ = absposeproblem_ptr;
 		ransac.threshold_ = 1.0 - cos(atan(reprojError/cameraModels[0].fx()));
-		ransac.max_iterations_ = 100;
-		UDEBUG("Ransac params: threshold = %f, max iterations=%d", ransac.threshold_, ransac.max_iterations_);
+		ransac.max_iterations_ = iterations;
+		UDEBUG("Ransac params: threshold = %f (reprojError=%f fx=%f), max iterations=%d", ransac.threshold_, reprojError, cameraModels[0].fx(), ransac.max_iterations_);
 
 		//Run the experiment
 		ransac.computeModel();
@@ -381,18 +379,8 @@ Transform estimateMotion3DTo2D(
 
 		UDEBUG("Ransac result: %s", pnp.prettyPrint().c_str());
 		UDEBUG("Ransac iterations done: %d", ransac.iterations_);
-		size_t numberInliers = 0;
-		for(size_t i = 0; i < ransac.inliers_.size(); i++)
-		{
-		    numberInliers += ransac.inliers_[i].size();
-		    for(size_t j = 0; j < ransac.inliers_[i].size(); j++)
-		    {
-		          inliers.push_back(bearingIndexes[i][ransac.inliers_[i][j]]);
-		          //std::cout << matches[bearingIndexes[i][ransac.inliers_[i][j]]] << " ";
-		    }
-		    //std::cout << std::endl;
-		}
-		UDEBUG("Ransac inliers: %ld", numberInliers);
+		inliers = ransac.inliers_;
+		UDEBUG("Ransac inliers: %ld", inliers.size());
 
 		if((int)inliers.size() >= minInliers)
 		{

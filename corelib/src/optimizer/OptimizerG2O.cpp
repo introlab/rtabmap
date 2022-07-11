@@ -1692,7 +1692,7 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 		}
 
 		UDEBUG("fill 3D points to g2o...");
-		const int stepVertexId = poses.rbegin()->first*MULTICAM_OFFSET+1;
+		const int stepVertexId = poses.rbegin()->first*MULTICAM_OFFSET+MULTICAM_OFFSET;
 		int negVertexOffset = stepVertexId;
 		if(wordReferences.size() && wordReferences.rbegin()->first>0)
 		{
