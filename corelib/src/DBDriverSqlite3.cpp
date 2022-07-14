@@ -1448,7 +1448,7 @@ void DBDriverSqlite3::loadNodeDataQuery(std::list<Signature *> & signatures, boo
 				cv::Mat imageCompressed;
 				cv::Mat depthOrRightCompressed;
 				std::vector<CameraModel> models;
-				StereoCameraModel stereoModel;
+				std::vector<StereoCameraModel> stereoModels;
 				Transform localTransform = Transform::getIdentity();
 				cv::Mat scanCompressed;
 				cv::Mat userDataCompressed;
@@ -1515,8 +1515,16 @@ void DBDriverSqlite3::loadNodeDataQuery(std::list<Signature *> & signatures, boo
 									}
 									else if(type == 1) // stereo
 									{
-										int bytesRead = (int)stereoModel.deserialize((unsigned char*)data, dataSize);
-										UASSERT(bytesRead == dataSize);
+										StereoCameraModel model;
+										int bytesReadTotal = 0;
+										unsigned int bytesRead = 0;
+										while(bytesReadTotal < dataSize &&
+											  (bytesRead=model.deserialize((const unsigned char *)data+bytesReadTotal, dataSize-bytesReadTotal))!=0)
+										{
+											bytesReadTotal+=bytesRead;
+											stereoModels.push_back(model);
+										}
+										UASSERT(bytesReadTotal == dataSize);
 									}
 									else
 									{
@@ -1589,14 +1597,14 @@ void DBDriverSqlite3::loadNodeDataQuery(std::list<Signature *> & signatures, boo
 									{
 										localTransform.normalizeRotation();
 									}
-									stereoModel = StereoCameraModel(
+									stereoModels.push_back(StereoCameraModel(
 											dataFloat[0],  // fx
 											dataFloat[1],  // fy
 											dataFloat[2],  // cx
 											dataFloat[3],  // cy
 											dataFloat[4], // baseline
 											localTransform,
-											cv::Size(dataFloat[5],dataFloat[6]));
+											cv::Size(dataFloat[5],dataFloat[6])));
 								}
 								else if((unsigned int)dataSize == (5+localTransform.size())*sizeof(float))
 								{
@@ -1606,13 +1614,13 @@ void DBDriverSqlite3::loadNodeDataQuery(std::list<Signature *> & signatures, boo
 									{
 										localTransform.normalizeRotation();
 									}
-									stereoModel = StereoCameraModel(
+									stereoModels.push_back(StereoCameraModel(
 											dataFloat[0],  // fx
 											dataFloat[1],  // fy
 											dataFloat[2],  // cx
 											dataFloat[3],  // cy
 											dataFloat[4], // baseline
-											localTransform);
+											localTransform));
 								}
 								else
 								{
@@ -1632,7 +1640,7 @@ void DBDriverSqlite3::loadNodeDataQuery(std::list<Signature *> & signatures, boo
 						if(fyOrBaseline < 1.0)
 						{
 							//it is a baseline
-							stereoModel = StereoCameraModel(fx,fx,cx,cy,fyOrBaseline, localTransform);
+							stereoModels.push_back(StereoCameraModel(fx,fx,cx,cy,fyOrBaseline, localTransform));
 						}
 						else
 						{
@@ -1818,7 +1826,7 @@ void DBDriverSqlite3::loadNodeDataQuery(std::list<Signature *> & signatures, boo
 					}
 					else
 					{
-						(*iter)->sensorData().setStereoImage(imageCompressed, depthOrRightCompressed, stereoModel);
+						(*iter)->sensorData().setStereoImage(imageCompressed, depthOrRightCompressed, stereoModels);
 					}
 				}
 				if(userData)
@@ -3286,7 +3294,7 @@ void DBDriverSqlite3::loadSignaturesQuery(const std::list<int> & ids, std::list<
 					int dataSize = 0;
 					Transform localTransform;
 					std::vector<CameraModel> models;
-					StereoCameraModel stereoModel;
+					std::vector<StereoCameraModel> stereoModels;
 
 					// calibration
 					data = sqlite3_column_blob(ppStmt, index);
@@ -3316,8 +3324,16 @@ void DBDriverSqlite3::loadSignaturesQuery(const std::list<int> & ids, std::list<
 								}
 								else if(type == 1) // stereo
 								{
-									int bytesRead = (int)stereoModel.deserialize((unsigned char*)data, dataSize);
-									UASSERT(bytesRead == dataSize);
+									StereoCameraModel model;
+									int bytesReadTotal = 0;
+									unsigned int bytesRead = 0;
+									while(bytesReadTotal < dataSize &&
+										  (bytesRead=model.deserialize((const unsigned char *)data+bytesReadTotal, dataSize-bytesReadTotal))!=0)
+									{
+										bytesReadTotal+=bytesRead;
+										stereoModels.push_back(model);
+									}
+									UASSERT(bytesReadTotal == dataSize);
 								}
 								else
 								{
@@ -3391,14 +3407,14 @@ void DBDriverSqlite3::loadSignaturesQuery(const std::list<int> & ids, std::list<
 								{
 									localTransform.normalizeRotation();
 								}
-								stereoModel = StereoCameraModel(
+								stereoModels.push_back(StereoCameraModel(
 										dataFloat[0],  // fx
 										dataFloat[1],  // fy
 										dataFloat[2],  // cx
 										dataFloat[3],  // cy
 										dataFloat[4], // baseline
 										localTransform,
-										cv::Size(dataFloat[5], dataFloat[6]));
+										cv::Size(dataFloat[5], dataFloat[6])));
 							}
 							else if((unsigned int)dataSize == (5+localTransform.size())*sizeof(float))
 							{
@@ -3408,13 +3424,13 @@ void DBDriverSqlite3::loadSignaturesQuery(const std::list<int> & ids, std::list<
 								{
 									localTransform.normalizeRotation();
 								}
-								stereoModel = StereoCameraModel(
+								stereoModels.push_back(StereoCameraModel(
 										dataFloat[0],  // fx
 										dataFloat[1],  // fy
 										dataFloat[2],  // cx
 										dataFloat[3],  // cy
 										dataFloat[4], // baseline
-										localTransform);
+										localTransform));
 							}
 							else
 							{
@@ -3423,7 +3439,7 @@ void DBDriverSqlite3::loadSignaturesQuery(const std::list<int> & ids, std::list<
 						}
 
 						(*iter)->sensorData().setCameraModels(models);
-						(*iter)->sensorData().setStereoCameraModel(stereoModel);
+						(*iter)->sensorData().setStereoCameraModels(stereoModels);
 					}
 					rc = sqlite3_step(ppStmt);
 				}

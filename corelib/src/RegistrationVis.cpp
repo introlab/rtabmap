@@ -1853,7 +1853,6 @@ Transform RegistrationVis::computeTransformationImpl(
 					const std::vector<CameraModel> & cam = models.at(2);
 					if(cam.size()>1)
 					{
-						UDEBUG("");
 						UASSERT(cam[0].imageWidth()>0);
 						float subImageWidth = cam[0].imageWidth();
 						cameraIndex = int(kpt.pt.x / subImageWidth);

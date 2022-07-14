@@ -4701,20 +4701,17 @@ void DatabaseViewer::update(int value,
 
 						for(unsigned int i=0; i<data.stereoCameraModels().size();++i)
 						{
-							if(i!=0) calibrationDetails << std::endl;
 							calibrationDetails << "Id: " << i << std::endl;
 							calibrationDetails << " Left:" << " Size=" << data.stereoCameraModels()[i].left().imageWidth() << "x" << data.stereoCameraModels()[i].left().imageHeight() << std::endl;
 							if( data.stereoCameraModels()[i].left().K_raw().total()) calibrationDetails << " K=" << data.stereoCameraModels()[i].left().K_raw() << std::endl;
 							if( data.stereoCameraModels()[i].left().D_raw().total()) calibrationDetails << " D=" << data.stereoCameraModels()[i].left().D_raw() << std::endl;
 							if( data.stereoCameraModels()[i].left().R().total()) calibrationDetails << " R=" << data.stereoCameraModels()[i].left().R() << std::endl;
 							if( data.stereoCameraModels()[i].left().P().total()) calibrationDetails << " P=" << data.stereoCameraModels()[i].left().P() << std::endl;
-							calibrationDetails << std::endl;
 							calibrationDetails << " Right:" << " Size=" << data.stereoCameraModels()[i].right().imageWidth() << "x" << data.stereoCameraModels()[i].right().imageHeight() << std::endl;
 							if( data.stereoCameraModels()[i].right().K_raw().total()) calibrationDetails << " K=" << data.stereoCameraModels()[i].right().K_raw() << std::endl;
 							if( data.stereoCameraModels()[i].right().D_raw().total()) calibrationDetails << " D=" << data.stereoCameraModels()[i].right().D_raw() << std::endl;
 							if( data.stereoCameraModels()[i].right().R().total()) calibrationDetails << " R=" << data.stereoCameraModels()[i].right().R() << std::endl;
 							if( data.stereoCameraModels()[i].right().P().total()) calibrationDetails << " P=" << data.stereoCameraModels()[i].right().P() << std::endl;
-							calibrationDetails << std::endl;
 							if( data.stereoCameraModels()[i].R().total()) calibrationDetails << " R=" << data.stereoCameraModels()[i].R() << std::endl;
 							if( data.stereoCameraModels()[i].T().total()) calibrationDetails << " T=" << data.stereoCameraModels()[i].T() << std::endl;
 							if( data.stereoCameraModels()[i].F().total()) calibrationDetails << " F=" << data.stereoCameraModels()[i].F() << std::endl;
