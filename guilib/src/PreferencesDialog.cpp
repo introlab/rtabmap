@@ -1919,8 +1919,8 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->source_checkBox_ignoreOdometry->setChecked(false);
 		_ui->source_checkBox_ignoreGoalDelay->setChecked(true);
 		_ui->source_checkBox_ignoreGoals->setChecked(true);
-		_ui->source_checkBox_ignoreLandmarks->setChecked(false);
-		_ui->source_checkBox_ignoreFeatures->setChecked(false);
+		_ui->source_checkBox_ignoreLandmarks->setChecked(true);
+		_ui->source_checkBox_ignoreFeatures->setChecked(true);
 		_ui->source_spinBox_databaseStartId->setValue(0);
 		_ui->source_spinBox_databaseStopId->setValue(0);
 		_ui->source_spinBox_database_cameraIndex->setValue(-1);
@@ -5886,9 +5886,6 @@ Camera * PreferencesDialog::createCamera(bool useRawImages, bool useColor)
 		this->getSourceDriver(), 
 		_ui->lineEdit_sourceDevice->text(), 
 		_ui->lineEdit_calibrationFile->text(), 
-		(this->getSourceDriver()>=kSrcStereo && 
-		 this->getSourceDriver()<kSrcRGB && 
-		 _ui->checkBox_stereo_rectify->isEnabled() && !_ui->checkBox_stereo_rectify->isChecked()) || 
 		useRawImages, 
 		useColor, 
 		false,
@@ -6049,7 +6046,7 @@ Camera * PreferencesDialog::createCamera(
 			((CameraRealSense2*)camera)->publishInterIMU(_ui->checkbox_publishInterIMU->isChecked());
 			if(driver == kSrcStereoRealSense2)
 			{
-				((CameraRealSense2*)camera)->setImagesRectified(!useRawImages);
+				((CameraRealSense2*)camera)->setImagesRectified((_ui->checkBox_stereo_rectify->isEnabled() && _ui->checkBox_stereo_rectify->isChecked()) && !useRawImages);
 				((CameraRealSense2*)camera)->setOdomProvided(_ui->comboBox_odom_sensor->currentIndex() == 1 || odomOnly, odomOnly, odomSensorExtrinsicsCalib);
 			}
 			else
@@ -6148,7 +6145,7 @@ Camera * PreferencesDialog::createCamera(
 		camera = new CameraStereoImages(
 			_ui->lineEdit_cameraStereoImages_path_left->text().append(QDir::separator()).toStdString(),
 			_ui->lineEdit_cameraStereoImages_path_right->text().append(QDir::separator()).toStdString(),
-			!useRawImages,
+			(_ui->checkBox_stereo_rectify->isEnabled() && _ui->checkBox_stereo_rectify->isChecked()) && !useRawImages,
 			this->getGeneralInputRate(),
 			this->getSourceLocalTransform());
 		((CameraStereoImages*)camera)->setStartIndex(_ui->spinBox_cameraStereoImages_startIndex->value());
@@ -6175,7 +6172,7 @@ Camera * PreferencesDialog::createCamera(
 			camera = new CameraStereoVideo(
 				device.isEmpty() ? 0 : atoi(device.toStdString().c_str()),
 				_ui->spinBox_stereo_right_device->value(),
-				!useRawImages,
+				(_ui->checkBox_stereo_rectify->isEnabled() && _ui->checkBox_stereo_rectify->isChecked()) && !useRawImages,
 				this->getGeneralInputRate(),
 				this->getSourceLocalTransform());
 		}
@@ -6183,7 +6180,7 @@ Camera * PreferencesDialog::createCamera(
 		{
 			camera = new CameraStereoVideo(
 				device.isEmpty() ? 0 : atoi(device.toStdString().c_str()),
-				!useRawImages,
+				(_ui->checkBox_stereo_rectify->isEnabled() && _ui->checkBox_stereo_rectify->isChecked()) && !useRawImages,
 				this->getGeneralInputRate(),
 				this->getSourceLocalTransform());
 		}
@@ -6197,7 +6194,7 @@ Camera * PreferencesDialog::createCamera(
 			camera = new CameraStereoVideo(
 					_ui->lineEdit_cameraStereoVideo_path->text().toStdString(),
 					_ui->lineEdit_cameraStereoVideo_path_2->text().toStdString(),
-					!useRawImages,
+					(_ui->checkBox_stereo_rectify->isEnabled() && _ui->checkBox_stereo_rectify->isChecked()) && !useRawImages,
 					this->getGeneralInputRate(),
 					this->getSourceLocalTransform());
 		}
@@ -6206,7 +6203,7 @@ Camera * PreferencesDialog::createCamera(
 			// side-by-side video
 			camera = new CameraStereoVideo(
 					_ui->lineEdit_cameraStereoVideo_path->text().toStdString(),
-					!useRawImages,
+					(_ui->checkBox_stereo_rectify->isEnabled() && _ui->checkBox_stereo_rectify->isChecked()) && !useRawImages,
 					this->getGeneralInputRate(),
 					this->getSourceLocalTransform());
 		}
@@ -6217,7 +6214,7 @@ Camera * PreferencesDialog::createCamera(
 
             camera = new CameraStereoTara(
                 device.isEmpty()?0:atoi(device.toStdString().c_str()),
-                !useRawImages,
+                (_ui->checkBox_stereo_rectify->isEnabled() && _ui->checkBox_stereo_rectify->isChecked()) && !useRawImages,
                 this->getGeneralInputRate(),
                 this->getSourceLocalTransform());
 
@@ -6280,7 +6277,7 @@ Camera * PreferencesDialog::createCamera(
 	{
 		camera = new CameraVideo(
 			device.isEmpty()?0:atoi(device.toStdString().c_str()),
-			!useRawImages,
+			(_ui->checkBox_rgb_rectify->isEnabled() && _ui->checkBox_rgb_rectify->isChecked()) && !useRawImages,
 			this->getGeneralInputRate(),
 			this->getSourceLocalTransform());
 		((CameraVideo*)camera)->setResolution(_ui->spinBox_usbcam_streamWidth->value(), _ui->spinBox_usbcam_streamHeight->value());
@@ -6289,7 +6286,7 @@ Camera * PreferencesDialog::createCamera(
 	{
 		camera = new CameraVideo(
 			_ui->source_video_lineEdit_path->text().toStdString(),
-			!useRawImages,
+			(_ui->checkBox_rgb_rectify->isEnabled() && _ui->checkBox_rgb_rectify->isChecked()) && !useRawImages,
 			this->getGeneralInputRate(),
 			this->getSourceLocalTransform());
 	}
@@ -6302,7 +6299,7 @@ Camera * PreferencesDialog::createCamera(
 
 		((CameraImages*)camera)->setStartIndex(_ui->source_images_spinBox_startPos->value());
 		((CameraImages*)camera)->setMaxFrames(_ui->source_images_spinBox_maxFrames->value());
-		((CameraImages*)camera)->setImagesRectified(!useRawImages);
+		((CameraImages*)camera)->setImagesRectified((_ui->checkBox_rgb_rectify->isEnabled() && _ui->checkBox_rgb_rectify->isChecked()) && !useRawImages);
 
 		((CameraImages*)camera)->setBayerMode(_ui->comboBox_cameraImages_bayerMode->currentIndex()-1);
 		((CameraImages*)camera)->setOdometryPath(
@@ -6365,6 +6362,7 @@ Camera * PreferencesDialog::createCamera(
 			}
 		}
 
+		UDEBUG("useRawImages=%d dir=%s", useRawImages?1:0, dir.toStdString().c_str());
 		// don't set calibration folder if we want raw images
 		if(!camera->init(useRawImages?"":dir.toStdString(), name.toStdString()))
 		{

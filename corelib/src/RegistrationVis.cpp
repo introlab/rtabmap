@@ -811,6 +811,19 @@ Transform RegistrationVis::computeTransformationImpl(
 				for(size_t i=0; i<models.size() && isCalibrated; ++i)
 				{
 					isCalibrated = models[i].isValidForProjection();
+
+					// For old database formats
+					if(isCalibrated && (models[i].imageWidth()==0 || models[i].imageHeight()==0))
+					{
+						if(!toSignature.sensorData().imageRaw().empty())
+						{
+							models[i].setImageSize(cv::Size(toSignature.sensorData().imageRaw().cols/models.size(), toSignature.sensorData().imageRaw().rows));
+						}
+						else
+						{
+							isCalibrated = false;
+						}
+					}
 				}
 
 				// If guess is set, limit the search of matches using optical flow window size
