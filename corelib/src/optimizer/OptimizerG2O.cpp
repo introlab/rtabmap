@@ -1726,7 +1726,7 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 				vpt3d->setMarginalized(true);
 				optimizer.addVertex(vpt3d);
 
-				UDEBUG("Added 3D point %d (%f,%f,%f)", vpt3d->id()-stepVertexId, pt3d.x, pt3d.y, pt3d.z);
+				//UDEBUG("Added 3D point %d (%f,%f,%f)", vpt3d->id()-stepVertexId, pt3d.x, pt3d.y, pt3d.z);
 
 				// set observations
 				for(std::map<int, FeatureBA>::const_iterator jter=iter->second.begin(); jter!=iter->second.end(); ++jter)
@@ -1739,7 +1739,7 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 						const FeatureBA & pt = jter->second;
 						double depth = pt.depth;
 
-						UDEBUG("Added observation pt=%d to cam=%d (%d,%d) depth=%f (camIndex=%d)", vpt3d->id()-stepVertexId, camId, (int)pt.kpt.pt.x, (int)pt.kpt.pt.y, depth, camIndex);
+						//UDEBUG("Added observation pt=%d to cam=%d (%d,%d) depth=%f (camIndex=%d)", vpt3d->id()-stepVertexId, camId, (int)pt.kpt.pt.x, (int)pt.kpt.pt.y, depth, camIndex);
 
 						g2o::OptimizableGraph::Edge * e;
 						double baseline = 0.0;
@@ -1873,13 +1873,13 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 						{
 							d = ((g2o::EdgeStereoSE3ProjectXYZ*)(*iter))->measurement()[0]-((g2o::EdgeStereoSE3ProjectXYZ*)(*iter))->measurement()[2];
 						}
-						UDEBUG("Ignoring edge (%d<->%d) d=%f var=%f kernel=%f chi2=%f", (*iter)->vertex(0)->id()-stepVertexId, (*iter)->vertex(1)->id(), d, 1.0/((g2o::EdgeStereoSE3ProjectXYZ*)(*iter))->information()(0,0), (*iter)->robustKernel()->delta(), (*iter)->chi2());
+						//UDEBUG("Ignoring edge (%d<->%d) d=%f var=%f kernel=%f chi2=%f", (*iter)->vertex(0)->id()-stepVertexId, (*iter)->vertex(1)->id(), d, 1.0/((g2o::EdgeStereoSE3ProjectXYZ*)(*iter))->information()(0,0), (*iter)->robustKernel()->delta(), (*iter)->chi2());
 #else
 						if(dynamic_cast<g2o::EdgeProjectP2SC*>(*iter) != 0)
 						{
 							d = ((g2o::EdgeProjectP2SC*)(*iter))->measurement()[0]-((g2o::EdgeProjectP2SC*)(*iter))->measurement()[2];
 						}
-						UDEBUG("Ignoring edge (%d<->%d) d=%f var=%f kernel=%f chi2=%f", (*iter)->vertex(0)->id()-stepVertexId, (*iter)->vertex(1)->id(), d, 1.0/((g2o::EdgeProjectP2SC*)(*iter))->information()(0,0), (*iter)->robustKernel()->delta(), (*iter)->chi2());
+						//UDEBUG("Ignoring edge (%d<->%d) d=%f var=%f kernel=%f chi2=%f", (*iter)->vertex(0)->id()-stepVertexId, (*iter)->vertex(1)->id(), d, 1.0/((g2o::EdgeProjectP2SC*)(*iter))->information()(0,0), (*iter)->robustKernel()->delta(), (*iter)->chi2());
 #endif
 
 						cv::Point3f pt3d;

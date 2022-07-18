@@ -795,6 +795,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->comboBox_depthai_resolution, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->checkBox_depthai_depth, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->spinBox_depthai_confidence, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->checkBox_depthai_imu_firmware_update, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 
 	connect(_ui->checkbox_rgbd_colorOnly, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->spinBox_source_imageDecimation, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
@@ -2039,6 +2040,7 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->comboBox_depthai_resolution->setCurrentIndex(1);
 		_ui->checkBox_depthai_depth->setChecked(false);
 		_ui->spinBox_depthai_confidence->setValue(200);
+		_ui->checkBox_depthai_imu_firmware_update->setChecked(false);
 
 		_ui->checkBox_cameraImages_configForEachFrame->setChecked(false);
 		_ui->checkBox_cameraImages_timestamps->setChecked(false);
@@ -2519,6 +2521,7 @@ void PreferencesDialog::readCameraSettings(const QString & filePath)
 	_ui->comboBox_depthai_resolution->setCurrentIndex(settings.value("resolution", _ui->comboBox_depthai_resolution->currentIndex()).toInt());
 	_ui->checkBox_depthai_depth->setChecked(settings.value("depth", _ui->checkBox_depthai_depth->isChecked()).toBool());
 	_ui->spinBox_depthai_confidence->setValue(settings.value("confidence", _ui->spinBox_depthai_confidence->value()).toInt());
+	_ui->checkBox_depthai_imu_firmware_update->setChecked(settings.value("imu_firmware_update", _ui->checkBox_depthai_imu_firmware_update->isChecked()).toBool());
 	settings.endGroup(); // DepthAI
 
 	settings.beginGroup("Images");
@@ -3041,6 +3044,7 @@ void PreferencesDialog::writeCameraSettings(const QString & filePath) const
 	settings.setValue("resolution",    _ui->comboBox_depthai_resolution->currentIndex());
 	settings.setValue("depth",         _ui->checkBox_depthai_depth->isChecked());
 	settings.setValue("confidence",    _ui->spinBox_depthai_confidence->value());
+	settings.setValue("imu_firmware_update", _ui->checkBox_depthai_imu_firmware_update->isChecked());
 	settings.endGroup(); // DepthAI
 
 	settings.beginGroup("Images");
@@ -6272,6 +6276,7 @@ Camera * PreferencesDialog::createCamera(
 			this->getGeneralInputRate(),
 			this->getSourceLocalTransform());
 		((CameraDepthAI*)camera)->setOutputDepth(_ui->checkBox_depthai_depth->isChecked(), _ui->spinBox_depthai_confidence->value());
+		((CameraDepthAI*)camera)->setIMUFirmwareUpdate(_ui->checkBox_depthai_imu_firmware_update->isChecked());
 	}
 	else if(driver == kSrcUsbDevice)
 	{
