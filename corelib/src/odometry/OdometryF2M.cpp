@@ -734,7 +734,8 @@ Transform OdometryF2M::computeTransform(
 
 					int lastFrameOldestNewId = lastFrameOldestNewId_;
 					lastFrameOldestNewId_ = lastFrame_->getWords().size()?lastFrame_->getWords().rbegin()->first:0;
-					const std::vector<CameraModel> & cam = bundleModels.at(lastFrame_->id());
+					const std::vector<CameraModel> * cam = bundleModels.find(lastFrame_->id()) != bundleModels.end()?&bundleModels.at(lastFrame_->id()):0;
+					UASSERT(bundleAdjustment_ == 0 || cam);
 					for(std::multimap<float, std::pair<int, std::pair<cv::KeyPoint, std::pair<cv::Point3f, std::pair<cv::Mat, int> > > > >::reverse_iterator iter=newIds.rbegin();
 						iter!=newIds.rend();
 						++iter)
@@ -753,7 +754,7 @@ Transform OdometryF2M::computeTransform(
 									int cameraIndex = iter->second.second.second.second.second;
 									if(util3d::isFinite(iter->second.second.second.first))
 									{
-										depth = util3d::transformPoint(iter->second.second.second.first, cam[cameraIndex].localTransform().inverse()).z;
+										depth = util3d::transformPoint(iter->second.second.second.first, (*cam)[cameraIndex].localTransform().inverse()).z;
 									}
 									if(bundleWordReferences_.find(iter->second.first) == bundleWordReferences_.end())
 									{
@@ -821,6 +822,7 @@ Transform OdometryF2M::computeTransform(
 							++added;
 						}
 					}
+					UDEBUG("");
 
 					// remove words in map if max size is reached
 					if((int)mapWords.size() > maximumMapSize_)
