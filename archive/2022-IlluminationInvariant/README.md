@@ -9,7 +9,7 @@
 
 ## Description
 
-This folder contains scripts to re-generate results from the paper. The main idea behind this work is that using Multi-Session mapping can help to localize visually in illumination changing environments even with features that are not very robust to such conditions. We compared common hand-made visual features like SIFT, SURF, BRIEF, BRISK, FREAK, DAISY, KAZE with learned descriptor SuperPoint. The following picture show how robust are the visual features tested when localizing against single session recorded at different time. For example, the bottom-left and top-right cells are when the robot tries to localize the night on a map taken the day or vice-versa. The diagonal is localization performance when the localization session is about the same time than when the map was recorded. SuperPoint has clearly an advantage on this single-session experiment.
+This folder contains scripts to re-generate results from the paper. The main idea behind this work is that using multi-session mapping can help to localize visually in illumination changing environments even with features that are not very robust to such conditions. We compared common hand-made visual features like SIFT, SURF, BRIEF, BRISK, FREAK, DAISY, KAZE with learned descriptor SuperPoint. The following picture show how robust are the visual features tested when localizing against single session recorded at different time. For example, the bottom-left and top-right cells are when the robot tries to localize the night on a map taken the day or vice-versa. The diagonal is localization performance when the localization session is about the same time than when the map was recorded. SuperPoint has clearly an advantage on this single-session experiment.
 
 ![All sessions](https://github.com/introlab/rtabmap/raw/master/archive/2022-IlluminationInvariant/images/fig_single_percentage.jpg)
 
@@ -29,8 +29,8 @@ We provide two formats: the first one is more general and the second one is used
   * `rgb`: folder containing *.jpg color camera images
   * `depth`: folder containing *.png 16bits mm depth images
   * `calib`: folder containing calibration for each color image. Each calibration contains also the transform between `device` and `camera` frames as `local_transform`.
-  * `device_poses.txt`: VIO poses of of each image in `device` frame
-  * `camera_poses.txt`: VIO poses of of each image in `camera` frame
+  * `device_poses.txt`: VIO poses of each image in `device` frame
+  * `camera_poses.txt`: VIO poses of each image in `camera` frame
 * [RTAB-Map Databases](https://usherbrooke-my.sharepoint.com/:u:/g/personal/labm2414_usherbrooke_ca/EU5fb0jEKzlGhPK3OWjMGLUBnDo1BRAoZwtB2czyeVLE_A?e=Y0JyXY)
 
 
