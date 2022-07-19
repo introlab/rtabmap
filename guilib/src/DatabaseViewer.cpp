@@ -1546,7 +1546,7 @@ void DatabaseViewer::extractImages()
 						for(size_t i=0; i<data.stereoCameraModels().size(); ++i)
 						{
 							std::string cameraName = id.toStdString();
-							if(data.cameraModels().size()>1)
+							if(data.stereoCameraModels().size()>1)
 							{
 								cameraName+="_"+uNumber2Str((int)i);
 							}

@@ -3874,7 +3874,7 @@ std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::Indic
 							util3d::transformPointCloud(cloud, iter->second),
 							indices,
 							"z",
-							min!=0.0f&&min<max?min:std::numeric_limits<int>::min(),
+							min!=0.0f&&(min<max || max==0.0f)?min:std::numeric_limits<int>::min(),
 							max!=0.0f?max:std::numeric_limits<int>::max());
 				}
 				if(!indices->empty() &&

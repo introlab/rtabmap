@@ -1525,7 +1525,7 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 					// negative root means that all other poses should be fixed instead of the root
 					vCam->setFixed((rootId >= 0 && iter->first == rootId) || (rootId < 0 && iter->first != -rootId));
 
-					UDEBUG("camPose %d (camid=%d) (fixed=%d) fx=%f fy=%f cx=%f cy=%f Tx=%f baseline=%f t=%s",
+					/*UDEBUG("camPose %d (camid=%d) (fixed=%d) fx=%f fy=%f cx=%f cy=%f Tx=%f baseline=%f t=%s",
 							iter->first,
 							vCam->id(),
 							vCam->fixed()?1:0,
@@ -1535,7 +1535,7 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 							iterModel->second[i].cy(),
 							iterModel->second[i].Tx(),
 							iterModel->second[i].Tx()<0.0?-iterModel->second[i].Tx()/iterModel->second[i].fx():baseline_,
-							camPose.prettyPrint().c_str());
+							camPose.prettyPrint().c_str());*/
 
 					UASSERT_MSG(optimizer.addVertex(vCam), uFormat("cannot insert cam vertex %d (pose=%d)!?", vCam->id(), iter->first).c_str());
 				}
@@ -1601,12 +1601,12 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 
 					// between cameras, not base_link
 					Transform camLink = models.at(id1)[0].localTransform().inverse()*iter->second.transform()*models.at(id2)[0].localTransform();
-					UDEBUG("added edge %d->%d (camIDs %d->%d) (in cam frame=%s)",
+					/*UDEBUG("added edge %d->%d (camIDs %d->%d) (in cam frame=%s)",
 							id1,
 							id2,
 							id1*MULTICAM_OFFSET,
 							id2*MULTICAM_OFFSET,
-							camLink.prettyPrint().c_str());
+							camLink.prettyPrint().c_str());*/
 #ifdef RTABMAP_ORB_SLAM
 					EdgeSE3Expmap * e = new EdgeSE3Expmap();
 					g2o::VertexSE3Expmap* v1 = (g2o::VertexSE3Expmap*)optimizer.vertex(id1*MULTICAM_OFFSET);
@@ -1667,11 +1667,11 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 					g2o::VertexCam* v1 = (g2o::VertexCam*)optimizer.vertex(id*MULTICAM_OFFSET);
 					g2o::VertexCam* v2 = (g2o::VertexCam*)optimizer.vertex(id*MULTICAM_OFFSET+i);
 #endif
-					UDEBUG("added edge between subcam 0->%d id:%d->%d (in cam frame=%s)",
+					/*UDEBUG("added edge between subcam 0->%d id:%d->%d (in cam frame=%s)",
 							i,
 							v1->id(),
 							v2->id(),
-							camLink.prettyPrint().c_str());
+							camLink.prettyPrint().c_str());*/
 
 					UASSERT(v1 != 0);
 					UASSERT(v2 != 0);

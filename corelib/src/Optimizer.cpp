@@ -586,9 +586,10 @@ void Optimizer::computeBACorrespondences(
 			{
 				Signature sTo = signatures.at(link.to());
 
-				if(sFrom.sensorData().cameraModels().empty() || sTo.sensorData().cameraModels().empty())
+				if((sFrom.sensorData().cameraModels().empty() && sFrom.sensorData().stereoCameraModels().empty()) ||
+				   (sTo.sensorData().cameraModels().empty() && sTo.sensorData().stereoCameraModels().empty()))
 				{
-					UERROR("No camera models found (stereo not implemented)");
+					UERROR("No camera models found");
 					continue;
 				}
 
@@ -697,15 +698,24 @@ void Optimizer::computeBACorrespondences(
 										descriptorFrom = sFrom.getWordsDescriptors().row(indexFrom);
 									}
 									int cameraIndex = 0;
-									if(sFrom.sensorData().cameraModels().size()>1)
+									if(sFrom.sensorData().cameraModels().size()>1 || sFrom.sensorData().stereoCameraModels().size()>1)
 									{
-										float subImageWidth = sFrom.sensorData().cameraModels()[0].imageWidth();
+										float subImageWidth = sFrom.sensorData().cameraModels().size()>1?sFrom.sensorData().cameraModels()[0].imageWidth():sFrom.sensorData().stereoCameraModels()[0].left().imageWidth();
 										cameraIndex = int(ptFrom.pt.x / subImageWidth);
 										ptFrom.pt.x = ptFrom.pt.x - (subImageWidth*float(cameraIndex));
 									}
 									
 									float depth = 0.0f;
-									depth = util3d::transformPoint(p, sFrom.sensorData().cameraModels()[cameraIndex].localTransform().inverse()).z;
+									if(!sFrom.sensorData().cameraModels().empty())
+									{
+										depth = util3d::transformPoint(p, sFrom.sensorData().cameraModels()[cameraIndex].localTransform().inverse()).z;
+									}
+									else
+									{
+										UASSERT(!sFrom.sensorData().stereoCameraModels().empty());
+										depth = util3d::transformPoint(p, sFrom.sensorData().stereoCameraModels()[cameraIndex].localTransform().inverse()).z;
+									}
+
 
 									wordReferences.at(wordId).insert(std::make_pair(sFrom.id(), FeatureBA(ptFrom, depth, descriptorFrom, cameraIndex)));
 									frameToWordMap.insert(std::make_pair(sFrom.id(), std::map<cv::KeyPoint, int, KeyPointCompare>()));
@@ -722,9 +732,9 @@ void Optimizer::computeBACorrespondences(
 									}
 
 									int cameraIndex = 0;
-									if(sTo.sensorData().cameraModels().size()>1)
+									if(sTo.sensorData().cameraModels().size()>1 || sTo.sensorData().stereoCameraModels().size()>1)
 									{
-										float subImageWidth = sTo.sensorData().cameraModels()[0].imageWidth();
+										float subImageWidth = sTo.sensorData().cameraModels().size()>1?sTo.sensorData().cameraModels()[0].imageWidth():sTo.sensorData().stereoCameraModels()[0].left().imageWidth();
 										cameraIndex = int(ptTo.pt.x / subImageWidth);
 										ptTo.pt.x = ptTo.pt.x - (subImageWidth*float(cameraIndex));
 									}
@@ -734,7 +744,15 @@ void Optimizer::computeBACorrespondences(
 									{
 										UASSERT(indexTo < (int)sTo.getWords3().size());
 										const cv::Point3f & pt = sTo.getWords3()[indexTo];
-										depth = util3d::transformPoint(pt, sTo.sensorData().cameraModels()[cameraIndex].localTransform().inverse()).z;
+										if(!sTo.sensorData().cameraModels().empty())
+										{
+											depth = util3d::transformPoint(pt, sTo.sensorData().cameraModels()[cameraIndex].localTransform().inverse()).z;
+										}
+										else
+										{
+											UASSERT(!sTo.sensorData().stereoCameraModels().empty());
+											depth = util3d::transformPoint(pt, sTo.sensorData().stereoCameraModels()[cameraIndex].localTransform().inverse()).z;
+										}
 									}
 
 									wordReferences.at(wordId).insert(std::make_pair(sTo.id(), FeatureBA(ptTo, depth, descriptorTo, cameraIndex)));

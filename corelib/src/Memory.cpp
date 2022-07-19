@@ -3036,9 +3036,10 @@ Transform Memory::computeTransform(
 								{
 									cv::KeyPoint kpts = s->getWordsKpts()[jter->second];
 									int cameraIndex = 0;
-									if(s->sensorData().cameraModels().size()>1)
+									if(models.size()>1)
 									{
-										float subImageWidth = s->sensorData().cameraModels()[0].imageWidth();
+										UASSERT(models[0].imageWidth()>0);
+										float subImageWidth = models[0].imageWidth();
 										cameraIndex = int(kpts.pt.x / subImageWidth);
 										kpts.pt.x = kpts.pt.x - (subImageWidth*float(cameraIndex));
 									}
@@ -3049,7 +3050,7 @@ Transform Memory::computeTransform(
 										util3d::isFinite(s->getWords3()[jter->second]))
 									{
 										//move back point in camera frame (to get depth along z)
-										Transform invLocalTransform = s->sensorData().cameraModels()[cameraIndex].localTransform().inverse();
+										Transform invLocalTransform = models[cameraIndex].localTransform().inverse();
 										d = util3d::transformPoint(s->getWords3()[jter->second], invLocalTransform).z;
 									}
 									wordReferences.insert(std::make_pair(jter->first, std::map<int, FeatureBA>()));
@@ -4514,6 +4515,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 		// we assume that once rtabmap is receiving data, the calibration won't change over time
 		if(data.cameraModels().size())
 		{
+			UDEBUG("Monocular rectification");
 			// Note that only RGB image is rectified, the depth image is assumed to be already registered to rectified RGB camera.
 			UASSERT(int((data.imageRaw().cols/data.cameraModels().size())*data.cameraModels().size()) == data.imageRaw().cols);
 			int subImageWidth = data.imageRaw().cols/data.cameraModels().size();
@@ -4557,6 +4559,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 		}
 		else if(data.stereoCameraModels().size())
 		{
+			UDEBUG("Stereo rectification");
 			UASSERT(int((data.imageRaw().cols/data.stereoCameraModels().size())*data.stereoCameraModels().size()) == data.imageRaw().cols);
 			int subImageWidth = data.imageRaw().cols/data.stereoCameraModels().size();
 			UASSERT(subImageWidth == data.rightRaw().cols/(int)data.stereoCameraModels().size());
@@ -4568,7 +4571,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 				_rectStereoCameraModels.resize(data.stereoCameraModels().size());
 			}
 
-			for(unsigned int i=0; i<data.cameraModels().size(); ++i)
+			for(unsigned int i=0; i<data.stereoCameraModels().size(); ++i)
 			{
 				if(data.stereoCameraModels()[i].isValidForRectification())
 				{
