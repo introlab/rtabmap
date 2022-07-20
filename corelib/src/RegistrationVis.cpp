@@ -1244,11 +1244,11 @@ Transform RegistrationVis::computeTransformationImpl(
 								if(_nnType == 7)
 								{
 									imageSizeFrom = imageFrom.size();
-									if(imageSizeFrom.height == 0 || imageSizeFrom.width == 0)
+									if((imageSizeFrom.height == 0 || imageSizeFrom.width == 0) && (fromSignature.sensorData().cameraModels().size() || fromSignature.sensorData().stereoCameraModels().size()))
 									{
-										imageSizeFrom = fromSignature.sensorData().cameraModels().size() == 1?fromSignature.sensorData().cameraModels()[0].imageSize():fromSignature.sensorData().stereoCameraModel().left().imageSize();
+										imageSizeFrom = fromSignature.sensorData().cameraModels().size() == 1?fromSignature.sensorData().cameraModels()[0].imageSize():fromSignature.sensorData().stereoCameraModels()[0].left().imageSize();
 									}
-									if(imageSize.height > 0 && imageSize.width > 0 &&
+									if(!models.empty() && models[0].imageSize().height > 0 && models[0].imageSize().width > 0 &&
 									   imageSizeFrom.height > 0 && imageSizeFrom.width > 0)
 									{
 										doCrossCheck = false;
@@ -1268,8 +1268,9 @@ Transform RegistrationVis::computeTransformationImpl(
 #if defined(HAVE_OPENCV_XFEATURES2D) && (CV_MAJOR_VERSION > 3 || (CV_MAJOR_VERSION==3 && CV_MINOR_VERSION >=4 && CV_SUBMINOR_VERSION >= 1))
 								if(!doCrossCheck)
 								{
+									UASSERT(!models.empty());
 									std::vector<cv::DMatch> matchesGMS;
-									cv::xfeatures2d::matchGMS(imageSize, imageSizeFrom, kptsTo, kptsFrom, matches, matchesGMS, _gmsWithRotation, _gmsWithScale, _gmsThresholdFactor);
+									cv::xfeatures2d::matchGMS(models[0].imageSize(), imageSizeFrom, kptsTo, kptsFrom, matches, matchesGMS, _gmsWithRotation, _gmsWithScale, _gmsThresholdFactor);
 									matches = matchesGMS;
 								}
 #endif
