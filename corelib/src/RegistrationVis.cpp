@@ -310,7 +310,7 @@ Transform RegistrationVis::computeTransformationImpl(
 			fromSignature.sensorData().imageRaw().cols,
 			fromSignature.sensorData().imageRaw().rows,
 			(int)fromSignature.sensorData().cameraModels().size(),
-			fromSignature.sensorData().stereoCameraModel().isValidForProjection()?1:0);
+			(int)fromSignature.sensorData().stereoCameraModels().size());
 
 	UDEBUG("Input(%d): to=%d words, %d 3D words, %d words descriptors, %d kpts, %d kpts3D, %d descriptors, image=%dx%d models=%d stereo=%d",
 			toSignature.id(),
@@ -323,7 +323,7 @@ Transform RegistrationVis::computeTransformationImpl(
 			toSignature.sensorData().imageRaw().cols,
 			toSignature.sensorData().imageRaw().rows,
 			(int)toSignature.sensorData().cameraModels().size(),
-			toSignature.sensorData().stereoCameraModel().isValidForProjection()?1:0);
+			(int)toSignature.sensorData().stereoCameraModels().size());
 
 	std::string msg;
 	info.projectedIDs.clear();
@@ -487,17 +487,24 @@ Transform RegistrationVis::computeTransformationImpl(
 				bool guessSet = !guess.isIdentity() && !guess.isNull();
 				if(guessSet)
 				{
-					Transform localTransform = fromSignature.sensorData().cameraModels().size()?fromSignature.sensorData().cameraModels()[0].localTransform():fromSignature.sensorData().stereoCameraModel().left().localTransform();
-					Transform guessCameraRef = (guess * localTransform).inverse();
-					cv::Mat R = (cv::Mat_<double>(3,3) <<
-							(double)guessCameraRef.r11(), (double)guessCameraRef.r12(), (double)guessCameraRef.r13(),
-							(double)guessCameraRef.r21(), (double)guessCameraRef.r22(), (double)guessCameraRef.r23(),
-							(double)guessCameraRef.r31(), (double)guessCameraRef.r32(), (double)guessCameraRef.r33());
-					cv::Mat rvec(1,3, CV_64FC1);
-					cv::Rodrigues(R, rvec);
-					cv::Mat tvec = (cv::Mat_<double>(1,3) << (double)guessCameraRef.x(), (double)guessCameraRef.y(), (double)guessCameraRef.z());
-					cv::Mat K = fromSignature.sensorData().cameraModels().size()?fromSignature.sensorData().cameraModels()[0].K():fromSignature.sensorData().stereoCameraModel().left().K();
-					cv::projectPoints(kptsFrom3D, rvec, tvec, K, cv::Mat(), cornersTo);
+					if(fromSignature.sensorData().cameraModels().size() == 1 || fromSignature.sensorData().cameraModels().size() == 1)
+					{
+						Transform localTransform = fromSignature.sensorData().cameraModels().size()?fromSignature.sensorData().cameraModels()[0].localTransform():fromSignature.sensorData().stereoCameraModels()[0].left().localTransform();
+						Transform guessCameraRef = (guess * localTransform).inverse();
+						cv::Mat R = (cv::Mat_<double>(3,3) <<
+								(double)guessCameraRef.r11(), (double)guessCameraRef.r12(), (double)guessCameraRef.r13(),
+								(double)guessCameraRef.r21(), (double)guessCameraRef.r22(), (double)guessCameraRef.r23(),
+								(double)guessCameraRef.r31(), (double)guessCameraRef.r32(), (double)guessCameraRef.r33());
+						cv::Mat rvec(1,3, CV_64FC1);
+						cv::Rodrigues(R, rvec);
+						cv::Mat tvec = (cv::Mat_<double>(1,3) << (double)guessCameraRef.x(), (double)guessCameraRef.y(), (double)guessCameraRef.z());
+						cv::Mat K = fromSignature.sensorData().cameraModels().size()?fromSignature.sensorData().cameraModels()[0].K():fromSignature.sensorData().stereoCameraModels()[0].left().K();
+						cv::projectPoints(kptsFrom3D, rvec, tvec, K, cv::Mat(), cornersTo);
+					}
+					else
+					{
+						UERROR("Optical flow guess with multi-cameras is not implemented, guess ignored...");
+					}
 				}
 
 				// Find features in the new left image
@@ -735,7 +742,7 @@ Transform RegistrationVis::computeTransformationImpl(
 
 			if(!kptsFrom3D.empty() &&
 			   (_detectorFrom->getMinDepth() > 0.0f || _detectorFrom->getMaxDepth() > 0.0f) &&
-			   (!fromSignature.sensorData().cameraModels().empty() || fromSignature.sensorData().stereoCameraModel().isValidForProjection())) // Ignore local map from OdometryF2M
+			   (!fromSignature.sensorData().cameraModels().empty() || !fromSignature.sensorData().stereoCameraModels().empty())) // Ignore local map from OdometryF2M
 			{
 				_detectorFrom->filterKeypointsByDepth(kptsFrom, descriptorsFrom, kptsFrom3D, _detectorFrom->getMinDepth(), _detectorFrom->getMaxDepth());
 			}
@@ -770,7 +777,7 @@ Transform RegistrationVis::computeTransformationImpl(
 
 			if(kptsTo3D.size() &&
 		       (_detectorTo->getMinDepth() > 0.0f || _detectorTo->getMaxDepth() > 0.0f) &&
-			   (!toSignature.sensorData().cameraModels().empty() || toSignature.sensorData().stereoCameraModel().isValidForProjection())) // Ignore local map from OdometryF2M
+			   (!toSignature.sensorData().cameraModels().empty() || !toSignature.sensorData().stereoCameraModels().empty())) // Ignore local map from OdometryF2M
 			{
 				_detectorTo->filterKeypointsByDepth(kptsTo, descriptorsTo, kptsTo3D, _detectorTo->getMinDepth(), _detectorTo->getMaxDepth());
 			}
@@ -787,15 +794,37 @@ Transform RegistrationVis::computeTransformationImpl(
 			// We have all data we need here, so match!
 			if(descriptorsFrom.rows > 0 && descriptorsTo.rows > 0)
 			{
-				cv::Size imageSize = imageTo.size();
-				bool isCalibrated = false; // multiple cameras not supported.
-				if(imageSize.height == 0 || imageSize.width == 0)
+				std::vector<CameraModel> models;
+				if(!toSignature.sensorData().stereoCameraModels().empty())
 				{
-					imageSize = toSignature.sensorData().cameraModels().size() == 1?toSignature.sensorData().cameraModels()[0].imageSize():toSignature.sensorData().stereoCameraModel().left().imageSize();
+					for(size_t i=0; i<toSignature.sensorData().stereoCameraModels().size(); ++i)
+					{
+						models.push_back(toSignature.sensorData().stereoCameraModels()[i].left());
+					}
+				}
+				else
+				{
+					models = toSignature.sensorData().cameraModels();
 				}
 
-				isCalibrated = imageSize.height != 0 && imageSize.width != 0 &&
-						(toSignature.sensorData().cameraModels().size()==1?toSignature.sensorData().cameraModels()[0].isValidForProjection():toSignature.sensorData().stereoCameraModel().isValidForProjection());
+				bool isCalibrated = !models.empty();
+				for(size_t i=0; i<models.size() && isCalibrated; ++i)
+				{
+					isCalibrated = models[i].isValidForProjection();
+
+					// For old database formats
+					if(isCalibrated && (models[i].imageWidth()==0 || models[i].imageHeight()==0))
+					{
+						if(!toSignature.sensorData().imageRaw().empty())
+						{
+							models[i].setImageSize(cv::Size(toSignature.sensorData().imageRaw().cols/models.size(), toSignature.sensorData().imageRaw().rows));
+						}
+						else
+						{
+							isCalibrated = false;
+						}
+					}
+				}
 
 				// If guess is set, limit the search of matches using optical flow window size
 				bool guessSet = !guess.isIdentity() && !guess.isNull();
@@ -803,52 +832,62 @@ Transform RegistrationVis::computeTransformationImpl(
 						isCalibrated &&  // needed for projection
 						_estimationType != 2) // To make sure we match all features for 2D->2D
 				{
+					// Use guess to project 3D "from" keypoints into "to" image
 					UDEBUG("");
 					UASSERT((int)kptsTo.size() == descriptorsTo.rows);
 					UASSERT((int)kptsFrom3D.size() == descriptorsFrom.rows);
 
-					// Use guess to project 3D "from" keypoints into "to" image
-					if(toSignature.sensorData().cameraModels().size() > 1)
+					std::vector<cv::Point2f> cornersProjected;
+					std::vector<int> projectedIndexToDescIndex;
+					float subImageWidth = models[0].imageWidth();
+					std::set<int> added;
+					int duplicates=0;
+					for(size_t m=0; m<models.size(); ++m)
 					{
-						UFATAL("Guess reprojection feature matching is not supported for multiple cameras.");
-					}
+						Transform guessCameraRef = (guess * models[m].localTransform()).inverse();
+						cv::Mat R = (cv::Mat_<double>(3,3) <<
+								(double)guessCameraRef.r11(), (double)guessCameraRef.r12(), (double)guessCameraRef.r13(),
+								(double)guessCameraRef.r21(), (double)guessCameraRef.r22(), (double)guessCameraRef.r23(),
+								(double)guessCameraRef.r31(), (double)guessCameraRef.r32(), (double)guessCameraRef.r33());
+						cv::Mat rvec(1,3, CV_64FC1);
+						cv::Rodrigues(R, rvec);
+						cv::Mat tvec = (cv::Mat_<double>(1,3) << (double)guessCameraRef.x(), (double)guessCameraRef.y(), (double)guessCameraRef.z());
+						cv::Mat K = models[m].K();
+						std::vector<cv::Point2f> projected;
+						cv::projectPoints(kptsFrom3D, rvec, tvec, K, cv::Mat(), projected);
+						UDEBUG("Projected points=%d", (int)projected.size());
 
-					Transform localTransform = toSignature.sensorData().cameraModels().size()?toSignature.sensorData().cameraModels()[0].localTransform():toSignature.sensorData().stereoCameraModel().left().localTransform();
-					Transform guessCameraRef = (guess * localTransform).inverse();
-					cv::Mat R = (cv::Mat_<double>(3,3) <<
-							(double)guessCameraRef.r11(), (double)guessCameraRef.r12(), (double)guessCameraRef.r13(),
-							(double)guessCameraRef.r21(), (double)guessCameraRef.r22(), (double)guessCameraRef.r23(),
-							(double)guessCameraRef.r31(), (double)guessCameraRef.r32(), (double)guessCameraRef.r33());
-					cv::Mat rvec(1,3, CV_64FC1);
-					cv::Rodrigues(R, rvec);
-					cv::Mat tvec = (cv::Mat_<double>(1,3) << (double)guessCameraRef.x(), (double)guessCameraRef.y(), (double)guessCameraRef.z());
-					cv::Mat K = toSignature.sensorData().cameraModels().size()?toSignature.sensorData().cameraModels()[0].K():toSignature.sensorData().stereoCameraModel().left().K();
-					std::vector<cv::Point2f> projected;
-					cv::projectPoints(kptsFrom3D, rvec, tvec, K, cv::Mat(), projected);
-					UDEBUG("Projected points=%d", (int)projected.size());
-					//remove projected points outside of the image
-					UASSERT((int)projected.size() == descriptorsFrom.rows);
-					std::vector<cv::Point2f> cornersProjected(projected.size());
-					std::vector<int> projectedIndexToDescIndex(projected.size());
-					int oi=0;
-					for(unsigned int i=0; i<projected.size(); ++i)
-					{
-						if(uIsInBounds(projected[i].x, 0.0f, float(imageSize.width-1)) &&
-						   uIsInBounds(projected[i].y, 0.0f, float(imageSize.height-1)) &&
-						   util3d::transformPoint(kptsFrom3D[i], guessCameraRef).z > 0.0)
+						//remove projected points outside of the image
+						UASSERT((int)projected.size() == descriptorsFrom.rows);
+						int cornersInFrame = 0;
+						for(unsigned int i=0; i<projected.size(); ++i)
 						{
-							projectedIndexToDescIndex[oi] = i;
-							cornersProjected[oi++] = projected[i];
+							if(uIsInBounds(projected[i].x, 0.0f, float(models[m].imageWidth()-1)) &&
+							   uIsInBounds(projected[i].y, 0.0f, float(models[m].imageHeight()-1)) &&
+							   util3d::transformPoint(kptsFrom3D[i], guessCameraRef).z > 0.0)
+							{
+								if(added.find(i) != added.end())
+								{
+									++duplicates;
+									continue;
+								}
+
+								projectedIndexToDescIndex.push_back(i);
+								projected[i].x += subImageWidth*float(m); // Convert in multicam stitched image
+								cornersProjected.push_back(projected[i]);
+								++cornersInFrame;
+								added.insert(i);
+							}
 						}
+						UDEBUG("corners in frame=%d (camera index=%ld)", cornersInFrame, m);
 					}
-					projectedIndexToDescIndex.resize(oi);
-					cornersProjected.resize(oi);
-					UDEBUG("corners in frame=%d", (int)cornersProjected.size());
 
 					// For each projected feature guess of "from" in "to", find its matching feature in
 					// the radius around the projected guess.
 					// TODO: do cross-check?
-					UDEBUG("guessMatchToProjection=%d, cornersProjected=%d", _guessMatchToProjection?1:0, (int)cornersProjected.size());
+					UDEBUG("guessMatchToProjection=%d, cornersProjected=%d orignalWordsFromIds=%d (added=%ld, duplicates=%d)",
+							_guessMatchToProjection?1:0, (int)cornersProjected.size(), (int)orignalWordsFromIds.size(),
+							added.size(), duplicates);
 					if(cornersProjected.size())
 					{
 						if(_guessMatchToProjection)
@@ -1147,19 +1186,9 @@ Transform RegistrationVis::computeTransformationImpl(
 				{
 					if(guessSet && _guessWinSize > 0 && kptsFrom3D.size() && !isCalibrated)
 					{
-						if(fromSignature.sensorData().cameraModels().size() > 1 || toSignature.sensorData().cameraModels().size() > 1)
-						{
-							UWARN("Finding correspondences with the guess cannot "
-								  "be done with multiple cameras, global matching is "
-								   "done instead. Please set \"%s\" to 0 to avoid this warning.",
-								   Parameters::kVisCorGuessWinSize().c_str());
-						}
-						else
-						{
-							UWARN("Calibration not found! Finding correspondences "
-								   "with the guess cannot be done, global matching is "
-								   "done instead.");
-						}
+						UWARN("Calibration not found! Finding correspondences "
+							   "with the guess cannot be done, global matching is "
+							   "done instead.");
 					}
 
 					UDEBUG("");
@@ -1194,16 +1223,16 @@ Transform RegistrationVis::computeTransformationImpl(
 								descriptorsTo.type() == CV_32F &&
 								descriptorsFrom.type() == CV_32F &&
 								descriptorsFrom.rows == (int)kptsFrom.size() &&
-								imageSize.width > 0 && imageSize.height > 0)
+								models.size() == 1)
 							{
 								UDEBUG("Python matching");
-								matches = _pyMatcher->match(descriptorsTo, descriptorsFrom, kptsTo, kptsFrom, imageSize);
+								matches = _pyMatcher->match(descriptorsTo, descriptorsFrom, kptsTo, kptsFrom, models[0].imageSize());
 							}
 							else
 							{
 								if(_nnType == 6 && _pyMatcher)
 								{
-									UDEBUG("Invalid inputs for Python matching (desc type=%d, only float descriptors supported), doing bruteforce matching instead.", descriptorsFrom.type());
+									UDEBUG("Invalid inputs for Python matching (desc type=%d, only float descriptors supported, multicam not supported), doing bruteforce matching instead.", descriptorsFrom.type());
 								}
 #else
 							{
@@ -1215,11 +1244,11 @@ Transform RegistrationVis::computeTransformationImpl(
 								if(_nnType == 7)
 								{
 									imageSizeFrom = imageFrom.size();
-									if(imageSizeFrom.height == 0 || imageSizeFrom.width == 0)
+									if((imageSizeFrom.height == 0 || imageSizeFrom.width == 0) && (fromSignature.sensorData().cameraModels().size() || fromSignature.sensorData().stereoCameraModels().size()))
 									{
-										imageSizeFrom = fromSignature.sensorData().cameraModels().size() == 1?fromSignature.sensorData().cameraModels()[0].imageSize():fromSignature.sensorData().stereoCameraModel().left().imageSize();
+										imageSizeFrom = fromSignature.sensorData().cameraModels().size() == 1?fromSignature.sensorData().cameraModels()[0].imageSize():fromSignature.sensorData().stereoCameraModels()[0].left().imageSize();
 									}
-									if(imageSize.height > 0 && imageSize.width > 0 &&
+									if(!models.empty() && models[0].imageSize().height > 0 && models[0].imageSize().width > 0 &&
 									   imageSizeFrom.height > 0 && imageSizeFrom.width > 0)
 									{
 										doCrossCheck = false;
@@ -1239,8 +1268,9 @@ Transform RegistrationVis::computeTransformationImpl(
 #if defined(HAVE_OPENCV_XFEATURES2D) && (CV_MAJOR_VERSION > 3 || (CV_MAJOR_VERSION==3 && CV_MINOR_VERSION >=4 && CV_SUBMINOR_VERSION >= 1))
 								if(!doCrossCheck)
 								{
+									UASSERT(!models.empty());
 									std::vector<cv::DMatch> matchesGMS;
-									cv::xfeatures2d::matchGMS(imageSize, imageSizeFrom, kptsTo, kptsFrom, matches, matchesGMS, _gmsWithRotation, _gmsWithScale, _gmsThresholdFactor);
+									cv::xfeatures2d::matchGMS(models[0].imageSize(), imageSizeFrom, kptsTo, kptsFrom, matches, matchesGMS, _gmsWithRotation, _gmsWithScale, _gmsThresholdFactor);
 									matches = matchesGMS;
 								}
 #endif
@@ -1385,7 +1415,8 @@ Transform RegistrationVis::computeTransformationImpl(
 			if(_estimationType == 2) // Epipolar Geometry
 			{
 				UDEBUG("");
-				if(!signatureB->sensorData().stereoCameraModel().isValidForProjection() &&
+				if((signatureB->sensorData().stereoCameraModels().size() != 1 ||
+					!signatureB->sensorData().stereoCameraModels()[0].isValidForProjection()) &&
 				   (signatureB->sensorData().cameraModels().size() != 1 ||
 					!signatureB->sensorData().cameraModels()[0].isValidForProjection()))
 				{
@@ -1394,8 +1425,8 @@ Transform RegistrationVis::computeTransformationImpl(
 				else if((int)signatureA->getWords().size() >= _minInliers &&
 						(int)signatureB->getWords().size() >= _minInliers)
 				{
-					UASSERT(signatureA->sensorData().stereoCameraModel().isValidForProjection() || (signatureA->sensorData().cameraModels().size() == 1 && signatureA->sensorData().cameraModels()[0].isValidForProjection()));
-					const CameraModel & cameraModel = signatureA->sensorData().stereoCameraModel().isValidForProjection()?signatureA->sensorData().stereoCameraModel().left():signatureA->sensorData().cameraModels()[0];
+					UASSERT((signatureA->sensorData().stereoCameraModels().size() == 1 && signatureA->sensorData().stereoCameraModels()[0].isValidForProjection()) || (signatureA->sensorData().cameraModels().size() == 1 && signatureA->sensorData().cameraModels()[0].isValidForProjection()));
+					const CameraModel & cameraModel = signatureA->sensorData().stereoCameraModels().size()?signatureA->sensorData().stereoCameraModels()[0].left():signatureA->sensorData().cameraModels()[0];
 
 					// we only need the camera transform, send guess words3 for scale estimation
 					Transform cameraTransform;
@@ -1479,16 +1510,22 @@ Transform RegistrationVis::computeTransformationImpl(
 			else if(_estimationType == 1) // PnP
 			{
 				UDEBUG("");
-				if(!signatureB->sensorData().stereoCameraModel().isValidForProjection() &&
-				   (signatureB->sensorData().cameraModels().size() != 1 ||
-					!signatureB->sensorData().cameraModels()[0].isValidForProjection()))
+				if((signatureB->sensorData().stereoCameraModels().empty() || !signatureB->sensorData().stereoCameraModels()[0].isValidForProjection()) &&
+				   (signatureB->sensorData().cameraModels().empty() || !signatureB->sensorData().cameraModels()[0].isValidForProjection()))
 				{
-					UERROR("Calibrated camera required (multi-cameras not supported). Id=%d Models=%d StereoModel=%d weight=%d",
+					UERROR("Calibrated camera required. Id=%d Models=%d StereoModels=%d weight=%d",
 							signatureB->id(),
 							(int)signatureB->sensorData().cameraModels().size(),
-							signatureB->sensorData().stereoCameraModel().isValidForProjection()?1:0,
+							signatureB->sensorData().stereoCameraModels().size(),
 							signatureB->getWeight());
 				}
+#ifndef RTABMAP_OPENGV
+				else if(signatureB->sensorData().cameraModels().size() > 1)
+				{
+					UERROR("Multi-camera 2D-3D PnP registration is only available if rtabmap is built "
+							"with OpenGV dependency. Use 3D-3D registration approach instead for multi-camera.");
+				}
+#endif
 				else
 				{
 					UDEBUG("words from3D=%d to2D=%d", (int)signatureA->getWords3().size(), (int)signatureB->getWords().size());
@@ -1496,9 +1533,6 @@ Transform RegistrationVis::computeTransformationImpl(
 					if((int)signatureA->getWords3().size() >= _minInliers &&
 					   (int)signatureB->getWords().size() >= _minInliers)
 					{
-						UASSERT(signatureB->sensorData().stereoCameraModel().isValidForProjection() || (signatureB->sensorData().cameraModels().size() == 1 && signatureB->sensorData().cameraModels()[0].isValidForProjection()));
-						const CameraModel & cameraModel = signatureB->sensorData().stereoCameraModel().isValidForProjection()?signatureB->sensorData().stereoCameraModel().left():signatureB->sensorData().cameraModels()[0];
-
 						std::vector<int> inliersV;
 						std::vector<int> matchesV;
 						std::map<int, int> uniqueWordsA = uMultimapToMapUnique(signatureA->getWords());
@@ -1518,22 +1552,63 @@ Transform RegistrationVis::computeTransformationImpl(
 								words3B.insert(std::make_pair(iter->first, signatureB->getWords3()[iter->second]));
 							}
 						}
-						transforms[dir] = util3d::estimateMotion3DTo2D(
-								words3A,
-								wordsB,
-								cameraModel,
-								_minInliers,
-								_iterations,
-								_PnPReprojError,
-								_PnPFlags,
-								_PnPRefineIterations,
-								dir==0?(!guess.isNull()?guess:Transform::getIdentity()):!transforms[0].isNull()?transforms[0].inverse():(!guess.isNull()?guess.inverse():Transform::getIdentity()),
-								words3B,
-								&covariances[dir],
-								&matchesV,
-								&inliersV);
-						inliers[dir] = inliersV;
-						matches[dir] = matchesV;
+
+						std::vector<CameraModel> models;
+						if(signatureB->sensorData().stereoCameraModels().size())
+						{
+							for(size_t i=0; i<signatureB->sensorData().stereoCameraModels().size(); ++i)
+							{
+								models.push_back(signatureB->sensorData().stereoCameraModels()[i].left());
+							}
+						}
+						else
+						{
+							models = signatureB->sensorData().cameraModels();
+						}
+
+						if(models.size()>1)
+						{
+							// Multi-Camera
+							UASSERT(models[0].isValidForProjection());
+
+							transforms[dir] = util3d::estimateMotion3DTo2D(
+									words3A,
+									wordsB,
+									models,
+									_minInliers,
+									_iterations,
+									_PnPReprojError,
+									_PnPFlags,
+									_PnPRefineIterations,
+									dir==0?(!guess.isNull()?guess:Transform::getIdentity()):!transforms[0].isNull()?transforms[0].inverse():(!guess.isNull()?guess.inverse():Transform::getIdentity()),
+									words3B,
+									&covariances[dir],
+									&matchesV,
+									&inliersV);
+							inliers[dir] = inliersV;
+							matches[dir] = matchesV;
+						}
+						else
+						{
+							UASSERT(models.size() == 1 && models[0].isValidForProjection());
+
+							transforms[dir] = util3d::estimateMotion3DTo2D(
+									words3A,
+									wordsB,
+									models[0],
+									_minInliers,
+									_iterations,
+									_PnPReprojError,
+									_PnPFlags,
+									_PnPRefineIterations,
+									dir==0?(!guess.isNull()?guess:Transform::getIdentity()):!transforms[0].isNull()?transforms[0].inverse():(!guess.isNull()?guess.inverse():Transform::getIdentity()),
+									words3B,
+									&covariances[dir],
+									&matchesV,
+									&inliersV);
+							inliers[dir] = inliersV;
+							matches[dir] = matchesV;
+						}
 						UDEBUG("inliers: %d/%d", (int)inliersV.size(), (int)matchesV.size());
 						if(transforms[dir].isNull())
 						{
@@ -1652,8 +1727,8 @@ Transform RegistrationVis::computeTransformationImpl(
 			allInliers.size() &&
 			fromSignature.getWords3().size() &&
 			toSignature.getWords().size() &&
-			fromSignature.sensorData().cameraModels().size() <= 1 &&
-			toSignature.sensorData().cameraModels().size() <= 1)
+			(fromSignature.sensorData().stereoCameraModels().size() >= 1 || fromSignature.sensorData().cameraModels().size() >= 1) &&
+			(toSignature.sensorData().stereoCameraModels().size() >= 1 || toSignature.sensorData().cameraModels().size() >= 1))
 		{
 			UDEBUG("Refine with bundle adjustment");
 			Optimizer * sba = Optimizer::create(_bundleAdjustment==3?Optimizer::kTypeCeres:_bundleAdjustment==2?Optimizer::kTypeCVSBA:Optimizer::kTypeG2O, _bundleParameters);
@@ -1693,60 +1768,61 @@ Transform RegistrationVis::computeTransformationImpl(
 
 			std::map<int, Transform> optimizedPoses;
 
-			UASSERT(toSignature.sensorData().stereoCameraModel().isValidForProjection() ||
-					(toSignature.sensorData().cameraModels().size() == 1 && toSignature.sensorData().cameraModels()[0].isValidForProjection()));
+			UASSERT((toSignature.sensorData().stereoCameraModels().size()  >= 1 && toSignature.sensorData().stereoCameraModels()[0].isValidForProjection()) ||
+					(toSignature.sensorData().cameraModels().size() >= 1 && toSignature.sensorData().cameraModels()[0].isValidForProjection()));
 
-			std::map<int, CameraModel> models;
+			std::map<int, std::vector<CameraModel> > models;
 
-			Transform invLocalTransformFrom;
-			CameraModel cameraModelFrom;
-			if(fromSignature.sensorData().stereoCameraModel().isValidForProjection())
+			std::vector<CameraModel> cameraModelsFrom;
+			if(fromSignature.sensorData().stereoCameraModels().size())
 			{
-				cameraModelFrom = fromSignature.sensorData().stereoCameraModel().left();
-				// Set Tx=-baseline*fx for Stereo BA
-				cameraModelFrom = CameraModel(cameraModelFrom.fx(),
-						cameraModelFrom.fy(),
-						cameraModelFrom.cx(),
-						cameraModelFrom.cy(),
-						cameraModelFrom.localTransform(),
-						-fromSignature.sensorData().stereoCameraModel().baseline()*cameraModelFrom.fy());
-				invLocalTransformFrom = toSignature.sensorData().stereoCameraModel().localTransform().inverse();
+				for(size_t i=0; i<fromSignature.sensorData().stereoCameraModels().size(); ++i)
+				{
+					CameraModel cameraModel = fromSignature.sensorData().stereoCameraModels()[i].left();
+					// Set Tx=-baseline*fx for Stereo BA
+					cameraModel = CameraModel(cameraModel.fx(),
+							cameraModel.fy(),
+							cameraModel.cx(),
+							cameraModel.cy(),
+							cameraModel.localTransform(),
+							-fromSignature.sensorData().stereoCameraModels()[0].baseline()*cameraModel.fx(),
+							cameraModel.imageSize());
+					cameraModelsFrom.push_back(cameraModel);
+				}
 			}
-			else if(fromSignature.sensorData().cameraModels().size() == 1)
+			else
 			{
-				cameraModelFrom = fromSignature.sensorData().cameraModels()[0];
-				invLocalTransformFrom = toSignature.sensorData().cameraModels()[0].localTransform().inverse();
-			}
-
-			Transform invLocalTransformTo = Transform::getIdentity();
-			CameraModel cameraModelTo;
-			if(toSignature.sensorData().stereoCameraModel().isValidForProjection())
-			{
-				cameraModelTo = toSignature.sensorData().stereoCameraModel().left();
-				// Set Tx=-baseline*fx for Stereo BA
-				cameraModelTo = CameraModel(cameraModelTo.fx(),
-						cameraModelTo.fy(),
-						cameraModelTo.cx(),
-						cameraModelTo.cy(),
-						cameraModelTo.localTransform(),
-						-toSignature.sensorData().stereoCameraModel().baseline()*cameraModelTo.fy());
-				invLocalTransformTo = toSignature.sensorData().stereoCameraModel().localTransform().inverse();
-			}
-			else if(toSignature.sensorData().cameraModels().size() == 1)
-			{
-				cameraModelTo = toSignature.sensorData().cameraModels()[0];
-				invLocalTransformTo = toSignature.sensorData().cameraModels()[0].localTransform().inverse();
-			}
-			if(invLocalTransformFrom.isNull())
-			{
-				invLocalTransformFrom = invLocalTransformTo;
+				cameraModelsFrom = fromSignature.sensorData().cameraModels();
 			}
 
-			models.insert(std::make_pair(1, cameraModelFrom.isValidForProjection()?cameraModelFrom:cameraModelTo));
-			models.insert(std::make_pair(2, cameraModelTo));
+			std::vector<CameraModel> cameraModelsTo;
+			if(toSignature.sensorData().stereoCameraModels().size())
+			{
+				for(size_t i=0; i<toSignature.sensorData().stereoCameraModels().size(); ++i)
+				{
+					CameraModel cameraModel = toSignature.sensorData().stereoCameraModels()[i].left();
+					// Set Tx=-baseline*fx for Stereo BA
+					cameraModel = CameraModel(cameraModel.fx(),
+							cameraModel.fy(),
+							cameraModel.cx(),
+							cameraModel.cy(),
+							cameraModel.localTransform(),
+							-toSignature.sensorData().stereoCameraModels()[0].baseline()*cameraModel.fx(),
+							cameraModel.imageSize());
+					cameraModelsTo.push_back(cameraModel);
+				}
+			}
+			else
+			{
+				cameraModelsTo = toSignature.sensorData().cameraModels();
+			}
+
+			models.insert(std::make_pair(1, cameraModelsFrom));
+			models.insert(std::make_pair(2, cameraModelsTo));
 
 			std::map<int, std::map<int, FeatureBA> > wordReferences;
 			std::set<int> sbaOutliers;
+			UDEBUG("");
 			for(unsigned int i=0; i<allInliers.size(); ++i)
 			{
 				int wordId = allInliers[i];
@@ -1762,22 +1838,50 @@ Transform RegistrationVis::computeTransformationImpl(
 				points3DMap.insert(std::make_pair(wordId, pt3D));
 
 				std::map<int, FeatureBA> ptMap;
-				if(!fromSignature.getWordsKpts().empty() && cameraModelFrom.isValidForProjection())
+				if(!fromSignature.getWordsKpts().empty())
 				{
-					float depthFrom = util3d::transformPoint(pt3D, invLocalTransformFrom).z;
-					const cv::KeyPoint & kpt = fromSignature.getWordsKpts()[indexFrom];
-					ptMap.insert(std::make_pair(1,FeatureBA(kpt, depthFrom)));
+					cv::KeyPoint kpt = fromSignature.getWordsKpts()[indexFrom];
+
+					int cameraIndex = 0;
+					const std::vector<CameraModel> & cam = models.at(1);
+					if(cam.size()>1)
+					{
+						UASSERT(cam[0].imageWidth()>0);
+						float subImageWidth = cam[0].imageWidth();
+						cameraIndex = int(kpt.pt.x / subImageWidth);
+						kpt.pt.x = kpt.pt.x - (subImageWidth*float(cameraIndex));
+					}
+
+					UASSERT(cam[cameraIndex].isValidForProjection());
+
+					float depthFrom = util3d::transformPoint(pt3D, cam[cameraIndex].localTransform().inverse()).z;
+					ptMap.insert(std::make_pair(1,FeatureBA(kpt, depthFrom, cv::Mat(), cameraIndex)));
 				}
-				if(!toSignature.getWordsKpts().empty() && cameraModelTo.isValidForProjection())
+
+				if(!toSignature.getWordsKpts().empty())
 				{
 					int indexTo = toSignature.getWords().find(wordId)->second;
+					cv::KeyPoint kpt = toSignature.getWordsKpts()[indexTo];
+
+					int cameraIndex = 0;
+					const std::vector<CameraModel> & cam = models.at(2);
+					if(cam.size()>1)
+					{
+						UASSERT(cam[0].imageWidth()>0);
+						float subImageWidth = cam[0].imageWidth();
+						cameraIndex = int(kpt.pt.x / subImageWidth);
+						kpt.pt.x = kpt.pt.x - (subImageWidth*float(cameraIndex));
+					}
+
+					UASSERT(cam[cameraIndex].isValidForProjection());
+
 					float depthTo = 0.0f;
 					if(!toSignature.getWords3().empty())
 					{
-						depthTo = util3d::transformPoint(toSignature.getWords3()[indexTo], invLocalTransformTo).z;
+						depthTo = util3d::transformPoint(toSignature.getWords3()[indexTo], cam[cameraIndex].localTransform().inverse()).z;
 					}
-					const cv::KeyPoint & kpt = toSignature.getWordsKpts()[indexTo];
-					ptMap.insert(std::make_pair(2,FeatureBA(kpt, depthTo)));
+
+					ptMap.insert(std::make_pair(2,FeatureBA(kpt, depthTo, cv::Mat(), cameraIndex)));
 				}
 
 				wordReferences.insert(std::make_pair(wordId, ptMap));
@@ -1876,10 +1980,10 @@ Transform RegistrationVis::computeTransformationImpl(
 			float cx=0, cy=0, w=0, h=0;
 			if(_minInliersDistributionThr > 0)
 			{
-				if(toSignature.sensorData().stereoCameraModel().isValidForProjection() ||
+				if((toSignature.sensorData().stereoCameraModels().size() == 1 && toSignature.sensorData().stereoCameraModels()[0].isValidForProjection()) ||
 					(toSignature.sensorData().cameraModels().size() == 1 && toSignature.sensorData().cameraModels()[0].isValidForReprojection()))
 				{
-					const CameraModel & cameraModel = toSignature.sensorData().stereoCameraModel().isValidForProjection()?toSignature.sensorData().stereoCameraModel().left():toSignature.sensorData().cameraModels()[0];
+					const CameraModel & cameraModel = toSignature.sensorData().stereoCameraModels().size()?toSignature.sensorData().stereoCameraModels()[0].left():toSignature.sensorData().cameraModels()[0];
 					cx = cameraModel.cx();
 					cy = cameraModel.cy();
 					w = cameraModel.imageWidth();
@@ -1894,7 +1998,7 @@ Transform RegistrationVis::computeTransformationImpl(
 						UERROR("Invalid calibration image size (%dx%d), cannot compute inliers distribution! (see %s=%f)", w, h, Parameters::kVisMinInliersDistribution().c_str(), _minInliersDistributionThr);
 					}
 				}
-				else if(toSignature.sensorData().cameraModels().size() > 1)
+				else if(toSignature.sensorData().cameraModels().size() > 1 || toSignature.sensorData().stereoCameraModels().size() > 1)
 				{
 					UERROR("Multi-camera not supported when computing inliers distribution! (see %s=%f)", Parameters::kVisMinInliersDistribution().c_str(), _minInliersDistributionThr);
 				}

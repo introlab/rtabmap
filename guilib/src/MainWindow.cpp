@@ -949,7 +949,7 @@ bool MainWindow::handleEvent(UEvent* anEvent)
 			// we receive too many odometry events! just send without data
 			SensorData data(cv::Mat(), odomEvent->data().id(), odomEvent->data().stamp());
 			data.setCameraModels(odomEvent->data().cameraModels());
-			data.setStereoCameraModel(odomEvent->data().stereoCameraModel());
+			data.setStereoCameraModels(odomEvent->data().stereoCameraModels());
 			data.setGroundTruth(odomEvent->data().groundTruth());
 			OdometryEvent tmp(data, odomEvent->pose(), odomEvent->info().copyWithoutData());
 			Q_EMIT odometryReceived(tmp, true);
@@ -1113,34 +1113,51 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 				}
 				rectifiedData.setRGBDImage(rectifiedImages, data->depthOrRightRaw(), data->cameraModels());
 			}
-			else if(!data->rightRaw().empty())
+			else if(!data->rightRaw().empty() && data->stereoCameraModels().size())
 			{
-				if(data->stereoCameraModel().isValidForRectification())
+				UASSERT(int((data->imageRaw().cols/data->stereoCameraModels().size())*data->stereoCameraModels().size()) == data->imageRaw().cols);
+				int subImageWidth = data->imageRaw().cols/data->stereoCameraModels().size();
+				cv::Mat rectifiedLeftImages = data->imageRaw().clone();
+				cv::Mat rectifiedRightImages = data->imageRaw().clone();
+				bool initRectMaps = _rectCameraModelsOdom.empty() || _rectCameraModelsOdom.size()!=data->stereoCameraModels().size()*2;
+				if(initRectMaps)
 				{
-					bool initRectMaps = _rectCameraModelsOdom.size()!=2;
-					if(initRectMaps)
+					_rectCameraModelsOdom.resize(data->stereoCameraModels().size()*2);
+				}
+				for(unsigned int i=0; i<data->stereoCameraModels().size(); ++i)
+				{
+					if(data->stereoCameraModels()[i].isValidForRectification())
 					{
-						_rectCameraModelsOdom.resize(2);
-						_rectCameraModelsOdom[0] = data->stereoCameraModel().left();
-						_rectCameraModelsOdom[1] = data->stereoCameraModel().right();
-						if(!_rectCameraModelsOdom[0].isRectificationMapInitialized())
+						if(initRectMaps)
 						{
-							UWARN("Initializing rectification maps for stereo camera (only done for the first image received)...");
-							_rectCameraModelsOdom[0].initRectificationMap();
-							_rectCameraModelsOdom[1].initRectificationMap();
-							UWARN("Initializing rectification maps for stereo camera (only done for the first image received)... done!");
+							_rectCameraModelsOdom[i*2] = data->stereoCameraModels()[i].left();
+							_rectCameraModelsOdom[i*2+1] = data->stereoCameraModels()[i].right();
+							if(!_rectCameraModelsOdom[i*2].isRectificationMapInitialized())
+							{
+								UWARN("Initializing rectification maps for stereo camera %d (only done for the first image received)...", i);
+								_rectCameraModelsOdom[i*2].initRectificationMap();
+								_rectCameraModelsOdom[i*2+1].initRectificationMap();
+								UWARN("Initializing rectification maps for stereo camera %d (only done for the first image received)... done!", i);
+							}
 						}
+						UASSERT(_rectCameraModelsOdom[i*2].imageWidth() == data->stereoCameraModels()[i].left().imageWidth() &&
+								_rectCameraModelsOdom[i*2].imageHeight() == data->stereoCameraModels()[i].left().imageHeight() &&
+								_rectCameraModelsOdom[i*2+1].imageWidth() == data->stereoCameraModels()[i].right().imageWidth() &&
+								_rectCameraModelsOdom[i*2+1].imageHeight() == data->stereoCameraModels()[i].right().imageHeight());
+						cv::Mat rectifiedLeftImage = _rectCameraModelsOdom[i*2].rectifyImage(cv::Mat(data->imageRaw(), cv::Rect(subImageWidth*i, 0, subImageWidth, data->imageRaw().rows)));
+						cv::Mat rectifiedRightImage = _rectCameraModelsOdom[i*2+1].rectifyImage(cv::Mat(data->rightRaw(), cv::Rect(subImageWidth*i, 0, subImageWidth, data->rightRaw().rows)));
+						rectifiedLeftImage.copyTo(cv::Mat(rectifiedLeftImages, cv::Rect(subImageWidth*i, 0, subImageWidth, data->imageRaw().rows)));
+						rectifiedRightImage.copyTo(cv::Mat(rectifiedRightImages, cv::Rect(subImageWidth*i, 0, subImageWidth, data->rightRaw().rows)));
 					}
-					UASSERT(_rectCameraModelsOdom[0].imageWidth() == data->stereoCameraModel().left().imageWidth() &&
-							_rectCameraModelsOdom[1].imageHeight() == data->stereoCameraModel().right().imageHeight());
-					cv::Mat rectifiedLeft = _rectCameraModelsOdom[0].rectifyImage(data->imageRaw());
-					cv::Mat rectifiedRight = _rectCameraModelsOdom[1].rectifyImage(data->rightRaw());
-					rectifiedData.setStereoImage(rectifiedLeft, rectifiedRight, data->stereoCameraModel());
+					else
+					{
+						UWARN("Stereo camera %d of data %d is not valid for rectification (%dx%d).",
+								i, data->id(),
+								data->stereoCameraModels()[i].left().imageWidth(),
+								data->stereoCameraModels()[i].right().imageHeight());
+					}
 				}
-				else
-				{
-					UWARN("Stereo camera model of data %d is not valid for rectification.", data->id());
-				}
+				rectifiedData.setStereoImage(rectifiedLeftImages, rectifiedRightImages, data->stereoCameraModels());
 			}
 			UDEBUG("Time rectification: %fs", time.ticks());
 			data = &rectifiedData;
@@ -1159,7 +1176,7 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 			// 3d cloud
 			if(!data->imageRaw().empty() &&
 			   !data->depthOrRightRaw().empty() &&
-			   (data->cameraModels().size() || data->stereoCameraModel().isValidForProjection()) &&
+			   (data->cameraModels().size() || data->stereoCameraModels().size()) &&
 			   _preferencesDialog->isCloudsShown(1))
 			{
 				pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
@@ -1190,11 +1207,11 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 							viewpoint[1] = data->cameraModels()[0].localTransform().y();
 							viewpoint[2] = data->cameraModels()[0].localTransform().z();
 						}
-						else if(!data->stereoCameraModel().localTransform().isNull())
+						else if(data->stereoCameraModels().size() && !data->stereoCameraModels()[0].localTransform().isNull())
 						{
-							viewpoint[0] = data->stereoCameraModel().localTransform().x();
-							viewpoint[1] = data->stereoCameraModel().localTransform().y();
-							viewpoint[2] = data->stereoCameraModel().localTransform().z();
+							viewpoint[0] = data->stereoCameraModels()[0].localTransform().x();
+							viewpoint[1] = data->stereoCameraModels()[0].localTransform().y();
+							viewpoint[2] = data->stereoCameraModels()[0].localTransform().z();
 						}
 						std::vector<pcl::Vertices> polygons = util3d::organizedFastMesh(
 								output,
@@ -1427,6 +1444,7 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 					if(splitted.size() == 2)
 					{
 						int id = std::atoi(splitted.back().c_str());
+						id -= id%10;
 						if(splitted.front().compare("f_odom_") == 0 &&
 								odom.info().localBundlePoses.find(id) == odom.info().localBundlePoses.end())
 						{
@@ -1437,19 +1455,27 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 
 				for(std::map<int, Transform>::const_iterator iter=odom.info().localBundlePoses.begin();iter!=odom.info().localBundlePoses.end(); ++iter)
 				{
-					std::string frustumId = uFormat("f_odom_%d", iter->first);
+					std::string frustumId = uFormat("f_odom_%d", iter->first*10);
 					if(_cloudViewer->getAddedFrustums().contains(frustumId))
 					{
-						_cloudViewer->updateFrustumPose(frustumId, _odometryCorrection*iter->second);
+						for(size_t i=0; i<10; ++i)
+						{
+							std::string subFrustumId = uFormat("f_odom_%d", iter->first*10+i);
+							_cloudViewer->updateFrustumPose(subFrustumId, _odometryCorrection*iter->second);
+						}
 					}
 					else if(odom.info().localBundleModels.find(iter->first) != odom.info().localBundleModels.end())
 					{
-						const CameraModel & model = odom.info().localBundleModels.at(iter->first);
-						Transform t = model.localTransform();
-						if(!t.isNull())
+						const std::vector<CameraModel> & models = odom.info().localBundleModels.at(iter->first);
+						for(size_t i=0; i<models.size(); ++i)
 						{
-							QColor color = Qt::yellow;
-							_cloudViewer->addOrUpdateFrustum(frustumId, _odometryCorrection*iter->second, t, _cloudViewer->getFrustumScale(), color, model.fovX(), model.fovY());
+							Transform t = models[i].localTransform();
+							if(!t.isNull())
+							{
+								QColor color = Qt::yellow;
+								std::string subFrustumId = uFormat("f_odom_%d", iter->first*10+i);
+								_cloudViewer->addOrUpdateFrustum(subFrustumId, _odometryCorrection*iter->second, t, _cloudViewer->getFrustumScale(), color, models[i].fovX(), models[i].fovY());
+							}
 						}
 					}
 				}
@@ -1519,9 +1545,9 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 		{
 			_cloudViewer->updateCameraFrustums(_odometryCorrection*odom.pose(), data->cameraModels());
 		}
-		else if(data->stereoCameraModel().isValidForProjection())
+		else if(data->stereoCameraModels().size() && data->stereoCameraModels()[0].isValidForProjection())
 		{
-			_cloudViewer->updateCameraFrustum(_odometryCorrection*odom.pose(), data->stereoCameraModel());
+			_cloudViewer->updateCameraFrustums(_odometryCorrection*odom.pose(), data->stereoCameraModels());
 		}
 		else if(!data->laserScanRaw().isEmpty() ||
 				!data->laserScanCompressed().isEmpty())
@@ -2198,9 +2224,13 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 							sceneRect.setHeight(sceneRect.height()+signature.sensorData().cameraModels()[i].imageHeight());
 						}
 					}
-					else if(signature.sensorData().stereoCameraModel().isValidForProjection())
+					else if(signature.sensorData().stereoCameraModels().size())
 					{
-						sceneRect.setRect(0,0,signature.sensorData().stereoCameraModel().left().imageWidth(), signature.sensorData().stereoCameraModel().left().imageHeight());
+						for(unsigned int i=0; i<signature.sensorData().cameraModels().size(); ++i)
+						{
+							sceneRect.setWidth(sceneRect.width()+signature.sensorData().stereoCameraModels()[i].left().imageWidth());
+							sceneRect.setHeight(sceneRect.height()+signature.sensorData().stereoCameraModels()[i].left().imageHeight());
+						}
 					}
 					if(sceneRect.isValid())
 					{
@@ -2366,9 +2396,9 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 					{
 						_cloudViewer->updateCameraFrustums(poses.rbegin()->second, stat.getLastSignatureData().sensorData().cameraModels());
 					}
-					else if(stat.getLastSignatureData().sensorData().stereoCameraModel().isValidForProjection())
+					else if(stat.getLastSignatureData().sensorData().stereoCameraModels().size() && stat.getLastSignatureData().sensorData().stereoCameraModels()[0].isValidForProjection())
 					{
-						_cloudViewer->updateCameraFrustum(poses.rbegin()->second, stat.getLastSignatureData().sensorData().stereoCameraModel());
+						_cloudViewer->updateCameraFrustums(poses.rbegin()->second, stat.getLastSignatureData().sensorData().stereoCameraModels());
 					}
 					else if(!stat.getLastSignatureData().sensorData().laserScanRaw().isEmpty() ||
 							!stat.getLastSignatureData().sensorData().laserScanCompressed().isEmpty())
@@ -3015,9 +3045,9 @@ void MainWindow::updateMapCloud(
 				{
 					const Signature & s = _cachedSignatures.value(iter->first);
 					// Supporting only one frustum per node
-					if(s.sensorData().cameraModels().size() == 1 || s.sensorData().stereoCameraModel().isValidForProjection())
+					if(s.sensorData().cameraModels().size() == 1 || s.sensorData().stereoCameraModels().size()==1)
 					{
-						const CameraModel & model = s.sensorData().stereoCameraModel().isValidForProjection()?s.sensorData().stereoCameraModel().left():s.sensorData().cameraModels()[0];
+						const CameraModel & model = s.sensorData().stereoCameraModels().size()?s.sensorData().stereoCameraModels()[0].left():s.sensorData().cameraModels()[0];
 						Transform t = model.localTransform();
 						if(!t.isNull())
 						{
@@ -3441,11 +3471,11 @@ std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr, pcl::IndicesPtr> MainWindow::c
 			viewPoint[1] = data.cameraModels()[0].localTransform().y();
 			viewPoint[2] = data.cameraModels()[0].localTransform().z();
 		}
-		else if(!data.stereoCameraModel().localTransform().isNull())
+		else if(data.stereoCameraModels().size() && !data.stereoCameraModels()[0].localTransform().isNull())
 		{
-			viewPoint[0] = data.stereoCameraModel().localTransform().x();
-			viewPoint[1] = data.stereoCameraModel().localTransform().y();
-			viewPoint[2] = data.stereoCameraModel().localTransform().z();
+			viewPoint[0] = data.stereoCameraModels()[0].localTransform().x();
+			viewPoint[1] = data.stereoCameraModels()[0].localTransform().y();
+			viewPoint[2] = data.stereoCameraModels()[0].localTransform().z();
 		}
 
 		// filtering pipeline
@@ -4077,13 +4107,15 @@ void MainWindow::createAndAddFeaturesToMap(int nodeId, const Transform & pose, i
 		if(!iter->getWords3().empty() && !iter->getWordsKpts().empty())
 		{
 			Transform invLocalTransform = Transform::getIdentity();
-			if(iter.value().sensorData().cameraModels().size() == 1 && iter.value().sensorData().cameraModels().at(0).isValidForProjection())
+			if(iter.value().sensorData().cameraModels().size() == 1 &&
+			   iter.value().sensorData().cameraModels().at(0).isValidForProjection())
 			{
 				invLocalTransform = iter.value().sensorData().cameraModels()[0].localTransform().inverse();
 			}
-			else if(iter.value().sensorData().stereoCameraModel().isValidForProjection())
+			else if(iter.value().sensorData().stereoCameraModels().size() == 1 &&
+					iter.value().sensorData().stereoCameraModels()[0].isValidForProjection())
 			{
-				invLocalTransform = iter.value().sensorData().stereoCameraModel().left().localTransform().inverse();
+				invLocalTransform = iter.value().sensorData().stereoCameraModels()[0].left().localTransform().inverse();
 			}
 
 			for(std::multimap<int, int>::const_iterator jter=iter->getWords().begin(); jter!=iter->getWords().end(); ++jter)
@@ -4883,9 +4915,10 @@ void MainWindow::drawLandmarks(cv::Mat & image, const Signature & signature)
 		{
 			model = signature.sensorData().cameraModels()[0];
 		}
-		else if(signature.sensorData().stereoCameraModel().isValidForProjection())
+		else if(!signature.sensorData().stereoCameraModels().empty() &&
+				signature.sensorData().stereoCameraModels()[0].isValidForProjection())
 		{
-			model = signature.sensorData().stereoCameraModel().left();
+			model = signature.sensorData().stereoCameraModels()[0].left();
 		}
 		if(model.isValidForProjection())
 		{
@@ -5941,16 +5974,18 @@ void MainWindow::exportPoses(int format)
 					Transform localTransform;
 					if(cameraFrame)
 					{
-						if((_cachedSignatures[iter->first].sensorData().cameraModels().size() == 1 &&
-							!_cachedSignatures[iter->first].sensorData().cameraModels().at(0).localTransform().isNull()))
+						if(_cachedSignatures[iter->first].sensorData().cameraModels().size() == 1 &&
+						   !_cachedSignatures[iter->first].sensorData().cameraModels().at(0).localTransform().isNull())
 						{
 							localTransform = _cachedSignatures[iter->first].sensorData().cameraModels().at(0).localTransform();
 						}
-						else if(!_cachedSignatures[iter->first].sensorData().stereoCameraModel().localTransform().isNull())
+						else if(_cachedSignatures[iter->first].sensorData().stereoCameraModels().size() == 1 &&
+								!_cachedSignatures[iter->first].sensorData().stereoCameraModels()[0].localTransform().isNull())
 						{
-							localTransform = _cachedSignatures[iter->first].sensorData().stereoCameraModel().localTransform();
+							localTransform = _cachedSignatures[iter->first].sensorData().stereoCameraModels()[0].localTransform();
 						}
-						else if(_cachedSignatures[iter->first].sensorData().cameraModels().size()>1)
+						else if(_cachedSignatures[iter->first].sensorData().cameraModels().size()>1 ||
+								_cachedSignatures[iter->first].sensorData().stereoCameraModels().size()>1)
 						{
 							UWARN("Multi-camera is not supported (node %d)", iter->first);
 						}
@@ -7707,26 +7742,30 @@ void MainWindow::exportImages()
 						QDir dir;
 						dir.mkdir(QString("%1/left").arg(path));
 						dir.mkdir(QString("%1/right").arg(path));
-						if(data.stereoCameraModel().isValidForProjection())
+						if(data.stereoCameraModels().size() > 1)
+						{
+							UERROR("Only one stereo camera calibration can be saved at this time (%d detected)", (int)data.stereoCameraModels().size());
+						}
+						else if(data.stereoCameraModels().size() == 1 && data.stereoCameraModels().front().isValidForProjection())
 						{
 							std::string cameraName = "calibration";
 							StereoCameraModel model(
 									cameraName,
 									data.imageRaw().size(),
-									data.stereoCameraModel().left().K(),
-									data.stereoCameraModel().left().D(),
-									data.stereoCameraModel().left().R(),
-									data.stereoCameraModel().left().P(),
+									data.stereoCameraModels()[0].left().K(),
+									data.stereoCameraModels()[0].left().D(),
+									data.stereoCameraModels()[0].left().R(),
+									data.stereoCameraModels()[0].left().P(),
 									data.rightRaw().size(),
-									data.stereoCameraModel().right().K(),
-									data.stereoCameraModel().right().D(),
-									data.stereoCameraModel().right().R(),
-									data.stereoCameraModel().right().P(),
-									data.stereoCameraModel().R(),
-									data.stereoCameraModel().T(),
-									data.stereoCameraModel().E(),
-									data.stereoCameraModel().F(),
-									data.stereoCameraModel().left().localTransform());
+									data.stereoCameraModels()[0].right().K(),
+									data.stereoCameraModels()[0].right().D(),
+									data.stereoCameraModels()[0].right().R(),
+									data.stereoCameraModels()[0].right().P(),
+									data.stereoCameraModels()[0].R(),
+									data.stereoCameraModels()[0].T(),
+									data.stereoCameraModels()[0].E(),
+									data.stereoCameraModels()[0].F(),
+									data.stereoCameraModels()[0].left().localTransform());
 							if(model.save(path.toStdString()))
 							{
 								calibrationSaved = true;
@@ -7880,8 +7919,10 @@ void MainWindow::exportBundlerFormat()
 			{
 				UWARN("Missing image in cache for node %d", iter->first);
 			}
-			else if((_cachedSignatures[iter->first].sensorData().cameraModels().size() == 1 && _cachedSignatures[iter->first].sensorData().cameraModels().at(0).isValidForProjection()) ||
-			         _cachedSignatures[iter->first].sensorData().stereoCameraModel().isValidForProjection())
+			else if((_cachedSignatures[iter->first].sensorData().cameraModels().size() == 1 &&
+					 _cachedSignatures[iter->first].sensorData().cameraModels().at(0).isValidForProjection()) ||
+			        (_cachedSignatures[iter->first].sensorData().stereoCameraModels().size() == 1 &&
+			         _cachedSignatures[iter->first].sensorData().stereoCameraModels()[0].isValidForProjection()))
 			{
 				poses.insert(*iter);
 			}

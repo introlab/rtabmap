@@ -206,7 +206,7 @@ public:
 			std::vector<GlobalDescriptor> & globalDescriptors) const;
 	void getNodeCalibration(int nodeId,
 			std::vector<CameraModel> & models,
-			StereoCameraModel & stereoModel) const;
+			std::vector<StereoCameraModel> & stereoModels) const;
 	std::set<int> getAllSignatureIds(bool ignoreChildren = true) const;
 	bool memoryChanged() const {return _memoryChanged;}
 	bool isIncremental() const {return _incrementalMemory;}
@@ -348,7 +348,7 @@ private:
 	bool _allNodesInWM;
 	GPS _gpsOrigin;
 	std::vector<CameraModel> _rectCameraModels;
-	StereoCameraModel _rectStereoCameraModel;
+	std::vector<StereoCameraModel> _rectStereoCameraModels;
 	std::vector<double> _odomMaxInf;
 
 	std::map<int, Signature *> _signatures; // TODO : check if a signature is already added? although it is not supposed to occur...

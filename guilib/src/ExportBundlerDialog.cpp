@@ -445,10 +445,10 @@ void ExportBundlerDialog::exportBundler(
 						out << ster.value().sensorData().cameraModels().at(0).fx() << " 0 0\n";
 						localTransform = ster.value().sensorData().cameraModels().at(0).localTransform();
 					}
-					else
+					else if(ster.value().sensorData().stereoCameraModels().size())
 					{
-						out << ster.value().sensorData().stereoCameraModel().left().fx() << " 0 0\n";
-						localTransform = ster.value().sensorData().stereoCameraModel().left().localTransform();
+						out << ster.value().sensorData().stereoCameraModels()[0].left().fx() << " 0 0\n";
+						localTransform = ster.value().sensorData().stereoCameraModels()[0].left().localTransform();
 					}
 
 					Transform pose = iter->second;
@@ -519,10 +519,10 @@ void ExportBundlerDialog::exportBundler(
 							pt.x = kter->second.kpt.pt.x - s.sensorData().cameraModels().at(0).cx();
 							pt.y = kter->second.kpt.pt.y - s.sensorData().cameraModels().at(0).cy();
 						}
-						else
+						else if(signatures[camId].sensorData().stereoCameraModels().size())
 						{
-							pt.x = kter->second.kpt.pt.x - s.sensorData().stereoCameraModel().left().cx();
-							pt.y = kter->second.kpt.pt.y - s.sensorData().stereoCameraModel().left().cy();
+							pt.x = kter->second.kpt.pt.x - s.sensorData().stereoCameraModels()[0].left().cx();
+							pt.y = kter->second.kpt.pt.y - s.sensorData().stereoCameraModels()[0].left().cy();
 						}
 						descriptorIndexes.insert(std::make_pair(camId, 0));
 						out << " " << cameraIndexes.at(camId) << " " << descriptorIndexes.at(camId)++ << " " << pt.x << " " << -pt.y;

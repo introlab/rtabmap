@@ -430,8 +430,25 @@ void OccupancyGrid::createLocalMap(
 			}
 			else
 			{
-				const Transform & t = node.sensorData().stereoCameraModel().localTransform();
-				viewPoint = cv::Point3f(t.x(), t.y(), t.z());
+				// average of all local transforms
+				float sum = 0;
+				for(unsigned int i=0; i<node.sensorData().stereoCameraModels().size(); ++i)
+				{
+					const Transform & t = node.sensorData().stereoCameraModels()[i].localTransform();
+					if(!t.isNull())
+					{
+						viewPoint.x += t.x();
+						viewPoint.y += t.y();
+						viewPoint.z += t.z();
+						sum += 1.0f;
+					}
+				}
+				if(sum > 0.0f)
+				{
+					viewPoint.x /= sum;
+					viewPoint.y /= sum;
+					viewPoint.z /= sum;
+				}
 			}
 
 			cv::Mat scanGroundCells;

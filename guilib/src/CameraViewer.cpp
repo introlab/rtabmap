@@ -125,7 +125,7 @@ void CameraViewer::showImage(const rtabmap::SensorData & data)
 	imageSizeLabel_->setText(sizes);
 
 	if(!data.depthOrRightRaw().empty() &&
-	   (data.stereoCameraModel().isValidForProjection() || (data.cameraModels().size() && data.cameraModels().at(0).isValidForProjection())))
+	   ((data.stereoCameraModels().size() && data.stereoCameraModels()[0].isValidForProjection()) || (data.cameraModels().size() && data.cameraModels().at(0).isValidForProjection())))
 	{
 		if(showCloudCheckbox_->isChecked())
 		{

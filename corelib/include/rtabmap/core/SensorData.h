@@ -126,6 +126,25 @@ public:
 			double stamp = 0.0,
 			const cv::Mat & userData = cv::Mat());
 
+	// Multi-cameras stereo constructor
+	SensorData(
+			const cv::Mat & rgb,
+			const cv::Mat & depth,
+			const std::vector<StereoCameraModel> & cameraModels,
+			int id = 0,
+			double stamp = 0.0,
+			const cv::Mat & userData = cv::Mat());
+
+	// Multi-cameras stereo constructor + laser scan
+	SensorData(
+			const LaserScan & laserScan,
+			const cv::Mat & rgb,
+			const cv::Mat & depth,
+			const std::vector<StereoCameraModel> & cameraModels,
+			int id = 0,
+			double stamp = 0.0,
+			const cv::Mat & userData = cv::Mat());
+
 	// IMU constructor
 	SensorData(
 			const IMU & imu,
@@ -143,8 +162,8 @@ public:
 			_depthOrRightCompressed.empty() &&
 			_laserScanRaw.isEmpty() &&
 			_laserScanCompressed.isEmpty() &&
-			_cameraModels.size() == 0 &&
-			!_stereoCameraModel.isValidForProjection() &&
+			_cameraModels.empty() &&
+			_stereoCameraModels.empty() &&
 			_userDataRaw.empty() &&
 			_userDataCompressed.empty() &&
 			_keypoints.size() == 0 &&
@@ -173,6 +192,7 @@ public:
 	void setRGBDImage(const cv::Mat & rgb, const cv::Mat & depth, const CameraModel & model, bool clearPreviousData = true);
 	void setRGBDImage(const cv::Mat & rgb, const cv::Mat & depth, const std::vector<CameraModel> & models, bool clearPreviousData = true);
 	void setStereoImage(const cv::Mat & left, const cv::Mat & right, const StereoCameraModel & stereoCameraModel, bool clearPreviousData = true);
+	void setStereoImage(const cv::Mat & left, const cv::Mat & right, const std::vector<StereoCameraModel> & stereoCameraModels, bool clearPreviousData = true);
 
 	/**
 	 * Set laser scan data. Detect automatically if raw or compressed.
@@ -183,7 +203,8 @@ public:
 
 	void setCameraModel(const CameraModel & model) {_cameraModels.clear(); _cameraModels.push_back(model);}
 	void setCameraModels(const std::vector<CameraModel> & models) {_cameraModels = models;}
-	void setStereoCameraModel(const StereoCameraModel & stereoCameraModel) {_stereoCameraModel = stereoCameraModel;}
+	void setStereoCameraModel(const StereoCameraModel & stereoCameraModel) {_stereoCameraModels.clear(); _stereoCameraModels.push_back(stereoCameraModel);}
+	void setStereoCameraModels(const std::vector<StereoCameraModel> & stereoCameraModels) {_stereoCameraModels = stereoCameraModels;}
 
 	//for convenience
 	cv::Mat depthRaw() const {return _depthOrRightRaw.type()!=CV_8UC1?_depthOrRightRaw:cv::Mat();}
@@ -213,7 +234,7 @@ public:
 			cv::Mat * emptyCellsRaw = 0) const;
 
 	const std::vector<CameraModel> & cameraModels() const {return _cameraModels;}
-	const StereoCameraModel & stereoCameraModel() const {return _stereoCameraModel;}
+	const std::vector<StereoCameraModel> & stereoCameraModels() const {return _stereoCameraModels;}
 
 	/**
 	 * Set user data. Detect automatically if raw or compressed. If raw, the data is
@@ -302,7 +323,7 @@ private:
 	LaserScan _laserScanRaw;
 
 	std::vector<CameraModel> _cameraModels;
-	StereoCameraModel _stereoCameraModel;
+	std::vector<StereoCameraModel> _stereoCameraModels;
 
 	// user data
 	cv::Mat _userDataCompressed;      // compressed data

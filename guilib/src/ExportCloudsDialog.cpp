@@ -1256,9 +1256,12 @@ void ExportCloudsDialog::viewClouds(
 				{
 					models = iter->sensorData().cameraModels();
 				}
-				else if(iter->sensorData().stereoCameraModel().isValidForProjection())
+				else if(iter->sensorData().stereoCameraModels().size())
 				{
-					models.push_back(iter->sensorData().stereoCameraModel().left());
+					for(size_t i=0; i<iter->sensorData().stereoCameraModels().size(); ++i)
+					{
+						models.push_back(iter->sensorData().stereoCameraModels()[i].left());
+					}
 				}
 
 				if(!models.empty())
@@ -1793,25 +1796,25 @@ bool ExportCloudsDialog::getExportedClouds(
 				if(_ui->checkBox_fromDepth->isChecked())
 				{
 					std::vector<CameraModel> models;
-					StereoCameraModel stereoModel;
+					std::vector<StereoCameraModel> stereoModels;
 					if(cachedSignatures.contains(iter->first))
 					{
 						const SensorData & data = cachedSignatures.find(iter->first)->sensorData();
 						models = data.cameraModels();
-						stereoModel = data.stereoCameraModel();
+						stereoModels = data.stereoCameraModels();
 					}
 					else if(_dbDriver)
 					{
-						_dbDriver->getCalibration(iter->first, models, stereoModel);
+						_dbDriver->getCalibration(iter->first, models, stereoModels);
 					}
 
 					if(models.size() && !models[0].localTransform().isNull())
 					{
 						iter->second *= models[0].localTransform();
 					}
-					else if(!stereoModel.localTransform().isNull())
+					else if(stereoModels.size() && !stereoModels[0].localTransform().isNull())
 					{
-						iter->second *= stereoModel.localTransform();
+						iter->second *= stereoModels[0].localTransform();
 					}
 				}
 				else
@@ -2260,16 +2263,16 @@ bool ExportCloudsDialog::getExportedClouds(
 							Eigen::Vector3f viewpoint(0.0f,0.0f,0.0f);
 
 							std::vector<CameraModel> models;
-							StereoCameraModel stereoModel;
+							std::vector<StereoCameraModel> stereoModels;
 							if(cachedSignatures.contains(iter->first))
 							{
 								const SensorData & data = cachedSignatures.find(iter->first)->sensorData();
 								models = data.cameraModels();
-								stereoModel = data.stereoCameraModel();
+								stereoModels = data.stereoCameraModels();
 							}
 							else if(_dbDriver)
 							{
-								_dbDriver->getCalibration(iter->first, models, stereoModel);
+								_dbDriver->getCalibration(iter->first, models, stereoModels);
 							}
 
 #ifdef RTABMAP_CPUTSDF
@@ -2340,11 +2343,11 @@ bool ExportCloudsDialog::getExportedClouds(
 										viewpoint[1] = models[0].localTransform().y();
 										viewpoint[2] = models[0].localTransform().z();
 									}
-									else if(!stereoModel.localTransform().isNull())
+									else if(stereoModels.size() && !stereoModels[0].localTransform().isNull())
 									{
-										viewpoint[0] = stereoModel.localTransform().x();
-										viewpoint[1] = stereoModel.localTransform().y();
-										viewpoint[2] = stereoModel.localTransform().z();
+										viewpoint[0] = stereoModels[0].localTransform().x();
+										viewpoint[1] = stereoModels[0].localTransform().y();
+										viewpoint[2] = stereoModels[0].localTransform().z();
 									}
 								}
 
@@ -2686,24 +2689,28 @@ bool ExportCloudsDialog::getExportedClouds(
 			for(std::map<int, Transform>::const_iterator iter=poses.lower_bound(0); iter!=poses.end(); ++iter)
 			{
 				std::vector<CameraModel> models;
-				StereoCameraModel stereoModel;
+				std::vector<StereoCameraModel> stereoModels;
 				if(cachedSignatures.contains(iter->first))
 				{
 					const SensorData & data = cachedSignatures.find(iter->first)->sensorData();
 					models = data.cameraModels();
-					stereoModel = data.stereoCameraModel();
+					stereoModels = data.stereoCameraModels();
 				}
 				else if(_dbDriver)
 				{
-					_dbDriver->getCalibration(iter->first, models, stereoModel);
+					_dbDriver->getCalibration(iter->first, models, stereoModels);
 				}
 
-				if(stereoModel.isValidForProjection())
+				if(stereoModels.size())
 				{
 					models.clear();
-					models.push_back(stereoModel.left());
+					for(size_t i=0; i<stereoModels.size(); ++i)
+					{
+						models.push_back(stereoModels[i].left());
+					}
 				}
-				else if(models.size() == 0 || !models[0].isValidForProjection())
+
+				if(models.size() == 0 || !models[0].isValidForProjection())
 				{
 					models.clear();
 				}
@@ -3150,28 +3157,32 @@ bool ExportCloudsDialog::getExportedClouds(
 					if(validCameras.find(jter->first) != validCameras.end())
 					{
 						std::vector<CameraModel> models;
-						StereoCameraModel stereoModel;
+						std::vector<StereoCameraModel> stereoModels;
 						bool cacheHasCompressedImage = false;
 						if(cachedSignatures.contains(jter->first))
 						{
 							const SensorData & data = cachedSignatures.find(jter->first)->sensorData();
 							models = data.cameraModels();
-							stereoModel = data.stereoCameraModel();
+							stereoModels = data.stereoCameraModels();
 							cacheHasCompressedImage = !data.imageCompressed().empty();
 						}
 						else if(_dbDriver)
 						{
-							_dbDriver->getCalibration(jter->first, models, stereoModel);
+							_dbDriver->getCalibration(jter->first, models, stereoModels);
 						}
 
 						bool stereo=false;
-						if(stereoModel.isValidForProjection())
+						if(stereoModels.size())
 						{
 							stereo = true;
 							models.clear();
-							models.push_back(stereoModel.left());
+							for(size_t i=0; i<stereoModels.size(); ++i)
+							{
+								models.push_back(stereoModels[i].left());
+							}
 						}
-						else if(models.size() == 0 || !models[0].isValidForProjection())
+
+						if(models.size() == 0 || !models[0].isValidForProjection())
 						{
 							models.clear();
 						}
@@ -3650,12 +3661,12 @@ std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::Indic
 							viewPoint[1] = data.cameraModels()[0].localTransform().y();
 							viewPoint[2] = data.cameraModels()[0].localTransform().z();
 						}
-						else if(!data.stereoCameraModel().localTransform().isNull())
+						else if(data.stereoCameraModels().size() && !data.stereoCameraModels()[0].localTransform().isNull())
 						{
-							localTransform = data.stereoCameraModel().localTransform();
-							viewPoint[0] = data.stereoCameraModel().localTransform().x();
-							viewPoint[1] = data.stereoCameraModel().localTransform().y();
-							viewPoint[2] = data.stereoCameraModel().localTransform().z();
+							localTransform = data.stereoCameraModels()[0].localTransform();
+							viewPoint[0] = data.stereoCameraModels()[0].localTransform().x();
+							viewPoint[1] = data.stereoCameraModels()[0].localTransform().y();
+							viewPoint[2] = data.stereoCameraModels()[0].localTransform().z();
 						}
 
 						if(_ui->spinBox_normalKSearch->value()>0 || _ui->doubleSpinBox_normalRadiusSearch->value()>0.0)
@@ -3766,16 +3777,16 @@ std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::Indic
 				// view point
 				Eigen::Vector3f viewPoint(0.0f,0.0f,0.0f);
 				std::vector<CameraModel> models;
-				StereoCameraModel stereoModel;
+				std::vector<StereoCameraModel> stereoModels;
 				if(cachedSignatures.contains(iter->first))
 				{
 					const Signature & s = cachedSignatures.find(iter->first).value();
 					models = s.sensorData().cameraModels();
-					stereoModel = s.sensorData().stereoCameraModel();
+					stereoModels = s.sensorData().stereoCameraModels();
 				}
 				else if(_dbDriver)
 				{
-					_dbDriver->getCalibration(iter->first, models, stereoModel);
+					_dbDriver->getCalibration(iter->first, models, stereoModels);
 				}
 
 				if(models.size() && !models[0].localTransform().isNull())
@@ -3785,12 +3796,12 @@ std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::Indic
 					viewPoint[1] = models[0].localTransform().y();
 					viewPoint[2] = models[0].localTransform().z();
 				}
-				else if(!stereoModel.localTransform().isNull())
+				else if(stereoModels.size() && !stereoModels[0].localTransform().isNull())
 				{
-					localTransform = stereoModel.localTransform();
-					viewPoint[0] = stereoModel.localTransform().x();
-					viewPoint[1] = stereoModel.localTransform().y();
-					viewPoint[2] = stereoModel.localTransform().z();
+					localTransform = stereoModels[0].localTransform();
+					viewPoint[0] = stereoModels[0].localTransform().x();
+					viewPoint[1] = stereoModels[0].localTransform().y();
+					viewPoint[2] = stereoModels[0].localTransform().z();
 				}
 				else
 				{
@@ -3863,7 +3874,7 @@ std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::Indic
 							util3d::transformPointCloud(cloud, iter->second),
 							indices,
 							"z",
-							min!=0.0f&&min<max?min:std::numeric_limits<int>::min(),
+							min!=0.0f&&(min<max || max==0.0f)?min:std::numeric_limits<int>::min(),
 							max!=0.0f?max:std::numeric_limits<int>::max());
 				}
 				if(!indices->empty() &&
@@ -4494,9 +4505,12 @@ void ExportCloudsDialog::saveTextureMeshes(
 		{
 			models = iter->sensorData().cameraModels();
 		}
-		else if(iter->sensorData().stereoCameraModel().isValidForProjection())
+		else if(iter->sensorData().stereoCameraModels().size())
 		{
-			models.push_back(iter->sensorData().stereoCameraModel().left());
+			for(size_t i=0; i<iter->sensorData().stereoCameraModels().size(); ++i)
+			{
+				models.push_back(iter->sensorData().stereoCameraModels()[i].left());
+			}
 		}
 
 		if(!models.empty())
@@ -4693,8 +4707,15 @@ void ExportCloudsDialog::saveTextureMeshes(
 										SensorData data;
 										_dbDriver->getNodeData(textureId, data, true, false, false, false);
 										data.uncompressDataConst(&image, 0);
-										StereoCameraModel stereoModel;
-										_dbDriver->getCalibration(textureId, cameraModels, stereoModel);
+										std::vector<StereoCameraModel> stereoModels;
+										_dbDriver->getCalibration(textureId, cameraModels, stereoModels);
+										if(cameraModels.empty())
+										{
+											for(size_t i=0; i<stereoModels.size(); ++i)
+											{
+												cameraModels.push_back(stereoModels[i].left());
+											}
+										}
 									}
 
 									previousImage = image;
@@ -4878,8 +4899,15 @@ void ExportCloudsDialog::saveTextureMeshes(
 											SensorData data;
 											_dbDriver->getNodeData(textureId, data, true, false, false, false);
 											data.uncompressDataConst(&image, 0);
-											StereoCameraModel stereoModel;
-											_dbDriver->getCalibration(textureId, cameraModels, stereoModel);
+											std::vector<StereoCameraModel> stereoModels;
+											_dbDriver->getCalibration(textureId, cameraModels, stereoModels);
+											if(cameraModels.empty())
+											{
+												for(size_t i=0; i<stereoModels.size(); ++i)
+												{
+													cameraModels.push_back(stereoModels[i].left());
+												}
+											}
 										}
 
 										previousImage = image;

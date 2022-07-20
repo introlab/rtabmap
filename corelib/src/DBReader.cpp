@@ -186,8 +186,8 @@ bool DBReader::init(
 	if(_ids.size())
 	{
 		std::vector<CameraModel> models;
-		StereoCameraModel stereoModel;
-		if(_dbDriver->getCalibration(*_ids.begin(), models, stereoModel))
+		std::vector<StereoCameraModel> stereoModels;
+		if(_dbDriver->getCalibration(*_ids.begin(), models, stereoModels))
 		{
 			if(models.size())
 			{
@@ -208,7 +208,7 @@ bool DBReader::init(
 					}
 				}
 			}
-			else if(stereoModel.isValidForProjection())
+			else if(stereoModels.size() && stereoModels.at(0).isValidForProjection())
 			{
 				_calibrated = true;
 			}

@@ -103,7 +103,7 @@ public:
 	int localBundleConstraints;
 	float localBundleTime;
 	std::map<int, Transform> localBundlePoses;
-	std::map<int, CameraModel> localBundleModels;
+	std::map<int, std::vector<CameraModel> > localBundleModels;
 	bool keyFrameAdded;
 	float timeEstimation;
 	float timeParticleFiltering;

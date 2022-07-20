@@ -5007,10 +5007,10 @@ Signature Rtabmap::getSignatureCopy(int id, bool images, bool scan, bool userDat
 		if(!images && withWords)
 		{
 			std::vector<CameraModel> models;
-			StereoCameraModel stereoModel;
-			_memory->getNodeCalibration(id, models, stereoModel);
+			std::vector<StereoCameraModel> stereoModels;
+			_memory->getNodeCalibration(id, models, stereoModels);
 			data.setCameraModels(models);
-			data.setStereoCameraModel(stereoModel);
+			data.setStereoCameraModels(stereoModels);
 		}
 
 		s=Signature(id,

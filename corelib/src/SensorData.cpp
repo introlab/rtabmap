@@ -175,6 +175,40 @@ SensorData::SensorData(
 	setUserData(userData);
 }
 
+// Multi-Stereo constructor
+SensorData::SensorData(
+		const cv::Mat & left,
+		const cv::Mat & right,
+		const std::vector<StereoCameraModel> & cameraModels,
+		int id,
+		double stamp,
+		const cv::Mat & userData):
+		_id(id),
+		_stamp(stamp),
+		_cellSize(0.0f)
+{
+	setStereoImage(left, right, cameraModels);
+	setUserData(userData);
+}
+
+// Multi-Stereo constructor + 2d laser scan
+SensorData::SensorData(
+		const LaserScan & laserScan,
+		const cv::Mat & left,
+		const cv::Mat & right,
+		const std::vector<StereoCameraModel> & cameraModels,
+		int id,
+		double stamp,
+		const cv::Mat & userData) :
+		_id(id),
+		_stamp(stamp),
+		_cellSize(0.0f)
+{
+	setStereoImage(left, right, cameraModels);
+	setLaserScan(laserScan);
+	setUserData(userData);
+}
+
 SensorData::SensorData(
 	const IMU & imu,
 	int id,
@@ -206,16 +240,16 @@ void SensorData::setRGBDImage(
 		const std::vector<CameraModel> & models,
 		bool clearPreviousData)
 {
-	if(!clearPreviousData && _stereoCameraModel.isValidForProjection())
+	if(!clearPreviousData && !_stereoCameraModels.empty())
 	{
 		UERROR("Sensor data has previously stereo images "
 				"but clearPreviousData parameter is false. We "
 				"will still clear previous data to avoid incompatibilities "
 				"between raw and compressed data!");
 	}
-	bool clearData = clearPreviousData || _stereoCameraModel.isValidForProjection();
+	bool clearData = clearPreviousData || !_stereoCameraModels.empty();
 
-	_stereoCameraModel = StereoCameraModel();
+	_stereoCameraModels.clear();
 	_cameraModels = models;
 	if(rgb.rows == 1)
 	{
@@ -273,6 +307,16 @@ void SensorData::setStereoImage(
 		const StereoCameraModel & stereoCameraModel,
 		bool clearPreviousData)
 {
+	std::vector<StereoCameraModel> models;
+	models.push_back(stereoCameraModel);
+	setStereoImage(left, right, models, clearPreviousData);
+}
+void SensorData::setStereoImage(
+		const cv::Mat & left,
+		const cv::Mat & right,
+		const std::vector<StereoCameraModel> & stereoCameraModels,
+		bool clearPreviousData)
+{
 	if(!clearPreviousData && !_cameraModels.empty())
 	{
 		UERROR("Sensor data has previously RGB-D/RGB images "
@@ -283,7 +327,7 @@ void SensorData::setStereoImage(
 	bool clearData = clearPreviousData || !_cameraModels.empty();
 
 	_cameraModels.clear();
-	_stereoCameraModel = stereoCameraModel;
+	_stereoCameraModels = stereoCameraModels;
 
 	if(left.rows == 1)
 	{
@@ -842,15 +886,24 @@ bool SensorData::isPointVisibleFromCameras(const cv::Point3f & pt) const
 			}
 		}
 	}
-	else if(_stereoCameraModel.isValidForProjection())
+	else if(_stereoCameraModels.size() >= 1)
 	{
-		cv::Point3f ptInCameraFrame = util3d::transformPoint(pt, _stereoCameraModel.localTransform().inverse());
-		if(ptInCameraFrame.z > 0.0f)
+		for(unsigned int i=0; i<_stereoCameraModels.size(); ++i)
 		{
-			int u, v;
-			_stereoCameraModel.left().reproject(ptInCameraFrame.x, ptInCameraFrame.y, ptInCameraFrame.z, u, v);
-			return uIsInBounds(u, 0, _stereoCameraModel.left().imageWidth()) &&
-				   uIsInBounds(v, 0, _stereoCameraModel.left().imageHeight());
+			if(_stereoCameraModels[i].isValidForProjection() && !_stereoCameraModels[i].localTransform().isNull())
+			{
+				cv::Point3f ptInCameraFrame = util3d::transformPoint(pt, _stereoCameraModels[i].localTransform().inverse());
+				if(ptInCameraFrame.z > 0.0f)
+				{
+					int u, v;
+					_stereoCameraModels[i].left().reproject(ptInCameraFrame.x, ptInCameraFrame.y, ptInCameraFrame.z, u, v);
+					if(uIsInBounds(u, 0, _stereoCameraModels[i].left().imageWidth()) &&
+					   uIsInBounds(v, 0, _stereoCameraModels[i].left().imageHeight()))
+					{
+						return true;
+					}
+				}
+			}
 		}
 	}
 	else

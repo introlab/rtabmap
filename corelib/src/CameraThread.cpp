@@ -287,9 +287,10 @@ void CameraThread::mainLoop()
 				model.setLocalTransform(_extrinsicsOdomToCamera);
 				data.setCameraModel(model);
 			}
-			else
+			else if(!data.stereoCameraModels().empty())
 			{
-				StereoCameraModel model = data.stereoCameraModel();
+				UASSERT(data.stereoCameraModels().size()==1);
+				StereoCameraModel model = data.stereoCameraModels()[0];
 				model.setLocalTransform(_extrinsicsOdomToCamera);
 				data.setStereoCameraModel(model);
 			}
@@ -358,7 +359,12 @@ void CameraThread::postUpdate(SensorData * dataPtr, CameraInfo * info) const
 		}
 		else if(!data.rightRaw().empty())
 		{
-			data.setRGBDImage(data.imageRaw(), cv::Mat(), data.stereoCameraModel().left());
+			std::vector<CameraModel> models;
+			for(size_t i=0; i<data.stereoCameraModels().size(); ++i)
+			{
+				models.push_back(data.stereoCameraModels()[i].left());
+			}
+			data.setRGBDImage(data.imageRaw(), cv::Mat(), models);
 		}
 	}
 
@@ -435,91 +441,116 @@ void CameraThread::postUpdate(SensorData * dataPtr, CameraInfo * info) const
 			{
 				data.setRGBDImage(image, depthOrRight, models);
 			}
-			else
+
+
+			std::vector<StereoCameraModel> stereoModels = data.stereoCameraModels();
+			for(unsigned int i=0; i<stereoModels.size(); ++i)
 			{
-				StereoCameraModel stereoModel = data.stereoCameraModel();
-				if(stereoModel.isValidForProjection())
+				if(stereoModels[i].isValidForProjection())
 				{
-					stereoModel.scale(1.0/double(_imageDecimation));
+					stereoModels[i].scale(1.0/double(_imageDecimation));
 				}
-				data.setStereoImage(image, depthOrRight, stereoModel);
+			}
+			if(!stereoModels.empty())
+			{
+				data.setStereoImage(image, depthOrRight, stereoModels);
 			}
 		}
 		if(info) info->timeImageDecimation = timer.ticks();
 	}
-	if(_mirroring && !data.imageRaw().empty() && data.cameraModels().size() == 1)
+	if(_mirroring && !data.imageRaw().empty() && data.cameraModels().size()>=1)
 	{
-		UDEBUG("");
-		UTimer timer;
-		cv::Mat tmpRgb;
-		cv::flip(data.imageRaw(), tmpRgb, 1);
+		if(data.cameraModels().size() == 1)
+		{
+			UDEBUG("");
+			UTimer timer;
+			cv::Mat tmpRgb;
+			cv::flip(data.imageRaw(), tmpRgb, 1);
 
-		UASSERT_MSG(data.cameraModels().size() <= 1 && !data.stereoCameraModel().isValidForProjection(), "Only single RGBD cameras are supported for mirroring.");
-		CameraModel tmpModel = data.cameraModels()[0];
-		if(data.cameraModels()[0].cx())
-		{
-			tmpModel = CameraModel(
-					data.cameraModels()[0].fx(),
-					data.cameraModels()[0].fy(),
-					float(data.imageRaw().cols) - data.cameraModels()[0].cx(),
-					data.cameraModels()[0].cy(),
-					data.cameraModels()[0].localTransform(),
-					data.cameraModels()[0].Tx(),
-					data.cameraModels()[0].imageSize());
+			CameraModel tmpModel = data.cameraModels()[0];
+			if(data.cameraModels()[0].cx())
+			{
+				tmpModel = CameraModel(
+						data.cameraModels()[0].fx(),
+						data.cameraModels()[0].fy(),
+						float(data.imageRaw().cols) - data.cameraModels()[0].cx(),
+						data.cameraModels()[0].cy(),
+						data.cameraModels()[0].localTransform(),
+						data.cameraModels()[0].Tx(),
+						data.cameraModels()[0].imageSize());
+			}
+			cv::Mat tmpDepth = data.depthOrRightRaw();
+			if(!data.depthRaw().empty())
+			{
+				cv::flip(data.depthRaw(), tmpDepth, 1);
+			}
+			data.setRGBDImage(tmpRgb, tmpDepth, tmpModel);
+			if(info) info->timeMirroring = timer.ticks();
 		}
-		cv::Mat tmpDepth = data.depthOrRightRaw();
-		if(!data.depthRaw().empty())
+		else
 		{
-			cv::flip(data.depthRaw(), tmpDepth, 1);
+			UWARN("Mirroring is not implemented for multiple cameras or stereo...");
 		}
-		data.setRGBDImage(tmpRgb, tmpDepth, tmpModel);
-		if(info) info->timeMirroring = timer.ticks();
 	}
 
 	if(_stereoExposureCompensation && !data.imageRaw().empty() && !data.rightRaw().empty())
 	{
+		if(data.stereoCameraModels().size()==1)
+		{
 #if CV_MAJOR_VERSION < 3
-		UWARN("Stereo exposure compensation not implemented for OpenCV version under 3.");
+			UWARN("Stereo exposure compensation not implemented for OpenCV version under 3.");
 #else
-		UDEBUG("");
-		UTimer timer;
-		cv::Ptr<cv::detail::ExposureCompensator> compensator = cv::detail::ExposureCompensator::createDefault(cv::detail::ExposureCompensator::GAIN);
-		std::vector<cv::Point> topLeftCorners(2, cv::Point(0,0));
-		std::vector<cv::UMat> images;
-		std::vector<cv::UMat> masks(2, cv::UMat(data.imageRaw().size(), CV_8UC1,  cv::Scalar(255)));
-		images.push_back(data.imageRaw().getUMat(cv::ACCESS_READ));
-		images.push_back(data.rightRaw().getUMat(cv::ACCESS_READ));
-		compensator->feed(topLeftCorners, images, masks);
-		cv::Mat imgLeft = data.imageRaw().clone();
-		compensator->apply(0, cv::Point(0,0), imgLeft, masks[0]);
-		cv::Mat imgRight = data.rightRaw().clone();
-		compensator->apply(1, cv::Point(0,0), imgRight, masks[1]);
-		data.setStereoImage(imgLeft, imgRight, data.stereoCameraModel());
-		cv::detail::GainCompensator * gainCompensator = (cv::detail::GainCompensator*)compensator.get();
-		UDEBUG("gains = %f %f ", gainCompensator->gains()[0], gainCompensator->gains()[1]);
-		if(info) info->timeStereoExposureCompensation = timer.ticks();
+			UDEBUG("");
+			UTimer timer;
+			cv::Ptr<cv::detail::ExposureCompensator> compensator = cv::detail::ExposureCompensator::createDefault(cv::detail::ExposureCompensator::GAIN);
+			std::vector<cv::Point> topLeftCorners(2, cv::Point(0,0));
+			std::vector<cv::UMat> images;
+			std::vector<cv::UMat> masks(2, cv::UMat(data.imageRaw().size(), CV_8UC1,  cv::Scalar(255)));
+			images.push_back(data.imageRaw().getUMat(cv::ACCESS_READ));
+			images.push_back(data.rightRaw().getUMat(cv::ACCESS_READ));
+			compensator->feed(topLeftCorners, images, masks);
+			cv::Mat imgLeft = data.imageRaw().clone();
+			compensator->apply(0, cv::Point(0,0), imgLeft, masks[0]);
+			cv::Mat imgRight = data.rightRaw().clone();
+			compensator->apply(1, cv::Point(0,0), imgRight, masks[1]);
+			data.setStereoImage(imgLeft, imgRight, data.stereoCameraModels()[0]);
+			cv::detail::GainCompensator * gainCompensator = (cv::detail::GainCompensator*)compensator.get();
+			UDEBUG("gains = %f %f ", gainCompensator->gains()[0], gainCompensator->gains()[1]);
+			if(info) info->timeStereoExposureCompensation = timer.ticks();
 #endif
+		}
+		else
+		{
+			UWARN("Stereo exposure compensation only is not implemented to multiple stereo cameras...");
+		}
 	}
 
-	if(_stereoToDepth && !data.imageRaw().empty() && data.stereoCameraModel().isValidForProjection() && !data.rightRaw().empty())
+	if(_stereoToDepth && !data.imageRaw().empty() && !data.stereoCameraModels().empty() && data.stereoCameraModels()[0].isValidForProjection() && !data.rightRaw().empty())
 	{
-		UDEBUG("");
-		UTimer timer;
-		cv::Mat depth = util2d::depthFromDisparity(
-				_stereoDense->computeDisparity(data.imageRaw(), data.rightRaw()),
-				data.stereoCameraModel().left().fx(),
-				data.stereoCameraModel().baseline());
-		// set Tx for stereo bundle adjustment (when used)
-		CameraModel model = CameraModel(
-				data.stereoCameraModel().left().fx(),
-				data.stereoCameraModel().left().fy(),
-				data.stereoCameraModel().left().cx(),
-				data.stereoCameraModel().left().cy(),
-				data.stereoCameraModel().localTransform(),
-				-data.stereoCameraModel().baseline()*data.stereoCameraModel().left().fx(),
-				data.stereoCameraModel().left().imageSize());
-		data.setRGBDImage(data.imageRaw(), depth, model);
-		if(info) info->timeDisparity = timer.ticks();
+		if(data.stereoCameraModels().size()==1)
+		{
+			UDEBUG("");
+			UTimer timer;
+			cv::Mat depth = util2d::depthFromDisparity(
+					_stereoDense->computeDisparity(data.imageRaw(), data.rightRaw()),
+					data.stereoCameraModels()[0].left().fx(),
+					data.stereoCameraModels()[0].baseline());
+			// set Tx for stereo bundle adjustment (when used)
+			CameraModel model = CameraModel(
+					data.stereoCameraModels()[0].left().fx(),
+					data.stereoCameraModels()[0].left().fy(),
+					data.stereoCameraModels()[0].left().cx(),
+					data.stereoCameraModels()[0].left().cy(),
+					data.stereoCameraModels()[0].localTransform(),
+					-data.stereoCameraModels()[0].baseline()*data.stereoCameraModels()[0].left().fx(),
+					data.stereoCameraModels()[0].left().imageSize());
+			data.setRGBDImage(data.imageRaw(), depth, model);
+			if(info) info->timeDisparity = timer.ticks();
+		}
+		else
+		{
+			UWARN("Stereo to depth is not implemented for multiple stereo cameras...");
+		}
 	}
 	if(_scanFromDepth &&
 		data.cameraModels().size() &&

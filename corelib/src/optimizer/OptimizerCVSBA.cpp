@@ -57,7 +57,7 @@ std::map<int, Transform> OptimizerCVSBA::optimizeBA(
 		int rootId,
 		const std::map<int, Transform> & posesIn,
 		const std::multimap<int, Link> & links,
-		const std::map<int, CameraModel> & models,
+		const std::map<int, std::vector<CameraModel> > & models,
 		std::map<int, cv::Point3f> & points3DMap,
 		const std::map<int, std::map<int, FeatureBA> > & wordReferences, // <ID words, IDs frames + keypoint/Disparity>)
 		std::set<int> * outliers)

@@ -58,6 +58,7 @@ public:
 	virtual ~CameraDepthAI();
 
 	void setOutputDepth(bool enabled, int confidence = 200);
+	void setIMUFirmwareUpdate(bool enabled);
 
 	virtual bool init(const std::string & calibrationFolder = ".", const std::string & cameraName = "");
 	virtual bool isCalibrated() const;
@@ -74,6 +75,7 @@ private:
 	bool outputDepth_;
 	int depthConfidence_;
 	int resolution_;
+	bool imuFirmwareUpdate_;
 	std::shared_ptr<dai::Device> device_;
 	std::shared_ptr<dai::DataOutputQueue> leftQueue_;
 	std::shared_ptr<dai::DataOutputQueue> rightOrDepthQueue_;

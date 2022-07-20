@@ -469,6 +469,13 @@ IF(FastCV_FOUND)
 	)
 ENDIF(FastCV_FOUND)
 
+IF(opengv_FOUND)
+    SET(LIBRARIES
+        ${LIBRARIES}
+        opengv
+    )
+ENDIF(opengv_FOUND)
+
 IF(PDAL_FOUND)
 	SET(INCLUDE_DIRS
 		${INCLUDE_DIRS}

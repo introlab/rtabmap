@@ -726,7 +726,7 @@ void DBDriver::getNodeData(
 bool DBDriver::getCalibration(
 		int signatureId,
 		std::vector<CameraModel> & models,
-		StereoCameraModel & stereoModel) const
+		std::vector<StereoCameraModel> & stereoModels) const
 {
 	UDEBUG("");
 	bool found = false;
@@ -735,7 +735,7 @@ bool DBDriver::getCalibration(
 	if(uContains(_trashSignatures, signatureId))
 	{
 		models = _trashSignatures.at(signatureId)->sensorData().cameraModels();
-		stereoModel = _trashSignatures.at(signatureId)->sensorData().stereoCameraModel();
+		stereoModels = _trashSignatures.at(signatureId)->sensorData().stereoCameraModels();
 		found = true;
 	}
 	_trashesMutex.unlock();
@@ -743,7 +743,7 @@ bool DBDriver::getCalibration(
 	if(!found)
 	{
 		_dbSafeAccessMutex.lock();
-		found = this->getCalibrationQuery(signatureId, models, stereoModel);
+		found = this->getCalibrationQuery(signatureId, models, stereoModels);
 		_dbSafeAccessMutex.unlock();
 	}
 	return found;

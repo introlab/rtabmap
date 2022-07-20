@@ -170,7 +170,8 @@ Transform OdometryMono::computeTransform(SensorData & data, const Transform & gu
 		return output;
 	}
 
-	if(!(((data.cameraModels().size() == 1 && data.cameraModels()[0].isValidForProjection()) || data.stereoCameraModel().isValidForProjection())))
+	if(!((data.cameraModels().size() == 1 && data.cameraModels()[0].isValidForProjection()) ||
+	     (data.stereoCameraModels().size() == 1  && data.stereoCameraModels()[0].isValidForProjection())))
 	{
 		UERROR("Odometry cannot be done without calibration or on multi-camera!");
 		return output;
@@ -178,21 +179,24 @@ Transform OdometryMono::computeTransform(SensorData & data, const Transform & gu
 
 
 	CameraModel cameraModel;
-	if(data.stereoCameraModel().isValidForProjection())
+	if(data.stereoCameraModels().size())
 	{
-		cameraModel = data.stereoCameraModel().left();
+		cameraModel = data.stereoCameraModels()[0].left();
 		// Set Tx for stereo BA
 		cameraModel = CameraModel(cameraModel.fx(),
 				cameraModel.fy(),
 				cameraModel.cx(),
 				cameraModel.cy(),
 				cameraModel.localTransform(),
-				-data.stereoCameraModel().baseline()*cameraModel.fx());
+				-data.stereoCameraModels()[0].baseline()*cameraModel.fx(),
+				cameraModel.imageSize());
 	}
 	else
 	{
 		cameraModel = data.cameraModels()[0];
 	}
+	std::vector<CameraModel> newModel;
+	newModel.push_back(cameraModel);
 
 	UTimer timer;
 
@@ -205,9 +209,9 @@ Transform OdometryMono::computeTransform(SensorData & data, const Transform & gu
 	{
 		cv::Mat newFrame;
 		cv::cvtColor(data.imageRaw(), newFrame, cv::COLOR_BGR2GRAY);
-		if(data.stereoCameraModel().isValidForProjection())
+		if(!data.stereoCameraModels().empty())
 		{
-			data.setStereoImage(newFrame, data.rightRaw(), data.stereoCameraModel());
+			data.setStereoImage(newFrame, data.rightRaw(), data.stereoCameraModels());
 		}
 		else
 		{
@@ -436,9 +440,9 @@ Transform OdometryMono::computeTransform(SensorData & data, const Transform & gu
 						{
 							UWARN("Bundle adjustment: fill arguments");
 							std::multimap<int, Link> links = keyFrameLinks_;
-							std::map<int, CameraModel> models = keyFrameModels_;
+							std::map<int, std::vector<CameraModel> > models = keyFrameModels_;
 							links.insert(std::make_pair(keyFramePoses_.rbegin()->first, newLink));
-							models.insert(std::make_pair(newS->id(), cameraModel));
+							models.insert(std::make_pair(newS->id(), newModel));
 							std::map<int, std::map<int, FeatureBA> > wordReferences;
 
 							for(std::set<int>::iterator iter = memory_->getStMem().begin(); iter!=memory_->getStMem().end(); ++iter)
@@ -596,7 +600,7 @@ Transform OdometryMono::computeTransform(SensorData & data, const Transform & gu
 										}
 										keyFramePoses_ = poses;
 										keyFrameLinks_.insert(std::make_pair(newLink.from(), newLink));
-										keyFrameModels_.insert(std::make_pair(newS->id(), cameraModel));
+										keyFrameModels_.insert(std::make_pair(newS->id(), newModel));
 
 										// keep only the two last signatures
 										while(localHistoryMaxSize_ && (int)localMap_.size() > localHistoryMaxSize_ && memory_->getStMem().size()>2)
@@ -798,7 +802,7 @@ Transform OdometryMono::computeTransform(SensorData & data, const Transform & gu
 					keyFrameWords3D_.insert(std::make_pair(memory_->getLastWorkingSignature()->id(), refWords3));
 				}
 				keyFramePoses_.insert(std::make_pair(memory_->getLastWorkingSignature()->id(), this->getPose()));
-				keyFrameModels_.insert(std::make_pair(memory_->getLastWorkingSignature()->id(), cameraModel));
+				keyFrameModels_.insert(std::make_pair(memory_->getLastWorkingSignature()->id(), newModel));
 			}
 		}
 		else

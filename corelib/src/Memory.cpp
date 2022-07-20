@@ -1812,7 +1812,7 @@ void Memory::clear()
 	_linksChanged = false;
 	_gpsOrigin = GPS();
 	_rectCameraModels.clear();
-	_rectStereoCameraModel = StereoCameraModel();
+	_rectStereoCameraModels.clear();
 	_odomMaxInf.clear();
 	_groundTruths.clear();
 	_labels.clear();
@@ -2963,7 +2963,7 @@ Transform Memory::computeTransform(
 				}
 				std::map<int, Transform> bundlePoses;
 				std::multimap<int, Link> bundleLinks;
-				std::map<int, CameraModel> bundleModels;
+				std::map<int, std::vector<CameraModel> > bundleModels;
 				std::map<int, std::map<int, FeatureBA> > wordReferences;
 
 				std::multimap<int, Link> links = fromS.getLinks();
@@ -2989,28 +2989,32 @@ Transform Memory::computeTransform(
 						}
 						if(s)
 						{
-							CameraModel model;
-							if(s->sensorData().cameraModels().size() == 1 && s->sensorData().cameraModels().at(0).isValidForProjection())
+							std::vector<CameraModel> models;
+							if(s->sensorData().cameraModels().size() >= 1 && s->sensorData().cameraModels().at(0).isValidForProjection())
 							{
-								model = s->sensorData().cameraModels()[0];
+								models = s->sensorData().cameraModels();
 							}
-							else if(s->sensorData().stereoCameraModel().isValidForProjection())
+							else if(s->sensorData().stereoCameraModels().size() >= 1 && s->sensorData().stereoCameraModels().at(0).isValidForProjection())
 							{
-								model = s->sensorData().stereoCameraModel().left();
-								// Set Tx for stereo BA
-								model = CameraModel(model.fx(),
-										model.fy(),
-										model.cx(),
-										model.cy(),
-										model.localTransform(),
-										-s->sensorData().stereoCameraModel().baseline()*model.fx());
+								for(size_t i=0; i<s->sensorData().stereoCameraModels().size(); ++i)
+								{
+									CameraModel model = s->sensorData().stereoCameraModels()[i].left();
+									// Set Tx for stereo BA
+									model = CameraModel(model.fx(),
+											model.fy(),
+											model.cx(),
+											model.cy(),
+											model.localTransform(),
+											-s->sensorData().stereoCameraModels()[i].baseline()*model.fx(),
+											model.imageSize());
+									models.push_back(model);
+								}
 							}
 							else
 							{
 								UFATAL("no valid camera model to use local bundle adjustment on loop closure!");
 							}
-							bundleModels.insert(std::make_pair(id, model));
-							Transform invLocalTransform = model.localTransform().inverse();
+							bundleModels.insert(std::make_pair(id, models));
 							UASSERT(iter->second.isValid() || iter->first == fromS.id());
 
 							if(iter->second.transform().isNull())
@@ -3030,16 +3034,27 @@ Transform Memory::computeTransform(
 								if(points3DMap.find(jter->first)!=points3DMap.end() &&
 										(id == tmpTo.id() || jter->first > 0)) // Since we added negative words of "from", only accept matches with current frame
 								{
+									cv::KeyPoint kpts = s->getWordsKpts()[jter->second];
+									int cameraIndex = 0;
+									if(models.size()>1)
+									{
+										UASSERT(models[0].imageWidth()>0);
+										float subImageWidth = models[0].imageWidth();
+										cameraIndex = int(kpts.pt.x / subImageWidth);
+										kpts.pt.x = kpts.pt.x - (subImageWidth*float(cameraIndex));
+									}
+
 									//get depth
 									float d = 0.0f;
 									if( !s->getWords3().empty() &&
 										util3d::isFinite(s->getWords3()[jter->second]))
 									{
 										//move back point in camera frame (to get depth along z)
+										Transform invLocalTransform = models[cameraIndex].localTransform().inverse();
 										d = util3d::transformPoint(s->getWords3()[jter->second], invLocalTransform).z;
 									}
 									wordReferences.insert(std::make_pair(jter->first, std::map<int, FeatureBA>()));
-									wordReferences.at(jter->first).insert(std::make_pair(id, FeatureBA(s->getWordsKpts()[jter->second], d)));
+									wordReferences.at(jter->first).insert(std::make_pair(id, FeatureBA(kpts, d, cv::Mat(), cameraIndex)));
 									++totalWordReferences;
 								}
 							}
@@ -4110,19 +4125,19 @@ void Memory::getNodeWordsAndGlobalDescriptors(int nodeId,
 
 void Memory::getNodeCalibration(int nodeId,
 		std::vector<CameraModel> & models,
-		StereoCameraModel & stereoModel) const
+		std::vector<StereoCameraModel> & stereoModels) const
 {
 	//UDEBUG("nodeId=%d", nodeId);
 	Signature * s = this->_getSignature(nodeId);
 	if(s)
 	{
 		models = s->sensorData().cameraModels();
-		stereoModel = s->sensorData().stereoCameraModel();
+		stereoModels = s->sensorData().stereoCameraModels();
 	}
 	else if(_dbDriver)
 	{
 		// load from database
-		_dbDriver->getCalibration(nodeId, models, stereoModel);
+		_dbDriver->getCalibration(nodeId, models, stereoModels);
 	}
 }
 
@@ -4445,15 +4460,11 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 						CV_16UC1, CV_32FC1, CV_8UC1).c_str());
 
 	if(!data.depthOrRightRaw().empty() &&
-		data.cameraModels().size() == 0 &&
-		!data.stereoCameraModel().isValidForProjection() &&
+		data.cameraModels().empty() &&
+		data.stereoCameraModels().empty() &&
 		!pose.isNull())
 	{
-		UERROR("Camera calibration not valid, calibrate your camera!");
-		if(data.cameraModels().empty())
-			std::cout << data.stereoCameraModel() << std::endl;
-		else
-			std::cout << data.cameraModels()[0] << std::endl;
+		UERROR("No camera calibration found, calibrate your camera!");
 		return 0;
 	}
 	UASSERT(_feature2D != 0);
@@ -4504,6 +4515,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 		// we assume that once rtabmap is receiving data, the calibration won't change over time
 		if(data.cameraModels().size())
 		{
+			UDEBUG("Monocular rectification");
 			// Note that only RGB image is rectified, the depth image is assumed to be already registered to rectified RGB camera.
 			UASSERT(int((data.imageRaw().cols/data.cameraModels().size())*data.cameraModels().size()) == data.imageRaw().cols);
 			int subImageWidth = data.imageRaw().cols/data.cameraModels().size();
@@ -4545,25 +4557,58 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 			}
 			data.setRGBDImage(rectifiedImages, data.depthOrRightRaw(), data.cameraModels());
 		}
-		else if(data.stereoCameraModel().isValidForRectification())
+		else if(data.stereoCameraModels().size())
 		{
-			if(!_rectStereoCameraModel.isValidForRectification())
+			UDEBUG("Stereo rectification");
+			UASSERT(int((data.imageRaw().cols/data.stereoCameraModels().size())*data.stereoCameraModels().size()) == data.imageRaw().cols);
+			int subImageWidth = data.imageRaw().cols/data.stereoCameraModels().size();
+			UASSERT(subImageWidth == data.rightRaw().cols/(int)data.stereoCameraModels().size());
+			cv::Mat rectifiedLefts(data.imageRaw().size(), data.imageRaw().type());
+			cv::Mat rectifiedRights(data.rightRaw().size(), data.rightRaw().type());
+			bool initRectMaps = _rectStereoCameraModels.empty();
+			if(initRectMaps)
 			{
-				_rectStereoCameraModel = data.stereoCameraModel();
-				if(!_rectStereoCameraModel.isRectificationMapInitialized())
+				_rectStereoCameraModels.resize(data.stereoCameraModels().size());
+			}
+
+			for(unsigned int i=0; i<data.stereoCameraModels().size(); ++i)
+			{
+				if(data.stereoCameraModels()[i].isValidForRectification())
 				{
-					UWARN("Initializing rectification maps (only done for the first image received)...");
-					_rectStereoCameraModel.initRectificationMap();
-					UWARN("Initializing rectification maps (only done for the first image received)...done!");
+					if(initRectMaps)
+					{
+						_rectStereoCameraModels[i] = data.stereoCameraModels()[i];
+						if(!_rectStereoCameraModels[i].isRectificationMapInitialized())
+						{
+							UWARN("Initializing rectification maps (only done for the first image received)...");
+							_rectStereoCameraModels[i].initRectificationMap();
+							UWARN("Initializing rectification maps (only done for the first image received)...done!");
+						}
+					}
+					UASSERT(_rectStereoCameraModels[i].left().imageWidth() == data.stereoCameraModels()[i].left().imageWidth());
+					UASSERT(_rectStereoCameraModels[i].left().imageHeight() == data.stereoCameraModels()[i].left().imageHeight());
+
+					cv::Mat rectifiedLeft = _rectStereoCameraModels[i].left().rectifyImage(cv::Mat(data.imageRaw(), cv::Rect(subImageWidth*i, 0, subImageWidth, data.imageRaw().rows)));
+					cv::Mat rectifiedRight = _rectStereoCameraModels[i].right().rectifyImage(cv::Mat(data.rightRaw(), cv::Rect(subImageWidth*i, 0, subImageWidth, data.rightRaw().rows)));
+					rectifiedLeft.copyTo(cv::Mat(rectifiedLefts, cv::Rect(subImageWidth*i, 0, subImageWidth, data.imageRaw().rows)));
+					rectifiedRight.copyTo(cv::Mat(rectifiedRights, cv::Rect(subImageWidth*i, 0, subImageWidth, data.rightRaw().rows)));
+					imagesRectified = true;
+				}
+				else
+				{
+					UERROR("Calibration for camera %d cannot be used to rectify the image. Make sure to do a "
+						"full calibration. If images are already rectified, set %s parameter back to true.",
+						(int)i,
+						Parameters::kRtabmapImagesAlreadyRectified().c_str());
+					std::cout << data.stereoCameraModels()[i] << std::endl;
+					return 0;
 				}
 			}
-			UASSERT(_rectStereoCameraModel.left().imageWidth() == data.stereoCameraModel().left().imageWidth());
-			UASSERT(_rectStereoCameraModel.left().imageHeight() == data.stereoCameraModel().left().imageHeight());
+
 			data.setStereoImage(
-					_rectStereoCameraModel.left().rectifyImage(data.imageRaw()),
-					_rectStereoCameraModel.right().rectifyImage(data.rightRaw()),
-					data.stereoCameraModel());
-			imagesRectified = true;
+					rectifiedLefts,
+					rectifiedRights,
+					data.stereoCameraModels());
 		}
 		else
 		{
@@ -4636,17 +4681,18 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 							util2d::decimate(decimatedData.depthOrRightRaw(), decimationDepth),
 							cameraModels);
 				}
-				else
+
+				std::vector<StereoCameraModel> stereoCameraModels = decimatedData.stereoCameraModels();
+				for(unsigned int i=0; i<stereoCameraModels.size(); ++i)
 				{
-					StereoCameraModel stereoModel = decimatedData.stereoCameraModel();
-					if(stereoModel.isValidForProjection())
-					{
-						stereoModel.scale(1.0/double(_imagePreDecimation));
-					}
+					stereoCameraModels[i].scale(1.0/double(_imagePreDecimation));
+				}
+				if(!stereoCameraModels.empty())
+				{
 					decimatedData.setStereoImage(
 							util2d::decimate(decimatedData.imageRaw(), _imagePreDecimation),
 							util2d::decimate(decimatedData.depthOrRightRaw(), _imagePreDecimation),
-							stereoModel);
+							stereoCameraModels);
 				}
 			}
 
@@ -4885,7 +4931,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 					keypoints3D = data.keypoints3D();
 				}
 				else if((!decimatedData.depthRaw().empty() && decimatedData.cameraModels().size() && decimatedData.cameraModels()[0].isValidForProjection()) ||
-				   (!decimatedData.rightRaw().empty() && decimatedData.stereoCameraModel().isValidForProjection()))
+				   (!decimatedData.rightRaw().empty() && decimatedData.stereoCameraModels().size() && decimatedData.stereoCameraModels()[0].isValidForProjection()))
 				{
 					keypoints3D = _feature2D->generateKeypoints3D(decimatedData, keypoints);
 					t = timer.ticks();
@@ -5090,7 +5136,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 
 		if(keypoints3D.empty() &&
 			((!data.depthRaw().empty() && data.cameraModels().size() && data.cameraModels()[0].isValidForProjection()) ||
-		   (!data.rightRaw().empty() && data.stereoCameraModel().isValidForProjection())))
+		   (!data.rightRaw().empty() && data.stereoCameraModels().size() && data.stereoCameraModels()[0].isValidForProjection())))
 		{
 			keypoints3D = _feature2D->generateKeypoints3D(data, keypoints);
 		}
@@ -5280,9 +5326,21 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 					markers = _markerDetector->detect(data.imageRaw(), data.cameraModels()[0], data.depthRaw(), _landmarksSize);
 				}
 			}
-			else if(data.stereoCameraModel().isValidForProjection())
+			else if(!data.stereoCameraModels().empty() && data.stereoCameraModels()[0].isValidForProjection())
 			{
-				markers = _markerDetector->detect(data.imageRaw(), data.stereoCameraModel().left(), cv::Mat(), _landmarksSize);
+				if(data.stereoCameraModels().size() > 1)
+				{
+					static bool warned = false;
+					if(!warned)
+					{
+						UWARN("Detecting markers in multi-camera setup is not yet implemented, aborting marker detection. This message is only printed once.");
+					}
+					warned = true;
+				}
+				else
+				{
+					markers = _markerDetector->detect(data.imageRaw(), data.stereoCameraModels()[0].left(), cv::Mat(), _landmarksSize);
+				}
 			}
 			for(std::map<int, MarkerInfo>::iterator iter=markers.begin(); iter!=markers.end(); ++iter)
 			{
@@ -5310,7 +5368,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 	cv::Mat image = data.imageRaw();
 	cv::Mat depthOrRightImage = data.depthOrRightRaw();
 	std::vector<CameraModel> cameraModels = data.cameraModels();
-	StereoCameraModel stereoCameraModel = data.stereoCameraModel();
+	std::vector<StereoCameraModel> stereoCameraModels = data.stereoCameraModels();
 
 	// apply decimation?
 	if(_imagePostDecimation > 1 && !isIntermediateNode)
@@ -5320,7 +5378,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 			image = decimatedData.imageRaw();
 			depthOrRightImage = decimatedData.depthOrRightRaw();
 			cameraModels = decimatedData.cameraModels();
-			stereoCameraModel = decimatedData.stereoCameraModel();
+			stereoCameraModels = decimatedData.stereoCameraModels();
 		}
 		else
 		{
@@ -5348,9 +5406,9 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 			{
 				cameraModels[i] = cameraModels[i].scaled(1.0/double(_imagePostDecimation));
 			}
-			if(stereoCameraModel.isValidForProjection())
+			for(unsigned int i=0; i<stereoCameraModels.size(); ++i)
 			{
-				stereoCameraModel.scale(1.0/double(_imagePostDecimation));
+				stereoCameraModels[i].scale(1.0/double(_imagePostDecimation));
 			}
 		}
 
@@ -5598,7 +5656,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 			"",
 			pose,
 			data.groundTruth(),
-			stereoCameraModel.isValidForProjection()?
+			!stereoCameraModels.empty()?
 				SensorData(
 						laserScan.angleIncrement() == 0.0f?
 							LaserScan(compressedScan,
@@ -5616,7 +5674,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 								laserScan.localTransform()),
 						compressedImage,
 						compressedDepth,
-						stereoCameraModel,
+						stereoCameraModels,
 						id,
 						0,
 						compressedUserData):
@@ -5682,7 +5740,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 			"",
 			pose,
 			data.groundTruth(),
-			stereoCameraModel.isValidForProjection()?
+			!stereoCameraModels.empty()?
 				SensorData(
 						laserScan.angleIncrement() == 0.0f?
 								LaserScan(compressedScan,
@@ -5700,7 +5758,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 									laserScan.localTransform()),
 						cv::Mat(),
 						cv::Mat(),
-						stereoCameraModel,
+						stereoCameraModels,
 						id,
 						0,
 						compressedUserData):
@@ -5738,7 +5796,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 	}
 	else
 	{
-		s->sensorData().setStereoImage(image, depthOrRightImage, stereoCameraModel, false);
+		s->sensorData().setStereoImage(image, depthOrRightImage, stereoCameraModels, false);
 	}
 	s->sensorData().setLaserScan(laserScan, false);
 	s->sensorData().setUserData(data.userDataRaw(), false);

@@ -3008,6 +3008,21 @@ void CloudViewer::updateCameraFrustums(const Transform & pose, const std::vector
 		}
 	}
 }
+void CloudViewer::updateCameraFrustums(const Transform & pose, const std::vector<StereoCameraModel> & stereoModels)
+{
+	std::vector<CameraModel> models;
+	for(size_t i=0; i<stereoModels.size(); ++i)
+	{
+		models.push_back(stereoModels[i].left());
+		CameraModel right = stereoModels[i].right();
+		if(!stereoModels[i].left().localTransform().isNull())
+		{
+			right.setLocalTransform(stereoModels[i].left().localTransform() * Transform(stereoModels[i].baseline(), 0, 0, 0, 0, 0));
+		}
+		models.push_back(right);
+		updateCameraFrustums(pose, models);
+	}
+}
 
 const QColor & CloudViewer::getDefaultBackgroundColor() const
 {

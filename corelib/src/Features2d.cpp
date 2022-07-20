@@ -792,7 +792,9 @@ std::vector<cv::Point3f> Feature2D::generateKeypoints3D(
 	std::vector<cv::Point3f> keypoints3D;
 	if(keypoints.size())
 	{
-		if(!data.rightRaw().empty() && !data.imageRaw().empty() && data.stereoCameraModel().isValidForProjection())
+		if(!data.rightRaw().empty() && !data.imageRaw().empty() &&
+			!data.stereoCameraModels().empty() &&
+			data.stereoCameraModels()[0].isValidForProjection())
 		{
 			//stereo
 			cv::Mat imageMono;
@@ -808,22 +810,121 @@ std::vector<cv::Point3f> Feature2D::generateKeypoints3D(
 
 			std::vector<cv::Point2f> leftCorners;
 			cv::KeyPoint::convert(keypoints, leftCorners);
-			std::vector<unsigned char> status;
 
 			std::vector<cv::Point2f> rightCorners;
-			rightCorners = _stereo->computeCorrespondences(
-					imageMono,
-					data.rightRaw(),
-					leftCorners,
-					status);
 
-			keypoints3D = util3d::generateKeypoints3DStereo(
-					leftCorners,
-					rightCorners,
-					data.stereoCameraModel(),
-					status,
-					_minDepth,
-					_maxDepth);
+			if(data.stereoCameraModels().size() == 1)
+			{
+				std::vector<unsigned char> status;
+				rightCorners = _stereo->computeCorrespondences(
+						imageMono,
+						data.rightRaw(),
+						leftCorners,
+						status);
+
+				if(ULogger::level() >= ULogger::kWarning)
+				{
+					int rejected = 0;
+					for(size_t i=0; i<status.size(); ++i)
+					{
+						if(status[i]==0)
+						{
+							++rejected;
+						}
+					}
+					if(rejected > (int)status.size()/2)
+					{
+						UWARN("A large number (%d/%d) of stereo correspondences are rejected! "
+								"Optical flow may have failed because images are not calibrated, "
+								"the background is too far (no disparity between the images), "
+								"maximum disparity may be too small (%f) or that exposure between "
+								"left and right images is too different.",
+								rejected,
+								(int)status.size(),
+								_stereo->maxDisparity());
+					}
+				}
+
+				keypoints3D = util3d::generateKeypoints3DStereo(
+						leftCorners,
+						rightCorners,
+						data.stereoCameraModels()[0],
+						status,
+						_minDepth,
+						_maxDepth);
+			}
+			else
+			{
+				int subImageWith = imageMono.cols / data.stereoCameraModels().size();
+				UASSERT(imageMono.cols % subImageWith == 0);
+				std::vector<std::vector<cv::Point2f> > subLeftCorners(data.stereoCameraModels().size());
+				std::vector<std::vector<int> > subIndex(data.stereoCameraModels().size());
+				// Assign keypoints per camera
+				for(size_t i=0; i<leftCorners.size(); ++i)
+				{
+					int cameraIndex = int(leftCorners[i].x / subImageWith);
+					leftCorners[i].x -= cameraIndex*subImageWith;
+					subLeftCorners[cameraIndex].push_back(leftCorners[i]);
+					subIndex[cameraIndex].push_back(i);
+				}
+
+				keypoints3D.resize(keypoints.size());
+				int total = 0;
+				int rejected = 0;
+				for(size_t i=0; i<data.stereoCameraModels().size(); ++i)
+				{
+					if(!subLeftCorners[i].empty())
+					{
+						std::vector<unsigned char> status;
+						rightCorners = _stereo->computeCorrespondences(
+								imageMono.colRange(cv::Range(subImageWith*i, subImageWith*(i+1))),
+								data.rightRaw().colRange(cv::Range(subImageWith*i, subImageWith*(i+1))),
+								subLeftCorners[i],
+								status);
+
+						std::vector<cv::Point3f> subKeypoints3D = util3d::generateKeypoints3DStereo(
+								subLeftCorners[i],
+								rightCorners,
+								data.stereoCameraModels()[i],
+								status,
+								_minDepth,
+								_maxDepth);
+
+						if(ULogger::level() >= ULogger::kWarning)
+						{
+							for(size_t i=0; i<status.size(); ++i)
+							{
+								if(status[i]==0)
+								{
+									++rejected;
+								}
+							}
+							total+=status.size();
+						}
+
+						UASSERT(subIndex[i].size() == subKeypoints3D.size());
+						for(size_t j=0; j<subKeypoints3D.size(); ++j)
+						{
+							keypoints3D[subIndex[i][j]] = subKeypoints3D[j];
+						}
+					}
+				}
+
+				if(ULogger::level() >= ULogger::kWarning)
+				{
+					if(rejected > total/2)
+					{
+						UWARN("A large number (%d/%d) of stereo correspondences are rejected! "
+								"Optical flow may have failed because images are not calibrated, "
+								"the background is too far (no disparity between the images), "
+								"maximum disparity may be too small (%f) or that exposure between "
+								"left and right images is too different.",
+								rejected,
+								total,
+								_stereo->maxDisparity());
+					}
+				}
+			}
 		}
 		else if(!data.depthRaw().empty() && data.cameraModels().size())
 		{

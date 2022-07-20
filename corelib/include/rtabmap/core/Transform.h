@@ -143,6 +143,8 @@ public:
 	static Transform fromEigen3d(const Eigen::Affine3d & matrix);
 	static Transform fromEigen3f(const Eigen::Isometry3f & matrix);
 	static Transform fromEigen3d(const Eigen::Isometry3d & matrix);
+	static Transform fromEigen3f(const Eigen::Matrix<float, 3, 4> & matrix);
+	static Transform fromEigen3d(const Eigen::Matrix<double, 3, 4> & matrix);
 
 	static Transform opengl_T_rtabmap() {return Transform(
 			 0.0f, -1.0f, 0.0f, 0.0f,

@@ -1568,18 +1568,19 @@ cv::Mat mergeTextures(
 					else if(memory)
 					{
 						SensorData data = memory->getNodeData(textureId, true, false, false, false);
-						std::vector<CameraModel> models = data.cameraModels();
-						StereoCameraModel stereoModel = data.stereoCameraModel();
+						const std::vector<CameraModel> & models = data.cameraModels();
+						const std::vector<StereoCameraModel> & stereoModels = data.stereoCameraModels();
 						if(models.size()>=1 &&
 							models[0].imageHeight()>0 &&
 							models[0].imageWidth()>0)
 						{
 							imageSize = models[0].imageSize();
 						}
-						else if(stereoModel.left().imageHeight() > 0 &&
-								stereoModel.left().imageWidth() > 0)
+						else if(stereoModels.size()>=1 &&
+								stereoModels[0].left().imageHeight() > 0 &&
+								stereoModels[0].left().imageWidth() > 0)
 						{
-							imageSize = stereoModel.left().imageSize();
+							imageSize = stereoModels[0].left().imageSize();
 						}
 						else // backward compatibility for image size not set in CameraModel
 						{
@@ -1596,18 +1597,19 @@ cv::Mat mergeTextures(
 					else if(dbDriver)
 					{
 						std::vector<CameraModel> models;
-						StereoCameraModel stereoModel;
-						dbDriver->getCalibration(textureId, models, stereoModel);
+						std::vector<StereoCameraModel> stereoModels;
+						dbDriver->getCalibration(textureId, models, stereoModels);
 						if(models.size()>=1 &&
 							models[0].imageHeight()>0 &&
 							models[0].imageWidth()>0)
 						{
 							imageSize = models[0].imageSize();
 						}
-						else if(stereoModel.left().imageHeight() > 0 &&
-								stereoModel.left().imageWidth() > 0)
+						else if(stereoModels.size()>=1 &&
+								stereoModels[0].left().imageHeight() > 0 &&
+								stereoModels[0].left().imageWidth() > 0)
 						{
-							imageSize = stereoModel.left().imageSize();
+							imageSize = stereoModels[0].left().imageSize();
 						}
 						else // backward compatibility for image size not set in CameraModel
 						{
@@ -1698,6 +1700,13 @@ cv::Mat mergeTextures(
 								{
 									SensorData data = memory->getNodeData(textures[t].first, true, false, false, false);
 									models = data.cameraModels();
+									if(models.empty() && !data.stereoCameraModels().empty())
+									{
+										for(size_t i=0; i<data.stereoCameraModels().size(); ++i)
+										{
+											models.push_back(data.stereoCameraModels()[i].left());
+										}
+									}
 									data.uncompressDataConst(&image, 0);
 								}
 								else if(dbDriver)
@@ -1705,8 +1714,15 @@ cv::Mat mergeTextures(
 									SensorData data;
 									dbDriver->getNodeData(textures[t].first, data, true, false, false, false);
 									data.uncompressDataConst(&image, 0);
-									StereoCameraModel stereoModel;
-									dbDriver->getCalibration(textures[t].first, models, stereoModel);
+									std::vector<StereoCameraModel> stereoModels;
+									dbDriver->getCalibration(textures[t].first, models, stereoModels);
+									if(models.empty() && !stereoModels.empty())
+									{
+										for(size_t i=0; i<stereoModels.size(); ++i)
+										{
+											models.push_back(stereoModels[i].left());
+										}
+									}
 								}
 
 								previousImage = image;
@@ -2401,9 +2417,12 @@ bool multiBandTexturing(
 		{
 			SensorData data = memory->getNodeData(camId, true, false, false, false);
 			models = data.cameraModels();
-			if(models.empty() && data.stereoCameraModel().isValidForProjection())
+			if(models.empty() && data.stereoCameraModels().size())
 			{
-				models.push_back(data.stereoCameraModel().left());
+				for(size_t i=0; i<data.stereoCameraModels().size(); ++i)
+				{
+					models.push_back(data.stereoCameraModels()[i].left());
+				}
 			}
 			if(data.imageRaw().empty())
 			{
@@ -2432,11 +2451,14 @@ bool multiBandTexturing(
 		}
 		else if(dbDriver)
 		{
-			StereoCameraModel stereoModel;
-			dbDriver->getCalibration(camId, models, stereoModel);
-			if(models.empty() && stereoModel.isValidForProjection())
+			std::vector<StereoCameraModel> stereoModels;
+			dbDriver->getCalibration(camId, models, stereoModels);
+			if(models.empty() && stereoModels.size())
 			{
-				models.push_back(stereoModel.left());
+				for(size_t i=0; i<stereoModels.size(); ++i)
+				{
+					models.push_back(stereoModels[i].left());
+				}
 			}
 
 			SensorData data;

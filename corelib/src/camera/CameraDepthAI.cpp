@@ -55,7 +55,8 @@ CameraDepthAI::CameraDepthAI(
 	deviceSerial_(deviceSerial),
 	outputDepth_(false),
 	depthConfidence_(200),
-	resolution_(resolution)
+	resolution_(resolution),
+	imuFirmwareUpdate_(false)
 #endif
 {
 #ifdef RTABMAP_DEPTHAI
@@ -81,6 +82,15 @@ void CameraDepthAI::setOutputDepth(bool enabled, int confidence)
 	{
 		depthConfidence_ = confidence;
 	}
+#else
+	UERROR("CameraDepthAI: RTAB-Map is not built with depthai-core support!");
+#endif
+}
+
+void CameraDepthAI::setIMUFirmwareUpdate(bool enabled)
+{
+#ifdef RTABMAP_DEPTHAI
+	imuFirmwareUpdate_ = enabled;
 #else
 	UERROR("CameraDepthAI: RTAB-Map is not built with depthai-core support!");
 #endif
@@ -194,6 +204,8 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 
 	// Link plugins IMU -> XLINK
 	imu->out.link(xoutIMU->input);
+
+	imu->enableFirmwareUpdate(imuFirmwareUpdate_);
 
 	device_.reset(new dai::Device(p, deviceToUse));
 

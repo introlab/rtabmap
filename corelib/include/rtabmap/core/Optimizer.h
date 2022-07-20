@@ -41,14 +41,18 @@ namespace rtabmap {
 class FeatureBA
 {
 public:
-	FeatureBA(const cv::KeyPoint & kptIn, const float & depthIn = 0.0f, const cv::Mat & descriptorIn = cv::Mat()):
+	FeatureBA(const cv::KeyPoint & kptIn, const float & depthIn = 0.0f, const cv::Mat & descriptorIn = cv::Mat(), int cameraIndexIn = 0):
 		kpt(kptIn),
 		depth(depthIn),
-		descriptor(descriptorIn)
-	{}
+		descriptor(descriptorIn),
+		cameraIndex(cameraIndexIn)
+	{
+		//UDEBUG("kpt=(%f,%f) depth=%f, camIndex=%d", kpt.pt.x, kpt.pt.y, depth, cameraIndex);
+	}
 	cv::KeyPoint kpt;
 	float depth;
 	cv::Mat descriptor;
+	int cameraIndex;
 };
 
 ////////////////////////////////////////////
@@ -134,7 +138,7 @@ public:
 			int rootId, // if negative, all other poses are fixed
 			const std::map<int, Transform> & poses,
 			const std::multimap<int, Link> & links,
-			const std::map<int, CameraModel> & models, // in case of stereo, Tx should be set
+			const std::map<int, std::vector<CameraModel> > & models, // in case of stereo, Tx should be set
 			std::map<int, cv::Point3f> & points3DMap,
 			const std::map<int, std::map<int, FeatureBA> > & wordReferences, // <ID words, IDs frames + keypoint/depth/descriptor>
 			std::set<int> * outliers = 0);

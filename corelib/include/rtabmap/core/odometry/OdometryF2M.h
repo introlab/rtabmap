@@ -83,7 +83,7 @@ private:
 	std::map<int, Transform> bundlePoses_;
 	std::multimap<int, Link> bundleLinks_;
 	std::multimap<int, Link> bundleIMUOrientations_;
-	std::map<int, CameraModel> bundleModels_;
+	std::map<int, std::vector<CameraModel> > bundleModels_;
 	std::map<int, int> bundlePoseReferences_;
 	int bundleSeq_;
 	Optimizer * sba_;
