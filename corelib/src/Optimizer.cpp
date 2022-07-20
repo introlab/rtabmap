@@ -565,7 +565,7 @@ void Optimizer::computeBACorrespondences(
 		std::map<int, std::map<int, FeatureBA> > & wordReferences,
 		bool rematchFeatures)
 {
-	UDEBUG("");
+	UDEBUG("rematchFeatures=%d", rematchFeatures?1:0);
 	int wordCount = 0;
 	int edgeWithWordsAdded = 0;
 	std::map<int, std::map<cv::KeyPoint, int, KeyPointCompare> > frameToWordMap; // <FrameId, <Keypoint, wordId> >
@@ -772,6 +772,14 @@ void Optimizer::computeBACorrespondences(
 		}
 	}
 	UDEBUG("Added %d words (edges with words=%d/%d)", wordCount, edgeWithWordsAdded, links.size());
+	if(links.empty())
+	{
+		UERROR("No links found for BA?!");
+	}
+	else if(wordCount == 0)
+	{
+		UERROR("No words added for BA?!");
+	}
 }
 
 } /* namespace rtabmap */
