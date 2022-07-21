@@ -102,9 +102,10 @@ RUN if [ "$TARGETPLATFORM" = "linux/amd64" ]; then git clone https://github.com/
     cd && \
     rm -r AliceVision; fi
     
-RUN git clone https://github.com/laurentkneip/opengv.git
 #commit Aug 6 2020
-RUN cd opengv && \
+RUN apt-get update && apt install wget
+RUN git clone https://github.com/laurentkneip/opengv.git && \
+    cd opengv && \
     git checkout 91f4b19c73450833a40e463ad3648aae80b3a7f3 && \
     wget https://gist.githubusercontent.com/matlabbe/a412cf7c4627253874f81a00745a7fbb/raw/accc3acf465d1ffd0304a46b17741f62d4d354ef/opengv_disable_march_native.patch && \
     git apply opengv_disable_march_native.patch && \
