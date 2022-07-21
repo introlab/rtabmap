@@ -69,6 +69,7 @@ void showUsage()
 			"    --texture_depth_error # Maximum depth error between reprojected mesh and depth image to texture a face (-1=disabled, 0=edge length is used, default=0).\n"
 			"    --texture_roi_ratios \"# # # #\" Region of interest from images to texture or to color scans. Format is \"left right top bottom\" (e.g. \"0 0 0 0.1\" means 10%% of the image bottom not used).\n"
 			"    --texture_d2c         Distance to camera policy.\n"
+			"    --texture_blur #      Motion blur threshold (default 0: disabled). Below this threshold, the image is considered blurred. 0 means disabled. 50 can be good default.\n"
 			"    --cam_projection      Camera projection on assembled cloud and export node ID on each point (in PointSourceId field).\n"
 			"    --cam_projection_keep_all  Keep not colored points from cameras (node ID will be 0 and color will be red).\n"
 			"    --cam_projection_decimation  Decimate images before projecting the points.\n"
@@ -183,6 +184,7 @@ int main(int argc, char * argv[])
 	float textureDepthError = 0;
 	std::vector<float> textureRoiRatios;
 	bool distanceToCamPolicy = false;
+	int laplacianThr = 0;
 	bool multiband = false;
 	int multibandDownScale = 2;
 	std::string multibandNbContrib = "1 5 10 0";
@@ -371,6 +373,18 @@ int main(int argc, char * argv[])
 		else if(std::strcmp(argv[i], "--texture_d2c") == 0)
 		{
 			distanceToCamPolicy = true;
+		}
+		else if(std::strcmp(argv[i], "--texture_blur") == 0)
+		{
+			++i;
+			if(i<argc-1)
+			{
+				laplacianThr = uStr2Int(argv[i]);
+			}
+			else
+			{
+				showUsage();
+			}
 		}
 		else if(std::strcmp(argv[i], "--cam_projection") == 0)
 		{
@@ -1791,11 +1805,46 @@ int main(int argc, char * argv[])
 				}
 				else
 				{
-					printf("Texturing %d polygons... robotPoses=%d, cameraModels=%d, cameraDepths=%d\n", (int)mesh->polygons.size(), (int)robotPoses.size(), (int)cameraModels.size(), (int)cameraDepths.size());
+					// Camera filtering for texturing
+					std::map<int, rtabmap::Transform> robotPosesFiltered;
+					if(laplacianThr>0)
+					{
+						printf("Filtering %ld images from texturing...\n", robotPoses.size());
+						for(std::map<int, rtabmap::Transform>::iterator iter=robotPoses.begin(); iter!=robotPoses.end(); ++iter)
+						{
+							UASSERT(nodes.find(iter->first) != nodes.end());
+							cv::Mat img;
+							nodes.find(iter->first)->second.sensorData().uncompressDataConst(&img, 0);
+							if(!img.empty())
+							{
+								cv::Mat imgLaplacian;
+								cv::Laplacian(img, imgLaplacian, CV_16S);
+								cv::Mat m, s;
+								cv::meanStdDev(imgLaplacian, m, s);
+								double stddev_pxl = s.at<double>(0);
+								double var = stddev_pxl*stddev_pxl;
+								if(var < (double)laplacianThr)
+								{
+									printf("Camera's image %d is detected as blurry (var=%f < thr=%d), camera is ignored for texturing.\n", iter->first, var, laplacianThr);
+								}
+								else
+								{
+									robotPosesFiltered.insert(*iter);
+								}
+							}
+						}
+						printf("Filtered %ld/%ld images from texturing", robotPosesFiltered.size(), robotPoses.size());
+					}
+					else
+					{
+						robotPosesFiltered = robotPoses;
+					}
+
+					printf("Texturing %d polygons... robotPoses=%d, cameraModels=%d, cameraDepths=%d\n", (int)mesh->polygons.size(), (int)robotPosesFiltered.size(), (int)cameraModels.size(), (int)cameraDepths.size());
 					std::vector<std::map<int, pcl::PointXY> > vertexToPixels;
 					pcl::TextureMeshPtr textureMesh = rtabmap::util3d::createTextureMesh(
 							mesh,
-							robotPoses,
+							robotPosesFiltered,
 							cameraModels,
 							cameraDepths,
 							textureRange,
@@ -1914,7 +1963,7 @@ int main(int argc, char * argv[])
 							if(util3d::multiBandTexturing(outputPath,
 									textureMesh->cloud,
 									textureMesh->tex_polygons[0],
-									robotPoses,
+									robotPosesFiltered,
 									vertexToPixels,
 									std::map<int, cv::Mat >(),
 									std::map<int, std::vector<CameraModel> >(),

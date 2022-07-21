@@ -3294,7 +3294,7 @@ bool ExportCloudsDialog::getExportedClouds(
 									if(var < _ui->doubleSpinBox_laplacianVariance->value())
 									{
 										blurryImage = true;
-										msg = uFormat("Camera's image %d is detected as blurry (var=%f < thr=%f), camera is ignored for texturing.", jter->first, var, _ui->doubleSpinBox_laplacianVariance->value());
+										msg = uFormat("Camera's image %d is detected as blurry (var=%f, thr=%f), camera is ignored for texturing.", jter->first, var, _ui->doubleSpinBox_laplacianVariance->value());
 									}
 								}
 								if(blurryImage)
@@ -3403,7 +3403,7 @@ bool ExportCloudsDialog::getExportedClouds(
 									++modelIter;
 								}
 							}
-							_progressDialog->appendText(tr("Camera filtering: keeping %1/%2 cameras for texturing.").arg(cameraPoses.size()).arg(before));
+							_progressDialog->appendText(tr("Camera filtering: keeping %1/%2/%3 cameras for texturing.").arg(cameraPoses.size()).arg(before).arg(validCameras.size()));
 							QApplication::processEvents();
 							uSleep(100);
 							QApplication::processEvents();
