@@ -27,3 +27,17 @@ This project is supported by [IntRoLab - Intelligent / Interactive / Integrated 
 <a href="https://introlab.3it.usherbrooke.ca/">
 <img src="https://github.com/introlab/16SoundsUSB/blob/master/images/IntRoLab.png" alt="IntRoLab" height="100">
 </a>
+
+
+### Installing rtabmap(vcpkg)
+
+You can download and install rtabmap using the [vcpkg](https://github.com/Microsoft/vcpkg) dependency manager:
+
+git clone https://github.com/Microsoft/vcpkg.git
+
+ * cd vcpkg
+ * ./bootstrap-vcpkg.sh
+ * ./vcpkg integrate install
+ * vcpkg install rtabmap
+
+The rtabmap port in vcpkg is kept up to date by Microsoft team members and community contributors. If the version is out of date, please [create an issue or pull request](https://github.com/Microsoft/vcpkg) on the vcpkg repository.
