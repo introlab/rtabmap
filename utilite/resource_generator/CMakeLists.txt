@@ -7,11 +7,22 @@ if (CMAKE_CROSSCOMPILING OR ANDROID OR IOS)
     # The target named 'res_tool' can be used elsewhere in all cases, when cross compiling or not.
 
     IF(NOT RTABMAP_RES_TOOL)
-        FIND_PROGRAM(RTABMAP_RES_TOOL  ${PROJECT_PREFIX}-res_tool)
+      IF (COMMAND find_host_program)
+        # On android docker build
+        MESSAGE(STATUS "Looking for ${PROJECT_PREFIX}-res tool in ${PROJECT_BINARY_DIR}/../bin")
+        FIND_HOST_PROGRAM( RTABMAP_RES_TOOL ${PROJECT_PREFIX}-res_tool PATHS ${PROJECT_BINARY_DIR}/../bin NO_DEFAULT_PATH)
         IF(NOT RTABMAP_RES_TOOL)
-            MESSAGE( FATAL_ERROR "RTABMAP_RES_TOOL is not defined (it is the path to \"rtabmap-res_tool\" application created by a non-Android build)." )
+          MESSAGE(STATUS "Looking for ${PROJECT_PREFIX}-res tool on host system")
+          FIND_HOST_PROGRAM( RTABMAP_RES_TOOL ${PROJECT_PREFIX}-res_tool)
         ENDIF(NOT RTABMAP_RES_TOOL)
-    ENDIF()
+      ELSE()
+        MESSAGE(STATUS "Looking for ${PROJECT_PREFIX}-res tool on host system")
+        FIND_PROGRAM( RTABMAP_RES_TOOL  ${PROJECT_PREFIX}-res_tool )
+      ENDIF()
+      IF(NOT RTABMAP_RES_TOOL)
+        MESSAGE( FATAL_ERROR "RTABMAP_RES_TOOL is not defined (it is the path to \"${PROJECT_PREFIX}-res_tool\" application created by a non-Android build)." )
+      ENDIF(NOT RTABMAP_RES_TOOL)
+    ENDIF(NOT RTABMAP_RES_TOOL)
 
     MESSAGE(STATUS "Using res_tool at ${RTABMAP_RES_TOOL}")
 
