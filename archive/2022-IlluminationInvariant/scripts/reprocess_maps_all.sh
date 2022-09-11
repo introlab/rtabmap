@@ -1,17 +1,18 @@
 #!/bin/bash
 
-if [ $# -lt 1 ]
+if [ $# -lt 2 ]
 then
-  echo "No arguments supplied. It should be the data directory (where the reprocessed map databases will be saved)."
+  echo "No arguments supplied. They should be 2: the input directory (original maps) and the output data directory (where reprocessed map databases will be saved)."
   exit
 fi
-DATA=$1
+INPUT=$1
+OUTPUT=$2
 
 DETECTOR=(0 1 6 7 9 14 11 111)
 
 for d in "${DETECTOR[@]}"
 do
-  ./reprocess_maps.sh $d $DATA
-  ./run_merge.sh $d $DATA
+  ./reprocess_maps.sh $d $INPUT $OUTPUT
+  ./run_merge.sh $d $OUTPUT
 done
 

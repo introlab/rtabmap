@@ -1,13 +1,14 @@
 #!/bin/bash
 
-if [ $# -lt 1 ]
+if [ $# -lt 2 ]
 then
-  echo "No arguments supplied. It should be the data directory (where the reprocessed map databases will be saved)."
+  echo "No arguments supplied. They should be 2: the input directory (original maps) and the output data directory (where reprocessed map databases will be saved)."
   exit
 fi
-DATA=$1
+INPUT=$1
+OUTPUT=$2
 
-./reprocess_maps_all.sh $DATA
-./run_localization_single_all.sh $DATA
-./run_consecutive_localization_all.sh $DATA
+./reprocess_maps_all.sh $INPUT $OUTPUT
+./run_localization_single_all.sh $INPUT $OUTPUT
+./run_consecutive_localization_all.sh $OUTPUT
 

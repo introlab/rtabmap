@@ -38,13 +38,21 @@ We provide two formats: the first one is more general and the second one is used
 ## How reproduce results shown in the paper
 
 1. RTAB-Map should be built from source with those dependencies (don't need to "install" it, we will launch it from build directory in the scripts below to avoid conflicting with another rtabmap already installed): 
+    * Use Ubuntu 20.04+ to avoid any python2/python3 conflicts.
     * OpenCV built with **xfeatures2d** and **nonfree** modules
-    * [torchlib c++](https://pytorch.org/get-started/locally/) (tested on v1.10.2) to enable [SuperPoint](https://github.com/magicleap/SuperPointPretrainedNetwork) (superpoint.pt can be downloaded [here](https://github.com/KinglittleQ/SuperPoint_SLAM/blob/master/superpoint.pt))
-    * Python3 to use [SuperGlue](https://github.com/magicleap/SuperGluePretrainedNetwork)
+    * [torchlib c++](https://pytorch.org/get-started/locally/) (tested on v1.10.2) to enable [SuperPoint](https://github.com/magicleap/SuperPointPretrainedNetwork)
+    * Git clone [SuperGlue](https://github.com/magicleap/SuperGluePretrainedNetwork) into scripts directory.
+    * Generate `superpoint_v1.pt` in the scripts directory (can also be downloaded from [here](https://github.com/KinglittleQ/SuperPoint_SLAM/blob/master/superpoint.pt) but may not be compatible with more recent pytorch versions):
+      ```bash
+      cd rtabmap/archive/2022-IlluminationInvariant/scripts
+      wget https://github.com/magicleap/SuperPointPretrainedNetwork/raw/master/superpoint_v1.pth
+      wget https://raw.githubusercontent.com/magicleap/SuperPointPretrainedNetwork/master/demo_superpoint.py
+      python trace.py
+      ```
 
-2. Download database version of the dataset and extract the databases in the `script` directory.
+2. Download databases of the dataset and extract them.
 3. Adjust the path inside `rtabmap_latest.sh` script to match where you just built rtabmap with right dependencies.
-4. Run `run_all.sh OUTPUT_PATH`, this script will do the following steps (warning, this could take hours to do...):
+4. Run `run_all.sh DATABASES_PATH OUTPUT_PATH`, this script will do the following steps (warning, this could take hours to do...):
     * Recreate the map databases for each feature type
     * Create the merged databases
     * Run localization databases over all map/merged databases
@@ -53,4 +61,23 @@ We provide two formats: the first one is more general and the second one is used
 5. Export statistics with `export_stats.sh` script.
 
 6. Use the MatLab/Octave scripts in this folder to show results you want. Set `dataDir` to directory containing the exported statistics. 
+
+### Docker
+
+1. Create the docker image:
+```
+cd rtabmap
+docker build -t rtabmap_frontiers -f docker/frontiers2022/Dockerfile .
+```
+
+2. Assuming you extracted the databases of the dataset in `~/Downloads/Illumination_invariant_databases`, create an output directory for results:
+```
+mkdir ~/Downloads/Illumination_invariant_databases/results
+```
+
+3. Run script:
+```
+docker run --gpus all -it --rm --ipc=host --runtime=nvidia --user $(id -u):$(id -g) -w=/root/scripts -v ~/Downloads/Illumination_invariant_databases:/root/databases -v ~/Downloads/Illumination_invariant_databases/results:/root/results rtabmap_frontiers /root/scripts/run_all.sh /root/databases /root/results
+```
+
   
