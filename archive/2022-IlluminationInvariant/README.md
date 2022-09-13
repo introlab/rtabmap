@@ -61,6 +61,12 @@ We provide two formats: the first one is more general and the second one is used
 5. Export statistics with `export_stats.sh` script.
 
 6. Use the MatLab/Octave scripts in this folder to show results you want. Set `dataDir` to directory containing the exported statistics. 
+```
+sudo apt install install octave liboctave-dev
+
+# In octave:
+pkg install -forge control signal
+```
 
 ### Docker
 
@@ -77,7 +83,24 @@ mkdir ~/Downloads/Illumination_invariant_databases/results
 
 3. Run script:
 ```
-docker run --gpus all -it --rm --ipc=host --runtime=nvidia --user $(id -u):$(id -g) -w=/root/scripts -v ~/Downloads/Illumination_invariant_databases:/root/databases -v ~/Downloads/Illumination_invariant_databases/results:/root/results rtabmap_frontiers /root/scripts/run_all.sh /root/databases /root/results
+docker run --gpus all -it --rm --ipc=host --runtime=nvidia \
+    --user $(id -u):$(id -g) \
+    -w=/workspace/scripts \
+    -v ~/Downloads/Illumination_invariant_databases:/workspace/databases \
+    -v ~/Downloads/Illumination_invariant_databases/results:/workspace/results \
+    rtabmap_frontiers /workspace/scripts/run_all.sh /workspace/databases /workspace/results
 ```
 
-  
+4. Export statistics:
+```
+docker run --gpus all -it --rm --ipc=host --runtime=nvidia \
+    --env="DISPLAY=$DISPLAY" \
+    --env="QT_X11_NO_MITSHM=1" \
+    --volume="/tmp/.X11-unix:/tmp/.X11-unix:rw" \
+    --env="XAUTHORITY=$XAUTH" \
+    --volume="$XAUTH:$XAUTH" \
+    --user $(id -u):$(id -g) \
+    -w=/workspace/results \
+    -v ~/Downloads/Illumination_invariant_databases/results:/workspace/results \
+    rtabmap_frontiers /workspace/scripts/export_stats.sh /workspace/results
+```

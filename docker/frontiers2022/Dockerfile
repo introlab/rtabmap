@@ -70,7 +70,7 @@ RUN cd scripts && \
 # Build RTAB-Map
 RUN cd rtabmap && \
     cd build && \
-    cmake -DTorch_DIR=/opt/conda/lib/python3.8/site-packages/torch/share/cmake/Torch -DWITH_TORCH=ON -DWITH_PYTHON=ON -DWITH_QT=OFF .. && \
+    cmake -DTorch_DIR=/opt/conda/lib/python3.8/site-packages/torch/share/cmake/Torch -DWITH_TORCH=ON -DWITH_PYTHON=ON -DWITH_QT=ON .. && \
     make -j$(nproc) && \
     make install && \
     cd /workspace && \
