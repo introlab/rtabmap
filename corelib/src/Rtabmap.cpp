@@ -2996,6 +2996,16 @@ bool Rtabmap::process(
 			}
 		}
 
+		bool allLocalizationLinksInGraph = !localizationLinks.empty();
+		for(std::multimap<int, Link>::iterator iter=localizationLinks.begin(); iter!=localizationLinks.end(); ++iter)
+		{
+			if(!uContains(_optimizedPoses, iter->first))
+			{
+				allLocalizationLinksInGraph = false;
+				break;
+			}
+		}
+
 		// Note that in localization mode, we don't re-optimize the graph
 		// if:
 		//  1- there are no signatures retrieved,
@@ -3003,7 +3013,7 @@ bool Rtabmap::process(
 		if(!_memory->isIncremental() &&
 		   signaturesRetrieved.empty() &&
 		   !localizationLinks.empty() &&
-		   uContains(_optimizedPoses, localizationLinks.rbegin()->first))
+		   allLocalizationLinksInGraph)
 		{
 			bool rejectLocalization = _odomCachePoses.empty();
 			if(!_odomCachePoses.empty())
@@ -3311,6 +3321,7 @@ bool Rtabmap::process(
 
 						_odomCacheConstraints.insert(std::make_pair(signature->id(), iter->second));
 					}
+
 					_odomCacheConstraints.insert(selfLinks.begin(), selfLinks.end());
 
 					// At least 2 localizations at 2 different time required
@@ -3340,7 +3351,7 @@ bool Rtabmap::process(
                                             !landmarksDetected.at(landmarkId).empty());
                                     loopId = *landmarksDetected.at(landmarkId).begin();
                                 }
-                                
+
                                 const Signature * loopS = _memory->getSignature(loopId);
                                 UASSERT(loopS !=0);
                                 std::multimap<int, Link>::const_iterator iterGravityLoop = graph::findLink(loopS->getLinks(), loopS->id(), loopS->id(), false, Link::kGravity);
