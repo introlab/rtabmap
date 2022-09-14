@@ -5309,52 +5309,37 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 		UDEBUG("Detecting markers...");
 		if(landmarks.empty())
 		{
-			std::map<int, MarkerInfo> markers;
-			if(!data.cameraModels().empty() && data.cameraModels()[0].isValidForProjection())
+			std::vector<CameraModel> models = data.cameraModels();
+			if(models.empty())
 			{
-				if(data.cameraModels().size() > 1)
+				for(size_t i=0; i<data.stereoCameraModels().size(); ++i)
 				{
-					static bool warned = false;
-					if(!warned)
+					models.push_back(data.stereoCameraModels()[0].left());
+				}
+			}
+
+			if(!models.empty() && models[0].isValidForProjection())
+			{
+				std::map<int, MarkerInfo> markers = _markerDetector->detect(data.imageRaw(), models, data.depthRaw(), _landmarksSize);
+
+				for(std::map<int, MarkerInfo>::iterator iter=markers.begin(); iter!=markers.end(); ++iter)
+				{
+					if(iter->first <= 0)
 					{
-						UWARN("Detecting markers in multi-camera setup is not yet implemented, aborting marker detection. This message is only printed once.");
+						UERROR("Invalid marker received! IDs should be > 0 (it is %d). Ignoring this marker.", iter->first);
+						continue;
 					}
-					warned = true;
+					cv::Mat covariance = cv::Mat::eye(6,6,CV_64FC1);
+					covariance(cv::Range(0,3), cv::Range(0,3)) *= _markerLinVariance;
+					covariance(cv::Range(3,6), cv::Range(3,6)) *= _markerAngVariance;
+					landmarks.insert(std::make_pair(iter->first, Landmark(iter->first, iter->second.length(), iter->second.pose(), covariance)));
 				}
-				else
-				{
-					markers = _markerDetector->detect(data.imageRaw(), data.cameraModels()[0], data.depthRaw(), _landmarksSize);
-				}
+				UDEBUG("Markers detected = %d", (int)markers.size());
 			}
-			else if(!data.stereoCameraModels().empty() && data.stereoCameraModels()[0].isValidForProjection())
+			else
 			{
-				if(data.stereoCameraModels().size() > 1)
-				{
-					static bool warned = false;
-					if(!warned)
-					{
-						UWARN("Detecting markers in multi-camera setup is not yet implemented, aborting marker detection. This message is only printed once.");
-					}
-					warned = true;
-				}
-				else
-				{
-					markers = _markerDetector->detect(data.imageRaw(), data.stereoCameraModels()[0].left(), cv::Mat(), _landmarksSize);
-				}
+				UWARN("No valid camera calibration for marker detection");
 			}
-			for(std::map<int, MarkerInfo>::iterator iter=markers.begin(); iter!=markers.end(); ++iter)
-			{
-				if(iter->first <= 0)
-				{
-					UERROR("Invalid marker received! IDs should be > 0 (it is %d). Ignoring this marker.", iter->first);
-					continue;
-				}
-				cv::Mat covariance = cv::Mat::eye(6,6,CV_64FC1);
-				covariance(cv::Range(0,3), cv::Range(0,3)) *= _markerLinVariance;
-				covariance(cv::Range(3,6), cv::Range(3,6)) *= _markerAngVariance;
-				landmarks.insert(std::make_pair(iter->first, Landmark(iter->first, iter->second.length(), iter->second.pose(), covariance)));
-			}
-			UDEBUG("Markers detected = %d", (int)markers.size());
 		}
 		else
 		{
