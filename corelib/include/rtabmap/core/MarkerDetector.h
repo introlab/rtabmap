@@ -65,16 +65,22 @@ public:
 
     RTABMAP_DEPRECATED(
     MapIdPose detect(const cv::Mat & image,
-                                    const CameraModel & model,
-                                    const cv::Mat & depth = cv::Mat(),
-                                    float * estimatedMarkerLength = 0,
-                                    cv::Mat * imageWithDetections = 0), "Use the other constructor, in which the returned map contains the length of each marker detected.");
+			const CameraModel & model,
+			const cv::Mat & depth = cv::Mat(),
+			float * estimatedMarkerLength = 0,
+			cv::Mat * imageWithDetections = 0), "Use the other detect(), in which the returned map contains the length of each marker detected.");
 
     std::map<int, MarkerInfo> detect(const cv::Mat & image,
-                               const CameraModel & model,
-                               const cv::Mat & depth = cv::Mat(),
-                               const std::map<int, float> & markerLengths = std::map<int, float>(),
-                               cv::Mat * imageWithDetections = 0);
+		    const std::vector<CameraModel> & models,
+		    const cv::Mat & depth = cv::Mat(),
+		    const std::map<int, float> & markerLengths = std::map<int, float>(),
+		    cv::Mat * imageWithDetections = 0);
+
+    std::map<int, MarkerInfo> detect(const cv::Mat & image,
+		    const CameraModel & model,
+		    const cv::Mat & depth = cv::Mat(),
+		    const std::map<int, float> & markerLengths = std::map<int, float>(),
+		    cv::Mat * imageWithDetections = 0);
 
 private:
 #ifdef HAVE_OPENCV_ARUCO
