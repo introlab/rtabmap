@@ -5314,7 +5314,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 			{
 				for(size_t i=0; i<data.stereoCameraModels().size(); ++i)
 				{
-					models.push_back(data.stereoCameraModels()[0].left());
+					models.push_back(data.stereoCameraModels()[i].left());
 				}
 			}
 

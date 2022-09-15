@@ -315,7 +315,7 @@ std::map<int, MarkerInfo> MarkerDetector::detect(const cv::Mat & image,
 								 R.at<double>(2,0), R.at<double>(2,1), R.at<double>(2,2), tvecs[i].val[2]);
 				Transform pose = model.localTransform() * t;
 				detections.insert(std::make_pair(ids[i], MarkerInfo(ids[i], length, pose)));
-				UDEBUG("Marker %d detected at %s (%s)", ids[i], pose.prettyPrint().c_str(), t.prettyPrint().c_str());
+				UDEBUG("Marker %d detected in base_link: %s, optical_link=%s, local transform=%s", ids[i], pose.prettyPrint().c_str(), t.prettyPrint().c_str(), model.localTransform().prettyPrint().c_str());
 			}
 		}
 		if(markerLength_ == 0 && !scales.empty())
