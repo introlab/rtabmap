@@ -4830,7 +4830,7 @@ std::map<int, Transform> Rtabmap::optimizeGraph(
 	}
 	else
 	{
-		bool hasLandmarks = edgeConstraints.begin()->first < 0;
+		bool hasLandmarks = !edgeConstraints.empty() && edgeConstraints.begin()->first < 0;
 		if(poses.size() != guessPoses.size() || hasLandmarks)
 		{
 			UDEBUG("recompute poses using only links (robust to multi-session)");
