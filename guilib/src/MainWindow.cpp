@@ -2103,6 +2103,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 				}
 				else if(landmarkId!=0)
 				{
+					highestHypothesisId = landmarkNodeRef;
 					if(rejectedHyp)
 					{
 						show = _preferencesDialog->imageRejectedShown();
