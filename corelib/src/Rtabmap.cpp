@@ -1434,30 +1434,43 @@ bool Rtabmap::process(
 				//============================================================
 				// Minimum displacement required to add to Memory
 				//============================================================
-				const std::multimap<int, Link> & links = signature->getLinks();
-				if(links.size() && links.begin()->second.type() == Link::kNeighbor)
+				Transform t;
+
+				if(_memory->isIncremental())
 				{
-					const Signature * s = _memory->getSignature(links.begin()->second.to());
-					UASSERT(s!=0);
-					// don't filter if the new node is not intermediate but previous one is
-					if(signature->getWeight() < 0 || s->getWeight() >= 0)
+					const std::multimap<int, Link> & links = signature->getLinks();
+					if(links.size() && links.begin()->second.type() == Link::kNeighbor)
 					{
-						float x,y,z, roll,pitch,yaw;
-						links.begin()->second.transform().getTranslationAndEulerAngles(x,y,z, roll,pitch,yaw);
-						bool isMoving = fabs(x) > _rgbdLinearUpdate ||
-										fabs(y) > _rgbdLinearUpdate ||
-										fabs(z) > _rgbdLinearUpdate ||
-									    (_rgbdAngularUpdate>0.0f && (
-											fabs(roll) > _rgbdAngularUpdate ||
-											fabs(pitch) > _rgbdAngularUpdate ||
-											fabs(yaw) > _rgbdAngularUpdate));
-						if(!isMoving)
+						const Signature * s = _memory->getSignature(links.begin()->second.to());
+						UASSERT(s!=0);
+						// don't filter if the new node is not intermediate but previous one is
+						if(signature->getWeight() < 0 || s->getWeight() >= 0)
 						{
-							// This will disable global loop closure detection, only retrieval will be done.
-							// The location will also be deleted at the end.
-							smallDisplacement = true;
-							UDEBUG("smallDisplacement: %f %f %f %f %f %f", x,y,z, roll,pitch,yaw);
+							t = links.begin()->second.transform();
 						}
+					}
+				}
+				else if(!_odomCachePoses.empty())
+				{
+					t = _odomCachePoses.rbegin()->second.inverse() * signature->getPose();
+				}
+				if(!t.isNull())
+				{
+					float x,y,z, roll,pitch,yaw;
+					t.getTranslationAndEulerAngles(x,y,z, roll,pitch,yaw);
+					bool isMoving = fabs(x) > _rgbdLinearUpdate ||
+									fabs(y) > _rgbdLinearUpdate ||
+									fabs(z) > _rgbdLinearUpdate ||
+									(_rgbdAngularUpdate>0.0f && (
+										fabs(roll) > _rgbdAngularUpdate ||
+										fabs(pitch) > _rgbdAngularUpdate ||
+										fabs(yaw) > _rgbdAngularUpdate));
+					if(!isMoving)
+					{
+						// This will disable global loop closure detection, only retrieval will be done.
+						// The location will also be deleted at the end.
+						smallDisplacement = true;
+						UDEBUG("smallDisplacement: %f %f %f %f %f %f", x,y,z, roll,pitch,yaw);
 					}
 				}
 			}

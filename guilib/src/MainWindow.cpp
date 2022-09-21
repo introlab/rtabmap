@@ -2186,12 +2186,30 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 					//draw markers
 					if(!signature.getLandmarks().empty())
 					{
-						refImage = refImage.clone();
+						if(refImage.channels() == 1)
+						{
+							cv::Mat imgColor;
+							cvtColor(refImage, imgColor, cv::COLOR_GRAY2BGR);
+							refImage = imgColor;
+						}
+						else
+						{
+							refImage = refImage.clone();
+						}
 						drawLandmarks(refImage, signature);
 					}
 					if(!loopSignature.getLandmarks().empty())
 					{
-						loopImage = loopImage.clone();
+						if(loopImage.channels() == 1)
+						{
+							cv::Mat imgColor;
+							cv::cvtColor(loopImage, imgColor, cv::COLOR_GRAY2BGR);
+							loopImage = imgColor;
+						}
+						else
+						{
+							loopImage = loopImage.clone();
+						}
 						drawLandmarks(loopImage, loopSignature);
 					}
 				}
@@ -4910,44 +4928,72 @@ void MainWindow::drawLandmarks(cv::Mat & image, const Signature & signature)
 {
 	for(std::map<int, Link>::const_iterator iter=signature.getLandmarks().begin(); iter!=signature.getLandmarks().end(); ++iter)
 	{
-		CameraModel model;
-		if(!signature.sensorData().cameraModels().empty() &&
-			signature.sensorData().cameraModels()[0].isValidForProjection())
+		// Project in all cameras in which the landmark is visible
+		for(size_t i=0; i<signature.sensorData().cameraModels().size() || i<signature.sensorData().stereoCameraModels().size(); ++i)
 		{
-			model = signature.sensorData().cameraModels()[0];
-		}
-		else if(!signature.sensorData().stereoCameraModels().empty() &&
-				signature.sensorData().stereoCameraModels()[0].isValidForProjection())
-		{
-			model = signature.sensorData().stereoCameraModels()[0].left();
-		}
-		if(model.isValidForProjection())
-		{
-			Transform t = model.localTransform().inverse() * iter->second.transform();
-			cv::Vec3d rvec, tvec;
-			tvec.val[0] = t.x();
-			tvec.val[1] = t.y();
-			tvec.val[2] = t.z();
-			cv::Mat R;
-			t.rotationMatrix().convertTo(R, CV_64F);
-			cv::Rodrigues(R, rvec);
+			CameraModel model;
+			if(i<signature.sensorData().cameraModels().size())
+			{
+				model = signature.sensorData().cameraModels()[i];
+			}
+			else if(i<signature.sensorData().stereoCameraModels().size())
+			{
+				model = signature.sensorData().stereoCameraModels()[i].left();
+			}
+			if(model.isValidForProjection())
+			{
+				Transform t = model.localTransform().inverse() * iter->second.transform();
+				cv::Vec3d rvec, tvec;
+				tvec.val[0] = t.x();
+				tvec.val[1] = t.y();
+				tvec.val[2] = t.z();
 
-			//cv::aruco::drawAxis(image, model.K(), model.D(), rvec, tvec, _preferencesDialog->getMarkerLength()<=0?0.1:_preferencesDialog->getMarkerLength() * 0.5f);
+				// In front of the camera?
+				if(t.z() > 0)
+				{
+					cv::Mat R;
+					t.rotationMatrix().convertTo(R, CV_64F);
+					cv::Rodrigues(R, rvec);
 
-			// project axis points
-			std::vector< cv::Point3f > axisPoints;
-			float length = _preferencesDialog->getMarkerLength()<=0?0.1:_preferencesDialog->getMarkerLength() * 0.5f;
-			axisPoints.push_back(cv::Point3f(0, 0, 0));
-			axisPoints.push_back(cv::Point3f(length, 0, 0));
-			axisPoints.push_back(cv::Point3f(0, length, 0));
-			axisPoints.push_back(cv::Point3f(0, 0, length));
-			std::vector< cv::Point2f > imagePoints;
-			projectPoints(axisPoints, rvec, tvec, model.K(), model.D(), imagePoints);
-			// draw axis lines
-			cv::line(image, imagePoints[0], imagePoints[1], cv::Scalar(0, 0, 255), 3);
-			cv::line(image, imagePoints[0], imagePoints[2], cv::Scalar(0, 255, 0), 3);
-			cv::line(image, imagePoints[0], imagePoints[3], cv::Scalar(255, 0, 0), 3);
-			cv::putText(image, uNumber2Str(-iter->first), imagePoints[0], cv::FONT_HERSHEY_SIMPLEX, 0.75, cv::Scalar(0, 255, 255), 2);
+					//cv::aruco::drawAxis(image, model.K(), model.D(), rvec, tvec, _preferencesDialog->getMarkerLength()<=0?0.1:_preferencesDialog->getMarkerLength() * 0.5f);
+
+					// project axis points
+					std::vector< cv::Point3f > axisPoints;
+					float length = _preferencesDialog->getMarkerLength()<=0?0.1:_preferencesDialog->getMarkerLength() * 0.5f;
+					axisPoints.push_back(cv::Point3f(0, 0, 0));
+					axisPoints.push_back(cv::Point3f(length, 0, 0));
+					axisPoints.push_back(cv::Point3f(0, length, 0));
+					axisPoints.push_back(cv::Point3f(0, 0, length));
+					std::vector< cv::Point2f > imagePoints;
+					projectPoints(axisPoints, rvec, tvec, model.K(), model.D(), imagePoints);
+
+					//offset x based on camera index
+					bool valid = true;
+					if(i!=0)
+					{
+						if(model.imageWidth() <= 0)
+						{
+							valid = false;
+							UWARN("Cannot draw correctly landmark %d with provided camera model %d (missing image width)", -iter->first, (int)i);
+						}
+						else
+						{
+							for(int j=0; j<4; ++j)
+							{
+								imagePoints[j].x += i*model.imageWidth();
+							}
+						}
+					}
+					if(valid)
+					{
+						// draw axis lines
+						cv::line(image, imagePoints[0], imagePoints[1], cv::Scalar(0, 0, 255), 3);
+						cv::line(image, imagePoints[0], imagePoints[2], cv::Scalar(0, 255, 0), 3);
+						cv::line(image, imagePoints[0], imagePoints[3], cv::Scalar(255, 0, 0), 3);
+						cv::putText(image, uNumber2Str(-iter->first), imagePoints[0], cv::FONT_HERSHEY_SIMPLEX, 0.75, cv::Scalar(0, 255, 255), 2);
+					}
+				}
+			}
 		}
 	}
 }

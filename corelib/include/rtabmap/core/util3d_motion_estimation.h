@@ -48,6 +48,7 @@ Transform RTABMAP_EXP estimateMotion3DTo2D(
 			double reprojError = 5.,
 			int flagsPnP = 0,
 			int pnpRefineIterations = 1,
+			float maxVariance = 0,
 			const Transform & guess = Transform::getIdentity(),
 			const std::map<int, cv::Point3f> & words3B = std::map<int, cv::Point3f>(),
 			cv::Mat * covariance = 0, // mean reproj error if words3B is not set
@@ -63,6 +64,7 @@ Transform RTABMAP_EXP estimateMotion3DTo2D(
 			double reprojError = 5.,
 			int flagsPnP = 0,
 			int pnpRefineIterations = 1,
+			float maxVariance = 0,
 			const Transform & guess = Transform::getIdentity(),
 			const std::map<int, cv::Point3f> & words3B = std::map<int, cv::Point3f>(),
 			cv::Mat * covariance = 0, // mean reproj error if words3B is not set

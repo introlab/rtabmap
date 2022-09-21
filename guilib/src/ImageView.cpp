@@ -68,7 +68,11 @@ public:
 		delete _placeHolder;
 	}
 
-	void setColor(const QColor & color);
+	void setWidth(int width)
+	{
+		_width = width;
+		this->setPen(QPen(pen().color(), _width));
+	}
 
 protected:
 	virtual void hoverEnterEvent ( QGraphicsSceneHoverEvent * event )
@@ -166,6 +170,7 @@ ImageView::ImageView(QWidget * parent) :
 		QWidget(parent),
 		_alpha(100),
 		_featuresSize(0.0f),
+		_linesWidth(0),
 		_defaultBgColor(Qt::black),
 		_defaultFeatureColor(Qt::yellow),
 		_defaultMatchingFeatureColor(Qt::magenta),
@@ -211,6 +216,7 @@ ImageView::ImageView(QWidget * parent) :
 	_showLines = _featureMenu->addAction(tr("Show lines"));
 	_showLines->setCheckable(true);
 	_showLines->setChecked(true);
+	_setLinesWidth = _featureMenu->addAction(tr("Set lines width..."));
 	_setFeatureColor = _featureMenu->addAction(tr("Set default feature color"));
 	_setFeatureColor->setIcon(createIcon(_defaultFeatureColor));
 	_setFeatureColor->setIconVisibleInMenu(true);
@@ -280,6 +286,7 @@ void ImageView::saveSettings(QSettings & settings, const QString & group) const
 	settings.setValue("features_shown", this->isFeaturesShown());
 	settings.setValue("features_size", this->getFeaturesSize());
 	settings.setValue("lines_shown", this->isLinesShown());
+	settings.setValue("lines_width", this->getLinesWidth());
 	settings.setValue("alpha", this->getAlpha());
 	settings.setValue("bg_color", this->getDefaultBackgroundColor());
 	settings.setValue("feature_color", this->getDefaultFeatureColor());
@@ -307,6 +314,7 @@ void ImageView::loadSettings(QSettings & settings, const QString & group)
 	this->setFeaturesShown(settings.value("features_shown", this->isFeaturesShown()).toBool());
 	this->setFeaturesSize(settings.value("features_size", this->getFeaturesSize()).toInt());
 	this->setLinesShown(settings.value("lines_shown", this->isLinesShown()).toBool());
+	this->setLinesWidth(settings.value("lines_width", this->getLinesWidth()).toInt());
 	this->setAlpha(settings.value("alpha", this->getAlpha()).toInt());
 	this->setDefaultBackgroundColor(settings.value("bg_color", this->getDefaultBackgroundColor()).value<QColor>());
 	this->setDefaultFeatureColor(settings.value("feature_color", this->getDefaultFeatureColor()).value<QColor>());
@@ -796,9 +804,8 @@ void ImageView::paintEvent(QPaintEvent *event)
 			{
 				for(QList<QGraphicsLineItem*>::iterator iter = _lines.begin(); iter != _lines.end(); ++iter)
 				{
-					QColor color = (*iter)->pen().color();
 					painter.save();
-					painter.setPen(color);
+					painter.setPen(QPen((*iter)->pen().color(), _linesWidth));
 					painter.drawLine((*iter)->line());
 					painter.restore();
 				}
@@ -996,6 +1003,16 @@ void ImageView::contextMenuEvent(QContextMenuEvent * e)
 			Q_EMIT configChanged();
 		}
 	}
+	else if(action == _setLinesWidth)
+	{
+		bool ok = false;
+		int value = QInputDialog::getInt(this, tr("Set lines width"), tr("Width"), _linesWidth, 0, 999, 1, &ok);
+		if(ok)
+		{
+			this->setLinesWidth(value);
+			Q_EMIT configChanged();
+		}
+	}
 
 	if(action == _showImage || action ==_showImageDepth)
 	{
@@ -1112,6 +1129,7 @@ void ImageView::addLine(float x1, float y1, float x2, float y2, QColor color, co
 	color.setAlpha(this->getAlpha());
 	LineItem * item  = new LineItem(x1, y1, x2, y2, text);
 	item->setPen(QPen(color));
+	item->setWidth(_linesWidth);
 	_lines.push_back(item);
 	item->setVisible(isLinesShown());
 	item->setZValue(1);
@@ -1267,6 +1285,22 @@ void ImageView::setFeaturesSize(int size)
 		iter.value()->setRect(kpt.pt.x-sizef/2.0f, kpt.pt.y-sizef/2.0f, sizef, sizef);
 	}
 
+	if(!_graphicsView->isVisible())
+	{
+		this->update();
+	}
+}
+
+void ImageView::setLinesWidth(int width)
+{
+	_linesWidth = width;
+	for(QList<QGraphicsLineItem*>::iterator iter=_lines.begin(); iter!=_lines.end(); ++iter)
+	{
+		if(dynamic_cast<LineItem*>(*iter))
+		{
+			((LineItem*)(*iter))->setWidth(_linesWidth);
+		}
+	}
 	if(!_graphicsView->isVisible())
 	{
 		this->update();
