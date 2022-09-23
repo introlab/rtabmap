@@ -2964,6 +2964,7 @@ bool Rtabmap::process(
 	cv::Mat localizationCovariance;
 	Transform previousMapCorrection;
 	bool rejectedLandmark = false;
+	bool delayedLocalization = false;
 	UDEBUG("RGB-D SLAM mode: %d", _rgbdSlamMode?1:0);
 	UDEBUG("Incremental: %d", _memory->isIncremental());
 	UDEBUG("Loop hyp: %d", _loopClosureHypothesis.first);
@@ -3454,6 +3455,7 @@ bool Rtabmap::process(
 					else //delayed localization (wait for more than 1 link)
 					{
 						UWARN("Localization was good, but waiting for another one to be more accurate (%s>0)", Parameters::kRGBDMaxOdomCacheSize().c_str());
+						delayedLocalization = true;
 						rejectLocalization = true;
 					}
 				}
@@ -3967,8 +3969,8 @@ bool Rtabmap::process(
 			(smallDisplacement || tooFastMovement) &&
 			_loopClosureHypothesis.first == 0 &&
 			lastProximitySpaceClosureId == 0 &&
-			!rejectedGlobalLoopClosure &&
-			(!rejectedLandmark || landmarksDetected.empty()))
+			!delayedLocalization &&
+			(rejectedLandmark || landmarksDetected.empty()))
 	{
 		_odomCachePoses.erase(signatureRemoved);
 		_odomCacheConstraints.erase(signatureRemoved);
