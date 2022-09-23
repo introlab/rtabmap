@@ -3967,7 +3967,8 @@ bool Rtabmap::process(
 			(smallDisplacement || tooFastMovement) &&
 			_loopClosureHypothesis.first == 0 &&
 			lastProximitySpaceClosureId == 0 &&
-			(rejectedLandmark || landmarksDetected.empty()))
+			!rejectedGlobalLoopClosure &&
+			(!rejectedLandmark || landmarksDetected.empty()))
 	{
 		_odomCachePoses.erase(signatureRemoved);
 		_odomCacheConstraints.erase(signatureRemoved);
