@@ -3973,7 +3973,17 @@ bool Rtabmap::process(
 			(rejectedLandmark || landmarksDetected.empty()))
 	{
 		_odomCachePoses.erase(signatureRemoved);
-		_odomCacheConstraints.erase(signatureRemoved);
+		for(std::multimap<int, Link>::iterator iter=_odomCacheConstraints.begin(); iter!=_odomCacheConstraints.end();)
+		{
+			if(iter->second.from() == signatureRemoved || iter->second.to() == signatureRemoved)
+			{
+				_odomCacheConstraints.erase(iter++);
+			}
+			else
+			{
+				++iter;
+			}
+		}
 	}
 
 	// Pass this point signature should not be used, since it could have been transferred...
