@@ -151,6 +151,7 @@ Transform estimateMotion3DTo2D(
 			{
 				std::vector<float> errorSqrdDists(inliers.size());
 				std::vector<float> errorSqrdAngles(inliers.size());
+				Transform localTransformInv = cameraModel.localTransform().inverse();
 				Transform transformCameraFrameInv = (transform * cameraModel.localTransform()).inverse();
 				for(unsigned int i=0; i<inliers.size(); ++i)
 				{
@@ -164,7 +165,7 @@ Transform estimateMotion3DTo2D(
 					cv::Point3f newPt;
 					if(iter!=words3B.end() && util3d::isFinite(iter->second))
 					{
-						newPt = util3d::transformPoint(iter->second, cameraModel.localTransform().inverse());
+						newPt = util3d::transformPoint(iter->second, localTransformInv);
 					}
 					else
 					{
@@ -178,8 +179,7 @@ Transform estimateMotion3DTo2D(
 								cameraModel.fx(),
 								cameraModel.fy());
 						// transform in camera B frame
-						newPt = util3d::transformPoint(objPt, transformCameraFrameInv);
-						newPt = cv::Point3f(ray.x(), ray.y(), ray.z()) * newPt.z*1.1; // Add 10 % error
+						newPt = cv::Point3f(ray.x(), ray.y(), ray.z()) * objPt.z*1.1; // Add 10 % error
 					}
 
 					errorSqrdDists[i] = uNormSquared(objPt.x-newPt.x, objPt.y-newPt.y, objPt.z-newPt.z);
@@ -412,8 +412,7 @@ Transform estimateMotion3DTo2D(
 								cameraModels[cameraIndex].fx(),
 								cameraModels[cameraIndex].fy());
 						// transform in camera B frame
-						newPt = util3d::transformPoint(objPt, transformCameraFrameInv);
-						newPt = cv::Point3f(ray.x(), ray.y(), ray.z()) * newPt.z*1.1; // Add 10 % error
+						newPt = cv::Point3f(ray.x(), ray.y(), ray.z()) * objPt.z*1.1; // Add 10 % error
 					}
 
 					errorSqrdDists[i] = uNormSquared(objPt.x-newPt.x, objPt.y-newPt.y, objPt.z-newPt.z);
