@@ -82,6 +82,7 @@ private:
 	float _PnPReprojError;
 	int _PnPFlags;
 	int _PnPRefineIterations;
+	float _PnPMaxVar;
 	int _correspondencesApproach;
 	int _flowWinSize;
 	int _flowIterations;

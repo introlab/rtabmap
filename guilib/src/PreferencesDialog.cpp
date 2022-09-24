@@ -1130,6 +1130,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->loopClosure_identityGuess->setObjectName(Parameters::kRGBDLoopClosureIdentityGuess().c_str());
 	_ui->loopClosure_reextract->setObjectName(Parameters::kRGBDLoopClosureReextractFeatures().c_str());
 	_ui->loopClosure_bunlde->setObjectName(Parameters::kRGBDLocalBundleOnLoopClosure().c_str());
+	_ui->loopClosure_invertedReg->setObjectName(Parameters::kRGBDInvertedReg().c_str());
 	_ui->checkbox_rgbd_createOccupancyGrid->setObjectName(Parameters::kRGBDCreateOccupancyGrid().c_str());
 	_ui->RGBDMarkerDetection->setObjectName(Parameters::kRGBDMarkerDetection().c_str());
 	_ui->spinBox_maxOdomCacheSize->setObjectName(Parameters::kRGBDMaxOdomCacheSize().c_str());
@@ -1154,6 +1155,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->loopClosure_pnpReprojError->setObjectName(Parameters::kVisPnPReprojError().c_str());
 	_ui->loopClosure_pnpFlags->setObjectName(Parameters::kVisPnPFlags().c_str());
 	_ui->loopClosure_pnpRefineIterations->setObjectName(Parameters::kVisPnPRefineIterations().c_str());
+	_ui->loopClosure_pnpMaxVariance->setObjectName(Parameters::kVisPnPMaxVariance().c_str());
 	_ui->reextract_nn->setObjectName(Parameters::kVisCorNNType().c_str());
 	connect(_ui->reextract_nn, SIGNAL(currentIndexChanged(int)), this, SLOT(updateFeatureMatchingVisibility()));
 	_ui->reextract_nndrRatio->setObjectName(Parameters::kVisCorNNDR().c_str());

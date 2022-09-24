@@ -101,6 +101,7 @@ Memory::Memory(const ParametersMap & parameters) :
 	_laserScanGroundNormalsUp(Parameters::defaultIcpPointToPlaneGroundNormalsUp()),
 	_reextractLoopClosureFeatures(Parameters::defaultRGBDLoopClosureReextractFeatures()),
 	_localBundleOnLoopClosure(Parameters::defaultRGBDLocalBundleOnLoopClosure()),
+	_invertedReg(Parameters::defaultRGBDInvertedReg()),
 	_rehearsalMaxDistance(Parameters::defaultRGBDLinearUpdate()),
 	_rehearsalMaxAngle(Parameters::defaultRGBDAngularUpdate()),
 	_rehearsalWeightIgnoredWhileMoving(Parameters::defaultMemRehearsalWeightIgnoredWhileMoving()),
@@ -578,6 +579,15 @@ void Memory::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(params, Parameters::kIcpPointToPlaneGroundNormalsUp(), _laserScanGroundNormalsUp);
 	Parameters::parse(params, Parameters::kRGBDLoopClosureReextractFeatures(), _reextractLoopClosureFeatures);
 	Parameters::parse(params, Parameters::kRGBDLocalBundleOnLoopClosure(), _localBundleOnLoopClosure);
+	Parameters::parse(params, Parameters::kRGBDInvertedReg(), _invertedReg);
+	if(_invertedReg && _localBundleOnLoopClosure)
+	{
+		UWARN("%s and %s cannot be used at the same time, disabling %s...",
+				Parameters::kRGBDLocalBundleOnLoopClosure().c_str(),
+				Parameters::kRGBDInvertedReg().c_str(),
+				Parameters::kRGBDLocalBundleOnLoopClosure().c_str());
+		_localBundleOnLoopClosure = false;
+	}
 	Parameters::parse(params, Parameters::kRGBDLinearUpdate(), _rehearsalMaxDistance);
 	Parameters::parse(params, Parameters::kRGBDAngularUpdate(), _rehearsalMaxAngle);
 	Parameters::parse(params, Parameters::kMemRehearsalWeightIgnoredWhileMoving(), _rehearsalWeightIgnoredWhileMoving);
@@ -2855,8 +2865,21 @@ Transform Memory::computeTransform(
 		(fromS.getWords().size() && toS.getWords().size()) ||
 		(!guess.isNull() && !_registrationPipeline->isImageRequired()))
 	{
-		Signature tmpFrom = fromS;
-		Signature tmpTo = toS;
+		Signature tmpFrom, tmpTo;
+		if(_invertedReg)
+		{
+			tmpFrom = toS;
+			tmpTo = fromS;
+			if(!guess.isNull())
+			{
+				guess = guess.inverse();
+			}
+		}
+		else
+		{
+			tmpFrom = fromS;
+			tmpTo = toS;
+		}
 
 		if(_reextractLoopClosureFeatures && (_registrationPipeline->isImageRequired() || guess.isNull()))
 		{
@@ -2891,6 +2914,7 @@ Transform Memory::computeTransform(
 				_registrationPipeline->isImageRequired() &&
 			   !_registrationPipeline->isScanRequired() &&
 			   !_registrationPipeline->isUserDataRequired() &&
+			   !_invertedReg &&
 			   !tmpTo.getWordsDescriptors().empty() &&
 			   !tmpTo.getWords().empty() &&
 			   !tmpFrom.getWordsDescriptors().empty() &&
@@ -3114,6 +3138,10 @@ Transform Memory::computeTransform(
 		else
 		{
 			transform = _registrationPipeline->computeTransformationMod(tmpFrom, tmpTo, guess, info);
+		}
+		if(_invertedReg && !transform.isNull())
+		{
+			transform = transform.inverse();
 		}
 	}
 	return transform;

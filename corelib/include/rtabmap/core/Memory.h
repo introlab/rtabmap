@@ -324,6 +324,7 @@ private:
 	float _laserScanGroundNormalsUp;
 	bool _reextractLoopClosureFeatures;
 	bool _localBundleOnLoopClosure;
+	bool _invertedReg;
 	float _rehearsalMaxDistance;
 	float _rehearsalMaxAngle;
 	bool _rehearsalWeightIgnoredWhileMoving;
