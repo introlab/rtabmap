@@ -32,7 +32,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef RTABMAP_PARAMETERSTOOLBOX_H_
 #define RTABMAP_PARAMETERSTOOLBOX_H_
 
-#include "rtabmap/gui/RtabmapGuiExp.h" // DLL export/import defines
+#include "rtabmap/gui/rtabmap_gui_export.h" // DLL export/import defines
 
 #include <rtabmap/core/Parameters.h>
 #include <QWidget>
@@ -44,7 +44,7 @@ class QComboBox;
 
 namespace rtabmap {
 
-class RTABMAPGUI_EXP ParametersToolBox: public QWidget
+class RTABMAP_GUI_EXPORT ParametersToolBox: public QWidget
 {
 	Q_OBJECT
 

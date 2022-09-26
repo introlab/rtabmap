@@ -27,7 +27,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #pragma once
 
-#include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
+#include "rtabmap/core/rtabmap_core_export.h" // DLL export/import defines
 
 #include <rtabmap/core/Parameters.h>
 #include <rtabmap/core/Transform.h>
@@ -52,7 +52,7 @@ class IMUFilter;
  * Class CameraThread
  *
  */
-class RTABMAP_EXP CameraThread :
+class RTABMAP_CORE_EXPORT CameraThread :
 	public UThread,
 	public UEventsSender
 {
@@ -88,7 +88,8 @@ public:
 	void enableIMUFiltering(int filteringStrategy=1, const ParametersMap & parameters = ParametersMap(), bool baseFrameConversion = false);
 	void disableIMUFiltering();
 
-	RTABMAP_DEPRECATED(void setScanParameters(
+	// Use new version of this function with groundNormalsUp=0.8 for forceGroundNormalsUp=True and groundNormalsUp=0.0 for forceGroundNormalsUp=False.
+	RTABMAP_DEPRECATED void setScanParameters(
 			bool fromDepth,
 			int downsampleStep, // decimation of the depth image in case the scan is from depth image
 			float rangeMin,
@@ -96,7 +97,7 @@ public:
 			float voxelSize,
 			int normalsK,
 			int normalsRadius,
-			bool forceGroundNormalsUp) , "Use new version of this function with groundNormalsUp=0.8 for forceGroundNormalsUp=True and groundNormalsUp=0.0 for forceGroundNormalsUp=False.");
+			bool forceGroundNormalsUp);
 	void setScanParameters(
 			bool fromDepth,
 			int downsampleStep=1, // decimation of the depth image in case the scan is from depth image

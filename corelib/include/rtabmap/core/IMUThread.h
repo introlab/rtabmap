@@ -27,7 +27,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #pragma once
 
-#include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
+#include "rtabmap/core/rtabmap_core_export.h" // DLL export/import defines
 
 #include <rtabmap/core/Transform.h>
 #include <rtabmap/utilite/UThread.h>
@@ -43,7 +43,7 @@ namespace rtabmap
  * Class IMUThread
  *
  */
-class RTABMAP_EXP IMUThread :
+class RTABMAP_CORE_EXPORT IMUThread :
 	public UThread,
 	public UEventsSender
 {

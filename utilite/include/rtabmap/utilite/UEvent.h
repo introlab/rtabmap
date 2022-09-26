@@ -20,7 +20,7 @@
 #ifndef UEVENT_H
 #define UEVENT_H
 
-#include "rtabmap/utilite/UtiLiteExp.h" // DLL export/import defines
+#include "rtabmap/utilite/utilite_export.h" // DLL export/import defines
 
 #include <string>
 
@@ -54,7 +54,7 @@ class UEventsHandler;
  * @see UEventsHandler
  * @see getClassName()
  */
-class UTILITE_EXP UEvent{
+class UTILITE_EXPORT UEvent{
 public:
     virtual ~UEvent() {}
 

@@ -41,7 +41,7 @@ class Signature;
 class Registration;
 class Optimizer;
 
-class RTABMAP_EXP OdometryF2M : public Odometry
+class RTABMAP_CORE_EXPORT OdometryF2M : public Odometry
 {
 public:
 	OdometryF2M(const rtabmap::ParametersMap & parameters = rtabmap::ParametersMap());

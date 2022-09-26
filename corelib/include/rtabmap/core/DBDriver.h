@@ -28,7 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef DBDRIVER_H_
 #define DBDRIVER_H_
 
-#include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
+#include "rtabmap/core/rtabmap_core_export.h" // DLL export/import defines
 
 #include <string>
 #include <list>
@@ -59,7 +59,7 @@ class VisualWord;
 //but never, never try to use the same connection simultaneously in
 //two or more threads."
 //
-class RTABMAP_EXP DBDriver : public UThreadNode
+class RTABMAP_CORE_EXPORT DBDriver : public UThreadNode
 {
 public:
 	static DBDriver * create(const ParametersMap & parameters = ParametersMap());

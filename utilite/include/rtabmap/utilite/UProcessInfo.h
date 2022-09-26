@@ -20,13 +20,13 @@
 #ifndef UPROCESSINFO_H
 #define UPROCESSINFO_H
 
-#include "rtabmap/utilite/UtiLiteExp.h" // DLL export/import defines
+#include "rtabmap/utilite/utilite_export.h" // DLL export/import defines
 
 /**
  * This class is used to get some informations
  * about the current process.
  */
-class UTILITE_EXP UProcessInfo {
+class UTILITE_EXPORT UProcessInfo {
 public:
 	UProcessInfo();
 	virtual ~UProcessInfo();

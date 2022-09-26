@@ -28,7 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef MEMORY_H_
 #define MEMORY_H_
 
-#include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
+#include "rtabmap/core/rtabmap_core_export.h" // DLL export/import defines
 
 #include "rtabmap/utilite/UEventsHandler.h"
 #include "rtabmap/core/Parameters.h"
@@ -60,7 +60,7 @@ class Stereo;
 class OccupancyGrid;
 class MarkerDetector;
 
-class RTABMAP_EXP Memory
+class RTABMAP_CORE_EXPORT Memory
 {
 public:
 	static const int kIdStart;

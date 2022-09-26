@@ -36,7 +36,7 @@ class VioManager;
 
 namespace rtabmap {
 
-class RTABMAP_EXP OdometryOpenVINS : public Odometry
+class RTABMAP_CORE_EXPORT OdometryOpenVINS : public Odometry
 {
 public:
 	OdometryOpenVINS(const rtabmap::ParametersMap & parameters = rtabmap::ParametersMap());

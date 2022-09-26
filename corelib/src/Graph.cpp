@@ -1761,7 +1761,7 @@ std::list<std::pair<int, Transform> > computePath(
 }
 
 // Dijksta
-std::list<int> RTABMAP_EXP computePath(
+std::list<int> computePath(
 			const std::multimap<int, Link> & links,
 			int from,
 			int to,

@@ -27,8 +27,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #pragma once
 
-#include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
-
 #include "rtabmap/core/CameraModel.h"
 #include "rtabmap/core/Camera.h"
 #include "rtabmap/core/Version.h"
@@ -53,7 +51,7 @@ struct rs2_extrinsics;
 namespace rtabmap
 {
 
-class RTABMAP_EXP CameraRealSense2 :
+class RTABMAP_CORE_EXPORT CameraRealSense2 :
 	public Camera
 {
 public:

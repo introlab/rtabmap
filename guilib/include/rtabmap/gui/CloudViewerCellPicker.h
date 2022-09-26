@@ -8,13 +8,13 @@
 #ifndef GUILIB_SRC_CLOUDVIEWERCELLPICKER_H_
 #define GUILIB_SRC_CLOUDVIEWERCELLPICKER_H_
 
-#include "rtabmap/gui/RtabmapGuiExp.h" // DLL export/import defines
+#include "rtabmap/gui/rtabmap_gui_export.h" // DLL export/import defines
 
 #include <vtkCellPicker.h>
 
 namespace rtabmap {
 
-class RTABMAPGUI_EXP CloudViewerCellPicker : public vtkCellPicker {
+class RTABMAP_GUI_EXPORT CloudViewerCellPicker : public vtkCellPicker {
 public:
 public:
     static CloudViewerCellPicker *New ();

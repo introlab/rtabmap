@@ -27,8 +27,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #pragma once
 
-#include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
-
 #include "rtabmap/core/StereoCameraModel.h"
 #include "rtabmap/core/camera/CameraVideo.h"
 #include "rtabmap/core/Version.h"
@@ -42,7 +40,7 @@ namespace rtabmap
 {
 class ZedIMUThread;
 
-class RTABMAP_EXP CameraStereoZed :
+class RTABMAP_CORE_EXPORT CameraStereoZed :
 	public Camera
 {
 public:

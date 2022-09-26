@@ -28,13 +28,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef OPTIMIZERCERES_H_
 #define OPTIMIZERCERES_H_
 
-#include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
-
 #include <rtabmap/core/Optimizer.h>
 
 namespace rtabmap {
 
-class RTABMAP_EXP OptimizerCeres : public Optimizer
+class RTABMAP_CORE_EXPORT OptimizerCeres : public Optimizer
 {
 public:
 	static bool available();

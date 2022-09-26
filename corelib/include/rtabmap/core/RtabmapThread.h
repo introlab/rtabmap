@@ -28,7 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef RTABMAPTHREAD_H_
 #define RTABMAPTHREAD_H_
 
-#include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
+#include "rtabmap/core/rtabmap_core_export.h" // DLL export/import defines
 
 #include <rtabmap/utilite/UThreadNode.h>
 #include <rtabmap/utilite/UEventsHandler.h>
@@ -48,7 +48,7 @@ namespace rtabmap {
 
 class Rtabmap;
 
-class RTABMAP_EXP RtabmapThread :
+class RTABMAP_CORE_EXPORT RtabmapThread :
 	public UThreadNode,
 	public UEventsHandler
 {

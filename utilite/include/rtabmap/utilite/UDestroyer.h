@@ -20,8 +20,6 @@
 #ifndef UDESTROYER_H
 #define UDESTROYER_H
 
-#include "rtabmap/utilite/UtiLiteExp.h" // DLL export/import defines
-
 /**
  * This class is used to delete a dynamically created
  * objects. It was mainly designed to remove dynamically created Singleton.

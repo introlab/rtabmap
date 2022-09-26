@@ -1,28 +1,6 @@
-SET(INCLUDE_DIRS
-    ${PROJECT_BINARY_DIR}/corelib/include
-	${PROJECT_SOURCE_DIR}/corelib/include
-	${PROJECT_SOURCE_DIR}/utilite/include
-	${PROJECT_SOURCE_DIR}/guilib/include
-    ${OpenCV_INCLUDE_DIRS}
-    ${PCL_INCLUDE_DIRS}
-)
-
-IF(QT4_FOUND)
-    INCLUDE(${QT_USE_FILE})
-ENDIF(QT4_FOUND)
-
-SET(LIBRARIES
-	${OpenCV_LIBRARIES} 
-	${PCL_LIBRARIES}
-	${QT_LIBRARIES} 
-)
-
-add_definitions(${PCL_DEFINITIONS})
-
-INCLUDE_DIRECTORIES(${INCLUDE_DIRS})
 
 ADD_EXECUTABLE(matcher main.cpp)
-TARGET_LINK_LIBRARIES(matcher rtabmap_core rtabmap_utilite rtabmap_gui ${LIBRARIES})
+TARGET_LINK_LIBRARIES(matcher rtabmap_gui)
 
 SET_TARGET_PROPERTIES( matcher 
   PROPERTIES OUTPUT_NAME ${PROJECT_PREFIX}-matcher)

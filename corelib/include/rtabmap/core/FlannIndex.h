@@ -28,13 +28,13 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef CORELIB_SRC_FLANNINDEX_H_
 #define CORELIB_SRC_FLANNINDEX_H_
 
-#include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
+#include "rtabmap/core/rtabmap_core_export.h" // DLL export/import defines
 #include <list>
 #include <opencv2/opencv.hpp>
 
 namespace rtabmap {
 
-class RTABMAP_EXP FlannIndex
+class RTABMAP_CORE_EXPORT FlannIndex
 {
 public:
 	FlannIndex();

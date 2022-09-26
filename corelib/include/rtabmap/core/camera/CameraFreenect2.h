@@ -27,8 +27,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #pragma once
 
-#include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
-
 #include "rtabmap/core/StereoCameraModel.h"
 #include "rtabmap/core/Camera.h"
 #include "rtabmap/core/Version.h"
@@ -45,7 +43,7 @@ class PacketPipeline;
 namespace rtabmap
 {
 
-class RTABMAP_EXP CameraFreenect2 :
+class RTABMAP_CORE_EXPORT CameraFreenect2 :
 	public Camera
 {
 public:

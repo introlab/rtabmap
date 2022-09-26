@@ -1,22 +1,6 @@
-SET(INCLUDE_DIRS
-    ${PROJECT_BINARY_DIR}/corelib/include
-	${PROJECT_SOURCE_DIR}/corelib/include
-	${PROJECT_SOURCE_DIR}/utilite/include
-    ${OpenCV_INCLUDE_DIRS}
-    ${PCL_INCLUDE_DIRS}
-)
-
-SET(LIBRARIES
-	${OpenCV_LIBRARIES} 
-	${PCL_LIBRARIES}
-)
-
-add_definitions(${PCL_DEFINITIONS})
-
-INCLUDE_DIRECTORIES(${INCLUDE_DIRS})
 
 ADD_EXECUTABLE(camera main.cpp)
-TARGET_LINK_LIBRARIES(camera rtabmap_core rtabmap_utilite ${LIBRARIES})
+TARGET_LINK_LIBRARIES(camera rtabmap_core)
 
 SET_TARGET_PROPERTIES( camera 
   PROPERTIES OUTPUT_NAME ${PROJECT_PREFIX}-camera)

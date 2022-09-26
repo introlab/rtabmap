@@ -850,7 +850,7 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudFromStereoImages(
 			validIndices);
 }
 
-pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP cloudFromSensorData(
+pcl::PointCloud<pcl::PointXYZ>::Ptr cloudFromSensorData(
 		const SensorData & sensorData,
 		int decimation,
 		float maxDepth,
@@ -1053,7 +1053,7 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP cloudFromSensorData(
 	return cloud;
 }
 
-pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_EXP cloudRGBFromSensorData(
+pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudRGBFromSensorData(
 		const SensorData & sensorData,
 		int decimation,
 		float maxDepth,

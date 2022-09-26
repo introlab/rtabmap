@@ -36,6 +36,7 @@
 #ifndef _U_Thread_Win32_
 #define _U_Thread_Win32_
 
+#include "rtabmap/utilite/utilite_export.h"
 #include "rtabmap/utilite/Win32/UWin32.h"
 #include "rtabmap/utilite/USemaphore.h"
 #include "rtabmap/utilite/UMutex.h"
@@ -87,7 +88,7 @@ template
 <
   typename Thread_T
 >
-class UTILITE_EXP UThreadC
+class UTILITE_EXPORT UThreadC
 {
   private:
     struct Instance;
@@ -241,7 +242,7 @@ class UTILITE_EXP UThreadC
 //  Explicit Specialization of void
 //
 template<>
-class UTILITE_EXP UThreadC<void>
+class UTILITE_EXPORT UThreadC<void>
 {
   private:
     struct Instance;

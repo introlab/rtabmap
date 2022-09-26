@@ -34,7 +34,6 @@ RTAB-Map integration: Mathieu Labbe
 #include <pcl/point_types.h>
 #include <opencv2/core/core.hpp>
 #include <rtabmap/core/CameraModel.h>
-#include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
 
 #define MAX_MULT 1.3
 #define MIN_MULT 0.7
@@ -60,7 +59,7 @@ namespace clams
 
   //! This is essentially a pinhole camera model for an RGBD sensor, with
   //! some extra functions added on for use during calibration.
-  class RTABMAP_EXP FrameProjector
+  class RTABMAP_CORE_EXPORT FrameProjector
   {
   public:
     // For storing z values in meters.  This is not Euclidean distance.

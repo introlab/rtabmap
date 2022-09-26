@@ -32,7 +32,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 namespace rtabmap {
 
-class RTABMAP_EXP OdometryOpen3D : public Odometry
+class RTABMAP_CORE_EXPORT OdometryOpen3D : public Odometry
 {
 public:
 	OdometryOpen3D(const rtabmap::ParametersMap & parameters = rtabmap::ParametersMap());
