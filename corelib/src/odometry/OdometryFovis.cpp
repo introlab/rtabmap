@@ -123,18 +123,14 @@ Transform OdometryFovis::computeTransform(
 		return t;
 	}
 
-	if(!((data.cameraModels().size() == 1 &&
-			data.cameraModels()[0].isValidForReprojection()) ||
-		(data.stereoCameraModel().isValidForProjection() &&
-			data.stereoCameraModel().left().isValidForReprojection() &&
-			data.stereoCameraModel().right().isValidForReprojection())))
+	if(!((data.cameraModels().size() == 1 && data.cameraModels()[0].isValidForReprojection()) ||
+		(data.stereoCameraModels().size() == 1 && data.stereoCameraModels()[0].isValidForProjection())))
 	{
-		UERROR("Invalid camera model! Mono cameras=%d (reproj=%d), Stereo camera=%d (reproj=%d|%d)",
+		UERROR("Invalid camera model! Mono cameras=%d (reproj=%d), Stereo cameras=%d (reproj=%d)",
 				(int)data.cameraModels().size(),
 				data.cameraModels().size() && data.cameraModels()[0].isValidForReprojection()?1:0,
-				data.stereoCameraModel().isValidForProjection()?1:0,
-				data.stereoCameraModel().left().isValidForReprojection()?1:0,
-				data.stereoCameraModel().right().isValidForReprojection()?1:0);
+				(int)data.stereoCameraModels().size(),
+				data.stereoCameraModels().size() && data.stereoCameraModels()[0].isValidForProjection()?1:0);
 		return t;
 	}
 
@@ -254,18 +250,18 @@ Transform OdometryFovis::computeTransform(
 		depthImage_->setDepthImage((float*)depth.data);
 		depthSource = depthImage_;
 	}
-	else // stereo
+	else if(data.stereoCameraModels().size() == 1) // stereo
 	{
 		UDEBUG("");
 		// initialize left camera parameters
 		fovis::CameraIntrinsicsParameters left_parameters;
-		left_parameters.width = data.stereoCameraModel().left().imageWidth();
-		left_parameters.height = data.stereoCameraModel().left().imageHeight();
-		left_parameters.fx = data.stereoCameraModel().left().fx();
-		left_parameters.fy = data.stereoCameraModel().left().fy();
-		left_parameters.cx = data.stereoCameraModel().left().cx()==0.0?double(left_parameters.width) / 2.0:data.stereoCameraModel().left().cx();
-		left_parameters.cy = data.stereoCameraModel().left().cy()==0.0?double(left_parameters.height) / 2.0:data.stereoCameraModel().left().cy();
-		localTransform = data.stereoCameraModel().localTransform();
+		left_parameters.width = data.stereoCameraModels()[0].left().imageWidth();
+		left_parameters.height = data.stereoCameraModels()[0].left().imageHeight();
+		left_parameters.fx = data.stereoCameraModels()[0].left().fx();
+		left_parameters.fy = data.stereoCameraModels()[0].left().fy();
+		left_parameters.cx = data.stereoCameraModels()[0].left().cx()==0.0?double(left_parameters.width) / 2.0:data.stereoCameraModels()[0].left().cx();
+		left_parameters.cy = data.stereoCameraModels()[0].left().cy()==0.0?double(left_parameters.height) / 2.0:data.stereoCameraModels()[0].left().cy();
+		localTransform = data.stereoCameraModels()[0].localTransform();
 
 		if(rect_ == 0)
 		{
@@ -277,12 +273,12 @@ Transform OdometryFovis::computeTransform(
 		{
 			// initialize right camera parameters
 			fovis::CameraIntrinsicsParameters right_parameters;
-			right_parameters.width = data.stereoCameraModel().right().imageWidth();
-			right_parameters.height = data.stereoCameraModel().right().imageHeight();
-			right_parameters.fx = data.stereoCameraModel().right().fx();
-			right_parameters.fy = data.stereoCameraModel().right().fy();
-			right_parameters.cx = data.stereoCameraModel().right().cx()==0.0?double(right_parameters.width) / 2.0:data.stereoCameraModel().right().cx();
-			right_parameters.cy = data.stereoCameraModel().right().cy()==0.0?double(right_parameters.height) / 2.0:data.stereoCameraModel().right().cy();
+			right_parameters.width = data.stereoCameraModels()[0].right().imageWidth();
+			right_parameters.height = data.stereoCameraModels()[0].right().imageHeight();
+			right_parameters.fx = data.stereoCameraModels()[0].right().fx();
+			right_parameters.fy = data.stereoCameraModels()[0].right().fy();
+			right_parameters.cx = data.stereoCameraModels()[0].right().cx()==0.0?double(right_parameters.width) / 2.0:data.stereoCameraModels()[0].right().cx();
+			right_parameters.cy = data.stereoCameraModels()[0].right().cy()==0.0?double(right_parameters.height) / 2.0:data.stereoCameraModels()[0].right().cy();
 
 			// as we use rectified images, rotation is identity
 			// and translation is baseline only
@@ -293,7 +289,7 @@ Transform OdometryFovis::computeTransform(
 			stereo_parameters.right_to_left_rotation[1] = 0.0;
 			stereo_parameters.right_to_left_rotation[2] = 0.0;
 			stereo_parameters.right_to_left_rotation[3] = 0.0;
-			stereo_parameters.right_to_left_translation[0] = -data.stereoCameraModel().baseline();
+			stereo_parameters.right_to_left_translation[0] = -data.stereoCameraModels()[0].baseline();
 			stereo_parameters.right_to_left_translation[1] = 0.0;
 			stereo_parameters.right_to_left_translation[2] = 0.0;
 

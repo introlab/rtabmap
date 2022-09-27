@@ -838,7 +838,7 @@ Transform OdometryMSCKF::computeTransform(
 	if(!data.imageRaw().empty() && !data.rightRaw().empty())
 	{
 		UDEBUG("Image update stamp=%f", data.stamp());
-		if(data.stereoCameraModel().isValidForProjection())
+		if(data.stereoCameraModels().size() == 1 && data.stereoCameraModels()[0].isValidForProjection())
 		{
 			if(msckf_ == 0)
 			{
@@ -852,13 +852,13 @@ Transform OdometryMSCKF::computeTransform(
 				imageProcessor_ = new ImageProcessorNoROS(
 						parameters_,
 						lastImu_.localTransform(),
-						data.stereoCameraModel(),
+						data.stereoCameraModels()[0],
 						this->imagesAlreadyRectified());
 				UINFO("Creating MsckfVioNoROS...");
 				msckf_ = new MsckfVioNoROS(
 						parameters_,
 						lastImu_.localTransform(),
-						data.stereoCameraModel(),
+						data.stereoCameraModels()[0],
 						this->imagesAlreadyRectified());
 			}
 
@@ -975,10 +975,10 @@ Transform OdometryMSCKF::computeTransform(
 						if(this->imagesAlreadyRectified())
 						{
 							info->newCorners.resize(measurements->features.size());
-							float fx = data.stereoCameraModel().left().fx();
-							float fy = data.stereoCameraModel().left().fy();
-							float cx = data.stereoCameraModel().left().cx();
-							float cy = data.stereoCameraModel().left().cy();
+							float fx = data.stereoCameraModels()[0].left().fx();
+							float fy = data.stereoCameraModels()[0].left().fy();
+							float cx = data.stereoCameraModels()[0].left().cx();
+							float cy = data.stereoCameraModels()[0].left().cy();
 							info->reg.inliersIDs.resize(measurements->features.size());
 							for(unsigned int i=0; i<measurements->features.size(); ++i)
 							{

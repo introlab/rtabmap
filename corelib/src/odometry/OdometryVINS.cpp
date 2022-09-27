@@ -367,7 +367,7 @@ Transform OdometryVINS::computeTransform(
 		}
 	}
 
-	if(!data.imageRaw().empty() && !data.rightRaw().empty())
+	if(!data.imageRaw().empty() && !data.rightRaw().empty() && data.stereoCameraModels().size() == 1 && data.stereoCameraModels()[0].isValidForProjection())
 	{
 		if(USE_IMU==1 && lastImu_.localTransform().isNull())
 		{
@@ -379,7 +379,7 @@ Transform OdometryVINS::computeTransform(
 			// intialize
 			vinsEstimator_ = new VinsEstimator(
 					lastImu_.localTransform().isNull()?Transform::getIdentity():lastImu_.localTransform(),
-					data.stereoCameraModel(),
+					data.stereoCameraModels()[0],
 					this->imagesAlreadyRectified());
 		}
 
@@ -479,7 +479,7 @@ Transform OdometryVINS::computeTransform(
 						if(this->imagesAlreadyRectified())
 						{
 							cv::Point2f pt;
-							data.stereoCameraModel().left().reproject(pts_i(0), pts_i(1), pts_i(2), pt.x, pt.y);
+							data.stereoCameraModels()[0].left().reproject(pts_i(0), pts_i(1), pts_i(2), pt.x, pt.y);
 							info->reg.inliersIDs.push_back(info->newCorners.size());
 							info->newCorners.push_back(pt);
 						}
@@ -502,6 +502,10 @@ Transform OdometryVINS::computeTransform(
 	else if(!data.imageRaw().empty() && data.depthOrRightRaw().empty())
 	{
 		UERROR("VINS-Fusion requires stereo images!");
+	}
+	else
+	{
+		UERROR("VINS-Fusion requires stereo images (and only one stereo camera with valid calibration)!");
 	}
 #else
 	UERROR("RTAB-Map is not built with VINS support! Select another visual odometry approach.");
