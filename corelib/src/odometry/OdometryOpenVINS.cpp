@@ -99,7 +99,7 @@ Transform OdometryOpenVINS::computeTransform(
 	}
 
 	// OpenVINS has to buffer image before computing transformation with IMU stamp > image stamp
-	if(!data.imageRaw().empty() && !data.rightRaw().empty())
+	if(!data.imageRaw().empty() && !data.rightRaw().empty() && data.stereoCameraModels().size() == 1)
 	{
 		if(imuBuffer_.empty())
 		{
@@ -218,27 +218,27 @@ Transform OdometryOpenVINS::computeTransform(
 
 
 			// CAMERA ======================================================================
-			bool fisheye = data.stereoCameraModel().left().isFisheye() && !this->imagesAlreadyRectified();
+			bool fisheye = data.stereoCameraModels()[0].left().isFisheye() && !this->imagesAlreadyRectified();
 			params.camera_fisheye.insert(std::make_pair(0, fisheye));
 			params.camera_fisheye.insert(std::make_pair(1, fisheye));
 
 			Eigen::VectorXd camLeft(8), camRight(8);
-			if(this->imagesAlreadyRectified() || data.stereoCameraModel().left().D_raw().empty())
+			if(this->imagesAlreadyRectified() || data.stereoCameraModels()[0].left().D_raw().empty())
 			{
-				camLeft << data.stereoCameraModel().left().fx(),
-					 data.stereoCameraModel().left().fy(),
-					 data.stereoCameraModel().left().cx(),
-					 data.stereoCameraModel().left().cy(), 0, 0, 0, 0;
-				camRight << data.stereoCameraModel().right().fx(),
-					 data.stereoCameraModel().right().fy(),
-					 data.stereoCameraModel().right().cx(),
-					 data.stereoCameraModel().right().cy(), 0, 0, 0, 0;
+				camLeft << data.stereoCameraModels()[0].left().fx(),
+					 data.stereoCameraModels()[0].left().fy(),
+					 data.stereoCameraModels()[0].left().cx(),
+					 data.stereoCameraModels()[0].left().cy(), 0, 0, 0, 0;
+				camRight << data.stereoCameraModels()[0].right().fx(),
+					 data.stereoCameraModels()[0].right().fy(),
+					 data.stereoCameraModels()[0].right().cx(),
+					 data.stereoCameraModels()[0].right().cy(), 0, 0, 0, 0;
 			}
 			else
 			{
-				UASSERT(data.stereoCameraModel().left().D_raw().cols == data.stereoCameraModel().right().D_raw().cols);
-				UASSERT(data.stereoCameraModel().left().D_raw().cols >= 4);
-				UASSERT(data.stereoCameraModel().right().D_raw().cols >= 4);
+				UASSERT(data.stereoCameraModels()[0].left().D_raw().cols == data.stereoCameraModels()[0].right().D_raw().cols);
+				UASSERT(data.stereoCameraModels()[0].left().D_raw().cols >= 4);
+				UASSERT(data.stereoCameraModels()[0].right().D_raw().cols >= 4);
 
 				//https://github.com/ethz-asl/kalibr/wiki/supported-models
 				///	    radial-tangential (radtan)
@@ -247,41 +247,41 @@ Transform OdometryOpenVINS::computeTransform(
 				//		(distortion_coeffs: [k1 k2 k3 k4]) rtabmap: (k1,k2,p1,p2,k3,k4)
 
 				camLeft <<
-					 data.stereoCameraModel().left().K_raw().at<double>(0,0),
-					 data.stereoCameraModel().left().K_raw().at<double>(1,1),
-					 data.stereoCameraModel().left().K_raw().at<double>(0,2),
-					 data.stereoCameraModel().left().K_raw().at<double>(1,2),
-					 data.stereoCameraModel().left().D_raw().at<double>(0,0),
-					 data.stereoCameraModel().left().D_raw().at<double>(0,1),
-					 data.stereoCameraModel().left().D_raw().at<double>(0,fisheye?4:2),
-					 data.stereoCameraModel().left().D_raw().at<double>(0,fisheye?5:3);
+					 data.stereoCameraModels()[0].left().K_raw().at<double>(0,0),
+					 data.stereoCameraModels()[0].left().K_raw().at<double>(1,1),
+					 data.stereoCameraModels()[0].left().K_raw().at<double>(0,2),
+					 data.stereoCameraModels()[0].left().K_raw().at<double>(1,2),
+					 data.stereoCameraModels()[0].left().D_raw().at<double>(0,0),
+					 data.stereoCameraModels()[0].left().D_raw().at<double>(0,1),
+					 data.stereoCameraModels()[0].left().D_raw().at<double>(0,fisheye?4:2),
+					 data.stereoCameraModels()[0].left().D_raw().at<double>(0,fisheye?5:3);
 				camRight <<
-					 data.stereoCameraModel().right().K_raw().at<double>(0,0),
-					 data.stereoCameraModel().right().K_raw().at<double>(1,1),
-					 data.stereoCameraModel().right().K_raw().at<double>(0,2),
-					 data.stereoCameraModel().right().K_raw().at<double>(1,2),
-					 data.stereoCameraModel().right().D_raw().at<double>(0,0),
-					 data.stereoCameraModel().right().D_raw().at<double>(0,1),
-					 data.stereoCameraModel().right().D_raw().at<double>(0,fisheye?4:2),
-					 data.stereoCameraModel().right().D_raw().at<double>(0,fisheye?5:3);
+					 data.stereoCameraModels()[0].right().K_raw().at<double>(0,0),
+					 data.stereoCameraModels()[0].right().K_raw().at<double>(1,1),
+					 data.stereoCameraModels()[0].right().K_raw().at<double>(0,2),
+					 data.stereoCameraModels()[0].right().K_raw().at<double>(1,2),
+					 data.stereoCameraModels()[0].right().D_raw().at<double>(0,0),
+					 data.stereoCameraModels()[0].right().D_raw().at<double>(0,1),
+					 data.stereoCameraModels()[0].right().D_raw().at<double>(0,fisheye?4:2),
+					 data.stereoCameraModels()[0].right().D_raw().at<double>(0,fisheye?5:3);
 			}
 			params.camera_intrinsics.insert(std::make_pair(0, camLeft));
 			params.camera_intrinsics.insert(std::make_pair(1, camRight));
 
 			const IMU & imu = imuBuffer_.begin()->second;
 			imuLocalTransform_ = imu.localTransform();
-			Transform imuCam0 = imuLocalTransform_.inverse() * data.stereoCameraModel().localTransform();
+			Transform imuCam0 = imuLocalTransform_.inverse() * data.stereoCameraModels()[0].localTransform();
 			Transform cam0cam1;
-			if(this->imagesAlreadyRectified() || data.stereoCameraModel().stereoTransform().isNull())
+			if(this->imagesAlreadyRectified() || data.stereoCameraModels()[0].stereoTransform().isNull())
 			{
 				cam0cam1 = Transform(
-						1, 0, 0, data.stereoCameraModel().baseline(),
+						1, 0, 0, data.stereoCameraModels()[0].baseline(),
 						0, 1, 0, 0,
 						0, 0, 1, 0);
 			}
 			else
 			{
-				cam0cam1 = data.stereoCameraModel().stereoTransform().inverse();
+				cam0cam1 = data.stereoCameraModels()[0].stereoTransform().inverse();
 			}
 			UASSERT(!cam0cam1.isNull());
 			Transform imuCam1 = imuCam0 * cam0cam1;
@@ -296,8 +296,8 @@ Transform OdometryOpenVINS::computeTransform(
 			params.camera_extrinsics.insert(std::make_pair(0, cam_eigen0));
 			params.camera_extrinsics.insert(std::make_pair(1, cam_eigen1));
 
-			params.camera_wh.insert({0, std::make_pair(data.stereoCameraModel().left().imageWidth(),data.stereoCameraModel().left().imageHeight())});
-			params.camera_wh.insert({1, std::make_pair(data.stereoCameraModel().right().imageWidth(),data.stereoCameraModel().right().imageHeight())});
+			params.camera_wh.insert({0, std::make_pair(data.stereoCameraModels()[0].left().imageWidth(),data.stereoCameraModels()[0].left().imageHeight())});
+			params.camera_wh.insert({1, std::make_pair(data.stereoCameraModels()[0].right().imageWidth(),data.stereoCameraModels()[0].right().imageHeight())});
 
 			vioManager_ = new ov_msckf::VioManager(params);
 		}
@@ -441,7 +441,7 @@ Transform OdometryOpenVINS::computeTransform(
 
 					// feature map
 					Transform fixT = this->getPose()*previousPoseInv;
-					Transform camLocalTransformInv = data.stereoCameraModel().localTransform().inverse()*this->getPose().inverse();
+					Transform camLocalTransformInv = data.stereoCameraModels()[0].localTransform().inverse()*this->getPose().inverse();
 					for (auto &it_per_id : vioManager_->get_features_SLAM())
 					{
 						cv::Point3f pt3d;
@@ -455,7 +455,7 @@ Transform OdometryOpenVINS::computeTransform(
 						{
 							cv::Point2f pt;
 							pt3d = util3d::transformPoint(pt3d, camLocalTransformInv);
-							data.stereoCameraModel().left().reproject(pt3d.x, pt3d.y, pt3d.z, pt.x, pt.y);
+							data.stereoCameraModels()[0].left().reproject(pt3d.x, pt3d.y, pt3d.z, pt.x, pt.y);
 							info->reg.inliersIDs.push_back(info->newCorners.size());
 							info->newCorners.push_back(pt);
 						}
@@ -474,6 +474,10 @@ Transform OdometryOpenVINS::computeTransform(
 	else if(!data.imageRaw().empty() && data.depthOrRightRaw().empty())
 	{
 		UERROR("OpenVINS requires stereo images!");
+	}
+	else
+	{
+		UERROR("OpenVINS requires stereo images (only one stereo camera and should be calibrated)!");
 	}
 
 #else
