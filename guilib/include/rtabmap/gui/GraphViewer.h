@@ -37,6 +37,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/GPS.h>
 #include <opencv2/opencv.hpp>
 #include <map>
+#include <set>
 #include <vector>
 
 class QGraphicsItem;
