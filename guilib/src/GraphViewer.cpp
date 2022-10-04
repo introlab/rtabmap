@@ -707,7 +707,7 @@ void GraphViewer::updateGraph(const std::map<int, Transform> & poses,
 
 	if(_nodeItems.size())
 	{
-		(--_nodeItems.end()).value()->setColor(Qt::green);
+		(--_nodeItems.end()).value()->setColor(_nodeOdomCacheColor);
 	}
 
 	this->scene()->setSceneRect(this->scene()->itemsBoundingRect());  // Re-shrink the scene to it's bounding contents
@@ -1063,10 +1063,6 @@ void GraphViewer::updatePosterior(const std::map<int, float> & posterior, float 
 				float v = jter->second>max?max:jter->second;
 				iter.value()->setColor(QColor::fromHsvF((1-v/max)*240.0f/360.0f, 1, 1, 1)); //0=red 240=blue
 				iter.value()->setZValue(iter.value()->zValue()+zValueOffset);
-			}
-			else if(iter.key() > 0)
-			{
-				iter.value()->setColor(QColor::fromHsvF(240.0f/360.0f, 1, 1, 1)); // blue
 			}
 		}
 	}

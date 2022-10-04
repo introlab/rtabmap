@@ -1576,7 +1576,7 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 #if PCL_VERSION_COMPARE(>=, 1, 7, 2)
 		if(_preferencesDialog->isFramesShown())
 		{
-			_cloudViewer->addOrUpdateLine("odom_to_base_link", _odometryCorrection, _odometryCorrection*odom.pose(), qRgb(255, 128, 0), false, false);
+			_cloudViewer->addOrUpdateLine("odom_to_base_link", _odometryCorrection, _odometryCorrection*odom.pose(), qRgb(255, 128, 0), true, false);
 		}
 		else
 		{
@@ -2391,21 +2391,6 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 
 			UDEBUG("time= %d ms (update gt-gps stuff)", time.restart());
 
-#if PCL_VERSION_COMPARE(>=, 1, 7, 2)
-			if(_preferencesDialog->isFramesShown())
-			{
-				_cloudViewer->addOrUpdateCoordinate("map_frame", Transform::getIdentity(), 0.5, false);
-				_cloudViewer->addOrUpdateCoordinate("odom_frame", _odometryCorrection, 0.35, false);
-				_cloudViewer->addOrUpdateLine("map_to_odom", Transform::getIdentity(), _odometryCorrection, qRgb(255, 128, 0), false, false);
-			}
-			else
-			{
-				_cloudViewer->removeLine("map_to_odom");
-				_cloudViewer->removeCoordinate("odom_frame");
-				_cloudViewer->removeCoordinate("map_frame");
-			}
-#endif
-
 			UDEBUG("%d %d %d", poses.size(), poses.size()?poses.rbegin()->first:0, stat.refImageId());
 			if(!_odometryReceived && poses.size() && poses.rbegin()->first == stat.refImageId())
 			{
@@ -2489,6 +2474,28 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 					_ui->statsToolBox->updateStat(iter->first.c_str(), _preferencesDialog->isTimeUsedInFigures()?stat.stamp()-_firstStamp:stat.refImageId(), int(iter->second), _preferencesDialog->isCacheSavedInFigures());
 				}
 			}
+
+#if PCL_VERSION_COMPARE(>=, 1, 7, 2)
+			if(_preferencesDialog->isFramesShown())
+			{
+				_cloudViewer->addOrUpdateCoordinate("map_frame", Transform::getIdentity(), 0.5, false);
+				_cloudViewer->addOrUpdateCoordinate("odom_frame", _odometryCorrection, 0.35, false);
+				_cloudViewer->addOrUpdateLine("map_to_odom", Transform::getIdentity(), _odometryCorrection, qRgb(255, 128, 0), true, false);
+				if(_preferencesDialog->isLabelsShown())
+				{
+					_cloudViewer->addOrUpdateText("map_frame_label", "map",	Transform::getIdentity(), 0.1, Qt::white);
+					_cloudViewer->addOrUpdateText("odom_frame_label", "odom", _odometryCorrection, 0.1, Qt::white);
+				}
+			}
+			else
+			{
+				_cloudViewer->removeLine("map_to_odom");
+				_cloudViewer->removeCoordinate("odom_frame");
+				_cloudViewer->removeCoordinate("map_frame");
+				_cloudViewer->removeText("map_frame_label");
+				_cloudViewer->removeText("odom_frame_label");
+			}
+#endif
 		}
 
 		if( _ui->graphicsView_graphView->isVisible())
@@ -2511,6 +2518,26 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 				{
 					_ui->graphicsView_graphView->updatePosterior(_cachedLocalizationsCount, 1.0f);
 				}
+			}
+			if(_preferencesDialog->isRelocalizationColorOdomCacheGraphView() && !stat.odomCachePoses().empty())
+			{
+				std::map<int, float> colors;
+				colors.insert(std::make_pair(stat.odomCachePoses().rbegin()->first, 240));
+				for(std::multimap<int, Link>::const_iterator iter=stat.odomCacheConstraints().begin(); iter!=stat.odomCacheConstraints().end(); ++iter)
+				{
+					if(iter->second.type() != Link::kNeighbor)
+					{
+						uInsert(colors, std::pair<int,float>(iter->second.from()>iter->second.to()?iter->second.from():iter->second.to(), 120)); //green
+					}
+				}
+				for(std::map<int, Transform>::const_iterator iter=stat.odomCachePoses().begin(); iter!=stat.odomCachePoses().end(); ++iter)
+				{
+					if(stat.poses().find(iter->first) == stat.poses().end())
+					{
+						colors.insert(std::make_pair(iter->first, 240)); //red
+					}
+				}
+				_ui->graphicsView_graphView->updatePosterior(colors, 240);
 			}
 			// update local path on the graph view
 			_ui->graphicsView_graphView->updateLocalPath(stat.localPath());
@@ -5224,6 +5251,8 @@ void MainWindow::newDatabase()
 	_cloudViewer->removeLine("odom_to_base_link");
 	_cloudViewer->removeCoordinate("odom_frame");
 	_cloudViewer->removeCoordinate("map_frame");
+	_cloudViewer->removeText("map_frame_label");
+	_cloudViewer->removeText("odom_frame_label");
 	ULOGGER_DEBUG("");
 	this->clearTheCache();
 	std::string databasePath = (_preferencesDialog->getWorkingDirectory()+QDir::separator()+QString("rtabmap.tmp.db")).toStdString();
@@ -5373,8 +5402,9 @@ void MainWindow::openDatabase(const QString & path, const ParametersMap & overri
 						if(different)
 						{
 							differentParameters.insert(*iter);
-							QString msg = tr("Parameter \"%1\": database=\"%2\" Preferences=\"%3\"")
+							QString msg = tr("Parameter \"%1\": %2=\"%3\" Preferences=\"%4\"")
 											.arg(iter->first.c_str())
+											.arg(overridedParameters.find(iter->first) != overridedParameters.end()?"Arguments":"Database")
 											.arg(iter->second.c_str())
 											.arg(jter->second.c_str());
 							_ui->widget_console->appendMsg(msg);
@@ -5387,9 +5417,11 @@ void MainWindow::openDatabase(const QString & path, const ParametersMap & overri
 				{
 					int r = QMessageBox::question(this,
 							tr("Update parameters..."),
-							tr("The database is using %1 different parameter(s) than "
+							tr("The %1 using %2 different parameter(s) than "
 							   "those currently set in Preferences. Do you want "
-							   "to use database's parameters?").arg(differentParameters.size()),
+							   "to use those parameters?")
+							   .arg(overridedParameters.empty()?tr("database is"):tr("database and input arguments are"))
+							   .arg(differentParameters.size()),
 							QMessageBox::Yes | QMessageBox::No,
 							QMessageBox::Yes);
 					if(r == QMessageBox::Yes)
