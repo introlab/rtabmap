@@ -55,7 +55,9 @@ public:
 			 int stopId = 0,
 			 bool intermediateNodesIgnored = false,
 			 bool landmarksIgnored = false,
-			 bool featuresIgnored = false);
+			 bool featuresIgnored = false,
+			 int startMapId = 0,
+			 int stopMapId = -1);
 	DBReader(const std::list<std::string> & databasePaths,
 			 float frameRate = 0.0f, // -1 = use Database stamps, 0 = inf
 			 bool odometryIgnored = false,
@@ -66,7 +68,9 @@ public:
 			 int stopId = 0,
 			 bool intermediateNodesIgnored = false,
 			 bool landmarksIgnored = false,
-			 bool featuresIgnored = false);
+			 bool featuresIgnored = false,
+			 int startMapId = 0,
+			 int stopMapId = -1);
 	virtual ~DBReader();
 
 	virtual bool init(
@@ -76,6 +80,8 @@ public:
 	virtual bool isCalibrated() const;
 	virtual std::string getSerial() const;
 	virtual bool odomProvided() const {return !_odometryIgnored;}
+
+	const DBDriver * driver() const {return _dbDriver;}
 
 protected:
 	virtual SensorData captureImage(CameraInfo * info = 0);
@@ -94,6 +100,8 @@ private:
 	bool _intermediateNodesIgnored;
 	bool _landmarksIgnored;
 	bool _featuresIgnored;
+	int _startMapId;
+	int _stopMapId;
 
 	DBDriver * _dbDriver;
 	UTimer _timer;

@@ -5680,7 +5680,7 @@ bool Rtabmap::addLink(const Link & link)
 	}
 	if(t.isNull())
 	{
-		UERROR("Link's transform is null!");
+		UERROR("Link's transform is null! (%d->%d type=%s)", link.from(), link.to(), link.typeName().c_str());
 		return false;
 	}
 	if(_memory->isIncremental())

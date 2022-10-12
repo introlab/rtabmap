@@ -69,8 +69,11 @@ void showUsage()
 			"                       arguments, they overwrite those in config file and the database.\n"
 			"     -start #    Start from this node ID.\n"
 			"     -stop #     Last node to process.\n"
+			"     -start_s #  Start from this map session ID.\n"
+			"     -stop_s #   Last map session to process.\n"
 			"     -cam #      Camera index to stream. Ignored if a database doesn't contain multi-camera data.\n"
 			"     -nolandmark Don't republish landmarks contained in input database.\n"
+			"     -pub_loops  Republish loop closures contained in input database.\n"
 			"     -loc_null   On localization mode, reset localization pose to null and map correction to identity between sessions.\n"
 			"     -gt         When reprocessing a single database, load its original optimized graph, then \n"
 			"                 set it as ground truth for output database. If there was a ground truth in the input database, it will be ignored.\n"
@@ -226,9 +229,12 @@ int main(int argc, char * argv[])
 	bool useDatabaseRate = false;
 	int startId = 0;
 	int stopId = 0;
+	int startMapId = 0;
+	int stopMapId = -1;
 	int cameraIndex = -1;
 	int framesToSkip = 0;
 	bool ignoreLandmarks = false;
+	bool republishLoopClosures = false;
 	bool locNull = false;
 	bool originalGraphAsGT = false;
 	bool scanFromDepth = false;
@@ -293,6 +299,34 @@ int main(int argc, char * argv[])
 				showUsage();
 			}
 		}
+		else if (strcmp(argv[i], "-start_s") == 0 || strcmp(argv[i], "--start_s") == 0)
+		{
+			++i;
+			if(i < argc - 2)
+			{
+				startMapId = atoi(argv[i]);
+				printf("Start at map session ID = %d.\n", startMapId);
+			}
+			else
+			{
+				printf("-start_s option requires a value\n");
+				showUsage();
+			}
+		}
+		else if (strcmp(argv[i], "-stop_s") == 0 || strcmp(argv[i], "--stop_s") == 0)
+		{
+			++i;
+			if(i < argc - 2)
+			{
+				stopMapId = atoi(argv[i]);
+				printf("Stop at map session ID = %d.\n", stopMapId);
+			}
+			else
+			{
+				printf("-stop option requires a value\n");
+				showUsage();
+			}
+		}
 		else if (strcmp(argv[i], "-cam") == 0 || strcmp(argv[i], "--cam") == 0)
 		{
 			++i;
@@ -325,6 +359,11 @@ int main(int argc, char * argv[])
 		{
 			ignoreLandmarks = true;
 			printf("Ignoring landmarks from input database (-nolandmark option).\n");
+		}
+		else if(strcmp(argv[i], "-pub_loops") == 0 || strcmp(argv[i], "--pub_loops") == 0)
+		{
+			republishLoopClosures = true;
+			printf("Republish loop closures from input database (-pub_loops option).\n");
 		}
 		else if(strcmp(argv[i], "-loc_null") == 0 || strcmp(argv[i], "--loc_null") == 0)
 		{
@@ -524,6 +563,8 @@ int main(int argc, char * argv[])
 			printf("  %s\t= %s\n", iter->first.c_str(), iter->second.c_str());
 		}
 	}
+
+	bool useOdomFeatures = Parameters::defaultMemUseOdomFeatures();
 	if((configParameters.find(Parameters::kKpDetectorStrategy())!=configParameters.end() ||
 		configParameters.find(Parameters::kVisFeatureType())!=configParameters.end() ||
 		customParameters.find(Parameters::kKpDetectorStrategy())!=customParameters.end() ||
@@ -531,7 +572,6 @@ int main(int argc, char * argv[])
 			configParameters.find(Parameters::kMemUseOdomFeatures())==configParameters.end() &&
 			customParameters.find(Parameters::kMemUseOdomFeatures())==customParameters.end())
 	{
-		bool useOdomFeatures = Parameters::defaultMemUseOdomFeatures();
 		Parameters::parse(parameters, Parameters::kMemUseOdomFeatures(), useOdomFeatures);
 		if(useOdomFeatures)
 		{
@@ -543,6 +583,43 @@ int main(int argc, char * argv[])
 					Parameters::kMemUseOdomFeatures().c_str(),
 					Parameters::kMemUseOdomFeatures().c_str());
 			uInsert(parameters, ParametersPair(Parameters::kMemUseOdomFeatures(), "false"));
+			useOdomFeatures = false;
+		}
+	}
+
+	if(republishLoopClosures)
+	{
+		if(databases.size() > 1)
+		{
+			printf("[Warning] \"pub_loops\" option cannot be used with multiple databases input. "
+					"Disabling \"pub_loops\" to avoid mismatched loop closue ids.\n");
+			republishLoopClosures = false;
+		}
+		else
+		{
+			bool generateIds = Parameters::defaultMemGenerateIds();
+			Parameters::parse(parameters, Parameters::kMemGenerateIds(), generateIds);
+			Parameters::parse(configParameters, Parameters::kMemGenerateIds(), generateIds);
+			Parameters::parse(customParameters, Parameters::kMemGenerateIds(), generateIds);
+			if(generateIds)
+			{
+				if(configParameters.find(Parameters::kMemGenerateIds())!=configParameters.end() ||
+				   customParameters.find(Parameters::kMemGenerateIds())!=customParameters.end())
+				{
+					printf("[Warning] \"pub_loops\" option is used but parameter %s is set to true in custom arguments. "
+							"Disabling \"pub_loops\" to avoid mismatched loop closure ids.\n",
+							Parameters::kMemGenerateIds().c_str());
+					republishLoopClosures = false;
+				}
+				else
+				{
+					printf("[Warning] \"pub_loops\" option is used but parameter %s is true in the opened database. "
+							"Setting parameter %s to false for convenience to so that republished loop closure ids match.\n",
+							Parameters::kMemGenerateIds().c_str(),
+							Parameters::kMemGenerateIds().c_str());
+					uInsert(parameters, ParametersPair(Parameters::kMemGenerateIds(), "false"));
+				}
+			}
 		}
 	}
 	uInsert(parameters, configParameters);
@@ -627,7 +704,22 @@ int main(int argc, char * argv[])
 	bool rgbdEnabled = Parameters::defaultRGBDEnabled();
 	Parameters::parse(parameters, Parameters::kRGBDEnabled(), rgbdEnabled);
 	bool odometryIgnored = !rgbdEnabled;
-	DBReader * dbReader = new DBReader(inputDatabasePath, useDatabaseRate?-1:0, odometryIgnored, false, false, startId, cameraIndex, stopId, !intermediateNodes, ignoreLandmarks);
+
+	DBReader * dbReader = new DBReader(
+			inputDatabasePath,
+			useDatabaseRate?-1:0,
+			odometryIgnored,
+			false,
+			false,
+			startId,
+			cameraIndex,
+			stopId,
+			!intermediateNodes,
+			ignoreLandmarks,
+			!useOdomFeatures,
+			startMapId,
+			stopMapId);
+
 	dbReader->init();
 
 	OccupancyGrid grid(parameters);
@@ -692,84 +784,109 @@ int main(int argc, char * argv[])
 				printf("Failed processing node %d.\n", data.id());
 				globalMapStats.clear();
 			}
-			else if(assemble2dMap || assemble3dMap || assemble2dOctoMap || assemble3dOctoMap)
+			else
 			{
-				globalMapStats.clear();
-				double timeRtabmap = t.ticks();
-				double timeUpdateInit = 0.0;
-				double timeUpdateGrid = 0.0;
-#ifdef RTABMAP_OCTOMAP
-				double timeUpdateOctoMap = 0.0;
-#endif
-				const rtabmap::Statistics & stats = rtabmap.getStatistics();
-				if(stats.poses().size() && stats.getLastSignatureData().id())
+				if(republishLoopClosures && dbReader->driver())
 				{
-					int id = stats.poses().rbegin()->first;
-					if(id == stats.getLastSignatureData().id() &&
-					   stats.getLastSignatureData().sensorData().gridCellSize() > 0.0f)
+					std::multimap<int, Link> links;
+					dbReader->driver()->loadLinks(data.id(), links);
+					for(std::multimap<int, Link>::iterator iter=links.begin(); iter!=links.end(); ++iter)
 					{
-						bool updateGridMap = false;
-						bool updateOctoMap = false;
-						if((assemble2dMap || assemble3dMap) && grid.addedNodes().find(id) == grid.addedNodes().end())
+						if((iter->second.type() == Link::kGlobalClosure ||
+							iter->second.type() == Link::kLocalSpaceClosure ||
+							iter->second.type() == Link::kLocalTimeClosure ||
+							iter->second.type() == Link::kUserClosure) &&
+							iter->second.to() < data.id())
 						{
-							updateGridMap = true;
-						}
-#ifdef RTABMAP_OCTOMAP
-						if((assemble2dOctoMap || assemble3dOctoMap) && octomap.addedNodes().find(id) == octomap.addedNodes().end())
-						{
-							updateOctoMap = true;
-						}
-#endif
-						if(updateGridMap || updateOctoMap)
-						{
-							cv::Mat ground, obstacles, empty;
-							stats.getLastSignatureData().sensorData().uncompressDataConst(0, 0, 0, 0, &ground, &obstacles, &empty);
-
-							timeUpdateInit = t.ticks();
-
-							if(updateGridMap)
+							if(!iter->second.transform().isNull() &&
+								rtabmap.getMemory()->getWorkingMem().find(iter->second.to()) != rtabmap.getMemory()->getWorkingMem().end() &&
+								rtabmap.addLink(iter->second))
 							{
-								grid.addToCache(id, ground, obstacles, empty);
-								grid.update(stats.poses());
-								timeUpdateGrid = t.ticks() + timeUpdateInit;
+								printf("Added link %d->%d from input database.\n", iter->second.from(), iter->second.to());
 							}
-#ifdef RTABMAP_OCTOMAP
-							if(updateOctoMap)
-							{
-								const cv::Point3f & viewpoint = stats.getLastSignatureData().sensorData().gridViewPoint();
-								octomap.addToCache(id, ground, obstacles, empty, viewpoint);
-								octomap.update(stats.poses());
-								timeUpdateOctoMap = t.ticks() + timeUpdateInit;
-							}
-#endif
 						}
 					}
 				}
 
-				globalMapStats.insert(std::make_pair(std::string("GlobalGrid/GridUpdate/ms"), timeUpdateGrid*1000.0f));
+				if(assemble2dMap || assemble3dMap || assemble2dOctoMap || assemble3dOctoMap)
+				{
+					globalMapStats.clear();
+					double timeRtabmap = t.ticks();
+					double timeUpdateInit = 0.0;
+					double timeUpdateGrid = 0.0;
 #ifdef RTABMAP_OCTOMAP
-				//Simulate publishing
-				double timePub2dOctoMap = 0.0;
-				double timePub3dOctoMap = 0.0;
-				if(assemble2dOctoMap)
-				{
-					float xMin, yMin, size;
-					octomap.createProjectionMap(xMin, yMin, size);
-					timePub2dOctoMap = t.ticks();
-				}
-				if(assemble3dOctoMap)
-				{
-					octomap.createCloud();
-					timePub3dOctoMap = t.ticks();
-				}
-
-				globalMapStats.insert(std::make_pair(std::string("GlobalGrid/OctoMapUpdate/ms"), timeUpdateOctoMap*1000.0f));
-				globalMapStats.insert(std::make_pair(std::string("GlobalGrid/OctoMapProjection/ms"), timePub2dOctoMap*1000.0f));
-				globalMapStats.insert(std::make_pair(std::string("GlobalGrid/OctomapToCloud/ms"), timePub3dOctoMap*1000.0f));
-				globalMapStats.insert(std::make_pair(std::string("GlobalGrid/TotalWithRtabmap/ms"), (timeUpdateGrid+timeUpdateOctoMap+timePub2dOctoMap+timePub3dOctoMap+timeRtabmap)*1000.0f));
-#else
-				globalMapStats.insert(std::make_pair(std::string("GlobalGrid/TotalWithRtabmap/ms"), (timeUpdateGrid+timeRtabmap)*1000.0f));
+					double timeUpdateOctoMap = 0.0;
 #endif
+					const rtabmap::Statistics & stats = rtabmap.getStatistics();
+					if(stats.poses().size() && stats.getLastSignatureData().id())
+					{
+						int id = stats.poses().rbegin()->first;
+						if(id == stats.getLastSignatureData().id() &&
+						   stats.getLastSignatureData().sensorData().gridCellSize() > 0.0f)
+						{
+							bool updateGridMap = false;
+							bool updateOctoMap = false;
+							if((assemble2dMap || assemble3dMap) && grid.addedNodes().find(id) == grid.addedNodes().end())
+							{
+								updateGridMap = true;
+							}
+#ifdef RTABMAP_OCTOMAP
+							if((assemble2dOctoMap || assemble3dOctoMap) && octomap.addedNodes().find(id) == octomap.addedNodes().end())
+							{
+								updateOctoMap = true;
+							}
+#endif
+							if(updateGridMap || updateOctoMap)
+							{
+								cv::Mat ground, obstacles, empty;
+								stats.getLastSignatureData().sensorData().uncompressDataConst(0, 0, 0, 0, &ground, &obstacles, &empty);
+
+								timeUpdateInit = t.ticks();
+
+								if(updateGridMap)
+								{
+									grid.addToCache(id, ground, obstacles, empty);
+									grid.update(stats.poses());
+									timeUpdateGrid = t.ticks() + timeUpdateInit;
+								}
+#ifdef RTABMAP_OCTOMAP
+								if(updateOctoMap)
+								{
+									const cv::Point3f & viewpoint = stats.getLastSignatureData().sensorData().gridViewPoint();
+									octomap.addToCache(id, ground, obstacles, empty, viewpoint);
+									octomap.update(stats.poses());
+									timeUpdateOctoMap = t.ticks() + timeUpdateInit;
+								}
+#endif
+							}
+						}
+					}
+
+					globalMapStats.insert(std::make_pair(std::string("GlobalGrid/GridUpdate/ms"), timeUpdateGrid*1000.0f));
+#ifdef RTABMAP_OCTOMAP
+					//Simulate publishing
+					double timePub2dOctoMap = 0.0;
+					double timePub3dOctoMap = 0.0;
+					if(assemble2dOctoMap)
+					{
+						float xMin, yMin, size;
+						octomap.createProjectionMap(xMin, yMin, size);
+						timePub2dOctoMap = t.ticks();
+					}
+					if(assemble3dOctoMap)
+					{
+						octomap.createCloud();
+						timePub3dOctoMap = t.ticks();
+					}
+
+					globalMapStats.insert(std::make_pair(std::string("GlobalGrid/OctoMapUpdate/ms"), timeUpdateOctoMap*1000.0f));
+					globalMapStats.insert(std::make_pair(std::string("GlobalGrid/OctoMapProjection/ms"), timePub2dOctoMap*1000.0f));
+					globalMapStats.insert(std::make_pair(std::string("GlobalGrid/OctomapToCloud/ms"), timePub3dOctoMap*1000.0f));
+					globalMapStats.insert(std::make_pair(std::string("GlobalGrid/TotalWithRtabmap/ms"), (timeUpdateGrid+timeUpdateOctoMap+timePub2dOctoMap+timePub3dOctoMap+timeRtabmap)*1000.0f));
+#else
+					globalMapStats.insert(std::make_pair(std::string("GlobalGrid/TotalWithRtabmap/ms"), (timeUpdateGrid+timeRtabmap)*1000.0f));
+#endif
+				}
 			}
 		}
 

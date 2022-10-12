@@ -4373,10 +4373,12 @@ void DatabaseViewer::sliderAValueChanged(int value)
 			ui_->label_idA,
 			ui_->label_mapA,
 			ui_->label_poseA,
+			ui_->label_optposeA,
 			ui_->label_velA,
 			ui_->label_calibA,
 			ui_->label_scanA,
 			ui_->label_gravityA,
+			ui_->label_priorA,
 			ui_->label_gpsA,
 			ui_->label_gtA,
 			ui_->label_sensorsA,
@@ -4396,10 +4398,12 @@ void DatabaseViewer::sliderBValueChanged(int value)
 			ui_->label_idB,
 			ui_->label_mapB,
 			ui_->label_poseB,
+			ui_->label_optposeB,
 			ui_->label_velB,
 			ui_->label_calibB,
 			ui_->label_scanB,
 			ui_->label_gravityB,
+			ui_->label_priorB,
 			ui_->label_gpsB,
 			ui_->label_gtB,
 			ui_->label_sensorsB,
@@ -4417,10 +4421,12 @@ void DatabaseViewer::update(int value,
 						QLabel * labelId,
 						QLabel * labelMapId,
 						QLabel * labelPose,
+						QLabel * labelOptPose,
 						QLabel * labelVelocity,
 						QLabel * labelCalib,
 						QLabel * labelScan,
 						QLabel * labelGravity,
+						QLabel * labelPrior,
 						QLabel * labelGps,
 						QLabel * labelGt,
 						QLabel * labelSensors,
@@ -4436,11 +4442,13 @@ void DatabaseViewer::update(int value,
 	label->clear();
 	labelMapId->clear();
 	labelPose->clear();
+	labelOptPose->clear();
 	labelVelocity->clear();
 	stamp->clear();
 	labelCalib->clear();
 	labelScan ->clear();
 	labelGravity->clear();
+	labelPrior->clear();
 	labelGps->clear();
 	labelGt->clear();
 	labelSensors->clear();
@@ -4545,9 +4553,17 @@ void DatabaseViewer::update(int value,
 				float x,y,z,roll,pitch,yaw;
 				odomPose.getTranslationAndEulerAngles(x,y,z,roll, pitch,yaw);
 				labelPose->setText(QString("%1xyz=(%2,%3,%4)\nrpy=(%5,%6,%7)").arg(odomPose.isIdentity()?"* ":"").arg(x).arg(y).arg(z).arg(roll).arg(pitch).arg(yaw));
-				if(graphes_.size() && graphes_.back().find(id) == graphes_.back().end())
+				if(graphes_.size())
 				{
-					labelPose->setText(labelPose->text() + "\n<Not in optimized graph>");
+					if(graphes_.back().find(id) == graphes_.back().end())
+					{
+						labelOptPose->setText("<Not in optimized graph>");
+					}
+					else
+					{
+						graphes_.back().find(id)->second.getTranslationAndEulerAngles(x,y,z,roll, pitch,yaw);
+						labelOptPose->setText(QString("xyz=(%1,%2,%3)\nrpy=(%4,%5,%6)").arg(x).arg(y).arg(z).arg(roll).arg(pitch).arg(yaw));
+					}
 				}
 				if(s!=0.0)
 				{
@@ -4568,6 +4584,17 @@ void DatabaseViewer::update(int value,
 					Eigen::Vector3d v = Transform(0,0,0,roll,pitch,0).toEigen3d() * -Eigen::Vector3d::UnitZ();
 					labelGravity->setText(QString("x=%1 y=%2 z=%3").arg(v[0]).arg(v[1]).arg(v[2]));
 					labelGravity->setToolTip(QString("roll=%1 pitch=%2 yaw=%3").arg(roll).arg(pitch).arg(yaw));
+				}
+
+				std::multimap<int, Link> priorLink;
+				dbDriver_->loadLinks(id, priorLink, Link::kPosePrior);
+				if(!priorLink.empty())
+				{
+					priorLink.begin()->second.transform().getTranslationAndEulerAngles(x,y,z,roll, pitch,yaw);
+					labelPrior->setText(QString("xyz=(%1,%2,%3)\nrpy=(%4,%5,%6)").arg(x).arg(y).arg(z).arg(roll).arg(pitch).arg(yaw));
+					std::stringstream out;
+					out << priorLink.begin()->second.infMatrix().inv();
+					labelPrior->setToolTip(QString("%1").arg(out.str().c_str()));
 				}
 
 				if(gps.stamp()>0.0)
@@ -5966,10 +5993,12 @@ void DatabaseViewer::updateConstraintView(
 						ui_->label_idA,
 						ui_->label_mapA,
 						ui_->label_poseA,
+						ui_->label_optposeA,
 						ui_->label_velA,
 						ui_->label_calibA,
 						ui_->label_scanA,
 						ui_->label_gravityA,
+						ui_->label_priorA,
 						ui_->label_gpsA,
 						ui_->label_gtA,
 						ui_->label_sensorsA,
@@ -5987,10 +6016,12 @@ void DatabaseViewer::updateConstraintView(
 						ui_->label_idB,
 						ui_->label_mapB,
 						ui_->label_poseB,
+						ui_->label_optposeB,
 						ui_->label_velB,
 						ui_->label_calibB,
 						ui_->label_scanB,
 						ui_->label_gravityB,
+						ui_->label_priorB,
 						ui_->label_gpsB,
 						ui_->label_gtB,
 						ui_->label_sensorsB,

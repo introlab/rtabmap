@@ -52,7 +52,9 @@ DBReader::DBReader(const std::string & databasePath,
 				   int stopId,
 				   bool intermediateNodesIgnored,
 				   bool landmarksIgnored,
-				   bool featuresIgnored) :
+				   bool featuresIgnored,
+				   int startMapId,
+				   int stopMapId) :
 	Camera(frameRate),
 	_paths(uSplit(databasePath, ';')),
 	_odometryIgnored(odometryIgnored),
@@ -64,6 +66,8 @@ DBReader::DBReader(const std::string & databasePath,
 	_intermediateNodesIgnored(intermediateNodesIgnored),
 	_landmarksIgnored(landmarksIgnored),
 	_featuresIgnored(featuresIgnored),
+	_startMapId(startMapId),
+	_stopMapId(stopMapId),
 	_dbDriver(0),
 	_currentId(_ids.end()),
 	_previousMapId(-1),
@@ -74,6 +78,11 @@ DBReader::DBReader(const std::string & databasePath,
 	if(_stopId>0 && _stopId<_startId)
 	{
 		_stopId = _startId;
+	}
+
+	if(_stopMapId>-1 && _stopMapId<_startMapId)
+	{
+		_stopMapId = _startMapId;
 	}
 }
 
@@ -87,7 +96,9 @@ DBReader::DBReader(const std::list<std::string> & databasePaths,
 				   int stopId,
 				   bool intermediateNodesIgnored,
 				   bool landmarksIgnored,
-				   bool featuresIgnored) :
+				   bool featuresIgnored,
+				   int startMapId,
+				   int stopMapId) :
 	Camera(frameRate),
    _paths(databasePaths),
 	_odometryIgnored(odometryIgnored),
@@ -99,6 +110,8 @@ DBReader::DBReader(const std::list<std::string> & databasePaths,
 	_intermediateNodesIgnored(intermediateNodesIgnored),
 	_landmarksIgnored(landmarksIgnored),
 	_featuresIgnored(featuresIgnored),
+	_startMapId(startMapId),
+	_stopMapId(stopMapId),
 	_dbDriver(0),
 	_currentId(_ids.end()),
 	_previousMapId(-1),
@@ -109,6 +122,11 @@ DBReader::DBReader(const std::list<std::string> & databasePaths,
 	if(_stopId>0 && _stopId<_startId)
 	{
 		_stopId = _startId;
+	}
+
+	if(_stopMapId>-1 && _stopMapId<_startMapId)
+	{
+		_stopMapId = _startMapId;
 	}
 }
 
@@ -368,6 +386,15 @@ SensorData DBReader::getNextData(CameraInfo * info)
 
 			if(_intermediateNodesIgnored && s->getWeight() == -1)
 			{
+				UDEBUG("Ignoring node %d (intermediate nodes ignored)", s->id());
+				++_currentId;
+				delete s;
+				continue;
+			}
+
+			if(s->mapId() < _startMapId || (_stopMapId>=0 && s->mapId() > _stopMapId))
+			{
+				UDEBUG("Ignoring node %d (map id=%d, min=%d max=%d)", s->id(), s->mapId(), _startMapId, _stopMapId);
 				++_currentId;
 				delete s;
 				continue;
@@ -439,15 +466,7 @@ SensorData DBReader::getNextData(CameraInfo * info)
 				}
 				else
 				{
-					// if localization data saved in database, covariance will be set in a prior link
-					_dbDriver->loadLinks(*_currentId, links, Link::kPosePrior);
-					if(links.size())
-					{
-						// assume the first is the backward neighbor, take its variance
-						infMatrix = links.begin()->second.infMatrix();
-						_previousInfMatrix = infMatrix;
-					}
-					else if(_previousMapId != s->mapId())
+					if(_previousMapId != s->mapId())
 					{
 						// first node, set high variance to make rtabmap trigger a new map
 						infMatrix /= 9999.0;
@@ -455,12 +474,23 @@ SensorData DBReader::getNextData(CameraInfo * info)
 					}
 					else
 					{
-						if(_previousInfMatrix.empty())
+						// if localization data saved in database, covariance will be set in a prior link
+						_dbDriver->loadLinks(*_currentId, links, Link::kPosePrior);
+						if(links.size())
 						{
-							_previousInfMatrix = cv::Mat::eye(6,6,CV_64FC1);
+							// assume the first is the backward neighbor, take its variance
+							infMatrix = links.begin()->second.infMatrix();
+							_previousInfMatrix = infMatrix;
 						}
-						// we have a node not linked to map, use last variance
-						infMatrix = _previousInfMatrix;
+						else
+						{
+							if(_previousInfMatrix.empty())
+							{
+								_previousInfMatrix = cv::Mat::eye(6,6,CV_64FC1);
+							}
+							// we have a node not linked to map, use last variance
+							infMatrix = _previousInfMatrix;
+						}
 					}
 				}
 				_previousMapId = s->mapId();
@@ -545,7 +575,7 @@ SensorData DBReader::getNextData(CameraInfo * info)
 			data.setId(seq);
 			data.setStamp(s->getStamp());
 			data.setGroundTruth(s->getGroundTruthPose());
-			if(globalPose.isNull())
+			if(!globalPose.isNull())
 			{
 				data.setGlobalPose(globalPose, globalPoseCov);
 			}
