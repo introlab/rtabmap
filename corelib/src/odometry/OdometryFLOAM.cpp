@@ -70,7 +70,6 @@ OdometryFLOAM::OdometryFLOAM(const ParametersMap & parameters) :
 	Parameters::parse(parameters, Parameters::kIcpRangeMin(), min_dis);
 	Parameters::parse(parameters, Parameters::kOdomLOAMResolution(), map_resolution);
 
-	UASSERT(scan_period>0.0f);
 	Parameters::parse(parameters, Parameters::kOdomLOAMLinVar(), linVar_);
 	UASSERT(linVar_>0.0f);
 	Parameters::parse(parameters, Parameters::kOdomLOAMAngVar(), angVar_);
@@ -139,6 +138,12 @@ Transform OdometryFLOAM::computeTransform(
 
 		laserProcessing_->featureExtraction(laserCloudInPtr,pointcloud_edge,pointcloud_surf);
 		UDEBUG("Feature extraction: %fs", timer.ticks());
+
+		// Put back the laser scan filtered
+		pcl::PointCloud<pcl::PointXYZI>::Ptr pointcloud_filtered(new pcl::PointCloud<pcl::PointXYZI>());
+		*pointcloud_filtered+=*pointcloud_edge;
+		*pointcloud_filtered+=*pointcloud_surf;
+		data.setLaserScan(util3d::laserScanFromPointCloud(*pointcloud_filtered));
 
 		if(this->framesProcessed() == 0){
 			odomEstimation_->initMapWithPoints(pointcloud_edge, pointcloud_surf);
