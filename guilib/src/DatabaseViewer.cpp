@@ -3226,17 +3226,57 @@ void DatabaseViewer::regenerateSavedMap()
 		return;
 	}
 
+	//
+#ifdef RTABMAP_OCTOMAP
+	QStringList types;
+	types.push_back("Default occupancy grid");
+	types.push_back("From OctoMap projection");
+	bool ok;
+	QString type = QInputDialog::getItem(this, tr("Which type?"), tr("Poses:"), types, 0, false, &ok);
+	if(!ok)
+	{
+		return;
+	}
+#endif
 
 	//update scans
 	UINFO("Update local maps list...");
-	OccupancyGrid grid(ui_->parameters_toolbox->getParameters());
-	for(std::map<int, std::pair<std::pair<cv::Mat, cv::Mat>, cv::Mat> >::iterator iter=localMaps_.begin(); iter!=localMaps_.end(); ++iter)
-	{
-		grid.addToCache(iter->first, iter->second.first.first, iter->second.first.second, iter->second.second);
-	}
-	grid.update(graphes_.back());
 	float xMin, yMin;
-	cv::Mat map = grid.getMap(xMin, yMin);
+	cv::Mat map;
+	float gridCellSize = Parameters::defaultGridCellSize();
+	Parameters::parse(ui_->parameters_toolbox->getParameters(), Parameters::kGridCellSize(), gridCellSize);
+#ifdef RTABMAP_OCTOMAP
+	if(type.compare("From OctoMap projection") == 0)
+	{
+		//create local octomap
+		OctoMap octomap(ui_->parameters_toolbox->getParameters());
+		for(std::map<int, std::pair<std::pair<cv::Mat, cv::Mat>, cv::Mat> >::iterator iter=localMaps_.begin(); iter!=localMaps_.end(); ++iter)
+		{
+			if(iter->second.first.first.channels() == 2 || iter->second.first.second.channels() == 2)
+			{
+				QMessageBox::warning(this, tr(""),
+						tr("Some local occupancy grids are 2D, but OctoMap requires 3D local "
+							"occupancy grids. Select default occupancy grid or generate "
+							"3D local occupancy grids (\"Grid/3D\" core parameter)."));
+				return;
+			}
+			octomap.addToCache(iter->first, iter->second.first.first, iter->second.first.second, iter->second.second, localMapsInfo_.at(iter->first).second);
+		}
+
+		octomap.update(graphes_.back());
+		map = octomap.createProjectionMap(xMin, yMin, gridCellSize, 0);
+	}
+	else
+#endif
+	{
+		OccupancyGrid grid(ui_->parameters_toolbox->getParameters());
+		for(std::map<int, std::pair<std::pair<cv::Mat, cv::Mat>, cv::Mat> >::iterator iter=localMaps_.begin(); iter!=localMaps_.end(); ++iter)
+		{
+			grid.addToCache(iter->first, iter->second.first.first, iter->second.first.second, iter->second.second);
+		}
+		grid.update(graphes_.back());
+		map = grid.getMap(xMin, yMin);
+	}
 
 	if(map.empty())
 	{
@@ -3244,7 +3284,7 @@ void DatabaseViewer::regenerateSavedMap()
 	}
 	else
 	{
-		dbDriver_->save2DMap(map, xMin, yMin, grid.getCellSize());
+		dbDriver_->save2DMap(map, xMin, yMin, gridCellSize);
 		Transform lastlocalizationPose;
 		dbDriver_->loadOptimizedPoses(&lastlocalizationPose);
 		if(lastlocalizationPose.isNull() && !graphes_.back().empty())
@@ -6701,7 +6741,7 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 						localMapsInfo.insert(*localMapsInfo_.find(ids[i]));
 					}
 				}
-				else
+				else if(ids.at(i)>0)
 				{
 					SensorData data;
 					dbDriver_->getNodeData(ids.at(i), data, false, false, false);
