@@ -587,6 +587,19 @@ int main(int argc, char * argv[])
 		}
 	}
 
+	if(useOdomFeatures && databases.size() > 1 &&
+		configParameters.find(Parameters::kMemUseOdomFeatures())==configParameters.end() &&
+		customParameters.find(Parameters::kMemUseOdomFeatures())==customParameters.end())
+	{
+		printf("[Warning] Parameter %s is set to false for convenience as "
+				"there are more than one input database (which could "
+				"contain different features). Set %s "
+				"explicitly to suppress this warning.\n",
+				Parameters::kMemUseOdomFeatures().c_str(),
+				Parameters::kMemUseOdomFeatures().c_str());
+		useOdomFeatures = false;
+	}
+
 	if(republishLoopClosures)
 	{
 		if(databases.size() > 1)
