@@ -63,7 +63,7 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-548</y>
+            <y>-543</y>
             <width>756</width>
             <height>3657</height>
            </rect>
@@ -5815,7 +5815,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                   <item row="0" column="0">
                                    <widget class="QComboBox" name="comboBox_depthai_resolution">
                                     <property name="currentIndex">
-                                     <number>1</number>
+                                     <number>0</number>
                                     </property>
                                     <property name="sizeAdjustPolicy">
                                      <enum>QComboBox::AdjustToContents</enum>
@@ -5833,6 +5833,16 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                     <item>
                                      <property name="text">
                                       <string>400p</string>
+                                     </property>
+                                    </item>
+                                    <item>
+                                     <property name="text">
+                                      <string>480p</string>
+                                     </property>
+                                    </item>
+                                    <item>
+                                     <property name="text">
+                                      <string>1200p</string>
                                      </property>
                                     </item>
                                    </widget>

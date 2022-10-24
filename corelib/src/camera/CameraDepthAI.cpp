@@ -61,7 +61,7 @@ CameraDepthAI::CameraDepthAI(
 #endif
 {
 #ifdef RTABMAP_DEPTHAI
-	UASSERT(resolution_>=0 && resolution_<=2);
+	UASSERT(resolution_>=(int)dai::MonoCameraProperties::SensorResolution::THE_720_P && resolution_<=(int)dai::MonoCameraProperties::SensorResolution::THE_1200_P);
 #endif
 }
 
@@ -149,7 +149,7 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 
 	// look for calibration files
 	stereoModel_ = StereoCameraModel();
-	cv::Size targetSize(resolution_<2?1280:640, resolution_==0?720:resolution_==1?800:400);
+	cv::Size targetSize(resolution_<2?1280:resolution_==4?1920:640, resolution_==0?720:resolution_==1?800:resolution_==2?400:resolution_==3?480:1200);
 
 	dai::Pipeline p;
 	auto monoLeft  = p.create<dai::node::MonoCamera>();
@@ -337,34 +337,37 @@ SensorData CameraDepthAI::captureImage(CameraInfo * info)
 			double stampStart = UTimer::now();
 			while(imuPublished_ && imuQueue_.get())
 			{
-				auto imuData = imuQueue_->get<dai::IMUData>();
-
-				auto imuPackets = imuData->packets;
-				double accStamp = 0.0;
-				double gyroStamp = 0.0;
-				for(auto& imuPacket : imuPackets) {
-					auto& acceleroValues = imuPacket.acceleroMeter;
-					auto& gyroValues = imuPacket.gyroscope;
-
-					accStamp = double(acceleroValues.timestamp.get().time_since_epoch().count())/10e8;
-					gyroStamp = double(gyroValues.timestamp.get().time_since_epoch().count())/10e8;
-					accBuffer_.insert(accBuffer_.end(), std::make_pair(accStamp, cv::Vec3f(acceleroValues.x, acceleroValues.y, acceleroValues.z)));
-					gyroBuffer_.insert(gyroBuffer_.end(), std::make_pair(gyroStamp, cv::Vec3f(gyroValues.x, gyroValues.y, gyroValues.z)));
-					if(accBuffer_.size() > 1000)
-					{
-						accBuffer_.erase(accBuffer_.begin());
-					}
-					if(gyroBuffer_.size() > 1000)
-					{
-						gyroBuffer_.erase(gyroBuffer_.begin());
-					}
-					++added;
-				}
-				if(accStamp >= stamp && gyroStamp >= stamp)
+				if(imuQueue_->has())
 				{
-					break;
+					auto imuData = imuQueue_->get<dai::IMUData>();
+
+					auto imuPackets = imuData->packets;
+					double accStamp = 0.0;
+					double gyroStamp = 0.0;
+					for(auto& imuPacket : imuPackets) {
+						auto& acceleroValues = imuPacket.acceleroMeter;
+						auto& gyroValues = imuPacket.gyroscope;
+
+						accStamp = double(acceleroValues.timestamp.get().time_since_epoch().count())/10e8;
+						gyroStamp = double(gyroValues.timestamp.get().time_since_epoch().count())/10e8;
+						accBuffer_.insert(accBuffer_.end(), std::make_pair(accStamp, cv::Vec3f(acceleroValues.x, acceleroValues.y, acceleroValues.z)));
+						gyroBuffer_.insert(gyroBuffer_.end(), std::make_pair(gyroStamp, cv::Vec3f(gyroValues.x, gyroValues.y, gyroValues.z)));
+						if(accBuffer_.size() > 1000)
+						{
+							accBuffer_.erase(accBuffer_.begin());
+						}
+						if(gyroBuffer_.size() > 1000)
+						{
+							gyroBuffer_.erase(gyroBuffer_.begin());
+						}
+						++added;
+					}
+					if(accStamp >= stamp && gyroStamp >= stamp)
+					{
+						break;
+					}
 				}
-				else if((UTimer::now() - stampStart) > 0.01)
+				if((UTimer::now() - stampStart) > 0.01)
 				{
 					UWARN("Could not received IMU after 10 ms! Disabling IMU!");
 					imuPublished_ = false;

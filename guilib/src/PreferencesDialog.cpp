@@ -3931,9 +3931,10 @@ void PreferencesDialog::selectSourceDriver(Src src, int variant)
 			// disable IMU filtering (zed sends already quaternion)
 			_ui->comboBox_imuFilter_strategy->setCurrentIndex(0);
 		}
-		else if(src == kSrcStereoDepthAI) // OAK-D, OAK-D Lite
+		else if(src == kSrcStereoDepthAI) // OAK-D (variant==1), OAK-D Lite (variant==0)
 		{
 			_ui->checkBox_depthai_imu_published->setChecked(variant == 1);
+			_ui->comboBox_depthai_resolution->setCurrentIndex(variant == 1?1:3);
 		}
 	}
 	else if(src >= kSrcRGB && src<kSrcDatabase)
