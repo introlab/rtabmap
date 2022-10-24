@@ -187,7 +187,8 @@ protected Q_SLOTS:
 	void selectStereoTara();
 	void selectStereoUsb();
 	void selectMyntEyeS();
-	void selectDepthAI();
+	void selectDepthAIOAKD();
+	void selectDepthAIOAKDLite();
 	void dumpTheMemory();
 	void dumpThePrediction();
 	void sendGoal();

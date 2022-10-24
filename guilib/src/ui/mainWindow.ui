@@ -320,7 +320,17 @@
         <iconset resource="../GuiLib.qrc">
          <normaloff>:/images/oakd.png</normaloff>:/images/oakd.png</iconset>
        </property>
-       <addaction name="actionDepthAI"/>
+       <addaction name="actionDepthAI_oakd"/>
+      </widget>
+      <widget class="QMenu" name="menuOAK_D_Lite">
+       <property name="title">
+        <string>OAK-D Lite</string>
+       </property>
+       <property name="icon">
+        <iconset resource="../GuiLib.qrc">
+         <normaloff>:/images/oakd_lite.png</normaloff>:/images/oakd_lite.png</iconset>
+       </property>
+       <addaction name="actionDepthAI_oakdlite"/>
       </widget>
       <addaction name="menuBumblebee2_2"/>
       <addaction name="menuZed_camera"/>
@@ -328,6 +338,7 @@
       <addaction name="menuRealSense_T265"/>
       <addaction name="menuMynt_Eye_S"/>
       <addaction name="menuOAK_D"/>
+      <addaction name="menuOAK_D_Lite"/>
      </widget>
      <addaction name="menuRGB_D_camera"/>
      <addaction name="menuStereo_camera"/>
@@ -1677,7 +1688,7 @@
     <string>Zed Open Capture</string>
    </property>
   </action>
-  <action name="actionDepthAI">
+  <action name="actionDepthAI_oakd">
    <property name="checkable">
     <bool>true</bool>
    </property>
@@ -1701,6 +1712,14 @@
   <action name="actionRemove_label">
    <property name="text">
     <string>Remove label...</string>
+   </property>
+  </action>
+  <action name="actionDepthAI_oakdlite">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Depth AI</string>
    </property>
   </action>
  </widget>
