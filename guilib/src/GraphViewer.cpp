@@ -624,7 +624,14 @@ void GraphViewer::updateGraph(const std::map<int, Transform> & poses,
 				}
 				else if(iter->second.type() == Link::kUserClosure)
 				{
-					linkItem->setColor(_loopClosureUserColor);
+					if(_intraInterSessionColors)
+					{
+						linkItem->setColor(interSessionClosure?_loopInterSessionColor:_loopIntraSessionColor);
+					}
+					else
+					{
+						linkItem->setColor(_loopClosureUserColor);
+					}
 				}
 				else if(iter->second.type() == Link::kLandmark)
 				{
@@ -1587,7 +1594,8 @@ void GraphViewer::setIntraSessionLoopColor(const QColor & color)
 		{
 			if((iter.value()->linkType() == Link::kGlobalClosure ||
 				iter.value()->linkType() == Link::kLocalSpaceClosure ||
-				iter.value()->linkType() == Link::kLocalTimeClosure) &&
+				iter.value()->linkType() == Link::kLocalTimeClosure ||
+				iter.value()->linkType() == Link::kUserClosure) &&
 				!iter.value()->isInterSession())
 			{
 				iter.value()->setColor(_loopIntraSessionColor);
@@ -1605,7 +1613,8 @@ void GraphViewer::setInterSessionLoopColor(const QColor & color)
 		{
 			if((iter.value()->linkType() == Link::kGlobalClosure ||
 				iter.value()->linkType() == Link::kLocalSpaceClosure ||
-				iter.value()->linkType() == Link::kLocalTimeClosure) &&
+				iter.value()->linkType() == Link::kLocalTimeClosure ||
+				iter.value()->linkType() == Link::kUserClosure) &&
 				iter.value()->isInterSession())
 			{
 				iter.value()->setColor(_loopInterSessionColor);
@@ -1627,6 +1636,7 @@ void GraphViewer::setIntraInterSessionColorsEnabled(bool enabled)
 	{
 		this->setGlobalLoopClosureColor(_loopClosureColor);
 		this->setLocalLoopClosureColor(_loopClosureLocalColor);
+		this->setUserLoopClosureColor(_loopClosureUserColor);
 	}
 }
 
