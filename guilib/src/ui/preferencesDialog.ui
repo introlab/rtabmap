@@ -63,7 +63,7 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-543</y>
+            <y>0</y>
             <width>756</width>
             <height>3657</height>
            </rect>
@@ -95,7 +95,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>5</number>
+                <number>0</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,0">
@@ -107,15 +107,8 @@
                    <layout class="QVBoxLayout" name="verticalLayout_28">
                     <item>
                      <layout class="QGridLayout" name="gridLayout_39" columnstretch="0,1">
-                      <item row="2" column="0">
-                       <widget class="QCheckBox" name="checkBox_beep">
-                        <property name="text">
-                         <string/>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="5" column="0">
-                       <widget class="QCheckBox" name="checkBox_notifyWhenNewGlobalPathIsReceived">
+                      <item row="0" column="0">
+                       <widget class="QCheckBox" name="general_checkBox_imagesKept">
                         <property name="text">
                          <string/>
                         </property>
@@ -124,7 +117,7 @@
                         </property>
                        </widget>
                       </item>
-                      <item row="3" column="1">
+                      <item row="4" column="1">
                        <widget class="QLabel" name="label_247">
                         <property name="text">
                          <string>Use time for figures' x-axis. Otherwise, sensor data IDs are used for camera/odometry info and for all mapping statistics, node IDs are used.</string>
@@ -137,7 +130,24 @@
                         </property>
                        </widget>
                       </item>
-                      <item row="1" column="1">
+                      <item row="5" column="0">
+                       <widget class="QCheckBox" name="checkBox_cacheStatistics">
+                        <property name="text">
+                         <string/>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="6" column="0">
+                       <widget class="QCheckBox" name="checkBox_notifyWhenNewGlobalPathIsReceived">
+                        <property name="text">
+                         <string/>
+                        </property>
+                        <property name="checked">
+                         <bool>true</bool>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="2" column="1">
                        <widget class="QLabel" name="label_313">
                         <property name="text">
                          <string>Insert created clouds in the GUI cache to avoid regenerating clouds on export.</string>
@@ -150,47 +160,14 @@
                         </property>
                        </widget>
                       </item>
-                      <item row="5" column="1">
-                       <widget class="QLabel" name="label_102">
-                        <property name="text">
-                         <string>Notify when a new global path is received.</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                        <property name="textInteractionFlags">
-                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="0" column="0">
-                       <widget class="QCheckBox" name="general_checkBox_imagesKept">
-                        <property name="text">
-                         <string/>
-                        </property>
-                        <property name="checked">
-                         <bool>true</bool>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="1" column="0">
-                       <widget class="QCheckBox" name="general_checkBox_cloudsKept">
-                        <property name="text">
-                         <string/>
-                        </property>
-                        <property name="checked">
-                         <bool>true</bool>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="3" column="0">
+                      <item row="4" column="0">
                        <widget class="QCheckBox" name="checkBox_stamps">
                         <property name="text">
                          <string/>
                         </property>
                        </widget>
                       </item>
-                      <item row="4" column="1">
+                      <item row="5" column="1">
                        <widget class="QLabel" name="label_342">
                         <property name="text">
                          <string>Cache statistics.</string>
@@ -203,7 +180,40 @@
                         </property>
                        </widget>
                       </item>
-                      <item row="2" column="1">
+                      <item row="3" column="0">
+                       <widget class="QCheckBox" name="checkBox_beep">
+                        <property name="text">
+                         <string/>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="6" column="1">
+                       <widget class="QLabel" name="label_102">
+                        <property name="text">
+                         <string>Notify when a new global path is received.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="7" column="1">
+                       <widget class="QLabel" name="label_239">
+                        <property name="text">
+                         <string>Disable odometry. This option only makes sense in localization mode with a pre-built map and that odometry cannot be computed from the source selected (e.g. RGB source).</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="3" column="1">
                        <widget class="QLabel" name="label_88">
                         <property name="text">
                          <string>Beep! on special events (finished processing the data set, an error has occured, ...).</string>
@@ -229,34 +239,14 @@
                         </property>
                        </widget>
                       </item>
-                      <item row="6" column="0">
+                      <item row="7" column="0">
                        <widget class="QCheckBox" name="checkbox_odomDisabled">
                         <property name="text">
                          <string/>
                         </property>
                        </widget>
                       </item>
-                      <item row="6" column="1">
-                       <widget class="QLabel" name="label_239">
-                        <property name="text">
-                         <string>Disable odometry. This option only makes sense in localization mode with a pre-built map and that odometry cannot be computed from the source selected (e.g. RGB source).</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                        <property name="textInteractionFlags">
-                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="4" column="0">
-                       <widget class="QCheckBox" name="checkBox_cacheStatistics">
-                        <property name="text">
-                         <string/>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="7" column="1">
+                      <item row="8" column="1">
                        <widget class="QLabel" name="label_347">
                         <property name="text">
                          <string>When a ground truth is provided, align it with the map.</string>
@@ -269,10 +259,43 @@
                         </property>
                        </widget>
                       </item>
-                      <item row="7" column="0">
+                      <item row="8" column="0">
                        <widget class="QCheckBox" name="checkbox_groundTruthAlign">
                         <property name="text">
                          <string/>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="2" column="0">
+                       <widget class="QCheckBox" name="general_checkBox_cloudsKept">
+                        <property name="text">
+                         <string/>
+                        </property>
+                        <property name="checked">
+                         <bool>true</bool>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="1" column="1">
+                       <widget class="QLabel" name="label_651">
+                        <property name="text">
+                         <string>Republish nodes not in GUI cache.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="1" column="0">
+                       <widget class="QCheckBox" name="general_checkBox_missing_cache_republished">
+                        <property name="text">
+                         <string/>
+                        </property>
+                        <property name="checked">
+                         <bool>true</bool>
                         </property>
                        </widget>
                       </item>
@@ -8307,19 +8330,6 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                    <layout class="QVBoxLayout" name="verticalLayout_15">
                     <item>
                      <layout class="QGridLayout" name="gridLayout_43" columnstretch="0,1">
-                      <item row="1" column="0">
-                       <widget class="QDoubleSpinBox" name="general_doubleSpinBox_detectionRate">
-                        <property name="suffix">
-                         <string> Hz</string>
-                        </property>
-                        <property name="decimals">
-                         <number>3</number>
-                        </property>
-                        <property name="value">
-                         <double>1.000000000000000</double>
-                        </property>
-                       </widget>
-                      </item>
                       <item row="0" column="0">
                        <widget class="QCheckBox" name="general_checkBox_SLAM_mode">
                         <property name="text">
@@ -8344,13 +8354,16 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
-                      <item row="4" column="0">
-                       <widget class="QCheckBox" name="general_checkBox_startNewMapOnLoopClosure">
-                        <property name="text">
-                         <string/>
+                      <item row="1" column="0">
+                       <widget class="QDoubleSpinBox" name="general_doubleSpinBox_detectionRate">
+                        <property name="suffix">
+                         <string> Hz</string>
                         </property>
-                        <property name="checked">
-                         <bool>true</bool>
+                        <property name="decimals">
+                         <number>3</number>
+                        </property>
+                        <property name="value">
+                         <double>1.000000000000000</double>
                         </property>
                        </widget>
                       </item>
@@ -8377,29 +8390,6 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
-                      <item row="3" column="0">
-                       <widget class="QCheckBox" name="general_checkBox_createIntermediateNodes">
-                        <property name="text">
-                         <string/>
-                        </property>
-                        <property name="checked">
-                         <bool>false</bool>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="4" column="1">
-                       <widget class="QLabel" name="label_185">
-                        <property name="text">
-                         <string>Start a new map only if there is a global loop closure detected first with a previous map. If there is no map in memory, a new map is still created.</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                        <property name="textInteractionFlags">
-                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                        </property>
-                       </widget>
-                      </item>
                       <item row="2" column="1">
                        <widget class="QLabel" name="label_84">
                         <property name="text">
@@ -8410,6 +8400,16 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                         <property name="textInteractionFlags">
                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="3" column="0">
+                       <widget class="QCheckBox" name="general_checkBox_createIntermediateNodes">
+                        <property name="text">
+                         <string/>
+                        </property>
+                        <property name="checked">
+                         <bool>false</bool>
                         </property>
                        </widget>
                       </item>
@@ -8426,10 +8426,20 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
-                      <item row="6" column="1">
-                       <widget class="QLabel" name="label_467">
+                      <item row="4" column="0">
+                       <widget class="QCheckBox" name="general_checkBox_startNewMapOnLoopClosure">
                         <property name="text">
-                         <string>Images are already rectified. By default RTAB-Map assumes that received images are rectified. If they are not, they can be rectified by RTAB-Map if this parameter is false.</string>
+                         <string/>
+                        </property>
+                        <property name="checked">
+                         <bool>true</bool>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="4" column="1">
+                       <widget class="QLabel" name="label_185">
+                        <property name="text">
+                         <string>Start a new map only if there is a global loop closure detected first with a previous map. If there is no map in memory, a new map is still created.</string>
                         </property>
                         <property name="wordWrap">
                          <bool>true</bool>
@@ -8439,8 +8449,8 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
-                      <item row="6" column="0">
-                       <widget class="QCheckBox" name="general_checkBox_imagesAlreadyRectified">
+                      <item row="5" column="0">
+                       <widget class="QCheckBox" name="general_checkBox_startNewMapOnGoodSignature">
                         <property name="text">
                          <string/>
                         </property>
@@ -8462,8 +8472,31 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
-                      <item row="5" column="0">
-                       <widget class="QCheckBox" name="general_checkBox_startNewMapOnGoodSignature">
+                      <item row="6" column="0">
+                       <widget class="QCheckBox" name="general_checkBox_imagesAlreadyRectified">
+                        <property name="text">
+                         <string/>
+                        </property>
+                        <property name="checked">
+                         <bool>true</bool>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="6" column="1">
+                       <widget class="QLabel" name="label_467">
+                        <property name="text">
+                         <string>Images are already rectified. By default RTAB-Map assumes that received images are rectified. If they are not, they can be rectified by RTAB-Map if this parameter is false.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="7" column="0">
+                       <widget class="QCheckBox" name="general_checkBox_rectifyOnlyFeatures">
                         <property name="text">
                          <string/>
                         </property>
@@ -8485,8 +8518,8 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
-                      <item row="7" column="0">
-                       <widget class="QCheckBox" name="general_checkBox_rectifyOnlyFeatures">
+                      <item row="8" column="0">
+                       <widget class="QCheckBox" name="general_checkBox_saveLocalizationData">
                         <property name="text">
                          <string/>
                         </property>
@@ -8505,16 +8538,6 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                         <property name="textInteractionFlags">
                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="8" column="0">
-                       <widget class="QCheckBox" name="general_checkBox_saveLocalizationData">
-                        <property name="text">
-                         <string/>
-                        </property>
-                        <property name="checked">
-                         <bool>true</bool>
                         </property>
                        </widget>
                       </item>
@@ -8645,7 +8668,27 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                        <bool>true</bool>
                       </property>
                       <layout class="QGridLayout" name="gridLayout_45" columnstretch="0,1">
-                       <item row="1" column="0">
+                       <item row="4" column="0">
+                        <widget class="QCheckBox" name="general_checkBox_publishRMSE">
+                         <property name="text">
+                          <string/>
+                         </property>
+                         <property name="checked">
+                          <bool>true</bool>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="6" column="0">
+                        <widget class="QCheckBox" name="general_checkBox_saveWMState">
+                         <property name="text">
+                          <string/>
+                         </property>
+                         <property name="checked">
+                          <bool>true</bool>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="2" column="0">
                         <widget class="QCheckBox" name="general_checkBox_publishPdf">
                          <property name="text">
                           <string/>
@@ -8655,7 +8698,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                          </property>
                         </widget>
                        </item>
-                       <item row="1" column="1">
+                       <item row="2" column="1">
                         <widget class="QLabel" name="label_106">
                          <property name="text">
                           <string>Publish loop closure hypotheses (pdf).</string>
@@ -8665,17 +8708,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                          </property>
                         </widget>
                        </item>
-                       <item row="2" column="0">
-                        <widget class="QCheckBox" name="general_checkBox_publishLikelihood">
-                         <property name="text">
-                          <string/>
-                         </property>
-                         <property name="checked">
-                          <bool>true</bool>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="5" column="1">
+                       <item row="6" column="1">
                         <widget class="QLabel" name="label_462">
                          <property name="text">
                           <string>Save working memory state after each update.</string>
@@ -8685,8 +8718,48 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                          </property>
                         </widget>
                        </item>
+                       <item row="3" column="1">
+                        <widget class="QLabel" name="label_116">
+                         <property name="text">
+                          <string>Publish loop closure likelihood.</string>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="5" column="1">
+                        <widget class="QLabel" name="label_452">
+                         <property name="text">
+                          <string>Publish RAM usage.</string>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="4" column="1">
+                        <widget class="QLabel" name="label_437">
+                         <property name="text">
+                          <string>Compute RMSE when ground truth is available.</string>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
+                        </widget>
+                       </item>
                        <item row="0" column="0">
                         <widget class="QCheckBox" name="general_checkBox_publishRawData">
+                         <property name="text">
+                          <string/>
+                         </property>
+                         <property name="checked">
+                          <bool>true</bool>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="3" column="0">
+                        <widget class="QCheckBox" name="general_checkBox_publishLikelihood">
                          <property name="text">
                           <string/>
                          </property>
@@ -8705,27 +8778,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                          </property>
                         </widget>
                        </item>
-                       <item row="2" column="1">
-                        <widget class="QLabel" name="label_116">
-                         <property name="text">
-                          <string>Publish loop closure likelihood.</string>
-                         </property>
-                         <property name="textInteractionFlags">
-                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="4" column="1">
-                        <widget class="QLabel" name="label_452">
-                         <property name="text">
-                          <string>Publish RAM usage.</string>
-                         </property>
-                         <property name="textInteractionFlags">
-                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="4" column="0">
+                       <item row="5" column="0">
                         <widget class="QCheckBox" name="general_checkBox_publishRAM">
                          <property name="text">
                           <string/>
@@ -8735,33 +8788,26 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                          </property>
                         </widget>
                        </item>
-                       <item row="3" column="1">
-                        <widget class="QLabel" name="label_437">
+                       <item row="1" column="1">
+                        <widget class="QLabel" name="label_652">
                          <property name="text">
-                          <string>Compute RMSE when ground truth is available.</string>
+                          <string>Maximum nodes republished when requesting missing data. When RGB-D SLAM mode is disabled, only loop closure data is republished, otherwise the closest nodes from the current localization are republished first. Ignored if &quot;Publish signature data&quot; is unchecked.</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
                          </property>
                          <property name="textInteractionFlags">
                           <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                          </property>
                         </widget>
                        </item>
-                       <item row="3" column="0">
-                        <widget class="QCheckBox" name="general_checkBox_publishRMSE">
-                         <property name="text">
-                          <string/>
+                       <item row="1" column="0">
+                        <widget class="QSpinBox" name="general_spinBox_max_republished">
+                         <property name="maximum">
+                          <number>999</number>
                          </property>
-                         <property name="checked">
-                          <bool>true</bool>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="5" column="0">
-                        <widget class="QCheckBox" name="general_checkBox_saveWMState">
-                         <property name="text">
-                          <string/>
-                         </property>
-                         <property name="checked">
-                          <bool>true</bool>
+                         <property name="value">
+                          <number>0</number>
                          </property>
                         </widget>
                        </item>

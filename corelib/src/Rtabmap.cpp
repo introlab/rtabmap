@@ -101,6 +101,7 @@ Rtabmap::Rtabmap() :
 	_verifyLoopClosureHypothesis(Parameters::defaultVhEpEnabled()),
 	_maxRetrieved(Parameters::defaultRtabmapMaxRetrieved()),
 	_maxLocalRetrieved(Parameters::defaultRGBDMaxLocalRetrieved()),
+	_maxRepublished(Parameters::defaultRtabmapMaxRepublished()),
 	_rawDataKept(Parameters::defaultMemImageKept()),
 	_statisticLogsBufferedInRAM(Parameters::defaultRtabmapStatisticLogsBufferedInRAM()),
 	_statisticLogged(Parameters::defaultRtabmapStatisticLogged()),
@@ -355,6 +356,7 @@ void Rtabmap::init(const ParametersMap & parameters, const std::string & databas
 	_globalScanMapPoses.clear();
 	_odomCachePoses.clear();
 	_odomCacheConstraints.clear();
+	_nodesToRepublish.clear();
 
 	// Parse all parameters
 	this->parseParameters(allParameters);
@@ -473,6 +475,8 @@ void Rtabmap::close(bool databaseSaved, const std::string & ouputDatabasePath)
 	_globalScanMap.clear();
 	_globalScanMapPoses.clear();
 
+	_nodesToRepublish.clear();
+
 	flushStatisticLogs();
 	if(_foutFloat)
 	{
@@ -559,6 +563,11 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kVhEpEnabled(), _verifyLoopClosureHypothesis);
 	Parameters::parse(parameters, Parameters::kRtabmapMaxRetrieved(), _maxRetrieved);
 	Parameters::parse(parameters, Parameters::kRGBDMaxLocalRetrieved(), _maxLocalRetrieved);
+	Parameters::parse(parameters, Parameters::kRtabmapMaxRepublished(), _maxRepublished);
+	if(_maxRepublished == 0 || !_publishLastSignatureData)
+	{
+		_nodesToRepublish.clear();
+	}
 	Parameters::parse(parameters, Parameters::kMemImageKept(), _rawDataKept);
 	Parameters::parse(parameters, Parameters::kRGBDEnabled(), _rgbdSlamMode);
 	Parameters::parse(parameters, Parameters::kRGBDLinearUpdate(), _rgbdLinearUpdate);
@@ -1053,6 +1062,7 @@ void Rtabmap::resetMemory()
 	_optimizeFromGraphEndChanged = false;
 	_globalScanMap.clear();
 	_globalScanMapPoses.clear();
+	_nodesToRepublish.clear();
 	this->clearPath(0);
 
 	if(_memory)
@@ -3667,6 +3677,7 @@ bool Rtabmap::process(
 
 	// Posterior is empty if a bad signature is detected
 	float vpHypothesis = posterior.size()?posterior.at(Memory::kIdVirtual):0.0f;
+	int loopId = _loopClosureHypothesis.first>0?_loopClosureHypothesis.first:lastProximitySpaceClosureId;
 
 	// prepare statistics
 	if(_loopClosureHypothesis.first || _publishStats)
@@ -3681,6 +3692,7 @@ bool Rtabmap::process(
 			statistics_.setLoopClosureMapId(_memory->getMapId(_loopClosureHypothesis.first));
 			ULOGGER_INFO("Loop closure detected! With id=%d", _loopClosureHypothesis.first);
 		}
+
 		if(_publishStats)
 		{
 			ULOGGER_INFO("send all stats...");
@@ -3722,7 +3734,6 @@ bool Rtabmap::process(
 			statistics_.setProximityDetectionId(lastProximitySpaceClosureId);
 			statistics_.setProximityDetectionMapId(_memory->getMapId(lastProximitySpaceClosureId));
 
-			int loopId = _loopClosureHypothesis.first>0?_loopClosureHypothesis.first:lastProximitySpaceClosureId;
 			statistics_.addStatistic(Statistics::kLoopId(), loopId);
 			statistics_.addStatistic(Statistics::kLoopMap_id(), (loopId>0 && sLoop)?sLoop->mapId():-1);
 
@@ -4187,7 +4198,71 @@ bool Rtabmap::process(
 		if(_publishLastSignatureData)
 		{
 			UINFO("Adding data %d [%d] (rgb/left=%d depth/right=%d)", lastSignatureData.id(), lastSignatureData.mapId(), lastSignatureData.sensorData().imageRaw().empty()?0:1, lastSignatureData.sensorData().depthOrRightRaw().empty()?0:1);
-			statistics_.setLastSignatureData(lastSignatureData);
+			statistics_.addSignatureData(lastSignatureData);
+
+			if(_nodesToRepublish.size())
+			{
+				std::multimap<int, int> missingIds;
+
+				// priority to loopId
+				int tmpId = loopId>0?loopId:_highestHypothesis.first;
+				if(tmpId>0 && _nodesToRepublish.find(tmpId) != _nodesToRepublish.end())
+				{
+					missingIds.insert(std::make_pair(-1, tmpId));
+				}
+
+				if(!_lastLocalizationPose.isNull())
+				{
+					// Republish data from closest nodes of the current localization
+					std::map<int, Transform> nodesOnly(_optimizedPoses.lower_bound(1), _optimizedPoses.end());
+					int id = rtabmap::graph::findNearestNode(nodesOnly, _lastLocalizationPose);
+					if(id>0)
+					{
+						std::map<int, int> ids = _memory->getNeighborsId(id, 0, 0, true, false, true);
+						for(std::map<int, int>::iterator iter=ids.begin(); iter!=ids.end(); ++iter)
+						{
+							if(iter->first != loopId &&
+									_nodesToRepublish.find(iter->first) != _nodesToRepublish.end())
+							{
+								missingIds.insert(std::make_pair(iter->second, iter->first));
+							}
+						}
+
+						if(_nodesToRepublish.size() != missingIds.size())
+						{
+							// remove requested nodes not anymore in the graph
+							for(std::set<int>::iterator iter=_nodesToRepublish.begin(); iter!=_nodesToRepublish.end();)
+							{
+								if(ids.find(*iter) == ids.end())
+								{
+									iter = _nodesToRepublish.erase(iter);
+								}
+								else
+								{
+									++iter;
+								}
+							}
+						}
+					}
+				}
+
+				int loaded = 0;
+				std::stringstream stream;
+				for(std::multimap<int, int>::iterator iter=missingIds.begin(); iter!=missingIds.end() && loaded<(int)_maxRepublished; ++iter)
+				{
+					statistics_.addSignatureData(_memory->getNodeData(iter->second, true, true, true, true));
+					_nodesToRepublish.erase(iter->second);
+					++loaded;
+					stream << iter->second << " ";
+				}
+				if(loaded)
+				{
+					UWARN("Republishing data of requested node(s) %s(%s=%d)",
+							stream.str().c_str(),
+							Parameters::kRtabmapMaxRepublished().c_str(),
+							_maxRepublished);
+				}
+			}
 		}
 		else
 		{
@@ -4207,7 +4282,7 @@ bool Rtabmap::process(
 			}
 			nodeInfo.sensorData().setGPS(lastSignatureData.sensorData().gps());
 			nodeInfo.sensorData().setEnvSensors(lastSignatureData.sensorData().envSensors());
-			statistics_.setLastSignatureData(nodeInfo);
+			statistics_.addSignatureData(nodeInfo);
 		}
 		UDEBUG("");
 		localGraphSize = (int)poses.size();
@@ -6014,6 +6089,26 @@ cv::Mat Rtabmap::getInformation(const cv::Mat & covariance) const
 		}
 	}
 	return information;
+}
+
+void Rtabmap::addNodesToRepublish(const std::vector<int> & ids)
+{
+	if(ids.empty())
+	{
+		_nodesToRepublish.clear();
+	}
+	else if(_maxRepublished > 0 && _publishLastSignatureData)
+	{
+		_nodesToRepublish.insert(ids.begin(), ids.end());
+	}
+	else if(_maxRepublished == 0)
+	{
+		UWARN("%s=0, so cannot republish the %d requested nodes.", Parameters::kRtabmapMaxRepublished().c_str(), (int)ids.size());
+	}
+	else //_publishLastSignatureData=false
+	{
+		UWARN("%s=false, so cannot republish the %d requested nodes.", Parameters::kRtabmapPublishLastSignature().c_str(), (int)ids.size());
+	}
 }
 
 void Rtabmap::clearPath(int status)

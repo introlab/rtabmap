@@ -54,22 +54,8 @@ class RTABMAP_EXP RtabmapThread :
 {
 public:
 	enum State {
-		kStateInit,
 		kStateDetecting,
-		kStateReseting,
-		kStateClose,
-		kStateChangingParameters,
-		kStateDumpingMemory,
-		kStateDumpingPrediction,
-		kStateExportingDOTGraph,
-		kStateExportingPoses,
-		kStateCleanDataBuffer,
-		kStatePublishingMap,
-		kStateTriggeringMap,
-		kStateSettingGoal,
-		kStateCancellingGoal,
-		kStateLabelling,
-		kStateRemovingLabel
+		kStateProcessCommand
 	};
 
 public:
@@ -105,13 +91,13 @@ private:
 	void process();
 	void addData(const OdometryEvent & odomEvent);
 	bool getData(OdometryEvent & data);
-	void pushNewState(State newState, const ParametersMap & parameters = ParametersMap());
+	void pushNewState(State newState, const RtabmapEventCmd & cmdEvent = RtabmapEventCmd(RtabmapEventCmd::kCmdUndef));
 	void publishMap(bool optimized, bool full, bool graphOnly) const;
 
 private:
 	UMutex _stateMutex;
 	std::queue<State> _state;
-	std::queue<ParametersMap> _stateParam;
+	std::queue<RtabmapEventCmd> _stateParam;
 
 	std::list<OdometryEvent> _dataBuffer;
 	std::list<double> _newMapEvents;

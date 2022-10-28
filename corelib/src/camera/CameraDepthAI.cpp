@@ -261,12 +261,12 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 		UINFO("IMU disabled");
 	}
 
-	leftQueue_ = device_->getOutputQueue("rectified_left", 8, false);
-	rightOrDepthQueue_ = device_->getOutputQueue(outputDepth_?"depth":"rectified_right", 8, false);
 	if(imuPublished_)
 	{
 		imuQueue_ = device_->getOutputQueue("imu", 50, false);
 	}
+	leftQueue_ = device_->getOutputQueue("rectified_left", 1, false);
+	rightOrDepthQueue_ = device_->getOutputQueue(outputDepth_?"depth":"rectified_right", 1, false);
 
 	uSleep(2000); // avoid bad frames on start
 
@@ -333,7 +333,6 @@ SensorData CameraDepthAI::captureImage(CameraInfo * info)
 			}
 
 			//get imu
-			int added=  0;
 			double stampStart = UTimer::now();
 			while(imuPublished_ && imuQueue_.get())
 			{
@@ -360,7 +359,6 @@ SensorData CameraDepthAI::captureImage(CameraInfo * info)
 						{
 							gyroBuffer_.erase(gyroBuffer_.begin());
 						}
-						++added;
 					}
 					if(accStamp >= stamp && gyroStamp >= stamp)
 					{

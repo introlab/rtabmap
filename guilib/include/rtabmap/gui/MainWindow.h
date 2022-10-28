@@ -193,6 +193,7 @@ protected Q_SLOTS:
 	void dumpThePrediction();
 	void sendGoal();
 	void sendWaypoints();
+	void postGoal();
 	void postGoal(const QString & goal);
 	void cancelGoal();
 	void label();

@@ -450,6 +450,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 
 	// General panel
 	connect(_ui->general_checkBox_imagesKept, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteGeneralPanel()));
+	connect(_ui->general_checkBox_missing_cache_republished, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteGeneralPanel()));
 	connect(_ui->general_checkBox_cloudsKept, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteGeneralPanel()));
 	connect(_ui->checkBox_verticalLayoutUsed, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteGeneralPanel()));
 	connect(_ui->checkBox_imageRejectedShown, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteGeneralPanel()));
@@ -888,6 +889,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->general_spinBox_imagesBufferSize->setObjectName(Parameters::kRtabmapImageBufferSize().c_str());
 	_ui->general_checkBox_createIntermediateNodes->setObjectName(Parameters::kRtabmapCreateIntermediateNodes().c_str());
 	_ui->general_spinBox_maxRetrieved->setObjectName(Parameters::kRtabmapMaxRetrieved().c_str());
+	_ui->general_spinBox_max_republished->setObjectName(Parameters::kRtabmapMaxRepublished().c_str());
 	_ui->general_checkBox_startNewMapOnLoopClosure->setObjectName(Parameters::kRtabmapStartNewMapOnLoopClosure().c_str());
 	_ui->general_checkBox_startNewMapOnGoodSignature->setObjectName(Parameters::kRtabmapStartNewMapOnGoodSignature().c_str());
 	_ui->general_checkBox_imagesAlreadyRectified->setObjectName(Parameters::kRtabmapImagesAlreadyRectified().c_str());
@@ -1792,6 +1794,7 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 	if(groupBox->objectName() == _ui->groupBox_generalSettingsGui0->objectName())
 	{
 		_ui->general_checkBox_imagesKept->setChecked(true);
+		_ui->general_checkBox_missing_cache_republished->setChecked(true);
 		_ui->general_checkBox_cloudsKept->setChecked(true);
 		_ui->checkBox_beep->setChecked(false);
 		_ui->checkBox_stamps->setChecked(true);
@@ -2272,6 +2275,7 @@ void PreferencesDialog::readGuiSettings(const QString & filePath)
 	settings.beginGroup("Gui");
 	settings.beginGroup("General");
 	_ui->general_checkBox_imagesKept->setChecked(settings.value("imagesKept", _ui->general_checkBox_imagesKept->isChecked()).toBool());
+	_ui->general_checkBox_missing_cache_republished->setChecked(settings.value("missingRepublished", _ui->general_checkBox_missing_cache_republished->isChecked()).toBool());
 	_ui->general_checkBox_cloudsKept->setChecked(settings.value("cloudsKept", _ui->general_checkBox_cloudsKept->isChecked()).toBool());
 	_ui->comboBox_loggerLevel->setCurrentIndex(settings.value("loggerLevel", _ui->comboBox_loggerLevel->currentIndex()).toInt());
 	_ui->comboBox_loggerEventLevel->setCurrentIndex(settings.value("loggerEventLevel", _ui->comboBox_loggerEventLevel->currentIndex()).toInt());
@@ -2801,6 +2805,7 @@ void PreferencesDialog::writeGuiSettings(const QString & filePath) const
 	settings.beginGroup("General");
 	settings.remove("");
 	settings.setValue("imagesKept",           _ui->general_checkBox_imagesKept->isChecked());
+	settings.setValue("missingRepublished",   _ui->general_checkBox_missing_cache_republished->isChecked());
 	settings.setValue("cloudsKept",           _ui->general_checkBox_cloudsKept->isChecked());
 	settings.setValue("loggerLevel",          _ui->comboBox_loggerLevel->currentIndex());
 	settings.setValue("loggerEventLevel",     _ui->comboBox_loggerEventLevel->currentIndex());
@@ -6481,6 +6486,10 @@ QString PreferencesDialog::getCameraInfoDir() const
 bool PreferencesDialog::isImagesKept() const
 {
 	return _ui->general_checkBox_imagesKept->isChecked();
+}
+bool PreferencesDialog::isMissingCacheRepublished() const
+{
+	return _ui->general_checkBox_missing_cache_republished->isChecked();
 }
 bool PreferencesDialog::isCloudsKept() const
 {

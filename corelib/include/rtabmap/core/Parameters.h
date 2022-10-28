@@ -183,7 +183,8 @@ class RTABMAP_EXP Parameters
     RTABMAP_PARAM(Rtabmap, ImageBufferSize,          unsigned int, 1, "Data buffer size (0 min inf).");
     RTABMAP_PARAM(Rtabmap, CreateIntermediateNodes,      bool, false, uFormat("Create intermediate nodes between loop closure detection. Only used when %s>0.", kRtabmapDetectionRate().c_str()));
     RTABMAP_PARAM_STR(Rtabmap, WorkingDirectory,         "",          "Working directory.");
-    RTABMAP_PARAM(Rtabmap, MaxRetrieved,             unsigned int, 2, "Maximum locations retrieved at the same time from LTM.");
+    RTABMAP_PARAM(Rtabmap, MaxRetrieved,             unsigned int, 2, "Maximum nodes retrieved at the same time from LTM.");
+    RTABMAP_PARAM(Rtabmap, MaxRepublished,           unsigned int, 2, uFormat("Maximum nodes republished when requesting missing data. When %s=false, only loop closure data is republished, otherwise the closest nodes from the current localization are republished first. Ignored if %s=false.", kRGBDEnabled().c_str(), kRtabmapPublishLastSignature().c_str()));
     RTABMAP_PARAM(Rtabmap, StatisticLogsBufferedInRAM,   bool, true,  "Statistic logs buffered in RAM instead of written to hard drive after each iteration.");
     RTABMAP_PARAM(Rtabmap, StatisticLogged,              bool, false, "Logging enabled.");
     RTABMAP_PARAM(Rtabmap, StatisticLoggedHeaders,       bool, true,  "Add column header description to log files.");

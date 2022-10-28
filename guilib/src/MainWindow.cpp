@@ -1997,6 +1997,33 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 			}
 		}
 
+		// Add data
+		for(std::map<int, Signature>::const_iterator iter = stat.getSignaturesData().begin();
+			iter!=stat.getSignaturesData().end();
+			++iter)
+		{
+			if(signature.id() != iter->first &&
+				(!_cachedSignatures.contains(iter->first) ||
+				 (_cachedSignatures.value(iter->first).sensorData().imageCompressed().empty() && !iter->second.sensorData().imageCompressed().empty())))
+			{
+				_cachedSignatures.insert(iter->first, iter->second);
+				_cachedMemoryUsage += iter->second.sensorData().getMemoryUsed();
+				unsigned int count = 0;
+				if(!iter->second.getWords3().empty())
+				{
+					for(std::multimap<int, int>::const_iterator jter=iter->second.getWords().upper_bound(-1); jter!=iter->second.getWords().end(); ++jter)
+					{
+						if(util3d::isFinite(iter->second.getWords3()[jter->second]))
+						{
+							++count;
+						}
+					}
+				}
+				_cachedWordsCount.insert(std::make_pair(iter->first, (float)count));
+				UINFO("Added %d node data to cache", iter->first);
+			}
+		}
+
 		// For intermediate empty nodes, keep latest image shown
 		if(signature.getWeight() >= 0)
 		{
@@ -2571,6 +2598,33 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 			s.sensorData().clearRawData();
 			s.sensorData().clearOccupancyGridRaw();
 			_cachedMemoryUsage += s.sensorData().getMemoryUsed();
+		}
+
+		// Check missing cache
+		if(stat.getSignaturesData().size() <= 1)
+		{
+			if(_preferencesDialog->isMissingCacheRepublished() &&
+			   _preferencesDialog->isImagesKept() &&
+			   atoi(_preferencesDialog->getParameter(Parameters::kRtabmapMaxRepublished()).c_str()) > 0)
+			{
+				std::vector<int> missingIds;
+				for(std::map<int, Transform>::const_iterator iter=stat.poses().begin(); iter!=stat.poses().end(); ++iter)
+				{
+					QMap<int, Signature>::iterator ster = _cachedSignatures.find(iter->first);
+					if(ster == _cachedSignatures.end() ||
+						(ster.value().getWeight() >=0 && // ignore intermediate nodes
+						 ster.value().sensorData().imageCompressed().empty() &&
+						 ster.value().sensorData().depthOrRightCompressed().empty() &&
+						 ster.value().sensorData().laserScanCompressed().empty()))
+					{
+						missingIds.push_back(iter->first);
+					}
+				}
+				if(!missingIds.empty())
+				{
+					this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdRepublishData, UVariant(missingIds)));
+				}
+			}
 		}
 
 		UDEBUG("time= %d ms (update cache)", time.restart());
@@ -4651,8 +4705,7 @@ void MainWindow::processRtabmapGlobalPathEvent(const rtabmap::RtabmapGlobalPathE
 	else if(event.getPoses().empty() && _waypoints.size())
 	{
 		// resend the same goal
-		uSleep(1000);
-		this->postGoal(_waypoints.at(_waypointsIndex % _waypoints.size()));
+		QTimer::singleShot(1000, this, SLOT(postGoal()));
 	}
 }
 
@@ -7042,6 +7095,14 @@ void MainWindow::sendWaypoints()
 			_waypointsIndex = 0;
 			this->postGoal(_waypoints.at(_waypointsIndex));
 		}
+	}
+}
+
+void MainWindow::postGoal()
+{
+	if(!_waypoints.isEmpty())
+	{
+		postGoal(_waypoints.at(_waypointsIndex % _waypoints.size()));
 	}
 }
 

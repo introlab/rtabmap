@@ -41,6 +41,14 @@ public:
 		kFloat,
 		kDouble,
 		kStr,
+		kCharArray,
+		kUCharArray,
+		kShortArray,
+		kUShortArray,
+		kIntArray,
+		kUIntArray,
+		kFloatArray,
+		kDoubleArray,
 		kUndef
 		};
 public:
@@ -56,6 +64,14 @@ public:
 	UVariant(const double & value);
 	UVariant(const char * value);
 	UVariant(const std::string & value);
+	UVariant(const std::vector<char> & value);
+	UVariant(const std::vector<unsigned char> & value);
+	UVariant(const std::vector<short> & value);
+	UVariant(const std::vector<unsigned short> & value);
+	UVariant(const std::vector<int> & value);
+	UVariant(const std::vector<unsigned int> & value);
+	UVariant(const std::vector<float> & value);
+	UVariant(const std::vector<double> & value);
 
 	Type type() const {return type_;}
 
@@ -70,6 +86,14 @@ public:
 	bool isFloat() const {return type_ == kFloat;}
 	bool isDouble() const {return type_ == kDouble;}
 	bool isStr() const {return type_ == kStr;}
+	bool isCharArray() const {return type_ == kCharArray;}
+	bool isUCharArray() const {return type_ == kUCharArray;}
+	bool isShortArray() const {return type_ == kShortArray;}
+	bool isUShortArray() const {return type_ == kUShortArray;}
+	bool isIntArray() const {return type_ == kIntArray;}
+	bool isUIntArray() const {return type_ == kUIntArray;}
+	bool isFloatArray() const {return type_ == kFloatArray;}
+	bool isDoubleArray() const {return type_ == kDoubleArray;}
 
 	bool toBool() const;
 	char toChar(bool * ok = 0) const;
@@ -81,6 +105,14 @@ public:
 	float toFloat(bool * ok = 0) const;
 	double toDouble(bool * ok = 0) const;
 	std::string toStr(bool * ok = 0) const;
+	std::vector<char> toCharArray(bool * ok = 0) const;
+	std::vector<unsigned char> toUCharArray(bool * ok = 0) const;
+	std::vector<short> toShortArray(bool * ok = 0) const;
+	std::vector<unsigned short> toUShortArray(bool * ok = 0) const;
+	std::vector<int> toIntArray(bool * ok = 0) const;
+	std::vector<unsigned int> toUIntArray(bool * ok = 0) const;
+	std::vector<float> toFloatArray(bool * ok = 0) const;
+	std::vector<double> toDoubleArray(bool * ok = 0) const;
 
 	virtual ~UVariant() {}
 

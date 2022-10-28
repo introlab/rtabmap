@@ -93,6 +93,54 @@ UVariant::UVariant(const std::string & value) :
 {
 	memcpy(data_.data(), value.data(), value.size()+1);
 }
+UVariant::UVariant(const std::vector<char> & value) :
+	type_(kCharArray),
+	data_(sizeof(char)*value.size())
+{
+	memcpy(data_.data(), value.data(), sizeof(char)*value.size());
+}
+UVariant::UVariant(const std::vector<unsigned char> & value) :
+	type_(kUCharArray),
+	data_(sizeof(unsigned char)*value.size())
+{
+	memcpy(data_.data(), value.data(), sizeof(unsigned char)*value.size());
+}
+UVariant::UVariant(const std::vector<short> & value) :
+	type_(kShortArray),
+	data_(sizeof(short)*value.size())
+{
+	memcpy(data_.data(), value.data(), sizeof(short)*value.size());
+}
+UVariant::UVariant(const std::vector<unsigned short> & value) :
+	type_(kUShortArray),
+	data_(sizeof(unsigned short)*value.size())
+{
+	memcpy(data_.data(), value.data(), sizeof(unsigned short)*value.size());
+}
+UVariant::UVariant(const std::vector<int> & value) :
+	type_(kIntArray),
+	data_(sizeof(int)*value.size())
+{
+	memcpy(data_.data(), value.data(), sizeof(int)*value.size());
+}
+UVariant::UVariant(const std::vector<unsigned int> & value) :
+	type_(kUIntArray),
+	data_(sizeof(unsigned int)*value.size())
+{
+	memcpy(data_.data(), value.data(), sizeof(unsigned int)*value.size());
+}
+UVariant::UVariant(const std::vector<float> & value) :
+	type_(kFloatArray),
+	data_(sizeof(float)*value.size())
+{
+	memcpy(data_.data(), value.data(), sizeof(float)*value.size());
+}
+UVariant::UVariant(const std::vector<double> & value) :
+	type_(kDoubleArray),
+	data_(sizeof(double)*value.size())
+{
+	memcpy(data_.data(), value.data(), sizeof(double)*value.size());
+}
 
 bool UVariant::toBool() const
 {
@@ -638,6 +686,185 @@ std::string UVariant::toStr(bool * ok) const
 	else if(type_ == kDouble)
 	{
 		v = uNumber2Str(toDouble(ok));
+	}
+	return v;
+}
+
+std::vector<char> UVariant::toCharArray(bool * ok) const
+{
+	if(ok)
+	{
+		*ok = false;
+	}
+
+	std::vector<char> v;
+	if(type_ == kCharArray)
+	{
+		if(ok)
+		{
+			*ok = true;
+		}
+		if(data_.size())
+		{
+			v.resize(data_.size() / sizeof(char));
+			memcpy(v.data(), data_.data(), data_.size());
+		}
+	}
+	return v;
+}
+
+std::vector<unsigned char> UVariant::toUCharArray(bool * ok) const
+{
+	if(ok)
+	{
+		*ok = false;
+	}
+
+	std::vector<unsigned char> v;
+	if(type_ == kUCharArray)
+	{
+		if(ok)
+		{
+			*ok = true;
+		}
+		if(data_.size())
+		{
+			v.resize(data_.size() / sizeof(unsigned char));
+			memcpy(v.data(), data_.data(), data_.size());
+		}
+	}
+	return v;
+}
+
+std::vector<short> UVariant::toShortArray(bool * ok) const
+{
+	if(ok)
+	{
+		*ok = false;
+	}
+
+	std::vector<short> v;
+	if(type_ == kShortArray)
+	{
+		if(ok)
+		{
+			*ok = true;
+		}
+		if(data_.size())
+		{
+			v.resize(data_.size() / sizeof(short));
+			memcpy(v.data(), data_.data(), data_.size());
+		}
+	}
+	return v;
+}
+std::vector<unsigned short> UVariant::toUShortArray(bool * ok) const
+{
+	if(ok)
+	{
+		*ok = false;
+	}
+
+	std::vector<unsigned short> v;
+	if(type_ == kUShortArray)
+	{
+		if(ok)
+		{
+			*ok = true;
+		}
+		if(data_.size())
+		{
+			v.resize(data_.size() / sizeof(unsigned short));
+			memcpy(v.data(), data_.data(), data_.size());
+		}
+	}
+	return v;
+}
+std::vector<int> UVariant::toIntArray(bool * ok) const
+{
+	if(ok)
+	{
+		*ok = false;
+	}
+
+	std::vector<int> v;
+	if(type_ == kIntArray)
+	{
+		if(ok)
+		{
+			*ok = true;
+		}
+		if(data_.size())
+		{
+			v.resize(data_.size() / sizeof(int));
+			memcpy(v.data(), data_.data(), data_.size());
+		}
+	}
+	return v;
+}
+std::vector<unsigned int> UVariant::toUIntArray(bool * ok) const
+{
+	if(ok)
+	{
+		*ok = false;
+	}
+
+	std::vector<unsigned int> v;
+	if(type_ == kUIntArray)
+	{
+		if(ok)
+		{
+			*ok = true;
+		}
+		if(data_.size())
+		{
+			v.resize(data_.size() / sizeof(unsigned int));
+			memcpy(v.data(), data_.data(), data_.size());
+		}
+	}
+	return v;
+}
+std::vector<float> UVariant::toFloatArray(bool * ok) const
+{
+	if(ok)
+	{
+		*ok = false;
+	}
+
+	std::vector<float> v;
+	if(type_ == kFloatArray)
+	{
+		if(ok)
+		{
+			*ok = true;
+		}
+		if(data_.size())
+		{
+			v.resize(data_.size() / sizeof(float));
+			memcpy(v.data(), data_.data(), data_.size());
+		}
+	}
+	return v;
+}
+std::vector<double> UVariant::toDoubleArray(bool * ok) const
+{
+	if(ok)
+	{
+		*ok = false;
+	}
+
+	std::vector<double> v;
+	if(type_ == kDoubleArray)
+	{
+		if(ok)
+		{
+			*ok = true;
+		}
+		if(data_.size())
+		{
+			v.resize(data_.size() / sizeof(double));
+			memcpy(v.data(), data_.data(), data_.size());
+		}
 	}
 	return v;
 }

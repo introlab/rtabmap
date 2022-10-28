@@ -223,6 +223,7 @@ public:
 	int refineLinks();
 	bool addLink(const Link & link);
 	cv::Mat getInformation(const cv::Mat & covariance) const;
+	void addNodesToRepublish(const std::vector<int> & ids);
 
 	int getPathStatus() const {return _pathStatus;} // -1=failed 0=idle/executing 1=success
 	void clearPath(int status); // -1=failed 0=idle/executing 1=success
@@ -284,6 +285,7 @@ private:
 	bool _verifyLoopClosureHypothesis;
 	unsigned int _maxRetrieved;
 	unsigned int _maxLocalRetrieved;
+	unsigned int _maxRepublished;
 	bool _rawDataKept;
 	bool _statisticLogsBufferedInRAM;
 	bool _statisticLogged;
@@ -367,6 +369,8 @@ private:
 	std::multimap<int, Link> _odomCacheConstraints; // used in localization mode to reject loop closures
 	std::vector<float> _odomCorrectionAcc;
 	std::map<int, Transform> _markerPriors;
+
+	std::set<int> _nodesToRepublish;
 
 	// Planning stuff
 	int _pathStatus;

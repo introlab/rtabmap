@@ -286,6 +286,7 @@ public:
 
 	//
 	bool isImagesKept() const;
+	bool isMissingCacheRepublished() const;
 	bool isCloudsKept() const;
 	float getTimeLimit() const;
 	float getDetectionRate() const;

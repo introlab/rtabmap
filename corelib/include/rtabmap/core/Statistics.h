@@ -241,7 +241,9 @@ public:
 	void setProximityDetectionMapId(int id) {_proximiyDetectionMapId = id;}
 	void setStamp(double stamp) {_stamp = stamp;}
 
-	void setLastSignatureData(const Signature & data) {_lastSignatureData = data;}
+	RTABMAP_DEPRECATED(void setLastSignatureData(const Signature & data) {_signaturesData.insert(std::make_pair(data.id(), data));}, "Use addSignatureData() instead.");
+	void addSignatureData(const Signature & data) {_signaturesData.insert(std::make_pair(data.id(), data));}
+	void setSignaturesData(const std::map<int, Signature> & data) {_signaturesData = data;}
 
 	void setPoses(const std::map<int, Transform> & poses) {_poses = poses;}
 	void setConstraints(const std::multimap<int, Link> & constraints) {_constraints = constraints;}
@@ -270,7 +272,8 @@ public:
 	int proximityDetectionMapId() const {return _proximiyDetectionMapId;}
 	double stamp() const {return _stamp;}
 
-	const Signature & getLastSignatureData() const {return _lastSignatureData;}
+	const Signature & getLastSignatureData() const {return _signaturesData.empty()?_dummyEmptyData:_signaturesData.rbegin()->second;}
+	const std::map<int, Signature> & getSignaturesData() const {return _signaturesData;}
 
 	const std::map<int, Transform> & poses() const {return _poses;}
 	const std::multimap<int, Link> & constraints() const {return _constraints;}
@@ -302,7 +305,8 @@ private:
 	int _proximiyDetectionMapId;
 	double _stamp;
 
-	Signature _lastSignatureData;
+	std::map<int, Signature> _signaturesData;
+	Signature _dummyEmptyData;
 
 	std::map<int, Transform> _poses;
 	std::multimap<int, Link> _constraints;
