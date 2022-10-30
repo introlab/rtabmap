@@ -299,7 +299,7 @@ void RtabmapThread::mainLoop()
 				id = _rtabmap->getMemory()->getSignatureIdByLabel(cmdEvent.value1().toStr());
 				if(id <= 0)
 				{
-					UERROR("Failed to find a node with label \"%s\".", cmdEvent.value1().toStr());
+					UERROR("Failed to find a node with label \"%s\".", cmdEvent.value1().toStr().c_str());
 				}
 			}
 			else if(cmdEvent.value1().isInt() || cmdEvent.value1().isUInt())
