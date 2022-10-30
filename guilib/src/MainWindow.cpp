@@ -1947,6 +1947,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 			signature = _cachedSignatures.value(rehearsalMerged);
 		}
 
+		int newIdIsTemporary = 0;
 		if(signature.id()!=0)
 		{
 			// make sure data are uncompressed
@@ -1976,6 +1977,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 				if(smallMovement || fastMovement)
 				{
 					_cachedSignatures.insert(0, signature); // zero means temporary
+					newIdIsTemporary = stat.refImageId();
 				}
 				else
 				{
@@ -2020,7 +2022,13 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 					}
 				}
 				_cachedWordsCount.insert(std::make_pair(iter->first, (float)count));
-				UINFO("Added %d node data to cache", iter->first);
+				UINFO("Added node data %d [map=%d] to cache", iter->first, iter->second.mapId());
+
+				_currentMapIds.insert(std::make_pair(iter->first, iter->second.mapId()));
+				if(!iter->second.getGroundTruthPose().isNull())
+				{
+					_currentGTPosesMap.insert(std::make_pair(iter->first, iter->second.getGroundTruthPose()));
+				}
 			}
 		}
 
@@ -2610,14 +2618,17 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 				std::vector<int> missingIds;
 				for(std::map<int, Transform>::const_iterator iter=stat.poses().begin(); iter!=stat.poses().end(); ++iter)
 				{
-					QMap<int, Signature>::iterator ster = _cachedSignatures.find(iter->first);
-					if(ster == _cachedSignatures.end() ||
-						(ster.value().getWeight() >=0 && // ignore intermediate nodes
-						 ster.value().sensorData().imageCompressed().empty() &&
-						 ster.value().sensorData().depthOrRightCompressed().empty() &&
-						 ster.value().sensorData().laserScanCompressed().empty()))
+					if(newIdIsTemporary != iter->first)
 					{
-						missingIds.push_back(iter->first);
+						QMap<int, Signature>::iterator ster = _cachedSignatures.find(iter->first);
+						if(ster == _cachedSignatures.end() ||
+							(ster.value().getWeight() >=0 && // ignore intermediate nodes
+							 ster.value().sensorData().imageCompressed().empty() &&
+							 ster.value().sensorData().depthOrRightCompressed().empty() &&
+							 ster.value().sensorData().laserScanCompressed().empty()))
+						{
+							missingIds.push_back(iter->first);
+						}
 					}
 				}
 				if(!missingIds.empty())

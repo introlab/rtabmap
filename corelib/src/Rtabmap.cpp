@@ -4250,7 +4250,7 @@ bool Rtabmap::process(
 				std::stringstream stream;
 				for(std::multimap<int, int>::iterator iter=missingIds.begin(); iter!=missingIds.end() && loaded<(int)_maxRepublished; ++iter)
 				{
-					statistics_.addSignatureData(_memory->getNodeData(iter->second, true, true, true, true));
+					statistics_.addSignatureData(getSignatureCopy(iter->second, true, true, true, true, true, true));
 					_nodesToRepublish.erase(iter->second);
 					++loaded;
 					stream << iter->second << " ";
