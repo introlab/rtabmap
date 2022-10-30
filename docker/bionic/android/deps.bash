@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 if [ $# -ne 1 ]; then
     echo "deps.bash android_install_prefix   # Example: setup.bash /opt/android"
     exit 1

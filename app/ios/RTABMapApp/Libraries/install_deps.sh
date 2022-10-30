@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -euxo pipefail
+
 # Tested on Apple Silicon Mac, with cmake 3.19.2.
 
 pwd=$(pwd)
