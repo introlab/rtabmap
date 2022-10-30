@@ -17,6 +17,8 @@ jobs:
           docker_tags: |
             introlab3it/rtabmap:xenial
             introlab3it/rtabmap:16.04
+          docker_args: |
+            NOT_USED=0
           docker_platforms: |
             linux/amd64
           docker_path: 'xenial'
@@ -24,6 +26,8 @@ jobs:
           docker_tags: |
             introlab3it/rtabmap:bionic
             introlab3it/rtabmap:18.04
+          docker_args: |
+            NOT_USED=0
           docker_platforms: |
             linux/amd64
             linux/arm64
@@ -33,6 +37,8 @@ jobs:
             introlab3it/rtabmap:focal
             introlab3it/rtabmap:20.04
             introlab3it/rtabmap:latest
+          docker_args: |
+            NOT_USED=0
           docker_platforms: |
             linux/amd64
             linux/arm64
