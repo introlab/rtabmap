@@ -1947,7 +1947,6 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 			signature = _cachedSignatures.value(rehearsalMerged);
 		}
 
-		int newIdIsTemporary = 0;
 		if(signature.id()!=0)
 		{
 			// make sure data are uncompressed
@@ -1977,7 +1976,6 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 				if(smallMovement || fastMovement)
 				{
 					_cachedSignatures.insert(0, signature); // zero means temporary
-					newIdIsTemporary = stat.refImageId();
 				}
 				else
 				{
@@ -2616,9 +2614,10 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 			   atoi(_preferencesDialog->getParameter(Parameters::kRtabmapMaxRepublished()).c_str()) > 0)
 			{
 				std::vector<int> missingIds;
+				bool ignoreNewData = smallMovement || fastMovement || signature.getWeight()<0;
 				for(std::map<int, Transform>::const_iterator iter=stat.poses().begin(); iter!=stat.poses().end(); ++iter)
 				{
-					if(newIdIsTemporary != iter->first)
+					if(!ignoreNewData || stat.refImageId() != iter->first)
 					{
 						QMap<int, Signature>::iterator ster = _cachedSignatures.find(iter->first);
 						if(ster == _cachedSignatures.end() ||
