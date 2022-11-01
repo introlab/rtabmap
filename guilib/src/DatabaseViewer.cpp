@@ -25,6 +25,10 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+#include <chrono>
+#include <iostream>
+#include <sstream>
+
 #include "rtabmap/gui/DatabaseViewer.h"
 #include "rtabmap/gui/CloudViewer.h"
 #include "ui_DatabaseViewer.h"
@@ -1482,6 +1486,7 @@ void DatabaseViewer::extractImages()
 			SensorData data;
 			dbDriver_->getNodeData(ids_.at(i), data);
 			data.uncompressData();
+			Exiv2::ExifData exifData;
 
 			if(!directoriesCreated)
 			{
@@ -1507,7 +1512,7 @@ void DatabaseViewer::extractImages()
 				}
 			}
 
-			if(!data.imageRaw().empty() && useStamp)
+			if(!data.imageRaw().empty())
 			{
 				Transform p,gt;
 				int m,w;
@@ -1517,25 +1522,67 @@ void DatabaseViewer::extractImages()
 				GPS gps;
 				EnvSensors s;
 				dbDriver_->getNodeInfo(ids_.at(i), p, m, w, l, stamp, gt, v, gps, s);
-				if(stamp == 0.0)
+				if(useStamp && stamp == 0.0)
 				{
 					UWARN("Node %d has null timestamp! Using id instead!", ids_.at(i));
 				}
-				else
+				else if(useStamp)
 				{
 					id = QString::number(stamp, 'f');
 				}
+
+				//fill out image metadata
+				std::time_t time = std::chrono::system_clock::to_time_t(std::chrono::system_clock::time_point(std::chrono::duration_cast<std::chrono::seconds>(std::chrono::duration<double>(gps.stamp()))));
+				std::tm timestamp = *std::localtime(&time);
+				char datebuf[20] = { 0 };
+                std::strftime(datebuf, sizeof(datebuf), "%Y:%m:%d:%H:%M:%S", &timestamp);
+				std::string dateString(datebuf);
+
+				double latitude = gps.latitude();
+				double longitude = gps.longitude();
+				double altitude = gps.altitude();
+				exifData["Exif.Image.ProcessingSoftware"] = "RTABMAP";
+				
+				writeExiv2Data(exifData, "EExif.GPSInfo.GPSMapDatum", "WGS-84");
+				writeExiv2Data(exifData, "Exif.GPSInfo.GPSDateStamp", dateString);
+				writeExiv2Data(exifData, "Exif.GPSInfo.GPSTimeStamp", toExifTimeStamp(dateString));
+				writeExiv2Data(exifData, "Exif.GPSInfo.GPSLatitude", toExifLatLonString(latitude));
+				writeExiv2Data(exifData, "Exif.GPSInfo.GPSLongitude", toExifLatLonString(longitude));
+				writeExiv2Data(exifData, "Exif.GPSInfo.GPSAltitude", toExifString(altitude));
+				writeExiv2Data(exifData, "Exif.GPSInfo.GPSLatitudeRef", (latitude<0 ? "S" : "N"));
+				writeExiv2Data(exifData, "Exif.GPSInfo.GPSLongitudeRef", (longitude<0 ? "W" : "E"));
+				writeExiv2Data(exifData, "Exif.GPSInfo.GPSAltitudeRef", (altitude < 0.0 ? "1" : "0"));
+
+				writeExiv2Data(exifData, "Exif.GPSInfo.GPSImgDirectionRef", "T");
+				
+				float x,y,z,roll,pitch,yaw;
+				p.getTranslationAndEulerAngles(x,y,z,roll, pitch,yaw);
+				float bearing = (yaw/3.1416*180.0) + 180.0;
+				if (bearing > 90) bearing -= 90.0;
+				else bearing += 270.0;
+				writeExiv2Data(exifData, "Exif.GPSInfo.GPSImgDirection", toExifString(bearing));
+				
 			}
 
 			if(!data.imageRaw().empty())
 			{
 				if(!data.rightRaw().empty())
 				{
-					if(!cv::imwrite(QString("%1/left/%2.%3").arg(path).arg(id).arg(ext).toStdString(), data.imageRaw()))
+					std::string filename_left = QString("%1/left/%2.%3").arg(path).arg(id).arg(ext).toStdString();
+					if(!cv::imwrite(filename_left, data.imageRaw()))
 						UWARN("Failed saving \"%s\"", QString("%1/left/%2.%3").arg(path).arg(id).arg(ext).toStdString().c_str());
-					if(!cv::imwrite(QString("%1/right/%2.%3").arg(path).arg(id).arg(ext).toStdString(), data.rightRaw()))
+					std::string filename_right = QString("%1/right/%2.%3").arg(path).arg(id).arg(ext).toStdString();
+					if(!cv::imwrite(filename_right, data.rightRaw()))
 						UWARN("Failed saving \"%s\"", QString("%1/right/%2.%3").arg(path).arg(id).arg(ext).toStdString().c_str());
 					UINFO(QString("Saved left/%1.%2 and right/%1.%2").arg(id).arg(ext).toStdString().c_str());
+
+					Exiv2::Image::AutoPtr exiv_left = Exiv2::ImageFactory::open(filename_left);
+        			exiv_left->setExifData(exifData);
+        			exiv_left->writeMetadata();
+
+					Exiv2::Image::AutoPtr exiv_right = Exiv2::ImageFactory::open(filename_right);
+        			exiv_right->setExifData(exifData);
+        			exiv_right->writeMetadata();
 
 					if(databaseFileName_.empty())
 					{
@@ -1582,18 +1629,28 @@ void DatabaseViewer::extractImages()
 				{
 					if(!data.depthRaw().empty())
 					{
-						if(!cv::imwrite(QString("%1/rgb/%2.%3").arg(path).arg(id).arg(ext).toStdString(), data.imageRaw()))
+						std::string filename = QString("%1/rgb/%2.%3").arg(path).arg(id).arg(ext).toStdString();
+						if(!cv::imwrite(filename, data.imageRaw()))
 							UWARN("Failed saving \"%s\"", QString("%1/rgb/%2.%3").arg(path).arg(id).arg(ext).toStdString().c_str());
 						if(!cv::imwrite(QString("%1/depth/%2.png").arg(path).arg(id).toStdString(), data.depthRaw().type()==CV_32FC1?util2d::cvtDepthFromFloat(data.depthRaw()):data.depthRaw()))
 							UWARN("Failed saving \"%s\"", QString("%1/depth/%2.png").arg(path).arg(id).toStdString().c_str());
 						UINFO(QString("Saved rgb/%1.%2 and depth/%1.png").arg(id).arg(ext).toStdString().c_str());
+
+						Exiv2::Image::AutoPtr exiv_image = Exiv2::ImageFactory::open(filename);
+        			    exiv_image->setExifData(exifData);
+        			    exiv_image->writeMetadata();
 					}
 					else
 					{
-						if(!cv::imwrite(QString("%1/%2.%3").arg(path).arg(id).arg(ext).toStdString(), data.imageRaw()))
+						std::string filename = QString("%1/%2.%3").arg(path).arg(id).arg(ext).toStdString();
+						if(!cv::imwrite(filename, data.imageRaw()))
 							UWARN("Failed saving \"%s\"", QString("%1/%2.%3").arg(path).arg(id).arg(ext).toStdString().c_str());
 						else
 							UINFO(QString("Saved %1.%2").arg(id).arg(ext).toStdString().c_str());
+
+						Exiv2::Image::AutoPtr exiv_image = Exiv2::ImageFactory::open(filename);
+        			    exiv_image->setExifData(exifData);
+        			    exiv_image->writeMetadata();
 					}
 
 					if(databaseFileName_.empty())
@@ -8793,6 +8850,26 @@ void DatabaseViewer::notifyParametersChanged(const QStringList & parametersChang
 		this->updateGraphView();
 	}
 	this->configModified();
+}
+
+void DatabaseViewer::writeExiv2Data(Exiv2::ExifData &exifData, std::string keyStr, std::string str)
+{
+	try{
+        Exiv2::ExifKey key(keyStr);
+        Exiv2::ExifData::iterator pos = exifData.findKey(key);
+        if(pos != exifData.end()){
+            exifData[keyStr].setValue(str);
+        }
+        else
+        {
+            exifData[keyStr].setValue(str);
+        }
+    }
+    catch (Exiv2::Error& e) {
+        ;//std::cerr << "Caught Exiv2 exception '" << e.what() << "'\n";
+    }
+
+	
 }
 
 } // namespace rtabmap
