@@ -106,6 +106,7 @@ private Q_SLOTS:
 	void updateOptimizedMesh();
 	void exportDatabase();
 	void extractImages();
+	std::string selectGraph();
 	void exportPosesRaw();
 	void exportPosesRGBDSLAMMotionCapture();
 	void exportPosesRGBDSLAM();
@@ -199,6 +200,7 @@ private:
 	void exportPoses(int format);
 	void exportGPS(int format);
 
+	std::map<int, GPS> graphToGPS(std::string graphSource);
 	void writeExiv2Data(Exiv2::ExifData &exifData, std::string keyStr, std::string str);
 
 	std::string toExifTimeStamp(std::string& t) 
