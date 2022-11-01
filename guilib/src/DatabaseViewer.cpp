@@ -1479,8 +1479,13 @@ void DatabaseViewer::extractImages()
 		progressDialog->show();
 
 		// Determine source of gps info for images
-		std::string graphSource = DatabaseViewer::selectGraph();
-		std::map<int, GPS> gpsValues = graphToGPS(graphSource);
+		std::string gpsSource = "None";
+		std::map<int, GPS> gpsValues;
+		if(!gpsPoses_.empty())
+		{
+			gpsSource = DatabaseViewer::selectGraph();
+			gpsValues = graphToGPS(gpsSource);
+		}
 
 		int imagesExported = 0;
 		for(int i=0; i<ids_.size(); ++i)
@@ -1535,39 +1540,41 @@ void DatabaseViewer::extractImages()
 					id = QString::number(stamp, 'f');
 				}
 
-				gps = gpsValues[ids_.at(i)];
-
 				//fill out image metadata
-				std::time_t time = std::chrono::system_clock::to_time_t(std::chrono::system_clock::time_point(std::chrono::duration_cast<std::chrono::seconds>(std::chrono::duration<double>(gps.stamp()))));
-				std::tm timestamp = *std::localtime(&time);
-				char datebuf[20] = { 0 };
-                std::strftime(datebuf, sizeof(datebuf), "%Y:%m:%d:%H:%M:%S", &timestamp);
-				std::string dateString(datebuf);
-
-				double latitude = gps.latitude();
-				double longitude = gps.longitude();
-				double altitude = gps.altitude();
 				exifData["Exif.Image.ProcessingSoftware"] = "RTABMAP";
-				
-				writeExiv2Data(exifData, "EExif.GPSInfo.GPSMapDatum", "WGS-84");
-				writeExiv2Data(exifData, "Exif.GPSInfo.GPSDateStamp", dateString);
-				writeExiv2Data(exifData, "Exif.GPSInfo.GPSTimeStamp", toExifTimeStamp(dateString));
-				writeExiv2Data(exifData, "Exif.GPSInfo.GPSLatitude", toExifLatLonString(latitude));
-				writeExiv2Data(exifData, "Exif.GPSInfo.GPSLongitude", toExifLatLonString(longitude));
-				writeExiv2Data(exifData, "Exif.GPSInfo.GPSAltitude", toExifString(altitude));
-				writeExiv2Data(exifData, "Exif.GPSInfo.GPSLatitudeRef", (latitude<0 ? "S" : "N"));
-				writeExiv2Data(exifData, "Exif.GPSInfo.GPSLongitudeRef", (longitude<0 ? "W" : "E"));
-				writeExiv2Data(exifData, "Exif.GPSInfo.GPSAltitudeRef", (altitude < 0.0 ? "1" : "0"));
+				if(!(gpsSource == "None"))
+				{
+					gps = gpsValues[ids_.at(i)];
 
-				writeExiv2Data(exifData, "Exif.GPSInfo.GPSImgDirectionRef", "T");
-				
-				float x,y,z,roll,pitch,yaw;
-				p.getTranslationAndEulerAngles(x,y,z,roll, pitch,yaw);
-				float bearing = (yaw/3.1416*180.0) + 180.0;
-				if (bearing > 90) bearing -= 90.0;
-				else bearing += 270.0;
-				writeExiv2Data(exifData, "Exif.GPSInfo.GPSImgDirection", toExifString(bearing));
-				
+					std::time_t time = std::chrono::system_clock::to_time_t(std::chrono::system_clock::time_point(std::chrono::duration_cast<std::chrono::seconds>(std::chrono::duration<double>(gps.stamp()))));
+					std::tm timestamp = *std::localtime(&time);
+					char datebuf[20] = { 0 };
+					std::strftime(datebuf, sizeof(datebuf), "%Y:%m:%d:%H:%M:%S", &timestamp);
+					std::string dateString(datebuf);
+
+					double latitude = gps.latitude();
+					double longitude = gps.longitude();
+					double altitude = gps.altitude();
+					
+					writeExiv2Data(exifData, "EExif.GPSInfo.GPSMapDatum", "WGS-84");
+					writeExiv2Data(exifData, "Exif.GPSInfo.GPSDateStamp", dateString);
+					writeExiv2Data(exifData, "Exif.GPSInfo.GPSTimeStamp", toExifTimeStamp(dateString));
+					writeExiv2Data(exifData, "Exif.GPSInfo.GPSLatitude", toExifLatLonString(latitude));
+					writeExiv2Data(exifData, "Exif.GPSInfo.GPSLongitude", toExifLatLonString(longitude));
+					writeExiv2Data(exifData, "Exif.GPSInfo.GPSAltitude", toExifString(altitude));
+					writeExiv2Data(exifData, "Exif.GPSInfo.GPSLatitudeRef", (latitude<0 ? "S" : "N"));
+					writeExiv2Data(exifData, "Exif.GPSInfo.GPSLongitudeRef", (longitude<0 ? "W" : "E"));
+					writeExiv2Data(exifData, "Exif.GPSInfo.GPSAltitudeRef", (altitude < 0.0 ? "1" : "0"));
+
+					writeExiv2Data(exifData, "Exif.GPSInfo.GPSImgDirectionRef", "T");
+					
+					float x,y,z,roll,pitch,yaw;
+					p.getTranslationAndEulerAngles(x,y,z,roll, pitch,yaw);
+					float bearing = (yaw/3.1416*180.0) + 180.0;
+					if (bearing > 90) bearing -= 90.0;
+					else bearing += 270.0;
+					writeExiv2Data(exifData, "Exif.GPSInfo.GPSImgDirection", toExifString(bearing));
+				}
 			}
 
 			if(!data.imageRaw().empty())
