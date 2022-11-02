@@ -71,6 +71,8 @@ void showUsage()
 			"     -stop #     Last node to process.\n"
 			"     -start_s #  Start from this map session ID.\n"
 			"     -stop_s #   Last map session to process.\n"
+			"     -a          Append mode: if Mem/IncrementalMemory is true, RTAB-Map is initialized with the first input database,\n"
+			"                 then next databases are reprocessed on top of the first one.\n"
 			"     -cam #      Camera index to stream. Ignored if a database doesn't contain multi-camera data.\n"
 			"     -nolandmark Don't republish landmarks contained in input database.\n"
 			"     -pub_loops  Republish loop closures contained in input database.\n"
@@ -231,6 +233,7 @@ int main(int argc, char * argv[])
 	int stopId = 0;
 	int startMapId = 0;
 	int stopMapId = -1;
+	bool appendMode = false;
 	int cameraIndex = -1;
 	int framesToSkip = 0;
 	bool ignoreLandmarks = false;
@@ -326,6 +329,11 @@ int main(int argc, char * argv[])
 				printf("-stop option requires a value\n");
 				showUsage();
 			}
+		}
+		else if (strcmp(argv[i], "-a") == 0 || strcmp(argv[i], "--a") == 0)
+		{
+			appendMode = true;
+			printf("Append mode enabled (initialize with first database then reprocess next ones)\n");
 		}
 		else if (strcmp(argv[i], "-cam") == 0 || strcmp(argv[i], "--cam") == 0)
 		{
@@ -654,7 +662,7 @@ int main(int argc, char * argv[])
 		delete dbDriver;
 		return -1;
 	}
-	if(!(!incrementalMemory && databases.size() > 1))
+	if(!((!incrementalMemory || appendMode) && databases.size() > 1))
 	{
 		totalIds = ids.size();
 	}
@@ -698,10 +706,13 @@ int main(int argc, char * argv[])
 	uInsert(parameters, ParametersPair(Parameters::kRtabmapWorkingDirectory(), workingDirectory));
 	uInsert(parameters, ParametersPair(Parameters::kRtabmapPublishStats(), "true")); // to log status below
 
-	if(!incrementalMemory && databases.size() > 1)
+	if((!incrementalMemory || appendMode ) && databases.size() > 1)
 	{
 		UFile::copy(databases.front(), outputDatabasePath);
-		printf("Parameter \"%s\" is set to false, initializing RTAB-Map with \"%s\" for localization...\n", Parameters::kMemIncrementalMemory().c_str(), databases.front().c_str());
+		if(!incrementalMemory)
+		{
+			printf("Parameter \"%s\" is set to false, initializing RTAB-Map with \"%s\" for localization...\n", Parameters::kMemIncrementalMemory().c_str(), databases.front().c_str());
+		}
 		databases.pop_front();
 		inputDatabasePath = uJoin(databases, ";");
 	}
