@@ -109,13 +109,13 @@ std::string UTILITE_EXP uNumber2Str(int number);
  * @param number the number to convert in a string
  * @return the string
  */
-std::string UTILITE_EXP uNumber2Str(float number);
+std::string UTILITE_EXP uNumber2Str(float number, int precision=6);
 /**
  * Convert a number (double) to a string.
  * @param number the number to convert in a string
  * @return the string
  */
-std::string UTILITE_EXP uNumber2Str(double number);
+std::string UTILITE_EXP uNumber2Str(double number, int precision=6);
 
 /**
  * Convert a string to an integer.

@@ -524,9 +524,9 @@ bool exportGPS(
 			for(std::map<int, GPS>::const_iterator iter=gpsValues.begin(); iter!=gpsValues.end(); ++iter)
 			{
 				values += uFormat("%s,%s,%s ",
-                                  uReplaceChar(uNumber2Str(iter->second.longitude()), ',', '.').c_str(),
-                                  uReplaceChar(uNumber2Str(iter->second.latitude()), ',', '.').c_str(),
-                                  uReplaceChar(uNumber2Str(iter->second.altitude()), ',', '.').c_str());
+                                  uReplaceChar(uNumber2Str(iter->second.longitude(), 8), ',', '.').c_str(),
+                                  uReplaceChar(uNumber2Str(iter->second.latitude(), 8), ',', '.').c_str(),
+                                  uReplaceChar(uNumber2Str(iter->second.altitude(), 8), ',', '.').c_str());
 			}
 
 			// switch argb (Qt format) -> abgr
@@ -580,13 +580,13 @@ bool exportGPS(
 			fprintf(fout, "# stamp longitude latitude altitude error bearing\n");
 			for(std::map<int, GPS>::const_iterator iter=gpsValues.begin(); iter!=gpsValues.end(); ++iter)
 			{
-				fprintf(fout, "%f %f %f %f %f %f\n",
-						iter->second.stamp(),
-						iter->second.longitude(),
-						iter->second.latitude(),
-						iter->second.altitude(),
-						iter->second.error(),
-						iter->second.bearing());
+				fprintf(fout, "%f %.*f %.*f %.*f %.*f %.*f\n",
+				    iter->second.stamp(),
+				    8, iter->second.longitude(),
+				    8, iter->second.latitude(),
+				    8, iter->second.altitude(),
+				    8, iter->second.error(),
+				    8, iter->second.bearing());
 			}
 		}
 
