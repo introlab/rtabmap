@@ -41,6 +41,7 @@
 * Ask a question on [RTAB-Map Forum](http://official-rtab-map-forum.206.s1.nabble.com/) (**New address! August 9, 2021**).
 * Post an [issue on GitHub](https://github.com/introlab/rtabmap/issues) 
 * For the loop closure detection approach, visit [RTAB-Map on IntRoLab website](https://introlab.3it.usherbrooke.ca/mediawiki-introlab/index.php/RTAB-Map)
+* Enabled [Github Discussions](https://github.com/introlab/rtabmap/discussions) (**New! November 2022**)
 
 **ROS**
 
