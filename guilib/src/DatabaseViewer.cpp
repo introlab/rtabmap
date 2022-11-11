@@ -3232,7 +3232,7 @@ void DatabaseViewer::regenerateSavedMap()
 	types.push_back("Default occupancy grid");
 	types.push_back("From OctoMap projection");
 	bool ok;
-	QString type = QInputDialog::getItem(this, tr("Which type?"), tr("Poses:"), types, 0, false, &ok);
+	QString type = QInputDialog::getItem(this, tr("Which type?"), tr("Type:"), types, 0, false, &ok);
 	if(!ok)
 	{
 		return;
