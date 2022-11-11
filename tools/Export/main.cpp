@@ -1290,7 +1290,7 @@ int main(int argc, char * argv[])
 				}
 			}
 		}
-		if(!depth.empty())
+		if(!depth.empty() && (depth.type() == CV_16UC1 || depth.type() == CV_32FC1))
 		{
 			cameraDepths.insert(std::make_pair(iter->first, depth));
 		}

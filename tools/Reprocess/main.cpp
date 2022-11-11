@@ -635,7 +635,7 @@ int main(int argc, char * argv[])
 				else
 				{
 					printf("[Warning] \"pub_loops\" option is used but parameter %s is true in the opened database. "
-							"Setting parameter %s to false for convenience to so that republished loop closure ids match.\n",
+							"Setting parameter %s to false for convenience so that republished loop closure ids match.\n",
 							Parameters::kMemGenerateIds().c_str(),
 							Parameters::kMemGenerateIds().c_str());
 					uInsert(parameters, ParametersPair(Parameters::kMemGenerateIds(), "false"));
