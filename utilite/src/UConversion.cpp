@@ -102,17 +102,23 @@ std::string uNumber2Str(int number)
 	return s.str();
 }
 
-std::string uNumber2Str(float number, int precision)
+std::string uNumber2Str(float number, int precision, bool fixed)
 {
 	std::stringstream s;
-	s << std::setprecision(precision) << std::fixed << number;
+	s << std::setprecision(precision);
+	if(fixed)
+		s << std::fixed;
+	s << number;
 	return s.str();
 }
 
-std::string uNumber2Str(double number, int precision)
+std::string uNumber2Str(double number, int precision, bool fixed)
 {
 	std::stringstream s;
-	s << std::setprecision(precision) << std::fixed << number;
+	s << std::setprecision(precision);
+	if(fixed)
+		s << std::fixed;
+	s << number;
 	return s.str();
 }
 
