@@ -2130,7 +2130,7 @@ int RTABMapApp::Render()
 				if(camera_!=0 && lastPoseEventTime_>0.0 && UTimer::now()-lastPoseEventTime_ > 1.0)
 				{
 					UERROR("TangoPoseEventNotReceived");
-					UEventsManager::post(new rtabmap::CameraInfoEvent(10, "TangoPoseEventNotReceived", uNumber2Str(UTimer::now()-lastPoseEventTime_)));
+					UEventsManager::post(new rtabmap::CameraInfoEvent(10, "TangoPoseEventNotReceived", uNumber2Str(UTimer::now()-lastPoseEventTime_, 6)));
 				}
 			}
 		}
