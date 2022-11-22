@@ -714,16 +714,19 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 			}
 			else
 			{
-				UWARN("GTSAM: Could not compute marginal covariance!");
+				UERROR("GTSAM: Could not compute marginal covariance!");
+				optimizedPoses.clear(); // Failed optimization
 			}
 		}
 		catch(gtsam::IndeterminantLinearSystemException & e)
 		{
-			UWARN("GTSAM exception caught: %s", e.what());
+			UERROR("GTSAM exception caught: %s", e.what());
+			optimizedPoses.clear(); // Failed optimization
 		}
 		catch(std::exception& e)
 		{
-			UWARN("GTSAM exception caught: %s", e.what());
+			UERROR("GTSAM exception caught: %s", e.what());
+			optimizedPoses.clear(); // Failed optimization
 		}
 
 		delete optimizer;
