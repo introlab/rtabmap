@@ -1021,7 +1021,7 @@ void Rtabmap::exportPoses(const std::string & path, bool optimized, bool global,
 		}
 
 		std::map<int, double> stamps;
-		if(format == 1)
+		if(format == 1 || format == 10 || format == 11)
 		{
 			for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter)
 			{
