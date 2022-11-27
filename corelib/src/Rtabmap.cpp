@@ -5415,7 +5415,7 @@ int Rtabmap::detectMoreLoopClosures(
 							UASSERT(signatures.find(to) != signatures.end());
 
 							Transform guess;
-							if(_proximityOdomGuess && uContains(poses, from) && uContains(poses, to))
+							if(_proximityBySpace && uContains(poses, from) && uContains(poses, to))
 							{
 								guess = poses.at(from).inverse() * poses.at(to);
 							}
