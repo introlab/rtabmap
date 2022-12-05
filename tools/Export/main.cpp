@@ -1483,6 +1483,46 @@ int main(int argc, char * argv[])
 				cameraModelsProj = cameraModels;
 			}
 
+			if(exportImages)
+			{
+				printf("Camera projection... projecting cloud to individual cameras (--images option)\n");
+				// projectCloudToCamera requires PCLPointCloud2
+				pcl::PCLPointCloud2::Ptr cloud2(new pcl::PCLPointCloud2);
+				if(!cloudToExport->empty())
+				{
+					pcl::toPCLPointCloud2(*cloudToExport, *cloud2);
+				}
+				else if(!cloudIToExport->empty())
+				{
+					pcl::toPCLPointCloud2(*cloudIToExport, *cloud2);
+				}
+
+				std::string dir = outputDirectory+"/"+baseName+"_depth_from_scan";
+				if(!UDirectory::exists(dir)) {
+					UDirectory::makeDir(dir);
+				}
+
+				for(std::map<int, std::vector<rtabmap::CameraModel> >::iterator iter=cameraModelsProj.begin();
+					iter!=cameraModelsProj.end();
+					++iter)
+				{
+					cv::Mat depth(iter->second.front().imageHeight(), iter->second.front().imageWidth()*iter->second.size(), CV_32FC1);
+					for(size_t i=0; i<iter->second.size(); ++i)
+					{
+						cv::Mat subDepth = util3d::projectCloudToCamera(
+								iter->second.at(i).imageSize(),
+								iter->second.at(i).K(),
+								cloud2,
+								robotPoses.at(iter->first) * iter->second.at(i).localTransform());
+						subDepth.copyTo(depth(cv::Range::all(), cv::Range(i*iter->second.front().imageWidth(), (i+1)*iter->second.front().imageWidth())));
+					}
+
+					depth = rtabmap::util2d::cvtDepthFromFloat(depth);
+					std::string outputPath=dir+"/"+(exportImagesId?uNumber2Str(iter->first):uFormat("%f",cameraStamps.at(iter->first)))+".png";
+					cv::imwrite(outputPath, depth);
+				}
+			}
+
 			cv::Mat projMask;
 			if(!cameraProjMask.empty())
 			{
@@ -1495,6 +1535,7 @@ int main(int argc, char * argv[])
 				}
 			}
 
+			printf("Camera projection... projecting cloud to all cameras\n");
 			pointToCamId.resize(!cloudToExport->empty()?cloudToExport->size():cloudIToExport->size());
 			std::vector<std::pair< std::pair<int, int>, pcl::PointXY> > pointToPixel;
 			if(!cloudToExport->empty())
