@@ -109,7 +109,7 @@ void segmentObstaclesFromGround(
 					{
 						Eigen::Vector4f min,max;
 						pcl::getMinMax3D(*cloud, *clusteredFlatSurfaces.at(i), min, max);
-						if(min[2]<maxGroundHeight && clusteredFlatSurfaces.size() > points)
+						if(min[2]<maxGroundHeight && clusteredFlatSurfaces.at(i)->size() > points)
 						{
 							points = clusteredFlatSurfaces.at(i)->size();
 							biggestFlatSurfaceIndex = i;
