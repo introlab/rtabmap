@@ -303,8 +303,8 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 							Eigen::Matrix<double, 6, 6> mgtsam = Eigen::Matrix<double, 6, 6>::Identity();
 							mgtsam.block(0,0,3,3) = information.block(3,3,3,3); // cov rotation
 							mgtsam.block(3,3,3,3) = information.block(0,0,3,3); // cov translation
-							mgtsam.block(0,3,3,3) = information.block(0,3,3,3); // off diagonal
-							mgtsam.block(3,0,3,3) = information.block(3,0,3,3); // off diagonal
+							mgtsam.block(0,3,3,3) = information.block(3,0,3,3); // off diagonal
+							mgtsam.block(3,0,3,3) = information.block(0,3,3,3); // off diagonal
 							gtsam::SharedNoiseModel model = gtsam::noiseModel::Gaussian::Information(mgtsam);
 
 							graph.add(gtsam::PriorFactor<gtsam::Pose3>(id1, gtsam::Pose3(iter->second.transform().toEigen4d()), model));
@@ -383,8 +383,8 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 							Eigen::Matrix<double, 6, 6> mgtsam = Eigen::Matrix<double, 6, 6>::Identity();
 							mgtsam.block(0,0,3,3) = information.block(3,3,3,3); // cov rotation
 							mgtsam.block(3,3,3,3) = information.block(0,0,3,3); // cov translation
-							mgtsam.block(0,3,3,3) = information.block(0,3,3,3); // off diagonal
-							mgtsam.block(3,0,3,3) = information.block(3,0,3,3); // off diagonal
+							mgtsam.block(0,3,3,3) = information.block(3,0,3,3); // off diagonal
+							mgtsam.block(3,0,3,3) = information.block(0,3,3,3); // off diagonal
 							gtsam::SharedNoiseModel model = gtsam::noiseModel::Gaussian::Information(mgtsam);
 							graph.add(gtsam::BetweenFactor<gtsam::Pose3>(id1, id2, gtsam::Pose3(t.toEigen4d()), model));
 						}
@@ -471,8 +471,8 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 					Eigen::Matrix<double, 6, 6> mgtsam = Eigen::Matrix<double, 6, 6>::Identity();
 					mgtsam.block(0,0,3,3) = information.block(3,3,3,3); // cov rotation
 					mgtsam.block(3,3,3,3) = information.block(0,0,3,3); // cov translation
-					mgtsam.block(0,3,3,3) = information.block(0,3,3,3); // off diagonal
-					mgtsam.block(3,0,3,3) = information.block(3,0,3,3); // off diagonal
+					mgtsam.block(0,3,3,3) = information.block(3,0,3,3); // off diagonal
+					mgtsam.block(3,0,3,3) = information.block(0,3,3,3); // off diagonal
 					gtsam::SharedNoiseModel model = gtsam::noiseModel::Gaussian::Information(mgtsam);
 
 #ifdef RTABMAP_VERTIGO
@@ -708,8 +708,8 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 				Eigen::Matrix<double, 6, 6> mgtsam = Eigen::Matrix<double, 6, 6>::Identity();
 				mgtsam.block(3,3,3,3) = info.block(0,0,3,3); // cov rotation
 				mgtsam.block(0,0,3,3) = info.block(3,3,3,3); // cov translation
-				mgtsam.block(0,3,3,3) = info.block(0,3,3,3); // off diagonal
-				mgtsam.block(3,0,3,3) = info.block(3,0,3,3); // off diagonal
+				mgtsam.block(0,3,3,3) = info.block(3,0,3,3); // off diagonal
+				mgtsam.block(3,0,3,3) = info.block(0,3,3,3); // off diagonal
 				memcpy(outputCovariance.data, mgtsam.data(), outputCovariance.total()*sizeof(double));
 			}
 			else
