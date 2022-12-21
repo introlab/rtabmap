@@ -490,9 +490,9 @@ Transform RegistrationVis::computeTransformationImpl(
 				bool guessSet = !guess.isIdentity() && !guess.isNull();
 				if(guessSet)
 				{
-					if(fromSignature.sensorData().cameraModels().size() == 1 || fromSignature.sensorData().cameraModels().size() == 1)
+					if(toSignature.sensorData().cameraModels().size() == 1 || toSignature.sensorData().stereoCameraModels().size() == 1)
 					{
-						Transform localTransform = fromSignature.sensorData().cameraModels().size()?fromSignature.sensorData().cameraModels()[0].localTransform():fromSignature.sensorData().stereoCameraModels()[0].left().localTransform();
+						Transform localTransform = toSignature.sensorData().cameraModels().size()?toSignature.sensorData().cameraModels()[0].localTransform():toSignature.sensorData().stereoCameraModels()[0].left().localTransform();
 						Transform guessCameraRef = (guess * localTransform).inverse();
 						cv::Mat R = (cv::Mat_<double>(3,3) <<
 								(double)guessCameraRef.r11(), (double)guessCameraRef.r12(), (double)guessCameraRef.r13(),
@@ -501,7 +501,7 @@ Transform RegistrationVis::computeTransformationImpl(
 						cv::Mat rvec(1,3, CV_64FC1);
 						cv::Rodrigues(R, rvec);
 						cv::Mat tvec = (cv::Mat_<double>(1,3) << (double)guessCameraRef.x(), (double)guessCameraRef.y(), (double)guessCameraRef.z());
-						cv::Mat K = fromSignature.sensorData().cameraModels().size()?fromSignature.sensorData().cameraModels()[0].K():fromSignature.sensorData().stereoCameraModels()[0].left().K();
+						cv::Mat K = toSignature.sensorData().cameraModels().size()?toSignature.sensorData().cameraModels()[0].K():toSignature.sensorData().stereoCameraModels()[0].left().K();
 						cv::projectPoints(kptsFrom3D, rvec, tvec, K, cv::Mat(), cornersTo);
 					}
 					else
