@@ -169,7 +169,7 @@ void CameraAREngine::close()
 	CameraMobile::close();
 }
 
-SensorData CameraAREngine::captureImage(CameraInfo * info)
+SensorData CameraAREngine::captureImage(SensorCaptureInfo * info)
 {
 	UScopeMutex lock(arSessionMutex_);
 	//LOGI("Capturing image...");

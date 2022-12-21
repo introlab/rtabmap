@@ -241,7 +241,7 @@ void CameraMobile::mainLoopBegin()
 
 void CameraMobile::mainLoop()
 {
-	CameraInfo info;
+	SensorCaptureInfo info;
 	SensorData data = this->captureImage(&info);
 
 	if(data.isValid() && !info.odomPose.isNull())
@@ -393,7 +393,7 @@ void CameraMobile::mainLoop()
 	}
 }
 
-SensorData CameraMobile::captureImage(CameraInfo * info)
+SensorData CameraMobile::captureImage(SensorCaptureInfo * info)
 {
 	if(info)
 	{

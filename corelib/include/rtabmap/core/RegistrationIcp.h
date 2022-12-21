@@ -68,6 +68,7 @@ private:
 	float _epsilon;
 	float _correspondenceRatio;
 	bool _force4DoF;
+	int _filtersEnabled;
 	bool _pointToPlane;
 	int _pointToPlaneK;
 	float _pointToPlaneRadius;

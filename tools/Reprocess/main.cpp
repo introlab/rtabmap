@@ -34,7 +34,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/OccupancyGrid.h>
 #include <rtabmap/core/Graph.h>
 #include <rtabmap/core/Memory.h>
-#include <rtabmap/core/CameraThread.h>
+#include <rtabmap/core/SensorCaptureThread.h>
 #include <rtabmap/utilite/UFile.h>
 #include <rtabmap/utilite/UDirectory.h>
 #include <rtabmap/utilite/UTimer.h>
@@ -760,9 +760,9 @@ int main(int argc, char * argv[])
 	printf("Reprocessing data of \"%s\"...\n", inputDatabasePath.c_str());
 	std::map<std::string, float> globalMapStats;
 	int processed = 0;
-	CameraInfo info;
+	SensorCaptureInfo info;
 	SensorData data = dbReader->takeImage(&info);
-	CameraThread camThread(dbReader, parameters); // take ownership of dbReader
+	SensorCaptureThread camThread(dbReader, parameters); // take ownership of dbReader
 	camThread.setScanParameters(scanFromDepth, scanDecimation, scanRangeMin, scanRangeMax, scanVoxelSize, scanNormalK, scanNormalRadius);
 	if(scanFromDepth)
 	{

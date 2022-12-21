@@ -78,7 +78,7 @@ public:
 	void imageCallback(AImageReader *reader);
 
 protected:
-	virtual SensorData captureImage(CameraInfo * info = 0); // should be called in opengl thread
+	virtual SensorData captureImage(SensorCaptureInfo * info = 0); // should be called in opengl thread
 	virtual void capturePoseOnly();
 
 private:

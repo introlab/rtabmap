@@ -25,9 +25,9 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include "rtabmap/core/CameraThread.h"
+#include "rtabmap/core/SensorCaptureThread.h"
 #include "rtabmap/core/Camera.h"
-#include "rtabmap/core/CameraEvent.h"
+#include "rtabmap/core/SensorEvent.h"
 #include "rtabmap/core/CameraRGBD.h"
 #include "rtabmap/core/util2d.h"
 #include "rtabmap/core/util3d.h"
@@ -47,7 +47,7 @@ namespace rtabmap
 {
 
 // ownership transferred
-CameraThread::CameraThread(Camera * camera, const ParametersMap & parameters) :
+SensorCaptureThread::SensorCaptureThread(SensorCapture * camera, const ParametersMap & parameters) :
 		_camera(camera),
 		_odomSensor(0),
 		_odomAsGt(false),
@@ -78,9 +78,9 @@ CameraThread::CameraThread(Camera * camera, const ParametersMap & parameters) :
 }
 
 // ownership transferred
-CameraThread::CameraThread(
-		Camera * camera,
-		Camera * odomSensor,
+SensorCaptureThread::SensorCaptureThread(
+		SensorCapture * camera,
+		SensorCapture * odomSensor,
 		const Transform & extrinsics,
 		double poseTimeOffset,
 		float poseScaleFactor,
@@ -121,8 +121,8 @@ CameraThread::CameraThread(
 }
 
 // ownership transferred
-CameraThread::CameraThread(
-		Camera * camera,
+SensorCaptureThread::SensorCaptureThread(
+		SensorCapture * camera,
 		bool odomAsGt,
 		const ParametersMap & parameters) :
 			_camera(camera),
@@ -155,7 +155,7 @@ CameraThread::CameraThread(
 	UDEBUG("_odomAsGt              =%s", _odomAsGt?"true":"false");
 }
 
-CameraThread::~CameraThread()
+SensorCaptureThread::~SensorCaptureThread()
 {
 	join(true);
 	delete _camera;
@@ -165,7 +165,7 @@ CameraThread::~CameraThread()
 	delete _imuFilter;
 }
 
-void CameraThread::setImageRate(float imageRate)
+void SensorCaptureThread::setImageRate(float imageRate)
 {
 	if(_camera)
 	{
@@ -173,7 +173,7 @@ void CameraThread::setImageRate(float imageRate)
 	}
 }
 
-void CameraThread::setDistortionModel(const std::string & path)
+void SensorCaptureThread::setDistortionModel(const std::string & path)
 {
 	if(_distortionModel)
 	{
@@ -193,7 +193,7 @@ void CameraThread::setDistortionModel(const std::string & path)
 	}
 }
 
-void CameraThread::enableBilateralFiltering(float sigmaS, float sigmaR)
+void SensorCaptureThread::enableBilateralFiltering(float sigmaS, float sigmaR)
 {
 	UASSERT(sigmaS > 0.0f && sigmaR > 0.0f);
 	_bilateralFiltering = true;
@@ -201,20 +201,20 @@ void CameraThread::enableBilateralFiltering(float sigmaS, float sigmaR)
 	_bilateralSigmaR = sigmaR;
 }
 
-void CameraThread::enableIMUFiltering(int filteringStrategy, const ParametersMap & parameters, bool baseFrameConversion)
+void SensorCaptureThread::enableIMUFiltering(int filteringStrategy, const ParametersMap & parameters, bool baseFrameConversion)
 {
 	delete _imuFilter;
 	_imuFilter = IMUFilter::create((IMUFilter::Type)filteringStrategy, parameters);
 	_imuBaseFrameConversion = baseFrameConversion;
 }
 
-void CameraThread::disableIMUFiltering()
+void SensorCaptureThread::disableIMUFiltering()
 {
 	delete _imuFilter;
 	_imuFilter = 0;
 }
 
-void CameraThread::setScanParameters(
+void SensorCaptureThread::setScanParameters(
 	bool fromDepth,
 	int downsampleStep,
 	float rangeMin,
@@ -227,7 +227,7 @@ void CameraThread::setScanParameters(
 	setScanParameters(fromDepth, downsampleStep, rangeMin, rangeMax, voxelSize, normalsK, normalsRadius, forceGroundNormalsUp?0.8f:0.0f);
 }
 
-void CameraThread::setScanParameters(
+void SensorCaptureThread::setScanParameters(
 			bool fromDepth,
 			int downsampleStep, // decimation of the depth image in case the scan is from depth image
 			float rangeMin,
@@ -247,21 +247,21 @@ void CameraThread::setScanParameters(
 	_scanForceGroundNormalsUp = groundNormalsUp;
 }
 
-bool CameraThread::odomProvided() const
+bool SensorCaptureThread::odomProvided() const
 {
 	return _camera && (_camera->odomProvided() || (_odomSensor && _odomSensor->odomProvided()));
 }
 
-void CameraThread::mainLoopBegin()
+void SensorCaptureThread::mainLoopBegin()
 {
 	ULogger::registerCurrentThread("Camera");
 	_camera->resetTimer();
 }
 
-void CameraThread::mainLoop()
+void SensorCaptureThread::mainLoop()
 {
 	UTimer totalTime;
-	CameraInfo info;
+	SensorCaptureInfo info;
 	SensorData data = _camera->takeImage(&info);
 
 	if(_odomSensor)
@@ -312,17 +312,17 @@ void CameraThread::mainLoop()
 		postUpdate(&data, &info);
 		info.cameraName = _camera->getSerial();
 		info.timeTotal = totalTime.ticks();
-		this->post(new CameraEvent(data, info));
+		this->post(new SensorEvent(data, info));
 	}
 	else if(!this->isKilled())
 	{
 		UWARN("no more images...");
 		this->kill();
-		this->post(new CameraEvent());
+		this->post(new SensorEvent());
 	}
 }
 
-void CameraThread::mainLoopKill()
+void SensorCaptureThread::mainLoopKill()
 {
 	if(dynamic_cast<CameraFreenect2*>(_camera) != 0)
 	{
@@ -347,7 +347,7 @@ void CameraThread::mainLoopKill()
 	}
 }
 
-void CameraThread::postUpdate(SensorData * dataPtr, CameraInfo * info) const
+void SensorCaptureThread::postUpdate(SensorData * dataPtr, SensorCaptureInfo * info) const
 {
 	UASSERT(dataPtr!=0);
 	SensorData & data = *dataPtr;

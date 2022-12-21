@@ -25,9 +25,9 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+#include <rtabmap/core/SensorEvent.h>
 #include "rtabmap/gui/CameraViewer.h"
 
-#include <rtabmap/core/CameraEvent.h>
 #include <rtabmap/core/util3d.h>
 #include <rtabmap/core/util2d.h>
 #include <rtabmap/core/util3d_filtering.h>
@@ -199,10 +199,10 @@ bool CameraViewer::handleEvent(UEvent * event)
 {
 	if(!pause_->isChecked())
 	{
-		if(event->getClassName().compare("CameraEvent") == 0)
+		if(event->getClassName().compare("") == 0)
 		{
-			CameraEvent * camEvent = (CameraEvent*)event;
-			if(camEvent->getCode() == CameraEvent::kCodeData)
+			SensorEvent * camEvent = (SensorEvent*)event;
+			if(camEvent->getCode() == SensorEvent::kCodeData)
 			{
 				if(camEvent->data().isValid())
 				{

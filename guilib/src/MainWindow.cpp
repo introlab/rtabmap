@@ -31,9 +31,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "rtabmap/core/CameraRGB.h"
 #include "rtabmap/core/CameraStereo.h"
-#include "rtabmap/core/CameraThread.h"
 #include "rtabmap/core/IMUThread.h"
-#include "rtabmap/core/CameraEvent.h"
 #include "rtabmap/core/DBReader.h"
 #include "rtabmap/core/Parameters.h"
 #include "rtabmap/core/ParamEvent.h"
@@ -113,6 +111,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pcl/io/ply_io.h>
 #include <pcl/filters/filter.h>
 #include <pcl/search/kdtree.h>
+#include <rtabmap/core/SensorCaptureThread.h>
+#include <rtabmap/core/SensorEvent.h>
 
 #ifdef RTABMAP_OCTOMAP
 #include <rtabmap/core/OctoMap.h>
@@ -551,8 +551,8 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent, bool sh
 	qRegisterMetaType<rtabmap::Statistics>("rtabmap::Statistics");
 	connect(this, SIGNAL(statsReceived(rtabmap::Statistics)), this, SLOT(processStats(rtabmap::Statistics)));
 
-	qRegisterMetaType<rtabmap::CameraInfo>("rtabmap::CameraInfo");
-	connect(this, SIGNAL(cameraInfoReceived(rtabmap::CameraInfo)), this, SLOT(processCameraInfo(rtabmap::CameraInfo)));
+	qRegisterMetaType<rtabmap::SensorCaptureInfo>("rtabmap::SensorCameraInfo");
+	connect(this, SIGNAL(cameraInfoReceived(rtabmap::SensorCaptureInfo)), this, SLOT(processCameraInfo(rtabmap::SensorCaptureInfo)));
 
 	qRegisterMetaType<rtabmap::OdometryEvent>("rtabmap::OdometryEvent");
 	connect(this, SIGNAL(odometryReceived(rtabmap::OdometryEvent, bool)), this, SLOT(processOdometry(rtabmap::OdometryEvent, bool)));
@@ -907,10 +907,10 @@ bool MainWindow::handleEvent(UEvent* anEvent)
 	{
 		Q_EMIT rtabmapGoalStatusEventReceived(anEvent->getCode());
 	}
-	else if(anEvent->getClassName().compare("CameraEvent") == 0)
+	else if(anEvent->getClassName().compare("SensorEvent") == 0)
 	{
-		CameraEvent * cameraEvent = (CameraEvent*)anEvent;
-		if(cameraEvent->getCode() == CameraEvent::kCodeNoMoreImages)
+		SensorEvent * sensorEvent = (SensorEvent*)anEvent;
+		if(sensorEvent->getCode() == SensorEvent::kCodeNoMoreImages)
 		{
 			if(_preferencesDialog->beepOnPause())
 			{
@@ -920,15 +920,15 @@ bool MainWindow::handleEvent(UEvent* anEvent)
 		}
 		else
 		{
-			Q_EMIT cameraInfoReceived(cameraEvent->info());
+			Q_EMIT cameraInfoReceived(sensorEvent->info());
 			if (_odomThread == 0 && (_camera->odomProvided()) && _preferencesDialog->isRGBDMode())
 			{
 				OdometryInfo odomInfo;
-				odomInfo.reg.covariance = cameraEvent->info().odomCovariance;
+				odomInfo.reg.covariance = sensorEvent->info().odomCovariance;
 				if (!_processingOdometry && !_processingStatistics)
 				{
 					_processingOdometry = true; // if we receive too many odometry events!
-					OdometryEvent tmp(cameraEvent->data(), cameraEvent->info().odomPose, odomInfo);
+					OdometryEvent tmp(sensorEvent->data(), sensorEvent->info().odomPose, odomInfo);
 					Q_EMIT odometryReceived(tmp, false);
 				}
 				else
@@ -978,7 +978,7 @@ bool MainWindow::handleEvent(UEvent* anEvent)
 	return false;
 }
 
-void MainWindow::processCameraInfo(const rtabmap::CameraInfo & info)
+void MainWindow::processCameraInfo(const rtabmap::SensorCaptureInfo & info)
 {
 	if(_firstStamp == 0.0)
 	{
@@ -5731,11 +5731,11 @@ void MainWindow::startDetection()
 
 	if(odomSensor)
 	{
-		_camera = new CameraThread(camera, odomSensor, extrinsics, poseTimeOffset, scaleFactor, _preferencesDialog->isOdomSensorAsGt(), parameters);
+		_camera = new SensorCaptureThread(camera, odomSensor, extrinsics, poseTimeOffset, scaleFactor, _preferencesDialog->isOdomSensorAsGt(), parameters);
 	}
 	else
 	{
-		_camera = new CameraThread(camera, _preferencesDialog->isOdomSensorAsGt(), parameters);
+		_camera = new SensorCaptureThread(camera, _preferencesDialog->isOdomSensorAsGt(), parameters);
 	}
 	_camera->setMirroringEnabled(_preferencesDialog->isSourceMirroring());
 	_camera->setColorOnly(_preferencesDialog->isSourceRGBDColorOnly());
@@ -5857,8 +5857,8 @@ void MainWindow::startDetection()
 				_odomThread = new OdometryThread(odom, _preferencesDialog->getOdomBufferSize());
 
 				UEventsManager::addHandler(_odomThread);
-				UEventsManager::createPipe(_camera, _odomThread, "CameraEvent");
-				UEventsManager::createPipe(_camera, this, "CameraEvent");
+				UEventsManager::createPipe(_camera, _odomThread, "SensorEvent");
+				UEventsManager::createPipe(_camera, this, "SensorEvent");
 				if(_imuThread)
 				{
 					UEventsManager::createPipe(_imuThread, _odomThread, "IMUEvent");
@@ -5870,7 +5870,7 @@ void MainWindow::startDetection()
 
 	if(_dataRecorder && _camera && _odomThread)
 	{
-		UEventsManager::createPipe(_camera, _dataRecorder, "CameraEvent");
+		UEventsManager::createPipe(_camera, _dataRecorder, "SensorEvent");
 	}
 
 	_lastOdomPose.setNull();
@@ -8146,7 +8146,7 @@ void MainWindow::dataRecorder()
 					_dataRecorder->registerToEventsManager();
 					if(_camera)
 					{
-						UEventsManager::createPipe(_camera, _dataRecorder, "CameraEvent");
+						UEventsManager::createPipe(_camera, _dataRecorder, "SensorEvent");
 					}
 					_ui->actionData_recorder->setEnabled(false);
 				}

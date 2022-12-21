@@ -260,7 +260,7 @@ std::string CameraStereoFlyCapture2::getSerial() const
 	return "";
 }
 
-SensorData CameraStereoFlyCapture2::captureImage(CameraInfo * info)
+SensorData CameraStereoFlyCapture2::captureImage(SensorCaptureInfo * info)
 {
 	SensorData data;
 #ifdef RTABMAP_FLYCAPTURE2

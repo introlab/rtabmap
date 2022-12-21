@@ -334,7 +334,7 @@ void CameraARCore::setScreenRotationAndSize(ScreenRotation colorCameraToDisplayR
 	}
 }
 
-SensorData CameraARCore::captureImage(CameraInfo * info)
+SensorData CameraARCore::captureImage(SensorCaptureInfo * info)
 {
 	UScopeMutex lock(arSessionMutex_);
 	//LOGI("Capturing image...");

@@ -598,7 +598,7 @@ void CameraMyntEye::getPoseAndIMU(
 }
 #endif
 
-SensorData CameraMyntEye::captureImage(CameraInfo * info)
+SensorData CameraMyntEye::captureImage(SensorCaptureInfo * info)
 {
 	SensorData data;
 #ifdef RTABMAP_MYNTEYE

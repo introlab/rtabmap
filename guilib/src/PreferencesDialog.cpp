@@ -55,7 +55,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/Odometry.h"
 #include "rtabmap/core/OdometryThread.h"
 #include "rtabmap/core/CameraRGBD.h"
-#include "rtabmap/core/CameraThread.h"
 #include "rtabmap/core/CameraRGB.h"
 #include "rtabmap/core/CameraStereo.h"
 #include "rtabmap/core/IMUThread.h"
@@ -84,6 +83,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/utilite/UPlot.h"
 
 #include <opencv2/opencv_modules.hpp>
+#include <rtabmap/core/SensorCaptureThread.h>
 #if CV_MAJOR_VERSION < 3
 #ifdef HAVE_OPENCV_GPU
   #include <opencv2/gpu/gpu.hpp>
@@ -6657,7 +6657,7 @@ void PreferencesDialog::testOdometry()
 	odomViewer->resize(1280, 480+QPushButton().minimumHeight());
 	odomViewer->registerToEventsManager();
 
-	CameraThread cameraThread(camera, this->getAllParameters()); // take ownership of camera
+	SensorCaptureThread cameraThread(camera, this->getAllParameters()); // take ownership of camera
 	cameraThread.setMirroringEnabled(isSourceMirroring());
 	cameraThread.setColorOnly(_ui->checkbox_rgbd_colorOnly->isChecked());
 	cameraThread.setImageDecimation(_ui->spinBox_source_imageDecimation->value());
@@ -6690,7 +6690,7 @@ void PreferencesDialog::testOdometry()
 		}
 	}
 
-	UEventsManager::createPipe(&cameraThread, &odomThread, "CameraEvent");
+	UEventsManager::createPipe(&cameraThread, &odomThread, "SensorEvent");
 	if(imuThread)
 	{
 		UEventsManager::createPipe(imuThread, &odomThread, "IMUEvent");
@@ -6728,7 +6728,7 @@ void PreferencesDialog::testCamera()
 	Camera * camera = this->createCamera();
 	if(camera)
 	{
-		CameraThread cameraThread(camera, this->getAllParameters());
+		SensorCaptureThread cameraThread(camera, this->getAllParameters());
 		cameraThread.setMirroringEnabled(isSourceMirroring());
 		cameraThread.setColorOnly(_ui->checkbox_rgbd_colorOnly->isChecked());
 		cameraThread.setImageDecimation(_ui->spinBox_source_imageDecimation->value());
@@ -6760,7 +6760,7 @@ void PreferencesDialog::testCamera()
 				cameraThread.setDistortionModel(_ui->lineEdit_source_distortionModel->text().toStdString());
 			}
 		}
-		UEventsManager::createPipe(&cameraThread, window, "CameraEvent");
+		UEventsManager::createPipe(&cameraThread, window, "SensorEvent");
 
 		cameraThread.start();
 		window->exec();
@@ -6824,8 +6824,8 @@ void PreferencesDialog::calibrate()
 				_calibrationDialog->setStereoMode(false); // this forces restart
 				_calibrationDialog->setCameraName(QString(camera->getSerial().c_str())+"_rgb");
 				_calibrationDialog->registerToEventsManager();
-				CameraThread cameraThread(camera, this->getAllParameters());
-				UEventsManager::createPipe(&cameraThread, _calibrationDialog, "CameraEvent");
+				SensorCaptureThread cameraThread(camera, this->getAllParameters());
+				UEventsManager::createPipe(&cameraThread, _calibrationDialog, "SensorEvent");
 				cameraThread.start();
 				_calibrationDialog->exec();
 				_calibrationDialog->unregisterFromEventsManager();
@@ -6852,8 +6852,8 @@ void PreferencesDialog::calibrate()
 					_calibrationDialog->setStereoMode(false); // this forces restart
 					_calibrationDialog->setCameraName(QString(camera->getSerial().c_str())+"_depth");
 					_calibrationDialog->registerToEventsManager();
-					CameraThread cameraThread(camera, this->getAllParameters());
-					UEventsManager::createPipe(&cameraThread, _calibrationDialog, "CameraEvent");
+					SensorCaptureThread cameraThread(camera, this->getAllParameters());
+					UEventsManager::createPipe(&cameraThread, _calibrationDialog, "SensorEvent");
 					cameraThread.start();
 					_calibrationDialog->exec();
 					_calibrationDialog->unregisterFromEventsManager();
@@ -6981,8 +6981,8 @@ void PreferencesDialog::calibrate()
 		_calibrationDialog->setSavingDirectory(this->getCameraInfoDir());
 		_calibrationDialog->registerToEventsManager();
 
-		CameraThread cameraThread(camera, this->getAllParameters());
-		UEventsManager::createPipe(&cameraThread, _calibrationDialog, "CameraEvent");
+		SensorCaptureThread cameraThread(camera, this->getAllParameters());
+		UEventsManager::createPipe(&cameraThread, _calibrationDialog, "SensorEvent");
 
 		cameraThread.start();
 

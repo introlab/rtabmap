@@ -65,6 +65,9 @@ std::string LaserScan::formatName(const Format & format)
 		case kXYZRGBNormal:
 			name = "XYZRGBNormal";
 			break;
+		case kXYZIT:
+			name = "XYZIT";
+			break;
 		default:
 			name = "Unknown";
 			break;
@@ -88,6 +91,7 @@ int LaserScan::channels(const Format & format)
 			channels = 4;
 			break;
 		case kXYNormal:
+		case kXYZIT:
 			channels = 5;
 			break;
 		case kXYZNormal:
@@ -119,7 +123,11 @@ bool LaserScan::isScanHasRGB(const Format & format)
 }
 bool LaserScan::isScanHasIntensity(const Format & format)
 {
-	return format==kXYZI || format==kXYZINormal || format == kXYI || format == kXYINormal;
+	return format==kXYZI || format==kXYZINormal || format == kXYI || format == kXYINormal || format==kXYZIT;
+}
+bool LaserScan::isScanHasTime(const Format & format)
+{
+	return format==kXYZIT;
 }
 
 LaserScan LaserScan::backwardCompatibility(
@@ -213,7 +221,14 @@ LaserScan::LaserScan(
 		const LaserScan & scan,
 		int maxPoints,
 		float maxRange,
-		const Transform & localTransform)
+		const Transform & localTransform) :
+	format_(kUnknown),
+	maxPoints_(0),
+	rangeMin_(0),
+	rangeMax_(0),
+	angleMin_(0),
+	angleMax_(0),
+	angleIncrement_(0)
 {
 	UASSERT(scan.empty() || scan.format() != kUnknown);
 	init(scan.data(), scan.format(), 0, maxRange, 0, 0, 0, maxPoints, localTransform);
@@ -224,7 +239,14 @@ LaserScan::LaserScan(
 		int maxPoints,
 		float maxRange,
 		Format format,
-		const Transform & localTransform)
+		const Transform & localTransform) :
+	format_(kUnknown),
+	maxPoints_(0),
+	rangeMin_(0),
+	rangeMax_(0),
+	angleMin_(0),
+	angleMax_(0),
+	angleIncrement_(0)
 {
 	init(scan.data(), format, 0, maxRange, 0, 0, 0, maxPoints, localTransform);
 }
@@ -234,7 +256,14 @@ LaserScan::LaserScan(
 		int maxPoints,
 		float maxRange,
 		Format format,
-		const Transform & localTransform)
+		const Transform & localTransform) :
+	format_(kUnknown),
+	maxPoints_(0),
+	rangeMin_(0),
+	rangeMax_(0),
+	angleMin_(0),
+	angleMax_(0),
+	angleIncrement_(0)
 {
 	init(data, format, 0, maxRange, 0, 0, 0, maxPoints, localTransform);
 }
@@ -246,7 +275,14 @@ LaserScan::LaserScan(
 		float angleMin,
 		float angleMax,
 		float angleIncrement,
-		const Transform & localTransform)
+		const Transform & localTransform) :
+	format_(kUnknown),
+	maxPoints_(0),
+	rangeMin_(0),
+	rangeMax_(0),
+	angleMin_(0),
+	angleMax_(0),
+	angleIncrement_(0)
 {
 	UASSERT(scan.empty() || scan.format() != kUnknown);
 	init(scan.data(), scan.format(), minRange, maxRange, angleMin, angleMax, angleIncrement, 0, localTransform);
@@ -260,7 +296,14 @@ LaserScan::LaserScan(
 		float angleMin,
 		float angleMax,
 		float angleIncrement,
-		const Transform & localTransform)
+		const Transform & localTransform) :
+	format_(kUnknown),
+	maxPoints_(0),
+	rangeMin_(0),
+	rangeMax_(0),
+	angleMin_(0),
+	angleMax_(0),
+	angleIncrement_(0)
 {
 	init(scan.data(), format, minRange, maxRange, angleMin, angleMax, angleIncrement, 0, localTransform);
 }
@@ -273,7 +316,14 @@ LaserScan::LaserScan(
 		float angleMin,
 		float angleMax,
 		float angleIncrement,
-		const Transform & localTransform)
+		const Transform & localTransform) :
+	format_(kUnknown),
+	maxPoints_(0),
+	rangeMin_(0),
+	rangeMax_(0),
+	angleMin_(0),
+	angleMax_(0),
+	angleIncrement_(0)
 {
 	init(data, format, minRange, maxRange, angleMin, angleMax, angleIncrement, 0, localTransform);
 }
@@ -289,8 +339,7 @@ void LaserScan::init(
 		int maxPoints,
 		const Transform & localTransform)
 {
-	UASSERT(data.empty() || data.rows == 1);
-	UASSERT(data.empty() || data.type() == CV_8UC1 || data.type() == CV_32FC2 || data.type() == CV_32FC3 || data.type() == CV_32FC(4) || data.type() == CV_32FC(5) || data.type() == CV_32FC(6)  || data.type() == CV_32FC(7));
+	UASSERT(data.empty() || (data.type() == CV_8UC1 && data.rows == 1) || data.type() == CV_32FC2 || data.type() == CV_32FC3 || data.type() == CV_32FC(4) || data.type() == CV_32FC(5) || data.type() == CV_32FC(6)  || data.type() == CV_32FC(7));
 	UASSERT(!localTransform.isNull());
 
 	bool is2D = false;
@@ -307,6 +356,10 @@ void LaserScan::init(
 		// 3D scan
 		UASSERT(rangeMax>=rangeMin);
 		maxPoints_ = maxPoints;
+		if(maxPoints_ == 0 && data.rows>1)
+		{
+			maxPoints_ = data.rows * data.cols;
+		}
 	}
 
 	data_ = data;
@@ -320,18 +373,18 @@ void LaserScan::init(
 
 	if(!data.empty() && !isCompressed())
 	{
-		if(is2D && data_.cols > maxPoints_)
+		if(is2D && (int)data_.total() > maxPoints_)
 		{
-			UWARN("The number of points (%d) in the scan is over the maximum "
+			UWARN("The number of points (%ld) in the scan is over the maximum "
 				  "points (%d) defined by angle settings (min=%f max=%f inc=%f). "
 				  "The scan info may be wrong!",
-				  data_.cols, maxPoints_, angleMin_, angleMax_, angleIncrement_);
+				  data_.total(), maxPoints_, angleMin_, angleMax_, angleIncrement_);
 		}
-		else if(!is2D && maxPoints_>0 && data_.cols > maxPoints_)
+		else if(!is2D && maxPoints_>0 && (int)data_.total() > maxPoints_)
 		{
-			UDEBUG("The number of points (%d) in the scan is over the maximum "
+			UDEBUG("The number of points (%ld) in the scan is over the maximum "
 				  "points (%d) defined by max points setting.",
-				  data_.cols, maxPoints_);
+				  data_.total(), maxPoints_);
 		}
 
 		if(format == kUnknown)
@@ -350,7 +403,7 @@ void LaserScan::init(
 			UASSERT_MSG(data.channels() != 2 || (data.channels() == 2 && format == kXY), uFormat("format=%s", LaserScan::formatName(format).c_str()).c_str());
 			UASSERT_MSG(data.channels() != 3 || (data.channels() == 3 && (format == kXYZ || format == kXYI)), uFormat("format=%s", LaserScan::formatName(format).c_str()).c_str());
 			UASSERT_MSG(data.channels() != 4 || (data.channels() == 4 && (format == kXYZI || format == kXYZRGB)), uFormat("format=%s", LaserScan::formatName(format).c_str()).c_str());
-			UASSERT_MSG(data.channels() != 5 || (data.channels() == 5 && (format == kXYNormal)), uFormat("format=%s", LaserScan::formatName(format).c_str()).c_str());
+			UASSERT_MSG(data.channels() != 5 || (data.channels() == 5 && (format == kXYNormal || format == kXYZIT)), uFormat("format=%s", LaserScan::formatName(format).c_str()).c_str());
 			UASSERT_MSG(data.channels() != 6 || (data.channels() == 6 && (format == kXYINormal || format == kXYZNormal)), uFormat("format=%s", LaserScan::formatName(format).c_str()).c_str());
 			UASSERT_MSG(data.channels() != 7 || (data.channels() == 7 && (format == kXYZRGBNormal || format == kXYZINormal)), uFormat("format=%s", LaserScan::formatName(format).c_str()).c_str());
 		}
@@ -366,11 +419,36 @@ LaserScan LaserScan::clone() const
 	return LaserScan(data_.clone(), maxPoints_, rangeMax_, format_, localTransform_.clone());
 }
 
+LaserScan LaserScan::densify() const
+{
+	if(!isOrganized())
+	{
+		return *this;
+	}
+	cv::Mat output(1, data_.total(), data_.type());
+	int oi = 0;
+	for(int i=0; i<data_.rows; ++i)
+	{
+		for(int j=0; j<data_.cols; ++j)
+		{
+			const float * ptr = data_.ptr<float>(i, j);
+			float * outputPtr = output.ptr<float>(0, oi);
+			if(! (std::isnan(ptr[0]) || std::isnan(ptr[1]) || (!is2d() && std::isnan(ptr[2]))))
+			{
+				memcpy(outputPtr, ptr, data_.elemSize());
+				++oi;
+			}
+		}
+	}
+	return LaserScan(cv::Mat(output, cv::Range::all(), cv::Range(0,oi)), maxPoints_, rangeMax_, format_, localTransform_.clone());
+}
+
 float & LaserScan::field(unsigned int pointIndex, unsigned int channelOffset)
 {
-	UASSERT(pointIndex < (unsigned int)data_.cols);
+	UASSERT(pointIndex < (unsigned int)data_.total());
 	UASSERT(channelOffset < (unsigned int)data_.channels());
-	return data_.ptr<float>(0, pointIndex)[channelOffset];
+	unsigned int row = pointIndex / data_.cols;
+	return data_.ptr<float>(row, pointIndex - row * data_.cols)[channelOffset];
 }
 
 LaserScan & LaserScan::operator+=(const LaserScan & scan)
@@ -381,7 +459,7 @@ LaserScan & LaserScan::operator+=(const LaserScan & scan)
 
 LaserScan LaserScan::operator+(const LaserScan & scan)
 {
-	UASSERT(this->empty() || scan.empty() || this->format() == scan.format());
+	UASSERT(this->empty() || scan.empty() || (this->format() == scan.format() && !this->isOrganized() && !scan.isOrganized()));
 	LaserScan dest;
 	if(!scan.empty())
 	{

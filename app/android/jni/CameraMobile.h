@@ -122,7 +122,7 @@ public:
     const cv::Mat & getOcclusionImage(CameraModel * model=0) const {if(model)*model=occlusionModel_; return occlusionImage_; }
 
 protected:
-	virtual SensorData captureImage(CameraInfo * info = 0);
+	virtual SensorData captureImage(SensorCaptureInfo * info = 0);
 	virtual void capturePoseOnly() {}
 
 	virtual void mainLoopBegin();

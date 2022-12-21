@@ -42,8 +42,8 @@ class DiscreteDepthDistortionModel;
 namespace rtabmap
 {
 
-class Camera;
-class CameraInfo;
+class SensorCapture;
+class SensorCaptureInfo;
 class SensorData;
 class StereoDense;
 class IMUFilter;
@@ -52,29 +52,29 @@ class IMUFilter;
  * Class CameraThread
  *
  */
-class RTABMAP_EXP CameraThread :
+class RTABMAP_EXP SensorCaptureThread :
 	public UThread,
 	public UEventsSender
 {
 public:
 	// ownership transferred
-	CameraThread(Camera * camera, const ParametersMap & parameters = ParametersMap());
+	SensorCaptureThread(SensorCapture * camera, const ParametersMap & parameters = ParametersMap());
 	/**
 	 * @param camera the camera to take images from
 	 * @param odomSensor an odometry sensor to get a pose
 	 * @param extrinsics the static transform between odometry sensor's left lens frame to camera's left lens frame
 	 */
-	CameraThread(Camera * camera,
-			Camera * odomSensor,
+	SensorCaptureThread(SensorCapture * camera,
+			SensorCapture * odomSensor,
 			const Transform & extrinsics,
 			double poseTimeOffset = 0.0,
 			float poseScaleFactor = 1.0f,
 			bool odomAsGt = false,
 			const ParametersMap & parameters = ParametersMap());
-	CameraThread(Camera * camera,
+	SensorCaptureThread(SensorCapture * camera,
 				bool odomAsGt,
 				const ParametersMap & parameters = ParametersMap());
-	virtual ~CameraThread();
+	virtual ~SensorCaptureThread();
 
 	void setMirroringEnabled(bool enabled) {_mirroring = enabled;}
 	void setStereoExposureCompensation(bool enabled) {_stereoExposureCompensation = enabled;}
@@ -107,15 +107,15 @@ public:
 			int normalsRadius = 0.0f,
 			float groundNormalsUp = 0.0f);
 
-	void postUpdate(SensorData * data, CameraInfo * info = 0) const;
+	void postUpdate(SensorData * data, SensorCaptureInfo * info = 0) const;
 
 	//getters
 	bool isPaused() const {return !this->isRunning();}
 	bool isCapturing() const {return this->isRunning();}
 	bool odomProvided() const;
 
-	Camera * camera() {return _camera;} // return null if not set, valid until CameraThread is deleted
-	Camera * odomSensor() {return _odomSensor;} // return null if not set, valid until CameraThread is deleted
+	SensorCapture * camera() {return _camera;} // return null if not set, valid until CameraThread is deleted
+	SensorCapture * odomSensor() {return _odomSensor;} // return null if not set, valid until CameraThread is deleted
 
 private:
 	virtual void mainLoopBegin();
@@ -123,8 +123,8 @@ private:
 	virtual void mainLoopKill();
 
 private:
-	Camera * _camera;
-	Camera * _odomSensor;
+	SensorCapture * _camera;
+	SensorCapture * _odomSensor;
 	Transform _extrinsicsOdomToCamera;
 	bool _odomAsGt;
 	double _poseTimeOffset;

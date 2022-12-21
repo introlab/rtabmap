@@ -391,6 +391,19 @@ RTABMAP_DEPRECATED(pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP loadCloud(
 		int downsampleStep = 1,
 		float voxelSize = 0.0f), "Use loadScan() instead.");
 
+/**
+ * @brief Lidar deskewing
+ * @param input lidar, format should have time channel
+ * @param input stamp of the lidar
+ * @param velocity in base frame
+ * @param velocity stamp at which it has been computed
+ * @return lidar deskewed
+ */
+LaserScan RTABMAP_EXP deskew(
+		const LaserScan & input,
+		double inputStamp,
+		const rtabmap::Transform & velocity);
+
 } // namespace util3d
 } // namespace rtabmap
 

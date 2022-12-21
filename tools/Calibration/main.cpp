@@ -25,10 +25,10 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+#include <rtabmap/core/SensorCaptureThread.h>
 #include "rtabmap/core/CameraRGB.h"
 #include "rtabmap/core/CameraRGBD.h"
 #include "rtabmap/core/CameraStereo.h"
-#include "rtabmap/core/CameraThread.h"
 #include "rtabmap/utilite/ULogger.h"
 #include "rtabmap/utilite/UConversion.h"
 #include "rtabmap/gui/CalibrationDialog.h"
@@ -271,7 +271,7 @@ int main(int argc, char * argv[])
 		UFATAL("Calibration for driver %d not available.", driver);
 	}
 
-	rtabmap::CameraThread * cameraThread = 0;
+	rtabmap::SensorCaptureThread * cameraThread = 0;
 
 	if(camera)
 	{
@@ -281,7 +281,7 @@ int main(int argc, char * argv[])
 			delete camera;
 			exit(1);
 		}
-		cameraThread = new rtabmap::CameraThread(camera);
+		cameraThread = new rtabmap::SensorCaptureThread(camera);
 	}
 
 	dialog.registerToEventsManager();

@@ -27,96 +27,16 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "rtabmap/core/Camera.h"
 
-#include <rtabmap/utilite/UEventsManager.h>
-#include <rtabmap/utilite/UConversion.h>
 #include <rtabmap/utilite/UStl.h>
-#include <rtabmap/utilite/UConversion.h>
 #include <rtabmap/utilite/UFile.h>
 #include <rtabmap/utilite/UDirectory.h>
-#include <rtabmap/utilite/UTimer.h>
-
-#include <opencv2/imgproc/imgproc.hpp>
-
-#include <iostream>
-#include <cmath>
 
 namespace rtabmap
 {
 
-Camera::Camera(float imageRate, const Transform & localTransform) :
-	_imageRate(imageRate),
-	_localTransform(localTransform*CameraModel::opticalRotation()),
-	_targetImageSize(0,0),
-	_frameRateTimer(new UTimer()),
-	_seq(0)
-{
-}
-
-Camera::~Camera()
-{
-	UDEBUG("");
-	delete _frameRateTimer;
-	UDEBUG("");
-}
-
-void Camera::resetTimer()
-{
-	_frameRateTimer->start();
-}
-
 bool Camera::initFromFile(const std::string & calibrationPath)
 {
 	return init(UDirectory::getDir(calibrationPath), uSplit(UFile::getName(calibrationPath), '.').front());
-}
-
-SensorData Camera::takeImage(CameraInfo * info)
-{
-	bool warnFrameRateTooHigh = false;
-	float actualFrameRate = 0;
-	float imageRate = _imageRate;
-	if(imageRate>0)
-	{
-		int sleepTime = (1000.0f/imageRate - 1000.0f*_frameRateTimer->getElapsedTime());
-		if(sleepTime > 2)
-		{
-			uSleep(sleepTime-2);
-		}
-		else if(sleepTime < 0)
-		{
-			warnFrameRateTooHigh = true;
-			actualFrameRate = 1.0/(_frameRateTimer->getElapsedTime());
-		}
-
-		// Add precision at the cost of a small overhead
-		while(_frameRateTimer->getElapsedTime() < 1.0/double(imageRate)-0.000001)
-		{
-			//
-		}
-
-		double slept = _frameRateTimer->getElapsedTime();
-		_frameRateTimer->start();
-		UDEBUG("slept=%fs vs target=%fs", slept, 1.0/double(imageRate));
-	}
-
-	UTimer timer;
-	SensorData data = this->captureImage(info);
-	double captureTime = timer.ticks();
-	if(warnFrameRateTooHigh)
-	{
-		UWARN("Camera: Cannot reach target image rate %f Hz, current rate is %f Hz and capture time = %f s.",
-				imageRate, actualFrameRate, captureTime);
-	}
-	else
-	{
-		UDEBUG("Time capturing image = %fs", captureTime);
-	}
-	if(info)
-	{
-		info->id = data.id();
-		info->stamp = data.stamp();
-		info->timeCapture = captureTime;
-	}
-	return data;
 }
 
 } // namespace rtabmap

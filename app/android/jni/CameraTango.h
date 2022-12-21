@@ -61,7 +61,7 @@ public:
 	void tangoEventReceived(int type, const char * key, const char * value);
 
 protected:
-	virtual SensorData captureImage(CameraInfo * info = 0);
+	virtual SensorData captureImage(SensorCaptureInfo * info = 0);
 
 private:
 	rtabmap::Transform getPoseAtTimestamp(double timestamp);

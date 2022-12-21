@@ -617,7 +617,7 @@ bool CameraStereoZed::getPose(double stamp, Transform & pose, cv::Mat & covarian
 	return false;
 }
 
-SensorData CameraStereoZed::captureImage(CameraInfo * info)
+SensorData CameraStereoZed::captureImage(SensorCaptureInfo * info)
 {
 	SensorData data;
 #ifdef RTABMAP_ZED

@@ -29,7 +29,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/Odometry.h>
 #include "rtabmap/core/Rtabmap.h"
 #include "rtabmap/core/CameraStereo.h"
-#include "rtabmap/core/CameraThread.h"
 #include "rtabmap/core/Graph.h"
 #include "rtabmap/core/OdometryInfo.h"
 #include "rtabmap/core/OdometryEvent.h"
@@ -43,6 +42,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/utilite/UProcessInfo.h"
 #include "rtabmap/core/IMUFilter.h"
 #include <pcl/common/common.h>
+#include <rtabmap/core/SensorCaptureThread.h>
 #include <yaml-cpp/yaml.h>
 #include <stdio.h>
 #include <signal.h>
@@ -280,7 +280,7 @@ int main(int argc, char * argv[])
 
 	// We use CameraThread only to use postUpdate() method
 	Transform baseToImu(0,0,1,0, 0,-1,0,0, 1,0,0,0);
-	CameraThread cameraThread(new
+	SensorCaptureThread cameraThread(new
 		CameraStereoImages(
 				pathLeftImages,
 				pathRightImages,
@@ -387,7 +387,7 @@ int main(int argc, char * argv[])
 
 		UTimer totalTime;
 		UTimer timer;
-		CameraInfo cameraInfo;
+		SensorCaptureInfo cameraInfo;
 		UDEBUG("");
 		SensorData data = cameraThread.camera()->takeImage(&cameraInfo);
 		UDEBUG("");
@@ -558,7 +558,7 @@ int main(int argc, char * argv[])
 				fflush(stdout);
 			}
 
-			cameraInfo = CameraInfo();
+			cameraInfo = SensorCaptureInfo();
 			timer.restart();
 			data = cameraThread.camera()->takeImage(&cameraInfo);
 		}

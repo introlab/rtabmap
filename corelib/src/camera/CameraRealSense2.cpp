@@ -1252,7 +1252,7 @@ void CameraRealSense2::setOdomProvided(bool enabled, bool imageStreamsDisabled, 
 #endif
 }
 
-SensorData CameraRealSense2::captureImage(CameraInfo * info)
+SensorData CameraRealSense2::captureImage(SensorCaptureInfo * info)
 {
 	SensorData data;
 #ifdef RTABMAP_REALSENSE2

@@ -75,7 +75,7 @@ public:
 	virtual bool odomProvided() const;
 
 protected:
-	virtual SensorData captureImage(CameraInfo * info = 0);
+	virtual SensorData captureImage(SensorCaptureInfo * info = 0);
 
 private:
 #ifdef RTABMAP_REALSENSE

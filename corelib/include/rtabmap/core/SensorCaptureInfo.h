@@ -27,65 +27,49 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #pragma once
 
-#include <rtabmap/utilite/UEvent.h>
-#include "rtabmap/core/SensorData.h"
-#include "rtabmap/core/CameraInfo.h"
+#include "rtabmap/core/Transform.h"
+#include <string>
 
 namespace rtabmap
 {
 
-class CameraEvent :
-	public UEvent
+class SensorCaptureInfo
 {
-public:
-	enum Code {
-		kCodeData,
-		kCodeNoMoreImages
-	};
 
 public:
-	CameraEvent(const cv::Mat & image, int seq=0, double stamp = 0.0, const std::string & cameraName = std::string()) :
-		UEvent(kCodeData),
-		data_(image, seq, stamp)
-	{
-		cameraInfo_.cameraName = cameraName;
-	}
-
-	CameraEvent() :
-		UEvent(kCodeNoMoreImages)
-	{
-	}
-
-	CameraEvent(const SensorData & data) :
-		UEvent(kCodeData),
-		data_(data)
-	{
-	}
-
-	CameraEvent(const SensorData & data, const std::string & cameraName) :
-		UEvent(kCodeData),
-		data_(data)
-	{
-		cameraInfo_.cameraName = cameraName;
-	}
-	CameraEvent(const SensorData & data, const CameraInfo & cameraInfo) :
-		UEvent(kCodeData),
-		data_(data),
-		cameraInfo_(cameraInfo)
+	SensorCaptureInfo() :
+		cameraName(""),
+		id(0),
+		stamp(0.0),
+		timeCapture(0.0f),
+		timeDisparity(0.0f),
+		timeMirroring(0.0f),
+		timeStereoExposureCompensation(0.0f),
+		timeImageDecimation(0.0f),
+		timeScanFromDepth(0.0f),
+		timeUndistortDepth(0.0f),
+		timeBilateralFiltering(0.0f),
+		timeTotal(0.0f),
+		odomCovariance(cv::Mat::eye(6,6,CV_64FC1))
 	{
 	}
+	virtual ~SensorCaptureInfo() {}
 
-	// Image or descriptors
-	const SensorData & data() const {return data_;}
-	const std::string & cameraName() const {return cameraInfo_.cameraName;}
-	const CameraInfo & info() const {return cameraInfo_;}
-
-	virtual ~CameraEvent() {}
-	virtual std::string getClassName() const {return std::string("CameraEvent");}
-
-private:
-	SensorData data_;
-	CameraInfo cameraInfo_;
+	std::string cameraName;
+	int id;
+	double stamp;
+	float timeCapture;
+	float timeDisparity;
+	float timeMirroring;
+	float timeStereoExposureCompensation;
+	float timeImageDecimation;
+	float timeScanFromDepth;
+	float timeUndistortDepth;
+	float timeBilateralFiltering;
+	float timeTotal;
+	Transform odomPose;
+	cv::Mat odomCovariance;
+	std::vector<float> odomVelocity;
 };
 
 } // namespace rtabmap

@@ -710,7 +710,7 @@ std::string CameraStereoZedOC::getSerial() const
 	return "";
 }
 
-SensorData CameraStereoZedOC::captureImage(CameraInfo * info)
+SensorData CameraStereoZedOC::captureImage(SensorCaptureInfo * info)
 {
 	SensorData data;
 #ifdef RTABMAP_ZEDOC
