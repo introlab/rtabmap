@@ -503,7 +503,7 @@ Transform OdometryVINS::computeTransform(
 	{
 		UERROR("VINS-Fusion requires stereo images!");
 	}
-	else
+	else if(data.imu().empty())
 	{
 		UERROR("VINS-Fusion requires stereo images (and only one stereo camera with valid calibration)!");
 	}
