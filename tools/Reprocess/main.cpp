@@ -67,6 +67,7 @@ void showUsage()
 			"     -c \"path.ini\"   Configuration file, overwriting parameters read \n"
 			"                       from the database. If custom parameters are also set as \n"
 			"                       arguments, they overwrite those in config file and the database.\n"
+			"     -default    Input database's parameters are ignored, using default ones instead.\n"
 			"     -start #    Start from this node ID.\n"
 			"     -stop #     Last node to process.\n"
 			"     -start_s #  Start from this map session ID.\n"
@@ -229,6 +230,7 @@ int main(int argc, char * argv[])
 	bool assemble2dOctoMap = false;
 	bool assemble3dOctoMap = false;
 	bool useDatabaseRate = false;
+	bool useDefaultParameters = false;
 	int startId = 0;
 	int stopId = 0;
 	int startMapId = 0;
@@ -273,6 +275,11 @@ int main(int argc, char * argv[])
 				printf("Config file is not set!\n");
 				showUsage();
 			}
+		}
+		else if(strcmp(argv[i], "-default") == 0 || strcmp(argv[i], "--default") == 0)
+		{
+			useDefaultParameters = true;
+			printf("Using default parameters.\n");
 		}
 		else if (strcmp(argv[i], "-start") == 0 || strcmp(argv[i], "--start") == 0)
 		{
@@ -556,13 +563,19 @@ int main(int argc, char * argv[])
 		return -1;
 	}
 
-	ParametersMap parameters = dbDriver->getLastParameters();
-	std::string targetVersion = dbDriver->getDatabaseVersion();
-	parameters.insert(ParametersPair(Parameters::kDbTargetVersion(), targetVersion));
-	if(parameters.empty())
+	ParametersMap parameters;
+	std::string targetVersion;
+	if(!useDefaultParameters)
 	{
-		printf("WARNING: Failed getting parameters from database, reprocessing will be done with default parameters! Database version may be too old (%s).\n", dbDriver->getDatabaseVersion().c_str());
+		parameters = dbDriver->getLastParameters();
+		targetVersion = dbDriver->getDatabaseVersion();
+		parameters.insert(ParametersPair(Parameters::kDbTargetVersion(), targetVersion));
+		if(parameters.empty())
+		{
+			printf("WARNING: Failed getting parameters from database, reprocessing will be done with default parameters! Database version may be too old (%s).\n", dbDriver->getDatabaseVersion().c_str());
+		}
 	}
+
 	if(customParameters.size())
 	{
 		printf("Custom parameters:\n");
