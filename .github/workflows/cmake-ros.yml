@@ -22,15 +22,13 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        ros_distribution: [melodic, noetic, foxy, galactic, humble, rolling]
+        ros_distribution: [melodic, noetic, foxy, humble, rolling]
         include:
         - ros_distribution: 'melodic' 
           os: ubuntu-18.04
         - ros_distribution: 'noetic'
           os: ubuntu-20.04
         - ros_distribution: 'foxy'
-          os: ubuntu-20.04
-        - ros_distribution: 'galactic'
           os: ubuntu-20.04
         - ros_distribution: 'humble'
           os: ubuntu-22.04
