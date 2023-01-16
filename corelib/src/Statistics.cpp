@@ -95,4 +95,10 @@ void Statistics::addStatistic(const std::string & name, float value)
 	uInsert(_data, std::pair<std::string, float>(name, value));
 }
 
+//deprecated
+void Statistics::setLastSignatureData(const Signature & data)
+{
+	_signaturesData.insert(std::make_pair(data.id(), data));
+}
+
 }

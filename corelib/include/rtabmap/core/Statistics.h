@@ -241,7 +241,7 @@ public:
 	void setProximityDetectionMapId(int id) {_proximiyDetectionMapId = id;}
 	void setStamp(double stamp) {_stamp = stamp;}
 
-	RTABMAP_DEPRECATED(void setLastSignatureData(const Signature & data) {_signaturesData.insert(std::make_pair(data.id(), data));}, "Use addSignatureData() instead.");
+	RTABMAP_DEPRECATED(void setLastSignatureData(const Signature & data), "Use addSignatureData() instead.");
 	void addSignatureData(const Signature & data) {_signaturesData.insert(std::make_pair(data.id(), data));}
 	void setSignaturesData(const std::map<int, Signature> & data) {_signaturesData = data;}
 
