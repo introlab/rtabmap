@@ -24,7 +24,7 @@ jobs:
       run: |
         DEBIAN_FRONTEND=noninteractive
         sudo apt-get update
-        sudo apt-get -y install libopencv-dev libpcl-dev git cmake software-properties-common
+        sudo apt-get -y install libopencv-dev libpcl-dev git cmake software-properties-common libyaml-cpp-dev
 
     - uses: actions/checkout@v2
 

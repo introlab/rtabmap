@@ -4364,9 +4364,15 @@ void DatabaseViewer::refineAllLinks(const QList<Link> & links)
 		{
 			int from = links[i].from();
 			int to = links[i].to();
-			this->refineConstraint(links[i].from(), links[i].to(), true);
-
-			progressDialog->appendText(tr("Refined link %1->%2 (%3/%4)").arg(from).arg(to).arg(i+1).arg(links.size()));
+			if(from > 0 && to > 0)
+			{
+				this->refineConstraint(links[i].from(), links[i].to(), true);
+				progressDialog->appendText(tr("Refined link %1->%2 (%3/%4)").arg(from).arg(to).arg(i+1).arg(links.size()));
+			}
+			else
+			{
+				progressDialog->appendText(tr("Ignored link %1->%2 (landmark)").arg(from).arg(to));
+			}
 			progressDialog->incrementStep();
 			QApplication::processEvents();
 			if(progressDialog->isCanceled())
@@ -7217,6 +7223,49 @@ void DatabaseViewer::updateGraphView()
 			}
 		}
 
+		// Marker priors parameters
+		double markerPriorsLinearVariance = Parameters::defaultMarkerPriorsVarianceLinear();
+		double markerPriorsAngularVariance = Parameters::defaultMarkerPriorsVarianceAngular();
+		std::map<int, Transform> markerPriors;
+		ParametersMap parameters = ui_->parameters_toolbox->getParameters();
+		Parameters::parse(parameters, Parameters::kMarkerPriorsVarianceLinear(), markerPriorsLinearVariance);
+		UASSERT(markerPriorsLinearVariance>0.0f);
+		Parameters::parse(parameters, Parameters::kMarkerPriorsVarianceAngular(), markerPriorsAngularVariance);
+		UASSERT(markerPriorsAngularVariance>0.0f);
+		std::string markerPriorsStr;
+		if(Parameters::parse(parameters, Parameters::kMarkerPriors(), markerPriorsStr))
+		{
+			std::list<std::string> strList = uSplit(markerPriorsStr, '|');
+			for(std::list<std::string>::iterator iter=strList.begin(); iter!=strList.end(); ++iter)
+			{
+				std::string markerStr = *iter;
+				while(!markerStr.empty() && !uIsDigit(markerStr[0]))
+				{
+					markerStr.erase(markerStr.begin());
+				}
+				if(!markerStr.empty())
+				{
+					std::string idStr = uSplitNumChar(markerStr).front();
+					int id = uStr2Int(idStr);
+					Transform prior = Transform::fromString(markerStr.substr(idStr.size()));
+					if(!prior.isNull() && id>0)
+					{
+						markerPriors.insert(std::make_pair(-id, prior));
+						UDEBUG("Added landmark prior %d: %s", id, prior.prettyPrint().c_str());
+					}
+					else
+					{
+						UERROR("Failed to parse element \"%s\" in parameter %s", markerStr.c_str(), Parameters::kMarkerPriors().c_str());
+					}
+				}
+				else if(!iter->empty())
+				{
+					UERROR("Failed to parse parameter %s, value=\"%s\"", Parameters::kMarkerPriors().c_str(), iter->c_str());
+				}
+			}
+		}
+
+
 		// filter links
 		int totalNeighbor = 0;
 		int totalNeighborMerged = 0;
@@ -7291,6 +7340,19 @@ void DatabaseViewer::updateGraphView()
 				}
 				loopLinks_.push_back(iter->second);
 				++totalLandmarks;
+
+				// add landmark priors if there are some
+				int markerId = iter->second.to();
+				if(markerPriors.find(markerId) != markerPriors.end())
+				{
+					cv::Mat infMatrix = cv::Mat::eye(6, 6, CV_64FC1);
+					infMatrix(cv::Range(0,3), cv::Range(0,3)) /= markerPriorsLinearVariance;
+					infMatrix(cv::Range(3,6), cv::Range(3,6)) /= markerPriorsAngularVariance;
+					links.insert(std::make_pair(markerId, Link(markerId, markerId, Link::kPosePrior, markerPriors.at(markerId), infMatrix)));
+					UDEBUG("Added prior %d : %s (variance: lin=%f ang=%f)", markerId, markerPriors.at(markerId).prettyPrint().c_str(),
+							markerPriorsLinearVariance, markerPriorsAngularVariance);
+					++totalPriors;
+				}
 			}
 			else if(iter->second.type() == Link::kPosePrior)
 			{
@@ -7352,7 +7414,7 @@ void DatabaseViewer::updateGraphView()
 
 		graphes_.push_back(poses);
 
-		Optimizer * optimizer = Optimizer::create(ui_->parameters_toolbox->getParameters());
+		Optimizer * optimizer = Optimizer::create(parameters);
 
 		std::map<int, rtabmap::Transform> posesOut;
 		std::multimap<int, rtabmap::Link> linksOut;
