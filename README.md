@@ -59,13 +59,9 @@ This project is supported by [IntRoLab - Intelligent / Interactive / Integrated 
             <td><a href="http://build.ros.org/job/Nbin_ufv8_uFv8__rtabmap__ubuntu_focal_arm64__binary/"><img src="http://build.ros.org/buildStatus/icon?job=Nbin_ufv8_uFv8__rtabmap__ubuntu_focal_arm64__binary" alt="Build Status"/></td>
         </tr>
         <tr>
-            <td rowspan="4">ROS 2</td>
+            <td rowspan="3">ROS 2</td>
             <td>Foxy</td>
             <td><a href="http://build.ros2.org/job/Fbin_uF64__rtabmap__ubuntu_focal_amd64__binary/"><img src="http://build.ros2.org/buildStatus/icon?job=Fbin_uF64__rtabmap__ubuntu_focal_amd64__binary" alt="Build Status"/></td>
-        </tr>
-        <tr>
-            <td>Galactic</td>
-            <td><a href="http://build.ros2.org/job/Gbin_uF64__rtabmap__ubuntu_focal_amd64__binary/"><img src="http://build.ros2.org/buildStatus/icon?job=Gbin_uF64__rtabmap__ubuntu_focal_amd64__binary" alt="Build Status"/></td>
         </tr>
         <tr>
             <td>Humble</td>
