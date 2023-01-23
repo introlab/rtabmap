@@ -11,7 +11,7 @@ jobs:
     
     strategy:
       matrix:
-        docker_tag: [xenial, bionic, focal, jammy, android23, android24, android26, android30]
+        docker_tag: [xenial, bionic, focal, focal-foxy, jammy, android23, android24, android26, android30]
         include:
         - docker_tag: xenial
           docker_tags: |
@@ -43,6 +43,16 @@ jobs:
             linux/amd64
             linux/arm64
           docker_path: 'focal'
+        - docker_tag: focal-foxy
+          docker_tags: |
+            introlab3it/rtabmap:focal-foxy
+            introlab3it/rtabmap:20.04-foxy
+          docker_args: |
+            NOT_USED=0
+          docker_platforms: |
+            linux/amd64
+            linux/arm64
+          docker_path: 'focal-foxy'
         - docker_tag: jammy
           docker_tags: |
             introlab3it/rtabmap:jammy
