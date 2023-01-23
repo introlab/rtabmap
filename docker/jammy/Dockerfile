@@ -67,7 +67,8 @@ RUN rm /bin/sh && ln -s /bin/bash /bin/sh
 # Copy current source code
 COPY . /root/rtabmap
 
-ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/ros/humble/lib/x86_64-linux-gnu
+# ros2 seems not sourcing by default its multi-arch folders
+ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/ros/humble/lib/x86_64-linux-gnu:/opt/ros/humble/lib/aarch64-linux-gnu
 
 # Build RTAB-Map project
 RUN source /ros_entrypoint.sh && \
