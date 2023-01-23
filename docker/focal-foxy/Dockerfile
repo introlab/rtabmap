@@ -17,7 +17,7 @@ RUN apt install libgtsam-dev libgtsam-unstable-dev -y
 RUN apt-get install -y libpdal-dev
 
 # RealSense2
-RUN apt-get install -y ros-noetic-librealsense2
+RUN apt-get install -y ros-foxy-librealsense2
 
 ARG TARGETPLATFORM
 ENV TARGETPLATFORM=${TARGETPLATFORM:-linux/amd64}
