@@ -732,37 +732,34 @@ SensorData CameraStereoZed::captureImage(CameraInfo * info)
 				{
 					int trackingConfidence = pose.pose_confidence;
 					// FIXME What does pose_confidence == -1 mean?
-					if (trackingConfidence>0)
+					info->odomPose = zedPoseToTransform(pose);
+					if (!info->odomPose.isNull())
 					{
-						info->odomPose = zedPoseToTransform(pose);
-						if (!info->odomPose.isNull())
+						//transform from:
+						// x->right, y->down, z->forward
+						//to:
+						// x->forward, y->left, z->up
+						info->odomPose = this->getLocalTransform() * info->odomPose * this->getLocalTransform().inverse();
+						if(force3DoF_)
 						{
-							//transform from:
-							// x->right, y->down, z->forward
-							//to:
-							// x->forward, y->left, z->up
-							info->odomPose = this->getLocalTransform() * info->odomPose * this->getLocalTransform().inverse();
-							if(force3DoF_)
-							{
-								info->odomPose = info->odomPose.to3DoF();
-							}
-							if (lost_)
-							{
-								info->odomCovariance = cv::Mat::eye(6, 6, CV_64FC1) * 9999.0f; // don't know transform with previous pose
-								lost_ = false;
-								UDEBUG("Init %s (var=%f)", info->odomPose.prettyPrint().c_str(), 9999.0f);
-							}
-							else
-							{
-								info->odomCovariance = cv::Mat::eye(6, 6, CV_64FC1) * 1.0f / float(trackingConfidence);
-								UDEBUG("Run %s (var=%f)", info->odomPose.prettyPrint().c_str(), 1.0f / float(trackingConfidence));
-							}
+							info->odomPose = info->odomPose.to3DoF();
 						}
-						else
+						if (lost_)
+						{
+							info->odomCovariance = cv::Mat::eye(6, 6, CV_64FC1) * 9999.0f; // don't know transform with previous pose
+							lost_ = false;
+							UDEBUG("Init %s (var=%f)", info->odomPose.prettyPrint().c_str(), 9999.0f);
+						}
+						else if(trackingConfidence==0)
 						{
 							info->odomCovariance = cv::Mat::eye(6, 6, CV_64FC1) * 9999.0f; // lost
 							lost_ = true;
 							UWARN("ZED lost! (trackingConfidence=%d)", trackingConfidence);
+						}
+						else
+						{
+							info->odomCovariance = cv::Mat::eye(6, 6, CV_64FC1) * 1.0f / float(trackingConfidence);
+							UDEBUG("Run %s (var=%f)", info->odomPose.prettyPrint().c_str(), 1.0f / float(trackingConfidence));
 						}
 					}
 					else
