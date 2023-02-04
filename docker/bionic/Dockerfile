@@ -12,7 +12,7 @@ WORKDIR /root/
 
 # GTSAM
 RUN add-apt-repository ppa:borglab/gtsam-release-4.0 -y
-RUN apt install libgtsam-dev libgtsam-unstable-dev -y
+RUN apt-get update && apt install libgtsam-dev libgtsam-unstable-dev -y
 
 ARG TARGETPLATFORM
 ENV TARGETPLATFORM=${TARGETPLATFORM:-linux/amd64}
