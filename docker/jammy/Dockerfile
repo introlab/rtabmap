@@ -4,7 +4,7 @@ FROM osrf/ros:humble-desktop
 
 # Install build dependencies
 RUN apt-get update && \
-    apt-get install -y git software-properties-common ros-humble-rtabmap-ros && \
+    apt-get install -y git software-properties-common ros-humble-rtabmap-ros libmrpt-poses-dev && \
     apt-get remove -y ros-humble-rtabmap
 
 WORKDIR /root/

@@ -44,6 +44,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/VWDictionary.h"
 #include "rtabmap/core/BayesFilter.h"
 #include "rtabmap/core/Compression.h"
+#include "rtabmap/core/Registration.h"
 #include "rtabmap/core/RegistrationInfo.h"
 
 #include <rtabmap/utilite/ULogger.h>
@@ -55,6 +56,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #ifdef RTABMAP_PYTHON
 #include "rtabmap/core/PythonInterface.h"
+#endif
+
+#ifdef RTABMAP_MRPT
+// Used for odometry error propagation
+#include <mrpt/poses/CPose3DPDFGaussian.h>
 #endif
 
 #include <pcl/search/kdtree.h>
@@ -461,6 +467,7 @@ void Rtabmap::close(bool databaseSaved, const std::string & ouputDatabasePath)
 	_mapCorrection.setIdentity();
 	_mapCorrectionBackup.setNull();
 
+	_localizationCovariance = cv::Mat();
 	_lastLocalizationNodeId = 0;
 	_odomCachePoses.clear();
 	_odomCacheConstraints.clear();
@@ -844,6 +851,7 @@ void Rtabmap::setInitialPose(const Transform & initialPose)
 		if(!_memory->isIncremental())
 		{
 			_lastLocalizationPose = initialPose;
+			_localizationCovariance = 0;
 			_lastLocalizationNodeId = 0;
 			_odomCachePoses.clear();
 			_odomCacheConstraints.clear();
@@ -870,6 +878,7 @@ int Rtabmap::triggerNewMap()
 	int mapId = -1;
 	if(_memory)
 	{
+		_localizationCovariance = cv::Mat();
 		_lastLocalizationNodeId = 0;
 		_odomCachePoses.clear();
 		_odomCacheConstraints.clear();
@@ -1053,6 +1062,7 @@ void Rtabmap::resetMemory()
 	_mapCorrection.setIdentity();
 	_mapCorrectionBackup.setNull();
 	_lastLocalizationPose.setNull();
+	_localizationCovariance = cv::Mat();
 	_lastLocalizationNodeId = 0;
 	_odomCachePoses.clear();
 	_odomCacheConstraints.clear();
@@ -1654,6 +1664,38 @@ bool Rtabmap::process(
 			_constraints.insert(std::make_pair(tmp.from(), tmp));
 		}
 		// Localization mode stuff
+		if( signature->getWeight() >= 0 &&
+			!smallDisplacement &&
+		    odomCovariance.cols == 6 &&
+			odomCovariance.rows == 6 &&
+			odomCovariance.type() == CV_64FC1 &&
+			odomCovariance.at<double>(0,0) < 1)
+		{
+			if(_localizationCovariance.empty() || _lastLocalizationPose.isNull())
+			{
+				_localizationCovariance = odomCovariance.clone();
+			}
+			else
+			{
+#ifdef RTABMAP_MRPT
+				// Transform odometry covariance (which in base frame) into global frame
+				// "odometry error propagation law"
+				Eigen::Quaterniond rotation = _lastLocalizationPose.getQuaterniond();
+				mrpt::poses::CPose3D pose = mrpt::poses::CPose3D::FromQuaternion(mrpt::math::CQuaternionDouble(rotation.w(), rotation.x(), rotation.y(), rotation.z()));
+				mrpt::math::CMatrixDouble66 gaussian;
+				gaussian.loadFromRawPointer((const double*)odomCovariance.data);
+				mrpt::poses::CPose3DPDFGaussian gaussianTransformed(mrpt::poses::CPose3D(), gaussian);
+				gaussianTransformed.changeCoordinatesReference(pose);
+				_localizationCovariance += cv::Mat(6,6,CV_64FC1, gaussianTransformed.cov.data());
+#else
+				// Assuming diagonal uniform covariance matrix!
+				// If variance is different for each axis,
+				// build rtabmap with MRPT to use approach above.
+				_localizationCovariance += odomCovariance;
+#endif
+
+			}
+		}
 		_lastLocalizationPose = newPose; // keep in cache the latest corrected pose
 		if(!_memory->isIncremental() && signature->getWeight() >= 0)
 		{
@@ -2971,7 +3013,6 @@ bool Rtabmap::process(
 	float maxAngularErrorRatio = 0.0f;
 	double optimizationError = 0.0;
 	int optimizationIterations = 0;
-	cv::Mat localizationCovariance;
 	Transform previousMapCorrection;
 	bool rejectedLandmark = false;
 	bool delayedLocalization = false;
@@ -3085,7 +3126,8 @@ bool Rtabmap::process(
 				_graphOptimizer->setPriorsIgnored(false); //temporary set false to use priors above to fix nodes of the map
 				// If slam2d: get connected graph while keeping original roll,pitch,z values.
 				_graphOptimizer->getConnectedGraph(signature->id(), poses, constraints, posesOut, edgeConstraintsOut, !_graphOptimizer->isSlam2d());
-				std::map<int, Transform> optPoses = _graphOptimizer->optimize(poses.begin()->first, posesOut, edgeConstraintsOut);
+				cv::Mat locOptCovariance;
+				std::map<int, Transform> optPoses = _graphOptimizer->optimize(poses.begin()->first, posesOut, edgeConstraintsOut, locOptCovariance);
 				_graphOptimizer->setPriorsIgnored(priorsIgnored); // set back
 				for(std::map<int, Transform>::iterator iter=optPoses.begin(); iter!=optPoses.end(); ++iter)
 				{
@@ -3199,7 +3241,7 @@ bool Rtabmap::process(
 						_graphOptimizer->setPriorsIgnored(false); //temporary set false to use priors above to fix nodes of the map
 						// If slam2d: get connected graph while keeping original roll,pitch,z values.
 						_graphOptimizer->getConnectedGraph(signature->id(), poses, constraints, posesOut, edgeConstraintsOut, !_graphOptimizer->isSlam2d());
-						optPoses = _graphOptimizer->optimize(poses.begin()->first, posesOut, edgeConstraintsOut);
+						optPoses = _graphOptimizer->optimize(poses.begin()->first, posesOut, edgeConstraintsOut, locOptCovariance);
 						_graphOptimizer->setPriorsIgnored(priorsIgnored); // set back
 						for(std::map<int, Transform>::iterator iter=optPoses.begin(); iter!=optPoses.end(); ++iter)
 						{
@@ -3460,7 +3502,7 @@ bool Rtabmap::process(
 							}
 							_optimizedPoses.at(signature->id()) = newPose;
 						}
-						localizationCovariance = localizationLinks.rbegin()->second.infMatrix().inv();
+						_localizationCovariance = locOptCovariance.empty()?localizationLinks.rbegin()->second.infMatrix().inv():locOptCovariance;
 					}
 					else //delayed localization (wait for more than 1 link)
 					{
@@ -3607,7 +3649,7 @@ bool Rtabmap::process(
 				UINFO("Updated local map (old size=%d, new size=%d)", (int)_optimizedPoses.size(), (int)poses.size());
 				_optimizedPoses = poses;
 				_constraints = constraints;
-				localizationCovariance = covariance;
+				_localizationCovariance = covariance;
 			}
 		}
 
@@ -3675,6 +3717,14 @@ bool Rtabmap::process(
 	refWordsCount = (int)signature->getWords().size();
 	refUniqueWordsCount = (int)uUniqueKeys(signature->getWords()).size();
 
+	if(_graphOptimizer->isSlam2d())
+	{
+		// set very small
+		_localizationCovariance.at<double>(2,2) = Registration::COVARIANCE_LINEAR_EPSILON;
+		_localizationCovariance.at<double>(3,3) = Registration::COVARIANCE_ANGULAR_EPSILON;
+		_localizationCovariance.at<double>(4,4) = Registration::COVARIANCE_ANGULAR_EPSILON;
+	}
+
 	// Posterior is empty if a bad signature is detected
 	float vpHypothesis = posterior.size()?posterior.at(Memory::kIdVirtual):0.0f;
 	int loopId = _loopClosureHypothesis.first>0?_loopClosureHypothesis.first:lastProximitySpaceClosureId;
@@ -3737,6 +3787,8 @@ bool Rtabmap::process(
 			statistics_.addStatistic(Statistics::kLoopId(), loopId);
 			statistics_.addStatistic(Statistics::kLoopMap_id(), (loopId>0 && sLoop)?sLoop->mapId():-1);
 
+			statistics_.addStatistic(Statistics::kLoopDistance_since_last_loc(), _distanceTravelledSinceLastLocalization);
+
 			float x,y,z,roll,pitch,yaw;
 			if(_loopClosureHypothesis.first || lastProximitySpaceClosureId || (!rejectedLandmark && !landmarksDetected.empty()))
 			{
@@ -3760,7 +3812,7 @@ bool Rtabmap::process(
 						statistics_.addStatistic(Statistics::kGtLocalization_angular_error(), error.getAngle(1,0,0)*180/M_PI);
 					}
 				}
-				statistics_.addStatistic(Statistics::kLoopDistance_since_last_loc(), _distanceTravelledSinceLastLocalization);
+
 				_distanceTravelledSinceLastLocalization = 0.0f;
 
 				statistics_.addStatistic(Statistics::kLoopMapToOdom_norm(), _mapCorrection.getNorm());
@@ -3822,11 +3874,21 @@ bool Rtabmap::process(
 				statistics_.addStatistic(Statistics::kLoopMapToBase_pitch(),  pitch*180.0f/M_PI);
 				statistics_.addStatistic(Statistics::kLoopMapToBase_yaw(), yaw*180.0f/M_PI);
 				UINFO("Localization pose = %s", _lastLocalizationPose.prettyPrint().c_str());
+
+				if(_localizationCovariance.total()==36)
+				{
+					double varLin = _graphOptimizer->isSlam2d()?
+							std::max(_localizationCovariance.at<double>(0,0), _localizationCovariance.at<double>(1,1)):
+							uMax3(_localizationCovariance.at<double>(0,0), _localizationCovariance.at<double>(1,1), _localizationCovariance.at<double>(2,2));
+
+					statistics_.addStatistic(Statistics::kLoopMapToBase_lin_std(), sqrt(varLin));
+					statistics_.addStatistic(Statistics::kLoopMapToBase_lin_var(), varLin);
+				}
 			}
 
 			statistics_.setMapCorrection(_mapCorrection);
 			UINFO("Set map correction = %s", _mapCorrection.prettyPrint().c_str());
-			statistics_.setLocalizationCovariance(localizationCovariance);
+			statistics_.setLocalizationCovariance(_localizationCovariance);
 
 			// timings...
 			statistics_.addStatistic(Statistics::kTimingMemory_update(), timeMemoryUpdate*1000);

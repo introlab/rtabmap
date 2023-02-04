@@ -115,6 +115,8 @@ class RTABMAP_EXP Statistics
 	RTABMAP_STATS(Loop, MapToBase_roll, deg);
 	RTABMAP_STATS(Loop, MapToBase_pitch, deg);
 	RTABMAP_STATS(Loop, MapToBase_yaw, deg);
+	RTABMAP_STATS(Loop, MapToBase_lin_std, m);
+	RTABMAP_STATS(Loop, MapToBase_lin_var, m2);
 
 	RTABMAP_STATS(Proximity, Time_detections,);
 	RTABMAP_STATS(Proximity, Space_last_detection_id,);

@@ -12,6 +12,10 @@ WORKDIR /root/
 # GTSAM
 RUN add-apt-repository ppa:borglab/gtsam-release-4.0 -y
 RUN apt install libgtsam-dev libgtsam-unstable-dev -y
+
+# MRPT
+RUN add-apt-repository ppa:joseluisblancoc/mrpt-stable -y
+RUN apt install libmrpt-poses-dev
     
 # PDAL
 RUN apt-get install -y libpdal-dev
