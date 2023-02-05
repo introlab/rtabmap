@@ -4,15 +4,21 @@ FROM ros:melodic-perception
 
 # Install build dependencies
 RUN apt-get update && \
-    apt-get install -y git software-properties-common ros-melodic-rtabmap-ros libmrpt-dev && \
+    apt-get install -y git software-properties-common ros-melodic-rtabmap-ros && \
     apt-get remove -y ros-melodic-rtabmap && \
-    rm -rf /var/lib/apt/lists/
+    apt-get clean && rm -rf /var/lib/apt/lists/
 
 WORKDIR /root/
 
 # GTSAM
 RUN add-apt-repository ppa:borglab/gtsam-release-4.0 -y
-RUN apt-get update && apt install libgtsam-dev libgtsam-unstable-dev -y
+RUN apt-get update && apt install libgtsam-dev libgtsam-unstable-dev -y && \
+    apt-get clean && rm -rf /var/lib/apt/lists/
+
+# MRPT
+RUN add-apt-repository ppa:joseluisblancoc/mrpt-stable -y
+RUN apt-get update && apt install libmrpt-poses-dev -y && \
+    apt-get clean && rm -rf /var/lib/apt/lists/
 
 ARG TARGETPLATFORM
 ENV TARGETPLATFORM=${TARGETPLATFORM:-linux/amd64}
@@ -22,7 +28,7 @@ RUN echo "I am building for $TARGETPLATFORM"
 RUN if [ "$TARGETPLATFORM" = "linux/arm64" ]; then ln -s /usr/bin/cmake ~/cmake; fi
 
 # cmake >=3.11 required for amd64 dependencies
-RUN if [ "$TARGETPLATFORM" = "linux/amd64" ]; then apt install -y wget && \
+RUN if [ "$TARGETPLATFORM" = "linux/amd64" ]; then apt update && apt install -y wget && apt-get clean && rm -rf /var/lib/apt/lists/ && \
     wget -nv https://github.com/Kitware/CMake/releases/download/v3.17.0/cmake-3.17.0-Linux-x86_64.tar.gz && \
     tar -xzf cmake-3.17.0-Linux-x86_64.tar.gz && \
     rm cmake-3.17.0-Linux-x86_64.tar.gz &&\
@@ -33,7 +39,7 @@ RUN if [ "$TARGETPLATFORM" = "linux/amd64" ]; then apt-get update && DEBIAN_FRON
       libsuitesparse-dev \
       libceres-dev \
       xorg-dev \
-      libglu1-mesa-dev; fi
+      libglu1-mesa-dev && apt-get clean && rm -rf /var/lib/apt/lists/; fi
 RUN if [ "$TARGETPLATFORM" = "linux/amd64" ]; then git clone https://github.com/OpenImageIO/oiio.git && \
     cd oiio && \
     git checkout Release-2.0.12 && \
@@ -80,7 +86,7 @@ RUN if [ "$TARGETPLATFORM" = "linux/amd64" ]; then git clone https://github.com/
     rm -r AliceVision; fi
     
 #commit Aug 6 2020
-RUN apt-get update && apt install wget
+RUN apt-get update && apt install wget && apt-get clean && rm -rf /var/lib/apt/lists/
 RUN git clone https://github.com/laurentkneip/opengv.git && \
     cd opengv && \
     git checkout 91f4b19c73450833a40e463ad3648aae80b3a7f3 && \
