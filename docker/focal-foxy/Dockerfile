@@ -118,7 +118,7 @@ RUN if [ "$TARGETPLATFORM" = "linux/amd64" ]; then git clone https://github.com/
     cd && \
     rm -r assimp; fi
 # Ignore assimp installed from ros, as it has invalid "/usr/lib/include" in its target, making rtabmap's cmake fails
-RUN if [ "$TARGETPLATFORM" = "linux/amd64" ]; then rm -rf /usr/lib/x86_64-linux-gnu/cmake/assimp*
+RUN if [ "$TARGETPLATFORM" = "linux/amd64" ]; then rm -rf /usr/lib/x86_64-linux-gnu/cmake/assimp*; fi
 RUN if [ "$TARGETPLATFORM" = "linux/amd64" ]; then git clone https://github.com/alicevision/geogram.git && \
     cd geogram && \
     git checkout v1.7.6 && \
