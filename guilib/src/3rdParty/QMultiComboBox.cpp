@@ -47,7 +47,11 @@ QMultiComboBox::~QMultiComboBox()
 void QMultiComboBox::SetDisplayText(QString text)
 {
     m_DisplayText_ = text;
+#if QT_VERSION >= QT_VERSION_CHECK(5, 15, 0)
     const int textWidth = fontMetrics().horizontalAdvance(text);
+#else
+    const int textWidth = fontMetrics().width(text);
+#endif
     setMinimumWidth(textWidth + 30);
     updateGeometry();
     repaint();

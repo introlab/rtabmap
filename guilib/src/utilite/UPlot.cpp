@@ -1211,8 +1211,13 @@ void UPlotAxis::setAxis(qreal & min, qreal & max)
 	}
 	else
 	{
+#if QT_VERSION >= QT_VERSION_CHECK(5, 15, 0)
 		borderMin = this->fontMetrics().horizontalAdvance(QString::number(_min,'g',_gradMaxDigits))/2;
 		borderMax = this->fontMetrics().horizontalAdvance(QString::number(_max,'g',_gradMaxDigits))/2;
+#else
+		borderMin = this->fontMetrics().width(QString::number(_min,'g',_gradMaxDigits))/2;
+		borderMax = this->fontMetrics().width(QString::number(_max,'g',_gradMaxDigits))/2;
+#endif
 	}
 	int border = borderMin>borderMax?borderMin:borderMax;
 	int borderDelta;
@@ -1320,10 +1325,18 @@ void UPlotAxis::setAxis(qreal & min, qreal & max)
 		for (int i = 0; i <= _count; i+=5)
 		{
 			QString n(QString::number(_min + (i/5)*((_max-_min)/(_count/5)),'g',_gradMaxDigits));
+#if QT_VERSION >= QT_VERSION_CHECK(5, 15, 0)
 			if(this->fontMetrics().horizontalAdvance(n) > minWidth)
 			{
 				minWidth = this->fontMetrics().horizontalAdvance(n);
 			}
+#else
+			if(this->fontMetrics().width(n) > minWidth)
+			{
+				minWidth = this->fontMetrics().width(n);
+			}
+#endif
+
 		}
 		this->setMinimumWidth(15+minWidth);
 	}

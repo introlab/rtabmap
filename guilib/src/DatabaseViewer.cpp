@@ -2223,10 +2223,18 @@ void DatabaseViewer::updateInfo()
 			ui_->textEdit_info->append("");
 			ParametersMap parameters = dbDriver_->getLastParameters();
 			QFontMetrics metrics(ui_->textEdit_info->font());
+#if QT_VERSION >= QT_VERSION_CHECK(5, 15, 0)
 			int tabW = ui_->textEdit_info->tabStopDistance();
+#else
+			int tabW = ui_->textEdit_info->tabStopWidth();
+#endif
 			for(ParametersMap::iterator iter=parameters.begin(); iter!=parameters.end(); ++iter)
 			{
+#if QT_VERSION >= QT_VERSION_CHECK(5, 15, 0)
 				int strW = metrics.horizontalAdvance(QString(iter->first.c_str()) + "=");
+#else
+				int strW = metrics.width(QString(iter->first.c_str()) + "=");
+#endif
 				ui_->textEdit_info->append(tr("%1=%2%3")
 						.arg(iter->first.c_str())
 						.arg(strW < tabW?"\t\t\t\t":strW < tabW*2?"\t\t\t":strW < tabW*3?"\t\t":"\t")
