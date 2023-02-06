@@ -789,28 +789,44 @@ void UPlotCurve::draw(QPainter * painter, const QRect & limits)
 				{
 					QPointF intersection;
 					QLineF::IntersectType type;
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
 					type = lineItem->line().intersects(QLineF(limits.topLeft(), limits.bottomLeft()), &intersection);
+#else
+					type = lineItem->line().intersect(QLineF(limits.topLeft(), limits.bottomLeft()), &intersection);
+#endif
 					if(type == QLineF::BoundedIntersection)
 					{
 						!limits.contains(line.p1())?line.setP1(intersection.toPoint()):line.setP2(intersection.toPoint());
 					}
 					else
 					{
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
 						type = lineItem->line().intersects(QLineF(limits.topLeft(), limits.topRight()), &intersection);
+#else
+						type = lineItem->line().intersect(QLineF(limits.topLeft(), limits.topRight()), &intersection);
+#endif
 						if(type == QLineF::BoundedIntersection)
 						{
 							!limits.contains(line.p1())?line.setP1(intersection.toPoint()):line.setP2(intersection.toPoint());
 						}
 						else
 						{
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
 							type = lineItem->line().intersects(QLineF(limits.bottomLeft(), limits.bottomRight()), &intersection);
+#else
+							type = lineItem->line().intersect(QLineF(limits.bottomLeft(), limits.bottomRight()), &intersection);
+#endif
 							if(type == QLineF::BoundedIntersection)
 							{
 								!limits.contains(line.p1())?line.setP1(intersection.toPoint()):line.setP2(intersection.toPoint());
 							}
 							else
 							{
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
 								type = lineItem->line().intersects(QLineF(limits.topRight(), limits.bottomRight()), &intersection);
+#else
+								type = lineItem->line().intersect(QLineF(limits.topRight(), limits.bottomRight()), &intersection);
+#endif
 								if(type == QLineF::BoundedIntersection)
 								{
 									!limits.contains(line.p1())?line.setP1(intersection.toPoint()):line.setP2(intersection.toPoint());
@@ -2586,7 +2602,11 @@ void UPlot::mouseMoveEvent(QMouseEvent * event)
 			if((QApplication::mouseButtons() & Qt::LeftButton) ||
 			   (_aMouseTracking->isChecked() && xPos>=0 && yPos>=0 && xPos<_graphicsViewHolder->width() && yPos<_graphicsViewHolder->height()))
 			{
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
 				QToolTip::showText(event->globalPosition().toPoint(), QString("%1,%2").arg(x).arg(y));
+#else
+				QToolTip::showText(event->globalPos(), QString("%1,%2").arg(x).arg(y));
+#endif
 			}
 			else
 			{

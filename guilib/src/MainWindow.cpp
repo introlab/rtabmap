@@ -4965,7 +4965,11 @@ void MainWindow::drawKeypoints(const std::multimap<int, cv::KeyPoint> & refWords
 			_lastId = (*refWords.rbegin()).first;
 		}
 		std::list<int> kpts = uKeysList(refWords);
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
 		_lastIds = QSet<int>(kpts.begin(), kpts.end());
+#else
+		_lastIds = QSet<int>::fromList(QList<int>::fromStdList(kpts));
+#endif
 	}
 
 	// Draw lines between corresponding features...

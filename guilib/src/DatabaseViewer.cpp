@@ -1682,7 +1682,11 @@ void DatabaseViewer::updateIds()
 	UINFO("Loading all IDs...");
 	std::set<int> ids;
 	dbDriver_->getAllNodeIds(ids);
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
 	ids_ = QList<int>(ids.begin(), ids.end());
+#else
+	ids_ = QList<int>::fromStdList(std::list<int>(ids.begin(), ids.end()));
+#endif
 	lastWmIds_.clear();
 	dbDriver_->getLastNodeIds(lastWmIds_);
 	idToIndex_.clear();
@@ -3867,7 +3871,11 @@ void DatabaseViewer::regenerateCurrentLocalMaps()
 	QSet<int> idsSet;
 	idsSet.insert(ids_.at(ui_->horizontalSlider_A->value()));
 	idsSet.insert(ids_.at(ui_->horizontalSlider_B->value()));
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
 	QList<int> ids(idsSet.begin(), idsSet.end());
+#else
+	QList<int> ids = idsSet.toList();
+#endif
 
 	rtabmap::ProgressDialog progressDialog(this);
 	progressDialog.setMaximumSteps(ids.size());
