@@ -70,10 +70,14 @@ IF(QT4_FOUND)
     #This will generate moc_* for Qt
     QT4_WRAP_CPP(moc_srcs ${headers_ui})
     ### Qt Gui stuff  end###
-ELSE()
+ELSEIF(Qt5_FOUND)
     QT5_ADD_RESOURCES(srcs_qrc ${qrc})
     QT5_WRAP_UI(moc_uis ${uis})
     QT5_WRAP_CPP(moc_srcs ${headers_ui})
+ELSE()
+    QT6_ADD_RESOURCES(srcs_qrc ${qrc})
+    QT6_WRAP_UI(moc_uis ${uis})
+    QT6_WRAP_CPP(moc_srcs ${headers_ui})
 ENDIF()
 
 
@@ -210,14 +214,24 @@ add_definitions(${PCL_DEFINITIONS})
 ADD_LIBRARY(rtabmap_gui ${SRC_FILES})
 # Linking with Qt libraries
 
-TARGET_LINK_LIBRARIES(rtabmap_gui rtabmap_core rtabmap_utilite ${LIBRARIES})
-IF(Qt5_FOUND)
+IF(Qt6_FOUND)
+  IF(Qt6Svg_FOUND)
+    TARGET_LINK_LIBRARIES(rtabmap_gui rtabmap_core rtabmap_utilite ${LIBRARIES} 
+      Qt6::Widgets Qt6::Core Qt6::PrintSupport Qt6::Svg)
+  ELSE()
+    TARGET_LINK_LIBRARIES(rtabmap_gui rtabmap_core rtabmap_utilite ${LIBRARIES} 
+      Qt6::Widgets Qt6::Core Qt6::PrintSupport)
+  ENDIF()
+ELSE()
+  TARGET_LINK_LIBRARIES(rtabmap_gui rtabmap_core rtabmap_utilite ${LIBRARIES})
+  IF(Qt5_FOUND)
     IF(Qt5Svg_FOUND)
-        QT5_USE_MODULES(rtabmap_gui Widgets Core Gui Svg PrintSupport)
+      QT5_USE_MODULES(rtabmap_gui Widgets Core Gui Svg PrintSupport)
     ELSE()
-        QT5_USE_MODULES(rtabmap_gui Widgets Core Gui PrintSupport)
+      QT5_USE_MODULES(rtabmap_gui Widgets Core Gui PrintSupport)
     ENDIF()
-ENDIF(Qt5_FOUND)
+  ENDIF()
+ENDIF()
 
 SET_TARGET_PROPERTIES(
      rtabmap_gui

@@ -1777,7 +1777,7 @@ void GraphViewer::restoreDefaults()
 
 void GraphViewer::wheelEvent ( QWheelEvent * event )
 {
-	if(event->delta() < 0)
+	if(event->angleDelta().y() < 0)
 	{
 		this->scale(0.95, 0.95);
 	}
@@ -2039,7 +2039,7 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 				if(QFileInfo(filePath).suffix().compare("pdf") == 0)
 				{
 					QPrinter printer(QPrinter::HighResolution);
-					printer.setOrientation(QPrinter::Portrait);
+					printer.setPageOrientation(QPageLayout::Portrait);
 					printer.setOutputFileName( filePath );
 					QPainter p(&printer);
 					scene()->render(&p);

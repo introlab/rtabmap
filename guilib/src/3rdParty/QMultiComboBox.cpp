@@ -11,7 +11,8 @@
 #include "QMultiComboBox.h"
 #include <QApplication>
 #include <QCoreApplication>
-#include <QDesktopWidget>
+#include <QWindow>
+#include <QScreen>
 
 #include "rtabmap/utilite/ULogger.h"
 
@@ -46,7 +47,7 @@ QMultiComboBox::~QMultiComboBox()
 void QMultiComboBox::SetDisplayText(QString text)
 {
     m_DisplayText_ = text;
-    const int textWidth = fontMetrics().width(text);
+    const int textWidth = fontMetrics().horizontalAdvance(text);
     setMinimumWidth(textWidth + 30);
     updateGeometry();
     repaint();
@@ -88,7 +89,7 @@ void QMultiComboBox::showPopup()
     //QRect rec2(p , p + QPoint(rec.width(), rec.height()));
 
     // get the two possible list points and height
-    QRect screen = QApplication::desktop()->screenGeometry(this);
+    QRect screen = this->window()->windowHandle()->screen()->availableGeometry();
     QPoint above = this->mapToGlobal(QPoint(0,0));
     int aboveHeight = above.y() - screen.y();
     QPoint below = this->mapToGlobal(QPoint(0,rec.height()));

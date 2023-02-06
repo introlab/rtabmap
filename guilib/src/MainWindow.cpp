@@ -168,6 +168,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent, bool sh
 	_processingOdometry(false),
 	_oneSecondTimer(0),
 	_elapsedTime(0),
+	_logEventTime(0),
 	_posteriorCurve(0),
 	_likelihoodCurve(0),
 	_rawLikelihoodCurve(0),
@@ -266,10 +267,10 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent, bool sh
 	// Timer
 	_oneSecondTimer = new QTimer(this);
 	_oneSecondTimer->setInterval(1000);
-	_elapsedTime = new QTime();
+	_elapsedTime = new QElapsedTimer();
 	_ui->label_elapsedTime->setText("00:00:00");
 	connect(_oneSecondTimer, SIGNAL(timeout()), this, SLOT(updateElapsedTime()));
-	_logEventTime = new QTime();
+	_logEventTime = new QElapsedTimer();
 	_logEventTime->start();
 
 	//Graphics scenes
@@ -694,6 +695,7 @@ MainWindow::~MainWindow()
 	this->stopDetection();
 	delete _ui;
 	delete _elapsedTime;
+	delete _logEventTime;
 #ifdef RTABMAP_OCTOMAP
 	delete _octomap;
 #endif
@@ -1893,7 +1895,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 {
 	_processingStatistics = true;
 	ULOGGER_DEBUG("");
-	QTime time, totalTime;
+	QElapsedTimer time, totalTime;
 	time.start();
 	totalTime.start();
 	//Affichage des stats et images
@@ -4962,7 +4964,8 @@ void MainWindow::drawKeypoints(const std::multimap<int, cv::KeyPoint> & refWords
 		{
 			_lastId = (*refWords.rbegin()).first;
 		}
-		_lastIds = QSet<int>::fromList(QList<int>::fromStdList(uKeysList(refWords)));
+		std::list<int> kpts = uKeysList(refWords);
+		_lastIds = QSet<int>(kpts.begin(), kpts.end());
 	}
 
 	// Draw lines between corresponding features...
@@ -5205,7 +5208,7 @@ QString MainWindow::captureScreen(bool cacheInRAM, bool png)
 {
 	QString name = (QDateTime::currentDateTime().toString("yyMMddhhmmsszzz") + (png?".png":".jpg"));
 	_ui->statusbar->clearMessage();
-	QPixmap figure = QPixmap::grabWidget(this);
+	QPixmap figure = this->grab();
 
 	QString targetDir = _preferencesDialog->getWorkingDirectory() + QDir::separator() + "ScreensCaptured";
 	QString msg;

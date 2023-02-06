@@ -18,18 +18,21 @@ if(internal)
 		rtabmap_utilite
 	)  
 else()
-	# external build
-	PROJECT( MyProject )
+    # external build
+    PROJECT( MyProject )
 	
-	FIND_PACKAGE(RTABMap REQUIRED)
-	FIND_PACKAGE(OpenCV REQUIRED)
-	FIND_PACKAGE(PCL 1.7 REQUIRED)
+    FIND_PACKAGE(RTABMap REQUIRED)
+    FIND_PACKAGE(OpenCV REQUIRED)
+    FIND_PACKAGE(PCL 1.7 REQUIRED)
 	
-	# Find Qt5 first
-	FIND_PACKAGE(Qt5 COMPONENTS Widgets Core Gui Svg QUIET)
-    	IF(NOT Qt5_FOUND)
-       		FIND_PACKAGE(Qt4 COMPONENTS QtCore QtGui QtSvg)
-    	ENDIF(NOT Qt5_FOUND)
+    # Find Qt6 first
+    FIND_PACKAGE(Qt6 COMPONENTS Widgets Core Gui Svg QUIET)
+    IF(NOT Qt6_FOUND)
+       	FIND_PACKAGE(Qt5 COMPONENTS Widgets Core Gui Svg QUIET)
+        IF(NOT Qt5_FOUND)
+       	    FIND_PACKAGE(Qt4 COMPONENTS QtCore QtGui QtSvg)
+        ENDIF(NOT Qt5_FOUND)
+    ENDIF(NOT Qt6_FOUND)
 endif()
 
 if(POLICY CMP0020)
@@ -57,8 +60,10 @@ INCLUDE_DIRECTORIES(${INCLUDE_DIRS})
 
 IF(QT4_FOUND)
     QT4_WRAP_CPP(moc_srcs MapBuilder.h)
-ELSE()
+ELSEIF(Qt5_FOUND)
     QT5_WRAP_CPP(moc_srcs MapBuilder.h)
+ELSE()
+    QT6_WRAP_CPP(moc_srcs MapBuilder.h)
 ENDIF()
 
 ADD_EXECUTABLE(noEventsExample main.cpp ${moc_srcs})

@@ -35,6 +35,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QtCore/QMutex>
 #include <QtCore/QTimer>
 #include <QtCore/QTime>
+#include <QtCore/QElapsedTimer>
 
 class Ui_consoleWidget;
 class QMessageBox;
@@ -69,7 +70,7 @@ private:
 	QMutex _errorMessageMutex;
 	QMutex _msgListMutex;
 	QTimer _timer;
-	QTime _time;
+	QElapsedTimer _time;
 	QTextCursor * _textCursor;
 	QList<QPair<QString, int> > _msgList;
 };

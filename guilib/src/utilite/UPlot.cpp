@@ -37,6 +37,7 @@
 #include <QLabel>
 #include <QMenu>
 #include <QStyle>
+#include <QActionGroup>
 #include <QInputDialog>
 #include <QMessageBox>
 #include <QFileDialog>
@@ -788,28 +789,28 @@ void UPlotCurve::draw(QPainter * painter, const QRect & limits)
 				{
 					QPointF intersection;
 					QLineF::IntersectType type;
-					type = lineItem->line().intersect(QLineF(limits.topLeft(), limits.bottomLeft()), &intersection);
+					type = lineItem->line().intersects(QLineF(limits.topLeft(), limits.bottomLeft()), &intersection);
 					if(type == QLineF::BoundedIntersection)
 					{
 						!limits.contains(line.p1())?line.setP1(intersection.toPoint()):line.setP2(intersection.toPoint());
 					}
 					else
 					{
-						type = lineItem->line().intersect(QLineF(limits.topLeft(), limits.topRight()), &intersection);
+						type = lineItem->line().intersects(QLineF(limits.topLeft(), limits.topRight()), &intersection);
 						if(type == QLineF::BoundedIntersection)
 						{
 							!limits.contains(line.p1())?line.setP1(intersection.toPoint()):line.setP2(intersection.toPoint());
 						}
 						else
 						{
-							type = lineItem->line().intersect(QLineF(limits.bottomLeft(), limits.bottomRight()), &intersection);
+							type = lineItem->line().intersects(QLineF(limits.bottomLeft(), limits.bottomRight()), &intersection);
 							if(type == QLineF::BoundedIntersection)
 							{
 								!limits.contains(line.p1())?line.setP1(intersection.toPoint()):line.setP2(intersection.toPoint());
 							}
 							else
 							{
-								type = lineItem->line().intersect(QLineF(limits.topRight(), limits.bottomRight()), &intersection);
+								type = lineItem->line().intersects(QLineF(limits.topRight(), limits.bottomRight()), &intersection);
 								if(type == QLineF::BoundedIntersection)
 								{
 									!limits.contains(line.p1())?line.setP1(intersection.toPoint()):line.setP2(intersection.toPoint());
@@ -968,7 +969,7 @@ void UPlotCurve::setData(const std::vector<qreal> & x, const std::vector<qreal> 
 
 void UPlotCurve::setData(const QVector<qreal> & y)
 {
-	this->setData(y.toStdVector());
+	this->setData(std::vector<qreal>(y.begin(), y.end()));
 }
 
 void UPlotCurve::setData(const std::vector<qreal> & y)
@@ -1194,8 +1195,8 @@ void UPlotAxis::setAxis(qreal & min, qreal & max)
 	}
 	else
 	{
-		borderMin = this->fontMetrics().width(QString::number(_min,'g',_gradMaxDigits))/2;
-		borderMax = this->fontMetrics().width(QString::number(_max,'g',_gradMaxDigits))/2;
+		borderMin = this->fontMetrics().horizontalAdvance(QString::number(_min,'g',_gradMaxDigits))/2;
+		borderMax = this->fontMetrics().horizontalAdvance(QString::number(_max,'g',_gradMaxDigits))/2;
 	}
 	int border = borderMin>borderMax?borderMin:borderMax;
 	int borderDelta;
@@ -1303,9 +1304,9 @@ void UPlotAxis::setAxis(qreal & min, qreal & max)
 		for (int i = 0; i <= _count; i+=5)
 		{
 			QString n(QString::number(_min + (i/5)*((_max-_min)/(_count/5)),'g',_gradMaxDigits));
-			if(this->fontMetrics().width(n) > minWidth)
+			if(this->fontMetrics().horizontalAdvance(n) > minWidth)
 			{
-				minWidth = this->fontMetrics().width(n);
+				minWidth = this->fontMetrics().horizontalAdvance(n);
 			}
 		}
 		this->setMinimumWidth(15+minWidth);
@@ -1592,7 +1593,7 @@ void UPlotLegend::addItem(UPlotCurve * curve)
 		QHBoxLayout * hLayout = new QHBoxLayout();
 		hLayout->addWidget(legendItem);
 		hLayout->addStretch(0);
-		hLayout->setMargin(0);
+		hLayout->setContentsMargins(0,0,0,0);
 
 		// add to the legend
 		((QVBoxLayout*)_contentLayout)->insertLayout(_contentLayout->count()-1, hLayout);
@@ -1644,7 +1645,7 @@ void UPlotLegend::moveUp(UPlotLegendItem * item)
 		QHBoxLayout * hLayout = new QHBoxLayout();
 		hLayout->addWidget(layoutItem->layout()->itemAt(0)->widget());
 		hLayout->addStretch(0);
-		hLayout->setMargin(0);
+		hLayout->setContentsMargins(0,0,0,0);
 		((QVBoxLayout*)_contentLayout)->insertLayout(index-1, hLayout);
 		delete layoutItem;
 		Q_EMIT legendItemMoved(item->curve(), index-1);
@@ -1671,7 +1672,7 @@ void UPlotLegend::moveDown(UPlotLegendItem * item)
 		QHBoxLayout * hLayout = new QHBoxLayout();
 		hLayout->addWidget(layoutItem->layout()->itemAt(0)->widget());
 		hLayout->addStretch(0);
-		hLayout->setMargin(0);
+		hLayout->setContentsMargins(0,0,0,0);
 		((QVBoxLayout*)_contentLayout)->insertLayout(index+1, hLayout);
 		delete layoutItem;
 		Q_EMIT legendItemMoved(item->curve(), index+1);
@@ -1694,7 +1695,7 @@ QString UPlotLegend::getAllCurveDataAsText() const
 				xAxisMap.insert(iter.key(), iter.value());
 			}
 		}
-		QList<qreal> xAxis = xAxisMap.uniqueKeys();
+		QList<qreal> xAxis = xAxisMap.keys();
 
 		QVector<QVector<qreal> > axes;
 		for(int i=0; i<items.size(); ++i)
@@ -2585,7 +2586,7 @@ void UPlot::mouseMoveEvent(QMouseEvent * event)
 			if((QApplication::mouseButtons() & Qt::LeftButton) ||
 			   (_aMouseTracking->isChecked() && xPos>=0 && yPos>=0 && xPos<_graphicsViewHolder->width() && yPos<_graphicsViewHolder->height()))
 			{
-				QToolTip::showText(event->globalPos(), QString("%1,%2").arg(x).arg(y));
+				QToolTip::showText(event->globalPosition().toPoint(), QString("%1,%2").arg(x).arg(y));
 			}
 			else
 			{
@@ -2831,8 +2832,8 @@ void UPlot::contextMenuEvent(QContextMenuEvent * event)
 
 			QPalette p(palette());
 			// Set background color to white
-			QColor c = p.color(QPalette::Background);
-			p.setColor(QPalette::Background, Qt::white);
+			QColor c = p.color(QPalette::Window);
+			p.setColor(QPalette::Window, Qt::white);
 			setPalette(p);
 
 #ifdef QT_SVG_LIB
@@ -2858,14 +2859,14 @@ void UPlot::contextMenuEvent(QContextMenuEvent * event)
 				}
 				else
 				{
-					QPixmap figure = QPixmap::grabWidget(this);
+					QPixmap figure = this->grab();
 					figure.save(text);
 				}
 #ifdef QT_SVG_LIB
 			}
 #endif
 			// revert background color
-			p.setColor(QPalette::Background, c);
+			p.setColor(QPalette::Window, c);
 			setPalette(p);
 
 			if(flatModified)
@@ -2923,7 +2924,7 @@ void UPlot::captureScreen()
 	}
 	targetDir += "/";
 	QString name = (QDateTime::currentDateTime().toString("yyMMddhhmmsszzz") + ".") + _autoScreenCaptureFormat;
-	QPixmap figure = QPixmap::grabWidget(this);
+	QPixmap figure = this->grab();
 	figure.save(targetDir + name);
 }
 
@@ -3181,7 +3182,7 @@ void UPlot::removeCurves()
 
 void UPlot::removeCurve(const UPlotCurve * curve)
 {
-	QList<UPlotCurve *>::iterator iter = qFind(_curves.begin(), _curves.end(), curve);
+	QList<UPlotCurve *>::iterator iter = std::find(_curves.begin(), _curves.end(), curve);
 #if PRINT_DEBUG
 	ULOGGER_DEBUG("Plot=\"%s\" removing curve=\"%s\"", this->objectName().toStdString().c_str(), curve?curve->name().toStdString().c_str():"");
 #endif
@@ -3215,7 +3216,7 @@ void UPlot::removeCurve(const UPlotCurve * curve)
 
 void UPlot::showCurve(const UPlotCurve * curve, bool shown)
 {
-	QList<UPlotCurve *>::iterator iter = qFind(_curves.begin(), _curves.end(), curve);
+	QList<UPlotCurve *>::iterator iter = std::find(_curves.begin(), _curves.end(), curve);
 	if(iter!=_curves.end())
 	{
 		UPlotCurve * value = *iter;

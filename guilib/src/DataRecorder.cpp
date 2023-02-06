@@ -58,7 +58,7 @@ DataRecorder::DataRecorder(QWidget * parent) :
 	imageView_->setImageDepthShown(true);
 	imageView_->setMinimumSize(320, 240);
 	QVBoxLayout * layout = new QVBoxLayout(this);
-	layout->setMargin(0);
+	layout->setContentsMargins(0,0,0,0);
 	layout->addWidget(imageView_);
 	layout->addWidget(label_);
 	layout->setStretch(0,1);

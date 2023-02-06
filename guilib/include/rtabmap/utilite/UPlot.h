@@ -32,6 +32,7 @@
 #include <QLabel>
 #include <QPushButton>
 #include <QtCore/QTime>
+#include <QtCore/QElapsedTimer>
 
 class QGraphicsView;
 class QGraphicsScene;
@@ -602,9 +603,9 @@ private:
 	UOrientableLabel * _yLabel;
 	QLabel * _refreshRate;
 	QString _workingDirectory;
-	QTime _refreshIntervalTime;
+	QElapsedTimer _refreshIntervalTime;
 	int _lowestRefreshRate;
-	QTime _refreshStartTime;
+	QElapsedTimer _refreshStartTime;
 	QString _autoScreenCaptureFormat;
 	QPoint _mousePressedPos;
 	QPoint _mouseCurrentPos;
