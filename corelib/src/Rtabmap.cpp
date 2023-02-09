@@ -3717,7 +3717,7 @@ bool Rtabmap::process(
 	refWordsCount = (int)signature->getWords().size();
 	refUniqueWordsCount = (int)uUniqueKeys(signature->getWords()).size();
 
-	if(_graphOptimizer->isSlam2d())
+	if(_graphOptimizer->isSlam2d() && _localizationCovariance.total() == 36)
 	{
 		// set very small
 		_localizationCovariance.at<double>(2,2) = Registration::COVARIANCE_LINEAR_EPSILON;
