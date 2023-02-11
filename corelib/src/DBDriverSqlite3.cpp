@@ -500,6 +500,7 @@ void DBDriverSqlite3::disconnectDatabaseQuery(bool save, const std::string & out
 				UERROR("Failed to rename just closed db %s to %s", this->getUrl().c_str(), outputUrl.c_str());
 			}
 		}
+		UINFO("Disconnected database %s!", this->getUrl().c_str());
 	}
 }
 

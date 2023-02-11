@@ -121,9 +121,8 @@ Transform OdometryViso2::computeTransform(
 		return t;
 	}
 
-	if(!(data.stereoCameraModel().isValidForProjection() &&
-		 data.stereoCameraModel().left().isValidForReprojection() &&
-		 data.stereoCameraModel().right().isValidForReprojection()))
+	if(!(data.stereoCameraModels().size() == 1 &&
+		data.stereoCameraModels()[0].isValidForProjection()))
 	{
 		UERROR("Invalid stereo camera model!");
 		return t;
@@ -161,10 +160,10 @@ Transform OdometryViso2::computeTransform(
 	if(viso2_ == 0)
 	{
 		VisualOdometryStereo::parameters params;
-		params.base      = params.match.base = data.stereoCameraModel().baseline();
-		params.calib.cu  = params.match.cu = data.stereoCameraModel().left().cx();
-		params.calib.cv  = params.match.cv = data.stereoCameraModel().left().cy();
-		params.calib.f   = params.match.f = data.stereoCameraModel().left().fx();
+		params.base      = params.match.base = data.stereoCameraModels()[0].baseline();
+		params.calib.cu  = params.match.cu = data.stereoCameraModels()[0].left().cx();
+		params.calib.cv  = params.match.cv = data.stereoCameraModels()[0].left().cy();
+		params.calib.f   = params.match.f = data.stereoCameraModels()[0].left().fx();
 
 		Parameters::parse(viso2Parameters_, Parameters::kOdomViso2RansacIters(), params.ransac_iters);
 		Parameters::parse(viso2Parameters_, Parameters::kOdomViso2InlierThreshold(), params.inlier_threshold);
@@ -255,7 +254,7 @@ Transform OdometryViso2::computeTransform(
 		}
 	}
 
-	const Transform & localTransform = data.stereoCameraModel().localTransform();
+	const Transform & localTransform = data.stereoCameraModels()[0].localTransform();
 	if(!t.isNull() && !t.isIdentity() && !localTransform.isIdentity() && !localTransform.isNull())
 	{
 		// from camera frame to base frame

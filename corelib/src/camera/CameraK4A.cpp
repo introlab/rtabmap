@@ -158,8 +158,24 @@ bool CameraK4A::init(const std::string & calibrationFolder, const std::string & 
 			return false;
 		}
 
-		uint64_t recording_length = k4a_playback_get_last_timestamp_usec((k4a_playback_t)playbackHandle_);
+		uint64_t recording_length = k4a_playback_get_recording_length_usec((k4a_playback_t)playbackHandle_);
 		UINFO("Recording is %lld seconds long", recording_length / 1000000);
+
+		k4a_record_configuration_t config;
+		if(k4a_playback_get_record_configuration((k4a_playback_t)playbackHandle_, &config))
+		{
+			UERROR("Failed to get record configuration");
+			close();
+			return false;
+		}
+		if(this->getImageRate() < 0)
+		{
+			int rate =
+					config.camera_fps == K4A_FRAMES_PER_SECOND_5?5:
+					config.camera_fps == K4A_FRAMES_PER_SECOND_15?15:30;
+			UINFO("Recording framerate is %d fps", rate);
+			this->setImageRate(-float(rate));
+		}
 
 		if (k4a_playback_get_calibration((k4a_playback_t)playbackHandle_, &calibration_))
 		{
@@ -501,6 +517,7 @@ SensorData CameraK4A::captureImage(CameraInfo * info)
 		}
 
 		double stamp = UTimer::now();
+		uint64_t imageStamp = 0;
 		if(!bgrCV.empty())
 		{
 			// Retrieve depth image from capture
@@ -508,7 +525,8 @@ SensorData CameraK4A::captureImage(CameraInfo * info)
 
 			if (depth_image_ != NULL)
 			{
-				double stampDevice = ((double)k4a_image_get_device_timestamp_usec(depth_image_)) / 1000000.0;
+				imageStamp = k4a_image_get_device_timestamp_usec(depth_image_);
+				double stampDevice = ((double)imageStamp) / 1000000.0;
 
 				if(timestampOffset_ == 0.0)
 				{
@@ -557,12 +575,19 @@ SensorData CameraK4A::captureImage(CameraInfo * info)
 
 		k4a_capture_release(captureHandle_);
 
+		// Get IMU sample
 		if(playbackHandle_)
 		{
-			// Get IMU sample, clear buffer
-			// FIXME: not tested, uncomment when tested.
-			k4a_playback_seek_timestamp(playbackHandle_, stamp* 1000000+1, K4A_PLAYBACK_SEEK_BEGIN);
-			if(K4A_STREAM_RESULT_SUCCEEDED == k4a_playback_get_previous_imu_sample(playbackHandle_, &imu_sample_))
+			k4a_stream_result_t imu_res = K4A_STREAM_RESULT_FAILED;
+			k4a_imu_sample_t next_imu_sample;
+
+			while((K4A_STREAM_RESULT_SUCCEEDED == (imu_res=k4a_playback_get_next_imu_sample(playbackHandle_, &next_imu_sample))) &&
+				  (next_imu_sample.gyro_timestamp_usec < imageStamp))
+			{
+				imu_sample_ = next_imu_sample;
+			}
+
+			if(imu_res == K4A_STREAM_RESULT_SUCCEEDED)
 			{
 				imu = IMU(cv::Vec3d(imu_sample_.gyro_sample.xyz.x, imu_sample_.gyro_sample.xyz.y, imu_sample_.gyro_sample.xyz.z),
 						cv::Mat::eye(3, 3, CV_64FC1),
@@ -577,7 +602,6 @@ SensorData CameraK4A::captureImage(CameraInfo * info)
 		}
 		else
 		{
-			// Get IMU sample, clear buffer
 			if(K4A_WAIT_RESULT_SUCCEEDED == k4a_device_get_imu_sample(deviceHandle_, &imu_sample_, 60))
 			{
 				imu = IMU(cv::Vec3d(imu_sample_.gyro_sample.xyz.x, imu_sample_.gyro_sample.xyz.y, imu_sample_.gyro_sample.xyz.z),
@@ -610,8 +634,8 @@ SensorData CameraK4A::captureImage(CameraInfo * info)
 				}
 				else if (previousStamp_ > 0)
 				{
-					float ratio = -this->getImageRate();
-					int sleepTime = 1000.0*(stamp - previousStamp_) / ratio - 1000.0*timer_.getElapsedTime();
+					double rateSec = -1.0/this->getImageRate();
+					int sleepTime = 1000.0*(rateSec - timer_.getElapsedTime());
 					if (sleepTime > 10000)
 					{
 						UWARN("Detected long delay (%d sec, stamps = %f vs %f). Waiting a maximum of 10 seconds.",
@@ -624,14 +648,14 @@ SensorData CameraK4A::captureImage(CameraInfo * info)
 					}
 
 					// Add precision at the cost of a small overhead
-					while (timer_.getElapsedTime() < (stamp - previousStamp_) / ratio - 0.000001)
+					while (timer_.getElapsedTime() < rateSec - 0.000001)
 					{
 						//
 					}
 
 					double slept = timer_.getElapsedTime();
 					timer_.start();
-					UDEBUG("slept=%fs vs target=%fs (ratio=%f)", slept, (stamp - previousStamp_) / ratio, ratio);
+					UDEBUG("slept=%fs vs target=%fs", slept, rateSec);
 				}
 				previousStamp_ = stamp;
 			}

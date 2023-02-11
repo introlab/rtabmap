@@ -66,14 +66,14 @@ RtabmapThread::~RtabmapThread()
 	delete _frameRateTimer;
 }
 
-void RtabmapThread::pushNewState(State newState, const ParametersMap & parameters)
+void RtabmapThread::pushNewState(State newState, const RtabmapEventCmd & cmdEvent)
 {
 	ULOGGER_DEBUG("to %d", newState);
 
 	_stateMutex.lock();
 	{
 		_state.push(newState);
-		_stateParam.push(parameters);
+		_stateParam.push(cmdEvent);
 	}
 	_stateMutex.unlock();
 
@@ -180,7 +180,7 @@ void RtabmapThread::mainLoopKill()
 void RtabmapThread::mainLoop()
 {
 	State state = kStateDetecting;
-	ParametersMap parameters;
+	RtabmapEventCmd cmdEvent(RtabmapEventCmd::kCmdUndef);
 
 	_stateMutex.lock();
 	{
@@ -188,7 +188,7 @@ void RtabmapThread::mainLoop()
 		{
 			state = _state.front();
 			_state.pop();
-			parameters = _stateParam.front();
+			cmdEvent = _stateParam.front();
 			_stateParam.pop();
 		}
 	}
@@ -198,110 +198,161 @@ void RtabmapThread::mainLoop()
 	cv::Mat userData;
 	UTimer timer;
 	std::string str;
+	RtabmapEventCmd::Cmd cmd = cmdEvent.getCmd();
 	switch(state)
 	{
 	case kStateDetecting:
 		this->process();
 		break;
-	case kStateInit:
-		UASSERT(!parameters.at("RtabmapThread/DatabasePath").empty());
-		str = parameters.at("RtabmapThread/DatabasePath");
-		parameters.erase("RtabmapThread/DatabasePath");
-		Parameters::parse(parameters, Parameters::kRtabmapImageBufferSize(), _dataBufferMaxSize);
-		Parameters::parse(parameters, Parameters::kRtabmapDetectionRate(), _rate);
-		Parameters::parse(parameters, Parameters::kRtabmapCreateIntermediateNodes(), _createIntermediateNodes);
-		UASSERT(_rate >= 0.0f);
-		_rtabmap->init(parameters, str);
-		break;
-	case kStateChangingParameters:
-		Parameters::parse(parameters, Parameters::kRtabmapImageBufferSize(), _dataBufferMaxSize);
-		Parameters::parse(parameters, Parameters::kRtabmapDetectionRate(), _rate);
-		Parameters::parse(parameters, Parameters::kRtabmapCreateIntermediateNodes(), _createIntermediateNodes);
-		UASSERT(_rate >= 0.0f);
-		_rtabmap->parseParameters(parameters);
-		break;
-	case kStateReseting:
-		_rtabmap->resetMemory();
-		this->clearBufferedData();
-		break;
-	case kStateClose:
-		if(_dataBuffer.size())
+	case kStateProcessCommand:
+		if(cmd == RtabmapEventCmd::kCmdInit)
 		{
-			UWARN("Closing... %d data still buffered! They will be cleared.", (int)_dataBuffer.size());
+			ULOGGER_DEBUG("CMD_INIT");
+			Parameters::parse(cmdEvent.getParameters(), Parameters::kRtabmapImageBufferSize(), _dataBufferMaxSize);
+			Parameters::parse(cmdEvent.getParameters(), Parameters::kRtabmapDetectionRate(), _rate);
+			Parameters::parse(cmdEvent.getParameters(), Parameters::kRtabmapCreateIntermediateNodes(), _createIntermediateNodes);
+			UASSERT(_rate >= 0.0f);
+			_rtabmap->init(cmdEvent.getParameters(), cmdEvent.value1().toStr());
+		}
+		else if(cmd == RtabmapEventCmd::kCmdClose)
+		{
+			ULOGGER_DEBUG("CMD_CLOSE");
+			if(_dataBuffer.size())
+			{
+				UWARN("Closing... %d data still buffered! They will be cleared.", (int)_dataBuffer.size());
+				this->clearBufferedData();
+			}
+			_rtabmap->close(cmdEvent.value1().toBool(), cmdEvent.value2().toStr());
+		}
+		else if(cmd == RtabmapEventCmd::kCmdUpdateParams)
+		{
+			ULOGGER_DEBUG("CMD_UPDATE_PARAMS");
+			Parameters::parse(cmdEvent.getParameters(), Parameters::kRtabmapImageBufferSize(), _dataBufferMaxSize);
+			Parameters::parse(cmdEvent.getParameters(), Parameters::kRtabmapDetectionRate(), _rate);
+			Parameters::parse(cmdEvent.getParameters(), Parameters::kRtabmapCreateIntermediateNodes(), _createIntermediateNodes);
+			UASSERT(_rate >= 0.0f);
+			_rtabmap->parseParameters(cmdEvent.getParameters());
+			break;
+		}
+		else if(cmd == RtabmapEventCmd::kCmdResetMemory)
+		{
+			ULOGGER_DEBUG("CMD_RESET_MEMORY");
+			_rtabmap->resetMemory();
 			this->clearBufferedData();
 		}
-		_rtabmap->close(uStr2Bool(parameters.at("saved")), parameters.at("outputPath"));
-		break;
-	case kStateDumpingMemory:
-		_rtabmap->dumpData();
-		break;
-	case kStateDumpingPrediction:
-		_rtabmap->dumpPrediction();
-		break;
-	case kStateExportingDOTGraph:
-		_rtabmap->generateDOTGraph(
-				parameters.at("path"),
-				atoi(parameters.at("id").c_str()),
-				atoi(parameters.at("margin").c_str()));
-		break;
-	case kStateExportingPoses:
-		_rtabmap->exportPoses(
-				parameters.at("path"),
-				uStr2Bool(parameters.at("optimized")),
-				uStr2Bool(parameters.at("global")),
-				atoi(parameters.at("type").c_str()));
-		break;
-	case kStateCleanDataBuffer:
-		this->clearBufferedData();
-		break;
-	case kStatePublishingMap:
-		this->publishMap(
-				uStr2Bool(parameters.at("optimized")),
-				uStr2Bool(parameters.at("global")),
-				uStr2Bool(parameters.at("graph_only")));
-		break;
-	case kStateTriggeringMap:
-		_rtabmap->triggerNewMap();
-		break;
-	case kStateSettingGoal:
-		id = atoi(parameters.at("id").c_str());
-		if(id == 0 && !parameters.at("label").empty() && _rtabmap->getMemory())
+		else if(cmd == RtabmapEventCmd::kCmdDumpMemory)
 		{
-			id = _rtabmap->getMemory()->getSignatureIdByLabel(parameters.at("label"));
-			if(id <= 0)
+			ULOGGER_DEBUG("CMD_DUMP_MEMORY");
+			_rtabmap->dumpData();
+		}
+		else if(cmd == RtabmapEventCmd::kCmdDumpPrediction)
+		{
+			ULOGGER_DEBUG("CMD_DUMP_PREDICTION");
+			_rtabmap->dumpPrediction();
+		}
+		else if(cmd == RtabmapEventCmd::kCmdGenerateDOTGraph)
+		{
+			ULOGGER_DEBUG("CMD_GENERATE_DOT_GRAPH");
+			_rtabmap->generateDOTGraph(
+					cmdEvent.value2().toStr(),
+					cmdEvent.value1().toBool()?0:cmdEvent.value3().toInt(),
+					cmdEvent.value1().toBool()?0:cmdEvent.value4().toInt());
+		}
+		else if(cmd == RtabmapEventCmd::kCmdExportPoses)
+		{
+			ULOGGER_DEBUG("CMD_EXPORT_POSES");
+			_rtabmap->exportPoses(
+					cmdEvent.value3().toStr(),
+					cmdEvent.value2().toBool(),
+					cmdEvent.value1().toBool(),
+					cmdEvent.value4().toInt());
+
+		}
+		else if(cmd == RtabmapEventCmd::kCmdCleanDataBuffer)
+		{
+			ULOGGER_DEBUG("CMD_CLEAN_DATA_BUFFER");
+			this->clearBufferedData();
+		}
+		else if(cmd == RtabmapEventCmd::kCmdPublish3DMap)
+		{
+			ULOGGER_DEBUG("CMD_PUBLISH_MAP");
+			this->publishMap(
+					cmdEvent.value2().toBool(),
+					cmdEvent.value1().toBool(),
+					cmdEvent.value3().toBool());
+		}
+		else if(cmd == RtabmapEventCmd::kCmdTriggerNewMap)
+		{
+			ULOGGER_DEBUG("CMD_TRIGGER_NEW_MAP");
+			_rtabmap->triggerNewMap();
+		}
+		else if(cmd == RtabmapEventCmd::kCmdPause)
+		{
+			ULOGGER_DEBUG("CMD_PAUSE");
+			_paused = !_paused;
+		}
+		else if(cmd == RtabmapEventCmd::kCmdGoal)
+		{
+			ULOGGER_DEBUG("CMD_GOAL");
+			if(cmdEvent.value1().isStr() && !cmdEvent.value1().toStr().empty() && _rtabmap->getMemory())
 			{
-				UERROR("Failed to find a node with label \"%s\".", parameters.at("label").c_str());
+				id = _rtabmap->getMemory()->getSignatureIdByLabel(cmdEvent.value1().toStr());
+				if(id <= 0)
+				{
+					UERROR("Failed to find a node with label \"%s\".", cmdEvent.value1().toStr().c_str());
+				}
+			}
+			else if(cmdEvent.value1().isInt() || cmdEvent.value1().isUInt())
+			{
+				id = cmdEvent.value1().toInt();
+			}
+
+			if(id < 0)
+			{
+				UERROR("Failed to set a goal. ID (%d) should be positive > 0", id);
+			}
+			timer.start();
+			if(id > 0 && !_rtabmap->computePath(id, true))
+			{
+				UERROR("Failed to compute a path to goal %d.", id);
+			}
+			this->post(new RtabmapGlobalPathEvent(
+					id,
+					cmdEvent.value1().isStr()?cmdEvent.value1().toStr():"",
+					_rtabmap->getPath(),
+					timer.elapsed()));
+			break;
+		}
+		else if(cmd == RtabmapEventCmd::kCmdCancelGoal)
+		{
+			ULOGGER_DEBUG("CMD_CANCEL_GOAL");
+			_rtabmap->clearPath(0);
+		}
+		else if(cmd == RtabmapEventCmd::kCmdLabel)
+		{
+			ULOGGER_DEBUG("CMD_LABEL");
+			if(!_rtabmap->labelLocation(cmdEvent.value2().toInt(), cmdEvent.value1().toStr()))
+			{
+				this->post(new RtabmapLabelErrorEvent(cmdEvent.value2().toInt(), cmdEvent.value1().toStr()));
 			}
 		}
-		else if(id < 0)
+		else if(cmd == RtabmapEventCmd::kCmdRemoveLabel)
 		{
-			UERROR("Failed to set a goal. ID (%d) should be positive > 0", id);
+			ULOGGER_DEBUG("CMD_REMOVE_LABEL");
+			id = _rtabmap->getMemory()->getSignatureIdByLabel(cmdEvent.value1().toStr(), true);
+			if(id <= 0 || !_rtabmap->labelLocation(id, ""))
+			{
+				this->post(new RtabmapLabelErrorEvent(id, cmdEvent.value1().toStr()));
+			}
 		}
-		timer.start();
-		if(id > 0 && !_rtabmap->computePath(id, true))
+		else if(cmd == RtabmapEventCmd::kCmdRepublishData)
 		{
-			UERROR("Failed to compute a path to goal %d.", id);
+			ULOGGER_DEBUG("CMD_REPUBLISH_DATA");
+			_rtabmap->addNodesToRepublish(cmdEvent.value1().toIntArray());
 		}
-		this->post(new RtabmapGlobalPathEvent(
-				id,
-				parameters.at("label"),
-				_rtabmap->getPath(),
-				timer.elapsed()));
-		break;
-	case kStateCancellingGoal:
-		_rtabmap->clearPath(0);
-		break;
-	case kStateLabelling:
-		if(!_rtabmap->labelLocation(atoi(parameters.at("id").c_str()), parameters.at("label")))
+		else
 		{
-			this->post(new RtabmapLabelErrorEvent(atoi(parameters.at("id").c_str()), parameters.at("label")));
-		}
-		break;
-	case kStateRemovingLabel:
-		id = _rtabmap->getMemory()->getSignatureIdByLabel(parameters.at("label"), true);
-		if(!_rtabmap->labelLocation(id, ""))
-		{
-			this->post(new RtabmapLabelErrorEvent(id, parameters.at("label")));
+			UWARN("Cmd %d unknown!", cmd);
 		}
 		break;
 	default:
@@ -397,127 +448,12 @@ bool RtabmapThread::handleEvent(UEvent* event)
 		else if(event->getClassName().compare("RtabmapEventCmd") == 0)
 		{
 			RtabmapEventCmd * rtabmapEvent = (RtabmapEventCmd*)event;
-			RtabmapEventCmd::Cmd cmd = rtabmapEvent->getCmd();
-			if(cmd == RtabmapEventCmd::kCmdInit)
-			{
-				ULOGGER_DEBUG("CMD_INIT");
-				ParametersMap parameters = ((RtabmapEventCmd*)event)->getParameters();
-				UASSERT(rtabmapEvent->value1().isStr());
-				UASSERT(parameters.insert(ParametersPair("RtabmapThread/DatabasePath", rtabmapEvent->value1().toStr())).second);
-				pushNewState(kStateInit, parameters);
-			}
-			else if(cmd == RtabmapEventCmd::kCmdClose)
-			{
-				ULOGGER_DEBUG("CMD_CLOSE");
-				UASSERT(rtabmapEvent->value1().isUndef() || rtabmapEvent->value1().isBool());
-				ParametersMap param;
-				param.insert(ParametersPair("saved", uBool2Str(rtabmapEvent->value1().isUndef() || rtabmapEvent->value1().toBool())));
-				param.insert(ParametersPair("outputPath", rtabmapEvent->value2().toStr()));
-				pushNewState(kStateClose, param);
-			}
-			else if(cmd == RtabmapEventCmd::kCmdResetMemory)
-			{
-				ULOGGER_DEBUG("CMD_RESET_MEMORY");
-				pushNewState(kStateReseting);
-			}
-			else if(cmd == RtabmapEventCmd::kCmdDumpMemory)
-			{
-				ULOGGER_DEBUG("CMD_DUMP_MEMORY");
-				pushNewState(kStateDumpingMemory);
-			}
-			else if(cmd == RtabmapEventCmd::kCmdDumpPrediction)
-			{
-				ULOGGER_DEBUG("CMD_DUMP_PREDICTION");
-				pushNewState(kStateDumpingPrediction);
-			}
-			else if(cmd == RtabmapEventCmd::kCmdGenerateDOTGraph)
-			{
-				ULOGGER_DEBUG("CMD_GENERATE_DOT_GRAPH");
-				UASSERT(rtabmapEvent->value1().isBool());
-				UASSERT(rtabmapEvent->value2().isStr());
-				UASSERT(rtabmapEvent->value1().toBool() || rtabmapEvent->value3().isInt() || rtabmapEvent->value3().isUInt());
-				UASSERT(rtabmapEvent->value1().toBool() || rtabmapEvent->value4().isInt() || rtabmapEvent->value4().isUInt());
-				ParametersMap param;
-				param.insert(ParametersPair("path", rtabmapEvent->value2().toStr()));
-				param.insert(ParametersPair("id", !rtabmapEvent->value1().toBool()?rtabmapEvent->value3().toStr():"0"));
-				param.insert(ParametersPair("margin", !rtabmapEvent->value1().toBool()?rtabmapEvent->value4().toStr():"0"));
-				pushNewState(kStateExportingDOTGraph, param);
-			}
-			else if(cmd == RtabmapEventCmd::kCmdExportPoses)
-			{
-				ULOGGER_DEBUG("CMD_EXPORT_POSES");
-				UASSERT(rtabmapEvent->value1().isBool());
-				UASSERT(rtabmapEvent->value2().isBool());
-				UASSERT(rtabmapEvent->value3().isStr());
-				UASSERT(rtabmapEvent->value4().isUndef() || rtabmapEvent->value4().isInt() || rtabmapEvent->value4().isUInt());
-				ParametersMap param;
-				param.insert(ParametersPair("global", rtabmapEvent->value1().toStr()));
-				param.insert(ParametersPair("optimized", rtabmapEvent->value1().toStr()));
-				param.insert(ParametersPair("path", rtabmapEvent->value3().toStr()));
-				param.insert(ParametersPair("type", rtabmapEvent->value4().isInt()?rtabmapEvent->value4().toStr():"0"));
-				pushNewState(kStateExportingPoses, param);
-
-			}
-			else if(cmd == RtabmapEventCmd::kCmdCleanDataBuffer)
-			{
-				ULOGGER_DEBUG("CMD_CLEAN_DATA_BUFFER");
-				pushNewState(kStateCleanDataBuffer);
-			}
-			else if(cmd == RtabmapEventCmd::kCmdPublish3DMap)
-			{
-				ULOGGER_DEBUG("CMD_PUBLISH_MAP");
-				UASSERT(rtabmapEvent->value1().isBool());
-				UASSERT(rtabmapEvent->value2().isBool());
-				UASSERT(rtabmapEvent->value3().isBool());
-				ParametersMap param;
-				param.insert(ParametersPair("global", rtabmapEvent->value1().toStr()));
-				param.insert(ParametersPair("optimized", rtabmapEvent->value2().toStr()));
-				param.insert(ParametersPair("graph_only", rtabmapEvent->value3().toStr()));
-				pushNewState(kStatePublishingMap, param);
-			}
-			else if(cmd == RtabmapEventCmd::kCmdTriggerNewMap)
-			{
-				ULOGGER_DEBUG("CMD_TRIGGER_NEW_MAP");
-				pushNewState(kStateTriggeringMap);
-			}
-			else if(cmd == RtabmapEventCmd::kCmdPause)
-			{
-				ULOGGER_DEBUG("CMD_PAUSE");
-				_paused = !_paused;
-			}
-			else if(cmd == RtabmapEventCmd::kCmdGoal)
-			{
-				ULOGGER_DEBUG("CMD_GOAL");
-				UASSERT(rtabmapEvent->value1().isStr() || rtabmapEvent->value1().isInt() || rtabmapEvent->value1().isUInt());
-				ParametersMap param;
-				param.insert(ParametersPair("label", rtabmapEvent->value1().isStr()?rtabmapEvent->value1().toStr():""));
-				param.insert(ParametersPair("id", !rtabmapEvent->value1().isStr()?rtabmapEvent->value1().toStr():"0"));
-				pushNewState(kStateSettingGoal, param);
-			}
-			else if(cmd == RtabmapEventCmd::kCmdCancelGoal)
-			{
-				ULOGGER_DEBUG("CMD_CANCEL_GOAL");
-				pushNewState(kStateCancellingGoal);
-			}
-			else if(cmd == RtabmapEventCmd::kCmdLabel)
-			{
-				ULOGGER_DEBUG("CMD_LABEL");
-				UASSERT(rtabmapEvent->value1().isStr());
-				UASSERT(rtabmapEvent->value2().isUndef() || rtabmapEvent->value2().isInt() || rtabmapEvent->value2().isUInt());
-				ParametersMap param;
-				param.insert(ParametersPair("label", rtabmapEvent->value1().toStr()));
-				param.insert(ParametersPair("id", rtabmapEvent->value2().isUndef()?"0":rtabmapEvent->value2().toStr()));
-				pushNewState(kStateLabelling, param);
-			}
-			else
-			{
-				UWARN("Cmd %d unknown!", cmd);
-			}
+			pushNewState(kStateProcessCommand, *rtabmapEvent);
 		}
 		else if(event->getClassName().compare("ParamEvent") == 0)
 		{
 			ULOGGER_DEBUG("changing parameters");
-			pushNewState(kStateChangingParameters, ((ParamEvent*)event)->getParameters());
+			pushNewState(kStateProcessCommand, RtabmapEventCmd(RtabmapEventCmd::kCmdUpdateParams, ((ParamEvent*)event)->getParameters()));
 		}
 	}
 	return false;

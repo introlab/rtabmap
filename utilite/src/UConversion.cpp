@@ -24,6 +24,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <iomanip>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -101,16 +102,22 @@ std::string uNumber2Str(int number)
 	return s.str();
 }
 
-std::string uNumber2Str(float number)
+std::string uNumber2Str(float number, int precision, bool fixed)
 {
 	std::stringstream s;
+	s << std::setprecision(precision);
+	if(fixed)
+		s << std::fixed;
 	s << number;
 	return s.str();
 }
 
-std::string uNumber2Str(double number)
+std::string uNumber2Str(double number, int precision, bool fixed)
 {
 	std::stringstream s;
+	s << std::setprecision(precision);
+	if(fixed)
+		s << std::fixed;
 	s << number;
 	return s.str();
 }

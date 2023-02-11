@@ -56,7 +56,6 @@ OdometryLOAM::OdometryLOAM(const ParametersMap & parameters) :
 	float mapResolution  = Parameters::defaultOdomLOAMResolution();
 	Parameters::parse(parameters, Parameters::kOdomLOAMSensor(), velodyneType);
 	Parameters::parse(parameters, Parameters::kOdomLOAMScanPeriod(), scanPeriod_);
-	UASSERT(scanPeriod_>0.0f);
 	Parameters::parse(parameters, Parameters::kOdomLOAMResolution(), mapResolution);
 	UASSERT(mapResolution>0.0f);
 	Parameters::parse(parameters, Parameters::kOdomLOAMLinVar(), linVar_);

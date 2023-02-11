@@ -67,7 +67,7 @@ class RTABMAP_CORE_EXPORT Statistics
 	RTABMAP_STATS(Loop, Visual_inliers,);
 	RTABMAP_STATS(Loop, Visual_inliers_ratio,);
 	RTABMAP_STATS(Loop, Visual_matches,);
-	RTABMAP_STATS(Loop, Distance_since_last_loc,);
+	RTABMAP_STATS(Loop, Distance_since_last_loc, m);
 	RTABMAP_STATS(Loop, Last_id,);
 	RTABMAP_STATS(Loop, Optimization_max_error, m);
 	RTABMAP_STATS(Loop, Optimization_max_error_ratio, );
@@ -90,15 +90,6 @@ class RTABMAP_CORE_EXPORT Statistics
 	RTABMAP_STATS(Loop, Odom_correction_roll, deg);
 	RTABMAP_STATS(Loop, Odom_correction_pitch, deg);
 	RTABMAP_STATS(Loop, Odom_correction_yaw, deg);
-	//Odom correction
-	RTABMAP_STATS(Loop, Odom_correction_acc_norm, m);
-	RTABMAP_STATS(Loop, Odom_correction_acc_angle, deg);
-	RTABMAP_STATS(Loop, Odom_correction_acc_x, m);
-	RTABMAP_STATS(Loop, Odom_correction_acc_y, m);
-	RTABMAP_STATS(Loop, Odom_correction_acc_z, m);
-	RTABMAP_STATS(Loop, Odom_correction_acc_roll, deg);
-	RTABMAP_STATS(Loop, Odom_correction_acc_pitch, deg);
-	RTABMAP_STATS(Loop, Odom_correction_acc_yaw, deg);
 	// Map to Odom
 	RTABMAP_STATS(Loop, MapToOdom_norm, m);
 	RTABMAP_STATS(Loop, MapToOdom_angle, deg);
@@ -115,6 +106,8 @@ class RTABMAP_CORE_EXPORT Statistics
 	RTABMAP_STATS(Loop, MapToBase_roll, deg);
 	RTABMAP_STATS(Loop, MapToBase_pitch, deg);
 	RTABMAP_STATS(Loop, MapToBase_yaw, deg);
+	RTABMAP_STATS(Loop, MapToBase_lin_std, m);
+	RTABMAP_STATS(Loop, MapToBase_lin_var, m2);
 
 	RTABMAP_STATS(Proximity, Time_detections,);
 	RTABMAP_STATS(Proximity, Space_last_detection_id,);
@@ -158,6 +151,8 @@ class RTABMAP_CORE_EXPORT Statistics
 	RTABMAP_STATS(Memory, RAM_usage, MB);
 	RTABMAP_STATS(Memory, RAM_estimated, MB);
 	RTABMAP_STATS(Memory, Triangulated_points, );
+	RTABMAP_STATS(Memory, Closest_node_distance, m);
+	RTABMAP_STATS(Memory, Closest_node_angle, rad);
 
 	RTABMAP_STATS(Timing, Memory_update, ms);
 	RTABMAP_STATS(Timing, Neighbor_link_refining, ms);
@@ -241,7 +236,9 @@ public:
 	void setProximityDetectionMapId(int id) {_proximiyDetectionMapId = id;}
 	void setStamp(double stamp) {_stamp = stamp;}
 
-	void setLastSignatureData(const Signature & data) {_lastSignatureData = data;}
+	RTABMAP_DEPRECATED(void setLastSignatureData(const Signature & data), "Use addSignatureData() instead.");
+	void addSignatureData(const Signature & data) {_signaturesData.insert(std::make_pair(data.id(), data));}
+	void setSignaturesData(const std::map<int, Signature> & data) {_signaturesData = data;}
 
 	void setPoses(const std::map<int, Transform> & poses) {_poses = poses;}
 	void setConstraints(const std::multimap<int, Link> & constraints) {_constraints = constraints;}
@@ -270,7 +267,8 @@ public:
 	int proximityDetectionMapId() const {return _proximiyDetectionMapId;}
 	double stamp() const {return _stamp;}
 
-	const Signature & getLastSignatureData() const {return _lastSignatureData;}
+	const Signature & getLastSignatureData() const {return _signaturesData.empty()?_dummyEmptyData:_signaturesData.rbegin()->second;}
+	const std::map<int, Signature> & getSignaturesData() const {return _signaturesData;}
 
 	const std::map<int, Transform> & poses() const {return _poses;}
 	const std::multimap<int, Link> & constraints() const {return _constraints;}
@@ -302,7 +300,8 @@ private:
 	int _proximiyDetectionMapId;
 	double _stamp;
 
-	Signature _lastSignatureData;
+	std::map<int, Signature> _signaturesData;
+	Signature _dummyEmptyData;
 
 	std::map<int, Transform> _poses;
 	std::multimap<int, Link> _constraints;

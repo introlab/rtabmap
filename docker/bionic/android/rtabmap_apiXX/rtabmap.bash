@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 if [ $# -ne 2 ]; then
     echo "rtabmap.bash android_install_prefix api_level (23 for tango, 24 for arengine)   # Example: build.bash /opt/android 24"
     exit 1

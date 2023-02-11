@@ -1,5 +1,9 @@
 # Image: introlab3it/rtabmap:jfr2018
 
+# Build this image:
+# $ cd rtabmap
+# $ docker build -t introlab3it/rtabmap:jfr2018 -f docker/jfr2018/latest/Dockerfile .
+
 FROM ubuntu:16.04
 
 WORKDIR /root/
@@ -44,13 +48,13 @@ RUN apt-get update && apt-get install -q -y \
     && rm -rf /var/lib/apt/lists/*
 
 # setup keys
-RUN apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys 421C365BD9FF1F717815A3895523BAEEB01FA116
+RUN apt-key adv --keyserver 'hkp://keyserver.ubuntu.com:80' --recv-key C1CF6E31E6BADE8868B172B4F42ED6FBAB17C654
 
 # setup sources.list
 RUN echo "deb http://packages.ros.org/ros/ubuntu `lsb_release -sc` main" > /etc/apt/sources.list.d/ros-latest.list
 
 # install bootstrap tools
-RUN apt-get update && apt-get install --no-install-recommends -y \
+RUN apt-get update && apt-get install --no-install-recommends -y --allow-unauthenticated \
     python-rosdep \
     python-rosinstall \
     python-vcstools \
@@ -127,27 +131,31 @@ WORKDIR /root/catkin_ws/src
 RUN /bin/bash -c '. /opt/ros/${ROS_DISTRO}/setup.bash; catkin_init_workspace'
 # OPENCV ROS
 RUN git clone https://github.com/ros-perception/vision_opencv.git && cd vision_opencv && git checkout kinetic
+# make sure cv_bridge is rebuilt before other packages
+RUN /bin/bash -c 'cd /root/catkin_ws;. /opt/ros/${ROS_DISTRO}/setup.bash; catkin_make -DCMAKE_BUILD_TYPE=Release; rm -rf build;'
 # DVO
 RUN git clone https://github.com/tum-vision/dvo_slam.git && cd dvo_slam && git checkout ${ROS_DISTRO}-devel && rm dvo_slam/package.xml && rm dvo_benchmark/package.xml && rm dvo_ros/package.xml
 # VISO2
 RUN git clone https://github.com/srv/viso2.git && cd viso2 && git checkout ${ROS_DISTRO}
 # MSCKF-VIO
-RUN git clone https://github.com/KumarRobotics/msckf_vio.git && cd msckf_vio && git checkout a9386c5 && wget https://gist.githubusercontent.com/matlabbe/f2518d7427e7f6740af2110e540b1f2b/raw/a6d604e730bcbf3dcd7fd8a27302bed4bb94b799/msckf_vio_a9386c5_ros_commented.patch && git apply --ignore-space-change --ignore-whitespace msckf_vio_a9386c5_ros_commented.patch
+RUN git clone https://github.com/KumarRobotics/msckf_vio.git && cd msckf_vio && git checkout a9386c5 && wget https://gist.githubusercontent.com/matlabbe/f2518d7427e7f6740af2110e540b1f2b/raw/1b7c96b38e063bacfa77408686e4528f3d27af2e/msckf_vio_a9386c5_ros_commented.patch && git apply --ignore-space-change --ignore-whitespace msckf_vio_a9386c5_ros_commented.patch
 # FOVIS
 RUN git clone https://github.com/srv/libfovis.git && cd libfovis && git checkout 896acc8425e9fd7c5609153b8bad349ae1abbb50
 # LOAM
 RUN git clone https://github.com/laboshinl/loam_velodyne.git && cd loam_velodyne && git checkout a4c364a677647f2a35831439032dc5a58378b3fd
+# FLOAM
+RUN git clone https://github.com/wh200720041/floam.git && cd floam && git checkout 9fdb2ca60a2988c0db515c9c1567100fba8b58d8 && wget https://gist.githubusercontent.com/matlabbe/d8ab56e69146c18afbd1a3b05444c649/raw/f1f37ece5d5787c77f008cb89e9446fc20a40c1f/floam_as_library_support.patch && git apply --ignore-space-change --ignore-whitespace floam_as_library_support.patch
 # VINS-Fusion
 RUN git clone https://github.com/HKUST-Aerial-Robotics/VINS-Fusion.git && cd VINS-Fusion && git checkout e72b5f7ae7437e8cf481cc0bcbfb5fe91bd3d640 && wget https://gist.githubusercontent.com/matlabbe/795ab37067367dca58bbadd8201d986c/raw/0657cc30fca6b1b61faeef42be9f3428861d2598/vins-fusion_e72b5f7.patch && git apply --ignore-space-change --ignore-whitespace vins-fusion_e72b5f7.patch
+# OpenVINS (currently failing because not right ceres version is installed)
+# RUN git clone https://github.com/rpng/open_vins.git && cd open_vins && git checkout 83ffb88ad35586d86bddc1e041094f4cd3d400df
 
 WORKDIR /root
 # OKVIS
 RUN git clone https://github.com/ethz-asl/okvis.git && cd okvis && git checkout 1dce9129f22dd4d21d944788cd9da3a4341586aa && wget https://gist.githubusercontent.com/matlabbe/383be55b5cb682fea217d45ef9a37ef8/raw/bd4f6886eeba3800f0e5171e77abc5dd6dc8bfd9/okvis_1dce912_marchnative_disabled.patch && git apply --ignore-space-change --ignore-whitespace okvis_1dce912_marchnative_disabled.patch
 # ORB_SLAM2
-RUN git clone https://github.com/stevenlovegrove/Pangolin.git
+RUN git clone https://github.com/stevenlovegrove/Pangolin.git && cd Pangolin && git checkout v0.6
 RUN git clone https://github.com/raulmur/ORB_SLAM2.git && cd ORB_SLAM2 && wget https://gist.githubusercontent.com/matlabbe/c10403c5d44af85cc3585c0e1c601a60/raw/48adf04098960d86ddf225f1a8c68af87bfcf56e/orbslam2_f2e6f51_marchnative_disabled.patch && git apply --ignore-space-change --ignore-whitespace orbslam2_f2e6f51_marchnative_disabled.patch
-
-RUN git clone https://github.com/introlab/rtabmap.git
 
 # for dvo, TBB is required (docker related issue)
 # Download and install TBB
@@ -219,15 +227,21 @@ ENV ORB_SLAM2_ROOT_DIR /root/ORB_SLAM2
 
 WORKDIR /root
 
+# Copy current source code
+COPY . /root/rtabmap
+
+# Patch for OpenCV 3.1
+RUN cd rtabmap && wget https://gist.githubusercontent.com/matlabbe/ab42b8ea5d5902ffc6177539b98d9d51/raw/87520db7a54bf2673be3fc898578cd6348dd66f0/rtabmap_opencv310_backward_compatibility.patch && git apply --ignore-space-change --ignore-whitespace rtabmap_opencv310_backward_compatibility.patch
+
 # Build RTAB-Map (using standard g2o, then a version for orbslam2, which uses its own g2o version)
 RUN cp -r rtabmap rtabmap_os2 && cp -r rtabmap rtabmap_msckf && cp -r rtabmap rtabmap_loam
-RUN /bin/bash -c '. /root/catkin_ws/devel/setup.bash; cd rtabmap ;  cd build ;  cmake -DWITH_G2O=ON .. ;  make -j3 ; make install ; rm -rf * ; ldconfig'
+RUN /bin/bash -c '. /root/catkin_ws/devel/setup.bash; cd rtabmap ;  cd build ;  cmake -DWITH_FOVIS=ON -DWITH_VISO2=ON -DWITH_DVO=ON -DWITH_OKVIS=ON -DWITH_VINS=ON -DWITH_OPENVINS=ON .. ;  make -j3 ; make install ; rm -rf * ; ldconfig'
 # Version with orb_slam2 (system g2o disabled)
-RUN /bin/bash -c '. /root/catkin_ws/devel/setup.bash; cd rtabmap_os2 ; cd build ; cmake -DWITH_G2O=OFF .. ; make -j3 ; rm -rf *'
+RUN /bin/bash -c '. /root/catkin_ws/devel/setup.bash; cd rtabmap_os2 ; cd build ; cmake -DWITH_G2O=OFF -DWITH_ORB_SLAM=ON .. ; make -j3 ; rm -rf *'
 
 # rtabmap is crashing if LOAM and MSCKF dependencies are used at the same time, so split them
-RUN /bin/bash -c '. /root/catkin_ws/devel/setup.bash; cd rtabmap_loam ;cd build ;cmake -DWITH_MSCKF_VIO=OFF -DWITH_LOAM=ON -DWITH_G2O=ON -DWITH_FOVIS=OFF -DWITH_DVO=OFF -DWITH_OKVIS=OFF -DWITH_VINS=OFF -DWITH_VISO2=OFF .. ;make -j3 ;rm -rf *'
-RUN /bin/bash -c '. /root/catkin_ws/devel/setup.bash; cd rtabmap_msckf ;cd build ;cmake -DWITH_MSCKF_VIO=ON -DWITH_LOAM=OFF -DWITH_G2O=ON -DWITH_FOVIS=OFF -DWITH_DVO=OFF -DWITH_OKVIS=OFF -DWITH_VINS=OFF -DWITH_VISO2=OFF .. ;make -j3 ;rm -rf *'
+RUN /bin/bash -c '. /root/catkin_ws/devel/setup.bash; cd rtabmap_loam ;cd build ;cmake  -DWITH_LOAM=ON -DWITH_FLOAM=ON .. ;make -j3 ;rm -rf *'
+RUN /bin/bash -c '. /root/catkin_ws/devel/setup.bash; cd rtabmap_msckf ;cd build ;cmake -DWITH_MSCKF_VIO=ON .. ;make -j3 ;rm -rf *'
 
 WORKDIR /root
     

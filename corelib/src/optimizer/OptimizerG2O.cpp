@@ -950,14 +950,17 @@ std::map<int, Transform> OptimizerG2O::optimize(
 		UDEBUG("Initial optimization...");
 		optimizer.initializeOptimization();
 
-		UASSERT_MSG(optimizer.verifyInformationMatrices(true),
-				"This error can be caused by (1) bad covariance matrix "
+		if(!optimizer.verifyInformationMatrices(true))
+		{
+			UERROR("This error can be caused by (1) bad covariance matrix "
 				"set in odometry messages "
 				"(see requirements in g2o::OptimizableGraph::verifyInformationMatrices() function) "
 				"or that (2) PCL and g2o hadn't "
 				"been built both with or without \"-march=native\" compilation "
 				"flag (if one library is built with this flag and not the other, "
 				"this is causing Eigen to not work properly, resulting in segmentation faults).");
+			return optimizedPoses;
+		}
 
 		UINFO("g2o optimizing begin (max iterations=%d, robust=%d)", iterations(), isRobust()?1:0);
 		int it = 0;
@@ -1085,7 +1088,7 @@ std::map<int, Transform> OptimizerG2O::optimize(
 
 				if(i>0 && optimizer.activeRobustChi2() > 1000000000000.0)
 				{
-					UWARN("g2o: Large optimimzation error detected (%f), aborting optimization!");
+					UERROR("g2o: Large optimimzation error detected (%f), aborting optimization!");
 					return optimizedPoses;
 				}
 
@@ -1128,7 +1131,7 @@ std::map<int, Transform> OptimizerG2O::optimize(
 
 		if(optimizer.activeRobustChi2() > 1000000000000.0)
 		{
-			UWARN("g2o: Large optimimzation error detected (%f), aborting optimization!");
+			UERROR("g2o: Large optimimzation error detected (%f), aborting optimization!");
 			return optimizedPoses;
 		}
 

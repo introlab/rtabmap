@@ -6,43 +6,27 @@ FROM ros:noetic-perception
 RUN apt-get update && \
     apt-get install -y git software-properties-common ros-noetic-rtabmap-ros && \
     apt-get remove -y ros-noetic-rtabmap && \
-    rm -rf /var/lib/apt/lists/
+    apt-get clean && rm -rf /var/lib/apt/lists/
 
 WORKDIR /root/
 
 # GTSAM
 RUN add-apt-repository ppa:borglab/gtsam-release-4.0 -y
-RUN apt install libgtsam-dev libgtsam-unstable-dev -y
+RUN apt-get update && apt install libgtsam-dev libgtsam-unstable-dev -y && \
+    apt-get clean && rm -rf /var/lib/apt/lists/
 
-# libpointmatcher 
-RUN git clone https://github.com/ethz-asl/libnabo.git
-#commit February 13 2021
-RUN cd libnabo && \
-    git checkout 3cab7eed92bd5d4aed997347b8c8a2692a83a532 && \
-    mkdir build && \
-    cd build && \
-    cmake -DCMAKE_BUILD_TYPE=Release .. && \
-    make -j$(nproc) && \
-    make install && \
-    cd && \
-    rm -r libnabo
-RUN git clone https://github.com/ethz-asl/libpointmatcher.git
-#commit April 6 2021
-RUN cd libpointmatcher && \
-    git checkout 76f99fce0fe69e6384102a0343fdf8d262626e1f && \
-    mkdir build && \
-    cd build && \
-    cmake -DCMAKE_BUILD_TYPE=Release .. && \
-    make -j$(nproc) && \
-    make install && \
-    cd && \
-    rm -r libpointmatcher
-    
+# MRPT
+RUN add-apt-repository ppa:joseluisblancoc/mrpt-stable -y
+RUN apt-get update && apt install libmrpt-poses-dev -y && \
+    apt-get clean && rm -rf /var/lib/apt/lists/
+
 # PDAL
-RUN apt-get install -y libpdal-dev
+RUN apt-get update && apt-get install -y libpdal-dev && \
+    apt-get clean && rm -rf /var/lib/apt/lists/
 
 # RealSense2
-RUN apt-get install -y ros-noetic-librealsense2
+RUN apt-get update && apt-get install -y ros-noetic-librealsense2 && \
+    apt-get clean && rm -rf /var/lib/apt/lists/
 
 ARG TARGETPLATFORM
 ENV TARGETPLATFORM=${TARGETPLATFORM:-linux/amd64}
@@ -74,11 +58,13 @@ RUN if [ "$TARGETPLATFORM" = "linux/amd64" ]; then echo "Installing k4a..." && \
     dpkg -i /tmp/libk4abt1.0-dev_1.0.0_amd64.deb && \
     apt-get install -y libsoundio1 && \
     dpkg -i /tmp/k4a-tools_1.3.0_amd64.deb && \
-    rm /tmp/libk4a* /tmp/k4a*; fi
+    rm /tmp/libk4a* /tmp/k4a* && \
+    apt-get clean && rm -rf /var/lib/apt/lists/; fi
 
 # libfreenect2 
 RUN if [ "$TARGETPLATFORM" = "linux/amd64" ]; then echo "Installing libfreenect2..." && \
     apt-get update && apt-get install -y mesa-utils xserver-xorg-video-all libusb-1.0-0-dev libturbojpeg0-dev libglfw3-dev && \
+    apt-get clean && rm -rf /var/lib/apt/lists/ && \
     git clone https://github.com/OpenKinect/libfreenect2 && \
     cd libfreenect2 && \
     mkdir build && \
@@ -92,6 +78,7 @@ RUN if [ "$TARGETPLATFORM" = "linux/amd64" ]; then echo "Installing libfreenect2
 # zed open capture
 RUN if [ "$TARGETPLATFORM" = "linux/amd64" ]; then echo "Installing zed-open-capture..." && \
     apt-get update && apt install libusb-1.0-0-dev libhidapi-libusb0 libhidapi-dev wget && \
+    apt-get clean && rm -rf /var/lib/apt/lists/ && \
     git clone https://github.com/stereolabs/zed-open-capture.git && \
     cd zed-open-capture && \
     mkdir build && \
@@ -109,7 +96,7 @@ RUN if [ "$TARGETPLATFORM" = "linux/amd64" ]; then echo "Installing AliceVision.
       libceres-dev \
       xorg-dev \
       libglu1-mesa-dev \
-      wget; fi
+      wget && apt-get clean && rm -rf /var/lib/apt/lists/; fi
 RUN if [ "$TARGETPLATFORM" = "linux/amd64" ]; then git clone https://github.com/OpenImageIO/oiio.git && \
     cd oiio && \
     git checkout Release-2.0.12 && \
@@ -130,6 +117,8 @@ RUN if [ "$TARGETPLATFORM" = "linux/amd64" ]; then git clone https://github.com/
     make install && \
     cd && \
     rm -r assimp; fi
+# Ignore assimp installed from ros, as it has invalid "/usr/lib/include" in its target, making rtabmap's cmake fails
+RUN if [ "$TARGETPLATFORM" = "linux/amd64" ]; then rm -rf /usr/lib/x86_64-linux-gnu/cmake/assimp*; fi
 RUN if [ "$TARGETPLATFORM" = "linux/amd64" ]; then git clone https://github.com/alicevision/geogram.git && \
     cd geogram && \
     git checkout v1.7.6 && \
@@ -144,6 +133,7 @@ RUN if [ "$TARGETPLATFORM" = "linux/amd64" ]; then git clone https://github.com/
 RUN if [ "$TARGETPLATFORM" = "linux/amd64" ]; then git clone https://github.com/alicevision/AliceVision.git --recursive && \
     cd AliceVision && \
     git checkout 0f6115b6af6183c524aa7fcf26141337c1cf3872 && \
+    git submodule update -i && \
     wget https://gist.githubusercontent.com/matlabbe/1df724465106c056ca4cc195c81d8cf0/raw/b3ed4cb8f9b270833a40d57d870a259eabfa4415/alicevision_0f6115b.patch && \
     git apply alicevision_0f6115b.patch && \
     mkdir build && \
@@ -155,7 +145,7 @@ RUN if [ "$TARGETPLATFORM" = "linux/amd64" ]; then git clone https://github.com/
     rm -r AliceVision; fi
     
 #commit Aug 6 2020
-RUN apt-get update && apt install wget
+RUN apt-get update && apt install wget && apt-get clean && rm -rf /var/lib/apt/lists/
 RUN git clone https://github.com/laurentkneip/opengv.git && \
     cd opengv && \
     git checkout 91f4b19c73450833a40e463ad3648aae80b3a7f3 && \

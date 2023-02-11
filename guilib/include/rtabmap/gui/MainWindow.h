@@ -187,11 +187,13 @@ protected Q_SLOTS:
 	void selectStereoTara();
 	void selectStereoUsb();
 	void selectMyntEyeS();
-	void selectDepthAI();
+	void selectDepthAIOAKD();
+	void selectDepthAIOAKDLite();
 	void dumpTheMemory();
 	void dumpThePrediction();
 	void sendGoal();
 	void sendWaypoints();
+	void postGoal();
 	void postGoal(const QString & goal);
 	void cancelGoal();
 	void label();

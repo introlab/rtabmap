@@ -202,6 +202,7 @@ Odometry::~Odometry()
 
 void Odometry::reset(const Transform & initialPose)
 {
+	UDEBUG("");
 	UASSERT(!initialPose.isNull());
 	previousVelocities_.clear();
 	velocityGuess_.setNull();

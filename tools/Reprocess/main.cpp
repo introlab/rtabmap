@@ -35,6 +35,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/Graph.h>
 #include <rtabmap/core/Memory.h>
 #include <rtabmap/core/CameraThread.h>
+#include <rtabmap/core/Odometry.h>
+#include <rtabmap/core/OdometryInfo.h>
 #include <rtabmap/utilite/UFile.h>
 #include <rtabmap/utilite/UDirectory.h>
 #include <rtabmap/utilite/UTimer.h>
@@ -67,10 +69,21 @@ void showUsage()
 			"     -c \"path.ini\"   Configuration file, overwriting parameters read \n"
 			"                       from the database. If custom parameters are also set as \n"
 			"                       arguments, they overwrite those in config file and the database.\n"
+			"     -default    Input database's parameters are ignored, using default ones instead.\n"
+			"     -odom       Recompute odometry. See \"Odom/\" parameters with --params. If -skip option\n"
+			"                 is used, it will be applied to odometry frames, not rtabmap frames. Multi-session\n"
+			"                 cannot be detected in this mode (assuming the database contains continuous frames\n"
+			"                 of a single session).\n"
 			"     -start #    Start from this node ID.\n"
 			"     -stop #     Last node to process.\n"
+			"     -start_s #  Start from this map session ID.\n"
+			"     -stop_s #   Last map session to process.\n"
+			"     -a          Append mode: if Mem/IncrementalMemory is true, RTAB-Map is initialized with the first input database,\n"
+			"                 then next databases are reprocessed on top of the first one.\n"
 			"     -cam #      Camera index to stream. Ignored if a database doesn't contain multi-camera data.\n"
 			"     -nolandmark Don't republish landmarks contained in input database.\n"
+			"     -nopriors   Don't republish priors contained in input database.\n"
+			"     -pub_loops  Republish loop closures contained in input database.\n"
 			"     -loc_null   On localization mode, reset localization pose to null and map correction to identity between sessions.\n"
 			"     -gt         When reprocessing a single database, load its original optimized graph, then \n"
 			"                 set it as ground truth for output database. If there was a ground truth in the input database, it will be ignored.\n"
@@ -224,11 +237,18 @@ int main(int argc, char * argv[])
 	bool assemble2dOctoMap = false;
 	bool assemble3dOctoMap = false;
 	bool useDatabaseRate = false;
+	bool useDefaultParameters = false;
+	bool recomputeOdometry = false;
 	int startId = 0;
 	int stopId = 0;
+	int startMapId = 0;
+	int stopMapId = -1;
+	bool appendMode = false;
 	int cameraIndex = -1;
 	int framesToSkip = 0;
 	bool ignoreLandmarks = false;
+	bool ignorePriors = false;
+	bool republishLoopClosures = false;
 	bool locNull = false;
 	bool originalGraphAsGT = false;
 	bool scanFromDepth = false;
@@ -265,6 +285,15 @@ int main(int argc, char * argv[])
 				showUsage();
 			}
 		}
+		else if(strcmp(argv[i], "-default") == 0 || strcmp(argv[i], "--default") == 0)
+		{
+			useDefaultParameters = true;
+			printf("Using default parameters.\n");
+		}
+		else if(strcmp(argv[i], "-odom") == 0 || strcmp(argv[i], "--odom") == 0)
+		{
+			recomputeOdometry = true;
+		}
 		else if (strcmp(argv[i], "-start") == 0 || strcmp(argv[i], "--start") == 0)
 		{
 			++i;
@@ -292,6 +321,39 @@ int main(int argc, char * argv[])
 				printf("-stop option requires a value\n");
 				showUsage();
 			}
+		}
+		else if (strcmp(argv[i], "-start_s") == 0 || strcmp(argv[i], "--start_s") == 0)
+		{
+			++i;
+			if(i < argc - 2)
+			{
+				startMapId = atoi(argv[i]);
+				printf("Start at map session ID = %d.\n", startMapId);
+			}
+			else
+			{
+				printf("-start_s option requires a value\n");
+				showUsage();
+			}
+		}
+		else if (strcmp(argv[i], "-stop_s") == 0 || strcmp(argv[i], "--stop_s") == 0)
+		{
+			++i;
+			if(i < argc - 2)
+			{
+				stopMapId = atoi(argv[i]);
+				printf("Stop at map session ID = %d.\n", stopMapId);
+			}
+			else
+			{
+				printf("-stop option requires a value\n");
+				showUsage();
+			}
+		}
+		else if (strcmp(argv[i], "-a") == 0 || strcmp(argv[i], "--a") == 0)
+		{
+			appendMode = true;
+			printf("Append mode enabled (initialize with first database then reprocess next ones)\n");
 		}
 		else if (strcmp(argv[i], "-cam") == 0 || strcmp(argv[i], "--cam") == 0)
 		{
@@ -325,6 +387,16 @@ int main(int argc, char * argv[])
 		{
 			ignoreLandmarks = true;
 			printf("Ignoring landmarks from input database (-nolandmark option).\n");
+		}
+		else if(strcmp(argv[i], "-nopriors") == 0 || strcmp(argv[i], "--nopriors") == 0)
+		{
+			ignorePriors = true;
+			printf("Ignoring priors from input database (-nopriors option).\n");
+		}
+		else if(strcmp(argv[i], "-pub_loops") == 0 || strcmp(argv[i], "--pub_loops") == 0)
+		{
+			republishLoopClosures = true;
+			printf("Republish loop closures from input database (-pub_loops option).\n");
 		}
 		else if(strcmp(argv[i], "-loc_null") == 0 || strcmp(argv[i], "--loc_null") == 0)
 		{
@@ -509,13 +581,19 @@ int main(int argc, char * argv[])
 		return -1;
 	}
 
-	ParametersMap parameters = dbDriver->getLastParameters();
-	std::string targetVersion = dbDriver->getDatabaseVersion();
-	parameters.insert(ParametersPair(Parameters::kDbTargetVersion(), targetVersion));
-	if(parameters.empty())
+	ParametersMap parameters;
+	std::string targetVersion;
+	if(!useDefaultParameters)
 	{
-		printf("WARNING: Failed getting parameters from database, reprocessing will be done with default parameters! Database version may be too old (%s).\n", dbDriver->getDatabaseVersion().c_str());
+		parameters = dbDriver->getLastParameters();
+		targetVersion = dbDriver->getDatabaseVersion();
+		parameters.insert(ParametersPair(Parameters::kDbTargetVersion(), targetVersion));
+		if(parameters.empty())
+		{
+			printf("WARNING: Failed getting parameters from database, reprocessing will be done with default parameters! Database version may be too old (%s).\n", dbDriver->getDatabaseVersion().c_str());
+		}
 	}
+
 	if(customParameters.size())
 	{
 		printf("Custom parameters:\n");
@@ -524,6 +602,8 @@ int main(int argc, char * argv[])
 			printf("  %s\t= %s\n", iter->first.c_str(), iter->second.c_str());
 		}
 	}
+
+	bool useOdomFeatures = Parameters::defaultMemUseOdomFeatures();
 	if((configParameters.find(Parameters::kKpDetectorStrategy())!=configParameters.end() ||
 		configParameters.find(Parameters::kVisFeatureType())!=configParameters.end() ||
 		customParameters.find(Parameters::kKpDetectorStrategy())!=customParameters.end() ||
@@ -531,7 +611,6 @@ int main(int argc, char * argv[])
 			configParameters.find(Parameters::kMemUseOdomFeatures())==configParameters.end() &&
 			customParameters.find(Parameters::kMemUseOdomFeatures())==customParameters.end())
 	{
-		bool useOdomFeatures = Parameters::defaultMemUseOdomFeatures();
 		Parameters::parse(parameters, Parameters::kMemUseOdomFeatures(), useOdomFeatures);
 		if(useOdomFeatures)
 		{
@@ -543,6 +622,56 @@ int main(int argc, char * argv[])
 					Parameters::kMemUseOdomFeatures().c_str(),
 					Parameters::kMemUseOdomFeatures().c_str());
 			uInsert(parameters, ParametersPair(Parameters::kMemUseOdomFeatures(), "false"));
+			useOdomFeatures = false;
+		}
+	}
+
+	if(useOdomFeatures && databases.size() > 1 &&
+		configParameters.find(Parameters::kMemUseOdomFeatures())==configParameters.end() &&
+		customParameters.find(Parameters::kMemUseOdomFeatures())==customParameters.end())
+	{
+		printf("[Warning] Parameter %s is set to false for convenience as "
+				"there are more than one input database (which could "
+				"contain different features). Set %s "
+				"explicitly to suppress this warning.\n",
+				Parameters::kMemUseOdomFeatures().c_str(),
+				Parameters::kMemUseOdomFeatures().c_str());
+		useOdomFeatures = false;
+	}
+
+	if(republishLoopClosures)
+	{
+		if(databases.size() > 1)
+		{
+			printf("[Warning] \"pub_loops\" option cannot be used with multiple databases input. "
+					"Disabling \"pub_loops\" to avoid mismatched loop closue ids.\n");
+			republishLoopClosures = false;
+		}
+		else
+		{
+			bool generateIds = Parameters::defaultMemGenerateIds();
+			Parameters::parse(parameters, Parameters::kMemGenerateIds(), generateIds);
+			Parameters::parse(configParameters, Parameters::kMemGenerateIds(), generateIds);
+			Parameters::parse(customParameters, Parameters::kMemGenerateIds(), generateIds);
+			if(generateIds)
+			{
+				if(configParameters.find(Parameters::kMemGenerateIds())!=configParameters.end() ||
+				   customParameters.find(Parameters::kMemGenerateIds())!=customParameters.end())
+				{
+					printf("[Warning] \"pub_loops\" option is used but parameter %s is set to true in custom arguments. "
+							"Disabling \"pub_loops\" to avoid mismatched loop closure ids.\n",
+							Parameters::kMemGenerateIds().c_str());
+					republishLoopClosures = false;
+				}
+				else
+				{
+					printf("[Warning] \"pub_loops\" option is used but parameter %s is true in the opened database. "
+							"Setting parameter %s to false for convenience so that republished loop closure ids match.\n",
+							Parameters::kMemGenerateIds().c_str(),
+							Parameters::kMemGenerateIds().c_str());
+					uInsert(parameters, ParametersPair(Parameters::kMemGenerateIds(), "false"));
+				}
+			}
 		}
 	}
 	uInsert(parameters, configParameters);
@@ -564,7 +693,7 @@ int main(int argc, char * argv[])
 		delete dbDriver;
 		return -1;
 	}
-	if(!(!incrementalMemory && databases.size() > 1))
+	if(!((!incrementalMemory || appendMode) && databases.size() > 1))
 	{
 		totalIds = ids.size();
 	}
@@ -608,10 +737,13 @@ int main(int argc, char * argv[])
 	uInsert(parameters, ParametersPair(Parameters::kRtabmapWorkingDirectory(), workingDirectory));
 	uInsert(parameters, ParametersPair(Parameters::kRtabmapPublishStats(), "true")); // to log status below
 
-	if(!incrementalMemory && databases.size() > 1)
+	if((!incrementalMemory || appendMode ) && databases.size() > 1)
 	{
 		UFile::copy(databases.front(), outputDatabasePath);
-		printf("Parameter \"%s\" is set to false, initializing RTAB-Map with \"%s\" for localization...\n", Parameters::kMemIncrementalMemory().c_str(), databases.front().c_str());
+		if(!incrementalMemory)
+		{
+			printf("Parameter \"%s\" is set to false, initializing RTAB-Map with \"%s\" for localization...\n", Parameters::kMemIncrementalMemory().c_str(), databases.front().c_str());
+		}
 		databases.pop_front();
 		inputDatabasePath = uJoin(databases, ";");
 	}
@@ -627,7 +759,23 @@ int main(int argc, char * argv[])
 	bool rgbdEnabled = Parameters::defaultRGBDEnabled();
 	Parameters::parse(parameters, Parameters::kRGBDEnabled(), rgbdEnabled);
 	bool odometryIgnored = !rgbdEnabled;
-	DBReader * dbReader = new DBReader(inputDatabasePath, useDatabaseRate?-1:0, odometryIgnored, false, false, startId, cameraIndex, stopId, !intermediateNodes, ignoreLandmarks);
+
+	DBReader * dbReader = new DBReader(
+			inputDatabasePath,
+			useDatabaseRate?-1:0,
+			odometryIgnored,
+			false,
+			false,
+			startId,
+			cameraIndex,
+			stopId,
+			!intermediateNodes,
+			ignoreLandmarks,
+			!useOdomFeatures,
+			startMapId,
+			stopMapId,
+			ignorePriors);
+
 	dbReader->init();
 
 	OccupancyGrid grid(parameters);
@@ -640,6 +788,28 @@ int main(int argc, char * argv[])
 	float angularUpdate = Parameters::defaultRGBDAngularUpdate();
 	Parameters::parse(parameters, Parameters::kRGBDLinearUpdate(), linearUpdate);
 	Parameters::parse(parameters, Parameters::kRGBDAngularUpdate(), angularUpdate);
+
+	Odometry * odometry = 0;
+	float rtabmapUpdateRate = Parameters::defaultRtabmapDetectionRate();
+	double lastUpdateStamp = 0;
+	if(recomputeOdometry)
+	{
+		if(odometryIgnored)
+		{
+			printf("odom option is set but %s parameter is false, odometry won't be recomputed...\n", Parameters::kRGBDEnabled().c_str());
+			recomputeOdometry = false;
+		}
+		else
+		{
+			printf("Odometry will be recomputed (odom option is set)\n");
+			Parameters::parse(parameters, Parameters::kRtabmapDetectionRate(), rtabmapUpdateRate);
+			if(rtabmapUpdateRate!=0)
+			{
+				rtabmapUpdateRate = 1.0f/rtabmapUpdateRate;
+			}
+			odometry = Odometry::create(parameters);
+		}
+	}
 
 	printf("Reprocessing data of \"%s\"...\n", inputDatabasePath.c_str());
 	std::map<std::string, float> globalMapStats;
@@ -657,6 +827,44 @@ int main(int argc, char * argv[])
 	bool inMotion = true;
 	while(data.isValid() && g_loopForever)
 	{
+		if(recomputeOdometry)
+		{
+			OdometryInfo odomInfo;
+			Transform pose = odometry->process(data, &odomInfo);
+			printf("Processed %d/%d frames (visual=%d/%d lidar=%f lost=%s)... odometry = %dms\n",
+					processed+1,
+					totalIds,
+					odomInfo.reg.inliers,
+					odomInfo.reg.matches,
+					odomInfo.reg.icpInliersRatio,
+					odomInfo.lost?"true":"false",
+					int(odomInfo.timeEstimation * 1000));
+			if(lastUpdateStamp > 0.0 && data.stamp() < lastUpdateStamp + rtabmapUpdateRate)
+			{
+				if(framesToSkip>0)
+				{
+					int skippedFrames = framesToSkip;
+					while(skippedFrames-- > 0)
+					{
+						++processed;
+						data = dbReader->takeImage();
+					}
+				}
+
+				data = dbReader->takeImage(&info);
+				if(scanFromDepth)
+				{
+					data.setLaserScan(LaserScan());
+				}
+				camThread.postUpdate(&data, &info);
+				++processed;
+				continue;
+			}
+			info.odomPose = pose;
+			info.odomCovariance = odomInfo.reg.covariance;
+			lastUpdateStamp = data.stamp();
+		}
+
 		UTimer iterationTime;
 		std::string status;
 		if(!odometryIgnored && info.odomPose.isNull())
@@ -692,84 +900,109 @@ int main(int argc, char * argv[])
 				printf("Failed processing node %d.\n", data.id());
 				globalMapStats.clear();
 			}
-			else if(assemble2dMap || assemble3dMap || assemble2dOctoMap || assemble3dOctoMap)
+			else
 			{
-				globalMapStats.clear();
-				double timeRtabmap = t.ticks();
-				double timeUpdateInit = 0.0;
-				double timeUpdateGrid = 0.0;
-#ifdef RTABMAP_OCTOMAP
-				double timeUpdateOctoMap = 0.0;
-#endif
-				const rtabmap::Statistics & stats = rtabmap.getStatistics();
-				if(stats.poses().size() && stats.getLastSignatureData().id())
+				if(republishLoopClosures && dbReader->driver())
 				{
-					int id = stats.poses().rbegin()->first;
-					if(id == stats.getLastSignatureData().id() &&
-					   stats.getLastSignatureData().sensorData().gridCellSize() > 0.0f)
+					std::multimap<int, Link> links;
+					dbReader->driver()->loadLinks(data.id(), links);
+					for(std::multimap<int, Link>::iterator iter=links.begin(); iter!=links.end(); ++iter)
 					{
-						bool updateGridMap = false;
-						bool updateOctoMap = false;
-						if((assemble2dMap || assemble3dMap) && grid.addedNodes().find(id) == grid.addedNodes().end())
+						if((iter->second.type() == Link::kGlobalClosure ||
+							iter->second.type() == Link::kLocalSpaceClosure ||
+							iter->second.type() == Link::kLocalTimeClosure ||
+							iter->second.type() == Link::kUserClosure) &&
+							iter->second.to() < data.id())
 						{
-							updateGridMap = true;
-						}
-#ifdef RTABMAP_OCTOMAP
-						if((assemble2dOctoMap || assemble3dOctoMap) && octomap.addedNodes().find(id) == octomap.addedNodes().end())
-						{
-							updateOctoMap = true;
-						}
-#endif
-						if(updateGridMap || updateOctoMap)
-						{
-							cv::Mat ground, obstacles, empty;
-							stats.getLastSignatureData().sensorData().uncompressDataConst(0, 0, 0, 0, &ground, &obstacles, &empty);
-
-							timeUpdateInit = t.ticks();
-
-							if(updateGridMap)
+							if(!iter->second.transform().isNull() &&
+								rtabmap.getMemory()->getWorkingMem().find(iter->second.to()) != rtabmap.getMemory()->getWorkingMem().end() &&
+								rtabmap.addLink(iter->second))
 							{
-								grid.addToCache(id, ground, obstacles, empty);
-								grid.update(stats.poses());
-								timeUpdateGrid = t.ticks() + timeUpdateInit;
+								printf("Added link %d->%d from input database.\n", iter->second.from(), iter->second.to());
 							}
-#ifdef RTABMAP_OCTOMAP
-							if(updateOctoMap)
-							{
-								const cv::Point3f & viewpoint = stats.getLastSignatureData().sensorData().gridViewPoint();
-								octomap.addToCache(id, ground, obstacles, empty, viewpoint);
-								octomap.update(stats.poses());
-								timeUpdateOctoMap = t.ticks() + timeUpdateInit;
-							}
-#endif
 						}
 					}
 				}
 
-				globalMapStats.insert(std::make_pair(std::string("GlobalGrid/GridUpdate/ms"), timeUpdateGrid*1000.0f));
+				if(assemble2dMap || assemble3dMap || assemble2dOctoMap || assemble3dOctoMap)
+				{
+					globalMapStats.clear();
+					double timeRtabmap = t.ticks();
+					double timeUpdateInit = 0.0;
+					double timeUpdateGrid = 0.0;
 #ifdef RTABMAP_OCTOMAP
-				//Simulate publishing
-				double timePub2dOctoMap = 0.0;
-				double timePub3dOctoMap = 0.0;
-				if(assemble2dOctoMap)
-				{
-					float xMin, yMin, size;
-					octomap.createProjectionMap(xMin, yMin, size);
-					timePub2dOctoMap = t.ticks();
-				}
-				if(assemble3dOctoMap)
-				{
-					octomap.createCloud();
-					timePub3dOctoMap = t.ticks();
-				}
-
-				globalMapStats.insert(std::make_pair(std::string("GlobalGrid/OctoMapUpdate/ms"), timeUpdateOctoMap*1000.0f));
-				globalMapStats.insert(std::make_pair(std::string("GlobalGrid/OctoMapProjection/ms"), timePub2dOctoMap*1000.0f));
-				globalMapStats.insert(std::make_pair(std::string("GlobalGrid/OctomapToCloud/ms"), timePub3dOctoMap*1000.0f));
-				globalMapStats.insert(std::make_pair(std::string("GlobalGrid/TotalWithRtabmap/ms"), (timeUpdateGrid+timeUpdateOctoMap+timePub2dOctoMap+timePub3dOctoMap+timeRtabmap)*1000.0f));
-#else
-				globalMapStats.insert(std::make_pair(std::string("GlobalGrid/TotalWithRtabmap/ms"), (timeUpdateGrid+timeRtabmap)*1000.0f));
+					double timeUpdateOctoMap = 0.0;
 #endif
+					const rtabmap::Statistics & stats = rtabmap.getStatistics();
+					if(stats.poses().size() && stats.getLastSignatureData().id())
+					{
+						int id = stats.poses().rbegin()->first;
+						if(id == stats.getLastSignatureData().id() &&
+						   stats.getLastSignatureData().sensorData().gridCellSize() > 0.0f)
+						{
+							bool updateGridMap = false;
+							bool updateOctoMap = false;
+							if((assemble2dMap || assemble3dMap) && grid.addedNodes().find(id) == grid.addedNodes().end())
+							{
+								updateGridMap = true;
+							}
+#ifdef RTABMAP_OCTOMAP
+							if((assemble2dOctoMap || assemble3dOctoMap) && octomap.addedNodes().find(id) == octomap.addedNodes().end())
+							{
+								updateOctoMap = true;
+							}
+#endif
+							if(updateGridMap || updateOctoMap)
+							{
+								cv::Mat ground, obstacles, empty;
+								stats.getLastSignatureData().sensorData().uncompressDataConst(0, 0, 0, 0, &ground, &obstacles, &empty);
+
+								timeUpdateInit = t.ticks();
+
+								if(updateGridMap)
+								{
+									grid.addToCache(id, ground, obstacles, empty);
+									grid.update(stats.poses());
+									timeUpdateGrid = t.ticks() + timeUpdateInit;
+								}
+#ifdef RTABMAP_OCTOMAP
+								if(updateOctoMap)
+								{
+									const cv::Point3f & viewpoint = stats.getLastSignatureData().sensorData().gridViewPoint();
+									octomap.addToCache(id, ground, obstacles, empty, viewpoint);
+									octomap.update(stats.poses());
+									timeUpdateOctoMap = t.ticks() + timeUpdateInit;
+								}
+#endif
+							}
+						}
+					}
+
+					globalMapStats.insert(std::make_pair(std::string("GlobalGrid/GridUpdate/ms"), timeUpdateGrid*1000.0f));
+#ifdef RTABMAP_OCTOMAP
+					//Simulate publishing
+					double timePub2dOctoMap = 0.0;
+					double timePub3dOctoMap = 0.0;
+					if(assemble2dOctoMap)
+					{
+						float xMin, yMin, size;
+						octomap.createProjectionMap(xMin, yMin, size);
+						timePub2dOctoMap = t.ticks();
+					}
+					if(assemble3dOctoMap)
+					{
+						octomap.createCloud();
+						timePub3dOctoMap = t.ticks();
+					}
+
+					globalMapStats.insert(std::make_pair(std::string("GlobalGrid/OctoMapUpdate/ms"), timeUpdateOctoMap*1000.0f));
+					globalMapStats.insert(std::make_pair(std::string("GlobalGrid/OctoMapProjection/ms"), timePub2dOctoMap*1000.0f));
+					globalMapStats.insert(std::make_pair(std::string("GlobalGrid/OctomapToCloud/ms"), timePub3dOctoMap*1000.0f));
+					globalMapStats.insert(std::make_pair(std::string("GlobalGrid/TotalWithRtabmap/ms"), (timeUpdateGrid+timeUpdateOctoMap+timePub2dOctoMap+timePub3dOctoMap+timeRtabmap)*1000.0f));
+#else
+					globalMapStats.insert(std::make_pair(std::string("GlobalGrid/TotalWithRtabmap/ms"), (timeUpdateGrid+timeRtabmap)*1000.0f));
+#endif
+				}
 			}
 		}
 
@@ -845,11 +1078,12 @@ int main(int argc, char * argv[])
 
 		Transform odomPose = info.odomPose;
 
-		if(framesToSkip>0)
+		if(framesToSkip>0 && !recomputeOdometry)
 		{
 			int skippedFrames = framesToSkip;
 			while(skippedFrames-- > 0)
 			{
+				processed++;
 				data = dbReader->takeImage(&info);
 				if(!odometryIgnored && !info.odomCovariance.empty() && info.odomCovariance.at<double>(0,0)>=9999)
 				{
@@ -916,6 +1150,8 @@ int main(int argc, char * argv[])
 	printf("Closing database \"%s\"...\n", outputDatabasePath.c_str());
 	rtabmap.close(true);
 	printf("Closing database \"%s\"... done!\n", outputDatabasePath.c_str());
+
+	delete odometry;
 
 	if(assemble2dMap)
 	{

@@ -60,21 +60,141 @@
          <property name="geometry">
           <rect>
            <x>0</x>
-           <y>-23</y>
+           <y>0</y>
            <width>293</width>
-           <height>334</height>
+           <height>380</height>
           </rect>
          </property>
          <layout class="QGridLayout" name="gridLayout" columnstretch="0,1">
-          <item row="5" column="0">
-           <widget class="QLabel" name="label_childrenA_12">
+          <item row="2" column="0">
+           <widget class="QLabel" name="label_childrenA_8">
             <property name="text">
-             <string>Pose</string>
+             <string>Weight</string>
             </property>
            </widget>
           </item>
-          <item row="5" column="1">
-           <widget class="QLabel" name="label_poseA">
+          <item row="11" column="0">
+           <widget class="QLabel" name="label_childrenA_24">
+            <property name="text">
+             <string>Gravity</string>
+            </property>
+           </widget>
+          </item>
+          <item row="12" column="1">
+           <widget class="QLabel" name="label_priorA">
+            <property name="text">
+             <string/>
+            </property>
+            <property name="textInteractionFlags">
+             <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="0">
+           <widget class="QLabel" name="label_childrenA_2">
+            <property name="text">
+             <string>Children</string>
+            </property>
+           </widget>
+          </item>
+          <item row="15" column="1">
+           <widget class="QLabel" name="label_sensorsA">
+            <property name="text">
+             <string/>
+            </property>
+            <property name="textInteractionFlags">
+             <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+            </property>
+           </widget>
+          </item>
+          <item row="8" column="0">
+           <widget class="QLabel" name="label_childrenA_6">
+            <property name="text">
+             <string>Stamp</string>
+            </property>
+           </widget>
+          </item>
+          <item row="10" column="0">
+           <widget class="QLabel" name="label_childrenA_22">
+            <property name="text">
+             <string>Scan</string>
+            </property>
+           </widget>
+          </item>
+          <item row="15" column="0">
+           <widget class="QLabel" name="label_childrenA_20">
+            <property name="text">
+             <string>Sensors</string>
+            </property>
+           </widget>
+          </item>
+          <item row="10" column="1">
+           <widget class="QLabel" name="label_scanA">
+            <property name="text">
+             <string/>
+            </property>
+            <property name="textInteractionFlags">
+             <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+            </property>
+           </widget>
+          </item>
+          <item row="5" column="0">
+           <widget class="QLabel" name="label_childrenA_12">
+            <property name="text">
+             <string>Odometry Pose</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="0">
+           <widget class="QLabel" name="label_parentsA_2">
+            <property name="text">
+             <string>Parents</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="1">
+           <widget class="QLabel" name="label_weightA">
+            <property name="text">
+             <string/>
+            </property>
+            <property name="textInteractionFlags">
+             <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+            </property>
+           </widget>
+          </item>
+          <item row="13" column="1">
+           <widget class="QLabel" name="label_gpsA">
+            <property name="text">
+             <string/>
+            </property>
+            <property name="textInteractionFlags">
+             <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+            </property>
+           </widget>
+          </item>
+          <item row="9" column="0">
+           <widget class="QLabel" name="label_childrenA_14">
+            <property name="text">
+             <string>Calib</string>
+            </property>
+           </widget>
+          </item>
+          <item row="12" column="0">
+           <widget class="QLabel" name="label_childrenA_28">
+            <property name="text">
+             <string>Prior</string>
+            </property>
+           </widget>
+          </item>
+          <item row="7" column="0">
+           <widget class="QLabel" name="label_childrenA_18">
+            <property name="text">
+             <string>Velocity</string>
+            </property>
+           </widget>
+          </item>
+          <item row="4" column="1">
+           <widget class="QLabel" name="label_mapA">
             <property name="text">
              <string/>
             </property>
@@ -93,15 +213,56 @@
             </property>
            </widget>
           </item>
-          <item row="2" column="0">
-           <widget class="QLabel" name="label_childrenA_8">
+          <item row="4" column="0">
+           <widget class="QLabel" name="label_childrenA_10">
             <property name="text">
-             <string>Weight</string>
+             <string>Map ID</string>
             </property>
            </widget>
           </item>
-          <item row="6" column="1">
+          <item row="13" column="0">
+           <widget class="QLabel" name="label_childrenA_16">
+            <property name="text">
+             <string>GPS</string>
+            </property>
+           </widget>
+          </item>
+          <item row="14" column="0">
+           <widget class="QLabel" name="label_childrenA_27">
+            <property name="text">
+             <string>Ground Truth</string>
+            </property>
+           </widget>
+          </item>
+          <item row="7" column="1">
            <widget class="QLabel" name="label_velA">
+            <property name="text">
+             <string/>
+            </property>
+            <property name="textInteractionFlags">
+             <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+            </property>
+           </widget>
+          </item>
+          <item row="3" column="0">
+           <widget class="QLabel" name="label_childrenA_4">
+            <property name="text">
+             <string>Label</string>
+            </property>
+           </widget>
+          </item>
+          <item row="5" column="1">
+           <widget class="QLabel" name="label_poseA">
+            <property name="text">
+             <string/>
+            </property>
+            <property name="textInteractionFlags">
+             <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+            </property>
+           </widget>
+          </item>
+          <item row="9" column="1">
+           <widget class="QLabel" name="label_calibA">
             <property name="text">
              <string/>
             </property>
@@ -120,8 +281,8 @@
             </property>
            </widget>
           </item>
-          <item row="4" column="1">
-           <widget class="QLabel" name="label_mapA">
+          <item row="11" column="1">
+           <widget class="QLabel" name="label_gravityA">
             <property name="text">
              <string/>
             </property>
@@ -130,10 +291,13 @@
             </property>
            </widget>
           </item>
-          <item row="8" column="0">
-           <widget class="QLabel" name="label_childrenA_14">
+          <item row="8" column="1">
+           <widget class="QLabel" name="label_stampA">
             <property name="text">
-             <string>Calib</string>
+             <string/>
+            </property>
+            <property name="textInteractionFlags">
+             <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
             </property>
            </widget>
           </item>
@@ -147,155 +311,25 @@
             </property>
            </widget>
           </item>
-          <item row="7" column="1">
-           <widget class="QLabel" name="label_stampA">
+          <item row="14" column="1">
+           <widget class="QLabel" name="label_gtA">
             <property name="text">
              <string/>
             </property>
             <property name="textInteractionFlags">
              <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-            </property>
-           </widget>
-          </item>
-          <item row="13" column="1">
-           <widget class="QLabel" name="label_sensorsA">
-            <property name="text">
-             <string/>
-            </property>
-            <property name="textInteractionFlags">
-             <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-            </property>
-           </widget>
-          </item>
-          <item row="9" column="0">
-           <widget class="QLabel" name="label_childrenA_22">
-            <property name="text">
-             <string>Scan</string>
-            </property>
-           </widget>
-          </item>
-          <item row="10" column="0">
-           <widget class="QLabel" name="label_childrenA_24">
-            <property name="text">
-             <string>Gravity</string>
-            </property>
-           </widget>
-          </item>
-          <item row="11" column="1">
-           <widget class="QLabel" name="label_gpsA">
-            <property name="text">
-             <string/>
-            </property>
-            <property name="textInteractionFlags">
-             <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-            </property>
-           </widget>
-          </item>
-          <item row="2" column="1">
-           <widget class="QLabel" name="label_weightA">
-            <property name="text">
-             <string/>
-            </property>
-            <property name="textInteractionFlags">
-             <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-            </property>
-           </widget>
-          </item>
-          <item row="13" column="0">
-           <widget class="QLabel" name="label_childrenA_20">
-            <property name="text">
-             <string>Sensors</string>
-            </property>
-           </widget>
-          </item>
-          <item row="11" column="0">
-           <widget class="QLabel" name="label_childrenA_16">
-            <property name="text">
-             <string>GPS</string>
-            </property>
-           </widget>
-          </item>
-          <item row="7" column="0">
-           <widget class="QLabel" name="label_childrenA_6">
-            <property name="text">
-             <string>Stamp</string>
             </property>
            </widget>
           </item>
           <item row="6" column="0">
-           <widget class="QLabel" name="label_childrenA_18">
+           <widget class="QLabel" name="label_childrenA_30">
             <property name="text">
-             <string>Velocity</string>
+             <string>Optimized Pose</string>
             </property>
            </widget>
           </item>
-          <item row="0" column="0">
-           <widget class="QLabel" name="label_parentsA_2">
-            <property name="text">
-             <string>Parents</string>
-            </property>
-           </widget>
-          </item>
-          <item row="10" column="1">
-           <widget class="QLabel" name="label_gravityA">
-            <property name="text">
-             <string/>
-            </property>
-            <property name="textInteractionFlags">
-             <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-            </property>
-           </widget>
-          </item>
-          <item row="4" column="0">
-           <widget class="QLabel" name="label_childrenA_10">
-            <property name="text">
-             <string>Map ID</string>
-            </property>
-           </widget>
-          </item>
-          <item row="9" column="1">
-           <widget class="QLabel" name="label_scanA">
-            <property name="text">
-             <string/>
-            </property>
-            <property name="textInteractionFlags">
-             <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-            </property>
-           </widget>
-          </item>
-          <item row="3" column="0">
-           <widget class="QLabel" name="label_childrenA_4">
-            <property name="text">
-             <string>Label</string>
-            </property>
-           </widget>
-          </item>
-          <item row="1" column="0">
-           <widget class="QLabel" name="label_childrenA_2">
-            <property name="text">
-             <string>Children</string>
-            </property>
-           </widget>
-          </item>
-          <item row="8" column="1">
-           <widget class="QLabel" name="label_calibA">
-            <property name="text">
-             <string/>
-            </property>
-            <property name="textInteractionFlags">
-             <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-            </property>
-           </widget>
-          </item>
-          <item row="12" column="0">
-           <widget class="QLabel" name="label_childrenA_27">
-            <property name="text">
-             <string>Ground Truth</string>
-            </property>
-           </widget>
-          </item>
-          <item row="12" column="1">
-           <widget class="QLabel" name="label_gtA">
+          <item row="6" column="1">
+           <widget class="QLabel" name="label_optposeA">
             <property name="text">
              <string/>
             </property>
@@ -320,16 +354,16 @@
          <property name="geometry">
           <rect>
            <x>0</x>
-           <y>-23</y>
+           <y>0</y>
            <width>292</width>
-           <height>334</height>
+           <height>380</height>
           </rect>
          </property>
          <layout class="QGridLayout" name="gridLayout_2" columnstretch="0,1">
-          <item row="11" column="0">
-           <widget class="QLabel" name="label_childrenA_17">
+          <item row="4" column="0">
+           <widget class="QLabel" name="label_childrenA_11">
             <property name="text">
-             <string>GPS</string>
+             <string>Map ID</string>
             </property>
            </widget>
           </item>
@@ -343,8 +377,36 @@
             </property>
            </widget>
           </item>
-          <item row="11" column="1">
-           <widget class="QLabel" name="label_gpsB">
+          <item row="14" column="0">
+           <widget class="QLabel" name="label_childrenA_26">
+            <property name="text">
+             <string>Ground Truth</string>
+            </property>
+           </widget>
+          </item>
+          <item row="3" column="0">
+           <widget class="QLabel" name="label_childrenA_5">
+            <property name="text">
+             <string>Label</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="0">
+           <widget class="QLabel" name="label_childrenA_3">
+            <property name="text">
+             <string>Children</string>
+            </property>
+           </widget>
+          </item>
+          <item row="15" column="0">
+           <widget class="QLabel" name="label_childrenA_21">
+            <property name="text">
+             <string>Sensors</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="1">
+           <widget class="QLabel" name="label_childrenB">
             <property name="text">
              <string/>
             </property>
@@ -353,24 +415,10 @@
             </property>
            </widget>
           </item>
-          <item row="7" column="0">
+          <item row="8" column="0">
            <widget class="QLabel" name="label_childrenA_7">
             <property name="text">
              <string>Stamp</string>
-            </property>
-           </widget>
-          </item>
-          <item row="2" column="0">
-           <widget class="QLabel" name="label_childrenA_9">
-            <property name="text">
-             <string>Weight</string>
-            </property>
-           </widget>
-          </item>
-          <item row="13" column="0">
-           <widget class="QLabel" name="label_childrenA_21">
-            <property name="text">
-             <string>Sensors</string>
             </property>
            </widget>
           </item>
@@ -384,56 +432,8 @@
             </property>
            </widget>
           </item>
-          <item row="10" column="0">
-           <widget class="QLabel" name="label_childrenA_25">
-            <property name="text">
-             <string>Gravity</string>
-            </property>
-           </widget>
-          </item>
-          <item row="8" column="0">
-           <widget class="QLabel" name="label_childrenA_15">
-            <property name="text">
-             <string>Calib</string>
-            </property>
-           </widget>
-          </item>
-          <item row="9" column="1">
-           <widget class="QLabel" name="label_scanB">
-            <property name="text">
-             <string/>
-            </property>
-            <property name="textInteractionFlags">
-             <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-            </property>
-           </widget>
-          </item>
-          <item row="0" column="1">
-           <widget class="QLabel" name="label_parentsB">
-            <property name="text">
-             <string/>
-            </property>
-            <property name="textInteractionFlags">
-             <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-            </property>
-           </widget>
-          </item>
-          <item row="1" column="0">
-           <widget class="QLabel" name="label_childrenA_3">
-            <property name="text">
-             <string>Children</string>
-            </property>
-           </widget>
-          </item>
-          <item row="5" column="0">
-           <widget class="QLabel" name="label_childrenA_13">
-            <property name="text">
-             <string>Pose</string>
-            </property>
-           </widget>
-          </item>
-          <item row="8" column="1">
-           <widget class="QLabel" name="label_calibB">
+          <item row="11" column="1">
+           <widget class="QLabel" name="label_gravityB">
             <property name="text">
              <string/>
             </property>
@@ -452,59 +452,76 @@
             </property>
            </widget>
           </item>
-          <item row="6" column="0">
-           <widget class="QLabel" name="label_childrenA_19">
-            <property name="text">
-             <string>Velocity</string>
-            </property>
-           </widget>
-          </item>
-          <item row="4" column="0">
-           <widget class="QLabel" name="label_childrenA_11">
-            <property name="text">
-             <string>Map ID</string>
-            </property>
-           </widget>
-          </item>
-          <item row="2" column="1">
-           <widget class="QLabel" name="label_weightB">
-            <property name="text">
-             <string/>
-            </property>
-            <property name="textInteractionFlags">
-             <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-            </property>
-           </widget>
-          </item>
-          <item row="3" column="0">
-           <widget class="QLabel" name="label_childrenA_5">
-            <property name="text">
-             <string>Label</string>
-            </property>
-           </widget>
-          </item>
-          <item row="1" column="1">
-           <widget class="QLabel" name="label_childrenB">
-            <property name="text">
-             <string/>
-            </property>
-            <property name="textInteractionFlags">
-             <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-            </property>
-           </widget>
-          </item>
           <item row="7" column="1">
-           <widget class="QLabel" name="label_stampB">
+           <widget class="QLabel" name="label_velB">
             <property name="text">
              <string/>
             </property>
             <property name="textInteractionFlags">
              <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+            </property>
+           </widget>
+          </item>
+          <item row="13" column="1">
+           <widget class="QLabel" name="label_gpsB">
+            <property name="text">
+             <string/>
+            </property>
+            <property name="textInteractionFlags">
+             <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+            </property>
+           </widget>
+          </item>
+          <item row="5" column="0">
+           <widget class="QLabel" name="label_childrenA_13">
+            <property name="text">
+             <string>Odometry Pose</string>
+            </property>
+           </widget>
+          </item>
+          <item row="10" column="0">
+           <widget class="QLabel" name="label_childrenA_23">
+            <property name="text">
+             <string>Scan</string>
             </property>
            </widget>
           </item>
           <item row="10" column="1">
-           <widget class="QLabel" name="label_gravityB">
+           <widget class="QLabel" name="label_scanB">
+            <property name="text">
+             <string/>
+            </property>
+            <property name="textInteractionFlags">
+             <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+            </property>
+           </widget>
+          </item>
+          <item row="9" column="0">
+           <widget class="QLabel" name="label_childrenA_15">
+            <property name="text">
+             <string>Calib</string>
+            </property>
+           </widget>
+          </item>
+          <item row="11" column="0">
+           <widget class="QLabel" name="label_childrenA_25">
+            <property name="text">
+             <string>Gravity</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="1">
+           <widget class="QLabel" name="label_parentsB">
+            <property name="text">
+             <string/>
+            </property>
+            <property name="textInteractionFlags">
+             <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+            </property>
+           </widget>
+          </item>
+          <item row="12" column="1">
+           <widget class="QLabel" name="label_priorB">
             <property name="text">
              <string/>
             </property>
@@ -520,15 +537,8 @@
             </property>
            </widget>
           </item>
-          <item row="9" column="0">
-           <widget class="QLabel" name="label_childrenA_23">
-            <property name="text">
-             <string>Scan</string>
-            </property>
-           </widget>
-          </item>
-          <item row="6" column="1">
-           <widget class="QLabel" name="label_velB">
+          <item row="8" column="1">
+           <widget class="QLabel" name="label_stampB">
             <property name="text">
              <string/>
             </property>
@@ -537,7 +547,14 @@
             </property>
            </widget>
           </item>
-          <item row="13" column="1">
+          <item row="7" column="0">
+           <widget class="QLabel" name="label_childrenA_19">
+            <property name="text">
+             <string>Velocity</string>
+            </property>
+           </widget>
+          </item>
+          <item row="15" column="1">
            <widget class="QLabel" name="label_sensorsB">
             <property name="text">
              <string/>
@@ -547,15 +564,66 @@
             </property>
            </widget>
           </item>
-          <item row="12" column="0">
-           <widget class="QLabel" name="label_childrenA_26">
+          <item row="9" column="1">
+           <widget class="QLabel" name="label_calibB">
             <property name="text">
-             <string>Ground Truth</string>
+             <string/>
+            </property>
+            <property name="textInteractionFlags">
+             <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
             </property>
            </widget>
           </item>
-          <item row="12" column="1">
+          <item row="2" column="0">
+           <widget class="QLabel" name="label_childrenA_9">
+            <property name="text">
+             <string>Weight</string>
+            </property>
+           </widget>
+          </item>
+          <item row="14" column="1">
            <widget class="QLabel" name="label_gtB">
+            <property name="text">
+             <string/>
+            </property>
+            <property name="textInteractionFlags">
+             <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+            </property>
+           </widget>
+          </item>
+          <item row="13" column="0">
+           <widget class="QLabel" name="label_childrenA_17">
+            <property name="text">
+             <string>GPS</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="1">
+           <widget class="QLabel" name="label_weightB">
+            <property name="text">
+             <string/>
+            </property>
+            <property name="textInteractionFlags">
+             <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+            </property>
+           </widget>
+          </item>
+          <item row="12" column="0">
+           <widget class="QLabel" name="label_childrenA_29">
+            <property name="text">
+             <string>Prior</string>
+            </property>
+           </widget>
+          </item>
+          <item row="6" column="0">
+           <widget class="QLabel" name="label_childrenA_31">
+            <property name="text">
+             <string>Optimized Pose</string>
+            </property>
+           </widget>
+          </item>
+          <item row="6" column="1">
+           <widget class="QLabel" name="label_optposeB">
             <property name="text">
              <string/>
             </property>

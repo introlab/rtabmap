@@ -162,6 +162,7 @@ public:
 	bool isPosteriorGraphView() const;
 	bool isWordsCountGraphView() const;
 	bool isLocalizationsCountGraphView() const;
+	bool isRelocalizationColorOdomCacheGraphView() const;
 	int getOdomRegistrationApproach() const;
 	double getOdomF2MGravitySigma() const;
 	bool isOdomDisabled() const;
@@ -285,6 +286,7 @@ public:
 
 	//
 	bool isImagesKept() const;
+	bool isMissingCacheRepublished() const;
 	bool isCloudsKept() const;
 	float getTimeLimit() const;
 	float getDetectionRate() const;

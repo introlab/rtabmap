@@ -56,11 +56,12 @@ CameraDepthAI::CameraDepthAI(
 	outputDepth_(false),
 	depthConfidence_(200),
 	resolution_(resolution),
-	imuFirmwareUpdate_(false)
+	imuFirmwareUpdate_(false),
+	imuPublished_(true)
 #endif
 {
 #ifdef RTABMAP_DEPTHAI
-	UASSERT(resolution_>=0 && resolution_<=2);
+	UASSERT(resolution_>=(int)dai::MonoCameraProperties::SensorResolution::THE_720_P && resolution_<=(int)dai::MonoCameraProperties::SensorResolution::THE_1200_P);
 #endif
 }
 
@@ -91,6 +92,15 @@ void CameraDepthAI::setIMUFirmwareUpdate(bool enabled)
 {
 #ifdef RTABMAP_DEPTHAI
 	imuFirmwareUpdate_ = enabled;
+#else
+	UERROR("CameraDepthAI: RTAB-Map is not built with depthai-core support!");
+#endif
+}
+
+void CameraDepthAI::setIMUPublished(bool published)
+{
+#ifdef RTABMAP_DEPTHAI
+	imuPublished_ = published;
 #else
 	UERROR("CameraDepthAI: RTAB-Map is not built with depthai-core support!");
 #endif
@@ -139,21 +149,27 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 
 	// look for calibration files
 	stereoModel_ = StereoCameraModel();
-	cv::Size targetSize(resolution_<2?1280:640, resolution_==0?720:resolution_==1?800:400);
+	cv::Size targetSize(resolution_<2?1280:resolution_==4?1920:640, resolution_==0?720:resolution_==1?800:resolution_==2?400:resolution_==3?480:1200);
 
 	dai::Pipeline p;
 	auto monoLeft  = p.create<dai::node::MonoCamera>();
 	auto monoRight = p.create<dai::node::MonoCamera>();
 	auto stereo    = p.create<dai::node::StereoDepth>();
-	auto imu       = p.create<dai::node::IMU>();
+	std::shared_ptr<dai::node::IMU> imu;
+	if(imuPublished_)
+		imu = p.create<dai::node::IMU>();
+
 	auto xoutLeft = p.create<dai::node::XLinkOut>();
 	auto xoutDepthOrRight = p.create<dai::node::XLinkOut>();
-	auto xoutIMU = p.create<dai::node::XLinkOut>();
+	std::shared_ptr<dai::node::XLinkOut> xoutIMU;
+	if(imuPublished_)
+		xoutIMU = p.create<dai::node::XLinkOut>();
 
 	// XLinkOut
 	xoutLeft->setStreamName("rectified_left");
 	xoutDepthOrRight->setStreamName(outputDepth_?"depth":"rectified_right");
-	xoutIMU->setStreamName("imu");
+	if(imuPublished_)
+		xoutIMU->setStreamName("imu");
 
 	// MonoCamera
 	monoLeft->setResolution((dai::MonoCameraProperties::SensorResolution)resolution_);
@@ -193,19 +209,22 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 		stereo->rectifiedRight.link(xoutDepthOrRight->input);
 	}
 
-	// enable ACCELEROMETER_RAW and GYROSCOPE_RAW at 200 hz rate
-	imu->enableIMUSensor({dai::IMUSensor::ACCELEROMETER_RAW, dai::IMUSensor::GYROSCOPE_RAW}, 200);
-	// above this threshold packets will be sent in batch of X, if the host is not blocked and USB bandwidth is available
-	imu->setBatchReportThreshold(1);
-	// maximum number of IMU packets in a batch, if it's reached device will block sending until host can receive it
-	// if lower or equal to batchReportThreshold then the sending is always blocking on device
-	// useful to reduce device's CPU load  and number of lost packets, if CPU load is high on device side due to multiple nodes
-	imu->setMaxBatchReports(10);
+	if(imuPublished_)
+	{
+		// enable ACCELEROMETER_RAW and GYROSCOPE_RAW at 200 hz rate
+		imu->enableIMUSensor({dai::IMUSensor::ACCELEROMETER_RAW, dai::IMUSensor::GYROSCOPE_RAW}, 200);
+		// above this threshold packets will be sent in batch of X, if the host is not blocked and USB bandwidth is available
+		imu->setBatchReportThreshold(1);
+		// maximum number of IMU packets in a batch, if it's reached device will block sending until host can receive it
+		// if lower or equal to batchReportThreshold then the sending is always blocking on device
+		// useful to reduce device's CPU load  and number of lost packets, if CPU load is high on device side due to multiple nodes
+		imu->setMaxBatchReports(10);
 
-	// Link plugins IMU -> XLINK
-	imu->out.link(xoutIMU->input);
+		// Link plugins IMU -> XLINK
+		imu->out.link(xoutIMU->input);
 
-	imu->enableFirmwareUpdate(imuFirmwareUpdate_);
+		imu->enableFirmwareUpdate(imuFirmwareUpdate_);
+	}
 
 	device_.reset(new dai::Device(p, deviceToUse));
 
@@ -221,23 +240,33 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 	UINFO("left: fx=%f fy=%f cx=%f cy=%f baseline=%f", fx, fy, cx, cy, baseline);
 	stereoModel_ = StereoCameraModel(device_->getMxId(), fx, fy, cx, cy, baseline, this->getLocalTransform(), targetSize);
 
-	// Cannot test the following, I get "IMU calibration data is not available on device yet." with my camera
-	// Update: now (as March 6, 2022) it crashes in "dai::CalibrationHandler::getImuToCameraExtrinsics(dai::CameraBoardSocket, bool)"
-	//matrix = calibHandler.getImuToCameraExtrinsics(dai::CameraBoardSocket::LEFT);
-	//imuLocalTransform_ = Transform(
-	//		matrix[0][0], matrix[0][1], matrix[0][2], matrix[0][3],
-	//		matrix[1][0], matrix[1][1], matrix[1][2], matrix[1][3],
-	//		matrix[2][0], matrix[2][1], matrix[2][2], matrix[2][3]);
-	// Hard-coded: x->down, y->left, z->forward
-	imuLocalTransform_ = Transform(
-			 0, 0, 1, 0,
-			 0, 1, 0, 0,
-			-1 ,0, 0, 0);
-	UINFO("IMU local transform = %s", imuLocalTransform_.prettyPrint().c_str());
+	if(imuPublished_)
+	{
+		// Cannot test the following, I get "IMU calibration data is not available on device yet." with my camera
+		// Update: now (as March 6, 2022) it crashes in "dai::CalibrationHandler::getImuToCameraExtrinsics(dai::CameraBoardSocket, bool)"
+		//matrix = calibHandler.getImuToCameraExtrinsics(dai::CameraBoardSocket::LEFT);
+		//imuLocalTransform_ = Transform(
+		//		matrix[0][0], matrix[0][1], matrix[0][2], matrix[0][3],
+		//		matrix[1][0], matrix[1][1], matrix[1][2], matrix[1][3],
+		//		matrix[2][0], matrix[2][1], matrix[2][2], matrix[2][3]);
+		// Hard-coded: x->down, y->left, z->forward
+		imuLocalTransform_ = Transform(
+				 0, 0, 1, 0,
+				 0, 1, 0, 0,
+				-1 ,0, 0, 0);
+		UINFO("IMU local transform = %s", imuLocalTransform_.prettyPrint().c_str());
+	}
+	else
+	{
+		UINFO("IMU disabled");
+	}
 
-	leftQueue_ = device_->getOutputQueue("rectified_left", 8, false);
-	rightOrDepthQueue_ = device_->getOutputQueue(outputDepth_?"depth":"rectified_right", 8, false);
-	imuQueue_ = device_->getOutputQueue("imu", 50, false);
+	if(imuPublished_)
+	{
+		imuQueue_ = device_->getOutputQueue("imu", 50, false);
+	}
+	leftQueue_ = device_->getOutputQueue("rectified_left", 1, false);
+	rightOrDepthQueue_ = device_->getOutputQueue(outputDepth_?"depth":"rectified_right", 1, false);
 
 	uSleep(2000); // avoid bad frames on start
 
@@ -304,35 +333,42 @@ SensorData CameraDepthAI::captureImage(CameraInfo * info)
 			}
 
 			//get imu
-			int added=  0;
-			while(1)
+			double stampStart = UTimer::now();
+			while(imuPublished_ && imuQueue_.get())
 			{
-				auto imuData = imuQueue_->get<dai::IMUData>();
-
-				auto imuPackets = imuData->packets;
-				double accStamp = 0.0;
-				double gyroStamp = 0.0;
-				for(auto& imuPacket : imuPackets) {
-					auto& acceleroValues = imuPacket.acceleroMeter;
-					auto& gyroValues = imuPacket.gyroscope;
-
-					accStamp = double(acceleroValues.timestamp.get().time_since_epoch().count())/10e8;
-					gyroStamp = double(gyroValues.timestamp.get().time_since_epoch().count())/10e8;
-					accBuffer_.insert(accBuffer_.end(), std::make_pair(accStamp, cv::Vec3f(acceleroValues.x, acceleroValues.y, acceleroValues.z)));
-					gyroBuffer_.insert(gyroBuffer_.end(), std::make_pair(gyroStamp, cv::Vec3f(gyroValues.x, gyroValues.y, gyroValues.z)));
-					if(accBuffer_.size() > 1000)
-					{
-						accBuffer_.erase(accBuffer_.begin());
-					}
-					if(gyroBuffer_.size() > 1000)
-					{
-						gyroBuffer_.erase(gyroBuffer_.begin());
-					}
-					++added;
-				}
-				if(accStamp >= stamp && gyroStamp >= stamp)
+				if(imuQueue_->has())
 				{
-					break;
+					auto imuData = imuQueue_->get<dai::IMUData>();
+
+					auto imuPackets = imuData->packets;
+					double accStamp = 0.0;
+					double gyroStamp = 0.0;
+					for(auto& imuPacket : imuPackets) {
+						auto& acceleroValues = imuPacket.acceleroMeter;
+						auto& gyroValues = imuPacket.gyroscope;
+
+						accStamp = double(acceleroValues.timestamp.get().time_since_epoch().count())/10e8;
+						gyroStamp = double(gyroValues.timestamp.get().time_since_epoch().count())/10e8;
+						accBuffer_.insert(accBuffer_.end(), std::make_pair(accStamp, cv::Vec3f(acceleroValues.x, acceleroValues.y, acceleroValues.z)));
+						gyroBuffer_.insert(gyroBuffer_.end(), std::make_pair(gyroStamp, cv::Vec3f(gyroValues.x, gyroValues.y, gyroValues.z)));
+						if(accBuffer_.size() > 1000)
+						{
+							accBuffer_.erase(accBuffer_.begin());
+						}
+						if(gyroBuffer_.size() > 1000)
+						{
+							gyroBuffer_.erase(gyroBuffer_.begin());
+						}
+					}
+					if(accStamp >= stamp && gyroStamp >= stamp)
+					{
+						break;
+					}
+				}
+				if((UTimer::now() - stampStart) > 0.01)
+				{
+					UWARN("Could not received IMU after 10 ms! Disabling IMU!");
+					imuPublished_ = false;
 				}
 			}
 

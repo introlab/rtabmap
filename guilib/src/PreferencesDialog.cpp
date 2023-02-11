@@ -450,6 +450,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 
 	// General panel
 	connect(_ui->general_checkBox_imagesKept, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteGeneralPanel()));
+	connect(_ui->general_checkBox_missing_cache_republished, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteGeneralPanel()));
 	connect(_ui->general_checkBox_cloudsKept, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteGeneralPanel()));
 	connect(_ui->checkBox_verticalLayoutUsed, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteGeneralPanel()));
 	connect(_ui->checkBox_imageRejectedShown, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteGeneralPanel()));
@@ -463,6 +464,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->radioButton_posteriorGraphView, SIGNAL(toggled(bool)), this, SLOT(makeObsoleteGeneralPanel()));
 	connect(_ui->radioButton_wordsGraphView, SIGNAL(toggled(bool)), this, SLOT(makeObsoleteGeneralPanel()));
 	connect(_ui->radioButton_localizationsGraphView, SIGNAL(toggled(bool)), this, SLOT(makeObsoleteGeneralPanel()));
+	connect(_ui->radioButton_localizationsGraphViewOdomCache, SIGNAL(toggled(bool)), this, SLOT(makeObsoleteGeneralPanel()));
 	connect(_ui->radioButton_nochangeGraphView, SIGNAL(toggled(bool)), this, SLOT(makeObsoleteGeneralPanel()));
 	connect(_ui->checkbox_odomDisabled, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteGeneralPanel()));
 	connect(_ui->odom_registration, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteGeneralPanel()));
@@ -674,6 +676,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->source_checkBox_ignoreGoals, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->source_checkBox_ignoreLandmarks, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->source_checkBox_ignoreFeatures, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->source_checkBox_ignorePriors, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->source_spinBox_databaseStartId, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->source_spinBox_databaseStopId, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->source_checkBox_useDbStamps, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
@@ -795,6 +798,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->comboBox_depthai_resolution, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->checkBox_depthai_depth, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->spinBox_depthai_confidence, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->checkBox_depthai_imu_published, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->checkBox_depthai_imu_firmware_update, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 
 	connect(_ui->checkbox_rgbd_colorOnly, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
@@ -886,6 +890,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->general_spinBox_imagesBufferSize->setObjectName(Parameters::kRtabmapImageBufferSize().c_str());
 	_ui->general_checkBox_createIntermediateNodes->setObjectName(Parameters::kRtabmapCreateIntermediateNodes().c_str());
 	_ui->general_spinBox_maxRetrieved->setObjectName(Parameters::kRtabmapMaxRetrieved().c_str());
+	_ui->general_spinBox_max_republished->setObjectName(Parameters::kRtabmapMaxRepublished().c_str());
 	_ui->general_checkBox_startNewMapOnLoopClosure->setObjectName(Parameters::kRtabmapStartNewMapOnLoopClosure().c_str());
 	_ui->general_checkBox_startNewMapOnGoodSignature->setObjectName(Parameters::kRtabmapStartNewMapOnGoodSignature().c_str());
 	_ui->general_checkBox_imagesAlreadyRectified->setObjectName(Parameters::kRtabmapImagesAlreadyRectified().c_str());
@@ -1790,6 +1795,7 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 	if(groupBox->objectName() == _ui->groupBox_generalSettingsGui0->objectName())
 	{
 		_ui->general_checkBox_imagesKept->setChecked(true);
+		_ui->general_checkBox_missing_cache_republished->setChecked(true);
 		_ui->general_checkBox_cloudsKept->setChecked(true);
 		_ui->checkBox_beep->setChecked(false);
 		_ui->checkBox_stamps->setChecked(true);
@@ -1803,6 +1809,7 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->radioButton_posteriorGraphView->setChecked(true);
 		_ui->radioButton_wordsGraphView->setChecked(false);
 		_ui->radioButton_localizationsGraphView->setChecked(false);
+		_ui->radioButton_localizationsGraphViewOdomCache->setChecked(false);
 		_ui->radioButton_nochangeGraphView->setChecked(false);
 		_ui->checkbox_odomDisabled->setChecked(false);
 		_ui->checkbox_groundTruthAlign->setChecked(true);
@@ -1924,6 +1931,7 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->source_checkBox_ignoreGoals->setChecked(true);
 		_ui->source_checkBox_ignoreLandmarks->setChecked(true);
 		_ui->source_checkBox_ignoreFeatures->setChecked(true);
+		_ui->source_checkBox_ignorePriors->setChecked(false);
 		_ui->source_spinBox_databaseStartId->setValue(0);
 		_ui->source_spinBox_databaseStopId->setValue(0);
 		_ui->source_spinBox_database_cameraIndex->setValue(-1);
@@ -2042,6 +2050,7 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->comboBox_depthai_resolution->setCurrentIndex(1);
 		_ui->checkBox_depthai_depth->setChecked(false);
 		_ui->spinBox_depthai_confidence->setValue(200);
+		_ui->checkBox_depthai_imu_published->setChecked(true);
 		_ui->checkBox_depthai_imu_firmware_update->setChecked(false);
 
 		_ui->checkBox_cameraImages_configForEachFrame->setChecked(false);
@@ -2268,6 +2277,7 @@ void PreferencesDialog::readGuiSettings(const QString & filePath)
 	settings.beginGroup("Gui");
 	settings.beginGroup("General");
 	_ui->general_checkBox_imagesKept->setChecked(settings.value("imagesKept", _ui->general_checkBox_imagesKept->isChecked()).toBool());
+	_ui->general_checkBox_missing_cache_republished->setChecked(settings.value("missingRepublished", _ui->general_checkBox_missing_cache_republished->isChecked()).toBool());
 	_ui->general_checkBox_cloudsKept->setChecked(settings.value("cloudsKept", _ui->general_checkBox_cloudsKept->isChecked()).toBool());
 	_ui->comboBox_loggerLevel->setCurrentIndex(settings.value("loggerLevel", _ui->comboBox_loggerLevel->currentIndex()).toInt());
 	_ui->comboBox_loggerEventLevel->setCurrentIndex(settings.value("loggerEventLevel", _ui->comboBox_loggerEventLevel->currentIndex()).toInt());
@@ -2287,6 +2297,7 @@ void PreferencesDialog::readGuiSettings(const QString & filePath)
 	_ui->radioButton_posteriorGraphView->setChecked(settings.value("posteriorGraphView", _ui->radioButton_posteriorGraphView->isChecked()).toBool());
 	_ui->radioButton_wordsGraphView->setChecked(settings.value("wordsGraphView", _ui->radioButton_wordsGraphView->isChecked()).toBool());
 	_ui->radioButton_localizationsGraphView->setChecked(settings.value("localizationsGraphView", _ui->radioButton_localizationsGraphView->isChecked()).toBool());
+	_ui->radioButton_localizationsGraphViewOdomCache->setChecked(settings.value("localizationsGraphViewOdomCache", _ui->radioButton_localizationsGraphViewOdomCache->isChecked()).toBool());
 	_ui->radioButton_nochangeGraphView->setChecked(settings.value("nochangeGraphView", _ui->radioButton_nochangeGraphView->isChecked()).toBool());
 	_ui->checkbox_odomDisabled->setChecked(settings.value("odomDisabled", _ui->checkbox_odomDisabled->isChecked()).toBool());
 	_ui->odom_registration->setCurrentIndex(settings.value("odomRegistration", _ui->odom_registration->currentIndex()).toInt());
@@ -2523,6 +2534,7 @@ void PreferencesDialog::readCameraSettings(const QString & filePath)
 	_ui->comboBox_depthai_resolution->setCurrentIndex(settings.value("resolution", _ui->comboBox_depthai_resolution->currentIndex()).toInt());
 	_ui->checkBox_depthai_depth->setChecked(settings.value("depth", _ui->checkBox_depthai_depth->isChecked()).toBool());
 	_ui->spinBox_depthai_confidence->setValue(settings.value("confidence", _ui->spinBox_depthai_confidence->value()).toInt());
+	_ui->checkBox_depthai_imu_published->setChecked(settings.value("imu_published", _ui->checkBox_depthai_imu_published->isChecked()).toBool());
 	_ui->checkBox_depthai_imu_firmware_update->setChecked(settings.value("imu_firmware_update", _ui->checkBox_depthai_imu_firmware_update->isChecked()).toBool());
 	settings.endGroup(); // DepthAI
 
@@ -2607,6 +2619,7 @@ void PreferencesDialog::readCameraSettings(const QString & filePath)
 	_ui->source_checkBox_ignoreGoals->setChecked(settings.value("ignoreGoals", _ui->source_checkBox_ignoreGoals->isChecked()).toBool());
 	_ui->source_checkBox_ignoreLandmarks->setChecked(settings.value("ignoreLandmarks", _ui->source_checkBox_ignoreLandmarks->isChecked()).toBool());
 	_ui->source_checkBox_ignoreFeatures->setChecked(settings.value("ignoreFeatures", _ui->source_checkBox_ignoreFeatures->isChecked()).toBool());
+	_ui->source_checkBox_ignorePriors->setChecked(settings.value("ignorePriors", _ui->source_checkBox_ignorePriors->isChecked()).toBool());
 	_ui->source_spinBox_databaseStartId->setValue(settings.value("startId", _ui->source_spinBox_databaseStartId->value()).toInt());
 	_ui->source_spinBox_databaseStopId->setValue(settings.value("stopId", _ui->source_spinBox_databaseStopId->value()).toInt());
 	_ui->source_spinBox_database_cameraIndex->setValue(settings.value("cameraIndex", _ui->source_spinBox_database_cameraIndex->value()).toInt());
@@ -2795,6 +2808,7 @@ void PreferencesDialog::writeGuiSettings(const QString & filePath) const
 	settings.beginGroup("General");
 	settings.remove("");
 	settings.setValue("imagesKept",           _ui->general_checkBox_imagesKept->isChecked());
+	settings.setValue("missingRepublished",   _ui->general_checkBox_missing_cache_republished->isChecked());
 	settings.setValue("cloudsKept",           _ui->general_checkBox_cloudsKept->isChecked());
 	settings.setValue("loggerLevel",          _ui->comboBox_loggerLevel->currentIndex());
 	settings.setValue("loggerEventLevel",     _ui->comboBox_loggerEventLevel->currentIndex());
@@ -2814,6 +2828,7 @@ void PreferencesDialog::writeGuiSettings(const QString & filePath) const
 	settings.setValue("posteriorGraphView",   _ui->radioButton_posteriorGraphView->isChecked());
 	settings.setValue("wordsGraphView",       _ui->radioButton_wordsGraphView->isChecked());
 	settings.setValue("localizationsGraphView", _ui->radioButton_localizationsGraphView->isChecked());
+	settings.setValue("localizationsGraphViewOdomCache", _ui->radioButton_localizationsGraphViewOdomCache->isChecked());
 	settings.setValue("nochangeGraphView",    _ui->radioButton_nochangeGraphView->isChecked());
 	settings.setValue("odomDisabled",         _ui->checkbox_odomDisabled->isChecked());
 	settings.setValue("odomRegistration",     _ui->odom_registration->currentIndex());
@@ -3046,6 +3061,7 @@ void PreferencesDialog::writeCameraSettings(const QString & filePath) const
 	settings.setValue("resolution",    _ui->comboBox_depthai_resolution->currentIndex());
 	settings.setValue("depth",         _ui->checkBox_depthai_depth->isChecked());
 	settings.setValue("confidence",    _ui->spinBox_depthai_confidence->value());
+	settings.setValue("imu_published", _ui->checkBox_depthai_imu_published->isChecked());
 	settings.setValue("imu_firmware_update", _ui->checkBox_depthai_imu_firmware_update->isChecked());
 	settings.endGroup(); // DepthAI
 
@@ -3128,6 +3144,7 @@ void PreferencesDialog::writeCameraSettings(const QString & filePath) const
 	settings.setValue("ignoreGoals",       _ui->source_checkBox_ignoreGoals->isChecked());
 	settings.setValue("ignoreLandmarks", _ui->source_checkBox_ignoreLandmarks->isChecked());
 	settings.setValue("ignoreFeatures",  _ui->source_checkBox_ignoreFeatures->isChecked());
+	settings.setValue("ignorePriors",  _ui->source_checkBox_ignorePriors->isChecked());
 	settings.setValue("startId",          _ui->source_spinBox_databaseStartId->value());
 	settings.setValue("stopId",          _ui->source_spinBox_databaseStopId->value());
 	settings.setValue("cameraIndex",       _ui->source_spinBox_database_cameraIndex->value());
@@ -3922,6 +3939,11 @@ void PreferencesDialog::selectSourceDriver(Src src, int variant)
 		{
 			// disable IMU filtering (zed sends already quaternion)
 			_ui->comboBox_imuFilter_strategy->setCurrentIndex(0);
+		}
+		else if(src == kSrcStereoDepthAI) // OAK-D (variant==1), OAK-D Lite (variant==0)
+		{
+			_ui->checkBox_depthai_imu_published->setChecked(variant == 1);
+			_ui->comboBox_depthai_resolution->setCurrentIndex(variant == 1?1:3);
 		}
 	}
 	else if(src >= kSrcRGB && src<kSrcDatabase)
@@ -5331,6 +5353,10 @@ bool PreferencesDialog::isLocalizationsCountGraphView() const
 {
 	return _ui->radioButton_localizationsGraphView->isChecked();
 }
+bool PreferencesDialog::isRelocalizationColorOdomCacheGraphView() const
+{
+	return _ui->radioButton_localizationsGraphViewOdomCache->isChecked();
+}
 bool PreferencesDialog::isOdomDisabled() const
 {
 	return _ui->checkbox_odomDisabled->isChecked();
@@ -6279,6 +6305,7 @@ Camera * PreferencesDialog::createCamera(
 			this->getSourceLocalTransform());
 		((CameraDepthAI*)camera)->setOutputDepth(_ui->checkBox_depthai_depth->isChecked(), _ui->spinBox_depthai_confidence->value());
 		((CameraDepthAI*)camera)->setIMUFirmwareUpdate(_ui->checkBox_depthai_imu_firmware_update->isChecked());
+		((CameraDepthAI*)camera)->setIMUPublished(_ui->checkBox_depthai_imu_published->isChecked());
 	}
 	else if(driver == kSrcUsbDevice)
 	{
@@ -6342,7 +6369,10 @@ Camera * PreferencesDialog::createCamera(
 				_ui->source_spinBox_databaseStopId->value(),
 				!_ui->general_checkBox_createIntermediateNodes->isChecked(),
 				_ui->source_checkBox_ignoreLandmarks->isChecked(),
-				_ui->source_checkBox_ignoreFeatures->isChecked());
+				_ui->source_checkBox_ignoreFeatures->isChecked(),
+				0,
+				-1,
+				_ui->source_checkBox_ignorePriors->isChecked());
 	}
 	else
 	{
@@ -6463,6 +6493,10 @@ QString PreferencesDialog::getCameraInfoDir() const
 bool PreferencesDialog::isImagesKept() const
 {
 	return _ui->general_checkBox_imagesKept->isChecked();
+}
+bool PreferencesDialog::isMissingCacheRepublished() const
+{
+	return _ui->general_checkBox_missing_cache_republished->isChecked();
 }
 bool PreferencesDialog::isCloudsKept() const
 {
