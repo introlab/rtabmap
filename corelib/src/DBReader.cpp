@@ -54,7 +54,8 @@ DBReader::DBReader(const std::string & databasePath,
 				   bool landmarksIgnored,
 				   bool featuresIgnored,
 				   int startMapId,
-				   int stopMapId) :
+				   int stopMapId,
+				   bool priorsIgnored) :
 	Camera(frameRate),
 	_paths(uSplit(databasePath, ';')),
 	_odometryIgnored(odometryIgnored),
@@ -66,6 +67,7 @@ DBReader::DBReader(const std::string & databasePath,
 	_intermediateNodesIgnored(intermediateNodesIgnored),
 	_landmarksIgnored(landmarksIgnored),
 	_featuresIgnored(featuresIgnored),
+	_priorsIgnored(priorsIgnored),
 	_startMapId(startMapId),
 	_stopMapId(stopMapId),
 	_dbDriver(0),
@@ -98,7 +100,8 @@ DBReader::DBReader(const std::list<std::string> & databasePaths,
 				   bool landmarksIgnored,
 				   bool featuresIgnored,
 				   int startMapId,
-				   int stopMapId) :
+				   int stopMapId,
+				   bool priorsIgnored) :
 	Camera(frameRate),
    _paths(databasePaths),
 	_odometryIgnored(odometryIgnored),
@@ -110,6 +113,7 @@ DBReader::DBReader(const std::list<std::string> & databasePaths,
 	_intermediateNodesIgnored(intermediateNodesIgnored),
 	_landmarksIgnored(landmarksIgnored),
 	_featuresIgnored(featuresIgnored),
+	_priorsIgnored(priorsIgnored),
 	_startMapId(startMapId),
 	_stopMapId(stopMapId),
 	_dbDriver(0),
@@ -408,21 +412,24 @@ SensorData DBReader::getNextData(CameraInfo * info)
 			cv::Mat globalPoseCov;
 
 			std::multimap<int, Link> priorLinks;
-			_dbDriver->loadLinks(*_currentId, priorLinks, Link::kPosePrior);
-			if( priorLinks.size() &&
-				!priorLinks.begin()->second.transform().isNull() &&
-				priorLinks.begin()->second.infMatrix().cols == 6 &&
-				priorLinks.begin()->second.infMatrix().rows == 6)
+			if(!_priorsIgnored)
 			{
-				globalPose = priorLinks.begin()->second.transform();
-				globalPoseCov = priorLinks.begin()->second.infMatrix().inv();
-				if(data.gps().stamp() != 0.0 &&
-						globalPoseCov.at<double>(3,3)>=9999 &&
-						globalPoseCov.at<double>(4,4)>=9999 &&
-						globalPoseCov.at<double>(5,5)>=9999)
+				_dbDriver->loadLinks(*_currentId, priorLinks, Link::kPosePrior);
+				if( priorLinks.size() &&
+					!priorLinks.begin()->second.transform().isNull() &&
+					priorLinks.begin()->second.infMatrix().cols == 6 &&
+					priorLinks.begin()->second.infMatrix().rows == 6)
 				{
-					// clear global pose as GPS was used for prior
-					globalPose.setNull();
+					globalPose = priorLinks.begin()->second.transform();
+					globalPoseCov = priorLinks.begin()->second.infMatrix().inv();
+					if(data.gps().stamp() != 0.0 &&
+							globalPoseCov.at<double>(3,3)>=9999 &&
+							globalPoseCov.at<double>(4,4)>=9999 &&
+							globalPoseCov.at<double>(5,5)>=9999)
+					{
+						// clear global pose as GPS was used for prior
+						globalPose.setNull();
+					}
 				}
 			}
 
