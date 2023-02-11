@@ -156,12 +156,16 @@ SET(PUBLIC_INCLUDE_DIRS
 )
 
 SET(LIBRARIES
-	${ZLIB_LIBRARIES} 
+	${ZLIB_LIBRARIES}
 )
 
+# Issue that qhull dependency uses optimized and debug keywords,
+# which are converted to \$<\$<NOT:\$<CONFIG:DEBUG>> and \$<\$<CONFIG:DEBUG>
+# in RTABMap_coreTargets.cmake (not sure why?!).
+list(REMOVE_ITEM PCL_LIBRARIES "debug" "optimized")
 SET(PUBLIC_LIBRARIES
-	${OpenCV_LIBS} 
-    ${PCL_LIBRARIES} 
+	${OpenCV_LIBS}
+	${PCL_LIBRARIES}
 )
 
 IF(Sqlite3_FOUND)
