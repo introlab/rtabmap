@@ -233,7 +233,7 @@ install(
     ${INSTALL_INCLUDE_DIR}
   COMPONENT
     Devel
-  FILES_MATCHING PATTERN "*.h;" PATTERN "*.hpp"
+  FILES_MATCHING PATTERN "*.h" PATTERN "*.hpp"
 )
 export(EXPORT rtabmap_guiTargets
   FILE "${CMAKE_CURRENT_BINARY_DIR}/../../${PROJECT_NAME}_guiTargets.cmake"

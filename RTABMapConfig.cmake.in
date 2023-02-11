@@ -23,6 +23,10 @@ IF(@CONF_WITH_G20@)
   find_dependency(g2o)
 ENDIF()
 
+IF(@CONF_WITH_OCTOMAP@)
+  find_dependency(octomap)
+ENDIF()
+
 set(RTABMap_DEFINITIONS ${PCL_DEFINITIONS})
 
 # Provide those for backward compatibilities (e.g., catkin requires them to propagate dependencies)

@@ -20,7 +20,7 @@ generate_export_header(rtabmap_utilite
 
 target_include_directories(rtabmap_utilite PUBLIC 
   "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../include;${CMAKE_CURRENT_BINARY_DIR}/include;${PTHREADS_INCLUDE_DIR}>"
-  "$<INSTALL_INTERFACE:${INSTALL_INCLUDE_DIR}>")
+  "$<INSTALL_INTERFACE:${INSTALL_INCLUDE_DIR};${PTHREADS_INCLUDE_DIR}>")
 
 IF(MINGW)
     TARGET_LINK_LIBRARIES(rtabmap_utilite PRIVATE ${PTHREADS_LIBRARY} "-lpsapi")
@@ -55,7 +55,7 @@ install(
     "${INSTALL_INCLUDE_DIR}" 
   COMPONENT 
     devel 
-  FILES_MATCHING PATTERN "*.h;" PATTERN "*.hpp")
+  FILES_MATCHING PATTERN "*.h" PATTERN "*.hpp")
 
 export(EXPORT rtabmap_utiliteTargets
   FILE "${CMAKE_CURRENT_BINARY_DIR}/../../${PROJECT_NAME}_utiliteTargets.cmake"
