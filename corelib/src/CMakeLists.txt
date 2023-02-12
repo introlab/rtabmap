@@ -383,7 +383,7 @@ ENDIF(WITH_TORO)
 
 IF(G2O_FOUND)
 	IF(g2o_FOUND)
-	  SET(PUBLIC_LIBRARIES ${PUBLIC_LIBRARIES}
+	  SET(LIBRARIES ${LIBRARIES}
 	     g2o::core
 	     g2o::solver_eigen
 	     g2o::solver_pcg
@@ -391,12 +391,12 @@ IF(G2O_FOUND)
 	     g2o::types_slam3d
 	     g2o::types_sba)
 	  IF(TARGET g2o::solver_csparse)
-	    SET(PUBLIC_LIBRARIES ${PUBLIC_LIBRARIES}
+	    SET(LIBRARIES ${LIBRARIES}
           g2o::solver_csparse
           g2o::csparse_extension)
       ENDIF(TARGET g2o::solver_csparse)
       IF(TARGET g2o::solver_cholmod)
-        SET(PUBLIC_LIBRARIES ${PUBLIC_LIBRARIES} 
+        SET(LIBRARIES ${LIBRARIES}
           g2o::solver_cholmod)
       ENDIF(TARGET g2o::solver_cholmod)
 	ELSE()
@@ -404,8 +404,8 @@ IF(G2O_FOUND)
 		${INCLUDE_DIRS} 
 		${G2O_INCLUDE_DIRS}
 	  )
-	  SET(PUBLIC_LIBRARIES
-		${PUBLIC_LIBRARIES}
+	  SET(LIBRARIES
+		${LIBRARIES}
 		${G2O_LIBRARIES}
 	  )
 	ENDIF()

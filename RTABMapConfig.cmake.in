@@ -19,10 +19,6 @@ IF(@CONF_WITH_K4A@)
     ENDIF()
 ENDIF()
 
-IF(@CONF_WITH_G20@)
-  find_dependency(g2o)
-ENDIF()
-
 IF(@CONF_WITH_OCTOMAP@)
   find_dependency(octomap)
 ENDIF()
