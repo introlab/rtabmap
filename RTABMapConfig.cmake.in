@@ -1,19 +1,19 @@
 include(CMakeFindDependencyMacro)
 
 # Mandatory dependencies
-find_package(OpenCV REQUIRED QUIET COMPONENTS core calib3d imgproc highgui stitching photo video OPTIONAL_COMPONENTS aruco xfeatures2d nonfree gpu cudafeatures2d)
+find_dependency(OpenCV COMPONENTS core calib3d imgproc highgui stitching photo video OPTIONAL_COMPONENTS aruco xfeatures2d nonfree gpu cudafeatures2d)
 
 if(EXISTS "${CMAKE_CURRENT_LIST_DIR}/RTABMap_guiTargets.cmake")
-    FIND_PACKAGE(PCL 1.7 REQUIRED QUIET COMPONENTS common io kdtree search surface filters registration sample_consensus segmentation visualization)
+    find_dependency(PCL 1.7 COMPONENTS common io kdtree search surface filters registration sample_consensus segmentation visualization)
     
     if(@CONF_QT_VERSION@ EQUAL 5)
-        find_dependency(Qt5 COMPONENTS Widgets Core Gui PrintSupport OpenGL OPTIONAL_COMPONENTS Svg)
+        find_dependency(Qt5 COMPONENTS Widgets Core Gui OpenGL)
     else() # Qt4
-        find_dependency(Qt4 COMPONENTS QtCore QtGui OPTIONAL_COMPONENTS QtSvg)
+        find_dependency(Qt4 COMPONENTS QtCore QtGui)
     endif()
     set(RTABMap_QT_VERSION @CONF_QT_VERSION@)
 ELSE()
-    FIND_PACKAGE(PCL 1.7 REQUIRED QUIET COMPONENTS common io kdtree search surface filters registration sample_consensus segmentation)
+    find_dependency(PCL 1.7 COMPONENTS common io kdtree search surface filters registration sample_consensus segmentation)
 ENDIF()
 set(RTABMap_DEFINITIONS ${PCL_DEFINITIONS})
 
