@@ -8,11 +8,11 @@
 #ifndef UEVENTSSENDER_H_
 #define UEVENTSSENDER_H_
 
-#include "rtabmap/utilite/UtiLiteExp.h" // DLL export/import defines
+#include "rtabmap/utilite/utilite_export.h" // DLL export/import defines
 
 class UEvent;
 
-class UTILITE_EXP UEventsSender
+class UTILITE_EXPORT UEventsSender
 {
 public:
 	UEventsSender(){}

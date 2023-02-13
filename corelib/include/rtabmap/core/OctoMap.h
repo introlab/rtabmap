@@ -28,7 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef SRC_OCTOMAP_H_
 #define SRC_OCTOMAP_H_
 
-#include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
+#include "rtabmap/core/rtabmap_core_export.h" // DLL export/import defines
 
 #include <octomap/ColorOcTree.h>
 #include <octomap/OcTreeKey.h>
@@ -171,7 +171,7 @@ class RtabmapColorOcTree : public octomap::OccupancyOcTreeBase <RtabmapColorOcTr
 
   };
 
-class RTABMAP_EXP OctoMap {
+class RTABMAP_CORE_EXPORT OctoMap {
 public:
 	OctoMap(const ParametersMap & parameters = ParametersMap());
 

@@ -128,51 +128,30 @@ IF(MSVC)
 ENDIF(MSVC)
 
 SET(INCLUDE_DIRS
-	${PROJECT_BINARY_DIR}/corelib/include
-	${PROJECT_SOURCE_DIR}/corelib/include
-	${PROJECT_SOURCE_DIR}/utilite/include
 	${CMAKE_CURRENT_SOURCE_DIR}/../include
 	${CMAKE_CURRENT_SOURCE_DIR}
-	${OpenCV_INCLUDE_DIRS}
 	${CMAKE_CURRENT_BINARY_DIR} # for qt ui generated in binary dir
-	${PCL_INCLUDE_DIRS}
 )
-
-# Hack as CameraRealsense2.h needs realsense2 include dir
-IF(realsense2_FOUND)
-	SET(INCLUDE_DIRS
-		${INCLUDE_DIRS}
-		${realsense2_INCLUDE_DIRS}
-	)
-ENDIF(realsense2_FOUND)
-# Hack as CameraK4A.h needs k4a include dir
-IF(k4a_FOUND)
-	SET(INCLUDE_DIRS
-		${INCLUDE_DIRS}
-		${k4a_INCLUDE_DIRS}
-	)
-ENDIF(k4a_FOUND)
 
 IF(QT4_FOUND)
     INCLUDE(${QT_USE_FILE})
 ENDIF(QT4_FOUND)
 
-SET(LIBRARIES
-    ${QT_LIBRARIES} 
-	${OpenCV_LIBS} 
-	${PCL_LIBRARIES}
-)
+SET(LIBRARIES "")
+SET(PUBLIC_LIBRARIES "")
 
-IF(octomap_FOUND)
-	SET(INCLUDE_DIRS
-		${INCLUDE_DIRS}
-		${OCTOMAP_INCLUDE_DIRS}
-	)
-	SET(LIBRARIES
-		${LIBRARIES}
-		${OCTOMAP_LIBRARIES}
-	)
-ENDIF(octomap_FOUND)
+IF(Qt5_FOUND)
+    SET(PUBLIC_LIBRARIES ${PUBLIC_LIBRARIES} Qt5::Widgets Qt5::Core Qt5::Gui)
+    SET(LIBRARIES ${LIBRARIES} Qt5::PrintSupport)
+    IF(Qt5Svg_FOUND)
+        SET(LIBRARIES ${LIBRARIES} Qt5::Svg)
+    ENDIF()
+ELSE()
+    SET(PUBLIC_LIBRARIES ${PUBLIC_LIBRARIES} ${QTCORE_LIBRARY} ${QTGUI_LIBRARY})
+    IF(QTSVG_FOUND)
+        SET(LIBRARIES ${LIBRARIES} ${QTSVG_LIBRARY})
+    ENDIF()
+ENDIF()
 
 IF(CPUTSDF_FOUND)
 	SET(INCLUDE_DIRS
@@ -208,16 +187,20 @@ add_definitions(${PCL_DEFINITIONS})
 
 # create a library from the source files
 ADD_LIBRARY(rtabmap_gui ${SRC_FILES})
-# Linking with Qt libraries
 
-TARGET_LINK_LIBRARIES(rtabmap_gui rtabmap_core rtabmap_utilite ${LIBRARIES})
-IF(Qt5_FOUND)
-    IF(Qt5Svg_FOUND)
-        QT5_USE_MODULES(rtabmap_gui Widgets Core Gui Svg PrintSupport)
-    ELSE()
-        QT5_USE_MODULES(rtabmap_gui Widgets Core Gui PrintSupport)
-    ENDIF()
-ENDIF(Qt5_FOUND)
+generate_export_header(rtabmap_gui
+ DEPRECATED_MACRO_NAME RTABMAP_DEPRECATED)
+
+target_include_directories(rtabmap_gui PUBLIC 
+  "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../include;${CMAKE_CURRENT_BINARY_DIR}/include>"
+  "$<INSTALL_INTERFACE:${INSTALL_INCLUDE_DIR}>")
+
+TARGET_LINK_LIBRARIES(rtabmap_gui 
+  PUBLIC
+    rtabmap_core ${PUBLIC_LIBRARIES}
+  PRIVATE
+    ${LIBRARIES}
+)
 
 SET_TARGET_PROPERTIES(
      rtabmap_gui
@@ -226,9 +209,34 @@ SET_TARGET_PROPERTIES(
      SOVERSION ${RTABMAP_MAJOR_VERSION}.${RTABMAP_MINOR_VERSION}
 )
 
-INSTALL(TARGETS rtabmap_gui
+INSTALL(TARGETS rtabmap_gui EXPORT rtabmap_guiTargets
         RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}" COMPONENT runtime
         LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}" COMPONENT devel
         ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}" COMPONENT devel)
-        
-install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/../include/ DESTINATION "${INSTALL_INCLUDE_DIR}" COMPONENT devel FILES_MATCHING PATTERN "*.h" PATTERN ".svn" EXCLUDE)
+
+configure_file(
+  ${CMAKE_CURRENT_BINARY_DIR}/rtabmap_gui_export.h
+  ${CMAKE_CURRENT_BINARY_DIR}/include/${PROJECT_PREFIX}/gui/rtabmap_gui_export.h
+  COPYONLY)
+  
+install(
+  DIRECTORY
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/${PROJECT_PREFIX}
+    ${CMAKE_CURRENT_BINARY_DIR}/include/${PROJECT_PREFIX}
+  DESTINATION
+    ${INSTALL_INCLUDE_DIR}
+  COMPONENT
+    devel
+  FILES_MATCHING PATTERN "*.h" PATTERN "*.hpp"
+)
+export(EXPORT rtabmap_guiTargets
+  FILE "${CMAKE_CURRENT_BINARY_DIR}/../../${PROJECT_NAME}_guiTargets.cmake"
+)
+install(EXPORT rtabmap_guiTargets
+  FILE
+    ${PROJECT_NAME}_guiTargets.cmake
+  DESTINATION
+    ${INSTALL_CMAKE_DIR}
+  COMPONENT
+    devel
+)

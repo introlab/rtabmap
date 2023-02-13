@@ -1,38 +1,11 @@
 
-SET(SRC_FILES
-    main.cpp
-)
-
-SET(INCLUDE_DIRS
-    ${PROJECT_BINARY_DIR}/corelib/include
-	${PROJECT_SOURCE_DIR}/utilite/include
-	${PROJECT_SOURCE_DIR}/corelib/include
-	${PROJECT_SOURCE_DIR}/guilib/include
-    ${OpenCV_INCLUDE_DIRS}
-    ${PCL_INCLUDE_DIRS}
-)
-
-IF(QT4_FOUND)
-    INCLUDE(${QT_USE_FILE})
-ENDIF(QT4_FOUND)
-
-SET(LIBRARIES
-	${OpenCV_LIBRARIES}
-	${QT_LIBRARIES} 
-	${PCL_LIBRARIES}
-)
-
-add_definitions(${PCL_DEFINITIONS})
-
-INCLUDE_DIRECTORIES(${INCLUDE_DIRS})
-
 IF(MINGW)
-  ADD_EXECUTABLE(databaseViewer WIN32 ${SRC_FILES})
+  ADD_EXECUTABLE(databaseViewer WIN32 main.cpp)
 ELSE()
-  ADD_EXECUTABLE(databaseViewer ${SRC_FILES})
+  ADD_EXECUTABLE(databaseViewer main.cpp)
 ENDIF()
 
-TARGET_LINK_LIBRARIES(databaseViewer rtabmap_core rtabmap_gui rtabmap_utilite ${LIBRARIES})
+TARGET_LINK_LIBRARIES(databaseViewer rtabmap_gui)
 
 SET_TARGET_PROPERTIES( databaseViewer 
   PROPERTIES OUTPUT_NAME ${PROJECT_PREFIX}-databaseViewer)

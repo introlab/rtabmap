@@ -28,7 +28,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #pragma once
 
 #include <rtabmap/core/camera/CameraImages.h>
-#include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
 
 #include "rtabmap/core/StereoCameraModel.h"
 #include "rtabmap/core/Version.h"
@@ -37,7 +36,7 @@ namespace rtabmap
 {
 
 class CameraImages;
-class RTABMAP_EXP CameraStereoImages :
+class RTABMAP_CORE_EXPORT CameraStereoImages :
 	public CameraImages
 {
 public:

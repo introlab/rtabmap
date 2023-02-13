@@ -28,7 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef OPTIMIZER_H_
 #define OPTIMIZER_H_
 
-#include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
+#include "rtabmap/core/rtabmap_core_export.h" // DLL export/import defines
 
 #include <map>
 #include <list>
@@ -58,7 +58,7 @@ public:
 ////////////////////////////////////////////
 // Graph optimizers
 ////////////////////////////////////////////
-class RTABMAP_EXP Optimizer
+class RTABMAP_CORE_EXPORT Optimizer
 {
 public:
 	enum Type {

@@ -28,13 +28,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef OPTIMIZERGTSAM_H_
 #define OPTIMIZERGTSAM_H_
 
-#include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
-
 #include <rtabmap/core/Optimizer.h>
 
 namespace rtabmap {
 
-class RTABMAP_EXP OptimizerGTSAM : public Optimizer
+class RTABMAP_CORE_EXPORT OptimizerGTSAM : public Optimizer
 {
 public:
 	static bool available();

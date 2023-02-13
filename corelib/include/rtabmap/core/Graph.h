@@ -28,7 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef GRAPH_H_
 #define GRAPH_H_
 
-#include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
+#include "rtabmap/core/rtabmap_core_export.h" // DLL export/import defines
 
 #include <map>
 #include <list>
@@ -46,7 +46,7 @@ namespace graph {
 // Graph utilities
 ////////////////////////////////////////////
 
-bool RTABMAP_EXP exportPoses(
+bool RTABMAP_CORE_EXPORT exportPoses(
 		const std::string & filePath,
 		int format, // 0=Raw (*.txt), 1=RGBD-SLAM motion capture (*.txt) (10=without change of coordinate frame, 11=10+ID), 2=KITTI (*.txt), 3=TORO (*.graph), 4=g2o (*.g2o)
 		const std::map<int, Transform> & poses,
@@ -54,14 +54,14 @@ bool RTABMAP_EXP exportPoses(
 		const std::map<int, double> & stamps = std::map<int, double>(),  // required for format 1
 		const ParametersMap & parameters = ParametersMap()); // optional for formats 3 and 4
 
-bool RTABMAP_EXP importPoses(
+bool RTABMAP_CORE_EXPORT importPoses(
 		const std::string & filePath,
 		int format, // 0=Raw, 1=RGBD-SLAM motion capture (10=without change of coordinate frame, 11=10+ID), 2=KITTI, 3=TORO, 4=g2o, 5=NewCollege(t,x,y), 6=Malaga Urban GPS, 7=St Lucia INS, 8=Karlsruhe, 9=EuRoC MAV
 		std::map<int, Transform> & poses,
 		std::multimap<int, Link> * constraints = 0, // optional for formats 3 and 4
 		std::map<int, double> * stamps = 0); // optional for format 1 and 9
 
-bool RTABMAP_EXP exportGPS(
+bool RTABMAP_CORE_EXPORT exportGPS(
 		const std::string & filePath,
 		const std::map<int, GPS> & gpsValues,
 		unsigned int rgba = 0xFFFFFFFF);
@@ -74,7 +74,7 @@ bool RTABMAP_EXP exportGPS(
  * @param t_err, Output translation error (%)
  * @param r_err, Output rotation error (deg/m)
  */
-void RTABMAP_EXP calcKittiSequenceErrors(
+void RTABMAP_CORE_EXPORT calcKittiSequenceErrors(
 		const std::vector<Transform> &poses_gt,
 		const std::vector<Transform> &poses_result,
 		float & t_err,
@@ -87,7 +87,7 @@ void RTABMAP_EXP calcKittiSequenceErrors(
  * @param t_err, Output translation error (m)
  * @param r_err, Output rotation error (deg)
  */
-void RTABMAP_EXP calcRelativeErrors (
+void RTABMAP_CORE_EXPORT calcRelativeErrors (
 		const std::vector<Transform> &poses_gt,
 		const std::vector<Transform> &poses_result,
 		float & t_err,
@@ -101,7 +101,7 @@ void RTABMAP_EXP calcRelativeErrors (
  * @param poses, Estimated poses
  * @return Gt to Map transform
  */
-Transform RTABMAP_EXP calcRMSE(
+Transform RTABMAP_CORE_EXPORT calcRMSE(
 		const std::map<int, Transform> &groundTruth,
 		const std::map<int, Transform> &poses,
 		float & translational_rmse,
@@ -117,7 +117,7 @@ Transform RTABMAP_EXP calcRMSE(
 		float & rotational_min,
 		float & rotational_max);
 
-void RTABMAP_EXP computeMaxGraphErrors(
+void RTABMAP_CORE_EXPORT computeMaxGraphErrors(
 		const std::map<int, Transform> & poses,
 		const std::multimap<int, Link> & links,
 		float & maxLinearErrorRatio,
@@ -128,53 +128,53 @@ void RTABMAP_EXP computeMaxGraphErrors(
 		const Link ** maxAngularErrorLink = 0,
 		bool for3DoF = false);
 
-std::vector<double> RTABMAP_EXP getMaxOdomInf(const std::multimap<int, Link> & links);
+std::vector<double> RTABMAP_CORE_EXPORT getMaxOdomInf(const std::multimap<int, Link> & links);
 
-std::multimap<int, Link>::iterator RTABMAP_EXP findLink(
+std::multimap<int, Link>::iterator RTABMAP_CORE_EXPORT findLink(
 		std::multimap<int, Link> & links,
 		int from,
 		int to,
 		bool checkBothWays = true,
 		Link::Type type = Link::kUndef);
-std::multimap<int, int>::iterator RTABMAP_EXP findLink(
+std::multimap<int, int>::iterator RTABMAP_CORE_EXPORT findLink(
 		std::multimap<int, int> & links,
 		int from,
 		int to,
 		bool checkBothWays = true);
-std::multimap<int, Link>::const_iterator RTABMAP_EXP findLink(
+std::multimap<int, Link>::const_iterator RTABMAP_CORE_EXPORT findLink(
 		const std::multimap<int, Link> & links,
 		int from,
 		int to,
 		bool checkBothWays = true,
 		Link::Type type = Link::kUndef);
-std::multimap<int, int>::const_iterator RTABMAP_EXP findLink(
+std::multimap<int, int>::const_iterator RTABMAP_CORE_EXPORT findLink(
 		const std::multimap<int, int> & links,
 		int from,
 		int to,
 		bool checkBothWays = true);
-std::list<Link> RTABMAP_EXP findLinks(
+std::list<Link> RTABMAP_CORE_EXPORT findLinks(
 		const std::multimap<int, Link> & links,
 		int from);
 
-std::multimap<int, Link> RTABMAP_EXP filterDuplicateLinks(
+std::multimap<int, Link> RTABMAP_CORE_EXPORT filterDuplicateLinks(
 		const std::multimap<int, Link> & links);
 /**
  * Return links not of type "filteredType". If inverted=true, return links of type "filteredType".
  */
-std::multimap<int, Link> RTABMAP_EXP filterLinks(
+std::multimap<int, Link> RTABMAP_CORE_EXPORT filterLinks(
 		const std::multimap<int, Link> & links,
 		Link::Type filteredType,
 		bool inverted = false);
 /**
  * Return links not of type "filteredType". If inverted=true, return links of type "filteredType".
  */
-std::map<int, Link> RTABMAP_EXP filterLinks(
+std::map<int, Link> RTABMAP_CORE_EXPORT filterLinks(
 		const std::map<int, Link> & links,
 		Link::Type filteredType,
 		bool inverted = false);
 
 //Note: This assumes a coordinate system where X is forward, * Y is up, and Z is right.
-std::map<int, Transform> RTABMAP_EXP frustumPosesFiltering(
+std::map<int, Transform> RTABMAP_CORE_EXPORT frustumPosesFiltering(
 		const std::map<int, Transform> & poses,
 		const Transform & cameraPose,
 		float horizontalFOV = 45.0f, // in degrees, xfov = atan((image_width/2)/fx)*2
@@ -191,7 +191,7 @@ std::map<int, Transform> RTABMAP_EXP frustumPosesFiltering(
  * @param keepLatest keep the latest node if true, otherwise the oldest node is kept
  * @return A map containing only most recent or older poses in the the defined radius
  */
-std::map<int, Transform> RTABMAP_EXP radiusPosesFiltering(
+std::map<int, Transform> RTABMAP_CORE_EXPORT radiusPosesFiltering(
 		const std::map<int, Transform> & poses,
 		float radius,
 		float angle,
@@ -204,7 +204,7 @@ std::map<int, Transform> RTABMAP_EXP radiusPosesFiltering(
  * @param angle Maximum angle (rad, [0,PI]) of accepted neighbor nodes in the radius (0 means ignore angle)
  * @return A map between each pose id and its neighbors found in the radius
  */
-std::multimap<int, int> RTABMAP_EXP radiusPosesClustering(
+std::multimap<int, int> RTABMAP_CORE_EXPORT radiusPosesClustering(
 		const std::map<int, Transform> & poses,
 		float radius,
 		float angle);
@@ -224,7 +224,7 @@ void reduceGraph(
  * @param updateNewCosts Keep up-to-date costs while traversing the graph.
  * @return the path ids from id "from" to id "to" including initial and final nodes.
  */
-std::list<std::pair<int, Transform> > RTABMAP_EXP computePath(
+std::list<std::pair<int, Transform> > RTABMAP_CORE_EXPORT computePath(
 			const std::map<int, rtabmap::Transform> & poses,
 			const std::multimap<int, int> & links,
 			int from,
@@ -241,7 +241,7 @@ std::list<std::pair<int, Transform> > RTABMAP_EXP computePath(
  * @param useSameCostForAllLinks Ignore distance between nodes
  * @return the path ids from id "from" to id "to" including initial and final nodes.
  */
-std::list<int> RTABMAP_EXP computePath(
+std::list<int> RTABMAP_CORE_EXPORT computePath(
 			const std::multimap<int, Link> & links,
 			int from,
 			int to,
@@ -257,7 +257,7 @@ std::list<int> RTABMAP_EXP computePath(
  * @param updateNewCosts Keep up-to-date costs while traversing the graph.
  * @return the path ids from id "fromId" to id "toId" including initial and final nodes (Identity pose for the first node).
  */
-std::list<std::pair<int, Transform> > RTABMAP_EXP computePath(
+std::list<std::pair<int, Transform> > RTABMAP_CORE_EXPORT computePath(
 		int fromId,
 		int toId,
 		const Memory * memory,
@@ -273,7 +273,7 @@ std::list<std::pair<int, Transform> > RTABMAP_EXP computePath(
  * @param distance squared distance of the nearest node found (optional)
  * @return the node id.
  */
-int RTABMAP_EXP findNearestNode(
+int RTABMAP_CORE_EXPORT findNearestNode(
 		const std::map<int, rtabmap::Transform> & poses,
 		const rtabmap::Transform & targetPose,
 		float * distance = 0);
@@ -286,54 +286,56 @@ int RTABMAP_EXP findNearestNode(
  * @param k max nearest neighbors (0=all inside the radius)
  * @return the nodes with squared distance to query node.
  */
-std::map<int, float> RTABMAP_EXP findNearestNodes(
+std::map<int, float> RTABMAP_CORE_EXPORT findNearestNodes(
 		int nodeId,
 		const std::map<int, Transform> & poses,
 		float radius,
 		float angle = 0.0f,
 		int k=0);
-std::map<int, float> RTABMAP_EXP findNearestNodes(
+std::map<int, float> RTABMAP_CORE_EXPORT findNearestNodes(
 		const Transform & targetPose,
 		const std::map<int, Transform> & poses,
 		float radius,
 		float angle = 0.0f,
 		int k=0);
-std::map<int, Transform> RTABMAP_EXP findNearestPoses(
+std::map<int, Transform> RTABMAP_CORE_EXPORT findNearestPoses(
 		int nodeId,
 		const std::map<int, Transform> & poses,
 		float radius,
 		float angle = 0.0f,
 		int k=0);
-std::map<int, Transform> RTABMAP_EXP findNearestPoses(
+std::map<int, Transform> RTABMAP_CORE_EXPORT findNearestPoses(
 		const Transform & targetPose,
 		const std::map<int, Transform> & poses,
 		float radius,
 		float angle = 0.0f,
 		int k=0);
 
-// typedef hack to avoid error with RTABMAP_DEPRECATED
-typedef std::map<int, float> _mapIntFloat;
-typedef std::map<int, Transform> _mapIntTransform;
-RTABMAP_DEPRECATED(_mapIntFloat RTABMAP_EXP findNearestNodes(const std::map<int, rtabmap::Transform> & nodes, const rtabmap::Transform & targetPose, int k), "Use new findNearestNodes() interface with radius=0, angle=0.");
-RTABMAP_DEPRECATED(_mapIntFloat RTABMAP_EXP getNodesInRadius(int nodeId, const std::map<int, Transform> & nodes, float radius), "Renamed to findNearestNodes()");
-RTABMAP_DEPRECATED(_mapIntFloat RTABMAP_EXP getNodesInRadius(const Transform & targetPose, const std::map<int, Transform> & nodes, float radius), "Renamed to findNearestNodes()");
-RTABMAP_DEPRECATED(_mapIntTransform RTABMAP_EXP getPosesInRadius(int nodeId, const std::map<int, Transform> & nodes, float radius, float angle = 0.0f), "Renamed to findNearestNodes()");
-RTABMAP_DEPRECATED(_mapIntTransform RTABMAP_EXP getPosesInRadius(const Transform & targetPose, const std::map<int, Transform> & nodes, float radius, float angle = 0.0f), "Renamed to findNearestNodes()");
+// Use new findNearestNodes() interface with radius=0, angle=0.
+RTABMAP_DEPRECATED std::map<int, float> RTABMAP_CORE_EXPORT findNearestNodes(const std::map<int, rtabmap::Transform> & nodes, const rtabmap::Transform & targetPose, int k);
+// Renamed to findNearestNodes()
+RTABMAP_DEPRECATED std::map<int, float> RTABMAP_CORE_EXPORT getNodesInRadius(int nodeId, const std::map<int, Transform> & nodes, float radius);
+// Renamed to findNearestNodes()
+RTABMAP_DEPRECATED std::map<int, float> RTABMAP_CORE_EXPORT getNodesInRadius(const Transform & targetPose, const std::map<int, Transform> & nodes, float radius);
+// Renamed to findNearestNodes()
+RTABMAP_DEPRECATED std::map<int, Transform> RTABMAP_CORE_EXPORT getPosesInRadius(int nodeId, const std::map<int, Transform> & nodes, float radius, float angle = 0.0f);
+// Renamed to findNearestNodes()
+RTABMAP_DEPRECATED std::map<int, Transform> RTABMAP_CORE_EXPORT getPosesInRadius(const Transform & targetPose, const std::map<int, Transform> & nodes, float radius, float angle = 0.0f);
 
-float RTABMAP_EXP computePathLength(
+float RTABMAP_CORE_EXPORT computePathLength(
 		const std::vector<std::pair<int, Transform> > & path,
 		unsigned int fromIndex = 0,
 		unsigned int toIndex = 0);
 
 // assuming they are all linked in map order
-float RTABMAP_EXP computePathLength(
+float RTABMAP_CORE_EXPORT computePathLength(
 		const std::map<int, Transform> & path);
 
-std::list<std::map<int, Transform> > RTABMAP_EXP getPaths(
+std::list<std::map<int, Transform> > RTABMAP_CORE_EXPORT getPaths(
 		std::map<int, Transform> poses,
 		const std::multimap<int, Link> & links);
 
-void RTABMAP_EXP computeMinMax(const std::map<int, Transform> & poses,
+void RTABMAP_CORE_EXPORT computeMinMax(const std::map<int, Transform> & poses,
 		cv::Vec3f & min,
 		cv::Vec3f & max);
 

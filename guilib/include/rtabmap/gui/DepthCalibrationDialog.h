@@ -28,7 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef RTABMAP_DEPTHCALIBRATIONDIALOG_H_
 #define RTABMAP_DEPTHCALIBRATIONDIALOG_H_
 
-#include "rtabmap/gui/RtabmapGuiExp.h" // DLL export/import defines
+#include "rtabmap/gui/rtabmap_gui_export.h" // DLL export/import defines
 
 #include <QDialog>
 #include <QMap>
@@ -46,7 +46,7 @@ namespace rtabmap {
 
 class ProgressDialog;
 
-class RTABMAPGUI_EXP DepthCalibrationDialog : public QDialog
+class RTABMAP_GUI_EXPORT DepthCalibrationDialog : public QDialog
 {
 	Q_OBJECT
 

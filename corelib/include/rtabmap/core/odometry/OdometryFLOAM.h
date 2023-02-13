@@ -35,7 +35,7 @@ class OdomEstimationClass;
 
 namespace rtabmap {
 
-class RTABMAP_EXP OdometryFLOAM : public Odometry
+class RTABMAP_CORE_EXPORT OdometryFLOAM : public Odometry
 {
 public:
 	OdometryFLOAM(const rtabmap::ParametersMap & parameters = rtabmap::ParametersMap());

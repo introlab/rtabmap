@@ -30,12 +30,12 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <opencv2/opencv.hpp>
 
-#include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
+#include "rtabmap/core/rtabmap_core_export.h" // DLL export/import defines
 #include "rtabmap/core/Transform.h"
 
 namespace rtabmap {
 
-class RTABMAP_EXP CameraModel
+class RTABMAP_CORE_EXPORT CameraModel
 {
 public:
 	/**
@@ -159,7 +159,7 @@ private:
 	Transform localTransform_;
 };
 
-RTABMAP_EXP std::ostream& operator<<(std::ostream& os, const CameraModel& model);
+RTABMAP_CORE_EXPORT std::ostream& operator<<(std::ostream& os, const CameraModel& model);
 
 } /* namespace rtabmap */
 #endif /* CAMERAMODEL_H_ */

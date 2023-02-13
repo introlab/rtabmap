@@ -28,7 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef COMPRESSION_H_
 #define COMPRESSION_H_
 
-#include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
+#include "rtabmap/core/rtabmap_core_export.h" // DLL export/import defines
 
 #include <rtabmap/utilite/UThread.h>
 #include <opencv2/opencv.hpp>
@@ -52,7 +52,7 @@ namespace rtabmap {
  *   ct.join();
  *   cv::Mat image = ct.getUncompressedData();
  */
-class RTABMAP_EXP CompressionThread : public UThread
+class RTABMAP_CORE_EXPORT CompressionThread : public UThread
 {
 public:
 	// format : ".png" ".jpg" "" (empty is general)
@@ -70,21 +70,21 @@ private:
 	bool compressMode_;
 };
 
-std::vector<unsigned char> RTABMAP_EXP compressImage(const cv::Mat & image, const std::string & format = ".png");
-cv::Mat RTABMAP_EXP compressImage2(const cv::Mat & image, const std::string & format = ".png");
+std::vector<unsigned char> RTABMAP_CORE_EXPORT compressImage(const cv::Mat & image, const std::string & format = ".png");
+cv::Mat RTABMAP_CORE_EXPORT compressImage2(const cv::Mat & image, const std::string & format = ".png");
 
-cv::Mat RTABMAP_EXP uncompressImage(const cv::Mat & bytes);
-cv::Mat RTABMAP_EXP uncompressImage(const std::vector<unsigned char> & bytes);
+cv::Mat RTABMAP_CORE_EXPORT uncompressImage(const cv::Mat & bytes);
+cv::Mat RTABMAP_CORE_EXPORT uncompressImage(const std::vector<unsigned char> & bytes);
 
-std::vector<unsigned char> RTABMAP_EXP compressData(const cv::Mat & data);
-cv::Mat RTABMAP_EXP compressData2(const cv::Mat & data);
+std::vector<unsigned char> RTABMAP_CORE_EXPORT compressData(const cv::Mat & data);
+cv::Mat RTABMAP_CORE_EXPORT compressData2(const cv::Mat & data);
 
-cv::Mat RTABMAP_EXP uncompressData(const cv::Mat & bytes);
-cv::Mat RTABMAP_EXP uncompressData(const std::vector<unsigned char> & bytes);
-cv::Mat RTABMAP_EXP uncompressData(const unsigned char * bytes, unsigned long size);
+cv::Mat RTABMAP_CORE_EXPORT uncompressData(const cv::Mat & bytes);
+cv::Mat RTABMAP_CORE_EXPORT uncompressData(const std::vector<unsigned char> & bytes);
+cv::Mat RTABMAP_CORE_EXPORT uncompressData(const unsigned char * bytes, unsigned long size);
 
-cv::Mat RTABMAP_EXP compressString(const std::string & str);
-std::string RTABMAP_EXP uncompressString(const cv::Mat & bytes);
+cv::Mat RTABMAP_CORE_EXPORT compressString(const std::string & str);
+std::string RTABMAP_CORE_EXPORT uncompressString(const cv::Mat & bytes);
 
 } /* namespace rtabmap */
 #endif /* COMPRESSION_H_ */

@@ -25,10 +25,10 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef RTABMAP_EXPORTBUNDLERDIALOG_H_
-#define RTABMAP_EXPORTBUNDLERDIALOG_H_
+#ifndef RTABMAP_CORE_EXPORTBUNDLERDIALOG_H_
+#define RTABMAP_CORE_EXPORTBUNDLERDIALOG_H_
 
-#include "rtabmap/gui/RtabmapGuiExp.h" // DLL export/import defines
+#include "rtabmap/gui/rtabmap_gui_export.h" // DLL export/import defines
 
 #include <rtabmap/core/Signature.h>
 #include <rtabmap/core/Parameters.h>
@@ -39,7 +39,7 @@ class Ui_ExportBundlerDialog;
 
 namespace rtabmap {
 
-class RTABMAPGUI_EXP ExportBundlerDialog : public QDialog
+class RTABMAP_GUI_EXPORT ExportBundlerDialog : public QDialog
 {
 	Q_OBJECT
 

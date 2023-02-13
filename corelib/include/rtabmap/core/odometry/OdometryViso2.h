@@ -34,7 +34,7 @@ class VisualOdometryStereo;
 
 namespace rtabmap {
 
-class RTABMAP_EXP OdometryViso2 : public Odometry
+class RTABMAP_CORE_EXPORT OdometryViso2 : public Odometry
 {
 public:
 	OdometryViso2(const rtabmap::ParametersMap & parameters = rtabmap::ParametersMap());

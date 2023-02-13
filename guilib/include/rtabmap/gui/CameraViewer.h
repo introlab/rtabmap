@@ -28,7 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef RTABMAP_CAMERAVIEWER_H_
 #define RTABMAP_CAMERAVIEWER_H_
 
-#include "rtabmap/gui/RtabmapGuiExp.h" // DLL export/import defines
+#include "rtabmap/gui/rtabmap_gui_export.h" // DLL export/import defines
 
 #include <rtabmap/utilite/UEventsHandler.h>
 #include <QDialog>
@@ -45,7 +45,7 @@ namespace rtabmap {
 class ImageView;
 class CloudViewer;
 
-class RTABMAPGUI_EXP CameraViewer : public QDialog, public UEventsHandler
+class RTABMAP_GUI_EXPORT CameraViewer : public QDialog, public UEventsHandler
 {
 	Q_OBJECT
 public:

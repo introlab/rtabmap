@@ -28,7 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef UTIL3D_SURFACE_H_
 #define UTIL3D_SURFACE_H_
 
-#include <rtabmap/core/RtabmapExp.h>
+#include <rtabmap/core/rtabmap_core_export.h>
 
 #include <pcl/PolygonMesh.h>
 #include <pcl/point_cloud.h>
@@ -61,74 +61,74 @@ namespace util3d
  * @param neighborPolygons returned index from polygons to neighbor polygons (index size = polygons size).
  * @param vertexPolygons returned index from vertices to polygons (index size = cloudSize).
  */
-void RTABMAP_EXP createPolygonIndexes(
+void RTABMAP_CORE_EXPORT createPolygonIndexes(
 		const std::vector<pcl::Vertices> & polygons,
 		int cloudSize,
 		std::vector<std::set<int> > & neighborPolygons,
 		std::vector<std::set<int> > & vertexPolygons);
 
-std::list<std::list<int> > RTABMAP_EXP clusterPolygons(
+std::list<std::list<int> > RTABMAP_CORE_EXPORT clusterPolygons(
 		const std::vector<std::set<int> > & neighborPolygons,
 		int minClusterSize = 0);
 
-std::vector<pcl::Vertices> RTABMAP_EXP organizedFastMesh(
+std::vector<pcl::Vertices> RTABMAP_CORE_EXPORT organizedFastMesh(
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
 		double angleTolerance,
 		bool quad,
 		int trianglePixelSize,
 		const Eigen::Vector3f & viewpoint = Eigen::Vector3f(0,0,0));
-std::vector<pcl::Vertices> RTABMAP_EXP organizedFastMesh(
+std::vector<pcl::Vertices> RTABMAP_CORE_EXPORT organizedFastMesh(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 		double angleTolerance = M_PI/16,
 		bool quad=true,
 		int trianglePixelSize = 2,
 		const Eigen::Vector3f & viewpoint = Eigen::Vector3f(0,0,0));
-std::vector<pcl::Vertices> RTABMAP_EXP organizedFastMesh(
+std::vector<pcl::Vertices> RTABMAP_CORE_EXPORT organizedFastMesh(
 		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
 		double angleTolerance = M_PI/16,
 		bool quad=true,
 		int trianglePixelSize = 2,
 		const Eigen::Vector3f & viewpoint = Eigen::Vector3f(0,0,0));
 
-void RTABMAP_EXP appendMesh(
+void RTABMAP_CORE_EXPORT appendMesh(
 		pcl::PointCloud<pcl::PointXYZRGBNormal> & cloudA,
 		std::vector<pcl::Vertices> & polygonsA,
 		const pcl::PointCloud<pcl::PointXYZRGBNormal> & cloudB,
 		const std::vector<pcl::Vertices> & polygonsB);
-void RTABMAP_EXP appendMesh(
+void RTABMAP_CORE_EXPORT appendMesh(
 		pcl::PointCloud<pcl::PointXYZRGB> & cloudA,
 		std::vector<pcl::Vertices> & polygonsA,
 		const pcl::PointCloud<pcl::PointXYZRGB> & cloudB,
 		const std::vector<pcl::Vertices> & polygonsB);
 
 // return map from new to old polygon indices
-std::vector<int> RTABMAP_EXP filterNotUsedVerticesFromMesh(
+std::vector<int> RTABMAP_CORE_EXPORT filterNotUsedVerticesFromMesh(
 		const pcl::PointCloud<pcl::PointXYZRGBNormal> & cloud,
 		const std::vector<pcl::Vertices> & polygons,
 		pcl::PointCloud<pcl::PointXYZRGBNormal> & outputCloud,
 		std::vector<pcl::Vertices> & outputPolygons);
-std::vector<int> RTABMAP_EXP filterNotUsedVerticesFromMesh(
+std::vector<int> RTABMAP_CORE_EXPORT filterNotUsedVerticesFromMesh(
 		const pcl::PointCloud<pcl::PointXYZRGB> & cloud,
 		const std::vector<pcl::Vertices> & polygons,
 		pcl::PointCloud<pcl::PointXYZRGB> & outputCloud,
 		std::vector<pcl::Vertices> & outputPolygons);
-std::vector<int> RTABMAP_EXP filterNaNPointsFromMesh(
+std::vector<int> RTABMAP_CORE_EXPORT filterNaNPointsFromMesh(
 		const pcl::PointCloud<pcl::PointXYZRGB> & cloud,
 		const std::vector<pcl::Vertices> & polygons,
 		pcl::PointCloud<pcl::PointXYZRGB> & outputCloud,
 		std::vector<pcl::Vertices> & outputPolygons);
 
-std::vector<pcl::Vertices> RTABMAP_EXP filterCloseVerticesFromMesh(
+std::vector<pcl::Vertices> RTABMAP_CORE_EXPORT filterCloseVerticesFromMesh(
 		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloud,
 		const std::vector<pcl::Vertices> & polygons,
 		float radius,
 		float angle,
 		bool keepLatestInRadius);
 
-std::vector<pcl::Vertices> RTABMAP_EXP filterInvalidPolygons(
+std::vector<pcl::Vertices> RTABMAP_CORE_EXPORT filterInvalidPolygons(
 		const std::vector<pcl::Vertices> & polygons);
 
-pcl::PolygonMesh::Ptr RTABMAP_EXP createMesh(
+pcl::PolygonMesh::Ptr RTABMAP_CORE_EXPORT createMesh(
 		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloudWithNormals,
 		float gp3SearchRadius = 0.025,
 		float gp3Mu = 2.5,
@@ -138,7 +138,7 @@ pcl::PolygonMesh::Ptr RTABMAP_EXP createMesh(
 		float gp3MaximumAngle = 2*M_PI/3,
 		bool gp3NormalConsistency = true);
 
-pcl::TextureMesh::Ptr RTABMAP_EXP createTextureMesh(
+pcl::TextureMesh::Ptr RTABMAP_CORE_EXPORT createTextureMesh(
 		const pcl::PolygonMesh::Ptr & mesh,
 		const std::map<int, Transform> & poses,
 		const std::map<int, CameraModel> & cameraModels,
@@ -151,7 +151,7 @@ pcl::TextureMesh::Ptr RTABMAP_EXP createTextureMesh(
 		const ProgressState * state = 0,
 		std::vector<std::map<int, pcl::PointXY> > * vertexToPixels = 0, // For each point, we have a list of cameras with corresponding pixel in it. Beware that the camera ids don't correspond to pose ids, they are indexes from 0 to total camera models and texture's materials.
 		bool distanceToCamPolicy = false);
-pcl::TextureMesh::Ptr RTABMAP_EXP createTextureMesh(
+pcl::TextureMesh::Ptr RTABMAP_CORE_EXPORT createTextureMesh(
 		const pcl::PolygonMesh::Ptr & mesh,
 		const std::map<int, Transform> & poses,
 		const std::map<int, std::vector<CameraModel> > & cameraModels,
@@ -168,26 +168,26 @@ pcl::TextureMesh::Ptr RTABMAP_EXP createTextureMesh(
 /**
  * Remove not textured polygon clusters. If minClusterSize<0, only the largest cluster is kept.
  */
-void RTABMAP_EXP cleanTextureMesh(
+void RTABMAP_CORE_EXPORT cleanTextureMesh(
 		pcl::TextureMesh & textureMesh,
 		int minClusterSize);
 
-pcl::TextureMesh::Ptr RTABMAP_EXP concatenateTextureMeshes(
+pcl::TextureMesh::Ptr RTABMAP_CORE_EXPORT concatenateTextureMeshes(
 		const std::list<pcl::TextureMesh::Ptr> & meshes);
 
-void RTABMAP_EXP concatenateTextureMaterials(
+void RTABMAP_CORE_EXPORT concatenateTextureMaterials(
 		pcl::TextureMesh & mesh, const cv::Size & imageSize, int textureSize, int maxTextures, float & scale, std::vector<bool> * materialsKept=0);
 
-std::vector<std::vector<RTABMAP_PCL_INDEX> > RTABMAP_EXP convertPolygonsFromPCL(
+std::vector<std::vector<RTABMAP_PCL_INDEX> > RTABMAP_CORE_EXPORT convertPolygonsFromPCL(
 		const std::vector<pcl::Vertices> & polygons);
-std::vector<std::vector<std::vector<RTABMAP_PCL_INDEX> > > RTABMAP_EXP convertPolygonsFromPCL(
+std::vector<std::vector<std::vector<RTABMAP_PCL_INDEX> > > RTABMAP_CORE_EXPORT convertPolygonsFromPCL(
 		const std::vector<std::vector<pcl::Vertices> > & polygons);
-std::vector<pcl::Vertices> RTABMAP_EXP convertPolygonsToPCL(
+std::vector<pcl::Vertices> RTABMAP_CORE_EXPORT convertPolygonsToPCL(
 		const std::vector<std::vector<RTABMAP_PCL_INDEX> > & polygons);
-std::vector<std::vector<pcl::Vertices> > RTABMAP_EXP convertPolygonsToPCL(
+std::vector<std::vector<pcl::Vertices> > RTABMAP_CORE_EXPORT convertPolygonsToPCL(
 		const std::vector<std::vector<std::vector<RTABMAP_PCL_INDEX> > > & tex_polygons);
 
-pcl::TextureMesh::Ptr RTABMAP_EXP assembleTextureMesh(
+pcl::TextureMesh::Ptr RTABMAP_CORE_EXPORT assembleTextureMesh(
 		const cv::Mat & cloudMat,
 		const std::vector<std::vector<std::vector<RTABMAP_PCL_INDEX> > > & polygons,
 #if PCL_VERSION_COMPARE(>=, 1, 8, 0)
@@ -198,7 +198,7 @@ pcl::TextureMesh::Ptr RTABMAP_EXP assembleTextureMesh(
 		cv::Mat & textures,
 		bool mergeTextures = false);
 
-pcl::PolygonMesh::Ptr RTABMAP_EXP assemblePolygonMesh(
+pcl::PolygonMesh::Ptr RTABMAP_CORE_EXPORT assemblePolygonMesh(
 		const cv::Mat & cloudMat,
 		const std::vector<std::vector<RTABMAP_PCL_INDEX> > & polygons);
 
@@ -206,7 +206,7 @@ pcl::PolygonMesh::Ptr RTABMAP_EXP assemblePolygonMesh(
  * Merge all textures in the mesh into "textureCount" textures of size "textureSize".
  * @return merged textures corresponding to new materials set in TextureMesh (height=textureSize, width=textureSize*materials)
  */
-cv::Mat RTABMAP_EXP mergeTextures(
+cv::Mat RTABMAP_CORE_EXPORT mergeTextures(
 		pcl::TextureMesh & mesh,
 		const std::map<int, cv::Mat> & images, // raw or compressed, can be empty if memory or dbDriver should be used
 		const std::map<int, CameraModel> & calibrations, // Should match images
@@ -228,7 +228,7 @@ cv::Mat RTABMAP_EXP mergeTextures(
 		std::map<int, std::map<int, cv::Vec4d> > * gains = 0, // <Camera ID, Camera Sub Index (multi-cameras), gains Gray-R-G-B>
 		std::map<int, std::map<int, cv::Mat> > * blendingGains = 0, // <Camera ID, Camera Sub Index (multi-cameras), gains>
 		std::pair<float, float> * contrastValues = 0); // Alpha/beta contrast values
-cv::Mat RTABMAP_EXP mergeTextures(
+cv::Mat RTABMAP_CORE_EXPORT mergeTextures(
 		pcl::TextureMesh & mesh,
 		const std::map<int, cv::Mat> & images, // raw or compressed, can be empty if memory or dbDriver should be used
 		const std::map<int, std::vector<CameraModel> > & calibrations, // Should match images
@@ -251,9 +251,10 @@ cv::Mat RTABMAP_EXP mergeTextures(
 		std::map<int, std::map<int, cv::Mat> > * blendingGains = 0, // <Camera ID, Camera Sub Index (multi-cameras), gains>
 		std::pair<float, float> * contrastValues = 0); // Alpha/beta contrast values
 
-void RTABMAP_EXP fixTextureMeshForVisualization(pcl::TextureMesh & textureMesh);
+void RTABMAP_CORE_EXPORT fixTextureMeshForVisualization(pcl::TextureMesh & textureMesh);
 
-RTABMAP_DEPRECATED(bool RTABMAP_EXP multiBandTexturing(
+// Use the same method with 22 parameters instead.
+RTABMAP_DEPRECATED bool RTABMAP_CORE_EXPORT multiBandTexturing(
 		const std::string & outputOBJPath,
 		const pcl::PCLPointCloud2 & cloud,
 		const std::vector<pcl::Vertices> & polygons,
@@ -268,7 +269,7 @@ RTABMAP_DEPRECATED(bool RTABMAP_EXP multiBandTexturing(
 		const std::map<int, std::map<int, cv::Vec4d> > & gains = std::map<int, std::map<int, cv::Vec4d> >(),       // optional output of util3d::mergeTextures()
 		const std::map<int, std::map<int, cv::Mat> > & blendingGains = std::map<int, std::map<int, cv::Mat> >(),   // optional output of util3d::mergeTextures()
 		const std::pair<float, float> & contrastValues = std::pair<float, float>(0,0),                             // optional output of util3d::mergeTextures()
-		bool gainRGB = true), "Use the same method with 22 parameters instead.");
+		bool gainRGB = true);
 
 /**
  * Texture mesh with AliceVision's multiband texturing approach. See also https://meshroom-manual.readthedocs.io/en/bibtex1/node-reference/nodes/Texturing.html.
@@ -296,7 +297,7 @@ RTABMAP_DEPRECATED(bool RTABMAP_EXP multiBandTexturing(
  * @param angleHardThreshold 0.0 to disable angle hard threshold filtering (0.0, 180.0).
  * @param forceVisibleByAllVertices Triangle visibility is based on the union of vertices visibility.
  */
-bool RTABMAP_EXP multiBandTexturing(
+bool RTABMAP_CORE_EXPORT multiBandTexturing(
 		const std::string & outputOBJPath,
 		const pcl::PCLPointCloud2 & cloud,
 		const std::vector<pcl::Vertices> & polygons,
@@ -321,108 +322,108 @@ bool RTABMAP_EXP multiBandTexturing(
 		double angleHardThreshold = 90.0,
 		bool forceVisibleByAllVertices = false);
 
-cv::Mat RTABMAP_EXP computeNormals(
+cv::Mat RTABMAP_CORE_EXPORT computeNormals(
 		const cv::Mat & laserScan,
 		int searchK,
 		float searchRadius);
-pcl::PointCloud<pcl::Normal>::Ptr RTABMAP_EXP computeNormals(
+pcl::PointCloud<pcl::Normal>::Ptr RTABMAP_CORE_EXPORT computeNormals(
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
 		int searchK = 20,
 		float searchRadius = 0.0f,
 		const Eigen::Vector3f & viewPoint = Eigen::Vector3f(0,0,0));
-pcl::PointCloud<pcl::Normal>::Ptr RTABMAP_EXP computeNormals(
+pcl::PointCloud<pcl::Normal>::Ptr RTABMAP_CORE_EXPORT computeNormals(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 		int searchK = 20,
 		float searchRadius = 0.0f,
 		const Eigen::Vector3f & viewPoint = Eigen::Vector3f(0,0,0));
-pcl::PointCloud<pcl::Normal>::Ptr RTABMAP_EXP computeNormals(
+pcl::PointCloud<pcl::Normal>::Ptr RTABMAP_CORE_EXPORT computeNormals(
 		const pcl::PointCloud<pcl::PointXYZI>::Ptr & cloud,
 		int searchK = 20,
 		float searchRadius = 0.0f,
 		const Eigen::Vector3f & viewPoint = Eigen::Vector3f(0,0,0));
-pcl::PointCloud<pcl::Normal>::Ptr RTABMAP_EXP computeNormals(
+pcl::PointCloud<pcl::Normal>::Ptr RTABMAP_CORE_EXPORT computeNormals(
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
 		int searchK = 20,
 		float searchRadius = 0.0f,
 		const Eigen::Vector3f & viewPoint = Eigen::Vector3f(0,0,0));
-pcl::PointCloud<pcl::Normal>::Ptr RTABMAP_EXP computeNormals(
+pcl::PointCloud<pcl::Normal>::Ptr RTABMAP_CORE_EXPORT computeNormals(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
 		int searchK = 20,
 		float searchRadius = 0.0f,
 		const Eigen::Vector3f & viewPoint = Eigen::Vector3f(0,0,0));
-pcl::PointCloud<pcl::Normal>::Ptr RTABMAP_EXP computeNormals(
+pcl::PointCloud<pcl::Normal>::Ptr RTABMAP_CORE_EXPORT computeNormals(
 		const pcl::PointCloud<pcl::PointXYZI>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
 		int searchK = 20,
 		float searchRadius = 0.0f,
 		const Eigen::Vector3f & viewPoint = Eigen::Vector3f(0,0,0));
 
-pcl::PointCloud<pcl::Normal>::Ptr RTABMAP_EXP computeNormals2D(
+pcl::PointCloud<pcl::Normal>::Ptr RTABMAP_CORE_EXPORT computeNormals2D(
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
 		int searchK = 5,
 		float searchRadius = 0.0f,
 		const Eigen::Vector3f & viewPoint = Eigen::Vector3f(0,0,0));
-pcl::PointCloud<pcl::Normal>::Ptr RTABMAP_EXP computeNormals2D(
+pcl::PointCloud<pcl::Normal>::Ptr RTABMAP_CORE_EXPORT computeNormals2D(
 		const pcl::PointCloud<pcl::PointXYZI>::Ptr & cloud,
 		int searchK = 5,
 		float searchRadius = 0.0f,
 		const Eigen::Vector3f & viewPoint = Eigen::Vector3f(0,0,0));
-pcl::PointCloud<pcl::Normal>::Ptr RTABMAP_EXP computeFastOrganizedNormals2D(
+pcl::PointCloud<pcl::Normal>::Ptr RTABMAP_CORE_EXPORT computeFastOrganizedNormals2D(
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
 		int searchK = 5,
 		float searchRadius = 0.0f,
 		const Eigen::Vector3f & viewPoint = Eigen::Vector3f(0,0,0));
-pcl::PointCloud<pcl::Normal>::Ptr RTABMAP_EXP computeFastOrganizedNormals2D(
+pcl::PointCloud<pcl::Normal>::Ptr RTABMAP_CORE_EXPORT computeFastOrganizedNormals2D(
 		const pcl::PointCloud<pcl::PointXYZI>::Ptr & cloud,
 		int searchK = 5,
 		float searchRadius = 0.0f,
 		const Eigen::Vector3f & viewPoint = Eigen::Vector3f(0,0,0));
 
-pcl::PointCloud<pcl::Normal>::Ptr RTABMAP_EXP computeFastOrganizedNormals(
+pcl::PointCloud<pcl::Normal>::Ptr RTABMAP_CORE_EXPORT computeFastOrganizedNormals(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 		float maxDepthChangeFactor = 0.02f,
 		float normalSmoothingSize = 10.0f,
 		const Eigen::Vector3f & viewPoint = Eigen::Vector3f(0,0,0));
-pcl::PointCloud<pcl::Normal>::Ptr RTABMAP_EXP computeFastOrganizedNormals(
+pcl::PointCloud<pcl::Normal>::Ptr RTABMAP_CORE_EXPORT computeFastOrganizedNormals(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
 		float maxDepthChangeFactor = 0.02f,
 		float normalSmoothingSize = 10.0f,
 		const Eigen::Vector3f & viewPoint = Eigen::Vector3f(0,0,0));
 
-float RTABMAP_EXP computeNormalsComplexity(
+float RTABMAP_CORE_EXPORT computeNormalsComplexity(
 		const LaserScan & scan,
 		const Transform & t = Transform::getIdentity(),
 		cv::Mat * pcaEigenVectors = 0,
 		cv::Mat * pcaEigenValues = 0);
-float RTABMAP_EXP computeNormalsComplexity(
+float RTABMAP_CORE_EXPORT computeNormalsComplexity(
 		const pcl::PointCloud<pcl::Normal> & normals,
 		const Transform & t = Transform::getIdentity(),
 		bool is2d = false,
 		cv::Mat * pcaEigenVectors = 0,
 		cv::Mat * pcaEigenValues = 0);
-float RTABMAP_EXP computeNormalsComplexity(
+float RTABMAP_CORE_EXPORT computeNormalsComplexity(
 		const pcl::PointCloud<pcl::PointNormal> & cloud,
 		const Transform & t = Transform::getIdentity(),
 		bool is2d = false,
 		cv::Mat * pcaEigenVectors = 0,
 		cv::Mat * pcaEigenValues = 0);
-float RTABMAP_EXP computeNormalsComplexity(
+float RTABMAP_CORE_EXPORT computeNormalsComplexity(
 		const pcl::PointCloud<pcl::PointXYZINormal> & cloud,
 		const Transform & t = Transform::getIdentity(),
 		bool is2d = false,
 		cv::Mat * pcaEigenVectors = 0,
 		cv::Mat * pcaEigenValues = 0);
-float RTABMAP_EXP computeNormalsComplexity(
+float RTABMAP_CORE_EXPORT computeNormalsComplexity(
 		const pcl::PointCloud<pcl::PointXYZRGBNormal> & cloud,
 		const Transform & t = Transform::getIdentity(),
 		bool is2d = false,
 		cv::Mat * pcaEigenVectors = 0,
 		cv::Mat * pcaEigenValues = 0);
 
-pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr RTABMAP_EXP mls(
+pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr RTABMAP_CORE_EXPORT mls(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 		float searchRadius = 0.0f,
 		int polygonialOrder = 2,
@@ -432,7 +433,7 @@ pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr RTABMAP_EXP mls(
 		int pointDensity = 0,            // RANDOM_UNIFORM_DENSITY
 		float dilationVoxelSize = 1.0f,  // VOXEL_GRID_DILATION
 		int dilationIterations = 0);     // VOXEL_GRID_DILATION
-pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr RTABMAP_EXP mls(
+pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr RTABMAP_CORE_EXPORT mls(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
 		float searchRadius = 0.0f,
@@ -444,66 +445,70 @@ pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr RTABMAP_EXP mls(
 		float dilationVoxelSize = 1.0f,  // VOXEL_GRID_DILATION
 		int dilationIterations = 0);     // VOXEL_GRID_DILATION
 
-RTABMAP_DEPRECATED(LaserScan RTABMAP_EXP adjustNormalsToViewPoint(
+// Use version with groundNormalsUp as float. For forceGroundNormalsUp=true, set groundNormalsUp to 0.8f, otherwise set groundNormalsUp to 0.0f.
+RTABMAP_DEPRECATED LaserScan RTABMAP_CORE_EXPORT adjustNormalsToViewPoint(
 		const LaserScan & scan,
 		const Eigen::Vector3f & viewpoint,
-		bool forceGroundNormalsUp), "Use version with groundNormalsUp as float. For forceGroundNormalsUp=true, set groundNormalsUp to 0.8f, otherwise set groundNormalsUp to 0.0f.");
-LaserScan RTABMAP_EXP adjustNormalsToViewPoint(
+		bool forceGroundNormalsUp);
+LaserScan RTABMAP_CORE_EXPORT adjustNormalsToViewPoint(
 		const LaserScan & scan,
 		const Eigen::Vector3f & viewpoint = Eigen::Vector3f(0,0,0),
 		float groundNormalsUp = 0.0f);
-RTABMAP_DEPRECATED(void RTABMAP_EXP adjustNormalsToViewPoint(
+// Use version with groundNormalsUp as float. For forceGroundNormalsUp=true, set groundNormalsUp to 0.8f, otherwise set groundNormalsUp to 0.0f.
+RTABMAP_DEPRECATED void RTABMAP_CORE_EXPORT adjustNormalsToViewPoint(
 		pcl::PointCloud<pcl::PointNormal>::Ptr & cloud,
 		const Eigen::Vector3f & viewpoint,
-		bool forceGroundNormalsUp), "Use version with groundNormalsUp as float. For forceGroundNormalsUp=true, set groundNormalsUp to 0.8f, otherwise set groundNormalsUp to 0.0f.");
-void RTABMAP_EXP adjustNormalsToViewPoint(
+		bool forceGroundNormalsUp);
+void RTABMAP_CORE_EXPORT adjustNormalsToViewPoint(
 		pcl::PointCloud<pcl::PointNormal>::Ptr & cloud,
 		const Eigen::Vector3f & viewpoint = Eigen::Vector3f(0,0,0),
 		float groundNormalsUp = 0.0f);
-RTABMAP_DEPRECATED(void RTABMAP_EXP adjustNormalsToViewPoint(
+// Use version with groundNormalsUp as float. For forceGroundNormalsUp=true, set groundNormalsUp to 0.8f, otherwise set groundNormalsUp to 0.0f.
+RTABMAP_DEPRECATED void RTABMAP_CORE_EXPORT adjustNormalsToViewPoint(
 		pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
 		const Eigen::Vector3f & viewpoint,
-		bool forceGroundNormalsUp), "Use version with groundNormalsUp as float. For forceGroundNormalsUp=true, set groundNormalsUp to 0.8f, otherwise set groundNormalsUp to 0.0f.");
-void RTABMAP_EXP adjustNormalsToViewPoint(
+		bool forceGroundNormalsUp);
+void RTABMAP_CORE_EXPORT adjustNormalsToViewPoint(
 		pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
 		const Eigen::Vector3f & viewpoint = Eigen::Vector3f(0,0,0),
 		float groundNormalsUp = 0.0f);
-RTABMAP_DEPRECATED(void RTABMAP_EXP adjustNormalsToViewPoint(
+// Use version with groundNormalsUp as float. For forceGroundNormalsUp=true, set groundNormalsUp to 0.8f, otherwise set groundNormalsUp to 0.0f.
+RTABMAP_DEPRECATED void RTABMAP_CORE_EXPORT adjustNormalsToViewPoint(
 		pcl::PointCloud<pcl::PointXYZINormal>::Ptr & cloud,
 		const Eigen::Vector3f & viewpoint,
-		bool forceGroundNormalsUp), "Use version with groundNormalsUp as float. For forceGroundNormalsUp=true, set groundNormalsUp to 0.8f, otherwise set groundNormalsUp to 0.0f.");
-void RTABMAP_EXP adjustNormalsToViewPoint(
+		bool forceGroundNormalsUp);
+void RTABMAP_CORE_EXPORT adjustNormalsToViewPoint(
 		pcl::PointCloud<pcl::PointXYZINormal>::Ptr & cloud,
 		const Eigen::Vector3f & viewpoint = Eigen::Vector3f(0,0,0),
 		float groundNormalsUp = 0.0f);
 
-void RTABMAP_EXP adjustNormalsToViewPoints(
+void RTABMAP_CORE_EXPORT adjustNormalsToViewPoints(
 		const std::map<int, Transform> & poses,
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & rawCloud,
 		const std::vector<int> & rawCameraIndices,
 		pcl::PointCloud<pcl::PointNormal>::Ptr & cloud,
 		float groundNormalsUp = 0.0f);
-void RTABMAP_EXP adjustNormalsToViewPoints(
+void RTABMAP_CORE_EXPORT adjustNormalsToViewPoints(
 		const std::map<int, Transform> & poses,
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & rawCloud,
 		const std::vector<int> & rawCameraIndices,
 		pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
 		float groundNormalsUp = 0.0f);
-void RTABMAP_EXP adjustNormalsToViewPoints(
+void RTABMAP_CORE_EXPORT adjustNormalsToViewPoints(
 		const std::map<int, Transform> & poses,
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & rawCloud,
 		const std::vector<int> & rawCameraIndices,
 		pcl::PointCloud<pcl::PointXYZINormal>::Ptr & cloud,
 		float groundNormalsUp = 0.0f);
 
-void RTABMAP_EXP adjustNormalsToViewPoints(
+void RTABMAP_CORE_EXPORT adjustNormalsToViewPoints(
 		const std::map<int, Transform> & viewpoints,
 		const LaserScan & rawScan,
 		const std::vector<int> & viewpointIds,
 		LaserScan & scan,
 		float groundNormalsUp = 0.0f);
 
-pcl::PolygonMesh::Ptr RTABMAP_EXP meshDecimation(const pcl::PolygonMesh::Ptr & mesh, float factor);
+pcl::PolygonMesh::Ptr RTABMAP_CORE_EXPORT meshDecimation(const pcl::PolygonMesh::Ptr & mesh, float factor);
 
 template<typename pointT>
 std::vector<pcl::Vertices> normalizePolygonsSide(
@@ -545,7 +550,7 @@ void denseMeshPostProcessing(
  *
  *   Mathieu:  Adapted for PCL format
  */
-bool RTABMAP_EXP intersectRayTriangle(
+bool RTABMAP_CORE_EXPORT intersectRayTriangle(
 		const Eigen::Vector3f & p,
 		const Eigen::Vector3f & dir,
 		const Eigen::Vector3f & v0,

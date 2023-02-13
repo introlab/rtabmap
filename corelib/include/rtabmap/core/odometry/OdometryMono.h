@@ -36,7 +36,7 @@ namespace rtabmap {
 class Memory;
 class Feature2D;
 
-class RTABMAP_EXP OdometryMono : public Odometry
+class RTABMAP_CORE_EXPORT OdometryMono : public Odometry
 {
 public:
 	OdometryMono(const rtabmap::ParametersMap & parameters = rtabmap::ParametersMap());

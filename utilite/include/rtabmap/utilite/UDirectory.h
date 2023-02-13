@@ -20,7 +20,7 @@
 #ifndef UDIRECTORY_H
 #define UDIRECTORY_H
 
-#include "rtabmap/utilite/UtiLiteExp.h" // DLL export/import defines
+#include "rtabmap/utilite/utilite_export.h" // DLL export/import defines
 
 #include <string>
 #include <vector>
@@ -31,7 +31,7 @@
  *
  * This class can be used to get file names in a directory.
  */
-class UTILITE_EXP UDirectory
+class UTILITE_EXPORT UDirectory
 {
 public:
 	/**

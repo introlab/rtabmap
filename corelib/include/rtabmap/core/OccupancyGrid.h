@@ -28,7 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef CORELIB_SRC_OCCUPANCYGRID_H_
 #define CORELIB_SRC_OCCUPANCYGRID_H_
 
-#include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
+#include "rtabmap/core/rtabmap_core_export.h" // DLL export/import defines
 
 #include <pcl/point_cloud.h>
 #include <pcl/pcl_base.h>
@@ -37,7 +37,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 namespace rtabmap {
 
-class RTABMAP_EXP OccupancyGrid
+class RTABMAP_CORE_EXPORT OccupancyGrid
 {
 public:
 	inline static float logodds(double probability)

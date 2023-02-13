@@ -28,7 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef RTABMAP_LOOPCLOSUREVIEWER_H_
 #define RTABMAP_LOOPCLOSUREVIEWER_H_
 
-#include "rtabmap/gui/RtabmapGuiExp.h" // DLL export/import defines
+#include "rtabmap/gui/rtabmap_gui_export.h" // DLL export/import defines
 
 #include <rtabmap/core/Parameters.h>
 #include <rtabmap/core/Transform.h>
@@ -40,7 +40,7 @@ class Ui_loopClosureViewer;
 
 namespace rtabmap {
 
-class RTABMAPGUI_EXP LoopClosureViewer : public QWidget {
+class RTABMAP_GUI_EXPORT LoopClosureViewer : public QWidget {
 
 	Q_OBJECT
 

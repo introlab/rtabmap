@@ -28,7 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef FEATURES2D_H_
 #define FEATURES2D_H_
 
-#include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
+#include "rtabmap/core/rtabmap_core_export.h" // DLL export/import defines
 
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/core/core.hpp>
@@ -103,7 +103,7 @@ class CV_ORB;
 #endif
 
 // Feature2D
-class RTABMAP_EXP Feature2D {
+class RTABMAP_CORE_EXPORT Feature2D {
 public:
 	enum Type {kFeatureUndef=-1,
 		kFeatureSurf=0,
@@ -247,7 +247,7 @@ private:
 };
 
 //SURF
-class RTABMAP_EXP SURF : public Feature2D
+class RTABMAP_CORE_EXPORT SURF : public Feature2D
 {
 public:
 	SURF(const ParametersMap & parameters = ParametersMap());
@@ -274,7 +274,7 @@ private:
 };
 
 //SIFT
-class RTABMAP_EXP SIFT : public Feature2D
+class RTABMAP_CORE_EXPORT SIFT : public Feature2D
 {
 public:
 	SIFT(const ParametersMap & parameters = ParametersMap());
@@ -298,7 +298,7 @@ private:
 };
 
 //ORB
-class RTABMAP_EXP ORB : public Feature2D
+class RTABMAP_CORE_EXPORT ORB : public Feature2D
 {
 public:
 	ORB(const ParametersMap & parameters = ParametersMap());
@@ -329,7 +329,7 @@ private:
 };
 
 //FAST
-class RTABMAP_EXP FAST : public Feature2D
+class RTABMAP_CORE_EXPORT FAST : public Feature2D
 {
 public:
 	FAST(const ParametersMap & parameters = ParametersMap());
@@ -365,7 +365,7 @@ private:
 };
 
 //FAST_BRIEF
-class RTABMAP_EXP FAST_BRIEF : public FAST
+class RTABMAP_CORE_EXPORT FAST_BRIEF : public FAST
 {
 public:
 	FAST_BRIEF(const ParametersMap & parameters = ParametersMap());
@@ -384,7 +384,7 @@ private:
 };
 
 //FAST_FREAK
-class RTABMAP_EXP FAST_FREAK : public FAST
+class RTABMAP_CORE_EXPORT FAST_FREAK : public FAST
 {
 public:
 	FAST_FREAK(const ParametersMap & parameters = ParametersMap());
@@ -406,7 +406,7 @@ private:
 };
 
 //GFTT
-class RTABMAP_EXP GFTT : public Feature2D
+class RTABMAP_CORE_EXPORT GFTT : public Feature2D
 {
 public:
 	GFTT(const ParametersMap & parameters = ParametersMap());
@@ -428,7 +428,7 @@ private:
 };
 
 //GFTT_BRIEF
-class RTABMAP_EXP GFTT_BRIEF : public GFTT
+class RTABMAP_CORE_EXPORT GFTT_BRIEF : public GFTT
 {
 public:
 	GFTT_BRIEF(const ParametersMap & parameters = ParametersMap());
@@ -447,7 +447,7 @@ private:
 };
 
 //GFTT_FREAK
-class RTABMAP_EXP GFTT_FREAK : public GFTT
+class RTABMAP_CORE_EXPORT GFTT_FREAK : public GFTT
 {
 public:
 	GFTT_FREAK(const ParametersMap & parameters = ParametersMap());
@@ -469,7 +469,7 @@ private:
 };
 
 //SURF_FREAK
-class RTABMAP_EXP SURF_FREAK : public SURF
+class RTABMAP_CORE_EXPORT SURF_FREAK : public SURF
 {
 public:
 	SURF_FREAK(const ParametersMap & parameters = ParametersMap());
@@ -491,7 +491,7 @@ private:
 };
 
 //GFTT_ORB
-class RTABMAP_EXP GFTT_ORB : public GFTT
+class RTABMAP_CORE_EXPORT GFTT_ORB : public GFTT
 {
 public:
 	GFTT_ORB(const ParametersMap & parameters = ParametersMap());
@@ -508,7 +508,7 @@ private:
 };
 
 //BRISK
-class RTABMAP_EXP BRISK : public Feature2D
+class RTABMAP_CORE_EXPORT BRISK : public Feature2D
 {
 public:
 	BRISK(const ParametersMap & parameters = ParametersMap());
@@ -530,7 +530,7 @@ private:
 };
 
 //KAZE
-class RTABMAP_EXP KAZE : public Feature2D
+class RTABMAP_CORE_EXPORT KAZE : public Feature2D
 {
 public:
 	KAZE(const ParametersMap & parameters = ParametersMap());
@@ -557,7 +557,7 @@ private:
 };
 
 //ORB OCTREE
-class RTABMAP_EXP ORBOctree : public Feature2D
+class RTABMAP_CORE_EXPORT ORBOctree : public Feature2D
 {
 public:
 	ORBOctree(const ParametersMap & parameters = ParametersMap());
@@ -583,7 +583,7 @@ private:
 };
 
 //SuperPointTorch
-class RTABMAP_EXP SuperPointTorch : public Feature2D
+class RTABMAP_CORE_EXPORT SuperPointTorch : public Feature2D
 {
 public:
 	SuperPointTorch(const ParametersMap & parameters = ParametersMap());
@@ -606,7 +606,7 @@ private:
 };
 
 //GFTT_DAISY
-class RTABMAP_EXP GFTT_DAISY : public GFTT
+class RTABMAP_CORE_EXPORT GFTT_DAISY : public GFTT
 {
 public:
 	GFTT_DAISY(const ParametersMap & parameters = ParametersMap());
@@ -630,7 +630,7 @@ private:
 };
 
 //SURF_DAISY
-class RTABMAP_EXP SURF_DAISY : public SURF
+class RTABMAP_CORE_EXPORT SURF_DAISY : public SURF
 {
 public:
 	SURF_DAISY(const ParametersMap & parameters = ParametersMap());

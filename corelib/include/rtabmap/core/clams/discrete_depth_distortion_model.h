@@ -36,11 +36,11 @@ RTAB-Map integration: Mathieu Labbe
 #include <Eigen/Core>
 #include <opencv2/opencv.hpp>
 #include <rtabmap/utilite/UMutex.h>
-#include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
+#include "rtabmap/core/rtabmap_core_export.h" // DLL export/import defines
 
 namespace clams
 {
-  class RTABMAP_EXP DiscreteFrustum
+  class RTABMAP_CORE_EXPORT DiscreteFrustum
   {
   public:
     DiscreteFrustum(int smoothing = 1, double bin_depth = 1.0, double max_dist = 10.0);
@@ -65,7 +65,7 @@ namespace clams
     friend class DiscreteDepthDistortionModel;
   };
 
-  class RTABMAP_EXP DiscreteDepthDistortionModel
+  class RTABMAP_CORE_EXPORT DiscreteDepthDistortionModel
   {
   public:
     // returns all divisors of num
