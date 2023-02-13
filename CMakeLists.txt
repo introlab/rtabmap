@@ -146,7 +146,7 @@ endif()
 set(INSTALL_CMAKE_DIR ${DEF_INSTALL_CMAKE_DIR})
   
 ####### BUILD OPTIONS #######
-
+include (GenerateExportHeader)
 # ANDROID_PREBUILD (early exit if true)
 OPTION( ANDROID_PREBUILD "Set to ON to build rtabmap resource build tool (required for android build)" OFF )
 IF(ANDROID_PREBUILD)
@@ -1011,8 +1011,6 @@ IF(NOT WITH_MADGWICK)
 ENDIF()
 
 CONFIGURE_FILE(Version.h.in ${CMAKE_CURRENT_BINARY_DIR}/corelib/src/include/${PROJECT_PREFIX}/core/Version.h)
-
-include(GenerateExportHeader)
 
 ADD_SUBDIRECTORY( utilite )
 ADD_SUBDIRECTORY( corelib )
