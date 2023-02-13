@@ -296,7 +296,7 @@ IF(WITH_QT)
     # look for Qt5 (if vtk>5 is installed) before Qt4
     IF("${VTK_MAJOR_VERSION}" GREATER 5)
         if(RTABMAP_QT_VERSION STREQUAL "AUTO" OR RTABMAP_QT_VERSION STREQUAL "5")
-            FIND_PACKAGE(Qt5 COMPONENTS Widgets Core Gui PrintSupport OPTIONAL_COMPONENTS Svg)
+            FIND_PACKAGE(Qt5 COMPONENTS Widgets Core Gui PrintSupport OpenGL OPTIONAL_COMPONENTS Svg)
         ENDIF(RTABMAP_QT_VERSION STREQUAL "AUTO" OR RTABMAP_QT_VERSION STREQUAL "5")
     ENDIF("${VTK_MAJOR_VERSION}" GREATER 5)
 
@@ -415,7 +415,7 @@ ENDIF(WITH_K4W2 AND WIN32)
 
 IF(WITH_K4A)
     IF(WIN32)
-        FIND_PACKAGE(K4A QUIET)
+        FIND_PACKAGE(K4A QUIET REQUIRED)
     ELSE()
         FIND_PACKAGE(k4a QUIET)
         FIND_PACKAGE(k4arecord QUIET)
@@ -596,7 +596,7 @@ ENDIF(WITH_REALSENSE)
 
 IF(WITH_REALSENSE2)
     IF(WIN32)
-        FIND_PACKAGE(RealSense2 QUIET)
+        FIND_PACKAGE(RealSense2 QUIET REQUIRED)
     ELSE()
         FIND_PACKAGE(realsense2 QUIET)
     ENDIF()
@@ -900,6 +900,14 @@ IF(NOT k4a_FOUND)
    SET(CONF_WITH_K4A 0)
 ELSE()
    SET(CONF_WITH_K4A 1)
+   IF(WIN32)
+      install(
+         FILES
+         "${CMAKE_CURRENT_SOURCE_DIR}/cmake_modules/FindK4A.cmake"
+         DESTINATION ${INSTALL_CMAKE_DIR}/Modules/.
+         COMPONENT Devel
+      )
+   ENDIF(WIN32)
 ENDIF()
 IF(NOT OpenNI2_FOUND)
    SET(OPENNI2 "//")
@@ -927,6 +935,14 @@ IF(NOT realsense2_FOUND)
    SET(CONF_WITH_REALSENSE2 0)
 ELSE()
    SET(CONF_WITH_REALSENSE2 1)
+   IF(WIN32)
+      install(
+         FILES
+         "${CMAKE_CURRENT_SOURCE_DIR}/cmake_modules/FindRealSense2.cmake"
+         DESTINATION ${INSTALL_CMAKE_DIR}/Modules/.
+         COMPONENT Devel
+      )
+   ENDIF(WIN32)
 ENDIF()
 IF(NOT mynteye_FOUND)
    SET(MYNTEYE "//")
@@ -939,9 +955,9 @@ ELSE()
 ENDIF()
 IF(NOT octomap_FOUND)
    SET(OCTOMAP "//")
-   SET(CONF_WITH_OCTOMAP 1)
-ELSE()
    SET(CONF_WITH_OCTOMAP 0)
+ELSE()
+   SET(CONF_WITH_OCTOMAP 1)
 ENDIF()
 IF(NOT CPUTSDF_FOUND)
    SET(CPUTSDF "//")
@@ -1069,16 +1085,24 @@ write_basic_package_version_file(
   COMPATIBILITY AnyNewerVersion
 )
 
-
-
+# Build tree:
+SET(CONF_MODULES_DIR "../cmake_modules")
 configure_file(
   ${PROJECT_NAME}Config.cmake.in
   "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake"
   @ONLY
 )
+
+# Install tree:
+SET(CONF_MODULES_DIR "Modules")
+configure_file(
+  ${PROJECT_NAME}Config.cmake.in
+  "${CMAKE_CURRENT_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/${PROJECT_NAME}Config.cmake"
+  @ONLY
+)
 install(
   FILES
-    "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake"
+    "${CMAKE_CURRENT_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/${PROJECT_NAME}Config.cmake"
     "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake"
   DESTINATION
     ${INSTALL_CMAKE_DIR}
@@ -1515,7 +1539,11 @@ MESSAGE(STATUS "  With RealSense            = NO (librealsense not found)")
 ENDIF()
 
 IF(realsense2_FOUND)
+IF(WIN32)
+MESSAGE(STATUS "  With RealSense2           = YES (License: Apache-2)")
+ELSE()
 MESSAGE(STATUS "  With RealSense2 ${realsense2_VERSION}    = YES (License: Apache-2)")
+ENDIF()
 ELSEIF(NOT WITH_REALSENSE2)
 MESSAGE(STATUS "  With RealSense2           = NO (WITH_REALSENSE2=OFF)")
 ELSE()
