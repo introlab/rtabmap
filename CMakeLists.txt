@@ -905,7 +905,7 @@ ELSE()
          FILES
          "${CMAKE_CURRENT_SOURCE_DIR}/cmake_modules/FindK4A.cmake"
          DESTINATION ${INSTALL_CMAKE_DIR}/Modules/.
-         COMPONENT Devel
+         COMPONENT devel
       )
    ENDIF(WIN32)
 ENDIF()
@@ -940,7 +940,7 @@ ELSE()
          FILES
          "${CMAKE_CURRENT_SOURCE_DIR}/cmake_modules/FindRealSense2.cmake"
          DESTINATION ${INSTALL_CMAKE_DIR}/Modules/.
-         COMPONENT Devel
+         COMPONENT devel
       )
    ENDIF(WIN32)
 ENDIF()
@@ -1073,6 +1073,8 @@ install(EXPORT rtabmapTargets
     ${PROJECT_NAME}Targets.cmake
   DESTINATION
     ${INSTALL_CMAKE_DIR}
+  COMPONENT
+    devel
 )
 
 ####
@@ -1107,18 +1109,19 @@ install(
   DESTINATION
     ${INSTALL_CMAKE_DIR}
   COMPONENT
-    Devel
+    devel
 )
   
 ####
 
 ### Install package.xml for catkin
-install(FILES package.xml DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/${PROJECT_PREFIX}")
+install(FILES package.xml DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/${PROJECT_PREFIX}" COMPONENT devel)
 
 #######################
 # CPACK (Packaging)
 #######################
 IF(BUILD_AS_BUNDLE)
+  SET(CMAKE_INSTALL_SYSTEM_RUNTIME_COMPONENT runtime)
   INCLUDE(InstallRequiredSystemLibraries)
 ENDIF(BUILD_AS_BUNDLE)
 
@@ -1134,6 +1137,7 @@ SET(CPACK_PACKAGE_VERSION_PATCH "${PROJECT_VERSION_PATCH}")
 #SET(CPACK_PACKAGE_EXECUTABLES "")
 #SET(CPACK_SOURCE_PACKAGE_FILE_NAME "${PROJECT_NAME}-${CPACK_PACKAGE_VERSION_MAJOR}.${CPACK_PACKAGE_VERSION_MINOR}.${CPACK_PACKAGE_VERSION_PATCH}")
 SET(CPACK_PACKAGE_CONTACT "matlabbe@gmail.com")
+
 
 set(CPACK_SOURCE_IGNORE_FILES 
   "\\\\.svn/" 

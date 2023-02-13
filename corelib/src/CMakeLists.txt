@@ -800,7 +800,7 @@ install(
   DESTINATION
     ${INSTALL_INCLUDE_DIR}
   COMPONENT
-    Devel
+    devel
   FILES_MATCHING PATTERN "*.h" PATTERN "*.hpp"
 )
 
@@ -813,5 +813,7 @@ install(EXPORT rtabmap_coreTargets
     ${PROJECT_NAME}_coreTargets.cmake
   DESTINATION
     ${INSTALL_CMAKE_DIR}
+  COMPONENT
+    devel
 )
 	

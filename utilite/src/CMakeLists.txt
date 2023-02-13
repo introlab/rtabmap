@@ -65,4 +65,6 @@ install(EXPORT rtabmap_utiliteTargets
     ${PROJECT_NAME}_utiliteTargets.cmake
   DESTINATION
     ${INSTALL_CMAKE_DIR}
+  COMPONENT
+    devel
 )
