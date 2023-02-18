@@ -523,11 +523,13 @@ SensorData DBReader::getNextData(CameraInfo * info)
 				{
 					float ratio = -this->getImageRate();
 					int sleepTime = 1000.0*(s->getStamp()-_previousStamp)/ratio - 1000.0*_timer.getElapsedTime();
+					double stamp = s->getStamp();
 					if(sleepTime > 10000)
 					{
 						UWARN("Detected long delay (%d sec, stamps = %f vs %f). Waiting a maximum of 10 seconds.",
 								sleepTime/1000, _previousStamp, s->getStamp());
 						sleepTime = 10000;
+						stamp = _previousStamp+10;
 					}
 					if(sleepTime > 2)
 					{
@@ -535,14 +537,14 @@ SensorData DBReader::getNextData(CameraInfo * info)
 					}
 
 					// Add precision at the cost of a small overhead
-					while(_timer.getElapsedTime() < (s->getStamp()-_previousStamp)/ratio-0.000001)
+					while(_timer.getElapsedTime() < (stamp-_previousStamp)/ratio-0.000001)
 					{
 						//
 					}
 
 					double slept = _timer.getElapsedTime();
 					_timer.start();
-					UDEBUG("slept=%fs vs target=%fs (ratio=%f)", slept, (s->getStamp()-_previousStamp)/ratio, ratio);
+					UDEBUG("slept=%fs vs target=%fs (ratio=%f)", slept, (stamp-_previousStamp)/ratio, ratio);
 				}
 				_previousStamp = s->getStamp();
 				_previousMapID = s->mapId();
