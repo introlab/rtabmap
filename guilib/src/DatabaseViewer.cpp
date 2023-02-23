@@ -373,7 +373,7 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	connect(ui_->horizontalSlider_iterations, SIGNAL(valueChanged(int)), this, SLOT(sliderIterationsValueChanged(int)));
 	connect(ui_->horizontalSlider_iterations, SIGNAL(sliderMoved(int)), this, SLOT(sliderIterationsValueChanged(int)));
 	connect(ui_->spinBox_optimizationsFrom, SIGNAL(editingFinished()), this, SLOT(updateGraphView()));
-	connect(ui_->checkBox_iterativeOptimization, SIGNAL(stateChanged(int)), this, SLOT(updateGraphView()));
+	connect(ui_->comboBox_optimizationFlavor, SIGNAL(activated(int)), this, SLOT(updateGraphView()));
 	connect(ui_->checkBox_spanAllMaps, SIGNAL(stateChanged(int)), this, SLOT(updateGraphView()));
 	connect(ui_->checkBox_wmState, SIGNAL(stateChanged(int)), this, SLOT(updateGraphView()));
 	connect(ui_->graphViewer, SIGNAL(mapShownRequested()), this, SLOT(updateGraphView()));
@@ -428,6 +428,8 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	connect(ui_->groupBox_posefiltering, SIGNAL(clicked(bool)), this, SLOT(configModified()));
 	connect(ui_->doubleSpinBox_posefilteringRadius, SIGNAL(valueChanged(double)), this, SLOT(configModified()));
 	connect(ui_->doubleSpinBox_posefilteringAngle, SIGNAL(valueChanged(double)), this, SLOT(configModified()));
+	connect(ui_->horizontalSlider_rotation, SIGNAL(valueChanged(int)), this, SLOT(updateGraphRotation()));
+	connect(ui_->pushButton_applyRotation, SIGNAL(clicked()), this, SLOT(updateGraphView()));
 
 	connect(ui_->spinBox_icp_decimation, SIGNAL(valueChanged(int)), this, SLOT(configModified()));
 	connect(ui_->doubleSpinBox_icp_maxDepth, SIGNAL(valueChanged(double)), this, SLOT(configModified()));
@@ -721,7 +723,7 @@ void DatabaseViewer::restoreDefaultSettings()
 	ui_->checkBox_ignoreIntermediateNodes->setChecked(false);
 	ui_->checkBox_timeStats->setChecked(true);
 
-	ui_->checkBox_iterativeOptimization->setChecked(true);
+	ui_->comboBox_optimizationFlavor->setCurrentIndex(0);
 	ui_->checkBox_spanAllMaps->setChecked(true);
 	ui_->checkBox_wmState->setChecked(false);
 	ui_->checkBox_ignorePoseCorrection->setChecked(false);
@@ -7117,6 +7119,21 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 		ui_->label_pathLength->setNum(length);
 	}
 }
+
+void DatabaseViewer::updateGraphRotation()
+{
+	if(ui_->horizontalSlider_rotation->isEnabled())
+	{
+		float theta = float(ui_->horizontalSlider_rotation->value())*M_PI/1800.0f;
+		ui_->graphViewer->setWorldMapRotation(theta);
+		ui_->label_rotation->setText(QString::number(float(-ui_->horizontalSlider_rotation->value())/10.0f, 'f', 1) + " deg");
+	}
+	else
+	{
+		ui_->graphViewer->setWorldMapRotation(0);
+	}
+}
+
 void DatabaseViewer::updateGraphView()
 {
 	ui_->label_loopClosures->clear();
@@ -7412,41 +7429,160 @@ void DatabaseViewer::updateGraphView()
 			}
 		}
 
-		graphes_.push_back(poses);
-
-		Optimizer * optimizer = Optimizer::create(parameters);
-
-		std::map<int, rtabmap::Transform> posesOut;
-		std::multimap<int, rtabmap::Link> linksOut;
-		UINFO("Get connected graph from %d (%d poses, %d links)", fromId, (int)poses.size(), (int)links.size());
-		optimizer->getConnectedGraph(
-				fromId,
-				poses,
-				links,
-				posesOut,
-				linksOut);
-		UINFO("Connected graph of %d poses and %d links", (int)posesOut.size(), (int)linksOut.size());
-		QTime time;
-		time.start();
-		std::map<int, rtabmap::Transform> finalPoses = optimizer->optimize(fromId, posesOut, linksOut, ui_->checkBox_iterativeOptimization->isChecked()?&graphes_:0);
-		ui_->label_timeOptimization->setNum(double(time.elapsed())/1000.0);
-		graphLinks_ = linksOut;
-		if(posesOut.size() && finalPoses.empty())
+		bool applyRotation = sender() == ui_->pushButton_applyRotation;
+		if(applyRotation)
 		{
-			UWARN("Optimization failed... (poses=%d, links=%d).", (int)posesOut.size(), (int)linksOut.size());
-			if(!optimizer->isCovarianceIgnored() || optimizer->type() != Optimizer::kTypeTORO)
+			float xMin, yMin, cellSize;
+			bool hasMap = !dbDriver_->load2DMap(xMin, yMin, cellSize).empty();
+			if(hasMap || !dbDriver_->loadOptimizedMesh().empty())
 			{
-				QMessageBox::warning(this, tr("Graph optimization error!"), tr("Graph optimization has failed. See the terminal for potential errors. "
-						"Give it a try with %1=0 and %2=true.").arg(Parameters::kOptimizerStrategy().c_str()).arg(Parameters::kOptimizerVarianceIgnored().c_str()));
-			}
-			else
-			{
-				QMessageBox::warning(this, tr("Graph optimization error!"), tr("Graph optimization has failed. See the terminal for potential errors."));
+				QMessageBox::StandardButton r = QMessageBox::question(this,
+					tr("Rotate Optimized Graph"),
+					tr("There is a 2D occupancy grid or mesh already saved in "
+					   "database. Applying rotation will clear them (they can be "
+					   "regenerated later from File menu options). "
+					   "Do you want to continue?"),
+					   QMessageBox::Cancel | QMessageBox::Yes,
+					   QMessageBox::Cancel);
+				if(r != QMessageBox::Yes)
+				{
+					applyRotation = false;
+				}
 			}
 		}
-		ui_->label_poses->setNum((int)finalPoses.size());
-		graphes_.push_back(finalPoses);
-		delete optimizer;
+
+		std::map<int, Transform> optPoses;
+		Transform lastLocalizationPose;
+		if(applyRotation ||
+		   ui_->comboBox_optimizationFlavor->currentIndex() == 2)
+		{
+			optPoses = dbDriver_->loadOptimizedPoses(&lastLocalizationPose);
+			if(optPoses.empty())
+			{
+				ui_->comboBox_optimizationFlavor->setCurrentIndex(0);
+				QMessageBox::warning(this, tr("Optimization Flavor"),
+						tr("There is no local optimized graph in the database, "
+						   "falling back to global iterative optimization."));
+			}
+		}
+
+		if(applyRotation ||
+		   ui_->comboBox_optimizationFlavor->currentIndex() != 2)
+		{
+			if(ui_->horizontalSlider_rotation->value()!=0 && applyRotation)
+			{
+				float theta = float(-ui_->horizontalSlider_rotation->value())*M_PI/1800.0f;
+				Transform rotT(0,0,theta);
+				poses.at(fromId) = rotT * poses.at(fromId);
+			}
+
+			graphes_.push_back(poses);
+
+			Optimizer * optimizer = Optimizer::create(parameters);
+
+			std::map<int, rtabmap::Transform> posesOut;
+			std::multimap<int, rtabmap::Link> linksOut;
+			UINFO("Get connected graph from %d (%d poses, %d links)", fromId, (int)poses.size(), (int)links.size());
+			optimizer->getConnectedGraph(
+					fromId,
+					poses,
+					links,
+					posesOut,
+					linksOut);
+			UINFO("Connected graph of %d poses and %d links", (int)posesOut.size(), (int)linksOut.size());
+			QTime time;
+			time.start();
+			std::map<int, rtabmap::Transform> finalPoses = optimizer->optimize(fromId, posesOut, linksOut, ui_->comboBox_optimizationFlavor->currentIndex()==0?&graphes_:0);
+			ui_->label_timeOptimization->setNum(double(time.elapsed())/1000.0);
+			graphLinks_ = linksOut;
+			if(posesOut.size() && finalPoses.empty())
+			{
+				UWARN("Optimization failed... (poses=%d, links=%d).", (int)posesOut.size(), (int)linksOut.size());
+				if(!optimizer->isCovarianceIgnored() || optimizer->type() != Optimizer::kTypeTORO)
+				{
+					QMessageBox::warning(this, tr("Graph optimization error!"), tr("Graph optimization has failed. See the terminal for potential errors. "
+							"Give it a try with %1=0 and %2=true.").arg(Parameters::kOptimizerStrategy().c_str()).arg(Parameters::kOptimizerVarianceIgnored().c_str()));
+				}
+				else
+				{
+					QMessageBox::warning(this, tr("Graph optimization error!"), tr("Graph optimization has failed. See the terminal for potential errors."));
+				}
+			}
+			ui_->label_poses->setNum((int)finalPoses.size());
+			graphes_.push_back(finalPoses);
+			delete optimizer;
+
+			if(applyRotation && !finalPoses.empty())
+			{
+				ui_->comboBox_optimizationFlavor->setCurrentIndex(2);
+				graphes_.clear();
+				graphes_.push_back(finalPoses);
+				if(lastLocalizationPose.isNull())
+				{
+					// use last pose by default
+					lastLocalizationPose = finalPoses.rbegin()->second;
+				}
+				dbDriver_->saveOptimizedPoses(finalPoses, lastLocalizationPose);
+				// reset optimized mesh and map as poses have changed
+				float xMin, yMin, cellSize;
+				bool hasMap = !dbDriver_->load2DMap(xMin, yMin, cellSize).empty();
+				if(hasMap || !dbDriver_->loadOptimizedMesh().empty())
+				{
+					dbDriver_->saveOptimizedMesh(cv::Mat());
+					dbDriver_->save2DMap(cv::Mat(), 0, 0, 0);
+					QMessageBox::StandardButton r = QMessageBox::question(this,
+						tr("Rotate Optimized Graph"),
+						tr("Optimized graph has been rotated and saved back to database. "
+						   "Note that 2D occupancy grid and mesh have been cleared (if set). "
+						   "Do you want to regenerate the 2D occupancy grid now "
+						   "(can be done later from File menu)?"),
+						   QMessageBox::Ignore | QMessageBox::Yes,
+						   QMessageBox::Yes);
+					ui_->actionEdit_optimized_2D_map->setEnabled(false);
+					ui_->actionExport_saved_2D_map->setEnabled(false);
+					ui_->actionImport_2D_map->setEnabled(false);
+					ui_->actionView_optimized_mesh->setEnabled(false);
+					ui_->actionExport_optimized_mesh->setEnabled(false);
+					if(r == QMessageBox::Yes)
+					{
+						regenerateSavedMap();
+					}
+				}
+			}
+		}
+
+		// Update buttons state
+		if(ui_->comboBox_optimizationFlavor->currentIndex() == 2)
+		{
+			// Local optimized graph
+			if(graphes_.empty())
+			{
+				ui_->label_timeOptimization->setNum(0);
+				ui_->label_poses->setNum((int)optPoses.size());
+				graphes_.push_back(optPoses);
+			}
+			ui_->horizontalSlider_rotation->setEnabled(false);
+			ui_->pushButton_applyRotation->setEnabled(false);
+			ui_->spinBox_optimizationsFrom->setEnabled(false);
+			ui_->checkBox_spanAllMaps->setEnabled(false);
+			ui_->checkBox_wmState->setEnabled(false);
+			ui_->checkBox_alignPosesWithGroundTruth->setEnabled(false);
+			ui_->checkBox_alignScansCloudsWithGroundTruth->setEnabled(false);
+			ui_->checkBox_ignoreIntermediateNodes->setEnabled(false);
+		}
+		else
+		{
+			// Global map re-optimized
+			ui_->pushButton_applyRotation->setEnabled(true);
+			ui_->horizontalSlider_rotation->setEnabled(true);
+			ui_->spinBox_optimizationsFrom->setEnabled(true);
+			ui_->checkBox_spanAllMaps->setEnabled(true);
+			ui_->checkBox_wmState->setEnabled(true);
+			ui_->checkBox_alignPosesWithGroundTruth->setEnabled(true);
+			ui_->checkBox_alignScansCloudsWithGroundTruth->setEnabled(true);
+			ui_->checkBox_ignoreIntermediateNodes->setEnabled(true);
+		}
+		updateGraphRotation();
 	}
 	if(graphes_.size())
 	{

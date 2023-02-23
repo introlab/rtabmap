@@ -61,7 +61,7 @@
           <rect>
            <x>0</x>
            <y>0</y>
-           <width>293</width>
+           <width>307</width>
            <height>380</height>
           </rect>
          </property>
@@ -355,7 +355,7 @@
           <rect>
            <x>0</x>
            <y>0</y>
-           <width>292</width>
+           <width>306</width>
            <height>380</height>
           </rect>
          </property>
@@ -1176,6 +1176,52 @@
       <widget class="rtabmap::GraphViewer" name="graphViewer"/>
      </item>
      <item>
+      <layout class="QHBoxLayout" name="horizontalLayout_15">
+       <item>
+        <widget class="QLabel" name="label_rotation">
+         <property name="text">
+          <string>0.0 deg</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QSlider" name="horizontalSlider_rotation">
+         <property name="focusPolicy">
+          <enum>Qt::ClickFocus</enum>
+         </property>
+         <property name="minimum">
+          <number>-1799</number>
+         </property>
+         <property name="maximum">
+          <number>1800</number>
+         </property>
+         <property name="sliderPosition">
+          <number>0</number>
+         </property>
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
+         </property>
+         <property name="tickPosition">
+          <enum>QSlider::TicksAbove</enum>
+         </property>
+         <property name="tickInterval">
+          <number>100</number>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="pushButton_applyRotation">
+         <property name="toolTip">
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The rotation will be applied temporary to optimized global graph. To save it to database, do File-&amp;gt;&amp;quot;Regenerate optimized 2D map...&amp;quot;.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         </property>
+         <property name="text">
+          <string>Apply Rotation</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </item>
+     <item>
       <layout class="QHBoxLayout" name="horizontalLayout_4">
        <item>
         <widget class="QLabel" name="label_iterations">
@@ -1198,16 +1244,25 @@
         </widget>
        </item>
        <item>
-        <widget class="QCheckBox" name="checkBox_iterativeOptimization">
-         <property name="toolTip">
-          <string>Iterative optimization. Intermediate optimization graphes will be computed. Depending on the graph optimizer used, final optimization may not give the same results.</string>
+        <widget class="QComboBox" name="comboBox_optimizationFlavor">
+         <property name="sizeAdjustPolicy">
+          <enum>QComboBox::AdjustToContents</enum>
          </property>
-         <property name="text">
-          <string/>
-         </property>
-         <property name="checked">
-          <bool>true</bool>
-         </property>
+         <item>
+          <property name="text">
+           <string>Global Iterative</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>Global Full</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>Local Optimized</string>
+          </property>
+         </item>
         </widget>
        </item>
       </layout>

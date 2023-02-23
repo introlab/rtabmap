@@ -137,6 +137,7 @@ private Q_SLOTS:
 	void editConstraint();
 	void updateGrid();
 	void updateOctomapView();
+	void updateGraphRotation();
 	void updateGraphView();
 	void refineConstraint();
 	void addConstraint();
