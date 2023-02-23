@@ -187,6 +187,7 @@ add_definitions(${PCL_DEFINITIONS})
 
 # create a library from the source files
 ADD_LIBRARY(rtabmap_gui ${SRC_FILES})
+ADD_LIBRARY(rtabmap::gui ALIAS rtabmap_gui)
 
 generate_export_header(rtabmap_gui
  DEPRECATED_MACRO_NAME RTABMAP_DEPRECATED)
@@ -207,6 +208,7 @@ SET_TARGET_PROPERTIES(
    PROPERTIES
      VERSION ${RTABMAP_VERSION}
      SOVERSION ${RTABMAP_MAJOR_VERSION}.${RTABMAP_MINOR_VERSION}
+     EXPORT_NAME "gui"
 )
 
 INSTALL(TARGETS rtabmap_gui EXPORT rtabmap_guiTargets
@@ -231,12 +233,14 @@ install(
 )
 export(EXPORT rtabmap_guiTargets
   FILE "${CMAKE_CURRENT_BINARY_DIR}/../../${PROJECT_NAME}_guiTargets.cmake"
+  NAMESPACE rtabmap::
 )
 install(EXPORT rtabmap_guiTargets
   FILE
     ${PROJECT_NAME}_guiTargets.cmake
   DESTINATION
     ${INSTALL_CMAKE_DIR}
+  NAMESPACE rtabmap::
   COMPONENT
     devel
 )

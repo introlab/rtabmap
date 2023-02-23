@@ -38,7 +38,7 @@ IF(APPLE)
 ENDIF(APPLE)
 
 ADD_EXECUTABLE(wifi_mapping ${srcs} ${moc_srcs})
-TARGET_LINK_LIBRARIES(wifi_mapping rtabmap_gui ${LIBRARIES})
+TARGET_LINK_LIBRARIES(wifi_mapping rtabmap::gui ${LIBRARIES})
 
 if(internal)
   SET_TARGET_PROPERTIES( wifi_mapping 

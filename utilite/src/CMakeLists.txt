@@ -14,6 +14,7 @@ SET(SRC_FILES
 )
 
 ADD_LIBRARY(rtabmap_utilite ${SRC_FILES})
+ADD_LIBRARY(rtabmap::utilite ALIAS rtabmap_utilite)
 
 generate_export_header(rtabmap_utilite 
   BASE_NAME utilite)
@@ -36,6 +37,7 @@ SET_TARGET_PROPERTIES(
    PROPERTIES
      VERSION ${RTABMAP_VERSION}
      SOVERSION ${RTABMAP_MAJOR_VERSION}.${RTABMAP_MINOR_VERSION}
+     EXPORT_NAME "utilite"
 )
 INSTALL(TARGETS rtabmap_utilite EXPORT rtabmap_utiliteTargets
         RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}" COMPONENT runtime
@@ -59,12 +61,14 @@ install(
 
 export(EXPORT rtabmap_utiliteTargets
   FILE "${CMAKE_CURRENT_BINARY_DIR}/../../${PROJECT_NAME}_utiliteTargets.cmake"
+  NAMESPACE rtabmap::
 )
 install(EXPORT rtabmap_utiliteTargets
   FILE
     ${PROJECT_NAME}_utiliteTargets.cmake
   DESTINATION
     ${INSTALL_CMAKE_DIR}
+  NAMESPACE rtabmap::
   COMPONENT
     devel
 )

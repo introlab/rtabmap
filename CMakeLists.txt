@@ -69,7 +69,11 @@ if(POLICY CMP0020)
     cmake_policy(SET CMP0020 NEW)
 endif()
 if(POLICY CMP0043)
-    cmake_policy(SET CMP0043 OLD)
+    cmake_policy(SET CMP0043 NEW)
+endif()
+# To suppress g2o related opengl warning
+if(POLICY CMP0072)
+    cmake_policy(SET CMP0072 NEW)
 endif()
 
 IF(MINGW)
@@ -296,13 +300,13 @@ IF(WITH_QT)
     # look for Qt5 (if vtk>5 is installed) before Qt4
     IF("${VTK_MAJOR_VERSION}" GREATER 5)
         if(RTABMAP_QT_VERSION STREQUAL "AUTO" OR RTABMAP_QT_VERSION STREQUAL "5")
-            FIND_PACKAGE(Qt5 COMPONENTS Widgets Core Gui PrintSupport OpenGL OPTIONAL_COMPONENTS Svg)
+            FIND_PACKAGE(Qt5 QUIET COMPONENTS Widgets Core Gui PrintSupport OpenGL OPTIONAL_COMPONENTS Svg)
         ENDIF(RTABMAP_QT_VERSION STREQUAL "AUTO" OR RTABMAP_QT_VERSION STREQUAL "5")
     ENDIF("${VTK_MAJOR_VERSION}" GREATER 5)
 
     IF(NOT Qt5_FOUND)
         IF(RTABMAP_QT_VERSION STREQUAL "AUTO" OR RTABMAP_QT_VERSION STREQUAL "4")
-            FIND_PACKAGE(Qt4 COMPONENTS QtCore QtGui OPTIONAL_COMPONENTS QtSvg)
+            FIND_PACKAGE(Qt4 QUIET COMPONENTS QtCore QtGui OPTIONAL_COMPONENTS QtSvg)
         ENDIF(RTABMAP_QT_VERSION STREQUAL "AUTO" OR RTABMAP_QT_VERSION STREQUAL "4")
     ENDIF(NOT Qt5_FOUND)
         
@@ -1050,6 +1054,7 @@ ADD_CUSTOM_TARGET(uninstall
 # Global Export Target
 ####
 add_library(rtabmap INTERFACE)
+add_library(rtabmap::rtabmap ALIAS rtabmap)
 IF(QT4_FOUND OR Qt5_FOUND)
    set(CONF_WITH_GUI ON)
    IF(QT4_FOUND)
@@ -1065,12 +1070,14 @@ ENDIF()
 install(TARGETS rtabmap EXPORT rtabmapTargets)
 export(EXPORT rtabmapTargets
   FILE "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Targets.cmake"
+  NAMESPACE rtabmap::
 )
 install(EXPORT rtabmapTargets
   FILE
     ${PROJECT_NAME}Targets.cmake
   DESTINATION
     ${INSTALL_CMAKE_DIR}
+  NAMESPACE rtabmap::
   COMPONENT
     devel
 )

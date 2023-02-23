@@ -12,7 +12,7 @@ if(NOT internal)
 endif()
 
 ADD_EXECUTABLE(bow_mapping main.cpp)
-TARGET_LINK_LIBRARIES(bow_mapping rtabmap)
+TARGET_LINK_LIBRARIES(bow_mapping rtabmap::rtabmap)
 
 if(internal)
   SET_TARGET_PROPERTIES( bow_mapping 

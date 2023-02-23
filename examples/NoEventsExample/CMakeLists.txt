@@ -19,7 +19,7 @@ ENDIF()
 
 ADD_EXECUTABLE(noEventsExample main.cpp ${moc_srcs})
   
-TARGET_LINK_LIBRARIES(noEventsExample rtabmap_gui)
+TARGET_LINK_LIBRARIES(noEventsExample rtabmap::gui)
 
 if(internal)
 	SET_TARGET_PROPERTIES( noEventsExample 

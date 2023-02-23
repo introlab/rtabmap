@@ -16,6 +16,7 @@ ELSE()
     find_dependency(PCL 1.7 COMPONENTS common io kdtree search surface filters registration sample_consensus segmentation)
 ENDIF()
 set(RTABMap_DEFINITIONS ${PCL_DEFINITIONS})
+add_definitions(${RTABMap_DEFINITIONS}) # To include -march=native if set
 
 # Optional dependencies
 IF(EXISTS "${CMAKE_CURRENT_LIST_DIR}/@CONF_MODULES_DIR@")
@@ -46,6 +47,7 @@ ENDIF()
 # Provide those for backward compatibilities (e.g., catkin requires them to propagate dependencies)
 set(RTABMap_INCLUDE_DIRS "")
 set(RTABMap_LIBRARIES "")
+set(RTABMap_TARGETS "")
 
 set(_RTABMap_supported_components utilite core gui)
 
@@ -53,14 +55,17 @@ foreach(_comp ${_RTABMap_supported_components})
   if(EXISTS "${CMAKE_CURRENT_LIST_DIR}/RTABMap_${_comp}Targets.cmake")
     include("${CMAKE_CURRENT_LIST_DIR}/RTABMap_${_comp}Targets.cmake")
     set(RTABMap_${_comp}_FOUND True)
-    get_target_property(RTABMap_${_comp}_INCLUDE_DIRS rtabmap_${_comp} INTERFACE_INCLUDE_DIRECTORIES)
-    get_target_property(RTABMap_${_comp}_LIBRARIES rtabmap_${_comp} INTERFACE_LINK_LIBRARIES)
+    set(RTABMap_TARGETS
+      ${RTABMap_TARGETS}
+      rtabmap::${_comp})
+    get_target_property(RTABMap_${_comp}_INCLUDE_DIRS rtabmap::${_comp} INTERFACE_INCLUDE_DIRECTORIES)
+    get_target_property(RTABMap_${_comp}_LIBRARIES rtabmap::${_comp} INTERFACE_LINK_LIBRARIES)
     set(RTABMap_INCLUDE_DIRS 
       ${RTABMap_INCLUDE_DIRS}
       ${RTABMap_${_comp}_INCLUDE_DIRS})
     set(RTABMap_LIBRARIES 
       ${RTABMap_LIBRARIES}
-      rtabmap_${_comp})
+      rtabmap::${_comp})
     if(RTABMap_${_comp}_LIBRARIES)
       set(RTABMap_LIBRARIES 
         ${RTABMap_LIBRARIES}

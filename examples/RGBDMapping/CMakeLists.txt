@@ -19,7 +19,7 @@ ENDIF()
 
 ADD_EXECUTABLE(rgbd_mapping main.cpp ${moc_srcs})
   
-TARGET_LINK_LIBRARIES(rgbd_mapping rtabmap_gui)
+TARGET_LINK_LIBRARIES(rgbd_mapping rtabmap::gui)
 
 if(internal)
   SET_TARGET_PROPERTIES( rgbd_mapping 
