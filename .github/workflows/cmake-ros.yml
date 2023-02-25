@@ -36,7 +36,7 @@ jobs:
           os: ubuntu-22.04
 
     steps:
-    - uses: Workaround dpkg grub-efi-amd64-signed error
+    - name: Workaround dpkg grub-efi-amd64-signed error
       run: |
         sudo apt-mark hold grub-efi-amd64-signed
     
