@@ -2615,18 +2615,24 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 			{
 				std::vector<int> missingIds;
 				bool ignoreNewData = smallMovement || fastMovement || signature.getWeight()<0;
-				for(std::map<int, Transform>::const_iterator iter=stat.poses().begin(); iter!=stat.poses().end(); ++iter)
+				std::set<int> ids = uKeysSet(stat.poses());
+				if(ids.empty())
 				{
-					if(!ignoreNewData || stat.refImageId() != iter->first)
+					// In appearance-only mode
+					ids = uKeysSet(stat.posterior());
+				}
+				for(std::set<int>::const_iterator iter=ids.lower_bound(1); iter!=ids.end(); ++iter)
+				{
+					if(!ignoreNewData || stat.refImageId() != *iter)
 					{
-						QMap<int, Signature>::iterator ster = _cachedSignatures.find(iter->first);
+						QMap<int, Signature>::iterator ster = _cachedSignatures.find(*iter);
 						if(ster == _cachedSignatures.end() ||
 							(ster.value().getWeight() >=0 && // ignore intermediate nodes
 							 ster.value().sensorData().imageCompressed().empty() &&
 							 ster.value().sensorData().depthOrRightCompressed().empty() &&
 							 ster.value().sensorData().laserScanCompressed().empty()))
 						{
-							missingIds.push_back(iter->first);
+							missingIds.push_back(*iter);
 						}
 					}
 				}
