@@ -28,7 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef RTABMAP_REGISTRATION_H_
 #define RTABMAP_REGISTRATION_H_
 
-#include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
+#include "rtabmap/core/rtabmap_core_export.h" // DLL export/import defines
 
 #include <rtabmap/core/Parameters.h>
 #include <rtabmap/core/Signature.h>
@@ -36,7 +36,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 namespace rtabmap {
 
-class RTABMAP_EXP Registration
+class RTABMAP_CORE_EXPORT Registration
 {
 public:
 	enum Type {

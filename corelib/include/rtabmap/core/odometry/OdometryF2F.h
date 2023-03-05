@@ -35,7 +35,7 @@ namespace rtabmap {
 
 class Registration;
 
-class RTABMAP_EXP OdometryF2F : public Odometry
+class RTABMAP_CORE_EXPORT OdometryF2F : public Odometry
 {
 public:
 	OdometryF2F(const rtabmap::ParametersMap & parameters = rtabmap::ParametersMap());

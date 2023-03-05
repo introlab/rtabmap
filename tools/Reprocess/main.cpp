@@ -82,6 +82,7 @@ void showUsage()
 			"                 then next databases are reprocessed on top of the first one.\n"
 			"     -cam #      Camera index to stream. Ignored if a database doesn't contain multi-camera data.\n"
 			"     -nolandmark Don't republish landmarks contained in input database.\n"
+			"     -nopriors   Don't republish priors contained in input database.\n"
 			"     -pub_loops  Republish loop closures contained in input database.\n"
 			"     -loc_null   On localization mode, reset localization pose to null and map correction to identity between sessions.\n"
 			"     -gt         When reprocessing a single database, load its original optimized graph, then \n"
@@ -246,6 +247,7 @@ int main(int argc, char * argv[])
 	int cameraIndex = -1;
 	int framesToSkip = 0;
 	bool ignoreLandmarks = false;
+	bool ignorePriors = false;
 	bool republishLoopClosures = false;
 	bool locNull = false;
 	bool originalGraphAsGT = false;
@@ -385,6 +387,11 @@ int main(int argc, char * argv[])
 		{
 			ignoreLandmarks = true;
 			printf("Ignoring landmarks from input database (-nolandmark option).\n");
+		}
+		else if(strcmp(argv[i], "-nopriors") == 0 || strcmp(argv[i], "--nopriors") == 0)
+		{
+			ignorePriors = true;
+			printf("Ignoring priors from input database (-nopriors option).\n");
 		}
 		else if(strcmp(argv[i], "-pub_loops") == 0 || strcmp(argv[i], "--pub_loops") == 0)
 		{
@@ -766,7 +773,8 @@ int main(int argc, char * argv[])
 			ignoreLandmarks,
 			!useOdomFeatures,
 			startMapId,
-			stopMapId);
+			stopMapId,
+			ignorePriors);
 
 	dbReader->init();
 

@@ -28,7 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef RECOVERY_H_
 #define RECOVERY_H_
 
-#include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
+#include "rtabmap/core/rtabmap_core_export.h" // DLL export/import defines
 
 #include <string>
 
@@ -44,7 +44,7 @@ class ProgressState;
  * @param errorMsg error message if the function returns false
  * @param progressState A ProgressState object used to get status of the recovery process
  */
-bool RTABMAP_EXP databaseRecovery(
+bool RTABMAP_CORE_EXPORT databaseRecovery(
 		const std::string & corruptedDatabase,
 		bool keepCorruptedDatabase = true,
 		std::string * errorMsg = 0,

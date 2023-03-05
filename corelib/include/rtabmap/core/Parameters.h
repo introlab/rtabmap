@@ -29,7 +29,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define PARAMETERS_H_
 
 // default parameters
-#include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
+#include "rtabmap/core/rtabmap_core_export.h" // DLL export/import defines
 #include "rtabmap/core/Version.h" // DLL export/import defines
 #include <rtabmap/utilite/UConversion.h>
 #include <opencv2/core/version.hpp>
@@ -167,7 +167,7 @@ typedef std::pair<std::string, std::string> ParametersPair;
  * @see getDefaultParameters()
  * TODO Add a detailed example with simple classes
  */
-class RTABMAP_EXP Parameters
+class RTABMAP_CORE_EXPORT Parameters
 {
     // Rtabmap parameters
     RTABMAP_PARAM(Rtabmap, PublishStats,                 bool, true,  "Publishing statistics.");

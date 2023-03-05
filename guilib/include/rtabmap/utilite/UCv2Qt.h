@@ -95,9 +95,15 @@ inline QImage uCvMat2QImage(
     {
 		// Assume depth image (float in meters)
 		const float * data = (const float *)image.data;
-		float min=depthMax>depthMin?depthMin:data[0], max=depthMax>depthMin?depthMax:data[0];
-		if(depthMax <= depthMin)
+		float min,max;
+		if(depthMax>depthMin)
 		{
+			min = depthMin;
+			max = depthMax;
+		}
+		else
+		{
+			min = max = data[0];
 			for(unsigned int i=1; i<image.total(); ++i)
 			{
 				if(uIsFinite(data[i]) && data[i] > 0)
@@ -112,6 +118,14 @@ inline QImage uCvMat2QImage(
 					}
 				}
 			}
+			if(depthMax > 0 && depthMax > depthMin)
+			{
+				max = depthMax;
+			}
+			if(depthMin>0 && (depthMin < depthMax || depthMin < max))
+			{
+				min = depthMin;
+			}
 		}
 
 		qtemp = QImage(image.cols, image.rows, QImage::Format_Indexed8);
@@ -120,21 +134,25 @@ inline QImage uCvMat2QImage(
 			for(int x = 0; x < image.cols; ++x)
 			{
 				uchar * p = qtemp.scanLine (y) + x;
-				if(data[x] < min || data[x] > max || !uIsFinite(data[x]) || max == min)
+				if(!uIsFinite(data[x]) || max == min || data[x] == 0)
 				{
 					*p = 0;
 				}
+				else if(data[x] < min)
+				{
+					*p = 255;
+				}
+				else if(data[x] > max)
+				{
+					*p=1;
+				}
 				else
 				{
-					*p = uchar(std::max(0.0f, std::min(255.0f, 255.0f - ((data[x]-min)*255.0f)/(max-min))));
-					if(*p == 255)
-					{
-						*p = 0;
-					}
+					*p = uchar(std::max(1.0f, std::min(255.0f, 255.0f - ((data[x]-min)*255.0f)/(max-min))));
 				}
 				if(*p!=0 && (colorMap == uCvQtDepthBlackToWhite || colorMap == uCvQtDepthRedToBlue))
 				{
-					*p = 255-*p;
+					*p = 255-*p+1;
 				}
 			}
 		}
@@ -158,9 +176,15 @@ inline QImage uCvMat2QImage(
 	{
 		// Assume depth image (unsigned short in mm)
 		const unsigned short * data = (const unsigned short *)image.data;
-		unsigned short min=depthMax>depthMin?(unsigned short)(depthMin*1000):data[0], max=depthMax>depthMin?(unsigned short)(depthMax*1000):data[0];
-		if(depthMax<=depthMin)
+		unsigned short min,max;
+		if(depthMax>depthMin)
 		{
+			min = depthMin*1000;
+			max = depthMax*1000;
+		}
+		else
+		{
+			min = max = data[0];
 			for(unsigned int i=1; i<image.total(); ++i)
 			{
 				if(uIsFinite(data[i]) && data[i] > 0)
@@ -175,6 +199,14 @@ inline QImage uCvMat2QImage(
 					}
 				}
 			}
+			if(depthMax > 0 && depthMax > depthMin)
+			{
+				max = depthMax*1000;
+			}
+			if(depthMin>0 && (depthMin < depthMax || depthMin*1000 < max))
+			{
+				min = depthMin*1000;
+			}
 		}
 
 		qtemp = QImage(image.cols, image.rows, QImage::Format_Indexed8);
@@ -183,21 +215,25 @@ inline QImage uCvMat2QImage(
 			for(int x = 0; x < image.cols; ++x)
 			{
 				uchar * p = qtemp.scanLine (y) + x;
-				if(data[x] < min || data[x] > max || !uIsFinite(data[x]) || max == min)
+				if(!uIsFinite(data[x]) || max == min || data[x]==0)
 				{
 					*p = 0;
 				}
+				else if(data[x] < min)
+				{
+					*p = 255;
+				}
+				else if(data[x] > max)
+				{
+					*p = 1;
+				}
 				else
 				{
-					*p = uchar(std::max(0.0f, std::min(255.0f, 255.0f - (float(data[x]-min)/float(max-min))*255.0f)));
-					if(*p == 255)
-					{
-						*p = 0;
-					}
+					*p = uchar(std::max(1.0f, std::min(255.0f, 255.0f - (float(data[x]-min)/float(max-min))*255.0f)));
 				}
 				if(*p!=0 && (colorMap == uCvQtDepthBlackToWhite || colorMap == uCvQtDepthRedToBlue))
 				{
-					*p = 255-*p;
+					*p = 255-*p+1;
 				}
 			}
 		}

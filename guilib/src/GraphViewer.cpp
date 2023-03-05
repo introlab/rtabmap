@@ -129,6 +129,13 @@ public:
 			break;
 		}
 		_pose=pose;
+		float r,p,yaw;
+		_pose.getEulerAngles(r, p, yaw);
+		if(_line)
+		{
+			float radius = this->rect().width()/2.0f;
+			_line->setLine(0,0,-radius*sin(yaw),-radius*cos(yaw));
+		}
 	}
 
 protected:
@@ -1704,16 +1711,9 @@ void GraphViewer::setOrientationENU(bool enabled)
 		_orientationENU = enabled;
 		this->rotate(_orientationENU?90:270);
 	}
-	if(_orientationENU)
-	{
-		QTransform t;
-		t.rotateRadians(_worldMapRotation);
-		_root->setTransform(t);
-	}
-	else
-	{
-		_root->resetTransform();
-	}
+	QTransform t;
+	t.rotateRadians(_worldMapRotation);
+	_root->setTransform(t);
 	if(_nodeItems.size() || _linkItems.size())
 	{
 		this->scene()->setSceneRect(this->scene()->itemsBoundingRect());  // Re-shrink the scene to it's bounding contents

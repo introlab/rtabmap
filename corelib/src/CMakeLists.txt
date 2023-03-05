@@ -143,20 +143,29 @@ IF(MSVC)
 ENDIF(MSVC)
 
 SET(INCLUDE_DIRS
-    ${CMAKE_CURRENT_BINARY_DIR}/../include
-    ${PROJECT_SOURCE_DIR}/utilite/include
-	${CMAKE_CURRENT_SOURCE_DIR}/../include
-	${CMAKE_CURRENT_SOURCE_DIR}
-	${CMAKE_CURRENT_BINARY_DIR}
-    ${OpenCV_INCLUDE_DIRS}
-	${PCL_INCLUDE_DIRS}
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include
+    ${CMAKE_CURRENT_BINARY_DIR}
+    ${CMAKE_CURRENT_BINARY_DIR}/include
 	${ZLIB_INCLUDE_DIRS}
 )
 
+SET(PUBLIC_INCLUDE_DIRS
+ 	${OpenCV_INCLUDE_DIRS}
+ 	${PCL_INCLUDE_DIRS}
+)
+
 SET(LIBRARIES
-	${OpenCV_LIBS} 
-	${PCL_LIBRARIES} 
-	${ZLIB_LIBRARIES} 
+	${ZLIB_LIBRARIES}
+)
+
+# Issue that qhull dependency uses optimized and debug keywords,
+# which are converted to \$<\$<NOT:\$<CONFIG:DEBUG>> and \$<\$<CONFIG:DEBUG>
+# in RTABMap_coreTargets.cmake (not sure why?!).
+list(REMOVE_ITEM PCL_LIBRARIES "debug" "optimized")
+SET(PUBLIC_LIBRARIES
+	${OpenCV_LIBS}
+	${PCL_LIBRARIES}
 )
 
 IF(Sqlite3_FOUND)
@@ -264,18 +273,18 @@ IF(KinectSDK2_FOUND)
 ENDIF(KinectSDK2_FOUND)
 
 IF(k4a_FOUND)
-	SET(INCLUDE_DIRS
-		${INCLUDE_DIRS}
+	SET(PUBLIC_INCLUDE_DIRS
+		${PUBLIC_INCLUDE_DIRS}
 		${k4a_INCLUDE_DIRS}
 	)
 	IF(WIN32)
-	    SET(LIBRARIES
-			${LIBRARIES}
+	    SET(PUBLIC_LIBRARIES
+			${PUBLIC_LIBRARIES}
 			${k4a_LIBRARIES}
 		)
 	ELSE()
-		SET(LIBRARIES
-			${LIBRARIES}
+		SET(PUBLIC_LIBRARIES
+			${PUBLIC_LIBRARIES}
 			k4a::k4a 
 			k4a::k4arecord
 		)
@@ -294,23 +303,23 @@ IF(RealSense_FOUND)
 ENDIF(RealSense_FOUND)
 
 IF(realsense2_FOUND)
-	SET(INCLUDE_DIRS
-		${INCLUDE_DIRS}
+	SET(PUBLIC_INCLUDE_DIRS
+		${PUBLIC_INCLUDE_DIRS}
 		${realsense2_INCLUDE_DIRS}
 	)
 	IF(WIN32)
-	    SET(LIBRARIES
-			${LIBRARIES}
+	    SET(PUBLIC_LIBRARIES
+			${PUBLIC_LIBRARIES}
 			${RealSense2_LIBRARIES}
 		)
 	ELSEIF(APPLE)
-	    SET(LIBRARIES
-			${LIBRARIES}
+	    SET(PUBLIC_LIBRARIES
+			${PUBLIC_LIBRARIES}
 			${realsense2_LIBRARIES}
 		)
 	ELSE()
-		SET(LIBRARIES
-			${LIBRARIES}
+		SET(PUBLIC_LIBRARIES
+			${PUBLIC_LIBRARIES}
 			realsense2::realsense2 # target
 		)
 	ENDIF()
@@ -387,7 +396,7 @@ IF(G2O_FOUND)
           g2o::csparse_extension)
       ENDIF(TARGET g2o::solver_csparse)
       IF(TARGET g2o::solver_cholmod)
-        SET(LIBRARIES ${LIBRARIES} 
+        SET(LIBRARIES ${LIBRARIES}
           g2o::solver_cholmod)
       ENDIF(TARGET g2o::solver_cholmod)
 	ELSE()
@@ -559,12 +568,12 @@ IF(ZEDOC_FOUND)
 ENDIF(ZEDOC_FOUND)
 
 IF(octomap_FOUND)
-    SET(INCLUDE_DIRS
-		${INCLUDE_DIRS}
+    SET(PUBLIC_INCLUDE_DIRS
+		${PUBLIC_INCLUDE_DIRS}
 		${OCTOMAP_INCLUDE_DIRS}
 	)
-	SET(LIBRARIES
-		${LIBRARIES}
+	SET(PUBLIC_LIBRARIES
+		${PUBLIC_LIBRARIES}
 		${OCTOMAP_LIBRARIES}
 	)
 	SET(SRC_FILES
@@ -752,30 +761,63 @@ INCLUDE_DIRECTORIES(${INCLUDE_DIRS})
 # Add binary that is built from the source file "main.cpp".
 # The extension is automatically found.
 ADD_LIBRARY(rtabmap_core ${SRC_FILES} ${RESOURCES_HEADERS})
-TARGET_LINK_LIBRARIES(rtabmap_core rtabmap_utilite ${LIBRARIES})
+ADD_LIBRARY(rtabmap::core ALIAS rtabmap_core)
+
+generate_export_header(rtabmap_core
+ DEPRECATED_MACRO_NAME RTABMAP_DEPRECATED)
+
+target_include_directories(rtabmap_core PUBLIC 
+  "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../include;${CMAKE_CURRENT_BINARY_DIR}/include;${PUBLIC_INCLUDE_DIRS}>"
+  "$<INSTALL_INTERFACE:${INSTALL_INCLUDE_DIR};${PUBLIC_INCLUDE_DIRS}>")
+  
+TARGET_LINK_LIBRARIES(rtabmap_core 
+  PUBLIC 
+    rtabmap_utilite 
+    ${PUBLIC_LIBRARIES}
+  PRIVATE 
+    ${LIBRARIES})
 
 SET_TARGET_PROPERTIES(
      rtabmap_core
    PROPERTIES
      VERSION ${RTABMAP_VERSION}
      SOVERSION ${RTABMAP_MAJOR_VERSION}.${RTABMAP_MINOR_VERSION}
+     EXPORT_NAME "core"
 )
 
-INSTALL(TARGETS rtabmap_core
+INSTALL(TARGETS rtabmap_core EXPORT rtabmap_coreTargets
         RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}" COMPONENT runtime
         LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}" COMPONENT devel
         ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}" COMPONENT devel)
-		
-install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/../include/ 
-		DESTINATION "${INSTALL_INCLUDE_DIR}"
-		COMPONENT devel 
-		FILES_MATCHING PATTERN "*.h" PATTERN "*.hpp" 
-		PATTERN ".svn" EXCLUDE)
-		
-# For generated Version.h
-install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/../include/ 
-        DESTINATION "${INSTALL_INCLUDE_DIR}"
-        COMPONENT devel 
-        FILES_MATCHING PATTERN "*.h" PATTERN "*.hpp" 
-        PATTERN ".svn" EXCLUDE)
+        
+configure_file(
+  ${CMAKE_CURRENT_BINARY_DIR}/rtabmap_core_export.h
+  ${CMAKE_CURRENT_BINARY_DIR}/include/${PROJECT_PREFIX}/core/rtabmap_core_export.h
+  COPYONLY)
+  
+install(
+  DIRECTORY
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/${PROJECT_PREFIX}
+    ${CMAKE_CURRENT_BINARY_DIR}/include/${PROJECT_PREFIX}
+  DESTINATION
+    ${INSTALL_INCLUDE_DIR}
+  COMPONENT
+    devel
+  FILES_MATCHING PATTERN "*.h" PATTERN "*.hpp"
+)
 
+export(EXPORT rtabmap_coreTargets
+  FILE "${CMAKE_CURRENT_BINARY_DIR}/../../${PROJECT_NAME}_coreTargets.cmake"
+  NAMESPACE rtabmap::
+)
+
+install(EXPORT rtabmap_coreTargets
+  FILE
+    ${PROJECT_NAME}_coreTargets.cmake
+  DESTINATION
+    ${INSTALL_CMAKE_DIR}
+  NAMESPACE rtabmap::
+  COMPONENT
+    devel
+)
+	

@@ -1,31 +1,7 @@
 
-SET(RTABMap_INCLUDE_DIRS 
-    ${PROJECT_BINARY_DIR}/corelib/include
-    ${PROJECT_SOURCE_DIR}/utilite/include
-	${PROJECT_SOURCE_DIR}/corelib/include
-)
-SET(RTABMap_LIBRARIES 
-    rtabmap_core
-	rtabmap_utilite
-)  
-
-SET(INCLUDE_DIRS
-	${RTABMap_INCLUDE_DIRS}
-    ${OpenCV_INCLUDE_DIRS}
-    ${PCL_INCLUDE_DIRS}
-)
-
-SET(LIBRARIES
-	${RTABMap_LIBRARIES}
-	${OpenCV_LIBRARIES}
-	${PCL_LIBRARIES}
-)
-
-INCLUDE_DIRECTORIES(${INCLUDE_DIRS})
-
 ADD_EXECUTABLE(export main.cpp)
   
-TARGET_LINK_LIBRARIES(export ${LIBRARIES})
+TARGET_LINK_LIBRARIES(export rtabmap_core)
 
 SET_TARGET_PROPERTIES( export 
   PROPERTIES OUTPUT_NAME ${PROJECT_PREFIX}-export)

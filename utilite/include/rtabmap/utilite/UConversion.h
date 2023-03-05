@@ -20,7 +20,7 @@
 #ifndef UCONVERSION_H
 #define UCONVERSION_H
 
-#include "rtabmap/utilite/UtiLiteExp.h" // DLL export/import defines
+#include "rtabmap/utilite/utilite_export.h" // DLL export/import defines
 
 #include <string>
 #include <vector>
@@ -48,7 +48,7 @@
  * @param after the new character replacing the old one
  * @return the modified string
  */
-std::string UTILITE_EXP uReplaceChar(const std::string & str, char before, char after);
+std::string UTILITE_EXPORT uReplaceChar(const std::string & str, char before, char after);
 
 /**
  * Replace old characters in a string with the specified string.
@@ -64,7 +64,7 @@ std::string UTILITE_EXP uReplaceChar(const std::string & str, char before, char 
  * @param after the new string replacing the old character
  * @return the modified string
  */
-std::string UTILITE_EXP uReplaceChar(const std::string & str, char before, const std::string & after);
+std::string UTILITE_EXPORT uReplaceChar(const std::string & str, char before, const std::string & after);
 
 /**
  * Transform characters from a string to upper case.
@@ -77,7 +77,7 @@ std::string UTILITE_EXP uReplaceChar(const std::string & str, char before, const
  * @param str the string
  * @return the modified string
  */
-std::string UTILITE_EXP uToUpperCase(const std::string & str);
+std::string UTILITE_EXPORT uToUpperCase(const std::string & str);
 
 /**
  * Transform characters from a string to lower case.
@@ -90,53 +90,53 @@ std::string UTILITE_EXP uToUpperCase(const std::string & str);
  * @param str the string
  * @return the modified string
  */
-std::string UTILITE_EXP uToLowerCase(const std::string & str);
+std::string UTILITE_EXPORT uToLowerCase(const std::string & str);
 
 /**
  * Convert a number (unsigned int) to a string.
  * @param number the number to convert in a string
  * @return the string
  */
-std::string UTILITE_EXP uNumber2Str(unsigned int number);
+std::string UTILITE_EXPORT uNumber2Str(unsigned int number);
 /**
  * Convert a number (int) to a string.
  * @param number the number to convert in a string
  * @return the string
  */
-std::string UTILITE_EXP uNumber2Str(int number);
+std::string UTILITE_EXPORT uNumber2Str(int number);
 /**
  * Convert a number (float) to a string.
  * @param number the number to convert in a string
  * @return the string
  */
-std::string UTILITE_EXP uNumber2Str(float number, int precision=6, bool fixed = false);
+std::string UTILITE_EXPORT uNumber2Str(float number, int precision=6, bool fixed = false);
 /**
  * Convert a number (double) to a string.
  * @param number the number to convert in a string
  * @return the string
  */
-std::string UTILITE_EXP uNumber2Str(double number, int precision=6, bool fixed = false);
+std::string UTILITE_EXPORT uNumber2Str(double number, int precision=6, bool fixed = false);
 
 /**
  * Convert a string to an integer.
  * @param the string
  * @return the number
  */
-int UTILITE_EXP uStr2Int(const std::string & str);
+int UTILITE_EXPORT uStr2Int(const std::string & str);
 
 /**
  * Convert a string to a float independent of the locale (comma/dot).
  * @param the string
  * @return the number
  */
-float UTILITE_EXP uStr2Float(const std::string & str);
+float UTILITE_EXPORT uStr2Float(const std::string & str);
 
 /**
  * Convert a string to a double independent of the locale (comma/dot).
  * @param the string
  * @return the number
  */
-double UTILITE_EXP uStr2Double(const std::string & str);
+double UTILITE_EXPORT uStr2Double(const std::string & str);
 
 
 /**
@@ -145,7 +145,7 @@ double UTILITE_EXP uStr2Double(const std::string & str);
  * @param boolean the boolean to convert in a string
  * @return the string
  */
-std::string UTILITE_EXP uBool2Str(bool boolean);
+std::string UTILITE_EXPORT uBool2Str(bool boolean);
 /**
  * Convert a string to a boolean.
  * The format used is :
@@ -153,22 +153,22 @@ std::string UTILITE_EXP uBool2Str(bool boolean);
  * @param str the string to convert in a boolean
  * @return the boolean
  */
-bool UTILITE_EXP uStr2Bool(const char * str);
-bool UTILITE_EXP uStr2Bool(const std::string & str);
+bool UTILITE_EXPORT uStr2Bool(const char * str);
+bool UTILITE_EXPORT uStr2Bool(const std::string & str);
 
 /**
  * Convert a string to an array of bytes including the null character ('\0').
  * @param str the string
  * @return the array of bytes
  */
-std::vector<unsigned char> UTILITE_EXP uStr2Bytes(const std::string & str);
+std::vector<unsigned char> UTILITE_EXPORT uStr2Bytes(const std::string & str);
 
 /**
  * Convert an array of bytes to string, the array of bytes must end with the null character ('\0').
  * @param bytes the array of bytes
  * @return the string
  */
-std::string UTILITE_EXP uBytes2Str(const std::vector<unsigned char> & bytes);
+std::string UTILITE_EXPORT uBytes2Str(const std::vector<unsigned char> & bytes);
 
 /**
  * Convert a bytes array to an hexadecimal string.
@@ -185,7 +185,7 @@ std::string UTILITE_EXP uBytes2Str(const std::vector<unsigned char> & bytes);
  * @param bytesLen the length of the bytes array
  * @return the hexadecimal string
  */
-std::string UTILITE_EXP uBytes2Hex(const char * bytes, unsigned int bytesLen);
+std::string UTILITE_EXPORT uBytes2Hex(const char * bytes, unsigned int bytesLen);
 /**
  * Convert an hexadecimal string to a bytes array.
  * The string must be pair length. The hexadecimal
@@ -200,7 +200,7 @@ std::string UTILITE_EXP uBytes2Hex(const char * bytes, unsigned int bytesLen);
  * @param hex the hexadecimal string
  * @return the bytes array
  */
-std::vector<char> UTILITE_EXP uHex2Bytes(const std::string & hex);
+std::vector<char> UTILITE_EXPORT uHex2Bytes(const std::string & hex);
 /**
  * Convert an hexadecimal string to a bytes array.
  * The string must be pair length. The hexadecimal
@@ -215,7 +215,7 @@ std::vector<char> UTILITE_EXP uHex2Bytes(const std::string & hex);
  * @param bytesLen the hexadecimal string length
  * @return the bytes array
  */
-std::vector<char> UTILITE_EXP uHex2Bytes(const char * hex, int hexLen);
+std::vector<char> UTILITE_EXPORT uHex2Bytes(const char * hex, int hexLen);
 
 /**
  * Convert an hexadecimal string to an ascii string. A convenient way
@@ -233,7 +233,7 @@ std::vector<char> UTILITE_EXP uHex2Bytes(const char * hex, int hexLen);
  * @param hex the hexadecimal string
  * @return the ascii string
  */
-std::string UTILITE_EXP uHex2Str(const std::string & hex);
+std::string UTILITE_EXPORT uHex2Str(const std::string & hex);
 
 /**
  * Convert hexadecimal (left or right part) value to an ascii character.
@@ -247,7 +247,7 @@ std::string UTILITE_EXP uHex2Str(const std::string & hex);
  * @param rightPart If we want the character corresponding to the right of left part (4 bits) of the byte value.
  * @return the ascii character (in upper case)
  */
-unsigned char UTILITE_EXP uHex2Ascii(const unsigned char & c, bool rightPart);
+unsigned char UTILITE_EXPORT uHex2Ascii(const unsigned char & c, bool rightPart);
 
 /**
  * Convert an ascii character to an hexadecimal value (right 4 bits).
@@ -261,30 +261,30 @@ unsigned char UTILITE_EXP uHex2Ascii(const unsigned char & c, bool rightPart);
  * @param c the ascii character
  * @return the hexadecimal value
  */
-unsigned char UTILITE_EXP uAscii2Hex(const unsigned char & c);
+unsigned char UTILITE_EXPORT uAscii2Hex(const unsigned char & c);
 
 /**
  * Format a string like printf, and return it as a std::string
  */
-std::string UTILITE_EXP uFormatv (const char *fmt, va_list ap);
+std::string UTILITE_EXPORT uFormatv (const char *fmt, va_list ap);
 
 /**
  * Format a string like printf, and return it as a std::string
  */
-std::string UTILITE_EXP uFormat (const char *fmt, ...);
+std::string UTILITE_EXPORT uFormat (const char *fmt, ...);
 
 #ifdef _WIN32
 /**
  * Convert multi-byte string to unicode (wide-char) string.
  * Note that returned whar_t * must be deleted : delete [] wText;
  */
-UTILITE_EXP wchar_t * createWCharFromChar(const char * text);
+UTILITE_EXPORT wchar_t * createWCharFromChar(const char * text);
 
 /**
  * Convert unicode (wide-char) string to multi-byte string.
  * Note that returned char * must be deleted : delete [] text;
  */
-UTILITE_EXP char * createCharFromWChar(const wchar_t * wText);
+UTILITE_EXPORT char * createCharFromWChar(const wchar_t * wText);
 #endif
 
 #endif /* UCONVERSION_H */

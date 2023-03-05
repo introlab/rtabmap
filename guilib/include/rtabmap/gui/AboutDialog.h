@@ -28,7 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef RTABMAP_ABOUTDIALOG_H_
 #define RTABMAP_ABOUTDIALOG_H_
 
-#include "rtabmap/gui/RtabmapGuiExp.h" // DLL export/import defines
+#include "rtabmap/gui/rtabmap_gui_export.h" // DLL export/import defines
 
 #include <QDialog>
 #include <QtCore/QUrl>
@@ -37,7 +37,7 @@ class Ui_aboutDialog;
 
 namespace rtabmap {
 
-class RTABMAPGUI_EXP AboutDialog : public QDialog
+class RTABMAP_GUI_EXPORT AboutDialog : public QDialog
 {
 	Q_OBJECT
 

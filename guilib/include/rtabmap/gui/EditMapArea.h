@@ -28,7 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef RTABMAP_EDITMAPAREA_H
 #define RTABMAP_EDITMAPAREA_H
 
-#include "rtabmap/gui/RtabmapGuiExp.h" // DLL export/import defines
+#include "rtabmap/gui/rtabmap_gui_export.h" // DLL export/import defines
 
 #include <QColor>
 #include <QImage>
@@ -42,7 +42,7 @@ class QAction;
 
 namespace rtabmap {
 
-class RTABMAPGUI_EXP EditMapArea : public QWidget
+class RTABMAP_GUI_EXPORT EditMapArea : public QWidget
 {
     Q_OBJECT
 

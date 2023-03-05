@@ -27,7 +27,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #pragma once
 
-#include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
+#include "rtabmap/core/rtabmap_core_export.h" // DLL export/import defines
 #include "rtabmap/core/Parameters.h"
 #include "rtabmap/utilite/UStl.h"
 #include <opencv2/core/core.hpp>
@@ -42,7 +42,7 @@ namespace rtabmap
 
 class Signature;
 
-class RTABMAP_EXP EpipolarGeometry
+class RTABMAP_CORE_EXPORT EpipolarGeometry
 {
 public:
 	EpipolarGeometry(const ParametersMap & parameters = ParametersMap());

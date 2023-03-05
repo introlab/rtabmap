@@ -28,7 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef RTABMAP_CREATESIMPLECALIBRATIONDIALOG_H_
 #define RTABMAP_CREATESIMPLECALIBRATIONDIALOG_H_
 
-#include "rtabmap/gui/RtabmapGuiExp.h" // DLL export/import defines
+#include "rtabmap/gui/rtabmap_gui_export.h" // DLL export/import defines
 
 #include <QDialog>
 #include <QSettings>
@@ -37,7 +37,7 @@ class Ui_createSimpleCalibrationDialog;
 
 namespace rtabmap {
 
-class RTABMAPGUI_EXP CreateSimpleCalibrationDialog : public QDialog
+class RTABMAP_GUI_EXPORT CreateSimpleCalibrationDialog : public QDialog
 {
 	Q_OBJECT
 

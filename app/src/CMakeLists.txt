@@ -3,32 +3,6 @@ SET(SRC_FILES
     main.cpp
 )
 
-SET(INCLUDE_DIRS
-    ${PROJECT_BINARY_DIR}/corelib/include
-	${PROJECT_SOURCE_DIR}/utilite/include
-	${PROJECT_SOURCE_DIR}/corelib/include
-	${PROJECT_SOURCE_DIR}/guilib/include
-    ${CMAKE_CURRENT_SOURCE_DIR}
-    ${OpenCV_INCLUDE_DIRS}
-    ${PCL_INCLUDE_DIRS}
-)
-
-IF(QT4_FOUND)
-    INCLUDE(${QT_USE_FILE})
-ENDIF(QT4_FOUND)
-
-SET(LIBRARIES
-    ${QT_LIBRARIES} 
-    ${OpenCV_LIBS}
-    ${PCL_LIBRARIES}
-)
-
-# rc.exe has problems with these defintions... commented!
-#add_definitions(${PCL_DEFINITIONS})
-
-# Make sure the compiler can find include files from our library.
-INCLUDE_DIRECTORIES(${INCLUDE_DIRS})
-
 # For Apple set the icns file containing icons
 IF(APPLE AND BUILD_AS_BUNDLE)
   # set how it shows up in the Info.plist file
@@ -54,36 +28,29 @@ ENDIF(WIN32)
 
 # Add binary
 IF(APPLE AND BUILD_AS_BUNDLE)
-  ADD_EXECUTABLE(rtabmap MACOSX_BUNDLE ${SRC_FILES})
+  ADD_EXECUTABLE(rtabmap_app MACOSX_BUNDLE ${SRC_FILES})
 ELSEIF(MINGW)
-  ADD_EXECUTABLE(rtabmap WIN32 ${SRC_FILES})
+  ADD_EXECUTABLE(rtabmap_app WIN32 ${SRC_FILES})
 ELSE()
-  ADD_EXECUTABLE(rtabmap ${SRC_FILES})
+  ADD_EXECUTABLE(rtabmap_app ${SRC_FILES})
 ENDIF()
-TARGET_LINK_LIBRARIES(rtabmap rtabmap_core rtabmap_gui rtabmap_utilite ${LIBRARIES})
-IF(Qt5_FOUND)
-    IF(Qt5Svg_FOUND)
-        QT5_USE_MODULES(rtabmap Widgets Core Gui Svg PrintSupport)
-    ELSE()
-        QT5_USE_MODULES(rtabmap Widgets Core Gui PrintSupport)
-    ENDIF()
-ENDIF(Qt5_FOUND)
+TARGET_LINK_LIBRARIES(rtabmap_app rtabmap_gui)
 
 IF(APPLE AND BUILD_AS_BUNDLE)
-  SET_TARGET_PROPERTIES(rtabmap PROPERTIES
+  SET_TARGET_PROPERTIES(rtabmap_app PROPERTIES
     OUTPUT_NAME ${CMAKE_BUNDLE_NAME})
 ELSEIF(WIN32)
-  SET_TARGET_PROPERTIES(rtabmap PROPERTIES
+  SET_TARGET_PROPERTIES(rtabmap_app PROPERTIES
     OUTPUT_NAME ${PROJECT_NAME})
 ELSE()
-  SET_TARGET_PROPERTIES(rtabmap PROPERTIES
+  SET_TARGET_PROPERTIES(rtabmap_app PROPERTIES
     OUTPUT_NAME ${PROJECT_PREFIX})
 ENDIF()
 
 #---------------------------
 # Installation stuff
 #--------------------------- 
-INSTALL(TARGETS rtabmap
+INSTALL(TARGETS rtabmap_app
         RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}" COMPONENT runtime
         BUNDLE DESTINATION "${CMAKE_BUNDLE_LOCATION}" COMPONENT runtime)
       

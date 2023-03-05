@@ -28,7 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef RTABMAP_KEYPOINTITEM_H_
 #define RTABMAP_KEYPOINTITEM_H_
 
-#include "rtabmap/gui/RtabmapGuiExp.h" // DLL export/import defines
+#include "rtabmap/gui/rtabmap_gui_export.h" // DLL export/import defines
 
 #include <QGraphicsEllipseItem>
 #include <QGraphicsTextItem>
@@ -38,7 +38,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 namespace rtabmap {
 
-class RTABMAPGUI_EXP KeypointItem : public QGraphicsEllipseItem
+class RTABMAP_GUI_EXPORT KeypointItem : public QGraphicsEllipseItem
 {
 public:
 	KeypointItem(int id, const cv::KeyPoint & kpt, float depth = 0, const QColor & color = Qt::green, QGraphicsItem * parent = 0);

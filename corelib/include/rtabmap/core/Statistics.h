@@ -28,7 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef STATISTICS_H_
 #define STATISTICS_H_
 
-#include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
+#include "rtabmap/core/rtabmap_core_export.h" // DLL export/import defines
 
 #include <opencv2/core/core.hpp>
 #include <opencv2/features2d/features2d.hpp>
@@ -50,7 +50,7 @@ namespace rtabmap {
 		}; \
 		Dummy##PREFIX##NAME dummy##PREFIX##NAME
 
-class RTABMAP_EXP Statistics
+class RTABMAP_CORE_EXPORT Statistics
 {
 	RTABMAP_STATS(Loop, Id,); // Combined loop or proximity detection
 	RTABMAP_STATS(Loop, RejectedHypothesis,);
@@ -67,7 +67,7 @@ class RTABMAP_EXP Statistics
 	RTABMAP_STATS(Loop, Visual_inliers,);
 	RTABMAP_STATS(Loop, Visual_inliers_ratio,);
 	RTABMAP_STATS(Loop, Visual_matches,);
-	RTABMAP_STATS(Loop, Distance_since_last_loc,);
+	RTABMAP_STATS(Loop, Distance_since_last_loc, m);
 	RTABMAP_STATS(Loop, Last_id,);
 	RTABMAP_STATS(Loop, Optimization_max_error, m);
 	RTABMAP_STATS(Loop, Optimization_max_error_ratio, );
@@ -90,15 +90,6 @@ class RTABMAP_EXP Statistics
 	RTABMAP_STATS(Loop, Odom_correction_roll, deg);
 	RTABMAP_STATS(Loop, Odom_correction_pitch, deg);
 	RTABMAP_STATS(Loop, Odom_correction_yaw, deg);
-	//Odom correction
-	RTABMAP_STATS(Loop, Odom_correction_acc_norm, m);
-	RTABMAP_STATS(Loop, Odom_correction_acc_angle, deg);
-	RTABMAP_STATS(Loop, Odom_correction_acc_x, m);
-	RTABMAP_STATS(Loop, Odom_correction_acc_y, m);
-	RTABMAP_STATS(Loop, Odom_correction_acc_z, m);
-	RTABMAP_STATS(Loop, Odom_correction_acc_roll, deg);
-	RTABMAP_STATS(Loop, Odom_correction_acc_pitch, deg);
-	RTABMAP_STATS(Loop, Odom_correction_acc_yaw, deg);
 	// Map to Odom
 	RTABMAP_STATS(Loop, MapToOdom_norm, m);
 	RTABMAP_STATS(Loop, MapToOdom_angle, deg);
@@ -160,6 +151,8 @@ class RTABMAP_EXP Statistics
 	RTABMAP_STATS(Memory, RAM_usage, MB);
 	RTABMAP_STATS(Memory, RAM_estimated, MB);
 	RTABMAP_STATS(Memory, Triangulated_points, );
+	RTABMAP_STATS(Memory, Closest_node_distance, m);
+	RTABMAP_STATS(Memory, Closest_node_angle, rad);
 
 	RTABMAP_STATS(Timing, Memory_update, ms);
 	RTABMAP_STATS(Timing, Neighbor_link_refining, ms);
@@ -243,7 +236,8 @@ public:
 	void setProximityDetectionMapId(int id) {_proximiyDetectionMapId = id;}
 	void setStamp(double stamp) {_stamp = stamp;}
 
-	RTABMAP_DEPRECATED(void setLastSignatureData(const Signature & data), "Use addSignatureData() instead.");
+	// Use addSignatureData() instead.
+	RTABMAP_DEPRECATED void setLastSignatureData(const Signature & data);
 	void addSignatureData(const Signature & data) {_signaturesData.insert(std::make_pair(data.id(), data));}
 	void setSignaturesData(const std::map<int, Signature> & data) {_signaturesData = data;}
 

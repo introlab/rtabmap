@@ -28,13 +28,13 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef CORELIB_INCLUDE_RTABMAP_CORE_LASERSCAN_H_
 #define CORELIB_INCLUDE_RTABMAP_CORE_LASERSCAN_H_
 
-#include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
+#include "rtabmap/core/rtabmap_core_export.h" // DLL export/import defines
 
 #include <rtabmap/core/Transform.h>
 
 namespace rtabmap {
 
-class RTABMAP_EXP LaserScan
+class RTABMAP_CORE_EXPORT LaserScan
 {
 public:
 	enum Format{kUnknown=0,
@@ -75,24 +75,26 @@ public:
 			int maxPoints,
 			float maxRange,
 			const Transform & localTransform = Transform::getIdentity());
-	RTABMAP_DEPRECATED(LaserScan(const LaserScan & data,
+	// Use version without \"format\" argument.
+	RTABMAP_DEPRECATED LaserScan(const LaserScan & data,
 			int maxPoints,
 			float maxRange,
 			Format format,
-			const Transform & localTransform = Transform::getIdentity()), "Use version without \"format\" argument.");
+			const Transform & localTransform = Transform::getIdentity());
 	LaserScan(const cv::Mat & data,
 			int maxPoints,
 			float maxRange,
 			Format format,
 			const Transform & localTransform = Transform::getIdentity());
-	RTABMAP_DEPRECATED(LaserScan(const LaserScan & data,
+	// Use version without \"format\" argument.
+	RTABMAP_DEPRECATED LaserScan(const LaserScan & data,
 			Format format,
 			float minRange,
 			float maxRange,
 			float angleMin,
 			float angleMax,
 			float angleIncrement,
-			const Transform & localTransform = Transform::getIdentity()), "Use version without \"format\" argument.");
+			const Transform & localTransform = Transform::getIdentity());
 	LaserScan(const LaserScan & data,
 			float minRange,
 			float maxRange,

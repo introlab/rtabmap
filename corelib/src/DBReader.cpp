@@ -54,7 +54,8 @@ DBReader::DBReader(const std::string & databasePath,
 				   bool landmarksIgnored,
 				   bool featuresIgnored,
 				   int startMapId,
-				   int stopMapId) :
+				   int stopMapId,
+				   bool priorsIgnored) :
 	Camera(frameRate),
 	_paths(uSplit(databasePath, ';')),
 	_odometryIgnored(odometryIgnored),
@@ -66,6 +67,7 @@ DBReader::DBReader(const std::string & databasePath,
 	_intermediateNodesIgnored(intermediateNodesIgnored),
 	_landmarksIgnored(landmarksIgnored),
 	_featuresIgnored(featuresIgnored),
+	_priorsIgnored(priorsIgnored),
 	_startMapId(startMapId),
 	_stopMapId(stopMapId),
 	_dbDriver(0),
@@ -98,7 +100,8 @@ DBReader::DBReader(const std::list<std::string> & databasePaths,
 				   bool landmarksIgnored,
 				   bool featuresIgnored,
 				   int startMapId,
-				   int stopMapId) :
+				   int stopMapId,
+				   bool priorsIgnored) :
 	Camera(frameRate),
    _paths(databasePaths),
 	_odometryIgnored(odometryIgnored),
@@ -110,6 +113,7 @@ DBReader::DBReader(const std::list<std::string> & databasePaths,
 	_intermediateNodesIgnored(intermediateNodesIgnored),
 	_landmarksIgnored(landmarksIgnored),
 	_featuresIgnored(featuresIgnored),
+	_priorsIgnored(priorsIgnored),
 	_startMapId(startMapId),
 	_stopMapId(stopMapId),
 	_dbDriver(0),
@@ -408,21 +412,24 @@ SensorData DBReader::getNextData(CameraInfo * info)
 			cv::Mat globalPoseCov;
 
 			std::multimap<int, Link> priorLinks;
-			_dbDriver->loadLinks(*_currentId, priorLinks, Link::kPosePrior);
-			if( priorLinks.size() &&
-				!priorLinks.begin()->second.transform().isNull() &&
-				priorLinks.begin()->second.infMatrix().cols == 6 &&
-				priorLinks.begin()->second.infMatrix().rows == 6)
+			if(!_priorsIgnored)
 			{
-				globalPose = priorLinks.begin()->second.transform();
-				globalPoseCov = priorLinks.begin()->second.infMatrix().inv();
-				if(data.gps().stamp() != 0.0 &&
-						globalPoseCov.at<double>(3,3)>=9999 &&
-						globalPoseCov.at<double>(4,4)>=9999 &&
-						globalPoseCov.at<double>(5,5)>=9999)
+				_dbDriver->loadLinks(*_currentId, priorLinks, Link::kPosePrior);
+				if( priorLinks.size() &&
+					!priorLinks.begin()->second.transform().isNull() &&
+					priorLinks.begin()->second.infMatrix().cols == 6 &&
+					priorLinks.begin()->second.infMatrix().rows == 6)
 				{
-					// clear global pose as GPS was used for prior
-					globalPose.setNull();
+					globalPose = priorLinks.begin()->second.transform();
+					globalPoseCov = priorLinks.begin()->second.infMatrix().inv();
+					if(data.gps().stamp() != 0.0 &&
+							globalPoseCov.at<double>(3,3)>=9999 &&
+							globalPoseCov.at<double>(4,4)>=9999 &&
+							globalPoseCov.at<double>(5,5)>=9999)
+					{
+						// clear global pose as GPS was used for prior
+						globalPose.setNull();
+					}
 				}
 			}
 
@@ -516,11 +523,13 @@ SensorData DBReader::getNextData(CameraInfo * info)
 				{
 					float ratio = -this->getImageRate();
 					int sleepTime = 1000.0*(s->getStamp()-_previousStamp)/ratio - 1000.0*_timer.getElapsedTime();
+					double stamp = s->getStamp();
 					if(sleepTime > 10000)
 					{
 						UWARN("Detected long delay (%d sec, stamps = %f vs %f). Waiting a maximum of 10 seconds.",
 								sleepTime/1000, _previousStamp, s->getStamp());
 						sleepTime = 10000;
+						stamp = _previousStamp+10;
 					}
 					if(sleepTime > 2)
 					{
@@ -528,14 +537,14 @@ SensorData DBReader::getNextData(CameraInfo * info)
 					}
 
 					// Add precision at the cost of a small overhead
-					while(_timer.getElapsedTime() < (s->getStamp()-_previousStamp)/ratio-0.000001)
+					while(_timer.getElapsedTime() < (stamp-_previousStamp)/ratio-0.000001)
 					{
 						//
 					}
 
 					double slept = _timer.getElapsedTime();
 					_timer.start();
-					UDEBUG("slept=%fs vs target=%fs (ratio=%f)", slept, (s->getStamp()-_previousStamp)/ratio, ratio);
+					UDEBUG("slept=%fs vs target=%fs (ratio=%f)", slept, (stamp-_previousStamp)/ratio, ratio);
 				}
 				_previousStamp = s->getStamp();
 				_previousMapID = s->mapId();

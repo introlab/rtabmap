@@ -42,7 +42,7 @@ class ORBSLAMSystem;
 
 namespace rtabmap {
 
-class RTABMAP_EXP OdometryORBSLAM : public Odometry
+class RTABMAP_CORE_EXPORT OdometryORBSLAM : public Odometry
 {
 public:
 	OdometryORBSLAM(const rtabmap::ParametersMap & parameters = rtabmap::ParametersMap());

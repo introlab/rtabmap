@@ -176,7 +176,8 @@ ImageView::ImageView(QWidget * parent) :
 		_defaultFeatureColor(Qt::yellow),
 		_defaultMatchingFeatureColor(Qt::magenta),
 		_defaultMatchingLineColor(Qt::cyan),
-		_depthColorMapRange(0),
+		_depthColorMapMinRange(0),
+		_depthColorMapMaxRange(0),
 		_imageItem(0),
 		_imageDepthItem(0)
 {
@@ -259,13 +260,14 @@ ImageView::ImageView(QWidget * parent) :
 	_colorMapBlueToRed = colorMap->addAction(tr("Blue to red"));
 	_colorMapBlueToRed->setCheckable(true);
 	_colorMapBlueToRed->setChecked(false);
-	_colorMapRange = colorMap->addAction(tr("Max Range..."));
+	_colorMapMinRange = colorMap->addAction(tr("Min Range..."));
+	_colorMapMaxRange = colorMap->addAction(tr("Max Range..."));
 	group = new QActionGroup(this);
 	group->addAction(_colorMapWhiteToBlack);
 	group->addAction(_colorMapBlackToWhite);
 	group->addAction(_colorMapRedToBlue);
 	group->addAction(_colorMapBlueToRed);
-	group->addAction(_colorMapRange);
+	group->addAction(_colorMapMaxRange);
 	_saveImage = _menu->addAction(tr("Save picture..."));
 	_saveImage->setEnabled(false);
 
@@ -297,7 +299,8 @@ void ImageView::saveSettings(QSettings & settings, const QString & group) const
 	settings.setValue("graphics_view_scale", this->isGraphicsViewScaled());
 	settings.setValue("graphics_view_scale_to_height", this->isGraphicsViewScaledToHeight());
 	settings.setValue("colormap", _colorMapWhiteToBlack->isChecked()?0:_colorMapBlackToWhite->isChecked()?1:_colorMapRedToBlue->isChecked()?2:3);
-	settings.setValue("colormap_range", this->getDepthColorMapRange());
+	settings.setValue("colormap_min_range", this->getDepthColorMapMinRange());
+	settings.setValue("colormap_max_range", this->getDepthColorMapMaxRange());
 	if(!group.isEmpty())
 	{
 		settings.endGroup();
@@ -329,7 +332,9 @@ void ImageView::loadSettings(QSettings & settings, const QString & group)
 	_colorMapBlackToWhite->setChecked(colorMap==1);
 	_colorMapRedToBlue->setChecked(colorMap==2);
 	_colorMapBlueToRed->setChecked(colorMap==3);
-	this->setDepthColorMapRange(settings.value("colormap_range", this->getDepthColorMapRange()).toFloat());
+	this->setDepthColorMapRange(
+			settings.value("colormap_min_range", this->getDepthColorMapMinRange()).toFloat(),
+			settings.value("colormap_max_range", settings.value("colormap_range" /*backward compatibility*/, this->getDepthColorMapMaxRange())).toFloat());
 	if(!group.isEmpty())
 	{
 		settings.endGroup();
@@ -393,9 +398,14 @@ const QColor & ImageView::getBackgroundColor() const
 	return _graphicsView->backgroundBrush().color();
 }
 
-float ImageView::getDepthColorMapRange() const
+float ImageView::getDepthColorMapMinRange() const
 {
-	return _depthColorMapRange;
+	return _depthColorMapMinRange;
+}
+
+float ImageView::getDepthColorMapMaxRange() const
+{
+	return _depthColorMapMaxRange;
 }
 
 uCvQtDepthColorMap ImageView::getDepthColorMap() const
@@ -695,9 +705,10 @@ void ImageView::setBackgroundColor(const QColor & color)
 	}
 }
 
-void ImageView::setDepthColorMapRange(float value)
+void ImageView::setDepthColorMapRange(float min, float max)
 {
-	_depthColorMapRange = value;
+	_depthColorMapMinRange = min;
+	_depthColorMapMaxRange = max;
 }
 
 
@@ -974,13 +985,27 @@ void ImageView::contextMenuEvent(QContextMenuEvent * e)
 			this->setImageDepth(_imageDepthCv);
 		Q_EMIT configChanged();
 	}
-	else if(action == _colorMapRange)
+	else if(action == _colorMapMinRange)
 	{
 		bool ok = false;
-		double value = QInputDialog::getDouble(this, tr("Set depth colormap max range"), tr("Range (m), 0=no limit"), _depthColorMapRange, 0, 9999, 1, &ok);
+		double value = QInputDialog::getDouble(this, tr("Set depth colormap min range"), tr("Range (m), 0=no limit"), _depthColorMapMinRange, 0, 9999, 1, &ok);
 		if(ok)
 		{
-			this->setDepthColorMapRange(value);
+			this->setDepthColorMapRange(value, _depthColorMapMaxRange);
+			if(!_imageDepthCv.empty())
+				this->setImageDepth(_imageDepthCv);
+			Q_EMIT configChanged();
+		}
+	}
+	else if(action == _colorMapMaxRange)
+	{
+		bool ok = false;
+		double value = QInputDialog::getDouble(this, tr("Set depth colormap max range"), tr("Range (m), 0=no limit"), _depthColorMapMaxRange, 0, 9999, 1, &ok);
+		if(ok)
+		{
+			this->setDepthColorMapRange(_depthColorMapMinRange, value);
+			if(!_imageDepthCv.empty())
+				this->setImageDepth(_imageDepthCv);
 			Q_EMIT configChanged();
 		}
 	}
@@ -1171,7 +1196,7 @@ void ImageView::setImage(const QImage & image)
 void ImageView::setImageDepth(const cv::Mat & imageDepth)
 {
 	_imageDepthCv = imageDepth;
-	setImageDepth(uCvMat2QImage(_imageDepthCv, true, getDepthColorMap(), 0.0f, _depthColorMapRange));
+	setImageDepth(uCvMat2QImage(_imageDepthCv, true, getDepthColorMap(), _depthColorMapMinRange, _depthColorMapMaxRange));
 }
 
 void ImageView::setImageDepth(const QImage & imageDepth)

@@ -28,7 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef UTIL3D_MAPPING_H_
 #define UTIL3D_MAPPING_H_
 
-#include "rtabmap/core/RtabmapExp.h"
+#include "rtabmap/core/rtabmap_core_export.h"
 
 #include <opencv2/core/core.hpp>
 #include <map>
@@ -43,24 +43,26 @@ namespace rtabmap
 namespace util3d
 {
 
-RTABMAP_DEPRECATED(void RTABMAP_EXP occupancy2DFromLaserScan(
+// Use interface with \"viewpoint\" parameter to make sure the ray tracing origin is from the sensor and not the base.
+RTABMAP_DEPRECATED void RTABMAP_CORE_EXPORT occupancy2DFromLaserScan(
 		const cv::Mat & scan, // in /base_link frame
 		cv::Mat & empty,
 		cv::Mat & occupied,
 		float cellSize,
 		bool unknownSpaceFilled = false,
-		float scanMaxRange = 0.0f), "Use interface with \"viewpoint\" parameter to make sure the ray tracing origin is from the sensor and not the base.");
+		float scanMaxRange = 0.0f);
 
-RTABMAP_DEPRECATED(void RTABMAP_EXP occupancy2DFromLaserScan(
+// Use interface with scanHit/scanNoHit parameters: scanNoHit set to null matrix has the same functionality than this method.
+RTABMAP_DEPRECATED void RTABMAP_CORE_EXPORT occupancy2DFromLaserScan(
 		const cv::Mat & scan, // in /base_link frame
 		const cv::Point3f & viewpoint, // /base_link -> /base_scan
 		cv::Mat & empty,
 		cv::Mat & occupied,
 		float cellSize,
 		bool unknownSpaceFilled = false,
-		float scanMaxRange = 0.0f), "Use interface with scanHit/scanNoHit parameters: scanNoHit set to null matrix has the same functionality than this method.");
+		float scanMaxRange = 0.0f);
 
-void RTABMAP_EXP occupancy2DFromLaserScan(
+void RTABMAP_CORE_EXPORT occupancy2DFromLaserScan(
 		const cv::Mat & scanHit, // in /base_link frame
 		const cv::Mat & scanNoHit, // in /base_link frame
 		const cv::Point3f & viewpoint, // /base_link -> /base_scan
@@ -70,7 +72,7 @@ void RTABMAP_EXP occupancy2DFromLaserScan(
 		bool unknownSpaceFilled = false,
 		float scanMaxRange = 0.0f); // would be set if unknownSpaceFilled=true
 
-cv::Mat RTABMAP_EXP create2DMapFromOccupancyLocalMaps(
+cv::Mat RTABMAP_CORE_EXPORT create2DMapFromOccupancyLocalMaps(
 		const std::map<int, Transform> & poses,
 		const std::map<int, std::pair<cv::Mat, cv::Mat> > & occupancy,
 		float cellSize,
@@ -80,16 +82,18 @@ cv::Mat RTABMAP_EXP create2DMapFromOccupancyLocalMaps(
 		bool erode = false,
 		float footprintRadius = 0.0f);
 
-RTABMAP_DEPRECATED(cv::Mat RTABMAP_EXP create2DMap(const std::map<int, Transform> & poses,
+// Use interface with \"viewpoints\" parameter to make sure the ray tracing origin is from the sensor and not the base.
+RTABMAP_DEPRECATED cv::Mat RTABMAP_CORE_EXPORT create2DMap(const std::map<int, Transform> & poses,
 		const std::map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr > & scans, // in /base_link frame
 		float cellSize,
 		bool unknownSpaceFilled,
 		float & xMin,
 		float & yMin,
 		float minMapSize = 0.0f,
-		float scanMaxRange = 0.0f), "Use interface with \"viewpoints\" parameter to make sure the ray tracing origin is from the sensor and not the base.");
+		float scanMaxRange = 0.0f);
 
-RTABMAP_DEPRECATED(cv::Mat RTABMAP_EXP create2DMap(const std::map<int, Transform> & poses,
+// Use interface with cv::Mat scans.
+RTABMAP_DEPRECATED cv::Mat RTABMAP_CORE_EXPORT create2DMap(const std::map<int, Transform> & poses,
 		const std::map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr > & scans, // in /base_link frame
 		const std::map<int, cv::Point3f > & viewpoints, // /base_link -> /base_scan
 		float cellSize,
@@ -97,7 +101,7 @@ RTABMAP_DEPRECATED(cv::Mat RTABMAP_EXP create2DMap(const std::map<int, Transform
 		float & xMin,
 		float & yMin,
 		float minMapSize = 0.0f,
-		float scanMaxRange = 0.0f), "Use interface with cv::Mat scans.");
+		float scanMaxRange = 0.0f);
 
 /**
  * Create 2d Occupancy grid (CV_8S)
@@ -114,7 +118,7 @@ RTABMAP_DEPRECATED(cv::Mat RTABMAP_EXP create2DMap(const std::map<int, Transform
  * @param minMapSize minimum map size in meters
  * @param scanMaxRange laser scan maximum range, would be set if unknownSpaceFilled=true
  */
-cv::Mat RTABMAP_EXP create2DMap(const std::map<int, Transform> & poses,
+cv::Mat RTABMAP_CORE_EXPORT create2DMap(const std::map<int, Transform> & poses,
 		const std::map<int, std::pair<cv::Mat, cv::Mat> > & scans, // <id, <hit, no hit> >, in /base_link frame
 		const std::map<int, cv::Point3f > & viewpoints, // /base_link -> /base_scan
 		float cellSize,
@@ -124,15 +128,15 @@ cv::Mat RTABMAP_EXP create2DMap(const std::map<int, Transform> & poses,
 		float minMapSize = 0.0f,
 		float scanMaxRange = 0.0f); // would be set if unknownSpaceFilled=true
 
-void RTABMAP_EXP rayTrace(const cv::Point2i & start,
+void RTABMAP_CORE_EXPORT rayTrace(const cv::Point2i & start,
 		const cv::Point2i & end,
 		cv::Mat & grid,
 		bool stopOnObstacle);
 
-cv::Mat RTABMAP_EXP convertMap2Image8U(const cv::Mat & map8S, bool pgmFormat = false);
-cv::Mat RTABMAP_EXP convertImage8U2Map(const cv::Mat & map8U, bool pgmFormat = false);
+cv::Mat RTABMAP_CORE_EXPORT convertMap2Image8U(const cv::Mat & map8S, bool pgmFormat = false);
+cv::Mat RTABMAP_CORE_EXPORT convertImage8U2Map(const cv::Mat & map8U, bool pgmFormat = false);
 
-cv::Mat RTABMAP_EXP erodeMap(const cv::Mat & map);
+cv::Mat RTABMAP_CORE_EXPORT erodeMap(const cv::Mat & map);
 
 template<typename PointT>
 typename pcl::PointCloud<PointT>::Ptr projectCloudOnXYPlane(

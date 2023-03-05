@@ -28,7 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef CORELIB_SRC_GAINCOMPENSATOR_H_
 #define CORELIB_SRC_GAINCOMPENSATOR_H_
 
-#include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
+#include "rtabmap/core/rtabmap_core_export.h" // DLL export/import defines
 
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
@@ -41,7 +41,7 @@ namespace rtabmap {
 /**
  * Works like cv::GainCompensator but with point clouds
  */
-class RTABMAP_EXP GainCompensator {
+class RTABMAP_CORE_EXPORT GainCompensator {
 public:
 	GainCompensator(double maxCorrespondenceDistance = 0.02, double minOverlap = 0.0, double alpha = 0.01, double beta = 10);
 	virtual ~GainCompensator();

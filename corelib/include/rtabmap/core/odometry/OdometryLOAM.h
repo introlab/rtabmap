@@ -40,7 +40,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 namespace rtabmap {
 
-class RTABMAP_EXP OdometryLOAM : public Odometry
+class RTABMAP_CORE_EXPORT OdometryLOAM : public Odometry
 {
 public:
 	OdometryLOAM(const rtabmap::ParametersMap & parameters = rtabmap::ParametersMap());

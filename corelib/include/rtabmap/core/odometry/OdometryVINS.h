@@ -34,7 +34,7 @@ namespace rtabmap {
 
 class VinsEstimator;
 
-class RTABMAP_EXP OdometryVINS : public Odometry
+class RTABMAP_CORE_EXPORT OdometryVINS : public Odometry
 {
 public:
 	OdometryVINS(const rtabmap::ParametersMap & parameters = rtabmap::ParametersMap());

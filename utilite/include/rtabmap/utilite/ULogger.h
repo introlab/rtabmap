@@ -20,7 +20,7 @@
 #ifndef ULOGGER_H
 #define ULOGGER_H
 
-#include "rtabmap/utilite/UtiLiteExp.h" // DLL export/import defines
+#include "rtabmap/utilite/utilite_export.h" // DLL export/import defines
 
 #include "rtabmap/utilite/UMutex.h"
 #include "rtabmap/utilite/UDestroyer.h"
@@ -226,7 +226,7 @@ private:
  * @see UDEBUG(), UINFO(), UWARN(), UERROR(), UFATAL()
  *
  */
-class UTILITE_EXP ULogger
+class UTILITE_EXPORT ULogger
 {
 
 public:

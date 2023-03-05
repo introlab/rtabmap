@@ -43,13 +43,13 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef GEODETICCOORDS_H_
 #define GEODETICCOORDS_H_
 
-#include <rtabmap/core/RtabmapExp.h>
+#include <rtabmap/core/rtabmap_core_export.h>
 
 #include <opencv2/core/core.hpp>
 
 namespace rtabmap {
 
-class RTABMAP_EXP GeodeticCoords
+class RTABMAP_CORE_EXPORT GeodeticCoords
 {
 public:
 	GeodeticCoords();

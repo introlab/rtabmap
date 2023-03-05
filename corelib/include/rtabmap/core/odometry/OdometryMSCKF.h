@@ -35,7 +35,7 @@ namespace rtabmap {
 class ImageProcessorNoROS;
 class MsckfVioNoROS;
 
-class RTABMAP_EXP OdometryMSCKF : public Odometry
+class RTABMAP_CORE_EXPORT OdometryMSCKF : public Odometry
 {
 public:
 	OdometryMSCKF(const rtabmap::ParametersMap & parameters = rtabmap::ParametersMap());

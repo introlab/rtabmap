@@ -40,7 +40,7 @@ class StereoDepth;
 
 namespace rtabmap {
 
-class RTABMAP_EXP OdometryFovis : public Odometry
+class RTABMAP_CORE_EXPORT OdometryFovis : public Odometry
 {
 public:
 	OdometryFovis(const rtabmap::ParametersMap & parameters = rtabmap::ParametersMap());

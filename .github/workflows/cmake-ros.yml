@@ -2,10 +2,10 @@ name: CMake-ROS
 
 on:
   push:
-    branches:
-      - '**'
+    branches: 
+      - master
   pull_request:
-    branches:
+    branches: 
       - '**'
 
 env:
@@ -36,7 +36,11 @@ jobs:
           os: ubuntu-22.04
 
     steps:
-    - uses: ros-tooling/setup-ros@v0.4
+    - name: Workaround dpkg grub-efi-amd64-signed error
+      run: |
+        sudo apt-mark hold grub-efi-amd64-signed
+    
+    - uses: ros-tooling/setup-ros@v0.5
       with:
         required-ros-distributions: ${{ matrix.ros_distribution }}
     

@@ -1,46 +1,7 @@
 
-SET(RTABMap_INCLUDE_DIRS 
-    ${PROJECT_BINARY_DIR}/corelib/include
-    ${PROJECT_SOURCE_DIR}/utilite/include
-	${PROJECT_SOURCE_DIR}/corelib/include
-)
-SET(RTABMap_LIBRARIES 
-    rtabmap_core
-	rtabmap_utilite
-)  
-
-if(POLICY CMP0020)
-	cmake_policy(SET CMP0020 NEW)
-endif()
-
-SET(INCLUDE_DIRS
-	${RTABMap_INCLUDE_DIRS}
-    ${OpenCV_INCLUDE_DIRS}
-    ${PCL_INCLUDE_DIRS}
-)
-
-SET(LIBRARIES
-	${RTABMap_LIBRARIES}
-	${OpenCV_LIBRARIES}
-	${PCL_LIBRARIES}
-)
-
-IF(octomap_FOUND)
-    SET(INCLUDE_DIRS
-		${INCLUDE_DIRS}
-		${OCTOMAP_INCLUDE_DIRS}
-	)
-	SET(LIBRARIES
-		${LIBRARIES}
-		${OCTOMAP_LIBRARIES}
-	)
-ENDIF(octomap_FOUND)
-
-INCLUDE_DIRECTORIES(${INCLUDE_DIRS})
-
 ADD_EXECUTABLE(reprocess main.cpp)
   
-TARGET_LINK_LIBRARIES(reprocess ${LIBRARIES})
+TARGET_LINK_LIBRARIES(reprocess rtabmap_core)
 
 SET_TARGET_PROPERTIES( reprocess 
 	PROPERTIES OUTPUT_NAME ${PROJECT_PREFIX}-reprocess)
