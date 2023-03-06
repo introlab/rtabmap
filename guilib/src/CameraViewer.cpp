@@ -59,7 +59,7 @@ CameraViewer::CameraViewer(QWidget * parent, const ParametersMap & parameters) :
 	imageView_->setImageDepthShown(true);
 	imageView_->setMinimumSize(320, 240);
 	QHBoxLayout * layout = new QHBoxLayout();
-	layout->setMargin(0);
+	layout->setContentsMargins(0,0,0,0);
 	layout->addWidget(imageView_,1);
 	layout->addWidget(cloudView_,1);
 
@@ -95,7 +95,7 @@ CameraViewer::CameraViewer(QWidget * parent, const ParametersMap & parameters) :
 	layout2->addWidget(buttonBox);
 
 	QVBoxLayout * vlayout = new QVBoxLayout(this);
-	vlayout->setMargin(0);
+	vlayout->setContentsMargins(0,0,0,0);
 	vlayout->setSpacing(0);
 	vlayout->addLayout(layout, 1);
 	vlayout->addLayout(layout2);

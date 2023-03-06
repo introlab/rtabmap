@@ -33,6 +33,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/utilite/UEventsHandler.h"
 #include <QMainWindow>
 #include <QtCore/QSet>
+#include <QElapsedTimer>
 #include "rtabmap/core/RtabmapEvent.h"
 #include "rtabmap/core/SensorData.h"
 #include "rtabmap/core/OdometryEvent.h"
@@ -400,8 +401,8 @@ private:
 	bool _processingOdometry;
 
 	QTimer * _oneSecondTimer;
-	QTime * _elapsedTime;
-	QTime * _logEventTime;
+	QElapsedTimer * _elapsedTime;
+	QElapsedTimer * _logEventTime;
 
 	PdfPlotCurve * _posteriorCurve;
 	PdfPlotCurve * _likelihoodCurve;

@@ -33,6 +33,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QFileDialog>
 #include <QtCore/QDir>
 #include <QAction>
+#include <QActionGroup>
 #include <QGraphicsEffect>
 #include <QInputDialog>
 #include <QVBoxLayout>
@@ -880,12 +881,12 @@ void ImageView::contextMenuEvent(QContextMenuEvent * e)
 				if(QFileInfo(text).suffix().compare("pdf") == 0)
 				{
 					QPrinter printer(QPrinter::HighResolution);
-					printer.setOrientation(QPrinter::Portrait);
+					printer.setPageOrientation(QPageLayout::Portrait);
 					printer.setOutputFileName( text );
 					QPainter p(&printer);
 					p.begin(&printer);
-					double xscale = printer.pageRect().width()/double(_graphicsView->sceneRect().width());
-					double yscale = printer.pageRect().height()/double(_graphicsView->sceneRect().height());
+					double xscale = printer.pageLayout().paintRectPixels(printer.resolution()).width()/double(_graphicsView->sceneRect().width());
+					double yscale = printer.pageLayout().paintRectPixels(printer.resolution()).height()/double(_graphicsView->sceneRect().height());
 					double scale = qMin(xscale, yscale);
 					p.scale(scale, scale);
 					_graphicsView->scene()->render(&p, _graphicsView->sceneRect(), _graphicsView->sceneRect());

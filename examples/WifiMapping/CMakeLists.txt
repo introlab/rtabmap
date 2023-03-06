@@ -13,8 +13,10 @@ endif()
 
 IF(QT4_FOUND)
     QT4_WRAP_CPP(moc_srcs MapBuilder.h MapBuilderWifi.h)
-ELSE()
+ELSEIF(Qt5_FOUND)
     QT5_WRAP_CPP(moc_srcs MapBuilder.h MapBuilderWifi.h)
+ELSE()
+    QT6_WRAP_CPP(moc_srcs MapBuilder.h MapBuilderWifi.h)
 ENDIF()
 
 SET(srcs

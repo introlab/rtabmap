@@ -62,7 +62,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QMessageBox>
 #include <QFileDialog>
 #include <QInputDialog>
-#include <QDesktopWidget>
+#include <QWindow>
+#include <QScreen>
 
 #ifdef RTABMAP_CPUTSDF
 #include <cpu_tsdf/tsdf_volume_octree.h>
@@ -1212,7 +1213,7 @@ void ExportCloudsDialog::viewClouds(
 		}
 		window->setMinimumWidth(120);
 		window->setMinimumHeight(90);
-		window->resize(QDesktopWidget().availableGeometry(this).size() * 0.7);
+		window->resize(this->window()->windowHandle()->screen()->availableGeometry().size() * 0.7);
 
 		CloudViewer * viewer = new CloudViewer(window);
 		if(_ui->comboBox_pipeline->currentIndex() == 0)
@@ -4169,7 +4170,7 @@ void ExportCloudsDialog::saveClouds(
 #else
 		QString extensions = tr("Save clouds to (*.ply *.pcd)...");
 #endif
-		QString path = QFileDialog::getExistingDirectory(this, extensions, workingDirectory, 0);
+		QString path = QFileDialog::getExistingDirectory(this, extensions, workingDirectory, QFileDialog::ShowDirsOnly);
 		if(!path.isEmpty())
 		{
 			bool ok = false;
@@ -4394,7 +4395,7 @@ void ExportCloudsDialog::saveMeshes(
 	}
 	else if(meshes.size())
 	{
-		QString path = QFileDialog::getExistingDirectory(this, tr("Save meshes to (*.ply *.obj)..."), workingDirectory, 0);
+		QString path = QFileDialog::getExistingDirectory(this, tr("Save meshes to (*.ply *.obj)..."), workingDirectory, QFileDialog::ShowDirsOnly);
 		if(!path.isEmpty())
 		{
 			bool ok = false;
@@ -4799,7 +4800,7 @@ void ExportCloudsDialog::saveTextureMeshes(
 	}
 	else if(meshes.size())
 	{
-		QString path = QFileDialog::getExistingDirectory(this, tr("Save texture meshes to (*.obj)..."), workingDirectory, 0);
+		QString path = QFileDialog::getExistingDirectory(this, tr("Save texture meshes to (*.obj)..."), workingDirectory, QFileDialog::ShowDirsOnly);
 		if(!path.isEmpty())
 		{
 			bool ok = false;

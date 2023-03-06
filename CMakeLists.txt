@@ -226,7 +226,7 @@ option(PCL_OMP            "With PCL OMP implementations"         ON)
 ENDIF()
 
 set(RTABMAP_QT_VERSION AUTO CACHE STRING "Force a specific Qt version.")
-set_property(CACHE RTABMAP_QT_VERSION PROPERTY STRINGS AUTO 4 5)
+set_property(CACHE RTABMAP_QT_VERSION PROPERTY STRINGS AUTO 4 5 6)
 
 FIND_PACKAGE(OpenCV REQUIRED QUIET COMPONENTS core calib3d imgproc highgui stitching photo video OPTIONAL_COMPONENTS aruco xfeatures2d nonfree gpu cudafeatures2d)
 
@@ -297,20 +297,31 @@ IF(WITH_QT)
     ENDIF(NOT VTK_FOUND)
 
     # If Qt is here, the GUI will be built
-    # look for Qt5 (if vtk>5 is installed) before Qt4
-    IF("${VTK_MAJOR_VERSION}" GREATER 5)
-        if(RTABMAP_QT_VERSION STREQUAL "AUTO" OR RTABMAP_QT_VERSION STREQUAL "5")
-            FIND_PACKAGE(Qt5 QUIET COMPONENTS Widgets Core Gui PrintSupport OpenGL OPTIONAL_COMPONENTS Svg)
-        ENDIF(RTABMAP_QT_VERSION STREQUAL "AUTO" OR RTABMAP_QT_VERSION STREQUAL "5")
-    ENDIF("${VTK_MAJOR_VERSION}" GREATER 5)
+    IF("${VTK_MAJOR_VERSION}" GREATER_EQUAL 9)
+      MESSAGE(STATUS "VTK>=9 detected, will use VTK_QT_VERSION=${VTK_QT_VERSION} for Qt version.")
+      IF(${VTK_QT_VERSION} EQUAL 6)
+        FIND_PACKAGE(Qt6 COMPONENTS Widgets Core Gui OpenGL PrintSupport QUIET OPTIONAL_COMPONENTS Svg)
+      ELSEIF(${VTK_QT_VERSION} EQUAL 5)
+        FIND_PACKAGE(Qt5 COMPONENTS Widgets Core Gui OpenGL PrintSupport QUIET OPTIONAL_COMPONENTS Svg)
+      ELSE()
+        FIND_PACKAGE(Qt4 COMPONENTS QtCore QtGui OPTIONAL_COMPONENTS QtSvg)
+      ENDIF()
+    ELSE()
+      # look for Qt5 (if vtk>5 is installed) before Qt4
+      IF("${VTK_MAJOR_VERSION}" GREATER 5)
+        IF(RTABMAP_QT_VERSION STREQUAL "AUTO" OR RTABMAP_QT_VERSION STREQUAL "5")
+          FIND_PACKAGE(Qt5 COMPONENTS Widgets Core Gui OpenGL PrintSupport QUIET OPTIONAL_COMPONENTS Svg)
+	    ENDIF(RTABMAP_QT_VERSION STREQUAL "AUTO" OR RTABMAP_QT_VERSION STREQUAL "5")
+	  ENDIF("${VTK_MAJOR_VERSION}" GREATER 5)
 
-    IF(NOT Qt5_FOUND)
+      IF(NOT Qt5_FOUND)
         IF(RTABMAP_QT_VERSION STREQUAL "AUTO" OR RTABMAP_QT_VERSION STREQUAL "4")
-            FIND_PACKAGE(Qt4 QUIET COMPONENTS QtCore QtGui OPTIONAL_COMPONENTS QtSvg)
+          FIND_PACKAGE(Qt4 COMPONENTS QtCore QtGui OPTIONAL_COMPONENTS QtSvg)
         ENDIF(RTABMAP_QT_VERSION STREQUAL "AUTO" OR RTABMAP_QT_VERSION STREQUAL "4")
-    ENDIF(NOT Qt5_FOUND)
+      ENDIF(NOT Qt5_FOUND)
+    ENDIF()
         
-    IF(QT4_FOUND OR Qt5_FOUND)
+    IF(QT4_FOUND OR Qt5_FOUND OR Qt6_FOUND)
         IF("${VTK_MAJOR_VERSION}" EQUAL 5)
             FIND_PACKAGE(QVTK REQUIRED) # only for VTK 5
         ELSE()
@@ -318,7 +329,7 @@ IF(WITH_QT)
 			IF(value EQUAL -1)
                 list(FIND PCL_LIBRARIES vtkGUISupportQt value)
                 IF(value EQUAL -1)
-                    IF("${VTK_MAJOR_VERSION}" GREATER 8)
+                    IF("${VTK_MAJOR_VERSION}" GREATER_EQUAL 9)
                         SET(PCL_LIBRARIES "${PCL_LIBRARIES};VTK::GUISupportQt")
                     ELSE()
                         SET(PCL_LIBRARIES "${PCL_LIBRARIES};vtkGUISupportQt")
@@ -354,7 +365,7 @@ IF(WITH_QT)
 
         ENDIF()
         ADD_DEFINITIONS(-DQT_NO_KEYWORDS) # To avoid conflicts with boost signals/foreach and Qt macros
-    ENDIF(QT4_FOUND OR Qt5_FOUND)
+    ENDIF(QT4_FOUND OR Qt5_FOUND OR Qt6_FOUND)
 ENDIF(WITH_QT)
 
 IF(NOT VTK_FOUND)
@@ -752,7 +763,18 @@ IF(WITH_ORB_SLAM AND NOT G2O_FOUND)
 ENDIF(WITH_ORB_SLAM AND NOT G2O_FOUND)
 
 IF(NOT MSVC)
-	IF((NOT WITH_MSCKF_VIO OR NOT msckf_vio_FOUND) AND (loam_velodyne_FOUND OR floam_FOUND OR PCL_VERSION VERSION_GREATER "1.9.1" OR TORCH_FOUND OR G2O_FOUND OR CCCoreLib_FOUND OR Open3D_FOUND))
+    IF(Qt6_FOUND)
+      # Qt6 requires c++17
+      include(CheckCXXCompilerFlag)
+	  CHECK_CXX_COMPILER_FLAG("-std=c++17" COMPILER_SUPPORTS_CXX17)
+	  IF(COMPILER_SUPPORTS_CXX17)
+	    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
+	    set(CMAKE_CXX_STANDARD 17)
+	  ELSE()
+	    message(STATUS "The compiler ${CMAKE_CXX_COMPILER} has no C++17 support. Please use a different C++ compiler if you want to use Qt6.")
+	  ENDIF()
+    ENDIF()
+	IF((NOT (${CMAKE_CXX_STANDARD} STREQUAL "17")) AND ((NOT WITH_MSCKF_VIO OR NOT msckf_vio_FOUND) AND (loam_velodyne_FOUND OR floam_FOUND OR PCL_VERSION VERSION_GREATER "1.9.1" OR TORCH_FOUND OR G2O_FOUND OR CCCoreLib_FOUND OR Open3D_FOUND)))
 	 #LOAM, PCL>=1.10, latest g2o and CCCoreLib require c++14, but MSCKF_VIO requires c++11
 	 include(CheckCXXCompilerFlag)
 	  CHECK_CXX_COMPILER_FLAG("-std=c++14" COMPILER_SUPPORTS_CXX14)
@@ -764,7 +786,7 @@ IF(NOT MSVC)
 	  ENDIF()
 	ENDIF()
 
-	IF( (NOT (${CMAKE_CXX_STANDARD} STREQUAL "14")) AND (
+	IF( (NOT (${CMAKE_CXX_STANDARD} STREQUAL "17") AND NOT (${CMAKE_CXX_STANDARD} STREQUAL "14")) AND (
 	       G2O_FOUND OR
 	       GTSAM_FOUND OR
 	       CERES_FOUND OR
@@ -796,7 +818,7 @@ ENDIF()
 
 ####### OSX BUNDLE CMAKE_INSTALL_PREFIX #######
 IF(APPLE AND BUILD_AS_BUNDLE)
-  IF(Qt5_FOUND OR (QT4_FOUND AND QT_QTCORE_FOUND AND QT_QTGUI_FOUND))
+  IF(Qt6_FOUND OR Qt5_FOUND OR (QT4_FOUND AND QT_QTCORE_FOUND AND QT_QTGUI_FOUND))
        
     # Required when packaging, and set CMAKE_INSTALL_PREFIX to "/".
     SET(CMAKE_INSTALL_PREFIX "/")
@@ -1023,7 +1045,7 @@ IF(ANDROID)
    IF(BUILD_APP)
       ADD_SUBDIRECTORY( app )
    ENDIF(BUILD_APP)
-ELSEIF(Qt5_FOUND OR (QT4_FOUND AND QT_QTCORE_FOUND AND QT_QTGUI_FOUND))
+ELSEIF(Qt6_FOUND OR Qt5_FOUND OR (QT4_FOUND AND QT_QTCORE_FOUND AND QT_QTGUI_FOUND))
    ADD_SUBDIRECTORY( guilib )
    IF(BUILD_APP)
       ADD_SUBDIRECTORY( app )
@@ -1055,12 +1077,14 @@ ADD_CUSTOM_TARGET(uninstall
 ####
 add_library(rtabmap INTERFACE)
 add_library(rtabmap::rtabmap ALIAS rtabmap)
-IF(QT4_FOUND OR Qt5_FOUND)
+IF(QT4_FOUND OR Qt5_FOUND OR Qt6_FOUND)
    set(CONF_WITH_GUI ON)
    IF(QT4_FOUND)
       set(CONF_QT_VERSION 4)
-   ELSE()
+   ELSEIF(Qt5_FOUND)
       set(CONF_QT_VERSION 5)
+   ELSE()
+      set(CONF_QT_VERSION 6)
    ENDIF()
    target_link_libraries(rtabmap INTERFACE rtabmap_utilite rtabmap_core rtabmap_gui)
 ELSE()
@@ -1270,6 +1294,9 @@ MESSAGE(STATUS "  With Qt4                  = YES (License: Open Source or Comme
 MESSAGE(STATUS "  With VTK ${VTK_MAJOR_VERSION}.${VTK_MINOR_VERSION}              = YES (License: BSD)")
 ELSEIF(Qt5_FOUND)
 MESSAGE(STATUS "  With Qt ${Qt5_VERSION}            = YES (License: Open Source or Commercial)")
+MESSAGE(STATUS "  With VTK ${VTK_MAJOR_VERSION}.${VTK_MINOR_VERSION}              = YES (License: BSD)")
+ELSEIF(Qt6_FOUND)
+MESSAGE(STATUS "  With Qt ${Qt6_VERSION}            = YES (License: Open Source or Commercial)")
 MESSAGE(STATUS "  With VTK ${VTK_MAJOR_VERSION}.${VTK_MINOR_VERSION}              = YES (License: BSD)")
 
 ELSEIF(NOT WITH_QT)

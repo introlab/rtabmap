@@ -45,7 +45,7 @@ class RTABMAP_GUI_EXPORT ProgressDialog : public QDialog
 	Q_OBJECT
 
 public:
-	ProgressDialog(QWidget *parent = 0, Qt::WindowFlags flags = 0);
+	ProgressDialog(QWidget *parent = 0, Qt::WindowFlags flags = Qt::WindowFlags());
 	virtual ~ProgressDialog();
 
 	void setEndMessage(const QString & message) {_endMessage = message;} // Message shown when the progress is finished

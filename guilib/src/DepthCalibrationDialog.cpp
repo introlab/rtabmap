@@ -465,7 +465,7 @@ void DepthCalibrationDialog::calibrate(
 			ImageView * imageView2 = new ImageView(dialog);
 			imageView2->setMinimumSize(320, 240);
 			QVBoxLayout * vlayout = new QVBoxLayout();
-			vlayout->setMargin(0);
+			vlayout->setContentsMargins(0,0,0,0);
 			vlayout->addWidget(imageView1, 1);
 			vlayout->addWidget(imageView2, 1);
 			dialog->setLayout(vlayout);

@@ -40,6 +40,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pcl/common/transforms.h>
 #include <QMenu>
 #include <QAction>
+#include <QActionGroup>
 #include <QtGui/QContextMenuEvent>
 #include <QInputDialog>
 #include <QtGui/QWheelEvent>

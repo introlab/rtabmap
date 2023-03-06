@@ -126,13 +126,13 @@ OdometryViewer::OdometryViewer(
 
 	//layout
 	QHBoxLayout * layout = new QHBoxLayout();
-	layout->setMargin(0);
+	layout->setContentsMargins(0,0,0,0);
 	layout->setSpacing(0);
 	layout->addWidget(imageView_,1);
 	layout->addWidget(cloudView_,1);
 
 	QHBoxLayout * hlayout2 = new QHBoxLayout();
-	hlayout2->setMargin(0);
+	hlayout2->setContentsMargins(0,0,0,0);
 	hlayout2->addWidget(maxCloudsLabel);
 	hlayout2->addWidget(maxCloudsSpin_);
 	hlayout2->addWidget(voxelLabel);
@@ -151,7 +151,7 @@ OdometryViewer::OdometryViewer(
 	hlayout2->addWidget(closeButton);
 
 	QVBoxLayout * vlayout = new QVBoxLayout(this);
-	vlayout->setMargin(0);
+	vlayout->setContentsMargins(0,0,0,0);
 	vlayout->setSpacing(0);
 	vlayout->addLayout(layout, 1);
 	vlayout->addLayout(hlayout2);

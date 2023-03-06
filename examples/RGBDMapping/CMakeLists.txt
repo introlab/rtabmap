@@ -13,8 +13,10 @@ endif()
 
 IF(QT4_FOUND)
     QT4_WRAP_CPP(moc_srcs MapBuilder.h)
-ELSE()
+ELSEIF(Qt5_FOUND)
     QT5_WRAP_CPP(moc_srcs MapBuilder.h)
+ELSE()
+    QT6_WRAP_CPP(moc_srcs MapBuilder.h)
 ENDIF()
 
 ADD_EXECUTABLE(rgbd_mapping main.cpp ${moc_srcs})

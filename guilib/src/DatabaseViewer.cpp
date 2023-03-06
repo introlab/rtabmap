@@ -31,7 +31,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QMessageBox>
 #include <QFileDialog>
 #include <QInputDialog>
-#include <QDesktopWidget>
 #include <QColorDialog>
 #include <QGraphicsLineItem>
 #include <QtGui/QCloseEvent>
@@ -1685,7 +1684,11 @@ void DatabaseViewer::updateIds()
 	UINFO("Loading all IDs...");
 	std::set<int> ids;
 	dbDriver_->getAllNodeIds(ids);
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+	ids_ = QList<int>(ids.begin(), ids.end());
+#else
 	ids_ = QList<int>::fromStdList(std::list<int>(ids.begin(), ids.end()));
+#endif
 	lastWmIds_.clear();
 	dbDriver_->getLastNodeIds(lastWmIds_);
 	idToIndex_.clear();
@@ -2222,10 +2225,18 @@ void DatabaseViewer::updateInfo()
 			ui_->textEdit_info->append("");
 			ParametersMap parameters = dbDriver_->getLastParameters();
 			QFontMetrics metrics(ui_->textEdit_info->font());
+#if QT_VERSION >= QT_VERSION_CHECK(5, 15, 0)
+			int tabW = ui_->textEdit_info->tabStopDistance();
+#else
 			int tabW = ui_->textEdit_info->tabStopWidth();
+#endif
 			for(ParametersMap::iterator iter=parameters.begin(); iter!=parameters.end(); ++iter)
 			{
+#if QT_VERSION >= QT_VERSION_CHECK(5, 15, 0)
+				int strW = metrics.horizontalAdvance(QString(iter->first.c_str()) + "=");
+#else
 				int strW = metrics.width(QString(iter->first.c_str()) + "=");
+#endif
 				ui_->textEdit_info->append(tr("%1=%2%3")
 						.arg(iter->first.c_str())
 						.arg(strW < tabW?"\t\t\t\t":strW < tabW*2?"\t\t\t":strW < tabW*3?"\t\t":"\t")
@@ -3889,7 +3900,11 @@ void DatabaseViewer::regenerateCurrentLocalMaps()
 	QSet<int> idsSet;
 	idsSet.insert(ids_.at(ui_->horizontalSlider_A->value()));
 	idsSet.insert(ids_.at(ui_->horizontalSlider_B->value()));
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+	QList<int> ids(idsSet.begin(), idsSet.end());
+#else
 	QList<int> ids = idsSet.toList();
+#endif
 
 	rtabmap::ProgressDialog progressDialog(this);
 	progressDialog.setMaximumSteps(ids.size());
@@ -6832,7 +6847,7 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 		if(graph.size() && localMaps.size() &&
 			(ui_->graphViewer->isGridMapVisible() || ui_->dockWidget_occupancyGridView->isVisible()))
 		{
-			QTime time;
+			QElapsedTimer time;
 			time.start();
 
 #ifdef RTABMAP_OCTOMAP
@@ -7509,7 +7524,7 @@ void DatabaseViewer::updateGraphView()
 					posesOut,
 					linksOut);
 			UINFO("Connected graph of %d poses and %d links", (int)posesOut.size(), (int)linksOut.size());
-			QTime time;
+			QElapsedTimer time;
 			time.start();
 			std::map<int, rtabmap::Transform> finalPoses = optimizer->optimize(fromId, posesOut, linksOut, ui_->comboBox_optimizationFlavor->currentIndex()==0?&graphes_:0);
 			ui_->label_timeOptimization->setNum(double(time.elapsed())/1000.0);
