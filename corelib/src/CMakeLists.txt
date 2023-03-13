@@ -355,8 +355,8 @@ IF(mynteye_FOUND)
 ENDIF(mynteye_FOUND)
 
 IF(depthai_FOUND)
-	SET(LIBRARIES
-		${LIBRARIES}
+	SET(PUBLIC_LIBRARIES
+		${PUBLIC_LIBRARIES}
 		depthai::core
 		depthai::opencv
 	)

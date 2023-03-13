@@ -142,7 +142,9 @@ CloudViewer::CloudViewer(QWidget *parent, CloudViewerInteractorStyle * style) :
 {
 	UDEBUG("");
 	this->setMinimumSize(200, 200);
-	
+
+	vtkObject::GlobalWarningDisplayOff();
+
 	int argc = 0;
 	UASSERT(style!=0);
 	style->setCloudViewer(this);
