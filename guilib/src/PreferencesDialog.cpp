@@ -3921,12 +3921,16 @@ void PreferencesDialog::selectSourceDriver(Src src, int variant)
 				_ui->spinBox_rs2_width->setValue(1280);
 				_ui->spinBox_rs2_height->setValue(720);
 				_ui->spinBox_rs2_rate->setValue(30);
+				_ui->checkbox_rs2_irMode->setChecked(false);
+				_ui->checkbox_rs2_emitter->setChecked(true);
 			}
-			else
+			else // D400
 			{
 				_ui->spinBox_rs2_width->setValue(848);
 				_ui->spinBox_rs2_height->setValue(480);
 				_ui->spinBox_rs2_rate->setValue(60);
+				_ui->checkbox_rs2_irMode->setChecked(true);
+				_ui->checkbox_rs2_emitter->setChecked(false);
 			}
 		}
 	}

@@ -153,7 +153,7 @@ OptimizerG2O::OptimizerG2O(const ParametersMap & parameters) :
 	// Issue on android, have to explicitly register this type when using fixed root prior below
 	if(!g2o::Factory::instance()->knowsTag("CACHE_SE3_OFFSET"))
 	{
-#if defined(RTABMAP_G2O_CPP11) and RTABMAP_G2O_CPP11 == 1
+#if defined(RTABMAP_G2O_CPP11) && RTABMAP_G2O_CPP11 == 1
 		g2o::Factory::instance()->registerType("CACHE_SE3_OFFSET", g2o::make_unique<g2o::HyperGraphElementCreator<g2o::CacheSE3Offset> >());
 #else
 		g2o::Factory::instance()->registerType("CACHE_SE3_OFFSET", new g2o::HyperGraphElementCreator<g2o::CacheSE3Offset>);
@@ -1414,7 +1414,7 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 	{
 		g2o::SparseOptimizer optimizer;
 		//optimizer.setVerbose(ULogger::level()==ULogger::kDebug);
-#if defined(RTABMAP_G2O_CPP11) and not defined(RTABMAP_ORB_SLAM)
+#if defined(RTABMAP_G2O_CPP11) && !defined(RTABMAP_ORB_SLAM)
 		std::unique_ptr<g2o::BlockSolver_6_3::LinearSolverType> linearSolver;
 #else
 		g2o::BlockSolver_6_3::LinearSolverType * linearSolver = 0;
@@ -1478,7 +1478,7 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 		else
 #endif
 		{
-#if defined(RTABMAP_G2O_CPP11) and not defined(RTABMAP_ORB_SLAM)
+#if defined(RTABMAP_G2O_CPP11) && !defined(RTABMAP_ORB_SLAM)
 			optimizer.setAlgorithm(new g2o::OptimizationAlgorithmLevenberg(
 					g2o::make_unique<g2o::BlockSolver_6_3>(std::move(linearSolver))));
 #else
