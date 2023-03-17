@@ -41,10 +41,10 @@ public:
 	virtual ~FlannIndex();
 
 	void release();
-	unsigned int indexedFeatures() const;
+	size_t indexedFeatures() const;
 
 	// return Bytes
-	unsigned long memoryUsed() const;
+	size_t memoryUsed() const;
 
 	// Note that useDistanceL1 doesn't have any effect if LSH is used
 	void buildLinearIndex(

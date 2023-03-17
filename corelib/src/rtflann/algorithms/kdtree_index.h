@@ -37,6 +37,7 @@
 #include <cstring>
 #include <stdarg.h>
 #include <cmath>
+#include <random>
 
 #include "rtflann/general.h"
 #include "rtflann/algorithms/nn_index.h"
@@ -677,7 +678,9 @@ protected:
         /* Construct the randomized trees. */
         for (int i = 0; i < trees_; i++) {
             /* Randomize the order of vectors to allow for unbiased sampling. */
-            std::random_shuffle(ind.begin(), ind.end());
+            std::random_device rd;
+            std::mt19937 g(rd());
+            std::shuffle(ind.begin(), ind.end(), g);
             tree_roots_[i] = divideTree(&ind[0], int(size_) );
         }
         delete[] mean_;

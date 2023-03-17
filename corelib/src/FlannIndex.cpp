@@ -80,7 +80,7 @@ void FlannIndex::release()
 	UDEBUG("");
 }
 
-unsigned int FlannIndex::indexedFeatures() const
+size_t FlannIndex::indexedFeatures() const
 {
 	if(!index_)
 	{
@@ -108,13 +108,13 @@ unsigned int FlannIndex::indexedFeatures() const
 }
 
 // return Bytes
-unsigned long FlannIndex::memoryUsed() const
+size_t FlannIndex::memoryUsed() const
 {
 	if(!index_)
 	{
 		return 0;
 	}
-	unsigned long memoryUsage = sizeof(FlannIndex);
+	size_t memoryUsage = sizeof(FlannIndex);
 	memoryUsage += addedDescriptors_.size() * (sizeof(int) + sizeof(cv::Mat) + sizeof(std::map<int, cv::Mat>::iterator)) + sizeof(std::map<int, cv::Mat>);
 	memoryUsage += sizeof(std::list<int>) + removedIndexes_.size() * sizeof(int);
 	if(featuresType_ == CV_8UC1)

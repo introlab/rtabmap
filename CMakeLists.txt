@@ -298,6 +298,9 @@ IF(WITH_QT)
 
     # If Qt is here, the GUI will be built
     IF(NOT(${VTK_MAJOR_VERSION} LESS 9))
+	  IF(NOT VTK_QT_VERSION)
+	    MESSAGE(FATAL_ERROR "WITH_QT option is ON, but VTK ${VTK_MAJOR_VERSION} has not been built with Qt support, disabling Qt.")
+	  ENDIF()
       MESSAGE(STATUS "VTK>=9 detected, will use VTK_QT_VERSION=${VTK_QT_VERSION} for Qt version.")
       IF(${VTK_QT_VERSION} EQUAL 6)
         FIND_PACKAGE(Qt6 COMPONENTS Widgets Core Gui OpenGL PrintSupport QUIET OPTIONAL_COMPONENTS Svg)
