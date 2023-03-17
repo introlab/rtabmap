@@ -121,16 +121,23 @@ IF(BUILD_AS_BUNDLE AND (APPLE OR WIN32))
 	ENDIF(WIN32 AND CUDA_FOUND)
   ENDIF(Torch_FOUND)
 
-  # Install needed Qt plugins by copying directories from the qt installation
-  # One can cull what gets copied by using 'REGEX "..." EXCLUDE'
-  # Exclude debug libraries
-  IF(QT_PLUGINS_DIR)
-    INSTALL(DIRECTORY "${QT_PLUGINS_DIR}/imageformats"
-          DESTINATION ${plugin_dest_dir}/plugins 
-          COMPONENT runtime 
-          REGEX ".*d4.dll" EXCLUDE
-          REGEX ".*d4.a" EXCLUDE)
-  ELSE()
+  IF(Qt6_FOUND)
+	# Reference: https://doc-snapshots.qt.io/qt6-6.4/qt-deploy-runtime-dependencies.html
+	# The following script must only be executed at install time
+	set(deploy_script "${CMAKE_CURRENT_BINARY_DIR}/deploy_app$<CONFIG>.cmake")
+	file(GENERATE OUTPUT ${deploy_script} CONTENT "
+	# Including the file pointed to by QT_DEPLOY_SUPPORT ensures the generated
+	# deployment script has access to qt_deploy_runtime_dependencies()
+	include(\"${QT_DEPLOY_SUPPORT}\")
+	qt_deploy_runtime_dependencies(
+		EXECUTABLE \"${APPS}\"
+		VERBOSE
+		PLUGINS_DIR ${plugin_dest_dir}/plugins
+	)")
+	install(SCRIPT "${CMAKE_CURRENT_BINARY_DIR}/deploy_appRelease.cmake"
+		CONFIGURATIONS Release
+		COMPONENT runtime)
+  ELSEIF(Qt5_FOUND)
 	#Qt5
 	foreach(plugin ${Qt5Gui_PLUGINS})
 		get_target_property(plugin_loc ${plugin} LOCATION)
@@ -142,8 +149,8 @@ IF(BUILD_AS_BUNDLE AND (APPLE OR WIN32))
 		ENDIF(NOT plugin_root)
 		#MESSAGE(STATUS "Qt5 plugin \"${plugin_loc}\" installed in \"${plugin_dest_dir}/plugins${plugin_type}\"")
 		INSTALL(FILES ${plugin_loc}
-          DESTINATION ${plugin_dest_dir}/plugins${plugin_type}
-          COMPONENT runtime)
+		  DESTINATION ${plugin_dest_dir}/plugins${plugin_type}
+		  COMPONENT runtime)
 	endforeach()
 	IF(NOT Qt5Widgets_VERSION VERSION_LESS 5.10.0)
 		IF(WIN32)
@@ -161,18 +168,27 @@ IF(BUILD_AS_BUNDLE AND (APPLE OR WIN32))
 			#MESSAGE(STATUS "Qt5 plugin \"${plugin_loc}\" installed in \"${plugin_dest_dir}/plugins${plugin_type}\"")
 		ENDIF(EXISTS ${plugin_loc})
 	ENDIF(NOT Qt5Widgets_VERSION VERSION_LESS 5.10.0)
+  ELSEIF(QT_PLUGINS_DIR) # Qt4
+    # Install needed Qt plugins by copying directories from the qt installation
+	# One can cull what gets copied by using 'REGEX "..." EXCLUDE'
+	# Exclude debug libraries
+	INSTALL(DIRECTORY "${QT_PLUGINS_DIR}/imageformats"
+		DESTINATION ${plugin_dest_dir}/plugins 
+		COMPONENT runtime 
+		REGEX ".*d4.dll" EXCLUDE
+		REGEX ".*d4.a" EXCLUDE)
   ENDIF()
-  
+ 
   # install a qt.conf file
   # this inserts some cmake code into the install script to write the file
   SET(QT_CONF_FILE [Paths]\nPlugins=plugins)
   IF(APPLE)
-    SET(QT_CONF_FILE [Paths]\nPlugins=MacOS/plugins)
+	SET(QT_CONF_FILE [Paths]\nPlugins=MacOS/plugins)
   ENDIF(APPLE)
   INSTALL(CODE "
-    file(WRITE \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${qtconf_dest_dir}/qt.conf\" \"${QT_CONF_FILE}\")
-    " COMPONENT runtime)
-
+	file(WRITE \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${qtconf_dest_dir}/qt.conf\" \"${QT_CONF_FILE}\")
+	" COMPONENT runtime)
+ 
   # directories to look for dependencies
   SET(DIRS ${QT_LIBRARY_DIRS} ${PROJECT_SOURCE_DIR}/bin)
   IF(APPLE)
