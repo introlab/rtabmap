@@ -30,6 +30,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/utilite/ULogger.h"
 
 #include <vtkObject.h>
+#include <vtkVersionMacros.h>
 
 int main(int argc, char * argv[])
 {

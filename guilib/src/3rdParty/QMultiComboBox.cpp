@@ -114,8 +114,8 @@ void QMultiComboBox::showPopup()
 
     // determine rect
     int contheight = vlist_.count()*vlist_.sizeHintForRow(0) + 4; // +4 - should be determined by margins?
-    belowHeight = min(abs(belowHeight)-screenbound_, contheight);
-    aboveHeight = min(abs(aboveHeight)-screenbound_, contheight);
+    belowHeight = std::min(abs(belowHeight)-screenbound_, contheight);
+    aboveHeight = std::min(abs(aboveHeight)-screenbound_, contheight);
     if (popheight_ > 0) // fixed
     {
         rec2.setHeight(popheight_);

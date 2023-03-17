@@ -36,6 +36,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/utilite/UFile.h"
 #include "rtabmap/utilite/UConversion.h"
 
+#include <vtkVersionMacros.h>
 #include <vtkObject.h>
 
 using namespace rtabmap;
