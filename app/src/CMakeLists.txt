@@ -134,8 +134,17 @@ IF(BUILD_AS_BUNDLE AND (APPLE OR WIN32))
 		VERBOSE
 		PLUGINS_DIR ${plugin_dest_dir}/plugins
 	)")
+	install(SCRIPT "${CMAKE_CURRENT_BINARY_DIR}/deploy_appDebug.cmake"
+		CONFIGURATIONS Debug
+		COMPONENT runtime)
 	install(SCRIPT "${CMAKE_CURRENT_BINARY_DIR}/deploy_appRelease.cmake"
 		CONFIGURATIONS Release
+		COMPONENT runtime)
+	install(SCRIPT "${CMAKE_CURRENT_BINARY_DIR}/deploy_appRelWithDebInfo.cmake"
+		CONFIGURATIONS RelWithDebInfo
+		COMPONENT runtime)
+	install(SCRIPT "${CMAKE_CURRENT_BINARY_DIR}/deploy_appMinSizeRel.cmake"
+		CONFIGURATIONS MinSizeRel
 		COMPONENT runtime)
   ELSEIF(Qt5_FOUND)
 	#Qt5
