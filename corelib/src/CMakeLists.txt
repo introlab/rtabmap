@@ -568,10 +568,21 @@ IF(ZEDOC_FOUND)
 ENDIF(ZEDOC_FOUND)
 
 IF(octomap_FOUND)
-	SET(PUBLIC_LIBRARIES
-		${PUBLIC_LIBRARIES}
-		octomap
-	)
+    IF(TARGET octomap)
+        SET(PUBLIC_LIBRARIES
+            ${PUBLIC_LIBRARIES}
+            octomap
+        )
+    ELSE()
+        SET(PUBLIC_INCLUDE_DIRS
+            ${PUBLIC_INCLUDE_DIRS}
+            ${OCTOMAP_INCLUDE_DIRS}
+        )
+        SET(PUBLIC_LIBRARIES
+            ${PUBLIC_LIBRARIES}
+            ${OCTOMAP_LIBRARIES}
+        )
+    ENDIF()
 	SET(SRC_FILES
     	${SRC_FILES}
 		OctoMap.cpp
