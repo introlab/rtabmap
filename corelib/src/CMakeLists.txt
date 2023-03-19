@@ -715,6 +715,13 @@ IF(GTSAM_FOUND)
 		${LIBRARIES}
 		gtsam # Windows: Place static libs at the end
 	)
+	IF(WIN32)
+		#explicitly add metis target on windows (after gtsam target)
+		SET(LIBRARIES
+			${LIBRARIES}
+			metis
+		)
+	ENDIF(WIN32)
 ENDIF(GTSAM_FOUND)
 
 IF(WITH_MADGWICK)

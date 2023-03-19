@@ -238,8 +238,9 @@ std::map<int, Transform> OptimizerCeres::optimize(
 		UINFO("Ceres optimizing begin (iterations=%d)", iterations());
 
 		ceres::Solver::Options options;
+		options.linear_solver_type = ceres::ITERATIVE_SCHUR;
+		options.sparse_linear_algebra_library_type = ceres::SUITE_SPARSE;
 		options.max_num_iterations = iterations();
-		options.linear_solver_type = ceres::SPARSE_NORMAL_CHOLESKY;
 		options.function_tolerance = this->epsilon();
 		ceres::Solver::Summary summary;
 		UTimer timer;
@@ -457,7 +458,8 @@ std::map<int, Transform> OptimizerCeres::optimizeBA(
 	// standard solver, SPARSE_NORMAL_CHOLESKY, also works fine but it is slower
 	// for standard bundle adjustment problems.
 	ceres::Solver::Options options;
-	options.linear_solver_type = ceres::DENSE_SCHUR;
+	options.linear_solver_type = ceres::ITERATIVE_SCHUR;
+	options.sparse_linear_algebra_library_type = ceres::SUITE_SPARSE;
 	options.max_num_iterations = iterations();
 	//options.linear_solver_type = ceres::SPARSE_NORMAL_CHOLESKY;
 	options.function_tolerance = this->epsilon();
