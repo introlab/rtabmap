@@ -1018,7 +1018,7 @@ Transform OdometryORBSLAM::computeTransform(
 	if(orbslam_->mpTracker == 0)
 	{
 		CameraModel model = data.cameraModels().size()==1?data.cameraModels()[0]:data.stereoCameraModels()[0].left();
-		if(!orbslam_->init(model, stereo, data.stereoCameraModels()[0].baseline(), imuLocalTransform_))
+		if(!orbslam_->init(model, stereo, data.cameraModels().size()==1?0.0f:data.stereoCameraModels()[0].baseline(), imuLocalTransform_))
 		{
 			return t;
 		}
@@ -1078,7 +1078,7 @@ Transform OdometryORBSLAM::computeTransform(
 		}
 		else
 		{
-			float baseline = data.stereoCameraModels()[0].baseline();
+			float baseline = data.cameraModels().size()==1?0.0f:data.stereoCameraModels()[0].baseline();
 			if(baseline <= 0.0f)
 			{
 				baseline = rtabmap::Parameters::defaultOdomORBSLAMBf();
