@@ -314,8 +314,8 @@ IF(WITH_QT)
       IF("${VTK_MAJOR_VERSION}" GREATER 5)
         IF(RTABMAP_QT_VERSION STREQUAL "AUTO" OR RTABMAP_QT_VERSION STREQUAL "5")
           FIND_PACKAGE(Qt5 COMPONENTS Widgets Core Gui OpenGL PrintSupport QUIET OPTIONAL_COMPONENTS Svg)
-	    ENDIF(RTABMAP_QT_VERSION STREQUAL "AUTO" OR RTABMAP_QT_VERSION STREQUAL "5")
-	  ENDIF("${VTK_MAJOR_VERSION}" GREATER 5)
+        ENDIF(RTABMAP_QT_VERSION STREQUAL "AUTO" OR RTABMAP_QT_VERSION STREQUAL "5")
+      ENDIF("${VTK_MAJOR_VERSION}" GREATER 5)
 
       IF(NOT Qt5_FOUND)
         IF(RTABMAP_QT_VERSION STREQUAL "AUTO" OR RTABMAP_QT_VERSION STREQUAL "4")
@@ -328,8 +328,8 @@ IF(WITH_QT)
         IF("${VTK_MAJOR_VERSION}" EQUAL 5)
             FIND_PACKAGE(QVTK REQUIRED) # only for VTK 5
         ELSE()
-		    list(FIND PCL_LIBRARIES VTK::GUISupportQt value)
-			IF(value EQUAL -1)
+            list(FIND PCL_LIBRARIES VTK::GUISupportQt value)
+            IF(value EQUAL -1)
                 list(FIND PCL_LIBRARIES vtkGUISupportQt value)
                 IF(value EQUAL -1)
                     IF(NOT(${VTK_MAJOR_VERSION} LESS 9))
@@ -339,8 +339,8 @@ IF(WITH_QT)
                     ENDIF()
                     SET(ADD_VTK_GUI_SUPPORT_QT_TO_CONF TRUE)
                 ENDIF(value EQUAL -1)
-		    ENDIF(value EQUAL -1)
-		    
+            ENDIF(value EQUAL -1)
+
             MESSAGE(STATUS "VTK_RENDERING_BACKEND=${VTK_RENDERING_BACKEND}")
 
             IF(VTK_RENDERING_BACKEND STREQUAL "OpenGL2")
@@ -358,12 +358,12 @@ IF(WITH_QT)
                 ENDIF(value EQUAL -1)
             ELSEIF("${VTK_MAJOR_VERSION}" EQUAL 9)
                 list(FIND PCL_LIBRARIES VTK::RenderingOpenGL2 value)
-			    IF(NOT value EQUAL -1)
-			        list(FIND PCL_LIBRARIES VTK::RenderingVolumeOpenGL2 value)
+                IF(NOT value EQUAL -1)
+                    list(FIND PCL_LIBRARIES VTK::RenderingVolumeOpenGL2 value)
                     IF(value EQUAL -1)
                         SET(PCL_LIBRARIES "${PCL_LIBRARIES};VTK::RenderingVolumeOpenGL2")
                     ENDIF(value EQUAL -1)
-			    ENDIF(NOT value EQUAL -1)
+                ENDIF(NOT value EQUAL -1)
             ENDIF()
 
         ENDIF()
@@ -426,7 +426,7 @@ ENDIF(WITH_FREENECT2)
 
 IF(WITH_K4W2 AND WIN32)
     FIND_PACKAGE(KinectSDK2 QUIET)
-	IF(KinectSDK2_FOUND)
+    IF(KinectSDK2_FOUND)
        MESSAGE(STATUS "Found Kinect for Windows 2: ${KinectSDK2_INCLUDE_DIRS}")
     ENDIF(KinectSDK2_FOUND)
 ENDIF(WITH_K4W2 AND WIN32)
@@ -441,7 +441,7 @@ IF(WITH_K4A)
             SET(k4a_FOUND FALSE)
         ENDIF(NOT (k4a_FOUND AND k4arecord_FOUND))
     ENDIF()
-	IF(k4a_FOUND)
+    IF(k4a_FOUND)
        MESSAGE(STATUS "Found Kinect for Azure: ${k4a_INCLUDE_DIRS}")
     ENDIF(k4a_FOUND)
 ENDIF(WITH_K4A)
@@ -465,10 +465,10 @@ IF(WITH_G2O)
     FIND_PACKAGE(g2o NO_MODULE)
     IF(g2o_FOUND)
        MESSAGE(STATUS "Found g2o (targets)")
-	     SET(G2O_FOUND ${g2o_FOUND})
-	     get_target_property(G2O_INCLUDES g2o::core INTERFACE_INCLUDE_DIRECTORIES)
-	     MESSAGE(STATUS "g2o include dir: ${G2O_INCLUDES}")
-	     FIND_FILE(G2O_FACTORY_FILE g2o/core/factory.h 
+         SET(G2O_FOUND ${g2o_FOUND})
+         get_target_property(G2O_INCLUDES g2o::core INTERFACE_INCLUDE_DIRECTORIES)
+         MESSAGE(STATUS "g2o include dir: ${G2O_INCLUDES}")
+         FIND_FILE(G2O_FACTORY_FILE g2o/core/factory.h 
          PATHS ${G2O_INCLUDES}
          NO_DEFAULT_PATH)
        FILE(READ ${G2O_FACTORY_FILE} TMPTXT)
@@ -528,8 +528,8 @@ IF(libpointmatcher_FOUND OR GTSAM_FOUND)
         find_package(Boost COMPONENTS thread filesystem system program_options date_time chrono timer serialization REQUIRED)
     ENDIF(Boost_MINOR_VERSION GREATER 47)
     IF(WIN32)
-	    MESSAGE(STATUS "Boost_LIBRARY_DIRS=${Boost_LIBRARY_DIRS}")
-	    link_directories(${Boost_LIBRARY_DIRS})
+        MESSAGE(STATUS "Boost_LIBRARY_DIRS=${Boost_LIBRARY_DIRS}")
+        link_directories(${Boost_LIBRARY_DIRS})
     ENDIF(WIN32)
 ENDIF(libpointmatcher_FOUND OR GTSAM_FOUND)
 
@@ -766,57 +766,57 @@ IF(WITH_ORB_SLAM AND NOT G2O_FOUND)
 ENDIF(WITH_ORB_SLAM AND NOT G2O_FOUND)
 
 IF(NOT MSVC)
-    IF(Qt6_FOUND)
+    IF(Qt6_FOUND OR (G2O_FOUND AND ${G2O_CPP11} EQUAL 1))
       # Qt6 requires c++17
       include(CheckCXXCompilerFlag)
-	  CHECK_CXX_COMPILER_FLAG("-std=c++17" COMPILER_SUPPORTS_CXX17)
-	  IF(COMPILER_SUPPORTS_CXX17)
-	    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
-	    set(CMAKE_CXX_STANDARD 17)
-	  ELSE()
-	    message(STATUS "The compiler ${CMAKE_CXX_COMPILER} has no C++17 support. Please use a different C++ compiler if you want to use Qt6.")
-	  ENDIF()
+      CHECK_CXX_COMPILER_FLAG("-std=c++17" COMPILER_SUPPORTS_CXX17)
+      IF(COMPILER_SUPPORTS_CXX17)
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
+        set(CMAKE_CXX_STANDARD 17)
+      ELSE()
+        message(STATUS "The compiler ${CMAKE_CXX_COMPILER} has no C++17 support. Please use a different C++ compiler if you want to use Qt6.")
+      ENDIF()
     ENDIF()
-	IF((NOT (${CMAKE_CXX_STANDARD} STREQUAL "17")) AND ((NOT WITH_MSCKF_VIO OR NOT msckf_vio_FOUND) AND (loam_velodyne_FOUND OR floam_FOUND OR PCL_VERSION VERSION_GREATER "1.9.1" OR TORCH_FOUND OR G2O_FOUND OR CCCoreLib_FOUND OR Open3D_FOUND)))
-	 #LOAM, PCL>=1.10, latest g2o and CCCoreLib require c++14, but MSCKF_VIO requires c++11
-	 include(CheckCXXCompilerFlag)
-	  CHECK_CXX_COMPILER_FLAG("-std=c++14" COMPILER_SUPPORTS_CXX14)
-	  IF(COMPILER_SUPPORTS_CXX14)
-	    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")
-	    set(CMAKE_CXX_STANDARD 14)
-	  ELSE()
-	    message(STATUS "The compiler ${CMAKE_CXX_COMPILER} has no C++14 support. Please use a different C++ compiler if you want to use LOAM, latest PCL or g2o.")
-	  ENDIF()
-	ENDIF()
+    IF((NOT (${CMAKE_CXX_STANDARD} STREQUAL "17")) AND ((NOT WITH_MSCKF_VIO OR NOT msckf_vio_FOUND) AND (loam_velodyne_FOUND OR floam_FOUND OR PCL_VERSION VERSION_GREATER "1.9.1" OR TORCH_FOUND OR G2O_FOUND OR CCCoreLib_FOUND OR Open3D_FOUND)))
+     #LOAM, PCL>=1.10, latest g2o and CCCoreLib require c++14, but MSCKF_VIO requires c++11
+     include(CheckCXXCompilerFlag)
+      CHECK_CXX_COMPILER_FLAG("-std=c++14" COMPILER_SUPPORTS_CXX14)
+      IF(COMPILER_SUPPORTS_CXX14)
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")
+        set(CMAKE_CXX_STANDARD 14)
+      ELSE()
+        message(STATUS "The compiler ${CMAKE_CXX_COMPILER} has no C++14 support. Please use a different C++ compiler if you want to use LOAM, latest PCL or g2o.")
+      ENDIF()
+    ENDIF()
 
-	IF( (NOT (${CMAKE_CXX_STANDARD} STREQUAL "17") AND NOT (${CMAKE_CXX_STANDARD} STREQUAL "14")) AND (
-	       G2O_FOUND OR
-	       GTSAM_FOUND OR
-	       CERES_FOUND OR
-	       ZED_FOUND OR
-	       ZEDOC_FOUND OR
-	       ANDROID OR
-	       RealSense_FOUND OR
-	       realsense2_FOUND OR
-	       ORB_SLAM_FOUND OR
-	       okvis_FOUND OR
-	       open_chisel_FOUND OR
-	       msckf_vio_FOUND OR
-	       vins_FOUND OR
-	       ov_msckf_FOUND OR
-	       libpointmatcher_FOUND))
-	 #Newest versions require std11
-	 include(CheckCXXCompilerFlag)
-	  CHECK_CXX_COMPILER_FLAG("-std=c++11" COMPILER_SUPPORTS_CXX11)
-	  CHECK_CXX_COMPILER_FLAG("-std=c++0x" COMPILER_SUPPORTS_CXX0X)
-	  IF(COMPILER_SUPPORTS_CXX11)
-	    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
-	  ELSEIF(COMPILER_SUPPORTS_CXX0X)
-	    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
-	  ELSE()
-	    message(STATUS "The compiler ${CMAKE_CXX_COMPILER} has no C++11 support. Please use a different C++ compiler.")
-	  ENDIF()
-	ENDIF()
+    IF( (NOT (${CMAKE_CXX_STANDARD} STREQUAL "17") AND NOT (${CMAKE_CXX_STANDARD} STREQUAL "14")) AND (
+           G2O_FOUND OR
+           GTSAM_FOUND OR
+           CERES_FOUND OR
+           ZED_FOUND OR
+           ZEDOC_FOUND OR
+           ANDROID OR
+           RealSense_FOUND OR
+           realsense2_FOUND OR
+           ORB_SLAM_FOUND OR
+           okvis_FOUND OR
+           open_chisel_FOUND OR
+           msckf_vio_FOUND OR
+           vins_FOUND OR
+           ov_msckf_FOUND OR
+           libpointmatcher_FOUND))
+     #Newest versions require std11
+     include(CheckCXXCompilerFlag)
+      CHECK_CXX_COMPILER_FLAG("-std=c++11" COMPILER_SUPPORTS_CXX11)
+      CHECK_CXX_COMPILER_FLAG("-std=c++0x" COMPILER_SUPPORTS_CXX0X)
+      IF(COMPILER_SUPPORTS_CXX11)
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+      ELSEIF(COMPILER_SUPPORTS_CXX0X)
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
+      ELSE()
+        message(STATUS "The compiler ${CMAKE_CXX_COMPILER} has no C++11 support. Please use a different C++ compiler.")
+      ENDIF()
+    ENDIF()
 ENDIF()
 
 ####### OSX BUNDLE CMAKE_INSTALL_PREFIX #######
