@@ -454,7 +454,7 @@
 		</dict>
 		<dict>
 			<key>FooterText</key>
-			<string>Copyright (c) 2010-2022, Mathieu Labbe - IntRoLab - Université de Sherbrooke. All rights reserved.</string>
+			<string>Copyright (c) 2010-2023, Mathieu Labbe - IntRoLab - Université de Sherbrooke. All rights reserved.</string>
 			<key>Title</key>
 			<string>About</string>
 			<key>Type</key>
