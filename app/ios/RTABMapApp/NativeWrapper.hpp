@@ -97,7 +97,6 @@ void setGraphOptimizationNative(const void *object, bool enabled);
 void setNodesFilteringNative(const void *object, bool enabled);
 void setGraphVisibleNative(const void *object, bool visible);
 void setGridVisibleNative(const void *object, bool visible);
-void setRawScanSavedNative(const void *object, bool enabled);
 void setFullResolutionNative(const void *object, bool enabled);
 void setSmoothingNative(const void *object, bool enabled);
 void setAppendModeNative(const void *object, bool enabled);

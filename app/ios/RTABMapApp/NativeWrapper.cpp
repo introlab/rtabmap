@@ -489,13 +489,6 @@ void setGridVisibleNative(const void *object, bool visible)
     else
         UERROR("object is null!");
 }
-void setRawScanSavedNative(const void *object, bool enabled)
-{
-    if(object)
-        native(object)->setRawScanSaved(enabled);
-    else
-        UERROR("object is null!");
-}
 void setFullResolutionNative(const void *object, bool enabled)
 {
     if(object)

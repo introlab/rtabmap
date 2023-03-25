@@ -405,9 +405,6 @@ class RTABMap {
     func setGridVisible(visible: Bool) {
         setGridVisibleNative(native_rtabmap, visible)
     }
-    func setRawScanSaved(enabled: Bool) {
-        setRawScanSavedNative(native_rtabmap, enabled)
-    }
     func setFullResolution(enabled: Bool) {
         setFullResolutionNative(native_rtabmap, enabled)
     }
