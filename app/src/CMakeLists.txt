@@ -26,6 +26,10 @@ IF(WIN32)
   ENDIF( MINGW )
 ENDIF(WIN32)
 
+IF(BUILD_AS_BUNDLE)
+  ADD_DEFINITIONS("-DBUILD_AS_BUNDLE")
+ENDIF()
+
 # Add binary
 IF(APPLE AND BUILD_AS_BUNDLE)
   ADD_EXECUTABLE(rtabmap_app MACOSX_BUNDLE ${SRC_FILES})
@@ -199,9 +203,9 @@ IF(BUILD_AS_BUNDLE AND (APPLE OR WIN32))
 	" COMPONENT runtime)
  
   # directories to look for dependencies
-  SET(DIRS ${QT_LIBRARY_DIRS} ${PROJECT_SOURCE_DIR}/bin)
+  SET(DIRS ${QT_LIBRARY_DIRS} ${PROJECT_BINARY_DIR}/bin)
   IF(APPLE)
-    SET(DIRS ${DIRS} /usr/local /usr/local/lib)
+    SET(DIRS ${DIRS} /usr/local /usr/local/lib /opt/homebrew /opt/homebrew/lib /opt/homebrew/lib/gcc/current)
   ENDIF(APPLE)
 
   # Now the work of copying dependencies into the bundle/package
