@@ -63,7 +63,7 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-314</y>
+            <y>0</y>
             <width>756</width>
             <height>3657</height>
            </rect>
@@ -95,7 +95,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>5</number>
+                <number>22</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,0">
@@ -19953,16 +19953,10 @@ Lower the ratio -&gt; higher the precision.</string>
                     </item>
                     <item>
                      <layout class="QGridLayout" name="gridLayout_48" columnstretch="0,1">
-                      <item row="9" column="0">
-                       <widget class="QDoubleSpinBox" name="loopClosure_icpEpsilon">
-                        <property name="suffix">
-                         <string> m</string>
-                        </property>
+                      <item row="19" column="0">
+                       <widget class="QDoubleSpinBox" name="loopClosure_icpPointToPlaneNormalsMinComplexity">
                         <property name="decimals">
-                         <number>6</number>
-                        </property>
-                        <property name="minimum">
-                         <double>0.000000000000000</double>
+                         <number>3</number>
                         </property>
                         <property name="maximum">
                          <double>1.000000000000000</double>
@@ -19970,12 +19964,79 @@ Lower the ratio -&gt; higher the precision.</string>
                         <property name="singleStep">
                          <double>0.010000000000000</double>
                         </property>
+                       </widget>
+                      </item>
+                      <item row="6" column="0">
+                       <widget class="QDoubleSpinBox" name="loopClosure_icpRangeMax">
+                        <property name="suffix">
+                         <string> m</string>
+                        </property>
+                        <property name="decimals">
+                         <number>2</number>
+                        </property>
+                        <property name="minimum">
+                         <double>0.000000000000000</double>
+                        </property>
+                        <property name="maximum">
+                         <double>999.000000000000000</double>
+                        </property>
+                        <property name="singleStep">
+                         <double>1.000000000000000</double>
+                        </property>
                         <property name="value">
                          <double>0.000000000000000</double>
                         </property>
                        </widget>
                       </item>
-                      <item row="12" column="1">
+                      <item row="9" column="1">
+                       <widget class="QLabel" name="label_124">
+                        <property name="text">
+                         <string>Max iterations.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="0" column="0">
+                       <widget class="QComboBox" name="comboBox_icpStrategy">
+                        <item>
+                         <property name="text">
+                          <string>PCL (Point Cloud Library)</string>
+                         </property>
+                        </item>
+                        <item>
+                         <property name="text">
+                          <string>libpointmatcher</string>
+                         </property>
+                        </item>
+                        <item>
+                         <property name="text">
+                          <string>CCCoreLib (CloudCompare)</string>
+                         </property>
+                        </item>
+                       </widget>
+                      </item>
+                      <item row="3" column="0">
+                       <widget class="QSpinBox" name="loopClosure_icpDownsamplingStep">
+                        <property name="minimum">
+                         <number>1</number>
+                        </property>
+                        <property name="maximum">
+                         <number>999999</number>
+                        </property>
+                        <property name="singleStep">
+                         <number>1</number>
+                        </property>
+                        <property name="value">
+                         <number>1</number>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="13" column="1">
                        <widget class="QLabel" name="label_446">
                         <property name="text">
                          <string>Outlier ratio used when ICP strategy is not PCL. For libpointmatcher, this parameter set TrimmedDistOutlierFilter / ratio for convenience when configuration file is not set. For CCCoreLib, this parameter set the &quot;finalOverlapRatio&quot;. </string>
@@ -19988,16 +20049,36 @@ Lower the ratio -&gt; higher the precision.</string>
                         </property>
                        </widget>
                       </item>
-                      <item row="19" column="1">
-                       <widget class="QLabel" name="label_607">
+                      <item row="21" column="1">
+                       <widget class="QLabel" name="label_640">
                         <property name="text">
-                         <string>Stuctural complexity strategy. If structural complexity is below the minimum complexity threshold: set to 0 to so that the transform is automatically rejected, set to 1 to limit ICP correction in axes with most constraints (e.g., for a corridor-like environment, the resulting transform will be limited in y and yaw, x will taken from the guess), set to 2 to accept &quot;as is&quot; the transform computed by PointToPoint.</string>
+                         <string>Export scans used for ICP in the specified format (a warning on terminal will be shown with the file paths used). Supported formats are &quot;pcd&quot;, &quot;ply&quot; or &quot;vtk&quot;. If logger level is debug, from and to scans will stamped, so previous files won't be overwritten.</string>
                         </property>
                         <property name="wordWrap">
                          <bool>true</bool>
                         </property>
                         <property name="textInteractionFlags">
                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="7" column="1">
+                       <widget class="QLabel" name="label_122">
+                        <property name="text">
+                         <string>Max distance for point correspondences.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="14" column="0">
+                       <widget class="QCheckBox" name="loopClosure_icpPointToPlane">
+                        <property name="text">
+                         <string/>
                         </property>
                        </widget>
                       </item>
@@ -20014,7 +20095,7 @@ Lower the ratio -&gt; higher the precision.</string>
                         </property>
                        </widget>
                       </item>
-                      <item row="14" column="0">
+                      <item row="15" column="0">
                        <widget class="QSpinBox" name="loopClosure_icpPointToPlaneNormals">
                         <property name="minimum">
                          <number>1</number>
@@ -20027,203 +20108,8 @@ Lower the ratio -&gt; higher the precision.</string>
                         </property>
                        </widget>
                       </item>
-                      <item row="18" column="1">
-                       <widget class="QLabel" name="label_429">
-                        <property name="text">
-                         <string>Minimum structural complexity (0.0=low, 1.0=high) of the scan to do PointToPlane registration, otherwise PointToPoint registration is done instead and strategy from %s is used. This check is done only when PointToPlane is enabled.</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                        <property name="textInteractionFlags">
-                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="4" column="1">
-                       <widget class="QLabel" name="label_125">
-                        <property name="text">
-                         <string>Uniform sampling voxel size. Set to 0 to disable.</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                        <property name="textInteractionFlags">
-                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="8" column="0">
-                       <widget class="QSpinBox" name="loopClosure_icpIterations">
-                        <property name="minimum">
-                         <number>1</number>
-                        </property>
-                        <property name="maximum">
-                         <number>1000</number>
-                        </property>
-                        <property name="value">
-                         <number>10</number>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="16" column="0">
-                       <widget class="QDoubleSpinBox" name="loopClosure_icpPointToPlaneNormalsRadius">
-                        <property name="singleStep">
-                         <double>0.010000000000000</double>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="10" column="1">
-                       <widget class="QLabel" name="label_133">
-                        <property name="text">
-                         <string>Ratio of matching correspondences to accept the transform. If the maximum laser scans is set, this is the minimum ratio of correspondences on laser scan maximum size to accept the transform.</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                        <property name="textInteractionFlags">
-                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="0" column="1">
-                       <widget class="QLabel" name="label_617">
-                        <property name="text">
-                         <string>Strategy.</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                        <property name="textInteractionFlags">
-                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="1" column="1">
-                       <widget class="QLabel" name="label_51">
-                        <property name="text">
-                         <string>Maximum ICP translation correction accepted (&gt;0). A large translation difference between the visual transformation and ICP transformation results in wrong transformations in most cases.</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                        <property name="textInteractionFlags">
-                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="7" column="0">
-                       <widget class="QDoubleSpinBox" name="loopClosure_icpMaxCorrespondenceDistance">
-                        <property name="decimals">
-                         <number>3</number>
-                        </property>
-                        <property name="minimum">
-                         <double>0.001000000000000</double>
-                        </property>
-                        <property name="maximum">
-                         <double>9999.989999999999782</double>
-                        </property>
-                        <property name="singleStep">
-                         <double>0.010000000000000</double>
-                        </property>
-                        <property name="value">
-                         <double>0.100000000000000</double>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="5" column="1">
-                       <widget class="QLabel" name="label_559">
-                        <property name="text">
-                         <string>Minimum range filtering. Set to 0 to disable.</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                        <property name="textInteractionFlags">
-                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="13" column="0">
-                       <widget class="QCheckBox" name="loopClosure_icpPointToPlane">
-                        <property name="text">
-                         <string/>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="6" column="1">
-                       <widget class="QLabel" name="label_560">
-                        <property name="text">
-                         <string>Maximum range filtering. Set to 0 to disable.</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                        <property name="textInteractionFlags">
-                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="10" column="0">
-                       <widget class="QDoubleSpinBox" name="loopClosure_icpRatio">
-                        <property name="minimum">
-                         <double>0.000000000000000</double>
-                        </property>
-                        <property name="maximum">
-                         <double>1.000000000000000</double>
-                        </property>
-                        <property name="singleStep">
-                         <double>0.010000000000000</double>
-                        </property>
-                        <property name="value">
-                         <double>0.700000000000000</double>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="17" column="0">
-                       <widget class="QDoubleSpinBox" name="loopClosure_icpPointToPlaneGroundNormalsUp">
-                        <property name="decimals">
-                         <number>2</number>
-                        </property>
-                        <property name="maximum">
-                         <double>1.000000000000000</double>
-                        </property>
-                        <property name="singleStep">
-                         <double>0.010000000000000</double>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="17" column="1">
-                       <widget class="QLabel" name="label_608">
-                        <property name="text">
-                         <string>Invert normals on ground if they are pointing down (useful for ring-like 3D LiDARs). 0 means disabled, 1 means only normals perfectly aligned with -z axis. This is only done with 3D scans.</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                        <property name="textInteractionFlags">
-                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="5" column="0">
-                       <widget class="QDoubleSpinBox" name="loopClosure_icpRangeMin">
-                        <property name="suffix">
-                         <string> m</string>
-                        </property>
-                        <property name="decimals">
-                         <number>2</number>
-                        </property>
-                        <property name="minimum">
-                         <double>0.000000000000000</double>
-                        </property>
-                        <property name="singleStep">
-                         <double>1.000000000000000</double>
-                        </property>
-                        <property name="value">
-                         <double>0.000000000000000</double>
-                        </property>
-                       </widget>
+                      <item row="21" column="0">
+                       <widget class="QLineEdit" name="loopClosure_icpDebugExportFormat"/>
                       </item>
                       <item row="1" column="0">
                        <widget class="QDoubleSpinBox" name="globalDetection_icpMaxTranslation">
@@ -20244,45 +20130,23 @@ Lower the ratio -&gt; higher the precision.</string>
                         </property>
                        </widget>
                       </item>
-                      <item row="11" column="1">
-                       <widget class="QLabel" name="label_622">
-                        <property name="text">
-                         <string>Force 4 DoF: Limit ICP to x, y, z and yaw DoF. Available only with libpointmatcher or CCCoreLib strategies.</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                        <property name="textInteractionFlags">
-                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="12" column="0">
-                       <widget class="QDoubleSpinBox" name="doubleSpinBox_icpOutlierRatio">
-                        <property name="suffix">
-                         <string/>
-                        </property>
-                        <property name="decimals">
-                         <number>2</number>
-                        </property>
+                      <item row="9" column="0">
+                       <widget class="QSpinBox" name="loopClosure_icpIterations">
                         <property name="minimum">
-                         <double>0.010000000000000</double>
+                         <number>1</number>
                         </property>
                         <property name="maximum">
-                         <double>1.000000000000000</double>
-                        </property>
-                        <property name="singleStep">
-                         <double>0.100000000000000</double>
+                         <number>1000</number>
                         </property>
                         <property name="value">
-                         <double>0.850000000000000</double>
+                         <number>10</number>
                         </property>
                        </widget>
                       </item>
-                      <item row="14" column="1">
-                       <widget class="QLabel" name="label_212">
+                      <item row="19" column="1">
+                       <widget class="QLabel" name="label_429">
                         <property name="text">
-                         <string>Number of neighbors to compute normals for point to plane. Normals won't be recomputed if uniform sampling is disabled and that there are already normals in the laser scans.</string>
+                         <string>Minimum structural complexity (0.0=low, 1.0=high) of the scan to do PointToPlane registration, otherwise PointToPoint registration is done instead and strategy from %s is used. This check is done only when PointToPlane is enabled.</string>
                         </property>
                         <property name="wordWrap">
                          <bool>true</bool>
@@ -20292,10 +20156,23 @@ Lower the ratio -&gt; higher the precision.</string>
                         </property>
                        </widget>
                       </item>
-                      <item row="16" column="1">
-                       <widget class="QLabel" name="label_426">
+                      <item row="3" column="1">
+                       <widget class="QLabel" name="label_139">
                         <property name="text">
-                         <string>Search radius to compute normals for point to plane. Normals won't be recomputed if uniform sampling is disabled and that there are already normals in the laser scans.</string>
+                         <string>Downsampling step of the cloud. Set to 1 to disable. This is done before uniform sampling.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="0" column="1">
+                       <widget class="QLabel" name="label_617">
+                        <property name="text">
+                         <string>Strategy.</string>
                         </property>
                         <property name="wordWrap">
                          <bool>true</bool>
@@ -20324,20 +20201,36 @@ Lower the ratio -&gt; higher the precision.</string>
                         </property>
                        </widget>
                       </item>
-                      <item row="3" column="1">
-                       <widget class="QLabel" name="label_139">
-                        <property name="text">
-                         <string>Downsampling step of the cloud. Set to 1 to disable. This is done before uniform sampling.</string>
+                      <item row="10" column="0">
+                       <widget class="QDoubleSpinBox" name="loopClosure_icpEpsilon">
+                        <property name="suffix">
+                         <string> m</string>
                         </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
+                        <property name="decimals">
+                         <number>6</number>
                         </property>
-                        <property name="textInteractionFlags">
-                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        <property name="minimum">
+                         <double>0.000000000000000</double>
+                        </property>
+                        <property name="maximum">
+                         <double>1.000000000000000</double>
+                        </property>
+                        <property name="singleStep">
+                         <double>0.010000000000000</double>
+                        </property>
+                        <property name="value">
+                         <double>0.000000000000000</double>
                         </property>
                        </widget>
                       </item>
-                      <item row="19" column="0">
+                      <item row="12" column="0">
+                       <widget class="QCheckBox" name="loopClosure_icpForce4DoF">
+                        <property name="text">
+                         <string/>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="20" column="0">
                        <widget class="QComboBox" name="loopClosure_icpPointToPlaneLowComplexityStrategy">
                         <item>
                          <property name="text">
@@ -20356,33 +20249,75 @@ Lower the ratio -&gt; higher the precision.</string>
                         </item>
                        </widget>
                       </item>
-                      <item row="11" column="0">
-                       <widget class="QCheckBox" name="loopClosure_icpForce4DoF">
+                      <item row="17" column="1">
+                       <widget class="QLabel" name="label_426">
                         <property name="text">
-                         <string/>
+                         <string>Search radius to compute normals for point to plane. Normals won't be recomputed if uniform sampling is disabled and that there are already normals in the laser scans.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                         </property>
                        </widget>
                       </item>
-                      <item row="0" column="0">
-                       <widget class="QComboBox" name="comboBox_icpStrategy">
-                        <item>
-                         <property name="text">
-                          <string>PCL (Point Cloud Library)</string>
-                         </property>
-                        </item>
-                        <item>
-                         <property name="text">
-                          <string>libpointmatcher</string>
-                         </property>
-                        </item>
-                        <item>
-                         <property name="text">
-                          <string>CCCoreLib (CloudCompare)</string>
-                         </property>
-                        </item>
+                      <item row="11" column="0">
+                       <widget class="QDoubleSpinBox" name="loopClosure_icpRatio">
+                        <property name="minimum">
+                         <double>0.000000000000000</double>
+                        </property>
+                        <property name="maximum">
+                         <double>1.000000000000000</double>
+                        </property>
+                        <property name="singleStep">
+                         <double>0.010000000000000</double>
+                        </property>
+                        <property name="value">
+                         <double>0.700000000000000</double>
+                        </property>
                        </widget>
                       </item>
-                      <item row="9" column="1">
+                      <item row="12" column="1">
+                       <widget class="QLabel" name="label_622">
+                        <property name="text">
+                         <string>Force 4 DoF: Limit ICP to x, y, z and yaw DoF. Available only with libpointmatcher or CCCoreLib strategies.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="20" column="1">
+                       <widget class="QLabel" name="label_607">
+                        <property name="text">
+                         <string>Stuctural complexity strategy. If structural complexity is below the minimum complexity threshold: set to 0 to so that the transform is automatically rejected, set to 1 to limit ICP correction in axes with most constraints (e.g., for a corridor-like environment, the resulting transform will be limited in y and yaw, x will taken from the guess), set to 2 to accept &quot;as is&quot; the transform computed by PointToPoint.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="18" column="0">
+                       <widget class="QDoubleSpinBox" name="loopClosure_icpPointToPlaneGroundNormalsUp">
+                        <property name="decimals">
+                         <number>2</number>
+                        </property>
+                        <property name="maximum">
+                         <double>1.000000000000000</double>
+                        </property>
+                        <property name="singleStep">
+                         <double>0.010000000000000</double>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="10" column="1">
                        <widget class="QLabel" name="label_136">
                         <property name="text">
                          <string>Set the transformation epsilon (maximum allowable difference between two consecutive transformations) in order for an optimization to be considered as having converged to the final solution.</string>
@@ -20395,7 +20330,7 @@ Lower the ratio -&gt; higher the precision.</string>
                         </property>
                        </widget>
                       </item>
-                      <item row="13" column="1">
+                      <item row="14" column="1">
                        <widget class="QLabel" name="label_144">
                         <property name="text">
                          <string>Point to plane ICP.</string>
@@ -20408,10 +20343,10 @@ Lower the ratio -&gt; higher the precision.</string>
                         </property>
                        </widget>
                       </item>
-                      <item row="8" column="1">
-                       <widget class="QLabel" name="label_124">
+                      <item row="15" column="1">
+                       <widget class="QLabel" name="label_212">
                         <property name="text">
-                         <string>Max iterations.</string>
+                         <string>Number of neighbors to compute normals for point to plane. Normals won't be recomputed if uniform sampling is disabled and that there are already normals in the laser scans.</string>
                         </property>
                         <property name="wordWrap">
                          <bool>true</bool>
@@ -20421,45 +20356,16 @@ Lower the ratio -&gt; higher the precision.</string>
                         </property>
                        </widget>
                       </item>
-                      <item row="18" column="0">
-                       <widget class="QDoubleSpinBox" name="loopClosure_icpPointToPlaneNormalsMinComplexity">
-                        <property name="decimals">
-                         <number>3</number>
-                        </property>
-                        <property name="maximum">
-                         <double>1.000000000000000</double>
-                        </property>
-                        <property name="singleStep">
-                         <double>0.010000000000000</double>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="7" column="1">
-                       <widget class="QLabel" name="label_122">
+                      <item row="11" column="1">
+                       <widget class="QLabel" name="label_133">
                         <property name="text">
-                         <string>Max distance for point correspondences.</string>
+                         <string>Ratio of matching correspondences to accept the transform. If the maximum laser scans is set, this is the minimum ratio of correspondences on laser scan maximum size to accept the transform.</string>
                         </property>
                         <property name="wordWrap">
                          <bool>true</bool>
                         </property>
                         <property name="textInteractionFlags">
                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="3" column="0">
-                       <widget class="QSpinBox" name="loopClosure_icpDownsamplingStep">
-                        <property name="minimum">
-                         <number>1</number>
-                        </property>
-                        <property name="maximum">
-                         <number>999999</number>
-                        </property>
-                        <property name="singleStep">
-                         <number>1</number>
-                        </property>
-                        <property name="value">
-                         <number>1</number>
                         </property>
                        </widget>
                       </item>
@@ -20482,32 +20388,10 @@ Lower the ratio -&gt; higher the precision.</string>
                         </property>
                        </widget>
                       </item>
-                      <item row="6" column="0">
-                       <widget class="QDoubleSpinBox" name="loopClosure_icpRangeMax">
-                        <property name="suffix">
-                         <string> m</string>
-                        </property>
-                        <property name="decimals">
-                         <number>2</number>
-                        </property>
-                        <property name="minimum">
-                         <double>0.000000000000000</double>
-                        </property>
-                        <property name="maximum">
-                         <double>999.000000000000000</double>
-                        </property>
-                        <property name="singleStep">
-                         <double>1.000000000000000</double>
-                        </property>
-                        <property name="value">
-                         <double>0.000000000000000</double>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="20" column="1">
-                       <widget class="QLabel" name="label_640">
+                      <item row="5" column="1">
+                       <widget class="QLabel" name="label_559">
                         <property name="text">
-                         <string>Export scans used for ICP in the specified format (a warning on terminal will be shown with the file paths used). Supported formats are &quot;pcd&quot;, &quot;ply&quot; or &quot;vtk&quot;. If logger level is debug, from and to scans will stamped, so previous files won't be overwritten.</string>
+                         <string>Minimum range filtering. Set to 0 to disable.</string>
                         </property>
                         <property name="wordWrap">
                          <bool>true</bool>
@@ -20517,8 +20401,144 @@ Lower the ratio -&gt; higher the precision.</string>
                         </property>
                        </widget>
                       </item>
-                      <item row="20" column="0">
-                       <widget class="QLineEdit" name="loopClosure_icpDebugExportFormat"/>
+                      <item row="1" column="1">
+                       <widget class="QLabel" name="label_51">
+                        <property name="text">
+                         <string>Maximum ICP translation correction accepted (&gt;0). A large translation difference between the visual transformation and ICP transformation results in wrong transformations in most cases.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="13" column="0">
+                       <widget class="QDoubleSpinBox" name="doubleSpinBox_icpOutlierRatio">
+                        <property name="suffix">
+                         <string/>
+                        </property>
+                        <property name="decimals">
+                         <number>2</number>
+                        </property>
+                        <property name="minimum">
+                         <double>0.010000000000000</double>
+                        </property>
+                        <property name="maximum">
+                         <double>1.000000000000000</double>
+                        </property>
+                        <property name="singleStep">
+                         <double>0.100000000000000</double>
+                        </property>
+                        <property name="value">
+                         <double>0.850000000000000</double>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="18" column="1">
+                       <widget class="QLabel" name="label_608">
+                        <property name="text">
+                         <string>Invert normals on ground if they are pointing down (useful for ring-like 3D LiDARs). 0 means disabled, 1 means only normals perfectly aligned with -z axis. This is only done with 3D scans.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="6" column="1">
+                       <widget class="QLabel" name="label_560">
+                        <property name="text">
+                         <string>Maximum range filtering. Set to 0 to disable.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="5" column="0">
+                       <widget class="QDoubleSpinBox" name="loopClosure_icpRangeMin">
+                        <property name="suffix">
+                         <string> m</string>
+                        </property>
+                        <property name="decimals">
+                         <number>2</number>
+                        </property>
+                        <property name="minimum">
+                         <double>0.000000000000000</double>
+                        </property>
+                        <property name="singleStep">
+                         <double>1.000000000000000</double>
+                        </property>
+                        <property name="value">
+                         <double>0.000000000000000</double>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="4" column="1">
+                       <widget class="QLabel" name="label_125">
+                        <property name="text">
+                         <string>Uniform sampling voxel size. Set to 0 to disable.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="17" column="0">
+                       <widget class="QDoubleSpinBox" name="loopClosure_icpPointToPlaneNormalsRadius">
+                        <property name="singleStep">
+                         <double>0.010000000000000</double>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="7" column="0">
+                       <widget class="QDoubleSpinBox" name="loopClosure_icpMaxCorrespondenceDistance">
+                        <property name="decimals">
+                         <number>3</number>
+                        </property>
+                        <property name="minimum">
+                         <double>0.001000000000000</double>
+                        </property>
+                        <property name="maximum">
+                         <double>9999.989999999999782</double>
+                        </property>
+                        <property name="singleStep">
+                         <double>0.010000000000000</double>
+                        </property>
+                        <property name="value">
+                         <double>0.100000000000000</double>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="8" column="1">
+                       <widget class="QLabel" name="label_654">
+                        <property name="text">
+                         <string>Reciprocal correspondences. To be a valid correspondence, the corresponding point in target cloud to point in source cloud should be both their closest closest correspondence.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="8" column="0">
+                       <widget class="QCheckBox" name="loopClosure_icpReciprocalCorrespondences">
+                        <property name="text">
+                         <string/>
+                        </property>
+                       </widget>
                       </item>
                      </layout>
                     </item>

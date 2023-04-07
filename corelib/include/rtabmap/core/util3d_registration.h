@@ -65,26 +65,30 @@ void RTABMAP_CORE_EXPORT computeVarianceAndCorrespondences(
 		double maxCorrespondenceDistance,
 		double maxCorrespondenceAngle, // <=0 means that we don't care about normal angle difference
 		double & variance,
-		int & correspondencesOut);
+		int & correspondencesOut,
+		bool reciprocal);
 void RTABMAP_CORE_EXPORT computeVarianceAndCorrespondences(
 		const pcl::PointCloud<pcl::PointXYZINormal>::ConstPtr & cloudA,
 		const pcl::PointCloud<pcl::PointXYZINormal>::ConstPtr & cloudB,
 		double maxCorrespondenceDistance,
 		double maxCorrespondenceAngle, // <=0 means that we don't care about normal angle difference
 		double & variance,
-		int & correspondencesOut);
+		int & correspondencesOut,
+		bool reciprocal);
 void RTABMAP_CORE_EXPORT computeVarianceAndCorrespondences(
 		const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & cloudA,
 		const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & cloudB,
 		double maxCorrespondenceDistance,
 		double & variance,
-		int & correspondencesOut);
+		int & correspondencesOut,
+		bool reciprocal);
 void RTABMAP_CORE_EXPORT computeVarianceAndCorrespondences(
 		const pcl::PointCloud<pcl::PointXYZI>::ConstPtr & cloudA,
 		const pcl::PointCloud<pcl::PointXYZI>::ConstPtr & cloudB,
 		double maxCorrespondenceDistance,
 		double & variance,
-		int & correspondencesOut);
+		int & correspondencesOut,
+		bool reciprocal);
 
 Transform RTABMAP_CORE_EXPORT icp(
 		const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & cloud_source,

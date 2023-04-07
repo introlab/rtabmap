@@ -663,7 +663,8 @@ class RTABMAP_CORE_EXPORT Parameters
 #else
     RTABMAP_PARAM(Icp, MaxCorrespondenceDistance, float, 0.05,  "Max distance for point correspondences.");
 #endif
-    RTABMAP_PARAM(Icp, Iterations,                int, 30,      "Max iterations.");
+	RTABMAP_PARAM(Icp, ReciprocalCorrespondences, bool, true,   "To be a valid correspondence, the corresponding point in target cloud to point in source cloud should be both their closest closest correspondence.");
+	RTABMAP_PARAM(Icp, Iterations,                int, 30,      "Max iterations.");
     RTABMAP_PARAM(Icp, Epsilon,                   float, 0,     "Set the transformation epsilon (maximum allowable difference between two consecutive transformations) in order for an optimization to be considered as having converged to the final solution.");
     RTABMAP_PARAM(Icp, CorrespondenceRatio,       float, 0.1,   "Ratio of matching correspondences to accept the transform.");
     RTABMAP_PARAM(Icp, Force4DoF,                 bool, false,   uFormat("Limit ICP to x, y, z and yaw DoF. Available if %s > 0.", kIcpStrategy().c_str()));

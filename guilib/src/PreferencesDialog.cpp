@@ -1194,6 +1194,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->loopClosure_icpRangeMin->setObjectName(Parameters::kIcpRangeMin().c_str());
 	_ui->loopClosure_icpRangeMax->setObjectName(Parameters::kIcpRangeMax().c_str());
 	_ui->loopClosure_icpMaxCorrespondenceDistance->setObjectName(Parameters::kIcpMaxCorrespondenceDistance().c_str());
+	_ui->loopClosure_icpReciprocalCorrespondences->setObjectName(Parameters::kIcpReciprocalCorrespondences().c_str());
 	_ui->loopClosure_icpIterations->setObjectName(Parameters::kIcpIterations().c_str());
 	_ui->loopClosure_icpEpsilon->setObjectName(Parameters::kIcpEpsilon().c_str());
 	_ui->loopClosure_icpRatio->setObjectName(Parameters::kIcpCorrespondenceRatio().c_str());
