@@ -47,7 +47,6 @@ jobs:
     - name: Install dependencies
       run: |
         source /opt/ros/${{ matrix.ros_distribution }}/setup.bash
-        rosdep init
         rosdep update
         rosdep install --from-paths ${{github.workspace}} -y
 
