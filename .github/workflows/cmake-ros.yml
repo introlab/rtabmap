@@ -48,6 +48,7 @@ jobs:
 
     - name: Install dependencies
       run: |
+        rosdep update
         rosdep install --from-paths ${{github.workspace}} --ignore-src -r -y
 
     - name: Configure CMake
