@@ -22,10 +22,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        ros_distribution: [melodic, noetic, foxy, humble, rolling]
+        ros_distribution: [ noetic, foxy, humble, rolling]
         include:
-        - ros_distribution: 'melodic' 
-          os: ubuntu-18.04
         - ros_distribution: 'noetic'
           os: ubuntu-20.04
         - ros_distribution: 'foxy'
@@ -48,8 +46,10 @@ jobs:
 
     - name: Install dependencies
       run: |
+        source /opt/ros/${{ matrix.ros_distribution }}/setup.bash
+        rosdep init
         rosdep update
-        rosdep install --from-paths ${{github.workspace}} --ignore-src -r -y
+        rosdep install --from-paths ${{github.workspace}} -y
 
     - name: Configure CMake
       run: |
