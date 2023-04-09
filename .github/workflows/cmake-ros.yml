@@ -26,14 +26,19 @@ jobs:
         include:
         - ros_distribution: 'melodic' 
           os: ubuntu-18.04
+          deps: ros-melodic-cv-bridge ros-melodic-libg2o ros-melodic-libpointmatcher ros-melodic-octomap ros-melodic-qt-gui-cpp
         - ros_distribution: 'noetic'
           os: ubuntu-20.04
+          deps: ros-noetic-cv-bridge ros-noetic-libg2o ros-noetic-libpointmatcher ros-noetic-octomap ros-noetic-qt-gui-cpp
         - ros_distribution: 'foxy'
           os: ubuntu-20.04
+          deps: ros-foxy-cv-bridge ros-foxy-libg2o ros-foxy-libpointmatcher ros-foxy-octomap ros-foxy-qt-gui-cpp ros-foxy-ros-workspace
         - ros_distribution: 'humble'
           os: ubuntu-22.04
+          deps: ros-humble-cv-bridge ros-humble-libg2o ros-humble-libpointmatcher ros-humble-octomap ros-humble-qt-gui-cpp ros-humble-ros-workspace
         - ros_distribution: 'rolling'
           os: ubuntu-22.04
+          deps: ros-rolling-cv-bridge ros-rolling-libg2o ros-rolling-libpointmatcher ros-rolling-octomap ros-rolling-qt-gui-cpp ros-rolling-ros-workspace
 
     steps:
     - name: Workaround dpkg grub-efi-amd64-signed error
@@ -47,8 +52,7 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get -y install ros-${{ matrix.ros_distribution }}-rtabmap
-        sudo apt-get -y remove ros-${{ matrix.ros_distribution }}-rtabmap
+        sudo apt-get -y install ${{ matrix.deps }}
 
     - uses: actions/checkout@v2
 
