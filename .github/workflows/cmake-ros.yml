@@ -22,10 +22,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        ros_distribution: [melodic, noetic, foxy, humble, rolling]
+        ros_distribution: [ noetic, foxy, humble, rolling]
         include:
-        - ros_distribution: 'melodic' 
-          os: ubuntu-18.04
         - ros_distribution: 'noetic'
           os: ubuntu-20.04
         - ros_distribution: 'foxy'
@@ -44,13 +42,13 @@ jobs:
       with:
         required-ros-distributions: ${{ matrix.ros_distribution }}
     
+    - uses: actions/checkout@v2
+
     - name: Install dependencies
       run: |
-        sudo apt-get update
-        sudo apt-get -y install ros-${{ matrix.ros_distribution }}-rtabmap
-        sudo apt-get -y remove ros-${{ matrix.ros_distribution }}-rtabmap
-
-    - uses: actions/checkout@v2
+        source /opt/ros/${{ matrix.ros_distribution }}/setup.bash
+        rosdep update
+        rosdep install --from-paths ${{github.workspace}} -y
 
     - name: Configure CMake
       run: |
