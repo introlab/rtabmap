@@ -324,6 +324,10 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 				imus_.erase(imus_.begin());
 			}
 		}
+		else
+		{
+			UWARN("Received IMU doesn't have orientation set! It is ignored.");
+		}
 	}
 
 

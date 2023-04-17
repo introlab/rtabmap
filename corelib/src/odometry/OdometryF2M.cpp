@@ -214,6 +214,11 @@ Transform OdometryF2M::computeTransform(
 	if(sba_ && sba_->gravitySigma() > 0.0f && !imus().empty())
 	{
 		imuT = Transform::getTransform(imus(), data.stamp());
+		if(data.imu().empty())
+		{
+			Eigen::Quaternionf q = imuT.getQuaternionf();
+			data.setIMU(IMU(cv::Vec4d(q.x(), q.y(), q.z(), q.w()), cv::Mat(), cv::Vec3d(), cv::Mat(), cv::Vec3d(), cv::Mat()));
+		}
 	}
 
 	RegistrationInfo regInfo;

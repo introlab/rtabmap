@@ -6609,35 +6609,28 @@ void PreferencesDialog::testOdometry()
 		return;
 	}
 
+	ParametersMap parameters = this->getAllParameters();
 	IMUThread * imuThread = 0;
 	if((this->getSourceDriver() == kSrcStereoImages ||
 	   this->getSourceDriver() == kSrcRGBDImages ||
 	   this->getSourceDriver() == kSrcImages) &&
 	   !_ui->lineEdit_cameraImages_path_imu->text().isEmpty())
 	{
-		if(this->getOdomStrategy() != Odometry::kTypeOkvis &&
-		   this->getOdomStrategy() != Odometry::kTypeMSCKF &&
-		   this->getOdomStrategy() != Odometry::kTypeVINS &&
-		   this->getOdomStrategy() != Odometry::kTypeOpenVINS)
+		imuThread = new IMUThread(_ui->spinBox_cameraImages_max_imu_rate->value(), this->getIMULocalTransform());
+		if(getIMUFilteringStrategy()>0)
+		{
+			imuThread->enableIMUFiltering(getIMUFilteringStrategy()-1, parameters, getIMUFilteringBaseFrameConversion());
+		}
+		if(!imuThread->init(_ui->lineEdit_cameraImages_path_imu->text().toStdString()))
 		{
 			QMessageBox::warning(this, tr("Source IMU Path"),
-					tr("IMU path is set but odometry chosen doesn't support asynchronous IMU, ignoring IMU..."), QMessageBox::Ok);
-		}
-		else
-		{
-			imuThread = new IMUThread(_ui->spinBox_cameraImages_max_imu_rate->value(), this->getIMULocalTransform());
-			if(!imuThread->init(_ui->lineEdit_cameraImages_path_imu->text().toStdString()))
-			{
-				QMessageBox::warning(this, tr("Source IMU Path"),
-					tr("Initialization of IMU data has failed! Path=%1.").arg(_ui->lineEdit_cameraImages_path_imu->text()), QMessageBox::Ok);
-				delete camera;
-				delete imuThread;
-				return;
-			}
+				tr("Initialization of IMU data has failed! Path=%1.").arg(_ui->lineEdit_cameraImages_path_imu->text()), QMessageBox::Ok);
+			delete camera;
+			delete imuThread;
+			return;
 		}
 	}
 
-	ParametersMap parameters = this->getAllParameters();
 	if(getOdomRegistrationApproach() < 3)
 	{
 		uInsert(parameters, ParametersPair(Parameters::kRegStrategy(), uNumber2Str(getOdomRegistrationApproach())));
