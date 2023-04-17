@@ -63,7 +63,7 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>0</y>
+            <y>-373</y>
             <width>756</width>
             <height>3657</height>
            </rect>
@@ -95,7 +95,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>22</number>
+                <number>5</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,0">
@@ -3188,7 +3188,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                     <item>
                      <widget class="QStackedWidget" name="stackedWidget_src">
                       <property name="currentIndex">
-                       <number>3</number>
+                       <number>1</number>
                       </property>
                       <widget class="QWidget" name="page_41">
                        <layout class="QVBoxLayout" name="verticalLayout_64">
@@ -4971,7 +4971,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                            <item>
                             <widget class="QStackedWidget" name="stackedWidget_stereo">
                              <property name="currentIndex">
-                              <number>10</number>
+                              <number>4</number>
                              </property>
                              <widget class="QWidget" name="page_49">
                               <layout class="QVBoxLayout" name="verticalLayout_91"/>
@@ -5240,6 +5240,11 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                       <string>ULTRA</string>
                                      </property>
                                     </item>
+                                    <item>
+                                     <property name="text">
+                                      <string>NEURAL</string>
+                                     </property>
+                                    </item>
                                    </widget>
                                   </item>
                                   <item row="5" column="1">
@@ -5400,12 +5405,27 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                     </item>
                                     <item>
                                      <property name="text">
+                                      <string>HD1200</string>
+                                     </property>
+                                    </item>
+                                    <item>
+                                     <property name="text">
                                       <string>HD720</string>
                                      </property>
                                     </item>
                                     <item>
                                      <property name="text">
+                                      <string>SVGA</string>
+                                     </property>
+                                    </item>
+                                    <item>
+                                     <property name="text">
                                       <string>VGA</string>
+                                     </property>
+                                    </item>
+                                    <item>
+                                     <property name="text">
+                                      <string>AUTO</string>
                                      </property>
                                     </item>
                                    </widget>

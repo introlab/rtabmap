@@ -380,6 +380,13 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 		_ui->comboBox_cameraStereo->setItemData(kSrcStereoZed - kSrcStereo, 0, Qt::UserRole - 1);
 		_ui->comboBox_odom_sensor->setItemData(2, 0, Qt::UserRole - 1);
 	}
+	else if(CameraStereoZed::sdkVersion() < 4)
+	{
+		_ui->comboBox_stereoZed_resolution->setItemData(2, 0, Qt::UserRole - 1);
+		_ui->comboBox_stereoZed_resolution->setItemData(4, 0, Qt::UserRole - 1);
+		_ui->comboBox_stereoZed_resolution->setItemData(6, 0, Qt::UserRole - 1);
+		_ui->comboBox_stereoZed_quality->setItemData(3, 0, Qt::UserRole - 1);
+	}
     if (!CameraStereoTara::available())
     {
         _ui->comboBox_cameraStereo->setItemData(kSrcStereoTara - kSrcStereo, 0, Qt::UserRole - 1);
@@ -2033,7 +2040,7 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->spinBox_stereo_right_device->setValue(-1);
 		_ui->spinBox_stereousbcam_streamWidth->setValue(0);
 		_ui->spinBox_stereousbcam_streamHeight->setValue(0);
-		_ui->comboBox_stereoZed_resolution->setCurrentIndex(2);
+		_ui->comboBox_stereoZed_resolution->setCurrentIndex(CameraStereoZed::sdkVersion()<4?3:6);
 		_ui->comboBox_stereoZed_quality->setCurrentIndex(1);
 		_ui->checkbox_stereoZed_selfCalibration->setChecked(true);
 		_ui->comboBox_stereoZed_sensingMode->setCurrentIndex(0);
