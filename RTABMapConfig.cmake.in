@@ -42,6 +42,10 @@ IF(@CONF_WITH_K4A@)
     ENDIF()
 ENDIF()
 
+IF(@CONF_WITH_DEPTH_AI@)
+ find_dependency(depthai 2)
+ENDIF()
+
 IF(@CONF_WITH_OCTOMAP@)
   find_dependency(octomap)
 ENDIF()
