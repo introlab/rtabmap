@@ -42,11 +42,13 @@ RUN git clone https://github.com/opencv/opencv.git && \
     cd opencv && \
     mkdir build && \
     cd build && \
-    cmake -DBUILD_opencv_python3=OFF -DBUILD_opencv_python_bindings_generator=OFF -DBUILD_opencv_python_tests=OFF -DBUILD_PERF_TESTS=OFF -DBUILD_TESTS=OFF -DOPENCV_EXTRA_MODULES_PATH=/root/opencv_contrib/modules .. && \
+    cmake -DBUILD_opencv_python3=OFF -DBUILD_opencv_python_bindings_generator=OFF -DBUILD_opencv_python_tests=OFF -DBUILD_PERF_TESTS=OFF -DBUILD_TESTS=OFF -DOPENCV_ENABLE_NONFREE=ON -DOPENCV_EXTRA_MODULES_PATH=/root/opencv_contrib/modules .. && \
     make -j$(nproc) && \
     make install && \
     cd ../.. && \
     rm -rf opencv
+
+RUN mkdir -p /root/Documents/RTAB-Map
 
 # Copy current source code
 COPY . /root/rtabmap
@@ -61,9 +63,4 @@ RUN source /ros_entrypoint.sh && \
     rm -rf rtabmap && \
     ldconfig
 
-# nvidia-container-runtime
-ENV NVIDIA_VISIBLE_DEVICES \
-    ${NVIDIA_VISIBLE_DEVICES:-all}
-ENV NVIDIA_DRIVER_CAPABILITIES \
-    ${NVIDIA_DRIVER_CAPABILITIES:+$NVIDIA_DRIVER_CAPABILITIES,}graphics
 

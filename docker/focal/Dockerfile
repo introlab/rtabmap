@@ -5,7 +5,7 @@ FROM ros:noetic-perception
 # Install build dependencies
 RUN apt-get update && \
     apt-get install -y git software-properties-common ros-noetic-rtabmap-ros && \
-    apt-get remove -y ros-noetic-rtabmap && \
+    apt-get remove -y ros-noetic-rtabmap* && \
     apt-get clean && rm -rf /var/lib/apt/lists/
 
 WORKDIR /root/
@@ -158,6 +158,20 @@ RUN git clone https://github.com/laurentkneip/opengv.git && \
     make install && \
     cd && \
     rm -r opengv
+
+RUN git clone --branch 4.2.0 https://github.com/opencv/opencv.git && \
+    git clone --branch 4.2.0 https://github.com/opencv/opencv_contrib.git && \
+    cd opencv && \
+    mkdir build && \
+    cd build && \
+    cmake -DBUILD_opencv_python3=OFF -DBUILD_opencv_python_bindings_generator=OFF -DBUILD_opencv_python_tests=OFF -DBUILD_PERF_TESTS=OFF -DBUILD_TESTS=OFF -DOPENCV_ENABLE_NONFREE=ON -DOPENCV_EXTRA_MODULES_PATH=/root/opencv_contrib/modules .. && \
+    make -j$(nproc) && \
+    make install && \
+    cd ../.. && \
+    rm -rf opencv opencv_contrib
+
+# Will be used to read/store databases on host
+RUN mkdir -p /root/Documents/RTAB-Map
 
 RUN rm /bin/sh && ln -s /bin/bash /bin/sh
 

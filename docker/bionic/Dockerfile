@@ -5,7 +5,7 @@ FROM ros:melodic-perception
 # Install build dependencies
 RUN apt-get update && \
     apt-get install -y git software-properties-common ros-melodic-rtabmap-ros && \
-    apt-get remove -y ros-melodic-rtabmap && \
+    apt-get remove -y ros-melodic-rtabmap* && \
     apt-get clean && rm -rf /var/lib/apt/lists/
 
 WORKDIR /root/
@@ -48,6 +48,9 @@ RUN git clone https://github.com/laurentkneip/opengv.git && \
     make install && \
     cd && \
     rm -r opengv
+
+# Will be used to read/store databases on host
+RUN mkdir -p /root/Documents/RTAB-Map
 
 RUN rm /bin/sh && ln -s /bin/bash /bin/sh
 
