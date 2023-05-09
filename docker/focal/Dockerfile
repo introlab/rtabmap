@@ -159,7 +159,7 @@ RUN git clone https://github.com/laurentkneip/opengv.git && \
     cd && \
     rm -r opengv
 
-RUN git clone --branch 4.2.0 https://github.com/opencv/opencv.git && \
+RUN if [ "$TARGETPLATFORM" = "linux/amd64" ]; then git clone --branch 4.2.0 https://github.com/opencv/opencv.git && \
     git clone --branch 4.2.0 https://github.com/opencv/opencv_contrib.git && \
     cd opencv && \
     mkdir build && \
@@ -168,7 +168,7 @@ RUN git clone --branch 4.2.0 https://github.com/opencv/opencv.git && \
     make -j$(nproc) && \
     make install && \
     cd ../.. && \
-    rm -rf opencv opencv_contrib
+    rm -rf opencv opencv_contrib; fi
 
 # Will be used to read/store databases on host
 RUN mkdir -p /root/Documents/RTAB-Map
