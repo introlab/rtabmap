@@ -3395,8 +3395,8 @@ bool Rtabmap::process(
 					Transform newOptPoseInv = optPoses.at(signature->id()).inverse();
 					for(std::multimap<int, Link>::iterator iter=localizationLinks.begin(); iter!=localizationLinks.end(); ++iter)
 					{
-						UDEBUG("Adding new odom cache constraint (%d->%d) %d->%d (%s)", 
-						    iter->first, signature->id(), iter->second.from(), iter->second.to(), iter->second.transform().prettyPrint().c_str());
+						UDEBUG("Adding new odom cache constraint %d->%d (%s)", 
+						    iter->second.from(), iter->second.to(), iter->second.transform().prettyPrint().c_str());
 						_odomCacheConstraints.insert(std::make_pair(signature->id(), iter->second));
 					}
 
