@@ -3391,12 +3391,30 @@ bool Rtabmap::process(
 						}
 					}
 
-					// add localization links to odometry cache
+					// update localization links
 					Transform newOptPoseInv = optPoses.at(signature->id()).inverse();
 					for(std::multimap<int, Link>::iterator iter=localizationLinks.begin(); iter!=localizationLinks.end(); ++iter)
 					{
-						UDEBUG("Adding new odom cache constraint %d->%d (%s)", 
-						    iter->second.from(), iter->second.to(), iter->second.transform().prettyPrint().c_str());
+						if(!hadAlreadyLocalizationLinks)
+						{
+							// Add original link without optimization
+							UDEBUG("Adding new odom cache constraint %d->%d (%s)", 
+								iter->second.from(), iter->second.to(), iter->second.transform().prettyPrint().c_str());
+						}
+						else
+						{
+							// Adjust with optimized poses, this will smooth the localization
+							Transform newT = newOptPoseInv * optPoses.at(iter->first);
+							UDEBUG("Adjusted localization link %d->%d after optimization", iter->second.from(), iter->second.to());
+							UDEBUG("from %s", iter->second.transform().prettyPrint().c_str());
+							UDEBUG("  to %s", newT.prettyPrint().c_str());
+							iter->second.setTransform(newT);
+
+							// Update link in the referred signatures
+							if(iter->first > 0)
+								_memory->updateLink(iter->second, false);
+						}
+						
 						_odomCacheConstraints.insert(std::make_pair(signature->id(), iter->second));
 					}
 
