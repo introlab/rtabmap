@@ -376,6 +376,7 @@ class RTABMAP_CORE_EXPORT Parameters
     RTABMAP_PARAM(RGBD, MarkerDetection,              bool, false,  "Detect static markers to be added as landmarks for graph optimization. If input data have already landmarks, this will be ignored. See \"Marker\" group for parameters.");
     RTABMAP_PARAM(RGBD, LoopCovLimited,               bool, false,  "Limit covariance of non-neighbor links to minimum covariance of neighbor links. In other words, if covariance of a loop closure link is smaller than the minimum covariance of odometry links, its covariance is set to minimum covariance of odometry links.");
     RTABMAP_PARAM(RGBD, MaxOdomCacheSize,             int,  10,      uFormat("Maximum odometry cache size. Used only in localization mode (when %s=false). This is used to get smoother localizations and to verify localization transforms (when %s!=0) to make sure we don't teleport to a location very similar to one we previously localized on. Set 0 to disable caching.", kMemIncrementalMemory().c_str(), kRGBDOptimizeMaxError().c_str()));
+    RTABMAP_PARAM(RGBD, LocalizationSmoothing,        bool, true,    uFormat("Adjust localization constraints based on optimized odometry cache poses (when %s>0).",  kRGBDMaxOdomCacheSize().c_str()));
 
     // Local/Proximity loop closure detection
     RTABMAP_PARAM(RGBD, ProximityByTime,              bool, false, "Detection over all locations in STM.");

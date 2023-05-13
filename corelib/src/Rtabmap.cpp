@@ -147,6 +147,7 @@ Rtabmap::Rtabmap() :
 	_loopCovLimited(Parameters::defaultRGBDLoopCovLimited()),
 	_loopGPS(Parameters::defaultRtabmapLoopGPS()),
 	_maxOdomCacheSize(Parameters::defaultRGBDMaxOdomCacheSize()),
+	_localizationSmoothing(Parameters::defaultRGBDLocalizationSmoothing()),
 	_createGlobalScanMap(Parameters::defaultRGBDProximityGlobalScanMap()),
 	_markerPriorsLinearVariance(Parameters::defaultMarkerPriorsVarianceLinear()),
 	_markerPriorsAngularVariance(Parameters::defaultMarkerPriorsVarianceAngular()),
@@ -618,6 +619,7 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kRGBDLoopCovLimited(), _loopCovLimited);
 	Parameters::parse(parameters, Parameters::kRtabmapLoopGPS(), _loopGPS);
 	Parameters::parse(parameters, Parameters::kRGBDMaxOdomCacheSize(), _maxOdomCacheSize);
+	Parameters::parse(parameters, Parameters::kRGBDLocalizationSmoothing(), _localizationSmoothing);
 	Parameters::parse(parameters, Parameters::kRGBDProximityGlobalScanMap(), _createGlobalScanMap);
 
 	Parameters::parse(parameters, Parameters::kMarkerPriorsVarianceLinear(), _markerPriorsLinearVariance);
@@ -3173,10 +3175,10 @@ bool Rtabmap::process(
 							&maxLinearLink,
 							&maxAngularLink,
 							_graphOptimizer->isSlam2d());
-					if(maxLinearLink == 0 && maxAngularLink==0 && _maxOdomCacheSize>0)
+					if(maxLinearLink == 0 && maxAngularLink==0)
 					{
-						UWARN("Could not compute graph errors! Wrong loop closures could be accepted!");
-						optPoses = posesOut;
+						UWARN("Could not compute graph errors! Rejecting localization!");
+						rejectLocalization = true;
 					}
 
 					if(maxLinearLink)
@@ -3287,10 +3289,10 @@ bool Rtabmap::process(
 									&maxLinearLink,
 									&maxAngularLink,
 									_graphOptimizer->isSlam2d());
-							if(maxLinearLink == 0 && maxAngularLink==0 && _maxOdomCacheSize>0)
+							if(maxLinearLink == 0 && maxAngularLink==0)
 							{
-								UWARN("Could not compute graph errors! Wrong loop closures could be accepted!");
-								optPoses = posesOut;
+								UWARN("Could not compute graph errors! Rejecting localization!");
+								rejectLocalization = true;
 							}
 
 							if(maxLinearLink)
@@ -3395,7 +3397,7 @@ bool Rtabmap::process(
 					Transform newOptPoseInv = optPoses.at(signature->id()).inverse();
 					for(std::multimap<int, Link>::iterator iter=localizationLinks.begin(); iter!=localizationLinks.end(); ++iter)
 					{
-						if(!hadAlreadyLocalizationLinks)
+						if(!_localizationSmoothing)
 						{
 							// Add original link without optimization
 							UDEBUG("Adding new odom cache constraint %d->%d (%s)", 

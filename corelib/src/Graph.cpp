@@ -912,8 +912,8 @@ void computeMaxGraphErrors(
 	UDEBUG("poses=%d links=%d", (int)poses.size(), (int)links.size());
 	for(std::multimap<int, Link>::const_iterator iter=links.begin(); iter!=links.end(); ++iter)
 	{
-		// ignore links with high variance and priors
-		if(iter->second.transVariance() <= 1.0 && iter->second.from() != iter->second.to())
+		// ignore priors
+		if(iter->second.from() != iter->second.to())
 		{
 			Transform t1 = uValue(poses, iter->second.from(), Transform());
 			Transform t2 = uValue(poses, iter->second.to(), Transform());
