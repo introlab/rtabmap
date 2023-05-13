@@ -12,13 +12,14 @@ platform: x64
 configuration: Release
 
 init:
+
   - cmake --version
   - call "C:\Program Files\Microsoft SDKs\Windows\v7.1\Bin\SetEnv.cmd" /x64
   - call "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" x86_amd64
 
 install:
   # To download from google drive
-  - ps: pip3 install gdown
+  - ps: pip --disable-pip-version-check install gdown
   # Qt
   - set QTDIR=C:\Qt\5.10.1\msvc2015_64
   # make sure Qt bin path is before cmake bin path to avoid copying qt5 dlls from cmake before qt installation
