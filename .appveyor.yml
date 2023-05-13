@@ -6,6 +6,10 @@ branches:
 
 os: Visual Studio 2015
 
+environment:
+  matrix:
+  - TOXENV: py38
+
 clone_folder: c:\projects\rtabmap
 
 platform: x64
