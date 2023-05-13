@@ -18,7 +18,7 @@ init:
 
 install:
   # To download from google drive
-  - set PATH=C:\Python38-x64;%PATH%
+  - set PATH=C:\Python38-x64;C:\Python38-x64\Scripts;%PATH%
   - ps: py -m pip --disable-pip-version-check install gdown
   # Qt
   - set QTDIR=C:\Qt\5.10.1\msvc2015_64
