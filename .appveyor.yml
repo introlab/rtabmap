@@ -6,23 +6,19 @@ branches:
 
 os: Visual Studio 2015
 
-environment:
-  matrix:
-  - TOXENV: py38
-
 clone_folder: c:\projects\rtabmap
 
 platform: x64
 configuration: Release
 
 init:
-
   - cmake --version
   - call "C:\Program Files\Microsoft SDKs\Windows\v7.1\Bin\SetEnv.cmd" /x64
   - call "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" x86_amd64
 
 install:
   # To download from google drive
+  - set PATH=C:\Python38-x64;%PATH%
   - ps: pip --disable-pip-version-check install gdown
   # Qt
   - set QTDIR=C:\Qt\5.10.1\msvc2015_64
