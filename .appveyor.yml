@@ -76,7 +76,7 @@ install:
   - ps: "ls \"C:/Program Files/PCL\""
   - set PATH=%PATH%;C:\Program Files\PCL\bin
   # zlib
-  - ps: gdown 0B46akLGdg-uaYm9MTTI4MUtUcmc
+  - ps: gdown -q 0B46akLGdg-uaYm9MTTI4MUtUcmc
   - ps: Expand-Archive zlib-1.2.8-vc2010-x64.zip -DestinationPath 'C:\Program Files'
   - ECHO "Installed zlib:"
   - ps: "ls \"C:/Program Files/zlib\""
