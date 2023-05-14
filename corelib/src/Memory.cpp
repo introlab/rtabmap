@@ -283,6 +283,10 @@ void Memory::loadDataFromDb(bool postInitClosingEvents)
                                           -landmarkId, inserted.first->second, landmarkSize.at<float>(0,0));
                                 }
                             }
+							else
+							{
+								UDEBUG("Caching landmark size %f for %d", landmarkSize.at<float>(0,0), -landmarkId);
+							}
                         }
 
                         std::map<int, std::set<int> >::iterator nter = _landmarksIndex.find(landmarkId);

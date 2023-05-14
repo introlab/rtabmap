@@ -63,7 +63,7 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-373</y>
+            <y>-611</y>
             <width>756</width>
             <height>3657</height>
            </rect>
@@ -95,7 +95,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>5</number>
+                <number>12</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,0">
@@ -11101,33 +11101,49 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                        <string>Map Update</string>
                       </property>
                       <layout class="QGridLayout" name="gridLayout_47" columnstretch="0,1">
-                       <item row="8" column="1">
-                        <widget class="QLabel" name="label_scanMatching_14">
-                         <property name="text">
-                          <string>Use Identity matrix as guess when computing loop closure transform, otherwise no guess is used (assuming that registration strategy can deal with transformation estimation without guess).</string>
-                         </property>
-                         <property name="wordWrap">
-                          <bool>true</bool>
-                         </property>
-                         <property name="textInteractionFlags">
-                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="17" column="0">
-                        <widget class="QDoubleSpinBox" name="maxLocalizationDistance">
+                       <item row="5" column="0">
+                        <widget class="QDoubleSpinBox" name="rgdb_newMapOdomChange">
                          <property name="suffix">
                           <string> m</string>
+                         </property>
+                         <property name="decimals">
+                          <number>1</number>
+                         </property>
+                         <property name="maximum">
+                          <double>99.000000000000000</double>
+                         </property>
+                         <property name="singleStep">
+                          <double>0.100000000000000</double>
                          </property>
                          <property name="value">
                           <double>1.000000000000000</double>
                          </property>
                         </widget>
                        </item>
-                       <item row="1" column="1">
-                        <widget class="QLabel" name="label_152">
+                       <item row="2" column="0">
+                        <widget class="QDoubleSpinBox" name="rgdb_linearSpeedUpdate">
+                         <property name="suffix">
+                          <string> m/s</string>
+                         </property>
+                         <property name="decimals">
+                          <number>3</number>
+                         </property>
+                         <property name="singleStep">
+                          <double>0.100000000000000</double>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="8" column="0">
+                        <widget class="QCheckBox" name="loopClosure_identityGuess">
                          <property name="text">
-                          <string>Angular update: Minimum angular displacement to update the map. Note that Weight Update is done prior to this, so weights are still updated.</string>
+                          <string/>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="7" column="1">
+                        <widget class="QLabel" name="label_scanMatching_7">
+                         <property name="text">
+                          <string>Use odometry instead of IMU orientation to add gravity links to new nodes created. We assume that odometry is already aligned with gravity (e.g., we are using a VIO approach). Gravity constraints are used by graph optimization only if &quot;Optimizer/GravitySigma&quot; is not zero.</string>
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>
@@ -11136,6 +11152,58 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                           <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                          </property>
                         </widget>
+                       </item>
+                       <item row="0" column="1">
+                        <widget class="QLabel" name="label_153">
+                         <property name="text">
+                          <string>Linear update: Minimum linear displacement to update the map. Note that Weight Update is done prior to this, so weights are still updated.</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="5" column="1">
+                        <widget class="QLabel" name="label_163">
+                         <property name="text">
+                          <string>Odometry change detected that triggers a new map (0 means whatever the odometry change, the detector will still link the new pose in the current map). Also by default, when an odometry with Identity transformation is detected, a new map is automatically created. </string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="3" column="0">
+                        <widget class="QDoubleSpinBox" name="rgdb_angularSpeedUpdate">
+                         <property name="suffix">
+                          <string> rad/s</string>
+                         </property>
+                         <property name="decimals">
+                          <number>2</number>
+                         </property>
+                         <property name="maximum">
+                          <double>3.140000000000000</double>
+                         </property>
+                         <property name="singleStep">
+                          <double>0.100000000000000</double>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="6" column="0">
+                        <widget class="QCheckBox" name="odomScanHistory">
+                         <property name="text">
+                          <string/>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="14" column="0">
+                        <widget class="QSpinBox" name="spinBox_maxLocalLocationsRetrieved"/>
                        </item>
                        <item row="1" column="0">
                         <widget class="QDoubleSpinBox" name="rgdb_angularUpdate">
@@ -11153,10 +11221,16 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                          </property>
                         </widget>
                        </item>
-                       <item row="12" column="0">
-                        <widget class="QCheckBox" name="memCovOffDiagIgnored">
+                       <item row="11" column="1">
+                        <widget class="QLabel" name="label_scanMatching_16">
                          <property name="text">
-                          <string/>
+                          <string>Inverted registration. On loop closure, do registration from the target to reference instead of reference to target.</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                          </property>
                         </widget>
                        </item>
@@ -11192,101 +11266,23 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                          </property>
                         </widget>
                        </item>
-                       <item row="5" column="0">
-                        <widget class="QDoubleSpinBox" name="rgdb_newMapOdomChange">
-                         <property name="suffix">
-                          <string> m</string>
+                       <item row="18" column="1">
+                        <widget class="QLabel" name="label_space2_5">
+                         <property name="text">
+                          <string>Maximum odometry cache size. Used only in localization mode. This is used to get smoother localizations and to verify localization transforms (when maximum graph error is not null) to make sure we don't teleport to a location very similar to one we previously localized on. Set 0 to disable caching.</string>
                          </property>
-                         <property name="decimals">
-                          <number>1</number>
+                         <property name="wordWrap">
+                          <bool>true</bool>
                          </property>
-                         <property name="maximum">
-                          <double>99.000000000000000</double>
-                         </property>
-                         <property name="singleStep">
-                          <double>0.100000000000000</double>
-                         </property>
-                         <property name="value">
-                          <double>1.000000000000000</double>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                          </property>
                         </widget>
                        </item>
-                       <item row="10" column="0">
-                        <widget class="QCheckBox" name="loopClosure_bunlde">
+                       <item row="7" column="0">
+                        <widget class="QCheckBox" name="odomGravity">
                          <property name="text">
                           <string/>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="0" column="1">
-                        <widget class="QLabel" name="label_153">
-                         <property name="text">
-                          <string>Linear update: Minimum linear displacement to update the map. Note that Weight Update is done prior to this, so weights are still updated.</string>
-                         </property>
-                         <property name="wordWrap">
-                          <bool>true</bool>
-                         </property>
-                         <property name="textInteractionFlags">
-                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="2" column="1">
-                        <widget class="QLabel" name="label_432">
-                         <property name="text">
-                          <string>Maximum linear speed to update the map (0 means not limit).</string>
-                         </property>
-                         <property name="wordWrap">
-                          <bool>true</bool>
-                         </property>
-                         <property name="textInteractionFlags">
-                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="4" column="0">
-                        <widget class="QCheckBox" name="rgbd_savedLocalizationIgnored">
-                         <property name="text">
-                          <string/>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="2" column="0">
-                        <widget class="QDoubleSpinBox" name="rgdb_linearSpeedUpdate">
-                         <property name="suffix">
-                          <string> m/s</string>
-                         </property>
-                         <property name="decimals">
-                          <number>3</number>
-                         </property>
-                         <property name="singleStep">
-                          <double>0.100000000000000</double>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="0" column="0">
-                        <widget class="QDoubleSpinBox" name="rgdb_linearUpdate">
-                         <property name="suffix">
-                          <string> m</string>
-                         </property>
-                         <property name="decimals">
-                          <number>3</number>
-                         </property>
-                         <property name="singleStep">
-                          <double>0.100000000000000</double>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="5" column="1">
-                        <widget class="QLabel" name="label_163">
-                         <property name="text">
-                          <string>Odometry change detected that triggers a new map (0 means whatever the odometry change, the detector will still link the new pose in the current map). Also by default, when an odometry with Identity transformation is detected, a new map is automatically created. </string>
-                         </property>
-                         <property name="wordWrap">
-                          <bool>true</bool>
-                         </property>
-                         <property name="textInteractionFlags">
-                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                          </property>
                         </widget>
                        </item>
@@ -11307,16 +11303,43 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                          </property>
                         </widget>
                        </item>
-                       <item row="12" column="1">
-                        <widget class="QLabel" name="label_scanMatching_11">
+                       <item row="14" column="1">
+                        <widget class="QLabel" name="label_scanMatching_3">
                          <property name="text">
-                          <string>Ignore off diagonal values of the odometry covariance matrix.</string>
+                          <string>Maximum local locations retrieved (0=disabled) near the current pose in the local map or on the current planned path (those on the planned path have priority).</string>
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>
                          </property>
                          <property name="textInteractionFlags">
                           <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="8" column="1">
+                        <widget class="QLabel" name="label_scanMatching_14">
+                         <property name="text">
+                          <string>Use Identity matrix as guess when computing loop closure transform, otherwise no guess is used (assuming that registration strategy can deal with transformation estimation without guess).</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="10" column="0">
+                        <widget class="QCheckBox" name="loopClosure_bunlde">
+                         <property name="text">
+                          <string/>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="11" column="0">
+                        <widget class="QCheckBox" name="loopClosure_invertedReg">
+                         <property name="text">
+                          <string/>
                          </property>
                         </widget>
                        </item>
@@ -11333,59 +11356,23 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                          </property>
                         </widget>
                        </item>
-                       <item row="7" column="1">
-                        <widget class="QLabel" name="label_scanMatching_7">
-                         <property name="text">
-                          <string>Use odometry instead of IMU orientation to add gravity links to new nodes created. We assume that odometry is already aligned with gravity (e.g., we are using a VIO approach). Gravity constraints are used by graph optimization only if &quot;Optimizer/GravitySigma&quot; is not zero.</string>
-                         </property>
-                         <property name="wordWrap">
-                          <bool>true</bool>
-                         </property>
-                         <property name="textInteractionFlags">
-                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="9" column="1">
-                        <widget class="QLabel" name="label_scanMatching_9">
-                         <property name="text">
-                          <string>Re-extract visual features when computing loop closure transformations. Raw features are not saved in database.</string>
-                         </property>
-                         <property name="wordWrap">
-                          <bool>true</bool>
-                         </property>
-                         <property name="textInteractionFlags">
-                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="3" column="0">
-                        <widget class="QDoubleSpinBox" name="rgdb_angularSpeedUpdate">
+                       <item row="0" column="0">
+                        <widget class="QDoubleSpinBox" name="rgdb_linearUpdate">
                          <property name="suffix">
-                          <string> rad/s</string>
+                          <string> m</string>
                          </property>
                          <property name="decimals">
-                          <number>2</number>
-                         </property>
-                         <property name="maximum">
-                          <double>3.140000000000000</double>
+                          <number>3</number>
                          </property>
                          <property name="singleStep">
                           <double>0.100000000000000</double>
                          </property>
                         </widget>
                        </item>
-                       <item row="13" column="0">
-                        <widget class="QCheckBox" name="rgbd_loopCovLimited">
+                       <item row="2" column="1">
+                        <widget class="QLabel" name="label_432">
                          <property name="text">
-                          <string/>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="3" column="1">
-                        <widget class="QLabel" name="label_433">
-                         <property name="text">
-                          <string>Maximum angular speed to update the map (0 means not limit).</string>
+                          <string>Maximum linear speed to update the map (0 means not limit).</string>
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>
@@ -11395,13 +11382,24 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                          </property>
                         </widget>
                        </item>
-                       <item row="14" column="0">
-                        <widget class="QSpinBox" name="spinBox_maxLocalLocationsRetrieved"/>
-                       </item>
-                       <item row="10" column="1">
-                        <widget class="QLabel" name="label_scanMatching_10">
+                       <item row="9" column="0">
+                        <widget class="QCheckBox" name="loopClosure_reextract">
                          <property name="text">
-                          <string>Do local bundle adjustment with neighborhood of the loop closure.</string>
+                          <string/>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="12" column="0">
+                        <widget class="QCheckBox" name="memCovOffDiagIgnored">
+                         <property name="text">
+                          <string/>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="6" column="1">
+                        <widget class="QLabel" name="label_scanMatching">
+                         <property name="text">
+                          <string>Neighbor link refining. When a new node is added to the graph, the transformation of its neighbor link (odometry) with the previous node is refined using ICP registration approach (laser scans required).</string>
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>
@@ -11424,57 +11422,10 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                          </property>
                         </widget>
                        </item>
-                       <item row="6" column="0">
-                        <widget class="QCheckBox" name="odomScanHistory">
-                         <property name="text">
-                          <string/>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="7" column="0">
-                        <widget class="QCheckBox" name="odomGravity">
-                         <property name="text">
-                          <string/>
-                         </property>
-                        </widget>
-                       </item>
                        <item row="17" column="1">
                         <widget class="QLabel" name="label_space2_12">
                          <property name="text">
                           <string>Reject loop closures/localizations if the distance from the map is over this distance (0=disabled).</string>
-                         </property>
-                         <property name="wordWrap">
-                          <bool>true</bool>
-                         </property>
-                         <property name="textInteractionFlags">
-                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="14" column="1">
-                        <widget class="QLabel" name="label_scanMatching_3">
-                         <property name="text">
-                          <string>Maximum local locations retrieved (0=disabled) near the current pose in the local map or on the current planned path (those on the planned path have priority).</string>
-                         </property>
-                         <property name="wordWrap">
-                          <bool>true</bool>
-                         </property>
-                         <property name="textInteractionFlags">
-                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="9" column="0">
-                        <widget class="QCheckBox" name="loopClosure_reextract">
-                         <property name="text">
-                          <string/>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="18" column="1">
-                        <widget class="QLabel" name="label_space2_5">
-                         <property name="text">
-                          <string>Maximum odometry cache size. Used only in localization mode. This is used to get smoother localizations and to verify localization transforms (when maximum graph error is not null) to make sure we don't teleport to a location very similar to one we previously localized on. Set 0 to disable caching.</string>
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>
@@ -11497,17 +11448,40 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                          </property>
                         </widget>
                        </item>
-                       <item row="8" column="0">
-                        <widget class="QCheckBox" name="loopClosure_identityGuess">
+                       <item row="1" column="1">
+                        <widget class="QLabel" name="label_152">
+                         <property name="text">
+                          <string>Angular update: Minimum angular displacement to update the map. Note that Weight Update is done prior to this, so weights are still updated.</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="4" column="0">
+                        <widget class="QCheckBox" name="rgbd_savedLocalizationIgnored">
                          <property name="text">
                           <string/>
                          </property>
                         </widget>
                        </item>
-                       <item row="6" column="1">
-                        <widget class="QLabel" name="label_scanMatching">
+                       <item row="17" column="0">
+                        <widget class="QDoubleSpinBox" name="maxLocalizationDistance">
+                         <property name="suffix">
+                          <string> m</string>
+                         </property>
+                         <property name="value">
+                          <double>1.000000000000000</double>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="12" column="1">
+                        <widget class="QLabel" name="label_scanMatching_11">
                          <property name="text">
-                          <string>Neighbor link refining. When a new node is added to the graph, the transformation of its neighbor link (odometry) with the previous node is refined using ICP registration approach (laser scans required).</string>
+                          <string>Ignore off diagonal values of the odometry covariance matrix.</string>
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>
@@ -11517,10 +11491,10 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                          </property>
                         </widget>
                        </item>
-                       <item row="11" column="1">
-                        <widget class="QLabel" name="label_scanMatching_16">
+                       <item row="10" column="1">
+                        <widget class="QLabel" name="label_scanMatching_10">
                          <property name="text">
-                          <string>Inverted registration. On loop closure, do registration from the target to reference instead of reference to target.</string>
+                          <string>Do local bundle adjustment with neighborhood of the loop closure.</string>
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>
@@ -11530,8 +11504,54 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                          </property>
                         </widget>
                        </item>
-                       <item row="11" column="0">
-                        <widget class="QCheckBox" name="loopClosure_invertedReg">
+                       <item row="13" column="0">
+                        <widget class="QCheckBox" name="rgbd_loopCovLimited">
+                         <property name="text">
+                          <string/>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="9" column="1">
+                        <widget class="QLabel" name="label_scanMatching_9">
+                         <property name="text">
+                          <string>Re-extract visual features when computing loop closure transformations. Raw features are not saved in database.</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="3" column="1">
+                        <widget class="QLabel" name="label_433">
+                         <property name="text">
+                          <string>Maximum angular speed to update the map (0 means not limit).</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="19" column="1">
+                        <widget class="QLabel" name="label_space2_18">
+                         <property name="text">
+                          <string>Localization smoothing. Used only in localization mode. Adjust localization constraints based on optimized odometry cache poses.</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="19" column="0">
+                        <widget class="QCheckBox" name="checkbox_localizationSmoothing">
                          <property name="text">
                           <string/>
                          </property>
