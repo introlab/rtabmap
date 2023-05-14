@@ -902,7 +902,7 @@ void computeMaxGraphErrors(
 		float & maxAngularError,
 		const Link ** maxLinearErrorLink,
 		const Link ** maxAngularErrorLink,
-		bool for3DoF)
+		bool force3DoF)
 {
 	maxLinearErrorRatio = -1;
 	maxAngularErrorRatio = -1;
@@ -912,8 +912,8 @@ void computeMaxGraphErrors(
 	UDEBUG("poses=%d links=%d", (int)poses.size(), (int)links.size());
 	for(std::multimap<int, Link>::const_iterator iter=links.begin(); iter!=links.end(); ++iter)
 	{
-		// ignore links with high variance, priors and landmarks
-		if(iter->second.transVariance() <= 1.0 && iter->second.from() != iter->second.to() && iter->second.type() != Link::kLandmark)
+		// ignore priors
+		if(iter->second.from() != iter->second.to())
 		{
 			Transform t1 = uValue(poses, iter->second.from(), Transform());
 			Transform t2 = uValue(poses, iter->second.to(), Transform());
@@ -922,7 +922,7 @@ void computeMaxGraphErrors(
 			float linearError = uMax3(
 					fabs(iter->second.transform().x() - t.x()),
 					fabs(iter->second.transform().y() - t.y()),
-					for3DoF?0:fabs(iter->second.transform().z() - t.z()));
+					force3DoF?0:fabs(iter->second.transform().z() - t.z()));
 			UASSERT(iter->second.transVariance(false)>0.0);
 			float stddevLinear = sqrt(iter->second.transVariance(false));
 			float linearErrorRatio = linearError/stddevLinear;
@@ -936,25 +936,30 @@ void computeMaxGraphErrors(
 				}
 			}
 
-			float opt_roll,opt_pitch,opt_yaw;
-			float link_roll,link_pitch,link_yaw;
-			t.getEulerAngles(opt_roll, opt_pitch, opt_yaw);
-			iter->second.transform().getEulerAngles(link_roll, link_pitch, link_yaw);
-			float angularError = uMax3(
-					for3DoF?0:fabs(opt_roll - link_roll),
-					for3DoF?0:fabs(opt_pitch - link_pitch),
-					fabs(opt_yaw - link_yaw));
-			angularError = angularError>M_PI?2*M_PI-angularError:angularError;
-			UASSERT(iter->second.rotVariance(false)>0.0);
-			float stddevAngular = sqrt(iter->second.rotVariance(false));
-			float angularErrorRatio = angularError/stddevAngular;
-			if(angularErrorRatio > maxAngularErrorRatio)
+			// For landmark links, don't compute angular error if it doesn't estimate orientation
+			if(iter->second.type() != Link::kLandmark ||
+				1.0 / static_cast<double>(iter->second.infMatrix().at<double>(5,5)) < 9999.0)
 			{
-				maxAngularError = angularError;
-				maxAngularErrorRatio = angularErrorRatio;
-				if(maxAngularErrorLink)
+				float opt_roll,opt_pitch,opt_yaw;
+				float link_roll,link_pitch,link_yaw;
+				t.getEulerAngles(opt_roll, opt_pitch, opt_yaw);
+				iter->second.transform().getEulerAngles(link_roll, link_pitch, link_yaw);
+				float angularError = uMax3(
+						force3DoF?0:fabs(opt_roll - link_roll),
+						force3DoF?0:fabs(opt_pitch - link_pitch),
+						fabs(opt_yaw - link_yaw));
+				angularError = angularError>M_PI?2*M_PI-angularError:angularError;
+				UASSERT(iter->second.rotVariance(false)>0.0);
+				float stddevAngular = sqrt(iter->second.rotVariance(false));
+				float angularErrorRatio = angularError/stddevAngular;
+				if(angularErrorRatio > maxAngularErrorRatio)
 				{
-					*maxAngularErrorLink = &iter->second;
+					maxAngularError = angularError;
+					maxAngularErrorRatio = angularErrorRatio;
+					if(maxAngularErrorLink)
+					{
+						*maxAngularErrorLink = &iter->second;
+					}
 				}
 			}
 		}

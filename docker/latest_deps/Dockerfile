@@ -4,7 +4,7 @@ FROM osrf/ros:humble-desktop
 # Install build dependencies
 RUN apt-get update && \
     apt-get install -y git software-properties-common ros-humble-rtabmap-ros libqt6* qt6* && \
-    apt-get remove -y ros-humble-rtabmap libpcl* libqt5* qt5* libvtk* libopencv* && \
+    apt-get remove -y ros-humble-rtabmap* ros-humble-libg2o libpcl* libqt5* qt5* libvtk* libopencv* && \
     apt-get clean && rm -rf /var/lib/apt/lists/
 
 WORKDIR /root/
@@ -47,6 +47,26 @@ RUN git clone https://github.com/opencv/opencv.git && \
     make install && \
     cd ../.. && \
     rm -rf opencv
+
+# Build latest gtsam
+RUN git clone https://github.com/borglab/gtsam.git && \
+ cd gtsam && \
+ mkdir build && \
+ cd build && \
+ cmake -DGTSAM_BUILD_EXAMPLES_ALWAYS=OFF -DGTSAM_BUILD_TESTS=OFF -DGTSAM_BUILD_STATIC_LIBRARY=OFF -DGTSAM_BUILD_UNSTABLE=OFF -DGTSAM_INSTALL_CPPUNILITE=OFF -DGTSAM_USE_SYSTEM_EIGEN=ON .. && \
+ cmake --build . --config Release --target install && \
+ cd ../.. && \
+ rm -rf gtsam
+
+# Build latest g2o
+RUN git clone https://github.com/RainerKuemmerle/g2o.git  && \
+ cd g2o && \
+ mkdir build && \
+ cd build && \
+ cmake -DBUILD_WITH_MARCH_NATIVE=OFF -DG2O_BUILD_APPS=OFF -DG2O_BUILD_EXAMPLES=OFF -DG2O_USE_OPENGL=OFF .. && \
+ cmake --build . --config Release --target install && \
+ cd ../.. && \
+ rm -rf g2o
 
 RUN mkdir -p /root/Documents/RTAB-Map
 

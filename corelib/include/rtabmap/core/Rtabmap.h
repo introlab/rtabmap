@@ -326,6 +326,7 @@ private:
 	bool _loopCovLimited;
 	bool _loopGPS;
 	int _maxOdomCacheSize;
+	bool _localizationSmoothing;
 	bool _createGlobalScanMap;
 	float _markerPriorsLinearVariance;
 	float _markerPriorsAngularVariance;
