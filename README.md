@@ -71,6 +71,12 @@ This project is supported by [IntRoLab - Intelligent / Interactive / Integrated 
             <td>Rolling</td>
             <td><a href="http://build.ros2.org/job/Rbin_uJ64__rtabmap__ubuntu_jammy_amd64__binary/"><img src="http://build.ros2.org/buildStatus/icon?job=Rbin_uJ64__rtabmap__ubuntu_jammy_amd64__binary" alt="Build Status"/></td>
         </tr>
+        <tr>
+           <td>Docker</td>
+           <td>
+             <a href="https://hub.docker.com/r/introlab3it/rtabmap">rtabmap</a>
+           </td>
+           <td><img src="https://img.shields.io/docker/pulls/introlab3it/rtabmap.svg?label=pulls" alt="Docker Pulls"/></td>
+        </tr>
     </tbody>
 </table>
- 
