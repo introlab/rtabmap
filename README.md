@@ -4,10 +4,14 @@ rtabmap
 [![RTAB-Map Logo](https://raw.githubusercontent.com/introlab/rtabmap/master/guilib/src/images/RTAB-Map100.png)](http://introlab.github.io/rtabmap)
 
 [![Release][release-image]][releases]
+[![Downloads][downloads-image]][downloads]
 [![License][license-image]][license]
 
-[release-image]: https://img.shields.io/badge/release-0.20.16-green.svg?style=flat
+[release-image]: https://img.shields.io/badge/release-0.21.0-green.svg?style=flat
 [releases]: https://github.com/introlab/rtabmap/releases
+
+[downloads-image]: https://img.shields.io/github/downloads/introlab/rtabmap/total?label=downloads
+[downloads]: https://github.com/introlab/rtabmap/releases
 
 [license-image]: https://img.shields.io/badge/license-BSD-green.svg?style=flat
 [license]: https://github.com/introlab/rtabmap/blob/master/LICENSE
