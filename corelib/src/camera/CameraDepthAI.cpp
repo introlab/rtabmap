@@ -106,6 +106,24 @@ void CameraDepthAI::setIMUPublished(bool published)
 #endif
 }
 
+void CameraDepthAI::setLaserDotBrightness(float dotProjectormA)
+{
+#ifdef RTABMAP_DEPTHAI
+	dotProjectormA_ = dotProjectormA;
+#else
+	UERROR("CameraDepthAI: RTAB-Map is not built with depthai-core support!");
+#endif
+}
+
+void CameraDepthAI::setFloodLightBrightness(float floodLightmA)
+{
+#ifdef RTABMAP_DEPTHAI
+	floodLightmA_ = floodLightmA;
+#else
+	UERROR("CameraDepthAI: RTAB-Map is not built with depthai-core support!");
+#endif
+}
+
 bool CameraDepthAI::init(const std::string & calibrationFolder, const std::string & cameraName)
 {
 	UDEBUG("");
@@ -267,6 +285,13 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 	}
 	leftQueue_ = device_->getOutputQueue("rectified_left", 1, false);
 	rightOrDepthQueue_ = device_->getOutputQueue(outputDepth_?"depth":"rectified_right", 1, false);
+
+	std::vector<std::tuple<std::string, int, int>> irDrivers = device_->getIrDrivers();
+        if(!irDrivers.empty())
+        {
+            device_->setIrLaserDotProjectorBrightness(dotProjectormA_);
+            device_->setIrFloodLightBrightness(floodLightmA_);
+        }
 
 	uSleep(2000); // avoid bad frames on start
 
