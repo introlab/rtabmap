@@ -201,31 +201,23 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 	}
 
 	// StereoDepth
-	stereo->initialConfig.setConfidenceThreshold(depthConfidence_);
-	stereo->initialConfig.setLeftRightCheckThreshold(5);
-	stereo->setRectifyEdgeFillColor(0); // black, to better see the cutout
-	stereo->setLeftRightCheck(true);
+	stereo->setDepthAlign(dai::StereoDepthProperties::DepthAlign::RECTIFIED_LEFT);
 	stereo->setSubpixel(false);
 	stereo->setExtendedDisparity(false);
+	stereo->setRectifyEdgeFillColor(0); // black, to better see the cutout
+	stereo->initialConfig.setConfidenceThreshold(depthConfidence_);
+	stereo->initialConfig.setLeftRightCheck(true);
+	stereo->initialConfig.setLeftRightCheckThreshold(5);
 
 	// Link plugins CAM -> STEREO -> XLINK
 	monoLeft->out.link(stereo->left);
 	monoRight->out.link(stereo->right);
 
+	stereo->rectifiedLeft.link(xoutLeft->input);
 	if(outputDepth_)
-	{
-		// Depth is registered to right image by default, so subscribe to right image when depth is used
-		if(outputDepth_)
-			stereo->rectifiedRight.link(xoutLeft->input);
-		else
-			stereo->rectifiedLeft.link(xoutLeft->input);
 		stereo->depth.link(xoutDepthOrRight->input);
-	}
 	else
-	{
-		stereo->rectifiedLeft.link(xoutLeft->input);
 		stereo->rectifiedRight.link(xoutDepthOrRight->input);
-	}
 
 	if(imuPublished_)
 	{
@@ -253,8 +245,8 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 	double fy = matrix[1][1];
 	double cx = matrix[0][2];
 	double cy = matrix[1][2];
-	matrix = calibHandler.getCameraExtrinsics(dai::CameraBoardSocket::RIGHT, dai::CameraBoardSocket::LEFT);
-	double baseline = matrix[0][3]/100.0;
+	matrix = calibHandler.getCameraExtrinsics(dai::CameraBoardSocket::LEFT, dai::CameraBoardSocket::RIGHT);
+	double baseline = -matrix[0][3]/100.0;
 	UINFO("left: fx=%f fy=%f cx=%f cy=%f baseline=%f", fx, fy, cx, cy, baseline);
 	stereoModel_ = StereoCameraModel(device_->getMxId(), fx, fy, cx, cy, baseline, this->getLocalTransform(), targetSize);
 
@@ -340,11 +332,6 @@ SensorData CameraDepthAI::captureImage(CameraInfo * info)
 		{
 			if(depthOrRight.type() == CV_8UC1)
 			{
-				if(stereoModel_.isValidForRectification())
-				{
-					left = stereoModel_.left().rectifyImage(left);
-					depthOrRight = stereoModel_.right().rectifyImage(depthOrRight);
-				}
 				data = SensorData(left, depthOrRight, stereoModel_, this->getNextSeqID(), stamp);
 			}
 			else
