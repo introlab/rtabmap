@@ -202,12 +202,18 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 
 	// StereoDepth
 	stereo->setDepthAlign(dai::StereoDepthProperties::DepthAlign::RECTIFIED_LEFT);
-	stereo->setSubpixel(false);
+	stereo->setSubpixel(true);
+	stereo->setSubpixelFractionalBits(4);
 	stereo->setExtendedDisparity(false);
 	stereo->setRectifyEdgeFillColor(0); // black, to better see the cutout
 	stereo->initialConfig.setConfidenceThreshold(depthConfidence_);
 	stereo->initialConfig.setLeftRightCheck(true);
 	stereo->initialConfig.setLeftRightCheckThreshold(5);
+	stereo->initialConfig.setMedianFilter(dai::MedianFilter::KERNEL_5x5);
+	auto config = stereo->initialConfig.get();
+	config.costMatching.disparityWidth = dai::StereoDepthConfig::CostMatching::DisparityWidth::DISPARITY_64;
+	config.costMatching.enableCompanding = true;
+	stereo->initialConfig.set(config);
 
 	// Link plugins CAM -> STEREO -> XLINK
 	monoLeft->out.link(stereo->left);
