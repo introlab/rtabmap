@@ -251,8 +251,7 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 	double fy = matrix[1][1];
 	double cx = matrix[0][2];
 	double cy = matrix[1][2];
-	matrix = calibHandler.getCameraExtrinsics(dai::CameraBoardSocket::LEFT, dai::CameraBoardSocket::RIGHT);
-	double baseline = -matrix[0][3]/100.0;
+	double baseline = calibHandler.getBaselineDistance(dai::CameraBoardSocket::RIGHT, dai::CameraBoardSocket::LEFT, false)/100.0;
 	UINFO("left: fx=%f fy=%f cx=%f cy=%f baseline=%f", fx, fy, cx, cy, baseline);
 	stereoModel_ = StereoCameraModel(device_->getMxId(), fx, fy, cx, cy, baseline, this->getLocalTransform(), targetSize);
 
