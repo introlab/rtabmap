@@ -917,6 +917,33 @@ void computeMaxGraphErrors(
 		{
 			Transform t1 = uValue(poses, iter->second.from(), Transform());
 			Transform t2 = uValue(poses, iter->second.to(), Transform());
+
+			if( t1.isNull() ||
+				t2.isNull() ||
+				!t1.isInvertible() ||
+				!t2.isInvertible())
+			{
+				UWARN("Poses are null or not invertible, aborting optimized graph max error check! (Pose %d=%s Pose %d=%s)",
+					iter->second.from(),
+					t1.prettyPrint().c_str(),
+					iter->second.to(),
+					t2.prettyPrint().c_str());
+
+				if(maxLinearErrorLink)
+				{
+					*maxLinearErrorLink = 0;
+				}
+				if(maxAngularErrorLink)
+				{
+					*maxAngularErrorLink = 0;
+				}
+				maxLinearErrorRatio = -1;
+				maxAngularErrorRatio = -1;
+				maxLinearError = -1;
+				maxAngularError = -1;
+				return;
+			}
+
 			Transform t = t1.inverse()*t2;
 
 			float linearError = uMax3(
