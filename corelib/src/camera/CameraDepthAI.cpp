@@ -57,7 +57,9 @@ CameraDepthAI::CameraDepthAI(
 	depthConfidence_(200),
 	resolution_(resolution),
 	imuFirmwareUpdate_(false),
-	imuPublished_(true)
+	imuPublished_(true),
+	dotProjectormA_(0.0),
+	floodLightmA_(200.0)
 #endif
 {
 #ifdef RTABMAP_DEPTHAI
@@ -264,12 +266,28 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 		//		matrix[0][0], matrix[0][1], matrix[0][2], matrix[0][3],
 		//		matrix[1][0], matrix[1][1], matrix[1][2], matrix[1][3],
 		//		matrix[2][0], matrix[2][1], matrix[2][2], matrix[2][3]);
-		// Hard-coded: x->down, y->left, z->forward
-		imuLocalTransform_ = Transform(
-				 0, 0, 1, 0,
-				 0, 1, 0, 0,
-				-1 ,0, 0, 0);
-		UINFO("IMU local transform = %s", imuLocalTransform_.prettyPrint().c_str());
+		auto eeprom = calibHandler.getEepromData();
+		if(eeprom.boardName == "OAK-D")
+		{
+			// Hard-coded: x->down, y->left, z->forward
+			imuLocalTransform_ = Transform(
+				 0,  0,  1,  0,
+				 0,  1,  0, -0.0525,
+				-1,  0,  0, -0.0137);
+		}
+		else if(eeprom.boardName == "DM9098")
+		{
+			// Hard-coded: x->down, y->right, z->backward
+			imuLocalTransform_ = Transform(
+				 0,  0, -1, -0.007,
+				 0, -1,  0, -0.0754,
+				-1,  0,  0, -0.0026);
+		}
+		else
+		{
+			UWARN("Unknown boardName! Disabling IMU!");
+			imuPublished_ = false;
+		}
 	}
 	else
 	{
@@ -278,17 +296,18 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 
 	if(imuPublished_)
 	{
+		UINFO("IMU local transform = %s", imuLocalTransform_.prettyPrint().c_str());
 		imuQueue_ = device_->getOutputQueue("imu", 50, false);
 	}
 	leftQueue_ = device_->getOutputQueue("rectified_left", 1, false);
 	rightOrDepthQueue_ = device_->getOutputQueue(outputDepth_?"depth":"rectified_right", 1, false);
 
 	std::vector<std::tuple<std::string, int, int>> irDrivers = device_->getIrDrivers();
-        if(!irDrivers.empty())
-        {
-            device_->setIrLaserDotProjectorBrightness(dotProjectormA_);
-            device_->setIrFloodLightBrightness(floodLightmA_);
-        }
+	if(!irDrivers.empty())
+	{
+		device_->setIrLaserDotProjectorBrightness(dotProjectormA_);
+		device_->setIrFloodLightBrightness(floodLightmA_);
+	}
 
 	uSleep(2000); // avoid bad frames on start
 
@@ -382,11 +401,11 @@ SensorData CameraDepthAI::captureImage(CameraInfo * info)
 						break;
 					}
 				}
-				if((UTimer::now() - stampStart) > 0.01)
-				{
-					UWARN("Could not received IMU after 10 ms! Disabling IMU!");
-					imuPublished_ = false;
-				}
+				// if((UTimer::now() - stampStart) > 0.01)
+				// {
+				// 	UWARN("Could not received IMU after 10 ms! Disabling IMU!");
+				// 	imuPublished_ = false;
+				// }
 			}
 
 			cv::Vec3d acc, gyro;
