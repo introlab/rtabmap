@@ -271,17 +271,17 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 		{
 			// Hard-coded: x->down, y->left, z->forward
 			imuLocalTransform_ = Transform(
-				 0,  0,  1,  0,
-				 0,  1,  0, -0.0525,
-				-1,  0,  0, -0.0137);
+				 0, -1,  0,  0.0525,
+				 1,  0,  0,  0.0137,
+				 0,  0,  1,  0);
 		}
 		else if(eeprom.boardName == "DM9098")
 		{
 			// Hard-coded: x->down, y->right, z->backward
 			imuLocalTransform_ = Transform(
-				 0,  0, -1, -0.007,
-				 0, -1,  0, -0.0754,
-				-1,  0,  0, -0.0026);
+				 0,  1,  0,  0.0754,
+				 1,  0,  0,  0.0026,
+				 0,  0, -1, -0.007);
 		}
 		else
 		{
@@ -296,6 +296,7 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 
 	if(imuPublished_)
 	{
+		imuLocalTransform_ = this->getLocalTransform() * imuLocalTransform_;
 		UINFO("IMU local transform = %s", imuLocalTransform_.prettyPrint().c_str());
 		imuQueue_ = device_->getOutputQueue("imu", 50, false);
 	}
