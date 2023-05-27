@@ -6327,6 +6327,7 @@ Camera * PreferencesDialog::createCamera(
 		((CameraDepthAI*)camera)->setOutputDepth(_ui->checkBox_depthai_depth->isChecked(), _ui->spinBox_depthai_confidence->value());
 		((CameraDepthAI*)camera)->setIMUFirmwareUpdate(_ui->checkBox_depthai_imu_firmware_update->isChecked());
 		((CameraDepthAI*)camera)->setIMUPublished(_ui->checkBox_depthai_imu_published->isChecked());
+		((CameraDepthAI*)camera)->publishInterIMU(_ui->checkbox_publishInterIMU->isChecked());
 		((CameraDepthAI*)camera)->setLaserDotBrightness(_ui->doubleSpinBox_depthai_laser_dot_brightness->value());
 		((CameraDepthAI*)camera)->setFloodLightBrightness(_ui->doubleSpinBox_depthai_floodlight_brightness->value());
 	}
