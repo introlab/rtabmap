@@ -58,6 +58,9 @@ public:
 	void setOutputDepth(bool enabled, int confidence = 200);
 	void setIMUFirmwareUpdate(bool enabled);
 	void setIMUPublished(bool published);
+	void publishInterIMU(bool enabled);
+	void setLaserDotBrightness(float dotProjectormA = 0.0f);
+	void setFloodLightBrightness(float floodLightmA = 200.0f);
 
 	virtual bool init(const std::string & calibrationFolder = ".", const std::string & cameraName = "");
 	virtual bool isCalibrated() const;
@@ -76,12 +79,15 @@ private:
 	int resolution_;
 	bool imuFirmwareUpdate_;
 	bool imuPublished_;
+	bool publishInterIMU_;
+	float dotProjectormA_;
+	float floodLightmA_;
 	std::shared_ptr<dai::Device> device_;
 	std::shared_ptr<dai::DataOutputQueue> leftQueue_;
 	std::shared_ptr<dai::DataOutputQueue> rightOrDepthQueue_;
-	std::shared_ptr<dai::DataOutputQueue> imuQueue_;
 	std::map<double, cv::Vec3f> accBuffer_;
 	std::map<double, cv::Vec3f> gyroBuffer_;
+	UMutex imuMutex_;
 #endif
 };
 

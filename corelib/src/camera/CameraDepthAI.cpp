@@ -57,7 +57,10 @@ CameraDepthAI::CameraDepthAI(
 	depthConfidence_(200),
 	resolution_(resolution),
 	imuFirmwareUpdate_(false),
-	imuPublished_(true)
+	imuPublished_(true),
+	publishInterIMU_(false),
+	dotProjectormA_(0.0),
+	floodLightmA_(200.0)
 #endif
 {
 #ifdef RTABMAP_DEPTHAI
@@ -101,6 +104,33 @@ void CameraDepthAI::setIMUPublished(bool published)
 {
 #ifdef RTABMAP_DEPTHAI
 	imuPublished_ = published;
+#else
+	UERROR("CameraDepthAI: RTAB-Map is not built with depthai-core support!");
+#endif
+}
+
+void CameraDepthAI::publishInterIMU(bool enabled)
+{
+#ifdef RTABMAP_DEPTHAI
+	publishInterIMU_ = enabled;
+#else
+	UERROR("CameraDepthAI: RTAB-Map is not built with depthai-core support!");
+#endif
+}
+
+void CameraDepthAI::setLaserDotBrightness(float dotProjectormA)
+{
+#ifdef RTABMAP_DEPTHAI
+	dotProjectormA_ = dotProjectormA;
+#else
+	UERROR("CameraDepthAI: RTAB-Map is not built with depthai-core support!");
+#endif
+}
+
+void CameraDepthAI::setFloodLightBrightness(float floodLightmA)
+{
+#ifdef RTABMAP_DEPTHAI
+	floodLightmA_ = floodLightmA;
 #else
 	UERROR("CameraDepthAI: RTAB-Map is not built with depthai-core support!");
 #endif
@@ -183,31 +213,29 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 	}
 
 	// StereoDepth
-	stereo->initialConfig.setConfidenceThreshold(depthConfidence_);
-	stereo->initialConfig.setLeftRightCheckThreshold(5);
-	stereo->setRectifyEdgeFillColor(0); // black, to better see the cutout
-	stereo->setLeftRightCheck(true);
-	stereo->setSubpixel(false);
+	stereo->setDepthAlign(dai::StereoDepthProperties::DepthAlign::RECTIFIED_LEFT);
+	stereo->setSubpixel(true);
+	stereo->setSubpixelFractionalBits(4);
 	stereo->setExtendedDisparity(false);
+	stereo->setRectifyEdgeFillColor(0); // black, to better see the cutout
+	stereo->initialConfig.setConfidenceThreshold(depthConfidence_);
+	stereo->initialConfig.setLeftRightCheck(true);
+	stereo->initialConfig.setLeftRightCheckThreshold(5);
+	stereo->initialConfig.setMedianFilter(dai::MedianFilter::KERNEL_5x5);
+	auto config = stereo->initialConfig.get();
+	config.costMatching.disparityWidth = dai::StereoDepthConfig::CostMatching::DisparityWidth::DISPARITY_64;
+	config.costMatching.enableCompanding = true;
+	stereo->initialConfig.set(config);
 
 	// Link plugins CAM -> STEREO -> XLINK
 	monoLeft->out.link(stereo->left);
 	monoRight->out.link(stereo->right);
 
+	stereo->rectifiedLeft.link(xoutLeft->input);
 	if(outputDepth_)
-	{
-		// Depth is registered to right image by default, so subscribe to right image when depth is used
-		if(outputDepth_)
-			stereo->rectifiedRight.link(xoutLeft->input);
-		else
-			stereo->rectifiedLeft.link(xoutLeft->input);
 		stereo->depth.link(xoutDepthOrRight->input);
-	}
 	else
-	{
-		stereo->rectifiedLeft.link(xoutLeft->input);
 		stereo->rectifiedRight.link(xoutDepthOrRight->input);
-	}
 
 	if(imuPublished_)
 	{
@@ -235,8 +263,7 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 	double fy = matrix[1][1];
 	double cx = matrix[0][2];
 	double cy = matrix[1][2];
-	matrix = calibHandler.getCameraExtrinsics(dai::CameraBoardSocket::RIGHT, dai::CameraBoardSocket::LEFT);
-	double baseline = matrix[0][3]/100.0;
+	double baseline = calibHandler.getBaselineDistance(dai::CameraBoardSocket::RIGHT, dai::CameraBoardSocket::LEFT, false)/100.0;
 	UINFO("left: fx=%f fy=%f cx=%f cy=%f baseline=%f", fx, fy, cx, cy, baseline);
 	stereoModel_ = StereoCameraModel(device_->getMxId(), fx, fy, cx, cy, baseline, this->getLocalTransform(), targetSize);
 
@@ -249,12 +276,27 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 		//		matrix[0][0], matrix[0][1], matrix[0][2], matrix[0][3],
 		//		matrix[1][0], matrix[1][1], matrix[1][2], matrix[1][3],
 		//		matrix[2][0], matrix[2][1], matrix[2][2], matrix[2][3]);
-		// Hard-coded: x->down, y->left, z->forward
-		imuLocalTransform_ = Transform(
-				 0, 0, 1, 0,
-				 0, 1, 0, 0,
-				-1 ,0, 0, 0);
-		UINFO("IMU local transform = %s", imuLocalTransform_.prettyPrint().c_str());
+		auto eeprom = calibHandler.getEepromData();
+		if(eeprom.boardName == "OAK-D" ||
+		   eeprom.boardName == "BW1098OBC")
+		{
+			imuLocalTransform_ = Transform(
+				 0, -1,  0,  0.0525,
+				 1,  0,  0,  0.0137,
+				 0,  0,  1,  0);
+		}
+		else if(eeprom.boardName == "DM9098")
+		{
+			imuLocalTransform_ = Transform(
+				 0,  1,  0,  0.0754,
+				 1,  0,  0,  0.0026,
+				 0,  0, -1, -0.007);
+		}
+		else
+		{
+			UWARN("Unknown boardName (%s)! Disabling IMU!", eeprom.boardName.c_str());
+			imuPublished_ = false;
+		}
 	}
 	else
 	{
@@ -263,10 +305,47 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 
 	if(imuPublished_)
 	{
-		imuQueue_ = device_->getOutputQueue("imu", 50, false);
+		imuLocalTransform_ = this->getLocalTransform() * imuLocalTransform_;
+		UINFO("IMU local transform = %s", imuLocalTransform_.prettyPrint().c_str());
+		device_->getOutputQueue("imu", 50, false)->addCallback([this](std::shared_ptr<dai::ADatatype> callback) {
+			if(dynamic_cast<dai::IMUData*>(callback.get()) != nullptr)
+			{
+				dai::IMUData* imuData = static_cast<dai::IMUData*>(callback.get());
+				auto imuPackets = imuData->packets;
+
+				for(auto& imuPacket : imuPackets)
+				{
+					auto& acceleroValues = imuPacket.acceleroMeter;
+					auto& gyroValues = imuPacket.gyroscope;
+					double accStamp = std::chrono::duration<double>(acceleroValues.getTimestampDevice().time_since_epoch()).count();
+					double gyroStamp = std::chrono::duration<double>(gyroValues.getTimestampDevice().time_since_epoch()).count();
+
+					if(publishInterIMU_)
+					{
+						IMU imu(cv::Vec3f(gyroValues.x, gyroValues.y, gyroValues.z), cv::Mat::eye(3,3,CV_64FC1),
+								cv::Vec3f(acceleroValues.x, acceleroValues.y, acceleroValues.z), cv::Mat::eye(3,3,CV_64FC1),
+								imuLocalTransform_);
+						UEventsManager::post(new IMUEvent(imu, (accStamp+gyroStamp)/2));
+					}
+					else
+					{
+						UScopeMutex lock(imuMutex_);
+						accBuffer_.emplace_hint(accBuffer_.end(), std::make_pair(accStamp, cv::Vec3f(acceleroValues.x, acceleroValues.y, acceleroValues.z)));
+						gyroBuffer_.emplace_hint(gyroBuffer_.end(), std::make_pair(gyroStamp, cv::Vec3f(gyroValues.x, gyroValues.y, gyroValues.z)));
+					}
+				}
+			}
+		});
 	}
-	leftQueue_ = device_->getOutputQueue("rectified_left", 1, false);
-	rightOrDepthQueue_ = device_->getOutputQueue(outputDepth_?"depth":"rectified_right", 1, false);
+	leftQueue_ = device_->getOutputQueue("rectified_left", 8, false);
+	rightOrDepthQueue_ = device_->getOutputQueue(outputDepth_?"depth":"rectified_right", 8, false);
+
+	std::vector<std::tuple<std::string, int, int>> irDrivers = device_->getIrDrivers();
+	if(!irDrivers.empty())
+	{
+		device_->setIrLaserDotProjectorBrightness(dotProjectormA_);
+		device_->setIrFloodLightBrightness(floodLightmA_);
+	}
 
 	uSleep(2000); // avoid bad frames on start
 
@@ -303,173 +382,67 @@ SensorData CameraDepthAI::captureImage(CameraInfo * info)
 	auto rectifL = leftQueue_->get<dai::ImgFrame>();
 	auto rectifRightOrDepth = rightOrDepthQueue_->get<dai::ImgFrame>();
 
-	if(rectifL.get() && rectifRightOrDepth.get())
-	{
-		auto stampLeft = rectifL->getTimestamp().time_since_epoch().count();
-		auto stampRight = rectifRightOrDepth->getTimestamp().time_since_epoch().count();
-		double stamp = double(stampLeft)/10e8;
-		left = rectifL->getCvFrame();
-		depthOrRight = rectifRightOrDepth->getCvFrame();
+	while(rectifL->getSequenceNum() < rectifRightOrDepth->getSequenceNum())
+		rectifL = leftQueue_->get<dai::ImgFrame>();
+	while(rectifL->getSequenceNum() > rectifRightOrDepth->getSequenceNum())
+		rectifRightOrDepth = rightOrDepthQueue_->get<dai::ImgFrame>();
 
-		if(!left.empty() && !depthOrRight.empty())
-		{
-			if(depthOrRight.type() == CV_8UC1)
-			{
-				if(stereoModel_.isValidForRectification())
-				{
-					left = stereoModel_.left().rectifyImage(left);
-					depthOrRight = stereoModel_.right().rectifyImage(depthOrRight);
-				}
-				data = SensorData(left, depthOrRight, stereoModel_, this->getNextSeqID(), stamp);
-			}
-			else
-			{
-				data = SensorData(left, depthOrRight, stereoModel_.left(), this->getNextSeqID(), stamp);
-			}
+	double stamp = std::chrono::duration<double>(rectifL->getTimestampDevice(dai::CameraExposureOffset::MIDDLE).time_since_epoch()).count();
+	left = rectifL->getCvFrame();
+	depthOrRight = rectifRightOrDepth->getCvFrame();
 
-			if(fabs(double(stampLeft)/10e8 - double(stampRight)/10e8) >= 0.0001) //0.1 ms
-			{
-				UWARN("Frames are not synchronized! %f vs %f", double(stampLeft)/10e8, double(stampRight)/10e8);
-			}
-
-			//get imu
-			double stampStart = UTimer::now();
-			while(imuPublished_ && imuQueue_.get())
-			{
-				if(imuQueue_->has())
-				{
-					auto imuData = imuQueue_->get<dai::IMUData>();
-
-					auto imuPackets = imuData->packets;
-					double accStamp = 0.0;
-					double gyroStamp = 0.0;
-					for(auto& imuPacket : imuPackets) {
-						auto& acceleroValues = imuPacket.acceleroMeter;
-						auto& gyroValues = imuPacket.gyroscope;
-
-						accStamp = double(acceleroValues.timestamp.get().time_since_epoch().count())/10e8;
-						gyroStamp = double(gyroValues.timestamp.get().time_since_epoch().count())/10e8;
-						accBuffer_.insert(accBuffer_.end(), std::make_pair(accStamp, cv::Vec3f(acceleroValues.x, acceleroValues.y, acceleroValues.z)));
-						gyroBuffer_.insert(gyroBuffer_.end(), std::make_pair(gyroStamp, cv::Vec3f(gyroValues.x, gyroValues.y, gyroValues.z)));
-						if(accBuffer_.size() > 1000)
-						{
-							accBuffer_.erase(accBuffer_.begin());
-						}
-						if(gyroBuffer_.size() > 1000)
-						{
-							gyroBuffer_.erase(gyroBuffer_.begin());
-						}
-					}
-					if(accStamp >= stamp && gyroStamp >= stamp)
-					{
-						break;
-					}
-				}
-				if((UTimer::now() - stampStart) > 0.01)
-				{
-					UWARN("Could not received IMU after 10 ms! Disabling IMU!");
-					imuPublished_ = false;
-				}
-			}
-
-			cv::Vec3d acc, gyro;
-			bool valid = !accBuffer_.empty() && !gyroBuffer_.empty();
-			//acc
-			if(!accBuffer_.empty())
-			{
-				std::map<double, cv::Vec3f>::const_iterator iterB = accBuffer_.lower_bound(stamp);
-				std::map<double, cv::Vec3f>::const_iterator iterA = iterB;
-				if(iterA != accBuffer_.begin())
-				{
-					iterA = --iterA;
-				}
-				if(iterB == accBuffer_.end())
-				{
-					iterB = --iterB;
-				}
-				if(iterA == iterB && stamp == iterA->first)
-				{
-					acc[0] = iterA->second[0];
-					acc[1] = iterA->second[1];
-					acc[2] = iterA->second[2];
-				}
-				else if(stamp >= iterA->first && stamp <= iterB->first)
-				{
-					float t = (stamp-iterA->first) / (iterB->first-iterA->first);
-					acc[0] = iterA->second[0] + t*(iterB->second[0] - iterA->second[0]);
-					acc[1] = iterA->second[1] + t*(iterB->second[1] - iterA->second[1]);
-					acc[2] = iterA->second[2] + t*(iterB->second[2] - iterA->second[2]);
-				}
-				else
-				{
-					valid = false;
-					if(stamp < iterA->first)
-					{
-						UWARN("Could not find acc data to interpolate at image time %f (earliest is %f). Are sensors synchronized?", stamp, iterA->first);
-					}
-					else if(stamp > iterB->first)
-					{
-						UWARN("Could not find acc data to interpolate at image time %f (latest is %f). Are sensors synchronized?", stamp, iterB->first);
-					}
-					else
-					{
-						UWARN("Could not find acc data to interpolate at image time %f (between %f and %f). Are sensors synchronized?", stamp, iterA->first, iterB->first);
-					}
-				}
-			}
-			//gyro
-			if(!gyroBuffer_.empty())
-			{
-				std::map<double, cv::Vec3f>::const_iterator iterB = gyroBuffer_.lower_bound(stamp);
-				std::map<double, cv::Vec3f>::const_iterator iterA = iterB;
-				if(iterA != gyroBuffer_.begin())
-				{
-					iterA = --iterA;
-				}
-				if(iterB == gyroBuffer_.end())
-				{
-					iterB = --iterB;
-				}
-				if(iterA == iterB && stamp == iterA->first)
-				{
-					gyro[0] = iterA->second[0];
-					gyro[1] = iterA->second[1];
-					gyro[2] = iterA->second[2];
-				}
-				else if(stamp >= iterA->first && stamp <= iterB->first)
-				{
-					float t = (stamp-iterA->first) / (iterB->first-iterA->first);
-					gyro[0] = iterA->second[0] + t*(iterB->second[0] - iterA->second[0]);
-					gyro[1] = iterA->second[1] + t*(iterB->second[1] - iterA->second[1]);
-					gyro[2] = iterA->second[2] + t*(iterB->second[2] - iterA->second[2]);
-				}
-				else
-				{
-					valid = false;
-					if(stamp < iterA->first)
-					{
-						UWARN("Could not find gyro data to interpolate at image time %f (earliest is %f). Are sensors synchronized?", stamp, iterA->first);
-					}
-					else if(stamp > iterB->first)
-					{
-						UWARN("Could not find gyro data to interpolate at image time %f (latest is %f). Are sensors synchronized?", stamp, iterB->first);
-					}
-					else
-					{
-						UWARN("Could not find gyro data to interpolate at image time %f (between %f and %f). Are sensors synchronized?", stamp, iterA->first, iterB->first);
-					}
-				}
-			}
-
-			if(valid)
-			{
-				data.setIMU(IMU(gyro, cv::Mat::eye(3, 3, CV_64FC1), acc, cv::Mat::eye(3, 3, CV_64FC1), imuLocalTransform_));
-			}
-		}
-	}
+	if(depthOrRight.type() == CV_8UC1)
+		data = SensorData(left, depthOrRight, stereoModel_, this->getNextSeqID(), stamp);
 	else
+		data = SensorData(left, depthOrRight, stereoModel_.left(), this->getNextSeqID(), stamp);
+
+	if(imuPublished_ && !publishInterIMU_)
 	{
-		UWARN("Null images received!?");
+		cv::Vec3d acc, gyro;
+		std::map<double, cv::Vec3f>::const_iterator iterA, iterB;
+	
+		imuMutex_.lock();
+		while(accBuffer_.empty() || gyroBuffer_.empty() || accBuffer_.rbegin()->first < stamp || gyroBuffer_.rbegin()->first < stamp)
+		{
+			imuMutex_.unlock();
+			uSleep(1);
+			imuMutex_.lock();
+		}
+
+		//acc
+		iterB = accBuffer_.lower_bound(stamp);
+		iterA = iterB;
+		if(iterA != accBuffer_.begin())
+			iterA = --iterA;
+		if(iterA == iterB || stamp == iterB->first)
+		{
+			acc = iterB->second;
+		}
+		else if(stamp > iterA->first && stamp < iterB->first)
+		{
+			float t = (stamp-iterA->first) / (iterB->first-iterA->first);
+			acc = iterA->second + t*(iterB->second - iterA->second);
+		}
+		accBuffer_.erase(accBuffer_.begin(), iterB);
+
+		//gyro
+		iterB = gyroBuffer_.lower_bound(stamp);
+		iterA = iterB;
+		if(iterA != gyroBuffer_.begin())
+			iterA = --iterA;
+		if(iterA == iterB || stamp == iterB->first)
+		{
+			gyro = iterB->second;
+		}
+		else if(stamp > iterA->first && stamp < iterB->first)
+		{
+			float t = (stamp-iterA->first) / (iterB->first-iterA->first);
+			gyro = iterA->second + t*(iterB->second - iterA->second);
+		}
+		gyroBuffer_.erase(gyroBuffer_.begin(), iterB);
+
+		imuMutex_.unlock();
+		data.setIMU(IMU(gyro, cv::Mat::eye(3, 3, CV_64FC1), acc, cv::Mat::eye(3, 3, CV_64FC1), imuLocalTransform_));
 	}
 
 #else

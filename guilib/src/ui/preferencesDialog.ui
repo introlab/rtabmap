@@ -5943,6 +5943,58 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                     </property>
                                    </widget>
                                   </item>
+                                  <item row="5" column="0">
+                                   <widget class="QDoubleSpinBox" name="doubleSpinBox_depthai_laser_dot_brightness">
+                                    <property name="suffix">
+                                     <string> mA</string>
+                                    </property>
+                                    <property name="maximum">
+                                     <double>1200.000000000000000</double>
+                                    </property>
+                                    <property name="value">
+                                     <double>0.000000000000000</double>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="5" column="1">
+                                   <widget class="QLabel" name="label_676">
+                                    <property name="text">
+                                     <string>Laser dot brightness.</string>
+                                    </property>
+                                    <property name="wordWrap">
+                                     <bool>true</bool>
+                                    </property>
+                                    <property name="textInteractionFlags">
+                                     <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="6" column="0">
+                                   <widget class="QDoubleSpinBox" name="doubleSpinBox_depthai_floodlight_brightness">
+                                    <property name="suffix">
+                                     <string> mA</string>
+                                    </property>
+                                    <property name="maximum">
+                                     <double>1500.000000000000000</double>
+                                    </property>
+                                    <property name="value">
+                                     <double>200.000000000000000</double>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="6" column="1">
+                                   <widget class="QLabel" name="label_677">
+                                    <property name="text">
+                                     <string>Floodlight brightness.</string>
+                                    </property>
+                                    <property name="wordWrap">
+                                     <bool>true</bool>
+                                    </property>
+                                    <property name="textInteractionFlags">
+                                     <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                    </property>
+                                   </widget>
+                                  </item>
                                  </layout>
                                 </widget>
                                </item>
