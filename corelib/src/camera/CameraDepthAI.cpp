@@ -277,9 +277,9 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 		//		matrix[1][0], matrix[1][1], matrix[1][2], matrix[1][3],
 		//		matrix[2][0], matrix[2][1], matrix[2][2], matrix[2][3]);
 		auto eeprom = calibHandler.getEepromData();
-		if(eeprom.boardName == "OAK-D")
+		if(eeprom.boardName == "OAK-D" ||
+		   eeprom.boardName == "BW1098OBC")
 		{
-			// Hard-coded: x->down, y->left, z->forward
 			imuLocalTransform_ = Transform(
 				 0, -1,  0,  0.0525,
 				 1,  0,  0,  0.0137,
@@ -287,7 +287,6 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 		}
 		else if(eeprom.boardName == "DM9098")
 		{
-			// Hard-coded: x->down, y->right, z->backward
 			imuLocalTransform_ = Transform(
 				 0,  1,  0,  0.0754,
 				 1,  0,  0,  0.0026,
@@ -295,7 +294,7 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 		}
 		else
 		{
-			UWARN("Unknown boardName! Disabling IMU!");
+			UWARN("Unknown boardName (%s)! Disabling IMU!", eeprom.boardName.c_str());
 			imuPublished_ = false;
 		}
 	}
