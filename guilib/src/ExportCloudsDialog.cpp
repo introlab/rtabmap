@@ -4369,11 +4369,11 @@ void ExportCloudsDialog::saveMeshes(
 				}
 				else if(QFileInfo(path).suffix() == "obj")
 				{
-					success = pcl::io::saveOBJFile(path.toStdString(), *meshes.begin()->second) == 0;
+					success = saveOBJFile(path, *meshes.begin()->second);
 				}
 				else
 				{
-					UERROR("Extension not recognized! (%s) Should be (*.ply).", QFileInfo(path).suffix().toStdString().c_str());
+					UERROR("Extension not recognized! (%s) Should be (*.ply) or (*.obj).", QFileInfo(path).suffix().toStdString().c_str());
 				}
 				if(success)
 				{
@@ -4455,7 +4455,7 @@ void ExportCloudsDialog::saveMeshes(
 							}
 							else if(suffix == "obj")
 							{
-								success = pcl::io::saveOBJFile(pathFile.toStdString(), mesh) == 0;
+								success = saveOBJFile(pathFile, mesh);
 							}
 							else
 							{
@@ -4779,8 +4779,7 @@ void ExportCloudsDialog::saveTextureMeshes(
 					}
 				}
 
-				success = pcl::io::saveOBJFile(path.toStdString(), *mesh) == 0;
-				if(success)
+                if(saveOBJFile(path, mesh))
 				{
 					_progressDialog->incrementStep();
 					_progressDialog->appendText(tr("Saving the mesh (with %1 textures)... done.").arg(mesh->tex_materials.size()));
@@ -4976,7 +4975,7 @@ void ExportCloudsDialog::saveTextureMeshes(
 						bool success =false;
 						if(suffix == "obj")
 						{
-							success = pcl::io::saveOBJFile(pathFile.toStdString(), *mesh) == 0;
+							success = saveOBJFile(pathFile, mesh);
 						}
 						else
 						{
@@ -5009,5 +5008,29 @@ void ExportCloudsDialog::saveTextureMeshes(
 		}
 	}
 }
+
+    bool ExportCloudsDialog::saveOBJFile(const QString &path, pcl::TextureMesh::Ptr &mesh) const {
+#if PCL_VERSION_COMPARE(>=, 1, 13, 0)
+        mesh->tex_coord_indices = std::vector<std::vector<pcl::Vertices>>();
+        auto nr_meshes = static_cast<unsigned>(mesh->tex_polygons.size());
+        unsigned f_idx = 0;
+        for (unsigned m = 0; m < nr_meshes; m++) {
+            std::vector<pcl::Vertices> ci = mesh->tex_polygons[m];
+            for(std::size_t i = 0; i < ci.size(); i++) {
+                for (std::size_t j = 0; j < ci[i].vertices.size(); j++) {
+                    ci[i].vertices[j] = ci[i].vertices.size() * (i + f_idx) + j;
+                }
+            }
+            mesh->tex_coord_indices.push_back(ci);
+            f_idx += static_cast<unsigned>(mesh->tex_polygons[m].size());
+        }
+#endif
+        return pcl::io::saveOBJFile(path.toStdString(), *mesh) == 0;
+    }
+
+    bool ExportCloudsDialog::saveOBJFile(const QString &path, pcl::PolygonMesh &mesh) const {
+        return pcl::io::saveOBJFile(path.toStdString(), mesh) == 0;
+    }
+
 
 }
