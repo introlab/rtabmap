@@ -56,6 +56,7 @@ CameraDepthAI::CameraDepthAI(
 	outputDepth_(false),
 	depthConfidence_(200),
 	resolution_(resolution),
+	alphaScaling_(0.0),
 	imuFirmwareUpdate_(false),
 	imuPublished_(true),
 	publishInterIMU_(false),
@@ -86,6 +87,15 @@ void CameraDepthAI::setOutputDepth(bool enabled, int confidence)
 	{
 		depthConfidence_ = confidence;
 	}
+#else
+	UERROR("CameraDepthAI: RTAB-Map is not built with depthai-core support!");
+#endif
+}
+
+void CameraDepthAI::setAlphaScaling(float alphaScaling)
+{
+#ifdef RTABMAP_DEPTHAI
+	alphaScaling_ = alphaScaling;
 #else
 	UERROR("CameraDepthAI: RTAB-Map is not built with depthai-core support!");
 #endif
@@ -218,7 +228,7 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 	stereo->setSubpixelFractionalBits(4);
 	stereo->setExtendedDisparity(false);
 	stereo->setRectifyEdgeFillColor(0); // black, to better see the cutout
-	stereo->setAlphaScaling(0.0);
+	stereo->setAlphaScaling(alphaScaling_);
 	stereo->initialConfig.setConfidenceThreshold(depthConfidence_);
 	stereo->initialConfig.setLeftRightCheck(true);
 	stereo->initialConfig.setLeftRightCheckThreshold(5);
@@ -272,7 +282,7 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 	if(calibHandler.getDistortionModel(dai::CameraBoardSocket::LEFT) == dai::CameraModel::Perspective)
 		distCoeffs = (cv::Mat_<double>(1,8) << coeffs[0], coeffs[1], coeffs[2], coeffs[3], coeffs[4], coeffs[5], coeffs[6], coeffs[7]);
 
-	new_camera_matrix = cv::getOptimalNewCameraMatrix(cameraMatrix, distCoeffs, targetSize, 0.0);
+	new_camera_matrix = cv::getOptimalNewCameraMatrix(cameraMatrix, distCoeffs, targetSize, alphaScaling_);
 	double fx = new_camera_matrix.at<double>(0, 0);
 	double fy = new_camera_matrix.at<double>(1, 1);
 	double cx = new_camera_matrix.at<double>(0, 2);
