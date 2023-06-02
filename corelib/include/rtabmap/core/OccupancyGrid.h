@@ -132,6 +132,7 @@ private:
 	bool normalsSegmentation_;
 	bool grid3D_;
 	bool groundIsObstacle_;
+	bool labelUndergroundObstaclesAsGround_;
 	float noiseFilteringRadius_;
 	int noiseFilteringMinNeighbors_;
 	bool scan2dUnknownSpaceFilled_;

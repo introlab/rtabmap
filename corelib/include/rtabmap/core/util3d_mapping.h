@@ -157,7 +157,8 @@ void segmentObstaclesFromGround(
 		float maxGroundHeight = 0.0f,
 		pcl::IndicesPtr * flatObstacles = 0,
 		const Eigen::Vector4f & viewPoint = Eigen::Vector4f(0,0,100,0),
-		float groundNormalsUp = 0);
+		float groundNormalsUp = 0,
+		bool labelUndergroundObstaclesAsGround = false);
 template<typename PointT>
 void segmentObstaclesFromGround(
 		const typename pcl::PointCloud<PointT>::Ptr & cloud,
@@ -171,7 +172,8 @@ void segmentObstaclesFromGround(
 		float maxGroundHeight = 0.0f,
 		pcl::IndicesPtr * flatObstacles = 0,
 		const Eigen::Vector4f & viewPoint = Eigen::Vector4f(0,0,100,0),
-		float groundNormalsUp = 0);
+		float groundNormalsUp = 0,
+		bool labelUndergroundObstaclesAsGround = false);
 
 template<typename PointT>
 void occupancy2DFromGroundObstacles(

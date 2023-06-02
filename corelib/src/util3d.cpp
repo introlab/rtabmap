@@ -372,34 +372,127 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr cloudFromDepth(
 	float depthCx = model.cx() * rgbToDepthFactorX;
 	float depthCy = model.cy() * rgbToDepthFactorY;
 
-	UDEBUG("depth=%dx%d fx=%f fy=%f cx=%f cy=%f (depth factors=%f %f) decimation=%d",
+	bool isMM = imageDepth.type() == CV_16UC1;
+
+	UDEBUG("depth=%dx%d (isMM=%d) fx=%f fy=%f cx=%f cy=%f (depth factors=%f %f) decimation=%d",
 			imageDepth.cols, imageDepth.rows,
+			isMM?1:0,
 			model.fx(), model.fy(), model.cx(), model.cy(),
 			rgbToDepthFactorX,
 			rgbToDepthFactorY,
 			decimation);
 
+	int decimationMode = 1;
 	int oi = 0;
-	for(int h = 0; h < imageDepth.rows && h/decimation < (int)cloud->height; h+=decimation)
+	if(isMM)
 	{
-		for(int w = 0; w < imageDepth.cols && w/decimation < (int)cloud->width; w+=decimation)
+		for(int h = 0; h < imageDepth.rows && h/decimation < (int)cloud->height; h+=decimation)
 		{
-			pcl::PointXYZ & pt = cloud->at((h/decimation)*cloud->width + (w/decimation));
-
-			pcl::PointXYZ ptXYZ = projectDepthTo3D(imageDepth, w, h, depthCx, depthCy, depthFx, depthFy, false);
-			if(pcl::isFinite(ptXYZ) && ptXYZ.z>=minDepth && (maxDepth<=0.0f || ptXYZ.z <= maxDepth))
+			const unsigned short * rowPtr = imageDepth.ptr<unsigned short>(h);
+			for(int w = 0; w < imageDepth.cols && w/decimation < (int)cloud->width; w+=decimation)
 			{
-				pt.x = ptXYZ.x;
-				pt.y = ptXYZ.y;
-				pt.z = ptXYZ.z;
-				if(validIndices)
+				pcl::PointXYZ & pt = cloud->at((h/decimation)*cloud->width + (w/decimation));
+
+				pt.x = pt.y = pt.z = std::numeric_limits<float>::quiet_NaN();
+
+				if(decimationMode == 1 && decimation>1)
+				{
+					// project closest point
+					cv::Point2i closestPixel(w,h);
+					unsigned short closestDepthMM = 0;
+					for(int v = h; v < h + decimation; ++v)
+					{
+						const unsigned short * roiRowPtr = imageDepth.ptr<unsigned short>(v);
+						for(int u = w; u < w + decimation; ++u)
+						{
+							const unsigned short & depthMM = roiRowPtr[u];
+							if(depthMM > 0 && (depthMM < closestDepthMM || closestDepthMM == 0))
+							{
+								closestDepthMM = depthMM;
+								closestPixel.x = u;
+								closestPixel.y = v;
+							}
+						}
+					}
+					if(closestDepthMM > 0)
+					{
+						float depth = ((float)closestDepthMM)/1000.0f;
+						if(depth>=minDepth && (maxDepth<=0.0f || depth <= maxDepth))
+						{
+							// Fill in XYZ
+							pt.z = depth;
+							pt.x = ((float)closestPixel.x - depthCx) * pt.z / depthFx;
+							pt.y = ((float)closestPixel.y - depthCy) * pt.z / depthFy;
+						}
+					}
+				}
+				else if(rowPtr[w]>0)
+				{
+					float depth = ((float)rowPtr[w])/1000.0f;
+					if(depth>=minDepth && (maxDepth<=0.0f || depth <= maxDepth))
+					{
+						// Fill in XYZ
+						pt.z = depth;
+						pt.x = ((float)w - depthCx) * pt.z / depthFx;
+						pt.y = ((float)h - depthCy) * pt.z / depthFy;
+					}
+				}
+				if(pcl::isFinite(pt) && validIndices)
 				{
 					validIndices->at(oi++) = (h/decimation)*cloud->width + (w/decimation);
 				}
 			}
-			else
+		}
+	}
+	else
+	{
+		for(int h = 0; h < imageDepth.rows && h/decimation < (int)cloud->height; h+=decimation)
+		{
+			const float * rowPtr = imageDepth.ptr<float>(h);
+			for(int w = 0; w < imageDepth.cols && w/decimation < (int)cloud->width; w+=decimation)
 			{
+				pcl::PointXYZ & pt = cloud->at((h/decimation)*cloud->width + (w/decimation));
+
 				pt.x = pt.y = pt.z = std::numeric_limits<float>::quiet_NaN();
+
+				if(decimationMode == 1 && decimation>1)
+				{
+					// project closest point
+					cv::Point2i closestPixel(w,h);
+					float closestDepth = 0.0f;
+					for(int v = h; v < h + decimation; ++v)
+					{
+						const float * roiRowPtr =  imageDepth.ptr<float>(v);
+						for(int u = w; u < w + decimation; ++u)
+						{
+							const float & depth = roiRowPtr[u];
+							if(depth > 0.0f && (depth < closestDepth || closestDepth == 0.0f))
+							{
+								closestDepth = depth;
+								closestPixel.x = u;
+								closestPixel.y = v;
+							}
+						}
+					}
+					if(closestDepth > 0.0f && closestDepth>=minDepth && (maxDepth<=0.0f || closestDepth <= maxDepth))
+					{
+						// Fill in XYZ
+						pt.z = closestDepth;
+						pt.x = ((float)closestPixel.x - depthCx) * pt.z / depthFx;
+						pt.y = ((float)closestPixel.y - depthCy) * pt.z / depthFy;
+					}
+				}
+				else if(rowPtr[w] > 0 && rowPtr[w]>=minDepth && (maxDepth<=0.0f || rowPtr[w] <= maxDepth))
+				{
+					// Fill in XYZ
+					pt.z = rowPtr[w];
+					pt.x = ((float)w - depthCx) * pt.z / depthFx;
+					pt.y = ((float)h - depthCy) * pt.z / depthFy;
+				}
+				if(pcl::isFinite(pt) && validIndices)
+				{
+					validIndices->at(oi++) = (h/decimation)*cloud->width + (w/decimation);
+				}
 			}
 		}
 	}

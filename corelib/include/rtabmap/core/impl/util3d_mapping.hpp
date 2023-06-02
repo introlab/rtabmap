@@ -64,7 +64,8 @@ void segmentObstaclesFromGround(
 		float maxGroundHeight,
 		pcl::IndicesPtr * flatObstacles,
 		const Eigen::Vector4f & viewPoint,
-		float groundNormalsUp)
+		float groundNormalsUp,
+		bool labelUndergroundObstaclesAsGround)
 {
 	ground.reset(new std::vector<int>);
 	obstacles.reset(new std::vector<int>);
@@ -84,10 +85,15 @@ void segmentObstaclesFromGround(
 				normalKSearch,
 				viewPoint,
 				groundNormalsUp);
+		UDEBUG("%ld points on flat surfaces (input indices = %ld, total cloud=%ld)",
+			flatSurfaces->size(), indices->size(), cloud->size());
 
 		if(segmentFlatObstacles && flatSurfaces->size())
 		{
 			int biggestFlatSurfaceIndex;
+
+			//If cloud is orgazized, cluster/floodfill using intergral image (can use radius to limit the flood)
+
 			std::vector<pcl::IndicesPtr> clusteredFlatSurfaces = extractClusters(
 					cloud,
 					flatSurfaces,
@@ -125,6 +131,8 @@ void segmentObstaclesFromGround(
 				if(biggestFlatSurfaceIndex>=0)
 				{
 					ground = clusteredFlatSurfaces.at(biggestFlatSurfaceIndex);
+					UDEBUG("Biggest flat surface size = %ld (z min=%f max=%f)",
+						ground->size(), biggestSurfaceMin[2], biggestSurfaceMax[2]);
 				}
 
 				if(!ground->empty() && (maxGroundHeight == 0.0f || biggestSurfaceMin[2] < maxGroundHeight))
@@ -135,7 +143,7 @@ void segmentObstaclesFromGround(
 						{
 							Eigen::Vector4f centroid(0,0,0,1);
 							pcl::compute3DCentroid(*cloud, *clusteredFlatSurfaces.at(i), centroid);
-							if(maxGroundHeight==0.0f || centroid[2] <= maxGroundHeight || centroid[2] <= biggestSurfaceMax[2]) // epsilon
+							if(centroid[2] <= biggestSurfaceMax[2]) // relative to ground detected
 							{
 								ground = util3d::concatenate(ground, clusteredFlatSurfaces.at(i));
 							}
@@ -171,25 +179,53 @@ void segmentObstaclesFromGround(
 				notObstacles = util3d::extractIndices(cloud, indices, true);
 				notObstacles = util3d::concatenate(notObstacles, ground);
 			}
-			pcl::IndicesPtr otherStuffIndices = util3d::extractIndices(cloud, notObstacles, true);
 
-			// If ground height is set, remove obstacles under it
-			if(maxGroundHeight != 0.0f)
+			// If ground height is set and if we label obstacles under it as ground
+			if(labelUndergroundObstaclesAsGround)
 			{
-				otherStuffIndices = rtabmap::util3d::passThrough(cloud, otherStuffIndices, "z", maxGroundHeight, std::numeric_limits<float>::max());
+				Eigen::Vector4f min,max;
+				if(!ground->empty())
+				{
+					pcl::getMinMax3D(*cloud, *ground, min, max);
+					if(maxGroundHeight>0)
+					{
+						max[2] += maxGroundHeight;
+					}
+				}
+				else
+				{
+					max[2] = maxGroundHeight;
+				}
+
+				pcl::IndicesPtr otherStuffIndices = util3d::extractIndices(cloud, notObstacles, true);
+				pcl::IndicesPtr underground = rtabmap::util3d::passThrough(cloud, otherStuffIndices, "z", (float)std::numeric_limits<int>::min(), max[2]);
+				if(!underground->empty())
+				{
+					ground = util3d::concatenate(ground, underground);
+					notObstacles = util3d::concatenate(underground, notObstacles);
+				}
 			}
+
+			pcl::IndicesPtr otherStuffIndices = util3d::extractIndices(cloud, notObstacles, true);
 
 			//Cluster remaining stuff (obstacles)
 			if(otherStuffIndices->size())
 			{
-				std::vector<pcl::IndicesPtr> clusteredObstaclesSurfaces = util3d::extractClusters(
-						cloud,
-						otherStuffIndices,
-						clusterRadius,
-						minClusterSize);
+				if(minClusterSize>1)
+				{
+					std::vector<pcl::IndicesPtr> clusteredObstaclesSurfaces = util3d::extractClusters(
+							cloud,
+							otherStuffIndices,
+							clusterRadius,
+							minClusterSize);
 
-				// merge indices
-				obstacles = util3d::concatenate(clusteredObstaclesSurfaces);
+					// merge indices
+					obstacles = util3d::concatenate(clusteredObstaclesSurfaces);
+				}
+				else
+				{
+					obstacles = otherStuffIndices;
+				}
 			}
 		}
 	}
@@ -208,7 +244,8 @@ void segmentObstaclesFromGround(
 		float maxGroundHeight,
 		pcl::IndicesPtr * flatObstacles,
 		const Eigen::Vector4f & viewPoint,
-		float groundNormalsUp)
+		float groundNormalsUp,
+		bool labelUndergroundObstaclesAsGround)
 {
 	pcl::IndicesPtr indices(new std::vector<int>);
 	segmentObstaclesFromGround<PointT>(
@@ -224,7 +261,8 @@ void segmentObstaclesFromGround(
 			maxGroundHeight,
 			flatObstacles,
 			viewPoint,
-			groundNormalsUp);
+			groundNormalsUp,
+			labelUndergroundObstaclesAsGround);
 }
 
 template<typename PointT>

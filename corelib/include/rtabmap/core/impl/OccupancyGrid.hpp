@@ -54,6 +54,7 @@ typename pcl::PointCloud<PointT>::Ptr OccupancyGrid::segmentCloud(
 	typename pcl::PointCloud<PointT>::Ptr cloud(new pcl::PointCloud<PointT>);
 	pcl::IndicesPtr indices(new std::vector<int>);
 
+	UDEBUG("preVoxelFiltering=%d", preVoxelFiltering_?1:0);
 	if(preVoxelFiltering_)
 	{
 		// voxelize to grid cell size
@@ -127,6 +128,8 @@ typename pcl::PointCloud<PointT>::Ptr OccupancyGrid::segmentCloud(
 			UDEBUG("flatObstaclesDetected=%d", flatObstaclesDetected_?1:0);
 			UDEBUG("maxGroundHeight=%f", maxGroundHeight_);
 			UDEBUG("groundNormalsUp=%f", groundNormalsUp_);
+			UDEBUG("labelUndergroundObstaclesAsGround=%d", labelUndergroundObstaclesAsGround_?1:0);
+			UDEBUG("viewPoint=%f,%f,%f", viewPoint.x, viewPoint.y, viewPoint.z+(projMapFrame_?pose.z():0));
 			util3d::segmentObstaclesFromGround<PointT>(
 					cloud,
 					indices,
@@ -140,8 +143,8 @@ typename pcl::PointCloud<PointT>::Ptr OccupancyGrid::segmentCloud(
 					maxGroundHeight_,
 					flatObstacles,
 					Eigen::Vector4f(viewPoint.x, viewPoint.y, viewPoint.z+(projMapFrame_?pose.z():0), 1),
-					groundNormalsUp_);
-			UDEBUG("viewPoint=%f,%f,%f", viewPoint.x, viewPoint.y, viewPoint.z+(projMapFrame_?pose.z():0));
+					groundNormalsUp_,
+					labelUndergroundObstaclesAsGround_);
 			//UWARN("Saving ground.pcd and obstacles.pcd");
 			//pcl::io::savePCDFile("ground.pcd", *cloud, *groundIndices);
 			//pcl::io::savePCDFile("obstacles.pcd", *cloud, *obstaclesIndices);
@@ -164,6 +167,42 @@ typename pcl::PointCloud<PointT>::Ptr OccupancyGrid::segmentCloud(
 		}
 
 		UDEBUG("groundIndices=%d obstaclesIndices=%d", (int)groundIndices->size(), (int)obstaclesIndices->size());
+
+		if(!preVoxelFiltering_ && (!groundIndices->empty() || !obstaclesIndices->empty()))
+		{
+			// voxelize to grid cell size
+			typename pcl::PointCloud<PointT>::Ptr cloudWithTransform = cloud;
+			cloud.reset(new pcl::PointCloud<PointT>);
+			if(!groundIndices->empty())
+			{
+				*cloud += *util3d::voxelize(cloudWithTransform, groundIndices, cellSize_);
+				groundIndices->resize(cloud->size());
+				for(size_t i=0; i<groundIndices->size(); ++i)
+				{
+					groundIndices->at(i) = i;
+				}
+			}
+			if(!obstaclesIndices->empty())
+			{
+				int previousSize = cloud->size();
+				*cloud += *util3d::voxelize(cloudWithTransform, obstaclesIndices, cellSize_);
+				obstaclesIndices->resize(cloud->size()-previousSize);
+				for(size_t i=0; i<obstaclesIndices->size(); ++i)
+				{
+					obstaclesIndices->at(i) = previousSize+i;
+				}
+			}
+			if(flatObstacles && !(*flatObstacles)->empty())
+			{
+				int previousSize = cloud->size();
+				*cloud += *util3d::voxelize(cloudWithTransform, *flatObstacles, cellSize_);
+				(*flatObstacles)->resize(cloud->size()-previousSize);
+				for(size_t i=0; i<(*flatObstacles)->size(); ++i)
+				{
+					(*flatObstacles)->at(i) = previousSize+i;
+				}
+			}
+		}
 
 		// Do radius filtering after voxel filtering ( a lot faster)
 		if(noiseFilteringRadius_ > 0.0 && noiseFilteringMinNeighbors_ > 0)

@@ -3033,6 +3033,65 @@ pcl::PointCloud<pcl::Normal>::Ptr computeFastOrganizedNormals2D(
 	return computeFastOrganizedNormals2DImpl<pcl::PointXYZI>(cloud, searchK, searchRadius, viewPoint);
 }
 
+template<typename PointT>
+pcl::PointCloud<pcl::Normal>::Ptr computeFastOrganizedNormalsImpl(
+		const typename pcl::PointCloud<PointT>::Ptr & cloud,
+		const pcl::IndicesPtr & indices,
+		float maxDepthChangeFactor,
+		float normalSmoothingSize,
+		const Eigen::Vector3f & viewPoint)
+{
+	UASSERT(cloud->isOrganized());
+
+	// Normal estimation
+	pcl::PointCloud<pcl::Normal>::Ptr normals (new pcl::PointCloud<pcl::Normal>);
+	pcl::IntegralImageNormalEstimation<PointT, pcl::Normal> ne;
+#if PCL_VERSION_COMPARE(<, 1, 7, 0)
+	ne.setNormalEstimationMethod (ne.AVERAGE_3D_GRADIENT);
+	ne.setBorderPolicy(ne.BORDER_POLICY_MIRROR);
+#else
+	ne.setNormalEstimationMethod (ne.SIMPLE_3D_GRADIENT);
+	ne.setBorderPolicy(ne.BORDER_POLICY_IGNORE);
+#endif
+	ne.setMaxDepthChangeFactor(maxDepthChangeFactor);
+	ne.setNormalSmoothingSize(normalSmoothingSize);
+	ne.setInputCloud(cloud);
+	// Commented: Keep the output normals size the same as the input cloud
+	//if(indices->size())
+	//{
+	//	ne.setIndices(indices);
+	//}
+
+	// create kdtree search tree (not used by IntegralImageNormalEstimation) to avoid 
+	// "[pcl::OrganizedNeighbor::radiusSearch] Input dataset is not from a projective device!"
+	// on clouds smaller than regular organized clouds from camera (640x480)
+	typename pcl::search::KdTree<PointT>::Ptr tree (new pcl::search::KdTree<PointT>);
+	ne.setSearchMethod(tree);
+
+	ne.setViewPoint(viewPoint[0], viewPoint[1], viewPoint[2]);
+	ne.compute(*normals);
+
+	return normals;
+}
+pcl::PointCloud<pcl::Normal>::Ptr computeFastOrganizedNormals(
+		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
+		float maxDepthChangeFactor,
+		float normalSmoothingSize,
+		const Eigen::Vector3f & viewPoint)
+{
+	pcl::IndicesPtr indices(new std::vector<int>);
+	return computeFastOrganizedNormals(cloud, indices, maxDepthChangeFactor, normalSmoothingSize, viewPoint);
+}
+pcl::PointCloud<pcl::Normal>::Ptr computeFastOrganizedNormals(
+		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
+		const pcl::IndicesPtr & indices,
+		float maxDepthChangeFactor,
+		float normalSmoothingSize,
+		const Eigen::Vector3f & viewPoint)
+{
+	return computeFastOrganizedNormalsImpl<pcl::PointXYZ>(cloud, indices, maxDepthChangeFactor, normalSmoothingSize, viewPoint);
+}
+
 pcl::PointCloud<pcl::Normal>::Ptr computeFastOrganizedNormals(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 		float maxDepthChangeFactor,
@@ -3049,36 +3108,7 @@ pcl::PointCloud<pcl::Normal>::Ptr computeFastOrganizedNormals(
 		float normalSmoothingSize,
 		const Eigen::Vector3f & viewPoint)
 {
-	UASSERT(cloud->isOrganized());
-
-	pcl::search::KdTree<pcl::PointXYZRGB>::Ptr tree (new pcl::search::KdTree<pcl::PointXYZRGB>);
-	if(indices->size())
-	{
-		tree->setInputCloud(cloud, indices);
-	}
-	else
-	{
-		tree->setInputCloud (cloud);
-	}
-
-	// Normal estimation
-	pcl::PointCloud<pcl::Normal>::Ptr normals (new pcl::PointCloud<pcl::Normal>);
-	pcl::IntegralImageNormalEstimation<pcl::PointXYZRGB, pcl::Normal> ne;
-	ne.setNormalEstimationMethod (ne.AVERAGE_3D_GRADIENT);
-	ne.setMaxDepthChangeFactor(maxDepthChangeFactor);
-	ne.setNormalSmoothingSize(normalSmoothingSize);
-	ne.setBorderPolicy(ne.BORDER_POLICY_MIRROR);
-	ne.setInputCloud(cloud);
-	// Commented: Keep the output normals size the same as the input cloud
-	//if(indices->size())
-	//{
-	//	ne.setIndices(indices);
-	//}
-	ne.setSearchMethod(tree);
-	ne.setViewPoint(viewPoint[0], viewPoint[1], viewPoint[2]);
-	ne.compute(*normals);
-
-	return normals;
+	return computeFastOrganizedNormalsImpl<pcl::PointXYZRGB>(cloud, indices, maxDepthChangeFactor, normalSmoothingSize, viewPoint);
 }
 
 float computeNormalsComplexity(
