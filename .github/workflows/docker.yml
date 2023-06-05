@@ -11,7 +11,7 @@ jobs:
     
     strategy:
       matrix:
-        docker_tag: [focal-foxy-deps, humble-deps]
+        docker_tag: [focal-foxy-deps, jammy-deps]
         include:
         - docker_tag: focal-foxy-deps
           docker_tags: |
@@ -20,13 +20,13 @@ jobs:
             linux/amd64
             linux/arm64
           docker_path: 'focal-foxy/deps'
-        - docker_tag: humble-deps
+        - docker_tag: jammy-deps
           docker_tags: |
-            introlab3it/rtabmap:humble-deps
+            introlab3it/rtabmap:jammy-deps
           docker_platforms: |
             linux/amd64
             linux/arm64
-          docker_path: 'humble/deps'
+          docker_path: 'jammy/deps'
     
     steps:
       -
