@@ -183,6 +183,6 @@ RUN git clone --branch 4.2.0 https://github.com/opencv/opencv.git && \
 
 RUN rm /bin/sh && ln -s /bin/bash /bin/sh
 
-RUN cp /root/rtabmap/docker/focal-foxy/deps/ros_entrypoint.sh /ros_entrypoint.sh
+COPY ./docker/focal-foxy/deps/ros_entrypoint.sh /ros_entrypoint.sh
 ENTRYPOINT [ "/ros_entrypoint.sh" ]
 

@@ -92,7 +92,7 @@ RUN git clone --branch 4.5.4 https://github.com/opencv/opencv.git && \
 
 RUN rm /bin/sh && ln -s /bin/bash /bin/sh
 
-RUN cp /root/rtabmap/docker/jammy/deps/ros_entrypoint.sh /ros_entrypoint.sh
+COPY ./docker/jammy/deps/ros_entrypoint.sh /ros_entrypoint.sh
 ENTRYPOINT [ "/ros_entrypoint.sh" ]
 
 # ros2 seems not sourcing by default its multi-arch folders
