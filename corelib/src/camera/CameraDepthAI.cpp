@@ -228,7 +228,8 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 	stereo->setSubpixelFractionalBits(4);
 	stereo->setExtendedDisparity(false);
 	stereo->setRectifyEdgeFillColor(0); // black, to better see the cutout
-	stereo->setAlphaScaling(alphaScaling_);
+	if(alphaScaling_>-1.0f)
+	    stereo->setAlphaScaling(alphaScaling_);
 	stereo->initialConfig.setConfidenceThreshold(depthConfidence_);
 	stereo->initialConfig.setLeftRightCheck(true);
 	stereo->initialConfig.setLeftRightCheckThreshold(5);
@@ -282,7 +283,13 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 	if(calibHandler.getDistortionModel(dai::CameraBoardSocket::LEFT) == dai::CameraModel::Perspective)
 		distCoeffs = (cv::Mat_<double>(1,8) << coeffs[0], coeffs[1], coeffs[2], coeffs[3], coeffs[4], coeffs[5], coeffs[6], coeffs[7]);
 
-	new_camera_matrix = cv::getOptimalNewCameraMatrix(cameraMatrix, distCoeffs, targetSize, alphaScaling_);
+    if(alphaScaling_>-1.0f) {
+	    new_camera_matrix = cv::getOptimalNewCameraMatrix(cameraMatrix, distCoeffs, targetSize, alphaScaling_);
+	}
+	else {
+	    new_camera_matrix = cameraMatrix;
+	}
+
 	double fx = new_camera_matrix.at<double>(0, 0);
 	double fy = new_camera_matrix.at<double>(1, 1);
 	double cx = new_camera_matrix.at<double>(0, 2);
