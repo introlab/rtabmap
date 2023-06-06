@@ -62,7 +62,9 @@ CameraDepthAI::CameraDepthAI(
 	publishInterIMU_(false),
 	dotProjectormA_(0.0),
 	floodLightmA_(200.0),
-	detectFeatures_(1)
+	detectFeatures_(0),
+	useHarrisDetector_(false),
+	minDistance_(7.0)
 #endif
 {
 #ifdef RTABMAP_DEPTHAI
@@ -156,6 +158,16 @@ void CameraDepthAI::setDetectFeatures(int detectFeatures)
 #endif
 }
 
+void CameraDepthAI::setGFTTDetector(bool useHarrisDetector, double minDistance)
+{
+#ifdef RTABMAP_DEPTHAI
+	useHarrisDetector_ = useHarrisDetector;
+	minDistance_ = minDistance;
+#else
+	UERROR("CameraDepthAI: RTAB-Map is not built with depthai-core support!");
+#endif
+}
+
 bool CameraDepthAI::init(const std::string & calibrationFolder, const std::string & cameraName)
 {
 	UDEBUG("");
@@ -209,7 +221,7 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 	if(imuPublished_)
 		imu = p.create<dai::node::IMU>();
 	std::shared_ptr<dai::node::FeatureTracker> gfttDetector;
-	if(detectFeatures_==1)
+	if(detectFeatures_ == 1)
 		gfttDetector = p.create<dai::node::FeatureTracker>();
 
 	auto xoutLeft = p.create<dai::node::XLinkOut>();
@@ -284,9 +296,14 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 		imu->enableFirmwareUpdate(imuFirmwareUpdate_);
 	}
 
-	if(detectFeatures_==1)
+	if(detectFeatures_ == 1)
 	{
+		gfttDetector->initialConfig.setCornerDetector(
+			useHarrisDetector_?dai::FeatureTrackerConfig::CornerDetector::Type::HARRIS:dai::FeatureTrackerConfig::CornerDetector::Type::SHI_THOMASI);
 		gfttDetector->initialConfig.setMotionEstimator(false);
+		auto cfg = gfttDetector->initialConfig.get();
+		cfg.featureMaintainer.minimumDistanceBetweenFeatures = minDistance_ * minDistance_;
+		gfttDetector->initialConfig.set(cfg);
 		stereo->rectifiedLeft.link(gfttDetector->inputImage);
 		gfttDetector->outputFeatures.link(xoutFeatures->input);
 	}
@@ -503,7 +520,7 @@ SensorData CameraDepthAI::captureImage(CameraInfo * info)
 		data.setIMU(IMU(gyro, cv::Mat::eye(3, 3, CV_64FC1), acc, cv::Mat::eye(3, 3, CV_64FC1), imuLocalTransform_));
 	}
 
-	if(detectFeatures_==1)
+	if(detectFeatures_ == 1)
 	{
 		auto features = featuresQueue_->get<dai::TrackedFeatures>();
 		while(features->getSequenceNum() < rectifL->getSequenceNum())
