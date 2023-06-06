@@ -1713,8 +1713,8 @@ bool Rtabmap::process(
 				// If variance is different for each axis,
 				// build rtabmap with MRPT to use approach above.
 				_localizationCovariance += odomCovariance;
-			}
 #endif
+			}
 		}
 		_lastLocalizationPose = newPose; // keep in cache the latest corrected pose
 		if(!_memory->isIncremental() && signature->getWeight() >= 0)
