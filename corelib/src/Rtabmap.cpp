@@ -851,7 +851,7 @@ void Rtabmap::setInitialPose(const Transform & initialPose)
 		if(!_memory->isIncremental())
 		{
 			_lastLocalizationPose = initialPose;
-			_localizationCovariance = 0;
+			_localizationCovariance = cv::Mat();
 			_lastLocalizationNodeId = 0;
 			_odomCachePoses.clear();
 			_odomCacheConstraints.clear();
@@ -1692,11 +1692,11 @@ bool Rtabmap::process(
 			odomCovariance.type() == CV_64FC1 &&
 			odomCovariance.at<double>(0,0) < 1)
 		{
-			if(_localizationCovariance.empty() || _lastLocalizationPose.isNull())
+			if( _memory->isIncremental() && _localizationCovariance.empty())
 			{
-				_localizationCovariance = odomCovariance.clone();
+				_localizationCovariance = cv::Mat::zeros(6,6,CV_64FC1);
 			}
-			else
+			if(_localizationCovariance.total() == 36)
 			{
 #ifdef RTABMAP_MRPT
 				// Transform odometry covariance (which in base frame) into global frame
@@ -1713,9 +1713,8 @@ bool Rtabmap::process(
 				// If variance is different for each axis,
 				// build rtabmap with MRPT to use approach above.
 				_localizationCovariance += odomCovariance;
-#endif
-
 			}
+#endif
 		}
 		_lastLocalizationPose = newPose; // keep in cache the latest corrected pose
 		if(!_memory->isIncremental() && signature->getWeight() >= 0)
