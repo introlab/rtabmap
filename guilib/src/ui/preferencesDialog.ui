@@ -63,7 +63,7 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-611</y>
+            <y>-606</y>
             <width>756</width>
             <height>3657</height>
            </rect>
@@ -95,7 +95,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>12</number>
+                <number>5</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,0">
@@ -4971,7 +4971,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                            <item>
                             <widget class="QStackedWidget" name="stackedWidget_stereo">
                              <property name="currentIndex">
-                              <number>4</number>
+                              <number>10</number>
                              </property>
                              <widget class="QWidget" name="page_49">
                               <layout class="QVBoxLayout" name="verticalLayout_91"/>
@@ -5809,52 +5809,6 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                   <string>DepthAI</string>
                                  </property>
                                  <layout class="QGridLayout" name="gridLayout_120" columnstretch="0,1">
-                                  <item row="0" column="1">
-                                   <widget class="QLabel" name="label_626">
-                                    <property name="text">
-                                     <string>Resolution.</string>
-                                    </property>
-                                    <property name="wordWrap">
-                                     <bool>true</bool>
-                                    </property>
-                                    <property name="textInteractionFlags">
-                                     <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                                    </property>
-                                   </widget>
-                                  </item>
-                                  <item row="1" column="1">
-                                   <widget class="QLabel" name="label_625">
-                                    <property name="text">
-                                     <string>Output depth.</string>
-                                    </property>
-                                    <property name="wordWrap">
-                                     <bool>true</bool>
-                                    </property>
-                                    <property name="textInteractionFlags">
-                                     <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                                    </property>
-                                   </widget>
-                                  </item>
-                                  <item row="2" column="1">
-                                   <widget class="QLabel" name="label_627">
-                                    <property name="text">
-                                     <string>Depth confidence.</string>
-                                    </property>
-                                    <property name="wordWrap">
-                                     <bool>true</bool>
-                                    </property>
-                                    <property name="textInteractionFlags">
-                                     <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                                    </property>
-                                   </widget>
-                                  </item>
-                                  <item row="1" column="0">
-                                   <widget class="QCheckBox" name="checkBox_depthai_depth">
-                                    <property name="text">
-                                     <string/>
-                                    </property>
-                                   </widget>
-                                  </item>
                                   <item row="0" column="0">
                                    <widget class="QComboBox" name="comboBox_depthai_resolution">
                                     <property name="currentIndex">
@@ -5890,6 +5844,127 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                     </item>
                                    </widget>
                                   </item>
+                                  <item row="3" column="0">
+                                   <widget class="QDoubleSpinBox" name="doubleSpinBox_depthai_alpha_scaling">
+                                    <property name="minimum">
+                                     <double>-1.000000000000000</double>
+                                    </property>
+                                    <property name="maximum">
+                                     <double>1.000000000000000</double>
+                                    </property>
+                                    <property name="singleStep">
+                                     <double>1.000000000000000</double>
+                                    </property>
+                                    <property name="value">
+                                     <double>0.000000000000000</double>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="2" column="1">
+                                   <widget class="QLabel" name="label_627">
+                                    <property name="text">
+                                     <string>Depth confidence.</string>
+                                    </property>
+                                    <property name="wordWrap">
+                                     <bool>true</bool>
+                                    </property>
+                                    <property name="textInteractionFlags">
+                                     <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="6" column="0">
+                                   <widget class="QDoubleSpinBox" name="doubleSpinBox_depthai_laser_dot_brightness">
+                                    <property name="suffix">
+                                     <string> mA</string>
+                                    </property>
+                                    <property name="maximum">
+                                     <double>1200.000000000000000</double>
+                                    </property>
+                                    <property name="value">
+                                     <double>0.000000000000000</double>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="4" column="0">
+                                   <widget class="QCheckBox" name="checkBox_depthai_imu_published">
+                                    <property name="text">
+                                     <string/>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="7" column="1">
+                                   <widget class="QLabel" name="label_677">
+                                    <property name="text">
+                                     <string>Floodlight brightness.</string>
+                                    </property>
+                                    <property name="wordWrap">
+                                     <bool>true</bool>
+                                    </property>
+                                    <property name="textInteractionFlags">
+                                     <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="6" column="1">
+                                   <widget class="QLabel" name="label_676">
+                                    <property name="text">
+                                     <string>Laser dot brightness.</string>
+                                    </property>
+                                    <property name="wordWrap">
+                                     <bool>true</bool>
+                                    </property>
+                                    <property name="textInteractionFlags">
+                                     <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="5" column="1">
+                                   <widget class="QLabel" name="label_646">
+                                    <property name="text">
+                                     <string>IMU firmware update</string>
+                                    </property>
+                                    <property name="wordWrap">
+                                     <bool>true</bool>
+                                    </property>
+                                    <property name="textInteractionFlags">
+                                     <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="0" column="1">
+                                   <widget class="QLabel" name="label_626">
+                                    <property name="text">
+                                     <string>Resolution.</string>
+                                    </property>
+                                    <property name="wordWrap">
+                                     <bool>true</bool>
+                                    </property>
+                                    <property name="textInteractionFlags">
+                                     <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="1" column="0">
+                                   <widget class="QCheckBox" name="checkBox_depthai_depth">
+                                    <property name="text">
+                                     <string/>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="3" column="1">
+                                   <widget class="QLabel" name="label_678">
+                                    <property name="text">
+                                     <string>Free scaling parameter between 0 (when all the pixels in the undistorted image are valid) and 1 (when all the source image pixels are retained in the undistorted image). On some high distortion lenses, and/or due to rectification (image rotated) invalid areas may appear even with alpha=0, in these cases alpha &lt; 0.0 helps removing invalid areas. If alpha is set to -1, old rectification policy is used.</string>
+                                    </property>
+                                    <property name="wordWrap">
+                                     <bool>true</bool>
+                                    </property>
+                                    <property name="textInteractionFlags">
+                                     <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                    </property>
+                                   </widget>
+                                  </item>
                                   <item row="2" column="0">
                                    <widget class="QSpinBox" name="spinBox_depthai_confidence">
                                     <property name="minimum">
@@ -5904,26 +5979,6 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                    </widget>
                                   </item>
                                   <item row="4" column="1">
-                                   <widget class="QLabel" name="label_646">
-                                    <property name="text">
-                                     <string>IMU firmware update</string>
-                                    </property>
-                                    <property name="wordWrap">
-                                     <bool>true</bool>
-                                    </property>
-                                    <property name="textInteractionFlags">
-                                     <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                                    </property>
-                                   </widget>
-                                  </item>
-                                  <item row="4" column="0">
-                                   <widget class="QCheckBox" name="checkBox_depthai_imu_firmware_update">
-                                    <property name="text">
-                                     <string/>
-                                    </property>
-                                   </widget>
-                                  </item>
-                                  <item row="3" column="1">
                                    <widget class="QLabel" name="label_650">
                                     <property name="text">
                                      <string>IMU published</string>
@@ -5936,30 +5991,17 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                     </property>
                                    </widget>
                                   </item>
-                                  <item row="3" column="0">
-                                   <widget class="QCheckBox" name="checkBox_depthai_imu_published">
+                                  <item row="5" column="0">
+                                   <widget class="QCheckBox" name="checkBox_depthai_imu_firmware_update">
                                     <property name="text">
                                      <string/>
                                     </property>
                                    </widget>
                                   </item>
-                                  <item row="5" column="0">
-                                   <widget class="QDoubleSpinBox" name="doubleSpinBox_depthai_laser_dot_brightness">
-                                    <property name="suffix">
-                                     <string> mA</string>
-                                    </property>
-                                    <property name="maximum">
-                                     <double>1200.000000000000000</double>
-                                    </property>
-                                    <property name="value">
-                                     <double>0.000000000000000</double>
-                                    </property>
-                                   </widget>
-                                  </item>
-                                  <item row="5" column="1">
-                                   <widget class="QLabel" name="label_676">
+                                  <item row="1" column="1">
+                                   <widget class="QLabel" name="label_625">
                                     <property name="text">
-                                     <string>Laser dot brightness.</string>
+                                     <string>Output depth.</string>
                                     </property>
                                     <property name="wordWrap">
                                      <bool>true</bool>
@@ -5969,7 +6011,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                     </property>
                                    </widget>
                                   </item>
-                                  <item row="6" column="0">
+                                  <item row="7" column="0">
                                    <widget class="QDoubleSpinBox" name="doubleSpinBox_depthai_floodlight_brightness">
                                     <property name="suffix">
                                      <string> mA</string>
@@ -5979,19 +6021,6 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                     </property>
                                     <property name="value">
                                      <double>200.000000000000000</double>
-                                    </property>
-                                   </widget>
-                                  </item>
-                                  <item row="6" column="1">
-                                   <widget class="QLabel" name="label_677">
-                                    <property name="text">
-                                     <string>Floodlight brightness.</string>
-                                    </property>
-                                    <property name="wordWrap">
-                                     <bool>true</bool>
-                                    </property>
-                                    <property name="textInteractionFlags">
-                                     <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                                     </property>
                                    </widget>
                                   </item>

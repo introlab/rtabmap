@@ -56,6 +56,7 @@ public:
 	virtual ~CameraDepthAI();
 
 	void setOutputDepth(bool enabled, int confidence = 200);
+	void setAlphaScaling(float alphaScaling = 0.0f);
 	void setIMUFirmwareUpdate(bool enabled);
 	void setIMUPublished(bool published);
 	void publishInterIMU(bool enabled);
@@ -77,6 +78,7 @@ private:
 	bool outputDepth_;
 	int depthConfidence_;
 	int resolution_;
+	float alphaScaling_;
 	bool imuFirmwareUpdate_;
 	bool imuPublished_;
 	bool publishInterIMU_;

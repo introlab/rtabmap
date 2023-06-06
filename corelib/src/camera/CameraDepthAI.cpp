@@ -56,6 +56,7 @@ CameraDepthAI::CameraDepthAI(
 	outputDepth_(false),
 	depthConfidence_(200),
 	resolution_(resolution),
+	alphaScaling_(0.0),
 	imuFirmwareUpdate_(false),
 	imuPublished_(true),
 	publishInterIMU_(false),
@@ -86,6 +87,15 @@ void CameraDepthAI::setOutputDepth(bool enabled, int confidence)
 	{
 		depthConfidence_ = confidence;
 	}
+#else
+	UERROR("CameraDepthAI: RTAB-Map is not built with depthai-core support!");
+#endif
+}
+
+void CameraDepthAI::setAlphaScaling(float alphaScaling)
+{
+#ifdef RTABMAP_DEPTHAI
+	alphaScaling_ = alphaScaling;
 #else
 	UERROR("CameraDepthAI: RTAB-Map is not built with depthai-core support!");
 #endif
@@ -218,6 +228,8 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 	stereo->setSubpixelFractionalBits(4);
 	stereo->setExtendedDisparity(false);
 	stereo->setRectifyEdgeFillColor(0); // black, to better see the cutout
+	if(alphaScaling_>-1.0f)
+	    stereo->setAlphaScaling(alphaScaling_);
 	stereo->initialConfig.setConfidenceThreshold(depthConfidence_);
 	stereo->initialConfig.setLeftRightCheck(true);
 	stereo->initialConfig.setLeftRightCheckThreshold(5);
@@ -258,11 +270,30 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 
 	UINFO("Loading eeprom calibration data");
 	dai::CalibrationHandler calibHandler = device_->readCalibration();
+
+	cv::Mat cameraMatrix, distCoeffs, new_camera_matrix;
+
 	std::vector<std::vector<float> > matrix = calibHandler.getCameraIntrinsics(dai::CameraBoardSocket::LEFT, dai::Size2f(targetSize.width, targetSize.height));
-	double fx = matrix[0][0];
-	double fy = matrix[1][1];
-	double cx = matrix[0][2];
-	double cy = matrix[1][2];
+	cameraMatrix = (cv::Mat_<double>(3,3) <<
+		matrix[0][0], matrix[0][1], matrix[0][2],
+		matrix[1][0], matrix[1][1], matrix[1][2],
+		matrix[2][0], matrix[2][1], matrix[2][2]);
+
+	std::vector<float> coeffs = calibHandler.getDistortionCoefficients(dai::CameraBoardSocket::LEFT);
+	if(calibHandler.getDistortionModel(dai::CameraBoardSocket::LEFT) == dai::CameraModel::Perspective)
+		distCoeffs = (cv::Mat_<double>(1,8) << coeffs[0], coeffs[1], coeffs[2], coeffs[3], coeffs[4], coeffs[5], coeffs[6], coeffs[7]);
+
+    if(alphaScaling_>-1.0f) {
+	    new_camera_matrix = cv::getOptimalNewCameraMatrix(cameraMatrix, distCoeffs, targetSize, alphaScaling_);
+	}
+	else {
+	    new_camera_matrix = cameraMatrix;
+	}
+
+	double fx = new_camera_matrix.at<double>(0, 0);
+	double fy = new_camera_matrix.at<double>(1, 1);
+	double cx = new_camera_matrix.at<double>(0, 2);
+	double cy = new_camera_matrix.at<double>(1, 2);
 	double baseline = calibHandler.getBaselineDistance(dai::CameraBoardSocket::RIGHT, dai::CameraBoardSocket::LEFT, false)/100.0;
 	UINFO("left: fx=%f fy=%f cx=%f cy=%f baseline=%f", fx, fy, cx, cy, baseline);
 	stereoModel_ = StereoCameraModel(device_->getMxId(), fx, fy, cx, cy, baseline, this->getLocalTransform(), targetSize);

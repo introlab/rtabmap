@@ -2532,7 +2532,8 @@ cv::Point3f projectDisparityTo3D(
 			c = model.right().cx() - model.left().cx();
 		}
 		float W = model.baseline()/(disparity + c);
-		return cv::Point3f((pt.x - model.left().cx())*W, (pt.y - model.left().cy())*W, model.left().fx()*W);
+		return cv::Point3f((pt.x - model.left().cx())*W,
+			(pt.y - model.left().cy())*model.left().fx()/model.left().fy()*W, model.left().fx()*W);
 	}
 	float bad_point = std::numeric_limits<float>::quiet_NaN ();
 	return cv::Point3f(bad_point, bad_point, bad_point);
