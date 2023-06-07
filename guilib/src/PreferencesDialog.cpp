@@ -6342,7 +6342,7 @@ Camera * PreferencesDialog::createCamera(
 		((CameraDepthAI*)camera)->setDetectFeatures(_ui->comboBox_depthai_detect_features->currentIndex());
 		if(_ui->comboBox_depthai_detect_features->currentIndex() == 1)
 		{
-			((CameraDepthAI*)camera)->setGFTTDetector(_ui->checkBox_GFTT_useHarrisDetector->isChecked(), _ui->doubleSpinBox_GFTT_minDistance->value());
+			((CameraDepthAI*)camera)->setGFTTDetector(_ui->checkBox_GFTT_useHarrisDetector->isChecked(), _ui->doubleSpinBox_GFTT_minDistance->value(), _ui->reextract_maxFeatures->value());
 		}
 	}
 	else if(driver == kSrcUsbDevice)

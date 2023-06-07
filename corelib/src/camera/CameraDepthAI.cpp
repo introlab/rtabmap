@@ -64,7 +64,8 @@ CameraDepthAI::CameraDepthAI(
 	floodLightmA_(200.0),
 	detectFeatures_(0),
 	useHarrisDetector_(false),
-	minDistance_(7.0)
+	minDistance_(7.0),
+	numTargetFeatures_(1000)
 #endif
 {
 #ifdef RTABMAP_DEPTHAI
@@ -158,11 +159,12 @@ void CameraDepthAI::setDetectFeatures(int detectFeatures)
 #endif
 }
 
-void CameraDepthAI::setGFTTDetector(bool useHarrisDetector, double minDistance)
+void CameraDepthAI::setGFTTDetector(bool useHarrisDetector, double minDistance, int numTargetFeatures)
 {
 #ifdef RTABMAP_DEPTHAI
 	useHarrisDetector_ = useHarrisDetector;
 	minDistance_ = minDistance;
+	numTargetFeatures_ = numTargetFeatures;
 #else
 	UERROR("CameraDepthAI: RTAB-Map is not built with depthai-core support!");
 #endif
@@ -298,8 +300,10 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 
 	if(detectFeatures_ == 1)
 	{
+		gfttDetector->setHardwareResources(1, 2);
 		gfttDetector->initialConfig.setCornerDetector(
 			useHarrisDetector_?dai::FeatureTrackerConfig::CornerDetector::Type::HARRIS:dai::FeatureTrackerConfig::CornerDetector::Type::SHI_THOMASI);
+		gfttDetector->initialConfig.setNumTargetFeatures(numTargetFeatures_);
 		gfttDetector->initialConfig.setMotionEstimator(false);
 		auto cfg = gfttDetector->initialConfig.get();
 		cfg.featureMaintainer.minimumDistanceBetweenFeatures = minDistance_ * minDistance_;
