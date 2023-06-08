@@ -50,6 +50,79 @@ typename pcl::PointCloud<PointT>::Ptr projectCloudOnXYPlane(
 	return output;
 }
 
+void clusterIndicesFloodfill(std::vector<int> & cluster,
+	float * visitedIndices,
+	int width,
+	int height,
+	float clusterRadius,
+	int currentIndex,
+	float previousHeight);
+
+/**
+ * @brief Cluster indices of an organized cloud
+ * 
+ * @tparam PointT 
+ * @param cloud 
+ * @param indices 
+ * @param minClusterSize 
+ * @param maxClusterSize 
+ * @param biggestClusterIndex 
+ * @return std::vector<pcl::IndicesPtr> 
+ */
+template<typename PointT>
+std::vector<pcl::IndicesPtr> clusterIndices(
+	const typename pcl::PointCloud<PointT>::Ptr & cloud,
+	const typename pcl::IndicesPtr & indices,
+	float clusterRadius,
+	int minClusterSize,
+	int maxClusterSize,
+	int * biggestClusterIndex)
+{
+	std::vector<pcl::IndicesPtr> clusters;
+	if(cloud->empty())
+	{
+		return clusters;
+	}
+
+	UASSERT(cloud->isOrganized());
+
+	cv::Mat visitedIndices = cv::Mat::zeros(cloud->height, cloud->width, CV_32FC1);
+	float * ptr = visitedIndices.ptr<float>();
+	// init search image
+	for(size_t i = 0; i<indices->size(); ++i)
+	{
+		ptr[indices->at(i)] = cloud->at(indices->at(i)).z;
+	}
+
+	int largestCluster = -1;
+	int largestClusterSize = 0;
+	int sum = 0;
+	for(size_t i = 0; i<indices->size(); ++i)
+	{
+		if(ptr[indices->at(i)] != 0.0f)
+		{
+			pcl::IndicesPtr cluster(new pcl::Indices());
+			clusterIndicesFloodfill(*cluster, ptr, visitedIndices.cols, visitedIndices.rows, clusterRadius, indices->at(i), ptr[indices->at(i)]);
+			if(cluster->size()>0 && (int)cluster->size()>=minClusterSize && (int)cluster->size()<=maxClusterSize)
+			{
+				clusters.push_back(cluster);
+				if((int)cluster->size() > largestClusterSize)
+				{
+					sum+=cluster->size();
+					largestCluster = clusters.size()-1;
+					largestClusterSize = cluster->size();
+				}
+			}
+		}
+	}
+	if(biggestClusterIndex)
+	{
+		*biggestClusterIndex = largestCluster;
+	}
+
+	return clusters;
+}
+
 template<typename PointT>
 void segmentObstaclesFromGround(
 		const typename pcl::PointCloud<PointT>::Ptr & cloud,
@@ -76,6 +149,8 @@ void segmentObstaclesFromGround(
 
 	if(cloud->size())
 	{
+		UDEBUG("Normal filtering.... cloud=%ld indices=%ld organized=%d",
+			cloud->size(), indices->size(), cloud->isOrganized()?1:0);
 		// Find the ground
 		pcl::IndicesPtr flatSurfaces = normalFiltering(
 				cloud,
@@ -88,24 +163,37 @@ void segmentObstaclesFromGround(
 		UDEBUG("%ld points on flat surfaces (input indices = %ld, total cloud=%ld)",
 			flatSurfaces->size(), indices->size(), cloud->size());
 
+		Eigen::Vector4f biggestSurfaceMin,biggestSurfaceMax(0,0,0,0);
 		if(segmentFlatObstacles && flatSurfaces->size())
 		{
 			int biggestFlatSurfaceIndex;
 
-			//If cloud is orgazized, cluster/floodfill using intergral image (can use radius to limit the flood)
-
-			std::vector<pcl::IndicesPtr> clusteredFlatSurfaces = extractClusters(
+			std::vector<pcl::IndicesPtr> clusteredFlatSurfaces;
+			if(cloud->isOrganized())
+			{
+				clusteredFlatSurfaces = clusterIndices<PointT>(
 					cloud,
 					flatSurfaces,
 					clusterRadius,
 					minClusterSize,
 					std::numeric_limits<int>::max(),
 					&biggestFlatSurfaceIndex);
+					UDEBUG("clusteredFlatSurfaces=%ld", clusteredFlatSurfaces.size());
+			}
+			else
+			{
+				clusteredFlatSurfaces = extractClusters(
+					cloud,
+					flatSurfaces,
+					clusterRadius,
+					minClusterSize,
+					std::numeric_limits<int>::max(),
+					&biggestFlatSurfaceIndex);
+			}
 
 			// cluster all surfaces for which the centroid is in the Z-range of the bigger surface
 			if(clusteredFlatSurfaces.size())
 			{
-				Eigen::Vector4f biggestSurfaceMin,biggestSurfaceMax;
 				if(maxGroundHeight != 0.0f)
 				{
 					// Search for biggest surface under max ground height
@@ -131,11 +219,12 @@ void segmentObstaclesFromGround(
 				if(biggestFlatSurfaceIndex>=0)
 				{
 					ground = clusteredFlatSurfaces.at(biggestFlatSurfaceIndex);
-					UDEBUG("Biggest flat surface size = %ld (z min=%f max=%f)",
-						ground->size(), biggestSurfaceMin[2], biggestSurfaceMax[2]);
+					UDEBUG("Biggest flat surface size = %ld (%d%%) (z min=%f max=%f)",
+						ground->size(), 100*ground->size()/cloud->size(), biggestSurfaceMin[2], biggestSurfaceMax[2]);
 				}
 
-				if(!ground->empty() && (maxGroundHeight == 0.0f || biggestSurfaceMin[2] < maxGroundHeight))
+				if(!ground->empty() && 
+				  (maxGroundHeight == 0.0f || biggestSurfaceMin[2] < maxGroundHeight))
 				{
 					for(unsigned int i=0; i<clusteredFlatSurfaces.size(); ++i)
 					{
@@ -153,9 +242,46 @@ void segmentObstaclesFromGround(
 							}
 						}
 					}
+
+					int groundRatio = 100*ground->size()/cloud->size();
+					int minGroundRatio = 10;
+					if(minGroundRatio != 0 && groundRatio<minGroundRatio)
+					{
+						if(labelUndergroundObstaclesAsGround && maxGroundHeight!=0.0f)
+						{
+							// just do passthrough (e.g. reflective floor)
+							UWARN("Failed normal segmentation (ground ratio=%d%%, ground height=%f), fallback to passThrough (label underground as ground is true).",
+								groundRatio, !ground->empty()?biggestSurfaceMin[2]:0.0f);
+							// passthrough filter
+							ground = rtabmap::util3d::passThrough(cloud, indices, "z",
+									std::numeric_limits<int>::min(),
+									maxGroundHeight!=0.0f?maxGroundHeight:std::numeric_limits<int>::max());
+
+							pcl::IndicesPtr notObstacles = ground;
+							if(indices->size())
+							{
+								notObstacles = util3d::extractIndices(cloud, indices, true);
+								notObstacles = util3d::concatenate(notObstacles, ground);
+							}
+							obstacles = rtabmap::util3d::extractIndices(cloud, notObstacles, true);
+							return;
+						}
+						else
+						{
+							UWARN("Failed normal segmentation, ground surface is too small (ground ratio=%d%%, ground height=%f)!",
+								groundRatio, !ground->empty()?biggestSurfaceMin[2]:0.0f);
+							// reject ground!
+							ground.reset(new std::vector<int>);
+							if(flatObstacles)
+							{
+								*flatObstacles = flatSurfaces;
+							}
+						}
+					}
 				}
 				else
 				{
+					UWARN("Failed normal segmentation, could not detect the ground!");
 					// reject ground!
 					ground.reset(new std::vector<int>);
 					if(flatObstacles)
@@ -176,6 +302,7 @@ void segmentObstaclesFromGround(
 			pcl::IndicesPtr notObstacles = ground;
 			if(indices->size())
 			{
+				// This will ignore all points not in input indices for obstacles.
 				notObstacles = util3d::extractIndices(cloud, indices, true);
 				notObstacles = util3d::concatenate(notObstacles, ground);
 			}
@@ -183,22 +310,14 @@ void segmentObstaclesFromGround(
 			// If ground height is set and if we label obstacles under it as ground
 			if(labelUndergroundObstaclesAsGround)
 			{
-				Eigen::Vector4f min,max;
-				if(!ground->empty())
+				float max = biggestSurfaceMax[2];
+				if(maxGroundHeight > 0)
 				{
-					pcl::getMinMax3D(*cloud, *ground, min, max);
-					if(maxGroundHeight>0)
-					{
-						max[2] += maxGroundHeight;
-					}
-				}
-				else
-				{
-					max[2] = maxGroundHeight;
+					max += maxGroundHeight;
 				}
 
 				pcl::IndicesPtr otherStuffIndices = util3d::extractIndices(cloud, notObstacles, true);
-				pcl::IndicesPtr underground = rtabmap::util3d::passThrough(cloud, otherStuffIndices, "z", (float)std::numeric_limits<int>::min(), max[2]);
+				pcl::IndicesPtr underground = rtabmap::util3d::passThrough(cloud, otherStuffIndices, "z", (float)std::numeric_limits<int>::min(), max);
 				if(!underground->empty())
 				{
 					ground = util3d::concatenate(ground, underground);

@@ -44,6 +44,8 @@ typename pcl::PointCloud<PointT>::Ptr OccupancyGrid::segmentCloud(
 		pcl::IndicesPtr & obstaclesIndices,
 		pcl::IndicesPtr * flatObstacles) const
 {
+	UDEBUG("cloudIn=%dx%d indicesIn=%ld", cloudIn->width, cloudIn->height, indicesIn->size());
+
 	groundIndices.reset(new std::vector<int>);
 	obstaclesIndices.reset(new std::vector<int>);
 	if(flatObstacles)
@@ -130,6 +132,7 @@ typename pcl::PointCloud<PointT>::Ptr OccupancyGrid::segmentCloud(
 			UDEBUG("groundNormalsUp=%f", groundNormalsUp_);
 			UDEBUG("labelUndergroundObstaclesAsGround=%d", labelUndergroundObstaclesAsGround_?1:0);
 			UDEBUG("viewPoint=%f,%f,%f", viewPoint.x, viewPoint.y, viewPoint.z+(projMapFrame_?pose.z():0));
+			UDEBUG("cloud=%dx%d indices=%ld", cloud->width, cloud->height, indices->size());
 			util3d::segmentObstaclesFromGround<PointT>(
 					cloud,
 					indices,
