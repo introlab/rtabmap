@@ -61,7 +61,11 @@ CameraDepthAI::CameraDepthAI(
 	imuPublished_(true),
 	publishInterIMU_(false),
 	dotProjectormA_(0.0),
-	floodLightmA_(200.0)
+	floodLightmA_(200.0),
+	detectFeatures_(0),
+	useHarrisDetector_(false),
+	minDistance_(7.0),
+	numTargetFeatures_(1000)
 #endif
 {
 #ifdef RTABMAP_DEPTHAI
@@ -146,6 +150,26 @@ void CameraDepthAI::setFloodLightBrightness(float floodLightmA)
 #endif
 }
 
+void CameraDepthAI::setDetectFeatures(int detectFeatures)
+{
+#ifdef RTABMAP_DEPTHAI
+	detectFeatures_ = detectFeatures;
+#else
+	UERROR("CameraDepthAI: RTAB-Map is not built with depthai-core support!");
+#endif
+}
+
+void CameraDepthAI::setGFTTDetector(bool useHarrisDetector, double minDistance, int numTargetFeatures)
+{
+#ifdef RTABMAP_DEPTHAI
+	useHarrisDetector_ = useHarrisDetector;
+	minDistance_ = minDistance;
+	numTargetFeatures_ = numTargetFeatures;
+#else
+	UERROR("CameraDepthAI: RTAB-Map is not built with depthai-core support!");
+#endif
+}
+
 bool CameraDepthAI::init(const std::string & calibrationFolder, const std::string & cameraName)
 {
 	UDEBUG("");
@@ -198,18 +222,26 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 	std::shared_ptr<dai::node::IMU> imu;
 	if(imuPublished_)
 		imu = p.create<dai::node::IMU>();
+	std::shared_ptr<dai::node::FeatureTracker> gfttDetector;
+	if(detectFeatures_ == 1)
+		gfttDetector = p.create<dai::node::FeatureTracker>();
 
 	auto xoutLeft = p.create<dai::node::XLinkOut>();
 	auto xoutDepthOrRight = p.create<dai::node::XLinkOut>();
 	std::shared_ptr<dai::node::XLinkOut> xoutIMU;
 	if(imuPublished_)
 		xoutIMU = p.create<dai::node::XLinkOut>();
+	std::shared_ptr<dai::node::XLinkOut> xoutFeatures;
+	if(detectFeatures_)
+		xoutFeatures = p.create<dai::node::XLinkOut>();
 
 	// XLinkOut
 	xoutLeft->setStreamName("rectified_left");
 	xoutDepthOrRight->setStreamName(outputDepth_?"depth":"rectified_right");
 	if(imuPublished_)
 		xoutIMU->setStreamName("imu");
+	if(detectFeatures_)
+		xoutFeatures->setStreamName("features");
 
 	// MonoCamera
 	monoLeft->setResolution((dai::MonoCameraProperties::SensorResolution)resolution_);
@@ -264,6 +296,20 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 		imu->out.link(xoutIMU->input);
 
 		imu->enableFirmwareUpdate(imuFirmwareUpdate_);
+	}
+
+	if(detectFeatures_ == 1)
+	{
+		gfttDetector->setHardwareResources(1, 2);
+		gfttDetector->initialConfig.setCornerDetector(
+			useHarrisDetector_?dai::FeatureTrackerConfig::CornerDetector::Type::HARRIS:dai::FeatureTrackerConfig::CornerDetector::Type::SHI_THOMASI);
+		gfttDetector->initialConfig.setNumTargetFeatures(numTargetFeatures_);
+		gfttDetector->initialConfig.setMotionEstimator(false);
+		auto cfg = gfttDetector->initialConfig.get();
+		cfg.featureMaintainer.minimumDistanceBetweenFeatures = minDistance_ * minDistance_;
+		gfttDetector->initialConfig.set(cfg);
+		stereo->rectifiedLeft.link(gfttDetector->inputImage);
+		gfttDetector->outputFeatures.link(xoutFeatures->input);
 	}
 
 	device_.reset(new dai::Device(p, deviceToUse));
@@ -370,6 +416,8 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 	}
 	leftQueue_ = device_->getOutputQueue("rectified_left", 8, false);
 	rightOrDepthQueue_ = device_->getOutputQueue(outputDepth_?"depth":"rectified_right", 8, false);
+	if(detectFeatures_)
+		featuresQueue_ = device_->getOutputQueue("features", 8, false);
 
 	std::vector<std::tuple<std::string, int, int>> irDrivers = device_->getIrDrivers();
 	if(!irDrivers.empty())
@@ -474,6 +522,19 @@ SensorData CameraDepthAI::captureImage(CameraInfo * info)
 
 		imuMutex_.unlock();
 		data.setIMU(IMU(gyro, cv::Mat::eye(3, 3, CV_64FC1), acc, cv::Mat::eye(3, 3, CV_64FC1), imuLocalTransform_));
+	}
+
+	if(detectFeatures_ == 1)
+	{
+		auto features = featuresQueue_->get<dai::TrackedFeatures>();
+		while(features->getSequenceNum() < rectifL->getSequenceNum())
+			features = featuresQueue_->get<dai::TrackedFeatures>();
+		auto detectedFeatures = features->trackedFeatures;
+
+		std::vector<cv::KeyPoint> keypoints;
+		for(auto& feature : detectedFeatures)
+			keypoints.emplace_back(cv::KeyPoint(feature.position.x, feature.position.y, 3));
+		data.setFeatures(keypoints, std::vector<cv::Point3f>(), cv::Mat());
 	}
 
 #else

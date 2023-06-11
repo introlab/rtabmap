@@ -62,6 +62,8 @@ public:
 	void publishInterIMU(bool enabled);
 	void setLaserDotBrightness(float dotProjectormA = 0.0f);
 	void setFloodLightBrightness(float floodLightmA = 200.0f);
+	void setDetectFeatures(int detectFeatures = 0);
+	void setGFTTDetector(bool useHarrisDetector, double minDistance = 7.0f, int numTargetFeatures = 1000);
 
 	virtual bool init(const std::string & calibrationFolder = ".", const std::string & cameraName = "");
 	virtual bool isCalibrated() const;
@@ -84,9 +86,14 @@ private:
 	bool publishInterIMU_;
 	float dotProjectormA_;
 	float floodLightmA_;
+	int detectFeatures_;
+	bool useHarrisDetector_;
+	double minDistance_;
+	int numTargetFeatures_;
 	std::shared_ptr<dai::Device> device_;
 	std::shared_ptr<dai::DataOutputQueue> leftQueue_;
 	std::shared_ptr<dai::DataOutputQueue> rightOrDepthQueue_;
+	std::shared_ptr<dai::DataOutputQueue> featuresQueue_;
 	std::map<double, cv::Vec3f> accBuffer_;
 	std::map<double, cv::Vec3f> gyroBuffer_;
 	UMutex imuMutex_;
