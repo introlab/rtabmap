@@ -188,3 +188,5 @@ RUN source /ros_entrypoint.sh && \
     rm -rf rtabmap && \
     ldconfig
 
+# for jetson (https://github.com/introlab/rtabmap/issues/776)
+ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/lib/aarch64-linux-gnu/tegra
