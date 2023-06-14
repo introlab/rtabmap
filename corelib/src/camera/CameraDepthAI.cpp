@@ -245,9 +245,9 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 
 	// MonoCamera
 	monoLeft->setResolution((dai::MonoCameraProperties::SensorResolution)resolution_);
-	monoLeft->setBoardSocket(dai::CameraBoardSocket::LEFT);
+	monoLeft->setCamera("left");
 	monoRight->setResolution((dai::MonoCameraProperties::SensorResolution)resolution_);
-	monoRight->setBoardSocket(dai::CameraBoardSocket::RIGHT);
+	monoRight->setCamera("right");
 	if(this->getImageRate()>0)
 	{
 		monoLeft->setFps(this->getImageRate());
@@ -319,14 +319,14 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 
 	cv::Mat cameraMatrix, distCoeffs, new_camera_matrix;
 
-	std::vector<std::vector<float> > matrix = calibHandler.getCameraIntrinsics(dai::CameraBoardSocket::LEFT, dai::Size2f(targetSize.width, targetSize.height));
+	std::vector<std::vector<float> > matrix = calibHandler.getCameraIntrinsics(dai::CameraBoardSocket::CAM_B, dai::Size2f(targetSize.width, targetSize.height));
 	cameraMatrix = (cv::Mat_<double>(3,3) <<
 		matrix[0][0], matrix[0][1], matrix[0][2],
 		matrix[1][0], matrix[1][1], matrix[1][2],
 		matrix[2][0], matrix[2][1], matrix[2][2]);
 
-	std::vector<float> coeffs = calibHandler.getDistortionCoefficients(dai::CameraBoardSocket::LEFT);
-	if(calibHandler.getDistortionModel(dai::CameraBoardSocket::LEFT) == dai::CameraModel::Perspective)
+	std::vector<float> coeffs = calibHandler.getDistortionCoefficients(dai::CameraBoardSocket::CAM_B);
+	if(calibHandler.getDistortionModel(dai::CameraBoardSocket::CAM_B) == dai::CameraModel::Perspective)
 		distCoeffs = (cv::Mat_<double>(1,8) << coeffs[0], coeffs[1], coeffs[2], coeffs[3], coeffs[4], coeffs[5], coeffs[6], coeffs[7]);
 
     if(alphaScaling_>-1.0f) {
@@ -340,7 +340,7 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 	double fy = new_camera_matrix.at<double>(1, 1);
 	double cx = new_camera_matrix.at<double>(0, 2);
 	double cy = new_camera_matrix.at<double>(1, 2);
-	double baseline = calibHandler.getBaselineDistance(dai::CameraBoardSocket::RIGHT, dai::CameraBoardSocket::LEFT, false)/100.0;
+	double baseline = calibHandler.getBaselineDistance(dai::CameraBoardSocket::CAM_C, dai::CameraBoardSocket::CAM_B, false)/100.0;
 	UINFO("left: fx=%f fy=%f cx=%f cy=%f baseline=%f", fx, fy, cx, cy, baseline);
 	stereoModel_ = StereoCameraModel(device_->getMxId(), fx, fy, cx, cy, baseline, this->getLocalTransform(), targetSize);
 
@@ -348,7 +348,7 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 	{
 		// Cannot test the following, I get "IMU calibration data is not available on device yet." with my camera
 		// Update: now (as March 6, 2022) it crashes in "dai::CalibrationHandler::getImuToCameraExtrinsics(dai::CameraBoardSocket, bool)"
-		//matrix = calibHandler.getImuToCameraExtrinsics(dai::CameraBoardSocket::LEFT);
+		//matrix = calibHandler.getImuToCameraExtrinsics(dai::CameraBoardSocket::CAM_B);
 		//imuLocalTransform_ = Transform(
 		//		matrix[0][0], matrix[0][1], matrix[0][2], matrix[0][3],
 		//		matrix[1][0], matrix[1][1], matrix[1][2], matrix[1][3],
