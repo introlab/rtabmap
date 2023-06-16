@@ -2212,7 +2212,9 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 			UDEBUG("time= %d ms (update detection ui)", time.restart());
 
 			//update image views
-			if(!signature.sensorData().imageRaw().empty() || signature.getWords().size())
+			if(!signature.sensorData().imageRaw().empty() ||
+			   !loopSignature.sensorData().imageRaw().empty() ||
+			   signature.getWords().size())
 			{
 				cv::Mat refImage = signature.sensorData().imageRaw();
 				cv::Mat loopImage = loopSignature.sensorData().imageRaw();
@@ -2393,7 +2395,10 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 		//======================
 		// RGB-D Mapping stuff
 		//======================
-		_odometryCorrection = stat.mapCorrection();
+		if(!stat.mapCorrection().isNull())
+		{
+			_odometryCorrection = stat.mapCorrection();
+		}
 		// update clouds
 		if(stat.poses().size())
 		{
@@ -7204,6 +7209,11 @@ void MainWindow::updateCacheFromDatabase(const QString & path)
 			{
 				signatures.insert(std::make_pair((*iter)->id(), *(*iter)));
 				delete *iter;
+			}
+			if(_currentPosesMap.empty() && _currentLinksMap.empty())
+			{
+				_currentPosesMap = driver->loadOptimizedPoses();
+				driver->getAllLinks(_currentLinksMap, true, true);
 			}
 			RtabmapEvent3DMap event(signatures, _currentPosesMap, _currentLinksMap);
 			processRtabmapEvent3DMap(event);
