@@ -811,6 +811,8 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->doubleSpinBox_depthai_laser_dot_brightness, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->doubleSpinBox_depthai_floodlight_brightness, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->comboBox_depthai_detect_features, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->lineEdit_depthai_blob_path, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->toolButton_depthai_blob_path, SIGNAL(clicked()), this, SLOT(selectSourceDepthaiBlobPath()));
 
 	connect(_ui->checkbox_rgbd_colorOnly, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->spinBox_source_imageDecimation, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
@@ -2069,6 +2071,7 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->doubleSpinBox_depthai_laser_dot_brightness->setValue(0.0);
 		_ui->doubleSpinBox_depthai_floodlight_brightness->setValue(200.0);
 		_ui->comboBox_depthai_detect_features->setCurrentIndex(0);
+		_ui->lineEdit_depthai_blob_path->clear();
 
 		_ui->checkBox_cameraImages_configForEachFrame->setChecked(false);
 		_ui->checkBox_cameraImages_timestamps->setChecked(false);
@@ -2557,6 +2560,7 @@ void PreferencesDialog::readCameraSettings(const QString & filePath)
 	_ui->doubleSpinBox_depthai_laser_dot_brightness->setValue(settings.value("laser_dot_brightness", _ui->doubleSpinBox_depthai_laser_dot_brightness->value()).toDouble());
 	_ui->doubleSpinBox_depthai_floodlight_brightness->setValue(settings.value("floodlight_brightness", _ui->doubleSpinBox_depthai_floodlight_brightness->value()).toDouble());
 	_ui->comboBox_depthai_detect_features->setCurrentIndex(settings.value("detect_features", _ui->comboBox_depthai_detect_features->currentIndex()).toInt());
+	_ui->lineEdit_depthai_blob_path->setText(settings.value("blob_path", _ui->lineEdit_depthai_blob_path->text()).toString());
 	settings.endGroup(); // DepthAI
 
 	settings.beginGroup("Images");
@@ -3088,6 +3092,7 @@ void PreferencesDialog::writeCameraSettings(const QString & filePath) const
 	settings.setValue("laser_dot_brightness",  _ui->doubleSpinBox_depthai_laser_dot_brightness->value());
 	settings.setValue("floodlight_brightness", _ui->doubleSpinBox_depthai_floodlight_brightness->value());
 	settings.setValue("detect_features",       _ui->comboBox_depthai_detect_features->currentIndex());
+	settings.setValue("blob_path",             _ui->lineEdit_depthai_blob_path->text());
 	settings.endGroup(); // DepthAI
 
 	settings.beginGroup("Images");
@@ -4417,6 +4422,20 @@ void PreferencesDialog::selectSourceRealsense2JsonPath()
 	if(path.size())
 	{
 		_ui->lineEdit_rs2_jsonFile->setText(path);
+	}
+}
+
+void PreferencesDialog::selectSourceDepthaiBlobPath()
+{
+	QString dir = _ui->lineEdit_depthai_blob_path->text();
+	if(dir.isEmpty())
+	{
+		dir = getWorkingDirectory();
+	}
+	QString path = QFileDialog::getOpenFileName(this, tr("Select file"), dir, tr("MyriadX blob (*.blob)"));
+	if(path.size())
+	{
+		_ui->lineEdit_depthai_blob_path->setText(path);
 	}
 }
 
@@ -6340,9 +6359,14 @@ Camera * PreferencesDialog::createCamera(
 		((CameraDepthAI*)camera)->setLaserDotBrightness(_ui->doubleSpinBox_depthai_laser_dot_brightness->value());
 		((CameraDepthAI*)camera)->setFloodLightBrightness(_ui->doubleSpinBox_depthai_floodlight_brightness->value());
 		((CameraDepthAI*)camera)->setDetectFeatures(_ui->comboBox_depthai_detect_features->currentIndex());
+		((CameraDepthAI*)camera)->setBlobPath(_ui->lineEdit_depthai_blob_path->text().toStdString());
 		if(_ui->comboBox_depthai_detect_features->currentIndex() == 1)
 		{
 			((CameraDepthAI*)camera)->setGFTTDetector(_ui->checkBox_GFTT_useHarrisDetector->isChecked(), _ui->doubleSpinBox_GFTT_minDistance->value(), _ui->reextract_maxFeatures->value());
+		}
+		else if(_ui->comboBox_depthai_detect_features->currentIndex() == 2)
+		{
+			((CameraDepthAI*)camera)->setSuperPointDetector(_ui->doubleSpinBox_sptorch_threshold->value(), _ui->checkBox_sptorch_nms->isChecked(), _ui->spinBox_sptorch_minDistance->value());
 		}
 	}
 	else if(driver == kSrcUsbDevice)

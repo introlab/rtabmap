@@ -380,6 +380,7 @@ private Q_SLOTS:
 	void selectSourceMKVPath();
 	void selectSourceSvoPath();
 	void selectSourceRealsense2JsonPath();
+	void selectSourceDepthaiBlobPath();
 	void updateSourceGrpVisibility();
 	void testOdometry();
 	void testCamera();
