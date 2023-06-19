@@ -1,23 +1,11 @@
-# Image: introlab3it/rtabmap:focal-foxy-deps
+# Image: introlab3it/rtabmap:focal
 
-FROM ubuntu:20.04
-
-RUN apt update && \
-    apt install software-properties-common -y && \
-    add-apt-repository universe && \
-    apt update && \
-    apt install curl -y && \
-    curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key -o /usr/share/keyrings/ros-archive-keyring.gpg && \
-    echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu $(. /etc/os-release && echo $UBUNTU_CODENAME) main" | tee /etc/apt/sources.list.d/ros2.list > /dev/null && \
-    apt-get clean && rm -rf /var/lib/apt/lists/
-
-ENV DEBIAN_FRONTEND=noninteractive
+FROM ros:noetic-perception
 
 # Install build dependencies
 RUN apt-get update && \
-    apt upgrade -y && \
-    apt-get install -y git ros-foxy-ros-base python3-argcomplete ros-dev-tools ros-foxy-rtabmap-ros && \
-    apt-get remove -y ros-foxy-rtabmap && \
+    apt-get install -y git software-properties-common ros-noetic-rtabmap-ros && \
+    apt-get remove -y ros-noetic-rtabmap* && \
     apt-get clean && rm -rf /var/lib/apt/lists/
 
 WORKDIR /root/
@@ -31,18 +19,20 @@ RUN apt-get update && apt install libgtsam-dev libgtsam-unstable-dev -y && \
 RUN add-apt-repository ppa:joseluisblancoc/mrpt-stable -y
 RUN apt-get update && apt install libmrpt-poses-dev -y && \
     apt-get clean && rm -rf /var/lib/apt/lists/
-    
+
 # PDAL
 RUN apt-get update && apt-get install -y libpdal-dev && \
     apt-get clean && rm -rf /var/lib/apt/lists/
 
 # RealSense2
-RUN apt-get update && apt-get install -y ros-foxy-librealsense2 && \
+RUN apt-get update && apt-get install -y ros-noetic-librealsense2 && \
     apt-get clean && rm -rf /var/lib/apt/lists/
 
 ARG TARGETPLATFORM
 ENV TARGETPLATFORM=${TARGETPLATFORM:-linux/amd64}
 RUN echo "I am building for $TARGETPLATFORM"
+
+ENV DEBIAN_FRONTEND=noninteractive
 
 # Azure Kinect DK
 # Taken from https://github.com/microsoft/Azure-Kinect-Sensor-SDK/issues/1190#issuecomment-822772494
@@ -87,7 +77,7 @@ RUN if [ "$TARGETPLATFORM" = "linux/amd64" ]; then echo "Installing libfreenect2
 
 # zed open capture
 RUN if [ "$TARGETPLATFORM" = "linux/amd64" ]; then echo "Installing zed-open-capture..." && \
-    apt-get update && apt install -y libusb-1.0-0-dev libhidapi-libusb0 libhidapi-dev wget && \
+    apt-get update && apt install libusb-1.0-0-dev libhidapi-libusb0 libhidapi-dev wget && \
     apt-get clean && rm -rf /var/lib/apt/lists/ && \
     git clone https://github.com/stereolabs/zed-open-capture.git && \
     cd zed-open-capture && \
@@ -167,10 +157,5 @@ RUN git clone --branch 4.2.0 https://github.com/opencv/opencv.git && \
 
 RUN rm /bin/sh && ln -s /bin/bash /bin/sh
 
-COPY ./docker/focal-foxy/deps/ros_entrypoint.sh /ros_entrypoint.sh
-RUN chmod +x /ros_entrypoint.sh
-ENTRYPOINT [ "/ros_entrypoint.sh" ]
-
 # for jetson (https://github.com/introlab/rtabmap/issues/776)
 ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/lib/aarch64-linux-gnu/tegra
-

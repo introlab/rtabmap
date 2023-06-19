@@ -63,22 +63,6 @@ RUN if [ "$TARGETPLATFORM" = "linux/amd64" ]; then echo "Installing zed-open-cap
     cd && \
     rm -r zed-open-capture; fi
     
-#commit Aug 6 2020
-RUN apt-get update && apt install -y wget && \
-    apt-get clean && rm -rf /var/lib/apt/lists/
-RUN git clone https://github.com/laurentkneip/opengv.git && \
-    cd opengv && \
-    git checkout 91f4b19c73450833a40e463ad3648aae80b3a7f3 && \
-    wget https://gist.githubusercontent.com/matlabbe/a412cf7c4627253874f81a00745a7fbb/raw/accc3acf465d1ffd0304a46b17741f62d4d354ef/opengv_disable_march_native.patch && \
-    git apply opengv_disable_march_native.patch && \
-    mkdir build && \
-    cd build && \
-    cmake -DCMAKE_BUILD_TYPE=Release .. && \
-    make -j$(nproc) && \
-    make install && \
-    cd && \
-    rm -r opengv
-
 RUN git clone --branch 4.5.4 https://github.com/opencv/opencv.git && \
     git clone --branch 4.5.4 https://github.com/opencv/opencv_contrib.git && \
     cd opencv && \
