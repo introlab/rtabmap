@@ -311,7 +311,7 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 	stereo->setExtendedDisparity(false);
 	stereo->setRectifyEdgeFillColor(0); // black, to better see the cutout
 	if(alphaScaling_>-1.0f)
-	    stereo->setAlphaScaling(alphaScaling_);
+		stereo->setAlphaScaling(alphaScaling_);
 	stereo->initialConfig.setConfidenceThreshold(depthConfidence_);
 	stereo->initialConfig.setLeftRightCheck(true);
 	stereo->initialConfig.setLeftRightCheckThreshold(5);
@@ -368,8 +368,8 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 		manip->initialConfig.setResize(320, 200);
 		superPointNetwork->setBlobPath(blobPath_);
 		superPointNetwork->setNumInferenceThreads(1);
-    	superPointNetwork->setNumNCEPerInferenceThread(2);
-    	superPointNetwork->input.setBlocking(false);
+		superPointNetwork->setNumNCEPerInferenceThread(2);
+		superPointNetwork->input.setBlocking(false);
 		stereo->rectifiedLeft.link(manip->inputImage);
 		manip->out.link(superPointNetwork->input);
 		superPointNetwork->out.link(xoutFeatures->input);
@@ -392,11 +392,11 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 	if(calibHandler.getDistortionModel(dai::CameraBoardSocket::CAM_B) == dai::CameraModel::Perspective)
 		distCoeffs = (cv::Mat_<double>(1,8) << coeffs[0], coeffs[1], coeffs[2], coeffs[3], coeffs[4], coeffs[5], coeffs[6], coeffs[7]);
 
-    if(alphaScaling_>-1.0f) {
-	    new_camera_matrix = cv::getOptimalNewCameraMatrix(cameraMatrix, distCoeffs, targetSize_, alphaScaling_);
+	if(alphaScaling_>-1.0f) {
+		new_camera_matrix = cv::getOptimalNewCameraMatrix(cameraMatrix, distCoeffs, targetSize_, alphaScaling_);
 	}
 	else {
-	    new_camera_matrix = cameraMatrix;
+		new_camera_matrix = cameraMatrix;
 	}
 
 	double fx = new_camera_matrix.at<double>(0, 0);
@@ -629,7 +629,26 @@ SensorData CameraDepthAI::captureImage(CameraInfo * info)
 			keypoints = keypoints_no_nms;
 		}
 
-		data.setFeatures(keypoints, std::vector<cv::Point3f>(), cv::Mat());
+		cv::Mat coarse_desc(25, 40, CV_32FC(256), desc.data());
+		coarse_desc.forEach<cv::Vec<float, 256>>([&](cv::Vec<float, 256>& descriptor, const int position[]) -> void {
+			cv::normalize(descriptor, descriptor);
+		});
+		cv::Mat mapX(keypoints.size(), 1, CV_32FC1);
+		cv::Mat mapY(keypoints.size(), 1, CV_32FC1);
+		for(size_t i=0; i<keypoints.size(); ++i)
+		{
+			mapX.at<float>(i) = (keypoints[i].pt.x - (targetSize_.width-1)/2) * 40/targetSize_.width + (40-1)/2;
+			mapY.at<float>(i) = (keypoints[i].pt.y - (targetSize_.height-1)/2) * 25/targetSize_.height + (25-1)/2;
+		}
+		cv::Mat map1, map2, descriptors;
+		cv::convertMaps(mapX, mapY, map1, map2, CV_16SC2);
+		cv::remap(coarse_desc, descriptors, map1, map2, cv::INTER_LINEAR);
+		descriptors.forEach<cv::Vec<float, 256>>([&](cv::Vec<float, 256>& descriptor, const int position[]) -> void {
+			cv::normalize(descriptor, descriptor);
+		});
+		descriptors = descriptors.reshape(1);
+
+		data.setFeatures(keypoints, std::vector<cv::Point3f>(), descriptors);
 	}
 
 #else
