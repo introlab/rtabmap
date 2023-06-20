@@ -3,6 +3,7 @@
  */
 
 #include <superpoint_torch/SuperPoint.h>
+#include <rtabmap/core/util2d.h>
 #include <rtabmap/utilite/ULogger.h>
 #include <rtabmap/utilite/UDirectory.h>
 #include <rtabmap/utilite/UFile.h>
@@ -40,7 +41,7 @@ SuperPoint::SuperPoint()
         convDa(torch::nn::Conv2dOptions(c4, c5, 3).stride(1).padding(1)),
         convDb(torch::nn::Conv2dOptions(c5, d1, 1).stride(1).padding(0))
 
-  {
+{
     register_module("conv1a", conv1a);
     register_module("conv1b", conv1b);
 
@@ -58,11 +59,10 @@ SuperPoint::SuperPoint()
 
     register_module("convDa", convDa);
     register_module("convDb", convDb);
-  }
+}
 
-
-std::vector<torch::Tensor> SuperPoint::forward(torch::Tensor x) {
-
+std::vector<torch::Tensor> SuperPoint::forward(torch::Tensor x)
+{
     x = torch::relu(conv1a->forward(x));
     x = torch::relu(conv1b->forward(x));
     x = torch::max_pool2d(x, 2, 2);
@@ -104,14 +104,7 @@ std::vector<torch::Tensor> SuperPoint::forward(torch::Tensor x) {
     ret.push_back(desc);
 
     return ret;
-  }
-
-void NMS(const std::vector<cv::KeyPoint> & ptsIn,
-		const cv::Mat & conf,
-		const cv::Mat & descriptorsIn,
-		std::vector<cv::KeyPoint> & ptsOut,
-		cv::Mat & descriptorsOut,
-        int border, int dist_thresh, int img_width, int img_height);
+}
 
 SPDetector::SPDetector(const std::string & modelPath, float threshold, bool nms, int minDistance, bool cuda) :
 		threshold_(threshold),
@@ -183,13 +176,6 @@ std::vector<cv::KeyPoint> SPDetector::detect(const cv::Mat &img, const cv::Mat &
 
 		detected_ = true;
 		if (nms_ && !keypoints_no_nms.empty()) {
-			cv::Mat conf(keypoints_no_nms.size(), 1, CV_32F);
-			for (size_t i = 0; i < keypoints_no_nms.size(); i++) {
-				int x = keypoints_no_nms[i].pt.x;
-				int y = keypoints_no_nms[i].pt.y;
-				conf.at<float>(i, 0) = prob_cpu[y][x].item<float>();
-			}
-
 			int border = 0;
 			int dist_thresh = minDistance_;
 			int height = img.rows;
@@ -197,7 +183,7 @@ std::vector<cv::KeyPoint> SPDetector::detect(const cv::Mat &img, const cv::Mat &
 
 			std::vector<cv::KeyPoint> keypoints;
 			cv::Mat descEmpty;
-			NMS(keypoints_no_nms, conf, descEmpty, keypoints, descEmpty, border, dist_thresh, width, height);
+			util2d::NMS(keypoints_no_nms, descEmpty, keypoints, descEmpty, border, dist_thresh, width, height);
 			if(keypoints.size()>1)
 			{
 				return keypoints;
@@ -272,121 +258,6 @@ cv::Mat SPDetector::compute(const std::vector<cv::KeyPoint> &keypoints)
 		UERROR("No model is loaded!");
 		return cv::Mat();
 	}
-}
-
-void NMS(const std::vector<cv::KeyPoint> & ptsIn,
-		const cv::Mat & conf,
-		const cv::Mat & descriptorsIn,
-		std::vector<cv::KeyPoint> & ptsOut,
-		cv::Mat & descriptorsOut,
-        int border, int dist_thresh, int img_width, int img_height)
-{
-
-    std::vector<cv::Point2f> pts_raw;
-
-    for (size_t i = 0; i < ptsIn.size(); i++)
-    {
-		int u = (int) ptsIn[i].pt.x;
-		int v = (int) ptsIn[i].pt.y;
-
-		pts_raw.push_back(cv::Point2f(u, v));
-	}
-
-    //Grid Value Legend:
-    //    255  : Kept.
-    //     0   : Empty or suppressed.
-    //    100  : To be processed (converted to either kept or suppressed).
-    cv::Mat grid = cv::Mat(cv::Size(img_width, img_height), CV_8UC1);
-    cv::Mat inds = cv::Mat(cv::Size(img_width, img_height), CV_16UC1);
-
-    cv::Mat confidence = cv::Mat(cv::Size(img_width, img_height), CV_32FC1);
-
-    grid.setTo(0);
-    inds.setTo(0);
-    confidence.setTo(0);
-
-    for (size_t i = 0; i < pts_raw.size(); i++)
-    {
-        int uu = (int) pts_raw[i].x;
-        int vv = (int) pts_raw[i].y;
-
-        grid.at<unsigned char>(vv, uu) = 100;
-        inds.at<unsigned short>(vv, uu) = i;
-
-        confidence.at<float>(vv, uu) = conf.at<float>(i, 0);
-    }
-
-    // debug
-    //cv::Mat confidenceVis = confidence.clone() * 255;
-    //confidenceVis.convertTo(confidenceVis, CV_8UC1);
-    //cv::imwrite("confidence.bmp", confidenceVis);
-    //cv::imwrite("grid_in.bmp", grid);
-
-    cv::copyMakeBorder(grid, grid, dist_thresh, dist_thresh, dist_thresh, dist_thresh, cv::BORDER_CONSTANT, 0);
-
-    for (size_t i = 0; i < pts_raw.size(); i++)
-    {
-    	// account for top left padding
-        int uu = (int) pts_raw[i].x + dist_thresh;
-        int vv = (int) pts_raw[i].y + dist_thresh;
-        float c = confidence.at<float>(vv-dist_thresh, uu-dist_thresh);
-
-        if (grid.at<unsigned char>(vv, uu) == 100)  // If not yet suppressed.
-        {
-			for(int k = -dist_thresh; k < (dist_thresh+1); k++)
-			{
-				for(int j = -dist_thresh; j < (dist_thresh+1); j++)
-				{
-					if(j==0 && k==0)
-						continue;
-
-					if ( confidence.at<float>(vv + k - dist_thresh, uu + j - dist_thresh) <= c )
-					{
-						grid.at<unsigned char>(vv + k, uu + j) = 0;
-					}
-				}
-			}
-			grid.at<unsigned char>(vv, uu) = 255;
-        }
-    }
-
-    size_t valid_cnt = 0;
-    std::vector<int> select_indice;
-
-    grid = cv::Mat(grid, cv::Rect(dist_thresh, dist_thresh, img_width, img_height));
-
-    //debug
-    //cv::imwrite("grid_nms.bmp", grid);
-
-    for (int v = 0; v < img_height; v++)
-    {
-        for (int u = 0; u < img_width; u++)
-        {
-            if (grid.at<unsigned char>(v,u) == 255)
-            {
-                int select_ind = (int) inds.at<unsigned short>(v, u);
-                float response = conf.at<float>(select_ind, 0);
-                ptsOut.push_back(cv::KeyPoint(pts_raw[select_ind], 8.0f, -1, response));
-
-                select_indice.push_back(select_ind);
-                valid_cnt++;
-            }
-        }
-    }
-
-    if(!descriptorsIn.empty())
-    {
-    	UASSERT(descriptorsIn.rows == (int)ptsIn.size());
-		descriptorsOut.create(select_indice.size(), 256, CV_32F);
-
-		for (size_t i=0; i<select_indice.size(); i++)
-		{
-			for (int j=0; j < 256; j++)
-			{
-				descriptorsOut.at<float>(i, j) = descriptorsIn.at<float>(select_indice[i], j);
-			}
-		}
-    }
 }
 
 }

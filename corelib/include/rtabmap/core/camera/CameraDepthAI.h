@@ -63,7 +63,9 @@ public:
 	void setLaserDotBrightness(float dotProjectormA = 0.0f);
 	void setFloodLightBrightness(float floodLightmA = 200.0f);
 	void setDetectFeatures(int detectFeatures = 0);
-	void setGFTTDetector(bool useHarrisDetector, double minDistance = 7.0f, int numTargetFeatures = 1000);
+	void setBlobPath(const std::string & blobPath);
+	void setGFTTDetector(bool useHarrisDetector = false, float minDistance = 7.0f, int numTargetFeatures = 1000);
+	void setSuperPointDetector(float threshold = 0.01f, bool nms = true, int nmsRadius = 4);
 
 	virtual bool init(const std::string & calibrationFolder = ".", const std::string & cameraName = "");
 	virtual bool isCalibrated() const;
@@ -75,6 +77,7 @@ protected:
 private:
 #ifdef RTABMAP_DEPTHAI
 	StereoCameraModel stereoModel_;
+	cv::Size targetSize_;
 	Transform imuLocalTransform_;
 	std::string deviceSerial_;
 	bool outputDepth_;
@@ -88,8 +91,12 @@ private:
 	float floodLightmA_;
 	int detectFeatures_;
 	bool useHarrisDetector_;
-	double minDistance_;
+	float minDistance_;
 	int numTargetFeatures_;
+	float threshold_;
+	bool nms_;
+	int nmsRadius_;
+	std::string blobPath_;
 	std::shared_ptr<dai::Device> device_;
 	std::shared_ptr<dai::DataOutputQueue> leftQueue_;
 	std::shared_ptr<dai::DataOutputQueue> rightOrDepthQueue_;

@@ -156,6 +156,13 @@ cv::Mat RTABMAP_CORE_EXPORT exposureFusion(
 
 void RTABMAP_CORE_EXPORT HSVtoRGB( float *r, float *g, float *b, float h, float s, float v );
 
+void RTABMAP_CORE_EXPORT NMS(
+		const std::vector<cv::KeyPoint> & ptsIn,
+		const cv::Mat & descriptorsIn,
+		std::vector<cv::KeyPoint> & ptsOut,
+		cv::Mat & descriptorsOut,
+		int border, int dist_thresh, int img_width, int img_height);
+
 } // namespace util3d
 } // namespace rtabmap
 

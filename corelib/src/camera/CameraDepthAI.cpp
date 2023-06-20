@@ -26,6 +26,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 #include <rtabmap/core/camera/CameraDepthAI.h>
+#include <rtabmap/core/util2d.h>
 #include <rtabmap/utilite/UTimer.h>
 #include <rtabmap/utilite/UThread.h>
 #include <rtabmap/utilite/UEventsManager.h>
@@ -65,7 +66,10 @@ CameraDepthAI::CameraDepthAI(
 	detectFeatures_(0),
 	useHarrisDetector_(false),
 	minDistance_(7.0),
-	numTargetFeatures_(1000)
+	numTargetFeatures_(1000),
+	threshold_(0.01),
+	nms_(true),
+	nmsRadius_(4)
 #endif
 {
 #ifdef RTABMAP_DEPTHAI
@@ -159,12 +163,32 @@ void CameraDepthAI::setDetectFeatures(int detectFeatures)
 #endif
 }
 
-void CameraDepthAI::setGFTTDetector(bool useHarrisDetector, double minDistance, int numTargetFeatures)
+void CameraDepthAI::setBlobPath(const std::string & blobPath)
+{
+#ifdef RTABMAP_DEPTHAI
+	blobPath_ = blobPath;
+#else
+	UERROR("CameraDepthAI: RTAB-Map is not built with depthai-core support!");
+#endif
+}
+
+void CameraDepthAI::setGFTTDetector(bool useHarrisDetector, float minDistance, int numTargetFeatures)
 {
 #ifdef RTABMAP_DEPTHAI
 	useHarrisDetector_ = useHarrisDetector;
 	minDistance_ = minDistance;
 	numTargetFeatures_ = numTargetFeatures;
+#else
+	UERROR("CameraDepthAI: RTAB-Map is not built with depthai-core support!");
+#endif
+}
+
+void CameraDepthAI::setSuperPointDetector(float threshold, bool nms, int nmsRadius)
+{
+#ifdef RTABMAP_DEPTHAI
+	threshold_ = threshold;
+	nms_ = nms;
+	nmsRadius_ = nmsRadius;
 #else
 	UERROR("CameraDepthAI: RTAB-Map is not built with depthai-core support!");
 #endif
@@ -213,7 +237,7 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 
 	// look for calibration files
 	stereoModel_ = StereoCameraModel();
-	cv::Size targetSize(resolution_<2?1280:resolution_==4?1920:640, resolution_==0?720:resolution_==1?800:resolution_==2?400:resolution_==3?480:1200);
+	targetSize_ = cv::Size(resolution_<2?1280:resolution_==4?1920:640, resolution_==0?720:resolution_==1?800:resolution_==2?400:resolution_==3?480:1200);
 
 	dai::Pipeline p;
 	auto monoLeft  = p.create<dai::node::MonoCamera>();
@@ -223,8 +247,25 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 	if(imuPublished_)
 		imu = p.create<dai::node::IMU>();
 	std::shared_ptr<dai::node::FeatureTracker> gfttDetector;
+	std::shared_ptr<dai::node::ImageManip> manip;
+	std::shared_ptr<dai::node::NeuralNetwork> superPointNetwork;
 	if(detectFeatures_ == 1)
+	{
 		gfttDetector = p.create<dai::node::FeatureTracker>();
+	}
+	else if(detectFeatures_ == 2)
+	{
+		if(!blobPath_.empty())
+		{
+			manip = p.create<dai::node::ImageManip>();
+			superPointNetwork = p.create<dai::node::NeuralNetwork>();
+		}
+		else
+		{
+			UWARN("Missing SuperPoint blob file!");
+			detectFeatures_ = 0;
+		}
+	}
 
 	auto xoutLeft = p.create<dai::node::XLinkOut>();
 	auto xoutDepthOrRight = p.create<dai::node::XLinkOut>();
@@ -245,10 +286,19 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 
 	// MonoCamera
 	monoLeft->setResolution((dai::MonoCameraProperties::SensorResolution)resolution_);
-	monoLeft->setBoardSocket(dai::CameraBoardSocket::LEFT);
+	monoLeft->setCamera("left");
 	monoRight->setResolution((dai::MonoCameraProperties::SensorResolution)resolution_);
-	monoRight->setBoardSocket(dai::CameraBoardSocket::RIGHT);
-	if(this->getImageRate()>0)
+	monoRight->setCamera("right");
+	if(detectFeatures_ == 2)
+	{
+		if(this->getImageRate() <= 0 || this->getImageRate() > 15)
+		{
+			UWARN("On-device SuperPoint enabled, image rate is limited to 15 FPS!");
+			monoLeft->setFps(15);
+			monoRight->setFps(15);
+		}
+	}
+	else if(this->getImageRate() > 0)
 	{
 		monoLeft->setFps(this->getImageRate());
 		monoRight->setFps(this->getImageRate());
@@ -261,7 +311,7 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 	stereo->setExtendedDisparity(false);
 	stereo->setRectifyEdgeFillColor(0); // black, to better see the cutout
 	if(alphaScaling_>-1.0f)
-	    stereo->setAlphaScaling(alphaScaling_);
+		stereo->setAlphaScaling(alphaScaling_);
 	stereo->initialConfig.setConfidenceThreshold(depthConfidence_);
 	stereo->initialConfig.setLeftRightCheck(true);
 	stereo->initialConfig.setLeftRightCheckThreshold(5);
@@ -311,6 +361,19 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 		stereo->rectifiedLeft.link(gfttDetector->inputImage);
 		gfttDetector->outputFeatures.link(xoutFeatures->input);
 	}
+	else if(detectFeatures_ == 2)
+	{
+		manip->setKeepAspectRatio(false);
+		manip->setMaxOutputFrameSize(320 * 200);
+		manip->initialConfig.setResize(320, 200);
+		superPointNetwork->setBlobPath(blobPath_);
+		superPointNetwork->setNumInferenceThreads(1);
+		superPointNetwork->setNumNCEPerInferenceThread(2);
+		superPointNetwork->input.setBlocking(false);
+		stereo->rectifiedLeft.link(manip->inputImage);
+		manip->out.link(superPointNetwork->input);
+		superPointNetwork->out.link(xoutFeatures->input);
+	}
 
 	device_.reset(new dai::Device(p, deviceToUse));
 
@@ -319,36 +382,36 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 
 	cv::Mat cameraMatrix, distCoeffs, new_camera_matrix;
 
-	std::vector<std::vector<float> > matrix = calibHandler.getCameraIntrinsics(dai::CameraBoardSocket::LEFT, dai::Size2f(targetSize.width, targetSize.height));
+	std::vector<std::vector<float> > matrix = calibHandler.getCameraIntrinsics(dai::CameraBoardSocket::CAM_B, dai::Size2f(targetSize_.width, targetSize_.height));
 	cameraMatrix = (cv::Mat_<double>(3,3) <<
 		matrix[0][0], matrix[0][1], matrix[0][2],
 		matrix[1][0], matrix[1][1], matrix[1][2],
 		matrix[2][0], matrix[2][1], matrix[2][2]);
 
-	std::vector<float> coeffs = calibHandler.getDistortionCoefficients(dai::CameraBoardSocket::LEFT);
-	if(calibHandler.getDistortionModel(dai::CameraBoardSocket::LEFT) == dai::CameraModel::Perspective)
+	std::vector<float> coeffs = calibHandler.getDistortionCoefficients(dai::CameraBoardSocket::CAM_B);
+	if(calibHandler.getDistortionModel(dai::CameraBoardSocket::CAM_B) == dai::CameraModel::Perspective)
 		distCoeffs = (cv::Mat_<double>(1,8) << coeffs[0], coeffs[1], coeffs[2], coeffs[3], coeffs[4], coeffs[5], coeffs[6], coeffs[7]);
 
-    if(alphaScaling_>-1.0f) {
-	    new_camera_matrix = cv::getOptimalNewCameraMatrix(cameraMatrix, distCoeffs, targetSize, alphaScaling_);
+	if(alphaScaling_>-1.0f) {
+		new_camera_matrix = cv::getOptimalNewCameraMatrix(cameraMatrix, distCoeffs, targetSize_, alphaScaling_);
 	}
 	else {
-	    new_camera_matrix = cameraMatrix;
+		new_camera_matrix = cameraMatrix;
 	}
 
 	double fx = new_camera_matrix.at<double>(0, 0);
 	double fy = new_camera_matrix.at<double>(1, 1);
 	double cx = new_camera_matrix.at<double>(0, 2);
 	double cy = new_camera_matrix.at<double>(1, 2);
-	double baseline = calibHandler.getBaselineDistance(dai::CameraBoardSocket::RIGHT, dai::CameraBoardSocket::LEFT, false)/100.0;
+	double baseline = calibHandler.getBaselineDistance(dai::CameraBoardSocket::CAM_C, dai::CameraBoardSocket::CAM_B, false)/100.0;
 	UINFO("left: fx=%f fy=%f cx=%f cy=%f baseline=%f", fx, fy, cx, cy, baseline);
-	stereoModel_ = StereoCameraModel(device_->getMxId(), fx, fy, cx, cy, baseline, this->getLocalTransform(), targetSize);
+	stereoModel_ = StereoCameraModel(device_->getMxId(), fx, fy, cx, cy, baseline, this->getLocalTransform(), targetSize_);
 
 	if(imuPublished_)
 	{
 		// Cannot test the following, I get "IMU calibration data is not available on device yet." with my camera
 		// Update: now (as March 6, 2022) it crashes in "dai::CalibrationHandler::getImuToCameraExtrinsics(dai::CameraBoardSocket, bool)"
-		//matrix = calibHandler.getImuToCameraExtrinsics(dai::CameraBoardSocket::LEFT);
+		//matrix = calibHandler.getImuToCameraExtrinsics(dai::CameraBoardSocket::CAM_B);
 		//imuLocalTransform_ = Transform(
 		//		matrix[0][0], matrix[0][1], matrix[0][2], matrix[0][3],
 		//		matrix[1][0], matrix[1][1], matrix[1][2], matrix[1][3],
@@ -535,6 +598,57 @@ SensorData CameraDepthAI::captureImage(CameraInfo * info)
 		for(auto& feature : detectedFeatures)
 			keypoints.emplace_back(cv::KeyPoint(feature.position.x, feature.position.y, 3));
 		data.setFeatures(keypoints, std::vector<cv::Point3f>(), cv::Mat());
+	}
+	else if(detectFeatures_ == 2)
+	{
+		auto features = featuresQueue_->get<dai::NNData>();
+		while(features->getSequenceNum() < rectifL->getSequenceNum())
+			features = featuresQueue_->get<dai::NNData>();
+
+		auto heatmap = features->getLayerFp16("heatmap");
+		auto desc = features->getLayerFp16("desc");
+
+		cv::Mat prob(200, 320, CV_32FC1, heatmap.data());
+		cv::resize(prob, prob, targetSize_, 0, 0, cv::INTER_CUBIC);
+		std::vector<cv::Point> kpts;
+		cv::findNonZero(prob > threshold_, kpts);
+		std::vector<cv::KeyPoint> keypoints_no_nms, keypoints;
+		for(auto& kpt : kpts)
+		{
+			float response = prob.at<float>(kpt);
+			keypoints_no_nms.emplace_back(cv::KeyPoint(kpt, 8, -1, response));
+		}
+
+		if(nms_ && !keypoints_no_nms.empty())
+		{
+			cv::Mat descEmpty;
+			util2d::NMS(keypoints_no_nms, descEmpty, keypoints, descEmpty, 0, nmsRadius_, targetSize_.width, targetSize_.height);
+		}
+		else if(!keypoints_no_nms.empty())
+		{
+			keypoints = keypoints_no_nms;
+		}
+
+		cv::Mat coarse_desc(25, 40, CV_32FC(256), desc.data());
+		coarse_desc.forEach<cv::Vec<float, 256>>([&](cv::Vec<float, 256>& descriptor, const int position[]) -> void {
+			cv::normalize(descriptor, descriptor);
+		});
+		cv::Mat mapX(keypoints.size(), 1, CV_32FC1);
+		cv::Mat mapY(keypoints.size(), 1, CV_32FC1);
+		for(size_t i=0; i<keypoints.size(); ++i)
+		{
+			mapX.at<float>(i) = (keypoints[i].pt.x - (targetSize_.width-1)/2) * 40/targetSize_.width + (40-1)/2;
+			mapY.at<float>(i) = (keypoints[i].pt.y - (targetSize_.height-1)/2) * 25/targetSize_.height + (25-1)/2;
+		}
+		cv::Mat map1, map2, descriptors;
+		cv::convertMaps(mapX, mapY, map1, map2, CV_16SC2);
+		cv::remap(coarse_desc, descriptors, map1, map2, cv::INTER_LINEAR);
+		descriptors.forEach<cv::Vec<float, 256>>([&](cv::Vec<float, 256>& descriptor, const int position[]) -> void {
+			cv::normalize(descriptor, descriptor);
+		});
+		descriptors = descriptors.reshape(1);
+
+		data.setFeatures(keypoints, std::vector<cv::Point3f>(), descriptors);
 	}
 
 #else
