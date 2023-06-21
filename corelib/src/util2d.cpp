@@ -2155,7 +2155,7 @@ void NMS(
 			{
 				for(int j = -dist_thresh; j < (dist_thresh+1); j++)
 				{
-					if(j==0 && k==0)
+					if((j==0 && k==0) || grid.at<unsigned char>(vv + k, uu + j) == 0)
 						continue;
 
 					if ( confidence.at<float>(vv + k - dist_thresh, uu + j - dist_thresh) <= c )
