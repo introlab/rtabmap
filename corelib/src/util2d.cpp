@@ -2197,10 +2197,7 @@ void NMS(
 
 		for (size_t i=0; i<select_indice.size(); i++)
 		{
-			for (int j=0; j < 256; j++)
-			{
-				descriptorsOut.at<float>(i, j) = descriptorsIn.at<float>(select_indice[i], j);
-			}
+			descriptorsIn.row(select_indice[i]).copyTo(descriptorsOut.row(i));
 		}
     }
 }
