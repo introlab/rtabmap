@@ -50,6 +50,10 @@ IF(@CONF_WITH_OCTOMAP@)
   find_dependency(octomap)
 ENDIF()
 
+IF(@CONF_WITH_PYTHON@)
+  find_dependency(Python3 COMPONENTS Interpreter Development NumPy)
+ENDIF()
+
 # Provide those for backward compatibilities (e.g., catkin requires them to propagate dependencies)
 set(RTABMap_INCLUDE_DIRS "")
 set(RTABMap_LIBRARIES "")
