@@ -777,8 +777,8 @@ IF(NOT MSVC)
         message(STATUS "The compiler ${CMAKE_CXX_COMPILER} has no C++17 support. Please use a different C++ compiler if you want to use Qt6.")
       ENDIF()
     ENDIF()
-    IF((NOT (${CMAKE_CXX_STANDARD} STREQUAL "17")) AND ((NOT WITH_MSCKF_VIO OR NOT msckf_vio_FOUND) AND (loam_velodyne_FOUND OR floam_FOUND OR PCL_VERSION VERSION_GREATER "1.9.1" OR TORCH_FOUND OR G2O_FOUND OR CCCoreLib_FOUND OR Open3D_FOUND)))
-     #LOAM, PCL>=1.10, latest g2o and CCCoreLib require c++14, but MSCKF_VIO requires c++11
+    IF((NOT (${CMAKE_CXX_STANDARD} STREQUAL "17")) AND (msckf_vio_FOUND OR loam_velodyne_FOUND OR floam_FOUND OR PCL_VERSION VERSION_GREATER "1.9.1" OR TORCH_FOUND OR G2O_FOUND OR CCCoreLib_FOUND OR Open3D_FOUND))
+     #MSCKF_VIO, LOAM, PCL>=1.10, latest g2o and CCCoreLib require c++14
      include(CheckCXXCompilerFlag)
       CHECK_CXX_COMPILER_FLAG("-std=c++14" COMPILER_SUPPORTS_CXX14)
       IF(COMPILER_SUPPORTS_CXX14)
