@@ -1073,8 +1073,11 @@ bool DatabaseViewer::closeDatabase()
 		ui_->toolBox_statistics->clear();
 		databaseFileName_.clear();
 		ui_->checkBox_alignPosesWithGPS->setVisible(false);
+		ui_->checkBox_alignPosesWithGPS->setEnabled(false);
 		ui_->checkBox_alignPosesWithGroundTruth->setVisible(false);
+		ui_->checkBox_alignPosesWithGroundTruth->setEnabled(false);
 		ui_->checkBox_alignScansCloudsWithGroundTruth->setVisible(false);
+		ui_->checkBox_alignScansCloudsWithGroundTruth->setEnabled(false);
 		ui_->doubleSpinBox_optimizationScale->setVisible(false);
 		ui_->label_scale_title->setVisible(false);
 		ui_->label_rmse->setVisible(false);
@@ -1706,8 +1709,11 @@ void DatabaseViewer::updateIds()
 	lastSliderIndexBrowsed_ = 0;
 	ui_->checkBox_wmState->setVisible(false);
 	ui_->checkBox_alignPosesWithGPS->setVisible(false);
+	ui_->checkBox_alignPosesWithGPS->setEnabled(false);
 	ui_->checkBox_alignPosesWithGroundTruth->setVisible(false);
+	ui_->checkBox_alignPosesWithGroundTruth->setEnabled(false);
 	ui_->checkBox_alignScansCloudsWithGroundTruth->setVisible(false);
+	ui_->checkBox_alignScansCloudsWithGroundTruth->setEnabled(false);
 	ui_->doubleSpinBox_optimizationScale->setVisible(false);
 	ui_->label_scale_title->setVisible(false);
 	ui_->label_rmse->setVisible(false);
@@ -1903,10 +1909,13 @@ void DatabaseViewer::updateIds()
 	ui_->label_rmse_title->setVisible(!groundTruthPoses_.empty());
 
 	ui_->checkBox_alignPosesWithGPS->setVisible(!gpsPoses_.empty());
+	ui_->checkBox_alignPosesWithGPS->setEnabled(!gpsPoses_.empty());
 	ui_->label_alignPosesWithGPS->setVisible(!gpsPoses_.empty());
 	ui_->checkBox_alignPosesWithGroundTruth->setVisible(!groundTruthPoses_.empty());
+	ui_->checkBox_alignPosesWithGroundTruth->setEnabled(!groundTruthPoses_.empty());
 	ui_->label_alignPosesWithGroundTruth->setVisible(!groundTruthPoses_.empty());
 	ui_->checkBox_alignScansCloudsWithGroundTruth->setVisible(!groundTruthPoses_.empty());
+	ui_->checkBox_alignScansCloudsWithGroundTruth->setEnabled(!groundTruthPoses_.empty());
 	ui_->label_alignScansCloudsWithGroundTruth->setVisible(!groundTruthPoses_.empty());
 
 	if(!gpsValues_.empty())
@@ -2551,11 +2560,12 @@ void DatabaseViewer::exportPoses(int format)
 			optimizedPoses = uValueAt(graphes_, ui_->horizontalSlider_iterations->value());
 		}
 
-		if(ui_->checkBox_alignPosesWithGPS->isChecked() ||
-		   ui_->checkBox_alignPosesWithGroundTruth->isChecked())
+		if((ui_->checkBox_alignPosesWithGPS->isEnabled() && ui_->checkBox_alignPosesWithGPS->isChecked()) ||
+		   (ui_->checkBox_alignPosesWithGroundTruth->isEnabled() && ui_->checkBox_alignPosesWithGroundTruth->isChecked()))
 		{
 			std::map<int, Transform> refPoses = groundTruthPoses_;
-			if(ui_->checkBox_alignPosesWithGPS->isChecked())
+			if(ui_->checkBox_alignPosesWithGPS->isEnabled() && 
+			   ui_->checkBox_alignPosesWithGPS->isChecked())
 			{
 				refPoses = gpsPoses_;
 			}
@@ -3519,7 +3529,9 @@ void DatabaseViewer::updateOptimizedMesh()
 	}
 
 	std::map<int, Transform> optimizedPoses;
-	if(ui_->checkBox_alignScansCloudsWithGroundTruth->isChecked() && !groundTruthPoses_.empty())
+	if(ui_->checkBox_alignScansCloudsWithGroundTruth->isEnabled() &&
+	   ui_->checkBox_alignScansCloudsWithGroundTruth->isChecked()
+	   && !groundTruthPoses_.empty())
 	{
 		optimizedPoses = groundTruthPoses_;
 	}
@@ -4036,7 +4048,9 @@ void DatabaseViewer::view3DMap()
 	}
 
 	std::map<int, Transform> optimizedPoses;
-	if(ui_->checkBox_alignScansCloudsWithGroundTruth->isChecked() && !groundTruthPoses_.empty())
+	if(ui_->checkBox_alignScansCloudsWithGroundTruth->isEnabled() &&
+	   ui_->checkBox_alignScansCloudsWithGroundTruth->isChecked() &&
+	   !groundTruthPoses_.empty())
 	{
 		optimizedPoses = groundTruthPoses_;
 	}
@@ -4087,7 +4101,9 @@ void DatabaseViewer::generate3DMap()
 	}
 
 	std::map<int, Transform> optimizedPoses;
-	if(ui_->checkBox_alignScansCloudsWithGroundTruth->isChecked() && !groundTruthPoses_.empty())
+	if(ui_->checkBox_alignScansCloudsWithGroundTruth->isEnabled() &&
+	   ui_->checkBox_alignScansCloudsWithGroundTruth->isChecked() &&
+	   !groundTruthPoses_.empty())
 	{
 		optimizedPoses = groundTruthPoses_;
 	}
@@ -6665,7 +6681,7 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 		std::map<int, rtabmap::Transform> graph = uValueAt(graphes_, value);
 
 		std::map<int, Transform> refPoses = groundTruthPoses_;
-		if(ui_->checkBox_alignPosesWithGPS->isChecked())
+		if(ui_->checkBox_alignPosesWithGPS->isEnabled() && ui_->checkBox_alignPosesWithGPS->isChecked())
 		{
 			refPoses = gpsPoses_;
 		}
@@ -6729,8 +6745,8 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 			UINFO("rotational_min=%f", rotational_min);
 			UINFO("rotational_max=%f", rotational_max);
 
-			if((ui_->checkBox_alignPosesWithGPS->isChecked() ||
-				ui_->checkBox_alignPosesWithGroundTruth->isChecked()) &&
+			if(((ui_->checkBox_alignPosesWithGPS->isEnabled() && ui_->checkBox_alignPosesWithGPS->isChecked()) ||
+				(ui_->checkBox_alignPosesWithGroundTruth->isEnabled() && ui_->checkBox_alignPosesWithGroundTruth->isChecked())) &&
 			   !gtToMap.isIdentity())
 			{
 				for(std::map<int, Transform>::iterator iter=graph.begin(); iter!=graph.end(); ++iter)
@@ -6741,7 +6757,9 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 		}
 
 		std::map<int, rtabmap::Transform> graphFiltered;
-		if(ui_->checkBox_alignScansCloudsWithGroundTruth->isChecked() && !groundTruthPoses_.empty())
+		if(ui_->checkBox_alignScansCloudsWithGroundTruth->isEnabled() &&
+		   ui_->checkBox_alignScansCloudsWithGroundTruth->isChecked() &&
+		   !groundTruthPoses_.empty())
 		{
 			graphFiltered = groundTruthPoses_;
 		}
@@ -7623,9 +7641,9 @@ void DatabaseViewer::updateGraphView()
 			ui_->spinBox_optimizationsFrom->setEnabled(true);
 			ui_->checkBox_spanAllMaps->setEnabled(true);
 			ui_->checkBox_wmState->setEnabled(true);
-			ui_->checkBox_alignPosesWithGPS->setEnabled(true);
-			ui_->checkBox_alignPosesWithGroundTruth->setEnabled(true);
-			ui_->checkBox_alignScansCloudsWithGroundTruth->setEnabled(true);
+			ui_->checkBox_alignPosesWithGPS->setEnabled(ui_->checkBox_alignPosesWithGPS->isVisible());
+			ui_->checkBox_alignPosesWithGroundTruth->setEnabled(ui_->checkBox_alignPosesWithGroundTruth->isVisible());
+			ui_->checkBox_alignScansCloudsWithGroundTruth->setEnabled(ui_->checkBox_alignScansCloudsWithGroundTruth->isVisible());
 			ui_->checkBox_ignoreIntermediateNodes->setEnabled(true);
 		}
 		updateGraphRotation();
