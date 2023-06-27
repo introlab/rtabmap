@@ -33,12 +33,8 @@ jobs:
         - ros_distribution: 'rolling'
           os: ubuntu-22.04
 
-    steps:
-    - name: Workaround dpkg grub-efi-amd64-signed error
-      run: |
-        sudo apt-mark hold grub-efi-amd64-signed
-    
-    - uses: ros-tooling/setup-ros@v0.5
+    steps:   
+    - uses: ros-tooling/setup-ros@v0.6
       with:
         required-ros-distributions: ${{ matrix.ros_distribution }}
     
