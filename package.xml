@@ -23,7 +23,7 @@
   <!-- <depend>libproj-dev</depend> needed due to error in vtk6 (kinetic)-->
   <depend>libsqlite3-dev</depend>
   <depend>octomap</depend>
-  <depend>qt_gui_cpp</depend> <!-- libqt4-dev or libqt5-dev -->
+  <depend>qtbase5-dev</depend>
   <depend>zlib</depend>
 
   <export>
