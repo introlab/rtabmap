@@ -2250,7 +2250,7 @@ std::map<int, Transform> findNearestPoses(
 	{
 		foundPoses.insert(*poses.find(iter->first));
 	}
-	UDEBUG("found nodes=%d", (int)foundPoses.size());
+	UDEBUG("found nodes=%d/%d (radius=%f, angle=%f, k=%d)", (int)foundPoses.size(), (int)poses.size(), radius, angle, k);
 	return foundPoses;
 }
 

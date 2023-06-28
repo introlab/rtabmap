@@ -2519,7 +2519,8 @@ bool Rtabmap::process(
 	{
 		if(_startNewMapOnLoopClosure &&
 			_memory->getWorkingMem().size()>=2 && // must have an old map (+1 virtual place)
-			graph::filterLinks(signature->getLinks(), Link::kSelfRefLink).size() == 0) // alone in new session)
+			_localizationCovariance.empty() && // if we didn't localize yet
+			graph::filterLinks(signature->getLinks(), Link::kSelfRefLink).size() == 0) // alone in new session
 		{
 			UINFO("Proximity detection by space disabled as if we force to have a global loop "
 					"closure with previous map before doing proximity detections (%s=true).",
@@ -2694,6 +2695,15 @@ bool Rtabmap::process(
 											nearestId, transform.getNorm(), proximityFilteringRadius);
 								}
 							}
+						}
+						else if(!signature->hasLink(nearestId) && proximityFilteringRadius>0.0f)
+						{
+							UDEBUG("Skipping path %d as most likely ID %d is too far %f > %f (%s)",
+								iter->first.id,
+								nearestId,
+								_optimizedPoses.at(signature->id()).getDistance(_optimizedPoses.at(nearestId)),
+								proximityFilteringRadius,
+								Parameters::kRGBDProximityPathFilteringRadius().c_str());
 						}
 					}
 				}
