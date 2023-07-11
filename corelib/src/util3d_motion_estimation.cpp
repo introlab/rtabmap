@@ -41,9 +41,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #ifdef RTABMAP_OPENGV
 #include <opengv/absolute_pose/methods.hpp>
+
 #include <opengv/absolute_pose/NoncentralAbsoluteAdapter.hpp>
-#include <opengv/sac/Ransac.hpp>
-#include <opengv/sac_problems/absolute_pose/AbsolutePoseSacProblem.hpp>
+#include <opengv/absolute_pose/NoncentralAbsoluteMultiAdapter.hpp>
+#include <opengv/sac/MultiRansac.hpp>
+#include <opengv/sac_problems/absolute_pose/MultiNoncentralAbsolutePoseSacProblem.hpp>
 #endif
 
 namespace rtabmap
@@ -308,11 +310,31 @@ Transform estimateMotion3DTo2D(
 	cameraIndexes.resize(oi);
 	matches.resize(oi);
 
+	std::vector<int> cc;
+	cc.resize(cameraModels.size());
+	std::fill(cc.begin(), cc.end(),0);
+	for(size_t i=0; i<cameraIndexes.size(); ++i)
+	{
+		cc[cameraIndexes[i]] = cc[cameraIndexes[i]] + 1;
+	}
+
+	bool cameraMatchLessThan2 = false;
+	for (size_t i=0; i<cameraModels.size(); ++i)
+	{
+		UDEBUG("Matches in Camera %d: %d", i, cc[i]);
+		// opengv multi ransac needs at least 2 matches/camera 
+		if (cc[i] < 2)
+		{
+			cameraMatchLessThan2 = true;
+		}
+	}
+
+
 	UDEBUG("words3A=%d words2B=%d matches=%d words3B=%d guess=%s reprojError=%f iterations=%d",
 			(int)words3A.size(), (int)words2B.size(), (int)matches.size(), (int)words3B.size(),
 			guess.prettyPrint().c_str(), reprojError, iterations);
 
-	if((int)matches.size() >= minInliers)
+	if((int)matches.size() >= minInliers && !cameraMatchLessThan2)
 	{
 		// convert cameras
 		opengv::translations_t camOffsets;
@@ -327,37 +349,42 @@ Transform estimateMotion3DTo2D(
 		}
 
 		// convert 3d points
-		opengv::points_t points;
+		std::vector<std::shared_ptr<opengv::points_t>> multiPoints;
+		multiPoints.resize(cameraModels.size());
 		// convert 2d-3d correspondences into bearing vectors
-		opengv::bearingVectors_t bearingVectors;
-		opengv::absolute_pose::NoncentralAbsoluteAdapter::camCorrespondences_t camCorrespondences;
+		std::vector<std::shared_ptr<opengv::bearingVectors_t>> multiBearingVectors;
+		multiBearingVectors.resize(cameraModels.size());
+		for(size_t i=0; i<cameraModels.size();++i)
+		{
+			multiPoints[i] = std::make_shared<opengv::points_t>();
+			multiBearingVectors[i] = std::make_shared<opengv::bearingVectors_t>();
+		}
+
 		for(size_t i=0; i<objectPoints.size(); ++i)
 		{
 			int cameraIndex = cameraIndexes[i];
-			points.push_back(opengv::point_t(objectPoints[i].x,objectPoints[i].y,objectPoints[i].z));
+			multiPoints[cameraIndex]->push_back(opengv::point_t(objectPoints[i].x,objectPoints[i].y,objectPoints[i].z));
 			cv::Vec3f pt;
 			cameraModels[cameraIndex].project(imagePoints[i].x, imagePoints[i].y, 1, pt[0], pt[1], pt[2]);
 			pt = cv::normalize(pt);
-			bearingVectors.push_back(opengv::bearingVector_t(pt[0], pt[1], pt[2]));
-			camCorrespondences.push_back(cameraIndex);
+			multiBearingVectors[cameraIndex]->push_back(opengv::bearingVector_t(pt[0], pt[1], pt[2]));
 		}
 
-		//create a non-central absolute adapter
-		opengv::absolute_pose::NoncentralAbsoluteAdapter adapter(
-				bearingVectors,
-				camCorrespondences,
-				points,
+		//create a non-central absolute multi adapter
+		opengv::absolute_pose::NoncentralAbsoluteMultiAdapter adapter(
+				multiBearingVectors,
+				multiPoints,
 				camOffsets,
 				camRotations );
 
 		adapter.setR(guess.toEigen4d().block<3,3>(0, 0));
 		adapter.sett(opengv::translation_t(guess.x(), guess.y(), guess.z()));
 
-		//Create a AbsolutePoseSacProblem and Ransac
+		//Create a MultiNoncentralAbsolutePoseSacProblem and MultiRansac
 		//The method is set to GP3P
-		opengv::sac::Ransac<opengv::sac_problems::absolute_pose::AbsolutePoseSacProblem> ransac;
-		std::shared_ptr<opengv::sac_problems::absolute_pose::AbsolutePoseSacProblem> absposeproblem_ptr(
-				new opengv::sac_problems::absolute_pose::AbsolutePoseSacProblem(adapter, opengv::sac_problems::absolute_pose::AbsolutePoseSacProblem::GP3P));
+		opengv::sac::MultiRansac<opengv::sac_problems::absolute_pose::MultiNoncentralAbsolutePoseSacProblem> ransac;
+		std::shared_ptr<opengv::sac_problems::absolute_pose::MultiNoncentralAbsolutePoseSacProblem> absposeproblem_ptr(
+				new opengv::sac_problems::absolute_pose::MultiNoncentralAbsolutePoseSacProblem(adapter));
 
 		ransac.sac_model_ = absposeproblem_ptr;
 		ransac.threshold_ = 1.0 - cos(atan(reprojError/cameraModels[0].fx()));
@@ -371,7 +398,10 @@ Transform estimateMotion3DTo2D(
 
 		UDEBUG("Ransac result: %s", pnp.prettyPrint().c_str());
 		UDEBUG("Ransac iterations done: %d", ransac.iterations_);
-		inliers = ransac.inliers_;
+		for (size_t i=0; i < cameraModels.size(); ++i)
+		{
+			inliers.insert(inliers.end(), ransac.inliers_[i].begin(), ransac.inliers_[i].end());
+		}
 		UDEBUG("Ransac inliers: %ld", inliers.size());
 
 		if((int)inliers.size() >= minInliers)
