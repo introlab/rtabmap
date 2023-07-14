@@ -428,8 +428,15 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 		else if(eeprom.boardName == "DM9098")
 		{
 			imuLocalTransform_ = Transform(
-				 0,  1,  0,  0.0754,
-				 1,  0,  0,  0.0026,
+				 0,  1,  0,  0.075445,
+				 1,  0,  0,  0.00079,
+				 0,  0, -1, -0.007);
+		}
+		else if(eeprom.boardName == "NG9097")
+		{
+			imuLocalTransform_ = Transform(
+				 0,  1,  0,  0.0775,
+				 1,  0,  0,  0.020265,
 				 0,  0, -1, -0.007);
 		}
 		else
