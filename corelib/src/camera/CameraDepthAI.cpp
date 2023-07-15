@@ -46,14 +46,14 @@ bool CameraDepthAI::available()
 }
 
 CameraDepthAI::CameraDepthAI(
-		const std::string & deviceSerial,
+		const std::string & mxidOrName,
 		int resolution,
 		float imageRate,
 		const Transform & localTransform) :
 	Camera(imageRate, localTransform)
 #ifdef RTABMAP_DEPTHAI
 	,
-	deviceSerial_(deviceSerial),
+	mxidOrName_(mxidOrName),
 	outputDepth_(false),
 	depthConfidence_(200),
 	resolution_(resolution),
@@ -202,38 +202,45 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 	std::vector<dai::DeviceInfo> devices = dai::Device::getAllAvailableDevices();
 	if(devices.empty())
 	{
+		UERROR("No DepthAI device found");
 		return false;
 	}
 
 	if(device_.get())
-	{
 		device_->close();
-	}
+
 	accBuffer_.clear();
 	gyroBuffer_.clear();
 
-	dai::DeviceInfo deviceToUse;
-	if(deviceSerial_.empty())
-		deviceToUse = devices[0];
-	for(size_t i=0; i<devices.size(); ++i)
+	bool deviceFound = false;
+	dai::DeviceInfo deviceToUse(mxidOrName_);
+	if(mxidOrName_.empty())
 	{
-		UINFO("DepthAI device found: %s", devices[i].getMxId().c_str());
-		if(!deviceSerial_.empty() && deviceSerial_.compare(devices[i].getMxId()) == 0)
+		std::tie(deviceFound, deviceToUse) = dai::Device::getFirstAvailableDevice();
+	}
+	else if(!deviceToUse.mxid.empty())
+	{
+		std::tie(deviceFound, deviceToUse) = dai::Device::getDeviceByMxId(deviceToUse.mxid);
+	}
+	else
+	{
+		for(auto& device : devices)
 		{
-			deviceToUse = devices[i];
+			if(deviceToUse.name.compare(device.name) == 0)
+			{
+				deviceFound = true;
+				deviceToUse = device;
+			}
 		}
 	}
 
-	if(deviceToUse.getMxId().empty())
+	if(!deviceFound)
 	{
-		UERROR("Could not find device with serial \"%s\", found devices:", deviceSerial_.c_str());
-		for(size_t i=0; i<devices.size(); ++i)
-		{
-			UERROR("DepthAI device found: %s", devices[i].getMxId().c_str());
-		}
+		UERROR("Could not find DepthAI device with MXID or IP/USB name \"%s\", found devices:", mxidOrName_.c_str());
+		for(auto& device : devices)
+			UERROR("%s", device.toString().c_str());
 		return false;
 	}
-	deviceSerial_ = deviceToUse.getMxId();
 
 	// look for calibration files
 	stereoModel_ = StereoCameraModel();
@@ -405,7 +412,7 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 	double cy = new_camera_matrix.at<double>(1, 2);
 	double baseline = calibHandler.getBaselineDistance(dai::CameraBoardSocket::CAM_C, dai::CameraBoardSocket::CAM_B, false)/100.0;
 	UINFO("left: fx=%f fy=%f cx=%f cy=%f baseline=%f", fx, fy, cx, cy, baseline);
-	stereoModel_ = StereoCameraModel(device_->getMxId(), fx, fy, cx, cy, baseline, this->getLocalTransform(), targetSize_);
+	stereoModel_ = StereoCameraModel(device_->getDeviceName(), fx, fy, cx, cy, baseline, this->getLocalTransform(), targetSize_);
 
 	if(imuPublished_)
 	{
@@ -517,7 +524,7 @@ bool CameraDepthAI::isCalibrated() const
 std::string CameraDepthAI::getSerial() const
 {
 #ifdef RTABMAP_DEPTHAI
-	return deviceSerial_;
+	return device_->getMxId();
 #endif
 	return "";
 }

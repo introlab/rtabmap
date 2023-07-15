@@ -49,7 +49,7 @@ public:
 
 public:
 	CameraDepthAI(
-			const std::string & deviceSerial = "",
+			const std::string & mxidOrName = "",
 			int resolution = 1, // 0=720p, 1=800p, 2=400p
 			float imageRate=0.0f,
 			const Transform & localTransform = Transform::getIdentity());
@@ -79,7 +79,7 @@ private:
 	StereoCameraModel stereoModel_;
 	cv::Size targetSize_;
 	Transform imuLocalTransform_;
-	std::string deviceSerial_;
+	std::string mxidOrName_;
 	bool outputDepth_;
 	int depthConfidence_;
 	int resolution_;
