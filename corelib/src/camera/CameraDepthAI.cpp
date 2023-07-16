@@ -226,7 +226,7 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 	{
 		for(auto& device : devices)
 		{
-			if(deviceToUse.name.compare(device.name) == 0)
+			if(deviceToUse.name == device.name)
 			{
 				deviceFound = true;
 				deviceToUse = device;
@@ -313,8 +313,6 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 
 	// StereoDepth
 	stereo->setDepthAlign(dai::StereoDepthProperties::DepthAlign::RECTIFIED_LEFT);
-	stereo->setSubpixel(true);
-	stereo->setSubpixelFractionalBits(4);
 	stereo->setExtendedDisparity(false);
 	stereo->setRectifyEdgeFillColor(0); // black, to better see the cutout
 	if(alphaScaling_>-1.0f)
@@ -323,20 +321,40 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 	stereo->initialConfig.setLeftRightCheck(true);
 	stereo->initialConfig.setLeftRightCheckThreshold(5);
 	stereo->initialConfig.setMedianFilter(dai::MedianFilter::KERNEL_5x5);
-	auto config = stereo->initialConfig.get();
-	config.costMatching.disparityWidth = dai::StereoDepthConfig::CostMatching::DisparityWidth::DISPARITY_64;
-	config.costMatching.enableCompanding = true;
-	stereo->initialConfig.set(config);
 
 	// Link plugins CAM -> STEREO -> XLINK
 	monoLeft->out.link(stereo->left);
 	monoRight->out.link(stereo->right);
 
-	stereo->rectifiedLeft.link(xoutLeft->input);
-	if(outputDepth_)
-		stereo->depth.link(xoutDepthOrRight->input);
+	// Using VideoEncoder on PoE devices, Subpixel is not supported
+	if(ProtocolToStr(deviceToUse.protocol) == "X_LINK_TCP_IP")
+	{
+		auto leftEnc  = p.create<dai::node::VideoEncoder>();
+		auto depthOrRightEnc  = p.create<dai::node::VideoEncoder>();
+		leftEnc->setDefaultProfilePreset(monoLeft->getFps(), dai::VideoEncoderProperties::Profile::MJPEG);
+		depthOrRightEnc->setDefaultProfilePreset(monoRight->getFps(), dai::VideoEncoderProperties::Profile::MJPEG);
+		stereo->rectifiedLeft.link(leftEnc->input);
+		if(outputDepth_)
+			stereo->disparity.link(depthOrRightEnc->input);
+		else
+			stereo->rectifiedRight.link(depthOrRightEnc->input);
+		leftEnc->bitstream.link(xoutLeft->input);
+		depthOrRightEnc->bitstream.link(xoutDepthOrRight->input);
+	}
 	else
-		stereo->rectifiedRight.link(xoutDepthOrRight->input);
+	{
+		stereo->setSubpixel(true);
+		stereo->setSubpixelFractionalBits(4);
+		auto config = stereo->initialConfig.get();
+		config.costMatching.disparityWidth = dai::StereoDepthConfig::CostMatching::DisparityWidth::DISPARITY_64;
+		config.costMatching.enableCompanding = true;
+		stereo->initialConfig.set(config);
+		stereo->rectifiedLeft.link(xoutLeft->input);
+		if(outputDepth_)
+			stereo->depth.link(xoutDepthOrRight->input);
+		else
+			stereo->rectifiedRight.link(xoutDepthOrRight->input);
+	}
 
 	if(imuPublished_)
 	{
@@ -374,8 +392,8 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 		manip->setMaxOutputFrameSize(320 * 200);
 		manip->initialConfig.setResize(320, 200);
 		superPointNetwork->setBlobPath(blobPath_);
-		superPointNetwork->setNumInferenceThreads(1);
-		superPointNetwork->setNumNCEPerInferenceThread(2);
+		superPointNetwork->setNumInferenceThreads(2);
+		superPointNetwork->setNumNCEPerInferenceThread(1);
 		superPointNetwork->input.setBlocking(false);
 		stereo->rectifiedLeft.link(manip->inputImage);
 		manip->out.link(superPointNetwork->input);
@@ -399,12 +417,10 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 	if(calibHandler.getDistortionModel(dai::CameraBoardSocket::CAM_B) == dai::CameraModel::Perspective)
 		distCoeffs = (cv::Mat_<double>(1,8) << coeffs[0], coeffs[1], coeffs[2], coeffs[3], coeffs[4], coeffs[5], coeffs[6], coeffs[7]);
 
-	if(alphaScaling_>-1.0f) {
+	if(alphaScaling_>-1.0f)
 		new_camera_matrix = cv::getOptimalNewCameraMatrix(cameraMatrix, distCoeffs, targetSize_, alphaScaling_);
-	}
-	else {
+	else
 		new_camera_matrix = cameraMatrix;
-	}
 
 	double fx = new_camera_matrix.at<double>(0, 0);
 	double fy = new_camera_matrix.at<double>(1, 1);
@@ -544,13 +560,29 @@ SensorData CameraDepthAI::captureImage(CameraInfo * info)
 		rectifRightOrDepth = rightOrDepthQueue_->get<dai::ImgFrame>();
 
 	double stamp = std::chrono::duration<double>(rectifL->getTimestampDevice(dai::CameraExposureOffset::MIDDLE).time_since_epoch()).count();
-	left = rectifL->getCvFrame();
-	depthOrRight = rectifRightOrDepth->getCvFrame();
-
-	if(depthOrRight.type() == CV_8UC1)
-		data = SensorData(left, depthOrRight, stereoModel_, this->getNextSeqID(), stamp);
+	if(ProtocolToStr(device_->getDeviceInfo().protocol) == "X_LINK_TCP_IP")
+	{
+		left = cv::imdecode(rectifL->getData(), cv::IMREAD_GRAYSCALE);
+		depthOrRight = cv::imdecode(rectifRightOrDepth->getData(), cv::IMREAD_GRAYSCALE);
+		if(outputDepth_)
+		{
+			cv::Mat depth(targetSize_, CV_16UC1);
+			depth.forEach<uint16_t>([&](uint16_t& pixel, const int * position) -> void {
+				pixel = stereoModel_.computeDepth(depthOrRight.at<uint8_t>(position))*1000;
+			});
+			depthOrRight = depth;
+		}
+	}
 	else
+	{
+		left = rectifL->getFrame();
+		depthOrRight = rectifRightOrDepth->getFrame();
+	}
+
+	if(outputDepth_)
 		data = SensorData(left, depthOrRight, stereoModel_.left(), this->getNextSeqID(), stamp);
+	else
+		data = SensorData(left, depthOrRight, stereoModel_, this->getNextSeqID(), stamp);
 
 	if(imuPublished_ && !publishInterIMU_)
 	{
@@ -669,6 +701,33 @@ SensorData CameraDepthAI::captureImage(CameraInfo * info)
 	UERROR("CameraDepthAI: RTAB-Map is not built with depthai-core support!");
 #endif
 	return data;
+}
+
+std::string CameraDepthAI::ProtocolToStr(XLinkProtocol_t val)
+{
+#ifdef RTABMAP_DEPTHAI
+	switch (val)
+	{
+	case X_LINK_USB_VSC:
+		return "X_LINK_USB_VSC";
+	case X_LINK_USB_CDC:
+		return "X_LINK_USB_CDC";
+	case X_LINK_PCIE:
+		return "X_LINK_PCIE";
+	case X_LINK_IPC:
+		return "X_LINK_IPC";
+	case X_LINK_TCP_IP:
+		return "X_LINK_TCP_IP";
+	case X_LINK_NMB_OF_PROTOCOLS:
+		return "X_LINK_NMB_OF_PROTOCOLS";
+	case X_LINK_ANY_PROTOCOL:
+		return "X_LINK_ANY_PROTOCOL";
+	default:
+		return "INVALID_ENUM_VALUE";
+		break;
+	}
+#endif
+	return "";
 }
 
 } // namespace rtabmap

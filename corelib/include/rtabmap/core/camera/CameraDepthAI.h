@@ -104,6 +104,8 @@ private:
 	std::map<double, cv::Vec3f> accBuffer_;
 	std::map<double, cv::Vec3f> gyroBuffer_;
 	UMutex imuMutex_;
+
+	static std::string ProtocolToStr(XLinkProtocol_t val);
 #endif
 };
 
