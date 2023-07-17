@@ -703,9 +703,9 @@ SensorData CameraDepthAI::captureImage(CameraInfo * info)
 	return data;
 }
 
+#ifdef RTABMAP_DEPTHAI
 std::string CameraDepthAI::ProtocolToStr(XLinkProtocol_t val)
 {
-#ifdef RTABMAP_DEPTHAI
 	switch (val)
 	{
 	case X_LINK_USB_VSC:
@@ -726,8 +726,7 @@ std::string CameraDepthAI::ProtocolToStr(XLinkProtocol_t val)
 		return "INVALID_ENUM_VALUE";
 		break;
 	}
-#endif
-	return "";
 }
+#endif
 
 } // namespace rtabmap
