@@ -327,7 +327,7 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 	monoRight->out.link(stereo->right);
 
 	// Using VideoEncoder on PoE devices, Subpixel is not supported
-	if(ProtocolToStr(deviceToUse.protocol) == "X_LINK_TCP_IP")
+	if(deviceToUse.protocol == X_LINK_TCP_IP)
 	{
 		auto leftEnc  = p.create<dai::node::VideoEncoder>();
 		auto depthOrRightEnc  = p.create<dai::node::VideoEncoder>();
@@ -560,7 +560,7 @@ SensorData CameraDepthAI::captureImage(CameraInfo * info)
 		rectifRightOrDepth = rightOrDepthQueue_->get<dai::ImgFrame>();
 
 	double stamp = std::chrono::duration<double>(rectifL->getTimestampDevice(dai::CameraExposureOffset::MIDDLE).time_since_epoch()).count();
-	if(ProtocolToStr(device_->getDeviceInfo().protocol) == "X_LINK_TCP_IP")
+	if(device_->getDeviceInfo().protocol == X_LINK_TCP_IP)
 	{
 		left = cv::imdecode(rectifL->getData(), cv::IMREAD_GRAYSCALE);
 		depthOrRight = cv::imdecode(rectifRightOrDepth->getData(), cv::IMREAD_GRAYSCALE);
@@ -702,31 +702,5 @@ SensorData CameraDepthAI::captureImage(CameraInfo * info)
 #endif
 	return data;
 }
-
-#ifdef RTABMAP_DEPTHAI
-std::string CameraDepthAI::ProtocolToStr(XLinkProtocol_t val)
-{
-	switch (val)
-	{
-	case X_LINK_USB_VSC:
-		return "X_LINK_USB_VSC";
-	case X_LINK_USB_CDC:
-		return "X_LINK_USB_CDC";
-	case X_LINK_PCIE:
-		return "X_LINK_PCIE";
-	case X_LINK_IPC:
-		return "X_LINK_IPC";
-	case X_LINK_TCP_IP:
-		return "X_LINK_TCP_IP";
-	case X_LINK_NMB_OF_PROTOCOLS:
-		return "X_LINK_NMB_OF_PROTOCOLS";
-	case X_LINK_ANY_PROTOCOL:
-		return "X_LINK_ANY_PROTOCOL";
-	default:
-		return "INVALID_ENUM_VALUE";
-		break;
-	}
-}
-#endif
 
 } // namespace rtabmap
