@@ -477,32 +477,29 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 	{
 		imuLocalTransform_ = this->getLocalTransform() * imuLocalTransform_;
 		UINFO("IMU local transform = %s", imuLocalTransform_.prettyPrint().c_str());
-		device_->getOutputQueue("imu", 50, false)->addCallback([this](std::shared_ptr<dai::ADatatype> callback) {
-			if(dynamic_cast<dai::IMUData*>(callback.get()) != nullptr)
+		device_->getOutputQueue("imu", 50, false)->addCallback([this](const std::shared_ptr<dai::ADatatype> data) {
+			auto imuData = std::dynamic_pointer_cast<dai::IMUData>(data);
+			auto imuPackets = imuData->packets;
+
+			for(auto& imuPacket : imuPackets)
 			{
-				dai::IMUData* imuData = static_cast<dai::IMUData*>(callback.get());
-				auto imuPackets = imuData->packets;
+				auto& acceleroValues = imuPacket.acceleroMeter;
+				auto& gyroValues = imuPacket.gyroscope;
+				double accStamp = std::chrono::duration<double>(acceleroValues.getTimestampDevice().time_since_epoch()).count();
+				double gyroStamp = std::chrono::duration<double>(gyroValues.getTimestampDevice().time_since_epoch()).count();
 
-				for(auto& imuPacket : imuPackets)
+				if(publishInterIMU_)
 				{
-					auto& acceleroValues = imuPacket.acceleroMeter;
-					auto& gyroValues = imuPacket.gyroscope;
-					double accStamp = std::chrono::duration<double>(acceleroValues.getTimestampDevice().time_since_epoch()).count();
-					double gyroStamp = std::chrono::duration<double>(gyroValues.getTimestampDevice().time_since_epoch()).count();
-
-					if(publishInterIMU_)
-					{
-						IMU imu(cv::Vec3f(gyroValues.x, gyroValues.y, gyroValues.z), cv::Mat::eye(3,3,CV_64FC1),
-								cv::Vec3f(acceleroValues.x, acceleroValues.y, acceleroValues.z), cv::Mat::eye(3,3,CV_64FC1),
-								imuLocalTransform_);
-						UEventsManager::post(new IMUEvent(imu, (accStamp+gyroStamp)/2));
-					}
-					else
-					{
-						UScopeMutex lock(imuMutex_);
-						accBuffer_.emplace_hint(accBuffer_.end(), std::make_pair(accStamp, cv::Vec3f(acceleroValues.x, acceleroValues.y, acceleroValues.z)));
-						gyroBuffer_.emplace_hint(gyroBuffer_.end(), std::make_pair(gyroStamp, cv::Vec3f(gyroValues.x, gyroValues.y, gyroValues.z)));
-					}
+					IMU imu(cv::Vec3f(gyroValues.x, gyroValues.y, gyroValues.z), cv::Mat::eye(3,3,CV_64FC1),
+							cv::Vec3f(acceleroValues.x, acceleroValues.y, acceleroValues.z), cv::Mat::eye(3,3,CV_64FC1),
+							imuLocalTransform_);
+					UEventsManager::post(new IMUEvent(imu, (accStamp+gyroStamp)/2));
+				}
+				else
+				{
+					UScopeMutex lock(imuMutex_);
+					accBuffer_.emplace_hint(accBuffer_.end(), std::make_pair(accStamp, cv::Vec3f(acceleroValues.x, acceleroValues.y, acceleroValues.z)));
+					gyroBuffer_.emplace_hint(gyroBuffer_.end(), std::make_pair(gyroStamp, cv::Vec3f(gyroValues.x, gyroValues.y, gyroValues.z)));
 				}
 			}
 		});
