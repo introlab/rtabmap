@@ -572,8 +572,8 @@ SensorData CameraDepthAI::captureImage(CameraInfo * info)
 	}
 	else
 	{
-		left = rectifL->getFrame();
-		depthOrRight = rectifRightOrDepth->getFrame();
+		left = rectifL->getFrame(true);
+		depthOrRight = rectifRightOrDepth->getFrame(true);
 	}
 
 	if(outputDepth_)
