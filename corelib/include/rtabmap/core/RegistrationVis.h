@@ -83,6 +83,7 @@ private:
 	int _PnPFlags;
 	int _PnPRefineIterations;
 	float _PnPMaxVar;
+	unsigned int _multiSamplingPolicy;
 	int _correspondencesApproach;
 	int _flowWinSize;
 	int _flowIterations;

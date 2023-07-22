@@ -70,6 +70,7 @@ RegistrationVis::RegistrationVis(const ParametersMap & parameters, Registration 
 		_PnPFlags(Parameters::defaultVisPnPFlags()),
 		_PnPRefineIterations(Parameters::defaultVisPnPRefineIterations()),
 		_PnPMaxVar(Parameters::defaultVisPnPMaxVariance()),
+		_multiSamplingPolicy(Parameters::defaultVisPnPSamplingPolicy()),
 		_correspondencesApproach(Parameters::defaultVisCorType()),
 		_flowWinSize(Parameters::defaultVisCorFlowWinSize()),
 		_flowIterations(Parameters::defaultVisCorFlowIterations()),
@@ -126,6 +127,7 @@ void RegistrationVis::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kVisPnPFlags(), _PnPFlags);
 	Parameters::parse(parameters, Parameters::kVisPnPRefineIterations(), _PnPRefineIterations);
 	Parameters::parse(parameters, Parameters::kVisPnPMaxVariance(), _PnPMaxVar);
+	Parameters::parse(parameters, Parameters::kVisPnPSamplingPolicy(), _multiSamplingPolicy);
 	Parameters::parse(parameters, Parameters::kVisCorType(), _correspondencesApproach);
 	Parameters::parse(parameters, Parameters::kVisCorFlowWinSize(), _flowWinSize);
 	Parameters::parse(parameters, Parameters::kVisCorFlowIterations(), _flowIterations);
@@ -1578,6 +1580,7 @@ Transform RegistrationVis::computeTransformationImpl(
 									words3A,
 									wordsB,
 									models,
+									_multiSamplingPolicy,
 									_minInliers,
 									_iterations,
 									_PnPReprojError,
