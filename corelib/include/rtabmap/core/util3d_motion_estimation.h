@@ -59,6 +59,7 @@ Transform RTABMAP_CORE_EXPORT estimateMotion3DTo2D(
 			const std::map<int, cv::Point3f> & words3A,
 			const std::map<int, cv::KeyPoint> & words2B,
 			const std::vector<CameraModel> & cameraModels,
+			unsigned int samplingPolicy = 0, // 0=AUTO, 1=ANY, 2=HOMOGENEOUS
 			int minInliers = 10,
 			int iterations = 100,
 			double reprojError = 5.,
