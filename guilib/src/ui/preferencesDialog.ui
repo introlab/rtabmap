@@ -63,7 +63,7 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-988</y>
+            <y>-942</y>
             <width>756</width>
             <height>3736</height>
            </rect>
@@ -19455,26 +19455,36 @@ Lower the ratio -&gt; higher the precision.</string>
                            <string>Motion Estimation: 3D to 2D (PnP)</string>
                           </property>
                           <layout class="QGridLayout" name="gridLayout_59" columnstretch="0,1">
-                           <item row="3" column="0">
-                            <widget class="QDoubleSpinBox" name="loopClosure_pnpMaxVariance">
-                             <property name="suffix">
-                              <string/>
+                           <item row="1" column="1">
+                            <widget class="QLabel" name="label_235">
+                             <property name="text">
+                              <string>Flags.</string>
                              </property>
-                             <property name="decimals">
-                              <number>4</number>
+                             <property name="wordWrap">
+                              <bool>true</bool>
                              </property>
-                             <property name="minimum">
-                              <double>0.000000000000000</double>
+                             <property name="textInteractionFlags">
+                              <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                              </property>
-                             <property name="maximum">
-                              <double>99.000000000000000</double>
-                             </property>
-                             <property name="singleStep">
-                              <double>0.100000000000000</double>
-                             </property>
-                             <property name="value">
-                              <double>0.000000000000000</double>
-                             </property>
+                            </widget>
+                           </item>
+                           <item row="5" column="0">
+                            <widget class="QComboBox" name="loopClosure_pnpSamplingPolicy">
+                             <item>
+                              <property name="text">
+                               <string>AUTO</string>
+                              </property>
+                             </item>
+                             <item>
+                              <property name="text">
+                               <string>ANY</string>
+                              </property>
+                             </item>
+                             <item>
+                              <property name="text">
+                               <string>HOMOGENEOUS</string>
+                              </property>
+                             </item>
                             </widget>
                            </item>
                            <item row="1" column="0">
@@ -19496,68 +19506,23 @@ Lower the ratio -&gt; higher the precision.</string>
                              </item>
                             </widget>
                            </item>
-                           <item row="0" column="1">
-                            <widget class="QLabel" name="label_236">
-                             <property name="text">
-                              <string>Reprojection error.</string>
-                             </property>
-                             <property name="wordWrap">
-                              <bool>true</bool>
-                             </property>
-                             <property name="textInteractionFlags">
-                              <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                             </property>
-                            </widget>
-                           </item>
-                           <item row="3" column="1">
-                            <widget class="QLabel" name="label_loopClosure_pnpOpenCV2_2">
-                             <property name="text">
-                              <string>Max linear variance between 3D point correspondences after PnP. 0 means disabled.</string>
-                             </property>
-                             <property name="wordWrap">
-                              <bool>true</bool>
-                             </property>
-                             <property name="textInteractionFlags">
-                              <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                             </property>
-                            </widget>
-                           </item>
-                           <item row="0" column="0">
-                            <widget class="QDoubleSpinBox" name="loopClosure_pnpReprojError">
-                             <property name="suffix">
-                              <string> pix</string>
-                             </property>
-                             <property name="decimals">
-                              <number>1</number>
-                             </property>
-                             <property name="minimum">
-                              <double>0.100000000000000</double>
-                             </property>
-                             <property name="singleStep">
-                              <double>1.000000000000000</double>
-                             </property>
-                             <property name="value">
-                              <double>8.000000000000000</double>
-                             </property>
-                            </widget>
-                           </item>
-                           <item row="1" column="1">
-                            <widget class="QLabel" name="label_235">
-                             <property name="text">
-                              <string>Flags.</string>
-                             </property>
-                             <property name="wordWrap">
-                              <bool>true</bool>
-                             </property>
-                             <property name="textInteractionFlags">
-                              <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                             </property>
-                            </widget>
-                           </item>
                            <item row="2" column="1">
                             <widget class="QLabel" name="label_loopClosure_pnpOpenCV2">
                              <property name="text">
                               <string>Refine iterations.</string>
+                             </property>
+                             <property name="wordWrap">
+                              <bool>true</bool>
+                             </property>
+                             <property name="textInteractionFlags">
+                              <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                             </property>
+                            </widget>
+                           </item>
+                           <item row="0" column="1">
+                            <widget class="QLabel" name="label_655">
+                             <property name="text">
+                              <string>Reprojection error.</string>
                              </property>
                              <property name="wordWrap">
                               <bool>true</bool>
@@ -19584,25 +19549,47 @@ Lower the ratio -&gt; higher the precision.</string>
                             </widget>
                            </item>
                            <item row="4" column="0">
-                            <widget class="QComboBox" name="loopClosure_pnpSamplingPolicy">
-                             <item>
-                              <property name="text">
-                               <string>AUTO</string>
-                              </property>
-                             </item>
-                             <item>
-                              <property name="text">
-                               <string>ANY</string>
-                              </property>
-                             </item>
-                             <item>
-                              <property name="text">
-                               <string>HOMOGENEOUS</string>
-                              </property>
-                             </item>
+                            <widget class="QDoubleSpinBox" name="loopClosure_pnpMaxVariance">
+                             <property name="suffix">
+                              <string/>
+                             </property>
+                             <property name="decimals">
+                              <number>4</number>
+                             </property>
+                             <property name="minimum">
+                              <double>0.000000000000000</double>
+                             </property>
+                             <property name="maximum">
+                              <double>99.000000000000000</double>
+                             </property>
+                             <property name="singleStep">
+                              <double>0.100000000000000</double>
+                             </property>
+                             <property name="value">
+                              <double>0.000000000000000</double>
+                             </property>
                             </widget>
                            </item>
-                           <item row="4" column="1">
+                           <item row="0" column="0">
+                            <widget class="QDoubleSpinBox" name="loopClosure_pnpReprojError">
+                             <property name="suffix">
+                              <string> pix</string>
+                             </property>
+                             <property name="decimals">
+                              <number>1</number>
+                             </property>
+                             <property name="minimum">
+                              <double>0.100000000000000</double>
+                             </property>
+                             <property name="singleStep">
+                              <double>1.000000000000000</double>
+                             </property>
+                             <property name="value">
+                              <double>8.000000000000000</double>
+                             </property>
+                            </widget>
+                           </item>
+                           <item row="5" column="1">
                             <widget class="QLabel" name="label_loopClosure_pnpOpenCV2_3">
                              <property name="text">
                               <string>Multi-camera random sampling policy. With HOMOGENEOUS policy, RANSAC will be done uniformly against all cameras, so at least 2 matches per camera are required. With ANY policy, RANSAC is not constraint to sample on all cameras at the same time. AUTO policy will use HOMOGENEOUS if there are at least 2 matches per camera, otherwise it will fallback to ANY policy.</string>
@@ -19612,6 +19599,58 @@ Lower the ratio -&gt; higher the precision.</string>
                              </property>
                              <property name="textInteractionFlags">
                               <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                             </property>
+                            </widget>
+                           </item>
+                           <item row="0" column="1">
+                            <widget class="QLabel" name="label_656">
+                             <property name="text">
+                              <string>Reprojection error.</string>
+                             </property>
+                             <property name="wordWrap">
+                              <bool>true</bool>
+                             </property>
+                             <property name="textInteractionFlags">
+                              <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                             </property>
+                            </widget>
+                           </item>
+                           <item row="4" column="1">
+                            <widget class="QLabel" name="label_loopClosure_pnpOpenCV2_2">
+                             <property name="text">
+                              <string>Max linear variance between 3D point correspondences after PnP. 0 means disabled.</string>
+                             </property>
+                             <property name="wordWrap">
+                              <bool>true</bool>
+                             </property>
+                             <property name="textInteractionFlags">
+                              <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                             </property>
+                            </widget>
+                           </item>
+                           <item row="3" column="1">
+                            <widget class="QLabel" name="label_loopClosure_pnpOpenCV2_4">
+                             <property name="text">
+                              <string>Ratio used to compute variance of the estimated transformation if 3D correspondences are provided (should be &gt; 1). The higher it is, the smaller the covariance will be. With accurate depth estimation, this could be set to 2. For depth estimated by stereo, 4 or more maybe used to ignore large errors of very far points.</string>
+                             </property>
+                             <property name="wordWrap">
+                              <bool>true</bool>
+                             </property>
+                             <property name="textInteractionFlags">
+                              <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                             </property>
+                            </widget>
+                           </item>
+                           <item row="3" column="0">
+                            <widget class="QSpinBox" name="loopClosure_pnpVarMedianRatio">
+                             <property name="minimum">
+                              <number>2</number>
+                             </property>
+                             <property name="maximum">
+                              <number>999999</number>
+                             </property>
+                             <property name="value">
+                              <number>4</number>
                              </property>
                             </widget>
                            </item>

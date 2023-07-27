@@ -82,6 +82,7 @@ private:
 	float _PnPReprojError;
 	int _PnPFlags;
 	int _PnPRefineIterations;
+	int  _PnPVarMedianRatio;
 	float _PnPMaxVar;
 	unsigned int _multiSamplingPolicy;
 	int _correspondencesApproach;

@@ -64,6 +64,7 @@ Transform estimateMotion3DTo2D(
 			double reprojError,
 			int flagsPnP,
 			int refineIterations,
+			int varianceMedianRatio,
 			float maxVariance,
 			const Transform & guess,
 			const std::map<int, cv::Point3f> & words3B,
@@ -73,6 +74,7 @@ Transform estimateMotion3DTo2D(
 {
 	UASSERT(cameraModel.isValidForProjection());
 	UASSERT(!guess.isNull());
+	UASSERT(varianceMedianRatio>1);
 	Transform transform;
 	std::vector<int> matches, inliers;
 
@@ -194,11 +196,11 @@ Transform estimateMotion3DTo2D(
 
 				std::sort(errorSqrdDists.begin(), errorSqrdDists.end());
 				//divide by 4 instead of 2 to ignore very very far features (stereo)
-				double median_error_sqr_lin = 2.1981 * (double)errorSqrdDists[errorSqrdDists.size () >> 2];
+				double median_error_sqr_lin = 2.1981 * (double)errorSqrdDists[errorSqrdDists.size () / varianceMedianRatio];
 				UASSERT(uIsFinite(median_error_sqr_lin));
 				(*covariance)(cv::Range(0,3), cv::Range(0,3)) *= median_error_sqr_lin;
 				std::sort(errorSqrdAngles.begin(), errorSqrdAngles.end());
-				double median_error_sqr_ang = 2.1981 * (double)errorSqrdAngles[errorSqrdAngles.size () >> 2];
+				double median_error_sqr_ang = 2.1981 * (double)errorSqrdAngles[errorSqrdAngles.size () / varianceMedianRatio];
 				UASSERT(uIsFinite(median_error_sqr_ang));
 				(*covariance)(cv::Range(3,6), cv::Range(3,6)) *= median_error_sqr_ang;
 
@@ -251,6 +253,7 @@ Transform estimateMotion3DTo2D(
 			double reprojError,
 			int flagsPnP,
 			int refineIterations,
+			int varianceMedianRatio,
 			float maxVariance,
 			const Transform & guess,
 			const std::map<int, cv::Point3f> & words3B,
@@ -271,6 +274,7 @@ Transform estimateMotion3DTo2D(
 	}
 
 	UASSERT(!guess.isNull());
+	UASSERT(varianceMedianRatio > 1);
 
 	std::vector<int> matches, inliers;
 
@@ -530,11 +534,11 @@ Transform estimateMotion3DTo2D(
 
 				std::sort(errorSqrdDists.begin(), errorSqrdDists.end());
 				//divide by 4 instead of 2 to ignore very very far features (stereo)
-				double median_error_sqr_lin = 2.1981 * (double)errorSqrdDists[errorSqrdDists.size () >> 2];
+				double median_error_sqr_lin = 2.1981 * (double)errorSqrdDists[errorSqrdDists.size () / varianceMedianRatio];
 				UASSERT(uIsFinite(median_error_sqr_lin));
 				(*covariance)(cv::Range(0,3), cv::Range(0,3)) *= median_error_sqr_lin;
 				std::sort(errorSqrdAngles.begin(), errorSqrdAngles.end());
-				double median_error_sqr_ang = 2.1981 * (double)errorSqrdAngles[errorSqrdAngles.size () >> 2];
+				double median_error_sqr_ang = 2.1981 * (double)errorSqrdAngles[errorSqrdAngles.size () / varianceMedianRatio];
 				UASSERT(uIsFinite(median_error_sqr_ang));
 				(*covariance)(cv::Range(3,6), cv::Range(3,6)) *= median_error_sqr_ang;
 
