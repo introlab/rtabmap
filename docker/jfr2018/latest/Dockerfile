@@ -137,8 +137,8 @@ RUN /bin/bash -c 'cd /root/catkin_ws;. /opt/ros/${ROS_DISTRO}/setup.bash; catkin
 RUN git clone https://github.com/tum-vision/dvo_slam.git && cd dvo_slam && git checkout ${ROS_DISTRO}-devel && rm dvo_slam/package.xml && rm dvo_benchmark/package.xml && rm dvo_ros/package.xml
 # VISO2
 RUN git clone https://github.com/srv/viso2.git && cd viso2 && git checkout ${ROS_DISTRO}
-# MSCKF-VIO
-RUN git clone https://github.com/KumarRobotics/msckf_vio.git && cd msckf_vio && git checkout a9386c5 && wget https://gist.githubusercontent.com/matlabbe/f2518d7427e7f6740af2110e540b1f2b/raw/1b7c96b38e063bacfa77408686e4528f3d27af2e/msckf_vio_a9386c5_ros_commented.patch && git apply --ignore-space-change --ignore-whitespace msckf_vio_a9386c5_ros_commented.patch
+# MSCKF-VIO: using a patched version to be used outside ros and c++14:
+RUN git clone https://github.com/borongyuan/msckf_vio.git && cd msckf_vio && git checkout e69cdb68e9b31a438bbc51bb77cd34fe9b2e80cb
 # FOVIS
 RUN git clone https://github.com/srv/libfovis.git && cd libfovis && git checkout 896acc8425e9fd7c5609153b8bad349ae1abbb50
 # LOAM
