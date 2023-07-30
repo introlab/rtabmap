@@ -127,7 +127,8 @@ WORKDIR /root/catkin_ws/src
 RUN /bin/bash -c '. /opt/ros/${ROS_DISTRO}/setup.bash; catkin_init_workspace'
 RUN git clone https://github.com/tum-vision/dvo_slam.git && cd dvo_slam && git checkout kinetic-devel && rm dvo_slam/package.xml && rm dvo_benchmark/package.xml && rm dvo_ros/package.xml
 RUN git clone https://github.com/srv/viso2.git && cd viso2 && git checkout kinetic
-RUN git clone https://github.com/KumarRobotics/msckf_vio.git && cd msckf_vio && git checkout a9386c5 && wget https://gist.githubusercontent.com/matlabbe/f2518d7427e7f6740af2110e540b1f2b/raw/a6d604e730bcbf3dcd7fd8a27302bed4bb94b799/msckf_vio_a9386c5_ros_commented.patch && git apply --ignore-space-change --ignore-whitespace msckf_vio_a9386c5_ros_commented.patch
+# msckf: using a patched version to be used outside ros and c++14:
+RUN git clone https://github.com/borongyuan/msckf_vio.git && cd msckf_vio && git checkout e69cdb68e9b31a438bbc51bb77cd34fe9b2e80cb
 RUN git clone https://github.com/srv/libfovis.git && cd libfovis && git checkout db2fc39451e59317cf8486d92085da1c8e414785
 RUN git clone https://github.com/ros-perception/vision_opencv.git && cd vision_opencv && git checkout kinetic
 RUN git clone https://github.com/laboshinl/loam_velodyne.git && cd loam_velodyne && git checkout a4c364a677647f2a35831439032dc5a58378b3fd
