@@ -40,7 +40,6 @@ class RTABMAP_CORE_EXPORT OdometryOpenVINS : public Odometry
 {
 public:
 	OdometryOpenVINS(const rtabmap::ParametersMap & parameters = rtabmap::ParametersMap());
-	virtual ~OdometryOpenVINS();
 
 	virtual void reset(const Transform & initialPose = Transform::getIdentity());
 	virtual Odometry::Type getType() {return Odometry::kTypeOpenVINS;}
@@ -52,7 +51,7 @@ private:
 
 private:
 #ifdef RTABMAP_OPENVINS
-	ov_msckf::VioManager * vioManager_;
+	std::unique_ptr<ov_msckf::VioManager> vioManager_;
 	bool initGravity_;
 	Transform previousPose_;
 	Transform previousLocalTransform_;
