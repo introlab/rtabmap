@@ -76,7 +76,7 @@ namespace vertigo {
 
     /** between operation */
     inline SwitchVariableSigmoid between(const SwitchVariableSigmoid& l2,
-#if GTSAM_VERSION_MAJOR > 4 || (GTSAM_VERSION_MAJOR == 4 && GTSAM_VERSION_MINOR >= 3)
+#if GTSAM_VERSION_NUMERIC >= 40300
         OptionalMatrixType H1=OptionalNone,
 		OptionalMatrixType H2=OptionalNone) const {
 #else
@@ -122,7 +122,7 @@ template<> struct traits<vertigo::SwitchVariableSigmoid> {
   typedef OptionalJacobian<3, 3> ChartJacobian;
   typedef gtsam::Vector TangentVector;
   static TangentVector Local(const vertigo::SwitchVariableSigmoid& origin, const vertigo::SwitchVariableSigmoid& other,
-#if GTSAM_VERSION_MAJOR > 4 || (GTSAM_VERSION_MAJOR == 4 && GTSAM_VERSION_MINOR >= 3)
+#if GTSAM_VERSION_NUMERIC >= 40300
 	  ChartJacobian Horigin = {}, ChartJacobian Hother = {}) {
 #else
 	  ChartJacobian Horigin = boost::none, ChartJacobian Hother = boost::none) {
@@ -130,7 +130,7 @@ template<> struct traits<vertigo::SwitchVariableSigmoid> {
     return origin.localCoordinates(other);
   }
   static vertigo::SwitchVariableSigmoid Retract(const vertigo::SwitchVariableSigmoid& g, const TangentVector& v,
-#if GTSAM_VERSION_MAJOR > 4 || (GTSAM_VERSION_MAJOR == 4 && GTSAM_VERSION_MINOR >= 3)
+#if GTSAM_VERSION_NUMERIC >= 40300
         ChartJacobian H1 = {}, ChartJacobian H2 = {}) {
 #else
         ChartJacobian H1 = boost::none, ChartJacobian H2 = boost::none) {
