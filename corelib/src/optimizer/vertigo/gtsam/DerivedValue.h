@@ -72,7 +72,7 @@ public:
   /**
    * Clone this value (normal clone on the heap, delete with 'delete' operator)
    */
-#if GTSAM_VERSION_MAJOR > 4 || (GTSAM_VERSION_MAJOR == 4 && GTSAM_VERSION_MINOR >= 3)
+#if GTSAM_VERSION_NUMERIC >= 40300
   virtual std::shared_ptr<gtsam::Value> clone() const {
     return std::make_shared<DERIVED>(static_cast<const DERIVED&>(*this));
   }

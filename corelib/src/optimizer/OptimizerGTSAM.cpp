@@ -527,7 +527,7 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 			{
 				float x,y,z,roll,pitch,yaw;
 				std::map<int, Transform> tmpPoses;
-#if GTSAM_VERSION_MAJOR > 4 || (GTSAM_VERSION_MAJOR == 4 && GTSAM_VERSION_MINOR >= 3)
+#if GTSAM_VERSION_NUMERIC >= 40200
 				for(gtsam::Values::deref_iterator iter=optimizer->values().begin(); iter!=optimizer->values().end(); ++iter)
 #else
 				for(gtsam::Values::const_iterator iter=optimizer->values().begin(); iter!=optimizer->values().end(); ++iter)
@@ -634,7 +634,7 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 				optimizer->iterations(), optimizer->error(), graph.error(initialEstimate), graph.error(optimizer->values()), timer.ticks());
 
 		float x,y,z,roll,pitch,yaw;
-#if GTSAM_VERSION_MAJOR > 4 || (GTSAM_VERSION_MAJOR == 4 && GTSAM_VERSION_MINOR >= 3)
+#if GTSAM_VERSION_NUMERIC >= 40200
 		for(gtsam::Values::deref_iterator iter=optimizer->values().begin(); iter!=optimizer->values().end(); ++iter)
 #else
 		for(gtsam::Values::const_iterator iter=optimizer->values().begin(); iter!=optimizer->values().end(); ++iter)

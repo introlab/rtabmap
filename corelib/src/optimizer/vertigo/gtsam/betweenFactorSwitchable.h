@@ -30,7 +30,7 @@ namespace vertigo {
         betweenFactor(key1, key2, measured, model) {};
 
       gtsam::Vector evaluateError(const VALUE& p1, const VALUE& p2, const SwitchVariableLinear& s,
-#if GTSAM_VERSION_MAJOR > 4 || (GTSAM_VERSION_MAJOR == 4 && GTSAM_VERSION_MINOR >= 3)
+#if GTSAM_VERSION_NUMERIC >= 40300
 		  OptionalMatrixType H1 = OptionalNone,
 		  OptionalMatrixType H2 = OptionalNone,
 		  OptionalMatrixType H3 = OptionalNone) const
@@ -70,7 +70,7 @@ namespace vertigo {
         betweenFactor(key1, key2, measured, model) {};
 
       gtsam::Vector evaluateError(const VALUE& p1, const VALUE& p2, const SwitchVariableSigmoid& s,
-#if GTSAM_VERSION_MAJOR > 4 || (GTSAM_VERSION_MAJOR == 4 && GTSAM_VERSION_MINOR >= 3)
+#if GTSAM_VERSION_NUMERIC >= 40300
 		  OptionalMatrixType H1 = OptionalNone,
 		  OptionalMatrixType H2 = OptionalNone,
 		  OptionalMatrixType H3 = OptionalNone) const

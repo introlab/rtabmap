@@ -12,7 +12,7 @@
 #include <Eigen/Eigen>
 #include <gtsam/config.h>
 
-#if GTSAM_VERSION_MAJOR > 4 || (GTSAM_VERSION_MAJOR==4 && GTSAM_VERSION_MINOR>=1)
+#if GTSAM_VERSION_NUMERIC >= 40100
 namespace gtsam {
 gtsam::Matrix inverse(const gtsam::Matrix & matrix)
 {
@@ -49,7 +49,7 @@ namespace vertigo {
           double nu1 = 1.0/sqrt(gtsam::inverse(info1).determinant());
           double l1 = nu1 * exp(-0.5*m1);
 
-#if GTSAM_VERSION_MAJOR > 4 || (GTSAM_VERSION_MAJOR==4 && GTSAM_VERSION_MINOR>=1)
+#if GTSAM_VERSION_NUMERIC >= 40100
           double m2 = nullHypothesisModel->squaredMahalanobisDistance(error);
 #else
           double m2 = nullHypothesisModel->distance(error);

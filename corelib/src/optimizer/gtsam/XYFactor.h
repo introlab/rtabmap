@@ -42,7 +42,7 @@ public:
   // @param p    the pose in Pose2
   // @param H    the optional Jacobian matrix, which use boost optional and has default null pointer
   gtsam::Vector evaluateError(const VALUE& p,
-#if GTSAM_VERSION_MAJOR > 4 || (GTSAM_VERSION_MAJOR == 4 && GTSAM_VERSION_MINOR >= 3)
+#if GTSAM_VERSION_NUMERIC >= 40300
 		  OptionalMatrixType H = OptionalNone) const {
 #else
 		  boost::optional<gtsam::Matrix&> H = boost::none) const {

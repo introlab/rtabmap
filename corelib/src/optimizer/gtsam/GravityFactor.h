@@ -63,14 +63,14 @@ public:
 
   /** vector of errors */
   Vector attitudeError(const Rot3& p,
-#if GTSAM_VERSION_MAJOR > 4 || (GTSAM_VERSION_MAJOR == 4 && GTSAM_VERSION_MINOR >= 3)
+#if GTSAM_VERSION_NUMERIC >= 40300
       OptionalJacobian<2,3> H = {}) const;
 #else
   	  OptionalJacobian<2,3> H = boost::none) const;
 #endif
 
   /** Serialization function */
-#if defined(GTSAM_ENABLE_BOOST_SERIALIZATION) || GTSAM_VERSION_MAJOR < 4 || (GTSAM_VERSION_MAJOR == 4 && GTSAM_VERSION_MINOR < 3)
+#if defined(GTSAM_ENABLE_BOOST_SERIALIZATION) || GTSAM_VERSION_NUMERIC < 40300
   friend class boost::serialization::access;
   template<class ARCHIVE>
   void serialize(ARCHIVE & ar, const unsigned int /*version*/) {
@@ -91,7 +91,7 @@ class Rot3GravityFactor: public NoiseModelFactor1<Rot3>, public GravityFactor {
 public:
 
   /// shorthand for a smart pointer to a factor
-#if GTSAM_VERSION_MAJOR > 4 || (GTSAM_VERSION_MAJOR == 4 && GTSAM_VERSION_MINOR >= 3)
+#if GTSAM_VERSION_NUMERIC >= 40300
   typedef std::shared_ptr<Rot3GravityFactor> shared_ptr;
   #else
   typedef boost::shared_ptr<Rot3GravityFactor> shared_ptr;
@@ -121,7 +121,7 @@ public:
 
   /// @return a deep copy of this factor
   virtual gtsam::NonlinearFactor::shared_ptr clone() const {
-#if GTSAM_VERSION_MAJOR > 4 || (GTSAM_VERSION_MAJOR == 4 && GTSAM_VERSION_MINOR >= 3)
+#if GTSAM_VERSION_NUMERIC >= 40300
     return std::static_pointer_cast<gtsam::NonlinearFactor>(
 #else
     return boost::static_pointer_cast<gtsam::NonlinearFactor>(
@@ -138,7 +138,7 @@ public:
 
   /** vector of errors */
   virtual Vector evaluateError(const Rot3& nRb, //
-#if GTSAM_VERSION_MAJOR > 4 || (GTSAM_VERSION_MAJOR == 4 && GTSAM_VERSION_MINOR >= 3)
+#if GTSAM_VERSION_NUMERIC >= 40300
 	OptionalMatrixType H = OptionalNone) const {
 #else
 	boost::optional<Matrix&> H = boost::none) const {
@@ -153,7 +153,7 @@ public:
   }
 
 private:
-#if defined(GTSAM_ENABLE_BOOST_SERIALIZATION) || GTSAM_VERSION_MAJOR < 4 || (GTSAM_VERSION_MAJOR == 4 && GTSAM_VERSION_MINOR < 3)
+#if defined(GTSAM_ENABLE_BOOST_SERIALIZATION) || GTSAM_VERSION_NUMERIC < 40300
   /** Serialization function */
   friend class boost::serialization::access;
   template<class ARCHIVE>
@@ -182,7 +182,7 @@ class Pose3GravityFactor: public NoiseModelFactor1<Pose3>,
 public:
 
   /// shorthand for a smart pointer to a factor
-#if GTSAM_VERSION_MAJOR > 4 || (GTSAM_VERSION_MAJOR == 4 && GTSAM_VERSION_MINOR >= 3)
+#if GTSAM_VERSION_NUMERIC >= 40300
   typedef std::shared_ptr<Pose3GravityFactor> shared_ptr;
 #else
   typedef boost::shared_ptr<Pose3GravityFactor> shared_ptr;
@@ -211,7 +211,7 @@ public:
 
   /// @return a deep copy of this factor
   virtual gtsam::NonlinearFactor::shared_ptr clone() const {
-#if GTSAM_VERSION_MAJOR > 4 || (GTSAM_VERSION_MAJOR == 4 && GTSAM_VERSION_MINOR >= 3)
+#if GTSAM_VERSION_NUMERIC >= 40300
     return std::static_pointer_cast<gtsam::NonlinearFactor>(
 #else
     return boost::static_pointer_cast<gtsam::NonlinearFactor>(
@@ -228,7 +228,7 @@ public:
 
   /** vector of errors */
   virtual Vector evaluateError(const Pose3& nTb, //
-#if GTSAM_VERSION_MAJOR > 4 || (GTSAM_VERSION_MAJOR == 4 && GTSAM_VERSION_MINOR >= 3)
+#if GTSAM_VERSION_NUMERIC >= 40300
       OptionalMatrixType H = OptionalNone) const {
 #else
       boost::optional<Matrix&> H = boost::none) const {
@@ -249,7 +249,7 @@ public:
   }
 
 private:
-#if defined(GTSAM_ENABLE_BOOST_SERIALIZATION) || GTSAM_VERSION_MAJOR < 4 || (GTSAM_VERSION_MAJOR == 4 && GTSAM_VERSION_MINOR < 3)
+#if defined(GTSAM_ENABLE_BOOST_SERIALIZATION) || GTSAM_VERSION_NUMERIC < 40300
   /** Serialization function */
   friend class boost::serialization::access;
   template<class ARCHIVE>
