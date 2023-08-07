@@ -41,14 +41,24 @@ public:
   // error function
   // @param p    the pose in Pose
   // @param H    the optional Jacobian matrix, which use boost optional and has default null pointer
-  gtsam::Vector evaluateError(const gtsam::Pose3& p, boost::optional<gtsam::Matrix&> H = boost::none) const {
+  gtsam::Vector evaluateError(const gtsam::Pose3& p,
+#if GTSAM_VERSION_NUMERIC >= 40300
+		  OptionalMatrixType H = OptionalNone) const {
+#else
+		  boost::optional<gtsam::Matrix&> H = boost::none) const {
+#endif
     if(H)
     {
 	  p.translation(H);
     }
     return (gtsam::Vector3() << p.x() - mx_, p.y() - my_, p.z() - mz_).finished();
   }
-  gtsam::Vector evaluateError(const gtsam::Point3& p, boost::optional<gtsam::Matrix&> H = boost::none) const {
+  gtsam::Vector evaluateError(const gtsam::Point3& p,
+#if GTSAM_VERSION_NUMERIC >= 40300
+		  OptionalMatrixType H = OptionalNone) const {
+#else
+		  boost::optional<gtsam::Matrix&> H = boost::none) const {
+#endif
     return (gtsam::Vector3() << p.x() - mx_, p.y() - my_, p.z() - mz_).finished();
   }
 };
