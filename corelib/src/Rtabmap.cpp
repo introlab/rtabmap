@@ -1667,7 +1667,10 @@ bool Rtabmap::process(
 
 			Link tmp = signature->getLinks().begin()->second.inverse();
 
-			_distanceTravelled += tmp.transform().getNorm();
+			if(!smallDisplacement)
+			{
+				_distanceTravelled += tmp.transform().getNorm();
+			}
 
 			// if the previous node is an intermediate node, remove it from the local graph
 			if(_constraints.size() &&
@@ -1723,7 +1726,10 @@ bool Rtabmap::process(
 			if(!_odomCachePoses.empty())
 			{
 				float odomDistance = (_odomCachePoses.rbegin()->second.inverse() * signature->getPose()).getNorm();
-				_distanceTravelled += odomDistance;
+				if(!smallDisplacement)
+				{
+					_distanceTravelled += odomDistance;
+				}
 
 				while(!_odomCachePoses.empty() && (int)_odomCachePoses.size() > _maxOdomCacheSize)
 				{
