@@ -4081,15 +4081,16 @@ bool Rtabmap::process(
 		ULOGGER_INFO("Time creating stats = %f...", timeStatsCreation);
 	}
 
-	Signature lastSignatureData(signature->id());
+	Signature lastSignatureData = *signature;
 	Transform lastSignatureLocalizedPose;
 	if(_optimizedPoses.find(signature->id()) != _optimizedPoses.end())
 	{
 		lastSignatureLocalizedPose = _optimizedPoses.at(signature->id());
 	}
-	if(_publishLastSignatureData)
+	if(!_publishLastSignatureData)
 	{
-		lastSignatureData = *signature;
+		lastSignatureData.sensorData().clearCompressedData();
+		lastSignatureData.sensorData().clearRawData();
 	}
 	if(!_rawDataKept)
 	{
@@ -4372,96 +4373,73 @@ bool Rtabmap::process(
 			poses = _optimizedPoses;
 			constraints = _constraints;
 		}
-		UDEBUG("");
-		if(_publishLastSignatureData)
-		{
-			UINFO("Adding data %d [%d] (rgb/left=%d depth/right=%d)", lastSignatureData.id(), lastSignatureData.mapId(), lastSignatureData.sensorData().imageRaw().empty()?0:1, lastSignatureData.sensorData().depthOrRightRaw().empty()?0:1);
+		UINFO("Adding data %d [%d] (rgb/left=%d depth/right=%d)", lastSignatureData.id(), lastSignatureData.mapId(), lastSignatureData.sensorData().imageRaw().empty()?0:1, lastSignatureData.sensorData().depthOrRightRaw().empty()?0:1);
 			statistics_.addSignatureData(lastSignatureData);
 
-			if(_nodesToRepublish.size())
+		if(_nodesToRepublish.size())
+		{
+			std::multimap<int, int> missingIds;
+
+			// priority to loopId
+			int tmpId = loopId>0?loopId:_highestHypothesis.first;
+			if(tmpId>0 && _nodesToRepublish.find(tmpId) != _nodesToRepublish.end())
 			{
-				std::multimap<int, int> missingIds;
+				missingIds.insert(std::make_pair(-1, tmpId));
+			}
 
-				// priority to loopId
-				int tmpId = loopId>0?loopId:_highestHypothesis.first;
-				if(tmpId>0 && _nodesToRepublish.find(tmpId) != _nodesToRepublish.end())
+			if(!_lastLocalizationPose.isNull())
+			{
+				// Republish data from closest nodes of the current localization
+				std::map<int, Transform> nodesOnly(_optimizedPoses.lower_bound(1), _optimizedPoses.end());
+				int id = rtabmap::graph::findNearestNode(nodesOnly, _lastLocalizationPose);
+				if(id>0)
 				{
-					missingIds.insert(std::make_pair(-1, tmpId));
-				}
-
-				if(!_lastLocalizationPose.isNull())
-				{
-					// Republish data from closest nodes of the current localization
-					std::map<int, Transform> nodesOnly(_optimizedPoses.lower_bound(1), _optimizedPoses.end());
-					int id = rtabmap::graph::findNearestNode(nodesOnly, _lastLocalizationPose);
-					if(id>0)
+					std::map<int, int> ids = _memory->getNeighborsId(id, 0, 0, true, false, true);
+					for(std::map<int, int>::iterator iter=ids.begin(); iter!=ids.end(); ++iter)
 					{
-						std::map<int, int> ids = _memory->getNeighborsId(id, 0, 0, true, false, true);
-						for(std::map<int, int>::iterator iter=ids.begin(); iter!=ids.end(); ++iter)
+						if(iter->first != loopId &&
+								_nodesToRepublish.find(iter->first) != _nodesToRepublish.end())
 						{
-							if(iter->first != loopId &&
-									_nodesToRepublish.find(iter->first) != _nodesToRepublish.end())
-							{
-								missingIds.insert(std::make_pair(iter->second, iter->first));
-							}
+							missingIds.insert(std::make_pair(iter->second, iter->first));
 						}
+					}
 
-						if(_nodesToRepublish.size() != missingIds.size())
+					if(_nodesToRepublish.size() != missingIds.size())
+					{
+						// remove requested nodes not anymore in the graph
+						for(std::set<int>::iterator iter=_nodesToRepublish.begin(); iter!=_nodesToRepublish.end();)
 						{
-							// remove requested nodes not anymore in the graph
-							for(std::set<int>::iterator iter=_nodesToRepublish.begin(); iter!=_nodesToRepublish.end();)
+							if(ids.find(*iter) == ids.end())
 							{
-								if(ids.find(*iter) == ids.end())
-								{
-									iter = _nodesToRepublish.erase(iter);
-								}
-								else
-								{
-									++iter;
-								}
+								iter = _nodesToRepublish.erase(iter);
+							}
+							else
+							{
+								++iter;
 							}
 						}
 					}
 				}
+			}
 
-				int loaded = 0;
-				std::stringstream stream;
-				for(std::multimap<int, int>::iterator iter=missingIds.begin(); iter!=missingIds.end() && loaded<(int)_maxRepublished; ++iter)
-				{
-					statistics_.addSignatureData(getSignatureCopy(iter->second, true, true, true, true, true, true));
-					_nodesToRepublish.erase(iter->second);
-					++loaded;
-					stream << iter->second << " ";
-				}
-				if(loaded)
-				{
-					UWARN("Republishing data of requested node(s) %s(%s=%d)",
-							stream.str().c_str(),
-							Parameters::kRtabmapMaxRepublished().c_str(),
-							_maxRepublished);
-				}
-			}
-		}
-		else
-		{
-			// only copy node info
-			Signature nodeInfo(
-					lastSignatureData.id(),
-					lastSignatureData.mapId(),
-					lastSignatureData.getWeight(),
-					lastSignatureData.getStamp(),
-					lastSignatureData.getLabel(),
-					lastSignatureData.getPose(),
-					lastSignatureData.getGroundTruthPose());
-			const std::vector<float> & v = lastSignatureData.getVelocity();
-			if(v.size() == 6)
+			int loaded = 0;
+			std::stringstream stream;
+			for(std::multimap<int, int>::iterator iter=missingIds.begin(); iter!=missingIds.end() && loaded<(int)_maxRepublished; ++iter)
 			{
-				nodeInfo.setVelocity(v[0], v[1], v[2], v[3], v[4], v[5]);
+				statistics_.addSignatureData(getSignatureCopy(iter->second, true, true, true, true, true, true));
+				_nodesToRepublish.erase(iter->second);
+				++loaded;
+				stream << iter->second << " ";
 			}
-			nodeInfo.sensorData().setGPS(lastSignatureData.sensorData().gps());
-			nodeInfo.sensorData().setEnvSensors(lastSignatureData.sensorData().envSensors());
-			statistics_.addSignatureData(nodeInfo);
+			if(loaded)
+			{
+				UWARN("Republishing data of requested node(s) %s(%s=%d)",
+						stream.str().c_str(),
+						Parameters::kRtabmapMaxRepublished().c_str(),
+						_maxRepublished);
+			}
 		}
+
 		UDEBUG("");
 		localGraphSize = (int)poses.size();
 		if(!lastSignatureLocalizedPose.isNull())
