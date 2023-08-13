@@ -54,22 +54,18 @@ This project is supported by [IntRoLab - Intelligent / Interactive / Integrated 
  <table>
     <tbody>
         <tr>
-           <td rowspan="2">ROS 1</td>
-           <td>Melodic</td>
-            <td><a href="http://build.ros.org/job/Mbin_ubv8_uBv8__rtabmap__ubuntu_bionic_arm64__binary/"><img src="http://build.ros.org/buildStatus/icon?job=Mbin_ubv8_uBv8__rtabmap__ubuntu_bionic_arm64__binary" alt="Build Status"/></td>
-        </tr>
-        <tr>
+           <td rowspan="1">ROS 1</td>
             <td>Noetic</td>
             <td><a href="http://build.ros.org/job/Nbin_ufv8_uFv8__rtabmap__ubuntu_focal_arm64__binary/"><img src="http://build.ros.org/buildStatus/icon?job=Nbin_ufv8_uFv8__rtabmap__ubuntu_focal_arm64__binary" alt="Build Status"/></td>
         </tr>
         <tr>
             <td rowspan="3">ROS 2</td>
-            <td>Foxy</td>
-            <td><a href="http://build.ros2.org/job/Fbin_uF64__rtabmap__ubuntu_focal_amd64__binary/"><img src="http://build.ros2.org/buildStatus/icon?job=Fbin_uF64__rtabmap__ubuntu_focal_amd64__binary" alt="Build Status"/></td>
-        </tr>
-        <tr>
             <td>Humble</td>
             <td><a href="http://build.ros2.org/job/Hbin_uJ64__rtabmap__ubuntu_jammy_amd64__binary/"><img src="http://build.ros2.org/buildStatus/icon?job=Hbin_uJ64__rtabmap__ubuntu_jammy_amd64__binary" alt="Build Status"/></td>
+        </tr>
+        <tr>
+            <td>Iron</td>
+            <td><a href="http://build.ros2.org/job/Ibin_uJ64__rtabmap__ubuntu_jammy_amd64__binary/"><img src="http://build.ros2.org/buildStatus/icon?job=Ibin_uJ64__rtabmap__ubuntu_jammy_amd64__binary" alt="Build Status"/></td>
         </tr>
         <tr>
             <td>Rolling</td>
