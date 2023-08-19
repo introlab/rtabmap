@@ -324,6 +324,7 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 	auto config = stereo->initialConfig.get();
 	config.censusTransform.kernelSize = dai::StereoDepthConfig::CensusTransform::KernelSize::KERNEL_7x9;
 	config.censusTransform.kernelMask = 0X2AA00AA805540155;
+	config.postProcessing.brightnessFilter.maxBrightness = 255;
 	stereo->initialConfig.set(config);
 
 	// Link plugins CAM -> STEREO -> XLINK
