@@ -11,7 +11,7 @@ jobs:
     
     strategy:
       matrix:
-        docker_tag: [focal-deps, jammy-deps]
+        docker_tag: [focal-deps, jammy-deps, jammy-iron-deps]
         include:
         - docker_tag: focal-deps
           docker_tags: |
@@ -27,6 +27,13 @@ jobs:
             linux/amd64
             linux/arm64
           docker_path: 'jammy/deps'
+        - docker_tag: jammy-iron-deps
+          docker_tags: |
+            introlab3it/rtabmap:jammy-iron-deps
+          docker_platforms: |
+            linux/amd64
+            linux/arm64
+          docker_path: 'jammy-iron/deps'
     
     steps:
       -
@@ -64,7 +71,7 @@ jobs:
     
     strategy:
       matrix:
-        docker_tag: [xenial, bionic, focal, jammy, android23, android24, android26, android30]
+        docker_tag: [xenial, bionic, focal, jammy, jammy-iron, android23, android24, android26, android30]
         include:
         - docker_tag: xenial
           docker_tags: |
@@ -106,6 +113,15 @@ jobs:
             linux/amd64
             linux/arm64
           docker_path: 'jammy'
+        - docker_tag: jammy-iron
+          docker_tags: |
+            introlab3it/rtabmap:jammy-iron
+          docker_args: |
+            NOT_USED=0
+          docker_platforms: |
+            linux/amd64
+            linux/arm64
+          docker_path: 'jammy-iron'
         - docker_tag: android23
           docker_tags: |
             introlab3it/rtabmap:android23
