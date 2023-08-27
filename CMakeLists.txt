@@ -519,6 +519,9 @@ IF(WITH_POINTMATCHER)
     find_package(libpointmatcher QUIET)
     IF(libpointmatcher_FOUND)
        MESSAGE(STATUS "Found libpointmatcher: ${libpointmatcher_INCLUDE_DIRS}")
+       # Find libnabo:
+       find_package(libnabo REQUIRED PATHS ${LIBNABO_INSTALL_DIR})
+       message(STATUS "libnabo found, version ${libnabo_VERSION} (Config mode)")
     ENDIF(libpointmatcher_FOUND)
 ENDIF(WITH_POINTMATCHER)
 
