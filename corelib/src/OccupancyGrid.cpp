@@ -377,7 +377,7 @@ void OccupancyGrid::createLocalMap(
 			}
 			else
 			{
-				UWARN("Cannot create local map, scan is empty (node=%d, %s=0).", node.id(), Parameters::kGridSensor().c_str());
+				UWARN("Cannot create local map from scan: scan is empty (node=%d, %s=%d).", node.id(), Parameters::kGridSensor().c_str(), occupancySensor_);
 			}
 		}
 
@@ -457,9 +457,12 @@ void OccupancyGrid::createLocalMap(
 			if(occupancySensor_ == 2)
 			{
 				// backup
-				scanGroundCells = groundCells.clone();
-				scanObstacleCells = obstacleCells.clone();
-				scanEmptyCells = emptyCells.clone();
+				scanGroundCells = groundCells;
+				scanObstacleCells = obstacleCells;
+				scanEmptyCells = emptyCells;
+				groundCells = cv::Mat();
+				obstacleCells = cv::Mat();
+				emptyCells = cv::Mat();
 			}
 
 			createLocalMap(LaserScan(util3d::laserScanFromPointCloud(*cloud, indices), 0, 0.0f), node.getPose(), groundCells, obstacleCells, emptyCells, viewPoint);
