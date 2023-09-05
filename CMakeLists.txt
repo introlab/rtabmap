@@ -518,10 +518,14 @@ ENDIF(WITH_CVSBA)
 IF(WITH_POINTMATCHER)
     find_package(libpointmatcher QUIET)
     IF(libpointmatcher_FOUND)
-       MESSAGE(STATUS "Found libpointmatcher: ${libpointmatcher_INCLUDE_DIRS}")
-       # Find libnabo:
-       find_package(libnabo REQUIRED PATHS ${LIBNABO_INSTALL_DIR})
-       message(STATUS "libnabo found, version ${libnabo_VERSION} (Config mode)")
+        MESSAGE(STATUS "Found libpointmatcher: ${libpointmatcher_INCLUDE_DIRS}")
+        string(FIND "${libpointmatcher_LIBRARIES}" "libnabo" value)
+        IF(value EQUAL -1)
+            # Find libnabo (Issue #1117):
+            find_package(libnabo REQUIRED PATHS ${LIBNABO_INSTALL_DIR})
+            message(STATUS "libnabo found, version ${libnabo_VERSION} (Config mode)")
+            SET(libpointmatcher_LIBRARIES "${libpointmatcher_LIBRARIES};libnabo::nabo")
+        ENDIF(value EQUAL -1)
     ENDIF(libpointmatcher_FOUND)
 ENDIF(WITH_POINTMATCHER)
 

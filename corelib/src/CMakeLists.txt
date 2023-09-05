@@ -457,7 +457,6 @@ IF(libpointmatcher_FOUND)
 	SET(LIBRARIES
 		${LIBRARIES}
 		${libpointmatcher_LIBRARIES}
-		libnabo::nabo
 	)
 ENDIF(libpointmatcher_FOUND)
 
