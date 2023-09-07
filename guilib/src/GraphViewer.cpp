@@ -1798,6 +1798,8 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 {
 	QMenu menu;
 	QAction * aScreenShot = menu.addAction(tr("Take a screenshot..."));
+	QAction * aExportGridMap = menu.addAction(tr("Export grid map..."));
+	aExportGridMap->setEnabled(!_gridMap->pixmap().isNull());
 	menu.addSeparator();
 
 	QAction * aChangeNodeColor = menu.addAction(createIcon(_nodeColor), tr("Set node color..."));
@@ -2094,6 +2096,48 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 			}
 		}
 		return; // without emitting configChanged
+	}
+	else if(r == aExportGridMap)
+	{
+		float xMin, yMin, cellSize;
+
+		cellSize = _gridCellSize;
+		xMin = -_gridMap->y()/100.0f;
+		yMin = -_gridMap->x()/100.0f;
+
+		QString path = QFileDialog::getSaveFileName(
+				this,
+				tr("Save File"),
+				"map.pgm",
+				tr("Map (*.pgm)"));
+
+		if(!path.isEmpty())
+		{
+			if(QFileInfo(path).suffix() == "")
+			{
+				path += ".pgm";
+			}
+			_gridMap->pixmap().save(path);
+
+			QFileInfo info(path);
+			QString yaml = info.absolutePath() + "/" +  info.baseName() + ".yaml";
+
+			float occupancyThr = Parameters::defaultGridGlobalOccupancyThr();
+
+			std::ofstream file;
+			file.open (yaml.toStdString());
+			file << "image: " << info.baseName().toStdString() << ".pgm" << std::endl;
+			file << "resolution: " << cellSize << std::endl;
+			file << "origin: [" << xMin << ", " << yMin << ", 0.0]" << std::endl;
+			file << "negate: 0" << std::endl;
+			file << "occupied_thresh: " << occupancyThr << std::endl;
+			file << "free_thresh: 0.196" << std::endl;
+			file << std::endl;
+			file.close();
+
+
+			QMessageBox::information(this, tr("Export 2D map"), tr("Exported %1 and %2!").arg(path).arg(yaml));
+		}
 	}
 	else if(r == aSetIntraInterSessionColors)
 	{
