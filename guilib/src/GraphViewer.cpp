@@ -62,6 +62,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 	#include <QStandardPaths>
 #endif
 
+#include <fstream>
+
 namespace rtabmap {
 
 class NodeItem: public QGraphicsEllipseItem
