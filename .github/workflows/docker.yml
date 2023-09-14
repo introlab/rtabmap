@@ -70,17 +70,8 @@ jobs:
     
     strategy:
       matrix:
-        docker_tag: [xenial, bionic, focal, jammy, jammy-iron, android23, android24, android26, android30]
+        docker_tag: [bionic, focal, jammy, jammy-iron, android23, android24, android26, android30]
         include:
-        - docker_tag: xenial
-          docker_tags: |
-            introlab3it/rtabmap:xenial
-            introlab3it/rtabmap:16.04
-          docker_args: |
-            NOT_USED=0
-          docker_platforms: |
-            linux/amd64
-          docker_path: 'xenial'
         - docker_tag: bionic
           docker_tags: |
             introlab3it/rtabmap:bionic
