@@ -325,6 +325,9 @@ IF(WITH_QT)
     ENDIF()
         
     IF(QT4_FOUND OR Qt5_FOUND OR Qt6_FOUND)
+        set(CMAKE_AUTOUIC ON)
+        set(CMAKE_AUTOMOC ON)
+        set(CMAKE_AUTORCC ON)
         IF("${VTK_MAJOR_VERSION}" EQUAL 5)
             FIND_PACKAGE(QVTK REQUIRED) # only for VTK 5
         ELSE()

@@ -38,46 +38,12 @@ SET(headers_ui
 	../include/${PROJECT_PREFIX}/gui/MultiSessionLocSubView.h
 )
 
-SET(uis
-    ./ui/mainWindow.ui
-    ./ui/preferencesDialog.ui
-    ./ui/aboutDialog.ui
-    ./ui/consoleWidget.ui
-    ./ui/DatabaseViewer.ui
-    ./ui/loopClosureViewer.ui
-    ./ui/exportDialog.ui
-    ./ui/postProcessingDialog.ui
-    ./ui/exportCloudsDialog.ui
-    ./ui/calibrationDialog.ui
-    ./ui/createSimpleCalibrationDialog.ui
-    ./ui/depthCalibrationDialog.ui
-    ./ui/exportBundlerDialog.ui
-    ./ui/editConstraintDialog.ui
-    ./ui/multiSessionLocSubView.ui
-)
-
 SET(qrc 
     ./GuiLib.qrc
 )
 
-IF(QT4_FOUND)
-    # generate rules for building source files from the resources
-    QT4_ADD_RESOURCES(srcs_qrc ${qrc})
-
-    #Generate .h files from the .ui files
-    QT4_WRAP_UI(moc_uis ${uis})
-
-    #This will generate moc_* for Qt
-    QT4_WRAP_CPP(moc_srcs ${headers_ui})
-    ### Qt Gui stuff  end###
-ELSEIF(Qt5_FOUND)
-    QT5_ADD_RESOURCES(srcs_qrc ${qrc})
-    QT5_WRAP_UI(moc_uis ${uis})
-    QT5_WRAP_CPP(moc_srcs ${headers_ui})
-ELSE()
-    QT6_ADD_RESOURCES(srcs_qrc ${qrc})
-    QT6_WRAP_UI(moc_uis ${uis})
-    QT6_WRAP_CPP(moc_srcs ${headers_ui})
+IF(QT4_FOUND OR Qt5_FOUND OR Qt6_FOUND)
+    set(CMAKE_AUTOUIC_SEARCH_PATHS ./ui/)
 ENDIF()
 
 
@@ -117,10 +83,8 @@ SET(SRC_FILES
 	./DepthCalibrationDialog.cpp
 	./3rdParty/QMultiComboBox.cpp
 	./opencv/vtkImageMatSource.cpp
-	
-	${moc_srcs} 
-	${moc_uis} 
-	${srcs_qrc}
+	${qrc}
+	${headers_ui}
 )
 
 # to get includes in visual studio
