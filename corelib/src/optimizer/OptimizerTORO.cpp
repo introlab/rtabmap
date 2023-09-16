@@ -36,8 +36,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/optimizer/OptimizerTORO.h>
 
 #ifdef RTABMAP_TORO
-#include "toro3d/treeoptimizer3.hh"
-#include "toro3d/treeoptimizer2.hh"
+#include "toro3d/treeoptimizer3.h"
+#include "toro3d/treeoptimizer2.h"
 #endif
 
 namespace rtabmap {

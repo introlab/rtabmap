@@ -40,7 +40,8 @@
  * such as loading, saving, merging constraints, and etc.
  **/
 
-#include "posegraph2.hh"
+#include "posegraph2.h"
+
 #include <fstream>
 #include <sstream>
 #include <string>

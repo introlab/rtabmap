@@ -41,7 +41,8 @@
  *
  **/
 
-#include "treeoptimizer2.hh"
+#include "treeoptimizer2.h"
+
 #include <fstream>
 #include <sstream>
 #include <string>

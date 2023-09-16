@@ -750,6 +750,7 @@ foreach(arg ${RESOURCES})
    get_filename_component(filename ${arg} NAME)
    string(REPLACE "." "_" output ${filename})
    set(RESOURCES_HEADERS "${RESOURCES_HEADERS}" "${CMAKE_CURRENT_BINARY_DIR}/${output}.h")
+   set_property(SOURCE "${CMAKE_CURRENT_BINARY_DIR}/${output}.h" PROPERTY SKIP_AUTOGEN ON)
 endforeach(arg ${RESOURCES})
 
 #MESSAGE(STATUS "RESOURCES = ${RESOURCES}")

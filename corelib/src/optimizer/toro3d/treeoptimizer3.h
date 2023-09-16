@@ -44,7 +44,7 @@
 #ifndef _TREEOPTIMIZER3_HH_
 #define _TREEOPTIMIZER3_HH_
 
-#include "posegraph3.hh"
+#include "posegraph3.h"
 
 namespace AISNavigation {
 
