@@ -209,6 +209,7 @@ IF(WITH_PYTHON AND Python3_FOUND)
 		${LIBRARIES}
 		Python3::Python
 		Python3::NumPy
+		pybind11::embed
 	)
 	SET(SRC_FILES
 		${SRC_FILES}

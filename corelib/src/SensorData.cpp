@@ -810,23 +810,23 @@ void SensorData::setFeatures(const std::vector<cv::KeyPoint> & keypoints, const 
 unsigned long SensorData::getMemoryUsed() const // Return memory usage in Bytes
 {
 	return sizeof(SensorData) +
-			_imageCompressed.total()*_imageCompressed.elemSize() +
-			_imageRaw.total()*_imageRaw.elemSize() +
-			_depthOrRightCompressed.total()*_depthOrRightCompressed.elemSize() +
-			_depthOrRightRaw.total()*_depthOrRightRaw.elemSize() +
-			_userDataCompressed.total()*_userDataCompressed.elemSize() +
-			_userDataRaw.total()*_userDataRaw.elemSize() +
-			_laserScanCompressed.data().total()*_laserScanCompressed.data().elemSize() +
-			_laserScanRaw.data().total()*_laserScanRaw.data().elemSize() +
-			_groundCellsCompressed.total()*_groundCellsCompressed.elemSize() +
-			_groundCellsRaw.total()*_groundCellsRaw.elemSize() +
-			_obstacleCellsCompressed.total()*_obstacleCellsCompressed.elemSize() +
-			_obstacleCellsRaw.total()*_obstacleCellsRaw.elemSize()+
-			_emptyCellsCompressed.total()*_emptyCellsCompressed.elemSize() +
-			_emptyCellsRaw.total()*_emptyCellsRaw.elemSize()+
+			(_imageCompressed.empty()?0:_imageCompressed.total()*_imageCompressed.elemSize()) +
+			(_imageRaw.empty()?0:_imageRaw.total()*_imageRaw.elemSize()) +
+			(_depthOrRightCompressed.empty()?0:_depthOrRightCompressed.total()*_depthOrRightCompressed.elemSize()) +
+			(_depthOrRightRaw.empty()?0:_depthOrRightRaw.total()*_depthOrRightRaw.elemSize()) +
+			(_userDataCompressed.empty()?0:_userDataCompressed.total()*_userDataCompressed.elemSize()) +
+			(_userDataRaw.empty()?0:_userDataRaw.total()*_userDataRaw.elemSize()) +
+			(_laserScanCompressed.empty()?0:_laserScanCompressed.data().total()*_laserScanCompressed.data().elemSize()) +
+			(_laserScanRaw.empty()?0:_laserScanRaw.data().total()*_laserScanRaw.data().elemSize()) +
+			(_groundCellsCompressed.empty()?0:_groundCellsCompressed.total()*_groundCellsCompressed.elemSize()) +
+			(_groundCellsRaw.empty()?0:_groundCellsRaw.total()*_groundCellsRaw.elemSize()) +
+			(_obstacleCellsCompressed.empty()?0:_obstacleCellsCompressed.total()*_obstacleCellsCompressed.elemSize()) +
+			(_obstacleCellsRaw.empty()?0:_obstacleCellsRaw.total()*_obstacleCellsRaw.elemSize())+
+			(_emptyCellsCompressed.empty()?0:_emptyCellsCompressed.total()*_emptyCellsCompressed.elemSize()) +
+			(_emptyCellsRaw.empty()?0:_emptyCellsRaw.total()*_emptyCellsRaw.elemSize())+
 			_keypoints.size() * sizeof(cv::KeyPoint) +
 			_keypoints3D.size() * sizeof(cv::Point3f) +
-			_descriptors.total()*_descriptors.elemSize();
+			(_descriptors.empty()?0:_descriptors.total()*_descriptors.elemSize());
 }
 
 void SensorData::clearCompressedData(bool images, bool scan, bool userData)
