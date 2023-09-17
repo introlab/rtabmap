@@ -392,6 +392,7 @@ IF(WITH_PYTHON)
     FIND_PACKAGE(Python3 COMPONENTS Interpreter Development NumPy)
     IF(Python3_FOUND)
         MESSAGE(STATUS "Found Python3")
+        FIND_PACKAGE(pybind11 REQUIRED)
     ENDIF(Python3_FOUND)
 ENDIF(WITH_PYTHON)
 

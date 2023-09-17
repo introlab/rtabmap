@@ -8,83 +8,26 @@
 #include <rtabmap/core/PythonInterface.h>
 #include <rtabmap/utilite/ULogger.h>
 #include <rtabmap/utilite/UThread.h>
+#include <pybind11/embed.h>
 
 namespace rtabmap {
 
-UMutex PythonInterface::mutex_;
-int PythonInterface::refCount_ = 0;
-PyThreadState * PythonInterface::mainThreadState_ = 0;
-unsigned long PythonInterface::mainThreadID_ = 0;
-
-PythonInterface::PythonInterface() :
-		threadState_(0)
+PythonInterface::PythonInterface()
 {
-	UScopeMutex lockM(mutex_);
-	if(refCount_ == 0)
-	{
-		UINFO("Py_Initialize() with thread = %d", UThread::currentThreadId());
-		// initialize Python
-		Py_Initialize();
-
-		// initialize thread support
-		PyEval_InitThreads();
-		Py_DECREF(PyImport_ImportModule("threading"));
-
-		//release the GIL, store thread state, set the current thread state to NULL
-		mainThreadState_ = PyEval_SaveThread();
-		UASSERT(mainThreadState_);
-		mainThreadID_ = UThread::currentThreadId();
-	}
-
-	++refCount_;
+	UINFO("Initialize python interpreter");
+	guard_ = new pybind11::scoped_interpreter();
+	pybind11::module::import("threading");
+	release_ = new pybind11::gil_scoped_release();
 }
 
 PythonInterface::~PythonInterface()
 {
-	UScopeMutex lock(mutex_);
-	if(refCount_>0 && --refCount_==0)
-	{
-		// shut down the interpreter
-		UINFO("Py_Finalize() with thread = %d", UThread::currentThreadId());
-		PyEval_RestoreThread(mainThreadState_);
-		Py_Finalize();
-	}
+	UINFO("Finalize python interpreter");
+	delete release_;
+	delete guard_;
 }
 
-void PythonInterface::lock()
-{
-	mutex_.lock();
-
-	UDEBUG("Lock: Current thread=%d (main=%d)", UThread::currentThreadId(), mainThreadID_);
-	if(UThread::currentThreadId() == mainThreadID_)
-	{
-		PyEval_RestoreThread(mainThreadState_);
-	}
-	else
-	{
-		// create a thread state object for this thread
-		threadState_ = PyThreadState_New(mainThreadState_->interp);
-		UASSERT(threadState_);
-		PyEval_RestoreThread(threadState_);
-	}
-}
-
-void PythonInterface::unlock()
-{
-	if(UThread::currentThreadId() == mainThreadID_)
-	{
-		mainThreadState_ = PyEval_SaveThread();
-	}
-	else
-	{
-		PyThreadState_Clear(threadState_);
-		PyThreadState_DeleteCurrent();
-	}
-	UDEBUG("Unlock: Current thread=%d (main=%d)", UThread::currentThreadId(), mainThreadID_);
-	mutex_.unlock();
-}
-
-std::string PythonInterface::getTraceback()
+std::string getPythonTraceback()
 {
 	// Author: https://stackoverflow.com/questions/41268061/c-c-python-exception-traceback-not-being-generated
 

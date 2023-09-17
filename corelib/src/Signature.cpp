@@ -348,7 +348,7 @@ unsigned long Signature::getMemoryUsed(bool withSensorData) const // Return memo
 	total += _words.size() * (sizeof(int)*2+sizeof(std::multimap<int, cv::KeyPoint>::iterator)) + sizeof(std::multimap<int, cv::KeyPoint>);
 	total += _wordsKpts.size() * sizeof(cv::KeyPoint) + sizeof(std::vector<cv::KeyPoint>);
 	total += _words3.size() * sizeof(cv::Point3f) + sizeof(std::vector<cv::Point3f>);
-	total += _wordsDescriptors.total() * _wordsDescriptors.elemSize() + sizeof(cv::Mat);
+	total += _wordsDescriptors.empty()?0:_wordsDescriptors.total() * _wordsDescriptors.elemSize() + sizeof(cv::Mat);
 	total += _wordsChanged.size() * (sizeof(int)*2+sizeof(std::map<int, int>::iterator)) + sizeof(std::map<int, int>);
 	if(withSensorData)
 	{
