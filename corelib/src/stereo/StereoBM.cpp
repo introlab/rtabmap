@@ -121,6 +121,14 @@ cv::Mat StereoBM::computeDisparity(
 	stereo->setDisp12MaxDiff(disp12MaxDiff_);
 	stereo->compute(leftMono, rightImage, disparity);
 #endif
+
+	if(minDisparity_>0)
+	{
+		cv::Mat dst;
+		cv::threshold(disparity, dst, minDisparity_*16, 0, cv::THRESH_TOZERO);
+		disparity = dst;
+	}
+
 	return disparity;
 }
 
