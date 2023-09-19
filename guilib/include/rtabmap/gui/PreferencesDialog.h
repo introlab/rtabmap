@@ -264,6 +264,7 @@ public:
 	double getBilateralSigmaS() const;
 	double getBilateralSigmaR() const;
 	int getSourceImageDecimation() const;
+	int getSourceHistogramMethod() const;
 	bool isSourceStereoDepthGenerated() const;
 	bool isSourceStereoExposureCompensation() const;
 	bool isSourceScanFromDepth() const;

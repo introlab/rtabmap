@@ -816,6 +816,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 
 	connect(_ui->checkbox_rgbd_colorOnly, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->spinBox_source_imageDecimation, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->comboBox_source_histogramMethod, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->checkbox_stereo_depthGenerated, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->checkBox_stereo_exposureCompensation, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->pushButton_calibrate, SIGNAL(clicked()), this, SLOT(calibrate()));
@@ -1985,6 +1986,7 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 
 		_ui->checkbox_rgbd_colorOnly->setChecked(false);
 		_ui->spinBox_source_imageDecimation->setValue(1);
+		_ui->comboBox_source_histogramMethod->setCurrentIndex(0);
 		_ui->checkbox_stereo_depthGenerated->setChecked(false);
 		_ui->checkBox_stereo_exposureCompensation->setChecked(false);
 		_ui->openni2_autoWhiteBalance->setChecked(true);
@@ -2419,6 +2421,7 @@ void PreferencesDialog::readCameraSettings(const QString & filePath)
 	_ui->lineEdit_sourceDevice->setText(settings.value("device",_ui->lineEdit_sourceDevice->text()).toString());
 	_ui->lineEdit_sourceLocalTransform->setText(settings.value("localTransform",_ui->lineEdit_sourceLocalTransform->text()).toString());
 	_ui->spinBox_source_imageDecimation->setValue(settings.value("imageDecimation",_ui->spinBox_source_imageDecimation->value()).toInt());
+	_ui->comboBox_source_histogramMethod->setCurrentIndex(settings.value("histogramMethod", _ui->comboBox_source_histogramMethod->currentIndex()).toInt());
 	// Backward compatibility
 	if(_ui->lineEdit_sourceLocalTransform->text().compare("0 0 1 -1 0 0 0 -1 0") == 0)
 	{
@@ -2957,6 +2960,7 @@ void PreferencesDialog::writeCameraSettings(const QString & filePath) const
 	settings.setValue("device", 		 _ui->lineEdit_sourceDevice->text());
 	settings.setValue("localTransform",  _ui->lineEdit_sourceLocalTransform->text());
 	settings.setValue("imageDecimation",  _ui->spinBox_source_imageDecimation->value());
+	settings.setValue("histogramMethod",  _ui->comboBox_source_histogramMethod->currentIndex());
 
 	settings.beginGroup("rgbd");
 	settings.setValue("driver", 	       _ui->comboBox_cameraRGBD->currentIndex());
@@ -5921,6 +5925,10 @@ int PreferencesDialog::getSourceImageDecimation() const
 {
 	return _ui->spinBox_source_imageDecimation->value();
 }
+int PreferencesDialog::getSourceHistogramMethod() const
+{
+	return _ui->comboBox_source_histogramMethod->currentIndex();
+}
 bool PreferencesDialog::isSourceStereoDepthGenerated() const
 {
 	return _ui->checkbox_stereo_depthGenerated->isChecked();
@@ -6725,6 +6733,7 @@ void PreferencesDialog::testOdometry()
 	cameraThread.setMirroringEnabled(isSourceMirroring());
 	cameraThread.setColorOnly(_ui->checkbox_rgbd_colorOnly->isChecked());
 	cameraThread.setImageDecimation(_ui->spinBox_source_imageDecimation->value());
+	cameraThread.setHistogramMethod(_ui->comboBox_source_histogramMethod->currentIndex());
 	cameraThread.setStereoToDepth(_ui->checkbox_stereo_depthGenerated->isChecked());
 	cameraThread.setStereoExposureCompensation(_ui->checkBox_stereo_exposureCompensation->isChecked());
 	cameraThread.setScanParameters(
@@ -6796,6 +6805,7 @@ void PreferencesDialog::testCamera()
 		cameraThread.setMirroringEnabled(isSourceMirroring());
 		cameraThread.setColorOnly(_ui->checkbox_rgbd_colorOnly->isChecked());
 		cameraThread.setImageDecimation(_ui->spinBox_source_imageDecimation->value());
+		cameraThread.setHistogramMethod(_ui->comboBox_source_histogramMethod->currentIndex());
 		cameraThread.setStereoToDepth(_ui->checkbox_stereo_depthGenerated->isChecked());
 		cameraThread.setStereoExposureCompensation(_ui->checkBox_stereo_exposureCompensation->isChecked());
 		cameraThread.setScanParameters(

@@ -2955,7 +2955,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                         </property>
                        </widget>
                       </item>
-                      <item row="10" column="1">
+                      <item row="11" column="1">
                        <widget class="QLabel" name="label_244">
                         <property name="text">
                          <string>Create a calibration file with known intrinsics (fx, fy, cx, cy). Useful if you already know the intrinsics of the source of images.</string>
@@ -2968,7 +2968,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                         </property>
                        </widget>
                       </item>
-                      <item row="7" column="0">
+                      <item row="8" column="0">
                        <layout class="QHBoxLayout" name="horizontalLayout_5" stretch="0,1">
                         <item>
                          <widget class="QToolButton" name="toolButton_source_path_calibration">
@@ -3068,7 +3068,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                         </item>
                        </widget>
                       </item>
-                      <item row="11" column="0">
+                      <item row="12" column="0">
                        <widget class="QPushButton" name="pushButton_test_camera">
                         <property name="sizePolicy">
                          <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
@@ -3081,7 +3081,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                         </property>
                        </widget>
                       </item>
-                      <item row="9" column="0">
+                      <item row="10" column="0">
                        <widget class="QPushButton" name="pushButton_calibrate">
                         <property name="sizePolicy">
                          <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
@@ -3094,7 +3094,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                         </property>
                        </widget>
                       </item>
-                      <item row="9" column="1">
+                      <item row="10" column="1">
                        <widget class="QLabel" name="label_24">
                         <property name="text">
                          <string>Calibration files are saved in &quot;camera_info&quot; folder of the working directory.</string>
@@ -3114,7 +3114,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                         </property>
                        </widget>
                       </item>
-                      <item row="10" column="0">
+                      <item row="11" column="0">
                        <widget class="QPushButton" name="pushButton_calibrate_simple">
                         <property name="sizePolicy">
                          <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
@@ -3127,7 +3127,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                         </property>
                        </widget>
                       </item>
-                      <item row="7" column="1">
+                      <item row="8" column="1">
                        <widget class="QLabel" name="label_18">
                         <property name="text">
                          <string>Calibration file path (*.yaml). If empty, the GUID of the camera is used (for those having one). OpenNI and Freenect drivers use factory calibration by default (so they ignore this parameter). A calibrated camera is required for RGB-D SLAM mode.</string>
@@ -3161,6 +3161,44 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                        </widget>
                       </item>
                       <item row="6" column="1">
+                       <widget class="QLabel" name="label_681">
+                        <property name="text">
+                         <string>Equalizes the histogram of grayscale images.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="6" column="0">
+                       <widget class="QComboBox" name="comboBox_source_histogramMethod">
+                        <property name="currentIndex">
+                         <number>0</number>
+                        </property>
+                        <property name="sizeAdjustPolicy">
+                         <enum>QComboBox::AdjustToContents</enum>
+                        </property>
+                        <item>
+                         <property name="text">
+                          <string>None</string>
+                         </property>
+                        </item>
+                        <item>
+                         <property name="text">
+                          <string>Histogram</string>
+                         </property>
+                        </item>
+                        <item>
+                         <property name="text">
+                          <string>CLAHE</string>
+                         </property>
+                        </item>
+                       </widget>
+                      </item>
+                      <item row="7" column="1">
                        <widget class="QLabel" name="label_229">
                         <property name="text">
                          <string>Only RGB images (for RGB-D cameras) or left images (for stereo cameras) are published.</string>
@@ -3173,7 +3211,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                         </property>
                        </widget>
                       </item>
-                      <item row="6" column="0">
+                      <item row="7" column="0">
                        <widget class="QCheckBox" name="checkbox_rgbd_colorOnly">
                         <property name="text">
                          <string/>
