@@ -80,6 +80,7 @@ public:
 	void setStereoExposureCompensation(bool enabled) {_stereoExposureCompensation = enabled;}
 	void setColorOnly(bool colorOnly) {_colorOnly = colorOnly;}
 	void setImageDecimation(int decimation) {_imageDecimation = decimation;}
+	void setHistogramMethod(int histogramMethod) {_histogramMethod = histogramMethod;}
 	void setStereoToDepth(bool enabled) {_stereoToDepth = enabled;}
 	void setImageRate(float imageRate);
 	void setDistortionModel(const std::string & path);
@@ -134,6 +135,7 @@ private:
 	bool _stereoExposureCompensation;
 	bool _colorOnly;
 	int _imageDecimation;
+	int _histogramMethod;
 	bool _stereoToDepth;
 	bool _scanFromDepth;
 	int _scanDownsampleStep;

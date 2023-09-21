@@ -57,6 +57,7 @@ CameraThread::CameraThread(Camera * camera, const ParametersMap & parameters) :
 		_stereoExposureCompensation(false),
 		_colorOnly(false),
 		_imageDecimation(1),
+		_histogramMethod(0),
 		_stereoToDepth(false),
 		_scanFromDepth(false),
 		_scanDownsampleStep(1),
@@ -96,6 +97,7 @@ CameraThread::CameraThread(
 			_stereoExposureCompensation(false),
 			_colorOnly(false),
 			_imageDecimation(1),
+			_histogramMethod(0),
 			_stereoToDepth(false),
 			_scanFromDepth(false),
 			_scanDownsampleStep(1),
@@ -134,6 +136,7 @@ CameraThread::CameraThread(
 			_stereoExposureCompensation(false),
 			_colorOnly(false),
 			_imageDecimation(1),
+			_histogramMethod(0),
 			_stereoToDepth(false),
 			_scanFromDepth(false),
 			_scanDownsampleStep(1),
@@ -458,6 +461,7 @@ void CameraThread::postUpdate(SensorData * dataPtr, CameraInfo * info) const
 		}
 		if(info) info->timeImageDecimation = timer.ticks();
 	}
+
 	if(_mirroring && !data.imageRaw().empty() && data.cameraModels().size()>=1)
 	{
 		if(data.cameraModels().size() == 1)
@@ -490,6 +494,50 @@ void CameraThread::postUpdate(SensorData * dataPtr, CameraInfo * info) const
 		else
 		{
 			UWARN("Mirroring is not implemented for multiple cameras or stereo...");
+		}
+	}
+
+	if(_histogramMethod && !data.imageRaw().empty())
+	{
+		if(data.imageRaw().type() == CV_8UC1)
+		{
+			UDEBUG("");
+			UTimer timer;
+			cv::Mat image;
+			if(_histogramMethod == 1)
+			{
+				cv::equalizeHist(data.imageRaw(), image);
+				if(!data.depthRaw().empty())
+				{
+					data.setRGBDImage(image, data.depthRaw(), data.cameraModels());
+				}
+				else if(!data.rightRaw().empty())
+				{
+					cv::Mat right;
+					cv::equalizeHist(data.rightRaw(), right);
+					data.setStereoImage(image, right, data.stereoCameraModels()[0]);
+				}
+			}
+			else if(_histogramMethod == 2)
+			{
+				cv::Ptr<cv::CLAHE> clahe = cv::createCLAHE(3.0);
+				clahe->apply(data.imageRaw(), image);
+				if(!data.depthRaw().empty())
+				{
+					data.setRGBDImage(image, data.depthRaw(), data.cameraModels());
+				}
+				else if(!data.rightRaw().empty())
+				{
+					cv::Mat right;
+					clahe->apply(data.rightRaw(), right);
+					data.setStereoImage(image, right, data.stereoCameraModels()[0]);
+				}
+			}
+			if(info) info->timeHistogramEqualization = timer.ticks();
+		}
+		else
+		{
+			UWARN("Histogram equalization only supports grayscale images...");
 		}
 	}
 
