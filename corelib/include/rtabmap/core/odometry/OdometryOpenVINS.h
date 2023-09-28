@@ -32,6 +32,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 namespace ov_msckf {
 class VioManager;
+struct VioManagerOptions;
 }
 
 namespace rtabmap {
@@ -52,11 +53,10 @@ private:
 private:
 #ifdef RTABMAP_OPENVINS
 	std::unique_ptr<ov_msckf::VioManager> vioManager_;
+	std::unique_ptr<ov_msckf::VioManagerOptions> params_;
 	bool initGravity_;
 	Transform previousPose_;
-	Transform previousLocalTransform_;
-	Transform imuLocalTransform_;
-	std::map<double, IMU> imuBuffer_;
+	Transform imuLocalTransformInv_;
 #endif
 };
 
