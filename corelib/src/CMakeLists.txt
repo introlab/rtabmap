@@ -209,6 +209,9 @@ IF(WITH_PYTHON AND Python3_FOUND)
 		${PUBLIC_LIBRARIES}
 		Python3::Python
 		Python3::NumPy
+	)
+	SET(LIBRARIES
+		${LIBRARIES}
 		pybind11::embed
 	)
 	SET(SRC_FILES
