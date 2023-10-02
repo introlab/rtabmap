@@ -55,7 +55,7 @@ private:
 	std::unique_ptr<ov_msckf::VioManager> vioManager_;
 	std::unique_ptr<ov_msckf::VioManagerOptions> params_;
 	bool initGravity_;
-	Transform previousPose_;
+	Transform previousPoseInv_;
 	Transform imuLocalTransformInv_;
 #endif
 };
