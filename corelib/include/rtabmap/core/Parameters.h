@@ -576,6 +576,48 @@ class RTABMAP_CORE_EXPORT Parameters
     // Odometry VINS
     RTABMAP_PARAM_STR(OdomVINS, ConfigPath,     "",  "Path of VINS config file.");
 
+    // Odometry OpenVINS
+    RTABMAP_PARAM(OdomOpenVINS, UseStereo,                 bool,   true,   "If we have more than 1 camera, if we should try to track stereo constraints between pairs");
+    RTABMAP_PARAM(OdomOpenVINS, UseKLT,                    bool,   true,   "If true we will use KLT, otherwise use a ORB descriptor + robust matching");
+    RTABMAP_PARAM(OdomOpenVINS, NumPts,                    int,    200,    "Number of points (per camera) we will extract and try to track");
+    RTABMAP_PARAM(OdomOpenVINS, FastThreshold,             int,    30,     "Threshold for fast extraction (warning: lower threshs can be expensive)");
+    RTABMAP_PARAM(OdomOpenVINS, GridX,                     int,    5,      "Extraction sub-grid count for horizontal direction (uniform tracking)");
+    RTABMAP_PARAM(OdomOpenVINS, GridY,                     int,    5,      "Extraction sub-grid count for vertical direction (uniform tracking)");
+    RTABMAP_PARAM(OdomOpenVINS, MinPxDist,                 int,    15,     "Eistance between features (features near each other provide less information)");
+    RTABMAP_PARAM(OdomOpenVINS, KNNRatio,                  double, 0.7,    "Descriptor knn threshold for the top two descriptor matches");
+
+    RTABMAP_PARAM(OdomOpenVINS, UseFEJ,                    bool,   true,   "If first-estimate Jacobians should be used (enable for good consistency)");
+    RTABMAP_PARAM(OdomOpenVINS, Integration,               int,    1,      "0=discrete, 1=rk4, 2=analytical (if rk4 or analytical used then analytical covariance propagation is used)");
+    RTABMAP_PARAM(OdomOpenVINS, MaxClones,                 int,    11,     "Max clone size of sliding window");
+    RTABMAP_PARAM(OdomOpenVINS, MaxSLAM,                   int,    50,     "Max number of estimated SLAM features");
+    RTABMAP_PARAM(OdomOpenVINS, MaxSLAMInUpdate,           int,    25,     "Max number of SLAM features we allow to be included in a single EKF update.");
+    RTABMAP_PARAM(OdomOpenVINS, MaxMSCKFInUpdate,          int,    50,     "Max number of MSCKF features we will use at a given image timestep.");
+    RTABMAP_PARAM(OdomOpenVINS, FeatRepMSCKF,              int,    0,      "What representation our features are in (msckf features)");
+    RTABMAP_PARAM(OdomOpenVINS, FeatRepSLAM,               int,    4,      "What representation our features are in (slam features)");
+    RTABMAP_PARAM(OdomOpenVINS, DtSLAMDelay,               double, 2.0,    "Delay, in seconds, that we should wait from init before we start estimating SLAM features");
+    RTABMAP_PARAM(OdomOpenVINS, GravityMag,                double, 9.81,   "Gravity magnitude in the global frame (i.e. should be 9.81 typically)");
+
+    RTABMAP_PARAM(OdomOpenVINS, InitWindowTime,            double, 2.0,    "Amount of time we will initialize over (seconds)");
+    RTABMAP_PARAM(OdomOpenVINS, InitIMUThresh,             double, 1.0,    "Variance threshold on our acceleration to be classified as moving");
+    RTABMAP_PARAM(OdomOpenVINS, InitMaxDisparity,          double, 10.0,   "Max disparity to consider the platform stationary (dependent on resolution)");
+    RTABMAP_PARAM(OdomOpenVINS, InitMaxFeatures,           int,    50,     "How many features to track during initialization (saves on computation)");
+
+    RTABMAP_PARAM(OdomOpenVINS, TryZUPT,                   bool,   true,   "If we should try to use zero velocity update");
+    RTABMAP_PARAM(OdomOpenVINS, ZUPTChi2Multiplier,        double, 0.0,    "Chi2 multiplier for zero velocity");
+    RTABMAP_PARAM(OdomOpenVINS, ZUPTMaxVelodicy,           double, 0.1,    "Max velocity we will consider to try to do a zupt (i.e. if above this, don't do zupt)");
+    RTABMAP_PARAM(OdomOpenVINS, ZUPTNoiseMultiplier,       double, 10.0,   "Multiplier of our zupt measurement IMU noise matrix (default should be 1.0)");
+    RTABMAP_PARAM(OdomOpenVINS, ZUPTMaxDisparity,          double, 0.5,    "Max disparity we will consider to try to do a zupt (i.e. if above this, don't do zupt)");
+    RTABMAP_PARAM(OdomOpenVINS, ZUPTOnlyAtBeginning,       bool,   false,  "If we should only use the zupt at the very beginning static initialization phase");
+
+    RTABMAP_PARAM(OdomOpenVINS, AccelerometerNoiseDensity, double, 0.01,   "[m/s^2/sqrt(Hz)] (accel \"white noise\")");
+    RTABMAP_PARAM(OdomOpenVINS, AccelerometerRandomWalk,   double, 0.001,  "[m/s^3/sqrt(Hz)] (accel bias diffusion)");
+    RTABMAP_PARAM(OdomOpenVINS, GyroscopeNoiseDensity,     double, 0.001,  "[rad/s/sqrt(Hz)] (gyro \"white noise\")");
+    RTABMAP_PARAM(OdomOpenVINS, GyroscopeRandomWalk,       double, 0.0001, "[rad/s^2/sqrt(Hz)] (gyro bias diffusion)");
+    RTABMAP_PARAM(OdomOpenVINS, UpMSCKFSigmaPx,            double, 2.0,    "Pixel noise for MSCKF features");
+    RTABMAP_PARAM(OdomOpenVINS, UpMSCKFChi2Multiplier,     double, 1.0,    "Chi2 multiplier for MSCKF features");
+    RTABMAP_PARAM(OdomOpenVINS, UpSLAMSigmaPx,             double, 2.0,    "Pixel noise for SLAM features");
+    RTABMAP_PARAM(OdomOpenVINS, UpSLAMChi2Multiplier,      double, 1.0,    "Chi2 multiplier for SLAM features");
+
     // Odometry Open3D
     RTABMAP_PARAM(OdomOpen3D, MaxDepth,         float, 3.0,  "Maximum depth.");
     RTABMAP_PARAM(OdomOpen3D, Method,           int, 0,  "Registration method: 0=PointToPlane, 1=Intensity, 2=Hybrid.");

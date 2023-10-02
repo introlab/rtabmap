@@ -1433,6 +1433,48 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->lineEdit_OdomVinsPath->setObjectName(Parameters::kOdomVINSConfigPath().c_str());
 	connect(_ui->toolButton_OdomVinsPath, SIGNAL(clicked()), this, SLOT(changeOdometryVINSConfigPath()));
 
+	// Odometry OpenVINS
+	_ui->checkBox_OdomOpenVINSUseStereo->setObjectName(Parameters::kOdomOpenVINSUseStereo().c_str());
+	_ui->checkBox_OdomOpenVINSUseKLT->setObjectName(Parameters::kOdomOpenVINSUseKLT().c_str());
+	_ui->spinBox_OdomOpenVINSNumPts->setObjectName(Parameters::kOdomOpenVINSNumPts().c_str());
+	_ui->spinBox_OdomOpenVINSFastThreshold->setObjectName(Parameters::kOdomOpenVINSFastThreshold().c_str());
+	_ui->spinBox_OdomOpenVINSGridX->setObjectName(Parameters::kOdomOpenVINSGridX().c_str());
+	_ui->spinBox_OdomOpenVINSGridY->setObjectName(Parameters::kOdomOpenVINSGridY().c_str());
+	_ui->spinBox_OdomOpenVINSMinPxDist->setObjectName(Parameters::kOdomOpenVINSMinPxDist().c_str());
+	_ui->doubleSpinBox_OdomOpenVINSKNNRatio->setObjectName(Parameters::kOdomOpenVINSKNNRatio().c_str());
+
+	_ui->checkBox_OdomOpenVINSUseFEJ->setObjectName(Parameters::kOdomOpenVINSUseFEJ().c_str());
+	_ui->comboBox_OdomOpenVINSIntegration->setObjectName(Parameters::kOdomOpenVINSIntegration().c_str());
+	_ui->spinBox_OdomOpenVINSMaxClones->setObjectName(Parameters::kOdomOpenVINSMaxClones().c_str());
+	_ui->spinBox_OdomOpenVINSMaxSLAM->setObjectName(Parameters::kOdomOpenVINSMaxSLAM().c_str());
+	_ui->spinBox_OdomOpenVINSMaxSLAMInUpdate->setObjectName(Parameters::kOdomOpenVINSMaxSLAMInUpdate().c_str());
+	_ui->spinBox_OdomOpenVINSMaxMSCKFInUpdate->setObjectName(Parameters::kOdomOpenVINSMaxMSCKFInUpdate().c_str());
+	_ui->comboBox_OdomOpenVINSFeatRepMSCKF->setObjectName(Parameters::kOdomOpenVINSFeatRepMSCKF().c_str());
+	_ui->comboBox_OdomOpenVINSFeatRepSLAM->setObjectName(Parameters::kOdomOpenVINSFeatRepSLAM().c_str());
+	_ui->doubleSpinBox_OdomOpenVINSDtSLAMDelay->setObjectName(Parameters::kOdomOpenVINSDtSLAMDelay().c_str());
+	_ui->doubleSpinBox_OdomOpenVINSGravityMag->setObjectName(Parameters::kOdomOpenVINSGravityMag().c_str());
+
+	_ui->doubleSpinBox_OdomOpenVINSInitWindowTime->setObjectName(Parameters::kOdomOpenVINSInitWindowTime().c_str());
+	_ui->doubleSpinBox_OdomOpenVINSInitIMUThresh->setObjectName(Parameters::kOdomOpenVINSInitIMUThresh().c_str());
+	_ui->doubleSpinBox_OdomOpenVINSInitMaxDisparity->setObjectName(Parameters::kOdomOpenVINSInitMaxDisparity().c_str());
+	_ui->spinBox_OdomOpenVINSInitMaxFeatures->setObjectName(Parameters::kOdomOpenVINSInitMaxFeatures().c_str());
+
+	_ui->checkBox_OdomOpenVINSTryZUPT->setObjectName(Parameters::kOdomOpenVINSTryZUPT().c_str());
+	_ui->doubleSpinBox_OdomOpenVINSZUPTChi2Multiplier->setObjectName(Parameters::kOdomOpenVINSZUPTChi2Multiplier().c_str());
+	_ui->doubleSpinBox_OdomOpenVINSZUPTMaxVelodicy->setObjectName(Parameters::kOdomOpenVINSZUPTMaxVelodicy().c_str());
+	_ui->doubleSpinBox_OdomOpenVINSZUPTNoiseMultiplier->setObjectName(Parameters::kOdomOpenVINSZUPTNoiseMultiplier().c_str());
+	_ui->doubleSpinBox_OdomOpenVINSZUPTMaxDisparity->setObjectName(Parameters::kOdomOpenVINSZUPTMaxDisparity().c_str());
+	_ui->checkBox_OdomOpenVINSZUPTOnlyAtBeginning->setObjectName(Parameters::kOdomOpenVINSZUPTOnlyAtBeginning().c_str());
+
+	_ui->doubleSpinBox_OdomOpenVINSAccelerometerNoiseDensity->setObjectName(Parameters::kOdomOpenVINSAccelerometerNoiseDensity().c_str());
+	_ui->doubleSpinBox_OdomOpenVINSAccelerometerRandomWalk->setObjectName(Parameters::kOdomOpenVINSAccelerometerRandomWalk().c_str());
+	_ui->doubleSpinBox_OdomOpenVINSGyroscopeNoiseDensity->setObjectName(Parameters::kOdomOpenVINSGyroscopeNoiseDensity().c_str());
+	_ui->doubleSpinBox_OdomOpenVINSGyroscopeRandomWalk->setObjectName(Parameters::kOdomOpenVINSGyroscopeRandomWalk().c_str());
+	_ui->doubleSpinBox_OdomOpenVINSUpMSCKFSigmaPx->setObjectName(Parameters::kOdomOpenVINSUpMSCKFSigmaPx().c_str());
+	_ui->doubleSpinBox_OdomOpenVINSUpMSCKFChi2Multiplier->setObjectName(Parameters::kOdomOpenVINSUpMSCKFChi2Multiplier().c_str());
+	_ui->doubleSpinBox_OdomOpenVINSUpSLAMSigmaPx->setObjectName(Parameters::kOdomOpenVINSUpSLAMSigmaPx().c_str());
+	_ui->doubleSpinBox_OdomOpenVINSUpSLAMChi2Multiplier->setObjectName(Parameters::kOdomOpenVINSUpSLAMChi2Multiplier().c_str());
+
 	//Stereo
 	_ui->stereo_winWidth->setObjectName(Parameters::kStereoWinWidth().c_str());
 	_ui->stereo_winHeight->setObjectName(Parameters::kStereoWinHeight().c_str());
