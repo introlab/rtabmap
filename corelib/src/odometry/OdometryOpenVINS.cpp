@@ -333,9 +333,15 @@ Transform OdometryOpenVINS::computeTransform(
 
 					if(info)
 					{
+						double timestamp;
+						std::unordered_map<size_t, Eigen::Vector3d> feat_posinG, feat_tracks_uvd;
+						vioManager_->get_active_tracks(timestamp, feat_posinG, feat_tracks_uvd);
+						auto features_SLAM = vioManager_->get_features_SLAM();
+						auto good_features_MSCKF = vioManager_->get_good_features_MSCKF();
+
 						info->type = this->getType();
-						info->localMapSize = vioManager_->get_features_SLAM().size();
-						info->features = info->localMapSize + vioManager_->get_good_features_MSCKF().size();
+						info->localMapSize = feat_posinG.size();
+						info->features = features_SLAM.size() + good_features_MSCKF.size();
 						info->reg.covariance = cv::Mat(6,6,CV_64FC1);
 						std::vector<std::shared_ptr<ov_type::Type>> statevars;
 						statevars.emplace_back(state->_imu->pose()->p());
@@ -352,22 +358,26 @@ Transform OdometryOpenVINS::computeTransform(
 						if(this->isInfoDataFilled())
 						{
 							Transform fixT = this->getPose() * previousPoseInv_;
-							Transform camLocalTransformInv;
+							Transform camT;
 							if(!data.rightRaw().empty())
-								camLocalTransformInv = data.stereoCameraModels()[0].localTransform().inverse() * t.inverse() * this->getPose().inverse();
+								camT = data.stereoCameraModels()[0].localTransform().inverse() * t.inverse() * this->getPose().inverse() * fixT;
 							else
-								camLocalTransformInv = data.cameraModels()[0].localTransform().inverse() * t.inverse() * this->getPose().inverse();
+								camT = data.cameraModels()[0].localTransform().inverse() * t.inverse() * this->getPose().inverse() * fixT;
 							
-							for(auto &feature : vioManager_->get_features_SLAM())
+							for(auto &feature : feat_posinG)
 							{
-								cv::Point3f pt3d(feature[0], feature[1], feature[2]);
+								cv::Point3f pt3d(feature.second[0], feature.second[1], feature.second[2]);
 								pt3d = util3d::transformPoint(pt3d, fixT);
-								info->localMap.emplace_hint(info->localMap.end(), info->localMap.size(), pt3d);
+								info->localMap.emplace(feature.first, pt3d);
+							}
 
-								if(this->imagesAlreadyRectified())
+							if(this->imagesAlreadyRectified())
+							{
+								for(auto &feature : features_SLAM)
 								{
+									cv::Point3f pt3d(feature[0], feature[1], feature[2]);
+									pt3d = util3d::transformPoint(pt3d, camT);
 									cv::Point2f pt;
-									pt3d = util3d::transformPoint(pt3d, camLocalTransformInv);
 									if(!data.rightRaw().empty())
 										data.stereoCameraModels()[0].left().reproject(pt3d.x, pt3d.y, pt3d.z, pt.x, pt.y);
 									else
@@ -375,15 +385,11 @@ Transform OdometryOpenVINS::computeTransform(
 									info->reg.inliersIDs.emplace_back(info->newCorners.size());
 									info->newCorners.emplace_back(pt);
 								}
-							}
 
-							if(this->imagesAlreadyRectified())
-							{
-								for(auto &feature : vioManager_->get_good_features_MSCKF())
+								for(auto &feature : good_features_MSCKF)
 								{
 									cv::Point3f pt3d(feature[0], feature[1], feature[2]);
-									pt3d = util3d::transformPoint(pt3d, fixT);
-									pt3d = util3d::transformPoint(pt3d, camLocalTransformInv);
+									pt3d = util3d::transformPoint(pt3d, camT);
 									cv::Point2f pt;
 									if(!data.rightRaw().empty())
 										data.stereoCameraModels()[0].left().reproject(pt3d.x, pt3d.y, pt3d.z, pt.x, pt.y);
