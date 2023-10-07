@@ -343,9 +343,14 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 		depthOrRightEnc->setDefaultProfilePreset(monoRight->getFps(), dai::VideoEncoderProperties::Profile::MJPEG);
 		stereo->rectifiedLeft.link(leftEnc->input);
 		if(outputDepth_)
+		{
+			depthOrRightEnc->setQuality(100);
 			stereo->disparity.link(depthOrRightEnc->input);
+		}
 		else
+		{
 			stereo->rectifiedRight.link(depthOrRightEnc->input);
+		}
 		leftEnc->bitstream.link(xoutLeft->input);
 		depthOrRightEnc->bitstream.link(xoutDepthOrRight->input);
 	}
@@ -569,11 +574,9 @@ SensorData CameraDepthAI::captureImage(CameraInfo * info)
 		depthOrRight = cv::imdecode(rectifRightOrDepth->getData(), cv::IMREAD_GRAYSCALE);
 		if(outputDepth_)
 		{
-			cv::Mat depth(targetSize_, CV_16UC1);
-			depth.forEach<uint16_t>([&](uint16_t& pixel, const int * position) -> void {
-				pixel = stereoModel_.computeDepth(depthOrRight.at<uint8_t>(position))*1000;
-			});
-			depthOrRight = depth;
+			cv::Mat disp;
+			depthOrRight.convertTo(disp, CV_16UC1);
+			cv::divide(-stereoModel_.right().Tx() * 1000, disp, depthOrRight);
 		}
 	}
 	else
