@@ -805,9 +805,9 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->comboBox_depthai_resolution, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->checkBox_depthai_depth, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->spinBox_depthai_confidence, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->checkBox_depthai_use_spec_translation, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->doubleSpinBox_depthai_alpha_scaling, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->checkBox_depthai_imu_published, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
-	connect(_ui->checkBox_depthai_imu_firmware_update, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->doubleSpinBox_depthai_laser_dot_brightness, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->doubleSpinBox_depthai_floodlight_brightness, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->comboBox_depthai_detect_features, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
@@ -2111,9 +2111,9 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->comboBox_depthai_resolution->setCurrentIndex(1);
 		_ui->checkBox_depthai_depth->setChecked(false);
 		_ui->spinBox_depthai_confidence->setValue(200);
+		_ui->checkBox_depthai_use_spec_translation->setChecked(false);
 		_ui->doubleSpinBox_depthai_alpha_scaling->setValue(0.0);
 		_ui->checkBox_depthai_imu_published->setChecked(true);
-		_ui->checkBox_depthai_imu_firmware_update->setChecked(false);
 		_ui->doubleSpinBox_depthai_laser_dot_brightness->setValue(0.0);
 		_ui->doubleSpinBox_depthai_floodlight_brightness->setValue(200.0);
 		_ui->comboBox_depthai_detect_features->setCurrentIndex(0);
@@ -2601,9 +2601,9 @@ void PreferencesDialog::readCameraSettings(const QString & filePath)
 	_ui->comboBox_depthai_resolution->setCurrentIndex(settings.value("resolution", _ui->comboBox_depthai_resolution->currentIndex()).toInt());
 	_ui->checkBox_depthai_depth->setChecked(settings.value("depth", _ui->checkBox_depthai_depth->isChecked()).toBool());
 	_ui->spinBox_depthai_confidence->setValue(settings.value("confidence", _ui->spinBox_depthai_confidence->value()).toInt());
+	_ui->checkBox_depthai_use_spec_translation->setChecked(settings.value("use_spec_translation", _ui->checkBox_depthai_use_spec_translation->isChecked()).toBool());
 	_ui->doubleSpinBox_depthai_alpha_scaling->setValue(settings.value("alpha_scaling", _ui->doubleSpinBox_depthai_alpha_scaling->value()).toDouble());
 	_ui->checkBox_depthai_imu_published->setChecked(settings.value("imu_published", _ui->checkBox_depthai_imu_published->isChecked()).toBool());
-	_ui->checkBox_depthai_imu_firmware_update->setChecked(settings.value("imu_firmware_update", _ui->checkBox_depthai_imu_firmware_update->isChecked()).toBool());
 	_ui->doubleSpinBox_depthai_laser_dot_brightness->setValue(settings.value("laser_dot_brightness", _ui->doubleSpinBox_depthai_laser_dot_brightness->value()).toDouble());
 	_ui->doubleSpinBox_depthai_floodlight_brightness->setValue(settings.value("floodlight_brightness", _ui->doubleSpinBox_depthai_floodlight_brightness->value()).toDouble());
 	_ui->comboBox_depthai_detect_features->setCurrentIndex(settings.value("detect_features", _ui->comboBox_depthai_detect_features->currentIndex()).toInt());
@@ -3131,12 +3131,12 @@ void PreferencesDialog::writeCameraSettings(const QString & filePath) const
 	settings.endGroup(); // MyntEye
 
 	settings.beginGroup("DepthAI");
-	settings.setValue("resolution",    _ui->comboBox_depthai_resolution->currentIndex());
-	settings.setValue("depth",         _ui->checkBox_depthai_depth->isChecked());
-	settings.setValue("confidence",    _ui->spinBox_depthai_confidence->value());
-	settings.setValue("alpha_scaling", _ui->doubleSpinBox_depthai_alpha_scaling->value());
-	settings.setValue("imu_published", _ui->checkBox_depthai_imu_published->isChecked());
-	settings.setValue("imu_firmware_update",   _ui->checkBox_depthai_imu_firmware_update->isChecked());
+	settings.setValue("resolution",            _ui->comboBox_depthai_resolution->currentIndex());
+	settings.setValue("depth",                 _ui->checkBox_depthai_depth->isChecked());
+	settings.setValue("confidence",            _ui->spinBox_depthai_confidence->value());
+	settings.setValue("use_spec_translation",  _ui->checkBox_depthai_use_spec_translation->isChecked());
+	settings.setValue("alpha_scaling",         _ui->doubleSpinBox_depthai_alpha_scaling->value());
+	settings.setValue("imu_published",         _ui->checkBox_depthai_imu_published->isChecked());
 	settings.setValue("laser_dot_brightness",  _ui->doubleSpinBox_depthai_laser_dot_brightness->value());
 	settings.setValue("floodlight_brightness", _ui->doubleSpinBox_depthai_floodlight_brightness->value());
 	settings.setValue("detect_features",       _ui->comboBox_depthai_detect_features->currentIndex());
@@ -6404,8 +6404,8 @@ Camera * PreferencesDialog::createCamera(
 			this->getGeneralInputRate(),
 			this->getSourceLocalTransform());
 		((CameraDepthAI*)camera)->setOutputDepth(_ui->checkBox_depthai_depth->isChecked(), _ui->spinBox_depthai_confidence->value());
+		((CameraDepthAI*)camera)->setUseSpecTranslation(_ui->checkBox_depthai_use_spec_translation->isChecked());
 		((CameraDepthAI*)camera)->setAlphaScaling(_ui->doubleSpinBox_depthai_alpha_scaling->value());
-		((CameraDepthAI*)camera)->setIMUFirmwareUpdate(_ui->checkBox_depthai_imu_firmware_update->isChecked());
 		((CameraDepthAI*)camera)->setIMUPublished(_ui->checkBox_depthai_imu_published->isChecked());
 		((CameraDepthAI*)camera)->publishInterIMU(_ui->checkbox_publishInterIMU->isChecked());
 		((CameraDepthAI*)camera)->setLaserDotBrightness(_ui->doubleSpinBox_depthai_laser_dot_brightness->value());

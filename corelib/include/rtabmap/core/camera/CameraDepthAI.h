@@ -56,8 +56,8 @@ public:
 	virtual ~CameraDepthAI();
 
 	void setOutputDepth(bool enabled, int confidence = 200);
+	void setUseSpecTranslation(bool useSpecTranslation);
 	void setAlphaScaling(float alphaScaling = 0.0f);
-	void setIMUFirmwareUpdate(bool enabled);
 	void setIMUPublished(bool published);
 	void publishInterIMU(bool enabled);
 	void setLaserDotBrightness(float dotProjectormA = 0.0f);
@@ -83,8 +83,8 @@ private:
 	bool outputDepth_;
 	int depthConfidence_;
 	int resolution_;
+	bool useSpecTranslation_;
 	float alphaScaling_;
-	bool imuFirmwareUpdate_;
 	bool imuPublished_;
 	bool publishInterIMU_;
 	float dotProjectormA_;

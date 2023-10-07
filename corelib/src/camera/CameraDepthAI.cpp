@@ -57,8 +57,8 @@ CameraDepthAI::CameraDepthAI(
 	outputDepth_(false),
 	depthConfidence_(200),
 	resolution_(resolution),
+	useSpecTranslation_(false),
 	alphaScaling_(0.0),
-	imuFirmwareUpdate_(false),
 	imuPublished_(true),
 	publishInterIMU_(false),
 	dotProjectormA_(0.0),
@@ -100,19 +100,19 @@ void CameraDepthAI::setOutputDepth(bool enabled, int confidence)
 #endif
 }
 
-void CameraDepthAI::setAlphaScaling(float alphaScaling)
+void CameraDepthAI::setUseSpecTranslation(bool useSpecTranslation)
 {
 #ifdef RTABMAP_DEPTHAI
-	alphaScaling_ = alphaScaling;
+	useSpecTranslation_ = useSpecTranslation;
 #else
 	UERROR("CameraDepthAI: RTAB-Map is not built with depthai-core support!");
 #endif
 }
 
-void CameraDepthAI::setIMUFirmwareUpdate(bool enabled)
+void CameraDepthAI::setAlphaScaling(float alphaScaling)
 {
 #ifdef RTABMAP_DEPTHAI
-	imuFirmwareUpdate_ = enabled;
+	alphaScaling_ = alphaScaling;
 #else
 	UERROR("CameraDepthAI: RTAB-Map is not built with depthai-core support!");
 #endif
@@ -315,6 +315,9 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 	stereo->setDepthAlign(dai::StereoDepthProperties::DepthAlign::RECTIFIED_LEFT);
 	stereo->setExtendedDisparity(false);
 	stereo->setRectifyEdgeFillColor(0); // black, to better see the cutout
+	stereo->enableDistortionCorrection(true);
+	stereo->setDisparityToDepthUseSpecTranslation(useSpecTranslation_);
+	stereo->setDepthAlignmentUseSpecTranslation(useSpecTranslation_);
 	if(alphaScaling_>-1.0f)
 		stereo->setAlphaScaling(alphaScaling_);
 	stereo->initialConfig.setConfidenceThreshold(depthConfidence_);
@@ -374,8 +377,6 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 
 		// Link plugins IMU -> XLINK
 		imu->out.link(xoutIMU->input);
-
-		imu->enableFirmwareUpdate(imuFirmwareUpdate_);
 	}
 
 	if(detectFeatures_ == 1)
@@ -431,7 +432,7 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 	double fy = new_camera_matrix.at<double>(1, 1);
 	double cx = new_camera_matrix.at<double>(0, 2);
 	double cy = new_camera_matrix.at<double>(1, 2);
-	double baseline = calibHandler.getBaselineDistance()/100.0;
+	double baseline = calibHandler.getBaselineDistance(dai::CameraBoardSocket::CAM_C, dai::CameraBoardSocket::CAM_B, useSpecTranslation_)/100.0;
 	UINFO("left: fx=%f fy=%f cx=%f cy=%f baseline=%f", fx, fy, cx, cy, baseline);
 	stereoModel_ = StereoCameraModel(device_->getDeviceName(), fx, fy, cx, cy, baseline, this->getLocalTransform(), targetSize_);
 
