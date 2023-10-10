@@ -49,7 +49,7 @@ OdometryOpenVINS::OdometryOpenVINS(const ParametersMap & parameters) :
 #endif
 {
 #ifdef RTABMAP_OPENVINS
-	ov_core::Printer::setPrintLevel("WARNING");
+	ov_core::Printer::setPrintLevel(ov_core::Printer::PrintLevel(ULogger::level()+1));
 	int enum_index;
 	params_ = std::make_unique<ov_msckf::VioManagerOptions>();
 	Parameters::parse(parameters, Parameters::kOdomOpenVINSUseStereo(), params_->use_stereo);
