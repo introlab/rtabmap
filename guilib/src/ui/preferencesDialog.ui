@@ -18024,78 +18024,6 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                                </widget>
                               </item>
                               <item row="3" column="0">
-                               <widget class="QSpinBox" name="spinBox_OdomOpenVINSFastThreshold">
-                                <property name="minimum">
-                                 <number>1</number>
-                                </property>
-                                <property name="maximum">
-                                 <number>9999</number>
-                                </property>
-                                <property name="value">
-                                 <number>30</number>
-                                </property>
-                               </widget>
-                              </item>
-                              <item row="3" column="1">
-                               <widget class="QLabel" name="label_685">
-                                <property name="text">
-                                 <string>Fast extraction threshold</string>
-                                </property>
-                                <property name="wordWrap">
-                                 <bool>true</bool>
-                                </property>
-                                <property name="textInteractionFlags">
-                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                                </property>
-                               </widget>
-                              </item>
-                              <item row="4" column="0">
-                               <widget class="QSpinBox" name="spinBox_OdomOpenVINSGridX">
-                                <property name="minimum">
-                                 <number>1</number>
-                                </property>
-                                <property name="value">
-                                 <number>5</number>
-                                </property>
-                               </widget>
-                              </item>
-                              <item row="4" column="1">
-                               <widget class="QLabel" name="label_686">
-                                <property name="text">
-                                 <string>Number of grids we should split column-wise to do feature extraction in</string>
-                                </property>
-                                <property name="wordWrap">
-                                 <bool>true</bool>
-                                </property>
-                                <property name="textInteractionFlags">
-                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                                </property>
-                               </widget>
-                              </item>
-                              <item row="5" column="0">
-                               <widget class="QSpinBox" name="spinBox_OdomOpenVINSGridY">
-                                <property name="minimum">
-                                 <number>1</number>
-                                </property>
-                                <property name="value">
-                                 <number>5</number>
-                                </property>
-                               </widget>
-                              </item>
-                              <item row="5" column="1">
-                               <widget class="QLabel" name="label_687">
-                                <property name="text">
-                                 <string>Number of grids we should split row-wise to do feature extraction in</string>
-                                </property>
-                                <property name="wordWrap">
-                                 <bool>true</bool>
-                                </property>
-                                <property name="textInteractionFlags">
-                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                                </property>
-                               </widget>
-                              </item>
-                              <item row="6" column="0">
                                <widget class="QSpinBox" name="spinBox_OdomOpenVINSMinPxDist">
                                 <property name="minimum">
                                  <number>1</number>
@@ -18105,7 +18033,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                                 </property>
                                </widget>
                               </item>
-                              <item row="6" column="1">
+                              <item row="3" column="1">
                                <widget class="QLabel" name="label_688">
                                 <property name="text">
                                  <string>Will check after doing KLT track and remove any features closer than this</string>
@@ -18118,7 +18046,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                                 </property>
                                </widget>
                               </item>
-                              <item row="7" column="0">
+                              <item row="4" column="0">
                                <widget class="QDoubleSpinBox" name="doubleSpinBox_OdomOpenVINSKNNRatio">
                                 <property name="minimum">
                                  <double>0.010000000000000</double>
@@ -18134,7 +18062,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                                 </property>
                                </widget>
                               </item>
-                              <item row="7" column="1">
+                              <item row="4" column="1">
                                <widget class="QLabel" name="label_689">
                                 <property name="text">
                                  <string>KNN ration between top two descriptor matcher which is required to be a good match</string>
@@ -18433,7 +18361,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                                  <double>0.500000000000000</double>
                                 </property>
                                 <property name="value">
-                                 <double>2.000000000000000</double>
+                                 <double>0.000000000000000</double>
                                 </property>
                                </widget>
                               </item>

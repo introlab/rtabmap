@@ -1437,9 +1437,6 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->checkBox_OdomOpenVINSUseStereo->setObjectName(Parameters::kOdomOpenVINSUseStereo().c_str());
 	_ui->checkBox_OdomOpenVINSUseKLT->setObjectName(Parameters::kOdomOpenVINSUseKLT().c_str());
 	_ui->spinBox_OdomOpenVINSNumPts->setObjectName(Parameters::kOdomOpenVINSNumPts().c_str());
-	_ui->spinBox_OdomOpenVINSFastThreshold->setObjectName(Parameters::kOdomOpenVINSFastThreshold().c_str());
-	_ui->spinBox_OdomOpenVINSGridX->setObjectName(Parameters::kOdomOpenVINSGridX().c_str());
-	_ui->spinBox_OdomOpenVINSGridY->setObjectName(Parameters::kOdomOpenVINSGridY().c_str());
 	_ui->spinBox_OdomOpenVINSMinPxDist->setObjectName(Parameters::kOdomOpenVINSMinPxDist().c_str());
 	_ui->doubleSpinBox_OdomOpenVINSKNNRatio->setObjectName(Parameters::kOdomOpenVINSKNNRatio().c_str());
 

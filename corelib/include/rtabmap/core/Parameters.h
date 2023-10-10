@@ -580,9 +580,6 @@ class RTABMAP_CORE_EXPORT Parameters
     RTABMAP_PARAM(OdomOpenVINS, UseStereo,                 bool,   true,   "If we have more than 1 camera, if we should try to track stereo constraints between pairs");
     RTABMAP_PARAM(OdomOpenVINS, UseKLT,                    bool,   true,   "If true we will use KLT, otherwise use a ORB descriptor + robust matching");
     RTABMAP_PARAM(OdomOpenVINS, NumPts,                    int,    200,    "Number of points (per camera) we will extract and try to track");
-    RTABMAP_PARAM(OdomOpenVINS, FastThreshold,             int,    30,     "Threshold for fast extraction (warning: lower threshs can be expensive)");
-    RTABMAP_PARAM(OdomOpenVINS, GridX,                     int,    5,      "Extraction sub-grid count for horizontal direction (uniform tracking)");
-    RTABMAP_PARAM(OdomOpenVINS, GridY,                     int,    5,      "Extraction sub-grid count for vertical direction (uniform tracking)");
     RTABMAP_PARAM(OdomOpenVINS, MinPxDist,                 int,    15,     "Eistance between features (features near each other provide less information)");
     RTABMAP_PARAM(OdomOpenVINS, KNNRatio,                  double, 0.7,    "Descriptor knn threshold for the top two descriptor matches");
 
@@ -594,7 +591,7 @@ class RTABMAP_CORE_EXPORT Parameters
     RTABMAP_PARAM(OdomOpenVINS, MaxMSCKFInUpdate,          int,    50,     "Max number of MSCKF features we will use at a given image timestep.");
     RTABMAP_PARAM(OdomOpenVINS, FeatRepMSCKF,              int,    0,      "What representation our features are in (msckf features)");
     RTABMAP_PARAM(OdomOpenVINS, FeatRepSLAM,               int,    4,      "What representation our features are in (slam features)");
-    RTABMAP_PARAM(OdomOpenVINS, DtSLAMDelay,               double, 2.0,    "Delay, in seconds, that we should wait from init before we start estimating SLAM features");
+    RTABMAP_PARAM(OdomOpenVINS, DtSLAMDelay,               double, 0.0,    "Delay, in seconds, that we should wait from init before we start estimating SLAM features");
     RTABMAP_PARAM(OdomOpenVINS, GravityMag,                double, 9.81,   "Gravity magnitude in the global frame (i.e. should be 9.81 typically)");
 
     RTABMAP_PARAM(OdomOpenVINS, InitWindowTime,            double, 2.0,    "Amount of time we will initialize over (seconds)");

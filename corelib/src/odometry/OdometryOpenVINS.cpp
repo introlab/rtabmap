@@ -55,9 +55,9 @@ OdometryOpenVINS::OdometryOpenVINS(const ParametersMap & parameters) :
 	Parameters::parse(parameters, Parameters::kOdomOpenVINSUseStereo(), params_->use_stereo);
 	Parameters::parse(parameters, Parameters::kOdomOpenVINSUseKLT(), params_->use_klt);
 	Parameters::parse(parameters, Parameters::kOdomOpenVINSNumPts(), params_->num_pts);
-	Parameters::parse(parameters, Parameters::kOdomOpenVINSFastThreshold(), params_->fast_threshold);
-	Parameters::parse(parameters, Parameters::kOdomOpenVINSGridX(), params_->grid_x);
-	Parameters::parse(parameters, Parameters::kOdomOpenVINSGridY(), params_->grid_y);
+	Parameters::parse(parameters, Parameters::kFASTThreshold(), params_->fast_threshold);
+	Parameters::parse(parameters, Parameters::kVisGridCols(), params_->grid_x);
+	Parameters::parse(parameters, Parameters::kVisGridRows(), params_->grid_y);
 	Parameters::parse(parameters, Parameters::kOdomOpenVINSMinPxDist(), params_->min_px_dist);
 	Parameters::parse(parameters, Parameters::kOdomOpenVINSKNNRatio(), params_->knn_ratio);
 	Parameters::parse(parameters, Parameters::kOdomOpenVINSUseFEJ(), params_->state_options.do_fej);
