@@ -18143,6 +18143,106 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                                </widget>
                               </item>
                               <item row="2" column="0">
+                               <widget class="QCheckBox" name="checkBox_OdomOpenVINSCalibCamExtrinsics">
+                                <property name="text">
+                                 <string/>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="2" column="1">
+                               <widget class="QLabel" name="label_685">
+                                <property name="text">
+                                 <string>If the transform between camera and IMU should be optimized (R_ItoC, p_CinI)</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="3" column="0">
+                               <widget class="QCheckBox" name="checkBox_OdomOpenVINSCalibCamIntrinsics">
+                                <property name="text">
+                                 <string/>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="3" column="1">
+                               <widget class="QLabel" name="label_686">
+                                <property name="text">
+                                 <string>If camera intrinsics should be optimized (focal, center, distortion)</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="4" column="0">
+                               <widget class="QCheckBox" name="checkBox_OdomOpenVINSCalibCamTimeoffset">
+                                <property name="text">
+                                 <string/>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="4" column="1">
+                               <widget class="QLabel" name="label_687">
+                                <property name="text">
+                                 <string>If timeoffset between camera and IMU should be optimized</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="5" column="0">
+                               <widget class="QCheckBox" name="checkBox_OdomOpenVINSCalibIMUIntrinsics">
+                                <property name="text">
+                                 <string/>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="5" column="1">
+                               <widget class="QLabel" name="label_718">
+                                <property name="text">
+                                 <string>If imu intrinsics should be calibrated (rotation and skew-scale matrix)</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="6" column="0">
+                               <widget class="QCheckBox" name="checkBox_OdomOpenVINSCalibIMUGSensitivity">
+                                <property name="text">
+                                 <string/>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="6" column="1">
+                               <widget class="QLabel" name="label_719">
+                                <property name="text">
+                                 <string>If gyroscope gravity sensitivity (Tg) should be calibrated</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="7" column="0">
                                <widget class="QSpinBox" name="spinBox_OdomOpenVINSMaxClones">
                                 <property name="minimum">
                                  <number>1</number>
@@ -18152,7 +18252,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                                 </property>
                                </widget>
                               </item>
-                              <item row="2" column="1">
+                              <item row="7" column="1">
                                <widget class="QLabel" name="label_692">
                                 <property name="text">
                                  <string>Max clone size of sliding window</string>
@@ -18165,7 +18265,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                                 </property>
                                </widget>
                               </item>
-                              <item row="3" column="0">
+                              <item row="8" column="0">
                                <widget class="QSpinBox" name="spinBox_OdomOpenVINSMaxSLAM">
                                 <property name="minimum">
                                  <number>0</number>
@@ -18178,7 +18278,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                                 </property>
                                </widget>
                               </item>
-                              <item row="3" column="1">
+                              <item row="8" column="1">
                                <widget class="QLabel" name="label_693">
                                 <property name="text">
                                  <string>Max number of estimated SLAM features</string>
@@ -18191,7 +18291,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                                 </property>
                                </widget>
                               </item>
-                              <item row="4" column="0">
+                              <item row="9" column="0">
                                <widget class="QSpinBox" name="spinBox_OdomOpenVINSMaxSLAMInUpdate">
                                 <property name="minimum">
                                  <number>1</number>
@@ -18204,7 +18304,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                                 </property>
                                </widget>
                               </item>
-                              <item row="4" column="1">
+                              <item row="9" column="1">
                                <widget class="QLabel" name="label_694">
                                 <property name="text">
                                  <string>Max number of SLAM features we allow to be included in a single EKF update.</string>
@@ -18217,7 +18317,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                                 </property>
                                </widget>
                               </item>
-                              <item row="5" column="0">
+                              <item row="10" column="0">
                                <widget class="QSpinBox" name="spinBox_OdomOpenVINSMaxMSCKFInUpdate">
                                 <property name="minimum">
                                  <number>0</number>
@@ -18230,7 +18330,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                                 </property>
                                </widget>
                               </item>
-                              <item row="5" column="1">
+                              <item row="10" column="1">
                                <widget class="QLabel" name="label_695">
                                 <property name="text">
                                  <string>Max number of MSCKF features we will use at a given image timestep.</string>
@@ -18243,7 +18343,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                                 </property>
                                </widget>
                               </item>
-                              <item row="6" column="0">
+                              <item row="11" column="0">
                                <widget class="QComboBox" name="comboBox_OdomOpenVINSFeatRepMSCKF">
                                 <property name="currentIndex">
                                  <number>0</number>
@@ -18283,7 +18383,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                                 </item>
                                </widget>
                               </item>
-                              <item row="6" column="1">
+                              <item row="11" column="1">
                                <widget class="QLabel" name="label_696">
                                 <property name="text">
                                  <string>What representation our features are in (msckf features)</string>
@@ -18296,7 +18396,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                                 </property>
                                </widget>
                               </item>
-                              <item row="7" column="0">
+                              <item row="12" column="0">
                                <widget class="QComboBox" name="comboBox_OdomOpenVINSFeatRepSLAM">
                                 <property name="currentIndex">
                                  <number>4</number>
@@ -18336,7 +18436,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                                 </item>
                                </widget>
                               </item>
-                              <item row="7" column="1">
+                              <item row="12" column="1">
                                <widget class="QLabel" name="label_697">
                                 <property name="text">
                                  <string>What representation our features are in (slam features)</string>
@@ -18349,7 +18449,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                                 </property>
                                </widget>
                               </item>
-                              <item row="8" column="0">
+                              <item row="13" column="0">
                                <widget class="QDoubleSpinBox" name="doubleSpinBox_OdomOpenVINSDtSLAMDelay">
                                 <property name="suffix">
                                  <string> s</string>
@@ -18365,7 +18465,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                                 </property>
                                </widget>
                               </item>
-                              <item row="8" column="1">
+                              <item row="13" column="1">
                                <widget class="QLabel" name="label_698">
                                 <property name="text">
                                  <string>Delay before initializing (helps with stability from bad initialization...)</string>
@@ -18378,7 +18478,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                                 </property>
                                </widget>
                               </item>
-                              <item row="9" column="0">
+                              <item row="14" column="0">
                                <widget class="QDoubleSpinBox" name="doubleSpinBox_OdomOpenVINSGravityMag">
                                 <property name="decimals">
                                  <number>5</number>
@@ -18391,7 +18491,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                                 </property>
                                </widget>
                               </item>
-                              <item row="9" column="1">
+                              <item row="14" column="1">
                                <widget class="QLabel" name="label_699">
                                 <property name="text">
                                  <string>Magnitude of gravity in this location</string>

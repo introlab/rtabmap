@@ -585,6 +585,11 @@ class RTABMAP_CORE_EXPORT Parameters
 
     RTABMAP_PARAM(OdomOpenVINS, UseFEJ,                    bool,   true,   "If first-estimate Jacobians should be used (enable for good consistency)");
     RTABMAP_PARAM(OdomOpenVINS, Integration,               int,    1,      "0=discrete, 1=rk4, 2=analytical (if rk4 or analytical used then analytical covariance propagation is used)");
+    RTABMAP_PARAM(OdomOpenVINS, CalibCamExtrinsics,        bool,   false,  "Bool to determine whether or not to calibrate imu-to-camera pose");
+    RTABMAP_PARAM(OdomOpenVINS, CalibCamIntrinsics,        bool,   false,  "Bool to determine whether or not to calibrate camera intrinsics");
+    RTABMAP_PARAM(OdomOpenVINS, CalibCamTimeoffset,        bool,   false,  "Bool to determine whether or not to calibrate camera to IMU time offset");
+    RTABMAP_PARAM(OdomOpenVINS, CalibIMUIntrinsics,        bool,   false,  "Bool to determine whether or not to calibrate the IMU intrinsics");
+    RTABMAP_PARAM(OdomOpenVINS, CalibIMUGSensitivity,      bool,   false,  "Bool to determine whether or not to calibrate the Gravity sensitivity");
     RTABMAP_PARAM(OdomOpenVINS, MaxClones,                 int,    11,     "Max clone size of sliding window");
     RTABMAP_PARAM(OdomOpenVINS, MaxSLAM,                   int,    50,     "Max number of estimated SLAM features");
     RTABMAP_PARAM(OdomOpenVINS, MaxSLAMInUpdate,           int,    25,     "Max number of SLAM features we allow to be included in a single EKF update.");

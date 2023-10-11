@@ -63,6 +63,11 @@ OdometryOpenVINS::OdometryOpenVINS(const ParametersMap & parameters) :
 	Parameters::parse(parameters, Parameters::kOdomOpenVINSUseFEJ(), params_->state_options.do_fej);
 	Parameters::parse(parameters, Parameters::kOdomOpenVINSIntegration(), enum_index);
 	params_->state_options.integration_method = ov_msckf::StateOptions::IntegrationMethod(enum_index);
+	Parameters::parse(parameters, Parameters::kOdomOpenVINSCalibCamExtrinsics(), params_->state_options.do_calib_camera_pose);
+	Parameters::parse(parameters, Parameters::kOdomOpenVINSCalibCamIntrinsics(), params_->state_options.do_calib_camera_intrinsics);
+	Parameters::parse(parameters, Parameters::kOdomOpenVINSCalibCamTimeoffset(), params_->state_options.do_calib_camera_timeoffset);
+	Parameters::parse(parameters, Parameters::kOdomOpenVINSCalibIMUIntrinsics(), params_->state_options.do_calib_imu_intrinsics);
+	Parameters::parse(parameters, Parameters::kOdomOpenVINSCalibIMUGSensitivity(), params_->state_options.do_calib_imu_g_sensitivity);
 	Parameters::parse(parameters, Parameters::kOdomOpenVINSMaxClones(), params_->state_options.max_clone_size);
 	Parameters::parse(parameters, Parameters::kOdomOpenVINSMaxSLAM(), params_->state_options.max_slam_features);
 	Parameters::parse(parameters, Parameters::kOdomOpenVINSMaxSLAMInUpdate(), params_->state_options.max_slam_in_update);

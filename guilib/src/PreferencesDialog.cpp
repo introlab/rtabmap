@@ -1442,6 +1442,11 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 
 	_ui->checkBox_OdomOpenVINSUseFEJ->setObjectName(Parameters::kOdomOpenVINSUseFEJ().c_str());
 	_ui->comboBox_OdomOpenVINSIntegration->setObjectName(Parameters::kOdomOpenVINSIntegration().c_str());
+	_ui->checkBox_OdomOpenVINSCalibCamExtrinsics->setObjectName(Parameters::kOdomOpenVINSCalibCamExtrinsics().c_str());
+	_ui->checkBox_OdomOpenVINSCalibCamIntrinsics->setObjectName(Parameters::kOdomOpenVINSCalibCamIntrinsics().c_str());
+	_ui->checkBox_OdomOpenVINSCalibCamTimeoffset->setObjectName(Parameters::kOdomOpenVINSCalibCamTimeoffset().c_str());
+	_ui->checkBox_OdomOpenVINSCalibIMUIntrinsics->setObjectName(Parameters::kOdomOpenVINSCalibIMUIntrinsics().c_str());
+	_ui->checkBox_OdomOpenVINSCalibIMUGSensitivity->setObjectName(Parameters::kOdomOpenVINSCalibIMUGSensitivity().c_str());
 	_ui->spinBox_OdomOpenVINSMaxClones->setObjectName(Parameters::kOdomOpenVINSMaxClones().c_str());
 	_ui->spinBox_OdomOpenVINSMaxSLAM->setObjectName(Parameters::kOdomOpenVINSMaxSLAM().c_str());
 	_ui->spinBox_OdomOpenVINSMaxSLAMInUpdate->setObjectName(Parameters::kOdomOpenVINSMaxSLAMInUpdate().c_str());
