@@ -18047,25 +18047,111 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                                </widget>
                               </item>
                               <item row="4" column="0">
-                               <widget class="QDoubleSpinBox" name="doubleSpinBox_OdomOpenVINSKNNRatio">
-                                <property name="minimum">
-                                 <double>0.010000000000000</double>
-                                </property>
-                                <property name="maximum">
-                                 <double>1.000000000000000</double>
-                                </property>
-                                <property name="singleStep">
-                                 <double>0.100000000000000</double>
-                                </property>
-                                <property name="value">
-                                 <double>0.700000000000000</double>
+                               <widget class="QCheckBox" name="checkBox_OdomOpenVINSFiTriangulate1d">
+                                <property name="text">
+                                 <string/>
                                 </property>
                                </widget>
                               </item>
                               <item row="4" column="1">
                                <widget class="QLabel" name="label_689">
                                 <property name="text">
-                                 <string>KNN ration between top two descriptor matcher which is required to be a good match</string>
+                                 <string>If we should perform 1d triangulation instead of 3d</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="5" column="0">
+                               <widget class="QCheckBox" name="checkBox_OdomOpenVINSFiRefineFeatures">
+                                <property name="text">
+                                 <string/>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="5" column="1">
+                               <widget class="QLabel" name="label_732">
+                                <property name="text">
+                                 <string>If we should perform Levenberg-Marquardt refinement</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="6" column="0">
+                               <widget class="QSpinBox" name="spinBox_OdomOpenVINSFiMaxRuns">
+                                <property name="minimum">
+                                 <number>1</number>
+                                </property>
+                                <property name="value">
+                                 <number>5</number>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="6" column="1">
+                               <widget class="QLabel" name="label_733">
+                                <property name="text">
+                                 <string>Max runs for Levenberg-Marquardt</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="7" column="0">
+                               <widget class="QDoubleSpinBox" name="doubleSpinBox_OdomOpenVINSFiMaxBaseline">
+                                <property name="maximum">
+                                 <double>1000.000000000000000</double>
+                                </property>
+                                <property name="singleStep">
+                                 <double>10.000000000000000</double>
+                                </property>
+                                <property name="value">
+                                 <double>40.000000000000000</double>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="7" column="1">
+                               <widget class="QLabel" name="label_734">
+                                <property name="text">
+                                 <string>Max baseline ratio to accept triangulated features</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="8" column="0">
+                               <widget class="QDoubleSpinBox" name="doubleSpinBox_OdomOpenVINSFiMaxCondNumber">
+                                <property name="maximum">
+                                 <double>99999.000000000000000</double>
+                                </property>
+                                <property name="singleStep">
+                                 <double>1000.000000000000000</double>
+                                </property>
+                                <property name="value">
+                                 <double>10000.000000000000000</double>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="8" column="1">
+                               <widget class="QLabel" name="label_735">
+                                <property name="text">
+                                 <string>Max condition number of linear triangulation matrix accept triangulated features</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -21367,7 +21453,7 @@ Lower the ratio -&gt; higher the precision.</string>
                             <double>0.000000000000000</double>
                            </property>
                            <property name="value">
-                            <double>5.000000000000000</double>
+                            <double>60.000000000000000</double>
                            </property>
                           </widget>
                          </item>
@@ -21390,7 +21476,7 @@ Lower the ratio -&gt; higher the precision.</string>
                             <double>0.000000000000000</double>
                            </property>
                            <property name="value">
-                            <double>5.000000000000000</double>
+                            <double>0.100000000000000</double>
                            </property>
                           </widget>
                          </item>

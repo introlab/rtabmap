@@ -1438,7 +1438,11 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->checkBox_OdomOpenVINSUseKLT->setObjectName(Parameters::kOdomOpenVINSUseKLT().c_str());
 	_ui->spinBox_OdomOpenVINSNumPts->setObjectName(Parameters::kOdomOpenVINSNumPts().c_str());
 	_ui->spinBox_OdomOpenVINSMinPxDist->setObjectName(Parameters::kOdomOpenVINSMinPxDist().c_str());
-	_ui->doubleSpinBox_OdomOpenVINSKNNRatio->setObjectName(Parameters::kOdomOpenVINSKNNRatio().c_str());
+	_ui->checkBox_OdomOpenVINSFiTriangulate1d->setObjectName(Parameters::kOdomOpenVINSFiTriangulate1d().c_str());
+	_ui->checkBox_OdomOpenVINSFiRefineFeatures->setObjectName(Parameters::kOdomOpenVINSFiRefineFeatures().c_str());
+	_ui->spinBox_OdomOpenVINSFiMaxRuns->setObjectName(Parameters::kOdomOpenVINSFiMaxRuns().c_str());
+	_ui->doubleSpinBox_OdomOpenVINSFiMaxBaseline->setObjectName(Parameters::kOdomOpenVINSFiMaxBaseline().c_str());
+	_ui->doubleSpinBox_OdomOpenVINSFiMaxCondNumber->setObjectName(Parameters::kOdomOpenVINSFiMaxCondNumber().c_str());
 
 	_ui->checkBox_OdomOpenVINSUseFEJ->setObjectName(Parameters::kOdomOpenVINSUseFEJ().c_str());
 	_ui->comboBox_OdomOpenVINSIntegration->setObjectName(Parameters::kOdomOpenVINSIntegration().c_str());

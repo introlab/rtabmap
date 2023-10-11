@@ -59,7 +59,14 @@ OdometryOpenVINS::OdometryOpenVINS(const ParametersMap & parameters) :
 	Parameters::parse(parameters, Parameters::kVisGridCols(), params_->grid_x);
 	Parameters::parse(parameters, Parameters::kVisGridRows(), params_->grid_y);
 	Parameters::parse(parameters, Parameters::kOdomOpenVINSMinPxDist(), params_->min_px_dist);
-	Parameters::parse(parameters, Parameters::kOdomOpenVINSKNNRatio(), params_->knn_ratio);
+	Parameters::parse(parameters, Parameters::kVisCorNNDR(), params_->knn_ratio);
+	Parameters::parse(parameters, Parameters::kOdomOpenVINSFiTriangulate1d(), params_->featinit_options.triangulate_1d);
+	Parameters::parse(parameters, Parameters::kOdomOpenVINSFiRefineFeatures(), params_->featinit_options.refine_features);
+	Parameters::parse(parameters, Parameters::kOdomOpenVINSFiMaxRuns(), params_->featinit_options.max_runs);
+	Parameters::parse(parameters, Parameters::kVisMinDepth(), params_->featinit_options.min_dist);
+	Parameters::parse(parameters, Parameters::kVisMaxDepth(), params_->featinit_options.max_dist);
+	Parameters::parse(parameters, Parameters::kOdomOpenVINSFiMaxBaseline(), params_->featinit_options.max_baseline);
+	Parameters::parse(parameters, Parameters::kOdomOpenVINSFiMaxCondNumber(), params_->featinit_options.max_cond_number);
 	Parameters::parse(parameters, Parameters::kOdomOpenVINSUseFEJ(), params_->state_options.do_fej);
 	Parameters::parse(parameters, Parameters::kOdomOpenVINSIntegration(), enum_index);
 	params_->state_options.integration_method = ov_msckf::StateOptions::IntegrationMethod(enum_index);
