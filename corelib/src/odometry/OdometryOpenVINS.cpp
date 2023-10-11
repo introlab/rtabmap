@@ -82,6 +82,18 @@ OdometryOpenVINS::OdometryOpenVINS(const ParametersMap & parameters) :
 	Parameters::parse(parameters, Parameters::kOdomOpenVINSInitIMUThresh(), params_->init_options.init_imu_thresh);
 	Parameters::parse(parameters, Parameters::kOdomOpenVINSInitMaxDisparity(), params_->init_options.init_max_disparity);
 	Parameters::parse(parameters, Parameters::kOdomOpenVINSInitMaxFeatures(), params_->init_options.init_max_features);
+	Parameters::parse(parameters, Parameters::kOdomOpenVINSInitDynUse(), params_->init_options.init_dyn_use);
+	Parameters::parse(parameters, Parameters::kOdomOpenVINSInitDynMLEOptCalib(), params_->init_options.init_dyn_mle_opt_calib);
+	Parameters::parse(parameters, Parameters::kOdomOpenVINSInitDynMLEMaxIter(), params_->init_options.init_dyn_mle_max_iter);
+	Parameters::parse(parameters, Parameters::kOdomOpenVINSInitDynMLEMaxTime(), params_->init_options.init_dyn_mle_max_time);
+	Parameters::parse(parameters, Parameters::kOdomOpenVINSInitDynMLEMaxThreads(), params_->init_options.init_dyn_mle_max_threads);
+	Parameters::parse(parameters, Parameters::kOdomOpenVINSInitDynNumPose(), params_->init_options.init_dyn_num_pose);
+	Parameters::parse(parameters, Parameters::kOdomOpenVINSInitDynMinDeg(), params_->init_options.init_dyn_min_deg);
+	Parameters::parse(parameters, Parameters::kOdomOpenVINSInitDynInflationOri(), params_->init_options.init_dyn_inflation_orientation);
+	Parameters::parse(parameters, Parameters::kOdomOpenVINSInitDynInflationVel(), params_->init_options.init_dyn_inflation_velocity);
+	Parameters::parse(parameters, Parameters::kOdomOpenVINSInitDynInflationBg(), params_->init_options.init_dyn_inflation_bias_gyro);
+	Parameters::parse(parameters, Parameters::kOdomOpenVINSInitDynInflationBa(), params_->init_options.init_dyn_inflation_bias_accel);
+	Parameters::parse(parameters, Parameters::kOdomOpenVINSInitDynMinRecCond(), params_->init_options.init_dyn_min_rec_cond);
 	Parameters::parse(parameters, Parameters::kOdomOpenVINSTryZUPT(), params_->try_zupt);
 	Parameters::parse(parameters, Parameters::kOdomOpenVINSZUPTChi2Multiplier(), params_->zupt_options.chi2_multipler);
 	Parameters::parse(parameters, Parameters::kOdomOpenVINSZUPTMaxVelodicy(), params_->zupt_max_velocity);

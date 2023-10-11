@@ -603,6 +603,18 @@ class RTABMAP_CORE_EXPORT Parameters
     RTABMAP_PARAM(OdomOpenVINS, InitIMUThresh,             double, 1.0,    "Variance threshold on our acceleration to be classified as moving");
     RTABMAP_PARAM(OdomOpenVINS, InitMaxDisparity,          double, 10.0,   "Max disparity to consider the platform stationary (dependent on resolution)");
     RTABMAP_PARAM(OdomOpenVINS, InitMaxFeatures,           int,    50,     "How many features to track during initialization (saves on computation)");
+    RTABMAP_PARAM(OdomOpenVINS, InitDynUse,                bool,   false,  "If dynamic initialization should be used");
+    RTABMAP_PARAM(OdomOpenVINS, InitDynMLEOptCalib,        bool,   false,  "If we should optimize calibration during intialization (not recommended)");
+    RTABMAP_PARAM(OdomOpenVINS, InitDynMLEMaxIter,         int,    50,     "How many iterations the MLE refinement should use (zero to skip the MLE)");
+    RTABMAP_PARAM(OdomOpenVINS, InitDynMLEMaxTime,         double, 0.05,   "How many seconds the MLE should be completed in");
+    RTABMAP_PARAM(OdomOpenVINS, InitDynMLEMaxThreads,      int,    6,      "How many threads the MLE should use");
+    RTABMAP_PARAM(OdomOpenVINS, InitDynNumPose,            int,    6,      "Number of poses to use within our window time (evenly spaced)");
+    RTABMAP_PARAM(OdomOpenVINS, InitDynMinDeg,             double, 10.0,   "Orientation change needed to try to init");
+    RTABMAP_PARAM(OdomOpenVINS, InitDynInflationOri,       double, 10.0,   "What to inflate the recovered q_GtoI covariance by");
+    RTABMAP_PARAM(OdomOpenVINS, InitDynInflationVel,       double, 100.0,  "What to inflate the recovered v_IinG covariance by");
+    RTABMAP_PARAM(OdomOpenVINS, InitDynInflationBg,        double, 10.0,   "What to inflate the recovered bias_g covariance by");
+    RTABMAP_PARAM(OdomOpenVINS, InitDynInflationBa,        double, 100.0,  "What to inflate the recovered bias_a covariance by");
+    RTABMAP_PARAM(OdomOpenVINS, InitDynMinRecCond,         double, 1e-15,  "Reciprocal condition number thresh for info inversion");
 
     RTABMAP_PARAM(OdomOpenVINS, TryZUPT,                   bool,   true,   "If we should try to use zero velocity update");
     RTABMAP_PARAM(OdomOpenVINS, ZUPTChi2Multiplier,        double, 0.0,    "Chi2 multiplier for zero velocity");

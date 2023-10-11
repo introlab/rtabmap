@@ -1460,6 +1460,18 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->doubleSpinBox_OdomOpenVINSInitIMUThresh->setObjectName(Parameters::kOdomOpenVINSInitIMUThresh().c_str());
 	_ui->doubleSpinBox_OdomOpenVINSInitMaxDisparity->setObjectName(Parameters::kOdomOpenVINSInitMaxDisparity().c_str());
 	_ui->spinBox_OdomOpenVINSInitMaxFeatures->setObjectName(Parameters::kOdomOpenVINSInitMaxFeatures().c_str());
+	_ui->checkBox_OdomOpenVINSInitDynUse->setObjectName(Parameters::kOdomOpenVINSInitDynUse().c_str());
+	_ui->checkBox_OdomOpenVINSInitDynMLEOptCalib->setObjectName(Parameters::kOdomOpenVINSInitDynMLEOptCalib().c_str());
+	_ui->spinBox_OdomOpenVINSInitDynMLEMaxIter->setObjectName(Parameters::kOdomOpenVINSInitDynMLEMaxIter().c_str());
+	_ui->doubleSpinBox_OdomOpenVINSInitDynMLEMaxTime->setObjectName(Parameters::kOdomOpenVINSInitDynMLEMaxTime().c_str());
+	_ui->spinBox_OdomOpenVINSInitDynMLEMaxThreads->setObjectName(Parameters::kOdomOpenVINSInitDynMLEMaxThreads().c_str());
+	_ui->spinBox_OdomOpenVINSInitDynNumPose->setObjectName(Parameters::kOdomOpenVINSInitDynNumPose().c_str());
+	_ui->doubleSpinBox_OdomOpenVINSInitDynMinDeg->setObjectName(Parameters::kOdomOpenVINSInitDynMinDeg().c_str());
+	_ui->doubleSpinBox_OdomOpenVINSInitDynInflationOri->setObjectName(Parameters::kOdomOpenVINSInitDynInflationOri().c_str());
+	_ui->doubleSpinBox_OdomOpenVINSInitDynInflationVel->setObjectName(Parameters::kOdomOpenVINSInitDynInflationVel().c_str());
+	_ui->doubleSpinBox_OdomOpenVINSInitDynInflationBg->setObjectName(Parameters::kOdomOpenVINSInitDynInflationBg().c_str());
+	_ui->doubleSpinBox_OdomOpenVINSInitDynInflationBa->setObjectName(Parameters::kOdomOpenVINSInitDynInflationBa().c_str());
+	_ui->doubleSpinBox_OdomOpenVINSInitDynMinRecCond->setObjectName(Parameters::kOdomOpenVINSInitDynMinRecCond().c_str());
 
 	_ui->checkBox_OdomOpenVINSTryZUPT->setObjectName(Parameters::kOdomOpenVINSTryZUPT().c_str());
 	_ui->doubleSpinBox_OdomOpenVINSZUPTChi2Multiplier->setObjectName(Parameters::kOdomOpenVINSZUPTChi2Multiplier().c_str());
