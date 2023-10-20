@@ -87,6 +87,7 @@ OdometryOpenVINS::OdometryOpenVINS(const ParametersMap & parameters) :
 	params_->state_options.feat_rep_slam = ov_type::LandmarkRepresentation::Representation(enum_index);
 	Parameters::parse(parameters, Parameters::kOdomOpenVINSDtSLAMDelay(), params_->dt_slam_delay);
 	Parameters::parse(parameters, Parameters::kOdomOpenVINSGravityMag(), params_->gravity_mag);
+	Parameters::parse(parameters, Parameters::kVisDepthAsMask(), params_->use_mask);
 	Parameters::parse(parameters, Parameters::kOdomOpenVINSLeftMaskPath(), left_mask_path);
 	if(!left_mask_path.empty())
 	{
@@ -334,9 +335,22 @@ Transform OdometryOpenVINS::computeTransform(
 			message.sensor_ids.emplace_back(0);
 			message.images.emplace_back(image);
 			if(params_->masks.find(0) != params_->masks.end())
+			{
 				message.masks.emplace_back(params_->masks[0]);
+			}
+			else if(!data.depthRaw().empty() && params_->use_mask)
+			{
+				cv::Mat mask;
+				if(data.depthRaw().type() == CV_32FC1)
+					cv::inRange(data.depthRaw(), params_->featinit_options.min_dist, params_->featinit_options.max_dist, mask);
+				else if(data.depthRaw().type() == CV_16UC1)
+					cv::inRange(data.depthRaw(), params_->featinit_options.min_dist*1000, params_->featinit_options.max_dist*1000, mask);
+				message.masks.emplace_back(255-mask);
+			}
 			else
+			{
 				message.masks.emplace_back(cv::Mat::zeros(image.size(), CV_8UC1));
+			}
 			if(!data.rightRaw().empty())
 			{
 				if(data.rightRaw().type() == CV_8UC3)
