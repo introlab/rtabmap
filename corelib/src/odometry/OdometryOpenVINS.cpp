@@ -28,6 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/odometry/OdometryOpenVINS.h"
 #include "rtabmap/core/OdometryInfo.h"
 #include "rtabmap/core/util3d_transforms.h"
+#include "rtabmap/utilite/UFile.h"
 #include "rtabmap/utilite/ULogger.h"
 #include "rtabmap/utilite/UTimer.h"
 #include <opencv2/imgproc/types_c.h>
@@ -51,6 +52,7 @@ OdometryOpenVINS::OdometryOpenVINS(const ParametersMap & parameters) :
 #ifdef RTABMAP_OPENVINS
 	ov_core::Printer::setPrintLevel(ov_core::Printer::PrintLevel(ULogger::level()+1));
 	int enum_index;
+	std::string left_mask_path, right_mask_path;
 	params_ = std::make_unique<ov_msckf::VioManagerOptions>();
 	Parameters::parse(parameters, Parameters::kOdomOpenVINSUseStereo(), params_->use_stereo);
 	Parameters::parse(parameters, Parameters::kOdomOpenVINSUseKLT(), params_->use_klt);
@@ -85,6 +87,22 @@ OdometryOpenVINS::OdometryOpenVINS(const ParametersMap & parameters) :
 	params_->state_options.feat_rep_slam = ov_type::LandmarkRepresentation::Representation(enum_index);
 	Parameters::parse(parameters, Parameters::kOdomOpenVINSDtSLAMDelay(), params_->dt_slam_delay);
 	Parameters::parse(parameters, Parameters::kOdomOpenVINSGravityMag(), params_->gravity_mag);
+	Parameters::parse(parameters, Parameters::kOdomOpenVINSLeftMaskPath(), left_mask_path);
+	if(!left_mask_path.empty())
+	{
+		if(!UFile::exists(left_mask_path))
+			UWARN("OpenVINS: invalid left mask path: %s", left_mask_path.c_str());
+		else
+			params_->masks.emplace(0, cv::imread(left_mask_path, cv::IMREAD_GRAYSCALE));
+	}
+	Parameters::parse(parameters, Parameters::kOdomOpenVINSRightMaskPath(), right_mask_path);
+	if(!right_mask_path.empty())
+	{
+		if(!UFile::exists(right_mask_path))
+			UWARN("OpenVINS: invalid right mask path: %s", right_mask_path.c_str());
+		else
+			params_->masks.emplace(1, cv::imread(right_mask_path, cv::IMREAD_GRAYSCALE));
+	}
 	Parameters::parse(parameters, Parameters::kOdomOpenVINSInitWindowTime(), params_->init_options.init_window_time);
 	Parameters::parse(parameters, Parameters::kOdomOpenVINSInitIMUThresh(), params_->init_options.init_imu_thresh);
 	Parameters::parse(parameters, Parameters::kOdomOpenVINSInitMaxDisparity(), params_->init_options.init_max_disparity);
@@ -315,7 +333,10 @@ Transform OdometryOpenVINS::computeTransform(
 			message.timestamp = data.stamp();
 			message.sensor_ids.emplace_back(0);
 			message.images.emplace_back(image);
-			message.masks.emplace_back(cv::Mat::zeros(image.size(), CV_8UC1));
+			if(params_->masks.find(0) != params_->masks.end())
+				message.masks.emplace_back(params_->masks[0]);
+			else
+				message.masks.emplace_back(cv::Mat::zeros(image.size(), CV_8UC1));
 			if(!data.rightRaw().empty())
 			{
 				if(data.rightRaw().type() == CV_8UC3)
@@ -326,7 +347,10 @@ Transform OdometryOpenVINS::computeTransform(
 					UFATAL("Not supported color type!");
 				message.sensor_ids.emplace_back(1);
 				message.images.emplace_back(image);
-				message.masks.emplace_back(cv::Mat::zeros(image.size(), CV_8UC1));
+				if(params_->masks.find(1) != params_->masks.end())
+					message.masks.emplace_back(params_->masks[1]);
+				else
+					message.masks.emplace_back(cv::Mat::zeros(image.size(), CV_8UC1));
 			}
 			vioManager_->feed_measurement_camera(message);
 

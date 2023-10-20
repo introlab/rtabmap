@@ -1459,6 +1459,10 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->comboBox_OdomOpenVINSFeatRepSLAM->setObjectName(Parameters::kOdomOpenVINSFeatRepSLAM().c_str());
 	_ui->doubleSpinBox_OdomOpenVINSDtSLAMDelay->setObjectName(Parameters::kOdomOpenVINSDtSLAMDelay().c_str());
 	_ui->doubleSpinBox_OdomOpenVINSGravityMag->setObjectName(Parameters::kOdomOpenVINSGravityMag().c_str());
+	_ui->lineEdit_OdomOpenVINSLeftMaskPath->setObjectName(Parameters::kOdomOpenVINSLeftMaskPath().c_str());
+	connect(_ui->toolButton_OdomOpenVINSLeftMaskPath, SIGNAL(clicked()), this, SLOT(changeOdometryOpenVINSLeftMask()));
+	_ui->lineEdit_OdomOpenVINSRightMaskPath->setObjectName(Parameters::kOdomOpenVINSRightMaskPath().c_str());
+	connect(_ui->toolButton_OdomOpenVINSRightMaskPath, SIGNAL(clicked()), this, SLOT(changeOdometryOpenVINSRightMask()));
 
 	_ui->doubleSpinBox_OdomOpenVINSInitWindowTime->setObjectName(Parameters::kOdomOpenVINSInitWindowTime().c_str());
 	_ui->doubleSpinBox_OdomOpenVINSInitIMUThresh->setObjectName(Parameters::kOdomOpenVINSInitIMUThresh().c_str());
@@ -5209,6 +5213,40 @@ void PreferencesDialog::changeOdometryVINSConfigPath()
 	if(!path.isEmpty())
 	{
 		_ui->lineEdit_OdomVinsPath->setText(path);
+	}
+}
+
+void PreferencesDialog::changeOdometryOpenVINSLeftMask()
+{
+	QString path;
+	if(_ui->lineEdit_OdomOpenVINSLeftMaskPath->text().isEmpty())
+	{
+		path = QFileDialog::getOpenFileName(this, tr("Select Left Mask"), this->getWorkingDirectory(), tr("Image mask (*.jpg *.png)"));
+	}
+	else
+	{
+		path = QFileDialog::getOpenFileName(this, tr("Select Left Mask"), _ui->lineEdit_OdomOpenVINSLeftMaskPath->text(), tr("Image mask (*.jpg *.png)"));
+	}
+	if(!path.isEmpty())
+	{
+		_ui->lineEdit_OdomOpenVINSLeftMaskPath->setText(path);
+	}
+}
+
+void PreferencesDialog::changeOdometryOpenVINSRightMask()
+{
+	QString path;
+	if(_ui->lineEdit_OdomOpenVINSRightMaskPath->text().isEmpty())
+	{
+		path = QFileDialog::getOpenFileName(this, tr("Select Right Mask"), this->getWorkingDirectory(), tr("Image mask (*.jpg *.png)"));
+	}
+	else
+	{
+		path = QFileDialog::getOpenFileName(this, tr("Select Right Mask"), _ui->lineEdit_OdomOpenVINSRightMaskPath->text(), tr("Image mask (*.jpg *.png)"));
+	}
+	if(!path.isEmpty())
+	{
+		_ui->lineEdit_OdomOpenVINSRightMaskPath->setText(path);
 	}
 }
 

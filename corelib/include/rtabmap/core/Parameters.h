@@ -602,6 +602,8 @@ class RTABMAP_CORE_EXPORT Parameters
     RTABMAP_PARAM(OdomOpenVINS, FeatRepSLAM,               int,    4,      "What representation our features are in (slam features)");
     RTABMAP_PARAM(OdomOpenVINS, DtSLAMDelay,               double, 0.0,    "Delay, in seconds, that we should wait from init before we start estimating SLAM features");
     RTABMAP_PARAM(OdomOpenVINS, GravityMag,                double, 9.81,   "Gravity magnitude in the global frame (i.e. should be 9.81 typically)");
+    RTABMAP_PARAM_STR(OdomOpenVINS, LeftMaskPath,                  "",     "Mask for left image");
+    RTABMAP_PARAM_STR(OdomOpenVINS, RightMaskPath,                 "",     "Mask for right image");
 
     RTABMAP_PARAM(OdomOpenVINS, InitWindowTime,            double, 2.0,    "Amount of time we will initialize over (seconds)");
     RTABMAP_PARAM(OdomOpenVINS, InitIMUThresh,             double, 1.0,    "Variance threshold on our acceleration to be classified as moving");
