@@ -649,9 +649,9 @@ int RTABMapApp::openDatabase(const std::string & databasePath, bool databaseInMe
 								UWARN("Cloud %d is empty", id);
 							}
 						}
-						else
+						else if(!data.depthOrRightCompressed().empty() || !data.laserScanCompressed().isEmpty())
 						{
-							UERROR("Failed to uncompress data!");
+							UERROR("Failed to uncompress data! (rgb=%d, depth=%d, scan=%d)", data.imageCompressed().cols, data.depthOrRightCompressed().cols, data.laserScanCompressed().size());
 							status=-2;
 						}
 					}
