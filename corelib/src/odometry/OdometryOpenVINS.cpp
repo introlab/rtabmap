@@ -69,6 +69,8 @@ OdometryOpenVINS::OdometryOpenVINS(const ParametersMap & parameters) :
 	Parameters::parse(parameters, Parameters::kOdomOpenVINSFiMaxRuns(), params_->featinit_options.max_runs);
 	Parameters::parse(parameters, Parameters::kVisMinDepth(), params_->featinit_options.min_dist);
 	Parameters::parse(parameters, Parameters::kVisMaxDepth(), params_->featinit_options.max_dist);
+	if(params_->featinit_options.max_dist == 0)
+		params_->featinit_options.max_dist = std::numeric_limits<double>::infinity();
 	Parameters::parse(parameters, Parameters::kOdomOpenVINSFiMaxBaseline(), params_->featinit_options.max_baseline);
 	Parameters::parse(parameters, Parameters::kOdomOpenVINSFiMaxCondNumber(), params_->featinit_options.max_cond_number);
 	Parameters::parse(parameters, Parameters::kOdomOpenVINSUseFEJ(), params_->state_options.do_fej);
@@ -355,9 +357,11 @@ Transform OdometryOpenVINS::computeTransform(
 			{
 				cv::Mat mask;
 				if(data.depthRaw().type() == CV_32FC1)
-					cv::inRange(data.depthRaw(), params_->featinit_options.min_dist, params_->featinit_options.max_dist, mask);
+					cv::inRange(data.depthRaw(), params_->featinit_options.min_dist,
+						std::isinf(params_->featinit_options.max_dist)?std::numeric_limits<float>::max():params_->featinit_options.max_dist, mask);
 				else if(data.depthRaw().type() == CV_16UC1)
-					cv::inRange(data.depthRaw(), params_->featinit_options.min_dist*1000, params_->featinit_options.max_dist*1000, mask);
+					cv::inRange(data.depthRaw(), params_->featinit_options.min_dist*1000,
+						std::isinf(params_->featinit_options.max_dist)?std::numeric_limits<uint16_t>::max():params_->featinit_options.max_dist*1000, mask);
 				message.masks.emplace_back(255-mask);
 			}
 			else
