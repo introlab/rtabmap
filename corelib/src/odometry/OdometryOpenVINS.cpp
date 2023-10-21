@@ -31,10 +31,12 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/utilite/UFile.h"
 #include "rtabmap/utilite/ULogger.h"
 #include "rtabmap/utilite/UTimer.h"
+#include <opencv2/core/eigen.hpp>
 #include <opencv2/imgproc/types_c.h>
 
 #ifdef RTABMAP_OPENVINS
 #include "core/VioManager.h"
+#include "state/Propagator.h"
 #include "state/State.h"
 #include "state/StateHelper.h"
 #endif
@@ -177,7 +179,12 @@ Transform OdometryOpenVINS::computeTransform(
 	if(!vioManager_)
 	{
 		if(!data.imu().empty())
+		{
 			imuLocalTransformInv_ = data.imu().localTransform().inverse();
+			Phi_.setZero();
+			Phi_.block(0,0,3,3) = data.imu().localTransform().toEigen4d().block(0,0,3,3);
+			Phi_.block(3,3,3,3) = data.imu().localTransform().toEigen4d().block(0,0,3,3);
+		}
 
 		if(!data.imageRaw().empty() && !imuLocalTransformInv_.isNull())
 		{
@@ -323,6 +330,12 @@ Transform OdometryOpenVINS::computeTransform(
 
 		if(!data.imageRaw().empty())
 		{
+			bool covFilled = false;
+			Eigen::Matrix<double, 13, 1> state_plus = Eigen::Matrix<double, 13, 1>::Zero();
+			Eigen::Matrix<double, 12, 12> cov_plus = Eigen::Matrix<double, 12, 12>::Zero();
+			if(vioManager_->initialized())
+				covFilled = vioManager_->get_propagator()->fast_state_propagate(vioManager_->get_state(), data.stamp(), state_plus, cov_plus);
+
 			cv::Mat image;
 			if(data.imageRaw().type() == CV_8UC3)
 				cv::cvtColor(data.imageRaw(), image, CV_BGR2GRAY);
@@ -404,17 +417,11 @@ Transform OdometryOpenVINS::computeTransform(
 						info->type = this->getType();
 						info->localMapSize = feat_posinG.size();
 						info->features = features_SLAM.size() + good_features_MSCKF.size();
-						info->reg.covariance = cv::Mat(6,6,CV_64FC1);
-						std::vector<std::shared_ptr<ov_type::Type>> statevars;
-						statevars.emplace_back(state->_imu->pose()->p());
-						statevars.emplace_back(state->_imu->pose()->q());
-						Eigen::Matrix<double,6,6> covariance_posori = ov_msckf::StateHelper::get_marginal_covariance(state, statevars);
-						for (int r = 0; r < 6; r++)
+						info->reg.covariance = cv::Mat::eye(6, 6, CV_64FC1);
+						if(covFilled)
 						{
-							for (int c = 0; c < 6; c++)
-							{
-								((double *)info->reg.covariance.data)[6*r+c] = covariance_posori(r,c);
-							}
+							Eigen::Matrix<double, 6, 6> covariance = Phi_ * cov_plus.block(6,6,6,6) * Phi_.transpose();
+							cv::eigen2cv(covariance, info->reg.covariance);
 						}
 
 						if(this->isInfoDataFilled())

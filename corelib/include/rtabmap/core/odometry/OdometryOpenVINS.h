@@ -57,6 +57,7 @@ private:
 	bool initGravity_;
 	Transform previousPoseInv_;
 	Transform imuLocalTransformInv_;
+	Eigen::Matrix<double, 6, 6> Phi_;
 #endif
 };
 
