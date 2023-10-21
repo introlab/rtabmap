@@ -1437,14 +1437,20 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->checkBox_OdomOpenVINSUseStereo->setObjectName(Parameters::kOdomOpenVINSUseStereo().c_str());
 	_ui->checkBox_OdomOpenVINSUseKLT->setObjectName(Parameters::kOdomOpenVINSUseKLT().c_str());
 	_ui->spinBox_OdomOpenVINSNumPts->setObjectName(Parameters::kOdomOpenVINSNumPts().c_str());
-	_ui->spinBox_OdomOpenVINSFastThreshold->setObjectName(Parameters::kOdomOpenVINSFastThreshold().c_str());
-	_ui->spinBox_OdomOpenVINSGridX->setObjectName(Parameters::kOdomOpenVINSGridX().c_str());
-	_ui->spinBox_OdomOpenVINSGridY->setObjectName(Parameters::kOdomOpenVINSGridY().c_str());
 	_ui->spinBox_OdomOpenVINSMinPxDist->setObjectName(Parameters::kOdomOpenVINSMinPxDist().c_str());
-	_ui->doubleSpinBox_OdomOpenVINSKNNRatio->setObjectName(Parameters::kOdomOpenVINSKNNRatio().c_str());
+	_ui->checkBox_OdomOpenVINSFiTriangulate1d->setObjectName(Parameters::kOdomOpenVINSFiTriangulate1d().c_str());
+	_ui->checkBox_OdomOpenVINSFiRefineFeatures->setObjectName(Parameters::kOdomOpenVINSFiRefineFeatures().c_str());
+	_ui->spinBox_OdomOpenVINSFiMaxRuns->setObjectName(Parameters::kOdomOpenVINSFiMaxRuns().c_str());
+	_ui->doubleSpinBox_OdomOpenVINSFiMaxBaseline->setObjectName(Parameters::kOdomOpenVINSFiMaxBaseline().c_str());
+	_ui->doubleSpinBox_OdomOpenVINSFiMaxCondNumber->setObjectName(Parameters::kOdomOpenVINSFiMaxCondNumber().c_str());
 
 	_ui->checkBox_OdomOpenVINSUseFEJ->setObjectName(Parameters::kOdomOpenVINSUseFEJ().c_str());
 	_ui->comboBox_OdomOpenVINSIntegration->setObjectName(Parameters::kOdomOpenVINSIntegration().c_str());
+	_ui->checkBox_OdomOpenVINSCalibCamExtrinsics->setObjectName(Parameters::kOdomOpenVINSCalibCamExtrinsics().c_str());
+	_ui->checkBox_OdomOpenVINSCalibCamIntrinsics->setObjectName(Parameters::kOdomOpenVINSCalibCamIntrinsics().c_str());
+	_ui->checkBox_OdomOpenVINSCalibCamTimeoffset->setObjectName(Parameters::kOdomOpenVINSCalibCamTimeoffset().c_str());
+	_ui->checkBox_OdomOpenVINSCalibIMUIntrinsics->setObjectName(Parameters::kOdomOpenVINSCalibIMUIntrinsics().c_str());
+	_ui->checkBox_OdomOpenVINSCalibIMUGSensitivity->setObjectName(Parameters::kOdomOpenVINSCalibIMUGSensitivity().c_str());
 	_ui->spinBox_OdomOpenVINSMaxClones->setObjectName(Parameters::kOdomOpenVINSMaxClones().c_str());
 	_ui->spinBox_OdomOpenVINSMaxSLAM->setObjectName(Parameters::kOdomOpenVINSMaxSLAM().c_str());
 	_ui->spinBox_OdomOpenVINSMaxSLAMInUpdate->setObjectName(Parameters::kOdomOpenVINSMaxSLAMInUpdate().c_str());
@@ -1453,11 +1459,27 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->comboBox_OdomOpenVINSFeatRepSLAM->setObjectName(Parameters::kOdomOpenVINSFeatRepSLAM().c_str());
 	_ui->doubleSpinBox_OdomOpenVINSDtSLAMDelay->setObjectName(Parameters::kOdomOpenVINSDtSLAMDelay().c_str());
 	_ui->doubleSpinBox_OdomOpenVINSGravityMag->setObjectName(Parameters::kOdomOpenVINSGravityMag().c_str());
+	_ui->lineEdit_OdomOpenVINSLeftMaskPath->setObjectName(Parameters::kOdomOpenVINSLeftMaskPath().c_str());
+	connect(_ui->toolButton_OdomOpenVINSLeftMaskPath, SIGNAL(clicked()), this, SLOT(changeOdometryOpenVINSLeftMask()));
+	_ui->lineEdit_OdomOpenVINSRightMaskPath->setObjectName(Parameters::kOdomOpenVINSRightMaskPath().c_str());
+	connect(_ui->toolButton_OdomOpenVINSRightMaskPath, SIGNAL(clicked()), this, SLOT(changeOdometryOpenVINSRightMask()));
 
 	_ui->doubleSpinBox_OdomOpenVINSInitWindowTime->setObjectName(Parameters::kOdomOpenVINSInitWindowTime().c_str());
 	_ui->doubleSpinBox_OdomOpenVINSInitIMUThresh->setObjectName(Parameters::kOdomOpenVINSInitIMUThresh().c_str());
 	_ui->doubleSpinBox_OdomOpenVINSInitMaxDisparity->setObjectName(Parameters::kOdomOpenVINSInitMaxDisparity().c_str());
 	_ui->spinBox_OdomOpenVINSInitMaxFeatures->setObjectName(Parameters::kOdomOpenVINSInitMaxFeatures().c_str());
+	_ui->checkBox_OdomOpenVINSInitDynUse->setObjectName(Parameters::kOdomOpenVINSInitDynUse().c_str());
+	_ui->checkBox_OdomOpenVINSInitDynMLEOptCalib->setObjectName(Parameters::kOdomOpenVINSInitDynMLEOptCalib().c_str());
+	_ui->spinBox_OdomOpenVINSInitDynMLEMaxIter->setObjectName(Parameters::kOdomOpenVINSInitDynMLEMaxIter().c_str());
+	_ui->doubleSpinBox_OdomOpenVINSInitDynMLEMaxTime->setObjectName(Parameters::kOdomOpenVINSInitDynMLEMaxTime().c_str());
+	_ui->spinBox_OdomOpenVINSInitDynMLEMaxThreads->setObjectName(Parameters::kOdomOpenVINSInitDynMLEMaxThreads().c_str());
+	_ui->spinBox_OdomOpenVINSInitDynNumPose->setObjectName(Parameters::kOdomOpenVINSInitDynNumPose().c_str());
+	_ui->doubleSpinBox_OdomOpenVINSInitDynMinDeg->setObjectName(Parameters::kOdomOpenVINSInitDynMinDeg().c_str());
+	_ui->doubleSpinBox_OdomOpenVINSInitDynInflationOri->setObjectName(Parameters::kOdomOpenVINSInitDynInflationOri().c_str());
+	_ui->doubleSpinBox_OdomOpenVINSInitDynInflationVel->setObjectName(Parameters::kOdomOpenVINSInitDynInflationVel().c_str());
+	_ui->doubleSpinBox_OdomOpenVINSInitDynInflationBg->setObjectName(Parameters::kOdomOpenVINSInitDynInflationBg().c_str());
+	_ui->doubleSpinBox_OdomOpenVINSInitDynInflationBa->setObjectName(Parameters::kOdomOpenVINSInitDynInflationBa().c_str());
+	_ui->doubleSpinBox_OdomOpenVINSInitDynMinRecCond->setObjectName(Parameters::kOdomOpenVINSInitDynMinRecCond().c_str());
 
 	_ui->checkBox_OdomOpenVINSTryZUPT->setObjectName(Parameters::kOdomOpenVINSTryZUPT().c_str());
 	_ui->doubleSpinBox_OdomOpenVINSZUPTChi2Multiplier->setObjectName(Parameters::kOdomOpenVINSZUPTChi2Multiplier().c_str());
@@ -5191,6 +5213,40 @@ void PreferencesDialog::changeOdometryVINSConfigPath()
 	if(!path.isEmpty())
 	{
 		_ui->lineEdit_OdomVinsPath->setText(path);
+	}
+}
+
+void PreferencesDialog::changeOdometryOpenVINSLeftMask()
+{
+	QString path;
+	if(_ui->lineEdit_OdomOpenVINSLeftMaskPath->text().isEmpty())
+	{
+		path = QFileDialog::getOpenFileName(this, tr("Select Left Mask"), this->getWorkingDirectory(), tr("Image mask (*.jpg *.png)"));
+	}
+	else
+	{
+		path = QFileDialog::getOpenFileName(this, tr("Select Left Mask"), _ui->lineEdit_OdomOpenVINSLeftMaskPath->text(), tr("Image mask (*.jpg *.png)"));
+	}
+	if(!path.isEmpty())
+	{
+		_ui->lineEdit_OdomOpenVINSLeftMaskPath->setText(path);
+	}
+}
+
+void PreferencesDialog::changeOdometryOpenVINSRightMask()
+{
+	QString path;
+	if(_ui->lineEdit_OdomOpenVINSRightMaskPath->text().isEmpty())
+	{
+		path = QFileDialog::getOpenFileName(this, tr("Select Right Mask"), this->getWorkingDirectory(), tr("Image mask (*.jpg *.png)"));
+	}
+	else
+	{
+		path = QFileDialog::getOpenFileName(this, tr("Select Right Mask"), _ui->lineEdit_OdomOpenVINSRightMaskPath->text(), tr("Image mask (*.jpg *.png)"));
+	}
+	if(!path.isEmpty())
+	{
+		_ui->lineEdit_OdomOpenVINSRightMaskPath->setText(path);
 	}
 }
 

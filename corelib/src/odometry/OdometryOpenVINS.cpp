@@ -28,12 +28,15 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/odometry/OdometryOpenVINS.h"
 #include "rtabmap/core/OdometryInfo.h"
 #include "rtabmap/core/util3d_transforms.h"
+#include "rtabmap/utilite/UFile.h"
 #include "rtabmap/utilite/ULogger.h"
 #include "rtabmap/utilite/UTimer.h"
+#include <opencv2/core/eigen.hpp>
 #include <opencv2/imgproc/types_c.h>
 
 #ifdef RTABMAP_OPENVINS
 #include "core/VioManager.h"
+#include "state/Propagator.h"
 #include "state/State.h"
 #include "state/StateHelper.h"
 #endif
@@ -49,20 +52,35 @@ OdometryOpenVINS::OdometryOpenVINS(const ParametersMap & parameters) :
 #endif
 {
 #ifdef RTABMAP_OPENVINS
-	ov_core::Printer::setPrintLevel("WARNING");
+	ov_core::Printer::setPrintLevel(ov_core::Printer::PrintLevel(ULogger::level()+1));
 	int enum_index;
+	std::string left_mask_path, right_mask_path;
 	params_ = std::make_unique<ov_msckf::VioManagerOptions>();
 	Parameters::parse(parameters, Parameters::kOdomOpenVINSUseStereo(), params_->use_stereo);
 	Parameters::parse(parameters, Parameters::kOdomOpenVINSUseKLT(), params_->use_klt);
 	Parameters::parse(parameters, Parameters::kOdomOpenVINSNumPts(), params_->num_pts);
-	Parameters::parse(parameters, Parameters::kOdomOpenVINSFastThreshold(), params_->fast_threshold);
-	Parameters::parse(parameters, Parameters::kOdomOpenVINSGridX(), params_->grid_x);
-	Parameters::parse(parameters, Parameters::kOdomOpenVINSGridY(), params_->grid_y);
+	Parameters::parse(parameters, Parameters::kFASTThreshold(), params_->fast_threshold);
+	Parameters::parse(parameters, Parameters::kVisGridCols(), params_->grid_x);
+	Parameters::parse(parameters, Parameters::kVisGridRows(), params_->grid_y);
 	Parameters::parse(parameters, Parameters::kOdomOpenVINSMinPxDist(), params_->min_px_dist);
-	Parameters::parse(parameters, Parameters::kOdomOpenVINSKNNRatio(), params_->knn_ratio);
+	Parameters::parse(parameters, Parameters::kVisCorNNDR(), params_->knn_ratio);
+	Parameters::parse(parameters, Parameters::kOdomOpenVINSFiTriangulate1d(), params_->featinit_options.triangulate_1d);
+	Parameters::parse(parameters, Parameters::kOdomOpenVINSFiRefineFeatures(), params_->featinit_options.refine_features);
+	Parameters::parse(parameters, Parameters::kOdomOpenVINSFiMaxRuns(), params_->featinit_options.max_runs);
+	Parameters::parse(parameters, Parameters::kVisMinDepth(), params_->featinit_options.min_dist);
+	Parameters::parse(parameters, Parameters::kVisMaxDepth(), params_->featinit_options.max_dist);
+	if(params_->featinit_options.max_dist == 0)
+		params_->featinit_options.max_dist = std::numeric_limits<double>::infinity();
+	Parameters::parse(parameters, Parameters::kOdomOpenVINSFiMaxBaseline(), params_->featinit_options.max_baseline);
+	Parameters::parse(parameters, Parameters::kOdomOpenVINSFiMaxCondNumber(), params_->featinit_options.max_cond_number);
 	Parameters::parse(parameters, Parameters::kOdomOpenVINSUseFEJ(), params_->state_options.do_fej);
 	Parameters::parse(parameters, Parameters::kOdomOpenVINSIntegration(), enum_index);
 	params_->state_options.integration_method = ov_msckf::StateOptions::IntegrationMethod(enum_index);
+	Parameters::parse(parameters, Parameters::kOdomOpenVINSCalibCamExtrinsics(), params_->state_options.do_calib_camera_pose);
+	Parameters::parse(parameters, Parameters::kOdomOpenVINSCalibCamIntrinsics(), params_->state_options.do_calib_camera_intrinsics);
+	Parameters::parse(parameters, Parameters::kOdomOpenVINSCalibCamTimeoffset(), params_->state_options.do_calib_camera_timeoffset);
+	Parameters::parse(parameters, Parameters::kOdomOpenVINSCalibIMUIntrinsics(), params_->state_options.do_calib_imu_intrinsics);
+	Parameters::parse(parameters, Parameters::kOdomOpenVINSCalibIMUGSensitivity(), params_->state_options.do_calib_imu_g_sensitivity);
 	Parameters::parse(parameters, Parameters::kOdomOpenVINSMaxClones(), params_->state_options.max_clone_size);
 	Parameters::parse(parameters, Parameters::kOdomOpenVINSMaxSLAM(), params_->state_options.max_slam_features);
 	Parameters::parse(parameters, Parameters::kOdomOpenVINSMaxSLAMInUpdate(), params_->state_options.max_slam_in_update);
@@ -73,10 +91,39 @@ OdometryOpenVINS::OdometryOpenVINS(const ParametersMap & parameters) :
 	params_->state_options.feat_rep_slam = ov_type::LandmarkRepresentation::Representation(enum_index);
 	Parameters::parse(parameters, Parameters::kOdomOpenVINSDtSLAMDelay(), params_->dt_slam_delay);
 	Parameters::parse(parameters, Parameters::kOdomOpenVINSGravityMag(), params_->gravity_mag);
+	Parameters::parse(parameters, Parameters::kVisDepthAsMask(), params_->use_mask);
+	Parameters::parse(parameters, Parameters::kOdomOpenVINSLeftMaskPath(), left_mask_path);
+	if(!left_mask_path.empty())
+	{
+		if(!UFile::exists(left_mask_path))
+			UWARN("OpenVINS: invalid left mask path: %s", left_mask_path.c_str());
+		else
+			params_->masks.emplace(0, cv::imread(left_mask_path, cv::IMREAD_GRAYSCALE));
+	}
+	Parameters::parse(parameters, Parameters::kOdomOpenVINSRightMaskPath(), right_mask_path);
+	if(!right_mask_path.empty())
+	{
+		if(!UFile::exists(right_mask_path))
+			UWARN("OpenVINS: invalid right mask path: %s", right_mask_path.c_str());
+		else
+			params_->masks.emplace(1, cv::imread(right_mask_path, cv::IMREAD_GRAYSCALE));
+	}
 	Parameters::parse(parameters, Parameters::kOdomOpenVINSInitWindowTime(), params_->init_options.init_window_time);
 	Parameters::parse(parameters, Parameters::kOdomOpenVINSInitIMUThresh(), params_->init_options.init_imu_thresh);
 	Parameters::parse(parameters, Parameters::kOdomOpenVINSInitMaxDisparity(), params_->init_options.init_max_disparity);
 	Parameters::parse(parameters, Parameters::kOdomOpenVINSInitMaxFeatures(), params_->init_options.init_max_features);
+	Parameters::parse(parameters, Parameters::kOdomOpenVINSInitDynUse(), params_->init_options.init_dyn_use);
+	Parameters::parse(parameters, Parameters::kOdomOpenVINSInitDynMLEOptCalib(), params_->init_options.init_dyn_mle_opt_calib);
+	Parameters::parse(parameters, Parameters::kOdomOpenVINSInitDynMLEMaxIter(), params_->init_options.init_dyn_mle_max_iter);
+	Parameters::parse(parameters, Parameters::kOdomOpenVINSInitDynMLEMaxTime(), params_->init_options.init_dyn_mle_max_time);
+	Parameters::parse(parameters, Parameters::kOdomOpenVINSInitDynMLEMaxThreads(), params_->init_options.init_dyn_mle_max_threads);
+	Parameters::parse(parameters, Parameters::kOdomOpenVINSInitDynNumPose(), params_->init_options.init_dyn_num_pose);
+	Parameters::parse(parameters, Parameters::kOdomOpenVINSInitDynMinDeg(), params_->init_options.init_dyn_min_deg);
+	Parameters::parse(parameters, Parameters::kOdomOpenVINSInitDynInflationOri(), params_->init_options.init_dyn_inflation_orientation);
+	Parameters::parse(parameters, Parameters::kOdomOpenVINSInitDynInflationVel(), params_->init_options.init_dyn_inflation_velocity);
+	Parameters::parse(parameters, Parameters::kOdomOpenVINSInitDynInflationBg(), params_->init_options.init_dyn_inflation_bias_gyro);
+	Parameters::parse(parameters, Parameters::kOdomOpenVINSInitDynInflationBa(), params_->init_options.init_dyn_inflation_bias_accel);
+	Parameters::parse(parameters, Parameters::kOdomOpenVINSInitDynMinRecCond(), params_->init_options.init_dyn_min_rec_cond);
 	Parameters::parse(parameters, Parameters::kOdomOpenVINSTryZUPT(), params_->try_zupt);
 	Parameters::parse(parameters, Parameters::kOdomOpenVINSZUPTChi2Multiplier(), params_->zupt_options.chi2_multipler);
 	Parameters::parse(parameters, Parameters::kOdomOpenVINSZUPTMaxVelodicy(), params_->zupt_max_velocity);
@@ -134,7 +181,12 @@ Transform OdometryOpenVINS::computeTransform(
 	if(!vioManager_)
 	{
 		if(!data.imu().empty())
+		{
 			imuLocalTransformInv_ = data.imu().localTransform().inverse();
+			Phi_.setZero();
+			Phi_.block(0,0,3,3) = data.imu().localTransform().toEigen4d().block(0,0,3,3);
+			Phi_.block(3,3,3,3) = data.imu().localTransform().toEigen4d().block(0,0,3,3);
+		}
 
 		if(!data.imageRaw().empty() && !imuLocalTransformInv_.isNull())
 		{
@@ -280,6 +332,12 @@ Transform OdometryOpenVINS::computeTransform(
 
 		if(!data.imageRaw().empty())
 		{
+			bool covFilled = false;
+			Eigen::Matrix<double, 13, 1> state_plus = Eigen::Matrix<double, 13, 1>::Zero();
+			Eigen::Matrix<double, 12, 12> cov_plus = Eigen::Matrix<double, 12, 12>::Zero();
+			if(vioManager_->initialized())
+				covFilled = vioManager_->get_propagator()->fast_state_propagate(vioManager_->get_state(), data.stamp(), state_plus, cov_plus);
+
 			cv::Mat image;
 			if(data.imageRaw().type() == CV_8UC3)
 				cv::cvtColor(data.imageRaw(), image, CV_BGR2GRAY);
@@ -291,7 +349,25 @@ Transform OdometryOpenVINS::computeTransform(
 			message.timestamp = data.stamp();
 			message.sensor_ids.emplace_back(0);
 			message.images.emplace_back(image);
-			message.masks.emplace_back(cv::Mat::zeros(image.size(), CV_8UC1));
+			if(params_->masks.find(0) != params_->masks.end())
+			{
+				message.masks.emplace_back(params_->masks[0]);
+			}
+			else if(!data.depthRaw().empty() && params_->use_mask)
+			{
+				cv::Mat mask;
+				if(data.depthRaw().type() == CV_32FC1)
+					cv::inRange(data.depthRaw(), params_->featinit_options.min_dist,
+						std::isinf(params_->featinit_options.max_dist)?std::numeric_limits<float>::max():params_->featinit_options.max_dist, mask);
+				else if(data.depthRaw().type() == CV_16UC1)
+					cv::inRange(data.depthRaw(), params_->featinit_options.min_dist*1000,
+						std::isinf(params_->featinit_options.max_dist)?std::numeric_limits<uint16_t>::max():params_->featinit_options.max_dist*1000, mask);
+				message.masks.emplace_back(255-mask);
+			}
+			else
+			{
+				message.masks.emplace_back(cv::Mat::zeros(image.size(), CV_8UC1));
+			}
 			if(!data.rightRaw().empty())
 			{
 				if(data.rightRaw().type() == CV_8UC3)
@@ -302,7 +378,10 @@ Transform OdometryOpenVINS::computeTransform(
 					UFATAL("Not supported color type!");
 				message.sensor_ids.emplace_back(1);
 				message.images.emplace_back(image);
-				message.masks.emplace_back(cv::Mat::zeros(image.size(), CV_8UC1));
+				if(params_->masks.find(1) != params_->masks.end())
+					message.masks.emplace_back(params_->masks[1]);
+				else
+					message.masks.emplace_back(cv::Mat::zeros(image.size(), CV_8UC1));
 			}
 			vioManager_->feed_measurement_camera(message);
 
@@ -342,17 +421,11 @@ Transform OdometryOpenVINS::computeTransform(
 						info->type = this->getType();
 						info->localMapSize = feat_posinG.size();
 						info->features = features_SLAM.size() + good_features_MSCKF.size();
-						info->reg.covariance = cv::Mat(6,6,CV_64FC1);
-						std::vector<std::shared_ptr<ov_type::Type>> statevars;
-						statevars.emplace_back(state->_imu->pose()->p());
-						statevars.emplace_back(state->_imu->pose()->q());
-						Eigen::Matrix<double,6,6> covariance_posori = ov_msckf::StateHelper::get_marginal_covariance(state, statevars);
-						for (int r = 0; r < 6; r++)
+						info->reg.covariance = cv::Mat::eye(6, 6, CV_64FC1);
+						if(covFilled)
 						{
-							for (int c = 0; c < 6; c++)
-							{
-								((double *)info->reg.covariance.data)[6*r+c] = covariance_posori(r,c);
-							}
+							Eigen::Matrix<double, 6, 6> covariance = Phi_ * cov_plus.block(6,6,6,6) * Phi_.transpose();
+							cv::eigen2cv(covariance, info->reg.covariance);
 						}
 
 						if(this->isInfoDataFilled())

@@ -18024,78 +18024,6 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                                </widget>
                               </item>
                               <item row="3" column="0">
-                               <widget class="QSpinBox" name="spinBox_OdomOpenVINSFastThreshold">
-                                <property name="minimum">
-                                 <number>1</number>
-                                </property>
-                                <property name="maximum">
-                                 <number>9999</number>
-                                </property>
-                                <property name="value">
-                                 <number>30</number>
-                                </property>
-                               </widget>
-                              </item>
-                              <item row="3" column="1">
-                               <widget class="QLabel" name="label_685">
-                                <property name="text">
-                                 <string>Fast extraction threshold</string>
-                                </property>
-                                <property name="wordWrap">
-                                 <bool>true</bool>
-                                </property>
-                                <property name="textInteractionFlags">
-                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                                </property>
-                               </widget>
-                              </item>
-                              <item row="4" column="0">
-                               <widget class="QSpinBox" name="spinBox_OdomOpenVINSGridX">
-                                <property name="minimum">
-                                 <number>1</number>
-                                </property>
-                                <property name="value">
-                                 <number>5</number>
-                                </property>
-                               </widget>
-                              </item>
-                              <item row="4" column="1">
-                               <widget class="QLabel" name="label_686">
-                                <property name="text">
-                                 <string>Number of grids we should split column-wise to do feature extraction in</string>
-                                </property>
-                                <property name="wordWrap">
-                                 <bool>true</bool>
-                                </property>
-                                <property name="textInteractionFlags">
-                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                                </property>
-                               </widget>
-                              </item>
-                              <item row="5" column="0">
-                               <widget class="QSpinBox" name="spinBox_OdomOpenVINSGridY">
-                                <property name="minimum">
-                                 <number>1</number>
-                                </property>
-                                <property name="value">
-                                 <number>5</number>
-                                </property>
-                               </widget>
-                              </item>
-                              <item row="5" column="1">
-                               <widget class="QLabel" name="label_687">
-                                <property name="text">
-                                 <string>Number of grids we should split row-wise to do feature extraction in</string>
-                                </property>
-                                <property name="wordWrap">
-                                 <bool>true</bool>
-                                </property>
-                                <property name="textInteractionFlags">
-                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                                </property>
-                               </widget>
-                              </item>
-                              <item row="6" column="0">
                                <widget class="QSpinBox" name="spinBox_OdomOpenVINSMinPxDist">
                                 <property name="minimum">
                                  <number>1</number>
@@ -18105,7 +18033,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                                 </property>
                                </widget>
                               </item>
-                              <item row="6" column="1">
+                              <item row="3" column="1">
                                <widget class="QLabel" name="label_688">
                                 <property name="text">
                                  <string>Will check after doing KLT track and remove any features closer than this</string>
@@ -18118,26 +18046,112 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                                 </property>
                                </widget>
                               </item>
-                              <item row="7" column="0">
-                               <widget class="QDoubleSpinBox" name="doubleSpinBox_OdomOpenVINSKNNRatio">
+                              <item row="4" column="0">
+                               <widget class="QCheckBox" name="checkBox_OdomOpenVINSFiTriangulate1d">
+                                <property name="text">
+                                 <string/>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="4" column="1">
+                               <widget class="QLabel" name="label_689">
+                                <property name="text">
+                                 <string>If we should perform 1d triangulation instead of 3d</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="5" column="0">
+                               <widget class="QCheckBox" name="checkBox_OdomOpenVINSFiRefineFeatures">
+                                <property name="text">
+                                 <string/>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="5" column="1">
+                               <widget class="QLabel" name="label_732">
+                                <property name="text">
+                                 <string>If we should perform Levenberg-Marquardt refinement</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="6" column="0">
+                               <widget class="QSpinBox" name="spinBox_OdomOpenVINSFiMaxRuns">
                                 <property name="minimum">
-                                 <double>0.010000000000000</double>
-                                </property>
-                                <property name="maximum">
-                                 <double>1.000000000000000</double>
-                                </property>
-                                <property name="singleStep">
-                                 <double>0.100000000000000</double>
+                                 <number>1</number>
                                 </property>
                                 <property name="value">
-                                 <double>0.700000000000000</double>
+                                 <number>5</number>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="6" column="1">
+                               <widget class="QLabel" name="label_733">
+                                <property name="text">
+                                 <string>Max runs for Levenberg-Marquardt</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="7" column="0">
+                               <widget class="QDoubleSpinBox" name="doubleSpinBox_OdomOpenVINSFiMaxBaseline">
+                                <property name="maximum">
+                                 <double>1000.000000000000000</double>
+                                </property>
+                                <property name="singleStep">
+                                 <double>10.000000000000000</double>
+                                </property>
+                                <property name="value">
+                                 <double>40.000000000000000</double>
                                 </property>
                                </widget>
                               </item>
                               <item row="7" column="1">
-                               <widget class="QLabel" name="label_689">
+                               <widget class="QLabel" name="label_734">
                                 <property name="text">
-                                 <string>KNN ration between top two descriptor matcher which is required to be a good match</string>
+                                 <string>Max baseline ratio to accept triangulated features</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="8" column="0">
+                               <widget class="QDoubleSpinBox" name="doubleSpinBox_OdomOpenVINSFiMaxCondNumber">
+                                <property name="maximum">
+                                 <double>99999.000000000000000</double>
+                                </property>
+                                <property name="singleStep">
+                                 <double>1000.000000000000000</double>
+                                </property>
+                                <property name="value">
+                                 <double>10000.000000000000000</double>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="8" column="1">
+                               <widget class="QLabel" name="label_735">
+                                <property name="text">
+                                 <string>Max condition number of linear triangulation matrix accept triangulated features</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -18215,6 +18229,106 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                                </widget>
                               </item>
                               <item row="2" column="0">
+                               <widget class="QCheckBox" name="checkBox_OdomOpenVINSCalibCamExtrinsics">
+                                <property name="text">
+                                 <string/>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="2" column="1">
+                               <widget class="QLabel" name="label_685">
+                                <property name="text">
+                                 <string>If the transform between camera and IMU should be optimized (R_ItoC, p_CinI)</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="3" column="0">
+                               <widget class="QCheckBox" name="checkBox_OdomOpenVINSCalibCamIntrinsics">
+                                <property name="text">
+                                 <string/>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="3" column="1">
+                               <widget class="QLabel" name="label_686">
+                                <property name="text">
+                                 <string>If camera intrinsics should be optimized (focal, center, distortion)</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="4" column="0">
+                               <widget class="QCheckBox" name="checkBox_OdomOpenVINSCalibCamTimeoffset">
+                                <property name="text">
+                                 <string/>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="4" column="1">
+                               <widget class="QLabel" name="label_687">
+                                <property name="text">
+                                 <string>If timeoffset between camera and IMU should be optimized</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="5" column="0">
+                               <widget class="QCheckBox" name="checkBox_OdomOpenVINSCalibIMUIntrinsics">
+                                <property name="text">
+                                 <string/>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="5" column="1">
+                               <widget class="QLabel" name="label_718">
+                                <property name="text">
+                                 <string>If imu intrinsics should be calibrated (rotation and skew-scale matrix)</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="6" column="0">
+                               <widget class="QCheckBox" name="checkBox_OdomOpenVINSCalibIMUGSensitivity">
+                                <property name="text">
+                                 <string/>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="6" column="1">
+                               <widget class="QLabel" name="label_719">
+                                <property name="text">
+                                 <string>If gyroscope gravity sensitivity (Tg) should be calibrated</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="7" column="0">
                                <widget class="QSpinBox" name="spinBox_OdomOpenVINSMaxClones">
                                 <property name="minimum">
                                  <number>1</number>
@@ -18224,7 +18338,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                                 </property>
                                </widget>
                               </item>
-                              <item row="2" column="1">
+                              <item row="7" column="1">
                                <widget class="QLabel" name="label_692">
                                 <property name="text">
                                  <string>Max clone size of sliding window</string>
@@ -18237,7 +18351,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                                 </property>
                                </widget>
                               </item>
-                              <item row="3" column="0">
+                              <item row="8" column="0">
                                <widget class="QSpinBox" name="spinBox_OdomOpenVINSMaxSLAM">
                                 <property name="minimum">
                                  <number>0</number>
@@ -18250,7 +18364,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                                 </property>
                                </widget>
                               </item>
-                              <item row="3" column="1">
+                              <item row="8" column="1">
                                <widget class="QLabel" name="label_693">
                                 <property name="text">
                                  <string>Max number of estimated SLAM features</string>
@@ -18263,7 +18377,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                                 </property>
                                </widget>
                               </item>
-                              <item row="4" column="0">
+                              <item row="9" column="0">
                                <widget class="QSpinBox" name="spinBox_OdomOpenVINSMaxSLAMInUpdate">
                                 <property name="minimum">
                                  <number>1</number>
@@ -18276,7 +18390,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                                 </property>
                                </widget>
                               </item>
-                              <item row="4" column="1">
+                              <item row="9" column="1">
                                <widget class="QLabel" name="label_694">
                                 <property name="text">
                                  <string>Max number of SLAM features we allow to be included in a single EKF update.</string>
@@ -18289,7 +18403,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                                 </property>
                                </widget>
                               </item>
-                              <item row="5" column="0">
+                              <item row="10" column="0">
                                <widget class="QSpinBox" name="spinBox_OdomOpenVINSMaxMSCKFInUpdate">
                                 <property name="minimum">
                                  <number>0</number>
@@ -18302,7 +18416,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                                 </property>
                                </widget>
                               </item>
-                              <item row="5" column="1">
+                              <item row="10" column="1">
                                <widget class="QLabel" name="label_695">
                                 <property name="text">
                                  <string>Max number of MSCKF features we will use at a given image timestep.</string>
@@ -18315,7 +18429,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                                 </property>
                                </widget>
                               </item>
-                              <item row="6" column="0">
+                              <item row="11" column="0">
                                <widget class="QComboBox" name="comboBox_OdomOpenVINSFeatRepMSCKF">
                                 <property name="currentIndex">
                                  <number>0</number>
@@ -18355,7 +18469,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                                 </item>
                                </widget>
                               </item>
-                              <item row="6" column="1">
+                              <item row="11" column="1">
                                <widget class="QLabel" name="label_696">
                                 <property name="text">
                                  <string>What representation our features are in (msckf features)</string>
@@ -18368,7 +18482,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                                 </property>
                                </widget>
                               </item>
-                              <item row="7" column="0">
+                              <item row="12" column="0">
                                <widget class="QComboBox" name="comboBox_OdomOpenVINSFeatRepSLAM">
                                 <property name="currentIndex">
                                  <number>4</number>
@@ -18408,7 +18522,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                                 </item>
                                </widget>
                               </item>
-                              <item row="7" column="1">
+                              <item row="12" column="1">
                                <widget class="QLabel" name="label_697">
                                 <property name="text">
                                  <string>What representation our features are in (slam features)</string>
@@ -18421,7 +18535,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                                 </property>
                                </widget>
                               </item>
-                              <item row="8" column="0">
+                              <item row="13" column="0">
                                <widget class="QDoubleSpinBox" name="doubleSpinBox_OdomOpenVINSDtSLAMDelay">
                                 <property name="suffix">
                                  <string> s</string>
@@ -18433,11 +18547,11 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                                  <double>0.500000000000000</double>
                                 </property>
                                 <property name="value">
-                                 <double>2.000000000000000</double>
+                                 <double>0.000000000000000</double>
                                 </property>
                                </widget>
                               </item>
-                              <item row="8" column="1">
+                              <item row="13" column="1">
                                <widget class="QLabel" name="label_698">
                                 <property name="text">
                                  <string>Delay before initializing (helps with stability from bad initialization...)</string>
@@ -18450,7 +18564,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                                 </property>
                                </widget>
                               </item>
-                              <item row="9" column="0">
+                              <item row="14" column="0">
                                <widget class="QDoubleSpinBox" name="doubleSpinBox_OdomOpenVINSGravityMag">
                                 <property name="decimals">
                                  <number>5</number>
@@ -18463,10 +18577,64 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                                 </property>
                                </widget>
                               </item>
-                              <item row="9" column="1">
+                              <item row="14" column="1">
                                <widget class="QLabel" name="label_699">
                                 <property name="text">
                                  <string>Magnitude of gravity in this location</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="15" column="0">
+                               <layout class="QHBoxLayout" name="horizontalLayout_16" stretch="0,1">
+                                <item>
+                                 <widget class="QToolButton" name="toolButton_OdomOpenVINSLeftMaskPath">
+                                  <property name="text">
+                                   <string>...</string>
+                                  </property>
+                                 </widget>
+                                </item>
+                                <item>
+                                 <widget class="QLineEdit" name="lineEdit_OdomOpenVINSLeftMaskPath"/>
+                                </item>
+                               </layout>
+                              </item>
+                              <item row="15" column="1">
+                               <widget class="QLabel" name="label_736">
+                                <property name="text">
+                                 <string>Mask for left image</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="16" column="0">
+                               <layout class="QHBoxLayout" name="horizontalLayout_17" stretch="0,1">
+                                <item>
+                                 <widget class="QToolButton" name="toolButton_OdomOpenVINSRightMaskPath">
+                                  <property name="text">
+                                   <string>...</string>
+                                  </property>
+                                 </widget>
+                                </item>
+                                <item>
+                                 <widget class="QLineEdit" name="lineEdit_OdomOpenVINSRightMaskPath"/>
+                                </item>
+                               </layout>
+                              </item>
+                              <item row="16" column="1">
+                               <widget class="QLabel" name="label_737">
+                                <property name="text">
+                                 <string>Mask for right image</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -18586,6 +18754,306 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                                <widget class="QLabel" name="label_703">
                                 <property name="text">
                                  <string>How many features to track during initialization (saves on computation)</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="4" column="0">
+                               <widget class="QCheckBox" name="checkBox_OdomOpenVINSInitDynUse">
+                                <property name="text">
+                                 <string/>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="4" column="1">
+                               <widget class="QLabel" name="label_720">
+                                <property name="text">
+                                 <string>If we should perform dynamic initialization</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="5" column="0">
+                               <widget class="QCheckBox" name="checkBox_OdomOpenVINSInitDynMLEOptCalib">
+                                <property name="text">
+                                 <string/>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="5" column="1">
+                               <widget class="QLabel" name="label_721">
+                                <property name="text">
+                                 <string>If we should optimize and recover the calibration in our MLE</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="6" column="0">
+                               <widget class="QSpinBox" name="spinBox_OdomOpenVINSInitDynMLEMaxIter">
+                                <property name="minimum">
+                                 <number>0</number>
+                                </property>
+                                <property name="value">
+                                 <number>50</number>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="6" column="1">
+                               <widget class="QLabel" name="label_722">
+                                <property name="text">
+                                 <string>Max number of MLE iterations for dynamic initialization</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="7" column="0">
+                               <widget class="QDoubleSpinBox" name="doubleSpinBox_OdomOpenVINSInitDynMLEMaxTime">
+                                <property name="suffix">
+                                 <string> s</string>
+                                </property>
+                                <property name="minimum">
+                                 <double>0.000000000000000</double>
+                                </property>
+                                <property name="singleStep">
+                                 <double>0.010000000000000</double>
+                                </property>
+                                <property name="value">
+                                 <double>0.050000000000000</double>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="7" column="1">
+                               <widget class="QLabel" name="label_723">
+                                <property name="text">
+                                 <string>Max time for MLE optimization</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="8" column="0">
+                               <widget class="QSpinBox" name="spinBox_OdomOpenVINSInitDynMLEMaxThreads">
+                                <property name="minimum">
+                                 <number>1</number>
+                                </property>
+                                <property name="value">
+                                 <number>6</number>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="8" column="1">
+                               <widget class="QLabel" name="label_724">
+                                <property name="text">
+                                 <string>Max number of MLE threads for dynamic initialization</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="9" column="0">
+                               <widget class="QSpinBox" name="spinBox_OdomOpenVINSInitDynNumPose">
+                                <property name="minimum">
+                                 <number>4</number>
+                                </property>
+                                <property name="value">
+                                 <number>6</number>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="9" column="1">
+                               <widget class="QLabel" name="label_725">
+                                <property name="text">
+                                 <string>Number of poses to use during initialization (max should be cam freq * window)</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="10" column="0">
+                               <widget class="QDoubleSpinBox" name="doubleSpinBox_OdomOpenVINSInitDynMinDeg">
+                                <property name="suffix">
+                                 <string> deg</string>
+                                </property>
+                                <property name="minimum">
+                                 <double>0.000000000000000</double>
+                                </property>
+                                <property name="maximum">
+                                 <double>45.000000000000000</double>
+                                </property>
+                                <property name="value">
+                                 <double>10.000000000000000</double>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="10" column="1">
+                               <widget class="QLabel" name="label_726">
+                                <property name="text">
+                                 <string>Minimum degrees we need to rotate before we try to init (sum of norm)</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="11" column="0">
+                               <widget class="QDoubleSpinBox" name="doubleSpinBox_OdomOpenVINSInitDynInflationOri">
+                                <property name="minimum">
+                                 <double>1.000000000000000</double>
+                                </property>
+                                <property name="maximum">
+                                 <double>999.000000000000000</double>
+                                </property>
+                                <property name="value">
+                                 <double>10.000000000000000</double>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="11" column="1">
+                               <widget class="QLabel" name="label_727">
+                                <property name="text">
+                                 <string>Magnitude we will inflate initial covariance of orientation</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="12" column="0">
+                               <widget class="QDoubleSpinBox" name="doubleSpinBox_OdomOpenVINSInitDynInflationVel">
+                                <property name="minimum">
+                                 <double>1.000000000000000</double>
+                                </property>
+                                <property name="maximum">
+                                 <double>999.000000000000000</double>
+                                </property>
+                                <property name="value">
+                                 <double>100.000000000000000</double>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="12" column="1">
+                               <widget class="QLabel" name="label_728">
+                                <property name="text">
+                                 <string>Magnitude we will inflate initial covariance of velocity</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="13" column="0">
+                               <widget class="QDoubleSpinBox" name="doubleSpinBox_OdomOpenVINSInitDynInflationBg">
+                                <property name="minimum">
+                                 <double>1.000000000000000</double>
+                                </property>
+                                <property name="maximum">
+                                 <double>999.000000000000000</double>
+                                </property>
+                                <property name="value">
+                                 <double>10.000000000000000</double>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="13" column="1">
+                               <widget class="QLabel" name="label_729">
+                                <property name="text">
+                                 <string>Magnitude we will inflate initial covariance of gyroscope bias</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="14" column="0">
+                               <widget class="QDoubleSpinBox" name="doubleSpinBox_OdomOpenVINSInitDynInflationBa">
+                                <property name="minimum">
+                                 <double>1.000000000000000</double>
+                                </property>
+                                <property name="maximum">
+                                 <double>999.000000000000000</double>
+                                </property>
+                                <property name="value">
+                                 <double>100.000000000000000</double>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="14" column="1">
+                               <widget class="QLabel" name="label_730">
+                                <property name="text">
+                                 <string>Magnitude we will inflate initial covariance of accelerometer bias</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="15" column="0">
+                               <widget class="QDoubleSpinBox" name="doubleSpinBox_OdomOpenVINSInitDynMinRecCond">
+                                <property name="minimum">
+                                 <double>0.000000000000000</double>
+                                </property>
+                                <property name="maximum">
+                                 <double>1.000000000000000</double>
+                                </property>
+                                <property name="singleStep">
+                                 <double>0.000000000001000</double>
+                                </property>
+                                <property name="value">
+                                 <double>0.000000000000001</double>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="15" column="1">
+                               <widget class="QLabel" name="label_731">
+                                <property name="text">
+                                 <string>Minimum reciprocal condition number acceptable for our covariance recovery</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -21039,7 +21507,7 @@ Lower the ratio -&gt; higher the precision.</string>
                             <double>0.000000000000000</double>
                            </property>
                            <property name="value">
-                            <double>5.000000000000000</double>
+                            <double>60.000000000000000</double>
                            </property>
                           </widget>
                          </item>
@@ -21062,7 +21530,7 @@ Lower the ratio -&gt; higher the precision.</string>
                             <double>0.000000000000000</double>
                            </property>
                            <property name="value">
-                            <double>5.000000000000000</double>
+                            <double>0.100000000000000</double>
                            </property>
                           </widget>
                          </item>

@@ -675,12 +675,12 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 			UASSERT(info->newCorners.size() == info->refCorners.size() || info->refCorners.empty());
 			for(unsigned int i=0; i<info->newCorners.size(); ++i)
 			{
-				info->refCorners[i].x *= _imageDecimation;
-				info->refCorners[i].y *= _imageDecimation;
+				info->newCorners[i].x *= _imageDecimation;
+				info->newCorners[i].y *= _imageDecimation;
 				if(!info->refCorners.empty())
 				{
-					info->newCorners[i].x *= _imageDecimation;
-					info->newCorners[i].y *= _imageDecimation;
+					info->refCorners[i].x *= _imageDecimation;
+					info->refCorners[i].y *= _imageDecimation;
 				}
 			}
 			for(std::multimap<int, cv::KeyPoint>::iterator iter=info->words.begin(); iter!=info->words.end(); ++iter)

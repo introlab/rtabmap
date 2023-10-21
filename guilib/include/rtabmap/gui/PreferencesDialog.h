@@ -349,6 +349,8 @@ private Q_SLOTS:
 	void changeOdometryORBSLAMVocabulary();
 	void changeOdometryOKVISConfigPath();
 	void changeOdometryVINSConfigPath();
+	void changeOdometryOpenVINSLeftMask();
+	void changeOdometryOpenVINSRightMask();
 	void changeIcpPMConfigPath();
 	void changeSuperPointModelPath();
 	void changePyMatcherPath();
