@@ -732,19 +732,19 @@ std::vector<cv::KeyPoint> Feature2D::generateKeypoints(const cv::Mat & image, co
 		for (int j = 0; j<gridCols_; ++j)
 		{
 			cv::Rect roi(globalRoi.x + j*colSize, globalRoi.y + i*rowSize, colSize, rowSize);
-			std::vector<cv::KeyPoint> sub_keypoints;
-			sub_keypoints = this->generateKeypointsImpl(image, roi, mask);
-			limitKeypoints(sub_keypoints, maxFeatures);
+			std::vector<cv::KeyPoint> subKeypoints;
+			subKeypoints = this->generateKeypointsImpl(image, roi, mask);
+			limitKeypoints(subKeypoints, maxFeatures);
 			if(roi.x || roi.y)
 			{
 				// Adjust keypoint position to raw image
-				for(std::vector<cv::KeyPoint>::iterator iter=sub_keypoints.begin(); iter!=sub_keypoints.end(); ++iter)
+				for(std::vector<cv::KeyPoint>::iterator iter=subKeypoints.begin(); iter!=subKeypoints.end(); ++iter)
 				{
 					iter->pt.x += roi.x;
 					iter->pt.y += roi.y;
 				}
 			}
-			keypoints.insert( keypoints.end(), sub_keypoints.begin(), sub_keypoints.end() );
+			keypoints.insert( keypoints.end(), subKeypoints.begin(), subKeypoints.end() );
 		}
 	}
 	UDEBUG("Keypoints extraction time = %f s, keypoints extracted = %d (grid=%dx%d, mask empty=%d)",
@@ -2118,6 +2118,24 @@ std::vector<cv::KeyPoint> ORBOctree::generateKeypointsImpl(const cv::Mat & image
 	}
 
 	(*_orb)(imgRoi, maskRoi, keypoints, descriptors_);
+
+	// OrbOctree ignores the mask, so we have to apply it manually here
+	if(!keypoints.empty() && !maskRoi.empty())
+	{
+		std::vector<cv::KeyPoint> validKeypoints;
+		validKeypoints.reserve(keypoints.size());
+		cv::Mat validDescriptors;
+		for(size_t i=0; i<keypoints.size(); ++i)
+		{
+			if(maskRoi.at<unsigned char>(keypoints[i].pt.y+roi.y, keypoints[i].pt.x+roi.x) != 0)
+			{
+				validKeypoints.push_back(keypoints[i]);
+				validDescriptors.push_back(descriptors_.row(i));
+			}
+		}
+		keypoints = validKeypoints;
+		descriptors_ = validDescriptors;
+	}
 
 	if((int)keypoints.size() > this->getMaxFeatures())
 	{

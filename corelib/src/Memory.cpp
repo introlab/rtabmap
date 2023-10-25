@@ -4970,7 +4970,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 					if(stats) stats->addStatistic(Statistics::kTimingMemKeypoints_3D(), t*1000.0f);
 					UDEBUG("time keypoints 3D (%d) = %fs", (int)keypoints3D.size(), t);
 				}
-				if(_feature2D->getMinDepth() > 0.0f || _feature2D->getMaxDepth() > 0.0f)
+				if(depthMask.empty() && (_feature2D->getMinDepth() > 0.0f || _feature2D->getMaxDepth() > 0.0f))
 				{
 					_feature2D->filterKeypointsByDepth(keypoints, descriptors, keypoints3D, _feature2D->getMinDepth(), _feature2D->getMaxDepth());
 				}
