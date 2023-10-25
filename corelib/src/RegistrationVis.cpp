@@ -30,6 +30,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/RegistrationVis.h>
 #include <rtabmap/core/util3d_motion_estimation.h>
 #include <rtabmap/core/util3d_features.h>
+#include <rtabmap/core/util3d_transforms.h>
 #include <rtabmap/core/util3d.h>
 #include <rtabmap/core/VWDictionary.h>
 #include <rtabmap/core/util2d.h>
@@ -488,6 +489,7 @@ Transform RegistrationVis::computeTransformationImpl(
 
 			if(!imageFrom.empty() && !imageTo.empty())
 			{
+				UASSERT(!toSignature.sensorData().cameraModels().empty() || !toSignature.sensorData().stereoCameraModels().empty());
 				std::vector<cv::Point2f> cornersFrom;
 				cv::KeyPoint::convert(kptsFrom, cornersFrom);
 				std::vector<cv::Point2f> cornersTo;
@@ -510,7 +512,48 @@ Transform RegistrationVis::computeTransformationImpl(
 					}
 					else
 					{
-						UERROR("Optical flow guess with multi-cameras is not implemented, guess ignored...");
+						UTimer t;
+						int nCameras = toSignature.sensorData().cameraModels().size()?toSignature.sensorData().cameraModels().size():toSignature.sensorData().stereoCameraModels().size();
+						cornersTo = cornersFrom;
+						// compute inverse transforms one time
+						std::vector<Transform> inverseTransforms(nCameras);
+						for(int c=0; c<nCameras; ++c)
+						{
+							Transform localTransform = toSignature.sensorData().cameraModels().size()?toSignature.sensorData().cameraModels()[c].localTransform():toSignature.sensorData().stereoCameraModels()[c].left().localTransform();
+							inverseTransforms[c] = (guess * localTransform).inverse();
+							UDEBUG("inverse transforms: cam %d -> %s", c, inverseTransforms[c].prettyPrint().c_str());
+						}
+						// Project 3D points in each camera
+						int inFrame = 0;
+						UASSERT(kptsFrom3D.size() == cornersTo.size());
+						int subImageWidth = toSignature.sensorData().cameraModels().size()?toSignature.sensorData().cameraModels()[0].imageWidth():toSignature.sensorData().stereoCameraModels()[0].left().imageWidth();
+						UASSERT(subImageWidth>0);
+						for(size_t i=0; i<kptsFrom3D.size(); ++i)
+						{
+							// Start from camera having the reference corner first (in case there is overlap between the cameras)
+							int startIndex = cornersFrom[i].x/subImageWidth;
+							UASSERT(startIndex < nCameras);
+							for(int c=startIndex; (c+1)%nCameras != 0; ++c)
+							{
+								const CameraModel & model = toSignature.sensorData().cameraModels().size()?toSignature.sensorData().cameraModels()[c]:toSignature.sensorData().stereoCameraModels()[c].left();
+								cv::Point3f ptsInCamFrame = util3d::transformPoint(kptsFrom3D[i], inverseTransforms[c]);
+								if(ptsInCamFrame.z > 0)
+								{
+									float u,v;
+									model.reproject(ptsInCamFrame.x, ptsInCamFrame.y, ptsInCamFrame.z, u, v);
+									if(model.inFrame(u,v))
+									{
+										cornersTo[i].x = u+model.imageWidth()*c;
+										cornersTo[i].y = v;
+										++inFrame;
+										break;
+									}
+								}
+							}
+						}
+				
+						UDEBUG("Pprojected %d/%ld points inside %d cameras (time=%fs)", 
+							inFrame, cornersTo.size(), nCameras, t.ticks());
 					}
 				}
 
