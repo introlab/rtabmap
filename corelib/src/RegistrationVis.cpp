@@ -552,7 +552,7 @@ Transform RegistrationVis::computeTransformationImpl(
 							}
 						}
 				
-						UDEBUG("Pprojected %d/%ld points inside %d cameras (time=%fs)", 
+						UDEBUG("Projected %d/%ld points inside %d cameras (time=%fs)", 
 							inFrame, cornersTo.size(), nCameras, t.ticks());
 					}
 				}

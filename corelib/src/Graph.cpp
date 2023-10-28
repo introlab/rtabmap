@@ -430,7 +430,7 @@ bool importPoses(
 			else if(format == 1 || format==10 || format==11) // rgbd-slam format
 			{
 				std::list<std::string> strList = uSplit(str);
-				if((strList.size() ==  8 && format!=11) || (strList.size() ==  9 && format==11))
+				if((strList.size() >=  8 && format!=11) || (strList.size() ==  9 && format==11))
 				{
 					double stamp = uStr2Double(strList.front());
 					strList.pop_front();

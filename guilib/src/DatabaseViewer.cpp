@@ -7473,12 +7473,17 @@ void DatabaseViewer::updateGraphView()
 					while(uContains(weights_, link.to()) && weights_.at(link.to()) < 0)
 					{
 						std::multimap<int, Link>::iterator uter = links.find(link.to());
+						while(uter != links.end() && 
+							  uter->first==link.to() && 
+							  uter->second.from()>uter->second.to())
+						{
+							++uter;
+						}
 						if(uter != links.end())
 						{
-							UASSERT(links.count(link.to()) == 1);
 							poses.erase(link.to());
 							link = link.merge(uter->second, uter->second.type());
-							links.erase(uter);
+							links.erase(uter->first);
 						}
 						else
 						{
