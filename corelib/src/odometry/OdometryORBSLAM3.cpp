@@ -58,7 +58,9 @@ OdometryORBSLAM3::OdometryORBSLAM3(const ParametersMap & parameters) :
 	lastImuStamp_(0.0)
 #endif
 {
+#if defined(RTABMAP_ORB_SLAM) and RTABMAP_ORB_SLAM == 3
 	Parameters::parse(parameters, Parameters::kOdomORBSLAMInertial(), useIMU_);
+#endif
 }
 
 OdometryORBSLAM3::~OdometryORBSLAM3()
@@ -101,6 +103,7 @@ bool OdometryORBSLAM3::canProcessAsyncIMU() const
 
 bool OdometryORBSLAM3::init(const rtabmap::CameraModel & model, bool stereo, double baseline)
 {
+#if defined(RTABMAP_ORB_SLAM) and RTABMAP_ORB_SLAM == 3
 	std::string vocabularyPath;
 	rtabmap::Parameters::parse(parameters_, rtabmap::Parameters::kOdomORBSLAMVocPath(), vocabularyPath);
 
@@ -288,7 +291,6 @@ bool OdometryORBSLAM3::init(const rtabmap::CameraModel & model, bool stereo, dou
 
 	ofs.close();
 
-#if defined(RTABMAP_ORB_SLAM) and RTABMAP_ORB_SLAM == 3
 	orbslam_ = new ORB_SLAM3::System(
 			vocabularyPath,
 			configPath,
@@ -298,6 +300,8 @@ bool OdometryORBSLAM3::init(const rtabmap::CameraModel & model, bool stereo, dou
 					ORB_SLAM3::System::RGBD,
 			false);
 	return true;
+#else
+	UERROR("RTAB-Map is not built with ORB_SLAM support! Select another visual odometry approach.");
 #endif
 	return false;
 }
