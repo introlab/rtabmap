@@ -88,6 +88,7 @@ SET(SRC_FILES
     odometry/OdometryDVO.cpp
     odometry/OdometryOkvis.cpp
     odometry/OdometryORBSLAM.cpp
+    odometry/OdometryORBSLAM3.cpp
     odometry/OdometryLOAM.cpp
     odometry/OdometryFLOAM.cpp
     odometry/OdometryMSCKF.cpp

@@ -25,38 +25,46 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef ODOMETRYORBSLAM_H_
-#define ODOMETRYORBSLAM_H_
+#ifndef ODOMETRYORBSLAM3_H_
+#define ODOMETRYORBSLAM3_H_
 
 #include <rtabmap/core/Odometry.h>
 
-
-class ORBSLAMSystem;
+#if defined(RTABMAP_ORB_SLAM) and RTABMAP_ORB_SLAM == 3
+#include <System.h>
+#endif
 
 namespace rtabmap {
 
-class RTABMAP_CORE_EXPORT OdometryORBSLAM : public Odometry
+class RTABMAP_CORE_EXPORT OdometryORBSLAM3 : public Odometry
 {
 public:
-	OdometryORBSLAM(const rtabmap::ParametersMap & parameters = rtabmap::ParametersMap());
-	virtual ~OdometryORBSLAM();
+	OdometryORBSLAM3(const rtabmap::ParametersMap & parameters = rtabmap::ParametersMap());
+	virtual ~OdometryORBSLAM3();
 
 	virtual void reset(const Transform & initialPose = Transform::getIdentity());
 	virtual Odometry::Type getType() {return Odometry::kTypeORBSLAM;}
+	virtual bool canProcessAsyncIMU() const;
 
 private:
 	virtual Transform computeTransform(SensorData & image, const Transform & guess = Transform(), OdometryInfo * info = 0);
 
+	bool init(const rtabmap::CameraModel & model, bool stereo, double baseline);
 private:
-#if defined(RTABMAP_ORB_SLAM) and RTABMAP_ORB_SLAM == 2
-	ORBSLAMSystem * orbslam_;
+#if defined(RTABMAP_ORB_SLAM) and RTABMAP_ORB_SLAM == 3
+	ORB_SLAM3::System * orbslam_;
 	bool firstFrame_;
 	Transform originLocalTransform_;
 	Transform previousPose_;
+	bool useIMU_;
+	Transform imuLocalTransform_;
+	ParametersMap parameters_;
+	std::vector<ORB_SLAM3::IMU::Point> imus_;
+	double lastImuStamp_;
 #endif
 
 };
 
 }
 
-#endif /* ODOMETRYORBSLAM_H_ */
+#endif /* ODOMETRYORBSLAM_H3_ */

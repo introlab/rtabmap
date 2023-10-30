@@ -63,9 +63,9 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-942</y>
+            <y>-817</y>
             <width>756</width>
-            <height>3736</height>
+            <height>4371</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -95,7 +95,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>21</number>
+                <number>19</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,0">
@@ -14719,7 +14719,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                     <item>
                      <widget class="QStackedWidget" name="stackedWidget_odometryType">
                       <property name="currentIndex">
-                       <number>12</number>
+                       <number>5</number>
                       </property>
                       <widget class="QWidget" name="page_52">
                        <layout class="QVBoxLayout" name="verticalLayout_77">
@@ -16644,10 +16644,45 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                                </property>
                               </widget>
                              </item>
-                             <item row="2" column="2">
-                              <widget class="QLabel" name="label_414">
+                             <item row="0" column="1">
+                              <widget class="QLineEdit" name="lineEdit_OdomORBSLAMVocPath"/>
+                             </item>
+                             <item row="3" column="1">
+                              <widget class="QDoubleSpinBox" name="doubleSpinBox_OdomORBSLAMFps">
+                               <property name="enabled">
+                                <bool>false</bool>
+                               </property>
+                               <property name="suffix">
+                                <string/>
+                               </property>
+                               <property name="decimals">
+                                <number>2</number>
+                               </property>
+                               <property name="minimum">
+                                <double>0.000000000000000</double>
+                               </property>
+                               <property name="maximum">
+                                <double>999.000000000000000</double>
+                               </property>
+                               <property name="singleStep">
+                                <double>1.000000000000000</double>
+                               </property>
+                               <property name="value">
+                                <double>0.000000000000000</double>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="0" column="0">
+                              <widget class="QToolButton" name="toolButton_OdomORBSLAMVocPath">
                                <property name="text">
-                                <string>Close/Far threshold. Baseline times.</string>
+                                <string>...</string>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="3" column="2">
+                              <widget class="QLabel" name="label_444">
+                               <property name="text">
+                                <string>Camera FPS. This parameter is linked to &quot;Input rate&quot; of the Source panel.</string>
                                </property>
                                <property name="wordWrap">
                                 <bool>true</bool>
@@ -16679,6 +16714,19 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                                </property>
                               </widget>
                              </item>
+                             <item row="2" column="2">
+                              <widget class="QLabel" name="label_414">
+                               <property name="text">
+                                <string>Close/Far threshold. Baseline times.</string>
+                               </property>
+                               <property name="wordWrap">
+                                <bool>true</bool>
+                               </property>
+                               <property name="textInteractionFlags">
+                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                               </property>
+                              </widget>
+                             </item>
                              <item row="1" column="2">
                               <widget class="QLabel" name="label_413">
                                <property name="text">
@@ -16692,71 +16740,23 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                                </property>
                               </widget>
                              </item>
-                             <item row="0" column="1">
-                              <widget class="QLineEdit" name="lineEdit_OdomORBSLAMVocPath"/>
+                             <item row="4" column="2">
+                              <widget class="QLabel" name="label_445">
+                               <property name="text">
+                                <string>Maximum ORB features extracted per frame.</string>
+                               </property>
+                               <property name="wordWrap">
+                                <bool>true</bool>
+                               </property>
+                               <property name="textInteractionFlags">
+                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                               </property>
+                              </widget>
                              </item>
                              <item row="0" column="2">
                               <widget class="QLabel" name="label_415">
                                <property name="text">
                                 <string>Path to ORB vocabulary (*.txt).</string>
-                               </property>
-                               <property name="wordWrap">
-                                <bool>true</bool>
-                               </property>
-                               <property name="textInteractionFlags">
-                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                               </property>
-                              </widget>
-                             </item>
-                             <item row="0" column="0">
-                              <widget class="QToolButton" name="toolButton_OdomORBSLAMVocPath">
-                               <property name="text">
-                                <string>...</string>
-                               </property>
-                              </widget>
-                             </item>
-                             <item row="3" column="2">
-                              <widget class="QLabel" name="label_444">
-                               <property name="text">
-                                <string>Camera FPS. This parameter is linked to &quot;Input rate&quot; of the Source panel.</string>
-                               </property>
-                               <property name="wordWrap">
-                                <bool>true</bool>
-                               </property>
-                               <property name="textInteractionFlags">
-                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                               </property>
-                              </widget>
-                             </item>
-                             <item row="3" column="1">
-                              <widget class="QDoubleSpinBox" name="doubleSpinBox_OdomORBSLAMFps">
-                               <property name="enabled">
-                                <bool>false</bool>
-                               </property>
-                               <property name="suffix">
-                                <string/>
-                               </property>
-                               <property name="decimals">
-                                <number>2</number>
-                               </property>
-                               <property name="minimum">
-                                <double>0.000000000000000</double>
-                               </property>
-                               <property name="maximum">
-                                <double>999.000000000000000</double>
-                               </property>
-                               <property name="singleStep">
-                                <double>1.000000000000000</double>
-                               </property>
-                               <property name="value">
-                                <double>0.000000000000000</double>
-                               </property>
-                              </widget>
-                             </item>
-                             <item row="4" column="2">
-                              <widget class="QLabel" name="label_445">
-                               <property name="text">
-                                <string>Maximum ORB features extracted per frame.</string>
                                </property>
                                <property name="wordWrap">
                                 <bool>true</bool>
@@ -16779,7 +16779,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                              <item row="5" column="2">
                               <widget class="QLabel" name="label_449">
                                <property name="text">
-                                <string>Maximum size of the feature map (0 means infinite).</string>
+                                <string>Maximum size of the feature map (0 means infinite). Only supported with ORB_SLAM2.</string>
                                </property>
                                <property name="wordWrap">
                                 <bool>true</bool>
@@ -16796,6 +16796,26 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                                </property>
                                <property name="value">
                                 <number>0</number>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="6" column="2">
+                              <widget class="QLabel" name="label_657">
+                               <property name="text">
+                                <string>Enable IMU. Only supported with ORB_SLAM3.</string>
+                               </property>
+                               <property name="wordWrap">
+                                <bool>true</bool>
+                               </property>
+                               <property name="textInteractionFlags">
+                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="6" column="1">
+                              <widget class="QCheckBox" name="checkBox_OdomORBSLAMInertial">
+                               <property name="text">
+                                <string/>
                                </property>
                               </widget>
                              </item>
@@ -17934,7 +17954,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                           <property name="title">
                            <string>OpenVINS</string>
                           </property>
-                          <layout class="QVBoxLayout" name="verticalLayout_161" stretch="0">
+                          <layout class="QVBoxLayout" name="verticalLayout_161" stretch="0,0,0,0,0,0">
                            <item>
                             <widget class="QLabel" name="label_632">
                              <property name="text">
@@ -19046,7 +19066,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                                  <double>0.000000000001000</double>
                                 </property>
                                 <property name="value">
-                                 <double>0.000000000000001</double>
+                                 <double>0.000000000000000</double>
                                 </property>
                                </widget>
                               </item>
@@ -19259,7 +19279,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                               <item row="0" column="1">
                                <widget class="QLabel" name="label_710">
                                 <property name="text">
-                                 <string>Accel "white noise"</string>
+                                 <string>Accel &quot;white noise&quot;</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -19323,7 +19343,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                               <item row="2" column="1">
                                <widget class="QLabel" name="label_712">
                                 <property name="text">
-                                 <string>Gyro "white noise"</string>
+                                 <string>Gyro &quot;white noise&quot;</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>

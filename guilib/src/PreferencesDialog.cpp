@@ -1387,6 +1387,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->doubleSpinBox_OdomORBSLAMFps->setObjectName(Parameters::kOdomORBSLAMFps().c_str());
 	_ui->spinBox_OdomORBSLAMMaxFeatures->setObjectName(Parameters::kOdomORBSLAMMaxFeatures().c_str());
 	_ui->spinBox_OdomORBSLAMMapSize->setObjectName(Parameters::kOdomORBSLAMMapSize().c_str());
+	_ui->checkBox_OdomORBSLAMInertial->setObjectName(Parameters::kOdomORBSLAMInertial().c_str());
 
 	// Odometry Okvis
 	_ui->lineEdit_OdomOkvisPath->setObjectName(Parameters::kOdomOKVISConfigPath().c_str());
