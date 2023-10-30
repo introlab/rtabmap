@@ -25,21 +25,21 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef ODOMETRYORBSLAM_H_
-#define ODOMETRYORBSLAM_H_
+#ifndef ODOMETRYORBSLAM2_H_
+#define ODOMETRYORBSLAM2_H_
 
 #include <rtabmap/core/Odometry.h>
 
 
-class ORBSLAMSystem;
+class ORBSLAM2System;
 
 namespace rtabmap {
 
-class RTABMAP_CORE_EXPORT OdometryORBSLAM : public Odometry
+class RTABMAP_CORE_EXPORT OdometryORBSLAM2 : public Odometry
 {
 public:
-	OdometryORBSLAM(const rtabmap::ParametersMap & parameters = rtabmap::ParametersMap());
-	virtual ~OdometryORBSLAM();
+	OdometryORBSLAM2(const rtabmap::ParametersMap & parameters = rtabmap::ParametersMap());
+	virtual ~OdometryORBSLAM2();
 
 	virtual void reset(const Transform & initialPose = Transform::getIdentity());
 	virtual Odometry::Type getType() {return Odometry::kTypeORBSLAM;}
@@ -49,7 +49,7 @@ private:
 
 private:
 #if defined(RTABMAP_ORB_SLAM) and RTABMAP_ORB_SLAM == 2
-	ORBSLAMSystem * orbslam_;
+	ORBSLAM2System * orbslam_;
 	bool firstFrame_;
 	Transform originLocalTransform_;
 	Transform previousPose_;
@@ -59,4 +59,4 @@ private:
 
 }
 
-#endif /* ODOMETRYORBSLAM_H_ */
+#endif /* ODOMETRYORBSLAM2_H_ */

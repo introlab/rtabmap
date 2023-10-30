@@ -34,7 +34,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/utilite/UDirectory.h"
 #include <pcl/common/transforms.h>
 #include <opencv2/imgproc/types_c.h>
-#include <rtabmap/core/odometry/OdometryORBSLAM.h>
+#include <rtabmap/core/odometry/OdometryORBSLAM2.h>
 
 #if defined(RTABMAP_ORB_SLAM) and RTABMAP_ORB_SLAM == 2
 #include <System.h>
@@ -537,10 +537,10 @@ public:
 
 using namespace ORB_SLAM2;
 
-class ORBSLAMSystem
+class ORBSLAM2System
 {
 public:
-	ORBSLAMSystem(const rtabmap::ParametersMap & parameters) :
+	ORBSLAM2System(const rtabmap::ParametersMap & parameters) :
 		mpVocabulary(0),
 		mpKeyFrameDatabase(0),
 		mpMap(0),
@@ -748,7 +748,7 @@ public:
 		return true;
 	}
 
-	virtual ~ORBSLAMSystem()
+	virtual ~ORBSLAM2System()
 	{
 		shutdown();
 		delete mpVocabulary;
@@ -820,7 +820,7 @@ public:
 
 namespace rtabmap {
 
-OdometryORBSLAM::OdometryORBSLAM(const ParametersMap & parameters) :
+OdometryORBSLAM2::OdometryORBSLAM2(const ParametersMap & parameters) :
 	Odometry(parameters)
 #if defined(RTABMAP_ORB_SLAM) and RTABMAP_ORB_SLAM == 2
     ,
@@ -830,11 +830,11 @@ OdometryORBSLAM::OdometryORBSLAM(const ParametersMap & parameters) :
 #endif
 {
 #if defined(RTABMAP_ORB_SLAM) and RTABMAP_ORB_SLAM == 2
-	orbslam_ = new ORBSLAMSystem(parameters);
+	orbslam_ = new ORBSLAM2System(parameters);
 #endif
 }
 
-OdometryORBSLAM::~OdometryORBSLAM()
+OdometryORBSLAM2::~OdometryORBSLAM2()
 {
 #if defined(RTABMAP_ORB_SLAM) and RTABMAP_ORB_SLAM == 2
 	if(orbslam_)
@@ -844,7 +844,7 @@ OdometryORBSLAM::~OdometryORBSLAM()
 #endif
 }
 
-void OdometryORBSLAM::reset(const Transform & initialPose)
+void OdometryORBSLAM2::reset(const Transform & initialPose)
 {
 	Odometry::reset(initialPose);
 #if defined(RTABMAP_ORB_SLAM) and RTABMAP_ORB_SLAM == 2
@@ -859,7 +859,7 @@ void OdometryORBSLAM::reset(const Transform & initialPose)
 }
 
 // return not null transform if odometry is correctly computed
-Transform OdometryORBSLAM::computeTransform(
+Transform OdometryORBSLAM2::computeTransform(
 		SensorData & data,
 		const Transform & guess,
 		OdometryInfo * info)
