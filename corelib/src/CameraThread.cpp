@@ -458,6 +458,17 @@ void CameraThread::postUpdate(SensorData * dataPtr, CameraInfo * info) const
 			{
 				data.setStereoImage(image, depthOrRight, stereoModels);
 			}
+
+			std::vector<cv::KeyPoint> kpts = data.keypoints();
+			double log2value = log(double(_imageDecimation))/log(2.0);
+			for(unsigned int i=0; i<kpts.size(); ++i)
+			{
+				kpts[i].pt.x /= _imageDecimation;
+				kpts[i].pt.y /= _imageDecimation;
+				kpts[i].size /= _imageDecimation;
+				kpts[i].octave -= log2value;
+			}
+			data.setFeatures(kpts, data.keypoints3D(), data.descriptors());
 		}
 		if(info) info->timeImageDecimation = timer.ticks();
 	}
