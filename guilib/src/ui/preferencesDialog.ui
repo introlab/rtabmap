@@ -63,7 +63,7 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-876</y>
+            <y>-844</y>
             <width>756</width>
             <height>4371</height>
            </rect>
@@ -11770,7 +11770,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                           <string> m</string>
                          </property>
                          <property name="decimals">
-                          <number>3</number>
+                          <number>4</number>
                          </property>
                          <property name="maximum">
                           <double>1.000000000000000</double>
