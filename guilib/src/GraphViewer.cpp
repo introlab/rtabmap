@@ -251,10 +251,10 @@ public:
 protected:
 	virtual void hoverEnterEvent ( QGraphicsSceneHoverEvent * event )
 	{
-		QString str = QString("%1->%2 (%3 m)").arg(_from).arg(_to).arg(_poseA.getDistance(_poseB));
+		QString str = QString("%1->%2 (type=%3 length=%4 m)").arg(_from).arg(_to).arg(_link.type()).arg(_poseA.getDistance(_poseB));
 		if(!_link.transform().isNull())
 		{
-			str.append(QString("\n%1\n%2 %3").arg(_link.transform().prettyPrint().c_str()).arg(_link.transVariance()).arg(_link.rotVariance()));
+			str.append(QString("\n%1\nvar= %2 %3").arg(_link.transform().prettyPrint().c_str()).arg(_link.transVariance()).arg(_link.rotVariance()));
 		}
 		this->setToolTip(str);
 		QPen pen = this->pen();
@@ -566,7 +566,7 @@ void GraphViewer::updateGraph(const std::map<int, Transform> & poses,
 				itemIter = _linkItems.find(iter->first);
 				while(itemIter.key() == idFrom && itemIter != _linkItems.end())
 				{
-					if(itemIter.value()->to() == idTo)
+					if(itemIter.value()->to() == idTo && itemIter.value()->type() == iter->second.type())
 					{
 						itemIter.value()->setPoses(poseA, poseB, _viewPlane);
 						itemIter.value()->show();

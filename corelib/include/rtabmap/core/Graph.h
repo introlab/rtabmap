@@ -136,6 +136,12 @@ std::multimap<int, Link>::iterator RTABMAP_CORE_EXPORT findLink(
 		int to,
 		bool checkBothWays = true,
 		Link::Type type = Link::kUndef);
+std::multimap<int, std::pair<int, Link::Type> >::iterator RTABMAP_CORE_EXPORT findLink(
+		std::multimap<int, std::pair<int, Link::Type> > & links,
+		int from,
+		int to,
+		bool checkBothWays = true,
+		Link::Type type = Link::kUndef);
 std::multimap<int, int>::iterator RTABMAP_CORE_EXPORT findLink(
 		std::multimap<int, int> & links,
 		int from,
@@ -143,6 +149,12 @@ std::multimap<int, int>::iterator RTABMAP_CORE_EXPORT findLink(
 		bool checkBothWays = true);
 std::multimap<int, Link>::const_iterator RTABMAP_CORE_EXPORT findLink(
 		const std::multimap<int, Link> & links,
+		int from,
+		int to,
+		bool checkBothWays = true,
+		Link::Type type = Link::kUndef);
+std::multimap<int, std::pair<int, Link::Type> >::const_iterator RTABMAP_CORE_EXPORT findLink(
+		const std::multimap<int, std::pair<int, Link::Type> > & links,
 		int from,
 		int to,
 		bool checkBothWays = true,
