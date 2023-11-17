@@ -190,8 +190,7 @@ void Optimizer::getConnectedGraph(
 		const std::map<int, Transform> & posesIn,
 		const std::multimap<int, Link> & linksIn,
 		std::map<int, Transform> & posesOut,
-		std::multimap<int, Link> & linksOut,
-		bool adjustPosesWithConstraints) const
+		std::multimap<int, Link> & linksOut) const
 {
 	UDEBUG("IN: fromId=%d poses=%d links=%d priorsIgnored=%d landmarksIgnored=%d", fromId, (int)posesIn.size(), (int)linksIn.size(), priorsIgnored()?1:0, landmarksIgnored()?1:0);
 	UASSERT(fromId>0);
@@ -245,31 +244,24 @@ void Optimizer::getConnectedGraph(
 				{
 					if(!uContains(posesOut, toId))
 					{
-						if(adjustPosesWithConstraints)
+						const Transform & poseToIn = posesIn.at(toId);
+						Transform t = kter->second.from()==currentId?kter->second.transform():kter->second.transform().inverse();
+						if(isSlam2d() && kter->second.type() == Link::kLandmark && toId>0 && (poseToIn.is3DoF() || poseToIn.is4DoF()))
 						{
-							if(isSlam2d() && kter->second.type() == Link::kLandmark && toId>0)
+							if(poseToIn.is3DoF())
 							{
-								Transform t;
-								if(kter->second.from()==currentId)
-								{
-									t = kter->second.transform();
-								}
-								else
-								{
-									t = kter->second.transform().inverse();
-								}
 								posesOut.insert(std::make_pair(toId, (posesOut.at(currentId) * t).to3DoF()));
 							}
 							else
 							{
-								Transform t = posesOut.at(currentId) * (kter->second.from()==currentId?kter->second.transform():kter->second.transform().inverse());
-								posesOut.insert(std::make_pair(toId, t));
+								posesOut.insert(std::make_pair(toId, (posesOut.at(currentId) * t).to4DoF()));
 							}
 						}
 						else
 						{
-							posesOut.insert(*posesIn.find(toId));
+							posesOut.insert(std::make_pair(toId, posesOut.at(currentId)* t));
 						}
+
 						// add prior links
 						for(std::multimap<int, Link>::const_iterator pter=linksIn.find(toId); pter!=linksIn.end() && pter->first==toId; ++pter)
 						{
