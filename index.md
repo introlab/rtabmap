@@ -81,6 +81,8 @@ Related papers:
 * Petit, L. and Desbiens, A.L., 2022. "[Tape: Tether-aware path planning for autonomous exploration of unknown 3d cavities using a tangle-compatible tethered aerial robot](https://www.researchgate.net/profile/Louis-Petit/publication/362336640_TAPE_Tether-Aware_Path_Planning_for_Autonomous_Exploration_of_Unknown_3D_Cavities_using_a_Tangle-compatible_Tethered_Aerial_Robot/links/62e94ab93c0ea8788776c506/TAPE-Tether-Aware-Path-Planning-for-Autonomous-Exploration-of-Unknown-3D-Cavities-Using-a-Tangle-Compatible-Tethered-Aerial-Robot.pdf)". IEEE Robotics and Automation Letters, 7(4), pp.10550-10557. ([IEEE Xplore](https://ieeexplore.ieee.org/document/9844242))
    [![Watch the video](https://img.youtube.com/vi/nROO0BFK4lc/maxresdefault.jpg)](https://youtu.be/nROO0BFK4lc)
   
+### March 2023
+New release [v0.21.0](https://github.com/introlab/rtabmap/releases/tag/0.21.0)!
 
 ### June 2022
 A new paper has been published: **Multi-Session Visual SLAM for Illumination-Invariant Re-Localization in Indoor Environments**. The general idea is to remap multiple times the same environment to capture multiple illumination variations caused by natural and artificial lighting, then the robot would be able to localize afterwards at any hour of the day. For more details, see this [page](https://github.com/introlab/rtabmap/tree/master/archive/2022-IlluminationInvariant) and the linked paper. Some great comparisons about robustness to illumination variations between binary descriptors (BRIEF/ORB, BRISK), float descriptors (SURF/SIFT/KAZE/DAISY) and learned descriptors (SuperPoint).
