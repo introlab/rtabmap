@@ -76,7 +76,7 @@ We had new papers published this year on a very fun project about underground mi
 [![Watch the video](https://img.youtube.com/vi/ytsfhMdv9W0/sddefault.jpg)](https://youtu.be/ytsfhMdv9W0)
 
 Related papers:
-* Leclerc, M.A., Bass, J., Labbé, M., Dozois, D., Delisle, J., Rancourt, D. and Lussier Desbiens, A., 2023. "[NetherDrone: A tethered and ducted propulsion multirotor drone for complex underground mining stopes inspection](https://cdnsciencepub.com/doi/pdf/10.1139/dsa-2023-0001)". Drone Systems and Applications. (**Editor's Choice**)
+* Leclerc, M.A., Bass, J., Labbé, M., Dozois, D., Delisle, J., Rancourt, D. and Lussier Desbiens, A., 2023. "[NetherDrone: A tethered and ducted propulsion multirotor drone for complex underground mining stopes inspection](https://cdnsciencepub.com/doi/pdf/10.1139/dsa-2023-0001)". Drone Systems and Applications. ([Canadian Science Publishing](https://cdnsciencepub.com/doi/full/10.1139/dsa-2023-0001)) (**Editor's Choice**)
 
 * Petit, L. and Desbiens, A.L., 2022. "[Tape: Tether-aware path planning for autonomous exploration of unknown 3d cavities using a tangle-compatible tethered aerial robot](https://www.researchgate.net/profile/Louis-Petit/publication/362336640_TAPE_Tether-Aware_Path_Planning_for_Autonomous_Exploration_of_Unknown_3D_Cavities_using_a_Tangle-compatible_Tethered_Aerial_Robot/links/62e94ab93c0ea8788776c506/TAPE-Tether-Aware-Path-Planning-for-Autonomous-Exploration-of-Unknown-3D-Cavities-Using-a-Tangle-Compatible-Tethered-Aerial-Robot.pdf)". IEEE Robotics and Automation Letters, 7(4), pp.10550-10557. ([IEEE Xplore](https://ieeexplore.ieee.org/document/9844242))
    [![Watch the video](https://img.youtube.com/vi/nROO0BFK4lc/maxresdefault.jpg)](https://youtu.be/nROO0BFK4lc)
