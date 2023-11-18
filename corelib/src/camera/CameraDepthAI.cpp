@@ -200,9 +200,9 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 #ifdef RTABMAP_DEPTHAI
 
 	std::vector<dai::DeviceInfo> devices = dai::Device::getAllAvailableDevices();
-	if(devices.empty())
+	if(devices.empty() && mxidOrName_.empty())
 	{
-		UERROR("No DepthAI device found");
+		UERROR("No DepthAI device found or specified");
 		return false;
 	}
 
@@ -215,24 +215,11 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 	bool deviceFound = false;
 	dai::DeviceInfo deviceToUse(mxidOrName_);
 	if(mxidOrName_.empty())
-	{
 		std::tie(deviceFound, deviceToUse) = dai::Device::getFirstAvailableDevice();
-	}
 	else if(!deviceToUse.mxid.empty())
-	{
 		std::tie(deviceFound, deviceToUse) = dai::Device::getDeviceByMxId(deviceToUse.mxid);
-	}
 	else
-	{
-		for(auto& device : devices)
-		{
-			if(deviceToUse.name == device.name)
-			{
-				deviceFound = true;
-				deviceToUse = device;
-			}
-		}
-	}
+		deviceFound = true;
 
 	if(!deviceFound)
 	{
@@ -335,7 +322,7 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 	monoRight->out.link(stereo->right);
 
 	// Using VideoEncoder on PoE devices, Subpixel is not supported
-	if(deviceToUse.protocol == X_LINK_TCP_IP)
+	if(deviceToUse.protocol == X_LINK_TCP_IP || mxidOrName_.find(".") != std::string::npos)
 	{
 		auto leftEnc  = p.create<dai::node::VideoEncoder>();
 		auto depthOrRightEnc  = p.create<dai::node::VideoEncoder>();
@@ -509,8 +496,8 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 				else
 				{
 					UScopeMutex lock(imuMutex_);
-					accBuffer_.emplace_hint(accBuffer_.end(), std::make_pair(accStamp, cv::Vec3f(acceleroValues.x, acceleroValues.y, acceleroValues.z)));
-					gyroBuffer_.emplace_hint(gyroBuffer_.end(), std::make_pair(gyroStamp, cv::Vec3f(gyroValues.x, gyroValues.y, gyroValues.z)));
+					accBuffer_.emplace_hint(accBuffer_.end(), accStamp, cv::Vec3f(acceleroValues.x, acceleroValues.y, acceleroValues.z));
+					gyroBuffer_.emplace_hint(gyroBuffer_.end(), gyroStamp, cv::Vec3f(gyroValues.x, gyroValues.y, gyroValues.z));
 				}
 			}
 		});
@@ -568,7 +555,7 @@ SensorData CameraDepthAI::captureImage(CameraInfo * info)
 		rectifRightOrDepth = rightOrDepthQueue_->get<dai::ImgFrame>();
 
 	double stamp = std::chrono::duration<double>(rectifL->getTimestampDevice(dai::CameraExposureOffset::MIDDLE).time_since_epoch()).count();
-	if(device_->getDeviceInfo().protocol == X_LINK_TCP_IP)
+	if(device_->getDeviceInfo().protocol == X_LINK_TCP_IP || mxidOrName_.find(".") != std::string::npos)
 	{
 		left = cv::imdecode(rectifL->getData(), cv::IMREAD_GRAYSCALE);
 		depthOrRight = cv::imdecode(rectifRightOrDepth->getData(), cv::IMREAD_GRAYSCALE);

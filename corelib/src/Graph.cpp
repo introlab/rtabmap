@@ -1054,6 +1054,39 @@ std::multimap<int, Link>::iterator findLink(
 	return links.end();
 }
 
+std::multimap<int, std::pair<int, Link::Type> >::iterator findLink(
+		std::multimap<int, std::pair<int, Link::Type> > & links,
+		int from,
+		int to,
+		bool checkBothWays,
+		Link::Type type)
+{
+	std::multimap<int, std::pair<int, Link::Type> >::iterator iter = links.find(from);
+	while(iter != links.end() && iter->first == from)
+	{
+		if(iter->second.first == to && (type==Link::kUndef || type == iter->second.second))
+		{
+			return iter;
+		}
+		++iter;
+	}
+
+	if(checkBothWays)
+	{
+		// let's try to -> from
+		iter = links.find(to);
+		while(iter != links.end() && iter->first == to)
+		{
+			if(iter->second.first == from && (type==Link::kUndef || type == iter->second.second))
+			{
+				return iter;
+			}
+			++iter;
+		}
+	}
+	return links.end();
+}
+
 std::multimap<int, int>::iterator findLink(
 		std::multimap<int, int> & links,
 		int from,
@@ -1109,6 +1142,39 @@ std::multimap<int, Link>::const_iterator findLink(
 		while(iter != links.end() && iter->first == to)
 		{
 			if(iter->second.to() == from && (type==Link::kUndef || type == iter->second.type()))
+			{
+				return iter;
+			}
+			++iter;
+		}
+	}
+	return links.end();
+}
+
+std::multimap<int, std::pair<int, Link::Type> >::const_iterator findLink(
+		const std::multimap<int, std::pair<int, Link::Type> > & links,
+		int from,
+		int to,
+		bool checkBothWays,
+		Link::Type type)
+{
+	std::multimap<int, std::pair<int, Link::Type> >::const_iterator iter = links.find(from);
+	while(iter != links.end() && iter->first == from)
+	{
+		if(iter->second.first == to && (type==Link::kUndef || type == iter->second.second))
+		{
+			return iter;
+		}
+		++iter;
+	}
+
+	if(checkBothWays)
+	{
+		// let's try to -> from
+		iter = links.find(to);
+		while(iter != links.end() && iter->first == to)
+		{
+			if(iter->second.first == from && (type==Link::kUndef || type == iter->second.second))
 			{
 				return iter;
 			}

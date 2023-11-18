@@ -377,6 +377,7 @@ class RTABMAP_CORE_EXPORT Parameters
     RTABMAP_PARAM(RGBD, LoopCovLimited,               bool, false,  "Limit covariance of non-neighbor links to minimum covariance of neighbor links. In other words, if covariance of a loop closure link is smaller than the minimum covariance of odometry links, its covariance is set to minimum covariance of odometry links.");
     RTABMAP_PARAM(RGBD, MaxOdomCacheSize,             int,  10,      uFormat("Maximum odometry cache size. Used only in localization mode (when %s=false). This is used to get smoother localizations and to verify localization transforms (when %s!=0) to make sure we don't teleport to a location very similar to one we previously localized on. Set 0 to disable caching.", kMemIncrementalMemory().c_str(), kRGBDOptimizeMaxError().c_str()));
     RTABMAP_PARAM(RGBD, LocalizationSmoothing,        bool, true,    uFormat("Adjust localization constraints based on optimized odometry cache poses (when %s>0).",  kRGBDMaxOdomCacheSize().c_str()));
+    RTABMAP_PARAM(RGBD, LocalizationPriorError,       double, 0.001, uFormat("The corresponding variance (error x error) set to priors of the map's poses during localization (when %s>0).",  kRGBDMaxOdomCacheSize().c_str()));
 
     // Local/Proximity loop closure detection
     RTABMAP_PARAM(RGBD, ProximityByTime,              bool, false, "Detection over all locations in STM.");
@@ -526,13 +527,19 @@ class RTABMAP_CORE_EXPORT Parameters
     RTABMAP_PARAM(OdomViso2, BucketHeight,              double, 50,  "Height of bucket.");
 
     // Odometry ORB_SLAM2
-    RTABMAP_PARAM_STR(OdomORBSLAM, VocPath,             "",    "Path to ORB vocabulary (*.txt).");
-    RTABMAP_PARAM(OdomORBSLAM, Bf,              double, 0.076, "Fake IR projector baseline (m) used only when stereo is not used.");
-    RTABMAP_PARAM(OdomORBSLAM, ThDepth,         double, 40.0,  "Close/Far threshold. Baseline times.");
-    RTABMAP_PARAM(OdomORBSLAM, Fps,             float,  30.0,  "Camera FPS.");
-    RTABMAP_PARAM(OdomORBSLAM, MaxFeatures,     int,    1000,  "Maximum ORB features extracted per frame.");
-    RTABMAP_PARAM(OdomORBSLAM, MapSize,         int,    3000,  "Maximum size of the feature map (0 means infinite). Only supported with ORB_SLAM2.");
-    RTABMAP_PARAM(OdomORBSLAM, Inertial,        bool,   false, "Enable IMU. Only supported with ORB_SLAM3.");
+    RTABMAP_PARAM_STR(OdomORBSLAM, VocPath,             "",       "Path to ORB vocabulary (*.txt).");
+    RTABMAP_PARAM(OdomORBSLAM, Bf,              double, 0.076,    "Fake IR projector baseline (m) used only when stereo is not used.");
+    RTABMAP_PARAM(OdomORBSLAM, ThDepth,         double, 40.0,     "Close/Far threshold. Baseline times.");
+    RTABMAP_PARAM(OdomORBSLAM, Fps,             float,  0.0,      "Camera FPS (0 to estimate from input data).");
+    RTABMAP_PARAM(OdomORBSLAM, MaxFeatures,     int,    1000,     "Maximum ORB features extracted per frame.");
+    RTABMAP_PARAM(OdomORBSLAM, MapSize,         int,    3000,     "Maximum size of the feature map (0 means infinite). Only supported with ORB_SLAM2.");
+    RTABMAP_PARAM(OdomORBSLAM, Inertial,        bool,   false,    "Enable IMU. Only supported with ORB_SLAM3.");
+    RTABMAP_PARAM(OdomORBSLAM, GyroNoise,       double, 0.01,     "IMU gyroscope \"white noise\".");
+    RTABMAP_PARAM(OdomORBSLAM, AccNoise,        double, 0.1,      "IMU accelerometer \"white noise\".");
+    RTABMAP_PARAM(OdomORBSLAM, GyroWalk,        double, 0.000001, "IMU gyroscope \"random walk\".");
+    RTABMAP_PARAM(OdomORBSLAM, AccWalk,         double, 0.0001,   "IMU accelerometer \"random walk\".");
+    RTABMAP_PARAM(OdomORBSLAM, SamplingRate,    double, 0,        "IMU sampling rate (0 to estimate from input data).");
+
 
     // Odometry OKVIS
     RTABMAP_PARAM_STR(OdomOKVIS, ConfigPath,     "",  "Path of OKVIS config file.");

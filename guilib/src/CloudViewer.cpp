@@ -2835,8 +2835,6 @@ void CloudViewer::setCameraPosition(
 	{
 		renderer->ResetCameraClippingRange(boundingBox);
 	}
-
-	_visualizer->getRenderWindow()->Render ();
 }
 
 void CloudViewer::updateCameraTargetPosition(const Transform & pose)
@@ -2845,14 +2843,6 @@ void CloudViewer::updateCameraTargetPosition(const Transform & pose)
 	{
 		Eigen::Affine3f m = pose.toEigen3f();
 		Eigen::Vector3f pos = m.translation();
-
-		Eigen::Vector3f lastPos(0,0,0);
-		if(_trajectory->size())
-		{
-			lastPos[0]=_trajectory->back().x;
-			lastPos[1]=_trajectory->back().y;
-			lastPos[2]=_trajectory->back().z;
-		}
 
 		_trajectory->push_back(pcl::PointXYZ(pos[0], pos[1], pos[2]));
 		if(_maxTrajectorySize>0)

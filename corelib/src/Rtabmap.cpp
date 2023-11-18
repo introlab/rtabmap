@@ -148,6 +148,7 @@ Rtabmap::Rtabmap() :
 	_loopGPS(Parameters::defaultRtabmapLoopGPS()),
 	_maxOdomCacheSize(Parameters::defaultRGBDMaxOdomCacheSize()),
 	_localizationSmoothing(Parameters::defaultRGBDLocalizationSmoothing()),
+	_localizationPriorInf(1.0/(Parameters::defaultRGBDLocalizationPriorError()*Parameters::defaultRGBDLocalizationPriorError())),
 	_createGlobalScanMap(Parameters::defaultRGBDProximityGlobalScanMap()),
 	_markerPriorsLinearVariance(Parameters::defaultMarkerPriorsVarianceLinear()),
 	_markerPriorsAngularVariance(Parameters::defaultMarkerPriorsVarianceAngular()),
@@ -620,6 +621,10 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kRtabmapLoopGPS(), _loopGPS);
 	Parameters::parse(parameters, Parameters::kRGBDMaxOdomCacheSize(), _maxOdomCacheSize);
 	Parameters::parse(parameters, Parameters::kRGBDLocalizationSmoothing(), _localizationSmoothing);
+	double localizationPriorError = Parameters::defaultRGBDLocalizationPriorError();
+	Parameters::parse(parameters, Parameters::kRGBDLocalizationPriorError(), localizationPriorError);
+	UASSERT(localizationPriorError>0.0);
+	_localizationPriorInf = 1.0/(localizationPriorError*localizationPriorError);
 	Parameters::parse(parameters, Parameters::kRGBDProximityGlobalScanMap(), _createGlobalScanMap);
 
 	Parameters::parse(parameters, Parameters::kMarkerPriorsVarianceLinear(), _markerPriorsLinearVariance);
@@ -3137,6 +3142,7 @@ bool Rtabmap::process(
 				{
 					constraints.insert(std::make_pair(iter->second.from(), iter->second));
 				}
+				cv::Mat priorInfMat = cv::Mat::eye(6,6, CV_64FC1)*_localizationPriorInf;
 				for(std::multimap<int, Link>::iterator iter=constraints.begin(); iter!=constraints.end(); ++iter)
 				{
 					std::map<int, Transform>::iterator iterPose = _optimizedPoses.find(iter->second.to());
@@ -3144,16 +3150,11 @@ bool Rtabmap::process(
 					{
 						poses.insert(*iterPose);
 						// make the poses in the map fixed
-						constraints.insert(std::make_pair(iterPose->first, Link(iterPose->first, iterPose->first, Link::kPosePrior, iterPose->second, cv::Mat::eye(6,6, CV_64FC1)*1000000)));
-						UDEBUG("Constraint %d->%d (type=%s)", iterPose->first, iterPose->first, Link::typeName(Link::kPosePrior).c_str());
+						constraints.insert(std::make_pair(iterPose->first, Link(iterPose->first, iterPose->first, Link::kPosePrior, iterPose->second, priorInfMat)));
+						UDEBUG("Constraint %d->%d: %s (type=%s, var=%f)", iterPose->first, iterPose->first, iterPose->second.prettyPrint().c_str(), Link::typeName(Link::kPosePrior).c_str(), 1./_localizationPriorInf);
 					}
-					UDEBUG("Constraint %d->%d (type=%s, var = %f %f)", iter->second.from(), iter->second.to(), iter->second.typeName().c_str(), iter->second.transVariance(), iter->second.rotVariance());
+					UDEBUG("Constraint %d->%d: %s (type=%s, var = %f %f)", iter->second.from(), iter->second.to(), iter->second.transform().prettyPrint().c_str(), iter->second.typeName().c_str(), iter->second.transVariance(), iter->second.rotVariance());
 				}
-				for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter)
-				{
-					UDEBUG("Pose %d %s", iter->first, iter->second.prettyPrint().c_str());
-				}
-
 
 				std::map<int, Transform> posesOut;
 				std::multimap<int, Link> edgeConstraintsOut;
@@ -3161,9 +3162,25 @@ bool Rtabmap::process(
 				UDEBUG("priorsIgnored was %s", priorsIgnored?"true":"false");
 				_graphOptimizer->setPriorsIgnored(false); //temporary set false to use priors above to fix nodes of the map
 				// If slam2d: get connected graph while keeping original roll,pitch,z values.
-				_graphOptimizer->getConnectedGraph(signature->id(), poses, constraints, posesOut, edgeConstraintsOut, !_graphOptimizer->isSlam2d());
+				_graphOptimizer->getConnectedGraph(signature->id(), poses, constraints, posesOut, edgeConstraintsOut);
+				if(ULogger::level() == ULogger::kDebug)
+				{
+					for(std::map<int, Transform>::iterator iter=posesOut.begin(); iter!=posesOut.end(); ++iter)
+					{
+						UDEBUG("Pose %d %s", iter->first, iter->second.prettyPrint().c_str());
+					}
+				}
 				cv::Mat locOptCovariance;
-				std::map<int, Transform> optPoses = _graphOptimizer->optimize(poses.begin()->first, posesOut, edgeConstraintsOut, locOptCovariance);
+				std::map<int, Transform> optPoses;
+				if(!posesOut.empty() &&
+				   posesOut.begin()->first < _odomCachePoses.begin()->first)
+				{
+					optPoses = _graphOptimizer->optimize(posesOut.begin()->first, posesOut, edgeConstraintsOut, locOptCovariance);
+				}
+				else
+				{
+					UERROR("Invalid localization constraints");
+				}
 				_graphOptimizer->setPriorsIgnored(priorsIgnored); // set back
 				for(std::map<int, Transform>::iterator iter=optPoses.begin(); iter!=optPoses.end(); ++iter)
 				{
@@ -3302,8 +3319,17 @@ bool Rtabmap::process(
 						UDEBUG("priorsIgnored was %s", priorsIgnored?"true":"false");
 						_graphOptimizer->setPriorsIgnored(false); //temporary set false to use priors above to fix nodes of the map
 						// If slam2d: get connected graph while keeping original roll,pitch,z values.
-						_graphOptimizer->getConnectedGraph(signature->id(), poses, constraints, posesOut, edgeConstraintsOut, !_graphOptimizer->isSlam2d());
-						optPoses = _graphOptimizer->optimize(poses.begin()->first, posesOut, edgeConstraintsOut, locOptCovariance);
+						_graphOptimizer->getConnectedGraph(signature->id(), poses, constraints, posesOut, edgeConstraintsOut);
+						optPoses.clear();
+						if(!posesOut.empty() &&
+						   posesOut.begin()->first < _odomCachePoses.begin()->first)
+						{
+							optPoses = _graphOptimizer->optimize(posesOut.begin()->first, posesOut, edgeConstraintsOut, locOptCovariance);
+						}
+						else
+						{
+							UERROR("Invalid localization constraints");
+						}
 						_graphOptimizer->setPriorsIgnored(priorsIgnored); // set back
 						for(std::map<int, Transform>::iterator iter=optPoses.begin(); iter!=optPoses.end(); ++iter)
 						{

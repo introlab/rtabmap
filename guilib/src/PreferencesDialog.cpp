@@ -1154,6 +1154,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->RGBDMarkerDetection->setObjectName(Parameters::kRGBDMarkerDetection().c_str());
 	_ui->spinBox_maxOdomCacheSize->setObjectName(Parameters::kRGBDMaxOdomCacheSize().c_str());
 	_ui->checkbox_localizationSmoothing->setObjectName(Parameters::kRGBDLocalizationSmoothing().c_str());
+	_ui->doubleSpinBox_localizationPriorError->setObjectName(Parameters::kRGBDLocalizationPriorError().c_str());
 
 	// Registration
 	_ui->reg_repeatOnce->setObjectName(Parameters::kRegRepeatOnce().c_str());
@@ -1387,7 +1388,12 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->doubleSpinBox_OdomORBSLAMFps->setObjectName(Parameters::kOdomORBSLAMFps().c_str());
 	_ui->spinBox_OdomORBSLAMMaxFeatures->setObjectName(Parameters::kOdomORBSLAMMaxFeatures().c_str());
 	_ui->spinBox_OdomORBSLAMMapSize->setObjectName(Parameters::kOdomORBSLAMMapSize().c_str());
-	_ui->checkBox_OdomORBSLAMInertial->setObjectName(Parameters::kOdomORBSLAMInertial().c_str());
+	_ui->groupBox_OdomORBSLAMInertial->setObjectName(Parameters::kOdomORBSLAMInertial().c_str());
+	_ui->doubleSpinBox_ORBSLAMGyroNoise->setObjectName(Parameters::kOdomORBSLAMGyroNoise().c_str());
+	_ui->doubleSpinBox_ORBSLAMAccNoise->setObjectName(Parameters::kOdomORBSLAMAccNoise().c_str());
+	_ui->doubleSpinBox_ORBSLAMGyroWalk->setObjectName(Parameters::kOdomORBSLAMGyroWalk().c_str());
+	_ui->doubleSpinBox_ORBSLAMAccWalk->setObjectName(Parameters::kOdomORBSLAMAccWalk().c_str());
+	_ui->doubleSpinBox_ORBSLAMSamplingRate->setObjectName(Parameters::kOdomORBSLAMSamplingRate().c_str());
 
 	// Odometry Okvis
 	_ui->lineEdit_OdomOkvisPath->setObjectName(Parameters::kOdomOKVISConfigPath().c_str());

@@ -49,7 +49,7 @@ public:
 private:
 	virtual Transform computeTransform(SensorData & image, const Transform & guess = Transform(), OdometryInfo * info = 0);
 
-	bool init(const rtabmap::CameraModel & model, bool stereo, double baseline);
+	bool init(const rtabmap::CameraModel & model, double stamp, bool stereo, double baseline);
 private:
 #if defined(RTABMAP_ORB_SLAM) and RTABMAP_ORB_SLAM == 3
 	ORB_SLAM3::System * orbslam_;
@@ -59,8 +59,9 @@ private:
 	bool useIMU_;
 	Transform imuLocalTransform_;
 	ParametersMap parameters_;
-	std::vector<ORB_SLAM3::IMU::Point> imus_;
+	std::vector<ORB_SLAM3::IMU::Point> orbslamImus_;
 	double lastImuStamp_;
+	double lastImageStamp_;
 #endif
 
 };

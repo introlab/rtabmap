@@ -211,14 +211,24 @@ Transform Transform::to3DoF() const
 {
 	float x,y,z,roll,pitch,yaw;
 	this->getTranslationAndEulerAngles(x,y,z,roll,pitch,yaw);
-	return Transform(x,y,0, 0,0,yaw);
+	float A = std::cos(yaw);
+	float B = std::sin(yaw);
+	return Transform(
+			A,-B, 0, x,
+			B, A, 0, y,
+			0, 0, 1, 0);
 }
 
 Transform Transform::to4DoF() const
 {
 	float x,y,z,roll,pitch,yaw;
 	this->getTranslationAndEulerAngles(x,y,z,roll,pitch,yaw);
-	return Transform(x,y,z, 0,0,yaw);
+	float A = std::cos(yaw);
+	float B = std::sin(yaw);
+	return Transform(
+			A,-B, 0, x,
+			B, A, 0, y,
+			0, 0, 1, z);
 }
 
 bool Transform::is3DoF() const
@@ -232,7 +242,7 @@ bool Transform::is4DoF() const
 		   r23() == 0.0 &&
 		   r31() == 0.0 &&
 		   r32() == 0.0 &&
-		   r33() == 0.0;
+		   r33() == 1.0;
 }
 
 cv::Mat Transform::rotationMatrix() const

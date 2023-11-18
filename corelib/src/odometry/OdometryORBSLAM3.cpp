@@ -55,7 +55,8 @@ OdometryORBSLAM3::OdometryORBSLAM3(const ParametersMap & parameters) :
 	previousPose_(Transform::getIdentity()),
 	useIMU_(Parameters::defaultOdomORBSLAMInertial()),
 	parameters_(parameters),
-	lastImuStamp_(0.0)
+	lastImuStamp_(0.0),
+	lastImageStamp_(0.0)
 #endif
 {
 #if defined(RTABMAP_ORB_SLAM) and RTABMAP_ORB_SLAM == 3
@@ -89,6 +90,7 @@ void OdometryORBSLAM3::reset(const Transform & initialPose)
 	previousPose_.setIdentity();
 	imuLocalTransform_.setNull();
 	lastImuStamp_ = 0.0;
+	lastImageStamp_ = 0.0;
 #endif
 }
 
@@ -101,7 +103,7 @@ bool OdometryORBSLAM3::canProcessAsyncIMU() const
 #endif
 }
 
-bool OdometryORBSLAM3::init(const rtabmap::CameraModel & model, bool stereo, double baseline)
+bool OdometryORBSLAM3::init(const rtabmap::CameraModel & model, double stamp,  bool stereo, double baseline)
 {
 #if defined(RTABMAP_ORB_SLAM) and RTABMAP_ORB_SLAM == 3
 	std::string vocabularyPath;
@@ -190,6 +192,14 @@ bool OdometryORBSLAM3::init(const rtabmap::CameraModel & model, bool stereo, dou
 
 	float fps = rtabmap::Parameters::defaultOdomORBSLAMFps();
 	rtabmap::Parameters::parse(parameters_, rtabmap::Parameters::kOdomORBSLAMFps(), fps);
+	if(fps == 0)
+	{
+		UASSERT(stamp > lastImageStamp_);
+		fps = std::round(1./(stamp - lastImageStamp_));
+		UWARN("Camera FPS estimated at %d Hz. If this doesn't look good, "
+			  "set explicitly parameter %s to expected frequency.",
+			  int(fps), Parameters::kOdomORBSLAMFps().c_str());
+	}
 	ofs << "Camera.fps: " << (int)fps << std::endl;
 	ofs << std::endl;
 
@@ -201,7 +211,7 @@ bool OdometryORBSLAM3::init(const rtabmap::CameraModel & model, bool stereo, dou
 	ofs << std::endl;
 
 	//# Deptmap values factor
-	ofs << "RGBD.DepthMapFactor: " << 1000.0 << std::endl;
+	ofs << "RGBD.DepthMapFactor: " << 1.0 << std::endl;
 	ofs << std::endl;
 
 	bool withIMU = false;
@@ -226,11 +236,32 @@ bool OdometryORBSLAM3::init(const rtabmap::CameraModel & model, bool stereo, dou
 		ofs << "IMU.InsertKFsWhenLost: " << 0 << std::endl;
 		ofs << std::endl;
 
-		ofs << "IMU.NoiseGyro: " << 1e-2 << std::endl;
-		ofs << "IMU.NoiseAcc: " << 1e-1 << std::endl;
-		ofs << "IMU.GyroWalk: " << 1e-6 << std::endl;
-		ofs << "IMU.AccWalk: " << 1e-4 << std::endl;
-		ofs << "IMU.Frequency: " << 200.0 << std::endl;
+		double gyroNoise = rtabmap::Parameters::defaultOdomORBSLAMGyroNoise();
+		double accNoise = rtabmap::Parameters::defaultOdomORBSLAMAccNoise();
+		double gyroWalk = rtabmap::Parameters::defaultOdomORBSLAMGyroWalk();
+		double accWalk = rtabmap::Parameters::defaultOdomORBSLAMAccWalk();
+		double samplingRate = rtabmap::Parameters::defaultOdomORBSLAMSamplingRate();
+		rtabmap::Parameters::parse(parameters_, rtabmap::Parameters::kOdomORBSLAMGyroNoise(), gyroNoise);
+		rtabmap::Parameters::parse(parameters_, rtabmap::Parameters::kOdomORBSLAMAccNoise(), accNoise);
+		rtabmap::Parameters::parse(parameters_, rtabmap::Parameters::kOdomORBSLAMGyroWalk(), gyroWalk);
+		rtabmap::Parameters::parse(parameters_, rtabmap::Parameters::kOdomORBSLAMAccWalk(), accWalk);
+		rtabmap::Parameters::parse(parameters_, rtabmap::Parameters::kOdomORBSLAMSamplingRate(), samplingRate);
+
+		ofs << "IMU.NoiseGyro: " << gyroNoise << std::endl; // 1e-2
+		ofs << "IMU.NoiseAcc: " << accNoise << std::endl; // 1e-1
+		ofs << "IMU.GyroWalk: " << gyroWalk << std::endl; // 1e-6
+		ofs << "IMU.AccWalk: " << accWalk << std::endl; // 1e-4
+		if(samplingRate == 0)
+		{
+			// estimate rate from imu received.
+			UASSERT(orbslamImus_.size() > 1 && orbslamImus_[0].t < orbslamImus_[1].t);
+			samplingRate = 1./(orbslamImus_[1].t - orbslamImus_[0].t);
+			samplingRate = std::round(samplingRate);
+			UWARN("IMU sampling rate estimated at %.0f Hz. If this doesn't look good, "
+				  "set explicitly parameter %s to expected frequency.",
+				  samplingRate,	Parameters::kOdomORBSLAMSamplingRate().c_str());
+		}
+		ofs << "IMU.Frequency: " << samplingRate << std::endl; // 200
 		ofs << std::endl;
 	}
 
@@ -319,18 +350,12 @@ Transform OdometryORBSLAM3::computeTransform(
 
 	if(useIMU_)
 	{
-		if(orbslam_ == 0)
-		{
-			if(!data.imu().empty())
-			{
-				imuLocalTransform_ = data.imu().localTransform();
-			}
-		}
-		else if(!data.imu().empty())
+		bool added = false;
+		if(!data.imu().empty())
 		{
 			if(lastImuStamp_ == 0.0 || lastImuStamp_ < data.stamp())
 			{
-				imus_.push_back(ORB_SLAM3::IMU::Point(
+				orbslamImus_.push_back(ORB_SLAM3::IMU::Point(
 						data.imu().linearAcceleration().val[0],
 						data.imu().linearAcceleration().val[1],
 						data.imu().linearAcceleration().val[2],
@@ -339,10 +364,20 @@ Transform OdometryORBSLAM3::computeTransform(
 						data.imu().angularVelocity().val[2],
 						data.stamp()));
 				lastImuStamp_ = data.stamp();
+				added = true;
 			}
 			else
 			{
 				UERROR("Received IMU with stamp (%f) <= than the previous IMU (%f), ignoring it!", data.stamp(), lastImuStamp_);
+			}
+		}
+
+		if(orbslam_ == 0)
+		{
+			// We need two samples to estimate imu frame rate
+			if(orbslamImus_.size()>1 && added)
+			{
+				imuLocalTransform_ = data.imu().localTransform();
 			}
 		}
 
@@ -375,8 +410,15 @@ Transform OdometryORBSLAM3::computeTransform(
 	cv::Mat covariance;
 	if(orbslam_ == 0)
 	{
+		// We need two frames to estimate camera frame rate
+		if(lastImageStamp_ == 0.0)
+		{
+			lastImageStamp_ = data.stamp();
+			return t;
+		}
+
 		CameraModel model = data.cameraModels().size()==1?data.cameraModels()[0]:data.stereoCameraModels()[0].left();
-		if(!init(model, stereo, data.cameraModels().size()==1?0.0:data.stereoCameraModels()[0].baseline()))
+		if(!init(model, data.stamp(), stereo, data.cameraModels().size()==1?0.0:data.stereoCameraModels()[0].baseline()))
 		{
 			return t;
 		}
@@ -388,8 +430,8 @@ Transform OdometryORBSLAM3::computeTransform(
 	{
 		localTransform = data.stereoCameraModels()[0].localTransform();
 
-		Tcw = orbslam_->TrackStereo(data.imageRaw(), data.rightRaw(), data.stamp(), imus_);
-		imus_.clear();
+		Tcw = orbslam_->TrackStereo(data.imageRaw(), data.rightRaw(), data.stamp(), orbslamImus_);
+		orbslamImus_.clear();
 	}
 	else
 	{
@@ -403,12 +445,13 @@ Transform OdometryORBSLAM3::computeTransform(
 		{
 			depth = util2d::cvtDepthToFloat(data.depthRaw());
 		}
-		Tcw = orbslam_->TrackRGBD(data.imageRaw(), depth, data.stamp(), imus_);
-		imus_.clear();
+		Tcw = orbslam_->TrackRGBD(data.imageRaw(), depth, data.stamp(), orbslamImus_);
+		orbslamImus_.clear();
 	}
 
 	Transform previousPoseInv = previousPose_.inverse();
-	if(orbslam_->isLost())
+	std::vector<ORB_SLAM3::MapPoint*> mapPoints = orbslam_->GetTrackedMapPoints();
+	if(orbslam_->isLost() || mapPoints.empty())
 	{
 		covariance = cv::Mat::eye(6,6,CV_64FC1)*9999.0f;
 	}
@@ -464,29 +507,21 @@ Transform OdometryORBSLAM3::computeTransform(
 		}
 	}
 
-	int totalMapPoints= 0;
-	int totalKfs= 0;
-	if(orbslam_)
-	{
-		//totalMapPoints = orbslam_->mpAtlas->MapPointsInMap();
-		//totalKfs = orbslam_->mpAtlas->KeyFramesInMap();
-	}
-
 	if(info)
 	{
 		info->lost = t.isNull();
 		info->type = (int)kTypeORBSLAM;
 		info->reg.covariance = covariance;
-		info->localMapSize = totalMapPoints;
-		info->localKeyFrames = totalKfs;
+		info->localMapSize = mapPoints.size();
+		info->localKeyFrames = 0;
 
-		if(this->isInfoDataFilled() && orbslam_)
+		if(this->isInfoDataFilled())
 		{
 			std::vector<cv::KeyPoint> kpts = orbslam_->GetTrackedKeyPointsUn();
 			info->reg.matchesIDs.resize(kpts.size());
 			info->reg.inliersIDs.resize(kpts.size());
 			int oi = 0;
-			std::vector<ORB_SLAM3::MapPoint*> mapPoints = orbslam_->GetTrackedMapPoints();
+
 			UASSERT(mapPoints.size() == kpts.size());
 			for (unsigned int i = 0; i < kpts.size(); ++i)
 			{
@@ -512,18 +547,20 @@ Transform OdometryORBSLAM3::computeTransform(
 			info->reg.inliers = oi;
 			info->reg.matches = oi;
 
-			/*std::vector<MapPoint*> mapPoints = orbslam_->mpAtlas->GetAllMapPoints();
 			Eigen::Affine3f fixRot = (this->getPose()*previousPoseInv*originLocalTransform_).toEigen3f();
 			for (unsigned int i = 0; i < mapPoints.size(); ++i)
 			{
-				Eigen::Vector3f pt = mapPoints[i]->GetWorldPos();
-				pcl::PointXYZ ptt = pcl::transformPoint(pcl::PointXYZ(pt[0], pt[1], pt[2]), fixRot);
-				info->localMap.insert(std::make_pair(mapPoints[i]->mnId, cv::Point3f(ptt.x, ptt.y, ptt.z)));
-			}*/
+				if(mapPoints[i])
+				{
+					Eigen::Vector3f pt = mapPoints[i]->GetWorldPos();
+					pcl::PointXYZ ptt = pcl::transformPoint(pcl::PointXYZ(pt[0], pt[1], pt[2]), fixRot);
+					info->localMap.insert(std::make_pair(mapPoints[i]->mnId, cv::Point3f(ptt.x, ptt.y, ptt.z)));
+				}
+			}
 		}
 	}
 
-	UINFO("Odom update time = %fs, map points=%d, keyframes=%d, lost=%s", timer.elapsed(), totalMapPoints, totalKfs, t.isNull()?"true":"false");
+	UINFO("Odom update time = %fs, map points=%ld, lost=%s", timer.elapsed(), mapPoints.size(), t.isNull()?"true":"false");
 
 #else
 	UERROR("RTAB-Map is not built with ORB_SLAM support! Select another visual odometry approach.");
