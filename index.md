@@ -71,6 +71,17 @@ This website uses Google Analytics. See their Privacy Policy [here](https://supp
 
 ## What's new 
 
+### November 2023
+We had new papers published this year on a very fun project about underground mines scanning. Here is a video of the SLAM part of the project realized with RTAB-Map (it is an early field test we did before going in the mines):
+[![Watch the video](https://img.youtube.com/vi/ytsfhMdv9W0/sddefault.jpg)](https://youtu.be/ytsfhMdv9W0)
+
+Related papers:
+* Leclerc, M.A., Bass, J., Labbé, M., Dozois, D., Delisle, J., Rancourt, D. and Lussier Desbiens, A., 2023. "[NetherDrone: A tethered and ducted propulsion multirotor drone for complex underground mining stopes inspection](https://cdnsciencepub.com/doi/pdf/10.1139/dsa-2023-0001)". Drone Systems and Applications. (**Editor's Choice**)
+
+* Petit, L. and Desbiens, A.L., 2022. "[Tape: Tether-aware path planning for autonomous exploration of unknown 3d cavities using a tangle-compatible tethered aerial robot](https://www.researchgate.net/profile/Louis-Petit/publication/362336640_TAPE_Tether-Aware_Path_Planning_for_Autonomous_Exploration_of_Unknown_3D_Cavities_using_a_Tangle-compatible_Tethered_Aerial_Robot/links/62e94ab93c0ea8788776c506/TAPE-Tether-Aware-Path-Planning-for-Autonomous-Exploration-of-Unknown-3D-Cavities-Using-a-Tangle-Compatible-Tethered-Aerial-Robot.pdf)". IEEE Robotics and Automation Letters, 7(4), pp.10550-10557. ([IEEE Xplore](https://ieeexplore.ieee.org/document/9844242))
+   [![Watch the video](https://img.youtube.com/vi/nROO0BFK4lc/maxresdefault.jpg)](https://youtu.be/nROO0BFK4lc)
+  
+
 ### June 2022
 A new paper has been published: **Multi-Session Visual SLAM for Illumination-Invariant Re-Localization in Indoor Environments**. The general idea is to remap multiple times the same environment to capture multiple illumination variations caused by natural and artificial lighting, then the robot would be able to localize afterwards at any hour of the day. For more details, see this [page](https://github.com/introlab/rtabmap/tree/master/archive/2022-IlluminationInvariant) and the linked paper. Some great comparisons about robustness to illumination variations between binary descriptors (BRIEF/ORB, BRISK), float descriptors (SURF/SIFT/KAZE/DAISY) and learned descriptors (SuperPoint).
 ![Illumination-invariant](https://github.com/introlab/rtabmap/raw/master/archive/2022-IlluminationInvariant/images/fig_overview.jpg)
