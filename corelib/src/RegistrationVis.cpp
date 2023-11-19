@@ -1095,7 +1095,7 @@ Transform RegistrationVis::computeTransformationImpl(
 							std::vector<std::vector<float> > dists;
 							float radius = (float)_guessWinSize; // pixels
 							rtflann::Matrix<float> cornersProjectedMat((float*)cornersProjected.data(), cornersProjected.size(), 2);
-							index.radiusSearch(cornersProjectedMat, indices, dists, radius*radius, rtflann::SearchParams());
+							index.radiusSearch(cornersProjectedMat, indices, dists, radius*radius, rtflann::SearchParams(32, 0, false));
 
 							UASSERT(indices.size() == cornersProjectedMat.rows);
 							UASSERT(descriptorsFrom.cols == descriptorsTo.cols);

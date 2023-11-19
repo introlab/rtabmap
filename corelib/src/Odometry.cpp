@@ -32,7 +32,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/odometry/OdometryViso2.h"
 #include "rtabmap/core/odometry/OdometryDVO.h"
 #include "rtabmap/core/odometry/OdometryOkvis.h"
-#include "rtabmap/core/odometry/OdometryORBSLAM.h"
+#include "rtabmap/core/odometry/OdometryORBSLAM3.h"
 #include "rtabmap/core/odometry/OdometryLOAM.h"
 #include "rtabmap/core/odometry/OdometryFLOAM.h"
 #include "rtabmap/core/odometry/OdometryMSCKF.h"
@@ -51,6 +51,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/util2d.h"
 
 #include <pcl/pcl_base.h>
+#include <rtabmap/core/odometry/OdometryORBSLAM2.h>
 
 namespace rtabmap {
 
@@ -84,7 +85,11 @@ Odometry * Odometry::create(Odometry::Type & type, const ParametersMap & paramet
 		odometry = new OdometryDVO(parameters);
 		break;
 	case Odometry::kTypeORBSLAM:
+#if defined(RTABMAP_ORB_SLAM) and RTABMAP_ORB_SLAM == 2
 		odometry = new OdometryORBSLAM(parameters);
+#else
+		odometry = new OdometryORBSLAM3(parameters);
+#endif
 		break;
 	case Odometry::kTypeOkvis:
 		odometry = new OdometryOkvis(parameters);

@@ -1501,7 +1501,7 @@ SensorData CameraRealSense2::captureImage(CameraInfo * info)
 						getPoseAndIMU(stamps[i], tmp, confidence, imuTmp);
 						if(!imuTmp.empty())
 						{
-							UEventsManager::post(new IMUEvent(imuTmp, iterA->first/1000.0));
+							UEventsManager::post(new IMUEvent(imuTmp, stamps[i]/1000.0));
 							pub++;
 						}
 						else

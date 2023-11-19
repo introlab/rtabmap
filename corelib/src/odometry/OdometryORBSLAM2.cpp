@@ -34,28 +34,21 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/utilite/UDirectory.h"
 #include <pcl/common/transforms.h>
 #include <opencv2/imgproc/types_c.h>
-#include <rtabmap/core/odometry/OdometryORBSLAM.h>
+#include <rtabmap/core/odometry/OdometryORBSLAM2.h>
 
-#ifdef RTABMAP_ORB_SLAM
+#if defined(RTABMAP_ORB_SLAM) and RTABMAP_ORB_SLAM == 2
 #include <System.h>
 #include <thread>
 
 using namespace std;
 
-#if RTABMAP_ORB_SLAM == 3
-namespace ORB_SLAM3 {
-#else
 namespace ORB_SLAM2 {
-#endif
+
 // Override original Tracking object to comment all rendering stuff
 class Tracker: public Tracking
 {
 public:
-#if RTABMAP_ORB_SLAM == 3
-	Tracker(System* pSys, ORBVocabulary* pVoc, FrameDrawer* pFrameDrawer, MapDrawer* pMapDrawer, Atlas* pMap,
-#else
 	Tracker(System* pSys, ORBVocabulary* pVoc, FrameDrawer* pFrameDrawer, MapDrawer* pMapDrawer, Map* pMap,
-#endif
 	             KeyFrameDatabase* pKFDB, const std::string &strSettingPath, const int sensor, long unsigned int maxFeatureMapSize) :
 	            	 Tracking(pSys, pVoc, pFrameDrawer, pMapDrawer, pMap, pKFDB, strSettingPath, sensor),
 	            	 maxFeatureMapSize_(maxFeatureMapSize)
@@ -67,9 +60,6 @@ private:
 protected:
 	void Track()
 	{
-#if RTABMAP_ORB_SLAM == 3
-		Map* mpMap = mpAtlas->GetCurrentMap();
-#endif
 	    if(mState==NO_IMAGES_YET)
 	    {
 	        mState = NOT_INITIALIZED;
@@ -91,17 +81,8 @@ protected:
 
 	        if(mState!=OK)
 	        {
-#if RTABMAP_ORB_SLAM == 3
-	        	mLastFrame = Frame(mCurrentFrame);
-#endif
 	            return;
 	        }
-#if RTABMAP_ORB_SLAM == 3
-	        if(mpAtlas->GetAllMaps().size() == 1)
-			{
-				mnFirstFrameId = mCurrentFrame.mnId;
-			}
-#endif
 	    }
 	    else
 	    {
@@ -384,9 +365,6 @@ protected:
 	        // Set Frame pose to the origin
 	        mCurrentFrame.SetPose(cv::Mat::eye(4,4,CV_32F));
 
-#if RTABMAP_ORB_SLAM == 3
-			Map* mpMap = mpAtlas->GetCurrentMap();
-#endif
 	        // Create KeyFrame
 	        KeyFrame* pKFini = new KeyFrame(mCurrentFrame,mpMap,mpKeyFrameDB);
 
@@ -484,11 +462,9 @@ public:
 				cvtColor(imGrayRight,imGrayRight,CV_BGRA2GRAY);
 			}
 		}
-#if RTABMAP_ORB_SLAM == 3
-	    mCurrentFrame = Frame(mImGray,imGrayRight,timestamp,mpORBextractorLeft,mpORBextractorRight,mpORBVocabulary,mK,mDistCoef,mbf,mThDepth, mpCamera);
-#else
+
 	    mCurrentFrame = Frame(mImGray,imGrayRight,timestamp,mpORBextractorLeft,mpORBextractorRight,mpORBVocabulary,mK,mDistCoef,mbf,mThDepth);
-#endif
+
 	    Track();
 
 	    return mCurrentFrame.mTcw.clone();
@@ -516,11 +492,8 @@ public:
 
 	    UASSERT(imDepth.type()==CV_32F);
 
-#if RTABMAP_ORB_SLAM == 3
-	    mCurrentFrame = Frame(mImGray,imDepth,timestamp,mpORBextractorLeft,mpORBVocabulary,mK,mDistCoef,mbf,mThDepth, mpCamera);
-#else
 	    mCurrentFrame = Frame(mImGray,imDepth,timestamp,mpORBextractorLeft,mpORBVocabulary,mK,mDistCoef,mbf,mThDepth);
-#endif
+
 	    Track();
 
 	    return mCurrentFrame.mTcw.clone();
@@ -531,11 +504,7 @@ public:
 class LoopCloser: public LoopClosing
 {
 public:
-#if RTABMAP_ORB_SLAM == 3
-	LoopCloser(Atlas* pMap, KeyFrameDatabase* pDB, ORBVocabulary* pVoc,const bool bFixScale) :
-#else
 	LoopCloser(Map* pMap, KeyFrameDatabase* pDB, ORBVocabulary* pVoc,const bool bFixScale) :
-#endif
 		LoopClosing(pMap, pDB, pVoc, bFixScale)
 	{}
 
@@ -566,16 +535,12 @@ public:
 
 } // namespace ORB_SLAM
 
-#if RTABMAP_ORB_SLAM == 3
-using namespace ORB_SLAM3;
-#else
 using namespace ORB_SLAM2;
-#endif
 
-class ORBSLAMSystem
+class ORBSLAM2System
 {
 public:
-	ORBSLAMSystem(const rtabmap::ParametersMap & parameters) :
+	ORBSLAM2System(const rtabmap::ParametersMap & parameters) :
 		mpVocabulary(0),
 		mpKeyFrameDatabase(0),
 		mpMap(0),
@@ -613,7 +578,7 @@ public:
 		}
 	}
 
-	bool init(const rtabmap::CameraModel & model, bool stereo, double baseline, const rtabmap::Transform & localIMUTransform)
+	bool init(const rtabmap::CameraModel & model, bool stereo, double baseline)
 	{
 		if(!mpVocabulary)
 		{
@@ -709,31 +674,6 @@ public:
 		ofs << "DepthMapFactor: " << 1000.0 << std::endl;
 		ofs << std::endl;
 
-		if(!localIMUTransform.isNull())
-		{
-			//#--------------------------------------------------------------------------------------------
-			//# IMU Parameters TODO: hard-coded, not used
-			//#--------------------------------------------------------------------------------------------
-			//  Transformation from camera 0 to body-frame (imu)
-			rtabmap::Transform camImuT = model.localTransform()*localIMUTransform;
-			ofs << "Tbc: !!opencv-matrix" << std::endl;
-			ofs << "   rows: 4" << std::endl;
-			ofs << "   cols: 4" << std::endl;
-			ofs << "   dt: f" << std::endl;
-			ofs << "   data: [" << camImuT.data()[0] << ", " << camImuT.data()[1] << ", " << camImuT.data()[2]  << ", " << camImuT.data()[3]  << ", " << std::endl;
-			ofs << "         "  << camImuT.data()[4] << ", " << camImuT.data()[5] << ", " << camImuT.data()[6]  << ", " << camImuT.data()[7]  << ", " << std::endl;
-			ofs << "         "  << camImuT.data()[8] << ", " << camImuT.data()[9] << ", " << camImuT.data()[10] << ", " << camImuT.data()[11] << ", " << std::endl;
-			ofs << "         0.0, 0.0, 0.0, 1.0]" << std::endl;
-			ofs << std::endl;
-
-			ofs << "IMU.NoiseGyro: " << 1.7e-4 << std::endl;
-			ofs << "IMU.NoiseAcc: " << 2.0e-3 << std::endl;
-			ofs << "IMU.GyroWalk: " << 1.9393e-5 << std::endl;
-			ofs << "IMU.AccWalk: " << 3.e-3 << std::endl;
-			ofs << "IMU.Frequency: " << 200 << std::endl;
-			ofs << std::endl;
-		}
-
 		//#--------------------------------------------------------------------------------------------
 		//# ORB Parameters
 		//#--------------------------------------------------------------------------------------------
@@ -776,22 +716,15 @@ public:
 		mpKeyFrameDatabase = new KeyFrameDatabase(*mpVocabulary);
 
 		//Create the Map
-#if RTABMAP_ORB_SLAM == 3
-		mpMap = new Atlas(0);
-#else
 		mpMap = new ORB_SLAM2::Map();
-#endif
 
 		//Initialize the Tracking thread
 		//(it will live in the main thread of execution, the one that called this constructor)
 		mpTracker = new Tracker(0, mpVocabulary, 0, 0, mpMap, mpKeyFrameDatabase, configPath, stereo?System::STEREO:System::RGBD, maxFeatureMapSize);
 
 		//Initialize the Local Mapping thread and launch
-#if RTABMAP_ORB_SLAM == 3
-		mpLocalMapper = new LocalMapping(0, mpMap, false, stereo && !localIMUTransform.isNull());
-#else
 		mpLocalMapper = new LocalMapping(mpMap, false);
-#endif
+
 		//Initialize the Loop Closing thread and launch
 		mpLoopCloser = new LoopCloser(mpMap, mpKeyFrameDatabase, mpVocabulary, true);
 
@@ -812,17 +745,10 @@ public:
 		// Reset all static variables
 		Frame::mbInitialComputations = true;
 
-#if RTABMAP_ORB_SLAM == 3
-		if(ULogger::level() > ULogger::kInfo)
-			Verbose::SetTh(Verbose::VERBOSITY_QUIET);
-
-		mpTracker->Reset(true);
-#endif
-
 		return true;
 	}
 
-	virtual ~ORBSLAMSystem()
+	virtual ~ORBSLAM2System()
 	{
 		shutdown();
 		delete mpVocabulary;
@@ -869,11 +795,7 @@ public:
 	KeyFrameDatabase* mpKeyFrameDatabase;
 
 	// Map structure that stores the pointers to all KeyFrames and MapPoints.
-#if RTABMAP_ORB_SLAM == 3
-	Atlas* mpMap;
-#else
 	Map* mpMap;
-#endif
 
 	// Tracker. It receives a frame and computes the associated camera pose.
 	// It also decides when to insert a new keyframe, create some new MapPoints and
@@ -898,24 +820,23 @@ public:
 
 namespace rtabmap {
 
-OdometryORBSLAM::OdometryORBSLAM(const ParametersMap & parameters) :
+OdometryORBSLAM2::OdometryORBSLAM2(const ParametersMap & parameters) :
 	Odometry(parameters)
-#ifdef RTABMAP_ORB_SLAM
+#if defined(RTABMAP_ORB_SLAM) and RTABMAP_ORB_SLAM == 2
     ,
 	orbslam_(0),
 	firstFrame_(true),
-	previousPose_(Transform::getIdentity()),
-	useIMU_(false) // TODO: Not yet supported with ORB_SLAM3
+	previousPose_(Transform::getIdentity())
 #endif
 {
-#ifdef RTABMAP_ORB_SLAM
-	orbslam_ = new ORBSLAMSystem(parameters);
+#if defined(RTABMAP_ORB_SLAM) and RTABMAP_ORB_SLAM == 2
+	orbslam_ = new ORBSLAM2System(parameters);
 #endif
 }
 
-OdometryORBSLAM::~OdometryORBSLAM()
+OdometryORBSLAM2::~OdometryORBSLAM2()
 {
-#ifdef RTABMAP_ORB_SLAM
+#if defined(RTABMAP_ORB_SLAM) and RTABMAP_ORB_SLAM == 2
 	if(orbslam_)
 	{
 		delete orbslam_;
@@ -923,10 +844,10 @@ OdometryORBSLAM::~OdometryORBSLAM()
 #endif
 }
 
-void OdometryORBSLAM::reset(const Transform & initialPose)
+void OdometryORBSLAM2::reset(const Transform & initialPose)
 {
 	Odometry::reset(initialPose);
-#ifdef RTABMAP_ORB_SLAM
+#if defined(RTABMAP_ORB_SLAM) and RTABMAP_ORB_SLAM == 2
 	if(orbslam_)
 	{
 		orbslam_->shutdown();
@@ -934,59 +855,19 @@ void OdometryORBSLAM::reset(const Transform & initialPose)
 	firstFrame_ = true;
 	originLocalTransform_.setNull();
 	previousPose_.setIdentity();
-	imuLocalTransform_.setNull();
-#endif
-}
-
-bool OdometryORBSLAM::canProcessAsyncIMU() const
-{
-#ifdef RTABMAP_ORB_SLAM
-	return useIMU_;
-#else
-	return false;
 #endif
 }
 
 // return not null transform if odometry is correctly computed
-Transform OdometryORBSLAM::computeTransform(
+Transform OdometryORBSLAM2::computeTransform(
 		SensorData & data,
 		const Transform & guess,
 		OdometryInfo * info)
 {
 	Transform t;
 
-#ifdef RTABMAP_ORB_SLAM
+#if defined(RTABMAP_ORB_SLAM) and RTABMAP_ORB_SLAM == 2
 	UTimer timer;
-
-#if RTABMAP_ORB_SLAM == 3
-	if(useIMU_)
-	{
-		if(orbslam_->mpTracker == 0)
-		{
-			if(!data.imu().empty())
-			{
-				imuLocalTransform_ = data.imu().localTransform();
-			}
-		}
-		else if(!data.imu().empty())
-		{
-			ORB_SLAM3::IMU::Point pt(
-					data.imu().linearAcceleration().val[0],
-					data.imu().linearAcceleration().val[1],
-					data.imu().linearAcceleration().val[2],
-					data.imu().angularVelocity().val[0],
-					data.imu().angularVelocity().val[1],
-					data.imu().angularVelocity().val[2],
-					data.stamp());
-			orbslam_->mpTracker->GrabImuData(pt);
-		}
-
-		if(data.imageRaw().empty() || imuLocalTransform_.isNull())
-		{
-			return Transform();
-		}
-	}
-#endif
 
 	if(data.imageRaw().empty() ||
 		data.imageRaw().rows != data.depthOrRightRaw().rows ||
@@ -1007,18 +888,12 @@ Transform OdometryORBSLAM::computeTransform(
 	}
 
 	bool stereo = data.cameraModels().size() == 0;
-	if(!stereo && useIMU_)
-	{
-		UWARN("Disabling IMU support (ORB_SLAM3 doesn't support IMU with RGB-D mode).");
-		useIMU_ = false;
-		imuLocalTransform_.setNull();
-	}
 
 	cv::Mat covariance;
 	if(orbslam_->mpTracker == 0)
 	{
 		CameraModel model = data.cameraModels().size()==1?data.cameraModels()[0]:data.stereoCameraModels()[0].left();
-		if(!orbslam_->init(model, stereo, data.cameraModels().size()==1?0.0f:data.stereoCameraModels()[0].baseline(), imuLocalTransform_))
+		if(!orbslam_->init(model, stereo, data.cameraModels().size()==1?0.0f:data.stereoCameraModels()[0].baseline()))
 		{
 			return t;
 		}

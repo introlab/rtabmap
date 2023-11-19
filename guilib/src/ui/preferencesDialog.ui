@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1052</width>
+    <width>1009</width>
     <height>925</height>
    </rect>
   </property>
@@ -23,8 +23,8 @@
    <iconset resource="../GuiLib.qrc">
     <normaloff>:/images/RTAB-Map.ico</normaloff>:/images/RTAB-Map.ico</iconset>
   </property>
-  <layout class="QGridLayout" name="gridLayout_49">
-   <item row="0" column="0">
+  <layout class="QVBoxLayout" name="verticalLayout_172">
+   <item>
     <layout class="QHBoxLayout" name="horizontalLayout_2" stretch="0,1">
      <property name="spacing">
       <number>0</number>
@@ -63,9 +63,9 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-844</y>
-            <width>756</width>
-            <height>4371</height>
+            <y>0</y>
+            <width>713</width>
+            <height>3893</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -95,7 +95,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>12</number>
+                <number>5</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,0">
@@ -2906,29 +2906,6 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                    <layout class="QVBoxLayout" name="verticalLayout_7" stretch="0,0,0,0,0,0,1">
                     <item>
                      <layout class="QGridLayout" name="gridLayout_28" columnstretch="0,1">
-                      <item row="1" column="1">
-                       <widget class="QLabel" name="label_3">
-                        <property name="text">
-                         <string>Input rate (0 means as fast as possible).</string>
-                        </property>
-                        <property name="textInteractionFlags">
-                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="3" column="1">
-                       <widget class="QLabel" name="label_42">
-                        <property name="text">
-                         <string>Local transform from /base_link to /camera_link. Mouse over the box to show formats. If odometry sensor is enabled, it is the transform to odometry sensor.</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                        <property name="textInteractionFlags">
-                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                        </property>
-                       </widget>
-                      </item>
                       <item row="0" column="1">
                        <widget class="QLabel" name="label_19">
                         <property name="text">
@@ -2942,33 +2919,17 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                         </property>
                        </widget>
                       </item>
-                      <item row="2" column="1">
-                       <widget class="QLabel" name="label_39">
+                      <item row="3" column="0">
+                       <widget class="QLineEdit" name="lineEdit_sourceLocalTransform">
+                        <property name="toolTip">
+                         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Format (3 values): x y z&lt;br/&gt;Format (6 values): x y z roll pitch yaw&lt;br/&gt;Format (7 values): x y z qx qy qz qw&lt;br/&gt;Format (9 values, 3x3 rotation): r11 r12 r13 r21 r22 r23 r31 r32 r33&lt;br/&gt;Format (12 values, 3x4 transform): r11 r12 r13 tx r21 r22 r23 ty r31 r32 r33 tz&lt;/p&gt;&lt;p&gt;KITTI: /base_link to /gray_camera = 0 0 0 0 0 0&lt;br/&gt;KITTI: /base_link to /color_camera = 0 -0.06 0 0 0 0&lt;br/&gt;KITTI: /base_footprint to /gray_camera = 0 0 1.67 0 0 0&lt;br/&gt;KITTI: /base_footprint to /color_camera = 0 -0.06 1.67 0 0 0&lt;/p&gt;&lt;p&gt;EuRoC MAV: /base_link to /cam0 = T_BS*T_SC0 = 0.999661 0.0257743 -0.00375625 0.00981073 -0.0257154 0.999557 0.0149672 0.064677 0.00414035 -0.0148655 0.999881 -0.0216401&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                        </property>
                         <property name="text">
-                         <string>ID of the device, which might be a serial number, bus@address or the index of the device. If empty, the first device found is taken.</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                        <property name="textInteractionFlags">
-                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         <string>0 0 0 0 0 0</string>
                         </property>
                        </widget>
                       </item>
-                      <item row="11" column="1">
-                       <widget class="QLabel" name="label_244">
-                        <property name="text">
-                         <string>Create a calibration file with known intrinsics (fx, fy, cx, cy). Useful if you already know the intrinsics of the source of images.</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                        <property name="textInteractionFlags">
-                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="8" column="0">
+                      <item row="9" column="0">
                        <layout class="QHBoxLayout" name="horizontalLayout_5" stretch="0,1">
                         <item>
                          <widget class="QToolButton" name="toolButton_source_path_calibration">
@@ -2992,6 +2953,16 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                         </item>
                        </layout>
                       </item>
+                      <item row="7" column="0">
+                       <widget class="QCheckBox" name="checkbox_rgbd_colorOnly">
+                        <property name="text">
+                         <string/>
+                        </property>
+                        <property name="checked">
+                         <bool>false</bool>
+                        </property>
+                       </widget>
+                      </item>
                       <item row="1" column="0">
                        <widget class="QDoubleSpinBox" name="general_doubleSpinBox_imgRate">
                         <property name="suffix">
@@ -3008,36 +2979,6 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                         </property>
                         <property name="value">
                          <double>0.000000000000000</double>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="4" column="1">
-                       <widget class="QLabel" name="label_17">
-                        <property name="text">
-                         <string>Mirroring mode (flip image horizontally). It has no effect on database source.</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                        <property name="textInteractionFlags">
-                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="4" column="0">
-                       <widget class="QCheckBox" name="source_mirroring">
-                        <property name="text">
-                         <string/>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="3" column="0">
-                       <widget class="QLineEdit" name="lineEdit_sourceLocalTransform">
-                        <property name="toolTip">
-                         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Format (3 values): x y z&lt;br/&gt;Format (6 values): x y z roll pitch yaw&lt;br/&gt;Format (7 values): x y z qx qy qz qw&lt;br/&gt;Format (9 values, 3x3 rotation): r11 r12 r13 r21 r22 r23 r31 r32 r33&lt;br/&gt;Format (12 values, 3x4 transform): r11 r12 r13 tx r21 r22 r23 ty r31 r32 r33 tz&lt;/p&gt;&lt;p&gt;KITTI: /base_link to /gray_camera = 0 0 0 0 0 0&lt;br/&gt;KITTI: /base_link to /color_camera = 0 -0.06 0 0 0 0&lt;br/&gt;KITTI: /base_footprint to /gray_camera = 0 0 1.67 0 0 0&lt;br/&gt;KITTI: /base_footprint to /color_camera = 0 -0.06 1.67 0 0 0&lt;/p&gt;&lt;p&gt;EuRoC MAV: /base_link to /cam0 = T_BS*T_SC0 = 0.999661 0.0257743 -0.00375625 0.00981073 -0.0257154 0.999557 0.0149672 0.064677 0.00414035 -0.0148655 0.999881 -0.0216401&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                        </property>
-                        <property name="text">
-                         <string>0 0 0 0 0 0</string>
                         </property>
                        </widget>
                       </item>
@@ -3069,52 +3010,6 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                        </widget>
                       </item>
                       <item row="12" column="0">
-                       <widget class="QPushButton" name="pushButton_test_camera">
-                        <property name="sizePolicy">
-                         <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-                          <horstretch>0</horstretch>
-                          <verstretch>0</verstretch>
-                         </sizepolicy>
-                        </property>
-                        <property name="text">
-                         <string>Test</string>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="10" column="0">
-                       <widget class="QPushButton" name="pushButton_calibrate">
-                        <property name="sizePolicy">
-                         <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-                          <horstretch>0</horstretch>
-                          <verstretch>0</verstretch>
-                         </sizepolicy>
-                        </property>
-                        <property name="text">
-                         <string>Calibrate</string>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="10" column="1">
-                       <widget class="QLabel" name="label_24">
-                        <property name="text">
-                         <string>Calibration files are saved in &quot;camera_info&quot; folder of the working directory.</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                        <property name="textInteractionFlags">
-                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="2" column="0">
-                       <widget class="QLineEdit" name="lineEdit_sourceDevice">
-                        <property name="text">
-                         <string/>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="11" column="0">
                        <widget class="QPushButton" name="pushButton_calibrate_simple">
                         <property name="sizePolicy">
                          <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
@@ -3127,43 +3022,36 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                         </property>
                        </widget>
                       </item>
-                      <item row="8" column="1">
-                       <widget class="QLabel" name="label_18">
-                        <property name="text">
-                         <string>Calibration file path (*.yaml). If empty, the GUID of the camera is used (for those having one). OpenNI and Freenect drivers use factory calibration by default (so they ignore this parameter). A calibrated camera is required for RGB-D SLAM mode.</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                        <property name="textInteractionFlags">
-                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="5" column="1">
-                       <widget class="QLabel" name="label_36">
-                        <property name="text">
-                         <string>Image decimation. RGB/Mono and depth images will be resized according to this value (size*1/decimation). Note that if depth images are captured, decimation should be a multiple of the depth image size. If depth images are smaller than RGB images, the decimation is first applied on RGB, if the resulting RGB image is still bigger than depth image, the depth is not decimated.</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                        <property name="textInteractionFlags">
-                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="5" column="0">
-                       <widget class="QSpinBox" name="spinBox_source_imageDecimation">
-                        <property name="minimum">
-                         <number>1</number>
-                        </property>
-                       </widget>
-                      </item>
                       <item row="6" column="1">
                        <widget class="QLabel" name="label_681">
                         <property name="text">
                          <string>Equalizes the histogram of grayscale images.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="11" column="0">
+                       <widget class="QPushButton" name="pushButton_calibrate">
+                        <property name="sizePolicy">
+                         <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                          <horstretch>0</horstretch>
+                          <verstretch>0</verstretch>
+                         </sizepolicy>
+                        </property>
+                        <property name="text">
+                         <string>Calibrate</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="12" column="1">
+                       <widget class="QLabel" name="label_244">
+                        <property name="text">
+                         <string>Create a calibration file with known intrinsics (fx, fy, cx, cy). Useful if you already know the intrinsics of the source of images.</string>
                         </property>
                         <property name="wordWrap">
                          <bool>true</bool>
@@ -3198,6 +3086,49 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                         </item>
                        </widget>
                       </item>
+                      <item row="1" column="1">
+                       <widget class="QLabel" name="label_3">
+                        <property name="text">
+                         <string>Input rate (0 means as fast as possible).</string>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="4" column="0">
+                       <widget class="QCheckBox" name="source_mirroring">
+                        <property name="text">
+                         <string/>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="13" column="0">
+                       <widget class="QPushButton" name="pushButton_test_camera">
+                        <property name="sizePolicy">
+                         <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                          <horstretch>0</horstretch>
+                          <verstretch>0</verstretch>
+                         </sizepolicy>
+                        </property>
+                        <property name="text">
+                         <string>Test</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="11" column="1">
+                       <widget class="QLabel" name="label_24">
+                        <property name="text">
+                         <string>Calibration files are saved in &quot;camera_info&quot; folder of the working directory.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
                       <item row="7" column="1">
                        <widget class="QLabel" name="label_229">
                         <property name="text">
@@ -3211,8 +3142,100 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                         </property>
                        </widget>
                       </item>
-                      <item row="7" column="0">
-                       <widget class="QCheckBox" name="checkbox_rgbd_colorOnly">
+                      <item row="5" column="0">
+                       <widget class="QSpinBox" name="spinBox_source_imageDecimation">
+                        <property name="minimum">
+                         <number>1</number>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="2" column="1">
+                       <widget class="QLabel" name="label_39">
+                        <property name="text">
+                         <string>ID of the device, which might be a serial number, bus@address or the index of the device. If empty, the first device found is taken.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="2" column="0">
+                       <widget class="QLineEdit" name="lineEdit_sourceDevice">
+                        <property name="text">
+                         <string/>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="4" column="1">
+                       <widget class="QLabel" name="label_17">
+                        <property name="text">
+                         <string>Mirroring mode (flip image horizontally). It has no effect on database source.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="5" column="1">
+                       <widget class="QLabel" name="label_36">
+                        <property name="text">
+                         <string>Image decimation. RGB/Mono and depth images will be resized according to this value (size*1/decimation). Note that if depth images are captured, decimation should be a multiple of the depth image size. If depth images are smaller than RGB images, the decimation is first applied on RGB, if the resulting RGB image is still bigger than depth image, the depth is not decimated.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="3" column="1">
+                       <widget class="QLabel" name="label_42">
+                        <property name="text">
+                         <string>Local transform from /base_link to /camera_link. Mouse over the box to show formats. If odometry sensor is enabled, it is the transform to odometry sensor.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="9" column="1">
+                       <widget class="QLabel" name="label_18">
+                        <property name="text">
+                         <string>Calibration file path (*.yaml). If empty, the GUID of the camera is used (for those having one). OpenNI and Freenect drivers use factory calibration by default (so they ignore this parameter). A calibrated camera is required for RGB-D SLAM mode.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="8" column="1">
+                       <widget class="QLabel" name="label_740">
+                        <property name="text">
+                         <string>Detect features inside camera thread using parameters set in Visual Registration panel.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="8" column="0">
+                       <widget class="QCheckBox" name="checkbox_source_feature_detection">
                         <property name="text">
                          <string/>
                         </property>
@@ -14310,7 +14333,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                    <property name="title">
                     <string>Odometry</string>
                    </property>
-                   <layout class="QVBoxLayout" name="verticalLayout_34">
+                   <layout class="QVBoxLayout" name="verticalLayout_34" stretch="0,0,0,0">
                     <item>
                      <widget class="QLabel" name="label_114">
                       <property name="text">
@@ -14751,7 +14774,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                     <item>
                      <widget class="QStackedWidget" name="stackedWidget_odometryType">
                       <property name="currentIndex">
-                       <number>12</number>
+                       <number>5</number>
                       </property>
                       <widget class="QWidget" name="page_52">
                        <layout class="QVBoxLayout" name="verticalLayout_77">
@@ -15067,21 +15090,21 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                              </item>
                             </layout>
                            </item>
-                           <item>
-                            <spacer name="verticalSpacer_46">
-                             <property name="orientation">
-                              <enum>Qt::Vertical</enum>
-                             </property>
-                             <property name="sizeHint" stdset="0">
-                              <size>
-                               <width>20</width>
-                               <height>0</height>
-                              </size>
-                             </property>
-                            </spacer>
-                           </item>
                           </layout>
                          </widget>
+                        </item>
+                        <item>
+                         <spacer name="verticalSpacer_45">
+                          <property name="orientation">
+                           <enum>Qt::Vertical</enum>
+                          </property>
+                          <property name="sizeHint" stdset="0">
+                           <size>
+                            <width>20</width>
+                            <height>0</height>
+                           </size>
+                          </property>
+                         </spacer>
                         </item>
                        </layout>
                       </widget>
@@ -15151,7 +15174,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                              <property name="title">
                               <string>[Visual] Correspondences computation: Optical Flow</string>
                              </property>
-                             <layout class="QGridLayout" name="gridLayout_52" columnstretch="0,1">
+                             <layout class="QGridLayout" name="gridLayout_52" columnstretch="0,0">
                               <item row="0" column="0">
                                <widget class="QSpinBox" name="odom_flow_winSize_2">
                                 <property name="minimum">
@@ -15168,35 +15191,6 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                                 </property>
                                </widget>
                               </item>
-                              <item row="0" column="1">
-                               <widget class="QLabel" name="label_201">
-                                <property name="text">
-                                 <string>Window size.</string>
-                                </property>
-                                <property name="wordWrap">
-                                 <bool>true</bool>
-                                </property>
-                                <property name="textInteractionFlags">
-                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                                </property>
-                               </widget>
-                              </item>
-                              <item row="3" column="0">
-                               <widget class="QSpinBox" name="odom_flow_maxLevel_2">
-                                <property name="minimum">
-                                 <number>0</number>
-                                </property>
-                                <property name="maximum">
-                                 <number>999999</number>
-                                </property>
-                                <property name="singleStep">
-                                 <number>1</number>
-                                </property>
-                                <property name="value">
-                                 <number>3</number>
-                                </property>
-                               </widget>
-                              </item>
                               <item row="1" column="1">
                                <widget class="QLabel" name="label_295">
                                 <property name="text">
@@ -15210,10 +15204,10 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                                 </property>
                                </widget>
                               </item>
-                              <item row="2" column="1">
-                               <widget class="QLabel" name="label_296">
+                              <item row="3" column="1">
+                               <widget class="QLabel" name="label_297">
                                 <property name="text">
-                                 <string>Epsilon.</string>
+                                 <string>Max level.</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -15223,26 +15217,23 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                                 </property>
                                </widget>
                               </item>
-                              <item row="1" column="0">
-                               <widget class="QSpinBox" name="odom_flow_iterations_2">
-                                <property name="minimum">
-                                 <number>1</number>
+                              <item row="0" column="1">
+                               <widget class="QLabel" name="label_201">
+                                <property name="text">
+                                 <string>Window size.</string>
                                 </property>
-                                <property name="maximum">
-                                 <number>999999</number>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
                                 </property>
-                                <property name="singleStep">
-                                 <number>1</number>
-                                </property>
-                                <property name="value">
-                                 <number>30</number>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                                 </property>
                                </widget>
                               </item>
-                              <item row="3" column="1">
-                               <widget class="QLabel" name="label_297">
+                              <item row="2" column="1">
+                               <widget class="QLabel" name="label_296">
                                 <property name="text">
-                                 <string>Max level.</string>
+                                 <string>Epsilon.</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -15271,18 +15262,37 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                                 </property>
                                </widget>
                               </item>
-                              <item row="4" column="0">
-                               <spacer name="verticalSpacer_45">
-                                <property name="orientation">
-                                 <enum>Qt::Vertical</enum>
+                              <item row="3" column="0">
+                               <widget class="QSpinBox" name="odom_flow_maxLevel_2">
+                                <property name="minimum">
+                                 <number>0</number>
                                 </property>
-                                <property name="sizeHint" stdset="0">
-                                 <size>
-                                  <width>20</width>
-                                  <height>0</height>
-                                 </size>
+                                <property name="maximum">
+                                 <number>999999</number>
                                 </property>
-                               </spacer>
+                                <property name="singleStep">
+                                 <number>1</number>
+                                </property>
+                                <property name="value">
+                                 <number>3</number>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="1" column="0">
+                               <widget class="QSpinBox" name="odom_flow_iterations_2">
+                                <property name="minimum">
+                                 <number>1</number>
+                                </property>
+                                <property name="maximum">
+                                 <number>999999</number>
+                                </property>
+                                <property name="singleStep">
+                                 <number>1</number>
+                                </property>
+                                <property name="value">
+                                 <number>30</number>
+                                </property>
+                               </widget>
                               </item>
                              </layout>
                             </widget>
@@ -15295,7 +15305,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                              <property name="sizeHint" stdset="0">
                               <size>
                                <width>20</width>
-                               <height>40</height>
+                               <height>0</height>
                               </size>
                              </property>
                             </spacer>
@@ -16654,112 +16664,6 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                            </item>
                            <item>
                             <layout class="QGridLayout" name="gridLayout_93" columnstretch="0,0,1">
-                             <item row="1" column="1">
-                              <widget class="QDoubleSpinBox" name="doubleSpinBox_OdomORBSLAMBf">
-                               <property name="suffix">
-                                <string> m</string>
-                               </property>
-                               <property name="decimals">
-                                <number>4</number>
-                               </property>
-                               <property name="minimum">
-                                <double>0.000000000000000</double>
-                               </property>
-                               <property name="maximum">
-                                <double>9.999900000000000</double>
-                               </property>
-                               <property name="singleStep">
-                                <double>0.010000000000000</double>
-                               </property>
-                               <property name="value">
-                                <double>0.076000000000000</double>
-                               </property>
-                              </widget>
-                             </item>
-                             <item row="2" column="2">
-                              <widget class="QLabel" name="label_414">
-                               <property name="text">
-                                <string>Close/Far threshold. Baseline times.</string>
-                               </property>
-                               <property name="wordWrap">
-                                <bool>true</bool>
-                               </property>
-                               <property name="textInteractionFlags">
-                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                               </property>
-                              </widget>
-                             </item>
-                             <item row="2" column="1">
-                              <widget class="QDoubleSpinBox" name="doubleSpinBox_OdomORBSLAMThDepth">
-                               <property name="suffix">
-                                <string/>
-                               </property>
-                               <property name="decimals">
-                                <number>1</number>
-                               </property>
-                               <property name="minimum">
-                                <double>0.100000000000000</double>
-                               </property>
-                               <property name="maximum">
-                                <double>999.000000000000000</double>
-                               </property>
-                               <property name="singleStep">
-                                <double>1.000000000000000</double>
-                               </property>
-                               <property name="value">
-                                <double>40.000000000000000</double>
-                               </property>
-                              </widget>
-                             </item>
-                             <item row="1" column="2">
-                              <widget class="QLabel" name="label_413">
-                               <property name="text">
-                                <string>Fake IR projector baseline used only when stereo is not used.</string>
-                               </property>
-                               <property name="wordWrap">
-                                <bool>true</bool>
-                               </property>
-                               <property name="textInteractionFlags">
-                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                               </property>
-                              </widget>
-                             </item>
-                             <item row="0" column="1">
-                              <widget class="QLineEdit" name="lineEdit_OdomORBSLAMVocPath"/>
-                             </item>
-                             <item row="0" column="2">
-                              <widget class="QLabel" name="label_415">
-                               <property name="text">
-                                <string>Path to ORB vocabulary (*.txt).</string>
-                               </property>
-                               <property name="wordWrap">
-                                <bool>true</bool>
-                               </property>
-                               <property name="textInteractionFlags">
-                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                               </property>
-                              </widget>
-                             </item>
-                             <item row="0" column="0">
-                              <widget class="QToolButton" name="toolButton_OdomORBSLAMVocPath">
-                               <property name="text">
-                                <string>...</string>
-                               </property>
-                              </widget>
-                             </item>
-                             <item row="3" column="2">
-                              <widget class="QLabel" name="label_444">
-                               <property name="text">
-                                <string>Camera FPS. This parameter is linked to &quot;Input rate&quot; of the Source panel.</string>
-                               </property>
-                               <property name="wordWrap">
-                                <bool>true</bool>
-                               </property>
-                               <property name="textInteractionFlags">
-                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                               </property>
-                              </widget>
-                             </item>
                              <item row="3" column="1">
                               <widget class="QDoubleSpinBox" name="doubleSpinBox_OdomORBSLAMFps">
                                <property name="enabled">
@@ -16785,10 +16689,56 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                                </property>
                               </widget>
                              </item>
+                             <item row="1" column="2">
+                              <widget class="QLabel" name="label_413">
+                               <property name="text">
+                                <string>Fake IR projector baseline used only when stereo is not used.</string>
+                               </property>
+                               <property name="wordWrap">
+                                <bool>true</bool>
+                               </property>
+                               <property name="textInteractionFlags">
+                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="5" column="2">
+                              <widget class="QLabel" name="label_449">
+                               <property name="text">
+                                <string>Maximum size of the feature map (0 means infinite). Only supported with ORB_SLAM2.</string>
+                               </property>
+                               <property name="wordWrap">
+                                <bool>true</bool>
+                               </property>
+                               <property name="textInteractionFlags">
+                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                               </property>
+                              </widget>
+                             </item>
                              <item row="4" column="2">
                               <widget class="QLabel" name="label_445">
                                <property name="text">
                                 <string>Maximum ORB features extracted per frame.</string>
+                               </property>
+                               <property name="wordWrap">
+                                <bool>true</bool>
+                               </property>
+                               <property name="textInteractionFlags">
+                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="0" column="0">
+                              <widget class="QToolButton" name="toolButton_OdomORBSLAMVocPath">
+                               <property name="text">
+                                <string>...</string>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="2" column="2">
+                              <widget class="QLabel" name="label_414">
+                               <property name="text">
+                                <string>Close/Far threshold. Baseline times.</string>
                                </property>
                                <property name="wordWrap">
                                 <bool>true</bool>
@@ -16808,16 +16758,76 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                                </property>
                               </widget>
                              </item>
-                             <item row="5" column="2">
-                              <widget class="QLabel" name="label_449">
+                             <item row="0" column="1">
+                              <widget class="QLineEdit" name="lineEdit_OdomORBSLAMVocPath"/>
+                             </item>
+                             <item row="3" column="2">
+                              <widget class="QLabel" name="label_444">
                                <property name="text">
-                                <string>Maximum size of the feature map (0 means infinite).</string>
+                                <string>Camera FPS. This parameter is linked to &quot;Input rate&quot; of the Source panel.</string>
                                </property>
                                <property name="wordWrap">
                                 <bool>true</bool>
                                </property>
                                <property name="textInteractionFlags">
                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="0" column="2">
+                              <widget class="QLabel" name="label_415">
+                               <property name="text">
+                                <string>Path to ORB vocabulary (*.txt).</string>
+                               </property>
+                               <property name="wordWrap">
+                                <bool>true</bool>
+                               </property>
+                               <property name="textInteractionFlags">
+                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="1" column="1">
+                              <widget class="QDoubleSpinBox" name="doubleSpinBox_OdomORBSLAMBf">
+                               <property name="suffix">
+                                <string> m</string>
+                               </property>
+                               <property name="decimals">
+                                <number>4</number>
+                               </property>
+                               <property name="minimum">
+                                <double>0.000000000000000</double>
+                               </property>
+                               <property name="maximum">
+                                <double>9.999900000000000</double>
+                               </property>
+                               <property name="singleStep">
+                                <double>0.010000000000000</double>
+                               </property>
+                               <property name="value">
+                                <double>0.076000000000000</double>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="2" column="1">
+                              <widget class="QDoubleSpinBox" name="doubleSpinBox_OdomORBSLAMThDepth">
+                               <property name="suffix">
+                                <string/>
+                               </property>
+                               <property name="decimals">
+                                <number>1</number>
+                               </property>
+                               <property name="minimum">
+                                <double>0.100000000000000</double>
+                               </property>
+                               <property name="maximum">
+                                <double>999.000000000000000</double>
+                               </property>
+                               <property name="singleStep">
+                                <double>1.000000000000000</double>
+                               </property>
+                               <property name="value">
+                                <double>40.000000000000000</double>
                                </property>
                               </widget>
                              </item>
@@ -16833,11 +16843,172 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                              </item>
                             </layout>
                            </item>
+                           <item>
+                            <widget class="QGroupBox" name="groupBox_OdomORBSLAMInertial">
+                             <property name="title">
+                              <string>Enable IMU. Only supported with ORB_SLAM3.</string>
+                             </property>
+                             <property name="checkable">
+                              <bool>true</bool>
+                             </property>
+                             <layout class="QVBoxLayout" name="verticalLayout_169">
+                              <item>
+                               <layout class="QGridLayout" name="gridLayout_129" columnstretch="0,1">
+                                <item row="0" column="0">
+                                 <widget class="QDoubleSpinBox" name="doubleSpinBox_ORBSLAMGyroNoise">
+                                  <property name="decimals">
+                                   <number>8</number>
+                                  </property>
+                                  <property name="minimum">
+                                   <double>0.010000000000000</double>
+                                  </property>
+                                  <property name="maximum">
+                                   <double>0.010000000000000</double>
+                                  </property>
+                                 </widget>
+                                </item>
+                                <item row="3" column="1">
+                                 <widget class="QLabel" name="label_738">
+                                  <property name="text">
+                                   <string>Accelerometer &quot;random walk&quot;.</string>
+                                  </property>
+                                  <property name="wordWrap">
+                                   <bool>true</bool>
+                                  </property>
+                                  <property name="textInteractionFlags">
+                                   <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                  </property>
+                                 </widget>
+                                </item>
+                                <item row="1" column="1">
+                                 <widget class="QLabel" name="label_657">
+                                  <property name="text">
+                                   <string>Accelerometer &quot;white noise&quot;.</string>
+                                  </property>
+                                  <property name="wordWrap">
+                                   <bool>true</bool>
+                                  </property>
+                                  <property name="textInteractionFlags">
+                                   <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                  </property>
+                                 </widget>
+                                </item>
+                                <item row="0" column="1">
+                                 <widget class="QLabel" name="label_236">
+                                  <property name="text">
+                                   <string>Gyroscope &quot;white noise&quot;.</string>
+                                  </property>
+                                  <property name="wordWrap">
+                                   <bool>true</bool>
+                                  </property>
+                                  <property name="textInteractionFlags">
+                                   <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                  </property>
+                                 </widget>
+                                </item>
+                                <item row="1" column="0">
+                                 <widget class="QDoubleSpinBox" name="doubleSpinBox_ORBSLAMAccNoise">
+                                  <property name="decimals">
+                                   <number>8</number>
+                                  </property>
+                                  <property name="minimum">
+                                   <double>0.100000000000000</double>
+                                  </property>
+                                  <property name="maximum">
+                                   <double>0.100000000000000</double>
+                                  </property>
+                                 </widget>
+                                </item>
+                                <item row="2" column="1">
+                                 <widget class="QLabel" name="label_658">
+                                  <property name="text">
+                                   <string>Gyroscope &quot;random walk&quot;.</string>
+                                  </property>
+                                  <property name="wordWrap">
+                                   <bool>true</bool>
+                                  </property>
+                                  <property name="textInteractionFlags">
+                                   <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                  </property>
+                                 </widget>
+                                </item>
+                                <item row="4" column="1">
+                                 <widget class="QLabel" name="label_739">
+                                  <property name="text">
+                                   <string>IMU sampling rate (0 to estimate from input data).</string>
+                                  </property>
+                                  <property name="wordWrap">
+                                   <bool>true</bool>
+                                  </property>
+                                  <property name="textInteractionFlags">
+                                   <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                  </property>
+                                 </widget>
+                                </item>
+                                <item row="2" column="0">
+                                 <widget class="QDoubleSpinBox" name="doubleSpinBox_ORBSLAMGyroWalk">
+                                  <property name="decimals">
+                                   <number>8</number>
+                                  </property>
+                                  <property name="minimum">
+                                   <double>0.000000000000000</double>
+                                  </property>
+                                  <property name="maximum">
+                                   <double>1.000000000000000</double>
+                                  </property>
+                                  <property name="singleStep">
+                                   <double>0.000001000000000</double>
+                                  </property>
+                                  <property name="value">
+                                   <double>0.000001000000000</double>
+                                  </property>
+                                 </widget>
+                                </item>
+                                <item row="3" column="0">
+                                 <widget class="QDoubleSpinBox" name="doubleSpinBox_ORBSLAMAccWalk">
+                                  <property name="decimals">
+                                   <number>8</number>
+                                  </property>
+                                  <property name="minimum">
+                                   <double>0.000000000000000</double>
+                                  </property>
+                                  <property name="maximum">
+                                   <double>1.000000000000000</double>
+                                  </property>
+                                  <property name="singleStep">
+                                   <double>0.000100000000000</double>
+                                  </property>
+                                  <property name="value">
+                                   <double>0.000100000000000</double>
+                                  </property>
+                                 </widget>
+                                </item>
+                                <item row="4" column="0">
+                                 <widget class="QDoubleSpinBox" name="doubleSpinBox_ORBSLAMSamplingRate">
+                                  <property name="decimals">
+                                   <number>0</number>
+                                  </property>
+                                  <property name="minimum">
+                                   <double>0.000000000000000</double>
+                                  </property>
+                                  <property name="maximum">
+                                   <double>10000.000000000000000</double>
+                                  </property>
+                                  <property name="value">
+                                   <double>0.000000000000000</double>
+                                  </property>
+                                 </widget>
+                                </item>
+                               </layout>
+                              </item>
+                             </layout>
+                            </widget>
+                           </item>
                           </layout>
                          </widget>
                         </item>
                         <item>
-                         <spacer name="verticalSpacer_64">
+                         <spacer name="verticalSpacer_47">
                           <property name="orientation">
                            <enum>Qt::Vertical</enum>
                           </property>
@@ -18201,7 +18372,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                              <property name="title">
                               <string>State</string>
                              </property>
-                             <layout class="QGridLayout" name="gridLayout_125" columnstretch="0,1">
+                             <layout class="QGridLayout" name="gridLayout_125" columnstretch="0,1" columnminimumwidth="0,0">
                               <item row="0" column="0">
                                <widget class="QCheckBox" name="checkBox_OdomOpenVINSUseFEJ">
                                 <property name="text">
@@ -19527,7 +19698,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                           <property name="sizeHint" stdset="0">
                            <size>
                             <width>20</width>
-                            <height>1049</height>
+                            <height>0</height>
                            </size>
                           </property>
                          </spacer>
@@ -19678,19 +19849,6 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                             </widget>
                            </item>
                            <item>
-                            <spacer name="verticalSpacer_62">
-                             <property name="orientation">
-                              <enum>Qt::Vertical</enum>
-                             </property>
-                             <property name="sizeHint" stdset="0">
-                              <size>
-                               <width>20</width>
-                               <height>0</height>
-                              </size>
-                             </property>
-                            </spacer>
-                           </item>
-                           <item>
                             <widget class="QLabel" name="label_661">
                              <property name="text">
                               <string>Parameters from BOW and OpticalFlow are also used here. PnP parameters on Odometry panel are used too.</string>
@@ -19829,6 +19987,19 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                              </item>
                             </layout>
                            </item>
+                           <item>
+                            <spacer name="verticalSpacer_62">
+                             <property name="orientation">
+                              <enum>Qt::Vertical</enum>
+                             </property>
+                             <property name="sizeHint" stdset="0">
+                              <size>
+                               <width>20</width>
+                               <height>0</height>
+                              </size>
+                             </property>
+                            </spacer>
+                           </item>
                           </layout>
                          </widget>
                         </item>
@@ -19839,7 +20010,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                     <item>
                      <widget class="QStackedWidget" name="stackedWidget_odometryFiltering">
                       <property name="currentIndex">
-                       <number>0</number>
+                       <number>2</number>
                       </property>
                       <widget class="QWidget" name="page_31">
                        <layout class="QVBoxLayout" name="verticalLayout_84"/>
@@ -20153,16 +20324,6 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </item>
                        </layout>
                       </widget>
-                     </widget>
-                    </item>
-                    <item>
-                     <widget class="QLabel" name="label_162">
-                      <property name="text">
-                       <string/>
-                      </property>
-                      <property name="wordWrap">
-                       <bool>true</bool>
-                      </property>
                      </widget>
                     </item>
                    </layout>
@@ -25734,7 +25895,7 @@ Lower the ratio -&gt; higher the precision.</string>
      </item>
     </layout>
    </item>
-   <item row="1" column="0">
+   <item>
     <layout class="QHBoxLayout" name="horizontalLayout_3">
      <item>
       <widget class="QRadioButton" name="radioButton_basic">
