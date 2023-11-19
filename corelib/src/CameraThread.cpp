@@ -36,10 +36,12 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/StereoDense.h"
 #include "rtabmap/core/DBReader.h"
 #include "rtabmap/core/IMUFilter.h"
+#include "rtabmap/core/Features2d.h"
 #include "rtabmap/core/clams/discrete_depth_distortion_model.h"
 #include <opencv2/stitching/detail/exposure_compensate.hpp>
 #include <rtabmap/utilite/UTimer.h>
 #include <rtabmap/utilite/ULogger.h>
+#include <rtabmap/utilite/UStl.h>
 
 #include <pcl/io/io.h>
 
@@ -73,7 +75,9 @@ CameraThread::CameraThread(Camera * camera, const ParametersMap & parameters) :
 		_bilateralSigmaS(10),
 		_bilateralSigmaR(0.1),
 		_imuFilter(0),
-		_imuBaseFrameConversion(false)
+		_imuBaseFrameConversion(false),
+		_featureDetector(0),
+		_depthAsMask(Parameters::defaultVisDepthAsMask())
 {
 	UASSERT(_camera != 0);
 }
@@ -113,7 +117,9 @@ CameraThread::CameraThread(
 			_bilateralSigmaS(10),
 			_bilateralSigmaR(0.1),
 			_imuFilter(0),
-			_imuBaseFrameConversion(false)
+			_imuBaseFrameConversion(false),
+			_featureDetector(0),
+			_depthAsMask(Parameters::defaultVisDepthAsMask())
 {
 	UASSERT(_camera != 0 && _odomSensor != 0 && !_extrinsicsOdomToCamera.isNull());
 	UDEBUG("_extrinsicsOdomToCamera=%s", _extrinsicsOdomToCamera.prettyPrint().c_str());
@@ -152,7 +158,9 @@ CameraThread::CameraThread(
 			_bilateralSigmaS(10),
 			_bilateralSigmaR(0.1),
 			_imuFilter(0),
-			_imuBaseFrameConversion(false)
+			_imuBaseFrameConversion(false),
+			_featureDetector(0),
+			_depthAsMask(Parameters::defaultVisDepthAsMask())
 {
 	UASSERT(_camera != 0);
 	UDEBUG("_odomAsGt              =%s", _odomAsGt?"true":"false");
@@ -166,6 +174,7 @@ CameraThread::~CameraThread()
 	delete _distortionModel;
 	delete _stereoDense;
 	delete _imuFilter;
+	delete _featureDetector;
 }
 
 void CameraThread::setImageRate(float imageRate)
@@ -215,6 +224,30 @@ void CameraThread::disableIMUFiltering()
 {
 	delete _imuFilter;
 	_imuFilter = 0;
+}
+
+void CameraThread::enableFeatureDetection(const ParametersMap & parameters)
+{
+	delete _featureDetector;
+	ParametersMap params = parameters;
+	ParametersMap defaultParams = Parameters::getDefaultParameters("Vis");
+	uInsert(params, ParametersPair(Parameters::kKpDetectorStrategy(), uValue(params, Parameters::kVisFeatureType(), defaultParams.at(Parameters::kVisFeatureType()))));
+	uInsert(params, ParametersPair(Parameters::kKpMaxFeatures(), uValue(params, Parameters::kVisMaxFeatures(), defaultParams.at(Parameters::kVisMaxFeatures()))));
+	uInsert(params, ParametersPair(Parameters::kKpMaxDepth(), uValue(params, Parameters::kVisMaxDepth(), defaultParams.at(Parameters::kVisMaxDepth()))));
+	uInsert(params, ParametersPair(Parameters::kKpMinDepth(), uValue(params, Parameters::kVisMinDepth(), defaultParams.at(Parameters::kVisMinDepth()))));
+	uInsert(params, ParametersPair(Parameters::kKpRoiRatios(), uValue(params, Parameters::kVisRoiRatios(), defaultParams.at(Parameters::kVisRoiRatios()))));
+	uInsert(params, ParametersPair(Parameters::kKpSubPixEps(), uValue(params, Parameters::kVisSubPixEps(), defaultParams.at(Parameters::kVisSubPixEps()))));
+	uInsert(params, ParametersPair(Parameters::kKpSubPixIterations(), uValue(params, Parameters::kVisSubPixIterations(), defaultParams.at(Parameters::kVisSubPixIterations()))));
+	uInsert(params, ParametersPair(Parameters::kKpSubPixWinSize(), uValue(params, Parameters::kVisSubPixWinSize(), defaultParams.at(Parameters::kVisSubPixWinSize()))));
+	uInsert(params, ParametersPair(Parameters::kKpGridRows(), uValue(params, Parameters::kVisGridRows(), defaultParams.at(Parameters::kVisGridRows()))));
+	uInsert(params, ParametersPair(Parameters::kKpGridCols(), uValue(params, Parameters::kVisGridCols(), defaultParams.at(Parameters::kVisGridCols()))));
+	_featureDetector = Feature2D::create(params);
+	_depthAsMask = Parameters::parse(params, Parameters::kVisDepthAsMask(), _depthAsMask);
+}
+void CameraThread::disableFeatureDetection()
+{
+	delete _featureDetector;
+	_featureDetector = 0;
 }
 
 void CameraThread::setScanParameters(
@@ -731,6 +764,50 @@ void CameraThread::postUpdate(SensorData * dataPtr, CameraInfo * info) const
 						data.imu().linearAcceleration()[2],
 						data.stamp());
 		}
+	}
+
+	if(_featureDetector && !data.imageRaw().empty())
+	{
+		UDEBUG("Detecting features");
+		cv::Mat grayScaleImg = data.imageRaw();
+		if(data.imageRaw().channels() > 1)
+		{
+			cv::Mat tmp;
+			cv::cvtColor(grayScaleImg, tmp, cv::COLOR_BGR2GRAY);
+			grayScaleImg = tmp;
+		}
+
+		cv::Mat depthMask;
+		if(!data.depthRaw().empty() && _depthAsMask)
+		{
+			if( data.imageRaw().rows % data.depthRaw().rows == 0 &&
+				data.imageRaw().cols % data.depthRaw().cols == 0 &&
+				data.imageRaw().rows/data.depthRaw().rows == data.imageRaw().cols/data.depthRaw().cols)
+			{
+				depthMask = util2d::interpolate(data.depthRaw(), data.imageRaw().rows/data.depthRaw().rows, 0.1f);
+			}
+			else
+			{
+				UWARN("%s is true, but RGB size (%dx%d) modulo depth size (%dx%d) is not 0. Ignoring depth mask for feature detection.",
+						Parameters::kVisDepthAsMask().c_str(),
+						data.imageRaw().rows, data.imageRaw().cols,
+						data.depthRaw().rows, data.depthRaw().cols);
+			}
+		}
+
+		std::vector<cv::KeyPoint> keypoints = _featureDetector->generateKeypoints(grayScaleImg, depthMask);
+		cv::Mat descriptors;
+		std::vector<cv::Point3f> keypoints3D;
+		if(!keypoints.empty())
+		{
+			descriptors = _featureDetector->generateDescriptors(grayScaleImg, keypoints);
+			if(!keypoints.empty())
+			{
+				keypoints3D = _featureDetector->generateKeypoints3D(data, keypoints);
+			}
+		}
+
+		data.setFeatures(keypoints, keypoints3D, descriptors);
 	}
 }
 

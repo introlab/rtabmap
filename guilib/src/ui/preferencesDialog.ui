@@ -63,9 +63,9 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-781</y>
+            <y>0</y>
             <width>713</width>
-            <height>3853</height>
+            <height>3893</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -95,7 +95,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>19</number>
+                <number>5</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,0">
@@ -2906,29 +2906,6 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                    <layout class="QVBoxLayout" name="verticalLayout_7" stretch="0,0,0,0,0,0,1">
                     <item>
                      <layout class="QGridLayout" name="gridLayout_28" columnstretch="0,1">
-                      <item row="1" column="1">
-                       <widget class="QLabel" name="label_3">
-                        <property name="text">
-                         <string>Input rate (0 means as fast as possible).</string>
-                        </property>
-                        <property name="textInteractionFlags">
-                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="3" column="1">
-                       <widget class="QLabel" name="label_42">
-                        <property name="text">
-                         <string>Local transform from /base_link to /camera_link. Mouse over the box to show formats. If odometry sensor is enabled, it is the transform to odometry sensor.</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                        <property name="textInteractionFlags">
-                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                        </property>
-                       </widget>
-                      </item>
                       <item row="0" column="1">
                        <widget class="QLabel" name="label_19">
                         <property name="text">
@@ -2942,33 +2919,17 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                         </property>
                        </widget>
                       </item>
-                      <item row="2" column="1">
-                       <widget class="QLabel" name="label_39">
+                      <item row="3" column="0">
+                       <widget class="QLineEdit" name="lineEdit_sourceLocalTransform">
+                        <property name="toolTip">
+                         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Format (3 values): x y z&lt;br/&gt;Format (6 values): x y z roll pitch yaw&lt;br/&gt;Format (7 values): x y z qx qy qz qw&lt;br/&gt;Format (9 values, 3x3 rotation): r11 r12 r13 r21 r22 r23 r31 r32 r33&lt;br/&gt;Format (12 values, 3x4 transform): r11 r12 r13 tx r21 r22 r23 ty r31 r32 r33 tz&lt;/p&gt;&lt;p&gt;KITTI: /base_link to /gray_camera = 0 0 0 0 0 0&lt;br/&gt;KITTI: /base_link to /color_camera = 0 -0.06 0 0 0 0&lt;br/&gt;KITTI: /base_footprint to /gray_camera = 0 0 1.67 0 0 0&lt;br/&gt;KITTI: /base_footprint to /color_camera = 0 -0.06 1.67 0 0 0&lt;/p&gt;&lt;p&gt;EuRoC MAV: /base_link to /cam0 = T_BS*T_SC0 = 0.999661 0.0257743 -0.00375625 0.00981073 -0.0257154 0.999557 0.0149672 0.064677 0.00414035 -0.0148655 0.999881 -0.0216401&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                        </property>
                         <property name="text">
-                         <string>ID of the device, which might be a serial number, bus@address or the index of the device. If empty, the first device found is taken.</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                        <property name="textInteractionFlags">
-                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         <string>0 0 0 0 0 0</string>
                         </property>
                        </widget>
                       </item>
-                      <item row="11" column="1">
-                       <widget class="QLabel" name="label_244">
-                        <property name="text">
-                         <string>Create a calibration file with known intrinsics (fx, fy, cx, cy). Useful if you already know the intrinsics of the source of images.</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                        <property name="textInteractionFlags">
-                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="8" column="0">
+                      <item row="9" column="0">
                        <layout class="QHBoxLayout" name="horizontalLayout_5" stretch="0,1">
                         <item>
                          <widget class="QToolButton" name="toolButton_source_path_calibration">
@@ -2992,6 +2953,16 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                         </item>
                        </layout>
                       </item>
+                      <item row="7" column="0">
+                       <widget class="QCheckBox" name="checkbox_rgbd_colorOnly">
+                        <property name="text">
+                         <string/>
+                        </property>
+                        <property name="checked">
+                         <bool>false</bool>
+                        </property>
+                       </widget>
+                      </item>
                       <item row="1" column="0">
                        <widget class="QDoubleSpinBox" name="general_doubleSpinBox_imgRate">
                         <property name="suffix">
@@ -3008,36 +2979,6 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                         </property>
                         <property name="value">
                          <double>0.000000000000000</double>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="4" column="1">
-                       <widget class="QLabel" name="label_17">
-                        <property name="text">
-                         <string>Mirroring mode (flip image horizontally). It has no effect on database source.</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                        <property name="textInteractionFlags">
-                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="4" column="0">
-                       <widget class="QCheckBox" name="source_mirroring">
-                        <property name="text">
-                         <string/>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="3" column="0">
-                       <widget class="QLineEdit" name="lineEdit_sourceLocalTransform">
-                        <property name="toolTip">
-                         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Format (3 values): x y z&lt;br/&gt;Format (6 values): x y z roll pitch yaw&lt;br/&gt;Format (7 values): x y z qx qy qz qw&lt;br/&gt;Format (9 values, 3x3 rotation): r11 r12 r13 r21 r22 r23 r31 r32 r33&lt;br/&gt;Format (12 values, 3x4 transform): r11 r12 r13 tx r21 r22 r23 ty r31 r32 r33 tz&lt;/p&gt;&lt;p&gt;KITTI: /base_link to /gray_camera = 0 0 0 0 0 0&lt;br/&gt;KITTI: /base_link to /color_camera = 0 -0.06 0 0 0 0&lt;br/&gt;KITTI: /base_footprint to /gray_camera = 0 0 1.67 0 0 0&lt;br/&gt;KITTI: /base_footprint to /color_camera = 0 -0.06 1.67 0 0 0&lt;/p&gt;&lt;p&gt;EuRoC MAV: /base_link to /cam0 = T_BS*T_SC0 = 0.999661 0.0257743 -0.00375625 0.00981073 -0.0257154 0.999557 0.0149672 0.064677 0.00414035 -0.0148655 0.999881 -0.0216401&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                        </property>
-                        <property name="text">
-                         <string>0 0 0 0 0 0</string>
                         </property>
                        </widget>
                       </item>
@@ -3069,52 +3010,6 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                        </widget>
                       </item>
                       <item row="12" column="0">
-                       <widget class="QPushButton" name="pushButton_test_camera">
-                        <property name="sizePolicy">
-                         <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-                          <horstretch>0</horstretch>
-                          <verstretch>0</verstretch>
-                         </sizepolicy>
-                        </property>
-                        <property name="text">
-                         <string>Test</string>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="10" column="0">
-                       <widget class="QPushButton" name="pushButton_calibrate">
-                        <property name="sizePolicy">
-                         <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-                          <horstretch>0</horstretch>
-                          <verstretch>0</verstretch>
-                         </sizepolicy>
-                        </property>
-                        <property name="text">
-                         <string>Calibrate</string>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="10" column="1">
-                       <widget class="QLabel" name="label_24">
-                        <property name="text">
-                         <string>Calibration files are saved in &quot;camera_info&quot; folder of the working directory.</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                        <property name="textInteractionFlags">
-                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="2" column="0">
-                       <widget class="QLineEdit" name="lineEdit_sourceDevice">
-                        <property name="text">
-                         <string/>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="11" column="0">
                        <widget class="QPushButton" name="pushButton_calibrate_simple">
                         <property name="sizePolicy">
                          <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
@@ -3127,43 +3022,36 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                         </property>
                        </widget>
                       </item>
-                      <item row="8" column="1">
-                       <widget class="QLabel" name="label_18">
-                        <property name="text">
-                         <string>Calibration file path (*.yaml). If empty, the GUID of the camera is used (for those having one). OpenNI and Freenect drivers use factory calibration by default (so they ignore this parameter). A calibrated camera is required for RGB-D SLAM mode.</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                        <property name="textInteractionFlags">
-                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="5" column="1">
-                       <widget class="QLabel" name="label_36">
-                        <property name="text">
-                         <string>Image decimation. RGB/Mono and depth images will be resized according to this value (size*1/decimation). Note that if depth images are captured, decimation should be a multiple of the depth image size. If depth images are smaller than RGB images, the decimation is first applied on RGB, if the resulting RGB image is still bigger than depth image, the depth is not decimated.</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                        <property name="textInteractionFlags">
-                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="5" column="0">
-                       <widget class="QSpinBox" name="spinBox_source_imageDecimation">
-                        <property name="minimum">
-                         <number>1</number>
-                        </property>
-                       </widget>
-                      </item>
                       <item row="6" column="1">
                        <widget class="QLabel" name="label_681">
                         <property name="text">
                          <string>Equalizes the histogram of grayscale images.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="11" column="0">
+                       <widget class="QPushButton" name="pushButton_calibrate">
+                        <property name="sizePolicy">
+                         <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                          <horstretch>0</horstretch>
+                          <verstretch>0</verstretch>
+                         </sizepolicy>
+                        </property>
+                        <property name="text">
+                         <string>Calibrate</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="12" column="1">
+                       <widget class="QLabel" name="label_244">
+                        <property name="text">
+                         <string>Create a calibration file with known intrinsics (fx, fy, cx, cy). Useful if you already know the intrinsics of the source of images.</string>
                         </property>
                         <property name="wordWrap">
                          <bool>true</bool>
@@ -3198,6 +3086,49 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                         </item>
                        </widget>
                       </item>
+                      <item row="1" column="1">
+                       <widget class="QLabel" name="label_3">
+                        <property name="text">
+                         <string>Input rate (0 means as fast as possible).</string>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="4" column="0">
+                       <widget class="QCheckBox" name="source_mirroring">
+                        <property name="text">
+                         <string/>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="13" column="0">
+                       <widget class="QPushButton" name="pushButton_test_camera">
+                        <property name="sizePolicy">
+                         <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                          <horstretch>0</horstretch>
+                          <verstretch>0</verstretch>
+                         </sizepolicy>
+                        </property>
+                        <property name="text">
+                         <string>Test</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="11" column="1">
+                       <widget class="QLabel" name="label_24">
+                        <property name="text">
+                         <string>Calibration files are saved in &quot;camera_info&quot; folder of the working directory.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
                       <item row="7" column="1">
                        <widget class="QLabel" name="label_229">
                         <property name="text">
@@ -3211,8 +3142,100 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                         </property>
                        </widget>
                       </item>
-                      <item row="7" column="0">
-                       <widget class="QCheckBox" name="checkbox_rgbd_colorOnly">
+                      <item row="5" column="0">
+                       <widget class="QSpinBox" name="spinBox_source_imageDecimation">
+                        <property name="minimum">
+                         <number>1</number>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="2" column="1">
+                       <widget class="QLabel" name="label_39">
+                        <property name="text">
+                         <string>ID of the device, which might be a serial number, bus@address or the index of the device. If empty, the first device found is taken.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="2" column="0">
+                       <widget class="QLineEdit" name="lineEdit_sourceDevice">
+                        <property name="text">
+                         <string/>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="4" column="1">
+                       <widget class="QLabel" name="label_17">
+                        <property name="text">
+                         <string>Mirroring mode (flip image horizontally). It has no effect on database source.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="5" column="1">
+                       <widget class="QLabel" name="label_36">
+                        <property name="text">
+                         <string>Image decimation. RGB/Mono and depth images will be resized according to this value (size*1/decimation). Note that if depth images are captured, decimation should be a multiple of the depth image size. If depth images are smaller than RGB images, the decimation is first applied on RGB, if the resulting RGB image is still bigger than depth image, the depth is not decimated.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="3" column="1">
+                       <widget class="QLabel" name="label_42">
+                        <property name="text">
+                         <string>Local transform from /base_link to /camera_link. Mouse over the box to show formats. If odometry sensor is enabled, it is the transform to odometry sensor.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="9" column="1">
+                       <widget class="QLabel" name="label_18">
+                        <property name="text">
+                         <string>Calibration file path (*.yaml). If empty, the GUID of the camera is used (for those having one). OpenNI and Freenect drivers use factory calibration by default (so they ignore this parameter). A calibrated camera is required for RGB-D SLAM mode.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="8" column="1">
+                       <widget class="QLabel" name="label_740">
+                        <property name="text">
+                         <string>Detect features inside camera thread using parameters set in Visual Registration panel.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="8" column="0">
+                       <widget class="QCheckBox" name="checkbox_source_feature_detection">
                         <property name="text">
                          <string/>
                         </property>

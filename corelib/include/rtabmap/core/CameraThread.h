@@ -47,6 +47,7 @@ class CameraInfo;
 class SensorData;
 class StereoDense;
 class IMUFilter;
+class Feature2D;
 
 /**
  * Class CameraThread
@@ -88,6 +89,8 @@ public:
 	void disableBilateralFiltering() {_bilateralFiltering = false;}
 	void enableIMUFiltering(int filteringStrategy=1, const ParametersMap & parameters = ParametersMap(), bool baseFrameConversion = false);
 	void disableIMUFiltering();
+	void enableFeatureDetection(const ParametersMap & parameters = ParametersMap());
+	void disableFeatureDetection();
 
 	// Use new version of this function with groundNormalsUp=0.8 for forceGroundNormalsUp=True and groundNormalsUp=0.0 for forceGroundNormalsUp=False.
 	RTABMAP_DEPRECATED void setScanParameters(
@@ -152,6 +155,8 @@ private:
 	float _bilateralSigmaR;
 	IMUFilter * _imuFilter;
 	bool _imuBaseFrameConversion;
+	Feature2D * _featureDetector;
+	bool _depthAsMask;
 };
 
 } // namespace rtabmap

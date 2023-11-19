@@ -5774,6 +5774,10 @@ void MainWindow::startDetection()
 	_camera->setColorOnly(_preferencesDialog->isSourceRGBDColorOnly());
 	_camera->setImageDecimation(_preferencesDialog->getSourceImageDecimation());
 	_camera->setHistogramMethod(_preferencesDialog->getSourceHistogramMethod());
+	if(_preferencesDialog->isSourceFeatureDetection())
+	{
+		_camera->enableFeatureDetection(parameters);
+	}
 	_camera->setStereoToDepth(_preferencesDialog->isSourceStereoDepthGenerated());
 	_camera->setStereoExposureCompensation(_preferencesDialog->isSourceStereoExposureCompensation());
 	_camera->setScanParameters(
