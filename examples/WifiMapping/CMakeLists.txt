@@ -42,6 +42,14 @@ ENDIF(APPLE)
 ADD_EXECUTABLE(wifi_mapping ${srcs} ${moc_srcs})
 TARGET_LINK_LIBRARIES(wifi_mapping rtabmap::gui ${LIBRARIES})
 
+SET_TARGET_PROPERTIES(
+     wifi_mapping
+   PROPERTIES
+	 AUTOUIC ON
+     AUTOMOC ON
+     AUTORCC ON
+)
+
 if(internal)
   SET_TARGET_PROPERTIES( wifi_mapping 
     PROPERTIES OUTPUT_NAME ${PROJECT_PREFIX}-wifi_mapping)

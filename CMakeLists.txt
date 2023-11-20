@@ -325,9 +325,11 @@ IF(WITH_QT)
     ENDIF()
         
     IF(QT4_FOUND OR Qt5_FOUND OR Qt6_FOUND)
-        set(CMAKE_AUTOUIC ON)
-        set(CMAKE_AUTOMOC ON)
-        set(CMAKE_AUTORCC ON)
+        # For VCPKG build, set those global variables to off, 
+        # we will enable them for jsut specific targets
+        set(CMAKE_AUTOMOC OFF)
+        set(CMAKE_AUTORCC OFF)
+        set(CMAKE_AUTOUIC OFF)
         IF("${VTK_MAJOR_VERSION}" EQUAL 5)
             FIND_PACKAGE(QVTK REQUIRED) # only for VTK 5
         ELSE()

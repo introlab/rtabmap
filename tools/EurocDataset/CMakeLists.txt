@@ -2,9 +2,12 @@
 FIND_PACKAGE(yaml-cpp QUIET)
 
 IF(yaml-cpp_FOUND)
-  # yaml-cpp 0.8.0 uses the wrong target in YAML_CPP_LIBRARIES.
-  IF(yaml-cpp_VERSION VERSION_EQUAL "0.8.0")
+  IF (TARGET yaml-cpp::yaml-cpp)
+    # yaml-cpp 0.8.0 uses target yaml-cpp::yaml-cpp.
     SET(YAML_CPP_LIBRARIES yaml-cpp::yaml-cpp)
+  ELSEIF (TARGET yaml-cpp)
+    # yaml-cpp 0.7.0 uses target yaml-cpp (VCPKG).
+    SET(YAML_CPP_LIBRARIES yaml-cpp)
   ENDIF()
 ELSE()
    find_package(PkgConfig QUIET)

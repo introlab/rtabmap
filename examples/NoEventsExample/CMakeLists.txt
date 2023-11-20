@@ -23,6 +23,14 @@ ADD_EXECUTABLE(noEventsExample main.cpp ${moc_srcs})
   
 TARGET_LINK_LIBRARIES(noEventsExample rtabmap::gui)
 
+SET_TARGET_PROPERTIES(
+     noEventsExample
+   PROPERTIES
+	 AUTOUIC ON
+     AUTOMOC ON
+     AUTORCC ON
+)
+
 if(internal)
 	SET_TARGET_PROPERTIES( noEventsExample 
 	  PROPERTIES OUTPUT_NAME ${PROJECT_PREFIX}-noEventsExample)

@@ -23,6 +23,14 @@ ADD_EXECUTABLE(rgbd_mapping main.cpp ${moc_srcs})
   
 TARGET_LINK_LIBRARIES(rgbd_mapping rtabmap::gui)
 
+SET_TARGET_PROPERTIES(
+     rgbd_mapping
+   PROPERTIES
+	 AUTOUIC ON
+     AUTOMOC ON
+     AUTORCC ON
+)
+
 if(internal)
   SET_TARGET_PROPERTIES( rgbd_mapping 
     PROPERTIES OUTPUT_NAME ${PROJECT_PREFIX}-rgbd_mapping)

@@ -1018,6 +1018,7 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 	UDEBUG("");
 	_processingOdometry = true;
 	UTimer time;
+	UTimer timeTotal;
 	// Process Data
 
 	// Set color code as tooltip
@@ -1898,7 +1899,7 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 			_ui->statsToolBox->updateStat("Odometry/Distance/m", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), odom.info().distanceTravelled, _preferencesDialog->isCacheSavedInFigures());
 		}
 
-		_ui->statsToolBox->updateStat("GUI/Refresh odom/ms", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), time.elapsed()*1000.0, _preferencesDialog->isCacheSavedInFigures());
+		_ui->statsToolBox->updateStat("GUI/Refresh odom/ms", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), timeTotal.elapsed()*1000.0, _preferencesDialog->isCacheSavedInFigures());
 		UDEBUG("Time updating Stats toolbox: %fs", time.ticks());
 	}
 	_processingOdometry = false;
