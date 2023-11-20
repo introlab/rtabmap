@@ -48,7 +48,7 @@
 **ROS**
 
 * Visit [rtabmap_ros](http://wiki.ros.org/rtabmap_ros) wiki page for nodes documentation, demos and tutorials on ROS. 
-* Ask a question on [answers.ros.org](http://answers.ros.org/questions/scope:all/sort:activity-desc/tags:rtabmap_ros/page:1/) with **rtabmap** or **rtabmap_ros** tag.
+* Ask a question on ~~[answers.ros.org](http://answers.ros.org/questions/scope:all/sort:activity-desc/tags:rtabmap_ros/page:1/)~~ [robotics.stackexchange.com](https://robotics.stackexchange.com/questions/tagged/rtabmap) with **rtabmap** or **rtabmap-ros** tag.
 
 ## License
 * If OpenCV is built **without the nonfree** module, RTAB-Map can be used under the permissive BSD License.
