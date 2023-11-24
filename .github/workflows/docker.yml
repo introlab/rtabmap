@@ -32,6 +32,7 @@ jobs:
             introlab3it/rtabmap:jammy-iron-deps
           docker_platforms: |
             linux/amd64
+            linux/arm64
           docker_path: 'jammy-iron/deps'
     
     steps:
