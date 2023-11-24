@@ -403,7 +403,7 @@ RTABMAP_DEPRECATED pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_CORE_EXPORT loadC
  * @param velocity stamp at which it has been computed
  * @return lidar deskewed
  */
-LaserScan RTABMAP_EXP deskew(
+LaserScan RTABMAP_CORE_EXPORT deskew(
 		const LaserScan & input,
 		double inputStamp,
 		const rtabmap::Transform & velocity);

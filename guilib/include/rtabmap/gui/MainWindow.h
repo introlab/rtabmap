@@ -342,7 +342,7 @@ private:
 	Ui_mainWindow * _ui;
 
 	State _state;
-	rtabmap::SensorCaptureThread * _camera;
+	rtabmap::SensorCaptureThread * _sensorCapture;
 	rtabmap::OdometryThread * _odomThread;
 	rtabmap::IMUThread * _imuThread;
 

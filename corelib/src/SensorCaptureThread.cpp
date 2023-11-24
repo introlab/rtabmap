@@ -49,8 +49,8 @@ namespace rtabmap
 {
 
 // ownership transferred
-SensorCaptureThread::SensorCaptureThread(SensorCapture * camera, const ParametersMap & parameters) :
-		_camera(camera),
+SensorCaptureThread::SensorCaptureThread(SensorCapture * sensor, const ParametersMap & parameters) :
+		_sensor(sensor),
 		_odomSensor(0),
 		_odomAsGt(false),
 		_poseTimeOffset(0.0),
@@ -79,19 +79,19 @@ SensorCaptureThread::SensorCaptureThread(SensorCapture * camera, const Parameter
 		_featureDetector(0),
 		_depthAsMask(Parameters::defaultVisDepthAsMask())
 {
-	UASSERT(_camera != 0);
+	UASSERT(_sensor != 0);
 }
 
 // ownership transferred
 SensorCaptureThread::SensorCaptureThread(
-		SensorCapture * camera,
+		SensorCapture * sensor,
 		SensorCapture * odomSensor,
 		const Transform & extrinsics,
 		double poseTimeOffset,
 		float poseScaleFactor,
 		bool odomAsGt,
 		const ParametersMap & parameters) :
-			_camera(camera),
+			_sensor(sensor),
 			_odomSensor(odomSensor),
 			_extrinsicsOdomToCamera(extrinsics * CameraModel::opticalRotation()),
 			_odomAsGt(odomAsGt),
@@ -121,7 +121,7 @@ SensorCaptureThread::SensorCaptureThread(
 			_featureDetector(0),
 			_depthAsMask(Parameters::defaultVisDepthAsMask())
 {
-	UASSERT(_camera != 0 && _odomSensor != 0 && !_extrinsicsOdomToCamera.isNull());
+	UASSERT(_sensor != 0 && _odomSensor != 0 && !_extrinsicsOdomToCamera.isNull());
 	UDEBUG("_extrinsicsOdomToCamera=%s", _extrinsicsOdomToCamera.prettyPrint().c_str());
 	UDEBUG("_poseTimeOffset        =%f", _poseTimeOffset);
 	UDEBUG("_poseScaleFactor       =%f", _poseScaleFactor);
@@ -130,10 +130,10 @@ SensorCaptureThread::SensorCaptureThread(
 
 // ownership transferred
 SensorCaptureThread::SensorCaptureThread(
-		SensorCapture * camera,
+		SensorCapture * sensor,
 		bool odomAsGt,
 		const ParametersMap & parameters) :
-			_camera(camera),
+			_sensor(sensor),
 			_odomSensor(0),
 			_odomAsGt(odomAsGt),
 			_poseTimeOffset(0.0),
@@ -162,14 +162,14 @@ SensorCaptureThread::SensorCaptureThread(
 			_featureDetector(0),
 			_depthAsMask(Parameters::defaultVisDepthAsMask())
 {
-	UASSERT(_camera != 0);
+	UASSERT(_sensor != 0);
 	UDEBUG("_odomAsGt              =%s", _odomAsGt?"true":"false");
 }
 
 SensorCaptureThread::~SensorCaptureThread()
 {
 	join(true);
-	delete _camera;
+	delete _sensor;
 	delete _odomSensor;
 	delete _distortionModel;
 	delete _stereoDense;
@@ -179,9 +179,9 @@ SensorCaptureThread::~SensorCaptureThread()
 
 void SensorCaptureThread::setImageRate(float imageRate)
 {
-	if(_camera)
+	if(_sensor)
 	{
-		_camera->setImageRate(imageRate);
+		_sensor->setImageRate(imageRate);
 	}
 }
 
@@ -285,20 +285,20 @@ void SensorCaptureThread::setScanParameters(
 
 bool SensorCaptureThread::odomProvided() const
 {
-	return _camera && (_camera->odomProvided() || (_odomSensor && _odomSensor->odomProvided()));
+	return _sensor && (_sensor->odomProvided() || (_odomSensor && _odomSensor->odomProvided()));
 }
 
 void SensorCaptureThread::mainLoopBegin()
 {
 	ULogger::registerCurrentThread("Camera");
-	_camera->resetTimer();
+	_sensor->resetTimer();
 }
 
 void SensorCaptureThread::mainLoop()
 {
 	UTimer totalTime;
 	SensorCaptureInfo info;
-	SensorData data = _camera->takeImage(&info);
+	SensorData data = _sensor->takeImage(&info);
 
 	if(_odomSensor)
 	{
@@ -343,10 +343,10 @@ void SensorCaptureThread::mainLoop()
 		info.odomPose.setNull();
 	}
 
-	if(!data.imageRaw().empty() || !data.laserScanRaw().empty() || (dynamic_cast<DBReader*>(_camera) != 0 && data.id()>0)) // intermediate nodes could not have image set
+	if(!data.imageRaw().empty() || !data.laserScanRaw().empty() || (dynamic_cast<DBReader*>(_sensor) != 0 && data.id()>0)) // intermediate nodes could not have image set
 	{
 		postUpdate(&data, &info);
-		info.cameraName = _camera->getSerial();
+		info.cameraName = _sensor->getSerial();
 		info.timeTotal = totalTime.ticks();
 		this->post(new SensorEvent(data, info));
 	}
@@ -360,7 +360,7 @@ void SensorCaptureThread::mainLoop()
 
 void SensorCaptureThread::mainLoopKill()
 {
-	if(dynamic_cast<CameraFreenect2*>(_camera) != 0)
+	if(dynamic_cast<CameraFreenect2*>(_sensor) != 0)
 	{
 		int i=20;
 		while(i-->0)

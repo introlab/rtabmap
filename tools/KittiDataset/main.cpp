@@ -374,7 +374,7 @@ int main(int argc, char * argv[])
 					0.0f);
 	}
 	SensorCaptureThread cameraThread(camera, parameters);
-	((CameraImages*)cameraThread.camera())->setTimestamps(false, pathTimes, false);
+	((CameraImages*)cameraThread.sensor())->setTimestamps(false, pathTimes, false);
 	if(exposureCompensation)
 	{
 		cameraThread.setStereoExposureCompensation(true);
@@ -385,11 +385,11 @@ int main(int argc, char * argv[])
 	}
 	if(!gtPath.empty())
 	{
-		((CameraImages*)cameraThread.camera())->setGroundTruthPath(gtPath, 2);
+		((CameraImages*)cameraThread.sensor())->setGroundTruthPath(gtPath, 2);
 	}
 	if(!pathScan.empty())
 	{
-		((CameraImages*)cameraThread.camera())->setScanPath(
+		((CameraImages*)cameraThread.sensor())->setScanPath(
 						pathScan,
 						130000,
 						Transform(-0.27f, 0.0f, 0.08+(height?1.67f:0.0f), 0.0f, 0.0f, 0.0f));
@@ -420,9 +420,9 @@ int main(int argc, char * argv[])
 
 	std::string databasePath = output+"/"+outputName+".db";
 	UFile::erase(databasePath);
-	if(cameraThread.camera()->init(output, outputName+"_calib"))
+	if(cameraThread.sensor()->init(output, outputName+"_calib"))
 	{
-		int totalImages = (int)((CameraStereoImages*)cameraThread.camera())->filenames().size();
+		int totalImages = (int)((CameraStereoImages*)cameraThread.sensor())->filenames().size();
 
 		printf("Processing %d images...\n", totalImages);
 
@@ -435,7 +435,7 @@ int main(int argc, char * argv[])
 		UTimer totalTime;
 		UTimer timer;
 		SensorCaptureInfo cameraInfo;
-		SensorData data = cameraThread.camera()->takeImage(&cameraInfo);
+		SensorData data = cameraThread.sensor()->takeImage(&cameraInfo);
 		int iteration = 0;
 
 		/////////////////////////////
@@ -571,7 +571,7 @@ int main(int argc, char * argv[])
 
 			cameraInfo = SensorCaptureInfo();
 			timer.restart();
-			data = cameraThread.camera()->takeImage(&cameraInfo);
+			data = cameraThread.sensor()->takeImage(&cameraInfo);
 		}
 		delete odom;
 		printf("Total time=%fs\n", totalTime.ticks());

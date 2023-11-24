@@ -102,7 +102,7 @@ class SimpleVLPViewer
       FPS_CALC("cloud callback");
       std::lock_guard<std::mutex> lock (cloud_mutex_);
       cloud_ = cloud;
-      printf("points= %d %dx%d fps=%f\n", cloud_->size(), cloud_->width, cloud_->height, grabber_.getFramesPerSecond());
+      printf("points= %ld %dx%d fps=%f\n", cloud_->size(), cloud_->width, cloud_->height, grabber_.getFramesPerSecond());
     }
 
     void

@@ -138,7 +138,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent, bool sh
 	QMainWindow(parent),
 	_ui(0),
 	_state(kIdle),
-	_camera(0),
+	_sensorCapture(0),
 	_odomThread(0),
 	_imuThread(0),
 	_preferencesDialog(0),
@@ -818,11 +818,11 @@ void MainWindow::closeEvent(QCloseEvent* event)
 		_ui->dockWidget_odometry->close();
 		_ui->dockWidget_multiSessionLoc->close();
 
-		if(_camera)
+		if(_sensorCapture)
 		{
 			UERROR("Camera must be already deleted here!");
-			delete _camera;
-			_camera = 0;
+			delete _sensorCapture;
+			_sensorCapture = 0;
 			if(_imuThread)
 			{
 				delete _imuThread;
@@ -928,7 +928,7 @@ bool MainWindow::handleEvent(UEvent* anEvent)
 		else
 		{
 			Q_EMIT cameraInfoReceived(sensorEvent->info());
-			if (_odomThread == 0 && (_camera->odomProvided()) && _preferencesDialog->isRGBDMode())
+			if (_odomThread == 0 && (_sensorCapture->odomProvided()) && _preferencesDialog->isRGBDMode())
 			{
 				OdometryInfo odomInfo;
 				odomInfo.reg.covariance = sensorEvent->info().odomCovariance;
@@ -4782,15 +4782,15 @@ void MainWindow::applyPrefSettings(PreferencesDialog::PANEL_FLAGS flags)
 		this->updateSelectSourceMenu();
 		_ui->label_stats_source->setText(_preferencesDialog->getSourceDriverStr());
 
-		if(_camera)
+		if(_sensorCapture)
 		{
-			if(dynamic_cast<DBReader*>(_camera->camera()) != 0)
+			if(dynamic_cast<DBReader*>(_sensorCapture->sensor()) != 0)
 			{
-				_camera->setImageRate( _preferencesDialog->isSourceDatabaseStampsUsed()?-1:_preferencesDialog->getGeneralInputRate());
+				_sensorCapture->setImageRate( _preferencesDialog->isSourceDatabaseStampsUsed()?-1:_preferencesDialog->getGeneralInputRate());
 			}
 			else
 			{
-				_camera->setImageRate(_preferencesDialog->getGeneralInputRate());
+				_sensorCapture->setImageRate(_preferencesDialog->getGeneralInputRate());
 			}
 		}
 
@@ -5730,12 +5730,12 @@ void MainWindow::startDetection()
 	UDEBUG("");
 	Q_EMIT stateChanged(kStartingDetection);
 
-	if(_camera != 0)
+	if(_sensorCapture != 0)
 	{
 		QMessageBox::warning(this,
 						     tr("RTAB-Map"),
 						     tr("A camera is running, stop it first."));
-		UWARN("_camera is not null... it must be stopped first");
+		UWARN("_sensorCapture is not null... it must be stopped first");
 		Q_EMIT stateChanged(kInitialized);
 		return;
 	}
@@ -5765,23 +5765,23 @@ void MainWindow::startDetection()
 
 	if(odomSensor)
 	{
-		_camera = new SensorCaptureThread(camera, odomSensor, extrinsics, poseTimeOffset, scaleFactor, _preferencesDialog->isOdomSensorAsGt(), parameters);
+		_sensorCapture = new SensorCaptureThread(camera, odomSensor, extrinsics, poseTimeOffset, scaleFactor, _preferencesDialog->isOdomSensorAsGt(), parameters);
 	}
 	else
 	{
-		_camera = new SensorCaptureThread(camera, _preferencesDialog->isOdomSensorAsGt(), parameters);
+		_sensorCapture = new SensorCaptureThread(camera, _preferencesDialog->isOdomSensorAsGt(), parameters);
 	}
-	_camera->setMirroringEnabled(_preferencesDialog->isSourceMirroring());
-	_camera->setColorOnly(_preferencesDialog->isSourceRGBDColorOnly());
-	_camera->setImageDecimation(_preferencesDialog->getSourceImageDecimation());
-	_camera->setHistogramMethod(_preferencesDialog->getSourceHistogramMethod());
+	_sensorCapture->setMirroringEnabled(_preferencesDialog->isSourceMirroring());
+	_sensorCapture->setColorOnly(_preferencesDialog->isSourceRGBDColorOnly());
+	_sensorCapture->setImageDecimation(_preferencesDialog->getSourceImageDecimation());
+	_sensorCapture->setHistogramMethod(_preferencesDialog->getSourceHistogramMethod());
 	if(_preferencesDialog->isSourceFeatureDetection())
 	{
-		_camera->enableFeatureDetection(parameters);
+		_sensorCapture->enableFeatureDetection(parameters);
 	}
-	_camera->setStereoToDepth(_preferencesDialog->isSourceStereoDepthGenerated());
-	_camera->setStereoExposureCompensation(_preferencesDialog->isSourceStereoExposureCompensation());
-	_camera->setScanParameters(
+	_sensorCapture->setStereoToDepth(_preferencesDialog->isSourceStereoDepthGenerated());
+	_sensorCapture->setStereoExposureCompensation(_preferencesDialog->isSourceStereoExposureCompensation());
+	_sensorCapture->setScanParameters(
 			_preferencesDialog->isSourceScanFromDepth(),
 			_preferencesDialog->getSourceScanDownsampleStep(),
 			_preferencesDialog->getSourceScanRangeMin(),
@@ -5792,17 +5792,17 @@ void MainWindow::startDetection()
 			(float)_preferencesDialog->getSourceScanForceGroundNormalsUp());
 	if(_preferencesDialog->getIMUFilteringStrategy()>0 && dynamic_cast<DBReader*>(camera) == 0)
 	{
-		_camera->enableIMUFiltering(_preferencesDialog->getIMUFilteringStrategy()-1, parameters, _preferencesDialog->getIMUFilteringBaseFrameConversion());
+		_sensorCapture->enableIMUFiltering(_preferencesDialog->getIMUFilteringStrategy()-1, parameters, _preferencesDialog->getIMUFilteringBaseFrameConversion());
 	}
 	if(_preferencesDialog->isDepthFilteringAvailable())
 	{
 		if(_preferencesDialog->isBilateralFiltering())
 		{
-			_camera->enableBilateralFiltering(
+			_sensorCapture->enableBilateralFiltering(
 					_preferencesDialog->getBilateralSigmaS(),
 					_preferencesDialog->getBilateralSigmaR());
 		}
-		_camera->setDistortionModel(_preferencesDialog->getSourceDistortionModel().toStdString());
+		_sensorCapture->setDistortionModel(_preferencesDialog->getSourceDistortionModel().toStdString());
 	}
 
 	//Create odometry thread if rgbd slam
@@ -5813,8 +5813,8 @@ void MainWindow::startDetection()
 		{
 			UWARN("Camera is not calibrated!");
 			Q_EMIT stateChanged(kInitialized);
-			delete _camera;
-			_camera = 0;
+			delete _sensorCapture;
+			_sensorCapture = 0;
 
 			int button = QMessageBox::question(this,
 					tr("Camera is not calibrated!"),
@@ -5842,7 +5842,7 @@ void MainWindow::startDetection()
 				_imuThread = 0;
 			}
 
-			if((!_camera->odomProvided() || _preferencesDialog->isOdomSensorAsGt()) && !_preferencesDialog->isOdomDisabled())
+			if((!_sensorCapture->odomProvided() || _preferencesDialog->isOdomSensorAsGt()) && !_preferencesDialog->isOdomDisabled())
 			{
 				ParametersMap odomParameters = parameters;
 				if(_preferencesDialog->getOdomRegistrationApproach() < 3)
@@ -5878,8 +5878,8 @@ void MainWindow::startDetection()
 					{
 						QMessageBox::warning(this, tr("Source IMU Path"),
 							tr("Initialization of IMU data has failed! Path=%1.").arg(_preferencesDialog->getIMUPath()), QMessageBox::Ok);
-						delete _camera;
-						_camera = 0;
+						delete _sensorCapture;
+						_sensorCapture = 0;
 						delete _imuThread;
 						_imuThread = 0;
 						return;
@@ -5889,8 +5889,8 @@ void MainWindow::startDetection()
 				_odomThread = new OdometryThread(odom, _preferencesDialog->getOdomBufferSize());
 
 				UEventsManager::addHandler(_odomThread);
-				UEventsManager::createPipe(_camera, _odomThread, "SensorEvent");
-				UEventsManager::createPipe(_camera, this, "SensorEvent");
+				UEventsManager::createPipe(_sensorCapture, _odomThread, "SensorEvent");
+				UEventsManager::createPipe(_sensorCapture, this, "SensorEvent");
 				if(_imuThread)
 				{
 					UEventsManager::createPipe(_imuThread, _odomThread, "IMUEvent");
@@ -5900,9 +5900,9 @@ void MainWindow::startDetection()
 		}
 	}
 
-	if(_dataRecorder && _camera && _odomThread)
+	if(_dataRecorder && _sensorCapture && _odomThread)
 	{
-		UEventsManager::createPipe(_camera, _dataRecorder, "SensorEvent");
+		UEventsManager::createPipe(_sensorCapture, _dataRecorder, "SensorEvent");
 	}
 
 	_lastOdomPose.setNull();
@@ -5944,7 +5944,7 @@ void MainWindow::startDetection()
 // Could not be in the main thread here! (see handleEvents())
 void MainWindow::pauseDetection()
 {
-	if(_camera)
+	if(_sensorCapture)
 	{
 		if(_state == kPaused && (QApplication::keyboardModifiers() & Qt::ShiftModifier))
 		{
@@ -5978,13 +5978,13 @@ void MainWindow::pauseDetection()
 
 void MainWindow::stopDetection()
 {
-	if(!_camera && !_odomThread)
+	if(!_sensorCapture && !_odomThread)
 	{
 		return;
 	}
 
 	if(_state == kDetecting &&
-	   (_camera && _camera->isRunning()) )
+	   (_sensorCapture && _sensorCapture->isRunning()) )
 	{
 		QMessageBox::StandardButton button = QMessageBox::question(this, tr("Stopping process..."), tr("Are you sure you want to stop the process?"), QMessageBox::Yes|QMessageBox::No, QMessageBox::No);
 
@@ -6001,9 +6001,9 @@ void MainWindow::stopDetection()
 		_imuThread->join(true);
 	}
 
-	if(_camera)
+	if(_sensorCapture)
 	{
-		_camera->join(true);
+		_sensorCapture->join(true);
 	}
 
 	if(_odomThread)
@@ -6018,10 +6018,10 @@ void MainWindow::stopDetection()
 		delete _imuThread;
 		_imuThread = 0;
 	}
-	if(_camera)
+	if(_sensorCapture)
 	{
-		delete _camera;
-		_camera = 0;
+		delete _sensorCapture;
+		_sensorCapture = 0;
 	}
 	if(_odomThread)
 	{
@@ -8181,9 +8181,9 @@ void MainWindow::dataRecorder()
 					this->connect(_dataRecorder, SIGNAL(destroyed(QObject*)), this, SLOT(dataRecorderDestroyed()));
 					_dataRecorder->show();
 					_dataRecorder->registerToEventsManager();
-					if(_camera)
+					if(_sensorCapture)
 					{
-						UEventsManager::createPipe(_camera, _dataRecorder, "SensorEvent");
+						UEventsManager::createPipe(_sensorCapture, _dataRecorder, "SensorEvent");
 					}
 					_ui->actionData_recorder->setEnabled(false);
 				}
@@ -8450,9 +8450,9 @@ void MainWindow::changeState(MainWindow::State newState)
 
 		_databaseUpdated = true; // if a new database is used, it won't be empty anymore...
 
-		if(_camera)
+		if(_sensorCapture)
 		{
-			_camera->start();
+			_sensorCapture->start();
 			if(_imuThread)
 			{
 				_imuThread->start();
@@ -8486,9 +8486,9 @@ void MainWindow::changeState(MainWindow::State newState)
 			_elapsedTime->start();
 			_oneSecondTimer->start();
 
-			if(_camera)
+			if(_sensorCapture)
 			{
-				_camera->start();
+				_sensorCapture->start();
 				if(_imuThread)
 				{
 					_imuThread->start();
@@ -8524,13 +8524,13 @@ void MainWindow::changeState(MainWindow::State newState)
 			_oneSecondTimer->stop();
 
 			// kill sensors
-			if(_camera)
+			if(_sensorCapture)
 			{
 				if(_imuThread)
 				{
 					_imuThread->join(true);
 				}
-				_camera->join(true);
+				_sensorCapture->join(true);
 			}
 		}
 		break;
