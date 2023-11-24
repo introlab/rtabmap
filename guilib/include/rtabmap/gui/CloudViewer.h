@@ -28,11 +28,12 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef RTABMAP_CLOUDVIEWER_H_
 #define RTABMAP_CLOUDVIEWER_H_
 
-#include "rtabmap/gui/RtabmapGuiExp.h" // DLL export/import defines
+#include "rtabmap/gui/rtabmap_gui_export.h" // DLL export/import defines
 
 #include "rtabmap/core/Transform.h"
 #include "rtabmap/core/StereoCameraModel.h"
 #include "rtabmap/gui/CloudViewerInteractorStyle.h"
+#include <vtkVersionMacros.h>
 
 #if VTK_MAJOR_VERSION > 8
 #ifndef slots
@@ -75,7 +76,7 @@ namespace rtabmap {
 
 class OctoMap;
 
-class RTABMAPGUI_EXP CloudViewer : public PCLQVTKWidget
+class RTABMAP_GUI_EXPORT CloudViewer : public PCLQVTKWidget
 {
 	Q_OBJECT
 

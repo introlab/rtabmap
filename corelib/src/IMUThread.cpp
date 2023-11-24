@@ -27,6 +27,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "rtabmap/core/IMUThread.h"
 #include "rtabmap/core/IMU.h"
+#include "rtabmap/core/IMUFilter.h"
 #include <rtabmap/utilite/UTimer.h>
 #include <rtabmap/utilite/ULogger.h>
 #include <rtabmap/utilite/UConversion.h>
@@ -38,13 +39,16 @@ IMUThread::IMUThread(int rate, const Transform & localTransform) :
 		rate_(rate),
 		localTransform_(localTransform),
 		captureDelay_(0.0),
-		previousStamp_(0.0)
+		previousStamp_(0.0),
+		_imuFilter(0),
+		_imuBaseFrameConversion(false)
 {
 }
 
 IMUThread::~IMUThread()
 {
 	imuFile_.close();
+	delete _imuFilter;
 }
 
 bool IMUThread::init(const std::string & path)
@@ -79,6 +83,19 @@ bool IMUThread::init(const std::string & path)
 void IMUThread::setRate(int rate)
 {
 	rate_ = rate;
+}
+
+void IMUThread::enableIMUFiltering(int filteringStrategy, const ParametersMap & parameters, bool baseFrameConversion)
+{
+	delete _imuFilter;
+	_imuFilter = IMUFilter::create((IMUFilter::Type)filteringStrategy, parameters);
+	_imuBaseFrameConversion = baseFrameConversion;
+}
+
+void IMUThread::disableIMUFiltering()
+{
+	delete _imuFilter;
+	_imuFilter = 0;
 }
 
 void IMUThread::mainLoopBegin()
@@ -141,6 +158,60 @@ void IMUThread::mainLoop()
 		previousStamp_ = stamp;
 
 		IMU imu(gyr, cv::Mat(), acc, cv::Mat(), localTransform_);
+
+		// IMU filtering
+		if(_imuFilter && !imu.empty())
+		{
+			if(imu.angularVelocity()[0] == 0 &&
+			   imu.angularVelocity()[1] == 0 &&
+			   imu.angularVelocity()[2] == 0 &&
+			   imu.linearAcceleration()[0] == 0 &&
+			   imu.linearAcceleration()[1] == 0 &&
+			   imu.linearAcceleration()[2] == 0)
+			{
+				UWARN("IMU's acc and gyr values are null! Please disable IMU filtering.");
+			}
+			else
+			{
+				// Transform IMU data in base_link to correctly initialize yaw
+				if(_imuBaseFrameConversion)
+				{
+					UASSERT(!imu.localTransform().isNull());
+					imu.convertToBaseFrame();
+
+				}
+				_imuFilter->update(
+						imu.angularVelocity()[0],
+						imu.angularVelocity()[1],
+						imu.angularVelocity()[2],
+						imu.linearAcceleration()[0],
+						imu.linearAcceleration()[1],
+						imu.linearAcceleration()[2],
+						stamp);
+				double qx,qy,qz,qw;
+				_imuFilter->getOrientation(qx,qy,qz,qw);
+
+				imu = IMU(
+						cv::Vec4d(qx,qy,qz,qw), cv::Mat::eye(3,3,CV_64FC1),
+						imu.angularVelocity(), imu.angularVelocityCovariance(),
+						imu.linearAcceleration(), imu.linearAccelerationCovariance(),
+						imu.localTransform());
+
+				UDEBUG("%f %f %f %f (gyro=%f %f %f, acc=%f %f %f, %fs)",
+							imu.orientation()[0],
+							imu.orientation()[1],
+							imu.orientation()[2],
+							imu.orientation()[3],
+							imu.angularVelocity()[0],
+							imu.angularVelocity()[1],
+							imu.angularVelocity()[2],
+							imu.linearAcceleration()[0],
+							imu.linearAcceleration()[1],
+							imu.linearAcceleration()[2],
+							stamp);
+			}
+		}
+
 		this->post(new IMUEvent(imu, stamp));
 	}
 	else if(!this->isKilled())

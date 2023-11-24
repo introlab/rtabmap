@@ -160,6 +160,14 @@ AboutDialog::AboutDialog(QWidget * parent) :
 	_ui->label_ceres->setText(Optimizer::isAvailable(Optimizer::kTypeCeres)?"Yes":"No");
 	_ui->label_ceres_license->setEnabled(Optimizer::isAvailable(Optimizer::kTypeCeres)?true:false);
 
+#ifdef RTABMAP_MRPT
+	_ui->label_mrpt->setText("Yes");
+	_ui->label_mrpt_license->setEnabled(true);
+#else
+	_ui->label_mrpt->setText("No");
+	_ui->label_mrpt_license->setEnabled(false);
+#endif
+
 #ifdef RTABMAP_POINTMATCHER
 	_ui->label_libpointmatcher->setText("Yes");
 	_ui->label_libpointmatcher_license->setEnabled(true);

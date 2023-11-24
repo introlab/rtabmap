@@ -27,7 +27,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #pragma once
 
-#include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
+#include "rtabmap/core/rtabmap_core_export.h" // DLL export/import defines
 
 #include <rtabmap/core/Parameters.h>
 #include <rtabmap/core/Transform.h>
@@ -47,12 +47,13 @@ class SensorCaptureInfo;
 class SensorData;
 class StereoDense;
 class IMUFilter;
+class Feature2D;
 
 /**
  * Class CameraThread
  *
  */
-class RTABMAP_EXP SensorCaptureThread :
+class RTABMAP_CORE_EXPORT SensorCaptureThread :
 	public UThread,
 	public UEventsSender
 {
@@ -80,6 +81,7 @@ public:
 	void setStereoExposureCompensation(bool enabled) {_stereoExposureCompensation = enabled;}
 	void setColorOnly(bool colorOnly) {_colorOnly = colorOnly;}
 	void setImageDecimation(int decimation) {_imageDecimation = decimation;}
+	void setHistogramMethod(int histogramMethod) {_histogramMethod = histogramMethod;}
 	void setStereoToDepth(bool enabled) {_stereoToDepth = enabled;}
 	void setImageRate(float imageRate);
 	void setDistortionModel(const std::string & path);
@@ -87,8 +89,11 @@ public:
 	void disableBilateralFiltering() {_bilateralFiltering = false;}
 	void enableIMUFiltering(int filteringStrategy=1, const ParametersMap & parameters = ParametersMap(), bool baseFrameConversion = false);
 	void disableIMUFiltering();
+	void enableFeatureDetection(const ParametersMap & parameters = ParametersMap());
+	void disableFeatureDetection();
 
-	RTABMAP_DEPRECATED(void setScanParameters(
+	// Use new version of this function with groundNormalsUp=0.8 for forceGroundNormalsUp=True and groundNormalsUp=0.0 for forceGroundNormalsUp=False.
+	RTABMAP_DEPRECATED void setScanParameters(
 			bool fromDepth,
 			int downsampleStep, // decimation of the depth image in case the scan is from depth image
 			float rangeMin,
@@ -96,7 +101,7 @@ public:
 			float voxelSize,
 			int normalsK,
 			int normalsRadius,
-			bool forceGroundNormalsUp) , "Use new version of this function with groundNormalsUp=0.8 for forceGroundNormalsUp=True and groundNormalsUp=0.0 for forceGroundNormalsUp=False.");
+			bool forceGroundNormalsUp);
 	void setScanParameters(
 			bool fromDepth,
 			int downsampleStep=1, // decimation of the depth image in case the scan is from depth image
@@ -133,6 +138,7 @@ private:
 	bool _stereoExposureCompensation;
 	bool _colorOnly;
 	int _imageDecimation;
+	int _histogramMethod;
 	bool _stereoToDepth;
 	bool _scanFromDepth;
 	int _scanDownsampleStep;
@@ -149,6 +155,8 @@ private:
 	float _bilateralSigmaR;
 	IMUFilter * _imuFilter;
 	bool _imuBaseFrameConversion;
+	Feature2D * _featureDetector;
+	bool _depthAsMask;
 };
 
 } // namespace rtabmap

@@ -37,7 +37,7 @@ namespace okvis {
 namespace rtabmap {
 
 class OkvisCallbackHandler;
-class RTABMAP_EXP OdometryOkvis : public Odometry
+class RTABMAP_CORE_EXPORT OdometryOkvis : public Odometry
 {
 public:
 	OdometryOkvis(const rtabmap::ParametersMap & parameters = rtabmap::ParametersMap());

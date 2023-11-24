@@ -43,10 +43,10 @@
 #ifndef _POSEGRAPH3_HH_
 #define _POSEGRAPH3_HH_
 
-#include "posegraph.hh"
-#include "transformation3.hh"
 #include <iostream>
 #include <vector>
+#include "posegraph.h"
+#include "transformation3.h"
 
 typedef unsigned int uint;
 #ifndef M_PI

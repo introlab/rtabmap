@@ -40,7 +40,7 @@ class RgbdCameraPyramid;
 
 namespace rtabmap {
 
-class RTABMAP_EXP OdometryDVO : public Odometry
+class RTABMAP_CORE_EXPORT OdometryDVO : public Odometry
 {
 public:
 	OdometryDVO(const rtabmap::ParametersMap & parameters = rtabmap::ParametersMap());

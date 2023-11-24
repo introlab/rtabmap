@@ -35,6 +35,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/Graph.h>
 #include <rtabmap/core/Memory.h>
 #include <rtabmap/core/SensorCaptureThread.h>
+#include <rtabmap/core/Odometry.h>
+#include <rtabmap/core/OdometryInfo.h>
 #include <rtabmap/utilite/UFile.h>
 #include <rtabmap/utilite/UDirectory.h>
 #include <rtabmap/utilite/UTimer.h>
@@ -67,6 +69,11 @@ void showUsage()
 			"     -c \"path.ini\"   Configuration file, overwriting parameters read \n"
 			"                       from the database. If custom parameters are also set as \n"
 			"                       arguments, they overwrite those in config file and the database.\n"
+			"     -default    Input database's parameters are ignored, using default ones instead.\n"
+			"     -odom       Recompute odometry. See \"Odom/\" parameters with --params. If -skip option\n"
+			"                 is used, it will be applied to odometry frames, not rtabmap frames. Multi-session\n"
+			"                 cannot be detected in this mode (assuming the database contains continuous frames\n"
+			"                 of a single session).\n"
 			"     -start #    Start from this node ID.\n"
 			"     -stop #     Last node to process.\n"
 			"     -start_s #  Start from this map session ID.\n"
@@ -75,6 +82,7 @@ void showUsage()
 			"                 then next databases are reprocessed on top of the first one.\n"
 			"     -cam #      Camera index to stream. Ignored if a database doesn't contain multi-camera data.\n"
 			"     -nolandmark Don't republish landmarks contained in input database.\n"
+			"     -nopriors   Don't republish priors contained in input database.\n"
 			"     -pub_loops  Republish loop closures contained in input database.\n"
 			"     -loc_null   On localization mode, reset localization pose to null and map correction to identity between sessions.\n"
 			"     -gt         When reprocessing a single database, load its original optimized graph, then \n"
@@ -229,6 +237,8 @@ int main(int argc, char * argv[])
 	bool assemble2dOctoMap = false;
 	bool assemble3dOctoMap = false;
 	bool useDatabaseRate = false;
+	bool useDefaultParameters = false;
+	bool recomputeOdometry = false;
 	int startId = 0;
 	int stopId = 0;
 	int startMapId = 0;
@@ -237,6 +247,7 @@ int main(int argc, char * argv[])
 	int cameraIndex = -1;
 	int framesToSkip = 0;
 	bool ignoreLandmarks = false;
+	bool ignorePriors = false;
 	bool republishLoopClosures = false;
 	bool locNull = false;
 	bool originalGraphAsGT = false;
@@ -273,6 +284,15 @@ int main(int argc, char * argv[])
 				printf("Config file is not set!\n");
 				showUsage();
 			}
+		}
+		else if(strcmp(argv[i], "-default") == 0 || strcmp(argv[i], "--default") == 0)
+		{
+			useDefaultParameters = true;
+			printf("Using default parameters.\n");
+		}
+		else if(strcmp(argv[i], "-odom") == 0 || strcmp(argv[i], "--odom") == 0)
+		{
+			recomputeOdometry = true;
 		}
 		else if (strcmp(argv[i], "-start") == 0 || strcmp(argv[i], "--start") == 0)
 		{
@@ -367,6 +387,11 @@ int main(int argc, char * argv[])
 		{
 			ignoreLandmarks = true;
 			printf("Ignoring landmarks from input database (-nolandmark option).\n");
+		}
+		else if(strcmp(argv[i], "-nopriors") == 0 || strcmp(argv[i], "--nopriors") == 0)
+		{
+			ignorePriors = true;
+			printf("Ignoring priors from input database (-nopriors option).\n");
 		}
 		else if(strcmp(argv[i], "-pub_loops") == 0 || strcmp(argv[i], "--pub_loops") == 0)
 		{
@@ -556,13 +581,19 @@ int main(int argc, char * argv[])
 		return -1;
 	}
 
-	ParametersMap parameters = dbDriver->getLastParameters();
-	std::string targetVersion = dbDriver->getDatabaseVersion();
-	parameters.insert(ParametersPair(Parameters::kDbTargetVersion(), targetVersion));
-	if(parameters.empty())
+	ParametersMap parameters;
+	std::string targetVersion;
+	if(!useDefaultParameters)
 	{
-		printf("WARNING: Failed getting parameters from database, reprocessing will be done with default parameters! Database version may be too old (%s).\n", dbDriver->getDatabaseVersion().c_str());
+		parameters = dbDriver->getLastParameters();
+		targetVersion = dbDriver->getDatabaseVersion();
+		parameters.insert(ParametersPair(Parameters::kDbTargetVersion(), targetVersion));
+		if(parameters.empty())
+		{
+			printf("WARNING: Failed getting parameters from database, reprocessing will be done with default parameters! Database version may be too old (%s).\n", dbDriver->getDatabaseVersion().c_str());
+		}
 	}
+
 	if(customParameters.size())
 	{
 		printf("Custom parameters:\n");
@@ -742,7 +773,8 @@ int main(int argc, char * argv[])
 			ignoreLandmarks,
 			!useOdomFeatures,
 			startMapId,
-			stopMapId);
+			stopMapId,
+			ignorePriors);
 
 	dbReader->init();
 
@@ -756,6 +788,28 @@ int main(int argc, char * argv[])
 	float angularUpdate = Parameters::defaultRGBDAngularUpdate();
 	Parameters::parse(parameters, Parameters::kRGBDLinearUpdate(), linearUpdate);
 	Parameters::parse(parameters, Parameters::kRGBDAngularUpdate(), angularUpdate);
+
+	Odometry * odometry = 0;
+	float rtabmapUpdateRate = Parameters::defaultRtabmapDetectionRate();
+	double lastUpdateStamp = 0;
+	if(recomputeOdometry)
+	{
+		if(odometryIgnored)
+		{
+			printf("odom option is set but %s parameter is false, odometry won't be recomputed...\n", Parameters::kRGBDEnabled().c_str());
+			recomputeOdometry = false;
+		}
+		else
+		{
+			printf("Odometry will be recomputed (odom option is set)\n");
+			Parameters::parse(parameters, Parameters::kRtabmapDetectionRate(), rtabmapUpdateRate);
+			if(rtabmapUpdateRate!=0)
+			{
+				rtabmapUpdateRate = 1.0f/rtabmapUpdateRate;
+			}
+			odometry = Odometry::create(parameters);
+		}
+	}
 
 	printf("Reprocessing data of \"%s\"...\n", inputDatabasePath.c_str());
 	std::map<std::string, float> globalMapStats;
@@ -773,6 +827,44 @@ int main(int argc, char * argv[])
 	bool inMotion = true;
 	while(data.isValid() && g_loopForever)
 	{
+		if(recomputeOdometry)
+		{
+			OdometryInfo odomInfo;
+			Transform pose = odometry->process(data, &odomInfo);
+			printf("Processed %d/%d frames (visual=%d/%d lidar=%f lost=%s)... odometry = %dms\n",
+					processed+1,
+					totalIds,
+					odomInfo.reg.inliers,
+					odomInfo.reg.matches,
+					odomInfo.reg.icpInliersRatio,
+					odomInfo.lost?"true":"false",
+					int(odomInfo.timeEstimation * 1000));
+			if(lastUpdateStamp > 0.0 && data.stamp() < lastUpdateStamp + rtabmapUpdateRate)
+			{
+				if(framesToSkip>0)
+				{
+					int skippedFrames = framesToSkip;
+					while(skippedFrames-- > 0)
+					{
+						++processed;
+						data = dbReader->takeImage();
+					}
+				}
+
+				data = dbReader->takeImage(&info);
+				if(scanFromDepth)
+				{
+					data.setLaserScan(LaserScan());
+				}
+				camThread.postUpdate(&data, &info);
+				++processed;
+				continue;
+			}
+			info.odomPose = pose;
+			info.odomCovariance = odomInfo.reg.covariance;
+			lastUpdateStamp = data.stamp();
+		}
+
 		UTimer iterationTime;
 		std::string status;
 		if(!odometryIgnored && info.odomPose.isNull())
@@ -986,11 +1078,12 @@ int main(int argc, char * argv[])
 
 		Transform odomPose = info.odomPose;
 
-		if(framesToSkip>0)
+		if(framesToSkip>0 && !recomputeOdometry)
 		{
 			int skippedFrames = framesToSkip;
 			while(skippedFrames-- > 0)
 			{
+				processed++;
 				data = dbReader->takeImage(&info);
 				if(!odometryIgnored && !info.odomCovariance.empty() && info.odomCovariance.at<double>(0,0)>=9999)
 				{
@@ -1057,6 +1150,8 @@ int main(int argc, char * argv[])
 	printf("Closing database \"%s\"...\n", outputDatabasePath.c_str());
 	rtabmap.close(true);
 	printf("Closing database \"%s\"... done!\n", outputDatabasePath.c_str());
+
+	delete odometry;
 
 	if(assemble2dMap)
 	{

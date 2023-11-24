@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <package format="2">
   <name>rtabmap</name>
-  <version>0.20.22</version>
+  <version>0.21.2</version>
   <description>RTAB-Map's standalone library. RTAB-Map is a RGB-D SLAM approach with real-time constraints.</description>
   <maintainer email="matlabbe@gmail.com">Mathieu Labbe</maintainer>
   <author>Mathieu Labbe</author>
@@ -14,9 +14,8 @@
 
   <build_depend>proj</build_depend>
   <depend>cv_bridge</depend>
-  <depend>libfreenect-dev</depend>
   <depend>libg2o</depend>
-  <depend>libopenni-dev</depend>
+  <depend>gtsam</depend>
   <!-- <depend>libopenni2-dev</depend> --> <!-- not available on Jessie -->
   <depend>libpcl-all-dev</depend> <!--  include libvtk-qt -->
   <depend>libpointmatcher</depend> <!-- optional but recommended if lidar is used, also not available on 32 bits system, but rtabmap can be built without it -->

@@ -28,7 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef REGISTRATIONICP_H_
 #define REGISTRATIONICP_H_
 
-#include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
+#include "rtabmap/core/rtabmap_core_export.h" // DLL export/import defines
 
 #include <rtabmap/core/Registration.h>
 #include <rtabmap/core/Signature.h>
@@ -36,7 +36,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 namespace rtabmap {
 
 // Geometrical registration
-class RTABMAP_EXP RegistrationIcp : public Registration
+class RTABMAP_CORE_EXPORT RegistrationIcp : public Registration
 {
 public:
 	// take ownership of child
@@ -64,6 +64,7 @@ private:
 	float _rangeMin;
 	float _rangeMax;
 	float _maxCorrespondenceDistance;
+	bool _reciprocalCorrespondences;
 	int _maxIterations;
 	float _epsilon;
 	float _correspondenceRatio;

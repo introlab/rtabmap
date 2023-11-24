@@ -10,3 +10,5 @@ app/android/AndroidManifest.xml
 app/android/res/raw/
 compile_flags.txt
 tags
+build_*
+*.bak

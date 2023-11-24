@@ -163,7 +163,7 @@ cv::Mat Link::uncompressUserDataConst() const
 
 Link Link::merge(const Link & link, Type outputType) const
 {
-	UASSERT(to_ == link.from());
+	UASSERT_MSG(to_ == link.from(), uFormat("merging this=%d->%d to link=%d->%d", from_, to_, link.from(), link.to()).c_str());
 	UASSERT(outputType != Link::kUndef);
 	UASSERT((link.transform().isNull() && transform_.isNull()) || (!link.transform().isNull() && !transform_.isNull()));
 	UASSERT(infMatrix_.cols == 6 && infMatrix_.rows == 6 && infMatrix_.type() == CV_64FC1);

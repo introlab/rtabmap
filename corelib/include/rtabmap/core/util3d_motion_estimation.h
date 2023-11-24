@@ -28,7 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef UTIL3D_MOTION_ESTIMATION_H_
 #define UTIL3D_MOTION_ESTIMATION_H_
 
-#include <rtabmap/core/RtabmapExp.h>
+#include <rtabmap/core/rtabmap_core_export.h>
 
 #include <rtabmap/core/Transform.h>
 #include <rtabmap/core/CameraModel.h>
@@ -39,7 +39,7 @@ namespace rtabmap
 namespace util3d
 {
 
-Transform RTABMAP_EXP estimateMotion3DTo2D(
+Transform RTABMAP_CORE_EXPORT estimateMotion3DTo2D(
 			const std::map<int, cv::Point3f> & words3A,
 			const std::map<int, cv::KeyPoint> & words2B,
 			const CameraModel & cameraModel,
@@ -48,6 +48,7 @@ Transform RTABMAP_EXP estimateMotion3DTo2D(
 			double reprojError = 5.,
 			int flagsPnP = 0,
 			int pnpRefineIterations = 1,
+			int varianceMedianRatio = 4,
 			float maxVariance = 0,
 			const Transform & guess = Transform::getIdentity(),
 			const std::map<int, cv::Point3f> & words3B = std::map<int, cv::Point3f>(),
@@ -55,15 +56,17 @@ Transform RTABMAP_EXP estimateMotion3DTo2D(
 			std::vector<int> * matchesOut = 0,
 			std::vector<int> * inliersOut = 0);
 			
-Transform RTABMAP_EXP estimateMotion3DTo2D(
+Transform RTABMAP_CORE_EXPORT estimateMotion3DTo2D(
 			const std::map<int, cv::Point3f> & words3A,
 			const std::map<int, cv::KeyPoint> & words2B,
 			const std::vector<CameraModel> & cameraModels,
+			unsigned int samplingPolicy = 0, // 0=AUTO, 1=ANY, 2=HOMOGENEOUS
 			int minInliers = 10,
 			int iterations = 100,
 			double reprojError = 5.,
 			int flagsPnP = 0,
 			int pnpRefineIterations = 1,
+			int varianceMedianRatio = 4,
 			float maxVariance = 0,
 			const Transform & guess = Transform::getIdentity(),
 			const std::map<int, cv::Point3f> & words3B = std::map<int, cv::Point3f>(),
@@ -71,7 +74,7 @@ Transform RTABMAP_EXP estimateMotion3DTo2D(
 			std::vector<int> * matchesOut = 0,
 			std::vector<int> * inliersOut = 0);
 
-Transform RTABMAP_EXP estimateMotion3DTo3D(
+Transform RTABMAP_CORE_EXPORT estimateMotion3DTo3D(
 			const std::map<int, cv::Point3f> & words3A,
 			const std::map<int, cv::Point3f> & words3B,
 			int minInliers = 10,
@@ -82,7 +85,7 @@ Transform RTABMAP_EXP estimateMotion3DTo3D(
 			std::vector<int> * matchesOut = 0,
 			std::vector<int> * inliersOut = 0);
 
-void RTABMAP_EXP solvePnPRansac(
+void RTABMAP_CORE_EXPORT solvePnPRansac(
 		const std::vector<cv::Point3f> & objectPoints,
 		const std::vector<cv::Point2f> & imagePoints,
 		const cv::Mat & cameraMatrix,

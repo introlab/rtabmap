@@ -246,7 +246,6 @@ int main(int argc, char * argv[])
 		/////////////////////////////
 		// Processing dataset begin
 		/////////////////////////////
-		cv::Mat covariance;
 		int odomKeyFrames = 0;
 		double previousStamp = 0.0;
 		int skipCount = 0;
@@ -277,6 +276,12 @@ int main(int argc, char * argv[])
 					odomInfo.reg.covariance = cv::Mat::eye(6,6,CV_64FC1);
 				}
 			}
+			
+			if(iteration!=0 && !odomInfo.reg.covariance.empty() && odomInfo.reg.covariance.at<double>(0,0)>=9999)
+            {
+				UWARN("Odometry is reset (high variance (%f >=9999 detected). Increment map id!", odomInfo.reg.covariance.at<double>(0,0));
+				rtabmap.triggerNewMap();
+            }
 
 			if(odomInfo.keyFrameAdded)
 			{
@@ -303,10 +308,6 @@ int main(int argc, char * argv[])
 				data.setFeatures(std::vector<cv::KeyPoint>(), std::vector<cv::Point3f>(), cv::Mat());// remove features
 				processData = intermediateNodes;
 			}
-			if(covariance.empty() || odomInfo.reg.covariance.at<double>(0,0) > covariance.at<double>(0,0))
-			{
-				covariance = odomInfo.reg.covariance;
-			}
 
 			timer.restart();
 			if(processData)
@@ -318,6 +319,7 @@ int main(int argc, char * argv[])
 				externalStats.insert(std::make_pair("Camera/Disparity/ms", cameraInfo.timeDisparity*1000.0f));
 				externalStats.insert(std::make_pair("Camera/ImageDecimation/ms", cameraInfo.timeImageDecimation*1000.0f));
 				externalStats.insert(std::make_pair("Camera/Mirroring/ms", cameraInfo.timeMirroring*1000.0f));
+				externalStats.insert(std::make_pair("Camera/HistogramEqualization/ms", cameraInfo.timeHistogramEqualization*1000.0f));
 				externalStats.insert(std::make_pair("Camera/ExposureCompensation/ms", cameraInfo.timeStereoExposureCompensation*1000.0f));
 				externalStats.insert(std::make_pair("Camera/ScanFromDepth/ms", cameraInfo.timeScanFromDepth*1000.0f));
 				externalStats.insert(std::make_pair("Camera/TotalTime/ms", cameraInfo.timeTotal*1000.0f));
@@ -337,8 +339,7 @@ int main(int argc, char * argv[])
 				externalStats.insert(std::make_pair("Odometry/LocalScanMapSize/", odomInfo.localScanMapSize));
 
 				OdometryEvent e(SensorData(), Transform(), odomInfo);
-				rtabmap.process(data, pose, covariance, e.velocity(), externalStats);
-				covariance = cv::Mat();
+				rtabmap.process(data, pose, odomInfo.reg.covariance, e.velocity(), externalStats);
 			}
 
 			++iteration;
@@ -354,8 +355,6 @@ int main(int argc, char * argv[])
 
 				if(rmse >= 0.0f)
 				{
-					//printf("Iteration %d/%d: camera=%dms, odom(quality=%d/%d, kfs=%d)=%dms, slam=%dms, rmse=%fm, noise stddev=%fm %frad",
-					//		iteration, totalImages, int(cameraInfo.timeTotal*1000.0f), odomInfo.reg.inliers, odomInfo.features, odomKeyFrames, int(odomInfo.timeEstimation*1000.0f), int(slamTime*1000.0f), rmse, sqrt(odomInfo.reg.covariance.at<double>(0,0)), sqrt(odomInfo.reg.covariance.at<double>(3,3)));
 					printf("Iteration %d/%d: camera=%dms, odom(quality=%d/%d, kfs=%d)=%dms, slam=%dms, rmse=%fm",
 							iteration, totalImages, int(cameraInfo.timeTotal*1000.0f), odomInfo.reg.inliers, odomInfo.features, odomKeyFrames, int(odomInfo.timeEstimation*1000.0f), int(slamTime*1000.0f), rmse);
 				}

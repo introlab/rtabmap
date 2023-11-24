@@ -27,7 +27,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #pragma once
 
-#include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
+#include "rtabmap/core/rtabmap_core_export.h" // DLL export/import defines
 
 #include "rtabmap/core/StereoCameraModel.h"
 #include "rtabmap/core/Camera.h"
@@ -41,7 +41,7 @@ namespace rtabmap
 
 class FreenectDevice;
 
-class RTABMAP_EXP CameraFreenect :
+class RTABMAP_CORE_EXPORT CameraFreenect :
 	public Camera
 {
 public:

@@ -43,10 +43,10 @@
 #ifndef _POSEGRAPH2_HH_
 #define _POSEGRAPH2_HH_
 
-#include "posegraph.hh"
-#include "transformation2.hh"
 #include <iostream>
 #include <vector>
+#include "posegraph.h"
+#include "transformation2.h"
 
 namespace AISNavigation {
 

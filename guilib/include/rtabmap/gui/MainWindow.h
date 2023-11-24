@@ -28,11 +28,12 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef RTABMAP_MAINWINDOW_H_
 #define RTABMAP_MAINWINDOW_H_
 
-#include "rtabmap/gui/RtabmapGuiExp.h" // DLL export/import defines
+#include "rtabmap/gui/rtabmap_gui_export.h" // DLL export/import defines
 
 #include "rtabmap/utilite/UEventsHandler.h"
 #include <QMainWindow>
 #include <QtCore/QSet>
+#include <QElapsedTimer>
 #include "rtabmap/core/RtabmapEvent.h"
 #include "rtabmap/core/SensorData.h"
 #include "rtabmap/core/OdometryEvent.h"
@@ -76,7 +77,7 @@ class DataRecorder;
 class OctoMap;
 class MultiSessionLocWidget;
 
-class RTABMAPGUI_EXP MainWindow : public QMainWindow, public UEventsHandler
+class RTABMAP_GUI_EXPORT MainWindow : public QMainWindow, public UEventsHandler
 {
 	Q_OBJECT
 
@@ -400,8 +401,8 @@ private:
 	bool _processingOdometry;
 
 	QTimer * _oneSecondTimer;
-	QTime * _elapsedTime;
-	QTime * _logEventTime;
+	QElapsedTimer * _elapsedTime;
+	QElapsedTimer * _logEventTime;
 
 	PdfPlotCurve * _posteriorCurve;
 	PdfPlotCurve * _likelihoodCurve;

@@ -175,7 +175,7 @@ void CreateSimpleCalibrationDialog::saveCalibration()
 					ui_->doubleSpinBox_fy->value(),
 					ui_->doubleSpinBox_cx->value(),
 					ui_->doubleSpinBox_cy->value(),
-					Transform::getIdentity(),
+					CameraModel::opticalRotation(),
 					0,
 					cv::Size(width, height));
 			UASSERT(modelLeft.isValidForProjection());

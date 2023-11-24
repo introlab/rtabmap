@@ -44,6 +44,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/VWDictionary.h"
 #include "rtabmap/core/BayesFilter.h"
 #include "rtabmap/core/Compression.h"
+#include "rtabmap/core/Registration.h"
 #include "rtabmap/core/RegistrationInfo.h"
 
 #include <rtabmap/utilite/ULogger.h>
@@ -55,6 +56,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #ifdef RTABMAP_PYTHON
 #include "rtabmap/core/PythonInterface.h"
+#endif
+
+#ifdef RTABMAP_MRPT
+// Used for odometry error propagation
+#include <mrpt/poses/CPose3DPDFGaussian.h>
 #endif
 
 #include <pcl/search/kdtree.h>
@@ -141,6 +147,8 @@ Rtabmap::Rtabmap() :
 	_loopCovLimited(Parameters::defaultRGBDLoopCovLimited()),
 	_loopGPS(Parameters::defaultRtabmapLoopGPS()),
 	_maxOdomCacheSize(Parameters::defaultRGBDMaxOdomCacheSize()),
+	_localizationSmoothing(Parameters::defaultRGBDLocalizationSmoothing()),
+	_localizationPriorInf(1.0/(Parameters::defaultRGBDLocalizationPriorError()*Parameters::defaultRGBDLocalizationPriorError())),
 	_createGlobalScanMap(Parameters::defaultRGBDProximityGlobalScanMap()),
 	_markerPriorsLinearVariance(Parameters::defaultMarkerPriorsVarianceLinear()),
 	_markerPriorsAngularVariance(Parameters::defaultMarkerPriorsVarianceAngular()),
@@ -161,7 +169,6 @@ Rtabmap::Rtabmap() :
 	_mapCorrection(Transform::getIdentity()),
 	_lastLocalizationNodeId(0),
 	_currentSessionHasGPS(false),
-	_odomCorrectionAcc(6,0),
 	_pathStatus(0),
 	_pathCurrentIndex(0),
 	_pathGoalIndex(0),
@@ -461,10 +468,10 @@ void Rtabmap::close(bool databaseSaved, const std::string & ouputDatabasePath)
 	_mapCorrection.setIdentity();
 	_mapCorrectionBackup.setNull();
 
+	_localizationCovariance = cv::Mat();
 	_lastLocalizationNodeId = 0;
 	_odomCachePoses.clear();
 	_odomCacheConstraints.clear();
-	_odomCorrectionAcc = std::vector<float>(6,0);
 	_distanceTravelled = 0.0f;
 	_distanceTravelledSinceLastLocalization = 0.0f;
 	_optimizeFromGraphEndChanged = false;
@@ -613,6 +620,11 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kRGBDLoopCovLimited(), _loopCovLimited);
 	Parameters::parse(parameters, Parameters::kRtabmapLoopGPS(), _loopGPS);
 	Parameters::parse(parameters, Parameters::kRGBDMaxOdomCacheSize(), _maxOdomCacheSize);
+	Parameters::parse(parameters, Parameters::kRGBDLocalizationSmoothing(), _localizationSmoothing);
+	double localizationPriorError = Parameters::defaultRGBDLocalizationPriorError();
+	Parameters::parse(parameters, Parameters::kRGBDLocalizationPriorError(), localizationPriorError);
+	UASSERT(localizationPriorError>0.0);
+	_localizationPriorInf = 1.0/(localizationPriorError*localizationPriorError);
 	Parameters::parse(parameters, Parameters::kRGBDProximityGlobalScanMap(), _createGlobalScanMap);
 
 	Parameters::parse(parameters, Parameters::kMarkerPriorsVarianceLinear(), _markerPriorsLinearVariance);
@@ -844,10 +856,10 @@ void Rtabmap::setInitialPose(const Transform & initialPose)
 		if(!_memory->isIncremental())
 		{
 			_lastLocalizationPose = initialPose;
+			_localizationCovariance = cv::Mat();
 			_lastLocalizationNodeId = 0;
 			_odomCachePoses.clear();
 			_odomCacheConstraints.clear();
-			_odomCorrectionAcc = std::vector<float>(6,0);
 			_mapCorrection.setIdentity();
 			_mapCorrectionBackup.setNull();
 
@@ -870,10 +882,10 @@ int Rtabmap::triggerNewMap()
 	int mapId = -1;
 	if(_memory)
 	{
+		_localizationCovariance = cv::Mat();
 		_lastLocalizationNodeId = 0;
 		_odomCachePoses.clear();
 		_odomCacheConstraints.clear();
-		_odomCorrectionAcc = std::vector<float>(6,0);
 		_distanceTravelled = 0.0f;
 		_distanceTravelledSinceLastLocalization = 0.0f;
 
@@ -1053,10 +1065,10 @@ void Rtabmap::resetMemory()
 	_mapCorrection.setIdentity();
 	_mapCorrectionBackup.setNull();
 	_lastLocalizationPose.setNull();
+	_localizationCovariance = cv::Mat();
 	_lastLocalizationNodeId = 0;
 	_odomCachePoses.clear();
 	_odomCacheConstraints.clear();
-	_odomCorrectionAcc = std::vector<float>(6,0);
 	_distanceTravelled = 0.0f;
 	_distanceTravelledSinceLastLocalization = 0.0f;
 	_optimizeFromGraphEndChanged = false;
@@ -1426,6 +1438,8 @@ bool Rtabmap::process(
 	std::list<int> signaturesRemoved;
 	bool neighborLinkRefined = false;
 	bool addedNewLandmark = false;
+	float distanceToClosestNodeInTheGraph = 0;
+	float angleToClosestNodeInTheGraph = 0;
 	if(_rgbdSlamMode)
 	{
 		statistics_.addStatistic(Statistics::kMemoryOdometry_variance_lin(), odomCovariance.empty()?1.0f:(float)odomCovariance.at<double>(0,0));
@@ -1607,6 +1621,28 @@ bool Rtabmap::process(
 			newPose = _mapCorrection * signature->getPose();
 		}
 
+		// Get statistics about the closest node in the graph
+		if(!_memory->isIncremental())
+		{
+			int closestNode = 0;
+			float sqrdDistance = 0.0f;
+			if(_optimizedPoses.begin()->first < 0)
+			{
+				std::map<int, Transform> poses(_optimizedPoses.lower_bound(1), _optimizedPoses.end());
+				closestNode = graph::findNearestNode(poses, newPose, &sqrdDistance);
+			}
+			else
+			{
+				closestNode = graph::findNearestNode(_optimizedPoses, newPose, &sqrdDistance);
+			}
+			if(closestNode>0 && sqrdDistance>0.0f)
+			{
+				distanceToClosestNodeInTheGraph = sqrt(sqrdDistance);
+				UDEBUG("Last localization pose = %s, closest node=%d (%f m)", newPose.prettyPrint().c_str(), closestNode, distanceToClosestNodeInTheGraph);
+				angleToClosestNodeInTheGraph = (newPose.inverse() * _optimizedPoses.at(closestNode)).getAngle();
+			}
+		}
+
 		UDEBUG("Added pose %s (odom=%s)", newPose.prettyPrint().c_str(), signature->getPose().prettyPrint().c_str());
 		// Update Poses and Constraints
 		_optimizedPoses.insert(std::make_pair(signature->id(), newPose));
@@ -1636,7 +1672,10 @@ bool Rtabmap::process(
 
 			Link tmp = signature->getLinks().begin()->second.inverse();
 
-			_distanceTravelled += tmp.transform().getNorm();
+			if(!smallDisplacement)
+			{
+				_distanceTravelled += tmp.transform().getNorm();
+			}
 
 			// if the previous node is an intermediate node, remove it from the local graph
 			if(_constraints.size() &&
@@ -1654,6 +1693,37 @@ bool Rtabmap::process(
 			_constraints.insert(std::make_pair(tmp.from(), tmp));
 		}
 		// Localization mode stuff
+		if( signature->getWeight() >= 0 &&
+			!smallDisplacement &&
+		    odomCovariance.cols == 6 &&
+			odomCovariance.rows == 6 &&
+			odomCovariance.type() == CV_64FC1 &&
+			odomCovariance.at<double>(0,0) < 1)
+		{
+			if( _memory->isIncremental() && _localizationCovariance.empty())
+			{
+				_localizationCovariance = cv::Mat::zeros(6,6,CV_64FC1);
+			}
+			if(_localizationCovariance.total() == 36)
+			{
+#ifdef RTABMAP_MRPT
+				// Transform odometry covariance (which in base frame) into global frame
+				// "odometry error propagation law"
+				Eigen::Quaterniond rotation = _lastLocalizationPose.getQuaterniond();
+				mrpt::poses::CPose3D pose = mrpt::poses::CPose3D::FromQuaternion(mrpt::math::CQuaternionDouble(rotation.w(), rotation.x(), rotation.y(), rotation.z()));
+				mrpt::math::CMatrixDouble66 gaussian;
+				gaussian.loadFromRawPointer((const double*)odomCovariance.data);
+				mrpt::poses::CPose3DPDFGaussian gaussianTransformed(mrpt::poses::CPose3D(), gaussian);
+				gaussianTransformed.changeCoordinatesReference(pose);
+				_localizationCovariance += cv::Mat(6,6,CV_64FC1, gaussianTransformed.cov.data());
+#else
+				// Assuming diagonal uniform covariance matrix!
+				// If variance is different for each axis,
+				// build rtabmap with MRPT to use approach above.
+				_localizationCovariance += odomCovariance;
+#endif
+			}
+		}
 		_lastLocalizationPose = newPose; // keep in cache the latest corrected pose
 		if(!_memory->isIncremental() && signature->getWeight() >= 0)
 		{
@@ -1661,7 +1731,10 @@ bool Rtabmap::process(
 			if(!_odomCachePoses.empty())
 			{
 				float odomDistance = (_odomCachePoses.rbegin()->second.inverse() * signature->getPose()).getNorm();
-				_distanceTravelled += odomDistance;
+				if(!smallDisplacement)
+				{
+					_distanceTravelled += odomDistance;
+				}
 
 				while(!_odomCachePoses.empty() && (int)_odomCachePoses.size() > _maxOdomCacheSize)
 				{
@@ -2457,7 +2530,8 @@ bool Rtabmap::process(
 	{
 		if(_startNewMapOnLoopClosure &&
 			_memory->getWorkingMem().size()>=2 && // must have an old map (+1 virtual place)
-			graph::filterLinks(signature->getLinks(), Link::kSelfRefLink).size() == 0) // alone in new session)
+			_localizationCovariance.empty() && // if we didn't localize yet
+			graph::filterLinks(signature->getLinks(), Link::kSelfRefLink).size() == 0) // alone in new session
 		{
 			UINFO("Proximity detection by space disabled as if we force to have a global loop "
 					"closure with previous map before doing proximity detections (%s=true).",
@@ -2632,6 +2706,15 @@ bool Rtabmap::process(
 											nearestId, transform.getNorm(), proximityFilteringRadius);
 								}
 							}
+						}
+						else if(!signature->hasLink(nearestId) && proximityFilteringRadius>0.0f)
+						{
+							UDEBUG("Skipping path %d as most likely ID %d is too far %f > %f (%s)",
+								iter->first.id,
+								nearestId,
+								_optimizedPoses.at(signature->id()).getDistance(_optimizedPoses.at(nearestId)),
+								proximityFilteringRadius,
+								Parameters::kRGBDProximityPathFilteringRadius().c_str());
 						}
 					}
 				}
@@ -2971,7 +3054,6 @@ bool Rtabmap::process(
 	float maxAngularErrorRatio = 0.0f;
 	double optimizationError = 0.0;
 	int optimizationIterations = 0;
-	cv::Mat localizationCovariance;
 	Transform previousMapCorrection;
 	bool rejectedLandmark = false;
 	bool delayedLocalization = false;
@@ -3060,6 +3142,7 @@ bool Rtabmap::process(
 				{
 					constraints.insert(std::make_pair(iter->second.from(), iter->second));
 				}
+				cv::Mat priorInfMat = cv::Mat::eye(6,6, CV_64FC1)*_localizationPriorInf;
 				for(std::multimap<int, Link>::iterator iter=constraints.begin(); iter!=constraints.end(); ++iter)
 				{
 					std::map<int, Transform>::iterator iterPose = _optimizedPoses.find(iter->second.to());
@@ -3067,16 +3150,11 @@ bool Rtabmap::process(
 					{
 						poses.insert(*iterPose);
 						// make the poses in the map fixed
-						constraints.insert(std::make_pair(iterPose->first, Link(iterPose->first, iterPose->first, Link::kPosePrior, iterPose->second, cv::Mat::eye(6,6, CV_64FC1)*1000000)));
-						UDEBUG("Constraint %d->%d (type=%s)", iterPose->first, iterPose->first, Link::typeName(Link::kPosePrior).c_str());
+						constraints.insert(std::make_pair(iterPose->first, Link(iterPose->first, iterPose->first, Link::kPosePrior, iterPose->second, priorInfMat)));
+						UDEBUG("Constraint %d->%d: %s (type=%s, var=%f)", iterPose->first, iterPose->first, iterPose->second.prettyPrint().c_str(), Link::typeName(Link::kPosePrior).c_str(), 1./_localizationPriorInf);
 					}
-					UDEBUG("Constraint %d->%d (type=%s, var = %f %f)", iter->second.from(), iter->second.to(), iter->second.typeName().c_str(), iter->second.transVariance(), iter->second.rotVariance());
+					UDEBUG("Constraint %d->%d: %s (type=%s, var = %f %f)", iter->second.from(), iter->second.to(), iter->second.transform().prettyPrint().c_str(), iter->second.typeName().c_str(), iter->second.transVariance(), iter->second.rotVariance());
 				}
-				for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter)
-				{
-					UDEBUG("Pose %d %s", iter->first, iter->second.prettyPrint().c_str());
-				}
-
 
 				std::map<int, Transform> posesOut;
 				std::multimap<int, Link> edgeConstraintsOut;
@@ -3084,8 +3162,25 @@ bool Rtabmap::process(
 				UDEBUG("priorsIgnored was %s", priorsIgnored?"true":"false");
 				_graphOptimizer->setPriorsIgnored(false); //temporary set false to use priors above to fix nodes of the map
 				// If slam2d: get connected graph while keeping original roll,pitch,z values.
-				_graphOptimizer->getConnectedGraph(signature->id(), poses, constraints, posesOut, edgeConstraintsOut, !_graphOptimizer->isSlam2d());
-				std::map<int, Transform> optPoses = _graphOptimizer->optimize(poses.begin()->first, posesOut, edgeConstraintsOut);
+				_graphOptimizer->getConnectedGraph(signature->id(), poses, constraints, posesOut, edgeConstraintsOut);
+				if(ULogger::level() == ULogger::kDebug)
+				{
+					for(std::map<int, Transform>::iterator iter=posesOut.begin(); iter!=posesOut.end(); ++iter)
+					{
+						UDEBUG("Pose %d %s", iter->first, iter->second.prettyPrint().c_str());
+					}
+				}
+				cv::Mat locOptCovariance;
+				std::map<int, Transform> optPoses;
+				if(!posesOut.empty() &&
+				   posesOut.begin()->first < _odomCachePoses.begin()->first)
+				{
+					optPoses = _graphOptimizer->optimize(posesOut.begin()->first, posesOut, edgeConstraintsOut, locOptCovariance);
+				}
+				else
+				{
+					UERROR("Invalid localization constraints");
+				}
 				_graphOptimizer->setPriorsIgnored(priorsIgnored); // set back
 				for(std::map<int, Transform>::iterator iter=optPoses.begin(); iter!=optPoses.end(); ++iter)
 				{
@@ -3097,7 +3192,7 @@ bool Rtabmap::process(
 					UWARN("Optimization failed, rejecting localization!");
 					rejectLocalization = true;
 				}
-				else if(_optimizationMaxError > 0.0f)
+				else
 				{
 					UINFO("Compute max graph errors...");
 					const Link * maxLinearLink = 0;
@@ -3112,10 +3207,10 @@ bool Rtabmap::process(
 							&maxLinearLink,
 							&maxAngularLink,
 							_graphOptimizer->isSlam2d());
-					if(maxLinearLink == 0 && maxAngularLink==0 && _maxOdomCacheSize>0)
+					if(maxLinearLink == 0 && maxAngularLink==0)
 					{
-						UWARN("Could not compute graph errors! Wrong loop closures could be accepted!");
-						optPoses = posesOut;
+						UWARN("Could not compute graph errors! Rejecting localization!");
+						rejectLocalization = true;
 					}
 
 					if(maxLinearLink)
@@ -3127,7 +3222,7 @@ bool Rtabmap::process(
 								maxLinearLink->transVariance(),
 								maxLinearError/sqrt(maxLinearLink->transVariance()),
 								_optimizationMaxError);
-						if(maxLinearErrorRatio > _optimizationMaxError)
+						if(_optimizationMaxError > 0.0f && maxLinearErrorRatio > _optimizationMaxError)
 						{
 							UWARN("Rejecting localization (%d <-> %d) in this "
 									"iteration because a wrong loop closure has been "
@@ -3146,6 +3241,19 @@ bool Rtabmap::process(
 									_optimizationMaxError);
 							rejectLocalization = true;
 						}
+						else if(_optimizationMaxError == 0.0f && maxLinearErrorRatio>100)
+						{
+							UERROR("Huge optimization error detected!"
+									"Linear error ratio of %f (edge %d->%d, type=%d, abs error=%f m, stddev=%f). You may consider "
+									"enabling \"%s\" to reject those bad optimizations by setting it to a non null value!",
+									maxLinearErrorRatio,
+									maxLinearLink->from(),
+									maxLinearLink->to(),
+									maxLinearLink->type(),
+									maxLinearError,
+									sqrt(maxLinearLink->transVariance()),
+									Parameters::kRGBDOptimizeMaxError().c_str());
+						}
 					}
 					if(maxAngularLink)
 					{
@@ -3156,7 +3264,7 @@ bool Rtabmap::process(
 								maxAngularLink->rotVariance(),
 								maxAngularError/sqrt(maxAngularLink->rotVariance()),
 								_optimizationMaxError);
-						if(maxAngularErrorRatio > _optimizationMaxError)
+						if(_optimizationMaxError > 0.0f && maxAngularErrorRatio > _optimizationMaxError)
 						{
 							UWARN("Rejecting localization (%d <-> %d) in this "
 									"iteration because a wrong loop closure has been "
@@ -3174,6 +3282,19 @@ bool Rtabmap::process(
 									Parameters::kRGBDOptimizeMaxError().c_str(),
 									_optimizationMaxError);
 							rejectLocalization = true;
+						}
+						else if(_optimizationMaxError == 0.0f && maxAngularErrorRatio>100)
+						{
+							UERROR("Huge optimization error detected!"
+									"Angular error ratio of %f (edge %d->%d, type=%d, abs error=%f m, stddev=%f). You may consider "
+									"enabling \"%s\" to reject those bad optimizations by setting it to a non null value!",
+									maxAngularErrorRatio,
+									maxAngularLink->from(),
+									maxAngularLink->to(),
+									maxAngularLink->type(),
+									maxAngularError*180.0f/CV_PI,
+									sqrt(maxAngularLink->rotVariance()),
+									Parameters::kRGBDOptimizeMaxError().c_str());
 						}
 					}
 				}
@@ -3198,8 +3319,17 @@ bool Rtabmap::process(
 						UDEBUG("priorsIgnored was %s", priorsIgnored?"true":"false");
 						_graphOptimizer->setPriorsIgnored(false); //temporary set false to use priors above to fix nodes of the map
 						// If slam2d: get connected graph while keeping original roll,pitch,z values.
-						_graphOptimizer->getConnectedGraph(signature->id(), poses, constraints, posesOut, edgeConstraintsOut, !_graphOptimizer->isSlam2d());
-						optPoses = _graphOptimizer->optimize(poses.begin()->first, posesOut, edgeConstraintsOut);
+						_graphOptimizer->getConnectedGraph(signature->id(), poses, constraints, posesOut, edgeConstraintsOut);
+						optPoses.clear();
+						if(!posesOut.empty() &&
+						   posesOut.begin()->first < _odomCachePoses.begin()->first)
+						{
+							optPoses = _graphOptimizer->optimize(posesOut.begin()->first, posesOut, edgeConstraintsOut, locOptCovariance);
+						}
+						else
+						{
+							UERROR("Invalid localization constraints");
+						}
 						_graphOptimizer->setPriorsIgnored(priorsIgnored); // set back
 						for(std::map<int, Transform>::iterator iter=optPoses.begin(); iter!=optPoses.end(); ++iter)
 						{
@@ -3211,7 +3341,7 @@ bool Rtabmap::process(
 							UWARN("Optimization failed, rejecting localization!");
 							rejectLocalization = true;
 						}
-						else if(_optimizationMaxError > 0.0f)
+						else
 						{
 							UINFO("Compute max graph errors...");
 							const Link * maxLinearLink = 0;
@@ -3226,10 +3356,10 @@ bool Rtabmap::process(
 									&maxLinearLink,
 									&maxAngularLink,
 									_graphOptimizer->isSlam2d());
-							if(maxLinearLink == 0 && maxAngularLink==0 && _maxOdomCacheSize>0)
+							if(maxLinearLink == 0 && maxAngularLink==0)
 							{
-								UWARN("Could not compute graph errors! Wrong loop closures could be accepted!");
-								optPoses = posesOut;
+								UWARN("Could not compute graph errors! Rejecting localization!");
+								rejectLocalization = true;
 							}
 
 							if(maxLinearLink)
@@ -3241,7 +3371,7 @@ bool Rtabmap::process(
 										maxLinearLink->transVariance(),
 										maxLinearError/sqrt(maxLinearLink->transVariance()),
 										_optimizationMaxError);
-								if(maxLinearErrorRatio > _optimizationMaxError)
+								if(_optimizationMaxError > 0.0f && maxLinearErrorRatio > _optimizationMaxError)
 								{
 									UWARN("Rejecting localization (%d <-> %d) in this "
 											"iteration because a wrong loop closure has been "
@@ -3260,6 +3390,19 @@ bool Rtabmap::process(
 											_optimizationMaxError);
 									rejectLocalization = true;
 								}
+								else if(_optimizationMaxError == 0.0f && maxLinearErrorRatio>100)
+								{
+									UERROR("Huge optimization error detected!"
+											"Linear error ratio of %f (edge %d->%d, type=%d, abs error=%f m, stddev=%f). You may consider "
+											"enabling \"%s\" to reject those bad optimizations by setting it to a non null value!",
+											maxLinearErrorRatio,
+											maxLinearLink->from(),
+											maxLinearLink->to(),
+											maxLinearLink->type(),
+											maxLinearError,
+											sqrt(maxLinearLink->transVariance()),
+											Parameters::kRGBDOptimizeMaxError().c_str());
+								}
 							}
 							if(maxAngularLink)
 							{
@@ -3270,7 +3413,7 @@ bool Rtabmap::process(
 										maxAngularLink->rotVariance(),
 										maxAngularError/sqrt(maxAngularLink->rotVariance()),
 										_optimizationMaxError);
-								if(maxAngularErrorRatio > _optimizationMaxError)
+								if(_optimizationMaxError > 0.0f && maxAngularErrorRatio > _optimizationMaxError)
 								{
 									UWARN("Rejecting localization (%d <-> %d) in this "
 											"iteration because a wrong loop closure has been "
@@ -3288,6 +3431,19 @@ bool Rtabmap::process(
 											Parameters::kRGBDOptimizeMaxError().c_str(),
 											_optimizationMaxError);
 									rejectLocalization = true;
+								}
+								else if(_optimizationMaxError == 0.0f && maxAngularErrorRatio>100)
+								{
+									UERROR("Huge optimization error detected!"
+											"Angular error ratio of %f (edge %d->%d, type=%d, abs error=%f m, stddev=%f). You may consider "
+											"enabling \"%s\" to reject those bad optimizations by setting it to a non null value!",
+											maxAngularErrorRatio,
+											maxAngularLink->from(),
+											maxAngularLink->to(),
+											maxAngularLink->type(),
+											maxAngularError*180.0f/CV_PI,
+											sqrt(maxAngularLink->rotVariance()),
+											Parameters::kRGBDOptimizeMaxError().c_str());
 								}
 							}
 						}
@@ -3334,16 +3490,26 @@ bool Rtabmap::process(
 					Transform newOptPoseInv = optPoses.at(signature->id()).inverse();
 					for(std::multimap<int, Link>::iterator iter=localizationLinks.begin(); iter!=localizationLinks.end(); ++iter)
 					{
-						Transform newT = newOptPoseInv * optPoses.at(iter->first);
-						UDEBUG("Adjusted localization link %d->%d after optimization", iter->second.from(), iter->second.to());
-						UDEBUG("from %s", iter->second.transform().prettyPrint().c_str());
-						UDEBUG("  to %s", newT.prettyPrint().c_str());
-						iter->second.setTransform(newT);
+						if(!_localizationSmoothing)
+						{
+							// Add original link without optimization
+							UDEBUG("Adding new odom cache constraint %d->%d (%s)", 
+								iter->second.from(), iter->second.to(), iter->second.transform().prettyPrint().c_str());
+						}
+						else
+						{
+							// Adjust with optimized poses, this will smooth the localization
+							Transform newT = newOptPoseInv * optPoses.at(iter->first);
+							UDEBUG("Adjusted localization link %d->%d after optimization", iter->second.from(), iter->second.to());
+							UDEBUG("from %s", iter->second.transform().prettyPrint().c_str());
+							UDEBUG("  to %s", newT.prettyPrint().c_str());
+							iter->second.setTransform(newT);
 
-						// Update link in the referred signatures
-						if(iter->first > 0)
-							_memory->updateLink(iter->second, false);
-
+							// Update link in the referred signatures
+							if(iter->first > 0)
+								_memory->updateLink(iter->second, false);
+						}
+						
 						_odomCacheConstraints.insert(std::make_pair(signature->id(), iter->second));
 					}
 
@@ -3460,7 +3626,7 @@ bool Rtabmap::process(
 							}
 							_optimizedPoses.at(signature->id()) = newPose;
 						}
-						localizationCovariance = localizationLinks.rbegin()->second.infMatrix().inv();
+						_localizationCovariance = locOptCovariance.empty()?localizationLinks.rbegin()->second.infMatrix().inv():locOptCovariance;
 					}
 					else //delayed localization (wait for more than 1 link)
 					{
@@ -3515,7 +3681,6 @@ bool Rtabmap::process(
 				rejectedLandmark = true;
 			}
 			else if(_memory->isIncremental() &&
-			  _optimizationMaxError > 0.0f &&
 			  loopClosureLinksAdded.size() &&
 			  optimizationIterations > 0 &&
 			  constraints.size())
@@ -3541,7 +3706,7 @@ bool Rtabmap::process(
 				if(maxLinearLink)
 				{
 					UINFO("Max optimization linear error = %f m (link %d->%d, var=%f, ratio error/std=%f)", maxLinearError, maxLinearLink->from(), maxLinearLink->to(), maxLinearLink->transVariance(), maxLinearError/sqrt(maxLinearLink->transVariance()));
-					if(maxLinearErrorRatio > _optimizationMaxError)
+					if(_optimizationMaxError > 0.0f && maxLinearErrorRatio > _optimizationMaxError)
 					{
 						UWARN("Rejecting all added loop closures (%d, first is %d <-> %d) in this "
 							  "iteration because a wrong loop closure has been "
@@ -3561,11 +3726,24 @@ bool Rtabmap::process(
 							  _optimizationMaxError);
 						reject = true;
 					}
+					else if(_optimizationMaxError == 0.0f && maxLinearErrorRatio>100)
+					{
+						UERROR("Huge optimization error detected!"
+								"Linear error ratio of %f (edge %d->%d, type=%d, abs error=%f m, stddev=%f). You may consider "
+								"enabling \"%s\" to reject those bad optimizations by setting it to a non null value!",
+								maxLinearErrorRatio,
+								maxLinearLink->from(),
+								maxLinearLink->to(),
+								maxLinearLink->type(),
+								maxLinearError,
+								sqrt(maxLinearLink->transVariance()),
+								Parameters::kRGBDOptimizeMaxError().c_str());
+					}
 				}
 				if(maxAngularLink)
 				{
 					UINFO("Max optimization angular error = %f deg (link %d->%d, var=%f, ratio error/std=%f)", maxAngularError*180.0f/CV_PI, maxAngularLink->from(), maxAngularLink->to(), maxAngularLink->rotVariance(), maxAngularError/sqrt(maxAngularLink->rotVariance()));
-					if(maxAngularErrorRatio > _optimizationMaxError)
+					if(_optimizationMaxError > 0.0f && maxAngularErrorRatio > _optimizationMaxError)
 					{
 						UWARN("Rejecting all added loop closures (%d, first is %d <-> %d) in this "
 							  "iteration because a wrong loop closure has been "
@@ -3584,6 +3762,19 @@ bool Rtabmap::process(
 							  Parameters::kRGBDOptimizeMaxError().c_str(),
 							  _optimizationMaxError);
 						reject = true;
+					}
+					else if(_optimizationMaxError == 0.0f && maxAngularErrorRatio>100)
+					{
+						UERROR("Huge optimization error detected!"
+								"Angular error ratio of %f (edge %d->%d, type=%d, abs error=%f m, stddev=%f). You may consider "
+								"enabling \"%s\" to reject those bad optimizations by setting it to a non null value!",
+								maxAngularErrorRatio,
+								maxAngularLink->from(),
+								maxAngularLink->to(),
+								maxAngularLink->type(),
+								maxAngularError*180.0f/CV_PI,
+								sqrt(maxAngularLink->rotVariance()),
+								Parameters::kRGBDOptimizeMaxError().c_str());
 					}
 				}
 
@@ -3607,7 +3798,7 @@ bool Rtabmap::process(
 				UINFO("Updated local map (old size=%d, new size=%d)", (int)_optimizedPoses.size(), (int)poses.size());
 				_optimizedPoses = poses;
 				_constraints = constraints;
-				localizationCovariance = covariance;
+				_localizationCovariance = covariance;
 			}
 		}
 
@@ -3619,6 +3810,17 @@ bool Rtabmap::process(
 		}
 		previousMapCorrection = _mapCorrection;
 		_mapCorrection = _optimizedPoses.at(signature->id()) * signature->getPose().inverse();
+		// Update statistics about the closest node in the graph using the actual loop closure
+		if(!_memory->isIncremental() && !_lastLocalizationPose.isNull())
+		{
+			int closestNode = _loopClosureHypothesis.first>0?_loopClosureHypothesis.first:lastProximitySpaceClosureId;
+			if(closestNode>0)
+			{
+				distanceToClosestNodeInTheGraph = _lastLocalizationPose.getDistance(_optimizedPoses.at(closestNode));
+				UDEBUG("Last localization pose = %s, updated closest node=%d (%f m)", _lastLocalizationPose.prettyPrint().c_str(), closestNode, distanceToClosestNodeInTheGraph);
+				angleToClosestNodeInTheGraph = (_lastLocalizationPose.inverse() * _optimizedPoses.at(closestNode)).getAngle();
+			}
+		}
 		_lastLocalizationPose = _optimizedPoses.at(signature->id()); // update
 		if(_mapCorrection.getNormSquared() > 0.1f && _optimizeFromGraphEnd)
 		{
@@ -3674,6 +3876,14 @@ bool Rtabmap::process(
 	dictionarySize = (int)_memory->getVWDictionary()->getVisualWords().size();
 	refWordsCount = (int)signature->getWords().size();
 	refUniqueWordsCount = (int)uUniqueKeys(signature->getWords()).size();
+
+	if(_graphOptimizer->isSlam2d() && _localizationCovariance.total() == 36)
+	{
+		// set very small
+		_localizationCovariance.at<double>(2,2) = Registration::COVARIANCE_LINEAR_EPSILON;
+		_localizationCovariance.at<double>(3,3) = Registration::COVARIANCE_ANGULAR_EPSILON;
+		_localizationCovariance.at<double>(4,4) = Registration::COVARIANCE_ANGULAR_EPSILON;
+	}
 
 	// Posterior is empty if a bad signature is detected
 	float vpHypothesis = posterior.size()?posterior.at(Memory::kIdVirtual):0.0f;
@@ -3737,6 +3947,8 @@ bool Rtabmap::process(
 			statistics_.addStatistic(Statistics::kLoopId(), loopId);
 			statistics_.addStatistic(Statistics::kLoopMap_id(), (loopId>0 && sLoop)?sLoop->mapId():-1);
 
+			statistics_.addStatistic(Statistics::kLoopDistance_since_last_loc(), _distanceTravelledSinceLastLocalization);
+
 			float x,y,z,roll,pitch,yaw;
 			if(_loopClosureHypothesis.first || lastProximitySpaceClosureId || (!rejectedLandmark && !landmarksDetected.empty()))
 			{
@@ -3760,7 +3972,7 @@ bool Rtabmap::process(
 						statistics_.addStatistic(Statistics::kGtLocalization_angular_error(), error.getAngle(1,0,0)*180/M_PI);
 					}
 				}
-				statistics_.addStatistic(Statistics::kLoopDistance_since_last_loc(), _distanceTravelledSinceLastLocalization);
+
 				_distanceTravelledSinceLastLocalization = 0.0f;
 
 				statistics_.addStatistic(Statistics::kLoopMapToOdom_norm(), _mapCorrection.getNorm());
@@ -3786,30 +3998,6 @@ bool Rtabmap::process(
 					statistics_.addStatistic(Statistics::kLoopOdom_correction_roll(),  roll*180.0f/M_PI);
 					statistics_.addStatistic(Statistics::kLoopOdom_correction_pitch(),  pitch*180.0f/M_PI);
 					statistics_.addStatistic(Statistics::kLoopOdom_correction_yaw(), yaw*180.0f/M_PI);
-
-					_odomCorrectionAcc[0]+=x;
-					_odomCorrectionAcc[1]+=y;
-					_odomCorrectionAcc[2]+=z;
-					_odomCorrectionAcc[3]+=roll;
-					_odomCorrectionAcc[4]+=pitch;
-					_odomCorrectionAcc[5]+=yaw;
-					Transform odomCorrectionAcc(
-							_odomCorrectionAcc[0],
-							_odomCorrectionAcc[1],
-							_odomCorrectionAcc[2],
-							_odomCorrectionAcc[3],
-							_odomCorrectionAcc[4],
-							_odomCorrectionAcc[5]);
-
-					statistics_.addStatistic(Statistics::kLoopOdom_correction_acc_norm(), odomCorrectionAcc.getNorm());
-					statistics_.addStatistic(Statistics::kLoopOdom_correction_acc_angle(), odomCorrectionAcc.getAngle()*180.0f/M_PI);
-					odomCorrectionAcc.getTranslationAndEulerAngles(x, y, z, roll, pitch, yaw);
-					statistics_.addStatistic(Statistics::kLoopOdom_correction_acc_x(), x);
-					statistics_.addStatistic(Statistics::kLoopOdom_correction_acc_y(), y);
-					statistics_.addStatistic(Statistics::kLoopOdom_correction_acc_z(), z);
-					statistics_.addStatistic(Statistics::kLoopOdom_correction_acc_roll(),  roll*180.0f/M_PI);
-					statistics_.addStatistic(Statistics::kLoopOdom_correction_acc_pitch(),  pitch*180.0f/M_PI);
-					statistics_.addStatistic(Statistics::kLoopOdom_correction_acc_yaw(), yaw*180.0f/M_PI);
 				}
 			}
 			if(!_lastLocalizationPose.isNull() && !_lastLocalizationPose.isIdentity())
@@ -3822,11 +4010,21 @@ bool Rtabmap::process(
 				statistics_.addStatistic(Statistics::kLoopMapToBase_pitch(),  pitch*180.0f/M_PI);
 				statistics_.addStatistic(Statistics::kLoopMapToBase_yaw(), yaw*180.0f/M_PI);
 				UINFO("Localization pose = %s", _lastLocalizationPose.prettyPrint().c_str());
+
+				if(_localizationCovariance.total()==36)
+				{
+					double varLin = _graphOptimizer->isSlam2d()?
+							std::max(_localizationCovariance.at<double>(0,0), _localizationCovariance.at<double>(1,1)):
+							uMax3(_localizationCovariance.at<double>(0,0), _localizationCovariance.at<double>(1,1), _localizationCovariance.at<double>(2,2));
+
+					statistics_.addStatistic(Statistics::kLoopMapToBase_lin_std(), sqrt(varLin));
+					statistics_.addStatistic(Statistics::kLoopMapToBase_lin_var(), varLin);
+				}
 			}
 
 			statistics_.setMapCorrection(_mapCorrection);
 			UINFO("Set map correction = %s", _mapCorrection.prettyPrint().c_str());
-			statistics_.setLocalizationCovariance(localizationCovariance);
+			statistics_.setLocalizationCovariance(_localizationCovariance);
 
 			// timings...
 			statistics_.addStatistic(Statistics::kTimingMemory_update(), timeMemoryUpdate*1000);
@@ -3859,6 +4057,12 @@ bool Rtabmap::process(
 			statistics_.addStatistic(Statistics::kMemoryDistance_travelled(), _distanceTravelled);
 			statistics_.addStatistic(Statistics::kMemoryFast_movement(), tooFastMovement?1.0f:0);
 			statistics_.addStatistic(Statistics::kMemoryNew_landmark(), addedNewLandmark?1.0f:0);
+
+			if(distanceToClosestNodeInTheGraph>0.0)
+			{
+				statistics_.addStatistic(Statistics::kMemoryClosest_node_distance(), distanceToClosestNodeInTheGraph);
+				statistics_.addStatistic(Statistics::kMemoryClosest_node_angle(), angleToClosestNodeInTheGraph);
+			}
 
 			if(_publishRAMUsage)
 			{
@@ -3903,15 +4107,16 @@ bool Rtabmap::process(
 		ULOGGER_INFO("Time creating stats = %f...", timeStatsCreation);
 	}
 
-	Signature lastSignatureData(signature->id());
+	Signature lastSignatureData = *signature;
 	Transform lastSignatureLocalizedPose;
 	if(_optimizedPoses.find(signature->id()) != _optimizedPoses.end())
 	{
 		lastSignatureLocalizedPose = _optimizedPoses.at(signature->id());
 	}
-	if(_publishLastSignatureData)
+	if(!_publishLastSignatureData)
 	{
-		lastSignatureData = *signature;
+		lastSignatureData.sensorData().clearCompressedData();
+		lastSignatureData.sensorData().clearRawData();
 	}
 	if(!_rawDataKept)
 	{
@@ -4194,96 +4399,73 @@ bool Rtabmap::process(
 			poses = _optimizedPoses;
 			constraints = _constraints;
 		}
-		UDEBUG("");
-		if(_publishLastSignatureData)
-		{
-			UINFO("Adding data %d [%d] (rgb/left=%d depth/right=%d)", lastSignatureData.id(), lastSignatureData.mapId(), lastSignatureData.sensorData().imageRaw().empty()?0:1, lastSignatureData.sensorData().depthOrRightRaw().empty()?0:1);
+		UINFO("Adding data %d [%d] (rgb/left=%d depth/right=%d)", lastSignatureData.id(), lastSignatureData.mapId(), lastSignatureData.sensorData().imageRaw().empty()?0:1, lastSignatureData.sensorData().depthOrRightRaw().empty()?0:1);
 			statistics_.addSignatureData(lastSignatureData);
 
-			if(_nodesToRepublish.size())
+		if(_nodesToRepublish.size())
+		{
+			std::multimap<int, int> missingIds;
+
+			// priority to loopId
+			int tmpId = loopId>0?loopId:_highestHypothesis.first;
+			if(tmpId>0 && _nodesToRepublish.find(tmpId) != _nodesToRepublish.end())
 			{
-				std::multimap<int, int> missingIds;
+				missingIds.insert(std::make_pair(-1, tmpId));
+			}
 
-				// priority to loopId
-				int tmpId = loopId>0?loopId:_highestHypothesis.first;
-				if(tmpId>0 && _nodesToRepublish.find(tmpId) != _nodesToRepublish.end())
+			if(!_lastLocalizationPose.isNull())
+			{
+				// Republish data from closest nodes of the current localization
+				std::map<int, Transform> nodesOnly(_optimizedPoses.lower_bound(1), _optimizedPoses.end());
+				int id = rtabmap::graph::findNearestNode(nodesOnly, _lastLocalizationPose);
+				if(id>0)
 				{
-					missingIds.insert(std::make_pair(-1, tmpId));
-				}
-
-				if(!_lastLocalizationPose.isNull())
-				{
-					// Republish data from closest nodes of the current localization
-					std::map<int, Transform> nodesOnly(_optimizedPoses.lower_bound(1), _optimizedPoses.end());
-					int id = rtabmap::graph::findNearestNode(nodesOnly, _lastLocalizationPose);
-					if(id>0)
+					std::map<int, int> ids = _memory->getNeighborsId(id, 0, 0, true, false, true);
+					for(std::map<int, int>::iterator iter=ids.begin(); iter!=ids.end(); ++iter)
 					{
-						std::map<int, int> ids = _memory->getNeighborsId(id, 0, 0, true, false, true);
-						for(std::map<int, int>::iterator iter=ids.begin(); iter!=ids.end(); ++iter)
+						if(iter->first != loopId &&
+								_nodesToRepublish.find(iter->first) != _nodesToRepublish.end())
 						{
-							if(iter->first != loopId &&
-									_nodesToRepublish.find(iter->first) != _nodesToRepublish.end())
-							{
-								missingIds.insert(std::make_pair(iter->second, iter->first));
-							}
+							missingIds.insert(std::make_pair(iter->second, iter->first));
 						}
+					}
 
-						if(_nodesToRepublish.size() != missingIds.size())
+					if(_nodesToRepublish.size() != missingIds.size())
+					{
+						// remove requested nodes not anymore in the graph
+						for(std::set<int>::iterator iter=_nodesToRepublish.begin(); iter!=_nodesToRepublish.end();)
 						{
-							// remove requested nodes not anymore in the graph
-							for(std::set<int>::iterator iter=_nodesToRepublish.begin(); iter!=_nodesToRepublish.end();)
+							if(ids.find(*iter) == ids.end())
 							{
-								if(ids.find(*iter) == ids.end())
-								{
-									iter = _nodesToRepublish.erase(iter);
-								}
-								else
-								{
-									++iter;
-								}
+								iter = _nodesToRepublish.erase(iter);
+							}
+							else
+							{
+								++iter;
 							}
 						}
 					}
 				}
+			}
 
-				int loaded = 0;
-				std::stringstream stream;
-				for(std::multimap<int, int>::iterator iter=missingIds.begin(); iter!=missingIds.end() && loaded<(int)_maxRepublished; ++iter)
-				{
-					statistics_.addSignatureData(getSignatureCopy(iter->second, true, true, true, true, true, true));
-					_nodesToRepublish.erase(iter->second);
-					++loaded;
-					stream << iter->second << " ";
-				}
-				if(loaded)
-				{
-					UWARN("Republishing data of requested node(s) %s(%s=%d)",
-							stream.str().c_str(),
-							Parameters::kRtabmapMaxRepublished().c_str(),
-							_maxRepublished);
-				}
-			}
-		}
-		else
-		{
-			// only copy node info
-			Signature nodeInfo(
-					lastSignatureData.id(),
-					lastSignatureData.mapId(),
-					lastSignatureData.getWeight(),
-					lastSignatureData.getStamp(),
-					lastSignatureData.getLabel(),
-					lastSignatureData.getPose(),
-					lastSignatureData.getGroundTruthPose());
-			const std::vector<float> & v = lastSignatureData.getVelocity();
-			if(v.size() == 6)
+			int loaded = 0;
+			std::stringstream stream;
+			for(std::multimap<int, int>::iterator iter=missingIds.begin(); iter!=missingIds.end() && loaded<(int)_maxRepublished; ++iter)
 			{
-				nodeInfo.setVelocity(v[0], v[1], v[2], v[3], v[4], v[5]);
+				statistics_.addSignatureData(getSignatureCopy(iter->second, true, true, true, true, true, true));
+				_nodesToRepublish.erase(iter->second);
+				++loaded;
+				stream << iter->second << " ";
 			}
-			nodeInfo.sensorData().setGPS(lastSignatureData.sensorData().gps());
-			nodeInfo.sensorData().setEnvSensors(lastSignatureData.sensorData().envSensors());
-			statistics_.addSignatureData(nodeInfo);
+			if(loaded)
+			{
+				UWARN("Republishing data of requested node(s) %s(%s=%d)",
+						stream.str().c_str(),
+						Parameters::kRtabmapMaxRepublished().c_str(),
+						_maxRepublished);
+			}
 		}
+
 		UDEBUG("");
 		localGraphSize = (int)poses.size();
 		if(!lastSignatureLocalizedPose.isNull())
@@ -5427,106 +5609,130 @@ int Rtabmap::detectMoreLoopClosures(
 							if(!t.isNull())
 							{
 								bool updateConstraints = true;
-								if(_optimizationMaxError > 0.0f)
-								{
-									//optimize the graph to see if the new constraint is globally valid
 
-									int fromId = from;
-									int mapId = signatures.at(from).mapId();
-									// use first node of the map containing from
-									for(std::map<int, Signature>::iterator ster=signatures.begin(); ster!=signatures.end(); ++ster)
+								//optimize the graph to see if the new constraint is globally valid
+
+								int fromId = from;
+								int mapId = signatures.at(from).mapId();
+								// use first node of the map containing from
+								for(std::map<int, Signature>::iterator ster=signatures.begin(); ster!=signatures.end(); ++ster)
+								{
+									if(ster->second.mapId() == mapId)
 									{
-										if(ster->second.mapId() == mapId)
+										fromId = ster->first;
+										break;
+									}
+								}
+								std::multimap<int, Link> linksIn = links;
+								linksIn.insert(std::make_pair(from, Link(from, to, Link::kUserClosure, t, getInformation(info.covariance))));
+								const Link * maxLinearLink = 0;
+								const Link * maxAngularLink = 0;
+								float maxLinearError = 0.0f;
+								float maxAngularError = 0.0f;
+								float maxLinearErrorRatio = 0.0f;
+								float maxAngularErrorRatio = 0.0f;
+								std::map<int, Transform> optimizedPoses;
+								std::multimap<int, Link> links;
+								UASSERT(poses.find(fromId) != poses.end());
+								UASSERT_MSG(poses.find(from) != poses.end(), uFormat("id=%d poses=%d links=%d", from, (int)poses.size(), (int)links.size()).c_str());
+								UASSERT_MSG(poses.find(to) != poses.end(), uFormat("id=%d poses=%d links=%d", to, (int)poses.size(), (int)links.size()).c_str());
+								_graphOptimizer->getConnectedGraph(fromId, poses, linksIn, optimizedPoses, links);
+								UASSERT(optimizedPoses.find(fromId) != optimizedPoses.end());
+								UASSERT_MSG(optimizedPoses.find(from) != optimizedPoses.end(), uFormat("id=%d poses=%d links=%d", from, (int)optimizedPoses.size(), (int)links.size()).c_str());
+								UASSERT_MSG(optimizedPoses.find(to) != optimizedPoses.end(), uFormat("id=%d poses=%d links=%d", to, (int)optimizedPoses.size(), (int)links.size()).c_str());
+								UASSERT(graph::findLink(links, from, to) != links.end());
+								optimizedPoses = _graphOptimizer->optimize(fromId, optimizedPoses, links);
+								std::string msg;
+								if(optimizedPoses.size())
+								{
+									graph::computeMaxGraphErrors(
+											optimizedPoses,
+											links,
+											maxLinearErrorRatio,
+											maxAngularErrorRatio,
+											maxLinearError,
+											maxAngularError,
+											&maxLinearLink,
+											&maxAngularLink);
+									if(maxLinearLink)
+									{
+										UINFO("Max optimization linear error = %f m (link %d->%d)", maxLinearError, maxLinearLink->from(), maxLinearLink->to());
+										if(_optimizationMaxError > 0.0f && maxLinearErrorRatio > _optimizationMaxError)
 										{
-											fromId = ster->first;
-											break;
+											msg = uFormat("Rejecting edge %d->%d because "
+														"graph error is too large after optimization (%f m for edge %d->%d with ratio %f > std=%f m). "
+														"\"%s\" is %f.",
+														from,
+														to,
+														maxLinearError,
+														maxLinearLink->from(),
+														maxLinearLink->to(),
+														maxLinearErrorRatio,
+														sqrt(maxLinearLink->transVariance()),
+														Parameters::kRGBDOptimizeMaxError().c_str(),
+														_optimizationMaxError);
+										}
+										else if(_optimizationMaxError == 0.0f && maxLinearErrorRatio>100)
+										{
+											UERROR("Huge optimization error detected!"
+													"Linear error ratio of %f (edge %d->%d, type=%d, abs error=%f m, stddev=%f). You may consider "
+													"enabling \"%s\" to reject those bad optimizations by setting it to a non null value!",
+													maxLinearErrorRatio,
+													maxLinearLink->from(),
+													maxLinearLink->to(),
+													maxLinearLink->type(),
+													maxLinearError,
+													sqrt(maxLinearLink->transVariance()),
+													Parameters::kRGBDOptimizeMaxError().c_str());
 										}
 									}
-									std::multimap<int, Link> linksIn = links;
-									linksIn.insert(std::make_pair(from, Link(from, to, Link::kUserClosure, t, getInformation(info.covariance))));
-									const Link * maxLinearLink = 0;
-									const Link * maxAngularLink = 0;
-									float maxLinearError = 0.0f;
-									float maxAngularError = 0.0f;
-									float maxLinearErrorRatio = 0.0f;
-									float maxAngularErrorRatio = 0.0f;
-									std::map<int, Transform> optimizedPoses;
-									std::multimap<int, Link> links;
-									UASSERT(poses.find(fromId) != poses.end());
-									UASSERT_MSG(poses.find(from) != poses.end(), uFormat("id=%d poses=%d links=%d", from, (int)poses.size(), (int)links.size()).c_str());
-									UASSERT_MSG(poses.find(to) != poses.end(), uFormat("id=%d poses=%d links=%d", to, (int)poses.size(), (int)links.size()).c_str());
-									_graphOptimizer->getConnectedGraph(fromId, poses, linksIn, optimizedPoses, links);
-									UASSERT(optimizedPoses.find(fromId) != optimizedPoses.end());
-									UASSERT_MSG(optimizedPoses.find(from) != optimizedPoses.end(), uFormat("id=%d poses=%d links=%d", from, (int)optimizedPoses.size(), (int)links.size()).c_str());
-									UASSERT_MSG(optimizedPoses.find(to) != optimizedPoses.end(), uFormat("id=%d poses=%d links=%d", to, (int)optimizedPoses.size(), (int)links.size()).c_str());
-									UASSERT(graph::findLink(links, from, to) != links.end());
-									optimizedPoses = _graphOptimizer->optimize(fromId, optimizedPoses, links);
-									std::string msg;
-									if(optimizedPoses.size())
+									else if(maxAngularLink)
 									{
-										graph::computeMaxGraphErrors(
-												optimizedPoses,
-												links,
-												maxLinearErrorRatio,
-												maxAngularErrorRatio,
-												maxLinearError,
-												maxAngularError,
-												&maxLinearLink,
-												&maxAngularLink);
-										if(maxLinearLink)
+										UINFO("Max optimization angular error = %f deg (link %d->%d)", maxAngularError*180.0f/M_PI, maxAngularLink->from(), maxAngularLink->to());
+										if(_optimizationMaxError > 0.0f && maxAngularErrorRatio > _optimizationMaxError)
 										{
-											UINFO("Max optimization linear error = %f m (link %d->%d)", maxLinearError, maxLinearLink->from(), maxLinearLink->to());
-											if(maxLinearErrorRatio > _optimizationMaxError)
-											{
-												msg = uFormat("Rejecting edge %d->%d because "
-														  "graph error is too large after optimization (%f m for edge %d->%d with ratio %f > std=%f m). "
-														  "\"%s\" is %f.",
-														  from,
-														  to,
-														  maxLinearError,
-														  maxLinearLink->from(),
-														  maxLinearLink->to(),
-														  maxLinearErrorRatio,
-														  sqrt(maxLinearLink->transVariance()),
-														  Parameters::kRGBDOptimizeMaxError().c_str(),
-														  _optimizationMaxError);
-											}
+											msg = uFormat("Rejecting edge %d->%d because "
+														"graph error is too large after optimization (%f deg for edge %d->%d with ratio %f > std=%f deg). "
+														"\"%s\" is %f m.",
+														from,
+														to,
+														maxAngularError*180.0f/M_PI,
+														maxAngularLink->from(),
+														maxAngularLink->to(),
+														maxAngularErrorRatio,
+														sqrt(maxAngularLink->rotVariance()),
+														Parameters::kRGBDOptimizeMaxError().c_str(),
+														_optimizationMaxError);
 										}
-										else if(maxAngularLink)
+										else if(_optimizationMaxError == 0.0f && maxAngularErrorRatio>100)
 										{
-											UINFO("Max optimization angular error = %f deg (link %d->%d)", maxAngularError*180.0f/M_PI, maxAngularLink->from(), maxAngularLink->to());
-											if(maxAngularErrorRatio > _optimizationMaxError)
-											{
-												msg = uFormat("Rejecting edge %d->%d because "
-														  "graph error is too large after optimization (%f deg for edge %d->%d with ratio %f > std=%f deg). "
-														  "\"%s\" is %f m.",
-														  from,
-														  to,
-														  maxAngularError*180.0f/M_PI,
-														  maxAngularLink->from(),
-														  maxAngularLink->to(),
-														  maxAngularErrorRatio,
-														  sqrt(maxAngularLink->rotVariance()),
-														  Parameters::kRGBDOptimizeMaxError().c_str(),
-														  _optimizationMaxError);
-											}
+											UERROR("Huge optimization error detected!"
+													"Angular error ratio of %f (edge %d->%d, type=%d, abs error=%f m, stddev=%f). You may consider "
+													"enabling \"%s\" to reject those bad optimizations by setting it to a non null value!",
+													maxAngularErrorRatio,
+													maxAngularLink->from(),
+													maxAngularLink->to(),
+													maxAngularLink->type(),
+													maxAngularError*180.0f/CV_PI,
+													sqrt(maxAngularLink->rotVariance()),
+													Parameters::kRGBDOptimizeMaxError().c_str());
 										}
 									}
-									else
-									{
-										msg = uFormat("Rejecting edge %d->%d because graph optimization has failed!",
-												  from,
-												  to);
-									}
-									if(!msg.empty())
-									{
-										UWARN("%s", msg.c_str());
-										updateConstraints = false;
-									}
-									else
-									{
-										poses = optimizedPoses;
-									}
+								}
+								else
+								{
+									msg = uFormat("Rejecting edge %d->%d because graph optimization has failed!",
+												from,
+												to);
+								}
+								if(!msg.empty())
+								{
+									UWARN("%s", msg.c_str());
+									updateConstraints = false;
+								}
+								else
+								{
+									poses = optimizedPoses;
 								}
 
 								if(updateConstraints)
@@ -5809,7 +6015,7 @@ bool Rtabmap::addLink(const Link & link)
 		{
 			msg = uFormat("Rejecting edge %d->%d because graph optimization has failed!", link.from(), link.to());
 		}
-		else if(_optimizationMaxError > 0.0f)
+		else
 		{
 			float maxLinearError = 0.0f;
 			float maxLinearErrorRatio = 0.0f;
@@ -5830,7 +6036,7 @@ bool Rtabmap::addLink(const Link & link)
 			if(maxLinearLink)
 			{
 				UINFO("Max optimization linear error = %f m (link %d->%d)", maxLinearError, maxLinearLink->from(), maxLinearLink->to());
-				if(maxLinearErrorRatio > _optimizationMaxError)
+				if(_optimizationMaxError > 0.0f && maxLinearErrorRatio > _optimizationMaxError)
 				{
 					msg = uFormat("Rejecting edge %d->%d because "
 							  "graph error is too large after optimization (%f m for edge %d->%d with ratio %f > std=%f m). "
@@ -5845,11 +6051,24 @@ bool Rtabmap::addLink(const Link & link)
 							  Parameters::kRGBDOptimizeMaxError().c_str(),
 							  _optimizationMaxError);
 				}
+				else if(_optimizationMaxError == 0.0f && maxLinearErrorRatio>100)
+				{
+					UERROR("Huge optimization error detected!"
+							"Linear error ratio of %f (edge %d->%d, type=%d, abs error=%f m, stddev=%f). You may consider "
+							"enabling \"%s\" to reject those bad optimizations by setting it to a non null value!",
+							maxLinearErrorRatio,
+							maxLinearLink->from(),
+							maxLinearLink->to(),
+							maxLinearLink->type(),
+							maxLinearError,
+							sqrt(maxLinearLink->transVariance()),
+							Parameters::kRGBDOptimizeMaxError().c_str());
+				}
 			}
 			else if(maxAngularLink)
 			{
 				UINFO("Max optimization angular error = %f deg (link %d->%d)", maxAngularError*180.0f/M_PI, maxAngularLink->from(), maxAngularLink->to());
-				if(maxAngularErrorRatio > _optimizationMaxError)
+				if(_optimizationMaxError > 0.0f && maxAngularErrorRatio > _optimizationMaxError)
 				{
 					msg = uFormat("Rejecting edge %d->%d because "
 							  "graph error is too large after optimization (%f deg for edge %d->%d with ratio %f > std=%f deg). "
@@ -5863,6 +6082,19 @@ bool Rtabmap::addLink(const Link & link)
 							  sqrt(maxAngularLink->rotVariance()),
 							  Parameters::kRGBDOptimizeMaxError().c_str(),
 							  _optimizationMaxError);
+				}
+				else if(_optimizationMaxError == 0.0f && maxAngularErrorRatio>100)
+				{
+					UERROR("Huge optimization error detected!"
+							"Angular error ratio of %f (edge %d->%d, type=%d, abs error=%f m, stddev=%f). You may consider "
+							"enabling \"%s\" to reject those bad optimizations by setting it to a non null value!",
+							maxAngularErrorRatio,
+							maxAngularLink->from(),
+							maxAngularLink->to(),
+							maxAngularLink->type(),
+							maxAngularError*180.0f/CV_PI,
+							sqrt(maxAngularLink->rotVariance()),
+							Parameters::kRGBDOptimizeMaxError().c_str());
 				}
 			}
 		}
@@ -5968,7 +6200,7 @@ bool Rtabmap::addLink(const Link & link)
 			UWARN("Optimization failed, rejecting localization!");
 			rejectLocalization = true;
 		}
-		else if(_optimizationMaxError > 0.0f)
+		else
 		{
 			UINFO("Compute max graph errors...");
 			float maxLinearError = 0.0f;
@@ -5995,7 +6227,7 @@ bool Rtabmap::addLink(const Link & link)
 			if(maxLinearLink)
 			{
 				UINFO("Max optimization linear error = %f m (link %d->%d, var=%f, ratio error/std=%f)", maxLinearError, maxLinearLink->from(), maxLinearLink->to(), maxLinearLink->transVariance(), maxLinearError/sqrt(maxLinearLink->transVariance()));
-				if(maxLinearErrorRatio > _optimizationMaxError)
+				if(_optimizationMaxError > 0.0f && maxLinearErrorRatio > _optimizationMaxError)
 				{
 					UWARN("Rejecting localization (%d <-> %d) in this "
 							"iteration because a wrong loop closure has been "
@@ -6014,11 +6246,24 @@ bool Rtabmap::addLink(const Link & link)
 							_optimizationMaxError);
 					rejectLocalization = true;
 				}
+				else if(_optimizationMaxError == 0.0f && maxLinearErrorRatio>100)
+				{
+					UERROR("Huge optimization error detected!"
+							"Linear error ratio of %f (edge %d->%d, type=%d, abs error=%f m, stddev=%f). You may consider "
+							"enabling \"%s\" to reject those bad optimizations by setting it to a non null value!",
+							maxLinearErrorRatio,
+							maxLinearLink->from(),
+							maxLinearLink->to(),
+							maxLinearLink->type(),
+							maxLinearError,
+							sqrt(maxLinearLink->transVariance()),
+							Parameters::kRGBDOptimizeMaxError().c_str());
+				}
 			}
 			if(maxAngularLink)
 			{
 				UINFO("Max optimization angular error = %f deg (link %d->%d, var=%f, ratio error/std=%f)", maxAngularError*180.0f/CV_PI, maxAngularLink->from(), maxAngularLink->to(), maxAngularLink->rotVariance(), maxAngularError/sqrt(maxAngularLink->rotVariance()));
-				if(maxAngularErrorRatio > _optimizationMaxError)
+				if(_optimizationMaxError > 0.0f && maxAngularErrorRatio > _optimizationMaxError)
 				{
 					UWARN("Rejecting localization (%d <-> %d) in this "
 							"iteration because a wrong loop closure has been "
@@ -6036,6 +6281,19 @@ bool Rtabmap::addLink(const Link & link)
 							Parameters::kRGBDOptimizeMaxError().c_str(),
 							_optimizationMaxError);
 					rejectLocalization = true;
+				}
+				else if(_optimizationMaxError == 0.0f && maxAngularErrorRatio>100)
+				{
+					UERROR("Huge optimization error detected!"
+							"Angular error ratio of %f (edge %d->%d, type=%d, abs error=%f m, stddev=%f). You may consider "
+							"enabling \"%s\" to reject those bad optimizations by setting it to a non null value!",
+							maxAngularErrorRatio,
+							maxAngularLink->from(),
+							maxAngularLink->to(),
+							maxAngularLink->type(),
+							maxAngularError*180.0f/CV_PI,
+							sqrt(maxAngularLink->rotVariance()),
+							Parameters::kRGBDOptimizeMaxError().c_str());
 				}
 			}
 		}

@@ -28,7 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef RTABMAP_MULTISESSIONLOCSUBVIEW_H_
 #define RTABMAP_MULTISESSIONLOCSUBVIEW_H_
 
-#include "rtabmap/gui/RtabmapGuiExp.h" // DLL export/import defines
+#include "rtabmap/gui/rtabmap_gui_export.h" // DLL export/import defines
 #include <opencv2/core.hpp>
 #include <QWidget>
 
@@ -38,7 +38,7 @@ namespace rtabmap {
 
 class ImageView;
 
-class RTABMAPGUI_EXP MultiSessionLocSubView : public QWidget
+class RTABMAP_GUI_EXPORT MultiSessionLocSubView : public QWidget
 {
 	Q_OBJECT
 

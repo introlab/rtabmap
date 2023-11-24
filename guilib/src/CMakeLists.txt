@@ -38,42 +38,12 @@ SET(headers_ui
 	../include/${PROJECT_PREFIX}/gui/MultiSessionLocSubView.h
 )
 
-SET(uis
-    ./ui/mainWindow.ui
-    ./ui/preferencesDialog.ui
-    ./ui/aboutDialog.ui
-    ./ui/consoleWidget.ui
-    ./ui/DatabaseViewer.ui
-    ./ui/loopClosureViewer.ui
-    ./ui/exportDialog.ui
-    ./ui/postProcessingDialog.ui
-    ./ui/exportCloudsDialog.ui
-    ./ui/calibrationDialog.ui
-    ./ui/createSimpleCalibrationDialog.ui
-    ./ui/depthCalibrationDialog.ui
-    ./ui/exportBundlerDialog.ui
-    ./ui/editConstraintDialog.ui
-    ./ui/multiSessionLocSubView.ui
-)
-
 SET(qrc 
     ./GuiLib.qrc
 )
 
-IF(QT4_FOUND)
-    # generate rules for building source files from the resources
-    QT4_ADD_RESOURCES(srcs_qrc ${qrc})
-
-    #Generate .h files from the .ui files
-    QT4_WRAP_UI(moc_uis ${uis})
-
-    #This will generate moc_* for Qt
-    QT4_WRAP_CPP(moc_srcs ${headers_ui})
-    ### Qt Gui stuff  end###
-ELSE()
-    QT5_ADD_RESOURCES(srcs_qrc ${qrc})
-    QT5_WRAP_UI(moc_uis ${uis})
-    QT5_WRAP_CPP(moc_srcs ${headers_ui})
+IF(QT4_FOUND OR Qt5_FOUND OR Qt6_FOUND)
+    set(CMAKE_AUTOUIC_SEARCH_PATHS ./ui/)
 ENDIF()
 
 
@@ -113,10 +83,8 @@ SET(SRC_FILES
 	./DepthCalibrationDialog.cpp
 	./3rdParty/QMultiComboBox.cpp
 	./opencv/vtkImageMatSource.cpp
-	
-	${moc_srcs} 
-	${moc_uis} 
-	${srcs_qrc}
+	${qrc}
+	${headers_ui}
 )
 
 # to get includes in visual studio
@@ -128,51 +96,52 @@ IF(MSVC)
 ENDIF(MSVC)
 
 SET(INCLUDE_DIRS
-	${PROJECT_BINARY_DIR}/corelib/include
-	${PROJECT_SOURCE_DIR}/corelib/include
-	${PROJECT_SOURCE_DIR}/utilite/include
 	${CMAKE_CURRENT_SOURCE_DIR}/../include
 	${CMAKE_CURRENT_SOURCE_DIR}
-	${OpenCV_INCLUDE_DIRS}
 	${CMAKE_CURRENT_BINARY_DIR} # for qt ui generated in binary dir
-	${PCL_INCLUDE_DIRS}
 )
-
-# Hack as CameraRealsense2.h needs realsense2 include dir
-IF(realsense2_FOUND)
-	SET(INCLUDE_DIRS
-		${INCLUDE_DIRS}
-		${realsense2_INCLUDE_DIRS}
-	)
-ENDIF(realsense2_FOUND)
-# Hack as CameraK4A.h needs k4a include dir
-IF(k4a_FOUND)
-	SET(INCLUDE_DIRS
-		${INCLUDE_DIRS}
-		${k4a_INCLUDE_DIRS}
-	)
-ENDIF(k4a_FOUND)
 
 IF(QT4_FOUND)
     INCLUDE(${QT_USE_FILE})
 ENDIF(QT4_FOUND)
 
-SET(LIBRARIES
-    ${QT_LIBRARIES} 
-	${OpenCV_LIBS} 
-	${PCL_LIBRARIES}
-)
+SET(LIBRARIES "")
+SET(PUBLIC_LIBRARIES "")
+SET(PUBLIC_INCLUDE_DIRS "")
 
-IF(octomap_FOUND)
-	SET(INCLUDE_DIRS
-		${INCLUDE_DIRS}
-		${OCTOMAP_INCLUDE_DIRS}
-	)
-	SET(LIBRARIES
-		${LIBRARIES}
-		${OCTOMAP_LIBRARIES}
-	)
-ENDIF(octomap_FOUND)
+IF(Qt6_FOUND)
+    SET(PUBLIC_LIBRARIES ${PUBLIC_LIBRARIES} Qt6::Widgets Qt6::Core Qt6::Gui Qt6::OpenGL)
+    SET(LIBRARIES ${LIBRARIES} Qt6::PrintSupport)
+    IF(Qt6Svg_FOUND)
+        SET(LIBRARIES ${LIBRARIES} Qt6::Svg)
+    ENDIF()
+    SET(PUBLIC_INCLUDE_DIRS
+        ${PUBLIC_INCLUDE_DIRS}
+        ${Qt6Widgets_INCLUDE_DIRS}
+        ${Qt6Core_INCLUDE_DIRS}
+        ${Qt6Gui_INCLUDE_DIRS}
+        ${Qt6OpenGL_INCLUDE_DIRS})
+ELSEIF(Qt5_FOUND)
+    SET(PUBLIC_LIBRARIES ${PUBLIC_LIBRARIES} Qt5::Widgets Qt5::Core Qt5::Gui Qt5::OpenGL)
+    SET(LIBRARIES ${LIBRARIES} Qt5::PrintSupport)
+    IF(Qt5Svg_FOUND)
+        SET(LIBRARIES ${LIBRARIES} Qt5::Svg)
+    ENDIF()
+    SET(PUBLIC_INCLUDE_DIRS
+        ${PUBLIC_INCLUDE_DIRS}
+        ${Qt5Widgets_INCLUDE_DIRS}
+        ${Qt5Core_INCLUDE_DIRS}
+        ${Qt5Gui_INCLUDE_DIRS}
+        ${Qt5OpenGL_INCLUDE_DIRS})
+ELSE()
+    SET(PUBLIC_LIBRARIES ${PUBLIC_LIBRARIES} ${QTCORE_LIBRARY} ${QTGUI_LIBRARY})
+    IF(QTSVG_FOUND)
+        SET(LIBRARIES ${LIBRARIES} ${QTSVG_LIBRARY})
+    ENDIF()
+    SET(PUBLIC_INCLUDE_DIRS
+        ${QTCORE_INCLUDE_DIRS}
+        ${QTGUI_INCLUDE_DIRS})
+ENDIF()
 
 IF(CPUTSDF_FOUND)
 	SET(INCLUDE_DIRS
@@ -208,27 +177,63 @@ add_definitions(${PCL_DEFINITIONS})
 
 # create a library from the source files
 ADD_LIBRARY(rtabmap_gui ${SRC_FILES})
-# Linking with Qt libraries
+ADD_LIBRARY(rtabmap::gui ALIAS rtabmap_gui)
 
-TARGET_LINK_LIBRARIES(rtabmap_gui rtabmap_core rtabmap_utilite ${LIBRARIES})
-IF(Qt5_FOUND)
-    IF(Qt5Svg_FOUND)
-        QT5_USE_MODULES(rtabmap_gui Widgets Core Gui Svg PrintSupport)
-    ELSE()
-        QT5_USE_MODULES(rtabmap_gui Widgets Core Gui PrintSupport)
-    ENDIF()
-ENDIF(Qt5_FOUND)
+generate_export_header(rtabmap_gui
+ DEPRECATED_MACRO_NAME RTABMAP_DEPRECATED)
+
+target_include_directories(rtabmap_gui PUBLIC 
+  "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../include;${CMAKE_CURRENT_BINARY_DIR}/include;${PUBLIC_INCLUDE_DIRS}>"
+  "$<INSTALL_INTERFACE:${INSTALL_INCLUDE_DIR};${PUBLIC_INCLUDE_DIRS}>")
+
+TARGET_LINK_LIBRARIES(rtabmap_gui 
+  PUBLIC
+    rtabmap_core ${PUBLIC_LIBRARIES}
+  PRIVATE
+    ${LIBRARIES}
+)
 
 SET_TARGET_PROPERTIES(
      rtabmap_gui
    PROPERTIES
      VERSION ${RTABMAP_VERSION}
      SOVERSION ${RTABMAP_MAJOR_VERSION}.${RTABMAP_MINOR_VERSION}
+     EXPORT_NAME "gui"
+	 AUTOUIC ON
+     AUTOMOC ON
+     AUTORCC ON
 )
 
-INSTALL(TARGETS rtabmap_gui
+INSTALL(TARGETS rtabmap_gui EXPORT rtabmap_guiTargets
         RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}" COMPONENT runtime
         LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}" COMPONENT devel
         ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}" COMPONENT devel)
-        
-install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/../include/ DESTINATION "${INSTALL_INCLUDE_DIR}" COMPONENT devel FILES_MATCHING PATTERN "*.h" PATTERN ".svn" EXCLUDE)
+
+configure_file(
+  ${CMAKE_CURRENT_BINARY_DIR}/rtabmap_gui_export.h
+  ${CMAKE_CURRENT_BINARY_DIR}/include/${PROJECT_PREFIX}/gui/rtabmap_gui_export.h
+  COPYONLY)
+  
+install(
+  DIRECTORY
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/${PROJECT_PREFIX}
+    ${CMAKE_CURRENT_BINARY_DIR}/include/${PROJECT_PREFIX}
+  DESTINATION
+    ${INSTALL_INCLUDE_DIR}
+  COMPONENT
+    devel
+  FILES_MATCHING PATTERN "*.h" PATTERN "*.hpp"
+)
+export(EXPORT rtabmap_guiTargets
+  FILE "${CMAKE_CURRENT_BINARY_DIR}/../../${PROJECT_NAME}_guiTargets.cmake"
+  NAMESPACE rtabmap::
+)
+install(EXPORT rtabmap_guiTargets
+  FILE
+    ${PROJECT_NAME}_guiTargets.cmake
+  DESTINATION
+    ${INSTALL_CMAKE_DIR}
+  NAMESPACE rtabmap::
+  COMPONENT
+    devel
+)

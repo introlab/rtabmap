@@ -28,7 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef REGISTRATIONVIS_H_
 #define REGISTRATIONVIS_H_
 
-#include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
+#include "rtabmap/core/rtabmap_core_export.h" // DLL export/import defines
 
 #include <rtabmap/core/Registration.h>
 #include <rtabmap/core/Signature.h>
@@ -42,7 +42,7 @@ class PyMatcher;
 #endif
 
 // Visual registration
-class RTABMAP_EXP RegistrationVis : public Registration
+class RTABMAP_CORE_EXPORT RegistrationVis : public Registration
 {
 public:
 	// take ownership of child
@@ -82,7 +82,9 @@ private:
 	float _PnPReprojError;
 	int _PnPFlags;
 	int _PnPRefineIterations;
+	int  _PnPVarMedianRatio;
 	float _PnPMaxVar;
+	unsigned int _multiSamplingPolicy;
 	int _correspondencesApproach;
 	int _flowWinSize;
 	int _flowIterations;

@@ -28,7 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef CORELIB_INCLUDE_RTABMAP_CORE_LANDMARK_H_
 #define CORELIB_INCLUDE_RTABMAP_CORE_LANDMARK_H_
 
-#include <rtabmap/core/RtabmapExp.h>
+#include <rtabmap/core/rtabmap_core_export.h>
 #include <rtabmap/core/Transform.h>
 #include <rtabmap/utilite/ULogger.h>
 #include <rtabmap/utilite/UMath.h>
@@ -59,7 +59,8 @@ public:
         UASSERT_MSG(uIsFinite(covariance_.at<double>(4,4)) && covariance_.at<double>(4,4)>0, uFormat("Angular covariance should not be null! Value=%f (set to 9999 if unknown).", covariance_.at<double>(4,4)).c_str());
         UASSERT_MSG(uIsFinite(covariance_.at<double>(5,5)) && covariance_.at<double>(5,5)>0, uFormat("Angular covariance should not be null! Value=%f (set to 9999 if unknown).", covariance_.at<double>(5,5)).c_str());
     }
-    RTABMAP_DEPRECATED(Landmark(const int & id, const Transform & pose, const cv::Mat & covariance), "Use constructor with size=0 instead.");
+    // Use constructor with size=0 instead.
+    RTABMAP_DEPRECATED Landmark(const int & id, const Transform & pose, const cv::Mat & covariance);
 
 	virtual ~Landmark() {}
 

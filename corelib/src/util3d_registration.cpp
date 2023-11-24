@@ -244,7 +244,8 @@ void computeVarianceAndCorrespondencesImpl(
 		double maxCorrespondenceDistance,
 		double maxCorrespondenceAngle,
 		double & variance,
-		int & correspondencesOut)
+		int & correspondencesOut,
+		bool reciprocal)
 {
 	variance = 1;
 	correspondencesOut = 0;
@@ -255,7 +256,7 @@ void computeVarianceAndCorrespondencesImpl(
 	est->setInputTarget(target);
 	est->setInputSource(source);
 	pcl::Correspondences correspondences;
-	est->determineCorrespondences(correspondences, maxCorrespondenceDistance);
+	est->determineReciprocalCorrespondences(correspondences, maxCorrespondenceDistance);
 
 	if(correspondences.size())
 	{
@@ -305,9 +306,10 @@ void computeVarianceAndCorrespondences(
 		double maxCorrespondenceDistance,
 		double maxCorrespondenceAngle,
 		double & variance,
-		int & correspondencesOut)
+		int & correspondencesOut,
+		bool reciprocal)
 {
-	computeVarianceAndCorrespondencesImpl<pcl::PointNormal>(cloudA, cloudB, maxCorrespondenceDistance, maxCorrespondenceAngle, variance, correspondencesOut);
+	computeVarianceAndCorrespondencesImpl<pcl::PointNormal>(cloudA, cloudB, maxCorrespondenceDistance, maxCorrespondenceAngle, variance, correspondencesOut, reciprocal);
 }
 
 void computeVarianceAndCorrespondences(
@@ -316,9 +318,10 @@ void computeVarianceAndCorrespondences(
 		double maxCorrespondenceDistance,
 		double maxCorrespondenceAngle,
 		double & variance,
-		int & correspondencesOut)
+		int & correspondencesOut,
+		bool reciprocal)
 {
-	computeVarianceAndCorrespondencesImpl<pcl::PointXYZINormal>(cloudA, cloudB, maxCorrespondenceDistance, maxCorrespondenceAngle, variance, correspondencesOut);
+	computeVarianceAndCorrespondencesImpl<pcl::PointXYZINormal>(cloudA, cloudB, maxCorrespondenceDistance, maxCorrespondenceAngle, variance, correspondencesOut, reciprocal);
 }
 
 template<typename PointT>
@@ -327,7 +330,8 @@ void computeVarianceAndCorrespondencesImpl(
 		const typename pcl::PointCloud<PointT>::ConstPtr & cloudB,
 		double maxCorrespondenceDistance,
 		double & variance,
-		int & correspondencesOut)
+		int & correspondencesOut,
+		bool reciprocal)
 {
 	variance = 1;
 	correspondencesOut = 0;
@@ -336,7 +340,7 @@ void computeVarianceAndCorrespondencesImpl(
 	est->setInputTarget(cloudA->size()>cloudB->size()?cloudA:cloudB);
 	est->setInputSource(cloudA->size()>cloudB->size()?cloudB:cloudA);
 	pcl::Correspondences correspondences;
-	est->determineCorrespondences(correspondences, maxCorrespondenceDistance);
+	est->determineReciprocalCorrespondences(correspondences, maxCorrespondenceDistance);
 
 	if(correspondences.size()>=3)
 	{
@@ -360,9 +364,10 @@ void computeVarianceAndCorrespondences(
 		const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & cloudB,
 		double maxCorrespondenceDistance,
 		double & variance,
-		int & correspondencesOut)
+		int & correspondencesOut,
+		bool reciprocal)
 {
-	computeVarianceAndCorrespondencesImpl<pcl::PointXYZ>(cloudA, cloudB, maxCorrespondenceDistance, variance, correspondencesOut);
+	computeVarianceAndCorrespondencesImpl<pcl::PointXYZ>(cloudA, cloudB, maxCorrespondenceDistance, variance, correspondencesOut, reciprocal);
 }
 
 void computeVarianceAndCorrespondences(
@@ -370,9 +375,10 @@ void computeVarianceAndCorrespondences(
 		const pcl::PointCloud<pcl::PointXYZI>::ConstPtr & cloudB,
 		double maxCorrespondenceDistance,
 		double & variance,
-		int & correspondencesOut)
+		int & correspondencesOut,
+		bool reciprocal)
 {
-	computeVarianceAndCorrespondencesImpl<pcl::PointXYZI>(cloudA, cloudB, maxCorrespondenceDistance, variance, correspondencesOut);
+	computeVarianceAndCorrespondencesImpl<pcl::PointXYZI>(cloudA, cloudB, maxCorrespondenceDistance, variance, correspondencesOut, reciprocal);
 }
 
 // return transform from source to target (All points must be finite!!!)

@@ -74,15 +74,15 @@ Transform OdometryF2F::computeTransform(
 	UTimer timer;
 	Transform output;
 	if(!data.rightRaw().empty() &&
-	   (data.stereoCameraModels().size() != 1 || !data.stereoCameraModels()[0].isValidForProjection()))
+	   (data.stereoCameraModels().empty() || !data.stereoCameraModels()[0].isValidForProjection()))
 	{
-		UERROR("Calibrated stereo camera required (multi-cameras not supported)");
+		UERROR("Calibrated stereo camera required.");
 		return output;
 	}
 	if(!data.depthRaw().empty() &&
-		(data.cameraModels().size() != 1 || !data.cameraModels()[0].isValidForProjection()))
+		(data.cameraModels().empty() || !data.cameraModels()[0].isValidForProjection()))
 	{
-		UERROR("Calibrated camera required (multi-cameras not supported).");
+		UERROR("Calibrated camera required.");
 		return output;
 	}
 

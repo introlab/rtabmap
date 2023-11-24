@@ -32,7 +32,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/odometry/OdometryViso2.h"
 #include "rtabmap/core/odometry/OdometryDVO.h"
 #include "rtabmap/core/odometry/OdometryOkvis.h"
-#include "rtabmap/core/odometry/OdometryORBSLAM.h"
+#include "rtabmap/core/odometry/OdometryORBSLAM3.h"
 #include "rtabmap/core/odometry/OdometryLOAM.h"
 #include "rtabmap/core/odometry/OdometryFLOAM.h"
 #include "rtabmap/core/odometry/OdometryMSCKF.h"
@@ -51,6 +51,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/util2d.h"
 
 #include <pcl/pcl_base.h>
+#include <rtabmap/core/odometry/OdometryORBSLAM2.h>
 
 namespace rtabmap {
 
@@ -84,7 +85,11 @@ Odometry * Odometry::create(Odometry::Type & type, const ParametersMap & paramet
 		odometry = new OdometryDVO(parameters);
 		break;
 	case Odometry::kTypeORBSLAM:
+#if defined(RTABMAP_ORB_SLAM) and RTABMAP_ORB_SLAM == 2
 		odometry = new OdometryORBSLAM(parameters);
+#else
+		odometry = new OdometryORBSLAM3(parameters);
+#endif
 		break;
 	case Odometry::kTypeOkvis:
 		odometry = new OdometryOkvis(parameters);
@@ -325,6 +330,10 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 			{
 				imus_.erase(imus_.begin());
 			}
+		}
+		else
+		{
+			UWARN("Received IMU doesn't have orientation set! It is ignored.");
 		}
 	}
 
@@ -738,12 +747,12 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 			UASSERT(info->newCorners.size() == info->refCorners.size() || info->refCorners.empty());
 			for(unsigned int i=0; i<info->newCorners.size(); ++i)
 			{
-				info->refCorners[i].x *= _imageDecimation;
-				info->refCorners[i].y *= _imageDecimation;
+				info->newCorners[i].x *= _imageDecimation;
+				info->newCorners[i].y *= _imageDecimation;
 				if(!info->refCorners.empty())
 				{
-					info->newCorners[i].x *= _imageDecimation;
-					info->newCorners[i].y *= _imageDecimation;
+					info->refCorners[i].x *= _imageDecimation;
+					info->refCorners[i].y *= _imageDecimation;
 				}
 			}
 			for(std::multimap<int, cv::KeyPoint>::iterator iter=info->words.begin(); iter!=info->words.end(); ++iter)

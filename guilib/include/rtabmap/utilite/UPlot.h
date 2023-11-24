@@ -20,7 +20,7 @@
 #ifndef UPLOT_H_
 #define UPLOT_H_
 
-#include "rtabmap/gui/RtabmapGuiExp.h" // DLL export/import defines
+#include "rtabmap/gui/rtabmap_gui_export.h" // DLL export/import defines
 
 #include <QFrame>
 #include <QtCore/QList>
@@ -32,6 +32,7 @@
 #include <QLabel>
 #include <QPushButton>
 #include <QtCore/QTime>
+#include <QtCore/QElapsedTimer>
 
 class QGraphicsView;
 class QGraphicsScene;
@@ -43,7 +44,7 @@ class QScrollArea;
  * UPlotItem is a QGraphicsEllipseItem and can be inherited to do custom behaviors
  * on an hoverEnterEvent() for example.
  */
-class RTABMAPGUI_EXP UPlotItem : public QGraphicsEllipseItem
+class RTABMAP_GUI_EXPORT UPlotItem : public QGraphicsEllipseItem
 {
 public:
 	/**
@@ -89,7 +90,7 @@ class UPlot;
 /**
  * UPlotCurve is a curve used to hold data shown in a UPlot.
  */
-class RTABMAPGUI_EXP UPlotCurve : public QObject
+class RTABMAP_GUI_EXPORT UPlotCurve : public QObject
 {
 	Q_OBJECT
 
@@ -259,7 +260,7 @@ private:
 /**
  * A special UPlotCurve that shows as a line at the specified value, spanning all the UPlot.
  */
-class RTABMAPGUI_EXP UPlotCurveThreshold : public UPlotCurve
+class RTABMAP_GUI_EXPORT UPlotCurveThreshold : public UPlotCurve
 {
 	Q_OBJECT
 
@@ -292,7 +293,7 @@ private:
 /**
  * The UPlot axis object.
  */
-class RTABMAPGUI_EXP UPlotAxis : public QWidget
+class RTABMAP_GUI_EXPORT UPlotAxis : public QWidget
 {
 public:
 	/**
@@ -342,7 +343,7 @@ private:
 /**
  * The UPlot legend item. Used internally by UPlot.
  */
-class RTABMAPGUI_EXP UPlotLegendItem : public QPushButton
+class RTABMAP_GUI_EXPORT UPlotLegendItem : public QPushButton
 {
 	Q_OBJECT
 
@@ -383,7 +384,7 @@ private:
 /**
  * The UPlot legend. Used internally by UPlot.
  */
-class RTABMAPGUI_EXP UPlotLegend : public QWidget
+class RTABMAP_GUI_EXPORT UPlotLegend : public QWidget
 {
 	Q_OBJECT
 
@@ -430,7 +431,7 @@ private:
 /**
  * Orientable QLabel. Inherit QLabel and let you to specify the orientation.
  */
-class RTABMAPGUI_EXP UOrientableLabel : public QLabel
+class RTABMAP_GUI_EXPORT UOrientableLabel : public QLabel
 {
 	Q_OBJECT
 
@@ -486,7 +487,7 @@ private:
  *
  *
  */
-class RTABMAPGUI_EXP UPlot : public QWidget
+class RTABMAP_GUI_EXPORT UPlot : public QWidget
 {
 	Q_OBJECT
 
@@ -602,9 +603,9 @@ private:
 	UOrientableLabel * _yLabel;
 	QLabel * _refreshRate;
 	QString _workingDirectory;
-	QTime _refreshIntervalTime;
+	QElapsedTimer _refreshIntervalTime;
 	int _lowestRefreshRate;
-	QTime _refreshStartTime;
+	QElapsedTimer _refreshStartTime;
 	QString _autoScreenCaptureFormat;
 	QPoint _mousePressedPos;
 	QPoint _mouseCurrentPos;

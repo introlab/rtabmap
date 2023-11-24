@@ -1007,7 +1007,7 @@
 					"$(PROJECT_DIR)/RTABMapApp/Libraries/lib",
 					"$(PROJECT_DIR)/RTABMapApp/Libraries/share/OpenCV/3rdparty/lib",
 				);
-				MARKETING_VERSION = 0.20.19;
+				MARKETING_VERSION = 0.21.0;
 				OTHER_CFLAGS = "";
 				PRODUCT_BUNDLE_IDENTIFIER = com.introlab.rtabmap;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -1020,7 +1020,7 @@
 					"\"$(SRCROOT)/RTABMapApp/Libraries/include\"",
 					"\"$(SRCROOT)/RTABMapApp/Libraries/include/eigen3\"",
 					"\"$(SRCROOT)/RTABMapApp/Libraries/include/pcl-1.11\"",
-					"\"$(SRCROOT)/RTABMapApp/Libraries/include/rtabmap-0.20\"",
+					"\"$(SRCROOT)/RTABMapApp/Libraries/include/rtabmap-0.21\"",
 					"\"$(SRCROOT)/../android/jni/tango-gl/include\"",
 					"\"$(SRCROOT)/../android/jni/third-party/include\"",
 					"\"$(SRCROOT)/RTABMapApp/Libraries/lib/vtk.framework/Headers\"",
@@ -1064,7 +1064,7 @@
 					"$(PROJECT_DIR)/RTABMapApp/Libraries/lib",
 					"$(PROJECT_DIR)/RTABMapApp/Libraries/share/OpenCV/3rdparty/lib",
 				);
-				MARKETING_VERSION = 0.20.19;
+				MARKETING_VERSION = 0.21.0;
 				ONLY_ACTIVE_ARCH = YES;
 				OTHER_CFLAGS = "";
 				PRODUCT_BUNDLE_IDENTIFIER = com.introlab.rtabmap;
@@ -1078,7 +1078,7 @@
 					"\"$(SRCROOT)/RTABMapApp/Libraries/include\"",
 					"\"$(SRCROOT)/RTABMapApp/Libraries/include/eigen3\"",
 					"\"$(SRCROOT)/RTABMapApp/Libraries/include/pcl-1.11\"",
-					"\"$(SRCROOT)/RTABMapApp/Libraries/include/rtabmap-0.20\"",
+					"\"$(SRCROOT)/RTABMapApp/Libraries/include/rtabmap-0.21\"",
 					"\"$(SRCROOT)/../android/jni/tango-gl/include\"",
 					"\"$(SRCROOT)/../android/jni/third-party/include\"",
 					"\"$(SRCROOT)/RTABMapApp/Libraries/lib/vtk.framework/Headers\"",

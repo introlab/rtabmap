@@ -51,6 +51,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QtCore/QTime>
+#include <QtCore/QElapsedTimer>
 #include <QGraphicsEffect>
 
 
@@ -183,11 +184,10 @@ int main(int argc, char** argv)
 		showUsage();
 	}
 
-	QTime timer;
+	QElapsedTimer timer;
 	timer.start();
 
 	// Extract words
-	timer.start();
    VWDictionary dictionary;
    ParametersMap param;
    param.insert(ParametersPair(Parameters::kSURFExtended(), "true"));

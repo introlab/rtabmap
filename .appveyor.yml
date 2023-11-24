@@ -17,6 +17,9 @@ init:
   - call "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" x86_amd64
 
 install:
+  # To download from google drive
+  - set PATH=C:\Python38-x64;C:\Python38-x64\Scripts;%PATH%
+  - ps: py -m pip --disable-pip-version-check install gdown
   # Qt
   - set QTDIR=C:\Qt\5.10.1\msvc2015_64
   # make sure Qt bin path is before cmake bin path to avoid copying qt5 dlls from cmake before qt installation
@@ -73,7 +76,7 @@ install:
   - ps: "ls \"C:/Program Files/PCL\""
   - set PATH=%PATH%;C:\Program Files\PCL\bin
   # zlib
-  - ps: wget 'https://docs.google.com/uc?authuser=0&id=0B46akLGdg-uaYm9MTTI4MUtUcmc&export=download' -outfile zlib-1.2.8-vc2010-x64.zip
+  - ps: gdown -q 0B46akLGdg-uaYm9MTTI4MUtUcmc
   - ps: Expand-Archive zlib-1.2.8-vc2010-x64.zip -DestinationPath 'C:\Program Files'
   - ECHO "Installed zlib:"
   - ps: "ls \"C:/Program Files/zlib\""

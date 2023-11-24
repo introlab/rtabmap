@@ -27,7 +27,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #pragma once
 
-#include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
+#include "rtabmap/core/rtabmap_core_export.h" // DLL export/import defines
 
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/core/core.hpp>
@@ -43,7 +43,7 @@ class DBDriver;
 class VisualWord;
 class FlannIndex;
 
-class RTABMAP_EXP VWDictionary
+class RTABMAP_CORE_EXPORT VWDictionary
 {
 public:
 	enum NNStrategy{

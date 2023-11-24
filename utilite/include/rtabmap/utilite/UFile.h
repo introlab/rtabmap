@@ -20,7 +20,7 @@
 #ifndef FILE_H
 #define FILE_H
 
-#include "rtabmap/utilite/UtiLiteExp.h" // DLL export/import defines
+#include "rtabmap/utilite/utilite_export.h" // DLL export/import defines
 
 #include "rtabmap/utilite/UDirectory.h"
 #include <string>
@@ -30,7 +30,7 @@
  *
  * This class can be used to modify/erase files on hard drive.
  */
-class UTILITE_EXP UFile
+class UTILITE_EXPORT UFile
 {
 public:
 	/**

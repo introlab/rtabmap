@@ -30,6 +30,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/RegistrationVis.h>
 #include <rtabmap/core/util3d_motion_estimation.h>
 #include <rtabmap/core/util3d_features.h>
+#include <rtabmap/core/util3d_transforms.h>
 #include <rtabmap/core/util3d.h>
 #include <rtabmap/core/VWDictionary.h>
 #include <rtabmap/core/util2d.h>
@@ -69,7 +70,9 @@ RegistrationVis::RegistrationVis(const ParametersMap & parameters, Registration 
 		_PnPReprojError(Parameters::defaultVisPnPReprojError()),
 		_PnPFlags(Parameters::defaultVisPnPFlags()),
 		_PnPRefineIterations(Parameters::defaultVisPnPRefineIterations()),
+		_PnPVarMedianRatio(Parameters::defaultVisPnPVarianceMedianRatio()),
 		_PnPMaxVar(Parameters::defaultVisPnPMaxVariance()),
+		_multiSamplingPolicy(Parameters::defaultVisPnPSamplingPolicy()),
 		_correspondencesApproach(Parameters::defaultVisCorType()),
 		_flowWinSize(Parameters::defaultVisCorFlowWinSize()),
 		_flowIterations(Parameters::defaultVisCorFlowIterations()),
@@ -125,7 +128,9 @@ void RegistrationVis::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kVisPnPReprojError(), _PnPReprojError);
 	Parameters::parse(parameters, Parameters::kVisPnPFlags(), _PnPFlags);
 	Parameters::parse(parameters, Parameters::kVisPnPRefineIterations(), _PnPRefineIterations);
+	Parameters::parse(parameters, Parameters::kVisPnPVarianceMedianRatio(), _PnPVarMedianRatio);
 	Parameters::parse(parameters, Parameters::kVisPnPMaxVariance(), _PnPMaxVar);
+	Parameters::parse(parameters, Parameters::kVisPnPSamplingPolicy(), _multiSamplingPolicy);
 	Parameters::parse(parameters, Parameters::kVisCorType(), _correspondencesApproach);
 	Parameters::parse(parameters, Parameters::kVisCorFlowWinSize(), _flowWinSize);
 	Parameters::parse(parameters, Parameters::kVisCorFlowIterations(), _flowIterations);
@@ -484,15 +489,16 @@ Transform RegistrationVis::computeTransformationImpl(
 
 			if(!imageFrom.empty() && !imageTo.empty())
 			{
+				UASSERT(!toSignature.sensorData().cameraModels().empty() || !toSignature.sensorData().stereoCameraModels().empty());
 				std::vector<cv::Point2f> cornersFrom;
 				cv::KeyPoint::convert(kptsFrom, cornersFrom);
 				std::vector<cv::Point2f> cornersTo;
 				bool guessSet = !guess.isIdentity() && !guess.isNull();
 				if(guessSet)
 				{
-					if(fromSignature.sensorData().cameraModels().size() == 1 || fromSignature.sensorData().cameraModels().size() == 1)
+					if(toSignature.sensorData().cameraModels().size() == 1 || toSignature.sensorData().stereoCameraModels().size() == 1)
 					{
-						Transform localTransform = fromSignature.sensorData().cameraModels().size()?fromSignature.sensorData().cameraModels()[0].localTransform():fromSignature.sensorData().stereoCameraModels()[0].left().localTransform();
+						Transform localTransform = toSignature.sensorData().cameraModels().size()?toSignature.sensorData().cameraModels()[0].localTransform():toSignature.sensorData().stereoCameraModels()[0].left().localTransform();
 						Transform guessCameraRef = (guess * localTransform).inverse();
 						cv::Mat R = (cv::Mat_<double>(3,3) <<
 								(double)guessCameraRef.r11(), (double)guessCameraRef.r12(), (double)guessCameraRef.r13(),
@@ -501,12 +507,53 @@ Transform RegistrationVis::computeTransformationImpl(
 						cv::Mat rvec(1,3, CV_64FC1);
 						cv::Rodrigues(R, rvec);
 						cv::Mat tvec = (cv::Mat_<double>(1,3) << (double)guessCameraRef.x(), (double)guessCameraRef.y(), (double)guessCameraRef.z());
-						cv::Mat K = fromSignature.sensorData().cameraModels().size()?fromSignature.sensorData().cameraModels()[0].K():fromSignature.sensorData().stereoCameraModels()[0].left().K();
+						cv::Mat K = toSignature.sensorData().cameraModels().size()?toSignature.sensorData().cameraModels()[0].K():toSignature.sensorData().stereoCameraModels()[0].left().K();
 						cv::projectPoints(kptsFrom3D, rvec, tvec, K, cv::Mat(), cornersTo);
 					}
 					else
 					{
-						UERROR("Optical flow guess with multi-cameras is not implemented, guess ignored...");
+						UTimer t;
+						int nCameras = toSignature.sensorData().cameraModels().size()?toSignature.sensorData().cameraModels().size():toSignature.sensorData().stereoCameraModels().size();
+						cornersTo = cornersFrom;
+						// compute inverse transforms one time
+						std::vector<Transform> inverseTransforms(nCameras);
+						for(int c=0; c<nCameras; ++c)
+						{
+							Transform localTransform = toSignature.sensorData().cameraModels().size()?toSignature.sensorData().cameraModels()[c].localTransform():toSignature.sensorData().stereoCameraModels()[c].left().localTransform();
+							inverseTransforms[c] = (guess * localTransform).inverse();
+							UDEBUG("inverse transforms: cam %d -> %s", c, inverseTransforms[c].prettyPrint().c_str());
+						}
+						// Project 3D points in each camera
+						int inFrame = 0;
+						UASSERT(kptsFrom3D.size() == cornersTo.size());
+						int subImageWidth = toSignature.sensorData().cameraModels().size()?toSignature.sensorData().cameraModels()[0].imageWidth():toSignature.sensorData().stereoCameraModels()[0].left().imageWidth();
+						UASSERT(subImageWidth>0);
+						for(size_t i=0; i<kptsFrom3D.size(); ++i)
+						{
+							// Start from camera having the reference corner first (in case there is overlap between the cameras)
+							int startIndex = cornersFrom[i].x/subImageWidth;
+							UASSERT(startIndex < nCameras);
+							for(int c=startIndex; (c+1)%nCameras != 0; ++c)
+							{
+								const CameraModel & model = toSignature.sensorData().cameraModels().size()?toSignature.sensorData().cameraModels()[c]:toSignature.sensorData().stereoCameraModels()[c].left();
+								cv::Point3f ptsInCamFrame = util3d::transformPoint(kptsFrom3D[i], inverseTransforms[c]);
+								if(ptsInCamFrame.z > 0)
+								{
+									float u,v;
+									model.reproject(ptsInCamFrame.x, ptsInCamFrame.y, ptsInCamFrame.z, u, v);
+									if(model.inFrame(u,v))
+									{
+										cornersTo[i].x = u+model.imageWidth()*c;
+										cornersTo[i].y = v;
+										++inFrame;
+										break;
+									}
+								}
+							}
+						}
+				
+						UDEBUG("Projected %d/%ld points inside %d cameras (time=%fs)", 
+							inFrame, cornersTo.size(), nCameras, t.ticks());
 					}
 				}
 
@@ -1048,7 +1095,7 @@ Transform RegistrationVis::computeTransformationImpl(
 							std::vector<std::vector<float> > dists;
 							float radius = (float)_guessWinSize; // pixels
 							rtflann::Matrix<float> cornersProjectedMat((float*)cornersProjected.data(), cornersProjected.size(), 2);
-							index.radiusSearch(cornersProjectedMat, indices, dists, radius*radius, rtflann::SearchParams());
+							index.radiusSearch(cornersProjectedMat, indices, dists, radius*radius, rtflann::SearchParams(32, 0, false));
 
 							UASSERT(indices.size() == cornersProjectedMat.rows);
 							UASSERT(descriptorsFrom.cols == descriptorsTo.cols);
@@ -1578,11 +1625,13 @@ Transform RegistrationVis::computeTransformationImpl(
 									words3A,
 									wordsB,
 									models,
+									_multiSamplingPolicy,
 									_minInliers,
 									_iterations,
 									_PnPReprojError,
 									_PnPFlags,
 									_PnPRefineIterations,
+									_PnPVarMedianRatio,
 									_PnPMaxVar,
 									dir==0?(!guess.isNull()?guess:Transform::getIdentity()):!transforms[0].isNull()?transforms[0].inverse():(!guess.isNull()?guess.inverse():Transform::getIdentity()),
 									words3B,
@@ -1605,6 +1654,7 @@ Transform RegistrationVis::computeTransformationImpl(
 									_PnPReprojError,
 									_PnPFlags,
 									_PnPRefineIterations,
+									_PnPVarMedianRatio,
 									_PnPMaxVar,
 									dir==0?(!guess.isNull()?guess:Transform::getIdentity()):!transforms[0].isNull()?transforms[0].inverse():(!guess.isNull()?guess.inverse():Transform::getIdentity()),
 									words3B,
@@ -2021,29 +2071,31 @@ Transform RegistrationVis::computeTransformationImpl(
 			}
 			for(unsigned int i=0; i<allInliers.size(); ++i)
 			{
-				if(_maxInliersMeanDistance>0.0f)
+				std::multimap<int, int>::const_iterator wordsIter = toSignature.getWords().find(allInliers[i]);
+				if(wordsIter != toSignature.getWords().end() && !toSignature.getWordsKpts().empty())
 				{
-					std::multimap<int, int>::const_iterator wordsIter = fromSignature.getWords().find(allInliers[i]);
-					if(wordsIter != fromSignature.getWords().end() && !fromSignature.getWords3().empty())
-					{
-						const cv::Point3f & pt = fromSignature.getWords3()[wordsIter->second];
-						if(uIsFinite(pt.x))
-						{
-							distances.push_back(util3d::transformPoint(pt, transformInv).x);
-						}
-					}
-				}
-
-				if(!pcaData.empty())
-				{
-					std::multimap<int, int>::const_iterator wordsIter = toSignature.getWords().find(allInliers[i]);
-					UASSERT(wordsIter != fromSignature.getWords().end() && !toSignature.getWordsKpts().empty());
-					float * ptr = pcaData.ptr<float>(i, 0);
 					const cv::KeyPoint & kpt = toSignature.getWordsKpts()[wordsIter->second];
 					int cameraIndex = (int)(kpt.pt.x / cameraModelsTo[0].imageWidth());
 					UASSERT_MSG(cameraIndex < (int)cameraModelsTo.size(), uFormat("cameraIndex=%d (x=%f models=%d camera width = %d)", cameraIndex, kpt.pt.x, (int)cameraModelsTo.size(), cameraModelsTo[0].imageWidth()).c_str());
-					ptr[0] = (kpt.pt.x-cameraIndex*cameraModelsTo[cameraIndex].imageWidth()-cameraModelsTo[cameraIndex].cx()) / cameraModelsTo[cameraIndex].imageWidth();
-					ptr[1] = (kpt.pt.y-cameraModelsTo[cameraIndex].cy()) / cameraModelsTo[cameraIndex].imageHeight();
+
+					if(_maxInliersMeanDistance>0.0f && !toSignature.getWords3().empty())
+					{
+						const cv::Point3f & pt = toSignature.getWords3()[wordsIter->second];
+						if(util3d::isFinite(pt))
+						{
+							UASSERT(cameraModelsTo[cameraIndex].isValidForProjection());
+
+							float depth = util3d::transformPoint(pt, cameraModelsTo[cameraIndex].localTransform().inverse()).z;
+							distances.push_back(depth);
+						}
+					}
+
+					if(!pcaData.empty())
+					{
+						float * ptr = pcaData.ptr<float>(i, 0);
+						ptr[0] = (kpt.pt.x-cameraIndex*cameraModelsTo[cameraIndex].imageWidth()-cameraModelsTo[cameraIndex].cx()) / cameraModelsTo[cameraIndex].imageWidth();
+						ptr[1] = (kpt.pt.y-cameraModelsTo[cameraIndex].cy()) / cameraModelsTo[cameraIndex].imageHeight();
+					}
 				}
 			}
 

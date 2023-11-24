@@ -35,12 +35,10 @@ RTAB-Map integration: Mathieu Labbe
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 
-#include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
-
 namespace clams
 {
   
-DiscreteDepthDistortionModel RTABMAP_EXP calibrate(
+DiscreteDepthDistortionModel RTABMAP_CORE_EXPORT calibrate(
 		const std::map<int, rtabmap::SensorData> & sequence,
 		const std::map<int, rtabmap::Transform> & trajectory,
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & map,

@@ -11,7 +11,8 @@
 #include "QMultiComboBox.h"
 #include <QApplication>
 #include <QCoreApplication>
-#include <QDesktopWidget>
+#include <QWindow>
+#include <QScreen>
 
 #include "rtabmap/utilite/ULogger.h"
 
@@ -46,7 +47,11 @@ QMultiComboBox::~QMultiComboBox()
 void QMultiComboBox::SetDisplayText(QString text)
 {
     m_DisplayText_ = text;
+#if QT_VERSION >= QT_VERSION_CHECK(5, 15, 0)
+    const int textWidth = fontMetrics().horizontalAdvance(text);
+#else
     const int textWidth = fontMetrics().width(text);
+#endif
     setMinimumWidth(textWidth + 30);
     updateGeometry();
     repaint();
@@ -88,7 +93,7 @@ void QMultiComboBox::showPopup()
     //QRect rec2(p , p + QPoint(rec.width(), rec.height()));
 
     // get the two possible list points and height
-    QRect screen = QApplication::desktop()->screenGeometry(this);
+    QRect screen = this->window()->windowHandle()->screen()->availableGeometry();
     QPoint above = this->mapToGlobal(QPoint(0,0));
     int aboveHeight = above.y() - screen.y();
     QPoint below = this->mapToGlobal(QPoint(0,rec.height()));
@@ -109,8 +114,8 @@ void QMultiComboBox::showPopup()
 
     // determine rect
     int contheight = vlist_.count()*vlist_.sizeHintForRow(0) + 4; // +4 - should be determined by margins?
-    belowHeight = min(abs(belowHeight)-screenbound_, contheight);
-    aboveHeight = min(abs(aboveHeight)-screenbound_, contheight);
+    belowHeight = std::min(abs(belowHeight)-screenbound_, contheight);
+    aboveHeight = std::min(abs(aboveHeight)-screenbound_, contheight);
     if (popheight_ > 0) // fixed
     {
         rec2.setHeight(popheight_);

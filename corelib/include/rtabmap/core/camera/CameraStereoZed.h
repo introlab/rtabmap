@@ -27,8 +27,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #pragma once
 
-#include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
-
 #include "rtabmap/core/StereoCameraModel.h"
 #include "rtabmap/core/camera/CameraVideo.h"
 #include "rtabmap/core/Version.h"
@@ -42,16 +40,16 @@ namespace rtabmap
 {
 class ZedIMUThread;
 
-class RTABMAP_EXP CameraStereoZed :
+class RTABMAP_CORE_EXPORT CameraStereoZed :
 	public Camera
 {
 public:
 	static bool available();
-
+	static int sdkVersion();
 public:
 	CameraStereoZed(
 			int deviceId,
-			int resolution = 2, // 0=HD2K, 1=HD1080, 2=HD720, 3=VGA
+			int resolution = 6, // 0=HD2K, 1=HD1080, 2=HD1200, 3=HD720, 4=SVGA, 5=VGA, 6=AUTO
 			int quality = 1,    // 0=NONE, 1=PERFORMANCE, 2=QUALITY
 			int sensingMode = 0,// 0=STANDARD, 1=FILL
 			int confidenceThr = 100,
@@ -63,7 +61,7 @@ public:
 			int texturenessConfidenceThr = 90); // introduced with ZED SDK 3
 	CameraStereoZed(
 			const std::string & svoFilePath,
-			int quality = 1,    // 0=NONE, 1=PERFORMANCE, 2=QUALITY
+			int quality = 1,    // 0=NONE, 1=PERFORMANCE, 2=QUALITY, 3=NEURAL
 			int sensingMode = 0,// 0=STANDARD, 1=FILL
 			int confidenceThr = 100,
 			bool computeOdometry = false,

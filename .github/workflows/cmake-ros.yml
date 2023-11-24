@@ -2,10 +2,10 @@ name: CMake-ROS
 
 on:
   push:
-    branches:
-      - '**'
+    branches: 
+      - master
   pull_request:
-    branches:
+    branches: 
       - '**'
 
 env:
@@ -22,33 +22,29 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        ros_distribution: [melodic, noetic, foxy, galactic, humble, rolling]
+        ros_distribution: [ noetic, humble, iron, rolling]
         include:
-        - ros_distribution: 'melodic' 
-          os: ubuntu-18.04
         - ros_distribution: 'noetic'
           os: ubuntu-20.04
-        - ros_distribution: 'foxy'
-          os: ubuntu-20.04
-        - ros_distribution: 'galactic'
-          os: ubuntu-20.04
         - ros_distribution: 'humble'
+          os: ubuntu-22.04
+        - ros_distribution: 'iron'
           os: ubuntu-22.04
         - ros_distribution: 'rolling'
           os: ubuntu-22.04
 
-    steps:
-    - uses: ros-tooling/setup-ros@v0.4
+    steps:   
+    - uses: ros-tooling/setup-ros@v0.6
       with:
         required-ros-distributions: ${{ matrix.ros_distribution }}
     
+    - uses: actions/checkout@v2
+
     - name: Install dependencies
       run: |
-        sudo apt-get update
-        sudo apt-get -y install ros-${{ matrix.ros_distribution }}-rtabmap
-        sudo apt-get -y remove ros-${{ matrix.ros_distribution }}-rtabmap
-
-    - uses: actions/checkout@v2
+        source /opt/ros/${{ matrix.ros_distribution }}/setup.bash
+        rosdep update
+        rosdep install --from-paths ${{github.workspace}} -y
 
     - name: Configure CMake
       run: |

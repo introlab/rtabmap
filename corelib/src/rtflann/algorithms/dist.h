@@ -477,6 +477,10 @@ struct HammingPopcnt
     ResultType operator()(Iterator1 a, Iterator2 b, size_t size, ResultType /*worst_dist*/ = -1) const
     {
         ResultType result = 0;
+
+        //for portability just use unsigned long -- and use the __builtin_popcountll (see docs for __builtin_popcountll)
+        typedef unsigned long long pop_t;
+
 #if __GNUC__
 #if ANDROID && HAVE_NEON
         static uint64_t features = android_getCpuFeatures();

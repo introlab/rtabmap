@@ -238,8 +238,9 @@ std::map<int, Transform> OptimizerCeres::optimize(
 		UINFO("Ceres optimizing begin (iterations=%d)", iterations());
 
 		ceres::Solver::Options options;
+		options.linear_solver_type = ceres::ITERATIVE_SCHUR;
+		options.sparse_linear_algebra_library_type = ceres::SUITE_SPARSE;
 		options.max_num_iterations = iterations();
-		options.linear_solver_type = ceres::SPARSE_NORMAL_CHOLESKY;
 		options.function_tolerance = this->epsilon();
 		ceres::Solver::Summary summary;
 		UTimer timer;
@@ -317,7 +318,7 @@ std::map<int, Transform> OptimizerCeres::optimizeBA(
 		int rootId,
 		const std::map<int, Transform> & posesIn,
 		const std::multimap<int, Link> & links,
-		const std::map<int, CameraModel> & models,
+		const std::map<int, std::vector<CameraModel> > & models,
 		std::map<int, cv::Point3f> & points3DMap,
 		const std::map<int, std::map<int, FeatureBA> > & wordReferences, // <ID words, IDs frames + keypoint/Disparity>)
 		std::set<int> * outliers)
@@ -354,10 +355,16 @@ std::map<int, Transform> OptimizerCeres::optimizeBA(
 		++iter)
 	{
 		// Get camera model
-		std::map<int, CameraModel>::const_iterator iterModel = models.find(iter->first);
-		UASSERT(iterModel != models.end() && iterModel->second.isValidForProjection());
+		std::map<int, std::vector<CameraModel> >::const_iterator iterModel = models.find(iter->first);
+		UASSERT(iterModel != models.end());
+		if(iterModel->second.size() != 1)
+		{
+			UERROR("Multi-camera BA not implemented for Ceres, only single camera.");
+			return std::map<int, Transform>();
+		}
+		UASSERT(iterModel->second[0].isValidForProjection());
 
-		const Transform & t = (iter->second * iterModel->second.localTransform()).inverse();
+		const Transform & t = (iter->second * iterModel->second[0].localTransform()).inverse();
 		cv::Mat R = (cv::Mat_<double>(3,3) <<
 				(double)t.r11(), (double)t.r12(), (double)t.r13(),
 				(double)t.r21(), (double)t.r22(), (double)t.r23(),
@@ -403,15 +410,21 @@ std::map<int, Transform> OptimizerCeres::optimizeBA(
 			jter!=iter->second.end();
 			++jter)
 		{
-			std::map<int, CameraModel>::const_iterator iterModel = models.find(jter->first);
-			UASSERT(iterModel != models.end() && iterModel->second.isValidForProjection());
+			std::map<int, std::vector<CameraModel> >::const_iterator iterModel = models.find(jter->first);
+			UASSERT(iterModel != models.end());
+			if(iterModel->second.size() != 1)
+			{
+				UERROR("Multi-camera BA not implemented for Ceres, only single camera.");
+				return std::map<int, Transform>();
+			}
+			UASSERT(iterModel->second[0].isValidForProjection());
 
 			baProblem.camera_index_[oi] = camIdToIndex.at(jter->first);
 			baProblem.point_index_[oi] = pointIdToIndex.at(iter->first);
-			baProblem.observations_[4*oi] = jter->second.kpt.pt.x - iterModel->second.cx();
-			baProblem.observations_[4*oi+1] = jter->second.kpt.pt.y - iterModel->second.cy();
-			baProblem.observations_[4*oi+2] = iterModel->second.fx();
-			baProblem.observations_[4*oi+3] = iterModel->second.fy();
+			baProblem.observations_[4*oi] = jter->second.kpt.pt.x - iterModel->second[0].cx();
+			baProblem.observations_[4*oi+1] = jter->second.kpt.pt.y - iterModel->second[0].cy();
+			baProblem.observations_[4*oi+2] = iterModel->second[0].fx();
+			baProblem.observations_[4*oi+3] = iterModel->second[0].fy();
 			++oi;
 		}
 	}
@@ -445,7 +458,8 @@ std::map<int, Transform> OptimizerCeres::optimizeBA(
 	// standard solver, SPARSE_NORMAL_CHOLESKY, also works fine but it is slower
 	// for standard bundle adjustment problems.
 	ceres::Solver::Options options;
-	options.linear_solver_type = ceres::DENSE_SCHUR;
+	options.linear_solver_type = ceres::ITERATIVE_SCHUR;
+	options.sparse_linear_algebra_library_type = ceres::SUITE_SPARSE;
 	options.max_num_iterations = iterations();
 	//options.linear_solver_type = ceres::SPARSE_NORMAL_CHOLESKY;
 	options.function_tolerance = this->epsilon();
@@ -480,13 +494,13 @@ std::map<int, Transform> OptimizerCeres::optimizeBA(
 
 		if(this->isSlam2d())
 		{
-			t = (models.at(iter->first).localTransform() * t).inverse();
+			t = (models.at(iter->first)[0].localTransform() * t).inverse();
 			t = iter->second.inverse() * t;
 			iter->second *= t.to3DoF();
 		}
 		else
 		{
-			iter->second = (models.at(iter->first).localTransform() * t).inverse();
+			iter->second = (models.at(iter->first)[0].localTransform() * t).inverse();
 		}
 
 	}

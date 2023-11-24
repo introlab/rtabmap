@@ -20,14 +20,14 @@
 #ifndef UVARIANT_H
 #define UVARIANT_H
 
-#include "rtabmap/utilite/UtiLiteExp.h" // DLL export/import defines
+#include "rtabmap/utilite/utilite_export.h" // DLL export/import defines
 #include <string>
 #include <vector>
 
 /**
  * Experimental class...
  */
-class UTILITE_EXP UVariant
+class UTILITE_EXPORT UVariant
 {
 public:
 	enum Type{

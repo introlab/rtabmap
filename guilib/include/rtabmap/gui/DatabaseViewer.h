@@ -28,7 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef RTABMAP_DATABASEVIEWER_H_
 #define RTABMAP_DATABASEVIEWER_H_
 
-#include "rtabmap/gui/RtabmapGuiExp.h" // DLL export/import defines
+#include "rtabmap/gui/rtabmap_gui_export.h" // DLL export/import defines
 
 #include <QMainWindow>
 #include <QtCore/QByteArray>
@@ -62,7 +62,7 @@ class ExportCloudsDialog;
 class EditDepthArea;
 class EditMapArea;
 
-class RTABMAPGUI_EXP DatabaseViewer : public QMainWindow
+class RTABMAP_GUI_EXPORT DatabaseViewer : public QMainWindow
 {
 	Q_OBJECT
 
@@ -137,6 +137,7 @@ private Q_SLOTS:
 	void editConstraint();
 	void updateGrid();
 	void updateOctomapView();
+	void updateGraphRotation();
 	void updateGraphView();
 	void refineConstraint();
 	void addConstraint();

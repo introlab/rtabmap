@@ -20,7 +20,7 @@
 #ifndef UTHREADNODE_H
 #define UTHREADNODE_H
 
-#include "rtabmap/utilite/UtiLiteExp.h" // DLL export/import defines
+#include "rtabmap/utilite/utilite_export.h" // DLL export/import defines
 
 #include "rtabmap/utilite/UThreadC.h"
 
@@ -83,7 +83,7 @@
  * @see mainLoop()
  *
  */
-class UTILITE_EXP UThread : public UThreadC<void>
+class UTILITE_EXPORT UThread : public UThreadC<void>
 {
 public:
     /**

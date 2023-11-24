@@ -59,6 +59,7 @@ void showUsage()
 			"  Options:\n"
 			"     --diff                   Show only modified parameters.\n"
 			"     --diff  \"other_map.db\"   Compare parameters with other database.\n"
+			"     --dump  \"config.ini\"     Dump parameters in ini file.\n"
 			"\n");
 	exit(1);
 }
@@ -81,18 +82,32 @@ int main(int argc, char * argv[])
 	}
 
 	std::string otherDatabasePath;
+	std::string dumpFilePath;
 	bool diff = false;
 	for(int i=1; i<argc-1; ++i)
 	{
 		if(strcmp(argv[i], "--diff") == 0)
 		{
 			++i;
-			if(i<argc-1)
+			if(i<argc-1 && argv[i][0] != '-')
 			{
 				otherDatabasePath = uReplaceChar(argv[i], '~', UDirectory::homeDir());
 				printf("Comparing with other database \"%s\"...\n", otherDatabasePath.c_str());
 			}
 			diff = true;
+		}
+		if(strcmp(argv[i], "--dump") == 0)
+		{
+			++i;
+			if(i<argc-1)
+			{
+				dumpFilePath = uReplaceChar(argv[i], '~', UDirectory::homeDir());
+			}
+			else
+			{
+				printf("--dump should have an output file path\n");
+				showUsage();
+			}
 		}
 	}
 
@@ -112,6 +127,12 @@ int main(int argc, char * argv[])
 	}
 
 	ParametersMap parameters = driver->getLastParameters();
+	if(!dumpFilePath.empty())
+	{
+		Parameters::writeINI(dumpFilePath, parameters);
+		printf("%ld parameters exported to \"%s\".\n", parameters.size(), dumpFilePath.c_str());
+		return 0;
+	}
 	ParametersMap defaultParameters = Parameters::getDefaultParameters();
 	ParametersMap removedParameters = Parameters::getBackwardCompatibilityMap();
 	std::string otherDatabasePathName;

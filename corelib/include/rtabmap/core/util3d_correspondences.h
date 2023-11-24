@@ -28,7 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef UTIL3D_CORRESPONDENCES_H_
 #define UTIL3D_CORRESPONDENCES_H_
 
-#include <rtabmap/core/RtabmapExp.h>
+#include <rtabmap/core/rtabmap_core_export.h>
 
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
@@ -44,12 +44,12 @@ namespace util3d
 {
 
 
-void RTABMAP_EXP findCorrespondences(
+void RTABMAP_CORE_EXPORT findCorrespondences(
 		const std::multimap<int, cv::KeyPoint> & wordsA,
 		const std::multimap<int, cv::KeyPoint> & wordsB,
 		std::list<std::pair<cv::Point2f, cv::Point2f> > & pairs);
 
-void RTABMAP_EXP findCorrespondences(
+void RTABMAP_CORE_EXPORT findCorrespondences(
 		const std::multimap<int, cv::Point3f> & words1,
 		const std::multimap<int, cv::Point3f> & words2,
 		std::vector<cv::Point3f> & inliers1,
@@ -57,7 +57,7 @@ void RTABMAP_EXP findCorrespondences(
 		float maxDepth,
 		std::vector<int> * uniqueCorrespondences = 0);
 
-void RTABMAP_EXP findCorrespondences(
+void RTABMAP_CORE_EXPORT findCorrespondences(
 		const std::map<int, cv::Point3f> & words1,
 		const std::map<int, cv::Point3f> & words2,
 		std::vector<cv::Point3f> & inliers1,
@@ -66,17 +66,17 @@ void RTABMAP_EXP findCorrespondences(
 		std::vector<int> * correspondences = 0);
 
 // remove depth by z axis
-void RTABMAP_EXP extractXYZCorrespondences(const std::multimap<int, pcl::PointXYZ> & words1,
+void RTABMAP_CORE_EXPORT extractXYZCorrespondences(const std::multimap<int, pcl::PointXYZ> & words1,
 									  const std::multimap<int, pcl::PointXYZ> & words2,
 									  pcl::PointCloud<pcl::PointXYZ> & cloud1,
 									  pcl::PointCloud<pcl::PointXYZ> & cloud2);
 
-void RTABMAP_EXP extractXYZCorrespondencesRANSAC(const std::multimap<int, pcl::PointXYZ> & words1,
+void RTABMAP_CORE_EXPORT extractXYZCorrespondencesRANSAC(const std::multimap<int, pcl::PointXYZ> & words1,
 									  const std::multimap<int, pcl::PointXYZ> & words2,
 									  pcl::PointCloud<pcl::PointXYZ> & cloud1,
 									  pcl::PointCloud<pcl::PointXYZ> & cloud2);
 
-void RTABMAP_EXP extractXYZCorrespondences(const std::list<std::pair<cv::Point2f, cv::Point2f> > & correspondences,
+void RTABMAP_CORE_EXPORT extractXYZCorrespondences(const std::list<std::pair<cv::Point2f, cv::Point2f> > & correspondences,
 									   const cv::Mat & depthImage1,
 									   const cv::Mat & depthImage2,
 									   float cx, float cy,
@@ -85,23 +85,23 @@ void RTABMAP_EXP extractXYZCorrespondences(const std::list<std::pair<cv::Point2f
 									   pcl::PointCloud<pcl::PointXYZ> & cloud1,
 									   pcl::PointCloud<pcl::PointXYZ> & cloud2);
 
-void RTABMAP_EXP extractXYZCorrespondences(const std::list<std::pair<cv::Point2f, cv::Point2f> > & correspondences,
+void RTABMAP_CORE_EXPORT extractXYZCorrespondences(const std::list<std::pair<cv::Point2f, cv::Point2f> > & correspondences,
 							   const pcl::PointCloud<pcl::PointXYZ> & cloud1,
 							   const pcl::PointCloud<pcl::PointXYZ> & cloud2,
 							   pcl::PointCloud<pcl::PointXYZ> & inliers1,
 							   pcl::PointCloud<pcl::PointXYZ> & inliers2,
 							   char depthAxis);
-void RTABMAP_EXP extractXYZCorrespondences(const std::list<std::pair<cv::Point2f, cv::Point2f> > & correspondences,
+void RTABMAP_CORE_EXPORT extractXYZCorrespondences(const std::list<std::pair<cv::Point2f, cv::Point2f> > & correspondences,
 							   const pcl::PointCloud<pcl::PointXYZRGB> & cloud1,
 							   const pcl::PointCloud<pcl::PointXYZRGB> & cloud2,
 							   pcl::PointCloud<pcl::PointXYZ> & inliers1,
 							   pcl::PointCloud<pcl::PointXYZ> & inliers2,
 							   char depthAxis);
 
-int RTABMAP_EXP countUniquePairs(const std::multimap<int, pcl::PointXYZ> & wordsA,
+int RTABMAP_CORE_EXPORT countUniquePairs(const std::multimap<int, pcl::PointXYZ> & wordsA,
 					 const std::multimap<int, pcl::PointXYZ> & wordsB);
 
-void RTABMAP_EXP filterMaxDepth(pcl::PointCloud<pcl::PointXYZ> & inliers1,
+void RTABMAP_CORE_EXPORT filterMaxDepth(pcl::PointCloud<pcl::PointXYZ> & inliers1,
 					pcl::PointCloud<pcl::PointXYZ> & inliers2,
 					float maxDepth,
 					char depthAxis,

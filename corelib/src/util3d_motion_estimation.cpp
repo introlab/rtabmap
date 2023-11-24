@@ -42,8 +42,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifdef RTABMAP_OPENGV
 #include <opengv/absolute_pose/methods.hpp>
 #include <opengv/absolute_pose/NoncentralAbsoluteAdapter.hpp>
+#include <opengv/absolute_pose/NoncentralAbsoluteMultiAdapter.hpp>
 #include <opengv/sac/Ransac.hpp>
+#include <opengv/sac/MultiRansac.hpp>
 #include <opengv/sac_problems/absolute_pose/AbsolutePoseSacProblem.hpp>
+#include <opengv/sac_problems/absolute_pose/MultiNoncentralAbsolutePoseSacProblem.hpp>
 #endif
 
 namespace rtabmap
@@ -61,6 +64,7 @@ Transform estimateMotion3DTo2D(
 			double reprojError,
 			int flagsPnP,
 			int refineIterations,
+			int varianceMedianRatio,
 			float maxVariance,
 			const Transform & guess,
 			const std::map<int, cv::Point3f> & words3B,
@@ -70,6 +74,7 @@ Transform estimateMotion3DTo2D(
 {
 	UASSERT(cameraModel.isValidForProjection());
 	UASSERT(!guess.isNull());
+	UASSERT(varianceMedianRatio>1);
 	Transform transform;
 	std::vector<int> matches, inliers;
 
@@ -191,11 +196,11 @@ Transform estimateMotion3DTo2D(
 
 				std::sort(errorSqrdDists.begin(), errorSqrdDists.end());
 				//divide by 4 instead of 2 to ignore very very far features (stereo)
-				double median_error_sqr_lin = 2.1981 * (double)errorSqrdDists[errorSqrdDists.size () >> 2];
+				double median_error_sqr_lin = 2.1981 * (double)errorSqrdDists[errorSqrdDists.size () / varianceMedianRatio];
 				UASSERT(uIsFinite(median_error_sqr_lin));
 				(*covariance)(cv::Range(0,3), cv::Range(0,3)) *= median_error_sqr_lin;
 				std::sort(errorSqrdAngles.begin(), errorSqrdAngles.end());
-				double median_error_sqr_ang = 2.1981 * (double)errorSqrdAngles[errorSqrdAngles.size () >> 2];
+				double median_error_sqr_ang = 2.1981 * (double)errorSqrdAngles[errorSqrdAngles.size () / varianceMedianRatio];
 				UASSERT(uIsFinite(median_error_sqr_ang));
 				(*covariance)(cv::Range(3,6), cv::Range(3,6)) *= median_error_sqr_ang;
 
@@ -242,11 +247,13 @@ Transform estimateMotion3DTo2D(
 			const std::map<int, cv::Point3f> & words3A,
 			const std::map<int, cv::KeyPoint> & words2B,
 			const std::vector<CameraModel> & cameraModels,
+			unsigned int samplingPolicy,
 			int minInliers,
 			int iterations,
 			double reprojError,
 			int flagsPnP,
 			int refineIterations,
+			int varianceMedianRatio,
 			float maxVariance,
 			const Transform & guess,
 			const std::map<int, cv::Point3f> & words3B,
@@ -267,6 +274,7 @@ Transform estimateMotion3DTo2D(
 	}
 
 	UASSERT(!guess.isNull());
+	UASSERT(varianceMedianRatio > 1);
 
 	std::vector<int> matches, inliers;
 
@@ -308,12 +316,50 @@ Transform estimateMotion3DTo2D(
 	cameraIndexes.resize(oi);
 	matches.resize(oi);
 
-	UDEBUG("words3A=%d words2B=%d matches=%d words3B=%d guess=%s reprojError=%f iterations=%d",
+	UDEBUG("words3A=%d words2B=%d matches=%d words3B=%d guess=%s reprojError=%f iterations=%d samplingPolicy=%ld",
 			(int)words3A.size(), (int)words2B.size(), (int)matches.size(), (int)words3B.size(),
-			guess.prettyPrint().c_str(), reprojError, iterations);
+			guess.prettyPrint().c_str(), reprojError, iterations, samplingPolicy);
 
 	if((int)matches.size() >= minInliers)
 	{
+		if(samplingPolicy == 0 || samplingPolicy == 2)
+		{
+			std::vector<int> cc;
+			cc.resize(cameraModels.size());
+			std::fill(cc.begin(), cc.end(),0);
+			for(size_t i=0; i<cameraIndexes.size(); ++i)
+			{
+				cc[cameraIndexes[i]] = cc[cameraIndexes[i]] + 1;
+			}
+
+			for (size_t i=0; i<cameraModels.size(); ++i)
+			{
+				UDEBUG("Matches in Camera %d: %d", i, cc[i]);
+				// opengv multi ransac needs at least 2 matches/camera
+				if (cc[i] < 2)
+				{
+					if(samplingPolicy==2) {
+						UERROR("Not enough matches in camera %ld to do "
+							  "homogenoeus random sampling, returning null "
+							  "transform. Consider using AUTO sampling "
+							  "policy to fallback to ANY policy.", i);
+						return Transform();
+					}
+					else { // samplingPolicy==0
+						samplingPolicy = 1;
+						UWARN("Not enough matches in camera %ld to do "
+							  "homogenoeus random sampling, falling back to ANY policy.", i);
+						break;
+					}
+				}
+			}
+		}
+
+		if(samplingPolicy == 0)
+		{
+			samplingPolicy = 2;
+		}
+
 		// convert cameras
 		opengv::translations_t camOffsets;
 		opengv::rotations_t camRotations;
@@ -326,55 +372,119 @@ Transform estimateMotion3DTo2D(
 			camRotations.push_back(cameraModels[i].localTransform().toEigen4d().block<3,3>(0, 0));
 		}
 
-		// convert 3d points
-		opengv::points_t points;
-		// convert 2d-3d correspondences into bearing vectors
-		opengv::bearingVectors_t bearingVectors;
-		opengv::absolute_pose::NoncentralAbsoluteAdapter::camCorrespondences_t camCorrespondences;
-		for(size_t i=0; i<objectPoints.size(); ++i)
+		Transform pnp;
+		if(samplingPolicy == 2) // Homogenoeus random sampling
 		{
-			int cameraIndex = cameraIndexes[i];
-			points.push_back(opengv::point_t(objectPoints[i].x,objectPoints[i].y,objectPoints[i].z));
-			cv::Vec3f pt;
-			cameraModels[cameraIndex].project(imagePoints[i].x, imagePoints[i].y, 1, pt[0], pt[1], pt[2]);
-			pt = cv::normalize(pt);
-			bearingVectors.push_back(opengv::bearingVector_t(pt[0], pt[1], pt[2]));
-			camCorrespondences.push_back(cameraIndex);
+			// convert 3d points
+			std::vector<std::shared_ptr<opengv::points_t>> multiPoints;
+			multiPoints.resize(cameraModels.size());
+			// convert 2d-3d correspondences into bearing vectors
+			std::vector<std::shared_ptr<opengv::bearingVectors_t>> multiBearingVectors;
+			multiBearingVectors.resize(cameraModels.size());
+			for(size_t i=0; i<cameraModels.size();++i)
+			{
+				multiPoints[i] = std::make_shared<opengv::points_t>();
+				multiBearingVectors[i] = std::make_shared<opengv::bearingVectors_t>();
+			}
+
+			for(size_t i=0; i<objectPoints.size(); ++i)
+			{
+				int cameraIndex = cameraIndexes[i];
+				multiPoints[cameraIndex]->push_back(opengv::point_t(objectPoints[i].x,objectPoints[i].y,objectPoints[i].z));
+				cv::Vec3f pt;
+				cameraModels[cameraIndex].project(imagePoints[i].x, imagePoints[i].y, 1, pt[0], pt[1], pt[2]);
+				pt = cv::normalize(pt);
+				multiBearingVectors[cameraIndex]->push_back(opengv::bearingVector_t(pt[0], pt[1], pt[2]));
+			}
+
+			//create a non-central absolute multi adapter
+			opengv::absolute_pose::NoncentralAbsoluteMultiAdapter adapter(
+					multiBearingVectors,
+					multiPoints,
+					camOffsets,
+					camRotations );
+
+			adapter.setR(guess.toEigen4d().block<3,3>(0, 0));
+			adapter.sett(opengv::translation_t(guess.x(), guess.y(), guess.z()));
+
+			//Create a MultiNoncentralAbsolutePoseSacProblem and MultiRansac
+			//The method is set to GP3P
+			opengv::sac::MultiRansac<opengv::sac_problems::absolute_pose::MultiNoncentralAbsolutePoseSacProblem> ransac;
+			std::shared_ptr<opengv::sac_problems::absolute_pose::MultiNoncentralAbsolutePoseSacProblem> absposeproblem_ptr(
+					new opengv::sac_problems::absolute_pose::MultiNoncentralAbsolutePoseSacProblem(adapter));
+
+			ransac.sac_model_ = absposeproblem_ptr;
+			ransac.threshold_ = 1.0 - cos(atan(reprojError/cameraModels[0].fx()));
+			ransac.max_iterations_ = iterations;
+			UDEBUG("Ransac params: threshold = %f (reprojError=%f fx=%f), max iterations=%d", ransac.threshold_, reprojError, cameraModels[0].fx(), ransac.max_iterations_);
+
+			//Run the experiment
+			ransac.computeModel();
+
+			pnp = Transform::fromEigen3d(ransac.model_coefficients_);
+
+			UDEBUG("Ransac result: %s", pnp.prettyPrint().c_str());
+			UDEBUG("Ransac iterations done: %d", ransac.iterations_);
+			for (size_t i=0; i < cameraModels.size(); ++i)
+			{
+				inliers.insert(inliers.end(), ransac.inliers_[i].begin(), ransac.inliers_[i].end());
+			}
+		}
+		else
+		{
+			// convert 3d points
+			opengv::points_t points;
+
+			// convert 2d-3d correspondences into bearing vectors
+			opengv::bearingVectors_t bearingVectors;
+			opengv::absolute_pose::NoncentralAbsoluteAdapter::camCorrespondences_t camCorrespondences;
+
+			for(size_t i=0; i<objectPoints.size(); ++i)
+			{
+				int cameraIndex = cameraIndexes[i];
+				points.push_back(opengv::point_t(objectPoints[i].x,objectPoints[i].y,objectPoints[i].z));
+				cv::Vec3f pt;
+				cameraModels[cameraIndex].project(imagePoints[i].x, imagePoints[i].y, 1, pt[0], pt[1], pt[2]);
+				pt = cv::normalize(pt);
+				bearingVectors.push_back(opengv::bearingVector_t(pt[0], pt[1], pt[2]));
+				camCorrespondences.push_back(cameraIndex);
+			}
+
+			//create a non-central absolute adapter
+			opengv::absolute_pose::NoncentralAbsoluteAdapter adapter(
+					bearingVectors,
+					camCorrespondences,
+					points,
+					camOffsets,
+					camRotations );
+
+			adapter.setR(guess.toEigen4d().block<3,3>(0, 0));
+			adapter.sett(opengv::translation_t(guess.x(), guess.y(), guess.z()));
+
+			//Create a AbsolutePoseSacProblem and Ransac
+			//The method is set to GP3P
+			opengv::sac::Ransac<opengv::sac_problems::absolute_pose::AbsolutePoseSacProblem> ransac;
+			std::shared_ptr<opengv::sac_problems::absolute_pose::AbsolutePoseSacProblem> absposeproblem_ptr(
+					new opengv::sac_problems::absolute_pose::AbsolutePoseSacProblem(adapter, opengv::sac_problems::absolute_pose::AbsolutePoseSacProblem::GP3P));
+
+			ransac.sac_model_ = absposeproblem_ptr;
+			ransac.threshold_ = 1.0 - cos(atan(reprojError/cameraModels[0].fx()));
+			ransac.max_iterations_ = iterations;
+			UDEBUG("Ransac params: threshold = %f (reprojError=%f fx=%f), max iterations=%d", ransac.threshold_, reprojError, cameraModels[0].fx(), ransac.max_iterations_);
+
+			//Run the experiment
+			ransac.computeModel();
+
+			pnp = Transform::fromEigen3d(ransac.model_coefficients_);
+
+			UDEBUG("Ransac result: %s", pnp.prettyPrint().c_str());
+			UDEBUG("Ransac iterations done: %d", ransac.iterations_);
+			inliers = ransac.inliers_;
 		}
 
-		//create a non-central absolute adapter
-		opengv::absolute_pose::NoncentralAbsoluteAdapter adapter(
-				bearingVectors,
-				camCorrespondences,
-				points,
-				camOffsets,
-				camRotations );
-
-		adapter.setR(guess.toEigen4d().block<3,3>(0, 0));
-		adapter.sett(opengv::translation_t(guess.x(), guess.y(), guess.z()));
-
-		//Create a AbsolutePoseSacProblem and Ransac
-		//The method is set to GP3P
-		opengv::sac::Ransac<opengv::sac_problems::absolute_pose::AbsolutePoseSacProblem> ransac;
-		std::shared_ptr<opengv::sac_problems::absolute_pose::AbsolutePoseSacProblem> absposeproblem_ptr(
-				new opengv::sac_problems::absolute_pose::AbsolutePoseSacProblem(adapter, opengv::sac_problems::absolute_pose::AbsolutePoseSacProblem::GP3P));
-
-		ransac.sac_model_ = absposeproblem_ptr;
-		ransac.threshold_ = 1.0 - cos(atan(reprojError/cameraModels[0].fx()));
-		ransac.max_iterations_ = iterations;
-		UDEBUG("Ransac params: threshold = %f (reprojError=%f fx=%f), max iterations=%d", ransac.threshold_, reprojError, cameraModels[0].fx(), ransac.max_iterations_);
-
-		//Run the experiment
-		ransac.computeModel();
-
-		Transform pnp = Transform::fromEigen3d(ransac.model_coefficients_);
-
-		UDEBUG("Ransac result: %s", pnp.prettyPrint().c_str());
-		UDEBUG("Ransac iterations done: %d", ransac.iterations_);
-		inliers = ransac.inliers_;
 		UDEBUG("Ransac inliers: %ld", inliers.size());
 
-		if((int)inliers.size() >= minInliers)
+		if((int)inliers.size() >= minInliers && !pnp.isNull())
 		{
 			transform = pnp;
 
@@ -424,11 +534,11 @@ Transform estimateMotion3DTo2D(
 
 				std::sort(errorSqrdDists.begin(), errorSqrdDists.end());
 				//divide by 4 instead of 2 to ignore very very far features (stereo)
-				double median_error_sqr_lin = 2.1981 * (double)errorSqrdDists[errorSqrdDists.size () >> 2];
+				double median_error_sqr_lin = 2.1981 * (double)errorSqrdDists[errorSqrdDists.size () / varianceMedianRatio];
 				UASSERT(uIsFinite(median_error_sqr_lin));
 				(*covariance)(cv::Range(0,3), cv::Range(0,3)) *= median_error_sqr_lin;
 				std::sort(errorSqrdAngles.begin(), errorSqrdAngles.end());
-				double median_error_sqr_ang = 2.1981 * (double)errorSqrdAngles[errorSqrdAngles.size () >> 2];
+				double median_error_sqr_ang = 2.1981 * (double)errorSqrdAngles[errorSqrdAngles.size () / varianceMedianRatio];
 				UASSERT(uIsFinite(median_error_sqr_ang));
 				(*covariance)(cv::Range(3,6), cv::Range(3,6)) *= median_error_sqr_ang;
 

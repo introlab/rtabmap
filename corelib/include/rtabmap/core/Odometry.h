@@ -28,7 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef ODOMETRY_H_
 #define ODOMETRY_H_
 
-#include <rtabmap/core/RtabmapExp.h>
+#include <rtabmap/core/rtabmap_core_export.h>
 
 #include <rtabmap/core/Transform.h>
 #include <rtabmap/core/SensorData.h>
@@ -39,7 +39,7 @@ namespace rtabmap {
 class OdometryInfo;
 class ParticleFilter;
 
-class RTABMAP_EXP Odometry
+class RTABMAP_CORE_EXPORT Odometry
 {
 public:
 	enum Type {
@@ -75,7 +75,8 @@ public:
 	//getters
 	const Transform & getPose() const {return _pose;}
 	bool isInfoDataFilled() const {return _fillInfoData;}
-	RTABMAP_DEPRECATED(const Transform & previousVelocityTransform() const, "Use getVelocityGuess() instead.");
+	// Use getVelocityGuess() instead.
+	RTABMAP_DEPRECATED const Transform & previousVelocityTransform() const;
 	const Transform & getVelocityGuess() const {return velocityGuess_;}
 	double previousStamp() const {return previousStamp_;}
 	unsigned int framesProcessed() const {return framesProcessed_;}

@@ -27,8 +27,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #pragma once
 
-#include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
-
 #include "rtabmap/core/Camera.h"
 #include "rtabmap/utilite/UTimer.h"
 #include <list>
@@ -38,7 +36,7 @@ class UDirectory;
 namespace rtabmap
 {
 
-class RTABMAP_EXP CameraImages :
+class RTABMAP_CORE_EXPORT CameraImages :
 	public Camera
 {
 public:

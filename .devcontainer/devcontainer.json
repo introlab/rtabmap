@@ -1,0 +1,8 @@
+{
+    "image": "introlab3it/rtabmap:20.04",
+    "customizations": {
+        "vscode": {
+          "extensions": ["ms-vscode.cpptools-themes", "ms-vscode.cmake-tools", "vscjava.vscode-java-pack"]
+        }
+      }
+}

@@ -168,6 +168,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent, bool sh
 	_processingOdometry(false),
 	_oneSecondTimer(0),
 	_elapsedTime(0),
+	_logEventTime(0),
 	_posteriorCurve(0),
 	_likelihoodCurve(0),
 	_rawLikelihoodCurve(0),
@@ -266,10 +267,10 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent, bool sh
 	// Timer
 	_oneSecondTimer = new QTimer(this);
 	_oneSecondTimer->setInterval(1000);
-	_elapsedTime = new QTime();
+	_elapsedTime = new QElapsedTimer();
 	_ui->label_elapsedTime->setText("00:00:00");
 	connect(_oneSecondTimer, SIGNAL(timeout()), this, SLOT(updateElapsedTime()));
-	_logEventTime = new QTime();
+	_logEventTime = new QElapsedTimer();
 	_logEventTime->start();
 
 	//Graphics scenes
@@ -597,10 +598,15 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent, bool sh
 	_ui->statsToolBox->updateStat("Planning/Length/m", false);
 
 	_ui->statsToolBox->updateStat("Camera/Time capturing/ms", false);
+	_ui->statsToolBox->updateStat("Camera/Time undistort depth/ms", false);
+	_ui->statsToolBox->updateStat("Camera/Time bilateral filtering/ms", false);
 	_ui->statsToolBox->updateStat("Camera/Time decimation/ms", false);
 	_ui->statsToolBox->updateStat("Camera/Time disparity/ms", false);
 	_ui->statsToolBox->updateStat("Camera/Time mirroring/ms", false);
+	_ui->statsToolBox->updateStat("Camera/Time histogram equalization/ms", false);
+	_ui->statsToolBox->updateStat("Camera/Time exposure compensation/ms", false);
 	_ui->statsToolBox->updateStat("Camera/Time scan from depth/ms", false);
+	_ui->statsToolBox->updateStat("Camera/Time total/ms", false);
 
 	_ui->statsToolBox->updateStat("Odometry/ID/", false);
 	_ui->statsToolBox->updateStat("Odometry/Features/", false);
@@ -694,6 +700,7 @@ MainWindow::~MainWindow()
 	this->stopDetection();
 	delete _ui;
 	delete _elapsedTime;
+	delete _logEventTime;
 #ifdef RTABMAP_OCTOMAP
 	delete _octomap;
 #endif
@@ -986,15 +993,16 @@ void MainWindow::processCameraInfo(const rtabmap::SensorCaptureInfo & info)
 	}
 	if(_preferencesDialog->isCacheSavedInFigures() || _ui->statsToolBox->isVisible())
 	{
-		_ui->statsToolBox->updateStat("Camera/Time total/ms", _preferencesDialog->isTimeUsedInFigures()?info.stamp-_firstStamp:(float)info.id, info.timeTotal*1000.0f, _preferencesDialog->isCacheSavedInFigures());
 		_ui->statsToolBox->updateStat("Camera/Time capturing/ms", _preferencesDialog->isTimeUsedInFigures()?info.stamp-_firstStamp:(float)info.id, info.timeCapture*1000.0f, _preferencesDialog->isCacheSavedInFigures());
 		_ui->statsToolBox->updateStat("Camera/Time undistort depth/ms", _preferencesDialog->isTimeUsedInFigures()?info.stamp-_firstStamp:(float)info.id, info.timeUndistortDepth*1000.0f, _preferencesDialog->isCacheSavedInFigures());
 		_ui->statsToolBox->updateStat("Camera/Time bilateral filtering/ms", _preferencesDialog->isTimeUsedInFigures()?info.stamp-_firstStamp:(float)info.id, info.timeBilateralFiltering*1000.0f, _preferencesDialog->isCacheSavedInFigures());
 		_ui->statsToolBox->updateStat("Camera/Time decimation/ms", _preferencesDialog->isTimeUsedInFigures()?info.stamp-_firstStamp:(float)info.id, info.timeImageDecimation*1000.0f, _preferencesDialog->isCacheSavedInFigures());
 		_ui->statsToolBox->updateStat("Camera/Time disparity/ms", _preferencesDialog->isTimeUsedInFigures()?info.stamp-_firstStamp:(float)info.id, info.timeDisparity*1000.0f, _preferencesDialog->isCacheSavedInFigures());
 		_ui->statsToolBox->updateStat("Camera/Time mirroring/ms", _preferencesDialog->isTimeUsedInFigures()?info.stamp-_firstStamp:(float)info.id, info.timeMirroring*1000.0f, _preferencesDialog->isCacheSavedInFigures());
+		_ui->statsToolBox->updateStat("Camera/Time histogram equalization/ms", _preferencesDialog->isTimeUsedInFigures()?info.stamp-_firstStamp:(float)info.id, info.timeHistogramEqualization*1000.0f, _preferencesDialog->isCacheSavedInFigures());
 		_ui->statsToolBox->updateStat("Camera/Time exposure compensation/ms", _preferencesDialog->isTimeUsedInFigures()?info.stamp-_firstStamp:(float)info.id, info.timeStereoExposureCompensation*1000.0f, _preferencesDialog->isCacheSavedInFigures());
 		_ui->statsToolBox->updateStat("Camera/Time scan from depth/ms", _preferencesDialog->isTimeUsedInFigures()?info.stamp-_firstStamp:(float)info.id, info.timeScanFromDepth*1000.0f, _preferencesDialog->isCacheSavedInFigures());
+		_ui->statsToolBox->updateStat("Camera/Time total/ms", _preferencesDialog->isTimeUsedInFigures()?info.stamp-_firstStamp:(float)info.id, info.timeTotal*1000.0f, _preferencesDialog->isCacheSavedInFigures());
 	}
 
 	Q_EMIT(cameraInfoProcessed());
@@ -1010,6 +1018,7 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 	UDEBUG("");
 	_processingOdometry = true;
 	UTimer time;
+	UTimer timeTotal;
 	// Process Data
 
 	// Set color code as tooltip
@@ -1705,6 +1714,11 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 					//draw lines
 					UASSERT(odom.info().refCorners.size() == odom.info().newCorners.size());
 					std::set<int> inliers(odom.info().cornerInliers.begin(), odom.info().cornerInliers.end());
+					int subImageWidth = 0;
+					if(data->cameraModels().size()>1 || data->stereoCameraModels().size()>1)
+					{
+						subImageWidth = data->cameraModels().size()?data->cameraModels()[0].imageWidth():data->stereoCameraModels()[0].left().imageWidth();
+					}
 					for(unsigned int i=0; i<odom.info().refCorners.size(); ++i)
 					{
 						if(_ui->imageView_odometry->isFeaturesShown() && inliers.find(i) != inliers.end())
@@ -1713,12 +1727,16 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 						}
 						if(_ui->imageView_odometry->isLinesShown())
 						{
-							_ui->imageView_odometry->addLine(
-									odom.info().newCorners[i].x,
-									odom.info().newCorners[i].y,
-									odom.info().refCorners[i].x,
-									odom.info().refCorners[i].y,
-									inliers.find(i) != inliers.end()?Qt::blue:Qt::yellow);
+							// just draw lines in same camera
+							if(subImageWidth==0 || int(odom.info().refCorners[i].x/subImageWidth) == int(odom.info().newCorners[i].x/subImageWidth))
+							{
+								_ui->imageView_odometry->addLine(
+										odom.info().newCorners[i].x,
+										odom.info().newCorners[i].y,
+										odom.info().refCorners[i].x,
+										odom.info().refCorners[i].y,
+										inliers.find(i) != inliers.end()?Qt::blue:Qt::yellow);
+							}
 						}
 					}
 				}
@@ -1881,7 +1899,7 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 			_ui->statsToolBox->updateStat("Odometry/Distance/m", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), odom.info().distanceTravelled, _preferencesDialog->isCacheSavedInFigures());
 		}
 
-		_ui->statsToolBox->updateStat("GUI/Refresh odom/ms", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), time.elapsed()*1000.0, _preferencesDialog->isCacheSavedInFigures());
+		_ui->statsToolBox->updateStat("GUI/Refresh odom/ms", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), timeTotal.elapsed()*1000.0, _preferencesDialog->isCacheSavedInFigures());
 		UDEBUG("Time updating Stats toolbox: %fs", time.ticks());
 	}
 	_processingOdometry = false;
@@ -1893,7 +1911,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 {
 	_processingStatistics = true;
 	ULOGGER_DEBUG("");
-	QTime time, totalTime;
+	QElapsedTimer time, totalTime;
 	time.start();
 	totalTime.start();
 	//Affichage des stats et images
@@ -2210,7 +2228,9 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 			UDEBUG("time= %d ms (update detection ui)", time.restart());
 
 			//update image views
-			if(!signature.sensorData().imageRaw().empty() || signature.getWords().size())
+			if(!signature.sensorData().imageRaw().empty() ||
+			   !loopSignature.sensorData().imageRaw().empty() ||
+			   signature.getWords().size())
 			{
 				cv::Mat refImage = signature.sensorData().imageRaw();
 				cv::Mat loopImage = loopSignature.sensorData().imageRaw();
@@ -2391,7 +2411,10 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 		//======================
 		// RGB-D Mapping stuff
 		//======================
-		_odometryCorrection = stat.mapCorrection();
+		if(!stat.mapCorrection().isNull())
+		{
+			_odometryCorrection = stat.mapCorrection();
+		}
 		// update clouds
 		if(stat.poses().size())
 		{
@@ -2615,18 +2638,24 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 			{
 				std::vector<int> missingIds;
 				bool ignoreNewData = smallMovement || fastMovement || signature.getWeight()<0;
-				for(std::map<int, Transform>::const_iterator iter=stat.poses().begin(); iter!=stat.poses().end(); ++iter)
+				std::set<int> ids = uKeysSet(stat.poses());
+				if(ids.empty())
 				{
-					if(!ignoreNewData || stat.refImageId() != iter->first)
+					// In appearance-only mode
+					ids = uKeysSet(stat.posterior());
+				}
+				for(std::set<int>::const_iterator iter=ids.lower_bound(1); iter!=ids.end(); ++iter)
+				{
+					if(!ignoreNewData || stat.refImageId() != *iter)
 					{
-						QMap<int, Signature>::iterator ster = _cachedSignatures.find(iter->first);
+						QMap<int, Signature>::iterator ster = _cachedSignatures.find(*iter);
 						if(ster == _cachedSignatures.end() ||
 							(ster.value().getWeight() >=0 && // ignore intermediate nodes
 							 ster.value().sensorData().imageCompressed().empty() &&
 							 ster.value().sensorData().depthOrRightCompressed().empty() &&
 							 ster.value().sensorData().laserScanCompressed().empty()))
 						{
-							missingIds.push_back(iter->first);
+							missingIds.push_back(*iter);
 						}
 					}
 				}
@@ -4962,7 +4991,12 @@ void MainWindow::drawKeypoints(const std::multimap<int, cv::KeyPoint> & refWords
 		{
 			_lastId = (*refWords.rbegin()).first;
 		}
-		_lastIds = QSet<int>::fromList(QList<int>::fromStdList(uKeysList(refWords)));
+		std::list<int> kpts = uKeysList(refWords);
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+		_lastIds = QSet<int>(kpts.begin(), kpts.end());
+#else
+		_lastIds = QSet<int>::fromList(QList<int>::fromStdList(kpts));
+#endif
 	}
 
 	// Draw lines between corresponding features...
@@ -5205,7 +5239,7 @@ QString MainWindow::captureScreen(bool cacheInRAM, bool png)
 {
 	QString name = (QDateTime::currentDateTime().toString("yyMMddhhmmsszzz") + (png?".png":".jpg"));
 	_ui->statusbar->clearMessage();
-	QPixmap figure = QPixmap::grabWidget(this);
+	QPixmap figure = this->grab();
 
 	QString targetDir = _preferencesDialog->getWorkingDirectory() + QDir::separator() + "ScreensCaptured";
 	QString msg;
@@ -5740,6 +5774,11 @@ void MainWindow::startDetection()
 	_camera->setMirroringEnabled(_preferencesDialog->isSourceMirroring());
 	_camera->setColorOnly(_preferencesDialog->isSourceRGBDColorOnly());
 	_camera->setImageDecimation(_preferencesDialog->getSourceImageDecimation());
+	_camera->setHistogramMethod(_preferencesDialog->getSourceHistogramMethod());
+	if(_preferencesDialog->isSourceFeatureDetection())
+	{
+		_camera->enableFeatureDetection(parameters);
+	}
 	_camera->setStereoToDepth(_preferencesDialog->isSourceStereoDepthGenerated());
 	_camera->setStereoExposureCompensation(_preferencesDialog->isSourceStereoExposureCompensation());
 	_camera->setScanParameters(
@@ -5830,27 +5869,20 @@ void MainWindow::startDetection()
 					_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcImages) &&
 				   !_preferencesDialog->getIMUPath().isEmpty())
 				{
-					if( odomStrategy != Odometry::kTypeOkvis &&
-						odomStrategy != Odometry::kTypeMSCKF &&
-						odomStrategy != Odometry::kTypeVINS &&
-						odomStrategy != Odometry::kTypeOpenVINS)
+					_imuThread = new IMUThread(_preferencesDialog->getIMURate(), _preferencesDialog->getIMULocalTransform());
+					if(_preferencesDialog->getIMUFilteringStrategy()>0)
+					{
+						_imuThread->enableIMUFiltering(_preferencesDialog->getIMUFilteringStrategy()-1, parameters, _preferencesDialog->getIMUFilteringBaseFrameConversion());
+					}
+					if(!_imuThread->init(_preferencesDialog->getIMUPath().toStdString()))
 					{
 						QMessageBox::warning(this, tr("Source IMU Path"),
-								tr("IMU path is set but odometry chosen doesn't support asynchronous IMU, ignoring IMU..."), QMessageBox::Ok);
-					}
-					else
-					{
-						_imuThread = new IMUThread(_preferencesDialog->getIMURate(), _preferencesDialog->getIMULocalTransform());
-						if(!_imuThread->init(_preferencesDialog->getIMUPath().toStdString()))
-						{
-							QMessageBox::warning(this, tr("Source IMU Path"),
-								tr("Initialization of IMU data has failed! Path=%1.").arg(_preferencesDialog->getIMUPath()), QMessageBox::Ok);
-							delete _camera;
-							_camera = 0;
-							delete _imuThread;
-							_imuThread = 0;
-							return;
-						}
+							tr("Initialization of IMU data has failed! Path=%1.").arg(_preferencesDialog->getIMUPath()), QMessageBox::Ok);
+						delete _camera;
+						_camera = 0;
+						delete _imuThread;
+						_imuThread = 0;
+						return;
 					}
 				}
 				Odometry * odom = Odometry::create(odomParameters);
@@ -7198,6 +7230,11 @@ void MainWindow::updateCacheFromDatabase(const QString & path)
 			{
 				signatures.insert(std::make_pair((*iter)->id(), *(*iter)));
 				delete *iter;
+			}
+			if(_currentPosesMap.empty() && _currentLinksMap.empty())
+			{
+				_currentPosesMap = driver->loadOptimizedPoses();
+				driver->getAllLinks(_currentLinksMap, true, true);
 			}
 			RtabmapEvent3DMap event(signatures, _currentPosesMap, _currentLinksMap);
 			processRtabmapEvent3DMap(event);

@@ -25,10 +25,10 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef RTABMAP_EXPORTCLOUDSDIALOG_H_
-#define RTABMAP_EXPORTCLOUDSDIALOG_H_
+#ifndef RTABMAP_CORE_EXPORTCLOUDSDIALOG_H_
+#define RTABMAP_CORE_EXPORTCLOUDSDIALOG_H_
 
-#include "rtabmap/gui/RtabmapGuiExp.h" // DLL export/import defines
+#include "rtabmap/gui/rtabmap_gui_export.h" // DLL export/import defines
 
 #include <QDialog>
 #include <QMap>
@@ -51,7 +51,7 @@ class ProgressDialog;
 class GainCompensator;
 class DBDriver;
 
-class RTABMAPGUI_EXP ExportCloudsDialog : public QDialog
+class RTABMAP_GUI_EXPORT ExportCloudsDialog : public QDialog
 {
 	Q_OBJECT
 
@@ -153,6 +153,10 @@ private:
 	GainCompensator * _compensator;
 	const DBDriver * _dbDriver;
 	bool _scansHaveRGB;
+
+    bool saveOBJFile(const QString &path, pcl::TextureMesh::Ptr &mesh) const;
+    bool saveOBJFile(const QString &path, pcl::PolygonMesh &mesh) const;
+
 };
 
 }

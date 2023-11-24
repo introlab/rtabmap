@@ -28,7 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef RTABMAP_EDITCONSTRAINTDIALOG_H_
 #define RTABMAP_EDITCONSTRAINTDIALOG_H_
 
-#include "rtabmap/gui/RtabmapGuiExp.h" // DLL export/import defines
+#include "rtabmap/gui/rtabmap_gui_export.h" // DLL export/import defines
 
 #include <QDialog>
 #include <rtabmap/core/Transform.h>
@@ -37,7 +37,7 @@ class Ui_EditConstraintDialog;
 
 namespace rtabmap {
 
-class RTABMAPGUI_EXP EditConstraintDialog : public QDialog
+class RTABMAP_GUI_EXPORT EditConstraintDialog : public QDialog
 {
 	Q_OBJECT
 

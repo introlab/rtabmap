@@ -28,7 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef RTABMAP_H_
 #define RTABMAP_H_
 
-#include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
+#include "rtabmap/core/rtabmap_core_export.h" // DLL export/import defines
 
 #include "rtabmap/core/Parameters.h"
 #include "rtabmap/core/SensorData.h"
@@ -51,7 +51,7 @@ class Signature;
 class Optimizer;
 class PythonInterface;
 
-class RTABMAP_EXP Rtabmap
+class RTABMAP_CORE_EXPORT Rtabmap
 {
 public:
 	enum VhStrategy {kVhNone, kVhEpipolar, kVhUndef};
@@ -180,12 +180,13 @@ public:
 	void deleteLastLocation();
 	void setOptimizedPoses(const std::map<int, Transform> & poses, const std::multimap<int, Link> & constraints);
 	Signature getSignatureCopy(int id, bool images, bool scan, bool userData, bool occupancyGrid, bool withWords, bool withGlobalDescriptors) const;
-	RTABMAP_DEPRECATED(
+	// Use getGraph() instead with withImages=true, withScan=true, withUserData=true and withGrid=true.
+	RTABMAP_DEPRECATED
 		void get3DMap(std::map<int, Signature> & signatures,
 				std::map<int, Transform> & poses,
 				std::multimap<int, Link> & constraints,
 				bool optimized,
-				bool global) const, "Use getGraph() instead with withImages=true, withScan=true, withUserData=true and withGrid=true.");
+				bool global) const;
 	void getGraph(std::map<int, Transform> & poses,
 			std::multimap<int, Link> & constraints,
 			bool optimized,
@@ -325,6 +326,8 @@ private:
 	bool _loopCovLimited;
 	bool _loopGPS;
 	int _maxOdomCacheSize;
+	bool _localizationSmoothing;
+	double _localizationPriorInf;
 	bool _createGlobalScanMap;
 	float _markerPriorsLinearVariance;
 	float _markerPriorsAngularVariance;
@@ -361,13 +364,13 @@ private:
 	Transform _mapCorrectionBackup; // used in localization mode when odom is lost
 	Transform _lastLocalizationPose; // Corrected odometry pose. In mapping mode, this corresponds to last pose return by getLocalOptimizedPoses().
 	int _lastLocalizationNodeId; // for localization mode
+	cv::Mat _localizationCovariance;
 	std::map<int, std::pair<cv::Point3d, Transform> > _gpsGeocentricCache;
 	bool _currentSessionHasGPS;
 	LaserScan _globalScanMap;
 	std::map<int, Transform> _globalScanMapPoses;
 	std::map<int, Transform> _odomCachePoses;       // used in localization mode to reject loop closures
 	std::multimap<int, Link> _odomCacheConstraints; // used in localization mode to reject loop closures
-	std::vector<float> _odomCorrectionAcc;
 	std::map<int, Transform> _markerPriors;
 
 	std::set<int> _nodesToRepublish;

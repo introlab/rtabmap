@@ -12,7 +12,6 @@
 #define __MULTIBOXCOMBO_H__
 
 #include <iostream>
-using namespace std;
 
 #include <QComboBox>
 #include <QListWidget>

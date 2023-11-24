@@ -30,6 +30,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/utilite/ULogger.h"
 
 #include <vtkObject.h>
+#include <vtkVersionMacros.h>
+
+#if VTK_MAJOR_VERSION > 9 || (VTK_MAJOR_VERSION==9 && VTK_MINOR_VERSION >= 1)
+#include <QVTKRenderWidget.h>
+#endif
 
 int main(int argc, char * argv[])
 {
@@ -40,8 +45,9 @@ int main(int argc, char * argv[])
 	CoInitialize(nullptr);
 #endif
 
-#if VTK_MAJOR_VERSION >= 8
-	vtkObject::GlobalWarningDisplayOff();
+#if VTK_MAJOR_VERSION > 9 || (VTK_MAJOR_VERSION==9 && VTK_MINOR_VERSION >= 1)
+    // needed to ensure appropriate OpenGL context is created for VTK rendering.
+    QSurfaceFormat::setDefaultFormat(QVTKRenderWidget::defaultFormat());
 #endif
 
 	QApplication * app = new QApplication(argc, argv);

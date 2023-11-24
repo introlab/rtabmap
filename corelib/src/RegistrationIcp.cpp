@@ -64,6 +64,7 @@ RegistrationIcp::RegistrationIcp(const ParametersMap & parameters, Registration 
 	_rangeMin(Parameters::defaultIcpRangeMin()),
 	_rangeMax(Parameters::defaultIcpRangeMax()),
 	_maxCorrespondenceDistance(Parameters::defaultIcpMaxCorrespondenceDistance()),
+	_reciprocalCorrespondences(Parameters::defaultIcpReciprocalCorrespondences()),
 	_maxIterations(Parameters::defaultIcpIterations()),
 	_epsilon(Parameters::defaultIcpEpsilon()),
 	_correspondenceRatio(Parameters::defaultIcpCorrespondenceRatio()),
@@ -110,6 +111,7 @@ void RegistrationIcp::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kIcpRangeMin(), _rangeMin);
 	Parameters::parse(parameters, Parameters::kIcpRangeMax(), _rangeMax);
 	Parameters::parse(parameters, Parameters::kIcpMaxCorrespondenceDistance(), _maxCorrespondenceDistance);
+	Parameters::parse(parameters, Parameters::kIcpReciprocalCorrespondences(), _reciprocalCorrespondences);
 	Parameters::parse(parameters, Parameters::kIcpIterations(), _maxIterations);
 	Parameters::parse(parameters, Parameters::kIcpEpsilon(), _epsilon);
 	Parameters::parse(parameters, Parameters::kIcpCorrespondenceRatio(), _correspondenceRatio);
@@ -652,7 +654,8 @@ Transform RegistrationIcp::computeTransformationImpl(
 							_maxCorrespondenceDistance,
 							_maxRotation,
 							variance,
-							correspondences);
+							correspondences,
+							_reciprocalCorrespondences);
 				}
 			}
 			////////////////////
@@ -843,7 +846,8 @@ Transform RegistrationIcp::computeTransformationImpl(
 							toCloud,
 							_maxCorrespondenceDistance,
 							variance,
-							correspondences);
+							correspondences,
+							_reciprocalCorrespondences);
 				}
 			} // END Registration PointToPLane to PointToPoint
 			UDEBUG("ICP (iterations=%d) time = %f s", _maxIterations, timer.ticks());

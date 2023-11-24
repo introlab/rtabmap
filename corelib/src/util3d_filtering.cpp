@@ -1002,7 +1002,7 @@ pcl::PointCloud<pcl::PointXYZI>::Ptr removeNaNFromPointCloud(const pcl::PointClo
 	return removeNaNFromPointCloudImpl<pcl::PointXYZI>(cloud);
 }
 
-pcl::PCLPointCloud2::Ptr RTABMAP_EXP removeNaNFromPointCloud(const pcl::PCLPointCloud2::Ptr & cloud)
+pcl::PCLPointCloud2::Ptr removeNaNFromPointCloud(const pcl::PCLPointCloud2::Ptr & cloud)
 {
 	pcl::PCLPointCloud2::Ptr output(new pcl::PCLPointCloud2);
 	output->fields = cloud->fields;

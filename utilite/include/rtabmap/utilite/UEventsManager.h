@@ -20,7 +20,7 @@
 #ifndef UEVENTSMANAGER_H
 #define UEVENTSMANAGER_H
 
-#include "rtabmap/utilite/UtiLiteExp.h" // DLL export/import defines
+#include "rtabmap/utilite/utilite_export.h" // DLL export/import defines
 
 #include "rtabmap/utilite/UEventsHandler.h"
 #include "rtabmap/utilite/UThreadNode.h"
@@ -75,7 +75,7 @@ private:
  * @see addHandler()
  * @see removeHandler()
  */
-class UTILITE_EXP UEventsManager : public UThread{
+class UTILITE_EXPORT UEventsManager : public UThread{
 
 public:
 

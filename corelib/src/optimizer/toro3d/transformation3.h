@@ -39,7 +39,8 @@
 
 #include <assert.h>
 #include <cmath>
-#include "dmatrix.hh"
+
+#include "dmatrix.h"
 
 namespace AISNavigation {
 

@@ -28,7 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef DBDRIVERSQLITE3_H_
 #define DBDRIVERSQLITE3_H_
 
-#include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
+#include "rtabmap/core/rtabmap_core_export.h" // DLL export/import defines
 #include "rtabmap/core/DBDriver.h"
 #include <opencv2/features2d/features2d.hpp>
 
@@ -37,7 +37,7 @@ typedef struct sqlite3 sqlite3;
 
 namespace rtabmap {
 
-class RTABMAP_EXP DBDriverSqlite3: public DBDriver {
+class RTABMAP_CORE_EXPORT DBDriverSqlite3: public DBDriver {
 public:
 	DBDriverSqlite3(const ParametersMap & parameters = ParametersMap());
 	virtual ~DBDriverSqlite3();

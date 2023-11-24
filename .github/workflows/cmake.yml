@@ -3,7 +3,7 @@ name: CMake
 on:
   push:
     branches: 
-      - '**'
+      - master
   pull_request:
     branches: 
       - '**'
@@ -17,14 +17,14 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-22.04, ubuntu-20.04, ubuntu-18.04]
+        os: [ubuntu-22.04, ubuntu-20.04]
 
     steps:    
     - name: Install dependencies
       run: |
         DEBIAN_FRONTEND=noninteractive
         sudo apt-get update
-        sudo apt-get -y install libopencv-dev libpcl-dev git cmake software-properties-common
+        sudo apt-get -y install libopencv-dev libpcl-dev git cmake software-properties-common libyaml-cpp-dev
 
     - uses: actions/checkout@v2
 

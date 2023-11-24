@@ -148,6 +148,7 @@ int main (int argc, char * argv[])
 	cam->setMirroringEnabled(dialog.isSourceMirroring());
 	cam->setColorOnly(dialog.isSourceRGBDColorOnly());
 	cam->setImageDecimation(dialog.getSourceImageDecimation());
+	cam->setHistogramMethod(dialog.getSourceHistogramMethod());
 	cam->setStereoToDepth(dialog.isSourceStereoDepthGenerated());
 	cam->setStereoExposureCompensation(dialog.isSourceStereoExposureCompensation());
 	cam->setScanParameters(

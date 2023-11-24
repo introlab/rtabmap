@@ -28,7 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef SENSORDATA_H_
 #define SENSORDATA_H_
 
-#include <rtabmap/core/RtabmapExp.h>
+#include <rtabmap/core/rtabmap_core_export.h>
 #include <rtabmap/core/Transform.h>
 #include <rtabmap/core/CameraModel.h>
 #include <rtabmap/core/StereoCameraModel.h>
@@ -48,7 +48,7 @@ namespace rtabmap
 /**
  * An id is automatically generated if id=0.
  */
-class RTABMAP_EXP SensorData
+class RTABMAP_CORE_EXPORT SensorData
 {
 public:
 	// empty constructor
@@ -210,10 +210,14 @@ public:
 	cv::Mat depthRaw() const {return _depthOrRightRaw.type()!=CV_8UC1?_depthOrRightRaw:cv::Mat();}
 	cv::Mat rightRaw() const {return _depthOrRightRaw.type()==CV_8UC1?_depthOrRightRaw:cv::Mat();}
 
-	RTABMAP_DEPRECATED(void setImageRaw(const cv::Mat & image), "Use setRGBDImage() or setStereoImage() with clearNotUpdated=false or removeRawData() instead. To be backward compatible, this function doesn't clear compressed data.");
-	RTABMAP_DEPRECATED(void setDepthOrRightRaw(const cv::Mat & image), "Use setRGBDImage() or setStereoImage() with clearNotUpdated=false or removeRawData() instead. To be backward compatible, this function doesn't clear compressed data.");
-	RTABMAP_DEPRECATED(void setLaserScanRaw(const LaserScan & scan), "Use setLaserScan() with clearNotUpdated=false or removeRawData() instead. To be backward compatible, this function doesn't clear compressed data.");
-	RTABMAP_DEPRECATED(void setUserDataRaw(const cv::Mat & data), "Use setUserData() or removeRawData() instead.");
+	// Use setRGBDImage() or setStereoImage() with clearNotUpdated=false or removeRawData() instead. To be backward compatible, this function doesn't clear compressed data.
+	RTABMAP_DEPRECATED void setImageRaw(const cv::Mat & image);
+	// Use setRGBDImage() or setStereoImage() with clearNotUpdated=false or removeRawData() instead. To be backward compatible, this function doesn't clear compressed data.
+	RTABMAP_DEPRECATED void setDepthOrRightRaw(const cv::Mat & image);
+	// Use setLaserScan() with clearNotUpdated=false or removeRawData() instead. To be backward compatible, this function doesn't clear compressed data.
+	RTABMAP_DEPRECATED void setLaserScanRaw(const LaserScan & scan);
+	// Use setUserData() or removeRawData() instead.
+	RTABMAP_DEPRECATED void setUserDataRaw(const cv::Mat & data);
 
 	void uncompressData();
 	void uncompressData(

@@ -1,5 +1,5 @@
 # Top-Level CmakeLists.txt
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.10)
 PROJECT( RTABMap )
 SET(PROJECT_PREFIX rtabmap)
 
@@ -19,8 +19,8 @@ SET(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake_modules")
 # VERSION
 #######################
 SET(RTABMAP_MAJOR_VERSION 0)
-SET(RTABMAP_MINOR_VERSION 20)
-SET(RTABMAP_PATCH_VERSION 22)
+SET(RTABMAP_MINOR_VERSION 21)
+SET(RTABMAP_PATCH_VERSION 2)
 SET(RTABMAP_VERSION
   ${RTABMAP_MAJOR_VERSION}.${RTABMAP_MINOR_VERSION}.${RTABMAP_PATCH_VERSION})
   
@@ -69,7 +69,11 @@ if(POLICY CMP0020)
     cmake_policy(SET CMP0020 NEW)
 endif()
 if(POLICY CMP0043)
-    cmake_policy(SET CMP0043 OLD)
+    cmake_policy(SET CMP0043 NEW)
+endif()
+# To suppress g2o related opengl warning
+if(POLICY CMP0072)
+    cmake_policy(SET CMP0072 NEW)
 endif()
 
 IF(MINGW)
@@ -106,6 +110,7 @@ if(MSVC)
       SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /MP${N}")
     endif()
   endif()
+  add_compile_options("/bigobj")
 endif()
 
 # [Eclipse] Automatic Discovery of Include directories (Optional, but handy) 
@@ -145,7 +150,7 @@ endif()
 set(INSTALL_CMAKE_DIR ${DEF_INSTALL_CMAKE_DIR})
   
 ####### BUILD OPTIONS #######
-
+include (GenerateExportHeader)
 # ANDROID_PREBUILD (early exit if true)
 OPTION( ANDROID_PREBUILD "Set to ON to build rtabmap resource build tool (required for android build)" OFF )
 IF(ANDROID_PREBUILD)
@@ -182,6 +187,7 @@ option(WITH_G2O           "Include g2o support"                  ON)
 option(WITH_GTSAM         "Include GTSAM support"                ON)
 option(WITH_TORO          "Include TORO support"                 ON)
 option(WITH_CERES         "Include Ceres support"                OFF)
+option(WITH_MRPT          "Include MRPT support"                 ON)
 option(WITH_VERTIGO       "Include Vertigo support"              ON)
 option(WITH_CVSBA         "Include cvsba support"                OFF)
 option(WITH_POINTMATCHER  "Include libpointmatcher support"      ON)
@@ -212,7 +218,7 @@ option(WITH_OPENVINS      "Include OpenVINS support"             OFF)
 option(WITH_MADGWICK      "Include Madgwick IMU filtering support" ON)
 option(WITH_FASTCV        "Include FastCV support"               ON)
 option(WITH_OPENMP        "Include OpenMP support"               ON)
-option(WITH_OPENGV        "Include OpenGV support"               OFF)
+option(WITH_OPENGV        "Include OpenGV support"               ON)
 IF(MOBILE_BUILD)
 option(PCL_OMP            "With PCL OMP implementations"         OFF)
 ELSE()
@@ -220,9 +226,9 @@ option(PCL_OMP            "With PCL OMP implementations"         ON)
 ENDIF()
 
 set(RTABMAP_QT_VERSION AUTO CACHE STRING "Force a specific Qt version.")
-set_property(CACHE RTABMAP_QT_VERSION PROPERTY STRINGS AUTO 4 5)
+set_property(CACHE RTABMAP_QT_VERSION PROPERTY STRINGS AUTO 4 5 6)
 
-FIND_PACKAGE(OpenCV REQUIRED QUIET COMPONENTS core calib3d imgproc highgui stitching photo video OPTIONAL_COMPONENTS aruco xfeatures2d nonfree gpu cudafeatures2d)
+FIND_PACKAGE(OpenCV REQUIRED QUIET COMPONENTS core calib3d imgproc highgui stitching photo video videoio OPTIONAL_COMPONENTS aruco xfeatures2d nonfree gpu cudafeatures2d)
 
 IF(WITH_QT)
 FIND_PACKAGE(PCL 1.7 REQUIRED QUIET COMPONENTS common io kdtree search surface filters registration sample_consensus segmentation visualization)
@@ -291,35 +297,55 @@ IF(WITH_QT)
     ENDIF(NOT VTK_FOUND)
 
     # If Qt is here, the GUI will be built
-    # look for Qt5 (if vtk>5 is installed) before Qt4
-    IF("${VTK_MAJOR_VERSION}" GREATER 5)
-        if(RTABMAP_QT_VERSION STREQUAL "AUTO" OR RTABMAP_QT_VERSION STREQUAL "5")
-            FIND_PACKAGE(Qt5 COMPONENTS Widgets Core Gui QUIET)
-            IF(Qt5_FOUND)
-                FIND_PACKAGE(Qt5 COMPONENTS Widgets Core Gui OPTIONAL_COMPONENTS Svg)
-            ENDIF(Qt5_FOUND)
+    IF(NOT(${VTK_MAJOR_VERSION} LESS 9))
+	  IF(NOT VTK_QT_VERSION)
+	    MESSAGE(FATAL_ERROR "WITH_QT option is ON, but VTK ${VTK_MAJOR_VERSION} has not been built with Qt support, disabling Qt.")
+	  ENDIF()
+      MESSAGE(STATUS "VTK>=9 detected, will use VTK_QT_VERSION=${VTK_QT_VERSION} for Qt version.")
+      IF(${VTK_QT_VERSION} EQUAL 6)
+        FIND_PACKAGE(Qt6 COMPONENTS Widgets Core Gui OpenGL PrintSupport QUIET OPTIONAL_COMPONENTS Svg)
+      ELSEIF(${VTK_QT_VERSION} EQUAL 5)
+        FIND_PACKAGE(Qt5 COMPONENTS Widgets Core Gui OpenGL PrintSupport QUIET OPTIONAL_COMPONENTS Svg)
+      ELSE()
+        FIND_PACKAGE(Qt4 COMPONENTS QtCore QtGui OPTIONAL_COMPONENTS QtSvg)
+      ENDIF()
+    ELSE()
+      # look for Qt5 (if vtk>5 is installed) before Qt4
+      IF("${VTK_MAJOR_VERSION}" GREATER 5)
+        IF(RTABMAP_QT_VERSION STREQUAL "AUTO" OR RTABMAP_QT_VERSION STREQUAL "5")
+          FIND_PACKAGE(Qt5 COMPONENTS Widgets Core Gui OpenGL PrintSupport QUIET OPTIONAL_COMPONENTS Svg)
         ENDIF(RTABMAP_QT_VERSION STREQUAL "AUTO" OR RTABMAP_QT_VERSION STREQUAL "5")
-    ENDIF("${VTK_MAJOR_VERSION}" GREATER 5)
+      ENDIF("${VTK_MAJOR_VERSION}" GREATER 5)
 
-    IF(NOT Qt5_FOUND)
+      IF(NOT Qt5_FOUND)
         IF(RTABMAP_QT_VERSION STREQUAL "AUTO" OR RTABMAP_QT_VERSION STREQUAL "4")
-            FIND_PACKAGE(Qt4 COMPONENTS QtCore QtGui OPTIONAL_COMPONENTS QtSvg)
+          FIND_PACKAGE(Qt4 COMPONENTS QtCore QtGui OPTIONAL_COMPONENTS QtSvg)
         ENDIF(RTABMAP_QT_VERSION STREQUAL "AUTO" OR RTABMAP_QT_VERSION STREQUAL "4")
-    ENDIF(NOT Qt5_FOUND)
+      ENDIF(NOT Qt5_FOUND)
+    ENDIF()
         
-    IF(QT4_FOUND OR Qt5_FOUND)
+    IF(QT4_FOUND OR Qt5_FOUND OR Qt6_FOUND)
+        # For VCPKG build, set those global variables to off, 
+        # we will enable them for jsut specific targets
+        set(CMAKE_AUTOMOC OFF)
+        set(CMAKE_AUTORCC OFF)
+        set(CMAKE_AUTOUIC OFF)
         IF("${VTK_MAJOR_VERSION}" EQUAL 5)
             FIND_PACKAGE(QVTK REQUIRED) # only for VTK 5
         ELSE()
-		    list(FIND PCL_LIBRARIES VTK::GUISupportQt value)
-			IF(value EQUAL -1)
+            list(FIND PCL_LIBRARIES VTK::GUISupportQt value)
+            IF(value EQUAL -1)
                 list(FIND PCL_LIBRARIES vtkGUISupportQt value)
                 IF(value EQUAL -1)
-                    SET(PCL_LIBRARIES "${PCL_LIBRARIES};vtkGUISupportQt")
+                    IF(NOT(${VTK_MAJOR_VERSION} LESS 9))
+                        SET(PCL_LIBRARIES "${PCL_LIBRARIES};VTK::GUISupportQt")
+                    ELSE()
+                        SET(PCL_LIBRARIES "${PCL_LIBRARIES};vtkGUISupportQt")
+                    ENDIF()
                     SET(ADD_VTK_GUI_SUPPORT_QT_TO_CONF TRUE)
                 ENDIF(value EQUAL -1)
-		    ENDIF(value EQUAL -1)
-		    
+            ENDIF(value EQUAL -1)
+
             MESSAGE(STATUS "VTK_RENDERING_BACKEND=${VTK_RENDERING_BACKEND}")
 
             IF(VTK_RENDERING_BACKEND STREQUAL "OpenGL2")
@@ -337,17 +363,17 @@ IF(WITH_QT)
                 ENDIF(value EQUAL -1)
             ELSEIF("${VTK_MAJOR_VERSION}" EQUAL 9)
                 list(FIND PCL_LIBRARIES VTK::RenderingOpenGL2 value)
-			    IF(NOT value EQUAL -1)
-			        list(FIND PCL_LIBRARIES VTK::RenderingVolumeOpenGL2 value)
+                IF(NOT value EQUAL -1)
+                    list(FIND PCL_LIBRARIES VTK::RenderingVolumeOpenGL2 value)
                     IF(value EQUAL -1)
                         SET(PCL_LIBRARIES "${PCL_LIBRARIES};VTK::RenderingVolumeOpenGL2")
                     ENDIF(value EQUAL -1)
-			    ENDIF(NOT value EQUAL -1)
+                ENDIF(NOT value EQUAL -1)
             ENDIF()
 
         ENDIF()
         ADD_DEFINITIONS(-DQT_NO_KEYWORDS) # To avoid conflicts with boost signals/foreach and Qt macros
-    ENDIF(QT4_FOUND OR Qt5_FOUND)
+    ENDIF(QT4_FOUND OR Qt5_FOUND OR Qt6_FOUND)
 ENDIF(WITH_QT)
 
 IF(NOT VTK_FOUND)
@@ -368,6 +394,7 @@ IF(WITH_PYTHON)
     FIND_PACKAGE(Python3 COMPONENTS Interpreter Development NumPy)
     IF(Python3_FOUND)
         MESSAGE(STATUS "Found Python3")
+        FIND_PACKAGE(pybind11 REQUIRED)
     ENDIF(Python3_FOUND)
 ENDIF(WITH_PYTHON)
 
@@ -405,7 +432,7 @@ ENDIF(WITH_FREENECT2)
 
 IF(WITH_K4W2 AND WIN32)
     FIND_PACKAGE(KinectSDK2 QUIET)
-	IF(KinectSDK2_FOUND)
+    IF(KinectSDK2_FOUND)
        MESSAGE(STATUS "Found Kinect for Windows 2: ${KinectSDK2_INCLUDE_DIRS}")
     ENDIF(KinectSDK2_FOUND)
 ENDIF(WITH_K4W2 AND WIN32)
@@ -420,7 +447,7 @@ IF(WITH_K4A)
             SET(k4a_FOUND FALSE)
         ENDIF(NOT (k4a_FOUND AND k4arecord_FOUND))
     ENDIF()
-	IF(k4a_FOUND)
+    IF(k4a_FOUND)
        MESSAGE(STATUS "Found Kinect for Azure: ${k4a_INCLUDE_DIRS}")
     ENDIF(k4a_FOUND)
 ENDIF(WITH_K4A)
@@ -441,13 +468,13 @@ IF(WITH_DC1394)
 ENDIF(WITH_DC1394)
 
 IF(WITH_G2O)
-	  FIND_PACKAGE(g2o QUIET NO_MODULE)
+    FIND_PACKAGE(g2o NO_MODULE)
     IF(g2o_FOUND)
        MESSAGE(STATUS "Found g2o (targets)")
-	     SET(G2O_FOUND ${g2o_FOUND})
-	     get_target_property(G2O_INCLUDES g2o::core INTERFACE_INCLUDE_DIRECTORIES)
-	     MESSAGE(STATUS "g2o include dir: ${G2O_INCLUDES}")
-	     FIND_FILE(G2O_FACTORY_FILE g2o/core/factory.h 
+         SET(G2O_FOUND ${g2o_FOUND})
+         get_target_property(G2O_INCLUDES g2o::core INTERFACE_INCLUDE_DIRECTORIES)
+         MESSAGE(STATUS "g2o include dir: ${G2O_INCLUDES}")
+         FIND_FILE(G2O_FACTORY_FILE g2o/core/factory.h 
          PATHS ${G2O_INCLUDES}
          NO_DEFAULT_PATH)
        FILE(READ ${G2O_FACTORY_FILE} TMPTXT)
@@ -472,6 +499,14 @@ IF(WITH_GTSAM)
     FIND_PACKAGE(GTSAM CONFIG QUIET)
 ENDIF(WITH_GTSAM)
 
+IF(WITH_MRPT)
+    FIND_PACKAGE(MRPT COMPONENTS poses QUIET)
+    IF(MRPT_FOUND)
+        message(STATUS "MRPT_VERSION: ${MRPT_VERSION}")
+        message(STATUS "MRPT_LIBRARIES: ${MRPT_LIBRARIES}")
+    ENDIF(MRPT_FOUND)
+ENDIF(WITH_MRPT)
+
 IF(WITH_FLYCAPTURE2)
     FIND_PACKAGE(FlyCapture2 QUIET)
     IF(FlyCapture2_FOUND)
@@ -489,7 +524,14 @@ ENDIF(WITH_CVSBA)
 IF(WITH_POINTMATCHER)
     find_package(libpointmatcher QUIET)
     IF(libpointmatcher_FOUND)
-       MESSAGE(STATUS "Found libpointmatcher: ${libpointmatcher_INCLUDE_DIRS}")
+        MESSAGE(STATUS "Found libpointmatcher: ${libpointmatcher_INCLUDE_DIRS}")
+        string(FIND "${libpointmatcher_LIBRARIES}" "libnabo" value)
+        IF(value EQUAL -1)
+            # Find libnabo (Issue #1117):
+            find_package(libnabo REQUIRED PATHS ${LIBNABO_INSTALL_DIR})
+            message(STATUS "libnabo found, version ${libnabo_VERSION} (Config mode)")
+            SET(libpointmatcher_LIBRARIES "${libpointmatcher_LIBRARIES};libnabo::nabo")
+        ENDIF(value EQUAL -1)
     ENDIF(libpointmatcher_FOUND)
 ENDIF(WITH_POINTMATCHER)
 
@@ -499,8 +541,8 @@ IF(libpointmatcher_FOUND OR GTSAM_FOUND)
         find_package(Boost COMPONENTS thread filesystem system program_options date_time chrono timer serialization REQUIRED)
     ENDIF(Boost_MINOR_VERSION GREATER 47)
     IF(WIN32)
-	    MESSAGE(STATUS "Boost_LIBRARY_DIRS=${Boost_LIBRARY_DIRS}")
-	    link_directories(${Boost_LIBRARY_DIRS})
+        MESSAGE(STATUS "Boost_LIBRARY_DIRS=${Boost_LIBRARY_DIRS}")
+        link_directories(${Boost_LIBRARY_DIRS})
     ENDIF(WIN32)
 ENDIF(libpointmatcher_FOUND OR GTSAM_FOUND)
 
@@ -737,51 +779,63 @@ IF(WITH_ORB_SLAM AND NOT G2O_FOUND)
 ENDIF(WITH_ORB_SLAM AND NOT G2O_FOUND)
 
 IF(NOT MSVC)
-	IF((NOT WITH_MSCKF_VIO OR NOT msckf_vio_FOUND) AND (loam_velodyne_FOUND OR floam_FOUND OR PCL_VERSION VERSION_GREATER "1.9.1" OR TORCH_FOUND OR G2O_FOUND OR CCCoreLib_FOUND OR Open3D_FOUND))
-	 #LOAM, PCL>=1.10, latest g2o and CCCoreLib require c++14, but MSCKF_VIO requires c++11
-	 include(CheckCXXCompilerFlag)
-	  CHECK_CXX_COMPILER_FLAG("-std=c++14" COMPILER_SUPPORTS_CXX14)
-	  IF(COMPILER_SUPPORTS_CXX14)
-	    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")
-	    set(CMAKE_CXX_STANDARD 14)
-	  ELSE()
-	    message(STATUS "The compiler ${CMAKE_CXX_COMPILER} has no C++14 support. Please use a different C++ compiler if you want to use LOAM, latest PCL or g2o.")
-	  ENDIF()
-	ENDIF()
+    IF(Qt6_FOUND OR (G2O_FOUND AND G2O_CPP11 EQUAL 1) OR TORCH_FOUND)
+      # Qt6 requires c++17
+      include(CheckCXXCompilerFlag)
+      CHECK_CXX_COMPILER_FLAG("-std=c++17" COMPILER_SUPPORTS_CXX17)
+      IF(COMPILER_SUPPORTS_CXX17)
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
+        set(CMAKE_CXX_STANDARD 17)
+      ELSE()
+        message(STATUS "The compiler ${CMAKE_CXX_COMPILER} has no C++17 support. Please use a different C++ compiler if you want to use Qt6.")
+      ENDIF()
+    ENDIF()
+    IF((NOT (${CMAKE_CXX_STANDARD} STREQUAL "17")) AND (msckf_vio_FOUND OR loam_velodyne_FOUND OR floam_FOUND OR PCL_VERSION VERSION_GREATER "1.9.1" OR G2O_FOUND OR CCCoreLib_FOUND OR Open3D_FOUND))
+     #MSCKF_VIO, LOAM, PCL>=1.10, latest g2o and CCCoreLib require c++14
+     include(CheckCXXCompilerFlag)
+      CHECK_CXX_COMPILER_FLAG("-std=c++14" COMPILER_SUPPORTS_CXX14)
+      IF(COMPILER_SUPPORTS_CXX14)
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")
+        set(CMAKE_CXX_STANDARD 14)
+      ELSE()
+        message(STATUS "The compiler ${CMAKE_CXX_COMPILER} has no C++14 support. Please use a different C++ compiler if you want to use LOAM, latest PCL or g2o.")
+      ENDIF()
+    ENDIF()
 
-	IF( (NOT (${CMAKE_CXX_STANDARD} STREQUAL "14")) AND (
-	       G2O_FOUND OR
-	       GTSAM_FOUND OR
-	       CERES_FOUND OR
-	       ZED_FOUND OR
-	       ZEDOC_FOUND OR
-	       ANDROID OR
-	       RealSense_FOUND OR
-	       realsense2_FOUND OR
-	       ORB_SLAM_FOUND OR
-	       okvis_FOUND OR
-	       open_chisel_FOUND OR
-	       msckf_vio_FOUND OR
-	       vins_FOUND OR
-	       ov_msckf_FOUND OR
-	       libpointmatcher_FOUND))
-	 #Newest versions require std11
-	 include(CheckCXXCompilerFlag)
-	  CHECK_CXX_COMPILER_FLAG("-std=c++11" COMPILER_SUPPORTS_CXX11)
-	  CHECK_CXX_COMPILER_FLAG("-std=c++0x" COMPILER_SUPPORTS_CXX0X)
-	  IF(COMPILER_SUPPORTS_CXX11)
-	    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
-	  ELSEIF(COMPILER_SUPPORTS_CXX0X)
-	    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
-	  ELSE()
-	    message(STATUS "The compiler ${CMAKE_CXX_COMPILER} has no C++11 support. Please use a different C++ compiler.")
-	  ENDIF()
-	ENDIF()
+    IF( (NOT (${CMAKE_CXX_STANDARD} STREQUAL "17") AND NOT (${CMAKE_CXX_STANDARD} STREQUAL "14")) AND (
+           G2O_FOUND OR
+           GTSAM_FOUND OR
+           CERES_FOUND OR
+           ZED_FOUND OR
+           ZEDOC_FOUND OR
+           ANDROID OR
+           RealSense_FOUND OR
+           realsense2_FOUND OR
+           ORB_SLAM_FOUND OR
+           okvis_FOUND OR
+           open_chisel_FOUND OR
+           vins_FOUND OR
+           ov_msckf_FOUND OR
+           msckf_vio_FOUND OR
+           libpointmatcher_FOUND))
+     #Newest versions require std11
+     include(CheckCXXCompilerFlag)
+      CHECK_CXX_COMPILER_FLAG("-std=c++11" COMPILER_SUPPORTS_CXX11)
+      CHECK_CXX_COMPILER_FLAG("-std=c++0x" COMPILER_SUPPORTS_CXX0X)
+      IF(COMPILER_SUPPORTS_CXX11)
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+      ELSEIF(COMPILER_SUPPORTS_CXX0X)
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
+      ELSE()
+        message(STATUS "The compiler ${CMAKE_CXX_COMPILER} has no C++11 support. Please use a different C++ compiler.")
+      ENDIF()
+    ENDIF()
 ENDIF()
+
 
 ####### OSX BUNDLE CMAKE_INSTALL_PREFIX #######
 IF(APPLE AND BUILD_AS_BUNDLE)
-  IF(Qt5_FOUND OR (QT4_FOUND AND QT_QTCORE_FOUND AND QT_QTGUI_FOUND))
+  IF(Qt6_FOUND OR Qt5_FOUND OR (QT4_FOUND AND QT_QTCORE_FOUND AND QT_QTGUI_FOUND))
        
     # Required when packaging, and set CMAKE_INSTALL_PREFIX to "/".
     SET(CMAKE_INSTALL_PREFIX "/")
@@ -809,11 +863,6 @@ ENDIF(APPLE AND BUILD_AS_BUNDLE)
 
 ####### SOURCES (Projects) #######
 
-# CONF_DEPENDENCIES contains only dependencies not required by the headers
-SET(CONF_DEPENDENCIES 
-    ${ZLIB_LIBRARIES}
-)
-
 # OpenCV2 has nonfree if OPENCV_NONFREE_FOUND
 # OpenCV<=3.4.2 has nonfree if OPENCV_XFEATURES2D_FOUND
 # OpenCV>3.4.2 has nonfree if OPENCV_XFEATURES2D_FOUND and OPENCV_ENABLE_NONFREE is defined
@@ -834,16 +883,16 @@ IF(NOT G2O_FOUND)
    SET(G2O "//")
    SET(G2O_CPP_CONF "//")
 ELSE()
-   SET(CONF_DEPENDENCIES ${CONF_DEPENDENCIES} ${G2O_LIBRARIES})
    IF(NOT G2O_CPP11)
-   SET(G2O_CPP_CONF "//")
+     SET(G2O_CPP_CONF "//")
    ENDIF(NOT G2O_CPP11)
 ENDIF()
 IF(NOT GTSAM_FOUND)
    SET(GTSAM "//")
-ELSE()
-   SET(CONF_DEPENDENCIES ${CONF_DEPENDENCIES} ${GTSAM_LIBRARIES})
 ENDIF()
+IF(NOT MRPT_FOUND)
+   SET(MRPT "//")
+ENDIF(NOT MRPT_FOUND)
 IF(NOT CERES_FOUND)
    SET(CERES "//")
 ENDIF(NOT CERES_FOUND)
@@ -855,8 +904,6 @@ IF(NOT WITH_VERTIGO)
 ENDIF(NOT WITH_VERTIGO)
 IF(NOT cvsba_FOUND)
    SET(CVSBA "//")
-ELSE()
-   SET(CONF_DEPENDENCIES ${CONF_DEPENDENCIES} ${cvsba_LIBRARIES})
 ENDIF()
 IF(NOT libpointmatcher_FOUND)
    SET(POINTMATCHER "//")
@@ -870,9 +917,9 @@ ENDIF(NOT Open3D_FOUND)
 IF(NOT FastCV_FOUND)
    SET(FASTCV "//")
 ENDIF(NOT FastCV_FOUND)
-IF(NOT opengv_FOUND)
+IF(NOT opengv_FOUND OR NOT WITH_OPENGV)
    SET(OPENGV "//")
-ENDIF(NOT opengv_FOUND)
+ENDIF(NOT opengv_FOUND OR NOT WITH_OPENGV)
 IF(NOT PDAL_FOUND)
    SET(PDAL "//")
 ENDIF(NOT PDAL_FOUND)
@@ -884,129 +931,109 @@ IF(NOT floam_FOUND)
 ENDIF(NOT floam_FOUND)
 IF(NOT Freenect_FOUND)
    SET(FREENECT "//")
-ELSE()
-   SET(CONF_DEPENDENCIES ${CONF_DEPENDENCIES} ${Freenect_LIBRARIES})
 ENDIF()
 IF(NOT freenect2_FOUND)
    SET(FREENECT2 "//")
-ELSE()
-   SET(CONF_DEPENDENCIES ${CONF_DEPENDENCIES} ${freenect2_LIBRARIES})
 ENDIF()
 IF(NOT KinectSDK2_FOUND)
    SET(K4W2 "//")
-ELSE()
-   SET(CONF_DEPENDENCIES ${CONF_DEPENDENCIES} ${KinectSDK2_LIBRARIES})
 ENDIF()
 IF(NOT k4a_FOUND)
    SET(K4A "//")
+   SET(CONF_WITH_K4A 0)
 ELSE()
-   SET(CONF_DEPENDENCIES ${CONF_DEPENDENCIES} ${k4a_LIBRARIES})
+   SET(CONF_WITH_K4A 1)
+   IF(WIN32)
+      install(
+         FILES
+         "${CMAKE_CURRENT_SOURCE_DIR}/cmake_modules/FindK4A.cmake"
+         DESTINATION ${INSTALL_CMAKE_DIR}/Modules/.
+         COMPONENT devel
+      )
+   ENDIF(WIN32)
 ENDIF()
 IF(NOT OpenNI2_FOUND)
    SET(OPENNI2 "//")
-ELSE()
-   SET(CONF_DEPENDENCIES ${CONF_DEPENDENCIES} ${OpenNI2_LIBRARIES})
 ENDIF()
 IF(NOT DC1394_FOUND)
    SET(DC1394 "//")
-ELSE()
-   SET(CONF_DEPENDENCIES ${CONF_DEPENDENCIES} ${DC1394_LIBRARIES})
 ENDIF()
 IF(NOT FlyCapture2_FOUND)
    SET(FLYCAPTURE2 "//")
-ELSE()
-   SET(CONF_DEPENDENCIES ${CONF_DEPENDENCIES} ${FlyCapture2_LIBRARIES})
 ENDIF()
 IF(NOT ZED_FOUND)
    SET(ZED "//")
-ELSE()
-   SET(CONF_DEPENDENCIES ${CONF_DEPENDENCIES} ${ZED_LIBRARIES} ${CUDA_LIBRARIES}) 
 ENDIF()
 IF(NOT ZEDOC_FOUND)
    SET(ZEDOC "//")
-ELSE()
-   SET(CONF_DEPENDENCIES ${CONF_DEPENDENCIES} ${ZEDOC_LIBRARIES}) 
 ENDIF()
 IF(NOT RealSense_FOUND)
    SET(REALSENSE "//")
-ELSE()
-   SET(CONF_DEPENDENCIES ${CONF_DEPENDENCIES} ${RealSense_LIBRARIES}) 
 ENDIF()
 IF(NOT RealSenseSlam_FOUND)
    SET(REALSENSESLAM "//")
 ENDIF(NOT RealSenseSlam_FOUND)
 IF(NOT realsense2_FOUND)
    SET(REALSENSE2 "//")
+   SET(CONF_WITH_REALSENSE2 0)
 ELSE()
-   SET(CONF_DEPENDENCIES ${CONF_DEPENDENCIES} ${realsense2_LIBRARIES}) 
+   SET(CONF_WITH_REALSENSE2 1)
+   IF(WIN32)
+      install(
+         FILES
+         "${CMAKE_CURRENT_SOURCE_DIR}/cmake_modules/FindRealSense2.cmake"
+         DESTINATION ${INSTALL_CMAKE_DIR}/Modules/.
+         COMPONENT devel
+      )
+   ENDIF(WIN32)
 ENDIF()
 IF(NOT mynteye_FOUND)
    SET(MYNTEYE "//")
 ENDIF(NOT mynteye_FOUND)
 IF(NOT depthai_FOUND)
-   SET(CONF_DEPTH_AI OFF)
+   SET(CONF_WITH_DEPTH_AI 0)
    SET(DEPTHAI "//")
 ELSE()
-   SET(CONF_DEPTH_AI ON) 
-   SET(CONF_DEPENDENCIES ${CONF_DEPENDENCIES} depthai::core depthai::opencv) 
+   SET(CONF_WITH_DEPTH_AI 1)
 ENDIF()
 IF(NOT octomap_FOUND)
    SET(OCTOMAP "//")
+   SET(CONF_WITH_OCTOMAP 0)
 ELSE()
-   SET(CONF_DEPENDENCIES ${CONF_DEPENDENCIES} ${OCTOMAP_LIBRARIES}) 
+   SET(CONF_WITH_OCTOMAP 1)
 ENDIF()
 IF(NOT CPUTSDF_FOUND)
    SET(CPUTSDF "//")
-ELSE()
-   SET(CONF_DEPENDENCIES ${CONF_DEPENDENCIES} ${CPUTSDF_LIBRARIES}) 
 ENDIF()
 IF(NOT open_chisel_FOUND)
    SET(OPENCHISEL "//")
-ELSE()
-   SET(CONF_DEPENDENCIES ${CONF_DEPENDENCIES} ${open_chisel_LIBRARIES}) 
 ENDIF()
 IF(NOT AliceVision_FOUND)
    SET(ALICE_VISION "//")
 ENDIF(NOT AliceVision_FOUND)
 IF(NOT libfovis_FOUND)
    SET(FOVIS "//")
-ELSE()
-   SET(CONF_DEPENDENCIES ${CONF_DEPENDENCIES} ${libfovis_LIBRARIES}) 
 ENDIF()
 IF(NOT libviso2_FOUND)
    SET(VISO2 "//")
-ELSE()
-   SET(CONF_DEPENDENCIES ${CONF_DEPENDENCIES} ${libviso2_LIBRARIES}) 
 ENDIF()
 IF(NOT dvo_core_FOUND)
    SET(DVO "//")
-ELSE()
-   SET(CONF_DEPENDENCIES ${CONF_DEPENDENCIES} ${dvo_core_LIBRARIES}) 
 ENDIF()
 IF(NOT okvis_FOUND)
    SET(OKVIS "//")
-ELSE()
-   SET(CONF_DEPENDENCIES ${CONF_DEPENDENCIES} ${OKVIS_LIBRARIES}) 
 ENDIF()
 IF(NOT msckf_vio_FOUND)
    SET(MSCKF_VIO "//")
-ELSE()
-   SET(CONF_DEPENDENCIES ${CONF_DEPENDENCIES} ${msckf_vio_LIBRARIES}) 
 ENDIF()
 IF(NOT vins_FOUND)
    SET(VINS "//")
-ELSE()
-   SET(CONF_DEPENDENCIES ${CONF_DEPENDENCIES} ${vins_LIBRARIES}) 
 ENDIF()
 IF(NOT ov_msckf_FOUND)
    SET(OPENVINS "//")
-ELSE()
-   SET(CONF_DEPENDENCIES ${CONF_DEPENDENCIES} ${ov_msckf_LIBRARIES}) 
 ENDIF()
 IF(NOT ORB_SLAM_FOUND)
    SET(ORB_SLAM "//")
-ELSE()
-   SET(CONF_DEPENDENCIES ${CONF_DEPENDENCIES} ${ORB_SLAM_LIBRARIES})
 ENDIF()
 IF(NOT WITH_ORB_OCTREE)
    SET(ORB_OCTREE "//")
@@ -1016,21 +1043,20 @@ IF(NOT TORCH_FOUND)
 ENDIF()
 IF(NOT WITH_PYTHON OR NOT Python3_FOUND)
    SET(PYTHON "//")
+   SET(CONF_WITH_PYTHON 0)
+ELSE()
+   SET(CONF_WITH_PYTHON 1)
 ENDIF()
 IF(ADD_VTK_GUI_SUPPORT_QT_TO_CONF)
    SET(CONF_VTK_QT true)
-   SET(CONF_DEPENDENCIES ${CONF_DEPENDENCIES} vtkGUISupportQt)
 ELSE()
    SET(CONF_VTK_QT false)
 ENDIF()
-IF(VTK_USE_QVTK)
-   SET(CONF_DEPENDENCIES ${CONF_DEPENDENCIES} ${QVTK_LIBRARY}) 
-ENDIF(VTK_USE_QVTK)
 IF(NOT WITH_MADGWICK)
    SET(MADGWICK "//")
 ENDIF()
 
-CONFIGURE_FILE(Version.h.in ${CMAKE_CURRENT_BINARY_DIR}/corelib/include/${PROJECT_PREFIX}/core/Version.h)
+CONFIGURE_FILE(Version.h.in ${CMAKE_CURRENT_BINARY_DIR}/corelib/src/include/${PROJECT_PREFIX}/core/Version.h)
 
 ADD_SUBDIRECTORY( utilite )
 ADD_SUBDIRECTORY( corelib )
@@ -1039,7 +1065,7 @@ IF(ANDROID)
    IF(BUILD_APP)
       ADD_SUBDIRECTORY( app )
    ENDIF(BUILD_APP)
-ELSEIF(Qt5_FOUND OR (QT4_FOUND AND QT_QTCORE_FOUND AND QT_QTGUI_FOUND))
+ELSEIF(Qt6_FOUND OR Qt5_FOUND OR (QT4_FOUND AND QT_QTCORE_FOUND AND QT_QTGUI_FOUND))
    ADD_SUBDIRECTORY( guilib )
    IF(BUILD_APP)
       ADD_SUBDIRECTORY( app )
@@ -1067,55 +1093,84 @@ ADD_CUSTOM_TARGET(uninstall
   "${CMAKE_COMMAND}" -P "${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake")
 
 ####
-# Setup RTABMapConfig.cmake
+# Global Export Target
 ####
-# Create the RTABMapConfig.cmake and RTABMapConfigVersion files
-file(RELATIVE_PATH REL_INCLUDE_DIR "${CMAKE_INSTALL_PREFIX}/${INSTALL_CMAKE_DIR}" "${CMAKE_INSTALL_PREFIX}/${INSTALL_INCLUDE_DIR}")
-file(RELATIVE_PATH REL_LIB_DIR "${CMAKE_INSTALL_PREFIX}/${INSTALL_CMAKE_DIR}" "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}")
-   
-# ... for the build tree
-set(CONF_INCLUDE_DIRS "${PROJECT_BINARY_DIR}/corelib/include"
-                      "${PROJECT_SOURCE_DIR}/corelib/include" 
-                      "${PROJECT_SOURCE_DIR}/guilib/include" 
-                      "${PROJECT_SOURCE_DIR}/utilite/include")
-set(CONF_LIB_DIR "${CMAKE_ARCHIVE_OUTPUT_DIRECTORY} ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
-IF(QT4_FOUND OR Qt5_FOUND)
+add_library(rtabmap INTERFACE)
+add_library(rtabmap::rtabmap ALIAS rtabmap)
+IF(QT4_FOUND OR Qt5_FOUND OR Qt6_FOUND)
    set(CONF_WITH_GUI ON)
    IF(QT4_FOUND)
       set(CONF_QT_VERSION 4)
-   ELSE()
+   ELSEIF(Qt5_FOUND)
       set(CONF_QT_VERSION 5)
+   ELSE()
+      set(CONF_QT_VERSION 6)
    ENDIF()
+   target_link_libraries(rtabmap INTERFACE rtabmap_utilite rtabmap_core rtabmap_gui)
 ELSE()
    set(CONF_WITH_GUI OFF)
+   target_link_libraries(rtabmap INTERFACE rtabmap_utilite rtabmap_core)
 ENDIF()
-configure_file(RTABMapConfig.cmake.in
-  "${PROJECT_BINARY_DIR}/RTABMapConfig.cmake" @ONLY)
-  
-# ... for the install tree
-set(CONF_INCLUDE_DIRS "\${RTABMap_CMAKE_DIR}/${REL_INCLUDE_DIR}")
-set(CONF_LIB_DIR "\${RTABMap_CMAKE_DIR}/${REL_LIB_DIR}")
-configure_file(RTABMapConfig.cmake.in
-  "${PROJECT_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/RTABMapConfig.cmake" @ONLY)
-  
-# ... for both
-configure_file(RTABMapConfigVersion.cmake.in
-  "${PROJECT_BINARY_DIR}/RTABMapConfigVersion.cmake" @ONLY)
+install(TARGETS rtabmap EXPORT rtabmapTargets)
+export(EXPORT rtabmapTargets
+  FILE "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Targets.cmake"
+  NAMESPACE rtabmap::
+)
+install(EXPORT rtabmapTargets
+  FILE
+    ${PROJECT_NAME}Targets.cmake
+  DESTINATION
+    ${INSTALL_CMAKE_DIR}
+  NAMESPACE rtabmap::
+  COMPONENT
+    devel
+)
 
-# Install the RTABMapConfig.cmake and RTABMapConfigVersion.cmake
-install(FILES
-  "${PROJECT_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/RTABMapConfig.cmake"
-  "${PROJECT_BINARY_DIR}/RTABMapConfigVersion.cmake"
-  DESTINATION "${INSTALL_CMAKE_DIR}" COMPONENT devel)
+####
+# Setup RTABMapConfig.cmake
+####
+include(CMakePackageConfigHelpers)
+write_basic_package_version_file(
+  "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake"
+  VERSION ${PROJECT_VERSION}
+  COMPATIBILITY AnyNewerVersion
+)
+
+# Build tree:
+SET(CONF_MODULES_DIR "../cmake_modules")
+configure_file(
+  ${PROJECT_NAME}Config.cmake.in
+  "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake"
+  @ONLY
+)
+
+# Install tree:
+SET(CONF_MODULES_DIR "Modules")
+configure_file(
+  ${PROJECT_NAME}Config.cmake.in
+  "${CMAKE_CURRENT_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/${PROJECT_NAME}Config.cmake"
+  @ONLY
+)
+install(
+  FILES
+    "${CMAKE_CURRENT_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/${PROJECT_NAME}Config.cmake"
+    "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake"
+  DESTINATION
+    ${INSTALL_CMAKE_DIR}
+  COMPONENT
+    devel
+)
+  
 ####
 
 ### Install package.xml for catkin
-install(FILES package.xml DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/${PROJECT_PREFIX}")
+install(FILES package.xml DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/${PROJECT_PREFIX}" COMPONENT devel)
 
 #######################
 # CPACK (Packaging)
 #######################
 IF(BUILD_AS_BUNDLE)
+  SET(CMAKE_INSTALL_SYSTEM_RUNTIME_COMPONENT runtime)
   INCLUDE(InstallRequiredSystemLibraries)
 ENDIF(BUILD_AS_BUNDLE)
 
@@ -1131,6 +1186,7 @@ SET(CPACK_PACKAGE_VERSION_PATCH "${PROJECT_VERSION_PATCH}")
 #SET(CPACK_PACKAGE_EXECUTABLES "")
 #SET(CPACK_SOURCE_PACKAGE_FILE_NAME "${PROJECT_NAME}-${CPACK_PACKAGE_VERSION_MAJOR}.${CPACK_PACKAGE_VERSION_MINOR}.${CPACK_PACKAGE_VERSION_PATCH}")
 SET(CPACK_PACKAGE_CONTACT "matlabbe@gmail.com")
+
 
 set(CPACK_SOURCE_IGNORE_FILES 
   "\\\\.svn/" 
@@ -1259,6 +1315,9 @@ MESSAGE(STATUS "  With VTK ${VTK_MAJOR_VERSION}.${VTK_MINOR_VERSION}            
 ELSEIF(Qt5_FOUND)
 MESSAGE(STATUS "  With Qt ${Qt5_VERSION}            = YES (License: Open Source or Commercial)")
 MESSAGE(STATUS "  With VTK ${VTK_MAJOR_VERSION}.${VTK_MINOR_VERSION}              = YES (License: BSD)")
+ELSEIF(Qt6_FOUND)
+MESSAGE(STATUS "  With Qt ${Qt6_VERSION}            = YES (License: Open Source or Commercial)")
+MESSAGE(STATUS "  With VTK ${VTK_MAJOR_VERSION}.${VTK_MINOR_VERSION}              = YES (License: BSD)")
 
 ELSEIF(NOT WITH_QT)
 MESSAGE(STATUS "  With Qt                   = NO (WITH_QT=OFF)")
@@ -1309,7 +1368,7 @@ MESSAGE(STATUS "  With FastCV               = NO (FastCV not found)")
 ENDIF()
 
 IF(PDAL_FOUND)
-MESSAGE(STATUS "  With PDAL                 = YES (License: BSD)")
+MESSAGE(STATUS "  With PDAL ${PDAL_VERSION}           = YES (License: BSD)")
 ELSEIF(NOT WITH_PDAL)
 MESSAGE(STATUS "  With PDAL                 = NO (WITH_PDAL=OFF)")
 ELSE()
@@ -1325,7 +1384,7 @@ MESSAGE(STATUS "  With TORO                 = NO (WITH_TORO=OFF)")
 ENDIF()
 
 IF(G2O_FOUND)
-MESSAGE(STATUS " *With g2o                  = YES (License: BSD)")
+MESSAGE(STATUS " *With g2o ${g2o_VERSION}            = YES (License: BSD)")
 ELSEIF(NOT WITH_G2O)
 MESSAGE(STATUS " *With g2o                  = NO (WITH_G2O=OFF)")
 ELSE()
@@ -1333,7 +1392,7 @@ MESSAGE(STATUS " *With g2o                  = NO (g2o not found)")
 ENDIF()
 
 IF(GTSAM_FOUND)
-MESSAGE(STATUS " *With GTSAM                = YES (License: BSD)")
+MESSAGE(STATUS " *With GTSAM ${GTSAM_VERSION}          = YES (License: BSD)")
 ELSEIF(NOT WITH_GTSAM)
 MESSAGE(STATUS " *With GTSAM                = NO (WITH_GTSAM=OFF)")
 ELSE()
@@ -1342,14 +1401,22 @@ ENDIF()
 
 IF(CERES_FOUND)
 IF(WITH_CERES)
-MESSAGE(STATUS " *With Ceres ${Ceres_VERSION}          = YES (License: BSD)")
+MESSAGE(STATUS " *With Ceres ${Ceres_VERSION}         = YES (License: BSD)")
 ELSE()
-MESSAGE(STATUS " *With Ceres ${Ceres_VERSION}          = YES (License: BSD, WITH_CERES=OFF but it is enabled by okvis or floam dependencies)")
+MESSAGE(STATUS " *With Ceres ${Ceres_VERSION}         = YES (License: BSD, WITH_CERES=OFF but it is enabled by okvis or floam dependencies)")
 ENDIF()
 ELSEIF(NOT WITH_CERES)
 MESSAGE(STATUS " *With Ceres                = NO (WITH_CERES=OFF)")
 ELSE()
 MESSAGE(STATUS " *With Ceres                = NO (Ceres not found)")
+ENDIF()
+
+IF(MRPT_FOUND)
+MESSAGE(STATUS "  With MRPT ${MRPT_VERSION}           = YES (License: BSD)")
+ELSEIF(NOT WITH_MRPT)
+MESSAGE(STATUS "  With MRPT                 = NO (WITH_MRPT=OFF)")
+ELSE()
+MESSAGE(STATUS "  With MRPT                 = NO (MRPT not found)")
 ENDIF()
 
 IF(G2O_FOUND OR GTSAM_FOUND)
@@ -1371,7 +1438,7 @@ MESSAGE(STATUS "  With cvsba                = NO (cvsba not found)")
 ENDIF()
 
 IF(libpointmatcher_FOUND)
-MESSAGE(STATUS " *With libpointmatcher      = YES (License: BSD)")
+MESSAGE(STATUS " *With libpointmatcher ${libpointmatcher_VERSION} = YES (License: BSD)")
 ELSEIF(NOT WITH_POINTMATCHER)
 MESSAGE(STATUS " *With libpointmatcher      = NO (WITH_POINTMATCHER=OFF)")
 ELSE()
@@ -1396,8 +1463,8 @@ ELSE()
 MESSAGE(STATUS "  With Open3D               = NO (Open3D not found)")
 ENDIF()
 
-IF(opengv_FOUND)
-MESSAGE(STATUS "  With OpenGV               = YES (License: BSD)")
+IF(opengv_FOUND AND WITH_OPENGV)
+MESSAGE(STATUS "  With OpenGV ${opengv_VERSION}           = YES (License: BSD)")
 ELSEIF(NOT WITH_OPENGV)
 MESSAGE(STATUS "  With OpenGV               = NO (WITH_OPENGV=OFF)")
 ELSE()
@@ -1407,7 +1474,7 @@ ENDIF()
 MESSAGE(STATUS "")
 MESSAGE(STATUS " Reconstruction Approaches:")
 IF(octomap_FOUND)
-MESSAGE(STATUS "  With OCTOMAP              = YES (License: BSD)")
+MESSAGE(STATUS "  With OCTOMAP ${octomap_VERSION}        = YES (License: BSD)")
 ELSEIF(NOT WITH_OCTOMAP)
 MESSAGE(STATUS "  With OCTOMAP              = NO (WITH_OCTOMAP=OFF)")
 ELSE()
@@ -1528,7 +1595,11 @@ MESSAGE(STATUS "  With RealSense            = NO (librealsense not found)")
 ENDIF()
 
 IF(realsense2_FOUND)
+IF(WIN32)
 MESSAGE(STATUS "  With RealSense2           = YES (License: Apache-2)")
+ELSE()
+MESSAGE(STATUS "  With RealSense2 ${realsense2_VERSION}    = YES (License: Apache-2)")
+ENDIF()
 ELSEIF(NOT WITH_REALSENSE2)
 MESSAGE(STATUS "  With RealSense2           = NO (WITH_REALSENSE2=OFF)")
 ELSE()
@@ -1544,7 +1615,7 @@ MESSAGE(STATUS "  With MyntEyeS             = NO (mynteye s sdk not found)")
 ENDIF()
 
 IF(depthai_FOUND)
-MESSAGE(STATUS "  With DepthAI              = YES (License: MIT)")
+MESSAGE(STATUS "  With DepthAI ${depthai_VERSION}       = YES (License: MIT)")
 ELSEIF(NOT WITH_DEPTHAI)
 MESSAGE(STATUS "  With DepthAI              = NO (WITH_DEPTHAI=OFF)")
 ELSE()

@@ -32,7 +32,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 namespace rtabmap
 {
 
-class RTABMAP_EXP CameraRGBDImages :
+class RTABMAP_CORE_EXPORT CameraRGBDImages :
 	public CameraImages
 {
 public:

@@ -170,7 +170,7 @@ void StatItem::setupUi(QGridLayout * grid)
 		layout->addWidget(_value);
 		layout->addWidget(_unit);
 		layout->addStretch();
-		layout->setMargin(0);
+		layout->setContentsMargins(0,0,0,0);
 	}
 }
 
@@ -220,7 +220,7 @@ StatsToolBox::StatsToolBox(QWidget * parent) :
 	//Statistics in the GUI (for plotting)
 	_statBox = new QToolBox(this);
 	this->setLayout(new QVBoxLayout());
-	this->layout()->setMargin(0);
+	this->layout()->setContentsMargins(0,0,0,0);
 	this->layout()->addWidget(_statBox);
 	_statBox->layout()->setSpacing(0);
 	_plotMenu = new QMenu(this);

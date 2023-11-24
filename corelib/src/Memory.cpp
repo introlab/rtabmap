@@ -283,6 +283,10 @@ void Memory::loadDataFromDb(bool postInitClosingEvents)
                                           -landmarkId, inserted.first->second, landmarkSize.at<float>(0,0));
                                 }
                             }
+							else
+							{
+								UDEBUG("Caching landmark size %f for %d", landmarkSize.at<float>(0,0), -landmarkId);
+							}
                         }
 
                         std::map<int, std::set<int> >::iterator nter = _landmarksIndex.find(landmarkId);
@@ -4965,6 +4969,10 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 					t = timer.ticks();
 					if(stats) stats->addStatistic(Statistics::kTimingMemKeypoints_3D(), t*1000.0f);
 					UDEBUG("time keypoints 3D (%d) = %fs", (int)keypoints3D.size(), t);
+				}
+				if(depthMask.empty() && (_feature2D->getMinDepth() > 0.0f || _feature2D->getMaxDepth() > 0.0f))
+				{
+					_feature2D->filterKeypointsByDepth(keypoints, descriptors, keypoints3D, _feature2D->getMinDepth(), _feature2D->getMaxDepth());
 				}
 			}
 		}

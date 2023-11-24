@@ -72,9 +72,15 @@ public:
   /**
    * Clone this value (normal clone on the heap, delete with 'delete' operator)
    */
+#if GTSAM_VERSION_NUMERIC >= 40300
+  virtual std::shared_ptr<gtsam::Value> clone() const {
+    return std::make_shared<DERIVED>(static_cast<const DERIVED&>(*this));
+  }
+  #else
   virtual boost::shared_ptr<gtsam::Value> clone() const {
     return boost::make_shared<DERIVED>(static_cast<const DERIVED&>(*this));
   }
+#endif
 
   /// equals implementing generic Value interface
   virtual bool equals_(const gtsam::Value& p, double tol = 1e-9) const {
