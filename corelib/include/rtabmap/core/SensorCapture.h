@@ -26,7 +26,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #pragma once
 
-#include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
+#include "rtabmap/core/rtabmap_core_export.h" // DLL export/import defines
 
 #include <opencv2/highgui/highgui.hpp>
 #include <rtabmap/core/SensorCaptureInfo.h>
@@ -46,7 +46,7 @@ namespace rtabmap
  * Class Camera
  *
  */
-class RTABMAP_EXP SensorCapture
+class RTABMAP_CORE_EXPORT SensorCapture
 {
 public:
 	virtual ~SensorCapture();

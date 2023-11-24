@@ -119,7 +119,8 @@ public:
 	bool isCapturing() const {return this->isRunning();}
 	bool odomProvided() const;
 
-	SensorCapture * camera() {return _camera;} // return null if not set, valid until CameraThread is deleted
+	SensorCapture * sensor() {return _sensor;} // return null if not set, valid until CameraThread is deleted
+	RTABMAP_DEPRECATED SensorCapture * camera() {return sensor();} // return null if not set, valid until CameraThread is deleted
 	SensorCapture * odomSensor() {return _odomSensor;} // return null if not set, valid until CameraThread is deleted
 
 private:
@@ -128,7 +129,7 @@ private:
 	virtual void mainLoopKill();
 
 private:
-	SensorCapture * _camera;
+	SensorCapture * _sensor;
 	SensorCapture * _odomSensor;
 	Transform _extrinsicsOdomToCamera;
 	bool _odomAsGt;
@@ -158,5 +159,8 @@ private:
 	Feature2D * _featureDetector;
 	bool _depthAsMask;
 };
+
+//backward compatibility
+RTABMAP_DEPRECATED typedef SensorCaptureThread CameraThread;
 
 } // namespace rtabmap
