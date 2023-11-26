@@ -612,6 +612,8 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 		}
 	}
 
+	UTimer time;
+
 	// Deskewing lidar
 	if( _deskewing &&
 		!data.laserScanRaw().empty() &&
@@ -619,6 +621,7 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 		dt > 0 &&
 		!guess.isNull())
 	{
+		UDEBUG("Deskewing begin");
 		// Recompute velocity
 		float vx,vy,vz, vroll,vpitch,vyaw;
 		guess.getTranslationAndEulerAngles(vx,vy,vz, vroll,vpitch,vyaw);
@@ -669,6 +672,8 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 		{
 			data.setLaserScan(scanDeskewed);
 		}
+		info->timeDeskewing = time.ticks();
+		UDEBUG("Deskewing end");
 	}
 	if(data.laserScanRaw().isOrganized())
 	{
@@ -677,7 +682,6 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 	}
 
 
-	UTimer time;
 	Transform t;
 	if(_imageDecimation > 1 && !data.imageRaw().empty())
 	{

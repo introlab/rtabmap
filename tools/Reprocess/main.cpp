@@ -815,7 +815,7 @@ int main(int argc, char * argv[])
 	std::map<std::string, float> globalMapStats;
 	int processed = 0;
 	SensorCaptureInfo info;
-	SensorData data = dbReader->takeImage(&info);
+	SensorData data = dbReader->takeData(&info);
 	SensorCaptureThread camThread(dbReader, parameters); // take ownership of dbReader
 	camThread.setScanParameters(scanFromDepth, scanDecimation, scanRangeMin, scanRangeMax, scanVoxelSize, scanNormalK, scanNormalRadius);
 	if(scanFromDepth)
@@ -847,11 +847,11 @@ int main(int argc, char * argv[])
 					while(skippedFrames-- > 0)
 					{
 						++processed;
-						data = dbReader->takeImage();
+						data = dbReader->takeData();
 					}
 				}
 
-				data = dbReader->takeImage(&info);
+				data = dbReader->takeData(&info);
 				if(scanFromDepth)
 				{
 					data.setLaserScan(LaserScan());
@@ -1084,7 +1084,7 @@ int main(int argc, char * argv[])
 			while(skippedFrames-- > 0)
 			{
 				processed++;
-				data = dbReader->takeImage(&info);
+				data = dbReader->takeData(&info);
 				if(!odometryIgnored && !info.odomCovariance.empty() && info.odomCovariance.at<double>(0,0)>=9999)
 				{
 					printf("High variance detected, triggering a new map...\n");
@@ -1098,7 +1098,7 @@ int main(int argc, char * argv[])
 			}
 		}
 
-		data = dbReader->takeImage(&info);
+		data = dbReader->takeData(&info);
 		if(scanFromDepth)
 		{
 			data.setLaserScan(LaserScan());

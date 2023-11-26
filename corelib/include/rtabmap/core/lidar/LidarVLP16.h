@@ -26,7 +26,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef CORELIB_INCLUDE_RTABMAP_CORE_LIDAR_LIDARVLP16_H_
 #define CORELIB_INCLUDE_RTABMAP_CORE_LIDAR_LIDARVLP16_H_
 
-#include <rtabmap/core/SensorCapture.h>
+#include <rtabmap/core/Lidar.h>
 #include <rtabmap/utilite/USemaphore.h>
 #include <pcl/io/vlp_grabber.h>
 
@@ -40,18 +40,25 @@ struct PointXYZIT {
 	float t;
 };
 
-class LidarVLP16 :public SensorCapture, public pcl::VLPGrabber {
+class LidarVLP16 :public Lidar, public pcl::VLPGrabber {
 public:
 	LidarVLP16(
 			const std::string& pcapFile,
-			float imageRate = 0.0f,
+			bool organized = false,
+			bool stampLast = true,
+			float frameRate = 0.0f,
 			Transform localTransform = Transform::getIdentity());
 	LidarVLP16(
 			const boost::asio::ip::address& ipAddress,
 			const std::uint16_t port = 2368,
-			float imageRate = 0.0f,
+			bool organized = false,
+			bool useHostTime = true,
+			bool stampLast = true,
+			float frameRate = 0.0f,
 			Transform localTransform = Transform::getIdentity());
 	virtual ~LidarVLP16();
+
+	SensorData takeScan(SensorCaptureInfo * info = 0) {return takeData(info);}
 
 	virtual bool init(const std::string & calibrationFolder = ".", const std::string & cameraName = "");
 	virtual std::string getSerial() const {return getName();}
@@ -63,14 +70,17 @@ private:
     void toPointClouds (HDLDataPacket *dataPacket) override;
 
 protected:
-    virtual SensorData captureImage(SensorCaptureInfo * info = 0);
+    virtual SensorData captureData(SensorCaptureInfo * info = 0);
 
 private:
     // timing offset lookup table
     std::vector< std::vector<float> > timingOffsets_;
     bool timingOffsetsDualMode_;
     double startSweepTime_;
+    double startSweepTimeHost_;
     bool organized_;
+    bool useHostTime_;
+    bool stampLast_;
     SensorData lastScan_;
     std::vector<std::vector<PointXYZIT> > accumulatedScans_;
     USemaphore scanReady_;

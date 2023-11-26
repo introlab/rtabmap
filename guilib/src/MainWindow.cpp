@@ -31,6 +31,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "rtabmap/core/CameraRGB.h"
 #include "rtabmap/core/CameraStereo.h"
+#include "rtabmap/core/Lidar.h"
 #include "rtabmap/core/IMUThread.h"
 #include "rtabmap/core/DBReader.h"
 #include "rtabmap/core/Parameters.h"
@@ -455,6 +456,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent, bool sh
 	connect(_ui->actionMYNT_EYE_S_SDK, SIGNAL(triggered()), this, SLOT(selectMyntEyeS()));
 	connect(_ui->actionDepthAI_oakd, SIGNAL(triggered()), this, SLOT(selectDepthAIOAKD()));
 	connect(_ui->actionDepthAI_oakdlite, SIGNAL(triggered()), this, SLOT(selectDepthAIOAKDLite()));
+	connect(_ui->actionVelodyne_VLP_16, SIGNAL(triggered()), this, SLOT(selectVLP16()));
 	_ui->actionFreenect->setEnabled(CameraFreenect::available());
 	_ui->actionOpenNI_CV->setEnabled(CameraOpenNICV::available());
 	_ui->actionOpenNI_CV_ASUS->setEnabled(CameraOpenNICV::available());
@@ -552,7 +554,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent, bool sh
 	qRegisterMetaType<rtabmap::Statistics>("rtabmap::Statistics");
 	connect(this, SIGNAL(statsReceived(rtabmap::Statistics)), this, SLOT(processStats(rtabmap::Statistics)));
 
-	qRegisterMetaType<rtabmap::SensorCaptureInfo>("rtabmap::SensorCameraInfo");
+	qRegisterMetaType<rtabmap::SensorCaptureInfo>("rtabmap::SensorCaptureInfo");
 	connect(this, SIGNAL(cameraInfoReceived(rtabmap::SensorCaptureInfo)), this, SLOT(processCameraInfo(rtabmap::SensorCaptureInfo)));
 
 	qRegisterMetaType<rtabmap::OdometryEvent>("rtabmap::OdometryEvent");
@@ -598,6 +600,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent, bool sh
 	_ui->statsToolBox->updateStat("Planning/Length/m", false);
 
 	_ui->statsToolBox->updateStat("Camera/Time capturing/ms", false);
+	_ui->statsToolBox->updateStat("Camera/Time deskewing/ms", false);
 	_ui->statsToolBox->updateStat("Camera/Time undistort depth/ms", false);
 	_ui->statsToolBox->updateStat("Camera/Time bilateral filtering/ms", false);
 	_ui->statsToolBox->updateStat("Camera/Time decimation/ms", false);
@@ -627,6 +630,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent, bool sh
 	_ui->statsToolBox->updateStat("Odometry/StdDevAng/rad", false);
 	_ui->statsToolBox->updateStat("Odometry/VarianceLin/", false);
 	_ui->statsToolBox->updateStat("Odometry/VarianceAng/", false);
+	_ui->statsToolBox->updateStat("Odometry/TimeDeskewing/ms", false);
 	_ui->statsToolBox->updateStat("Odometry/TimeEstimation/ms", false);
 	_ui->statsToolBox->updateStat("Odometry/TimeFiltering/ms", false);
 	_ui->statsToolBox->updateStat("Odometry/GravityRollError/deg", false);
@@ -994,6 +998,7 @@ void MainWindow::processCameraInfo(const rtabmap::SensorCaptureInfo & info)
 	if(_preferencesDialog->isCacheSavedInFigures() || _ui->statsToolBox->isVisible())
 	{
 		_ui->statsToolBox->updateStat("Camera/Time capturing/ms", _preferencesDialog->isTimeUsedInFigures()?info.stamp-_firstStamp:(float)info.id, info.timeCapture*1000.0f, _preferencesDialog->isCacheSavedInFigures());
+		_ui->statsToolBox->updateStat("Camera/Time deskewing/ms", _preferencesDialog->isTimeUsedInFigures()?info.stamp-_firstStamp:(float)info.id, info.timeDeskewing*1000.0f, _preferencesDialog->isCacheSavedInFigures());
 		_ui->statsToolBox->updateStat("Camera/Time undistort depth/ms", _preferencesDialog->isTimeUsedInFigures()?info.stamp-_firstStamp:(float)info.id, info.timeUndistortDepth*1000.0f, _preferencesDialog->isCacheSavedInFigures());
 		_ui->statsToolBox->updateStat("Camera/Time bilateral filtering/ms", _preferencesDialog->isTimeUsedInFigures()?info.stamp-_firstStamp:(float)info.id, info.timeBilateralFiltering*1000.0f, _preferencesDialog->isCacheSavedInFigures());
 		_ui->statsToolBox->updateStat("Camera/Time decimation/ms", _preferencesDialog->isTimeUsedInFigures()?info.stamp-_firstStamp:(float)info.id, info.timeImageDecimation*1000.0f, _preferencesDialog->isCacheSavedInFigures());
@@ -1777,6 +1782,7 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 		_ui->statsToolBox->updateStat("Odometry/VarianceLin/", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), (float)odom.info().reg.covariance.at<double>(0,0), _preferencesDialog->isCacheSavedInFigures());
 		_ui->statsToolBox->updateStat("Odometry/StdDevAng/rad", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), sqrt((float)odom.info().reg.covariance.at<double>(5,5)), _preferencesDialog->isCacheSavedInFigures());
 		_ui->statsToolBox->updateStat("Odometry/VarianceAng/", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), (float)odom.info().reg.covariance.at<double>(5,5), _preferencesDialog->isCacheSavedInFigures());
+		_ui->statsToolBox->updateStat("Odometry/TimeDeskewing/ms", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), (float)odom.info().timeDeskewing*1000.0f, _preferencesDialog->isCacheSavedInFigures());
 		_ui->statsToolBox->updateStat("Odometry/TimeEstimation/ms", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), (float)odom.info().timeEstimation*1000.0f, _preferencesDialog->isCacheSavedInFigures());
 		if(odom.info().timeParticleFiltering>0.0f)
 		{
@@ -4784,13 +4790,13 @@ void MainWindow::applyPrefSettings(PreferencesDialog::PANEL_FLAGS flags)
 
 		if(_sensorCapture)
 		{
-			if(dynamic_cast<DBReader*>(_sensorCapture->sensor()) != 0)
+			if(dynamic_cast<DBReader*>(_sensorCapture->camera()) != 0)
 			{
-				_sensorCapture->setImageRate( _preferencesDialog->isSourceDatabaseStampsUsed()?-1:_preferencesDialog->getGeneralInputRate());
+				_sensorCapture->setFrameRate( _preferencesDialog->isSourceDatabaseStampsUsed()?-1:_preferencesDialog->getGeneralInputRate());
 			}
 			else
 			{
-				_sensorCapture->setImageRate(_preferencesDialog->getGeneralInputRate());
+				_sensorCapture->setFrameRate(_preferencesDialog->getGeneralInputRate());
 			}
 		}
 
@@ -5213,6 +5219,7 @@ void MainWindow::updateSelectSourceMenu()
 	_ui->actionMYNT_EYE_S_SDK->setChecked(_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcStereoMyntEye);
 	_ui->actionDepthAI_oakd->setChecked(_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcStereoDepthAI);
 	_ui->actionDepthAI_oakdlite->setChecked(_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcStereoDepthAI);
+	_ui->actionVelodyne_VLP_16->setChecked(_preferencesDialog->getLidarSourceDriver() == PreferencesDialog::kSrcLidarVLP16);
 }
 
 void MainWindow::changeImgRateSetting()
@@ -5630,29 +5637,6 @@ void MainWindow::editDatabase()
 	}
 }
 
-Camera * MainWindow::createCamera(
-		Camera ** odomSensor,
-		Transform & odomSensorExtrinsics,
-		double & odomSensorTimeOffset,
-		float & odomSensorScaleFactor)
-{
-	Camera * camera = _preferencesDialog->createCamera();
-
-	if(camera &&
-	   _preferencesDialog->getOdomSourceDriver() != PreferencesDialog::kSrcUndef &&
-	   _preferencesDialog->getOdomSourceDriver() != _preferencesDialog->getSourceDriver() &&
-		!(_preferencesDialog->getOdomSourceDriver() == PreferencesDialog::kSrcStereoRealSense2 &&
-		  _preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcRealSense2))
-	{
-		UINFO("Create Odom Sensor %d (camera = %d)",
-				_preferencesDialog->getOdomSourceDriver(),
-				_preferencesDialog->getSourceDriver());
-		*odomSensor = _preferencesDialog->createOdomSensor(odomSensorExtrinsics, odomSensorTimeOffset, odomSensorScaleFactor);
-	}
-
-	return camera;
-}
-
 void MainWindow::startDetection()
 {
 	UDEBUG("");
@@ -5741,7 +5725,8 @@ void MainWindow::startDetection()
 	}
 
 	// Adjust pre-requirements
-	if(_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcUndef)
+	if(_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcUndef &&
+	   _preferencesDialog->getLidarSourceDriver() == PreferencesDialog::kSrcUndef)
 	{
 		QMessageBox::warning(this,
 				 tr("RTAB-Map"),
@@ -5754,23 +5739,55 @@ void MainWindow::startDetection()
 
 	double poseTimeOffset = 0.0;
 	float scaleFactor = 0.0f;
+	double waitTime = 0.1;
 	Transform extrinsics;
-	Camera * odomSensor = 0;
-	Camera * camera = this->createCamera(&odomSensor, extrinsics, poseTimeOffset, scaleFactor);
-	if(!camera)
+	SensorCapture * odomSensor = 0;
+	Camera * camera = 0;
+	Lidar * lidar = 0;
+
+	if(_preferencesDialog->getLidarSourceDriver() != PreferencesDialog::kSrcUndef)
 	{
-		Q_EMIT stateChanged(kInitialized);
-		return;
+		lidar = _preferencesDialog->createLidar();
+		if(!lidar)
+		{
+			Q_EMIT stateChanged(kInitialized);
+			return;
+		}
 	}
 
-	if(odomSensor)
+	if(!lidar || _preferencesDialog->getSourceDriver() != PreferencesDialog::kSrcUndef)
 	{
-		_sensorCapture = new SensorCaptureThread(camera, odomSensor, extrinsics, poseTimeOffset, scaleFactor, _preferencesDialog->isOdomSensorAsGt(), parameters);
+		camera = _preferencesDialog->createCamera();
+		if(!camera)
+		{
+			delete lidar;
+			Q_EMIT stateChanged(kInitialized);
+			return;
+		}
 	}
-	else
+
+	if(_preferencesDialog->getOdomSourceDriver() != PreferencesDialog::kSrcUndef &&
+		(camera == 0 ||
+		   (_preferencesDialog->getOdomSourceDriver() != _preferencesDialog->getSourceDriver() &&
+			!(_preferencesDialog->getOdomSourceDriver() == PreferencesDialog::kSrcStereoRealSense2 &&
+			  _preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcRealSense2))))
 	{
-		_sensorCapture = new SensorCaptureThread(camera, _preferencesDialog->isOdomSensorAsGt(), parameters);
+		UINFO("Create Odom Sensor %d (camera = %d)",
+				_preferencesDialog->getOdomSourceDriver(),
+				_preferencesDialog->getSourceDriver());
+		odomSensor = _preferencesDialog->createOdomSensor(extrinsics, poseTimeOffset, scaleFactor, waitTime);
+		if(!odomSensor)
+		{
+			delete camera;
+			delete lidar;
+			Q_EMIT stateChanged(kInitialized);
+			return;
+		}
 	}
+
+	_sensorCapture = new SensorCaptureThread(lidar, camera, odomSensor, extrinsics, poseTimeOffset, scaleFactor, waitTime, parameters);
+
+	_sensorCapture->setOdomAsGroundTruth(_preferencesDialog->isOdomSensorAsGt());
 	_sensorCapture->setMirroringEnabled(_preferencesDialog->isSourceMirroring());
 	_sensorCapture->setColorOnly(_preferencesDialog->isSourceRGBDColorOnly());
 	_sensorCapture->setImageDecimation(_preferencesDialog->getSourceImageDecimation());
@@ -5789,7 +5806,8 @@ void MainWindow::startDetection()
 			_preferencesDialog->getSourceScanVoxelSize(),
 			_preferencesDialog->getSourceScanNormalsK(),
 			_preferencesDialog->getSourceScanNormalsRadius(),
-			(float)_preferencesDialog->getSourceScanForceGroundNormalsUp());
+			(float)_preferencesDialog->getSourceScanForceGroundNormalsUp(),
+			_preferencesDialog->isSourceScanDeskewing());
 	if(_preferencesDialog->getIMUFilteringStrategy()>0 && dynamic_cast<DBReader*>(camera) == 0)
 	{
 		_sensorCapture->enableIMUFiltering(_preferencesDialog->getIMUFilteringStrategy()-1, parameters, _preferencesDialog->getIMUFilteringBaseFrameConversion());
@@ -5809,7 +5827,7 @@ void MainWindow::startDetection()
 	if(uStr2Bool(parameters.at(Parameters::kRGBDEnabled()).c_str()))
 	{
 		// Require calibrated camera
-		if(!camera->isCalibrated())
+		if(camera && !camera->isCalibrated())
 		{
 			UWARN("Camera is not calibrated!");
 			Q_EMIT stateChanged(kInitialized);
@@ -5842,7 +5860,7 @@ void MainWindow::startDetection()
 				_imuThread = 0;
 			}
 
-			if((!_sensorCapture->odomProvided() || _preferencesDialog->isOdomSensorAsGt()) && !_preferencesDialog->isOdomDisabled())
+			if(!_sensorCapture->odomProvided() && !_preferencesDialog->isOdomDisabled())
 			{
 				ParametersMap odomParameters = parameters;
 				if(_preferencesDialog->getOdomRegistrationApproach() < 3)
@@ -7093,6 +7111,11 @@ void MainWindow::selectDepthAIOAKD()
 void MainWindow::selectDepthAIOAKDLite()
 {
 	_preferencesDialog->selectSourceDriver(PreferencesDialog::kSrcStereoDepthAI, 0); // variant 0=no IMU
+}
+
+void MainWindow::selectVLP16()
+{
+	_preferencesDialog->selectSourceDriver(PreferencesDialog::kSrcLidarVLP16);
 }
 
 void MainWindow::dumpTheMemory()

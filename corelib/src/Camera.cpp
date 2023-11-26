@@ -26,17 +26,58 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 #include "rtabmap/core/Camera.h"
+#include "rtabmap/core/IMUFilter.h"
 
 #include <rtabmap/utilite/UStl.h>
 #include <rtabmap/utilite/UFile.h>
 #include <rtabmap/utilite/UDirectory.h>
+#include <rtabmap/utilite/UEventsManager.h>
 
 namespace rtabmap
 {
 
+Camera::Camera(float imageRate, const Transform & localTransform) :
+		SensorCapture(imageRate, localTransform*CameraModel::opticalRotation()),
+		imuFilter_(0),
+		publishInterIMU_(false)
+{}
+
+Camera::~Camera()
+{
+	delete imuFilter_;
+}
+
 bool Camera::initFromFile(const std::string & calibrationPath)
 {
 	return init(UDirectory::getDir(calibrationPath), uSplit(UFile::getName(calibrationPath), '.').front());
+}
+
+void Camera::setInterIMUPublishing(bool enabled, IMUFilter * filter)
+{
+	publishInterIMU_ = enabled;
+	delete imuFilter_;
+	imuFilter_ = filter;
+}
+
+void Camera::postInterIMU(const IMU & imu, double stamp)
+{
+	if(imuFilter_)
+	{
+		imuFilter_->update(
+				imu.angularVelocity()[0], imu.angularVelocity()[1], imu.angularVelocity()[2],
+				imu.linearAcceleration()[0], imu.linearAcceleration()[1], imu.linearAcceleration()[2],
+				stamp);
+		cv::Vec4d q;
+		imuFilter_->getOrientation(q[0],q[1],q[2],q[3]);
+		UEventsManager::post(new IMUEvent(IMU(
+				q, cv::Mat(),
+				imu.angularVelocity(), imu.angularVelocityCovariance(),
+				imu.linearAcceleration(), imu.linearAccelerationCovariance(),
+				imu.localTransform()),
+				stamp));
+		return;
+	}
+	UEventsManager::post(new IMUEvent(imu, stamp));
 }
 
 } // namespace rtabmap

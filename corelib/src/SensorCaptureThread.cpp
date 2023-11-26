@@ -27,6 +27,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "rtabmap/core/SensorCaptureThread.h"
 #include "rtabmap/core/Camera.h"
+#include "rtabmap/core/Lidar.h"
 #include "rtabmap/core/SensorEvent.h"
 #include "rtabmap/core/CameraRGBD.h"
 #include "rtabmap/core/util2d.h"
@@ -49,139 +50,138 @@ namespace rtabmap
 {
 
 // ownership transferred
-SensorCaptureThread::SensorCaptureThread(SensorCapture * sensor, const ParametersMap & parameters) :
-		_sensor(sensor),
-		_odomSensor(0),
-		_odomAsGt(false),
-		_poseTimeOffset(0.0),
-		_poseScaleFactor(1.0f),
-		_mirroring(false),
-		_stereoExposureCompensation(false),
-		_colorOnly(false),
-		_imageDecimation(1),
-		_histogramMethod(0),
-		_stereoToDepth(false),
-		_scanFromDepth(false),
-		_scanDownsampleStep(1),
-		_scanRangeMin(0.0f),
-		_scanRangeMax(0.0f),
-		_scanVoxelSize(0.0f),
-		_scanNormalsK(0),
-		_scanNormalsRadius(0.0f),
-		_scanForceGroundNormalsUp(false),
-		_stereoDense(StereoDense::create(parameters)),
-		_distortionModel(0),
-		_bilateralFiltering(false),
-		_bilateralSigmaS(10),
-		_bilateralSigmaR(0.1),
-		_imuFilter(0),
-		_imuBaseFrameConversion(false),
-		_featureDetector(0),
-		_depthAsMask(Parameters::defaultVisDepthAsMask())
+SensorCaptureThread::SensorCaptureThread(
+		Camera * camera,
+		const ParametersMap & parameters) :
+			SensorCaptureThread(0, camera, 0, Transform(), 0.0, 1.0f, 0.1, parameters)
 {
-	UASSERT(_sensor != 0);
+	UASSERT(camera != 0);
 }
 
 // ownership transferred
 SensorCaptureThread::SensorCaptureThread(
-		SensorCapture * sensor,
+		Camera * camera,
 		SensorCapture * odomSensor,
 		const Transform & extrinsics,
 		double poseTimeOffset,
 		float poseScaleFactor,
-		bool odomAsGt,
+		double poseWaitTime,
 		const ParametersMap & parameters) :
-			_sensor(sensor),
-			_odomSensor(odomSensor),
-			_extrinsicsOdomToCamera(extrinsics * CameraModel::opticalRotation()),
-			_odomAsGt(odomAsGt),
-			_poseTimeOffset(poseTimeOffset),
-			_poseScaleFactor(poseScaleFactor),
-			_mirroring(false),
-			_stereoExposureCompensation(false),
-			_colorOnly(false),
-			_imageDecimation(1),
-			_histogramMethod(0),
-			_stereoToDepth(false),
-			_scanFromDepth(false),
-			_scanDownsampleStep(1),
-			_scanRangeMin(0.0f),
-			_scanRangeMax(0.0f),
-			_scanVoxelSize(0.0f),
-			_scanNormalsK(0),
-			_scanNormalsRadius(0.0f),
-			_scanForceGroundNormalsUp(false),
-			_stereoDense(StereoDense::create(parameters)),
-			_distortionModel(0),
-			_bilateralFiltering(false),
-			_bilateralSigmaS(10),
-			_bilateralSigmaR(0.1),
-			_imuFilter(0),
-			_imuBaseFrameConversion(false),
-			_featureDetector(0),
-			_depthAsMask(Parameters::defaultVisDepthAsMask())
+			SensorCaptureThread(0, camera, odomSensor, extrinsics, poseTimeOffset, poseScaleFactor, poseWaitTime, parameters)
 {
-	UASSERT(_sensor != 0 && _odomSensor != 0 && !_extrinsicsOdomToCamera.isNull());
-	UDEBUG("_extrinsicsOdomToCamera=%s", _extrinsicsOdomToCamera.prettyPrint().c_str());
-	UDEBUG("_poseTimeOffset        =%f", _poseTimeOffset);
-	UDEBUG("_poseScaleFactor       =%f", _poseScaleFactor);
-	UDEBUG("_odomAsGt              =%s", _odomAsGt?"true":"false");
+	UASSERT(camera != 0 && odomSensor != 0 && !extrinsics.isNull());
 }
 
-// ownership transferred
 SensorCaptureThread::SensorCaptureThread(
-		SensorCapture * sensor,
-		bool odomAsGt,
+		Lidar * lidar,
 		const ParametersMap & parameters) :
-			_sensor(sensor),
-			_odomSensor(0),
-			_odomAsGt(odomAsGt),
-			_poseTimeOffset(0.0),
-			_poseScaleFactor(1.0f),
-			_mirroring(false),
-			_stereoExposureCompensation(false),
-			_colorOnly(false),
-			_imageDecimation(1),
-			_histogramMethod(0),
-			_stereoToDepth(false),
-			_scanFromDepth(false),
-			_scanDownsampleStep(1),
-			_scanRangeMin(0.0f),
-			_scanRangeMax(0.0f),
-			_scanVoxelSize(0.0f),
-			_scanNormalsK(0),
-			_scanNormalsRadius(0.0f),
-			_scanForceGroundNormalsUp(false),
-			_stereoDense(StereoDense::create(parameters)),
-			_distortionModel(0),
-			_bilateralFiltering(false),
-			_bilateralSigmaS(10),
-			_bilateralSigmaR(0.1),
-			_imuFilter(0),
-			_imuBaseFrameConversion(false),
-			_featureDetector(0),
-			_depthAsMask(Parameters::defaultVisDepthAsMask())
+			SensorCaptureThread(lidar, 0, 0, Transform(), 0.0, 1.0f, 0.1, parameters)
 {
-	UASSERT(_sensor != 0);
-	UDEBUG("_odomAsGt              =%s", _odomAsGt?"true":"false");
+	UASSERT(lidar != 0);
+}
+
+SensorCaptureThread::SensorCaptureThread(
+		Lidar * lidar,
+		Camera * camera,
+		const ParametersMap & parameters) :
+			SensorCaptureThread(lidar, camera, 0, Transform(), 0.0, 1.0f, 0.1, parameters)
+{
+	UASSERT(lidar != 0 && camera != 0);
+}
+
+SensorCaptureThread::SensorCaptureThread(
+		Lidar * lidar,
+		SensorCapture * odomSensor,
+		double poseTimeOffset,
+		float poseScaleFactor,
+		double poseWaitTime,
+		const ParametersMap & parameters) :
+			SensorCaptureThread(lidar, 0, odomSensor, Transform(), poseTimeOffset, poseScaleFactor, poseWaitTime, parameters)
+{
+	UASSERT(lidar != 0 && odomSensor != 0);
+}
+
+SensorCaptureThread::SensorCaptureThread(
+		Lidar * lidar,
+		Camera * camera,
+		SensorCapture * odomSensor,
+		const Transform & extrinsics,
+		double poseTimeOffset,
+		float poseScaleFactor,
+		double poseWaitTime,
+		const ParametersMap & parameters) :
+				_camera(camera),
+				_odomSensor(odomSensor),
+				_lidar(lidar),
+				_extrinsicsOdomToCamera(extrinsics * CameraModel::opticalRotation()),
+				_odomAsGt(false),
+				_poseTimeOffset(poseTimeOffset),
+				_poseScaleFactor(poseScaleFactor),
+				_poseWaitTime(poseWaitTime),
+				_mirroring(false),
+				_stereoExposureCompensation(false),
+				_colorOnly(false),
+				_imageDecimation(1),
+				_histogramMethod(0),
+				_stereoToDepth(false),
+				_scanDeskewing(false),
+				_scanFromDepth(false),
+				_scanDownsampleStep(1),
+				_scanRangeMin(0.0f),
+				_scanRangeMax(0.0f),
+				_scanVoxelSize(0.0f),
+				_scanNormalsK(0),
+				_scanNormalsRadius(0.0f),
+				_scanForceGroundNormalsUp(false),
+				_stereoDense(StereoDense::create(parameters)),
+				_distortionModel(0),
+				_bilateralFiltering(false),
+				_bilateralSigmaS(10),
+				_bilateralSigmaR(0.1),
+				_imuFilter(0),
+				_imuBaseFrameConversion(false),
+				_featureDetector(0),
+				_depthAsMask(Parameters::defaultVisDepthAsMask())
+{
+	UASSERT(_camera != 0 || _lidar != 0);
+	if(_lidar && _camera)
+	{
+		_camera->setFrameRate(0);
+	}
+	if(_odomSensor)
+	{
+		if(_camera)
+		{
+			UASSERT(!_extrinsicsOdomToCamera.isNull());
+			UDEBUG("_extrinsicsOdomToCamera=%s", _extrinsicsOdomToCamera.prettyPrint().c_str());
+		}
+		UDEBUG("_poseTimeOffset        =%f", _poseTimeOffset);
+		UDEBUG("_poseScaleFactor       =%f", _poseScaleFactor);
+		UDEBUG("_poseWaitTime          =%f", _poseWaitTime);
+	}
 }
 
 SensorCaptureThread::~SensorCaptureThread()
 {
 	join(true);
-	delete _sensor;
+	delete _camera;
 	delete _odomSensor;
+	delete _lidar;
 	delete _distortionModel;
 	delete _stereoDense;
 	delete _imuFilter;
 	delete _featureDetector;
 }
 
-void SensorCaptureThread::setImageRate(float imageRate)
+void SensorCaptureThread::setFrameRate(float frameRate)
 {
-	if(_sensor)
+	if(_lidar)
 	{
-		_sensor->setImageRate(imageRate);
+		_lidar->setFrameRate(frameRate);
+	}
+	else if(_camera)
+	{
+		_camera->setFrameRate(frameRate);
 	}
 }
 
@@ -258,9 +258,10 @@ void SensorCaptureThread::setScanParameters(
 	float voxelSize,
 	int normalsK,
 	int normalsRadius,
-	bool forceGroundNormalsUp)
+	bool forceGroundNormalsUp,
+	bool deskewing)
 {
-	setScanParameters(fromDepth, downsampleStep, rangeMin, rangeMax, voxelSize, normalsK, normalsRadius, forceGroundNormalsUp?0.8f:0.0f);
+	setScanParameters(fromDepth, downsampleStep, rangeMin, rangeMax, voxelSize, normalsK, normalsRadius, forceGroundNormalsUp?0.8f:0.0f, deskewing);
 }
 
 void SensorCaptureThread::setScanParameters(
@@ -271,8 +272,10 @@ void SensorCaptureThread::setScanParameters(
 			float voxelSize,
 			int normalsK,
 			int normalsRadius,
-			float groundNormalsUp)
+			float groundNormalsUp,
+			bool deskewing)
 {
+	_scanDeskewing = deskewing;
 	_scanFromDepth = fromDepth;
 	_scanDownsampleStep=downsampleStep;
 	_scanRangeMin = rangeMin;
@@ -285,27 +288,148 @@ void SensorCaptureThread::setScanParameters(
 
 bool SensorCaptureThread::odomProvided() const
 {
-	return _sensor && (_sensor->odomProvided() || (_odomSensor && _odomSensor->odomProvided()));
+	if(_odomAsGt)
+	{
+		return false;
+	}
+	return (_lidar && _lidar->odomProvided()) || (_camera && _camera->odomProvided()) || _odomSensor;
 }
 
 void SensorCaptureThread::mainLoopBegin()
 {
 	ULogger::registerCurrentThread("Camera");
-	_sensor->resetTimer();
+	if(_lidar)
+	{
+		_lidar->resetTimer();
+	}
+	else if(_camera)
+	{
+		_camera->resetTimer();
+	}
 }
 
 void SensorCaptureThread::mainLoop()
 {
+	UASSERT(_lidar || _camera);
 	UTimer totalTime;
 	SensorCaptureInfo info;
-	SensorData data = _sensor->takeImage(&info);
+	SensorData data;
+	SensorData cameraData;
+	if(_lidar)
+	{
+		data = _lidar->takeData(&info);
+		if(_camera)
+		{
+			cameraData = _camera->takeData();
+			if(cameraData.imageRaw().empty())
+			{
+				UERROR("Could not capture image!");
+			}
+			else
+			{
+				double stampStart = UTimer::now();
+				while(cameraData.stamp() < data.stamp() &&
+					  !isKilled() &&
+					  UTimer::now() - stampStart < _poseWaitTime &&
+					  !cameraData.imageRaw().empty())
+				{
+					// Make sure the camera frame is newer than lidar frame so
+					// that if there are imus published by the cameras, we can get
+					// them all in odometry before deskewing.
+					cameraData = _camera->takeData();
+				}
+
+				if(cameraData.stamp() < data.stamp())
+				{
+					UWARN("Could not get camera frame (%f) with stamp more recent than lidar frame (%f) after waiting for %f seconds.",
+							cameraData.stamp(),
+							data.stamp(),
+							_poseWaitTime);
+				}
+				if(!cameraData.stereoCameraModels().empty())
+				{
+					data.setStereoImage(cameraData.imageRaw(), cameraData.depthOrRightRaw(), cameraData.stereoCameraModels(), true);
+				}
+				else
+				{
+					data.setRGBDImage(cameraData.imageRaw(), cameraData.depthOrRightRaw(), cameraData.cameraModels(), true);
+				}
+			}
+		}
+	}
+	else if(_camera)
+	{
+		data = _camera->takeData(&info);
+	}
 
 	if(_odomSensor)
 	{
+		if(_lidar && _scanDeskewing)
+		{
+			UDEBUG("Deskewing begin");
+			if(!data.laserScanRaw().empty() && data.laserScanRaw().hasTime())
+			{
+				float scanTime =
+					data.laserScanRaw().data().ptr<float>(0, data.laserScanRaw().size()-1)[data.laserScanRaw().getTimeOffset()] -
+					data.laserScanRaw().data().ptr<float>(0, 0)[data.laserScanRaw().getTimeOffset()];
+
+				Transform poseFirstScan;
+				Transform poseLastScan;
+				cv::Mat cov;
+				double firstStamp = data.stamp() + data.laserScanRaw().data().ptr<float>(0, 0)[data.laserScanRaw().getTimeOffset()];
+				double lastStamp = data.stamp() + data.laserScanRaw().data().ptr<float>(0, data.laserScanRaw().size()-1)[data.laserScanRaw().getTimeOffset()];
+				if(_odomSensor->getPose(firstStamp+_poseTimeOffset, poseFirstScan, cov, _poseWaitTime>0?_poseWaitTime:0) &&
+				   _odomSensor->getPose(lastStamp+_poseTimeOffset, poseLastScan, cov, _poseWaitTime>0?_poseWaitTime:0))
+				{
+					if(_poseScaleFactor>0 && _poseScaleFactor!=1.0f)
+					{
+						poseFirstScan.x() *= _poseScaleFactor;
+						poseFirstScan.y() *= _poseScaleFactor;
+						poseFirstScan.z() *= _poseScaleFactor;
+						poseLastScan.x() *= _poseScaleFactor;
+						poseLastScan.y() *= _poseScaleFactor;
+						poseLastScan.z() *= _poseScaleFactor;
+					}
+
+					UASSERT(!poseFirstScan.isNull() && !poseLastScan.isNull());
+
+					Transform transform = poseFirstScan.inverse() * poseLastScan;
+
+					// convert to velocity
+					float x,y,z,roll,pitch,yaw;
+					transform.getTranslationAndEulerAngles(x, y, z, roll, pitch, yaw);
+					x/=scanTime;
+					y/=scanTime;
+					z/=scanTime;
+					roll /= scanTime;
+					pitch /= scanTime;
+					yaw /= scanTime;
+
+					Transform velocity(x,y,z,roll,pitch,yaw);
+					UTimer timeDeskewing;
+					LaserScan scanDeskewed = util3d::deskew(data.laserScanRaw(), data.stamp(), velocity);
+					info.timeDeskewing = timeDeskewing.ticks();
+					if(!scanDeskewed.isEmpty())
+					{
+						data.setLaserScan(scanDeskewed);
+					}
+				}
+				else
+				{
+					UWARN("Failed to get poses for stamps %f and %f! Lidar won't be deskewed!", firstStamp+_poseTimeOffset, lastStamp+_poseTimeOffset);
+				}
+			}
+			else if(!data.laserScanRaw().empty())
+			{
+				UWARN("The input scan doesn't have time channel (scan format received=%s)!. Lidar won't be deskewed!", data.laserScanRaw().formatName().c_str());
+			}
+			UDEBUG("Deskewing end");
+		}
+
 		Transform pose;
 		Transform poseToLeftCam;
 		cv::Mat covariance;
-		if(_odomSensor->getPose(data.stamp()+_poseTimeOffset, pose, covariance))
+		if(_odomSensor->getPose(data.stamp()+_poseTimeOffset, pose, covariance, _poseWaitTime>0?_poseWaitTime:0))
 		{
 			info.odomPose = pose;
 			info.odomCovariance = covariance;
@@ -330,6 +454,14 @@ void SensorCaptureThread::mainLoop()
 				model.setLocalTransform(_extrinsicsOdomToCamera);
 				data.setStereoCameraModel(model);
 			}
+
+			// Fake IMU to intialize gravity (assuming pose is aligned with gravity!)
+			Eigen::Quaterniond q = pose.getQuaterniond();
+			data.setIMU(IMU(
+					cv::Vec4d(q.x(), q.y(), q.z(), q.w()), cv::Mat(),
+					cv::Vec3d(), cv::Mat(),
+					cv::Vec3d(), cv::Mat(),
+					Transform::getIdentity()));
 		}
 		else
 		{
@@ -343,16 +475,16 @@ void SensorCaptureThread::mainLoop()
 		info.odomPose.setNull();
 	}
 
-	if(!data.imageRaw().empty() || !data.laserScanRaw().empty() || (dynamic_cast<DBReader*>(_sensor) != 0 && data.id()>0)) // intermediate nodes could not have image set
+	if(!data.imageRaw().empty() || !data.laserScanRaw().empty() || (dynamic_cast<DBReader*>(_camera) != 0 && data.id()>0)) // intermediate nodes could not have image set
 	{
 		postUpdate(&data, &info);
-		info.cameraName = _sensor->getSerial();
+		info.cameraName = _lidar?_lidar->getSerial():_camera->getSerial();
 		info.timeTotal = totalTime.ticks();
 		this->post(new SensorEvent(data, info));
 	}
 	else if(!this->isKilled())
 	{
-		UWARN("no more images...");
+		UWARN("no more data...");
 		this->kill();
 		this->post(new SensorEvent());
 	}
@@ -360,7 +492,7 @@ void SensorCaptureThread::mainLoop()
 
 void SensorCaptureThread::mainLoopKill()
 {
-	if(dynamic_cast<CameraFreenect2*>(_sensor) != 0)
+	if(dynamic_cast<CameraFreenect2*>(_camera) != 0)
 	{
 		int i=20;
 		while(i-->0)

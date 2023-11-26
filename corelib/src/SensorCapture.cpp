@@ -43,8 +43,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 namespace rtabmap
 {
 
-SensorCapture::SensorCapture(float imageRate, const Transform & localTransform) :
-	_imageRate(imageRate),
+SensorCapture::SensorCapture(float frameRate, const Transform & localTransform) :
+	_frameRate(frameRate),
 	_localTransform(localTransform),
 	_frameRateTimer(new UTimer()),
 	_seq(0)
@@ -61,14 +61,14 @@ void SensorCapture::resetTimer()
 	_frameRateTimer->start();
 }
 
-SensorData SensorCapture::takeImage(SensorCaptureInfo * info)
+SensorData SensorCapture::takeData(SensorCaptureInfo * info)
 {
 	bool warnFrameRateTooHigh = false;
 	float actualFrameRate = 0;
-	float imageRate = _imageRate;
-	if(imageRate>0)
+	float frameRate = _frameRate;
+	if(frameRate>0)
 	{
-		int sleepTime = (1000.0f/imageRate - 1000.0f*_frameRateTimer->getElapsedTime());
+		int sleepTime = (1000.0f/frameRate - 1000.0f*_frameRateTimer->getElapsedTime());
 		if(sleepTime > 2)
 		{
 			uSleep(sleepTime-2);
@@ -80,27 +80,27 @@ SensorData SensorCapture::takeImage(SensorCaptureInfo * info)
 		}
 
 		// Add precision at the cost of a small overhead
-		while(_frameRateTimer->getElapsedTime() < 1.0/double(imageRate)-0.000001)
+		while(_frameRateTimer->getElapsedTime() < 1.0/double(frameRate)-0.000001)
 		{
 			//
 		}
 
 		double slept = _frameRateTimer->getElapsedTime();
 		_frameRateTimer->start();
-		UDEBUG("slept=%fs vs target=%fs", slept, 1.0/double(imageRate));
+		UDEBUG("slept=%fs vs target=%fs", slept, 1.0/double(frameRate));
 	}
 
 	UTimer timer;
-	SensorData data = this->captureImage(info);
+	SensorData data = this->captureData(info);
 	double captureTime = timer.ticks();
 	if(warnFrameRateTooHigh)
 	{
-		UWARN("Camera: Cannot reach target image rate %f Hz, current rate is %f Hz and capture time = %f s.",
-				imageRate, actualFrameRate, captureTime);
+		UWARN("Camera: Cannot reach target frame rate %f Hz, current rate is %f Hz and capture time = %f s.",
+				frameRate, actualFrameRate, captureTime);
 	}
 	else
 	{
-		UDEBUG("Time capturing image = %fs", captureTime);
+		UDEBUG("Time capturing data = %fs", captureTime);
 	}
 	if(info)
 	{

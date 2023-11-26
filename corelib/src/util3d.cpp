@@ -3630,7 +3630,7 @@ LaserScan deskew(
 		}
 	}
 	output = cv::Mat(output, cv::Range::all(), cv::Range(0, oi));
-	UWARN("Lidar deskewing time=%fs", processingTime.elapsed());
+	UDEBUG("Lidar deskewing time=%fs", processingTime.elapsed());
 	return LaserScan(output, input.maxPoints(), input.rangeMax(), LaserScan::kXYZI, input.localTransform());
 }
 

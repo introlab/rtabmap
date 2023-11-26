@@ -50,19 +50,19 @@ class RTABMAP_CORE_EXPORT SensorCapture
 {
 public:
 	virtual ~SensorCapture();
-	SensorData takeImage(SensorCaptureInfo * info = 0);
+	SensorData takeData(SensorCaptureInfo * info = 0);
 
 	virtual bool init(const std::string & calibrationFolder = ".", const std::string & cameraName = "") = 0;
 	virtual std::string getSerial() const = 0;
 	virtual bool odomProvided() const { return false; }
-	virtual bool getPose(double stamp, Transform & pose, cv::Mat & covariance) { return false; }
+	virtual bool getPose(double stamp, Transform & pose, cv::Mat & covariance, double maxWaitTime = 0.06) { return false; }
 
 	//getters
-	float getImageRate() const {return _imageRate;}
+	float getFrameRate() const {return _frameRate;}
 	const Transform & getLocalTransform() const {return _localTransform;}
 
 	//setters
-	void setImageRate(float imageRate) {_imageRate = imageRate;}
+	void setFrameRate(float frameRate) {_frameRate = frameRate;}
 	void setLocalTransform(const Transform & localTransform) {_localTransform= localTransform;}
 
 	void resetTimer();
@@ -70,20 +70,20 @@ protected:
 	/**
 	 * Constructor
 	 *
-	 * @param imageRate the frame rate (Hz), 0 for fast as the camera can
+	 * @param frameRate the frame rate (Hz), 0 for fast as the sensor can
 	 * @param localTransform the transform from base frame to sensor frame
 	 */
-	SensorCapture(float imageRate = 0, const Transform & localTransform = Transform::getIdentity());
+	SensorCapture(float frameRate = 0, const Transform & localTransform = Transform::getIdentity());
 
 	/**
 	 * returned rgb and depth images should be already rectified if calibration was loaded
 	 */
-	virtual SensorData captureImage(SensorCaptureInfo * info = 0) = 0;
+	virtual SensorData captureData(SensorCaptureInfo * info = 0) = 0;
 
 	int getNextSeqID() {return ++_seq;}
 
 private:
-	float _imageRate;
+	float _frameRate;
 	Transform _localTransform;
 	UTimer * _frameRateTimer;
 	int _seq;

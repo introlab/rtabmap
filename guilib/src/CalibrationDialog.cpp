@@ -307,7 +307,7 @@ bool CalibrationDialog::handleEvent(UEvent * event)
 {
 	if(!processingData_)
 	{
-		if(event->getClassName().compare("") == 0)
+		if(event->getClassName().compare("SensorEvent") == 0)
 		{
 			rtabmap::SensorEvent * e = (rtabmap::SensorEvent *)event;
 			if(e->getCode() == rtabmap::SensorEvent::kCodeData)

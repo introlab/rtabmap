@@ -206,10 +206,10 @@ int main(int argc, char * argv[])
 				pathDepthImages,
 				depthFactor,
 				0.0f), parameters);
-	((CameraRGBDImages*)cameraThread.sensor())->setTimestamps(true, "", false);
+	((CameraRGBDImages*)cameraThread.camera())->setTimestamps(true, "", false);
 	if(!pathGt.empty())
 	{
-		((CameraRGBDImages*)cameraThread.sensor())->setGroundTruthPath(pathGt, 1);
+		((CameraRGBDImages*)cameraThread.camera())->setGroundTruthPath(pathGt, 1);
 	}
 
 	bool intermediateNodes = Parameters::defaultRtabmapCreateIntermediateNodes();
@@ -220,9 +220,9 @@ int main(int argc, char * argv[])
 	Parameters::parse(parameters, Parameters::kRtabmapDetectionRate(), detectionRate);
 	std::string databasePath = output+"/"+outputName+".db";
 	UFile::erase(databasePath);
-	if(cameraThread.sensor()->init(path, outputName+"_calib"))
+	if(cameraThread.camera()->init(path, outputName+"_calib"))
 	{
-		int totalImages = (int)((CameraRGBDImages*)cameraThread.sensor())->filenames().size();
+		int totalImages = (int)((CameraRGBDImages*)cameraThread.camera())->filenames().size();
 
 		if(skipFrames>0)
 		{
@@ -240,7 +240,7 @@ int main(int argc, char * argv[])
 		UTimer totalTime;
 		UTimer timer;
 		SensorCaptureInfo cameraInfo;
-		SensorData data = cameraThread.sensor()->takeImage(&cameraInfo);
+		SensorData data = cameraThread.camera()->takeData(&cameraInfo);
 		int iteration = 0;
 
 		/////////////////////////////
@@ -257,7 +257,7 @@ int main(int argc, char * argv[])
 
 				cameraInfo = SensorCaptureInfo();
 				timer.restart();
-				data = cameraThread.sensor()->takeImage(&cameraInfo);
+				data = cameraThread.camera()->takeData(&cameraInfo);
 				continue;
 			}
 			skipCount = 0;
@@ -377,7 +377,7 @@ int main(int argc, char * argv[])
 
 			cameraInfo = SensorCaptureInfo();
 			timer.restart();
-			data = cameraThread.sensor()->takeImage(&cameraInfo);
+			data = cameraThread.camera()->takeData(&cameraInfo);
 		}
 		delete odom;
 		printf("Total time=%fs\n", totalTime.ticks());

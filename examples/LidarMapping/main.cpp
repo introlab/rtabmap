@@ -101,12 +101,12 @@ int main(int argc, char * argv[])
 		return -1;
 	}
 
-	SensorCaptureThread sensorThread(lidar);
+	SensorCaptureThread lidarThread(lidar);
 
 	// GUI stuff, there the handler will receive RtabmapEvent and construct the map
-	// We give it the camera so the GUI can pause/resume the camera
+	// We give it the lidar so the GUI can pause/resume the lidar
 	QApplication app(argc, argv);
-	MapBuilder mapBuilder(&sensorThread);
+	MapBuilder mapBuilder(&lidarThread);
 
 	ParametersMap params;
 
@@ -137,7 +137,7 @@ int main(int argc, char * argv[])
 	params.insert(ParametersPair(Parameters::kOdomGuessSmoothingDelay(), "0.3"));
 	params.insert(ParametersPair(Parameters::kOdomDeskewing(), "true"));
 
-	// Create an odometry thread to process camera events, it will send OdometryEvent.
+	// Create an odometry thread to process lidar events, it will send OdometryEvent.
 	OdometryThread odomThread(Odometry::create(params));
 
 	// Rtabmap params
@@ -163,16 +163,16 @@ int main(int argc, char * argv[])
 
 	// The RTAB-Map is subscribed by default to SensorEvent, but we want
 	// RTAB-Map to process OdometryEvent instead, ignoring the SensorEvent.
-	// We can do that by creating a "pipe" between the camera and odometry, then
-	// only the odometry will receive SensorEvent from that camera. RTAB-Map is
+	// We can do that by creating a "pipe" between the lidar and odometry, then
+	// only the odometry will receive SensorEvent from that lidar. RTAB-Map is
 	// also subscribed to OdometryEvent by default, so no need to create a pipe between
 	// odometry and RTAB-Map.
-	UEventsManager::createPipe(&sensorThread, &odomThread, "SensorEvent");
+	UEventsManager::createPipe(&lidarThread, &odomThread, "SensorEvent");
 
 	// Let's start the threads
 	rtabmapThread.start();
 	odomThread.start();
-	sensorThread.start();
+	lidarThread.start();
 
 	printf("Press Tab key to switch between map and odom views (or both).\n");
 	printf("Press Space key to pause.\n");
@@ -186,7 +186,7 @@ int main(int argc, char * argv[])
 	odomThread.unregisterFromEventsManager();
 
 	// Kill all threads
-	sensorThread.kill();
+	lidarThread.kill();
 	odomThread.join(true);
 	rtabmapThread.join(true);
 

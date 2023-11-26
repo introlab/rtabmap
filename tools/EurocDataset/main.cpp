@@ -292,7 +292,7 @@ int main(int argc, char * argv[])
 	printf("baseToCam0=%s\n", (baseToImu*models[0].localTransform()*CameraModel::opticalRotation().inverse()).prettyPrint().c_str());
 	printf("imuToCam0=%s\n", models[0].localTransform().prettyPrint().c_str());
 	printf("imuToCam1=%s\n", models[1].localTransform().prettyPrint().c_str());
-	((CameraStereoImages*)cameraThread.sensor())->setTimestamps(true, "", false);
+	((CameraStereoImages*)cameraThread.camera())->setTimestamps(true, "", false);
 	if(exposureCompensation)
 	{
 		cameraThread.setStereoExposureCompensation(true);
@@ -303,7 +303,7 @@ int main(int argc, char * argv[])
 	}
 	if(!pathGt.empty())
 	{
-		((CameraStereoImages*)cameraThread.sensor())->setGroundTruthPath(pathGt, 9);
+		((CameraStereoImages*)cameraThread.camera())->setGroundTruthPath(pathGt, 9);
 	}
 
 	float detectionRate = Parameters::defaultRtabmapDetectionRate();
@@ -319,9 +319,9 @@ int main(int argc, char * argv[])
 
 	std::string databasePath = output+"/"+outputName+".db";
 	UFile::erase(databasePath);
-	if(cameraThread.sensor()->init(output, outputName+"_calib"))
+	if(cameraThread.camera()->init(output, outputName+"_calib"))
 	{
-		int totalImages = (int)((CameraStereoImages*)cameraThread.sensor())->filenames().size();
+		int totalImages = (int)((CameraStereoImages*)cameraThread.camera())->filenames().size();
 
 		printf("Processing %d images...\n", totalImages);
 
@@ -356,27 +356,27 @@ int main(int argc, char * argv[])
 			if(seq.compare("MH_01_easy") == 0)
 			{
 				printf("MH_01_easy detected with MSCFK odometry, ignoring first moving 440 images...\n");
-				((CameraStereoImages*)cameraThread.sensor())->setStartIndex(440);
+				((CameraStereoImages*)cameraThread.camera())->setStartIndex(440);
 			}
 			else if(seq.compare("MH_02_easy") == 0)
 			{
 				printf("MH_02_easy detected with MSCFK odometry, ignoring first moving 525 images...\n");
-				((CameraStereoImages*)cameraThread.sensor())->setStartIndex(525);
+				((CameraStereoImages*)cameraThread.camera())->setStartIndex(525);
 			}
 			else if(seq.compare("MH_03_medium") == 0)
 			{
 				printf("MH_03_medium detected with MSCFK odometry, ignoring first moving 210 images...\n");
-				((CameraStereoImages*)cameraThread.sensor())->setStartIndex(210);
+				((CameraStereoImages*)cameraThread.camera())->setStartIndex(210);
 			}
 			else if(seq.compare("MH_04_difficult") == 0)
 			{
 				printf("MH_04_difficult detected with MSCFK odometry, ignoring first moving 250 images...\n");
-				((CameraStereoImages*)cameraThread.sensor())->setStartIndex(250);
+				((CameraStereoImages*)cameraThread.camera())->setStartIndex(250);
 			}
 			else if(seq.compare("MH_05_difficult") == 0)
 			{
 				printf("MH_05_difficult detected with MSCFK odometry, ignoring first moving 310 images...\n");
-				((CameraStereoImages*)cameraThread.sensor())->setStartIndex(310);
+				((CameraStereoImages*)cameraThread.camera())->setStartIndex(310);
 			}
 		}
 
@@ -389,7 +389,7 @@ int main(int argc, char * argv[])
 		UTimer timer;
 		SensorCaptureInfo cameraInfo;
 		UDEBUG("");
-		SensorData data = cameraThread.sensor()->takeImage(&cameraInfo);
+		SensorData data = cameraThread.camera()->takeData(&cameraInfo);
 		UDEBUG("");
 		int iteration = 0;
 		double start = data.stamp();
@@ -561,7 +561,7 @@ int main(int argc, char * argv[])
 
 			cameraInfo = SensorCaptureInfo();
 			timer.restart();
-			data = cameraThread.sensor()->takeImage(&cameraInfo);
+			data = cameraThread.camera()->takeData(&cameraInfo);
 		}
 		delete odom;
 		printf("Total time=%fs\n", totalTime.ticks());

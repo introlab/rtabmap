@@ -29,9 +29,12 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "rtabmap/core/rtabmap_core_export.h" // DLL export/import defines
 #include <rtabmap/core/SensorCapture.h>
+#include <rtabmap/core/IMU.h>
 
 namespace rtabmap
 {
+
+class IMUFilter;
 
 /**
  * Class Camera
@@ -40,7 +43,13 @@ namespace rtabmap
 class RTABMAP_CORE_EXPORT Camera : public SensorCapture
 {
 public:
-	virtual ~Camera() {}
+	virtual ~Camera();
+
+	SensorData takeImage(SensorCaptureInfo * info = 0) {return takeData(info);}
+	float getImageRate() const {return getFrameRate();}
+	void setImageRate(float imageRate) {setFrameRate(imageRate);}
+	void setInterIMUPublishing(bool enabled, IMUFilter * filter = 0); // Take ownership of filter
+	bool isInterIMUPublishing() const {return publishInterIMU_;}
 
 	bool initFromFile(const std::string & calibrationPath);
 	virtual bool isCalibrated() const = 0;
@@ -52,8 +61,18 @@ protected:
 	 * @param imageRate the frame rate (Hz), 0 for fast as the camera can
 	 * @param localTransform the transform from base frame to camera frame (without optical rotation)
 	 */
-	Camera(float imageRate = 0, const Transform & localTransform = Transform::getIdentity()) :
-		SensorCapture(imageRate, localTransform*CameraModel::opticalRotation()) {}
+	Camera(float imageRate = 0, const Transform & localTransform = Transform::getIdentity());
+
+	virtual SensorData captureImage(SensorCaptureInfo * info = 0) = 0;
+
+	void postInterIMU(const IMU & imu, double stamp);
+
+private:
+	virtual SensorData captureData(SensorCaptureInfo * info = 0) {return captureImage(info);}
+
+private:
+	IMUFilter * imuFilter_;
+	bool publishInterIMU_;
 };
 
 

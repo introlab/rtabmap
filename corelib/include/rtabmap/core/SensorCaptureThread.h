@@ -42,6 +42,8 @@ class DiscreteDepthDistortionModel;
 namespace rtabmap
 {
 
+class Camera;
+class Lidar;
 class SensorCapture;
 class SensorCaptureInfo;
 class SensorData;
@@ -59,22 +61,63 @@ class RTABMAP_CORE_EXPORT SensorCaptureThread :
 {
 public:
 	// ownership transferred
-	SensorCaptureThread(SensorCapture * camera, const ParametersMap & parameters = ParametersMap());
+	SensorCaptureThread(
+			Camera * camera,
+			const ParametersMap & parameters = ParametersMap());
 	/**
 	 * @param camera the camera to take images from
 	 * @param odomSensor an odometry sensor to get a pose
-	 * @param extrinsics the static transform between odometry sensor's left lens frame to camera's left lens frame
+	 * @param odomAsGt set odometry sensor pose as ground truth instead of odometry
+	 * @param extrinsics the static transform between odometry sensor's left lens frame to camera's left lens frame  (without optical rotation)
 	 */
-	SensorCaptureThread(SensorCapture * camera,
+	SensorCaptureThread(
+			Camera * camera,
 			SensorCapture * odomSensor,
 			const Transform & extrinsics,
 			double poseTimeOffset = 0.0,
 			float poseScaleFactor = 1.0f,
-			bool odomAsGt = false,
+			double poseWaitTime = 0.1,
 			const ParametersMap & parameters = ParametersMap());
-	SensorCaptureThread(SensorCapture * camera,
-				bool odomAsGt,
-				const ParametersMap & parameters = ParametersMap());
+	/**
+	 * @param lidar the lidar to take scans from
+	 */
+	SensorCaptureThread(
+			Lidar * lidar,
+			const ParametersMap & parameters = ParametersMap());
+	/**
+	 * @param lidar the lidar to take scans from
+	 * @param camera the camera to take images from. If the camera is providing a pose, it can be used for deskewing
+	 */
+	SensorCaptureThread(
+			Lidar * lidar,
+			Camera * camera,
+			const ParametersMap & parameters = ParametersMap());
+	/**
+	 * @param lidar the lidar to take scans from
+	 * @param odomSensor an odometry sensor to get a pose and used for deskewing
+	 */
+	SensorCaptureThread(
+			Lidar * lidar,
+			SensorCapture * odomSensor,
+			double poseTimeOffset = 0.0,
+			float poseScaleFactor = 1.0f,
+			double poseWaitTime = 0.1,
+			const ParametersMap & parameters = ParametersMap());
+	/**
+	 * @param lidar the lidar to take scans from
+	 * @param camera the camera to take images from
+	 * @param odomSensor an odometry sensor to get a pose and used for deskewing
+	 * @param extrinsics the static transform between odometry frame to camera frame (without optical rotation)
+	 */
+	SensorCaptureThread(
+			Lidar * lidar,
+			Camera * camera,
+			SensorCapture * odomSensor,
+			const Transform & extrinsics,
+			double poseTimeOffset = 0.0,
+			float poseScaleFactor = 1.0f,
+			double poseWaitTime = 0.1,
+			const ParametersMap & parameters = ParametersMap());
 	virtual ~SensorCaptureThread();
 
 	void setMirroringEnabled(bool enabled) {_mirroring = enabled;}
@@ -83,8 +126,10 @@ public:
 	void setImageDecimation(int decimation) {_imageDecimation = decimation;}
 	void setHistogramMethod(int histogramMethod) {_histogramMethod = histogramMethod;}
 	void setStereoToDepth(bool enabled) {_stereoToDepth = enabled;}
-	void setImageRate(float imageRate);
+	void setFrameRate(float frameRate);
+	RTABMAP_DEPRECATED void setImageRate(float frameRate) {setFrameRate(frameRate);}
 	void setDistortionModel(const std::string & path);
+	void setOdomAsGroundTruth(bool enabled) {_odomAsGt = enabled;}
 	void enableBilateralFiltering(float sigmaS, float sigmaR);
 	void disableBilateralFiltering() {_bilateralFiltering = false;}
 	void enableIMUFiltering(int filteringStrategy=1, const ParametersMap & parameters = ParametersMap(), bool baseFrameConversion = false);
@@ -101,7 +146,8 @@ public:
 			float voxelSize,
 			int normalsK,
 			int normalsRadius,
-			bool forceGroundNormalsUp);
+			bool forceGroundNormalsUp,
+			bool deskewing);
 	void setScanParameters(
 			bool fromDepth,
 			int downsampleStep=1, // decimation of the depth image in case the scan is from depth image
@@ -110,7 +156,8 @@ public:
 			float voxelSize = 0.0f,
 			int normalsK = 0,
 			int normalsRadius = 0.0f,
-			float groundNormalsUp = 0.0f);
+			float groundNormalsUp = 0.0f,
+			bool deskewing = false);
 
 	void postUpdate(SensorData * data, SensorCaptureInfo * info = 0) const;
 
@@ -119,9 +166,9 @@ public:
 	bool isCapturing() const {return this->isRunning();}
 	bool odomProvided() const;
 
-	SensorCapture * sensor() {return _sensor;} // return null if not set, valid until CameraThread is deleted
-	RTABMAP_DEPRECATED SensorCapture * camera() {return sensor();} // return null if not set, valid until CameraThread is deleted
+	Camera * camera() {return _camera;} // return null if not set, valid until CameraThread is deleted
 	SensorCapture * odomSensor() {return _odomSensor;} // return null if not set, valid until CameraThread is deleted
+	Lidar * lidar() {return _lidar;} // return null if not set, valid until CameraThread is deleted
 
 private:
 	virtual void mainLoopBegin();
@@ -129,18 +176,21 @@ private:
 	virtual void mainLoopKill();
 
 private:
-	SensorCapture * _sensor;
+	Camera * _camera;
 	SensorCapture * _odomSensor;
+	Lidar * _lidar;
 	Transform _extrinsicsOdomToCamera;
 	bool _odomAsGt;
 	double _poseTimeOffset;
 	float _poseScaleFactor;
+	double _poseWaitTime;
 	bool _mirroring;
 	bool _stereoExposureCompensation;
 	bool _colorOnly;
 	int _imageDecimation;
 	int _histogramMethod;
 	bool _stereoToDepth;
+	bool _scanDeskewing;
 	bool _scanFromDepth;
 	int _scanDownsampleStep;
 	float _scanRangeMin;

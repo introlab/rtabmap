@@ -75,32 +75,47 @@ double rosTimeFromGpsTimestamp(const uint32_t data) {
 
 LidarVLP16::LidarVLP16(
 		const std::string& pcapFile,
-		float imageRate,
+		bool organized,
+		bool stampLast,
+		float frameRate,
 		Transform localTransform) :
-	SensorCapture(imageRate, localTransform),
+	Lidar(frameRate, localTransform),
 	pcl::VLPGrabber(pcapFile),
 	timingOffsetsDualMode_(false),
 	startSweepTime_(0),
-	organized_(false)
+	startSweepTimeHost_(0),
+	organized_(organized),
+	useHostTime_(false),
+	stampLast_(stampLast)
 {
+	UDEBUG("Using PCAP file \"%s\"", pcapFile.c_str());
 }
 LidarVLP16::LidarVLP16(
 		const boost::asio::ip::address& ipAddress,
 		const std::uint16_t port,
-		float imageRate,
+		bool organized,
+		bool useHostTime,
+		bool stampLast,
+		float frameRate,
 		Transform localTransform) :
-	SensorCapture(imageRate, localTransform),
+	Lidar(frameRate, localTransform),
 	pcl::VLPGrabber(ipAddress, port),
 	timingOffsetsDualMode_(false),
 	startSweepTime_(0),
-	organized_(false)
+	startSweepTimeHost_(0),
+	organized_(organized),
+	useHostTime_(useHostTime),
+	stampLast_(stampLast)
 {
+	UDEBUG("Using network lidar with IP=%s port=%d", ipAddress.to_string().c_str(), port);
 }
 
 LidarVLP16::~LidarVLP16()
 {
+	UDEBUG("Stopping lidar...");
 	stop();
 	scanReady_.release();
+	UDEBUG("Stopped lidar!");
 }
 
 void LidarVLP16::setOrganized(bool enable)
@@ -112,9 +127,13 @@ bool LidarVLP16::init(const std::string &, const std::string &)
 {
 	if(isRunning())
 	{
+		UDEBUG("Stopping lidar...");
 		stop();
 		uSleep(2000); // make sure all callbacks are finished
+		UDEBUG("Stopped lidar!");
 	}
+	startSweepTime_ = 0.0;
+	startSweepTimeHost_ = 0.0;
 	accumulatedScans_.clear();
 	if(organized_)
 	{
@@ -166,10 +185,12 @@ void LidarVLP16::toPointClouds (HDLDataPacket *dataPacket)
 	if (sizeof(HDLLaserReturn) != 3)
 		return;
 
+	double receivedHostTime = UTimer::now();
 	double packetStamp = rosTimeFromGpsTimestamp(dataPacket->gpsTimestamp);
 	if(startSweepTime_==0)
 	{
 		startSweepTime_ = packetStamp;
+		startSweepTimeHost_ = receivedHostTime;
 	}
 
 	bool dualMode = dataPacket->mode == VLP_DUAL_MODE;
@@ -179,6 +200,7 @@ void LidarVLP16::toPointClouds (HDLDataPacket *dataPacket)
 		timingOffsets_.clear();
 		buildTimings(dualMode);
 		startSweepTime_ = packetStamp;
+		startSweepTimeHost_ = receivedHostTime;
 		for(size_t i=0; i<accumulatedScans_.size(); ++i)
 		{
 			accumulatedScans_[i].clear();
@@ -226,12 +248,11 @@ void LidarVLP16::toPointClouds (HDLDataPacket *dataPacket)
 				{
 					UScopeMutex lock(lastScanMutex_);
 					bool notify = lastScan_.laserScanRaw().empty();
-					bool stampSweepEnd = true;
-					if(stampSweepEnd)
+					if(stampLast_)
 					{
 						double lastStamp = startSweepTime_ + accumulatedScans_[accumulatedScans_.size()-1].back().t;
 						double diff = lastStamp - startSweepTime_;
-						lastScan_.setStamp(lastStamp);
+						lastScan_.setStamp(useHostTime_?startSweepTimeHost_+diff:lastStamp);
 						for(size_t r=0; r<accumulatedScans_.size(); ++r)
 						{
 							for(size_t k=0; k<accumulatedScans_[r].size(); ++k)
@@ -242,7 +263,7 @@ void LidarVLP16::toPointClouds (HDLDataPacket *dataPacket)
 					}
 					else
 					{
-						lastScan_.setStamp(startSweepTime_);
+						lastScan_.setStamp(useHostTime_?startSweepTimeHost_:startSweepTime_);
 					}
 					if(accumulatedScans_.size() > 1)
 					{
@@ -264,6 +285,7 @@ void LidarVLP16::toPointClouds (HDLDataPacket *dataPacket)
 					}
 
 					startSweepTime_ = packetStamp + t;
+					startSweepTimeHost_ = receivedHostTime + t;
 				}
 				for(size_t k=0; k<accumulatedScans_.size(); ++k)
 				{
@@ -325,7 +347,7 @@ void LidarVLP16::toPointClouds (HDLDataPacket *dataPacket)
 	}
 }
 
-SensorData LidarVLP16::captureImage(SensorCaptureInfo * info)
+SensorData LidarVLP16::captureData(SensorCaptureInfo * info)
 {
 	SensorData data;
 	if(scanReady_.acquire(1, 5000))

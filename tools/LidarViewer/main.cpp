@@ -57,7 +57,7 @@ void showUsage()
 {
 	printf("\nUsage:\n"
 			"rtabmap-lidar_viewer IP PORT driver\n"
-			"  driver       Driver number to use: 0=VLP16 (default port is 2368)\n");
+			"  driver       Driver number to use: 0=VLP16 (default IP and port are 192.168.1.201 2368)\n");
 	exit(1);
 }
 
@@ -90,7 +90,7 @@ int main(int argc, char * argv[])
 		driver = atoi(argv[3]);
 		if(driver < 0 || driver > 0)
 		{
-			UERROR("driver should be between 0 and 0.");
+			UERROR("driver should be 0.");
 			showUsage();
 		}
 	}
@@ -120,7 +120,7 @@ int main(int argc, char * argv[])
 	signal(SIGTERM, &sighandler);
 	signal(SIGINT, &sighandler);
 
-	rtabmap::SensorData data = lidar->takeImage();
+	rtabmap::SensorData data = lidar->takeScan();
 	while(!data.laserScanRaw().empty() && (viewer==0 || !viewer->wasStopped()) && running)
 	{
 		pcl::PointCloud<pcl::PointXYZI>::Ptr cloud = rtabmap::util3d::laserScanToPointCloudI(data.laserScanRaw(), data.laserScanRaw().localTransform());
@@ -131,7 +131,7 @@ int main(int argc, char * argv[])
 		if(c == 27)
 			break; // if ESC, break and quit
 
-		data = lidar->takeImage();
+		data = lidar->takeScan();
 	}
 	printf("Closing...\n");
 	if(viewer)

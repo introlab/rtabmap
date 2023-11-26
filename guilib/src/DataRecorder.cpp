@@ -172,7 +172,7 @@ bool DataRecorder::handleEvent(UEvent * event)
 {
 	if(memory_)
 	{
-		if(event->getClassName().compare("") == 0)
+		if(event->getClassName().compare("SensorEvent") == 0)
 		{
 			SensorEvent * camEvent = (SensorEvent*)event;
 			if(camEvent->getCode() == SensorEvent::kCodeData)

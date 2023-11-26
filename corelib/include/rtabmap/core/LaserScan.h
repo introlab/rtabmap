@@ -123,6 +123,7 @@ public:
 	float angleMin() const {return angleMin_;}
 	float angleMax() const {return angleMax_;}
 	float angleIncrement() const {return angleIncrement_;}
+	void setLocalTransform(const Transform & t) {localTransform_ = t;}
 	Transform localTransform() const {return localTransform_;}
 
 	bool empty() const {return data_.empty();}

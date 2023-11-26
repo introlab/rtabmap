@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2010-2016, Mathieu Labbe - IntRoLab - Universite de Sherbrooke
+Copyright (c) 2010-2022, Mathieu Labbe - IntRoLab - Universite de Sherbrooke
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -27,56 +27,31 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #pragma once
 
-#include "rtabmap/core/Transform.h"
-#include <string>
+#include "rtabmap/core/rtabmap_core_export.h" // DLL export/import defines
+#include <rtabmap/core/SensorCapture.h>
 
 namespace rtabmap
 {
 
-class SensorCaptureInfo
+/**
+ * Class Lidar
+ *
+ */
+class RTABMAP_CORE_EXPORT Lidar : public SensorCapture
 {
-
 public:
-	SensorCaptureInfo() :
-		cameraName(""),
-		id(0),
-		stamp(0.0),
-		timeCapture(0.0f),
-		timeDeskewing(0.0f),
-		timeDisparity(0.0f),
-		timeMirroring(0.0f),
-		timeStereoExposureCompensation(0.0f),
-		timeImageDecimation(0.0f),
-		timeHistogramEqualization(0.0f),
-		timeScanFromDepth(0.0f),
-		timeUndistortDepth(0.0f),
-		timeBilateralFiltering(0.0f),
-		timeTotal(0.0f),
-		odomCovariance(cv::Mat::eye(6,6,CV_64FC1))
-	{
-	}
-	virtual ~SensorCaptureInfo() {}
+	virtual ~Lidar() {}
 
-	std::string cameraName;
-	int id;
-	double stamp;
-	float timeCapture;
-	float timeDeskewing;
-	float timeDisparity;
-	float timeMirroring;
-	float timeStereoExposureCompensation;
-	float timeImageDecimation;
-	float timeHistogramEqualization;
-	float timeScanFromDepth;
-	float timeUndistortDepth;
-	float timeBilateralFiltering;
-	float timeTotal;
-	Transform odomPose;
-	cv::Mat odomCovariance;
-	std::vector<float> odomVelocity;
+protected:
+	/**
+	 * Constructor
+	 *
+	 * @param lidarRate the frame rate (Hz), 0 for fast as the lidar can
+	 * @param localTransform the transform from base frame to lidar frame
+	 */
+	Lidar(float lidarRate = 0, const Transform & localTransform = Transform::getIdentity()) :
+		SensorCapture(lidarRate, localTransform) {}
 };
 
-//backward compatibility
-RTABMAP_DEPRECATED typedef SensorCaptureInfo CameraInfo;
 
 } // namespace rtabmap
