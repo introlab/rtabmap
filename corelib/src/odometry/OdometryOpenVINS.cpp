@@ -385,98 +385,95 @@ Transform OdometryOpenVINS::computeTransform(
 			}
 			vioManager_->feed_measurement_camera(message);
 
-			if(vioManager_->initialized())
+			std::shared_ptr<ov_msckf::State> state = vioManager_->get_state();
+			Transform p((float)state->_imu->pos()(0),
+						(float)state->_imu->pos()(1),
+						(float)state->_imu->pos()(2),
+						(float)state->_imu->quat()(0),
+						(float)state->_imu->quat()(1),
+						(float)state->_imu->quat()(2),
+						(float)state->_imu->quat()(3));
+			if(!p.isNull() && !p.isIdentity())
 			{
-				std::shared_ptr<ov_msckf::State> state = vioManager_->get_state();
-				Transform p((float)state->_imu->pos()(0),
-							(float)state->_imu->pos()(1),
-							(float)state->_imu->pos()(2),
-							(float)state->_imu->quat()(0),
-							(float)state->_imu->quat()(1),
-							(float)state->_imu->quat()(2),
-							(float)state->_imu->quat()(3));
-				if(!p.isNull())
+				p = p * imuLocalTransformInv_;
+
+				if(this->getPose().rotation().isIdentity())
 				{
-					p = p * imuLocalTransformInv_;
-
-					if(this->getPose().rotation().isIdentity())
-					{
-						initGravity_ = true;
-						this->reset(this->getPose() * p.rotation());
-					}
-
-					if(previousPoseInv_.isIdentity())
-						previousPoseInv_ = p.inverse();
-
-					t = previousPoseInv_ * p;
-
-					if(info)
-					{
-						double timestamp;
-						std::unordered_map<size_t, Eigen::Vector3d> feat_posinG, feat_tracks_uvd;
-						vioManager_->get_active_tracks(timestamp, feat_posinG, feat_tracks_uvd);
-						auto features_SLAM = vioManager_->get_features_SLAM();
-						auto good_features_MSCKF = vioManager_->get_good_features_MSCKF();
-
-						info->type = this->getType();
-						info->localMapSize = feat_posinG.size();
-						info->features = features_SLAM.size() + good_features_MSCKF.size();
-						info->reg.covariance = cv::Mat::eye(6, 6, CV_64FC1);
-						if(covFilled)
-						{
-							Eigen::Matrix<double, 6, 6> covariance = Phi_ * cov_plus.block(6,6,6,6) * Phi_.transpose();
-							cv::eigen2cv(covariance, info->reg.covariance);
-						}
-
-						if(this->isInfoDataFilled())
-						{
-							Transform fixT = this->getPose() * previousPoseInv_;
-							Transform camT;
-							if(!data.rightRaw().empty())
-								camT = data.stereoCameraModels()[0].localTransform().inverse() * t.inverse() * this->getPose().inverse() * fixT;
-							else
-								camT = data.cameraModels()[0].localTransform().inverse() * t.inverse() * this->getPose().inverse() * fixT;
-							
-							for(auto &feature : feat_posinG)
-							{
-								cv::Point3f pt3d(feature.second[0], feature.second[1], feature.second[2]);
-								pt3d = util3d::transformPoint(pt3d, fixT);
-								info->localMap.emplace(feature.first, pt3d);
-							}
-
-							if(this->imagesAlreadyRectified())
-							{
-								for(auto &feature : features_SLAM)
-								{
-									cv::Point3f pt3d(feature[0], feature[1], feature[2]);
-									pt3d = util3d::transformPoint(pt3d, camT);
-									cv::Point2f pt;
-									if(!data.rightRaw().empty())
-										data.stereoCameraModels()[0].left().reproject(pt3d.x, pt3d.y, pt3d.z, pt.x, pt.y);
-									else
-										data.cameraModels()[0].reproject(pt3d.x, pt3d.y, pt3d.z, pt.x, pt.y);
-									info->reg.inliersIDs.emplace_back(info->newCorners.size());
-									info->newCorners.emplace_back(pt);
-								}
-
-								for(auto &feature : good_features_MSCKF)
-								{
-									cv::Point3f pt3d(feature[0], feature[1], feature[2]);
-									pt3d = util3d::transformPoint(pt3d, camT);
-									cv::Point2f pt;
-									if(!data.rightRaw().empty())
-										data.stereoCameraModels()[0].left().reproject(pt3d.x, pt3d.y, pt3d.z, pt.x, pt.y);
-									else
-										data.cameraModels()[0].reproject(pt3d.x, pt3d.y, pt3d.z, pt.x, pt.y);
-									info->reg.matchesIDs.emplace_back(info->newCorners.size());
-									info->newCorners.emplace_back(pt);
-								}
-							}
-						}
-					}
-
-					previousPoseInv_ = p.inverse();
+					initGravity_ = true;
+					this->reset(this->getPose() * p.rotation());
 				}
+
+				if(previousPoseInv_.isIdentity())
+					previousPoseInv_ = p.inverse();
+
+				t = previousPoseInv_ * p;
+
+				if(info)
+				{
+					double timestamp;
+					std::unordered_map<size_t, Eigen::Vector3d> feat_posinG, feat_tracks_uvd;
+					vioManager_->get_active_tracks(timestamp, feat_posinG, feat_tracks_uvd);
+					auto features_SLAM = vioManager_->get_features_SLAM();
+					auto good_features_MSCKF = vioManager_->get_good_features_MSCKF();
+
+					info->type = this->getType();
+					info->localMapSize = feat_posinG.size();
+					info->features = features_SLAM.size() + good_features_MSCKF.size();
+					info->reg.covariance = cv::Mat::eye(6, 6, CV_64FC1);
+					if(covFilled)
+					{
+						Eigen::Matrix<double, 6, 6> covariance = Phi_ * cov_plus.block(6,6,6,6) * Phi_.transpose();
+						cv::eigen2cv(covariance, info->reg.covariance);
+					}
+
+					if(this->isInfoDataFilled())
+					{
+						Transform fixT = this->getPose() * previousPoseInv_;
+						Transform camT;
+						if(!data.rightRaw().empty())
+							camT = data.stereoCameraModels()[0].localTransform().inverse() * t.inverse() * this->getPose().inverse() * fixT;
+						else
+							camT = data.cameraModels()[0].localTransform().inverse() * t.inverse() * this->getPose().inverse() * fixT;
+						
+						for(auto &feature : feat_posinG)
+						{
+							cv::Point3f pt3d(feature.second[0], feature.second[1], feature.second[2]);
+							pt3d = util3d::transformPoint(pt3d, fixT);
+							info->localMap.emplace(feature.first, pt3d);
+						}
+
+						if(this->imagesAlreadyRectified())
+						{
+							for(auto &feature : features_SLAM)
+							{
+								cv::Point3f pt3d(feature[0], feature[1], feature[2]);
+								pt3d = util3d::transformPoint(pt3d, camT);
+								cv::Point2f pt;
+								if(!data.rightRaw().empty())
+									data.stereoCameraModels()[0].left().reproject(pt3d.x, pt3d.y, pt3d.z, pt.x, pt.y);
+								else
+									data.cameraModels()[0].reproject(pt3d.x, pt3d.y, pt3d.z, pt.x, pt.y);
+								info->reg.inliersIDs.emplace_back(info->newCorners.size());
+								info->newCorners.emplace_back(pt);
+							}
+
+							for(auto &feature : good_features_MSCKF)
+							{
+								cv::Point3f pt3d(feature[0], feature[1], feature[2]);
+								pt3d = util3d::transformPoint(pt3d, camT);
+								cv::Point2f pt;
+								if(!data.rightRaw().empty())
+									data.stereoCameraModels()[0].left().reproject(pt3d.x, pt3d.y, pt3d.z, pt.x, pt.y);
+								else
+									data.cameraModels()[0].reproject(pt3d.x, pt3d.y, pt3d.z, pt.x, pt.y);
+								info->reg.matchesIDs.emplace_back(info->newCorners.size());
+								info->newCorners.emplace_back(pt);
+							}
+						}
+					}
+				}
+
+				previousPoseInv_ = p.inverse();
 			}
 		}
 	}

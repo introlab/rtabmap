@@ -641,9 +641,9 @@ class RTABMAP_CORE_EXPORT Parameters
     RTABMAP_PARAM(OdomOpenVINS, AccelerometerRandomWalk,   double, 0.001,  "[m/s^3/sqrt(Hz)] (accel bias diffusion)");
     RTABMAP_PARAM(OdomOpenVINS, GyroscopeNoiseDensity,     double, 0.001,  "[rad/s/sqrt(Hz)] (gyro \"white noise\")");
     RTABMAP_PARAM(OdomOpenVINS, GyroscopeRandomWalk,       double, 0.0001, "[rad/s^2/sqrt(Hz)] (gyro bias diffusion)");
-    RTABMAP_PARAM(OdomOpenVINS, UpMSCKFSigmaPx,            double, 2.0,    "Pixel noise for MSCKF features");
+    RTABMAP_PARAM(OdomOpenVINS, UpMSCKFSigmaPx,            double, 1.0,    "Pixel noise for MSCKF features");
     RTABMAP_PARAM(OdomOpenVINS, UpMSCKFChi2Multiplier,     double, 1.0,    "Chi2 multiplier for MSCKF features");
-    RTABMAP_PARAM(OdomOpenVINS, UpSLAMSigmaPx,             double, 2.0,    "Pixel noise for SLAM features");
+    RTABMAP_PARAM(OdomOpenVINS, UpSLAMSigmaPx,             double, 1.0,    "Pixel noise for SLAM features");
     RTABMAP_PARAM(OdomOpenVINS, UpSLAMChi2Multiplier,      double, 1.0,    "Chi2 multiplier for SLAM features");
 
     // Odometry Open3D
