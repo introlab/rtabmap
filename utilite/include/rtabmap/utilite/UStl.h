@@ -186,11 +186,9 @@ template<class K, class V>
 inline std::set<K> uKeysSet(const std::map<K, V> & m)
 {
 	std::set<K> s;
-	int i=0;
 	for(typename std::map<K, V>::const_iterator iter = m.begin(); iter!=m.end(); ++iter)
 	{
 		s.insert(s.end(), iter->first);
-		++i;
 	}
 	return s;
 }
