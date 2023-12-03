@@ -202,6 +202,7 @@ RTABMapApp::RTABMapApp() :
 #endif
 		cameraDriver_(0),
 		camera_(0),
+		sensorCaptureThread_(0),
 		rtabmapThread_(0),
 		rtabmap_(0),
 		logHandler_(0),
@@ -885,7 +886,7 @@ bool RTABMapApp::startCamera()
 #endif
 	LOGW("startCamera() camera driver=%d", cameraDriver_);
 	boost::mutex::scoped_lock  lock(cameraMutex_);
-    
+
 	if(cameraDriver_ == 0) // Tango
 	{
 #ifdef RTABMAP_TANGO
@@ -937,6 +938,8 @@ bool RTABMapApp::startCamera()
 
 		LOGI("Start camera thread");
 		cameraJustInitialized_ = true;
+		sensorCaptureThread_ = new rtabmap::SensorCaptureThread(camera_);
+		sensorCaptureThread_->start();
 		return true;
 	}
 	UERROR("Failed camera initialization!");
@@ -948,11 +951,11 @@ void RTABMapApp::stopCamera()
 	LOGI("stopCamera()");
 	{
 		boost::mutex::scoped_lock  lock(cameraMutex_);
-		if(camera_!=0)
+		if(sensorCaptureThread_!=0)
 		{
-			camera_->join(true);
-			camera_->close();
-			delete camera_;
+			sensorCaptureThread_->join(true);
+			delete sensorCaptureThread_; // camera_ is closed and deleted inside
+			sensorCaptureThread_ = 0;
 			camera_ = 0;
 			poseBuffer_.clear();
 		}
@@ -1241,7 +1244,7 @@ int RTABMapApp::Render()
 	std::list<rtabmap::RtabmapEvent*> rtabmapEvents;
 	try
 	{
-        if(camera_ == 0)
+        if(sensorCaptureThread_ == 0)
         {
             // We are not doing continous drawing, just measure single draw
             fpsTime_.restart();
@@ -1272,49 +1275,45 @@ int RTABMapApp::Render()
 			{
 				if(cameraDriver_ <= 2)
 				{
-					camera_->spinOnce();
+					camera_->updateOnRender();
 				}
 #ifdef DEBUG_RENDERING_PERFORMANCE
-				LOGW("Camera spinOnce %fs", time.ticks());
+				LOGW("Camera updateOnRender %fs", time.ticks());
 #endif
-
-				if(cameraDriver_ != 2)
+				if(main_scene_.background_renderer_ == 0 && camera_->getTextureId() != 0)
 				{
-					if(main_scene_.background_renderer_ == 0 && camera_->getTextureId() != 0)
+					main_scene_.background_renderer_ = new BackgroundRenderer();
+					main_scene_.background_renderer_->InitializeGlContent(((rtabmap::CameraMobile*)camera_)->getTextureId(), cameraDriver_ <= 2);
+				}
+				if(camera_->uvsInitialized())
+				{
+					uvsTransformed = ((rtabmap::CameraMobile*)camera_)->uvsTransformed();
+					((rtabmap::CameraMobile*)camera_)->getVPMatrices(arViewMatrix, arProjectionMatrix);
+					if(graphOptimization_ && !mapToOdom_.isIdentity())
 					{
-						main_scene_.background_renderer_ = new BackgroundRenderer();
-						main_scene_.background_renderer_->InitializeGlContent(((rtabmap::CameraMobile*)camera_)->getTextureId(), cameraDriver_ == 0 || cameraDriver_ == 1);
+						rtabmap::Transform mapCorrection = rtabmap::opengl_world_T_rtabmap_world * mapToOdom_ *rtabmap::rtabmap_world_T_opengl_world;
+						arViewMatrix = glm::inverse(rtabmap::glmFromTransform(mapCorrection)*glm::inverse(arViewMatrix));
 					}
-					if(camera_->uvsInitialized())
-					{
-						uvsTransformed = ((rtabmap::CameraMobile*)camera_)->uvsTransformed();
-						((rtabmap::CameraMobile*)camera_)->getVPMatrices(arViewMatrix, arProjectionMatrix);
-						if(graphOptimization_ && !mapToOdom_.isIdentity())
-						{
-							rtabmap::Transform mapCorrection = rtabmap::opengl_world_T_rtabmap_world * mapToOdom_ *rtabmap::rtabmap_world_T_opengl_world;
-							arViewMatrix = glm::inverse(rtabmap::glmFromTransform(mapCorrection)*glm::inverse(arViewMatrix));
-						}
-					}
-					if(!visualizingMesh_ && main_scene_.GetCameraType() == tango_gl::GestureCamera::kFirstPerson)
-					{
-						rtabmap::CameraModel occlusionModel;
-						cv::Mat occlusionImage = ((rtabmap::CameraMobile*)camera_)->getOcclusionImage(&occlusionModel);
+				}
+				if(!visualizingMesh_ && main_scene_.GetCameraType() == tango_gl::GestureCamera::kFirstPerson)
+				{
+					rtabmap::CameraModel occlusionModel;
+					cv::Mat occlusionImage = ((rtabmap::CameraMobile*)camera_)->getOcclusionImage(&occlusionModel);
 
-						if(occlusionModel.isValidForProjection())
-						{
-							pcl::IndicesPtr indices(new std::vector<int>);
-							int meshDecimation = updateMeshDecimation(occlusionImage.cols, occlusionImage.rows);
-							pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = rtabmap::util3d::cloudFromDepth(occlusionImage, occlusionModel, meshDecimation, 0, 0, indices.get());
-							cloud = rtabmap::util3d::transformPointCloud(cloud, rtabmap::opengl_world_T_rtabmap_world*mapToOdom_*occlusionModel.localTransform());
-							occlusionMesh.cloud.reset(new pcl::PointCloud<pcl::PointXYZRGB>());
-							pcl::copyPointCloud(*cloud, *occlusionMesh.cloud);
-							occlusionMesh.indices = indices;
-							occlusionMesh.polygons = rtabmap::util3d::organizedFastMesh(cloud, 1.0*M_PI/180.0, false, meshTrianglePix_);
-						}
-						else if(!occlusionImage.empty())
-						{
-							UERROR("invalid occlusionModel: %f %f %f %f %dx%d", occlusionModel.fx(), occlusionModel.fy(), occlusionModel.cx(), occlusionModel.cy(), occlusionModel.imageWidth(), occlusionModel.imageHeight());
-						}
+					if(occlusionModel.isValidForProjection())
+					{
+						pcl::IndicesPtr indices(new std::vector<int>);
+						int meshDecimation = updateMeshDecimation(occlusionImage.cols, occlusionImage.rows);
+						pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = rtabmap::util3d::cloudFromDepth(occlusionImage, occlusionModel, meshDecimation, 0, 0, indices.get());
+						cloud = rtabmap::util3d::transformPointCloud(cloud, rtabmap::opengl_world_T_rtabmap_world*mapToOdom_*occlusionModel.localTransform());
+						occlusionMesh.cloud.reset(new pcl::PointCloud<pcl::PointXYZRGB>());
+						pcl::copyPointCloud(*cloud, *occlusionMesh.cloud);
+						occlusionMesh.indices = indices;
+						occlusionMesh.polygons = rtabmap::util3d::organizedFastMesh(cloud, 1.0*M_PI/180.0, false, meshTrianglePix_);
+					}
+					else if(!occlusionImage.empty())
+					{
+						UERROR("invalid occlusionModel: %f %f %f %f %dx%d", occlusionModel.fx(), occlusionModel.fy(), occlusionModel.cx(), occlusionModel.cy(), occlusionModel.imageWidth(), occlusionModel.imageHeight());
 					}
 				}
 #ifdef DEBUG_RENDERING_PERFORMANCE
@@ -1334,14 +1333,14 @@ int RTABMapApp::Render()
 			}
 		}
 
-		rtabmap::OdometryEvent odomEvent;
+		rtabmap::SensorEvent sensorEvent;
 		{
-			boost::mutex::scoped_lock  lock(odomMutex_);
-			if(odomEvents_.size())
+			boost::mutex::scoped_lock  lock(sensorMutex_);
+			if(sensorEvents_.size())
 			{
-				LOGI("Process odom events");
-				odomEvent = odomEvents_.back();
-				odomEvents_.clear();
+				LOGI("Process sensor events");
+				sensorEvent = sensorEvents_.back();
+				sensorEvents_.clear();
 				if(cameraJustInitialized_)
 				{
 					notifyCameraStarted = true;
@@ -1361,7 +1360,7 @@ int RTABMapApp::Render()
 			{
 				main_scene_.SetCameraPose(rtabmap::opengl_world_T_rtabmap_world*pose*rtabmap::optical_T_opengl);
 			}
-			if(camera_!=0 && cameraJustInitialized_)
+			if(sensorCaptureThread_!=0 && cameraJustInitialized_)
 			{
 				notifyCameraStarted = true;
 				cameraJustInitialized_ = false;
@@ -1562,9 +1561,9 @@ int RTABMapApp::Render()
 			if(clearSceneOnNextRender_)
 			{
 				LOGI("Clearing all rendering data...");
-				odomMutex_.lock();
-				odomEvents_.clear();
-				odomMutex_.unlock();
+				sensorMutex_.lock();
+				sensorEvents_.clear();
+				sensorMutex_.unlock();
 
 				poseMutex_.lock();
 				poseEvents_.clear();
@@ -2004,26 +2003,26 @@ int RTABMapApp::Render()
 			}
 			else
 			{
-				main_scene_.setCloudVisible(-1, odomCloudShown_ && !trajectoryMode_ && camera_!=0);
+				main_scene_.setCloudVisible(-1, odomCloudShown_ && !trajectoryMode_ && sensorCaptureThread_!=0);
 
 				//just process the last one
-				if(!odomEvent.pose().isNull())
+				if(!sensorEvent.info().odomPose.isNull())
 				{
 					if(odomCloudShown_ && !trajectoryMode_)
 					{
-						if((!odomEvent.data().imageRaw().empty() && !odomEvent.data().depthRaw().empty()) || !odomEvent.data().laserScanRaw().isEmpty())
+						if((!sensorEvent.data().imageRaw().empty() && !sensorEvent.data().depthRaw().empty()) || !sensorEvent.data().laserScanRaw().isEmpty())
 						{
 							pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
 							pcl::IndicesPtr indices(new std::vector<int>);
-							if((!odomEvent.data().imageRaw().empty() && !odomEvent.data().depthRaw().empty()))
+							if((!sensorEvent.data().imageRaw().empty() && !sensorEvent.data().depthRaw().empty()))
 							{
-                                int meshDecimation = updateMeshDecimation(odomEvent.data().depthRaw().cols, odomEvent.data().depthRaw().rows);
-								cloud = rtabmap::util3d::cloudRGBFromSensorData(odomEvent.data(), meshDecimation, maxCloudDepth_, minCloudDepth_, indices.get());
+                                int meshDecimation = updateMeshDecimation(sensorEvent.data().depthRaw().cols, sensorEvent.data().depthRaw().rows);
+								cloud = rtabmap::util3d::cloudRGBFromSensorData(sensorEvent.data(), meshDecimation, maxCloudDepth_, minCloudDepth_, indices.get());
 							}
 							else
 							{
 								//scan
-								cloud = rtabmap::util3d::laserScanToPointCloudRGB(rtabmap::util3d::commonFiltering(odomEvent.data().laserScanRaw(), 1, minCloudDepth_, maxCloudDepth_), odomEvent.data().laserScanRaw().localTransform(), 255, 255, 255);
+								cloud = rtabmap::util3d::laserScanToPointCloudRGB(rtabmap::util3d::commonFiltering(sensorEvent.data().laserScanRaw(), 1, minCloudDepth_, maxCloudDepth_), sensorEvent.data().laserScanRaw().localTransform(), 255, 255, 255);
 								indices->resize(cloud->size());
 								for(unsigned int i=0; i<cloud->size(); ++i)
 								{
@@ -2034,10 +2033,10 @@ int RTABMapApp::Render()
 							if(cloud->size() && indices->size())
 							{
 								LOGI("Created odom cloud (rgb=%dx%d depth=%dx%d cloud=%dx%d)",
-										odomEvent.data().imageRaw().cols, odomEvent.data().imageRaw().rows,
-										odomEvent.data().depthRaw().cols, odomEvent.data().depthRaw().rows,
+										sensorEvent.data().imageRaw().cols, sensorEvent.data().imageRaw().rows,
+										sensorEvent.data().depthRaw().cols, sensorEvent.data().depthRaw().rows,
 									   (int)cloud->width, (int)cloud->height);
-								main_scene_.addCloud(-1, cloud, indices, rtabmap::opengl_world_T_rtabmap_world*mapToOdom_*odomEvent.pose());
+								main_scene_.addCloud(-1, cloud, indices, rtabmap::opengl_world_T_rtabmap_world*mapToOdom_*sensorEvent.info().odomPose);
 								main_scene_.setCloudVisible(-1, true);
 							}
 							else
@@ -2127,7 +2126,7 @@ int RTABMapApp::Render()
 
 				lastPostRenderEventTime_ = UTimer::now();
 
-				if(camera_!=0 && lastPoseEventTime_>0.0 && UTimer::now()-lastPoseEventTime_ > 1.0)
+				if(sensorCaptureThread_!=0 && lastPoseEventTime_>0.0 && UTimer::now()-lastPoseEventTime_ > 1.0)
 				{
 					UERROR("TangoPoseEventNotReceived");
 					UEventsManager::post(new rtabmap::CameraInfoEvent(10, "TangoPoseEventNotReceived", uNumber2Str(UTimer::now()-lastPoseEventTime_, 6)));
@@ -2319,7 +2318,7 @@ void RTABMapApp::setTrajectoryMode(bool enabled)
 void RTABMapApp::setGraphOptimization(bool enabled)
 {
 	graphOptimization_ = enabled;
-	if((camera_ == 0) && rtabmap_ && rtabmap_->getMemory()->getLastWorkingSignature()!=0)
+	if((sensorCaptureThread_ == 0) && rtabmap_ && rtabmap_->getMemory()->getLastWorkingSignature()!=0)
 	{
 		std::map<int, rtabmap::Transform> poses;
 		std::multimap<int, rtabmap::Link> links;
@@ -3971,8 +3970,7 @@ void RTABMapApp::postOdometryEvent(
                     texCoords[5] = t5;
                     texCoords[6] = t6;
                     texCoords[7] = t7;
-					camera_->setData(data, pose, viewMatrixMat, projectionMatrix, main_scene_.GetCameraType() == tango_gl::GestureCamera::kFirstPerson?texCoords:0);
-					camera_->spinOnce();
+					camera_->update(data, pose, viewMatrixMat, projectionMatrix, main_scene_.GetCameraType() == tango_gl::GestureCamera::kFirstPerson?texCoords:0);
 				}
 			}
 		}
@@ -3989,17 +3987,17 @@ void RTABMapApp::postOdometryEvent(
 
 bool RTABMapApp::handleEvent(UEvent * event)
 {
-	if(camera_!=0)
+	if(sensorCaptureThread_!=0)
 	{
 		// called from events manager thread, so protect the data
-		if(event->getClassName().compare("OdometryEvent") == 0)
+		if(event->getClassName().compare("SensorEvent") == 0)
 		{
-			LOGI("Received OdometryEvent!");
-			if(odomMutex_.try_lock())
+			LOGI("Received SensorEvent!");
+			if(sensorMutex_.try_lock())
 			{
-				odomEvents_.clear();
-				odomEvents_.push_back(*((rtabmap::OdometryEvent*)(event)));
-				odomMutex_.unlock();
+				sensorEvents_.clear();
+				sensorEvents_.push_back(*((rtabmap::SensorEvent*)(event)));
+				sensorMutex_.unlock();
 			}
 		}
 		if(event->getClassName().compare("RtabmapEvent") == 0)

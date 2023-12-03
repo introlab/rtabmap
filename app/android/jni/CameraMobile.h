@@ -68,7 +68,7 @@ private:
 	Transform pose_;
 };
 
-class CameraMobile : public Camera, public UThread, public UEventsSender {
+class CameraMobile : public Camera, public UEventsSender {
 public:
 	static const float bilateralFilteringSigmaS;
 	static const float bilateralFilteringSigmaR;
@@ -93,8 +93,11 @@ public:
 
 	// abstract functions
 	virtual bool init(const std::string & calibrationFolder = ".", const std::string & cameraName = "");
-	virtual void close(); // inherited classes should call its parent in their close().
+	virtual void close(); // inherited classes should call its parent at the end of their close().
 	virtual std::string getSerial() const {return "CameraMobile";}
+	
+	void update(const SensorData & data, const Transform & pose, const glm::mat4 & viewMatrix, const glm::mat4 & projectionMatrix, const float * texCoord);
+	void updateOnRender();
 
 	const Transform & getOriginOffset() const {return originOffset_;} // in rtabmap frame
 	void resetOrigin();
@@ -108,10 +111,7 @@ public:
 	virtual void setScreenRotationAndSize(ScreenRotation colorCameraToDisplayRotation, int width, int height) {colorCameraToDisplayRotation_ = colorCameraToDisplayRotation;}
 	void setGPS(const GPS & gps);
 	void addEnvSensor(int type, float value);
-	void setData(const SensorData & data, const Transform & pose, const glm::mat4 & viewMatrix, const glm::mat4 & projectionMatrix, const float * texCoord);
 
-	void spinOnce(); // Should only be called if not thread is not running, otherwise it does nothing
-    
     GLuint getTextureId() {return textureId_;}
     bool uvsInitialized() const {return uvs_initialized_;}
     const float* uvsTransformed() const {return transformed_uvs_;}
@@ -122,17 +122,15 @@ public:
     const cv::Mat & getOcclusionImage(CameraModel * model=0) const {if(model)*model=occlusionModel_; return occlusionImage_; }
 
 protected:
-	virtual SensorData captureImage(SensorCaptureInfo * info = 0);
-	virtual void capturePoseOnly() {}
+	virtual SensorData updateDataOnRender(Transform & pose);
 
-	virtual void mainLoopBegin();
-	virtual void mainLoop();
+private:
+	virtual SensorData captureImage(SensorCaptureInfo * info = 0);
+	void postUpdate(); // Should be called while being protected by dataMutex_
 
 protected:
 	CameraModel model_; // local transform is the device to camera optical rotation in rtabmap frame
 	Transform deviceTColorCamera_; // device to camera optical rotation in rtabmap frame
-	UTimer spinOnceFrameRateTimer_;
-	double spinOncePreviousStamp_;
     
     GLuint textureId_;
     glm::mat4 viewMatrix_;
@@ -141,10 +139,7 @@ protected:
     bool uvs_initialized_ = false;
 
 private:
-	Transform previousPose_;
-	double previousStamp_;
-	UTimer cameraStartedTime_;
-	double stampEpochOffset_;
+	bool firstFrame_;
 	bool smoothing_;
 	ScreenRotation colorCameraToDisplayRotation_;
 	GPS lastKnownGPS_;
@@ -152,6 +147,8 @@ private:
 	Transform originOffset_;
 	bool originUpdate_;
 
+	USemaphore dataReady_;
+	UMutex dataMutex_;
 	SensorData data_;
 	Transform pose_;
     

@@ -38,6 +38,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UEvent.h>
 #include <rtabmap/utilite/UTimer.h>
 #include <boost/thread/mutex.hpp>
+#include <background_renderer.h>
 
 #include <huawei_arengine_interface.h>
 
@@ -48,12 +49,14 @@ public:
 	CameraAREngine(void* env, void* context, void* activity, bool smoothing = false);
 	virtual ~CameraAREngine();
 
+	virtual void setScreenRotationAndSize(ScreenRotation colorCameraToDisplayRotation, int width, int height);
+
 	virtual bool init(const std::string & calibrationFolder = ".", const std::string & cameraName = "");
-	virtual void close(); // close Tango connection
+	virtual void close(); // close AREngine connection
 	virtual std::string getSerial() const;
 
 protected:
-	virtual SensorData captureImage(SensorCaptureInfo * info = 0);
+	virtual SensorData updateDataOnRender(Transform & pose);
 	virtual void capturePoseOnly();
 
 private:
@@ -69,7 +72,6 @@ private:
 	HwArCameraIntrinsics *arCameraIntrinsics_ = nullptr;
 	HwArPose * arPose_ = nullptr;
 	bool arInstallRequested_;
-	GLuint textureId_;
 	UMutex arSessionMutex_;
 
 };

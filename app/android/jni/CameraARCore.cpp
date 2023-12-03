@@ -334,11 +334,12 @@ void CameraARCore::setScreenRotationAndSize(ScreenRotation colorCameraToDisplayR
 	}
 }
 
-SensorData CameraARCore::captureImage(SensorCaptureInfo * info)
+SensorData CameraARCore::updateDataOnRender(Transform & pose)
 {
 	UScopeMutex lock(arSessionMutex_);
 	//LOGI("Capturing image...");
 
+	pose.setNull();
 	SensorData data;
 	if(!arSession_)
 	{
@@ -370,7 +371,7 @@ SensorData CameraARCore::captureImage(SensorCaptureInfo * info)
 	if (geometry_changed != 0 || !uvs_initialized_) {
 		ArFrame_transformCoordinates2d(
 				arSession_, arFrame_, AR_COORDINATES_2D_OPENGL_NORMALIZED_DEVICE_COORDINATES,
-				BackgroundRenderer::kNumVertices, BackgroundRenderer_kVertices, AR_COORDINATES_2D_TEXTURE_NORMALIZED,
+				BackgroundRenderer::kNumVertices, BackgroundRenderer_kVerticesDevice, AR_COORDINATES_2D_TEXTURE_NORMALIZED,
 				transformed_uvs_);
 		UASSERT(transformed_uvs_);
 		uvs_initialized_ = true;
@@ -393,7 +394,6 @@ SensorData CameraARCore::captureImage(SensorCaptureInfo * info)
 	ArTrackingState camera_tracking_state;
 	ArCamera_getTrackingState(arSession_, ar_camera, &camera_tracking_state);
 
-	Transform pose;
 	CameraModel model;
 	if(camera_tracking_state == AR_TRACKING_STATE_TRACKING)
 	{
@@ -417,7 +417,6 @@ SensorData CameraARCore::captureImage(SensorCaptureInfo * info)
 			{
 				pose = getOriginOffset() * pose;
 			}
-			info->odomPose = pose;
 		}
 
 		// Get calibration parameters
@@ -571,7 +570,6 @@ SensorData CameraARCore::captureImage(SensorCaptureInfo * info)
 	ArCamera_release(ar_camera);
 
 	return data;
-
 }
 
 void CameraARCore::capturePoseOnly()
@@ -607,7 +605,7 @@ void CameraARCore::capturePoseOnly()
 	if (geometry_changed != 0 || !uvs_initialized_) {
 		ArFrame_transformCoordinates2d(
 				arSession_, arFrame_, AR_COORDINATES_2D_OPENGL_NORMALIZED_DEVICE_COORDINATES,
-				BackgroundRenderer::kNumVertices, BackgroundRenderer_kVertices, AR_COORDINATES_2D_TEXTURE_NORMALIZED,
+				BackgroundRenderer::kNumVertices, BackgroundRenderer_kVerticesDevice, AR_COORDINATES_2D_TEXTURE_NORMALIZED,
 				transformed_uvs_);
 		UASSERT(transformed_uvs_);
 		uvs_initialized_ = true;
