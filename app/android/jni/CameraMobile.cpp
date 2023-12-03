@@ -57,6 +57,7 @@ CameraMobile::CameraMobile(bool smoothing) :
 		deviceTColorCamera_(Transform::getIdentity()),
 		textureId_(0),
 		uvs_initialized_(false),
+		stampEpochOffset_(0.0),
 		smoothing_(smoothing),
 		colorCameraToDisplayRotation_(ROTATION_0),
 		originUpdate_(false)
@@ -81,7 +82,7 @@ void CameraMobile::close()
 	lastEnvSensors_.clear();
 	originOffset_ = Transform();
 	originUpdate_ = false;
-	pose_ = Transform();
+	dataPose_ = Transform();
 	data_ = SensorData();
 
     if(textureId_ != 0)
@@ -96,31 +97,103 @@ void CameraMobile::resetOrigin()
 	firstFrame_ = true;
 	lastKnownGPS_ = GPS();
 	lastEnvSensors_.clear();
-	pose_ = Transform();
+	dataPose_ = Transform();
 	data_ = SensorData();
 	originUpdate_ = true;
 }
 
-void CameraMobile::poseReceived(const Transform & pose)
+bool CameraMobile::getPose(double stamp, Transform & pose, cv::Mat & covariance, double maxWaitTime)
+{
+	pose.setNull();
+
+	int maxWaitTimeMs = maxWaitTime * 1000;
+
+	// Interpolate pose
+	if(!poseBuffer_.empty())
+	{
+		poseMutex_.lock();
+		int waitTry = 0;
+		while(maxWaitTimeMs>0 && poseBuffer_.rbegin()->first < stamp && waitTry < maxWaitTimeMs)
+		{
+			poseMutex_.unlock();
+			++waitTry;
+			uSleep(1);
+			poseMutex_.lock();
+		}
+		if(poseBuffer_.rbegin()->first < stamp)
+		{
+			if(maxWaitTimeMs > 0)
+			{
+				UWARN("Could not find poses to interpolate at time %f after waiting %d ms (latest is %f)...", stamp, maxWaitTimeMs, poseBuffer_.rbegin()->first);
+			}
+			else
+			{
+				UWARN("Could not find poses to interpolate at time %f (latest is %f)...", stamp, poseBuffer_.rbegin()->first);
+			}
+		}
+		else
+		{
+			std::map<double, Transform>::const_iterator iterB = poseBuffer_.lower_bound(stamp);
+			std::map<double, Transform>::const_iterator iterA = iterB;
+			if(iterA != poseBuffer_.begin())
+			{
+				iterA = --iterA;
+			}
+			if(iterB == poseBuffer_.end())
+			{
+				iterB = --iterB;
+			}
+			if(iterA == iterB && stamp == iterA->first)
+			{
+				pose = iterA->second;
+			}
+			else if(stamp >= iterA->first && stamp <= iterB->first)
+			{
+				pose = iterA->second.interpolate((stamp-iterA->first) / (iterB->first-iterA->first), iterB->second);
+			}
+			else // stamp < iterA->first
+			{
+				UWARN("Could not find pose data to interpolate at time %f (earliest is %f). Are sensors synchronized?", stamp, iterA->first);
+			}
+		}
+		poseMutex_.unlock();
+	}
+	return !pose.isNull();
+}
+
+void CameraMobile::poseReceived(const Transform & pose, double deviceStamp)
 {
 	if(!pose.isNull())
 	{
-		// send pose of the camera (without optical rotation)
-		Transform p = pose*deviceTColorCamera_;
+		Transform p = pose;
 		if(originUpdate_)
 		{
 			originOffset_ = p.translation().inverse();
 			originUpdate_ = false;
 		}
+		
+		if(stampEpochOffset_ == 0.0)
+		{
+			stampEpochOffset_ = UTimer::now() - deviceStamp;
+		}
+		double epochStamp = stampEpochOffset_ + deviceStamp;
 
 		if(!originOffset_.isNull())
 		{
-			this->post(new PoseEvent(originOffset_*p));
+			p = originOffset_*p;
 		}
-		else
+
 		{
-			this->post(new PoseEvent(p));
+			UScopeMutex lock(poseMutex_);
+			poseBuffer_.insert(poseBuffer_.end(), std::make_pair(epochStamp, p));
+			if(poseBuffer_.size() > 1000)
+			{
+				poseBuffer_.erase(poseBuffer_.begin());
+			}
 		}
+
+		// send pose of the camera (with optical rotation)
+		this->post(new PoseEvent(p * deviceTColorCamera_));
 	}
 }
 
@@ -147,7 +220,7 @@ void CameraMobile::update(const SensorData & data, const Transform & pose, const
 
 	LOGD("CameraMobile::update pose=%s stamp=%f", pose.prettyPrint().c_str(), data.stamp());
 	data_ = data;
-    pose_ = pose;
+    dataPose_ = pose;
 
     viewMatrix_ = viewMatrix;
     projectionMatrix_ = projectionMatrix;
@@ -155,7 +228,7 @@ void CameraMobile::update(const SensorData & data, const Transform & pose, const
     // adjust origin
     if(!originOffset_.isNull())
     {
-        pose_ = originOffset_ * pose_;
+        dataPose_ = originOffset_ * dataPose_;
         viewMatrix_ = glm::inverse(rtabmap::glmFromTransform(rtabmap::opengl_world_T_rtabmap_world * originOffset_ *rtabmap::rtabmap_world_T_opengl_world)*glm::inverse(viewMatrix_));
     }
     
@@ -211,7 +284,7 @@ void CameraMobile::updateOnRender()
 	UScopeMutex lock(dataMutex_);
 	bool notify = !data_.isValid();
 
-	data_ = updateDataOnRender(pose_);
+	data_ = updateDataOnRender(dataPose_);
 
 	if(data_.isValid())
 	{
@@ -359,6 +432,7 @@ SensorData CameraMobile::captureImage(SensorCaptureInfo * info)
 	if(data.isValid())
 	{
 		data.setGroundTruth(Transform());
+		data.setStamp(stampEpochOffset_ + data.stamp());
 
 		if(info)
 		{
@@ -371,7 +445,7 @@ SensorData CameraMobile::captureImage(SensorCaptureInfo * info)
 				info->odomCovariance.at<double>(4,4) *= 0.01;
 				info->odomCovariance.at<double>(5,5) *= 0.01;
 			}
-			info->odomPose = pose_;
+			info->odomPose = dataPose_;
 		}
 
 		firstFrame_ = false;

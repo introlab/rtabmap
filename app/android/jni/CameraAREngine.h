@@ -57,7 +57,6 @@ public:
 
 protected:
 	virtual SensorData updateDataOnRender(Transform & pose);
-	virtual void capturePoseOnly();
 
 private:
 	rtabmap::Transform getPoseAtTimestamp(double timestamp);

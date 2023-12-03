@@ -65,6 +65,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/GainCompensator.h>
 #include <rtabmap/core/DBDriver.h>
 #include <rtabmap/core/Recovery.h>
+#include <rtabmap/core/lidar/LidarVLP16.h>
 #include <pcl/common/common.h>
 #include <pcl/filters/extract_indices.h>
 #include <pcl/io/ply_io.h>
@@ -217,6 +218,7 @@ RTABMapApp::RTABMapApp() :
 		cameraColor_(true),
 		fullResolution_(false),
 		appendMode_(true),
+		useExternalLidar_(false),
 		maxCloudDepth_(2.5),
 		minCloudDepth_(0.0),
 		cloudDensityLevel_(1),
@@ -538,7 +540,7 @@ int RTABMapApp::openDatabase(const std::string & databasePath, bool databaseInMe
 							// Voxelize and filter depending on the previous cloud?
 							pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
 							pcl::IndicesPtr indices(new std::vector<int>);
-							if(!data.imageRaw().empty() && !data.depthRaw().empty())
+							if(!data.imageRaw().empty() && !data.depthRaw().empty() && (!useExternalLidar_ || data.laserScanRaw().isEmpty()))
 							{
                                 int meshDecimation = updateMeshDecimation(data.depthRaw().cols, data.depthRaw().rows);
                                 
@@ -938,7 +940,16 @@ bool RTABMapApp::startCamera()
 
 		LOGI("Start camera thread");
 		cameraJustInitialized_ = true;
-		sensorCaptureThread_ = new rtabmap::SensorCaptureThread(camera_);
+		if(useExternalLidar_)
+		{
+			rtabmap::LidarVLP16 * lidar = new rtabmap::LidarVLP16(boost::asio::ip::address::from_string("192.168.1.201"));
+			camera_->setImageRate(0); // if lidar, to get close camera synchronization
+			sensorCaptureThread_ = new rtabmap::SensorCaptureThread(lidar, camera_, camera_, rtabmap::Transform::getIdentity());
+		}
+		else
+		{
+			sensorCaptureThread_ = new rtabmap::SensorCaptureThread(camera_);
+		}
 		sensorCaptureThread_->start();
 		return true;
 	}
@@ -957,7 +968,6 @@ void RTABMapApp::stopCamera()
 			delete sensorCaptureThread_; // camera_ is closed and deleted inside
 			sensorCaptureThread_ = 0;
 			camera_ = 0;
-			poseBuffer_.clear();
 		}
 	}
     {
@@ -1799,7 +1809,7 @@ int RTABMapApp::Render()
 										// Voxelize and filter depending on the previous cloud?
 										pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
 										pcl::IndicesPtr indices(new std::vector<int>);
-										if(!data.imageRaw().empty() && !data.depthRaw().empty())
+										if(!data.imageRaw().empty() && !data.depthRaw().empty() && (!useExternalLidar_ || data.laserScanRaw().isEmpty()))
 										{
                                             int meshDecimation = updateMeshDecimation(data.depthRaw().cols, data.depthRaw().rows);
 											cloud = rtabmap::util3d::cloudRGBFromSensorData(data, meshDecimation, maxCloudDepth_, minCloudDepth_, indices.get());
@@ -2014,7 +2024,7 @@ int RTABMapApp::Render()
 						{
 							pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
 							pcl::IndicesPtr indices(new std::vector<int>);
-							if((!sensorEvent.data().imageRaw().empty() && !sensorEvent.data().depthRaw().empty()))
+							if(!sensorEvent.data().imageRaw().empty() && !sensorEvent.data().depthRaw().empty() && (!useExternalLidar_ || sensorEvent.data().laserScanRaw().isEmpty()))
 							{
                                 int meshDecimation = updateMeshDecimation(sensorEvent.data().depthRaw().cols, sensorEvent.data().depthRaw().rows);
 								cloud = rtabmap::util3d::cloudRGBFromSensorData(sensorEvent.data(), meshDecimation, maxCloudDepth_, minCloudDepth_, indices.get());
@@ -3708,19 +3718,12 @@ void RTABMapApp::postCameraPoseEvent(
 		if(qx==0 && qy==0 && qz==0 && qw==0)
 		{
 			// Lost! clear buffer
-			poseBuffer_.clear();
 			camera_->resetOrigin(); // we are lost, create new session on next valid frame
 			return;
 		}
 		rtabmap::Transform pose(x,y,z,qx,qy,qz,qw);
 		pose = rtabmap::rtabmap_world_T_opengl_world * pose * rtabmap::opengl_world_T_rtabmap_world;
-		camera_->poseReceived(pose);
-
-		poseBuffer_.insert(std::make_pair(stamp, pose));
-		if(poseBuffer_.size() > 1000)
-		{
-			poseBuffer_.erase(poseBuffer_.begin());
-		}
+		camera_->poseReceived(pose, stamp);
 	}
 }
 
@@ -3832,66 +3835,41 @@ void RTABMapApp::postOdometryEvent(
 				{
 					pose = rtabmap::rtabmap_world_T_opengl_world * pose * rtabmap::opengl_world_T_rtabmap_world;
 
+					rtabmap::Transform poseWithOriginOffset = pose;
+					if(!camera_->getOriginOffset().isNull())
+					{
+						poseWithOriginOffset = camera_->getOriginOffset() * pose;
+					}
+
 					// Registration depth to rgb
 					if(!outputDepth.empty() && !depthFrame.isNull() && depth_fx!=0 && (rgbFrame != depthFrame || depthStamp!=stamp))
 					{
 						UTimer time;
 						rtabmap::Transform motion = rtabmap::Transform::getIdentity();
-						if(depthStamp != stamp && !poseBuffer_.empty())
+						if(depthStamp != stamp)
 						{
 							// Interpolate pose
-							if(!poseBuffer_.empty())
+							rtabmap::Transform poseDepth;
+							cv::Mat cov;
+							if(!camera_->getPose(camera_->getStampEpochOffset()+depthStamp, poseDepth, cov, 0.0))
 							{
-								if(poseBuffer_.rbegin()->first < depthStamp)
-								{
-									UWARN("Could not find poses to interpolate at time %f (last is %f)...", depthStamp, poseBuffer_.rbegin()->first);
-								}
-								else
-								{
-									std::map<double, rtabmap::Transform >::const_iterator iterB = poseBuffer_.lower_bound(depthStamp);
-									std::map<double, rtabmap::Transform >::const_iterator iterA = iterB;
-									rtabmap::Transform poseDepth;
-									if(iterA != poseBuffer_.begin())
-									{
-										iterA = --iterA;
-									}
-									if(iterB == poseBuffer_.end())
-									{
-										iterB = --iterB;
-									}
-									if(iterA == iterB && depthStamp == iterA->first)
-									{
-										poseDepth = iterA->second;
-									}
-									else if(depthStamp >= iterA->first && depthStamp <= iterB->first)
-									{
-										poseDepth = iterA->second.interpolate((depthStamp-iterA->first) / (iterB->first-iterA->first), iterB->second);
-									}
-									else if(depthStamp < iterA->first)
-									{
-										UERROR("Could not find poses to interpolate at image time %f (earliest is %f). Are sensors synchronized?", depthStamp, iterA->first);
-									}
-									else
-									{
-										UERROR("Could not find poses to interpolate at image time %f (between %f and %f), Are sensors synchronized?", depthStamp, iterA->first, iterB->first);
-									}
-									if(!poseDepth.isNull())
-									{
+								UERROR("Could not find pose at depth stamp %f (epoch=%f rgb=%f)!", depthStamp, camera_->getStampEpochOffset()+depthStamp, stamp);
+							}
+							else
+							{
 #ifndef DISABLE_LOG
-										UDEBUG("poseRGB  =%s (stamp=%f)", pose.prettyPrint().c_str(), depthStamp);
-										UDEBUG("poseDepth=%s (stamp=%f)", poseDepth.prettyPrint().c_str(), depthStamp);
+								UDEBUG("poseRGB  =%s (stamp=%f)", poseWithOriginOffset.prettyPrint().c_str(), stamp);
+								UDEBUG("poseDepth=%s (stamp=%f)", poseDepth.prettyPrint().c_str(), depthStamp);
 #endif
-										motion = pose.inverse()*poseDepth;
-										// transform in camera frame
+								motion = poseWithOriginOffset.inverse()*poseDepth;
+								// transform in camera frame
 #ifndef DISABLE_LOG
-										UDEBUG("motion=%s", motion.prettyPrint().c_str());
+								UDEBUG("motion=%s", motion.prettyPrint().c_str());
 #endif
-										motion = rtabmap::CameraModel::opticalRotation().inverse() * motion * rtabmap::CameraModel::opticalRotation();
+								motion = rtabmap::CameraModel::opticalRotation().inverse() * motion * rtabmap::CameraModel::opticalRotation();
 #ifndef DISABLE_LOG
-										UDEBUG("motion=%s", motion.prettyPrint().c_str());
+								UDEBUG("motion=%s", motion.prettyPrint().c_str());
 #endif
-									}
-								}
 							}
 						}
 						rtabmap::Transform rgbToDepth = motion*rgbFrame.inverse()*depthFrame;
@@ -3940,11 +3918,6 @@ void RTABMapApp::postOdometryEvent(
                     
                     if(!outputDepth.empty())
                     {
-                    	rtabmap::Transform poseWithOriginOffset = pose;
-                    	if(!camera_->getOriginOffset().isNull())
-                    	{
-                    		poseWithOriginOffset = camera_->getOriginOffset() * pose;
-                    	}
                         rtabmap::CameraModel depthModel = model.scaled(float(outputDepth.cols) / float(model.imageWidth()));
                         depthModel.setLocalTransform(poseWithOriginOffset*model.localTransform());
                         camera_->setOcclusionImage(outputDepth, depthModel);

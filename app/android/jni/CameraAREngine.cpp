@@ -247,12 +247,6 @@ SensorData CameraAREngine::updateDataOnRender(Transform & pose)
 
 	if(camera_tracking_state == HWAR_TRACKING_STATE_TRACKING)
 	{
-		// pose in OpenGL coordinates
-		float pose_raw[7];
-		HwArCamera_getPose(arSession_, ar_camera, arPose_);
-		HwArPose_getPoseRaw(arSession_, arPose_, pose_raw);
-		pose = Transform(pose_raw[4], pose_raw[5], pose_raw[6], pose_raw[0], pose_raw[1], pose_raw[2], pose_raw[3]);
-
 		// Get calibration parameters
 		// FIXME: Hard-coded as getting intrinsics with the api fails
 		float fx=492.689667,fy=492.606201, cx=323.594849, cy=234.659744;
@@ -326,6 +320,26 @@ SensorData CameraAREngine::updateDataOnRender(Transform & pose)
 					double stamp = double(timestamp_ns)/10e8;
 					CameraModel model = CameraModel(fx, fy, cx, cy, deviceTColorCamera_, 0, cv::Size(camWidth, camHeight));
 					data = SensorData(outputRGB, outputDepth, model, 0, stamp);
+
+					// pose in OpenGL coordinates
+					float pose_raw[7];
+					HwArCamera_getPose(arSession_, ar_camera, arPose_);
+					HwArPose_getPoseRaw(arSession_, arPose_, pose_raw);
+					pose = Transform(pose_raw[4], pose_raw[5], pose_raw[6], pose_raw[0], pose_raw[1], pose_raw[2], pose_raw[3]);
+					if(pose.isNull())
+					{
+						LOGE("CameraAREngine: Pose is null");
+					}
+					else
+					{
+						pose = rtabmap::rtabmap_world_T_opengl_world * pose * rtabmap::opengl_world_T_rtabmap_world;
+						this->poseReceived(pose, stamp);
+						// adjust origin
+						if(!getOriginOffset().isNull())
+						{
+							pose = getOriginOffset() * pose;
+						}
+					}
 				}
 			}
 			else
@@ -343,99 +357,8 @@ SensorData CameraAREngine::updateDataOnRender(Transform & pose)
 	}
 
 	HwArCamera_release(ar_camera);
-
-	if(pose.isNull())
-	{
-		LOGE("CameraAREngine: Pose is null");
-	}
-	else
-	{
-		pose = rtabmap::rtabmap_world_T_opengl_world * pose * rtabmap::opengl_world_T_rtabmap_world;
-		this->poseReceived(pose);
-        // adjust origin
-        if(!getOriginOffset().isNull())
-        {
-            pose = getOriginOffset() * pose;
-        }
-	}
 	return data;
 
-}
-
-void CameraAREngine::capturePoseOnly()
-{
-	UScopeMutex lock(arSessionMutex_);
-	//LOGI("Capturing image...");
-
-	SensorData data;
-	if(!arSession_)
-	{
-		return;
-	}
-
-	if(textureId_ != 0)
-	{
-		glBindTexture(GL_TEXTURE_EXTERNAL_OES, textureId_);
-		glTexParameteri(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-		glTexParameteri(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-		glTexParameteri(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-		glTexParameteri(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-		HwArSession_setCameraTextureName(arSession_, textureId_);
-	}
-
-	// Update session to get current frame and render camera background.
-	if (HwArSession_update(arSession_, arFrame_) != HWAR_SUCCESS) {
-		LOGE("CameraARCore::captureImage() ArSession_update error");
-		return;
-	}
-
-	// If display rotation changed (also includes view size change), we need to
-	// re-query the uv coordinates for the on-screen portion of the camera image.
-	int32_t geometry_changed = 0;
-	HwArFrame_getDisplayGeometryChanged(arSession_, arFrame_, &geometry_changed);
-	if (geometry_changed != 0 || !uvs_initialized_) {
-		HwArFrame_transformDisplayUvCoords(
-				arSession_, arFrame_,
-				BackgroundRenderer::kNumVertices, BackgroundRenderer_kVerticesView,
-				transformed_uvs_);
-		UASSERT(transformed_uvs_);
-		uvs_initialized_ = true;
-	}
-
-	HwArCamera* ar_camera;
-	HwArFrame_acquireCamera(arSession_, arFrame_, &ar_camera);
-
-	HwArCamera_getViewMatrix(arSession_, ar_camera, glm::value_ptr(viewMatrix_));
-	HwArCamera_getProjectionMatrix(arSession_, ar_camera,
-							   /*near=*/0.1f, /*far=*/100.f,
-							   glm::value_ptr(projectionMatrix_));
-
-	// adjust origin
-	if(!getOriginOffset().isNull())
-	{
-		viewMatrix_ = glm::inverse(rtabmap::glmFromTransform(rtabmap::opengl_world_T_rtabmap_world * getOriginOffset() *rtabmap::rtabmap_world_T_opengl_world)*glm::inverse(viewMatrix_));
-	}
-
-	HwArTrackingState camera_tracking_state;
-	HwArCamera_getTrackingState(arSession_, ar_camera, &camera_tracking_state);
-
-	Transform pose;
-	CameraModel model;
-	if(camera_tracking_state == HWAR_TRACKING_STATE_TRACKING)
-	{
-		// pose in OpenGL coordinates
-		float pose_raw[7];
-		HwArCamera_getPose(arSession_, ar_camera, arPose_);
-		HwArPose_getPoseRaw(arSession_, arPose_, pose_raw);
-		pose = Transform(pose_raw[4], pose_raw[5], pose_raw[6], pose_raw[0], pose_raw[1], pose_raw[2], pose_raw[3]);
-		if(!pose.isNull())
-		{
-			pose = rtabmap::rtabmap_world_T_opengl_world * pose * rtabmap::opengl_world_T_rtabmap_world;
-			this->poseReceived(pose);
-		}
-	}
-
-	HwArCamera_release(ar_camera);
 }
 
 } /* namespace rtabmap */

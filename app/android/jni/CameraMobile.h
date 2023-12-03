@@ -95,7 +95,7 @@ public:
 	virtual bool init(const std::string & calibrationFolder = ".", const std::string & cameraName = "");
 	virtual void close(); // inherited classes should call its parent at the end of their close().
 	virtual std::string getSerial() const {return "CameraMobile";}
-	
+
 	void update(const SensorData & data, const Transform & pose, const glm::mat4 & viewMatrix, const glm::mat4 & projectionMatrix, const float * texCoord);
 	void updateOnRender();
 
@@ -103,7 +103,10 @@ public:
 	void resetOrigin();
 	virtual bool isCalibrated() const;
 
-	void poseReceived(const Transform & pose); // in rtabmap frame
+	virtual bool odomProvided() const { return true; }
+	virtual bool getPose(double epochStamp, Transform & pose, cv::Mat & covariance, double maxWaitTime = 0.06); // Return pose of device in rtabmap frame (with origin offset), stamp should be epoch time
+	void poseReceived(const Transform & pose, double deviceStamp); // original pose of device in rtabmap frame (without origin offset), stamp of the device (may be not epoch)
+	double getStampEpochOffset() const {return stampEpochOffset_;}
 
 	const CameraModel & getCameraModel() const {return model_;}
 	const Transform & getDeviceTColorCamera() const {return deviceTColorCamera_;}
@@ -140,6 +143,7 @@ protected:
 
 private:
 	bool firstFrame_;
+	double stampEpochOffset_;
 	bool smoothing_;
 	ScreenRotation colorCameraToDisplayRotation_;
 	GPS lastKnownGPS_;
@@ -150,7 +154,10 @@ private:
 	USemaphore dataReady_;
 	UMutex dataMutex_;
 	SensorData data_;
-	Transform pose_;
+	Transform dataPose_;
+
+	UMutex poseMutex_;
+	std::map<double, Transform> poseBuffer_; // <stamp, Pose>
     
     cv::Mat occlusionImage_;
     CameraModel occlusionModel_;

@@ -66,17 +66,17 @@ public:
 
 	SensorData takeScan(SensorCaptureInfo * info = 0) {return takeData(info);}
 
-	virtual bool init(const std::string & calibrationFolder = ".", const std::string & cameraName = "");
-	virtual std::string getSerial() const {return getName();}
+	virtual bool init(const std::string & calibrationFolder = ".", const std::string & cameraName = "") override;
+	virtual std::string getSerial() const override {return getName();}
 
 	void setOrganized(bool enable);
 
 private:
 	void buildTimings(bool dualMode);
-    void toPointClouds (HDLDataPacket *dataPacket) override;
+    virtual void toPointClouds (HDLDataPacket *dataPacket) override;
 
 protected:
-    virtual SensorData captureData(SensorCaptureInfo * info = 0);
+    virtual SensorData captureData(SensorCaptureInfo * info = 0) override;
 
 private:
     // timing offset lookup table

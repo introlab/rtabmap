@@ -71,7 +71,6 @@ public:
 
 protected:
 	virtual SensorData updateDataOnRender(Transform & pose); // should be called in opengl thread
-	virtual void capturePoseOnly();
 
 private:
 	rtabmap::Transform getPoseAtTimestamp(double timestamp);

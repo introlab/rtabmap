@@ -152,6 +152,10 @@ SensorCaptureThread::SensorCaptureThread(
 	{
 		if(_camera)
 		{
+			if(_odomSensor == _camera && _extrinsicsOdomToCamera.isNull())
+			{
+				_extrinsicsOdomToCamera.setIdentity();
+			}
 			UASSERT(!_extrinsicsOdomToCamera.isNull());
 			UDEBUG("_extrinsicsOdomToCamera=%s", _extrinsicsOdomToCamera.prettyPrint().c_str());
 		}
@@ -164,8 +168,11 @@ SensorCaptureThread::SensorCaptureThread(
 SensorCaptureThread::~SensorCaptureThread()
 {
 	join(true);
+	if(_odomSensor != _camera && _odomSensor != _lidar)
+	{
+		delete _odomSensor;
+	}
 	delete _camera;
-	delete _odomSensor;
 	delete _lidar;
 	delete _distortionModel;
 	delete _stereoDense;
@@ -292,7 +299,7 @@ bool SensorCaptureThread::odomProvided() const
 	{
 		return false;
 	}
-	return (_lidar && _lidar->odomProvided()) || (_camera && _camera->odomProvided()) || _odomSensor;
+	return _odomSensor != 0;
 }
 
 void SensorCaptureThread::mainLoopBegin()
@@ -315,44 +322,56 @@ void SensorCaptureThread::mainLoop()
 	SensorCaptureInfo info;
 	SensorData data;
 	SensorData cameraData;
+	double lidarStamp = 0.0;
+	double cameraStamp = 0.0;
 	if(_lidar)
 	{
 		data = _lidar->takeData(&info);
-		if(_camera)
+		if(data.stamp() == 0.0)
 		{
-			cameraData = _camera->takeData();
-			if(cameraData.imageRaw().empty())
+			UERROR("Could not capture scan!");
+		}
+		else
+		{
+			lidarStamp = data.stamp();
+			if(_camera)
 			{
-				UERROR("Could not capture image!");
-			}
-			else
-			{
-				double stampStart = UTimer::now();
-				while(cameraData.stamp() < data.stamp() &&
-					  !isKilled() &&
-					  UTimer::now() - stampStart < _poseWaitTime &&
-					  !cameraData.imageRaw().empty())
+				cameraData = _camera->takeData();
+				if(cameraData.stamp() == 0.0)
 				{
-					// Make sure the camera frame is newer than lidar frame so
-					// that if there are imus published by the cameras, we can get
-					// them all in odometry before deskewing.
-					cameraData = _camera->takeData();
-				}
-
-				if(cameraData.stamp() < data.stamp())
-				{
-					UWARN("Could not get camera frame (%f) with stamp more recent than lidar frame (%f) after waiting for %f seconds.",
-							cameraData.stamp(),
-							data.stamp(),
-							_poseWaitTime);
-				}
-				if(!cameraData.stereoCameraModels().empty())
-				{
-					data.setStereoImage(cameraData.imageRaw(), cameraData.depthOrRightRaw(), cameraData.stereoCameraModels(), true);
+					UERROR("Could not capture image!");
 				}
 				else
 				{
-					data.setRGBDImage(cameraData.imageRaw(), cameraData.depthOrRightRaw(), cameraData.cameraModels(), true);
+					double stampStart = UTimer::now();
+					while(cameraData.stamp() < data.stamp() &&
+						!isKilled() &&
+						UTimer::now() - stampStart < _poseWaitTime &&
+						!cameraData.imageRaw().empty())
+					{
+						// Make sure the camera frame is newer than lidar frame so
+						// that if there are imus published by the cameras, we can get
+						// them all in odometry before deskewing.
+						cameraData = _camera->takeData();
+					}
+
+					cameraStamp = cameraData.stamp();
+					if(cameraData.stamp() < data.stamp())
+					{
+						UWARN("Could not get camera frame (%f) with stamp more recent than lidar frame (%f) after waiting for %f seconds.",
+								cameraData.stamp(),
+								data.stamp(),
+								_poseWaitTime);
+					}
+
+					if(!cameraData.stereoCameraModels().empty())
+					{
+						data.setStereoImage(cameraData.imageRaw(), cameraData.depthOrRightRaw(), cameraData.stereoCameraModels(), true);
+					}
+					else
+					{
+						data.setRGBDImage(cameraData.imageRaw(), cameraData.depthOrRightRaw(), cameraData.cameraModels(), true);
+					}
 				}
 			}
 		}
@@ -360,11 +379,19 @@ void SensorCaptureThread::mainLoop()
 	else if(_camera)
 	{
 		data = _camera->takeData(&info);
+		if(data.stamp() == 0.0)
+		{
+			UERROR("Could not capture image!");
+		}
+		else
+		{
+			cameraStamp = cameraData.stamp();
+		}
 	}
 
-	if(_odomSensor)
+	if(_odomSensor && data.stamp() != 0.0)
 	{
-		if(_lidar && _scanDeskewing)
+		if(lidarStamp!=0.0 && _scanDeskewing)
 		{
 			UDEBUG("Deskewing begin");
 			if(!data.laserScanRaw().empty() && data.laserScanRaw().hasTime())
@@ -427,7 +454,6 @@ void SensorCaptureThread::mainLoop()
 		}
 
 		Transform pose;
-		Transform poseToLeftCam;
 		cv::Mat covariance;
 		if(_odomSensor->getPose(data.stamp()+_poseTimeOffset, pose, covariance, _poseWaitTime>0?_poseWaitTime:0))
 		{
@@ -439,24 +465,38 @@ void SensorCaptureThread::mainLoop()
 				info.odomPose.y() *= _poseScaleFactor;
 				info.odomPose.z() *= _poseScaleFactor;
 			}
+
+			Transform cameraCorrection = Transform::getIdentity();
+			if(lidarStamp > 0.0 && lidarStamp != cameraStamp)
+			{
+				if(_odomSensor->getPose(cameraStamp+_poseTimeOffset, pose, covariance, _poseWaitTime>0?_poseWaitTime:0))
+				{
+					cameraCorrection = info.odomPose.inverse() * pose;
+				}
+				else
+				{
+					UWARN("Could not get pose at stamp %f, the camera local motion against lidar won't be adjusted.", cameraStamp);
+				}
+			}
+
 			// Adjust local transform of the camera based on the pose frame
 			if(!data.cameraModels().empty())
 			{
 				UASSERT(data.cameraModels().size()==1);
 				CameraModel model = data.cameraModels()[0];
-				model.setLocalTransform(_extrinsicsOdomToCamera);
+				model.setLocalTransform(cameraCorrection*_extrinsicsOdomToCamera);
 				data.setCameraModel(model);
 			}
 			else if(!data.stereoCameraModels().empty())
 			{
 				UASSERT(data.stereoCameraModels().size()==1);
 				StereoCameraModel model = data.stereoCameraModels()[0];
-				model.setLocalTransform(_extrinsicsOdomToCamera);
+				model.setLocalTransform(cameraCorrection*_extrinsicsOdomToCamera);
 				data.setStereoCameraModel(model);
 			}
 
 			// Fake IMU to intialize gravity (assuming pose is aligned with gravity!)
-			Eigen::Quaterniond q = pose.getQuaterniond();
+			Eigen::Quaterniond q = info.odomPose.getQuaterniond();
 			data.setIMU(IMU(
 					cv::Vec4d(q.x(), q.y(), q.z(), q.w()), cv::Mat(),
 					cv::Vec3d(), cv::Mat(),

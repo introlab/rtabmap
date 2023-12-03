@@ -101,7 +101,7 @@ void onPoseAvailableRouter(void* context, const TangoPoseData* pose)
 	if(pose->status_code == TANGO_POSE_VALID)
 	{
 		CameraTango* app = static_cast<CameraTango*>(context);
-		app->poseReceived(rtabmap_world_T_tango_world * app->tangoPoseToTransform(pose) * tango_device_T_rtabmap_world);
+		app->poseReceived(rtabmap_world_T_tango_world * app->tangoPoseToTransform(pose) * tango_device_T_rtabmap_world, pose->timestamp);
 	}
 }
 

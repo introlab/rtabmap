@@ -227,6 +227,7 @@ class RTABMapApp : public UEventsHandler {
   bool cameraColor_;
   bool fullResolution_;
   bool appendMode_;
+  bool useExternalLidar_;
   float maxCloudDepth_;
   float minCloudDepth_;
   int cloudDensityLevel_;
@@ -275,7 +276,6 @@ class RTABMapApp : public UEventsHandler {
 	std::list<rtabmap::RtabmapEvent*> rtabmapEvents_;
 	std::list<rtabmap::SensorEvent> sensorEvents_;
 	std::list<rtabmap::Transform> poseEvents_;
-	std::map<double, rtabmap::Transform> poseBuffer_;
 
 	rtabmap::Transform mapToOdom_;
 

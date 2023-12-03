@@ -66,7 +66,7 @@ public:
 			const ParametersMap & parameters = ParametersMap());
 	/**
 	 * @param camera the camera to take images from
-	 * @param odomSensor an odometry sensor to get a pose
+	 * @param odomSensor an odometry sensor to get a pose (can be again the camera)
 	 * @param odomAsGt set odometry sensor pose as ground truth instead of odometry
 	 * @param extrinsics the static transform between odometry sensor's left lens frame to camera's left lens frame  (without optical rotation)
 	 */
@@ -94,7 +94,7 @@ public:
 			const ParametersMap & parameters = ParametersMap());
 	/**
 	 * @param lidar the lidar to take scans from
-	 * @param odomSensor an odometry sensor to get a pose and used for deskewing
+	 * @param odomSensor an odometry sensor to get a pose and used for deskewing (can be again the lidar)
 	 */
 	SensorCaptureThread(
 			Lidar * lidar,
@@ -106,7 +106,7 @@ public:
 	/**
 	 * @param lidar the lidar to take scans from
 	 * @param camera the camera to take images from
-	 * @param odomSensor an odometry sensor to get a pose and used for deskewing
+	 * @param odomSensor an odometry sensor to get a pose and used for deskewing (can be again the camera or lidar)
 	 * @param extrinsics the static transform between odometry frame to camera frame (without optical rotation)
 	 */
 	SensorCaptureThread(
