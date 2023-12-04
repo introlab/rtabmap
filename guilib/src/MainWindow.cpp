@@ -5766,22 +5766,31 @@ void MainWindow::startDetection()
 		}
 	}
 
-	if(_preferencesDialog->getOdomSourceDriver() != PreferencesDialog::kSrcUndef &&
-		(camera == 0 ||
+	if(_preferencesDialog->getOdomSourceDriver() != PreferencesDialog::kSrcUndef)
+	{
+		if(camera == 0 ||
 		   (_preferencesDialog->getOdomSourceDriver() != _preferencesDialog->getSourceDriver() &&
 			!(_preferencesDialog->getOdomSourceDriver() == PreferencesDialog::kSrcStereoRealSense2 &&
-			  _preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcRealSense2))))
-	{
-		UINFO("Create Odom Sensor %d (camera = %d)",
-				_preferencesDialog->getOdomSourceDriver(),
-				_preferencesDialog->getSourceDriver());
-		odomSensor = _preferencesDialog->createOdomSensor(extrinsics, poseTimeOffset, scaleFactor, waitTime);
-		if(!odomSensor)
+			  _preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcRealSense2)))
 		{
-			delete camera;
-			delete lidar;
-			Q_EMIT stateChanged(kInitialized);
-			return;
+			UINFO("Create Odom Sensor %d (camera = %d)",
+					_preferencesDialog->getOdomSourceDriver(),
+					_preferencesDialog->getSourceDriver());
+			odomSensor = _preferencesDialog->createOdomSensor(extrinsics, poseTimeOffset, scaleFactor, waitTime);
+			if(!odomSensor)
+			{
+				delete camera;
+				delete lidar;
+				Q_EMIT stateChanged(kInitialized);
+				return;
+			}
+		}
+		else if(camera->odomProvided())
+		{
+			UINFO("The camera is also the odometry sensor (camera=%d odom=%d).",
+					_preferencesDialog->getSourceDriver(),
+					_preferencesDialog->getOdomSourceDriver());
+			odomSensor = camera;
 		}
 	}
 
