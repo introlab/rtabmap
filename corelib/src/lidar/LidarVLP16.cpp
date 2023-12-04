@@ -27,6 +27,12 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/lidar/LidarVLP16.h>
 #include <rtabmap/utilite/UTimer.h>
 #include <rtabmap/utilite/UThread.h>
+#include <pcl/pcl_config.h>
+
+#if PCL_VERSION_COMPARE(<, 1, 9, 0)
+#define VLP_MAX_NUM_LASERS 16
+#define VLP_DUAL_MODE 0x39
+#endif
 
 namespace rtabmap {
 
@@ -125,6 +131,7 @@ void LidarVLP16::setOrganized(bool enable)
 
 bool LidarVLP16::init(const std::string &, const std::string &)
 {
+	UDEBUG("Init lidar");
 	if(isRunning())
 	{
 		UDEBUG("Stopping lidar...");
@@ -145,6 +152,7 @@ bool LidarVLP16::init(const std::string &, const std::string &)
 	}
 	buildTimings(false);
 	start();
+	UDEBUG("Lidar capture started");
 	return true;
 }
 

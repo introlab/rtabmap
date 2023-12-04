@@ -82,9 +82,9 @@ LaserScan commonFiltering(
 		float groundNormalsUp)
 {
 	LaserScan scan = scanIn;
-	UDEBUG("scan size=%d format=%d, step=%d, rangeMin=%f, rangeMax=%f, voxel=%f, normalK=%d, normalRadius=%f, groundNormalsUp=%f",
-			scan.size(), (int)scan.format(), downsamplingStep, rangeMin, rangeMax, voxelSize, normalK, normalRadius, groundNormalsUp);
-	if(!scan.isEmpty())
+	UDEBUG("scan size=%d format=%d, organized=%d, step=%d, rangeMin=%f, rangeMax=%f, voxel=%f, normalK=%d, normalRadius=%f, groundNormalsUp=%f",
+			scan.size(), (int)scan.format(), scan.isOrganized()?1:0, downsamplingStep, rangeMin, rangeMax, voxelSize, normalK, normalRadius, groundNormalsUp);
+	if(!scan.isEmpty() && !scan.isOrganized())
 	{
 		// combined downsampling and range filtering step
 		if(downsamplingStep<=1 || scan.size() <= downsamplingStep)
@@ -318,6 +318,10 @@ LaserScan commonFiltering(
 			scan = util3d::adjustNormalsToViewPoint(scan, Eigen::Vector3f(0,0,10), groundNormalsUp);
 		}
 	}
+    else if(scan.size() && scan.isOrganized())
+    {
+        UERROR("This function doesn't support organized laser scan! Returning original scan.");
+    }
 	return scan;
 }
 

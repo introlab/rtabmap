@@ -145,7 +145,7 @@ public:
 			float rangeMax,
 			float voxelSize,
 			int normalsK,
-			int normalsRadius,
+			float normalsRadius,
 			bool forceGroundNormalsUp,
 			bool deskewing);
 	void setScanParameters(
@@ -155,7 +155,7 @@ public:
 			float rangeMax=0.0f,
 			float voxelSize = 0.0f,
 			int normalsK = 0,
-			int normalsRadius = 0.0f,
+			float normalsRadius = 0.0f,
 			float groundNormalsUp = 0.0f,
 			bool deskewing = false);
 

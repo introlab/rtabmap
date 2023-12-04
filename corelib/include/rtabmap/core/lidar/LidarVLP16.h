@@ -29,12 +29,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/Lidar.h>
 #include <rtabmap/utilite/USemaphore.h>
 #include <pcl/io/vlp_grabber.h>
-#include <pcl/pcl_config.h>
-
-#if PCL_VERSION_COMPARE(<, 1, 9, 0)
-#define VLP_MAX_NUM_LASERS 16
-#define VLP_DUAL_MODE 0x39
-#endif
 
 namespace rtabmap {
 

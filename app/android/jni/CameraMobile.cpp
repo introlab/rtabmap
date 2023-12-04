@@ -176,6 +176,7 @@ void CameraMobile::poseReceived(const Transform & pose, double deviceStamp)
 		{
 			stampEpochOffset_ = UTimer::now() - deviceStamp;
 		}
+        
 		double epochStamp = stampEpochOffset_ + deviceStamp;
 
 		if(!originOffset_.isNull())

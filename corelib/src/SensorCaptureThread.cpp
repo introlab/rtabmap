@@ -264,7 +264,7 @@ void SensorCaptureThread::setScanParameters(
 	float rangeMax,
 	float voxelSize,
 	int normalsK,
-	int normalsRadius,
+	float normalsRadius,
 	bool forceGroundNormalsUp,
 	bool deskewing)
 {
@@ -278,7 +278,7 @@ void SensorCaptureThread::setScanParameters(
 			float rangeMax,
 			float voxelSize,
 			int normalsK,
-			int normalsRadius,
+			float normalsRadius,
 			float groundNormalsUp,
 			bool deskewing)
 {
@@ -329,7 +329,8 @@ void SensorCaptureThread::mainLoop()
 		data = _lidar->takeData(&info);
 		if(data.stamp() == 0.0)
 		{
-			UERROR("Could not capture scan!");
+			UERROR("Could not capture scan! Skipping this frame!");
+            return;
 		}
 		else
 		{
@@ -339,7 +340,8 @@ void SensorCaptureThread::mainLoop()
 				cameraData = _camera->takeData();
 				if(cameraData.stamp() == 0.0)
 				{
-					UERROR("Could not capture image!");
+					UERROR("Could not capture image! Skipping this frame!");
+                    return;
 				}
 				else
 				{
@@ -381,7 +383,8 @@ void SensorCaptureThread::mainLoop()
 		data = _camera->takeData(&info);
 		if(data.stamp() == 0.0)
 		{
-			UERROR("Could not capture image!");
+			UERROR("Could not capture image! Skipping this frame!");
+            return;
 		}
 		else
 		{
@@ -443,7 +446,8 @@ void SensorCaptureThread::mainLoop()
 				}
 				else
 				{
-					UWARN("Failed to get poses for stamps %f and %f! Lidar won't be deskewed!", firstStamp+_poseTimeOffset, lastStamp+_poseTimeOffset);
+					UWARN("Failed to get poses for stamps %f and %f! Skipping this frame!", firstStamp+_poseTimeOffset, lastStamp+_poseTimeOffset);
+                    return;
 				}
 			}
 			else if(!data.laserScanRaw().empty())
