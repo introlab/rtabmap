@@ -63,7 +63,7 @@ public:
 	void setPreferences(int rgb_resolution, int framerate, int depth_resolution);
 
 protected:
-	virtual SensorData captureImage(CameraInfo * info = 0);
+	virtual SensorData captureImage(SensorCaptureInfo * info = 0);
 
 private:
 	void close();

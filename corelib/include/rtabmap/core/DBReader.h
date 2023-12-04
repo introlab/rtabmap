@@ -86,10 +86,10 @@ public:
 	const DBDriver * driver() const {return _dbDriver;}
 
 protected:
-	virtual SensorData captureImage(CameraInfo * info = 0);
+	virtual SensorData captureImage(SensorCaptureInfo * info = 0);
 
 private:
-	SensorData getNextData(CameraInfo * info = 0);
+	SensorData getNextData(SensorCaptureInfo * info = 0);
 
 private:
 	std::list<std::string> _paths;

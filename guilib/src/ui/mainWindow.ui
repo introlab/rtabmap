@@ -340,9 +340,16 @@
       <addaction name="menuOAK_D"/>
       <addaction name="menuOAK_D_Lite"/>
      </widget>
+     <widget class="QMenu" name="menuLiDAR">
+      <property name="title">
+       <string>LiDAR</string>
+      </property>
+      <addaction name="actionVelodyne_VLP_16"/>
+     </widget>
      <addaction name="menuRGB_D_camera"/>
      <addaction name="menuStereo_camera"/>
      <addaction name="menuImage"/>
+     <addaction name="menuLiDAR"/>
      <addaction name="actionMore_options"/>
     </widget>
     <addaction name="menuSelect_source"/>
@@ -1720,6 +1727,14 @@
    </property>
    <property name="text">
     <string>Depth AI</string>
+   </property>
+  </action>
+  <action name="actionVelodyne_VLP_16">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Velodyne VLP-16</string>
    </property>
   </action>
  </widget>

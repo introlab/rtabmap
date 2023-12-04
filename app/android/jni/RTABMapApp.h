@@ -40,7 +40,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "util.h"
 #include "ProgressionStatus.h"
 
+#include <rtabmap/core/SensorCaptureThread.h>
 #include <rtabmap/core/RtabmapThread.h>
+#include <rtabmap/core/SensorEvent.h>
 #include <rtabmap/utilite/UEventsHandler.h>
 #include <boost/thread/mutex.hpp>
 #include <pcl/pcl_base.h>
@@ -209,6 +211,7 @@ class RTABMapApp : public UEventsHandler {
  private:
   int cameraDriver_;
   rtabmap::CameraMobile * camera_;
+  rtabmap::SensorCaptureThread * sensorCaptureThread_;
   rtabmap::RtabmapThread * rtabmapThread_;
   rtabmap::Rtabmap * rtabmap_;
   rtabmap::LogHandler * logHandler_;
@@ -224,6 +227,7 @@ class RTABMapApp : public UEventsHandler {
   bool cameraColor_;
   bool fullResolution_;
   bool appendMode_;
+  bool useExternalLidar_;
   float maxCloudDepth_;
   float minCloudDepth_;
   int cloudDensityLevel_;
@@ -270,16 +274,15 @@ class RTABMapApp : public UEventsHandler {
     UTimer fpsTime_;
 
 	std::list<rtabmap::RtabmapEvent*> rtabmapEvents_;
-	std::list<rtabmap::OdometryEvent> odomEvents_;
+	std::list<rtabmap::SensorEvent> sensorEvents_;
 	std::list<rtabmap::Transform> poseEvents_;
-	std::map<double, rtabmap::Transform> poseBuffer_;
 
 	rtabmap::Transform mapToOdom_;
 
 	boost::mutex cameraMutex_;
 	boost::mutex rtabmapMutex_;
 	boost::mutex meshesMutex_;
-	boost::mutex odomMutex_;
+	boost::mutex sensorMutex_;
 	boost::mutex poseMutex_;
 	boost::mutex renderingMutex_;
 

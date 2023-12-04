@@ -28,8 +28,14 @@
 
 #include "util.h"
 
-static const GLfloat BackgroundRenderer_kVertices[] = {
+static const GLfloat BackgroundRenderer_kVerticesDevice[] = {
 	-1.0f, -1.0f, +1.0f, -1.0f, -1.0f, +1.0f, +1.0f, +1.0f,
+};
+//static const GLfloat BackgroundRenderer_kVerticesView[] = {
+//	0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f,
+//};
+static const GLfloat BackgroundRenderer_kVerticesView[] = {
+	0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f,
 };
 static const GLfloat BackgroundRenderer_kTexCoord[] = {
    1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f,

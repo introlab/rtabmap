@@ -44,7 +44,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/utilite/UEventsHandler.h"
 #include "rtabmap/utilite/ULogger.h"
 #include "rtabmap/core/OdometryEvent.h"
-#include "rtabmap/core/CameraThread.h"
+#include <rtabmap/core/SensorCaptureThread.h>
 
 using namespace rtabmap;
 
@@ -54,7 +54,7 @@ class MapBuilder : public QWidget, public UEventsHandler
 	Q_OBJECT
 public:
 	//Camera ownership is not transferred!
-	MapBuilder(CameraThread * camera = 0) :
+	MapBuilder(SensorCaptureThread * camera = 0) :
 		camera_(camera),
 		odometryCorrection_(Transform::getIdentity()),
 		processingStatistics_(false),
@@ -278,7 +278,7 @@ protected Q_SLOTS:
 
 protected:
 	CloudViewer * cloudViewer_;
-	CameraThread * camera_;
+	SensorCaptureThread * camera_;
 	Transform lastOdomPose_;
 	Transform odometryCorrection_;
 	bool processingStatistics_;

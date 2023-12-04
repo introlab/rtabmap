@@ -56,7 +56,7 @@ class MapBuilderWifi : public MapBuilder
 	Q_OBJECT
 public:
 	// Camera ownership is not transferred!
-	MapBuilderWifi(CameraThread * camera = 0) :
+	MapBuilderWifi(SensorCaptureThread * camera = 0) :
 		MapBuilder(camera)
 	{}
 

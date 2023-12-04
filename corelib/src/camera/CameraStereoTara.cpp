@@ -136,7 +136,7 @@ std::string CameraStereoTara::getSerial() const
 	return cameraName_;
 }
 
-SensorData CameraStereoTara::captureImage(CameraInfo * info)
+SensorData CameraStereoTara::captureImage(SensorCaptureInfo * info)
 {
 	SensorData data;
 

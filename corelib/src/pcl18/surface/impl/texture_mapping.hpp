@@ -975,10 +975,6 @@ pcl::TextureMapping<PointInT>::textureMeshwithMultipleCameras (pcl::TextureMesh 
     visible_faces.resize (cpt_visible_faces);
     mesh.tex_polygons[current_cam].clear ();
     mesh.tex_polygons[current_cam] = visible_faces;
-
-    int nb_faces = 0;
-    for (int i = 0; i < static_cast<int> (mesh.tex_polygons.size ()); i++)
-      nb_faces += static_cast<int> (mesh.tex_polygons[i].size ());
   }
 
   // we have been through all the cameras.

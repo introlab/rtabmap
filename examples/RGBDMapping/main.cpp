@@ -30,7 +30,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/RtabmapThread.h"
 #include "rtabmap/core/CameraRGBD.h"
 #include "rtabmap/core/CameraStereo.h"
-#include "rtabmap/core/CameraThread.h"
 #include "rtabmap/core/OdometryThread.h"
 #include "rtabmap/core/Graph.h"
 #include "rtabmap/utilite/UEventsManager.h"
@@ -39,6 +38,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pcl/io/pcd_io.h>
 #include <pcl/io/ply_io.h>
 #include <pcl/filters/filter.h>
+#include <rtabmap/core/SensorCaptureThread.h>
 
 #ifdef RTABMAP_PYTHON
 #include "rtabmap/core/PythonInterface.h"
@@ -80,9 +80,9 @@ int main(int argc, char * argv[])
 	}
 
 	// Here is the pipeline that we will use:
-	// CameraOpenni -> "CameraEvent" -> OdometryThread -> "OdometryEvent" -> RtabmapThread -> "RtabmapEvent"
+	// CameraOpenni -> "SensorEvent" -> OdometryThread -> "OdometryEvent" -> RtabmapThread -> "RtabmapEvent"
 
-	// Create the OpenNI camera, it will send a CameraEvent at the rate specified.
+	// Create the OpenNI camera, it will send a SensorEvent at the rate specified.
 	// Set transform to camera so z is up, y is left and x going forward
 	Camera * camera = 0;
 	if(driver == 1)
@@ -185,7 +185,7 @@ int main(int argc, char * argv[])
 		UERROR("Camera init failed!");
 	}
 
-	CameraThread cameraThread(camera);
+	SensorCaptureThread cameraThread(camera);
 
 
 	// GUI stuff, there the handler will receive RtabmapEvent and construct the map
@@ -210,18 +210,20 @@ int main(int argc, char * argv[])
 	rtabmapThread.registerToEventsManager();
 	mapBuilder.registerToEventsManager();
 
-	// The RTAB-Map is subscribed by default to CameraEvent, but we want
-	// RTAB-Map to process OdometryEvent instead, ignoring the CameraEvent.
+	// The RTAB-Map is subscribed by default to SensorEvent, but we want
+	// RTAB-Map to process OdometryEvent instead, ignoring the SensorEvent.
 	// We can do that by creating a "pipe" between the camera and odometry, then
-	// only the odometry will receive CameraEvent from that camera. RTAB-Map is
+	// only the odometry will receive SensorEvent from that camera. RTAB-Map is
 	// also subscribed to OdometryEvent by default, so no need to create a pipe between
 	// odometry and RTAB-Map.
-	UEventsManager::createPipe(&cameraThread, &odomThread, "CameraEvent");
+	UEventsManager::createPipe(&cameraThread, &odomThread, "SensorEvent");
 
 	// Let's start the threads
 	rtabmapThread.start();
 	odomThread.start();
 	cameraThread.start();
+
+	printf("Press Space key to pause.\n");
 
 	mapBuilder.show();
 	app.exec(); // main loop

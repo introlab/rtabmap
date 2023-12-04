@@ -53,7 +53,7 @@ public:
 	virtual void setMaxFrames(int value) {CameraImages::setMaxFrames(value);cameraDepth_.setMaxFrames(value);}
 
 protected:
-	virtual SensorData captureImage(CameraInfo * info = 0);
+	virtual SensorData captureImage(SensorCaptureInfo * info = 0);
 
 private:
 	CameraImages cameraDepth_;

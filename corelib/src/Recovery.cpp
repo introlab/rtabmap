@@ -160,7 +160,7 @@ bool databaseRecovery(
 		DBReader dbReader(databasePath, 0, odometryIgnored);
 		dbReader.init();
 
-		CameraInfo info;
+		SensorCaptureInfo info;
 		SensorData data = dbReader.takeImage(&info);
 		int processed = 0;
 		if (progressState)

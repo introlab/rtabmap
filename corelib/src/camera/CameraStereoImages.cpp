@@ -156,7 +156,7 @@ std::string CameraStereoImages::getSerial() const
 	return stereoModel_.name();
 }
 
-SensorData CameraStereoImages::captureImage(CameraInfo * info)
+SensorData CameraStereoImages::captureImage(SensorCaptureInfo * info)
 {
 	SensorData data;
 

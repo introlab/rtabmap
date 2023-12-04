@@ -44,7 +44,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QMessageBox>
 #include <QCloseEvent>
 
-#include <rtabmap/core/CameraEvent.h>
+#include <rtabmap/core/SensorEvent.h>
 #include <rtabmap/utilite/UCv2Qt.h>
 
 #include <rtabmap/utilite/ULogger.h>
@@ -307,10 +307,10 @@ bool CalibrationDialog::handleEvent(UEvent * event)
 {
 	if(!processingData_)
 	{
-		if(event->getClassName().compare("CameraEvent") == 0)
+		if(event->getClassName().compare("SensorEvent") == 0)
 		{
-			rtabmap::CameraEvent * e = (rtabmap::CameraEvent *)event;
-			if(e->getCode() == rtabmap::CameraEvent::kCodeData)
+			rtabmap::SensorEvent * e = (rtabmap::SensorEvent *)event;
+			if(e->getCode() == rtabmap::SensorEvent::kCodeData)
 			{
 				processingData_ = true;
 				QMetaObject::invokeMethod(this, "processImages",

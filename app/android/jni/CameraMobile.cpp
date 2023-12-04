@@ -55,10 +55,8 @@ const rtabmap::Transform CameraMobile::opticalRotationInv = Transform(
 CameraMobile::CameraMobile(bool smoothing) :
 		Camera(10),
 		deviceTColorCamera_(Transform::getIdentity()),
-		spinOncePreviousStamp_(0.0),
 		textureId_(0),
 		uvs_initialized_(false),
-		previousStamp_(0.0),
 		stampEpochOffset_(0.0),
 		smoothing_(smoothing),
 		colorCameraToDisplayRotation_(ROTATION_0),
@@ -79,13 +77,12 @@ bool CameraMobile::init(const std::string &, const std::string &)
 
 void CameraMobile::close()
 {
-	previousPose_.setNull();
-	previousStamp_ = 0.0;
+	firstFrame_ = true;
 	lastKnownGPS_ = GPS();
 	lastEnvSensors_.clear();
 	originOffset_ = Transform();
 	originUpdate_ = false;
-	pose_ = Transform();
+	dataPose_ = Transform();
 	data_ = SensorData();
 
     if(textureId_ != 0)
@@ -97,35 +94,107 @@ void CameraMobile::close()
 
 void CameraMobile::resetOrigin()
 {
-	previousPose_.setNull();
-	previousStamp_ = 0.0;
+	firstFrame_ = true;
 	lastKnownGPS_ = GPS();
 	lastEnvSensors_.clear();
-	pose_ = Transform();
+	dataPose_ = Transform();
 	data_ = SensorData();
 	originUpdate_ = true;
 }
 
-void CameraMobile::poseReceived(const Transform & pose)
+bool CameraMobile::getPose(double stamp, Transform & pose, cv::Mat & covariance, double maxWaitTime)
+{
+	pose.setNull();
+
+	int maxWaitTimeMs = maxWaitTime * 1000;
+
+	// Interpolate pose
+	if(!poseBuffer_.empty())
+	{
+		poseMutex_.lock();
+		int waitTry = 0;
+		while(maxWaitTimeMs>0 && poseBuffer_.rbegin()->first < stamp && waitTry < maxWaitTimeMs)
+		{
+			poseMutex_.unlock();
+			++waitTry;
+			uSleep(1);
+			poseMutex_.lock();
+		}
+		if(poseBuffer_.rbegin()->first < stamp)
+		{
+			if(maxWaitTimeMs > 0)
+			{
+				UWARN("Could not find poses to interpolate at time %f after waiting %d ms (latest is %f)...", stamp, maxWaitTimeMs, poseBuffer_.rbegin()->first);
+			}
+			else
+			{
+				UWARN("Could not find poses to interpolate at time %f (latest is %f)...", stamp, poseBuffer_.rbegin()->first);
+			}
+		}
+		else
+		{
+			std::map<double, Transform>::const_iterator iterB = poseBuffer_.lower_bound(stamp);
+			std::map<double, Transform>::const_iterator iterA = iterB;
+			if(iterA != poseBuffer_.begin())
+			{
+				iterA = --iterA;
+			}
+			if(iterB == poseBuffer_.end())
+			{
+				iterB = --iterB;
+			}
+			if(iterA == iterB && stamp == iterA->first)
+			{
+				pose = iterA->second;
+			}
+			else if(stamp >= iterA->first && stamp <= iterB->first)
+			{
+				pose = iterA->second.interpolate((stamp-iterA->first) / (iterB->first-iterA->first), iterB->second);
+			}
+			else // stamp < iterA->first
+			{
+				UWARN("Could not find pose data to interpolate at time %f (earliest is %f). Are sensors synchronized?", stamp, iterA->first);
+			}
+		}
+		poseMutex_.unlock();
+	}
+	return !pose.isNull();
+}
+
+void CameraMobile::poseReceived(const Transform & pose, double deviceStamp)
 {
 	if(!pose.isNull())
 	{
-		// send pose of the camera (without optical rotation)
-		Transform p = pose*deviceTColorCamera_;
+		Transform p = pose;
 		if(originUpdate_)
 		{
 			originOffset_ = p.translation().inverse();
 			originUpdate_ = false;
 		}
+		
+		if(stampEpochOffset_ == 0.0)
+		{
+			stampEpochOffset_ = UTimer::now() - deviceStamp;
+		}
+        
+		double epochStamp = stampEpochOffset_ + deviceStamp;
 
 		if(!originOffset_.isNull())
 		{
-			this->post(new PoseEvent(originOffset_*p));
+			p = originOffset_*p;
 		}
-		else
+
 		{
-			this->post(new PoseEvent(p));
+			UScopeMutex lock(poseMutex_);
+			poseBuffer_.insert(poseBuffer_.end(), std::make_pair(epochStamp, p));
+			if(poseBuffer_.size() > 1000)
+			{
+				poseBuffer_.erase(poseBuffer_.begin());
+			}
 		}
+
+		// send pose of the camera (with optical rotation)
+		this->post(new PoseEvent(p * deviceTColorCamera_));
 	}
 }
 
@@ -139,11 +208,20 @@ void CameraMobile::setGPS(const GPS & gps)
 	lastKnownGPS_ = gps;
 }
 
-void CameraMobile::setData(const SensorData & data, const Transform & pose, const glm::mat4 & viewMatrix, const glm::mat4 & projectionMatrix, const float * texCoord)
+void CameraMobile::addEnvSensor(int type, float value)
 {
-	LOGD("CameraMobile::setData pose=%s stamp=%f", pose.prettyPrint().c_str(), data.stamp());
+	lastEnvSensors_.insert(std::make_pair((EnvSensor::Type)type, EnvSensor((EnvSensor::Type)type, value)));
+}
+
+void CameraMobile::update(const SensorData & data, const Transform & pose, const glm::mat4 & viewMatrix, const glm::mat4 & projectionMatrix, const float * texCoord)
+{
+	UScopeMutex lock(dataMutex_);
+
+	bool notify = !data_.isValid();
+
+	LOGD("CameraMobile::update pose=%s stamp=%f", pose.prettyPrint().c_str(), data.stamp());
 	data_ = data;
-    pose_ = pose;
+    dataPose_ = pose;
 
     viewMatrix_ = viewMatrix;
     projectionMatrix_ = projectionMatrix;
@@ -151,7 +229,7 @@ void CameraMobile::setData(const SensorData & data, const Transform & pose, cons
     // adjust origin
     if(!originOffset_.isNull())
     {
-        pose_ = originOffset_ * pose_;
+        dataPose_ = originOffset_ * dataPose_;
         viewMatrix_ = glm::inverse(rtabmap::glmFromTransform(rtabmap::opengl_world_T_rtabmap_world * originOffset_ *rtabmap::rtabmap_world_T_opengl_world)*glm::inverse(viewMatrix_));
     }
     
@@ -166,7 +244,7 @@ void CameraMobile::setData(const SensorData & data, const Transform & pose, cons
         uvs_initialized_ = true;
     }
     
-    LOGD("CameraMobile::setData textureId_=%d", (int)textureId_);
+    LOGD("CameraMobile::update textureId_=%d", (int)textureId_);
 
     if(textureId_ != 0 && texCoord != 0)
     {
@@ -193,78 +271,63 @@ void CameraMobile::setData(const SensorData & data, const Transform & pose, cons
             return;
         }
     }
-}
 
-void CameraMobile::addEnvSensor(int type, float value)
-{
-	lastEnvSensors_.insert(std::make_pair((EnvSensor::Type)type, EnvSensor((EnvSensor::Type)type, value)));
-}
-
-void CameraMobile::spinOnce()
-{
-	if(!this->isRunning())
+	postUpdate();
+	
+	if(notify)
 	{
-		bool ignoreFrame = false;
-		//float rate = 10.0f; // maximum 10 FPS for image data
-		double now = UTimer::now();
-		/*if(rate>0.0f)
-		{
-			if((spinOncePreviousStamp_>=0.0 && now>spinOncePreviousStamp_ && now - spinOncePreviousStamp_ < 1.0f/rate) ||
-				((spinOncePreviousStamp_<=0.0 || now<=spinOncePreviousStamp_) && spinOnceFrameRateTimer_.getElapsedTime() < 1.0f/rate))
-			{
-				ignoreFrame = true;
-			}
-		}*/
+		dataReady_.release();
+	}
+}
 
-		if(!ignoreFrame)
+void CameraMobile::updateOnRender()
+{
+	UScopeMutex lock(dataMutex_);
+	bool notify = !data_.isValid();
+
+	data_ = updateDataOnRender(dataPose_);
+
+	if(data_.isValid())
+	{
+		postUpdate();
+
+		if(notify)
 		{
-			spinOnceFrameRateTimer_.start();
-			spinOncePreviousStamp_ = now;
-			mainLoop();
-		}
-		else
-		{
-			// just send pose
-			capturePoseOnly();
+			dataReady_.release();
 		}
 	}
 }
 
-void CameraMobile::mainLoopBegin()
+SensorData CameraMobile::updateDataOnRender(Transform & pose)
 {
-	double t = cameraStartedTime_.elapsed();
-	if(t < 5.0)
-	{
-		uSleep((5.0-t)*1000); // just to make sure that the camera is started
-	}
+	LOGE("To use CameraMobile::updateOnRender(), CameraMobile::updateDataOnRender() "
+	     "should be overridden by inherited classes. Returning empty data!\n");
+	return SensorData();
 }
 
-void CameraMobile::mainLoop()
+void CameraMobile::postUpdate()
 {
-	CameraInfo info;
-	SensorData data = this->captureImage(&info);
-
-	if(data.isValid() && !info.odomPose.isNull())
+	if(data_.isValid())
 	{
-		if(lastKnownGPS_.stamp() > 0.0 && data.stamp()-lastKnownGPS_.stamp()<1.0)
+		if(lastKnownGPS_.stamp() > 0.0 && data_.stamp()-lastKnownGPS_.stamp()<1.0)
 		{
-			data.setGPS(lastKnownGPS_);
+			data_.setGPS(lastKnownGPS_);
 		}
 		else if(lastKnownGPS_.stamp()>0.0)
 		{
-			LOGD("GPS too old (current time=%f, gps time = %f)", data.stamp(), lastKnownGPS_.stamp());
+			LOGD("GPS too old (current time=%f, gps time = %f)", data_.stamp(), lastKnownGPS_.stamp());
 		}
 
 		if(lastEnvSensors_.size())
 		{
-			data.setEnvSensors(lastEnvSensors_);
+			data_.setEnvSensors(lastEnvSensors_);
 			lastEnvSensors_.clear();
 		}
 
-		if(smoothing_ && !data.depthRaw().empty())
+		if(smoothing_ && !data_.depthRaw().empty())
 		{
 			//UTimer t;
-			data.setDepthOrRightRaw(rtabmap::util2d::fastBilateralFiltering(data.depthRaw(), bilateralFilteringSigmaS, bilateralFilteringSigmaR));
+			data_.setDepthOrRightRaw(rtabmap::util2d::fastBilateralFiltering(data_.depthRaw(), bilateralFilteringSigmaS, bilateralFilteringSigmaR));
 			//LOGD("Bilateral filtering, time=%fs", t.ticks());
 		}
 
@@ -273,15 +336,15 @@ void CameraMobile::mainLoop()
 		{
 			UDEBUG("ROTATION_90");
 			cv::Mat rgb, depth;
-			cv::Mat rgbt(data.imageRaw().cols, data.imageRaw().rows, data.imageRaw().type());
-			cv::flip(data.imageRaw(),rgb,1);
+			cv::Mat rgbt(data_.imageRaw().cols, data_.imageRaw().rows, data_.imageRaw().type());
+			cv::flip(data_.imageRaw(),rgb,1);
 			cv::transpose(rgb,rgbt);
 			rgb = rgbt;
-			cv::Mat deptht(data.depthRaw().cols, data.depthRaw().rows, data.depthRaw().type());
-			cv::flip(data.depthRaw(),depth,1);
+			cv::Mat deptht(data_.depthRaw().cols, data_.depthRaw().rows, data_.depthRaw().type());
+			cv::flip(data_.depthRaw(),depth,1);
 			cv::transpose(depth,deptht);
 			depth = deptht;
-			CameraModel model = data.cameraModels()[0];
+			CameraModel model = data_.cameraModels()[0];
 			cv::Size sizet(model.imageHeight(), model.imageWidth());
 			model = CameraModel(
 					model.fy(),
@@ -290,25 +353,25 @@ void CameraMobile::mainLoop()
 					model.cx()>0?model.imageWidth()-model.cx():0,
 					model.localTransform()*rtabmap::Transform(0,-1,0,0, 1,0,0,0, 0,0,1,0));
 			model.setImageSize(sizet);
-			data.setRGBDImage(rgb, depth, model);
+			data_.setRGBDImage(rgb, depth, model);
 
-			std::vector<cv::KeyPoint> keypoints = data.keypoints();
+			std::vector<cv::KeyPoint> keypoints = data_.keypoints();
 			for(size_t i=0; i<keypoints.size(); ++i)
 			{
-				keypoints[i].pt.x = data.keypoints()[i].pt.y;
-				keypoints[i].pt.y = rgb.rows - data.keypoints()[i].pt.x;
+				keypoints[i].pt.x = data_.keypoints()[i].pt.y;
+				keypoints[i].pt.y = rgb.rows - data_.keypoints()[i].pt.x;
 			}
-			data.setFeatures(keypoints, data.keypoints3D(), cv::Mat());
+			data_.setFeatures(keypoints, data_.keypoints3D(), cv::Mat());
 		}
 		else if(colorCameraToDisplayRotation_ == ROTATION_180)
 		{
 			UDEBUG("ROTATION_180");
 			cv::Mat rgb, depth;
-			cv::flip(data.imageRaw(),rgb,1);
+			cv::flip(data_.imageRaw(),rgb,1);
 			cv::flip(rgb,rgb,0);
-			cv::flip(data.depthOrRightRaw(),depth,1);
+			cv::flip(data_.depthOrRightRaw(),depth,1);
 			cv::flip(depth,depth,0);
-			CameraModel model = data.cameraModels()[0];
+			CameraModel model = data_.cameraModels()[0];
 			cv::Size sizet(model.imageWidth(), model.imageHeight());
 			model = CameraModel(
 					model.fx(),
@@ -317,26 +380,26 @@ void CameraMobile::mainLoop()
 					model.cy()>0?model.imageHeight()-model.cy():0,
 					model.localTransform()*rtabmap::Transform(0,0,0,0,0,1,0));
 			model.setImageSize(sizet);
-			data.setRGBDImage(rgb, depth, model);
+			data_.setRGBDImage(rgb, depth, model);
 
-			std::vector<cv::KeyPoint> keypoints = data.keypoints();
+			std::vector<cv::KeyPoint> keypoints = data_.keypoints();
 			for(size_t i=0; i<keypoints.size(); ++i)
 			{
-				keypoints[i].pt.x = rgb.cols - data.keypoints()[i].pt.x;
-				keypoints[i].pt.y = rgb.rows - data.keypoints()[i].pt.y;
+				keypoints[i].pt.x = rgb.cols - data_.keypoints()[i].pt.x;
+				keypoints[i].pt.y = rgb.rows - data_.keypoints()[i].pt.y;
 			}
-			data.setFeatures(keypoints, data.keypoints3D(), cv::Mat());
+			data_.setFeatures(keypoints, data_.keypoints3D(), cv::Mat());
 		}
 		else if(colorCameraToDisplayRotation_ == ROTATION_270)
 		{
 			UDEBUG("ROTATION_270");
-			cv::Mat rgb(data.imageRaw().cols, data.imageRaw().rows, data.imageRaw().type());
-			cv::transpose(data.imageRaw(),rgb);
+			cv::Mat rgb(data_.imageRaw().cols, data_.imageRaw().rows, data_.imageRaw().type());
+			cv::transpose(data_.imageRaw(),rgb);
 			cv::flip(rgb,rgb,1);
-			cv::Mat depth(data.depthOrRightRaw().cols, data.depthOrRightRaw().rows, data.depthOrRightRaw().type());
-			cv::transpose(data.depthOrRightRaw(),depth);
+			cv::Mat depth(data_.depthOrRightRaw().cols, data_.depthOrRightRaw().rows, data_.depthOrRightRaw().type());
+			cv::transpose(data_.depthOrRightRaw(),depth);
 			cv::flip(depth,depth,1);
-			CameraModel model = data.cameraModels()[0];
+			CameraModel model = data_.cameraModels()[0];
 			cv::Size sizet(model.imageHeight(), model.imageWidth());
 			model = CameraModel(
 					model.fy(),
@@ -345,61 +408,54 @@ void CameraMobile::mainLoop()
 					model.cx(),
 					model.localTransform()*rtabmap::Transform(0,1,0,0, -1,0,0,0, 0,0,1,0));
 			model.setImageSize(sizet);
-			data.setRGBDImage(rgb, depth, model);
+			data_.setRGBDImage(rgb, depth, model);
 
-			std::vector<cv::KeyPoint> keypoints = data.keypoints();
+			std::vector<cv::KeyPoint> keypoints = data_.keypoints();
 			for(size_t i=0; i<keypoints.size(); ++i)
 			{
-				keypoints[i].pt.x = rgb.cols - data.keypoints()[i].pt.y;
-				keypoints[i].pt.y = data.keypoints()[i].pt.x;
+				keypoints[i].pt.x = rgb.cols - data_.keypoints()[i].pt.y;
+				keypoints[i].pt.y = data_.keypoints()[i].pt.x;
 			}
-			data.setFeatures(keypoints, data.keypoints3D(), cv::Mat());
+			data_.setFeatures(keypoints, data_.keypoints3D(), cv::Mat());
 		}
-
-		rtabmap::Transform pose = info.odomPose;
-		data.setGroundTruth(Transform());
-
-		// convert stamp to epoch
-		bool firstFrame = previousPose_.isNull();
-		if(firstFrame)
-		{
-			stampEpochOffset_ = UTimer::now()-data.stamp();
-		}
-		data.setStamp(stampEpochOffset_ + data.stamp());
-		OdometryInfo info;
-		if(!firstFrame)
-		{
-			info.interval = data.stamp()-previousStamp_;
-			info.transform = previousPose_.inverse() * pose;
-		}
-		// linear cov = 0.0001
-		info.reg.covariance = cv::Mat::eye(6,6,CV_64FC1) * (firstFrame?9999.0:0.0001);
-		if(!firstFrame)
-		{
-			// angular cov = 0.000001
-			info.reg.covariance.at<double>(3,3) *= 0.01;
-			info.reg.covariance.at<double>(4,4) *= 0.01;
-			info.reg.covariance.at<double>(5,5) *= 0.01;
-		}
-		LOGI("Publish odometry message (variance=%f)", firstFrame?9999:0.0001);
-		this->post(new OdometryEvent(data, pose, info));
-		previousPose_ = pose;
-		previousStamp_ = data.stamp();
-	}
-	else if(!this->isKilled() && info.odomPose.isNull())
-	{
-		LOGW("Odometry lost");
-		this->post(new OdometryEvent());
 	}
 }
 
-SensorData CameraMobile::captureImage(CameraInfo * info)
+SensorData CameraMobile::captureImage(SensorCaptureInfo * info)
 {
-	if(info)
+	SensorData data;
+	if(dataReady_.acquire(1, 5000))
 	{
-		info->odomPose = pose_;
+		UScopeMutex lock(dataMutex_);
+		data = data_;
+		data_ = SensorData();
 	}
-	return data_;
+	if(data.isValid())
+	{
+		data.setGroundTruth(Transform());
+		data.setStamp(stampEpochOffset_ + data.stamp());
+
+		if(info)
+		{
+			// linear cov = 0.0001
+			info->odomCovariance = cv::Mat::eye(6,6,CV_64FC1) * (firstFrame_?9999.0:0.0001);
+			if(!firstFrame_)
+			{
+				// angular cov = 0.000001
+				info->odomCovariance.at<double>(3,3) *= 0.01;
+				info->odomCovariance.at<double>(4,4) *= 0.01;
+				info->odomCovariance.at<double>(5,5) *= 0.01;
+			}
+			info->odomPose = dataPose_;
+		}
+
+		firstFrame_ = false;
+	}
+	else
+	{
+		UWARN("CameraMobile::captureImage() invalid data!");
+	}
+	return data;
 }
 
 LaserScan CameraMobile::scanFromPointCloudData(

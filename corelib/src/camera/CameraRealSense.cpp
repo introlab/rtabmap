@@ -856,7 +856,7 @@ Transform rsPoseToTransform(const rs::slam::PoseMatrix4f & pose)
 }
 #endif
 
-SensorData CameraRealSense::captureImage(CameraInfo * info)
+SensorData CameraRealSense::captureImage(SensorCaptureInfo * info)
 {
 	SensorData data;
 #ifdef RTABMAP_REALSENSE

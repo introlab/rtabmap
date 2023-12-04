@@ -278,7 +278,7 @@ std::string CameraK4W2::getSerial() const
 	return "";
 }
 
-SensorData CameraK4W2::captureImage(CameraInfo * info)
+SensorData CameraK4W2::captureImage(SensorCaptureInfo * info)
 {
 	SensorData data;
 

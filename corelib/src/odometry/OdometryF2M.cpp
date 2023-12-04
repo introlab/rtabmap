@@ -156,11 +156,14 @@ OdometryF2M::OdometryF2M(const ParametersMap & parameters) :
 	regPipeline_ = Registration::create(bundleParameters);
 	if(bundleAdjustment_>0 && regPipeline_->isScanRequired())
 	{
-		UWARN("%s=%d cannot be used with registration not done only with images (%s=%s), disabling bundle adjustment.",
-				Parameters::kOdomF2MBundleAdjustment().c_str(),
-				bundleAdjustment_,
-				Parameters::kRegStrategy().c_str(),
-				uValue(bundleParameters, Parameters::kRegStrategy(), uNumber2Str(Parameters::defaultRegStrategy())).c_str());
+		if(regPipeline_->isImageRequired())
+		{
+			UWARN("%s=%d cannot be used with registration not done only with images (%s=%s), disabling bundle adjustment.",
+					Parameters::kOdomF2MBundleAdjustment().c_str(),
+					bundleAdjustment_,
+					Parameters::kRegStrategy().c_str(),
+					uValue(bundleParameters, Parameters::kRegStrategy(), uNumber2Str(Parameters::defaultRegStrategy())).c_str());
+		}
 		bundleAdjustment_ = 0;
 	}
 

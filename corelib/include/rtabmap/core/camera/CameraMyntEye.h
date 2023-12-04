@@ -67,7 +67,7 @@ protected:
 	/**
 	 * returned rgb and depth images should be already rectified if calibration was loaded
 	 */
-	virtual SensorData captureImage(CameraInfo * info = 0);
+	virtual SensorData captureImage(SensorCaptureInfo * info = 0);
 
 private:
 #ifdef RTABMAP_MYNTEYE

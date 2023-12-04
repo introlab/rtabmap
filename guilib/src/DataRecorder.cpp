@@ -30,8 +30,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/ULogger.h>
 #include <rtabmap/utilite/UTimer.h>
 #include <rtabmap/core/Memory.h>
+#include <rtabmap/core/SensorEvent.h>
 #include <rtabmap/core/Signature.h>
-#include <rtabmap/core/CameraEvent.h>
 #include <rtabmap/core/util3d.h>
 #include <rtabmap/gui/ImageView.h>
 #include <rtabmap/utilite/UCv2Qt.h>
@@ -172,10 +172,10 @@ bool DataRecorder::handleEvent(UEvent * event)
 {
 	if(memory_)
 	{
-		if(event->getClassName().compare("CameraEvent") == 0)
+		if(event->getClassName().compare("SensorEvent") == 0)
 		{
-			CameraEvent * camEvent = (CameraEvent*)event;
-			if(camEvent->getCode() == CameraEvent::kCodeData)
+			SensorEvent * camEvent = (SensorEvent*)event;
+			if(camEvent->getCode() == SensorEvent::kCodeData)
 			{
 				if(camEvent->data().isValid())
 				{

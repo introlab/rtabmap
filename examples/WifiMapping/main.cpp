@@ -26,11 +26,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 #include <rtabmap/core/Odometry.h>
+#include <rtabmap/core/SensorCaptureThread.h>
 #include "rtabmap/core/Rtabmap.h"
 #include "rtabmap/core/RtabmapThread.h"
 #include "rtabmap/core/CameraRGBD.h"
 #include "rtabmap/core/CameraStereo.h"
-#include "rtabmap/core/CameraThread.h"
 #include "rtabmap/core/OdometryThread.h"
 #include "rtabmap/utilite/UEventsManager.h"
 #include <QApplication>
@@ -114,9 +114,9 @@ int main(int argc, char * argv[])
 	}
 
 	// Here is the pipeline that we will use:
-	// CameraOpenni -> "CameraEvent" -> OdometryThread -> "OdometryEvent" -> RtabmapThread -> "RtabmapEvent"
+	// CameraOpenni -> "" -> OdometryThread -> "OdometryEvent" -> RtabmapThread -> "RtabmapEvent"
 
-	// Create the OpenNI camera, it will send a CameraEvent at the rate specified.
+	// Create the OpenNI camera, it will send a  at the rate specified.
 	// Set transform to camera so z is up, y is left and x going forward
 	Camera * camera = 0;
 	Transform opticalRotation(0,0,1,0, -1,0,0,0, 0,-1,0,0);
@@ -222,7 +222,7 @@ int main(int argc, char * argv[])
 		showUsage();
 		exit(1);
 	}
-	CameraThread cameraThread(camera);
+	SensorCaptureThread cameraThread(camera);
 	if(mirroring)
 	{
 		cameraThread.setMirroringEnabled(true);
@@ -253,13 +253,13 @@ int main(int argc, char * argv[])
 	rtabmapThread.registerToEventsManager();
 	mapBuilderWifi.registerToEventsManager();
 
-	// The RTAB-Map is subscribed by default to CameraEvent, but we want
-	// RTAB-Map to process OdometryEvent instead, ignoring the CameraEvent.
+	// The RTAB-Map is subscribed by default to , but we want
+	// RTAB-Map to process OdometryEvent instead, ignoring the .
 	// We can do that by creating a "pipe" between the camera and odometry, then
-	// only the odometry will receive CameraEvent from that camera. RTAB-Map is
+	// only the odometry will receive  from that camera. RTAB-Map is
 	// also subscribed to OdometryEvent by default, so no need to create a pipe between
 	// odometry and RTAB-Map.
-	UEventsManager::createPipe(&cameraThread, &odomThread, "CameraEvent");
+	UEventsManager::createPipe(&cameraThread, &odomThread, "");
 
 	// Let's start the threads
 	rtabmapThread.start();

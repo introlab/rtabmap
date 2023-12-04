@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2010-2016, Mathieu Labbe - IntRoLab - Universite de Sherbrooke
+Copyright (c) 2010-2022, Mathieu Labbe - IntRoLab - Universite de Sherbrooke
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -28,47 +28,32 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #pragma once
 
 #include "rtabmap/core/rtabmap_core_export.h" // DLL export/import defines
-
-#include <opencv2/highgui/highgui.hpp>
-#include "rtabmap/core/SensorData.h"
-#include "rtabmap/core/CameraInfo.h"
-#include <set>
-#include <stack>
-#include <list>
-#include <vector>
-
-class UDirectory;
-class UTimer;
+#include <rtabmap/core/SensorCapture.h>
+#include <rtabmap/core/IMU.h>
 
 namespace rtabmap
 {
+
+class IMUFilter;
 
 /**
  * Class Camera
  *
  */
-class RTABMAP_CORE_EXPORT Camera
+class RTABMAP_CORE_EXPORT Camera : public SensorCapture
 {
 public:
 	virtual ~Camera();
-	SensorData takeImage(CameraInfo * info = 0);
+
+	SensorData takeImage(SensorCaptureInfo * info = 0) {return takeData(info);}
+	float getImageRate() const {return getFrameRate();}
+	void setImageRate(float imageRate) {setFrameRate(imageRate);}
+	void setInterIMUPublishing(bool enabled, IMUFilter * filter = 0); // Take ownership of filter
+	bool isInterIMUPublishing() const {return publishInterIMU_;}
 
 	bool initFromFile(const std::string & calibrationPath);
-	virtual bool init(const std::string & calibrationFolder = ".", const std::string & cameraName = "") = 0;
 	virtual bool isCalibrated() const = 0;
-	virtual std::string getSerial() const = 0;
-	virtual bool odomProvided() const { return false; }
-	virtual bool getPose(double stamp, Transform & pose, cv::Mat & covariance) { return false; }
 
-	//getters
-	float getImageRate() const {return _imageRate;}
-	const Transform & getLocalTransform() const {return _localTransform;}
-
-	//setters
-	void setImageRate(float imageRate) {_imageRate = imageRate;}
-	void setLocalTransform(const Transform & localTransform) {_localTransform= localTransform;}
-
-	void resetTimer();
 protected:
 	/**
 	 * Constructor
@@ -78,19 +63,16 @@ protected:
 	 */
 	Camera(float imageRate = 0, const Transform & localTransform = Transform::getIdentity());
 
-	/**
-	 * returned rgb and depth images should be already rectified if calibration was loaded
-	 */
-	virtual SensorData captureImage(CameraInfo * info = 0) = 0;
+	virtual SensorData captureImage(SensorCaptureInfo * info = 0) = 0;
 
-	int getNextSeqID() {return ++_seq;}
+	void postInterIMU(const IMU & imu, double stamp);
 
 private:
-	float _imageRate;
-	Transform _localTransform;
-	cv::Size _targetImageSize;
-	UTimer * _frameRateTimer;
-	int _seq;
+	virtual SensorData captureData(SensorCaptureInfo * info = 0) {return captureImage(info);}
+
+private:
+	IMUFilter * imuFilter_;
+	bool publishInterIMU_;
 };
 
 

@@ -25,6 +25,7 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+#include <rtabmap/core/SensorEvent.h>
 #include "rtabmap/core/DBReader.h"
 #include "rtabmap/core/DBDriver.h"
 
@@ -34,7 +35,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UConversion.h>
 #include <rtabmap/utilite/UEventsManager.h>
 
-#include "rtabmap/core/CameraEvent.h"
 #include "rtabmap/core/RtabmapEvent.h"
 #include "rtabmap/core/OdometryEvent.h"
 #include "rtabmap/core/util3d.h"
@@ -268,7 +268,7 @@ std::string DBReader::getSerial() const
 	return "DBReader";
 }
 
-SensorData DBReader::captureImage(CameraInfo * info)
+SensorData DBReader::captureImage(SensorCaptureInfo * info)
 {
 	SensorData data = this->getNextData(info);
 	if(data.id()>0 && _stopId>0 && data.id() > _stopId)
@@ -370,7 +370,7 @@ SensorData DBReader::captureImage(CameraInfo * info)
 	return data;
 }
 
-SensorData DBReader::getNextData(CameraInfo * info)
+SensorData DBReader::getNextData(SensorCaptureInfo * info)
 {
 	SensorData data;
 	if(_dbDriver)

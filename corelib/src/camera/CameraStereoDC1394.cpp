@@ -396,7 +396,7 @@ std::string CameraStereoDC1394::getSerial() const
 	return "";
 }
 
-SensorData CameraStereoDC1394::captureImage(CameraInfo * info)
+SensorData CameraStereoDC1394::captureImage(SensorCaptureInfo * info)
 {
 	SensorData data;
 #ifdef RTABMAP_DC1394

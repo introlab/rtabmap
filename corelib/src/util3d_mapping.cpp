@@ -655,7 +655,6 @@ cv::Mat create2DMap(const std::map<int, Transform> & poses,
 		map = cv::Mat::ones((yMax - yMin) / cellSize, (xMax - xMin) / cellSize, CV_8S)*-1;
 		UDEBUG("map size = %dx%d", map.cols, map.rows);
 
-		int j=0;
 		float scanMaxRangeSqr = scanMaxRange * scanMaxRange;
 		for(std::map<int, std::pair<cv::Mat, cv::Mat> >::iterator iter = localScans.begin(); iter!=localScans.end(); ++iter)
 		{
@@ -741,14 +740,12 @@ cv::Mat create2DMap(const std::map<int, Transform> & poses,
 					}
 				}
 			}
-			++j;
 		}
 		UDEBUG("Ray trace known space=%fs", timer.ticks());
 
 		// now fill unknown spaces
 		if(unknownSpaceFilled && scanMaxRange > 0)
 		{
-			j=0;
 			float angleIncrement = CV_PI/90.0f; // angle increment
 			for(std::map<int, std::pair<cv::Mat, cv::Mat> >::iterator iter = localScans.begin(); iter!=localScans.end(); ++iter)
 			{
@@ -813,7 +810,6 @@ cv::Mat create2DMap(const std::map<int, Transform> & poses,
 						}
 					}
 				}
-				++j;
 			}
 			UDEBUG("Fill empty space=%fs", timer.ticks());
 			//cv::imwrite("map.png", util3d::convertMap2Image8U(map));

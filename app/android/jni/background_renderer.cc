@@ -155,7 +155,7 @@ void BackgroundRenderer::InitializeGlContent(GLuint textureId, bool oes)
 }
 
 void BackgroundRenderer::Draw(const float * transformed_uvs, const GLuint & depthTexture, int screenWidth, int screenHeight, bool redUnknown) {
-  static_assert(std::extent<decltype(BackgroundRenderer_kVertices)>::value == kNumVertices * 2, "Incorrect kVertices length");
+  static_assert(std::extent<decltype(BackgroundRenderer_kVerticesDevice)>::value == kNumVertices * 2, "Incorrect kVertices length");
 
   GLuint program = shaderPrograms_[depthTexture>0?1:0];
     
@@ -170,7 +170,7 @@ void BackgroundRenderer::Draw(const float * transformed_uvs, const GLuint & dept
   else
 #endif
     glBindTexture(GL_TEXTURE_2D, texture_id_);
-    
+
   if(depthTexture>0)
   {
     // Texture activate unit 1
@@ -191,7 +191,7 @@ void BackgroundRenderer::Draw(const float * transformed_uvs, const GLuint & dept
   GLuint attributeVertices = glGetAttribLocation(program, "a_Position");
   GLuint attributeUvs = glGetAttribLocation(program, "a_TexCoord");
 
-  glVertexAttribPointer(attributeVertices, 2, GL_FLOAT, GL_FALSE, 0, BackgroundRenderer_kVertices);
+  glVertexAttribPointer(attributeVertices, 2, GL_FLOAT, GL_FALSE, 0, BackgroundRenderer_kVerticesDevice);
   glVertexAttribPointer(attributeUvs, 2, GL_FLOAT, GL_FALSE, 0, transformed_uvs?transformed_uvs:BackgroundRenderer_kTexCoord);
 
   glEnableVertexAttribArray(attributeVertices);

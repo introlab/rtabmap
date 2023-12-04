@@ -37,7 +37,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/RtabmapEvent.h"
 #include "rtabmap/core/SensorData.h"
 #include "rtabmap/core/OdometryEvent.h"
-#include "rtabmap/core/CameraInfo.h"
 #include "rtabmap/core/Optimizer.h"
 #include "rtabmap/gui/PreferencesDialog.h"
 
@@ -46,9 +45,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pcl/PolygonMesh.h>
 #include <pcl/pcl_base.h>
 #include <pcl/TextureMesh.h>
+#include <rtabmap/core/SensorCaptureInfo.h>
 
 namespace rtabmap {
-class CameraThread;
+class SensorCaptureThread;
 class OdometryThread;
 class IMUThread;
 class CloudViewer;
@@ -190,6 +190,7 @@ protected Q_SLOTS:
 	void selectMyntEyeS();
 	void selectDepthAIOAKD();
 	void selectDepthAIOAKDLite();
+	void selectVLP16();
 	void dumpTheMemory();
 	void dumpThePrediction();
 	void sendGoal();
@@ -204,7 +205,7 @@ protected Q_SLOTS:
 	void selectScreenCaptureFormat(bool checked);
 	void takeScreenshot();
 	void updateElapsedTime();
-	void processCameraInfo(const rtabmap::CameraInfo & info);
+	void processCameraInfo(const rtabmap::SensorCaptureInfo & info);
 	void processOdometry(const rtabmap::OdometryEvent & odom, bool dataIgnored);
 	void applyPrefSettings(PreferencesDialog::PANEL_FLAGS flags);
 	void applyPrefSettings(const rtabmap::ParametersMap & parameters);
@@ -239,7 +240,7 @@ protected Q_SLOTS:
 Q_SIGNALS:
 	void statsReceived(const rtabmap::Statistics &);
 	void statsProcessed();
-	void cameraInfoReceived(const rtabmap::CameraInfo &);
+	void cameraInfoReceived(const rtabmap::SensorCaptureInfo &);
 	void cameraInfoProcessed();
 	void odometryReceived(const rtabmap::OdometryEvent &, bool);
 	void odometryProcessed();
@@ -314,11 +315,6 @@ protected:
 	const QString & newDatabasePathOutput() const { return _newDatabasePathOutput; }
 
 	virtual ParametersMap getCustomParameters() {return ParametersMap();}
-	virtual Camera * createCamera(
-			Camera ** odomSensor,
-			Transform & odomSensorExtrinsics,
-			double & odomSensorTimeOffset,
-			float & odomSensorScaleFactor);
 
 	void postProcessing(
 			bool refineNeighborLinks,
@@ -342,7 +338,7 @@ private:
 	Ui_mainWindow * _ui;
 
 	State _state;
-	rtabmap::CameraThread * _camera;
+	rtabmap::SensorCaptureThread * _sensorCapture;
 	rtabmap::OdometryThread * _odomThread;
 	rtabmap::IMUThread * _imuThread;
 

@@ -346,7 +346,7 @@ int main(int argc, char * argv[])
 		exit(1);
 	}
 
-	rtabmap::SensorData data = camera->takeImage();
+	rtabmap::SensorData data = camera->takeData();
 	if (data.imageRaw().empty())
 	{
 		printf("Cloud not get frame from the camera!\n");
@@ -522,7 +522,7 @@ int main(int argc, char * argv[])
 			printf("Saved frames %d to \"%s/left\" and \"%s/right\" directories\n", id, stereoSavePath.c_str(), stereoSavePath.c_str());
 		}
 		++id;
-		data = camera->takeImage();
+		data = camera->takeData();
 	}
 	printf("Closing...\n");
 	if(viewer)

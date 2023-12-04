@@ -216,18 +216,18 @@ class RTABMap {
         setCameraNative(native_rtabmap, Int32(type))
     }
     
-    func postCameraPoseEvent(pose: simd_float4x4) {
+    func postCameraPoseEvent(pose: simd_float4x4, stamp: TimeInterval) {
         let rotation = GLKMatrix3(
             m: (pose[0,0], pose[0,1], pose[0,2],
             pose[1,0], pose[1,1], pose[1,2],
             pose[2,0], pose[2,1], pose[2,2]))
         let quat = GLKQuaternionMakeWithMatrix3(rotation)
-        postCameraPoseEventNative(native_rtabmap, pose[3,0], pose[3,1], pose[3,2], quat.x, quat.y, quat.z, quat.w)
+        postCameraPoseEventNative(native_rtabmap, pose[3,0], pose[3,1], pose[3,2], quat.x, quat.y, quat.z, quat.w, stamp)
     }
     
     func notifyLost() {
         // a null transform will make rtabmap creating a new session
-        postCameraPoseEventNative(native_rtabmap, 0,0,0,0,0,0,0)
+        postCameraPoseEventNative(native_rtabmap, 0,0,0,0,0,0,0,0)
     }
     
     func postOdometryEvent(frame: ARFrame, orientation: UIInterfaceOrientation, viewport: CGSize) {
@@ -239,7 +239,7 @@ class RTABMap {
         
         let quat = GLKQuaternionMakeWithMatrix3(rotation)
                 
-        postCameraPoseEventNative(native_rtabmap, pose[3,0], pose[3,1], pose[3,2], quat.x, quat.y, quat.z, quat.w)
+        postCameraPoseEventNative(native_rtabmap, pose[3,0], pose[3,1], pose[3,2], quat.x, quat.y, quat.z, quat.w, frame.timestamp)
                 
         let confMap = frame.sceneDepth?.confidenceMap
         let depthMap = frame.sceneDepth?.depthMap

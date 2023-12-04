@@ -670,7 +670,7 @@ std::vector<std::string> CameraImages::filenames() const
 	return std::vector<std::string>();
 }
 
-SensorData CameraImages::captureImage(CameraInfo * info)
+SensorData CameraImages::captureImage(SensorCaptureInfo * info)
 {
 	if(_syncImageRateWithStamps && _captureDelay>0.0)
 	{
