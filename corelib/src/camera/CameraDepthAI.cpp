@@ -54,8 +54,9 @@ CameraDepthAI::CameraDepthAI(
 #ifdef RTABMAP_DEPTHAI
 	,
 	mxidOrName_(mxidOrName),
-	outputDepth_(false),
-	depthConfidence_(200),
+	outputMode_(0),
+	confThreshold_(200),
+	lrcThreshold_(5),
 	resolution_(resolution),
 	useSpecTranslation_(false),
 	alphaScaling_(0.0),
@@ -87,20 +88,26 @@ CameraDepthAI::~CameraDepthAI()
 #endif
 }
 
-void CameraDepthAI::setOutputDepth(bool enabled, int confidence)
+void CameraDepthAI::setOutputMode(int outputMode)
 {
 #ifdef RTABMAP_DEPTHAI
-	outputDepth_ = enabled;
-	if(outputDepth_)
-	{
-		depthConfidence_ = confidence;
-	}
+	outputMode_ = outputMode;
 #else
 	UERROR("CameraDepthAI: RTAB-Map is not built with depthai-core support!");
 #endif
 }
 
-void CameraDepthAI::setUseSpecTranslation(bool useSpecTranslation)
+void CameraDepthAI::setDepthProfile(int confThreshold, int lrcThreshold)
+{
+#ifdef RTABMAP_DEPTHAI
+	confThreshold_ = confThreshold;
+	lrcThreshold_ = lrcThreshold;
+#else
+	UERROR("CameraDepthAI: RTAB-Map is not built with depthai-core support!");
+#endif
+}
+
+void CameraDepthAI::setRectification(bool useSpecTranslation, float alphaScaling)
 {
 #ifdef RTABMAP_DEPTHAI
 	useSpecTranslation_ = useSpecTranslation;
@@ -109,45 +116,20 @@ void CameraDepthAI::setUseSpecTranslation(bool useSpecTranslation)
 #endif
 }
 
-void CameraDepthAI::setAlphaScaling(float alphaScaling)
+void CameraDepthAI::setIMU(bool imuPublished, bool publishInterIMU)
 {
 #ifdef RTABMAP_DEPTHAI
-	alphaScaling_ = alphaScaling;
+	imuPublished_ = imuPublished;
+	publishInterIMU_ = publishInterIMU;
 #else
 	UERROR("CameraDepthAI: RTAB-Map is not built with depthai-core support!");
 #endif
 }
 
-void CameraDepthAI::setIMUPublished(bool published)
-{
-#ifdef RTABMAP_DEPTHAI
-	imuPublished_ = published;
-#else
-	UERROR("CameraDepthAI: RTAB-Map is not built with depthai-core support!");
-#endif
-}
-
-void CameraDepthAI::publishInterIMU(bool enabled)
-{
-#ifdef RTABMAP_DEPTHAI
-	publishInterIMU_ = enabled;
-#else
-	UERROR("CameraDepthAI: RTAB-Map is not built with depthai-core support!");
-#endif
-}
-
-void CameraDepthAI::setLaserDotBrightness(float dotProjectormA)
+void CameraDepthAI::setIrBrightness(float dotProjectormA, float floodLightmA)
 {
 #ifdef RTABMAP_DEPTHAI
 	dotProjectormA_ = dotProjectormA;
-#else
-	UERROR("CameraDepthAI: RTAB-Map is not built with depthai-core support!");
-#endif
-}
-
-void CameraDepthAI::setFloodLightBrightness(float floodLightmA)
-{
-#ifdef RTABMAP_DEPTHAI
 	floodLightmA_ = floodLightmA;
 #else
 	UERROR("CameraDepthAI: RTAB-Map is not built with depthai-core support!");
@@ -272,7 +254,7 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 
 	// XLinkOut
 	xoutLeft->setStreamName("rectified_left");
-	xoutDepthOrRight->setStreamName(outputDepth_?"depth":"rectified_right");
+	xoutDepthOrRight->setStreamName(outputMode_?"depth":"rectified_right");
 	if(imuPublished_)
 		xoutIMU->setStreamName("imu");
 	if(detectFeatures_)
@@ -307,9 +289,9 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 	stereo->setDepthAlignmentUseSpecTranslation(useSpecTranslation_);
 	if(alphaScaling_>-1.0f)
 		stereo->setAlphaScaling(alphaScaling_);
-	stereo->initialConfig.setConfidenceThreshold(depthConfidence_);
+	stereo->initialConfig.setConfidenceThreshold(confThreshold_);
 	stereo->initialConfig.setLeftRightCheck(true);
-	stereo->initialConfig.setLeftRightCheckThreshold(5);
+	stereo->initialConfig.setLeftRightCheckThreshold(lrcThreshold_);
 	stereo->initialConfig.setMedianFilter(dai::MedianFilter::KERNEL_7x7);
 	auto config = stereo->initialConfig.get();
 	config.censusTransform.kernelSize = dai::StereoDepthConfig::CensusTransform::KernelSize::KERNEL_7x9;
@@ -329,7 +311,7 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 		leftEnc->setDefaultProfilePreset(monoLeft->getFps(), dai::VideoEncoderProperties::Profile::MJPEG);
 		depthOrRightEnc->setDefaultProfilePreset(monoRight->getFps(), dai::VideoEncoderProperties::Profile::MJPEG);
 		stereo->rectifiedLeft.link(leftEnc->input);
-		if(outputDepth_)
+		if(outputMode_)
 		{
 			depthOrRightEnc->setQuality(100);
 			stereo->disparity.link(depthOrRightEnc->input);
@@ -350,7 +332,7 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 		config.costMatching.enableCompanding = true;
 		stereo->initialConfig.set(config);
 		stereo->rectifiedLeft.link(xoutLeft->input);
-		if(outputDepth_)
+		if(outputMode_)
 			stereo->depth.link(xoutDepthOrRight->input);
 		else
 			stereo->rectifiedRight.link(xoutDepthOrRight->input);
@@ -503,7 +485,7 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 		});
 	}
 	leftQueue_ = device_->getOutputQueue("rectified_left", 8, false);
-	rightOrDepthQueue_ = device_->getOutputQueue(outputDepth_?"depth":"rectified_right", 8, false);
+	rightOrDepthQueue_ = device_->getOutputQueue(outputMode_?"depth":"rectified_right", 8, false);
 	if(detectFeatures_)
 		featuresQueue_ = device_->getOutputQueue("features", 8, false);
 
@@ -559,7 +541,7 @@ SensorData CameraDepthAI::captureImage(CameraInfo * info)
 	{
 		left = cv::imdecode(rectifL->getData(), cv::IMREAD_GRAYSCALE);
 		depthOrRight = cv::imdecode(rectifRightOrDepth->getData(), cv::IMREAD_GRAYSCALE);
-		if(outputDepth_)
+		if(outputMode_)
 		{
 			cv::Mat disp;
 			depthOrRight.convertTo(disp, CV_16UC1);
@@ -572,7 +554,7 @@ SensorData CameraDepthAI::captureImage(CameraInfo * info)
 		depthOrRight = rectifRightOrDepth->getFrame(true);
 	}
 
-	if(outputDepth_)
+	if(outputMode_)
 		data = SensorData(left, depthOrRight, stereoModel_.left(), this->getNextSeqID(), stamp);
 	else
 		data = SensorData(left, depthOrRight, stereoModel_, this->getNextSeqID(), stamp);
