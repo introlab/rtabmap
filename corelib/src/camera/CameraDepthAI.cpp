@@ -111,6 +111,7 @@ void CameraDepthAI::setRectification(bool useSpecTranslation, float alphaScaling
 {
 #ifdef RTABMAP_DEPTHAI
 	useSpecTranslation_ = useSpecTranslation;
+	alphaScaling_ = alphaScaling;
 #else
 	UERROR("CameraDepthAI: RTAB-Map is not built with depthai-core support!");
 #endif
@@ -221,7 +222,14 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 	auto stereo    = p.create<dai::node::StereoDepth>();
 	std::shared_ptr<dai::node::Camera> colorCam;
 	if(outputMode_==2)
+	{
 		colorCam = p.create<dai::node::Camera>();
+		if(detectFeatures_)
+		{
+			UWARN("On-device feature detectors cannot be enabled on color camera input!");
+			detectFeatures_ = 0;
+		}
+	}
 	std::shared_ptr<dai::node::IMU> imu;
 	if(imuPublished_)
 		imu = p.create<dai::node::IMU>();
@@ -263,17 +271,8 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 	if(detectFeatures_)
 		xoutFeatures->setStreamName("features");
 
-	// MonoCamera
-	if(outputMode_ == 2)
-	{
-		monoLeft->setResolution(dai::MonoCameraProperties::SensorResolution::THE_400_P);
-		monoRight->setResolution(dai::MonoCameraProperties::SensorResolution::THE_400_P);
-	}
-	else
-	{
-		monoLeft->setResolution((dai::MonoCameraProperties::SensorResolution)resolution_);
-		monoRight->setResolution((dai::MonoCameraProperties::SensorResolution)resolution_);
-	}
+	monoLeft->setResolution((dai::MonoCameraProperties::SensorResolution)resolution_);
+	monoRight->setResolution((dai::MonoCameraProperties::SensorResolution)resolution_);
 	monoLeft->setCamera("left");
 	monoRight->setCamera("right");
 	if(detectFeatures_ == 2)
@@ -325,11 +324,6 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 			colorCam->setFps(this->getImageRate());
 		if(alphaScaling_ > -1.0f)
 			colorCam->setCalibrationAlpha(alphaScaling_);
-		if(detectFeatures_ == 2)
-		{
-			UWARN("SuperPoint cannot use color camera as input!");
-			detectFeatures_ = 0;
-		}
 	}
 
 	// Using VideoEncoder on PoE devices, Subpixel is not supported
@@ -368,9 +362,15 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 		config.costMatching.enableCompanding = true;
 		stereo->initialConfig.set(config);
 		if(outputMode_ < 2)
+		{
 			stereo->rectifiedLeft.link(xoutLeftOrColor->input);
+		}
 		else
+		{
+			monoLeft->setResolution(dai::MonoCameraProperties::SensorResolution::THE_400_P);
+			monoRight->setResolution(dai::MonoCameraProperties::SensorResolution::THE_400_P);
 			colorCam->video.link(xoutLeftOrColor->input);
+		}
 		if(outputMode_)
 			stereo->depth.link(xoutDepthOrRight->input);
 		else
@@ -380,7 +380,7 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 	if(imuPublished_)
 	{
 		// enable ACCELEROMETER_RAW and GYROSCOPE_RAW at 100 hz rate
-		imu->enableIMUSensor({dai::IMUSensor::ACCELEROMETER_RAW, dai::IMUSensor::GYROSCOPE_RAW}, 400);
+		imu->enableIMUSensor({dai::IMUSensor::ACCELEROMETER_RAW, dai::IMUSensor::GYROSCOPE_RAW}, 100);
 		// above this threshold packets will be sent in batch of X, if the host is not blocked and USB bandwidth is available
 		imu->setBatchReportThreshold(1);
 		// maximum number of IMU packets in a batch, if it's reached device will block sending until host can receive it
@@ -402,10 +402,7 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 		auto cfg = gfttDetector->initialConfig.get();
 		cfg.featureMaintainer.minimumDistanceBetweenFeatures = minDistance_ * minDistance_;
 		gfttDetector->initialConfig.set(cfg);
-		if(outputMode_ == 2)
-			colorCam->video.link(gfttDetector->inputImage);
-		else
-			stereo->rectifiedLeft.link(gfttDetector->inputImage);
+		stereo->rectifiedLeft.link(gfttDetector->inputImage);
 		gfttDetector->outputFeatures.link(xoutFeatures->input);
 	}
 	else if(detectFeatures_ == 2)
@@ -592,8 +589,8 @@ SensorData CameraDepthAI::captureImage(CameraInfo * info)
 	double stamp = std::chrono::duration<double>(rectifLeftOrColor->getTimestampDevice(dai::CameraExposureOffset::MIDDLE).time_since_epoch()).count();
 	if(device_->getDeviceInfo().protocol == X_LINK_TCP_IP || mxidOrName_.find(".") != std::string::npos)
 	{
-		leftOrColor = cv::imdecode(rectifLeftOrColor->getData(), cv::IMREAD_UNCHANGED);
-		depthOrRight = cv::imdecode(rectifRightOrDepth->getData(), cv::IMREAD_UNCHANGED);
+		leftOrColor = cv::imdecode(rectifLeftOrColor->getData(), cv::IMREAD_ANYCOLOR);
+		depthOrRight = cv::imdecode(rectifRightOrDepth->getData(), cv::IMREAD_GRAYSCALE);
 		if(outputMode_)
 		{
 			cv::Mat disp;
