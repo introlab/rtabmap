@@ -38,6 +38,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <rtabmap/core/Transform.h>
 #include <rtabmap/core/Parameters.h>
+#include <rtabmap/core/ProbabilisticMap.h>
 
 #include <map>
 #include <unordered_set>
@@ -171,23 +172,24 @@ class RtabmapColorOcTree : public octomap::OccupancyOcTreeBase <RtabmapColorOcTr
 
   };
 
-class RTABMAP_CORE_EXPORT OctoMap {
+class RTABMAP_CORE_EXPORT OctoMap : public ProbabilisticMap {
 public:
 	OctoMap(const ParametersMap & parameters = ParametersMap());
 
-	const std::map<int, Transform> & addedNodes() const {return addedNodes_;}
+	const RtabmapColorOcTree * octree() const {return octree_;}
+
+	virtual void addToCache(int nodeId,
+				const cv::Mat & ground,
+				const cv::Mat & obstacles,
+				const cv::Mat & empty,
+				const cv::Point3f & viewPoint);
+
 	void addToCache(int nodeId,
 			const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & ground,
 			const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & obstacles,
 			const pcl::PointXYZ & viewPoint);
-	void addToCache(int nodeId,
-			const cv::Mat & ground,
-			const cv::Mat & obstacles,
-			const cv::Mat & empty,
-			const cv::Point3f & viewPoint);
-	bool update(const std::map<int, Transform> & poses); // return true if map has changed
 
-	const RtabmapColorOcTree * octree() const {return octree_;}
+	virtual bool update(const std::map<int, Transform> & poses);
 
 	pcl::PointCloud<pcl::PointXYZRGB>::Ptr createCloud(
 			unsigned int treeDepth = 0,
@@ -208,13 +210,9 @@ public:
 	bool writeBinary(const std::string & path);
 
 	virtual ~OctoMap();
-	void clear();
+	virtual void clear(bool keepCache = false);
+	virtual unsigned long getMemoryUsed() const;
 
-	void getGridMin(double & x, double & y, double & z) const {x=minValues_[0];y=minValues_[1];z=minValues_[2];}
-	void getGridMax(double & x, double & y, double & z) const {x=maxValues_[0];y=maxValues_[1];z=maxValues_[2];}
-
-	void setMaxRange(float value) {rangeMax_ = value;}
-	void setRayTracing(bool enabled) {rayTracing_ = enabled;}
 	bool hasColor() const {return hasColor_;}
 
     static std::unordered_set<octomap::OcTreeKey, octomap::OcTreeKey::KeyHash> findEmptyNode(RtabmapColorOcTree* octree_, unsigned int treeDepth, octomap::point3d startPosition);
@@ -227,19 +225,12 @@ private:
 	void updateMinMax(const octomap::point3d & point);
 
 private:
-	std::map<int, std::pair<std::pair<cv::Mat, cv::Mat>, cv::Mat> > cache_; // [id: < <ground, obstacles>, empty>]
-	std::map<int, std::pair<const pcl::PointCloud<pcl::PointXYZRGB>::Ptr, const pcl::PointCloud<pcl::PointXYZRGB>::Ptr> > cacheClouds_; // [id: <ground, obstacles>]
-	std::map<int, cv::Point3f> cacheViewPoints_;
 	RtabmapColorOcTree * octree_;
-	std::map<int, Transform> addedNodes_;
+	std::map<int, std::pair<const pcl::PointCloud<pcl::PointXYZRGB>::Ptr, const pcl::PointCloud<pcl::PointXYZRGB>::Ptr> > cacheClouds_; // [id: <ground, obstacles>]
 	bool hasColor_;
-	bool fullUpdate_;
-	float updateError_;
 	float rangeMax_;
 	bool rayTracing_;
     unsigned int emptyFloodFillDepth_;
-	double minValues_[3];
-	double maxValues_[3];
 };
 
 } /* namespace rtabmap */

@@ -37,6 +37,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/util3d.h"
 #include "rtabmap/core/util3d_filtering.h"
 #include "rtabmap/core/util3d_transforms.h"
+#include "rtabmap/core/util3d_mapping.h"
 #include "rtabmap/core/RtabmapEvent.h"
 #include "rtabmap/core/OccupancyGrid.h"
 #endif

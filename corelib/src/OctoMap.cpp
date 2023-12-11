@@ -289,54 +289,32 @@ RtabmapColorOcTree::StaticMemberInitializer RtabmapColorOcTree::RtabmapColorOcTr
 //////////////////////////////////////
 
 OctoMap::OctoMap(const ParametersMap & parameters) :
+		ProbabilisticMap(parameters),
 		hasColor_(false),
-		fullUpdate_(Parameters::defaultGridGlobalFullUpdate()),
-		updateError_(Parameters::defaultGridGlobalUpdateError()),
 		rangeMax_(Parameters::defaultGridRangeMax()),
 		rayTracing_(Parameters::defaultGridRayTracing()),
 		emptyFloodFillDepth_(Parameters::defaultGridGlobalFloodFillDepth())
 {
-	float cellSize = Parameters::defaultGridCellSize();
-	Parameters::parse(parameters, Parameters::kGridCellSize(), cellSize);
-	UASSERT(cellSize>0.0f);
-
-	minValues_[0] = minValues_[1] = minValues_[2] = 0.0;
-	maxValues_[0] = maxValues_[1] = maxValues_[2] = 0.0;
-
-	float occupancyThr = Parameters::defaultGridGlobalOccupancyThr();
-	float probHit = Parameters::defaultGridGlobalProbHit();
-	float probMiss = Parameters::defaultGridGlobalProbMiss();
-	float clampingMin = Parameters::defaultGridGlobalProbClampingMin();
-	float clampingMax = Parameters::defaultGridGlobalProbClampingMax();
-	Parameters::parse(parameters, Parameters::kGridGlobalOccupancyThr(), occupancyThr);
-	Parameters::parse(parameters, Parameters::kGridGlobalProbHit(), probHit);
-	Parameters::parse(parameters, Parameters::kGridGlobalProbMiss(), probMiss);
-	Parameters::parse(parameters, Parameters::kGridGlobalProbClampingMin(), clampingMin);
-	Parameters::parse(parameters, Parameters::kGridGlobalProbClampingMax(), clampingMax);
-
-	octree_ = new RtabmapColorOcTree(cellSize);
-	if(occupancyThr <= 0.0f)
+	octree_ = new RtabmapColorOcTree(cellSize_);
+	if(occupancyThr_ <= 0.0f)
 	{
 		UWARN("Cannot set %s to null for OctoMap, using default value %f instead.",
 				Parameters::kGridGlobalOccupancyThr().c_str(),
 				Parameters::defaultGridGlobalOccupancyThr());
-		occupancyThr = Parameters::defaultGridGlobalOccupancyThr();
+		occupancyThr_ = Parameters::defaultGridGlobalOccupancyThr();
 	}
-	octree_->setOccupancyThres(occupancyThr);
-	octree_->setProbHit(probHit);
-	octree_->setProbMiss(probMiss);
-	octree_->setClampingThresMin(clampingMin);
-	octree_->setClampingThresMax(clampingMax);
-	Parameters::parse(parameters, Parameters::kGridGlobalFullUpdate(), fullUpdate_);
-   
-	Parameters::parse(parameters, Parameters::kGridGlobalUpdateError(), updateError_);
+	octree_->setOccupancyThres(occupancyThr_);
+	octree_->setProbHit(probHit_);
+	octree_->setProbMiss(probMiss_);
+	octree_->setClampingThresMin(probClampingMin_);
+	octree_->setClampingThresMax(probClampingMax_);
+
 	Parameters::parse(parameters, Parameters::kGridRangeMax(), rangeMax_);
 	Parameters::parse(parameters, Parameters::kGridRayTracing(), rayTracing_);
+
 	Parameters::parse(parameters, Parameters::kGridGlobalFloodFillDepth(), emptyFloodFillDepth_);
 	UASSERT(emptyFloodFillDepth_>=0 && emptyFloodFillDepth_<=16);
 
-	UDEBUG("fullUpdate_         =%s", fullUpdate_?"true":"false");
-	UDEBUG("updateError_        =%f", updateError_);
 	UDEBUG("rangeMax_           =%f", rangeMax_);
 	UDEBUG("rayTracing_         =%s", rayTracing_?"true":"false");
 	UDEBUG("emptyFloodFillDepth_=%d", emptyFloodFillDepth_);
@@ -348,16 +326,27 @@ OctoMap::~OctoMap()
 	delete octree_;
 }
 
-void OctoMap::clear()
+void OctoMap::clear(bool keepCache)
 {
+	if(!keepCache)
+	{
+		cacheClouds_.clear();
+	}
 	octree_->clear();
-	cache_.clear();
-	cacheClouds_.clear();
-	cacheViewPoints_.clear();
-	addedNodes_.clear();
 	hasColor_ = false;
-	minValues_[0] = minValues_[1] = minValues_[2] = 0.0;
-	maxValues_[0] = maxValues_[1] = maxValues_[2] = 0.0;
+	ProbabilisticMap::clear(keepCache);
+}
+
+void OctoMap::addToCache(int nodeId,
+		const cv::Mat & ground,
+		const cv::Mat & obstacles,
+		const cv::Mat & empty,
+		const cv::Point3f & viewPoint)
+{
+	ProbabilisticMap::addToCache(nodeId, ground, obstacles, empty, viewPoint);
+	UASSERT_MSG(ground.empty() || ground.type() == CV_32FC3 || ground.type() == CV_32FC(4) || ground.type() == CV_32FC(6), uFormat("Are local occupancy grids not 3d? (opencv type=%d)", ground.type()).c_str());
+	UASSERT_MSG(obstacles.empty() || obstacles.type() == CV_32FC3 || obstacles.type() == CV_32FC(4) || obstacles.type() == CV_32FC(6), uFormat("Are local occupancy grids not 3d? (opencv type=%d)", obstacles.type()).c_str());
+	UASSERT_MSG(empty.empty() || empty.type() == CV_32FC3 || empty.type() == CV_32FC(4) || empty.type() == CV_32FC(6), uFormat("Are local occupancy grids not 3d? (opencv type=%d)", empty.type()).c_str());
 }
 
 void OctoMap::addToCache(int nodeId,
@@ -375,23 +364,20 @@ void OctoMap::addToCache(int nodeId,
 	cacheClouds_.insert(std::make_pair(nodeId==0?-1:nodeId, std::make_pair(ground, obstacles)));
 	uInsert(cacheViewPoints_, std::make_pair(nodeId==0?-1:nodeId, cv::Point3f(viewPoint.x, viewPoint.y, viewPoint.z)));
 }
-void OctoMap::addToCache(int nodeId,
-		const cv::Mat & ground,
-		const cv::Mat & obstacles,
-		const cv::Mat & empty,
-		const cv::Point3f & viewPoint)
+
+unsigned long OctoMap::getMemoryUsed() const
 {
-	UDEBUG("nodeId=%d", nodeId);
-	if(nodeId < 0)
+	unsigned long memoryUsage = ProbabilisticMap::getMemoryUsed();
+
+	for(std::map<int, std::pair<const pcl::PointCloud<pcl::PointXYZRGB>::Ptr, const pcl::PointCloud<pcl::PointXYZRGB>::Ptr> >::const_iterator iter=cacheClouds_.begin(); iter!=cacheClouds_.end(); ++iter)
 	{
-		UWARN("Cannot add nodes with negative id (nodeId=%d)", nodeId);
-		return;
+		memoryUsage += iter->second.first->size();
+		memoryUsage += iter->second.second->size();
 	}
-	UASSERT_MSG(ground.empty() || ground.type() == CV_32FC3 || ground.type() == CV_32FC(4) || ground.type() == CV_32FC(6), uFormat("Are local occupancy grids not 3d? (opencv type=%d)", ground.type()).c_str());
-	UASSERT_MSG(obstacles.empty() || obstacles.type() == CV_32FC3 || obstacles.type() == CV_32FC(4) || obstacles.type() == CV_32FC(6), uFormat("Are local occupancy grids not 3d? (opencv type=%d)", obstacles.type()).c_str());
-	UASSERT_MSG(empty.empty() || empty.type() == CV_32FC3 || empty.type() == CV_32FC(4) || empty.type() == CV_32FC(6), uFormat("Are local occupancy grids not 3d? (opencv type=%d)", empty.type()).c_str());
-	uInsert(cache_, std::make_pair(nodeId==0?-1:nodeId, std::make_pair(std::make_pair(ground, obstacles), empty)));
-	uInsert(cacheViewPoints_, std::make_pair(nodeId==0?-1:nodeId, viewPoint));
+
+	// Note: size of OctoMap object is missing.
+
+	return memoryUsage;
 }
 
 bool OctoMap::isValidEmpty(RtabmapColorOcTree* octree_, unsigned int treeDepth,octomap::point3d startPosition)
@@ -514,32 +500,10 @@ bool OctoMap::update(const std::map<int, Transform> & poses)
 	UDEBUG("Update (poses=%d addedNodes_=%d)", (int)poses.size(), (int)addedNodes_.size());
 
 	// First, check of the graph has changed. If so, re-create the octree by moving all occupied nodes.
-	bool graphOptimized = false; // If a loop closure happened (e.g., poses are modified)
-	bool graphChanged = addedNodes_.size()>0; // If the new map doesn't have any node from the previous map
+	bool graphOptimized, graphChanged;
 	std::map<int, Transform> transforms;
 	std::map<int, Transform> updatedAddedNodes;
-	float updateErrorSqrd = updateError_*updateError_;
-	for(std::map<int, Transform>::iterator iter=addedNodes_.begin(); iter!=addedNodes_.end(); ++iter)
-	{
-		std::map<int, Transform>::const_iterator jter = poses.find(iter->first);
-		if(jter != poses.end())
-		{
-			graphChanged = false;
-			UASSERT(!iter->second.isNull() && !jter->second.isNull());
-			Transform t = Transform::getIdentity();
-			if(iter->second.getDistanceSquared(jter->second) > updateErrorSqrd)
-			{
-				t = jter->second * iter->second.inverse();
-				graphOptimized = true;
-			}
-			transforms.insert(std::make_pair(jter->first, t));
-			updatedAddedNodes.insert(std::make_pair(jter->first, jter->second));
-		}
-		else
-		{
-			UDEBUG("Updated pose for node %d is not found, some points may not be copied. Use negative ids to just update cell values without adding new ones.", jter->first);
-		}
-	}
+	checkIfMapChanged(poses, graphOptimized, graphChanged, transforms, updatedAddedNodes);
 
 	if(graphOptimized || graphChanged)
 	{
@@ -558,9 +522,7 @@ bool OctoMap::update(const std::map<int, Transform> & poses)
 		if(fullUpdate_ || graphChanged)
 		{
 			// clear all but keep cache
-			octree_->clear();
-			addedNodes_.clear();
-			hasColor_ = false;
+			clear(true);
 		}
 		else
 		{

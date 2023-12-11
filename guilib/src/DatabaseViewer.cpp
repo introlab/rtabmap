@@ -71,6 +71,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/RegistrationVis.h"
 #include "rtabmap/core/RegistrationIcp.h"
 #include "rtabmap/core/OccupancyGrid.h"
+#include "rtabmap/core/LocalMapMaker.h"
 #include "rtabmap/core/GeodeticCoords.h"
 #include "rtabmap/core/Recovery.h"
 #include "rtabmap/gui/DataRecorder.h"
@@ -3746,7 +3747,7 @@ void DatabaseViewer::generateLocalGraph()
 
 void DatabaseViewer::regenerateLocalMaps()
 {
-	OccupancyGrid grid(ui_->parameters_toolbox->getParameters());
+	LocalMapMaker localMapMaker(ui_->parameters_toolbox->getParameters());
 
 	generatedLocalMaps_.clear();
 	generatedLocalMapsInfo_.clear();
@@ -3854,17 +3855,17 @@ void DatabaseViewer::regenerateLocalMaps()
 						}
 					}
 
-					grid.createLocalMap(util3d::laserScanFromPointCloud(*cloud), s.getPose(), ground, obstacles, empty, viewpoint);
+					localMapMaker.createLocalMap(util3d::laserScanFromPointCloud(*cloud), s.getPose(), ground, obstacles, empty, viewpoint);
 				}
 			}
 			else
 			{
-				grid.createLocalMap(s, ground, obstacles, empty, viewpoint);
+				localMapMaker.createLocalMap(s, ground, obstacles, empty, viewpoint);
 			}
 
 			gridCreationTime = timer.ticks()*1000.0;
 			uInsert(generatedLocalMaps_, std::make_pair(data.id(), std::make_pair(std::make_pair(ground, obstacles), empty)));
-			uInsert(generatedLocalMapsInfo_, std::make_pair(data.id(), std::make_pair(grid.getCellSize(), viewpoint)));
+			uInsert(generatedLocalMapsInfo_, std::make_pair(data.id(), std::make_pair(localMapMaker.getCellSize(), viewpoint)));
 			msg = QString("Generated local occupancy grid map %1/%2").arg(i+1).arg((int)ids_.size());
 
 			totalCurve->addValue(ids_.at(i), obstacles.cols+ground.cols+empty.cols);
@@ -3900,7 +3901,7 @@ void DatabaseViewer::regenerateLocalMaps()
 void DatabaseViewer::regenerateCurrentLocalMaps()
 {
 	UTimer time;
-	OccupancyGrid grid(ui_->parameters_toolbox->getParameters());
+	LocalMapMaker localMapMaker(ui_->parameters_toolbox->getParameters());
 
 	if(ids_.size() == 0)
 	{
@@ -3998,17 +3999,17 @@ void DatabaseViewer::regenerateCurrentLocalMaps()
 						}
 					}
 
-					grid.createLocalMap(util3d::laserScanFromPointCloud(*cloud), s.getPose(), ground, obstacles, empty, viewpoint);
+					localMapMaker.createLocalMap(util3d::laserScanFromPointCloud(*cloud), s.getPose(), ground, obstacles, empty, viewpoint);
 				}
 			}
 			else
 			{
-				grid.createLocalMap(s, ground, obstacles, empty, viewpoint);
+				localMapMaker.createLocalMap(s, ground, obstacles, empty, viewpoint);
 			}
 
 
 			uInsert(generatedLocalMaps_, std::make_pair(data.id(), std::make_pair(std::make_pair(ground, obstacles),empty)));
-			uInsert(generatedLocalMapsInfo_, std::make_pair(data.id(), std::make_pair(grid.getCellSize(), viewpoint)));
+			uInsert(generatedLocalMapsInfo_, std::make_pair(data.id(), std::make_pair(localMapMaker.getCellSize(), viewpoint)));
 			msg = QString("Generated local occupancy grid map %1/%2 (%3s)").arg(i+1).arg((int)ids.size()).arg(time.ticks());
 		}
 
@@ -5246,8 +5247,7 @@ void DatabaseViewer::update(int value,
 #endif
 								{
 									OccupancyGrid grid(parameters);
-									grid.setCellSize(gridCellSize);
-									grid.addToCache(data.id(), localMaps.begin()->second.first.first, localMaps.begin()->second.first.second, localMaps.begin()->second.second);
+										grid.addToCache(data.id(), localMaps.begin()->second.first.first, localMaps.begin()->second.first.second, localMaps.begin()->second.second);
 									grid.update(poses);
 									map8S = grid.getMap(xMin, yMin);
 								}
@@ -6916,7 +6916,6 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 						uInsert(parameters, ParametersPair(Parameters::kGridGlobalEroded(), "true"));
 					}
 					OccupancyGrid grid(parameters);
-					grid.setCellSize(cellSize);
 					for(std::map<int, std::pair<std::pair<cv::Mat, cv::Mat>, cv::Mat> >::iterator iter=localMaps.begin(); iter!=localMaps.end(); ++iter)
 					{
 						grid.addToCache(iter->first, iter->second.first.first, iter->second.first.second, iter->second.second);

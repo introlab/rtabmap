@@ -4845,7 +4845,6 @@ void MainWindow::applyPrefSettings(const rtabmap::ParametersMap & parameters)
 void MainWindow::applyPrefSettings(const rtabmap::ParametersMap & parameters, bool postParamEvent)
 {
 	ULOGGER_DEBUG("");
-	_occupancyGrid->parseParameters(_preferencesDialog->getAllParameters());
 	if(parameters.size())
 	{
 		for(rtabmap::ParametersMap::const_iterator iter = parameters.begin(); iter!=parameters.end(); ++iter)
@@ -5922,11 +5921,10 @@ void MainWindow::startDetection()
 				   "progress will not be shown in the GUI."));
 	}
 
-	_occupancyGrid->clear();
-	_occupancyGrid->parseParameters(parameters);
+	delete _occupancyGrid;
+	_occupancyGrid = new OccupancyGrid(parameters);
 
 #ifdef RTABMAP_OCTOMAP
-	UASSERT(_octomap != 0);
 	delete _octomap;
 	_octomap = new OctoMap(parameters);
 #endif
@@ -7405,7 +7403,6 @@ void MainWindow::clearTheCache()
 	_multiSessionLocWidget->clear();
 #ifdef RTABMAP_OCTOMAP
 	// re-create one if the resolution has changed
-	UASSERT(_octomap != 0);
 	delete _octomap;
 	_octomap = new OctoMap(_preferencesDialog->getAllParameters());
 #endif
