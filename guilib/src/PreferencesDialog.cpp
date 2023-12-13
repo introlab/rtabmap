@@ -13,6 +13,7 @@ modification, are permitted provided that the following conditions are met:
       names of its contributors may be used to endorse or promote products
       derived from this software without specific prior written permission.
 
+
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
 ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
 WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
@@ -1613,6 +1614,7 @@ void PreferencesDialog::init(const QString & iniFilePath)
 	}
 
 	this->readSettings(iniFilePath);
+
 	this->writeSettings(getTmpIniFilePath());
 
 	_initialized = true;
@@ -4870,6 +4872,8 @@ void PreferencesDialog::addParameters(const QGroupBox * box)
 
 void PreferencesDialog::updateBasicParameter()
 {
+	UDEBUG("");
+
 	// This method is used to update basic/advanced referred parameters, see above editingFinished()
 
 	// basic to advanced (advanced to basic must be done by connecting signal valueChanged())
@@ -4907,19 +4911,27 @@ void PreferencesDialog::updateBasicParameter()
 	}
 	else if(sender() == _ui->general_checkBox_activateRGBD)
 	{
+        _ui->general_checkBox_activateRGBD_2->blockSignals(true);
 		_ui->general_checkBox_activateRGBD_2->setChecked(_ui->general_checkBox_activateRGBD->isChecked());
+        _ui->general_checkBox_activateRGBD_2->blockSignals(false);
 	}
 	else if(sender() == _ui->general_checkBox_activateRGBD_2)
 	{
+        _ui->general_checkBox_activateRGBD->blockSignals(true);
 		_ui->general_checkBox_activateRGBD->setChecked(_ui->general_checkBox_activateRGBD_2->isChecked());
+        _ui->general_checkBox_activateRGBD->blockSignals(false);
 	}
 	else if(sender() == _ui->general_checkBox_SLAM_mode)
 	{
+        _ui->general_checkBox_SLAM_mode_2->blockSignals(true);
 		_ui->general_checkBox_SLAM_mode_2->setChecked(_ui->general_checkBox_SLAM_mode->isChecked());
+        _ui->general_checkBox_SLAM_mode_2->blockSignals(false);
 	}
 	else if(sender() == _ui->general_checkBox_SLAM_mode_2)
 	{
+        _ui->general_checkBox_SLAM_mode->blockSignals(true);
 		_ui->general_checkBox_SLAM_mode->setChecked(_ui->general_checkBox_SLAM_mode_2->isChecked());
+        _ui->general_checkBox_SLAM_mode->blockSignals(false);
 	}
 	else
 	{
@@ -6107,7 +6119,7 @@ Camera * PreferencesDialog::createCamera(
 	if(odomOnly && !(driver == kSrcStereoRealSense2 || driver == kSrcStereoZed))
 	{
 		QMessageBox::warning(this, tr("Odometry Sensor"),
-				tr("Driver \%1 cannot support odometry only mode.").arg(driver), QMessageBox::Ok);
+				tr("Driver %1 cannot support odometry only mode.").arg(driver), QMessageBox::Ok);
 		return 0;
 	}
 
