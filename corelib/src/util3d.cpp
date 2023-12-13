@@ -873,7 +873,7 @@ std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> cloudsFromSensorData(
 		int subImageWidth = sensorData.depthRaw().cols/sensorData.cameraModels().size();
 		for(unsigned int i=0; i<sensorData.cameraModels().size(); ++i)
 		{
-			clouds.push_back(pcl::PointCloud<pcl::PointXYZ>::Ptr());
+			clouds.push_back(pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>));
 			if(validIndices)
 			{
 				validIndices->push_back(pcl::IndicesPtr(new std::vector<int>()));
@@ -970,7 +970,7 @@ std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> cloudsFromSensorData(
 		int subImageWidth = sensorData.rightRaw().cols/sensorData.stereoCameraModels().size();
 		for(unsigned int i=0; i<sensorData.stereoCameraModels().size(); ++i)
 		{
-			clouds.push_back(pcl::PointCloud<pcl::PointXYZ>::Ptr());
+			clouds.push_back(pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>));
 			if(validIndices)
 			{
 				validIndices->push_back(pcl::IndicesPtr(new std::vector<int>()));
@@ -1118,7 +1118,7 @@ std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> cloudsRGBFromSensorData(
 
 		for(unsigned int i=0; i<sensorData.cameraModels().size(); ++i)
 		{
-			clouds.push_back(pcl::PointCloud<pcl::PointXYZRGB>::Ptr());
+			clouds.push_back(pcl::PointCloud<pcl::PointXYZRGB>::Ptr(new pcl::PointCloud<pcl::PointXYZRGB>));
 			if(validIndices)
 			{
 				validIndices->push_back(pcl::IndicesPtr(new std::vector<int>()));
@@ -1196,7 +1196,7 @@ std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> cloudsRGBFromSensorData(
 		int subImageWidth = sensorData.rightRaw().cols/sensorData.stereoCameraModels().size();
 		for(unsigned int i=0; i<sensorData.stereoCameraModels().size(); ++i)
 		{
-			clouds.push_back(pcl::PointCloud<pcl::PointXYZRGB>::Ptr());
+			clouds.push_back(pcl::PointCloud<pcl::PointXYZRGB>::Ptr(new pcl::PointCloud<pcl::PointXYZRGB>));
 			if(validIndices)
 			{
 				validIndices->push_back(pcl::IndicesPtr(new std::vector<int>()));
