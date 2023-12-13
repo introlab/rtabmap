@@ -4876,14 +4876,8 @@ void DatabaseViewer::update(int value,
 				{
 					cloudViewer_->removeAllLines();
 					cloudViewer_->removeAllFrustums();
-					cloudViewer_->removeCloud("mesh");
-					cloudViewer_->removeCloud("cloud");
-					cloudViewer_->removeCloud("scan");
 					cloudViewer_->removeCloud("map");
-					cloudViewer_->removeCloud("ground");
-					cloudViewer_->removeCloud("obstacles");
-					cloudViewer_->removeCloud("empty_cells");
-					cloudViewer_->removeCloud("words");
+					cloudViewer_->removeAllClouds();
 					cloudViewer_->removeOctomap();
 
 					Transform pose = Transform::getIdentity();
@@ -5047,8 +5041,8 @@ void DatabaseViewer::update(int value,
 						{
 							if(!data.imageRaw().empty())
 							{
-								pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
-								pcl::IndicesPtr indices(new std::vector<int>);
+								std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> clouds;
+								std::vector<pcl::IndicesPtr> allIndices;
 								if(!data.depthRaw().empty() && data.cameraModels().size()==1)
 								{
 									cv::Mat depth = data.depthRaw();
@@ -5056,96 +5050,110 @@ void DatabaseViewer::update(int value,
 									{
 										depth = util2d::fillDepthHoles(depth, ui_->spinBox_mesh_fillDepthHoles->value(), float(ui_->spinBox_mesh_depthError->value())/100.0f);
 									}
-									cloud = util3d::cloudFromDepthRGB(
+									pcl::IndicesPtr indices(new std::vector<int>);
+									pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = util3d::cloudFromDepthRGB(
 											data.imageRaw(),
 											depth,
 											data.cameraModels()[0],
 											ui_->spinBox_decimation->value(),0,0,indices.get());
 									if(indices->size())
 									{
-										cloud = util3d::transformPointCloud(cloud, data.cameraModels()[0].localTransform());
+										clouds.push_back(util3d::transformPointCloud(cloud, data.cameraModels()[0].localTransform()));
+										allIndices.push_back(indices);
 									}
-
 								}
 								else
 								{
-									cloud = util3d::cloudRGBFromSensorData(data, ui_->spinBox_decimation->value(), 0, 0, indices.get(), ui_->parameters_toolbox->getParameters());
+									clouds = util3d::cloudsRGBFromSensorData(data, ui_->spinBox_decimation->value(), 0, 0, &allIndices, ui_->parameters_toolbox->getParameters());
 								}
-								if(indices->size())
+								UASSERT(clouds.size() == allIndices.size());
+								for(size_t i=0; i<allIndices.size(); ++i)
 								{
-									if(ui_->doubleSpinBox_voxelSize->value() > 0.0)
+									if(allIndices[i]->size())
 									{
-										cloud = util3d::voxelize(cloud, indices, ui_->doubleSpinBox_voxelSize->value());
-									}
-
-									if(ui_->checkBox_showMesh->isChecked() && !cloud->is_dense)
-									{
-										Eigen::Vector3f viewpoint(0.0f,0.0f,0.0f);
-										if(data.cameraModels().size() && !data.cameraModels()[0].localTransform().isNull())
+										pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = clouds[i];
+										pcl::IndicesPtr indices = allIndices[i];
+										if(ui_->doubleSpinBox_voxelSize->value() > 0.0)
 										{
-											viewpoint[0] = data.cameraModels()[0].localTransform().x();
-											viewpoint[1] = data.cameraModels()[0].localTransform().y();
-											viewpoint[2] = data.cameraModels()[0].localTransform().z();
+											cloud = util3d::voxelize(cloud, indices, ui_->doubleSpinBox_voxelSize->value());
 										}
-										else if(data.stereoCameraModels().size() && !data.stereoCameraModels()[0].localTransform().isNull())
-										{
-											viewpoint[0] = data.stereoCameraModels()[0].localTransform().x();
-											viewpoint[1] = data.stereoCameraModels()[0].localTransform().y();
-											viewpoint[2] = data.stereoCameraModels()[0].localTransform().z();
-										}
-										std::vector<pcl::Vertices> polygons = util3d::organizedFastMesh(
-												cloud,
-												float(ui_->spinBox_mesh_angleTolerance->value())*M_PI/180.0f,
-												ui_->checkBox_mesh_quad->isChecked(),
-												ui_->spinBox_mesh_triangleSize->value(),
-												viewpoint);
 
-										if(ui_->spinBox_mesh_minClusterSize->value())
+										if(ui_->checkBox_showMesh->isChecked() && !cloud->is_dense)
 										{
-											// filter polygons
-											std::vector<std::set<int> > neighbors;
-											std::vector<std::set<int> > vertexToPolygons;
-											util3d::createPolygonIndexes(polygons,
-													cloud->size(),
-													neighbors,
-													vertexToPolygons);
-											std::list<std::list<int> > clusters = util3d::clusterPolygons(
-													neighbors,
-													ui_->spinBox_mesh_minClusterSize->value());
-											std::vector<pcl::Vertices> filteredPolygons(polygons.size());
-											int oi=0;
-											for(std::list<std::list<int> >::iterator iter=clusters.begin(); iter!=clusters.end(); ++iter)
+											Eigen::Vector3f viewpoint(0.0f,0.0f,0.0f);
+											if(data.cameraModels().size() && !data.cameraModels()[0].localTransform().isNull())
 											{
-												for(std::list<int>::iterator jter=iter->begin(); jter!=iter->end(); ++jter)
-												{
-													filteredPolygons[oi++] = polygons.at(*jter);
-												}
+												viewpoint[0] = data.cameraModels()[0].localTransform().x();
+												viewpoint[1] = data.cameraModels()[0].localTransform().y();
+												viewpoint[2] = data.cameraModels()[0].localTransform().z();
 											}
-											filteredPolygons.resize(oi);
-											polygons = filteredPolygons;
-										}
+											else if(data.stereoCameraModels().size() && !data.stereoCameraModels()[0].localTransform().isNull())
+											{
+												viewpoint[0] = data.stereoCameraModels()[0].localTransform().x();
+												viewpoint[1] = data.stereoCameraModels()[0].localTransform().y();
+												viewpoint[2] = data.stereoCameraModels()[0].localTransform().z();
+											}
+											std::vector<pcl::Vertices> polygons = util3d::organizedFastMesh(
+													cloud,
+													float(ui_->spinBox_mesh_angleTolerance->value())*M_PI/180.0f,
+													ui_->checkBox_mesh_quad->isChecked(),
+													ui_->spinBox_mesh_triangleSize->value(),
+													viewpoint);
 
-										cloudViewer_->addCloudMesh("mesh", cloud, polygons, pose);
-									}
-									if(ui_->checkBox_showCloud->isChecked())
-									{
-										cloudViewer_->addCloud("cloud", cloud, pose);
+											if(ui_->spinBox_mesh_minClusterSize->value())
+											{
+												// filter polygons
+												std::vector<std::set<int> > neighbors;
+												std::vector<std::set<int> > vertexToPolygons;
+												util3d::createPolygonIndexes(polygons,
+														cloud->size(),
+														neighbors,
+														vertexToPolygons);
+												std::list<std::list<int> > clusters = util3d::clusterPolygons(
+														neighbors,
+														ui_->spinBox_mesh_minClusterSize->value());
+												std::vector<pcl::Vertices> filteredPolygons(polygons.size());
+												int oi=0;
+												for(std::list<std::list<int> >::iterator iter=clusters.begin(); iter!=clusters.end(); ++iter)
+												{
+													for(std::list<int>::iterator jter=iter->begin(); jter!=iter->end(); ++jter)
+													{
+														filteredPolygons[oi++] = polygons.at(*jter);
+													}
+												}
+												filteredPolygons.resize(oi);
+												polygons = filteredPolygons;
+											}
+
+											cloudViewer_->addCloudMesh(uFormat("mesh_%d", i), cloud, polygons, pose);
+										}
+										if(ui_->checkBox_showCloud->isChecked())
+										{
+											cloudViewer_->addCloud(uFormat("cloud_%d", i), cloud, pose);
+										}
 									}
 								}
 							}
 							else if(ui_->checkBox_showCloud->isChecked())
 							{
-								pcl::PointCloud<pcl::PointXYZ>::Ptr cloud;
-								pcl::IndicesPtr indices(new std::vector<int>);
-								cloud = util3d::cloudFromSensorData(data, ui_->spinBox_decimation->value(), 0, 0, indices.get(), ui_->parameters_toolbox->getParameters());
-								if(indices->size())
-								{
-									if(ui_->doubleSpinBox_voxelSize->value() > 0.0)
-									{
-										cloud = util3d::voxelize(cloud, indices, ui_->doubleSpinBox_voxelSize->value());
-									}
+								std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> clouds;
+								std::vector<pcl::IndicesPtr> allIndices;
 
-									cloudViewer_->addCloud("cloud", cloud, pose);
+								clouds = util3d::cloudsFromSensorData(data, ui_->spinBox_decimation->value(), 0, 0, &allIndices, ui_->parameters_toolbox->getParameters());
+								UASSERT(clouds.size() == allIndices.size());
+								for(size_t i=0; i<allIndices.size(); ++i)
+								{
+									if(allIndices[i]->size())
+									{
+										pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = clouds[i];
+										pcl::IndicesPtr indices = allIndices[i];
+										if(ui_->doubleSpinBox_voxelSize->value() > 0.0)
+										{
+											cloud = util3d::voxelize(cloud, indices, ui_->doubleSpinBox_voxelSize->value());
+										}
+
+										cloudViewer_->addCloud(uFormat("cloud_%d", i), cloud, pose);
+									}
 								}
 							}
 						}
