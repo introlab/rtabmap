@@ -55,13 +55,11 @@ public:
 			const Transform & localTransform = Transform::getIdentity());
 	virtual ~CameraDepthAI();
 
-	void setOutputDepth(bool enabled, int confidence = 200);
-	void setUseSpecTranslation(bool useSpecTranslation);
-	void setAlphaScaling(float alphaScaling = 0.0f);
-	void setIMUPublished(bool published);
-	void publishInterIMU(bool enabled);
-	void setLaserDotBrightness(float dotProjectormA = 0.0f);
-	void setFloodLightBrightness(float floodLightmA = 200.0f);
+	void setOutputMode(int outputMode = 0);
+	void setDepthProfile(int confThreshold = 200, int lrcThreshold = 5);
+	void setRectification(bool useSpecTranslation, float alphaScaling = 0.0f);
+	void setIMU(bool imuPublished, bool publishInterIMU);
+	void setIrBrightness(float dotProjectormA = 0.0f, float floodLightmA = 200.0f);
 	void setDetectFeatures(int detectFeatures = 0);
 	void setBlobPath(const std::string & blobPath);
 	void setGFTTDetector(bool useHarrisDetector = false, float minDistance = 7.0f, int numTargetFeatures = 1000);
@@ -80,8 +78,9 @@ private:
 	cv::Size targetSize_;
 	Transform imuLocalTransform_;
 	std::string mxidOrName_;
-	bool outputDepth_;
-	int depthConfidence_;
+	int outputMode_;
+	int confThreshold_;
+	int lrcThreshold_;
 	int resolution_;
 	bool useSpecTranslation_;
 	float alphaScaling_;
@@ -98,7 +97,7 @@ private:
 	int nmsRadius_;
 	std::string blobPath_;
 	std::shared_ptr<dai::Device> device_;
-	std::shared_ptr<dai::DataOutputQueue> leftQueue_;
+	std::shared_ptr<dai::DataOutputQueue> leftOrColorQueue_;
 	std::shared_ptr<dai::DataOutputQueue> rightOrDepthQueue_;
 	std::shared_ptr<dai::DataOutputQueue> featuresQueue_;
 	std::map<double, cv::Vec3f> accBuffer_;

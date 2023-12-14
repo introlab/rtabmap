@@ -5905,7 +5905,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                     </item>
                                    </widget>
                                   </item>
-                                  <item row="4" column="0">
+                                  <item row="5" column="0">
                                    <widget class="QDoubleSpinBox" name="doubleSpinBox_depthai_alpha_scaling">
                                     <property name="minimum">
                                      <double>-1.000000000000000</double>
@@ -5924,7 +5924,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                   <item row="2" column="1">
                                    <widget class="QLabel" name="label_627">
                                     <property name="text">
-                                     <string>Depth confidence.</string>
+                                     <string>Confidence threshold.</string>
                                     </property>
                                     <property name="wordWrap">
                                      <bool>true</bool>
@@ -5934,7 +5934,20 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                     </property>
                                    </widget>
                                   </item>
-                                  <item row="6" column="0">
+                                  <item row="3" column="1">
+                                   <widget class="QLabel" name="label_741">
+                                    <property name="text">
+                                     <string>Left-right check threshold.</string>
+                                    </property>
+                                    <property name="wordWrap">
+                                     <bool>true</bool>
+                                    </property>
+                                    <property name="textInteractionFlags">
+                                     <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="7" column="0">
                                    <widget class="QDoubleSpinBox" name="doubleSpinBox_depthai_laser_dot_brightness">
                                     <property name="suffix">
                                      <string> mA</string>
@@ -5947,14 +5960,14 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                     </property>
                                    </widget>
                                   </item>
-                                  <item row="5" column="0">
+                                  <item row="6" column="0">
                                    <widget class="QCheckBox" name="checkBox_depthai_imu_published">
                                     <property name="text">
                                      <string/>
                                     </property>
                                    </widget>
                                   </item>
-                                  <item row="7" column="1">
+                                  <item row="8" column="1">
                                    <widget class="QLabel" name="label_677">
                                     <property name="text">
                                      <string>Floodlight brightness.</string>
@@ -5967,7 +5980,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                     </property>
                                    </widget>
                                   </item>
-                                  <item row="6" column="1">
+                                  <item row="7" column="1">
                                    <widget class="QLabel" name="label_676">
                                     <property name="text">
                                      <string>Laser dot brightness.</string>
@@ -5980,7 +5993,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                     </property>
                                    </widget>
                                   </item>
-                                  <item row="3" column="1">
+                                  <item row="4" column="1">
                                    <widget class="QLabel" name="label_646">
                                     <property name="text">
                                      <string>Use the translation information from the board design data (not the calibration data).</string>
@@ -6007,13 +6020,31 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                    </widget>
                                   </item>
                                   <item row="1" column="0">
-                                   <widget class="QCheckBox" name="checkBox_depthai_depth">
-                                    <property name="text">
-                                     <string/>
+                                   <widget class="QComboBox" name="comboBox_depthai_output_mode">
+                                    <property name="currentIndex">
+                                     <number>0</number>
                                     </property>
+                                    <property name="sizeAdjustPolicy">
+                                     <enum>QComboBox::AdjustToContents</enum>
+                                    </property>
+                                    <item>
+                                     <property name="text">
+                                      <string>Stereo</string>
+                                     </property>
+                                    </item>
+                                    <item>
+                                     <property name="text">
+                                      <string>Mono+Depth</string>
+                                     </property>
+                                    </item>
+                                    <item>
+                                     <property name="text">
+                                      <string>Color+Depth</string>
+                                     </property>
+                                    </item>
                                    </widget>
                                   </item>
-                                  <item row="4" column="1">
+                                  <item row="5" column="1">
                                    <widget class="QLabel" name="label_678">
                                     <property name="text">
                                      <string>Free scaling parameter between 0 (when all the pixels in the undistorted image are valid) and 1 (when all the source image pixels are retained in the undistorted image). On some high distortion lenses, and/or due to rectification (image rotated) invalid areas may appear even with alpha=0, in these cases alpha &lt; 0.0 helps removing invalid areas. If alpha is set to -1, old rectification policy is used.</string>
@@ -6027,7 +6058,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                    </widget>
                                   </item>
                                   <item row="2" column="0">
-                                   <widget class="QSpinBox" name="spinBox_depthai_confidence">
+                                   <widget class="QSpinBox" name="spinBox_depthai_conf_threshold">
                                     <property name="minimum">
                                      <number>0</number>
                                     </property>
@@ -6039,7 +6070,20 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                     </property>
                                    </widget>
                                   </item>
-                                  <item row="5" column="1">
+                                  <item row="3" column="0">
+                                   <widget class="QSpinBox" name="spinBox_depthai_lrc_threshold">
+                                    <property name="minimum">
+                                     <number>0</number>
+                                    </property>
+                                    <property name="maximum">
+                                     <number>255</number>
+                                    </property>
+                                    <property name="value">
+                                     <number>5</number>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="6" column="1">
                                    <widget class="QLabel" name="label_650">
                                     <property name="text">
                                      <string>IMU published</string>
@@ -6052,7 +6096,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                     </property>
                                    </widget>
                                   </item>
-                                  <item row="3" column="0">
+                                  <item row="4" column="0">
                                    <widget class="QCheckBox" name="checkBox_depthai_use_spec_translation">
                                     <property name="text">
                                      <string/>
@@ -6062,7 +6106,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                   <item row="1" column="1">
                                    <widget class="QLabel" name="label_625">
                                     <property name="text">
-                                     <string>Output depth.</string>
+                                     <string>Output mode.</string>
                                     </property>
                                     <property name="wordWrap">
                                      <bool>true</bool>
@@ -6072,7 +6116,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                     </property>
                                    </widget>
                                   </item>
-                                  <item row="7" column="0">
+                                  <item row="8" column="0">
                                    <widget class="QDoubleSpinBox" name="doubleSpinBox_depthai_floodlight_brightness">
                                     <property name="suffix">
                                      <string> mA</string>
@@ -6085,7 +6129,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                     </property>
                                    </widget>
                                   </item>
-                                  <item row="8" column="0">
+                                  <item row="9" column="0">
                                    <widget class="QComboBox" name="comboBox_depthai_detect_features">
                                     <property name="currentIndex">
                                      <number>0</number>
@@ -6110,7 +6154,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                     </item>
                                    </widget>
                                   </item>
-                                  <item row="8" column="1">
+                                  <item row="9" column="1">
                                    <widget class="QLabel" name="label_679">
                                     <property name="text">
                                      <string>On-device feature detector.</string>
@@ -6123,7 +6167,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                     </property>
                                    </widget>
                                   </item>
-                                  <item row="9" column="0">
+                                  <item row="10" column="0">
                                    <layout class="QHBoxLayout" name="horizontalLayout_15" stretch="0,1">
                                     <item>
                                      <widget class="QToolButton" name="toolButton_depthai_blob_path">
@@ -6147,7 +6191,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                     </item>
                                    </layout>
                                   </item>
-                                  <item row="9" column="1">
+                                  <item row="10" column="1">
                                    <widget class="QLabel" name="label_680">
                                     <property name="text">
                                      <string>Path to SuperPoint blob file.</string>
