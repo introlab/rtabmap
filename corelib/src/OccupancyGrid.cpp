@@ -66,6 +66,7 @@ OccupancyGrid::OccupancyGrid(const ParametersMap & parameters) :
 	normalsSegmentation_(Parameters::defaultGridNormalsSegmentation()),
 	grid3D_(Parameters::defaultGrid3D()),
 	groundIsObstacle_(Parameters::defaultGridGroundIsObstacle()),
+	labelUndergroundObstaclesAsGround_(Parameters::defaultGridUndergroundIsGround()),
 	noiseFilteringRadius_(Parameters::defaultGridNoiseFilteringRadius()),
 	noiseFilteringMinNeighbors_(Parameters::defaultGridNoiseFilteringMinNeighbors()),
 	scan2dUnknownSpaceFilled_(Parameters::defaultGridScan2dUnknownSpaceFilled()),
@@ -128,6 +129,7 @@ void OccupancyGrid::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kGridNormalsSegmentation(), normalsSegmentation_);
 	Parameters::parse(parameters, Parameters::kGrid3D(), grid3D_);
 	Parameters::parse(parameters, Parameters::kGridGroundIsObstacle(), groundIsObstacle_);
+	Parameters::parse(parameters, Parameters::kGridUndergroundIsGround(), labelUndergroundObstaclesAsGround_);
 	Parameters::parse(parameters, Parameters::kGridNoiseFilteringRadius(), noiseFilteringRadius_);
 	Parameters::parse(parameters, Parameters::kGridNoiseFilteringMinNeighbors(), noiseFilteringMinNeighbors_);
 	Parameters::parse(parameters, Parameters::kGridScan2dUnknownSpaceFilled(), scan2dUnknownSpaceFilled_);

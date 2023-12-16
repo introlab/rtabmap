@@ -1026,6 +1026,36 @@ cv::Mat erodeMap(const cv::Mat & map)
 	return erodedMap;
 }
 
+void clusterIndicesFloodfill(std::vector<int> & cluster,
+	float * visitedIndices,
+	int width,
+	int height,
+	float clusterRadius,
+	int currentIndex,
+	float previousHeight)
+{
+	if(visitedIndices[currentIndex] == 0.0f || 
+		(clusterRadius>0.0f && fabs(visitedIndices[currentIndex]-previousHeight)>clusterRadius))
+	{
+		return;
+	}
+
+	int y = currentIndex / width;
+	int x = currentIndex - y*width;
+
+	if(x>=0 && x<width && y>=0 && y<height)
+	{
+		cluster.push_back(currentIndex);
+		float currentHeight = visitedIndices[currentIndex];
+		visitedIndices[currentIndex] = 0;
+
+		clusterIndicesFloodfill(cluster, visitedIndices, width, height, clusterRadius, (y+1)*width + x, currentHeight);
+		clusterIndicesFloodfill(cluster, visitedIndices, width, height, clusterRadius, (y-1)*width + x, currentHeight);
+		clusterIndicesFloodfill(cluster, visitedIndices, width, height, clusterRadius, y*width + x+1, currentHeight);
+		clusterIndicesFloodfill(cluster, visitedIndices, width, height, clusterRadius, y*width + x-1, currentHeight);
+	}
+}
+
 }
 
 }

@@ -382,6 +382,17 @@ pcl::PointCloud<pcl::Normal>::Ptr RTABMAP_CORE_EXPORT computeFastOrganizedNormal
 		const Eigen::Vector3f & viewPoint = Eigen::Vector3f(0,0,0));
 
 pcl::PointCloud<pcl::Normal>::Ptr RTABMAP_CORE_EXPORT computeFastOrganizedNormals(
+		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
+		float maxDepthChangeFactor = 0.02f,
+		float normalSmoothingSize = 10.0f,
+		const Eigen::Vector3f & viewPoint = Eigen::Vector3f(0,0,0));
+pcl::PointCloud<pcl::Normal>::Ptr RTABMAP_CORE_EXPORT computeFastOrganizedNormals(
+		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
+		const pcl::IndicesPtr & indices,
+		float maxDepthChangeFactor = 0.02f,
+		float normalSmoothingSize = 10.0f,
+		const Eigen::Vector3f & viewPoint = Eigen::Vector3f(0,0,0));
+pcl::PointCloud<pcl::Normal>::Ptr RTABMAP_CORE_EXPORT computeFastOrganizedNormals(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 		float maxDepthChangeFactor = 0.02f,
 		float normalSmoothingSize = 10.0f,

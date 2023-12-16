@@ -832,6 +832,7 @@ class RTABMAP_CORE_EXPORT Parameters
     RTABMAP_PARAM(Grid, 3D,                      bool,   false,   uFormat("A 3D occupancy grid is required if you want an OctoMap (3D ray tracing). Set to false if you want only a 2D map, the cloud will be projected on xy plane. A 2D map can be still generated if checked, but it requires more memory and time to generate it. Ignored if laser scan is 2D and \"%s\" is 0.", kGridSensor().c_str()));
 #endif
     RTABMAP_PARAM(Grid, GroundIsObstacle,           bool,   false,   uFormat("[%s=true] Ground segmentation (%s) is ignored, all points are obstacles. Use this only if you want an OctoMap with ground identified as an obstacle (e.g., with an UAV).", kGrid3D().c_str(), kGridNormalsSegmentation().c_str()));
+    RTABMAP_PARAM(Grid, UndergroundIsGround,        bool,   false,   uFormat("[%s=true] Label all underground points under largest flat surface detected as ground.", kGridNormalsSegmentation().c_str()));
     RTABMAP_PARAM(Grid, NoiseFilteringRadius,       float,   0.0,    "Noise filtering radius (0=disabled). Done after segmentation.");
     RTABMAP_PARAM(Grid, NoiseFilteringMinNeighbors, int,     5,      "Noise filtering minimum neighbors.");
     RTABMAP_PARAM(Grid, Scan2dUnknownSpaceFilled,   bool,    false,  uFormat("Unknown space filled. Only used with 2D laser scans. Use %s to set maximum range if laser scan max range is to set.", kGridRangeMax().c_str()));
