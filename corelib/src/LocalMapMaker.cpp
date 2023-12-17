@@ -37,7 +37,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UTimer.h>
 
 #ifdef RTABMAP_OCTOMAP
-#include <rtabmap/core/OctoMap.h>
+#include <rtabmap/core/global_map/OctoMap.h>
 #endif
 
 #include <pcl/io/pcd_io.h>
@@ -122,6 +122,7 @@ void LocalMapMaker::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kGridNoiseFilteringRadius(), noiseFilteringRadius_);
 	Parameters::parse(parameters, Parameters::kGridNoiseFilteringMinNeighbors(), noiseFilteringMinNeighbors_);
 	Parameters::parse(parameters, Parameters::kGridScan2dUnknownSpaceFilled(), scan2dUnknownSpaceFilled_);
+	Parameters::parse(parameters, Parameters::kGridRayTracing(), rayTracing_);
 
 	// convert ROI from string to vector
 	ParametersMap::const_iterator iter;

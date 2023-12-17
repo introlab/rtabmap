@@ -33,13 +33,25 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/Parameters.h>
 #include <rtabmap/core/Transform.h>
 #include <map>
+#include <list>
 
 namespace rtabmap {
 
-class RTABMAP_CORE_EXPORT Map
+class RTABMAP_CORE_EXPORT GlobalMap
 {
 public:
-	virtual ~Map();
+	inline static float logodds(double probability)
+	{
+		return (float) log(probability/(1-probability));
+	}
+
+	inline static double probability(double logodds)
+	{
+		return 1. - ( 1. / (1. + exp(logodds)));
+	}
+
+public:
+	virtual ~GlobalMap();
 
 	virtual void addToCache(int nodeId,
 			const cv::Mat & ground,
@@ -47,12 +59,11 @@ public:
 			const cv::Mat & empty,
 			const cv::Point3f & viewPoint = cv::Point3f(0,0,0));
 
-	virtual bool update(const std::map<int, Transform> & poses) = 0; // return true if map has changed
+	bool update(const std::map<int, Transform> & poses); // return true if map has changed
 
 	virtual void clear(bool keepCache = false);
 
 	float getCellSize() const {return cellSize_;}
-	bool isFullUpdate() const {return fullUpdate_;}
 	float getUpdateError() const {return updateError_;}
 	const std::map<int, Transform> & addedNodes() const {return addedNodes_;}
 	int cacheSize() const {return (int)cache_.size();}
@@ -66,24 +77,34 @@ public:
 	virtual unsigned long getMemoryUsed() const;
 
 protected:
-	Map(const ParametersMap & parameters = ParametersMap());
-	void checkIfMapChanged(
-			const std::map<int, Transform> & poses,
-			bool & graphOptimized,
-			bool & graphChanged,
-			std::map<int, Transform> & transforms,
-			std::map<int, Transform> & updatedAddedNodes);
+	GlobalMap(const ParametersMap & parameters = ParametersMap());
+
+	virtual void assemble(const std::list<std::pair<int, Transform> > & newPoses) = 0;
+
+	const std::map<int, std::pair<std::pair<cv::Mat, cv::Mat>, cv::Mat> > & cache() const {return cache_;}
+	const std::map<int, cv::Point3f> & cacheViewPoints() const {return cacheViewPoints_;}
+
+	const std::map<int, Transform> & assembledNodes() const {return addedNodes_;}
+	bool isNodeAssembled(int id) {return addedNodes_.find(id) != addedNodes_.end();}
+	void addAssembledNode(int id, const Transform & pose);
 
 protected:
-	std::map<int, std::pair<std::pair<cv::Mat, cv::Mat>, cv::Mat> > cache_; // [id: < <ground, obstacles>, empty>]
-	std::map<int, cv::Point3f> cacheViewPoints_;
-	std::map<int, Transform> addedNodes_;
 	float cellSize_;
-	bool fullUpdate_;
 	float updateError_;
+
+	float occupancyThr_;
+	float probHit_;
+	float probMiss_;
+	float probClampingMin_;
+	float probClampingMax_;
 
 	double minValues_[3];
 	double maxValues_[3];
+
+private:
+	std::map<int, std::pair<std::pair<cv::Mat, cv::Mat>, cv::Mat> > cache_; // [id: < <ground, obstacles>, empty>]
+	std::map<int, cv::Point3f> cacheViewPoints_;
+	std::map<int, Transform> addedNodes_;
 };
 
 } /* namespace rtabmap */

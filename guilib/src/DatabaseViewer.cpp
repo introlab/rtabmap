@@ -70,7 +70,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/Optimizer.h"
 #include "rtabmap/core/RegistrationVis.h"
 #include "rtabmap/core/RegistrationIcp.h"
-#include "rtabmap/core/OccupancyGrid.h"
+#include "rtabmap/core/global_map/OccupancyGrid.h"
 #include "rtabmap/core/LocalMapMaker.h"
 #include "rtabmap/core/GeodeticCoords.h"
 #include "rtabmap/core/Recovery.h"
@@ -95,7 +95,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pcl/common/common.h>
 
 #ifdef RTABMAP_OCTOMAP
-#include "rtabmap/core/OctoMap.h"
+#include "rtabmap/core/global_map/OctoMap.h"
 #endif
 
 namespace rtabmap {
@@ -5247,7 +5247,7 @@ void DatabaseViewer::update(int value,
 #endif
 								{
 									OccupancyGrid grid(parameters);
-										grid.addToCache(data.id(), localMaps.begin()->second.first.first, localMaps.begin()->second.first.second, localMaps.begin()->second.second);
+									grid.addToCache(data.id(), localMaps.begin()->second.first.first, localMaps.begin()->second.first.second, localMaps.begin()->second.second);
 									grid.update(poses);
 									map8S = grid.getMap(xMin, yMin);
 								}

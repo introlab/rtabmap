@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2010-2016, Mathieu Labbe - IntRoLab - Universite de Sherbrooke
+Copyright (c) 2010-2023, Mathieu Labbe - IntRoLab - Universite de Sherbrooke
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -25,53 +25,14 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef CORELIB_SRC_OCCUPANCYGRID_H_
-#define CORELIB_SRC_OCCUPANCYGRID_H_
+#ifndef CORELIB_INCLUDE_RTABMAP_CORE_OCCUPANCYGRID_H_
+#define CORELIB_INCLUDE_RTABMAP_CORE_OCCUPANCYGRID_H_
 
-#include "rtabmap/core/rtabmap_core_export.h" // DLL export/import defines
+/*
+ * Deprecated header, use the one below directly!
+ */
 
-#include <rtabmap/core/ProbabilisticMap.h>
+#include <rtabmap/core/global_map/OccupancyGrid.h>
 
-#include <pcl/point_cloud.h>
-#include <pcl/point_types.h>
 
-namespace rtabmap {
-
-class RTABMAP_CORE_EXPORT OccupancyGrid : public ProbabilisticMap
-{
-public:
-	OccupancyGrid(const ParametersMap & parameters = ParametersMap());
-	void setMap(const cv::Mat & map, float xMin, float yMin, float cellSize, const std::map<int, Transform> & poses);
-	void setCloudAssembling(bool enabled);
-	float getMinMapSize() const {return minMapSize_;}
-
-	virtual void clear(bool keepCache = false);
-
-	virtual bool update(const std::map<int, Transform> & poses);
-
-	cv::Mat getMap(float & xMin, float & yMin) const;
-	cv::Mat getProbMap(float & xMin, float & yMin) const;
-	const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & getMapGround() const {return assembledGround_;}
-	const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & getMapObstacles() const {return assembledObstacles_;}
-	const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & getMapEmptyCells() const {return assembledEmptyCells_;}
-
-	unsigned long getMemoryUsed() const;
-
-private:
-	cv::Mat map_;
-	cv::Mat mapInfo_;
-	std::map<int, std::pair<int, int> > cellCount_; //<node Id, cells>
-
-	float minMapSize_;
-	bool erode_;
-	float footprintRadius_;
-
-	bool cloudAssembling_;
-	pcl::PointCloud<pcl::PointXYZRGB>::Ptr assembledGround_;
-	pcl::PointCloud<pcl::PointXYZRGB>::Ptr assembledObstacles_;
-	pcl::PointCloud<pcl::PointXYZRGB>::Ptr assembledEmptyCells_;
-};
-
-}
-
-#endif /* CORELIB_SRC_OCCUPANCYGRID_H_ */
+#endif /* CORELIB_INCLUDE_RTABMAP_CORE_OCCUPANCYGRID_H_ */

@@ -28,7 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/DBDriver.h>
 #include <rtabmap/core/Rtabmap.h>
 #include <rtabmap/core/Memory.h>
-#include <rtabmap/core/OccupancyGrid.h>
+#include <rtabmap/core/global_map/OccupancyGrid.h>
 #include <rtabmap/core/util3d.h>
 #include <rtabmap/core/util3d_filtering.h>
 #include <rtabmap/core/util3d_transforms.h>

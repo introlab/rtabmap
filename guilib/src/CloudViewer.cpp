@@ -87,7 +87,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #endif
 
 #ifdef RTABMAP_OCTOMAP
-#include <rtabmap/core/OctoMap.h>
+#include <rtabmap/core/global_map/OctoMap.h>
 #endif
 
 namespace rtabmap {

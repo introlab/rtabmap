@@ -1268,7 +1268,6 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->checkBox_grid_unknownSpaceFilled->setObjectName(Parameters::kGridScan2dUnknownSpaceFilled().c_str());
 	_ui->spinBox_grid_scanDecimation->setObjectName(Parameters::kGridScanDecimation().c_str());
 
-	_ui->checkBox_grid_fullUpdate->setObjectName(Parameters::kGridGlobalFullUpdate().c_str());
 	_ui->doubleSpinBox_grid_updateError->setObjectName(Parameters::kGridGlobalUpdateError().c_str());
 	_ui->doubleSpinBox_grid_minMapSize->setObjectName(Parameters::kGridGlobalMinSize().c_str());
 	_ui->spinBox_grid_maxNodes->setObjectName(Parameters::kGridGlobalMaxNodes().c_str());

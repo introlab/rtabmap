@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2010-2023, Mathieu Labbe - IntRoLab - Universite de Sherbrooke
+Copyright (c) 2010-2016, Mathieu Labbe - IntRoLab - Universite de Sherbrooke
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -25,33 +25,40 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef CORELIB_SRC_GRIDMAP_H_
-#define CORELIB_SRC_GRIDMAP_H_
+#ifndef CORELIB_SRC_CLOUDMAP_H_
+#define CORELIB_SRC_CLOUDMAP_H_
 
 #include "rtabmap/core/rtabmap_core_export.h" // DLL export/import defines
 
-#include <rtabmap/core/Map.h>
+#include <rtabmap/core/GlobalMap.h>
 
-#include <grid_map_core/GridMap.hpp>
+#include <pcl/point_cloud.h>
+#include <pcl/point_types.h>
 
 namespace rtabmap {
 
-class RTABMAP_CORE_EXPORT GridMap : public Map
+class RTABMAP_CORE_EXPORT CloudMap : public GlobalMap
 {
 public:
-	GridMap(const ParametersMap & parameters = ParametersMap());
+	CloudMap(const ParametersMap & parameters = ParametersMap());
 
 	virtual void clear(bool keepCache = false);
 
-	virtual bool update(const std::map<int, Transform> & poses);
+	const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & getMapGround() const {return assembledGround_;}
+	const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & getMapObstacles() const {return assembledObstacles_;}
+	const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & getMapEmptyCells() const {return assembledEmptyCells_;}
 
-	const grid_map::GridMap & gridMap() const {return gridMap_;}
+	unsigned long getMemoryUsed() const;
+
+protected:
+	virtual void assemble(const std::list<std::pair<int, Transform> > & newPoses);
 
 private:
-	grid_map::GridMap gridMap_;
-	float minMapSize_;
+	pcl::PointCloud<pcl::PointXYZRGB>::Ptr assembledGround_;
+	pcl::PointCloud<pcl::PointXYZRGB>::Ptr assembledObstacles_;
+	pcl::PointCloud<pcl::PointXYZRGB>::Ptr assembledEmptyCells_;
 };
 
 }
 
-#endif /* CORELIB_SRC_OCCUPANCYGRID_H_ */
+#endif /* CORELIB_SRC_CLOUDMAP_H_ */

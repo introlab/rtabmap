@@ -25,39 +25,34 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include <rtabmap/core/ProbabilisticMap.h>
-#include <rtabmap/utilite/ULogger.h>
+#ifndef CORELIB_SRC_GRIDMAP_H_
+#define CORELIB_SRC_GRIDMAP_H_
+
+#include "rtabmap/core/rtabmap_core_export.h" // DLL export/import defines
+
+#include <rtabmap/core/GlobalMap.h>
+
+#include <grid_map_core/GridMap.hpp>
 
 namespace rtabmap {
 
-ProbabilisticMap::ProbabilisticMap(const ParametersMap & parameters) :
-	Map(parameters),
-	occupancyThr_(Parameters::defaultGridGlobalOccupancyThr()),
-	probHit_(logodds(Parameters::defaultGridGlobalProbHit())),
-	probMiss_(logodds(Parameters::defaultGridGlobalProbMiss())),
-	probClampingMin_(logodds(Parameters::defaultGridGlobalProbClampingMin())),
-	probClampingMax_(logodds(Parameters::defaultGridGlobalProbClampingMax()))
+class RTABMAP_CORE_EXPORT GridMap : public GlobalMap
 {
-	Parameters::parse(parameters, Parameters::kGridGlobalOccupancyThr(), occupancyThr_);
-	if(Parameters::parse(parameters, Parameters::kGridGlobalProbHit(), probHit_))
-	{
-		probHit_ = logodds(probHit_);
-		UASSERT_MSG(probHit_ >= 0.0f, uFormat("probHit_=%f",probHit_).c_str());
-	}
-	if(Parameters::parse(parameters, Parameters::kGridGlobalProbMiss(), probMiss_))
-	{
-		probMiss_ = logodds(probMiss_);
-		UASSERT_MSG(probMiss_ <= 0.0f, uFormat("probMiss_=%f",probMiss_).c_str());
-	}
-	if(Parameters::parse(parameters, Parameters::kGridGlobalProbClampingMin(), probClampingMin_))
-	{
-		probClampingMin_ = logodds(probClampingMin_);
-	}
-	if(Parameters::parse(parameters, Parameters::kGridGlobalProbClampingMax(), probClampingMax_))
-	{
-		probClampingMax_ = logodds(probClampingMax_);
-	}
-	UASSERT(probClampingMax_ > probClampingMin_);
+public:
+	GridMap(const ParametersMap & parameters = ParametersMap());
+
+	virtual void clear(bool keepCache = false);
+
+	const grid_map::GridMap & gridMap() const {return gridMap_;}
+
+protected:
+	virtual void assemble(const std::list<std::pair<int, Transform> > & newPoses);
+
+private:
+	grid_map::GridMap gridMap_;
+	float minMapSize_;
+};
+
 }
 
-} // namespace rtabmap
+#endif /* CORELIB_SRC_OCCUPANCYGRID_H_ */

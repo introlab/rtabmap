@@ -25,7 +25,7 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include <rtabmap/core/OctoMap.h>
+#include <rtabmap/core/global_map/OctoMap.h>
 #include <rtabmap/utilite/ULogger.h>
 #include <rtabmap/utilite/UStl.h>
 #include <rtabmap/utilite/UTimer.h>
@@ -289,7 +289,7 @@ RtabmapColorOcTree::StaticMemberInitializer RtabmapColorOcTree::RtabmapColorOcTr
 //////////////////////////////////////
 
 OctoMap::OctoMap(const ParametersMap & parameters) :
-		ProbabilisticMap(parameters),
+		GlobalMap(parameters),
 		hasColor_(false),
 		rangeMax_(Parameters::defaultGridRangeMax()),
 		rayTracing_(Parameters::defaultGridRayTracing()),
@@ -328,13 +328,9 @@ OctoMap::~OctoMap()
 
 void OctoMap::clear(bool keepCache)
 {
-	if(!keepCache)
-	{
-		cacheClouds_.clear();
-	}
 	octree_->clear();
 	hasColor_ = false;
-	ProbabilisticMap::clear(keepCache);
+	GlobalMap::clear(keepCache);
 }
 
 void OctoMap::addToCache(int nodeId,
@@ -343,37 +339,15 @@ void OctoMap::addToCache(int nodeId,
 		const cv::Mat & empty,
 		const cv::Point3f & viewPoint)
 {
-	ProbabilisticMap::addToCache(nodeId, ground, obstacles, empty, viewPoint);
+	GlobalMap::addToCache(nodeId, ground, obstacles, empty, viewPoint);
 	UASSERT_MSG(ground.empty() || ground.type() == CV_32FC3 || ground.type() == CV_32FC(4) || ground.type() == CV_32FC(6), uFormat("Are local occupancy grids not 3d? (opencv type=%d)", ground.type()).c_str());
 	UASSERT_MSG(obstacles.empty() || obstacles.type() == CV_32FC3 || obstacles.type() == CV_32FC(4) || obstacles.type() == CV_32FC(6), uFormat("Are local occupancy grids not 3d? (opencv type=%d)", obstacles.type()).c_str());
 	UASSERT_MSG(empty.empty() || empty.type() == CV_32FC3 || empty.type() == CV_32FC(4) || empty.type() == CV_32FC(6), uFormat("Are local occupancy grids not 3d? (opencv type=%d)", empty.type()).c_str());
 }
 
-void OctoMap::addToCache(int nodeId,
-		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & ground,
-		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & obstacles,
-		const pcl::PointXYZ & viewPoint)
-{
-	UDEBUG("nodeId=%d", nodeId);
-	if(nodeId < 0)
-	{
-		UWARN("Cannot add nodes with negative id (nodeId=%d)", nodeId);
-		return;
-	}
-	cacheClouds_.erase(nodeId==0?-1:nodeId);
-	cacheClouds_.insert(std::make_pair(nodeId==0?-1:nodeId, std::make_pair(ground, obstacles)));
-	uInsert(cacheViewPoints_, std::make_pair(nodeId==0?-1:nodeId, cv::Point3f(viewPoint.x, viewPoint.y, viewPoint.z)));
-}
-
 unsigned long OctoMap::getMemoryUsed() const
 {
-	unsigned long memoryUsage = ProbabilisticMap::getMemoryUsed();
-
-	for(std::map<int, std::pair<const pcl::PointCloud<pcl::PointXYZRGB>::Ptr, const pcl::PointCloud<pcl::PointXYZRGB>::Ptr> >::const_iterator iter=cacheClouds_.begin(); iter!=cacheClouds_.end(); ++iter)
-	{
-		memoryUsage += iter->second.first->size();
-		memoryUsage += iter->second.second->size();
-	}
+	unsigned long memoryUsage = GlobalMap::getMemoryUsed();
 
 	// Note: size of OctoMap object is missing.
 
@@ -495,165 +469,32 @@ std::unordered_set<octomap::OcTreeKey, octomap::OcTreeKey::KeyHash> OctoMap::fin
 }
 
 
-bool OctoMap::update(const std::map<int, Transform> & poses)
+void OctoMap::assemble(const std::list<std::pair<int, Transform> > & newPoses)
 {
-	UDEBUG("Update (poses=%d addedNodes_=%d)", (int)poses.size(), (int)addedNodes_.size());
-
-	// First, check of the graph has changed. If so, re-create the octree by moving all occupied nodes.
-	bool graphOptimized, graphChanged;
-	std::map<int, Transform> transforms;
-	std::map<int, Transform> updatedAddedNodes;
-	checkIfMapChanged(poses, graphOptimized, graphChanged, transforms, updatedAddedNodes);
-
-	if(graphOptimized || graphChanged)
-	{
-		if(graphChanged)
-		{
-			UWARN("Graph has changed! The whole map should be rebuilt.");
-		}
-		else
-		{
-			UINFO("Graph optimized!");
-		}
-
-		minValues_[0] = minValues_[1] = minValues_[2] = 0.0;
-		maxValues_[0] = maxValues_[1] = maxValues_[2] = 0.0;
-
-		if(fullUpdate_ || graphChanged)
-		{
-			// clear all but keep cache
-			clear(true);
-		}
-		else
-		{
-			RtabmapColorOcTree * newOcTree = new RtabmapColorOcTree(octree_->getResolution());
-			int copied=0;
-			int count=0;
-			UTimer t;
-			for (RtabmapColorOcTree::iterator it = octree_->begin(); it != octree_->end(); ++it, ++count)
-			{
-				RtabmapColorOcTreeNode & nOld = *it;
-				if(nOld.getNodeRefId() > 0)
-				{
-					std::map<int, Transform>::iterator jter = transforms.find(nOld.getNodeRefId());
-					if(jter != transforms.end())
-					{
-						octomap::point3d pt;
-						std::map<int, Transform>::iterator pter = addedNodes_.find(nOld.getNodeRefId());
-						UASSERT(pter != addedNodes_.end());
-
-						if(nOld.getOccupancyType() > 0)
-						{
-							pt = nOld.getPointRef();
-						}
-						else
-						{
-							pt = octree_->keyToCoord(it.getKey());
-						}
-
-						cv::Point3f cvPt(pt.x(), pt.y(), pt.z());
-						cvPt = util3d::transformPoint(cvPt, jter->second);
-						octomap::point3d ptTransformed(cvPt.x, cvPt.y, cvPt.z);
-
-						octomap::OcTreeKey key;
-						if(newOcTree->coordToKeyChecked(ptTransformed, key))
-						{
-							RtabmapColorOcTreeNode * n = newOcTree->search(key);
-							if(n)
-							{
-								if(n->getNodeRefId() > nOld.getNodeRefId())
-								{
-									// The cell has been updated from more recent node, don't update the cell
-									continue;
-								}
-								else if(nOld.getOccupancyType() <= 0 && n->getOccupancyType() > 0)
-								{
-									// empty cells cannot overwrite ground/obstacle cells
-									continue;
-								}
-							}
-
-							RtabmapColorOcTreeNode * nNew = newOcTree->updateNode(key, nOld.getLogOdds());
-							if(nNew)
-							{
-								++copied;
-								updateMinMax(ptTransformed);
-								nNew->setNodeRefId(nOld.getNodeRefId());
-								if(nOld.getOccupancyType() > 0)
-								{
-									nNew->setPointRef(pt);
-								}
-								nNew->setOccupancyType(nOld.getOccupancyType());
-								nNew->setColor(nOld.getColor());
-							}
-							else
-							{
-								UERROR("Could not update node at (%f,%f,%f)", cvPt.x, cvPt.y, cvPt.z);
-							}
-						}
-						else
-						{
-							UERROR("Could not find key for (%f,%f,%f)", cvPt.x, cvPt.y, cvPt.z);
-						}
-					}
-					else if(jter == transforms.end())
-					{
-						// Note: normal if old nodes were transfered to LTM
-						//UWARN("Could not find a transform for point linked to node %d (transforms=%d)", iter->second.nodeRefId_, (int)transforms.size());
-					}
-				}
-			}
-			UINFO("Graph optimization detected, moved %d/%d in %fs", copied, count, t.ticks());
-			delete octree_;
-			octree_ = newOcTree;
-
-			//update added poses
-			addedNodes_ = updatedAddedNodes;
-		}
-	}
-
 	// Original version from A. Hornung:
 	// https://github.com/OctoMap/octomap_mapping/blob/jade-devel/octomap_server/src/OctomapServer.cpp#L356
 	//
-	std::list<std::pair<int, Transform> > orderedPoses;
 
-	int lastId = addedNodes_.size()?addedNodes_.rbegin()->first:0;
+	int lastId = assembledNodes().size()?assembledNodes().rbegin()->first:0;
 	UDEBUG("Last id = %d", lastId);
 
-	// add old poses that were not in the current map (they were just retrieved from LTM)
-	for(std::map<int, Transform>::const_iterator iter=poses.lower_bound(1); iter!=poses.end(); ++iter)
-	{
-		if(addedNodes_.find(iter->first) == addedNodes_.end())
-		{
-			orderedPoses.push_back(*iter);
-		}
-	}
+	UDEBUG("newPoses = %d", (int)newPoses.size());
 
-	// insert zero after
-	if(poses.find(0) != poses.end())
-	{
-		orderedPoses.push_back(std::make_pair(-1, poses.at(0)));
-	}
-
-	UDEBUG("orderedPoses = %d", (int)orderedPoses.size());
-
-	if(!orderedPoses.empty())
+	if(!newPoses.empty())
 	{
 		float rangeMaxSqrd = rangeMax_*rangeMax_;
 		float cellSize = octree_->getResolution();
-		for(std::list<std::pair<int, Transform> >::const_iterator iter=orderedPoses.begin(); iter!=orderedPoses.end(); ++iter)
+		for(std::list<std::pair<int, Transform> >::const_iterator iter=newPoses.begin(); iter!=newPoses.end(); ++iter)
 		{
-			std::map<int, std::pair<const pcl::PointCloud<pcl::PointXYZRGB>::Ptr, const pcl::PointCloud<pcl::PointXYZRGB>::Ptr> >::iterator cloudIter;
-			std::map<int, std::pair<std::pair<cv::Mat, cv::Mat>, cv::Mat> >::iterator occupancyIter;
-			std::map<int, cv::Point3f>::iterator viewPointIter;
-			cloudIter = cacheClouds_.find(iter->first);
-			occupancyIter = cache_.find(iter->first);
-			viewPointIter = cacheViewPoints_.find(iter->first);
-			if(occupancyIter != cache_.end() || cloudIter != cacheClouds_.end())
+			std::map<int, std::pair<std::pair<cv::Mat, cv::Mat>, cv::Mat> >::const_iterator occupancyIter;
+			std::map<int, cv::Point3f>::const_iterator viewPointIter;
+			occupancyIter = cache().find(iter->first);
+			viewPointIter = cacheViewPoints().find(iter->first);
+			if(occupancyIter != cache().end())
 			{
 				UDEBUG("Adding %d to octomap (resolution=%f)", iter->first, octree_->getResolution());
 
-				UASSERT(viewPointIter != cacheViewPoints_.end());
+				UASSERT(viewPointIter != cacheViewPoints().end());
 				octomap::point3d sensorOrigin(iter->second.x(), iter->second.y(), iter->second.z());
 				sensorOrigin += octomap::point3d(viewPointIter->second.x, viewPointIter->second.y, viewPointIter->second.z);
 
@@ -666,16 +507,16 @@ bool OctoMap::update(const std::map<int, Transform> & poses)
 					UERROR("Could not generate Key for origin ", sensorOrigin.x(), sensorOrigin.y(), sensorOrigin.z());
 				}
 
-				bool computeRays = rayTracing_ && (occupancyIter == cache_.end() || occupancyIter->second.second.empty());
+				bool computeRays = rayTracing_ && (occupancyIter == cache().end() || occupancyIter->second.second.empty());
 
 				// instead of direct scan insertion, compute update to filter ground:
 				octomap::KeySet free_cells;
 				// insert ground points only as free:
-				unsigned int maxGroundPts = occupancyIter != cache_.end()?occupancyIter->second.first.first.cols:cloudIter->second.first->size();
+				unsigned int maxGroundPts = occupancyIter->second.first.first.cols;
 				UDEBUG("%d: compute free cells (from %d ground points)", iter->first, (int)maxGroundPts);
 				Eigen::Affine3f t = iter->second.toEigen3f();
 				LaserScan tmpGround;
-				if(occupancyIter != cache_.end())
+				if(occupancyIter != cache().end())
 				{
 					tmpGround = LaserScan::backwardCompatibility(occupancyIter->second.first.first);
 					UASSERT(tmpGround.size() == (int)maxGroundPts);
@@ -683,15 +524,9 @@ bool OctoMap::update(const std::map<int, Transform> & poses)
 				for (unsigned int i=0; i<maxGroundPts; ++i)
 				{
 					pcl::PointXYZRGB pt;
-					if(occupancyIter != cache_.end())
-					{
-						pt = util3d::laserScanToPointRGB(tmpGround, i);
-						pt = pcl::transformPoint(pt, t);
-					}
-					else
-					{
-						pt = pcl::transformPoint(cloudIter->second.first->at(i), t);
-					}
+					pt = util3d::laserScanToPointRGB(tmpGround, i);
+					pt = pcl::transformPoint(pt, t);
+
 					octomap::point3d point(pt.x, pt.y, pt.z);
 					bool ignoreOccupiedCell = false;
 					if(rangeMaxSqrd > 0.0f)
@@ -755,10 +590,10 @@ bool OctoMap::update(const std::map<int, Transform> & poses)
 				UDEBUG("%d: ground cells=%d free cells=%d", iter->first, (int)maxGroundPts, (int)free_cells.size());
 
 				// all other points: free on ray, occupied on endpoint:
-				unsigned int maxObstaclePts = occupancyIter != cache_.end()?occupancyIter->second.first.second.cols:cloudIter->second.second->size();
+				unsigned int maxObstaclePts = occupancyIter->second.first.second.cols;
 				UDEBUG("%d: compute occupied cells (from %d obstacle points)", iter->first, (int)maxObstaclePts);
 				LaserScan tmpObstacle;
-				if(occupancyIter != cache_.end())
+				if(occupancyIter != cache().end())
 				{
 					tmpObstacle = LaserScan::backwardCompatibility(occupancyIter->second.first.second);
 					UASSERT(tmpObstacle.size() == (int)maxObstaclePts);
@@ -766,15 +601,8 @@ bool OctoMap::update(const std::map<int, Transform> & poses)
 				for (unsigned int i=0; i<maxObstaclePts; ++i)
 				{
 					pcl::PointXYZRGB pt;
-					if(occupancyIter != cache_.end())
-					{
-						pt = util3d::laserScanToPointRGB(tmpObstacle, i);
-						pt = pcl::transformPoint(pt, t);
-					}
-					else
-					{
-						pt = pcl::transformPoint(cloudIter->second.second->at(i), t);
-					}
+					pt = util3d::laserScanToPointRGB(tmpObstacle, i);
+					pt = pcl::transformPoint(pt, t);
 
 					octomap::point3d point(pt.x, pt.y, pt.z);
 
@@ -865,7 +693,7 @@ bool OctoMap::update(const std::map<int, Transform> & poses)
 				}
 
 				// all empty cells
-				if(occupancyIter != cache_.end() && occupancyIter->second.second.cols)
+				if(occupancyIter != cache().end() && occupancyIter->second.second.cols)
 				{
 					unsigned int maxEmptyPts = occupancyIter->second.second.cols;
 					UDEBUG("%d: compute free cells (from %d empty points)", iter->first, (int)maxEmptyPts);
@@ -921,22 +749,18 @@ bool OctoMap::update(const std::map<int, Transform> & poses)
 					}
 				}
 
-				if((occupancyIter != cache_.end() && occupancyIter->second.second.cols) || !free_cells.empty())
+				if((occupancyIter != cache().end() && occupancyIter->second.second.cols) || !free_cells.empty())
 				{
 					octree_->updateInnerOccupancy();
 				}
 
 				// compress map
-				//if(orderedPoses.size() > 1)
+				//if(newPoses.size() > 1)
 				//{
 				//	octree_->prune();
 				//}
 
-				// ignore negative ids as they are temporary clouds
-				if(iter->first > 0)
-				{
-					addedNodes_.insert(*iter);
-				}
+				addAssembledNode(iter->first, iter->second);
 				UDEBUG("%d: end", iter->first);
 			}
 			else
@@ -967,21 +791,12 @@ bool OctoMap::update(const std::map<int, Transform> & poses)
             }
         }
 
-
         for(unsigned int y=0; y < nodeToDelete.size(); y++)
         {
             octree_->deleteNode(nodeToDelete[y],emptyFloodFillDepth_);
         }
         UDEBUG("Flood Fill: deleted %d empty cells (%fs)", (int)nodeToDelete.size(), t.ticks());
     }
-
-	if(!fullUpdate_)
-	{
-		cache_.clear();
-		cacheClouds_.clear();
-		cacheViewPoints_.clear();
-	}
-	return !orderedPoses.empty() || graphOptimized || graphChanged || emptyFloodFillDepth_>0;
 }
 
 void OctoMap::updateMinMax(const octomap::point3d & point)

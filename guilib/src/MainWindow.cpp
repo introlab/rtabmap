@@ -41,7 +41,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/Memory.h"
 #include "rtabmap/core/DBDriver.h"
 #include "rtabmap/core/RegistrationVis.h"
-#include "rtabmap/core/OccupancyGrid.h"
+#include "rtabmap/core/global_map/OccupancyGrid.h"
 #include "rtabmap/core/GainCompensator.h"
 #include "rtabmap/core/Recovery.h"
 #include "rtabmap/core/util2d.h"
@@ -115,7 +115,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pcl/search/kdtree.h>
 
 #ifdef RTABMAP_OCTOMAP
-#include <rtabmap/core/OctoMap.h>
+#include <rtabmap/core/global_map/OctoMap.h>
 #endif
 
 #ifdef HAVE_OPENCV_ARUCO

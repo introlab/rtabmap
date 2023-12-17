@@ -107,10 +107,10 @@ SET(SRC_FILES
     stereo/StereoBM.cpp
     stereo/StereoSGBM.cpp
     
-    Map.cpp
+    GlobalMap.cpp
     LocalMapMaker.cpp
-    ProbabilisticMap.cpp
-    OccupancyGrid.cpp
+    global_map/OccupancyGrid.cpp
+    global_map/CloudMap.cpp
     
     MarkerDetector.cpp
     
@@ -593,7 +593,7 @@ IF(octomap_FOUND)
     ENDIF()
 	SET(SRC_FILES
     	${SRC_FILES}
-		OctoMap.cpp
+		global_map/OctoMap.cpp
 	)
 ENDIF(octomap_FOUND)
 
@@ -615,7 +615,7 @@ IF(grid_map_core_FOUND)
     ENDIF()
 	SET(SRC_FILES
     	${SRC_FILES}
-		GridMap.cpp
+		global_map/GridMap.cpp
 	)
 ENDIF(grid_map_core_FOUND)
 

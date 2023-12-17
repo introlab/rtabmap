@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2010-2023, Mathieu Labbe - IntRoLab - Universite de Sherbrooke
+Copyright (c) 2010-2016, Mathieu Labbe - IntRoLab - Universite de Sherbrooke
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -25,41 +25,45 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef SRC_PROBABILISTIC_MAP_H_
-#define SRC_PROBABILISTIC_MAP_H_
+#ifndef CORELIB_SRC_OCCUPANCYGRID_H_
+#define CORELIB_SRC_OCCUPANCYGRID_H_
 
 #include "rtabmap/core/rtabmap_core_export.h" // DLL export/import defines
-#include <rtabmap/core/Map.h>
+
+#include <rtabmap/core/GlobalMap.h>
+
+#include <pcl/point_cloud.h>
+#include <pcl/point_types.h>
 
 namespace rtabmap {
 
-class RTABMAP_CORE_EXPORT ProbabilisticMap : public Map
+class RTABMAP_CORE_EXPORT OccupancyGrid : public GlobalMap
 {
 public:
-	inline static float logodds(double probability)
-	{
-		return (float) log(probability/(1-probability));
-	}
+	OccupancyGrid(const ParametersMap & parameters = ParametersMap());
+	void setMap(const cv::Mat & map, float xMin, float yMin, float cellSize, const std::map<int, Transform> & poses);
+	float getMinMapSize() const {return minMapSize_;}
 
-	inline static double probability(double logodds)
-	{
-		return 1. - ( 1. / (1. + exp(logodds)));
-	}
-public:
-	virtual ~ProbabilisticMap() {}
+	virtual void clear(bool keepCache = false);
 
-protected:
-	ProbabilisticMap(const ParametersMap & parameters = ParametersMap());
+	cv::Mat getMap(float & xMin, float & yMin) const;
+	cv::Mat getProbMap(float & xMin, float & yMin) const;
+
+	unsigned long getMemoryUsed() const;
 
 protected:
-	float occupancyThr_;
-	float probHit_;
-	float probMiss_;
-	float probClampingMin_;
-	float probClampingMax_;
+	virtual void assemble(const std::list<std::pair<int, Transform> > & newPoses);
+
+private:
+	cv::Mat map_;
+	cv::Mat mapInfo_;
+	std::map<int, std::pair<int, int> > cellCount_; //<node Id, cells>
+
+	float minMapSize_;
+	bool erode_;
+	float footprintRadius_;
 };
 
+}
 
-} /* namespace rtabmap */
-
-#endif /* SRC_PROBABILISTIC_MAP_H_ */
+#endif /* CORELIB_SRC_OCCUPANCYGRID_H_ */
