@@ -27,10 +27,17 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <rtabmap/core/global_map/GridMap.h>
 #include <rtabmap/core/util3d_transforms.h>
+#include <rtabmap/core/util3d.h>
+#include <rtabmap/core/util3d_surface.h>
+#include <rtabmap/core/CameraModel.h>
 #include <rtabmap/utilite/UTimer.h>
 #include <rtabmap/utilite/ULogger.h>
 #include <rtabmap/utilite/UStl.h>
 #include <list>
+
+#include <opencv2/photo.hpp>
+#include <grid_map_core/iterators/GridMapIterator.hpp>
+#include <pcl/io/pcd_io.h>
 
 namespace rtabmap {
 
@@ -45,6 +52,128 @@ void GridMap::clear(bool keepCache)
 {
 	gridMap_ = grid_map::GridMap();
 	GlobalMap::clear(keepCache);
+}
+
+cv::Mat GridMap::createHeightMap(float & xMin, float & yMin, float & cellSize) const
+{
+	return toImage("elevation", xMin, yMin, cellSize);
+}
+
+cv::Mat GridMap::createColorMap(float & xMin, float & yMin, float & cellSize) const
+{
+	return toImage("colors", xMin, yMin, cellSize);
+}
+
+cv::Mat GridMap::toImage(const std::string & layer, float & xMin, float & yMin, float & cellSize) const
+{
+	if( gridMap_.hasBasicLayers())
+	{
+		const grid_map::Matrix& data = gridMap_[layer];
+
+		cv::Mat image;
+		if(layer.compare("elevation") == 0)
+		{
+			image = cv::Mat::zeros(gridMap_.getSize()(1), gridMap_.getSize()(0), CV_32FC1);
+			for(grid_map::GridMapIterator iterator(gridMap_); !iterator.isPastEnd(); ++iterator) {
+				const grid_map::Index index(*iterator);
+				const float& value = data(index(0), index(1));
+				const grid_map::Index imageIndex(iterator.getUnwrappedIndex());
+				if (std::isfinite(value))
+				{
+					image.at<float>(image.rows-1-imageIndex(1), image.cols-1-imageIndex(0)) = value;
+				}
+			}
+		}
+		else if(layer.compare("colors") == 0)
+		{
+			image = cv::Mat::zeros(gridMap_.getSize()(1), gridMap_.getSize()(0), CV_8UC3);
+			for(grid_map::GridMapIterator iterator(gridMap_); !iterator.isPastEnd(); ++iterator) {
+				const grid_map::Index index(*iterator);
+				const float& value = data(index(0), index(1));
+				const grid_map::Index imageIndex(iterator.getUnwrappedIndex());
+				if (std::isfinite(value))
+				{
+					const int * ptr = (const int *)&value;
+					cv::Vec3b & color = image.at<cv::Vec3b>(image.rows-1-imageIndex(1), image.cols-1-imageIndex(0));
+					color[0] = (unsigned char)(*ptr & 0xFF); // B
+					color[1] = (unsigned char)((*ptr >> 8) & 0xFF); // G
+					color[2] = (unsigned char)((*ptr >> 16) & 0xFF); // R
+				}
+			}
+		}
+		else
+		{
+			UFATAL("Unknown layer \"%s\"", layer.c_str());
+		}
+
+		xMin = gridMap_.getPosition().x() - gridMap_.getLength().x()/2.0f;
+		yMin = gridMap_.getPosition().y() - gridMap_.getLength().y()/2.0f;
+		cellSize = gridMap_.getResolution();
+
+		return image;
+
+	}
+	return cv::Mat();
+}
+
+pcl::PointCloud<pcl::PointXYZRGB>::Ptr GridMap::createTerrainCloud() const
+{
+	pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+	if( gridMap_.hasBasicLayers())
+	{
+		const grid_map::Matrix& dataElevation = gridMap_["elevation"];
+		const grid_map::Matrix& dataColors = gridMap_["colors"];
+
+		cloud->width = gridMap_.getSize()(0);
+		cloud->height = gridMap_.getSize()(1);
+		cloud->resize(cloud->width * cloud->height);
+		cloud->is_dense = false;
+
+		float xMin = gridMap_.getPosition().x() - gridMap_.getLength().x()/2.0f;
+		float yMin = gridMap_.getPosition().y() - gridMap_.getLength().y()/2.0f;
+		float cellSize = gridMap_.getResolution();
+
+		for(grid_map::GridMapIterator iterator(gridMap_); !iterator.isPastEnd(); ++iterator)
+		{
+			const grid_map::Index index(*iterator);
+			const float& value = dataElevation(index(0), index(1));
+			const int* color = (const int*)&dataColors(index(0), index(1));
+			const grid_map::Index imageIndex(iterator.getUnwrappedIndex());
+			pcl::PointXYZRGB & pt = cloud->at(cloud->width-1-imageIndex(0), imageIndex(1));
+			if (std::isfinite(value))
+			{
+				pt.x = xMin + (cloud->width-1-imageIndex(0)) * cellSize;
+				pt.y = yMin + (cloud->height-1-imageIndex(1)) * cellSize;
+				pt.z = value;
+				pt.b = (unsigned char)(*color & 0xFF);
+				pt.g = (unsigned char)((*color >> 8) & 0xFF);
+				pt.r = (unsigned char)((*color >> 16) & 0xFF);
+			}
+			else
+			{
+				pt.x = pt.y = pt.z = std::numeric_limits<float>::quiet_NaN();
+			}
+		}
+	}
+	return cloud;
+}
+
+pcl::PolygonMesh::Ptr GridMap::createTerrainMesh() const
+{
+	pcl::PolygonMesh::Ptr mesh(new pcl::PolygonMesh);
+	pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = createTerrainCloud();
+	if(!cloud->empty())
+	{
+		mesh->polygons = util3d::organizedFastMesh(
+				cloud,
+				M_PI,
+				true,
+				1);
+
+		pcl::toPCLPointCloud2(*cloud, mesh->cloud);
+	}
+
+	return mesh;
 }
 
 void GridMap::assemble(const std::list<std::pair<int, Transform> > & newPoses)
@@ -111,7 +240,7 @@ void GridMap::assemble(const std::list<std::pair<int, Transform> > & newPoses)
 				cv::Mat occupied;
 				if(pair.first.first.cols || pair.first.second.cols)
 				{
-					occupied = cv::Mat(1, pair.first.first.cols+pair.first.second.cols, CV_32FC3);
+					occupied = cv::Mat(1, pair.first.first.cols+pair.first.second.cols, CV_32FC4);
 				}
 				if(pair.first.first.cols)
 				{
@@ -124,9 +253,14 @@ void GridMap::assemble(const std::list<std::pair<int, Transform> > & newPoses)
 						const float * vi = pair.first.first.ptr<float>(0,i);
 						float * vo = occupied.ptr<float>(0,i);
 						cv::Point3f vt;
+						vo[3] = 0xFFFFFFFF; // RGBA
 						if(pair.first.first.channels() != 2 && pair.first.first.channels() != 5)
 						{
 							vt = util3d::transformPoint(cv::Point3f(vi[0], vi[1], vi[2]), iter->second);
+							if(pair.first.first.channels() == 4)
+							{
+								vo[3] = vi[3];
+							}
 						}
 						else
 						{
@@ -159,9 +293,14 @@ void GridMap::assemble(const std::list<std::pair<int, Transform> > & newPoses)
 						const float * vi = pair.first.second.ptr<float>(0,i);
 						float * vo = occupied.ptr<float>(0,i+pair.first.first.cols);
 						cv::Point3f vt;
+						vo[3] = 0xFFFFFFFF; // RGBA
 						if(pair.first.second.channels() != 2 && pair.first.second.channels() != 5)
 						{
 							vt = util3d::transformPoint(cv::Point3f(vi[0], vi[1], vi[2]), iter->second);
+							if(pair.first.second.channels() == 4)
+							{
+								vo[3] = vi[3];
+							}
 						}
 						else
 						{
@@ -219,6 +358,7 @@ void GridMap::assemble(const std::list<std::pair<int, Transform> > & newPoses)
 				// Add elevation layer
 				gridMap_.add("elevation");
 				gridMap_.add("node_ids");
+				gridMap_.add("colors");
 				gridMap_.setBasicLayers({"elevation"});
 			}
 			else
@@ -287,6 +427,7 @@ void GridMap::assemble(const std::list<std::pair<int, Transform> > & newPoses)
 			}
 			grid_map::Matrix& gridMapData = gridMap_["elevation"];
 			grid_map::Matrix& gridMapNodeIds = gridMap_["node_ids"];
+			grid_map::Matrix& gridMapColors = gridMap_["colors"];
 			for(std::list<std::pair<int, Transform> >::const_iterator kter = newPoses.begin(); kter!=newPoses.end(); ++kter)
 			{
 				std::map<int, cv::Mat>::iterator iter = occupiedLocalMaps.find(kter->first);
@@ -306,6 +447,7 @@ void GridMap::assemble(const std::list<std::pair<int, Transform> > & newPoses)
 							{
 								gridMapData(index(0), index(1)) = ptf[2];
 								gridMapNodeIds(index(0), index(1)) = kter->first;
+								gridMapColors(index(0), index(1)) = ptf[3];
 							}
 							else
 							{
@@ -314,6 +456,7 @@ void GridMap::assemble(const std::list<std::pair<int, Transform> > & newPoses)
 								{
 									gridMapData(index(0), index(1)) = ptf[2];
 									gridMapNodeIds(index(0), index(1)) = kter->first;
+									gridMapColors(index(0), index(1)) = ptf[3];
 								}
 							}
 						}

@@ -121,7 +121,8 @@ void GlobalMap::addToCache(int nodeId,
 		const cv::Mat & empty,
 		const cv::Point3f & viewPoint)
 {
-	UDEBUG("nodeId=%d (ground=%d obstacles=%d empty=%d)", nodeId, ground.cols, obstacles.cols, empty.cols);
+	UDEBUG("nodeId=%d (ground=%d/%d obstacles=%d/%d empty=%d/%d)",
+			nodeId, ground.cols, ground.channels(), obstacles.cols, obstacles.channels(), empty.cols, empty.channels());
 	if(nodeId < 0)
 	{
 		UWARN("Cannot add nodes with negative id (nodeId=%d)", nodeId);

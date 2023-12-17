@@ -227,6 +227,7 @@ public:
 	double getSubtractFilteringAngle() const;
 
 	bool getGridMapShown() const;
+	int getElevationMapShown() const;
 	int getGridMapSensor() const;
 	bool projMapFrame() const;
 	double projMaxGroundAngle() const;

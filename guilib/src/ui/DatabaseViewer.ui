@@ -2335,7 +2335,7 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>226</width>
+          <width>298</width>
           <height>192</height>
          </rect>
         </property>
@@ -2489,8 +2489,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>185</width>
-          <height>485</height>
+          <width>432</width>
+          <height>196</height>
          </rect>
         </property>
         <attribute name="label">
@@ -2796,9 +2796,28 @@
         </widget>
        </item>
        <item>
-        <widget class="QCheckBox" name="checkBox_odomFrame_3dview">
+        <widget class="QCheckBox" name="checkBox_showElevation">
+         <property name="toolTip">
+          <string>Available if RTAB-Map is built with GridMap</string>
+         </property>
          <property name="text">
-          <string>Odom Frame</string>
+          <string>Elevation</string>
+         </property>
+         <property name="checked">
+          <bool>false</bool>
+         </property>
+         <property name="tristate">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QCheckBox" name="checkBox_odomFrame_3dview">
+         <property name="toolTip">
+          <string>Adjust roll, pitch and height based on odometry pose</string>
+         </property>
+         <property name="text">
+          <string>Odom</string>
          </property>
          <property name="checked">
           <bool>true</bool>
@@ -2967,12 +2986,38 @@
      <item>
       <layout class="QHBoxLayout" name="horizontalLayout_8">
        <item>
+        <widget class="QCheckBox" name="checkBox_grid_grid">
+         <property name="text">
+          <string>Grid</string>
+         </property>
+         <property name="checked">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+       <item>
         <widget class="QCheckBox" name="checkBox_grid_2d">
          <property name="text">
           <string>2d Map</string>
          </property>
          <property name="checked">
           <bool>false</bool>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QCheckBox" name="checkBox_grid_elevation">
+         <property name="toolTip">
+          <string>Available if RTAB-Map is built with GridMap</string>
+         </property>
+         <property name="text">
+          <string>Elevation</string>
+         </property>
+         <property name="checked">
+          <bool>false</bool>
+         </property>
+         <property name="tristate">
+          <bool>true</bool>
          </property>
         </widget>
        </item>

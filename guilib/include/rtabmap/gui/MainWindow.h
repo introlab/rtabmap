@@ -75,6 +75,7 @@ class PostProcessingDialog;
 class DepthCalibrationDialog;
 class DataRecorder;
 class OctoMap;
+class GridMap;
 class MultiSessionLocWidget;
 
 class RTABMAP_GUI_EXPORT MainWindow : public QMainWindow, public UEventsHandler
@@ -393,6 +394,7 @@ private:
 
 	rtabmap::OccupancyGrid * _occupancyGrid;
 	rtabmap::OctoMap * _octomap;
+	rtabmap::GridMap * _elevationMap;
 
 	std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr> _createdFeatures;
 

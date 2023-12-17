@@ -118,6 +118,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/global_map/OctoMap.h>
 #endif
 
+#ifdef RTABMAP_GRIDMAP
+#include <rtabmap/core/global_map/GridMap.h>
+#endif
+
 #ifdef HAVE_OPENCV_ARUCO
 #include <opencv2/aruco.hpp>
 #endif
@@ -164,6 +168,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent, bool sh
 	_createdCloudsMemoryUsage(0),
 	_occupancyGrid(0),
 	_octomap(0),
+	_elevationMap(0),
 	_odometryCorrection(Transform::getIdentity()),
 	_processingOdometry(false),
 	_oneSecondTimer(0),
@@ -262,6 +267,9 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent, bool sh
 	_occupancyGrid = new OccupancyGrid(parameters);
 #ifdef RTABMAP_OCTOMAP
 	_octomap = new OctoMap(parameters);
+#endif
+#ifdef RTABMAP_GRIDMAP
+	_elevationMap = new GridMap(parameters);
 #endif
 
 	// Timer
@@ -667,6 +675,10 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent, bool sh
 	_ui->statsToolBox->updateStat("GUI/Octomap Update/ms", false);
 	_ui->statsToolBox->updateStat("GUI/Octomap Rendering/ms", false);
 #endif
+#ifdef RTABMAP_GRIDMAP
+	_ui->statsToolBox->updateStat("GUI/Elevation Update/ms", false);
+	_ui->statsToolBox->updateStat("GUI/Elevation Rendering/ms", false);
+#endif
 	_ui->statsToolBox->updateStat("GUI/Grid Update/ms", false);
 	_ui->statsToolBox->updateStat("GUI/Grid Rendering/ms", false);
 	_ui->statsToolBox->updateStat("GUI/Refresh stats/ms", false);
@@ -703,6 +715,9 @@ MainWindow::~MainWindow()
 	delete _logEventTime;
 #ifdef RTABMAP_OCTOMAP
 	delete _octomap;
+#endif
+#ifdef RTABMAP_GRIDMAP
+	delete _elevationMap;
 #endif
 	delete _occupancyGrid;
 	UDEBUG("");
@@ -2960,13 +2975,20 @@ void MainWindow::updateMapCloud(
 					 (_cloudViewer->isVisible() && _preferencesDialog->getGridMapShown())) &&
 					_occupancyGrid->addedNodes().find(iter->first) == _occupancyGrid->addedNodes().end();
 			bool updateOctomap = false;
+			bool updateElevationMap = false;
 #ifdef RTABMAP_OCTOMAP
 			updateOctomap =
 					_cloudViewer->isVisible() &&
 					_preferencesDialog->isOctomapUpdated() &&
 					_octomap->addedNodes().find(iter->first) == _octomap->addedNodes().end();
 #endif
-			if(updateGridMap || updateOctomap)
+#ifdef RTABMAP_GRIDMAP
+			updateElevationMap =
+					_cloudViewer->isVisible() &&
+					_preferencesDialog->getElevationMapShown() > 0 &&
+					_elevationMap->addedNodes().find(iter->first) == _elevationMap->addedNodes().end();
+#endif
+			if(updateGridMap || updateOctomap || updateElevationMap)
 			{
 				QMap<int, Signature>::iterator jter = _cachedSignatures.find(iter->first);
 				if(jter!=_cachedSignatures.end() && jter->sensorData().gridCellSize() > 0.0f)
@@ -2991,6 +3013,21 @@ void MainWindow::updateMapCloud(
 						else if(!ground.empty() || !obstacles.empty())
 						{
 							UWARN("Node %d: Cannot update octomap with 2D occupancy grids.", iter->first);
+						}
+					}
+#endif
+#ifdef RTABMAP_GRIDMAP
+					if(updateElevationMap)
+					{
+						if((ground.empty() || ground.channels() > 2) &&
+						   (obstacles.empty() || obstacles.channels() > 2))
+						{
+							cv::Point3f viewpoint = jter->sensorData().gridViewPoint();
+							_elevationMap->addToCache(iter->first, ground, obstacles, empty, viewpoint);
+						}
+						else if(!ground.empty() || !obstacles.empty())
+						{
+							UWARN("Node %d: Cannot update elevation map with 2D occupancy grids.", iter->first);
 						}
 					}
 #endif
@@ -3329,6 +3366,50 @@ void MainWindow::updateMapCloud(
 	if(stats)
 	{
 		stats->insert(std::make_pair("GUI/Octomap Rendering/ms", (float)timer.restart()*1000.0f));
+	}
+#endif
+
+#ifdef RTABMAP_GRIDMAP
+	_cloudViewer->removeElevationMap();
+	_cloudViewer->removeCloud("elevation_mesh");
+	if(_preferencesDialog->getElevationMapShown() > 0)
+	{
+		UDEBUG("");
+		UTimer time;
+		_elevationMap->update(poses);
+		UINFO("Elevation map update time = %fs", time.ticks());
+	}
+	if(stats)
+	{
+		stats->insert(std::make_pair("GUI/Elevation Update/ms", (float)timer.restart()*1000.0f));
+	}
+	if(_preferencesDialog->getElevationMapShown() > 0)
+	{
+		UDEBUG("");
+		UTimer time;
+		if(_preferencesDialog->getElevationMapShown() == 1)
+		{
+			float xMin, yMin, cellSize;
+			cv::Mat map = _elevationMap->createHeightMap(xMin, yMin, cellSize);
+			if(!map.empty())
+			{
+				_cloudViewer->addElevationMap(map, cellSize, xMin, yMin, 1);
+			}
+		}
+		else // RGB elevation
+		{
+			pcl::PolygonMesh::Ptr mesh = _elevationMap->createTerrainMesh();
+			if(mesh->cloud.data.size())
+			{
+				_cloudViewer->addCloudMesh("elevation_mesh", mesh);
+			}
+		}
+		UINFO("Show elevation map time = %fs", time.ticks());
+	}
+	UDEBUG("");
+	if(stats)
+	{
+		stats->insert(std::make_pair("GUI/Elevation Rendering/ms", (float)timer.restart()*1000.0f));
 	}
 #endif
 

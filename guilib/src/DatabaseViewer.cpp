@@ -98,6 +98,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/global_map/OctoMap.h"
 #endif
 
+#ifdef RTABMAP_GRIDMAP
+#include "rtabmap/core/global_map/GridMap.h"
+#endif
+
 namespace rtabmap {
 
 DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
@@ -195,6 +199,13 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 #ifndef RTABMAP_OCTOMAP
 	ui_->checkBox_octomap->setEnabled(false);
 	ui_->checkBox_octomap->setChecked(false);
+#endif
+
+#ifndef RTABMAP_GRIDMAP
+	ui_->checkBox_showElevation->setEnabled(false);
+	ui_->checkBox_showElevation->setChecked(false);
+	ui_->checkBox_grid_elevation->setEnabled(false);
+	ui_->checkBox_grid_elevation->setChecked(false);
 #endif
 
 	ParametersMap parameters;
@@ -347,6 +358,7 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	connect(ui_->checkBox_showScan, SIGNAL(toggled(bool)), this, SLOT(update3dView()));
 	connect(ui_->checkBox_showMap, SIGNAL(toggled(bool)), this, SLOT(update3dView()));
 	connect(ui_->checkBox_showGrid, SIGNAL(toggled(bool)), this, SLOT(update3dView()));
+	connect(ui_->checkBox_showElevation, SIGNAL(stateChanged(int)), this, SLOT(update3dView()));
 	connect(ui_->checkBox_odomFrame_3dview, SIGNAL(toggled(bool)), this, SLOT(update3dView()));
 	connect(ui_->checkBox_gravity_3dview, SIGNAL(toggled(bool)), this, SLOT(update3dView()));
 
@@ -386,7 +398,9 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	connect(ui_->checkBox_ignoreLandmarks, SIGNAL(stateChanged(int)), this, SLOT(updateGraphView()));
 	connect(ui_->doubleSpinBox_optimizationScale, SIGNAL(editingFinished()), this, SLOT(updateGraphView()));
 	connect(ui_->checkBox_octomap, SIGNAL(stateChanged(int)), this, SLOT(updateGrid()));
+	connect(ui_->checkBox_grid_grid, SIGNAL(stateChanged(int)), this, SLOT(updateGrid()));
 	connect(ui_->checkBox_grid_2d, SIGNAL(stateChanged(int)), this, SLOT(updateGrid()));
+	connect(ui_->checkBox_grid_elevation, SIGNAL(stateChanged(int)), this, SLOT(updateGrid()));
 	connect(ui_->comboBox_octomap_rendering_type, SIGNAL(currentIndexChanged(int)), this, SLOT(updateOctomapView()));
 	connect(ui_->spinBox_grid_depth, SIGNAL(valueChanged(int)), this, SLOT(updateOctomapView()));
 	connect(ui_->checkBox_grid_empty, SIGNAL(stateChanged(int)), this, SLOT(updateGrid()));
@@ -4885,7 +4899,9 @@ void DatabaseViewer::update(int value,
 					cloudViewer_->removeCloud("obstacles");
 					cloudViewer_->removeCloud("empty_cells");
 					cloudViewer_->removeCloud("words");
+					cloudViewer_->removeCloud("elevation_mesh");
 					cloudViewer_->removeOctomap();
+					cloudViewer_->removeElevationMap();
 
 					Transform pose = Transform::getIdentity();
 					if(signatures.size() && ui_->checkBox_odomFrame_3dview->isChecked())
@@ -5229,15 +5245,15 @@ void DatabaseViewer::update(int value,
 								octomap->update(poses);
 							}
 #endif
-
+							ParametersMap parameters = ui_->parameters_toolbox->getParameters();
 							if(ui_->checkBox_showMap->isChecked())
 							{
 								float xMin=0.0f, yMin=0.0f;
 								cv::Mat map8S;
-								ParametersMap parameters = ui_->parameters_toolbox->getParameters();
 								float gridCellSize = Parameters::defaultGridCellSize();
 								Parameters::parse(parameters, Parameters::kGridCellSize(), gridCellSize);
 								parameters = Parameters::filterParameters(parameters, "GridGlobal", true);
+
 #ifdef RTABMAP_OCTOMAP
 								if(octomap)
 								{
@@ -5351,6 +5367,41 @@ void DatabaseViewer::update(int value,
 								delete octomap;
 							}
 #endif
+
+							if(ui_->checkBox_showElevation->checkState() != Qt::Unchecked) // Show elevation map?
+							{
+								GridMap gridMap(parameters);
+								bool updateAborted = false;
+								for(std::map<int, std::pair<std::pair<cv::Mat, cv::Mat>, cv::Mat> >::iterator iter=localMaps.begin(); iter!=localMaps.end(); ++iter)
+								{
+									if(iter->second.first.first.channels() == 2 || iter->second.first.second.channels() == 2)
+									{
+										QMessageBox::warning(this, tr(""),
+												tr("Some local occupancy grids are 2D, but OctoMap requires 3D local "
+													"occupancy grids. Uncheck OctoMap under GUI parameters or generate "
+													"3D local occupancy grids (\"Grid/3D\" core parameter)."));
+										updateAborted = true;
+										break;
+									}
+									gridMap.addToCache(iter->first, iter->second.first.first, iter->second.first.second, iter->second.second, localMapsInfo.at(iter->first).second);
+								}
+								if(!updateAborted)
+								{
+									gridMap.update(poses);
+									if(ui_->checkBox_showElevation->checkState() == Qt::PartiallyChecked)
+									{
+										float xMin, yMin, gridCellSize;
+										cv::Mat elevationMap = gridMap.createHeightMap(xMin, yMin, gridCellSize);
+										cloudViewer_->addElevationMap(elevationMap, gridCellSize, xMin, yMin, 1.0f);
+									}
+									else
+									{
+										pcl::PolygonMesh::Ptr mesh = gridMap.createTerrainMesh();
+										cloudViewer_->addCloudMesh("elevation_mesh", mesh);
+									}
+									cloudViewer_->refreshView();
+								}
+							}
 						}
 					}
 					cloudViewer_->updateCameraTargetPosition(pose);
@@ -6776,11 +6827,8 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 		std::map<int, std::pair<std::pair<cv::Mat, cv::Mat>, cv::Mat> > localMaps;
 		std::map<int, std::pair<float, cv::Point3f> > localMapsInfo;
 #ifdef RTABMAP_OCTOMAP
-		if(octomap_)
-		{
-			delete octomap_;
-			octomap_ = 0;
-		}
+		delete octomap_;
+		octomap_ = 0;
 #endif
 		if(ui_->dockWidget_graphView->isVisible() || ui_->dockWidget_occupancyGridView->isVisible())
 		{
@@ -6893,7 +6941,6 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 				}
 			}
 #endif
-
 			// Generate 2d grid map?
 			if((ui_->dockWidget_graphView->isVisible() && ui_->graphViewer->isGridMapVisible()) ||
 			   (ui_->dockWidget_occupancyGridView->isVisible() && ui_->checkBox_grid_2d->isChecked()))
@@ -7013,7 +7060,7 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 			}
 
 			// Generate 3d grid map?
-			if(ui_->dockWidget_occupancyGridView->isVisible())
+			if(ui_->dockWidget_occupancyGridView->isVisible() && ui_->checkBox_grid_grid->isChecked())
 			{
 #ifdef RTABMAP_OCTOMAP
 				if(ui_->checkBox_octomap->isChecked())
@@ -7129,6 +7176,43 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 								QColor(ui_->lineEdit_emptyColor->text()));
 						occupancyGridViewer_->setCloudPointSize("emptyCellsXYZ", 5);
 						occupancyGridViewer_->setCloudOpacity("emptyCellsXYZ", 0.5);
+					}
+					occupancyGridViewer_->refreshView();
+				}
+			}
+
+			// Show elevation map ?
+			if(ui_->dockWidget_occupancyGridView->isVisible() &&
+			   ui_->checkBox_grid_elevation->checkState() != Qt::Unchecked)
+			{
+				GridMap gridMap(parameters);
+				bool updateAborted = false;
+				for(std::map<int, std::pair<std::pair<cv::Mat, cv::Mat>, cv::Mat> >::iterator iter=localMaps.begin(); iter!=localMaps.end(); ++iter)
+				{
+					if(iter->second.first.first.channels() == 2 || iter->second.first.second.channels() == 2)
+					{
+						QMessageBox::warning(this, tr(""),
+								tr("Some local occupancy grids are 2D, but OctoMap requires 3D local "
+									"occupancy grids. Uncheck OctoMap under GUI parameters or generate "
+									"3D local occupancy grids (\"Grid/3D\" core parameter)."));
+						updateAborted = true;
+						break;
+					}
+					gridMap.addToCache(iter->first, iter->second.first.first, iter->second.first.second, iter->second.second, localMapsInfo.at(iter->first).second);
+				}
+				if(!updateAborted)
+				{
+					gridMap.update(graphFiltered);
+					if(ui_->checkBox_grid_elevation->checkState() == Qt::PartiallyChecked)
+					{
+						float xMin, yMin;
+						cv::Mat elevationMap = gridMap.createHeightMap(xMin, yMin, cellSize);
+						occupancyGridViewer_->addElevationMap(elevationMap, cellSize, xMin, yMin, 1.0f);
+					}
+					else
+					{
+						pcl::PolygonMesh::Ptr mesh = gridMap.createTerrainMesh();
+						occupancyGridViewer_->addCloudMesh("elevation_mesh", mesh);
 					}
 					occupancyGridViewer_->refreshView();
 				}

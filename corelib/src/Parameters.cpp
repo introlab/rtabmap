@@ -815,8 +815,14 @@ ParametersMap Parameters::parseArguments(int argc, char * argv[], bool onlyParam
 #else
 				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
 #endif
-				str = "With octomap:";
+				str = "With OctoMap:";
 #ifdef RTABMAP_OCTOMAP
+				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
+#else
+				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
+#endif
+				str = "With GridMap:";
+#ifdef RTABMAP_GRIDMAP
 				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
 #else
 				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
