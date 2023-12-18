@@ -11,6 +11,7 @@ jobs:
     
     strategy:
       matrix:
+        fail-fast: false
         docker_tag: [focal-deps, jammy-deps, jammy-iron-deps]
         include:
         - docker_tag: focal-deps
@@ -70,6 +71,7 @@ jobs:
     
     strategy:
       matrix:
+        fail-fast: false
         docker_tag: [bionic, focal, jammy, jammy-iron, android23, android24, android26, android30]
         include:
         - docker_tag: bionic
