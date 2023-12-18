@@ -1500,7 +1500,7 @@ MESSAGE(STATUS "  With GridMap ${grid_map_core_VERSION}        = YES (License: B
 ELSEIF(NOT WITH_OCTOMAP)
 MESSAGE(STATUS "  With GridMap              = NO (WITH_GRIDMAP=OFF)")
 ELSE()
-MESSAGE(STATUS "  With GridMap              = NO (octomap not found)")
+MESSAGE(STATUS "  With GridMap              = NO (grid_map_core not found)")
 ENDIF()
 
 IF(CPUTSDF_FOUND)
