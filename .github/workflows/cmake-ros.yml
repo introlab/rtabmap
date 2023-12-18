@@ -21,6 +21,7 @@ jobs:
     name: Build on ros ${{ matrix.ros_distribution }} and ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         ros_distribution: [ noetic, humble, iron, rolling]
         include:
