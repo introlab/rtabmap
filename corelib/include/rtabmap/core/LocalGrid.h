@@ -46,9 +46,9 @@ public:
 	virtual ~LocalGrid() {}
 	bool is3D() const;
 public:
-	cv::Mat ground;
-	cv::Mat obstacles;
-	cv::Mat empty;
+	cv::Mat groundCells;
+	cv::Mat obstacleCells;
+	cv::Mat emptyCells;
 	float cellSize;
 	cv::Point3f viewPoint;
 };

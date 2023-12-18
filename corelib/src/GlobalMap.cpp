@@ -35,10 +35,10 @@ GlobalMap::GlobalMap(const LocalGridCache * cache, const ParametersMap & paramet
 	cellSize_(Parameters::defaultGridCellSize()),
 	updateError_(Parameters::defaultGridGlobalUpdateError()),
 	occupancyThr_(Parameters::defaultGridGlobalOccupancyThr()),
-	probHit_(logodds(Parameters::defaultGridGlobalProbHit())),
-	probMiss_(logodds(Parameters::defaultGridGlobalProbMiss())),
-	probClampingMin_(logodds(Parameters::defaultGridGlobalProbClampingMin())),
-	probClampingMax_(logodds(Parameters::defaultGridGlobalProbClampingMax())),
+	logOddsHit_(logodds(Parameters::defaultGridGlobalProbHit())),
+	logOddsMiss_(logodds(Parameters::defaultGridGlobalProbMiss())),
+	logOddsClampingMin_(logodds(Parameters::defaultGridGlobalProbClampingMin())),
+	logOddsClampingMax_(logodds(Parameters::defaultGridGlobalProbClampingMax())),
 	cache_(cache)
 {
 	UASSERT(cache_);
@@ -56,25 +56,25 @@ GlobalMap::GlobalMap(const LocalGridCache * cache, const ParametersMap & paramet
 
 	// Probabilistic parameters
 	Parameters::parse(parameters, Parameters::kGridGlobalOccupancyThr(), occupancyThr_);
-	if(Parameters::parse(parameters, Parameters::kGridGlobalProbHit(), probHit_))
+	if(Parameters::parse(parameters, Parameters::kGridGlobalProbHit(), logOddsHit_))
 	{
-		probHit_ = logodds(probHit_);
-		UASSERT_MSG(probHit_ >= 0.0f, uFormat("probHit_=%f",probHit_).c_str());
+		logOddsHit_ = logodds(logOddsHit_);
+		UASSERT_MSG(logOddsHit_ >= 0.0f, uFormat("probHit_=%f",logOddsHit_).c_str());
 	}
-	if(Parameters::parse(parameters, Parameters::kGridGlobalProbMiss(), probMiss_))
+	if(Parameters::parse(parameters, Parameters::kGridGlobalProbMiss(), logOddsMiss_))
 	{
-		probMiss_ = logodds(probMiss_);
-		UASSERT_MSG(probMiss_ <= 0.0f, uFormat("probMiss_=%f",probMiss_).c_str());
+		logOddsMiss_ = logodds(logOddsMiss_);
+		UASSERT_MSG(logOddsMiss_ <= 0.0f, uFormat("probMiss_=%f",logOddsMiss_).c_str());
 	}
-	if(Parameters::parse(parameters, Parameters::kGridGlobalProbClampingMin(), probClampingMin_))
+	if(Parameters::parse(parameters, Parameters::kGridGlobalProbClampingMin(), logOddsClampingMin_))
 	{
-		probClampingMin_ = logodds(probClampingMin_);
+		logOddsClampingMin_ = logodds(logOddsClampingMin_);
 	}
-	if(Parameters::parse(parameters, Parameters::kGridGlobalProbClampingMax(), probClampingMax_))
+	if(Parameters::parse(parameters, Parameters::kGridGlobalProbClampingMax(), logOddsClampingMax_))
 	{
-		probClampingMax_ = logodds(probClampingMax_);
+		logOddsClampingMax_ = logodds(logOddsClampingMax_);
 	}
-	UASSERT(probClampingMax_ > probClampingMin_);
+	UASSERT(logOddsClampingMax_ > logOddsClampingMin_);
 }
 
 GlobalMap::~GlobalMap()

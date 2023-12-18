@@ -70,11 +70,11 @@ void OccupancyGrid::setMap(const cv::Mat & map, float xMin, float yMin, float ce
 				float * info = mapInfo_.ptr<float>(i,j);
 				if(value == 0)
 				{
-					info[3] = probClampingMin_;
+					info[3] = logOddsClampingMin_;
 				}
 				else if(value == 100)
 				{
-					info[3] = probClampingMax_;
+					info[3] = logOddsClampingMax_;
 				}
 			}
 		}
@@ -227,26 +227,26 @@ void OccupancyGrid::assemble(const std::list<std::pair<int, Transform> > & newPo
 			{
 				const LocalGrid & localGrid = cache().at(iter->first);
 
-				UDEBUG("Adding grid %d: ground=%d obstacles=%d empty=%d", iter->first, localGrid.ground.cols, localGrid.obstacles.cols, localGrid.empty.cols);
+				UDEBUG("Adding grid %d: ground=%d obstacles=%d empty=%d", iter->first, localGrid.groundCells.cols, localGrid.obstacleCells.cols, localGrid.emptyCells.cols);
 
 				//ground
 				cv::Mat ground;
-				if(localGrid.ground.cols || localGrid.empty.cols)
+				if(localGrid.groundCells.cols || localGrid.emptyCells.cols)
 				{
-					ground = cv::Mat(1, localGrid.ground.cols+localGrid.empty.cols, CV_32FC2);
+					ground = cv::Mat(1, localGrid.groundCells.cols+localGrid.emptyCells.cols, CV_32FC2);
 				}
-				if(localGrid.ground.cols)
+				if(localGrid.groundCells.cols)
 				{
-					if(localGrid.ground.rows > 1 && localGrid.ground.cols == 1)
+					if(localGrid.groundCells.rows > 1 && localGrid.groundCells.cols == 1)
 					{
-						UFATAL("Occupancy local maps should be 1 row and X cols! (rows=%d cols=%d)", localGrid.ground.rows, localGrid.ground.cols);
+						UFATAL("Occupancy local maps should be 1 row and X cols! (rows=%d cols=%d)", localGrid.groundCells.rows, localGrid.groundCells.cols);
 					}
-					for(int i=0; i<localGrid.ground.cols; ++i)
+					for(int i=0; i<localGrid.groundCells.cols; ++i)
 					{
-						const float * vi = localGrid.ground.ptr<float>(0,i);
+						const float * vi = localGrid.groundCells.ptr<float>(0,i);
 						float * vo = ground.ptr<float>(0,i);
 						cv::Point3f vt;
-						if(localGrid.ground.channels() != 2 && localGrid.ground.channels() != 5)
+						if(localGrid.groundCells.channels() != 2 && localGrid.groundCells.channels() != 5)
 						{
 							vt = util3d::transformPoint(cv::Point3f(vi[0], vi[1], vi[2]), iter->second);
 						}
@@ -269,18 +269,18 @@ void OccupancyGrid::assemble(const std::list<std::pair<int, Transform> > & newPo
 				}
 
 				//empty
-				if(localGrid.empty.cols)
+				if(localGrid.emptyCells.cols)
 				{
-					if(localGrid.empty.rows > 1 && localGrid.empty.cols == 1)
+					if(localGrid.emptyCells.rows > 1 && localGrid.emptyCells.cols == 1)
 					{
-						UFATAL("Occupancy local maps should be 1 row and X cols! (rows=%d cols=%d)", localGrid.empty.rows, localGrid.empty.cols);
+						UFATAL("Occupancy local maps should be 1 row and X cols! (rows=%d cols=%d)", localGrid.emptyCells.rows, localGrid.emptyCells.cols);
 					}
-					for(int i=0; i<localGrid.empty.cols; ++i)
+					for(int i=0; i<localGrid.emptyCells.cols; ++i)
 					{
-						const float * vi = localGrid.empty.ptr<float>(0,i);
-						float * vo = ground.ptr<float>(0,i+localGrid.ground.cols);
+						const float * vi = localGrid.emptyCells.ptr<float>(0,i);
+						float * vo = ground.ptr<float>(0,i+localGrid.groundCells.cols);
 						cv::Point3f vt;
-						if(localGrid.empty.channels() != 2 && localGrid.empty.channels() != 5)
+						if(localGrid.emptyCells.channels() != 2 && localGrid.emptyCells.channels() != 5)
 						{
 							vt = util3d::transformPoint(cv::Point3f(vi[0], vi[1], vi[2]), iter->second);
 						}
@@ -304,19 +304,19 @@ void OccupancyGrid::assemble(const std::list<std::pair<int, Transform> > & newPo
 				uInsert(emptyLocalMaps, std::make_pair(iter->first, ground));
 
 				//obstacles
-				if(localGrid.obstacles.cols)
+				if(localGrid.obstacleCells.cols)
 				{
-					if(localGrid.obstacles.rows > 1 && localGrid.obstacles.cols == 1)
+					if(localGrid.obstacleCells.rows > 1 && localGrid.obstacleCells.cols == 1)
 					{
-						UFATAL("Occupancy local maps should be 1 row and X cols! (rows=%d cols=%d)", localGrid.obstacles.rows, localGrid.obstacles.cols);
+						UFATAL("Occupancy local maps should be 1 row and X cols! (rows=%d cols=%d)", localGrid.obstacleCells.rows, localGrid.obstacleCells.cols);
 					}
-					cv::Mat obstacles(1, localGrid.obstacles.cols, CV_32FC2);
+					cv::Mat obstacles(1, localGrid.obstacleCells.cols, CV_32FC2);
 					for(int i=0; i<obstacles.cols; ++i)
 					{
-						const float * vi = localGrid.obstacles.ptr<float>(0,i);
+						const float * vi = localGrid.obstacleCells.ptr<float>(0,i);
 						float * vo = obstacles.ptr<float>(0,i);
 						cv::Point3f vt;
-						if(localGrid.obstacles.channels() != 2 && localGrid.obstacles.channels() != 5)
+						if(localGrid.obstacleCells.channels() != 2 && localGrid.obstacleCells.channels() != 5)
 						{
 							vt = util3d::transformPoint(cv::Point3f(vi[0], vi[1], vi[2]), iter->second);
 						}
@@ -486,14 +486,14 @@ void OccupancyGrid::assemble(const std::list<std::pair<int, Transform> > & newPo
 								// update odds
 								if(nodeId != kter->first)
 								{
-									info[3] += probMiss_;
-									if (info[3] < probClampingMin_)
+									info[3] += logOddsMiss_;
+									if (info[3] < logOddsClampingMin_)
 									{
-										info[3] = probClampingMin_;
+										info[3] = logOddsClampingMin_;
 									}
-									if (info[3] > probClampingMax_)
+									if (info[3] > logOddsClampingMax_)
 									{
-										info[3] = probClampingMax_;
+										info[3] = logOddsClampingMax_;
 									}
 								}
 							}
@@ -553,7 +553,7 @@ void OccupancyGrid::assemble(const std::list<std::pair<int, Transform> > & newPo
 									info[0] = (float)kter->first;
 									info[1] = float(i) * cellSize_ + xMin;
 									info[2] = float(j) * cellSize_ + yMin;
-									info[3] = probClampingMin_;
+									info[3] = logOddsClampingMin_;
 									cter->second.first+=1;
 								}
 								value = -2; // free space (footprint)
@@ -611,14 +611,14 @@ void OccupancyGrid::assemble(const std::list<std::pair<int, Transform> > & newPo
 								// update odds
 								if(nodeId != kter->first || value!=100)
 								{
-									info[3] += probHit_;
-									if (info[3] < probClampingMin_)
+									info[3] += logOddsHit_;
+									if (info[3] < logOddsClampingMin_)
 									{
-										info[3] = probClampingMin_;
+										info[3] = logOddsClampingMin_;
 									}
-									if (info[3] > probClampingMax_)
+									if (info[3] > logOddsClampingMax_)
 									{
-										info[3] = probClampingMax_;
+										info[3] = logOddsClampingMax_;
 									}
 								}
 

@@ -246,9 +246,11 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	ui_->comboBox_octomap_rendering_type->setVisible(ui_->checkBox_octomap->isChecked());
 	ui_->spinBox_grid_depth->setVisible(ui_->checkBox_octomap->isChecked());
 	ui_->checkBox_grid_empty->setVisible(!ui_->checkBox_octomap->isChecked() || ui_->comboBox_octomap_rendering_type->currentIndex()==0);
+	ui_->checkBox_grid_frontiers->setVisible(ui_->checkBox_octomap->isChecked() && ui_->comboBox_octomap_rendering_type->currentIndex()==0);
 	ui_->label_octomap_cubes->setVisible(ui_->checkBox_octomap->isChecked());
 	ui_->label_octomap_depth->setVisible(ui_->checkBox_octomap->isChecked());
 	ui_->label_octomap_empty->setVisible(!ui_->checkBox_octomap->isChecked() || ui_->comboBox_octomap_rendering_type->currentIndex()==0);
+	ui_->label_octomap_frontiers->setVisible(ui_->checkBox_octomap->isChecked() && ui_->comboBox_octomap_rendering_type->currentIndex()==0);
 
 	ui_->menuView->addAction(ui_->dockWidget_constraints->toggleViewAction());
 	ui_->menuView->addAction(ui_->dockWidget_graphView->toggleViewAction());
@@ -405,6 +407,7 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	connect(ui_->comboBox_octomap_rendering_type, SIGNAL(currentIndexChanged(int)), this, SLOT(updateOctomapView()));
 	connect(ui_->spinBox_grid_depth, SIGNAL(valueChanged(int)), this, SLOT(updateOctomapView()));
 	connect(ui_->checkBox_grid_empty, SIGNAL(stateChanged(int)), this, SLOT(updateGrid()));
+	connect(ui_->checkBox_grid_frontiers, SIGNAL(stateChanged(int)), this, SLOT(updateGrid()));
 	connect(ui_->doubleSpinBox_gainCompensationRadius, SIGNAL(valueChanged(double)), this, SLOT(updateConstraintView()));
 	connect(ui_->doubleSpinBox_voxelSize, SIGNAL(valueChanged(double)), this, SLOT(updateConstraintView()));
 	connect(ui_->doubleSpinBox_voxelSize, SIGNAL(valueChanged(double)), this, SLOT(update3dView()));
@@ -462,12 +465,15 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	connect(ui_->lineEdit_obstacleColor, SIGNAL(textChanged(const QString &)), this, SLOT(configModified()));
 	connect(ui_->lineEdit_groundColor, SIGNAL(textChanged(const QString &)), this, SLOT(configModified()));
 	connect(ui_->lineEdit_emptyColor, SIGNAL(textChanged(const QString &)), this, SLOT(configModified()));
+	connect(ui_->lineEdit_frontierColor, SIGNAL(textChanged(const QString &)), this, SLOT(configModified()));
 	connect(ui_->lineEdit_obstacleColor, SIGNAL(textChanged(const QString &)), this, SLOT(updateGrid()));
 	connect(ui_->lineEdit_groundColor, SIGNAL(textChanged(const QString &)), this, SLOT(updateGrid()));
 	connect(ui_->lineEdit_emptyColor, SIGNAL(textChanged(const QString &)), this, SLOT(updateGrid()));
+	connect(ui_->lineEdit_frontierColor, SIGNAL(textChanged(const QString &)), this, SLOT(updateGrid()));
 	connect(ui_->toolButton_obstacleColor, SIGNAL(clicked(bool)), this, SLOT(selectObstacleColor()));
 	connect(ui_->toolButton_groundColor, SIGNAL(clicked(bool)), this, SLOT(selectGroundColor()));
 	connect(ui_->toolButton_emptyColor, SIGNAL(clicked(bool)), this, SLOT(selectEmptyColor()));
+	connect(ui_->toolButton_frontierColor, SIGNAL(clicked(bool)), this, SLOT(selectFrontierColor()));
 	connect(ui_->spinBox_cropRadius, SIGNAL(valueChanged(int)), this, SLOT(configModified()));
 	connect(ui_->checkBox_grid_showProbMap, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
 	connect(ui_->checkBox_grid_showProbMap, SIGNAL(stateChanged(int)), this, SLOT(updateGraphView()));
@@ -584,6 +590,7 @@ void DatabaseViewer::readSettings()
 	ui_->lineEdit_obstacleColor->setText(settings.value("colorObstacle", ui_->lineEdit_obstacleColor->text()).toString());
 	ui_->lineEdit_groundColor->setText(settings.value("colorGround", ui_->lineEdit_groundColor->text()).toString());
 	ui_->lineEdit_emptyColor->setText(settings.value("colorEmpty", ui_->lineEdit_emptyColor->text()).toString());
+	ui_->lineEdit_frontierColor->setText(settings.value("colorFrontier", ui_->lineEdit_frontierColor->text()).toString());
 	ui_->spinBox_cropRadius->setValue(settings.value("cropRadius", ui_->spinBox_cropRadius->value()).toInt());
 	ui_->checkBox_grid_showProbMap->setChecked(settings.value("probMap", ui_->checkBox_grid_showProbMap->isChecked()).toBool());
 	settings.endGroup();
@@ -673,6 +680,7 @@ void DatabaseViewer::writeSettings()
 	settings.setValue("colorObstacle", ui_->lineEdit_obstacleColor->text());
 	settings.setValue("colorGround", ui_->lineEdit_groundColor->text());
 	settings.setValue("colorEmpty", ui_->lineEdit_emptyColor->text());
+	settings.setValue("colorFrontier", ui_->lineEdit_frontierColor->text());
 	settings.setValue("cropRadius", ui_->spinBox_cropRadius->value());
 	settings.setValue("probMap", ui_->checkBox_grid_showProbMap->isChecked());
 	settings.endGroup();
@@ -760,10 +768,12 @@ void DatabaseViewer::restoreDefaultSettings()
 	ui_->doubleSpinBox_posefilteringRadius->setValue(0.1);
 	ui_->doubleSpinBox_posefilteringAngle->setValue(30);
 	ui_->checkBox_grid_empty->setChecked(true);
+	ui_->checkBox_grid_frontiers->setChecked(false);
 	ui_->checkBox_octomap->setChecked(false);
 	ui_->lineEdit_obstacleColor->setText(QColor(Qt::red).name());
 	ui_->lineEdit_groundColor->setText(QColor(Qt::green).name());
 	ui_->lineEdit_emptyColor->setText(QColor(Qt::yellow).name());
+	ui_->lineEdit_frontierColor->setText(QColor(Qt::cyan).name());
 	ui_->spinBox_cropRadius->setValue(1);
 	ui_->checkBox_grid_showProbMap->setChecked(false);
 
@@ -996,9 +1006,9 @@ bool DatabaseViewer::closeDatabase()
 				{
 					dbDriver_->updateOccupancyGrid(
 							mapIter->first,
-							mapIter->second.ground,
-							mapIter->second.obstacles,
-							mapIter->second.empty,
+							mapIter->second.groundCells,
+							mapIter->second.obstacleCells,
+							mapIter->second.emptyCells,
 							mapIter->second.cellSize,
 							mapIter->second.viewPoint);
 				}
@@ -2342,6 +2352,14 @@ void DatabaseViewer::selectEmptyColor()
 		ui_->lineEdit_emptyColor->setText(c.name());
 	}
 }
+void DatabaseViewer::selectFrontierColor()
+{
+	QColor c = QColorDialog::getColor(ui_->lineEdit_frontierColor->text(), this);
+	if(c.isValid())
+	{
+		ui_->lineEdit_frontierColor->setText(c.name());
+	}
+}
 void DatabaseViewer::editDepthImage()
 {
 	if(dbDriver_ && ids_.size())
@@ -2979,7 +2997,7 @@ void DatabaseViewer::editSaved2DMap()
 
 				if(generatedLocalMaps_.localGrids().find(iter->first) != generatedLocalMaps_.localGrids().end())
 				{
-					gridObstacles = generatedLocalMaps_.localGrids().at(iter->first).obstacles;
+					gridObstacles = generatedLocalMaps_.localGrids().at(iter->first).obstacleCells;
 				}
 				if(!gridObstacles.empty())
 				{
@@ -3031,7 +3049,7 @@ void DatabaseViewer::editSaved2DMap()
 						if(generatedLocalMaps_.localGrids().find(iter->first) != generatedLocalMaps_.localGrids().end())
 						{
 							LocalGrid value = generatedLocalMaps_.localGrids().at(iter->first);
-							value.obstacles = newObstacles;
+							value.obstacleCells = newObstacles;
 							generatedLocalMaps_.add(iter->first, value);
 						}
 						else
@@ -5199,7 +5217,7 @@ void DatabaseViewer::update(int value,
 #ifdef RTABMAP_OCTOMAP
 							OctoMap * octomap = 0;
 							if(ui_->checkBox_octomap->isChecked() &&
-								(!combinedLocalMaps.localGrids().begin()->second.ground.empty() || !combinedLocalMaps.localGrids().begin()->second.obstacles.empty()) &&
+								(!combinedLocalMaps.localGrids().begin()->second.groundCells.empty() || !combinedLocalMaps.localGrids().begin()->second.obstacleCells.empty()) &&
 								combinedLocalMaps.localGrids().begin()->second.is3D() &&
 								combinedLocalMaps.localGrids().begin()->second.cellSize > 0.0f)
 							{
@@ -5292,7 +5310,7 @@ void DatabaseViewer::update(int value,
 #endif
 								{
 									// occupancy cloud
-									LaserScan scan = LaserScan::backwardCompatibility(combinedLocalMaps.localGrids().begin()->second.ground);
+									LaserScan scan = LaserScan::backwardCompatibility(combinedLocalMaps.localGrids().begin()->second.groundCells);
 									if(scan.hasRGB())
 									{
 										cloudViewer_->addCloud("ground", util3d::laserScanToPointCloudRGB(scan), pose, QColor(ui_->lineEdit_groundColor->text()));
@@ -5301,7 +5319,7 @@ void DatabaseViewer::update(int value,
 									{
 										cloudViewer_->addCloud("ground", util3d::laserScanToPointCloud(scan), pose, QColor(ui_->lineEdit_groundColor->text()));
 									}
-									scan = LaserScan::backwardCompatibility(combinedLocalMaps.localGrids().begin()->second.obstacles);
+									scan = LaserScan::backwardCompatibility(combinedLocalMaps.localGrids().begin()->second.obstacleCells);
 									if(scan.hasRGB())
 									{
 										cloudViewer_->addCloud("obstacles", util3d::laserScanToPointCloudRGB(scan), pose, QColor(ui_->lineEdit_obstacleColor->text()));
@@ -5317,7 +5335,7 @@ void DatabaseViewer::update(int value,
 									if(ui_->checkBox_grid_empty->isChecked())
 									{
 										cloudViewer_->addCloud("empty_cells",
-												util3d::laserScanToPointCloud(LaserScan::backwardCompatibility(combinedLocalMaps.localGrids().begin()->second.empty)),
+												util3d::laserScanToPointCloud(LaserScan::backwardCompatibility(combinedLocalMaps.localGrids().begin()->second.emptyCells)),
 												pose,
 												QColor(ui_->lineEdit_emptyColor->text()));
 										cloudViewer_->setCloudPointSize("empty_cells", 5);
@@ -6984,35 +7002,35 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 
 					cloudMap.update(graphFiltered);
 
-					const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & groundRGB = cloudMap.getMapGround();
-					const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & obstaclesRGB = cloudMap.getMapObstacles();
-					const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & emptyCellsRGB = cloudMap.getMapEmptyCells();
+					const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & groundCells = cloudMap.getMapGround();
+					const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & obstacleCells = cloudMap.getMapObstacles();
+					const pcl::PointCloud<pcl::PointXYZ>::Ptr & emptyCells = cloudMap.getMapEmptyCells();
 
 					// occupancy cloud
-					if(groundRGB->size())
+					if(groundCells->size())
 					{
-						occupancyGridViewer_->addCloud("groundRGB",
-								groundRGB,
+						occupancyGridViewer_->addCloud("groundCells",
+								groundCells,
 								Transform::getIdentity(),
 								QColor(ui_->lineEdit_groundColor->text()));
-						occupancyGridViewer_->setCloudPointSize("groundRGB", 5);
+						occupancyGridViewer_->setCloudPointSize("groundCells", 5);
 					}
-					if(obstaclesRGB->size())
+					if(obstacleCells->size())
 					{
-						occupancyGridViewer_->addCloud("obstaclesRGB",
-								obstaclesRGB,
+						occupancyGridViewer_->addCloud("obstacleCells",
+								obstacleCells,
 								Transform::getIdentity(),
 								QColor(ui_->lineEdit_obstacleColor->text()));
-						occupancyGridViewer_->setCloudPointSize("obstaclesRGB", 5);
+						occupancyGridViewer_->setCloudPointSize("obstacleCells", 5);
 					}
-					if(emptyCellsRGB->size())
+					if(ui_->checkBox_grid_empty->isChecked() && emptyCells->size())
 					{
-						occupancyGridViewer_->addCloud("emptyCellsRGB",
-								emptyCellsRGB,
+						occupancyGridViewer_->addCloud("emptyCells",
+								emptyCells,
 								Transform::getIdentity(),
 								QColor(ui_->lineEdit_emptyColor->text()));
-						occupancyGridViewer_->setCloudPointSize("emptyCellsRGB", 5);
-						occupancyGridViewer_->setCloudOpacity("emptyCellsRGB", 0.5);
+						occupancyGridViewer_->setCloudPointSize("emptyCells", 5);
+						occupancyGridViewer_->setCloudOpacity("emptyCells", 0.5);
 					}
 					occupancyGridViewer_->refreshView();
 				}
@@ -7600,9 +7618,11 @@ void DatabaseViewer::updateGrid()
 		ui_->comboBox_octomap_rendering_type->setVisible(ui_->checkBox_octomap->isChecked());
 		ui_->spinBox_grid_depth->setVisible(ui_->checkBox_octomap->isChecked());
 		ui_->checkBox_grid_empty->setVisible(!ui_->checkBox_octomap->isChecked() || ui_->comboBox_octomap_rendering_type->currentIndex()==0);
+		ui_->checkBox_grid_frontiers->setVisible(ui_->checkBox_octomap->isChecked() && ui_->comboBox_octomap_rendering_type->currentIndex()==0);
 		ui_->label_octomap_cubes->setVisible(ui_->checkBox_octomap->isChecked());
 		ui_->label_octomap_depth->setVisible(ui_->checkBox_octomap->isChecked());
 		ui_->label_octomap_empty->setVisible(!ui_->checkBox_octomap->isChecked() || ui_->comboBox_octomap_rendering_type->currentIndex()==0);
+		ui_->label_octomap_frontiers->setVisible(ui_->checkBox_octomap->isChecked() && ui_->comboBox_octomap_rendering_type->currentIndex()==0);
 
 		update3dView();
 		updateGraphView();
@@ -7615,9 +7635,11 @@ void DatabaseViewer::updateOctomapView()
 		ui_->comboBox_octomap_rendering_type->setVisible(ui_->checkBox_octomap->isChecked());
 		ui_->spinBox_grid_depth->setVisible(ui_->checkBox_octomap->isChecked());
 		ui_->checkBox_grid_empty->setVisible(!ui_->checkBox_octomap->isChecked() || ui_->comboBox_octomap_rendering_type->currentIndex()==0);
+		ui_->checkBox_grid_frontiers->setVisible(ui_->checkBox_octomap->isChecked() && ui_->comboBox_octomap_rendering_type->currentIndex()==0);
 		ui_->label_octomap_cubes->setVisible(ui_->checkBox_octomap->isChecked());
 		ui_->label_octomap_depth->setVisible(ui_->checkBox_octomap->isChecked());
 		ui_->label_octomap_empty->setVisible(!ui_->checkBox_octomap->isChecked() || ui_->comboBox_octomap_rendering_type->currentIndex()==0);
+		ui_->label_octomap_frontiers->setVisible(ui_->checkBox_octomap->isChecked() && ui_->comboBox_octomap_rendering_type->currentIndex()==0);
 
 		if(ui_->checkBox_octomap->isChecked())
 		{
@@ -7627,9 +7649,10 @@ void DatabaseViewer::updateOctomapView()
 				occupancyGridViewer_->removeCloud("octomap_obstacles");
 				occupancyGridViewer_->removeCloud("octomap_ground");
 				occupancyGridViewer_->removeCloud("octomap_empty");
-				occupancyGridViewer_->removeCloud("groundRGB");
-				occupancyGridViewer_->removeCloud("obstaclesRGB");
-				occupancyGridViewer_->removeCloud("emptyCellsRGB");
+				occupancyGridViewer_->removeCloud("octomap_frontiers");
+				occupancyGridViewer_->removeCloud("groundCells");
+				occupancyGridViewer_->removeCloud("obstacleCells");
+				occupancyGridViewer_->removeCloud("emptyCells");
 				if(ui_->comboBox_octomap_rendering_type->currentIndex()>0)
 				{
 					occupancyGridViewer_->addOctomap(octomap_, ui_->spinBox_grid_depth->value(), ui_->comboBox_octomap_rendering_type->currentIndex()>1);
@@ -7639,6 +7662,7 @@ void DatabaseViewer::updateOctomapView()
 					pcl::IndicesPtr obstacles(new std::vector<int>);
 					pcl::IndicesPtr empty(new std::vector<int>);
 					pcl::IndicesPtr ground(new std::vector<int>);
+					pcl::IndicesPtr frontiers(new std::vector<int>);
 					std::vector<double> prob;
 					pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = octomap_->createCloud(
 							ui_->spinBox_grid_depth->value(),
@@ -7646,7 +7670,7 @@ void DatabaseViewer::updateOctomapView()
 							empty.get(),
 							ground.get(),
 							true,
-							0,
+							frontiers.get(),
 							&prob);
 
 					if(octomap_->hasColor())
@@ -7705,6 +7729,15 @@ void DatabaseViewer::updateOctomapView()
 							occupancyGridViewer_->setCloudOpacity("octomap_empty", 0.5);
 							occupancyGridViewer_->setCloudPointSize("octomap_empty", 5);
 						}
+					}
+
+					if(ui_->checkBox_grid_frontiers->isChecked())
+					{
+						pcl::PointCloud<pcl::PointXYZ>::Ptr frontiersCloud(new pcl::PointCloud<pcl::PointXYZ>);
+						pcl::copyPointCloud(*cloud, *frontiers, *frontiersCloud);
+						occupancyGridViewer_->addCloud("octomap_frontiers", frontiersCloud, Transform::getIdentity(), QColor(ui_->lineEdit_frontierColor->text()));
+						occupancyGridViewer_->setCloudOpacity("octomap_frontiers", 0.5);
+						occupancyGridViewer_->setCloudPointSize("octomap_frontiers", 5);
 					}
 				}
 				occupancyGridViewer_->refreshView();

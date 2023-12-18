@@ -84,10 +84,10 @@ protected:
 	float updateError_;
 
 	float occupancyThr_;
-	float probHit_;
-	float probMiss_;
-	float probClampingMin_;
-	float probClampingMax_;
+	float logOddsHit_;
+	float logOddsMiss_;
+	float logOddsClampingMin_;
+	float logOddsClampingMax_;
 
 	double minValues_[3];
 	double maxValues_[3];

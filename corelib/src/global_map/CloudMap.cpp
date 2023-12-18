@@ -42,7 +42,7 @@ CloudMap::CloudMap(const LocalGridCache * cache, const ParametersMap & parameter
 	GlobalMap(cache, parameters),
 	assembledGround_(new pcl::PointCloud<pcl::PointXYZRGB>),
 	assembledObstacles_(new pcl::PointCloud<pcl::PointXYZRGB>),
-	assembledEmptyCells_(new pcl::PointCloud<pcl::PointXYZRGB>)
+	assembledEmptyCells_(new pcl::PointCloud<pcl::PointXYZ>)
 {
 }
 
@@ -50,6 +50,7 @@ void CloudMap::clear()
 {
 	assembledGround_->clear();
 	assembledObstacles_->clear();
+	assembledEmptyCells_->clear();
 	GlobalMap::clear();
 }
 
@@ -70,43 +71,43 @@ void CloudMap::assemble(const std::list<std::pair<int, Transform> > & newPoses)
 			{
 				const LocalGrid & localGrid = cache().at(iter->first);
 
-				UDEBUG("Adding grid %d: ground=%d obstacles=%d empty=%d", iter->first, localGrid.ground.cols, localGrid.obstacles.cols, localGrid.empty.cols);
+				UDEBUG("Adding grid %d: ground=%d obstacles=%d empty=%d", iter->first, localGrid.groundCells.cols, localGrid.obstacleCells.cols, localGrid.emptyCells.cols);
 
 				addAssembledNode(iter->first, iter->second);
 
 				//ground
-				if(localGrid.ground.cols)
+				if(localGrid.groundCells.cols)
 				{
-					if(localGrid.ground.rows > 1 && localGrid.ground.cols == 1)
+					if(localGrid.groundCells.rows > 1 && localGrid.groundCells.cols == 1)
 					{
-						UFATAL("Occupancy local maps should be 1 row and X cols! (rows=%d cols=%d)", localGrid.ground.rows, localGrid.ground.cols);
+						UFATAL("Occupancy local maps should be 1 row and X cols! (rows=%d cols=%d)", localGrid.groundCells.rows, localGrid.groundCells.cols);
 					}
 
-					*assembledGround_ += *util3d::laserScanToPointCloudRGB(LaserScan::backwardCompatibility(localGrid.ground), iter->second, 0, 255, 0);
+					*assembledGround_ += *util3d::laserScanToPointCloudRGB(LaserScan::backwardCompatibility(localGrid.groundCells), iter->second, 0, 255, 0);
 					assembledGroundUpdated = true;
 				}
 
 				//empty
-				if(localGrid.empty.cols)
+				if(localGrid.emptyCells.cols)
 				{
-					if(localGrid.empty.rows > 1 && localGrid.empty.cols == 1)
+					if(localGrid.emptyCells.rows > 1 && localGrid.emptyCells.cols == 1)
 					{
-						UFATAL("Occupancy local maps should be 1 row and X cols! (rows=%d cols=%d)", localGrid.empty.rows, localGrid.empty.cols);
+						UFATAL("Occupancy local maps should be 1 row and X cols! (rows=%d cols=%d)", localGrid.emptyCells.rows, localGrid.emptyCells.cols);
 					}
 
-					*assembledEmptyCells_ += *util3d::laserScanToPointCloudRGB(LaserScan::backwardCompatibility(localGrid.empty), iter->second, 0, 255, 0);
+					*assembledEmptyCells_ += *util3d::laserScanToPointCloud(LaserScan::backwardCompatibility(localGrid.emptyCells), iter->second);
 					assembledEmptyCellsUpdated = true;
 				}
 
 				//obstacles
-				if(localGrid.obstacles.cols)
+				if(localGrid.obstacleCells.cols)
 				{
-					if(localGrid.obstacles.rows > 1 && localGrid.obstacles.cols == 1)
+					if(localGrid.obstacleCells.rows > 1 && localGrid.obstacleCells.cols == 1)
 					{
-						UFATAL("Occupancy local maps should be 1 row and X cols! (rows=%d cols=%d)", localGrid.obstacles.rows, localGrid.obstacles.cols);
+						UFATAL("Occupancy local maps should be 1 row and X cols! (rows=%d cols=%d)", localGrid.obstacleCells.rows, localGrid.obstacleCells.cols);
 					}
 
-					*assembledObstacles_ += *util3d::laserScanToPointCloudRGB(LaserScan::backwardCompatibility(localGrid.obstacles), iter->second, 255, 0, 0);
+					*assembledObstacles_ += *util3d::laserScanToPointCloudRGB(LaserScan::backwardCompatibility(localGrid.obstacleCells), iter->second, 255, 0, 0);
 					assembledObstaclesUpdated = true;
 				}
 			}
@@ -144,7 +145,7 @@ unsigned long CloudMap::getMemoryUsed() const
 	}
 	if(assembledEmptyCells_.get())
 	{
-		memoryUsage += assembledEmptyCells_->points.size() * sizeof(pcl::PointXYZRGB);
+		memoryUsage += assembledEmptyCells_->points.size() * sizeof(pcl::PointXYZ);
 	}
 	return memoryUsage;
 }

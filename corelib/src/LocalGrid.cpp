@@ -36,9 +36,9 @@ LocalGrid::LocalGrid(const cv::Mat & groundIn,
 			 const cv::Mat & emptyIn,
 			 float cellSizeIn,
 			 const cv::Point3f & viewPointIn) :
-		ground(groundIn),
-		obstacles(obstaclesIn),
-		empty(emptyIn),
+		groundCells(groundIn),
+		obstacleCells(obstaclesIn),
+		emptyCells(emptyIn),
 		cellSize(cellSizeIn),
 		viewPoint(viewPointIn)
 {
@@ -47,9 +47,9 @@ LocalGrid::LocalGrid(const cv::Mat & groundIn,
 
 bool LocalGrid::is3D() const
 {
-	return (ground.empty() || ground.type() == CV_32FC3 || ground.type() == CV_32FC(4) || ground.type() == CV_32FC(6)) &&
-		   (obstacles.empty() || obstacles.type() == CV_32FC3 || obstacles.type() == CV_32FC(4) || obstacles.type() == CV_32FC(6)) &&
-		   (empty.empty() || empty.type() == CV_32FC3 || empty.type() == CV_32FC(4) || empty.type() == CV_32FC(6));
+	return (groundCells.empty() || groundCells.type() == CV_32FC3 || groundCells.type() == CV_32FC(4) || groundCells.type() == CV_32FC(6)) &&
+		   (obstacleCells.empty() || obstacleCells.type() == CV_32FC3 || obstacleCells.type() == CV_32FC(4) || obstacleCells.type() == CV_32FC(6)) &&
+		   (emptyCells.empty() || emptyCells.type() == CV_32FC3 || emptyCells.type() == CV_32FC(4) || emptyCells.type() == CV_32FC(6));
 }
 
 void LocalGridCache::add(int nodeId,
@@ -65,7 +65,7 @@ void LocalGridCache::add(int nodeId,
 void LocalGridCache::add(int nodeId, const LocalGrid & localGrid)
 {
 	UDEBUG("nodeId=%d (ground=%d/%d obstacles=%d/%d empty=%d/%d)",
-			nodeId, localGrid.ground.cols,  localGrid.ground.channels(),  localGrid.obstacles.cols,  localGrid.obstacles.channels(), localGrid.empty.cols,  localGrid.empty.channels());
+			nodeId, localGrid.groundCells.cols,  localGrid.groundCells.channels(),  localGrid.obstacleCells.cols,  localGrid.obstacleCells.channels(), localGrid.emptyCells.cols,  localGrid.emptyCells.channels());
 	if(nodeId < 0)
 	{
 		UWARN("Cannot add nodes with negative id (nodeId=%d)", nodeId);
@@ -79,7 +79,7 @@ bool LocalGridCache::shareTo(int nodeId, LocalGridCache & anotherCache) const
 	if(uContains(localGrids_, nodeId) && !uContains(anotherCache.localGrids(), nodeId))
 	{
 		const LocalGrid & localGrid = localGrids_.at(nodeId);
-		anotherCache.add(nodeId, localGrid.ground, localGrid.obstacles, localGrid.empty, localGrid.cellSize, localGrid.viewPoint);
+		anotherCache.add(nodeId, localGrid.groundCells, localGrid.obstacleCells, localGrid.emptyCells, localGrid.cellSize, localGrid.viewPoint);
 		return true;
 	}
 	return false;
@@ -91,9 +91,9 @@ unsigned long LocalGridCache::getMemoryUsed() const
 	memoryUsage += localGrids_.size()*(sizeof(int) + sizeof(LocalGrid) + sizeof(std::map<int, LocalGrid>::iterator)) + sizeof(std::map<int, LocalGrid>);
 	for(std::map<int, LocalGrid>::const_iterator iter=localGrids_.begin(); iter!=localGrids_.end(); ++iter)
 	{
-		memoryUsage += iter->second.ground.total() * iter->second.ground.elemSize();
-		memoryUsage += iter->second.obstacles.total() * iter->second.obstacles.elemSize();
-		memoryUsage += iter->second.empty.total() * iter->second.empty.elemSize();
+		memoryUsage += iter->second.groundCells.total() * iter->second.groundCells.elemSize();
+		memoryUsage += iter->second.obstacleCells.total() * iter->second.obstacleCells.elemSize();
+		memoryUsage += iter->second.emptyCells.total() * iter->second.emptyCells.elemSize();
 		memoryUsage += sizeof(int);
 		memoryUsage += sizeof(cv::Point3f);
 	}

@@ -94,6 +94,7 @@ private Q_SLOTS:
 	void selectObstacleColor();
 	void selectGroundColor();
 	void selectEmptyColor();
+	void selectFrontierColor();
 	void editDepthImage();
 	void generateGraph();
 	void editSaved2DMap();

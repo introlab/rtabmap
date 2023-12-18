@@ -1112,9 +1112,6 @@ bool CloudViewer::addOctomap(const OctoMap * octomap, unsigned int treeDepth, bo
 #ifdef RTABMAP_OCTOMAP
 	UASSERT(octomap!=0);
 
-	pcl::IndicesPtr obstacles(new std::vector<int>);
-	pcl::IndicesPtr ground(new std::vector<int>);
-
 	if(treeDepth == 0 || treeDepth > octomap->octree()->getTreeDepth())
 	{
 		if(treeDepth>0)
@@ -1130,7 +1127,11 @@ bool CloudViewer::addOctomap(const OctoMap * octomap, unsigned int treeDepth, bo
 
 	if(!volumeRepresentation)
 	{
-		pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = octomap->createCloud(treeDepth, obstacles.get(), 0, ground.get(), false);
+		pcl::IndicesPtr obstacles(new std::vector<int>);
+		pcl::IndicesPtr ground(new std::vector<int>);
+
+		pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = octomap->createCloud(
+				treeDepth, obstacles.get(), 0, ground.get(), false);
 		obstacles->insert(obstacles->end(), ground->begin(), ground->end());
 		if(obstacles->size())
 		{

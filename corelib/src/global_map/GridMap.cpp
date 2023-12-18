@@ -237,34 +237,34 @@ void GridMap::assemble(const std::list<std::pair<int, Transform> > & newPoses)
 				if(!localGrid.is3D())
 				{
 					UWARN("It seems the local occupancy grids are not 3d, cannot update GridMap! (ground type=%d, obstacles type=%d, empty type=%d)",
-							localGrid.ground.type(), localGrid.obstacles.type(), localGrid.empty.type());
+							localGrid.groundCells.type(), localGrid.obstacleCells.type(), localGrid.emptyCells.type());
 					continue;
 				}
 
-				UDEBUG("Adding grid %d: ground=%d obstacles=%d empty=%d", iter->first, localGrid.ground.cols, localGrid.obstacles.cols, localGrid.empty.cols);
+				UDEBUG("Adding grid %d: ground=%d obstacles=%d empty=%d", iter->first, localGrid.groundCells.cols, localGrid.obstacleCells.cols, localGrid.emptyCells.cols);
 
 				//ground
 				cv::Mat occupied;
-				if(localGrid.ground.cols || localGrid.obstacles.cols)
+				if(localGrid.groundCells.cols || localGrid.obstacleCells.cols)
 				{
-					occupied = cv::Mat(1, localGrid.ground.cols+localGrid.obstacles.cols, CV_32FC4);
+					occupied = cv::Mat(1, localGrid.groundCells.cols+localGrid.obstacleCells.cols, CV_32FC4);
 				}
-				if(localGrid.ground.cols)
+				if(localGrid.groundCells.cols)
 				{
-					if(localGrid.ground.rows > 1 && localGrid.ground.cols == 1)
+					if(localGrid.groundCells.rows > 1 && localGrid.groundCells.cols == 1)
 					{
-						UFATAL("Occupancy local maps should be 1 row and X cols! (rows=%d cols=%d)", localGrid.ground.rows, localGrid.ground.cols);
+						UFATAL("Occupancy local maps should be 1 row and X cols! (rows=%d cols=%d)", localGrid.groundCells.rows, localGrid.groundCells.cols);
 					}
-					for(int i=0; i<localGrid.ground.cols; ++i)
+					for(int i=0; i<localGrid.groundCells.cols; ++i)
 					{
-						const float * vi = localGrid.ground.ptr<float>(0,i);
+						const float * vi = localGrid.groundCells.ptr<float>(0,i);
 						float * vo = occupied.ptr<float>(0,i);
 						cv::Point3f vt;
 						vo[3] = 0xFFFFFFFF; // RGBA
-						if(localGrid.ground.channels() != 2 && localGrid.ground.channels() != 5)
+						if(localGrid.groundCells.channels() != 2 && localGrid.groundCells.channels() != 5)
 						{
 							vt = util3d::transformPoint(cv::Point3f(vi[0], vi[1], vi[2]), iter->second);
-							if(localGrid.ground.channels() == 4)
+							if(localGrid.groundCells.channels() == 4)
 							{
 								vo[3] = vi[3];
 							}
@@ -289,22 +289,22 @@ void GridMap::assemble(const std::list<std::pair<int, Transform> > & newPoses)
 				}
 
 				//obstacles
-				if(localGrid.obstacles.cols)
+				if(localGrid.obstacleCells.cols)
 				{
-					if(localGrid.obstacles.rows > 1 && localGrid.obstacles.cols == 1)
+					if(localGrid.obstacleCells.rows > 1 && localGrid.obstacleCells.cols == 1)
 					{
-						UFATAL("Occupancy local maps should be 1 row and X cols! (rows=%d cols=%d)", localGrid.obstacles.rows, localGrid.obstacles.cols);
+						UFATAL("Occupancy local maps should be 1 row and X cols! (rows=%d cols=%d)", localGrid.obstacleCells.rows, localGrid.obstacleCells.cols);
 					}
-					for(int i=0; i<localGrid.obstacles.cols; ++i)
+					for(int i=0; i<localGrid.obstacleCells.cols; ++i)
 					{
-						const float * vi = localGrid.obstacles.ptr<float>(0,i);
-						float * vo = occupied.ptr<float>(0,i+localGrid.ground.cols);
+						const float * vi = localGrid.obstacleCells.ptr<float>(0,i);
+						float * vo = occupied.ptr<float>(0,i+localGrid.groundCells.cols);
 						cv::Point3f vt;
 						vo[3] = 0xFFFFFFFF; // RGBA
-						if(localGrid.obstacles.channels() != 2 && localGrid.obstacles.channels() != 5)
+						if(localGrid.obstacleCells.channels() != 2 && localGrid.obstacleCells.channels() != 5)
 						{
 							vt = util3d::transformPoint(cv::Point3f(vi[0], vi[1], vi[2]), iter->second);
-							if(localGrid.obstacles.channels() == 4)
+							if(localGrid.obstacleCells.channels() == 4)
 							{
 								vo[3] = vi[3];
 							}

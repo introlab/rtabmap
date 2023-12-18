@@ -303,11 +303,18 @@ OctoMap::OctoMap(const LocalGridCache * cache, const ParametersMap & parameters)
 				Parameters::defaultGridGlobalOccupancyThr());
 		occupancyThr_ = Parameters::defaultGridGlobalOccupancyThr();
 	}
+	
+	UDEBUG("occupancyThr_=%f", occupancyThr_);
+	UDEBUG("probHit_=%f", probability(logOddsHit_));
+	UDEBUG("probMiss_=%f", probability(logOddsMiss_));
+	UDEBUG("probClampingMin_=%f", probability(logOddsClampingMin_));
+	UDEBUG("probClampingMax_=%f", probability(logOddsClampingMax_));
+	
 	octree_->setOccupancyThres(occupancyThr_);
-	octree_->setProbHit(probHit_);
-	octree_->setProbMiss(probMiss_);
-	octree_->setClampingThresMin(probClampingMin_);
-	octree_->setClampingThresMax(probClampingMax_);
+	octree_->setProbHit(probability(logOddsHit_));
+	octree_->setProbMiss(probability(logOddsMiss_));
+	octree_->setClampingThresMin(probability(logOddsClampingMin_));
+	octree_->setClampingThresMax(probability(logOddsClampingMax_));
 
 	Parameters::parse(parameters, Parameters::kGridRangeMax(), rangeMax_);
 	Parameters::parse(parameters, Parameters::kGridRayTracing(), rayTracing_);
@@ -478,14 +485,14 @@ void OctoMap::assemble(const std::list<std::pair<int, Transform> > & newPoses)
 			localGridIter = cache().find(iter->first);
 			if(localGridIter != cache().end())
 			{
-				cv::Mat ground = localGridIter->second.ground;
-				cv::Mat obstacles = localGridIter->second.obstacles;
-				cv::Mat empty = localGridIter->second.empty;
+				cv::Mat ground = localGridIter->second.groundCells;
+				cv::Mat obstacles = localGridIter->second.obstacleCells;
+				cv::Mat emptyCells = localGridIter->second.emptyCells;
 
 				if(!localGridIter->second.is3D())
 				{
 					UWARN("It seems the local occupancy grids are not 3d, cannot update OctoMap! (ground type=%d, obstacles type=%d, empty type=%d)",
-											ground.type(), obstacles.type(), empty.type());
+											ground.type(), obstacles.type(), emptyCells.type());
 					continue;
 				}
 
@@ -497,13 +504,12 @@ void OctoMap::assemble(const std::list<std::pair<int, Transform> > & newPoses)
 				updateMinMax(sensorOrigin);
 
 				octomap::OcTreeKey tmpKey;
-				if (!octree_->coordToKeyChecked(sensorOrigin, tmpKey)
-						|| !octree_->coordToKeyChecked(sensorOrigin, tmpKey))
+				if (!octree_->coordToKeyChecked(sensorOrigin, tmpKey))
 				{
 					UERROR("Could not generate Key for origin ", sensorOrigin.x(), sensorOrigin.y(), sensorOrigin.z());
 				}
 
-				bool computeRays = rayTracing_ && empty.empty();
+				bool computeRays = rayTracing_ && emptyCells.empty();
 
 				// instead of direct scan insertion, compute update to filter ground:
 				octomap::KeySet free_cells;
@@ -681,11 +687,11 @@ void OctoMap::assemble(const std::list<std::pair<int, Transform> > & newPoses)
 				}
 
 				// all empty cells
-				if(empty.cols)
+				if(emptyCells.cols)
 				{
-					unsigned int maxEmptyPts = empty.cols;
+					unsigned int maxEmptyPts = emptyCells.cols;
 					UDEBUG("%d: compute free cells (from %d empty points)", iter->first, (int)maxEmptyPts);
-					LaserScan tmpEmpty = LaserScan::backwardCompatibility(empty);
+					LaserScan tmpEmpty = LaserScan::backwardCompatibility(emptyCells);
 					UASSERT(tmpEmpty.size() == (int)maxEmptyPts);
 					for (unsigned int i=0; i<maxEmptyPts; ++i)
 					{
@@ -737,7 +743,7 @@ void OctoMap::assemble(const std::list<std::pair<int, Transform> > & newPoses)
 					}
 				}
 
-				if(empty.cols || !free_cells.empty())
+				if(emptyCells.cols || !free_cells.empty())
 				{
 					octree_->updateInnerOccupancy();
 				}
@@ -875,7 +881,6 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr OctoMap::createCloud(
 			if(cloudProb)
 			{
 				(*cloudProb)[oi] = it->getOccupancy();
-				UWARN("Adding occupied %f", (*cloudProb)[oi]);
 			}
 			if(octree_->getTreeDepth() == it.getDepth() && hasColor_)
 			{

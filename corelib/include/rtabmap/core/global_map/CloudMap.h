@@ -46,7 +46,7 @@ public:
 
 	const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & getMapGround() const {return assembledGround_;}
 	const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & getMapObstacles() const {return assembledObstacles_;}
-	const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & getMapEmptyCells() const {return assembledEmptyCells_;}
+	const pcl::PointCloud<pcl::PointXYZ>::Ptr & getMapEmptyCells() const {return assembledEmptyCells_;}
 
 	unsigned long getMemoryUsed() const;
 
@@ -56,7 +56,7 @@ protected:
 private:
 	pcl::PointCloud<pcl::PointXYZRGB>::Ptr assembledGround_;
 	pcl::PointCloud<pcl::PointXYZRGB>::Ptr assembledObstacles_;
-	pcl::PointCloud<pcl::PointXYZRGB>::Ptr assembledEmptyCells_;
+	pcl::PointCloud<pcl::PointXYZ>::Ptr assembledEmptyCells_;
 };
 
 }
