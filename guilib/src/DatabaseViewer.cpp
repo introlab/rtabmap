@@ -5359,6 +5359,7 @@ void DatabaseViewer::update(int value,
 							}
 #endif
 
+#ifdef RTABMAP_GRIDMAP
 							if(ui_->checkBox_showElevation->checkState() != Qt::Unchecked) // Show elevation map?
 							{
 								GridMap gridMap(&combinedLocalMaps, parameters);
@@ -5384,6 +5385,7 @@ void DatabaseViewer::update(int value,
 									UWARN("Local grid is not 3D, cannot generate an elevation map");
 								}
 							}
+#endif
 						}
 					}
 					cloudViewer_->updateCameraTargetPosition(pose);
@@ -7045,6 +7047,7 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 				}
 			}
 
+#ifdef RTABMAP_GRIDMAP
 			// Show elevation map ?
 			if(ui_->dockWidget_occupancyGridView->isVisible() &&
 			   ui_->checkBox_grid_elevation->checkState() != Qt::Unchecked)
@@ -7065,6 +7068,7 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 				}
 				occupancyGridViewer_->refreshView();
 			}
+#endif
 		}
 		ui_->graphViewer->fitInView(ui_->graphViewer->scene()->itemsBoundingRect(), Qt::KeepAspectRatio);
 		if(rectScaleItem != 0)
