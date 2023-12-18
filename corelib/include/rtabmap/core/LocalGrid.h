@@ -73,9 +73,13 @@ public:
 	unsigned long getMemoryUsed() const;
 	void clear(bool temporaryOnly = false);
 
-	int size() const {return (int)localGrids_.size();}
+	size_t size() const {return localGrids_.size();}
 	bool empty() const {return localGrids_.empty();}
 	const std::map<int, LocalGrid> & localGrids() const {return localGrids_;}
+
+	std::map<int, LocalGrid>::const_iterator find(int nodeId) const {return localGrids_.find(nodeId);}
+	std::map<int, LocalGrid>::const_iterator begin() const {return localGrids_.begin();}
+	std::map<int, LocalGrid>::const_iterator end() const {return localGrids_.end();}
 
 private:
 	std::map<int, LocalGrid> localGrids_;

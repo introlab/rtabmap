@@ -3470,6 +3470,8 @@ void MainWindow::updateMapCloud(
 	}
 	_ui->graphicsView_graphView->update();
 
+	_cachedLocalMaps.clear(true);
+
 	UDEBUG("");
 	if(stats)
 	{
