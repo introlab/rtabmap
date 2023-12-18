@@ -850,12 +850,12 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudFromStereoImages(
 			validIndices);
 }
 
-pcl::PointCloud<pcl::PointXYZ>::Ptr cloudFromSensorData(
+std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> cloudsFromSensorData(
 		const SensorData & sensorData,
 		int decimation,
 		float maxDepth,
 		float minDepth,
-		std::vector<int> * validIndices,
+		std::vector<pcl::IndicesPtr> * validIndices,
 		const ParametersMap & stereoParameters,
 		const std::vector<float> & roiRatios)
 {
@@ -864,7 +864,7 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr cloudFromSensorData(
 		decimation = 1;
 	}
 
-	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
+	std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> clouds;
 
 	if(!sensorData.depthRaw().empty() && sensorData.cameraModels().size())
 	{
@@ -873,6 +873,11 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr cloudFromSensorData(
 		int subImageWidth = sensorData.depthRaw().cols/sensorData.cameraModels().size();
 		for(unsigned int i=0; i<sensorData.cameraModels().size(); ++i)
 		{
+			clouds.push_back(pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>));
+			if(validIndices)
+			{
+				validIndices->push_back(pcl::IndicesPtr(new std::vector<int>()));
+			}
 			if(sensorData.cameraModels()[i].isValidForProjection())
 			{
 				cv::Mat depth = cv::Mat(sensorData.depthRaw(), cv::Rect(subImageWidth*i, 0, subImageWidth, sensorData.depthRaw().rows));
@@ -928,7 +933,7 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr cloudFromSensorData(
 						decimation,
 						maxDepth,
 						minDepth,
-						sensorData.cameraModels().size()==1?validIndices:0);
+						validIndices?validIndices->back().get():0);
 
 				if(tmp->size())
 				{
@@ -936,16 +941,7 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr cloudFromSensorData(
 					{
 						tmp = util3d::transformPointCloud(tmp, model.localTransform());
 					}
-
-					if(sensorData.cameraModels().size() > 1)
-					{
-						tmp = util3d::removeNaNFromPointCloud(tmp);
-						*cloud += *tmp;
-					}
-					else
-					{
-						cloud = tmp;
-					}
+					clouds.back() = tmp;
 				}
 			}
 			else
@@ -974,6 +970,11 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr cloudFromSensorData(
 		int subImageWidth = sensorData.rightRaw().cols/sensorData.stereoCameraModels().size();
 		for(unsigned int i=0; i<sensorData.stereoCameraModels().size(); ++i)
 		{
+			clouds.push_back(pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>));
+			if(validIndices)
+			{
+				validIndices->push_back(pcl::IndicesPtr(new std::vector<int>()));
+			}
 			if(sensorData.stereoCameraModels()[i].isValidForProjection())
 			{
 				cv::Mat left(leftMono, cv::Rect(subImageWidth*i, 0, subImageWidth, leftMono.rows));
@@ -1014,7 +1015,7 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr cloudFromSensorData(
 						decimation,
 						maxDepth,
 						minDepth,
-						validIndices);
+						validIndices?validIndices->back().get():0);
 
 				if(tmp->size())
 				{
@@ -1022,16 +1023,7 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr cloudFromSensorData(
 					{
 						tmp = util3d::transformPointCloud(tmp, model.localTransform());
 					}
-
-					if(sensorData.stereoCameraModels().size() > 1)
-					{
-						tmp = util3d::removeNaNFromPointCloud(tmp);
-						*cloud += *tmp;
-					}
-					else
-					{
-						cloud = tmp;
-					}
+					clouds.back() = tmp;
 				}
 			}
 			else
@@ -1041,19 +1033,10 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr cloudFromSensorData(
 		}
 	}
 
-	if(!cloud->empty() && cloud->is_dense && validIndices)
-	{
-		//generate indices for all points (they are all valid)
-		validIndices->resize(cloud->size());
-		for(unsigned int i=0; i<cloud->size(); ++i)
-		{
-			validIndices->at(i) = i;
-		}
-	}
-	return cloud;
+	return clouds;
 }
 
-pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudRGBFromSensorData(
+pcl::PointCloud<pcl::PointXYZ>::Ptr cloudFromSensorData(
 		const SensorData & sensorData,
 		int decimation,
 		float maxDepth,
@@ -1062,12 +1045,65 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudRGBFromSensorData(
 		const ParametersMap & stereoParameters,
 		const std::vector<float> & roiRatios)
 {
+	std::vector<pcl::IndicesPtr> validIndicesV;
+	std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> clouds = cloudsFromSensorData(
+		sensorData,
+		decimation,
+		maxDepth,
+		minDepth,
+		validIndices?&validIndicesV:0,
+		stereoParameters,
+		roiRatios);
+
+	if(validIndices)
+	{
+		UASSERT(validIndicesV.size() == clouds.size());
+	}
+	
+	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
+
+	if(clouds.size() == 1)
+	{
+		cloud = clouds[0];
+		if(validIndices)
+		{
+			*validIndices = *validIndicesV[0];
+		}
+	}
+	else
+	{
+		for(size_t i=0; i<clouds.size(); ++i)
+		{
+			*cloud += *util3d::removeNaNFromPointCloud(clouds[i]);
+		}
+		if(validIndices)
+		{
+			//generate indices for all points (they are all valid)
+			validIndices->resize(cloud->size());
+			for(size_t i=0; i<cloud->size(); ++i)
+			{
+				validIndices->at(i) = i;
+			}
+		}
+	}
+	return cloud;
+}
+
+std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> cloudsRGBFromSensorData(
+		const SensorData & sensorData,
+		int decimation,
+		float maxDepth,
+		float minDepth,
+		std::vector<pcl::IndicesPtr> * validIndices,
+		const ParametersMap & stereoParameters,
+		const std::vector<float> & roiRatios)
+{
 	if(decimation == 0)
 	{
 		decimation = 1;
 	}
 
-	pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+	std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> clouds;
 
 	if(!sensorData.imageRaw().empty() && !sensorData.depthRaw().empty() && sensorData.cameraModels().size())
 	{
@@ -1082,6 +1118,11 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudRGBFromSensorData(
 
 		for(unsigned int i=0; i<sensorData.cameraModels().size(); ++i)
 		{
+			clouds.push_back(pcl::PointCloud<pcl::PointXYZRGB>::Ptr(new pcl::PointCloud<pcl::PointXYZRGB>));
+			if(validIndices)
+			{
+				validIndices->push_back(pcl::IndicesPtr(new std::vector<int>()));
+			}
 			if(sensorData.cameraModels()[i].isValidForProjection())
 			{
 				cv::Mat rgb(sensorData.imageRaw(), cv::Rect(subRGBWidth*i, 0, subRGBWidth, sensorData.imageRaw().rows));
@@ -1128,7 +1169,7 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudRGBFromSensorData(
 						decimation,
 						maxDepth,
 						minDepth,
-						sensorData.cameraModels().size() == 1?validIndices:0);
+						validIndices?validIndices->back().get():0);
 
 				if(tmp->size())
 				{
@@ -1136,16 +1177,7 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudRGBFromSensorData(
 					{
 						tmp = util3d::transformPointCloud(tmp, model.localTransform());
 					}
-
-					if(sensorData.cameraModels().size() > 1)
-					{
-						tmp = util3d::removeNaNFromPointCloud(tmp);
-						*cloud += *tmp;
-					}
-					else
-					{
-						cloud = tmp;
-					}
+					clouds.back() = tmp;
 				}
 			}
 			else
@@ -1164,6 +1196,11 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudRGBFromSensorData(
 		int subImageWidth = sensorData.rightRaw().cols/sensorData.stereoCameraModels().size();
 		for(unsigned int i=0; i<sensorData.stereoCameraModels().size(); ++i)
 		{
+			clouds.push_back(pcl::PointCloud<pcl::PointXYZRGB>::Ptr(new pcl::PointCloud<pcl::PointXYZRGB>));
+			if(validIndices)
+			{
+				validIndices->push_back(pcl::IndicesPtr(new std::vector<int>()));
+			}
 			if(sensorData.stereoCameraModels()[i].isValidForProjection())
 			{
 				cv::Mat left(sensorData.imageRaw(), cv::Rect(subImageWidth*i, 0, subImageWidth, sensorData.imageRaw().rows));
@@ -1205,7 +1242,7 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudRGBFromSensorData(
 						decimation,
 						maxDepth,
 						minDepth,
-						validIndices,
+						validIndices?validIndices->back().get():0,
 						stereoParameters);
 
 				if(tmp->size())
@@ -1214,16 +1251,7 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudRGBFromSensorData(
 					{
 						tmp = util3d::transformPointCloud(tmp, model.localTransform());
 					}
-
-					if(sensorData.stereoCameraModels().size() > 1)
-					{
-						tmp = util3d::removeNaNFromPointCloud(tmp);
-						*cloud += *tmp;
-					}
-					else
-					{
-						cloud = tmp;
-					}
+					clouds.back() = tmp;
 				}
 			}
 			else
@@ -1233,16 +1261,59 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudRGBFromSensorData(
 		}
 	}
 
-	if(cloud->is_dense && validIndices)
+	return clouds;
+}
+
+pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudRGBFromSensorData(
+		const SensorData & sensorData,
+		int decimation,
+		float maxDepth,
+		float minDepth,
+		std::vector<int> * validIndices,
+		const ParametersMap & stereoParameters,
+		const std::vector<float> & roiRatios)
+{
+	std::vector<pcl::IndicesPtr> validIndicesV;
+	std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> clouds = cloudsRGBFromSensorData(
+		sensorData,
+		decimation,
+		maxDepth,
+		minDepth,
+		validIndices?&validIndicesV:0,
+		stereoParameters,
+		roiRatios);
+
+	if(validIndices)
 	{
-		//generate indices for all points (they are all valid)
-		validIndices->resize(cloud->size());
-		for(unsigned int i=0; i<cloud->size(); ++i)
+		UASSERT(validIndicesV.size() == clouds.size());
+	}
+	
+	pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+
+	if(clouds.size() == 1)
+	{
+		cloud = clouds[0];
+		if(validIndices)
 		{
-			validIndices->at(i) = i;
+			*validIndices = *validIndicesV[0];
 		}
 	}
-
+	else
+	{
+		for(size_t i=0; i<clouds.size(); ++i)
+		{
+			*cloud += *util3d::removeNaNFromPointCloud(clouds[i]);
+		}
+		if(validIndices)
+		{
+			//generate indices for all points (they are all valid)
+			validIndices->resize(cloud->size());
+			for(size_t i=0; i<cloud->size(); ++i)
+			{
+				validIndices->at(i) = i;
+			}
+		}
+	}
 	return cloud;
 }
 

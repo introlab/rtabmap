@@ -811,8 +811,9 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->spinBox_stereoMyntEye_irControl, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 
 	connect(_ui->comboBox_depthai_resolution, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
-	connect(_ui->checkBox_depthai_depth, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
-	connect(_ui->spinBox_depthai_confidence, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->comboBox_depthai_output_mode, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->spinBox_depthai_conf_threshold, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->spinBox_depthai_lrc_threshold, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->checkBox_depthai_use_spec_translation, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->doubleSpinBox_depthai_alpha_scaling, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->checkBox_depthai_imu_published, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
@@ -2149,8 +2150,9 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->spinBox_stereoMyntEye_contrast->setValue(116);
 		_ui->spinBox_stereoMyntEye_irControl->setValue(0);
 		_ui->comboBox_depthai_resolution->setCurrentIndex(1);
-		_ui->checkBox_depthai_depth->setChecked(false);
-		_ui->spinBox_depthai_confidence->setValue(200);
+		_ui->comboBox_depthai_output_mode->setCurrentIndex(0);
+		_ui->spinBox_depthai_conf_threshold->setValue(200);
+		_ui->spinBox_depthai_lrc_threshold->setValue(5);
 		_ui->checkBox_depthai_use_spec_translation->setChecked(false);
 		_ui->doubleSpinBox_depthai_alpha_scaling->setValue(0.0);
 		_ui->checkBox_depthai_imu_published->setChecked(true);
@@ -2641,8 +2643,9 @@ void PreferencesDialog::readCameraSettings(const QString & filePath)
 
 	settings.beginGroup("DepthAI");
 	_ui->comboBox_depthai_resolution->setCurrentIndex(settings.value("resolution", _ui->comboBox_depthai_resolution->currentIndex()).toInt());
-	_ui->checkBox_depthai_depth->setChecked(settings.value("depth", _ui->checkBox_depthai_depth->isChecked()).toBool());
-	_ui->spinBox_depthai_confidence->setValue(settings.value("confidence", _ui->spinBox_depthai_confidence->value()).toInt());
+	_ui->comboBox_depthai_output_mode->setCurrentIndex(settings.value("output_mode", _ui->comboBox_depthai_output_mode->currentIndex()).toInt());
+	_ui->spinBox_depthai_conf_threshold->setValue(settings.value("conf_threshold", _ui->spinBox_depthai_conf_threshold->value()).toInt());
+	_ui->spinBox_depthai_lrc_threshold->setValue(settings.value("lrc_threshold", _ui->spinBox_depthai_lrc_threshold->value()).toInt());
 	_ui->checkBox_depthai_use_spec_translation->setChecked(settings.value("use_spec_translation", _ui->checkBox_depthai_use_spec_translation->isChecked()).toBool());
 	_ui->doubleSpinBox_depthai_alpha_scaling->setValue(settings.value("alpha_scaling", _ui->doubleSpinBox_depthai_alpha_scaling->value()).toDouble());
 	_ui->checkBox_depthai_imu_published->setChecked(settings.value("imu_published", _ui->checkBox_depthai_imu_published->isChecked()).toBool());
@@ -3177,8 +3180,9 @@ void PreferencesDialog::writeCameraSettings(const QString & filePath) const
 
 	settings.beginGroup("DepthAI");
 	settings.setValue("resolution",            _ui->comboBox_depthai_resolution->currentIndex());
-	settings.setValue("depth",                 _ui->checkBox_depthai_depth->isChecked());
-	settings.setValue("confidence",            _ui->spinBox_depthai_confidence->value());
+	settings.setValue("output_mode",           _ui->comboBox_depthai_output_mode->currentIndex());
+	settings.setValue("conf_threshold",        _ui->spinBox_depthai_conf_threshold->value());
+	settings.setValue("lrc_threshold",         _ui->spinBox_depthai_lrc_threshold->value());
 	settings.setValue("use_spec_translation",  _ui->checkBox_depthai_use_spec_translation->isChecked());
 	settings.setValue("alpha_scaling",         _ui->doubleSpinBox_depthai_alpha_scaling->value());
 	settings.setValue("imu_published",         _ui->checkBox_depthai_imu_published->isChecked());
@@ -6500,13 +6504,11 @@ Camera * PreferencesDialog::createCamera(
 			_ui->comboBox_depthai_resolution->currentIndex(),
 			this->getGeneralInputRate(),
 			this->getSourceLocalTransform());
-		((CameraDepthAI*)camera)->setOutputDepth(_ui->checkBox_depthai_depth->isChecked(), _ui->spinBox_depthai_confidence->value());
-		((CameraDepthAI*)camera)->setUseSpecTranslation(_ui->checkBox_depthai_use_spec_translation->isChecked());
-		((CameraDepthAI*)camera)->setAlphaScaling(_ui->doubleSpinBox_depthai_alpha_scaling->value());
-		((CameraDepthAI*)camera)->setIMUPublished(_ui->checkBox_depthai_imu_published->isChecked());
-		((CameraDepthAI*)camera)->publishInterIMU(_ui->checkbox_publishInterIMU->isChecked());
-		((CameraDepthAI*)camera)->setLaserDotBrightness(_ui->doubleSpinBox_depthai_laser_dot_brightness->value());
-		((CameraDepthAI*)camera)->setFloodLightBrightness(_ui->doubleSpinBox_depthai_floodlight_brightness->value());
+		((CameraDepthAI*)camera)->setOutputMode(_ui->comboBox_depthai_output_mode->currentIndex());
+		((CameraDepthAI*)camera)->setDepthProfile(_ui->spinBox_depthai_conf_threshold->value(), _ui->spinBox_depthai_lrc_threshold->value());
+		((CameraDepthAI*)camera)->setRectification(_ui->checkBox_depthai_use_spec_translation->isChecked(), _ui->doubleSpinBox_depthai_alpha_scaling->value());
+		((CameraDepthAI*)camera)->setIMU(_ui->checkBox_depthai_imu_published->isChecked(), _ui->checkbox_publishInterIMU->isChecked());
+		((CameraDepthAI*)camera)->setIrBrightness(_ui->doubleSpinBox_depthai_laser_dot_brightness->value(), _ui->doubleSpinBox_depthai_floodlight_brightness->value());
 		((CameraDepthAI*)camera)->setDetectFeatures(_ui->comboBox_depthai_detect_features->currentIndex());
 		((CameraDepthAI*)camera)->setBlobPath(_ui->lineEdit_depthai_blob_path->text().toStdString());
 		if(_ui->comboBox_depthai_detect_features->currentIndex() == 1)
