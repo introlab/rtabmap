@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2010-2023, Mathieu Labbe - IntRoLab - Universite de Sherbrooke
+Copyright (c) 2010-2016, Mathieu Labbe - IntRoLab - Universite de Sherbrooke
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -25,14 +25,45 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef CORELIB_INCLUDE_RTABMAP_CORE_OCTOMAP_H_
-#define CORELIB_INCLUDE_RTABMAP_CORE_OCTOMAP_H_
+#ifndef CORELIB_SRC_OCCUPANCYGRID_H_
+#define CORELIB_SRC_OCCUPANCYGRID_H_
 
-/*
- * Deprecated header, use the one below directly!
- */
+#include "rtabmap/core/rtabmap_core_export.h" // DLL export/import defines
 
-#include <rtabmap/core/global_map/OctoMap.h>
+#include <rtabmap/core/GlobalMap.h>
 
+#include <pcl/point_cloud.h>
+#include <pcl/point_types.h>
 
-#endif /* CORELIB_INCLUDE_RTABMAP_CORE_OCTOMAP_H_ */
+namespace rtabmap {
+
+class RTABMAP_CORE_EXPORT OccupancyGrid : public GlobalMap
+{
+public:
+	OccupancyGrid(const LocalGridCache * cache, const ParametersMap & parameters = ParametersMap());
+	void setMap(const cv::Mat & map, float xMin, float yMin, float cellSize, const std::map<int, Transform> & poses);
+	float getMinMapSize() const {return minMapSize_;}
+
+	virtual void clear();
+
+	cv::Mat getMap(float & xMin, float & yMin) const;
+	cv::Mat getProbMap(float & xMin, float & yMin) const;
+
+	unsigned long getMemoryUsed() const;
+
+protected:
+	virtual void assemble(const std::list<std::pair<int, Transform> > & newPoses);
+
+private:
+	cv::Mat map_;
+	cv::Mat mapInfo_;
+	std::map<int, std::pair<int, int> > cellCount_; //<node Id, cells>
+
+	float minMapSize_;
+	bool erode_;
+	float footprintRadius_;
+};
+
+}
+
+#endif /* CORELIB_SRC_OCCUPANCYGRID_H_ */

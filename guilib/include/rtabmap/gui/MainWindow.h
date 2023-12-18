@@ -39,6 +39,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/OdometryEvent.h"
 #include "rtabmap/core/CameraInfo.h"
 #include "rtabmap/core/Optimizer.h"
+#include "rtabmap/core/GlobalMap.h"
 #include "rtabmap/gui/PreferencesDialog.h"
 
 #include <pcl/point_cloud.h>
@@ -75,6 +76,7 @@ class PostProcessingDialog;
 class DepthCalibrationDialog;
 class DataRecorder;
 class OctoMap;
+class GridMap;
 class MultiSessionLocWidget;
 
 class RTABMAP_GUI_EXPORT MainWindow : public QMainWindow, public UEventsHandler
@@ -388,11 +390,13 @@ private:
 	std::pair<int, std::pair<std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr, pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr>, pcl::IndicesPtr> > _previousCloud; // used for subtraction
 	std::map<int, float> _cachedWordsCount;
 	std::map<int, float> _cachedLocalizationsCount;
+	rtabmap::LocalGridCache _cachedLocalMaps;
 
 	std::map<int, LaserScan> _createdScans;
 
 	rtabmap::OccupancyGrid * _occupancyGrid;
 	rtabmap::OctoMap * _octomap;
+	rtabmap::GridMap * _elevationMap;
 
 	std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr> _createdFeatures;
 

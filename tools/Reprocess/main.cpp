@@ -29,9 +29,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/DBDriver.h>
 #include <rtabmap/core/DBReader.h>
 #ifdef RTABMAP_OCTOMAP
-#include <rtabmap/core/OctoMap.h>
+#include <rtabmap/core/global_map/OctoMap.h>
 #endif
-#include <rtabmap/core/OccupancyGrid.h>
+#include <rtabmap/core/global_map/OccupancyGrid.h>
+#include <rtabmap/core/global_map/CloudMap.h>
 #include <rtabmap/core/Graph.h>
 #include <rtabmap/core/Memory.h>
 #include <rtabmap/core/CameraThread.h>
@@ -778,11 +779,12 @@ int main(int argc, char * argv[])
 
 	dbReader->init();
 
-	OccupancyGrid grid(parameters);
-	grid.setCloudAssembling(assemble3dMap);
+	LocalGridCache mapCache;
+	OccupancyGrid grid(&mapCache, parameters);
 #ifdef RTABMAP_OCTOMAP
-	OctoMap octomap(parameters);
+	OctoMap octomap(&mapCache, parameters);
 #endif
+	CloudMap cloudMap(&mapCache, parameters);
 
 	float linearUpdate = Parameters::defaultRGBDLinearUpdate();
 	float angularUpdate = Parameters::defaultRGBDAngularUpdate();
@@ -930,6 +932,7 @@ int main(int argc, char * argv[])
 					double timeRtabmap = t.ticks();
 					double timeUpdateInit = 0.0;
 					double timeUpdateGrid = 0.0;
+					double timeUpdateCloudMap = 0.0;
 #ifdef RTABMAP_OCTOMAP
 					double timeUpdateOctoMap = 0.0;
 #endif
@@ -942,9 +945,14 @@ int main(int argc, char * argv[])
 						{
 							bool updateGridMap = false;
 							bool updateOctoMap = false;
-							if((assemble2dMap || assemble3dMap) && grid.addedNodes().find(id) == grid.addedNodes().end())
+							bool updateCloudMap = false;
+							if(assemble2dMap && grid.addedNodes().find(id) == grid.addedNodes().end())
 							{
 								updateGridMap = true;
+							}
+							if(assemble3dMap && cloudMap.addedNodes().find(id) == cloudMap.addedNodes().end())
+							{
+								updateCloudMap = true;
 							}
 #ifdef RTABMAP_OCTOMAP
 							if((assemble2dOctoMap || assemble3dOctoMap) && octomap.addedNodes().find(id) == octomap.addedNodes().end())
@@ -952,24 +960,30 @@ int main(int argc, char * argv[])
 								updateOctoMap = true;
 							}
 #endif
-							if(updateGridMap || updateOctoMap)
+							if(updateGridMap || updateOctoMap || updateCloudMap)
 							{
 								cv::Mat ground, obstacles, empty;
 								stats.getLastSignatureData().sensorData().uncompressDataConst(0, 0, 0, 0, &ground, &obstacles, &empty);
+								float cellSize = stats.getLastSignatureData().sensorData().gridCellSize();
+								const cv::Point3f & viewpoint = stats.getLastSignatureData().sensorData().gridViewPoint();
 
 								timeUpdateInit = t.ticks();
 
+								mapCache.add(id, ground, obstacles, empty, cellSize, viewpoint);
+
 								if(updateGridMap)
 								{
-									grid.addToCache(id, ground, obstacles, empty);
 									grid.update(stats.poses());
 									timeUpdateGrid = t.ticks() + timeUpdateInit;
+								}
+								if(updateCloudMap)
+								{
+										cloudMap.update(stats.poses());
+									timeUpdateCloudMap = t.ticks() + timeUpdateInit;
 								}
 #ifdef RTABMAP_OCTOMAP
 								if(updateOctoMap)
 								{
-									const cv::Point3f & viewpoint = stats.getLastSignatureData().sensorData().gridViewPoint();
-									octomap.addToCache(id, ground, obstacles, empty, viewpoint);
 									octomap.update(stats.poses());
 									timeUpdateOctoMap = t.ticks() + timeUpdateInit;
 								}
@@ -979,6 +993,7 @@ int main(int argc, char * argv[])
 					}
 
 					globalMapStats.insert(std::make_pair(std::string("GlobalGrid/GridUpdate/ms"), timeUpdateGrid*1000.0f));
+					globalMapStats.insert(std::make_pair(std::string("GlobalGrid/CloudUpdate/ms"), timeUpdateCloudMap*1000.0f));
 #ifdef RTABMAP_OCTOMAP
 					//Simulate publishing
 					double timePub2dOctoMap = 0.0;
@@ -998,9 +1013,9 @@ int main(int argc, char * argv[])
 					globalMapStats.insert(std::make_pair(std::string("GlobalGrid/OctoMapUpdate/ms"), timeUpdateOctoMap*1000.0f));
 					globalMapStats.insert(std::make_pair(std::string("GlobalGrid/OctoMapProjection/ms"), timePub2dOctoMap*1000.0f));
 					globalMapStats.insert(std::make_pair(std::string("GlobalGrid/OctomapToCloud/ms"), timePub3dOctoMap*1000.0f));
-					globalMapStats.insert(std::make_pair(std::string("GlobalGrid/TotalWithRtabmap/ms"), (timeUpdateGrid+timeUpdateOctoMap+timePub2dOctoMap+timePub3dOctoMap+timeRtabmap)*1000.0f));
+					globalMapStats.insert(std::make_pair(std::string("GlobalGrid/TotalWithRtabmap/ms"), (timeUpdateGrid+timeUpdateCloudMap+timeUpdateOctoMap+timePub2dOctoMap+timePub3dOctoMap+timeRtabmap)*1000.0f));
 #else
-					globalMapStats.insert(std::make_pair(std::string("GlobalGrid/TotalWithRtabmap/ms"), (timeUpdateGrid+timeRtabmap)*1000.0f));
+					globalMapStats.insert(std::make_pair(std::string("GlobalGrid/TotalWithRtabmap/ms"), (timeUpdateGrid+timeUpdateCloudMap+timeRtabmap)*1000.0f));
 #endif
 				}
 			}
@@ -1214,7 +1229,7 @@ int main(int argc, char * argv[])
 	if(assemble3dMap)
 	{
 		std::string outputPath = outputDatabasePath.substr(0, outputDatabasePath.size()-3) + "_obstacles.pcd";
-		if(pcl::io::savePCDFileBinary(outputPath, *grid.getMapObstacles()) == 0)
+		if(pcl::io::savePCDFileBinary(outputPath, *cloudMap.getMapObstacles()) == 0)
 		{
 			printf("Saving 3d obstacles \"%s\"... done!\n", outputPath.c_str());
 		}
@@ -1222,10 +1237,10 @@ int main(int argc, char * argv[])
 		{
 			printf("Saving 3d obstacles \"%s\"... failed!\n", outputPath.c_str());
 		}
-		if(grid.getMapGround()->size())
+		if(cloudMap.getMapGround()->size())
 		{
 			outputPath = outputDatabasePath.substr(0, outputDatabasePath.size()-3) + "_ground.pcd";
-			if(pcl::io::savePCDFileBinary(outputPath, *grid.getMapGround()) == 0)
+			if(pcl::io::savePCDFileBinary(outputPath, *cloudMap.getMapGround()) == 0)
 			{
 				printf("Saving 3d ground \"%s\"... done!\n", outputPath.c_str());
 			}
@@ -1234,10 +1249,10 @@ int main(int argc, char * argv[])
 				printf("Saving 3d ground \"%s\"... failed!\n", outputPath.c_str());
 			}
 		}
-		if(grid.getMapEmptyCells()->size())
+		if(cloudMap.getMapEmptyCells()->size())
 		{
 			outputPath = outputDatabasePath.substr(0, outputDatabasePath.size()-3) + "_empty.pcd";
-			if(pcl::io::savePCDFileBinary(outputPath, *grid.getMapEmptyCells()) == 0)
+			if(pcl::io::savePCDFileBinary(outputPath, *cloudMap.getMapEmptyCells()) == 0)
 			{
 				printf("Saving 3d empty cells \"%s\"... done!\n", outputPath.c_str());
 			}

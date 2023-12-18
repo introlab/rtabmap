@@ -214,14 +214,14 @@ ParametersMap Parameters::getDefaultParameters(const std::string & groupIn)
 	return parameters;
 }
 
-ParametersMap Parameters::filterParameters(const ParametersMap & parameters, const std::string & group, bool remove)
+ParametersMap Parameters::filterParameters(const ParametersMap & parameters, const std::string & groupIn, bool remove)
 {
 	ParametersMap output;
 	for(rtabmap::ParametersMap::const_iterator iter=parameters.begin(); iter!=parameters.end(); ++iter)
 	{
 		UASSERT(uSplit(iter->first, '/').size()  == 2);
 		std::string group = uSplit(iter->first, '/').front();
-		bool sameGroup = group.compare(group) == 0;
+		bool sameGroup = group.compare(groupIn) == 0;
 		if((!remove && sameGroup) || (remove && !sameGroup))
 		{
 			output.insert(*iter);
@@ -235,6 +235,9 @@ const std::map<std::string, std::pair<bool, std::string> > & Parameters::getRemo
 	if(removedParameters_.empty())
 	{
 		// removed parameters
+
+		// 0.21.3
+		removedParameters_.insert(std::make_pair("GridGlobal/FullUpdate",    std::make_pair(false, "")));
 
 		// 0.20.15
 		removedParameters_.insert(std::make_pair("Grid/FromDepth",           std::make_pair(true, Parameters::kGridSensor())));
@@ -301,7 +304,7 @@ const std::map<std::string, std::pair<bool, std::string> > & Parameters::getRemo
 		removedParameters_.insert(std::make_pair("Rtabmap/VhStrategy",            std::make_pair(true,  Parameters::kVhEpEnabled())));
 
 		// 0.12.5
-		removedParameters_.insert(std::make_pair("Grid/FullUpdate",               std::make_pair(true,  Parameters::kGridGlobalFullUpdate())));
+		removedParameters_.insert(std::make_pair("Grid/FullUpdate",               std::make_pair(false,  "")));
 
 		// 0.12.1
 		removedParameters_.insert(std::make_pair("Grid/3DGroundIsObstacle",       std::make_pair(true,  Parameters::kGridGroundIsObstacle())));
@@ -812,8 +815,14 @@ ParametersMap Parameters::parseArguments(int argc, char * argv[], bool onlyParam
 #else
 				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
 #endif
-				str = "With octomap:";
+				str = "With OctoMap:";
 #ifdef RTABMAP_OCTOMAP
+				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
+#else
+				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
+#endif
+				str = "With GridMap:";
+#ifdef RTABMAP_GRIDMAP
 				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
 #else
 				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;

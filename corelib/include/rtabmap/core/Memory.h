@@ -57,7 +57,7 @@ class RegistrationInfo;
 class RegistrationIcp;
 class RegistrationVis;
 class Stereo;
-class OccupancyGrid;
+class LocalGridMaker;
 class MarkerDetector;
 
 class RTABMAP_CORE_EXPORT Memory
@@ -371,7 +371,7 @@ private:
 	RegistrationIcp * _registrationIcpMulti;
 	RegistrationVis * _registrationVis;
 
-	OccupancyGrid * _occupancy;
+	LocalGridMaker * _localMapMaker;
 
 	MarkerDetector * _markerDetector;
 };

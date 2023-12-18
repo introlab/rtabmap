@@ -41,7 +41,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/Memory.h"
 #include "rtabmap/core/DBDriver.h"
 #include "rtabmap/core/RegistrationVis.h"
-#include "rtabmap/core/OccupancyGrid.h"
+#include "rtabmap/core/global_map/OccupancyGrid.h"
 #include "rtabmap/core/GainCompensator.h"
 #include "rtabmap/core/Recovery.h"
 #include "rtabmap/core/util2d.h"
@@ -115,7 +115,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pcl/search/kdtree.h>
 
 #ifdef RTABMAP_OCTOMAP
-#include <rtabmap/core/OctoMap.h>
+#include <rtabmap/core/global_map/OctoMap.h>
+#endif
+
+#ifdef RTABMAP_GRIDMAP
+#include <rtabmap/core/global_map/GridMap.h>
 #endif
 
 #ifdef HAVE_OPENCV_ARUCO
@@ -164,6 +168,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent, bool sh
 	_createdCloudsMemoryUsage(0),
 	_occupancyGrid(0),
 	_octomap(0),
+	_elevationMap(0),
 	_odometryCorrection(Transform::getIdentity()),
 	_processingOdometry(false),
 	_oneSecondTimer(0),
@@ -259,9 +264,12 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent, bool sh
 	setupMainLayout(_preferencesDialog->isVerticalLayoutUsed());
 
 	ParametersMap parameters = _preferencesDialog->getAllParameters();
-	_occupancyGrid = new OccupancyGrid(parameters);
+	_occupancyGrid = new OccupancyGrid(&_cachedLocalMaps, parameters);
 #ifdef RTABMAP_OCTOMAP
-	_octomap = new OctoMap(parameters);
+	_octomap = new OctoMap(&_cachedLocalMaps, parameters);
+#endif
+#ifdef RTABMAP_GRIDMAP
+	_elevationMap = new GridMap(&_cachedLocalMaps, parameters);
 #endif
 
 	// Timer
@@ -667,6 +675,10 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent, bool sh
 	_ui->statsToolBox->updateStat("GUI/Octomap Update/ms", false);
 	_ui->statsToolBox->updateStat("GUI/Octomap Rendering/ms", false);
 #endif
+#ifdef RTABMAP_GRIDMAP
+	_ui->statsToolBox->updateStat("GUI/Elevation Update/ms", false);
+	_ui->statsToolBox->updateStat("GUI/Elevation Rendering/ms", false);
+#endif
 	_ui->statsToolBox->updateStat("GUI/Grid Update/ms", false);
 	_ui->statsToolBox->updateStat("GUI/Grid Rendering/ms", false);
 	_ui->statsToolBox->updateStat("GUI/Refresh stats/ms", false);
@@ -703,6 +715,9 @@ MainWindow::~MainWindow()
 	delete _logEventTime;
 #ifdef RTABMAP_OCTOMAP
 	delete _octomap;
+#endif
+#ifdef RTABMAP_GRIDMAP
+	delete _elevationMap;
 #endif
 	delete _occupancyGrid;
 	UDEBUG("");
@@ -2960,13 +2975,20 @@ void MainWindow::updateMapCloud(
 					 (_cloudViewer->isVisible() && _preferencesDialog->getGridMapShown())) &&
 					_occupancyGrid->addedNodes().find(iter->first) == _occupancyGrid->addedNodes().end();
 			bool updateOctomap = false;
+			bool updateElevationMap = false;
 #ifdef RTABMAP_OCTOMAP
 			updateOctomap =
 					_cloudViewer->isVisible() &&
 					_preferencesDialog->isOctomapUpdated() &&
 					_octomap->addedNodes().find(iter->first) == _octomap->addedNodes().end();
 #endif
-			if(updateGridMap || updateOctomap)
+#ifdef RTABMAP_GRIDMAP
+			updateElevationMap =
+					_cloudViewer->isVisible() &&
+					_preferencesDialog->getElevationMapShown() > 0 &&
+					_elevationMap->addedNodes().find(iter->first) == _elevationMap->addedNodes().end();
+#endif
+			if(updateGridMap || updateOctomap || updateElevationMap)
 			{
 				QMap<int, Signature>::iterator jter = _cachedSignatures.find(iter->first);
 				if(jter!=_cachedSignatures.end() && jter->sensorData().gridCellSize() > 0.0f)
@@ -2977,23 +2999,7 @@ void MainWindow::updateMapCloud(
 
 					jter->sensorData().uncompressDataConst(0, 0, 0, 0, &ground, &obstacles, &empty);
 
-					_occupancyGrid->addToCache(iter->first, ground, obstacles, empty);
-
-#ifdef RTABMAP_OCTOMAP
-					if(updateOctomap)
-					{
-						if((ground.empty() || ground.channels() > 2) &&
-						   (obstacles.empty() || obstacles.channels() > 2))
-						{
-							cv::Point3f viewpoint = jter->sensorData().gridViewPoint();
-							_octomap->addToCache(iter->first, ground, obstacles, empty, viewpoint);
-						}
-						else if(!ground.empty() || !obstacles.empty())
-						{
-							UWARN("Node %d: Cannot update octomap with 2D occupancy grids.", iter->first);
-						}
-					}
-#endif
+					_cachedLocalMaps.add(iter->first, ground, obstacles, empty, jter->sensorData().gridCellSize(), jter->sensorData().gridViewPoint());
 				}
 			}
 
@@ -3332,6 +3338,50 @@ void MainWindow::updateMapCloud(
 	}
 #endif
 
+#ifdef RTABMAP_GRIDMAP
+	_cloudViewer->removeElevationMap();
+	_cloudViewer->removeCloud("elevation_mesh");
+	if(_preferencesDialog->getElevationMapShown() > 0)
+	{
+		UDEBUG("");
+		UTimer time;
+		_elevationMap->update(poses);
+		UINFO("Elevation map update time = %fs", time.ticks());
+	}
+	if(stats)
+	{
+		stats->insert(std::make_pair("GUI/Elevation Update/ms", (float)timer.restart()*1000.0f));
+	}
+	if(_preferencesDialog->getElevationMapShown() > 0)
+	{
+		UDEBUG("");
+		UTimer time;
+		if(_preferencesDialog->getElevationMapShown() == 1)
+		{
+			float xMin, yMin, cellSize;
+			cv::Mat map = _elevationMap->createHeightMap(xMin, yMin, cellSize);
+			if(!map.empty())
+			{
+				_cloudViewer->addElevationMap(map, cellSize, xMin, yMin, 1);
+			}
+		}
+		else // RGB elevation
+		{
+			pcl::PolygonMesh::Ptr mesh = _elevationMap->createTerrainMesh();
+			if(mesh->cloud.data.size())
+			{
+				_cloudViewer->addCloudMesh("elevation_mesh", mesh);
+			}
+		}
+		UINFO("Show elevation map time = %fs", time.ticks());
+	}
+	UDEBUG("");
+	if(stats)
+	{
+		stats->insert(std::make_pair("GUI/Elevation Rendering/ms", (float)timer.restart()*1000.0f));
+	}
+#endif
+
 	// Add landmarks to 3D Map view
 #if PCL_VERSION_COMPARE(>=, 1, 7, 2)
 	_cloudViewer->removeAllCoordinates("landmark_");
@@ -3392,7 +3442,7 @@ void MainWindow::updateMapCloud(
 		else
 #endif
 		{
-			if(_occupancyGrid->addedNodes().size() || _occupancyGrid->cacheSize()>0)
+			if(_occupancyGrid->addedNodes().size() || _cachedLocalMaps.size()>0)
 			{
 				_occupancyGrid->update(poses);
 			}
@@ -3419,6 +3469,8 @@ void MainWindow::updateMapCloud(
 		}
 	}
 	_ui->graphicsView_graphView->update();
+
+	_cachedLocalMaps.clear(true);
 
 	UDEBUG("");
 	if(stats)
@@ -4845,7 +4897,6 @@ void MainWindow::applyPrefSettings(const rtabmap::ParametersMap & parameters)
 void MainWindow::applyPrefSettings(const rtabmap::ParametersMap & parameters, bool postParamEvent)
 {
 	ULOGGER_DEBUG("");
-	_occupancyGrid->parseParameters(_preferencesDialog->getAllParameters());
 	if(parameters.size())
 	{
 		for(rtabmap::ParametersMap::const_iterator iter = parameters.begin(); iter!=parameters.end(); ++iter)
@@ -5922,13 +5973,19 @@ void MainWindow::startDetection()
 				   "progress will not be shown in the GUI."));
 	}
 
-	_occupancyGrid->clear();
-	_occupancyGrid->parseParameters(parameters);
+	_cachedLocalMaps.clear();
+
+	delete _occupancyGrid;
+	_occupancyGrid = new OccupancyGrid(&_cachedLocalMaps, parameters);
 
 #ifdef RTABMAP_OCTOMAP
-	UASSERT(_octomap != 0);
 	delete _octomap;
-	_octomap = new OctoMap(parameters);
+	_octomap = new OctoMap(&_cachedLocalMaps, parameters);
+#endif
+
+#ifdef RTABMAP_GRIDMAP
+	delete _elevationMap;
+	_elevationMap = new GridMap(&_cachedLocalMaps, parameters);
 #endif
 
 	// clear odometry visual stuff
@@ -7403,11 +7460,11 @@ void MainWindow::clearTheCache()
 	_ui->imageView_loopClosure->setBackgroundColor(_ui->imageView_loopClosure->getDefaultBackgroundColor());
 	_ui->imageView_odometry->setBackgroundColor(_ui->imageView_odometry->getDefaultBackgroundColor());
 	_multiSessionLocWidget->clear();
+	_cachedLocalMaps.clear();
 #ifdef RTABMAP_OCTOMAP
 	// re-create one if the resolution has changed
-	UASSERT(_octomap != 0);
 	delete _octomap;
-	_octomap = new OctoMap(_preferencesDialog->getAllParameters());
+	_octomap = new OctoMap(&_cachedLocalMaps, _preferencesDialog->getAllParameters());
 #endif
 	_occupancyGrid->clear();
 	_rectCameraModels.clear();

@@ -25,8 +25,8 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef CORELIB_INCLUDE_RTABMAP_CORE_IMPL_OCCUPANCYGRID_HPP_
-#define CORELIB_INCLUDE_RTABMAP_CORE_IMPL_OCCUPANCYGRID_HPP_
+#ifndef CORELIB_INCLUDE_RTABMAP_CORE_IMPL_LOCALMAP_HPP_
+#define CORELIB_INCLUDE_RTABMAP_CORE_IMPL_LOCALMAP_HPP_
 
 #include <rtabmap/core/util3d_mapping.h>
 #include <rtabmap/core/util3d_transforms.h>
@@ -35,7 +35,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 namespace rtabmap {
 
 template<typename PointT>
-typename pcl::PointCloud<PointT>::Ptr OccupancyGrid::segmentCloud(
+typename pcl::PointCloud<PointT>::Ptr LocalGridMaker::segmentCloud(
 		const typename pcl::PointCloud<PointT>::Ptr & cloudIn,
 		const pcl::IndicesPtr & indicesIn,
 		const Transform & pose,
@@ -205,4 +205,4 @@ typename pcl::PointCloud<PointT>::Ptr OccupancyGrid::segmentCloud(
 }
 
 
-#endif /* CORELIB_INCLUDE_RTABMAP_CORE_IMPL_OCCUPANCYGRID_HPP_ */
+#endif /* CORELIB_INCLUDE_RTABMAP_CORE_IMPL_LOCALMAP_HPP_ */

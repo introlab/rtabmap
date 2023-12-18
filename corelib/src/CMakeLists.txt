@@ -107,7 +107,11 @@ SET(SRC_FILES
     stereo/StereoBM.cpp
     stereo/StereoSGBM.cpp
     
-    OccupancyGrid.cpp
+    GlobalMap.cpp
+    LocalGridMaker.cpp
+    LocalGrid.cpp
+    global_map/OccupancyGrid.cpp
+    global_map/CloudMap.cpp
     
     MarkerDetector.cpp
     
@@ -590,9 +594,31 @@ IF(octomap_FOUND)
     ENDIF()
 	SET(SRC_FILES
     	${SRC_FILES}
-		OctoMap.cpp
+		global_map/OctoMap.cpp
 	)
 ENDIF(octomap_FOUND)
+
+IF(grid_map_core_FOUND)
+    IF(TARGET grid_map_core)
+        SET(PUBLIC_LIBRARIES
+            ${PUBLIC_LIBRARIES}
+            grid_map_core
+        )
+    ELSE()
+        SET(PUBLIC_INCLUDE_DIRS
+            ${PUBLIC_INCLUDE_DIRS}
+            ${grid_map_core_INCLUDE_DIRS}
+        )
+        SET(PUBLIC_LIBRARIES
+            ${PUBLIC_LIBRARIES}
+            ${grid_map_core_LIBRARIES}
+        )
+    ENDIF()
+	SET(SRC_FILES
+    	${SRC_FILES}
+		global_map/GridMap.cpp
+	)
+ENDIF(grid_map_core_FOUND)
 
 IF(AliceVision_FOUND)
   SET(LIBRARIES

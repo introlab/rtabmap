@@ -25,14 +25,45 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef CORELIB_INCLUDE_RTABMAP_CORE_OCTOMAP_H_
-#define CORELIB_INCLUDE_RTABMAP_CORE_OCTOMAP_H_
+#ifndef CORELIB_SRC_GRIDMAP_H_
+#define CORELIB_SRC_GRIDMAP_H_
 
-/*
- * Deprecated header, use the one below directly!
- */
+#include "rtabmap/core/rtabmap_core_export.h" // DLL export/import defines
 
-#include <rtabmap/core/global_map/OctoMap.h>
+#include <rtabmap/core/GlobalMap.h>
+#include <pcl/point_cloud.h>
+#include <pcl/point_types.h>
+#include <pcl/PolygonMesh.h>
 
+#include <grid_map_core/GridMap.hpp>
 
-#endif /* CORELIB_INCLUDE_RTABMAP_CORE_OCTOMAP_H_ */
+namespace rtabmap {
+
+class RTABMAP_CORE_EXPORT GridMap : public GlobalMap
+{
+public:
+	GridMap(const LocalGridCache * cache, const ParametersMap & parameters = ParametersMap());
+
+	virtual void clear();
+
+	const grid_map::GridMap & gridMap() const {return gridMap_;}
+
+	cv::Mat createHeightMap(float & xMin, float & yMin, float & cellSize) const;
+	cv::Mat createColorMap(float & xMin, float & yMin, float & cellSize) const;
+	pcl::PointCloud<pcl::PointXYZRGB>::Ptr createTerrainCloud() const;
+	pcl::PolygonMesh::Ptr createTerrainMesh() const;
+
+protected:
+	virtual void assemble(const std::list<std::pair<int, Transform> > & newPoses);
+
+private:
+	cv::Mat toImage(const std::string & layer, float & xMin, float & yMin, float & cellSize) const;
+
+private:
+	grid_map::GridMap gridMap_;
+	float minMapSize_;
+};
+
+}
+
+#endif /* CORELIB_SRC_OCCUPANCYGRID_H_ */
