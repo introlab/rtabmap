@@ -5205,7 +5205,9 @@ void DatabaseViewer::update(int value,
 					}
 
 					//add occupancy grid
-					if(ui_->checkBox_showMap->isChecked() || ui_->checkBox_showGrid->isChecked())
+					if(ui_->checkBox_showMap->isChecked() ||
+					   ui_->checkBox_showGrid->isChecked() ||
+					   ui_->checkBox_showElevation->checkState() != Qt::Unchecked)
 					{
 						LocalGridCache combinedLocalMaps;
 						if(generatedLocalMaps_.shareTo(data.id(), combinedLocalMaps))
