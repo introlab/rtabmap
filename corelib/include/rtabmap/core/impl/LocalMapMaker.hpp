@@ -35,7 +35,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 namespace rtabmap {
 
 template<typename PointT>
-typename pcl::PointCloud<PointT>::Ptr LocalMapMaker::segmentCloud(
+typename pcl::PointCloud<PointT>::Ptr LocalGridMaker::segmentCloud(
 		const typename pcl::PointCloud<PointT>::Ptr & cloudIn,
 		const pcl::IndicesPtr & indicesIn,
 		const Transform & pose,

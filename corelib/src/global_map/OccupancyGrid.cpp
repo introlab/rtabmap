@@ -38,8 +38,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 namespace rtabmap {
 
-OccupancyGrid::OccupancyGrid(const ParametersMap & parameters) :
-	GlobalMap(parameters),
+OccupancyGrid::OccupancyGrid(const LocalGridCache * cache, const ParametersMap & parameters) :
+	GlobalMap(cache, parameters),
 	minMapSize_(Parameters::defaultGridGlobalMinSize()),
 	erode_(Parameters::defaultGridGlobalEroded()),
 	footprintRadius_(Parameters::defaultGridGlobalFootprintRadius())
@@ -85,12 +85,12 @@ void OccupancyGrid::setMap(const cv::Mat & map, float xMin, float yMin, float ce
 	}
 }
 
-void OccupancyGrid::clear(bool keepCache)
+void OccupancyGrid::clear()
 {
 	map_ = cv::Mat();
 	mapInfo_ = cv::Mat();
 	cellCount_.clear();
-	GlobalMap::clear(keepCache);
+	GlobalMap::clear();
 }
 
 cv::Mat OccupancyGrid::getMap(float & xMin, float & yMin) const
@@ -225,28 +225,28 @@ void OccupancyGrid::assemble(const std::list<std::pair<int, Transform> > & newPo
 		{
 			if(uContains(cache(), iter->first))
 			{
-				const std::pair<std::pair<cv::Mat, cv::Mat>, cv::Mat> & pair = cache().at(iter->first);
+				const LocalGrid & localGrid = cache().at(iter->first);
 
-				UDEBUG("Adding grid %d: ground=%d obstacles=%d empty=%d", iter->first, pair.first.first.cols, pair.first.second.cols, pair.second.cols);
+				UDEBUG("Adding grid %d: ground=%d obstacles=%d empty=%d", iter->first, localGrid.ground.cols, localGrid.obstacles.cols, localGrid.empty.cols);
 
 				//ground
 				cv::Mat ground;
-				if(pair.first.first.cols || pair.second.cols)
+				if(localGrid.ground.cols || localGrid.empty.cols)
 				{
-					ground = cv::Mat(1, pair.first.first.cols+pair.second.cols, CV_32FC2);
+					ground = cv::Mat(1, localGrid.ground.cols+localGrid.empty.cols, CV_32FC2);
 				}
-				if(pair.first.first.cols)
+				if(localGrid.ground.cols)
 				{
-					if(pair.first.first.rows > 1 && pair.first.first.cols == 1)
+					if(localGrid.ground.rows > 1 && localGrid.ground.cols == 1)
 					{
-						UFATAL("Occupancy local maps should be 1 row and X cols! (rows=%d cols=%d)", pair.first.first.rows, pair.first.first.cols);
+						UFATAL("Occupancy local maps should be 1 row and X cols! (rows=%d cols=%d)", localGrid.ground.rows, localGrid.ground.cols);
 					}
-					for(int i=0; i<pair.first.first.cols; ++i)
+					for(int i=0; i<localGrid.ground.cols; ++i)
 					{
-						const float * vi = pair.first.first.ptr<float>(0,i);
+						const float * vi = localGrid.ground.ptr<float>(0,i);
 						float * vo = ground.ptr<float>(0,i);
 						cv::Point3f vt;
-						if(pair.first.first.channels() != 2 && pair.first.first.channels() != 5)
+						if(localGrid.ground.channels() != 2 && localGrid.ground.channels() != 5)
 						{
 							vt = util3d::transformPoint(cv::Point3f(vi[0], vi[1], vi[2]), iter->second);
 						}
@@ -269,18 +269,18 @@ void OccupancyGrid::assemble(const std::list<std::pair<int, Transform> > & newPo
 				}
 
 				//empty
-				if(pair.second.cols)
+				if(localGrid.empty.cols)
 				{
-					if(pair.second.rows > 1 && pair.second.cols == 1)
+					if(localGrid.empty.rows > 1 && localGrid.empty.cols == 1)
 					{
-						UFATAL("Occupancy local maps should be 1 row and X cols! (rows=%d cols=%d)", pair.second.rows, pair.second.cols);
+						UFATAL("Occupancy local maps should be 1 row and X cols! (rows=%d cols=%d)", localGrid.empty.rows, localGrid.empty.cols);
 					}
-					for(int i=0; i<pair.second.cols; ++i)
+					for(int i=0; i<localGrid.empty.cols; ++i)
 					{
-						const float * vi = pair.second.ptr<float>(0,i);
-						float * vo = ground.ptr<float>(0,i+pair.first.first.cols);
+						const float * vi = localGrid.empty.ptr<float>(0,i);
+						float * vo = ground.ptr<float>(0,i+localGrid.ground.cols);
 						cv::Point3f vt;
-						if(pair.second.channels() != 2 && pair.second.channels() != 5)
+						if(localGrid.empty.channels() != 2 && localGrid.empty.channels() != 5)
 						{
 							vt = util3d::transformPoint(cv::Point3f(vi[0], vi[1], vi[2]), iter->second);
 						}
@@ -304,19 +304,19 @@ void OccupancyGrid::assemble(const std::list<std::pair<int, Transform> > & newPo
 				uInsert(emptyLocalMaps, std::make_pair(iter->first, ground));
 
 				//obstacles
-				if(pair.first.second.cols)
+				if(localGrid.obstacles.cols)
 				{
-					if(pair.first.second.rows > 1 && pair.first.second.cols == 1)
+					if(localGrid.obstacles.rows > 1 && localGrid.obstacles.cols == 1)
 					{
-						UFATAL("Occupancy local maps should be 1 row and X cols! (rows=%d cols=%d)", pair.first.second.rows, pair.first.second.cols);
+						UFATAL("Occupancy local maps should be 1 row and X cols! (rows=%d cols=%d)", localGrid.obstacles.rows, localGrid.obstacles.cols);
 					}
-					cv::Mat obstacles(1, pair.first.second.cols, CV_32FC2);
+					cv::Mat obstacles(1, localGrid.obstacles.cols, CV_32FC2);
 					for(int i=0; i<obstacles.cols; ++i)
 					{
-						const float * vi = pair.first.second.ptr<float>(0,i);
+						const float * vi = localGrid.obstacles.ptr<float>(0,i);
 						float * vo = obstacles.ptr<float>(0,i);
 						cv::Point3f vt;
-						if(pair.first.second.channels() != 2 && pair.first.second.channels() != 5)
+						if(localGrid.obstacles.channels() != 2 && localGrid.obstacles.channels() != 5)
 						{
 							vt = util3d::transformPoint(cv::Point3f(vi[0], vi[1], vi[2]), iter->second);
 						}

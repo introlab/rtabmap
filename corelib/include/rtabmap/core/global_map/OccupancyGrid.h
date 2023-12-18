@@ -40,11 +40,11 @@ namespace rtabmap {
 class RTABMAP_CORE_EXPORT OccupancyGrid : public GlobalMap
 {
 public:
-	OccupancyGrid(const ParametersMap & parameters = ParametersMap());
+	OccupancyGrid(const LocalGridCache * cache, const ParametersMap & parameters = ParametersMap());
 	void setMap(const cv::Mat & map, float xMin, float yMin, float cellSize, const std::map<int, Transform> & poses);
 	float getMinMapSize() const {return minMapSize_;}
 
-	virtual void clear(bool keepCache = false);
+	virtual void clear();
 
 	cv::Mat getMap(float & xMin, float & yMin) const;
 	cv::Mat getProbMap(float & xMin, float & yMin) const;

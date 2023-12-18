@@ -174,15 +174,9 @@ class RtabmapColorOcTree : public octomap::OccupancyOcTreeBase <RtabmapColorOcTr
 
 class RTABMAP_CORE_EXPORT OctoMap : public GlobalMap {
 public:
-	OctoMap(const ParametersMap & parameters = ParametersMap());
+	OctoMap(const LocalGridCache * cache, const ParametersMap & parameters = ParametersMap());
 
 	const RtabmapColorOcTree * octree() const {return octree_;}
-
-	virtual void addToCache(int nodeId,
-				const cv::Mat & ground,
-				const cv::Mat & obstacles,
-				const cv::Mat & empty,
-				const cv::Point3f & viewPoint);
 
 	pcl::PointCloud<pcl::PointXYZRGB>::Ptr createCloud(
 			unsigned int treeDepth = 0,
@@ -203,7 +197,7 @@ public:
 	bool writeBinary(const std::string & path);
 
 	virtual ~OctoMap();
-	virtual void clear(bool keepCache = false);
+	virtual void clear();
 	virtual unsigned long getMemoryUsed() const;
 
 	bool hasColor() const {return hasColor_;}

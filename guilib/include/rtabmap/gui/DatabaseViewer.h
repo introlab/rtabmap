@@ -44,6 +44,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <rtabmap/core/Link.h>
 #include <rtabmap/core/Signature.h>
+#include <rtabmap/core/GlobalMap.h>
 
 class Ui_DatabaseViewer;
 class QGraphicsScene;
@@ -226,12 +227,10 @@ private:
 	std::multimap<int, rtabmap::Link> linksRefined_;
 	std::multimap<int, rtabmap::Link> linksAdded_;
 	std::multimap<int, rtabmap::Link> linksRemoved_;
-	std::map<int, std::pair<std::pair<cv::Mat, cv::Mat>, cv::Mat> > localMaps_; // < <ground, obstacles>, empty>
-	std::map<int, std::pair<float, cv::Point3f> > localMapsInfo_; // <cell size, viewpoint>
-	std::map<int, std::pair<std::pair<cv::Mat, cv::Mat>, cv::Mat> > generatedLocalMaps_; // < <ground, obstacles>, empty>
-	std::map<int, std::pair<float, cv::Point3f> > generatedLocalMapsInfo_; // <cell size, viewpoint>
 	std::map<int, LaserScan> modifiedLaserScans_;
 	std::vector<double> odomMaxInf_;
+	LocalGridCache localMaps_;
+	LocalGridCache generatedLocalMaps_;
 	OctoMap * octomap_;
 	ExportCloudsDialog * exportDialog_;
 	QDialog * editDepthDialog_;

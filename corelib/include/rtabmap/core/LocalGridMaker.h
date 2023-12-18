@@ -39,11 +39,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 namespace rtabmap {
 
-class RTABMAP_CORE_EXPORT LocalMapMaker
+class RTABMAP_CORE_EXPORT LocalGridMaker
 {
 public:
-	LocalMapMaker(const ParametersMap & parameters = ParametersMap());
-	virtual ~LocalMapMaker();
+	LocalGridMaker(const ParametersMap & parameters = ParametersMap());
+	virtual ~LocalGridMaker();
 	virtual void parseParameters(const ParametersMap & parameters);
 
 	float getCellSize() const {return cellSize_;}

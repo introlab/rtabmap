@@ -31,15 +31,18 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 namespace rtabmap {
 
-GlobalMap::GlobalMap(const ParametersMap & parameters) :
+GlobalMap::GlobalMap(const LocalGridCache * cache, const ParametersMap & parameters) :
 	cellSize_(Parameters::defaultGridCellSize()),
 	updateError_(Parameters::defaultGridGlobalUpdateError()),
 	occupancyThr_(Parameters::defaultGridGlobalOccupancyThr()),
 	probHit_(logodds(Parameters::defaultGridGlobalProbHit())),
 	probMiss_(logodds(Parameters::defaultGridGlobalProbMiss())),
 	probClampingMin_(logodds(Parameters::defaultGridGlobalProbClampingMin())),
-	probClampingMax_(logodds(Parameters::defaultGridGlobalProbClampingMax()))
+	probClampingMax_(logodds(Parameters::defaultGridGlobalProbClampingMax())),
+	cache_(cache)
 {
+	UASSERT(cache_);
+
 	minValues_[0] = minValues_[1] = minValues_[2] = 0.0;
 	maxValues_[0] = maxValues_[1] = maxValues_[2] = 0.0;
 
@@ -79,14 +82,9 @@ GlobalMap::~GlobalMap()
 	clear();
 }
 
-void GlobalMap::clear(bool keepCache)
+void GlobalMap::clear()
 {
-	UDEBUG("Clearing (keep cache = %d)", keepCache?1:0);
-	if(!keepCache)
-	{
-		cache_.clear();
-		cacheViewPoints_.clear();
-	}
+	UDEBUG("Clearing");
 	addedNodes_.clear();
 	minValues_[0] = minValues_[1] = minValues_[2] = 0.0;
 	maxValues_[0] = maxValues_[1] = maxValues_[2] = 0.0;
@@ -96,40 +94,9 @@ unsigned long GlobalMap::getMemoryUsed() const
 {
 	unsigned long memoryUsage = 0;
 
-	memoryUsage += cache_.size()*(sizeof(int) + sizeof(std::pair<std::pair<cv::Mat, cv::Mat>, cv::Mat>) + sizeof(std::map<int, std::pair<std::pair<cv::Mat, cv::Mat>, cv::Mat> >::iterator)) + sizeof(std::map<int, std::pair<std::pair<cv::Mat, cv::Mat>, cv::Mat> >);
-	for(std::map<int, std::pair<std::pair<cv::Mat, cv::Mat>, cv::Mat> >::const_iterator iter=cache_.begin(); iter!=cache_.end(); ++iter)
-	{
-		memoryUsage += iter->second.first.first.total() * iter->second.first.first.elemSize();
-		memoryUsage += iter->second.first.second.total() * iter->second.first.second.elemSize();
-		memoryUsage += iter->second.second.total() * iter->second.second.elemSize();
-	}
-
-	for(std::map<int, cv::Point3f>::const_iterator iter=cacheViewPoints_.begin(); iter!=cacheViewPoints_.end(); ++iter)
-	{
-		memoryUsage += sizeof(int);
-		memoryUsage += sizeof(cv::Point3f);
-	}
-
 	memoryUsage += addedNodes_.size()*(sizeof(int) + sizeof(Transform)+ sizeof(float)*12 + sizeof(std::map<int, Transform>::iterator)) + sizeof(std::map<int, Transform>);
 
 	return memoryUsage;
-}
-
-void GlobalMap::addToCache(int nodeId,
-		const cv::Mat & ground,
-		const cv::Mat & obstacles,
-		const cv::Mat & empty,
-		const cv::Point3f & viewPoint)
-{
-	UDEBUG("nodeId=%d (ground=%d/%d obstacles=%d/%d empty=%d/%d)",
-			nodeId, ground.cols, ground.channels(), obstacles.cols, obstacles.channels(), empty.cols, empty.channels());
-	if(nodeId < 0)
-	{
-		UWARN("Cannot add nodes with negative id (nodeId=%d)", nodeId);
-		return;
-	}
-	uInsert(cache_, std::make_pair(nodeId==0?-1:nodeId, std::make_pair(std::make_pair(ground, obstacles), empty)));
-	uInsert(cacheViewPoints_, std::make_pair(nodeId==0?-1:nodeId, viewPoint));
 }
 
 bool GlobalMap::update(const std::map<int, Transform> & poses)
@@ -161,7 +128,7 @@ bool GlobalMap::update(const std::map<int, Transform> & poses)
 	if(graphOptimized || graphChanged)
 	{
 		// clear all but keep cache
-		clear(true);
+		clear();
 	}
 
 	std::list<std::pair<int, Transform> > orderedPoses;
@@ -185,20 +152,6 @@ bool GlobalMap::update(const std::map<int, Transform> & poses)
 	if(!orderedPoses.empty())
 	{
 		assemble(orderedPoses);
-	}
-
-	//clear only negative ids
-	for(std::map<int, std::pair<std::pair<cv::Mat, cv::Mat>, cv::Mat> >::iterator iter=cache_.begin(); iter!=cache_.end();)
-	{
-		if(iter->first < 0)
-		{
-			cacheViewPoints_.erase(iter->first);
-			cache_.erase(iter++);
-		}
-		else
-		{
-			break;
-		}
 	}
 
 	return !orderedPoses.empty();

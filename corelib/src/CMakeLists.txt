@@ -108,7 +108,8 @@ SET(SRC_FILES
     stereo/StereoSGBM.cpp
     
     GlobalMap.cpp
-    LocalMapMaker.cpp
+    LocalGridMaker.cpp
+    LocalGrid.cpp
     global_map/OccupancyGrid.cpp
     global_map/CloudMap.cpp
     

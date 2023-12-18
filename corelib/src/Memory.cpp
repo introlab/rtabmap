@@ -60,9 +60,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/optimizer/OptimizerG2O.h"
 #include <pcl/io/pcd_io.h>
 #include <pcl/common/common.h>
-#include "rtabmap/core/LocalMapMaker.h"
 #include <rtabmap/core/MarkerDetector.h>
 #include <opencv2/imgproc/types_c.h>
+#include <rtabmap/core/LocalGridMaker.h>
 
 namespace rtabmap {
 
@@ -153,7 +153,7 @@ Memory::Memory(const ParametersMap & parameters) :
 	}
 	_registrationIcpMulti = new RegistrationIcp(paramsMulti);
 
-	_localMapMaker = new LocalMapMaker(parameters);
+	_localMapMaker = new LocalGridMaker(parameters);
 	_markerDetector = new MarkerDetector(parameters);
 	this->parseParameters(parameters);
 }
@@ -3706,7 +3706,7 @@ unsigned long Memory::getMemoryUsed() const
 	memoryUsage += sizeof(Feature2D) + _feature2D->getParameters().size()*(sizeof(std::string)*2+sizeof(ParametersMap::iterator)) + sizeof(ParametersMap);
 	memoryUsage += sizeof(Registration);
 	memoryUsage += sizeof(RegistrationIcp);
-	memoryUsage += sizeof(LocalMapMaker);
+	memoryUsage += sizeof(LocalGridMaker);
 	memoryUsage += sizeof(MarkerDetector);
 	memoryUsage += sizeof(DBDriver);
 

@@ -25,8 +25,7 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include <rtabmap/core/LocalMapMaker.h>
-
+#include <rtabmap/core/LocalGridMaker.h>
 #include <rtabmap/core/util3d.h>
 #include <rtabmap/core/util3d_filtering.h>
 #include <rtabmap/core/util3d_mapping.h>
@@ -44,7 +43,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 namespace rtabmap {
 
-LocalMapMaker::LocalMapMaker(const ParametersMap & parameters) :
+LocalGridMaker::LocalGridMaker(const ParametersMap & parameters) :
 	parameters_(parameters),
 	cloudDecimation_(Parameters::defaultGridDepthDecimation()),
 	rangeMax_(Parameters::defaultGridRangeMax()),
@@ -78,11 +77,11 @@ LocalMapMaker::LocalMapMaker(const ParametersMap & parameters) :
 	this->parseParameters(parameters);
 }
 
-LocalMapMaker::~LocalMapMaker()
+LocalGridMaker::~LocalGridMaker()
 {
 }
 
-void LocalMapMaker::parseParameters(const ParametersMap & parameters)
+void LocalGridMaker::parseParameters(const ParametersMap & parameters)
 {
 	uInsert(parameters_, parameters);
 
@@ -186,7 +185,7 @@ void LocalMapMaker::parseParameters(const ParametersMap & parameters)
 	}
 }
 
-void LocalMapMaker::createLocalMap(
+void LocalGridMaker::createLocalMap(
 		const Signature & node,
 		cv::Mat & groundCells,
 		cv::Mat & obstacleCells,
@@ -405,7 +404,7 @@ void LocalMapMaker::createLocalMap(
 	}
 }
 
-void LocalMapMaker::createLocalMap(
+void LocalGridMaker::createLocalMap(
 		const LaserScan & scan,
 		const Transform & pose,
 		cv::Mat & groundCells,
@@ -526,8 +525,9 @@ void LocalMapMaker::createLocalMap(
 					params.insert(ParametersPair(Parameters::kGridCellSize(), uNumber2Str(cellSize_)));
 					params.insert(ParametersPair(Parameters::kGridRangeMax(), uNumber2Str(rangeMax_)));
 					params.insert(ParametersPair(Parameters::kGridRayTracing(), uNumber2Str(rayTracing_)));
-					OctoMap octomap(params);
-					octomap.addToCache(1, groundCloud, obstaclesCloud, cv::Mat(), cv::Point3f(viewPointInOut.x, viewPointInOut.y, viewPointInOut.z));
+					LocalGridCache cache;
+					OctoMap octomap(&cache, params);
+					cache.add(1, groundCloud, obstaclesCloud, cv::Mat(), cellSize_, cv::Point3f(viewPointInOut.x, viewPointInOut.y, viewPointInOut.z));
 					std::map<int, Transform> poses;
 					poses.insert(std::make_pair(1, Transform::getIdentity()));
 					octomap.update(poses);

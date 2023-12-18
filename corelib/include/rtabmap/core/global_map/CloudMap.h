@@ -40,9 +40,9 @@ namespace rtabmap {
 class RTABMAP_CORE_EXPORT CloudMap : public GlobalMap
 {
 public:
-	CloudMap(const ParametersMap & parameters = ParametersMap());
+	CloudMap(const LocalGridCache * cache, const ParametersMap & parameters = ParametersMap());
 
-	virtual void clear(bool keepCache = false);
+	virtual void clear();
 
 	const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & getMapGround() const {return assembledGround_;}
 	const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & getMapObstacles() const {return assembledObstacles_;}

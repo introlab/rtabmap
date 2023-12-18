@@ -39,6 +39,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/OdometryEvent.h"
 #include "rtabmap/core/CameraInfo.h"
 #include "rtabmap/core/Optimizer.h"
+#include "rtabmap/core/GlobalMap.h"
 #include "rtabmap/gui/PreferencesDialog.h"
 
 #include <pcl/point_cloud.h>
@@ -389,6 +390,7 @@ private:
 	std::pair<int, std::pair<std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr, pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr>, pcl::IndicesPtr> > _previousCloud; // used for subtraction
 	std::map<int, float> _cachedWordsCount;
 	std::map<int, float> _cachedLocalizationsCount;
+	rtabmap::LocalGridCache _cachedLocalMaps;
 
 	std::map<int, LaserScan> _createdScans;
 

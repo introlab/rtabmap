@@ -30,9 +30,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "rtabmap/core/rtabmap_core_export.h" // DLL export/import defines
 
+#include <rtabmap/core/LocalGrid.h>
 #include <rtabmap/core/Parameters.h>
 #include <rtabmap/core/Transform.h>
-#include <map>
 #include <list>
 
 namespace rtabmap {
@@ -53,21 +53,13 @@ public:
 public:
 	virtual ~GlobalMap();
 
-	virtual void addToCache(int nodeId,
-			const cv::Mat & ground,
-			const cv::Mat & obstacles,
-			const cv::Mat & empty,
-			const cv::Point3f & viewPoint = cv::Point3f(0,0,0));
-
 	bool update(const std::map<int, Transform> & poses); // return true if map has changed
 
-	virtual void clear(bool keepCache = false);
+	virtual void clear();
 
 	float getCellSize() const {return cellSize_;}
 	float getUpdateError() const {return updateError_;}
 	const std::map<int, Transform> & addedNodes() const {return addedNodes_;}
-	int cacheSize() const {return (int)cache_.size();}
-	const std::map<int, std::pair<std::pair<cv::Mat, cv::Mat>, cv::Mat> > & getCache() const {return cache_;}
 
 	void getGridMin(double & x, double & y) const {x=minValues_[0];y=minValues_[1];}
 	void getGridMax(double & x, double & y) const {x=maxValues_[0];y=maxValues_[1];}
@@ -77,12 +69,11 @@ public:
 	virtual unsigned long getMemoryUsed() const;
 
 protected:
-	GlobalMap(const ParametersMap & parameters = ParametersMap());
+	GlobalMap(const LocalGridCache * cache, const ParametersMap & parameters = ParametersMap());
 
 	virtual void assemble(const std::list<std::pair<int, Transform> > & newPoses) = 0;
 
-	const std::map<int, std::pair<std::pair<cv::Mat, cv::Mat>, cv::Mat> > & cache() const {return cache_;}
-	const std::map<int, cv::Point3f> & cacheViewPoints() const {return cacheViewPoints_;}
+	const std::map<int, LocalGrid> & cache() const {return cache_->localGrids();}
 
 	const std::map<int, Transform> & assembledNodes() const {return addedNodes_;}
 	bool isNodeAssembled(int id) {return addedNodes_.find(id) != addedNodes_.end();}
@@ -102,8 +93,7 @@ protected:
 	double maxValues_[3];
 
 private:
-	std::map<int, std::pair<std::pair<cv::Mat, cv::Mat>, cv::Mat> > cache_; // [id: < <ground, obstacles>, empty>]
-	std::map<int, cv::Point3f> cacheViewPoints_;
+	const LocalGridCache * cache_;
 	std::map<int, Transform> addedNodes_;
 };
 

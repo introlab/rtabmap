@@ -779,11 +779,12 @@ int main(int argc, char * argv[])
 
 	dbReader->init();
 
-	OccupancyGrid grid(parameters);
+	LocalGridCache mapCache;
+	OccupancyGrid grid(&mapCache, parameters);
 #ifdef RTABMAP_OCTOMAP
-	OctoMap octomap(parameters);
+	OctoMap octomap(&mapCache, parameters);
 #endif
-	CloudMap cloudMap(parameters);
+	CloudMap cloudMap(&mapCache, parameters);
 
 	float linearUpdate = Parameters::defaultRGBDLinearUpdate();
 	float angularUpdate = Parameters::defaultRGBDAngularUpdate();
@@ -963,26 +964,26 @@ int main(int argc, char * argv[])
 							{
 								cv::Mat ground, obstacles, empty;
 								stats.getLastSignatureData().sensorData().uncompressDataConst(0, 0, 0, 0, &ground, &obstacles, &empty);
+								float cellSize = stats.getLastSignatureData().sensorData().gridCellSize();
+								const cv::Point3f & viewpoint = stats.getLastSignatureData().sensorData().gridViewPoint();
 
 								timeUpdateInit = t.ticks();
 
+								mapCache.add(id, ground, obstacles, empty, cellSize, viewpoint);
+
 								if(updateGridMap)
 								{
-									grid.addToCache(id, ground, obstacles, empty);
 									grid.update(stats.poses());
 									timeUpdateGrid = t.ticks() + timeUpdateInit;
 								}
 								if(updateCloudMap)
 								{
-									cloudMap.addToCache(id, ground, obstacles, empty);
-									cloudMap.update(stats.poses());
+										cloudMap.update(stats.poses());
 									timeUpdateCloudMap = t.ticks() + timeUpdateInit;
 								}
 #ifdef RTABMAP_OCTOMAP
 								if(updateOctoMap)
 								{
-									const cv::Point3f & viewpoint = stats.getLastSignatureData().sensorData().gridViewPoint();
-									octomap.addToCache(id, ground, obstacles, empty, viewpoint);
 									octomap.update(stats.poses());
 									timeUpdateOctoMap = t.ticks() + timeUpdateInit;
 								}

@@ -1113,6 +1113,7 @@ bool CloudViewer::addOctomap(const OctoMap * octomap, unsigned int treeDepth, bo
 	UASSERT(octomap!=0);
 
 	pcl::IndicesPtr obstacles(new std::vector<int>);
+	pcl::IndicesPtr ground(new std::vector<int>);
 
 	if(treeDepth == 0 || treeDepth > octomap->octree()->getTreeDepth())
 	{
@@ -1129,7 +1130,8 @@ bool CloudViewer::addOctomap(const OctoMap * octomap, unsigned int treeDepth, bo
 
 	if(!volumeRepresentation)
 	{
-		pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = octomap->createCloud(treeDepth, obstacles.get(), 0, 0, false);
+		pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = octomap->createCloud(treeDepth, obstacles.get(), 0, ground.get(), false);
+		obstacles->insert(obstacles->end(), ground->begin(), ground->end());
 		if(obstacles->size())
 		{
 			//vtkSmartPointer<vtkUnsignedCharArray> colors = vtkSmartPointer<vtkUnsignedCharArray>::New();
