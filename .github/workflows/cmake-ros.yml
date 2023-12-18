@@ -39,7 +39,7 @@ jobs:
       with:
         required-ros-distributions: ${{ matrix.ros_distribution }}
     
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
 
     - name: Install dependencies
       run: |
