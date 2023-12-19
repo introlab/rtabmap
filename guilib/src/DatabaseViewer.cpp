@@ -7290,15 +7290,25 @@ void DatabaseViewer::updateGraphView()
 		int totalPriors = 0;
 		int totalLandmarks = 0;
 		int totalGravity = 0;
+		std::multimap<int, int> uniqueLinks;
 		for(std::multimap<int, rtabmap::Link>::iterator iter=links.begin(); iter!=links.end();)
 		{
+			bool isUnique = iter->second.from() ==  iter->second.to(); // Count all self-reference links
+			if(graph::findLink(uniqueLinks, iter->second.from(), iter->second.to(), true) == uniqueLinks.end())
+			{
+				uniqueLinks.insert(std::make_pair(iter->second.from(), iter->second.to()));
+				isUnique = true;
+			}
+
 			if(iter->second.type() == Link::kNeighbor)
 			{
-				++totalNeighbor;
+				if(isUnique)
+					++totalNeighbor;
 			}
 			else if(iter->second.type() == Link::kNeighborMerged)
 			{
-				++totalNeighborMerged;
+				if(isUnique)
+					++totalNeighborMerged;
 			}
 			else if(iter->second.type() == Link::kGlobalClosure)
 			{
@@ -7308,7 +7318,8 @@ void DatabaseViewer::updateGraphView()
 					continue;
 				}
 				loopLinks_.push_back(iter->second);
-				++totalGlobal;
+				if(isUnique)
+					++totalGlobal;
 			}
 			else if(iter->second.type() == Link::kLocalSpaceClosure)
 			{
@@ -7318,7 +7329,8 @@ void DatabaseViewer::updateGraphView()
 					continue;
 				}
 				loopLinks_.push_back(iter->second);
-				++totalLocalSpace;
+				if(isUnique)
+					++totalLocalSpace;
 			}
 			else if(iter->second.type() == Link::kLocalTimeClosure)
 			{
@@ -7328,7 +7340,8 @@ void DatabaseViewer::updateGraphView()
 					continue;
 				}
 				loopLinks_.push_back(iter->second);
-				++totalLocalTime;
+				if(isUnique)
+					++totalLocalTime;
 			}
 			else if(iter->second.type() == Link::kUserClosure)
 			{
@@ -7338,7 +7351,8 @@ void DatabaseViewer::updateGraphView()
 					continue;
 				}
 				loopLinks_.push_back(iter->second);
-				++totalUser;
+				if(isUnique)
+					++totalUser;
 			}
 			else if(iter->second.type() == Link::kLandmark)
 			{
@@ -7353,7 +7367,8 @@ void DatabaseViewer::updateGraphView()
 					poses.insert(std::make_pair(iter->second.to(), poses.at(iter->second.from())*iter->second.transform()));
 				}
 				loopLinks_.push_back(iter->second);
-				++totalLandmarks;
+				if(isUnique)
+					++totalLandmarks;
 
 				// add landmark priors if there are some
 				int markerId = iter->second.to();
@@ -7365,16 +7380,19 @@ void DatabaseViewer::updateGraphView()
 					links.insert(std::make_pair(markerId, Link(markerId, markerId, Link::kPosePrior, markerPriors.at(markerId), infMatrix)));
 					UDEBUG("Added prior %d : %s (variance: lin=%f ang=%f)", markerId, markerPriors.at(markerId).prettyPrint().c_str(),
 							markerPriorsLinearVariance, markerPriorsAngularVariance);
-					++totalPriors;
+					if(isUnique)
+						++totalPriors;
 				}
 			}
 			else if(iter->second.type() == Link::kPosePrior)
 			{
-				++totalPriors;
+				if(isUnique)
+					++totalPriors;
 			}
 			else if(iter->second.type() == Link::kGravity)
 			{
-				++totalGravity;
+				if(isUnique)
+					++totalGravity;
 			}
 			else
 			{

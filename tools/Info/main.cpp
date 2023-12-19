@@ -347,7 +347,9 @@ int main(int argc, char * argv[])
 		driver->getAllLinks(links, true, true);
 		bool reducedGraph = false;
 		std::vector<int> linkTypes(Link::kEnd, 0);
-		for(std::multimap<int, Link>::iterator iter=links.begin(); iter!=links.end(); ++iter)
+		std::vector<std::vector<float> > linkLengths(Link::kEnd);
+		std::multimap<int, Link> uniqueLinks = graph::filterDuplicateLinks(links);
+		for(std::multimap<int, Link>::iterator iter=uniqueLinks.begin(); iter!=uniqueLinks.end(); ++iter)
 		{
 			if(iter->second.type() == Link::kNeighborMerged)
 			{
@@ -356,6 +358,7 @@ int main(int argc, char * argv[])
 			if(iter->second.type()>=0 && iter->second.type()<Link::kEnd)
 			{
 				++linkTypes[iter->second.type()];
+				linkLengths[iter->second.type()].push_back(iter->second.transform().getNorm());
 			}
 		}
 		if(reducedGraph)
@@ -408,7 +411,19 @@ int main(int argc, char * argv[])
 		std::cout << (uFormat("Links:\n"));
 		for(size_t i=0; i<linkTypes.size(); ++i)
 		{
-			std::cout << (uFormat("%s%d\n", pad(uFormat("  %s:", Link::typeName((Link::Type)i).c_str())).c_str(), linkTypes[i]));
+			float avg = uMean(linkLengths[i]);
+			float std = uVariance(linkLengths[i], avg);
+			float max = uMax(linkLengths[i]);
+			if(std>0)
+			{
+				std = std::sqrt(std);
+			}
+			std::cout << (uFormat("%s%d\t(length avg: %.2fm, std: %.2fm, max: %.2fm)\n", 
+				pad(uFormat("  %s:", Link::typeName((Link::Type)i).c_str())).c_str(),
+				linkTypes[i],
+				avg,
+				std,
+				max));
 		}
 		std::cout << ("\n");
 		long total = 0;

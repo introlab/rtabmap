@@ -1393,6 +1393,9 @@
        </item>
        <item row="10" column="1">
         <widget class="QLabel" name="label_41">
+         <property name="toolTip">
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;N: Neighbor&lt;/p&gt;&lt;p&gt;NM: Neighbor Merged&lt;/p&gt;&lt;p&gt;G: Global&lt;/p&gt;&lt;p&gt;LS: Local by Space (Proximity)&lt;/p&gt;&lt;p&gt;LT: Local by Time (Proximity)&lt;/p&gt;&lt;p&gt;U: User&lt;/p&gt;&lt;p&gt;P: Prior&lt;/p&gt;&lt;p&gt;LM: Landmark&lt;/p&gt;&lt;p&gt;GR: Gravity&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         </property>
          <property name="text">
           <string>Links (N, NM, G, LS, LT, U, P, LM, GR)</string>
          </property>
