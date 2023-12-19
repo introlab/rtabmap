@@ -15,10 +15,10 @@ RUN add-apt-repository ppa:borglab/gtsam-release-4.0 -y
 RUN apt-get update && apt install libgtsam-dev libgtsam-unstable-dev -y && \
     apt-get clean && rm -rf /var/lib/apt/lists/
 
-# MRPT
-RUN add-apt-repository ppa:joseluisblancoc/mrpt-stable -y
-RUN apt-get update && apt install libmrpt-poses-dev -y && \
-    apt-get clean && rm -rf /var/lib/apt/lists/
+# MRPT # build failed: https://github.com/introlab/rtabmap/actions/runs/7259315306/job/19776230419
+#RUN add-apt-repository ppa:joseluisblancoc/mrpt-stable -y
+#RUN apt-get update && apt install libmrpt-poses-dev -y && \
+#    apt-get clean && rm -rf /var/lib/apt/lists/
 
 ARG TARGETPLATFORM
 ENV TARGETPLATFORM=${TARGETPLATFORM:-linux/amd64}
