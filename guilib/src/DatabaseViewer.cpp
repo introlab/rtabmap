@@ -83,6 +83,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/VisualWord.h"
 #include "rtabmap/gui/ExportDialog.h"
 #include "rtabmap/gui/EditConstraintDialog.h"
+#include "rtabmap/gui/LinkRefiningDialog.h"
 #include "rtabmap/gui/ProgressDialog.h"
 #include "rtabmap/gui/ParametersToolBox.h"
 #include "rtabmap/gui/RecoveryState.h"
@@ -112,6 +113,7 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	exportDialog_(new ExportCloudsDialog(this)),
 	editDepthDialog_(new QDialog(this)),
 	editMapDialog_(new QDialog(this)),
+	linkRefiningDialog_(new LinkRefiningDialog(this)),
 	savedMaximized_(false),
 	firstCall_(true),
 	iniFilePath_(ini),
@@ -308,8 +310,7 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	connect(ui_->actionUpdate_all_neighbor_covariances, SIGNAL(triggered()), this, SLOT(updateAllNeighborCovariances()));
 	connect(ui_->actionUpdate_all_loop_closure_covariances, SIGNAL(triggered()), this, SLOT(updateAllLoopClosureCovariances()));
 	connect(ui_->actionUpdate_all_landmark_covariances, SIGNAL(triggered()), this, SLOT(updateAllLandmarkCovariances()));
-	connect(ui_->actionRefine_all_neighbor_links, SIGNAL(triggered()), this, SLOT(refineAllNeighborLinks()));
-	connect(ui_->actionRefine_all_loop_closure_links, SIGNAL(triggered()), this, SLOT(refineAllLoopClosureLinks()));
+	connect(ui_->actionRefine_links, SIGNAL(triggered()), this, SLOT(refineLinks()));
 	connect(ui_->actionRegenerate_local_grid_maps, SIGNAL(triggered()), this, SLOT(regenerateLocalMaps()));
 	connect(ui_->actionRegenerate_local_grid_maps_selected, SIGNAL(triggered()), this, SLOT(regenerateCurrentLocalMaps()));
 	connect(ui_->actionReset_all_changes, SIGNAL(triggered()), this, SLOT(resetAllChanges()));
@@ -1163,6 +1164,10 @@ bool DatabaseViewer::closeDatabase()
 		stereoViewer_->refreshView();
 
 		ui_->toolBox_statistics->clear();
+
+		// This will re-init the dialog
+		delete linkRefiningDialog_;
+		linkRefiningDialog_ = new LinkRefiningDialog(this);
 	}
 
 	ui_->actionClose_database->setEnabled(dbDriver_ != 0);
@@ -4282,7 +4287,7 @@ void DatabaseViewer::detectMoreLoopClosures()
 
 void DatabaseViewer::updateAllNeighborCovariances()
 {
-	updateAllCovariances(neighborLinks_);
+	updateCovariances(neighborLinks_);
 }
 void DatabaseViewer::updateAllLoopClosureCovariances()
 {
@@ -4294,7 +4299,7 @@ void DatabaseViewer::updateAllLoopClosureCovariances()
 			links.push_back(loopLinks_.at(i));
 		}
 	}
-	updateAllCovariances(links);
+	updateCovariances(links);
 }
 void DatabaseViewer::updateAllLandmarkCovariances()
 {
@@ -4306,10 +4311,10 @@ void DatabaseViewer::updateAllLandmarkCovariances()
 			links.push_back(loopLinks_.at(i));
 		}
 	}
-	updateAllCovariances(links);
+	updateCovariances(links);
 }
 
-void DatabaseViewer::updateAllCovariances(const QList<Link> & links)
+void DatabaseViewer::updateCovariances(const QList<Link> & links)
 {
 	if(links.size())
 	{
@@ -4397,15 +4402,79 @@ void DatabaseViewer::updateAllCovariances(const QList<Link> & links)
 	}
 }
 
-void DatabaseViewer::refineAllNeighborLinks()
+void DatabaseViewer::refineLinks()
 {
-	refineAllLinks(neighborLinks_);
+	int minNodeId = 0;
+	int maxNodeId = 0;
+	int minMapId = 0;
+	int maxMapId = 0;
+	std::multimap<int, Link> allLinks = updateLinksWithModifications(links_);
+	for(std::multimap<int, Link>::iterator iter=allLinks.begin(); iter!=allLinks.end(); ++iter)
+	{
+		int minId = iter->second.from()>iter->second.to()?iter->second.to():iter->second.from();
+		int maxId = iter->second.from()<iter->second.to()?iter->second.to():iter->second.from();
+		if(minNodeId == 0 || minNodeId > minId)
+		{
+			minNodeId = minId;
+		}
+		if(maxNodeId == 0 || maxNodeId < maxId)
+		{
+			maxNodeId = maxId;
+		}
+	}
+	if(minNodeId > 0)
+	{
+		minMapId = uValue(mapIds_, minNodeId, 0);
+		maxMapId = uValue(mapIds_, maxNodeId, minMapId);
+
+		linkRefiningDialog_->setMinMax(
+			minNodeId,
+			maxNodeId,
+			minMapId,
+			maxMapId);
+
+		if(linkRefiningDialog_->exec() == QDialog::Accepted)
+		{
+			QList<Link> links;
+			Link::Type type = linkRefiningDialog_->getLinkType();
+			linkRefiningDialog_->getRangeNodeId(minNodeId, maxNodeId);
+			linkRefiningDialog_->getRangeNodeId(minMapId, maxMapId);
+			bool intra, inter;
+			linkRefiningDialog_->getIntraInterSessions(intra, inter);
+			for(std::multimap<int, Link>::iterator iter=allLinks.begin(); iter!=allLinks.end(); ++iter)
+			{
+				if(type==Link::kEnd || type == iter->second.type())
+				{
+					int from = iter->second.from();
+					int to = iter->second.to();
+					int mapFrom = uValue(mapIds_, from, 0);
+					int mapTo = uValue(mapIds_, to, 0);
+					if(((linkRefiningDialog_->isRangeByNodeId() && 
+						((from >= minNodeId && from <= maxNodeId) ||
+							(to >= minNodeId && to <= maxNodeId))) ||
+						(linkRefiningDialog_->isRangeByMapId() && 
+						((mapFrom >= minMapId && mapFrom <= maxMapId) ||
+							(mapTo >= minMapId && mapTo <= maxMapId)))) &&
+					   ((intra && mapTo == mapFrom) ||
+					    (inter && mapTo != mapFrom)))
+					{
+						links.push_back(iter->second);
+					}
+				}
+			}
+			if(links.isEmpty())
+			{
+				QMessageBox::warning(this, tr("Refine links"), tr("No links found matching the requested parameters."));
+				return;
+			}
+			else
+			{
+				refineLinks(links);
+			}
+		}
+	}
 }
-void DatabaseViewer::refineAllLoopClosureLinks()
-{
-	refineAllLinks(loopLinks_);
-}
-void DatabaseViewer::refineAllLinks(const QList<Link> & links)
+void DatabaseViewer::refineLinks(const QList<Link> & links)
 {
 	if(links.size())
 	{

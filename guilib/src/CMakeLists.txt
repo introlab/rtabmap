@@ -36,6 +36,7 @@ SET(headers_ui
 	../include/${PROJECT_PREFIX}/gui/EditMapArea.h
 	../include/${PROJECT_PREFIX}/gui/MultiSessionLocWidget.h
 	../include/${PROJECT_PREFIX}/gui/MultiSessionLocSubView.h
+	../include/${PROJECT_PREFIX}/gui/LinkRefiningDialog.h
 )
 
 SET(qrc 
@@ -81,6 +82,7 @@ SET(SRC_FILES
 	./CreateSimpleCalibrationDialog.cpp
 	./ParametersToolBox.cpp
 	./DepthCalibrationDialog.cpp
+	./LinkRefiningDialog.cpp
 	./3rdParty/QMultiComboBox.cpp
 	./opencv/vtkImageMatSource.cpp
 	${qrc}

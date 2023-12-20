@@ -843,8 +843,7 @@
     <addaction name="actionGenerate_local_graph_dot"/>
     <addaction name="separator"/>
     <addaction name="actionDetect_more_loop_closures"/>
-    <addaction name="actionRefine_all_neighbor_links"/>
-    <addaction name="actionRefine_all_loop_closure_links"/>
+    <addaction name="actionRefine_links"/>
     <addaction name="actionUpdate_all_neighbor_covariances"/>
     <addaction name="actionUpdate_all_loop_closure_covariances"/>
     <addaction name="actionUpdate_all_landmark_covariances"/>
@@ -3130,20 +3129,12 @@
     <string>View 3D map...</string>
    </property>
   </action>
-  <action name="actionRefine_all_neighbor_links">
+  <action name="actionRefine_links">
    <property name="text">
-    <string>Refine all neighbor links...</string>
+    <string>Refine links...</string>
    </property>
    <property name="toolTip">
-    <string>Refine all neighbor links with the registration strategy set in &quot;Core Parameters&quot;-&gt;&quot;Reg&quot;</string>
-   </property>
-  </action>
-  <action name="actionRefine_all_loop_closure_links">
-   <property name="text">
-    <string>Refine all loop closure links...</string>
-   </property>
-   <property name="toolTip">
-    <string>Refine all loop closure links with the registration strategy set in &quot;Core Parameters&quot;-&gt;&quot;Reg&quot;</string>
+    <string>Refine selected links with the registration strategy set in &quot;Core Parameters&quot;-&gt;&quot;Reg&quot;, &quot;Vis&quot; and/or &quot;Icp&quot;</string>
    </property>
   </action>
   <action name="actionDetect_more_loop_closures">

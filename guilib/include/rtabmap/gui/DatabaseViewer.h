@@ -62,6 +62,7 @@ class OctoMap;
 class ExportCloudsDialog;
 class EditDepthArea;
 class EditMapArea;
+class LinkRefiningDialog;
 
 class RTABMAP_GUI_EXPORT DatabaseViewer : public QMainWindow
 {
@@ -125,8 +126,7 @@ private Q_SLOTS:
 	void updateAllNeighborCovariances();
 	void updateAllLoopClosureCovariances();
 	void updateAllLandmarkCovariances();
-	void refineAllNeighborLinks();
-	void refineAllLoopClosureLinks();
+	void refineLinks();
 	void resetAllChanges();
 	void sliderAValueChanged(int);
 	void sliderBValueChanged(int);
@@ -193,8 +193,8 @@ private:
 	std::multimap<int, rtabmap::Link> updateLinksWithModifications(
 			const std::multimap<int, rtabmap::Link> & edgeConstraints);
 	void updateLoopClosuresSlider(int from = 0, int to = 0);
-	void updateAllCovariances(const QList<Link> & links);
-	void refineAllLinks(const QList<Link> & links);
+	void updateCovariances(const QList<Link> & links);
+	void refineLinks(const QList<Link> & links);
 	void refineConstraint(int from, int to,  bool silent);
 	bool addConstraint(int from, int to, bool silent);
 	void exportPoses(int format);
@@ -238,6 +238,7 @@ private:
 	EditDepthArea * editDepthArea_;
 	QDialog * editMapDialog_;
 	EditMapArea * editMapArea_;
+	LinkRefiningDialog * linkRefiningDialog_;
 
 	bool savedMaximized_;
 	bool firstCall_;
