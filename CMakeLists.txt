@@ -208,7 +208,7 @@ option(WITH_GRIDMAP       "Include GridMap support"              OFF)
 option(WITH_CPUTSDF       "Include CPUTSDF support"              OFF)
 option(WITH_OPENCHISEL    "Include open_chisel support"          OFF)
 option(WITH_ALICE_VISION  "Include AliceVision support"          OFF)
-option(WITH_FOVIS         "Include FOVIS support"                OFF)
+option(WITH_FOVIS         "Include FOVIS supp++ort"                OFF)
 option(WITH_VISO2         "Include VISO2 support"                OFF)
 option(WITH_DVO           "Include DVO support"                  OFF)
 option(WITH_ORB_SLAM      "Include ORB_SLAM2 or ORB_SLAM3  support" OFF)
@@ -810,22 +810,7 @@ IF(NOT MSVC)
       ENDIF()
     ENDIF()
 
-    IF( (NOT (${CMAKE_CXX_STANDARD} STREQUAL "17") AND NOT (${CMAKE_CXX_STANDARD} STREQUAL "14")) AND (
-           G2O_FOUND OR
-           GTSAM_FOUND OR
-           CERES_FOUND OR
-           ZED_FOUND OR
-           ZEDOC_FOUND OR
-           ANDROID OR
-           RealSense_FOUND OR
-           realsense2_FOUND OR
-           ORB_SLAM_FOUND OR
-           okvis_FOUND OR
-           open_chisel_FOUND OR
-           vins_FOUND OR
-           ov_msckf_FOUND OR
-           msckf_vio_FOUND OR
-           libpointmatcher_FOUND))
+    IF(NOT ("${CMAKE_CXX_STANDARD}" STREQUAL "17") AND NOT ("${CMAKE_CXX_STANDARD}" STREQUAL "14"))
      #Newest versions require std11
      include(CheckCXXCompilerFlag)
       CHECK_CXX_COMPILER_FLAG("-std=c++11" COMPILER_SUPPORTS_CXX11)
