@@ -679,25 +679,39 @@ SensorData CameraDepthAI::captureImage(CameraInfo * info)
 		auto heatmap = features->getLayerFp16("heatmap");
 		auto desc = features->getLayerFp16("desc");
 
-		cv::Mat prob(200, 320, CV_32FC1, heatmap.data());
-		cv::resize(prob, prob, targetSize_, 0, 0, cv::INTER_CUBIC);
-		std::vector<cv::Point> kpts;
-		cv::findNonZero(prob > threshold_, kpts);
-		std::vector<cv::KeyPoint> keypoints_no_nms, keypoints;
-		for(auto& kpt : kpts)
+		cv::Mat scores(200, 320, CV_32FC1, heatmap.data());
+		cv::resize(scores, scores, targetSize_, 0, 0, cv::INTER_CUBIC);
+
+		if(nms_)
 		{
-			float response = prob.at<float>(kpt);
-			keypoints_no_nms.emplace_back(cv::KeyPoint(kpt, 8, -1, response));
+			cv::Mat dilated_scores(targetSize_, CV_32FC1);
+			cv::dilate(scores, dilated_scores, cv::getStructuringElement(cv::MORPH_RECT, cv::Size(nmsRadius_*2+1, nmsRadius_*2+1)));
+			cv::Mat max_mask = scores == dilated_scores;
+			cv::dilate(scores, dilated_scores, cv::Mat());
+			cv::Mat max_mask_r1 = scores == dilated_scores;
+			cv::Mat supp_mask(targetSize_, CV_8UC1);
+			for(size_t i=0; i<2; i++)
+			{
+				cv::dilate(max_mask, supp_mask, cv::getStructuringElement(cv::MORPH_RECT, cv::Size(nmsRadius_*2+1, nmsRadius_*2+1)));
+				cv::Mat supp_scores = scores.clone();
+				supp_scores.setTo(0, supp_mask);
+				cv::dilate(supp_scores, dilated_scores, cv::getStructuringElement(cv::MORPH_RECT, cv::Size(nmsRadius_*2+1, nmsRadius_*2+1)));
+				cv::Mat new_max_mask = cv::Mat::zeros(targetSize_, CV_8UC1);
+				cv::bitwise_not(supp_mask, supp_mask);
+				cv::bitwise_and(supp_scores == dilated_scores, supp_mask, new_max_mask, max_mask_r1);
+				cv::bitwise_or(max_mask, new_max_mask, max_mask);
+			}
+			cv::bitwise_not(max_mask, supp_mask);
+			scores.setTo(0, supp_mask);
 		}
 
-		if(nms_ && !keypoints_no_nms.empty())
+		std::vector<cv::Point> kpts;
+		cv::findNonZero(scores > threshold_, kpts);
+		std::vector<cv::KeyPoint> keypoints;
+		for(auto& kpt : kpts)
 		{
-			cv::Mat descEmpty;
-			util2d::NMS(keypoints_no_nms, descEmpty, keypoints, descEmpty, 0, nmsRadius_, targetSize_.width, targetSize_.height);
-		}
-		else if(!keypoints_no_nms.empty())
-		{
-			keypoints = keypoints_no_nms;
+			float response = scores.at<float>(kpt);
+			keypoints.emplace_back(cv::KeyPoint(kpt, 8, -1, response));
 		}
 
 		cv::Mat coarse_desc(25, 40, CV_32FC(256), desc.data());
