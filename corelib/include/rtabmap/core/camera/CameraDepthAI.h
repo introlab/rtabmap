@@ -97,9 +97,7 @@ private:
 	int nmsRadius_;
 	std::string blobPath_;
 	std::shared_ptr<dai::Device> device_;
-	std::shared_ptr<dai::DataOutputQueue> leftOrColorQueue_;
-	std::shared_ptr<dai::DataOutputQueue> rightOrDepthQueue_;
-	std::shared_ptr<dai::DataOutputQueue> featuresQueue_;
+	std::shared_ptr<dai::DataOutputQueue> cameraQueue_;
 	std::map<double, cv::Vec3f> accBuffer_;
 	std::map<double, cv::Vec3f> gyroBuffer_;
 	UMutex imuMutex_;
