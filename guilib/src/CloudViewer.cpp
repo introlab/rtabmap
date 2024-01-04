@@ -1679,7 +1679,7 @@ bool CloudViewer::addElevationMap(
 			color[j] = 255 * dcolor[j] / 1.0;
 		}
 
-#if VTK_MAJOR_VERSION > 7
+#if VTK_MAJOR_VERSION > 7 || (VTK_MAJOR_VERSION==7 && VTK_MINOR_VERSION >= 1)
 		colors->InsertNextTypedTuple(color);
 #else
 		colors->InsertNextTupleValue(color);

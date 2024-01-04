@@ -204,7 +204,7 @@ option(WITH_REALSENSE2    "Include RealSense support"            ON)
 option(WITH_MYNTEYE       "Include mynteye-s support"            ON)
 option(WITH_DEPTHAI       "Include depthai-core support"         OFF)
 option(WITH_OCTOMAP       "Include OctoMap support"              ON)
-option(WITH_GRIDMAP       "Include GridMap support"              OFF)
+option(WITH_GRIDMAP       "Include GridMap support"              ON)
 option(WITH_CPUTSDF       "Include CPUTSDF support"              OFF)
 option(WITH_OPENCHISEL    "Include open_chisel support"          OFF)
 option(WITH_ALICE_VISION  "Include AliceVision support"          OFF)
@@ -1083,6 +1083,7 @@ ENDIF(BUILD_EXAMPLES)
 #######################
 # Uninstall target, for "make uninstall"
 #######################
+IF (NOT TARGET uninstall)
 CONFIGURE_FILE(
   "${CMAKE_CURRENT_SOURCE_DIR}/cmake_uninstall.cmake.in"
   "${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake"
@@ -1090,6 +1091,7 @@ CONFIGURE_FILE(
 
 ADD_CUSTOM_TARGET(uninstall
   "${CMAKE_COMMAND}" -P "${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake")
+ENDIF()
 
 ####
 # Global Export Target
