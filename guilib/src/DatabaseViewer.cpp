@@ -6899,8 +6899,11 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 					SensorData data;
 					dbDriver_->getNodeData(ids.at(i), data, false, false, false);
 					cv::Mat ground, obstacles, empty;
-					data.uncompressData(0, 0, 0, 0, &ground, &obstacles, &empty);
-					localMaps_.add(ids.at(i), ground, obstacles, empty, data.gridCellSize(), data.gridViewPoint());
+					if(data.gridCellSize()>0.0f)
+					{
+						data.uncompressData(0, 0, 0, 0, &ground, &obstacles, &empty);
+					}
+					localMaps_.add(ids.at(i), ground, obstacles, empty, data.gridCellSize()>0.0f?data.gridCellSize():Parameters::defaultGridCellSize(), data.gridViewPoint());
 					if(!ground.empty() || !obstacles.empty())
 					{
 						localMaps_.shareTo(ids.at(i), combinedLocalMaps);
