@@ -330,6 +330,7 @@ private:
 	bool _rehearsalWeightIgnoredWhileMoving;
 	bool _useOdometryFeatures;
 	bool _useOdometryGravity;
+	bool _rotateImagesUpsideUp;
 	bool _createOccupancyGrid;
 	int _visMaxFeatures;
 	bool _imagesAlreadyRectified;

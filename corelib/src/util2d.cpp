@@ -2202,6 +2202,98 @@ void NMS(
     }
 }
 
+void rotateImagesUpsideUpIfNecessary(
+	CameraModel & model,
+	cv::Mat & rgb,
+	cv::Mat & depth)
+{
+	float roll,pitch,yaw;
+	// remove optical rotation
+	Transform localTransform = model.localTransform()*CameraModel::opticalRotation().inverse();
+	localTransform.getEulerAngles(roll, pitch, yaw);
+	UDEBUG("roll=%f pitch=%f yaw=%f", roll, pitch, yaw);
+	if(fabs(pitch > M_PI/4))
+	{
+		// Return original because of ambiguity for what would be considered up...
+		UDEBUG("Ignoring image rotation as pitch(%f)>Pi/4", pitch);
+		return;
+	}
+	if(roll<0)
+	{
+		roll+=2*M_PI;
+	}
+	if(roll >= M_PI/4 && roll < 3*M_PI/4)
+	{
+		UDEBUG("ROTATION_90 (roll=%f)", roll);
+		if(!rgb.empty())
+		{
+			cv::flip(rgb,rgb,1);
+			cv::transpose(rgb,rgb);
+		}
+		if(!depth.empty())
+		{
+			cv::flip(depth,depth,1);
+			cv::transpose(depth,depth);
+		}
+		cv::Size sizet(model.imageHeight(), model.imageWidth());
+		model = CameraModel(
+				model.fy(),
+				model.fx(),
+				model.cy(),
+				model.cx()>0?model.imageWidth()-model.cx():0,
+				model.localTransform()*rtabmap::Transform(0,-1,0,0, 1,0,0,0, 0,0,1,0));
+		model.setImageSize(sizet);
+	}
+	else if(roll >= 3*M_PI/4 && roll < 5*M_PI/4)
+	{
+		UDEBUG("ROTATION_180 (roll=%f)", roll);
+		if(!rgb.empty())
+		{
+			cv::flip(rgb,rgb,1);
+			cv::flip(rgb,rgb,0);
+		}
+		if(!depth.empty())
+		{
+			cv::flip(depth,depth,1);
+			cv::flip(depth,depth,0);
+		}
+		cv::Size sizet(model.imageWidth(), model.imageHeight());
+		model = CameraModel(
+				model.fx(),
+				model.fy(),
+				model.cx()>0?model.imageWidth()-model.cx():0,
+				model.cy()>0?model.imageHeight()-model.cy():0,
+				model.localTransform()*rtabmap::Transform(0,0,0,0,0,1,0));
+		model.setImageSize(sizet);
+	}
+	else if(roll >= 5*M_PI/4 && roll < 7*M_PI/4)
+	{
+		UDEBUG("ROTATION_270 (roll=%f)", roll);
+		if(!rgb.empty())
+		{
+			cv::transpose(rgb,rgb);
+			cv::flip(rgb,rgb,1);
+		}
+		if(!depth.empty())
+		{
+			cv::transpose(depth,depth);
+			cv::flip(depth,depth,1);
+		}
+		cv::Size sizet(model.imageHeight(), model.imageWidth());
+		model = CameraModel(
+				model.fy(),
+				model.fx(),
+				model.cy()>0?model.imageHeight()-model.cy():0,
+				model.cx(),
+				model.localTransform()*rtabmap::Transform(0,1,0,0, -1,0,0,0, 0,0,1,0));
+		model.setImageSize(sizet);
+	}
+	else
+	{
+		UDEBUG("ROTATION_0 (roll=%f)", roll);
+	}
+}
+
 }
 
 }

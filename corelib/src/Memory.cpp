@@ -107,6 +107,7 @@ Memory::Memory(const ParametersMap & parameters) :
 	_rehearsalWeightIgnoredWhileMoving(Parameters::defaultMemRehearsalWeightIgnoredWhileMoving()),
 	_useOdometryFeatures(Parameters::defaultMemUseOdomFeatures()),
 	_useOdometryGravity(Parameters::defaultMemUseOdomGravity()),
+	_rotateImagesUpsideUp(Parameters::defaultMemRotateImagesUpsideUp()),
 	_createOccupancyGrid(Parameters::defaultRGBDCreateOccupancyGrid()),
 	_visMaxFeatures(Parameters::defaultVisMaxFeatures()),
 	_imagesAlreadyRectified(Parameters::defaultRtabmapImagesAlreadyRectified()),
@@ -597,6 +598,7 @@ void Memory::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(params, Parameters::kMemRehearsalWeightIgnoredWhileMoving(), _rehearsalWeightIgnoredWhileMoving);
 	Parameters::parse(params, Parameters::kMemUseOdomFeatures(), _useOdometryFeatures);
 	Parameters::parse(params, Parameters::kMemUseOdomGravity(), _useOdometryGravity);
+	Parameters::parse(params, Parameters::kMemRotateImagesUpsideUp(), _rotateImagesUpsideUp);
 	Parameters::parse(params, Parameters::kRGBDCreateOccupancyGrid(), _createOccupancyGrid);
 	Parameters::parse(params, Parameters::kVisMaxFeatures(), _visMaxFeatures);
 	Parameters::parse(params, Parameters::kRtabmapImagesAlreadyRectified(), _imagesAlreadyRectified);
@@ -4665,6 +4667,96 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 	{
 		UDEBUG("Start dictionary update thread");
 		preUpdateThread.start();
+	}
+
+	if(_rotateImagesUpsideUp && !data.imageRaw().empty() && !data.cameraModels().empty())
+	{
+		// Currently stereo is not supported
+		UASSERT(int((data.imageRaw().cols/data.cameraModels().size())*data.cameraModels().size()) == data.imageRaw().cols);
+		int subInputImageWidth = data.imageRaw().cols/data.cameraModels().size();
+		int subInputDepthWidth = data.depthRaw().cols/data.cameraModels().size();
+		int subOutputImageWidth = 0;
+		int subOutputDepthWidth = 0;
+		cv::Mat rotatedColorImages;
+		cv::Mat rotatedDepthImages;
+		std::vector<CameraModel> rotatedCameraModels;
+		bool allOutputSizesAreOkay = true;
+		for(size_t i=0; i<data.cameraModels().size(); ++i)
+		{
+			UDEBUG("Rotating camera %ld", i);
+			cv::Mat rgb = cv::Mat(data.imageRaw(), cv::Rect(subInputImageWidth*i, 0, subInputImageWidth, data.imageRaw().rows));
+			cv::Mat depth = !data.depthRaw().empty()?cv::Mat(data.depthRaw(), cv::Rect(subInputDepthWidth*i, 0, subInputDepthWidth, data.depthRaw().rows)):cv::Mat();
+			CameraModel model = data.cameraModels()[i];
+			util2d::rotateImagesUpsideUpIfNecessary(model, rgb, depth);
+			if(rotatedColorImages.empty())
+			{
+				rotatedColorImages = cv::Mat(cv::Size(rgb.cols * data.cameraModels().size(), rgb.rows), rgb.type());
+				subOutputImageWidth = rgb.cols;;
+				if(!depth.empty())
+				{
+					rotatedDepthImages = cv::Mat(cv::Size(depth.cols * data.cameraModels().size(), depth.rows), depth.type());
+					subOutputDepthWidth = depth.cols;
+				}
+			}
+			else if(rgb.cols != subOutputImageWidth || depth.cols != subOutputDepthWidth ||
+					rgb.rows != rotatedColorImages.rows || depth.rows != rotatedDepthImages.rows)
+			{
+				UWARN("Rotated image for camera index %d (rgb=%dx%d depth=%dx%d) doesn't tally "
+				      "with the first camera (rgb=%dx%d, depth=%dx%d). Aborting upside up rotation, "
+					  "will use original image orientation. Set parameter %s to false to avoid "
+					  "this warning.",
+						i,
+						rgb.cols, rgb.rows,
+						depth.cols, depth.rows,
+						subOutputImageWidth, rotatedColorImages.rows,
+						subOutputDepthWidth, rotatedDepthImages.rows,
+						Parameters::kMemRotateImagesUpsideUp().c_str());
+				allOutputSizesAreOkay = false;
+				break;
+			}
+			rgb.copyTo(cv::Mat(rotatedColorImages, cv::Rect(subOutputImageWidth*i, 0, subOutputImageWidth, rgb.rows)));
+			if(!depth.empty())
+			{
+				depth.copyTo(cv::Mat(rotatedDepthImages, cv::Rect(subOutputDepthWidth*i, 0, subOutputDepthWidth, depth.rows)));
+			}
+			rotatedCameraModels.push_back(model);
+		}
+		if(allOutputSizesAreOkay)
+		{
+			data.setRGBDImage(rotatedColorImages, rotatedDepthImages, rotatedCameraModels);
+
+			// Clear any features to avoid confusion with the rotated cameras.
+			if(!data.keypoints().empty() || !data.keypoints3D().empty() || !data.descriptors().empty())
+			{
+				if(_useOdometryFeatures)
+				{
+					static bool warned = false;
+					if(!warned)
+					{
+						UWARN("Because parameter %s is enabled, parameter %s is inhibited as "
+							"features have to be regenerated. To avoid this warning, set "
+							"explicitly %s to false. This message is only "
+							"printed once.",
+							Parameters::kMemRotateImagesUpsideUp().c_str(),
+							Parameters::kMemUseOdomFeatures().c_str(),
+							Parameters::kMemUseOdomFeatures().c_str());
+						warned = true;
+					}
+				}
+				data.setFeatures(std::vector<cv::KeyPoint>(), std::vector<cv::Point3f>(), cv::Mat());
+			}
+		}
+	}
+	else if(_rotateImagesUpsideUp)
+	{
+		static bool warned = false;
+		if(!warned)
+		{
+			UWARN("Parameter %s can only be used with RGB-only or RGB-D cameras. "
+			      "Ignoring upside up rotation. This message is only printed once.",
+				  Parameters::kMemRotateImagesUpsideUp().c_str());
+			warned = true;
+		}
 	}
 
 	unsigned int preDecimation = 1;
