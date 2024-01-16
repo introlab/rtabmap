@@ -65,7 +65,7 @@ ENDIF(APPLE AND BUILD_AS_BUNDLE)
        
 IF(BUILD_AS_BUNDLE AND (APPLE OR WIN32))
   SET(APPS "\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/bin/${PROJECT_NAME}${CMAKE_EXECUTABLE_SUFFIX}")
-  SET(plugin_dest_dir bin)
+  SET(plugin_dest_dir bin/plugins)
   SET(qtconf_dest_dir bin)
   SET(thirdparty_dest_dir bin)
  
