@@ -135,79 +135,91 @@ IF(BUILD_AS_BUNDLE AND (APPLE OR WIN32))
 	include(\"${QT_DEPLOY_SUPPORT}\")
 	qt_deploy_runtime_dependencies(
 		EXECUTABLE \"${APPS}\"
-		VERBOSE
-		PLUGINS_DIR ${plugin_dest_dir}/plugins
+        PLUGINS_DIR ${plugin_dest_dir}/plugins
+        GENERATE_QT_CONF
+        NO_TRANSLATIONS
+        VERBOSE
 	)")
-	install(SCRIPT "${CMAKE_CURRENT_BINARY_DIR}/deploy_appDebug.cmake"
-		CONFIGURATIONS Debug
-		COMPONENT runtime)
-	install(SCRIPT "${CMAKE_CURRENT_BINARY_DIR}/deploy_appRelease.cmake"
-		CONFIGURATIONS Release
-		COMPONENT runtime)
-	install(SCRIPT "${CMAKE_CURRENT_BINARY_DIR}/deploy_appRelWithDebInfo.cmake"
-		CONFIGURATIONS RelWithDebInfo
-		COMPONENT runtime)
-	install(SCRIPT "${CMAKE_CURRENT_BINARY_DIR}/deploy_appMinSizeRel.cmake"
-		CONFIGURATIONS MinSizeRel
-		COMPONENT runtime)
+    IF("${CMAKE_BUILD_TYPE}" STREQUAL "" OR "${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
+        install(SCRIPT "${CMAKE_CURRENT_BINARY_DIR}/deploy_appDebug.cmake"
+            CONFIGURATIONS Debug
+            COMPONENT runtime)
+    ENDIF()
+    IF("${CMAKE_BUILD_TYPE}" STREQUAL "" OR "${CMAKE_BUILD_TYPE}" STREQUAL "Release")
+        install(SCRIPT "${CMAKE_CURRENT_BINARY_DIR}/deploy_appRelease.cmake"
+            CONFIGURATIONS Release
+            COMPONENT runtime)
+    ENDIF()
+    IF("${CMAKE_BUILD_TYPE}" STREQUAL "" OR "${CMAKE_BUILD_TYPE}" STREQUAL "RelWithDebInfo")
+        install(SCRIPT "${CMAKE_CURRENT_BINARY_DIR}/deploy_appRelWithDebInfo.cmake"
+            CONFIGURATIONS RelWithDebInfo
+            COMPONENT runtime)
+    ENDIF()
+    IF("${CMAKE_BUILD_TYPE}" STREQUAL "" OR "${CMAKE_BUILD_TYPE}" STREQUAL "MinSizeRel")
+        install(SCRIPT "${CMAKE_CURRENT_BINARY_DIR}/deploy_appMinSizeRel.cmake"
+            CONFIGURATIONS MinSizeRel
+            COMPONENT runtime)
+    ENDIF()
   ELSEIF(Qt5_FOUND)
-	#Qt5
-	foreach(plugin ${Qt5Gui_PLUGINS})
-		get_target_property(plugin_loc ${plugin} LOCATION)
-		get_filename_component(plugin_dir ${plugin_loc} DIRECTORY)
-		string(REPLACE "plugins" ";" loc_list ${plugin_dir})
-		list(GET loc_list 1 plugin_type)
-		IF(NOT plugin_root)
-			get_filename_component(plugin_root ${plugin_dir} DIRECTORY)
-		ENDIF(NOT plugin_root)
-		#MESSAGE(STATUS "Qt5 plugin \"${plugin_loc}\" installed in \"${plugin_dest_dir}/plugins${plugin_type}\"")
-		INSTALL(FILES ${plugin_loc}
-		  DESTINATION ${plugin_dest_dir}/plugins${plugin_type}
-		  COMPONENT runtime)
-	endforeach()
-	IF(NOT Qt5Widgets_VERSION VERSION_LESS 5.10.0)
-		IF(WIN32)
-			SET(plugin_loc "${plugin_root}/styles/qwindowsvistastyle.dll")
-		ELSEIF(APPLE)
-			SET(plugin_loc "${plugin_root}/styles/libqmacstyle.dylib")
-		ENDIF()
-		IF(EXISTS ${plugin_loc})
-			get_filename_component(plugin_dir ${plugin_loc} DIRECTORY)
-			string(REPLACE "plugins" ";" loc_list ${plugin_dir})
-			list(GET loc_list 1 plugin_type)
-			INSTALL(FILES ${plugin_loc}
-				DESTINATION ${plugin_dest_dir}/plugins${plugin_type}
-				COMPONENT runtime)
-			#MESSAGE(STATUS "Qt5 plugin \"${plugin_loc}\" installed in \"${plugin_dest_dir}/plugins${plugin_type}\"")
-		ENDIF(EXISTS ${plugin_loc})
-	ENDIF(NOT Qt5Widgets_VERSION VERSION_LESS 5.10.0)
+    #Qt5
+    foreach(plugin ${Qt5Gui_PLUGINS})
+        get_target_property(plugin_loc ${plugin} LOCATION)
+        get_filename_component(plugin_dir ${plugin_loc} DIRECTORY)
+        string(REPLACE "plugins" ";" loc_list ${plugin_dir})
+        list(GET loc_list 1 plugin_type)
+        IF(NOT plugin_root)
+            get_filename_component(plugin_root ${plugin_dir} DIRECTORY)
+        ENDIF(NOT plugin_root)
+        #MESSAGE(STATUS "Qt5 plugin \"${plugin_loc}\" installed in \"${plugin_dest_dir}/plugins${plugin_type}\"")
+        INSTALL(FILES ${plugin_loc}
+          DESTINATION ${plugin_dest_dir}/plugins${plugin_type}
+          COMPONENT runtime)
+    endforeach()
+    IF(NOT Qt5Widgets_VERSION VERSION_LESS 5.10.0)
+        IF(WIN32)
+            SET(plugin_loc "${plugin_root}/styles/qwindowsvistastyle.dll")
+        ELSEIF(APPLE)
+            SET(plugin_loc "${plugin_root}/styles/libqmacstyle.dylib")
+        ENDIF()
+        IF(EXISTS ${plugin_loc})
+            get_filename_component(plugin_dir ${plugin_loc} DIRECTORY)
+            string(REPLACE "plugins" ";" loc_list ${plugin_dir})
+            list(GET loc_list 1 plugin_type)
+            INSTALL(FILES ${plugin_loc}
+                DESTINATION ${plugin_dest_dir}/plugins${plugin_type}
+                COMPONENT runtime)
+            #MESSAGE(STATUS "Qt5 plugin \"${plugin_loc}\" installed in \"${plugin_dest_dir}/plugins${plugin_type}\"")
+        ENDIF(EXISTS ${plugin_loc})
+    ENDIF(NOT Qt5Widgets_VERSION VERSION_LESS 5.10.0)
   ELSEIF(QT_PLUGINS_DIR) # Qt4
     # Install needed Qt plugins by copying directories from the qt installation
-	# One can cull what gets copied by using 'REGEX "..." EXCLUDE'
-	# Exclude debug libraries
-	INSTALL(DIRECTORY "${QT_PLUGINS_DIR}/imageformats"
-		DESTINATION ${plugin_dest_dir}/plugins 
-		COMPONENT runtime 
-		REGEX ".*d4.dll" EXCLUDE
-		REGEX ".*d4.a" EXCLUDE)
+    # One can cull what gets copied by using 'REGEX "..." EXCLUDE'
+    # Exclude debug libraries
+    INSTALL(DIRECTORY "${QT_PLUGINS_DIR}/imageformats"
+        DESTINATION ${plugin_dest_dir}/plugins 
+        COMPONENT runtime 
+        REGEX ".*d4.dll" EXCLUDE
+        REGEX ".*d4.a" EXCLUDE)
   ENDIF()
  
-  # install a qt.conf file
-  # this inserts some cmake code into the install script to write the file
-  SET(QT_CONF_FILE [Paths]\nPlugins=plugins)
-  IF(APPLE)
-	SET(QT_CONF_FILE [Paths]\nPlugins=MacOS/plugins)
-  ENDIF(APPLE)
-  INSTALL(CODE "
-	file(WRITE \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${qtconf_dest_dir}/qt.conf\" \"${QT_CONF_FILE}\")
-	" COMPONENT runtime)
+  IF(Qt5_FOUND OR QT4_FOUND)
+      # install a qt.conf file
+      # this inserts some cmake code into the install script to write the file
+      SET(QT_CONF_FILE [Paths]\nPlugins=plugins)
+      IF(APPLE)
+        SET(QT_CONF_FILE [Paths]\nPlugins=MacOS/plugins)
+      ENDIF(APPLE)
+      INSTALL(CODE "
+        file(WRITE \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${qtconf_dest_dir}/qt.conf\" \"${QT_CONF_FILE}\")
+        " COMPONENT runtime)
+     
+      # directories to look for dependencies
+      SET(DIRS ${QT_LIBRARY_DIRS} ${PROJECT_BINARY_DIR}/buil/bin)
+      IF(APPLE)
+        SET(DIRS ${DIRS} /usr/local /usr/local/lib /opt/homebrew /opt/homebrew/lib /opt/homebrew/lib/gcc/current)
+      ENDIF(APPLE)
+  ENDIF()
  
-  # directories to look for dependencies
-  SET(DIRS ${QT_LIBRARY_DIRS} ${PROJECT_BINARY_DIR}/bin)
-  IF(APPLE)
-    SET(DIRS ${DIRS} /usr/local /usr/local/lib /opt/homebrew /opt/homebrew/lib /opt/homebrew/lib/gcc/current)
-  ENDIF(APPLE)
-
   # Now the work of copying dependencies into the bundle/package
   # The quotes are escaped and variables to use at install time have their $ escaped
   # An alternative is the do a configure_file() on a script and use install(SCRIPT  ...).
