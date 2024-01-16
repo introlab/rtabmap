@@ -212,13 +212,13 @@ IF(BUILD_AS_BUNDLE AND (APPLE OR WIN32))
       INSTALL(CODE "
         file(WRITE \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${qtconf_dest_dir}/qt.conf\" \"${QT_CONF_FILE}\")
         " COMPONENT runtime)
-     
-      # directories to look for dependencies
-      SET(DIRS ${QT_LIBRARY_DIRS} ${PROJECT_BINARY_DIR}/buil/bin)
-      IF(APPLE)
-        SET(DIRS ${DIRS} /usr/local /usr/local/lib /opt/homebrew /opt/homebrew/lib /opt/homebrew/lib/gcc/current)
-      ENDIF(APPLE)
   ENDIF()
+  
+  # directories to look for dependencies
+  SET(DIRS ${QT_LIBRARY_DIRS} ${PROJECT_BINARY_DIR}/build/bin)
+  IF(APPLE)
+    SET(DIRS ${DIRS} /usr/local /usr/local/lib /opt/homebrew /opt/homebrew/lib /opt/homebrew/lib/gcc/current)
+  ENDIF(APPLE)
  
   # Now the work of copying dependencies into the bundle/package
   # The quotes are escaped and variables to use at install time have their $ escaped
