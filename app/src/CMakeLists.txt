@@ -67,12 +67,15 @@ IF(BUILD_AS_BUNDLE AND (APPLE OR WIN32))
   SET(APPS "\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/bin/${PROJECT_NAME}${CMAKE_EXECUTABLE_SUFFIX}")
   SET(plugin_dest_dir bin)
   SET(qtconf_dest_dir bin)
-  SET(openni2_dest_dir bin)
+  SET(thirdparty_dest_dir bin)
  
   IF(APPLE)
-    SET(plugin_dest_dir MacOS)
+    SET(plugin_dest_dir MacOS/plugins)
+    IF(Qt6_FOUND)
+       SET(plugin_dest_dir PlugIns)
+    ENDIF()
     SET(qtconf_dest_dir Resources)
-    SET(openni2_dest_dir MacOS)
+    SET(thirdparty_dest_dir MacOS)
     SET(APPS "\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/MacOS/${CMAKE_BUNDLE_NAME}")
   ENDIF(APPLE)
 
@@ -93,7 +96,7 @@ IF(BUILD_AS_BUNDLE AND (APPLE OR WIN32))
           COMPONENT runtime 
           REGEX ".*pdb" EXCLUDE)
     INSTALL(FILES "${OpenNI2_BIN_DIR}/OpenNI.ini" 
-          DESTINATION ${openni2_dest_dir} 
+          DESTINATION ${thirdparty_dest_dir} 
           COMPONENT runtime)
   ENDIF(OpenNI2_FOUND)
   
@@ -102,7 +105,7 @@ IF(BUILD_AS_BUNDLE AND (APPLE OR WIN32))
     IF(WIN32)
 		file(TO_CMAKE_PATH "$ENV{K4A_ROOT_DIR}" ENV_K4A_ROOT_DIR)
 		INSTALL(FILES "${ENV_K4A_ROOT_DIR}/tools/depthengine_2_0.dll" 
-          DESTINATION ${plugin_dest_dir} 
+          DESTINATION ${thirdparty_dest_dir} 
           COMPONENT runtime)
 	ENDIF(WIN32)
   ENDIF(k4a_FOUND)
@@ -117,7 +120,7 @@ IF(BUILD_AS_BUNDLE AND (APPLE OR WIN32))
 			MESSAGE(STATUS "Found ${CUDNN_OPS_DLL}")
 			MESSAGE(STATUS "Found ${CUDNN_CNN_DLL}")
 			INSTALL(FILES ${CUDNN_OPS_DLL} ${CUDNN_CNN_DLL}
-			  DESTINATION ${plugin_dest_dir} 
+			  DESTINATION ${thirdparty_dest_dir} 
 			  COMPONENT runtime)
 		ELSE()
 			MESSAGE(AUTHOR_WARNING "Using Torch with CUDA, but cudnn_ops_infer64_8.dll and cudnn_cnn_infer64_8.dll are not found on the PATH, so it won't be added to package.")
@@ -135,31 +138,31 @@ IF(BUILD_AS_BUNDLE AND (APPLE OR WIN32))
 	include(\"${QT_DEPLOY_SUPPORT}\")
 	qt_deploy_runtime_dependencies(
 		EXECUTABLE \"${APPS}\"
-        PLUGINS_DIR ${plugin_dest_dir}/plugins
-        GENERATE_QT_CONF
-        NO_TRANSLATIONS
-        VERBOSE
+		PLUGINS_DIR ${plugin_dest_dir}
+		GENERATE_QT_CONF
+		NO_TRANSLATIONS
+		VERBOSE
 	)")
-    IF("${CMAKE_BUILD_TYPE}" STREQUAL "" OR "${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
-        install(SCRIPT "${CMAKE_CURRENT_BINARY_DIR}/deploy_appDebug.cmake"
+    	IF("${CMAKE_BUILD_TYPE}" STREQUAL "" OR "${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
+	install(SCRIPT "${CMAKE_CURRENT_BINARY_DIR}/deploy_appDebug.cmake"
             CONFIGURATIONS Debug
             COMPONENT runtime)
-    ENDIF()
-    IF("${CMAKE_BUILD_TYPE}" STREQUAL "" OR "${CMAKE_BUILD_TYPE}" STREQUAL "Release")
+    	ENDIF()
+    	IF("${CMAKE_BUILD_TYPE}" STREQUAL "" OR "${CMAKE_BUILD_TYPE}" STREQUAL "Release")
         install(SCRIPT "${CMAKE_CURRENT_BINARY_DIR}/deploy_appRelease.cmake"
             CONFIGURATIONS Release
             COMPONENT runtime)
-    ENDIF()
-    IF("${CMAKE_BUILD_TYPE}" STREQUAL "" OR "${CMAKE_BUILD_TYPE}" STREQUAL "RelWithDebInfo")
+    	ENDIF()
+    	IF("${CMAKE_BUILD_TYPE}" STREQUAL "" OR "${CMAKE_BUILD_TYPE}" STREQUAL "RelWithDebInfo")
         install(SCRIPT "${CMAKE_CURRENT_BINARY_DIR}/deploy_appRelWithDebInfo.cmake"
             CONFIGURATIONS RelWithDebInfo
             COMPONENT runtime)
-    ENDIF()
-    IF("${CMAKE_BUILD_TYPE}" STREQUAL "" OR "${CMAKE_BUILD_TYPE}" STREQUAL "MinSizeRel")
+    	ENDIF()
+    	IF("${CMAKE_BUILD_TYPE}" STREQUAL "" OR "${CMAKE_BUILD_TYPE}" STREQUAL "MinSizeRel")
         install(SCRIPT "${CMAKE_CURRENT_BINARY_DIR}/deploy_appMinSizeRel.cmake"
             CONFIGURATIONS MinSizeRel
             COMPONENT runtime)
-    ENDIF()
+    	ENDIF()
   ELSEIF(Qt5_FOUND)
     #Qt5
     foreach(plugin ${Qt5Gui_PLUGINS})
@@ -170,9 +173,9 @@ IF(BUILD_AS_BUNDLE AND (APPLE OR WIN32))
         IF(NOT plugin_root)
             get_filename_component(plugin_root ${plugin_dir} DIRECTORY)
         ENDIF(NOT plugin_root)
-        #MESSAGE(STATUS "Qt5 plugin \"${plugin_loc}\" installed in \"${plugin_dest_dir}/plugins${plugin_type}\"")
+        #MESSAGE(STATUS "Qt5 plugin \"${plugin_loc}\" installed in \"${plugin_dest_dir}${plugin_type}\"")
         INSTALL(FILES ${plugin_loc}
-          DESTINATION ${plugin_dest_dir}/plugins${plugin_type}
+          DESTINATION ${plugin_dest_dir}${plugin_type}
           COMPONENT runtime)
     endforeach()
     IF(NOT Qt5Widgets_VERSION VERSION_LESS 5.10.0)
@@ -188,7 +191,7 @@ IF(BUILD_AS_BUNDLE AND (APPLE OR WIN32))
             INSTALL(FILES ${plugin_loc}
                 DESTINATION ${plugin_dest_dir}/plugins${plugin_type}
                 COMPONENT runtime)
-            #MESSAGE(STATUS "Qt5 plugin \"${plugin_loc}\" installed in \"${plugin_dest_dir}/plugins${plugin_type}\"")
+            #MESSAGE(STATUS "Qt5 plugin \"${plugin_loc}\" installed in \"${plugin_dest_dir}${plugin_type}\"")
         ENDIF(EXISTS ${plugin_loc})
     ENDIF(NOT Qt5Widgets_VERSION VERSION_LESS 5.10.0)
   ELSEIF(QT_PLUGINS_DIR) # Qt4
@@ -196,7 +199,7 @@ IF(BUILD_AS_BUNDLE AND (APPLE OR WIN32))
     # One can cull what gets copied by using 'REGEX "..." EXCLUDE'
     # Exclude debug libraries
     INSTALL(DIRECTORY "${QT_PLUGINS_DIR}/imageformats"
-        DESTINATION ${plugin_dest_dir}/plugins 
+        DESTINATION ${plugin_dest_dir}
         COMPONENT runtime 
         REGEX ".*d4.dll" EXCLUDE
         REGEX ".*d4.a" EXCLUDE)
@@ -213,9 +216,9 @@ IF(BUILD_AS_BUNDLE AND (APPLE OR WIN32))
         file(WRITE \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${qtconf_dest_dir}/qt.conf\" \"${QT_CONF_FILE}\")
         " COMPONENT runtime)
   ENDIF()
-  
+
   # directories to look for dependencies
-  SET(DIRS ${QT_LIBRARY_DIRS} ${PROJECT_BINARY_DIR}/build/bin)
+  SET(DIRS "${QT_LIBRARY_DIRS}" "\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/lib")
   IF(APPLE)
     SET(DIRS ${DIRS} /usr/local /usr/local/lib /opt/homebrew /opt/homebrew/lib /opt/homebrew/lib/gcc/current)
   ENDIF(APPLE)
@@ -227,10 +230,11 @@ IF(BUILD_AS_BUNDLE AND (APPLE OR WIN32))
   # over.
   # To find dependencies, cmake use "otool" on Apple and "dumpbin" on Windows (make sure you have one of them).
   install(CODE "
-   file(GLOB_RECURSE QTPLUGINS \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${plugin_dest_dir}/plugins/*${CMAKE_SHARED_LIBRARY_SUFFIX}\")
+   file(GLOB_RECURSE QTPLUGINS \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${plugin_dest_dir}/*${CMAKE_SHARED_LIBRARY_SUFFIX}\")
     set(BU_CHMOD_BUNDLE_ITEMS ON)
     include(\"BundleUtilities\")
     fixup_bundle(\"${APPS}\" \"\${QTPLUGINS}\" \"${DIRS}\")
   " COMPONENT runtime)
+
 ENDIF(BUILD_AS_BUNDLE AND (APPLE OR WIN32))
   
