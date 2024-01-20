@@ -6269,8 +6269,8 @@ void MainWindow::exportPoses(int format)
 		std::multimap<int, Link> links;
 		if(localTransforms.empty())
 		{
-			poses = std::map<int, Transform>(_currentPosesMap.lower_bound(1), _currentPosesMap.end());
-			links = std::multimap<int, Link>(_currentLinksMap.lower_bound(1), _currentLinksMap.end());
+			poses = std::map<int, Transform>(_currentPosesMap.begin(), _currentPosesMap.end());
+			links = std::multimap<int, Link>(_currentLinksMap.begin(), _currentLinksMap.end());
 		}
 		else
 		{
@@ -6291,13 +6291,23 @@ void MainWindow::exportPoses(int format)
 			}
 		}
 
-		if(format != 4 && !poses.empty() && poses.begin()->first<0) // not g2o, landmark not supported
+		if(format != 4 && format != 11 && !poses.empty() && poses.begin()->first<0) // not g2o, landmark not supported
 		{
-			UWARN("Only g2o format (4) can export landmarks, they are ignored with format %d", format);
-			std::map<int, Transform>::iterator iter=poses.begin();
-			while(iter!=poses.end() && iter->first < 0)
+			UWARN("Only g2o format (4) and RGBD format with ID format can export landmarks, they are ignored with format %d", format);
+			for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end() && iter->first < 0;)
 			{
 				poses.erase(iter++);
+			}
+			for(std::multimap<int, Link>::iterator iter=links.begin(); iter!=links.end();)
+			{
+				if(iter->second.from() < 0 || iter->second.to() < 0)
+				{
+					links.erase(iter++);
+				}
+				else
+				{
+					++iter;
+				}
 			}
 		}
 
@@ -6306,7 +6316,11 @@ void MainWindow::exportPoses(int format)
 		{
 			for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter)
 			{
-				if(_cachedSignatures.contains(iter->first))
+				if(iter->first < 0 && format == 11) // in case of landmarks
+				{
+					stamps.insert(std::make_pair(iter->first, 0));
+				}
+				else if(_cachedSignatures.contains(iter->first))
 				{
 					stamps.insert(std::make_pair(iter->first, _cachedSignatures.value(iter->first).getStamp()));
 				}

@@ -2054,7 +2054,43 @@ bool OptimizerG2O::saveGraph(
 				q.w());
 		}
 
-		int landmarkOffset = poses.size()&&poses.rbegin()->first>0?poses.rbegin()->first+1:0;
+		// For landmarks, determinate which one has observation with orientation
+		std::map<int, bool> isLandmarkWithRotation;
+		for(std::multimap<int, Link>::const_iterator iter = edgeConstraints.begin(); iter!=edgeConstraints.end(); ++iter)
+		{
+			int landmarkId = iter->second.from() < 0?iter->second.from():iter->second.to() < 0?iter->second.to():0;
+			if(landmarkId != 0 && isLandmarkWithRotation.find(landmarkId) == isLandmarkWithRotation.end())
+			{
+				if(isSlam2d())
+				{
+					if (1 / static_cast<double>(iter->second.infMatrix().at<double>(5,5)) >= 9999.0)
+					{
+						isLandmarkWithRotation.insert(std::make_pair(landmarkId, false));
+						UDEBUG("Tag %d has no orientation", landmarkId);
+					}
+					else
+					{
+						isLandmarkWithRotation.insert(std::make_pair(landmarkId, true));
+						UDEBUG("Tag %d has orientation", landmarkId);
+					}
+				}
+				else if (1 / static_cast<double>(iter->second.infMatrix().at<double>(3,3)) >= 9999.0 ||
+						 1 / static_cast<double>(iter->second.infMatrix().at<double>(4,4)) >= 9999.0 ||
+						 1 / static_cast<double>(iter->second.infMatrix().at<double>(5,5)) >= 9999.0)
+				{
+					isLandmarkWithRotation.insert(std::make_pair(landmarkId, false));
+					UDEBUG("Tag %d has no orientation", landmarkId);
+				}
+				else
+				{
+					isLandmarkWithRotation.insert(std::make_pair(landmarkId, true));
+					UDEBUG("Tag %d has orientation", landmarkId);
+				}
+
+			}
+		}
+
+		int landmarkOffset = poses.size()&&poses.rbegin()->first>0?poses.rbegin()->first:0;
 		for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
 		{
 			if (isSlam2d())
@@ -2063,18 +2099,30 @@ bool OptimizerG2O::saveGraph(
 				{
 					// VERTEX_SE2 id x y theta
 					fprintf(file, "VERTEX_SE2 %d %f %f %f\n",
-						landmarkOffset-iter->first,
+						iter->first,
 						iter->second.x(),
 						iter->second.y(),
 						iter->second.theta());
 				}
 				else if(!landmarksIgnored())
 				{
-					// VERTEX_XY id x y
-					fprintf(file, "VERTEX_XY %d %f %f\n",
-						iter->first,
-						iter->second.x(),
-						iter->second.y());
+					if(uValue(isLandmarkWithRotation, iter->first, false))
+					{
+						// VERTEX_SE2 id x y theta
+						fprintf(file, "VERTEX_SE2 %d %f %f %f\n",
+							landmarkOffset-iter->first,
+							iter->second.x(),
+							iter->second.y(),
+							iter->second.theta());
+					}
+					else
+					{
+						// VERTEX_XY id x y
+						fprintf(file, "VERTEX_XY %d %f %f\n",
+							landmarkOffset-iter->first,
+							iter->second.x(),
+							iter->second.y());
+					}
 				}
 			}
 			else
@@ -2095,12 +2143,29 @@ bool OptimizerG2O::saveGraph(
 				}
 				else if(!landmarksIgnored())
 				{
-					// VERTEX_TRACKXYZ id x y z
-					fprintf(file, "VERTEX_TRACKXYZ %d %f %f %f\n",
-						landmarkOffset-iter->first,
-						iter->second.x(),
-						iter->second.y(),
-						iter->second.z());
+					if(uValue(isLandmarkWithRotation, iter->first, false))
+					{
+						// VERTEX_SE3 id x y z qw qx qy qz
+						Eigen::Quaternionf q = iter->second.getQuaternionf();
+						fprintf(file, "VERTEX_SE3:QUAT %d %f %f %f %f %f %f %f\n",
+							landmarkOffset-iter->first,
+							iter->second.x(),
+							iter->second.y(),
+							iter->second.z(),
+							q.x(),
+							q.y(),
+							q.z(),
+							q.w());
+					}
+					else
+					{
+						// VERTEX_TRACKXYZ id x y z
+						fprintf(file, "VERTEX_TRACKXYZ %d %f %f %f\n",
+							landmarkOffset-iter->first,
+							iter->second.x(),
+							iter->second.y(),
+							iter->second.z());
+					}
 				}
 			}
 		}
@@ -2116,32 +2181,90 @@ bool OptimizerG2O::saveGraph(
 				}
 				if(isSlam2d())
 				{
-					// EDGE_SE2_XY observed_vertex_id observing_vertex_id x y inf_11 inf_12 inf_22
-					fprintf(file, "EDGE_SE2_XY %d %d %f %f %f %f %f\n",
-						iter->second.from()<0?landmarkOffset-iter->second.from():iter->second.from(),
-						iter->second.to()<0?landmarkOffset-iter->second.to():iter->second.to(),
-						iter->second.transform().x(),
-						iter->second.transform().y(),
-						iter->second.infMatrix().at<double>(0, 0),
-						iter->second.infMatrix().at<double>(0, 1),
-						iter->second.infMatrix().at<double>(1, 1));
+					if(uValue(isLandmarkWithRotation, iter->first, false))
+					{
+						// EDGE_SE2 observed_vertex_id observing_vertex_id x y qx qy qz qw inf_11 inf_12 inf_13 inf_22 inf_23 inf_33
+						fprintf(file, "EDGE_SE2 %d %d %f %f %f %f %f %f %f %f %f\n",
+								iter->second.from()<0?landmarkOffset-iter->second.from():iter->second.from(),
+								iter->second.to()<0?landmarkOffset-iter->second.to():iter->second.to(),
+								iter->second.transform().x(),
+								iter->second.transform().y(),
+								iter->second.transform().theta(),
+								iter->second.infMatrix().at<double>(0, 0),
+								iter->second.infMatrix().at<double>(0, 1),
+								iter->second.infMatrix().at<double>(0, 5),
+								iter->second.infMatrix().at<double>(1, 1),
+								iter->second.infMatrix().at<double>(1, 5),
+								iter->second.infMatrix().at<double>(5, 5));
+					}
+					else
+					{
+						// EDGE_SE2_XY observed_vertex_id observing_vertex_id x y inf_11 inf_12 inf_22
+						fprintf(file, "EDGE_SE2_XY %d %d %f %f %f %f %f\n",
+							iter->second.from()<0?landmarkOffset-iter->second.from():iter->second.from(),
+							iter->second.to()<0?landmarkOffset-iter->second.to():iter->second.to(),
+							iter->second.transform().x(),
+							iter->second.transform().y(),
+							iter->second.infMatrix().at<double>(0, 0),
+							iter->second.infMatrix().at<double>(0, 1),
+							iter->second.infMatrix().at<double>(1, 1));
+					}
 				}
 				else
 				{
-					// EDGE_SE3_TRACKXYZ observed_vertex_id observing_vertex_id param_offset x y z inf_11 inf_12 inf_13 inf_22 inf_23 inf_33
-					fprintf(file, "EDGE_SE3_TRACKXYZ %d %d %d %f %f %f %f %f %f %f %f %f\n",
-						iter->second.from()<0?landmarkOffset-iter->second.from():iter->second.from(),
-						iter->second.to()<0?landmarkOffset-iter->second.to():iter->second.to(),
-						PARAM_OFFSET,
-						iter->second.transform().x(),
-						iter->second.transform().y(),
-						iter->second.transform().z(),
-						iter->second.infMatrix().at<double>(0, 0),
-						iter->second.infMatrix().at<double>(0, 1),
-						iter->second.infMatrix().at<double>(0, 2),
-						iter->second.infMatrix().at<double>(1, 1),
-						iter->second.infMatrix().at<double>(1, 2),
-						iter->second.infMatrix().at<double>(2, 2));
+					if(uValue(isLandmarkWithRotation, iter->first, false))
+					{
+						// EDGE_SE3 observed_vertex_id observing_vertex_id x y z qx qy qz qw inf_11 inf_12 .. inf_16 inf_22 .. inf_66
+						Eigen::Quaternionf q = iter->second.transform().getQuaternionf();
+						fprintf(file, "EDGE_SE3 %d %d %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f\n",
+								iter->second.from()<0?landmarkOffset-iter->second.from():iter->second.from(),
+								iter->second.to()<0?landmarkOffset-iter->second.to():iter->second.to(),
+								iter->second.transform().x(),
+								iter->second.transform().y(),
+								iter->second.transform().z(),
+								q.x(),
+								q.y(),
+								q.z(),
+								q.w(),
+								iter->second.infMatrix().at<double>(0, 0),
+								iter->second.infMatrix().at<double>(0, 1),
+								iter->second.infMatrix().at<double>(0, 2),
+								iter->second.infMatrix().at<double>(0, 3),
+								iter->second.infMatrix().at<double>(0, 4),
+								iter->second.infMatrix().at<double>(0, 5),
+								iter->second.infMatrix().at<double>(1, 1),
+								iter->second.infMatrix().at<double>(1, 2),
+								iter->second.infMatrix().at<double>(1, 3),
+								iter->second.infMatrix().at<double>(1, 4),
+								iter->second.infMatrix().at<double>(1, 5),
+								iter->second.infMatrix().at<double>(2, 2),
+								iter->second.infMatrix().at<double>(2, 3),
+								iter->second.infMatrix().at<double>(2, 4),
+								iter->second.infMatrix().at<double>(2, 5),
+								iter->second.infMatrix().at<double>(3, 3),
+								iter->second.infMatrix().at<double>(3, 4),
+								iter->second.infMatrix().at<double>(3, 5),
+								iter->second.infMatrix().at<double>(4, 4),
+								iter->second.infMatrix().at<double>(4, 5),
+								iter->second.infMatrix().at<double>(5, 5));
+					}
+					else
+					{
+						// EDGE_SE3_TRACKXYZ observed_vertex_id observing_vertex_id param_offset x y z inf_11 inf_12 inf_13 inf_22 inf_23 inf_33
+						fprintf(file, "EDGE_SE3_TRACKXYZ %d %d %d %f %f %f %f %f %f %f %f %f\n",
+							iter->second.from()<0?landmarkOffset-iter->second.from():iter->second.from(),
+							iter->second.to()<0?landmarkOffset-iter->second.to():iter->second.to(),
+							PARAM_OFFSET,
+							iter->second.transform().x(),
+							iter->second.transform().y(),
+							iter->second.transform().z(),
+							iter->second.infMatrix().at<double>(0, 0),
+							iter->second.infMatrix().at<double>(0, 1),
+							iter->second.infMatrix().at<double>(0, 2),
+							iter->second.infMatrix().at<double>(1, 1),
+							iter->second.infMatrix().at<double>(1, 2),
+							iter->second.infMatrix().at<double>(2, 2));
+					}
 				}
 				continue;
 			}

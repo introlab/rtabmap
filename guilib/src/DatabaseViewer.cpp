@@ -2753,13 +2753,23 @@ void DatabaseViewer::exportPoses(int format)
 			}
 		}
 
-		if(format != 4 && !poses.empty() && poses.begin()->first<0) // not g2o, landmark not supported
+		if(format != 4 && format != 11 && !poses.empty() && poses.begin()->first<0) // not g2o, landmark not supported
 		{
-			UWARN("Only g2o format (4) can export landmarks, they are ignored with format %d", format);
-			std::map<int, Transform>::iterator iter=poses.begin();
-			while(iter!=poses.end() && iter->first < 0)
+			UWARN("Only g2o format (4) and RGBD format with ID format can export landmarks, they are ignored with format %d", format);
+			for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end() && iter->first < 0;)
 			{
 				poses.erase(iter++);
+			}
+			for(std::multimap<int, Link>::iterator iter=links.begin(); iter!=links.end();)
+			{
+				if(iter->second.from() < 0 || iter->second.to() < 0)
+				{
+					links.erase(iter++);
+				}
+				else
+				{
+					++iter;
+				}
 			}
 		}
 
@@ -2768,17 +2778,24 @@ void DatabaseViewer::exportPoses(int format)
 		{
 			for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter)
 			{
-				Transform p, g;
-				int w;
-				std::string l;
-				double stamp=0.0;
-				int mapId;
-				std::vector<float> v;
-				GPS gps;
-				EnvSensors sensors;
-				if(dbDriver_->getNodeInfo(iter->first, p, mapId, w, l, stamp, g, v, gps, sensors))
+				if(iter->first<0 && format == 11) // in case of landmarks
 				{
-					stamps.insert(std::make_pair(iter->first, stamp));
+					stamps.insert(std::make_pair(iter->first, 0));
+				}
+				else
+				{
+					Transform p, g;
+					int w;
+					std::string l;
+					double stamp=0.0;
+					int mapId;
+					std::vector<float> v;
+					GPS gps;
+					EnvSensors sensors;
+					if(dbDriver_->getNodeInfo(iter->first, p, mapId, w, l, stamp, g, v, gps, sensors))
+					{
+						stamps.insert(std::make_pair(iter->first, stamp));
+					}
 				}
 			}
 			if(stamps.size()!=poses.size())
