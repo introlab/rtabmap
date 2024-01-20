@@ -378,8 +378,8 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 
 	if(imuPublished_)
 	{
-		// enable ACCELEROMETER_RAW and GYROSCOPE_RAW at 100 hz rate
-		imu->enableIMUSensor({dai::IMUSensor::ACCELEROMETER_RAW, dai::IMUSensor::GYROSCOPE_RAW}, 100);
+		// enable ACCELEROMETER_RAW and GYROSCOPE_RAW at 200 hz rate
+		imu->enableIMUSensor({dai::IMUSensor::ACCELEROMETER_RAW, dai::IMUSensor::GYROSCOPE_RAW}, 200);
 		// above this threshold packets will be sent in batch of X, if the host is not blocked and USB bandwidth is available
 		imu->setBatchReportThreshold(1);
 		// maximum number of IMU packets in a batch, if it's reached device will block sending until host can receive it
