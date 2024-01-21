@@ -38,6 +38,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/IMUFilter.h"
 #include "rtabmap/core/Features2d.h"
 #include "rtabmap/core/clams/discrete_depth_distortion_model.h"
+#include <opencv2/imgproc/types_c.h>
 #include <opencv2/stitching/detail/exposure_compensate.hpp>
 #include <rtabmap/utilite/UTimer.h>
 #include <rtabmap/utilite/ULogger.h>
@@ -543,46 +544,87 @@ void CameraThread::postUpdate(SensorData * dataPtr, CameraInfo * info) const
 
 	if(_histogramMethod && !data.imageRaw().empty())
 	{
-		if(data.imageRaw().type() == CV_8UC1)
+		UDEBUG("");
+		UTimer timer;
+		cv::Mat image;
+		if(_histogramMethod == 1)
 		{
-			UDEBUG("");
-			UTimer timer;
-			cv::Mat image;
-			if(_histogramMethod == 1)
+			if(data.imageRaw().type() == CV_8UC1)
 			{
 				cv::equalizeHist(data.imageRaw(), image);
-				if(!data.depthRaw().empty())
-				{
-					data.setRGBDImage(image, data.depthRaw(), data.cameraModels());
-				}
-				else if(!data.rightRaw().empty())
-				{
-					cv::Mat right;
-					cv::equalizeHist(data.rightRaw(), right);
-					data.setStereoImage(image, right, data.stereoCameraModels()[0]);
-				}
 			}
-			else if(_histogramMethod == 2)
+			else if(data.imageRaw().type() == CV_8UC3)
 			{
-				cv::Ptr<cv::CLAHE> clahe = cv::createCLAHE(3.0);
-				clahe->apply(data.imageRaw(), image);
-				if(!data.depthRaw().empty())
-				{
-					data.setRGBDImage(image, data.depthRaw(), data.cameraModels());
-				}
-				else if(!data.rightRaw().empty())
-				{
-					cv::Mat right;
-					clahe->apply(data.rightRaw(), right);
-					data.setStereoImage(image, right, data.stereoCameraModels()[0]);
-				}
+				cv::Mat channels[3];
+				cv::cvtColor(data.imageRaw(), image, CV_BGR2YCrCb);
+				cv::split(image, channels);
+				cv::equalizeHist(channels[0], channels[0]);
+				cv::merge(channels, 3, image);
+				cv::cvtColor(image, image, CV_YCrCb2BGR);
 			}
-			if(info) info->timeHistogramEqualization = timer.ticks();
+			if(!data.depthRaw().empty())
+			{
+				data.setRGBDImage(image, data.depthRaw(), data.cameraModels());
+			}
+			else if(!data.rightRaw().empty())
+			{
+				cv::Mat right;
+				if(data.rightRaw().type() == CV_8UC1)
+				{
+					cv::equalizeHist(data.rightRaw(), right);
+				}
+				else if(data.rightRaw().type() == CV_8UC3)
+				{
+					cv::Mat channels[3];
+					cv::cvtColor(data.rightRaw(), right, CV_BGR2YCrCb);
+					cv::split(right, channels);
+					cv::equalizeHist(channels[0], channels[0]);
+					cv::merge(channels, 3, right);
+					cv::cvtColor(right, right, CV_YCrCb2BGR);
+				}
+				data.setStereoImage(image, right, data.stereoCameraModels()[0]);
+			}
 		}
-		else
+		else if(_histogramMethod == 2)
 		{
-			UWARN("Histogram equalization only supports grayscale images...");
+			cv::Ptr<cv::CLAHE> clahe = cv::createCLAHE(3.0);
+			if(data.imageRaw().type() == CV_8UC1)
+			{
+				clahe->apply(data.imageRaw(), image);
+			}
+			else if(data.imageRaw().type() == CV_8UC3)
+			{
+				cv::Mat channels[3];
+				cv::cvtColor(data.imageRaw(), image, CV_BGR2YCrCb);
+				cv::split(image, channels);
+				clahe->apply(channels[0], channels[0]);
+				cv::merge(channels, 3, image);
+				cv::cvtColor(image, image, CV_YCrCb2BGR);
+			}
+			if(!data.depthRaw().empty())
+			{
+				data.setRGBDImage(image, data.depthRaw(), data.cameraModels());
+			}
+			else if(!data.rightRaw().empty())
+			{
+				cv::Mat right;
+				if(data.rightRaw().type() == CV_8UC1)
+				{
+					clahe->apply(data.rightRaw(), right);
+				}
+				else if(data.rightRaw().type() == CV_8UC3)
+				{
+					cv::Mat channels[3];
+					cv::cvtColor(data.rightRaw(), right, CV_BGR2YCrCb);
+					cv::split(right, channels);
+					clahe->apply(channels[0], channels[0]);
+					cv::merge(channels, 3, right);
+					cv::cvtColor(right, right, CV_YCrCb2BGR);
+				}
+				data.setStereoImage(image, right, data.stereoCameraModels()[0]);
+			}
 		}
+		if(info) info->timeHistogramEqualization = timer.ticks();
 	}
 
 	if(_stereoExposureCompensation && !data.imageRaw().empty() && !data.rightRaw().empty())
