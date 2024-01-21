@@ -528,15 +528,18 @@ void StatsToolBox::clear()
 			plots[0]->clearData();
 		}
 		else
-		{
-			UERROR("");
-		}
-	}
-	QList<StatItem*> items = _statBox->currentWidget()->findChildren<StatItem*>();
-	for (int i = 0; i<items.size(); ++i)
-	{
-		items[i]->clearCache();
-	}
+        {
+            UERROR("");
+        }
+    }
+    if(_statBox->currentWidget())
+    {
+        QList<StatItem*> items = _statBox->currentWidget()->findChildren<StatItem*>();
+        for (int i = 0; i<items.size(); ++i)
+        {
+            items[i]->clearCache();
+        }
+    }
 }
 
 void StatsToolBox::contextMenuEvent(QContextMenuEvent * event)
@@ -567,7 +570,7 @@ void StatsToolBox::contextMenuEvent(QContextMenuEvent * event)
 		}
 	}
 
-	if(!plotName.isEmpty())
+	if(!plotName.isEmpty() && _statBox->currentWidget())
 	{
 		QList<StatItem*> items = _statBox->currentWidget()->findChildren<StatItem*>();
 		for(int i=0; i<items.size(); ++i)
