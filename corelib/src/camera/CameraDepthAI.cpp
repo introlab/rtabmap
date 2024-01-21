@@ -373,7 +373,7 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 			stereo->rectifiedRight.link(sync->inputs["right"]);
 	}
 
-	sync->setSyncThreshold(std::chrono::milliseconds(100));
+	sync->setSyncThreshold(std::chrono::milliseconds(int(500 / monoLeft->getFps())));
 	sync->out.link(xoutCamera->input);
 
 	if(imuPublished_)
