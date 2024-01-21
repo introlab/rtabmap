@@ -17,9 +17,19 @@ ENV DEBIAN_FRONTEND=noninteractive
 # Install build dependencies
 RUN apt-get update && \
     apt upgrade -y && \
-    apt-get install -y git ros-humble-ros-base ros-dev-tools ros-humble-rtabmap-ros && \
-    apt-get remove -y ros-humble-rtabmap* && \
+    apt-get install -y git ros-humble-ros-base ros-dev-tools && \
     apt-get clean && rm -rf /var/lib/apt/lists/
+
+RUN if [ "$TARGETPLATFORM" = "linux/amd64" ]; then apt-get update && \
+    apt upgrade -y && \
+    apt-get install -y ros-humble-rtabmap-ros && \
+    apt-get remove -y ros-humble-rtabmap* && \
+    apt-get clean && rm -rf /var/lib/apt/lists/; fi
+RUN if [ "$TARGETPLATFORM" = "linux/arm64" ]; then apt-get update && \
+    apt upgrade -y && \
+    apt-get install -y ros-humble-rtabmap-launch && \
+    apt-get remove -y ros-humble-rtabmap* && \
+    apt-get clean && rm -rf /var/lib/apt/lists/; fi
 
 WORKDIR /root/
 
