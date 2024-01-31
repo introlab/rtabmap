@@ -501,32 +501,47 @@ bool CameraStereoZed::init(const std::string & calibrationFolder, const std::str
 #endif
 	sl::Resolution res = stereoParams->left_cam.image_size;
 
+#if ZED_SDK_MAJOR_VERSION < 4
+	stereoModel_ = StereoCameraModel(
+		stereoParams->left_cam.fx,
+		stereoParams->left_cam.fy,
+		stereoParams->left_cam.cx,
+		stereoParams->left_cam.cy,
+		stereoParams->T[0],//baseline
+		this->getLocalTransform(),
+		cv::Size(res.width, res.height));
+#else
 	stereoModel_ = StereoCameraModel(
 		stereoParams->left_cam.fx, 
 		stereoParams->left_cam.fy, 
 		stereoParams->left_cam.cx, 
 		stereoParams->left_cam.cy, 
-#if ZED_SDK_MAJOR_VERSION < 4
-		stereoParams->T[0],//baseline
-#else
 		stereoParams->getCameraBaseline(),
-#endif
 		this->getLocalTransform(),
 		cv::Size(res.width, res.height));
+#endif
 
+#if ZED_SDK_MAJOR_VERSION < 4
+	UINFO("Calibration: fx=%f, fy=%f, cx=%f, cy=%f, baseline=%f, width=%d, height=%d, transform=%s",
+		stereoParams->left_cam.fx,
+		stereoParams->left_cam.fy,
+		stereoParams->left_cam.cx,
+		stereoParams->left_cam.cy,
+		stereoParams->T[0],//baseline
+		(int)res.width,
+		(int)res.height,
+		this->getLocalTransform().prettyPrint().c_str());
+#else
 	UINFO("Calibration: fx=%f, fy=%f, cx=%f, cy=%f, baseline=%f, width=%d, height=%d, transform=%s",
 			stereoParams->left_cam.fx,
 			stereoParams->left_cam.fy,
 			stereoParams->left_cam.cx,
 			stereoParams->left_cam.cy,
-#if ZED_SDK_MAJOR_VERSION < 4
-			stereoParams->T[0],//baseline
-#else
 			stereoParams->getCameraBaseline(),
-#endif
 			(int)res.width,
 			(int)res.height,
 			this->getLocalTransform().prettyPrint().c_str());
+#endif
 
 #if ZED_SDK_MAJOR_VERSION < 3
 	if(infos.camera_model == sl::MODEL_ZED_M)
@@ -539,12 +554,15 @@ bool CameraStereoZed::init(const std::string & calibrationFolder, const std::str
 #else
 		imuLocalTransform_ = this->getLocalTransform() * zedPoseToTransform(infos.sensors_configuration.camera_imu_transform).inverse();
 #endif
-		UINFO("IMU local transform: %s (imu2cam=%s))",
-		imuLocalTransform_.prettyPrint().c_str(),
+
 #if ZED_SDK_MAJOR_VERSION < 4
-		zedPoseToTransform(infos.camera_imu_transform).prettyPrint().c_str());
+		UINFO("IMU local transform: %s (imu2cam=%s))",
+			imuLocalTransform_.prettyPrint().c_str(),
+			zedPoseToTransform(infos.camera_imu_transform).prettyPrint().c_str());
 #else
-		zedPoseToTransform(infos.sensors_configuration.camera_imu_transform).prettyPrint().c_str());
+		UINFO("IMU local transform: %s (imu2cam=%s))",
+			imuLocalTransform_.prettyPrint().c_str(),
+			zedPoseToTransform(infos.sensors_configuration.camera_imu_transform).prettyPrint().c_str());
 #endif
 		if(publishInterIMU_)
 		{
