@@ -204,6 +204,10 @@ CloudViewer::CloudViewer(QWidget *parent, CloudViewerInteractorStyle * style) :
 	}
 	_visualizer->getRenderWindow()->SetNumberOfLayers(4);
 
+#ifdef VTK_GLOBAL_WARNING_DISPLAY_OFF
+	_visualizer->getRenderWindow()->GlobalWarningDisplayOff();
+#endif
+
 #if VTK_MAJOR_VERSION > 8
 	this->setRenderWindow(_visualizer->getRenderWindow());
 #else
