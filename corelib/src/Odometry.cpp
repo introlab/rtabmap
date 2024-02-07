@@ -335,6 +335,15 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 		}
 	}
 
+	if(!data.imageRaw().empty())
+	{
+		UDEBUG("Processing image data %dx%d: rgbd models=%ld, stereo models=%ld",
+			data.imageRaw().cols,
+			data.imageRaw().rows,
+			data.cameraModels().size(),
+			data.stereoCameraModels().size());
+	}
+
 
 	if(!_imagesAlreadyRectified && !this->canProcessRawImages() && !data.imageRaw().empty())
 	{

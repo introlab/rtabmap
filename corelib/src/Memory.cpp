@@ -3372,7 +3372,7 @@ bool Memory::addLink(const Link & link, bool addInDatabase)
 {
 	UASSERT(link.type() > Link::kNeighbor && link.type() != Link::kUndef);
 
-	ULOGGER_INFO("to=%d, from=%d transform: %s var=%f", link.to(), link.from(), link.transform().prettyPrint().c_str(), link.transVariance());
+	ULOGGER_INFO("to=%d, from=%d transform: %s var=%f", link.to(), link.from(), link.transform().prettyPrint().c_str(), link.transVariance(false));
 	Signature * toS = _getSignature(link.to());
 	Signature * fromS = _getSignature(link.from());
 	if(toS && fromS)
