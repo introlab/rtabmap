@@ -734,7 +734,10 @@ std::vector<cv::KeyPoint> Feature2D::generateKeypoints(const cv::Mat & image, co
 			cv::Rect roi(globalRoi.x + j*colSize, globalRoi.y + i*rowSize, colSize, rowSize);
 			std::vector<cv::KeyPoint> sub_keypoints;
 			sub_keypoints = this->generateKeypointsImpl(image, roi, mask);
-			limitKeypoints(sub_keypoints, maxFeatures);
+			if (this->getType() != Feature2D::Type::kFeaturePyDetector)
+			{
+				limitKeypoints(sub_keypoints, maxFeatures);
+			}
 			if(roi.x || roi.y)
 			{
 				// Adjust keypoint position to raw image
