@@ -10,11 +10,6 @@ RUN apt-get update && \
 
 WORKDIR /root/
 
-# GTSAM
-RUN add-apt-repository ppa:borglab/gtsam-release-4.0 -y
-RUN apt-get update && apt install libgtsam-dev libgtsam-unstable-dev -y && \
-    apt-get clean && rm -rf /var/lib/apt/lists/
-
 # MRPT
 RUN add-apt-repository ppa:joseluisblancoc/mrpt-stable -y
 RUN apt-get update && apt install libmrpt-poses-dev -y && \
