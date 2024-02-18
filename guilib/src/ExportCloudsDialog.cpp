@@ -1504,6 +1504,7 @@ void ExportCloudsDialog::viewClouds(
 			}
 		}
 		viewer->refreshView();
+		window->activateWindow();
 	}
 	else
 	{
