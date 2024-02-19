@@ -7,7 +7,7 @@ rtabmap
 [![Downloads][downloads-image]][downloads]
 [![License][license-image]][license]
 
-[release-image]: https://img.shields.io/badge/release-0.21.0-green.svg?style=flat
+[release-image]: https://img.shields.io/badge/release-0.21.4-green.svg?style=flat
 [releases]: https://github.com/introlab/rtabmap/releases
 
 [downloads-image]: https://img.shields.io/github/downloads/introlab/rtabmap/total?label=downloads
