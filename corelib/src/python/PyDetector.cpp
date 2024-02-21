@@ -207,7 +207,7 @@ std::vector<cv::KeyPoint> PyDetector::generateKeypointsImpl(const cv::Mat & imag
 						cv::Mat descriptor = cv::Mat(1, dim, CV_32FC1, &c_out[i]).clone();
 						descriptors_.push_back(descriptor);
 					}
-					if (keypoints.size() != descriptors_.rows)
+					if (keypoints.size() != (size_t)descriptors_.rows)
 					{
 						UWARN("keypoints size is not match descriptors size %d vs %d", static_cast<int>(keypoints.size()), descriptors_.rows);
 						keypoints.clear();

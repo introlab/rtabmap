@@ -33,7 +33,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 namespace rtabmap {
 
 FlannIndex::FlannIndex():
-		index_(0),
+		index_(nullptr),
 		nextIndex_(0),
 		featuresType_(0),
 		featuresDim_(0),
@@ -47,6 +47,33 @@ FlannIndex::~FlannIndex()
 	this->release();
 }
 
+void FlannIndex::save(const std::filesystem::path& path)
+{
+	UDEBUG("");
+	if(!index_)
+	{
+		UERROR("Can not save FlannIndex when index_ is nullptr");
+		return;
+	}
+
+	if (featuresType_ == CV_8UC1)
+	{
+	    static_cast<rtflann::Index<rtflann::Hamming<unsigned char>>*>(index_)->save(path);
+	}
+	else if (useDistanceL1_)
+	{
+	    static_cast<rtflann::Index<rtflann::L1<float>>*>(index_)->save(path); 
+	}
+	else if (featuresDim_ <= 3)
+	{
+	    static_cast<rtflann::Index<rtflann::L2_Simple<float>>*>(index_)->save(path);
+	}
+	else
+	{
+	    static_cast<rtflann::Index<rtflann::L2<float>>*>(index_)->save(path);
+	}
+}
+
 void FlannIndex::release()
 {
 	UDEBUG("");
@@ -54,30 +81,142 @@ void FlannIndex::release()
 	{
 		if(featuresType_ == CV_8UC1)
 		{
-			delete (rtflann::Index<rtflann::Hamming<unsigned char> >*)index_;
+			delete static_cast<rtflann::Index<rtflann::Hamming<unsigned char> >*>(index_);
 		}
 		else
 		{
 			if(useDistanceL1_)
 			{
-				delete (rtflann::Index<rtflann::L1<float> >*)index_;
+				delete static_cast<rtflann::Index<rtflann::L1<float> >*>(index_);
 			}
 			else if(featuresDim_ <= 3)
 			{
-				delete (rtflann::Index<rtflann::L2_Simple<float> >*)index_;
+				delete static_cast<rtflann::Index<rtflann::L2_Simple<float>>*>(index_);
 			}
 			else
 			{
-				delete (rtflann::Index<rtflann::L2<float> >*)index_;
+				delete static_cast<rtflann::Index<rtflann::L2<float> >*>(index_);
 			}
 		}
-		index_ = 0;
+		index_ = nullptr;
 	}
 	nextIndex_ = 0;
 	isLSH_ = false;
 	addedDescriptors_.clear();
 	removedIndexes_.clear();
 	UDEBUG("");
+}
+
+void FlannIndex::deserialize(const std::filesystem::path& file)
+{
+    std::ifstream inFile(file, std::ios::binary);
+    if (!inFile.is_open()) {
+        throw std::runtime_error("Unable to open file for reading");
+    }
+
+    int mapSize;
+    inFile.read(reinterpret_cast<char*>(&mapSize), sizeof(mapSize));
+    inFile.read(reinterpret_cast<char*>(&nextIndex_), sizeof(nextIndex_));
+    inFile.read(reinterpret_cast<char*>(&featuresType_), sizeof(featuresType_));
+    inFile.read(reinterpret_cast<char*>(&featuresDim_), sizeof(featuresDim_));
+    inFile.read(reinterpret_cast<char*>(&isLSH_), sizeof(isLSH_));
+    inFile.read(reinterpret_cast<char*>(&useDistanceL1_), sizeof(useDistanceL1_));
+    inFile.read(reinterpret_cast<char*>(&rebalancingFactor_), sizeof(rebalancingFactor_));
+    
+    addedDescriptors_.clear();
+    for (int i = 0; i < mapSize; ++i) {
+        // Read the size of the compressed data
+        int compressedSize;
+        inFile.read(reinterpret_cast<char*>(&compressedSize), sizeof(compressedSize));
+        std::vector<char> compressedBuffer(compressedSize);
+        inFile.read(compressedBuffer.data(), compressedSize);
+
+        // Decompress
+        size_t decompressedSize = LZ4_compressBound(compressedSize); // Estimate decompressed size
+        std::vector<char> decompressedBuffer(decompressedSize);
+        [[maybe_unused]]int actualDecompressedSize = LZ4_decompress_safe(compressedBuffer.data(), decompressedBuffer.data(), compressedSize, (int)decompressedSize);
+        // UDEBUG("Size decriptor after decompressed: %ld", actualDecompressedSize);
+
+        // Extract data from decompressed buffer
+        char* dataPtr = decompressedBuffer.data();
+        int key, rows, cols, type, channels;
+        memcpy(&key, dataPtr, sizeof(key)); dataPtr += sizeof(key);
+        memcpy(&rows, dataPtr, sizeof(rows)); dataPtr += sizeof(rows);
+        memcpy(&cols, dataPtr, sizeof(cols)); dataPtr += sizeof(cols);
+        memcpy(&type, dataPtr, sizeof(type)); dataPtr += sizeof(type);
+        memcpy(&channels, dataPtr, sizeof(channels)); dataPtr += sizeof(channels);
+        cv::Mat mat(rows, cols, type, dataPtr);
+        addedDescriptors_[key] = mat.clone(); // Use clone if necessary
+    }
+}
+
+// Define a function to build the index
+template<typename T>
+rtflann::Index<T>* buildIndex(const rtflann::IndexParams& params) 
+{
+	  return new rtflann::Index<T>(params);
+}
+
+void FlannIndex::load(const std::filesystem::path& dir)
+{
+  auto start = std::chrono::high_resolution_clock::now();
+	auto var_file = dir / "vars.bin";
+	deserialize(var_file);
+
+  // Define function pointers for index building functions
+	if(index_)
+	{
+		if(featuresType_ == CV_8UC1)
+		{
+			delete static_cast<rtflann::Index<rtflann::Hamming<unsigned char> >*>(index_);
+		}
+		else
+		{
+			if(useDistanceL1_)
+			{
+				delete static_cast<rtflann::Index<rtflann::L1<float> >*>(index_);
+			}
+			else if(featuresDim_ <= 3)
+			{
+				delete static_cast<rtflann::Index<rtflann::L2_Simple<float>>*>(index_);
+			}
+			else
+			{
+				delete static_cast<rtflann::Index<rtflann::L2<float> >*>(index_);
+			}
+		}
+		index_ = nullptr;
+	}
+
+	auto index_file = dir / "index.bin";
+	rtflann::IndexParams params;
+	params["filename"] = index_file.string();
+	params["algorithm"] = rtflann::FLANN_INDEX_SAVED;
+	params["save_dataset"] = true;
+
+	if(featuresType_ == CV_8UC1)
+	{
+		index_ = buildIndex<rtflann::Hamming<unsigned char>>(params);
+		assert(index_);
+	}
+	else
+	{
+		if(useDistanceL1_)
+		{
+		  index_ = buildIndex<rtflann::L1<float>>(params);
+		}
+		else if(featuresDim_ <= 3)
+		{
+		  index_ = buildIndex<rtflann::L2_Simple<float>>(params);
+		}
+		else
+		{
+		  index_ = buildIndex<rtflann::L2<float>>(params);
+		}
+	}    
+  auto end = std::chrono::high_resolution_clock::now();
+	auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+	std::cout << "Done build index with saved index at: " << index_file.string() << " within " << duration.count() << " ms" << std::endl;
 }
 
 size_t FlannIndex::indexedFeatures() const
@@ -146,7 +285,7 @@ void FlannIndex::buildLinearIndex(
 {
 	UDEBUG("");
 	this->release();
-	UASSERT(index_ == 0);
+	UASSERT(index_ == nullptr);
 	UASSERT(features.type() == CV_32FC1 || features.type() == CV_8UC1);
 	featuresType_ = features.type();
 	featuresDim_ = features.cols;
@@ -154,7 +293,7 @@ void FlannIndex::buildLinearIndex(
 	rebalancingFactor_ = rebalancingFactor;
 
 	rtflann::LinearIndexParams params;
-
+	params["save_dataset"] = true;
 	if(featuresType_ == CV_8UC1)
 	{
 		rtflann::Matrix<unsigned char> dataset(features.data, features.rows, features.cols);
@@ -207,7 +346,7 @@ void FlannIndex::buildKDTreeIndex(
 {
 	UDEBUG("");
 	this->release();
-	UASSERT(index_ == 0);
+	UASSERT(index_ == nullptr);
 	UASSERT(features.type() == CV_32FC1 || features.type() == CV_8UC1);
 	featuresType_ = features.type();
 	featuresDim_ = features.cols;
@@ -215,6 +354,7 @@ void FlannIndex::buildKDTreeIndex(
 	rebalancingFactor_ = rebalancingFactor;
 
 	rtflann::KDTreeIndexParams params(trees);
+	params["save_dataset"] = true;
 
 	if(featuresType_ == CV_8UC1)
 	{
@@ -269,7 +409,7 @@ void FlannIndex::buildKDTreeSingleIndex(
 {
 	UDEBUG("");
 	this->release();
-	UASSERT(index_ == 0);
+	UASSERT(index_ == nullptr);
 	UASSERT(features.type() == CV_32FC1 || features.type() == CV_8UC1);
 	featuresType_ = features.type();
 	featuresDim_ = features.cols;
@@ -331,15 +471,18 @@ void FlannIndex::buildLSHIndex(
 {
 	UDEBUG("");
 	this->release();
-	UASSERT(index_ == 0);
+	UASSERT(index_ == nullptr);
 	UASSERT(features.type() == CV_8UC1);
 	featuresType_ = features.type();
 	featuresDim_ = features.cols;
 	useDistanceL1_ = true;
 	rebalancingFactor_ = rebalancingFactor;
 
+  auto params = rtflann::LshIndexParams(12, 20, 2);
+	params["save_dataset"] = true;
+
 	rtflann::Matrix<unsigned char> dataset(features.data, features.rows, features.cols);
-	index_ = new rtflann::Index<rtflann::Hamming<unsigned char> >(dataset, rtflann::LshIndexParams(12, 20, 2));
+	index_ = new rtflann::Index<rtflann::Hamming<unsigned char> >(dataset, params);
 	((rtflann::Index<rtflann::Hamming<unsigned char> >*)index_)->buildIndex();
 
 	// incremental FLANN: we should add all headers separately in case we remove
@@ -362,7 +505,7 @@ void FlannIndex::buildLSHIndex(
 
 bool FlannIndex::isBuilt()
 {
-	return index_!=0;
+	return index_!=nullptr;
 }
 
 std::vector<unsigned int> FlannIndex::addPoints(const cv::Mat & features)
@@ -370,7 +513,7 @@ std::vector<unsigned int> FlannIndex::addPoints(const cv::Mat & features)
 	if(!index_)
 	{
 		UERROR("Flann index not yet created!");
-		return std::vector<unsigned int>();
+		return {};
 	}
 	UASSERT(features.type() == featuresType_);
 	UASSERT(features.cols == featuresDim_);
@@ -379,7 +522,7 @@ std::vector<unsigned int> FlannIndex::addPoints(const cv::Mat & features)
 	if(featuresType_ == CV_8UC1)
 	{
 		rtflann::Matrix<unsigned char> points(features.data, features.rows, features.cols);
-		rtflann::Index<rtflann::Hamming<unsigned char> > * index = (rtflann::Index<rtflann::Hamming<unsigned char> >*)index_;
+		auto * index = (rtflann::Index<rtflann::Hamming<unsigned char> >*)index_;
 		removedPts = index->removedCount();
 		index->addPoints(points, 0);
 		// Rebuild index if it is now X times in size
@@ -396,7 +539,7 @@ std::vector<unsigned int> FlannIndex::addPoints(const cv::Mat & features)
 		rtflann::Matrix<float> points((float*)features.data, features.rows, features.cols);
 		if(useDistanceL1_)
 		{
-			rtflann::Index<rtflann::L1<float> > * index = (rtflann::Index<rtflann::L1<float> >*)index_;
+			auto * index = (rtflann::Index<rtflann::L1<float> >*)index_;
 			removedPts = index->removedCount();
 			index->addPoints(points, 0);
 			// Rebuild index if it doubles in size
@@ -410,7 +553,7 @@ std::vector<unsigned int> FlannIndex::addPoints(const cv::Mat & features)
 		}
 		else if(featuresDim_ <= 3)
 		{
-			rtflann::Index<rtflann::L2_Simple<float> > * index = (rtflann::Index<rtflann::L2_Simple<float> >*)index_;
+			auto * index = (rtflann::Index<rtflann::L2_Simple<float> >*)index_;
 			removedPts = index->removedCount();
 			index->addPoints(points, 0);
 			// Rebuild index if it doubles in size
@@ -424,7 +567,7 @@ std::vector<unsigned int> FlannIndex::addPoints(const cv::Mat & features)
 		}
 		else
 		{
-			rtflann::Index<rtflann::L2<float> > * index = (rtflann::Index<rtflann::L2<float> >*)index_;
+			auto * index = (rtflann::Index<rtflann::L2<float> >*)index_;
 			removedPts = index->removedCount();
 			index->addPoints(points, 0);
 			// Rebuild index if it doubles in size
@@ -442,9 +585,9 @@ std::vector<unsigned int> FlannIndex::addPoints(const cv::Mat & features)
 	{
 		UASSERT(removedPts == removedIndexes_.size());
 		// clean not used features
-		for(std::list<int>::iterator iter=removedIndexes_.begin(); iter!=removedIndexes_.end(); ++iter)
+		for(int & removedIndexe : removedIndexes_)
 		{
-			addedDescriptors_.erase(*iter);
+			addedDescriptors_.erase(removedIndexe);
 		}
 		removedIndexes_.clear();
 	}
@@ -491,7 +634,7 @@ void FlannIndex::removePoint(unsigned int index)
 		((rtflann::Index<rtflann::L2<float> >*)index_)->removePoint(index);
 	}
 
-	removedIndexes_.push_back(index);
+	removedIndexes_.push_back((int)index);
 }
 
 void FlannIndex::knnSearch(
@@ -592,4 +735,46 @@ void FlannIndex::radiusSearch(
 	}
 }
 
+void FlannIndex::serialize(const std::filesystem::path& filename)
+{
+    std::ofstream outFile(filename, std::ios::binary);
+    if (!outFile.is_open()) {
+        throw std::runtime_error("Unable to open file for writing");
+    }
+    int mapSize = (int)addedDescriptors_.size();
+    outFile.write(reinterpret_cast<char*>(&mapSize), sizeof(mapSize));
+    outFile.write(reinterpret_cast<char*>(&nextIndex_), sizeof(nextIndex_));
+    outFile.write(reinterpret_cast<char*>(&featuresType_), sizeof(featuresType_));
+    outFile.write(reinterpret_cast<char*>(&featuresDim_), sizeof(featuresDim_));
+    outFile.write(reinterpret_cast<char*>(&isLSH_), sizeof(isLSH_));
+    outFile.write(reinterpret_cast<char*>(&useDistanceL1_), sizeof(useDistanceL1_));
+    outFile.write(reinterpret_cast<char*>(&rebalancingFactor_), sizeof(rebalancingFactor_));
+    for (const auto& entry : addedDescriptors_) {
+    	  // Prepare data for compression
+        std::vector<char> buffer;
+        int key = entry.first;
+        const cv::Mat& m = entry.second;
+        int rows = m.rows;
+        int cols = m.cols;
+        int type = m.type();
+        int channels = m.channels();
+        buffer.insert(buffer.end(), reinterpret_cast<char*>(&key),  reinterpret_cast<char*>(&key) + sizeof(key));
+        buffer.insert(buffer.end(), reinterpret_cast<char*>(&rows), reinterpret_cast<char*>(&rows) + sizeof(rows));
+        buffer.insert(buffer.end(), reinterpret_cast<char*>(&cols), reinterpret_cast<char*>(&cols) + sizeof(cols));
+        buffer.insert(buffer.end(), reinterpret_cast<char*>(&type), reinterpret_cast<char*>(&type) + sizeof(type));
+        buffer.insert(buffer.end(), reinterpret_cast<char*>(&channels), reinterpret_cast<char*>(&channels) ) + sizeof(channels);
+        int dataSize = rows * cols * (int)m.elemSize();
+        buffer.insert(buffer.end(), reinterpret_cast<const char*>(m.data), reinterpret_cast<const char*>(m.data) + dataSize);
+
+        // Compress the buffer
+        size_t compressedSize = LZ4_compressBound((int)buffer.size());
+        std::vector<char> compressedBuffer(compressedSize);
+        int actualCompressedSize = LZ4_compress_default(buffer.data(), compressedBuffer.data(), (int)buffer.size(), (int)compressedSize);
+
+        // Write the size of the compressed data followed by the compressed data itself
+        outFile.write(reinterpret_cast<const char*>(&actualCompressedSize), sizeof(actualCompressedSize));
+        outFile.write(compressedBuffer.data(), actualCompressedSize);
+    }
+    outFile.close();
+}
 } /* namespace rtabmap */

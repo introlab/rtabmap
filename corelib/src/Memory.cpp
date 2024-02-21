@@ -367,6 +367,7 @@ void Memory::loadDataFromDb(bool postInitClosingEvents)
 
 		// Now load the dictionary if we have a connection
 		if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit("Loading dictionary..."));
+		_vwd->setSavedIndex(std::filesystem::path(_dbDriver->getUrl()).parent_path() / "vocabulary");
 		UDEBUG("Loading dictionary...");
 		if(loadAllNodesInWM)
 		{
@@ -3549,17 +3550,17 @@ void Memory::removeVirtualLinks(int signatureId)
 void Memory::dumpMemory(std::string directory) const
 {
 	UINFO("Dumping memory to directory \"%s\"", directory.c_str());
-	this->dumpDictionary((directory+"/DumpMemoryWordRef.txt").c_str(), (directory+"/DumpMemoryWordDesc.txt").c_str());
+	this->dumpDictionary(directory);
 	this->dumpSignatures((directory + "/DumpMemorySign.txt").c_str(), false);
 	this->dumpSignatures((directory + "/DumpMemorySign3.txt").c_str(), true);
 	this->dumpMemoryTree((directory + "/DumpMemoryTree.txt").c_str());
 }
 
-void Memory::dumpDictionary(const char * fileNameRef, const char * fileNameDesc) const
+void Memory::dumpDictionary(std::string_view dir) const
 {
 	if(_vwd)
 	{
-		_vwd->exportDictionary(fileNameRef, fileNameDesc);
+		_vwd->save(dir);
 	}
 }
 

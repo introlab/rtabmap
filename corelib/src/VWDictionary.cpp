@@ -30,12 +30,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "rtabmap/core/Signature.h"
 #include "rtabmap/core/DBDriver.h"
-#include "rtabmap/core/Parameters.h"
 #include "rtabmap/core/FlannIndex.h"
 
 #include "rtabmap/utilite/UtiLite.h"
-
-#include <opencv2/opencv_modules.hpp>
 
 #if CV_MAJOR_VERSION < 3
 #ifdef HAVE_OPENCV_GPU
@@ -47,9 +44,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <opencv2/cudafeatures2d.hpp>
 #endif
 #endif
-
-#include <fstream>
-#include <string>
 
 #define KDTREE_SIZE 4
 #define KNN_CHECKS 32
@@ -99,7 +93,7 @@ void VWDictionary::parseParameters(const ParametersMap & parameters)
 	bool incrementalDictionary = _incrementalDictionary;
 	if((iter=parameters.find(Parameters::kKpDictionaryPath())) != parameters.end())
 	{
-		_newDictionaryPath = (*iter).second.c_str();
+		_newDictionaryPath = (*iter).second;
 	}
 	if((iter=parameters.find(Parameters::kKpIncrementalDictionary())) != parameters.end())
 	{
@@ -110,7 +104,8 @@ void VWDictionary::parseParameters(const ParametersMap & parameters)
 	bool treeUpdated = false;
 	if((iter=parameters.find(Parameters::kKpNNStrategy())) != parameters.end())
 	{
-		NNStrategy nnStrategy = (NNStrategy)std::atoi((*iter).second.c_str());
+		// auto nnStrategy = (NNStrategy)std::atoi((*iter).second.c_str());
+    auto nnStrategy = static_cast<NNStrategy>(std::strtol((*iter).second.c_str(), nullptr, 10));
 		treeUpdated = this->setNNStrategy(nnStrategy);
 	}
 	if(!treeUpdated && byteToFloat!=_byteToFloat && _strategy == kNNFlannKdTree)
@@ -129,12 +124,32 @@ void VWDictionary::parseParameters(const ParametersMap & parameters)
 	_incrementalDictionary = incrementalDictionary;
 }
 
+void VWDictionary::setSavedIndex(const std::filesystem::path& dir)
+{
+	// check if saved files are needed
+	_useSavedFile = std::filesystem::exists(dir / "index.bin") && 
+									std::filesystem::exists(dir / "vars.bin") && 
+									std::filesystem::exists(dir / "VWDictionary.bin"); 
+	
+	// set directory if files are existed
+	save_dir_ = dir;
+
+	if(_useSavedFile)
+	{
+		UINFO("Use saved files at %s to load vocabulary!", save_dir_.c_str());
+	}
+	else
+	{
+		UINFO("Can not find necessary files at %s to load vocabulary, rebuild flannIndex from database", save_dir_.c_str());
+	}
+}
+
 void VWDictionary::setIncrementalDictionary()
 {
 	if(!_incrementalDictionary)
 	{
 		_incrementalDictionary = true;
-		if(_visualWords.size())
+		if(!_visualWords.empty())
 		{
 			UWARN("Incremental dictionary set: already loaded visual words (%d) from the fixed dictionary will be included in the incremental one.", _visualWords.size());
 		}
@@ -148,24 +163,24 @@ void VWDictionary::setFixedDictionary(const std::string & dictionaryPath)
 	UDEBUG("");
 	if(!dictionaryPath.empty())
 	{
-		if((!_incrementalDictionary && _dictionaryPath.compare(dictionaryPath) != 0) ||
-		   _visualWords.size() == 0)
+		if((!_incrementalDictionary && _dictionaryPath != dictionaryPath) ||
+		   _visualWords.empty())
 		{
 			UINFO("incremental=%d, oldPath=%s newPath=%s, visual words=%d",
 					_incrementalDictionary?1:0, _dictionaryPath.c_str(), dictionaryPath.c_str(), (int)_visualWords.size());
 
-			if(UFile::getExtension(dictionaryPath).compare("db") == 0)
+			if(UFile::getExtension(dictionaryPath) == "db")
 			{
 				UWARN("Loading fixed vocabulary \"%s\", this may take a while...", dictionaryPath.c_str());
 				DBDriver * driver = DBDriver::create();
 				if(driver->openConnection(dictionaryPath, false))
 				{
 					driver->load(this, false);
-					for(std::map<int, VisualWord*>::iterator iter=_visualWords.begin(); iter!=_visualWords.end(); ++iter)
+					for(auto & _visualWord : _visualWords)
 					{
-						iter->second->setSaved(true);
+						_visualWord.second->setSaved(true);
 					}
-					_incrementalDictionary = _visualWords.size()==0;
+					_incrementalDictionary = _visualWords.empty();
 					driver->closeConnection(false);
 				}
 				else
@@ -190,11 +205,11 @@ void VWDictionary::setFixedDictionary(const std::string & dictionaryPath)
 					std::getline(file, str);
 					strList = uSplitNumChar(str);
 					int dimension  = 0;
-					for(std::list<std::string>::iterator iter = strList.begin(); iter != strList.end(); ++iter)
+					for(auto & iter : strList)
 					{
-						if(uIsDigit(iter->at(0)))
+						if(uIsDigit(iter.at(0)))
 						{
-							dimension = std::atoi(iter->c_str());
+              dimension = static_cast<int>(std::strtol(iter.c_str(), nullptr, 10));
 							break;
 						}
 					}
@@ -214,8 +229,9 @@ void VWDictionary::setFixedDictionary(const std::string & dictionaryPath)
 							if((int)strList.size() == dimension+1)
 							{
 								//first one is the visual word id
-								std::list<std::string>::iterator iter = strList.begin();
-								int id = std::atoi(iter->c_str());
+								auto iter = strList.begin();
+                auto id = static_cast<int>(std::strtol(iter->c_str(), nullptr, 10));
+							  // int id = std::atoi(iter->c_str());
 								cv::Mat descriptor(1, dimension, CV_32F);
 								++iter;
 								int i=0;
@@ -230,7 +246,7 @@ void VWDictionary::setFixedDictionary(const std::string & dictionaryPath)
 									UERROR("Loaded word has not the same size (%d) than descriptor size previously detected (%d).", i, dimension);
 								}
 
-								VisualWord * vw = new VisualWord(id, descriptor, 0);
+								auto * vw = new VisualWord(id, descriptor, 0);
 								vw->setSaved(true);
 								_visualWords.insert(_visualWords.end(), std::pair<int, VisualWord*>(id, vw));
 								_notIndexedWords.insert(_notIndexedWords.end(), id);
@@ -241,7 +257,7 @@ void VWDictionary::setFixedDictionary(const std::string & dictionaryPath)
 								UWARN("Cannot parse line \"%s\"", str.c_str());
 							}
 						}
-						if(_visualWords.size())
+						if(!_visualWords.empty())
 						{
 							UWARN("Loaded %d words!", (int)_visualWords.size());
 						}
@@ -254,9 +270,9 @@ void VWDictionary::setFixedDictionary(const std::string & dictionaryPath)
 				file.close();
 			}
 
-			if(_visualWords.size() == 0)
+			if(_visualWords.empty())
 			{
-				_incrementalDictionary = _visualWords.size()==0;
+				_incrementalDictionary = _visualWords.empty();
 				UWARN("No words loaded, cannot set a fixed dictionary.", (int)_visualWords.size());
 			}
 			else
@@ -277,7 +293,7 @@ void VWDictionary::setFixedDictionary(const std::string & dictionaryPath)
 			UERROR("Cannot change to a fixed dictionary if there are already words (%d) in the incremental one.", _visualWords.size());
 		}
 	}
-	else if(_incrementalDictionary && _visualWords.size())
+	else if(_incrementalDictionary && !_visualWords.empty())
 	{
 		UWARN("Cannot change to fixed dictionary, %d words already loaded as incremental", (int)_visualWords.size());
 	}
@@ -346,7 +362,7 @@ bool VWDictionary::setNNStrategy(NNStrategy strategy)
 
 int VWDictionary::getLastIndexedWordId() const
 {
-	if(_mapIndexId.size())
+	if(!_mapIndexId.empty())
 	{
 		return _mapIndexId.rbegin()->second;
 	}
@@ -370,7 +386,7 @@ unsigned long VWDictionary::getMemoryUsed() const
 {
 	long memoryUsage = sizeof(VWDictionary);
 	memoryUsage += getIndexMemoryUsed();
-	memoryUsage += _dataTree.total()*_dataTree.elemSize();
+	memoryUsage += long( _dataTree.total()*_dataTree.elemSize() );
 	if(!_visualWords.empty())
 	{
 		memoryUsage += _visualWords.size()*(sizeof(int) + _visualWords.rbegin()->second->getMemoryUsed() + sizeof(std::map<int, VisualWord *>::iterator)) + sizeof(std::map<int, VisualWord *>);
@@ -411,7 +427,7 @@ cv::Mat VWDictionary::convertBinTo32F(const cv::Mat & descriptorsIn, bool byteTo
 		for(int i=0; i<descriptorsIn.rows; ++i)
 		{
 			const unsigned char * ptrIn = descriptorsIn.ptr(i);
-			float * ptrOut = descriptorsOut.ptr<float>(i);
+			auto * ptrOut = descriptorsOut.ptr<float>(i);
 			for(int j=0; j<descriptorsIn.cols; ++j)
 			{
 				int jo = j*8;
@@ -445,7 +461,7 @@ cv::Mat VWDictionary::convert32FToBin(const cv::Mat & descriptorsIn, bool byteTo
 		cv::Mat descriptorsOut(descriptorsIn.rows, descriptorsIn.cols/8, CV_8UC1);
 		for(int i=0; i<descriptorsIn.rows; ++i)
 		{
-			const float * ptrIn = descriptorsIn.ptr<float>(i);
+			const auto * ptrIn = descriptorsIn.ptr<float>(i);
 			unsigned char * ptrOut = descriptorsOut.ptr(i);
 			for(int j=0; j<descriptorsOut.cols; ++j)
 			{
@@ -467,13 +483,14 @@ cv::Mat VWDictionary::convert32FToBin(const cv::Mat & descriptorsIn, bool byteTo
 
 void VWDictionary::update()
 {
+  auto start = std::chrono::high_resolution_clock::now();
 	ULOGGER_DEBUG("incremental=%d", _incrementalDictionary?1:0);
 	if(!_incrementalDictionary)
 	{
 		// reload the fixed dictionary if it has been cleared or not yet initialized
 		this->setFixedDictionary(_newDictionaryPath);
 
-		if(!_incrementalDictionary && !_notIndexedWords.size())
+		if(!_incrementalDictionary && _notIndexedWords.empty())
 		{
 			// No need to update the search index if we
 			// use a fixed dictionary and the index is
@@ -482,29 +499,30 @@ void VWDictionary::update()
 		}
 	}
 
-	if(_notIndexedWords.size() || _visualWords.size() == 0 || _removedIndexedWords.size())
+	if(!_notIndexedWords.empty() || _visualWords.empty() || !_removedIndexedWords.empty())
 	{
 		if(_incrementalFlann &&
 		   _strategy < kNNBruteForce &&
-		   _visualWords.size())
+		   !_visualWords.empty())
 		{
 			ULOGGER_DEBUG("Incremental FLANN: Removing %d words...", (int)_removedIndexedWords.size());
-			for(std::set<int>::iterator iter=_removedIndexedWords.begin(); iter!=_removedIndexedWords.end(); ++iter)
+			for(int _removedIndexedWord : _removedIndexedWords)
 			{
-				UASSERT(uContains(_mapIdIndex, *iter));
-				UASSERT(uContains(_mapIndexId, _mapIdIndex.at(*iter)));
-				_flannIndex->removePoint(_mapIdIndex.at(*iter));
-				_mapIndexId.erase(_mapIdIndex.at(*iter));
-				_mapIdIndex.erase(*iter);
+				UASSERT(uContains(_mapIdIndex, _removedIndexedWord));
+				UASSERT(uContains(_mapIndexId, _mapIdIndex.at(_removedIndexedWord)));
+				_flannIndex->removePoint(_mapIdIndex.at(_removedIndexedWord));
+				_mapIndexId.erase(_mapIdIndex.at(_removedIndexedWord));
+				_mapIdIndex.erase(_removedIndexedWord);
 			}
-			ULOGGER_DEBUG("Incremental FLANN: Removing %d words... done!", (int)_removedIndexedWords.size());
+			UINFO("Incremental FLANN: Removing %d words... done!", (int)_removedIndexedWords.size());
 
-			if(_notIndexedWords.size())
+			// not rebuild tree when init
+			if(!_notIndexedWords.empty() && !_useSavedFile)
 			{
-				ULOGGER_DEBUG("Incremental FLANN: Inserting %d words...", (int)_notIndexedWords.size());
-				for(std::set<int>::iterator iter=_notIndexedWords.begin(); iter!=_notIndexedWords.end(); ++iter)
+				UINFO("Incremental FLANN: Inserting %d words...", (int)_notIndexedWords.size());
+				for(const int& notIndexedWord : _notIndexedWords)
 				{
-					VisualWord* w = uValue(_visualWords, *iter, (VisualWord*)0);
+					VisualWord* w = uValue(_visualWords, notIndexedWord, (VisualWord*)nullptr);
 					UASSERT(w);
 
 					cv::Mat descriptor;
@@ -553,7 +571,7 @@ void VWDictionary::update()
 						UASSERT(descriptor.cols == _flannIndex->featuresDim());
 						UASSERT(descriptor.type() == _flannIndex->featuresType());
 						UASSERT(descriptor.rows == 1);
-						index = _flannIndex->addPoints(descriptor).front();
+						index = (int)_flannIndex->addPoints(descriptor).front();
 					}
 					std::pair<std::map<int, int>::iterator, bool> inserted;
 					inserted = _mapIndexId.insert(std::pair<int, int>(index, w->id()));
@@ -561,21 +579,29 @@ void VWDictionary::update()
 					inserted = _mapIdIndex.insert(std::pair<int, int>(w->id(), index));
 					UASSERT(inserted.second);
 				}
-				ULOGGER_DEBUG("Incremental FLANN: Inserting %d words... done!", (int)_notIndexedWords.size());
+				UINFO("Incremental FLANN: Inserting %d words... done!", (int)_notIndexedWords.size());
+			}
+
+			// load tree and mapId when files are provided
+			// load only once initing -> set _useSavedFile = false after inited
+			if (_useSavedFile)
+			{
+				load(save_dir_);
+				_useSavedFile = false;
 			}
 		}
 		else if(_strategy >= kNNBruteForce &&
-				_notIndexedWords.size() &&
-				_removedIndexedWords.size() == 0 &&
-				_visualWords.size() &&
+				!_notIndexedWords.empty() &&
+				_removedIndexedWords.empty() &&
+				!_visualWords.empty() &&
 				_dataTree.rows)
 		{
 			//just add not indexed words
 			int i = _dataTree.rows;
 			_dataTree.reserve(_dataTree.rows + _notIndexedWords.size());
-			for(std::set<int>::iterator iter=_notIndexedWords.begin(); iter!=_notIndexedWords.end(); ++iter)
+			for(int _notIndexedWord : _notIndexedWords)
 			{
-				VisualWord* w = uValue(_visualWords, *iter, (VisualWord*)0);
+				VisualWord* w = uValue(_visualWords, _notIndexedWord, (VisualWord*)nullptr);
 				UASSERT(w);
 				UASSERT(w->getDescriptor().cols == _dataTree.cols);
 				UASSERT(w->getDescriptor().type() == _dataTree.type());
@@ -593,7 +619,7 @@ void VWDictionary::update()
 			_dataTree = cv::Mat();
 			_flannIndex->release();
 
-			if(_visualWords.size())
+			if(!_visualWords.empty())
 			{
 				UTimer timer;
 				timer.start();
@@ -625,9 +651,9 @@ void VWDictionary::update()
 				UASSERT(dim > 0);
 
 				// Create the data matrix
-				_dataTree = cv::Mat(_visualWords.size(), dim, type); // SURF descriptors are CV_32F
-				std::map<int, VisualWord*>::const_iterator iter = _visualWords.begin();
-				for(unsigned int i=0; i < _visualWords.size(); ++i, ++iter)
+				_dataTree = cv::Mat((int)_visualWords.size(), dim, type); // SURF descriptors are CV_32F
+				auto iter = _visualWords.begin();
+				for(auto i=0; i < (int)_visualWords.size(); ++i, ++iter)
 				{
 					cv::Mat descriptor;
 					if(iter->second->getDescriptor().type() == CV_8U)
@@ -649,7 +675,7 @@ void VWDictionary::update()
 					UASSERT_MSG(descriptor.type() == type, uFormat("%d vs %d", descriptor.type(), type).c_str());
 					UASSERT_MSG(descriptor.cols == dim, uFormat("%d vs %d", descriptor.cols, dim).c_str());
 
-					descriptor.copyTo(_dataTree.row(i));
+					descriptor.copyTo(_dataTree.row((int)i));
 					_mapIndexId.insert(_mapIndexId.end(), std::pair<int, int>(i, iter->second->id()));
 					_mapIdIndex.insert(_mapIdIndex.end(), std::pair<int, int>(iter->second->id(), i));
 				}
@@ -677,7 +703,7 @@ void VWDictionary::update()
 				ULOGGER_DEBUG("Time to create kd tree = %f s", timer.ticks());
 			}
 		}
-		UDEBUG("Dictionary updated! (size=%d added=%d removed=%d)",
+		UINFO("Dictionary updated! (size=%d added=%d removed=%d)",
 				_dataTree.rows, _notIndexedWords.size(), _removedIndexedWords.size());
 	}
 	else
@@ -687,6 +713,9 @@ void VWDictionary::update()
 	_notIndexedWords.clear();
 	_removedIndexedWords.clear();
 	UDEBUG("");
+  auto end = std::chrono::high_resolution_clock::now();
+	auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+	std::cout << __PRETTY_FUNCTION__ << " tooks: " << duration.count() << " ms" << std::endl;
 }
 
 void VWDictionary::clear(bool printWarningsIfNotEmpty)
@@ -694,18 +723,18 @@ void VWDictionary::clear(bool printWarningsIfNotEmpty)
 	ULOGGER_DEBUG("");
 	if(printWarningsIfNotEmpty)
 	{
-		if(_visualWords.size() && _incrementalDictionary)
+		if(!_visualWords.empty() && _incrementalDictionary)
 		{
 			UWARN("Visual dictionary would be already empty here (%d words still in dictionary).", (int)_visualWords.size());
 		}
-		if(_notIndexedWords.size())
+		if(!_notIndexedWords.empty())
 		{
 			UWARN("Not indexed words should be empty here (%d words still not indexed)", (int)_notIndexedWords.size());
 		}
 	}
-	for(std::map<int, VisualWord *>::iterator i=_visualWords.begin(); i!=_visualWords.end(); ++i)
+	for(auto & _visualWord : _visualWords)
 	{
-		delete (*i).second;
+		delete _visualWord.second;
 	}
 	_visualWords.clear();
 	_notIndexedWords.clear();
@@ -727,7 +756,7 @@ int VWDictionary::getNextId()
 
 void VWDictionary::addWordRef(int wordId, int signatureId)
 {
-	VisualWord * vw = 0;
+	VisualWord * vw = nullptr;
 	vw = uValue(_visualWords, wordId, vw);
 	if(vw)
 	{
@@ -744,12 +773,12 @@ void VWDictionary::addWordRef(int wordId, int signatureId)
 
 void VWDictionary::removeAllWordRef(int wordId, int signatureId)
 {
-	VisualWord * vw = 0;
+	VisualWord * vw = nullptr;
 	vw = uValue(_visualWords, wordId, vw);
 	if(vw)
 	{
 		_totalActiveReferences -= vw->removeAllRef(signatureId);
-		if(vw->getReferences().size() == 0)
+		if(vw->getReferences().empty())
 		{
 			_unusedWords.insert(std::pair<int, VisualWord*>(vw->id(), vw));
 		}
@@ -778,7 +807,7 @@ std::list<int> VWDictionary::addNewWords(
 	// verify we have the same features
 	int dim = 0;
 	int type = -1;
-	if(_visualWords.size())
+	if(!_visualWords.empty())
 	{
 		dim = _visualWords.begin()->second->getDescriptor().cols;
 		type = _visualWords.begin()->second->getDescriptor().type();
@@ -858,13 +887,13 @@ std::list<int> VWDictionary::addNewWords(
 
 		if(_strategy == kNNFlannNaive || _strategy == kNNFlannKdTree || _strategy == kNNFlannLSH)
 		{
-			_flannIndex->knnSearch(descriptors, results, dists, k, KNN_CHECKS);
+			_flannIndex->knnSearch(descriptors, results, dists, (int)k, KNN_CHECKS);
 		}
 		else if(_strategy == kNNBruteForce)
 		{
 			bruteForce = true;
 			cv::BFMatcher matcher(descriptors.type()==CV_8U?cv::NORM_HAMMING:cv::NORM_L2SQR);
-			matcher.knnMatch(descriptors, _dataTree, matches, k);
+			matcher.knnMatch(descriptors, _dataTree, matches, (int)k);
 		}
 		else if(_strategy == kNNBruteForceGPU)
 		{
@@ -953,12 +982,12 @@ std::list<int> VWDictionary::addNewWords(
 				}
 			}
 		}
-		else if(bruteForce && matches.size())
+		else if(bruteForce && !matches.empty())
 		{
-			for(unsigned int j=0; j<matches.at(i).size(); ++j)
+			for(auto & j : matches.at(i))
 			{
-				float d = matches.at(i).at(j).distance;
-				int id = uValue(_mapIndexId, matches.at(i).at(j).trainIdx);
+				float d = j.distance;
+				int id = uValue(_mapIndexId, j.trainIdx);
 				if(d >= 0.0f && id != 0)
 				{
 					if(isL2NotSqr)
@@ -983,10 +1012,10 @@ std::list<int> VWDictionary::addNewWords(
 			UASSERT(descriptors.cols == newWords.cols && descriptors.type() == newWords.type());
 			matcher.knnMatch(descriptors.row(i), newWords, matchesNewWords, newWords.rows>1?2:1);
 			UASSERT(matchesNewWords.size() == 1);
-			for(unsigned int j=0; j<matchesNewWords.at(0).size(); ++j)
+			for(auto & j : matchesNewWords.at(0))
 			{
-				float d = matchesNewWords.at(0).at(j).distance;
-				int id = newWordsId[matchesNewWords.at(0).at(j).trainIdx];
+				float d = j.distance;
+				int id = newWordsId[j.trainIdx];
 				if(d >= 0.0f && id != 0)
 				{
 					fullResults.insert(std::pair<float, int>(d, id));
@@ -1001,7 +1030,7 @@ std::list<int> VWDictionary::addNewWords(
 		if(_incrementalDictionary)
 		{
 			bool badDist = false;
-			if(fullResults.size() == 0)
+			if(fullResults.empty())
 			{
 				badDist = true;
 			}
@@ -1024,7 +1053,7 @@ std::list<int> VWDictionary::addNewWords(
 			if(badDist)
 			{
 				// use original descriptor
-				VisualWord * vw = new VisualWord(getNextId(), descriptorsIn.row(i), signatureId);
+				auto * vw = new VisualWord(getNextId(), descriptorsIn.row(i), signatureId);
 				_visualWords.insert(_visualWords.end(), std::pair<int, VisualWord *>(vw->id(), vw));
 				_notIndexedWords.insert(_notIndexedWords.end(), vw->id());
 				newWords.push_back(descriptors.row(i));
@@ -1047,7 +1076,7 @@ std::list<int> VWDictionary::addNewWords(
 				wordIds.push_back(fullResults.begin()->second);
 			}
 		}
-		else if(fullResults.size())
+		else if(!fullResults.empty())
 		{
 			// If the dictionary is not incremental, just take the nearest word
 			++dupWordsCountFromDict;
@@ -1063,7 +1092,7 @@ std::list<int> VWDictionary::addNewWords(
 			dupWordsCountFromDict+dupWordsCountFromLast, dupWordsCountFromLast);
 	UDEBUG("total time %fs", timer.ticks());
 
-	_totalActiveReferences += _notIndexedWords.size();
+	_totalActiveReferences += (int)_notIndexedWords.size();
 	return wordIds;
 }
 
@@ -1072,7 +1101,7 @@ std::vector<int> VWDictionary::findNN(const std::list<VisualWord *> & vws) const
 	UTimer timer;
 	timer.start();
 
-	if(_visualWords.size() && vws.size())
+	if(!_visualWords.empty() && !vws.empty())
 	{
 		int type = (*vws.begin())->getDescriptor().type();
 		int dim = (*vws.begin())->getDescriptor().cols;
@@ -1092,8 +1121,8 @@ std::vector<int> VWDictionary::findNN(const std::list<VisualWord *> & vws) const
 		// fill the request matrix
 		int index = 0;
 		VisualWord * vw;
-		cv::Mat query(vws.size(), dim, type);
-		for(std::list<VisualWord *>::const_iterator iter=vws.begin(); iter!=vws.end(); ++iter, ++index)
+		cv::Mat query((int)vws.size(), dim, type);
+		for(auto iter=vws.begin(); iter!=vws.end(); ++iter, ++index)
 		{
 			vw = *iter;
 			UASSERT(vw);
@@ -1116,7 +1145,7 @@ std::vector<int> VWDictionary::findNN(const cv::Mat & queryIn) const
 	std::vector<int> resultIds(queryIn.rows, 0);
 	unsigned int k=2; // k nearest neighbor
 
-	if(_visualWords.size() && queryIn.rows)
+	if(!_visualWords.empty() && queryIn.rows)
 	{
 		// verify we have the same features
 		int dim = _visualWords.begin()->second->getDescriptor().cols;
@@ -1185,13 +1214,13 @@ std::vector<int> VWDictionary::findNN(const cv::Mat & queryIn) const
 
 			if(_strategy == kNNFlannNaive || _strategy == kNNFlannKdTree || _strategy == kNNFlannLSH)
 			{
-				_flannIndex->knnSearch(query, results, dists, k, KNN_CHECKS);
+				_flannIndex->knnSearch(query, results, dists, (int)k, KNN_CHECKS);
 			}
 			else if(_strategy == kNNBruteForce)
 			{
 				bruteForce = true;
 				cv::BFMatcher matcher(query.type()==CV_8U?cv::NORM_HAMMING:cv::NORM_L2SQR);
-				matcher.knnMatch(query, _dataTree, matches, k);
+				matcher.knnMatch(query, _dataTree, matches, (int)k);
 			}
 			else if(_strategy == kNNBruteForceGPU)
 			{
@@ -1256,10 +1285,10 @@ std::vector<int> VWDictionary::findNN(const cv::Mat & queryIn) const
 		std::vector<std::vector<cv::DMatch> > matchesNotIndexed;
 		if(!_notIndexedWords.empty())
 		{
-			cv::Mat dataNotIndexed = cv::Mat::zeros(_notIndexedWords.size(), query.cols, query.type());
+			cv::Mat dataNotIndexed = cv::Mat::zeros((int)_notIndexedWords.size(), query.cols, query.type());
 			unsigned int index = 0;
 			VisualWord * vw;
-			for(std::set<int>::iterator iter = _notIndexedWords.begin(); iter != _notIndexedWords.end(); ++iter, ++index)
+			for(auto iter = _notIndexedWords.begin(); iter != _notIndexedWords.end(); ++iter, ++index)
 			{
 				vw = _visualWords.at(*iter);
 
@@ -1279,8 +1308,8 @@ std::vector<int> VWDictionary::findNN(const cv::Mat & queryIn) const
 				{
 					descriptor = vw->getDescriptor();
 				}
-				UASSERT(vw != 0 && descriptor.cols == query.cols && descriptor.type() == query.type());
-				descriptor.copyTo(dataNotIndexed.row(index));
+				UASSERT(vw != nullptr && descriptor.cols == query.cols && descriptor.type() == query.type());
+				descriptor.copyTo(dataNotIndexed.row((int)index));
 				mapIndexIdNotIndexed.insert(mapIndexIdNotIndexed.end(), std::pair<int,int>(index, vw->id()));
 			}
 			// Find nearest neighbor
@@ -1315,12 +1344,12 @@ std::vector<int> VWDictionary::findNN(const cv::Mat & queryIn) const
 					}
 				}
 			}
-			else if(bruteForce && matches.size())
+			else if(bruteForce && !matches.empty())
 			{
-				for(unsigned int j=0; j<matches.at(i).size(); ++j)
+				for(auto & j : matches.at(i))
 				{
-					float d = matches.at(i).at(j).distance;
-					int id = uValue(_mapIndexId, matches.at(i).at(j).trainIdx);
+					float d = j.distance;
+					int id = uValue(_mapIndexId, j.trainIdx);
 					if(d >= 0.0f && id != 0)
 					{
 						if(isL2NotSqr)
@@ -1334,12 +1363,12 @@ std::vector<int> VWDictionary::findNN(const cv::Mat & queryIn) const
 			}
 
 			// not indexed..
-			if(matchesNotIndexed.size())
+			if(!matchesNotIndexed.empty())
 			{
-				for(unsigned int j=0; j<matchesNotIndexed.at(i).size(); ++j)
+				for(auto & j : matchesNotIndexed.at(i))
 				{
-					float d = matchesNotIndexed.at(i).at(j).distance;
-					int id = uValue(mapIndexIdNotIndexed, matchesNotIndexed.at(i).at(j).trainIdx);
+					float d = j.distance;
+					int id = uValue(mapIndexIdNotIndexed, j.trainIdx);
 					if(d >= 0.0f && id != 0)
 					{
 						fullResults.insert(std::pair<float, int>(d, id));
@@ -1354,7 +1383,7 @@ std::vector<int> VWDictionary::findNN(const cv::Mat & queryIn) const
 			if(_incrementalDictionary)
 			{
 				bool badDist = false;
-				if(fullResults.size() == 0)
+				if(fullResults.empty())
 				{
 					badDist = true;
 				}
@@ -1379,7 +1408,7 @@ std::vector<int> VWDictionary::findNN(const cv::Mat & queryIn) const
 					resultIds[i] = fullResults.begin()->second; // Accepted
 				}
 			}
-			else if(fullResults.size())
+			else if(!fullResults.empty())
 			{
 				//Just take the nearest if the dictionary is not incremental
 				resultIds[i] = fullResults.begin()->second; // Accepted
@@ -1396,7 +1425,7 @@ void VWDictionary::addWord(VisualWord * vw)
 	{
 		_visualWords.insert(std::pair<int, VisualWord *>(vw->id(), vw));
 		_notIndexedWords.insert(vw->id());
-		if(vw->getReferences().size())
+		if(!vw->getReferences().empty())
 		{
 			_totalActiveReferences += uSum(uValues(vw->getReferences()));
 		}
@@ -1413,12 +1442,12 @@ void VWDictionary::addWord(VisualWord * vw)
 
 const VisualWord * VWDictionary::getWord(int id) const
 {
-	return uValue(_visualWords, id, (VisualWord *)0);
+	return uValue(_visualWords, id, (VisualWord *)nullptr);
 }
 
 VisualWord * VWDictionary::getUnusedWord(int id) const
 {
-	return uValue(_unusedWords, id, (VisualWord *)0);
+	return uValue(_unusedWords, id, (VisualWord *)nullptr);
 }
 
 std::vector<VisualWord*> VWDictionary::getUnusedWords() const
@@ -1434,13 +1463,13 @@ std::vector<int> VWDictionary::getUnusedWordIds() const
 void VWDictionary::removeWords(const std::vector<VisualWord*> & words)
 {
 	//UDEBUG("Removing %d words from dictionary (current size=%d)", (int)words.size(), (int)_visualWords.size());
-	for(unsigned int i=0; i<words.size(); ++i)
+	for(auto word : words)
 	{
-		_visualWords.erase(words[i]->id());
-		_unusedWords.erase(words[i]->id());
-		if(_notIndexedWords.erase(words[i]->id()) == 0)
+		_visualWords.erase(word->id());
+		_unusedWords.erase(word->id());
+		if(_notIndexedWords.erase(word->id()) == 0)
 		{
-			_removedIndexedWords.insert(words[i]->id());
+			_removedIndexedWords.insert(word->id());
 		}
 	}
 }
@@ -1449,9 +1478,9 @@ void VWDictionary::deleteUnusedWords()
 {
 	std::vector<VisualWord*> unusedWords = uValues(_unusedWords);
 	removeWords(unusedWords);
-	for(unsigned int i=0; i<unusedWords.size(); ++i)
+	for(auto & unusedWord : unusedWords)
 	{
-		delete unusedWords[i];
+		delete unusedWord;
 	}
 }
 
@@ -1468,8 +1497,8 @@ void VWDictionary::exportDictionary(const char * fileNameReferences, const char 
 		UERROR("Exporting binary descriptors is not implemented!");
 		return;
 	}
-    FILE* foutRef = 0;
-    FILE* foutDesc = 0;
+    FILE* foutRef = nullptr;
+    FILE* foutDesc = nullptr;
 #ifdef _MSC_VER
     fopen_s(&foutRef, fileNameReferences, "w");
     fopen_s(&foutDesc, fileNameDescriptors, "w");
@@ -1496,18 +1525,18 @@ void VWDictionary::exportDictionary(const char * fileNameReferences, const char 
 	}
 
 	UDEBUG("Export %d words...", _visualWords.size());
-    for(std::map<int, VisualWord *>::const_iterator iter=_visualWords.begin(); iter!=_visualWords.end(); ++iter)
+    for(auto _visualWord : _visualWords)
     {
     	// References
     	if(foutRef)
     	{
-			fprintf(foutRef, "%d ", (*iter).first);
-			const std::map<int, int> ref = (*iter).second->getReferences();
-			for(std::map<int, int>::const_iterator jter=ref.begin(); jter!=ref.end(); ++jter)
+			fprintf(foutRef, "%d ", _visualWord.first);
+			const std::map<int, int> ref = _visualWord.second->getReferences();
+			for(auto jter : ref)
 			{
-				for(int i=0; i<(*jter).second; ++i)
+				for(int i=0; i<jter.second; ++i)
 				{
-					fprintf(foutRef, "%d ", (*jter).first);
+					fprintf(foutRef, "%d ", jter.first);
 				}
 			}
 			fprintf(foutRef, "\n");
@@ -1516,9 +1545,9 @@ void VWDictionary::exportDictionary(const char * fileNameReferences, const char 
     	//Descriptors
     	if(foutDesc)
     	{
-			fprintf(foutDesc, "%d ", (*iter).first);
-			const float * desc = (const float *)(*iter).second->getDescriptor().data;
-			int dim = (*iter).second->getDescriptor().cols;
+			fprintf(foutDesc, "%d ", _visualWord.first);
+			const auto * desc = (const float *)_visualWord.second->getDescriptor().data;
+			int dim = _visualWord.second->getDescriptor().cols;
 
 			for(int i=0; i<dim; i++)
 			{
@@ -1534,4 +1563,83 @@ void VWDictionary::exportDictionary(const char * fileNameReferences, const char 
 		fclose(foutDesc);
 }
 
+void VWDictionary::save(std::string_view dir) const
+{
+	UDEBUG("");
+  std::error_code ec; // Variable to store the error code
+  // Attempt to create the directory and capture any error code
+  if (!std::filesystem::exists(dir) && !std::filesystem::create_directory(dir, ec)) {
+      // Check if the error code is set
+      if (ec) {
+          std::cerr << "Failed to create directory. Error: " << ec.message() << " (error code: " << ec.value() << ")\n";
+      } else {
+          std::cerr << "Failed to create directory for an unknown reason.\n";
+      }
+      return;
+  }
+	// save flann index and its data points
+	std::filesystem::path index_path = std::filesystem::path(dir) / "index.bin";
+	UINFO("saving index and its data points at: %s", index_path.c_str());
+  _flannIndex->save(index_path);	
+	UINFO("saved index and its data points at: %s", index_path.c_str());
+
+	// serialization binary map: Index <-> Id
+	std::filesystem::path mapIdexId = std::filesystem::path(dir) / "VWDictionary.bin";
+	UINFO("serializing class  at : %s", mapIdexId.c_str());
+	saveVars(mapIdexId);
+	UINFO("serialized class  at : %s", mapIdexId.c_str());
+
+  // serialization flannIndex class
+	std::filesystem::path flannIndex_path = std::filesystem::path( dir ) / "vars.bin";
+	UINFO("serializing class  at : %s", flannIndex_path.c_str());
+  _flannIndex->serialize(flannIndex_path);
+	UINFO("serialized class  at : %s", flannIndex_path.c_str());
+}
+
+void VWDictionary::load(std::string_view dir)
+{
+	delete _flannIndex;
+	_flannIndex = new rtabmap::FlannIndex() ;
+	_flannIndex->load(dir);
+	loadMapIndex(std::filesystem::path(dir) / "VWDictionary.bin");
+}
+
+void VWDictionary::loadMapIndex(const std::filesystem::path& file)
+{
+    std::ifstream inFile(file, std::ios::binary);
+    if (!inFile.is_open()) {
+        throw std::runtime_error("Unable to open file for reading");
+    }
+
+    int size, key, value;
+    inFile.read(reinterpret_cast<char*>(&size), sizeof(size));
+    _mapIndexId.clear();
+    _mapIdIndex.clear();
+    
+    for (int i = 0; i < size; ++i) {
+        inFile.read(reinterpret_cast<char*>(&key), sizeof(key));
+        inFile.read(reinterpret_cast<char*>(&value), sizeof(value));
+        _mapIndexId[key] = value;
+        _mapIdIndex[value] = key;
+    }
+
+    inFile.close();
+}
+
+void VWDictionary::saveVars(const std::filesystem::path& filename) const
+{
+	std::ofstream outFile(filename, std::ios::binary);
+  if (!outFile.is_open()) {
+      throw std::runtime_error("Unable to open file for writing");
+  }
+
+  int size = (int)_mapIndexId.size();
+  outFile.write(reinterpret_cast<const char*>(&size), sizeof(size));
+  for (const auto& pair : _mapIndexId) {
+      outFile.write(reinterpret_cast<const char*>(&pair.first), sizeof(pair.first));
+      outFile.write(reinterpret_cast<const char*>(&pair.second), sizeof(pair.second));
+  }
+
+  outFile.close();
+}
 } // namespace rtabmap

@@ -35,6 +35,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/SensorData.h"
 #include "rtabmap/core/Link.h"
 #include "rtabmap/core/Features2d.h"
+#include <string_view>
 #include <typeinfo>
 #include <list>
 #include <map>
@@ -225,7 +226,7 @@ public:
 	void dumpMemoryTree(const char * fileNameTree) const;
 	virtual void dumpMemory(std::string directory) const;
 	virtual void dumpSignatures(const char * fileNameSign, bool words3D) const;
-	void dumpDictionary(const char * fileNameRef, const char * fileNameDesc) const;
+	void dumpDictionary(std::string_view dir) const;
 	unsigned long getMemoryUsed() const; //Bytes
 
 	void generateGraph(const std::string & fileName, const std::set<int> & ids = std::set<int>());

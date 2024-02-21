@@ -318,7 +318,7 @@ void Rtabmap::init(const ParametersMap & parameters, const std::string & databas
 	_databasePath = databasePath;
 	if(!_databasePath.empty())
 	{
-		UASSERT(UFile::getExtension(_databasePath).compare("db") == 0);
+		UASSERT(UFile::getExtension(_databasePath) == "db");
 		UINFO("Using database \"%s\".", _databasePath.c_str());
 	}
 	else
@@ -4691,14 +4691,8 @@ void Rtabmap::dumpData() const
 	UDEBUG("");
 	if(_memory)
 	{
-		if(this->getWorkingDir().empty())
-		{
-			UERROR("Working directory not set.");
-		}
-		else
-		{
-			_memory->dumpMemory(this->getWorkingDir());
-		}
+		auto working_dir = std::filesystem::path(_databasePath).parent_path();
+		_memory->dumpDictionary((working_dir / "vocabulary").string());
 	}
 }
 
