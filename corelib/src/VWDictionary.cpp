@@ -715,7 +715,7 @@ void VWDictionary::update()
 	UDEBUG("");
   auto end = std::chrono::high_resolution_clock::now();
 	auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-	std::cout << __PRETTY_FUNCTION__ << " tooks: " << duration.count() << " ms" << std::endl;
+	UINFO("Update took: %d ms", duration.count());
 }
 
 void VWDictionary::clear(bool printWarningsIfNotEmpty)
