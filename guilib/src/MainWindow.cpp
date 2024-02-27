@@ -435,7 +435,6 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent, bool sh
 
 	//Settings menu
 	connect(_ui->actionMore_options, SIGNAL(triggered()), this, SLOT(openPreferencesSource()));
-	connect(_ui->actionUsbCamera, SIGNAL(triggered()), this, SLOT(selectStream()));
 	connect(_ui->actionOpenNI_PCL, SIGNAL(triggered()), this, SLOT(selectOpenni()));
 	connect(_ui->actionOpenNI_PCL_ASUS, SIGNAL(triggered()), this, SLOT(selectOpenni()));
 	connect(_ui->actionFreenect, SIGNAL(triggered()), this, SLOT(selectFreenect()));
@@ -5228,10 +5227,9 @@ bool MainWindow::eventFilter(QObject *obj, QEvent *event)
 
 void MainWindow::updateSelectSourceMenu()
 {
-	_ui->actionUsbCamera->setChecked(_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcUsbDevice);
-
 	_ui->actionMore_options->setChecked(
 			_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcDatabase ||
+			_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcUsbDevice ||
 			_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcImages ||
 			_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcVideo ||
 			_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcStereoImages ||
@@ -7059,11 +7057,6 @@ void MainWindow::updateEditMenu()
 			_ui->actionDelete_memory->setText(tr("Delete memory (%1 MB)").arg(UFile::length(_newDatabasePath.toStdString())/1000000));
 		}
 	}
-}
-
-void MainWindow::selectStream()
-{
-	_preferencesDialog->selectSourceDriver(PreferencesDialog::kSrcUsbDevice);
 }
 
 void MainWindow::selectOpenni()

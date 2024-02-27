@@ -170,7 +170,6 @@ protected Q_SLOTS:
 	void depthCalibration();
 	void openWorkingDirectory();
 	void updateEditMenu();
-	void selectStream();
 	void selectOpenni();
 	void selectFreenect();
 	void selectOpenniCv();

@@ -105,16 +105,6 @@
      <property name="title">
       <string>Select source</string>
      </property>
-     <widget class="QMenu" name="menuImage">
-      <property name="title">
-       <string>RGB camera</string>
-      </property>
-      <property name="icon">
-       <iconset resource="../GuiLib.qrc">
-        <normaloff>:/images/webcam.png</normaloff>:/images/webcam.png</iconset>
-      </property>
-      <addaction name="actionUsbCamera"/>
-     </widget>
      <widget class="QMenu" name="menuRGB_D_camera">
       <property name="title">
        <string>RGB-D camera</string>
@@ -342,7 +332,6 @@
      </widget>
      <addaction name="menuRGB_D_camera"/>
      <addaction name="menuStereo_camera"/>
-     <addaction name="menuImage"/>
      <addaction name="actionMore_options"/>
     </widget>
     <addaction name="menuSelect_source"/>
@@ -1242,18 +1231,6 @@
   <action name="action240p">
    <property name="text">
     <string>240p</string>
-   </property>
-  </action>
-  <action name="actionUsbCamera">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
-   <property name="icon">
-    <iconset resource="../GuiLib.qrc">
-     <normaloff>:/images/webcam.png</normaloff>:/images/webcam.png</iconset>
-   </property>
-   <property name="text">
-    <string>Usb camera</string>
    </property>
   </action>
   <action name="actionPrint_loop_closure_IDs_to_console">
