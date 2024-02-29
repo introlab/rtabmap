@@ -129,7 +129,8 @@ void VWDictionary::setSavedIndex(const std::filesystem::path& dir)
 	// check if saved files are needed
 	_useSavedFile = std::filesystem::exists(dir / "index.bin") && 
 									std::filesystem::exists(dir / "vars.bin") && 
-									std::filesystem::exists(dir / "VWDictionary.bin"); 
+									std::filesystem::exists(dir / "VWDictionary.bin") &&
+									!std::filesystem::exists(dir / "tmp.txt"); 
 	
 	// set directory if files are existed
 	save_dir_ = dir;
