@@ -1794,12 +1794,12 @@ void GraphViewer::wheelEvent ( QWheelEvent * event )
 void GraphViewer::mouseMoveEvent(QMouseEvent * event)
 {
 	QPointF scenePoint = mapToScene(event->pos());
-	if(_mouseTracking && this->sceneRect().contains(scenePoint))
+	if(_mouseTracking && _viewPlane==XY && this->sceneRect().contains(scenePoint))
 	{
 #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
 		QToolTip::showText(event->globalPosition().toPoint(), QString("%1,%2").arg(scenePoint.x()/100.0).arg(scenePoint.y()/100.0));
 #else
-		QToolTip::showText(event->globalPos(), QString("%1m %2m").arg(scenePoint.x()/100.0).arg(scenePoint.y()/100.0));
+		QToolTip::showText(event->globalPos(), QString("%1m %2m").arg(-scenePoint.y()/100.0).arg(-scenePoint.x()/100.0));
 #endif
 	}
 	else
@@ -2000,6 +2000,7 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 	aMouseTracking = menu.addAction(tr("Show mouse cursor position (m)"));
 	aMouseTracking->setCheckable(true);
 	aMouseTracking->setChecked(_mouseTracking);
+	aMouseTracking->setEnabled(_viewPlane == XY);
 	aShowHideGraph->setEnabled(_nodeItems.size() && _viewPlane == XY);
 	aShowHideGraphNodes->setEnabled(_nodeItems.size() && _graphRoot->isVisible());
 	aShowHideGlobalPath->setEnabled(_globalPathLinkItems.size());
