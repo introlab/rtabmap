@@ -235,21 +235,21 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 		imu = p.create<dai::node::IMU>();
 	std::shared_ptr<dai::node::FeatureTracker> gfttDetector;
 	std::shared_ptr<dai::node::ImageManip> manip;
-	std::shared_ptr<dai::node::NeuralNetwork> superPointNetwork;
+	std::shared_ptr<dai::node::NeuralNetwork> neuralNetwork;
 	if(detectFeatures_ == 1)
 	{
 		gfttDetector = p.create<dai::node::FeatureTracker>();
 	}
-	else if(detectFeatures_ == 2)
+	else if(detectFeatures_ >= 2)
 	{
 		if(!blobPath_.empty())
 		{
 			manip = p.create<dai::node::ImageManip>();
-			superPointNetwork = p.create<dai::node::NeuralNetwork>();
+			neuralNetwork = p.create<dai::node::NeuralNetwork>();
 		}
 		else
 		{
-			UWARN("Missing SuperPoint blob file!");
+			UWARN("Missing MyriadX blob file!");
 			detectFeatures_ = 0;
 		}
 	}
@@ -269,11 +269,11 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 	monoRight->setResolution((dai::MonoCameraProperties::SensorResolution)resolution_);
 	monoLeft->setCamera("left");
 	monoRight->setCamera("right");
-	if(detectFeatures_ == 2)
+	if(detectFeatures_ >= 2)
 	{
 		if(this->getImageRate() <= 0 || this->getImageRate() > 15)
 		{
-			UWARN("On-device SuperPoint enabled, image rate is limited to 15 FPS!");
+			UWARN("On-device SuperPoint or HF-Net enabled, image rate is limited to 15 FPS!");
 			monoLeft->setFps(15);
 			monoRight->setFps(15);
 		}
@@ -404,18 +404,18 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 		stereo->rectifiedLeft.link(gfttDetector->inputImage);
 		gfttDetector->outputFeatures.link(sync->inputs["feat"]);
 	}
-	else if(detectFeatures_ == 2)
+	else if(detectFeatures_ >= 2)
 	{
 		manip->setKeepAspectRatio(false);
 		manip->setMaxOutputFrameSize(320 * 200);
 		manip->initialConfig.setResize(320, 200);
-		superPointNetwork->setBlobPath(blobPath_);
-		superPointNetwork->setNumInferenceThreads(2);
-		superPointNetwork->setNumNCEPerInferenceThread(1);
-		superPointNetwork->input.setBlocking(false);
+		neuralNetwork->setBlobPath(blobPath_);
+		neuralNetwork->setNumInferenceThreads(2);
+		neuralNetwork->setNumNCEPerInferenceThread(1);
+		neuralNetwork->input.setBlocking(false);
 		stereo->rectifiedLeft.link(manip->inputImage);
-		manip->out.link(superPointNetwork->input);
-		superPointNetwork->out.link(sync->inputs["feat"]);
+		manip->out.link(neuralNetwork->input);
+		neuralNetwork->out.link(sync->inputs["feat"]);
 	}
 
 	device_.reset(new dai::Device(p, deviceToUse));
@@ -657,13 +657,23 @@ SensorData CameraDepthAI::captureImage(CameraInfo * info)
 			keypoints.emplace_back(cv::KeyPoint(feature.position.x, feature.position.y, 3));
 		data.setFeatures(keypoints, std::vector<cv::Point3f>(), cv::Mat());
 	}
-	else if(detectFeatures_ == 2)
+	else if(detectFeatures_ >= 2)
 	{
 		auto features = messageGroup->get<dai::NNData>("feat");
-		auto heatmap = features->getLayerFp16("heatmap");
-		auto desc = features->getLayerFp16("desc");
+		std::vector<float> scores_dense, local_descriptor_map, global_descriptor;
+		if(detectFeatures_ == 2)
+		{
+			scores_dense = features->getLayerFp16("heatmap");
+			local_descriptor_map = features->getLayerFp16("desc");
+		}
+		else if(detectFeatures_ == 3)
+		{
+			scores_dense = features->getLayerFp16("pred/local_head/detector/Squeeze");
+			local_descriptor_map = features->getLayerFp16("pred/local_head/descriptor/transpose");
+			global_descriptor = features->getLayerFp16("pred/global_head/l2_normalize_1");
+		}
 
-		cv::Mat scores(200, 320, CV_32FC1, heatmap.data());
+		cv::Mat scores(200, 320, CV_32FC1, scores_dense.data());
 		cv::resize(scores, scores, targetSize_, 0, 0, cv::INTER_CUBIC);	
 		if(nms_)
 		{
@@ -697,10 +707,11 @@ SensorData CameraDepthAI::captureImage(CameraInfo * info)
 			keypoints.emplace_back(cv::KeyPoint(kpt, 8, -1, response));
 		}
 
-		cv::Mat coarse_desc(25, 40, CV_32FC(256), desc.data());
-		coarse_desc.forEach<cv::Vec<float, 256>>([&](cv::Vec<float, 256>& descriptor, const int position[]) -> void {
-			cv::normalize(descriptor, descriptor);
-		});
+		cv::Mat coarse_desc(25, 40, CV_32FC(256), local_descriptor_map.data());
+		if(detectFeatures_ == 2)
+			coarse_desc.forEach<cv::Vec<float, 256>>([&](cv::Vec<float, 256>& descriptor, const int position[]) -> void {
+				cv::normalize(descriptor, descriptor);
+			});
 		cv::Mat mapX(keypoints.size(), 1, CV_32FC1);
 		cv::Mat mapY(keypoints.size(), 1, CV_32FC1);
 		for(size_t i=0; i<keypoints.size(); ++i)

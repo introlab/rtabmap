@@ -6517,7 +6517,7 @@ Camera * PreferencesDialog::createCamera(
 		{
 			((CameraDepthAI*)camera)->setGFTTDetector(_ui->checkBox_GFTT_useHarrisDetector->isChecked(), _ui->doubleSpinBox_GFTT_minDistance->value(), _ui->reextract_maxFeatures->value());
 		}
-		else if(_ui->comboBox_depthai_detect_features->currentIndex() == 2)
+		else if(_ui->comboBox_depthai_detect_features->currentIndex() >= 2)
 		{
 			((CameraDepthAI*)camera)->setSuperPointDetector(_ui->doubleSpinBox_sptorch_threshold->value(), _ui->checkBox_sptorch_nms->isChecked(), _ui->spinBox_sptorch_minDistance->value());
 		}
