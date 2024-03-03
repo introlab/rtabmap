@@ -3027,7 +3027,7 @@ bool Rtabmap::process(
 	// Landmark
 	//============================================================
 	std::map<int, std::set<int> > landmarksDetected; // <Landmark ID, list of nodes that saw this landmark>
-	if(!signature->getLandmarks().empty())
+	if(!signature->getLandmarks().empty() && !_graphOptimizer->landmarksIgnored())
 	{
 		bool hasGlobalLoopClosuresInOdomCache = !graph::filterLinks(_odomCacheConstraints, Link::kGlobalClosure, true).empty() || _loopClosureHypothesis.first != 0;
 		UDEBUG("hasGlobalLoopClosuresInOdomCache=%d", hasGlobalLoopClosuresInOdomCache?1:0);
@@ -3527,6 +3527,7 @@ bool Rtabmap::process(
 					}
 
 					// update localization links
+					UASSERT(uContains(optPoses, signature->id()));
 					Transform newOptPoseInv = optPoses.at(signature->id()).inverse();
 					for(std::multimap<int, Link>::iterator iter=localizationLinks.begin(); iter!=localizationLinks.end(); ++iter)
 					{
@@ -3539,6 +3540,7 @@ bool Rtabmap::process(
 						else
 						{
 							// Adjust with optimized poses, this will smooth the localization
+							UASSERT(uContains(optPoses, iter->first));
 							Transform newT = newOptPoseInv * optPoses.at(iter->first);
 							UDEBUG("Adjusted localization link %d->%d after optimization", iter->second.from(), iter->second.to());
 							UDEBUG("from %s", iter->second.transform().prettyPrint().c_str());
