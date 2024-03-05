@@ -4676,7 +4676,7 @@ void ExportCloudsDialog::saveTextureMeshes(
 								path.toStdString(),
 								mesh->cloud,
 								mesh->tex_polygons[0],
-								poses,
+								filterNodes(poses),
 								textureVertexToPixels,
 								images,
 								calibrations,
