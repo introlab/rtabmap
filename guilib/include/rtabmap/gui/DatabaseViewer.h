@@ -128,6 +128,8 @@ private Q_SLOTS:
 	void updateAllLandmarkCovariances();
 	void refineLinks();
 	void resetAllChanges();
+	void graphNodeSelected(int);
+	void graphLinkSelected(int, int);
 	void sliderAValueChanged(int);
 	void sliderBValueChanged(int);
 	void sliderAMoved(int);

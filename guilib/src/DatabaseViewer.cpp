@@ -268,6 +268,8 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	connect(ui_->dockWidget_statistics->toggleViewAction(), SIGNAL(triggered()), this, SLOT(updateStatistics()));
 	connect(ui_->dockWidget_info->toggleViewAction(), SIGNAL(triggered()), this, SLOT(updateInfo()));
 
+	connect(ui_->graphViewer, SIGNAL(nodeSelected(int)), this , SLOT(graphNodeSelected(int)));
+	connect(ui_->graphViewer, SIGNAL(linkSelected(int,int)), this , SLOT(graphLinkSelected(int,int)));
 
 	connect(ui_->parameters_toolbox, SIGNAL(parametersChanged(const QStringList &)), this, SLOT(notifyParametersChanged(const QStringList &)));
 
@@ -4547,6 +4549,20 @@ void DatabaseViewer::resetAllChanges()
 	}
 }
 
+void DatabaseViewer::graphNodeSelected(int id)
+{
+	if(id>0 && idToIndex_.contains(id))
+		ui_->horizontalSlider_A->setValue(idToIndex_.value(id));
+}
+
+void DatabaseViewer::graphLinkSelected(int from, int to)
+{
+	if(from>0 && idToIndex_.contains(from))
+		ui_->horizontalSlider_A->setValue(idToIndex_.value(from));
+	if(to>0 && idToIndex_.contains(to))
+		ui_->horizontalSlider_B->setValue(idToIndex_.value(to));
+}
+
 void DatabaseViewer::sliderAValueChanged(int value)
 {
 	this->update(value,
@@ -4685,7 +4701,12 @@ void DatabaseViewer::update(int value,
 				QRectF rect;
 				if(!img.isNull())
 				{
-					view->setImage(img);
+					Transform pose;
+					if(!graphes_.empty() && graphes_.back().find(data.id())!=graphes_.back().end())
+					{
+						pose = graphes_.back().at(data.id());
+					}
+					view->setImage(img, data.cameraModels(), pose);
 					rect = img.rect();
 				}
 				else

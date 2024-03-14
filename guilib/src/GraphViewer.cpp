@@ -1797,7 +1797,7 @@ void GraphViewer::mouseMoveEvent(QMouseEvent * event)
 	if(_mouseTracking && _viewPlane==XY && this->sceneRect().contains(scenePoint))
 	{
 #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
-		QToolTip::showText(event->globalPosition().toPoint(), QString("%1,%2").arg(scenePoint.x()/100.0).arg(scenePoint.y()/100.0));
+		QToolTip::showText(event->globalPosition().toPoint(), QString("%1m %2m").arg(-scenePoint.y()/100.0).arg(-scenePoint.x()/100.0));
 #else
 		QToolTip::showText(event->globalPos(), QString("%1m %2m").arg(-scenePoint.y()/100.0).arg(-scenePoint.x()/100.0));
 #endif
@@ -1807,6 +1807,32 @@ void GraphViewer::mouseMoveEvent(QMouseEvent * event)
 		QToolTip::hideText();
 	}
 	QGraphicsView::mouseMoveEvent(event);
+}
+
+void GraphViewer::mouseDoubleClickEvent(QMouseEvent * event)
+{
+	QGraphicsItem *item = this->scene()->itemAt(mapToScene(event->pos()), QTransform());
+	if(item)
+	{
+		NodeItem *nodeItem = qgraphicsitem_cast<NodeItem*>(item);
+		LinkItem *linkItem = qgraphicsitem_cast<LinkItem*>(item);
+		if(nodeItem && nodeItem->parentItem() == _graphRoot && nodeItem->id() != 0)
+		{
+			Q_EMIT nodeSelected(nodeItem->id());
+		}
+		else if(linkItem && linkItem->parentItem() == _graphRoot && linkItem->from() != 0 && linkItem->to() != 0)
+		{
+			Q_EMIT linkSelected(linkItem->from(), linkItem->to());
+		}
+		else
+		{
+			QGraphicsView::mouseDoubleClickEvent(event);
+		}
+	}
+	else
+	{
+		QGraphicsView::mouseDoubleClickEvent(event);
+	}
 }
 
 QIcon createIcon(const QColor & color)

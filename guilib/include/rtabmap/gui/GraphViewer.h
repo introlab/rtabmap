@@ -166,6 +166,8 @@ public:
 Q_SIGNALS:
 	void configChanged();
 	void mapShownRequested();
+	void nodeSelected(int);
+	void linkSelected(int, int);
 
 public Q_SLOTS:
 	void restoreDefaults();
@@ -173,6 +175,7 @@ public Q_SLOTS:
 protected:
 	virtual void wheelEvent ( QWheelEvent * event );
 	virtual void mouseMoveEvent(QMouseEvent * event);
+	virtual void mouseDoubleClickEvent(QMouseEvent * event);
 	virtual void contextMenuEvent(QContextMenuEvent * event);
 
 private:
