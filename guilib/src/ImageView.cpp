@@ -1100,7 +1100,7 @@ void ImageView::mouseMoveEvent(QMouseEvent * event)
 			}
 
 #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
-			QToolTip::showText(event->globalPosition().toPoint(), QString("%1 %2").arg(scenePoint.x()).arg(scenePoint.y()));
+			QToolTip::showText(event->globalPosition().toPoint(), pt.x!=0?tr("Depth=%1m Map=(%2,%3,%4)").arg(depth).arg(pt.x).arg(pt.y).arg(pt.z):depth > 0?tr("Depth=%1m").arg(depth):tr("Depth=NA"));
 #else
 			QToolTip::showText(event->globalPos(), pt.x!=0?tr("Depth=%1m Map=(%2,%3,%4)").arg(depth).arg(pt.x).arg(pt.y).arg(pt.z):depth > 0?tr("Depth=%1m").arg(depth):tr("Depth=NA"));
 #endif
