@@ -1,0 +1,25 @@
+name: pre-commit
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  pre-commit:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - uses: actions/setup-python@v3
+    - name: Install pre-commit
+      run: pip install pre-commit
+    - name: Run pre-commit
+      run: pre-commit run --all-files
+    - name: Check for modified files
+      run: |
+        if [[ `git diff --exit-code` ]]; then
+          echo "Files were changed by cmake-format and/or clang-format:"
+          git diff
+          echo "Please run 'pre-commit run --all-files' locally to fix these issues."
+          exit 1
+        fi
