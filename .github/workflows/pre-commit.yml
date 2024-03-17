@@ -11,15 +11,4 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - uses: actions/setup-python@v3
-    - name: Install pre-commit
-      run: pip install pre-commit
-    - name: Run pre-commit
-      run: pre-commit run --all-files
-    - name: Check for modified files
-      run: |
-        if [[ `git diff --exit-code` ]]; then
-          echo "Files were changed by cmake-format and/or clang-format:"
-          git diff
-          echo "Please run 'pre-commit run --all-files' locally to fix these issues."
-          exit 1
-        fi
+    - uses: pre-commit/action@v3.0.1

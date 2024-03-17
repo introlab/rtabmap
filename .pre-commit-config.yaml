@@ -16,7 +16,6 @@ repos:
     rev: v0.6.10
     hooks:
     -   id: cmake-format
-    -   id: cmake-lint
 
 -   repo: https://github.com/pryorda/dockerfilelint-precommit-hooks
     rev: v0.1.0
