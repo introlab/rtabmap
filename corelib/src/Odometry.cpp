@@ -915,6 +915,7 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 		{
 			UWARN("Odometry automatically reset to latest pose!");
 			this->reset(_pose);
+			_resetCurrentCount = _resetCountdown;
 			if(info)
 			{
 				*info = OdometryInfo();
