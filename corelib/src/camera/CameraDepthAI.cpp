@@ -319,6 +319,7 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 		if(alphaScaling_ > -1.0f)
 			colorCam->setCalibrationAlpha(alphaScaling_);
 	}
+	this->setImageRate(0);
 
 	// Using VideoEncoder on PoE devices, Subpixel is not supported
 	if(deviceToUse.protocol == X_LINK_TCP_IP || mxidOrName_.find(".") != std::string::npos)
