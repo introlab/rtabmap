@@ -73,6 +73,7 @@ SET(SRC_FILES
     optimizer/OptimizerGTSAM.cpp
     optimizer/OptimizerCVSBA.cpp
     optimizer/OptimizerCeres.cpp
+	optimizer/OptimizerISAM2.cpp
     
     Registration.cpp
     RegistrationIcp.cpp
