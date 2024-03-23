@@ -1,5 +1,5 @@
 # Top-Level CmakeLists.txt
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.14)
 PROJECT( RTABMap )
 SET(PROJECT_PREFIX rtabmap)
 
@@ -252,10 +252,10 @@ endif()
 
 FIND_PACKAGE(ZLIB REQUIRED QUIET)
 
-FIND_PACKAGE(Sqlite3 QUIET)
-IF(Sqlite3_FOUND)
-   MESSAGE(STATUS "Found Sqlite3: ${Sqlite3_INCLUDE_DIRS} ${Sqlite3_LIBRARIES}")
-ENDIF(Sqlite3_FOUND)
+FIND_PACKAGE(SQLite3 QUIET)
+IF(SQLite3_FOUND)
+   MESSAGE(STATUS "Found SQLite3: ${SQLite3_INCLUDE_DIRS} ${SQLite3_LIBRARIES}")
+ENDIF(SQLite3_FOUND)
 
 if(NOT "${PCL_LIBRARIES}" STREQUAL "")
    # fix libproj.so not found on Xenial
@@ -1332,10 +1332,10 @@ ELSE()
 MESSAGE(STATUS "  With Qt                   = NO (Qt not found)")
 ENDIF()
 
-IF(Sqlite3_FOUND)
+IF(SQLite3_FOUND)
 MESSAGE(STATUS "  With external SQLite3     = YES (License: Public Domain)")
 ELSE()
-MESSAGE(STATUS "  With external SQLite3     = NO (sqlite3 not found, internal version is used for convenience)")
+MESSAGE(STATUS "  With external SQLite3     = NO (SQLite3 not found, internal version is used for convenience)")
 ENDIF()
 
 IF(WITH_ORB_OCTREE)
