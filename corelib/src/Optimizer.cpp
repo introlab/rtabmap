@@ -41,7 +41,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/optimizer/OptimizerGTSAM.h>
 #include <rtabmap/core/optimizer/OptimizerCVSBA.h>
 #include <rtabmap/core/optimizer/OptimizerCeres.h>
-#include <rtabmap/core/optimizer/OptimizerISAM2.h>
 
 namespace rtabmap {
 
@@ -118,7 +117,7 @@ Optimizer * Optimizer::create(Optimizer::Type type, const ParametersMap & parame
 					type = Optimizer::kTypeCeres;
 		}
 	}
-	if(!OptimizerGTSAM::available() && (type == Optimizer::kTypeGTSAM || type == Optimizer::kTypeISAM2))
+	if(!OptimizerGTSAM::available() && (type == Optimizer::kTypeGTSAM))
 	{
 		if(OptimizerG2O::available())
 		{
@@ -165,9 +164,9 @@ Optimizer * Optimizer::create(Optimizer::Type type, const ParametersMap & parame
 	Optimizer * optimizer = 0;
 	switch(type)
 	{
-	//case Optimizer::kTypeGTSAM:
-	//	optimizer = new OptimizerGTSAM(parameters);
-	//	break;
+	case Optimizer::kTypeGTSAM:
+		optimizer = new OptimizerGTSAM(parameters);
+		break;
 	case Optimizer::kTypeG2O:
 		optimizer = new OptimizerG2O(parameters);
 		break;
@@ -176,10 +175,6 @@ Optimizer * Optimizer::create(Optimizer::Type type, const ParametersMap & parame
 		break;
 	case Optimizer::kTypeCeres:
 		optimizer = new OptimizerCeres(parameters);
-		break;
-	case Optimizer::kTypeGTSAM:
-	case Optimizer::kTypeISAM2:
-		optimizer = new OptimizerISAM2(parameters);
 		break;
 	case Optimizer::kTypeTORO:
 	default:

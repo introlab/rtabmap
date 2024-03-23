@@ -1094,6 +1094,13 @@ void Rtabmap::resetMemory()
 	{
 		UERROR("RTAB-Map is not initialized. No memory to reset...");
 	}
+
+	if(_graphOptimizer)
+	{
+		delete _graphOptimizer;
+		_graphOptimizer = Optimizer::create(_parameters);
+	}
+
 	this->setupLogFiles(true);
 }
 
