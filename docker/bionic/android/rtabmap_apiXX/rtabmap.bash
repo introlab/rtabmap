@@ -48,7 +48,7 @@ rm -r arengine
 
 # resource tool
 cd rtabmap-tango/build
-cmake -DANDROID_PREBUILD=ON ..
+$pwd/cmake-3.17.0-Linux-x86_64/bin/cmake -DANDROID_PREBUILD=ON ..
 make
 cd ../..
 

@@ -24,11 +24,8 @@ ARG TARGETPLATFORM
 ENV TARGETPLATFORM=${TARGETPLATFORM:-linux/amd64}
 RUN echo "I am building for $TARGETPLATFORM"
 
-# arm64
-RUN if [ "$TARGETPLATFORM" = "linux/arm64" ]; then ln -s /usr/bin/cmake ~/cmake; fi
-
-# cmake >=3.11 required for amd64 dependencies
-RUN if [ "$TARGETPLATFORM" = "linux/amd64" ]; then apt update && apt install -y wget && apt-get clean && rm -rf /var/lib/apt/lists/ && \
+# cmake >=3.14 required
+RUN apt update && apt install -y wget && apt-get clean && rm -rf /var/lib/apt/lists/ && \
     wget -nv https://github.com/Kitware/CMake/releases/download/v3.17.0/cmake-3.17.0-Linux-x86_64.tar.gz && \
     tar -xzf cmake-3.17.0-Linux-x86_64.tar.gz && \
     rm cmake-3.17.0-Linux-x86_64.tar.gz &&\
