@@ -121,7 +121,7 @@ bool GlobalMap::update(const std::map<int, Transform> & poses)
 		}
 		else
 		{
-			UDEBUG("Updated pose for node %d is not found, some points may not be copied. Use negative ids to just update cell values without adding new ones.", jter->first);
+			UDEBUG("Updated pose for node %d is not found, some points may not be copied. Use negative ids to just update cell values without adding new ones.", iter->first);
 		}
 	}
 

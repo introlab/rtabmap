@@ -3429,7 +3429,7 @@ void MainWindow::updateMapCloud(
 		}
 	}
 	cv::Mat map8U;
-	if((_ui->graphicsView_graphView->isVisible() || _preferencesDialog->getGridMapShown()))
+	if(_ui->graphicsView_graphView->isVisible() && _preferencesDialog->getGridMapShown())
 	{
 		float xMin, yMin;
 		float resolution = _occupancyGrid->getCellSize();
@@ -3438,7 +3438,6 @@ void MainWindow::updateMapCloud(
 		if(_preferencesDialog->isOctomap2dGrid())
 		{
 			map8S = _octomap->createProjectionMap(xMin, yMin, resolution, 0, _preferencesDialog->getOctomapTreeDepth());
-
 		}
 		else
 #endif

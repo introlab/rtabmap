@@ -800,7 +800,7 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 			// early stop condition
 			UDEBUG("iteration %d error =%f", i+1, error);
 			double errorDelta = lastError - error;
-			if(i>0 && errorDelta < this->epsilon())
+			if((isam2_ || i>0) && errorDelta < this->epsilon())
 			{
 				if(errorDelta < 0)
 				{
@@ -888,7 +888,7 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 
 		// compute marginals
 		try {
-			UDEBUG("Computing marginals...");
+			UDEBUG("Computing marginals for node %d...", poses.rbegin()->first);
 			UTimer t;
 			gtsam::Matrix info;
 			if(optimizer)
