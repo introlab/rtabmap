@@ -117,7 +117,7 @@ Optimizer * Optimizer::create(Optimizer::Type type, const ParametersMap & parame
 					type = Optimizer::kTypeCeres;
 		}
 	}
-	if(!OptimizerGTSAM::available() && (type == Optimizer::kTypeGTSAM))
+	if(!OptimizerGTSAM::available() && type == Optimizer::kTypeGTSAM)
 	{
 		if(OptimizerG2O::available())
 		{

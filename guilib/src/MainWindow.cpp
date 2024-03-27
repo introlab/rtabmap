@@ -3429,7 +3429,8 @@ void MainWindow::updateMapCloud(
 		}
 	}
 	cv::Mat map8U;
-	if(_ui->graphicsView_graphView->isVisible() && _preferencesDialog->getGridMapShown())
+	if((_ui->graphicsView_graphView->isVisible() && _ui->graphicsView_graphView->isGridMapVisible()) ||
+	   (_cloudViewer->isVisible() && _preferencesDialog->getGridMapShown()))
 	{
 		float xMin, yMin;
 		float resolution = _occupancyGrid->getCellSize();
@@ -3457,12 +3458,12 @@ void MainWindow::updateMapCloud(
 			//convert to gray scaled map
 			map8U = util3d::convertMap2Image8U(map8S);
 
-			if(_preferencesDialog->getGridMapShown())
+			if(_cloudViewer->isVisible() && _preferencesDialog->getGridMapShown())
 			{
 				float opacity = _preferencesDialog->getGridMapOpacity();
 				_cloudViewer->addOccupancyGridMap(map8U, resolution, xMin, yMin, opacity);
 			}
-			if(_ui->graphicsView_graphView->isVisible())
+			if(_ui->graphicsView_graphView->isVisible() && _ui->graphicsView_graphView->isGridMapVisible())
 			{
 				_ui->graphicsView_graphView->updateMap(map8U, resolution, xMin, yMin);
 			}
