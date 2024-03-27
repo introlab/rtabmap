@@ -62,7 +62,6 @@ private:
 	int internalOptimizerType_;
 
 	gtsam::ISAM2 * isam2_;
-	int lastAddedPose_;
 	struct ConstraintToFactor {
 		ConstraintToFactor(int _from, int _to, std::uint64_t _factorIndice)
 		{
@@ -77,7 +76,8 @@ private:
 
 	std::vector<ConstraintToFactor> lastAddedConstraints_;
 	int lastSwitchId_;
-	std::set<int> addedLandmarks_;
+	std::set<int> addedPoses_;
+	std::pair<int, std::uint64_t> lastRootFactorIndex_;
 };
 
 } /* namespace rtabmap */

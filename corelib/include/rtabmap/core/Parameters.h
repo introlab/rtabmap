@@ -436,7 +436,7 @@ class RTABMAP_CORE_EXPORT Parameters
     RTABMAP_PARAM(g2o, Baseline,          double, 0.075,   "When doing bundle adjustment with RGB-D data, we can set a fake baseline (m) to do stereo bundle adjustment (if 0, mono bundle adjustment is done). For stereo data, the baseline in the calibration is used directly.");
 
     RTABMAP_PARAM(GTSAM, Optimizer,       int, 1,          "0=Levenberg 1=GaussNewton 2=Dogleg");
-    RTABMAP_PARAM(GTSAM, Incremental,     bool, false,     uFormat("Do graph optimization incrementally (iSAM2) to increase optimization speed on loop closures. Current limitations: only GaussNewton and Dogleg optimization algorithms are supported (%s), memory management should be disabled (%s and %s set to 0), cannot be used in localization mode (%s should be true) and multi-session mapping is not supported.", kGTSAMOptimizer().c_str(), kRtabmapTimeThr().c_str(), kRtabmapMemoryThr().c_str(), kMemIncrementalMemory().c_str()));
+    RTABMAP_PARAM(GTSAM, Incremental,     bool, false,     uFormat("Do graph optimization incrementally (iSAM2) to increase optimization speed on loop closures. Note that only GaussNewton and Dogleg optimization algorithms are supported (%s) in this mode.", kGTSAMOptimizer().c_str()));
     RTABMAP_PARAM(GTSAM, IncRelinearizeThreshold,  double, 0.01, "Only relinearize variables whose linear delta magnitude is greater than this threshold. See GTSAM::ISAM2 doc for more info.");
     RTABMAP_PARAM(GTSAM, IncRelinearizeSkip,       int, 1, "Only relinearize any variables every X calls to ISAM2::update(). See GTSAM::ISAM2 doc for more info.");
 

@@ -23283,7 +23283,7 @@ Lower the ratio -&gt; higher the precision.</string>
                        <item row="1" column="1">
                         <widget class="QLabel" name="label_742">
                          <property name="text">
-                          <string>Do graph optimization incrementally (iSAM2) to increase optimization speed on loop closures. Current limitations: only GaussNewton and Dogleg optimization algorithms are supported, memory management should be disabled, cannot be used in localization mode and multi-session is not supported.</string>
+                          <string>iSAM2: Do graph optimization incrementally to increase optimization speed on loop closures. Note that only GaussNewton and Dogleg optimization algorithms are supported in this mode.</string>
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>

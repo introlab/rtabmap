@@ -292,6 +292,11 @@ bool CameraThread::odomProvided() const
 void CameraThread::mainLoopBegin()
 {
 	ULogger::registerCurrentThread("Camera");
+	if(_imuFilter)
+	{
+		// In case we paused the camera and moved somewhere else, restart filtering.
+		_imuFilter->reset();
+	}
 	_camera->resetTimer();
 }
 

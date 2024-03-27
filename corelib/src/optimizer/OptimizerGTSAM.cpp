@@ -67,9 +67,9 @@ OptimizerGTSAM::OptimizerGTSAM(const ParametersMap & parameters) :
 	Optimizer(parameters),
 	internalOptimizerType_(Parameters::defaultGTSAMOptimizer()),
 	isam2_(0),
-	lastAddedPose_(0),
 	lastSwitchId_(1000000000)
 {
+	lastRootFactorIndex_.first = 0;
 	parseParameters(parameters);
 }
 
@@ -121,6 +121,11 @@ void OptimizerGTSAM::parseParameters(const ParametersMap & parameters)
 		params.relinearizeSkip = skip;
 		params.evaluateNonlinearError = true;
 		isam2_ = new ISAM2(params);
+
+		addedPoses_.clear();
+		lastAddedConstraints_.clear();
+		lastRootFactorIndex_.first = 0;
+		lastSwitchId_ = 1000000000;
 	}
 	else if(!incremental && isam2_)
 	{
@@ -154,86 +159,6 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 	UDEBUG("Optimizing graph...");
 	if(edgeConstraints.size()>=1 && poses.size()>=2 && iterations() > 0)
 	{
-		std::map<int, Transform> newPoses;
-		std::multimap<int, Link> newEdgeConstraints;
-
-		if(isam2_)
-		{
-			UDEBUG("Add new poses...");
-			// new poses?
-			for(std::map<int, Transform>::const_reverse_iterator iter=poses.rbegin(); iter!=poses.rend(); ++iter)
-			{
-				if(iter->first > lastAddedPose_)
-				{
-					newPoses.insert(*iter);
-					UDEBUG("Adding pose %d to factor graph", iter->first);
-				}
-				else
-				{
-					break;
-				}
-			}
-			UDEBUG("Add new landmarks...");
-			// new landmarks?
-			for(std::map<int, Transform>::const_iterator iter=poses.begin(); iter->first<0 && iter!=poses.end(); ++iter)
-			{
-				if(addedLandmarks_.find(iter->first) == addedLandmarks_.end())
-				{
-					newPoses.insert(*iter);
-					UDEBUG("Adding landmark %d to factor graph", iter->first);
-					addedLandmarks_.insert(iter->first);
-				}
-			}
-			UDEBUG("Add new links...");
-			// new links?
-			for(std::multimap<int, Link>::const_iterator iter=edgeConstraints.begin(); iter!=edgeConstraints.end(); ++iter)
-			{
-				int largestId = iter->second.from()>iter->second.to()?iter->second.from():iter->second.to();
-				if(largestId > lastAddedPose_)
-				{
-					newEdgeConstraints.insert(*iter);
-					UDEBUG("Adding constraint %d (%d->%d) to factor graph", iter->first, iter->second.from(), iter->second.to());
-				}
-			}
-		}
-		else
-		{
-			newPoses = poses;
-			newEdgeConstraints = edgeConstraints;
-		}
-
-		gtsam::FactorIndices removeFactorIndices;
-		if(isam2_)
-		{
-			if(!this->isRobust())
-			{
-				UDEBUG("Remove links...");
-				// Remove constraints not there anymore in case the last loop closures were rejected.
-				// As we don't track "switch" constraints, we don't support this if vertigo is used.
-				for(size_t i=0; i<lastAddedConstraints_.size(); ++i)
-				{
-					if(lastAddedConstraints_[i].from != lastAddedConstraints_[i].to &&
-					   graph::findLink(edgeConstraints, lastAddedConstraints_[i].from, lastAddedConstraints_[i].to) == edgeConstraints.end())
-					{
-						removeFactorIndices.push_back(lastAddedConstraints_[i].factorIndice);
-						UDEBUG("Removing constraint %d->%d (factor indice=%ld)",
-								lastAddedConstraints_[i].from,
-								lastAddedConstraints_[i].to,
-								lastAddedConstraints_[i].factorIndice);
-					}
-				}
-			}
-			else if(poses.rbegin()->first >= 1000000000)
-			{
-				UERROR("Lastest pose id (%d) is too huge for robust optimization (over switch offset of 1000000000)", poses.rbegin()->first);
-				return optimizedPoses;
-			}
-		}
-
-		bool firstUpdate = lastAddedPose_ == 0;
-		lastAddedPose_ = poses.rbegin()->first;
-		lastAddedConstraints_.clear();
-
 		gtsam::NonlinearFactorGraph graph;
 
 		// detect if there is a global pose prior set, if so remove rootId
@@ -241,7 +166,7 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 		bool hasGravityConstraints = false;
 		if(!priorsIgnored() || (!isSlam2d() && gravitySigma() > 0))
 		{
-			for(std::multimap<int, Link>::const_iterator iter=newEdgeConstraints.begin(); iter!=newEdgeConstraints.end(); ++iter)
+			for(std::multimap<int, Link>::const_iterator iter=edgeConstraints.begin(); iter!=edgeConstraints.end(); ++iter)
 			{
 				if(iter->second.from() == iter->second.to())
 				{
@@ -271,21 +196,21 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 			}
 		}
 
-		//prior first pose
-		if(rootId != 0 && (!isam2_ || firstUpdate))
-		{
-			//TODO: To support mult-session mapping with iSAM2
-			//      we would need to keep track of this prior and
-			//      remove/re-add it if needed.
+		std::vector<ConstraintToFactor> addedPrior;
+		gtsam::FactorIndices removeFactorIndices;
 
-			UASSERT(uContains(newPoses, rootId));
-			const Transform & initialPose = newPoses.at(rootId);
+		//prior first pose
+		if(rootId != 0 && (!isam2_ || lastRootFactorIndex_.first != rootId))
+		{
+			UDEBUG("Setting prior for rootId=%d", rootId);
+			UASSERT(uContains(poses, rootId));
+			const Transform & initialPose = poses.at(rootId);
 			UDEBUG("hasGPSPrior=%s", hasGPSPrior?"true":"false");
 			if(isSlam2d())
 			{
 				gtsam::noiseModel::Diagonal::shared_ptr priorNoise = gtsam::noiseModel::Diagonal::Variances(gtsam::Vector3(0.01, 0.01, hasGPSPrior?1e-2:std::numeric_limits<double>::min()));
 				graph.add(gtsam::PriorFactor<gtsam::Pose2>(rootId, gtsam::Pose2(initialPose.x(), initialPose.y(), initialPose.theta()), priorNoise));
-				lastAddedConstraints_.push_back(ConstraintToFactor(rootId, rootId, -1));
+				addedPrior.push_back(ConstraintToFactor(rootId, rootId, -1));
 			}
 			else
 			{
@@ -295,8 +220,88 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 								(hasGPSPrior?2:1e-2), hasGPSPrior?2:1e-2, hasGPSPrior?2:1e-2 // xyz
 								).finished());
 				graph.add(gtsam::PriorFactor<gtsam::Pose3>(rootId, gtsam::Pose3(initialPose.toEigen4d()), priorNoise));
-				lastAddedConstraints_.push_back(ConstraintToFactor(rootId, rootId, -1));
+				addedPrior.push_back(ConstraintToFactor(rootId, rootId, -1));
 			}
+			if(isam2_ && lastRootFactorIndex_.first!=0)
+			{
+				if(uContains(poses, lastRootFactorIndex_.first))
+				{
+					UDEBUG("isam2: switching rootid from %d to %d", lastRootFactorIndex_.first, rootId);
+					removeFactorIndices.push_back(lastRootFactorIndex_.second);
+				}
+				else
+				{
+					UDEBUG("isam2: reset iSAM2, disjoint mapping sessions between previous root %d and new root %d", lastRootFactorIndex_.first, rootId);
+					// reset iSAM2, disjoint mapping session
+					gtsam::ISAM2Params params = isam2_->params();
+					delete isam2_;
+					isam2_ = new gtsam::ISAM2(params);
+					addedPoses_.clear();
+					lastAddedConstraints_.clear();
+					lastRootFactorIndex_.first = 0;
+					lastSwitchId_ = 1000000000;
+				}
+				lastRootFactorIndex_.first = 0;
+			}
+		}
+
+		std::map<int, Transform> newPoses;
+		std::multimap<int, Link> newEdgeConstraints;
+
+		if(isam2_)
+		{
+			UDEBUG("Add new poses...");
+			// new poses?
+			for(std::map<int, Transform>::const_iterator iter=poses.begin(); iter!=poses.end(); ++iter)
+			{
+				if(addedPoses_.find(iter->first) == addedPoses_.end())
+				{
+					newPoses.insert(*iter);
+					UDEBUG("Adding pose %d to factor graph", iter->first);
+				}
+			}
+			UDEBUG("Add new links...");
+			// new links?
+			for(std::multimap<int, Link>::const_iterator iter=edgeConstraints.begin(); iter!=edgeConstraints.end(); ++iter)
+			{
+				if(addedPoses_.find(iter->second.from()) == addedPoses_.end() ||
+				   addedPoses_.find(iter->second.to()) == addedPoses_.end())
+				{
+					newEdgeConstraints.insert(*iter);
+					UDEBUG("Adding constraint %d (%d->%d) to factor graph", iter->first, iter->second.from(), iter->second.to());
+				}
+			}
+
+			if(!this->isRobust())
+			{
+				UDEBUG("Remove links...");
+				// Remove constraints not there anymore in case the last loop closures were rejected.
+				// As we don't track "switch" constraints, we don't support this if vertigo is used.
+				for(size_t i=0; i<lastAddedConstraints_.size(); ++i)
+				{
+					if(lastAddedConstraints_[i].from != lastAddedConstraints_[i].to &&
+					   graph::findLink(edgeConstraints, lastAddedConstraints_[i].from, lastAddedConstraints_[i].to) == edgeConstraints.end())
+					{
+						removeFactorIndices.push_back(lastAddedConstraints_[i].factorIndice);
+						UDEBUG("Removing constraint %d->%d (factor indice=%ld)",
+								lastAddedConstraints_[i].from,
+								lastAddedConstraints_[i].to,
+								lastAddedConstraints_[i].factorIndice);
+					}
+				}
+			}
+			else if(poses.rbegin()->first >= 1000000000)
+			{
+				UERROR("Lastest pose id (%d) is too huge for robust optimization (over switch offset of 1000000000)", poses.rbegin()->first);
+				return optimizedPoses;
+			}
+
+			lastAddedConstraints_ = addedPrior;
+		}
+		else
+		{
+			newPoses = poses;
+			newEdgeConstraints = edgeConstraints;
 		}
 
 		UDEBUG("fill poses to gtsam... rootId=%d (priorsIgnored=%d landmarksIgnored=%d)",
@@ -311,6 +316,7 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 				if(iter->first > 0)
 				{
 					initialEstimate.insert(iter->first, gtsam::Pose2(iter->second.x(), iter->second.y(), iter->second.theta()));
+					addedPoses_.insert(iter->first);
 				}
 				else if(!landmarksIgnored())
 				{
@@ -328,6 +334,7 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 						initialEstimate.insert(iter->first, gtsam::Pose2(iter->second.x(), iter->second.y(), iter->second.theta()));
 						isLandmarkWithRotation.insert(std::make_pair(iter->first, true));
 					}
+					addedPoses_.insert(iter->first);
 				}
 
 			}
@@ -336,6 +343,7 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 				if(iter->first > 0)
 				{
 					initialEstimate.insert(iter->first, gtsam::Pose3(iter->second.toEigen4d()));
+					addedPoses_.insert(iter->first);
 				}
 				else if(!landmarksIgnored())
 				{
@@ -355,6 +363,7 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 						initialEstimate.insert(iter->first, gtsam::Pose3(iter->second.toEigen4d()));
 						isLandmarkWithRotation.insert(std::make_pair(iter->first, true));
 					}
+					addedPoses_.insert(iter->first);
 				}
 			}
 		}
@@ -780,6 +789,12 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 							lastAddedConstraints_[j].factorIndice = result.newFactorsIndices[j];
 						}
 					}
+					if(rootId != 0 && lastRootFactorIndex_.first == 0)
+					{
+						UASSERT(result.newFactorsIndices.size()>=1);
+						lastRootFactorIndex_.first = rootId;
+						lastRootFactorIndex_.second = result.newFactorsIndices[0]; // first one should be always the root prior
+					}
 				}
 				else // iSAM2 (more iterations)
 				{
@@ -804,6 +819,18 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 						(int)newEdgeConstraints.size(),
 						(int)newPoses.size());
 				delete optimizer;
+				if(isam2_)
+				{
+					// We are in bad state, cleanup
+					UDEBUG("Reset iSAM2!");
+					gtsam::ISAM2Params params = isam2_->params();
+					delete isam2_;
+					isam2_ = new gtsam::ISAM2(params);
+					addedPoses_.clear();
+					lastAddedConstraints_.clear();
+					lastRootFactorIndex_.first = 0;
+					lastSwitchId_ = 1000000000;
+				}
 				return optimizedPoses;
 			}
 
