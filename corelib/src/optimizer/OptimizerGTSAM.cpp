@@ -760,8 +760,13 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 				{
 					UDEBUG("Update iSAM with the new factors");
 					result = isam2_->update(graph, initialEstimate, removeFactorIndices);
+#if BOOST_VERSION >= 106100
 					UASSERT(result.errorBefore.has_value());
 					UASSERT(result.errorAfter.has_value());
+#else
+					UASSERT(result.errorBefore.is_initialized());
+					UASSERT(result.errorAfter.is_initialized());
+#endif
 					UDEBUG("error before = %f after=%f", result.errorBefore.value(), result.errorAfter.value());
 					initialError = lastError = result.errorBefore.value();
 					error = result.errorAfter.value();
@@ -779,8 +784,13 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 				else // iSAM2 (more iterations)
 				{
 					result = isam2_->update();
+#if BOOST_VERSION >= 106100
 					UASSERT(result.errorBefore.has_value());
 					UASSERT(result.errorAfter.has_value());
+#else
+					UASSERT(result.errorBefore.is_initialized());
+					UASSERT(result.errorAfter.is_initialized());
+#endif
 					UDEBUG("error before = %f after=%f", result.errorBefore.value(), result.errorAfter.value());
 
 					lastError = result.errorBefore.value();
