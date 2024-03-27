@@ -1184,6 +1184,7 @@ bool Rtabmap::process(
 	double timeMemoryUpdate = 0;
 	double timeNeighborLinkRefining = 0;
 	double timeProximityByTimeDetection = 0;
+	double timeProximityBySpaceSearch = 0;
 	double timeProximityBySpaceVisualDetection = 0;
 	double timeProximityBySpaceDetection = 0;
 	double timeCleaningNeighbors = 0;
@@ -2605,22 +2606,39 @@ bool Rtabmap::process(
 				// 1) compare visually with nearest locations
 				//
 				UDEBUG("Proximity detection (local loop closure in SPACE using matching images, local radius=%fm)", _localRadius);
-				std::map<int, float> nearestIds;
-				if(_memory->isIncremental() && _proximityMaxGraphDepth > 0)
-				{
-					nearestIds = _memory->getNeighborsIdRadius(signature->id(), _localRadius, _optimizedPoses, _proximityMaxGraphDepth);
-				}
-				else
-				{
-					nearestIds = graph::findNearestNodes(signature->id(), _optimizedPoses, _localRadius);
-				}
+				std::map<int, float> nearestIds = graph::findNearestNodes(signature->id(), _optimizedPoses, _localRadius);
 				UDEBUG("nearestIds=%d/%d", (int)nearestIds.size(), (int)_optimizedPoses.size());
 				std::map<int, Transform> nearestPoses;
+				std::multimap<int, int> links;
+				if(_memory->isIncremental() && _proximityMaxGraphDepth>0)
+				{
+					// get bidirectional links
+					for(std::multimap<int, Link>::iterator iter=_constraints.begin(); iter!=_constraints.end(); ++iter)
+					{
+						if(uContains(_optimizedPoses, iter->second.from()) && uContains(_optimizedPoses, iter->second.to()))
+						{
+							links.insert(std::make_pair(iter->second.from(), iter->second.to()));
+							links.insert(std::make_pair(iter->second.to(), iter->second.from())); // <->
+						}
+					}
+				}
 				for(std::map<int, float>::iterator iter=nearestIds.lower_bound(1); iter!=nearestIds.end(); ++iter)
 				{
 					if(_memory->getStMem().find(iter->first) == _memory->getStMem().end())
 					{
-						nearestPoses.insert(std::make_pair(iter->first, _optimizedPoses.at(iter->first)));
+						if(_memory->isIncremental() && _proximityMaxGraphDepth > 0)
+						{
+							std::list<std::pair<int, Transform> > path = graph::computePath(_optimizedPoses, links, signature->id(), iter->first);
+							UDEBUG("Graph depth to %d = %ld", iter->first, path.size());
+							if(!path.empty() && (int)path.size() <= _proximityMaxGraphDepth)
+							{
+								nearestPoses.insert(std::make_pair(iter->first, _optimizedPoses.at(iter->first)));
+							}
+						}
+						else
+						{
+							nearestPoses.insert(std::make_pair(iter->first, _optimizedPoses.at(iter->first)));
+						}
 					}
 				}
 				UDEBUG("nearestPoses=%d", (int)nearestPoses.size());
@@ -2651,6 +2669,9 @@ bool Rtabmap::process(
 					nearestPaths.insert(std::make_pair(NearestPathKey(highestLikelihood, highestLikelihoodId, smallestDistanceSqr), path));
 				}
 				UDEBUG("nearestPaths=%d proximityMaxPaths=%d", (int)nearestPaths.size(), _proximityMaxPaths);
+
+				timeProximityBySpaceSearch = timer.ticks();
+				ULOGGER_INFO("timeProximityBySpaceSearch=%fs", timeProximityBySpaceSearch);
 
 				float proximityFilteringRadius = _proximityFilteringRadius;
 				if(_maxLoopClosureDistance>0.0f && (proximityFilteringRadius <= 0.0f || _maxLoopClosureDistance<proximityFilteringRadius))
@@ -4079,6 +4100,7 @@ bool Rtabmap::process(
 			statistics_.addStatistic(Statistics::kTimingMemory_update(), timeMemoryUpdate*1000);
 			statistics_.addStatistic(Statistics::kTimingNeighbor_link_refining(), timeNeighborLinkRefining*1000);
 			statistics_.addStatistic(Statistics::kTimingProximity_by_time(), timeProximityByTimeDetection*1000);
+			statistics_.addStatistic(Statistics::kTimingProximity_by_space_search(), timeProximityBySpaceSearch*1000);
 			statistics_.addStatistic(Statistics::kTimingProximity_by_space_visual(), timeProximityBySpaceVisualDetection*1000);
 			statistics_.addStatistic(Statistics::kTimingProximity_by_space(), timeProximityBySpaceDetection*1000);
 			statistics_.addStatistic(Statistics::kTimingReactivation(), timeReactivations*1000);
