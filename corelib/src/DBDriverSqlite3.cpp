@@ -6728,7 +6728,7 @@ void DBDriverSqlite3::stepGlobalDescriptor(sqlite3_stmt * ppStmt,
 
 	//data
 	std::vector<unsigned char> dataBytes = rtabmap::compressData(descriptor.data());
-	if(infoBytes.empty())
+	if(dataBytes.empty())
 	{
 		rc = sqlite3_bind_null(ppStmt, index++);
 	}

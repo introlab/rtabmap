@@ -59,7 +59,7 @@ public:
 	void setDepthProfile(int confThreshold = 200, int lrcThreshold = 5);
 	void setRectification(bool useSpecTranslation, float alphaScaling = 0.0f);
 	void setIMU(bool imuPublished, bool publishInterIMU);
-	void setIrBrightness(float dotProjectormA = 0.0f, float floodLightmA = 200.0f);
+	void setIrIntensity(float dotIntensity = 0.0f, float floodIntensity = 0.0f);
 	void setDetectFeatures(int detectFeatures = 0);
 	void setBlobPath(const std::string & blobPath);
 	void setGFTTDetector(bool useHarrisDetector = false, float minDistance = 7.0f, int numTargetFeatures = 1000);
@@ -86,8 +86,8 @@ private:
 	float alphaScaling_;
 	bool imuPublished_;
 	bool publishInterIMU_;
-	float dotProjectormA_;
-	float floodLightmA_;
+	float dotIntensity_;
+	float floodIntensity_;
 	int detectFeatures_;
 	bool useHarrisDetector_;
 	float minDistance_;
@@ -97,9 +97,7 @@ private:
 	int nmsRadius_;
 	std::string blobPath_;
 	std::shared_ptr<dai::Device> device_;
-	std::shared_ptr<dai::DataOutputQueue> leftOrColorQueue_;
-	std::shared_ptr<dai::DataOutputQueue> rightOrDepthQueue_;
-	std::shared_ptr<dai::DataOutputQueue> featuresQueue_;
+	std::shared_ptr<dai::DataOutputQueue> cameraQueue_;
 	std::map<double, cv::Vec3f> accBuffer_;
 	std::map<double, cv::Vec3f> gyroBuffer_;
 	UMutex imuMutex_;

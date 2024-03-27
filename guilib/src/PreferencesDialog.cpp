@@ -817,8 +817,8 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->checkBox_depthai_use_spec_translation, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->doubleSpinBox_depthai_alpha_scaling, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->checkBox_depthai_imu_published, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
-	connect(_ui->doubleSpinBox_depthai_laser_dot_brightness, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteSourcePanel()));
-	connect(_ui->doubleSpinBox_depthai_floodlight_brightness, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->doubleSpinBox_depthai_dot_intensity, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->doubleSpinBox_depthai_flood_intensity, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->comboBox_depthai_detect_features, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->lineEdit_depthai_blob_path, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->toolButton_depthai_blob_path, SIGNAL(clicked()), this, SLOT(selectSourceDepthaiBlobPath()));
@@ -2158,8 +2158,8 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->checkBox_depthai_use_spec_translation->setChecked(false);
 		_ui->doubleSpinBox_depthai_alpha_scaling->setValue(0.0);
 		_ui->checkBox_depthai_imu_published->setChecked(true);
-		_ui->doubleSpinBox_depthai_laser_dot_brightness->setValue(0.0);
-		_ui->doubleSpinBox_depthai_floodlight_brightness->setValue(200.0);
+		_ui->doubleSpinBox_depthai_dot_intensity->setValue(0.0);
+		_ui->doubleSpinBox_depthai_flood_intensity->setValue(0.0);
 		_ui->comboBox_depthai_detect_features->setCurrentIndex(0);
 		_ui->lineEdit_depthai_blob_path->clear();
 
@@ -2651,8 +2651,8 @@ void PreferencesDialog::readCameraSettings(const QString & filePath)
 	_ui->checkBox_depthai_use_spec_translation->setChecked(settings.value("use_spec_translation", _ui->checkBox_depthai_use_spec_translation->isChecked()).toBool());
 	_ui->doubleSpinBox_depthai_alpha_scaling->setValue(settings.value("alpha_scaling", _ui->doubleSpinBox_depthai_alpha_scaling->value()).toDouble());
 	_ui->checkBox_depthai_imu_published->setChecked(settings.value("imu_published", _ui->checkBox_depthai_imu_published->isChecked()).toBool());
-	_ui->doubleSpinBox_depthai_laser_dot_brightness->setValue(settings.value("laser_dot_brightness", _ui->doubleSpinBox_depthai_laser_dot_brightness->value()).toDouble());
-	_ui->doubleSpinBox_depthai_floodlight_brightness->setValue(settings.value("floodlight_brightness", _ui->doubleSpinBox_depthai_floodlight_brightness->value()).toDouble());
+	_ui->doubleSpinBox_depthai_dot_intensity->setValue(settings.value("dot_intensity", _ui->doubleSpinBox_depthai_dot_intensity->value()).toDouble());
+	_ui->doubleSpinBox_depthai_flood_intensity->setValue(settings.value("flood_intensity", _ui->doubleSpinBox_depthai_flood_intensity->value()).toDouble());
 	_ui->comboBox_depthai_detect_features->setCurrentIndex(settings.value("detect_features", _ui->comboBox_depthai_detect_features->currentIndex()).toInt());
 	_ui->lineEdit_depthai_blob_path->setText(settings.value("blob_path", _ui->lineEdit_depthai_blob_path->text()).toString());
 	settings.endGroup(); // DepthAI
@@ -3188,8 +3188,8 @@ void PreferencesDialog::writeCameraSettings(const QString & filePath) const
 	settings.setValue("use_spec_translation",  _ui->checkBox_depthai_use_spec_translation->isChecked());
 	settings.setValue("alpha_scaling",         _ui->doubleSpinBox_depthai_alpha_scaling->value());
 	settings.setValue("imu_published",         _ui->checkBox_depthai_imu_published->isChecked());
-	settings.setValue("laser_dot_brightness",  _ui->doubleSpinBox_depthai_laser_dot_brightness->value());
-	settings.setValue("floodlight_brightness", _ui->doubleSpinBox_depthai_floodlight_brightness->value());
+	settings.setValue("dot_intensity",         _ui->doubleSpinBox_depthai_dot_intensity->value());
+	settings.setValue("flood_intensity",       _ui->doubleSpinBox_depthai_flood_intensity->value());
 	settings.setValue("detect_features",       _ui->comboBox_depthai_detect_features->currentIndex());
 	settings.setValue("blob_path",             _ui->lineEdit_depthai_blob_path->text());
 	settings.endGroup(); // DepthAI
@@ -6510,14 +6510,14 @@ Camera * PreferencesDialog::createCamera(
 		((CameraDepthAI*)camera)->setDepthProfile(_ui->spinBox_depthai_conf_threshold->value(), _ui->spinBox_depthai_lrc_threshold->value());
 		((CameraDepthAI*)camera)->setRectification(_ui->checkBox_depthai_use_spec_translation->isChecked(), _ui->doubleSpinBox_depthai_alpha_scaling->value());
 		((CameraDepthAI*)camera)->setIMU(_ui->checkBox_depthai_imu_published->isChecked(), _ui->checkbox_publishInterIMU->isChecked());
-		((CameraDepthAI*)camera)->setIrBrightness(_ui->doubleSpinBox_depthai_laser_dot_brightness->value(), _ui->doubleSpinBox_depthai_floodlight_brightness->value());
+		((CameraDepthAI*)camera)->setIrIntensity(_ui->doubleSpinBox_depthai_dot_intensity->value(), _ui->doubleSpinBox_depthai_flood_intensity->value());
 		((CameraDepthAI*)camera)->setDetectFeatures(_ui->comboBox_depthai_detect_features->currentIndex());
 		((CameraDepthAI*)camera)->setBlobPath(_ui->lineEdit_depthai_blob_path->text().toStdString());
 		if(_ui->comboBox_depthai_detect_features->currentIndex() == 1)
 		{
 			((CameraDepthAI*)camera)->setGFTTDetector(_ui->checkBox_GFTT_useHarrisDetector->isChecked(), _ui->doubleSpinBox_GFTT_minDistance->value(), _ui->reextract_maxFeatures->value());
 		}
-		else if(_ui->comboBox_depthai_detect_features->currentIndex() == 2)
+		else if(_ui->comboBox_depthai_detect_features->currentIndex() >= 2)
 		{
 			((CameraDepthAI*)camera)->setSuperPointDetector(_ui->doubleSpinBox_sptorch_threshold->value(), _ui->checkBox_sptorch_nms->isChecked(), _ui->spinBox_sptorch_minDistance->value());
 		}
