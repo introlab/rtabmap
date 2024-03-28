@@ -1137,6 +1137,9 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->doubleSpinBox_g2o_baseline->setObjectName(Parameters::kg2oBaseline().c_str());
 
 	_ui->comboBox_gtsam_optimizer->setObjectName(Parameters::kGTSAMOptimizer().c_str());
+	_ui->gtsam_incremental->setObjectName(Parameters::kGTSAMIncremental().c_str());
+	_ui->gtsam_incremental_threshold->setObjectName(Parameters::kGTSAMIncRelinearizeThreshold().c_str());
+	_ui->gtsam_incremental_skip->setObjectName(Parameters::kGTSAMIncRelinearizeSkip().c_str());
 
 	_ui->graphPlan_goalReachedRadius->setObjectName(Parameters::kRGBDGoalReachedRadius().c_str());
 	_ui->graphPlan_goalsSavedInUserData->setObjectName(Parameters::kRGBDGoalsSavedInUserData().c_str());

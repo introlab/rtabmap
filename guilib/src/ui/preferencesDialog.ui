@@ -23285,10 +23285,79 @@ Lower the ratio -&gt; higher the precision.</string>
                          </item>
                         </widget>
                        </item>
+                       <item row="1" column="1">
+                        <widget class="QLabel" name="label_742">
+                         <property name="text">
+                          <string>iSAM2: Do graph optimization incrementally to increase optimization speed on loop closures. Note that only GaussNewton and Dogleg optimization algorithms are supported in this mode.</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                        </widget>
+                       </item>
                        <item row="0" column="1">
                         <widget class="QLabel" name="label_364">
                          <property name="text">
                           <string>Optimization algorithm.</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="2" column="0">
+                        <widget class="QDoubleSpinBox" name="gtsam_incremental_threshold">
+                         <property name="decimals">
+                          <number>4</number>
+                         </property>
+                         <property name="minimum">
+                          <double>0.000100000000000</double>
+                         </property>
+                         <property name="maximum">
+                          <double>999.000000000000000</double>
+                         </property>
+                         <property name="singleStep">
+                          <double>0.100000000000000</double>
+                         </property>
+                         <property name="value">
+                          <double>0.100000000000000</double>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="2" column="1">
+                        <widget class="QLabel" name="label_743">
+                         <property name="text">
+                          <string>Only relinearize variables whose linear delta magnitude is greater than this threshold. See GTSAM::ISAM2 doc for more info.</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="1" column="0">
+                        <widget class="QCheckBox" name="gtsam_incremental">
+                         <property name="text">
+                          <string/>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="3" column="0">
+                        <widget class="QSpinBox" name="gtsam_incremental_skip">
+                         <property name="minimum">
+                          <number>1</number>
+                         </property>
+                         <property name="maximum">
+                          <number>10000</number>
+                         </property>
+                         <property name="value">
+                          <number>10</number>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="3" column="1">
+                        <widget class="QLabel" name="label_744">
+                         <property name="text">
+                          <string>Only relinearize any variables every X calls to ISAM2::update(). See GTSAM::ISAM2 doc for more info.</string>
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>
