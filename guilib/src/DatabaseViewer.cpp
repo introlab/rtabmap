@@ -809,7 +809,7 @@ void DatabaseViewer::openDatabase()
 	}
 }
 
-bool DatabaseViewer::openDatabase(const QString & path)
+bool DatabaseViewer::openDatabase(const QString & path, const ParametersMap & overriddenParameters)
 {
 	UDEBUG("Open database \"%s\"", path.toStdString().c_str());
 	if(QFile::exists(path))
@@ -843,6 +843,9 @@ bool DatabaseViewer::openDatabase(const QString & path)
 
 				// look if there are saved parameters
 				ParametersMap parameters = dbDriver_->getLastParameters();
+
+				// add overridden parameters
+				uInsert(parameters, overriddenParameters);
 
 				if(parameters.size())
 				{

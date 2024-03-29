@@ -55,9 +55,9 @@ int main(int argc, char * argv[])
 
 	mainWindow->showNormal();
 
-	if(argc == 2)
+	if(argc >= 2)
 	{
-		mainWindow->openDatabase(argv[1]);
+		mainWindow->openDatabase(argv[argc-1], rtabmap::Parameters::parseArguments(argc, argv, true));
 	}
 
 	// Now wait for application to finish
