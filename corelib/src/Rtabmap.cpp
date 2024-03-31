@@ -143,6 +143,7 @@ Rtabmap::Rtabmap() :
 	_pathStuckIterations(Parameters::defaultRGBDPlanStuckIterations()),
 	_pathLinearVelocity(Parameters::defaultRGBDPlanLinearVelocity()),
 	_pathAngularVelocity(Parameters::defaultRGBDPlanAngularVelocity()),
+	_forceOdom3doF(Parameters::defaultRGBDForceOdom3DoF()),
 	_restartAtOrigin(Parameters::defaultRGBDStartAtOrigin()),
 	_loopCovLimited(Parameters::defaultRGBDLoopCovLimited()),
 	_loopGPS(Parameters::defaultRtabmapLoopGPS()),
@@ -616,6 +617,7 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kRGBDPlanStuckIterations(), _pathStuckIterations);
 	Parameters::parse(parameters, Parameters::kRGBDPlanLinearVelocity(), _pathLinearVelocity);
 	Parameters::parse(parameters, Parameters::kRGBDPlanAngularVelocity(), _pathAngularVelocity);
+	Parameters::parse(parameters, Parameters::kRGBDForceOdom3DoF(), _forceOdom3doF);
 	Parameters::parse(parameters, Parameters::kRGBDStartAtOrigin(), _restartAtOrigin);
 	Parameters::parse(parameters, Parameters::kRGBDLoopCovLimited(), _loopCovLimited);
 	Parameters::parse(parameters, Parameters::kRtabmapLoopGPS(), _loopGPS);
@@ -1252,6 +1254,12 @@ bool Rtabmap::process(
 	{
 		if(!odomPose.isNull())
 		{
+			// If we are doing 2D mapping, make sure the pose is 3DoF so that landmark logic works.
+			if(_forceOdom3doF && _graphOptimizer->isSlam2d() && !odomPose.is3DoF())
+			{
+				odomPose = odomPose.to3DoF();
+			}
+
 			// this will make sure that all inverse operations will work!
 			if(!odomPose.isInvertible())
 			{
