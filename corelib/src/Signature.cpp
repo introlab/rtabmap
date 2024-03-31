@@ -221,17 +221,37 @@ void Signature::removeVirtualLinks()
 
 float Signature::compareTo(const Signature & s) const
 {
+	UASSERT(this->sensorData().globalDescriptors().size() == s.sensorData().globalDescriptors().size());
+
 	float similarity = 0.0f;
-	const std::multimap<int, int> & words = s.getWords();
+	int totalDescs = 0;
 
-	if(!s.isBadSignature() && !this->isBadSignature())
+	for(size_t i=0; i<this->sensorData().globalDescriptors().size(); ++i)
 	{
-		std::list<std::pair<int, std::pair<int, int> > > pairs;
-		int totalWords = ((int)_words.size()-_invalidWordsCount)>((int)words.size()-s.getInvalidWordsCount())?((int)_words.size()-_invalidWordsCount):((int)words.size()-s.getInvalidWordsCount());
-		UASSERT(totalWords > 0);
-		EpipolarGeometry::findPairs(words, _words, pairs);
+		if(this->sensorData().globalDescriptors()[i].type()==1 && s.sensorData().globalDescriptors()[i].type()==1)
+		{
+			similarity += this->sensorData().globalDescriptors()[i].data().dot(s.sensorData().globalDescriptors()[i].data());
+			totalDescs += 1;
+		}
+	}
 
-		similarity = float(pairs.size()) / float(totalWords);
+	if(totalDescs)
+	{
+		similarity /= totalDescs;
+	}
+	else
+	{
+		const std::multimap<int, int> & words = s.getWords();
+
+		if(!s.isBadSignature() && !this->isBadSignature())
+		{
+			std::list<std::pair<int, std::pair<int, int> > > pairs;
+			int totalWords = ((int)_words.size()-_invalidWordsCount)>((int)words.size()-s.getInvalidWordsCount())?((int)_words.size()-_invalidWordsCount):((int)words.size()-s.getInvalidWordsCount());
+			UASSERT(totalWords > 0);
+			EpipolarGeometry::findPairs(words, _words, pairs);
+
+			similarity = float(pairs.size()) / float(totalWords);
+		}
 	}
 	return similarity;
 }
