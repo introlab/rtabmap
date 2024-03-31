@@ -322,6 +322,16 @@
        </property>
        <addaction name="actionDepthAI_oakdlite"/>
       </widget>
+      <widget class="QMenu" name="menuOAK_D_Pro">
+       <property name="title">
+        <string>OAK-D Pro</string>
+       </property>
+       <property name="icon">
+        <iconset resource="../GuiLib.qrc">
+         <normaloff>:/images/oakdpro.png</normaloff>:/images/oakdpro.png</iconset>
+       </property>
+       <addaction name="actionDepthAI_oakdpro"/>
+      </widget>
       <addaction name="menuBumblebee2_2"/>
       <addaction name="menuZed_camera"/>
       <addaction name="menuTara_Camera"/>
@@ -329,6 +339,7 @@
       <addaction name="menuMynt_Eye_S"/>
       <addaction name="menuOAK_D"/>
       <addaction name="menuOAK_D_Lite"/>
+      <addaction name="menuOAK_D_Pro"/>
      </widget>
      <addaction name="menuRGB_D_camera"/>
      <addaction name="menuStereo_camera"/>
@@ -1692,6 +1703,14 @@
    </property>
   </action>
   <action name="actionDepthAI_oakdlite">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Depth AI</string>
+   </property>
+  </action>
+  <action name="actionDepthAI_oakdpro">
    <property name="checkable">
     <bool>true</bool>
    </property>

@@ -57,6 +57,9 @@ public:
 
 	void setOutputMode(int outputMode = 0);
 	void setDepthProfile(int confThreshold = 200, int lrcThreshold = 5);
+	void setExtendedDisparity(bool extendedDisparity);
+	void setSubpixelMode(bool enabled, int fractionalBits = 3);
+	void setCompanding(bool enabled, int width=96);
 	void setRectification(bool useSpecTranslation, float alphaScaling = 0.0f);
 	void setIMU(bool imuPublished, bool publishInterIMU);
 	void setIrIntensity(float dotIntensity = 0.0f, float floodIntensity = 0.0f);
@@ -82,6 +85,9 @@ private:
 	int confThreshold_;
 	int lrcThreshold_;
 	int resolution_;
+	bool extendedDisparity_;
+	int subpixelFractionalBits_;
+	int compandingWidth_;
 	bool useSpecTranslation_;
 	float alphaScaling_;
 	bool imuPublished_;

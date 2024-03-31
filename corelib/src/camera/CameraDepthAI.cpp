@@ -58,6 +58,9 @@ CameraDepthAI::CameraDepthAI(
 	confThreshold_(200),
 	lrcThreshold_(5),
 	resolution_(resolution),
+	extendedDisparity_(false),
+	subpixelFractionalBits_(0),
+	compandingWidth_(0),
 	useSpecTranslation_(false),
 	alphaScaling_(0.0),
 	imuPublished_(true),
@@ -102,6 +105,58 @@ void CameraDepthAI::setDepthProfile(int confThreshold, int lrcThreshold)
 #ifdef RTABMAP_DEPTHAI
 	confThreshold_ = confThreshold;
 	lrcThreshold_ = lrcThreshold;
+#else
+	UERROR("CameraDepthAI: RTAB-Map is not built with depthai-core support!");
+#endif
+}
+
+void CameraDepthAI::setExtendedDisparity(bool extendedDisparity)
+{
+#ifdef RTABMAP_DEPTHAI
+	extendedDisparity_ = extendedDisparity;
+	if(extendedDisparity_)
+	{
+		if(subpixelFractionalBits_>0)
+		{
+			UWARN("Extended disparity has been enabled while subpixel being also enabled, disabling subpixel...");
+			subpixelFractionalBits_ = 0;
+		}
+		if(compandingWidth_>0)
+		{
+			UWARN("Extended disparity has been enabled while companding being also enabled, disabling companding...");
+			compandingWidth_ = 0;
+		}
+	}
+#else
+	UERROR("CameraDepthAI: RTAB-Map is not built with depthai-core support!");
+#endif
+}
+
+void CameraDepthAI::setSubpixelMode(bool enabled, int fractionalBits)
+{
+#ifdef RTABMAP_DEPTHAI
+	UASSERT(fractionalBits>=3 && fractionalBits<=5);
+	subpixelFractionalBits_ = enabled?fractionalBits:0;
+	if(subpixelFractionalBits_ != 0 && extendedDisparity_)
+	{
+		UWARN("Subpixel has been enabled while extended disparity being also enabled, disabling extended disparity...");
+		extendedDisparity_ = false;
+	}
+#else
+	UERROR("CameraDepthAI: RTAB-Map is not built with depthai-core support!");
+#endif
+}
+
+void CameraDepthAI::setCompanding(bool enabled, int width)
+{
+#ifdef RTABMAP_DEPTHAI
+	UASSERT(width == 64 || width == 96);
+	compandingWidth_ = enabled?width:0;
+	if(compandingWidth_ != 0 && extendedDisparity_)
+	{
+		UWARN("Companding has been enabled while extended disparity being also enabled, disabling extended disparity...");
+		extendedDisparity_ = false;
+	}
 #else
 	UERROR("CameraDepthAI: RTAB-Map is not built with depthai-core support!");
 #endif
@@ -289,7 +344,7 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 		stereo->setDepthAlign(dai::CameraBoardSocket::CAM_A);
 	else
 		stereo->setDepthAlign(dai::StereoDepthProperties::DepthAlign::RECTIFIED_LEFT);
-	stereo->setExtendedDisparity(false);
+	stereo->setExtendedDisparity(extendedDisparity_);
 	stereo->setRectifyEdgeFillColor(0); // black, to better see the cutout
 	stereo->enableDistortionCorrection(true);
 	stereo->setDisparityToDepthUseSpecTranslation(useSpecTranslation_);
@@ -297,8 +352,9 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 	if(alphaScaling_ > -1.0f)
 		stereo->setAlphaScaling(alphaScaling_);
 	stereo->initialConfig.setConfidenceThreshold(confThreshold_);
-	stereo->initialConfig.setLeftRightCheck(true);
-	stereo->initialConfig.setLeftRightCheckThreshold(lrcThreshold_);
+	stereo->initialConfig.setLeftRightCheck(lrcThreshold_>=0);
+	if(lrcThreshold_>=0)
+		stereo->initialConfig.setLeftRightCheckThreshold(lrcThreshold_);
 	stereo->initialConfig.setMedianFilter(dai::MedianFilter::KERNEL_7x7);
 	auto config = stereo->initialConfig.get();
 	config.censusTransform.kernelSize = dai::StereoDepthConfig::CensusTransform::KernelSize::KERNEL_7x9;
@@ -352,11 +408,13 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 	}
 	else
 	{
-		stereo->setSubpixel(true);
-		stereo->setSubpixelFractionalBits(4);
+		stereo->setSubpixel(subpixelFractionalBits_>=3 && subpixelFractionalBits_<=5);
+		if(subpixelFractionalBits_>=3 && subpixelFractionalBits_<=5)
+			stereo->setSubpixelFractionalBits(subpixelFractionalBits_);
 		config = stereo->initialConfig.get();
-		config.costMatching.disparityWidth = dai::StereoDepthConfig::CostMatching::DisparityWidth::DISPARITY_64;
-		config.costMatching.enableCompanding = true;
+		config.costMatching.enableCompanding = compandingWidth_>0;
+		if(compandingWidth_>0)
+			config.costMatching.disparityWidth = compandingWidth_==64?dai::StereoDepthConfig::CostMatching::DisparityWidth::DISPARITY_64:dai::StereoDepthConfig::CostMatching::DisparityWidth::DISPARITY_96;
 		stereo->initialConfig.set(config);
 		if(outputMode_ < 2)
 		{
@@ -421,8 +479,16 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 
 	device_.reset(new dai::Device(p, deviceToUse));
 
+	UINFO("Available camera sensors: ");
+	for(auto& sensor : device_->getCameraSensorNames()) {
+		UINFO("Socket: CAM_%c - %s", 'A'+(unsigned char)sensor.first, sensor.second.c_str());
+	}
+
 	UINFO("Loading eeprom calibration data");
 	dai::CalibrationHandler calibHandler = device_->readCalibration();
+
+	auto eeprom = calibHandler.getEepromData();
+	UINFO("Product name: %s, board name: %s", eeprom.productName.c_str(), eeprom.boardName.c_str());
 
 	auto cameraId = outputMode_<2?dai::CameraBoardSocket::CAM_B:dai::CameraBoardSocket::CAM_A;
 	cv::Mat cameraMatrix, distCoeffs, newCameraMatrix;
@@ -462,7 +528,6 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 		//		matrix[0][0], matrix[0][1], matrix[0][2], matrix[0][3],
 		//		matrix[1][0], matrix[1][1], matrix[1][2], matrix[1][3],
 		//		matrix[2][0], matrix[2][1], matrix[2][2], matrix[2][3]);
-		auto eeprom = calibHandler.getEepromData();
 		if(eeprom.boardName == "OAK-D" ||
 		   eeprom.boardName == "BW1098OBC")
 		{
@@ -538,8 +603,13 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 
 	if(!device_->getIrDrivers().empty())
 	{
+		UINFO("Setting IR intensity");
 		device_->setIrLaserDotProjectorIntensity(dotIntensity_);
 		device_->setIrFloodLightIntensity(floodIntensity_);
+	}
+	else if(dotIntensity_ > 0 || floodIntensity_ > 0)
+	{
+		UWARN("No IR drivers were detected! IR intensity cannot be set.");
 	}
 
 	uSleep(2000); // avoid bad frames on start

@@ -191,6 +191,7 @@ protected Q_SLOTS:
 	void selectMyntEyeS();
 	void selectDepthAIOAKD();
 	void selectDepthAIOAKDLite();
+	void selectDepthAIOAKDPro();
 	void dumpTheMemory();
 	void dumpThePrediction();
 	void sendGoal();
