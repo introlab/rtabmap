@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2010-2016, Mathieu Labbe - IntRoLab - Universite de Sherbrooke
+Copyright (c) 2010-2024, Mathieu Labbe - IntRoLab - Universite de Sherbrooke
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -28,12 +28,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef GLOBAL_DESCRIPTOR_EXTRACTOR_H_
 #define GLOBAL_DESCRIPTOR_EXTRACTOR_H_
 
-#include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
+#include "rtabmap/core/rtabmap_core_export.h" // DLL export/import defines
 
-#include <opencv2/highgui/highgui.hpp>
-#include <opencv2/core/core.hpp>
-#include <opencv2/features2d/features2d.hpp>
-#include <list>
 #include "rtabmap/core/Parameters.h"
 #include "rtabmap/core/SensorData.h"
 
@@ -41,7 +37,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 namespace rtabmap {
 
 // Feature2D
-class RTABMAP_EXP GlobalDescriptorExtractor {
+class RTABMAP_CORE_EXPORT GlobalDescriptorExtractor {
 public:
 	enum Type {
 		kUndef=0,

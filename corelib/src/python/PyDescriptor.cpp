@@ -1,12 +1,13 @@
 
-#include <PyUtil.h>
-#include <pydescriptor/PyDescriptor.h>
+#include <python/PyDescriptor.h>
 #include <rtabmap/utilite/ULogger.h>
 #include <rtabmap/utilite/UDirectory.h>
 #include <rtabmap/utilite/UFile.h>
 #include <rtabmap/utilite/UStl.h>
 #include <rtabmap/utilite/UConversion.h>
 #include <rtabmap/utilite/UTimer.h>
+
+#include <pybind11/embed.h>
 
 #define NPY_NO_DEPRECATED_API NPY_API_VERSION
 #include <numpy/arrayobject.h>
@@ -17,18 +18,17 @@ namespace rtabmap
 PyDescriptor::PyDescriptor(
 		const ParametersMap & parameters) :
 		GlobalDescriptorExtractor(parameters),
-				pModule_(0),
-				pFunc_(0),
-				dim_(Parameters::defaultPyDescriptorDim())
+		pModule_(0),
+		pFunc_(0),
+		dim_(Parameters::defaultPyDescriptorDim())
 {
-	PyUtil::acquire();
-	UASSERT(_import_array()==0);
-
 	this->parseParameters(parameters);
 }
 
 PyDescriptor::~PyDescriptor()
 {
+	pybind11::gil_scoped_acquire acquire;
+
 	if(pFunc_)
 	{
 		Py_DECREF(pFunc_);
@@ -37,25 +37,26 @@ PyDescriptor::~PyDescriptor()
 	{
 		Py_DECREF(pModule_);
 	}
-	PyUtil::release();
 }
 
 void PyDescriptor::parseParameters(const ParametersMap & parameters)
 {
-	std::string path;
-	Parameters::parse(parameters, Parameters::kPyDescriptorPath(), path);
+	std::string previousPath = path_;
+	Parameters::parse(parameters, Parameters::kPyDescriptorPath(), path_);
 	Parameters::parse(parameters, Parameters::kPyDescriptorDim(), dim_);
-	path = uReplaceChar(path, '~', UDirectory::homeDir());
-	UINFO("path = %s", path.c_str());
+	path_ = uReplaceChar(path_, '~', UDirectory::homeDir());
+	UINFO("path = %s", path_.c_str());
 	UINFO("dim = %d", dim_);
 	UTimer timer;
 
+	pybind11::gil_scoped_acquire acquire;
+
 	if(pModule_)
 	{
-		if(!path.empty() && path.compare(path_)!=0)
+		if(!previousPath.empty() && previousPath.compare(path_)!=0)
 		{
 			UDEBUG("we changed script (old=%s), we need to reload (new=%s)",
-					path_.c_str(), path.c_str());
+					previousPath.c_str(), path_.c_str());
 			if(pFunc_)
 			{
 				Py_DECREF(pFunc_);
@@ -63,21 +64,40 @@ void PyDescriptor::parseParameters(const ParametersMap & parameters)
 			pFunc_=0;
 			Py_DECREF(pModule_);
 			pModule_ = 0;
-			path_.clear();
 		}
 	}
 
 	if(pModule_==0)
 	{
-		if(path.empty())
+		UASSERT(pFunc_ == 0);
+		if(path_.empty())
 		{
 			return;
 		}
-		pModule_ = PyUtil::importModule(path);
-
-		if(pModule_)
+		std::string matcherPythonDir = UDirectory::getDir(path_);
+		if(!matcherPythonDir.empty())
 		{
-			path_ = path;
+			PyRun_SimpleString("import sys");
+			PyRun_SimpleString(uFormat("sys.path.append(\"%s\")", matcherPythonDir.c_str()).c_str());
+		}
+
+		_import_array();
+
+		std::string scriptName = uSplit(UFile::getName(path_), '.').front();
+		PyObject * pName = PyUnicode_FromString(scriptName.c_str());
+		UDEBUG("PyImport_Import() beg");
+		pModule_ = PyImport_Import(pName);
+		UDEBUG("PyImport_Import() end");
+
+		Py_DECREF(pName);
+
+		if(!pModule_)
+		{
+			UERROR("Module \"%s\" could not be imported! (File=\"%s\")", scriptName.c_str(), path_.c_str());
+			UERROR("%s", getPythonTraceback().c_str());
+		}
+		else
+		{
 			PyObject * pFunc = PyObject_GetAttrString(pModule_, "init");
 			if(pFunc)
 			{
@@ -88,7 +108,7 @@ void PyDescriptor::parseParameters(const ParametersMap & parameters)
 					if(result == NULL)
 					{
 						UERROR("Call to \"init(...)\" in \"%s\" failed!", path_.c_str());
-						UERROR("%s", PyUtil::getTraceback().c_str());
+						UERROR("%s", getPythonTraceback().c_str());
 					}
 					Py_DECREF(result);
 
@@ -100,7 +120,7 @@ void PyDescriptor::parseParameters(const ParametersMap & parameters)
 					else
 					{
 						UERROR("Cannot find method \"extract(...)\" in %s", path_.c_str());
-						UERROR("%s", PyUtil::getTraceback().c_str());
+						UERROR("%s", getPythonTraceback().c_str());
 						if(pFunc_)
 						{
 							Py_DECREF(pFunc_);
@@ -111,16 +131,15 @@ void PyDescriptor::parseParameters(const ParametersMap & parameters)
 				else
 				{
 					UERROR("Cannot call method \"init(...)\" in %s", path_.c_str());
-					UERROR("%s", PyUtil::getTraceback().c_str());
+					UERROR("%s", getPythonTraceback().c_str());
 				}
 				Py_DECREF(pFunc);
 			}
 			else
 			{
 				UERROR("Cannot find method \"init(...)\"");
-				UERROR("%s", PyUtil::getTraceback().c_str());
+				UERROR("%s", getPythonTraceback().c_str());
 			}
-			UDEBUG("init time = %fs", timer.ticks());
 		}
 	}
 }
@@ -136,11 +155,14 @@ GlobalDescriptor PyDescriptor::extract(
 		UERROR("Python module not loaded!");
 		return descriptor;
 	}
+
 	if(!pFunc_)
 	{
 		UERROR("Python function not loaded!");
 		return descriptor;
 	}
+
+	pybind11::gil_scoped_acquire acquire;
 
 	if(!data.imageRaw().empty())
 	{
@@ -156,7 +178,7 @@ GlobalDescriptor PyDescriptor::extract(
 		if(pReturn == NULL)
 		{
 			UERROR("Failed to call extract() function!");
-			UERROR("%s", PyUtil::getTraceback().c_str());
+			UERROR("%s", getPythonTraceback().c_str());
 		}
 		else
 		{

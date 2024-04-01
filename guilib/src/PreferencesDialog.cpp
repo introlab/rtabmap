@@ -5416,11 +5416,6 @@ void PreferencesDialog::changePyDetectorPath()
 	}
 	else
 	{
-		path = QFileDialog::getOpenFileName(this, tr("Select file"), _ui->lineEdit_pydescriptor_path->text(), tr("Python wrapper (*.py)"));
-	}
-	if(!path.isEmpty())
-	{
-		_ui->lineEdit_pydescriptor_path->setText(path);
 		path = QFileDialog::getOpenFileName(this, tr("Select file"), _ui->lineEdit_pydetector_path->text(), tr("Python wrapper (*.py)"));
 	}
 	if(!path.isEmpty())

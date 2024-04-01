@@ -6,10 +6,8 @@
 #ifndef PYDESCRIPTOR_H
 #define PYDESCRIPTOR_H
 
-#include <opencv2/core/mat.hpp>
 #include <rtabmap/core/GlobalDescriptorExtractor.h>
-#include <vector>
-
+#include "rtabmap/core/PythonInterface.h"
 #include <Python.h>
 
 namespace rtabmap

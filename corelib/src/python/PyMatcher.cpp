@@ -76,7 +76,6 @@ PyMatcher::~PyMatcher()
 	{
 		Py_DECREF(pModule_);
 	}
-	PyUtil::release();
 }
 
 std::vector<cv::DMatch> PyMatcher::match(
