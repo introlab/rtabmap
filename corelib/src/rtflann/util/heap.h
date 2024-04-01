@@ -115,8 +115,11 @@ public:
         count = 0;
     }
 
-    struct CompareT : public std::binary_function<T,T,bool>
+    struct CompareT
     {
+        using result_type = bool;
+        using first_argument_type = T;
+        using second_argument_type = T;
         bool operator()(const T& t_1, const T& t_2) const
         {
             return t_2 < t_1;

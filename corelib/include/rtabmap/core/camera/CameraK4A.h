@@ -27,21 +27,20 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #pragma once
 
-#include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
-
 #include "rtabmap/core/CameraModel.h"
 #include "rtabmap/core/Camera.h"
 #include "rtabmap/core/Version.h"
 #include "rtabmap/utilite/UTimer.h"
 
 #ifdef RTABMAP_K4A
- #include <k4a/k4atypes.h>
+#include <k4a/k4atypes.h>
+#include <k4arecord/playback.h>
 #endif
 
 namespace rtabmap
 {
 
-class RTABMAP_EXP CameraK4A :
+class RTABMAP_CORE_EXPORT CameraK4A :
 	public Camera
 {
 public:
@@ -50,10 +49,10 @@ public:
 public:
 	CameraK4A(int deviceId = 0,
 		float imageRate = 0.0f,
-		const Transform & localTransform = CameraModel::opticalRotation());
+		const Transform & localTransform = Transform::getIdentity());
 	CameraK4A(const std::string & fileName,
 		float imageRate = 0.0f,
-		const Transform & localTransform = CameraModel::opticalRotation());
+		const Transform & localTransform = Transform::getIdentity());
 	virtual ~CameraK4A();
 
 	virtual bool init(const std::string & calibrationFolder = ".", const std::string & cameraName = "");
@@ -72,15 +71,14 @@ private:
 private:
 
 #ifdef RTABMAP_K4A
-	k4a_device_t device_;
+	k4a_device_t deviceHandle_;
 	k4a_device_configuration_t config_;
 	k4a_calibration_t calibration_;
-	k4a_transformation_t transformation_;
-	k4a_capture_t capture_;
+	k4a_transformation_t transformationHandle_;
+	k4a_capture_t captureHandle_;
+	k4a_playback_t playbackHandle_;
 	std::string serial_number_;
 
-	void* playbackHandle_;
-	void* transformationHandle_;
 	CameraModel model_;
 	int deviceId_;
 	std::string fileName_;
@@ -89,6 +87,7 @@ private:
 	int depth_resolution_;
 	bool ir_;
 	double previousStamp_;
+	double timestampOffset_;
 	UTimer timer_;
 	Transform imuLocalTransform_;
 #endif

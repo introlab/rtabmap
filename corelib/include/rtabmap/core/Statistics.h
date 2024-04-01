@@ -28,7 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef STATISTICS_H_
 #define STATISTICS_H_
 
-#include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
+#include "rtabmap/core/rtabmap_core_export.h" // DLL export/import defines
 
 #include <opencv2/core/core.hpp>
 #include <opencv2/features2d/features2d.hpp>
@@ -50,7 +50,7 @@ namespace rtabmap {
 		}; \
 		Dummy##PREFIX##NAME dummy##PREFIX##NAME
 
-class RTABMAP_EXP Statistics
+class RTABMAP_CORE_EXPORT Statistics
 {
 	RTABMAP_STATS(Loop, Id,); // Combined loop or proximity detection
 	RTABMAP_STATS(Loop, RejectedHypothesis,);
@@ -65,10 +65,14 @@ class RTABMAP_EXP Statistics
 	RTABMAP_STATS(Loop, Map_id,);
 	RTABMAP_STATS(Loop, Visual_words,);
 	RTABMAP_STATS(Loop, Visual_inliers,);
+	RTABMAP_STATS(Loop, Visual_inliers_ratio,);
 	RTABMAP_STATS(Loop, Visual_matches,);
+	RTABMAP_STATS(Loop, Distance_since_last_loc, m);
 	RTABMAP_STATS(Loop, Last_id,);
 	RTABMAP_STATS(Loop, Optimization_max_error, m);
 	RTABMAP_STATS(Loop, Optimization_max_error_ratio, );
+	RTABMAP_STATS(Loop, Optimization_max_ang_error, deg);
+	RTABMAP_STATS(Loop, Optimization_max_ang_error_ratio, );
 	RTABMAP_STATS(Loop, Optimization_error, );
 	RTABMAP_STATS(Loop, Optimization_iterations, );
 	RTABMAP_STATS(Loop, Linear_variance,);
@@ -86,15 +90,6 @@ class RTABMAP_EXP Statistics
 	RTABMAP_STATS(Loop, Odom_correction_roll, deg);
 	RTABMAP_STATS(Loop, Odom_correction_pitch, deg);
 	RTABMAP_STATS(Loop, Odom_correction_yaw, deg);
-	//Odom correction
-	RTABMAP_STATS(Loop, Odom_correction_acc_norm, m);
-	RTABMAP_STATS(Loop, Odom_correction_acc_angle, deg);
-	RTABMAP_STATS(Loop, Odom_correction_acc_x, m);
-	RTABMAP_STATS(Loop, Odom_correction_acc_y, m);
-	RTABMAP_STATS(Loop, Odom_correction_acc_z, m);
-	RTABMAP_STATS(Loop, Odom_correction_acc_roll, deg);
-	RTABMAP_STATS(Loop, Odom_correction_acc_pitch, deg);
-	RTABMAP_STATS(Loop, Odom_correction_acc_yaw, deg);
 	// Map to Odom
 	RTABMAP_STATS(Loop, MapToOdom_norm, m);
 	RTABMAP_STATS(Loop, MapToOdom_angle, deg);
@@ -111,6 +106,8 @@ class RTABMAP_EXP Statistics
 	RTABMAP_STATS(Loop, MapToBase_roll, deg);
 	RTABMAP_STATS(Loop, MapToBase_pitch, deg);
 	RTABMAP_STATS(Loop, MapToBase_yaw, deg);
+	RTABMAP_STATS(Loop, MapToBase_lin_std, m);
+	RTABMAP_STATS(Loop, MapToBase_lin_var, m2);
 
 	RTABMAP_STATS(Proximity, Time_detections,);
 	RTABMAP_STATS(Proximity, Space_last_detection_id,);
@@ -118,7 +115,8 @@ class RTABMAP_EXP Statistics
 	RTABMAP_STATS(Proximity, Space_visual_paths_checked,);
 	RTABMAP_STATS(Proximity, Space_scan_paths_checked,);
 	RTABMAP_STATS(Proximity, Space_detections_added_visually,);
-	RTABMAP_STATS(Proximity, Space_detections_added_icp_only,);
+	RTABMAP_STATS(Proximity, Space_detections_added_icp_multi,);
+	RTABMAP_STATS(Proximity, Space_detections_added_icp_global,);
 
 	RTABMAP_STATS(NeighborLinkRefining, Accepted,);
 	RTABMAP_STATS(NeighborLinkRefining, Inliers,);
@@ -142,17 +140,24 @@ class RTABMAP_EXP Statistics
 	RTABMAP_STATS(Memory, Rehearsal_id,);
 	RTABMAP_STATS(Memory, Rehearsal_merged,);
 	RTABMAP_STATS(Memory, Local_graph_size,);
+	RTABMAP_STATS(Memory, Odom_cache_poses,);
+	RTABMAP_STATS(Memory, Odom_cache_links,);
 	RTABMAP_STATS(Memory, Small_movement,);
 	RTABMAP_STATS(Memory, Fast_movement,);
+	RTABMAP_STATS(Memory, New_landmark,);
 	RTABMAP_STATS(Memory, Odometry_variance_ang,);
 	RTABMAP_STATS(Memory, Odometry_variance_lin,);
 	RTABMAP_STATS(Memory, Distance_travelled, m);
 	RTABMAP_STATS(Memory, RAM_usage, MB);
+	RTABMAP_STATS(Memory, RAM_estimated, MB);
 	RTABMAP_STATS(Memory, Triangulated_points, );
+	RTABMAP_STATS(Memory, Closest_node_distance, m);
+	RTABMAP_STATS(Memory, Closest_node_angle, rad);
 
 	RTABMAP_STATS(Timing, Memory_update, ms);
 	RTABMAP_STATS(Timing, Neighbor_link_refining, ms);
 	RTABMAP_STATS(Timing, Proximity_by_time, ms);
+	RTABMAP_STATS(Timing, Proximity_by_space_search, ms);
 	RTABMAP_STATS(Timing, Proximity_by_space_visual, ms);
 	RTABMAP_STATS(Timing, Proximity_by_space, ms);
 	RTABMAP_STATS(Timing, Cleaning_neighbors, ms);
@@ -170,6 +175,7 @@ class RTABMAP_EXP Statistics
 	RTABMAP_STATS(Timing, Joining_trash, ms);
 	RTABMAP_STATS(Timing, Emptying_trash, ms);
 	RTABMAP_STATS(Timing, Finalizing_statistics, ms);
+	RTABMAP_STATS(Timing, RAM_estimation, ms);
 
 	RTABMAP_STATS(TimingMem, Pre_update, ms);
 	RTABMAP_STATS(TimingMem, Signature_creation, ms);
@@ -231,7 +237,10 @@ public:
 	void setProximityDetectionMapId(int id) {_proximiyDetectionMapId = id;}
 	void setStamp(double stamp) {_stamp = stamp;}
 
-	void setLastSignatureData(const Signature & data) {_lastSignatureData = data;}
+	// Use addSignatureData() instead.
+	RTABMAP_DEPRECATED void setLastSignatureData(const Signature & data);
+	void addSignatureData(const Signature & data) {_signaturesData.insert(std::make_pair(data.id(), data));}
+	void setSignaturesData(const std::map<int, Signature> & data) {_signaturesData = data;}
 
 	void setPoses(const std::map<int, Transform> & poses) {_poses = poses;}
 	void setConstraints(const std::multimap<int, Link> & constraints) {_constraints = constraints;}
@@ -247,6 +256,8 @@ public:
 	void setCurrentGoalId(int goal) {_currentGoalId=goal;}
 	void setReducedIds(const std::map<int, int> & reducedIds) {_reducedIds = reducedIds;}
 	void setWmState(const std::vector<int> & state) {_wmState = state;}
+	void setOdomCachePoses(const std::map<int, Transform> & poses) {_odomCachePoses = poses;}
+	void setOdomCacheConstraints(const std::multimap<int, Link> & constraints) {_odomCacheConstraints = constraints;}
 
 	// getters
 	bool extended() const {return _extended;}
@@ -258,7 +269,8 @@ public:
 	int proximityDetectionMapId() const {return _proximiyDetectionMapId;}
 	double stamp() const {return _stamp;}
 
-	const Signature & getLastSignatureData() const {return _lastSignatureData;}
+	const Signature & getLastSignatureData() const {return _signaturesData.empty()?_dummyEmptyData:_signaturesData.rbegin()->second;}
+	const std::map<int, Signature> & getSignaturesData() const {return _signaturesData;}
 
 	const std::map<int, Transform> & poses() const {return _poses;}
 	const std::multimap<int, Link> & constraints() const {return _constraints;}
@@ -274,6 +286,8 @@ public:
 	int currentGoalId() const {return _currentGoalId;}
 	const std::map<int, int> & reducedIds() const {return _reducedIds;}
 	const std::vector<int> & wmState() const {return _wmState;}
+	const std::map<int, Transform> & odomCachePoses() const {return _odomCachePoses;}
+	const std::multimap<int, Link> & odomCacheConstraints() const {return _odomCacheConstraints;}
 
 	const std::map<std::string, float> & data() const {return _data;}
 
@@ -288,7 +302,8 @@ private:
 	int _proximiyDetectionMapId;
 	double _stamp;
 
-	Signature _lastSignatureData;
+	std::map<int, Signature> _signaturesData;
+	Signature _dummyEmptyData;
 
 	std::map<int, Transform> _poses;
 	std::multimap<int, Link> _constraints;
@@ -308,6 +323,9 @@ private:
 	std::map<int, int> _reducedIds;
 
 	std::vector<int> _wmState;
+
+	std::map<int, Transform> _odomCachePoses;
+	std::multimap<int, Link> _odomCacheConstraints;
 
 	// Format for statistics (Plottable statistics must go in that map) :
 	// {"Group/Name/Unit", value}

@@ -11,7 +11,9 @@
 #include <rtabmap/core/ProgressState.h>
 #include <rtabmap/utilite/ULogger.h>
 #include <rtabmap/utilite/UEventsManager.h>
+#ifdef __ANDROID__
 #include <jni.h>
+#endif
 
 namespace rtabmap {
 
@@ -27,16 +29,29 @@ public:
 class ProgressionStatus: public ProgressState, public UEventsHandler
 {
 public:
-	ProgressionStatus() : count_(0), max_(100), jvm_(0), rtabmap_(0)
+	ProgressionStatus() : count_(0), max_(100)
+#ifdef __ANDROID__
+    , jvm_(0), rtabmap_(0)
+#else
+    , swiftClassPtr_(0)
+#endif
 	{
 		registerToEventsManager();
 	}
 
+#ifdef __ANDROID__
 	void setJavaObjects(JavaVM * jvm, jobject rtabmap)
 	{
 		jvm_ = jvm;
 		rtabmap_ = rtabmap;
 	}
+#else
+    void setSwiftCallback(void * classPtr, void(*callback)(void *, int, int))
+    {
+        swiftClassPtr_ = classPtr;
+        swiftCallback = callback;
+    }
+#endif
 
 	void reset(int max)
 	{
@@ -82,6 +97,7 @@ protected:
 			count_ += ((ProgressEvent*)event)->count_;
 			// Call JAVA callback
 			bool success = false;
+#ifdef __ANDROID__
 			if(jvm_ && rtabmap_)
 			{
 				JNIEnv *env = 0;
@@ -103,6 +119,16 @@ protected:
 				}
 				jvm_->DetachCurrentThread();
 			}
+#else // APPLE
+            if(swiftClassPtr_)
+            {
+                std::function<void()> actualCallback = [&](){
+                    swiftCallback(swiftClassPtr_, count_, max_);
+                };
+                actualCallback();
+                success = true;
+            }
+#endif
 			if(!success)
 			{
 				UERROR("Failed to call rtabmap::updateProgressionCallback");
@@ -114,8 +140,13 @@ protected:
 private:
 	int count_;
 	int max_;
+#ifdef __ANDROID__
 	JavaVM *jvm_;
 	jobject rtabmap_;
+#else
+    void * swiftClassPtr_;
+    void(*swiftCallback)(void *, int, int);
+#endif
 };
 
 }

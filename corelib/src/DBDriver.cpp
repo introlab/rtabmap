@@ -40,7 +40,6 @@ namespace rtabmap {
 
 DBDriver * DBDriver::create(const ParametersMap & parameters)
 {
-	// well, we only have Sqlite3 database type for now :P
 	return new DBDriverSqlite3(parameters);
 }
 
@@ -59,6 +58,7 @@ DBDriver::~DBDriver()
 
 void DBDriver::parseParameters(const ParametersMap & parameters)
 {
+	Parameters::parse(parameters, Parameters::kDbTargetVersion(), _targetVersion);
 }
 
 void DBDriver::closeConnection(bool save, const std::string & outputUrl)
@@ -107,9 +107,9 @@ bool DBDriver::isConnected() const
 }
 
 // In bytes
-long DBDriver::getMemoryUsed() const
+unsigned long DBDriver::getMemoryUsed() const
 {
-	long bytes;
+	unsigned long bytes;
 	_dbSafeAccessMutex.lock();
 	bytes = getMemoryUsedQuery();
 	_dbSafeAccessMutex.unlock();
@@ -502,6 +502,16 @@ void DBDriver::updateOccupancyGrid(
 	_dbSafeAccessMutex.unlock();
 }
 
+void DBDriver::updateCalibration(int nodeId, const std::vector<CameraModel> & models, const std::vector<StereoCameraModel> & stereoModels)
+{
+	_dbSafeAccessMutex.lock();
+	this->updateCalibrationQuery(
+			nodeId,
+			models,
+			stereoModels);
+	_dbSafeAccessMutex.unlock();
+}
+
 void DBDriver::updateDepthImage(int nodeId, const cv::Mat & image)
 {
 	_dbSafeAccessMutex.lock();
@@ -726,7 +736,7 @@ void DBDriver::getNodeData(
 bool DBDriver::getCalibration(
 		int signatureId,
 		std::vector<CameraModel> & models,
-		StereoCameraModel & stereoModel) const
+		std::vector<StereoCameraModel> & stereoModels) const
 {
 	UDEBUG("");
 	bool found = false;
@@ -735,7 +745,7 @@ bool DBDriver::getCalibration(
 	if(uContains(_trashSignatures, signatureId))
 	{
 		models = _trashSignatures.at(signatureId)->sensorData().cameraModels();
-		stereoModel = _trashSignatures.at(signatureId)->sensorData().stereoCameraModel();
+		stereoModels = _trashSignatures.at(signatureId)->sensorData().stereoCameraModels();
 		found = true;
 	}
 	_trashesMutex.unlock();
@@ -743,7 +753,7 @@ bool DBDriver::getCalibration(
 	if(!found)
 	{
 		_dbSafeAccessMutex.lock();
-		found = this->getCalibrationQuery(signatureId, models, stereoModel);
+		found = this->getCalibrationQuery(signatureId, models, stereoModels);
 		_dbSafeAccessMutex.unlock();
 	}
 	return found;
@@ -873,7 +883,7 @@ void DBDriver::getLastNodeIds(std::set<int> & ids) const
 	_dbSafeAccessMutex.unlock();
 }
 
-void DBDriver::getAllNodeIds(std::set<int> & ids, bool ignoreChildren, bool ignoreBadSignatures) const
+void DBDriver::getAllNodeIds(std::set<int> & ids, bool ignoreChildren, bool ignoreBadSignatures, bool ignoreIntermediateNodes) const
 {
 	// look in the trash
 	_trashesMutex.lock();
@@ -896,7 +906,7 @@ void DBDriver::getAllNodeIds(std::set<int> & ids, bool ignoreChildren, bool igno
 					}
 				}
 			}
-			if(hasNeighbors)
+			if(hasNeighbors && (!ignoreIntermediateNodes || sIter->second->getWeight() != -1))
 			{
 				ids.insert(sIter->first);
 			}
@@ -908,7 +918,7 @@ void DBDriver::getAllNodeIds(std::set<int> & ids, bool ignoreChildren, bool igno
 	_trashesMutex.unlock();
 
 	_dbSafeAccessMutex.lock();
-	this->getAllNodeIdsQuery(ids, ignoreChildren, ignoreBadSignatures);
+	this->getAllNodeIdsQuery(ids, ignoreChildren, ignoreBadSignatures, ignoreIntermediateNodes);
 	_dbSafeAccessMutex.unlock();
 }
 
@@ -1209,7 +1219,7 @@ cv::Mat DBDriver::load2DMap(float & xMin, float & yMin, float & cellSize) const
 
 void DBDriver::saveOptimizedMesh(
 			const cv::Mat & cloud,
-			const std::vector<std::vector<std::vector<unsigned int> > > & polygons,
+			const std::vector<std::vector<std::vector<RTABMAP_PCL_INDEX> > > & polygons,
 #if PCL_VERSION_COMPARE(>=, 1, 8, 0)
 			const std::vector<std::vector<Eigen::Vector2f, Eigen::aligned_allocator<Eigen::Vector2f> > > & texCoords,
 #else
@@ -1223,7 +1233,7 @@ void DBDriver::saveOptimizedMesh(
 }
 
 cv::Mat DBDriver::loadOptimizedMesh(
-				std::vector<std::vector<std::vector<unsigned int> > > * polygons,
+				std::vector<std::vector<std::vector<RTABMAP_PCL_INDEX> > > * polygons,
 #if PCL_VERSION_COMPARE(>=, 1, 8, 0)
 				std::vector<std::vector<Eigen::Vector2f, Eigen::aligned_allocator<Eigen::Vector2f> > > * texCoords,
 #else

@@ -28,7 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef MEMORY_H_
 #define MEMORY_H_
 
-#include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
+#include "rtabmap/core/rtabmap_core_export.h" // DLL export/import defines
 
 #include "rtabmap/utilite/UEventsHandler.h"
 #include "rtabmap/core/Parameters.h"
@@ -55,12 +55,13 @@ class Statistics;
 class Registration;
 class RegistrationInfo;
 class RegistrationIcp;
+class RegistrationVis;
 class Stereo;
-class OccupancyGrid;
+class LocalGridMaker;
 class MarkerDetector;
 class GlobalDescriptorExtractor;
 
-class RTABMAP_EXP Memory
+class RTABMAP_CORE_EXPORT Memory
 {
 public:
 	static const int kIdStart;
@@ -103,7 +104,7 @@ public:
 	cv::Mat load2DMap(float & xMin, float & yMin, float & cellSize) const;
 	void saveOptimizedMesh(
 			const cv::Mat & cloud,
-			const std::vector<std::vector<std::vector<unsigned int> > > & polygons = std::vector<std::vector<std::vector<unsigned int> > >(),      // Textures -> polygons -> vertices
+			const std::vector<std::vector<std::vector<RTABMAP_PCL_INDEX> > > & polygons = std::vector<std::vector<std::vector<RTABMAP_PCL_INDEX> > >(),      // Textures -> polygons -> vertices
 #if PCL_VERSION_COMPARE(>=, 1, 8, 0)
 			const std::vector<std::vector<Eigen::Vector2f, Eigen::aligned_allocator<Eigen::Vector2f> > > & texCoords = std::vector<std::vector<Eigen::Vector2f, Eigen::aligned_allocator<Eigen::Vector2f> > >(), // Textures -> uv coords for each vertex of the polygons
 #else
@@ -111,7 +112,7 @@ public:
 #endif
 			const cv::Mat & textures = cv::Mat()) const; // concatenated textures (assuming square textures with all same size)
 	cv::Mat loadOptimizedMesh(
-			std::vector<std::vector<std::vector<unsigned int> > > * polygons = 0,
+			std::vector<std::vector<std::vector<RTABMAP_PCL_INDEX> > > * polygons = 0,
 #if PCL_VERSION_COMPARE(>=, 1, 8, 0)
 			std::vector<std::vector<Eigen::Vector2f, Eigen::aligned_allocator<Eigen::Vector2f> > > * texCoords = 0,
 #else
@@ -166,7 +167,6 @@ public:
 	bool labelSignature(int id, const std::string & label);
 	const std::map<int, std::string> & getAllLabels() const {return _labels;}
 	const std::map<int, std::set<int> > & getLandmarksIndex() const {return _landmarksIndex;}
-	const std::map<int, std::set<int> > & getLandmarksInvertedIndex() const {return _landmarksInvertedIndex;}
 	bool allNodesInWM() const {return _allNodesInWM;}
 
 	/**
@@ -200,13 +200,14 @@ public:
 	cv::Mat getImageCompressed(int signatureId) const;
 	SensorData getNodeData(int locationId, bool images, bool scan, bool userData, bool occupancyGrid) const;
 	void getNodeWordsAndGlobalDescriptors(int nodeId,
-			std::multimap<int, cv::KeyPoint> & words,
-			std::multimap<int, cv::Point3f> & words3,
-			std::multimap<int, cv::Mat> & wordsDescriptors,
+			std::multimap<int, int> & words,
+			std::vector<cv::KeyPoint> & wordsKpts,
+			std::vector<cv::Point3f> & words3,
+			cv::Mat & wordsDescriptors,
 			std::vector<GlobalDescriptor> & globalDescriptors) const;
 	void getNodeCalibration(int nodeId,
 			std::vector<CameraModel> & models,
-			StereoCameraModel & stereoModel) const;
+			std::vector<StereoCameraModel> & stereoModels) const;
 	std::set<int> getAllSignatureIds(bool ignoreChildren = true) const;
 	bool memoryChanged() const {return _memoryChanged;}
 	bool isIncremental() const {return _incrementalMemory;}
@@ -226,8 +227,17 @@ public:
 	virtual void dumpMemory(std::string directory) const;
 	virtual void dumpSignatures(const char * fileNameSign, bool words3D) const;
 	void dumpDictionary(const char * fileNameRef, const char * fileNameDesc) const;
+	unsigned long getMemoryUsed() const; //Bytes
 
 	void generateGraph(const std::string & fileName, const std::set<int> & ids = std::set<int>());
+	int cleanupLocalGrids(
+			const std::map<int, Transform> & poses,
+			const cv::Mat & map,
+			float xMin,
+			float yMin,
+			float cellSize,
+			int cropRadius = 1,
+			bool filterScans = false);
 
 	//keypoint stuff
 	const VWDictionary * getVWDictionary() const;
@@ -242,6 +252,7 @@ public:
 
 	Transform computeTransform(Signature & fromS, Signature & toS, Transform guess, RegistrationInfo * info = 0, bool useKnownCorrespondencesIfPossible = false) const;
 	Transform computeTransform(int fromId, int toId, Transform guess, RegistrationInfo * info = 0, bool useKnownCorrespondencesIfPossible = false);
+	Transform computeIcpTransform(const Signature & fromS, const Signature & toS, Transform guess, RegistrationInfo * info = 0) const;
 	Transform computeIcpTransformMulti(
 			int newId,
 			int oldId,
@@ -304,20 +315,23 @@ private:
 	bool _mapLabelsAdded;
 	bool _depthAsMask;
 	bool _stereoFromMotion;
-	int _imagePreDecimation;
-	int _imagePostDecimation;
+	unsigned int _imagePreDecimation;
+	unsigned int _imagePostDecimation;
 	bool _compressionParallelized;
 	float _laserScanDownsampleStepSize;
 	float _laserScanVoxelSize;
 	int _laserScanNormalK;
 	float _laserScanNormalRadius;
+	float _laserScanGroundNormalsUp;
 	bool _reextractLoopClosureFeatures;
 	bool _localBundleOnLoopClosure;
+	bool _invertedReg;
 	float _rehearsalMaxDistance;
 	float _rehearsalMaxAngle;
 	bool _rehearsalWeightIgnoredWhileMoving;
 	bool _useOdometryFeatures;
 	bool _useOdometryGravity;
+	bool _rotateImagesUpsideUp;
 	bool _createOccupancyGrid;
 	int _visMaxFeatures;
 	bool _imagesAlreadyRectified;
@@ -337,7 +351,7 @@ private:
 	bool _allNodesInWM;
 	GPS _gpsOrigin;
 	std::vector<CameraModel> _rectCameraModels;
-	StereoCameraModel _rectStereoCameraModel;
+	std::vector<StereoCameraModel> _rectStereoCameraModels;
 	std::vector<double> _odomMaxInf;
 
 	std::map<int, Signature *> _signatures; // TODO : check if a signature is already added? although it is not supposed to occur...
@@ -345,8 +359,8 @@ private:
 	std::map<int, double> _workingMem; // id,age
 	std::map<int, Transform> _groundTruths;
 	std::map<int, std::string> _labels;
-	std::map<int, std::set<int> > _landmarksIndex;         // <nodeId, landmarkIds>
-	std::map<int, std::set<int> > _landmarksInvertedIndex; // <landmarkId, nodeIds>
+	std::map<int, std::set<int> > _landmarksIndex; // < -landmarkId, nodeIds >
+    std::map<int, float> _landmarksSize;           // +landmarkId
 
 	//Keypoint stuff
 	VWDictionary * _vwd;
@@ -357,8 +371,9 @@ private:
 
 	Registration * _registrationPipeline;
 	RegistrationIcp * _registrationIcpMulti;
+	RegistrationVis * _registrationVis;
 
-	OccupancyGrid * _occupancy;
+	LocalGridMaker * _localMapMaker;
 
 	MarkerDetector * _markerDetector;
 

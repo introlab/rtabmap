@@ -101,15 +101,15 @@ Optimizer * Optimizer::create(Optimizer::Type type, const ParametersMap & parame
 	}
 	if(!OptimizerG2O::available() && type == Optimizer::kTypeG2O)
 	{
-		if(OptimizerTORO::available())
-		{
-			UWARN("g2o optimizer not available. TORO will be used instead.");
-					type = Optimizer::kTypeTORO;
-		}
-		else if(OptimizerGTSAM::available())
+		if(OptimizerGTSAM::available())
 		{
 			UWARN("g2o optimizer not available. GTSAM will be used instead.");
 					type = Optimizer::kTypeGTSAM;
+		}
+		else if(OptimizerTORO::available())
+		{
+			UWARN("g2o optimizer not available. TORO will be used instead.");
+					type = Optimizer::kTypeTORO;
 		}
 		else if(OptimizerCeres::available())
 		{
@@ -119,15 +119,15 @@ Optimizer * Optimizer::create(Optimizer::Type type, const ParametersMap & parame
 	}
 	if(!OptimizerGTSAM::available() && type == Optimizer::kTypeGTSAM)
 	{
-		if(OptimizerTORO::available())
-		{
-			UWARN("GTSAM optimizer not available. TORO will be used instead.");
-					type = Optimizer::kTypeTORO;
-		}
-		else if(OptimizerG2O::available())
+		if(OptimizerG2O::available())
 		{
 			UWARN("GTSAM optimizer not available. g2o will be used instead.");
 					type = Optimizer::kTypeG2O;
+		}
+		else if(OptimizerTORO::available())
+		{
+			UWARN("GTSAM optimizer not available. TORO will be used instead.");
+					type = Optimizer::kTypeTORO;
 		}
 		else if(OptimizerCeres::available())
 		{
@@ -137,25 +137,10 @@ Optimizer * Optimizer::create(Optimizer::Type type, const ParametersMap & parame
 	}
 	if(!OptimizerCVSBA::available() && type == Optimizer::kTypeCVSBA)
 	{
-		if(OptimizerTORO::available())
-		{
-			UWARN("CVSBA optimizer not available. TORO will be used instead.");
-					type = Optimizer::kTypeTORO;
-		}
-		else if(OptimizerGTSAM::available())
-		{
-			UWARN("CVSBA optimizer not available. GTSAM will be used instead.");
-					type = Optimizer::kTypeGTSAM;
-		}
-		else if(OptimizerG2O::available())
+		if(OptimizerG2O::available())
 		{
 			UWARN("CVSBA optimizer not available. g2o will be used instead.");
 					type = Optimizer::kTypeG2O;
-		}
-		else if(OptimizerCeres::available())
-		{
-			UWARN("CVSBA optimizer not available. ceres will be used instead.");
-					type = Optimizer::kTypeCeres;
 		}
 	}
 	if(!OptimizerCeres::available() && type == Optimizer::kTypeCeres)
@@ -216,30 +201,30 @@ void Optimizer::getConnectedGraph(
 
 	std::set<int> nextPoses;
 	nextPoses.insert(fromId);
-	std::multimap<int, int> biLinks;
+	std::multimap<int, std::pair<int, Link::Type> > biLinks;
 	for(std::multimap<int, Link>::const_iterator iter=linksIn.begin(); iter!=linksIn.end(); ++iter)
 	{
 		if(iter->second.from() != iter->second.to())
 		{
-			if(graph::findLink(biLinks, iter->second.from(), iter->second.to()) == biLinks.end())
+			if(graph::findLink(biLinks, iter->second.from(), iter->second.to(), true, iter->second.type()) == biLinks.end())
 			{
-				biLinks.insert(std::make_pair(iter->second.from(), iter->second.to()));
-				biLinks.insert(std::make_pair(iter->second.to(), iter->second.from()));
+				biLinks.insert(std::make_pair(iter->second.from(), std::make_pair(iter->second.to(), iter->second.type())));
+				biLinks.insert(std::make_pair(iter->second.to(), std::make_pair(iter->second.from(), iter->second.type())));
 			}
 		}
 	}
 
 	while(nextPoses.size())
 	{
-		int fromId = *nextPoses.rbegin(); // fill up all nodes before landmarks
+		int currentId = *nextPoses.rbegin(); // fill up all nodes before landmarks
 		nextPoses.erase(*nextPoses.rbegin());
 
 		if(posesOut.empty())
 		{
-			posesOut.insert(std::make_pair(fromId, posesIn.find(fromId)->second));
+			posesOut.insert(std::make_pair(currentId, posesIn.find(currentId)->second));
 
 			// add prior links
-			for(std::multimap<int, Link>::const_iterator pter=linksIn.find(fromId); pter!=linksIn.end() && pter->first==fromId; ++pter)
+			for(std::multimap<int, Link>::const_iterator pter=linksIn.find(currentId); pter!=linksIn.end() && pter->first==currentId; ++pter)
 			{
 				if(pter->second.from() == pter->second.to() && (!priorsIgnored() || pter->second.type() != Link::kPosePrior))
 				{
@@ -248,34 +233,35 @@ void Optimizer::getConnectedGraph(
 			}
 		}
 
-		for(std::multimap<int, int>::const_iterator iter=biLinks.find(fromId); iter!=biLinks.end() && iter->first==fromId; ++iter)
+		for(std::multimap<int, std::pair<int, Link::Type> >::const_iterator iter=biLinks.find(currentId); iter!=biLinks.end() && iter->first==currentId; ++iter)
 		{
-			int toId = iter->second;
+			int toId = iter->second.first;
+			Link::Type type = iter->second.second;
 			if(posesIn.find(toId) != posesIn.end() && (!landmarksIgnored() || toId>0))
 			{
-				std::multimap<int, Link>::const_iterator kter = graph::findLink(linksIn, fromId, toId);
+				std::multimap<int, Link>::const_iterator kter = graph::findLink(linksIn, currentId, toId, true, type);
 				if(nextPoses.find(toId) == nextPoses.end())
 				{
 					if(!uContains(posesOut, toId))
 					{
-						if(isSlam2d() && kter->second.type() == Link::kLandmark && toId>0)
+						const Transform & poseToIn = posesIn.at(toId);
+						Transform t = kter->second.from()==currentId?kter->second.transform():kter->second.transform().inverse();
+						if(isSlam2d() && kter->second.type() == Link::kLandmark && toId>0 && (poseToIn.is3DoF() || poseToIn.is4DoF()))
 						{
-							Transform t;
-							if(kter->second.from()==fromId)
+							if(poseToIn.is3DoF())
 							{
-								t = kter->second.transform();
+								posesOut.insert(std::make_pair(toId, (posesOut.at(currentId) * t).to3DoF()));
 							}
 							else
 							{
-								t = kter->second.transform().inverse();
+								posesOut.insert(std::make_pair(toId, (posesOut.at(currentId) * t).to4DoF()));
 							}
-							posesOut.insert(std::make_pair(toId, (posesOut.at(fromId) * t).to3DoF()));
 						}
 						else
 						{
-							Transform t = posesOut.at(fromId) * (kter->second.from()==fromId?kter->second.transform():kter->second.transform().inverse());
-							posesOut.insert(std::make_pair(toId, t));
+							posesOut.insert(std::make_pair(toId, posesOut.at(currentId)* t));
 						}
+
 						// add prior links
 						for(std::multimap<int, Link>::const_iterator pter=linksIn.find(toId); pter!=linksIn.end() && pter->first==toId; ++pter)
 						{
@@ -289,7 +275,7 @@ void Optimizer::getConnectedGraph(
 					}
 
 					// only add unique links
-					if(graph::findLink(linksOut, fromId, toId) == linksOut.end())
+					if(graph::findLink(linksOut, currentId, toId, true, kter->second.type()) == linksOut.end())
 					{
 						if(kter->second.to() < 0)
 						{
@@ -445,7 +431,7 @@ std::map<int, Transform> Optimizer::optimizeBA(
 		int rootId,
 		const std::map<int, Transform> & poses,
 		const std::multimap<int, Link> & links,
-		const std::map<int, CameraModel> & models,
+		const std::map<int, std::vector<CameraModel> > & models,
 		std::map<int, cv::Point3f> & points3DMap,
 		const std::map<int, std::map<int, FeatureBA> > & wordReferences,
 		std::set<int> * outliers)
@@ -464,37 +450,35 @@ std::map<int, Transform> Optimizer::optimizeBA(
 		bool rematchFeatures)
 {
 	UDEBUG("");
-	std::map<int, CameraModel> models;
+	std::map<int, std::vector<CameraModel> > multiModels;
 	std::map<int, Transform> poses;
 	for(std::map<int, Transform>::const_iterator iter=posesIn.lower_bound(1); iter!=posesIn.end(); ++iter)
 	{
 		// Get camera model
-		CameraModel model;
+		std::vector<CameraModel> models;
 		if(uContains(signatures, iter->first))
 		{
-			if(signatures.at(iter->first).sensorData().cameraModels().size() == 1 && signatures.at(iter->first).sensorData().cameraModels().at(0).isValidForProjection())
+			const SensorData & s = signatures.at(iter->first).sensorData();
+			if(s.cameraModels().size() >= 1 && s.cameraModels().at(0).isValidForProjection())
 			{
-				model = signatures.at(iter->first).sensorData().cameraModels()[0];
+				models = s.cameraModels();
 			}
-			else if(signatures.at(iter->first).sensorData().stereoCameraModel().isValidForProjection())
+			else if(!s.stereoCameraModels().empty() && s.stereoCameraModels()[0].isValidForProjection())
 			{
-				model = signatures.at(iter->first).sensorData().stereoCameraModel().left();
+				for(size_t i=0; i<s.stereoCameraModels().size(); ++i)
+				{
+					CameraModel model = s.stereoCameraModels()[i].left();
 
-				// Set Tx = -baseline*fx for stereo BA
-				model = CameraModel(
-						model.fx(),
-						model.fy(),
-						model.cx(),
-						model.cy(),
-						model.localTransform(),
-						-signatures.at(iter->first).sensorData().stereoCameraModel().baseline()*model.fx());
-			}
-			else if(signatures.at(iter->first).sensorData().cameraModels().size() > 1)
-			{
-				UERROR("Multi-cameras (%d) is not supported (id=%d).",
-						signatures.at(iter->first).sensorData().cameraModels().size(),
-						iter->first);
-				return std::map<int, Transform>();
+					// Set Tx = -baseline*fx for stereo BA
+					models.push_back(CameraModel(
+							model.fx(),
+							model.fy(),
+							model.cx(),
+							model.cy(),
+							model.localTransform(),
+							-s.stereoCameraModels()[i].baseline()*model.fx(),
+							model.imageSize()));
+				}
 			}
 			else
 			{
@@ -508,16 +492,14 @@ std::map<int, Transform> Optimizer::optimizeBA(
 			return std::map<int, Transform>();
 		}
 
-		UASSERT(model.isValidForProjection());
-
-		models.insert(std::make_pair(iter->first, model));
+		multiModels.insert(std::make_pair(iter->first, models));
 		poses.insert(*iter);
 	}
 
 	// compute correspondences
 	this->computeBACorrespondences(poses, links, signatures, points3DMap, wordReferences, rematchFeatures);
 
-	return optimizeBA(rootId, poses, links, models, points3DMap, wordReferences);
+	return optimizeBA(rootId, poses, links, multiModels, points3DMap, wordReferences);
 }
 
 std::map<int, Transform> Optimizer::optimizeBA(
@@ -544,9 +526,11 @@ Transform Optimizer::optimizeBA(
 	poses.insert(std::make_pair(link.to(), link.transform()));
 	std::multimap<int, Link> links;
 	links.insert(std::make_pair(link.from(), link));
-	std::map<int, CameraModel> models;
-	models.insert(std::make_pair(link.from(), model));
-	models.insert(std::make_pair(link.to(), model));
+	std::map<int, std::vector<CameraModel> > models;
+	std::vector<CameraModel> tmp;
+	tmp.push_back(model);
+	models.insert(std::make_pair(link.from(), tmp));
+	models.insert(std::make_pair(link.to(), tmp));
 	poses = optimizeBA(link.from(), poses, links, models, points3DMap, wordReferences, outliers);
 	if(poses.size() == 2)
 	{
@@ -574,7 +558,7 @@ void Optimizer::computeBACorrespondences(
 		std::map<int, std::map<int, FeatureBA> > & wordReferences,
 		bool rematchFeatures)
 {
-	UDEBUG("");
+	UDEBUG("rematchFeatures=%d", rematchFeatures?1:0);
 	int wordCount = 0;
 	int edgeWithWordsAdded = 0;
 	std::map<int, std::map<cv::KeyPoint, int, KeyPointCompare> > frameToWordMap; // <FrameId, <Keypoint, wordId> >
@@ -594,6 +578,14 @@ void Optimizer::computeBACorrespondences(
 			if(sFrom.getWeight() >= 0) // ignore intermediate links
 			{
 				Signature sTo = signatures.at(link.to());
+
+				if((sFrom.sensorData().cameraModels().empty() && sFrom.sensorData().stereoCameraModels().empty()) ||
+				   (sTo.sensorData().cameraModels().empty() && sTo.sensorData().stereoCameraModels().empty()))
+				{
+					UERROR("No camera models found");
+					continue;
+				}
+
 				if(sTo.getWeight() < 0)
 				{
 					for(std::multimap<int, Link>::const_iterator jter=links.find(sTo.id());
@@ -617,8 +609,8 @@ void Optimizer::computeBACorrespondences(
 
 					if(!rematchFeatures)
 					{
-						sFrom.setWordsDescriptors(std::multimap<int, cv::Mat>());
-						sTo.setWordsDescriptors(std::multimap<int, cv::Mat>());
+						sFrom.setWordsDescriptors(cv::Mat());
+						sTo.setWordsDescriptors(cv::Mat());
 					}
 
 					RegistrationInfo info;
@@ -633,13 +625,13 @@ void Optimizer::computeBACorrespondences(
 							// set descriptors for the output
 							if(sFrom.getWords().size() &&
 							   sFrom.getWordsDescriptors().empty() &&
-							   sFrom.getWords().size() == signatures.at(link.from()).getWordsDescriptors().size())
+							   (int)sFrom.getWords().size() == signatures.at(link.from()).getWordsDescriptors().rows)
 							{
 								sFrom.setWordsDescriptors(signatures.at(link.from()).getWordsDescriptors());
 							}
 							if(sTo.getWords().size() &&
 							   sTo.getWordsDescriptors().empty() &&
-							   sTo.getWords().size() == signatures.at(link.to()).getWordsDescriptors().size())
+							   (int)sTo.getWords().size() == signatures.at(link.to()).getWordsDescriptors().rows)
 							{
 								sTo.setWordsDescriptors(signatures.at(link.to()).getWordsDescriptors());
 							}
@@ -649,11 +641,13 @@ void Optimizer::computeBACorrespondences(
 						UASSERT(!pose.isNull());
 						for(unsigned int i=0; i<info.inliersIDs.size(); ++i)
 						{
-							cv::Point3f p = sFrom.getWords3().lower_bound(info.inliersIDs[i])->second;
+							int indexFrom = sFrom.getWords().lower_bound(info.inliersIDs[i])->second;
+							cv::Point3f p = sFrom.getWords3()[indexFrom];
 							if(p.x > 0.0f) // make sure the point is valid
 							{
-								cv::KeyPoint ptFrom = sFrom.getWords().lower_bound(info.inliersIDs[i])->second;
-								cv::KeyPoint ptTo = sTo.getWords().lower_bound(info.inliersIDs[i])->second;
+								cv::KeyPoint ptFrom = sFrom.getWordsKpts()[indexFrom];
+								int indexTo = sTo.getWords().lower_bound(info.inliersIDs[i])->second;
+								cv::KeyPoint ptTo = sTo.getWordsKpts()[indexTo];
 
 								int wordId = -1;
 
@@ -680,8 +674,7 @@ void Optimizer::computeBACorrespondences(
 									wordId = ++wordCount;
 									wordReferences.insert(std::make_pair(wordId, std::map<int, FeatureBA>()));
 
-									p = util3d::transformPoint(p, pose);
-									points3DMap.insert(std::make_pair(wordId, p));
+									points3DMap.insert(std::make_pair(wordId, util3d::transformPoint(p, pose)));
 								}
 								else
 								{
@@ -692,12 +685,32 @@ void Optimizer::computeBACorrespondences(
 								if(!fromAlreadyAdded)
 								{
 									cv::Mat descriptorFrom;
-									if(sFrom.getWordsDescriptors().size())
+									if(!sFrom.getWordsDescriptors().empty())
 									{
-										UASSERT(sFrom.getWordsDescriptors().find(info.inliersIDs[i]) != sFrom.getWordsDescriptors().end());
-										descriptorFrom = sFrom.getWordsDescriptors().lower_bound(info.inliersIDs[i])->second;
+										UASSERT(indexFrom < sFrom.getWordsDescriptors().rows);
+										descriptorFrom = sFrom.getWordsDescriptors().row(indexFrom);
 									}
-									wordReferences.at(wordId).insert(std::make_pair(sFrom.id(), FeatureBA(ptFrom, p.x, descriptorFrom)));
+									int cameraIndex = 0;
+									if(sFrom.sensorData().cameraModels().size()>1 || sFrom.sensorData().stereoCameraModels().size()>1)
+									{
+										float subImageWidth = sFrom.sensorData().cameraModels().size()>1?sFrom.sensorData().cameraModels()[0].imageWidth():sFrom.sensorData().stereoCameraModels()[0].left().imageWidth();
+										cameraIndex = int(ptFrom.pt.x / subImageWidth);
+										ptFrom.pt.x = ptFrom.pt.x - (subImageWidth*float(cameraIndex));
+									}
+									
+									float depth = 0.0f;
+									if(!sFrom.sensorData().cameraModels().empty())
+									{
+										depth = util3d::transformPoint(p, sFrom.sensorData().cameraModels()[cameraIndex].localTransform().inverse()).z;
+									}
+									else
+									{
+										UASSERT(!sFrom.sensorData().stereoCameraModels().empty());
+										depth = util3d::transformPoint(p, sFrom.sensorData().stereoCameraModels()[cameraIndex].localTransform().inverse()).z;
+									}
+
+
+									wordReferences.at(wordId).insert(std::make_pair(sFrom.id(), FeatureBA(ptFrom, depth, descriptorFrom, cameraIndex)));
 									frameToWordMap.insert(std::make_pair(sFrom.id(), std::map<cv::KeyPoint, int, KeyPointCompare>()));
 									frameToWordMap.at(sFrom.id()).insert(std::make_pair(ptFrom, wordId));
 								}
@@ -705,19 +718,37 @@ void Optimizer::computeBACorrespondences(
 								if(!toAlreadyAdded)
 								{
 									cv::Mat descriptorTo;
-									if(sTo.getWordsDescriptors().size())
+									if(!sTo.getWordsDescriptors().empty())
 									{
-										UASSERT(sTo.getWordsDescriptors().find(info.inliersIDs[i]) != sTo.getWordsDescriptors().end());
-										descriptorTo = sTo.getWordsDescriptors().lower_bound(info.inliersIDs[i])->second;
+										UASSERT(indexTo < sTo.getWordsDescriptors().rows);
+										descriptorTo = sTo.getWordsDescriptors().row(indexTo);
 									}
+
+									int cameraIndex = 0;
+									if(sTo.sensorData().cameraModels().size()>1 || sTo.sensorData().stereoCameraModels().size()>1)
+									{
+										float subImageWidth = sTo.sensorData().cameraModels().size()>1?sTo.sensorData().cameraModels()[0].imageWidth():sTo.sensorData().stereoCameraModels()[0].left().imageWidth();
+										cameraIndex = int(ptTo.pt.x / subImageWidth);
+										ptTo.pt.x = ptTo.pt.x - (subImageWidth*float(cameraIndex));
+									}
+
 									float depth = 0.0f;
-									std::multimap<int, cv::Point3f>::const_iterator iterTo = sTo.getWords3().lower_bound(info.inliersIDs[i]);
-									if( iterTo!=sTo.getWords3().end() &&
-										iterTo->second.x > 0)
+									if(!sTo.getWords3().empty())
 									{
-										depth = iterTo->second.x;
+										UASSERT(indexTo < (int)sTo.getWords3().size());
+										const cv::Point3f & pt = sTo.getWords3()[indexTo];
+										if(!sTo.sensorData().cameraModels().empty())
+										{
+											depth = util3d::transformPoint(pt, sTo.sensorData().cameraModels()[cameraIndex].localTransform().inverse()).z;
+										}
+										else
+										{
+											UASSERT(!sTo.sensorData().stereoCameraModels().empty());
+											depth = util3d::transformPoint(pt, sTo.sensorData().stereoCameraModels()[cameraIndex].localTransform().inverse()).z;
+										}
 									}
-									wordReferences.at(wordId).insert(std::make_pair(sTo.id(), FeatureBA(ptTo, depth, descriptorTo)));
+
+									wordReferences.at(wordId).insert(std::make_pair(sTo.id(), FeatureBA(ptTo, depth, descriptorTo, cameraIndex)));
 									frameToWordMap.insert(std::make_pair(sTo.id(), std::map<cv::KeyPoint, int, KeyPointCompare>()));
 									frameToWordMap.at(sTo.id()).insert(std::make_pair(ptTo, wordId));
 								}
@@ -734,6 +765,14 @@ void Optimizer::computeBACorrespondences(
 		}
 	}
 	UDEBUG("Added %d words (edges with words=%d/%d)", wordCount, edgeWithWordsAdded, links.size());
+	if(links.empty())
+	{
+		UERROR("No links found for BA?!");
+	}
+	else if(wordCount == 0)
+	{
+		UERROR("No words added for BA?!");
+	}
 }
 
 } /* namespace rtabmap */

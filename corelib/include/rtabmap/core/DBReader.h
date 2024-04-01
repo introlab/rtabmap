@@ -28,7 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef DBREADER_H_
 #define DBREADER_H_
 
-#include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
+#include "rtabmap/core/rtabmap_core_export.h" // DLL export/import defines
 
 #include <rtabmap/utilite/UTimer.h>
 #include <rtabmap/core/Transform.h>
@@ -43,7 +43,7 @@ namespace rtabmap {
 
 class DBDriver;
 
-class RTABMAP_EXP DBReader : public Camera {
+class RTABMAP_CORE_EXPORT DBReader : public Camera {
 public:
 	DBReader(const std::string & databasePath,
 			 float frameRate = 0.0f, // -1 = use Database stamps, 0 = inf
@@ -52,7 +52,13 @@ public:
 			 bool goalsIgnored = false,
 			 int startId = 0,
 			 int cameraIndex = -1,
-			 int stopId = 0);
+			 int stopId = 0,
+			 bool intermediateNodesIgnored = false,
+			 bool landmarksIgnored = false,
+			 bool featuresIgnored = false,
+			 int startMapId = 0,
+			 int stopMapId = -1,
+			 bool priorsIgnored = false);
 	DBReader(const std::list<std::string> & databasePaths,
 			 float frameRate = 0.0f, // -1 = use Database stamps, 0 = inf
 			 bool odometryIgnored = false,
@@ -60,7 +66,13 @@ public:
 			 bool goalsIgnored = false,
 			 int startId = 0,
 			 int cameraIndex = -1,
-			 int stopId = 0);
+			 int stopId = 0,
+			 bool intermediateNodesIgnored = false,
+			 bool landmarksIgnored = false,
+			 bool featuresIgnored = false,
+			 int startMapId = 0,
+			 int stopMapId = -1,
+			 bool priorsIgnored = false);
 	virtual ~DBReader();
 
 	virtual bool init(
@@ -70,6 +82,8 @@ public:
 	virtual bool isCalibrated() const;
 	virtual std::string getSerial() const;
 	virtual bool odomProvided() const {return !_odometryIgnored;}
+
+	const DBDriver * driver() const {return _dbDriver;}
 
 protected:
 	virtual SensorData captureImage(CameraInfo * info = 0);
@@ -85,6 +99,12 @@ private:
 	int _startId;
 	int _stopId;
 	int _cameraIndex;
+	bool _intermediateNodesIgnored;
+	bool _landmarksIgnored;
+	bool _featuresIgnored;
+	bool _priorsIgnored;
+	int _startMapId;
+	int _stopMapId;
 
 	DBDriver * _dbDriver;
 	UTimer _timer;

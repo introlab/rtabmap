@@ -59,21 +59,25 @@ class RtabmapEventCmd : public UEvent
 public:
 	enum dummy {d}; // Hack, to fix Eclipse complaining about not defined Cmd enum ?!
 	enum Cmd {
+			kCmdUndef,
 			kCmdInit,             // params: [string] database path + ParametersMap
 			kCmdResetMemory,
 			kCmdClose,            // params: [bool] database saved (default true), [string] output database path (empty=use same database to save, only work when Db/Sqlite3InMemory=true)
+			kCmdUpdateParams,     // params: ParametersMap
 			kCmdDumpMemory,
 			kCmdDumpPrediction,
 			kCmdGenerateDOTGraph, // params: [bool] global, [string] path, if global=false: [int] id, [int] margin
 			kCmdExportPoses,      // params: [bool] global, [bool] optimized, [string] path, [int] type (0=raw format, 1=RGBD-SLAM format, 2=KITTI format, 3=TORO, 4=g2o)
 			kCmdCleanDataBuffer,
 			kCmdPublish3DMap,     // params: [bool] global, [bool] optimized, [bool] graphOnly
+			kCmdRepublishData,    // params: [vector<int>] ids
 			kCmdTriggerNewMap,
 			kCmdPause,
 			kCmdResume,
 			kCmdGoal,             // params: [string] label or [int] location ID
 			kCmdCancelGoal,
-			kCmdLabel             // params: [string] label, [int] location ID
+			kCmdLabel,            // params: [string] label, [int] location ID
+			kCmdRemoveLabel       // params: [string] label
 	};
 public:
 	RtabmapEventCmd(Cmd cmd, const ParametersMap & parameters = ParametersMap()) :

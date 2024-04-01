@@ -27,7 +27,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #pragma once
 
-#include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
+#include "rtabmap/core/rtabmap_core_export.h" // DLL export/import defines
 
 #include <opencv2/highgui/highgui.hpp>
 #include "rtabmap/core/SensorData.h"
@@ -47,7 +47,7 @@ namespace rtabmap
  * Class Camera
  *
  */
-class RTABMAP_EXP Camera
+class RTABMAP_CORE_EXPORT Camera
 {
 public:
 	virtual ~Camera();
@@ -58,6 +58,7 @@ public:
 	virtual bool isCalibrated() const = 0;
 	virtual std::string getSerial() const = 0;
 	virtual bool odomProvided() const { return false; }
+	virtual bool getPose(double stamp, Transform & pose, cv::Mat & covariance) { return false; }
 
 	//getters
 	float getImageRate() const {return _imageRate;}
@@ -72,9 +73,10 @@ protected:
 	/**
 	 * Constructor
 	 *
-	 * @param imageRate : image/second , 0 for fast as the camera can
+	 * @param imageRate the frame rate (Hz), 0 for fast as the camera can
+	 * @param localTransform the transform from base frame to camera frame (without optical rotation)
 	 */
-	Camera(float imageRate = 0, const Transform & localTransform = CameraModel::opticalRotation());
+	Camera(float imageRate = 0, const Transform & localTransform = Transform::getIdentity());
 
 	/**
 	 * returned rgb and depth images should be already rectified if calibration was loaded

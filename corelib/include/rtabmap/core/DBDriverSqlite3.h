@@ -28,7 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef DBDRIVERSQLITE3_H_
 #define DBDRIVERSQLITE3_H_
 
-#include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
+#include "rtabmap/core/rtabmap_core_export.h" // DLL export/import defines
 #include "rtabmap/core/DBDriver.h"
 #include <opencv2/features2d/features2d.hpp>
 
@@ -37,7 +37,7 @@ typedef struct sqlite3 sqlite3;
 
 namespace rtabmap {
 
-class RTABMAP_EXP DBDriverSqlite3: public DBDriver {
+class RTABMAP_CORE_EXPORT DBDriverSqlite3: public DBDriver {
 public:
 	DBDriverSqlite3(const ParametersMap & parameters = ParametersMap());
 	virtual ~DBDriverSqlite3();
@@ -54,7 +54,7 @@ protected:
 	virtual bool connectDatabaseQuery(const std::string & url, bool overwritten = false);
 	virtual void disconnectDatabaseQuery(bool save = true, const std::string & outputUrl = "");
 	virtual bool isConnectedQuery() const;
-	virtual long getMemoryUsedQuery() const; // In bytes
+	virtual unsigned long getMemoryUsedQuery() const; // In bytes
 	virtual bool getDatabaseVersionQuery(std::string & version) const;
 	virtual long getNodesMemoryUsedQuery() const;
 	virtual long getLinksMemoryUsedQuery() const;
@@ -96,6 +96,11 @@ protected:
 			float cellSize,
 			const cv::Point3f & viewpoint) const;
 
+	virtual void updateCalibrationQuery(
+			int nodeId,
+			const std::vector<CameraModel> & models,
+			const std::vector<StereoCameraModel> & stereoModels) const;
+
 	virtual void updateDepthImageQuery(
 			int nodeId,
 			const cv::Mat & image) const;
@@ -113,7 +118,7 @@ protected:
 	virtual cv::Mat load2DMapQuery(float & xMin, float & yMin, float & cellSize) const;
 	virtual void saveOptimizedMeshQuery(
 			const cv::Mat & cloud,
-			const std::vector<std::vector<std::vector<unsigned int> > > & polygons,
+			const std::vector<std::vector<std::vector<RTABMAP_PCL_INDEX> > > & polygons,
 #if PCL_VERSION_COMPARE(>=, 1, 8, 0)
 			const std::vector<std::vector<Eigen::Vector2f, Eigen::aligned_allocator<Eigen::Vector2f> > > & texCoords,
 #else
@@ -121,7 +126,7 @@ protected:
 #endif
 			const cv::Mat & textures) const;
 	virtual cv::Mat loadOptimizedMeshQuery(
-			std::vector<std::vector<std::vector<unsigned int> > > * polygons,
+			std::vector<std::vector<std::vector<RTABMAP_PCL_INDEX> > > * polygons,
 #if PCL_VERSION_COMPARE(>=, 1, 8, 0)
 			std::vector<std::vector<Eigen::Vector2f, Eigen::aligned_allocator<Eigen::Vector2f> > > * texCoords,
 #else
@@ -137,11 +142,11 @@ protected:
 	virtual void loadLinksQuery(int signatureId, std::multimap<int, Link> & links, Link::Type type = Link::kUndef) const;
 
 	virtual void loadNodeDataQuery(std::list<Signature *> & signatures, bool images=true, bool scan=true, bool userData=true, bool occupancyGrid=true) const;
-	virtual bool getCalibrationQuery(int signatureId, std::vector<CameraModel> & models, StereoCameraModel & stereoModel) const;
+	virtual bool getCalibrationQuery(int signatureId, std::vector<CameraModel> & models, std::vector<StereoCameraModel> & stereoModels) const;
 	virtual bool getLaserScanInfoQuery(int signatureId, LaserScan & info) const;
 	virtual bool getNodeInfoQuery(int signatureId, Transform & pose, int & mapId, int & weight, std::string & label, double & stamp, Transform & groundTruthPose, std::vector<float> & velocity, GPS & gps, EnvSensors & sensors) const;
 	virtual void getLastNodeIdsQuery(std::set<int> & ids) const;
-	virtual void getAllNodeIdsQuery(std::set<int> & ids, bool ignoreChildren, bool ignoreBadSignatures) const;
+	virtual void getAllNodeIdsQuery(std::set<int> & ids, bool ignoreChildren, bool ignoreBadSignatures, bool ignoreIntermediateNodes) const;
 	virtual void getAllLinksQuery(std::multimap<int, Link> & links, bool ignoreNullLinks, bool withLandmarks) const;
 	virtual void getLastIdQuery(const std::string & tableName, int & id, const std::string & fieldName="id") const;
 	virtual void getInvertedIndexNiQuery(int signatureId, int & ni) const;
@@ -153,6 +158,7 @@ private:
 	std::string queryStepNode() const;
 	std::string queryStepImage() const;
 	std::string queryStepDepth() const;
+	std::string queryStepCalibrationUpdate() const;
 	std::string queryStepDepthUpdate() const;
 	std::string queryStepScanUpdate() const;
 	std::string queryStepSensorData() const;
@@ -165,6 +171,7 @@ private:
 	void stepNode(sqlite3_stmt * ppStmt, const Signature * s) const;
 	void stepImage(sqlite3_stmt * ppStmt, int id, const cv::Mat & imageBytes) const;
 	void stepDepth(sqlite3_stmt * ppStmt, const SensorData & sensorData) const;
+	void stepCalibrationUpdate(sqlite3_stmt * ppStmt, int nodeId, const std::vector<CameraModel> & models, const std::vector<StereoCameraModel> & stereoModels) const;
 	void stepDepthUpdate(sqlite3_stmt * ppStmt, int nodeId, const cv::Mat & imageCompressed) const;
 	void stepScanUpdate(sqlite3_stmt * ppStmt, int nodeId, const LaserScan & image) const;
 	void stepSensorData(sqlite3_stmt * ppStmt, const SensorData & sensorData) const;
@@ -189,7 +196,7 @@ protected:
 	std::string _version;
 
 private:
-	long _memoryUsedEstimate;
+	unsigned long _memoryUsedEstimate;
 	bool _dbInMemory;
 	unsigned int _cacheSize;
 	int _journalMode;

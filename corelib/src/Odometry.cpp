@@ -32,10 +32,13 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/odometry/OdometryViso2.h"
 #include "rtabmap/core/odometry/OdometryDVO.h"
 #include "rtabmap/core/odometry/OdometryOkvis.h"
-#include "rtabmap/core/odometry/OdometryORBSLAM2.h"
+#include "rtabmap/core/odometry/OdometryORBSLAM3.h"
 #include "rtabmap/core/odometry/OdometryLOAM.h"
+#include "rtabmap/core/odometry/OdometryFLOAM.h"
 #include "rtabmap/core/odometry/OdometryMSCKF.h"
 #include "rtabmap/core/odometry/OdometryVINS.h"
+#include "rtabmap/core/odometry/OdometryOpenVINS.h"
+#include "rtabmap/core/odometry/OdometryOpen3D.h"
 #include "rtabmap/core/OdometryInfo.h"
 #include "rtabmap/core/util3d.h"
 #include "rtabmap/core/util3d_mapping.h"
@@ -48,6 +51,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/util2d.h"
 
 #include <pcl/pcl_base.h>
+#include <rtabmap/core/odometry/OdometryORBSLAM2.h>
 
 namespace rtabmap {
 
@@ -80,8 +84,12 @@ Odometry * Odometry::create(Odometry::Type & type, const ParametersMap & paramet
 	case Odometry::kTypeDVO:
 		odometry = new OdometryDVO(parameters);
 		break;
-	case Odometry::kTypeORBSLAM2:
+	case Odometry::kTypeORBSLAM:
+#if defined(RTABMAP_ORB_SLAM) and RTABMAP_ORB_SLAM == 2
 		odometry = new OdometryORBSLAM2(parameters);
+#else
+		odometry = new OdometryORBSLAM3(parameters);
+#endif
 		break;
 	case Odometry::kTypeOkvis:
 		odometry = new OdometryOkvis(parameters);
@@ -89,11 +97,20 @@ Odometry * Odometry::create(Odometry::Type & type, const ParametersMap & paramet
 	case Odometry::kTypeLOAM:
 		odometry = new OdometryLOAM(parameters);
 		break;
+	case Odometry::kTypeFLOAM:
+		odometry = new OdometryFLOAM(parameters);
+		break;
 	case Odometry::kTypeMSCKF:
 		odometry = new OdometryMSCKF(parameters);
 		break;
 	case Odometry::kTypeVINS:
 		odometry = new OdometryVINS(parameters);
+		break;
+	case Odometry::kTypeOpenVINS:
+		odometry = new OdometryOpenVINS(parameters);
+		break;
+	case Odometry::kTypeOpen3D:
+		odometry = new OdometryOpen3D(parameters);
 		break;
 	default:
 		UERROR("Unknown odometry type %d, using F2M instead...", (int)type);
@@ -190,6 +207,7 @@ Odometry::~Odometry()
 
 void Odometry::reset(const Transform & initialPose)
 {
+	UDEBUG("");
 	UASSERT(!initialPose.isNull());
 	previousVelocities_.clear();
 	velocityGuess_.setNull();
@@ -284,38 +302,188 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 {
 	UASSERT_MSG(data.id() >= 0, uFormat("Input data should have ID greater or equal than 0 (id=%d)!", data.id()).c_str());
 
+	// cache imu data
+	if(!data.imu().empty() && !this->canProcessAsyncIMU())
+	{
+		if(!(data.imu().orientation()[0] == 0.0 && data.imu().orientation()[1] == 0.0 && data.imu().orientation()[2] == 0.0))
+		{
+			Transform orientation(0,0,0, data.imu().orientation()[0], data.imu().orientation()[1], data.imu().orientation()[2], data.imu().orientation()[3]);
+			// orientation includes roll and pitch but not yaw in local transform
+			Transform imuT = Transform(data.imu().localTransform().x(),data.imu().localTransform().y(),data.imu().localTransform().z(), 0,0,data.imu().localTransform().theta()) *
+					orientation*
+					data.imu().localTransform().rotation().inverse();
+
+			if(	this->getPose().r11() == 1.0f && this->getPose().r22() == 1.0f && this->getPose().r33() == 1.0f &&
+				this->framesProcessed() == 0)
+			{
+				Eigen::Quaterniond imuQuat = imuT.getQuaterniond();
+				Transform previous = this->getPose();
+				Transform newFramePose = Transform(previous.x(), previous.y(), previous.z(), imuQuat.x(), imuQuat.y(), imuQuat.z(), imuQuat.w());
+				UWARN("Updated initial pose from %s to %s with IMU orientation", previous.prettyPrint().c_str(), newFramePose.prettyPrint().c_str());
+				this->reset(newFramePose);
+			}
+
+			imus_.insert(std::make_pair(data.stamp(), imuT));
+			if(imus_.size() > 1000)
+			{
+				imus_.erase(imus_.begin());
+			}
+		}
+		else
+		{
+			UWARN("Received IMU doesn't have orientation set! It is ignored.");
+		}
+	}
+
+	if(!data.imageRaw().empty())
+	{
+		UDEBUG("Processing image data %dx%d: rgbd models=%ld, stereo models=%ld",
+			data.imageRaw().cols,
+			data.imageRaw().rows,
+			data.cameraModels().size(),
+			data.stereoCameraModels().size());
+	}
+
+
 	if(!_imagesAlreadyRectified && !this->canProcessRawImages() && !data.imageRaw().empty())
 	{
-		if(data.stereoCameraModel().isValidForRectification())
+		if(!data.stereoCameraModels().empty())
 		{
-			if(!stereoModel_.isRectificationMapInitialized() ||
-				stereoModel_.left().imageSize() != data.stereoCameraModel().left().imageSize())
+			bool valid = true;
+			if(data.stereoCameraModels().size() != stereoModels_.size())
 			{
-				stereoModel_ = data.stereoCameraModel();
-				stereoModel_.initRectificationMap();
-				if(stereoModel_.isRectificationMapInitialized())
+				stereoModels_.clear();
+				valid = false;
+			}
+			else
+			{
+				for(size_t i=0; i<data.stereoCameraModels().size() && valid; ++i)
+				{
+					valid = stereoModels_[i].isRectificationMapInitialized() &&
+							stereoModels_[i].left().imageSize() == data.stereoCameraModels()[i].left().imageSize();
+				}
+			}
+
+			if(!valid)
+			{
+				stereoModels_ = data.stereoCameraModels();
+				valid = true;
+				for(size_t i=0; i<stereoModels_.size() && valid; ++i)
+				{
+					stereoModels_[i].initRectificationMap();
+					valid = stereoModels_[i].isRectificationMapInitialized();
+				}
+				if(valid)
 				{
 					UWARN("%s parameter is set to false but the selected odometry approach cannot "
-							"process raw images. We will rectify them for convenience.",
+							"process raw stereo images. We will rectify them for convenience.",
 							Parameters::kRtabmapImagesAlreadyRectified().c_str());
 				}
 				else
 				{
-					UERROR("Odometry approach chosen cannot process raw images (not rectified images) and we cannot rectify them. "
-							"Make sure images are rectified, and set %s parameter back to true.",
+					UERROR("Odometry approach chosen cannot process raw stereo images (not rectified images) "
+							"and we cannot rectify them as the rectification map failed to initialize (valid calibration?). "
+							"Make sure images are rectified and set %s parameter back to true, or "
+							"make sure calibration is valid for rectification",
 							Parameters::kRtabmapImagesAlreadyRectified().c_str());
+					stereoModels_.clear();
 				}
 			}
-			if(stereoModel_.isRectificationMapInitialized())
+			if(valid)
 			{
-				data.setImageRaw(stereoModel_.left().rectifyImage(data.imageRaw()));
-				data.setDepthOrRightRaw(stereoModel_.right().rectifyImage(data.rightRaw()));
+				if(stereoModels_.size()==1)
+				{
+					data.setStereoImage(
+							stereoModels_[0].left().rectifyImage(data.imageRaw()),
+							stereoModels_[0].right().rectifyImage(data.rightRaw()),
+							stereoModels_,
+							false);
+				}
+				else
+				{
+					UASSERT(int((data.imageRaw().cols/data.stereoCameraModels().size())*data.stereoCameraModels().size()) == data.imageRaw().cols);
+					int subImageWidth = data.imageRaw().cols/data.stereoCameraModels().size();
+					cv::Mat rectifiedLeftImages = data.imageRaw().clone();
+					cv::Mat rectifiedRightImages = data.imageRaw().clone();
+					for(size_t i=0; i<stereoModels_.size() && valid; ++i)
+					{
+						cv::Mat rectifiedLeft = stereoModels_[i].left().rectifyImage(cv::Mat(data.imageRaw(), cv::Rect(subImageWidth*i, 0, subImageWidth, data.imageRaw().rows)));
+						cv::Mat rectifiedRight = stereoModels_[i].right().rectifyImage(cv::Mat(data.rightRaw(), cv::Rect(subImageWidth*i, 0, subImageWidth, data.rightRaw().rows)));
+						rectifiedLeft.copyTo(cv::Mat(rectifiedLeftImages, cv::Rect(subImageWidth*i, 0, subImageWidth, data.imageRaw().rows)));
+						rectifiedRight.copyTo(cv::Mat(rectifiedRightImages, cv::Rect(subImageWidth*i, 0, subImageWidth, data.imageRaw().rows)));
+					}
+					data.setStereoImage(rectifiedLeftImages, rectifiedRightImages, stereoModels_, false);
+				}
+			}
+		}
+		else if(!data.cameraModels().empty())
+		{
+			bool valid = true;
+			if(data.cameraModels().size() != models_.size())
+			{
+				models_.clear();
+				valid = false;
+			}
+			else
+			{
+				for(size_t i=0; i<data.cameraModels().size() && valid; ++i)
+				{
+					valid = models_[i].isRectificationMapInitialized() &&
+							models_[i].imageSize() == data.cameraModels()[i].imageSize();
+				}
+			}
+
+			if(!valid)
+			{
+				models_ = data.cameraModels();
+				valid = true;
+				for(size_t i=0; i<models_.size() && valid; ++i)
+				{
+					valid = models_[i].initRectificationMap();
+				}
+				if(valid)
+				{
+					UWARN("%s parameter is set to false but the selected odometry approach cannot "
+							"process raw images. We will rectify them for convenience (only "
+							"rgb is rectified, we assume depth image is already rectified!).",
+							Parameters::kRtabmapImagesAlreadyRectified().c_str());
+				}
+				else
+				{
+					UERROR("Odometry approach chosen cannot process raw images (not rectified images) "
+							"and we cannot rectify them as the rectification map failed to initialize (valid calibration?). "
+							"Make sure images are rectified and set %s parameter back to true, or "
+							"make sure calibration is valid for rectification",
+							Parameters::kRtabmapImagesAlreadyRectified().c_str());
+					models_.clear();
+				}
+			}
+			if(valid)
+			{
+				// Note that only RGB image is rectified, the depth image is assumed to be already registered to rectified RGB camera.
+				if(models_.size()==1)
+				{
+					data.setRGBDImage(models_[0].rectifyImage(data.imageRaw()), data.depthRaw(), models_, false);
+				}
+				else
+				{
+					UASSERT(int((data.imageRaw().cols/data.cameraModels().size())*data.cameraModels().size()) == data.imageRaw().cols);
+					int subImageWidth = data.imageRaw().cols/data.cameraModels().size();
+					cv::Mat rectifiedImages = data.imageRaw().clone();
+					for(size_t i=0; i<models_.size() && valid; ++i)
+					{
+						cv::Mat rectifiedImage = models_[i].rectifyImage(cv::Mat(data.imageRaw(), cv::Rect(subImageWidth*i, 0, subImageWidth, data.imageRaw().rows)));
+						rectifiedImage.copyTo(cv::Mat(rectifiedImages, cv::Rect(subImageWidth*i, 0, subImageWidth, data.imageRaw().rows)));
+					}
+					data.setRGBDImage(rectifiedImages, data.depthRaw(), models_, false);
+				}
 			}
 		}
 		else
 		{
 			UERROR("Odometry approach chosen cannot process raw images (not rectified images). Make sure images "
-					"are rectified, and set %s parameter back to true.",
+					"are rectified, and set %s parameter back to true, or make sure that calibration is valid "
+					"for rectification so we can rectifiy them for convenience",
 					Parameters::kRtabmapImagesAlreadyRectified().c_str());
 		}
 	}
@@ -383,21 +551,6 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 		}
 	}
 
-	// cache imu data
-	if(!data.imu().empty())
-	{
-		if(!(data.imu().orientation()[0] == 0.0 && data.imu().orientation()[1] == 0.0 && data.imu().orientation()[2] == 0.0))
-		{
-			Transform orientation(0,0,0, data.imu().orientation()[0], data.imu().orientation()[1], data.imu().orientation()[2], data.imu().orientation()[3]);
-			// orientation includes roll and pitch but not yaw in local transform
-			imus_.insert(std::make_pair(data.stamp(), Transform(0,0,data.imu().localTransform().theta()) * orientation*data.imu().localTransform().inverse()));
-			if(imus_.size() > 1000)
-			{
-				imus_.erase(imus_.begin());
-			}
-		}
-	}
-
 	// KITTI datasets start with stamp=0
 	double dt = previousStamp_>0.0f || (previousStamp_==0.0f && framesProcessed()==1)?data.stamp() - previousStamp_:0.0;
 	Transform guess = dt>0.0 && guessFromMotion_ && !velocityGuess_.isNull()?Transform::getIdentity():Transform();
@@ -444,7 +597,7 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 	{
 		guess = guessIn;
 	}
-	else if(!data.imu().empty() && !imus_.empty())
+	else if(!imus_.empty())
 	{
 		// replace orientation guess with IMU (if available)
 		imuCurrentTransform = Transform::getTransform(imus_, data.stamp());
@@ -455,6 +608,14 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 					orientation.r11(), orientation.r12(), orientation.r13(), guess.x(),
 					orientation.r21(), orientation.r22(), orientation.r23(), guess.y(),
 					orientation.r31(), orientation.r32(), orientation.r33(), guess.z());
+			if(_force3DoF)
+			{
+				guess = guess.to3DoF();
+			}
+		}
+		else if(!imuLastTransform_.isNull())
+		{
+			UWARN("Could not find imu transform at %f", data.stamp());
 		}
 	}
 
@@ -464,8 +625,26 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 	{
 		// Decimation of images with calibrations
 		SensorData decimatedData = data;
+		int decimationDepth = _imageDecimation;
+		if(	!data.cameraModels().empty() &&
+			data.cameraModels()[0].imageHeight()>0 &&
+			data.cameraModels()[0].imageWidth()>0)
+		{
+			// decimate from RGB image size
+			int targetSize = data.cameraModels()[0].imageHeight() / _imageDecimation;
+			if(targetSize >= data.depthRaw().rows)
+			{
+				decimationDepth = 1;
+			}
+			else
+			{
+				decimationDepth = (int)ceil(float(data.depthRaw().rows) / float(targetSize));
+			}
+		}
+		UDEBUG("decimation rgbOrLeft(rows=%d)=%d, depthOrRight(rows=%d)=%d", data.imageRaw().rows, _imageDecimation, data.depthOrRightRaw().rows, decimationDepth);
+
 		cv::Mat rgbLeft = util2d::decimate(decimatedData.imageRaw(), _imageDecimation);
-		cv::Mat depthRight = util2d::decimate(decimatedData.depthOrRightRaw(), _imageDecimation);
+		cv::Mat depthRight = util2d::decimate(decimatedData.depthOrRightRaw(), decimationDepth);
 		std::vector<CameraModel> cameraModels = decimatedData.cameraModels();
 		for(unsigned int i=0; i<cameraModels.size(); ++i)
 		{
@@ -477,12 +656,15 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 		}
 		else
 		{
-			StereoCameraModel stereoModel = decimatedData.stereoCameraModel();
-			if(stereoModel.isValidForProjection())
+			std::vector<StereoCameraModel> stereoModels = decimatedData.stereoCameraModels();
+			for(unsigned int i=0; i<stereoModels.size(); ++i)
 			{
-				stereoModel.scale(1.0/double(_imageDecimation));
+				stereoModels[i].scale(1.0/double(_imageDecimation));
 			}
-			decimatedData.setStereoImage(rgbLeft, depthRight, stereoModel);
+			if(!stereoModels.empty())
+			{
+				decimatedData.setStereoImage(rgbLeft, depthRight, stereoModels);
+			}
 		}
 
 
@@ -500,16 +682,20 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 			kpts[i].octave += log2value;
 		}
 		data.setFeatures(kpts, decimatedData.keypoints3D(), decimatedData.descriptors());
+		data.setLaserScan(decimatedData.laserScanRaw());
 
 		if(info)
 		{
-			UASSERT(info->newCorners.size() == info->refCorners.size());
+			UASSERT(info->newCorners.size() == info->refCorners.size() || info->refCorners.empty());
 			for(unsigned int i=0; i<info->newCorners.size(); ++i)
 			{
-				info->refCorners[i].x *= _imageDecimation;
-				info->refCorners[i].y *= _imageDecimation;
 				info->newCorners[i].x *= _imageDecimation;
 				info->newCorners[i].y *= _imageDecimation;
+				if(!info->refCorners.empty())
+				{
+					info->refCorners[i].x *= _imageDecimation;
+					info->refCorners[i].y *= _imageDecimation;
+				}
 			}
 			for(std::multimap<int, cv::KeyPoint>::iterator iter=info->words.begin(); iter!=info->words.end(); ++iter)
 			{
@@ -520,7 +706,7 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 			}
 		}
 	}
-	else
+	else if(!data.imageRaw().empty() || !data.laserScanRaw().isEmpty() || (this->canProcessAsyncIMU() && !data.imu().empty()))
 	{
 		t = this->computeTransform(data, guess, info);
 	}
@@ -537,6 +723,7 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 		info->stamp = data.stamp();
 		info->interval = dt;
 		info->transform = t;
+		info->guess = guess;
 		if(_publishRAMUsage)
 		{
 			info->memoryUsage = UProcessInfo::getMemoryUsage()/(1024*1024);
@@ -728,6 +915,12 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 		{
 			UWARN("Odometry automatically reset to latest pose!");
 			this->reset(_pose);
+			_resetCurrentCount = _resetCountdown;
+			if(info)
+			{
+				*info = OdometryInfo();
+			}
+			return this->computeTransform(data, Transform(), info);
 		}
 	}
 

@@ -27,8 +27,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #pragma once
 
-#include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
-
 #include "rtabmap/core/Camera.h"
 #include "rtabmap/utilite/UTimer.h"
 #include <list>
@@ -38,7 +36,7 @@ class UDirectory;
 namespace rtabmap
 {
 
-class RTABMAP_EXP CameraImages :
+class RTABMAP_CORE_EXPORT CameraImages :
 	public Camera
 {
 public:
@@ -46,7 +44,7 @@ public:
 	CameraImages(
 			const std::string & path,
 			float imageRate = 0,
-			const Transform & localTransform = CameraModel::opticalRotation());
+			const Transform & localTransform = Transform::getIdentity());
 	virtual ~CameraImages();
 
 	virtual bool init(const std::string & calibrationFolder = ".", const std::string & cameraName = "");
@@ -72,6 +70,11 @@ public:
 		_filenamesAreTimestamps = fileNamesAreStamps;
 		_timestampsPath=filePath;
 		_syncImageRateWithStamps = syncImageRateWithStamps;
+	}
+
+	void setConfigForEachFrame(bool value)
+	{
+		_hasConfigForEachFrame = value;
 	}
 
 	void setScanPath(
@@ -116,12 +119,14 @@ public:
 
 protected:
 	virtual SensorData captureImage(CameraInfo * info = 0);
+
+private:
 	bool readPoses(
-			std::list<Transform> & outputPoses,
-			std::list<double> & stamps,
-			const std::string & filePath,
-			int format,
-			double maxTimeDiff) const;
+		std::list<Transform> & outputPoses,
+		std::list<double> & stamps,
+		const std::string & filePath,
+		int format,
+		double maxTimeDiff) const;
 
 private:
 	std::string _path;
@@ -151,6 +156,7 @@ private:
 	bool _depthFromScanFillHolesFromBorder;
 
 	bool _filenamesAreTimestamps;
+	bool _hasConfigForEachFrame;
 	std::string _timestampsPath;
 	bool _syncImageRateWithStamps;
 
@@ -162,8 +168,10 @@ private:
 
 	std::list<double> _stamps;
 	std::list<Transform> odometry_;
+	std::list<cv::Mat> covariances_;
 	std::list<Transform> groundTruth_;
 	CameraModel _model;
+	std::list<CameraModel> _models;
 
 	UTimer _captureTimer;
 	double _captureDelay;

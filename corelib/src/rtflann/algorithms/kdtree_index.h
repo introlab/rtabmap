@@ -37,6 +37,7 @@
 #include <cstring>
 #include <stdarg.h>
 #include <cmath>
+#include <random>
 
 #include "rtflann/general.h"
 #include "rtflann/algorithms/nn_index.h"
@@ -362,7 +363,7 @@ public:
 			size_t knn,
 			const SearchParams& params) const
 	{
-		assert(queries.cols == veclen());
+		assert(queries.cols == veclen_);
 		assert(indices.rows >= queries.rows);
 		assert(dists.rows >= queries.rows);
 		assert(indices.cols >= knn);
@@ -430,7 +431,7 @@ public:
 					size_t knn,
 					const SearchParams& params) const
 	{
-		assert(queries.cols == veclen());
+		assert(queries.cols == veclen_);
 		bool use_heap;
 		if (params.use_heap==FLANN_Undefined) {
 			use_heap = (knn>KNN_HEAP_THRESHOLD)?true:false;
@@ -503,7 +504,7 @@ public:
 			float radius,
 			const SearchParams& params) const
 	{
-		assert(queries.cols == veclen());
+		assert(queries.cols == veclen);
 		int count = 0;
 		size_t num_neighbors = std::min(indices.cols, dists.cols);
 		int max_neighbors = params.max_neighbors;
@@ -588,7 +589,7 @@ public:
 			float radius,
 			const SearchParams& params) const
 	{
-		assert(queries.cols == veclen());
+		assert(queries.cols == veclen_);
 		int count = 0;
 
 		Heap<BranchSt>* heap = new Heap<BranchSt>((int)size_);
@@ -677,7 +678,9 @@ protected:
         /* Construct the randomized trees. */
         for (int i = 0; i < trees_; i++) {
             /* Randomize the order of vectors to allow for unbiased sampling. */
-            std::random_shuffle(ind.begin(), ind.end());
+            std::random_device rd;
+            std::mt19937 g(rd());
+            std::shuffle(ind.begin(), ind.end(), g);
             tree_roots_[i] = divideTree(&ind[0], int(size_) );
         }
         delete[] mean_;

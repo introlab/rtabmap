@@ -28,7 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef UTIL3D_FEATURES_H_
 #define UTIL3D_FEATURES_H_
 
-#include <rtabmap/core/RtabmapExp.h>
+#include <rtabmap/core/rtabmap_core_export.h>
 
 #include <opencv2/calib3d/calib3d.hpp>
 #include <rtabmap/core/Transform.h>
@@ -44,28 +44,28 @@ namespace util3d
 {
 
 
-std::vector<cv::Point3f> RTABMAP_EXP generateKeypoints3DDepth(
+std::vector<cv::Point3f> RTABMAP_CORE_EXPORT generateKeypoints3DDepth(
 		const std::vector<cv::KeyPoint> & keypoints,
 		const cv::Mat & depth,
 		const CameraModel & cameraModel,
 		float minDepth = 0,
 		float maxDepth = 0);
 
-std::vector<cv::Point3f> RTABMAP_EXP generateKeypoints3DDepth(
+std::vector<cv::Point3f> RTABMAP_CORE_EXPORT generateKeypoints3DDepth(
 		const std::vector<cv::KeyPoint> & keypoints,
 		const cv::Mat & depth,
 		const std::vector<CameraModel> & cameraModels,
 		float minDepth = 0,
 		float maxDepth = 0);
 
-std::vector<cv::Point3f> RTABMAP_EXP generateKeypoints3DDisparity(
+std::vector<cv::Point3f> RTABMAP_CORE_EXPORT generateKeypoints3DDisparity(
 		const std::vector<cv::KeyPoint> & keypoints,
 		const cv::Mat & disparity,
 		const StereoCameraModel & stereoCameraModel,
 		float minDepth = 0,
 		float maxDepth = 0);
 
-std::vector<cv::Point3f> RTABMAP_EXP generateKeypoints3DStereo(
+std::vector<cv::Point3f> RTABMAP_CORE_EXPORT generateKeypoints3DStereo(
 		const std::vector<cv::Point2f> & leftCorners,
 		const std::vector<cv::Point2f> & rightCorners,
 		const StereoCameraModel & model,
@@ -73,7 +73,7 @@ std::vector<cv::Point3f> RTABMAP_EXP generateKeypoints3DStereo(
 		float minDepth = 0,
 		float maxDepth = 0);
 
-std::map<int, cv::Point3f> RTABMAP_EXP generateWords3DMono(
+std::map<int, cv::Point3f> RTABMAP_CORE_EXPORT generateWords3DMono(
 		const std::map<int, cv::KeyPoint> & kpts,
 		const std::map<int, cv::KeyPoint> & previousKpts,
 		const CameraModel & cameraModel,
@@ -84,7 +84,7 @@ std::map<int, cv::Point3f> RTABMAP_EXP generateWords3DMono(
 		double * variance = 0,
 		std::vector<int> * matchesOut = 0);
 
-std::multimap<int, cv::KeyPoint> RTABMAP_EXP aggregate(
+std::multimap<int, cv::KeyPoint> RTABMAP_CORE_EXPORT aggregate(
 		const std::list<int> & wordIds,
 		const std::vector<cv::KeyPoint> & keypoints);
 

@@ -20,7 +20,7 @@
 #ifndef UEVENTSHANDLER_H
 #define UEVENTSHANDLER_H
 
-#include "rtabmap/utilite/UtiLiteExp.h" // DLL export/import defines
+#include "rtabmap/utilite/utilite_export.h" // DLL export/import defines
 
 #include "rtabmap/utilite/UEventsSender.h"
 class UEvent;
@@ -125,7 +125,7 @@ class UEvent;
  * @see UThreadNode
  *
  */
-class UTILITE_EXP UEventsHandler : public UEventsSender {
+class UTILITE_EXPORT UEventsHandler : public UEventsSender {
 public:
 
 	void registerToEventsManager();

@@ -13,6 +13,8 @@ ADD_SUBDIRECTORY( DetectMoreLoopClosures )
 ADD_SUBDIRECTORY( Export )
 ADD_SUBDIRECTORY( Report )
 ADD_SUBDIRECTORY( Info )
+ADD_SUBDIRECTORY( CleanupLocalGrids )
+ADD_SUBDIRECTORY( GlobalBundleAdjustment )
 
 IF(OPENCV_NONFREE_FOUND)
 ADD_SUBDIRECTORY( VocabularyComparison )

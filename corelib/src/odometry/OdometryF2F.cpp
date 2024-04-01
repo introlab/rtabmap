@@ -73,15 +73,16 @@ Transform OdometryF2F::computeTransform(
 {
 	UTimer timer;
 	Transform output;
-	if(!data.rightRaw().empty() && !data.stereoCameraModel().isValidForProjection())
+	if(!data.rightRaw().empty() &&
+	   (data.stereoCameraModels().empty() || !data.stereoCameraModels()[0].isValidForProjection()))
 	{
-		UERROR("Calibrated stereo camera required");
+		UERROR("Calibrated stereo camera required.");
 		return output;
 	}
 	if(!data.depthRaw().empty() &&
-		(data.cameraModels().size() != 1 || !data.cameraModels()[0].isValidForProjection()))
+		(data.cameraModels().empty() || !data.cameraModels()[0].isValidForProjection()))
 	{
-		UERROR("Calibrated camera required (multi-cameras not supported).");
+		UERROR("Calibrated camera required.");
 		return output;
 	}
 
@@ -99,7 +100,7 @@ Transform OdometryF2F::computeTransform(
 	if(refFrame_.sensorData().isValid())
 	{
 		float maxCorrespondenceDistance = 0.0f;
-		float pmOutlierRatio = 0.0f;
+		float outlierRatio = 0.0f;
 		if(guess.isNull() &&
 			!registrationPipeline_->isImageRequired() &&
 			registrationPipeline_->isScanRequired() &&
@@ -107,12 +108,12 @@ Transform OdometryF2F::computeTransform(
 		{
 			// only on initialization (first frame to register), increase icp max correspondences in case the robot is already moving
 			maxCorrespondenceDistance = Parameters::defaultIcpMaxCorrespondenceDistance();
-			pmOutlierRatio = Parameters::defaultIcpPMOutlierRatio();
+			outlierRatio = Parameters::defaultIcpOutlierRatio();
 			Parameters::parse(parameters_, Parameters::kIcpMaxCorrespondenceDistance(), maxCorrespondenceDistance);
-			Parameters::parse(parameters_, Parameters::kIcpPMOutlierRatio(), pmOutlierRatio);
+			Parameters::parse(parameters_, Parameters::kIcpOutlierRatio(), outlierRatio);
 			ParametersMap params;
 			params.insert(ParametersPair(Parameters::kIcpMaxCorrespondenceDistance(), uNumber2Str(maxCorrespondenceDistance*3.0f)));
-			params.insert(ParametersPair(Parameters::kIcpPMOutlierRatio(), uNumber2Str(0.95f)));
+			params.insert(ParametersPair(Parameters::kIcpOutlierRatio(), uNumber2Str(0.95f)));
 			registrationPipeline_->parseParameters(params);
 		}
 
@@ -129,7 +130,7 @@ Transform OdometryF2F::computeTransform(
 			// set it back
 			ParametersMap params;
 			params.insert(ParametersPair(Parameters::kIcpMaxCorrespondenceDistance(), uNumber2Str(maxCorrespondenceDistance)));
-			params.insert(ParametersPair(Parameters::kIcpPMOutlierRatio(), uNumber2Str(pmOutlierRatio)));
+			params.insert(ParametersPair(Parameters::kIcpOutlierRatio(), uNumber2Str(outlierRatio)));
 			registrationPipeline_->parseParameters(params);
 		}
 
@@ -137,9 +138,7 @@ Transform OdometryF2F::computeTransform(
 		{
 			tmpRefFrame = refFrame_;
 			// reset matches, but keep already extracted features in newFrame.sensorData()
-			newFrame.setWords(std::multimap<int, cv::KeyPoint>());
-			newFrame.setWords3(std::multimap<int, cv::Point3f>());
-			newFrame.setWordsDescriptors(std::multimap<int, cv::Mat>());
+			newFrame.removeAllWords();
 			UWARN("Failed to find a transformation with the provided guess (%s), trying again without a guess.", guess.prettyPrint().c_str());
 			// If optical flow is used, switch temporary to feature matching
 			int visCorTypeBackup = Parameters::defaultVisCorType();
@@ -176,18 +175,18 @@ Transform OdometryF2F::computeTransform(
 
 		if(info && this->isInfoDataFilled())
 		{
-			std::list<std::pair<int, std::pair<cv::KeyPoint, cv::KeyPoint> > > pairs;
+			std::list<std::pair<int, std::pair<int, int> > > pairs;
 			EpipolarGeometry::findPairsUnique(tmpRefFrame.getWords(), newFrame.getWords(), pairs);
 			info->refCorners.resize(pairs.size());
 			info->newCorners.resize(pairs.size());
 			std::map<int, int> idToIndex;
 			int i=0;
-			for(std::list<std::pair<int, std::pair<cv::KeyPoint, cv::KeyPoint> > >::iterator iter=pairs.begin();
+			for(std::list<std::pair<int, std::pair<int, int> > >::iterator iter=pairs.begin();
 				iter!=pairs.end();
 				++iter)
 			{
-				info->refCorners[i] = iter->second.first.pt;
-				info->newCorners[i] = iter->second.second.pt;
+				info->refCorners[i] = tmpRefFrame.getWordsKpts()[iter->second.first].pt;
+				info->newCorners[i] = newFrame.getWordsKpts()[iter->second.second].pt;
 				idToIndex.insert(std::make_pair(iter->first, i));
 				++i;
 			}
@@ -199,12 +198,21 @@ Transform OdometryF2F::computeTransform(
 			}
 
 			Transform t = this->getPose()*motionSinceLastKeyFrame.inverse();
-			for(std::multimap<int, cv::Point3f>::const_iterator iter=tmpRefFrame.getWords3().begin(); iter!=tmpRefFrame.getWords3().end(); ++iter)
+			if(!tmpRefFrame.getWords3().empty())
 			{
-				info->localMap.insert(std::make_pair(iter->first, util3d::transformPoint(iter->second, t)));
+				for(std::multimap<int, int>::const_iterator iter=tmpRefFrame.getWords().begin(); iter!=tmpRefFrame.getWords().end(); ++iter)
+				{
+					info->localMap.insert(std::make_pair(iter->first, util3d::transformPoint(tmpRefFrame.getWords3()[iter->second], t)));
+				}
 			}
 			info->localMapSize = tmpRefFrame.getWords3().size();
-			info->words = newFrame.getWords();
+			if(!newFrame.getWordsKpts().empty())
+			{
+				for(std::multimap<int, int>::const_iterator iter=newFrame.getWords().begin(); iter!=newFrame.getWords().end(); ++iter)
+				{
+					info->words.insert(std::make_pair(iter->first, newFrame.getWordsKpts()[iter->second]));
+				}
+			}
 
 			info->localScanMapSize = tmpRefFrame.sensorData().laserScanRaw().size();
 
@@ -232,16 +240,20 @@ Transform OdometryF2F::computeTransform(
 			(registrationPipeline_->isScanRequired() && (scanKeyFrameThr_ == 0.0f || regInfo.icpInliersRatio <= scanKeyFrameThr_)))
 		{
 			UDEBUG("Update key frame");
-			int features = newFrame.getWordsDescriptors().size();
-			if(registrationPipeline_->isImageRequired() && features == 0)
+			int features = newFrame.getWordsDescriptors().rows;
+			if(!refFrame_.sensorData().isValid() || (features==0 && registrationPipeline_->isImageRequired()))
 			{
 				newFrame = Signature(data);
 				// this will generate features only for the first frame or if optical flow was used (no 3d words)
+				// For scan, we want to use reading filters, so set dummy's scan and set back to reference afterwards
 				Signature dummy;
+				dummy.sensorData().setLaserScan(newFrame.sensorData().laserScanRaw());
+				newFrame.sensorData().setLaserScan(LaserScan());
 				registrationPipeline_->computeTransformationMod(
 						newFrame,
 						dummy);
 				features = (int)newFrame.sensorData().keypoints().size();
+				newFrame.sensorData().setLaserScan(dummy.sensorData().laserScanRaw(), true);
 			}
 
 			if((features >= registrationPipeline_->getMinVisualCorrespondences()) &&
@@ -251,9 +263,7 @@ Transform OdometryF2F::computeTransform(
 			{
 				refFrame_ = newFrame;
 
-				refFrame_.setWords(std::multimap<int, cv::KeyPoint>());
-				refFrame_.setWords3(std::multimap<int, cv::Point3f>());
-				refFrame_.setWordsDescriptors(std::multimap<int, cv::Mat>());
+				refFrame_.removeAllWords();
 
 				//reset motion
 				lastKeyFramePose_.setNull();
@@ -290,6 +300,7 @@ Transform OdometryF2F::computeTransform(
 	}
 
 	data.setFeatures(newFrame.sensorData().keypoints(), newFrame.sensorData().keypoints3D(), newFrame.sensorData().descriptors());
+	data.setLaserScan(newFrame.sensorData().laserScanRaw());
 
 	if(info)
 	{

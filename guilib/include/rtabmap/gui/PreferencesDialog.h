@@ -28,7 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef RTABMAP_PREFERENCESDIALOG_H_
 #define RTABMAP_PREFERENCESDIALOG_H_
 
-#include "rtabmap/gui/RtabmapGuiExp.h" // DLL export/import defines
+#include "rtabmap/gui/rtabmap_gui_export.h" // DLL export/import defines
 
 #include <QDialog>
 #include <QtCore/QModelIndex>
@@ -63,7 +63,7 @@ class Camera;
 class CalibrationDialog;
 class CreateSimpleCalibrationDialog;
 
-class RTABMAPGUI_EXP PreferencesDialog : public QDialog
+class RTABMAP_GUI_EXPORT PreferencesDialog : public QDialog
 {
 	Q_OBJECT
 
@@ -105,6 +105,8 @@ public:
 		kSrcStereoTara 	   = 106,
 		kSrcStereoRealSense2 = 107,
 		kSrcStereoMyntEye  = 108,
+		kSrcStereoZedOC    = 109,
+		kSrcStereoDepthAI  = 110,
 
 		kSrcRGB            = 200,
 		kSrcUsbDevice      = 200,
@@ -120,7 +122,7 @@ public:
 
 	virtual QString getIniFilePath() const;
 	virtual QString getTmpIniFilePath() const;
-	void init();
+	void init(const QString & iniFilePath = "");
 	void setCurrentPanelToSource();
 	virtual QString getDefaultWorkingDirectory() const;
 
@@ -160,9 +162,11 @@ public:
 	bool isPosteriorGraphView() const;
 	bool isWordsCountGraphView() const;
 	bool isLocalizationsCountGraphView() const;
+	bool isRelocalizationColorOdomCacheGraphView() const;
 	int getOdomRegistrationApproach() const;
 	double getOdomF2MGravitySigma() const;
 	bool isOdomDisabled() const;
+	bool isOdomSensorAsGt() const;
 	bool isGroundTruthAligned() const;
 
 	bool isGraphsShown() const;
@@ -223,7 +227,8 @@ public:
 	double getSubtractFilteringAngle() const;
 
 	bool getGridMapShown() const;
-	bool isGridMapFrom3DCloud() const;
+	int getElevationMapShown() const;
+	int getGridMapSensor() const;
 	bool projMapFrame() const;
 	double projMaxGroundAngle() const;
 	double projMaxGroundHeight() const;
@@ -247,16 +252,21 @@ public:
 	PreferencesDialog::Src getSourceDriver() const;
 	QString getSourceDriverStr() const;
 	QString getSourceDevice() const;
+	PreferencesDialog::Src getOdomSourceDriver() const;
 
 	bool isSourceDatabaseStampsUsed() const;
+	bool isSourceDatabaseStereoToDepth() const;
 	bool isSourceRGBDColorOnly() const;
 	int getIMUFilteringStrategy() const;
+	bool getIMUFilteringBaseFrameConversion() const;
 	bool isDepthFilteringAvailable() const;
 	QString getSourceDistortionModel() const;
 	bool isBilateralFiltering() const;
 	double getBilateralSigmaS() const;
 	double getBilateralSigmaR() const;
 	int getSourceImageDecimation() const;
+	int getSourceHistogramMethod() const;
+	bool isSourceFeatureDetection() const;
 	bool isSourceStereoDepthGenerated() const;
 	bool isSourceStereoExposureCompensation() const;
 	bool isSourceScanFromDepth() const;
@@ -266,18 +276,20 @@ public:
 	double getSourceScanVoxelSize() const;
 	int getSourceScanNormalsK() const;
 	double getSourceScanNormalsRadius() const;
-	bool isSourceScanForceGroundNormalsUp() const;
+	double getSourceScanForceGroundNormalsUp() const;
 	Transform getSourceLocalTransform() const;    //Openni group
 	Transform getLaserLocalTransform() const; // directory images
 	Transform getIMULocalTransform() const; // directory images
 	QString getIMUPath() const;
 	int getIMURate() const;
 	Camera * createCamera(bool useRawImages = false, bool useColor = true); // return camera should be deleted if not null
+	Camera * createOdomSensor(Transform & extrinsics, double & timeOffset, float & scaleFactor); // return camera should be deleted if not null
 
 	int getIgnoredDCComponents() const;
 
 	//
 	bool isImagesKept() const;
+	bool isMissingCacheRepublished() const;
 	bool isCloudsKept() const;
 	float getTimeLimit() const;
 	float getDetectionRate() const;
@@ -307,9 +319,10 @@ public Q_SLOTS:
 	void setDetectionRate(double value);
 	void setTimeLimit(float value);
 	void setSLAMMode(bool enabled);
-	void selectSourceDriver(Src src);
+	void selectSourceDriver(Src src, int variant = 0);
 	void calibrate();
 	void calibrateSimple();
+	void calibrateOdomSensorExtrinsics();
 
 private Q_SLOTS:
 	void closeDialog ( QAbstractButton * button );
@@ -332,17 +345,21 @@ private Q_SLOTS:
 	void updateStereoDisparityVisibility();
 	void updateFeatureMatchingVisibility();
 	void updateGlobalDescriptorVisibility();
+	void updateOdometryStackedIndex(int index);
 	void useOdomFeatures();
 	void changeWorkingDirectory();
 	void changeDictionaryPath();
-	void changeOdometryORBSLAM2Vocabulary();
+	void changeOdometryORBSLAMVocabulary();
 	void changeOdometryOKVISConfigPath();
 	void changeOdometryVINSConfigPath();
+	void changeOdometryOpenVINSLeftMask();
+	void changeOdometryOpenVINSRightMask();
 	void changeIcpPMConfigPath();
 	void changeSuperPointModelPath();
 	void changePyMatcherPath();
 	void changePyMatcherModel();
 	void changePyDescriptorPath();
+	void changePyDetectorPath();
 	void readSettingsEnd();
 	void setupTreeView();
 	void updateBasicParameter();
@@ -350,6 +367,7 @@ private Q_SLOTS:
 	void visualizeDistortionModel();
 	void selectSourceDatabase();
 	void selectCalibrationPath();
+	void selectOdomSensorCalibrationPath();
 	void selectSourceImagesStamps();
 	void selectSourceRGBDImagesPathRGB();
 	void selectSourceRGBDImagesPathDepth();
@@ -369,6 +387,7 @@ private Q_SLOTS:
 	void selectSourceMKVPath();
 	void selectSourceSvoPath();
 	void selectSourceRealsense2JsonPath();
+	void selectSourceDepthaiBlobPath();
 	void updateSourceGrpVisibility();
 	void testOdometry();
 	void testCamera();
@@ -406,6 +425,7 @@ private:
 	void addParameters(const QGroupBox * box);
 	QList<QGroupBox*> getGroupBoxes();
 	void readSettingsBegin();
+	Camera * createCamera(Src driver, const QString & device, const QString & calibrationPath, bool useRawImages, bool useColor, bool odomOnly, bool odomSensorExtrinsicsCalib); // return camera should be deleted if not null
 
 protected:
 	PANEL_FLAGS _obsoletePanels;

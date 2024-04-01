@@ -88,7 +88,7 @@ Scene::Scene() :
 		mapRendering_(true),
 		meshRendering_(true),
 		meshRenderingTexture_(true),
-		pointSize_(5.0f),
+		pointSize_(10.0f),
 		boundingBoxRendering_(false),
 		lighting_(false),
 		backfaceCulling_(true),
@@ -97,11 +97,12 @@ Scene::Scene() :
 		g_(0.0f),
 		b_(0.0f),
 		fboId_(0),
-		depthTexture_(0),
+		rboId_(0),
 		screenWidth_(0),
 		screenHeight_(0),
 		doubleTapOn_(false)
 {
+    depthTexture_ = 0;
 	gesture_camera_ = new tango_gl::GestureCamera();
 	gesture_camera_->SetCameraType(
 	      tango_gl::GestureCamera::kThirdPersonFollow);
@@ -176,8 +177,10 @@ void Scene::DeleteResources() {
 	{
 		glDeleteFramebuffers(1, &fboId_);
 		fboId_ = 0;
-		glDeleteTextures(1, &depthTexture_);
-		depthTexture_ = 0;
+		glDeleteRenderbuffers(1, &rboId_);
+		rboId_ = 0;
+        glDeleteTextures(1, &depthTexture_);
+        depthTexture_ = 0;
 	}
 
 	clear();
@@ -217,18 +220,31 @@ void Scene::SetupViewPort(int w, int h) {
 	if (h == 0) {
 		LOGE("Setup graphic height not valid");
 	}
+    
 	UASSERT(gesture_camera_ != 0);
 	gesture_camera_->SetWindowSize(static_cast<float>(w), static_cast<float>(h));
 	glViewport(0, 0, w, h);
-	if(screenWidth_ != w || fboId_ == 0)
+	if(screenWidth_ != w || screenHeight_ != h || fboId_ == 0)
 	{
+        UINFO("Setup viewport OpenGL: %dx%d", w, h);
+        
 		if(fboId_>0)
 		{
 			glDeleteFramebuffers(1, &fboId_);
 			fboId_ = 0;
+			glDeleteRenderbuffers(1, &rboId_);
+			rboId_ = 0;
 			glDeleteTextures(1, &depthTexture_);
-			depthTexture_ = 0;
+            depthTexture_ = 0;
 		}
+
+        GLint originid = 0;
+        glGetIntegerv(GL_FRAMEBUFFER_BINDING, &originid);
+        
+		// regenerate fbo texture
+		// create a framebuffer object, you need to delete them when program exits.
+		glGenFramebuffers(1, &fboId_);
+		glBindFramebuffer(GL_FRAMEBUFFER, fboId_);
 
 		// Create depth texture
 		glGenTextures(1, &depthTexture_);
@@ -237,24 +253,22 @@ void Scene::SetupViewPort(int w, int h) {
 		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, w, h, 0, GL_DEPTH_COMPONENT, GL_UNSIGNED_INT, NULL);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
 		glBindTexture(GL_TEXTURE_2D, 0);
+        
+		glGenRenderbuffers(1, &rboId_);
+		glBindRenderbuffer(GL_RENDERBUFFER, rboId_);
+		glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT16, w, h);
+		glBindRenderbuffer(GL_RENDERBUFFER, 0);
 
-		// regenerate fbo texture
-		// create a framebuffer object, you need to delete them when program exits.
-		glGenFramebuffers(1, &fboId_);
-		glBindFramebuffer(GL_FRAMEBUFFER, fboId_);
-
-		// Set the texture to be at the depth attachment point of the FBO
-		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depthTexture_, 0);
+		// Set the texture to be at the color attachment point of the FBO (we pack depth 32 bits in color)
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, depthTexture_, 0);
+		glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, rboId_);
 
 		GLuint status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
-		if ( status != GL_FRAMEBUFFER_COMPLETE)
-		{
-			LOGE("Frame buffer cannot be generated! Status: %in", status);
-		}
-		glBindFramebuffer(GL_FRAMEBUFFER,0);
-	}
+        UASSERT ( status == GL_FRAMEBUFFER_COMPLETE);
+		glBindFramebuffer(GL_FRAMEBUFFER, originid);
+    }
 	screenWidth_ = w;
 	screenHeight_ = h;
 }
@@ -327,8 +341,9 @@ std::vector<glm::vec4> computeFrustumPlanes(const glm::mat4 & mat, bool normaliz
 /**
  * Tells whether or not b is intersecting f.
  * http://www.txutxi.com/?p=584
- * @param f Viewing frustum.
- * @param b An axis aligned bounding box.
+ * @param planes Viewing frustum.
+ * @param boxMin The axis aligned bounding box min.
+ * @param boxMax The axis aligned bounding box max.
  * @return True if b intersects f, false otherwise.
  */
 bool intersectFrustumAABB(
@@ -367,7 +382,8 @@ bool intersectFrustumAABB(
 }
 
 //Should only be called in OpenGL thread!
-int Scene::Render(const float * uvsTransformed, glm::mat4 arViewMatrix, glm::mat4 arProjectionMatrix, const rtabmap::Mesh & occlusionMesh) {
+int Scene::Render(const float * uvsTransformed, glm::mat4 arViewMatrix, glm::mat4 arProjectionMatrix, const rtabmap::Mesh & occlusionMesh, bool mapping)
+{
 	UASSERT(gesture_camera_ != 0);
 
 	if(currentPose_ == 0)
@@ -400,13 +416,21 @@ int Scene::Render(const float * uvsTransformed, glm::mat4 arViewMatrix, glm::mat
 
 	bool renderBackgroundCamera =
 			background_renderer_ &&
-			gesture_camera_->GetCameraType() == tango_gl::GestureCamera::kFirstPerson &&
-			!rtabmap::glmToTransform(arProjectionMatrix).isNull() &&
-			uvsTransformed;
+            gesture_camera_->GetCameraType() == tango_gl::GestureCamera::kFirstPerson &&
+            !rtabmap::glmToTransform(arProjectionMatrix).isNull() &&
+            uvsTransformed;
+
 	if(renderBackgroundCamera)
 	{
-		projectionMatrix = arProjectionMatrix;
-		viewMatrix = arViewMatrix;
+        if(projectionMatrix[0][0] > arProjectionMatrix[0][0]-0.3)
+        {
+            projectionMatrix = arProjectionMatrix;
+            viewMatrix = arViewMatrix;
+        }
+        else
+        {
+            renderBackgroundCamera = false;
+        }
 	}
 
 	rtabmap::Transform openglCamera = GetOpenGLCameraPose();//*rtabmap::Transform(0.0f, 0.0f, 3.0f, 0.0f, 0.0f, 0.0f);
@@ -456,36 +480,45 @@ int Scene::Render(const float * uvsTransformed, glm::mat4 arViewMatrix, glm::mat
 		glDisable(GL_CULL_FACE);
 	}
 
-	UTimer timer;
+	bool onlineBlending =
+        (!meshRendering_ &&
+         occlusionMesh.cloud.get() &&
+         occlusionMesh.cloud->size()) ||
+        (blending_ &&
+         gesture_camera_->GetCameraType()!=tango_gl::GestureCamera::kTopOrtho &&
+         mapRendering_ && meshRendering_ &&
+         (cloudsToDraw.size() > 1 || (renderBackgroundCamera && wireFrame_)));
 
-	bool onlineBlending = (renderBackgroundCamera && occlusionMesh.cloud.get() && occlusionMesh.cloud->size()) || (blending_ && gesture_camera_->GetCameraType()!=tango_gl::GestureCamera::kTopOrtho && mapRendering_ && meshRendering_ && cloudsToDraw.size()>1);
 	if(onlineBlending && fboId_)
 	{
+        GLint originid = 0;
+        glGetIntegerv(GL_FRAMEBUFFER_BINDING, &originid);
+        
 		// set the rendering destination to FBO
 		glBindFramebuffer(GL_FRAMEBUFFER, fboId_);
 
-		glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
-		glClearColor(1, 1, 1, 1);
+		glClearColor(0, 0, 0, 0);
 		glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
-
-		if(renderBackgroundCamera)
-		{
-			PointCloudDrawable drawable(occlusionMesh);
-			drawable.Render(projectionMatrix, viewMatrix, true, pointSize_, false, false, 999.0f);
-		}
-		else
-		{
-			// Draw scene
-			for(std::vector<PointCloudDrawable*>::const_iterator iter=cloudsToDraw.begin(); iter!=cloudsToDraw.end(); ++iter)
-			{
-				// set large distance to cam to use low res polygons for fast processing
-				(*iter)->Render(projectionMatrix, viewMatrix, meshRendering_, pointSize_, false, false, 999.0f);
-			}
-		}
-
+        
+        // Draw scene
+        for(std::vector<PointCloudDrawable*>::const_iterator iter=cloudsToDraw.begin(); iter!=cloudsToDraw.end(); ++iter)
+        {
+            Eigen::Vector3f cloudToCamera(
+                      (*iter)->getPose().x() - openglCamera.x(),
+                      (*iter)->getPose().y() - openglCamera.y(),
+                      (*iter)->getPose().z() - openglCamera.z());
+            float distanceToCameraSqr = cloudToCamera[0]*cloudToCamera[0] + cloudToCamera[1]*cloudToCamera[1] + cloudToCamera[2]*cloudToCamera[2];
+            (*iter)->Render(projectionMatrix, viewMatrix, meshRendering_, pointSize_, false, false, distanceToCameraSqr, 0, 0, 0, 0, 0, true);
+        }
+        
+        if(!meshRendering_ && occlusionMesh.cloud.get() && occlusionMesh.cloud->size())
+        {
+            PointCloudDrawable drawable(occlusionMesh);
+            drawable.Render(projectionMatrix, viewMatrix, true, pointSize_, false, false, 0, 0, 0, 0, 0, 0, true);
+        }
+        
 		// back to normal window-system-provided framebuffer
-		glBindFramebuffer(GL_FRAMEBUFFER, 0); // unbind
-		glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+		glBindFramebuffer(GL_FRAMEBUFFER, originid); // unbind
 	}
 
 	if(doubleTapOn_ && gesture_camera_->GetCameraType() != tango_gl::GestureCamera::kFirstPerson)
@@ -493,16 +526,21 @@ int Scene::Render(const float * uvsTransformed, glm::mat4 arViewMatrix, glm::mat
 		glClearColor(0, 0, 0, 0);
 		glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 
+        // FIXME: we could use the depthTexture if already computed!
 		for(std::vector<PointCloudDrawable*>::const_iterator iter=cloudsToDraw.begin(); iter!=cloudsToDraw.end(); ++iter)
 		{
-			// set large distance to cam to use low res polygons for fast processing
-			(*iter)->Render(projectionMatrix, viewMatrix, meshRendering_, pointSize_*10.0f, false, false, 999.0f, 0, 0, 0, 0, 0, true);
+            Eigen::Vector3f cloudToCamera(
+                      (*iter)->getPose().x() - openglCamera.x(),
+                      (*iter)->getPose().y() - openglCamera.y(),
+                      (*iter)->getPose().z() - openglCamera.z());
+            float distanceToCameraSqr = cloudToCamera[0]*cloudToCamera[0] + cloudToCamera[1]*cloudToCamera[1] + cloudToCamera[2]*cloudToCamera[2];
+            
+            (*iter)->Render(projectionMatrix, viewMatrix, meshRendering_, pointSize_*10.0f, false, false, distanceToCameraSqr, 0, 0, 0, 0, 0, true);
 		}
 
 		GLubyte zValue[4];
 		glReadPixels(doubleTapPos_.x*screenWidth_, screenHeight_-doubleTapPos_.y*screenHeight_, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, zValue);
-		float fromFixed = 256.0f/255.0f;
-		float zValueF = float(zValue[0]/255.0f)*fromFixed + float(zValue[1]/255.0f)*fromFixed/255.0f + float(zValue[2]/255.0f)*fromFixed/65025.0f + float(zValue[3]/255.0f)*fromFixed/160581375.0f;
+		float zValueF = float(zValue[0]/255.0f) + float(zValue[1]/255.0f)/255.0f + float(zValue[2]/255.0f)/65025.0f + float(zValue[3]/255.0f)/160581375.0f;
 
 		if(zValueF != 0.0f)
 		{
@@ -516,15 +554,15 @@ int Scene::Render(const float * uvsTransformed, glm::mat4 arViewMatrix, glm::mat
 
 	glClearColor(r_, g_, b_, 1.0f);
 	glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
+    
+    if(renderBackgroundCamera && (!onlineBlending || !meshRendering_))
+    {
+        background_renderer_->Draw(uvsTransformed, 0, screenWidth_, screenHeight_, false);
 
-	if(renderBackgroundCamera)
-	{
-		background_renderer_->Draw(uvsTransformed);
-
-		//To debug occlusion image:
-		//PointCloudDrawable drawable(occlusionMesh);
-		//drawable.Render(projectionMatrix, viewMatrix, true, pointSize_, false, false, 999.0f);
-	}
+        //To debug occlusion image:
+        //PointCloudDrawable drawable(occlusionMesh);
+        //drawable.Render(projectionMatrix, viewMatrix, true, pointSize_, false, false, 999.0f);
+    }
 
 	if(!currentPose_->isNull())
 	{
@@ -552,6 +590,10 @@ int Scene::Render(const float * uvsTransformed, glm::mat4 arViewMatrix, glm::mat
 		{
 			trace_->Render(projectionMatrix, viewMatrix);
 		}
+        else
+        {
+            trace_->ClearVertexArray();
+        }
 	}
 
 	if(gridVisible_ && !renderBackgroundCamera)
@@ -592,10 +634,15 @@ int Scene::Render(const float * uvsTransformed, glm::mat4 arViewMatrix, glm::mat
 
 	if(onlineBlending)
 	{
+        if(renderBackgroundCamera && meshRendering_)
+        {
+            background_renderer_->Draw(uvsTransformed, depthTexture_, screenWidth_, screenHeight_, mapping);
+        }
+        
 		glDisable (GL_BLEND);
 		glDepthMask(GL_TRUE);
 	}
-
+    
 	//draw markers on foreground
 	for(std::map<int, tango_gl::Axis*>::const_iterator iter=markers_.begin(); iter!=markers_.end(); ++iter)
 	{
@@ -672,18 +719,10 @@ void Scene::updateGraph(
 		const std::multimap<int, rtabmap::Link> & links)
 {
 	LOGI("updateGraph");
-	if(graph_)
-	{
-		delete graph_;
-		graph_ = 0;
-	}
-
 	//create
-	if(graphVisible_)
-	{
-		UASSERT(graph_shader_program_ != 0);
-		graph_ = new GraphDrawable(graph_shader_program_, poses, links);
-	}
+    UASSERT(graph_shader_program_ != 0);
+    delete graph_;
+    graph_ = new GraphDrawable(graph_shader_program_, poses, links);
 }
 
 void Scene::setGraphVisible(bool visible)

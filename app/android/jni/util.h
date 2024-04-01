@@ -28,8 +28,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef UTIL_H_
 #define UTIL_H_
 
-
-#include <android/log.h>
 #include <rtabmap/utilite/UEventsHandler.h>
 #include <rtabmap/utilite/ULogger.h>
 #include <rtabmap/core/CameraModel.h>
@@ -46,8 +44,13 @@ class LogHandler : public UEventsHandler
 public:
 	LogHandler()
 	{
-		ULogger::setLevel(ULogger::kDebug);
-		ULogger::setEventLevel(ULogger::kDebug);
+#ifdef DISABLE_LOG
+		ULogger::setLevel(ULogger::kWarning);
+		ULogger::setEventLevel(ULogger::kWarning);
+#else
+        ULogger::setLevel(ULogger::kDebug);
+        ULogger::setEventLevel(ULogger::kDebug);
+#endif
 		ULogger::setPrintThreadId(true);
 
 		registerToEventsManager();
@@ -55,7 +58,7 @@ public:
 protected:
 	virtual bool handleEvent(UEvent * event)
 	{
-		if(event->getClassName().compare("ULogEvent") == 0)
+        if(event->getClassName().compare("ULogEvent") == 0)
 		{
 			ULogEvent * logEvent = (ULogEvent*)event;
 			if(logEvent->getCode() == ULogger::kDebug)
@@ -78,7 +81,6 @@ protected:
 			{
 				LOGF("%s", logEvent->getMsg().c_str());
 			}
-
 		}
 		return false;
 	}

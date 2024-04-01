@@ -31,17 +31,21 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QVBoxLayout>
 #include <QGraphicsScene>
 #include <QGraphicsEllipseItem>
+#include <QGraphicsRectItem>
 #include <QtGui/QWheelEvent>
 #include <QGraphicsSceneHoverEvent>
 #include <QMenu>
 #include <QtGui/QDesktopServices>
 #include <QtGui/QContextMenuEvent>
 #include <QColorDialog>
+#include <QPrinter>
+#include <QFileDialog>
 #ifdef QT_SVG_LIB
 #include <QtSvg/QSvgGenerator>
 #endif
 #include <QInputDialog>
 #include <QMessageBox>
+#include <QToolTip>
 
 #include <QtCore/QDir>
 #include <QtCore/QDateTime>
@@ -54,13 +58,20 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/ULogger.h>
 #include <rtabmap/utilite/UTimer.h>
 
+#include <QtGlobal>
+#if QT_VERSION >= 0x050000
+	#include <QStandardPaths>
+#endif
+
+#include <fstream>
+
 namespace rtabmap {
 
 class NodeItem: public QGraphicsEllipseItem
 {
 public:
 	// in meter
-	NodeItem(int id, int mapId, const Transform & pose, float radius, int weight=-1) :
+	NodeItem(int id, int mapId, const Transform & pose, float radius, int weight, GraphViewer::ViewPlane plane, float linkWidth) :
 		QGraphicsEllipseItem(QRectF(-radius*100.0f,-radius*100.0f,radius*100.0f*2.0f,radius*100.0f*2.0f)),
 		_id(id),
 		_mapId(mapId),
@@ -68,13 +79,16 @@ public:
 		_pose(pose),
 		_line(0)
 	{
-		this->setPos(-pose.y()*100.0f,-pose.x()*100.0f);
+		this->setPose(pose, plane);
 		this->setBrush(pen().color());
 		this->setAcceptHoverEvents(true);
 		float r,p,yaw;
 		pose.getEulerAngles(r, p, yaw);
 		radius*=100.0f;
 		_line = new QGraphicsLineItem(0,0,-radius*sin(yaw),-radius*cos(yaw), this);
+		QPen pen = _line->pen();
+		pen.setWidth(linkWidth*100.0f);
+		_line->setPen(pen);
 	}
 	virtual ~NodeItem() {}
 
@@ -87,7 +101,9 @@ public:
 		b.setColor(color);
 		this->setBrush(b);
 
-		_line->setPen(QPen(QColor(255-color.red(), 255-color.green(), 255-color.blue())));
+		QPen pen = _line->pen();
+		pen.setColor(QColor(255-color.red(), 255-color.green(), 255-color.blue()));
+		_line->setPen(pen);
 	}
 
 	void setRadius(float radius)
@@ -102,7 +118,28 @@ public:
 	int id() const {return _id;};
 	int mapId() const {return _mapId;}
 	const Transform & pose() const {return _pose;}
-	void setPose(const Transform & pose) {this->setPos(-pose.y()*100.0f,-pose.x()*100.0f); _pose=pose;}
+	void setPose(const Transform & pose, GraphViewer::ViewPlane plane) {
+		switch(plane)
+		{
+		case GraphViewer::XZ:
+			this->setPos(pose.x()*100.0f,-pose.z()*100.0f);
+			break;
+		case GraphViewer::YZ:
+			this->setPos(pose.y()*100.0f,-pose.z()*100.0f);
+			break;
+		default: // XY
+			this->setPos(-pose.y()*100.0f,-pose.x()*100.0f);
+			break;
+		}
+		_pose=pose;
+		float r,p,yaw;
+		_pose.getEulerAngles(r, p, yaw);
+		if(_line)
+		{
+			float radius = this->rect().width()/2.0f;
+			_line->setLine(0,0,-radius*sin(yaw),-radius*cos(yaw));
+		}
+	}
 
 protected:
 	virtual void hoverEnterEvent ( QGraphicsSceneHoverEvent * event )
@@ -136,8 +173,8 @@ private:
 class NodeGPSItem: public NodeItem
 {
 public:
-	NodeGPSItem(int id, int mapId, const Transform & pose, float radius, const GPS & gps) :
-		NodeItem(id, mapId, pose, radius),
+	NodeGPSItem(int id, int mapId, const Transform & pose, float radius, const GPS & gps, GraphViewer::ViewPlane plane, float linkWidth) :
+		NodeItem(id, mapId, pose, radius, -1, plane, linkWidth),
 		_gps(gps)
 	{
 	}
@@ -160,8 +197,7 @@ class LinkItem: public QGraphicsLineItem
 {
 public:
 	// in meter
-	LinkItem(int from, int to, const Transform & poseA, const Transform & poseB, const Link & link, bool interSessionClosure) :
-		QGraphicsLineItem(-poseA.y()*100.0f, -poseA.x()*100.0f, -poseB.y()*100.0f, -poseB.x()*100.0f),
+	LinkItem(int from, int to, const Transform & poseA, const Transform & poseB, const Link & link, bool interSessionClosure, GraphViewer::ViewPlane plane) :
 		_from(from),
 		_to(to),
 		_poseA(poseA),
@@ -169,6 +205,7 @@ public:
 		_link(link),
 		_interSession(interSessionClosure)
 	{
+		this->setPoses(poseA, poseB, plane);
 		this->setAcceptHoverEvents(true);
 	}
 	virtual ~LinkItem() {}
@@ -180,9 +217,20 @@ public:
 		this->setPen(p);
 	}
 
-	void setPoses(const Transform & poseA, const Transform & poseB)
+	void setPoses(const Transform & poseA, const Transform & poseB, GraphViewer::ViewPlane plane)
 	{
-		this->setLine(-poseA.y()*100.0f, -poseA.x()*100.0f, -poseB.y()*100.0f, -poseB.x()*100.0f);
+		switch(plane)
+		{
+		case GraphViewer::XZ:
+			this->setLine(poseA.x()*100.0f, -poseA.z()*100.0f, poseB.x()*100.0f, -poseB.z()*100.0f);
+			break;
+		case GraphViewer::YZ:
+			this->setLine(poseA.y()*100.0f, -poseA.z()*100.0f, poseB.y()*100.0f, -poseB.z()*100.0f);
+			break;
+		default: // XY
+			this->setLine(-poseA.y()*100.0f, -poseA.x()*100.0f, -poseB.y()*100.0f, -poseB.x()*100.0f);
+			break;
+		}
 		_poseA = poseA;
 		_poseB = poseB;
 	}
@@ -204,10 +252,10 @@ public:
 protected:
 	virtual void hoverEnterEvent ( QGraphicsSceneHoverEvent * event )
 	{
-		QString str = QString("%1->%2 (%3 m)").arg(_from).arg(_to).arg(_poseA.getDistance(_poseB));
+		QString str = QString("%1->%2 (type=%3 length=%4 m)").arg(_from).arg(_to).arg(_link.type()).arg(_poseA.getDistance(_poseB));
 		if(!_link.transform().isNull())
 		{
-			str.append(QString("\n%1\n%2 %3").arg(_link.transform().prettyPrint().c_str()).arg(_link.transVariance()).arg(_link.rotVariance()));
+			str.append(QString("\n%1\nvar= %2 %3").arg(_link.transform().prettyPrint().c_str()).arg(_link.transVariance()).arg(_link.rotVariance()));
 		}
 		this->setToolTip(str);
 		QPen pen = this->pen();
@@ -236,6 +284,7 @@ private:
 GraphViewer::GraphViewer(QWidget * parent) :
 		QGraphicsView(parent),
 		_nodeColor(Qt::blue),
+		_nodeOdomCacheColor(Qt::darkGreen),
 		_currentGoalColor(Qt::darkMagenta),
 		_neighborColor(Qt::blue),
 		_loopClosureColor(Qt::red),
@@ -267,7 +316,10 @@ GraphViewer::GraphViewer(QWidget * parent) :
 		_localRadius(0),
 		_loopClosureOutlierThr(0),
 		_maxLinkLength(0.02f),
-		_orientationENU(false)
+		_orientationENU(false),
+		_mouseTracking(false),
+		_viewPlane(XY),
+		_ensureFrameVisible(true)
 {
 	this->setScene(new QGraphicsScene(this));
 	this->setDragMode(QGraphicsView::ScrollHandDrag);
@@ -279,30 +331,99 @@ GraphViewer::GraphViewer(QWidget * parent) :
 	_root->setParentItem(_world);
 
 	// add referential
+	QGraphicsLineItem * item;
 	_originReferential = new QGraphicsItemGroup();
 	this->scene()->addItem(_originReferential); // ownership transfered
-	QGraphicsLineItem * item = this->scene()->addLine(0,0,0,-100, QPen(QBrush(Qt::red), _linkWidth));
+
+	// XY referential
+	_originReferentialXY = new QGraphicsItemGroup();
+	this->scene()->addItem(_originReferentialXY); // ownership transfered
+	item = this->scene()->addLine(0,0,0,-100, QPen(QBrush(Qt::red), _linkWidth));
 	item->setZValue(1);
 	item->setParentItem(_root);
-	_originReferential->addToGroup(item);
+	_originReferentialXY->addToGroup(item);
 	item = this->scene()->addLine(0,0,-100,0, QPen(QBrush(Qt::green), _linkWidth));
 	item->setZValue(1);
 	item->setParentItem(_root);
-	_originReferential->addToGroup(item);
+	_originReferentialXY->addToGroup(item);
+	_originReferential->addToGroup(_originReferentialXY);
+
+	// XZ referential
+	_originReferentialXZ = new QGraphicsItemGroup();
+	this->scene()->addItem(_originReferentialXZ); // ownership transfered
+	item = this->scene()->addLine(0,0,100,0, QPen(QBrush(Qt::red), _linkWidth));
+	item->setZValue(1);
+	item->setParentItem(_root);
+	_originReferentialXZ->addToGroup(item);
+	item = this->scene()->addLine(0,0,0,-100, QPen(QBrush(Qt::blue), _linkWidth));
+	item->setZValue(1);
+	item->setParentItem(_root);
+	_originReferentialXZ->addToGroup(item);
+	_originReferential->addToGroup(_originReferentialXZ);
+	_originReferentialXZ->setVisible(false);
+
+	// YZ referential
+	_originReferentialYZ = new QGraphicsItemGroup();
+	this->scene()->addItem(_originReferentialYZ); // ownership transfered
+	item = this->scene()->addLine(0,0,100,0, QPen(QBrush(Qt::green), _linkWidth));
+	item->setZValue(1);
+	item->setParentItem(_root);
+	_originReferentialYZ->addToGroup(item);
+	item = this->scene()->addLine(0,0,0,-100, QPen(QBrush(Qt::blue), _linkWidth));
+	item->setZValue(1);
+	item->setParentItem(_root);
+	_originReferentialYZ->addToGroup(item);
+	_originReferential->addToGroup(_originReferentialYZ);
+	_originReferentialYZ->setVisible(false);
+
 	_originReferential->setZValue(1);
 	_originReferential->setParentItem(_root);
 
 	// current pose
 	_referential = new QGraphicsItemGroup();
 	this->scene()->addItem(_referential); // ownership transfered
+
+	// XY
+	_referentialXY = new QGraphicsItemGroup();
+	this->scene()->addItem(_referentialXY); // ownership transfered
 	item = this->scene()->addLine(0,0,0,-50, QPen(QBrush(Qt::red), _linkWidth));
 	item->setZValue(100);
 	item->setParentItem(_root);
-	_referential->addToGroup(item);
+	_referentialXY->addToGroup(item);
 	item = this->scene()->addLine(0,0,-50,0, QPen(QBrush(Qt::green), _linkWidth));
 	item->setZValue(100);
 	item->setParentItem(_root);
-	_referential->addToGroup(item);
+	_referentialXY->addToGroup(item);
+	_referential->addToGroup(_referentialXY);
+
+	// XZ
+	_referentialXZ = new QGraphicsItemGroup();
+	this->scene()->addItem(_referentialXZ); // ownership transfered
+	item = this->scene()->addLine(0,0,50,0, QPen(QBrush(Qt::red), _linkWidth));
+	item->setZValue(100);
+	item->setParentItem(_root);
+	_referentialXZ->addToGroup(item);
+	item = this->scene()->addLine(0,0,0,-50, QPen(QBrush(Qt::blue), _linkWidth));
+	item->setZValue(100);
+	item->setParentItem(_root);
+	_referentialXZ->addToGroup(item);
+	_referential->addToGroup(_referentialXZ);
+	_referentialXZ->setVisible(false);
+
+	// XZ
+	_referentialYZ = new QGraphicsItemGroup();
+	this->scene()->addItem(_referentialYZ); // ownership transfered
+	item = this->scene()->addLine(0,0,50,0, QPen(QBrush(Qt::green), _linkWidth));
+	item->setZValue(100);
+	item->setParentItem(_root);
+	_referentialYZ->addToGroup(item);
+	item = this->scene()->addLine(0,0,0,-50, QPen(QBrush(Qt::blue), _linkWidth));
+	item->setZValue(100);
+	item->setParentItem(_root);
+	_referentialYZ->addToGroup(item);
+	_referential->addToGroup(_referentialYZ);
+	_referentialYZ->setVisible(false);
+
 	_referential->setZValue(100);
 	_referential->setParentItem(_root);
 
@@ -336,6 +457,12 @@ GraphViewer::GraphViewer(QWidget * parent) :
 	_gpsGraphRoot->setZValue(3);
 	_gpsGraphRoot->setParentItem(_root);
 
+	_odomCacheOverlay = this->scene()->addRect(0,0,0,0);
+	_odomCacheOverlay->setZValue(21); // just under odom cache nodes and links
+	_odomCacheOverlay->setParentItem(_graphRoot);
+	_odomCacheOverlay->setBrush(QBrush(QColor(255, 255, 255, 150)));
+	_odomCacheOverlay->setPen(QPen(Qt::NoPen));
+
 	this->restoreDefaults();
 
 	this->fitInView(this->sceneRect(), Qt::KeepAspectRatio);
@@ -354,7 +481,8 @@ void GraphViewer::setWorldMapRotation(const float & theta)
 void GraphViewer::updateGraph(const std::map<int, Transform> & poses,
 				 const std::multimap<int, Link> & constraints,
 				 const std::map<int, int> & mapIds,
-				 const std::map<int, int> & weights)
+				 const std::map<int, int> & weights,
+				 const std::set<int> & odomCacheIds)
 {
 	UTimer timer;
 	bool wasVisible = _graphRoot->isVisible();
@@ -365,8 +493,18 @@ void GraphViewer::updateGraph(const std::map<int, Transform> & poses,
 	//Hide nodes and links
 	for(QMap<int, NodeItem*>::iterator iter = _nodeItems.begin(); iter!=_nodeItems.end(); ++iter)
 	{
+		QColor color = _nodeColor;
+		bool isOdomCache = odomCacheIds.find(iter.key()) != odomCacheIds.end();
+		if(iter.key()<0)
+		{
+			color = QColor(255-color.red(), 255-color.green(), 255-color.blue());
+		}
+		else if(isOdomCache)
+		{
+			color = _nodeOdomCacheColor;
+		}
 		iter.value()->hide();
-		iter.value()->setColor(iter.key()<0?QColor(255-_nodeColor.red(), 255-_nodeColor.green(), 255-_nodeColor.blue()):_nodeColor); // reset color
+		iter.value()->setColor(color); // reset color
 		iter.value()->setZValue(iter.key()<0?21:20);
 	}
 	for(QMultiMap<int, LinkItem*>::iterator iter = _linkItems.begin(); iter!=_linkItems.end(); ++iter)
@@ -381,17 +519,27 @@ void GraphViewer::updateGraph(const std::map<int, Transform> & poses,
 			QMap<int, NodeItem*>::iterator itemIter = _nodeItems.find(iter->first);
 			if(itemIter != _nodeItems.end())
 			{
-				itemIter.value()->setPose(iter->second);
+				itemIter.value()->setPose(iter->second, _viewPlane);
 				itemIter.value()->show();
 			}
 			else
 			{
 				// create node item
+				QColor color = _nodeColor;
+				bool isOdomCache = odomCacheIds.find(iter->first) != odomCacheIds.end();
+				if(iter->first<0)
+				{
+					color = QColor(255-color.red(), 255-color.green(), 255-color.blue());
+				}
+				else if(isOdomCache)
+				{
+					color = _nodeOdomCacheColor;
+				}
 				const Transform & pose = iter->second;
-				NodeItem * item = new NodeItem(iter->first, uContains(mapIds, iter->first)?mapIds.at(iter->first):-1, pose, _nodeRadius, uContains(weights, iter->first)?weights.at(iter->first):-1);
+				NodeItem * item = new NodeItem(iter->first, uContains(mapIds, iter->first)?mapIds.at(iter->first):-1, pose, _nodeRadius, uContains(weights, iter->first)?weights.at(iter->first):-1, _viewPlane, _linkWidth);
 				this->scene()->addItem(item);
 				item->setZValue(iter->first<0?21:20);
-				item->setColor(iter->first<0?QColor(255-_nodeColor.red(), 255-_nodeColor.green(), 255-_nodeColor.blue()):_nodeColor);
+				item->setColor(color);
 				item->setParentItem(_graphRoot);
 				item->setVisible(_nodeVisible);
 				_nodeItems.insert(iter->first, item);
@@ -420,9 +568,9 @@ void GraphViewer::updateGraph(const std::map<int, Transform> & poses,
 				itemIter = _linkItems.find(iter->first);
 				while(itemIter.key() == idFrom && itemIter != _linkItems.end())
 				{
-					if(itemIter.value()->to() == idTo)
+					if(itemIter.value()->to() == idTo && itemIter.value()->type() == iter->second.type())
 					{
-						itemIter.value()->setPoses(poseA, poseB);
+						itemIter.value()->setPoses(poseA, poseB, _viewPlane);
 						itemIter.value()->show();
 						linkItem = itemIter.value();
 						break;
@@ -437,16 +585,26 @@ void GraphViewer::updateGraph(const std::map<int, Transform> & poses,
 				interSessionClosure = mapIds.at(jterA->first) != mapIds.at(jterB->first);
 			}
 
+			bool isLinkedToOdomCachePoses =
+					odomCacheIds.find(idFrom)!=odomCacheIds.end() ||
+					odomCacheIds.find(idTo)!=odomCacheIds.end();
+
+			if(isLinkedToOdomCachePoses)
+			{
+				_nodeItems.value(idFrom)->setZValue(odomCacheIds.find(idFrom)!=odomCacheIds.end()?24:23);
+				_nodeItems.value(idTo)->setZValue(odomCacheIds.find(idTo)!=odomCacheIds.end()?24:23);
+			}
+
 			if(poseA.getDistance(poseB) > _maxLinkLength)
 			{
 				if(linkItem == 0)
 				{
 					//create a link item
-					linkItem = new LinkItem(idFrom, idTo, poseA, poseB, iter->second, interSessionClosure);
+					linkItem = new LinkItem(idFrom, idTo, poseA, poseB, iter->second, interSessionClosure, _viewPlane);
 					QPen p = linkItem->pen();
 					p.setWidthF(_linkWidth*100.0f);
 					linkItem->setPen(p);
-					linkItem->setZValue(10);
+					linkItem->setZValue(isLinkedToOdomCachePoses?22:10);
 					this->scene()->addItem(linkItem);
 					linkItem->setParentItem(_graphRoot);
 					_linkItems.insert(idFrom, linkItem);
@@ -477,7 +635,14 @@ void GraphViewer::updateGraph(const std::map<int, Transform> & poses,
 				}
 				else if(iter->second.type() == Link::kUserClosure)
 				{
-					linkItem->setColor(_loopClosureUserColor);
+					if(_intraInterSessionColors)
+					{
+						linkItem->setColor(interSessionClosure?_loopInterSessionColor:_loopIntraSessionColor);
+					}
+					else
+					{
+						linkItem->setColor(_loopClosureUserColor);
+					}
 				}
 				else if(iter->second.type() == Link::kLandmark)
 				{
@@ -488,12 +653,12 @@ void GraphViewer::updateGraph(const std::map<int, Transform> & poses,
 					if(_intraInterSessionColors)
 					{
 						linkItem->setColor(interSessionClosure?_loopInterSessionColor:_loopIntraSessionColor);
-						linkItem->setZValue(interSessionClosure?6:7);
+						linkItem->setZValue(isLinkedToOdomCachePoses?22:interSessionClosure?6:7);
 					}
 					else
 					{
 						linkItem->setColor(_loopClosureLocalColor);
-						linkItem->setZValue(7);
+						linkItem->setZValue(isLinkedToOdomCachePoses?22:7);
 					}
 				}
 				else
@@ -501,12 +666,12 @@ void GraphViewer::updateGraph(const std::map<int, Transform> & poses,
 					if(_intraInterSessionColors)
 					{
 						linkItem->setColor(interSessionClosure?_loopInterSessionColor:_loopIntraSessionColor);
-						linkItem->setZValue(interSessionClosure?8:9);
+						linkItem->setZValue(isLinkedToOdomCachePoses?22:interSessionClosure?8:9);
 					}
 					else
 					{
 						linkItem->setColor(_loopClosureColor);
-						linkItem->setZValue(9);
+						linkItem->setZValue(isLinkedToOdomCachePoses?22:9);
 					}
 				}
 
@@ -560,10 +725,15 @@ void GraphViewer::updateGraph(const std::map<int, Transform> & poses,
 
 	if(_nodeItems.size())
 	{
-		(--_nodeItems.end()).value()->setColor(Qt::green);
+		(--_nodeItems.end()).value()->setColor(_nodeOdomCacheColor);
 	}
 
 	this->scene()->setSceneRect(this->scene()->itemsBoundingRect());  // Re-shrink the scene to it's bounding contents
+
+	if(!odomCacheIds.empty())
+		_odomCacheOverlay->setRect(this->scene()->itemsBoundingRect());
+	else
+		_odomCacheOverlay->setRect(0, 0, 0, 0);
 
 	if(wasEmpty)
 	{
@@ -601,14 +771,14 @@ void GraphViewer::updateGTGraph(const std::map<int, Transform> & poses)
 			QMap<int, NodeItem*>::iterator itemIter = _gtNodeItems.find(iter->first);
 			if(itemIter != _gtNodeItems.end())
 			{
-				itemIter.value()->setPose(iter->second);
+				itemIter.value()->setPose(iter->second, _viewPlane);
 				itemIter.value()->show();
 			}
 			else
 			{
 				// create node item
 				const Transform & pose = iter->second;
-				NodeItem * item = new NodeItem(iter->first, -1, pose, _nodeRadius);
+				NodeItem * item = new NodeItem(iter->first, -1, pose, _nodeRadius, -1, _viewPlane, _linkWidth);
 				this->scene()->addItem(item);
 				item->setZValue(20);
 				item->setColor(_gtPathColor);
@@ -633,7 +803,7 @@ void GraphViewer::updateGTGraph(const std::map<int, Transform> & poses)
 					{
 						if(linkIter.value()->to() == iter->first)
 						{
-							linkIter.value()->setPoses(previousPose, currentPose);
+							linkIter.value()->setPoses(previousPose, currentPose, _viewPlane);
 							linkIter.value()->show();
 							linkItem = linkIter.value();
 							break;
@@ -643,15 +813,29 @@ void GraphViewer::updateGTGraph(const std::map<int, Transform> & poses)
 				}
 				if(linkItem == 0)
 				{
-					//create a link item
-					linkItem = new LinkItem(iterPrevious->first, iter->first, previousPose, currentPose, Link(), 1);
-					QPen p = linkItem->pen();
-					p.setWidthF(_linkWidth*100.0f);
-					linkItem->setPen(p);
-					linkItem->setZValue(10);
-					this->scene()->addItem(linkItem);
-					linkItem->setParentItem(_gtGraphRoot);
-					_gtLinkItems.insert(iterPrevious->first, linkItem);
+					bool linkFound = iter->first - iterPrevious->first == 1; // if consecutive, add link
+					for(QMultiMap<int, LinkItem*>::iterator kter = _linkItems.find(iterPrevious->first);
+							kter!=_linkItems.end() && kter.key()==iterPrevious->first && !linkFound;
+							++kter)
+					{
+						if(kter.value()->from() == iterPrevious->first && kter.value()->to() == iter->first)
+						{
+							linkFound = true;
+						}
+					}
+
+					if(linkFound)
+					{
+						//create a link item
+						linkItem = new LinkItem(iterPrevious->first, iter->first, previousPose, currentPose, Link(), 1, _viewPlane);
+						QPen p = linkItem->pen();
+						p.setWidthF(_linkWidth*100.0f);
+						linkItem->setPen(p);
+						linkItem->setZValue(10);
+						this->scene()->addItem(linkItem);
+						linkItem->setParentItem(_gtGraphRoot);
+						_gtLinkItems.insert(iterPrevious->first, linkItem);
+					}
 				}
 				if(linkItem)
 				{
@@ -730,7 +914,7 @@ void GraphViewer::updateGPSGraph(
 			QMap<int, NodeItem*>::iterator itemIter = _gpsNodeItems.find(iter->first);
 			if(itemIter != _gpsNodeItems.end())
 			{
-				itemIter.value()->setPose(iter->second);
+				itemIter.value()->setPose(iter->second, _viewPlane);
 				itemIter.value()->show();
 			}
 			else
@@ -738,7 +922,7 @@ void GraphViewer::updateGPSGraph(
 				// create node item
 				const Transform & pose = iter->second;
 				UASSERT(gpsValues.find(iter->first) != gpsValues.end());
-				NodeItem * item = new NodeGPSItem(iter->first, -1, pose, _nodeRadius, gpsValues.at(iter->first));
+				NodeItem * item = new NodeGPSItem(iter->first, -1, pose, _nodeRadius, gpsValues.at(iter->first), _viewPlane, _linkWidth);
 				this->scene()->addItem(item);
 				item->setZValue(20);
 				item->setColor(_gpsPathColor);
@@ -763,7 +947,7 @@ void GraphViewer::updateGPSGraph(
 					{
 						if(linkIter.value()->to() == iter->first)
 						{
-							linkIter.value()->setPoses(previousPose, currentPose);
+							linkIter.value()->setPoses(previousPose, currentPose, _viewPlane);
 							linkIter.value()->show();
 							linkItem = linkIter.value();
 							break;
@@ -774,7 +958,7 @@ void GraphViewer::updateGPSGraph(
 				if(linkItem == 0)
 				{
 					//create a link item
-					linkItem = new LinkItem(iterPrevious->first, iter->first, previousPose, currentPose, Link(), 1);
+					linkItem = new LinkItem(iterPrevious->first, iter->first, previousPose, currentPose, Link(), 1, _viewPlane);
 					QPen p = linkItem->pen();
 					p.setWidthF(_linkWidth*100.0f);
 					linkItem->setPen(p);
@@ -837,15 +1021,19 @@ void GraphViewer::updateReferentialPosition(const Transform & t)
 {
 	QTransform qt;
 	qt.translate(-t.o24()*100.0f, -t.o14()*100.0f);
-	qt.rotateRadians(-t.theta());
+	if(_viewPlane == XY)
+		qt.rotateRadians(-t.theta());
 
 	_referential->setTransform(qt);
 	_localRadius->setTransform(qt);
 
-	this->ensureVisible(_referential);
-	if(_localRadius->isVisible())
+	if(_ensureFrameVisible)
 	{
-		this->ensureVisible(_localRadius, 0, 0);
+		this->ensureVisible(_referential);
+		if(_localRadius->isVisible())
+		{
+			this->ensureVisible(_localRadius, 0, 0);
+		}
 	}
 }
 
@@ -861,7 +1049,8 @@ void GraphViewer::updateMap(const cv::Mat & map8U, float resolution, float xMin,
 		_gridMap->setRotation(90);
 		_gridMap->setPixmap(QPixmap::fromImage(image));
 		_gridMap->setPos(-yMin*100.0f, -xMin*100.0f);
-		this->scene()->setSceneRect(this->scene()->itemsBoundingRect());  // Re-shrink the scene to it's bounding contents
+		// Re-shrink the scene to it's bounding contents
+		this->scene()->setSceneRect(this->scene()->itemsBoundingRect());
 	}
 	else
 	{
@@ -893,10 +1082,6 @@ void GraphViewer::updatePosterior(const std::map<int, float> & posterior, float 
 				iter.value()->setColor(QColor::fromHsvF((1-v/max)*240.0f/360.0f, 1, 1, 1)); //0=red 240=blue
 				iter.value()->setZValue(iter.value()->zValue()+zValueOffset);
 			}
-			else if(iter.key() > 0)
-			{
-				iter.value()->setColor(QColor::fromHsvF(240.0f/360.0f, 1, 1, 1)); // blue
-			}
 		}
 	}
 }
@@ -914,7 +1099,7 @@ void GraphViewer::setGlobalPath(const std::vector<std::pair<int, Transform> > & 
 			//create a link item
 			int idFrom = globalPath[i].first;
 			int idTo = globalPath[i+1].first;
-			LinkItem * item = new LinkItem(idFrom, idTo, globalPath[i].second, globalPath[i+1].second, Link(), false);
+			LinkItem * item = new LinkItem(idFrom, idTo, globalPath[i].second, globalPath[i+1].second, Link(), false, _viewPlane);
 			QPen p = item->pen();
 			p.setWidthF(_linkWidth*100.0f);
 			item->setPen(p);
@@ -946,7 +1131,7 @@ void GraphViewer::setCurrentGoalID(int id, const Transform & pose)
 		Transform t = pose * oldPose->getPoseA().inverse();
 		for(QMultiMap<int, LinkItem*>::iterator iter=_globalPathLinkItems.begin(); iter!=_globalPathLinkItems.end(); ++iter)
 		{
-			iter.value()->setPoses(t*iter.value()->getPoseA(), t*iter.value()->getPoseB());
+			iter.value()->setPoses(t*iter.value()->getPoseA(), t*iter.value()->getPoseB(), _viewPlane);
 		}
 	}
 }
@@ -982,7 +1167,7 @@ void GraphViewer::updateLocalPath(const std::vector<int> & localPath)
 					{
 						if(itemIter.value()->to() == idTo)
 						{
-							itemIter.value()->setPoses(_nodeItems.value(idFrom)->pose(), _nodeItems.value(idTo)->pose());
+							itemIter.value()->setPoses(_nodeItems.value(idFrom)->pose(), _nodeItems.value(idTo)->pose(), _viewPlane);
 							itemIter.value()->show();
 							updated = true;
 							break;
@@ -993,7 +1178,7 @@ void GraphViewer::updateLocalPath(const std::vector<int> & localPath)
 				if(!updated)
 				{
 					//create a link item
-					LinkItem * item = new LinkItem(idFrom, idTo, _nodeItems.value(idFrom)->pose(), _nodeItems.value(idTo)->pose(), Link(), false);
+					LinkItem * item = new LinkItem(idFrom, idTo, _nodeItems.value(idFrom)->pose(), _nodeItems.value(idTo)->pose(), Link(), false, _viewPlane);
 					QPen p = item->pen();
 					p.setWidthF(_linkWidth*100.0f);
 					item->setPen(p);
@@ -1079,6 +1264,7 @@ void GraphViewer::saveSettings(QSettings & settings, const QString & group) cons
 	settings.setValue("node_radius", (double)this->getNodeRadius());
 	settings.setValue("link_width", (double)this->getLinkWidth());
 	settings.setValue("node_color", this->getNodeColor());
+	settings.setValue("node_odom_cache_color", this->getNodeOdomCacheColor());
 	settings.setValue("current_goal_color", this->getCurrentGoalColor());
 	settings.setValue("neighbor_color", this->getNeighborColor());
 	settings.setValue("global_color", this->getGlobalLoopClosureColor());
@@ -1105,7 +1291,10 @@ void GraphViewer::saveSettings(QSettings & settings, const QString & group) cons
 	settings.setValue("local_path_visible", this->isLocalPathVisible());
 	settings.setValue("gt_graph_visible", this->isGtGraphVisible());
 	settings.setValue("gps_graph_visible", this->isGPSGraphVisible());
+	settings.setValue("odom_cache_overlay", this->isOdomCacheOverlayVisible());
 	settings.setValue("orientation_ENU", this->isOrientationENU());
+	settings.setValue("view_plane", (int)this->getViewPlane());
+	settings.setValue("ensure_frame_visible", (int)this->isEnsureFrameVisible());
 	if(!group.isEmpty())
 	{
 		settings.endGroup();
@@ -1121,6 +1310,7 @@ void GraphViewer::loadSettings(QSettings & settings, const QString & group)
 	this->setNodeRadius(settings.value("node_radius", this->getNodeRadius()).toDouble());
 	this->setLinkWidth(settings.value("link_width", this->getLinkWidth()).toDouble());
 	this->setNodeColor(settings.value("node_color", this->getNodeColor()).value<QColor>());
+	this->setNodeOdomCacheColor(settings.value("node_odom_cache_color", this->getNodeOdomCacheColor()).value<QColor>());
 	this->setCurrentGoalColor(settings.value("current_goal_color", this->getCurrentGoalColor()).value<QColor>());
 	this->setNeighborColor(settings.value("neighbor_color", this->getNeighborColor()).value<QColor>());
 	this->setGlobalLoopClosureColor(settings.value("global_color", this->getGlobalLoopClosureColor()).value<QColor>());
@@ -1147,7 +1337,10 @@ void GraphViewer::loadSettings(QSettings & settings, const QString & group)
 	this->setLocalPathVisible(settings.value("local_path_visible", this->isLocalPathVisible()).toBool());
 	this->setGtGraphVisible(settings.value("gt_graph_visible", this->isGtGraphVisible()).toBool());
 	this->setGPSGraphVisible(settings.value("gps_graph_visible", this->isGPSGraphVisible()).toBool());
+	this->setOdomCacheOverlayVisible(settings.value("odom_cache_overlay", this->isOdomCacheOverlayVisible()).toBool());
 	this->setOrientationENU(settings.value("orientation_ENU", this->isOrientationENU()).toBool());
+	this->setViewPlane((ViewPlane)settings.value("view_plane", (int)this->getViewPlane()).toInt());
+	this->setEnsureFrameVisible(settings.value("ensure_frame_visible", this->isEnsureFrameVisible()).toBool());
 	if(!group.isEmpty())
 	{
 		settings.endGroup();
@@ -1190,9 +1383,21 @@ bool GraphViewer::isGPSGraphVisible() const
 {
 	return _gpsGraphRoot->isVisible();
 }
+bool GraphViewer::isOdomCacheOverlayVisible() const
+{
+	return _odomCacheOverlay->isVisible();
+}
 bool GraphViewer::isOrientationENU() const
 {
 	return _orientationENU;
+}
+GraphViewer::ViewPlane GraphViewer::getViewPlane() const
+{
+	return _viewPlane;
+}
+bool GraphViewer::isEnsureFrameVisible() const
+{
+	return _ensureFrameVisible;
 }
 
 void GraphViewer::setWorkingDirectory(const QString & path)
@@ -1252,6 +1457,17 @@ void GraphViewer::setNodeColor(const QColor & color)
 	for(QMap<int, NodeItem*>::iterator iter=_nodeItems.begin(); iter!=_nodeItems.end(); ++iter)
 	{
 		iter.value()->setColor(_nodeColor);
+	}
+}
+void GraphViewer::setNodeOdomCacheColor(const QColor & color)
+{
+	_nodeOdomCacheColor = color;
+	for(QMap<int, NodeItem*>::iterator iter=_nodeItems.begin(); iter!=_nodeItems.end(); ++iter)
+	{
+		if(iter.value()->zValue() == 24)
+		{
+			iter.value()->setColor(_nodeOdomCacheColor);
+		}
 	}
 }
 void GraphViewer::setCurrentGoalColor(const QColor & color)
@@ -1389,7 +1605,8 @@ void GraphViewer::setIntraSessionLoopColor(const QColor & color)
 		{
 			if((iter.value()->linkType() == Link::kGlobalClosure ||
 				iter.value()->linkType() == Link::kLocalSpaceClosure ||
-				iter.value()->linkType() == Link::kLocalTimeClosure) &&
+				iter.value()->linkType() == Link::kLocalTimeClosure ||
+				iter.value()->linkType() == Link::kUserClosure) &&
 				!iter.value()->isInterSession())
 			{
 				iter.value()->setColor(_loopIntraSessionColor);
@@ -1407,7 +1624,8 @@ void GraphViewer::setInterSessionLoopColor(const QColor & color)
 		{
 			if((iter.value()->linkType() == Link::kGlobalClosure ||
 				iter.value()->linkType() == Link::kLocalSpaceClosure ||
-				iter.value()->linkType() == Link::kLocalTimeClosure) &&
+				iter.value()->linkType() == Link::kLocalTimeClosure ||
+				iter.value()->linkType() == Link::kUserClosure) &&
 				iter.value()->isInterSession())
 			{
 				iter.value()->setColor(_loopInterSessionColor);
@@ -1429,12 +1647,17 @@ void GraphViewer::setIntraInterSessionColorsEnabled(bool enabled)
 	{
 		this->setGlobalLoopClosureColor(_loopClosureColor);
 		this->setLocalLoopClosureColor(_loopClosureLocalColor);
+		this->setUserLoopClosureColor(_loopClosureUserColor);
 	}
 }
 
 void GraphViewer::setGridMapVisible(bool visible)
 {
-	_gridMap->setVisible(visible);
+	if(visible && _viewPlane!=XY)
+	{
+		UWARN("Grid map can be shown only with view plane is XY.");
+	}
+	_gridMap->setVisible(_viewPlane==XY && visible);
 }
 void GraphViewer::setOriginVisible(bool visible)
 {
@@ -1476,28 +1699,66 @@ void GraphViewer::setGPSGraphVisible(bool visible)
 {
 	_gpsGraphRoot->setVisible(visible);
 }
+void GraphViewer::setOdomCacheOverlayVisible(bool visible)
+{
+	_odomCacheOverlay->setVisible(visible);
+}
 void GraphViewer::setOrientationENU(bool enabled)
 {
+	if(enabled && _viewPlane!=XY)
+	{
+		UWARN("ENU orientation can be set only with view plane is XY.");
+	}
+	enabled = _viewPlane==XY && enabled;
 	if(_orientationENU!=enabled)
 	{
 		_orientationENU = enabled;
 		this->rotate(_orientationENU?90:270);
 	}
-	if(_orientationENU)
-	{
-		QTransform t;
-		t.rotateRadians(_worldMapRotation);
-		_root->setTransform(t);
-	}
-	else
-	{
-		_root->resetTransform();
-	}
+	QTransform t;
+	t.rotateRadians(_worldMapRotation);
+	_root->setTransform(t);
 	if(_nodeItems.size() || _linkItems.size())
 	{
 		this->scene()->setSceneRect(this->scene()->itemsBoundingRect());  // Re-shrink the scene to it's bounding contents
 	}
 }
+
+void GraphViewer::setViewPlane(ViewPlane plane)
+{
+	if(plane != XY)
+	{
+		setOrientationENU(false);
+		setGridMapVisible(false);
+	}
+	_viewPlane = plane;
+
+	for(QMap<int, NodeItem*>::iterator iter=_nodeItems.begin(); iter!=_nodeItems.end(); ++iter)
+	{
+		iter.value()->setPose(iter.value()->pose(), _viewPlane);
+	}
+	for(QMultiMap<int, LinkItem*>::iterator iter=_linkItems.begin(); iter!=_linkItems.end(); ++iter)
+	{
+		iter.value()->setPoses(iter.value()->getPoseA(), iter.value()->getPoseB(), _viewPlane);
+	}
+
+	_originReferentialXY->setVisible(plane==XY);
+	_originReferentialXZ->setVisible(plane==XZ);
+	_originReferentialYZ->setVisible(plane==YZ);
+	_referentialXY->setVisible(plane==XY);
+	_referentialXZ->setVisible(plane==XZ);
+	_referentialYZ->setVisible(plane==YZ);
+
+	if(_nodeItems.size() || _linkItems.size())
+	{
+		this->scene()->setSceneRect(this->scene()->itemsBoundingRect());  // Re-shrink the scene to it's bounding contents
+	}
+}
+void GraphViewer::setEnsureFrameVisible(bool visible)
+{
+	_ensureFrameVisible = visible;
+}
+
 
 void GraphViewer::restoreDefaults()
 {
@@ -1520,13 +1781,57 @@ void GraphViewer::restoreDefaults()
 
 void GraphViewer::wheelEvent ( QWheelEvent * event )
 {
-	if(event->delta() < 0)
+	if(event->angleDelta().y() < 0)
 	{
 		this->scale(0.95, 0.95);
 	}
 	else
 	{
 		this->scale(1.05, 1.05);
+	}
+}
+
+void GraphViewer::mouseMoveEvent(QMouseEvent * event)
+{
+	QPointF scenePoint = mapToScene(event->pos());
+	if(_mouseTracking && _viewPlane==XY && this->sceneRect().contains(scenePoint))
+	{
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+		QToolTip::showText(event->globalPosition().toPoint(), QString("%1m %2m").arg(-scenePoint.y()/100.0).arg(-scenePoint.x()/100.0));
+#else
+		QToolTip::showText(event->globalPos(), QString("%1m %2m").arg(-scenePoint.y()/100.0).arg(-scenePoint.x()/100.0));
+#endif
+	}
+	else
+	{
+		QToolTip::hideText();
+	}
+	QGraphicsView::mouseMoveEvent(event);
+}
+
+void GraphViewer::mouseDoubleClickEvent(QMouseEvent * event)
+{
+	QGraphicsItem *item = this->scene()->itemAt(mapToScene(event->pos()), QTransform());
+	if(item)
+	{
+		NodeItem *nodeItem = qgraphicsitem_cast<NodeItem*>(item);
+		LinkItem *linkItem = qgraphicsitem_cast<LinkItem*>(item);
+		if(nodeItem && nodeItem->parentItem() == _graphRoot && nodeItem->id() != 0)
+		{
+			Q_EMIT nodeSelected(nodeItem->id());
+		}
+		else if(linkItem && linkItem->parentItem() == _graphRoot && linkItem->from() != 0 && linkItem->to() != 0)
+		{
+			Q_EMIT linkSelected(linkItem->from(), linkItem->to());
+		}
+		else
+		{
+			QGraphicsView::mouseDoubleClickEvent(event);
+		}
+	}
+	else
+	{
+		QGraphicsView::mouseDoubleClickEvent(event);
 	}
 }
 
@@ -1540,16 +1845,16 @@ QIcon createIcon(const QColor & color)
 void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 {
 	QMenu menu;
-	QAction * aScreenShotPNG = menu.addAction(tr("Take a screenshot (PNG)"));
-	QAction * aScreenShotSVG = menu.addAction(tr("Take a screenshot (SVG)"));
-#ifndef QT_SVG_LIB
-	aScreenShotSVG->setEnabled(false);
-#endif
+	QAction * aScreenShot = menu.addAction(tr("Take a screenshot..."));
+	QAction * aExportGridMap = menu.addAction(tr("Export grid map..."));
+	aExportGridMap->setEnabled(!_gridMap->pixmap().isNull());
 	menu.addSeparator();
 
 	QAction * aChangeNodeColor = menu.addAction(createIcon(_nodeColor), tr("Set node color..."));
+	QAction * aChangeNodeOdomCacheColor = menu.addAction(createIcon(_nodeOdomCacheColor), tr("Set node odom cache color..."));
 	QAction * aChangeCurrentGoalColor = menu.addAction(createIcon(_currentGoalColor), tr("Set current goal color..."));
 	aChangeNodeColor->setIconVisibleInMenu(true);
+	aChangeNodeOdomCacheColor->setIconVisibleInMenu(true);
 	aChangeCurrentGoalColor->setIconVisibleInMenu(true);
 
 	// Links
@@ -1606,6 +1911,7 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 	QAction * aSetLinkSize = menu.addAction(tr("Set link width..."));
 	QAction * aChangeMaxLinkLength = menu.addAction(tr("Set maximum link length..."));
 	menu.addSeparator();
+	QAction * aEnsureFrameVisible;
 	QAction * aShowHideGridMap;
 	QAction * aShowHideGraph;
 	QAction * aShowHideGraphNodes;
@@ -1616,7 +1922,15 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 	QAction * aShowHideLocalPath;
 	QAction * aShowHideGtGraph;
 	QAction * aShowHideGPSGraph;
+	QAction * aShowHideOdomCacheOverlay;
 	QAction * aOrientationENU;
+	QAction * aMouseTracking;
+	QAction * aViewPlaneXY;
+	QAction * aViewPlaneXZ;
+	QAction * aViewPlaneYZ;
+	aEnsureFrameVisible = menu.addAction(tr("Ensure Frame Visible"));
+	aEnsureFrameVisible->setCheckable(true);
+	aEnsureFrameVisible->setChecked(_ensureFrameVisible);
 	if(_gridMap->isVisible())
 	{
 		aShowHideGridMap = menu.addAction(tr("Hide grid map"));
@@ -1625,6 +1939,7 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 	{
 		aShowHideGridMap = menu.addAction(tr("Show grid map"));
 	}
+	aShowHideGridMap->setEnabled(_viewPlane == XY);
 	if(_originReferential->isVisible())
 	{
 		aShowHideOrigin = menu.addAction(tr("Hide origin referential"));
@@ -1697,100 +2012,185 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 	{
 		aShowHideGPSGraph = menu.addAction(tr("Show GPS graph"));
 	}
+	if(_odomCacheOverlay->isVisible())
+	{
+		aShowHideOdomCacheOverlay = menu.addAction(tr("Hide odom cache overlay"));
+	}
+	else
+	{
+		aShowHideOdomCacheOverlay = menu.addAction(tr("Show odom cache overlay"));
+	}
 	aOrientationENU = menu.addAction(tr("ENU Orientation"));
 	aOrientationENU->setCheckable(true);
 	aOrientationENU->setChecked(_orientationENU);
-	aShowHideGraph->setEnabled(_nodeItems.size());
+	aMouseTracking = menu.addAction(tr("Show mouse cursor position (m)"));
+	aMouseTracking->setCheckable(true);
+	aMouseTracking->setChecked(_mouseTracking);
+	aMouseTracking->setEnabled(_viewPlane == XY);
+	aShowHideGraph->setEnabled(_nodeItems.size() && _viewPlane == XY);
 	aShowHideGraphNodes->setEnabled(_nodeItems.size() && _graphRoot->isVisible());
 	aShowHideGlobalPath->setEnabled(_globalPathLinkItems.size());
 	aShowHideLocalPath->setEnabled(_localPathLinkItems.size());
 	aShowHideGtGraph->setEnabled(_gtNodeItems.size());
 	aShowHideGPSGraph->setEnabled(_gpsNodeItems.size());
+	aShowHideOdomCacheOverlay->setEnabled(_odomCacheOverlay->rect().width()>0);
+
+	QMenu * viewPlaneMenu = menu.addMenu("View Plane...");
+	aViewPlaneXY = viewPlaneMenu->addAction("XY");
+	aViewPlaneXY->setCheckable(true);
+	aViewPlaneXY->setChecked(_viewPlane == XY);
+	aViewPlaneXZ = viewPlaneMenu->addAction("XZ");
+	aViewPlaneXZ->setCheckable(true);
+	aViewPlaneXZ->setChecked(_viewPlane == XZ);
+	aViewPlaneYZ = viewPlaneMenu->addAction("YZ");
+	aViewPlaneYZ->setCheckable(true);
+	aViewPlaneYZ->setChecked(_viewPlane == YZ);
+
 	menu.addSeparator();
 	QAction * aRestoreDefaults = menu.addAction(tr("Restore defaults"));
 
 	QAction * r = menu.exec(event->globalPos());
-	if(r == aScreenShotPNG || r == aScreenShotSVG)
+	if(r == aScreenShot)
 	{
 		if(_root)
 		{
-			QString targetDir = _workingDirectory + "/ScreensCaptured";
+			QString filePath;
+#if QT_VERSION >= 0x050000
+			filePath = QStandardPaths::writableLocation(QStandardPaths::PicturesLocation);
+#endif
 			QDir dir;
-			if(!dir.exists(targetDir))
+			if(!dir.exists(filePath))
 			{
-				dir.mkdir(targetDir);
+				filePath = QDir::homePath();
 			}
-			targetDir += "/";
-			targetDir += "Graph_view";
-			if(!dir.exists(targetDir))
-			{
-				dir.mkdir(targetDir);
-			}
-			targetDir += "/";
-			bool isPNG = r == aScreenShotPNG;
-			QString name = (QDateTime::currentDateTime().toString("yyMMddhhmmsszzz") + (isPNG?".png":".svg"));
+			filePath += "/graph.png";
 
-			if(_gridCellSize)
+#ifdef QT_SVG_LIB
+			filePath = QFileDialog::getSaveFileName(this, tr("Save figure to ..."), filePath, "*.png *.xpm *.jpg *.pdf *.svg");
+#else
+			filePath = QFileDialog::getSaveFileName(this, tr("Save figure to ..."), filePath, "*.png *.xpm *.jpg *.pdf");
+#endif
+			if(!filePath.isEmpty())
 			{
-				_root->setScale(1.0f/(_gridCellSize*100.0f)); // grid map precision (for 5cm grid cell, x20 to have 1pix/5cm)
-			}
-			else
-			{
-				_root->setScale(this->transform().m11()); // current view
-			}
-
-			this->scene()->clearSelection();                                  // Selections would also render to the file
-			this->scene()->setSceneRect(this->scene()->itemsBoundingRect());  // Re-shrink the scene to it's bounding contents
-			QSize sceneSize = this->scene()->sceneRect().size().toSize();
-
-			if(isPNG)
-			{
-				QImage image(sceneSize, QImage::Format_ARGB32);  // Create the image with the exact size of the shrunk scene
-				image.fill(Qt::transparent);                     // Start all pixels transparent
-				QPainter painter(&image);
-
-				this->scene()->render(&painter);
-				if(!image.isNull())
+				if(QFileInfo(filePath).suffix() == "")
 				{
-					image.save(targetDir + name);
+					//use png by default
+					filePath += ".png";
+				}
+
+				if(_gridCellSize)
+				{
+					_root->setScale(1.0f/(_gridCellSize*100.0f)); // grid map precision (for 5cm grid cell, x20 to have 1pix/5cm)
 				}
 				else
 				{
-					QMessageBox::warning(this,
-							tr("Save PNG"),
-							tr("Could not export in PNG (the scene may be too large %1x%2), try saving in SVG.").arg(sceneSize.width()).arg(sceneSize.height()));
+					_root->setScale(this->transform().m11()); // current view
 				}
-			}
-			else
-			{
+
+				this->scene()->clearSelection();                                  // Selections would also render to the file
+				this->scene()->setSceneRect(this->scene()->itemsBoundingRect());  // Re-shrink the scene to it's bounding contents
+				QSize sceneSize = this->scene()->sceneRect().size().toSize();
+
+				if(QFileInfo(filePath).suffix().compare("pdf") == 0)
+				{
+					QPrinter printer(QPrinter::HighResolution);
+					printer.setPageOrientation(QPageLayout::Portrait);
+					printer.setOutputFileName( filePath );
+					QPainter p(&printer);
+					scene()->render(&p);
+					p.end();
+				}
+				else if(QFileInfo(filePath).suffix().compare("svg") == 0)
+				{
 #ifdef QT_SVG_LIB
-				QSvgGenerator svgGen;
+					QSvgGenerator svgGen;
 
-				svgGen.setFileName( targetDir + name );
-				svgGen.setSize(sceneSize);
-				// add 1% border to make sure values are not cropped
-				int borderH = sceneSize.width()/100;
-				int borderV = sceneSize.height()/100;
-				svgGen.setViewBox(QRect(-borderH, -borderV, sceneSize.width()+borderH*2, sceneSize.height()+borderV*2));
-				svgGen.setTitle(tr("RTAB-Map graph"));
-				svgGen.setDescription(tr("RTAB-Map map and graph"));
+					svgGen.setFileName( filePath );
+					svgGen.setSize(sceneSize);
+					// add 1% border to make sure values are not cropped
+					int borderH = sceneSize.width()/100;
+					int borderV = sceneSize.height()/100;
+					svgGen.setViewBox(QRect(-borderH, -borderV, sceneSize.width()+borderH*2, sceneSize.height()+borderV*2));
+					svgGen.setTitle(tr("RTAB-Map graph"));
+					svgGen.setDescription(tr("RTAB-Map map and graph"));
 
-				QPainter painter( &svgGen );
+					QPainter painter( &svgGen );
 
-				this->scene()->render(&painter);
+					this->scene()->render(&painter);
 #else
-				UERROR("RTAB-MAp is not built with Qt's SVG library, cannot save picture in svg format.");
+					UERROR("RTAB-MAp is not built with Qt's SVG library, cannot save picture in svg format.");
 #endif
+				}
+				else
+				{
+					QImage image(sceneSize, QImage::Format_ARGB32);  // Create the image with the exact size of the shrunk scene
+					image.fill(Qt::transparent);                     // Start all pixels transparent
+					QPainter painter(&image);
+
+					this->scene()->render(&painter);
+					if(!image.isNull())
+					{
+						image.save(filePath);
+					}
+					else
+					{
+						QMessageBox::warning(this,
+								tr("Save PNG"),
+								tr("Could not export in PNG (the scene may be too large %1x%2), try saving in SVG.").arg(sceneSize.width()).arg(sceneSize.height()));
+					}
+				}
+
+				//reset scale
+				_root->setScale(1.0f);
+				this->scene()->setSceneRect(this->scene()->itemsBoundingRect());  // Re-shrink the scene to it's bounding contents
+
+
+				QDesktopServices::openUrl(QUrl::fromLocalFile(filePath));
 			}
-
-			//reset scale
-			_root->setScale(1.0f);
-			this->scene()->setSceneRect(this->scene()->itemsBoundingRect());  // Re-shrink the scene to it's bounding contents
-
-
-			QDesktopServices::openUrl(QUrl::fromLocalFile(targetDir + name));
 		}
 		return; // without emitting configChanged
+	}
+	else if(r == aExportGridMap)
+	{
+		float xMin, yMin, cellSize;
+
+		cellSize = _gridCellSize;
+		xMin = -_gridMap->y()/100.0f;
+		yMin = -_gridMap->x()/100.0f;
+
+		QString path = QFileDialog::getSaveFileName(
+				this,
+				tr("Save File"),
+				"map.pgm",
+				tr("Map (*.pgm)"));
+
+		if(!path.isEmpty())
+		{
+			if(QFileInfo(path).suffix() == "")
+			{
+				path += ".pgm";
+			}
+			_gridMap->pixmap().save(path);
+
+			QFileInfo info(path);
+			QString yaml = info.absolutePath() + "/" +  info.baseName() + ".yaml";
+
+			float occupancyThr = Parameters::defaultGridGlobalOccupancyThr();
+
+			std::ofstream file;
+			file.open (yaml.toStdString());
+			file << "image: " << info.baseName().toStdString() << ".pgm" << std::endl;
+			file << "resolution: " << cellSize << std::endl;
+			file << "origin: [" << xMin << ", " << yMin << ", 0.0]" << std::endl;
+			file << "negate: 0" << std::endl;
+			file << "occupied_thresh: " << occupancyThr << std::endl;
+			file << "free_thresh: 0.196" << std::endl;
+			file << std::endl;
+			file.close();
+
+
+			QMessageBox::information(this, tr("Export 2D map"), tr("Exported %1 and %2!").arg(path).arg(yaml));
+		}
 	}
 	else if(r == aSetIntraInterSessionColors)
 	{
@@ -1815,6 +2215,7 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 		}
 	}
 	else if(r == aChangeNodeColor ||
+			r == aChangeNodeOdomCacheColor ||
 			r == aChangeCurrentGoalColor ||
 			r == aChangeNeighborColor ||
 			r == aChangeGlobalLoopColor ||
@@ -1834,6 +2235,10 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 		if(r == aChangeNodeColor)
 		{
 			color = _nodeColor;
+		}
+		else if(r == aChangeNodeOdomCacheColor)
+		{
+			color = _nodeOdomCacheColor;
 		}
 		else if(r == aChangeCurrentGoalColor)
 		{
@@ -1902,6 +2307,10 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 			if(r == aChangeNodeColor)
 			{
 				this->setNodeColor(color);
+			}
+			else if(r == aChangeNodeOdomCacheColor)
+			{
+				this->setNodeOdomCacheColor(color);
 			}
 			else if(r == aChangeCurrentGoalColor)
 			{
@@ -1987,6 +2396,10 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 			setLinkWidth(value);
 		}
 	}
+	else if(r == aEnsureFrameVisible)
+	{
+		this->setEnsureFrameVisible(!this->isEnsureFrameVisible());
+	}
 	else if(r == aShowHideGridMap)
 	{
 		this->setGridMapVisible(!this->isGridMapVisible());
@@ -2035,9 +2448,29 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 	{
 		this->setGPSGraphVisible(!this->isGPSGraphVisible());
 	}
+	else if(r == aShowHideOdomCacheOverlay)
+	{
+		this->setOdomCacheOverlayVisible(!this->isOdomCacheOverlayVisible());
+	}
 	else if(r == aOrientationENU)
 	{
 		this->setOrientationENU(!this->isOrientationENU());
+	}
+	else if(r == aMouseTracking)
+	{
+		_mouseTracking = aMouseTracking->isChecked();
+	}
+	else if(r == aViewPlaneXY)
+	{
+		this->setViewPlane(XY);
+	}
+	else if(r == aViewPlaneXZ)
+	{
+		this->setViewPlane(XZ);
+	}
+	else if(r == aViewPlaneYZ)
+	{
+		this->setViewPlane(YZ);
 	}
 
 	if(r)

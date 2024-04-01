@@ -27,15 +27,13 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #pragma once
 
-#include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
-
 #include <opencv2/highgui/highgui.hpp>
 #include "rtabmap/core/Camera.h"
 
 namespace rtabmap
 {
 
-class RTABMAP_EXP CameraVideo :
+class RTABMAP_CORE_EXPORT CameraVideo :
 	public Camera
 {
 public:
@@ -45,11 +43,11 @@ public:
 	CameraVideo(int usbDevice = 0,
 			bool rectifyImages = false,
 			float imageRate = 0,
-			const Transform & localTransform = CameraModel::opticalRotation());
+			const Transform & localTransform = Transform::getIdentity());
 	CameraVideo(const std::string & filePath,
 			bool rectifyImages = false,
 			float imageRate = 0,
-			const Transform & localTransform = CameraModel::opticalRotation());
+			const Transform & localTransform = Transform::getIdentity());
 	virtual ~CameraVideo();
 
 	virtual bool init(const std::string & calibrationFolder = ".", const std::string & cameraName = "");

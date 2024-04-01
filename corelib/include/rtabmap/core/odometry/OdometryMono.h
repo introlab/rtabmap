@@ -36,7 +36,7 @@ namespace rtabmap {
 class Memory;
 class Feature2D;
 
-class RTABMAP_EXP OdometryMono : public Odometry
+class RTABMAP_CORE_EXPORT OdometryMono : public Odometry
 {
 public:
 	OdometryMono(const rtabmap::ParametersMap & parameters = rtabmap::ParametersMap());
@@ -73,7 +73,7 @@ private:
 	std::map<int, std::map<int, cv::Point3f> > keyFrameWords3D_;
 	std::map<int, Transform> keyFramePoses_;
 	std::multimap<int, Link> keyFrameLinks_;
-	std::map<int, CameraModel> keyFrameModels_;
+	std::map<int, std::vector<CameraModel> > keyFrameModels_;
 	float maxVariance_;
 	float keyFrameThr_;
 };

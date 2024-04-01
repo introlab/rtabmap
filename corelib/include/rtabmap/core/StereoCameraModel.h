@@ -32,7 +32,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 namespace rtabmap {
 
-class RTABMAP_EXP StereoCameraModel
+class RTABMAP_CORE_EXPORT StereoCameraModel
 {
 public:
 	StereoCameraModel() : leftSuffix_("left"), rightSuffix_("right") {}
@@ -139,6 +139,8 @@ private:
 	cv::Mat E_;
 	cv::Mat F_;
 };
+
+RTABMAP_CORE_EXPORT std::ostream& operator<<(std::ostream& os, const StereoCameraModel& model);
 
 } // rtabmap
 

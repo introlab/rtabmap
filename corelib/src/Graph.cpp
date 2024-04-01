@@ -53,10 +53,10 @@ namespace graph {
 
 bool exportPoses(
 		const std::string & filePath,
-		int format, // 0=Raw, 1=RGBD-SLAM motion capture (10=without change of coordinate frame), 2=KITTI, 3=TORO, 4=g2o
+		int format, // 0=Raw, 1=RGBD-SLAM motion capture (10=without change of coordinate frame, 11=10+ID), 2=KITTI, 3=TORO, 4=g2o
 		const std::map<int, Transform> & poses,
 		const std::multimap<int, Link> & constraints, // required for formats 3 and 4
-		const std::map<int, double> & stamps, // required for format 1
+		const std::map<int, double> & stamps, // required for format 1, 10 and 11
 		const ParametersMap & parameters) // optional for formats 3 and 4
 {
 	UDEBUG("%s", filePath.c_str());
@@ -86,11 +86,11 @@ bool exportPoses(
 			tmpPath+=".txt";
 		}
 
-		if(format == 1 || format == 10)
+		if(format == 1 || format == 10 || format == 11)
 		{
 			if(stamps.size() != poses.size())
 			{
-				UERROR("When exporting poses to format 1 (RGBD-SLAM), stamps and poses maps should have the same size! stamps=%d psoes=%d",
+				UERROR("When exporting poses to format 1 (RGBD-SLAM), stamps and poses maps should have the same size! stamps=%d poses=%d",
 						(int)stamps.size(), (int)poses.size());
 				return false;
 			}
@@ -106,7 +106,7 @@ bool exportPoses(
 		{
 			for(std::map<int, Transform>::const_iterator iter=poses.begin(); iter!=poses.end(); ++iter)
 			{
-				if(format == 1 || format == 10) // rgbd-slam format
+				if(format == 1 || format == 10 || format == 11) // rgbd-slam format
 				{
 					Transform pose = iter->second;
 					if(format == 1)
@@ -125,8 +125,21 @@ bool exportPoses(
 					// Format: stamp x y z qx qy qz qw
 					Eigen::Quaternionf q = pose.getQuaternionf();
 
+					if(iter == poses.begin())
+					{
+						// header
+						if(format == 11)
+						{
+							fprintf(fout, "#timestamp x y z qx qy qz qw id\n");
+						}
+						else
+						{
+							fprintf(fout, "#timestamp x y z qx qy qz qw\n");
+						}
+					}
+
 					UASSERT(uContains(stamps, iter->first));
-					fprintf(fout, "%f %f %f %f %f %f %f %f\n",
+					fprintf(fout, "%f %f %f %f %f %f %f %f%s\n",
 							stamps.at(iter->first),
 							pose.x(),
 							pose.y(),
@@ -134,7 +147,8 @@ bool exportPoses(
 							q.x(),
 							q.y(),
 							q.z(),
-							q.w());
+							q.w(),
+							format == 11?(" "+uNumber2Str(iter->first)).c_str():"");
 				}
 				else // default / KITTI format
 				{
@@ -169,7 +183,7 @@ bool exportPoses(
 
 bool importPoses(
 		const std::string & filePath,
-		int format, // 0=Raw, 1=RGBD-SLAM motion capture (10=without change of coordinate frame), 2=KITTI, 3=TORO, 4=g2o, 5=NewCollege(t,x,y), 6=Malaga Urban GPS, 7=St Lucia INS, 8=Karlsruhe, 9=EuRoC MAC
+		int format, // 0=Raw, 1=RGBD-SLAM motion capture (10=without change of coordinate frame, 11=10+ID), 2=KITTI, 3=TORO, 4=g2o, 5=NewCollege(t,x,y), 6=Malaga Urban GPS, 7=St Lucia INS, 8=Karlsruhe, 9=EuRoC MAV
 		std::map<int, Transform> & poses,
 		std::multimap<int, Link> * constraints, // optional for formats 3 and 4
 		std::map<int, double> * stamps) // optional for format 1 and 9
@@ -413,13 +427,18 @@ bool importPoses(
 					UERROR("Error parsing \"%s\" with NewCollege format (should have 3 values: stamp x y, found %d)", str.c_str(), (int)strList.size());
 				}
 			}
-			else if(format == 1 || format==10) // rgbd-slam format
+			else if(format == 1 || format==10 || format==11) // rgbd-slam format
 			{
 				std::list<std::string> strList = uSplit(str);
-				if(strList.size() ==  8)
+				if((strList.size() >=  8 && format!=11) || (strList.size() ==  9 && format==11))
 				{
 					double stamp = uStr2Double(strList.front());
 					strList.pop_front();
+					if(format==11)
+					{
+						id = uStr2Int(strList.back());
+						strList.pop_back();
+					}
 					str = uJoin(strList, " ");
 					Transform pose = Transform::fromString(str);
 					if(pose.isNull())
@@ -450,7 +469,7 @@ bool importPoses(
 				}
 				else
 				{
-					UERROR("Error parsing \"%s\" with RGBD-SLAM format (should have 8 values: stamp x y z qw qx qy qz)", str.c_str());
+					UERROR("Error parsing \"%s\" with RGBD-SLAM format (should have 8 values (or 9 with id): stamp x y z qw qx qy qz [id])", str.c_str());
 				}
 			}
 			else // default / KITTI format
@@ -504,7 +523,10 @@ bool exportGPS(
 			std::string values;
 			for(std::map<int, GPS>::const_iterator iter=gpsValues.begin(); iter!=gpsValues.end(); ++iter)
 			{
-				values += uFormat("%f,%f,%f ", iter->second.longitude(), iter->second.latitude(), iter->second.altitude());
+				values += uFormat("%s,%s,%s ",
+                                  uReplaceChar(uNumber2Str(iter->second.longitude(), 8, true), ',', '.').c_str(),
+                                  uReplaceChar(uNumber2Str(iter->second.latitude(), 8, true), ',', '.').c_str(),
+                                  uReplaceChar(uNumber2Str(iter->second.altitude(), 8, true), ',', '.').c_str());
 			}
 
 			// switch argb (Qt format) -> abgr
@@ -558,13 +580,13 @@ bool exportGPS(
 			fprintf(fout, "# stamp longitude latitude altitude error bearing\n");
 			for(std::map<int, GPS>::const_iterator iter=gpsValues.begin(); iter!=gpsValues.end(); ++iter)
 			{
-				fprintf(fout, "%f %f %f %f %f %f\n",
-						iter->second.stamp(),
-						iter->second.longitude(),
-						iter->second.latitude(),
-						iter->second.altitude(),
-						iter->second.error(),
-						iter->second.bearing());
+				fprintf(fout, "%f %.*f %.*f %.*f %.*f %.*f\n",
+				    iter->second.stamp(),
+				    8, iter->second.longitude(),
+				    8, iter->second.latitude(),
+				    8, iter->second.altitude(),
+				    8, iter->second.error(),
+				    8, iter->second.bearing());
 			}
 		}
 
@@ -879,7 +901,8 @@ void computeMaxGraphErrors(
 		float & maxLinearError,
 		float & maxAngularError,
 		const Link ** maxLinearErrorLink,
-		const Link ** maxAngularErrorLink)
+		const Link ** maxAngularErrorLink,
+		bool force3DoF)
 {
 	maxLinearErrorRatio = -1;
 	maxAngularErrorRatio = -1;
@@ -889,17 +912,44 @@ void computeMaxGraphErrors(
 	UDEBUG("poses=%d links=%d", (int)poses.size(), (int)links.size());
 	for(std::multimap<int, Link>::const_iterator iter=links.begin(); iter!=links.end(); ++iter)
 	{
-		// ignore links with high variance, priors and landmarks
-		if(iter->second.transVariance() <= 1.0 && iter->second.from() != iter->second.to() && iter->second.type() != Link::kLandmark)
+		// ignore priors
+		if(iter->second.from() != iter->second.to())
 		{
 			Transform t1 = uValue(poses, iter->second.from(), Transform());
 			Transform t2 = uValue(poses, iter->second.to(), Transform());
+
+			if( t1.isNull() ||
+				t2.isNull() ||
+				!t1.isInvertible() ||
+				!t2.isInvertible())
+			{
+				UWARN("Poses are null or not invertible, aborting optimized graph max error check! (Pose %d=%s Pose %d=%s)",
+					iter->second.from(),
+					t1.prettyPrint().c_str(),
+					iter->second.to(),
+					t2.prettyPrint().c_str());
+
+				if(maxLinearErrorLink)
+				{
+					*maxLinearErrorLink = 0;
+				}
+				if(maxAngularErrorLink)
+				{
+					*maxAngularErrorLink = 0;
+				}
+				maxLinearErrorRatio = -1;
+				maxAngularErrorRatio = -1;
+				maxLinearError = -1;
+				maxAngularError = -1;
+				return;
+			}
+
 			Transform t = t1.inverse()*t2;
 
 			float linearError = uMax3(
 					fabs(iter->second.transform().x() - t.x()),
 					fabs(iter->second.transform().y() - t.y()),
-					fabs(iter->second.transform().z() - t.z()));
+					force3DoF?0:fabs(iter->second.transform().z() - t.z()));
 			UASSERT(iter->second.transVariance(false)>0.0);
 			float stddevLinear = sqrt(iter->second.transVariance(false));
 			float linearErrorRatio = linearError/stddevLinear;
@@ -913,25 +963,30 @@ void computeMaxGraphErrors(
 				}
 			}
 
-			float opt_roll,opt_pitch,opt_yaw;
-			float link_roll,link_pitch,link_yaw;
-			t.getEulerAngles(opt_roll, opt_pitch, opt_yaw);
-			iter->second.transform().getEulerAngles(link_roll, link_pitch, link_yaw);
-			float angularError = uMax3(
-					fabs(opt_roll - link_roll),
-					fabs(opt_pitch - link_pitch),
-					fabs(opt_yaw - link_yaw));
-			angularError = angularError>M_PI?2*M_PI-angularError:angularError;
-			UASSERT(iter->second.rotVariance(false)>0.0);
-			float stddevAngular = sqrt(iter->second.rotVariance(false));
-			float angularErrorRatio = angularError/stddevAngular;
-			if(angularErrorRatio > maxAngularErrorRatio)
+			// For landmark links, don't compute angular error if it doesn't estimate orientation
+			if(iter->second.type() != Link::kLandmark ||
+				1.0 / static_cast<double>(iter->second.infMatrix().at<double>(5,5)) < 9999.0)
 			{
-				maxAngularError = angularError;
-				maxAngularErrorRatio = angularErrorRatio;
-				if(maxAngularErrorLink)
+				float opt_roll,opt_pitch,opt_yaw;
+				float link_roll,link_pitch,link_yaw;
+				t.getEulerAngles(opt_roll, opt_pitch, opt_yaw);
+				iter->second.transform().getEulerAngles(link_roll, link_pitch, link_yaw);
+				float angularError = uMax3(
+						force3DoF?0:fabs(opt_roll - link_roll),
+						force3DoF?0:fabs(opt_pitch - link_pitch),
+						fabs(opt_yaw - link_yaw));
+				angularError = angularError>M_PI?2*M_PI-angularError:angularError;
+				UASSERT(iter->second.rotVariance(false)>0.0);
+				float stddevAngular = sqrt(iter->second.rotVariance(false));
+				float angularErrorRatio = angularError/stddevAngular;
+				if(angularErrorRatio > maxAngularErrorRatio)
 				{
-					*maxAngularErrorLink = &iter->second;
+					maxAngularError = angularError;
+					maxAngularErrorRatio = angularErrorRatio;
+					if(maxAngularErrorLink)
+					{
+						*maxAngularErrorLink = &iter->second;
+					}
 				}
 			}
 		}
@@ -970,12 +1025,13 @@ std::multimap<int, Link>::iterator findLink(
 		std::multimap<int, Link> & links,
 		int from,
 		int to,
-		bool checkBothWays)
+		bool checkBothWays,
+		Link::Type type)
 {
 	std::multimap<int, Link>::iterator iter = links.find(from);
 	while(iter != links.end() && iter->first == from)
 	{
-		if(iter->second.to() == to)
+		if(iter->second.to() == to && (type==Link::kUndef || type == iter->second.type()))
 		{
 			return iter;
 		}
@@ -988,7 +1044,40 @@ std::multimap<int, Link>::iterator findLink(
 		iter = links.find(to);
 		while(iter != links.end() && iter->first == to)
 		{
-			if(iter->second.to() == from)
+			if(iter->second.to() == from && (type==Link::kUndef || type == iter->second.type()))
+			{
+				return iter;
+			}
+			++iter;
+		}
+	}
+	return links.end();
+}
+
+std::multimap<int, std::pair<int, Link::Type> >::iterator findLink(
+		std::multimap<int, std::pair<int, Link::Type> > & links,
+		int from,
+		int to,
+		bool checkBothWays,
+		Link::Type type)
+{
+	std::multimap<int, std::pair<int, Link::Type> >::iterator iter = links.find(from);
+	while(iter != links.end() && iter->first == from)
+	{
+		if(iter->second.first == to && (type==Link::kUndef || type == iter->second.second))
+		{
+			return iter;
+		}
+		++iter;
+	}
+
+	if(checkBothWays)
+	{
+		// let's try to -> from
+		iter = links.find(to);
+		while(iter != links.end() && iter->first == to)
+		{
+			if(iter->second.first == from && (type==Link::kUndef || type == iter->second.second))
 			{
 				return iter;
 			}
@@ -1053,6 +1142,39 @@ std::multimap<int, Link>::const_iterator findLink(
 		while(iter != links.end() && iter->first == to)
 		{
 			if(iter->second.to() == from && (type==Link::kUndef || type == iter->second.type()))
+			{
+				return iter;
+			}
+			++iter;
+		}
+	}
+	return links.end();
+}
+
+std::multimap<int, std::pair<int, Link::Type> >::const_iterator findLink(
+		const std::multimap<int, std::pair<int, Link::Type> > & links,
+		int from,
+		int to,
+		bool checkBothWays,
+		Link::Type type)
+{
+	std::multimap<int, std::pair<int, Link::Type> >::const_iterator iter = links.find(from);
+	while(iter != links.end() && iter->first == from)
+	{
+		if(iter->second.first == to && (type==Link::kUndef || type == iter->second.second))
+		{
+			return iter;
+		}
+		++iter;
+	}
+
+	if(checkBothWays)
+	{
+		// let's try to -> from
+		iter = links.find(to);
+		while(iter != links.end() && iter->first == to)
+		{
+			if(iter->second.first == from && (type==Link::kUndef || type == iter->second.second))
 			{
 				return iter;
 			}
@@ -1129,19 +1251,22 @@ std::multimap<int, Link> filterDuplicateLinks(
 
 std::multimap<int, Link> filterLinks(
 		const std::multimap<int, Link> & links,
-		Link::Type filteredType)
+		Link::Type filteredType,
+		bool inverted)
 {
 	std::multimap<int, Link> output;
 	for(std::multimap<int, Link>::const_iterator iter=links.begin(); iter!=links.end(); ++iter)
 	{
 		if(filteredType == Link::kSelfRefLink)
 		{
-			if(iter->second.from() != iter->second.to())
+			if((!inverted && iter->second.from() != iter->second.to())||
+			   (inverted && iter->second.from() == iter->second.to()))
 			{
 				output.insert(*iter);
 			}
 		}
-		else if(iter->second.type() != filteredType)
+		else if((!inverted && iter->second.type() != filteredType)||
+				(inverted && iter->second.type() == filteredType))
 		{
 			output.insert(*iter);
 		}
@@ -1151,19 +1276,22 @@ std::multimap<int, Link> filterLinks(
 
 std::map<int, Link> filterLinks(
 		const std::map<int, Link> & links,
-		Link::Type filteredType)
+		Link::Type filteredType,
+		bool inverted)
 {
 	std::map<int, Link> output;
 	for(std::map<int, Link>::const_iterator iter=links.begin(); iter!=links.end(); ++iter)
 	{
 		if(filteredType == Link::kSelfRefLink)
 		{
-			if(iter->second.from() != iter->second.to())
+			if((!inverted && iter->second.from() != iter->second.to())||
+			   (inverted && iter->second.from() == iter->second.to()))
 			{
 				output.insert(*iter);
 			}
 		}
-		else if(iter->second.type() != filteredType)
+		else if((!inverted && iter->second.type() != filteredType)||
+				(inverted && iter->second.type() == filteredType))
 		{
 			output.insert(*iter);
 		}
@@ -1310,7 +1438,7 @@ std::map<int, Transform> radiusPosesFiltering(
 
 		//pcl::IndicesPtr indicesOut(new std::vector<int>);
 		//indicesOut->insert(indicesOut->end(), indicesKept.begin(), indicesKept.end());
-		UINFO("Cloud filtered In = %d, Out = %d", cloud->size(), indicesKept.size());
+		UINFO("Cloud filtered In = %d, Out = %d (radius=%f angle=%f keepLatest=%d)", cloud->size(), indicesKept.size(), radius, angle, keepLatest?1:0);
 		//pcl::io::savePCDFile("duplicateIn.pcd", *cloud);
 		//pcl::io::savePCDFile("duplicateOut.pcd", *cloud, *indicesOut);
 
@@ -1731,7 +1859,7 @@ std::list<std::pair<int, Transform> > computePath(
 }
 
 // Dijksta
-std::list<int> RTABMAP_EXP computePath(
+std::list<int> computePath(
 			const std::multimap<int, Link> & links,
 			int from,
 			int to,
@@ -2053,83 +2181,69 @@ std::list<std::pair<int, Transform> > computePath(
 }
 
 int findNearestNode(
-		const std::map<int, rtabmap::Transform> & nodes,
-		const rtabmap::Transform & targetPose)
+		const std::map<int, rtabmap::Transform> & poses,
+		const rtabmap::Transform & targetPose,
+		float * distance)
 {
 	int id = 0;
-	std::vector<int> nearestNodes = findNearestNodes(nodes, targetPose, 1);
-	if(nearestNodes.size())
+	std::map<int, float> nearestNodes = findNearestNodes(targetPose, poses, 0, 0, 1);
+	if(!nearestNodes.empty())
 	{
-		id = nearestNodes[0];
+		id = nearestNodes.begin()->first;
+		if(distance)
+		{
+			*distance = nearestNodes.begin()->second;
+		}
 	}
 	return id;
 }
 
-std::vector<int> findNearestNodes(
-		const std::map<int, rtabmap::Transform> & nodes,
-		const rtabmap::Transform & targetPose,
+// return <id, sqrd distance>, excluding query
+std::map<int, float> findNearestNodes(
+		int nodeId,
+		const std::map<int, Transform> & poses,
+		float radius,
+		float angle,
 		int k)
 {
-	std::vector<int> nearestIds;
-	if(nodes.size() && !targetPose.isNull())
-	{
-		pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
-		cloud->resize(nodes.size());
-		std::vector<int> ids(nodes.size());
-		int oi = 0;
-		for(std::map<int, Transform>::const_iterator iter = nodes.begin(); iter!=nodes.end(); ++iter)
-		{
-			(*cloud)[oi] = pcl::PointXYZ(iter->second.x(), iter->second.y(), iter->second.z());
-			ids[oi++] = iter->first;
-		}
+	UASSERT(uContains(poses, nodeId));
 
-		pcl::search::KdTree<pcl::PointXYZ>::Ptr kdTree(new pcl::search::KdTree<pcl::PointXYZ>);
-		kdTree->setInputCloud(cloud);
-		std::vector<int> ind;
-		std::vector<float> dist;
-		pcl::PointXYZ pt(targetPose.x(), targetPose.y(), targetPose.z());
-		kdTree->nearestKSearch(pt, k, ind, dist);
-
-		nearestIds.resize(ind.size());
-		for(unsigned int i=0; i<ind.size(); ++i)
-		{
-			nearestIds[i] = ids[ind[i]];
-		}
-	}
-	return nearestIds;
+	std::map<int, Transform> nodesMinusTarget = poses;
+	Transform targetPose = poses.at(nodeId);
+	nodesMinusTarget.erase(nodeId);
+	return findNearestNodes(targetPose, nodesMinusTarget, radius, angle, k);
 }
 
-// return <id, sqrd distance>, excluding query
-std::map<int, float> getNodesInRadius(
-		int nodeId,
-		const std::map<int, Transform> & nodes,
-		float radius)
+// return <id, sqrd distance>
+std::map<int, float> findNearestNodes(
+		const Transform & targetPose,
+		const std::map<int, Transform> & poses,
+		float radius,
+		float angle,
+		int k)
 {
-	UASSERT(uContains(nodes, nodeId));
+	UASSERT(radius>=0.0f);
+	UASSERT(k>=0);
+	UASSERT(radius > 0.0f || k>0);
 	std::map<int, float> foundNodes;
-	if(nodes.size() <= 1)
+	if(poses.empty())
 	{
 		return foundNodes;
 	}
 
 	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
-	cloud->resize(nodes.size());
-	std::vector<int> ids(nodes.size());
+	cloud->resize(poses.size());
+	std::vector<int> ids(poses.size());
 	int oi = 0;
-	for(std::map<int, Transform>::const_iterator iter = nodes.begin(); iter!=nodes.end(); ++iter)
+	for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
 	{
-		if(iter->first != nodeId)
-		{
-			(*cloud)[oi] = pcl::PointXYZ(iter->second.x(), iter->second.y(), iter->second.z());
-			UASSERT_MSG(pcl::isFinite((*cloud)[oi]), uFormat("Invalid pose (%d) %s", iter->first, iter->second.prettyPrint().c_str()).c_str());
-			ids[oi] = iter->first;
-			++oi;
-		}
+		(*cloud)[oi] = pcl::PointXYZ(iter->second.x(), iter->second.y(), iter->second.z());
+		UASSERT_MSG(pcl::isFinite((*cloud)[oi]), uFormat("Invalid pose (%d) %s", iter->first, iter->second.prettyPrint().c_str()).c_str());
+		ids[oi] = iter->first;
+		++oi;
 	}
 	cloud->resize(oi);
 	ids.resize(oi);
-
-	Transform fromT = nodes.at(nodeId);
 
 	if(cloud->size())
 	{
@@ -2137,13 +2251,35 @@ std::map<int, float> getNodesInRadius(
 		kdTree->setInputCloud(cloud);
 		std::vector<int> ind;
 		std::vector<float> sqrdDist;
-		pcl::PointXYZ pt(fromT.x(), fromT.y(), fromT.z());
-		kdTree->radiusSearch(pt, radius, ind, sqrdDist, 0);
+		pcl::PointXYZ pt(targetPose.x(), targetPose.y(), targetPose.z());
+		if(radius>0.0f)
+		{
+			kdTree->radiusSearch(pt, radius, ind, sqrdDist, k);
+		}
+		else
+		{
+			kdTree->nearestKSearch(pt, k, ind, sqrdDist);
+		}
+		Eigen::Vector3f vA = targetPose.toEigen3f().linear()*Eigen::Vector3f(1,0,0);
 		for(unsigned int i=0; i<ind.size(); ++i)
 		{
 			if(ind[i] >=0)
 			{
-				foundNodes.insert(std::make_pair(ids[ind[i]], sqrdDist[i]));
+				if(angle > 0.0f)
+				{
+					const Transform & checkT = poses.at(ids[ind[i]]);
+					// same orientation?
+					Eigen::Vector3f vB = checkT.toEigen3f().linear()*Eigen::Vector3f(1,0,0);
+					double a = pcl::getAngle3D(Eigen::Vector4f(vA[0], vA[1], vA[2], 0), Eigen::Vector4f(vB[0], vB[1], vB[2], 0));
+					if(a <= angle)
+					{
+						foundNodes.insert(std::make_pair(ids[ind[i]], sqrdDist[i]));
+					}
+				}
+				else
+				{
+					foundNodes.insert(std::make_pair(ids[ind[i]], sqrdDist[i]));
+				}
 			}
 		}
 	}
@@ -2152,74 +2288,60 @@ std::map<int, float> getNodesInRadius(
 }
 
 // return <id, Transform>, excluding query
-std::map<int, Transform> getPosesInRadius(
+std::map<int, Transform> findNearestPoses(
 		int nodeId,
-		const std::map<int, Transform> & nodes,
+		const std::map<int, Transform> & poses,
 		float radius,
-		float angle)
+		float angle,
+		int k)
 {
-	UASSERT(uContains(nodes, nodeId));
-	std::map<int, Transform> foundNodes;
-	if(nodes.size() <= 1)
-	{
-		return foundNodes;
-	}
+	UASSERT(uContains(poses, nodeId));
 
-	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
-	cloud->resize(nodes.size());
-	std::vector<int> ids(nodes.size());
-	int oi = 0;
-	for(std::map<int, Transform>::const_iterator iter = nodes.begin(); iter!=nodes.end(); ++iter)
-	{
-		if(iter->first != nodeId)
-		{
-			(*cloud)[oi] = pcl::PointXYZ(iter->second.x(), iter->second.y(), iter->second.z());
-			UASSERT_MSG(pcl::isFinite((*cloud)[oi]), uFormat("Invalid pose (%d) %s", iter->first, iter->second.prettyPrint().c_str()).c_str());
-			ids[oi] = iter->first;
-			++oi;
-		}
-	}
-	cloud->resize(oi);
-	ids.resize(oi);
-
-	Transform fromT = nodes.at(nodeId);
-
-	if(cloud->size())
-	{
-		pcl::search::KdTree<pcl::PointXYZ>::Ptr kdTree(new pcl::search::KdTree<pcl::PointXYZ>);
-		kdTree->setInputCloud(cloud);
-		std::vector<int> ind;
-		std::vector<float> sqrdDist;
-		pcl::PointXYZ pt(fromT.x(), fromT.y(), fromT.z());
-		kdTree->radiusSearch(pt, radius, ind, sqrdDist, 0);
-
-		Eigen::Vector3f vA = fromT.toEigen3f().linear()*Eigen::Vector3f(1,0,0);
-
-		for(unsigned int i=0; i<ind.size(); ++i)
-		{
-			if(ind[i] >=0)
-			{
-				if(angle > 0.0f)
-				{
-					const Transform & checkT = nodes.at(ids[ind[i]]);
-					// same orientation?
-					Eigen::Vector3f vB = checkT.toEigen3f().linear()*Eigen::Vector3f(1,0,0);
-					double a = pcl::getAngle3D(Eigen::Vector4f(vA[0], vA[1], vA[2], 0), Eigen::Vector4f(vB[0], vB[1], vB[2], 0));
-					if(a <= angle)
-					{
-						foundNodes.insert(std::make_pair(ids[ind[i]], nodes.at(ids[ind[i]])));
-					}
-				}
-				else
-				{
-					foundNodes.insert(std::make_pair(ids[ind[i]], nodes.at(ids[ind[i]])));
-				}
-			}
-		}
-	}
-	UDEBUG("found nodes=%d", (int)foundNodes.size());
-	return foundNodes;
+	std::map<int, Transform> nodesMinusTarget = poses;
+	Transform targetPose = poses.at(nodeId);
+	nodesMinusTarget.erase(nodeId);
+	return findNearestPoses(targetPose, nodesMinusTarget, radius, angle, k);
 }
+// return <id, Transform>
+std::map<int, Transform> findNearestPoses(
+		const Transform & targetPose,
+		const std::map<int, Transform> & poses,
+		float radius,
+		float angle,
+		int k)
+{
+	std::map<int, float> nearestNodes = findNearestNodes(targetPose, poses, radius, angle, k);
+	std::map<int, Transform> foundPoses;
+	for(std::map<int, float>::iterator iter=nearestNodes.begin(); iter!=nearestNodes.end(); ++iter)
+	{
+		foundPoses.insert(*poses.find(iter->first));
+	}
+	UDEBUG("found nodes=%d/%d (radius=%f, angle=%f, k=%d)", (int)foundPoses.size(), (int)poses.size(), radius, angle, k);
+	return foundPoses;
+}
+
+// deprecated stuff
+std::map<int, float> findNearestNodes(const std::map<int, rtabmap::Transform> & nodes, const rtabmap::Transform & targetPose, int k)
+{
+	return findNearestNodes(targetPose, nodes, 0, 0, k);
+}
+std::map<int, float> getNodesInRadius(int nodeId, const std::map<int, Transform> & nodes, float radius)
+{
+	return findNearestNodes(nodeId, nodes, radius);
+}
+std::map<int, float> getNodesInRadius(const Transform & targetPose, const std::map<int, Transform> & nodes, float radius)
+{
+	return findNearestNodes(targetPose, nodes, radius);
+}
+std::map<int, Transform> getPosesInRadius(int nodeId, const std::map<int, Transform> & nodes, float radius, float angle)
+{
+	return findNearestPoses(nodeId, nodes, radius, angle);
+}
+std::map<int, Transform> getPosesInRadius(const Transform & targetPose, const std::map<int, Transform> & nodes, float radius, float angle)
+{
+	return findNearestPoses(targetPose, nodes, radius, angle);
+}
+
 
 float computePathLength(
 		const std::vector<std::pair<int, Transform> > & path,
@@ -2300,6 +2422,33 @@ std::list<std::map<int, Transform> > getPaths(
 
 	}
 	return paths;
+}
+
+void computeMinMax(const std::map<int, Transform> & poses,
+		cv::Vec3f & min,
+		cv::Vec3f & max)
+{
+	if(!poses.empty())
+	{
+		min[0] = max[0] = poses.begin()->second.x();
+		min[1] = max[1] = poses.begin()->second.y();
+		min[2] = max[2] = poses.begin()->second.z();
+		for(std::map<int, Transform>::const_iterator iter=poses.begin(); iter!=poses.end(); ++iter)
+		{
+			if(min[0] > iter->second.x())
+				min[0] = iter->second.x();
+			if(max[0] < iter->second.x())
+				max[0] = iter->second.x();
+			if(min[1] > iter->second.y())
+				min[1] = iter->second.y();
+			if(max[1] < iter->second.y())
+				max[1] = iter->second.y();
+			if(min[2] > iter->second.z())
+				min[2] = iter->second.z();
+			if(max[2] < iter->second.z())
+				max[2] = iter->second.z();
+		}
+	}
 }
 
 } /* namespace graph */

@@ -28,7 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef RTABMAP_EDITCONSTRAINTDIALOG_H_
 #define RTABMAP_EDITCONSTRAINTDIALOG_H_
 
-#include "rtabmap/gui/RtabmapGuiExp.h" // DLL export/import defines
+#include "rtabmap/gui/rtabmap_gui_export.h" // DLL export/import defines
 
 #include <QDialog>
 #include <rtabmap/core/Transform.h>
@@ -37,15 +37,20 @@ class Ui_EditConstraintDialog;
 
 namespace rtabmap {
 
-class RTABMAPGUI_EXP EditConstraintDialog : public QDialog
+class RTABMAP_GUI_EXPORT EditConstraintDialog : public QDialog
 {
 	Q_OBJECT
 
 public:
-	EditConstraintDialog(const Transform & constraint, QWidget * parent = 0);
+	EditConstraintDialog(const Transform & constraint, double linearSigma = 1, double angularSigma = 1, QWidget * parent = 0);
 
 	virtual ~EditConstraintDialog();
 	Transform getTransform() const;
+	double getLinearVariance() const;
+	double getAngularVariance() const;
+
+private Q_SLOTS:
+	void switchUnits();
 
 private:
 	Ui_EditConstraintDialog * _ui;

@@ -28,13 +28,13 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef CORELIB_INCLUDE_RTABMAP_CORE_LASERSCAN_H_
 #define CORELIB_INCLUDE_RTABMAP_CORE_LASERSCAN_H_
 
-#include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
+#include "rtabmap/core/rtabmap_core_export.h" // DLL export/import defines
 
 #include <rtabmap/core/Transform.h>
 
 namespace rtabmap {
 
-class RTABMAP_EXP LaserScan
+class RTABMAP_CORE_EXPORT LaserScan
 {
 public:
 	enum Format{kUnknown=0,
@@ -71,10 +71,36 @@ public:
 
 public:
 	LaserScan();
+	LaserScan(const LaserScan & data,
+			int maxPoints,
+			float maxRange,
+			const Transform & localTransform = Transform::getIdentity());
+	// Use version without \"format\" argument.
+	RTABMAP_DEPRECATED LaserScan(const LaserScan & data,
+			int maxPoints,
+			float maxRange,
+			Format format,
+			const Transform & localTransform = Transform::getIdentity());
 	LaserScan(const cv::Mat & data,
 			int maxPoints,
 			float maxRange,
 			Format format,
+			const Transform & localTransform = Transform::getIdentity());
+	// Use version without \"format\" argument.
+	RTABMAP_DEPRECATED LaserScan(const LaserScan & data,
+			Format format,
+			float minRange,
+			float maxRange,
+			float angleMin,
+			float angleMax,
+			float angleIncrement,
+			const Transform & localTransform = Transform::getIdentity());
+	LaserScan(const LaserScan & data,
+			float minRange,
+			float maxRange,
+			float angleMin,
+			float angleMax,
+			float angleIncrement,
 			const Transform & localTransform = Transform::getIdentity());
 	LaserScan(const cv::Mat & data,
 			Format format,
@@ -97,6 +123,7 @@ public:
 	float angleIncrement() const {return angleIncrement_;}
 	Transform localTransform() const {return localTransform_;}
 
+	bool empty() const {return data_.empty();}
 	bool isEmpty() const {return data_.empty();}
 	int size() const {return data_.cols;}
 	int dataType() const {return data_.type();}
@@ -111,7 +138,29 @@ public:
 	int getRGBOffset() const {return hasRGB()?(is2d()?2:3):-1;}
 	int getNormalsOffset() const {return hasNormals()?(2 + (is2d()?0:1) + ((hasRGB() || hasIntensity())?1:0)):-1;}
 
+	float & field(unsigned int pointIndex, unsigned int channelOffset);
+
 	void clear() {data_ = cv::Mat();}
+
+	/**
+	 * Concatenate scan's data, localTransform is ignored.
+	 */
+	LaserScan & operator+=(const LaserScan &);
+	/**
+	 * Concatenate scan's data, localTransform is ignored.
+	 */
+	LaserScan operator+(const LaserScan &);
+
+private:
+	void init(const cv::Mat & data,
+			Format format,
+			float minRange,
+			float maxRange,
+			float angleMin,
+			float angleMax,
+			float angleIncrement,
+			int maxPoints,
+			const Transform & localTransform = Transform::getIdentity());
 
 private:
 	cv::Mat data_;

@@ -36,10 +36,13 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/StereoDense.h"
 #include "rtabmap/core/DBReader.h"
 #include "rtabmap/core/IMUFilter.h"
+#include "rtabmap/core/Features2d.h"
 #include "rtabmap/core/clams/discrete_depth_distortion_model.h"
+#include <opencv2/imgproc/types_c.h>
 #include <opencv2/stitching/detail/exposure_compensate.hpp>
 #include <rtabmap/utilite/UTimer.h>
 #include <rtabmap/utilite/ULogger.h>
+#include <rtabmap/utilite/UStl.h>
 
 #include <pcl/io/io.h>
 
@@ -49,10 +52,15 @@ namespace rtabmap
 // ownership transferred
 CameraThread::CameraThread(Camera * camera, const ParametersMap & parameters) :
 		_camera(camera),
+		_odomSensor(0),
+		_odomAsGt(false),
+		_poseTimeOffset(0.0),
+		_poseScaleFactor(1.0f),
 		_mirroring(false),
 		_stereoExposureCompensation(false),
 		_colorOnly(false),
 		_imageDecimation(1),
+		_histogramMethod(0),
 		_stereoToDepth(false),
 		_scanFromDepth(false),
 		_scanDownsampleStep(1),
@@ -67,18 +75,107 @@ CameraThread::CameraThread(Camera * camera, const ParametersMap & parameters) :
 		_bilateralFiltering(false),
 		_bilateralSigmaS(10),
 		_bilateralSigmaR(0.1),
-		_imuFilter(0)
+		_imuFilter(0),
+		_imuBaseFrameConversion(false),
+		_featureDetector(0),
+		_depthAsMask(Parameters::defaultVisDepthAsMask())
 {
 	UASSERT(_camera != 0);
+}
+
+// ownership transferred
+CameraThread::CameraThread(
+		Camera * camera,
+		Camera * odomSensor,
+		const Transform & extrinsics,
+		double poseTimeOffset,
+		float poseScaleFactor,
+		bool odomAsGt,
+		const ParametersMap & parameters) :
+			_camera(camera),
+			_odomSensor(odomSensor),
+			_extrinsicsOdomToCamera(extrinsics * CameraModel::opticalRotation()),
+			_odomAsGt(odomAsGt),
+			_poseTimeOffset(poseTimeOffset),
+			_poseScaleFactor(poseScaleFactor),
+			_mirroring(false),
+			_stereoExposureCompensation(false),
+			_colorOnly(false),
+			_imageDecimation(1),
+			_histogramMethod(0),
+			_stereoToDepth(false),
+			_scanFromDepth(false),
+			_scanDownsampleStep(1),
+			_scanRangeMin(0.0f),
+			_scanRangeMax(0.0f),
+			_scanVoxelSize(0.0f),
+			_scanNormalsK(0),
+			_scanNormalsRadius(0.0f),
+			_scanForceGroundNormalsUp(false),
+			_stereoDense(StereoDense::create(parameters)),
+			_distortionModel(0),
+			_bilateralFiltering(false),
+			_bilateralSigmaS(10),
+			_bilateralSigmaR(0.1),
+			_imuFilter(0),
+			_imuBaseFrameConversion(false),
+			_featureDetector(0),
+			_depthAsMask(Parameters::defaultVisDepthAsMask())
+{
+	UASSERT(_camera != 0 && _odomSensor != 0 && !_extrinsicsOdomToCamera.isNull());
+	UDEBUG("_extrinsicsOdomToCamera=%s", _extrinsicsOdomToCamera.prettyPrint().c_str());
+	UDEBUG("_poseTimeOffset        =%f", _poseTimeOffset);
+	UDEBUG("_poseScaleFactor       =%f", _poseScaleFactor);
+	UDEBUG("_odomAsGt              =%s", _odomAsGt?"true":"false");
+}
+
+// ownership transferred
+CameraThread::CameraThread(
+		Camera * camera,
+		bool odomAsGt,
+		const ParametersMap & parameters) :
+			_camera(camera),
+			_odomSensor(0),
+			_odomAsGt(odomAsGt),
+			_poseTimeOffset(0.0),
+			_poseScaleFactor(1.0f),
+			_mirroring(false),
+			_stereoExposureCompensation(false),
+			_colorOnly(false),
+			_imageDecimation(1),
+			_histogramMethod(0),
+			_stereoToDepth(false),
+			_scanFromDepth(false),
+			_scanDownsampleStep(1),
+			_scanRangeMin(0.0f),
+			_scanRangeMax(0.0f),
+			_scanVoxelSize(0.0f),
+			_scanNormalsK(0),
+			_scanNormalsRadius(0.0f),
+			_scanForceGroundNormalsUp(false),
+			_stereoDense(StereoDense::create(parameters)),
+			_distortionModel(0),
+			_bilateralFiltering(false),
+			_bilateralSigmaS(10),
+			_bilateralSigmaR(0.1),
+			_imuFilter(0),
+			_imuBaseFrameConversion(false),
+			_featureDetector(0),
+			_depthAsMask(Parameters::defaultVisDepthAsMask())
+{
+	UASSERT(_camera != 0);
+	UDEBUG("_odomAsGt              =%s", _odomAsGt?"true":"false");
 }
 
 CameraThread::~CameraThread()
 {
 	join(true);
 	delete _camera;
+	delete _odomSensor;
 	delete _distortionModel;
 	delete _stereoDense;
 	delete _imuFilter;
+	delete _featureDetector;
 }
 
 void CameraThread::setImageRate(float imageRate)
@@ -117,10 +214,11 @@ void CameraThread::enableBilateralFiltering(float sigmaS, float sigmaR)
 	_bilateralSigmaR = sigmaR;
 }
 
-void CameraThread::enableIMUFiltering(int filteringStrategy, const ParametersMap & parameters)
+void CameraThread::enableIMUFiltering(int filteringStrategy, const ParametersMap & parameters, bool baseFrameConversion)
 {
 	delete _imuFilter;
 	_imuFilter = IMUFilter::create((IMUFilter::Type)filteringStrategy, parameters);
+	_imuBaseFrameConversion = baseFrameConversion;
 }
 
 void CameraThread::disableIMUFiltering()
@@ -129,9 +227,76 @@ void CameraThread::disableIMUFiltering()
 	_imuFilter = 0;
 }
 
+void CameraThread::enableFeatureDetection(const ParametersMap & parameters)
+{
+	delete _featureDetector;
+	ParametersMap params = parameters;
+	ParametersMap defaultParams = Parameters::getDefaultParameters("Vis");
+	uInsert(params, ParametersPair(Parameters::kKpDetectorStrategy(), uValue(params, Parameters::kVisFeatureType(), defaultParams.at(Parameters::kVisFeatureType()))));
+	uInsert(params, ParametersPair(Parameters::kKpMaxFeatures(), uValue(params, Parameters::kVisMaxFeatures(), defaultParams.at(Parameters::kVisMaxFeatures()))));
+	uInsert(params, ParametersPair(Parameters::kKpMaxDepth(), uValue(params, Parameters::kVisMaxDepth(), defaultParams.at(Parameters::kVisMaxDepth()))));
+	uInsert(params, ParametersPair(Parameters::kKpMinDepth(), uValue(params, Parameters::kVisMinDepth(), defaultParams.at(Parameters::kVisMinDepth()))));
+	uInsert(params, ParametersPair(Parameters::kKpRoiRatios(), uValue(params, Parameters::kVisRoiRatios(), defaultParams.at(Parameters::kVisRoiRatios()))));
+	uInsert(params, ParametersPair(Parameters::kKpSubPixEps(), uValue(params, Parameters::kVisSubPixEps(), defaultParams.at(Parameters::kVisSubPixEps()))));
+	uInsert(params, ParametersPair(Parameters::kKpSubPixIterations(), uValue(params, Parameters::kVisSubPixIterations(), defaultParams.at(Parameters::kVisSubPixIterations()))));
+	uInsert(params, ParametersPair(Parameters::kKpSubPixWinSize(), uValue(params, Parameters::kVisSubPixWinSize(), defaultParams.at(Parameters::kVisSubPixWinSize()))));
+	uInsert(params, ParametersPair(Parameters::kKpGridRows(), uValue(params, Parameters::kVisGridRows(), defaultParams.at(Parameters::kVisGridRows()))));
+	uInsert(params, ParametersPair(Parameters::kKpGridCols(), uValue(params, Parameters::kVisGridCols(), defaultParams.at(Parameters::kVisGridCols()))));
+	_featureDetector = Feature2D::create(params);
+	_depthAsMask = Parameters::parse(params, Parameters::kVisDepthAsMask(), _depthAsMask);
+}
+void CameraThread::disableFeatureDetection()
+{
+	delete _featureDetector;
+	_featureDetector = 0;
+}
+
+void CameraThread::setScanParameters(
+	bool fromDepth,
+	int downsampleStep,
+	float rangeMin,
+	float rangeMax,
+	float voxelSize,
+	int normalsK,
+	int normalsRadius,
+	bool forceGroundNormalsUp)
+{
+	setScanParameters(fromDepth, downsampleStep, rangeMin, rangeMax, voxelSize, normalsK, normalsRadius, forceGroundNormalsUp?0.8f:0.0f);
+}
+
+void CameraThread::setScanParameters(
+			bool fromDepth,
+			int downsampleStep, // decimation of the depth image in case the scan is from depth image
+			float rangeMin,
+			float rangeMax,
+			float voxelSize,
+			int normalsK,
+			int normalsRadius,
+			float groundNormalsUp)
+{
+	_scanFromDepth = fromDepth;
+	_scanDownsampleStep=downsampleStep;
+	_scanRangeMin = rangeMin;
+	_scanRangeMax = rangeMax;
+	_scanVoxelSize = voxelSize;
+	_scanNormalsK = normalsK;
+	_scanNormalsRadius = normalsRadius;
+	_scanForceGroundNormalsUp = groundNormalsUp;
+}
+
+bool CameraThread::odomProvided() const
+{
+	return _camera && (_camera->odomProvided() || (_odomSensor && _odomSensor->odomProvided()));
+}
+
 void CameraThread::mainLoopBegin()
 {
 	ULogger::registerCurrentThread("Camera");
+	if(_imuFilter)
+	{
+		// In case we paused the camera and moved somewhere else, restart filtering.
+		_imuFilter->reset();
+	}
 	_camera->resetTimer();
 }
 
@@ -141,10 +306,52 @@ void CameraThread::mainLoop()
 	CameraInfo info;
 	SensorData data = _camera->takeImage(&info);
 
-	if(!data.imageRaw().empty() || (dynamic_cast<DBReader*>(_camera) != 0 && data.id()>0)) // intermediate nodes could not have image set
+	if(_odomSensor)
+	{
+		Transform pose;
+		Transform poseToLeftCam;
+		cv::Mat covariance;
+		if(_odomSensor->getPose(data.stamp()+_poseTimeOffset, pose, covariance))
+		{
+			info.odomPose = pose;
+			info.odomCovariance = covariance;
+			if(_poseScaleFactor>0 && _poseScaleFactor!=1.0f)
+			{
+				info.odomPose.x() *= _poseScaleFactor;
+				info.odomPose.y() *= _poseScaleFactor;
+				info.odomPose.z() *= _poseScaleFactor;
+			}
+			// Adjust local transform of the camera based on the pose frame
+			if(!data.cameraModels().empty())
+			{
+				UASSERT(data.cameraModels().size()==1);
+				CameraModel model = data.cameraModels()[0];
+				model.setLocalTransform(_extrinsicsOdomToCamera);
+				data.setCameraModel(model);
+			}
+			else if(!data.stereoCameraModels().empty())
+			{
+				UASSERT(data.stereoCameraModels().size()==1);
+				StereoCameraModel model = data.stereoCameraModels()[0];
+				model.setLocalTransform(_extrinsicsOdomToCamera);
+				data.setStereoCameraModel(model);
+			}
+		}
+		else
+		{
+			UWARN("Could not get pose at stamp %f", data.stamp());
+		}
+	}
+
+	if(_odomAsGt && !info.odomPose.isNull())
+	{
+		data.setGroundTruth(info.odomPose);
+		info.odomPose.setNull();
+	}
+
+	if(!data.imageRaw().empty() || !data.laserScanRaw().empty() || (dynamic_cast<DBReader*>(_camera) != 0 && data.id()>0)) // intermediate nodes could not have image set
 	{
 		postUpdate(&data, &info);
-
 		info.cameraName = _camera->getSerial();
 		info.timeTotal = totalTime.ticks();
 		this->post(new CameraEvent(data, info));
@@ -194,15 +401,22 @@ void CameraThread::postUpdate(SensorData * dataPtr, CameraInfo * info) const
 		}
 		else if(!data.rightRaw().empty())
 		{
-			data.setRGBDImage(data.imageRaw(), cv::Mat(), data.stereoCameraModel().left());
+			std::vector<CameraModel> models;
+			for(size_t i=0; i<data.stereoCameraModels().size(); ++i)
+			{
+				models.push_back(data.stereoCameraModels()[i].left());
+			}
+			data.setRGBDImage(data.imageRaw(), cv::Mat(), models);
 		}
 	}
 
 	if(_distortionModel && !data.depthRaw().empty())
 	{
 		UTimer timer;
-		if(_distortionModel->getWidth() == data.depthRaw().cols &&
-		   _distortionModel->getHeight() == data.depthRaw().rows	)
+		if(_distortionModel->getWidth() >= data.depthRaw().cols &&
+		   _distortionModel->getHeight() >= data.depthRaw().rows &&
+		   _distortionModel->getWidth() % data.depthRaw().cols == 0 &&
+		   _distortionModel->getHeight() % data.depthRaw().rows == 0)
 		{
 			cv::Mat depth = data.depthRaw().clone();// make sure we are not modifying data in cached signatures.
 			_distortionModel->undistort(depth);
@@ -210,7 +424,7 @@ void CameraThread::postUpdate(SensorData * dataPtr, CameraInfo * info) const
 		}
 		else
 		{
-			UERROR("Distortion model size is %dx%d but dpeth image is %dx%d!",
+			UERROR("Distortion model size is %dx%d but depth image is %dx%d!",
 					_distortionModel->getWidth(), _distortionModel->getHeight(),
 					data.depthRaw().cols, data.depthRaw().rows);
 		}
@@ -237,7 +451,26 @@ void CameraThread::postUpdate(SensorData * dataPtr, CameraInfo * info) const
 		else
 		{
 			cv::Mat image = util2d::decimate(data.imageRaw(), _imageDecimation);
-			cv::Mat depthOrRight = util2d::decimate(data.depthOrRightRaw(), _imageDecimation);
+
+			int depthDecimation = _imageDecimation;
+			if(data.depthOrRightRaw().rows <= image.rows || data.depthOrRightRaw().cols <= image.cols)
+			{
+				depthDecimation = 1;
+			}
+			else
+			{
+				depthDecimation = 2;
+				while(data.depthOrRightRaw().rows / depthDecimation > image.rows ||
+					  data.depthOrRightRaw().cols / depthDecimation > image.cols ||
+					  data.depthOrRightRaw().rows % depthDecimation != 0 ||
+					  data.depthOrRightRaw().cols % depthDecimation != 0)
+				{
+					++depthDecimation;
+				}
+				UDEBUG("depthDecimation=%d", depthDecimation);
+			}
+			cv::Mat depthOrRight = util2d::decimate(data.depthOrRightRaw(), depthDecimation);
+
 			std::vector<CameraModel> models = data.cameraModels();
 			for(unsigned int i=0; i<models.size(); ++i)
 			{
@@ -250,91 +483,213 @@ void CameraThread::postUpdate(SensorData * dataPtr, CameraInfo * info) const
 			{
 				data.setRGBDImage(image, depthOrRight, models);
 			}
-			else
+
+
+			std::vector<StereoCameraModel> stereoModels = data.stereoCameraModels();
+			for(unsigned int i=0; i<stereoModels.size(); ++i)
 			{
-				StereoCameraModel stereoModel = data.stereoCameraModel();
-				if(stereoModel.isValidForProjection())
+				if(stereoModels[i].isValidForProjection())
 				{
-					stereoModel.scale(1.0/double(_imageDecimation));
+					stereoModels[i].scale(1.0/double(_imageDecimation));
 				}
-				data.setStereoImage(image, depthOrRight, stereoModel);
 			}
+			if(!stereoModels.empty())
+			{
+				data.setStereoImage(image, depthOrRight, stereoModels);
+			}
+
+			std::vector<cv::KeyPoint> kpts = data.keypoints();
+			double log2value = log(double(_imageDecimation))/log(2.0);
+			for(unsigned int i=0; i<kpts.size(); ++i)
+			{
+				kpts[i].pt.x /= _imageDecimation;
+				kpts[i].pt.y /= _imageDecimation;
+				kpts[i].size /= _imageDecimation;
+				kpts[i].octave -= log2value;
+			}
+			data.setFeatures(kpts, data.keypoints3D(), data.descriptors());
 		}
 		if(info) info->timeImageDecimation = timer.ticks();
 	}
-	if(_mirroring && !data.imageRaw().empty() && data.cameraModels().size() == 1)
+
+	if(_mirroring && !data.imageRaw().empty() && data.cameraModels().size()>=1)
+	{
+		if(data.cameraModels().size() == 1)
+		{
+			UDEBUG("");
+			UTimer timer;
+			cv::Mat tmpRgb;
+			cv::flip(data.imageRaw(), tmpRgb, 1);
+
+			CameraModel tmpModel = data.cameraModels()[0];
+			if(data.cameraModels()[0].cx())
+			{
+				tmpModel = CameraModel(
+						data.cameraModels()[0].fx(),
+						data.cameraModels()[0].fy(),
+						float(data.imageRaw().cols) - data.cameraModels()[0].cx(),
+						data.cameraModels()[0].cy(),
+						data.cameraModels()[0].localTransform(),
+						data.cameraModels()[0].Tx(),
+						data.cameraModels()[0].imageSize());
+			}
+			cv::Mat tmpDepth = data.depthOrRightRaw();
+			if(!data.depthRaw().empty())
+			{
+				cv::flip(data.depthRaw(), tmpDepth, 1);
+			}
+			data.setRGBDImage(tmpRgb, tmpDepth, tmpModel);
+			if(info) info->timeMirroring = timer.ticks();
+		}
+		else
+		{
+			UWARN("Mirroring is not implemented for multiple cameras or stereo...");
+		}
+	}
+
+	if(_histogramMethod && !data.imageRaw().empty())
 	{
 		UDEBUG("");
 		UTimer timer;
-		cv::Mat tmpRgb;
-		cv::flip(data.imageRaw(), tmpRgb, 1);
-
-		UASSERT_MSG(data.cameraModels().size() <= 1 && !data.stereoCameraModel().isValidForProjection(), "Only single RGBD cameras are supported for mirroring.");
-		CameraModel tmpModel = data.cameraModels()[0];
-		if(data.cameraModels()[0].cx())
+		cv::Mat image;
+		if(_histogramMethod == 1)
 		{
-			tmpModel = CameraModel(
-					data.cameraModels()[0].fx(),
-					data.cameraModels()[0].fy(),
-					float(data.imageRaw().cols) - data.cameraModels()[0].cx(),
-					data.cameraModels()[0].cy(),
-					data.cameraModels()[0].localTransform(),
-					data.cameraModels()[0].Tx(),
-					data.cameraModels()[0].imageSize());
+			if(data.imageRaw().type() == CV_8UC1)
+			{
+				cv::equalizeHist(data.imageRaw(), image);
+			}
+			else if(data.imageRaw().type() == CV_8UC3)
+			{
+				cv::Mat channels[3];
+				cv::cvtColor(data.imageRaw(), image, CV_BGR2YCrCb);
+				cv::split(image, channels);
+				cv::equalizeHist(channels[0], channels[0]);
+				cv::merge(channels, 3, image);
+				cv::cvtColor(image, image, CV_YCrCb2BGR);
+			}
+			if(!data.depthRaw().empty())
+			{
+				data.setRGBDImage(image, data.depthRaw(), data.cameraModels());
+			}
+			else if(!data.rightRaw().empty())
+			{
+				cv::Mat right;
+				if(data.rightRaw().type() == CV_8UC1)
+				{
+					cv::equalizeHist(data.rightRaw(), right);
+				}
+				else if(data.rightRaw().type() == CV_8UC3)
+				{
+					cv::Mat channels[3];
+					cv::cvtColor(data.rightRaw(), right, CV_BGR2YCrCb);
+					cv::split(right, channels);
+					cv::equalizeHist(channels[0], channels[0]);
+					cv::merge(channels, 3, right);
+					cv::cvtColor(right, right, CV_YCrCb2BGR);
+				}
+				data.setStereoImage(image, right, data.stereoCameraModels()[0]);
+			}
 		}
-		cv::Mat tmpDepth = data.depthOrRightRaw();
-		if(!data.depthRaw().empty())
+		else if(_histogramMethod == 2)
 		{
-			cv::flip(data.depthRaw(), tmpDepth, 1);
+			cv::Ptr<cv::CLAHE> clahe = cv::createCLAHE(3.0);
+			if(data.imageRaw().type() == CV_8UC1)
+			{
+				clahe->apply(data.imageRaw(), image);
+			}
+			else if(data.imageRaw().type() == CV_8UC3)
+			{
+				cv::Mat channels[3];
+				cv::cvtColor(data.imageRaw(), image, CV_BGR2YCrCb);
+				cv::split(image, channels);
+				clahe->apply(channels[0], channels[0]);
+				cv::merge(channels, 3, image);
+				cv::cvtColor(image, image, CV_YCrCb2BGR);
+			}
+			if(!data.depthRaw().empty())
+			{
+				data.setRGBDImage(image, data.depthRaw(), data.cameraModels());
+			}
+			else if(!data.rightRaw().empty())
+			{
+				cv::Mat right;
+				if(data.rightRaw().type() == CV_8UC1)
+				{
+					clahe->apply(data.rightRaw(), right);
+				}
+				else if(data.rightRaw().type() == CV_8UC3)
+				{
+					cv::Mat channels[3];
+					cv::cvtColor(data.rightRaw(), right, CV_BGR2YCrCb);
+					cv::split(right, channels);
+					clahe->apply(channels[0], channels[0]);
+					cv::merge(channels, 3, right);
+					cv::cvtColor(right, right, CV_YCrCb2BGR);
+				}
+				data.setStereoImage(image, right, data.stereoCameraModels()[0]);
+			}
 		}
-		data.setRGBDImage(tmpRgb, tmpDepth, tmpModel);
-		if(info) info->timeMirroring = timer.ticks();
+		if(info) info->timeHistogramEqualization = timer.ticks();
 	}
 
 	if(_stereoExposureCompensation && !data.imageRaw().empty() && !data.rightRaw().empty())
 	{
+		if(data.stereoCameraModels().size()==1)
+		{
 #if CV_MAJOR_VERSION < 3
-		UWARN("Stereo exposure compensation not implemented for OpenCV version under 3.");
+			UWARN("Stereo exposure compensation not implemented for OpenCV version under 3.");
 #else
-		UDEBUG("");
-		UTimer timer;
-		cv::Ptr<cv::detail::ExposureCompensator> compensator = cv::detail::ExposureCompensator::createDefault(cv::detail::ExposureCompensator::GAIN);
-		std::vector<cv::Point> topLeftCorners(2, cv::Point(0,0));
-		std::vector<cv::UMat> images;
-		std::vector<cv::UMat> masks(2, cv::UMat(data.imageRaw().size(), CV_8UC1,  cv::Scalar(255)));
-		images.push_back(data.imageRaw().getUMat(cv::ACCESS_READ));
-		images.push_back(data.rightRaw().getUMat(cv::ACCESS_READ));
-		compensator->feed(topLeftCorners, images, masks);
-		cv::Mat imgLeft = data.imageRaw().clone();
-		compensator->apply(0, cv::Point(0,0), imgLeft, masks[0]);
-		cv::Mat imgRight = data.rightRaw().clone();
-		compensator->apply(1, cv::Point(0,0), imgRight, masks[1]);
-		data.setStereoImage(imgLeft, imgRight, data.stereoCameraModel());
-		cv::detail::GainCompensator * gainCompensator = (cv::detail::GainCompensator*)compensator.get();
-		UDEBUG("gains = %f %f ", gainCompensator->gains()[0], gainCompensator->gains()[1]);
-		if(info) info->timeStereoExposureCompensation = timer.ticks();
+			UDEBUG("");
+			UTimer timer;
+			cv::Ptr<cv::detail::ExposureCompensator> compensator = cv::detail::ExposureCompensator::createDefault(cv::detail::ExposureCompensator::GAIN);
+			std::vector<cv::Point> topLeftCorners(2, cv::Point(0,0));
+			std::vector<cv::UMat> images;
+			std::vector<cv::UMat> masks(2, cv::UMat(data.imageRaw().size(), CV_8UC1,  cv::Scalar(255)));
+			images.push_back(data.imageRaw().getUMat(cv::ACCESS_READ));
+			images.push_back(data.rightRaw().getUMat(cv::ACCESS_READ));
+			compensator->feed(topLeftCorners, images, masks);
+			cv::Mat imgLeft = data.imageRaw().clone();
+			compensator->apply(0, cv::Point(0,0), imgLeft, masks[0]);
+			cv::Mat imgRight = data.rightRaw().clone();
+			compensator->apply(1, cv::Point(0,0), imgRight, masks[1]);
+			data.setStereoImage(imgLeft, imgRight, data.stereoCameraModels()[0]);
+			cv::detail::GainCompensator * gainCompensator = (cv::detail::GainCompensator*)compensator.get();
+			UDEBUG("gains = %f %f ", gainCompensator->gains()[0], gainCompensator->gains()[1]);
+			if(info) info->timeStereoExposureCompensation = timer.ticks();
 #endif
+		}
+		else
+		{
+			UWARN("Stereo exposure compensation only is not implemented to multiple stereo cameras...");
+		}
 	}
 
-	if(_stereoToDepth && !data.imageRaw().empty() && data.stereoCameraModel().isValidForProjection() && !data.rightRaw().empty())
+	if(_stereoToDepth && !data.imageRaw().empty() && !data.stereoCameraModels().empty() && data.stereoCameraModels()[0].isValidForProjection() && !data.rightRaw().empty())
 	{
-		UDEBUG("");
-		UTimer timer;
-		cv::Mat depth = util2d::depthFromDisparity(
-				_stereoDense->computeDisparity(data.imageRaw(), data.rightRaw()),
-				data.stereoCameraModel().left().fx(),
-				data.stereoCameraModel().baseline());
-		// set Tx for stereo bundle adjustment (when used)
-		CameraModel model = CameraModel(
-				data.stereoCameraModel().left().fx(),
-				data.stereoCameraModel().left().fy(),
-				data.stereoCameraModel().left().cx(),
-				data.stereoCameraModel().left().cy(),
-				data.stereoCameraModel().localTransform(),
-				-data.stereoCameraModel().baseline()*data.stereoCameraModel().left().fx(),
-				data.stereoCameraModel().left().imageSize());
-		data.setRGBDImage(data.imageRaw(), depth, model);
-		if(info) info->timeDisparity = timer.ticks();
+		if(data.stereoCameraModels().size()==1)
+		{
+			UDEBUG("");
+			UTimer timer;
+			cv::Mat depth = util2d::depthFromDisparity(
+					_stereoDense->computeDisparity(data.imageRaw(), data.rightRaw()),
+					data.stereoCameraModels()[0].left().fx(),
+					data.stereoCameraModels()[0].baseline());
+			// set Tx for stereo bundle adjustment (when used)
+			CameraModel model = CameraModel(
+					data.stereoCameraModels()[0].left().fx(),
+					data.stereoCameraModels()[0].left().fy(),
+					data.stereoCameraModels()[0].left().cx(),
+					data.stereoCameraModels()[0].left().cy(),
+					data.stereoCameraModels()[0].localTransform(),
+					-data.stereoCameraModels()[0].baseline()*data.stereoCameraModels()[0].left().fx(),
+					data.stereoCameraModels()[0].left().imageSize());
+			data.setRGBDImage(data.imageRaw(), depth, model);
+			if(info) info->timeDisparity = timer.ticks();
+		}
+		else
+		{
+			UWARN("Stereo to depth is not implemented for multiple stereo cameras...");
+		}
 	}
 	if(_scanFromDepth &&
 		data.cameraModels().size() &&
@@ -354,9 +709,8 @@ void CameraThread::postUpdate(SensorData * dataPtr, CameraInfo * info) const
 					_scanRangeMin,
 					validIndices.get());
 			float maxPoints = (data.depthRaw().rows/_scanDownsampleStep)*(data.depthRaw().cols/_scanDownsampleStep);
-			cv::Mat scan;
+			LaserScan scan;
 			const Transform & baseToScan = data.cameraModels()[0].localTransform();
-			LaserScan::Format format = LaserScan::kXYZRGB;
 			if(validIndices->size())
 			{
 				if(_scanVoxelSize>0.0f)
@@ -381,7 +735,6 @@ void CameraThread::postUpdate(SensorData * dataPtr, CameraInfo * info) const
 						pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloudNormals(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
 						pcl::concatenateFields(*cloud, *normals, *cloudNormals);
 						scan = util3d::laserScanFromPointCloud(*cloudNormals, baseToScan.inverse());
-						format = LaserScan::kXYZRGBNormal;
 					}
 					else
 					{
@@ -389,7 +742,7 @@ void CameraThread::postUpdate(SensorData * dataPtr, CameraInfo * info) const
 					}
 				}
 			}
-			data.setLaserScan(LaserScan(scan, (int)maxPoints, _scanRangeMax, format, baseToScan));
+			data.setLaserScan(LaserScan(scan, (int)maxPoints, _scanRangeMax, baseToScan));
 			if(info) info->timeScanFromDepth = timer.ticks();
 		}
 		else
@@ -420,21 +773,31 @@ void CameraThread::postUpdate(SensorData * dataPtr, CameraInfo * info) const
 		}
 		else
 		{
+			// Transform IMU data in base_link to correctly initialize yaw
+			IMU imu = data.imu();
+			if(_imuBaseFrameConversion)
+			{
+				UASSERT(!data.imu().localTransform().isNull());
+				imu.convertToBaseFrame();
+
+			}
 			_imuFilter->update(
-					data.imu().angularVelocity()[0],
-					data.imu().angularVelocity()[1],
-					data.imu().angularVelocity()[2],
-					data.imu().linearAcceleration()[0],
-					data.imu().linearAcceleration()[1],
-					data.imu().linearAcceleration()[2],
+					imu.angularVelocity()[0],
+					imu.angularVelocity()[1],
+					imu.angularVelocity()[2],
+					imu.linearAcceleration()[0],
+					imu.linearAcceleration()[1],
+					imu.linearAcceleration()[2],
 					data.stamp());
 			double qx,qy,qz,qw;
 			_imuFilter->getOrientation(qx,qy,qz,qw);
+
 			data.setIMU(IMU(
 					cv::Vec4d(qx,qy,qz,qw), cv::Mat::eye(3,3,CV_64FC1),
-					data.imu().angularVelocity(), data.imu().angularVelocityCovariance(),
-					data.imu().linearAcceleration(), data.imu().linearAccelerationCovariance(),
-					data.imu().localTransform()));
+					imu.angularVelocity(), imu.angularVelocityCovariance(),
+					imu.linearAcceleration(), imu.linearAccelerationCovariance(),
+					imu.localTransform()));
+
 			UDEBUG("%f %f %f %f (gyro=%f %f %f, acc=%f %f %f, %fs)",
 						data.imu().orientation()[0],
 						data.imu().orientation()[1],
@@ -448,6 +811,50 @@ void CameraThread::postUpdate(SensorData * dataPtr, CameraInfo * info) const
 						data.imu().linearAcceleration()[2],
 						data.stamp());
 		}
+	}
+
+	if(_featureDetector && !data.imageRaw().empty())
+	{
+		UDEBUG("Detecting features");
+		cv::Mat grayScaleImg = data.imageRaw();
+		if(data.imageRaw().channels() > 1)
+		{
+			cv::Mat tmp;
+			cv::cvtColor(grayScaleImg, tmp, cv::COLOR_BGR2GRAY);
+			grayScaleImg = tmp;
+		}
+
+		cv::Mat depthMask;
+		if(!data.depthRaw().empty() && _depthAsMask)
+		{
+			if( data.imageRaw().rows % data.depthRaw().rows == 0 &&
+				data.imageRaw().cols % data.depthRaw().cols == 0 &&
+				data.imageRaw().rows/data.depthRaw().rows == data.imageRaw().cols/data.depthRaw().cols)
+			{
+				depthMask = util2d::interpolate(data.depthRaw(), data.imageRaw().rows/data.depthRaw().rows, 0.1f);
+			}
+			else
+			{
+				UWARN("%s is true, but RGB size (%dx%d) modulo depth size (%dx%d) is not 0. Ignoring depth mask for feature detection.",
+						Parameters::kVisDepthAsMask().c_str(),
+						data.imageRaw().rows, data.imageRaw().cols,
+						data.depthRaw().rows, data.depthRaw().cols);
+			}
+		}
+
+		std::vector<cv::KeyPoint> keypoints = _featureDetector->generateKeypoints(grayScaleImg, depthMask);
+		cv::Mat descriptors;
+		std::vector<cv::Point3f> keypoints3D;
+		if(!keypoints.empty())
+		{
+			descriptors = _featureDetector->generateDescriptors(grayScaleImg, keypoints);
+			if(!keypoints.empty())
+			{
+				keypoints3D = _featureDetector->generateKeypoints3D(data, keypoints);
+			}
+		}
+
+		data.setFeatures(keypoints, keypoints3D, descriptors);
 	}
 }
 

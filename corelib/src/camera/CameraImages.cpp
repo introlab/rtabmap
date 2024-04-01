@@ -29,6 +29,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UConversion.h>
 #include <rtabmap/utilite/UDirectory.h>
 #include <rtabmap/utilite/UStl.h>
+#include <rtabmap/utilite/UFile.h>
 #include <rtabmap/utilite/UThreadC.h>
 #include <rtabmap/core/util3d.h>
 #include <rtabmap/core/util3d_filtering.h>
@@ -58,6 +59,7 @@ CameraImages::CameraImages() :
 		_depthFromScanFillHoles(1),
 		_depthFromScanFillHolesFromBorder(false),
 		_filenamesAreTimestamps(false),
+		_hasConfigForEachFrame(false),
 		_syncImageRateWithStamps(true),
 		_odometryFormat(0),
 		_groundTruthFormat(0),
@@ -87,6 +89,7 @@ CameraImages::CameraImages(const std::string & path,
 	_depthFromScanFillHoles(1),
 	_depthFromScanFillHolesFromBorder(false),
 	_filenamesAreTimestamps(false),
+	_hasConfigForEachFrame(false),
 	_syncImageRateWithStamps(true),
 	_odometryFormat(0),
 	_groundTruthFormat(0),
@@ -111,31 +114,39 @@ bool CameraImages::init(const std::string & calibrationFolder, const std::string
 	_countScan = 0;
 	_captureDelay = 0.0;
 	_framesPublished=0;
+	_model = cameraModel();
+	_models.clear();
+	covariances_.clear();
 
 	UDEBUG("");
 	if(_dir)
 	{
-		_dir->setPath(_path, "jpg ppm png bmp pnm tiff pgm");
+		delete _dir;
+		_dir = 0;
 	}
-	else
+	if(!_path.empty())
 	{
 		_dir = new UDirectory(_path, "jpg ppm png bmp pnm tiff pgm");
-	}
-	if(_path[_path.size()-1] != '\\' && _path[_path.size()-1] != '/')
-	{
-		_path.append("/");
-	}
-	if(!_dir->isValid())
-	{
-		ULOGGER_ERROR("Directory path is not valid \"%s\"", _path.c_str());
-	}
-	else if(_dir->getFileNames().size() == 0)
-	{
-		UWARN("Directory is empty \"%s\"", _path.c_str());
-	}
-	else
-	{
-		UINFO("path=%s images=%d", _path.c_str(), (int)this->imagesCount());
+		if(_path[_path.size()-1] != '\\' && _path[_path.size()-1] != '/')
+		{
+			_path.append("/");
+		}
+		if(!_dir->isValid())
+		{
+			ULOGGER_ERROR("Directory path is not valid \"%s\"", _path.c_str());
+			delete _dir;
+			_dir = 0;
+		}
+		else if(_dir->getFileNames().size() == 0)
+		{
+			UWARN("Directory is empty \"%s\"", _path.c_str());
+			delete _dir;
+			_dir = 0;
+		}
+		else
+		{
+			UINFO("path=%s images=%d", _path.c_str(), (int)this->imagesCount());
+		}
 	}
 
 	// check for scan directory
@@ -164,7 +175,7 @@ bool CameraImages::init(const std::string & calibrationFolder, const std::string
 			delete _scanDir;
 			_scanDir = 0;
 		}
-		else if(_scanDir->getFileNames().size() != _dir->getFileNames().size())
+		else if(_dir && _scanDir->getFileNames().size() != _dir->getFileNames().size())
 		{
 			UERROR("Scan and image directories should be the same size \"%s\"(%d) vs \"%s\"(%d)",
 					_scanPath.c_str(),
@@ -180,143 +191,291 @@ bool CameraImages::init(const std::string & calibrationFolder, const std::string
 		}
 	}
 
-	// look for calibration files
-	UINFO("calibration folder=%s name=%s", calibrationFolder.c_str(), cameraName.c_str());
-	if(!calibrationFolder.empty() && !cameraName.empty())
+	if(_dir==0 && _scanDir == 0)
 	{
-		if(!_model.load(calibrationFolder, cameraName))
-		{
-			UWARN("Missing calibration files for camera \"%s\" in \"%s\" folder, you should calibrate the camera!",
-					cameraName.c_str(), calibrationFolder.c_str());
-		}
-		else
-		{
-			UINFO("Camera parameters: fx=%f fy=%f cx=%f cy=%f",
-					_model.fx(),
-					_model.fy(),
-					_model.cx(),
-					_model.cy());
-		}
-	}
-	_model.setName(cameraName);
-
-	_model.setLocalTransform(this->getLocalTransform());
-	if(_rectifyImages && !_model.isValidForRectification())
-	{
-		UERROR("Parameter \"rectifyImages\" is set, but no camera model is loaded or valid.");
+		ULOGGER_ERROR("Images path or scans path should be set!");
 		return false;
 	}
 
-	bool success = _dir->isValid();
+	if(_dir)
+	{
+		// look for calibration files
+		UINFO("calibration folder=%s name=%s", calibrationFolder.c_str(), cameraName.c_str());
+		if(!calibrationFolder.empty() && !cameraName.empty())
+		{
+			if(!_model.load(calibrationFolder, cameraName))
+			{
+				UWARN("Missing calibration files for camera \"%s\" in \"%s\" folder, you should calibrate the camera!",
+						cameraName.c_str(), calibrationFolder.c_str());
+			}
+			else
+			{
+				UINFO("Camera parameters: fx=%f fy=%f cx=%f cy=%f",
+						_model.fx(),
+						_model.fy(),
+						_model.cx(),
+						_model.cy());
+
+				cv::FileStorage fs(calibrationFolder+"/"+cameraName+".yaml", 0);
+				cv::FileNode poseNode = fs["local_transform"];
+				if(!poseNode.isNone())
+				{
+					UWARN("Using local transform from calibration file (%s) instead of the parameter one (%s).",
+							_model.localTransform().prettyPrint().c_str(),
+							this->getLocalTransform().prettyPrint().c_str());
+					this->setLocalTransform(_model.localTransform());
+				}
+			}
+		}
+		_model.setName(cameraName);
+
+		_model.setLocalTransform(this->getLocalTransform());
+		if(_rectifyImages && !_model.isValidForRectification())
+		{
+			UERROR("Parameter \"rectifyImages\" is set, but no camera model is loaded or valid.");
+			return false;
+		}
+	}
+
+	bool success = _dir|| _scanDir;
 	_stamps.clear();
 	odometry_.clear();
 	groundTruth_.clear();
 	if(success)
 	{
-		if(_filenamesAreTimestamps)
+		if(_dir && _hasConfigForEachFrame)
 		{
-			const std::list<std::string> & filenames = _dir->getFileNames();
-			for(std::list<std::string>::const_iterator iter=filenames.begin(); iter!=filenames.end(); ++iter)
+#if CV_MAJOR_VERSION < 3 || (CV_MAJOR_VERSION == 3 && CV_MAJOR_VERSION < 2)
+			UDirectory dirJson(_path, "yaml xml");
+#else
+			UDirectory dirJson(_path, "yaml xml json");
+#endif
+			if(dirJson.getFileNames().size() == _dir->getFileNames().size())
 			{
-				// format is text_1223445645.12334_text.png or text_122344564512334_text.png
-				// If no decimals, 10 first number are the seconds
-				std::list<std::string> list = uSplit(*iter, '.');
-				if(list.size() == 3 || list.size() == 2)
+				bool modelsWarned = false;
+				bool localTWarned = false;
+				for(std::list<std::string>::const_iterator iter=dirJson.getFileNames().begin(); iter!=dirJson.getFileNames().end() && success; ++iter)
 				{
-					list.pop_back(); // remove extension
-					double stamp = 0.0;
-					if(list.size() == 1)
+					std::string filePath = _path+"/"+*iter;
+					cv::FileStorage fs(filePath, 0);
+					cv::FileNode poseNode = fs["cameraPoseARFrame"]; // Check if it is 3DScannerApp(iOS) format
+					if(poseNode.isNone())
 					{
-						std::list<std::string> numberList = uSplitNumChar(list.front());
-						for(std::list<std::string>::iterator iter=numberList.begin(); iter!=numberList.end(); ++iter)
+						cv::FileNode n = fs["local_transform"];
+						bool hasLocalTransform = !n.isNone();
+
+						fs.release();
+						if(_model.isValidForProjection() && !modelsWarned)
 						{
-							if(uIsNumber(*iter))
+							UWARN("Camera model loaded for each frame is overridden by "
+									"general calibration file provided. Remove general calibration "
+									"file to use camera model of each frame. This warning will "
+									"be shown only one time.");
+							modelsWarned = true;
+						}
+						else
+						{
+							CameraModel model;
+							model.load(filePath);
+
+							if(!hasLocalTransform)
 							{
-								std::string decimals;
-								std::string sec;
-								if(iter->length()>10)
+								if(!localTWarned)
 								{
-									decimals = iter->substr(10, iter->size()-10);
-									sec = iter->substr(0, 10);
+									UWARN("Loaded calibration file doesn't have local_transform field, "
+											"the global local_transform parameter is used by default (%s).",
+											this->getLocalTransform().prettyPrint().c_str());
+									localTWarned = true;
 								}
-								else
-								{
-									sec = *iter;
-								}
-								stamp = uStr2Double(sec + "." + decimals);
-								break;
+								model.setLocalTransform(this->getLocalTransform());
 							}
+
+							_models.push_back(model);
 						}
 					}
 					else
 					{
-						std::string decimals = uSplitNumChar(list.back()).front();
-						list.pop_back();
-						std::string sec = uSplitNumChar(list.back()).back();
-						stamp = uStr2Double(sec + "." + decimals);
-					}
-					if(stamp > 0.0)
-					{
-						_stamps.push_back(stamp);
-					}
-					else
-					{
-						UERROR("Conversion filename to timestamp failed! (filename=%s)", iter->c_str());
+						cv::FileNode timeNode = fs["time"];
+						cv::FileNode intrinsicsNode = fs["intrinsics"];
+						if(poseNode.isNone() || poseNode.size() != 16)
+						{
+							UERROR("Failed reading \"cameraPoseARFrame\" parameter, it should have 16 values (file=%s)", filePath.c_str());
+							success = false;
+							break;
+						}
+						else if(timeNode.isNone() || !timeNode.isReal())
+						{
+							UERROR("Failed reading \"time\" parameter (file=%s)", filePath.c_str());
+							success = false;
+							break;
+						}
+						else if(intrinsicsNode.isNone() || intrinsicsNode.size()!=9)
+						{
+							UERROR("Failed reading \"intrinsics\" parameter (file=%s)", filePath.c_str());
+							success = false;
+							break;
+						}
+						else
+						{
+							_stamps.push_back((double)timeNode);
+							if(_model.isValidForProjection() && !modelsWarned)
+							{
+								UWARN("Camera model loaded for each frame is overridden by "
+										"general calibration file provided. Remove general calibration "
+										"file to use camera model of each frame. This warning will "
+										"be shown only one time.");
+								modelsWarned = true;
+							}
+							else
+							{
+								_models.push_back(CameraModel(
+										(double)intrinsicsNode[0], //fx
+										(double)intrinsicsNode[4], //fy
+										(double)intrinsicsNode[2], //cx
+										(double)intrinsicsNode[5], //cy
+										CameraModel::opticalRotation()));
+							}
+							// we need to rotate from opengl world to rtabmap world
+							Transform pose(
+									(float)poseNode[0], (float)poseNode[1], (float)poseNode[2], (float)poseNode[3],
+									(float)poseNode[4], (float)poseNode[5], (float)poseNode[6], (float)poseNode[7],
+									(float)poseNode[8], (float)poseNode[9], (float)poseNode[10], (float)poseNode[11]);
+							pose =  Transform::rtabmap_T_opengl() * pose * Transform::opengl_T_rtabmap();
+							odometry_.push_back(pose);
+						}
 					}
 				}
+				if(!success)
+				{
+					odometry_.clear();
+					_stamps.clear();
+					_models.clear();
+				}
 			}
-			if(_stamps.size() != this->imagesCount())
+			else
 			{
-				UERROR("The stamps count is not the same as the images (%d vs %d)! "
-					   "Converting filenames to timestamps is activated.",
-						(int)_stamps.size(), this->imagesCount());
-				_stamps.clear();
+				std::string opencv32warn;
+#if CV_MAJOR_VERSION < 3 || (CV_MAJOR_VERSION == 3 && CV_MAJOR_VERSION < 2)
+				opencv32warn = " RTAB-Map is currently built with OpenCV < 3.2, only xml and yaml files are supported (not json).";
+#endif
+				UERROR("Parameter \"Config for each frame\" is true, but the "
+						"number of config files (%d) is not equal to number "
+						"of images (%d) in this directory \"%s\".%s",
+						(int)dirJson.getFileNames().size(),
+						(int)_dir->getFileNames().size(),
+						_path.c_str(),
+						opencv32warn.c_str());
 				success = false;
 			}
 		}
-		else if(_timestampsPath.size())
+
+		if(_stamps.empty())
 		{
-			std::ifstream file;
-			file.open(_timestampsPath.c_str(), std::ifstream::in);
-			while(file.good())
+			if(_filenamesAreTimestamps)
 			{
-				std::string str;
-				std::getline(file, str);
-
-				if(str.empty() || str.at(0) == '#' || str.at(0) == '%')
+				std::list<std::string> filenames = _dir?_dir->getFileNames():_scanDir->getFileNames();
+				for(std::list<std::string>::const_iterator iter=filenames.begin(); iter!=filenames.end(); ++iter)
 				{
-					continue;
-				}
-
-				std::list<std::string> strList = uSplit(str, ' ');
-				std::string stampStr = strList.front();
-				if(strList.size() == 2)
-				{
-					// format "seconds millisec"
-					// the millisec str needs 0-padding if size < 6
-					std::string millisecStr = strList.back();
-					while(millisecStr.size() < 6)
+					// format is text_1223445645.12334_text.png or text_122344564512334_text.png
+					// If no decimals, 10 first number are the seconds
+					std::list<std::string> list = uSplit(*iter, '.');
+					if(list.size() == 3 || list.size() == 2)
 					{
-						millisecStr = "0" + millisecStr;
+						list.pop_back(); // remove extension
+						double stamp = 0.0;
+						if(list.size() == 1)
+						{
+							std::list<std::string> numberList = uSplitNumChar(list.front());
+							for(std::list<std::string>::iterator iter=numberList.begin(); iter!=numberList.end(); ++iter)
+							{
+								if(uIsNumber(*iter))
+								{
+									std::string decimals;
+									std::string sec;
+									if(iter->length()>10)
+									{
+										decimals = iter->substr(10, iter->size()-10);
+										sec = iter->substr(0, 10);
+									}
+									else
+									{
+										sec = *iter;
+									}
+									stamp = uStr2Double(sec + "." + decimals);
+									break;
+								}
+							}
+						}
+						else
+						{
+							std::string decimals = uSplitNumChar(list.back()).front();
+							list.pop_back();
+							std::string sec = uSplitNumChar(list.back()).back();
+							stamp = uStr2Double(sec + "." + decimals);
+						}
+						if(stamp > 0.0)
+						{
+							_stamps.push_back(stamp);
+						}
+						else
+						{
+							UERROR("Conversion filename to timestamp failed! (filename=%s)", iter->c_str());
+						}
 					}
-					stampStr = stampStr+'.'+millisecStr;
 				}
-				_stamps.push_back(uStr2Double(stampStr));
+				if(_stamps.size() != this->imagesCount())
+				{
+					UERROR("The stamps count is not the same as the images (%d vs %d)! "
+						   "Converting filenames to timestamps is activated.",
+							(int)_stamps.size(), this->imagesCount());
+					_stamps.clear();
+					success = false;
+				}
 			}
-
-			file.close();
-
-			if(_stamps.size() != this->imagesCount())
+			else if(_timestampsPath.size())
 			{
-				UERROR("The stamps count (%d) is not the same as the images (%d)! Please remove "
-						"the timestamps file path if you don't want to use them (current file path=%s).",
-						(int)_stamps.size(), this->imagesCount(), _timestampsPath.c_str());
-				_stamps.clear();
-				success = false;
+				std::ifstream file;
+				file.open(_timestampsPath.c_str(), std::ifstream::in);
+				while(file.good())
+				{
+					std::string str;
+					std::getline(file, str);
+
+					if(str.empty() || str.at(0) == '#' || str.at(0) == '%')
+					{
+						continue;
+					}
+
+					std::list<std::string> strList = uSplit(str, ' ');
+					std::string stampStr = strList.front();
+					if(strList.size() == 2)
+					{
+						// format "seconds millisec"
+						// the millisec str needs 0-padding if size < 6
+						std::string millisecStr = strList.back();
+						while(millisecStr.size() < 6)
+						{
+							millisecStr = "0" + millisecStr;
+						}
+						stampStr = stampStr+'.'+millisecStr;
+					}
+					_stamps.push_back(uStr2Double(stampStr));
+				}
+
+				file.close();
+
+				if(_stamps.size() != this->imagesCount())
+				{
+					UERROR("The stamps count (%d) is not the same as the images (%d)! Please remove "
+							"the timestamps file path if you don't want to use them (current file path=%s).",
+							(int)_stamps.size(), this->imagesCount(), _timestampsPath.c_str());
+					_stamps.clear();
+					success = false;
+				}
 			}
 		}
 
-		if(success && _odometryPath.size())
+		if(success && _odometryPath.size() && odometry_.empty())
 		{
 			success = readPoses(odometry_, _stamps, _odometryPath, _odometryFormat, _maxPoseTimeDiff);
 		}
@@ -325,6 +484,23 @@ bool CameraImages::init(const std::string & calibrationFolder, const std::string
 		{
 			success = readPoses(groundTruth_, _stamps, _groundTruthPath, _groundTruthFormat, _maxPoseTimeDiff);
 		}
+
+		if(!odometry_.empty())
+		{
+			for(size_t i=0; i<odometry_.size(); ++i)
+			{
+				// linear cov = 0.0001
+				cv::Mat covariance = cv::Mat::eye(6,6,CV_64FC1) * (i==0?9999.0:0.0001);
+				if(i!=0)
+				{
+					// angular cov = 0.000001
+					covariance.at<double>(3,3) *= 0.01;
+					covariance.at<double>(4,4) *= 0.01;
+					covariance.at<double>(5,5) *= 0.01;
+				}
+				covariances_.push_back(covariance);
+			}
+		}
 	}
 
 	_captureTimer.restart();
@@ -332,7 +508,12 @@ bool CameraImages::init(const std::string & calibrationFolder, const std::string
 	return success;
 }
 
-bool CameraImages::readPoses(std::list<Transform> & outputPoses, std::list<double> & inOutStamps, const std::string & filePath, int format, double maxTimeDiff) const
+bool CameraImages::readPoses(
+		std::list<Transform> & outputPoses,
+		std::list<double> & inOutStamps,
+		const std::string & filePath,
+		int format,
+		double maxTimeDiff) const
 {
 	outputPoses.clear();
 	std::map<int, Transform> poses;
@@ -349,7 +530,7 @@ bool CameraImages::readPoses(std::list<Transform> & outputPoses, std::list<doubl
 				(int)poses.size(), this->imagesCount(), filePath.c_str());
 		return false;
 	}
-	else if((format == 1 || format == 10 || format == 5 || format == 6 || format == 7 || format == 9) && inOutStamps.size() == 0)
+	else if((format == 1 || format == 10 || format == 5 || format == 6 || format == 7 || format == 9) && (inOutStamps.empty() && stamps.size()!=poses.size()))
 	{
 		UERROR("When using RGBD-SLAM, GPS, MALAGA, ST LUCIA and EuRoC MAV formats, images must have timestamps!");
 		return false;
@@ -366,6 +547,11 @@ bool CameraImages::readPoses(std::list<Transform> & outputPoses, std::list<doubl
 		}
 		std::vector<double> values = uValues(stamps);
 
+		if(inOutStamps.empty())
+		{
+			inOutStamps = uValuesList(stamps);
+		}
+
 		int validPoses = 0;
 		for(std::list<double>::iterator ster=inOutStamps.begin(); ster!=inOutStamps.end(); ++ster)
 		{
@@ -377,6 +563,7 @@ bool CameraImages::readPoses(std::list<Transform> & outputPoses, std::list<doubl
 				if(endIter->first == *ster)
 				{
 					pose = poses.at(endIter->second);
+					++validPoses;
 				}
 				else if(endIter != stampsToIds.begin())
 				{
@@ -436,6 +623,11 @@ bool CameraImages::readPoses(std::list<Transform> & outputPoses, std::list<doubl
 			UERROR("With Karlsruhe format, timestamps (%d) and poses (%d) should match!", (int)stamps.size(), (int)poses.size());
 			return false;
 		}
+		else if(!outputPoses.empty() && inOutStamps.empty() && stamps.empty())
+		{
+			UERROR("Timestamps are empty (poses=%d)! Forgot the set a timestamp file?", (int)outputPoses.size());
+			return false;
+		}
 	}
 	UASSERT_MSG(outputPoses.size() == inOutStamps.size(), uFormat("%d vs %d", (int)outputPoses.size(), (int)inOutStamps.size()).c_str());
 	return true;
@@ -443,7 +635,8 @@ bool CameraImages::readPoses(std::list<Transform> & outputPoses, std::list<doubl
 
 bool CameraImages::isCalibrated() const
 {
-	return _model.isValidForProjection();
+	return (_dir && (_model.isValidForProjection() || (_models.size() && _models.front().isValidForProjection()))) ||
+			_scanDir;
 }
 
 std::string CameraImages::getSerial() const
@@ -457,6 +650,10 @@ unsigned int CameraImages::imagesCount() const
 	{
 		return (unsigned int)_dir->getFileNames().size();
 	}
+	else if(_scanDir)
+	{
+		return (unsigned int)_scanDir->getFileNames().size();
+	}
 	return 0;
 }
 
@@ -465,6 +662,10 @@ std::vector<std::string> CameraImages::filenames() const
 	if(_dir)
 	{
 		return uListToVector(_dir->getFileNames());
+	}
+	else if(_scanDir)
+	{
+		return uListToVector(_scanDir->getFileNames());
 	}
 	return std::vector<std::string>();
 }
@@ -506,14 +707,19 @@ SensorData CameraImages::captureImage(CameraInfo * info)
 	LaserScan scan(cv::Mat(), _scanMaxPts, 0, LaserScan::kUnknown, _scanLocalTransform);
 	double stamp = UTimer::now();
 	Transform odometryPose;
+	cv::Mat covariance;
 	Transform groundTruthPose;
 	cv::Mat depthFromScan;
+	CameraModel model = _model;
 	UDEBUG("");
-	if(_dir->isValid())
+	if(_dir || _scanDir)
 	{
 		if(_refreshDir)
 		{
-			_dir->update();
+			if(_dir)
+			{
+				_dir->update();
+			}
 			if(_scanDir)
 			{
 				_scanDir->update();
@@ -523,13 +729,16 @@ SensorData CameraImages::captureImage(CameraInfo * info)
 		std::string scanFilePath;
 		if(_startAt < 0)
 		{
-			const std::list<std::string> & fileNames = _dir->getFileNames();
-			if(fileNames.size())
+			if(_dir)
 			{
-				if(_lastFileName.empty() || uStrNumCmp(_lastFileName,*fileNames.rbegin()) < 0)
+				const std::list<std::string> & fileNames = _dir->getFileNames();
+				if(fileNames.size())
 				{
-					_lastFileName = *fileNames.rbegin();
-					imageFilePath = _path + _lastFileName;
+					if(_lastFileName.empty() || uStrNumCmp(_lastFileName,*fileNames.rbegin()) < 0)
+					{
+						_lastFileName = *fileNames.rbegin();
+						imageFilePath = _path + _lastFileName;
+					}
 				}
 			}
 			if(_scanDir)
@@ -553,25 +762,36 @@ SensorData CameraImages::captureImage(CameraInfo * info)
 				{
 					_captureDelay = _stamps.front() - stamp;
 				}
-				if(odometry_.size())
+			}
+			if(odometry_.size())
+			{
+				odometryPose = odometry_.front();
+				odometry_.pop_front();
+				if(covariances_.size())
 				{
-					odometryPose = odometry_.front();
-					odometry_.pop_front();
+					covariance = covariances_.front();
+					covariances_.pop_front();
 				}
-				if(groundTruth_.size())
-				{
-					groundTruthPose = groundTruth_.front();
-					groundTruth_.pop_front();
-				}
+			}
+			if(groundTruth_.size())
+			{
+				groundTruthPose = groundTruth_.front();
+				groundTruth_.pop_front();
+			}
+			if(_models.size() && !model.isValidForProjection())
+			{
+				model = _models.front();
+				_models.pop_front();
 			}
 		}
 		else
 		{
-			std::string fileName;
-			fileName = _dir->getNextFileName();
-			if(!fileName.empty())
+			std::string imageFileName = _dir?_dir->getNextFileName():"";
+			std::string scanFileName = _scanDir?_scanDir->getNextFileName():"";
+			if((_dir && !imageFileName.empty()) || (!_dir && !scanFileName.empty()))
 			{
-				imageFilePath = _path + fileName;
+				imageFilePath = _path + imageFileName;
+				scanFilePath = _scanPath + scanFileName;
 				if(_stamps.size())
 				{
 					stamp = _stamps.front();
@@ -580,21 +800,40 @@ SensorData CameraImages::captureImage(CameraInfo * info)
 					{
 						_captureDelay = _stamps.front() - stamp;
 					}
-					if(odometry_.size())
+				}
+				if(odometry_.size())
+				{
+					odometryPose = odometry_.front();
+					odometry_.pop_front();
+					if(covariances_.size())
 					{
-						odometryPose = odometry_.front();
-						odometry_.pop_front();
-					}
-					if(groundTruth_.size())
-					{
-						groundTruthPose = groundTruth_.front();
-						groundTruth_.pop_front();
+						covariance = covariances_.front();
+						covariances_.pop_front();
 					}
 				}
-
-				while(_count++ < _startAt && (fileName = _dir->getNextFileName()).size())
+				if(groundTruth_.size())
 				{
-					imageFilePath = _path + fileName;
+					groundTruthPose = groundTruth_.front();
+					groundTruth_.pop_front();
+				}
+				if(_models.size() && !model.isValidForProjection())
+				{
+					model = _models.front();
+					_models.pop_front();
+				}
+
+				while(_count++ < _startAt)
+				{
+					imageFileName = _dir?_dir->getNextFileName():"";
+					scanFileName = _scanDir?_scanDir->getNextFileName():"";
+
+					if((_dir && imageFileName.empty()) || (!_dir && scanFileName.empty()))
+					{
+						break;
+					}
+
+					imageFilePath = _path + imageFileName;
+					scanFilePath = _scanPath + scanFileName;
 					if(_stamps.size())
 					{
 						stamp = _stamps.front();
@@ -603,28 +842,26 @@ SensorData CameraImages::captureImage(CameraInfo * info)
 						{
 							_captureDelay = _stamps.front() - stamp;
 						}
-						if(odometry_.size())
+					}
+					if(odometry_.size())
+					{
+						odometryPose = odometry_.front();
+						odometry_.pop_front();
+						if(covariances_.size())
 						{
-							odometryPose = odometry_.front();
-							odometry_.pop_front();
-						}
-						if(groundTruth_.size())
-						{
-							groundTruthPose = groundTruth_.front();
-							groundTruth_.pop_front();
+							covariance = covariances_.front();
+							covariances_.pop_front();
 						}
 					}
-				}
-			}
-			if(_scanDir)
-			{
-				fileName = _scanDir->getNextFileName();
-				if(!fileName.empty())
-				{
-					scanFilePath = _scanPath + fileName;
-					while(_countScan++ < _startAt && (fileName = _scanDir->getNextFileName()).size())
+					if(groundTruth_.size())
 					{
-						scanFilePath = _scanPath + fileName;
+						groundTruthPose = groundTruth_.front();
+						groundTruth_.pop_front();
+					}
+					if(_models.size() && !model.isValidForProjection())
+					{
+						model = _models.front();
+						_models.pop_front();
 					}
 				}
 			}
@@ -680,7 +917,7 @@ SensorData CameraImages::captureImage(CameraInfo * info)
 						cv::cvtColor(img, out, CV_BGRA2BGR);
 						img = out;
 					}
-					else if(_bayerMode >= 0 && _bayerMode <=3)
+					else if(!img.empty() && _bayerMode >= 0 && _bayerMode <=3)
 					{
 						cv::Mat debayeredImg;
 						try
@@ -693,12 +930,11 @@ SensorData CameraImages::captureImage(CameraInfo * info)
 							UWARN("Error debayering images: \"%s\". Please set bayer mode to -1 if images are not bayered!", e.what());
 						}
 					}
-
 				}
 
-				if(!img.empty() && _model.isValidForRectification() && _rectifyImages)
+				if(!img.empty() && model.isValidForRectification() && _rectifyImages)
 				{
-					img = _model.rectifyImage(img);
+					img = model.rectifyImage(img);
 				}
 			}
 
@@ -711,7 +947,7 @@ SensorData CameraImages::captureImage(CameraInfo * info)
 				if(_depthFromScan && !img.empty())
 				{
 					UDEBUG("Computing depth from scan...");
-					if(!_model.isValidForProjection())
+					if(!model.isValidForProjection())
 					{
 						UWARN("Depth from laser scan: Camera model should be valid.");
 					}
@@ -722,7 +958,7 @@ SensorData CameraImages::captureImage(CameraInfo * info)
 					else
 					{
 						pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = util3d::laserScanToPointCloud(scan, scan.localTransform());
-						depthFromScan = util3d::projectCloudToCamera(img.size(), _model.K(), cloud, _model.localTransform());
+						depthFromScan = util3d::projectCloudToCamera(img.size(), model.K(), cloud, model.localTransform());
 						if(_depthFromScanFillHoles!=0)
 						{
 							util3d::fillProjectedCloudHoles(depthFromScan, _depthFromScanFillHoles>0, _depthFromScanFillHolesFromBorder);
@@ -737,18 +973,22 @@ SensorData CameraImages::captureImage(CameraInfo * info)
 		UWARN("Directory is not set, camera must be initialized.");
 	}
 
-	if(_model.imageHeight() == 0 || _model.imageWidth() == 0)
+	if(model.imageHeight() == 0 || model.imageWidth() == 0)
 	{
-		_model.setImageSize(img.size());
+		model.setImageSize(img.size());
 	}
 
-	SensorData data(scan, _isDepth?cv::Mat():img, _isDepth?img:depthFromScan, _model, this->getNextSeqID(), stamp);
-	data.setGroundTruth(groundTruthPose);
+	SensorData data;
+	if(!img.empty() || !scan.empty())
+	{
+		data = SensorData(scan, _isDepth?cv::Mat():img, _isDepth?img:depthFromScan, model, this->getNextSeqID(), stamp);
+		data.setGroundTruth(groundTruthPose);
+	}
 
 	if(info && !odometryPose.isNull())
 	{
 		info->odomPose = odometryPose;
-		info->odomCovariance = cv::Mat::eye(6,6,CV_64FC1); // Note that with TORO and g2o file formats, we could get the covariance
+		info->odomCovariance = covariance.empty()?cv::Mat::eye(6,6,CV_64FC1):covariance; // Note that with TORO and g2o file formats, we could get the covariance
 	}
 
 	return data;

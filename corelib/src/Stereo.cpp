@@ -148,18 +148,6 @@ std::vector<cv::Point2f> StereoOpticalFlow::computeCorrespondences(
 	}
 	UDEBUG("total=%d countFlowRejected=%d countDisparityRejected=%d", (int)status.size(), countFlowRejected, countDisparityRejected);
 
-	if(countFlowRejected + countDisparityRejected > (int)status.size()/2)
-	{
-		UWARN("A large number (%d/%d) of stereo correspondences are rejected! "
-				"Optical flow may have failed because images are not calibrated, "
-				"the background is too far (no disparity between the images), "
-				"maximum disparity may be too small (%f) or that exposure between "
-				"left and right images is too different.",
-				countFlowRejected+countDisparityRejected,
-				(int)status.size(),
-				this->maxDisparity());
-	}
-
 	return rightCorners;
 }
 

@@ -28,7 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef ODOMETRY_H_
 #define ODOMETRY_H_
 
-#include <rtabmap/core/RtabmapExp.h>
+#include <rtabmap/core/rtabmap_core_export.h>
 
 #include <rtabmap/core/Transform.h>
 #include <rtabmap/core/SensorData.h>
@@ -39,7 +39,7 @@ namespace rtabmap {
 class OdometryInfo;
 class ParticleFilter;
 
-class RTABMAP_EXP Odometry
+class RTABMAP_CORE_EXPORT Odometry
 {
 public:
 	enum Type {
@@ -49,11 +49,14 @@ public:
 		kTypeFovis = 2,
 		kTypeViso2 = 3,
 		kTypeDVO = 4,
-		kTypeORBSLAM2 = 5,
+		kTypeORBSLAM = 5,
 		kTypeOkvis = 6,
 		kTypeLOAM = 7,
 		kTypeMSCKF = 8,
-		kTypeVINS = 9
+		kTypeVINS = 9,
+		kTypeOpenVINS = 10,
+		kTypeFLOAM = 11,
+		kTypeOpen3D = 12
 	};
 
 public:
@@ -67,12 +70,13 @@ public:
 	virtual void reset(const Transform & initialPose = Transform::getIdentity());
 	virtual Odometry::Type getType() = 0;
 	virtual bool canProcessRawImages() const {return false;}
-	virtual bool canProcessIMU() const {return false;}
+	virtual bool canProcessAsyncIMU() const {return false;}
 
 	//getters
 	const Transform & getPose() const {return _pose;}
 	bool isInfoDataFilled() const {return _fillInfoData;}
-	RTABMAP_DEPRECATED(const Transform & previousVelocityTransform() const, "Use getVelocityGuess() instead.");
+	// Use getVelocityGuess() instead.
+	RTABMAP_DEPRECATED const Transform & previousVelocityTransform() const;
 	const Transform & getVelocityGuess() const {return velocityGuess_;}
 	double previousStamp() const {return previousStamp_;}
 	unsigned int framesProcessed() const {return framesProcessed_;}
@@ -103,7 +107,7 @@ private:
 	bool _fillInfoData;
 	float _kalmanProcessNoise;
 	float _kalmanMeasurementNoise;
-	int _imageDecimation;
+	unsigned int _imageDecimation;
 	bool _alignWithGround;
 	bool _publishRAMUsage;
 	bool _imagesAlreadyRectified;
@@ -119,7 +123,8 @@ private:
 
 	std::vector<ParticleFilter *> particleFilters_;
 	cv::KalmanFilter kalmanFilter_;
-	StereoCameraModel stereoModel_;
+	std::vector<StereoCameraModel> stereoModels_;
+	std::vector<CameraModel> models_;
 	std::map<double, Transform> imus_;
 
 protected:

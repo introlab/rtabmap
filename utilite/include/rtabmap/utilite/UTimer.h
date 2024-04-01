@@ -20,7 +20,7 @@
 #ifndef UTIMER_H
 #define UTIMER_H
 
-#include "rtabmap/utilite/UtiLiteExp.h" // DLL export/import defines
+#include "rtabmap/utilite/utilite_export.h" // DLL export/import defines
 
 #ifdef _WIN32
 #include <windows.h>
@@ -43,7 +43,7 @@
  *      ...
  * @endcode
  */
-class UTILITE_EXP UTimer
+class UTILITE_EXPORT UTimer
 {
 public:
     UTimer();
@@ -81,7 +81,7 @@ public:
 	 * @return double the interval in seconds.
 	 * @deprecated use elapsed() instead.
 	 */
-    UTILITE_DEPRECATED(double getInterval());
+    UTILITE_DEPRECATED double getInterval();
 
     /** 
      * This method is used to get the interval of 

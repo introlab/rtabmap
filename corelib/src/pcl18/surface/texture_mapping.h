@@ -43,6 +43,7 @@
 #include <pcl/surface/reconstruction.h>
 #include <pcl/common/transforms.h>
 #include <pcl/TextureMesh.h>
+#include <pcl/octree/octree.h>
 #include <rtabmap/core/ProgressState.h>
 #include <rtabmap/utilite/ULogger.h>
 #include <rtabmap/utilite/UStl.h>
@@ -366,7 +367,8 @@ namespace pcl
       textureMeshwithMultipleCameras2 (pcl::TextureMesh &mesh,
                                       const pcl::texture_mapping::CameraVector &cameras,
 									  const rtabmap::ProgressState * callback = 0,
-									  std::vector<std::map<int, pcl::PointXY> > * vertexToPixels = 0);
+									  std::vector<std::map<int, pcl::PointXY> > * vertexToPixels = 0,
+									  bool distanceToCamPolicy = false);
 
     protected:
       /** \brief mesh scale control. */

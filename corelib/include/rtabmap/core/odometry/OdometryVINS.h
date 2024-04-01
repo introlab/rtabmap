@@ -34,7 +34,7 @@ namespace rtabmap {
 
 class VinsEstimator;
 
-class RTABMAP_EXP OdometryVINS : public Odometry
+class RTABMAP_CORE_EXPORT OdometryVINS : public Odometry
 {
 public:
 	OdometryVINS(const rtabmap::ParametersMap & parameters = rtabmap::ParametersMap());
@@ -43,7 +43,7 @@ public:
 	virtual void reset(const Transform & initialPose = Transform::getIdentity());
 	virtual Odometry::Type getType() {return Odometry::kTypeVINS;}
 	virtual bool canProcessRawImages() const {return true;}
-	virtual bool canProcessIMU() const {return true;}
+	virtual bool canProcessAsyncIMU() const {return true;}
 
 private:
 	virtual Transform computeTransform(SensorData & image, const Transform & guess = Transform(), OdometryInfo * info = 0);
@@ -51,7 +51,6 @@ private:
 private:
 #ifdef RTABMAP_VINS
 	VinsEstimator * vinsEstimator_;
-	int imagesProcessed_;
 	bool initGravity_;
 	Transform previousPose_;
 	Transform previousLocalTransform_;

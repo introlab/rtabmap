@@ -27,8 +27,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #pragma once
 
-#include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
-
 #include "rtabmap/utilite/UMutex.h"
 #include "rtabmap/utilite/USemaphore.h"
 #include "rtabmap/core/Camera.h"
@@ -56,7 +54,7 @@ class Grabber;
 namespace rtabmap
 {
 
-class RTABMAP_EXP CameraOpenni :
+class RTABMAP_CORE_EXPORT CameraOpenni :
 	public Camera
 {
 public:
@@ -66,7 +64,7 @@ public:
 	// default local transform z in, x right, y down));
 	CameraOpenni(const std::string & deviceId="",
 			float imageRate = 0,
-			const Transform & localTransform = CameraModel::opticalRotation());
+			const Transform & localTransform = Transform::getIdentity());
 	virtual ~CameraOpenni();
 #ifdef RTABMAP_OPENNI
 #if PCL_VERSION_COMPARE(>=, 1, 10, 0)

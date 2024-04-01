@@ -32,5 +32,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/camera/CameraStereoImages.h>
 #include <rtabmap/core/camera/CameraStereoVideo.h>
 #include <rtabmap/core/camera/CameraStereoZed.h>
+#include <rtabmap/core/camera/CameraStereoZedOC.h>
 #include <rtabmap/core/camera/CameraStereoTara.h>
 #include <rtabmap/core/camera/CameraMyntEye.h>
+#include <rtabmap/core/camera/CameraDepthAI.h>

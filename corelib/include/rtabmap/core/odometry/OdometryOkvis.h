@@ -37,7 +37,7 @@ namespace okvis {
 namespace rtabmap {
 
 class OkvisCallbackHandler;
-class RTABMAP_EXP OdometryOkvis : public Odometry
+class RTABMAP_CORE_EXPORT OdometryOkvis : public Odometry
 {
 public:
 	OdometryOkvis(const rtabmap::ParametersMap & parameters = rtabmap::ParametersMap());
@@ -46,7 +46,7 @@ public:
 	virtual void reset(const Transform & initialPose = Transform::getIdentity());
 	virtual Odometry::Type getType() {return Odometry::kTypeOkvis;}
 	virtual bool canProcessRawImages() const {return true;}
-	virtual bool canProcessIMU() const {return true;}
+	virtual bool canProcessAsyncIMU() const {return true;}
 
 private:
 	virtual Transform computeTransform(SensorData & image, const Transform & guess = Transform(), OdometryInfo * info = 0);

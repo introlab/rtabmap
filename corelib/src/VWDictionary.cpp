@@ -65,6 +65,7 @@ VWDictionary::VWDictionary(const ParametersMap & parameters) :
 	_incrementalDictionary(Parameters::defaultKpIncrementalDictionary()),
 	_incrementalFlann(Parameters::defaultKpIncrementalFlann()),
 	_rebalancingFactor(Parameters::defaultKpFlannRebalancingFactor()),
+	_byteToFloat(Parameters::defaultKpByteToFloat()),
 	_nndrRatio(Parameters::defaultKpNndrRatio()),
 	_newDictionaryPath(Parameters::defaultKpDictionaryPath()),
 	_newWordsComparedTogether(Parameters::defaultKpNewWordsComparedTogether()),
@@ -90,6 +91,8 @@ void VWDictionary::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kKpNewWordsComparedTogether(), _newWordsComparedTogether);
 	Parameters::parse(parameters, Parameters::kKpIncrementalFlann(), _incrementalFlann);
 	Parameters::parse(parameters, Parameters::kKpFlannRebalancingFactor(), _rebalancingFactor);
+	bool byteToFloat = _byteToFloat;
+	Parameters::parse(parameters, Parameters::kKpByteToFloat(), _byteToFloat);
 
 	UASSERT_MSG(_nndrRatio > 0.0f, uFormat("String=%s value=%f", uContains(parameters, Parameters::kKpNndrRatio())?parameters.at(Parameters::kKpNndrRatio()).c_str():"", _nndrRatio).c_str());
 
@@ -104,10 +107,19 @@ void VWDictionary::parseParameters(const ParametersMap & parameters)
 	}
 
 	// Verifying hypotheses strategy
+	bool treeUpdated = false;
 	if((iter=parameters.find(Parameters::kKpNNStrategy())) != parameters.end())
 	{
 		NNStrategy nnStrategy = (NNStrategy)std::atoi((*iter).second.c_str());
-		this->setNNStrategy(nnStrategy);
+		treeUpdated = this->setNNStrategy(nnStrategy);
+	}
+	if(!treeUpdated && byteToFloat!=_byteToFloat && _strategy == kNNFlannKdTree)
+	{
+		UINFO("KDTree: Binary to Float conversion approach has changed, re-initialize kd-tree.");
+		_dataTree = cv::Mat();
+		_notIndexedWords = uKeysSet(_visualWords);
+		_removedIndexedWords.clear();
+		this->update();
 	}
 
 	if(incrementalDictionary)
@@ -277,7 +289,7 @@ void VWDictionary::setFixedDictionary(const std::string & dictionaryPath)
 	_newDictionaryPath = dictionaryPath;
 }
 
-void VWDictionary::setNNStrategy(NNStrategy strategy)
+bool VWDictionary::setNNStrategy(NNStrategy strategy)
 {
 #if CV_MAJOR_VERSION < 3
 #ifdef HAVE_OPENCV_GPU
@@ -319,11 +331,17 @@ void VWDictionary::setNNStrategy(NNStrategy strategy)
 	_strategy = strategy;
 	if(update)
 	{
+		if(_notIndexedWords.size() != _visualWords.size() || !_dataTree.empty())
+		{
+			UINFO("Nearest neighbor strategy has changed, re-initialize search tree.");
+		}
 		_dataTree = cv::Mat();
 		_notIndexedWords = uKeysSet(_visualWords);
 		_removedIndexedWords.clear();
 		this->update();
+		return true;
 	}
+	return false;
 }
 
 int VWDictionary::getLastIndexedWordId() const
@@ -348,59 +366,103 @@ unsigned int VWDictionary::getIndexMemoryUsed() const
 	return _flannIndex->memoryUsed();
 }
 
-cv::Mat VWDictionary::convertBinTo32F(const cv::Mat & descriptorsIn)
+unsigned long VWDictionary::getMemoryUsed() const
 {
-	// Old approach
-	//cv::Mat descriptorsOut;
-	//descriptorsIn.convertTo(descriptorsOut, CV_32F);
-	//return descriptorsOut;
-
-	// New approach
-	UASSERT(descriptorsIn.type() == CV_8UC1);
-	cv::Mat descriptorsOut(descriptorsIn.rows, descriptorsIn.cols*8, CV_32FC1);
-	for(int i=0; i<descriptorsIn.rows; ++i)
+	long memoryUsage = sizeof(VWDictionary);
+	memoryUsage += getIndexMemoryUsed();
+	memoryUsage += _dataTree.total()*_dataTree.elemSize();
+	if(!_visualWords.empty())
 	{
-		const unsigned char * ptrIn = descriptorsIn.ptr(i);
-		float * ptrOut = descriptorsOut.ptr<float>(i);
-		for(int j=0; j<descriptorsIn.cols; ++j)
+		memoryUsage += _visualWords.size()*(sizeof(int) + _visualWords.rbegin()->second->getMemoryUsed() + sizeof(std::map<int, VisualWord *>::iterator)) + sizeof(std::map<int, VisualWord *>);
+		if(_dataTree.empty() &&
+			_visualWords.begin()->second->getDescriptor().type() == CV_8U &&
+			_strategy == kNNFlannKdTree)
 		{
-			int jo = j*8;
-			ptrOut[jo] = (ptrIn[j] & 1) == 1?1.0f:0.0f;
-			ptrOut[jo+1] = (ptrIn[j] & (1<<1)) != 0?1.0f:0.0f;
-			ptrOut[jo+2] = (ptrIn[j] & (1<<2)) != 0?1.0f:0.0f;
-			ptrOut[jo+3] = (ptrIn[j] & (1<<3)) != 0?1.0f:0.0f;
-			ptrOut[jo+4] = (ptrIn[j] & (1<<4)) != 0?1.0f:0.0f;
-			ptrOut[jo+5] = (ptrIn[j] & (1<<5)) != 0?1.0f:0.0f;
-			ptrOut[jo+6] = (ptrIn[j] & (1<<6)) != 0?1.0f:0.0f;
-			ptrOut[jo+7] = (ptrIn[j] & (1<<7)) != 0?1.0f:0.0f;
+			// Binary descriptors were converted to float, and not included in _dataTree
+			memoryUsage += _visualWords.size() * _visualWords.begin()->second->getDescriptor().total() * sizeof(float) * (_byteToFloat?1:8);
 		}
 	}
-	return descriptorsOut;
+	if(!_unusedWords.empty())
+	{
+		// they are the same words than in _visualWords, so just add the pointer size
+		memoryUsage += _unusedWords.size()*(sizeof(int) + sizeof(VisualWord *)+sizeof(std::map<int, VisualWord *>::iterator)) + sizeof(std::map<int, VisualWord *>);
+	}
+	memoryUsage += _mapIndexId.size() * (sizeof(int)*2+sizeof(std::map<int ,int>::iterator)) + sizeof(std::map<int ,int>);
+	memoryUsage += _mapIdIndex.size() * (sizeof(int)*2+sizeof(std::map<int ,int>::iterator)) + sizeof(std::map<int ,int>);
+	memoryUsage += _notIndexedWords.size() * (sizeof(int)+sizeof(std::set<int>::iterator)) + sizeof(std::set<int>);
+	memoryUsage += _removedIndexedWords.size() * (sizeof(int)+sizeof(std::set<int>::iterator)) + sizeof(std::set<int>);
+	return memoryUsage;
 }
 
-cv::Mat VWDictionary::convert32FToBin(const cv::Mat & descriptorsIn)
+cv::Mat VWDictionary::convertBinTo32F(const cv::Mat & descriptorsIn, bool byteToFloat)
 {
-	UASSERT(descriptorsIn.type() == CV_32FC1 && descriptorsIn.cols % 8 == 0);
-	cv::Mat descriptorsOut(descriptorsIn.rows, descriptorsIn.cols/8, CV_8UC1);
-	for(int i=0; i<descriptorsIn.rows; ++i)
+	if(byteToFloat)
 	{
-		const float * ptrIn = descriptorsIn.ptr<float>(i);
-		unsigned char * ptrOut = descriptorsOut.ptr(i);
-		for(int j=0; j<descriptorsOut.cols; ++j)
-		{
-			int jo = j*8;
-			ptrOut[j] =
-					(unsigned char)(ptrIn[jo] == 0?0:1) |
-					(ptrIn[jo+1] == 0?0:(1<<1)) |
-					(ptrIn[jo+2] == 0?0:(1<<2)) |
-					(ptrIn[jo+3] == 0?0:(1<<3)) |
-					(ptrIn[jo+4] == 0?0:(1<<4)) |
-					(ptrIn[jo+5] == 0?0:(1<<5)) |
-					(ptrIn[jo+6] == 0?0:(1<<6)) |
-					(ptrIn[jo+7] == 0?0:(1<<7));
-		}
+		// Old approach
+		cv::Mat descriptorsOut;
+		descriptorsIn.convertTo(descriptorsOut, CV_32F);
+		return descriptorsOut;
 	}
-	return descriptorsOut;
+	else
+	{
+		// New approach
+		UASSERT(descriptorsIn.type() == CV_8UC1);
+		cv::Mat descriptorsOut(descriptorsIn.rows, descriptorsIn.cols*8, CV_32FC1);
+		for(int i=0; i<descriptorsIn.rows; ++i)
+		{
+			const unsigned char * ptrIn = descriptorsIn.ptr(i);
+			float * ptrOut = descriptorsOut.ptr<float>(i);
+			for(int j=0; j<descriptorsIn.cols; ++j)
+			{
+				int jo = j*8;
+				ptrOut[jo] = (ptrIn[j] & 1) == 1?1.0f:0.0f;
+				ptrOut[jo+1] = (ptrIn[j] & (1<<1)) != 0?1.0f:0.0f;
+				ptrOut[jo+2] = (ptrIn[j] & (1<<2)) != 0?1.0f:0.0f;
+				ptrOut[jo+3] = (ptrIn[j] & (1<<3)) != 0?1.0f:0.0f;
+				ptrOut[jo+4] = (ptrIn[j] & (1<<4)) != 0?1.0f:0.0f;
+				ptrOut[jo+5] = (ptrIn[j] & (1<<5)) != 0?1.0f:0.0f;
+				ptrOut[jo+6] = (ptrIn[j] & (1<<6)) != 0?1.0f:0.0f;
+				ptrOut[jo+7] = (ptrIn[j] & (1<<7)) != 0?1.0f:0.0f;
+			}
+		}
+		return descriptorsOut;
+	}
+}
+
+cv::Mat VWDictionary::convert32FToBin(const cv::Mat & descriptorsIn, bool byteToFloat)
+{
+	if(byteToFloat)
+	{
+		// Old approach
+		cv::Mat descriptorsOut;
+		descriptorsIn.convertTo(descriptorsOut, CV_8UC1);
+		return descriptorsOut;
+	}
+	else
+	{
+		// New approach
+		UASSERT(descriptorsIn.type() == CV_32FC1 && descriptorsIn.cols % 8 == 0);
+		cv::Mat descriptorsOut(descriptorsIn.rows, descriptorsIn.cols/8, CV_8UC1);
+		for(int i=0; i<descriptorsIn.rows; ++i)
+		{
+			const float * ptrIn = descriptorsIn.ptr<float>(i);
+			unsigned char * ptrOut = descriptorsOut.ptr(i);
+			for(int j=0; j<descriptorsOut.cols; ++j)
+			{
+				int jo = j*8;
+				ptrOut[j] =
+						(unsigned char)(ptrIn[jo] == 0?0:1) |
+						(ptrIn[jo+1] == 0?0:(1<<1)) |
+						(ptrIn[jo+2] == 0?0:(1<<2)) |
+						(ptrIn[jo+3] == 0?0:(1<<3)) |
+						(ptrIn[jo+4] == 0?0:(1<<4)) |
+						(ptrIn[jo+5] == 0?0:(1<<5)) |
+						(ptrIn[jo+6] == 0?0:(1<<6)) |
+						(ptrIn[jo+7] == 0?0:(1<<7));
+			}
+		}
+		return descriptorsOut;
+	}
 }
 
 void VWDictionary::update()
@@ -451,7 +513,7 @@ void VWDictionary::update()
 						useDistanceL1_ = true;
 						if(_strategy == kNNFlannKdTree)
 						{
-							descriptor = convertBinTo32F(w->getDescriptor());
+							descriptor = convertBinTo32F(w->getDescriptor(), _byteToFloat);
 						}
 						else
 						{
@@ -490,7 +552,8 @@ void VWDictionary::update()
 					{
 						UASSERT(descriptor.cols == _flannIndex->featuresDim());
 						UASSERT(descriptor.type() == _flannIndex->featuresType());
-						index = _flannIndex->addPoints(descriptor);
+						UASSERT(descriptor.rows == 1);
+						index = _flannIndex->addPoints(descriptor).front();
 					}
 					std::pair<std::map<int, int>::iterator, bool> inserted;
 					inserted = _mapIndexId.insert(std::pair<int, int>(index, w->id()));
@@ -543,7 +606,10 @@ void VWDictionary::update()
 					if(_strategy == kNNFlannKdTree)
 					{
 						type = CV_32F;
-						dim *= 8;
+						if(!_byteToFloat)
+						{
+							dim *= 8;
+						}
 					}
 					else
 					{
@@ -568,7 +634,7 @@ void VWDictionary::update()
 					{
 						if(_strategy == kNNFlannKdTree)
 						{
-							descriptor = convertBinTo32F(iter->second->getDescriptor());
+							descriptor = convertBinTo32F(iter->second->getDescriptor(), _byteToFloat);
 						}
 						else
 						{
@@ -594,15 +660,15 @@ void VWDictionary::update()
 				switch(_strategy)
 				{
 				case kNNFlannNaive:
-					_flannIndex->buildLinearIndex(_dataTree, useDistanceL1_, _rebalancingFactor);
+					_flannIndex->buildLinearIndex(_dataTree, useDistanceL1_, _incrementalDictionary&&_incrementalFlann?_rebalancingFactor:1);
 					break;
 				case kNNFlannKdTree:
 					UASSERT_MSG(type == CV_32F, "To use KdTree dictionary, float descriptors are required!");
-					_flannIndex->buildKDTreeIndex(_dataTree, KDTREE_SIZE, useDistanceL1_, _rebalancingFactor);
+					_flannIndex->buildKDTreeIndex(_dataTree, KDTREE_SIZE, useDistanceL1_, _incrementalDictionary&&_incrementalFlann?_rebalancingFactor:1);
 					break;
 				case kNNFlannLSH:
 					UASSERT_MSG(type == CV_8U, "To use LSH dictionary, binary descriptors are required!");
-					_flannIndex->buildLSHIndex(_dataTree, 12, 20, 2, _rebalancingFactor);
+					_flannIndex->buildLSHIndex(_dataTree, 12, 20, 2, _incrementalDictionary&&_incrementalFlann?_rebalancingFactor:1);
 					break;
 				default:
 					break;
@@ -736,7 +802,7 @@ std::list<int> VWDictionary::addNewWords(
 		useDistanceL1_ = true;
 		if(_strategy == kNNFlannKdTree)
 		{
-			descriptors = convertBinTo32F(descriptorsIn);
+			descriptors = convertBinTo32F(descriptorsIn, _byteToFloat);
 		}
 		else
 		{
@@ -1074,7 +1140,7 @@ std::vector<int> VWDictionary::findNN(const cv::Mat & queryIn) const
 		{
 			if(_strategy == kNNFlannKdTree)
 			{
-				query = convertBinTo32F(queryIn);
+				query = convertBinTo32F(queryIn, _byteToFloat);
 			}
 			else
 			{
@@ -1202,7 +1268,7 @@ std::vector<int> VWDictionary::findNN(const cv::Mat & queryIn) const
 				{
 					if(_strategy == kNNFlannKdTree)
 					{
-						descriptor = convertBinTo32F(vw->getDescriptor());
+						descriptor = convertBinTo32F(vw->getDescriptor(), _byteToFloat);
 					}
 					else
 					{

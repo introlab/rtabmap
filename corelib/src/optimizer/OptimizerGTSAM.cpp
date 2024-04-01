@@ -51,18 +51,34 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <gtsam/nonlinear/Marginals.h>
 #include <gtsam/nonlinear/Values.h>
 #include "gtsam/GravityFactor.h"
-#include "gtsam/GPSPose2XYFactor.h"
-#include "gtsam/GPSPose3XYZFactor.h"
+#include <optimizer/gtsam/XYFactor.h>
+#include <optimizer/gtsam/XYZFactor.h>
+#include <gtsam/nonlinear/ISAM2.h>
 
 #ifdef RTABMAP_VERTIGO
-#include "vertigo/gtsam/betweenFactorMaxMix.h"
 #include "vertigo/gtsam/betweenFactorSwitchable.h"
 #include "vertigo/gtsam/switchVariableLinear.h"
-#include "vertigo/gtsam/switchVariableSigmoid.h"
 #endif
 #endif // end RTABMAP_GTSAM
 
 namespace rtabmap {
+
+OptimizerGTSAM::OptimizerGTSAM(const ParametersMap & parameters) :
+	Optimizer(parameters),
+	internalOptimizerType_(Parameters::defaultGTSAMOptimizer()),
+	isam2_(0),
+	lastSwitchId_(1000000000)
+{
+	lastRootFactorIndex_.first = 0;
+	parseParameters(parameters);
+}
+
+OptimizerGTSAM::~OptimizerGTSAM()
+{
+#ifdef RTABMAP_GTSAM
+	delete isam2_;
+#endif
+}
 
 bool OptimizerGTSAM::available()
 {
@@ -76,7 +92,47 @@ bool OptimizerGTSAM::available()
 void OptimizerGTSAM::parseParameters(const ParametersMap & parameters)
 {
 	Optimizer::parseParameters(parameters);
-	Parameters::parse(parameters, Parameters::kGTSAMOptimizer(), optimizer_);
+#ifdef RTABMAP_GTSAM
+	Parameters::parse(parameters, Parameters::kGTSAMOptimizer(), internalOptimizerType_);
+
+	bool incremental = isam2_;
+	double threshold = Parameters::defaultGTSAMIncRelinearizeThreshold();
+	int skip = Parameters::defaultGTSAMIncRelinearizeSkip();
+	Parameters::parse(parameters, Parameters::kGTSAMIncremental(), incremental);
+	Parameters::parse(parameters, Parameters::kGTSAMIncRelinearizeThreshold(), threshold);
+	Parameters::parse(parameters, Parameters::kGTSAMIncRelinearizeSkip(), skip);
+	UDEBUG("GTSAM %s=%d", Parameters::kGTSAMOptimizer().c_str(), internalOptimizerType_);
+	UDEBUG("GTSAM %s=%d", Parameters::kGTSAMIncremental().c_str(), incremental?1:0);
+	UDEBUG("GTSAM %s=%f", Parameters::kGTSAMIncRelinearizeThreshold().c_str(), threshold);
+	UDEBUG("GTSAM %s=%d", Parameters::kGTSAMIncRelinearizeSkip().c_str(), skip);
+	if(incremental && !isam2_)
+	{
+		gtsam::ISAM2Params::OptimizationParams optParams;
+		if(internalOptimizerType_==2)
+		{
+			optParams = gtsam::ISAM2DoglegParams();
+		}
+		else
+		{
+			optParams = gtsam::ISAM2GaussNewtonParams();
+		}
+		gtsam::ISAM2Params params(optParams);
+		params.relinearizeThreshold = threshold;
+		params.relinearizeSkip = skip;
+		params.evaluateNonlinearError = true;
+		isam2_ = new ISAM2(params);
+
+		addedPoses_.clear();
+		lastAddedConstraints_.clear();
+		lastRootFactorIndex_.first = 0;
+		lastSwitchId_ = 1000000000;
+	}
+	else if(!incremental && isam2_)
+	{
+		delete isam2_;
+		isam2_ = 0;
+	}
+#endif
 }
 
 std::map<int, Transform> OptimizerGTSAM::optimize(
@@ -106,57 +162,153 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 		gtsam::NonlinearFactorGraph graph;
 
 		// detect if there is a global pose prior set, if so remove rootId
-		bool gpsPriorOnly = false;
-		if(!priorsIgnored())
+		bool hasGPSPrior = false;
+		bool hasGravityConstraints = false;
+		if(!priorsIgnored() || (!isSlam2d() && gravitySigma() > 0))
 		{
 			for(std::multimap<int, Link>::const_iterator iter=edgeConstraints.begin(); iter!=edgeConstraints.end(); ++iter)
 			{
-				if(iter->second.from() == iter->second.to() && iter->second.type() == Link::kPosePrior)
+				if(iter->second.from() == iter->second.to())
 				{
-					if ((isSlam2d() && 1 / static_cast<double>(iter->second.infMatrix().at<double>(5,5)) < 9999) ||
-						(1 / static_cast<double>(iter->second.infMatrix().at<double>(3,3)) < 9999.0 &&
-						 1 / static_cast<double>(iter->second.infMatrix().at<double>(4,4)) < 9999.0 &&
-						 1 / static_cast<double>(iter->second.infMatrix().at<double>(5,5)) < 9999.0))
+					if(!priorsIgnored() && iter->second.type() == Link::kPosePrior)
 					{
-						// orientation is set, don't set root prior
-						gpsPriorOnly = false;
-						rootId = 0;
-						break;
+						hasGPSPrior = true;
+						if ((isSlam2d() && 1 / static_cast<double>(iter->second.infMatrix().at<double>(5,5)) < 9999) ||
+							(1 / static_cast<double>(iter->second.infMatrix().at<double>(3,3)) < 9999.0 &&
+							 1 / static_cast<double>(iter->second.infMatrix().at<double>(4,4)) < 9999.0 &&
+							 1 / static_cast<double>(iter->second.infMatrix().at<double>(5,5)) < 9999.0))
+						{
+							// orientation is set, don't set root prior (it is no GPS)
+							rootId = 0;
+							hasGPSPrior = false;
+							break;
+						}
 					}
-					else if(gravitySigma()<=0)
+					if(iter->second.type() == Link::kGravity)
 					{
-						gpsPriorOnly = true;
+						hasGravityConstraints = true;
+						if(priorsIgnored())
+						{
+							break;
+						}
 					}
 				}
 			}
 		}
 
+		std::vector<ConstraintToFactor> addedPrior;
+		gtsam::FactorIndices removeFactorIndices;
+
 		//prior first pose
-		if(rootId != 0)
+		if(rootId != 0 && (!isam2_ || lastRootFactorIndex_.first != rootId))
 		{
+			UDEBUG("Setting prior for rootId=%d", rootId);
 			UASSERT(uContains(poses, rootId));
 			const Transform & initialPose = poses.at(rootId);
+			UDEBUG("hasGPSPrior=%s", hasGPSPrior?"true":"false");
 			if(isSlam2d())
 			{
-				gtsam::noiseModel::Diagonal::shared_ptr priorNoise = gtsam::noiseModel::Diagonal::Variances(gtsam::Vector3(0.01, 0.01, 0.01));
+				gtsam::noiseModel::Diagonal::shared_ptr priorNoise = gtsam::noiseModel::Diagonal::Variances(gtsam::Vector3(0.01, 0.01, hasGPSPrior?1e-2:std::numeric_limits<double>::min()));
 				graph.add(gtsam::PriorFactor<gtsam::Pose2>(rootId, gtsam::Pose2(initialPose.x(), initialPose.y(), initialPose.theta()), priorNoise));
+				addedPrior.push_back(ConstraintToFactor(rootId, rootId, -1));
 			}
 			else
 			{
 				gtsam::noiseModel::Diagonal::shared_ptr priorNoise = gtsam::noiseModel::Diagonal::Variances(
 						(gtsam::Vector(6) <<
-								(gpsPriorOnly?2:1e-2), gpsPriorOnly?2:1e-2, gpsPriorOnly?2:1e-2,
-								1e-2, 1e-2, 1e-2
+								(hasGravityConstraints?2:1e-2), (hasGravityConstraints?2:1e-2), hasGPSPrior?1e-2:std::numeric_limits<double>::min(), // roll, pitch, fixed yaw if there are no priors
+								(hasGPSPrior?2:1e-2), hasGPSPrior?2:1e-2, hasGPSPrior?2:1e-2 // xyz
 								).finished());
 				graph.add(gtsam::PriorFactor<gtsam::Pose3>(rootId, gtsam::Pose3(initialPose.toEigen4d()), priorNoise));
+				addedPrior.push_back(ConstraintToFactor(rootId, rootId, -1));
+			}
+			if(isam2_ && lastRootFactorIndex_.first!=0)
+			{
+				if(uContains(poses, lastRootFactorIndex_.first))
+				{
+					UDEBUG("isam2: switching rootid from %d to %d", lastRootFactorIndex_.first, rootId);
+					removeFactorIndices.push_back(lastRootFactorIndex_.second);
+				}
+				else
+				{
+					UDEBUG("isam2: reset iSAM2, disjoint mapping sessions between previous root %d and new root %d", lastRootFactorIndex_.first, rootId);
+					// reset iSAM2, disjoint mapping session
+					gtsam::ISAM2Params params = isam2_->params();
+					delete isam2_;
+					isam2_ = new gtsam::ISAM2(params);
+					addedPoses_.clear();
+					lastAddedConstraints_.clear();
+					lastRootFactorIndex_.first = 0;
+					lastSwitchId_ = 1000000000;
+				}
+				lastRootFactorIndex_.first = 0;
 			}
 		}
 
-		UDEBUG("fill poses to gtsam... rootId=%d (priorsIgnored=%d gpsPriorOnly=%d landmarksIgnored=%d)",
-				rootId, priorsIgnored()?1:0, gpsPriorOnly?1:0, landmarksIgnored()?1:0);
+		std::map<int, Transform> newPoses;
+		std::multimap<int, Link> newEdgeConstraints;
+
+		if(isam2_)
+		{
+			UDEBUG("Add new poses...");
+			// new poses?
+			for(std::map<int, Transform>::const_iterator iter=poses.begin(); iter!=poses.end(); ++iter)
+			{
+				if(addedPoses_.find(iter->first) == addedPoses_.end())
+				{
+					newPoses.insert(*iter);
+					UDEBUG("Adding pose %d to factor graph", iter->first);
+				}
+			}
+			UDEBUG("Add new links...");
+			// new links?
+			for(std::multimap<int, Link>::const_iterator iter=edgeConstraints.begin(); iter!=edgeConstraints.end(); ++iter)
+			{
+				if(addedPoses_.find(iter->second.from()) == addedPoses_.end() ||
+				   addedPoses_.find(iter->second.to()) == addedPoses_.end())
+				{
+					newEdgeConstraints.insert(*iter);
+					UDEBUG("Adding constraint %d (%d->%d) to factor graph", iter->first, iter->second.from(), iter->second.to());
+				}
+			}
+
+			if(!this->isRobust())
+			{
+				UDEBUG("Remove links...");
+				// Remove constraints not there anymore in case the last loop closures were rejected.
+				// As we don't track "switch" constraints, we don't support this if vertigo is used.
+				for(size_t i=0; i<lastAddedConstraints_.size(); ++i)
+				{
+					if(lastAddedConstraints_[i].from != lastAddedConstraints_[i].to &&
+					   graph::findLink(edgeConstraints, lastAddedConstraints_[i].from, lastAddedConstraints_[i].to) == edgeConstraints.end())
+					{
+						removeFactorIndices.push_back(lastAddedConstraints_[i].factorIndice);
+						UDEBUG("Removing constraint %d->%d (factor indice=%ld)",
+								lastAddedConstraints_[i].from,
+								lastAddedConstraints_[i].to,
+								lastAddedConstraints_[i].factorIndice);
+					}
+				}
+			}
+			else if(poses.rbegin()->first >= 1000000000)
+			{
+				UERROR("Lastest pose id (%d) is too huge for robust optimization (over switch offset of 1000000000)", poses.rbegin()->first);
+				return optimizedPoses;
+			}
+
+			lastAddedConstraints_ = addedPrior;
+		}
+		else
+		{
+			newPoses = poses;
+			newEdgeConstraints = edgeConstraints;
+		}
+
+		UDEBUG("fill poses to gtsam... rootId=%d (priorsIgnored=%d landmarksIgnored=%d)",
+				rootId, priorsIgnored()?1:0, landmarksIgnored()?1:0);
 		gtsam::Values initialEstimate;
 		std::map<int, bool> isLandmarkWithRotation;
-		for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
+		for(std::map<int, Transform>::const_iterator iter = newPoses.begin(); iter!=newPoses.end(); ++iter)
 		{
 			UASSERT(!iter->second.isNull());
 			if(isSlam2d())
@@ -164,12 +316,13 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 				if(iter->first > 0)
 				{
 					initialEstimate.insert(iter->first, gtsam::Pose2(iter->second.x(), iter->second.y(), iter->second.theta()));
+					addedPoses_.insert(iter->first);
 				}
 				else if(!landmarksIgnored())
 				{
 					// check if it is SE2 or only PointXY
-					std::multimap<int, Link>::const_iterator jter=edgeConstraints.find(iter->first);
-					UASSERT_MSG(jter != edgeConstraints.end(), uFormat("Not found landmark %d in edges!", iter->first).c_str());
+					std::multimap<int, Link>::const_iterator jter=newEdgeConstraints.find(iter->first);
+					UASSERT_MSG(jter != newEdgeConstraints.end(), uFormat("Not found landmark %d in edges!", iter->first).c_str());
 
 					if (1 / static_cast<double>(jter->second.infMatrix().at<double>(5,5)) >= 9999.0)
 					{
@@ -181,6 +334,7 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 						initialEstimate.insert(iter->first, gtsam::Pose2(iter->second.x(), iter->second.y(), iter->second.theta()));
 						isLandmarkWithRotation.insert(std::make_pair(iter->first, true));
 					}
+					addedPoses_.insert(iter->first);
 				}
 
 			}
@@ -189,12 +343,13 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 				if(iter->first > 0)
 				{
 					initialEstimate.insert(iter->first, gtsam::Pose3(iter->second.toEigen4d()));
+					addedPoses_.insert(iter->first);
 				}
 				else if(!landmarksIgnored())
 				{
 					// check if it is SE3 or only PointXYZ
-					std::multimap<int, Link>::const_iterator jter=edgeConstraints.find(iter->first);
-					UASSERT_MSG(jter != edgeConstraints.end(), uFormat("Not found landmark %d in edges!", iter->first).c_str());
+					std::multimap<int, Link>::const_iterator jter=newEdgeConstraints.find(iter->first);
+					UASSERT_MSG(jter != newEdgeConstraints.end(), uFormat("Not found landmark %d in edges!", iter->first).c_str());
 
 					if (1 / static_cast<double>(jter->second.infMatrix().at<double>(3,3)) >= 9999.0 ||
 						1 / static_cast<double>(jter->second.infMatrix().at<double>(4,4)) >= 9999.0 ||
@@ -208,29 +363,47 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 						initialEstimate.insert(iter->first, gtsam::Pose3(iter->second.toEigen4d()));
 						isLandmarkWithRotation.insert(std::make_pair(iter->first, true));
 					}
+					addedPoses_.insert(iter->first);
 				}
 			}
 		}
 
 		UDEBUG("fill edges to gtsam...");
-		int switchCounter = poses.rbegin()->first+1;
-		for(std::multimap<int, Link>::const_iterator iter=edgeConstraints.begin(); iter!=edgeConstraints.end(); ++iter)
+		if(!isam2_)
+		{
+			lastSwitchId_ = newPoses.rbegin()->first+1;
+		}
+		for(std::multimap<int, Link>::const_iterator iter=newEdgeConstraints.begin(); iter!=newEdgeConstraints.end(); ++iter)
 		{
 			int id1 = iter->second.from();
 			int id2 = iter->second.to();
+
+            UASSERT_MSG(poses.find(id1)!=poses.end(), uFormat("id1=%d", id1).c_str());
+            UASSERT_MSG(poses.find(id2)!=poses.end(), uFormat("id2=%d", id2).c_str());
+
 			UASSERT(!iter->second.transform().isNull());
 			if(id1 == id2)
 			{
-				if(iter->second.type() == Link::kPosePrior && !priorsIgnored())
+				if(iter->second.type() == Link::kPosePrior && !priorsIgnored() &&
+				  (!landmarksIgnored() || id1>0))
 				{
 					if(isSlam2d())
 					{
-						if (1 / static_cast<double>(iter->second.infMatrix().at<double>(5,5)) >= 9999.0)
+						if(id1 < 0 && !isLandmarkWithRotation.at(id1))
 						{
 							noiseModel::Diagonal::shared_ptr model = noiseModel::Diagonal::Variances(Vector2(
 									1/iter->second.infMatrix().at<double>(0,0),
 									1/iter->second.infMatrix().at<double>(1,1)));
-							graph.add(GPSPose2XYFactor(id1, gtsam::Point2(iter->second.transform().x(), iter->second.transform().y()), model));
+							graph.add(XYFactor<gtsam::Point2>(id1, gtsam::Point2(iter->second.transform().x(), iter->second.transform().y()), model));
+							lastAddedConstraints_.push_back(ConstraintToFactor(id1, id1, -1));
+						}
+						else if (1 / static_cast<double>(iter->second.infMatrix().at<double>(5,5)) >= 9999.0)
+						{
+							noiseModel::Diagonal::shared_ptr model = noiseModel::Diagonal::Variances(Vector2(
+									1/iter->second.infMatrix().at<double>(0,0),
+									1/iter->second.infMatrix().at<double>(1,1)));
+							graph.add(XYFactor<gtsam::Pose2>(id1, gtsam::Point2(iter->second.transform().x(), iter->second.transform().y()), model));
+							lastAddedConstraints_.push_back(ConstraintToFactor(id1, id1, -1));
 						}
 						else
 						{
@@ -250,11 +423,21 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 
 							gtsam::noiseModel::Gaussian::shared_ptr model = gtsam::noiseModel::Gaussian::Information(information);
 							graph.add(gtsam::PriorFactor<gtsam::Pose2>(id1, gtsam::Pose2(iter->second.transform().x(), iter->second.transform().y(), iter->second.transform().theta()), model));
+							lastAddedConstraints_.push_back(ConstraintToFactor(id1, id1, -1));
 						}
 					}
 					else
 					{
-						if (1 / static_cast<double>(iter->second.infMatrix().at<double>(3,3)) >= 9999.0 ||
+						if(id1 < 0 && !isLandmarkWithRotation.at(id1))
+						{
+							noiseModel::Diagonal::shared_ptr model = noiseModel::Diagonal::Precisions(Vector3(
+										iter->second.infMatrix().at<double>(0,0),
+										iter->second.infMatrix().at<double>(1,1),
+										iter->second.infMatrix().at<double>(2,2)));
+							graph.add(XYZFactor<gtsam::Point3>(id1, gtsam::Point3(iter->second.transform().x(), iter->second.transform().y(), iter->second.transform().z()), model));
+							lastAddedConstraints_.push_back(ConstraintToFactor(id1, id1, -1));
+						}
+						else if (1 / static_cast<double>(iter->second.infMatrix().at<double>(3,3)) >= 9999.0 ||
 							1 / static_cast<double>(iter->second.infMatrix().at<double>(4,4)) >= 9999.0 ||
 							1 / static_cast<double>(iter->second.infMatrix().at<double>(5,5)) >= 9999.0)
 						{
@@ -262,7 +445,8 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 										iter->second.infMatrix().at<double>(0,0),
 										iter->second.infMatrix().at<double>(1,1),
 										iter->second.infMatrix().at<double>(2,2)));
-							graph.add(GPSPose3XYZFactor(id1, gtsam::Point3(iter->second.transform().x(), iter->second.transform().y(), iter->second.transform().z()), model));
+							graph.add(XYZFactor<gtsam::Pose3>(id1, gtsam::Point3(iter->second.transform().x(), iter->second.transform().y(), iter->second.transform().z()), model));
+							lastAddedConstraints_.push_back(ConstraintToFactor(id1, id1, -1));
 						}
 						else
 						{
@@ -275,20 +459,22 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 							Eigen::Matrix<double, 6, 6> mgtsam = Eigen::Matrix<double, 6, 6>::Identity();
 							mgtsam.block(0,0,3,3) = information.block(3,3,3,3); // cov rotation
 							mgtsam.block(3,3,3,3) = information.block(0,0,3,3); // cov translation
-							mgtsam.block(0,3,3,3) = information.block(0,3,3,3); // off diagonal
-							mgtsam.block(3,0,3,3) = information.block(3,0,3,3); // off diagonal
+							mgtsam.block(0,3,3,3) = information.block(3,0,3,3); // off diagonal
+							mgtsam.block(3,0,3,3) = information.block(0,3,3,3); // off diagonal
 							gtsam::SharedNoiseModel model = gtsam::noiseModel::Gaussian::Information(mgtsam);
 
 							graph.add(gtsam::PriorFactor<gtsam::Pose3>(id1, gtsam::Pose3(iter->second.transform().toEigen4d()), model));
+							lastAddedConstraints_.push_back(ConstraintToFactor(id1, id1, -1));
 						}
 					}
 				}
-				else if(!isSlam2d() && gravitySigma() > 0 && iter->second.type() == Link::kGravity && poses.find(iter->first) != poses.end())
+				else if(!isSlam2d() && gravitySigma() > 0 && iter->second.type() == Link::kGravity && newPoses.find(iter->first) != newPoses.end())
 				{
 					Vector3 r = gtsam::Pose3(iter->second.transform().toEigen4d()).rotation().xyz();
 					gtsam::Unit3 nG = gtsam::Rot3::RzRyRx(r.x(), r.y(), 0).rotate(gtsam::Unit3(0,0,-1));
 					gtsam::SharedNoiseModel model = gtsam::noiseModel::Isotropic::Sigmas(gtsam::Vector2(gravitySigma(), 10));
 					graph.add(Pose3GravityFactor(iter->first, nG, model, Unit3(0,0,1)));
+					lastAddedConstraints_.push_back(ConstraintToFactor(iter->first, iter->first, -1));
 				}
 			}
 			else if(id1<0 || id2 < 0)
@@ -326,6 +512,7 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 							}
 							gtsam::noiseModel::Gaussian::shared_ptr model = gtsam::noiseModel::Gaussian::Information(information);
 							graph.add(gtsam::BetweenFactor<gtsam::Pose2>(id1, id2, gtsam::Pose2(t.x(), t.y(), t.theta()), model));
+							lastAddedConstraints_.push_back(ConstraintToFactor(id1, id2, -1));
 						}
 						else
 						{
@@ -340,6 +527,7 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 							gtsam::Point2 landmark(t.x(), t.y());
 							gtsam::Pose2 p;
 							graph.add(gtsam::BearingRangeFactor<gtsam::Pose2, gtsam::Point2>(id1, id2, p.bearing(landmark), p.range(landmark), model));
+							lastAddedConstraints_.push_back(ConstraintToFactor(id1, id2, -1));
 						}
 					}
 					else
@@ -355,10 +543,11 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 							Eigen::Matrix<double, 6, 6> mgtsam = Eigen::Matrix<double, 6, 6>::Identity();
 							mgtsam.block(0,0,3,3) = information.block(3,3,3,3); // cov rotation
 							mgtsam.block(3,3,3,3) = information.block(0,0,3,3); // cov translation
-							mgtsam.block(0,3,3,3) = information.block(0,3,3,3); // off diagonal
-							mgtsam.block(3,0,3,3) = information.block(3,0,3,3); // off diagonal
+							mgtsam.block(0,3,3,3) = information.block(3,0,3,3); // off diagonal
+							mgtsam.block(3,0,3,3) = information.block(0,3,3,3); // off diagonal
 							gtsam::SharedNoiseModel model = gtsam::noiseModel::Gaussian::Information(mgtsam);
 							graph.add(gtsam::BetweenFactor<gtsam::Pose3>(id1, id2, gtsam::Pose3(t.toEigen4d()), model));
+							lastAddedConstraints_.push_back(ConstraintToFactor(id1, id2, -1));
 						}
 						else
 						{
@@ -373,6 +562,7 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 							gtsam::Point3 landmark(t.x(), t.y(), t.z());
 							gtsam::Pose3 p;
 							graph.add(gtsam::BearingRangeFactor<gtsam::Pose3, gtsam::Point3>(id1, id2, p.bearing(landmark), p.range(landmark), model));
+							lastAddedConstraints_.push_back(ConstraintToFactor(id1, id2, -1));
 						}
 					}
 				}
@@ -390,7 +580,7 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 					//  a proper and convenient initial value for all switch variables would be
 					//  sij = 1 when using the linear switch function"
 					double prior = 1.0;
-					initialEstimate.insert(gtsam::Symbol('s',switchCounter), vertigo::SwitchVariableLinear(prior));
+					initialEstimate.insert(gtsam::Symbol('s',lastSwitchId_), vertigo::SwitchVariableLinear(prior));
 
 					// create switch prior factor
 					// "If the front-end is not able to assign sound individual values
@@ -398,10 +588,9 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 					//  to the individual optimal choice of Ξij for a large range of
 					//  outliers."
 					gtsam::noiseModel::Diagonal::shared_ptr switchPriorModel = gtsam::noiseModel::Diagonal::Sigmas(gtsam::Vector1(1.0));
-					graph.add(gtsam::PriorFactor<vertigo::SwitchVariableLinear> (gtsam::Symbol('s',switchCounter), vertigo::SwitchVariableLinear(prior), switchPriorModel));
+					graph.add(gtsam::PriorFactor<vertigo::SwitchVariableLinear> (gtsam::Symbol('s',lastSwitchId_), vertigo::SwitchVariableLinear(prior), switchPriorModel));
 				}
 #endif
-
 				if(isSlam2d())
 				{
 					Eigen::Matrix<double, 3, 3> information = Eigen::Matrix<double, 3, 3>::Identity();
@@ -425,12 +614,13 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 					   iter->second.type() != Link::kNeighborMerged)
 					{
 						// create switchable edge factor
-						graph.add(vertigo::BetweenFactorSwitchableLinear<gtsam::Pose2>(id1, id2, gtsam::Symbol('s', switchCounter++), gtsam::Pose2(iter->second.transform().x(), iter->second.transform().y(), iter->second.transform().theta()), model));
+						graph.add(vertigo::BetweenFactorSwitchableLinear<gtsam::Pose2>(id1, id2, gtsam::Symbol('s', lastSwitchId_++), gtsam::Pose2(iter->second.transform().x(), iter->second.transform().y(), iter->second.transform().theta()), model));
 					}
 					else
 #endif
 					{
 						graph.add(gtsam::BetweenFactor<gtsam::Pose2>(id1, id2, gtsam::Pose2(iter->second.transform().x(), iter->second.transform().y(), iter->second.transform().theta()), model));
+						lastAddedConstraints_.push_back(ConstraintToFactor(id1, id2, -1));
 					}
 				}
 				else
@@ -444,8 +634,8 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 					Eigen::Matrix<double, 6, 6> mgtsam = Eigen::Matrix<double, 6, 6>::Identity();
 					mgtsam.block(0,0,3,3) = information.block(3,3,3,3); // cov rotation
 					mgtsam.block(3,3,3,3) = information.block(0,0,3,3); // cov translation
-					mgtsam.block(0,3,3,3) = information.block(0,3,3,3); // off diagonal
-					mgtsam.block(3,0,3,3) = information.block(3,0,3,3); // off diagonal
+					mgtsam.block(0,3,3,3) = information.block(3,0,3,3); // off diagonal
+					mgtsam.block(3,0,3,3) = information.block(0,3,3,3); // off diagonal
 					gtsam::SharedNoiseModel model = gtsam::noiseModel::Gaussian::Information(mgtsam);
 
 #ifdef RTABMAP_VERTIGO
@@ -454,57 +644,68 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 					   iter->second.type() != Link::kNeighborMerged)
 					{
 						// create switchable edge factor
-						graph.add(vertigo::BetweenFactorSwitchableLinear<gtsam::Pose3>(id1, id2, gtsam::Symbol('s', switchCounter++), gtsam::Pose3(iter->second.transform().toEigen4d()), model));
+						graph.add(vertigo::BetweenFactorSwitchableLinear<gtsam::Pose3>(id1, id2, gtsam::Symbol('s', lastSwitchId_++), gtsam::Pose3(iter->second.transform().toEigen4d()), model));
 					}
 					else
 #endif
 					{
 						graph.add(gtsam::BetweenFactor<gtsam::Pose3>(id1, id2, gtsam::Pose3(iter->second.transform().toEigen4d()), model));
+						lastAddedConstraints_.push_back(ConstraintToFactor(id1, id2, -1));
 					}
 				}
 			}
 		}
 
 		UDEBUG("create optimizer");
-		gtsam::NonlinearOptimizer * optimizer;
+		gtsam::NonlinearOptimizer * optimizer = 0;
 
-		if(optimizer_ == 2)
+		if(!isam2_) // Batch optimization
 		{
-			gtsam::DoglegParams parameters;
-			parameters.relativeErrorTol = epsilon();
-			parameters.maxIterations = iterations();
-			optimizer = new gtsam::DoglegOptimizer(graph, initialEstimate, parameters);
-		}
-		else if(optimizer_ == 1)
-		{
-			gtsam::GaussNewtonParams parameters;
-			parameters.relativeErrorTol = epsilon();
-			parameters.maxIterations = iterations();
-			optimizer = new gtsam::GaussNewtonOptimizer(graph, initialEstimate, parameters);
+			UDEBUG("Batch optimization...");
+			if(internalOptimizerType_ == 2)
+			{
+				gtsam::DoglegParams parameters;
+				parameters.relativeErrorTol = epsilon();
+				parameters.maxIterations = iterations();
+				optimizer = new gtsam::DoglegOptimizer(graph, initialEstimate, parameters);
+			}
+			else if(internalOptimizerType_ == 1)
+			{
+				gtsam::GaussNewtonParams parameters;
+				parameters.relativeErrorTol = epsilon();
+				parameters.maxIterations = iterations();
+				optimizer = new gtsam::GaussNewtonOptimizer(graph, initialEstimate, parameters);
+			}
+			else
+			{
+				gtsam::LevenbergMarquardtParams parameters;
+				parameters.relativeErrorTol = epsilon();
+				parameters.maxIterations = iterations();
+				optimizer = new gtsam::LevenbergMarquardtOptimizer(graph, initialEstimate, parameters);
+			}
 		}
 		else
 		{
-			gtsam::LevenbergMarquardtParams parameters;
-			parameters.relativeErrorTol = epsilon();
-			parameters.maxIterations = iterations();
-			optimizer = new gtsam::LevenbergMarquardtOptimizer(graph, initialEstimate, parameters);
+			UDEBUG("iSAM2 optimization...");
 		}
 
 		UDEBUG("GTSAM optimizing begin (max iterations=%d, robust=%d)", iterations(), isRobust()?1:0);
 		UTimer timer;
 		int it = 0;
-		double lastError = optimizer->error();
+		double initialError = optimizer?graph.error(initialEstimate):0;
+		double lastError = optimizer?optimizer->error():0;
 		for(int i=0; i<iterations(); ++i)
 		{
 			if(intermediateGraphes && i > 0)
 			{
 				float x,y,z,roll,pitch,yaw;
 				std::map<int, Transform> tmpPoses;
-				for(gtsam::Values::const_iterator iter=optimizer->values().begin(); iter!=optimizer->values().end(); ++iter)
+				Values values = isam2_?isam2_->calculateEstimate():optimizer->values();
+				for(gtsam::Values::iterator iter=values.begin(); iter!=values.end(); ++iter)
 				{
-					if(iter->value.dim() > 1)
+					int key = (int)iter->key;
+					if(iter->value.dim() > 1 && uContains(newPoses, key))
 					{
-						int key = (int)iter->key;
 						if(isSlam2d())
 						{
 							if(key > 0)
@@ -516,13 +717,13 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 							{
 								if(isLandmarkWithRotation.at(key))
 								{
-									poses.at(key).getTranslationAndEulerAngles(x,y,z,roll,pitch,yaw);
+									newPoses.at(key).getTranslationAndEulerAngles(x,y,z,roll,pitch,yaw);
 									gtsam::Pose2 p = iter->value.cast<gtsam::Pose2>();
 									tmpPoses.insert(std::make_pair(key, Transform(p.x(), p.y(), z, roll, pitch, p.theta())));
 								}
 								else
 								{
-									poses.at(key).getTranslationAndEulerAngles(x,y,z,roll,pitch,yaw);
+									newPoses.at(key).getTranslationAndEulerAngles(x,y,z,roll,pitch,yaw);
 									gtsam::Point2 p = iter->value.cast<gtsam::Point2>();
 									tmpPoses.insert(std::make_pair(key, Transform(p.x(), p.y(), z, roll,pitch,yaw)));
 								}
@@ -544,7 +745,7 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 								}
 								else
 								{
-									poses.at(key).getTranslationAndEulerAngles(x,y,z,roll,pitch,yaw);
+									newPoses.at(key).getTranslationAndEulerAngles(x,y,z,roll,pitch,yaw);
 									gtsam::Point3 p = iter->value.cast<gtsam::Point3>();
 									tmpPoses.insert(std::make_pair(key, Transform(p.x(), p.y(), p.z(), roll,pitch,yaw)));
 								}
@@ -554,25 +755,89 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 				}
 				intermediateGraphes->push_back(tmpPoses);
 			}
+
+			gtsam::ISAM2Result result;
+			double error = 0;
 			try
 			{
-				optimizer->iterate();
+				if(optimizer) // Batch optimization
+				{
+					optimizer->iterate();
+					error = optimizer->error();
+				}
+				else if(i==0) // iSAM2 (add factors)
+				{
+					UDEBUG("Update iSAM with the new factors");
+					result = isam2_->update(graph, initialEstimate, removeFactorIndices);
+#if BOOST_VERSION >= 106800
+					UASSERT(result.errorBefore.has_value());
+					UASSERT(result.errorAfter.has_value());
+#else
+					UASSERT(result.errorBefore.is_initialized());
+					UASSERT(result.errorAfter.is_initialized());
+#endif
+					UDEBUG("error before = %f after=%f", result.errorBefore.value(), result.errorAfter.value());
+					initialError = lastError = result.errorBefore.value();
+					error = result.errorAfter.value();
+					if(!this->isRobust())
+					{
+						UASSERT_MSG(lastAddedConstraints_.size() == result.newFactorsIndices.size(),
+								uFormat("%ld versus %ld", lastAddedConstraints_.size(), result.newFactorsIndices.size()).c_str());
+						for(size_t j=0; j<result.newFactorsIndices.size(); ++j)
+						{
+							UDEBUG("New factor indice: %ld", result.newFactorsIndices[j]);
+							lastAddedConstraints_[j].factorIndice = result.newFactorsIndices[j];
+						}
+					}
+					if(rootId != 0 && lastRootFactorIndex_.first == 0)
+					{
+						UASSERT(result.newFactorsIndices.size()>=1);
+						lastRootFactorIndex_.first = rootId;
+						lastRootFactorIndex_.second = result.newFactorsIndices[0]; // first one should be always the root prior
+					}
+				}
+				else // iSAM2 (more iterations)
+				{
+					result = isam2_->update();
+#if BOOST_VERSION >= 106800
+					UASSERT(result.errorBefore.has_value());
+					UASSERT(result.errorAfter.has_value());
+#else
+					UASSERT(result.errorBefore.is_initialized());
+					UASSERT(result.errorAfter.is_initialized());
+#endif
+					UDEBUG("error before = %f after=%f", result.errorBefore.value(), result.errorAfter.value());
+
+					lastError = result.errorBefore.value();
+					error = result.errorAfter.value();
+				}
 				++it;
 			}
 			catch(gtsam::IndeterminantLinearSystemException & e)
 			{
 				UWARN("GTSAM exception caught: %s\n Graph has %d edges and %d vertices", e.what(),
-						(int)edgeConstraints.size(),
-						(int)poses.size());
+						(int)newEdgeConstraints.size(),
+						(int)newPoses.size());
 				delete optimizer;
+				if(isam2_)
+				{
+					// We are in bad state, cleanup
+					UDEBUG("Reset iSAM2!");
+					gtsam::ISAM2Params params = isam2_->params();
+					delete isam2_;
+					isam2_ = new gtsam::ISAM2(params);
+					addedPoses_.clear();
+					lastAddedConstraints_.clear();
+					lastRootFactorIndex_.first = 0;
+					lastSwitchId_ = 1000000000;
+				}
 				return optimizedPoses;
 			}
 
 			// early stop condition
-			double error = optimizer->error();
 			UDEBUG("iteration %d error =%f", i+1, error);
 			double errorDelta = lastError - error;
-			if(i>0 && errorDelta < this->epsilon())
+			if((isam2_ || i>0) && errorDelta < this->epsilon())
 			{
 				if(errorDelta < 0)
 				{
@@ -599,21 +864,23 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 		{
 			*iterationsDone = it;
 		}
-		UDEBUG("GTSAM optimizing end (%d iterations done, error=%f (initial=%f final=%f), time=%f s)",
-				optimizer->iterations(), optimizer->error(), graph.error(initialEstimate), graph.error(optimizer->values()), timer.ticks());
+		UDEBUG("GTSAM optimizing end (%d iterations done (error initial=%f final=%f), time=%f s)",
+				it, initialError, lastError, timer.ticks());
 
 		float x,y,z,roll,pitch,yaw;
-		for(gtsam::Values::const_iterator iter=optimizer->values().begin(); iter!=optimizer->values().end(); ++iter)
+		gtsam::Values values = isam2_?isam2_->calculateEstimate():optimizer->values();
+		for(gtsam::Values::iterator iter=values.begin(); iter!=values.end(); ++iter)
 		{
-			if(iter->value.dim() > 1)
+			int key = (int)iter->key;
+			if(iter->value.dim() > 1 && uContains(poses, key))
 			{
-				int key = (int)iter->key;
 				if(isSlam2d())
 				{
 					if(key > 0)
 					{
+						poses.at(key).getTranslationAndEulerAngles(x,y,z,roll,pitch,yaw);
 						gtsam::Pose2 p = iter->value.cast<gtsam::Pose2>();
-						optimizedPoses.insert(std::make_pair(key, Transform(p.x(), p.y(), p.theta())));
+						optimizedPoses.insert(std::make_pair(key, Transform(p.x(), p.y(), z, roll, pitch, p.theta())));
 					}
 					else if(!landmarksIgnored() && isLandmarkWithRotation.find(key)!=isLandmarkWithRotation.end())
 					{
@@ -658,10 +925,18 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 
 		// compute marginals
 		try {
-			UDEBUG("Computing marginals...");
+			UDEBUG("Computing marginals for node %d...", poses.rbegin()->first);
 			UTimer t;
-			gtsam::Marginals marginals(graph, optimizer->values());
-			gtsam::Matrix info = marginals.marginalCovariance(poses.rbegin()->first);
+			gtsam::Matrix info;
+			if(optimizer)
+			{
+				gtsam::Marginals marginals(graph, optimizer->values());
+			 	info = marginals.marginalCovariance(poses.rbegin()->first);
+			}
+			else //iSAM2
+			{
+				info = isam2_->marginalCovariance(poses.rbegin()->first);
+			}
 			UDEBUG("Computed marginals = %fs (key=%d)", t.ticks(), poses.rbegin()->first);
 			if(isSlam2d() && info.cols() == 3 && info.cols() == 3)
 			{
@@ -680,22 +955,25 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 				Eigen::Matrix<double, 6, 6> mgtsam = Eigen::Matrix<double, 6, 6>::Identity();
 				mgtsam.block(3,3,3,3) = info.block(0,0,3,3); // cov rotation
 				mgtsam.block(0,0,3,3) = info.block(3,3,3,3); // cov translation
-				mgtsam.block(0,3,3,3) = info.block(0,3,3,3); // off diagonal
-				mgtsam.block(3,0,3,3) = info.block(3,0,3,3); // off diagonal
+				mgtsam.block(0,3,3,3) = info.block(3,0,3,3); // off diagonal
+				mgtsam.block(3,0,3,3) = info.block(0,3,3,3); // off diagonal
 				memcpy(outputCovariance.data, mgtsam.data(), outputCovariance.total()*sizeof(double));
 			}
 			else
 			{
-				UWARN("GTSAM: Could not compute marginal covariance!");
+				UERROR("GTSAM: Could not compute marginal covariance!");
+				optimizedPoses.clear(); // Failed optimization
 			}
 		}
 		catch(gtsam::IndeterminantLinearSystemException & e)
 		{
-			UWARN("GTSAM exception caught: %s", e.what());
+			UERROR("GTSAM exception caught: %s", e.what());
+			optimizedPoses.clear(); // Failed optimization
 		}
 		catch(std::exception& e)
 		{
-			UWARN("GTSAM exception caught: %s", e.what());
+			UERROR("GTSAM exception caught: %s", e.what());
+			optimizedPoses.clear(); // Failed optimization
 		}
 
 		delete optimizer;

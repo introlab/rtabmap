@@ -27,9 +27,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #pragma once
 
-#include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
-
-
 #include "rtabmap/utilite/UMutex.h"
 #include "rtabmap/utilite/USemaphore.h"
 #include "rtabmap/core/CameraModel.h"
@@ -49,7 +46,7 @@ namespace rtabmap
 {
 
 class slam_event_handler;
-class RTABMAP_EXP CameraRealSense :
+class RTABMAP_CORE_EXPORT CameraRealSense :
 	public Camera
 {
 public:
@@ -64,7 +61,7 @@ public:
 		int presetDepth = 0, // 0=best quality, 1=largest image, 2=highest framerate
 		bool computeOdometry = false,
 		float imageRate = 0,
-		const Transform & localTransform = CameraModel::opticalRotation());
+		const Transform & localTransform = Transform::getIdentity());
 	virtual ~CameraRealSense();
 
 	void setDepthScaledToRGBSize(bool enabled);

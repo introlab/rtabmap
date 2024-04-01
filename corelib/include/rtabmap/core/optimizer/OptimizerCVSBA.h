@@ -28,13 +28,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef OPTIMIZERCVSBA_H_
 #define OPTIMIZERCVSBA_H_
 
-#include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
-
 #include <rtabmap/core/Optimizer.h>
 
 namespace rtabmap {
 
-class RTABMAP_EXP OptimizerCVSBA : public Optimizer
+class RTABMAP_CORE_EXPORT OptimizerCVSBA : public Optimizer
 {
 public:
 	static bool available();
@@ -55,7 +53,7 @@ public:
 			int rootId,
 			const std::map<int, Transform> & poses,
 			const std::multimap<int, Link> & links,
-			const std::map<int, CameraModel> & models,
+			const std::map<int, std::vector<CameraModel> > & models,
 			std::map<int, cv::Point3f> & points3DMap,
 			const std::map<int, std::map<int, FeatureBA> > & wordReferences, // <ID words, IDs frames + keypoint(x,y,depth)>
 			std::set<int> * outliers = 0);

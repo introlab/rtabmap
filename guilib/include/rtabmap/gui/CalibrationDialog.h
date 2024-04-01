@@ -28,7 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef RTABMAP_CALIBRATIONDIALOG_H_
 #define RTABMAP_CALIBRATIONDIALOG_H_
 
-#include "rtabmap/gui/RtabmapGuiExp.h" // DLL export/import defines
+#include "rtabmap/gui/rtabmap_gui_export.h" // DLL export/import defines
 
 #include <QDialog>
 #include <QSettings>
@@ -43,7 +43,7 @@ class Ui_calibrationDialog;
 
 namespace rtabmap {
 
-class RTABMAPGUI_EXP CalibrationDialog  : public QDialog, public UEventsHandler
+class RTABMAP_GUI_EXPORT CalibrationDialog  : public QDialog, public UEventsHandler
 {
 	Q_OBJECT;
 
@@ -57,6 +57,9 @@ public:
 	const rtabmap::StereoCameraModel & getStereoCameraModel() const {return stereoModel_;}
 	bool isProcessing() const {return processingData_;}
 	int getStereoPairs() const {return (int)stereoImagePoints_[0].size();}
+	int boardWidth() const;
+	int boardHeight() const;
+	double squareSize() const;
 
 	void saveSettings(QSettings & settings, const QString & group = "") const;
 	void loadSettings(QSettings & settings, const QString & group = "");
@@ -75,6 +78,7 @@ public Q_SLOTS:
 	void setBoardWidth(int width);
 	void setBoardHeight(int height);
 	void setSquareSize(double size);
+	void setExpectedStereoBaseline(double length);
 	void setMaxScale(int scale);
 
 	void processImages(const cv::Mat & imageLeft, const cv::Mat & imageRight, const QString & cameraName);

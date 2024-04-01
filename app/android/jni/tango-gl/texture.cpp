@@ -34,11 +34,13 @@ static int RoundUpPowerOfTwo(int w) {
 }
 
 Texture::Texture(const char* file_path) {
+#ifdef __ANDROID__
   if (!LoadFromPNG(file_path)) {
     LOGE("Texture initialing error");
   }
+#endif
 }
-
+#ifdef __ANDROID__
 bool Texture::LoadFromPNG(const char* file_path) {
   FILE* file = fopen(file_path, "rb");
 
@@ -94,7 +96,7 @@ bool Texture::LoadFromPNG(const char* file_path) {
 
   return true;
 }
-
+#endif
 GLuint Texture::GetTextureID() const { return texture_id_; }
 
 Texture::~Texture() {

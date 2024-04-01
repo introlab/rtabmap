@@ -210,41 +210,59 @@ LaserScan::LaserScan() :
 }
 
 LaserScan::LaserScan(
+		const LaserScan & scan,
+		int maxPoints,
+		float maxRange,
+		const Transform & localTransform)
+{
+	UASSERT(scan.empty() || scan.format() != kUnknown);
+	init(scan.data(), scan.format(), 0, maxRange, 0, 0, 0, maxPoints, localTransform);
+}
+
+LaserScan::LaserScan(
+		const LaserScan & scan,
+		int maxPoints,
+		float maxRange,
+		Format format,
+		const Transform & localTransform)
+{
+	init(scan.data(), format, 0, maxRange, 0, 0, 0, maxPoints, localTransform);
+}
+
+LaserScan::LaserScan(
 		const cv::Mat & data,
 		int maxPoints,
 		float maxRange,
 		Format format,
-		const Transform & localTransform) :
-	data_(data),
-	format_(format),
-	maxPoints_(maxPoints),
-	rangeMin_(0),
-	rangeMax_(maxRange),
-	angleMin_(0),
-	angleMax_(0),
-	angleIncrement_(0),
-	localTransform_(localTransform)
+		const Transform & localTransform)
 {
-	UASSERT(data.empty() || data.rows == 1);
-	UASSERT(data.empty() || data.type() == CV_8UC1 || data.type() == CV_32FC2 || data.type() == CV_32FC3 || data.type() == CV_32FC(4) || data.type() == CV_32FC(5) || data.type() == CV_32FC(6)  || data.type() == CV_32FC(7));
-	UASSERT(!localTransform.isNull());
+	init(data, format, 0, maxRange, 0, 0, 0, maxPoints, localTransform);
+}
 
-	if(!data.empty() && !isCompressed())
-	{
-		if(format == kUnknown)
-		{
-			*this = backwardCompatibility(data_, maxPoints_, rangeMax_, localTransform_);
-		}
-		else // verify that format corresponds to expected number of channels
-		{
-			UASSERT_MSG(data.channels() != 2 || (data.channels() == 2 && format == kXY), uFormat("format=%s", LaserScan::formatName(format).c_str()).c_str());
-			UASSERT_MSG(data.channels() != 3 || (data.channels() == 3 && (format == kXYZ || format == kXYI)), uFormat("format=%s", LaserScan::formatName(format).c_str()).c_str());
-			UASSERT_MSG(data.channels() != 4 || (data.channels() == 4 && (format == kXYZI || format == kXYZRGB)), uFormat("format=%s", LaserScan::formatName(format).c_str()).c_str());
-			UASSERT_MSG(data.channels() != 5 || (data.channels() == 5 && (format == kXYNormal)), uFormat("format=%s", LaserScan::formatName(format).c_str()).c_str());
-			UASSERT_MSG(data.channels() != 6 || (data.channels() == 6 && (format == kXYINormal || format == kXYZNormal)), uFormat("format=%s", LaserScan::formatName(format).c_str()).c_str());
-			UASSERT_MSG(data.channels() != 7 || (data.channels() == 7 && (format == kXYZRGBNormal || format == kXYZINormal)), uFormat("format=%s", LaserScan::formatName(format).c_str()).c_str());
-		}
-	}
+LaserScan::LaserScan(
+		const LaserScan & scan,
+		float minRange,
+		float maxRange,
+		float angleMin,
+		float angleMax,
+		float angleIncrement,
+		const Transform & localTransform)
+{
+	UASSERT(scan.empty() || scan.format() != kUnknown);
+	init(scan.data(), scan.format(), minRange, maxRange, angleMin, angleMax, angleIncrement, 0, localTransform);
+}
+
+LaserScan::LaserScan(
+		const LaserScan & scan,
+		Format format,
+		float minRange,
+		float maxRange,
+		float angleMin,
+		float angleMax,
+		float angleIncrement,
+		const Transform & localTransform)
+{
+	init(scan.data(), format, minRange, maxRange, angleMin, angleMax, angleIncrement, 0, localTransform);
 }
 
 LaserScan::LaserScan(
@@ -255,37 +273,77 @@ LaserScan::LaserScan(
 		float angleMin,
 		float angleMax,
 		float angleIncrement,
-		const Transform & localTransform) :
-	data_(data),
-	format_(format),
-	rangeMin_(minRange),
-	rangeMax_(maxRange),
-	angleMin_(angleMin),
-	angleMax_(angleMax),
-	angleIncrement_(angleIncrement),
-	localTransform_(localTransform)
+		const Transform & localTransform)
 {
-	UASSERT(maxRange>minRange);
-	UASSERT(angleMax>angleMin);
-	UASSERT(angleIncrement != 0.0f);
-	maxPoints_ = std::ceil((angleMax - angleMin) / angleIncrement)+1;
+	init(data, format, minRange, maxRange, angleMin, angleMax, angleIncrement, 0, localTransform);
+}
 
+void LaserScan::init(
+		const cv::Mat & data,
+		Format format,
+		float rangeMin,
+		float rangeMax,
+		float angleMin,
+		float angleMax,
+		float angleIncrement,
+		int maxPoints,
+		const Transform & localTransform)
+{
 	UASSERT(data.empty() || data.rows == 1);
 	UASSERT(data.empty() || data.type() == CV_8UC1 || data.type() == CV_32FC2 || data.type() == CV_32FC3 || data.type() == CV_32FC(4) || data.type() == CV_32FC(5) || data.type() == CV_32FC(6)  || data.type() == CV_32FC(7));
 	UASSERT(!localTransform.isNull());
 
+	bool is2D = false;
+	if(angleIncrement != 0.0f)
+	{
+		// 2D scan
+		is2D = true;
+		UASSERT(rangeMax>rangeMin);
+		UASSERT((angleIncrement>0 && angleMax>angleMin) || (angleIncrement<0 && angleMax<angleMin));
+		maxPoints_ = std::ceil((angleMax - angleMin) / angleIncrement)+1;
+	}
+	else
+	{
+		// 3D scan
+		UASSERT(rangeMax>=rangeMin);
+		maxPoints_ = maxPoints;
+	}
+
+	data_ = data;
+	format_ = format;
+	rangeMin_ = rangeMin;
+	rangeMax_ = rangeMax;
+	angleMin_ = angleMin;
+	angleMax_ = angleMax;
+	angleIncrement_ = angleIncrement;
+	localTransform_ = localTransform;
+
 	if(!data.empty() && !isCompressed())
 	{
-		if(data_.cols > maxPoints_)
+		if(is2D && data_.cols > maxPoints_)
 		{
 			UWARN("The number of points (%d) in the scan is over the maximum "
 				  "points (%d) defined by angle settings (min=%f max=%f inc=%f). "
 				  "The scan info may be wrong!",
 				  data_.cols, maxPoints_, angleMin_, angleMax_, angleIncrement_);
 		}
+		else if(!is2D && maxPoints_>0 && data_.cols > maxPoints_)
+		{
+			UDEBUG("The number of points (%d) in the scan is over the maximum "
+				  "points (%d) defined by max points setting.",
+				  data_.cols, maxPoints_);
+		}
+
 		if(format == kUnknown)
 		{
-			*this = backwardCompatibility(data_, rangeMin_, rangeMax_, angleMin_, angleMax_, angleIncrement_, localTransform_);
+			if(angleIncrement_ != 0)
+			{
+				*this = backwardCompatibility(data_, rangeMin_, rangeMax_, angleMin_, angleMax_, angleIncrement_, localTransform_);
+			}
+			else
+			{
+				*this = backwardCompatibility(data_, maxPoints_, rangeMax_, localTransform_);
+			}
 		}
 		else // verify that format corresponds to expected number of channels
 		{
@@ -306,6 +364,44 @@ LaserScan LaserScan::clone() const
 		return LaserScan(data_.clone(), format_, rangeMin_, rangeMax_, angleMin_, angleMax_, angleIncrement_, localTransform_.clone());
 	}
 	return LaserScan(data_.clone(), maxPoints_, rangeMax_, format_, localTransform_.clone());
+}
+
+float & LaserScan::field(unsigned int pointIndex, unsigned int channelOffset)
+{
+	UASSERT(pointIndex < (unsigned int)data_.cols);
+	UASSERT(channelOffset < (unsigned int)data_.channels());
+	return data_.ptr<float>(0, pointIndex)[channelOffset];
+}
+
+LaserScan & LaserScan::operator+=(const LaserScan & scan)
+{
+	*this = *this+scan;
+	return *this;
+}
+
+LaserScan LaserScan::operator+(const LaserScan & scan)
+{
+	UASSERT(this->empty() || scan.empty() || this->format() == scan.format());
+	LaserScan dest;
+	if(!scan.empty())
+	{
+		if(this->empty())
+		{
+			dest = scan.clone();
+		}
+		else
+		{
+			cv::Mat destData(1, data_.cols + scan.data().cols, data_.type());
+			data_.copyTo(destData(cv::Range::all(), cv::Range(0,data_.cols)));
+			scan.data().copyTo(destData(cv::Range::all(), cv::Range(data_.cols, data_.cols+scan.data().cols)));
+			dest = LaserScan(destData, 0, 0, this->format());
+		}
+	}
+	else
+	{
+		dest = this->clone();
+	}
+	return dest;
 }
 
 }

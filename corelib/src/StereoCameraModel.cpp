@@ -401,7 +401,11 @@ bool StereoCameraModel::saveStereoTransform(const std::string & directory) const
 	}
 	else
 	{
-		UERROR("Failed saving stereo extrinsics (they are null).");
+		UERROR("Failed saving stereo extrinsics (they are null):");
+		std::cout << "R= " << R_ << std::endl;
+		std::cout << "T= " << T_ << std::endl;
+		std::cout << "E= " << T_ << std::endl;
+		std::cout << "F= " << F_ << std::endl;
 	}
 	return false;
 }
@@ -596,6 +600,19 @@ Transform StereoCameraModel::stereoTransform() const
 				R_.at<double>(2,0), R_.at<double>(2,1), R_.at<double>(2,2), T_.at<double>(2));
 	}
 	return Transform();
+}
+
+std::ostream& operator<<(std::ostream& os, const StereoCameraModel& model)
+{
+	os << "Left Camera " << model.left() << std::endl
+	   << "Right Camera " << model.right() << std::endl
+	   << "Stereo Extrinsics:" << std::endl
+	   << "R= " << model.R() << std::endl
+	   << "T= " << model.T() << std::endl
+	   << "E= " << model.E() << std::endl
+	   << "F= "<< model.F() << std::endl
+	   << "baseline= " << model.baseline() << std::endl;
+	return os;
 }
 
 } /* namespace rtabmap */

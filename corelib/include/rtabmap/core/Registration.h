@@ -28,7 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef RTABMAP_REGISTRATION_H_
 #define RTABMAP_REGISTRATION_H_
 
-#include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
+#include "rtabmap/core/rtabmap_core_export.h" // DLL export/import defines
 
 #include <rtabmap/core/Parameters.h>
 #include <rtabmap/core/Signature.h>
@@ -36,7 +36,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 namespace rtabmap {
 
-class RTABMAP_EXP Registration
+class RTABMAP_CORE_EXPORT Registration
 {
 public:
 	enum Type {
@@ -45,7 +45,8 @@ public:
 		kTypeIcp = 1,
 		kTypeVisIcp = 2
 	};
-	static double COVARIANCE_EPSILON;
+	static double COVARIANCE_LINEAR_EPSILON;
+	static double COVARIANCE_ANGULAR_EPSILON;
 
 public:
 	static Registration * create(const ParametersMap & parameters);

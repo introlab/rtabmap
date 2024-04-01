@@ -84,6 +84,7 @@ public:
 		output.transformFiltered = transformFiltered;
 		output.transformGroundTruth = transformGroundTruth;
 		output.guessVelocity = guessVelocity;
+		output.guess = guess;
 		output.distanceTravelled = distanceTravelled;
 		output.memoryUsage = memoryUsage;
 		output.gravityRollError = gravityRollError;
@@ -102,7 +103,7 @@ public:
 	int localBundleConstraints;
 	float localBundleTime;
 	std::map<int, Transform> localBundlePoses;
-	std::map<int, CameraModel> localBundleModels;
+	std::map<int, std::vector<CameraModel> > localBundleModels;
 	bool keyFrameAdded;
 	float timeEstimation;
 	float timeParticleFiltering;
@@ -111,7 +112,8 @@ public:
 	Transform transform;
 	Transform transformFiltered;
 	Transform transformGroundTruth;
-	Transform guessVelocity;
+	Transform guessVelocity; // deprecated, will be removed. Use guess and interval instead.
+	Transform guess;
 	float distanceTravelled;
 	int memoryUsage; //MB
 	double gravityRollError;

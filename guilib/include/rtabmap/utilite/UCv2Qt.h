@@ -39,9 +39,17 @@ enum uCvQtDepthColorMap{
  * depth (float32, uint16) image and RGB/BGR 8bits images.
  * @param image the cv::Mat image (can be 1 channel [CV_8U, CV_16U or CV_32F] or 3 channels [CV_U8])
  * @param isBgr if 3 channels, it is BGR or RGB order.
+ * @param colorMap gradient of color to use to visualize depth
+ * @param depthMin fixed minimum range (m) of the depth gradient (if depthMax<=depthMin, max/min are computed based on data in depth image)
+ * @param depthMax fixed maximum range (m) of the depth gradient (if depthMax<=depthMin, max/min are computed based on data in depth image)
  * @return the QImage
  */
-inline QImage uCvMat2QImage(const cv::Mat & image, bool isBgr = true, uCvQtDepthColorMap colorMap = uCvQtDepthWhiteToBlack)
+inline QImage uCvMat2QImage(
+		const cv::Mat & image,
+		bool isBgr = true,
+		uCvQtDepthColorMap colorMap = uCvQtDepthWhiteToBlack,
+		float depthMin = 0,
+		float depthMax = 0)
 {
 	QImage qtemp;
 	if(!image.empty() && image.depth() == CV_8U)
@@ -87,19 +95,36 @@ inline QImage uCvMat2QImage(const cv::Mat & image, bool isBgr = true, uCvQtDepth
     {
 		// Assume depth image (float in meters)
 		const float * data = (const float *)image.data;
-		float min=data[0], max=data[0];
-		for(unsigned int i=1; i<image.total(); ++i)
+		float min,max;
+		if(depthMax>depthMin)
 		{
-			if(uIsFinite(data[i]) && data[i] > 0)
+			min = depthMin;
+			max = depthMax;
+		}
+		else
+		{
+			min = max = data[0];
+			for(unsigned int i=1; i<image.total(); ++i)
 			{
-				if(!uIsFinite(min) || (data[i] > 0 && data[i]<min))
+				if(uIsFinite(data[i]) && data[i] > 0)
 				{
-					min = data[i];
+					if(!uIsFinite(min) || (data[i] > 0 && data[i]<min))
+					{
+						min = data[i];
+					}
+					if(!uIsFinite(max) || (data[i] > 0 && data[i]>max))
+					{
+						max = data[i];
+					}
 				}
-				if(!uIsFinite(max) || (data[i] > 0 && data[i]>max))
-				{
-					max = data[i];
-				}
+			}
+			if(depthMax > 0 && depthMax > depthMin)
+			{
+				max = depthMax;
+			}
+			if(depthMin>0 && (depthMin < depthMax || depthMin < max))
+			{
+				min = depthMin;
 			}
 		}
 
@@ -109,21 +134,25 @@ inline QImage uCvMat2QImage(const cv::Mat & image, bool isBgr = true, uCvQtDepth
 			for(int x = 0; x < image.cols; ++x)
 			{
 				uchar * p = qtemp.scanLine (y) + x;
-				if(data[x] < min || data[x] > max || !uIsFinite(data[x]) || max == min)
+				if(!uIsFinite(data[x]) || max == min || data[x] == 0)
 				{
 					*p = 0;
 				}
+				else if(data[x] < min)
+				{
+					*p = 255;
+				}
+				else if(data[x] > max)
+				{
+					*p=1;
+				}
 				else
 				{
-					*p = uchar(255.0f - ((data[x]-min)*255.0f)/(max-min));
-					if(*p == 255)
-					{
-						*p = 0;
-					}
+					*p = uchar(std::max(1.0f, std::min(255.0f, 255.0f - ((data[x]-min)*255.0f)/(max-min))));
 				}
 				if(*p!=0 && (colorMap == uCvQtDepthBlackToWhite || colorMap == uCvQtDepthRedToBlue))
 				{
-					*p = 255-*p;
+					*p = 255-*p+1;
 				}
 			}
 		}
@@ -147,19 +176,36 @@ inline QImage uCvMat2QImage(const cv::Mat & image, bool isBgr = true, uCvQtDepth
 	{
 		// Assume depth image (unsigned short in mm)
 		const unsigned short * data = (const unsigned short *)image.data;
-		unsigned short min=data[0], max=data[0];
-		for(unsigned int i=1; i<image.total(); ++i)
+		unsigned short min,max;
+		if(depthMax>depthMin)
 		{
-			if(uIsFinite(data[i]) && data[i] > 0)
+			min = depthMin*1000;
+			max = depthMax*1000;
+		}
+		else
+		{
+			min = max = data[0];
+			for(unsigned int i=1; i<image.total(); ++i)
 			{
-				if(!uIsFinite(min) || (data[i] > 0 && data[i]<min))
+				if(uIsFinite(data[i]) && data[i] > 0)
 				{
-					min = data[i];
+					if(!uIsFinite(min) || (data[i] > 0 && data[i]<min))
+					{
+						min = data[i];
+					}
+					if(!uIsFinite(max) || (data[i] > 0 && data[i]>max))
+					{
+						max = data[i];
+					}
 				}
-				if(!uIsFinite(max) || (data[i] > 0 && data[i]>max))
-				{
-					max = data[i];
-				}
+			}
+			if(depthMax > 0 && depthMax > depthMin)
+			{
+				max = depthMax*1000;
+			}
+			if(depthMin>0 && (depthMin < depthMax || depthMin*1000 < max))
+			{
+				min = depthMin*1000;
 			}
 		}
 
@@ -169,21 +215,25 @@ inline QImage uCvMat2QImage(const cv::Mat & image, bool isBgr = true, uCvQtDepth
 			for(int x = 0; x < image.cols; ++x)
 			{
 				uchar * p = qtemp.scanLine (y) + x;
-				if(data[x] < min || data[x] > max || !uIsFinite(data[x]) || max == min)
+				if(!uIsFinite(data[x]) || max == min || data[x]==0)
 				{
 					*p = 0;
 				}
+				else if(data[x] < min)
+				{
+					*p = 255;
+				}
+				else if(data[x] > max)
+				{
+					*p = 1;
+				}
 				else
 				{
-					*p = uchar(255.0f - (float(data[x]-min)/float(max-min))*255.0f);
-					if(*p == 255)
-					{
-						*p = 0;
-					}
+					*p = uchar(std::max(1.0f, std::min(255.0f, 255.0f - (float(data[x]-min)/float(max-min))*255.0f)));
 				}
 				if(*p!=0 && (colorMap == uCvQtDepthBlackToWhite || colorMap == uCvQtDepthRedToBlue))
 				{
-					*p = 255-*p;
+					*p = 255-*p+1;
 				}
 			}
 		}

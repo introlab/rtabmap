@@ -28,7 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef TRANSFORM_H_
 #define TRANSFORM_H_
 
-#include <rtabmap/core/RtabmapExp.h>
+#include <rtabmap/core/rtabmap_core_export.h>
 #include <vector>
 #include <string>
 #include <map>
@@ -38,7 +38,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 namespace rtabmap {
 
-class RTABMAP_EXP Transform
+class RTABMAP_CORE_EXPORT Transform
 {
 public:
 
@@ -98,10 +98,14 @@ public:
 
 	float theta() const;
 
+	bool isInvertible() const;
 	Transform inverse() const;
 	Transform rotation() const;
 	Transform translation() const;
 	Transform to3DoF() const;
+	Transform to4DoF() const;
+	bool is3DoF() const;
+	bool is4DoF() const;
 
 	cv::Mat rotationMatrix() const;
 	cv::Mat translationMatrix() const;
@@ -139,6 +143,8 @@ public:
 	static Transform fromEigen3d(const Eigen::Affine3d & matrix);
 	static Transform fromEigen3f(const Eigen::Isometry3f & matrix);
 	static Transform fromEigen3d(const Eigen::Isometry3d & matrix);
+	static Transform fromEigen3f(const Eigen::Matrix<float, 3, 4> & matrix);
+	static Transform fromEigen3d(const Eigen::Matrix<double, 3, 4> & matrix);
 
 	static Transform opengl_T_rtabmap() {return Transform(
 			 0.0f, -1.0f, 0.0f, 0.0f,
@@ -162,16 +168,17 @@ public:
 	static Transform getTransform(
 				const std::map<double, Transform> & tfBuffer,
 				const double & stamp);
-	RTABMAP_DEPRECATED(static Transform getClosestTransform(
+	// Use Transform::getTransform() instead to get always accurate transforms.
+	RTABMAP_DEPRECATED static Transform getClosestTransform(
 				const std::map<double, Transform> & tfBuffer,
 				const double & stamp,
-				double * stampDiff), "Use Transform::getTransform() instead to get always accurate transforms.");
+				double * stampDiff);
 
 private:
 	cv::Mat data_;
 };
 
-RTABMAP_EXP std::ostream& operator<<(std::ostream& os, const Transform& s);
+RTABMAP_CORE_EXPORT std::ostream& operator<<(std::ostream& os, const Transform& s);
 
 class TransformStamped
 {

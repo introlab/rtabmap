@@ -31,7 +31,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/utilite/ULogger.h"
 #include "util.h"
 
+#ifdef __ANDROID__
 #include <GLES2/gl2.h>
+#else //__APPLE__
+#include <OpenGLES/ES2/gl.h>
+#endif
 
 GraphDrawable::GraphDrawable(
 		GLuint shaderProgram,

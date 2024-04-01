@@ -43,9 +43,6 @@ CameraARCore::CameraARCore(void* env, void* context, void* activity, bool depthF
 	context_(context),
 	activity_(activity),
 	arInstallRequested_(false),
-	textureId_(9999),
-	uvs_initialized_(false),
-	updateOcclusionImage_(false),
 	depthFromMotion_(depthFromMotion)
 {
 }
@@ -53,12 +50,6 @@ CameraARCore::CameraARCore(void* env, void* context, void* activity, bool depthF
 CameraARCore::~CameraARCore() {
 	// Disconnect ARCore service
 	close();
-
-	if(textureId_ != 9999)
-	{
-		glDeleteTextures(1, &textureId_);
-		textureId_ = 9999;
-	}
 }
 
 
@@ -176,7 +167,7 @@ bool CameraARCore::init(const std::string & calibrationFolder, const std::string
 	  ArConfig_setDepthMode(arSession_, arConfig_, AR_DEPTH_MODE_DISABLED);
 	}
 
-	ArConfig_setFocusMode(arSession_, arConfig_, AR_FOCUS_MODE_AUTO);
+	ArConfig_setFocusMode(arSession_, arConfig_, AR_FOCUS_MODE_FIXED);
 	UASSERT(ArSession_configure(arSession_, arConfig_) == AR_SUCCESS);
 
 	ArFrame_create(arSession_, &arFrame_);
@@ -279,7 +270,6 @@ void CameraARCore::close()
 	arPose_ = nullptr;
 
 	CameraMobile::close();
-	occlusionImage_ = cv::Mat();
 }
 
 LaserScan CameraARCore::scanFromPointCloudData(
@@ -355,7 +345,7 @@ SensorData CameraARCore::captureImage(CameraInfo * info)
 		return data;
 	}
 
-	if(textureId_ == 9999)
+	if(textureId_ == 0)
 	{
 		glGenTextures(1, &textureId_);
 		glBindTexture(GL_TEXTURE_EXTERNAL_OES, textureId_);
@@ -364,7 +354,8 @@ SensorData CameraARCore::captureImage(CameraInfo * info)
 		glTexParameteri(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 		glTexParameteri(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	}
-	ArSession_setCameraTextureName(arSession_, textureId_);
+	if(textureId_!=0)
+		ArSession_setCameraTextureName(arSession_, textureId_);
 
 	// Update session to get current frame and render camera background.
 	if (ArSession_update(arSession_, arFrame_) != AR_SUCCESS) {
@@ -393,6 +384,12 @@ SensorData CameraARCore::captureImage(CameraInfo * info)
 							   /*near=*/0.1f, /*far=*/100.f,
 							   glm::value_ptr(projectionMatrix_));
 
+	// adjust origin
+	if(!getOriginOffset().isNull())
+	{
+		viewMatrix_ = glm::inverse(rtabmap::glmFromTransform(rtabmap::opengl_world_T_rtabmap_world * getOriginOffset() *rtabmap::rtabmap_world_T_opengl_world)*glm::inverse(viewMatrix_));
+	}
+
 	ArTrackingState camera_tracking_state;
 	ArCamera_getTrackingState(arSession_, ar_camera, &camera_tracking_state);
 
@@ -406,6 +403,22 @@ SensorData CameraARCore::captureImage(CameraInfo * info)
 		ArPose_getPoseRaw(arSession_, arPose_, pose_raw);
 		pose = Transform(pose_raw[4], pose_raw[5], pose_raw[6], pose_raw[0], pose_raw[1], pose_raw[2], pose_raw[3]);
 		pose = rtabmap::rtabmap_world_T_opengl_world * pose * rtabmap::opengl_world_T_rtabmap_world;
+
+		Transform poseArCore = pose;
+		if(pose.isNull())
+		{
+			LOGE("CameraARCore: Pose is null");
+		}
+		else
+		{
+			this->poseReceived(pose);
+			// adjust origin
+			if(!getOriginOffset().isNull())
+			{
+				pose = getOriginOffset() * pose;
+			}
+			info->odomPose = pose;
+		}
 
 		// Get calibration parameters
 		float fx,fy, cx, cy;
@@ -432,7 +445,7 @@ SensorData CameraARCore::captureImage(CameraInfo * info)
 			ArStatus status = ArFrame_acquireCameraImage(arSession_, arFrame_, &image);
 			if(status == AR_SUCCESS)
 			{
-				if(is_depth_supported && (updateOcclusionImage_||depthFromMotion_))
+				if(is_depth_supported)
 				{
 					LOGD("Acquire depth image!");
 					ArImage * depthImage = nullptr;
@@ -459,11 +472,12 @@ SensorData CameraARCore::captureImage(CameraInfo * info)
 
 						LOGD("width=%d, height=%d, bytes=%d stride=%d", depth_width, depth_height, len, stride);
 
-						occlusionImage_ = cv::Mat(depth_height, depth_width, CV_16UC1, (void*)data).clone();
+						cv::Mat occlusionImage = cv::Mat(depth_height, depth_width, CV_16UC1, (void*)data).clone();
 
 						float scaleX = (float)depth_width / (float)width;
 						float scaleY = (float)depth_height / (float)height;
-						occlusionModel_ = CameraModel(fx*scaleX, fy*scaleY, cx*scaleX, cy*scaleY, pose*deviceTColorCamera_, 0, cv::Size(depth_width, depth_height));
+						CameraModel occlusionModel(fx*scaleX, fy*scaleY, cx*scaleX, cy*scaleY, pose*deviceTColorCamera_, 0, cv::Size(depth_width, depth_height));
+						this->setOcclusionImage(occlusionImage, occlusionModel);
 					}
 					ArImage_release(depthImage);
 				}
@@ -506,11 +520,11 @@ SensorData CameraARCore::captureImage(CameraInfo * info)
 							cv::Mat yuv(height+height/2, width, CV_8UC1);
 							memcpy(yuv.data, plane_data, data_length);
 							memcpy(yuv.data+data_length, plane_uv_data, height/2*width);
-							cv::cvtColor(yuv, rgb, CV_YUV2BGR_NV21);
+							cv::cvtColor(yuv, rgb, cv::COLOR_YUV2BGR_NV21);
 						}
 						else
 						{
-							cv::cvtColor(cv::Mat(height+height/2, width, CV_8UC1, (void*)plane_data), rgb, CV_YUV2BGR_NV21);
+							cv::cvtColor(cv::Mat(height+height/2, width, CV_8UC1, (void*)plane_data), rgb, cv::COLOR_YUV2BGR_NV21);
 						}
 
 						std::vector<cv::KeyPoint> kpts;
@@ -527,7 +541,7 @@ SensorData CameraARCore::captureImage(CameraInfo * info)
 #endif
 							if(pointCloudData && points>0)
 							{
-								scan = scanFromPointCloudData(pointCloudData, points, pose, model, rgb, &kpts, &kpts3);
+								scan = scanFromPointCloudData(pointCloudData, points, poseArCore, model, rgb, &kpts, &kpts3);
 							}
 						}
 						else
@@ -535,7 +549,7 @@ SensorData CameraARCore::captureImage(CameraInfo * info)
 							LOGI("pointCloud empty");
 						}
 
-						data = SensorData(scan, rgb, depthFromMotion_?occlusionImage_:cv::Mat(), model, 0, stamp);
+						data = SensorData(scan, rgb, depthFromMotion_?getOcclusionImage():cv::Mat(), model, 0, stamp);
 						data.setFeatures(kpts,  kpts3, cv::Mat());
 					}
 				}
@@ -556,15 +570,6 @@ SensorData CameraARCore::captureImage(CameraInfo * info)
 
 	ArCamera_release(ar_camera);
 
-	if(pose.isNull())
-	{
-		LOGE("CameraARCore: Pose is null");
-	}
-	else
-	{
-		this->poseReceived(pose);
-		info->odomPose = pose;
-	}
 	return data;
 
 }
@@ -579,16 +584,15 @@ void CameraARCore::capturePoseOnly()
 		return;
 	}
 
-	if(textureId_ == 9999)
+	if(textureId_ != 0)
 	{
-		glGenTextures(1, &textureId_);
 		glBindTexture(GL_TEXTURE_EXTERNAL_OES, textureId_);
 		glTexParameteri(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 		glTexParameteri(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 		glTexParameteri(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 		glTexParameteri(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		ArSession_setCameraTextureName(arSession_, textureId_);
 	}
-	ArSession_setCameraTextureName(arSession_, textureId_);
 
 	// Update session to get current frame and render camera background.
 	if (ArSession_update(arSession_, arFrame_) != AR_SUCCESS) {
@@ -617,6 +621,12 @@ void CameraARCore::capturePoseOnly()
 							   /*near=*/0.1f, /*far=*/100.f,
 							   glm::value_ptr(projectionMatrix_));
 
+	// adjust origin
+	if(!getOriginOffset().isNull())
+	{
+		viewMatrix_ = glm::inverse(rtabmap::glmFromTransform(rtabmap::opengl_world_T_rtabmap_world * getOriginOffset() *rtabmap::rtabmap_world_T_opengl_world)*glm::inverse(viewMatrix_));
+	}
+
 	ArTrackingState camera_tracking_state;
 	ArCamera_getTrackingState(arSession_, ar_camera, &camera_tracking_state);
 
@@ -633,12 +643,17 @@ void CameraARCore::capturePoseOnly()
 		{
 			pose = rtabmap::rtabmap_world_T_opengl_world * pose * rtabmap::opengl_world_T_rtabmap_world;
 			this->poseReceived(pose);
+
+			if(!getOriginOffset().isNull())
+			{
+				pose = getOriginOffset() * pose;
+			}
 		}
 
 		int32_t is_depth_supported = 0;
 		ArSession_isDepthModeSupported(arSession_, AR_DEPTH_MODE_AUTOMATIC, &is_depth_supported);
 
-		if(is_depth_supported && updateOcclusionImage_)
+		if(is_depth_supported)
 		{
 			LOGD("Acquire depth image!");
 			ArImage * depthImage = nullptr;
@@ -665,7 +680,7 @@ void CameraARCore::capturePoseOnly()
 
 				LOGD("width=%d, height=%d, bytes=%d stride=%d", width, height, len, stride);
 
-				occlusionImage_ = cv::Mat(height, width, CV_16UC1, (void*)data).clone();
+				cv::Mat occlusionImage = cv::Mat(height, width, CV_16UC1, (void*)data).clone();
 
 				float fx,fy, cx, cy;
 				int32_t rgb_width, rgb_height;
@@ -676,7 +691,8 @@ void CameraARCore::capturePoseOnly()
 
 				float scaleX = (float)width / (float)rgb_width;
 				float scaleY = (float)height / (float)rgb_height;
-				occlusionModel_ = CameraModel(fx*scaleX, fy*scaleY, cx*scaleX, cy*scaleY, pose*deviceTColorCamera_, 0, cv::Size(width, height));
+				CameraModel occlusionModel(fx*scaleX, fy*scaleY, cx*scaleX, cy*scaleY, pose*deviceTColorCamera_, 0, cv::Size(width, height));
+				this->setOcclusionImage(occlusionImage, occlusionModel);
 			}
 			ArImage_release(depthImage);
 		}

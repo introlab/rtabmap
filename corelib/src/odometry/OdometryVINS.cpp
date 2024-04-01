@@ -185,7 +185,7 @@ public:
 	        mBuf.unlock();
 	        TicToc processTime;
 	        processMeasurements();
-	        printf("process time: %f\n", processTime.toc());
+	        UDEBUG("VINS process time: %f", processTime.toc());
 	    }
 
 	}
@@ -288,7 +288,6 @@ OdometryVINS::OdometryVINS(const ParametersMap & parameters) :
 #ifdef RTABMAP_VINS
     ,
 	vinsEstimator_(0),
-	imagesProcessed_(0),
 	initGravity_(false),
 	previousPose_(Transform::getIdentity())
 #endif
@@ -368,7 +367,7 @@ Transform OdometryVINS::computeTransform(
 		}
 	}
 
-	if(!data.imageRaw().empty() && !data.rightRaw().empty())
+	if(!data.imageRaw().empty() && !data.rightRaw().empty() && data.stereoCameraModels().size() == 1 && data.stereoCameraModels()[0].isValidForProjection())
 	{
 		if(USE_IMU==1 && lastImu_.localTransform().isNull())
 		{
@@ -380,7 +379,7 @@ Transform OdometryVINS::computeTransform(
 			// intialize
 			vinsEstimator_ = new VinsEstimator(
 					lastImu_.localTransform().isNull()?Transform::getIdentity():lastImu_.localTransform(),
-					data.stereoCameraModel(),
+					data.stereoCameraModels()[0],
 					this->imagesAlreadyRectified());
 		}
 
@@ -431,7 +430,7 @@ Transform OdometryVINS::computeTransform(
 			{
 				if(!lastImu_.localTransform().isNull())
 				{
-					p = Transform(0,1,0,0,-1,0,0,0, 0,0,1,0) * p * lastImu_.localTransform().inverse();
+					p = p * lastImu_.localTransform().inverse();
 				}
 
 				if(this->getPose().rotation().isIdentity())
@@ -457,7 +456,7 @@ Transform OdometryVINS::computeTransform(
 					info->reg.covariance *= this->framesProcessed() == 0?9999:0.0001;
 
 					// feature map
-					Transform fixT = this->getPose()*previousPoseInv*Transform(0,1,0,0,-1,0,0,0, 0,0,1,0);
+					Transform fixT = this->getPose()*previousPoseInv;
 					for (auto &it_per_id : vinsEstimator_->f_manager.feature)
 					{
 						int used_num;
@@ -467,7 +466,7 @@ Transform OdometryVINS::computeTransform(
 						if (it_per_id.start_frame > WINDOW_SIZE * 3.0 / 4.0 || it_per_id.solve_flag != 1)
 							continue;
 						int imu_i = it_per_id.start_frame;
-						Vector3d pts_i = it_per_id.feature_per_frame[0].point * it_per_id.estimated_depth;
+						Vector3d pts_i = it_per_id.feature_per_frame[it_per_id.feature_per_frame.size()-1].point * it_per_id.estimated_depth;
 						Vector3d w_pts_i = vinsEstimator_->Rs[imu_i] * (vinsEstimator_->ric[0] * pts_i + vinsEstimator_->tic[0]) + vinsEstimator_->Ps[imu_i];
 
 						cv::Point3f p;
@@ -480,7 +479,7 @@ Transform OdometryVINS::computeTransform(
 						if(this->imagesAlreadyRectified())
 						{
 							cv::Point2f pt;
-							data.stereoCameraModel().left().reproject(pts_i(0), pts_i(1), pts_i(2), pt.x, pt.y);
+							data.stereoCameraModels()[0].left().reproject(pts_i(0), pts_i(1), pts_i(2), pt.x, pt.y);
 							info->reg.inliersIDs.push_back(info->newCorners.size());
 							info->newCorners.push_back(pt);
 						}
@@ -503,6 +502,10 @@ Transform OdometryVINS::computeTransform(
 	else if(!data.imageRaw().empty() && data.depthOrRightRaw().empty())
 	{
 		UERROR("VINS-Fusion requires stereo images!");
+	}
+	else if(data.imu().empty())
+	{
+		UERROR("VINS-Fusion requires stereo images (and only one stereo camera with valid calibration)!");
 	}
 #else
 	UERROR("RTAB-Map is not built with VINS support! Select another visual odometry approach.");

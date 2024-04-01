@@ -28,14 +28,14 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef STEREO_H_
 #define STEREO_H_
 
-#include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
+#include "rtabmap/core/rtabmap_core_export.h" // DLL export/import defines
 
 #include <rtabmap/core/Parameters.h>
 #include <opencv2/core/core.hpp>
 
 namespace rtabmap {
 
-class RTABMAP_EXP Stereo {
+class RTABMAP_CORE_EXPORT Stereo {
 public:
 	static Stereo * create(const ParametersMap & parameters = ParametersMap());
 
@@ -67,7 +67,7 @@ private:
 	bool winSSD_;
 };
 
-class RTABMAP_EXP StereoOpticalFlow : public Stereo {
+class RTABMAP_CORE_EXPORT StereoOpticalFlow : public Stereo {
 public:
 	StereoOpticalFlow(const ParametersMap & parameters = ParametersMap());
 	virtual ~StereoOpticalFlow() {}

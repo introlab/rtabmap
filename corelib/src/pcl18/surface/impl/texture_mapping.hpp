@@ -41,6 +41,7 @@
 #include <pcl/common/distances.h>
 #include <pcl18/surface/texture_mapping.h>
 #include <pcl/search/octree.h>
+#include <pcl/common/common.h> // for getAngle3D
 
 ///////////////////////////////////////////////////////////////////////////////////////////////
 template<typename PointInT> std::vector<Eigen::Vector2f, Eigen::aligned_allocator<Eigen::Vector2f> >
@@ -779,7 +780,6 @@ pcl::TextureMapping<PointInT>::textureMeshwithMultipleCameras (pcl::TextureMesh 
 
     // CREATE UV MAP FOR CURRENT FACES
     pcl::PointCloud<pcl::PointXY>::Ptr projections (new pcl::PointCloud<pcl::PointXY>);
-    std::vector<pcl::Vertices>::iterator current_face;
     std::vector<bool> visibility;
     visibility.resize (mesh.tex_polygons[current_cam].size ());
     std::vector<UvIndex> indexes_uv_to_points;
@@ -1054,7 +1054,8 @@ pcl::TextureMapping<PointInT>::textureMeshwithMultipleCameras2 (
 		pcl::TextureMesh &mesh,
 		const pcl::texture_mapping::CameraVector &cameras,
 		const rtabmap::ProgressState * state,
-		std::vector<std::map<int, pcl::PointXY> > * vertexToPixels)
+		std::vector<std::map<int, pcl::PointXY> > * vertexToPixels,
+		bool distanceToCamPolicy)
 {
 
 	if (mesh.tex_polygons.size () != 1)
@@ -1076,7 +1077,14 @@ pcl::TextureMapping<PointInT>::textureMeshwithMultipleCameras2 (
 	std::vector<std::map<int, FaceInfo > > visibleFaces(cameras.size());
 	std::vector<Eigen::Affine3f> invCamTransform(cameras.size());
 	std::vector<std::list<int> > faceCameras(faces.size());
-	UINFO("Precompute visible faces per cam (%d faces, %d cams)", (int)faces.size(), (int)cameras.size());
+	std::string msg = uFormat("Computing visible faces per cam (%d faces, %d cams)", (int)faces.size(), (int)cameras.size());
+	UINFO(msg.c_str());
+	if(state && !state->callback(msg))
+	{
+		//cancelled!
+		UWARN("Texturing cancelled!");
+		return false;
+	}
 	for (unsigned int current_cam = 0; current_cam < cameras.size(); ++current_cam)
 	{
 		UDEBUG("Texture camera %d...", current_cam);
@@ -1272,7 +1280,7 @@ pcl::TextureMapping<PointInT>::textureMeshwithMultipleCameras2 (
 			}
 		}
 
-		std::string msg = uFormat("Processed camera %d/%d: %d occluded and %d spurious polygons out of %d", (int)current_cam+1, (int)cameras.size(), (int)occludedFaces.size(), clusterFaces, (int)visibilityIndices.size());
+		msg = uFormat("Processed camera %d/%d: %d occluded and %d spurious polygons out of %d", (int)current_cam+1, (int)cameras.size(), (int)occludedFaces.size(), clusterFaces, (int)visibilityIndices.size());
 		UINFO(msg.c_str());
 		if(state && !state->callback(msg))
 		{
@@ -1282,7 +1290,7 @@ pcl::TextureMapping<PointInT>::textureMeshwithMultipleCameras2 (
 		}
 	}
 
-	std::string msg = uFormat("Texturing %d polygons...", (int)faces.size());
+	msg = uFormat("Texturing %d polygons...", (int)faces.size());
 	UINFO(msg.c_str());
 	if(state && !state->callback(msg))
 	{
@@ -1385,10 +1393,15 @@ pcl::TextureMapping<PointInT>::textureMeshwithMultipleCameras2 (
 
 				//UDEBUG("Process polygon %d cam =%d distanceToCam=%f", idx_face, current_cam, distanceToCam);
 
-				if(distanceToCenter <= smallestWeight || (!depthSet && currentDepthSet))
+				float distance = distanceToCenter;
+				if(distanceToCamPolicy)
+				{
+					distance = distanceToCam;
+				}
+				if(distance <= smallestWeight || (!depthSet && currentDepthSet))
 				{
 					cameraIndex = current_cam;
-					smallestWeight = distanceToCenter;
+					smallestWeight = distance;
 					uv_coords[0] = iter->second.uv_coord1;
 					uv_coords[1] = iter->second.uv_coord2;
 					uv_coords[2] = iter->second.uv_coord3;

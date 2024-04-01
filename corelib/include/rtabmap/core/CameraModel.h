@@ -30,12 +30,12 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <opencv2/opencv.hpp>
 
-#include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
+#include "rtabmap/core/rtabmap_core_export.h" // DLL export/import defines
 #include "rtabmap/core/Transform.h"
 
 namespace rtabmap {
 
-class RTABMAP_EXP CameraModel
+class RTABMAP_CORE_EXPORT CameraModel
 {
 public:
 	/**
@@ -81,7 +81,7 @@ public:
 
 	virtual ~CameraModel() {}
 
-	void initRectificationMap();
+	bool initRectificationMap();
 	bool isRectificationMapInitialized() const {return !mapX_.empty() && !mapY_.empty();}
 
 	bool isValidForProjection() const {return fx()>0.0 && fy()>0.0 && cx()>0.0 && cy()>0.0;}
@@ -124,6 +124,7 @@ public:
 	double fovY() const; // in radians
 	double horizontalFOV() const; // in degrees
 	double verticalFOV() const;   // in degrees
+	bool isFisheye() const {return D_.cols == 6;}
 
 	bool load(const std::string & filePath);
 	bool load(const std::string & directory, const std::string & cameraName);
@@ -157,6 +158,8 @@ private:
 	cv::Mat mapY_;
 	Transform localTransform_;
 };
+
+RTABMAP_CORE_EXPORT std::ostream& operator<<(std::ostream& os, const CameraModel& model);
 
 } /* namespace rtabmap */
 #endif /* CAMERAMODEL_H_ */

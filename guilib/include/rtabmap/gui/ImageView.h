@@ -28,7 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef RTABMAP_IMAGEVIEW_H_
 #define RTABMAP_IMAGEVIEW_H_
 
-#include "rtabmap/gui/RtabmapGuiExp.h" // DLL export/import defines
+#include "rtabmap/gui/rtabmap_gui_export.h" // DLL export/import defines
 
 #include <QGraphicsView>
 #include <QtCore/QRectF>
@@ -37,6 +37,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <opencv2/features2d/features2d.hpp>
 #include <map>
 #include "rtabmap/utilite/UCv2Qt.h"
+#include <rtabmap/core/CameraModel.h>
 
 class QAction;
 class QMenu;
@@ -45,7 +46,7 @@ namespace rtabmap {
 
 class KeypointItem;
 
-class RTABMAPGUI_EXP ImageView : public QWidget {
+class RTABMAP_GUI_EXPORT ImageView : public QWidget {
 
 	Q_OBJECT
 
@@ -63,6 +64,7 @@ public:
 	bool isLinesShown() const;
 	int getAlpha() const {return _alpha;}
 	int getFeaturesSize() const {return _featuresSize;}
+	int getLinesWidth() const {return _linesWidth;}
 	bool isGraphicsViewMode() const;
 	bool isGraphicsViewScaled() const;
 	bool isGraphicsViewScaledToHeight() const;
@@ -71,6 +73,8 @@ public:
 	const QColor & getDefaultMatchingFeatureColor() const;
 	const QColor & getDefaultMatchingLineColor() const;
 	const QColor & getBackgroundColor() const;
+	float getDepthColorMapMinRange() const;
+	float getDepthColorMapMaxRange() const;
 	uCvQtDepthColorMap getDepthColorMap() const;
 
 	float viewScale() const;
@@ -87,18 +91,20 @@ public:
 	void setDefaultMatchingFeatureColor(const QColor & color);
 	void setDefaultMatchingLineColor(const QColor & color);
 	void setBackgroundColor(const QColor & color);
+	void setDepthColorMapRange(float min, float max);
 
 	void setFeatures(const std::multimap<int, cv::KeyPoint> & refWords, const cv::Mat & depth = cv::Mat(), const QColor & color = Qt::yellow);
 	void setFeatures(const std::vector<cv::KeyPoint> & features, const cv::Mat & depth = cv::Mat(), const QColor & color = Qt::yellow);
 	void addFeature(int id, const cv::KeyPoint & kpt, float depth, QColor color);
 	void addLine(float x1, float y1, float x2, float y2, QColor color, const QString & text = QString());
-	void setImage(const QImage & image);
+	void setImage(const QImage & image, const std::vector<CameraModel> & models = std::vector<CameraModel>(), const Transform & pose = Transform());
 	void setImageDepth(const cv::Mat & imageDepth);
 	void setImageDepth(const QImage & image);
 	void setFeatureColor(int id, QColor color);
 	void setFeaturesColor(QColor color);
 	void setAlpha(int alpha);
 	void setFeaturesSize(int size);
+	void setLinesWidth(int width);
 	void setSceneRect(const QRectF & rect);
 
 	const QMultiMap<int, rtabmap::KeypointItem *> & getFeatures() const {return _features;}
@@ -116,6 +122,7 @@ protected:
 	virtual void paintEvent(QPaintEvent *event);
 	virtual void resizeEvent(QResizeEvent* event);
 	virtual void contextMenuEvent(QContextMenuEvent * e);
+	virtual void mouseMoveEvent(QMouseEvent * event);
 
 private Q_SLOTS:
 	void sceneRectChanged(const QRectF &rect);
@@ -129,10 +136,13 @@ private:
 	QString _savedFileName;
 	int _alpha;
 	int _featuresSize;
+	int _linesWidth;
 	QColor _defaultBgColor;
 	QColor _defaultFeatureColor;
 	QColor _defaultMatchingFeatureColor;
 	QColor _defaultMatchingLineColor;
+	float _depthColorMapMinRange;
+	float _depthColorMapMaxRange;
 
 	QMenu * _menu;
 	QAction * _showImage;
@@ -145,6 +155,7 @@ private:
 	QAction * _saveImage;
 	QAction * _setAlpha;
 	QAction * _setFeaturesSize;
+	QAction * _setLinesWidth;
 	QAction * _graphicsViewMode;
 	QAction * _graphicsViewScaled;
 	QAction * _graphicsViewScaledToHeight;
@@ -153,6 +164,9 @@ private:
 	QAction * _colorMapBlackToWhite;
 	QAction * _colorMapRedToBlue;
 	QAction * _colorMapBlueToRed;
+	QAction * _colorMapMinRange;
+	QAction * _colorMapMaxRange;
+	QAction * _mouseTracking;
 	QMenu * _featureMenu;
 	QMenu * _scaleMenu;
 
@@ -164,6 +178,8 @@ private:
 	QPixmap _image;
 	QPixmap _imageDepth;
 	cv::Mat _imageDepthCv;
+	std::vector<CameraModel> _models;
+	Transform _pose;
 };
 
 }

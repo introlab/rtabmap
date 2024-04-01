@@ -80,8 +80,8 @@ void occupancy2DFromLaserScan(
 }
 
 void occupancy2DFromLaserScan(
-		const cv::Mat & scanHit,
-		const cv::Mat & scanNoHit,
+		const cv::Mat & scanHitIn,
+		const cv::Mat & scanNoHitIn,
 		const cv::Point3f & viewpoint,
 		cv::Mat & empty,
 		cv::Mat & occupied,
@@ -89,9 +89,40 @@ void occupancy2DFromLaserScan(
 		bool unknownSpaceFilled,
 		float scanMaxRange)
 {
-	if(scanHit.empty() && scanNoHit.empty())
+	if(scanHitIn.empty() && scanNoHitIn.empty())
 	{
 		return;
+	}
+	cv::Mat scanHit;
+	cv::Mat scanNoHit;
+	// keep only XY channels
+	if(scanHitIn.channels()>2)
+	{
+		std::vector<cv::Mat> channels;
+		cv::split(scanHitIn,channels);
+		while(channels.size()>2)
+		{
+			channels.pop_back();
+		}
+		cv::merge(channels,scanHit);
+	}
+	else
+	{
+		scanHit = scanHitIn.clone(); // will be returned in occupied matrix
+	}
+	if(scanNoHitIn.channels()>2)
+	{
+		std::vector<cv::Mat> channels;
+		cv::split(scanNoHitIn,channels);
+		while(channels.size()>2)
+		{
+			channels.pop_back();
+		}
+		cv::merge(channels,scanNoHit);
+	}
+	else
+	{
+		scanNoHit = scanNoHitIn;
 	}
 
 	std::map<int, Transform> poses;
@@ -136,11 +167,11 @@ void occupancy2DFromLaserScan(
 	// copy directly obstacles precise positions
 	if(scanMaxRange > cellSize)
 	{
-		occupied = util3d::rangeFiltering(LaserScan::backwardCompatibility(scanHit), 0.0f, scanMaxRange).data().clone();
+		occupied = util3d::rangeFiltering(LaserScan::backwardCompatibility(scanHit), 0.0f, scanMaxRange).data();
 	}
 	else
 	{
-		occupied = scanHit.clone();
+		occupied = scanHit;
 	}
 }
 
@@ -299,8 +330,8 @@ cv::Mat create2DMapFromOccupancyLocalMaps(
 	{
 		//Get map size
 		float margin = cellSize*10.0f;
-		xMin = minX-margin;
-		yMin = minY-margin;
+		xMin = minX-margin-cellSize/2.0f;
+		yMin = minY-margin-cellSize/2.0f;
 		float xMax = maxX+margin;
 		float yMax = maxY+margin;
 		if(fabs((yMax - yMin) / cellSize) > 30000 || // Max 1.5Km/1.5Km at 5 cm/cell -> 900MB
@@ -507,7 +538,7 @@ cv::Mat create2DMap(const std::map<int, Transform> & poses,
 	std::map<int, std::pair<cv::Mat, cv::Mat> > scansCv;
 	for(std::map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr >::const_iterator iter = scans.begin(); iter!=scans.end(); ++iter)
 	{
-		scansCv.insert(std::make_pair(iter->first, std::make_pair(util3d::laserScanFromPointCloud(*iter->second), cv::Mat())));
+		scansCv.insert(std::make_pair(iter->first, std::make_pair(util3d::laserScanFromPointCloud(*iter->second).data(), cv::Mat())));
 	}
 	return create2DMap(poses,
 			scansCv,
@@ -533,7 +564,7 @@ cv::Mat create2DMap(const std::map<int, Transform> & poses,
 	std::map<int, std::pair<cv::Mat, cv::Mat> > scansCv;
 	for(std::map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr >::const_iterator iter = scans.begin(); iter!=scans.end(); ++iter)
 	{
-		scansCv.insert(std::make_pair(iter->first, std::make_pair(util3d::laserScanFromPointCloud(*iter->second), cv::Mat())));
+		scansCv.insert(std::make_pair(iter->first, std::make_pair(util3d::laserScanFromPointCloud(*iter->second).data(), cv::Mat())));
 	}
 	return create2DMap(poses,
 			scansCv,
@@ -546,21 +577,6 @@ cv::Mat create2DMap(const std::map<int, Transform> & poses,
 			scanMaxRange);
 }
 
-/**
- * Create 2d Occupancy grid (CV_8S)
- * -1 = unknown
- * 0 = empty space
- * 100 = obstacle
- * @param poses
- * @param scans
- * @param viewpoints
- * @param cellSize m
- * @param unknownSpaceFilled if false no fill, otherwise a virtual laser sweeps the unknown space from each pose (stopping on detected obstacle)
- * @param xMin
- * @param yMin
- * @param minMapSize minimum map size in meters
- * @param scanMaxRange laser scan maximum range, would be set if unknownSpaceFilled=true
- */
 cv::Mat create2DMap(const std::map<int, Transform> & poses,
 		const std::map<int, std::pair<cv::Mat, cv::Mat> > & scans, // <id, <hit, no hit> >
 		const std::map<int, cv::Point3f > & viewpoints,
@@ -585,6 +601,8 @@ cv::Mat create2DMap(const std::map<int, Transform> & poses,
 	for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
 	{
 		std::map<int, std::pair<cv::Mat, cv::Mat> >::const_iterator jter=scans.find(iter->first);
+		UASSERT_MSG(jter->second.first.empty() || jter->second.first.type() == CV_32FC2, "Input scans should be 2D to avoid any confusion.");
+		UASSERT_MSG(jter->second.second.empty() || jter->second.second.type() == CV_32FC2, "Input scans should be 2D to avoid any confusion.");
 		if(jter!=scans.end() && (jter->second.first.cols || jter->second.second.cols))
 		{
 			UASSERT(!iter->second.isNull());
@@ -731,10 +749,10 @@ cv::Mat create2DMap(const std::map<int, Transform> & poses,
 		if(unknownSpaceFilled && scanMaxRange > 0)
 		{
 			j=0;
-			float a = CV_PI/256.0f; // angle increment
+			float angleIncrement = CV_PI/90.0f; // angle increment
 			for(std::map<int, std::pair<cv::Mat, cv::Mat> >::iterator iter = localScans.begin(); iter!=localScans.end(); ++iter)
 			{
-				if(iter->second.first.cols > 1)
+				if(iter->second.first.cols > 2)
 				{
 					if(scanMaxRange > cellSize)
 					{
@@ -747,36 +765,39 @@ cv::Mat create2DMap(const std::map<int, Transform> & poses,
 						}
 						cv::Point2i start(((pose.x()+viewpoint.x)-xMin)/cellSize, ((pose.y()+viewpoint.y)-yMin)/cellSize);
 
-						//UWARN("maxLength = %f", maxLength);
-						//rotate counterclockwise from the first point until we pass the last point
-						// Note: assuming that first laser scan is negative y
-						cv::Mat rotation = (cv::Mat_<float>(2,2) << cos(a), -sin(a),
-																	 sin(a), cos(a));
-						cv::Mat origin(2,1,CV_32F), endFirst(2,1,CV_32F), endLast(2,1,CV_32F);
+						// As we don't know the angle_min or angle_max, ray trace between
+						// the first and last obstacle (counterclockwise).
+						cv::Mat rotation = (cv::Mat_<float>(2,2) << cos(angleIncrement), -sin(angleIncrement),
+																	 sin(angleIncrement), cos(angleIncrement));
+						cv::Mat origin(2,1,CV_32F), obsFirst(2,1,CV_32F), obsLast(2,1,CV_32F);
 						origin.at<float>(0) = pose.x()+viewpoint.x;
 						origin.at<float>(1) = pose.y()+viewpoint.y;
-						endFirst.at<float>(0) = iter->second.first.ptr<float>(0,0)[0];
-						endFirst.at<float>(1) = iter->second.first.ptr<float>(0,0)[1];
-						endLast.at<float>(0) = iter->second.first.ptr<float>(0,iter->second.first.cols-1)[0];
-						endLast.at<float>(1) = iter->second.first.ptr<float>(0,iter->second.first.cols-1)[1];
-						//UWARN("origin = %f %f", origin.at<float>(0), origin.at<float>(1));
-						//UWARN("endFirst = %f %f", endFirst.at<float>(0), endFirst.at<float>(1));
-						//UWARN("endLast = %f %f", endLast.at<float>(0), endLast.at<float>(1));
-						cv::Mat tmp = (endFirst - origin);
+						obsFirst.at<float>(0) = iter->second.first.ptr<float>(0,0)[0];
+						obsFirst.at<float>(1) = iter->second.first.ptr<float>(0,0)[1];
+						obsLast.at<float>(0) = iter->second.first.ptr<float>(0,iter->second.first.cols-2)[0];
+						obsLast.at<float>(1) = iter->second.first.ptr<float>(0,iter->second.first.cols-2)[1];
+						cv::Mat firstVector(3,1,CV_32F), lastVector(3,1,CV_32F);
+						firstVector.at<float>(0) = obsFirst.at<float>(0) - origin.at<float>(0);
+						firstVector.at<float>(1) = obsFirst.at<float>(1) - origin.at<float>(1);
+						firstVector.at<float>(2) = 0.0f;
+						firstVector = firstVector/cv::norm(firstVector);
+						lastVector.at<float>(0) = obsLast.at<float>(0) - origin.at<float>(0);
+						lastVector.at<float>(1) = obsLast.at<float>(1) - origin.at<float>(1);
+						lastVector.at<float>(2) = 0.0f;
+						lastVector = lastVector / cv::norm(lastVector);
+						float maxAngle = acos(firstVector.dot(lastVector));
+						if(firstVector.cross(lastVector).at<float>(2) < 0)
+						{
+							maxAngle = 2*M_PI-maxAngle;
+						}
+						//UWARN("angle=%f v1=[%f %f 0];v2=[%f %f 0];",
+						//		maxAngle,
+						//		firstVector.at<float>(0), firstVector.at<float>(1),
+						//		lastVector.at<float>(0), lastVector.at<float>(1));
+						float angle = angleIncrement;
+						cv::Mat tmp = (obsFirst - origin);
 						cv::Mat endRotated = rotation*((tmp/cv::norm(tmp))*scanMaxRange) + origin;
-						cv::Mat endLastVector(3,1,CV_32F), endRotatedVector(3,1,CV_32F);
-						endLastVector.at<float>(0) = endLast.at<float>(0) - origin.at<float>(0);
-						endLastVector.at<float>(1) = endLast.at<float>(1) - origin.at<float>(1);
-						endLastVector.at<float>(2) = 0.0f;
-						endRotatedVector.at<float>(0) = endRotated.at<float>(0) - origin.at<float>(0);
-						endRotatedVector.at<float>(1) = endRotated.at<float>(1) - origin.at<float>(1);
-						endRotatedVector.at<float>(2) = 0.0f;
-						//UWARN("endRotated = %f %f", endRotated.at<float>(0), endRotated.at<float>(1));
-						float normEndRotatedVector = cv::norm(endRotatedVector);
-						endLastVector = endLastVector / cv::norm(endLastVector);
-						float angle = (endRotatedVector/normEndRotatedVector).dot(endLastVector);
-						angle = angle<-1.0f?-1.0f:angle>1.0f?1.0f:angle;
-						while(acos(angle) > M_PI_4 || endRotatedVector.cross(endLastVector).at<float>(2) > 0.0f)
+						while(angle < maxAngle-angleIncrement)
 						{
 							cv::Point2i end((endRotated.at<float>(0)-xMin)/cellSize, (endRotated.at<float>(1)-yMin)/cellSize);
 							//end must be inside the grid
@@ -787,16 +808,8 @@ cv::Mat create2DMap(const std::map<int, Transform> & poses,
 							rayTrace(start, end, map, true); // trace free space
 							// next point
 							endRotated = rotation*(endRotated - origin) + origin;
-							endRotatedVector.at<float>(0) = endRotated.at<float>(0) - origin.at<float>(0);
-							endRotatedVector.at<float>(1) = endRotated.at<float>(1) - origin.at<float>(1);
-							angle = (endRotatedVector/normEndRotatedVector).dot(endLastVector);
-							angle = angle<-1.0f?-1.0f:angle>1.0f?1.0f:angle;
 
-							//UWARN("endRotated = %f %f (%f %f %f)",
-							//		endRotated.at<float>(0), endRotated.at<float>(1),
-							//		acos(angle),
-							//		angle,
-							//		endRotatedVector.cross(endLastVector).at<float>(2));
+							angle+=angleIncrement;
 						}
 					}
 				}
@@ -914,9 +927,17 @@ cv::Mat convertMap2Image8U(const cv::Mat & map8S, bool pgmFormat)
 			{
 				gray = pgmFormat?254:200;
 			}
-			else // -1
+			else if(pgmFormat || v == -1)// -1
 			{
 				gray = pgmFormat?205:89;
+			}
+			else if(v>50)
+			{
+				gray = double(100-v)*2/100.0*double(89);
+			}
+			else // v<50
+			{
+				gray = double(50-v)*2/100.0*double(178-89)+89;
 			}
 			map8U.at<unsigned char>(i, j) = gray;
 		}

@@ -48,6 +48,7 @@
 #include <vtkInformationVector.h>
 #include <vtkStreamingDemandDrivenPipeline.h>
 #include <vtkObjectFactory.h>
+#include <vtkVersionMacros.h>
 
 namespace rtabmap {
 	vtkStandardNewMacro(vtkImageMatSource);

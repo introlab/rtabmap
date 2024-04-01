@@ -38,7 +38,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 namespace rtabmap {
 
 CameraModel::CameraModel() :
-	localTransform_(0,0,1,0, -1,0,0,0, 0,-1,0,0)
+		localTransform_(opticalRotation())
 {
 
 }
@@ -153,7 +153,7 @@ CameraModel::CameraModel(
 	K_.at<double>(1,2) = cy;
 }
 
-void CameraModel::initRectificationMap()
+bool CameraModel::initRectificationMap()
 {
 	UASSERT(imageSize_.height > 0 && imageSize_.width > 0);
 	UASSERT(D_.rows == 1 && (D_.cols == 4 || D_.cols == 5 || D_.cols == 6 || D_.cols == 8));
@@ -183,6 +183,7 @@ void CameraModel::initRectificationMap()
 		// RadialTangential
 		cv::initUndistortRectifyMap(K_, D_, R_, P_, imageSize_, CV_32FC1, mapX_, mapY_);
 	}
+	return isRectificationMapInitialized();
 }
 
 void CameraModel::setImageSize(const cv::Size & size)
@@ -234,7 +235,7 @@ bool CameraModel::load(const std::string & filePath)
 			n = fs["camera_name"];
 			if(n.type() != cv::FileNode::NONE)
 			{
-				name_ = (int)n;
+				name_ = (std::string)n;
 			}
 			else
 			{
@@ -339,6 +340,25 @@ bool CameraModel::load(const std::string & filePath)
 				UWARN("Missing \"projection_matrix\" field in \"%s\"", filePath.c_str());
 			}
 
+			n = fs["local_transform"];
+			if(n.type() != cv::FileNode::NONE)
+			{
+				int rows = (int)n["rows"];
+				int cols = (int)n["cols"];
+				std::vector<float> data;
+				n["data"] >> data;
+				UASSERT(rows*cols == (int)data.size());
+				UASSERT(rows == 3 && cols == 4);
+				localTransform_ = Transform(
+						data[0], data[1], data[2], data[3],
+						data[4], data[5], data[6], data[7],
+						data[8], data[9], data[10], data[11]);
+			}
+			else
+			{
+				UWARN("Missing \"local_transform\" field in \"%s\"", filePath.c_str());
+			}
+
 			fs.release();
 
 			if(isValidForRectification())
@@ -350,7 +370,7 @@ bool CameraModel::load(const std::string & filePath)
 		}
 		catch(const cv::Exception & e)
 		{
-			UERROR("Error reading calibration file \"%s\": %s", filePath.c_str(), e.what());
+			UERROR("Error reading calibration file \"%s\": %s (Make sure the first line of the yaml file is \"%YAML:1.0\")", filePath.c_str(), e.what());
 		}
 	}
 	else
@@ -367,7 +387,11 @@ bool CameraModel::load(const std::string & directory, const std::string & camera
 
 bool CameraModel::save(const std::string & directory) const
 {
-	std::string filePath = directory+"/"+name_+".yaml";
+	if(name_.empty())
+	{
+		UWARN("Camera name is empty, will use general \"camera\" as name.");
+	}
+	std::string filePath = directory+"/"+(name_.empty()?"camera":name_)+".yaml";
 	if(!filePath.empty() && (!K_.empty() || !D_.empty() || !R_.empty() || !P_.empty()))
 	{
 		UINFO("Saving calibration to file \"%s\"", filePath.c_str());
@@ -441,6 +465,15 @@ bool CameraModel::save(const std::string & directory) const
 			fs << "rows" << P_.rows;
 			fs << "cols" << P_.cols;
 			fs << "data" << std::vector<double>((double*)P_.data, ((double*)P_.data)+(P_.rows*P_.cols));
+			fs << "}";
+		}
+
+		if(!localTransform_.isNull())
+		{
+			fs << "local_transform" << "{";
+			fs << "rows" << 3;
+			fs << "cols" << 4;
+			fs << "data" << std::vector<float>((float*)localTransform_.data(), ((float*)localTransform_.data())+12);
 			fs << "}";
 		}
 
@@ -763,6 +796,18 @@ void CameraModel::reproject(float x, float y, float z, int & u, int & v) const
 bool CameraModel::inFrame(int u, int v) const
 {
 	return uIsInBounds(u, 0, imageWidth()) && uIsInBounds(v, 0, imageHeight());
+}
+
+std::ostream& operator<<(std::ostream& os, const CameraModel& model)
+{
+	os << "Name: " << model.name().c_str() << std::endl
+	   << "Size: " << model.imageWidth() << "x" << model.imageHeight() << std::endl
+	   << "K= " << model.K_raw() << std::endl
+	   << "D= " << model.D_raw() << std::endl
+	   << "R= " << model.R() << std::endl
+	   << "P= " << model.P() << std::endl
+	   << "LocalTransform= " << model.localTransform();
+	return os;
 }
 
 } /* namespace rtabmap */

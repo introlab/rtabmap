@@ -3,6 +3,7 @@ SET(INCLUDE_DIRS
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/tango-gl/include
     ${CMAKE_CURRENT_SOURCE_DIR}/third-party/include
+	${PROJECT_BINARY_DIR}/corelib/include
 	${PROJECT_SOURCE_DIR}/corelib/include
 	${PROJECT_SOURCE_DIR}/utilite/include
     ${OpenCV_INCLUDE_DIRS}

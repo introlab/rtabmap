@@ -34,6 +34,14 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/util3d.h"
 #include "rtabmap/core/Compression.h"
 #include "DatabaseSchema_sql.h"
+#include "DatabaseSchema_0_18_3_sql.h"
+#include "DatabaseSchema_0_18_0_sql.h"
+#include "DatabaseSchema_0_17_0_sql.h"
+#include "DatabaseSchema_0_16_2_sql.h"
+#include "DatabaseSchema_0_16_1_sql.h"
+#include "DatabaseSchema_0_16_0_sql.h"
+
+
 #include <set>
 
 #include "rtabmap/utilite/UtiLite.h"
@@ -383,6 +391,34 @@ bool DBDriverSqlite3::connectDatabaseQuery(const std::string & url, bool overwri
 		}
 		// Create the database
 		std::string schema = DATABASESCHEMA_SQL;
+		std::string targetVersion = this->getTargetVersion();
+		if(!targetVersion.empty())
+		{
+			// search for schema with version <= target version
+			std::vector<std::pair<std::string, std::string> > schemas;
+			schemas.push_back(std::make_pair("0.16.0", DATABASESCHEMA_0_16_0_SQL));
+			schemas.push_back(std::make_pair("0.16.1", DATABASESCHEMA_0_16_1_SQL));
+			schemas.push_back(std::make_pair("0.16.2", DATABASESCHEMA_0_16_2_SQL));
+			schemas.push_back(std::make_pair("0.17.0", DATABASESCHEMA_0_17_0_SQL));
+			schemas.push_back(std::make_pair("0.18.0", DATABASESCHEMA_0_18_0_SQL));
+			schemas.push_back(std::make_pair("0.18.3", DATABASESCHEMA_0_18_3_SQL));
+			schemas.push_back(std::make_pair(uNumber2Str(RTABMAP_VERSION_MAJOR)+"."+uNumber2Str(RTABMAP_VERSION_MINOR), DATABASESCHEMA_SQL));
+			for(size_t i=0; i<schemas.size(); ++i)
+			{
+				if(uStrNumCmp(targetVersion, schemas[i].first) < 0)
+				{
+					if(i==0)
+					{
+						UERROR("Cannot create database with target version \"%s\" (not implemented), using latest version.", targetVersion.c_str());
+					}
+					break;
+				}
+				else
+				{
+					schema = schemas[i].second;
+				}
+			}
+		}
 		schema = uHex2Str(schema);
 		this->executeNoResultQuery(schema.c_str());
 	}
@@ -464,6 +500,7 @@ void DBDriverSqlite3::disconnectDatabaseQuery(bool save, const std::string & out
 				UERROR("Failed to rename just closed db %s to %s", this->getUrl().c_str(), outputUrl.c_str());
 			}
 		}
+		UINFO("Disconnected database %s!", this->getUrl().c_str());
 	}
 }
 
@@ -486,7 +523,7 @@ void DBDriverSqlite3::executeNoResultQuery(const std::string & sql) const
 	}
 }
 
-long DBDriverSqlite3::getMemoryUsedQuery() const
+unsigned long DBDriverSqlite3::getMemoryUsedQuery() const
 {
 	if(_dbInMemory)
 	{
@@ -842,22 +879,22 @@ long DBDriverSqlite3::getFeaturesMemoryUsedQuery() const
 		std::string query;
 		if(uStrNumCmp(_version, "0.13.0") >= 0)
 		{
-			query = "SELECT sum(length(node_id) + length(word_id) + length(pos_x) + length(pos_y) + length(size) + length(dir) + length(response) + length(octave) + length(depth_x) + length(depth_y) + length(depth_z) + length(descriptor_size) + length(descriptor)) "
+			query = "SELECT sum(length(node_id) + length(word_id) + length(pos_x) + length(pos_y) + length(size) + length(dir) + length(response) + length(octave) + ifnull(length(depth_x),0) + ifnull(length(depth_y),0) + ifnull(length(depth_z),0) + ifnull(length(descriptor_size),0) + ifnull(length(descriptor),0)) "
 					 "FROM Feature";
 		}
 		else if(uStrNumCmp(_version, "0.12.0") >= 0)
 		{
-			query = "SELECT sum(length(node_id) + length(word_id) + length(pos_x) + length(pos_y) + length(size) + length(dir) + length(response) + length(octave) + length(depth_x) + length(depth_y) + length(depth_z) + length(descriptor_size) + length(descriptor)) "
+			query = "SELECT sum(length(node_id) + length(word_id) + length(pos_x) + length(pos_y) + length(size) + length(dir) + length(response) + length(octave) + ifnull(length(depth_x),0) + ifnull(length(depth_y),0) + ifnull(length(depth_z),0) + ifnull(length(descriptor_size),0) + ifnull(length(descriptor),0)) "
 					 "FROM Map_Node_Word";
 		}
 		else if(uStrNumCmp(_version, "0.11.2") >= 0)
 		{
-			query = "SELECT sum(length(node_id) + length(word_id) + length(pos_x) + length(pos_y) + length(size) + length(dir) + length(response) + length(depth_x) + length(depth_y) + length(depth_z) + length(descriptor_size) + length(descriptor)) "
+			query = "SELECT sum(length(node_id) + length(word_id) + length(pos_x) + length(pos_y) + length(size) + length(dir) + length(response) + ifnull(length(depth_x),0) + ifnull(length(depth_y),0) + ifnull(length(depth_z),0) + ifnull(length(descriptor_size),0) + ifnull(length(descriptor),0)) "
 					 "FROM Map_Node_Word";
 		}
 		else
 		{
-			query = "SELECT sum(length(node_id) + length(word_id) + length(pos_x) + length(pos_y) + length(size) + length(dir) + length(response) + length(depth_x) + length(depth_y) + length(depth_z)) "
+			query = "SELECT sum(length(node_id) + length(word_id) + length(pos_x) + length(pos_y) + length(size) + length(dir) + length(response) + ifnull(length(depth_x),0) + ifnull(length(depth_y),0) + ifnull(length(depth_z),0) "
 					 "FROM Map_Node_Word";
 		}
 
@@ -1412,7 +1449,7 @@ void DBDriverSqlite3::loadNodeDataQuery(std::list<Signature *> & signatures, boo
 				cv::Mat imageCompressed;
 				cv::Mat depthOrRightCompressed;
 				std::vector<CameraModel> models;
-				StereoCameraModel stereoModel;
+				std::vector<StereoCameraModel> stereoModels;
 				Transform localTransform = Transform::getIdentity();
 				cv::Mat scanCompressed;
 				cv::Mat userDataCompressed;
@@ -1479,8 +1516,16 @@ void DBDriverSqlite3::loadNodeDataQuery(std::list<Signature *> & signatures, boo
 									}
 									else if(type == 1) // stereo
 									{
-										int bytesRead = (int)stereoModel.deserialize((unsigned char*)data, dataSize);
-										UASSERT(bytesRead == dataSize);
+										StereoCameraModel model;
+										int bytesReadTotal = 0;
+										unsigned int bytesRead = 0;
+										while(bytesReadTotal < dataSize &&
+											  (bytesRead=model.deserialize((const unsigned char *)data+bytesReadTotal, dataSize-bytesReadTotal))!=0)
+										{
+											bytesReadTotal+=bytesRead;
+											stereoModels.push_back(model);
+										}
+										UASSERT(bytesReadTotal == dataSize);
 									}
 									else
 									{
@@ -1553,14 +1598,14 @@ void DBDriverSqlite3::loadNodeDataQuery(std::list<Signature *> & signatures, boo
 									{
 										localTransform.normalizeRotation();
 									}
-									stereoModel = StereoCameraModel(
+									stereoModels.push_back(StereoCameraModel(
 											dataFloat[0],  // fx
 											dataFloat[1],  // fy
 											dataFloat[2],  // cx
 											dataFloat[3],  // cy
 											dataFloat[4], // baseline
 											localTransform,
-											cv::Size(dataFloat[5],dataFloat[6]));
+											cv::Size(dataFloat[5],dataFloat[6])));
 								}
 								else if((unsigned int)dataSize == (5+localTransform.size())*sizeof(float))
 								{
@@ -1570,13 +1615,13 @@ void DBDriverSqlite3::loadNodeDataQuery(std::list<Signature *> & signatures, boo
 									{
 										localTransform.normalizeRotation();
 									}
-									stereoModel = StereoCameraModel(
+									stereoModels.push_back(StereoCameraModel(
 											dataFloat[0],  // fx
 											dataFloat[1],  // fy
 											dataFloat[2],  // cx
 											dataFloat[3],  // cy
 											dataFloat[4], // baseline
-											localTransform);
+											localTransform));
 								}
 								else
 								{
@@ -1596,7 +1641,7 @@ void DBDriverSqlite3::loadNodeDataQuery(std::list<Signature *> & signatures, boo
 						if(fyOrBaseline < 1.0)
 						{
 							//it is a baseline
-							stereoModel = StereoCameraModel(fx,fx,cx,cy,fyOrBaseline, localTransform);
+							stereoModels.push_back(StereoCameraModel(fx,fx,cx,cy,fyOrBaseline, localTransform));
 						}
 						else
 						{
@@ -1782,7 +1827,7 @@ void DBDriverSqlite3::loadNodeDataQuery(std::list<Signature *> & signatures, boo
 					}
 					else
 					{
-						(*iter)->sensorData().setStereoImage(imageCompressed, depthOrRightCompressed, stereoModel);
+						(*iter)->sensorData().setStereoImage(imageCompressed, depthOrRightCompressed, stereoModels);
 					}
 				}
 				if(userData)
@@ -1814,7 +1859,7 @@ void DBDriverSqlite3::loadNodeDataQuery(std::list<Signature *> & signatures, boo
 bool DBDriverSqlite3::getCalibrationQuery(
 		int signatureId,
 		std::vector<CameraModel> & models,
-		StereoCameraModel & stereoModel) const
+		std::vector<StereoCameraModel> & stereoModels) const
 {
 	bool found = false;
 	if(_ppDb && signatureId)
@@ -1900,8 +1945,16 @@ bool DBDriverSqlite3::getCalibrationQuery(
 							}
 							else if(type == 1) // stereo
 							{
-								int bytesRead = (int)stereoModel.deserialize((unsigned char*)data, dataSize);
-								UASSERT(bytesRead == dataSize);
+								StereoCameraModel model;
+								int bytesReadTotal = 0;
+								unsigned int bytesRead = 0;
+								while(bytesReadTotal < dataSize &&
+									  (bytesRead=model.deserialize((const unsigned char *)data+bytesReadTotal, dataSize-bytesReadTotal))!=0)
+								{
+									bytesReadTotal+=bytesRead;
+									stereoModels.push_back(model);
+								}
+								UASSERT(bytesReadTotal == dataSize);
 							}
 							else
 							{
@@ -1974,14 +2027,14 @@ bool DBDriverSqlite3::getCalibrationQuery(
 							{
 								localTransform.normalizeRotation();
 							}
-							stereoModel = StereoCameraModel(
+							stereoModels.push_back(StereoCameraModel(
 									dataFloat[0],  // fx
 									dataFloat[1],  // fy
 									dataFloat[2],  // cx
 									dataFloat[3],  // cy
 									dataFloat[4], // baseline
 									localTransform,
-									cv::Size(dataFloat[5],dataFloat[6]));
+									cv::Size(dataFloat[5],dataFloat[6])));
 						}
 						else if((unsigned int)dataSize == (5+localTransform.size())*sizeof(float))
 						{
@@ -1991,13 +2044,13 @@ bool DBDriverSqlite3::getCalibrationQuery(
 							{
 								localTransform.normalizeRotation();
 							}
-							stereoModel = StereoCameraModel(
+							stereoModels.push_back((StereoCameraModel(
 									dataFloat[0],  // fx
 									dataFloat[1],  // fy
 									dataFloat[2],  // cx
 									dataFloat[3],  // cy
 									dataFloat[4], // baseline
-									localTransform);
+									localTransform)));
 						}
 						else
 						{
@@ -2018,7 +2071,7 @@ bool DBDriverSqlite3::getCalibrationQuery(
 				if(fyOrBaseline < 1.0)
 				{
 					//it is a baseline
-					stereoModel = StereoCameraModel(fx,fx,cx,cy,fyOrBaseline, localTransform);
+					stereoModels.push_back(StereoCameraModel(fx,fx,cx,cy,fyOrBaseline, localTransform));
 				}
 				else
 				{
@@ -2360,7 +2413,7 @@ void DBDriverSqlite3::getLastNodeIdsQuery(std::set<int> & ids) const
 	}
 }
 
-void DBDriverSqlite3::getAllNodeIdsQuery(std::set<int> & ids, bool ignoreChildren, bool ignoreBadSignatures) const
+void DBDriverSqlite3::getAllNodeIdsQuery(std::set<int> & ids, bool ignoreChildren, bool ignoreBadSignatures, bool ignoreIntermediateNodes) const
 {
 	if(_ppDb)
 	{
@@ -2377,11 +2430,20 @@ void DBDriverSqlite3::getAllNodeIdsQuery(std::set<int> & ids, bool ignoreChildre
 			query << "INNER JOIN Link ";
 			query << "ON id = to_id "; // use to_id to ignore all children (which don't have link pointing on them)
 			query << "WHERE from_id != to_id "; // ignore self referring links
+			query << "AND weight>-9 "; //ignore invalid nodes
+			if(ignoreIntermediateNodes)
+			{
+				query << "AND weight!=-1 "; //ignore intermediate nodes
+			}
+		}
+		else if(ignoreIntermediateNodes)
+		{
+			query << "WHERE weight!=-1 "; //ignore intermediate nodes
 		}
 
 		if(ignoreBadSignatures)
 		{
-			if(ignoreChildren)
+			if(ignoreChildren || ignoreIntermediateNodes)
 			{
 				query << "AND ";
 			}
@@ -2398,6 +2460,7 @@ void DBDriverSqlite3::getAllNodeIdsQuery(std::set<int> & ids, bool ignoreChildre
 				query << " id in (select node_id from Map_Node_Word) ";
 			}
 		}
+
 		query  << "ORDER BY id";
 
 		rc = sqlite3_prepare_v2(_ppDb, query.str().c_str(), -1, &ppStmt, 0);
@@ -3078,9 +3141,10 @@ void DBDriverSqlite3::loadSignaturesQuery(const std::list<int> & ids, std::list<
 			const void * descriptor = 0;
 			int dRealSize = 0;
 			cv::KeyPoint kpt;
-			std::multimap<int, cv::KeyPoint> visualWords;
-			std::multimap<int, cv::Point3f> visualWords3;
-			std::multimap<int, cv::Mat> descriptors;
+			std::multimap<int, int> visualWords;
+			std::vector<cv::KeyPoint> visualWordsKpts;
+			std::vector<cv::Point3f> visualWords3;
+			cv::Mat descriptors;
 			bool allWords3NaN = true;
 			cv::Point3f depth(0,0,0);
 
@@ -3130,8 +3194,9 @@ void DBDriverSqlite3::loadSignaturesQuery(const std::list<int> & ids, std::list<
 					depth.z = sqlite3_column_double(ppStmt, index++);
 				}
 
-				visualWords.insert(visualWords.end(), std::make_pair(visualWordId, kpt));
-				visualWords3.insert(visualWords3.end(), std::make_pair(visualWordId, depth));
+				visualWordsKpts.push_back(kpt);
+				visualWords.insert(visualWords.end(), std::make_pair(visualWordId, visualWordsKpts.size()-1));
+				visualWords3.push_back(depth);
 
 				if(allWords3NaN && util3d::isFinite(depth))
 				{
@@ -3164,7 +3229,7 @@ void DBDriverSqlite3::loadSignaturesQuery(const std::list<int> & ids, std::list<
 
 						memcpy(d.data, descriptor, dRealSize);
 
-						descriptors.insert(descriptors.end(), std::make_pair(visualWordId, d));
+						descriptors.push_back(d);
 					}
 				}
 
@@ -3178,13 +3243,12 @@ void DBDriverSqlite3::loadSignaturesQuery(const std::list<int> & ids, std::list<
 			}
 			else
 			{
-				(*iter)->setWords(visualWords);
-				if(!allWords3NaN)
+				if(allWords3NaN)
 				{
-					(*iter)->setWords3(visualWords3);
+					visualWords3.clear();
 				}
-				(*iter)->setWordsDescriptors(descriptors);
-				ULOGGER_DEBUG("Add %d keypoints, %d 3d points and %d descriptors to node %d", (int)visualWords.size(), allWords3NaN?0:(int)visualWords3.size(), (int)descriptors.size(), (*iter)->id());
+				(*iter)->setWords(visualWords, visualWordsKpts, visualWords3, descriptors);
+				ULOGGER_DEBUG("Add %d keypoints, %d 3d points and %d descriptors to node %d", (int)visualWords.size(), allWords3NaN?0:(int)visualWords3.size(), (int)descriptors.rows, (*iter)->id());
 			}
 
 			//reset
@@ -3231,7 +3295,7 @@ void DBDriverSqlite3::loadSignaturesQuery(const std::list<int> & ids, std::list<
 					int dataSize = 0;
 					Transform localTransform;
 					std::vector<CameraModel> models;
-					StereoCameraModel stereoModel;
+					std::vector<StereoCameraModel> stereoModels;
 
 					// calibration
 					data = sqlite3_column_blob(ppStmt, index);
@@ -3261,8 +3325,16 @@ void DBDriverSqlite3::loadSignaturesQuery(const std::list<int> & ids, std::list<
 								}
 								else if(type == 1) // stereo
 								{
-									int bytesRead = (int)stereoModel.deserialize((unsigned char*)data, dataSize);
-									UASSERT(bytesRead == dataSize);
+									StereoCameraModel model;
+									int bytesReadTotal = 0;
+									unsigned int bytesRead = 0;
+									while(bytesReadTotal < dataSize &&
+										  (bytesRead=model.deserialize((const unsigned char *)data+bytesReadTotal, dataSize-bytesReadTotal))!=0)
+									{
+										bytesReadTotal+=bytesRead;
+										stereoModels.push_back(model);
+									}
+									UASSERT(bytesReadTotal == dataSize);
 								}
 								else
 								{
@@ -3336,14 +3408,14 @@ void DBDriverSqlite3::loadSignaturesQuery(const std::list<int> & ids, std::list<
 								{
 									localTransform.normalizeRotation();
 								}
-								stereoModel = StereoCameraModel(
+								stereoModels.push_back(StereoCameraModel(
 										dataFloat[0],  // fx
 										dataFloat[1],  // fy
 										dataFloat[2],  // cx
 										dataFloat[3],  // cy
 										dataFloat[4], // baseline
 										localTransform,
-										cv::Size(dataFloat[5], dataFloat[6]));
+										cv::Size(dataFloat[5], dataFloat[6])));
 							}
 							else if((unsigned int)dataSize == (5+localTransform.size())*sizeof(float))
 							{
@@ -3353,13 +3425,13 @@ void DBDriverSqlite3::loadSignaturesQuery(const std::list<int> & ids, std::list<
 								{
 									localTransform.normalizeRotation();
 								}
-								stereoModel = StereoCameraModel(
+								stereoModels.push_back(StereoCameraModel(
 										dataFloat[0],  // fx
 										dataFloat[1],  // fy
 										dataFloat[2],  // cx
 										dataFloat[3],  // cy
 										dataFloat[4], // baseline
-										localTransform);
+										localTransform));
 							}
 							else
 							{
@@ -3368,7 +3440,7 @@ void DBDriverSqlite3::loadSignaturesQuery(const std::list<int> & ids, std::list<
 						}
 
 						(*iter)->sensorData().setCameraModels(models);
-						(*iter)->sensorData().setStereoCameraModel(stereoModel);
+						(*iter)->sensorData().setStereoCameraModels(stereoModels);
 					}
 					rc = sqlite3_step(ppStmt);
 				}
@@ -3622,6 +3694,7 @@ void DBDriverSqlite3::loadWordsQuery(const std::set<int> & wordIds, std::list<Vi
 		int descriptorSize;
 		const void * descriptor;
 		int dRealSize;
+		unsigned long dRealSizeTotal = 0;
 		for(std::set<int>::const_iterator iter=wordIds.begin(); iter!=wordIds.end(); ++iter)
 		{
 			// bind id
@@ -3654,6 +3727,7 @@ void DBDriverSqlite3::loadWordsQuery(const std::set<int> & wordIds, std::list<Vi
 				}
 
 				memcpy(d.data, descriptor, dRealSize);
+				dRealSizeTotal+=dRealSize;
 				VisualWord * vw = new VisualWord(*iter, d);
 				if(vw)
 				{
@@ -3675,7 +3749,7 @@ void DBDriverSqlite3::loadWordsQuery(const std::set<int> & wordIds, std::list<Vi
 		rc = sqlite3_finalize(ppStmt);
 		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
 
-		ULOGGER_DEBUG("Time=%fs", timer.ticks());
+		UDEBUG("Time=%fs (%d words, %lu MB)", timer.ticks(), (int)vws.size(), dRealSizeTotal/1000000);
 
 		if(wordIds.size() != loaded.size())
 		{
@@ -4224,9 +4298,9 @@ void DBDriverSqlite3::saveQuery(const std::list<Signature *> & signatures)
 		{
 			_memoryUsedEstimate += (*i)->getMemoryUsed();
 			// raw data are not kept in database
-			_memoryUsedEstimate -= (*i)->sensorData().imageRaw().total() * (*i)->sensorData().imageRaw().elemSize();
-			_memoryUsedEstimate -= (*i)->sensorData().depthOrRightRaw().total() * (*i)->sensorData().depthOrRightRaw().elemSize();
-			_memoryUsedEstimate -= (*i)->sensorData().laserScanRaw().data().total() * (*i)->sensorData().laserScanRaw().data().elemSize();
+			_memoryUsedEstimate -= (*i)->sensorData().imageRaw().empty()?0:(*i)->sensorData().imageRaw().total() * (*i)->sensorData().imageRaw().elemSize();
+			_memoryUsedEstimate -= (*i)->sensorData().depthOrRightRaw().empty()?0:(*i)->sensorData().depthOrRightRaw().total() * (*i)->sensorData().depthOrRightRaw().elemSize();
+			_memoryUsedEstimate -= (*i)->sensorData().laserScanRaw().empty()?0:(*i)->sensorData().laserScanRaw().data().total() * (*i)->sensorData().laserScanRaw().data().elemSize();
 
 			stepNode(ppStmt, *i);
 		}
@@ -4272,30 +4346,25 @@ void DBDriverSqlite3::saveQuery(const std::list<Signature *> & signatures)
 		float nanFloat = std::numeric_limits<float>::quiet_NaN ();
 		for(std::list<Signature *>::const_iterator i=signatures.begin(); i!=signatures.end(); ++i)
 		{
+			UASSERT((*i)->getWords().size() == (*i)->getWordsKpts().size());
 			UASSERT((*i)->getWords3().empty() || (*i)->getWords().size() == (*i)->getWords3().size());
-			UASSERT((*i)->getWordsDescriptors().empty() || (*i)->getWords().size() == (*i)->getWordsDescriptors().size());
+			UASSERT((*i)->getWordsDescriptors().empty() || (int)(*i)->getWords().size() == (*i)->getWordsDescriptors().rows);
 
-			std::multimap<int, cv::Point3f>::const_iterator p=(*i)->getWords3().begin();
-			std::multimap<int, cv::Mat>::const_iterator d=(*i)->getWordsDescriptors().begin();
-			for(std::multimap<int, cv::KeyPoint>::const_iterator w=(*i)->getWords().begin(); w!=(*i)->getWords().end(); ++w)
+			for(std::multimap<int, int>::const_iterator w=(*i)->getWords().begin(); w!=(*i)->getWords().end(); ++w)
 			{
 				cv::Point3f pt(nanFloat,nanFloat,nanFloat);
-				if(p!=(*i)->getWords3().end())
+				if(!(*i)->getWords3().empty())
 				{
-					UASSERT(w->first == p->first); // must be same id!
-					pt = p->second;
-					++p;
+					pt = (*i)->getWords3()[w->second];
 				}
 
 				cv::Mat descriptor;
-				if(d!=(*i)->getWordsDescriptors().end())
+				if(!(*i)->getWordsDescriptors().empty())
 				{
-					UASSERT(w->first == d->first); // must be same id!
-					descriptor = d->second;
-					++d;
+					descriptor = (*i)->getWordsDescriptors().row(w->second);
 				}
 
-				stepKeypoint(ppStmt, (*i)->id(), w->first, w->second, pt, descriptor);
+				stepKeypoint(ppStmt, (*i)->id(), w->first, (*i)->getWordsKpts()[w->second], pt, descriptor);
 			}
 		}
 		// Finalize (delete) the statement
@@ -4338,8 +4407,8 @@ void DBDriverSqlite3::saveQuery(const std::list<Signature *> & signatures)
 				   !(*i)->sensorData().depthOrRightCompressed().empty() ||
 				   !(*i)->sensorData().laserScanCompressed().isEmpty() ||
 				   !(*i)->sensorData().userDataCompressed().empty() ||
-				   !(*i)->sensorData().cameraModels().size() ||
-				   !(*i)->sensorData().stereoCameraModel().isValidForProjection())
+				   !(*i)->sensorData().cameraModels().empty() ||
+				   !(*i)->sensorData().stereoCameraModels().empty())
 				{
 					UASSERT((*i)->id() == (*i)->sensorData().id());
 					stepSensorData(ppStmt, (*i)->sensorData());
@@ -4537,6 +4606,39 @@ void DBDriverSqlite3::updateOccupancyGridQuery(
 				empty,
 				cellSize,
 				viewpoint);
+
+		// Finalize (delete) the statement
+		rc = sqlite3_finalize(ppStmt);
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+
+		UDEBUG("Time=%fs", timer.ticks());
+	}
+}
+
+void DBDriverSqlite3::updateCalibrationQuery(
+	int nodeId,
+	const std::vector<CameraModel> & models,
+	const std::vector<StereoCameraModel> & stereoModels) const
+{
+	UDEBUG("");
+	if(_ppDb)
+	{
+		std::string type;
+		UTimer timer;
+		timer.start();
+		int rc = SQLITE_OK;
+		sqlite3_stmt * ppStmt = 0;
+
+		// Create query
+		std::string query = queryStepCalibrationUpdate();
+		rc = sqlite3_prepare_v2(_ppDb, query.c_str(), -1, &ppStmt, 0);
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+
+		// step calibration
+		stepCalibrationUpdate(ppStmt,
+				nodeId,
+				models,
+				stereoModels);
 
 		// Finalize (delete) the statement
 		rc = sqlite3_finalize(ppStmt);
@@ -5058,7 +5160,7 @@ cv::Mat DBDriverSqlite3::load2DMapQuery(float & xMin, float & yMin, float & cell
 
 void DBDriverSqlite3::saveOptimizedMeshQuery(
 			const cv::Mat & cloud,
-			const std::vector<std::vector<std::vector<unsigned int> > > & polygons,
+			const std::vector<std::vector<std::vector<RTABMAP_PCL_INDEX> > > & polygons,
 #if PCL_VERSION_COMPARE(>=, 1, 8, 0)
 			const std::vector<std::vector<Eigen::Vector2f, Eigen::aligned_allocator<Eigen::Vector2f> > > & texCoords,
 #else
@@ -5253,7 +5355,7 @@ void DBDriverSqlite3::saveOptimizedMeshQuery(
 }
 
 cv::Mat DBDriverSqlite3::loadOptimizedMeshQuery(
-			std::vector<std::vector<std::vector<unsigned int> > > * polygons,
+			std::vector<std::vector<std::vector<RTABMAP_PCL_INDEX> > > * polygons,
 #if PCL_VERSION_COMPARE(>=, 1, 8, 0)
 			std::vector<std::vector<Eigen::Vector2f, Eigen::aligned_allocator<Eigen::Vector2f> > > * texCoords,
 #else
@@ -5315,7 +5417,7 @@ cv::Mat DBDriverSqlite3::loadOptimizedMeshQuery(
 					for(int t=0; t<serializedPolygons.cols; ++t)
 					{
 						UASSERT(serializedPolygons.at<int>(t) > 0);
-						std::vector<std::vector<unsigned int> > materialPolygons(serializedPolygons.at<int>(t), std::vector<unsigned int>(polygonSize));
+						std::vector<std::vector<RTABMAP_PCL_INDEX> > materialPolygons(serializedPolygons.at<int>(t), std::vector<RTABMAP_PCL_INDEX>(polygonSize));
 						++t;
 						UASSERT(t < serializedPolygons.cols);
 						UDEBUG("materialPolygons=%d", (int)materialPolygons.size());
@@ -5647,13 +5749,15 @@ void DBDriverSqlite3::stepDepth(sqlite3_stmt * ppStmt, const SensorData & sensor
 		cy = sensorData.cameraModels()[0].cy();
 		localTransform = sensorData.cameraModels()[0].localTransform();
 	}
-	else if(sensorData.stereoCameraModel().isValidForProjection())
+	else if(sensorData.stereoCameraModels().size())
 	{
-		fx = sensorData.stereoCameraModel().left().fx();
-		fyOrBaseline = sensorData.stereoCameraModel().baseline();
-		cx = sensorData.stereoCameraModel().left().cx();
-		cy = sensorData.stereoCameraModel().left().cy();
-		localTransform = sensorData.stereoCameraModel().left().localTransform();
+		UASSERT_MSG(sensorData.stereoCameraModels().size() == 1,
+				uFormat("Database version %s doesn't support multi-camera!", _version.c_str()).c_str());
+		fx = sensorData.stereoCameraModels()[0].left().fx();
+		fyOrBaseline = sensorData.stereoCameraModels()[0].baseline();
+		cx = sensorData.stereoCameraModels()[0].left().cx();
+		cy = sensorData.stereoCameraModels()[0].left().cy();
+		localTransform = sensorData.stereoCameraModels()[0].left().localTransform();
 	}
 
 	if(uStrNumCmp(_version, "0.7.0") >= 0)
@@ -5691,6 +5795,131 @@ void DBDriverSqlite3::stepDepth(sqlite3_stmt * ppStmt, const SensorData & sensor
 		rc = sqlite3_bind_int(ppStmt, index++, sensorData.laserScanCompressed().maxPoints());
 		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
 	}
+
+	//step
+	rc=sqlite3_step(ppStmt);
+	UASSERT_MSG(rc == SQLITE_DONE, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+
+	rc = sqlite3_reset(ppStmt);
+	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+}
+
+std::string DBDriverSqlite3::queryStepCalibrationUpdate() const
+{
+	UASSERT(uStrNumCmp(_version, "0.10.0") >= 0);
+	return "UPDATE Data SET calibration=? WHERE id=?;";
+}
+void DBDriverSqlite3::stepCalibrationUpdate(
+	sqlite3_stmt * ppStmt,
+	int nodeId,
+	const std::vector<CameraModel> & models,
+	const std::vector<StereoCameraModel> & stereoModels) const
+{
+	if(!ppStmt)
+	{
+		UFATAL("");
+	}
+
+	int rc = SQLITE_OK;
+	int index = 1;
+
+	// calibration
+	std::vector<unsigned char> calibrationData;
+	std::vector<float> calibration;
+	// multi-cameras [fx,fy,cx,cy,width,height,local_transform, ... ,fx,fy,cx,cy,width,height,local_transform] (6+12)*float * numCameras
+	// stereo [fx, fy, cx, cy, baseline, local_transform] (5+12)*float
+	if(models.size() && models[0].isValidForProjection())
+	{
+		if(uStrNumCmp(_version, "0.18.0") >= 0)
+		{
+			for(unsigned int i=0; i<models.size(); ++i)
+			{
+				UASSERT(models[i].isValidForProjection());
+				std::vector<unsigned char> data = models[i].serialize();
+				UASSERT(!data.empty());
+				unsigned int oldSize = calibrationData.size();
+				calibrationData.resize(calibrationData.size() + data.size());
+				memcpy(calibrationData.data()+oldSize, data.data(), data.size());
+			}
+		}
+		else if(uStrNumCmp(_version, "0.11.2") >= 0)
+		{
+			calibration.resize(models.size() * (6+Transform().size()));
+			for(unsigned int i=0; i<models.size(); ++i)
+			{
+				UASSERT(models[i].isValidForProjection());
+				const Transform & localTransform = models[i].localTransform();
+				calibration[i*(6+localTransform.size())] = models[i].fx();
+				calibration[i*(6+localTransform.size())+1] = models[i].fy();
+				calibration[i*(6+localTransform.size())+2] = models[i].cx();
+				calibration[i*(6+localTransform.size())+3] = models[i].cy();
+				calibration[i*(6+localTransform.size())+4] = models[i].imageWidth();
+				calibration[i*(6+localTransform.size())+5] = models[i].imageHeight();
+				memcpy(calibration.data()+i*(6+localTransform.size())+6, localTransform.data(), localTransform.size()*sizeof(float));
+			}
+		}
+		else
+		{
+			calibration.resize(models.size() * (4+Transform().size()));
+			for(unsigned int i=0; i<models.size(); ++i)
+			{
+				UASSERT(models[i].isValidForProjection());
+				const Transform & localTransform = models[i].localTransform();
+				calibration[i*(4+localTransform.size())] = models[i].fx();
+				calibration[i*(4+localTransform.size())+1] = models[i].fy();
+				calibration[i*(4+localTransform.size())+2] = models[i].cx();
+				calibration[i*(4+localTransform.size())+3] = models[i].cy();
+				memcpy(calibration.data()+i*(4+localTransform.size())+4, localTransform.data(), localTransform.size()*sizeof(float));
+			}
+		}
+	}
+	else if(stereoModels.size() && stereoModels[0].isValidForProjection())
+	{
+		if(uStrNumCmp(_version, "0.18.0") >= 0)
+		{
+			for(unsigned int i=0; i<stereoModels.size(); ++i)
+			{
+				UASSERT(stereoModels[i].isValidForProjection());
+				std::vector<unsigned char> data = stereoModels[i].serialize();
+				UASSERT(!data.empty());
+				unsigned int oldSize = calibrationData.size();
+				calibrationData.resize(calibrationData.size() + data.size());
+				memcpy(calibrationData.data()+oldSize, data.data(), data.size());
+			}
+		}
+		else
+		{
+			UASSERT_MSG(stereoModels.size()==1, uFormat("Database version (%s) is too old for saving multiple stereo cameras", _version.c_str()).c_str());
+			const Transform & localTransform = stereoModels[0].left().localTransform();
+			calibration.resize(7+localTransform.size());
+			calibration[0] = stereoModels[0].left().fx();
+			calibration[1] = stereoModels[0].left().fy();
+			calibration[2] = stereoModels[0].left().cx();
+			calibration[3] = stereoModels[0].left().cy();
+			calibration[4] = stereoModels[0].baseline();
+			calibration[5] = stereoModels[0].left().imageWidth();
+			calibration[6] = stereoModels[0].left().imageHeight();
+			memcpy(calibration.data()+7, localTransform.data(), localTransform.size()*sizeof(float));
+		}
+	}
+
+	if(calibrationData.size())
+	{
+		rc = sqlite3_bind_blob(ppStmt, index++, calibrationData.data(), calibrationData.size(), SQLITE_STATIC);
+	}
+	else if(calibration.size())
+	{
+		rc = sqlite3_bind_blob(ppStmt, index++, calibration.data(), calibration.size()*sizeof(float), SQLITE_STATIC);
+	}
+	else
+	{
+		rc = sqlite3_bind_null(ppStmt, index++);
+	}
+	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+
+	//id
+	rc = sqlite3_bind_int(ppStmt, index++, nodeId);
+	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
 
 	//step
 	rc=sqlite3_step(ppStmt);
@@ -5996,24 +6225,32 @@ void DBDriverSqlite3::stepSensorData(sqlite3_stmt * ppStmt,
 			}
 		}
 	}
-	else if(sensorData.stereoCameraModel().isValidForProjection())
+	else if(sensorData.stereoCameraModels().size() && sensorData.stereoCameraModels()[0].isValidForProjection())
 	{
 		if(uStrNumCmp(_version, "0.18.0") >= 0)
 		{
-			calibrationData = sensorData.stereoCameraModel().serialize();
-			UASSERT(!calibrationData.empty());
+			for(unsigned int i=0; i<sensorData.stereoCameraModels().size(); ++i)
+			{
+				UASSERT(sensorData.stereoCameraModels()[i].isValidForProjection());
+				std::vector<unsigned char> data = sensorData.stereoCameraModels()[i].serialize();
+				UASSERT(!data.empty());
+				unsigned int oldSize = calibrationData.size();
+				calibrationData.resize(calibrationData.size() + data.size());
+				memcpy(calibrationData.data()+oldSize, data.data(), data.size());
+			}
 		}
 		else
 		{
-			const Transform & localTransform = sensorData.stereoCameraModel().left().localTransform();
+			UASSERT_MSG(sensorData.stereoCameraModels().size()==1, uFormat("Database version (%s) is too old for saving multiple stereo cameras", _version.c_str()).c_str());
+			const Transform & localTransform = sensorData.stereoCameraModels()[0].left().localTransform();
 			calibration.resize(7+localTransform.size());
-			calibration[0] = sensorData.stereoCameraModel().left().fx();
-			calibration[1] = sensorData.stereoCameraModel().left().fy();
-			calibration[2] = sensorData.stereoCameraModel().left().cx();
-			calibration[3] = sensorData.stereoCameraModel().left().cy();
-			calibration[4] = sensorData.stereoCameraModel().baseline();
-			calibration[5] = sensorData.stereoCameraModel().left().imageWidth();
-			calibration[6] = sensorData.stereoCameraModel().left().imageHeight();
+			calibration[0] = sensorData.stereoCameraModels()[0].left().fx();
+			calibration[1] = sensorData.stereoCameraModels()[0].left().fy();
+			calibration[2] = sensorData.stereoCameraModels()[0].left().cx();
+			calibration[3] = sensorData.stereoCameraModels()[0].left().cy();
+			calibration[4] = sensorData.stereoCameraModels()[0].baseline();
+			calibration[5] = sensorData.stereoCameraModels()[0].left().imageWidth();
+			calibration[6] = sensorData.stereoCameraModels()[0].left().imageHeight();
 			memcpy(calibration.data()+7, localTransform.data(), localTransform.size()*sizeof(float));
 		}
 	}
@@ -6491,7 +6728,7 @@ void DBDriverSqlite3::stepGlobalDescriptor(sqlite3_stmt * ppStmt,
 
 	//data
 	std::vector<unsigned char> dataBytes = rtabmap::compressData(descriptor.data());
-	if(infoBytes.empty())
+	if(dataBytes.empty())
 	{
 		rc = sqlite3_bind_null(ppStmt, index++);
 	}

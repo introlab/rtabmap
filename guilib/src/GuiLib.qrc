@@ -40,5 +40,10 @@
         <file>images/t265.png</file>
         <file>images/sr300.png</file>
         <file>images/mynteyes.png</file>
+        <file>images/l515.png</file>
+        <file>images/oakd.png</file>
+        <file>images/oakd_lite.png</file>
+        <file>images/astra.png</file>
+        <file>images/oakdpro.png</file>
     </qresource>
 </RCC>

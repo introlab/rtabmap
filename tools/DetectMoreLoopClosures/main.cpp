@@ -27,6 +27,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <rtabmap/core/DBDriver.h>
 #include <rtabmap/core/Rtabmap.h>
+#include <rtabmap/core/Memory.h>
+#include <rtabmap/core/global_map/OccupancyGrid.h>
 #include <rtabmap/core/util3d.h>
 #include <rtabmap/core/util3d_filtering.h>
 #include <rtabmap/core/util3d_transforms.h>
@@ -51,6 +53,7 @@ void showUsage()
 			"rtabmap-detectMoreLoopClosures [options] database.db\n"
 			"Options:\n"
 			"    -r #          Cluster radius (default 1 m).\n"
+			"    -rx #         Cluster radius min (default 0 m).\n"
 			"    -a #          Cluster angle (default 30 deg).\n"
 			"    -i #          Iterations (default 1).\n"
 			"    --intra       Add only intra-session loop closures.\n"
@@ -92,7 +95,8 @@ int main(int argc, char * argv[])
 		showUsage();
 	}
 
-	float clusterRadius = 1.0f;
+	float clusterRadiusMin = 0.0f;
+	float clusterRadiusMax = 1.0f;
 	float clusterAngle = CV_PI/6.0f;
 	int iterations = 1;
 	bool intraSession = false;
@@ -124,7 +128,19 @@ int main(int argc, char * argv[])
 			++i;
 			if(i<argc-1)
 			{
-				clusterRadius = uStr2Float(argv[i]);
+				clusterRadiusMax = uStr2Float(argv[i]);
+			}
+			else
+			{
+				showUsage();
+			}
+		}
+		else if(std::strcmp(argv[i], "-rx") == 0)
+		{
+			++i;
+			if(i<argc-1)
+			{
+				clusterRadiusMin = uStr2Float(argv[i]);
 			}
 			else
 			{
@@ -165,7 +181,8 @@ int main(int argc, char * argv[])
 	}
 
 	printf("\nDatabase: %s\n", dbPath.c_str());
-	printf("Cluster radius = %f m\n", clusterRadius);
+	printf("Cluster radius min = %f m\n", clusterRadiusMin);
+	printf("Cluster radius max = %f m\n", clusterRadiusMax);
 	printf("Cluster angle = %f deg\n", clusterAngle*180.0f/CV_PI);
 	if(intraSession)
 	{
@@ -196,15 +213,23 @@ int main(int argc, char * argv[])
 	}
 	delete driver;
 
+	for(ParametersMap::iterator iter=inputParams.begin(); iter!=inputParams.end(); ++iter)
+	{
+		printf(" Using parameter \"%s=%s\" from arguments\n", iter->first.c_str(), iter->second.c_str());
+	}
+
 	// Get the global optimized map
 	Rtabmap rtabmap;
 	printf("Initialization...\n");
 	uInsert(parameters, inputParams);
 	rtabmap.init(parameters, dbPath);
 
+	float xMin, yMin, cellSize;
+	bool haveOptimizedMap = !rtabmap.getMemory()->load2DMap(xMin, yMin, cellSize).empty();
+
 	PrintProgressState progress;
 	printf("Detecting...\n");
-	int detected = rtabmap.detectMoreLoopClosures(clusterRadius, clusterAngle, iterations, intraSession, interSession, &progress);
+	int detected = rtabmap.detectMoreLoopClosures(clusterRadiusMax, clusterAngle, iterations, intraSession, interSession, &progress, clusterRadiusMin);
 	if(detected < 0)
 	{
 		if(!g_loopForever)
@@ -214,6 +239,30 @@ int main(int argc, char * argv[])
 		else
 		{
 			printf("Loop closure detection failed!\n");
+		}
+	}
+	else if(detected > 0 && haveOptimizedMap)
+	{
+		printf("The database has a global occupancy grid, regenerating one with new optimized graph!\n");
+		LocalGridCache cache;
+		OccupancyGrid grid(&cache, parameters);
+		std::map<int, Transform> optimizedPoses = rtabmap.getLocalOptimizedPoses();
+		for(std::map<int, Transform>::iterator iter=optimizedPoses.lower_bound(0); iter!=optimizedPoses.end(); ++iter)
+		{
+			SensorData data = rtabmap.getMemory()->getNodeData(iter->first, false, false, false, true);
+			data.uncompressData();
+			cache.add(iter->first, data.gridGroundCellsRaw(), data.gridObstacleCellsRaw(), data.gridEmptyCellsRaw(), data.gridCellSize(), data.gridViewPoint());
+		}
+		grid.update(optimizedPoses);
+		cv::Mat map = grid.getMap(xMin, yMin);
+		if(map.empty())
+		{
+			printf("Could not generate the global occupancy grid!\n");
+		}
+		else
+		{
+			rtabmap.getMemory()->save2DMap(map, xMin, yMin, cellSize);
+			printf("Save new global occupancy grid!\n");
 		}
 	}
 

@@ -1,45 +1,7 @@
 
-### Qt Gui stuff ###
-SET(headers_ui 
-	./ObjDeletionHandler.h
-)
-
-#This will generate moc_* for Qt
-IF(QT4_FOUND)
-    QT4_WRAP_CPP(moc_srcs ${headers_ui})
-ELSE()
-    QT5_WRAP_CPP(moc_srcs ${headers_ui})
-ENDIF()
-
 SET(SRC_FILES
     main.cpp
-    ${moc_srcs} 
 )
-
-SET(INCLUDE_DIRS
-	${PROJECT_SOURCE_DIR}/utilite/include
-	${PROJECT_SOURCE_DIR}/corelib/include
-	${PROJECT_SOURCE_DIR}/guilib/include
-    ${CMAKE_CURRENT_SOURCE_DIR}
-    ${OpenCV_INCLUDE_DIRS}
-    ${PCL_INCLUDE_DIRS}
-)
-
-IF(QT4_FOUND)
-    INCLUDE(${QT_USE_FILE})
-ENDIF(QT4_FOUND)
-
-SET(LIBRARIES
-    ${QT_LIBRARIES} 
-    ${OpenCV_LIBS}
-    ${PCL_LIBRARIES}
-)
-
-# rc.exe has problems with these defintions... commented!
-#add_definitions(${PCL_DEFINITIONS})
-
-# Make sure the compiler can find include files from our library.
-INCLUDE_DIRECTORIES(${INCLUDE_DIRS})
 
 # For Apple set the icns file containing icons
 IF(APPLE AND BUILD_AS_BUNDLE)
@@ -64,38 +26,35 @@ IF(WIN32)
   ENDIF( MINGW )
 ENDIF(WIN32)
 
+IF(BUILD_AS_BUNDLE)
+  ADD_DEFINITIONS("-DBUILD_AS_BUNDLE")
+ENDIF()
+
 # Add binary
 IF(APPLE AND BUILD_AS_BUNDLE)
-  ADD_EXECUTABLE(rtabmap MACOSX_BUNDLE ${SRC_FILES})
-ELSEIF(MINGW)
-  ADD_EXECUTABLE(rtabmap WIN32 ${SRC_FILES})
+  ADD_EXECUTABLE(rtabmap_app MACOSX_BUNDLE ${SRC_FILES})
+ELSEIF(WIN32 AND BUILD_AS_BUNDLE)
+  ADD_EXECUTABLE(rtabmap_app WIN32 ${SRC_FILES})
 ELSE()
-  ADD_EXECUTABLE(rtabmap ${SRC_FILES})
+  ADD_EXECUTABLE(rtabmap_app ${SRC_FILES})
 ENDIF()
-TARGET_LINK_LIBRARIES(rtabmap rtabmap_core rtabmap_gui rtabmap_utilite ${LIBRARIES})
-IF(Qt5_FOUND)
-    IF(Qt5Svg_FOUND)
-        QT5_USE_MODULES(rtabmap Widgets Core Gui Svg PrintSupport)
-    ELSE()
-        QT5_USE_MODULES(rtabmap Widgets Core Gui PrintSupport)
-    ENDIF()
-ENDIF(Qt5_FOUND)
+TARGET_LINK_LIBRARIES(rtabmap_app rtabmap_gui)
 
 IF(APPLE AND BUILD_AS_BUNDLE)
-  SET_TARGET_PROPERTIES(rtabmap PROPERTIES
+  SET_TARGET_PROPERTIES(rtabmap_app PROPERTIES
     OUTPUT_NAME ${CMAKE_BUNDLE_NAME})
 ELSEIF(WIN32)
-  SET_TARGET_PROPERTIES(rtabmap PROPERTIES
+  SET_TARGET_PROPERTIES(rtabmap_app PROPERTIES
     OUTPUT_NAME ${PROJECT_NAME})
 ELSE()
-  SET_TARGET_PROPERTIES(rtabmap PROPERTIES
+  SET_TARGET_PROPERTIES(rtabmap_app PROPERTIES
     OUTPUT_NAME ${PROJECT_PREFIX})
 ENDIF()
 
 #---------------------------
 # Installation stuff
 #--------------------------- 
-INSTALL(TARGETS rtabmap
+INSTALL(TARGETS rtabmap_app
         RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}" COMPONENT runtime
         BUNDLE DESTINATION "${CMAKE_BUNDLE_LOCATION}" COMPONENT runtime)
       
@@ -106,14 +65,17 @@ ENDIF(APPLE AND BUILD_AS_BUNDLE)
        
 IF(BUILD_AS_BUNDLE AND (APPLE OR WIN32))
   SET(APPS "\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/bin/${PROJECT_NAME}${CMAKE_EXECUTABLE_SUFFIX}")
-  SET(plugin_dest_dir bin)
+  SET(plugin_dest_dir bin/plugins)
   SET(qtconf_dest_dir bin)
-  SET(openni2_dest_dir bin)
+  SET(thirdparty_dest_dir bin)
  
   IF(APPLE)
-    SET(plugin_dest_dir MacOS)
+    SET(plugin_dest_dir MacOS/plugins)
+    IF(Qt6_FOUND)
+       SET(plugin_dest_dir PlugIns)
+    ENDIF()
     SET(qtconf_dest_dir Resources)
-    SET(openni2_dest_dir MacOS)
+    SET(thirdparty_dest_dir MacOS)
     SET(APPS "\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/MacOS/${CMAKE_BUNDLE_NAME}")
   ENDIF(APPLE)
 
@@ -130,11 +92,11 @@ IF(BUILD_AS_BUNDLE AND (APPLE OR WIN32))
     ENDIF()
     
     INSTALL(DIRECTORY "${OpenNI2_BIN_DIR}/OpenNI2" 
-          DESTINATION ${openni2_dest_dir} 
+          DESTINATION ${thirdparty_dest_dir} 
           COMPONENT runtime 
           REGEX ".*pdb" EXCLUDE)
     INSTALL(FILES "${OpenNI2_BIN_DIR}/OpenNI.ini" 
-          DESTINATION ${openni2_dest_dir} 
+          DESTINATION ${thirdparty_dest_dir} 
           COMPONENT runtime)
   ENDIF(OpenNI2_FOUND)
   
@@ -143,69 +105,124 @@ IF(BUILD_AS_BUNDLE AND (APPLE OR WIN32))
     IF(WIN32)
 		file(TO_CMAKE_PATH "$ENV{K4A_ROOT_DIR}" ENV_K4A_ROOT_DIR)
 		INSTALL(FILES "${ENV_K4A_ROOT_DIR}/tools/depthengine_2_0.dll" 
-          DESTINATION ${plugin_dest_dir} 
+          DESTINATION ${thirdparty_dest_dir} 
           COMPONENT runtime)
 	ENDIF(WIN32)
   ENDIF(k4a_FOUND)
-
-  # Install needed Qt plugins by copying directories from the qt installation
-  # One can cull what gets copied by using 'REGEX "..." EXCLUDE'
-  # Exclude debug libraries
-  IF(QT_PLUGINS_DIR)
-    INSTALL(DIRECTORY "${QT_PLUGINS_DIR}/imageformats"
-          DESTINATION ${plugin_dest_dir}/plugins 
-          COMPONENT runtime 
-          REGEX ".*d4.dll" EXCLUDE
-          REGEX ".*d4.a" EXCLUDE)
-  ELSE()
-	#Qt5
-	foreach(plugin ${Qt5Gui_PLUGINS})
-		get_target_property(plugin_loc ${plugin} LOCATION)
-		get_filename_component(plugin_dir ${plugin_loc} DIRECTORY)
-		string(REPLACE "plugins" ";" loc_list ${plugin_dir})
-		list(GET loc_list 1 plugin_type)
-		IF(NOT plugin_root)
-			get_filename_component(plugin_root ${plugin_dir} DIRECTORY)
-		ENDIF(NOT plugin_root)
-		#MESSAGE(STATUS "Qt5 plugin \"${plugin_loc}\" installed in \"${plugin_dest_dir}/plugins${plugin_type}\"")
-		INSTALL(FILES ${plugin_loc}
-          DESTINATION ${plugin_dest_dir}/plugins${plugin_type}
-          COMPONENT runtime)
-	endforeach()
-	IF(NOT Qt5Widgets_VERSION VERSION_LESS 5.10.0)
-		IF(WIN32)
-			SET(plugin_loc "${plugin_root}/styles/qwindowsvistastyle.dll")
-		ELSEIF(APPLE)
-			SET(plugin_loc "${plugin_root}/styles/libqmacstyle.dylib")
-		ENDIF()
-		IF(EXISTS ${plugin_loc})
-			get_filename_component(plugin_dir ${plugin_loc} DIRECTORY)
-			string(REPLACE "plugins" ";" loc_list ${plugin_dir})
-			list(GET loc_list 1 plugin_type)
-			INSTALL(FILES ${plugin_loc}
-				DESTINATION ${plugin_dest_dir}/plugins${plugin_type}
-				COMPONENT runtime)
-			#MESSAGE(STATUS "Qt5 plugin \"${plugin_loc}\" installed in \"${plugin_dest_dir}/plugins${plugin_type}\"")
-		ENDIF(EXISTS ${plugin_loc})
-	ENDIF(NOT Qt5Widgets_VERSION VERSION_LESS 5.10.0)
-  ENDIF()
   
-  # install a qt.conf file
-  # this inserts some cmake code into the install script to write the file
-  SET(QT_CONF_FILE [Paths]\nPlugins=plugins)
-  IF(APPLE)
-    SET(QT_CONF_FILE [Paths]\nPlugins=MacOS/plugins)
-  ENDIF(APPLE)
-  INSTALL(CODE "
-    file(WRITE \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${qtconf_dest_dir}/qt.conf\" \"${QT_CONF_FILE}\")
-    " COMPONENT runtime)
+  IF(Torch_FOUND)
+	# Install needed cudnn_ops_infer64_8.dll and cudnn_cnn_infer64_8.dll
+	# TODO: should be a more general way to include them if version is different
+    IF(WIN32 AND CUDA_FOUND)
+		find_file(CUDNN_OPS_DLL NAMES cudnn_ops_infer64_8.dll)
+		find_file(CUDNN_CNN_DLL NAMES cudnn_cnn_infer64_8.dll)
+		IF(CUDNN_OPS_DLL AND CUDNN_CNN_DLL)
+			MESSAGE(STATUS "Found ${CUDNN_OPS_DLL}")
+			MESSAGE(STATUS "Found ${CUDNN_CNN_DLL}")
+			INSTALL(FILES ${CUDNN_OPS_DLL} ${CUDNN_CNN_DLL}
+			  DESTINATION ${thirdparty_dest_dir} 
+			  COMPONENT runtime)
+		ELSE()
+			MESSAGE(AUTHOR_WARNING "Using Torch with CUDA, but cudnn_ops_infer64_8.dll and cudnn_cnn_infer64_8.dll are not found on the PATH, so it won't be added to package.")
+		ENDIF()
+	ENDIF(WIN32 AND CUDA_FOUND)
+  ENDIF(Torch_FOUND)
+
+  IF(Qt6_FOUND)
+	# Reference: https://doc-snapshots.qt.io/qt6-6.4/qt-deploy-runtime-dependencies.html
+	# The following script must only be executed at install time
+	set(deploy_script "${CMAKE_CURRENT_BINARY_DIR}/deploy_app$<CONFIG>.cmake")
+	file(GENERATE OUTPUT ${deploy_script} CONTENT "
+	# Including the file pointed to by QT_DEPLOY_SUPPORT ensures the generated
+	# deployment script has access to qt_deploy_runtime_dependencies()
+	include(\"${QT_DEPLOY_SUPPORT}\")
+	qt_deploy_runtime_dependencies(
+		EXECUTABLE \"${APPS}\"
+		PLUGINS_DIR ${plugin_dest_dir}
+		GENERATE_QT_CONF
+		NO_TRANSLATIONS
+		VERBOSE
+	)")
+    	IF("${CMAKE_BUILD_TYPE}" STREQUAL "" OR "${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
+	install(SCRIPT "${CMAKE_CURRENT_BINARY_DIR}/deploy_appDebug.cmake"
+            CONFIGURATIONS Debug
+            COMPONENT runtime)
+    	ENDIF()
+    	IF("${CMAKE_BUILD_TYPE}" STREQUAL "" OR "${CMAKE_BUILD_TYPE}" STREQUAL "Release")
+        install(SCRIPT "${CMAKE_CURRENT_BINARY_DIR}/deploy_appRelease.cmake"
+            CONFIGURATIONS Release
+            COMPONENT runtime)
+    	ENDIF()
+    	IF("${CMAKE_BUILD_TYPE}" STREQUAL "" OR "${CMAKE_BUILD_TYPE}" STREQUAL "RelWithDebInfo")
+        install(SCRIPT "${CMAKE_CURRENT_BINARY_DIR}/deploy_appRelWithDebInfo.cmake"
+            CONFIGURATIONS RelWithDebInfo
+            COMPONENT runtime)
+    	ENDIF()
+    	IF("${CMAKE_BUILD_TYPE}" STREQUAL "" OR "${CMAKE_BUILD_TYPE}" STREQUAL "MinSizeRel")
+        install(SCRIPT "${CMAKE_CURRENT_BINARY_DIR}/deploy_appMinSizeRel.cmake"
+            CONFIGURATIONS MinSizeRel
+            COMPONENT runtime)
+    	ENDIF()
+  ELSEIF(Qt5_FOUND)
+    #Qt5
+    foreach(plugin ${Qt5Gui_PLUGINS})
+        get_target_property(plugin_loc ${plugin} LOCATION)
+        get_filename_component(plugin_dir ${plugin_loc} DIRECTORY)
+        string(REPLACE "plugins" ";" loc_list ${plugin_dir})
+        list(GET loc_list 1 plugin_type)
+        IF(NOT plugin_root)
+            get_filename_component(plugin_root ${plugin_dir} DIRECTORY)
+        ENDIF(NOT plugin_root)
+        #MESSAGE(STATUS "Qt5 plugin \"${plugin_loc}\" installed in \"${plugin_dest_dir}${plugin_type}\"")
+        INSTALL(FILES ${plugin_loc}
+          DESTINATION ${plugin_dest_dir}${plugin_type}
+          COMPONENT runtime)
+    endforeach()
+    IF(NOT Qt5Widgets_VERSION VERSION_LESS 5.10.0)
+        IF(WIN32)
+            SET(plugin_loc "${plugin_root}/styles/qwindowsvistastyle.dll")
+        ELSEIF(APPLE)
+            SET(plugin_loc "${plugin_root}/styles/libqmacstyle.dylib")
+        ENDIF()
+        IF(EXISTS ${plugin_loc})
+            get_filename_component(plugin_dir ${plugin_loc} DIRECTORY)
+            string(REPLACE "plugins" ";" loc_list ${plugin_dir})
+            list(GET loc_list 1 plugin_type)
+            INSTALL(FILES ${plugin_loc}
+                DESTINATION ${plugin_dest_dir}/plugins${plugin_type}
+                COMPONENT runtime)
+            #MESSAGE(STATUS "Qt5 plugin \"${plugin_loc}\" installed in \"${plugin_dest_dir}${plugin_type}\"")
+        ENDIF(EXISTS ${plugin_loc})
+    ENDIF(NOT Qt5Widgets_VERSION VERSION_LESS 5.10.0)
+  ELSEIF(QT_PLUGINS_DIR) # Qt4
+    # Install needed Qt plugins by copying directories from the qt installation
+    # One can cull what gets copied by using 'REGEX "..." EXCLUDE'
+    # Exclude debug libraries
+    INSTALL(DIRECTORY "${QT_PLUGINS_DIR}/imageformats"
+        DESTINATION ${plugin_dest_dir}
+        COMPONENT runtime 
+        REGEX ".*d4.dll" EXCLUDE
+        REGEX ".*d4.a" EXCLUDE)
+  ENDIF()
+ 
+  IF(Qt5_FOUND OR QT4_FOUND)
+      # install a qt.conf file
+      # this inserts some cmake code into the install script to write the file
+      SET(QT_CONF_FILE [Paths]\nPlugins=plugins)
+      IF(APPLE)
+        SET(QT_CONF_FILE [Paths]\nPlugins=MacOS/plugins)
+      ENDIF(APPLE)
+      INSTALL(CODE "
+        file(WRITE \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${qtconf_dest_dir}/qt.conf\" \"${QT_CONF_FILE}\")
+        " COMPONENT runtime)
+  ENDIF()
 
   # directories to look for dependencies
-  SET(DIRS ${QT_LIBRARY_DIRS} ${PROJECT_SOURCE_DIR}/bin)
+  SET(DIRS "${QT_LIBRARY_DIRS}" "\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/lib")
   IF(APPLE)
-    SET(DIRS ${DIRS} /usr/local /usr/local/lib)
+    SET(DIRS ${DIRS} /usr/local /usr/local/lib /opt/homebrew /opt/homebrew/lib /opt/homebrew/lib/gcc/current)
   ENDIF(APPLE)
-
+ 
   # Now the work of copying dependencies into the bundle/package
   # The quotes are escaped and variables to use at install time have their $ escaped
   # An alternative is the do a configure_file() on a script and use install(SCRIPT  ...).
@@ -213,10 +230,11 @@ IF(BUILD_AS_BUNDLE AND (APPLE OR WIN32))
   # over.
   # To find dependencies, cmake use "otool" on Apple and "dumpbin" on Windows (make sure you have one of them).
   install(CODE "
-   file(GLOB_RECURSE QTPLUGINS \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${plugin_dest_dir}/plugins/*${CMAKE_SHARED_LIBRARY_SUFFIX}\")
+   file(GLOB_RECURSE QTPLUGINS \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${plugin_dest_dir}/*${CMAKE_SHARED_LIBRARY_SUFFIX}\")
     set(BU_CHMOD_BUNDLE_ITEMS ON)
     include(\"BundleUtilities\")
     fixup_bundle(\"${APPS}\" \"\${QTPLUGINS}\" \"${DIRS}\")
   " COMPONENT runtime)
+
 ENDIF(BUILD_AS_BUNDLE AND (APPLE OR WIN32))
   

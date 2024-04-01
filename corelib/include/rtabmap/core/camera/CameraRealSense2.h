@@ -27,8 +27,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #pragma once
 
-#include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
-
 #include "rtabmap/core/CameraModel.h"
 #include "rtabmap/core/Camera.h"
 #include "rtabmap/core/Version.h"
@@ -36,6 +34,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pcl/pcl_config.h>
 
 #ifdef RTABMAP_REALSENSE2
+#include <librealsense2/rs.hpp>
 #include <librealsense2/hpp/rs_frame.hpp>
 #endif
 
@@ -52,7 +51,7 @@ struct rs2_extrinsics;
 namespace rtabmap
 {
 
-class RTABMAP_EXP CameraRealSense2 :
+class RTABMAP_CORE_EXPORT CameraRealSense2 :
 	public Camera
 {
 public:
@@ -62,28 +61,37 @@ public:
 	CameraRealSense2(
 		const std::string & deviceId = "",
 		float imageRate = 0,
-		const Transform & localTransform = CameraModel::opticalRotation());
+		const Transform & localTransform = Transform::getIdentity());
 	virtual ~CameraRealSense2();
 
 	virtual bool init(const std::string & calibrationFolder = ".", const std::string & cameraName = "");
 	virtual bool isCalibrated() const;
 	virtual std::string getSerial() const;
-	bool odomProvided() const;
+	virtual bool odomProvided() const;
+	virtual bool getPose(double stamp, Transform & pose, cv::Mat & covariance);
 
 	// parameters are set during initialization
 	// D400 series
 	void setEmitterEnabled(bool enabled);
 	void setIRFormat(bool enabled, bool useDepthInsteadOfRightImage);
 	void setResolution(int width, int height, int fps = 30);
+	void setDepthResolution(int width, int height, int fps = 30);
+	void setGlobalTimeSync(bool enabled);
 	void publishInterIMU(bool enabled);
+	/**
+	 * Dual mode (D400+T265 or L500+T265)
+	 * @param enabled enable dual mode
+	 * @param extrinsics the extrinsics between T265 pose frame (middle of the camera) to D400/L500 main camera (without optical rotation).
+	 */
 	void setDualMode(bool enabled, const Transform & extrinsics);
 	void setJsonConfig(const std::string & json);
 	// T265 related parameters
 	void setImagesRectified(bool enabled);
-	void setOdomProvided(bool enabled);
+	void setOdomProvided(bool enabled, bool imageStreamsDisabled=false, bool onlyLeftStream = false);
 
 #ifdef RTABMAP_REALSENSE2
 private:
+	void close();
 	void imu_callback(rs2::frame frame);
 	void pose_callback(rs2::frame frame);
 	void frame_callback(rs2::frame frame);
@@ -93,7 +101,7 @@ private:
 			Transform & pose,
 			unsigned int & poseConfidence,
 			IMU & imu,
-			int maxWaitTimeMs = 35) const;
+			int maxWaitTimeMs = 35);
 #endif
 
 protected:
@@ -101,14 +109,11 @@ protected:
 
 private:
 #ifdef RTABMAP_REALSENSE2
-	rs2::context * ctx_;
-	std::vector<rs2::device *> dev_;
+	rs2::context ctx_;
+	std::vector<rs2::device> dev_;
 	std::string deviceId_;
-	rs2::syncer * syncer_;
+	rs2::syncer syncer_;
 	float depth_scale_meters_;
-	rs2_intrinsics * depthIntrinsics_;
-	rs2_intrinsics * rgbIntrinsics_;
-	rs2_extrinsics * depthToRGBExtrinsics_;
 	cv::Mat depthBuffer_;
 	cv::Mat rgbBuffer_;
 	CameraModel model_;
@@ -121,15 +126,22 @@ private:
 	UMutex imuMutex_;
 	double lastImuStamp_;
 	bool clockSyncWarningShown_;
+	bool imuGlobalSyncWarningShown_;
 
 	bool emitterEnabled_;
 	bool ir_;
 	bool irDepth_;
 	bool rectifyImages_;
 	bool odometryProvided_;
+	bool odometryImagesDisabled_;
+	bool odometryOnlyLeftStream_;
 	int cameraWidth_;
 	int cameraHeight_;
 	int cameraFps_;
+	int cameraDepthWidth_;
+	int cameraDepthHeight_;
+	int cameraDepthFps_;
+	bool globalTimeSync_;
 	bool publishInterIMU_;
 	bool dualMode_;
 	Transform dualExtrinsics_;

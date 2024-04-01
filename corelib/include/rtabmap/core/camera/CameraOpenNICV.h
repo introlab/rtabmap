@@ -27,15 +27,13 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #pragma once
 
-#include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
-
 #include "rtabmap/core/Camera.h"
 #include "rtabmap/core/Version.h"
 
 namespace rtabmap
 {
 
-class RTABMAP_EXP CameraOpenNICV :
+class RTABMAP_CORE_EXPORT CameraOpenNICV :
 	public Camera
 {
 
@@ -45,7 +43,7 @@ public:
 public:
 	CameraOpenNICV(bool asus = false,
 					float imageRate = 0,
-					const Transform & localTransform = CameraModel::opticalRotation());
+					const Transform & localTransform = Transform::getIdentity());
 	virtual ~CameraOpenNICV();
 
 	virtual bool init(const std::string & calibrationFolder = ".", const std::string & cameraName = "");

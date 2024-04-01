@@ -244,7 +244,7 @@ SensorData CameraAREngine::captureImage(CameraInfo * info)
 				cv::Mat outputRGB;
 				if(imageData != nullptr && len>0)
 				{
-					cv::cvtColor(cv::Mat(height+height/2, width, CV_8UC1, (void*)imageData), outputRGB, CV_YUV2BGR_NV21);
+					cv::cvtColor(cv::Mat(height+height/2, width, CV_8UC1, (void*)imageData), outputRGB, cv::COLOR_YUV2BGR_NV21);
 				}
 
 				//Depth
@@ -300,6 +300,11 @@ SensorData CameraAREngine::captureImage(CameraInfo * info)
 	{
 		pose = rtabmap::rtabmap_world_T_opengl_world * pose * rtabmap::opengl_world_T_rtabmap_world;
 		this->poseReceived(pose);
+        // adjust origin
+        if(!getOriginOffset().isNull())
+        {
+            pose = getOriginOffset() * pose;
+        }
 		info->odomPose = pose;
 	}
 	return data;

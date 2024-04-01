@@ -28,7 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef DBDRIVER_H_
 #define DBDRIVER_H_
 
-#include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
+#include "rtabmap/core/rtabmap_core_export.h" // DLL export/import defines
 
 #include <string>
 #include <list>
@@ -59,7 +59,7 @@ class VisualWord;
 //but never, never try to use the same connection simultaneously in
 //two or more threads."
 //
-class RTABMAP_EXP DBDriver : public UThreadNode
+class RTABMAP_CORE_EXPORT DBDriver : public UThreadNode
 {
 public:
 	static DBDriver * create(const ParametersMap & parameters = ParametersMap());
@@ -70,6 +70,7 @@ public:
 	virtual void parseParameters(const ParametersMap & parameters);
 	virtual bool isInMemory() const {return _url.empty();}
 	const std::string & getUrl() const {return _url;}
+	const std::string & getTargetVersion() const {return _targetVersion;}
 
 	void beginTransaction() const;
 	void commit() const;
@@ -95,6 +96,10 @@ public:
 				const cv::Mat & empty,
 				float cellSize,
 				const cv::Point3f & viewpoint);
+	void updateCalibration(
+		int nodeId,
+		const std::vector<CameraModel> & models,
+		const std::vector<StereoCameraModel> & stereoModels);
 	void updateDepthImage(int nodeId, const cv::Mat & image);
 	void updateLaserScan(int nodeId, const LaserScan & scan);
 
@@ -109,7 +114,7 @@ public:
 	cv::Mat load2DMap(float & xMin, float & yMin, float & cellSize) const;
 	void saveOptimizedMesh(
 			const cv::Mat & cloud,
-			const std::vector<std::vector<std::vector<unsigned int> > > & polygons = std::vector<std::vector<std::vector<unsigned int> > >(),      // Textures -> polygons -> vertices
+			const std::vector<std::vector<std::vector<RTABMAP_PCL_INDEX> > > & polygons = std::vector<std::vector<std::vector<RTABMAP_PCL_INDEX> > >(),      // Textures -> polygons -> vertices
 #if PCL_VERSION_COMPARE(>=, 1, 8, 0)
 			const std::vector<std::vector<Eigen::Vector2f, Eigen::aligned_allocator<Eigen::Vector2f> > > & texCoords = std::vector<std::vector<Eigen::Vector2f, Eigen::aligned_allocator<Eigen::Vector2f> > >(), // Textures -> uv coords for each vertex of the polygons
 #else
@@ -117,7 +122,7 @@ public:
 #endif
 			const cv::Mat & textures = cv::Mat()) const; // concatenated textures (assuming square textures with all same size);
 	cv::Mat loadOptimizedMesh(
-			std::vector<std::vector<std::vector<unsigned int> > > * polygons = 0,
+			std::vector<std::vector<std::vector<RTABMAP_PCL_INDEX> > > * polygons = 0,
 #if PCL_VERSION_COMPARE(>=, 1, 8, 0)
 			std::vector<std::vector<Eigen::Vector2f, Eigen::aligned_allocator<Eigen::Vector2f> > > * texCoords = 0,
 #else
@@ -131,7 +136,7 @@ public:
 	bool openConnection(const std::string & url, bool overwritten = false);
 	void closeConnection(bool save = true, const std::string & outputUrl = "");
 	bool isConnected() const;
-	long getMemoryUsed() const; // In bytes
+	unsigned long getMemoryUsed() const; // In bytes
 	std::string getDatabaseVersion() const;
 	long getNodesMemoryUsed() const;
 	long getLinksMemoryUsed() const;
@@ -166,13 +171,13 @@ public:
 	void loadNodeData(Signature * signature, bool images = true, bool scan = true, bool userData = true, bool occupancyGrid = true) const;
 	void loadNodeData(std::list<Signature *> & signatures, bool images = true, bool scan = true, bool userData = true, bool occupancyGrid = true) const;
 	void getNodeData(int signatureId, SensorData & data, bool images = true, bool scan = true, bool userData = true, bool occupancyGrid = true) const;
-	bool getCalibration(int signatureId, std::vector<CameraModel> & models, StereoCameraModel & stereoModel) const;
+	bool getCalibration(int signatureId, std::vector<CameraModel> & models, std::vector<StereoCameraModel> & stereoModels) const;
 	bool getLaserScanInfo(int signatureId, LaserScan & info) const;
 	bool getNodeInfo(int signatureId, Transform & pose, int & mapId, int & weight, std::string & label, double & stamp, Transform & groundTruthPose, std::vector<float> & velocity, GPS & gps, EnvSensors & sensors) const;
 	void loadLinks(int signatureId, std::multimap<int, Link> & links, Link::Type type = Link::kUndef) const;
 	void getWeight(int signatureId, int & weight) const;
 	void getLastNodeIds(std::set<int> & ids) const;
-	void getAllNodeIds(std::set<int> & ids, bool ignoreChildren = false, bool ignoreBadSignatures = false) const;
+	void getAllNodeIds(std::set<int> & ids, bool ignoreChildren = false, bool ignoreBadSignatures = false, bool ignoreIntermediateNodes = false) const;
 	void getAllLinks(std::multimap<int, Link> & links, bool ignoreNullLinks = true, bool withLandmarks = false) const;
 	void getLastNodeId(int & id) const;
 	void getLastMapId(int & mapId) const;
@@ -188,7 +193,7 @@ protected:
 	virtual bool connectDatabaseQuery(const std::string & url, bool overwritten = false) = 0;
 	virtual void disconnectDatabaseQuery(bool save = true, const std::string & outputUrl = "") = 0;
 	virtual bool isConnectedQuery() const = 0;
-	virtual long getMemoryUsedQuery() const = 0; // In bytes
+	virtual unsigned long getMemoryUsedQuery() const = 0; // In bytes
 	virtual bool getDatabaseVersionQuery(std::string & version) const = 0;
 	virtual long getNodesMemoryUsedQuery() const = 0;
 	virtual long getLinksMemoryUsedQuery() const = 0;
@@ -230,6 +235,11 @@ protected:
 			float cellSize,
 			const cv::Point3f & viewpoint) const = 0;
 
+	virtual void updateCalibrationQuery(
+			int nodeId,
+			const std::vector<CameraModel> & models,
+			const std::vector<StereoCameraModel> & stereoModels) const = 0;
+
 	virtual void updateDepthImageQuery(
 			int nodeId,
 			const cv::Mat & image) const = 0;
@@ -247,7 +257,7 @@ protected:
 	virtual cv::Mat load2DMapQuery(float & xMin, float & yMin, float & cellSize) const = 0;
 	virtual void saveOptimizedMeshQuery(
 				const cv::Mat & cloud,
-				const std::vector<std::vector<std::vector<unsigned int> > > & polygons,
+				const std::vector<std::vector<std::vector<RTABMAP_PCL_INDEX> > > & polygons,
 #if PCL_VERSION_COMPARE(>=, 1, 8, 0)
 				const std::vector<std::vector<Eigen::Vector2f, Eigen::aligned_allocator<Eigen::Vector2f> > > & texCoords,
 #else
@@ -255,7 +265,7 @@ protected:
 #endif
 				const cv::Mat & textures) const = 0;
 	virtual cv::Mat loadOptimizedMeshQuery(
-				std::vector<std::vector<std::vector<unsigned int> > > * polygons,
+				std::vector<std::vector<std::vector<RTABMAP_PCL_INDEX> > > * polygons,
 #if PCL_VERSION_COMPARE(>=, 1, 8, 0)
 				std::vector<std::vector<Eigen::Vector2f, Eigen::aligned_allocator<Eigen::Vector2f> > > * texCoords,
 #else
@@ -271,11 +281,11 @@ protected:
 	virtual void loadLinksQuery(int signatureId, std::multimap<int, Link> & links, Link::Type type = Link::kUndef) const = 0;
 
 	virtual void loadNodeDataQuery(std::list<Signature *> & signatures, bool images=true, bool scan=true, bool userData=true, bool occupancyGrid=true) const = 0;
-	virtual bool getCalibrationQuery(int signatureId, std::vector<CameraModel> & models, StereoCameraModel & stereoModel) const = 0;
+	virtual bool getCalibrationQuery(int signatureId, std::vector<CameraModel> & models, std::vector<StereoCameraModel> & stereoModels) const = 0;
 	virtual bool getLaserScanInfoQuery(int signatureId, LaserScan & info) const = 0;
 	virtual bool getNodeInfoQuery(int signatureId, Transform & pose, int & mapId, int & weight, std::string & label, double & stamp, Transform & groundTruthPose, std::vector<float> & velocity, GPS & gps, EnvSensors & sensors) const = 0;
 	virtual void getLastNodeIdsQuery(std::set<int> & ids) const = 0;
-	virtual void getAllNodeIdsQuery(std::set<int> & ids, bool ignoreChildren, bool ignoreBadSignatures) const = 0;
+	virtual void getAllNodeIdsQuery(std::set<int> & ids, bool ignoreChildren, bool ignoreBadSignatures, bool ignoreIntermediateNodes) const = 0;
 	virtual void getAllLinksQuery(std::multimap<int, Link> & links, bool ignoreNullLinks, bool withLandmarks) const = 0;
 	virtual void getLastIdQuery(const std::string & tableName, int & id, const std::string & fieldName="id") const = 0;
 	virtual void getInvertedIndexNiQuery(int signatureId, int & ni) const = 0;
@@ -300,6 +310,7 @@ private:
 	USemaphore _addSem;
 	double _emptyTrashesTime;
 	std::string _url;
+	std::string _targetVersion;
 	bool _timestampUpdate;
 };
 

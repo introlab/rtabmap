@@ -24,8 +24,6 @@
     \brief Basic mathematics functions
 */
 
-#include "rtabmap/utilite/UtiLiteExp.h" // DLL export/import defines
-
 #include <cmath>
 #include <list>
 #include <vector>

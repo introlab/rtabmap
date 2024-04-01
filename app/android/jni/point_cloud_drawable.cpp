@@ -35,7 +35,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "util.h"
 #include "pcl/common/transforms.h"
 
+#ifdef __ANDROID__
 #include <GLES2/gl2.h>
+#else // __APPLE__
+#include <OpenGLES/ES2/gl.h>
+#endif
 
 #define LOW_DEC 2
 #define LOWLOW_DEC 4
@@ -57,7 +61,7 @@ enum PointCloudShaders
 
 // PointCloud shaders
 const std::string kPointCloudVertexShader =
-    "precision mediump float;\n"
+    "precision highp float;\n"
     "precision mediump int;\n"
     "attribute vec3 aVertex;\n"
     "attribute vec3 aColor;\n"
@@ -75,7 +79,7 @@ const std::string kPointCloudVertexShader =
     "  vColor = aColor;\n"
     "}\n";
 const std::string kPointCloudLightingVertexShader =
-    "precision mediump float;\n"
+    "precision highp float;\n"
     "precision mediump int;\n"
     "attribute vec3 aVertex;\n"
 	"attribute vec3 aNormal;\n"
@@ -100,7 +104,7 @@ const std::string kPointCloudLightingVertexShader =
     "}\n";
 
 const std::string kPointCloudFragmentShader =
-    "precision mediump float;\n"
+    "precision highp float;\n"
     "precision mediump int;\n"
 	"uniform float uGainR;\n"
 	"uniform float uGainG;\n"
@@ -127,7 +131,8 @@ const std::string kPointCloudBlendingFragmentShader =
     "  vec4 textureColor = vec4(vColor.z, vColor.y, vColor.x, 1.0);\n"
 	"  float alpha = 1.0;\n"
 	"  vec2 coord = uScreenScale * gl_FragCoord.xy;\n;"
-	"  float depth = texture2D(uDepthTexture, coord).r;\n"
+	"  vec4 depthPacked = texture2D(uDepthTexture, coord);\n"
+	"  float depth = dot(depthPacked, 1./vec4(1.,255.,65025.,16581375.));\n"
 	"  float num =  (2.0 * uNearZ * uFarZ);\n"
 	"  float diff = (uFarZ - uNearZ);\n"
 	"  float add = (uFarZ + uNearZ);\n"
@@ -141,7 +146,7 @@ const std::string kPointCloudBlendingFragmentShader =
     "}\n";
 
 const std::string kPointCloudDepthPackingVertexShader =
-    "precision mediump float;\n"
+    "precision highp float;\n"
     "precision mediump int;\n"
     "attribute vec3 aVertex;\n"
     "uniform mat4 uMVP;\n"
@@ -154,15 +159,15 @@ const std::string kPointCloudDepthPackingFragmentShader =
     "precision highp float;\n"
     "precision mediump int;\n"
     "void main() {\n"
-	"  float toFixed = 255.0/256.0;\n"
-	"  vec4 enc = vec4(1.0, 255.0, 65025.0, 160581375.0) * toFixed * gl_FragCoord.z;\n"
+	"  vec4 enc = vec4(1.,255.,65025.,16581375.) * gl_FragCoord.z;\n"
 	"  enc = fract(enc);\n"
+	"  enc -= enc.yzww * vec2(1./255., 0.).xxxy;\n"
 	"  gl_FragColor = enc;\n"
     "}\n";
 
 // Texture shaders
 const std::string kTextureMeshVertexShader =
-    "precision mediump float;\n"
+    "precision highp float;\n"
     "precision mediump int;\n"
     "attribute vec3 aVertex;\n"
     "attribute vec2 aTexCoord;\n"
@@ -185,7 +190,7 @@ const std::string kTextureMeshVertexShader =
     "  vLightWeighting = 1.0;\n"
     "}\n";
 const std::string kTextureMeshLightingVertexShader =
-    "precision mediump float;\n"
+    "precision highp float;\n"
     "precision mediump int;\n"
     "attribute vec3 aVertex;\n"
 	"attribute vec3 aNormal;\n"
@@ -214,7 +219,7 @@ const std::string kTextureMeshLightingVertexShader =
     "    vLightWeighting=0.5;\n"
     "}\n";
 const std::string kTextureMeshFragmentShader =
-    "precision mediump float;\n"
+    "precision highp float;\n"
     "precision mediump int;\n"
 	"uniform sampler2D uTexture;\n"
 	"uniform float uGainR;\n"
@@ -245,7 +250,8 @@ const std::string kTextureMeshBlendingFragmentShader =
     "  vec4 textureColor = texture2D(uTexture, vTexCoord);\n"
     "  float alpha = 1.0;\n"
 	"  vec2 coord = uScreenScale * gl_FragCoord.xy;\n;"
-	"  float depth = texture2D(uDepthTexture, coord).r;\n"
+	"  vec4 depthPacked = texture2D(uDepthTexture, coord);\n"
+	"  float depth = dot(depthPacked, 1./vec4(1.,255.,65025.,16581375.));\n"
 	"  float num =  (2.0 * uNearZ * uFarZ);\n"
 	"  float diff = (uFarZ - uNearZ);\n"
 	"  float add = (uFarZ + uNearZ);\n"
@@ -255,7 +261,7 @@ const std::string kTextureMeshBlendingFragmentShader =
 	"  float linearFragz = num / (add - ndcFragz * diff);\n" // inverse projection matrix
 	"  if(linearFragz > linearDepth + 0.05)\n"
 	"    alpha=0.0;\n"
-	"  gl_FragColor = vec4(textureColor.r * uGainR * vLightWeighting, textureColor.g * uGainG * vLightWeighting, textureColor.b * uGainB * vLightWeighting, alpha);\n"
+    "  gl_FragColor = vec4(textureColor.r * uGainR * vLightWeighting, textureColor.g * uGainG * vLightWeighting, textureColor.b * uGainB * vLightWeighting, alpha);\n"
     "}\n";
 
 std::vector<GLuint> PointCloudDrawable::shaderPrograms_;
@@ -303,8 +309,8 @@ PointCloudDrawable::PointCloudDrawable(
 		float gainR,
 		float gainG,
 		float gainB) :
-				vertex_buffers_(0),
-				textures_(0),
+				vertex_buffer_(0),
+				texture_(0),
 				nPoints_(0),
 				pose_(rtabmap::Transform::getIdentity()),
 				poseGl_(1.0f),
@@ -314,14 +320,16 @@ PointCloudDrawable::PointCloudDrawable(
 				gainG_(gainG),
 				gainB_(gainB)
 {
+    index_buffers_.resize(6, 0);
+    index_buffers_count_.resize(6, 0);
 	updateCloud(cloud, indices);
 }
 
 PointCloudDrawable::PointCloudDrawable(
 		const rtabmap::Mesh & mesh,
 		bool createWireframe) :
-				vertex_buffers_(0),
-				textures_(0),
+				vertex_buffer_(0),
+				texture_(0),
 				nPoints_(0),
 				pose_(rtabmap::Transform::getIdentity()),
 				poseGl_(1.0f),
@@ -331,64 +339,83 @@ PointCloudDrawable::PointCloudDrawable(
 				gainG_(1.0f),
 				gainB_(1.0f)
 {
+    index_buffers_.resize(6, 0);
+    index_buffers_count_.resize(6, 0);
 	updateMesh(mesh, createWireframe);
 }
 
 PointCloudDrawable::~PointCloudDrawable()
 {
-	LOGI("Freeing cloud buffer %d", vertex_buffers_);
-	if (vertex_buffers_)
+	LOGI("Freeing cloud buffer %d", vertex_buffer_);
+	if (vertex_buffer_)
 	{
-		glDeleteBuffers(1, &vertex_buffers_);
+		glDeleteBuffers(1, &vertex_buffer_);
 		tango_gl::util::CheckGlError("PointCloudDrawable::~PointCloudDrawable()");
-		vertex_buffers_ = 0;
+		vertex_buffer_ = 0;
 	}
 
-	if (textures_)
+	if (texture_)
 	{
-		glDeleteTextures(1, &textures_);
+		glDeleteTextures(1, &texture_);
 		tango_gl::util::CheckGlError("PointCloudDrawable::~PointCloudDrawable()");
-		textures_ = 0;
+		texture_ = 0;
 	}
+    
+    for(size_t i=0; i<index_buffers_.size(); ++i)
+    {
+        if(index_buffers_[i])
+        {
+            glDeleteBuffers(1, &index_buffers_[i]);
+            index_buffers_[i] = 0;
+            tango_gl::util::CheckGlError("PointCloudDrawable::~PointCloudDrawable()");
+        }
+    }
 }
 
 void PointCloudDrawable::updatePolygons(const std::vector<pcl::Vertices> & polygons, const std::vector<pcl::Vertices> & polygonsLowRes, bool createWireframe)
 {
-	LOGD("Update polygons");
-	polygons_.clear();
-	polygonLines_.clear();
-	polygonsLowRes_.clear();
-	polygonLinesLowRes_.clear();
+    for(int i=0; i<4; ++i)
+    {
+        if(index_buffers_[i])
+        {
+            glDeleteBuffers(1, &index_buffers_[i]);
+            index_buffers_[i] = 0;
+            tango_gl::util::CheckGlError("PointCloudDrawable::updatePolygons() clearing polygon buffers");
+        }
+    }
+    
+	//LOGD("Update polygons");
 	if(polygons.size() && organizedToDenseIndices_.size())
 	{
-		unsigned int polygonSize = polygons[0].vertices.size();
+		size_t polygonSize = polygons[0].vertices.size();
 		UASSERT(polygonSize == 3);
-		polygons_.resize(polygons.size() * polygonSize);
+        std::vector<std::vector<GLuint> > indexes(4);
+        indexes[0].resize(polygons.size() * polygonSize);
 		if(createWireframe)
-			polygonLines_.resize(polygons_.size()*2);
+            indexes[2].resize(indexes[0].size()*2);
 		int oi = 0;
 		int li = 0;
-		for(unsigned int i=0; i<polygons.size(); ++i)
+        for(size_t i=0; i<polygons.size(); ++i)
 		{
 			UASSERT(polygons[i].vertices.size() == polygonSize);
 			for(unsigned int j=0; j<polygonSize; ++j)
 			{
-				polygons_[oi++] = organizedToDenseIndices_.at(polygons[i].vertices[j]);
+                indexes[0][oi++] = organizedToDenseIndices_.at(polygons[i].vertices[j]);
 				if(createWireframe)
 				{
-					polygonLines_[li++] = organizedToDenseIndices_.at(polygons[i].vertices[j]);
-					polygonLines_[li++] = organizedToDenseIndices_.at(polygons[i].vertices[(j+1) % polygonSize]);
+                    indexes[2][li++] = organizedToDenseIndices_.at(polygons[i].vertices[j]);
+                    indexes[2][li++] = organizedToDenseIndices_.at(polygons[i].vertices[(j+1) % polygonSize]);
 				}
 			}
 		}
 
 		if(polygonsLowRes.size())
 		{
-			unsigned int polygonSize = polygonsLowRes[0].vertices.size();
+			size_t polygonSize = polygonsLowRes[0].vertices.size();
 			UASSERT(polygonSize == 3);
-			polygonsLowRes_.resize(polygonsLowRes.size() * polygonSize);
+            indexes[1].resize(polygonsLowRes.size() * polygonSize);
 			if(createWireframe)
-				polygonLinesLowRes_.resize(polygonsLowRes_.size()*2);
+                indexes[3].resize(indexes[1].size()*2);
 			int oi = 0;
 			int li = 0;
 			for(unsigned int i=0; i<polygonsLowRes.size(); ++i)
@@ -396,15 +423,44 @@ void PointCloudDrawable::updatePolygons(const std::vector<pcl::Vertices> & polyg
 				UASSERT(polygonsLowRes[i].vertices.size() == polygonSize);
 				for(unsigned int j=0; j<polygonSize; ++j)
 				{
-					polygonsLowRes_[oi++] = organizedToDenseIndices_.at(polygonsLowRes[i].vertices[j]);
+                    indexes[1][oi++] = organizedToDenseIndices_.at(polygonsLowRes[i].vertices[j]);
 					if(createWireframe)
 					{
-						polygonLinesLowRes_[li++] = organizedToDenseIndices_.at(polygonsLowRes[i].vertices[j]);
-						polygonLinesLowRes_[li++] = organizedToDenseIndices_.at(polygonsLowRes[i].vertices[(j+1)%polygonSize]);
+                        indexes[3][li++] = organizedToDenseIndices_.at(polygonsLowRes[i].vertices[j]);
+                        indexes[3][li++] = organizedToDenseIndices_.at(polygonsLowRes[i].vertices[(j+1)%polygonSize]);
 					}
 				}
 			}
 		}
+        
+        // Generate index buffers
+        for(size_t i=0; i<indexes.size(); ++i)
+        {
+            if(!indexes[i].empty())
+            {
+                glGenBuffers(1, &index_buffers_[i]);
+                if(!index_buffers_[i])
+                {
+                    LOGE("OpenGL: could not generate index buffer %ld\n", i);
+                    return;
+                }
+                
+                LOGD("Adding polygon index %ld size=%ld", i, indexes[i].size());
+                
+                glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_buffers_[i]);
+                glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(uint32_t) * indexes[i].size(), indexes[i].data(), GL_STATIC_DRAW);
+                glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+                index_buffers_count_[i] = (int)indexes[i].size();
+
+                GLint error = glGetError();
+                if(error != GL_NO_ERROR)
+                {
+                    LOGE("OpenGL: Could not allocate indexes (0x%x)\n", error);
+                    index_buffers_[i] = 0;
+                    return;
+                }
+            }
+        }
 	}
 }
 
@@ -412,43 +468,51 @@ void PointCloudDrawable::updateCloud(const pcl::PointCloud<pcl::PointXYZRGB>::Pt
 {
 	UASSERT(cloud.get() && !cloud->empty());
 	nPoints_ = 0;
-	polygons_.clear();
-	polygonsLowRes_.clear();
-	verticesLowRes_.clear();
-	verticesLowLowRes_.clear();
 	aabbMinModel_ = aabbMinWorld_ = pcl::PointXYZ(1000,1000,1000);
 	aabbMaxModel_ = aabbMaxWorld_ = pcl::PointXYZ(-1000,-1000,-1000);
 
-	if (vertex_buffers_)
+	if (vertex_buffer_)
 	{
-		glDeleteBuffers(1, &vertex_buffers_);
-		tango_gl::util::CheckGlError("PointCloudDrawable::~PointCloudDrawable()");
-		vertex_buffers_ = 0;
+		glDeleteBuffers(1, &vertex_buffer_);
+		tango_gl::util::CheckGlError("PointCloudDrawable::updateCloud() clear vertex buffer");
+		vertex_buffer_ = 0;
 	}
 
-	if (textures_)
+	if (texture_)
 	{
-		glDeleteTextures(1, &textures_);
-		tango_gl::util::CheckGlError("PointCloudDrawable::~PointCloudDrawable()");
-		textures_ = 0;
+		glDeleteTextures(1, &texture_);
+		tango_gl::util::CheckGlError("PointCloudDrawable::updateCloud() clear texture buffer");
+		texture_ = 0;
 	}
+    
+    for(size_t i=0; i<index_buffers_.size(); ++i)
+    {
+        if(index_buffers_[i])
+        {
+            glDeleteBuffers(1, &index_buffers_[i]);
+            index_buffers_[i] = 0;
+            tango_gl::util::CheckGlError("PointCloudDrawable::updateCloud() clear index buffer");
+        }
+    }
 
-	glGenBuffers(1, &vertex_buffers_);
-	if(!vertex_buffers_)
+	glGenBuffers(1, &vertex_buffer_);
+	if(!vertex_buffer_)
 	{
 		LOGE("OpenGL: could not generate vertex buffers\n");
 		return;
 	}
 
-	LOGI("Creating cloud buffer %d", vertex_buffers_);
+	LOGI("Creating cloud buffer %d", vertex_buffer_);
 	std::vector<float> vertices;
-	int totalPoints = 0;
+	size_t totalPoints = 0;
+    std::vector<GLuint> verticesLowRes;
+    std::vector<GLuint> verticesLowLowRes;
 	if(indices.get() && indices->size())
 	{
 		totalPoints = indices->size();
 		vertices.resize(indices->size()*4);
-		verticesLowRes_.resize(cloud->isOrganized()?totalPoints:0);
-		verticesLowLowRes_.resize(cloud->isOrganized()?totalPoints:0);
+		verticesLowRes.resize(cloud->isOrganized()?totalPoints:0);
+		verticesLowLowRes.resize(cloud->isOrganized()?totalPoints:0);
 		int oi_low = 0;
 		int oi_lowlow = 0;
 		for(unsigned int i=0; i<indices->size(); ++i)
@@ -465,23 +529,23 @@ void PointCloudDrawable::updateCloud(const pcl::PointCloud<pcl::PointXYZRGB>::Pt
 			{
 				if(indices->at(i)%LOW_DEC == 0 && (indices->at(i)/cloud->width) % LOW_DEC == 0)
 				{
-					verticesLowRes_[oi_low++] = i;
+					verticesLowRes[oi_low++] = i;
 				}
 				if(indices->at(i)%LOWLOW_DEC == 0 && (indices->at(i)/cloud->width) % LOWLOW_DEC == 0)
 				{
-					verticesLowLowRes_[oi_lowlow++] = i;
+					verticesLowLowRes[oi_lowlow++] = i;
 				}
 			}
 		}
-		verticesLowRes_.resize(oi_low);
-		verticesLowLowRes_.resize(oi_lowlow);
+		verticesLowRes.resize(oi_low);
+		verticesLowLowRes.resize(oi_lowlow);
 	}
 	else
 	{
 		totalPoints = cloud->size();
 		vertices.resize(cloud->size()*4);
-		verticesLowRes_.resize(cloud->isOrganized()?totalPoints:0);
-		verticesLowLowRes_.resize(cloud->isOrganized()?totalPoints:0);
+		verticesLowRes.resize(cloud->isOrganized()?totalPoints:0);
+		verticesLowLowRes.resize(cloud->isOrganized()?totalPoints:0);
 		int oi_low = 0;
 		int oi_lowlow = 0;
 		for(unsigned int i=0; i<cloud->size(); ++i)
@@ -498,19 +562,19 @@ void PointCloudDrawable::updateCloud(const pcl::PointCloud<pcl::PointXYZRGB>::Pt
 			{
 				if(i%LOW_DEC == 0 && (i/cloud->width) % LOW_DEC == 0)
 				{
-					verticesLowRes_[oi_low++] = i;
+					verticesLowRes[oi_low++] = i;
 				}
 				if(i%LOWLOW_DEC == 0 && (i/cloud->width) % LOWLOW_DEC == 0)
 				{
-					verticesLowLowRes_[oi_lowlow++] = i;
+					verticesLowLowRes[oi_lowlow++] = i;
 				}
 			}
 		}
-		verticesLowRes_.resize(oi_low);
-		verticesLowLowRes_.resize(oi_lowlow);
+		verticesLowRes.resize(oi_low);
+		verticesLowLowRes.resize(oi_lowlow);
 	}
 
-	glBindBuffer(GL_ARRAY_BUFFER, vertex_buffers_);
+	glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer_);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat) * (int)vertices.size(), (const void *)vertices.data(), GL_STATIC_DRAW);
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 
@@ -518,11 +582,40 @@ void PointCloudDrawable::updateCloud(const pcl::PointCloud<pcl::PointXYZRGB>::Pt
 	if(error != GL_NO_ERROR)
 	{
 		LOGE("OpenGL: Could not allocate point cloud (0x%x)\n", error);
-		vertex_buffers_ = 0;
+		vertex_buffer_ = 0;
 		return;
 	}
+    
+    // vertex index buffers
+    for(size_t i=4; i<5; ++i)
+    {
+        if((i==4 && !verticesLowRes.empty()) ||
+           (i==5 && !verticesLowLowRes.empty()))
+        {
+            glGenBuffers(1, &index_buffers_[i]);
+            if(!index_buffers_[i])
+            {
+                LOGE("OpenGL: could not generate index buffer %ld\n", i);
+                return;
+            }
+            
+            index_buffers_count_[i] = i==4?(int)verticesLowRes.size():(int)verticesLowLowRes.size();
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_buffers_[i]);
+            glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(uint32_t) * index_buffers_count_[i], i==4?verticesLowRes.data():verticesLowLowRes.data(), GL_STATIC_DRAW);
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+            
 
-	nPoints_ = totalPoints;
+            GLint error = glGetError();
+            if(error != GL_NO_ERROR)
+            {
+                LOGE("OpenGL: Could not allocate indexes (0x%x)\n", error);
+                index_buffers_[i] = 0;
+                return;
+            }
+        }
+    }
+
+	nPoints_ = (int)totalPoints;
 }
 
 void PointCloudDrawable::updateMesh(const rtabmap::Mesh & mesh, bool createWireframe)
@@ -532,12 +625,22 @@ void PointCloudDrawable::updateMesh(const rtabmap::Mesh & mesh, bool createWiref
 	aabbMinModel_ = aabbMinWorld_ = pcl::PointXYZ(1000,1000,1000);
 	aabbMaxModel_ = aabbMaxWorld_ = pcl::PointXYZ(-1000,-1000,-1000);
 
-	if (vertex_buffers_)
+	if (vertex_buffer_)
 	{
-		glDeleteBuffers(1, &vertex_buffers_);
-		tango_gl::util::CheckGlError("PointCloudDrawable::~PointCloudDrawable()");
-		vertex_buffers_ = 0;
+		glDeleteBuffers(1, &vertex_buffer_);
+		tango_gl::util::CheckGlError("PointCloudDrawable::updateMesh() clear vertex buffer");
+		vertex_buffer_ = 0;
 	}
+    
+    for(size_t i=0; i<index_buffers_.size(); ++i)
+    {
+        if(index_buffers_[i])
+        {
+            glDeleteBuffers(1, &index_buffers_[i]);
+            index_buffers_[i] = 0;
+            tango_gl::util::CheckGlError("PointCloudDrawable::updateMesh() clear index buffer");
+        }
+    }
 
 	gainR_ = mesh.gains[0];
 	gainG_ = mesh.gains[1];
@@ -546,17 +649,17 @@ void PointCloudDrawable::updateMesh(const rtabmap::Mesh & mesh, bool createWiref
 	bool textureUpdate = false;
 	if(!mesh.texture.empty() && mesh.texture.type() == CV_8UC3)
 	{
-		if (textures_)
+		if (texture_)
 		{
-			glDeleteTextures(1, &textures_);
-			tango_gl::util::CheckGlError("PointCloudDrawable::~PointCloudDrawable()");
-			textures_ = 0;
+			glDeleteTextures(1, &texture_);
+			tango_gl::util::CheckGlError("PointCloudDrawable::updateMesh() clear texture buffer");
+			texture_ = 0;
 		}
 		textureUpdate = true;
 	}
 
-	glGenBuffers(1, &vertex_buffers_);
-	if(!vertex_buffers_)
+	glGenBuffers(1, &vertex_buffer_);
+	if(!vertex_buffer_)
 	{
 		LOGE("OpenGL: could not generate vertex buffers\n");
 		return;
@@ -564,10 +667,10 @@ void PointCloudDrawable::updateMesh(const rtabmap::Mesh & mesh, bool createWiref
 
 	if(textureUpdate)
 	{
-		glGenTextures(1, &textures_);
-		if(!textures_)
+		glGenTextures(1, &texture_);
+		if(!texture_)
 		{
-			vertex_buffers_ = 0;
+			vertex_buffer_ = 0;
 			LOGE("OpenGL: could not generate texture buffers\n");
 			return;
 		}
@@ -578,18 +681,20 @@ void PointCloudDrawable::updateMesh(const rtabmap::Mesh & mesh, bool createWiref
 	int totalPoints = 0;
 	std::vector<pcl::Vertices> polygons = mesh.polygons;
 	std::vector<pcl::Vertices> polygonsLowRes;
-	hasNormals_ = mesh.normals.get() && mesh.normals->size() == mesh.cloud->size();
+    hasNormals_ = mesh.normals.get() && mesh.normals->size() == mesh.cloud->size();
 	UASSERT(!hasNormals_ || mesh.cloud->size() == mesh.normals->size());
 	if(mesh.cloud->isOrganized()) // assume organized mesh
 	{
 		polygonsLowRes = mesh.polygonsLowRes; // only in organized we keep the low res
 		organizedToDenseIndices_ = std::vector<unsigned int>(mesh.cloud->width*mesh.cloud->height, -1);
-		totalPoints = mesh.indices->size();
-		verticesLowRes_.resize(totalPoints);
-		verticesLowLowRes_.resize(totalPoints);
+		totalPoints = (int)mesh.indices->size();
+        std::vector<GLuint> verticesLowRes;
+        std::vector<GLuint> verticesLowLowRes;
+        verticesLowRes.resize(totalPoints);
+        verticesLowLowRes.resize(totalPoints);
 		int oi_low = 0;
 		int oi_lowlow = 0;
-		if(textures_ && polygons.size())
+		if(texture_ && polygons.size())
 		{
 			int items = hasNormals_?9:6;
 			vertices = std::vector<float>(mesh.indices->size()*items);
@@ -622,11 +727,11 @@ void PointCloudDrawable::updateMesh(const rtabmap::Mesh & mesh, bool createWiref
 
 				if(mesh.indices->at(i)%LOW_DEC == 0 && (mesh.indices->at(i)/mesh.cloud->width) % LOW_DEC == 0)
 				{
-					verticesLowRes_[oi_low++] = i;
+                    verticesLowRes[oi_low++] = i;
 				}
 				if(mesh.indices->at(i)%LOWLOW_DEC == 0 && (mesh.indices->at(i)/mesh.cloud->width) % LOWLOW_DEC == 0)
 				{
-					verticesLowLowRes_[oi_lowlow++] = i;
+                    verticesLowLowRes[oi_lowlow++] = i;
 				}
 			}
 		}
@@ -657,20 +762,48 @@ void PointCloudDrawable::updateMesh(const rtabmap::Mesh & mesh, bool createWiref
 
 				if(mesh.indices->at(i)%LOW_DEC == 0 && (mesh.indices->at(i)/mesh.cloud->width) % LOW_DEC == 0)
 				{
-					verticesLowRes_[oi_low++] = i;
+                    verticesLowRes[oi_low++] = i;
 				}
 				if(mesh.indices->at(i)%LOWLOW_DEC == 0 && (mesh.indices->at(i)/mesh.cloud->width) % LOWLOW_DEC == 0)
 				{
-					verticesLowLowRes_[oi_lowlow++] = i;
+                    verticesLowLowRes[oi_lowlow++] = i;
 				}
 			}
 		}
-		verticesLowRes_.resize(oi_low);
-		verticesLowLowRes_.resize(oi_lowlow);
+        verticesLowRes.resize(oi_low);
+        verticesLowLowRes.resize(oi_lowlow);
+        
+        // vertex index buffers
+        for(size_t i=4; i<5; ++i)
+        {
+            if((i==4 && !verticesLowRes.empty()) ||
+               (i==5 && !verticesLowLowRes.empty()))
+            {
+                glGenBuffers(1, &index_buffers_[i]);
+                if(!index_buffers_[i])
+                {
+                    LOGE("OpenGL: could not generate index buffer %ld\n", i);
+                    return;
+                }
+                
+                index_buffers_count_[i] = i==4?(int)verticesLowRes.size():(int)verticesLowLowRes.size();
+                glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_buffers_[i]);
+                glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(uint32_t) * index_buffers_count_[i], i==4?verticesLowRes.data():verticesLowLowRes.data(), GL_STATIC_DRAW);
+                glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+
+                GLint error = glGetError();
+                if(error != GL_NO_ERROR)
+                {
+                    LOGE("OpenGL: Could not allocate indexes (0x%x)\n", error);
+                    index_buffers_[i] = 0;
+                    return;
+                }
+            }
+        }
 	}
 	else // assume dense mesh with texCoords set to polygons
 	{
-		if(textures_ && polygons.size() && mesh.normals->size())
+		if(texture_ && polygons.size())
 		{
 			//LOGD("Dense mesh with texture (%d texCoords %d points %d polygons %dx%d)",
 			//		(int)mesh.texCoords.size(), (int)mesh.cloud->size(), (int)mesh.polygons.size(), texture.cols, texture.rows);
@@ -679,14 +812,14 @@ void PointCloudDrawable::updateMesh(const rtabmap::Mesh & mesh, bool createWiref
 			//  tex_coordinates should be linked to points, not
 			//  polygon vertices. Points linked to multiple different texCoords (different textures) should
 			//  be duplicated.
-			totalPoints = mesh.texCoords.size();
-			vertices = std::vector<float>(mesh.texCoords.size()*9);
+			totalPoints = (int)mesh.texCoords.size();
+            int items = hasNormals_?9:6;
+			vertices = std::vector<float>(mesh.texCoords.size()*items);
 			organizedToDenseIndices_ = std::vector<unsigned int>(totalPoints, -1);
 
 			UASSERT_MSG(mesh.texCoords.size() == polygons[0].vertices.size()*polygons.size(),
 					uFormat("%d vs %d x %d", (int)mesh.texCoords.size(), (int)polygons[0].vertices.size(), (int)polygons.size()).c_str());
 
-			int items = hasNormals_?9:6;
 			unsigned int oi=0;
 			for(unsigned int i=0; i<polygons.size(); ++i)
 			{
@@ -737,7 +870,7 @@ void PointCloudDrawable::updateMesh(const rtabmap::Mesh & mesh, bool createWiref
 		}
 		else
 		{
-			totalPoints = mesh.cloud->size();
+			totalPoints = (int)mesh.cloud->size();
 			//LOGD("Dense mesh");
 			int items = hasNormals_?7:4;
 			organizedToDenseIndices_ = std::vector<unsigned int>(totalPoints, -1);
@@ -765,7 +898,7 @@ void PointCloudDrawable::updateMesh(const rtabmap::Mesh & mesh, bool createWiref
 		}
 	}
 
-	glBindBuffer(GL_ARRAY_BUFFER, vertex_buffers_);
+	glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer_);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat) * (int)vertices.size(), (const void *)vertices.data(), GL_STATIC_DRAW);
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 
@@ -773,11 +906,11 @@ void PointCloudDrawable::updateMesh(const rtabmap::Mesh & mesh, bool createWiref
 	if(error != GL_NO_ERROR)
 	{
 		LOGE("OpenGL: Could not allocate point cloud (0x%x)\n", error);
-		vertex_buffers_ = 0;
+		vertex_buffer_ = 0;
 		return;
 	}
 
-	if(textures_ && textureUpdate)
+	if(texture_ && textureUpdate)
 	{
 		//GLint maxTextureSize = 0;
 		//glGetIntegerv(GL_MAX_TEXTURE_SIZE, &maxTextureSize);
@@ -787,13 +920,13 @@ void PointCloudDrawable::updateMesh(const rtabmap::Mesh & mesh, bool createWiref
 		//LOGW("maxTextureUnits=%d", maxTextureUnits);
 
 		// gen texture from image
-		glBindTexture(GL_TEXTURE_2D, textures_);
+		glBindTexture(GL_TEXTURE_2D, texture_);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 		cv::Mat rgbImage;
-		cv::cvtColor(mesh.texture, rgbImage, CV_BGR2RGBA);
+		cv::cvtColor(mesh.texture, rgbImage, cv::COLOR_BGR2RGBA);
 
 		glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
 		//glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
@@ -805,20 +938,17 @@ void PointCloudDrawable::updateMesh(const rtabmap::Mesh & mesh, bool createWiref
 		if(error != GL_NO_ERROR)
 		{
 			LOGE("OpenGL: Could not allocate texture (0x%x)\n", error);
-			textures_ = 0;
+			texture_ = 0;
 
-			glDeleteBuffers(1, &vertex_buffers_);
-			vertex_buffers_ = 0;
+			glDeleteBuffers(1, &vertex_buffer_);
+			vertex_buffer_ = 0;
 			return;
 		}
 	}
 
 	nPoints_ = totalPoints;
 
-	if(polygons_.size() != polygons.size())
-	{
-		updatePolygons(polygons, polygonsLowRes, createWireframe);
-	}
+    updatePolygons(polygons, polygonsLowRes, createWireframe);
 
 	if(!pose_.isNull())
 	{
@@ -880,14 +1010,14 @@ void PointCloudDrawable::Render(
 		bool packDepthToColorChannel,
 		bool wireFrame) const
 {
-	if(vertex_buffers_ && nPoints_ && visible_ && !shaderPrograms_.empty())
+	if(vertex_buffer_ && nPoints_ && visible_ && !shaderPrograms_.empty())
 	{
 		if(packDepthToColorChannel || !hasNormals_)
 		{
 			lighting = false;
 		}
 
-		if(packDepthToColorChannel || !(meshRendering && textureRendering && textures_))
+		if(packDepthToColorChannel || !(meshRendering && textureRendering && texture_))
 		{
 			textureRendering = false;
 		}
@@ -990,7 +1120,7 @@ void PointCloudDrawable::Render(
 				// Texture activate unit 0
 				glActiveTexture(GL_TEXTURE0);
 				// Bind the texture to this unit.
-				glBindTexture(GL_TEXTURE_2D, textures_);
+				glBindTexture(GL_TEXTURE_2D, texture_);
 				// Tell the texture uniform sampler to use this texture in the shader by binding to texture unit 0.
 				GLuint texture_handle = glGetUniformLocation(program, "uTexture");
 				glUniform1i(texture_handle, 0);
@@ -1006,8 +1136,8 @@ void PointCloudDrawable::Render(
 		}
 		tango_gl::util::CheckGlError("Pointcloud::Render() common");
 
-		glBindBuffer(GL_ARRAY_BUFFER, vertex_buffers_);
-		if(textures_)
+		glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer_);
+		if(texture_)
 		{
 			glVertexAttribPointer(attribute_vertex, 3, GL_FLOAT, GL_FALSE, (hasNormals_?9:6)*sizeof(GLfloat), 0);
 			if(textureRendering)
@@ -1038,53 +1168,49 @@ void PointCloudDrawable::Render(
 		tango_gl::util::CheckGlError("Pointcloud::Render() set attribute pointer");
 
 		UTimer drawTime;
-		if(textureRendering)
+		if((textureRendering || meshRendering) && index_buffers_[0])
 		{
-			if(distanceToCameraSqr<16.0f || polygonsLowRes_.empty())
+            float dist = meshRendering?50.0f:16.0f;
+			if(distanceToCameraSqr<dist || index_buffers_[1]==0)
 			{
-				wireFrame = wireFrame && polygonLines_.size();
+				wireFrame = wireFrame && index_buffers_[2];
 				if(wireFrame)
-					glDrawElements(GL_LINES, polygonLines_.size(), GL_UNSIGNED_INT, polygonLines_.data());
+                {
+                    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_buffers_[2]);
+                    glDrawElements(GL_LINES, index_buffers_count_[2], GL_UNSIGNED_INT, 0);
+                }
 				else
-					glDrawElements(GL_TRIANGLES, polygons_.size(), GL_UNSIGNED_INT, polygons_.data());
+                {
+                    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_buffers_[0]);
+                    glDrawElements(GL_TRIANGLES, index_buffers_count_[0], GL_UNSIGNED_INT, 0);
+                }
 			}
 			else
 			{
-				wireFrame = wireFrame && polygonLinesLowRes_.size();
+				wireFrame = wireFrame && index_buffers_[3];
 				if(wireFrame)
-					glDrawElements(GL_LINES, polygonLinesLowRes_.size(), GL_UNSIGNED_INT, polygonLinesLowRes_.data());
+                {
+                    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_buffers_[3]);
+                    glDrawElements(GL_LINES, index_buffers_count_[3], GL_UNSIGNED_INT, 0);
+                }
 				else
-					glDrawElements(GL_TRIANGLES, polygonsLowRes_.size(), GL_UNSIGNED_INT, polygonsLowRes_.data());
+                {
+                    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_buffers_[1]);
+                    glDrawElements(GL_TRIANGLES, index_buffers_count_[1], GL_UNSIGNED_INT, 0);
+                }
 			}
 		}
-		else if(meshRendering && polygons_.size())
+		else if(index_buffers_[4])
 		{
-			if(distanceToCameraSqr<50.0f || polygonsLowRes_.empty())
+			if(distanceToCameraSqr>600.0f && index_buffers_[5])
 			{
-				wireFrame = wireFrame && polygonLines_.size();
-				if(wireFrame)
-					glDrawElements(GL_LINES, polygonLines_.size(), GL_UNSIGNED_INT, polygonLines_.data());
-				else
-					glDrawElements(GL_TRIANGLES, polygons_.size(), GL_UNSIGNED_INT, polygons_.data());
-			}
-			else
-			{
-				wireFrame = wireFrame && polygonLinesLowRes_.size();
-				if(wireFrame)
-					glDrawElements(GL_LINES, polygonLinesLowRes_.size(), GL_UNSIGNED_INT, polygonLinesLowRes_.data());
-				else
-					glDrawElements(GL_TRIANGLES, polygonsLowRes_.size(), GL_UNSIGNED_INT, polygonsLowRes_.data());
-			}
-		}
-		else if(!verticesLowRes_.empty())
-		{
-			if(distanceToCameraSqr>600.0f)
-			{
-				glDrawElements(GL_POINTS, verticesLowLowRes_.size(), GL_UNSIGNED_INT, verticesLowLowRes_.data());
+                glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_buffers_[5]);
+                glDrawElements(GL_POINTS, index_buffers_count_[5], GL_UNSIGNED_INT, 0);
 			}
 			else if(distanceToCameraSqr>150.0f)
 			{
-				glDrawElements(GL_POINTS, verticesLowRes_.size(), GL_UNSIGNED_INT, verticesLowRes_.data());
+                glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_buffers_[4]);
+                glDrawElements(GL_POINTS, index_buffers_count_[4], GL_UNSIGNED_INT, 0);
 			}
 			else
 			{
@@ -1100,6 +1226,7 @@ void PointCloudDrawable::Render(
 
 		glDisableVertexAttribArray(0);
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
 		glUseProgram(0);
 		tango_gl::util::CheckGlError("Pointcloud::Render() cleaning");

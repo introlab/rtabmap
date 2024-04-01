@@ -28,23 +28,23 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef CORELIB_SRC_FLANNINDEX_H_
 #define CORELIB_SRC_FLANNINDEX_H_
 
-#include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
+#include "rtabmap/core/rtabmap_core_export.h" // DLL export/import defines
 #include <list>
 #include <opencv2/opencv.hpp>
 
 namespace rtabmap {
 
-class RTABMAP_EXP FlannIndex
+class RTABMAP_CORE_EXPORT FlannIndex
 {
 public:
 	FlannIndex();
 	virtual ~FlannIndex();
 
 	void release();
-	unsigned int indexedFeatures() const;
+	size_t indexedFeatures() const;
 
-	// return KB
-	unsigned int memoryUsed() const;
+	// return Bytes
+	size_t memoryUsed() const;
 
 	// Note that useDistanceL1 doesn't have any effect if LSH is used
 	void buildLinearIndex(
@@ -74,7 +74,7 @@ public:
 	int featuresType() const {return featuresType_;}
 	int featuresDim() const {return featuresDim_;}
 
-	unsigned int addPoints(const cv::Mat & features);
+	std::vector<unsigned int> addPoints(const cv::Mat & features);
 
 	void removePoint(unsigned int index);
 

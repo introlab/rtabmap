@@ -31,6 +31,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/util3d_transforms.h"
 #include "rtabmap/core/OdometryEvent.h"
 #include "rtabmap/core/util2d.h"
+#include <glm/gtx/transform.hpp>
 
 namespace rtabmap {
 
@@ -55,6 +56,8 @@ CameraMobile::CameraMobile(bool smoothing) :
 		Camera(10),
 		deviceTColorCamera_(Transform::getIdentity()),
 		spinOncePreviousStamp_(0.0),
+		textureId_(0),
+		uvs_initialized_(false),
 		previousStamp_(0.0),
 		stampEpochOffset_(0.0),
 		smoothing_(smoothing),
@@ -84,10 +87,22 @@ void CameraMobile::close()
 	originUpdate_ = false;
 	pose_ = Transform();
 	data_ = SensorData();
+
+    if(textureId_ != 0)
+    {
+        glDeleteTextures(1, &textureId_);
+        textureId_ = 0;
+    }
 }
 
 void CameraMobile::resetOrigin()
 {
+	previousPose_.setNull();
+	previousStamp_ = 0.0;
+	lastKnownGPS_ = GPS();
+	lastEnvSensors_.clear();
+	pose_ = Transform();
+	data_ = SensorData();
 	originUpdate_ = true;
 }
 
@@ -124,11 +139,60 @@ void CameraMobile::setGPS(const GPS & gps)
 	lastKnownGPS_ = gps;
 }
 
-void CameraMobile::setData(const SensorData & data, const Transform & pose)
+void CameraMobile::setData(const SensorData & data, const Transform & pose, const glm::mat4 & viewMatrix, const glm::mat4 & projectionMatrix, const float * texCoord)
 {
 	LOGD("CameraMobile::setData pose=%s stamp=%f", pose.prettyPrint().c_str(), data.stamp());
 	data_ = data;
-	pose_ = pose;
+    pose_ = pose;
+
+    viewMatrix_ = viewMatrix;
+    projectionMatrix_ = projectionMatrix;
+    
+    // adjust origin
+    if(!originOffset_.isNull())
+    {
+        pose_ = originOffset_ * pose_;
+        viewMatrix_ = glm::inverse(rtabmap::glmFromTransform(rtabmap::opengl_world_T_rtabmap_world * originOffset_ *rtabmap::rtabmap_world_T_opengl_world)*glm::inverse(viewMatrix_));
+    }
+    
+    if(textureId_ == 0)
+    {
+    	glGenTextures(1, &textureId_);
+    }
+
+    if(texCoord)
+    {
+        memcpy(transformed_uvs_, texCoord, 8*sizeof(float));
+        uvs_initialized_ = true;
+    }
+    
+    LOGD("CameraMobile::setData textureId_=%d", (int)textureId_);
+
+    if(textureId_ != 0 && texCoord != 0)
+    {
+        cv::Mat rgbImage;
+        cv::cvtColor(data.imageRaw(), rgbImage, cv::COLOR_BGR2RGBA);
+        
+        glBindTexture(GL_TEXTURE_2D, textureId_);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        
+        glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+        //glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+        //glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
+        //glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, rgbImage.cols, rgbImage.rows, 0, GL_RGBA, GL_UNSIGNED_BYTE, rgbImage.data);
+
+        GLint error = glGetError();
+        if(error != GL_NO_ERROR)
+        {
+            LOGE("OpenGL: Could not allocate texture (0x%x)\n", error);
+            textureId_ = 0;
+            return;
+        }
+    }
 }
 
 void CameraMobile::addEnvSensor(int type, float value)
@@ -141,16 +205,16 @@ void CameraMobile::spinOnce()
 	if(!this->isRunning())
 	{
 		bool ignoreFrame = false;
-		float rate = 10.0f; // maximum 10 FPS for image data
+		//float rate = 10.0f; // maximum 10 FPS for image data
 		double now = UTimer::now();
-		if(rate>0.0f)
+		/*if(rate>0.0f)
 		{
 			if((spinOncePreviousStamp_>=0.0 && now>spinOncePreviousStamp_ && now - spinOncePreviousStamp_ < 1.0f/rate) ||
 				((spinOncePreviousStamp_<=0.0 || now<=spinOncePreviousStamp_) && spinOnceFrameRateTimer_.getElapsedTime() < 1.0f/rate))
 			{
 				ignoreFrame = true;
 			}
-		}
+		}*/
 
 		if(!ignoreFrame)
 		{
@@ -322,7 +386,7 @@ void CameraMobile::mainLoop()
 		previousPose_ = pose;
 		previousStamp_ = data.stamp();
 	}
-	else if(!this->isKilled())
+	else if(!this->isKilled() && info.odomPose.isNull())
 	{
 		LOGW("Odometry lost");
 		this->post(new OdometryEvent());
@@ -336,6 +400,64 @@ SensorData CameraMobile::captureImage(CameraInfo * info)
 		info->odomPose = pose_;
 	}
 	return data_;
+}
+
+LaserScan CameraMobile::scanFromPointCloudData(
+        const cv::Mat & pointCloudData,
+        int points,
+        const Transform & pose,
+        const CameraModel & model,
+        const cv::Mat & rgb,
+        std::vector<cv::KeyPoint> * kpts,
+        std::vector<cv::Point3f> * kpts3D,
+        int kptsSize)
+{
+    if(!pointCloudData.empty())
+    {
+        cv::Mat scanData(1, pointCloudData.cols, CV_32FC4);
+        float * ptr = scanData.ptr<float>();
+        const float * inPtr = pointCloudData.ptr<float>();
+        int ic = pointCloudData.channels();
+        UASSERT(pointCloudData.depth() == CV_32F && ic >= 3);
+        
+        int oi = 0;
+        for(unsigned int i=0;i<points; ++i)
+        {
+            cv::Point3f pt(inPtr[i*ic], inPtr[i*ic + 1], inPtr[i*ic + 2]);
+            pt = util3d::transformPoint(pt, pose.inverse()*rtabmap_world_T_opengl_world);
+            ptr[oi*4] = pt.x;
+            ptr[oi*4 + 1] = pt.y;
+            ptr[oi*4 + 2] = pt.z;
+
+            //get color from rgb image
+            cv::Point3f org= pt;
+            pt = util3d::transformPoint(pt, opticalRotationInv);
+            if(pt.z > 0)
+            {
+                int u,v;
+                model.reproject(pt.x, pt.y, pt.z, u, v);
+                unsigned char r=255,g=255,b=255;
+                if(model.inFrame(u, v))
+                {
+                    b=rgb.at<cv::Vec3b>(v,u).val[0];
+                    g=rgb.at<cv::Vec3b>(v,u).val[1];
+                    r=rgb.at<cv::Vec3b>(v,u).val[2];
+                    if(kpts)
+                        kpts->push_back(cv::KeyPoint(u,v,kptsSize));
+                    if(kpts3D)
+                        kpts3D->push_back(org);
+                    
+                    *(int*)&ptr[oi*4 + 3] = int(b) | (int(g) << 8) | (int(r) << 16);
+                    ++oi;
+                }
+            }
+            //confidence
+            //*(int*)&ptr[i*4 + 3] = (int(pointCloudData[i*4 + 3] * 255.0f) << 8) | (int(255) << 16);
+
+        }
+        return LaserScan::backwardCompatibility(scanData.colRange(0, oi), 0, 10, rtabmap::Transform::getIdentity());
+    }
+    return LaserScan();
 }
 
 } /* namespace rtabmap */

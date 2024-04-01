@@ -25,10 +25,10 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef RTABMAP_EXPORTCLOUDSDIALOG_H_
-#define RTABMAP_EXPORTCLOUDSDIALOG_H_
+#ifndef RTABMAP_CORE_EXPORTCLOUDSDIALOG_H_
+#define RTABMAP_CORE_EXPORTCLOUDSDIALOG_H_
 
-#include "rtabmap/gui/RtabmapGuiExp.h" // DLL export/import defines
+#include "rtabmap/gui/rtabmap_gui_export.h" // DLL export/import defines
 
 #include <QDialog>
 #include <QMap>
@@ -51,7 +51,7 @@ class ProgressDialog;
 class GainCompensator;
 class DBDriver;
 
-class RTABMAPGUI_EXP ExportCloudsDialog : public QDialog
+class RTABMAP_GUI_EXPORT ExportCloudsDialog : public QDialog
 {
 	Q_OBJECT
 
@@ -127,18 +127,21 @@ private Q_SLOTS:
 	void saveSettings();
 	void updateReconstructionFlavor();
 	void selectDistortionModel();
+	void selectCamProjMask();
 	void updateMLSGrpVisibility();
 	void cancel();
 
 private:
+	std::map<int, Transform> filterNodes(const std::map<int, Transform> & poses);
 	std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::IndicesPtr> > getClouds(
 			const std::map<int, Transform> & poses,
 			const QMap<int, Signature> & cachedSignatures,
 			const std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr, pcl::IndicesPtr> > & cachedClouds,
 			const std::map<int, LaserScan> & cachedScans,
 			const ParametersMap & parameters,
-			bool & has2dScans) const;
-	void saveClouds(const QString & workingDirectory, const std::map<int, Transform> & poses, const std::map<int, pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> & clouds, bool binaryMode = true);
+			bool & has2dScans,
+			bool & scansHaveRGB) const;
+	void saveClouds(const QString & workingDirectory, const std::map<int, Transform> & poses, const std::map<int, pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> & clouds, bool binaryMode = true, const std::vector<std::map<int, pcl::PointXY> > & pointToPixels = std::vector<std::map<int, pcl::PointXY> >());
 	void saveMeshes(const QString & workingDirectory, const std::map<int, Transform> & poses, const std::map<int, pcl::PolygonMesh::Ptr> & meshes, bool binaryMode = true);
 	void saveTextureMeshes(const QString & workingDirectory, const std::map<int, Transform> & poses, std::map<int, pcl::TextureMesh::Ptr> & textureMeshes, const QMap<int, Signature> & cachedSignatures, const std::vector<std::map<int, pcl::PointXY> > & textureVertexToPixels);
 
@@ -149,6 +152,11 @@ private:
 	bool _canceled;
 	GainCompensator * _compensator;
 	const DBDriver * _dbDriver;
+	bool _scansHaveRGB;
+
+    bool saveOBJFile(const QString &path, pcl::TextureMesh::Ptr &mesh) const;
+    bool saveOBJFile(const QString &path, pcl::PolygonMesh &mesh) const;
+
 };
 
 }

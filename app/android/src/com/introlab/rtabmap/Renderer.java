@@ -44,12 +44,14 @@ public class Renderer implements GLSurfaceView.Renderer {
 	private float mTextColor = 1.0f;
 	private int mOffset = 0;
 	private ARCoreSharedCamera mCamera = null;
+	private DisplayRotationHelper mDisplayRotationHelper = null;
 	
 	private Vector<TextObject> mTexts;
 
 	private static RTABMapActivity mActivity;
 	public Renderer(RTABMapActivity c) {
 		mActivity = c;
+		mDisplayRotationHelper = new DisplayRotationHelper(/*context=*/ c);
 	}
 
 	private ProgressDialog mProgressDialog = null;
@@ -76,6 +78,11 @@ public class Renderer implements GLSurfaceView.Renderer {
 	public void setCamera(ARCoreSharedCamera camera)
 	{
 		mCamera = camera;
+		if(mCamera!=null)
+		{
+			mDisplayRotationHelper.onDisplayChanged(0);
+			mDisplayRotationHelper.updateSessionIfNeeded(mCamera);
+		}
 	}
 
 	// Render loop of the Gl context.
@@ -84,17 +91,23 @@ public class Renderer implements GLSurfaceView.Renderer {
 		synchronized (this) {
 			if(mActivity.nativeApplication != 0)
 			{
+				int step = 0;
 				try
 				{
 					if(mCamera!=null)
 					{
+						step=1;
 						mCamera.updateGL();
+						
 					}
+					
+					step=2;
 					
 					final int value = RTABMapLib.render(mActivity.nativeApplication);
 		
 					if(mTextManager!=null)
 					{
+						step=3;
 						if(mTextChanged)
 						{
 							mTextChanged = false;
@@ -118,7 +131,7 @@ public class Renderer implements GLSurfaceView.Renderer {
 						Matrix.translateM(mvp, 0, mtrxProjectionAndView, 0, 0, mOffset, 0);
 						mTextManager.Draw(mvp);
 					}
-		
+					step=4;
 					if(value != 0 && mProgressDialog != null && mProgressDialog.isShowing())
 					{
 						mActivity.runOnUiThread(new Runnable() {
@@ -135,7 +148,7 @@ public class Renderer implements GLSurfaceView.Renderer {
 							public void run() {
 								if(mToast!=null)
 								{
-									mToast.makeText(mActivity, String.format("Out of Memory!"), Toast.LENGTH_SHORT).show();
+									mToast.makeText(mActivity.getApplicationContext(), String.format("Out of Memory!"), Toast.LENGTH_SHORT).show();
 								}
 							}
 						});
@@ -146,7 +159,7 @@ public class Renderer implements GLSurfaceView.Renderer {
 							public void run() {
 								if(mToast!=null)
 								{
-									mToast.makeText(mActivity, String.format("Rendering Error!"), Toast.LENGTH_SHORT).show();
+									mToast.makeText(mActivity.getApplicationContext(), String.format("Rendering Error!"), Toast.LENGTH_SHORT).show();
 								}
 							}
 						});
@@ -154,11 +167,14 @@ public class Renderer implements GLSurfaceView.Renderer {
 				}
 				catch(final Exception e)
 				{
+					final int stepF = step;
 					mActivity.runOnUiThread(new Runnable() {
 						public void run() {
 							if(mToast!=null)
 							{
-								mToast.makeText(mActivity, String.format("Rendering error! %s", e.getMessage()), Toast.LENGTH_SHORT).show();
+								String msg = String.format("Rendering error! (exception=%s) step=%d", e.getMessage(), stepF);
+								Log.e("RTABMapActivity", msg);
+								mToast.makeText(mActivity.getApplicationContext(), msg, Toast.LENGTH_LONG).show();
 							}
 						}
 		
@@ -174,6 +190,12 @@ public class Renderer implements GLSurfaceView.Renderer {
 		if(mActivity.nativeApplication!=0)
 		{
 			RTABMapLib.setupGraphic(mActivity.nativeApplication, width, height);
+		}
+		
+		mDisplayRotationHelper.onSurfaceChanged(width, height);
+		if(mCamera!=null)
+		{
+			mDisplayRotationHelper.updateSessionIfNeeded(mCamera);
 		}
 		
 		mSurfaceHeight = (float)height;

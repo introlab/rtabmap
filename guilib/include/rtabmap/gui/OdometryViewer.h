@@ -28,7 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef RTABMAP_ODOMETRYVIEWER_H_
 #define RTABMAP_ODOMETRYVIEWER_H_
 
-#include "rtabmap/gui/RtabmapGuiExp.h" // DLL export/import defines
+#include "rtabmap/gui/rtabmap_gui_export.h" // DLL export/import defines
 
 #include "rtabmap/core/OdometryEvent.h"
 #include "rtabmap/core/Parameters.h"
@@ -45,7 +45,7 @@ namespace rtabmap {
 class ImageView;
 class CloudViewer;
 
-class RTABMAPGUI_EXP OdometryViewer : public QDialog, public UEventsHandler
+class RTABMAP_GUI_EXPORT OdometryViewer : public QDialog, public UEventsHandler
 {
 	Q_OBJECT
 

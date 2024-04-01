@@ -27,9 +27,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #pragma once
 
-#include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
+#include "rtabmap/core/rtabmap_core_export.h" // DLL export/import defines
 
 #include <rtabmap/core/Transform.h>
+#include <rtabmap/core/Parameters.h>
 #include <rtabmap/utilite/UThread.h>
 #include <rtabmap/utilite/UEventsSender.h>
 #include <rtabmap/utilite/UTimer.h>
@@ -39,11 +40,13 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 namespace rtabmap
 {
 
+class IMUFilter;
+
 /**
  * Class IMUThread
  *
  */
-class RTABMAP_EXP IMUThread :
+class RTABMAP_CORE_EXPORT IMUThread :
 	public UThread,
 	public UEventsSender
 {
@@ -53,6 +56,8 @@ public:
 
 	bool init(const std::string & path);
 	void setRate(int rate);
+	void enableIMUFiltering(int filteringStrategy=1, const ParametersMap & parameters = ParametersMap(), bool baseFrameConversion = false);
+	void disableIMUFiltering();
 
 private:
 	virtual void mainLoopBegin();
@@ -65,6 +70,8 @@ private:
 	UTimer frameRateTimer_;
 	double captureDelay_;
 	double previousStamp_;
+	IMUFilter * _imuFilter;
+	bool _imuBaseFrameConversion;
 };
 
 } // namespace rtabmap

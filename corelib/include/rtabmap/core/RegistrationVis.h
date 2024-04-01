@@ -28,7 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef REGISTRATIONVIS_H_
 #define REGISTRATIONVIS_H_
 
-#include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
+#include "rtabmap/core/rtabmap_core_export.h" // DLL export/import defines
 
 #include <rtabmap/core/Registration.h>
 #include <rtabmap/core/Signature.h>
@@ -37,12 +37,12 @@ namespace rtabmap {
 
 class Feature2D;
 
-#ifdef RTABMAP_PYTHON3
+#ifdef RTABMAP_PYTHON
 class PyMatcher;
 #endif
 
 // Visual registration
-class RTABMAP_EXP RegistrationVis : public Registration
+class RTABMAP_CORE_EXPORT RegistrationVis : public Registration
 {
 public:
 	// take ownership of child
@@ -82,6 +82,10 @@ private:
 	float _PnPReprojError;
 	int _PnPFlags;
 	int _PnPRefineIterations;
+	int  _PnPVarMedianRatio;
+	float _PnPMaxVar;
+	bool _PnPSplitLinearCovarianceComponents;
+	unsigned int _multiSamplingPolicy;
 	int _correspondencesApproach;
 	int _flowWinSize;
 	int _flowIterations;
@@ -105,7 +109,7 @@ private:
 	Feature2D * _detectorFrom;
 	Feature2D * _detectorTo;
 
-#ifdef RTABMAP_PYTHON3
+#ifdef RTABMAP_PYTHON
 	PyMatcher * _pyMatcher;
 #endif
 };

@@ -25,7 +25,7 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include "rtabmap/core/Statistics.h"
+#include <rtabmap/core/Statistics.h>
 #include <rtabmap/utilite/UStl.h>
 #include <rtabmap/utilite/UConversion.h>
 
@@ -93,6 +93,12 @@ Statistics::~Statistics()
 void Statistics::addStatistic(const std::string & name, float value)
 {
 	uInsert(_data, std::pair<std::string, float>(name, value));
+}
+
+//deprecated
+void Statistics::setLastSignatureData(const Signature & data)
+{
+	_signaturesData.insert(std::make_pair(data.id(), data));
 }
 
 }

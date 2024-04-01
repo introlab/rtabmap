@@ -119,7 +119,7 @@ void OdometryThread::mainLoop()
 		OdometryInfo info;
 		UDEBUG("Processing data...");
 		Transform pose = _odometry->process(data, &info);
-		if(!data.imageRaw().empty() || (pose.isNull() && data.imu().empty()))
+		if(!data.imageRaw().empty() || !data.laserScanRaw().empty() || (pose.isNull() && data.imu().empty()))
 		{
 			UDEBUG("Odom pose = %s", pose.prettyPrint().c_str());
 			// a null pose notify that odometry could not be computed
@@ -134,16 +134,17 @@ void OdometryThread::addData(const SensorData & data)
 	{
 		if(dynamic_cast<OdometryMono*>(_odometry) == 0)
 		{
-			if(data.imageRaw().empty() || data.depthOrRightRaw().empty() || (data.cameraModels().size()==0 && !data.stereoCameraModel().isValidForProjection()))
+			if((data.imageRaw().empty() || data.depthOrRightRaw().empty() || (data.cameraModels().empty() && data.stereoCameraModels().empty())) &&
+					data.laserScanRaw().empty())
 			{
-				ULOGGER_ERROR("Missing some information (images empty or missing calibration)!?");
+				ULOGGER_ERROR("Missing some information (images/scans empty or missing calibration)!?");
 				return;
 			}
 		}
 		else
 		{
 			// Mono can accept RGB only
-			if(data.imageRaw().empty() || (data.cameraModels().size()==0 && !data.stereoCameraModel().isValidForProjection()))
+			if(data.imageRaw().empty() || (data.cameraModels().empty() && data.stereoCameraModels().empty()))
 			{
 				ULOGGER_ERROR("Missing some information (image empty or missing calibration)!?");
 				return;
@@ -190,10 +191,19 @@ bool OdometryThread::getData(SensorData & data)
 	{
 		if(!_dataBuffer.empty())
 		{
-			while(!_imuBuffer.empty() && _imuBuffer.front().stamp() <= _dataBuffer.front().stamp())
+			if(!_imuBuffer.empty())
 			{
-				_odometry->process(_imuBuffer.front());
-				_imuBuffer.pop_front();
+				// Send IMU up to stamp greater than image (OpenVINS needs this).
+				while(!_imuBuffer.empty())
+				{
+					_odometry->process(_imuBuffer.front());
+					double stamp = _imuBuffer.front().stamp();
+					_imuBuffer.pop_front();
+					if(stamp > _dataBuffer.front().stamp())
+					{
+						break;
+					}
+				}
 			}
 
 			data = _dataBuffer.front();

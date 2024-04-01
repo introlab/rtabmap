@@ -28,13 +28,13 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef OPTIMIZERG2O_H_
 #define OPTIMIZERG2O_H_
 
-#include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
+#include "rtabmap/core/rtabmap_core_export.h" // DLL export/import defines
 
 #include <rtabmap/core/Optimizer.h>
 
 namespace rtabmap {
 
-class RTABMAP_EXP OptimizerG2O : public Optimizer
+class RTABMAP_CORE_EXPORT OptimizerG2O : public Optimizer
 {
 public:
 	static bool available();
@@ -42,16 +42,7 @@ public:
 	static bool isCholmodAvailable();
 
 public:
-	OptimizerG2O(const ParametersMap & parameters = ParametersMap()) :
-		Optimizer(parameters),
-		solver_(Parameters::defaultg2oSolver()),
-		optimizer_(Parameters::defaultg2oOptimizer()),
-		pixelVariance_(Parameters::defaultg2oPixelVariance()),
-		robustKernelDelta_(Parameters::defaultg2oRobustKernelDelta()),
-		baseline_(Parameters::defaultg2oBaseline())
-	{
-		parseParameters(parameters);
-	}
+	OptimizerG2O(const ParametersMap & parameters = ParametersMap());
 	virtual ~OptimizerG2O() {}
 
 	virtual Type type() const {return kTypeG2O;}
@@ -71,7 +62,7 @@ public:
 			int rootId,
 			const std::map<int, Transform> & poses,
 			const std::multimap<int, Link> & links,
-			const std::map<int, CameraModel> & models, // in case of stereo, Tx should be set
+			const std::map<int, std::vector<CameraModel> > & models, // in case of stereo, Tx should be set
 			std::map<int, cv::Point3f> & points3DMap,
 			const std::map<int, std::map<int, FeatureBA> > & wordReferences, // <ID words, IDs frames + keypoint(x,y,depth)>
 			std::set<int> * outliers = 0);

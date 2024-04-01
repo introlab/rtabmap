@@ -29,7 +29,7 @@ then
     STRATEGY=$2
     DISP=$3
 else
-echo "Usage: run_euroc_datasets.sh \"output name\" \"odom strategy: 0=f2m 1=f2f 11=f2f_optflow 2=fovis 3=viso2 4=dvo 5=orbslam2 6=okvis(rect) 66=okvis(raw) 8=msckf_vio(rect) 88=msckf_vio(raw)\" \"Disparity: 0 or 1\" [sequence]"
+echo "Usage: run_euroc_datasets.sh \"output name\" \"odom strategy: 0=f2m 1=f2f 11=f2f_optflow 2=fovis 3=viso2 4=dvo 5=orbslam2 6=okvis(rect) 66=okvis(raw) 8=msckf_vio(rect) 88=msckf_vio(raw) 9=vins_vio(rect) 99=vins_vio(raw) 10=vins_stereo(rect) 100=vins_stereo(raw)\" \"Disparity: 0 or 1\" [sequence]"
 exit
 fi
 
@@ -133,11 +133,14 @@ do
        --RGBD/ProximityBySpace false\
        --Rtabmap/DetectionRate 2\
        --Kp/FlannRebalancingFactor 1.0\
+       --GFTT/MinDistance 3\
        --Odom/Strategy $STRATEGY\
        --Mem/STMSize 30\
        --Mem/UseOdomFeatures false \
        --Mem/BinDataKept false \
        --Rtabmap/CreateIntermediateNodes false\
+       --Vis/CorNNDR 0.6 \
+       --Vis/CorGuessWinSize 20 \
        $V203_params\
        $F2F_params\
        --OdomORBSLAM2/VocPath /root/ORBvoc.txt\

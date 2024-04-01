@@ -28,25 +28,22 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef OPTIMIZERGTSAM_H_
 #define OPTIMIZERGTSAM_H_
 
-#include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
-
 #include <rtabmap/core/Optimizer.h>
+
+namespace gtsam {
+	class ISAM2;
+}
 
 namespace rtabmap {
 
-class RTABMAP_EXP OptimizerGTSAM : public Optimizer
+class RTABMAP_CORE_EXPORT OptimizerGTSAM : public Optimizer
 {
 public:
 	static bool available();
 
 public:
-	OptimizerGTSAM(const ParametersMap & parameters = ParametersMap()) :
-		Optimizer(parameters),
-		optimizer_(Parameters::defaultGTSAMOptimizer())
-	{
-		parseParameters(parameters);
-	}
-	virtual ~OptimizerGTSAM() {}
+	OptimizerGTSAM(const ParametersMap & parameters = ParametersMap());
+	virtual ~OptimizerGTSAM();
 
 	virtual Type type() const {return kTypeGTSAM;}
 
@@ -62,7 +59,25 @@ public:
 			int * iterationsDone = 0);
 
 private:
-	int optimizer_;
+	int internalOptimizerType_;
+
+	gtsam::ISAM2 * isam2_;
+	struct ConstraintToFactor {
+		ConstraintToFactor(int _from, int _to, std::uint64_t _factorIndice)
+		{
+			from = _from;
+			to = _to;
+			factorIndice = _factorIndice;
+		}
+		int from;
+		int to;
+		std::uint64_t factorIndice;
+	};
+
+	std::vector<ConstraintToFactor> lastAddedConstraints_;
+	int lastSwitchId_;
+	std::set<int> addedPoses_;
+	std::pair<int, std::uint64_t> lastRootFactorIndex_;
 };
 
 } /* namespace rtabmap */

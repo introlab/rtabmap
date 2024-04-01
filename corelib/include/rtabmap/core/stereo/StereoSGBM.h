@@ -28,15 +28,13 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef STEREOSGBM_H_
 #define STEREOSGBM_H_
 
-#include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
-
 #include <rtabmap/core/StereoDense.h>
 #include <rtabmap/core/Parameters.h>
 #include <opencv2/core/core.hpp>
 
 namespace rtabmap {
 
-class RTABMAP_EXP StereoSGBM : public StereoDense {
+class RTABMAP_CORE_EXPORT StereoSGBM : public StereoDense {
 public:
 	StereoSGBM(const ParametersMap & parameters = ParametersMap());
 	virtual ~StereoSGBM() {}

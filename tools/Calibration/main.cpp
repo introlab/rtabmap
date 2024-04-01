@@ -48,6 +48,7 @@ void showUsage()
 			"                                       5=Freenect2  (Kinect v2)\n"
 			"                                       6=DC1394     (Bumblebee2)\n"
 			"                                       7=FlyCapture2 (Bumblebee2)\n"
+			"                                       11=RealSense2 (T265)\n"
 			"  --device #     Device id\n"
 			"  --debug        Debug log\n"
 			"  --stereo       Stereo: assuming device provides \n"
@@ -139,10 +140,14 @@ int main(int argc, char * argv[])
 		printf("Unrecognized option : %s\n", argv[i]);
 		showUsage();
 	}
-	if(driver < -1 || driver > 7)
+	if(driver < -1 || driver > 15)
 	{
-		UERROR("driver should be between -1 and 7.");
+		UERROR("driver should be between -1 and 15.");
 		showUsage();
+	}
+	if(driver == 11)
+	{
+		stereo = true;
 	}
 
 	UINFO("Using driver %d", driver);
@@ -249,9 +254,21 @@ int main(int argc, char * argv[])
 		camera = new rtabmap::CameraStereoFlyCapture2();
 		dialog.setStereoMode(stereo);
 	}
+	else if(driver == 11)
+	{
+		if(!rtabmap::CameraRealSense2::available())
+		{
+			UERROR("Not built with RealSense2 support...");
+			exit(-1);
+		}
+		camera = new rtabmap::CameraRealSense2();
+		((rtabmap::CameraRealSense2*)camera)->setImagesRectified(false);
+		dialog.setStereoMode(true);
+		dialog.setFisheyeImages(true);
+	}
 	else
 	{
-		UFATAL("");
+		UFATAL("Calibration for driver %d not available.", driver);
 	}
 
 	rtabmap::CameraThread * cameraThread = 0;

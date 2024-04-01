@@ -44,8 +44,12 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "opencv/ORBextractor.h"
 #endif
 
-#ifdef RTABMAP_SUPERPOINT_TORCH
+#ifdef RTABMAP_TORCH
 #include "superpoint_torch/SuperPoint.h"
+#endif
+
+#ifdef RTABMAP_PYTHON
+#include "python/PyDetector.h"
 #endif
 
 #if CV_MAJOR_VERSION < 3
@@ -298,7 +302,11 @@ void Feature2D::limitKeypoints(std::vector<cv::KeyPoint> & keypoints, std::vecto
 		int removed = (int)hessianMap.size()-maxKeypoints;
 		std::multimap<float, int>::reverse_iterator iter = hessianMap.rbegin();
 		std::vector<cv::KeyPoint> kptsTmp(maxKeypoints);
-		std::vector<cv::Point3f> kpts3DTmp(maxKeypoints);
+		std::vector<cv::Point3f> kpts3DTmp;
+		if(!keypoints3D.empty())
+		{
+			kpts3DTmp.resize(maxKeypoints);
+		}
 		cv::Mat descriptorsTmp;
 		if(descriptors.rows)
 		{
@@ -509,53 +517,68 @@ Feature2D * Feature2D::create(const ParametersMap & parameters)
 Feature2D * Feature2D::create(Feature2D::Type type, const ParametersMap & parameters)
 {
 
+// NONFREE checks
 #if CV_MAJOR_VERSION < 3 || (CV_MAJOR_VERSION == 4 && CV_MINOR_VERSION <= 3) || (CV_MAJOR_VERSION == 3 && (CV_MINOR_VERSION < 4 || (CV_MINOR_VERSION==4 && CV_SUBMINOR_VERSION<11)))
-#ifndef RTABMAP_NONFREE
-	if(type == Feature2D::kFeatureSurf || type == Feature2D::kFeatureSift)
+
+  #ifndef RTABMAP_NONFREE
+	if(type == Feature2D::kFeatureSurf || type == Feature2D::kFeatureSift || type == Feature2D::kFeatureSurfFreak || type == Feature2D::kFeatureSurfDaisy)
 	{
-#if CV_MAJOR_VERSION < 3
+    #if CV_MAJOR_VERSION < 3
 		UWARN("SURF and SIFT features cannot be used because OpenCV was not built with nonfree module. GFTT/ORB is used instead.");
-#else
+    #else
 		UWARN("SURF and SIFT features cannot be used because OpenCV was not built with xfeatures2d module. GFTT/ORB is used instead.");
-#endif
+    #endif
 		type = Feature2D::kFeatureGfttOrb;
 	}
-#if CV_MAJOR_VERSION == 3
-	if(type == Feature2D::kFeatureFastBrief ||
-	   type == Feature2D::kFeatureFastFreak ||
-	   type == Feature2D::kFeatureGfttBrief ||
-	   type == Feature2D::kFeatureGfttFreak)
-	{
-		UWARN("BRIEF and FREAK features cannot be used because OpenCV was not built with xfeatures2d module. GFTT/ORB is used instead.");
-		type = Feature2D::kFeatureGfttOrb;
-	}
-#endif
-#endif
+  #endif
 
 #else // >= 4.4.0 >= 3.4.11
 
-#ifndef RTABMAP_NONFREE
+  #ifndef RTABMAP_NONFREE
 	if(type == Feature2D::kFeatureSurf)
 	{
 		UWARN("SURF features cannot be used because OpenCV was not built with nonfree module. SIFT is used instead.");
 		type = Feature2D::kFeatureSift;
 	}
-#endif
+	else if(type == Feature2D::kFeatureSurfFreak || type == Feature2D::kFeatureSurfDaisy)
+	{
+		UWARN("SURF detector cannot be used because OpenCV was not built with nonfree module. GFTT/ORB is used instead.");
+		type = Feature2D::kFeatureGfttOrb;
+	}
+  #endif
 
 #endif // >= 4.4.0 >= 3.4.11
 
-#if CV_MAJOR_VERSION < 3
+#if !defined(HAVE_OPENCV_XFEATURES2D) && CV_MAJOR_VERSION >= 3
+	if(type == Feature2D::kFeatureFastBrief ||
+	   type == Feature2D::kFeatureFastFreak ||
+	   type == Feature2D::kFeatureGfttBrief ||
+	   type == Feature2D::kFeatureGfttFreak ||
+	   type == Feature2D::kFeatureSurfFreak ||
+	   type == Feature2D::kFeatureGfttDaisy ||
+	   type == Feature2D::kFeatureSurfDaisy)
+	{
+		UWARN("BRIEF, FREAK and DAISY features cannot be used because OpenCV was not built with xfeatures2d module. GFTT/ORB is used instead.");
+		type = Feature2D::kFeatureGfttOrb;
+	}
+#elif CV_MAJOR_VERSION < 3
 	if(type == Feature2D::kFeatureKaze)
 	{
-#ifdef RTABMAP_NONFREE
+  #ifdef RTABMAP_NONFREE
 		UWARN("KAZE detector/descriptor can be used only with OpenCV3. SURF is used instead.");
 		type = Feature2D::kFeatureSurf;
-#else
+  #else
 		UWARN("KAZE detector/descriptor can be used only with OpenCV3. GFTT/ORB is used instead.");
 		type = Feature2D::kFeatureGfttOrb;
-#endif
+  #endif
+	}
+	if(type == Feature2D::kFeatureGfttDaisy || type == Feature2D::kFeatureSurfDaisy)
+	{
+		UWARN("DAISY detector/descriptor can be used only with OpenCV3. GFTT/BRIEF is used instead.");
+		type = Feature2D::kFeatureGfttBrief;
 	}
 #endif
+
 
 #ifndef RTABMAP_ORB_OCTREE
 	if(type == Feature2D::kFeatureOrbOctree)
@@ -565,7 +588,7 @@ Feature2D * Feature2D::create(Feature2D::Type type, const ParametersMap & parame
 	}
 #endif
 
-#ifndef RTABMAP_SUPERPOINT_TORCH
+#ifndef RTABMAP_TORCH
 	if(type == Feature2D::kFeatureSuperPointTorch)
 	{
 		UWARN("SupertPoint Torch feature cannot be used as RTAB-Map is not built with the option enabled. GFTT/ORB is used instead.");
@@ -609,9 +632,23 @@ Feature2D * Feature2D::create(Feature2D::Type type, const ParametersMap & parame
 	case Feature2D::kFeatureOrbOctree:
 		feature2D = new ORBOctree(parameters);
 		break;
-#ifdef RTABMAP_SUPERPOINT_TORCH
+#ifdef RTABMAP_TORCH
 	case Feature2D::kFeatureSuperPointTorch:
 		feature2D = new SuperPointTorch(parameters);
+		break;
+#endif
+	case Feature2D::kFeatureSurfFreak:
+		feature2D = new SURF_FREAK(parameters);
+		break;
+	case Feature2D::kFeatureGfttDaisy:
+		feature2D = new GFTT_DAISY(parameters);
+		break;
+	case Feature2D::kFeatureSurfDaisy:
+		feature2D = new SURF_DAISY(parameters);
+		break;
+#ifdef RTABMAP_PYTHON
+	case Feature2D::kFeaturePyDetector:
+		feature2D = new PyDetector(parameters);
 		break;
 #endif
 #ifdef RTABMAP_NONFREE
@@ -621,6 +658,7 @@ Feature2D * Feature2D::create(Feature2D::Type type, const ParametersMap & parame
 #else
 	default:
 		feature2D = new ORB(parameters);
+		type = Feature2D::kFeatureGfttOrb;
 		break;
 #endif
 
@@ -693,19 +731,22 @@ std::vector<cv::KeyPoint> Feature2D::generateKeypoints(const cv::Mat & image, co
 		for (int j = 0; j<gridCols_; ++j)
 		{
 			cv::Rect roi(globalRoi.x + j*colSize, globalRoi.y + i*rowSize, colSize, rowSize);
-			std::vector<cv::KeyPoint> sub_keypoints;
-			sub_keypoints = this->generateKeypointsImpl(image, roi, mask);
-			limitKeypoints(sub_keypoints, maxFeatures);
+			std::vector<cv::KeyPoint> subKeypoints;
+			subKeypoints = this->generateKeypointsImpl(image, roi, mask);
+			if (this->getType() != Feature2D::Type::kFeaturePyDetector)
+			{
+				limitKeypoints(subKeypoints, maxFeatures);
+			}
 			if(roi.x || roi.y)
 			{
 				// Adjust keypoint position to raw image
-				for(std::vector<cv::KeyPoint>::iterator iter=sub_keypoints.begin(); iter!=sub_keypoints.end(); ++iter)
+				for(std::vector<cv::KeyPoint>::iterator iter=subKeypoints.begin(); iter!=subKeypoints.end(); ++iter)
 				{
 					iter->pt.x += roi.x;
 					iter->pt.y += roi.y;
 				}
 			}
-			keypoints.insert( keypoints.end(), sub_keypoints.begin(), sub_keypoints.end() );
+			keypoints.insert( keypoints.end(), subKeypoints.begin(), subKeypoints.end() );
 		}
 	}
 	UDEBUG("Keypoints extraction time = %f s, keypoints extracted = %d (grid=%dx%d, mask empty=%d)",
@@ -753,7 +794,9 @@ std::vector<cv::Point3f> Feature2D::generateKeypoints3D(
 	std::vector<cv::Point3f> keypoints3D;
 	if(keypoints.size())
 	{
-		if(!data.rightRaw().empty() && !data.imageRaw().empty() && data.stereoCameraModel().isValidForProjection())
+		if(!data.rightRaw().empty() && !data.imageRaw().empty() &&
+			!data.stereoCameraModels().empty() &&
+			data.stereoCameraModels()[0].isValidForProjection())
 		{
 			//stereo
 			cv::Mat imageMono;
@@ -769,22 +812,121 @@ std::vector<cv::Point3f> Feature2D::generateKeypoints3D(
 
 			std::vector<cv::Point2f> leftCorners;
 			cv::KeyPoint::convert(keypoints, leftCorners);
-			std::vector<unsigned char> status;
 
 			std::vector<cv::Point2f> rightCorners;
-			rightCorners = _stereo->computeCorrespondences(
-					imageMono,
-					data.rightRaw(),
-					leftCorners,
-					status);
 
-			keypoints3D = util3d::generateKeypoints3DStereo(
-					leftCorners,
-					rightCorners,
-					data.stereoCameraModel(),
-					status,
-					_minDepth,
-					_maxDepth);
+			if(data.stereoCameraModels().size() == 1)
+			{
+				std::vector<unsigned char> status;
+				rightCorners = _stereo->computeCorrespondences(
+						imageMono,
+						data.rightRaw(),
+						leftCorners,
+						status);
+
+				if(ULogger::level() >= ULogger::kWarning)
+				{
+					int rejected = 0;
+					for(size_t i=0; i<status.size(); ++i)
+					{
+						if(status[i]==0)
+						{
+							++rejected;
+						}
+					}
+					if(rejected > (int)status.size()/2)
+					{
+						UWARN("A large number (%d/%d) of stereo correspondences are rejected! "
+								"Optical flow may have failed because images are not calibrated, "
+								"the background is too far (no disparity between the images), "
+								"maximum disparity may be too small (%f) or that exposure between "
+								"left and right images is too different.",
+								rejected,
+								(int)status.size(),
+								_stereo->maxDisparity());
+					}
+				}
+
+				keypoints3D = util3d::generateKeypoints3DStereo(
+						leftCorners,
+						rightCorners,
+						data.stereoCameraModels()[0],
+						status,
+						_minDepth,
+						_maxDepth);
+			}
+			else
+			{
+				int subImageWith = imageMono.cols / data.stereoCameraModels().size();
+				UASSERT(imageMono.cols % subImageWith == 0);
+				std::vector<std::vector<cv::Point2f> > subLeftCorners(data.stereoCameraModels().size());
+				std::vector<std::vector<int> > subIndex(data.stereoCameraModels().size());
+				// Assign keypoints per camera
+				for(size_t i=0; i<leftCorners.size(); ++i)
+				{
+					int cameraIndex = int(leftCorners[i].x / subImageWith);
+					leftCorners[i].x -= cameraIndex*subImageWith;
+					subLeftCorners[cameraIndex].push_back(leftCorners[i]);
+					subIndex[cameraIndex].push_back(i);
+				}
+
+				keypoints3D.resize(keypoints.size());
+				int total = 0;
+				int rejected = 0;
+				for(size_t i=0; i<data.stereoCameraModels().size(); ++i)
+				{
+					if(!subLeftCorners[i].empty())
+					{
+						std::vector<unsigned char> status;
+						rightCorners = _stereo->computeCorrespondences(
+								imageMono.colRange(cv::Range(subImageWith*i, subImageWith*(i+1))),
+								data.rightRaw().colRange(cv::Range(subImageWith*i, subImageWith*(i+1))),
+								subLeftCorners[i],
+								status);
+
+						std::vector<cv::Point3f> subKeypoints3D = util3d::generateKeypoints3DStereo(
+								subLeftCorners[i],
+								rightCorners,
+								data.stereoCameraModels()[i],
+								status,
+								_minDepth,
+								_maxDepth);
+
+						if(ULogger::level() >= ULogger::kWarning)
+						{
+							for(size_t i=0; i<status.size(); ++i)
+							{
+								if(status[i]==0)
+								{
+									++rejected;
+								}
+							}
+							total+=status.size();
+						}
+
+						UASSERT(subIndex[i].size() == subKeypoints3D.size());
+						for(size_t j=0; j<subKeypoints3D.size(); ++j)
+						{
+							keypoints3D[subIndex[i][j]] = subKeypoints3D[j];
+						}
+					}
+				}
+
+				if(ULogger::level() >= ULogger::kWarning)
+				{
+					if(rejected > total/2)
+					{
+						UWARN("A large number (%d/%d) of stereo correspondences are rejected! "
+								"Optical flow may have failed because images are not calibrated, "
+								"the background is too far (no disparity between the images), "
+								"maximum disparity may be too small (%f) or that exposure between "
+								"left and right images is too different.",
+								rejected,
+								total,
+								_stereo->maxDisparity());
+					}
+				}
+			}
 		}
 		else if(!data.depthRaw().empty() && data.cameraModels().size())
 		{
@@ -971,7 +1113,7 @@ void SIFT::parseParameters(const ParametersMap & parameters)
 #else
 	UWARN("RTAB-Map is not built with OpenCV nonfree module so SIFT cannot be used!");
 #endif
-#else
+#else // >=4.4, >=3.4.11
 	_sift = CV_SIFT::create(this->getMaxFeatures(), nOctaveLayers_, contrastThreshold_, edgeThreshold_, sigma_);
 #endif
 }
@@ -980,16 +1122,20 @@ std::vector<cv::KeyPoint> SIFT::generateKeypointsImpl(const cv::Mat & image, con
 {
 	UASSERT(!image.empty() && image.channels() == 1 && image.depth() == CV_8U);
 	std::vector<cv::KeyPoint> keypoints;
-#if defined(RTABMAP_NONFREE) || CV_MAJOR_VERSION > 4 || (CV_MAJOR_VERSION == 4 && CV_MINOR_VERSION >= 3)
 	cv::Mat imgRoi(image, roi);
 	cv::Mat maskRoi;
 	if(!mask.empty())
 	{
 		maskRoi = cv::Mat(mask, roi);
 	}
+#if CV_MAJOR_VERSION < 3 || (CV_MAJOR_VERSION == 4 && CV_MINOR_VERSION <= 3) || (CV_MAJOR_VERSION == 3 && (CV_MINOR_VERSION < 4 || (CV_MINOR_VERSION==4 && CV_SUBMINOR_VERSION<11)))
+#ifdef RTABMAP_NONFREE
 	_sift->detect(imgRoi, keypoints, maskRoi); // Opencv keypoints
 #else
 	UWARN("RTAB-Map is not built with OpenCV nonfree module so SIFT cannot be used!");
+#endif
+#else // >=4.4, >=3.4.11
+	_sift->detect(imgRoi, keypoints, maskRoi); // Opencv keypoints
 #endif
 	return keypoints;
 }
@@ -998,9 +1144,15 @@ cv::Mat SIFT::generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::Key
 {
 	UASSERT(!image.empty() && image.channels() == 1 && image.depth() == CV_8U);
 	cv::Mat descriptors;
-#if defined(RTABMAP_NONFREE) || CV_MAJOR_VERSION > 4 || (CV_MAJOR_VERSION == 4 && CV_MINOR_VERSION >= 3)
+#if CV_MAJOR_VERSION < 3 || (CV_MAJOR_VERSION == 4 && CV_MINOR_VERSION <= 3) || (CV_MAJOR_VERSION == 3 && (CV_MINOR_VERSION < 4 || (CV_MINOR_VERSION==4 && CV_SUBMINOR_VERSION<11)))
+#ifdef RTABMAP_NONFREE
 	_sift->compute(image, keypoints, descriptors);
-
+#else
+	UWARN("RTAB-Map is not built with OpenCV nonfree module so SIFT cannot be used!");
+#endif
+#else // >=4.4, >=3.4.11
+	_sift->compute(image, keypoints, descriptors);
+#endif
 	if( rootSIFT_ && !descriptors.empty())
 	{
 		UDEBUG("Performing RootSIFT...");
@@ -1016,10 +1168,6 @@ cv::Mat SIFT::generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::Key
 			cv::sqrt(descriptors.row(i), descriptors.row(i));
 		}
 	}
-
-#else
-	UWARN("RTAB-Map is not built with OpenCV nonfree module so SIFT cannot be used!");
-#endif
 	return descriptors;
 }
 
@@ -1723,6 +1871,59 @@ cv::Mat GFTT_FREAK::generateDescriptorsImpl(const cv::Mat & image, std::vector<c
 }
 
 //////////////////////////
+//SURF-FREAK
+//////////////////////////
+SURF_FREAK::SURF_FREAK(const ParametersMap & parameters) :
+	SURF(parameters),
+	orientationNormalized_(Parameters::defaultFREAKOrientationNormalized()),
+	scaleNormalized_(Parameters::defaultFREAKScaleNormalized()),
+	patternScale_(Parameters::defaultFREAKPatternScale()),
+	nOctaves_(Parameters::defaultFREAKNOctaves())
+{
+	parseParameters(parameters);
+}
+
+SURF_FREAK::~SURF_FREAK()
+{
+}
+
+void SURF_FREAK::parseParameters(const ParametersMap & parameters)
+{
+	SURF::parseParameters(parameters);
+
+	Parameters::parse(parameters, Parameters::kFREAKOrientationNormalized(), orientationNormalized_);
+	Parameters::parse(parameters, Parameters::kFREAKScaleNormalized(), scaleNormalized_);
+	Parameters::parse(parameters, Parameters::kFREAKPatternScale(), patternScale_);
+	Parameters::parse(parameters, Parameters::kFREAKNOctaves(), nOctaves_);
+
+#if CV_MAJOR_VERSION < 3
+	_freak = cv::Ptr<CV_FREAK>(new CV_FREAK(orientationNormalized_, scaleNormalized_, patternScale_, nOctaves_));
+#else
+#ifdef HAVE_OPENCV_XFEATURES2D
+	_freak = CV_FREAK::create(orientationNormalized_, scaleNormalized_, patternScale_, nOctaves_);
+#else
+	UWARN("RTAB-Map is not built with OpenCV xfeatures2d module so Freak cannot be used!");
+#endif
+#endif
+}
+
+cv::Mat SURF_FREAK::generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const
+{
+	UASSERT(!image.empty() && image.channels() == 1 && image.depth() == CV_8U);
+	cv::Mat descriptors;
+#if CV_MAJOR_VERSION < 3
+	_freak->compute(image, keypoints, descriptors);
+#else
+#ifdef HAVE_OPENCV_XFEATURES2D
+	_freak->compute(image, keypoints, descriptors);
+#else
+	UWARN("RTAB-Map is not built with OpenCV xfeatures2d module so Freak cannot be used!");
+#endif
+#endif
+	return descriptors;
+}
+
+//////////////////////////
 //GFTT-ORB
 //////////////////////////
 GFTT_ORB::GFTT_ORB(const ParametersMap & parameters) :
@@ -1874,7 +2075,10 @@ cv::Mat KAZE::generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::Key
 ORBOctree::ORBOctree(const ParametersMap & parameters) :
 		scaleFactor_(Parameters::defaultORBScaleFactor()),
 		nLevels_(Parameters::defaultORBNLevels()),
-		fastThreshold_(Parameters::defaultFASTThreshold())
+		patchSize_(Parameters::defaultORBPatchSize()),
+		edgeThreshold_(Parameters::defaultORBEdgeThreshold()),
+		fastThreshold_(Parameters::defaultFASTThreshold()),
+		fastMinThreshold_(Parameters::defaultFASTMinThreshold())
 {
 	parseParameters(parameters);
 }
@@ -1889,12 +2093,14 @@ void ORBOctree::parseParameters(const ParametersMap & parameters)
 
 	Parameters::parse(parameters, Parameters::kORBScaleFactor(), scaleFactor_);
 	Parameters::parse(parameters, Parameters::kORBNLevels(), nLevels_);
+	Parameters::parse(parameters, Parameters::kORBPatchSize(), patchSize_);
+	Parameters::parse(parameters, Parameters::kORBEdgeThreshold(), edgeThreshold_);
 
 	Parameters::parse(parameters, Parameters::kFASTThreshold(), fastThreshold_);
 	Parameters::parse(parameters, Parameters::kFASTMinThreshold(), fastMinThreshold_);
 
 #ifdef RTABMAP_ORB_OCTREE
-	_orb = cv::Ptr<ORBextractor>(new ORBextractor(this->getMaxFeatures(), scaleFactor_, nLevels_, fastThreshold_, fastMinThreshold_));
+	_orb = cv::Ptr<ORBextractor>(new ORBextractor(this->getMaxFeatures(), scaleFactor_, nLevels_, fastThreshold_, fastMinThreshold_, patchSize_, edgeThreshold_));
 #else
 	UWARN("RTAB-Map is not built with ORB OcTree option enabled so ORB OcTree feature cannot be used!");
 #endif
@@ -1914,6 +2120,24 @@ std::vector<cv::KeyPoint> ORBOctree::generateKeypointsImpl(const cv::Mat & image
 	}
 
 	(*_orb)(imgRoi, maskRoi, keypoints, descriptors_);
+
+	// OrbOctree ignores the mask, so we have to apply it manually here
+	if(!keypoints.empty() && !maskRoi.empty())
+	{
+		std::vector<cv::KeyPoint> validKeypoints;
+		validKeypoints.reserve(keypoints.size());
+		cv::Mat validDescriptors;
+		for(size_t i=0; i<keypoints.size(); ++i)
+		{
+			if(maskRoi.at<unsigned char>(keypoints[i].pt.y+roi.y, keypoints[i].pt.x+roi.x) != 0)
+			{
+				validKeypoints.push_back(keypoints[i]);
+				validDescriptors.push_back(descriptors_.row(i));
+			}
+		}
+		keypoints = validKeypoints;
+		descriptors_ = validDescriptors;
+	}
 
 	if((int)keypoints.size() > this->getMaxFeatures())
 	{
@@ -1957,7 +2181,7 @@ void SuperPointTorch::parseParameters(const ParametersMap & parameters)
 	Feature2D::parseParameters(parameters);
 
 	std::string previousPath = path_;
-#ifdef RTABMAP_SUPERPOINT_TORCH
+#ifdef RTABMAP_TORCH
 	bool previousCuda = cuda_;
 #endif
 	Parameters::parse(parameters, Parameters::kSuperPointModelPath(), path_);
@@ -1966,7 +2190,7 @@ void SuperPointTorch::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kSuperPointNMSRadius(), minDistance_);
 	Parameters::parse(parameters, Parameters::kSuperPointCuda(), cuda_);
 
-#ifdef RTABMAP_SUPERPOINT_TORCH
+#ifdef RTABMAP_TORCH
 	if(superPoint_.get() == 0 || path_.compare(previousPath) != 0 || previousCuda != cuda_)
 	{
 		superPoint_ = cv::Ptr<SPDetector>(new SPDetector(path_, threshold_, nms_, minDistance_, cuda_));
@@ -1978,31 +2202,133 @@ void SuperPointTorch::parseParameters(const ParametersMap & parameters)
 		superPoint_->setMinDistance(minDistance_);
 	}
 #else
-	UWARN("RTAB-Map is not built with SuperPoint Torch support so SuperPoint Torch feature cannot be used!");
+	UWARN("RTAB-Map is not built with Torch support so SuperPoint Torch feature cannot be used!");
 #endif
 }
 
 std::vector<cv::KeyPoint> SuperPointTorch::generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask)
 {
-#ifdef RTABMAP_SUPERPOINT_TORCH
+#ifdef RTABMAP_TORCH
 	UASSERT(!image.empty() && image.channels() == 1 && image.depth() == CV_8U);
-	UASSERT_MSG(roi.x==0 && roi.y ==0, "Not supporting ROI");
+	if(roi.x!=0 || roi.y !=0)
+	{
+		UERROR("SuperPoint: Not supporting ROI (%d,%d,%d,%d). Make sure %s, %s, %s, %s, %s, %s are all set to default values.",
+				roi.x, roi.y, roi.width, roi.height,
+				Parameters::kKpRoiRatios().c_str(),
+				Parameters::kVisRoiRatios().c_str(),
+				Parameters::kVisGridRows().c_str(),
+				Parameters::kVisGridCols().c_str(),
+				Parameters::kKpGridRows().c_str(),
+				Parameters::kKpGridCols().c_str());
+		return std::vector<cv::KeyPoint>();
+	}
 	return superPoint_->detect(image, mask);
 #else
-	UWARN("RTAB-Map is not built with SuperPoint Torch support so SuperPoint Torch feature cannot be used!");
+	UWARN("RTAB-Map is not built with Torch support so SuperPoint Torch feature cannot be used!");
 	return std::vector<cv::KeyPoint>();
 #endif
 }
 
 cv::Mat SuperPointTorch::generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const
 {
-#ifdef RTABMAP_SUPERPOINT_TORCH
+#ifdef RTABMAP_TORCH
 	UASSERT(!image.empty() && image.channels() == 1 && image.depth() == CV_8U);
 	return superPoint_->compute(keypoints);
 #else
-	UWARN("RTAB-Map is not built with SuperPoint Torch support so SuperPoint Torch feature cannot be used!");
+	UWARN("RTAB-Map is not built with Torch support so SuperPoint Torch feature cannot be used!");
 	return cv::Mat();
 #endif
+}
+
+
+//////////////////////////
+//GFTT-DAISY
+//////////////////////////
+GFTT_DAISY::GFTT_DAISY(const ParametersMap & parameters) :
+	GFTT(parameters),
+	orientationNormalized_(Parameters::defaultFREAKOrientationNormalized()),
+	scaleNormalized_(Parameters::defaultFREAKScaleNormalized()),
+	patternScale_(Parameters::defaultFREAKPatternScale()),
+	nOctaves_(Parameters::defaultFREAKNOctaves())
+{
+	parseParameters(parameters);
+}
+
+GFTT_DAISY::~GFTT_DAISY()
+{
+}
+
+void GFTT_DAISY::parseParameters(const ParametersMap & parameters)
+{
+	GFTT::parseParameters(parameters);
+
+	Parameters::parse(parameters, Parameters::kFREAKOrientationNormalized(), orientationNormalized_);
+	Parameters::parse(parameters, Parameters::kFREAKScaleNormalized(), scaleNormalized_);
+	Parameters::parse(parameters, Parameters::kFREAKPatternScale(), patternScale_);
+	Parameters::parse(parameters, Parameters::kFREAKNOctaves(), nOctaves_);
+
+#ifdef HAVE_OPENCV_XFEATURES2D
+	_daisy = CV_DAISY::create();
+#else
+	UWARN("RTAB-Map is not built with OpenCV xfeatures2d module so DAISY cannot be used!");
+#endif
+}
+
+cv::Mat GFTT_DAISY::generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const
+{
+	UASSERT(!image.empty() && image.channels() == 1 && image.depth() == CV_8U);
+	cv::Mat descriptors;
+#ifdef HAVE_OPENCV_XFEATURES2D
+	_daisy->compute(image, keypoints, descriptors);
+#else
+	UWARN("RTAB-Map is not built with OpenCV xfeatures2d module so DAISY cannot be used!");
+#endif
+	return descriptors;
+}
+
+//////////////////////////
+//SURF-DAISY
+//////////////////////////
+SURF_DAISY::SURF_DAISY(const ParametersMap & parameters) :
+	SURF(parameters),
+	orientationNormalized_(Parameters::defaultFREAKOrientationNormalized()),
+	scaleNormalized_(Parameters::defaultFREAKScaleNormalized()),
+	patternScale_(Parameters::defaultFREAKPatternScale()),
+	nOctaves_(Parameters::defaultFREAKNOctaves())
+{
+	parseParameters(parameters);
+}
+
+SURF_DAISY::~SURF_DAISY()
+{
+}
+
+void SURF_DAISY::parseParameters(const ParametersMap & parameters)
+{
+	SURF::parseParameters(parameters);
+
+	Parameters::parse(parameters, Parameters::kFREAKOrientationNormalized(), orientationNormalized_);
+	Parameters::parse(parameters, Parameters::kFREAKScaleNormalized(), scaleNormalized_);
+	Parameters::parse(parameters, Parameters::kFREAKPatternScale(), patternScale_);
+	Parameters::parse(parameters, Parameters::kFREAKNOctaves(), nOctaves_);
+
+#ifdef HAVE_OPENCV_XFEATURES2D
+	_daisy = CV_DAISY::create();
+#else
+	UWARN("RTAB-Map is not built with OpenCV xfeatures2d module so DAISY cannot be used!");
+#endif
+}
+
+cv::Mat SURF_DAISY::generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const
+{
+	UASSERT(!image.empty() && image.channels() == 1 && image.depth() == CV_8U);
+	cv::Mat descriptors;
+#ifdef HAVE_OPENCV_XFEATURES2D
+	_daisy->compute(image, keypoints, descriptors);
+#else
+	UWARN("RTAB-Map is not built with OpenCV xfeatures2d module so DAISY cannot be used!");
+#endif
+	return descriptors;
 }
 
 }

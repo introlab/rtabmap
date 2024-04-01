@@ -233,19 +233,20 @@ void ExportBundlerDialog::exportBundler(
 				std::map<int, QColor> colors;
 				for(std::map<int, Transform>::const_iterator iter=newPoses.begin(); iter!=newPoses.end(); ++iter)
 				{
-					if(signatures.find(iter->first) != signatures.end())
+					QMap<int, Signature>::const_iterator ster = signatures.find(iter->first);
+					if(ster!= signatures.end())
 					{
-						cv::Mat image = signatures[iter->first].sensorData().imageRaw();
+						cv::Mat image = ster.value().sensorData().imageRaw();
 						if(image.empty())
 						{
-							signatures[iter->first].sensorData().uncompressDataConst(&image, 0, 0, 0);
+							ster.value().sensorData().uncompressDataConst(&image, 0, 0, 0);
 						}
 
 						double maxLinearVel = _ui->doubleSpinBox_linearSpeed->value();
 						double maxAngularVel = _ui->doubleSpinBox_angularSpeed->value();
 						double laplacianThr = _ui->doubleSpinBox_laplacianVariance->value();
 						bool blurryImage = false;
-						const std::vector<float> & velocity = signatures[iter->first].getVelocity();
+						const std::vector<float> & velocity = ster.value().getVelocity();
 						if(maxLinearVel>0.0 || maxAngularVel>0.0)
 						{
 							if(velocity.size() == 6)
@@ -437,15 +438,17 @@ void ExportBundlerDialog::exportBundler(
 					list << p << "\n";
 
 					Transform localTransform;
-					if(signatures[iter->first].sensorData().cameraModels().size())
+					QMap<int, Signature>::const_iterator ster = signatures.find(iter->first);
+					UASSERT(ster!=signatures.end());
+					if(ster.value().sensorData().cameraModels().size())
 					{
-						out << signatures[iter->first].sensorData().cameraModels().at(0).fx() << " 0 0\n";
-						localTransform = signatures[iter->first].sensorData().cameraModels().at(0).localTransform();
+						out << ster.value().sensorData().cameraModels().at(0).fx() << " 0 0\n";
+						localTransform = ster.value().sensorData().cameraModels().at(0).localTransform();
 					}
-					else
+					else if(ster.value().sensorData().stereoCameraModels().size())
 					{
-						out << signatures[iter->first].sensorData().stereoCameraModel().left().fx() << " 0 0\n";
-						localTransform = signatures[iter->first].sensorData().stereoCameraModel().left().localTransform();
+						out << ster.value().sensorData().stereoCameraModels()[0].left().fx() << " 0 0\n";
+						localTransform = ster.value().sensorData().stereoCameraModels()[0].left().localTransform();
 					}
 
 					Transform pose = iter->second;
@@ -516,10 +519,10 @@ void ExportBundlerDialog::exportBundler(
 							pt.x = kter->second.kpt.pt.x - s.sensorData().cameraModels().at(0).cx();
 							pt.y = kter->second.kpt.pt.y - s.sensorData().cameraModels().at(0).cy();
 						}
-						else
+						else if(signatures[camId].sensorData().stereoCameraModels().size())
 						{
-							pt.x = kter->second.kpt.pt.x - s.sensorData().stereoCameraModel().left().cx();
-							pt.y = kter->second.kpt.pt.y - s.sensorData().stereoCameraModel().left().cy();
+							pt.x = kter->second.kpt.pt.x - s.sensorData().stereoCameraModels()[0].left().cx();
+							pt.y = kter->second.kpt.pt.y - s.sensorData().stereoCameraModels()[0].left().cy();
 						}
 						descriptorIndexes.insert(std::make_pair(camId, 0));
 						out << " " << cameraIndexes.at(camId) << " " << descriptorIndexes.at(camId)++ << " " << pt.x << " " << -pt.y;

@@ -83,6 +83,8 @@ CameraStereoImages::~CameraStereoImages()
 
 bool CameraStereoImages::init(const std::string & calibrationFolder, const std::string & cameraName)
 {
+	UINFO("Calibration folder: \"%s\", name=\"%s\"", calibrationFolder.c_str(), cameraName.c_str());
+
 	// look for calibration files
 	if(!calibrationFolder.empty() && !cameraName.empty())
 	{
@@ -105,8 +107,7 @@ bool CameraStereoImages::init(const std::string & calibrationFolder, const std::
 	stereoModel_.setName(cameraName);
 	if(this->isImagesRectified() && !stereoModel_.isValidForRectification())
 	{
-		UERROR("Parameter \"rectifyImages\" is set, but no stereo model is loaded or valid.");
-		return false;
+		UWARN("Parameter \"rectifyImages\" is set, but no stereo model is loaded or valid for rectification. This can be ignored if input images are already rectified.");
 	}
 
 	//desactivate before init as we will do it in this class instead for convenience
@@ -165,6 +166,7 @@ SensorData CameraStereoImages::captureImage(CameraInfo * info)
 	{
 		if(camera2_)
 		{
+			camera2_->setBayerMode(this->getBayerMode());
 			right = camera2_->takeImage(info);
 		}
 		else

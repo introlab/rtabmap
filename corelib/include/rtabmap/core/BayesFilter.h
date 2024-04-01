@@ -28,7 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef BAYESFILTER_H_
 #define BAYESFILTER_H_
 
-#include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
+#include "rtabmap/core/rtabmap_core_export.h" // DLL export/import defines
 
 #include <opencv2/core/core.hpp>
 #include <list>
@@ -41,7 +41,7 @@ namespace rtabmap {
 class Memory;
 class Signature;
 
-class RTABMAP_EXP BayesFilter
+class RTABMAP_CORE_EXPORT BayesFilter
 {
 public:
 	BayesFilter(const ParametersMap & parameters = ParametersMap());
@@ -60,6 +60,8 @@ public:
 	std::string getPredictionLCStr() const; // for convenience {Vp, Lc, l1, l2, l3, l4...}
 
 	cv::Mat generatePrediction(const Memory * memory, const std::vector<int> & ids);
+
+	unsigned long getMemoryUsed() const;
 
 private:
 	cv::Mat updatePrediction(const cv::Mat & oldPrediction,

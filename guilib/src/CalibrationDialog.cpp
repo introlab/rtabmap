@@ -89,6 +89,7 @@ CalibrationDialog::CalibrationDialog(bool stereo, const QString & savingDirector
 	connect(ui_->spinBox_boardWidth, SIGNAL(valueChanged(int)), this, SLOT(setBoardWidth(int)));
 	connect(ui_->spinBox_boardHeight, SIGNAL(valueChanged(int)), this, SLOT(setBoardHeight(int)));
 	connect(ui_->doubleSpinBox_squareSize, SIGNAL(valueChanged(double)), this, SLOT(setSquareSize(double)));
+	connect(ui_->doubleSpinBox_stereoBaseline, SIGNAL(valueChanged(double)), this, SLOT(setExpectedStereoBaseline(double)));
 	connect(ui_->spinBox_maxScale, SIGNAL(valueChanged(int)), this, SLOT(setMaxScale(int)));
 
 	connect(ui_->buttonBox, SIGNAL(rejected()), this, SLOT(close()));
@@ -105,7 +106,6 @@ CalibrationDialog::CalibrationDialog(bool stereo, const QString & savingDirector
 	ui_->checkBox_switchImages->setChecked(switchImages);
 
 	ui_->checkBox_fisheye->setChecked(false);
-	ui_->checkBox_fisheye->setEnabled(false);
 
 	this->setStereoMode(stereo_);
 }
@@ -209,6 +209,21 @@ void CalibrationDialog::setStereoMode(bool stereo, const QString & leftSuffix, c
 	ui_->lineEdit_P_2->setVisible(stereo_);
 	ui_->radioButton_stereoRectified->setVisible(stereo_);
 	ui_->checkBox_switchImages->setVisible(stereo_);
+	ui_->doubleSpinBox_stereoBaseline->setVisible(stereo_);
+	ui_->label_stereoBaseline->setVisible(stereo_);
+}
+
+int CalibrationDialog::boardWidth() const
+{
+	return ui_->spinBox_boardWidth->value();
+}
+int CalibrationDialog::boardHeight() const
+{
+	return ui_->spinBox_boardHeight->value();
+}
+double CalibrationDialog::squareSize() const
+{
+	return ui_->doubleSpinBox_squareSize->value();
 }
 
 void CalibrationDialog::setBoardWidth(int width)
@@ -235,6 +250,14 @@ void CalibrationDialog::setSquareSize(double size)
 	{
 		ui_->doubleSpinBox_squareSize->setValue(size);
 		this->restart();
+	}
+}
+
+void CalibrationDialog::setExpectedStereoBaseline(double length)
+{
+	if(length != ui_->doubleSpinBox_stereoBaseline->value())
+	{
+		ui_->doubleSpinBox_stereoBaseline->setValue(length);
 	}
 }
 
@@ -304,10 +327,13 @@ void CalibrationDialog::processImages(const cv::Mat & imageLeft, const cv::Mat &
 {
 	UDEBUG("Processing images");
 	processingData_ = true;
-	cameraName_ = "0000";
-	if(!cameraName.isEmpty())
+	if(cameraName_.isEmpty())
 	{
 		cameraName_ = cameraName;
+	}
+	else if(cameraName.isEmpty())
+	{
+		cameraName_ = "0000";
 	}
 
 	if(ui_->label_serial->text().compare(cameraName_)!=0)
@@ -519,7 +545,11 @@ void CalibrationDialog::processImages(const cv::Mat & imageLeft, const cv::Mat &
 					ui_->progressBar_count_2->setValue((int)imagePoints_[id].size());
 				}
 
-				if(imagePoints_[id].size() >= COUNT_MIN && xGood > 0.5 && yGood > 0.5 && sizeGood > 0.4 && skewGood > 0.5)
+				if(imagePoints_[id].size() >= COUNT_MIN &&
+						xGood > 0.5 &&
+						yGood > 0.5 &&
+						(sizeGood > 0.4 || (ui_->checkBox_fisheye->isChecked() && sizeGood > 0.25)) &&
+						skewGood > 0.5)
 				{
 					readyToCalibrate[id] = true;
 				}
@@ -636,7 +666,6 @@ void CalibrationDialog::restart()
 	maxIrs_[1] = 0x7fff;
 
 	ui_->pushButton_calibrate->setEnabled(ui_->checkBox_unlock->isChecked());
-	ui_->checkBox_fisheye->setEnabled(ui_->checkBox_unlock->isChecked());
 	ui_->pushButton_save->setEnabled(false);
 	ui_->radioButton_raw->setChecked(true);
 	ui_->radioButton_rectified->setEnabled(false);
@@ -680,7 +709,6 @@ void CalibrationDialog::restart()
 void CalibrationDialog::unlock()
 {
 	ui_->pushButton_calibrate->setEnabled(true);
-	ui_->checkBox_fisheye->setEnabled(true);
 }
 
 void CalibrationDialog::calibrate()
@@ -853,6 +881,25 @@ void CalibrationDialog::calibrate()
 	if(stereo_ && models_[0].isValidForRectification() && models_[1].isValidForRectification())
 	{
 		stereoModel_ = stereoCalibration(models_[0], models_[1], false);
+
+		if(stereoModel_.isValidForProjection()  &&
+			ui_->doubleSpinBox_stereoBaseline->value() > 0 &&
+		   stereoModel_.baseline() != ui_->doubleSpinBox_stereoBaseline->value())
+		{
+			UWARN("Expected stereo baseline is set to %f m, but computed baseline is %f m. Rescaling baseline...",
+					stereoModel_.baseline(), ui_->doubleSpinBox_stereoBaseline->value());
+			cv::Mat P = stereoModel_.right().P().clone();
+			P.at<double>(0,3) = -P.at<double>(0,0)*ui_->doubleSpinBox_stereoBaseline->value();
+			double scale = ui_->doubleSpinBox_stereoBaseline->value() / stereoModel_.baseline();
+			UWARN("Scale %f (setting square size from %f to %f)", scale, ui_->doubleSpinBox_squareSize->value(), ui_->doubleSpinBox_squareSize->value()*scale);
+			ui_->doubleSpinBox_squareSize->setValue(ui_->doubleSpinBox_squareSize->value()*scale);
+			stereoModel_ = StereoCameraModel(
+					stereoModel_.name(),
+					stereoModel_.left().imageSize(),stereoModel_.left().K_raw(), stereoModel_.left().D_raw(), stereoModel_.left().R(), stereoModel_.left().P(),
+					stereoModel_.right().imageSize(), stereoModel_.right().K_raw(), stereoModel_.right().D_raw(), stereoModel_.right().R(), P,
+					stereoModel_.R(), stereoModel_.T()*scale, stereoModel_.E(), stereoModel_.F(), stereoModel_.localTransform());
+		}
+
 		std::stringstream strR1, strP1, strR2, strP2;
 		strR1 << stereoModel_.left().R();
 		strP1 << stereoModel_.left().P();
@@ -865,6 +912,18 @@ void CalibrationDialog::calibrate()
 
 		ui_->label_baseline->setNum(stereoModel_.baseline());
 		//ui_->label_error_stereo->setNum(totalAvgErr);
+
+		if(!stereoModel_.left().P().empty() &&
+		   !stereoModel_.left().K_raw().empty() &&
+		   fabs(stereoModel_.left().P().at<double>(0,0) - stereoModel_.left().K_raw().at<double>(0,0)) > 5)
+		{
+			QMessageBox::warning(this, tr("Stereo Calibration"),
+					tr("\"fx\" after stereo rectification (%1) is not close from original "
+					   "calibration (%2), the difference would have to be under 5. You may "
+					   "restart the calibration or keep it as is.")
+					   .arg(stereoModel_.left().P().at<double>(0,0))
+					   .arg(stereoModel_.left().K_raw().at<double>(0,0)));
+		}
 	}
 
 	if(stereo_)

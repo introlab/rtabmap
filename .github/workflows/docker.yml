@@ -1,0 +1,181 @@
+name: docker
+
+on:
+  push:
+    branches:
+      - 'master'
+
+jobs:
+  docker_deps:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        docker_tag: [focal-deps, jammy-deps, jammy-iron-deps]
+        include:
+        - docker_tag: focal-deps
+          docker_tags: |
+            introlab3it/rtabmap:focal-deps
+          docker_platforms: |
+            linux/amd64
+            linux/arm64
+          docker_path: 'focal/deps'
+        - docker_tag: jammy-deps
+          docker_tags: |
+            introlab3it/rtabmap:jammy-deps
+          docker_platforms: |
+            linux/amd64
+            linux/arm64
+          docker_path: 'jammy/deps'
+        - docker_tag: jammy-iron-deps
+          docker_tags: |
+            introlab3it/rtabmap:jammy-iron-deps
+          docker_platforms: |
+            linux/amd64
+          docker_path: 'jammy-iron/deps'
+    
+    steps:
+      -
+        name: Checkout
+        uses: actions/checkout@v2
+      - 
+        name: Set up QEMU
+        uses: docker/setup-qemu-action@v1
+        with:
+          platforms: all
+      -
+        name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+      -
+        name: Login to DockerHub
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      -
+        name: Build and push
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          push: true
+          platforms: ${{ matrix.docker_platforms }}
+          file: ./docker/${{ matrix.docker_path }}/Dockerfile
+          tags: ${{ matrix.docker_tags }}
+          cache-from: type=registry,ref=introlab3it/rtabmap:${{ matrix.docker_tag }}
+          cache-to: type=inline
+  
+  docker:
+    needs: docker_deps
+    runs-on: ubuntu-latest
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        docker_tag: [bionic, focal, jammy, jammy-iron, android23, android24, android26, android30]
+        include:
+        - docker_tag: bionic
+          docker_tags: |
+            introlab3it/rtabmap:bionic
+            introlab3it/rtabmap:18.04
+          docker_args: |
+            NOT_USED=0
+          docker_platforms: |
+            linux/amd64
+            linux/arm64
+          docker_path: 'bionic'
+        - docker_tag: focal
+          docker_tags: |
+            introlab3it/rtabmap:focal
+            introlab3it/rtabmap:20.04
+            introlab3it/rtabmap:latest
+          docker_args: |
+            NOT_USED=0
+          docker_platforms: |
+            linux/amd64
+            linux/arm64
+          docker_path: 'focal'
+        - docker_tag: jammy
+          docker_tags: |
+            introlab3it/rtabmap:jammy
+            introlab3it/rtabmap:22.04
+          docker_args: |
+            NOT_USED=0
+          docker_platforms: |
+            linux/amd64
+            linux/arm64
+          docker_path: 'jammy'
+        - docker_tag: jammy-iron
+          docker_tags: |
+            introlab3it/rtabmap:jammy-iron
+          docker_args: |
+            NOT_USED=0
+          docker_platforms: |
+            linux/amd64
+          docker_path: 'jammy-iron'
+        - docker_tag: android23
+          docker_tags: |
+            introlab3it/rtabmap:android23
+            introlab3it/rtabmap:tango
+          docker_args: |
+            API_VERSION=23
+          docker_platforms: |
+            linux/amd64
+          docker_path: 'bionic/android/rtabmap_apiXX'
+        - docker_tag: android24
+          docker_tags: |
+            introlab3it/rtabmap:android24
+          docker_args: |
+            API_VERSION=24
+          docker_platforms: |
+            linux/amd64
+          docker_path: 'bionic/android/rtabmap_apiXX'
+        - docker_tag: android26
+          docker_tags: |
+            introlab3it/rtabmap:android26
+          docker_args: |
+            API_VERSION=26
+          docker_platforms: |
+            linux/amd64
+          docker_path: 'bionic/android/rtabmap_apiXX'
+        - docker_tag: android30
+          docker_tags: |
+            introlab3it/rtabmap:android30
+          docker_args: |
+            API_VERSION=30
+          docker_platforms: |
+            linux/amd64
+          docker_path: 'bionic/android/rtabmap_apiXX'
+    
+    steps:
+      -
+        name: Checkout
+        uses: actions/checkout@v2
+      - 
+        name: Set up QEMU
+        uses: docker/setup-qemu-action@v1
+        with:
+          platforms: all
+      -
+        name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+      -
+        name: Login to DockerHub
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      -
+        name: Build and push
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          push: true
+          platforms: ${{ matrix.docker_platforms }}
+          file: ./docker/${{ matrix.docker_path }}/Dockerfile
+          build-args: |
+            ${{ matrix.docker_args }}
+          tags: ${{ matrix.docker_tags }}
+          cache-from: type=registry,ref=introlab3it/rtabmap:${{ matrix.docker_tag }}
+          cache-to: type=inline
+

@@ -8,7 +8,7 @@
 #ifndef GUILIB_SRC_CLOUDVIEWERINTERACTORSTYLE_H_
 #define GUILIB_SRC_CLOUDVIEWERINTERACTORSTYLE_H_
 
-#include "rtabmap/gui/RtabmapGuiExp.h" // DLL export/import defines
+#include "rtabmap/gui/rtabmap_gui_export.h" // DLL export/import defines
 
 #include <pcl/visualization/mouse_event.h>
 #include <pcl/visualization/point_picking_event.h>
@@ -19,7 +19,7 @@ namespace rtabmap {
 
 class CloudViewer;
 
-class RTABMAPGUI_EXP CloudViewerInteractorStyle: public pcl::visualization::PCLVisualizerInteractorStyle
+class RTABMAP_GUI_EXPORT CloudViewerInteractorStyle: public pcl::visualization::PCLVisualizerInteractorStyle
 {
 public:
     static CloudViewerInteractorStyle *New ();

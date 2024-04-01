@@ -34,8 +34,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/util3d.h"
 #include <pcl/common/transforms.h>
 
-float SCAN_PERIOD = 0.1f;
-
 namespace rtabmap {
 
 /**
@@ -54,10 +52,12 @@ OdometryLOAM::OdometryLOAM(const ParametersMap & parameters) :
 #endif
 {
 #ifdef RTABMAP_LOAM
-	int velodyneType = 0;
+	int velodyneType = Parameters::defaultOdomLOAMSensor();
+	float mapResolution  = Parameters::defaultOdomLOAMResolution();
 	Parameters::parse(parameters, Parameters::kOdomLOAMSensor(), velodyneType);
 	Parameters::parse(parameters, Parameters::kOdomLOAMScanPeriod(), scanPeriod_);
-	UASSERT(scanPeriod_>0.0f);
+	Parameters::parse(parameters, Parameters::kOdomLOAMResolution(), mapResolution);
+	UASSERT(mapResolution>0.0f);
 	Parameters::parse(parameters, Parameters::kOdomLOAMLinVar(), linVar_);
 	UASSERT(linVar_>0.0f);
 	Parameters::parse(parameters, Parameters::kOdomLOAMAngVar(), angVar_);
@@ -77,6 +77,8 @@ OdometryLOAM::OdometryLOAM(const ParametersMap & parameters) :
 	}
 	laserOdometry_ =  new loam::BasicLaserOdometry(scanPeriod_);
 	laserMapping_ = new loam::BasicLaserMapping(scanPeriod_);
+	laserMapping_->downSizeFilterCorner().setLeafSize(mapResolution, mapResolution, mapResolution);
+	laserMapping_->downSizeFilterSurf().setLeafSize(mapResolution*2.0f, mapResolution*2.0f, mapResolution*2.0f);
 #endif
 }
 
@@ -177,7 +179,7 @@ std::vector<pcl::PointCloud<pcl::PointXYZI> > OdometryLOAM::segmentScanRings(con
 		}
 
 		// calculate relative scan time based on point orientation
-		float relTime = SCAN_PERIOD * (ori - startOri) / (endOri - startOri);
+		float relTime = scanPeriod_ * (ori - startOri) / (endOri - startOri);
 		point.intensity = scanID + relTime;
 
 		// imu not used...
@@ -283,7 +285,7 @@ Transform OdometryLOAM::computeTransform(
 					Transform rot(0,0,1,0,1,0,0,0,0,1,0,0);
 					pcl::PointCloud<pcl::PointXYZI> out;
 					pcl::transformPointCloud(laserMapping_->laserCloudSurroundDS(), out, rot.toEigen3f());
-					info->localScanMap = LaserScan::backwardCompatibility(util3d::laserScanFromPointCloud(out), 0, data.laserScanRaw().rangeMax(), data.laserScanRaw().localTransform());
+					info->localScanMap = LaserScan(util3d::laserScanFromPointCloud(out), 0, data.laserScanRaw().rangeMax(), data.laserScanRaw().localTransform());
 				}
 			}
 		}

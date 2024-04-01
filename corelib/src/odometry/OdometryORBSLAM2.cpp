@@ -25,7 +25,6 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include "rtabmap/core/odometry/OdometryORBSLAM2.h"
 #include "rtabmap/core/OdometryInfo.h"
 #include "rtabmap/core/util2d.h"
 #include "rtabmap/core/util3d_transforms.h"
@@ -35,14 +34,16 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/utilite/UDirectory.h"
 #include <pcl/common/transforms.h>
 #include <opencv2/imgproc/types_c.h>
+#include <rtabmap/core/odometry/OdometryORBSLAM2.h>
 
-#ifdef RTABMAP_ORB_SLAM2
+#if defined(RTABMAP_ORB_SLAM) and RTABMAP_ORB_SLAM == 2
 #include <System.h>
 #include <thread>
 
 using namespace std;
 
 namespace ORB_SLAM2 {
+
 // Override original Tracking object to comment all rendering stuff
 class Tracker: public Tracking
 {
@@ -51,9 +52,8 @@ public:
 	             KeyFrameDatabase* pKFDB, const std::string &strSettingPath, const int sensor, long unsigned int maxFeatureMapSize) :
 	            	 Tracking(pSys, pVoc, pFrameDrawer, pMapDrawer, pMap, pKFDB, strSettingPath, sensor),
 	            	 maxFeatureMapSize_(maxFeatureMapSize)
-	{
+	{}
 
-	}
 private:
 	long unsigned int maxFeatureMapSize_;
 
@@ -80,12 +80,14 @@ protected:
 	        //mpFrameDrawer->Update(this);
 
 	        if(mState!=OK)
+	        {
 	            return;
+	        }
 	    }
 	    else
 	    {
 	        // System is initialized. Track Frame.
-	        bool bOK;
+	        bool bOK = true;
 
 	        // Initial camera pose estimation using motion model or relocalization (if tracking is lost)
 	        if(!mbOnlyTracking)
@@ -190,7 +192,8 @@ protected:
 	            }
 	        }
 
-	        mCurrentFrame.mpReferenceKF = mpReferenceKF;
+	        if(!mCurrentFrame.mpReferenceKF)
+				   mCurrentFrame.mpReferenceKF = mpReferenceKF;
 
 	        // If we have an initial estimation of the camera pose and matching. Track the local map.
 	        if(!mbOnlyTracking)
@@ -503,8 +506,7 @@ class LoopCloser: public LoopClosing
 public:
 	LoopCloser(Map* pMap, KeyFrameDatabase* pDB, ORBVocabulary* pVoc,const bool bFixScale) :
 		LoopClosing(pMap, pDB, pVoc, bFixScale)
-	{
-	}
+	{}
 
 public:
 	void RunNoLoop()
@@ -531,7 +533,9 @@ public:
 	}
 };
 
-} // namespace ORB_SLAM2
+} // namespace ORB_SLAM
+
+using namespace ORB_SLAM2;
 
 class ORBSLAM2System
 {
@@ -548,14 +552,14 @@ public:
 		parameters_(parameters)
 	{
 		std::string vocabularyPath;
-		rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kOdomORBSLAM2VocPath(), vocabularyPath);
+		rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kOdomORBSLAMVocPath(), vocabularyPath);
 
 		if(!vocabularyPath.empty())
 		{
 			//Load ORB Vocabulary
 			vocabularyPath = uReplaceChar(vocabularyPath, '~', UDirectory::homeDir());
 			UWARN("Loading ORB Vocabulary: \"%s\". This could take a while...", vocabularyPath.c_str());
-			mpVocabulary = new ORB_SLAM2::ORBVocabulary();
+			mpVocabulary = new ORBVocabulary();
 			bool bVocLoad = mpVocabulary->loadFromTextFile(vocabularyPath);
 			if(!bVocLoad)
 			{
@@ -570,7 +574,7 @@ public:
 		}
 		else
 		{
-			UERROR("ORBSLAM2 vocabulary path should be set! (Parameter name=\"%s\")", rtabmap::Parameters::kOdomORBSLAM2VocPath().c_str());
+			UERROR("ORBSLAM2 vocabulary path should be set! (Parameter name=\"%s\")", rtabmap::Parameters::kOdomORBSLAMVocPath().c_str());
 		}
 	}
 
@@ -591,10 +595,16 @@ public:
 		{
 			workingDir = ".";
 		}
-		std::string configPath = workingDir+"/rtabmap_orbslam2.yaml";
+		std::string configPath = workingDir+"/rtabmap_orbslam.yaml";
 		std::ofstream ofs (configPath, std::ofstream::out);
 		ofs << "%YAML:1.0" << std::endl;
 		ofs << std::endl;
+
+
+		ofs << "Camera.type: \"PinHole\"" << std::endl;
+		ofs << std::endl;
+
+		ofs << fixed << setprecision(13);
 
 		//# Camera calibration and distortion parameters (OpenCV)
 		ofs << "Camera.fx: " << model.fx() << std::endl;
@@ -605,13 +615,13 @@ public:
 
 		if(model.D().cols < 4)
 		{
-			ofs << "Camera.k1: " << 0 << std::endl;
-			ofs << "Camera.k2: " << 0 << std::endl;
-			ofs << "Camera.p1: " << 0 << std::endl;
-			ofs << "Camera.p2: " << 0 << std::endl;
+			ofs << "Camera.k1: " << 0.0 << std::endl;
+			ofs << "Camera.k2: " << 0.0 << std::endl;
+			ofs << "Camera.p1: " << 0.0 << std::endl;
+			ofs << "Camera.p2: " << 0.0 << std::endl;
 			if(!stereo)
 			{
-				ofs << "Camera.k3: " << 0 << std::endl;
+				ofs << "Camera.k3: " << 0.0 << std::endl;
 			}
 		}
 		if(model.D().cols >= 4)
@@ -638,8 +648,8 @@ public:
 		//# IR projector baseline times fx (aprox.)
 		if(baseline <= 0.0)
 		{
-			baseline = rtabmap::Parameters::defaultOdomORBSLAM2Bf();
-			rtabmap::Parameters::parse(parameters_, rtabmap::Parameters::kOdomORBSLAM2Bf(), baseline);
+			baseline = rtabmap::Parameters::defaultOdomORBSLAMBf();
+			rtabmap::Parameters::parse(parameters_, rtabmap::Parameters::kOdomORBSLAMBf(), baseline);
 		}
 		ofs << "Camera.bf: " << model.fx()*baseline << std::endl;
 		ofs << std::endl;
@@ -649,14 +659,14 @@ public:
 		ofs << "Camera.RGB: 1" << std::endl;
 		ofs << std::endl;
 
-		float fps = rtabmap::Parameters::defaultOdomORBSLAM2Fps();
-		rtabmap::Parameters::parse(parameters_, rtabmap::Parameters::kOdomORBSLAM2Fps(), fps);
+		float fps = rtabmap::Parameters::defaultOdomORBSLAMFps();
+		rtabmap::Parameters::parse(parameters_, rtabmap::Parameters::kOdomORBSLAMFps(), fps);
 		ofs << "Camera.fps: " << fps << std::endl;
 		ofs << std::endl;
 
 		//# Close/Far threshold. Baseline times.
-		double thDepth = rtabmap::Parameters::defaultOdomORBSLAM2ThDepth();
-		rtabmap::Parameters::parse(parameters_, rtabmap::Parameters::kOdomORBSLAM2ThDepth(), thDepth);
+		double thDepth = rtabmap::Parameters::defaultOdomORBSLAMThDepth();
+		rtabmap::Parameters::parse(parameters_, rtabmap::Parameters::kOdomORBSLAMThDepth(), thDepth);
 		ofs << "ThDepth: " << thDepth << std::endl;
 		ofs << std::endl;
 
@@ -668,8 +678,8 @@ public:
 		//# ORB Parameters
 		//#--------------------------------------------------------------------------------------------
 		//# ORB Extractor: Number of features per image
-		int features = rtabmap::Parameters::defaultOdomORBSLAM2MaxFeatures();
-		rtabmap::Parameters::parse(parameters_, rtabmap::Parameters::kOdomORBSLAM2MaxFeatures(), features);
+		int features = rtabmap::Parameters::defaultOdomORBSLAMMaxFeatures();
+		rtabmap::Parameters::parse(parameters_, rtabmap::Parameters::kOdomORBSLAMMaxFeatures(), features);
 		ofs << "ORBextractor.nFeatures: " << features << std::endl;
 		ofs << std::endl;
 
@@ -697,29 +707,29 @@ public:
 		ofs << "ORBextractor.minThFAST: " << minThFAST << std::endl;
 		ofs << std::endl;
 
-		int maxFeatureMapSize = rtabmap::Parameters::defaultOdomORBSLAM2MapSize();
-		rtabmap::Parameters::parse(parameters_, rtabmap::Parameters::kOdomORBSLAM2MapSize(), maxFeatureMapSize);
+		int maxFeatureMapSize = rtabmap::Parameters::defaultOdomORBSLAMMapSize();
+		rtabmap::Parameters::parse(parameters_, rtabmap::Parameters::kOdomORBSLAMMapSize(), maxFeatureMapSize);
 
 		ofs.close();
 
 		//Create KeyFrame Database
-		mpKeyFrameDatabase = new ORB_SLAM2::KeyFrameDatabase(*mpVocabulary);
+		mpKeyFrameDatabase = new KeyFrameDatabase(*mpVocabulary);
 
 		//Create the Map
 		mpMap = new ORB_SLAM2::Map();
 
 		//Initialize the Tracking thread
 		//(it will live in the main thread of execution, the one that called this constructor)
-		mpTracker = new ORB_SLAM2::Tracker(0, mpVocabulary, 0, 0, mpMap, mpKeyFrameDatabase, configPath, stereo?ORB_SLAM2::System::STEREO:ORB_SLAM2::System::RGBD, maxFeatureMapSize);
+		mpTracker = new Tracker(0, mpVocabulary, 0, 0, mpMap, mpKeyFrameDatabase, configPath, stereo?System::STEREO:System::RGBD, maxFeatureMapSize);
 
 		//Initialize the Local Mapping thread and launch
-		mpLocalMapper = new ORB_SLAM2::LocalMapping(mpMap, false);
+		mpLocalMapper = new LocalMapping(mpMap, false);
 
 		//Initialize the Loop Closing thread and launch
-		mpLoopCloser = new ORB_SLAM2::LoopCloser(mpMap, mpKeyFrameDatabase, mpVocabulary, true);
+		mpLoopCloser = new LoopCloser(mpMap, mpKeyFrameDatabase, mpVocabulary, true);
 
-		mptLocalMapping = new thread(&ORB_SLAM2::LocalMapping::Run, mpLocalMapper);
-		mptLoopClosing = new thread(&ORB_SLAM2::LoopCloser::RunNoLoop, mpLoopCloser);
+		mptLocalMapping = new thread(&LocalMapping::Run, mpLocalMapper);
+		mptLoopClosing = new thread(&LoopCloser::RunNoLoop, mpLoopCloser);
 
 		//Set pointers between threads
 		mpTracker->SetLocalMapper(mpLocalMapper);
@@ -731,6 +741,9 @@ public:
 
 		mpLoopCloser->SetTracker(mpTracker);
 		mpLoopCloser->SetLocalMapper(mpLocalMapper);
+
+		// Reset all static variables
+		Frame::mbInitialComputations = true;
 
 		return true;
 	}
@@ -776,25 +789,25 @@ public:
 
 public:
 	// ORB vocabulary used for place recognition and feature matching.
-	ORB_SLAM2::ORBVocabulary* mpVocabulary;
+	ORBVocabulary* mpVocabulary;
 
 	// KeyFrame database for place recognition (relocalization and loop detection).
-	ORB_SLAM2::KeyFrameDatabase* mpKeyFrameDatabase;
+	KeyFrameDatabase* mpKeyFrameDatabase;
 
 	// Map structure that stores the pointers to all KeyFrames and MapPoints.
-	ORB_SLAM2::Map* mpMap;
+	Map* mpMap;
 
 	// Tracker. It receives a frame and computes the associated camera pose.
 	// It also decides when to insert a new keyframe, create some new MapPoints and
 	// performs relocalization if tracking fails.
-	ORB_SLAM2::Tracker* mpTracker;
+	Tracker* mpTracker;
 
 	// Local Mapper. It manages the local map and performs local bundle adjustment.
-	ORB_SLAM2::LocalMapping* mpLocalMapper;
+	LocalMapping* mpLocalMapper;
 
 	// Loop Closer. It searches loops with every new keyframe. If there is a loop it performs
 	// a pose graph optimization and full bundle adjustment (in a new thread) afterwards.
-	ORB_SLAM2::LoopCloser* mpLoopCloser;
+	LoopCloser* mpLoopCloser;
 
 	 // System threads: Local Mapping, Loop Closing, Viewer.
 	// The Tracking thread "lives" in the main execution thread that creates the System object.
@@ -809,24 +822,24 @@ namespace rtabmap {
 
 OdometryORBSLAM2::OdometryORBSLAM2(const ParametersMap & parameters) :
 	Odometry(parameters)
-#ifdef RTABMAP_ORB_SLAM2
+#if defined(RTABMAP_ORB_SLAM) and RTABMAP_ORB_SLAM == 2
     ,
-	orbslam2_(0),
+	orbslam_(0),
 	firstFrame_(true),
 	previousPose_(Transform::getIdentity())
 #endif
 {
-#ifdef RTABMAP_ORB_SLAM2
-	orbslam2_ = new ORBSLAM2System(parameters);
+#if defined(RTABMAP_ORB_SLAM) and RTABMAP_ORB_SLAM == 2
+	orbslam_ = new ORBSLAM2System(parameters);
 #endif
 }
 
 OdometryORBSLAM2::~OdometryORBSLAM2()
 {
-#ifdef RTABMAP_ORB_SLAM2
-	if(orbslam2_)
+#if defined(RTABMAP_ORB_SLAM) and RTABMAP_ORB_SLAM == 2
+	if(orbslam_)
 	{
-		delete orbslam2_;
+		delete orbslam_;
 	}
 #endif
 }
@@ -834,10 +847,10 @@ OdometryORBSLAM2::~OdometryORBSLAM2()
 void OdometryORBSLAM2::reset(const Transform & initialPose)
 {
 	Odometry::reset(initialPose);
-#ifdef RTABMAP_ORB_SLAM2
-	if(orbslam2_)
+#if defined(RTABMAP_ORB_SLAM) and RTABMAP_ORB_SLAM == 2
+	if(orbslam_)
 	{
-		orbslam2_->shutdown();
+		orbslam_->shutdown();
 	}
 	firstFrame_ = true;
 	originLocalTransform_.setNull();
@@ -853,7 +866,7 @@ Transform OdometryORBSLAM2::computeTransform(
 {
 	Transform t;
 
-#ifdef RTABMAP_ORB_SLAM2
+#if defined(RTABMAP_ORB_SLAM) and RTABMAP_ORB_SLAM == 2
 	UTimer timer;
 
 	if(data.imageRaw().empty() ||
@@ -867,9 +880,8 @@ Transform OdometryORBSLAM2::computeTransform(
 
 	if(!((data.cameraModels().size() == 1 &&
 			data.cameraModels()[0].isValidForReprojection()) ||
-		(data.stereoCameraModel().isValidForProjection() &&
-			data.stereoCameraModel().left().isValidForReprojection() &&
-			data.stereoCameraModel().right().isValidForReprojection())))
+		(data.stereoCameraModels().size() == 1 &&
+			data.stereoCameraModels()[0].isValidForProjection())))
 	{
 		UERROR("Invalid camera model!");
 		return t;
@@ -878,10 +890,10 @@ Transform OdometryORBSLAM2::computeTransform(
 	bool stereo = data.cameraModels().size() == 0;
 
 	cv::Mat covariance;
-	if(orbslam2_->mpTracker == 0)
+	if(orbslam_->mpTracker == 0)
 	{
-		CameraModel model = data.cameraModels().size()==1?data.cameraModels()[0]:data.stereoCameraModel().left();
-		if(!orbslam2_->init(model, stereo, data.stereoCameraModel().baseline()))
+		CameraModel model = data.cameraModels().size()==1?data.cameraModels()[0]:data.stereoCameraModels()[0].left();
+		if(!orbslam_->init(model, stereo, data.cameraModels().size()==1?0.0f:data.stereoCameraModels()[0].baseline()))
 		{
 			return t;
 		}
@@ -891,8 +903,8 @@ Transform OdometryORBSLAM2::computeTransform(
 	Transform localTransform;
 	if(stereo)
 	{
-		localTransform = data.stereoCameraModel().localTransform();
-		Tcw = ((ORB_SLAM2::Tracker*)orbslam2_->mpTracker)->GrabImageStereo(data.imageRaw(), data.rightRaw(), data.stamp());
+		localTransform = data.stereoCameraModels()[0].localTransform();
+		Tcw = ((Tracker*)orbslam_->mpTracker)->GrabImageStereo(data.imageRaw(), data.rightRaw(), data.stamp());
 	}
 	else
 	{
@@ -906,11 +918,11 @@ Transform OdometryORBSLAM2::computeTransform(
 		{
 			depth = util2d::cvtDepthToFloat(data.depthRaw());
 		}
-		Tcw = ((ORB_SLAM2::Tracker*)orbslam2_->mpTracker)->GrabImageRGBD(data.imageRaw(), depth, data.stamp());
+		Tcw = ((Tracker*)orbslam_->mpTracker)->GrabImageRGBD(data.imageRaw(), depth, data.stamp());
 	}
 
 	Transform previousPoseInv = previousPose_.inverse();
-	if(orbslam2_->mpTracker->mState == ORB_SLAM2::Tracking::LOST)
+	if(orbslam_->mpTracker->mState == Tracking::LOST)
 	{
 		covariance = cv::Mat::eye(6,6,CV_64FC1)*9999.0f;
 	}
@@ -941,11 +953,11 @@ Transform OdometryORBSLAM2::computeTransform(
 		}
 		else
 		{
-			float baseline = data.stereoCameraModel().baseline();
+			float baseline = data.cameraModels().size()==1?0.0f:data.stereoCameraModels()[0].baseline();
 			if(baseline <= 0.0f)
 			{
-				baseline = rtabmap::Parameters::defaultOdomORBSLAM2Bf();
-				rtabmap::Parameters::parse(orbslam2_->parameters_, rtabmap::Parameters::kOdomORBSLAM2Bf(), baseline);
+				baseline = rtabmap::Parameters::defaultOdomORBSLAMBf();
+				rtabmap::Parameters::parse(orbslam_->parameters_, rtabmap::Parameters::kOdomORBSLAMBf(), baseline);
 			}
 			double linearVar = 0.0001;
 			if(baseline > 0.0f)
@@ -966,39 +978,39 @@ Transform OdometryORBSLAM2::computeTransform(
 
 	int totalMapPoints= 0;
 	int totalKfs= 0;
-	if(orbslam2_->mpMap)
+	if(orbslam_->mpMap)
 	{
-		totalMapPoints = orbslam2_->mpMap->MapPointsInMap();
-		totalKfs = orbslam2_->mpMap->KeyFramesInMap();
+		totalMapPoints = orbslam_->mpMap->MapPointsInMap();
+		totalKfs = orbslam_->mpMap->KeyFramesInMap();
 	}
 
 	if(info)
 	{
 		info->lost = t.isNull();
-		info->type = (int)kTypeORBSLAM2;
+		info->type = (int)kTypeORBSLAM;
 		info->reg.covariance = covariance;
 		info->localMapSize = totalMapPoints;
 		info->localKeyFrames = totalKfs;
 
-		if(this->isInfoDataFilled() && orbslam2_->mpTracker && orbslam2_->mpMap)
+		if(this->isInfoDataFilled() && orbslam_->mpTracker && orbslam_->mpMap)
 		{
-			const std::vector<cv::KeyPoint> & kpts = orbslam2_->mpTracker->mCurrentFrame.mvKeys;
+			const std::vector<cv::KeyPoint> & kpts = orbslam_->mpTracker->mCurrentFrame.mvKeys;
 			info->reg.matchesIDs.resize(kpts.size());
 			info->reg.inliersIDs.resize(kpts.size());
 			int oi = 0;
 			for (unsigned int i = 0; i < kpts.size(); ++i)
 			{
 				int wordId;
-				if(orbslam2_->mpTracker->mCurrentFrame.mvpMapPoints[i] != 0)
+				if(orbslam_->mpTracker->mCurrentFrame.mvpMapPoints[i] != 0)
 				{
-					wordId = orbslam2_->mpTracker->mCurrentFrame.mvpMapPoints[i]->mnId;
+					wordId = orbslam_->mpTracker->mCurrentFrame.mvpMapPoints[i]->mnId;
 				}
 				else
 				{
 					wordId = -(i+1);
 				}
 				info->words.insert(std::make_pair(wordId, kpts[i]));
-				if(orbslam2_->mpTracker->mCurrentFrame.mvpMapPoints[i] != 0)
+				if(orbslam_->mpTracker->mCurrentFrame.mvpMapPoints[i] != 0)
 				{
 					info->reg.matchesIDs[oi] = wordId;
 					info->reg.inliersIDs[oi] = wordId;
@@ -1010,7 +1022,7 @@ Transform OdometryORBSLAM2::computeTransform(
 			info->reg.inliers = oi;
 			info->reg.matches = oi;
 
-			std::vector<ORB_SLAM2::MapPoint*> mapPoints = orbslam2_->mpMap->GetAllMapPoints();
+			std::vector<MapPoint*> mapPoints = orbslam_->mpMap->GetAllMapPoints();
 			Eigen::Affine3f fixRot = (this->getPose()*previousPoseInv*originLocalTransform_).toEigen3f();
 			for (unsigned int i = 0; i < mapPoints.size(); ++i)
 			{
@@ -1024,7 +1036,7 @@ Transform OdometryORBSLAM2::computeTransform(
 	UINFO("Odom update time = %fs, map points=%d, keyframes=%d, lost=%s", timer.elapsed(), totalMapPoints, totalKfs, t.isNull()?"true":"false");
 
 #else
-	UERROR("RTAB-Map is not built with ORB_SLAM2 support! Select another visual odometry approach.");
+	UERROR("RTAB-Map is not built with ORB_SLAM support! Select another visual odometry approach.");
 #endif
 	return t;
 }

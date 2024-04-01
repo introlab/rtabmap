@@ -1,56 +1,35 @@
 # Image: introlab3it/rtabmap:focal
 
-FROM ros:noetic-perception
+FROM introlab3it/rtabmap:focal-deps
 
-# Install build dependencies
-RUN apt-get update && \
-    apt-get install -y git software-properties-common ros-noetic-rtabmap-ros && \
-    apt-get remove -y ros-noetic-rtabmap && \
-    rm -rf /var/lib/apt/lists/
-
-WORKDIR /root/
-
-# GTSAM
-RUN add-apt-repository ppa:joseluisblancoc/gtsam-develop -y
-RUN apt install libgtsam-dev
-
-# libpointmatcher 
-RUN git clone https://github.com/ethz-asl/libnabo.git
-#commit Apr 25 2018
-RUN cd libnabo && \
-    git checkout 7e378f6765393462357b8b74d8dc8c5554542ae6 && \
+# June 19 2023: moved opengv here so that focal-deps can be built on my computer. Not sure why but on my machine opengv arm64 fails, but not on CI.
+#commit Aug 6 2020
+RUN apt-get update && apt install wget && apt-get clean && rm -rf /var/lib/apt/lists/
+RUN git clone https://github.com/laurentkneip/opengv.git && \
+    cd opengv && \
+    git checkout 91f4b19c73450833a40e463ad3648aae80b3a7f3 && \
+    wget https://gist.githubusercontent.com/matlabbe/a412cf7c4627253874f81a00745a7fbb/raw/accc3acf465d1ffd0304a46b17741f62d4d354ef/opengv_disable_march_native.patch && \
+    git apply opengv_disable_march_native.patch && \
     mkdir build && \
     cd build && \
     cmake -DCMAKE_BUILD_TYPE=Release .. && \
     make -j$(nproc) && \
     make install && \
     cd && \
-    rm -r libnabo
-RUN git clone https://github.com/ethz-asl/libpointmatcher.git
-#commit Jan 19 2018
-RUN cd libpointmatcher && \
-    git checkout 00004bd41e44a1cf8de24ad87e4914760717cbcc && \
-    mkdir build && \
-    cd build && \
-    cmake -DCMAKE_BUILD_TYPE=Release .. && \
-    make -j$(nproc) && \
-    make install && \
-    cd && \
-    rm -r libpointmatcher
+    rm -r opengv
 
-# Clone source code
-ARG CACHE_DATE=2016-01-01
-RUN git clone https://github.com/introlab/rtabmap.git
+# Will be used to read/store databases on host
+RUN mkdir -p /root/Documents/RTAB-Map && chmod 777 /root/Documents/RTAB-Map
 
-RUN rm /bin/sh && ln -s /bin/bash /bin/sh
+# Copy current source code
+COPY . /root/rtabmap
 
 # Build RTAB-Map project
 RUN source /ros_entrypoint.sh && \
     cd rtabmap/build && \
-    cmake .. && \
-    make && \
+    cmake -DWITH_ALICE_VISION=ON -DWITH_OPENGV=ON .. && \
+    make -j$(nproc) && \
     make install && \
     cd ../.. && \
     rm -rf rtabmap && \
     ldconfig
-

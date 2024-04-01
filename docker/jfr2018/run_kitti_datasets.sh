@@ -30,7 +30,7 @@ then
     STRATEGY=$2
     REG=$3
 else
-echo "Usage: run_tum_datasets.sh \"output name\" \"odom strategy: 0=f2m 1=f2f 11=f2f_optflow 2=fovis 3=viso2 4=dvo 5=orbslam2 7=LOAM 9=VINS\" \"reg strategy: 0=vis 1=icp-point2point 11=icp-point2plane\" [sequence]"
+echo "Usage: run_kitti_datasets.sh \"output name\" \"odom strategy: 0=f2m 1=f2f 11=f2f_optflow 2=fovis 3=viso2 4=dvo 5=orbslam2 7=LOAM 9=VINS\" \"reg strategy: 0=vis 1=icp-point2point 11=icp-point2plane\" [sequence]"
 exit
 fi
 
@@ -78,7 +78,7 @@ then
       fi
       SCAN="--Icp/PointToPlane false --Icp/Iterations 10 --Odom/ScanKeyFrameThr 0.8 $SCAN"
    fi
-   SCAN="--scan --Reg/Strategy $REG --OdomF2M/ScanMaxSize 10000 --OdomF2M/ScanSubtractRadius 0.5 --Odom/LOAMSensor 2 --Icp/MaxTranslation 2 --Icp/Epsilon 0.0001 --Icp/MaxCorrespondenceDistance 1.5 --Icp/CorrespondenceRatio 0.01 --Icp/PM true --Icp/PMOutlierRatio 0.7 --Icp/PMMatcherKnn 3 --Icp/PMMatcherEpsilon 1  $SCAN"
+   SCAN="--scan --Reg/Strategy $REG --OdomF2M/ScanMaxSize 10000 --OdomF2M/ScanSubtractRadius 0.5 --Odom/LOAMSensor 2 --Icp/MaxTranslation 2 --Icp/Epsilon 0.0001 --Icp/MaxCorrespondenceDistance 1.5 --Icp/CorrespondenceRatio 0.01 --Icp/PM true --Icp/PMOutlierRatio 0.7 --Icp/PMMatcherKnn 3 --Icp/PMMatcherEpsilon 1 --Icp/ReciprocalCorrespondences false  $SCAN"
 fi
 
 RTABMAP_KITTI_TOOL="rtabmap-kitti_dataset"
@@ -124,6 +124,8 @@ do
        --Mem/STMSize 30\
        --Mem/UseOdomFeatures false \
        --Mem/BinDataKept false \
+       --Vis/CorNNDR 0.6 \
+       --Vis/CorGuessWinSize 20 \
        $SCAN \
        --gt $KITTI_ROOT_PATH"/devkit/cpp/data/odometry/poses/$d.txt"\
        --output "$KITTI_RESULTS_PATH/$d"\

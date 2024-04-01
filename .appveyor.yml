@@ -17,6 +17,9 @@ init:
   - call "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" x86_amd64
 
 install:
+  # To download from google drive
+  - set PATH=C:\Python38-x64;C:\Python38-x64\Scripts;%PATH%
+  - ps: py -m pip --disable-pip-version-check install gdown>=5.1.0 
   # Qt
   - set QTDIR=C:\Qt\5.10.1\msvc2015_64
   # make sure Qt bin path is before cmake bin path to avoid copying qt5 dlls from cmake before qt installation
@@ -33,13 +36,16 @@ install:
   - set OPENNI2_LIB64=C:\Program Files\OpenNI2\Lib
   - set OPENNI2_REDIST64=C:\Program Files\OpenNI2\Redist
   # OpenCV
-  #- ps: wget 'http://kent.dl.sourceforge.net/project/opencvlibrary/opencv-win/3.3.1/opencv-3.3.1-vc14.exe' -outfile opencv-3.3.1-vc14.exe
-  #- cmd: opencv-3.3.1-vc14.exe -o"C:\Program Files" -y
-  - ps: wget 'http://kent.dl.sourceforge.net/project/opencvlibrary/opencv-win/2.4.13/opencv-2.4.13.6-vc14.exe' -outfile opencv-2.4.13.6-vc14.exe
-  - cmd: opencv-2.4.13.6-vc14.exe -o"C:\Program Files" -y
+  #- appveyor-retry appveyor DownloadFile http://downloads.sourceforge.net/project/opencvlibrary/4.5.2/opencv-4.5.2-vc14_vc15.exe
+  #- cmd: opencv-4.5.2-vc14_vc15.exe -o"C:\Program Files" -y
+  #- ECHO "Installed OpenCV:"
+  #- ps: "ls \"C:/Program Files/opencv/build\""
+  #- set PATH=%PATH%;C:\Program Files\opencv\build\x64\vc14\bin
+  - ps: wget 'https://dl.dropboxusercontent.com/s/o6ofn491bc0jso1/opencv450_vc14.exe?dl=0' -outfile opencv.exe
+  - cmd: opencv.exe -o"C:\Program Files" -y
   - ECHO "Installed OpenCV:"
-  - ps: "ls \"C:/Program Files/opencv/build\""
-  - set PATH=%PATH%;C:\Program Files\opencv\build\x64\vc14\bin
+  - ps: "ls \"C:/Program Files/opencv\""
+  - set PATH=%PATH%;C:\Program Files\opencv\x64\vc14\bin
   # VTK (including QVTK)
   - ps: wget 'https://dl.dropboxusercontent.com/s/1l33b5l3f3y52gf/VTK-6_3-msvc140.exe?dl=0' -outfile VTK-6_3.exe
   - cmd: VTK-6_3.exe -o"C:\Program Files" -y
@@ -70,7 +76,7 @@ install:
   - ps: "ls \"C:/Program Files/PCL\""
   - set PATH=%PATH%;C:\Program Files\PCL\bin
   # zlib
-  - ps: wget 'https://docs.google.com/uc?authuser=0&id=0B46akLGdg-uaYm9MTTI4MUtUcmc&export=download' -outfile zlib-1.2.8-vc2010-x64.zip
+  - ps: gdown -q 0B46akLGdg-uaYm9MTTI4MUtUcmc
   - ps: Expand-Archive zlib-1.2.8-vc2010-x64.zip -DestinationPath 'C:\Program Files'
   - ECHO "Installed zlib:"
   - ps: "ls \"C:/Program Files/zlib\""
@@ -105,22 +111,31 @@ install:
   - ECHO "Installed Open Chisel:"
   - ps: "ls \"C:/Program Files/open_chisel\""
   - set PATH=%PATH%;C:\Program Files\open_chisel\bin
-  # cvsba
-  - ps: wget 'https://dl.dropboxusercontent.com/s/4ey8ergerx46zvj/cvsba_x64_vc14.exe?dl=0' -outfile cvsba.exe
-  - cmd: cvsba.exe -o"C:\Program Files" -y
-  - ECHO "Installed cvsba:"
-  - ps: "ls \"C:/Program Files/cvsba\""
-  - set PATH=%PATH%;C:\Program Files\cvsba\bin
+  # yaml-cpp
   - ps: wget 'https://dl.dropboxusercontent.com/s/22qfvftwj6zq8tj/yaml-cpp_x64_vc14.exe?dl=0' -outfile yaml-cpp.exe
   - cmd: yaml-cpp.exe -o"C:\Program Files" -y
   - ECHO "Installed yaml-cpp:"
   - ps: "ls \"C:/Program Files/yaml-cpp\""
+  # RealSense2
+  - ps: wget 'https://github.com/IntelRealSense/librealsense/releases/download/v2.40.0/Intel.RealSense.SDK-WIN10-2.40.0.2482.exe' -outfile realsense2.exe
+  - cmd: realsense2.exe /VERYSILENT
+  - ECHO "Installed RealSense2:"
+  - ps: "ls \"C:/Program Files (x86)/Intel RealSense SDK 2.0\""
+  - set PATH=%PATH%;C:\Program Files (x86)\Intel RealSense SDK 2.0\bin\x64
+  - set RealSense2_ROOT_DIR=C:\Program Files (x86)\Intel RealSense SDK 2.0
+  # Kinect 4 Azure
+  - ps: wget 'https://download.microsoft.com/download/3/d/6/3d6d9e99-a251-4cf3-8c6a-8e108e960b4b/Azure%20Kinect%20SDK%201.4.1.exe' -outfile azure.exe
+  - cmd: azure.exe /quiet
+  - ECHO "Installed Kinect For Azure:"
+  - ps: "ls \"C:/Program Files/Azure Kinect SDK v1.4.1\""
+  - set PATH=%PATH%;C:\Program Files\Azure Kinect SDK v1.4.1\tools
+  - set K4A_ROOT_DIR=C:\Program Files\Azure Kinect SDK v1.4.1
   
 before_build:
   - cd c:\projects\rtabmap\build
   - ECHO %PROGRAMFILES%
   - ECHO %PATH%
-  - cmake -G "Visual Studio 14 2015 Win64" -DOpenCV_DIR="C:\Program Files\opencv\build" -DPCL_DIR="C:\Program Files\PCL\cmake" -DCPUTSDF_DIR="C:\Program Files\cpu_tsdf\share\cpu_tsdf" -Dcvsba_DIR="C:\Program Files\cvsba\lib\cmake" -Dyaml-cpp_DIR="C:\Program Files\yaml-cpp\CMake" -DBUILD_AS_BUNDLE=ON ..
+  - cmake -G "Visual Studio 14 2015 Win64" -DOpenCV_DIR="C:\Program Files\opencv\build" -DPCL_DIR="C:\Program Files\PCL\cmake" -DCPUTSDF_DIR="C:\Program Files\cpu_tsdf\share\cpu_tsdf" -Dyaml-cpp_DIR="C:\Program Files\yaml-cpp\CMake" -DBUILD_AS_BUNDLE=ON ..
   
 after_build :
   - cmake --build . --config Release --target package

@@ -28,7 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef REGISTRATIONICP_H_
 #define REGISTRATIONICP_H_
 
-#include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
+#include "rtabmap/core/rtabmap_core_export.h" // DLL export/import defines
 
 #include <rtabmap/core/Registration.h>
 #include <rtabmap/core/Signature.h>
@@ -36,7 +36,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 namespace rtabmap {
 
 // Geometrical registration
-class RTABMAP_EXP RegistrationIcp : public Registration
+class RTABMAP_CORE_EXPORT RegistrationIcp : public Registration
 {
 public:
 	// take ownership of child
@@ -56,6 +56,7 @@ protected:
 	virtual float getMinGeometryCorrespondencesRatioImpl() const {return _correspondenceRatio;}
 
 private:
+	int _strategy;
 	float _maxTranslation;
 	float _maxRotation;
 	float _voxelSize;
@@ -63,19 +64,30 @@ private:
 	float _rangeMin;
 	float _rangeMax;
 	float _maxCorrespondenceDistance;
+	bool _reciprocalCorrespondences;
 	int _maxIterations;
 	float _epsilon;
 	float _correspondenceRatio;
+	bool _force4DoF;
 	bool _pointToPlane;
 	int _pointToPlaneK;
 	float _pointToPlaneRadius;
+	float _pointToPlaneGroundNormalsUp;
 	float _pointToPlaneMinComplexity;
-	bool _libpointmatcher;
+	int _pointToPlaneLowComplexityStrategy;
 	std::string _libpointmatcherConfig;
 	int _libpointmatcherKnn;
 	float _libpointmatcherEpsilon;
-	float _libpointmatcherOutlierRatio;
+	bool _libpointmatcherIntensity;
+	float _outlierRatio;
+	unsigned int _ccSamplingLimit;
+	bool _ccFilterOutFarthestPoints;
+	double _ccMaxFinalRMS;
+	std::string _debugExportFormat;
+	std::string _workingDir;
+
 	void * _libpointmatcherICP;
+	void * _libpointmatcherICPFilters;
 };
 
 }

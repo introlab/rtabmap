@@ -37,8 +37,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/util3d.h"
 #include "rtabmap/core/util3d_filtering.h"
 #include "rtabmap/core/util3d_transforms.h"
+#include "rtabmap/core/util3d_mapping.h"
 #include "rtabmap/core/RtabmapEvent.h"
-#include "rtabmap/core/OccupancyGrid.h"
+#include "rtabmap/core/global_map/OccupancyGrid.h"
 #endif
 #include "rtabmap/utilite/UStl.h"
 #include "rtabmap/utilite/UConversion.h"
@@ -59,7 +60,8 @@ public:
 		camera_(camera),
 		odometryCorrection_(Transform::getIdentity()),
 		processingStatistics_(false),
-		lastOdometryProcessed_(true)
+		lastOdometryProcessed_(true),
+		grid_(&localGrids_)
 	{
 		this->setWindowFlags(Qt::Dialog);
 		this->setWindowTitle(tr("3D Map"));
@@ -130,7 +132,7 @@ protected Q_SLOTS:
 			if(odom.data().depthOrRightRaw().cols == odom.data().imageRaw().cols &&
 			   odom.data().depthOrRightRaw().rows == odom.data().imageRaw().rows &&
 			   !odom.data().depthOrRightRaw().empty() &&
-			   (odom.data().stereoCameraModel().isValidForProjection() || odom.data().cameraModels().size()))
+			   (odom.data().stereoCameraModels().size() || odom.data().cameraModels().size()))
 			{
 				pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = util3d::cloudRGBFromSensorData(
 					odom.data(),
@@ -252,11 +254,11 @@ protected Q_SLOTS:
 			{
 				cv::Mat groundCells, obstacleCells, emptyCells;
 				stats.getLastSignatureData().sensorData().uncompressDataConst(0, 0, 0, 0, &groundCells, &obstacleCells, &emptyCells);
-				grid_.addToCache(stats.getLastSignatureData().id(), groundCells, obstacleCells, emptyCells);
+				localGrids_.add(stats.getLastSignatureData().id(), groundCells, obstacleCells, emptyCells, stats.getLastSignatureData().sensorData().gridCellSize(), stats.getLastSignatureData().sensorData().gridViewPoint());
 			}
 		}
 
-		if(grid_.addedNodes().size() || grid_.cacheSize())
+		if(grid_.addedNodes().size() || localGrids_.size())
 		{
 			grid_.update(stats.poses());
 		}
@@ -313,6 +315,7 @@ protected:
 	Transform odometryCorrection_;
 	bool processingStatistics_;
 	bool lastOdometryProcessed_;
+	LocalGridCache localGrids_;
 	OccupancyGrid grid_;
 };
 

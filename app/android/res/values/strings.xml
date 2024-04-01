@@ -19,7 +19,7 @@
     <string name="light_off">Lighting</string>
     <string name="wireframe">Wireframe</string>
     <string name="close_visualization">Close Visualization</string>
-    <string name="save_to_file">Export to File&#8230;</string>
+    <string name="save_to_file">Export OBJ/PLY&#8230;</string>
     <string name="share_to_sketchfab">Share to Sketchfab&#8230;</string>
     <string name="start">Start</string>
     <string name="nodes">"Nodes (WM): "</string>
@@ -51,7 +51,7 @@
     <string name="pref_key_remove_button">pref_key_remove_button</string>
     <string name="pref_key_reset_button">pref_key_reset_button</string>
     <string name="pref_key_density">pref_key_density</string>
-    <string name="pref_default_density">1</string>
+    <string name="pref_default_density">2</string>
     <string name="pref_key_min_depth">pref_key_min_depth</string>
     <string name="pref_default_min_depth">0</string>
     <string name="pref_key_depth">pref_key_depth</string>
@@ -65,7 +65,7 @@
     <string name="pref_key_rendering_texture_decimation">pref_key_rendering_texture_decimation</string>
     <string name="pref_default_rendering_texture_decimation">4</string>
     <string name="pref_key_blending">pref_key_blending</string>
-    <string name="pref_default_blending">false</string>
+    <string name="pref_default_blending">true</string>
     <string name="pref_key_background_color">pref_key_background_color</string>
     <string name="pref_default_background_color">0.2</string>
     <string name="pref_key_nodes_filtering">pref_key_nodes_filtering</string>
@@ -75,20 +75,22 @@
     <string name="pref_key_resolution">pref_key_resolution</string>
     <string name="pref_default_resolution">false</string>
     <string name="pref_key_smoothing">pref_key_smoothing</string>
-    <string name="pref_default_smoothing">true</string>
+    <string name="pref_default_smoothing">false</string>
     <string name="pref_key_fisheye">pref_key_fisheye</string>
     <string name="pref_default_fisheye">false</string>
     
     <string name="pref_key_camera_driver">pref_key_camera_driver</string>
-    <string name="pref_default_camera_driver">0</string>
+    <string name="pref_default_camera_driver">-1</string>
     <string name="pref_key_depth_from_motion">pref_key_depth_from_motion</string>
     <string name="pref_default_depth_from_motion">false</string>
+    <string name="pref_key_arcore_localization_filtering_speed">pref_key_arcore_localization_filtering_speed</string>
+    <string name="pref_default_arcore_localization_filtering_speed">1</string>
     <string name="pref_key_update_rate">pref_key_update_rate</string>
     <string name="pref_default_update_rate">1</string>
     <string name="pref_key_max_speed">pref_key_max_speed</string>
     <string name="pref_default_max_speed">0</string>
     <string name="pref_key_time_thr">pref_key_time_thr</string>
-    <string name="pref_default_time_thr">1000</string>
+    <string name="pref_default_time_thr">0</string>
     <string name="pref_key_mem_thr">pref_key_mem_thr</string>
     <string name="pref_default_mem_thr">0</string>
     <string name="pref_key_loop_thr">pref_key_loop_thr</string>
@@ -98,7 +100,7 @@
     <string name="pref_key_min_inliers">pref_key_min_inliers</string>
     <string name="pref_default_min_inliers">25</string>
     <string name="pref_key_opt_error">pref_key_opt_error</string>
-    <string name="pref_default_opt_error">3</string>
+    <string name="pref_default_opt_error">1</string>
     <string name="pref_key_features_voc">pref_key_features_voc</string>
     <string name="pref_default_features_voc">200</string>
     <string name="pref_key_features">pref_key_features</string>
@@ -162,7 +164,7 @@
     <string name="pref_title_triangle">Mesh Triangle Size</string>
     <string name="pref_summary_triangle">Size in pixels of the polygons created from the depth image.</string>
     <string name="pref_title_rendering_texture_decimation">Texture Resolution</string>
-    <string name="pref_summary_rendering_texture_decimation">Resolution of the texture for online rendering. This doesn\'t affect Export results.</string>
+    <string name="pref_summary_rendering_texture_decimation">Resolution of the texture for online rendering. This doesn\'t affect Assembling results.</string>
     <string name="pref_title_min_depth">Min Depth</string>
     <string name="pref_summary_min_depth">Points under the minimum depth are not rendered.</string>
     <string name="pref_title_depth">Max Depth</string>
@@ -324,9 +326,11 @@
     <string name="pref_title_mapping_core">Core</string>
     <string name="pref_title_mapping_database">Database</string>
     <string name="pref_title_camera_driver">Camera Driver</string>
-    <string name="pref_summary_camera_driver">AR sdk use for capturing 6DoF poses and images. A TOF camera is required to record a 3D model.</string>
+    <string name="pref_summary_camera_driver">AR sdk used for capturing 6DoF poses and images. A TOF camera is required to record a 3D model.</string>
     <string name="pref_title_depth_from_motion">Depth From Motion</string>
     <string name="pref_summary_depth_from_motion">Use ARCore\'s depth API to compute depth image from motion. If the phone has a TOF camera and is supported by ARCore, results should be better. Currently supported only with ARCore NDK driver.</string>
+    <string name="pref_title_arcore_localization_filtering_speed">ARCore Localization Filtering Speed</string>
+    <string name="pref_summary_arcore_localization_filtering_speed">Filter ARCore\'s localizations to avoid jumps in odometry when creating a map with RTAB-Map, which would cause large drift errors that are difficult to correct. Set a speed threshold to detect those events.</string>
     <string name="pref_title_append">Append Mode</string>
     <string name="pref_summary_append">When resuming mapping, wait for a relocalization on the current map before starting a new map.</string>
     <string name="pref_title_resolution">HD Mode</string>
@@ -373,16 +377,18 @@
     <string name="pref_summary_gps_saved">Save GPS to database.</string>
     <string name="pref_title_env_sensors_saved">Save Environmental Sensors</string>
     <string name="pref_summary_env_sensors_saved">Save Wifi strength, temperature, air pressure, light intensity and relative humidity to database.</string>
-    <string name="pref_title_db_in_memory">Database In Memory</string>
+    <string name="pref_title_db_in_memory">Database in Memory</string>
     <string name="pref_summary_db_in_memory">The database is kept in RAM for fast access. Set to false to reduce RAM used at the cost of slower access. This parameter is applied on reset or when a database is opened.</string>
 
     <string-array name="pref_camera_driver_keys">
+        <item>"Auto"</item>
         <item>"Google Tango NDK"</item>
         <item>"ARCore NDK"</item>
         <item>"AREngine NDK"</item>
         <item>"ARCore Java"</item>
     </string-array>
     <string-array name="pref_camera_driver_values">
+        <item>"-1"</item>
         <item>"0"</item>
         <item>"1"</item>
         <item>"2"</item>
@@ -398,6 +404,24 @@
         <item>"0.5 Hz"</item>
     </string-array>
     <string-array name="pref_update_rate_values">
+        <item>"0"</item>
+        <item>"5"</item>
+        <item>"4"</item>
+        <item>"3"</item>
+        <item>"2"</item>
+        <item>"1"</item>
+        <item>"0.5"</item>
+    </string-array>
+    <string-array name="pref_arcore_localization_filtering_speed_keys">
+        <item>"Disabled"</item>
+        <item>"5 m/s"</item>
+        <item>"4 m/s"</item>
+        <item>"3 m/s"</item>
+        <item>"2 m/s"</item>
+        <item>"1 m/s"</item>
+        <item>"0.5 m/s"</item>
+    </string-array>
+    <string-array name="pref_arcore_localization_filtering_speed_values">
         <item>"0"</item>
         <item>"5"</item>
         <item>"4"</item>
@@ -433,7 +457,7 @@
         <item>"700 ms"</item>
         <item>"600 ms"</item>
         <item>"500 ms"</item>
-        <item>"400"</item>
+        <item>"400 ms"</item>
     </string-array>
     <string-array name="pref_time_thr_values">
         <item>"0"</item>
@@ -529,29 +553,25 @@
         <item>"10"</item>
     </string-array>
     <string-array name="pref_opt_error_keys">
-        <item>"10x"</item>
-        <item>"9x"</item>
-        <item>"8x"</item>
-        <item>"7x"</item>
-        <item>"6x"</item>
-        <item>"5x"</item>
         <item>"4x"</item>
+        <item>"3.5x"</item>
         <item>"3x"</item>
+        <item>"2.5x"</item>
         <item>"2x"</item>
+        <item>"1.5x"</item>
         <item>"1x"</item>
+        <item>"0.5x"</item>
         <item>"Disabled"</item>
     </string-array>
     <string-array name="pref_opt_error_values">
-        <item>"10"</item>
-        <item>"9"</item>
-        <item>"8"</item>
-        <item>"7"</item>
-        <item>"6"</item>
-        <item>"5"</item>
         <item>"4"</item>
+        <item>"3.5"</item>
         <item>"3"</item>
+        <item>"2.5"</item>
         <item>"2"</item>
+        <item>"1.5"</item>
         <item>"1"</item>
+        <item>"0.5"</item>
         <item>"0"</item>
     </string-array>
     <string-array name="pref_features_voc_keys">
@@ -712,9 +732,9 @@
         <item>"1"</item>
     </string-array>
 
-    <string name="pref_title_export_sub">Exporting&#8230;</string>
-    <string name="pref_title_export">Exporting</string>
-    <string name="pref_summary_export">Advanced parameters used when exporting the map.</string>
+    <string name="pref_title_export_sub">Assembling&#8230;</string>
+    <string name="pref_title_export">Assembling</string>
+    <string name="pref_summary_export">Advanced parameters used when assembling the map.</string>
     <string name="pref_title_cloud_voxel">Voxel Size</string>
     <string name="pref_summary_cloud_voxel">If you don\'t need a very precise point cloud, you can set this to reduce the output point cloud size. This is also used for optimized mesh.</string>
     <string name="pref_title_texture_size">Texture Size</string>
@@ -727,8 +747,8 @@
     <string name="pref_summary_max_texture_distance">Maximum distance from a camera for polygons to be textured by this camera.</string>
     <string name="pref_title_min_texture_cluster_size">Min Texture Cluster Size</string>
     <string name="pref_summary_min_texture_cluster_size">Minimum polygon cluster size to be textured by a camera. This helps to filter sparse textured polygons.</string>
-    <string name="pref_title_block_render">Block Rendering Thread While Exporting</string>
-    <string name="pref_summary_block_render">This decreases exporting time, but freezes rendering while exporting. This also clears temporary the rendered clouds/meshes from memory during exporting, this can be useful to avoid out of memory errors.</string>
+    <string name="pref_title_block_render">Block Rendering Thread While Assembling</string>
+    <string name="pref_summary_block_render">This decreases assembling time, but freezes rendering while assembling. This also clears temporary the rendered clouds/meshes from memory during assembling, this can be useful to avoid out of memory errors.</string>
 
     <string-array name="pref_cloud_voxel_keys">
         <item>"0.2 m"</item>
@@ -834,7 +854,7 @@
     <string name="pref_title_opt_depth">Reconstruction Depth</string>
     <string name="pref_summary_opt_depth">Lowering this parameter decreases reconstruction time, but geometry precision is lower. Minimum polygon size: map length / 2^depth). \"Auto\" means that depth is chosen so that polygon size is just under 3 cm.</string>
     <string name="pref_title_opt_color_radius">Color Radius</string>
-    <string name="pref_summary_opt_color_radius">Radius used to transfer nearest color from the point cloud to reconstructed mesh. When exporting with texture, if Clean Mesh is also enabled, this will limit the number of polygons textured in holes.</string>
+    <string name="pref_summary_opt_color_radius">Radius used to transfer nearest color from the point cloud to reconstructed mesh. When assembling with texture, if Clean Mesh is also enabled, this will limit the number of polygons textured in holes.</string>
     <string name="pref_title_opt_clean_white">Clean Mesh</string>
     <string name="pref_summary_opt_clean_white">Clean mesh from textureless or colorless reconstructed polygons.</string>
 	<string name="pref_summary_opt_min_cluster_size">This can be used to filter polygons before texturing.</string>
@@ -868,10 +888,10 @@
         <item>"0.2 m"</item>
         <item>"0.1 m"</item>
         <item>"0.05 m"</item>
-        <item>"0.025"</item>
-        <item>"0.02"</item>
-        <item>"0.015"</item>
-        <item>"0.01"</item>
+        <item>"0.025 m"</item>
+        <item>"0.02 m"</item>
+        <item>"0.015 m"</item>
+        <item>"0.01 m"</item>
         <item>"Disabled"</item>
     </string-array>
     <string-array name="pref_opt_color_radius_values">

@@ -29,19 +29,35 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/gui/DatabaseViewer.h"
 #include "rtabmap/utilite/ULogger.h"
 
+#include <vtkObject.h>
+#include <vtkVersionMacros.h>
+
+#if VTK_MAJOR_VERSION > 9 || (VTK_MAJOR_VERSION==9 && VTK_MINOR_VERSION >= 1)
+#include <QVTKRenderWidget.h>
+#endif
+
 int main(int argc, char * argv[])
 {
 	ULogger::setType(ULogger::kTypeConsole);
 	ULogger::setLevel(ULogger::kInfo);
+
+#ifdef WIN32
+	CoInitialize(nullptr);
+#endif
+
+#if VTK_MAJOR_VERSION > 9 || (VTK_MAJOR_VERSION==9 && VTK_MINOR_VERSION >= 1)
+    // needed to ensure appropriate OpenGL context is created for VTK rendering.
+    QSurfaceFormat::setDefaultFormat(QVTKRenderWidget::defaultFormat());
+#endif
 
 	QApplication * app = new QApplication(argc, argv);
 	rtabmap::DatabaseViewer * mainWindow = new rtabmap::DatabaseViewer();
 
 	mainWindow->showNormal();
 
-	if(argc == 2)
+	if(argc >= 2)
 	{
-		mainWindow->openDatabase(argv[1]);
+		mainWindow->openDatabase(argv[argc-1], rtabmap::Parameters::parseArguments(argc, argv, true));
 	}
 
 	// Now wait for application to finish

@@ -75,6 +75,17 @@ public:
 
 	static const rtabmap::Transform opticalRotation;
 	static const rtabmap::Transform opticalRotationInv;
+    
+public:
+    static LaserScan scanFromPointCloudData(
+            const cv::Mat & pointCloudData,
+            int points,
+            const Transform & pose,
+            const CameraModel & model,
+            const cv::Mat & rgb,
+            std::vector<cv::KeyPoint> * kpts = 0,
+            std::vector<cv::Point3f> * kpts3D = 0,
+            int kptsSize = 3);
 
 public:
 	CameraMobile(bool smoothing = false);
@@ -97,9 +108,18 @@ public:
 	virtual void setScreenRotationAndSize(ScreenRotation colorCameraToDisplayRotation, int width, int height) {colorCameraToDisplayRotation_ = colorCameraToDisplayRotation;}
 	void setGPS(const GPS & gps);
 	void addEnvSensor(int type, float value);
-	void setData(const SensorData & data, const Transform & pose);
+	void setData(const SensorData & data, const Transform & pose, const glm::mat4 & viewMatrix, const glm::mat4 & projectionMatrix, const float * texCoord);
 
 	void spinOnce(); // Should only be called if not thread is not running, otherwise it does nothing
+    
+    GLuint getTextureId() {return textureId_;}
+    bool uvsInitialized() const {return uvs_initialized_;}
+    const float* uvsTransformed() const {return transformed_uvs_;}
+    void getVPMatrices(glm::mat4 & view, glm::mat4 & projection) const {view=viewMatrix_; projection=projectionMatrix_;}
+    ScreenRotation getScreenRotation() const {return colorCameraToDisplayRotation_;}
+    
+    void setOcclusionImage(const cv::Mat & image, const CameraModel & model) {occlusionModel_ = model; occlusionImage_ = image;}
+    const cv::Mat & getOcclusionImage(CameraModel * model=0) const {if(model)*model=occlusionModel_; return occlusionImage_; }
 
 protected:
 	virtual SensorData captureImage(CameraInfo * info = 0);
@@ -113,6 +133,12 @@ protected:
 	Transform deviceTColorCamera_; // device to camera optical rotation in rtabmap frame
 	UTimer spinOnceFrameRateTimer_;
 	double spinOncePreviousStamp_;
+    
+    GLuint textureId_;
+    glm::mat4 viewMatrix_;
+    glm::mat4 projectionMatrix_;
+    float transformed_uvs_[8];
+    bool uvs_initialized_ = false;
 
 private:
 	Transform previousPose_;
@@ -128,6 +154,9 @@ private:
 
 	SensorData data_;
 	Transform pose_;
+    
+    cv::Mat occlusionImage_;
+    CameraModel occlusionModel_;
 };
 
 } /* namespace rtabmap */

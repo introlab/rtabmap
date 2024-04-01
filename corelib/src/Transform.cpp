@@ -166,9 +166,30 @@ float Transform::theta() const
 	return yaw;
 }
 
+bool Transform::isInvertible() const
+{
+	bool invertible = false;
+	Eigen::Matrix4f inverse;
+	Eigen::Matrix4f::RealScalar det;
+	toEigen4f().computeInverseAndDetWithCheck(inverse, det, invertible);
+	return invertible;
+}
+
 Transform Transform::inverse() const
 {
-	return fromEigen4f(toEigen4f().inverse());
+	bool invertible = false;
+	Eigen::Matrix4f inverse;
+	Eigen::Matrix4f::RealScalar det;
+	toEigen4f().computeInverseAndDetWithCheck(inverse, det, invertible);
+	UASSERT_MSG(invertible, uFormat("This transform is not invertible! %s \n"
+			"[%f %f %f %f;\n"
+			" %f %f %f %f;\n"
+			" %f %f %f %f;\n"
+			" 0 0 0 1]", prettyPrint().c_str(),
+			r11(), r12(), r13(), o14(),
+			r21(), r22(), r23(), o24(),
+			r31(), r32(), r33(), o34()).c_str());
+	return fromEigen4f(inverse);
 }
 
 Transform Transform::rotation() const
@@ -190,7 +211,38 @@ Transform Transform::to3DoF() const
 {
 	float x,y,z,roll,pitch,yaw;
 	this->getTranslationAndEulerAngles(x,y,z,roll,pitch,yaw);
-	return Transform(x,y,0, 0,0,yaw);
+	float A = std::cos(yaw);
+	float B = std::sin(yaw);
+	return Transform(
+			A,-B, 0, x,
+			B, A, 0, y,
+			0, 0, 1, 0);
+}
+
+Transform Transform::to4DoF() const
+{
+	float x,y,z,roll,pitch,yaw;
+	this->getTranslationAndEulerAngles(x,y,z,roll,pitch,yaw);
+	float A = std::cos(yaw);
+	float B = std::sin(yaw);
+	return Transform(
+			A,-B, 0, x,
+			B, A, 0, y,
+			0, 0, 1, z);
+}
+
+bool Transform::is3DoF() const
+{
+	return is4DoF() && z() == 0.0;
+}
+
+bool Transform::is4DoF() const
+{
+	return r13() == 0.0 &&
+		   r23() == 0.0 &&
+		   r31() == 0.0 &&
+		   r32() == 0.0 &&
+		   r33() == 1.0;
 }
 
 cv::Mat Transform::rotationMatrix() const
@@ -311,14 +363,9 @@ bool Transform::operator!=(const Transform & t) const
 
 std::ostream& operator<<(std::ostream& os, const Transform& s)
 {
-	for(int i = 0; i < 3; ++i)
-	{
-		for(int j = 0; j < 4; ++j)
-		{
-			os << std::left << std::setw(12) << s.data()[i*4 + j] << " ";
-		}
-		os << std::endl;
-	}
+	os << "[" << s.data()[0] << ", " << s.data()[1] << ", " << s.data()[2] << ", " << s.data()[3] << ";" << std::endl
+	   << " " << s.data()[4] << ", " << s.data()[5] << ", " << s.data()[6] << ", " << s.data()[7] << ";" << std::endl
+	   << " " << s.data()[8] << ", " << s.data()[9] << ", " << s.data()[10]<< ", " << s.data()[11] << "]";
 	return os;
 }
 
@@ -399,6 +446,19 @@ Transform Transform::fromEigen3f(const Eigen::Isometry3f & matrix)
 					 matrix(2,0), matrix(2,1), matrix(2,2), matrix(2,3));
 }
 Transform Transform::fromEigen3d(const Eigen::Isometry3d & matrix)
+{
+	return Transform(matrix(0,0), matrix(0,1), matrix(0,2), matrix(0,3),
+					 matrix(1,0), matrix(1,1), matrix(1,2), matrix(1,3),
+					 matrix(2,0), matrix(2,1), matrix(2,2), matrix(2,3));
+}
+
+Transform Transform::fromEigen3f(const Eigen::Matrix<float, 3, 4> & matrix)
+{
+	return Transform(matrix(0,0), matrix(0,1), matrix(0,2), matrix(0,3),
+					 matrix(1,0), matrix(1,1), matrix(1,2), matrix(1,3),
+					 matrix(2,0), matrix(2,1), matrix(2,2), matrix(2,3));
+}
+Transform Transform::fromEigen3d(const Eigen::Matrix<double, 3, 4> & matrix)
 {
 	return Transform(matrix(0,0), matrix(0,1), matrix(0,2), matrix(0,3),
 					 matrix(1,0), matrix(1,1), matrix(1,2), matrix(1,3),

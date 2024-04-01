@@ -1,0 +1,487 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>PreferenceSpecifiers</key>
+	<array>
+		<dict>
+			<key>FooterText</key>
+			<string>Decrease density to reduce rendering time and memory. Tip: To apply a different density to current map: save the map, change density and re-open the same map to regenerate the point clouds at this density. Points over the maximum depth, under minimum depth or under the depth confidence are not rendered.</string>
+			<key>Title</key>
+			<string>Rendering</string>
+			<key>Type</key>
+			<string>PSGroupSpecifier</string>
+		</dict>
+		<dict>
+			<key>DefaultValue</key>
+			<integer>1</integer>
+			<key>Key</key>
+			<string>PointCloudDensity</string>
+			<key>Title</key>
+			<string>Point Cloud Density</string>
+			<key>Titles</key>
+			<array>
+				<string>Maximum</string>
+				<string>High</string>
+				<string>Low</string>
+				<string>Very Low</string>
+			</array>
+			<key>Type</key>
+			<string>PSMultiValueSpecifier</string>
+			<key>Values</key>
+			<array>
+				<integer>0</integer>
+				<integer>1</integer>
+				<integer>2</integer>
+				<integer>3</integer>
+			</array>
+		</dict>
+		<dict>
+			<key>DefaultValue</key>
+			<integer>3</integer>
+			<key>Key</key>
+			<string>MaxDepth</string>
+			<key>Title</key>
+			<string>Max Depth</string>
+			<key>Titles</key>
+			<array>
+				<string>No Limit</string>
+				<string>5 m</string>
+				<string>4.5 m</string>
+				<string>4 m</string>
+				<string>3.5 m</string>
+				<string>3 m</string>
+				<string>2.5 m</string>
+				<string>2 m</string>
+				<string>1.5 m</string>
+				<string>1 m</string>
+			</array>
+			<key>Type</key>
+			<string>PSMultiValueSpecifier</string>
+			<key>Values</key>
+			<array>
+				<real>0.0</real>
+				<real>5</real>
+				<real>4.5</real>
+				<real>4</real>
+				<real>3.5</real>
+				<real>3</real>
+				<real>2.5</real>
+				<real>2</real>
+				<real>1.5</real>
+				<real>1</real>
+			</array>
+		</dict>
+		<dict>
+			<key>DefaultValue</key>
+			<real>0.0</real>
+			<key>Key</key>
+			<string>MinDepth</string>
+			<key>Title</key>
+			<string>Min Depth</string>
+			<key>Titles</key>
+			<array>
+				<string>0 m</string>
+				<string>0.3 m</string>
+				<string>0.5 m</string>
+				<string>0.75 m</string>
+				<string>1 m</string>
+				<string>1.5 m</string>
+				<string>2 m</string>
+				<string>2.5 m</string>
+				<string>3 m</string>
+			</array>
+			<key>Type</key>
+			<string>PSMultiValueSpecifier</string>
+			<key>Values</key>
+			<array>
+				<real>0.0</real>
+				<real>0.29999999999999999</real>
+				<real>0.5</real>
+				<real>0.75</real>
+				<real>1</real>
+				<real>1.5</real>
+				<real>2</real>
+				<real>2.5</real>
+				<real>3</real>
+			</array>
+		</dict>
+		<dict>
+			<key>DefaultValue</key>
+			<integer>2</integer>
+			<key>Key</key>
+			<string>DepthConfidence</string>
+			<key>Title</key>
+			<string>Depth Confidence</string>
+			<key>Titles</key>
+			<array>
+				<string>High</string>
+				<string>Medium</string>
+				<string>Low</string>
+			</array>
+			<key>Type</key>
+			<string>PSMultiValueSpecifier</string>
+			<key>Values</key>
+			<array>
+				<integer>2</integer>
+				<integer>1</integer>
+				<integer>0</integer>
+			</array>
+		</dict>
+		<dict>
+			<key>FooterText</key>
+			<string>Increase minimum polygon angle to force scanning perpendicular to surfaces. Set a decimation factor to reduce the number of polygons. The higher the factor, the less polygons will remain. Note that the decimation factor is done after decreasing point cloud density. Decimation factor and texture resolution don't affect post-processing.</string>
+			<key>Type</key>
+			<string>PSGroupSpecifier</string>
+		</dict>
+		<dict>
+			<key>DefaultValue</key>
+			<integer>20</integer>
+			<key>Key</key>
+			<string>MeshAngleTolerance</string>
+			<key>Title</key>
+			<string>Mesh Angle Tolerance (deg)</string>
+			<key>Titles</key>
+			<array>
+				<string>60</string>
+				<string>45</string>
+				<string>35</string>
+				<string>30</string>
+				<string>25</string>
+				<string>20</string>
+				<string>15</string>
+				<string>10</string>
+				<string>5</string>
+			</array>
+			<key>Type</key>
+			<string>PSMultiValueSpecifier</string>
+			<key>Values</key>
+			<array>
+				<integer>60</integer>
+				<integer>45</integer>
+				<integer>35</integer>
+				<integer>30</integer>
+				<integer>25</integer>
+				<integer>20</integer>
+				<integer>15</integer>
+				<integer>10</integer>
+				<integer>5</integer>
+			</array>
+		</dict>
+		<dict>
+			<key>DefaultValue</key>
+			<integer>2</integer>
+			<key>Key</key>
+			<string>MeshTriangleSize</string>
+			<key>Title</key>
+			<string>Mesh Triangle Size</string>
+			<key>Titles</key>
+			<array>
+				<string>6 pix</string>
+				<string>5 pix</string>
+				<string>4 pix</string>
+				<string>3 pix</string>
+				<string>2 pix</string>
+			</array>
+			<key>Type</key>
+			<string>PSMultiValueSpecifier</string>
+			<key>Values</key>
+			<array>
+				<integer>6</integer>
+				<integer>5</integer>
+				<integer>4</integer>
+				<integer>3</integer>
+				<integer>2</integer>
+			</array>
+		</dict>
+		<dict>
+			<key>DefaultValue</key>
+			<real>0.0</real>
+			<key>Key</key>
+			<string>MeshDecimationFactor</string>
+			<key>Title</key>
+			<string>Mesh Decimation Factor</string>
+			<key>Titles</key>
+			<array>
+				<string>99%</string>
+				<string>95%</string>
+				<string>90%</string>
+				<string>80%</string>
+				<string>70%</string>
+				<string>60%</string>
+				<string>50%</string>
+				<string>40%</string>
+				<string>30%</string>
+				<string>20%</string>
+				<string>10%</string>
+				<string>Disabled</string>
+			</array>
+			<key>Type</key>
+			<string>PSMultiValueSpecifier</string>
+			<key>Values</key>
+			<array>
+				<real>0.98999999999999999</real>
+				<real>0.94999999999999996</real>
+				<real>0.90000000000000002</real>
+				<real>0.80000000000000004</real>
+				<real>0.69999999999999996</real>
+				<real>0.59999999999999998</real>
+				<real>0.5</real>
+				<real>0.40000000000000002</real>
+				<real>0.29999999999999999</real>
+				<real>0.20000000000000001</real>
+				<real>0.10000000000000001</real>
+				<real>0.0</real>
+			</array>
+		</dict>
+		<dict>
+			<key>DefaultValue</key>
+			<integer>4</integer>
+			<key>Key</key>
+			<string>TextureResolution</string>
+			<key>Title</key>
+			<string>Texture Resolution</string>
+			<key>Titles</key>
+			<array>
+				<string>Maximum</string>
+				<string>High</string>
+				<string>Low</string>
+				<string>Very Low</string>
+			</array>
+			<key>Type</key>
+			<string>PSMultiValueSpecifier</string>
+			<key>Values</key>
+			<array>
+				<integer>1</integer>
+				<integer>2</integer>
+				<integer>4</integer>
+				<integer>8</integer>
+			</array>
+		</dict>
+		<dict>
+			<key>FooterText</key>
+			<string>Enable Blending to get smoother colors on overlapping surfaces. When Nodes Filetring is enabled, only the newest point clouds of loop closures are rendered.</string>
+			<key>Type</key>
+			<string>PSGroupSpecifier</string>
+		</dict>
+		<dict>
+			<key>DefaultValue</key>
+			<real>0.20000000000000001</real>
+			<key>Key</key>
+			<string>BackgroundColor</string>
+			<key>Title</key>
+			<string>Background Color</string>
+			<key>Titles</key>
+			<array>
+				<string>0.9</string>
+				<string>Light Gray</string>
+				<string>0.7</string>
+				<string>0.6</string>
+				<string>Gray</string>
+				<string>0.4</string>
+				<string>0.3</string>
+				<string>Dark Gray</string>
+				<string>0.1</string>
+				<string>Black</string>
+			</array>
+			<key>Type</key>
+			<string>PSMultiValueSpecifier</string>
+			<key>Values</key>
+			<array>
+				<real>0.90000000000000002</real>
+				<real>0.80000000000000004</real>
+				<real>0.69999999999999996</real>
+				<real>0.59999999999999998</real>
+				<real>0.5</real>
+				<real>0.40000000000000002</real>
+				<real>0.29999999999999999</real>
+				<real>0.20000000000000001</real>
+				<real>0.10000000000000001</real>
+				<real>0.0</real>
+			</array>
+		</dict>
+		<dict>
+			<key>DefaultValue</key>
+			<integer>10</integer>
+			<key>Key</key>
+			<string>PointSize</string>
+			<key>Title</key>
+			<string>Point Size</string>
+			<key>Titles</key>
+			<array>
+				<string>50</string>
+				<string>30</string>
+				<string>25</string>
+				<string>15</string>
+				<string>10</string>
+				<string>5</string>
+				<string>1</string>
+			</array>
+			<key>Type</key>
+			<string>PSMultiValueSpecifier</string>
+			<key>Values</key>
+			<array>
+				<integer>50</integer>
+				<integer>30</integer>
+				<integer>25</integer>
+				<integer>15</integer>
+				<integer>10</integer>
+				<integer>5</integer>
+				<integer>1</integer>
+			</array>
+		</dict>
+		<dict>
+			<key>DefaultValue</key>
+			<true/>
+			<key>Key</key>
+			<string>Blending</string>
+			<key>Title</key>
+			<string>Blending</string>
+			<key>Type</key>
+			<string>PSToggleSwitchSpecifier</string>
+		</dict>
+		<dict>
+			<key>DefaultValue</key>
+			<false/>
+			<key>Key</key>
+			<string>NodesFiltering</string>
+			<key>Title</key>
+			<string>Nodes Filtering</string>
+			<key>Type</key>
+			<string>PSToggleSwitchSpecifier</string>
+		</dict>
+		<dict>
+			<key>Title</key>
+			<string>General</string>
+			<key>Type</key>
+			<string>PSGroupSpecifier</string>
+		</dict>
+		<dict>
+			<key>File</key>
+			<string>Mapping</string>
+			<key>Title</key>
+			<string>Mapping...</string>
+			<key>Type</key>
+			<string>PSChildPaneSpecifier</string>
+		</dict>
+		<dict>
+			<key>File</key>
+			<string>Assembling</string>
+			<key>Title</key>
+			<string>Assembling...</string>
+			<key>Type</key>
+			<string>PSChildPaneSpecifier</string>
+		</dict>
+		<dict>
+			<key>FooterText</key>
+			<string>Color CorrectionRadius is used to find pixel correspondences for Adjust Colors optimization. Noise Filtering Ratio is used to remove polygon clusters smaller than this ratio of the largest cluster during Noise Filtering optimization.</string>
+			<key>Title</key>
+			<string>Optimization</string>
+			<key>Type</key>
+			<string>PSGroupSpecifier</string>
+		</dict>
+		<dict>
+			<key>DefaultValue</key>
+			<real>0.02</real>
+			<key>Key</key>
+			<string>ColorCorrectionRadius</string>
+			<key>Title</key>
+			<string>Color Correction Radius</string>
+			<key>Titles</key>
+			<array>
+				<string>30 cm</string>
+				<string>20 cm</string>
+				<string>10 cm</string>
+				<string>5 cm</string>
+				<string>2.5 cm</string>
+				<string>2 cm</string>
+				<string>1.5 cm</string>
+				<string>1 cm</string>
+			</array>
+			<key>Type</key>
+			<string>PSMultiValueSpecifier</string>
+			<key>Values</key>
+			<array>
+				<real>0.29999999999999999</real>
+				<real>0.20000000000000001</real>
+				<real>0.10000000000000001</real>
+				<real>0.050000000000000003</real>
+				<real>0.025000000000000001</real>
+				<real>0.02</real>
+				<real>0.014999999999999999</real>
+				<real>0.01</real>
+			</array>
+		</dict>
+		<dict>
+			<key>DefaultValue</key>
+			<real>0.050000000000000003</real>
+			<key>Key</key>
+			<string>NoiseFilteringRatio</string>
+			<key>Title</key>
+			<string>Noise Filtering Ratio</string>
+			<key>Titles</key>
+			<array>
+				<string>Keep Largest Only</string>
+				<string>0.9</string>
+				<string>0.8</string>
+				<string>0.7</string>
+				<string>0.6</string>
+				<string>0.5</string>
+				<string>0.4</string>
+				<string>0.3</string>
+				<string>0.2</string>
+				<string>0.1</string>
+				<string>0.05</string>
+				<string>0.01</string>
+			</array>
+			<key>Type</key>
+			<string>PSMultiValueSpecifier</string>
+			<key>Values</key>
+			<array>
+				<real>1</real>
+				<real>0.90000000000000002</real>
+				<real>0.80000000000000004</real>
+				<real>0.69999999999999996</real>
+				<real>0.59999999999999998</real>
+				<real>0.5</real>
+				<real>0.40000000000000002</real>
+				<real>0.29999999999999999</real>
+				<real>0.20000000000000001</real>
+				<real>0.10000000000000001</real>
+				<real>0.050000000000000003</real>
+				<real>0.01</real>
+			</array>
+		</dict>
+		<dict>
+			<key>FooterText</key>
+			<string>Copyright (c) 2010-2023, Mathieu Labbe - IntRoLab - Université de Sherbrooke. All rights reserved.</string>
+			<key>Title</key>
+			<string>About</string>
+			<key>Type</key>
+			<string>PSGroupSpecifier</string>
+		</dict>
+		<dict>
+			<key>DefaultValue</key>
+			<string>0.21.0</string>
+			<key>Key</key>
+			<string>Version</string>
+			<key>Title</key>
+			<string>Version</string>
+			<key>Type</key>
+			<string>PSTitleValueSpecifier</string>
+		</dict>
+		<dict>
+			<key>File</key>
+			<string>License</string>
+			<key>Key</key>
+			<string></string>
+			<key>Title</key>
+			<string>License</string>
+			<key>Type</key>
+			<string>PSChildPaneSpecifier</string>
+		</dict>
+	</array>
+	<key>StringsTable</key>
+	<string>Root</string>
+</dict>
+</plist>

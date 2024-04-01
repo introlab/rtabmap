@@ -57,7 +57,7 @@ std::map<int, Transform> OptimizerCVSBA::optimizeBA(
 		int rootId,
 		const std::map<int, Transform> & posesIn,
 		const std::multimap<int, Link> & links,
-		const std::map<int, CameraModel> & models,
+		const std::map<int, std::vector<CameraModel> > & models,
 		std::map<int, cv::Point3f> & points3DMap,
 		const std::map<int, std::map<int, FeatureBA> > & wordReferences, // <ID words, IDs frames + keypoint/Disparity>)
 		std::set<int> * outliers)
@@ -87,23 +87,29 @@ std::map<int, Transform> OptimizerCVSBA::optimizeBA(
 	for(std::map<int, Transform>::const_iterator iter=poses.begin(); iter!=poses.end(); ++iter)
 	{
 		// Get camera model
-		std::map<int, CameraModel>::const_iterator iterModel = models.find(iter->first);
-		UASSERT(iterModel != models.end() && iterModel->second.isValidForProjection());
+		std::map<int, std::vector<CameraModel> >::const_iterator iterModel = models.find(iter->first);
+		UASSERT(iterModel != models.end());
+		if(iterModel->second.size() != 1)
+		{
+			UERROR("Multi-camera BA not implemented for cvsba, only single camera.");
+			return std::map<int, Transform>();
+		}
+		UASSERT(iterModel->second[0].isValidForProjection());
 
 		frameIdToIndex.insert(std::make_pair(iter->first, oi));
 
-		cameraMatrix[oi] = iterModel->second.K();
-		if(iterModel->second.D().cols != 5)
+		cameraMatrix[oi] = iterModel->second[0].K();
+		if(iterModel->second[0].D().cols != 5)
 		{
 			distCoeffs[oi] = cv::Mat::zeros(1, 5, CV_64FC1);
 			UWARN("Camera model %d: Distortion coefficients are not 5, setting all them to 0 (assuming no distortion)", iter->first);
 		}
 		else
 		{
-			distCoeffs[oi] = iterModel->second.D();
+			distCoeffs[oi] = iterModel->second[0].D();
 		}
 
-		Transform t = (iter->second * iterModel->second.localTransform()).inverse();
+		Transform t = (iter->second * iterModel->second[0].localTransform()).inverse();
 
 		R[oi] = (cv::Mat_<double>(3,3) <<
 				(double)t.r11(), (double)t.r12(), (double)t.r13(),
@@ -172,13 +178,13 @@ std::map<int, Transform> OptimizerCVSBA::optimizeBA(
 
 		if(this->isSlam2d())
 		{
-			t = (models.at(iter->first).localTransform() * t).inverse();
+			t = (models.at(iter->first)[0].localTransform() * t).inverse();
 			t = iter->second.inverse() * t;
 			iter->second *= t.to3DoF();
 		}
 		else
 		{
-			iter->second = (models.at(iter->first).localTransform() * t).inverse();
+			iter->second = (models.at(iter->first)[0].localTransform() * t).inverse();
 		}
 
 		++i;

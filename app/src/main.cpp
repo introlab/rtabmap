@@ -35,7 +35,13 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/utilite/UObjDeletionThread.h"
 #include "rtabmap/utilite/UFile.h"
 #include "rtabmap/utilite/UConversion.h"
-#include "ObjDeletionHandler.h"
+
+#include <vtkVersionMacros.h>
+#include <vtkObject.h>
+
+#if VTK_MAJOR_VERSION > 9 || (VTK_MAJOR_VERSION==9 && VTK_MINOR_VERSION >= 1)
+#include <QVTKRenderWidget.h>
+#endif
 
 using namespace rtabmap;
 
@@ -44,6 +50,15 @@ int main(int argc, char* argv[])
 	/* Set logger type */
 	ULogger::setType(ULogger::kTypeConsole);
 	ULogger::setLevel(ULogger::kWarning);
+
+#ifdef WIN32
+	CoInitialize(nullptr);
+#endif
+
+#if VTK_MAJOR_VERSION > 9 || (VTK_MAJOR_VERSION==9 && VTK_MINOR_VERSION >= 1)
+    // needed to ensure appropriate OpenGL context is created for VTK rendering.
+    QSurfaceFormat::setDefaultFormat(QVTKRenderWidget::defaultFormat());
+#endif
 
 	/* Create tasks */
 	QApplication * app = new QApplication(argc, argv);

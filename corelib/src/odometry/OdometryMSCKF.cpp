@@ -672,18 +672,17 @@ public:
 		T_i_w.linear() = msckf_vio::quaternionToRotation(imu_state.orientation).transpose();
 		T_i_w.translation() = imu_state.position;
 
-		Eigen::Isometry3d T_b_w = msckf_vio::IMUState::T_imu_body * T_i_w *
-				msckf_vio::IMUState::T_imu_body.inverse();
+		Eigen::Isometry3d T_b_w = T_i_w * msckf_vio::IMUState::T_imu_body.inverse();
 		Eigen::Vector3d body_velocity =
 				msckf_vio::IMUState::T_imu_body.linear() * imu_state.velocity;
 
 		// Publish tf
 		/*if (publish_tf) {
-	    tf::Transform T_b_w_tf;
-	    tf::transformEigenToTF(T_b_w, T_b_w_tf);
-	    tf_pub.sendTransform(tf::StampedTransform(
-	          T_b_w_tf, time, fixed_frame_id, child_frame_id));
-	  }*/
+			tf::Transform T_b_w_tf;
+			tf::transformEigenToTF(T_b_w, T_b_w_tf);
+			tf_pub.sendTransform(tf::StampedTransform(
+				T_b_w_tf, time, fixed_frame_id, child_frame_id));
+		}*/
 
 		// Publish the odometry
 		nav_msgs::Odometry odom_msg;
@@ -725,20 +724,18 @@ public:
 		// Publish the 3D positions of the features that
 		// has been initialized.
 		feature_msg_ptr.reset(new pcl::PointCloud<pcl::PointXYZ>());
-	  feature_msg_ptr->header.frame_id = fixed_frame_id;
-	  feature_msg_ptr->height = 1;
-	  for (const auto& item : map_server) {
-	    const auto& feature = item.second;
-	    if (feature.is_initialized) {
-	      Eigen::Vector3d feature_position =
-	        msckf_vio::IMUState::T_imu_body.linear() * feature.position;
-	      feature_msg_ptr->points.push_back(pcl::PointXYZ(
-	            feature_position(0), feature_position(1), feature_position(2)));
-	    }
-	  }
-	  feature_msg_ptr->width = feature_msg_ptr->points.size();
+		feature_msg_ptr->header.frame_id = fixed_frame_id;
+		feature_msg_ptr->height = 1;
+		for (const auto& item : map_server) {
+			const auto& feature = item.second;
+			if (feature.is_initialized) {
+				feature_msg_ptr->points.push_back(pcl::PointXYZ(
+					feature.position(0), feature.position(1), feature.position(2)));
+			}
+		}
+		feature_msg_ptr->width = feature_msg_ptr->points.size();
 
-	  //feature_pub.publish(feature_msg_ptr);
+		// feature_pub.publish(feature_msg_ptr);
 
 		return odom_msg;
 	}
@@ -755,7 +752,7 @@ OdometryMSCKF::OdometryMSCKF(const ParametersMap & parameters) :
 imageProcessor_(0),
 msckf_(0),
 parameters_(parameters),
-fixPoseRotation_(0, 0, -1, 0, 0, 1, 0, 0, 1, 0, 0, 0),
+fixPoseRotation_(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0),
 previousPose_(Transform::getIdentity()),
 initGravity_(false)
 #endif
@@ -838,7 +835,7 @@ Transform OdometryMSCKF::computeTransform(
 	if(!data.imageRaw().empty() && !data.rightRaw().empty())
 	{
 		UDEBUG("Image update stamp=%f", data.stamp());
-		if(data.stereoCameraModel().isValidForProjection())
+		if(data.stereoCameraModels().size() == 1 && data.stereoCameraModels()[0].isValidForProjection())
 		{
 			if(msckf_ == 0)
 			{
@@ -852,13 +849,13 @@ Transform OdometryMSCKF::computeTransform(
 				imageProcessor_ = new ImageProcessorNoROS(
 						parameters_,
 						lastImu_.localTransform(),
-						data.stereoCameraModel(),
+						data.stereoCameraModels()[0],
 						this->imagesAlreadyRectified());
 				UINFO("Creating MsckfVioNoROS...");
 				msckf_ = new MsckfVioNoROS(
 						parameters_,
 						lastImu_.localTransform(),
-						data.stereoCameraModel(),
+						data.stereoCameraModels()[0],
 						this->imagesAlreadyRectified());
 			}
 
@@ -975,10 +972,10 @@ Transform OdometryMSCKF::computeTransform(
 						if(this->imagesAlreadyRectified())
 						{
 							info->newCorners.resize(measurements->features.size());
-							float fx = data.stereoCameraModel().left().fx();
-							float fy = data.stereoCameraModel().left().fy();
-							float cx = data.stereoCameraModel().left().cx();
-							float cy = data.stereoCameraModel().left().cy();
+							float fx = data.stereoCameraModels()[0].left().fx();
+							float fy = data.stereoCameraModels()[0].left().fy();
+							float cx = data.stereoCameraModels()[0].left().cx();
+							float cy = data.stereoCameraModels()[0].left().cy();
 							info->reg.inliersIDs.resize(measurements->features.size());
 							for(unsigned int i=0; i<measurements->features.size(); ++i)
 							{

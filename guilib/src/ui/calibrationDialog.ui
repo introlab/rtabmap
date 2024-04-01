@@ -17,11 +17,20 @@
    <property name="spacing">
     <number>0</number>
    </property>
-   <property name="margin">
+   <property name="leftMargin">
+    <number>0</number>
+   </property>
+   <property name="topMargin">
+    <number>0</number>
+   </property>
+   <property name="rightMargin">
+    <number>0</number>
+   </property>
+   <property name="bottomMargin">
     <number>0</number>
    </property>
    <item>
-    <layout class="QHBoxLayout" name="horizontalLayout_4" stretch="1,0">
+    <layout class="QHBoxLayout" name="horizontalLayout_4" stretch="1,1">
      <item>
       <layout class="QVBoxLayout" name="verticalLayout_4">
        <property name="spacing">
@@ -137,6 +146,15 @@
      </item>
      <item>
       <widget class="QScrollArea" name="scrollArea">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Fixed" vsizetype="Expanding">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="verticalScrollBarPolicy">
+        <enum>Qt::ScrollBarAlwaysOff</enum>
+       </property>
        <property name="widgetResizable">
         <bool>true</bool>
        </property>
@@ -145,12 +163,21 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>379</width>
-          <height>816</height>
+          <width>357</width>
+          <height>820</height>
          </rect>
         </property>
         <layout class="QVBoxLayout" name="verticalLayout">
-         <property name="margin">
+         <property name="leftMargin">
+          <number>0</number>
+         </property>
+         <property name="topMargin">
+          <number>0</number>
+         </property>
+         <property name="rightMargin">
+          <number>0</number>
+         </property>
+         <property name="bottomMargin">
           <number>0</number>
          </property>
          <item>
@@ -241,7 +268,7 @@
                <string>Number of inner squares on the board</string>
               </property>
               <property name="text">
-               <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;a href=&quot;https://github.com/introlab/rtabmap/raw/master/bin/data/check-108.pdf&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;Sample8x6&lt;/span&gt;&lt;/a&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+               <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;a href=&quot;https://github.com/introlab/rtabmap/raw/master/data/check-108.pdf&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;Sample8x6&lt;/span&gt;&lt;/a&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
               </property>
               <property name="openExternalLinks">
                <bool>true</bool>
@@ -268,6 +295,35 @@
               </property>
               <property name="text">
                <string>Max scale</string>
+              </property>
+             </widget>
+            </item>
+            <item row="5" column="0">
+             <widget class="QLabel" name="label_stereoBaseline">
+              <property name="toolTip">
+               <string>If &gt; 1, image is scaled down to help board detection on high definition images</string>
+              </property>
+              <property name="text">
+               <string>Stereo Baseline</string>
+              </property>
+             </widget>
+            </item>
+            <item row="5" column="1">
+             <widget class="QDoubleSpinBox" name="doubleSpinBox_stereoBaseline">
+              <property name="toolTip">
+               <string>If you know the exact baseline of the stereo cameras, you can set it here in case the square size is not super accurate.</string>
+              </property>
+              <property name="suffix">
+               <string> m</string>
+              </property>
+              <property name="decimals">
+               <number>4</number>
+              </property>
+              <property name="maximum">
+               <double>10.000000000000000</double>
+              </property>
+              <property name="value">
+               <double>0.000000000000000</double>
               </property>
              </widget>
             </item>

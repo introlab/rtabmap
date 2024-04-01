@@ -28,7 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef RTABMAP_MAPVISIBILITYWIDGET_H_
 #define RTABMAP_MAPVISIBILITYWIDGET_H_
 
-#include "rtabmap/gui/RtabmapGuiExp.h" // DLL export/import defines
+#include "rtabmap/gui/rtabmap_gui_export.h" // DLL export/import defines
 
 #include <QWidget>
 #include <rtabmap/core/Transform.h>
@@ -36,7 +36,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 namespace rtabmap {
 
-class RTABMAPGUI_EXP MapVisibilityWidget : public QWidget {
+class RTABMAP_GUI_EXPORT MapVisibilityWidget : public QWidget {
 	Q_OBJECT;
 public:
 	MapVisibilityWidget(QWidget * parent = 0);

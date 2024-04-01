@@ -18,7 +18,10 @@
 #define TANGO_GL_TEXTURE_H_
 
 #include <errno.h>
+
+#ifdef __ANDROID__
 #include <png.h>
+#endif
 
 #include "tango-gl/util.h"
 
@@ -30,11 +33,15 @@ class Texture {
   Texture& operator=(const Texture&) = delete;
   ~Texture();
 
+#ifdef __ANDROID__
   bool LoadFromPNG(const char* file_path);
+#endif
   GLuint GetTextureID() const;
 
  private:
+#ifdef __ANDROID__
   png_uint_32 width_, height_;
+#endif
   int bit_depth_, color_type_;
   char* byte_data_;
   GLuint texture_id_;

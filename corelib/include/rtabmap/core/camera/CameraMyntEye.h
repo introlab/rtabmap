@@ -27,8 +27,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #pragma once
 
-#include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
-
 #include "rtabmap/core/Camera.h"
 #include "rtabmap/core/Version.h"
 #include "rtabmap/utilite/USemaphore.h"
@@ -46,13 +44,13 @@ namespace rtabmap
  * Class CameraMyntEye
  *
  */
-class RTABMAP_EXP CameraMyntEye : public Camera
+class RTABMAP_CORE_EXPORT CameraMyntEye : public Camera
 {
 public:
 	static bool available();
 
 public:
-	CameraMyntEye(const std::string & device = "", bool apiRectification = false, bool apiDepth = false, float imageRate = 0, const Transform & localTransform = CameraModel::opticalRotation());
+	CameraMyntEye(const std::string & device = "", bool apiRectification = false, bool apiDepth = false, float imageRate = 0, const Transform & localTransform = Transform::getIdentity());
 	virtual ~CameraMyntEye();
 
 	virtual bool init(const std::string & calibrationFolder = ".", const std::string & cameraName = "");

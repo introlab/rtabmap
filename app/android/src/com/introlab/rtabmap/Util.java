@@ -7,7 +7,11 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.FilenameFilter;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
@@ -55,7 +59,7 @@ public class Util {
 		}
 	}
 
-	public static String[] loadFileList(String directory, final boolean databasesOnly) {
+	public static String[] loadFileList(final String directory, final boolean databasesOnly) {
 		File path = new File(directory); 
 		String fileList[];
 		try {
@@ -83,6 +87,25 @@ public class Util {
 			};
 			fileList = path.list(filter);
 			Arrays.sort(fileList);
+			List<String> fileListt = new ArrayList<String>(Arrays.asList(fileList));
+			Collections.sort(fileListt, new Comparator<String>() {
+
+		        @Override
+		        public int compare(String filename1, String filename2) {
+		        	File file1 = new File(directory+"/"+filename1);
+		        	File file2 = new File(directory+"/"+filename2);
+		            long k = file1.lastModified() - file2.lastModified();
+		            if(k > 0){
+		               return -1;
+		            }else if(k == 0){
+		               return 0;
+		            }else{
+		              return 1;
+		           }
+		        }
+		    });
+			fileListt.toArray(fileList);
+			
 		}
 		else {
 			fileList = new String[0];

@@ -1,0 +1,789 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>StringsTable</key>
+	<string>Mapping</string>
+	<key>PreferenceSpecifiers</key>
+	<array>
+		<dict>
+			<key>Type</key>
+			<string>PSGroupSpecifier</string>
+			<key>FooterText</key>
+			<string>When resuming mapping, wait for a relocalization on the current map before starting a new map.</string>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSToggleSwitchSpecifier</string>
+			<key>Title</key>
+			<string>Append Mode</string>
+			<key>Key</key>
+			<string>AppendMode</string>
+			<key>DefaultValue</key>
+			<true/>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSGroupSpecifier</string>
+			<key>FooterText</key>
+			<string>Save HD images of the color camera if you want very detailed textures. More memory will be required.</string>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSToggleSwitchSpecifier</string>
+			<key>Title</key>
+			<string>HD Mode</string>
+			<key>Key</key>
+			<string>HDMode</string>
+			<key>DefaultValue</key>
+			<false/>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSGroupSpecifier</string>
+			<key>FooterText</key>
+			<string>When this is disabled (or the phone doesn&apos;t have LiDAR), only tracked features from ARKit will be mapped into a point cloud.</string>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSToggleSwitchSpecifier</string>
+			<key>Title</key>
+			<string>LiDAR Mode</string>
+			<key>Key</key>
+			<string>LidarMode</string>
+			<key>DefaultValue</key>
+			<true/>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSGroupSpecifier</string>
+			<key>FooterText</key>
+			<string>Smooth the point clouds.</string>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSToggleSwitchSpecifier</string>
+			<key>Title</key>
+			<string>Smoothing</string>
+			<key>Key</key>
+			<string>Smoothing</string>
+			<key>DefaultValue</key>
+			<false/>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSGroupSpecifier</string>
+			<key>Title</key>
+			<string>Core</string>
+			<key>FooterText</key>
+			<string>Rate at which a new node is added to map.</string>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSMultiValueSpecifier</string>
+			<key>Title</key>
+			<string>Update Rate</string>
+			<key>Key</key>
+			<string>UpdateRate</string>
+			<key>DefaultValue</key>
+			<string>1</string>
+			<key>Titles</key>
+			<array>
+				<string>Max</string>
+				<string>5 Hz</string>
+				<string>4 Hz</string>
+				<string>3 Hz</string>
+				<string>2 Hz</string>
+				<string>1 Hz</string>
+				<string>0.5 Hz</string>
+			</array>
+			<key>Values</key>
+			<array>
+				<string>0</string>
+				<string>5</string>
+				<string>4</string>
+				<string>3</string>
+				<string>2</string>
+				<string>1</string>
+				<string>0.5</string>
+			</array>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSGroupSpecifier</string>
+			<key>FooterText</key>
+			<string>Images taken when the camera is moving too fast are ignored to avoid blurry textures.</string>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSMultiValueSpecifier</string>
+			<key>Title</key>
+			<string>Maximum Motion Speed</string>
+			<key>Key</key>
+			<string>MaximumMotionSpeed</string>
+			<key>DefaultValue</key>
+			<string>0</string>
+			<key>Titles</key>
+			<array>
+				<string>No Limit</string>
+				<string>High</string>
+				<string>Medium</string>
+				<string>Low</string>
+				<string>Very Low</string>
+			</array>
+			<key>Values</key>
+			<array>
+				<string>0</string>
+				<string>0.4</string>
+				<string>0.3</string>
+				<string>0.2</string>
+				<string>0.1</string>
+			</array>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSGroupSpecifier</string>
+			<key>FooterText</key>
+			<string>Maximum time allowed for map updates. If time to add a new node is above this theshold, some old parts of the map are temporarly forgotten to reduce time of next updates.</string>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSMultiValueSpecifier</string>
+			<key>Title</key>
+			<string>Time Limit</string>
+			<key>Key</key>
+			<string>TimeLimit</string>
+			<key>DefaultValue</key>
+			<string>0</string>
+			<key>Titles</key>
+			<array>
+				<string>No Limit</string>
+				<string>1500 ms</string>
+				<string>1400 ms</string>
+				<string>1300 ms</string>
+				<string>1200 ms</string>
+				<string>1100 ms</string>
+				<string>1000 ms</string>
+				<string>900 ms</string>
+				<string>800 ms</string>
+				<string>700 ms</string>
+				<string>600 ms</string>
+				<string>500 ms</string>
+				<string>400 ms</string>
+			</array>
+			<key>Values</key>
+			<array>
+				<string>0</string>
+				<string>1500</string>
+				<string>1400</string>
+				<string>1300</string>
+				<string>1200</string>
+				<string>1100</string>
+				<string>1000</string>
+				<string>900</string>
+				<string>800</string>
+				<string>700</string>
+				<string>600</string>
+				<string>500</string>
+				<string>400</string>
+			</array>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSGroupSpecifier</string>
+			<key>FooterText</key>
+			<string>Maximum nodes kept in working memory.</string>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSMultiValueSpecifier</string>
+			<key>Title</key>
+			<string>Memory Limit</string>
+			<key>Key</key>
+			<string>MemoryLimit</string>
+			<key>DefaultValue</key>
+			<string>0</string>
+			<key>Titles</key>
+			<array>
+				<string>No Limit</string>
+				<string>500 nodes</string>
+				<string>400 nodes</string>
+				<string>300 nodes</string>
+				<string>200 nodes</string>
+				<string>100 nodes</string>
+				<string>50 nodes</string>
+			</array>
+			<key>Values</key>
+			<array>
+				<string>0</string>
+				<string>500</string>
+				<string>400</string>
+				<string>300</string>
+				<string>200</string>
+				<string>100</string>
+				<string>50</string>
+			</array>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSGroupSpecifier</string>
+			<key>FooterText</key>
+			<string>Proximity detections are loop closures found by comparing current frame with frames inside a radius of the current pose. Unlike global loop closure detection, this approach is dependent of odometry.</string>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSToggleSwitchSpecifier</string>
+			<key>Title</key>
+			<string>Proximity Detection</string>
+			<key>Key</key>
+			<string>ProximityDetection</string>
+			<key>DefaultValue</key>
+			<true/>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSGroupSpecifier</string>
+			<key>FooterText</key>
+			<string>Threshold at which loop closure hypotheses are accepted. Higher means more robust to false loop closures while rejecting more good loop closures.</string>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSMultiValueSpecifier</string>
+			<key>Title</key>
+			<string>Loop Closure Threshold</string>
+			<key>Key</key>
+			<string>LoopClosureThreshold</string>
+			<key>DefaultValue</key>
+			<real>0.11</real>
+			<key>Titles</key>
+			<array>
+				<string>0.90</string>
+				<string>0.80</string>
+				<string>0.70</string>
+				<string>0.60</string>
+				<string>0.50</string>
+				<string>0.40</string>
+				<string>0.30</string>
+				<string>0.20</string>
+				<string>0.15</string>
+				<string>0.11</string>
+				<string>0.10</string>
+			</array>
+			<key>Values</key>
+			<array>
+				<real>0.9</real>
+				<real>0.8</real>
+				<real>0.7</real>
+				<real>0.6</real>
+				<real>0.5</real>
+				<real>0.4</real>
+				<real>0.3</real>
+				<real>0.2</real>
+				<real>0.15</real>
+				<real>0.11</real>
+				<real>0.1</real>
+			</array>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSGroupSpecifier</string>
+			<key>FooterText</key>
+			<string>Threshold at which consecutive images are considered the same, so the corresponding node&apos;s weight is increased. The background turns dark blue when this happens.</string>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSMultiValueSpecifier</string>
+			<key>Title</key>
+			<string>Similarity Threshold</string>
+			<key>Key</key>
+			<string>SimilarityThreshold</string>
+			<key>DefaultValue</key>
+			<real>0.3</real>
+			<key>Titles</key>
+			<array>
+				<string>Disabled</string>
+				<string>0.60</string>
+				<string>0.50</string>
+				<string>0.40</string>
+				<string>0.30</string>
+				<string>0.20</string>
+				<string>0.10</string>
+			</array>
+			<key>Values</key>
+			<array>
+				<real>1</real>
+				<real>0.6</real>
+				<real>0.5</real>
+				<real>0.4</real>
+				<real>0.3</real>
+				<real>0.2</real>
+				<real>0.1</real>
+			</array>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSGroupSpecifier</string>
+			<key>FooterText</key>
+			<string>Minimum visual inliers to accept a loop closure.</string>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSMultiValueSpecifier</string>
+			<key>Title</key>
+			<string>Min Inliers</string>
+			<key>Key</key>
+			<string>MinInliers</string>
+			<key>DefaultValue</key>
+			<string>25</string>
+			<key>Titles</key>
+			<array>
+				<string>35</string>
+				<string>30</string>
+				<string>25</string>
+				<string>20</string>
+				<string>15</string>
+				<string>10</string>
+			</array>
+			<key>Values</key>
+			<array>
+				<string>35</string>
+				<string>30</string>
+				<string>25</string>
+				<string>20</string>
+				<string>15</string>
+				<string>10</string>
+			</array>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSGroupSpecifier</string>
+			<key>FooterText</key>
+			<string>Reject any loop closures causing error corrections in the map higher than this factor of the link&apos;s variance.</string>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSMultiValueSpecifier</string>
+			<key>Title</key>
+			<string>Max Optimization Error</string>
+			<key>Key</key>
+			<string>MaxOptimizationError</string>
+			<key>DefaultValue</key>
+			<integer>1</integer>
+			<key>Titles</key>
+			<array>
+				<string>4x</string>
+				<string>3.5x</string>
+				<string>3x</string>
+				<string>2.5x</string>
+				<string>2x</string>
+				<string>1.5x</string>
+				<string>1x</string>
+				<string>0.5x</string>
+				<string>Disabled</string>
+			</array>
+			<key>Values</key>
+			<array>
+				<real>4</real>
+				<real>3.5</real>
+				<real>3</real>
+				<real>2.5</real>
+				<real>2</real>
+				<real>1.5</real>
+				<real>1</real>
+				<real>0.5</real>
+				<real>0</real>
+			</array>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSGroupSpecifier</string>
+			<key>FooterText</key>
+			<string>Extracting more features per image would result in better loop closure hypotheses but more processing time is required.</string>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSMultiValueSpecifier</string>
+			<key>Title</key>
+			<string>Max Features Extracted (Vocabulary)</string>
+			<key>Key</key>
+			<string>MaxFeaturesExtractedVocabulary</string>
+			<key>DefaultValue</key>
+			<string>400</string>
+			<key>Titles</key>
+			<array>
+				<string>No Limit</string>
+				<string>1000</string>
+				<string>900</string>
+				<string>800</string>
+				<string>700</string>
+				<string>600</string>
+				<string>500</string>
+				<string>400</string>
+				<string>300</string>
+				<string>200</string>
+				<string>100</string>
+				<string>Disabled</string>
+			</array>
+			<key>Values</key>
+			<array>
+				<string>0</string>
+				<string>1000</string>
+				<string>900</string>
+				<string>800</string>
+				<string>700</string>
+				<string>600</string>
+				<string>500</string>
+				<string>400</string>
+				<string>300</string>
+				<string>200</string>
+				<string>100</string>
+				<string>-1</string>
+			</array>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSGroupSpecifier</string>
+			<key>FooterText</key>
+			<string>Extracting more features per image would result in better loop closure transforms but more processing time is required.</string>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSMultiValueSpecifier</string>
+			<key>Title</key>
+			<string>Max Features Extracted (Loop Closure)</string>
+			<key>Key</key>
+			<string>MaxFeaturesExtractedLoopClosure</string>
+			<key>DefaultValue</key>
+			<string>400</string>
+			<key>Titles</key>
+			<array>
+				<string>No Limit</string>
+				<string>1000</string>
+				<string>900</string>
+				<string>800</string>
+				<string>700</string>
+				<string>600</string>
+				<string>500</string>
+				<string>400</string>
+				<string>300</string>
+				<string>200</string>
+				<string>100</string>
+			</array>
+			<key>Values</key>
+			<array>
+				<string>0</string>
+				<string>1000</string>
+				<string>900</string>
+				<string>800</string>
+				<string>700</string>
+				<string>600</string>
+				<string>500</string>
+				<string>400</string>
+				<string>300</string>
+				<string>200</string>
+				<string>100</string>
+			</array>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSGroupSpecifier</string>
+			<key>FooterText</key>
+			<string>BRIEF features are fast to compute but are not rotation invariant like FREAK. Warning: Changing feature type will automatically reset the map!</string>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSMultiValueSpecifier</string>
+			<key>Title</key>
+			<string>Feature Type</string>
+			<key>Key</key>
+			<string>FeatureType</string>
+			<key>DefaultValue</key>
+			<string>6</string>
+			<key>Titles</key>
+			<array>
+				<string>BRIEF</string>
+				<string>FREAK</string>
+			</array>
+			<key>Values</key>
+			<array>
+				<string>6</string>
+				<string>5</string>
+			</array>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSGroupSpecifier</string>
+			<key>FooterText</key>
+			<string>Graph optimization approach.</string>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSMultiValueSpecifier</string>
+			<key>Title</key>
+			<string>Graph Optimizer</string>
+			<key>Key</key>
+			<string>GraphOptimizer</string>
+			<key>DefaultValue</key>
+			<string>2</string>
+			<key>Titles</key>
+			<array>
+				<string>GTSAM</string>
+				<string>g2o</string>
+			</array>
+			<key>Values</key>
+			<array>
+				<string>2</string>
+				<string>1</string>
+			</array>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSGroupSpecifier</string>
+			<key>FooterText</key>
+			<string>The map&apos;s graph is optimized from the last node. The map is moved when a loop closure happens instead of jumping the current pose back to localized area.</string>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSToggleSwitchSpecifier</string>
+			<key>Title</key>
+			<string>Optimization from Graph End</string>
+			<key>Key</key>
+			<string>OptimizationfromGraphEnd</string>
+			<key>DefaultValue</key>
+			<true/>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSGroupSpecifier</string>
+			<key>FooterText</key>
+			<string>Used only in localization mode (when clicking First-P. View during visualization). This is used to get smoother localizations and to verify localization transforms (when Max Optimization Error is not disabled) to make sure we don&apos;t teleport to a location very similar to one we previously localized on.</string>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSMultiValueSpecifier</string>
+			<key>Title</key>
+			<string>Maximum odometry cache size</string>
+			<key>Key</key>
+			<string>MaximumOdometryCacheSize</string>
+			<key>DefaultValue</key>
+			<string>10</string>
+			<key>Titles</key>
+			<array>
+				<string>500</string>
+				<string>200</string>
+				<string>100</string>
+				<string>75</string>
+				<string>50</string>
+				<string>40</string>
+				<string>30</string>
+				<string>20</string>
+				<string>10</string>
+				<string>5</string>
+				<string>Disabled</string>
+			</array>
+			<key>Values</key>
+			<array>
+				<string>500</string>
+				<string>200</string>
+				<string>100</string>
+				<string>75</string>
+				<string>50</string>
+				<string>40</string>
+				<string>30</string>
+				<string>20</string>
+				<string>10</string>
+				<string>5</string>
+				<string>0</string>
+			</array>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSGroupSpecifier</string>
+			<key>FooterText</key>
+			<string>ArUco markers can be detected for localization and graph optimization.</string>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSMultiValueSpecifier</string>
+			<key>Title</key>
+			<string>ArUco Marker Detection</string>
+			<key>Key</key>
+			<string>ArUcoMarkerDetection</string>
+			<key>DefaultValue</key>
+			<integer>-1</integer>
+			<key>Titles</key>
+			<array>
+				<string>Disabled</string>
+				<string>4X4_50</string>
+				<string>4X4_100</string>
+				<string>4X4_250</string>
+				<string>4X4_1000</string>
+				<string>5X5_50</string>
+				<string>5X5_100</string>
+				<string>5X5_250</string>
+				<string>5X5_1000</string>
+				<string>6X6_50</string>
+				<string>6X6_100</string>
+				<string>6X6_250</string>
+				<string>6X6_1000</string>
+				<string>7X7_50</string>
+				<string>7X7_100</string>
+				<string>7X7_250</string>
+				<string>7X7_1000</string>
+				<string>ARUCO_ORIGINAL</string>
+				<string>APRILTAG_16h5</string>
+				<string>APRILTAG_25h9</string>
+				<string>APRILTAG_36h10</string>
+				<string>APRILTAG_36h11</string>
+			</array>
+			<key>Values</key>
+			<array>
+				<integer>-1</integer>
+				<integer>0</integer>
+				<integer>1</integer>
+				<integer>2</integer>
+				<integer>3</integer>
+				<integer>4</integer>
+				<integer>5</integer>
+				<integer>6</integer>
+				<integer>7</integer>
+				<integer>8</integer>
+				<integer>9</integer>
+				<integer>10</integer>
+				<integer>11</integer>
+				<integer>12</integer>
+				<integer>13</integer>
+				<integer>14</integer>
+				<integer>15</integer>
+				<integer>16</integer>
+				<integer>17</integer>
+				<integer>18</integer>
+				<integer>19</integer>
+				<integer>20</integer>
+			</array>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSGroupSpecifier</string>
+			<key>FooterText</key>
+			<string>Size of markers are automatically initialized on the first marker seen. All markers should have the same size. This value is the maximum depth error to do the initialization to get accurate size of the tag. The lower it is, the more perpendicular the camera should be from the marker to do initialization, but size estimated would be more accurate.</string>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSMultiValueSpecifier</string>
+			<key>Title</key>
+			<string>Marker Depth Error Estimation</string>
+			<key>Key</key>
+			<string>MarkerDepthErrorEstimation</string>
+			<key>DefaultValue</key>
+			<real>0.04</real>
+			<key>Titles</key>
+			<array>
+				<string>1 cm</string>
+				<string>2 cm</string>
+				<string>3 cm</string>
+				<string>4 cm</string>
+				<string>5 cm</string>
+				<string>6 cm</string>
+				<string>7 cm</string>
+				<string>8 cm</string>
+				<string>9 cm</string>
+				<string>10 cm</string>
+				<string>15 cm</string>
+				<string>20 cm</string>
+				<string>30 cm</string>
+				<string>40 cm</string>
+				<string>50 cm</string>
+				<string>100 cm</string>
+			</array>
+			<key>Values</key>
+			<array>
+				<real>0.01</real>
+				<real>0.02</real>
+				<real>0.03</real>
+				<real>0.04</real>
+				<real>0.05</real>
+				<real>0.06</real>
+				<real>0.07000000000000001</real>
+				<real>0.08</real>
+				<real>0.09</real>
+				<real>0.1</real>
+				<real>0.15</real>
+				<real>0.2</real>
+				<real>0.3</real>
+				<real>0.4</real>
+				<real>0.5</real>
+				<real>1</real>
+			</array>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSGroupSpecifier</string>
+			<key>FooterText</key>
+			<string>If marker size is 0, marker size is estimated using depth camera on first detection, then the same size is assumed for next detections, thus all markers should have the same size (markers could then be detected farther from the camera). When the marker size is set &gt;0, all markers are estimated with this parameter (this can be useful on devices without depth camera). Finally, if marker size is &lt;0, the size of each marker is estimated the first time they are detected using the depth camera (thus markers can have different size). Note that if the marker is already in the database with a known size, the size contained in the database is used directly.</string>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSTextFieldSpecifier</string>
+			<key>Title</key>
+			<string>Marker Size (cm)</string>
+			<key>Key</key>
+			<string>MarkerSize</string>
+			<key>DefaultValue</key>
+			<string>-1</string>
+			<key>KeyboardType</key>
+			<string>NumberPad</string>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSGroupSpecifier</string>
+			<key>Title</key>
+			<string>Database</string>
+			<key>FooterText</key>
+			<string>Discarded frames while not moving are still saved in database. Useful to replay exactly the scanning on RTAB-Map Desktop.</string>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSToggleSwitchSpecifier</string>
+			<key>Title</key>
+			<string>Save All Frames in Database</string>
+			<key>Key</key>
+			<string>SaveAllFramesInDatabase</string>
+			<key>DefaultValue</key>
+			<true/>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSGroupSpecifier</string>
+			<key>FooterText</key>
+			<string>Save GPS to database.</string>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSToggleSwitchSpecifier</string>
+			<key>Title</key>
+			<string>Save GPS</string>
+			<key>Key</key>
+			<string>SaveGPS</string>
+			<key>DefaultValue</key>
+			<false/>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSGroupSpecifier</string>
+			<key>FooterText</key>
+			<string>The database is kept in RAM for fast access. Set to false to reduce RAM used at the cost of slower access. This parameter is applied on reset or when a database is opened.</string>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSToggleSwitchSpecifier</string>
+			<key>Title</key>
+			<string>Database in Memory</string>
+			<key>Key</key>
+			<string>DatabaseInMemory</string>
+			<key>DefaultValue</key>
+			<false/>
+		</dict>
+	</array>
+</dict>
+</plist>

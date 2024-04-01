@@ -30,29 +30,26 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <rtabmap/core/Odometry.h>
 
-namespace ORB_SLAM2 {
-class System;
-}
 
 class ORBSLAM2System;
 
 namespace rtabmap {
 
-class RTABMAP_EXP OdometryORBSLAM2 : public Odometry
+class RTABMAP_CORE_EXPORT OdometryORBSLAM2 : public Odometry
 {
 public:
 	OdometryORBSLAM2(const rtabmap::ParametersMap & parameters = rtabmap::ParametersMap());
 	virtual ~OdometryORBSLAM2();
 
 	virtual void reset(const Transform & initialPose = Transform::getIdentity());
-	virtual Odometry::Type getType() {return Odometry::kTypeORBSLAM2;}
+	virtual Odometry::Type getType() {return Odometry::kTypeORBSLAM;}
 
 private:
 	virtual Transform computeTransform(SensorData & image, const Transform & guess = Transform(), OdometryInfo * info = 0);
 
 private:
-#ifdef RTABMAP_ORB_SLAM2
-	ORBSLAM2System * orbslam2_;
+#if defined(RTABMAP_ORB_SLAM) and RTABMAP_ORB_SLAM == 2
+	ORBSLAM2System * orbslam_;
 	bool firstFrame_;
 	Transform originLocalTransform_;
 	Transform previousPose_;

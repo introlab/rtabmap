@@ -9,6 +9,7 @@
 #define CORELIB_INCLUDE_RTABMAP_CORE_IMPL_UTIL3D_SURFACE_HPP_
 
 #include <pcl/search/kdtree.h>
+#include <pcl/conversions.h>
 #include <rtabmap/utilite/UConversion.h>
 
 namespace rtabmap {

@@ -38,18 +38,58 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 namespace rtabmap {
 
-class MarkerDetector {
+typedef std::map<int, Transform> MapIdPose;
+
+class MarkerInfo {
+public:
+    MarkerInfo(int id, float length, Transform pose) :
+        id_(id),
+        length_(length),
+        pose_(pose)
+    {}
+    int id() const {return id_;}
+    float length() const {return length_;}
+    const Transform & pose() const {return pose_;}
+private:
+    int id_;
+    float length_;
+    Transform pose_;
+};
+
+class RTABMAP_CORE_EXPORT MarkerDetector {
+    
 public:
 	MarkerDetector(const ParametersMap & parameters = ParametersMap());
 	virtual ~MarkerDetector();
 	void parseParameters(const ParametersMap & parameters);
-	std::map<int, Transform> detect(const cv::Mat & image, const CameraModel & model, const cv::Mat & depth = cv::Mat(), float * estimatedMarkerLength = 0, cv::Mat * imageWithDetections = 0);
+
+	// Use the other detect(), in which the returned map contains the length of each marker detected.
+    RTABMAP_DEPRECATED
+    MapIdPose detect(const cv::Mat & image,
+			const CameraModel & model,
+			const cv::Mat & depth = cv::Mat(),
+			float * estimatedMarkerLength = 0,
+			cv::Mat * imageWithDetections = 0);
+
+    std::map<int, MarkerInfo> detect(const cv::Mat & image,
+		    const std::vector<CameraModel> & models,
+		    const cv::Mat & depth = cv::Mat(),
+		    const std::map<int, float> & markerLengths = std::map<int, float>(),
+		    cv::Mat * imageWithDetections = 0);
+
+    std::map<int, MarkerInfo> detect(const cv::Mat & image,
+		    const CameraModel & model,
+		    const cv::Mat & depth = cv::Mat(),
+		    const std::map<int, float> & markerLengths = std::map<int, float>(),
+		    cv::Mat * imageWithDetections = 0);
 
 private:
 #ifdef HAVE_OPENCV_ARUCO
 	cv::Ptr<cv::aruco::DetectorParameters> detectorParams_;
 	float markerLength_;
 	float maxDepthError_;
+	float maxRange_;
+	float minRange_;
 	int dictionaryId_;
 	cv::Ptr<cv::aruco::Dictionary> dictionary_;
 #endif

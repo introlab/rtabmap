@@ -28,7 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef ODOMETRYTHREAD_H_
 #define ODOMETRYTHREAD_H_
 
-#include <rtabmap/core/RtabmapExp.h>
+#include <rtabmap/core/rtabmap_core_export.h>
 #include <rtabmap/core/SensorData.h>
 #include <rtabmap/utilite/UThread.h>
 #include <rtabmap/utilite/UEventsHandler.h>
@@ -38,7 +38,7 @@ namespace rtabmap {
 
 class Odometry;
 
-class RTABMAP_EXP OdometryThread : public UThread, public UEventsHandler {
+class RTABMAP_CORE_EXPORT OdometryThread : public UThread, public UEventsHandler {
 public:
 	// take ownership of Odometry
 	OdometryThread(Odometry * odometry, unsigned int dataBufferMaxSize = 1);

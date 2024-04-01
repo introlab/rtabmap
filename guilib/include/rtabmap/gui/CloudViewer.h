@@ -28,13 +28,23 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef RTABMAP_CLOUDVIEWER_H_
 #define RTABMAP_CLOUDVIEWER_H_
 
-#include "rtabmap/gui/RtabmapGuiExp.h" // DLL export/import defines
+#include "rtabmap/gui/rtabmap_gui_export.h" // DLL export/import defines
 
 #include "rtabmap/core/Transform.h"
 #include "rtabmap/core/StereoCameraModel.h"
 #include "rtabmap/gui/CloudViewerInteractorStyle.h"
+#include <vtkVersionMacros.h>
 
+#if VTK_MAJOR_VERSION > 8
+#ifndef slots
+#define slots Q_SLOTS
+#endif
+#include <QVTKOpenGLNativeWidget.h>
+using PCLQVTKWidget = QVTKOpenGLNativeWidget;
+#else
 #include <QVTKWidget.h>
+using PCLQVTKWidget = QVTKWidget;
+#endif
 #include <pcl/pcl_base.h>
 #include <pcl/point_types.h>
 #include <pcl/point_cloud.h>
@@ -66,7 +76,7 @@ namespace rtabmap {
 
 class OctoMap;
 
-class RTABMAPGUI_EXP CloudViewer : public QVTKWidget
+class RTABMAP_GUI_EXPORT CloudViewer : public PCLQVTKWidget
 {
 	Q_OBJECT
 
@@ -76,6 +86,8 @@ public:
 
 	void saveSettings(QSettings & settings, const QString & group = "") const;
 	void loadSettings(QSettings & settings, const QString & group = "");
+
+	void refreshView();
 
 	bool updateCloudPose(
 		const std::string & id,
@@ -174,6 +186,14 @@ public:
 			float opacity);
 	void removeOccupancyGridMap();
 
+	bool addElevationMap(
+			const cv::Mat & map32FC1,
+			float resolution, // cell size
+			float xMin,
+			float yMin,
+			float opacity);
+	void removeElevationMap();
+
 	void updateCameraTargetPosition(
 		const Transform & pose);
 
@@ -188,6 +208,10 @@ public:
 	void updateCameraFrustums(
 			const Transform & pose,
 			const std::vector<CameraModel> & models);
+
+	void updateCameraFrustums(
+			const Transform & pose,
+			const std::vector<StereoCameraModel> & models);
 
 	void addOrUpdateCoordinate(
 			const std::string & id,
@@ -295,6 +319,8 @@ public:
 	void clearTrajectory();
 	bool isCameraAxisShown() const;
 	void setCameraAxisShown(bool shown);
+	double getCoordinateFrameScale() const;
+	void setCoordinateFrameScale(double scale);
 	bool isFrustumShown() const;
 	float getFrustumScale() const;
 	QColor getFrustumColor() const;
@@ -367,8 +393,10 @@ public:
 	void setNormalsStep(int step);
 	void setNormalsScale(float scale);
 	bool isIntensityRedColormap() const;
+	bool isIntensityRainbowColormap() const;
 	float getIntensityMax() const;
 	void setIntensityRedColormap(bool value);
+	void setIntensityRainbowColormap(bool value);
 	void setIntensityMax(float value);
 	void buildPickingLocator(bool enable);
 	const std::map<std::string, vtkSmartPointer<vtkOBBTree> > & getLocators() const {return _locators;}
@@ -412,6 +440,7 @@ private:
     QAction * _aSetTrajectorySize;
     QAction * _aClearTrajectory;
     QAction * _aShowCameraAxis;
+    QAction * _aSetFrameScale;
     QAction * _aShowFrustum;
     QAction * _aSetFrustumScale;
     QAction * _aSetFrustumColor;
@@ -422,6 +451,7 @@ private:
 	QAction * _aSetNormalsStep;
 	QAction * _aSetNormalsScale;
 	QAction * _aSetIntensityRedColormap;
+	QAction * _aSetIntensityRainbowColormap;
 	QAction * _aSetIntensityMaximum;
     QAction * _aSetBackgroundColor;
     QAction * _aSetRenderingRate;
@@ -462,6 +492,7 @@ private:
     double _renderingRate;
     vtkProp * _octomapActor;
     float _intensityAbsMax;
+    double  _coordinateFrameScale;
 };
 
 } /* namespace rtabmap */

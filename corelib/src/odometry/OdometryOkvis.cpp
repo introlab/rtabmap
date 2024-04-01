@@ -221,21 +221,21 @@ Transform OdometryOkvis::computeTransform(
 		UDEBUG("Image update stamp=%f", data.stamp());
 		std::vector<cv::Mat> images;
 		std::vector<CameraModel> models;
-		if(data.stereoCameraModel().isValidForProjection())
+		if(data.stereoCameraModels().size() ==1 && data.stereoCameraModels()[0].isValidForProjection())
 		{
 			images.push_back(data.imageRaw());
 			images.push_back(data.rightRaw());
-			CameraModel mleft = data.stereoCameraModel().left();
+			CameraModel mleft = data.stereoCameraModels()[0].left();
 			// should be transform between IMU and camera
 			mleft.setLocalTransform(lastImu_.localTransform().inverse()*mleft.localTransform());
 			models.push_back(mleft);
-			CameraModel mright = data.stereoCameraModel().right();
+			CameraModel mright = data.stereoCameraModels()[0].right();
 
 			// To support not rectified images
 			if(!imagesAlreadyRectified())
 			{
-				cv::Mat R = data.stereoCameraModel().R();
-				cv::Mat T = data.stereoCameraModel().T();
+				cv::Mat R = data.stereoCameraModels()[0].R();
+				cv::Mat T = data.stereoCameraModels()[0].T();
 				UASSERT(R.cols==3 && R.rows == 3);
 				UASSERT(T.cols==1 && T.rows == 3);
 				Transform extrinsics(R.at<double>(0,0), R.at<double>(0,1), R.at<double>(0,2), T.at<double>(0,0),
@@ -246,7 +246,7 @@ Transform OdometryOkvis::computeTransform(
 			else
 			{
 				Transform extrinsics(1, 0, 0, 0,
-									 0, 1, 0, data.stereoCameraModel().baseline(),
+									 0, 1, 0, data.stereoCameraModels()[0].baseline(),
 									 0, 0, 1, 0);
 				mright.setLocalTransform(extrinsics * mleft.localTransform());
 			}

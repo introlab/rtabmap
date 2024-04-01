@@ -167,7 +167,8 @@ bool Parameters::isFeatureParameter(const std::string & parameter)
 			group.compare("GFTT") == 0 ||
 			group.compare("BRISK") == 0 ||
 			group.compare("KAZE") == 0 ||
-			group.compare("SuperPoint") == 0;
+			group.compare("SuperPoint") == 0 ||
+			group.compare("PyDetector") == 0;
 }
 
 rtabmap::ParametersMap Parameters::getDefaultOdometryParameters(bool stereo, bool vis, bool icp)
@@ -186,7 +187,9 @@ rtabmap::ParametersMap Parameters::getDefaultOdometryParameters(bool stereo, boo
 			group.compare("g2o") == 0 ||
 			group.compare("GTSAM") == 0 ||
 			(vis && (group.compare("Vis") == 0 || group.compare("PyMatcher") == 0 || group.compare("GMS") == 0)) ||
-			iter->first.compare(kRtabmapPublishRAMUsage())==0)
+			iter->first.compare(kRtabmapPublishRAMUsage())==0 ||
+			iter->first.compare(kRtabmapImagesAlreadyRectified())==0 ||
+			iter->first.compare(kKpByteToFloat())==0)
 		{
 			odomParameters.insert(*iter);
 		}
@@ -211,14 +214,15 @@ ParametersMap Parameters::getDefaultParameters(const std::string & groupIn)
 	return parameters;
 }
 
-ParametersMap Parameters::filterParameters(const ParametersMap & parameters, const std::string & groupIn)
+ParametersMap Parameters::filterParameters(const ParametersMap & parameters, const std::string & groupIn, bool remove)
 {
 	ParametersMap output;
 	for(rtabmap::ParametersMap::const_iterator iter=parameters.begin(); iter!=parameters.end(); ++iter)
 	{
 		UASSERT(uSplit(iter->first, '/').size()  == 2);
 		std::string group = uSplit(iter->first, '/').front();
-		if(group.compare(groupIn) == 0)
+		bool sameGroup = group.compare(groupIn) == 0;
+		if((!remove && sameGroup) || (remove && !sameGroup))
 		{
 			output.insert(*iter);
 		}
@@ -231,6 +235,26 @@ const std::map<std::string, std::pair<bool, std::string> > & Parameters::getRemo
 	if(removedParameters_.empty())
 	{
 		// removed parameters
+
+		// 0.21.3
+		removedParameters_.insert(std::make_pair("GridGlobal/FullUpdate",    std::make_pair(false, "")));
+
+		// 0.20.15
+		removedParameters_.insert(std::make_pair("Grid/FromDepth",           std::make_pair(true, Parameters::kGridSensor())));
+
+		// 0.20.9
+		removedParameters_.insert(std::make_pair("OdomORBSLAM2/VocPath",     std::make_pair(true, Parameters::kOdomORBSLAMVocPath())));
+		removedParameters_.insert(std::make_pair("OdomORBSLAM2/Bf",          std::make_pair(true, Parameters::kOdomORBSLAMBf())));
+		removedParameters_.insert(std::make_pair("OdomORBSLAM2/ThDepth",     std::make_pair(true, Parameters::kOdomORBSLAMThDepth())));
+		removedParameters_.insert(std::make_pair("OdomORBSLAM2/Fps",         std::make_pair(true, Parameters::kOdomORBSLAMFps())));
+		removedParameters_.insert(std::make_pair("OdomORBSLAM2/MaxFeatures", std::make_pair(true, Parameters::kOdomORBSLAMMaxFeatures())));
+		removedParameters_.insert(std::make_pair("OdomORBSLAM2/MapSize",     std::make_pair(true, Parameters::kOdomORBSLAMMapSize())));
+
+		removedParameters_.insert(std::make_pair("RGBD/SavedLocalizationIgnored", std::make_pair(true, Parameters::kRGBDStartAtOrigin())));
+
+		removedParameters_.insert(std::make_pair("Icp/PMForce4DoF", std::make_pair(true, Parameters::kIcpForce4DoF())));
+		removedParameters_.insert(std::make_pair("Icp/PM",          std::make_pair(true, Parameters::kIcpStrategy()))); // convert "true" to "1"
+		removedParameters_.insert(std::make_pair("Icp/PMOutlierRatio",   std::make_pair(true, Parameters::kIcpOutlierRatio())));
 
 		// 0.20.
 		removedParameters_.insert(std::make_pair("SuperGlue/Path",           std::make_pair(true, Parameters::kPyMatcherPath())));
@@ -280,7 +304,7 @@ const std::map<std::string, std::pair<bool, std::string> > & Parameters::getRemo
 		removedParameters_.insert(std::make_pair("Rtabmap/VhStrategy",            std::make_pair(true,  Parameters::kVhEpEnabled())));
 
 		// 0.12.5
-		removedParameters_.insert(std::make_pair("Grid/FullUpdate",               std::make_pair(true,  Parameters::kGridGlobalFullUpdate())));
+		removedParameters_.insert(std::make_pair("Grid/FullUpdate",               std::make_pair(false,  "")));
 
 		// 0.12.1
 		removedParameters_.insert(std::make_pair("Grid/3DGroundIsObstacle",       std::make_pair(true,  Parameters::kGridGroundIsObstacle())));
@@ -624,13 +648,13 @@ ParametersMap Parameters::parseArguments(int argc, char * argv[], bool onlyParam
 				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
 #endif
 				str = "With SuperPoint Torch:";
-#ifdef RTABMAP_SUPERPOINT_TORCH
+#ifdef RTABMAP_TORCH
 				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
 #else
 				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
 #endif
 				str = "With Python3:";
-#ifdef RTABMAP_PYTHON3
+#ifdef RTABMAP_PYTHON
 				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
 #else
 				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
@@ -641,8 +665,20 @@ ParametersMap Parameters::parseArguments(int argc, char * argv[], bool onlyParam
 #else
 				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
 #endif
+				str = "With OpenGV:";
+#ifdef RTABMAP_OPENGV
+				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
+#else
+				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
+#endif
 				str = "With Madgwick:";
 #ifdef RTABMAP_MADGWICK
+				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
+#else
+				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
+#endif
+				str = "With PDAL:";
+#ifdef RTABMAP_PDAL
 				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
 #else
 				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
@@ -707,6 +743,12 @@ ParametersMap Parameters::parseArguments(int argc, char * argv[], bool onlyParam
 #else
 				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
 #endif
+				str = "With K4A:";
+#ifdef RTABMAP_K4A
+				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
+#else
+				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
+#endif
 				str = "With DC1394:";
 #ifdef RTABMAP_DC1394
 				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
@@ -721,6 +763,12 @@ ParametersMap Parameters::parseArguments(int argc, char * argv[], bool onlyParam
 #endif
 				str = "With ZED:";
 #ifdef RTABMAP_ZED
+				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
+#else
+				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
+#endif
+				str = "With ZED Open Capture:";
+#ifdef RTABMAP_ZEDOC
 				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
 #else
 				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
@@ -749,14 +797,38 @@ ParametersMap Parameters::parseArguments(int argc, char * argv[], bool onlyParam
 #else
 				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
 #endif
+				str = "With DepthAI:";
+#ifdef RTABMAP_DEPTHAI
+				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
+#else
+				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
+#endif
 				str = "With libpointmatcher:";
 #ifdef RTABMAP_POINTMATCHER
 				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
 #else
 				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
 #endif
-				str = "With octomap:";
+				str = "With CCCoreLib:";
+#ifdef RTABMAP_CCCORELIB
+				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
+#else
+				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
+#endif
+				str = "With Open3D:";
+#ifdef RTABMAP_OPEN3D
+				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
+#else
+				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
+#endif
+				str = "With OctoMap:";
 #ifdef RTABMAP_OCTOMAP
+				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
+#else
+				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
+#endif
+				str = "With GridMap:";
+#ifdef RTABMAP_GRIDMAP
 				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
 #else
 				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
@@ -785,6 +857,12 @@ ParametersMap Parameters::parseArguments(int argc, char * argv[], bool onlyParam
 #else
 				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
 #endif
+				str = "With FLOAM:";
+#ifdef RTABMAP_FLOAM
+				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
+#else
+				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
+#endif
 				str = "With FOVIS:";
 #ifdef RTABMAP_FOVIS
 				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
@@ -803,8 +881,14 @@ ParametersMap Parameters::parseArguments(int argc, char * argv[], bool onlyParam
 #else
 				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
 #endif
+#if RTABMAP_ORB_SLAM == 3
+				str = "With ORB_SLAM3:";
+#elif RTABMAP_ORB_SLAM == 2
 				str = "With ORB_SLAM2:";
-#ifdef RTABMAP_ORB_SLAM2
+#else
+				str = "With ORB_SLAM:";
+#endif
+#ifdef RTABMAP_ORB_SLAM
 				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
 #else
 				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
@@ -823,6 +907,12 @@ ParametersMap Parameters::parseArguments(int argc, char * argv[], bool onlyParam
 #endif
 				str = "With VINS-Fusion:";
 #ifdef RTABMAP_VINS
+				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
+#else
+				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
+#endif
+				str = "With OpenVINS:";
+#ifdef RTABMAP_OPENVINS
 				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
 #else
 				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
@@ -1001,7 +1091,7 @@ ParametersMap Parameters::parseArguments(int argc, char * argv[], bool onlyParam
 						ignore = true;
 					}
 #endif
-#ifndef RTABMAP_LOAM
+#if not defined(RTABMAP_LOAM) and not defined(RTABMAP_FLOAM)
 					if(group.compare("OdomLOAM") == 0)
 					{
 						ignore = true;

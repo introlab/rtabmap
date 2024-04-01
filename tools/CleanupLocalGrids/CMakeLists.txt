@@ -1,0 +1,13 @@
+
+ADD_EXECUTABLE(cleanupLocalGrids main.cpp)
+  
+TARGET_LINK_LIBRARIES(cleanupLocalGrids rtabmap_core)
+
+SET_TARGET_PROPERTIES( cleanupLocalGrids 
+  PROPERTIES OUTPUT_NAME ${PROJECT_PREFIX}-cleanupLocalGrids)
+
+INSTALL(TARGETS cleanupLocalGrids
+		RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}" COMPONENT runtime
+		BUNDLE DESTINATION "${CMAKE_BUNDLE_LOCATION}" COMPONENT runtime)
+
+

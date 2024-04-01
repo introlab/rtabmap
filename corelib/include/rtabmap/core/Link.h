@@ -28,14 +28,14 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef LINK_H_
 #define LINK_H_
 
-#include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
+#include "rtabmap/core/rtabmap_core_export.h" // DLL export/import defines
 
 #include <rtabmap/core/Transform.h>
 #include <opencv2/core/core.hpp>
 
 namespace rtabmap {
 
-class RTABMAP_EXP Link
+class RTABMAP_CORE_EXPORT Link
 {
 public:
 	enum Type {
@@ -79,6 +79,7 @@ public:
 	void setTo(int to) {to_ = to;}
 	void setTransform(const Transform & transform) {transform_ = transform;}
 	void setType(Type type) {type_ = type;}
+    void setInfMatrix(const cv::Mat & infMatrix);
 
 	const cv::Mat & userDataRaw() const {return _userDataRaw;}
 	const cv::Mat & userDataCompressed() const {return _userDataCompressed;}
@@ -87,9 +88,6 @@ public:
 
 	Link merge(const Link & link, Type outputType) const;
 	Link inverse() const;
-
-private:
-	void setInfMatrix(const cv::Mat & infMatrix);
 
 private:
 	int from_;

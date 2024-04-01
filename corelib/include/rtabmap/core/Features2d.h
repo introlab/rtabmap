@@ -28,7 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef FEATURES2D_H_
 #define FEATURES2D_H_
 
-#include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
+#include "rtabmap/core/rtabmap_core_export.h" // DLL export/import defines
 
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/core/core.hpp>
@@ -61,6 +61,7 @@ typedef cv::gpu::FAST_GPU CV_FAST_GPU;
 namespace cv{
 namespace xfeatures2d {
 class FREAK;
+class DAISY;
 class BriefDescriptorExtractor;
 #if CV_MAJOR_VERSION < 3 || (CV_MAJOR_VERSION == 4 && CV_MINOR_VERSION <= 3) || (CV_MAJOR_VERSION == 3 && (CV_MINOR_VERSION < 4 || (CV_MINOR_VERSION==4 && CV_SUBMINOR_VERSION<11)))
 class SIFT;
@@ -81,6 +82,7 @@ typedef cv::SIFT CV_SIFT; // SIFT is back in features2d since 4.4.0 / 3.4.11
 typedef cv::xfeatures2d::SURF CV_SURF;
 typedef cv::FastFeatureDetector CV_FAST;
 typedef cv::xfeatures2d::FREAK CV_FREAK;
+typedef cv::xfeatures2d::DAISY CV_DAISY;
 typedef cv::GFTTDetector CV_GFTT;
 typedef cv::xfeatures2d::BriefDescriptorExtractor CV_BRIEF;
 typedef cv::BRISK CV_BRISK;
@@ -101,7 +103,7 @@ class CV_ORB;
 #endif
 
 // Feature2D
-class RTABMAP_EXP Feature2D {
+class RTABMAP_CORE_EXPORT Feature2D {
 public:
 	enum Type {kFeatureUndef=-1,
 		kFeatureSurf=0,
@@ -115,7 +117,12 @@ public:
 		kFeatureGfttOrb=8,  //new 0.10.11
 		kFeatureKaze=9,     //new 0.13.2
 		kFeatureOrbOctree=10, //new 0.19.2
-		kFeatureSuperPointTorch=11}; //new 0.19.7
+		kFeatureSuperPointTorch=11, //new 0.19.7
+		kFeatureSurfFreak=12, //new 0.20.4
+		kFeatureGfttDaisy=13, //new 0.20.6
+		kFeatureSurfDaisy=14,  //new 0.20.6
+		kFeaturePyDetector=15}; //new 0.20.8
+
 	static std::string typeName(Type type)
 	{
 		switch(type){
@@ -143,6 +150,12 @@ public:
 			return "ORB-OCTREE";
 		case kFeatureSuperPointTorch:
 			return "SUPERPOINT";
+		case kFeatureSurfFreak:
+			return "SURF+Freak";
+		case kFeatureGfttDaisy:
+			return "GFTT+Daisy";
+		case kFeatureSurfDaisy:
+			return "SURF+Daisy";
 		default:
 			return "Unknown";
 		}
@@ -234,7 +247,7 @@ private:
 };
 
 //SURF
-class RTABMAP_EXP SURF : public Feature2D
+class RTABMAP_CORE_EXPORT SURF : public Feature2D
 {
 public:
 	SURF(const ParametersMap & parameters = ParametersMap());
@@ -261,7 +274,7 @@ private:
 };
 
 //SIFT
-class RTABMAP_EXP SIFT : public Feature2D
+class RTABMAP_CORE_EXPORT SIFT : public Feature2D
 {
 public:
 	SIFT(const ParametersMap & parameters = ParametersMap());
@@ -285,7 +298,7 @@ private:
 };
 
 //ORB
-class RTABMAP_EXP ORB : public Feature2D
+class RTABMAP_CORE_EXPORT ORB : public Feature2D
 {
 public:
 	ORB(const ParametersMap & parameters = ParametersMap());
@@ -316,7 +329,7 @@ private:
 };
 
 //FAST
-class RTABMAP_EXP FAST : public Feature2D
+class RTABMAP_CORE_EXPORT FAST : public Feature2D
 {
 public:
 	FAST(const ParametersMap & parameters = ParametersMap());
@@ -352,7 +365,7 @@ private:
 };
 
 //FAST_BRIEF
-class RTABMAP_EXP FAST_BRIEF : public FAST
+class RTABMAP_CORE_EXPORT FAST_BRIEF : public FAST
 {
 public:
 	FAST_BRIEF(const ParametersMap & parameters = ParametersMap());
@@ -371,7 +384,7 @@ private:
 };
 
 //FAST_FREAK
-class RTABMAP_EXP FAST_FREAK : public FAST
+class RTABMAP_CORE_EXPORT FAST_FREAK : public FAST
 {
 public:
 	FAST_FREAK(const ParametersMap & parameters = ParametersMap());
@@ -393,7 +406,7 @@ private:
 };
 
 //GFTT
-class RTABMAP_EXP GFTT : public Feature2D
+class RTABMAP_CORE_EXPORT GFTT : public Feature2D
 {
 public:
 	GFTT(const ParametersMap & parameters = ParametersMap());
@@ -415,7 +428,7 @@ private:
 };
 
 //GFTT_BRIEF
-class RTABMAP_EXP GFTT_BRIEF : public GFTT
+class RTABMAP_CORE_EXPORT GFTT_BRIEF : public GFTT
 {
 public:
 	GFTT_BRIEF(const ParametersMap & parameters = ParametersMap());
@@ -434,7 +447,7 @@ private:
 };
 
 //GFTT_FREAK
-class RTABMAP_EXP GFTT_FREAK : public GFTT
+class RTABMAP_CORE_EXPORT GFTT_FREAK : public GFTT
 {
 public:
 	GFTT_FREAK(const ParametersMap & parameters = ParametersMap());
@@ -455,8 +468,30 @@ private:
 	cv::Ptr<CV_FREAK> _freak;
 };
 
+//SURF_FREAK
+class RTABMAP_CORE_EXPORT SURF_FREAK : public SURF
+{
+public:
+	SURF_FREAK(const ParametersMap & parameters = ParametersMap());
+	virtual ~SURF_FREAK();
+
+	virtual void parseParameters(const ParametersMap & parameters);
+	virtual Feature2D::Type getType() const {return kFeatureSurfFreak;}
+
+private:
+	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const;
+
+private:
+	bool orientationNormalized_;
+	bool scaleNormalized_;
+	float patternScale_;
+	int nOctaves_;
+
+	cv::Ptr<CV_FREAK> _freak;
+};
+
 //GFTT_ORB
-class RTABMAP_EXP GFTT_ORB : public GFTT
+class RTABMAP_CORE_EXPORT GFTT_ORB : public GFTT
 {
 public:
 	GFTT_ORB(const ParametersMap & parameters = ParametersMap());
@@ -473,7 +508,7 @@ private:
 };
 
 //BRISK
-class RTABMAP_EXP BRISK : public Feature2D
+class RTABMAP_CORE_EXPORT BRISK : public Feature2D
 {
 public:
 	BRISK(const ParametersMap & parameters = ParametersMap());
@@ -495,7 +530,7 @@ private:
 };
 
 //KAZE
-class RTABMAP_EXP KAZE : public Feature2D
+class RTABMAP_CORE_EXPORT KAZE : public Feature2D
 {
 public:
 	KAZE(const ParametersMap & parameters = ParametersMap());
@@ -522,7 +557,7 @@ private:
 };
 
 //ORB OCTREE
-class RTABMAP_EXP ORBOctree : public Feature2D
+class RTABMAP_CORE_EXPORT ORBOctree : public Feature2D
 {
 public:
 	ORBOctree(const ParametersMap & parameters = ParametersMap());
@@ -538,6 +573,8 @@ private:
 private:
 	float scaleFactor_;
 	int nLevels_;
+	int patchSize_;
+	int edgeThreshold_;
 	int fastThreshold_;
 	int fastMinThreshold_;
 
@@ -546,7 +583,7 @@ private:
 };
 
 //SuperPointTorch
-class RTABMAP_EXP SuperPointTorch : public Feature2D
+class RTABMAP_CORE_EXPORT SuperPointTorch : public Feature2D
 {
 public:
 	SuperPointTorch(const ParametersMap & parameters = ParametersMap());
@@ -566,6 +603,54 @@ private:
 	bool nms_;
 	int minDistance_;
 	bool cuda_;
+};
+
+//GFTT_DAISY
+class RTABMAP_CORE_EXPORT GFTT_DAISY : public GFTT
+{
+public:
+	GFTT_DAISY(const ParametersMap & parameters = ParametersMap());
+	virtual ~GFTT_DAISY();
+
+	virtual void parseParameters(const ParametersMap & parameters);
+	virtual Feature2D::Type getType() const {return kFeatureGfttDaisy;}
+
+private:
+	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const;
+
+private:
+	bool orientationNormalized_;
+	bool scaleNormalized_;
+	float patternScale_;
+	int nOctaves_;
+
+#if CV_MAJOR_VERSION > 2
+	cv::Ptr<CV_DAISY> _daisy;
+#endif
+};
+
+//SURF_DAISY
+class RTABMAP_CORE_EXPORT SURF_DAISY : public SURF
+{
+public:
+	SURF_DAISY(const ParametersMap & parameters = ParametersMap());
+	virtual ~SURF_DAISY();
+
+	virtual void parseParameters(const ParametersMap & parameters);
+	virtual Feature2D::Type getType() const {return kFeatureSurfDaisy;}
+
+private:
+	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const;
+
+private:
+	bool orientationNormalized_;
+	bool scaleNormalized_;
+	float patternScale_;
+	int nOctaves_;
+
+#if CV_MAJOR_VERSION > 2
+	cv::Ptr<CV_DAISY> _daisy;
+#endif
 };
 
 }

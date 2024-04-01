@@ -30,6 +30,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QMouseEvent>
 #include <QMenu>
 #include <QAction>
+#include <QActionGroup>
 #include <QInputDialog>
 
 #include "rtabmap/gui/EditMapArea.h"

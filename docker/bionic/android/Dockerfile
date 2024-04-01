@@ -9,29 +9,32 @@ RUN apt-get update && apt-get install -y \
       g++ lib32stdc++6 lib32z1 \
       software-properties-common \
       freeglut3-dev \
-      openjdk-8-jdk openjdk-8-jre
+      openjdk-8-jdk openjdk-8-jre \
+      curl
 
-ENV ANDROID_NDK_VERSION=r21
 ENV ANDROID_HOME=/opt/android-sdk
-ENV PATH=$PATH:/opt/android-sdk/tools:/opt/android-sdk/platform-tools:/opt/android-ndk-$ANDROID_NDK_VERSION
-ENV ANDROID_NDK=/opt/android-ndk-$ANDROID_NDK_VERSION
+ENV PATH=$PATH:/opt/android-sdk/cmdline-tools/latest/bin:/opt/android-sdk/tools:/opt/android-sdk/platform-tools:/opt/android-sdk/ndk/21.4.7075529
+ENV ANDROID_NDK=/opt/android-sdk/ndk/21.4.7075529
 ENV JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64
 
 WORKDIR /root/
 
 # Setup android sdk
-RUN wget -nv https://dl.google.com/android/repository/tools_r25.2.3-linux.zip && \
-    unzip -qq tools_r25.2.3-linux.zip && \
-    rm tools_r25.2.3-linux.zip && \
+RUN wget -nv https://dl.google.com/android/repository/commandlinetools-linux-7583922_latest.zip && \
+    unzip -qq commandlinetools-linux-7583922_latest.zip && \
+    rm commandlinetools-linux-7583922_latest.zip && \
     mkdir $ANDROID_HOME && \
-    mv tools $ANDROID_HOME/.
-RUN echo y | android update sdk --no-ui --all --filter platform-tools,android-23,android-24,android-26,build-tools-29.0.3
+    mkdir $ANDROID_HOME/cmdline-tools && \
+    mv cmdline-tools $ANDROID_HOME/cmdline-tools/latest
+# We should use build-tools <=30 to avoid dx missing error
+RUN echo y | sdkmanager --install "platform-tools" "platforms;android-23" "platforms;android-24" "platforms;android-26" "platforms;android-30" "build-tools;30.0.3" "ndk;21.4.7075529" && \
+    rm -r $ANDROID_HOME/tools
 
-# Setup android ndk
-RUN wget -nv https://dl.google.com/android/repository/android-ndk-$ANDROID_NDK_VERSION-linux-x86_64.zip && \
-    unzip -qq android-ndk-$ANDROID_NDK_VERSION-linux-x86_64.zip && \
-    rm android-ndk-$ANDROID_NDK_VERSION-linux-x86_64.zip && \
-    mv android-ndk-$ANDROID_NDK_VERSION /opt/.
+# we need <=r25 tools to use "android" command (now deprecated)
+RUN wget -nv http://dl-ssl.google.com/android/repository/tools_r25.2.5-linux.zip && \
+    unzip -qq tools_r25.2.5-linux.zip && \
+    mv tools $ANDROID_HOME/. && \
+    rm tools_r25.2.5-linux.zip
 
 ADD deps.bash /root/deps.bash
 RUN chmod +x deps.bash

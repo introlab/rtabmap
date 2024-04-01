@@ -33,7 +33,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 namespace rtabmap {
 
-double Registration::COVARIANCE_EPSILON = 0.000000001;
+double Registration::COVARIANCE_LINEAR_EPSILON = 0.00000001;   // 0.1 mm
+double Registration::COVARIANCE_ANGULAR_EPSILON = 0.00000003; // 0.01 deg
 
 Registration * Registration::create(const ParametersMap & parameters)
 {
@@ -237,18 +238,18 @@ Transform Registration::computeTransformationMod(
 		info.covariance = cv::Mat::eye(6,6,CV_64FC1);
 	}
 
-	if(info.covariance.at<double>(0,0)<=COVARIANCE_EPSILON)
-		info.covariance.at<double>(0,0) = COVARIANCE_EPSILON; // epsilon if exact transform
-	if(info.covariance.at<double>(1,1)<=COVARIANCE_EPSILON)
-		info.covariance.at<double>(1,1) = COVARIANCE_EPSILON; // epsilon if exact transform
-	if(info.covariance.at<double>(2,2)<=COVARIANCE_EPSILON)
-		info.covariance.at<double>(2,2) = COVARIANCE_EPSILON; // epsilon if exact transform
-	if(info.covariance.at<double>(3,3)<=COVARIANCE_EPSILON)
-		info.covariance.at<double>(3,3) = COVARIANCE_EPSILON; // epsilon if exact transform
-	if(info.covariance.at<double>(4,4)<=COVARIANCE_EPSILON)
-		info.covariance.at<double>(4,4) = COVARIANCE_EPSILON; // epsilon if exact transform
-	if(info.covariance.at<double>(5,5)<=COVARIANCE_EPSILON)
-		info.covariance.at<double>(5,5) = COVARIANCE_EPSILON; // epsilon if exact transform
+	if(info.covariance.at<double>(0,0)<=COVARIANCE_LINEAR_EPSILON)
+		info.covariance.at<double>(0,0) = COVARIANCE_LINEAR_EPSILON; // epsilon if exact transform
+	if(info.covariance.at<double>(1,1)<=COVARIANCE_LINEAR_EPSILON)
+		info.covariance.at<double>(1,1) = COVARIANCE_LINEAR_EPSILON; // epsilon if exact transform
+	if(info.covariance.at<double>(2,2)<=COVARIANCE_LINEAR_EPSILON)
+		info.covariance.at<double>(2,2) = COVARIANCE_LINEAR_EPSILON; // epsilon if exact transform
+	if(info.covariance.at<double>(3,3)<=COVARIANCE_ANGULAR_EPSILON)
+		info.covariance.at<double>(3,3) = COVARIANCE_ANGULAR_EPSILON; // epsilon if exact transform
+	if(info.covariance.at<double>(4,4)<=COVARIANCE_ANGULAR_EPSILON)
+		info.covariance.at<double>(4,4) = COVARIANCE_ANGULAR_EPSILON; // epsilon if exact transform
+	if(info.covariance.at<double>(5,5)<=COVARIANCE_ANGULAR_EPSILON)
+		info.covariance.at<double>(5,5) = COVARIANCE_ANGULAR_EPSILON; // epsilon if exact transform
 
 
 	if(infoOut)

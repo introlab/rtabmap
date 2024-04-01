@@ -35,10 +35,12 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UMath.h>
 #include <rtabmap/utilite/UConversion.h>
 #include <rtabmap/utilite/UStl.h>
+#include <rtabmap/core/util2d.h>
 #include <pcl/visualization/pcl_visualizer.h>
 #include <pcl/common/transforms.h>
 #include <QMenu>
 #include <QAction>
+#include <QActionGroup>
 #include <QtGui/QContextMenuEvent>
 #include <QInputDialog>
 #include <QtGui/QWheelEvent>
@@ -51,6 +53,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <vtkCamera.h>
 #include <vtkRenderWindow.h>
 #include <vtkCubeSource.h>
+#include <vtkDataSetMapper.h>
+#include <vtkDelaunay2D.h>
 #include <vtkGlyph3D.h>
 #include <vtkGlyph3DMapper.h>
 #include <vtkSmartVolumeMapper.h>
@@ -65,13 +69,17 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <vtkPNMReader.h>
 #include <vtkPNGReader.h>
 #include <vtkTIFFReader.h>
+#include <vtkElevationFilter.h>
 #include <vtkOpenGLRenderWindow.h>
 #include <vtkPointPicker.h>
+#include <vtkPointData.h>
 #include <vtkTextActor.h>
 #include <vtkTexture.h>
+#include <vtkNamedColors.h>
 #include <vtkOBBTree.h>
 #include <vtkObjectFactory.h>
 #include <vtkQuad.h>
+#include <vtkWarpScalar.h>
 #include <opencv/vtkImageMatSource.h>
 
 #if VTK_MAJOR_VERSION >= 7
@@ -80,14 +88,18 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <vtkOpenGLRenderer.h>
 #endif
 
+#if VTK_MAJOR_VERSION >= 8
+#include <vtkGenericOpenGLRenderWindow.h>
+#endif
+
 #ifdef RTABMAP_OCTOMAP
-#include <rtabmap/core/OctoMap.h>
+#include <rtabmap/core/global_map/OctoMap.h>
 #endif
 
 namespace rtabmap {
 
 CloudViewer::CloudViewer(QWidget *parent, CloudViewerInteractorStyle * style) :
-		QVTKWidget(parent),
+		PCLQVTKWidget(parent),
 		_aLockCamera(0),
 		_aFollowCamera(0),
 		_aResetCamera(0),
@@ -130,21 +142,35 @@ CloudViewer::CloudViewer(QWidget *parent, CloudViewerInteractorStyle * style) :
 		_frontfaceCulling(false),
 		_renderingRate(5.0),
 		_octomapActor(0),
-		_intensityAbsMax(0.0f)
+		_intensityAbsMax(100.0f),
+		_coordinateFrameScale(1.0)
 {
-	UDEBUG("");
 	this->setMinimumSize(200, 200);
 
 	int argc = 0;
 	UASSERT(style!=0);
 	style->setCloudViewer(this);
 	style->AutoAdjustCameraClippingRangeOff();
+#if VTK_MAJOR_VERSION > 8
+	auto renderer1 = vtkSmartPointer<vtkRenderer>::New();
+	auto renderWindow1 = vtkSmartPointer<vtkGenericOpenGLRenderWindow>::New();
+	renderWindow1->AddRenderer(renderer1);
 	_visualizer = new pcl::visualization::PCLVisualizer(
+		argc, 
+		0, 
+		renderer1,
+		renderWindow1,
+		"PCLVisualizer", 
+		style,
+		false);
+#else
+		_visualizer = new pcl::visualization::PCLVisualizer(
 		argc, 
 		0, 
 		"PCLVisualizer", 
 		style,
 		false);
+#endif
 
 	_visualizer->setShowFPS(false);
 	
@@ -178,17 +204,34 @@ CloudViewer::CloudViewer(QWidget *parent, CloudViewerInteractorStyle * style) :
 	}
 	_visualizer->getRenderWindow()->SetNumberOfLayers(4);
 
-	this->SetRenderWindow(_visualizer->getRenderWindow());
+#ifdef VTK_GLOBAL_WARNING_DISPLAY_OFF
+	_visualizer->getRenderWindow()->GlobalWarningDisplayOff();
+#endif
 
-	// Replaced by the second line, to avoid a crash in Mac OS X on close, as well as
-	// the "Invalid drawable" warning when the view is not visible.
-	//_visualizer->setupInteractor(this->GetInteractor(), this->GetRenderWindow());
+#if VTK_MAJOR_VERSION > 8
+	this->setRenderWindow(_visualizer->getRenderWindow());
+#else
+	this->SetRenderWindow(_visualizer->getRenderWindow());
+#endif
+
+    // Replaced by the second line, to avoid a crash in Mac OS X on close, as well as
+    // the "Invalid drawable" warning when the view is not visible.
+#if VTK_MAJOR_VERSION > 8
+    //_visualizer->setupInteractor(this->interactor(), this->renderWindow());
+	this->interactor()->SetInteractorStyle (_visualizer->getInteractorStyle());
+#else
+    //_visualizer->setupInteractor(this->GetInteractor(), this->GetRenderWindow());
 	this->GetInteractor()->SetInteractorStyle (_visualizer->getInteractorStyle());
+#endif
 	// setup a simple point picker
 	vtkSmartPointer<vtkPointPicker> pp = vtkSmartPointer<vtkPointPicker>::New ();
 	UDEBUG("pick tolerance=%f", pp->GetTolerance());
 	pp->SetTolerance (pp->GetTolerance()/2.0);
+#if VTK_MAJOR_VERSION > 8
+	this->interactor()->SetPicker (pp);
+#else
 	this->GetInteractor()->SetPicker (pp);
+#endif
 
 	setRenderingRate(_renderingRate);
 
@@ -225,6 +268,7 @@ void CloudViewer::clear()
 	this->removeAllTexts();
 	this->removeOccupancyGridMap();
 	this->removeOctomap();
+	this->removeElevationMap();
 
 	if(_aShowCameraAxis->isChecked())
 	{
@@ -264,6 +308,8 @@ void CloudViewer::createMenu()
 	_aShowCameraAxis= new QAction("Show base frame", this);
 	_aShowCameraAxis->setCheckable(true);
 	_aShowCameraAxis->setChecked(true);
+	_aSetFrameScale= new QAction("Set frame scale...", this);
+	_aShowCameraAxis->setChecked(true);
 	_aShowFrustum= new QAction("Show frustum", this);
 	_aShowFrustum->setCheckable(true);
 	_aShowFrustum->setChecked(false);
@@ -279,7 +325,10 @@ void CloudViewer::createMenu()
 	_aSetNormalsScale = new QAction("Set normals scale...", this);
 	_aSetIntensityRedColormap = new QAction("Red/Yellow Colormap", this);
 	_aSetIntensityRedColormap->setCheckable(true);
-	_aSetIntensityRedColormap->setChecked(false);
+	_aSetIntensityRedColormap->setChecked(true);
+	_aSetIntensityRainbowColormap = new QAction("Rainbow Colormap", this);
+	_aSetIntensityRainbowColormap->setCheckable(true);
+	_aSetIntensityRainbowColormap->setChecked(false);
 	_aSetIntensityMaximum = new QAction("Set maximum absolute intensity...", this);
 	_aSetBackgroundColor = new QAction("Set background color...", this);	
 	_aSetRenderingRate = new QAction("Set rendering rate...", this);
@@ -338,8 +387,9 @@ void CloudViewer::createMenu()
 	normalsMenu->addAction(_aSetNormalsStep);
 	normalsMenu->addAction(_aSetNormalsScale);
 
-	QMenu * scanMenu = new QMenu("Scan", this);
+	QMenu * scanMenu = new QMenu("Scan color", this);
 	scanMenu->addAction(_aSetIntensityRedColormap);
+	scanMenu->addAction(_aSetIntensityRainbowColormap);
 	scanMenu->addAction(_aSetIntensityMaximum);
 
 	//menus
@@ -347,6 +397,7 @@ void CloudViewer::createMenu()
 	_menu->addMenu(cameraMenu);
 	_menu->addMenu(trajectoryMenu);
 	_menu->addAction(_aShowCameraAxis);
+	_menu->addAction(_aSetFrameScale);
 	_menu->addMenu(frustumMenu);
 	_menu->addMenu(gridMenu);
 	_menu->addMenu(normalsMenu);
@@ -400,12 +451,14 @@ void CloudViewer::saveSettings(QSettings & settings, const QString & group) cons
 	settings.setValue("normals_scale", (double)this->getNormalsScale());
 
 	settings.setValue("intensity_red_colormap", this->isIntensityRedColormap());
+	settings.setValue("intensity_rainbow_colormap", this->isIntensityRainbowColormap());
 	settings.setValue("intensity_max", (double)this->getIntensityMax());
 
 	settings.setValue("trajectory_shown", this->isTrajectoryShown());
 	settings.setValue("trajectory_size", this->getTrajectorySize());
 
 	settings.setValue("camera_axis_shown", this->isCameraAxisShown());
+	settings.setValue("coordinate_frame_scale", this->getCoordinateFrameScale());
 
 	settings.setValue("frustum_shown", this->isFrustumShown());
 	settings.setValue("frustum_scale", this->getFrustumScale());
@@ -449,12 +502,14 @@ void CloudViewer::loadSettings(QSettings & settings, const QString & group)
 	this->setNormalsScale(settings.value("normals_scale", this->getNormalsScale()).toFloat());
 
 	this->setIntensityRedColormap(settings.value("intensity_red_colormap", this->isIntensityRedColormap()).toBool());
+	this->setIntensityRainbowColormap(settings.value("intensity_rainbow_colormap", this->isIntensityRainbowColormap()).toBool());
 	this->setIntensityMax(settings.value("intensity_max", this->getIntensityMax()).toFloat());
 
 	this->setTrajectoryShown(settings.value("trajectory_shown", this->isTrajectoryShown()).toBool());
 	this->setTrajectorySize(settings.value("trajectory_size", this->getTrajectorySize()).toUInt());
 
 	this->setCameraAxisShown(settings.value("camera_axis_shown", this->isCameraAxisShown()).toBool());
+	this->setCoordinateFrameScale(settings.value("coordinate_frame_scale", this->getCoordinateFrameScale()).toDouble());
 
 	this->setFrustumShown(settings.value("frustum_shown", this->isFrustumShown()).toBool());
 	this->setFrustumScale(settings.value("frustum_scale", this->getFrustumScale()).toDouble());
@@ -477,7 +532,16 @@ void CloudViewer::loadSettings(QSettings & settings, const QString & group)
 		settings.endGroup();
 	}
 
+	this->refreshView();
+}
+
+void CloudViewer::refreshView()
+{
+#if VTK_MAJOR_VERSION > 8
+	this->renderWindow()->Render();
+#else
 	this->update();
+#endif
 }
 
 bool CloudViewer::updateCloudPose(
@@ -542,10 +606,10 @@ public:
 	typedef boost::shared_ptr<const PointCloudColorHandlerIntensityField > ConstPtr;
 
 	/** \brief Constructor. */
-	PointCloudColorHandlerIntensityField (const PointCloudConstPtr &cloud, float maxAbsIntensity = 0.0f, bool redYellowColormap = true) :
+	PointCloudColorHandlerIntensityField (const PointCloudConstPtr &cloud, float maxAbsIntensity = 0.0f, int colorMap = 0) :
 		pcl::visualization::PointCloudColorHandler<pcl::PCLPointCloud2>::PointCloudColorHandler (cloud),
 		maxAbsIntensity_(maxAbsIntensity),
-		redColormap_(redYellowColormap)
+		colormap_(colorMap)
 		{
 		field_idx_  = pcl::getFieldIndex (*cloud, "intensity");
 		if (field_idx_ != -1)
@@ -562,12 +626,16 @@ public:
 	 * \return true if the operation was successful (the handler is capable and
 	 * the input cloud was given as a valid pointer), false otherwise
 	 */
-	virtual bool
-	getColor (vtkSmartPointer<vtkDataArray> &scalars) const
-	{
+#if PCL_VERSION_COMPARE(>, 1, 11, 1)
+	virtual vtkSmartPointer<vtkDataArray> getColor () const {
+		vtkSmartPointer<vtkDataArray> scalars;
+		if (!capable_ || !cloud_)
+			return scalars;
+#else
+	virtual bool getColor (vtkSmartPointer<vtkDataArray> &scalars) const {
 		if (!capable_ || !cloud_)
 			return (false);
-
+#endif
 		if (!scalars)
 			scalars = vtkSmartPointer<vtkUnsignedCharArray>::New ();
 		scalars->SetNumberOfComponents (3);
@@ -632,10 +700,18 @@ public:
 			for(size_t k=0; k<j; ++k)
 			{
 				colors[k*3+0] = colors[k*3+1] = colors[k*3+2] = max>0?(unsigned char)(std::min(intensities[k]/max*255.0f, 255.0f)):255;
-				if(redColormap_)
+				if(colormap_ == 1)
 				{
 					colors[k*3+0] = 255;
 					colors[k*3+2] = 0;
+				}
+				else if(colormap_ == 2)
+				{
+					float r,g,b;
+					util2d::HSVtoRGB(&r, &g, &b, colors[k*3+0]*299.0f/255.0f, 1.0f, 1.0f);
+					colors[k*3+0] = r*255.0f;
+					colors[k*3+1] = g*255.0f;
+					colors[k*3+2] = b*255.0f;
 				}
 			}
 			reinterpret_cast<vtkUnsignedCharArray*>(&(*scalars))->SetNumberOfTuples (j);
@@ -645,7 +721,11 @@ public:
 			reinterpret_cast<vtkUnsignedCharArray*>(&(*scalars))->SetNumberOfTuples (0);
 		//delete [] colors;
 		delete [] intensities;
+#if PCL_VERSION_COMPARE(>, 1, 11, 1)
+		return scalars;
+#else
 		return (true);
+#endif
 	}
 
 protected:
@@ -659,7 +739,7 @@ protected:
 
 private:
 	float maxAbsIntensity_;
-	bool redColormap_;
+	int colormap_; // 0=grayscale, 1=redYellow, 2=RainbowHSV
 };
 
 bool CloudViewer::addCloud(
@@ -724,7 +804,7 @@ bool CloudViewer::addCloud(
 		else if(hasIntensity)
 		{
 			//intensity
-			colorHandler.reset(new PointCloudColorHandlerIntensityField(binaryCloud, _intensityAbsMax, _aSetIntensityRedColormap->isChecked()));
+			colorHandler.reset(new PointCloudColorHandlerIntensityField(binaryCloud, _intensityAbsMax, _aSetIntensityRedColormap->isChecked()?1:_aSetIntensityRainbowColormap->isChecked()?2:0));
 			_visualizer->addPointCloud (binaryCloud, colorHandler, origin, orientation, id, viewport);
 		}
 		else if(previousColorIndex == 5)
@@ -1036,8 +1116,6 @@ bool CloudViewer::addOctomap(const OctoMap * octomap, unsigned int treeDepth, bo
 #ifdef RTABMAP_OCTOMAP
 	UASSERT(octomap!=0);
 
-	pcl::IndicesPtr obstacles(new std::vector<int>);
-
 	if(treeDepth == 0 || treeDepth > octomap->octree()->getTreeDepth())
 	{
 		if(treeDepth>0)
@@ -1053,7 +1131,12 @@ bool CloudViewer::addOctomap(const OctoMap * octomap, unsigned int treeDepth, bo
 
 	if(!volumeRepresentation)
 	{
-		pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = octomap->createCloud(treeDepth, obstacles.get(), 0, 0, false);
+		pcl::IndicesPtr obstacles(new std::vector<int>);
+		pcl::IndicesPtr ground(new std::vector<int>);
+
+		pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = octomap->createCloud(
+				treeDepth, obstacles.get(), 0, ground.get(), false);
+		obstacles->insert(obstacles->end(), ground->begin(), ground->end());
 		if(obstacles->size())
 		{
 			//vtkSmartPointer<vtkUnsignedCharArray> colors = vtkSmartPointer<vtkUnsignedCharArray>::New();
@@ -1179,7 +1262,7 @@ bool CloudViewer::addOctomap(const OctoMap * octomap, unsigned int treeDepth, bo
 							// Gradiant color on z axis
 							float H = (maxZ - pt.z())*299.0f/(maxZ-minZ);
 							float r,g,b;
-							OctoMap::HSVtoRGB(&r, &g, &b, H, 1, 1);
+							util2d::HSVtoRGB(&r, &g, &b, H, 1, 1);
 							pixel[0] = r*255.0f;
 							pixel[1] = g*255.0f;
 							pixel[2] = b*255.0f;
@@ -1222,7 +1305,7 @@ bool CloudViewer::addOctomap(const OctoMap * octomap, unsigned int treeDepth, bo
 			renderer->AddViewProp(volume);
 
 			// 3D texture mode. For coverage.
-#if !defined(VTK_LEGACY_REMOVE) && !defined(VTK_OPENGL2)
+#if !defined(VTK_LEGACY_REMOVE) && !defined(VTK_OPENGL2) && VTK_MAJOR_VERSION < 9
 			volumeMapper->SetRequestedRenderModeToRayCastAndTexture();
 #endif // VTK_LEGACY_REMOVE
 
@@ -1524,6 +1607,131 @@ void CloudViewer::removeOccupancyGridMap()
 #endif
 }
 
+bool CloudViewer::addElevationMap(
+			const cv::Mat & map32FC1,
+			float resolution, // cell size
+			float xMin,
+			float yMin,
+			float opacity)
+{
+	if(_visualizer->getShapeActorMap()->find("elevation_map") != _visualizer->getShapeActorMap()->end())
+	{
+		_visualizer->removeShape("elevation_map");
+	}
+
+	vtkSmartPointer<vtkPoints> gridPoints = vtkSmartPointer<vtkPoints>::New ();
+	vtkSmartPointer<vtkCellArray> gridCells = vtkSmartPointer<vtkCellArray>::New ();
+	for (int y = 0; y < map32FC1.rows; ++y)
+	{
+		const float * previousRow = y>0?map32FC1.ptr<float>(y-1):0;
+		const float * rowPtr = map32FC1.ptr<float>(y);
+		for (int x = 0; x < map32FC1.cols; ++x)
+		{
+			gridPoints->InsertNextPoint(xMin + x*resolution, yMin + y*resolution, rowPtr[x]);
+			if(x>0 && y>0 &&
+			   rowPtr[x] != 0 &&
+			   rowPtr[x-1] != 0 &&
+			   previousRow[x] != 0 &&
+			   previousRow[x-1] != 0)
+			{
+				gridCells->InsertNextCell(4);
+				gridCells->InsertCellPoint(x-1+y*map32FC1.cols);
+				gridCells->InsertCellPoint(x+y*map32FC1.cols);
+				gridCells->InsertCellPoint(x+(y-1)*map32FC1.cols);
+				gridCells->InsertCellPoint(x-1+(y-1)*map32FC1.cols);
+			}
+		}
+	}
+
+	double bounds[6];
+	gridPoints->GetBounds(bounds);
+
+	vtkSmartPointer<vtkPolyData> polyData = vtkSmartPointer<vtkPolyData>::New ();
+	polyData->SetPoints(gridPoints);
+	polyData->SetPolys(gridCells);
+
+	vtkSmartPointer<vtkElevationFilter> elevationFilter = vtkSmartPointer<vtkElevationFilter>::New ();
+	elevationFilter->SetInputData(polyData);
+	elevationFilter->SetLowPoint(0.0, 0.0, bounds[4]);
+	elevationFilter->SetHighPoint(0.0, 0.0, bounds[5]);
+	elevationFilter->Update();
+
+	vtkSmartPointer<vtkPolyData> output = vtkSmartPointer<vtkPolyData>::New ();
+	output->ShallowCopy(dynamic_cast<vtkPolyData*>(elevationFilter->GetOutput()));
+
+	vtkFloatArray* elevation = dynamic_cast<vtkFloatArray*>(
+	  output->GetPointData()->GetArray("Elevation"));
+
+	// Create the color map
+	vtkSmartPointer<vtkLookupTable> colorLookupTable = vtkSmartPointer<vtkLookupTable>::New ();
+	colorLookupTable->SetTableRange(bounds[4], bounds[5]);
+	colorLookupTable->Build();
+
+	// Generate the colors for each point based on the color map
+	vtkSmartPointer<vtkUnsignedCharArray> colors = vtkSmartPointer<vtkUnsignedCharArray>::New ();
+	colors->SetNumberOfComponents(3);
+	colors->SetName("Colors");
+
+	for (vtkIdType i = 0; i < output->GetNumberOfPoints(); i++)
+	{
+		double val = elevation->GetValue(i);
+		double dcolor[3];
+		colorLookupTable->GetColor(val, dcolor);
+		unsigned char color[3];
+		for (unsigned int j = 0; j < 3; j++)
+		{
+			color[j] = 255 * dcolor[j] / 1.0;
+		}
+
+#if VTK_MAJOR_VERSION > 7 || (VTK_MAJOR_VERSION==7 && VTK_MINOR_VERSION >= 1)
+		colors->InsertNextTypedTuple(color);
+#else
+		colors->InsertNextTupleValue(color);
+#endif
+
+	}
+
+	output->GetPointData()->AddArray(colors);
+
+	vtkSmartPointer<vtkPolyDataMapper> mapper = vtkSmartPointer<vtkPolyDataMapper>::New ();
+	mapper->SetInputData(output);
+
+	vtkSmartPointer<vtkActor> actor = vtkSmartPointer<vtkActor>::New ();
+	actor->SetMapper(mapper);
+
+	// Add it to all renderers
+	_visualizer->getRendererCollection()->InitTraversal ();
+	vtkRenderer* renderer = NULL;
+	int i = 0;
+	int viewport = 1;
+	while ((renderer = _visualizer->getRendererCollection()->GetNextItem ()) != NULL)
+	{
+		// Should we add the actor to all renderers?
+		if (viewport == 0)
+		{
+			renderer->AddActor (actor);
+		}
+		else if (viewport == i)               // add the actor only to the specified viewport
+		{
+			renderer->AddActor (actor);
+		}
+		++i;
+	}
+
+	(*_visualizer->getShapeActorMap())["elevation_map"] = actor;
+
+	setCloudOpacity("elevation_map", opacity);
+
+	return true;
+}
+void CloudViewer::removeElevationMap()
+{
+	if(_visualizer->getShapeActorMap()->find("elevation_map") != _visualizer->getShapeActorMap()->end())
+	{
+		_visualizer->removeShape("elevation_map");
+	}
+}
+
 void CloudViewer::addOrUpdateCoordinate(
 			const std::string & id,
 			const Transform & transform,
@@ -1542,10 +1750,10 @@ void CloudViewer::addOrUpdateCoordinate(
 	{
 		_coordinates.insert(id);
 #if PCL_VERSION_COMPARE(>=, 1, 7, 2)
-		_visualizer->addCoordinateSystem(scale, transform.toEigen3f(), id, foreground?3:2);
+		_visualizer->addCoordinateSystem(scale*_coordinateFrameScale, transform.toEigen3f(), id, foreground?3:2);
 #else
 		// Well, on older versions, just update the main coordinate
-		_visualizer->addCoordinateSystem(scale, transform.toEigen3f(), 0);
+		_visualizer->addCoordinateSystem(scale*_coordinateFrameScale, transform.toEigen3f(), 0);
 #endif
 	}
 }
@@ -2228,7 +2436,7 @@ void CloudViewer::clearTrajectory()
 {
 	_trajectory->clear();
 	_visualizer->removeShape("trajectory");
-	this->update();
+	this->refreshView();
 }
 
 bool CloudViewer::isCameraAxisShown() const
@@ -2246,8 +2454,18 @@ void CloudViewer::setCameraAxisShown(bool shown)
 	{
 		this->addOrUpdateCoordinate("reference", Transform::getIdentity(), 0.2);
 	}
-	this->update();
+	this->refreshView();
 	_aShowCameraAxis->setChecked(shown);
+}
+
+double CloudViewer::getCoordinateFrameScale() const
+{
+	return _coordinateFrameScale;
+}
+
+void CloudViewer::setCoordinateFrameScale(double scale)
+{
+	_coordinateFrameScale = std::max(0.1, scale);
 }
 
 bool CloudViewer::isFrustumShown() const
@@ -2285,7 +2503,7 @@ void CloudViewer::setFrustumShown(bool shown)
 				this->removeLine(*iter);
 			}
 		}
-		this->update();
+		this->refreshView();
 	}
 	_aShowFrustum->setChecked(shown);
 }
@@ -2305,7 +2523,7 @@ void CloudViewer::setFrustumColor(QColor value)
 	{
 		_visualizer->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR, value.redF(), value.greenF(), value.blueF(), iter.key());
 	}
-	this->update();
+	this->refreshView();
 	_frustumColor = value;
 }
 
@@ -2534,7 +2752,7 @@ void CloudViewer::setBackfaceCulling(bool enabled, bool frontfaceCulling)
 		}
 	}
 #endif
-	this->update();
+	this->refreshView();
 }
 
 void CloudViewer::setPolygonPicking(bool enabled)
@@ -2545,14 +2763,22 @@ void CloudViewer::setPolygonPicking(bool enabled)
 	{
 		vtkSmartPointer<vtkPointPicker> pp = vtkSmartPointer<vtkPointPicker>::New ();
 		pp->SetTolerance (pp->GetTolerance());
+		#if VTK_MAJOR_VERSION > 8
+		this->interactor()->SetPicker (pp);
+#else
 		this->GetInteractor()->SetPicker (pp);
+#endif
 		setMouseTracking(false);
 	}
 	else
 	{
 		vtkSmartPointer<CloudViewerCellPicker> pp = vtkSmartPointer<CloudViewerCellPicker>::New ();
 		pp->SetTolerance (pp->GetTolerance());
+#if VTK_MAJOR_VERSION > 8
+		this->interactor()->SetPicker (pp);
+#else
 		this->GetInteractor()->SetPicker (pp);
+#endif
 		setMouseTracking(true);
 	}
 }
@@ -2591,7 +2817,7 @@ void CloudViewer::setEDLShading(bool on)
 		glrenderer->SetPass(NULL);
 	}
 
-	this->update();
+	this->refreshView();
 #else
 	if(on)
 	{
@@ -2619,7 +2845,7 @@ void CloudViewer::setLighting(bool on)
 		}
 	}
 #endif
-	this->update();
+	this->refreshView();
 }
 
 void CloudViewer::setShading(bool on)
@@ -2641,7 +2867,7 @@ void CloudViewer::setShading(bool on)
 		}
 	}
 #endif
-	this->update();
+	this->refreshView();
 }
 
 void CloudViewer::setEdgeVisibility(bool visible)
@@ -2663,7 +2889,7 @@ void CloudViewer::setEdgeVisibility(bool visible)
 		}
 	}
 #endif
-	this->update();
+	this->refreshView();
 }
 
 void CloudViewer::setInteractorLayer(int layer)
@@ -2748,8 +2974,6 @@ void CloudViewer::setCameraPosition(
 	{
 		renderer->ResetCameraClippingRange(boundingBox);
 	}
-
-	_visualizer->getRenderWindow()->Render ();
 }
 
 void CloudViewer::updateCameraTargetPosition(const Transform & pose)
@@ -2758,14 +2982,6 @@ void CloudViewer::updateCameraTargetPosition(const Transform & pose)
 	{
 		Eigen::Affine3f m = pose.toEigen3f();
 		Eigen::Vector3f pos = m.translation();
-
-		Eigen::Vector3f lastPos(0,0,0);
-		if(_trajectory->size())
-		{
-			lastPos[0]=_trajectory->back().x;
-			lastPos[1]=_trajectory->back().y;
-			lastPos[2]=_trajectory->back().z;
-		}
 
 		_trajectory->push_back(pcl::PointXYZ(pos[0], pos[1], pos[2]));
 		if(_maxTrajectorySize>0)
@@ -2919,6 +3135,21 @@ void CloudViewer::updateCameraFrustums(const Transform & pose, const std::vector
 				}
 			}
 		}
+	}
+}
+void CloudViewer::updateCameraFrustums(const Transform & pose, const std::vector<StereoCameraModel> & stereoModels)
+{
+	std::vector<CameraModel> models;
+	for(size_t i=0; i<stereoModels.size(); ++i)
+	{
+		models.push_back(stereoModels[i].left());
+		CameraModel right = stereoModels[i].right();
+		if(!stereoModels[i].left().localTransform().isNull())
+		{
+			right.setLocalTransform(stereoModels[i].left().localTransform() * Transform(stereoModels[i].baseline(), 0, 0, 0, 0, 0));
+		}
+		models.push_back(right);
+		updateCameraFrustums(pose, models);
 	}
 }
 
@@ -3078,11 +3309,15 @@ void CloudViewer::setCameraLockZ(bool enabled)
 void CloudViewer::setCameraOrtho(bool enabled)
 {
 	_lastCameraOrientation= _lastCameraPose = cv::Vec3f(0,0,0);
+#if VTK_MAJOR_VERSION > 8
+	CloudViewerInteractorStyle * interactor = CloudViewerInteractorStyle::SafeDownCast(this->interactor()->GetInteractorStyle());
+#else
 	CloudViewerInteractorStyle * interactor = CloudViewerInteractorStyle::SafeDownCast(this->GetInteractor()->GetInteractorStyle());
+#endif
 	if(interactor)
 	{
 		interactor->setOrthoMode(enabled);
-		this->update();
+		this->refreshView();
 	}
 	_aCameraOrtho->setChecked(enabled);
 }
@@ -3296,6 +3531,10 @@ bool CloudViewer::isIntensityRedColormap() const
 {
 	return _aSetIntensityRedColormap->isChecked();
 }
+bool CloudViewer::isIntensityRainbowColormap() const
+{
+	return _aSetIntensityRainbowColormap->isChecked();
+}
 float CloudViewer::getIntensityMax() const
 {
 	return _intensityAbsMax;
@@ -3304,6 +3543,18 @@ float CloudViewer::getIntensityMax() const
 void CloudViewer::setIntensityRedColormap(bool on)
 {
 	_aSetIntensityRedColormap->setChecked(on);
+	if(on)
+	{
+		_aSetIntensityRainbowColormap->setChecked(false);
+	}
+}
+void CloudViewer::setIntensityRainbowColormap(bool on)
+{
+	_aSetIntensityRainbowColormap->setChecked(on);
+	if(on)
+	{
+		_aSetIntensityRedColormap->setChecked(false);
+	}
 }
 void CloudViewer::setIntensityMax(float value)
 {
@@ -3367,7 +3618,7 @@ void CloudViewer::keyReleaseEvent(QKeyEvent * event) {
 	}
 	else
 	{
-		QVTKWidget::keyPressEvent(event);
+		PCLQVTKWidget::keyPressEvent(event);
 	}
 }
 
@@ -3465,7 +3716,7 @@ void CloudViewer::keyPressEvent(QKeyEvent * event)
 	}
 	else
 	{
-		QVTKWidget::keyPressEvent(event);
+		PCLQVTKWidget::keyPressEvent(event);
 	}
 }
 
@@ -3477,13 +3728,13 @@ void CloudViewer::mousePressEvent(QMouseEvent * event)
 	}
 	else
 	{
-		QVTKWidget::mousePressEvent(event);
+		PCLQVTKWidget::mousePressEvent(event);
 	}
 }
 
 void CloudViewer::mouseMoveEvent(QMouseEvent * event)
 {
-	QVTKWidget::mouseMoveEvent(event);
+	PCLQVTKWidget::mouseMoveEvent(event);
 
 	std::vector<pcl::visualization::Camera> cameras;
 	_visualizer->getCameras(cameras);
@@ -3534,7 +3785,7 @@ void CloudViewer::mouseMoveEvent(QMouseEvent * event)
 
 void CloudViewer::wheelEvent(QWheelEvent * event)
 {
-	QVTKWidget::wheelEvent(event);
+	PCLQVTKWidget::wheelEvent(event);
 
 	std::vector<pcl::visualization::Camera> cameras;
 	_visualizer->getCameras(cameras);
@@ -3581,6 +3832,15 @@ void CloudViewer::handleAction(QAction * a)
 	{
 		this->setCameraAxisShown(a->isChecked());
 	}
+	else if(a == _aSetFrameScale)
+	{
+		bool ok;
+		double value = QInputDialog::getDouble(this, tr("Set frame scale"), tr("Scale"), _coordinateFrameScale, 0.1, 999.0, 1, &ok);
+		if(ok)
+		{
+			this->setCoordinateFrameScale(value);
+		}
+	}
 	else if(a == _aShowFrustum)
 	{
 		this->setFrustumShown(a->isChecked());
@@ -3617,7 +3877,7 @@ void CloudViewer::handleAction(QAction * a)
 			this->removeGrid();
 		}
 
-		this->update();
+		this->refreshView();
 	}
 	else if(a == _aSetGridCellCount)
 	{
@@ -3640,7 +3900,7 @@ void CloudViewer::handleAction(QAction * a)
 	else if(a == _aShowNormals)
 	{
 		this->setNormalsShown(_aShowNormals->isChecked());
-		this->update();
+		this->refreshView();
 	}
 	else if(a == _aSetNormalsStep)
 	{
@@ -3669,9 +3929,13 @@ void CloudViewer::handleAction(QAction * a)
 			this->setIntensityMax(value);
 		}
 	}
-	else if(a == _aShowNormals)
+	else if(a == _aSetIntensityRedColormap)
 	{
 		this->setIntensityRedColormap(_aSetIntensityRedColormap->isChecked());
+	}
+	else if(a == _aSetIntensityRainbowColormap)
+	{
+		this->setIntensityRainbowColormap(_aSetIntensityRainbowColormap->isChecked());
 	}
 	else if(a == _aSetBackgroundColor)
 	{
@@ -3680,7 +3944,7 @@ void CloudViewer::handleAction(QAction * a)
 		if(color.isValid())
 		{
 			this->setDefaultBackgroundColor(color);
-			this->update();
+			this->refreshView();
 		}
 	}
 	else if(a == _aSetRenderingRate)
@@ -3696,7 +3960,7 @@ void CloudViewer::handleAction(QAction * a)
 	{
 		if(_aLockViewZ->isChecked())
 		{
-			this->update();
+			this->refreshView();
 		}
 	}
 	else if(a == _aCameraOrtho)
