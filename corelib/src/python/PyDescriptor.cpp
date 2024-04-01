@@ -22,11 +22,13 @@ PyDescriptor::PyDescriptor(
 		pFunc_(0),
 		dim_(Parameters::defaultPyDescriptorDim())
 {
+	UDEBUG("");
 	this->parseParameters(parameters);
 }
 
 PyDescriptor::~PyDescriptor()
 {
+	UDEBUG("");
 	pybind11::gil_scoped_acquire acquire;
 
 	if(pFunc_)
@@ -41,6 +43,7 @@ PyDescriptor::~PyDescriptor()
 
 void PyDescriptor::parseParameters(const ParametersMap & parameters)
 {
+	UDEBUG("");
 	std::string previousPath = path_;
 	Parameters::parse(parameters, Parameters::kPyDescriptorPath(), path_);
 	Parameters::parse(parameters, Parameters::kPyDescriptorDim(), dim_);
@@ -147,6 +150,7 @@ void PyDescriptor::parseParameters(const ParametersMap & parameters)
 GlobalDescriptor PyDescriptor::extract(
 		  const SensorData & data) const
 {
+	UDEBUG("");
 	UTimer timer;
 	GlobalDescriptor descriptor;
 
@@ -184,31 +188,21 @@ GlobalDescriptor PyDescriptor::extract(
 		{
 			UDEBUG("Python extraction time = %fs", timer.ticks());
 
-			/*
 			PyArrayObject *np_ret = reinterpret_cast<PyArrayObject*>(pReturn);
 
 			// Convert back to C++ array and print.
 			int len1 = PyArray_SHAPE(np_ret)[0];
-			int len2 = PyArray_SHAPE(np_ret)[1];
+			int dim = PyArray_SHAPE(np_ret)[1];
 			int type = PyArray_TYPE(np_ret);
-			UDEBUG("Matches array %dx%d (type=%d)", len1, len2, type);
-			UASSERT_MSG(type == NPY_LONG || type == NPY_INT, uFormat("Returned matches should type INT=5 or LONG=7, received type=%d", type).c_str());
-			if(type == NPY_LONG)
-			{
-				long* c_out = reinterpret_cast<long*>(PyArray_DATA(np_ret));
-				for (int i = 0; i < len1*len2; i+=2)
-				{
-					matches.push_back(cv::DMatch(c_out[i], c_out[i+1], 0));
-				}
-			}
-			else // INT
-			{
-				int* c_out = reinterpret_cast<int*>(PyArray_DATA(np_ret));
-				for (int i = 0; i < len1*len2; i+=2)
-				{
-					matches.push_back(cv::DMatch(c_out[i], c_out[i+1], 0));
-				}
-			}*/
+			UDEBUG("Descriptor array %dx%d (type=%d)", len1, dim, type);
+			UASSERT(len1 == 1);
+			UASSERT_MSG(type == NPY_FLOAT, uFormat("Returned descriptor should type FLOAT=11, received type=%d", type).c_str());
+
+			float* d_out = reinterpret_cast<float*>(PyArray_DATA(np_ret));
+			descriptor = GlobalDescriptor(1, cv::Mat(1, dim, CV_32FC1, d_out).clone());
+
+			//std::cout << descriptor.data() << std::endl;
+
 			Py_DECREF(pReturn);
 		}
 

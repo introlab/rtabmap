@@ -1,8 +1,9 @@
 #! /usr/bin/env python3
 #
 # Drop this file in the "python" folder of NetVLAD git (tensorflow-v1 used): https://github.com/uzh-rpg/netvlad_tf_open/
+# Updated to work with https://github.com/uzh-rpg/netvlad_tf_open/pull/9
 # To use with rtabmap:
-#   --PyDescriptor/Dim 128 --PyDescriptor/Path ~/netvlad_tf_open/python/rtabmap_netvlad.py
+#   --Mem/GlobalDescriptorStrategy 1 --Kp/TfIdfLikelihoodUsed false --Mem/RehearsalSimilarity 1 --PyDescriptor/Dim 128 --PyDescriptor/Path ~/netvlad_tf_open/python/rtabmap_netvlad.py
 #
 
 import sys    
@@ -36,32 +37,40 @@ def init(descriptorDim):
     
     dim = descriptorDim
 
-    tf.reset_default_graph()
+    tf.compat.v1.disable_eager_execution()
+    tf.compat.v1.reset_default_graph()
 
-    image_batch = tf.placeholder(
+    image_batch = tf.compat.v1.placeholder(
         dtype=tf.float32, shape=[None, None, None, 3])
 
     net_out = nets.vgg16NetvladPca(image_batch)
-    saver = tf.train.Saver()
+    saver = tf.compat.v1.train.Saver()
 
-    sess = tf.Session()
+    sess = tf.compat.v1.Session()
     saver.restore(sess, nets.defaultCheckpoint())
 
 
 def extract(image):
-    print("NetVLAD python extract()")
+    print(f"NetVLAD python extract{image.shape}")
     global image_batch
     global net_out
     global sess
     global dim
-    
-    print(image.shape)
-    
+
+    if(image.shape[2] == 1):
+        image = np.dstack((image, image, image))
+
     batch = np.expand_dims(image, axis=0)
     result = sess.run(net_out, feed_dict={image_batch: batch})
-    result = result[:,:dim]
     
-    return result
+    # All that needs to be done (only valid for NetVLAD+whitening networks!)
+    # to reduce the dimensionality of the NetVLAD representation below 4096 to D
+    # is to keep the first D dimensions and L2-normalize.
+    if(result.shape[1] > dim):
+        v = result[:, :dim]
+        result = v/np.linalg.norm(v)
+
+    return np.float32(result)
 
 
 if __name__ == '__main__':
@@ -69,4 +78,6 @@ if __name__ == '__main__':
     img = np.zeros([100,100,3],dtype=np.uint8)
     img.fill(255)
     init(128)
-    print(extract(img))
+    descriptor = extract(img)
+    print(descriptor.shape)
+    print(descriptor)
