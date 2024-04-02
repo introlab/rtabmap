@@ -700,7 +700,7 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 			{
 				float x,y,z,roll,pitch,yaw;
 				std::map<int, Transform> tmpPoses;
-				Values values = isam2_?isam2_->calculateEstimate():optimizer->values();
+				const Values values = isam2_?isam2_->calculateEstimate():optimizer->values();
 #if GTSAM_VERSION_NUMERIC >= 40200
 				for(gtsam::Values::deref_iterator iter=values.begin(); iter!=values.end(); ++iter)
 #else
@@ -872,7 +872,7 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 				it, initialError, lastError, timer.ticks());
 
 		float x,y,z,roll,pitch,yaw;
-		gtsam::Values values = isam2_?isam2_->calculateEstimate():optimizer->values();
+		const gtsam::Values values = isam2_?isam2_->calculateEstimate():optimizer->values();
 #if GTSAM_VERSION_NUMERIC >= 40200
 		for(gtsam::Values::deref_iterator iter=values.begin(); iter!=values.end(); ++iter)
 #else
