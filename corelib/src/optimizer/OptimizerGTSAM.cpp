@@ -704,7 +704,7 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 #if GTSAM_VERSION_NUMERIC >= 40200
 				for(gtsam::Values::deref_iterator iter=values.begin(); iter!=values.end(); ++iter)
 #else
-				for(gtsam::Values::iterator iter=values.begin(); iter!=values.end(); ++iter)
+				for(gtsam::Values::const_iterator iter=values.begin(); iter!=values.end(); ++iter)
 #endif
 				{
 					int key = (int)iter->key;
@@ -876,7 +876,7 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 #if GTSAM_VERSION_NUMERIC >= 40200
 		for(gtsam::Values::deref_iterator iter=values.begin(); iter!=values.end(); ++iter)
 #else
-		for(gtsam::Values::iterator iter=values.begin(); iter!=values.end(); ++iter)
+		for(gtsam::Values::const_iterator iter=values.begin(); iter!=values.end(); ++iter)
 #endif
 		{
 			int key = (int)iter->key;
