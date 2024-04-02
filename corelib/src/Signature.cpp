@@ -230,7 +230,10 @@ float Signature::compareTo(const Signature & s) const
 	{
 		if(this->sensorData().globalDescriptors()[i].type()==1 && s.sensorData().globalDescriptors()[i].type()==1)
 		{
-			similarity += this->sensorData().globalDescriptors()[i].data().dot(s.sensorData().globalDescriptors()[i].data());
+			// rescale dot product from -1<->1 to 0<->1 (we assume normalized vectors!)
+			float dotProd = (this->sensorData().globalDescriptors()[i].data().dot(s.sensorData().globalDescriptors()[i].data()) + 1.0f) / 2.0f;
+			UASSERT_MSG(dotProd>=0, "Global descriptors should be normalized!");
+			similarity += dotProd;
 			totalDescs += 1;
 		}
 	}
