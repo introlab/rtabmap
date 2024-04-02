@@ -701,7 +701,11 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 				float x,y,z,roll,pitch,yaw;
 				std::map<int, Transform> tmpPoses;
 				Values values = isam2_?isam2_->calculateEstimate():optimizer->values();
+#if GTSAM_VERSION_NUMERIC >= 40200
+				for(gtsam::Values::deref_iterator iter=values.begin(); iter!=values.end(); ++iter)
+#else
 				for(gtsam::Values::iterator iter=values.begin(); iter!=values.end(); ++iter)
+#endif
 				{
 					int key = (int)iter->key;
 					if(iter->value.dim() > 1 && uContains(newPoses, key))
@@ -869,7 +873,11 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 
 		float x,y,z,roll,pitch,yaw;
 		gtsam::Values values = isam2_?isam2_->calculateEstimate():optimizer->values();
+#if GTSAM_VERSION_NUMERIC >= 40200
+		for(gtsam::Values::deref_iterator iter=values.begin(); iter!=values.end(); ++iter)
+#else
 		for(gtsam::Values::iterator iter=values.begin(); iter!=values.end(); ++iter)
+#endif
 		{
 			int key = (int)iter->key;
 			if(iter->value.dim() > 1 && uContains(poses, key))
