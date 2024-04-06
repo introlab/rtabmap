@@ -1354,6 +1354,13 @@ bool Rtabmap::process(
 				{
 					iter->second = mapCorrectionInv * iter->second;
 				}
+
+				std::map<int, Transform> nodesOnly(_optimizedPoses.lower_bound(1), _optimizedPoses.end());
+				_lastLocalizationNodeId = graph::findNearestNode(nodesOnly, _lastLocalizationPose);
+				UWARN("Transformed map accordingly to last localization pose saved in database (%s=true)! nearest id = %d of last pose = %s",
+						Parameters::kRGBDOptimizeFromGraphEnd().c_str(),
+						_lastLocalizationNodeId,
+						_lastLocalizationPose.prettyPrint().c_str());
 			}
 		}
 
@@ -4343,6 +4350,7 @@ bool Rtabmap::process(
 				}
 				else
 				{
+					UDEBUG("Clearing _lastLocalizationNodeId(%d)", _lastLocalizationNodeId);
 					_lastLocalizationNodeId = 0;
 				}
 			}
