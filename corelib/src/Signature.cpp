@@ -219,6 +219,34 @@ void Signature::removeVirtualLinks()
 	}
 }
 
+void Signature::addLandmark(const Link & landmark)
+{
+	UDEBUG("Add landmark %d to %d (type=%d/%s var=%f,%f)", landmark.to(), this->id(), (int)landmark.type(), landmark.typeName().c_str(), landmark.transVariance(), landmark.rotVariance());
+	UASSERT_MSG(landmark.from() == this->id(), uFormat("%d->%d for signature %d (type=%d)", landmark.from(), landmark.to(), this->id(), landmark.type()).c_str());
+	UASSERT_MSG(landmark.to() < 0, uFormat("%d->%d for signature %d (type=%d)", landmark.from(), landmark.to(), this->id(), landmark.type()).c_str());
+	UASSERT_MSG(_landmarks.find(landmark.to()) == _landmarks.end(), uFormat("Landmark %d (type=%d) already added to signature %d!", landmark.to(), landmark.type(), this->id()).c_str());
+	_landmarks.insert(std::make_pair(landmark.to(), landmark));
+	_linksModified = true;
+}
+
+void Signature::removeLandmarks()
+{
+	size_t sizeBefore = _landmarks.size();
+	_landmarks.clear();
+	if(_landmarks.size() != sizeBefore)
+		_linksModified = true;
+}
+
+void Signature::removeLandmark(int landmarkId)
+{
+	int count = (int)_landmarks.erase(landmarkId);
+	if(count)
+	{
+		UDEBUG("Removed landmark %d from %d", landmarkId, this->id());
+		_linksModified = true;
+	}
+}
+
 float Signature::compareTo(const Signature & s) const
 {
 	float similarity = 0.0f;

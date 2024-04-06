@@ -3097,6 +3097,7 @@ bool Rtabmap::process(
 					UINFO("Landmark %d observed again! Seen the first time by node %d.", -iter->first, *_memory->getLandmarksIndex().find(iter->first)->second.begin());
 					landmarksDetected.insert(std::make_pair(iter->first, _memory->getLandmarksIndex().find(iter->first)->second));
 					rejectedGlobalLoopClosure = false; // If it was true, it will be set back to false if landmarks are rejected on graph optimization
+					loopClosureLinksAdded.push_back(std::make_pair(signature->id(), iter->first));
 				}
 			}
 		}

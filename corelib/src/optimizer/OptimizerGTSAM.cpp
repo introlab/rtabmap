@@ -493,6 +493,32 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 						t = iter->second.transform().inverse();
 						std::swap(id1, id2); // should be node -> landmark
 					}
+
+#ifdef RTABMAP_VERTIGO
+					if(this->isRobust() && isLandmarkWithRotation.at(id2))
+					{
+						// create new switch variable
+						// Sunderhauf IROS 2012:
+						// "Since it is reasonable to initially accept all loop closure constraints,
+						//  a proper and convenient initial value for all switch variables would be
+						//  sij = 1 when using the linear switch function"
+						double prior = 1.0;
+						initialEstimate.insert(gtsam::Symbol('s',lastSwitchId_), vertigo::SwitchVariableLinear(prior));
+
+						// create switch prior factor
+						// "If the front-end is not able to assign sound individual values
+						//  for Ξij , it is save to set all Ξij = 1, since this value is close
+						//  to the individual optimal choice of Ξij for a large range of
+						//  outliers."
+						gtsam::noiseModel::Diagonal::shared_ptr switchPriorModel = gtsam::noiseModel::Diagonal::Sigmas(gtsam::Vector1(1.0));
+						graph.add(gtsam::PriorFactor<vertigo::SwitchVariableLinear> (gtsam::Symbol('s',lastSwitchId_), vertigo::SwitchVariableLinear(prior), switchPriorModel));
+					}
+					else if(this->isRobust() && !isLandmarkWithRotation.at(id2))
+					{
+						UWARN("%s cannot be used for landmark constraints without orientation.", Parameters::kOptimizerRobust().c_str());
+					}
+#endif
+
 					if(isSlam2d())
 					{
 						if(isLandmarkWithRotation.at(id2))
@@ -511,8 +537,19 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 								information(2,2) = iter->second.infMatrix().at<double>(5,5); // theta-theta
 							}
 							gtsam::noiseModel::Gaussian::shared_ptr model = gtsam::noiseModel::Gaussian::Information(information);
-							graph.add(gtsam::BetweenFactor<gtsam::Pose2>(id1, id2, gtsam::Pose2(t.x(), t.y(), t.theta()), model));
-							lastAddedConstraints_.push_back(ConstraintToFactor(id1, id2, -1));
+
+#ifdef RTABMAP_VERTIGO
+							if(this->isRobust())
+							{
+								// create switchable edge factor
+								graph.add(vertigo::BetweenFactorSwitchableLinear<gtsam::Pose2>(id1, id2, gtsam::Symbol('s', lastSwitchId_++), gtsam::Pose2(t.x(), t.y(), t.theta()), model));
+							}
+							else
+#endif
+							{
+								graph.add(gtsam::BetweenFactor<gtsam::Pose2>(id1, id2, gtsam::Pose2(t.x(), t.y(), t.theta()), model));
+								lastAddedConstraints_.push_back(ConstraintToFactor(id1, id2, -1));
+							}
 						}
 						else
 						{
@@ -546,8 +583,21 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 							mgtsam.block(0,3,3,3) = information.block(3,0,3,3); // off diagonal
 							mgtsam.block(3,0,3,3) = information.block(0,3,3,3); // off diagonal
 							gtsam::SharedNoiseModel model = gtsam::noiseModel::Gaussian::Information(mgtsam);
-							graph.add(gtsam::BetweenFactor<gtsam::Pose3>(id1, id2, gtsam::Pose3(t.toEigen4d()), model));
-							lastAddedConstraints_.push_back(ConstraintToFactor(id1, id2, -1));
+
+#ifdef RTABMAP_VERTIGO
+							if(this->isRobust() &&
+							   iter->second.type() != Link::kNeighbor &&
+							   iter->second.type() != Link::kNeighborMerged)
+							{
+								// create switchable edge factor
+								graph.add(vertigo::BetweenFactorSwitchableLinear<gtsam::Pose3>(id1, id2, gtsam::Symbol('s', lastSwitchId_++), gtsam::Pose3(t.toEigen4d()), model));
+							}
+							else
+#endif
+							{
+								graph.add(gtsam::BetweenFactor<gtsam::Pose3>(id1, id2, gtsam::Pose3(t.toEigen4d()), model));
+								lastAddedConstraints_.push_back(ConstraintToFactor(id1, id2, -1));
+							}
 						}
 						else
 						{

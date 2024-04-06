@@ -2770,6 +2770,19 @@ void Memory::removeLink(int oldId, int newId)
 			UERROR("Signatures %d and %d don't have bidirectional link!", oldS->id(), newS->id());
 		}
 	}
+	else if(this->_getSignature(newId<0?oldId:newId))
+	{
+		int landmarkId = newId<0?newId:oldId;
+		Signature * s = this->_getSignature(newId<0?oldId:newId);
+		s->removeLandmark(newId<0?newId:oldId);
+		_linksChanged = true;
+		// Update landmark index
+		std::map<int, std::set<int> >::iterator nter = _landmarksIndex.find(landmarkId);
+		if(nter!=_landmarksIndex.end())
+		{
+			nter->second.erase(s->id());
+		}
+	}
 	else
 	{
 		if(!newS)
