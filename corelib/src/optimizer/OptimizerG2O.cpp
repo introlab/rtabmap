@@ -720,6 +720,39 @@ std::map<int, Transform> OptimizerG2O::optimize(
 					int idTag= id2;
 					id2 = landmarkVertexOffset - id2;
 
+#if defined(RTABMAP_VERTIGO)
+					VertexSwitchLinear * v = 0;
+					if(this->isRobust() && isLandmarkWithRotation.at(idTag))
+					{
+						// For landmark links, add switchable edges
+						// Currently supporting only constraints with rotation
+
+						// create new switch variable
+						// Sunderhauf IROS 2012:
+						// "Since it is reasonable to initially accept all loop closure constraints,
+						//  a proper and convenient initial value for all switch variables would be
+						//  sij = 1 when using the linear switch function"
+						v = new VertexSwitchLinear();
+						v->setEstimate(1.0);
+						v->setId(vertigoVertexId++);
+						UASSERT_MSG(optimizer.addVertex(v), uFormat("cannot insert switchable vertex %d!?", v->id()).c_str());
+
+						// create switch prior factor
+						// "If the front-end is not able to assign sound individual values
+						//  for Ξij , it is save to set all Ξij = 1, since this value is close
+						//  to the individual optimal choice of Ξij for a large range of
+						//  outliers."
+						EdgeSwitchPrior * prior = new EdgeSwitchPrior();
+						prior->setMeasurement(1.0);
+						prior->setVertex(0, v);
+						UASSERT_MSG(optimizer.addEdge(prior), uFormat("cannot insert switchable prior edge %d!?", v->id()).c_str());
+					}
+					else if(this->isRobust() && !isLandmarkWithRotation.at(idTag))
+					{
+						UWARN("%s cannot be used for landmark constraints without orientation.", Parameters::kOptimizerRobust().c_str());
+					}
+#endif
+
 					if(isSlam2d())
 					{
 						if(isLandmarkWithRotation.at(idTag))
@@ -737,16 +770,35 @@ std::map<int, Transform> OptimizerG2O::optimize(
 								information(2,1) = iter->second.infMatrix().at<double>(5,1); // theta-y
 								information(2,2) = iter->second.infMatrix().at<double>(5,5); // theta-theta
 							}
-							g2o::EdgeSE2 * e = new g2o::EdgeSE2();
-							g2o::VertexSE2* v1 = (g2o::VertexSE2*)optimizer.vertex(id1);
-							g2o::VertexSE2* v2 = (g2o::VertexSE2*)optimizer.vertex(id2);
-							UASSERT(v1 != 0);
-							UASSERT(v2 != 0);
-							e->setVertex(0, v1);
-							e->setVertex(1, v2);
-							e->setMeasurement(g2o::SE2(t.x(), t.y(), t.theta()));
-							e->setInformation(information);
-							edge = e;
+#if defined(RTABMAP_VERTIGO)
+							if(this->isRobust())
+							{
+								EdgeSE2Switchable * e = new EdgeSE2Switchable();
+								g2o::VertexSE2* v1 = (g2o::VertexSE2*)optimizer.vertex(id1);
+								g2o::VertexSE2* v2 = (g2o::VertexSE2*)optimizer.vertex(id2);
+								UASSERT(v1 != 0);
+								UASSERT(v2 != 0);
+								e->setVertex(0, v1);
+								e->setVertex(1, v2);
+								e->setVertex(2, v);
+								e->setMeasurement(g2o::SE2(t.x(), t.y(), t.theta()));
+								e->setInformation(information);
+								edge = e;
+							}
+							else
+#endif
+							{
+								g2o::EdgeSE2 * e = new g2o::EdgeSE2();
+								g2o::VertexSE2* v1 = (g2o::VertexSE2*)optimizer.vertex(id1);
+								g2o::VertexSE2* v2 = (g2o::VertexSE2*)optimizer.vertex(id2);
+								UASSERT(v1 != 0);
+								UASSERT(v2 != 0);
+								e->setVertex(0, v1);
+								e->setVertex(1, v2);
+								e->setMeasurement(g2o::SE2(t.x(), t.y(), t.theta()));
+								e->setInformation(information);
+								edge = e;
+							}
 						}
 						else
 						{
@@ -780,16 +832,35 @@ std::map<int, Transform> OptimizerG2O::optimize(
 							constraint = a.linear();
 							constraint.translation() = a.translation();
 
-							g2o::EdgeSE3 * e = new g2o::EdgeSE3();
-							g2o::VertexSE3* v1 = (g2o::VertexSE3*)optimizer.vertex(id1);
-							g2o::VertexSE3* v2 = (g2o::VertexSE3*)optimizer.vertex(id2);
-							UASSERT(v1 != 0);
-							UASSERT(v2 != 0);
-							e->setVertex(0, v1);
-							e->setVertex(1, v2);
-							e->setMeasurement(constraint);
-							e->setInformation(information);
-							edge = e;
+#if defined(RTABMAP_VERTIGO)
+							if(this->isRobust())
+							{
+								EdgeSE3Switchable * e = new EdgeSE3Switchable();
+								g2o::VertexSE3* v1 = (g2o::VertexSE3*)optimizer.vertex(id1);
+								g2o::VertexSE3* v2 = (g2o::VertexSE3*)optimizer.vertex(id2);
+								UASSERT(v1 != 0);
+								UASSERT(v2 != 0);
+								e->setVertex(0, v1);
+								e->setVertex(1, v2);
+								e->setVertex(2, v);
+								e->setMeasurement(constraint);
+								e->setInformation(information);
+								edge = e;
+							}
+							else
+#endif
+							{
+								g2o::EdgeSE3 * e = new g2o::EdgeSE3();
+								g2o::VertexSE3* v1 = (g2o::VertexSE3*)optimizer.vertex(id1);
+								g2o::VertexSE3* v2 = (g2o::VertexSE3*)optimizer.vertex(id2);
+								UASSERT(v1 != 0);
+								UASSERT(v2 != 0);
+								e->setVertex(0, v1);
+								e->setVertex(1, v2);
+								e->setMeasurement(constraint);
+								e->setInformation(information);
+								edge = e;
+							}
 						}
 						else
 						{

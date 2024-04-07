@@ -1354,6 +1354,13 @@ bool Rtabmap::process(
 				{
 					iter->second = mapCorrectionInv * iter->second;
 				}
+
+				std::map<int, Transform> nodesOnly(_optimizedPoses.lower_bound(1), _optimizedPoses.end());
+				_lastLocalizationNodeId = graph::findNearestNode(nodesOnly, _lastLocalizationPose);
+				UWARN("Transformed map accordingly to last localization pose saved in database (%s=true)! nearest id = %d of last pose = %s",
+						Parameters::kRGBDOptimizeFromGraphEnd().c_str(),
+						_lastLocalizationNodeId,
+						_lastLocalizationPose.prettyPrint().c_str());
 			}
 		}
 
@@ -3090,6 +3097,7 @@ bool Rtabmap::process(
 					UINFO("Landmark %d observed again! Seen the first time by node %d.", -iter->first, *_memory->getLandmarksIndex().find(iter->first)->second.begin());
 					landmarksDetected.insert(std::make_pair(iter->first, _memory->getLandmarksIndex().find(iter->first)->second));
 					rejectedGlobalLoopClosure = false; // If it was true, it will be set back to false if landmarks are rejected on graph optimization
+					loopClosureLinksAdded.push_back(std::make_pair(signature->id(), iter->first));
 				}
 			}
 		}
@@ -4343,6 +4351,7 @@ bool Rtabmap::process(
 				}
 				else
 				{
+					UDEBUG("Clearing _lastLocalizationNodeId(%d)", _lastLocalizationNodeId);
 					_lastLocalizationNodeId = 0;
 				}
 			}

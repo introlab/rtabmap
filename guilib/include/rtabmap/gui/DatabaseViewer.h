@@ -50,6 +50,7 @@ class Ui_DatabaseViewer;
 class QGraphicsScene;
 class QGraphicsView;
 class QLabel;
+class QToolButton;
 class QDialog;
 
 namespace rtabmap
@@ -176,6 +177,8 @@ private:
 				QLabel * labelScan,
 				QLabel * labelGravity,
 				QLabel * labelPrior,
+				QToolButton * editPriorButton,
+				QToolButton * removePriorButton,
 				QLabel * labelGps,
 				QLabel * labelGt,
 				QLabel * labelSensors,

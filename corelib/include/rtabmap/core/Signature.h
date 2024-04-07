@@ -90,9 +90,10 @@ public:
 	void removeLink(int idTo);
 	void removeVirtualLinks();
 
-	void addLandmark(const Link & landmark) {_landmarks.insert(std::make_pair(landmark.to(), landmark));}
+	void addLandmark(const Link & landmark);
 	const std::map<int, Link> & getLandmarks() const {return _landmarks;}
-	void removeLandmarks() {_landmarks.clear();}
+	void removeLandmarks();
+	void removeLandmark(int landmarkId);
 
 	void setSaved(bool saved) {_saved = saved;}
 	void setModified(bool modified) {_modified = modified; _linksModified = modified;}
