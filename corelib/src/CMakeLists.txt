@@ -115,6 +115,8 @@ SET(SRC_FILES
     
     MarkerDetector.cpp
     
+    GlobalDescriptorExtractor.cpp
+    
     GainCompensator.cpp
 
     rtflann/ext/lz4.c
@@ -224,6 +226,7 @@ IF(WITH_PYTHON AND Python3_FOUND)
 		python/PythonInterface.cpp
 		python/PyMatcher.cpp
 		python/PyDetector.cpp
+		python/PyDescriptor.cpp
 	)
 	 SET(INCLUDE_DIRS
 	    ${TORCH_INCLUDE_DIRS}

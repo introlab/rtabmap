@@ -25,35 +25,49 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#pragma once
+#ifndef GLOBAL_DESCRIPTOR_EXTRACTOR_H_
+#define GLOBAL_DESCRIPTOR_EXTRACTOR_H_
 
-#include <opencv2/core/core.hpp>
+#include "rtabmap/core/rtabmap_core_export.h" // DLL export/import defines
 
-namespace rtabmap
-{
+#include "rtabmap/core/Parameters.h"
+#include "rtabmap/core/SensorData.h"
 
-class GlobalDescriptor
-{
+
+namespace rtabmap {
+
+// Feature2D
+class RTABMAP_CORE_EXPORT GlobalDescriptorExtractor {
+public:
+	enum Type {
+		kUndef=0,
+		kPyDescriptor=1};
+
+	static std::string typeName(Type type)
+	{
+		switch(type){
+		case kPyDescriptor:
+			return "PyDescriptor";
+		default:
+			return "Unknown";
+		}
+	}
+
+	static GlobalDescriptorExtractor * create(const ParametersMap & parameters = ParametersMap());
+	static GlobalDescriptorExtractor * create(GlobalDescriptorExtractor::Type type, const ParametersMap & parameters = ParametersMap()); // for convenience
 
 public:
-	GlobalDescriptor(int type, const cv::Mat & data, const cv::Mat & info = cv::Mat()) :
-		type_(type),
-		info_(info),
-		data_(data)
-	{}
-	GlobalDescriptor() :
-		type_(-1) // Not set
-	{}
-	virtual ~GlobalDescriptor() {}
+	virtual ~GlobalDescriptorExtractor();
 
-	int type() const {return type_;}
-	const cv::Mat info() const {return info_;}
-	const cv::Mat data() const {return data_;}
+	virtual GlobalDescriptor extract(const SensorData & data) const = 0;
 
-private:
-	int type_;
-	cv::Mat info_;
-	cv::Mat data_;
+	virtual void parseParameters(const ParametersMap & parameters) {}
+	virtual GlobalDescriptorExtractor::Type getType() const = 0;
+
+protected:
+	GlobalDescriptorExtractor(const ParametersMap & parameters = ParametersMap());
 };
 
-} // namespace rtabmap
+}
+
+#endif /* GLOBAL_DESCRIPTOR_EXTRACTOR_H_ */

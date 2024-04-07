@@ -344,6 +344,7 @@ private Q_SLOTS:
 	void updateKpROI();
 	void updateStereoDisparityVisibility();
 	void updateFeatureMatchingVisibility();
+	void updateGlobalDescriptorVisibility();
 	void updateOdometryStackedIndex(int index);
 	void useOdomFeatures();
 	void changeWorkingDirectory();
@@ -357,6 +358,7 @@ private Q_SLOTS:
 	void changeSuperPointModelPath();
 	void changePyMatcherPath();
 	void changePyMatcherModel();
+	void changePyDescriptorPath();
 	void changePyDetectorPath();
 	void readSettingsEnd();
 	void setupTreeView();

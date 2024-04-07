@@ -249,17 +249,40 @@ void Signature::removeLandmark(int landmarkId)
 
 float Signature::compareTo(const Signature & s) const
 {
+	UASSERT(this->sensorData().globalDescriptors().size() == s.sensorData().globalDescriptors().size());
+
 	float similarity = 0.0f;
-	const std::multimap<int, int> & words = s.getWords();
+	int totalDescs = 0;
 
-	if(!s.isBadSignature() && !this->isBadSignature())
+	for(size_t i=0; i<this->sensorData().globalDescriptors().size(); ++i)
 	{
-		std::list<std::pair<int, std::pair<int, int> > > pairs;
-		int totalWords = ((int)_words.size()-_invalidWordsCount)>((int)words.size()-s.getInvalidWordsCount())?((int)_words.size()-_invalidWordsCount):((int)words.size()-s.getInvalidWordsCount());
-		UASSERT(totalWords > 0);
-		EpipolarGeometry::findPairs(words, _words, pairs);
+		if(this->sensorData().globalDescriptors()[i].type()==1 && s.sensorData().globalDescriptors()[i].type()==1)
+		{
+			// rescale dot product from -1<->1 to 0<->1 (we assume normalized vectors!)
+			float dotProd = (this->sensorData().globalDescriptors()[i].data().dot(s.sensorData().globalDescriptors()[i].data()) + 1.0f) / 2.0f;
+			UASSERT_MSG(dotProd>=0, "Global descriptors should be normalized!");
+			similarity += dotProd;
+			totalDescs += 1;
+		}
+	}
 
-		similarity = float(pairs.size()) / float(totalWords);
+	if(totalDescs)
+	{
+		similarity /= totalDescs;
+	}
+	else
+	{
+		const std::multimap<int, int> & words = s.getWords();
+
+		if(!s.isBadSignature() && !this->isBadSignature())
+		{
+			std::list<std::pair<int, std::pair<int, int> > > pairs;
+			int totalWords = ((int)_words.size()-_invalidWordsCount)>((int)words.size()-s.getInvalidWordsCount())?((int)_words.size()-_invalidWordsCount):((int)words.size()-s.getInvalidWordsCount());
+			UASSERT(totalWords > 0);
+			EpipolarGeometry::findPairs(words, _words, pairs);
+
+			similarity = float(pairs.size()) / float(totalWords);
+		}
 	}
 	return similarity;
 }

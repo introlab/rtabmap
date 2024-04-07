@@ -59,6 +59,7 @@ class RegistrationVis;
 class Stereo;
 class LocalGridMaker;
 class MarkerDetector;
+class GlobalDescriptorExtractor;
 
 class RTABMAP_CORE_EXPORT Memory
 {
@@ -375,6 +376,8 @@ private:
 	LocalGridMaker * _localMapMaker;
 
 	MarkerDetector * _markerDetector;
+
+	GlobalDescriptorExtractor * _globalDescriptorExtractor;
 };
 
 } // namespace rtabmap
