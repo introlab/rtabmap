@@ -2,14 +2,39 @@
 
 FROM ros:noetic-perception
 
-# Install build dependencies
-RUN apt-get update && \
-    apt-get install -y git software-properties-common ros-noetic-rtabmap-ros && \
-    apt-get remove -y ros-noetic-rtabmap* && \
-    apt-get clean && rm -rf /var/lib/apt/lists/
+ARG TARGETPLATFORM
+ENV TARGETPLATFORM=${TARGETPLATFORM:-linux/amd64}
+RUN echo "I am building for $TARGETPLATFORM"
+
+ENV DEBIAN_FRONTEND=noninteractive
 
 WORKDIR /root/
 
+# Install build dependencies
+RUN if [ "$TARGETPLATFORM" = "linux/arm/v7" ]; then \
+    apt-get update && \
+    apt-get install -y git software-properties-common zlib1g-dev ros-noetic-visualization-msgs ros-noetic-velodyne-pointcloud ros-noetic-turtlebot3-navigation ros-noetic-turtlebot3-bringup ros-noetic-tf-conversions ros-noetic-tf2-ros ros-noetic-tf ros-noetic-stereo-msgs ros-noetic-std-srvs ros-noetic-std-msgs ros-noetic-sensor-msgs ros-noetic-rviz ros-noetic-rospy ros-noetic-roscpp ros-noetic-robot-localization ros-noetic-realsense2-camera qtbase5-dev libproj-dev ros-noetic-pluginlib ros-noetic-pcl-ros ros-noetic-pcl-conversions ros-noetic-octomap-msgs ros-noetic-octomap ros-noetic-nodelet ros-noetic-nav-msgs ros-noetic-move-base-msgs ros-noetic-message-runtime ros-noetic-message-generation ros-noetic-message-filters libsqlite3-dev libqt5widgets5 libqt5core5a libpcl-dev ros-noetic-libg2o ros-noetic-laser-geometry ros-noetic-imu-filter-madgwick ros-noetic-image-transport ros-noetic-image-geometry ros-noetic-husky-navigation ros-noetic-hector-mapping ros-noetic-gtsam ros-noetic-grid-map-ros ros-noetic-grid-map-core ros-noetic-geometry-msgs ros-noetic-genmsg ros-noetic-find-object-2d ros-noetic-eigen-conversions ros-noetic-dynamic-reconfigure ros-noetic-diagnostic-updater ros-noetic-cv-bridge ros-noetic-costmap-2d ros-noetic-catkin ros-noetic-apriltag-ros ros-noetic-actionlib-msgs ros-noetic-actionlib wget && \
+    apt-get clean && rm -rf /var/lib/apt/lists/ ;fi
+RUN if [ "$TARGETPLATFORM" != "linux/arm/v7" ]; then \
+    apt-get update && \
+    apt-get install -y git software-properties-common ros-noetic-rtabmap-ros && \
+    apt-get remove -y ros-noetic-rtabmap* && \
+    apt-get clean && rm -rf /var/lib/apt/lists/ ;fi
+
+#https://gitlab.kitware.com/cmake/cmake/-/issues/20568
+RUN if [ "$TARGETPLATFORM" = "linux/arm/v7" ]; then \
+    wget -nv https://github.com/Kitware/CMake/releases/download/v3.20.0/cmake-3.20.0.tar.gz   && \
+    tar -xzf cmake-3.20.0.tar.gz  && \
+    cd cmake-3.20.0 && \
+    export CFLAGS="-D_FILE_OFFSET_BITS=64" && \
+    export CXXFLAGS="-D_FILE_OFFSET_BITS=64" && \
+    ./bootstrap && \
+    make -j$(nproc) && \
+    sudo make install && \
+    cd .. && \
+    cmake --version && \
+    rm -r cmake-3.20.0.tar.gz cmake-3.20.0 ;fi
+ 
 # MRPT
 RUN add-apt-repository ppa:joseluisblancoc/mrpt-stable -y
 RUN apt-get update && apt install libmrpt-poses-dev -y && \
@@ -22,12 +47,6 @@ RUN apt-get update && apt-get install -y libpdal-dev && \
 # RealSense2
 RUN apt-get update && apt-get install -y ros-noetic-librealsense2 && \
     apt-get clean && rm -rf /var/lib/apt/lists/
-
-ARG TARGETPLATFORM
-ENV TARGETPLATFORM=${TARGETPLATFORM:-linux/amd64}
-RUN echo "I am building for $TARGETPLATFORM"
-
-ENV DEBIAN_FRONTEND=noninteractive
 
 # Azure Kinect DK
 # Taken from https://github.com/microsoft/Azure-Kinect-Sensor-SDK/issues/1190#issuecomment-822772494
@@ -144,7 +163,7 @@ RUN git clone --branch 4.2.0 https://github.com/opencv/opencv.git && \
     cd opencv && \
     mkdir build && \
     cd build && \
-    cmake -DBUILD_opencv_python3=OFF -DBUILD_opencv_python_bindings_generator=OFF -DBUILD_opencv_python_tests=OFF -DBUILD_PERF_TESTS=OFF -DBUILD_TESTS=OFF -DOPENCV_ENABLE_NONFREE=ON -DOPENCV_EXTRA_MODULES_PATH=/root/opencv_contrib/modules .. && \
+    cmake -DBUILD_opencv_python3=OFF -DBUILD_opencv_python_bindings_generator=OFF -DBUILD_opencv_python_tests=OFF -DBUILD_PERF_TESTS=OFF -DBUILD_TESTS=OFF -DOPENCV_ENABLE_NONFREE=ON -DWITH_VTK=OFF -DOPENCV_EXTRA_MODULES_PATH=/root/opencv_contrib/modules .. && \
     make -j$(nproc) && \
     make install && \
     cd ../.. && \
