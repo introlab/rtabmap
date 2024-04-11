@@ -4567,7 +4567,14 @@ void DatabaseViewer::resetAllChanges()
 void DatabaseViewer::graphNodeSelected(int id)
 {
 	if(id>0 && idToIndex_.contains(id))
-		ui_->horizontalSlider_A->setValue(idToIndex_.value(id));
+	{
+		static bool updateA = true;
+		if(updateA)
+			ui_->horizontalSlider_A->setValue(idToIndex_.value(id));
+		else
+			ui_->horizontalSlider_B->setValue(idToIndex_.value(id));
+		updateA = !updateA;
+	}
 }
 
 void DatabaseViewer::graphLinkSelected(int from, int to)
