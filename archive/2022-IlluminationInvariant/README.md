@@ -32,7 +32,7 @@ We provide two formats: the first one is more general and the second one is used
   * `device_poses.txt`: VIO poses of each image in `device` frame
   * `camera_poses.txt`: VIO poses of each image in `camera` frame
 * [RTAB-Map Databases](https://drive.google.com/file/d/1TklUcTKFSrcg8b0t0U80G_IpFRMVRlY5/view?usp=drive_link)
-
+* Dataset now also available on [Federated Research Data Repository (FRDR)](https://doi.org/10.20383/103.0931) (if links above don't work)
 
 
 ## How reproduce results shown in the paper
