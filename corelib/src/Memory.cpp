@@ -5344,9 +5344,17 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 		{
 			UASSERT((int)keypoints.size() == descriptors.rows);
 			int inliersCount = 0;
-			if(_feature2D->getGridRows() > 1 || _feature2D->getGridCols() > 1)
+			if((_feature2D->getGridRows() > 1 || _feature2D->getGridCols() > 1) &&
+				(decimatedData.cameraModels().size()==1 || decimatedData.stereoCameraModels().size()==1 ||
+				 data.cameraModels().size()==1 || data.stereoCameraModels().size()==1))
 			{
-				Feature2D::limitKeypoints(keypoints, inliers, _feature2D->getMaxFeatures(), decimatedData.imageRaw().size(), _feature2D->getGridRows(), _feature2D->getGridCols());
+				Feature2D::limitKeypoints(keypoints,
+						inliers,
+						_feature2D->getMaxFeatures(),
+						decimatedData.cameraModels().size()?decimatedData.cameraModels()[0].imageSize():
+						decimatedData.stereoCameraModels().size()?decimatedData.stereoCameraModels()[0].left().imageSize():
+						data.cameraModels().size()?data.cameraModels()[0].imageSize():data.stereoCameraModels()[0].left().imageSize(),
+						_feature2D->getGridRows(), _feature2D->getGridCols());
 				for(size_t i=0; i<inliers.size(); ++i)
 				{
 					if(inliers[i])
@@ -5357,6 +5365,11 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 			}
 			else
 			{
+				if(_feature2D->getGridRows() > 1 || _feature2D->getGridCols() > 1)
+				{
+					UWARN("Ignored %s and %s parameters as they cannot be used for multi-cameras setup or uncalibrated camera.",
+							Parameters::kKpGridCols().c_str(), Parameters::kKpGridRows().c_str());
+				}
 				Feature2D::limitKeypoints(keypoints, inliers, _feature2D->getMaxFeatures());
 				inliersCount = _feature2D->getMaxFeatures();
 			}
