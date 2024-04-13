@@ -800,7 +800,7 @@ SensorData CameraDepthAI::captureImage(CameraInfo * info)
 
 		data.setFeatures(keypoints, std::vector<cv::Point3f>(), descriptors);
 		if(detectFeatures_ == 3)
-			data.addGlobalDescriptor(GlobalDescriptor(1, cv::Mat(1, global_descriptor.size(), CV_32FC1, global_descriptor.data())));
+			data.addGlobalDescriptor(GlobalDescriptor(1, cv::Mat(1, global_descriptor.size(), CV_32FC1, global_descriptor.data()).clone()));
 	}
 
 #else
