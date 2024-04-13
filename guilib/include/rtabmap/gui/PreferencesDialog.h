@@ -226,6 +226,7 @@ public:
 	double getSubtractFilteringRadius() const;
 	double getSubtractFilteringAngle() const;
 
+	double getGridUIResolution() const;
 	bool getGridMapShown() const;
 	int getElevationMapShown() const;
 	int getGridMapSensor() const;

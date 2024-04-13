@@ -264,6 +264,11 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent, bool sh
 	setupMainLayout(_preferencesDialog->isVerticalLayoutUsed());
 
 	ParametersMap parameters = _preferencesDialog->getAllParameters();
+	// Override map resolution for UI
+	if(_preferencesDialog->getGridUIResolution()>0)
+	{
+		uInsert(parameters, ParametersPair(Parameters::kGridCellSize(), uNumber2Str(_preferencesDialog->getGridUIResolution())));
+	}
 	_occupancyGrid = new OccupancyGrid(&_cachedLocalMaps, parameters);
 #ifdef RTABMAP_OCTOMAP
 	_octomap = new OctoMap(&_cachedLocalMaps, parameters);
@@ -3002,7 +3007,28 @@ void MainWindow::updateMapCloud(
 
 					jter->sensorData().uncompressDataConst(0, 0, 0, 0, &ground, &obstacles, &empty);
 
-					_cachedLocalMaps.add(iter->first, ground, obstacles, empty, jter->sensorData().gridCellSize(), jter->sensorData().gridViewPoint());
+					double resolution = jter->sensorData().gridCellSize();
+					if(_preferencesDialog->getGridUIResolution() > jter->sensorData().gridCellSize())
+					{
+						resolution = _preferencesDialog->getGridUIResolution();
+						pcl::PointCloud<pcl::PointXYZ>::Ptr groundCloud = util3d::voxelize(util3d::laserScanToPointCloud(LaserScan::backwardCompatibility(ground)), resolution);
+						pcl::PointCloud<pcl::PointXYZ>::Ptr obstaclesCloud = util3d::voxelize(util3d::laserScanToPointCloud(LaserScan::backwardCompatibility(obstacles)), resolution);
+						pcl::PointCloud<pcl::PointXYZ>::Ptr emptyCloud = util3d::voxelize(util3d::laserScanToPointCloud(LaserScan::backwardCompatibility(empty)), resolution);
+						if(ground.channels() == 2)
+							ground = util3d::laserScan2dFromPointCloud(*groundCloud).data();
+						else
+							ground = util3d::laserScanFromPointCloud(*groundCloud).data();
+						if(obstacles.channels() == 2)
+							obstacles = util3d::laserScan2dFromPointCloud(*obstaclesCloud).data();
+						else
+							obstacles = util3d::laserScanFromPointCloud(*obstaclesCloud).data();
+						if(empty.channels() == 2)
+							empty = util3d::laserScan2dFromPointCloud(*emptyCloud).data();
+						else
+							empty = util3d::laserScanFromPointCloud(*emptyCloud).data();
+					}
+
+					_cachedLocalMaps.add(iter->first, ground, obstacles, empty, resolution, jter->sensorData().gridViewPoint());
 				}
 			}
 
@@ -5976,6 +6002,12 @@ void MainWindow::startDetection()
 				   "progress will not be shown in the GUI."));
 	}
 
+	// Override map resolution for UI
+	if(_preferencesDialog->getGridUIResolution()>0)
+	{
+		uInsert(parameters, ParametersPair(Parameters::kGridCellSize(), uNumber2Str(_preferencesDialog->getGridUIResolution())));
+	}
+
 	_cachedLocalMaps.clear();
 
 	delete _occupancyGrid;
@@ -7513,7 +7545,8 @@ void MainWindow::saveFigures()
 {
 	QList<int> curvesPerFigure;
 	QStringList curveNames;
-	_ui->statsToolBox->getFiguresSetup(curvesPerFigure, curveNames);
+	QStringList curveThresholds;
+	_ui->statsToolBox->getFiguresSetup(curvesPerFigure, curveNames, curveThresholds);
 
 	QStringList curvesPerFigureStr;
 	for(int i=0; i<curvesPerFigure.size(); ++i)
@@ -7526,17 +7559,24 @@ void MainWindow::saveFigures()
 	}
 	_preferencesDialog->saveCustomConfig("Figures", "counts", curvesPerFigureStr.join(" "));
 	_preferencesDialog->saveCustomConfig("Figures", "curves", curveNames.join(" "));
+	_preferencesDialog->saveCustomConfig("Figures", "thresholds", curveThresholds.join(" "));
 }
 
 void MainWindow::loadFigures()
 {
 	QString curvesPerFigure = _preferencesDialog->loadCustomConfig("Figures", "counts");
 	QString curveNames = _preferencesDialog->loadCustomConfig("Figures", "curves");
+	QString curveThresholds = _preferencesDialog->loadCustomConfig("Figures", "thresholds");
 
 	if(!curvesPerFigure.isEmpty())
 	{
 		QStringList curvesPerFigureList = curvesPerFigure.split(" ");
 		QStringList curvesNamesList = curveNames.split(" ");
+		QStringList curveThresholdsList = curveThresholds.split(" ");
+		if(curveThresholdsList[0].isEmpty()) {
+			curveThresholdsList.clear();
+		}
+		UASSERT(curveThresholdsList.isEmpty() || curveThresholdsList.size() == curvesNamesList.size());
 
 		int j=0;
 		for(int i=0; i<curvesPerFigureList.size(); ++i)
@@ -7553,7 +7593,23 @@ void MainWindow::loadFigures()
 				_ui->statsToolBox->addCurve(curvesNamesList[j++].replace('_', ' '));
 				for(int k=1; k<count && j<curveNames.size(); ++k)
 				{
-					_ui->statsToolBox->addCurve(curvesNamesList[j++].replace('_', ' '), false);
+					if(curveThresholdsList.size())
+					{
+						bool ok = false;
+						double thresholdValue = curveThresholdsList[j].toDouble(&ok);
+						if(ok)
+						{
+							_ui->statsToolBox->addThreshold(curvesNamesList[j++].replace('_', ' '), thresholdValue);
+						}
+						else
+						{
+							_ui->statsToolBox->addCurve(curvesNamesList[j++].replace('_', ' '), false);
+						}
+					}
+					else
+					{
+						_ui->statsToolBox->addCurve(curvesNamesList[j++].replace('_', ' '), false);
+					}
 				}
 			}
 		}

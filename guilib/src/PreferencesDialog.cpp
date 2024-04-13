@@ -626,6 +626,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->doubleSpinBox_subtractFilteringRadius, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 	connect(_ui->doubleSpinBox_subtractFilteringAngle, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 
+	connect(_ui->doubleSpinBox_map_resolution, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 	connect(_ui->checkBox_map_shown, SIGNAL(clicked(bool)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 	connect(_ui->doubleSpinBox_map_opacity, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 	connect(_ui->checkBox_elevation_shown, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
@@ -2005,6 +2006,7 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 	}
 	else if(groupBox->objectName() == _ui->groupBox_gridMap2->objectName())
 	{
+		_ui->doubleSpinBox_map_resolution->setValue(0);
 		_ui->checkBox_map_shown->setChecked(false);
 		_ui->doubleSpinBox_map_opacity->setValue(0.75);
 		_ui->checkBox_elevation_shown->setCheckState(Qt::Unchecked);
@@ -2490,6 +2492,7 @@ void PreferencesDialog::readGuiSettings(const QString & filePath)
 	_ui->doubleSpinBox_subtractFilteringRadius->setValue(settings.value("subtractFilteringRadius", _ui->doubleSpinBox_subtractFilteringRadius->value()).toDouble());
 	_ui->doubleSpinBox_subtractFilteringAngle->setValue(settings.value("subtractFilteringAngle", _ui->doubleSpinBox_subtractFilteringAngle->value()).toDouble());
 
+	_ui->doubleSpinBox_map_resolution->setValue(settings.value("gridUIResolution", _ui->doubleSpinBox_map_resolution->value()).toDouble());
 	_ui->checkBox_map_shown->setChecked(settings.value("gridMapShown", _ui->checkBox_map_shown->isChecked()).toBool());
 	_ui->doubleSpinBox_map_opacity->setValue(settings.value("gridMapOpacity", _ui->doubleSpinBox_map_opacity->value()).toDouble());
 	_ui->checkBox_elevation_shown->setCheckState((Qt::CheckState)settings.value("elevationMapShown", _ui->checkBox_elevation_shown->checkState()).toInt());
@@ -3033,6 +3036,7 @@ void PreferencesDialog::writeGuiSettings(const QString & filePath) const
 	settings.setValue("subtractFilteringRadius", _ui->doubleSpinBox_subtractFilteringRadius->value());
 	settings.setValue("subtractFilteringAngle",  _ui->doubleSpinBox_subtractFilteringAngle->value());
 
+	settings.setValue("gridUIResolution",            _ui->doubleSpinBox_map_resolution->value());
 	settings.setValue("gridMapShown",                _ui->checkBox_map_shown->isChecked());
 	settings.setValue("gridMapOpacity",              _ui->doubleSpinBox_map_opacity->value());
 	settings.setValue("elevationMapShown",           _ui->checkBox_elevation_shown->checkState());
@@ -4964,6 +4968,7 @@ void PreferencesDialog::updateBasicParameter()
 	{
         _ui->general_checkBox_activateRGBD->blockSignals(true);
 		_ui->general_checkBox_activateRGBD->setChecked(_ui->general_checkBox_activateRGBD_2->isChecked());
+		addParameter(_ui->general_checkBox_activateRGBD, _ui->general_checkBox_activateRGBD->isChecked());
         _ui->general_checkBox_activateRGBD->blockSignals(false);
 	}
 	else if(sender() == _ui->general_checkBox_SLAM_mode)
@@ -4976,6 +4981,7 @@ void PreferencesDialog::updateBasicParameter()
 	{
         _ui->general_checkBox_SLAM_mode->blockSignals(true);
 		_ui->general_checkBox_SLAM_mode->setChecked(_ui->general_checkBox_SLAM_mode_2->isChecked());
+		addParameter(_ui->general_checkBox_SLAM_mode, _ui->general_checkBox_SLAM_mode->isChecked());
         _ui->general_checkBox_SLAM_mode->blockSignals(false);
 	}
 	else
@@ -5898,6 +5904,10 @@ double PreferencesDialog::getSubtractFilteringRadius() const
 double PreferencesDialog::getSubtractFilteringAngle() const
 {
 	return _ui->doubleSpinBox_subtractFilteringAngle->value()*M_PI/180.0;
+}
+double PreferencesDialog::getGridUIResolution() const
+{
+	return _ui->doubleSpinBox_map_resolution->value();
 }
 bool PreferencesDialog::getGridMapShown() const
 {
