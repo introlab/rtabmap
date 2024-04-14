@@ -476,33 +476,36 @@ void SensorCaptureThread::mainLoop()
 				info.odomPose.z() *= _poseScaleFactor;
 			}
 
-			Transform cameraCorrection = Transform::getIdentity();
-			if(lidarStamp > 0.0 && lidarStamp != cameraStamp)
+			if(cameraStamp != 0.0)
 			{
-				if(_odomSensor->getPose(cameraStamp+_poseTimeOffset, pose, covariance, _poseWaitTime>0?_poseWaitTime:0))
+				Transform cameraCorrection = Transform::getIdentity();
+				if(lidarStamp > 0.0 && lidarStamp != cameraStamp)
 				{
-					cameraCorrection = info.odomPose.inverse() * pose;
+					if(_odomSensor->getPose(cameraStamp+_poseTimeOffset, pose, covariance, _poseWaitTime>0?_poseWaitTime:0))
+					{
+						cameraCorrection = info.odomPose.inverse() * pose;
+					}
+					else
+					{
+						UWARN("Could not get pose at stamp %f, the camera local motion against lidar won't be adjusted.", cameraStamp);
+					}
 				}
-				else
-				{
-					UWARN("Could not get pose at stamp %f, the camera local motion against lidar won't be adjusted.", cameraStamp);
-				}
-			}
 
-			// Adjust local transform of the camera based on the pose frame
-			if(!data.cameraModels().empty())
-			{
-				UASSERT(data.cameraModels().size()==1);
-				CameraModel model = data.cameraModels()[0];
-				model.setLocalTransform(cameraCorrection*_extrinsicsOdomToCamera);
-				data.setCameraModel(model);
-			}
-			else if(!data.stereoCameraModels().empty())
-			{
-				UASSERT(data.stereoCameraModels().size()==1);
-				StereoCameraModel model = data.stereoCameraModels()[0];
-				model.setLocalTransform(cameraCorrection*_extrinsicsOdomToCamera);
-				data.setStereoCameraModel(model);
+				// Adjust local transform of the camera based on the pose frame
+				if(!data.cameraModels().empty())
+				{
+					UASSERT(data.cameraModels().size()==1);
+					CameraModel model = data.cameraModels()[0];
+					model.setLocalTransform(cameraCorrection*_extrinsicsOdomToCamera);
+					data.setCameraModel(model);
+				}
+				else if(!data.stereoCameraModels().empty())
+				{
+					UASSERT(data.stereoCameraModels().size()==1);
+					StereoCameraModel model = data.stereoCameraModels()[0];
+					model.setLocalTransform(cameraCorrection*_extrinsicsOdomToCamera);
+					data.setStereoCameraModel(model);
+				}
 			}
 
 			// Fake IMU to intialize gravity (assuming pose is aligned with gravity!)
@@ -512,6 +515,7 @@ void SensorCaptureThread::mainLoop()
 					cv::Vec3d(), cv::Mat(),
 					cv::Vec3d(), cv::Mat(),
 					Transform::getIdentity()));
+			this->disableIMUFiltering();
 		}
 		else
 		{
