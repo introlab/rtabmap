@@ -27,8 +27,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define CORELIB_INCLUDE_RTABMAP_CORE_LIDAR_LIDARVLP16_H_
 
 #include <rtabmap/core/Lidar.h>
-#include <rtabmap/utilite/USemaphore.h>
 #include <pcl/io/vlp_grabber.h>
+
+// include after vlp_grabber.h to avoid https://stackoverflow.com/questions/9750344/boostasio-winsock-and-winsock-2-compatibility-issue
+#include <rtabmap/utilite/USemaphore.h>
 
 namespace rtabmap {
 
