@@ -4615,6 +4615,39 @@ void DBDriverSqlite3::updateOccupancyGridQuery(
 	}
 }
 
+void DBDriverSqlite3::updateCalibrationQuery(
+	int nodeId,
+	const std::vector<CameraModel> & models,
+	const std::vector<StereoCameraModel> & stereoModels) const
+{
+	UDEBUG("");
+	if(_ppDb)
+	{
+		std::string type;
+		UTimer timer;
+		timer.start();
+		int rc = SQLITE_OK;
+		sqlite3_stmt * ppStmt = 0;
+
+		// Create query
+		std::string query = queryStepCalibrationUpdate();
+		rc = sqlite3_prepare_v2(_ppDb, query.c_str(), -1, &ppStmt, 0);
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+
+		// step calibration
+		stepCalibrationUpdate(ppStmt,
+				nodeId,
+				models,
+				stereoModels);
+
+		// Finalize (delete) the statement
+		rc = sqlite3_finalize(ppStmt);
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+
+		UDEBUG("Time=%fs", timer.ticks());
+	}
+}
+
 void DBDriverSqlite3::updateDepthImageQuery(
 		int nodeId,
 		const cv::Mat & image) const
@@ -5771,6 +5804,131 @@ void DBDriverSqlite3::stepDepth(sqlite3_stmt * ppStmt, const SensorData & sensor
 	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
 }
 
+std::string DBDriverSqlite3::queryStepCalibrationUpdate() const
+{
+	UASSERT(uStrNumCmp(_version, "0.10.0") >= 0);
+	return "UPDATE Data SET calibration=? WHERE id=?;";
+}
+void DBDriverSqlite3::stepCalibrationUpdate(
+	sqlite3_stmt * ppStmt,
+	int nodeId,
+	const std::vector<CameraModel> & models,
+	const std::vector<StereoCameraModel> & stereoModels) const
+{
+	if(!ppStmt)
+	{
+		UFATAL("");
+	}
+
+	int rc = SQLITE_OK;
+	int index = 1;
+
+	// calibration
+	std::vector<unsigned char> calibrationData;
+	std::vector<float> calibration;
+	// multi-cameras [fx,fy,cx,cy,width,height,local_transform, ... ,fx,fy,cx,cy,width,height,local_transform] (6+12)*float * numCameras
+	// stereo [fx, fy, cx, cy, baseline, local_transform] (5+12)*float
+	if(models.size() && models[0].isValidForProjection())
+	{
+		if(uStrNumCmp(_version, "0.18.0") >= 0)
+		{
+			for(unsigned int i=0; i<models.size(); ++i)
+			{
+				UASSERT(models[i].isValidForProjection());
+				std::vector<unsigned char> data = models[i].serialize();
+				UASSERT(!data.empty());
+				unsigned int oldSize = calibrationData.size();
+				calibrationData.resize(calibrationData.size() + data.size());
+				memcpy(calibrationData.data()+oldSize, data.data(), data.size());
+			}
+		}
+		else if(uStrNumCmp(_version, "0.11.2") >= 0)
+		{
+			calibration.resize(models.size() * (6+Transform().size()));
+			for(unsigned int i=0; i<models.size(); ++i)
+			{
+				UASSERT(models[i].isValidForProjection());
+				const Transform & localTransform = models[i].localTransform();
+				calibration[i*(6+localTransform.size())] = models[i].fx();
+				calibration[i*(6+localTransform.size())+1] = models[i].fy();
+				calibration[i*(6+localTransform.size())+2] = models[i].cx();
+				calibration[i*(6+localTransform.size())+3] = models[i].cy();
+				calibration[i*(6+localTransform.size())+4] = models[i].imageWidth();
+				calibration[i*(6+localTransform.size())+5] = models[i].imageHeight();
+				memcpy(calibration.data()+i*(6+localTransform.size())+6, localTransform.data(), localTransform.size()*sizeof(float));
+			}
+		}
+		else
+		{
+			calibration.resize(models.size() * (4+Transform().size()));
+			for(unsigned int i=0; i<models.size(); ++i)
+			{
+				UASSERT(models[i].isValidForProjection());
+				const Transform & localTransform = models[i].localTransform();
+				calibration[i*(4+localTransform.size())] = models[i].fx();
+				calibration[i*(4+localTransform.size())+1] = models[i].fy();
+				calibration[i*(4+localTransform.size())+2] = models[i].cx();
+				calibration[i*(4+localTransform.size())+3] = models[i].cy();
+				memcpy(calibration.data()+i*(4+localTransform.size())+4, localTransform.data(), localTransform.size()*sizeof(float));
+			}
+		}
+	}
+	else if(stereoModels.size() && stereoModels[0].isValidForProjection())
+	{
+		if(uStrNumCmp(_version, "0.18.0") >= 0)
+		{
+			for(unsigned int i=0; i<stereoModels.size(); ++i)
+			{
+				UASSERT(stereoModels[i].isValidForProjection());
+				std::vector<unsigned char> data = stereoModels[i].serialize();
+				UASSERT(!data.empty());
+				unsigned int oldSize = calibrationData.size();
+				calibrationData.resize(calibrationData.size() + data.size());
+				memcpy(calibrationData.data()+oldSize, data.data(), data.size());
+			}
+		}
+		else
+		{
+			UASSERT_MSG(stereoModels.size()==1, uFormat("Database version (%s) is too old for saving multiple stereo cameras", _version.c_str()).c_str());
+			const Transform & localTransform = stereoModels[0].left().localTransform();
+			calibration.resize(7+localTransform.size());
+			calibration[0] = stereoModels[0].left().fx();
+			calibration[1] = stereoModels[0].left().fy();
+			calibration[2] = stereoModels[0].left().cx();
+			calibration[3] = stereoModels[0].left().cy();
+			calibration[4] = stereoModels[0].baseline();
+			calibration[5] = stereoModels[0].left().imageWidth();
+			calibration[6] = stereoModels[0].left().imageHeight();
+			memcpy(calibration.data()+7, localTransform.data(), localTransform.size()*sizeof(float));
+		}
+	}
+
+	if(calibrationData.size())
+	{
+		rc = sqlite3_bind_blob(ppStmt, index++, calibrationData.data(), calibrationData.size(), SQLITE_STATIC);
+	}
+	else if(calibration.size())
+	{
+		rc = sqlite3_bind_blob(ppStmt, index++, calibration.data(), calibration.size()*sizeof(float), SQLITE_STATIC);
+	}
+	else
+	{
+		rc = sqlite3_bind_null(ppStmt, index++);
+	}
+	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+
+	//id
+	rc = sqlite3_bind_int(ppStmt, index++, nodeId);
+	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+
+	//step
+	rc=sqlite3_step(ppStmt);
+	UASSERT_MSG(rc == SQLITE_DONE, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+
+	rc = sqlite3_reset(ppStmt);
+	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+}
+
 std::string DBDriverSqlite3::queryStepDepthUpdate() const
 {
 	if(uStrNumCmp(_version, "0.10.0") < 0)
@@ -6570,7 +6728,7 @@ void DBDriverSqlite3::stepGlobalDescriptor(sqlite3_stmt * ppStmt,
 
 	//data
 	std::vector<unsigned char> dataBytes = rtabmap::compressData(descriptor.data());
-	if(infoBytes.empty())
+	if(dataBytes.empty())
 	{
 		rc = sqlite3_bind_null(ppStmt, index++);
 	}

@@ -322,6 +322,7 @@ private:
 	int _pathStuckIterations;
 	float _pathLinearVelocity;
 	float _pathAngularVelocity;
+	bool _forceOdom3doF;
 	bool _restartAtOrigin;
 	bool _loopCovLimited;
 	bool _loopGPS;

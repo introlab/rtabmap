@@ -86,7 +86,7 @@ Odometry * Odometry::create(Odometry::Type & type, const ParametersMap & paramet
 		break;
 	case Odometry::kTypeORBSLAM:
 #if defined(RTABMAP_ORB_SLAM) and RTABMAP_ORB_SLAM == 2
-		odometry = new OdometryORBSLAM(parameters);
+		odometry = new OdometryORBSLAM2(parameters);
 #else
 		odometry = new OdometryORBSLAM3(parameters);
 #endif
@@ -335,6 +335,15 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 		{
 			UWARN("Received IMU doesn't have orientation set! It is ignored.");
 		}
+	}
+
+	if(!data.imageRaw().empty())
+	{
+		UDEBUG("Processing image data %dx%d: rgbd models=%ld, stereo models=%ld",
+			data.imageRaw().cols,
+			data.imageRaw().rows,
+			data.cameraModels().size(),
+			data.stereoCameraModels().size());
 	}
 
 
@@ -977,6 +986,7 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 		{
 			UWARN("Odometry automatically reset to latest pose!");
 			this->reset(_pose);
+			_resetCurrentCount = _resetCountdown;
 			if(info)
 			{
 				*info = OdometryInfo();

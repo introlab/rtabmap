@@ -49,7 +49,7 @@ public:
 private:
 	virtual Transform computeTransform(SensorData & image, const Transform & guess = Transform(), OdometryInfo * info = 0);
 
-	bool init(const rtabmap::CameraModel & model, double stamp, bool stereo, double baseline);
+	bool init(const rtabmap::CameraModel & model1, const rtabmap::CameraModel & model2, double stamp, bool stereo, double baseline);
 private:
 #if defined(RTABMAP_ORB_SLAM) and RTABMAP_ORB_SLAM == 3
 	ORB_SLAM3::System * orbslam_;

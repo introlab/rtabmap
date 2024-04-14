@@ -45,6 +45,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #endif
 #include <QInputDialog>
 #include <QMessageBox>
+#include <QToolTip>
 
 #include <QtCore/QDir>
 #include <QtCore/QDateTime>
@@ -316,6 +317,7 @@ GraphViewer::GraphViewer(QWidget * parent) :
 		_loopClosureOutlierThr(0),
 		_maxLinkLength(0.02f),
 		_orientationENU(false),
+		_mouseTracking(false),
 		_viewPlane(XY),
 		_ensureFrameVisible(true)
 {
@@ -1789,6 +1791,50 @@ void GraphViewer::wheelEvent ( QWheelEvent * event )
 	}
 }
 
+void GraphViewer::mouseMoveEvent(QMouseEvent * event)
+{
+	QPointF scenePoint = mapToScene(event->pos());
+	if(_mouseTracking && _viewPlane==XY && this->sceneRect().contains(scenePoint))
+	{
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+		QToolTip::showText(event->globalPosition().toPoint(), QString("%1m %2m").arg(-scenePoint.y()/100.0).arg(-scenePoint.x()/100.0));
+#else
+		QToolTip::showText(event->globalPos(), QString("%1m %2m").arg(-scenePoint.y()/100.0).arg(-scenePoint.x()/100.0));
+#endif
+	}
+	else
+	{
+		QToolTip::hideText();
+	}
+	QGraphicsView::mouseMoveEvent(event);
+}
+
+void GraphViewer::mouseDoubleClickEvent(QMouseEvent * event)
+{
+	QGraphicsItem *item = this->scene()->itemAt(mapToScene(event->pos()), QTransform());
+	if(item)
+	{
+		NodeItem *nodeItem = qgraphicsitem_cast<NodeItem*>(item);
+		LinkItem *linkItem = qgraphicsitem_cast<LinkItem*>(item);
+		if(nodeItem && nodeItem->parentItem() == _graphRoot && nodeItem->id() != 0)
+		{
+			Q_EMIT nodeSelected(nodeItem->id());
+		}
+		else if(linkItem && linkItem->parentItem() == _graphRoot && linkItem->from() != 0 && linkItem->to() != 0)
+		{
+			Q_EMIT linkSelected(linkItem->from(), linkItem->to());
+		}
+		else
+		{
+			QGraphicsView::mouseDoubleClickEvent(event);
+		}
+	}
+	else
+	{
+		QGraphicsView::mouseDoubleClickEvent(event);
+	}
+}
+
 QIcon createIcon(const QColor & color)
 {
 	QPixmap pixmap(50, 50);
@@ -1878,6 +1924,7 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 	QAction * aShowHideGPSGraph;
 	QAction * aShowHideOdomCacheOverlay;
 	QAction * aOrientationENU;
+	QAction * aMouseTracking;
 	QAction * aViewPlaneXY;
 	QAction * aViewPlaneXZ;
 	QAction * aViewPlaneYZ;
@@ -1976,6 +2023,10 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 	aOrientationENU = menu.addAction(tr("ENU Orientation"));
 	aOrientationENU->setCheckable(true);
 	aOrientationENU->setChecked(_orientationENU);
+	aMouseTracking = menu.addAction(tr("Show mouse cursor position (m)"));
+	aMouseTracking->setCheckable(true);
+	aMouseTracking->setChecked(_mouseTracking);
+	aMouseTracking->setEnabled(_viewPlane == XY);
 	aShowHideGraph->setEnabled(_nodeItems.size() && _viewPlane == XY);
 	aShowHideGraphNodes->setEnabled(_nodeItems.size() && _graphRoot->isVisible());
 	aShowHideGlobalPath->setEnabled(_globalPathLinkItems.size());
@@ -2404,6 +2455,10 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 	else if(r == aOrientationENU)
 	{
 		this->setOrientationENU(!this->isOrientationENU());
+	}
+	else if(r == aMouseTracking)
+	{
+		_mouseTracking = aMouseTracking->isChecked();
 	}
 	else if(r == aViewPlaneXY)
 	{

@@ -129,6 +129,14 @@ ExportCloudsDialog::ExportCloudsDialog(QWidget *parent) :
 	connect(_ui->doubleSpinBox_minDepth, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
 	connect(_ui->doubleSpinBox_ceilingHeight, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
 	connect(_ui->doubleSpinBox_floorHeight, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
+	connect(_ui->groupBox_offAxisFiltering, SIGNAL(toggled(bool)), this, SIGNAL(configChanged()));
+	connect(_ui->doubleSpinBox_offAxisFilteringAngle, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
+	connect(_ui->checkBox_offAxisFilteringPosX, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
+	connect(_ui->checkBox_offAxisFilteringNegX, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
+	connect(_ui->checkBox_offAxisFilteringPosY, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
+	connect(_ui->checkBox_offAxisFilteringNegY, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
+	connect(_ui->checkBox_offAxisFilteringPosZ, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
+	connect(_ui->checkBox_offAxisFilteringNegZ, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
 	connect(_ui->doubleSpinBox_footprintWidth, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
 	connect(_ui->doubleSpinBox_footprintLength, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
 	connect(_ui->doubleSpinBox_footprintHeight, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
@@ -370,6 +378,14 @@ void ExportCloudsDialog::saveSettings(QSettings & settings, const QString & grou
 	settings.setValue("regenerate_min_depth", _ui->doubleSpinBox_minDepth->value());
 	settings.setValue("regenerate_ceiling", _ui->doubleSpinBox_ceilingHeight->value());
 	settings.setValue("regenerate_floor", _ui->doubleSpinBox_floorHeight->value());
+	settings.setValue("regenerate_offaxis_filtering", _ui->groupBox_offAxisFiltering->isChecked());
+	settings.setValue("regenerate_offaxis_filtering_angle", _ui->doubleSpinBox_offAxisFilteringAngle->value());
+	settings.setValue("regenerate_offaxis_filtering_pos_x", _ui->checkBox_offAxisFilteringPosX->isChecked());
+	settings.setValue("regenerate_offaxis_filtering_neg_x", _ui->checkBox_offAxisFilteringNegX->isChecked());
+	settings.setValue("regenerate_offaxis_filtering_pos_y", _ui->checkBox_offAxisFilteringPosY->isChecked());
+	settings.setValue("regenerate_offaxis_filtering_neg_y", _ui->checkBox_offAxisFilteringNegY->isChecked());
+	settings.setValue("regenerate_offaxis_filtering_pos_z", _ui->checkBox_offAxisFilteringPosZ->isChecked());
+	settings.setValue("regenerate_offaxis_filtering_neg_z", _ui->checkBox_offAxisFilteringNegZ->isChecked());
 	settings.setValue("regenerate_footprint_height", _ui->doubleSpinBox_footprintHeight->value());
 	settings.setValue("regenerate_footprint_width", _ui->doubleSpinBox_footprintWidth->value());
 	settings.setValue("regenerate_footprint_length", _ui->doubleSpinBox_footprintLength->value());
@@ -543,6 +559,14 @@ void ExportCloudsDialog::loadSettings(QSettings & settings, const QString & grou
 	_ui->doubleSpinBox_minDepth->setValue(settings.value("regenerate_min_depth", _ui->doubleSpinBox_minDepth->value()).toDouble());
 	_ui->doubleSpinBox_ceilingHeight->setValue(settings.value("regenerate_ceiling", _ui->doubleSpinBox_ceilingHeight->value()).toDouble());
 	_ui->doubleSpinBox_floorHeight->setValue(settings.value("regenerate_floor", _ui->doubleSpinBox_floorHeight->value()).toDouble());
+	_ui->groupBox_offAxisFiltering->setChecked(settings.value("regenerate_offaxis_filtering", _ui->groupBox_offAxisFiltering->isChecked()).toBool());
+	_ui->doubleSpinBox_offAxisFilteringAngle->setValue(settings.value("regenerate_offaxis_filtering_angle", _ui->doubleSpinBox_offAxisFilteringAngle->value()).toDouble());
+	_ui->checkBox_offAxisFilteringPosX->setChecked(settings.value("regenerate_offaxis_filtering_pos_x", _ui->checkBox_offAxisFilteringPosX->isChecked()).toBool());
+	_ui->checkBox_offAxisFilteringNegX->setChecked(settings.value("regenerate_offaxis_filtering_neg_x", _ui->checkBox_offAxisFilteringNegX->isChecked()).toBool());
+	_ui->checkBox_offAxisFilteringPosY->setChecked(settings.value("regenerate_offaxis_filtering_pos_y", _ui->checkBox_offAxisFilteringPosY->isChecked()).toBool());
+	_ui->checkBox_offAxisFilteringNegY->setChecked(settings.value("regenerate_offaxis_filtering_neg_y", _ui->checkBox_offAxisFilteringNegY->isChecked()).toBool());
+	_ui->checkBox_offAxisFilteringPosZ->setChecked(settings.value("regenerate_offaxis_filtering_pos_z", _ui->checkBox_offAxisFilteringPosZ->isChecked()).toBool());
+	_ui->checkBox_offAxisFilteringNegZ->setChecked(settings.value("regenerate_offaxis_filtering_neg_z", _ui->checkBox_offAxisFilteringNegZ->isChecked()).toBool());
 	_ui->doubleSpinBox_footprintHeight->setValue(settings.value("regenerate_footprint_height", _ui->doubleSpinBox_footprintHeight->value()).toDouble());
 	_ui->doubleSpinBox_footprintWidth->setValue(settings.value("regenerate_footprint_width", _ui->doubleSpinBox_footprintWidth->value()).toDouble());
 	_ui->doubleSpinBox_footprintLength->setValue(settings.value("regenerate_footprint_length", _ui->doubleSpinBox_footprintLength->value()).toDouble());
@@ -719,6 +743,14 @@ void ExportCloudsDialog::restoreDefaults()
 	_ui->doubleSpinBox_minDepth->setValue(0);
 	_ui->doubleSpinBox_ceilingHeight->setValue(0);
 	_ui->doubleSpinBox_floorHeight->setValue(0);
+	_ui->groupBox_offAxisFiltering->setChecked(false);
+	_ui->doubleSpinBox_offAxisFilteringAngle->setValue(10);
+	_ui->checkBox_offAxisFilteringPosX->setChecked(true);
+	_ui->checkBox_offAxisFilteringNegX->setChecked(true);
+	_ui->checkBox_offAxisFilteringPosY->setChecked(true);
+	_ui->checkBox_offAxisFilteringNegY->setChecked(true);
+	_ui->checkBox_offAxisFilteringPosZ->setChecked(true);
+	_ui->checkBox_offAxisFilteringNegZ->setChecked(true);
 	_ui->doubleSpinBox_footprintHeight->setValue(0);
 	_ui->doubleSpinBox_footprintLength->setValue(0);
 	_ui->doubleSpinBox_footprintWidth->setValue(0);
@@ -1504,6 +1536,7 @@ void ExportCloudsDialog::viewClouds(
 			}
 		}
 		viewer->refreshView();
+		window->activateWindow();
 	}
 	else
 	{
@@ -3914,6 +3947,36 @@ std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::Indic
 						UWARN("Point cloud %d doesn't have anymore points (had %d points) after radius filtering.", iter->first, (int)cloud->size());
 					}
 				}
+				if( !indices->empty() && _ui->groupBox_offAxisFiltering->isChecked() &&
+					(_ui->checkBox_offAxisFilteringPosX->isChecked() ||
+					 _ui->checkBox_offAxisFilteringNegX->isChecked() ||
+					 _ui->checkBox_offAxisFilteringPosY->isChecked() ||
+					 _ui->checkBox_offAxisFilteringNegY->isChecked() ||
+					 _ui->checkBox_offAxisFilteringPosZ->isChecked() ||
+					 _ui->checkBox_offAxisFilteringNegZ->isChecked()))
+				{
+					pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloudInMapFrame = util3d::transformPointCloud(cloud, iter->second);
+					std::vector<pcl::IndicesPtr> indicesVector;
+					double maxDeltaAngle = _ui->doubleSpinBox_offAxisFilteringAngle->value()*M_PI/180.0;
+					Eigen::Vector4f viewpoint(iter->second.x(), iter->second.y(), iter->second.z(), 0);
+					if(_ui->checkBox_offAxisFilteringPosX->isChecked())
+						indicesVector.push_back(util3d::normalFiltering(cloudInMapFrame, indices, maxDeltaAngle, Eigen::Vector4f(1,0,0,0), 20, viewpoint));
+					if(_ui->checkBox_offAxisFilteringPosY->isChecked())
+						indicesVector.push_back(util3d::normalFiltering(cloudInMapFrame, indices, maxDeltaAngle, Eigen::Vector4f(0,1,0,0), 20, viewpoint));
+					if(_ui->checkBox_offAxisFilteringPosZ->isChecked())
+						indicesVector.push_back(util3d::normalFiltering(cloudInMapFrame, indices, maxDeltaAngle, Eigen::Vector4f(0,0,1,0), 20, viewpoint));
+					if(_ui->checkBox_offAxisFilteringNegX->isChecked())
+						indicesVector.push_back(util3d::normalFiltering(cloudInMapFrame, indices, maxDeltaAngle, Eigen::Vector4f(-1,0,0,0), 20, viewpoint));
+					if(_ui->checkBox_offAxisFilteringNegY->isChecked())
+						indicesVector.push_back(util3d::normalFiltering(cloudInMapFrame, indices, maxDeltaAngle, Eigen::Vector4f(0,-1,0,0), 20, viewpoint));
+					if(_ui->checkBox_offAxisFilteringNegZ->isChecked())
+						indicesVector.push_back(util3d::normalFiltering(cloudInMapFrame, indices, maxDeltaAngle, Eigen::Vector4f(0,0,-1,0), 20, viewpoint));
+					indices = util3d::concatenate(indicesVector);
+					if(indices->empty())
+					{
+						UWARN("Point cloud %d doesn't have anymore points (had %d points) after offaxis filtering.", iter->first, (int)cloud->size());
+					}
+				}
 			}
 
 			if(!indices->empty())
@@ -4613,7 +4676,7 @@ void ExportCloudsDialog::saveTextureMeshes(
 								path.toStdString(),
 								mesh->cloud,
 								mesh->tex_polygons[0],
-								poses,
+								filterNodes(poses),
 								textureVertexToPixels,
 								images,
 								calibrations,

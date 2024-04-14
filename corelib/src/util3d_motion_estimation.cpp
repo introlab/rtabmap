@@ -30,6 +30,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/utilite/UStl.h"
 #include "rtabmap/utilite/UMath.h"
 #include "rtabmap/utilite/ULogger.h"
+#include "rtabmap/utilite/UTimer.h"
 #include "rtabmap/core/util3d_transforms.h"
 #include "rtabmap/core/util3d_registration.h"
 #include "rtabmap/core/util3d_correspondences.h"
@@ -70,7 +71,8 @@ Transform estimateMotion3DTo2D(
 			const std::map<int, cv::Point3f> & words3B,
 			cv::Mat * covariance,
 			std::vector<int> * matchesOut,
-			std::vector<int> * inliersOut)
+			std::vector<int> * inliersOut,
+			bool splitLinearCovarianceComponents)
 {
 	UASSERT(cameraModel.isValidForProjection());
 	UASSERT(!guess.isNull());
@@ -155,25 +157,36 @@ Transform estimateMotion3DTo2D(
 			if(covariance && (!words3B.empty() || cameraModel.imageSize() != cv::Size()))
 			{
 				std::vector<float> errorSqrdDists(inliers.size());
+				std::vector<float> errorSqrdX;
+				std::vector<float> errorSqrdY;
+				std::vector<float> errorSqrdZ;
+				if(splitLinearCovarianceComponents)
+				{
+					errorSqrdX.resize(inliers.size());
+					errorSqrdY.resize(inliers.size());
+					errorSqrdZ.resize(inliers.size());
+				}
 				std::vector<float> errorSqrdAngles(inliers.size());
 				Transform localTransformInv = cameraModel.localTransform().inverse();
-				Transform transformCameraFrameInv = (transform * cameraModel.localTransform()).inverse();
+				Transform transformCameraFrame = transform * cameraModel.localTransform();
+				Transform transformCameraFrameInv = transformCameraFrame.inverse();
 				for(unsigned int i=0; i<inliers.size(); ++i)
 				{
 					cv::Point3f objPt = objectPoints[inliers[i]];
 
-					// Project obj point from base frame of cameraA in cameraB frame (z+ in front of the cameraB)
-					objPt = util3d::transformPoint(objPt, transformCameraFrameInv);
-
-					// Get 3D point from target in cameraB frame
+					// Get 3D point from cameraB base frame in cameraA base frame
 					std::map<int, cv::Point3f>::const_iterator iter = words3B.find(matches[inliers[i]]);
 					cv::Point3f newPt;
 					if(iter!=words3B.end() && util3d::isFinite(iter->second))
 					{
-						newPt = util3d::transformPoint(iter->second, localTransformInv);
+						newPt = util3d::transformPoint(iter->second, transform);
 					}
 					else
 					{
+
+						// Project obj point from base frame of cameraA in cameraB frame (z+ in front of the cameraB)
+						cv::Point3f objPtCamBFrame = util3d::transformPoint(objPt, transformCameraFrameInv);
+
 						//compute from projection
 						Eigen::Vector3f ray = projectDepthTo3DRay(
 								cameraModel.imageSize(),
@@ -184,7 +197,20 @@ Transform estimateMotion3DTo2D(
 								cameraModel.fx(),
 								cameraModel.fy());
 						// transform in camera B frame
-						newPt = cv::Point3f(ray.x(), ray.y(), ray.z()) * objPt.z*1.1; // Add 10 % error
+						newPt = cv::Point3f(ray.x(), ray.y(), ray.z()) * objPtCamBFrame.z*1.1; // Add 10 % error
+
+						//transform back into cameraA base frame
+						newPt = util3d::transformPoint(newPt, transformCameraFrame);
+					}
+
+					if(splitLinearCovarianceComponents)
+					{
+						double errorX = objPt.x-newPt.x;
+						double errorY = objPt.y-newPt.y;
+						double errorZ = objPt.z-newPt.z;
+						errorSqrdX[i] = errorX * errorX;
+						errorSqrdY[i] = errorY * errorY;
+						errorSqrdZ[i] = errorZ * errorZ;
 					}
 
 					errorSqrdDists[i] = uNormSquared(objPt.x-newPt.x, objPt.y-newPt.y, objPt.z-newPt.z);
@@ -203,6 +229,25 @@ Transform estimateMotion3DTo2D(
 				double median_error_sqr_ang = 2.1981 * (double)errorSqrdAngles[errorSqrdAngles.size () / varianceMedianRatio];
 				UASSERT(uIsFinite(median_error_sqr_ang));
 				(*covariance)(cv::Range(3,6), cv::Range(3,6)) *= median_error_sqr_ang;
+
+				if(splitLinearCovarianceComponents)
+				{
+					std::sort(errorSqrdX.begin(), errorSqrdX.end());
+					double median_error_sqr_x = 2.1981 * (double)errorSqrdX[errorSqrdX.size () / varianceMedianRatio];
+					std::sort(errorSqrdY.begin(), errorSqrdY.end());
+					double median_error_sqr_y = 2.1981 * (double)errorSqrdY[errorSqrdY.size () / varianceMedianRatio];
+					std::sort(errorSqrdZ.begin(), errorSqrdZ.end());
+					double median_error_sqr_z = 2.1981 * (double)errorSqrdZ[errorSqrdZ.size () / varianceMedianRatio];
+					
+					UASSERT(uIsFinite(median_error_sqr_x));
+					UASSERT(uIsFinite(median_error_sqr_y));
+					UASSERT(uIsFinite(median_error_sqr_z));
+					covariance->at<double>(0,0) = median_error_sqr_x;
+					covariance->at<double>(1,1) = median_error_sqr_y;
+					covariance->at<double>(2,2) = median_error_sqr_z;
+
+					median_error_sqr_lin = uMax3(median_error_sqr_x, median_error_sqr_y, median_error_sqr_z);
+				}
 
 				if(maxVariance > 0 && median_error_sqr_lin > maxVariance)
 				{
@@ -259,7 +304,8 @@ Transform estimateMotion3DTo2D(
 			const std::map<int, cv::Point3f> & words3B,
 			cv::Mat * covariance,
 			std::vector<int> * matchesOut,
-			std::vector<int> * inliersOut)
+			std::vector<int> * inliersOut,
+			bool splitLinearCovarianceComponents)
 {
 	Transform transform;
 #ifndef RTABMAP_OPENGV
@@ -491,27 +537,44 @@ Transform estimateMotion3DTo2D(
 			// compute variance (like in PCL computeVariance() method of sac_model.h)
 			if(covariance)
 			{
+				std::vector<float> errorSqrdX;
+				std::vector<float> errorSqrdY;
+				std::vector<float> errorSqrdZ;
+				if(splitLinearCovarianceComponents)
+				{
+					errorSqrdX.resize(inliers.size());
+					errorSqrdY.resize(inliers.size());
+					errorSqrdZ.resize(inliers.size());
+				}
 				std::vector<float> errorSqrdDists(inliers.size());
 				std::vector<float> errorSqrdAngles(inliers.size());
+
+				std::vector<Transform> transformsCameraFrame(cameraModels.size());
+				std::vector<Transform> transformsCameraFrameInv(cameraModels.size());
+				for(size_t i=0; i<cameraModels.size(); ++i)
+				{
+					transformsCameraFrame[i] = transform * cameraModels[i].localTransform();
+					transformsCameraFrameInv[i] = transformsCameraFrame[i].inverse();
+				}
+
 				for(unsigned int i=0; i<inliers.size(); ++i)
 				{
 					cv::Point3f objPt = objectPoints[inliers[i]];
 
-					int cameraIndex = cameraIndexes[inliers[i]];
-					Transform transformCameraFrameInv = (transform * cameraModels[cameraIndex].localTransform()).inverse();
-
-					// Project obj point from base frame of cameraA in cameraB frame (z+ in front of the cameraB)
-					objPt = util3d::transformPoint(objPt, transformCameraFrameInv);
-
-					// Get 3D point from target in cameraB frame
+					// Get 3D point from cameraB base frame in cameraA base frame
 					std::map<int, cv::Point3f>::const_iterator iter = words3B.find(matches[inliers[i]]);
 					cv::Point3f newPt;
 					if(iter!=words3B.end() && util3d::isFinite(iter->second))
 					{
-						newPt = util3d::transformPoint(iter->second, cameraModels[cameraIndex].localTransform().inverse());
+						newPt = util3d::transformPoint(iter->second, transform);
 					}
 					else
 					{
+						int cameraIndex = cameraIndexes[inliers[i]];
+
+						// Project obj point from base frame of cameraA in cameraB frame (z+ in front of the cameraB)
+						cv::Point3f objPtCamBFrame = util3d::transformPoint(objPt, transformsCameraFrameInv[cameraIndex]);
+
 						//compute from projection
 						Eigen::Vector3f ray = projectDepthTo3DRay(
 								cameraModels[cameraIndex].imageSize(),
@@ -522,7 +585,20 @@ Transform estimateMotion3DTo2D(
 								cameraModels[cameraIndex].fx(),
 								cameraModels[cameraIndex].fy());
 						// transform in camera B frame
-						newPt = cv::Point3f(ray.x(), ray.y(), ray.z()) * objPt.z*1.1; // Add 10 % error
+						newPt = cv::Point3f(ray.x(), ray.y(), ray.z()) * objPtCamBFrame.z*1.1; // Add 10 % error
+
+						//transfor back into cameraA base frame
+						newPt = util3d::transformPoint(newPt, transformsCameraFrame[cameraIndex]);
+					}
+
+					if(splitLinearCovarianceComponents)
+					{
+						double errorX = objPt.x-newPt.x;
+						double errorY = objPt.y-newPt.y;
+						double errorZ = objPt.z-newPt.z;
+						errorSqrdX[i] = errorX * errorX;
+						errorSqrdY[i] = errorY * errorY;
+						errorSqrdZ[i] = errorZ * errorZ;
 					}
 
 					errorSqrdDists[i] = uNormSquared(objPt.x-newPt.x, objPt.y-newPt.y, objPt.z-newPt.z);
@@ -541,6 +617,25 @@ Transform estimateMotion3DTo2D(
 				double median_error_sqr_ang = 2.1981 * (double)errorSqrdAngles[errorSqrdAngles.size () / varianceMedianRatio];
 				UASSERT(uIsFinite(median_error_sqr_ang));
 				(*covariance)(cv::Range(3,6), cv::Range(3,6)) *= median_error_sqr_ang;
+
+				if(splitLinearCovarianceComponents)
+				{
+					std::sort(errorSqrdX.begin(), errorSqrdX.end());
+					double median_error_sqr_x = 2.1981 * (double)errorSqrdX[errorSqrdX.size () / varianceMedianRatio];
+					std::sort(errorSqrdY.begin(), errorSqrdY.end());
+					double median_error_sqr_y = 2.1981 * (double)errorSqrdY[errorSqrdY.size () / varianceMedianRatio];
+					std::sort(errorSqrdZ.begin(), errorSqrdZ.end());
+					double median_error_sqr_z = 2.1981 * (double)errorSqrdZ[errorSqrdZ.size () / varianceMedianRatio];
+					
+					UASSERT(uIsFinite(median_error_sqr_x));
+					UASSERT(uIsFinite(median_error_sqr_y));
+					UASSERT(uIsFinite(median_error_sqr_z));
+					covariance->at<double>(0,0) = median_error_sqr_x;
+					covariance->at<double>(1,1) = median_error_sqr_y;
+					covariance->at<double>(2,2) = median_error_sqr_z;
+
+					median_error_sqr_lin = uMax3(median_error_sqr_x, median_error_sqr_y, median_error_sqr_z);
+				}
 
 				if(maxVariance > 0 && median_error_sqr_lin > maxVariance)
 				{

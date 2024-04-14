@@ -21,8 +21,9 @@ jobs:
     name: Build on ros ${{ matrix.ros_distribution }} and ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
-        ros_distribution: [ noetic, humble, iron, rolling]
+        ros_distribution: [ noetic, humble, iron]
         include:
         - ros_distribution: 'noetic'
           os: ubuntu-20.04
@@ -30,15 +31,13 @@ jobs:
           os: ubuntu-22.04
         - ros_distribution: 'iron'
           os: ubuntu-22.04
-        - ros_distribution: 'rolling'
-          os: ubuntu-22.04
 
     steps:   
     - uses: ros-tooling/setup-ros@v0.6
       with:
         required-ros-distributions: ${{ matrix.ros_distribution }}
     
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
 
     - name: Install dependencies
       run: |

@@ -53,6 +53,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <vtkCamera.h>
 #include <vtkRenderWindow.h>
 #include <vtkCubeSource.h>
+#include <vtkDataSetMapper.h>
+#include <vtkDelaunay2D.h>
 #include <vtkGlyph3D.h>
 #include <vtkGlyph3DMapper.h>
 #include <vtkSmartVolumeMapper.h>
@@ -67,13 +69,17 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <vtkPNMReader.h>
 #include <vtkPNGReader.h>
 #include <vtkTIFFReader.h>
+#include <vtkElevationFilter.h>
 #include <vtkOpenGLRenderWindow.h>
 #include <vtkPointPicker.h>
+#include <vtkPointData.h>
 #include <vtkTextActor.h>
 #include <vtkTexture.h>
+#include <vtkNamedColors.h>
 #include <vtkOBBTree.h>
 #include <vtkObjectFactory.h>
 #include <vtkQuad.h>
+#include <vtkWarpScalar.h>
 #include <opencv/vtkImageMatSource.h>
 
 #if VTK_MAJOR_VERSION >= 7
@@ -87,7 +93,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #endif
 
 #ifdef RTABMAP_OCTOMAP
-#include <rtabmap/core/OctoMap.h>
+#include <rtabmap/core/global_map/OctoMap.h>
 #endif
 
 namespace rtabmap {
@@ -198,6 +204,10 @@ CloudViewer::CloudViewer(QWidget *parent, CloudViewerInteractorStyle * style) :
 	}
 	_visualizer->getRenderWindow()->SetNumberOfLayers(4);
 
+#ifdef VTK_GLOBAL_WARNING_DISPLAY_OFF
+	_visualizer->getRenderWindow()->GlobalWarningDisplayOff();
+#endif
+
 #if VTK_MAJOR_VERSION > 8
 	this->setRenderWindow(_visualizer->getRenderWindow());
 #else
@@ -258,6 +268,7 @@ void CloudViewer::clear()
 	this->removeAllTexts();
 	this->removeOccupancyGridMap();
 	this->removeOctomap();
+	this->removeElevationMap();
 
 	if(_aShowCameraAxis->isChecked())
 	{
@@ -1105,8 +1116,6 @@ bool CloudViewer::addOctomap(const OctoMap * octomap, unsigned int treeDepth, bo
 #ifdef RTABMAP_OCTOMAP
 	UASSERT(octomap!=0);
 
-	pcl::IndicesPtr obstacles(new std::vector<int>);
-
 	if(treeDepth == 0 || treeDepth > octomap->octree()->getTreeDepth())
 	{
 		if(treeDepth>0)
@@ -1122,7 +1131,12 @@ bool CloudViewer::addOctomap(const OctoMap * octomap, unsigned int treeDepth, bo
 
 	if(!volumeRepresentation)
 	{
-		pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = octomap->createCloud(treeDepth, obstacles.get(), 0, 0, false);
+		pcl::IndicesPtr obstacles(new std::vector<int>);
+		pcl::IndicesPtr ground(new std::vector<int>);
+
+		pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = octomap->createCloud(
+				treeDepth, obstacles.get(), 0, ground.get(), false);
+		obstacles->insert(obstacles->end(), ground->begin(), ground->end());
 		if(obstacles->size())
 		{
 			//vtkSmartPointer<vtkUnsignedCharArray> colors = vtkSmartPointer<vtkUnsignedCharArray>::New();
@@ -1591,6 +1605,131 @@ void CloudViewer::removeOccupancyGridMap()
 		_visualizer->removePointCloud("map");
 	}
 #endif
+}
+
+bool CloudViewer::addElevationMap(
+			const cv::Mat & map32FC1,
+			float resolution, // cell size
+			float xMin,
+			float yMin,
+			float opacity)
+{
+	if(_visualizer->getShapeActorMap()->find("elevation_map") != _visualizer->getShapeActorMap()->end())
+	{
+		_visualizer->removeShape("elevation_map");
+	}
+
+	vtkSmartPointer<vtkPoints> gridPoints = vtkSmartPointer<vtkPoints>::New ();
+	vtkSmartPointer<vtkCellArray> gridCells = vtkSmartPointer<vtkCellArray>::New ();
+	for (int y = 0; y < map32FC1.rows; ++y)
+	{
+		const float * previousRow = y>0?map32FC1.ptr<float>(y-1):0;
+		const float * rowPtr = map32FC1.ptr<float>(y);
+		for (int x = 0; x < map32FC1.cols; ++x)
+		{
+			gridPoints->InsertNextPoint(xMin + x*resolution, yMin + y*resolution, rowPtr[x]);
+			if(x>0 && y>0 &&
+			   rowPtr[x] != 0 &&
+			   rowPtr[x-1] != 0 &&
+			   previousRow[x] != 0 &&
+			   previousRow[x-1] != 0)
+			{
+				gridCells->InsertNextCell(4);
+				gridCells->InsertCellPoint(x-1+y*map32FC1.cols);
+				gridCells->InsertCellPoint(x+y*map32FC1.cols);
+				gridCells->InsertCellPoint(x+(y-1)*map32FC1.cols);
+				gridCells->InsertCellPoint(x-1+(y-1)*map32FC1.cols);
+			}
+		}
+	}
+
+	double bounds[6];
+	gridPoints->GetBounds(bounds);
+
+	vtkSmartPointer<vtkPolyData> polyData = vtkSmartPointer<vtkPolyData>::New ();
+	polyData->SetPoints(gridPoints);
+	polyData->SetPolys(gridCells);
+
+	vtkSmartPointer<vtkElevationFilter> elevationFilter = vtkSmartPointer<vtkElevationFilter>::New ();
+	elevationFilter->SetInputData(polyData);
+	elevationFilter->SetLowPoint(0.0, 0.0, bounds[4]);
+	elevationFilter->SetHighPoint(0.0, 0.0, bounds[5]);
+	elevationFilter->Update();
+
+	vtkSmartPointer<vtkPolyData> output = vtkSmartPointer<vtkPolyData>::New ();
+	output->ShallowCopy(dynamic_cast<vtkPolyData*>(elevationFilter->GetOutput()));
+
+	vtkFloatArray* elevation = dynamic_cast<vtkFloatArray*>(
+	  output->GetPointData()->GetArray("Elevation"));
+
+	// Create the color map
+	vtkSmartPointer<vtkLookupTable> colorLookupTable = vtkSmartPointer<vtkLookupTable>::New ();
+	colorLookupTable->SetTableRange(bounds[4], bounds[5]);
+	colorLookupTable->Build();
+
+	// Generate the colors for each point based on the color map
+	vtkSmartPointer<vtkUnsignedCharArray> colors = vtkSmartPointer<vtkUnsignedCharArray>::New ();
+	colors->SetNumberOfComponents(3);
+	colors->SetName("Colors");
+
+	for (vtkIdType i = 0; i < output->GetNumberOfPoints(); i++)
+	{
+		double val = elevation->GetValue(i);
+		double dcolor[3];
+		colorLookupTable->GetColor(val, dcolor);
+		unsigned char color[3];
+		for (unsigned int j = 0; j < 3; j++)
+		{
+			color[j] = 255 * dcolor[j] / 1.0;
+		}
+
+#if VTK_MAJOR_VERSION > 7 || (VTK_MAJOR_VERSION==7 && VTK_MINOR_VERSION >= 1)
+		colors->InsertNextTypedTuple(color);
+#else
+		colors->InsertNextTupleValue(color);
+#endif
+
+	}
+
+	output->GetPointData()->AddArray(colors);
+
+	vtkSmartPointer<vtkPolyDataMapper> mapper = vtkSmartPointer<vtkPolyDataMapper>::New ();
+	mapper->SetInputData(output);
+
+	vtkSmartPointer<vtkActor> actor = vtkSmartPointer<vtkActor>::New ();
+	actor->SetMapper(mapper);
+
+	// Add it to all renderers
+	_visualizer->getRendererCollection()->InitTraversal ();
+	vtkRenderer* renderer = NULL;
+	int i = 0;
+	int viewport = 1;
+	while ((renderer = _visualizer->getRendererCollection()->GetNextItem ()) != NULL)
+	{
+		// Should we add the actor to all renderers?
+		if (viewport == 0)
+		{
+			renderer->AddActor (actor);
+		}
+		else if (viewport == i)               // add the actor only to the specified viewport
+		{
+			renderer->AddActor (actor);
+		}
+		++i;
+	}
+
+	(*_visualizer->getShapeActorMap())["elevation_map"] = actor;
+
+	setCloudOpacity("elevation_map", opacity);
+
+	return true;
+}
+void CloudViewer::removeElevationMap()
+{
+	if(_visualizer->getShapeActorMap()->find("elevation_map") != _visualizer->getShapeActorMap()->end())
+	{
+		_visualizer->removeShape("elevation_map");
+	}
 }
 
 void CloudViewer::addOrUpdateCoordinate(

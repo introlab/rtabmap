@@ -40,7 +40,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/Memory.h"
 #include "rtabmap/core/DBDriver.h"
 #include "rtabmap/core/RegistrationVis.h"
-#include "rtabmap/core/OccupancyGrid.h"
+#include "rtabmap/core/global_map/OccupancyGrid.h"
 #include "rtabmap/core/GainCompensator.h"
 #include "rtabmap/core/Recovery.h"
 #include "rtabmap/core/util2d.h"
@@ -116,7 +116,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/SensorEvent.h>
 
 #ifdef RTABMAP_OCTOMAP
-#include <rtabmap/core/OctoMap.h>
+#include <rtabmap/core/global_map/OctoMap.h>
+#endif
+
+#ifdef RTABMAP_GRIDMAP
+#include <rtabmap/core/global_map/GridMap.h>
 #endif
 
 #ifdef HAVE_OPENCV_ARUCO
@@ -165,6 +169,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent, bool sh
 	_createdCloudsMemoryUsage(0),
 	_occupancyGrid(0),
 	_octomap(0),
+	_elevationMap(0),
 	_odometryCorrection(Transform::getIdentity()),
 	_processingOdometry(false),
 	_oneSecondTimer(0),
@@ -260,9 +265,17 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent, bool sh
 	setupMainLayout(_preferencesDialog->isVerticalLayoutUsed());
 
 	ParametersMap parameters = _preferencesDialog->getAllParameters();
-	_occupancyGrid = new OccupancyGrid(parameters);
+	// Override map resolution for UI
+	if(_preferencesDialog->getGridUIResolution()>0)
+	{
+		uInsert(parameters, ParametersPair(Parameters::kGridCellSize(), uNumber2Str(_preferencesDialog->getGridUIResolution())));
+	}
+	_occupancyGrid = new OccupancyGrid(&_cachedLocalMaps, parameters);
 #ifdef RTABMAP_OCTOMAP
-	_octomap = new OctoMap(parameters);
+	_octomap = new OctoMap(&_cachedLocalMaps, parameters);
+#endif
+#ifdef RTABMAP_GRIDMAP
+	_elevationMap = new GridMap(&_cachedLocalMaps, parameters);
 #endif
 
 	// Timer
@@ -428,7 +441,6 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent, bool sh
 
 	//Settings menu
 	connect(_ui->actionMore_options, SIGNAL(triggered()), this, SLOT(openPreferencesSource()));
-	connect(_ui->actionUsbCamera, SIGNAL(triggered()), this, SLOT(selectStream()));
 	connect(_ui->actionOpenNI_PCL, SIGNAL(triggered()), this, SLOT(selectOpenni()));
 	connect(_ui->actionOpenNI_PCL_ASUS, SIGNAL(triggered()), this, SLOT(selectOpenni()));
 	connect(_ui->actionFreenect, SIGNAL(triggered()), this, SLOT(selectFreenect()));
@@ -456,6 +468,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent, bool sh
 	connect(_ui->actionMYNT_EYE_S_SDK, SIGNAL(triggered()), this, SLOT(selectMyntEyeS()));
 	connect(_ui->actionDepthAI_oakd, SIGNAL(triggered()), this, SLOT(selectDepthAIOAKD()));
 	connect(_ui->actionDepthAI_oakdlite, SIGNAL(triggered()), this, SLOT(selectDepthAIOAKDLite()));
+	connect(_ui->actionDepthAI_oakdpro, SIGNAL(triggered()), this, SLOT(selectDepthAIOAKDPro()));
 	connect(_ui->actionVelodyne_VLP_16, SIGNAL(triggered()), this, SLOT(selectVLP16()));
 	_ui->actionFreenect->setEnabled(CameraFreenect::available());
 	_ui->actionOpenNI_CV->setEnabled(CameraOpenNICV::available());
@@ -481,6 +494,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent, bool sh
     _ui->actionMYNT_EYE_S_SDK->setEnabled(CameraMyntEye::available());
     _ui->actionDepthAI_oakd->setEnabled(CameraDepthAI::available());
     _ui->actionDepthAI_oakdlite->setEnabled(CameraDepthAI::available());
+    _ui->actionDepthAI_oakdpro->setEnabled(CameraDepthAI::available());
 	this->updateSelectSourceMenu();
 
 	connect(_ui->actionPreferences, SIGNAL(triggered()), this, SLOT(openPreferences()));
@@ -671,6 +685,10 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent, bool sh
 	_ui->statsToolBox->updateStat("GUI/Octomap Update/ms", false);
 	_ui->statsToolBox->updateStat("GUI/Octomap Rendering/ms", false);
 #endif
+#ifdef RTABMAP_GRIDMAP
+	_ui->statsToolBox->updateStat("GUI/Elevation Update/ms", false);
+	_ui->statsToolBox->updateStat("GUI/Elevation Rendering/ms", false);
+#endif
 	_ui->statsToolBox->updateStat("GUI/Grid Update/ms", false);
 	_ui->statsToolBox->updateStat("GUI/Grid Rendering/ms", false);
 	_ui->statsToolBox->updateStat("GUI/Refresh stats/ms", false);
@@ -707,6 +725,9 @@ MainWindow::~MainWindow()
 	delete _logEventTime;
 #ifdef RTABMAP_OCTOMAP
 	delete _octomap;
+#endif
+#ifdef RTABMAP_GRIDMAP
+	delete _elevationMap;
 #endif
 	delete _occupancyGrid;
 	UDEBUG("");
@@ -1765,6 +1786,8 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 	//Process info
 	if(_preferencesDialog->isCacheSavedInFigures() || _ui->statsToolBox->isVisible())
 	{
+		double linVar = uMax3(odom.info().reg.covariance.at<double>(0,0), odom.info().reg.covariance.at<double>(1,1)>=9999?0:odom.info().reg.covariance.at<double>(1,1), odom.info().reg.covariance.at<double>(2,2)>=9999?0:odom.info().reg.covariance.at<double>(2,2));
+		double angVar = uMax3(odom.info().reg.covariance.at<double>(3,3)>=9999?0:odom.info().reg.covariance.at<double>(3,3), odom.info().reg.covariance.at<double>(4,4)>=9999?0:odom.info().reg.covariance.at<double>(4,4), odom.info().reg.covariance.at<double>(5,5));
 		_ui->statsToolBox->updateStat("Odometry/Inliers/", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), (float)odom.info().reg.inliers, _preferencesDialog->isCacheSavedInFigures());
 		_ui->statsToolBox->updateStat("Odometry/InliersMeanDistance/m", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), (float)odom.info().reg.inliersMeanDistance, _preferencesDialog->isCacheSavedInFigures());
 		_ui->statsToolBox->updateStat("Odometry/InliersDistribution/", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), (float)odom.info().reg.inliersDistribution, _preferencesDialog->isCacheSavedInFigures());
@@ -1778,10 +1801,10 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 		_ui->statsToolBox->updateStat("Odometry/ICPRMS/", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), (float)odom.info().reg.icpRMS, _preferencesDialog->isCacheSavedInFigures());
 		_ui->statsToolBox->updateStat("Odometry/Matches/", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), (float)odom.info().reg.matches, _preferencesDialog->isCacheSavedInFigures());
 		_ui->statsToolBox->updateStat("Odometry/MatchesRatio/", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), odom.info().features<=0?0.0f:float(odom.info().reg.matches)/float(odom.info().features), _preferencesDialog->isCacheSavedInFigures());
-		_ui->statsToolBox->updateStat("Odometry/StdDevLin/m", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), sqrt((float)odom.info().reg.covariance.at<double>(0,0)), _preferencesDialog->isCacheSavedInFigures());
-		_ui->statsToolBox->updateStat("Odometry/VarianceLin/", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), (float)odom.info().reg.covariance.at<double>(0,0), _preferencesDialog->isCacheSavedInFigures());
-		_ui->statsToolBox->updateStat("Odometry/StdDevAng/rad", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), sqrt((float)odom.info().reg.covariance.at<double>(5,5)), _preferencesDialog->isCacheSavedInFigures());
-		_ui->statsToolBox->updateStat("Odometry/VarianceAng/", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), (float)odom.info().reg.covariance.at<double>(5,5), _preferencesDialog->isCacheSavedInFigures());
+		_ui->statsToolBox->updateStat("Odometry/StdDevLin/m", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), sqrt((float)linVar), _preferencesDialog->isCacheSavedInFigures());
+		_ui->statsToolBox->updateStat("Odometry/VarianceLin/", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), (float)linVar, _preferencesDialog->isCacheSavedInFigures());
+		_ui->statsToolBox->updateStat("Odometry/StdDevAng/rad", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), sqrt((float)angVar), _preferencesDialog->isCacheSavedInFigures());
+		_ui->statsToolBox->updateStat("Odometry/VarianceAng/", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), (float)angVar, _preferencesDialog->isCacheSavedInFigures());
 		_ui->statsToolBox->updateStat("Odometry/TimeDeskewing/ms", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), (float)odom.info().timeDeskewing*1000.0f, _preferencesDialog->isCacheSavedInFigures());
 		_ui->statsToolBox->updateStat("Odometry/TimeEstimation/ms", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), (float)odom.info().timeEstimation*1000.0f, _preferencesDialog->isCacheSavedInFigures());
 		if(odom.info().timeParticleFiltering>0.0f)
@@ -2966,13 +2989,20 @@ void MainWindow::updateMapCloud(
 					 (_cloudViewer->isVisible() && _preferencesDialog->getGridMapShown())) &&
 					_occupancyGrid->addedNodes().find(iter->first) == _occupancyGrid->addedNodes().end();
 			bool updateOctomap = false;
+			bool updateElevationMap = false;
 #ifdef RTABMAP_OCTOMAP
 			updateOctomap =
 					_cloudViewer->isVisible() &&
 					_preferencesDialog->isOctomapUpdated() &&
 					_octomap->addedNodes().find(iter->first) == _octomap->addedNodes().end();
 #endif
-			if(updateGridMap || updateOctomap)
+#ifdef RTABMAP_GRIDMAP
+			updateElevationMap =
+					_cloudViewer->isVisible() &&
+					_preferencesDialog->getElevationMapShown() > 0 &&
+					_elevationMap->addedNodes().find(iter->first) == _elevationMap->addedNodes().end();
+#endif
+			if(updateGridMap || updateOctomap || updateElevationMap)
 			{
 				QMap<int, Signature>::iterator jter = _cachedSignatures.find(iter->first);
 				if(jter!=_cachedSignatures.end() && jter->sensorData().gridCellSize() > 0.0f)
@@ -2983,23 +3013,28 @@ void MainWindow::updateMapCloud(
 
 					jter->sensorData().uncompressDataConst(0, 0, 0, 0, &ground, &obstacles, &empty);
 
-					_occupancyGrid->addToCache(iter->first, ground, obstacles, empty);
-
-#ifdef RTABMAP_OCTOMAP
-					if(updateOctomap)
+					double resolution = jter->sensorData().gridCellSize();
+					if(_preferencesDialog->getGridUIResolution() > jter->sensorData().gridCellSize())
 					{
-						if((ground.empty() || ground.channels() > 2) &&
-						   (obstacles.empty() || obstacles.channels() > 2))
-						{
-							cv::Point3f viewpoint = jter->sensorData().gridViewPoint();
-							_octomap->addToCache(iter->first, ground, obstacles, empty, viewpoint);
-						}
-						else if(!ground.empty() || !obstacles.empty())
-						{
-							UWARN("Node %d: Cannot update octomap with 2D occupancy grids.", iter->first);
-						}
+						resolution = _preferencesDialog->getGridUIResolution();
+						pcl::PointCloud<pcl::PointXYZ>::Ptr groundCloud = util3d::voxelize(util3d::laserScanToPointCloud(LaserScan::backwardCompatibility(ground)), resolution);
+						pcl::PointCloud<pcl::PointXYZ>::Ptr obstaclesCloud = util3d::voxelize(util3d::laserScanToPointCloud(LaserScan::backwardCompatibility(obstacles)), resolution);
+						pcl::PointCloud<pcl::PointXYZ>::Ptr emptyCloud = util3d::voxelize(util3d::laserScanToPointCloud(LaserScan::backwardCompatibility(empty)), resolution);
+						if(ground.channels() == 2)
+							ground = util3d::laserScan2dFromPointCloud(*groundCloud).data();
+						else
+							ground = util3d::laserScanFromPointCloud(*groundCloud).data();
+						if(obstacles.channels() == 2)
+							obstacles = util3d::laserScan2dFromPointCloud(*obstaclesCloud).data();
+						else
+							obstacles = util3d::laserScanFromPointCloud(*obstaclesCloud).data();
+						if(empty.channels() == 2)
+							empty = util3d::laserScan2dFromPointCloud(*emptyCloud).data();
+						else
+							empty = util3d::laserScanFromPointCloud(*emptyCloud).data();
 					}
-#endif
+
+					_cachedLocalMaps.add(iter->first, ground, obstacles, empty, resolution, jter->sensorData().gridViewPoint());
 				}
 			}
 
@@ -3338,6 +3373,50 @@ void MainWindow::updateMapCloud(
 	}
 #endif
 
+#ifdef RTABMAP_GRIDMAP
+	_cloudViewer->removeElevationMap();
+	_cloudViewer->removeCloud("elevation_mesh");
+	if(_preferencesDialog->getElevationMapShown() > 0)
+	{
+		UDEBUG("");
+		UTimer time;
+		_elevationMap->update(poses);
+		UINFO("Elevation map update time = %fs", time.ticks());
+	}
+	if(stats)
+	{
+		stats->insert(std::make_pair("GUI/Elevation Update/ms", (float)timer.restart()*1000.0f));
+	}
+	if(_preferencesDialog->getElevationMapShown() > 0)
+	{
+		UDEBUG("");
+		UTimer time;
+		if(_preferencesDialog->getElevationMapShown() == 1)
+		{
+			float xMin, yMin, cellSize;
+			cv::Mat map = _elevationMap->createHeightMap(xMin, yMin, cellSize);
+			if(!map.empty())
+			{
+				_cloudViewer->addElevationMap(map, cellSize, xMin, yMin, 1);
+			}
+		}
+		else // RGB elevation
+		{
+			pcl::PolygonMesh::Ptr mesh = _elevationMap->createTerrainMesh();
+			if(mesh->cloud.data.size())
+			{
+				_cloudViewer->addCloudMesh("elevation_mesh", mesh);
+			}
+		}
+		UINFO("Show elevation map time = %fs", time.ticks());
+	}
+	UDEBUG("");
+	if(stats)
+	{
+		stats->insert(std::make_pair("GUI/Elevation Rendering/ms", (float)timer.restart()*1000.0f));
+	}
+#endif
+
 	// Add landmarks to 3D Map view
 #if PCL_VERSION_COMPARE(>=, 1, 7, 2)
 	_cloudViewer->removeAllCoordinates("landmark_");
@@ -3384,7 +3463,8 @@ void MainWindow::updateMapCloud(
 		}
 	}
 	cv::Mat map8U;
-	if((_ui->graphicsView_graphView->isVisible() || _preferencesDialog->getGridMapShown()))
+	if((_ui->graphicsView_graphView->isVisible() && _ui->graphicsView_graphView->isGridMapVisible()) ||
+	   (_cloudViewer->isVisible() && _preferencesDialog->getGridMapShown()))
 	{
 		float xMin, yMin;
 		float resolution = _occupancyGrid->getCellSize();
@@ -3393,12 +3473,11 @@ void MainWindow::updateMapCloud(
 		if(_preferencesDialog->isOctomap2dGrid())
 		{
 			map8S = _octomap->createProjectionMap(xMin, yMin, resolution, 0, _preferencesDialog->getOctomapTreeDepth());
-
 		}
 		else
 #endif
 		{
-			if(_occupancyGrid->addedNodes().size() || _occupancyGrid->cacheSize()>0)
+			if(_occupancyGrid->addedNodes().size() || _cachedLocalMaps.size()>0)
 			{
 				_occupancyGrid->update(poses);
 			}
@@ -3413,18 +3492,20 @@ void MainWindow::updateMapCloud(
 			//convert to gray scaled map
 			map8U = util3d::convertMap2Image8U(map8S);
 
-			if(_preferencesDialog->getGridMapShown())
+			if(_cloudViewer->isVisible() && _preferencesDialog->getGridMapShown())
 			{
 				float opacity = _preferencesDialog->getGridMapOpacity();
 				_cloudViewer->addOccupancyGridMap(map8U, resolution, xMin, yMin, opacity);
 			}
-			if(_ui->graphicsView_graphView->isVisible())
+			if(_ui->graphicsView_graphView->isVisible() && _ui->graphicsView_graphView->isGridMapVisible())
 			{
 				_ui->graphicsView_graphView->updateMap(map8U, resolution, xMin, yMin);
 			}
 		}
 	}
 	_ui->graphicsView_graphView->update();
+
+	_cachedLocalMaps.clear(true);
 
 	UDEBUG("");
 	if(stats)
@@ -4851,7 +4932,6 @@ void MainWindow::applyPrefSettings(const rtabmap::ParametersMap & parameters)
 void MainWindow::applyPrefSettings(const rtabmap::ParametersMap & parameters, bool postParamEvent)
 {
 	ULOGGER_DEBUG("");
-	_occupancyGrid->parseParameters(_preferencesDialog->getAllParameters());
 	if(parameters.size())
 	{
 		for(rtabmap::ParametersMap::const_iterator iter = parameters.begin(); iter!=parameters.end(); ++iter)
@@ -5181,10 +5261,9 @@ bool MainWindow::eventFilter(QObject *obj, QEvent *event)
 
 void MainWindow::updateSelectSourceMenu()
 {
-	_ui->actionUsbCamera->setChecked(_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcUsbDevice);
-
 	_ui->actionMore_options->setChecked(
 			_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcDatabase ||
+			_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcUsbDevice ||
 			_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcImages ||
 			_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcVideo ||
 			_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcStereoImages ||
@@ -5219,6 +5298,7 @@ void MainWindow::updateSelectSourceMenu()
 	_ui->actionMYNT_EYE_S_SDK->setChecked(_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcStereoMyntEye);
 	_ui->actionDepthAI_oakd->setChecked(_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcStereoDepthAI);
 	_ui->actionDepthAI_oakdlite->setChecked(_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcStereoDepthAI);
+	_ui->actionDepthAI_oakdpro->setChecked(_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcStereoDepthAI);
 	_ui->actionVelodyne_VLP_16->setChecked(_preferencesDialog->getLidarSourceDriver() == PreferencesDialog::kSrcLidarVLP16);
 }
 
@@ -5949,13 +6029,25 @@ void MainWindow::startDetection()
 				   "progress will not be shown in the GUI."));
 	}
 
-	_occupancyGrid->clear();
-	_occupancyGrid->parseParameters(parameters);
+	// Override map resolution for UI
+	if(_preferencesDialog->getGridUIResolution()>0)
+	{
+		uInsert(parameters, ParametersPair(Parameters::kGridCellSize(), uNumber2Str(_preferencesDialog->getGridUIResolution())));
+	}
+
+	_cachedLocalMaps.clear();
+
+	delete _occupancyGrid;
+	_occupancyGrid = new OccupancyGrid(&_cachedLocalMaps, parameters);
 
 #ifdef RTABMAP_OCTOMAP
-	UASSERT(_octomap != 0);
 	delete _octomap;
-	_octomap = new OctoMap(parameters);
+	_octomap = new OctoMap(&_cachedLocalMaps, parameters);
+#endif
+
+#ifdef RTABMAP_GRIDMAP
+	delete _elevationMap;
+	_elevationMap = new GridMap(&_cachedLocalMaps, parameters);
 #endif
 
 	// clear odometry visual stuff
@@ -6239,8 +6331,8 @@ void MainWindow::exportPoses(int format)
 		std::multimap<int, Link> links;
 		if(localTransforms.empty())
 		{
-			poses = std::map<int, Transform>(_currentPosesMap.lower_bound(1), _currentPosesMap.end());
-			links = std::multimap<int, Link>(_currentLinksMap.lower_bound(1), _currentLinksMap.end());
+			poses = std::map<int, Transform>(_currentPosesMap.begin(), _currentPosesMap.end());
+			links = std::multimap<int, Link>(_currentLinksMap.begin(), _currentLinksMap.end());
 		}
 		else
 		{
@@ -6261,13 +6353,23 @@ void MainWindow::exportPoses(int format)
 			}
 		}
 
-		if(format != 4 && !poses.empty() && poses.begin()->first<0) // not g2o, landmark not supported
+		if(format != 4 && format != 11 && !poses.empty() && poses.begin()->first<0) // not g2o, landmark not supported
 		{
-			UWARN("Only g2o format (4) can export landmarks, they are ignored with format %d", format);
-			std::map<int, Transform>::iterator iter=poses.begin();
-			while(iter!=poses.end() && iter->first < 0)
+			UWARN("Only g2o format (4) and RGBD format with ID format can export landmarks, they are ignored with format %d", format);
+			for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end() && iter->first < 0;)
 			{
 				poses.erase(iter++);
+			}
+			for(std::multimap<int, Link>::iterator iter=links.begin(); iter!=links.end();)
+			{
+				if(iter->second.from() < 0 || iter->second.to() < 0)
+				{
+					links.erase(iter++);
+				}
+				else
+				{
+					++iter;
+				}
 			}
 		}
 
@@ -6276,7 +6378,11 @@ void MainWindow::exportPoses(int format)
 		{
 			for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter)
 			{
-				if(_cachedSignatures.contains(iter->first))
+				if(iter->first < 0 && format == 11) // in case of landmarks
+				{
+					stamps.insert(std::make_pair(iter->first, 0));
+				}
+				else if(_cachedSignatures.contains(iter->first))
 				{
 					stamps.insert(std::make_pair(iter->first, _cachedSignatures.value(iter->first).getStamp()));
 				}
@@ -7015,11 +7121,6 @@ void MainWindow::updateEditMenu()
 	}
 }
 
-void MainWindow::selectStream()
-{
-	_preferencesDialog->selectSourceDriver(PreferencesDialog::kSrcUsbDevice);
-}
-
 void MainWindow::selectOpenni()
 {
 	_preferencesDialog->selectSourceDriver(PreferencesDialog::kSrcOpenNI_PCL);
@@ -7120,6 +7221,11 @@ void MainWindow::selectDepthAIOAKD()
 void MainWindow::selectDepthAIOAKDLite()
 {
 	_preferencesDialog->selectSourceDriver(PreferencesDialog::kSrcStereoDepthAI, 0); // variant 0=no IMU
+}
+
+void MainWindow::selectDepthAIOAKDPro()
+{
+	_preferencesDialog->selectSourceDriver(PreferencesDialog::kSrcStereoDepthAI, 2); // variant 2=IMU+color
 }
 
 void MainWindow::selectVLP16()
@@ -7435,11 +7541,11 @@ void MainWindow::clearTheCache()
 	_ui->imageView_loopClosure->setBackgroundColor(_ui->imageView_loopClosure->getDefaultBackgroundColor());
 	_ui->imageView_odometry->setBackgroundColor(_ui->imageView_odometry->getDefaultBackgroundColor());
 	_multiSessionLocWidget->clear();
+	_cachedLocalMaps.clear();
 #ifdef RTABMAP_OCTOMAP
 	// re-create one if the resolution has changed
-	UASSERT(_octomap != 0);
 	delete _octomap;
-	_octomap = new OctoMap(_preferencesDialog->getAllParameters());
+	_octomap = new OctoMap(&_cachedLocalMaps, _preferencesDialog->getAllParameters());
 #endif
 	_occupancyGrid->clear();
 	_rectCameraModels.clear();
@@ -7471,7 +7577,8 @@ void MainWindow::saveFigures()
 {
 	QList<int> curvesPerFigure;
 	QStringList curveNames;
-	_ui->statsToolBox->getFiguresSetup(curvesPerFigure, curveNames);
+	QStringList curveThresholds;
+	_ui->statsToolBox->getFiguresSetup(curvesPerFigure, curveNames, curveThresholds);
 
 	QStringList curvesPerFigureStr;
 	for(int i=0; i<curvesPerFigure.size(); ++i)
@@ -7484,17 +7591,24 @@ void MainWindow::saveFigures()
 	}
 	_preferencesDialog->saveCustomConfig("Figures", "counts", curvesPerFigureStr.join(" "));
 	_preferencesDialog->saveCustomConfig("Figures", "curves", curveNames.join(" "));
+	_preferencesDialog->saveCustomConfig("Figures", "thresholds", curveThresholds.join(" "));
 }
 
 void MainWindow::loadFigures()
 {
 	QString curvesPerFigure = _preferencesDialog->loadCustomConfig("Figures", "counts");
 	QString curveNames = _preferencesDialog->loadCustomConfig("Figures", "curves");
+	QString curveThresholds = _preferencesDialog->loadCustomConfig("Figures", "thresholds");
 
 	if(!curvesPerFigure.isEmpty())
 	{
 		QStringList curvesPerFigureList = curvesPerFigure.split(" ");
 		QStringList curvesNamesList = curveNames.split(" ");
+		QStringList curveThresholdsList = curveThresholds.split(" ");
+		if(curveThresholdsList[0].isEmpty()) {
+			curveThresholdsList.clear();
+		}
+		UASSERT(curveThresholdsList.isEmpty() || curveThresholdsList.size() == curvesNamesList.size());
 
 		int j=0;
 		for(int i=0; i<curvesPerFigureList.size(); ++i)
@@ -7511,7 +7625,23 @@ void MainWindow::loadFigures()
 				_ui->statsToolBox->addCurve(curvesNamesList[j++].replace('_', ' '));
 				for(int k=1; k<count && j<curveNames.size(); ++k)
 				{
-					_ui->statsToolBox->addCurve(curvesNamesList[j++].replace('_', ' '), false);
+					if(curveThresholdsList.size())
+					{
+						bool ok = false;
+						double thresholdValue = curveThresholdsList[j].toDouble(&ok);
+						if(ok)
+						{
+							_ui->statsToolBox->addThreshold(curvesNamesList[j++].replace('_', ' '), thresholdValue);
+						}
+						else
+						{
+							_ui->statsToolBox->addCurve(curvesNamesList[j++].replace('_', ' '), false);
+						}
+					}
+					else
+					{
+						_ui->statsToolBox->addCurve(curvesNamesList[j++].replace('_', ' '), false);
+					}
 				}
 			}
 		}

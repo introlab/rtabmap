@@ -144,12 +144,71 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_CORE_EXPORT cloudFromStereoImages
 		std::vector<int> * validIndices = 0,
 		const ParametersMap & parameters = ParametersMap());
 
+/**
+ * Create a XYZ cloud from the images contained in SensorData, one for each camera
+ *
+ * @param sensorData, the sensor data.
+ * @param decimation, images are decimated by this factor before projecting points to 3D. The factor
+ * should be a factor of the image width and height.
+ * @param maxDepth, maximum depth of the projected points (farther points are set to null in case of an organized cloud).
+ * @param minDepth, minimum depth of the projected points (closer points are set to null in case of an organized cloud).
+ * @param validIndices, the indices of valid points in the cloud
+ * @param stereoParameters, stereo optional parameters (in case it is stereo data)
+ * @param roiRatios, [left, right, top, bottom] region of interest (in ratios) of the image projected.
+ * @return XYZ cloud(s), one per camera
+ */
+std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> RTABMAP_CORE_EXPORT cloudsFromSensorData(
+		const SensorData & sensorData,
+		int decimation = 1,
+		float maxDepth = 0.0f,
+		float minDepth = 0.0f,
+		std::vector<pcl::IndicesPtr> * validIndices = 0,
+		const ParametersMap & stereoParameters = ParametersMap(),
+		const std::vector<float> & roiRatios = std::vector<float>()); // ignored for stereo
+
+/**
+ * Create a XYZ cloud from the images contained in SensorData. If there is only one camera,
+ * the returned cloud is organized. Otherwise, all NaN
+ * points are removed and the cloud will be dense.
+ *
+ * @param sensorData, the sensor data.
+ * @param decimation, images are decimated by this factor before projecting points to 3D. The factor
+ * should be a factor of the image width and height.
+ * @param maxDepth, maximum depth of the projected points (farther points are set to null in case of an organized cloud).
+ * @param minDepth, minimum depth of the projected points (closer points are set to null in case of an organized cloud).
+ * @param validIndices, the indices of valid points in the cloud
+ * @param stereoParameters, stereo optional parameters (in case it is stereo data)
+ * @param roiRatios, [left, right, top, bottom] region of interest (in ratios) of the image projected.
+ * @return a XYZ cloud.
+ */
 pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_CORE_EXPORT cloudFromSensorData(
 		const SensorData & sensorData,
 		int decimation = 1,
 		float maxDepth = 0.0f,
 		float minDepth = 0.0f,
 		std::vector<int> * validIndices = 0,
+		const ParametersMap & stereoParameters = ParametersMap(),
+		const std::vector<float> & roiRatios = std::vector<float>()); // ignored for stereo
+
+/**
+ * Create an RGB cloud from the images contained in SensorData, one for each camera
+ *
+ * @param sensorData, the sensor data.
+ * @param decimation, images are decimated by this factor before projecting points to 3D. The factor
+ * should be a factor of the image width and height.
+ * @param maxDepth, maximum depth of the projected points (farther points are set to null in case of an organized cloud).
+ * @param minDepth, minimum depth of the projected points (closer points are set to null in case of an organized cloud).
+ * @param validIndices, the indices of valid points in the cloud
+ * @param stereoParameters, stereo optional parameters (in case it is stereo data)
+ * @param roiRatios, [left, right, top, bottom] region of interest (in ratios) of the image projected.
+ * @return RGB cloud(s), one per camera
+ */
+std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> RTABMAP_CORE_EXPORT cloudsRGBFromSensorData(
+		const SensorData & sensorData,
+		int decimation = 1,
+		float maxDepth = 0.0f,
+		float minDepth = 0.0f,
+		std::vector<pcl::IndicesPtr > * validIndices = 0,
 		const ParametersMap & stereoParameters = ParametersMap(),
 		const std::vector<float> & roiRatios = std::vector<float>()); // ignored for stereo
 
@@ -164,6 +223,7 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_CORE_EXPORT cloudFromSensorData(
  * @param maxDepth, maximum depth of the projected points (farther points are set to null in case of an organized cloud).
  * @param minDepth, minimum depth of the projected points (closer points are set to null in case of an organized cloud).
  * @param validIndices, the indices of valid points in the cloud
+ * @param stereoParameters, stereo optional parameters (in case it is stereo data)
  * @param roiRatios, [left, right, top, bottom] region of interest (in ratios) of the image projected.
  * @return a RGB cloud.
  */

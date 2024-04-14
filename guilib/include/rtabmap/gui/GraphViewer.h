@@ -166,12 +166,16 @@ public:
 Q_SIGNALS:
 	void configChanged();
 	void mapShownRequested();
+	void nodeSelected(int);
+	void linkSelected(int, int);
 
 public Q_SLOTS:
 	void restoreDefaults();
 
 protected:
 	virtual void wheelEvent ( QWheelEvent * event );
+	virtual void mouseMoveEvent(QMouseEvent * event);
+	virtual void mouseDoubleClickEvent(QMouseEvent * event);
 	virtual void contextMenuEvent(QContextMenuEvent * event);
 
 private:
@@ -228,6 +232,7 @@ private:
 	float _loopClosureOutlierThr;
 	float _maxLinkLength;
 	bool _orientationENU;
+	bool _mouseTracking;
 	ViewPlane _viewPlane;
 	bool _ensureFrameVisible;
 };

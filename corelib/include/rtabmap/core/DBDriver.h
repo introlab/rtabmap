@@ -96,6 +96,10 @@ public:
 				const cv::Mat & empty,
 				float cellSize,
 				const cv::Point3f & viewpoint);
+	void updateCalibration(
+		int nodeId,
+		const std::vector<CameraModel> & models,
+		const std::vector<StereoCameraModel> & stereoModels);
 	void updateDepthImage(int nodeId, const cv::Mat & image);
 	void updateLaserScan(int nodeId, const LaserScan & scan);
 
@@ -230,6 +234,11 @@ protected:
 			const cv::Mat & empty,
 			float cellSize,
 			const cv::Point3f & viewpoint) const = 0;
+
+	virtual void updateCalibrationQuery(
+			int nodeId,
+			const std::vector<CameraModel> & models,
+			const std::vector<StereoCameraModel> & stereoModels) const = 0;
 
 	virtual void updateDepthImageQuery(
 			int nodeId,

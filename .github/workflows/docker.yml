@@ -10,6 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     
     strategy:
+      fail-fast: false
       matrix:
         docker_tag: [focal-deps, jammy-deps, jammy-iron-deps]
         include:
@@ -19,6 +20,7 @@ jobs:
           docker_platforms: |
             linux/amd64
             linux/arm64
+            linux/arm/v7
           docker_path: 'focal/deps'
         - docker_tag: jammy-deps
           docker_tags: |
@@ -69,6 +71,7 @@ jobs:
     runs-on: ubuntu-latest
     
     strategy:
+      fail-fast: false
       matrix:
         docker_tag: [bionic, focal, jammy, jammy-iron, android23, android24, android26, android30]
         include:
@@ -92,6 +95,7 @@ jobs:
           docker_platforms: |
             linux/amd64
             linux/arm64
+            linux/arm/v7
           docker_path: 'focal'
         - docker_tag: jammy
           docker_tags: |

@@ -55,9 +55,6 @@ int main(int argc, char* argv[])
 	CoInitialize(nullptr);
 #endif
 
-#if VTK_MAJOR_VERSION >= 8 && defined(BUILD_AS_BUNDLE)
-	vtkObject::GlobalWarningDisplayOff();
-#endif
 #if VTK_MAJOR_VERSION > 9 || (VTK_MAJOR_VERSION==9 && VTK_MINOR_VERSION >= 1)
     // needed to ensure appropriate OpenGL context is created for VTK rendering.
     QSurfaceFormat::setDefaultFormat(QVTKRenderWidget::defaultFormat());

@@ -186,6 +186,14 @@ public:
 			float opacity);
 	void removeOccupancyGridMap();
 
+	bool addElevationMap(
+			const cv::Mat & map32FC1,
+			float resolution, // cell size
+			float xMin,
+			float yMin,
+			float opacity);
+	void removeElevationMap();
+
 	void updateCameraTargetPosition(
 		const Transform & pose);
 

@@ -15,24 +15,26 @@ RUN add-apt-repository ppa:borglab/gtsam-release-4.0 -y
 RUN apt-get update && apt install libgtsam-dev libgtsam-unstable-dev -y && \
     apt-get clean && rm -rf /var/lib/apt/lists/
 
-# MRPT
-RUN add-apt-repository ppa:joseluisblancoc/mrpt-stable -y
-RUN apt-get update && apt install libmrpt-poses-dev -y && \
-    apt-get clean && rm -rf /var/lib/apt/lists/
+# MRPT # build failed: https://github.com/introlab/rtabmap/actions/runs/7259315306/job/19776230419
+#RUN add-apt-repository ppa:joseluisblancoc/mrpt-stable -y
+#RUN apt-get update && apt install libmrpt-poses-dev -y && \
+#    apt-get clean && rm -rf /var/lib/apt/lists/
 
 ARG TARGETPLATFORM
 ENV TARGETPLATFORM=${TARGETPLATFORM:-linux/amd64}
 RUN echo "I am building for $TARGETPLATFORM"
 
-# arm64
-RUN if [ "$TARGETPLATFORM" = "linux/arm64" ]; then ln -s /usr/bin/cmake ~/cmake; fi
-
-# cmake >=3.11 required for amd64 dependencies
+# cmake >=3.14 required
+RUN if [ "$TARGETPLATFORM" = "linux/arm64" ]; then apt update && apt install -y wget && apt-get clean && rm -rf /var/lib/apt/lists/ && \
+    wget -nv https://github.com/Kitware/CMake/releases/download/v3.20.0/cmake-3.20.0-linux-aarch64.tar.gz   && \
+    tar -xzf cmake-3.20.0-linux-aarch64.tar.gz  && \
+    rm cmake-3.20.0-linux-aarch64.tar.gz  &&\
+    ln -s ~/cmake-3.20.0-linux-aarch64/bin/cmake ~/cmake; fi
 RUN if [ "$TARGETPLATFORM" = "linux/amd64" ]; then apt update && apt install -y wget && apt-get clean && rm -rf /var/lib/apt/lists/ && \
-    wget -nv https://github.com/Kitware/CMake/releases/download/v3.17.0/cmake-3.17.0-Linux-x86_64.tar.gz && \
-    tar -xzf cmake-3.17.0-Linux-x86_64.tar.gz && \
-    rm cmake-3.17.0-Linux-x86_64.tar.gz &&\
-    ln -s ~/cmake-3.17.0-Linux-x86_64/bin/cmake ~/cmake; fi
+    wget -nv https://github.com/Kitware/CMake/releases/download/v3.20.0/cmake-3.20.0-linux-x86_64.tar.gz  && \
+    tar -xzf cmake-3.20.0-linux-x86_64.tar.gz  && \
+    rm cmake-3.20.0-linux-x86_64.tar.gz  &&\
+    ln -s ~/cmake-3.20.0-linux-x86_64/bin/cmake ~/cmake; fi
     
 #commit Aug 6 2020
 RUN apt-get update && apt install wget && apt-get clean && rm -rf /var/lib/apt/lists/

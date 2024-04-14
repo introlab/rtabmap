@@ -40,9 +40,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QColorDialog>
 #include <QPrinter>
 #include <QGraphicsRectItem>
+#include <QToolTip>
 #include "rtabmap/utilite/ULogger.h"
 #include "rtabmap/gui/KeypointItem.h"
 #include "rtabmap/core/util2d.h"
+#include "rtabmap/core/util3d_transforms.h"
 
 #include <QtGlobal>
 #if QT_VERSION >= 0x050000
@@ -268,8 +270,13 @@ ImageView::ImageView(QWidget * parent) :
 	group->addAction(_colorMapRedToBlue);
 	group->addAction(_colorMapBlueToRed);
 	group->addAction(_colorMapMaxRange);
+	_mouseTracking = _menu->addAction(tr("Show pixel depth"));
+	_mouseTracking->setCheckable(true);
+	_mouseTracking->setChecked(false);
 	_saveImage = _menu->addAction(tr("Save picture..."));
 	_saveImage->setEnabled(false);
+
+	setMouseTracking(true);
 
 	connect(_graphicsView->scene(), SIGNAL(sceneRectChanged(const QRectF &)), this, SLOT(sceneRectChanged(const QRectF &)));
 }
@@ -1047,6 +1054,65 @@ void ImageView::contextMenuEvent(QContextMenuEvent * e)
 	}
 }
 
+void ImageView::mouseMoveEvent(QMouseEvent * event)
+{
+	if(_mouseTracking->isChecked() &&
+		!_graphicsView->scene()->sceneRect().isNull() &&
+		!_image.isNull() &&
+		!_imageDepthCv.empty() &&
+		(_imageDepthCv.type() == CV_16UC1 || _imageDepthCv.type() == CV_32FC1))
+	{
+		float scale, offsetX, offsetY;
+		computeScaleOffsets(this->rect(), scale, offsetX, offsetY);
+		float u = (event->pos().x() - offsetX) / scale;
+		float v = (event->pos().y() - offsetY) / scale;
+		float depthScale = 1;
+		if(_image.width() > _imageDepth.width())
+		{
+			depthScale = _imageDepth.width() / _image.width();
+		}
+		int ud = int(u*depthScale);
+		int vd = int(v*depthScale);
+		if( ud>=0 && vd>=0 &&
+			ud < _imageDepthCv.cols &&
+			vd < _imageDepthCv.rows)
+		{
+			float depth = 0;
+			if(_imageDepthCv.type() == CV_32FC1)
+			{
+				depth = _imageDepthCv.at<float>(vd, ud);
+			}
+			else
+			{
+				depth = float(_imageDepthCv.at<unsigned short>(vd, ud)) / 1000.0f;
+			}
+
+			cv::Point3f pt(0,0,0);
+			if(depth>0 && !_models.empty() && !_pose.isNull())
+			{
+				int subImageWidth = _imageDepthCv.cols / _models.size();
+				int subImageIndex = ud / subImageWidth;
+				UASSERT(subImageIndex < (int)_models.size());
+				float x,y,z;
+				_models[subImageIndex].project(u, v, depth, x, y, z);
+				pt = cv::Point3f(x,y,z);
+				pt = util3d::transformPoint(pt, _pose*_models[subImageIndex].localTransform());
+			}
+
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+			QToolTip::showText(event->globalPosition().toPoint(), pt.x!=0?tr("Depth=%1m Map=(%2,%3,%4)").arg(depth).arg(pt.x).arg(pt.y).arg(pt.z):depth > 0?tr("Depth=%1m").arg(depth):tr("Depth=NA"));
+#else
+			QToolTip::showText(event->globalPos(), pt.x!=0?tr("Depth=%1m Map=(%2,%3,%4)").arg(depth).arg(pt.x).arg(pt.y).arg(pt.z):depth > 0?tr("Depth=%1m").arg(depth):tr("Depth=NA"));
+#endif
+		}
+		else
+		{
+			QToolTip::hideText();
+		}
+	}
+	QWidget::mouseMoveEvent(event);
+}
+
 void ImageView::updateOpacity()
 {
 	if(_imageItem && _imageDepthItem)
@@ -1166,9 +1232,11 @@ void ImageView::addLine(float x1, float y1, float x2, float y2, QColor color, co
 	}
 }
 
-void ImageView::setImage(const QImage & image)
+void ImageView::setImage(const QImage & image, const std::vector<CameraModel> & models, const Transform & pose)
 {
 	_image = QPixmap::fromImage(image);
+	_models = models;
+	_pose = pose;
 	if(_graphicsView->isVisible())
 	{
 		if(_imageItem)
@@ -1394,6 +1462,8 @@ void ImageView::clear()
 		_imageItem = 0;
 	}
 	_image = QPixmap();
+	_models.clear();
+	_pose.setNull();
 
 	if(_imageDepthItem)
 	{

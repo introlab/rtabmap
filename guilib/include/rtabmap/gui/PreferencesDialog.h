@@ -231,7 +231,9 @@ public:
 	double getSubtractFilteringRadius() const;
 	double getSubtractFilteringAngle() const;
 
+	double getGridUIResolution() const;
 	bool getGridMapShown() const;
+	int getElevationMapShown() const;
 	int getGridMapSensor() const;
 	bool projMapFrame() const;
 	double projMaxGroundAngle() const;
@@ -353,6 +355,7 @@ private Q_SLOTS:
 	void updateKpROI();
 	void updateStereoDisparityVisibility();
 	void updateFeatureMatchingVisibility();
+	void updateGlobalDescriptorVisibility();
 	void updateOdometryStackedIndex(int index);
 	void useOdomFeatures();
 	void changeWorkingDirectory();
@@ -366,6 +369,7 @@ private Q_SLOTS:
 	void changeSuperPointModelPath();
 	void changePyMatcherPath();
 	void changePyMatcherModel();
+	void changePyDescriptorPath();
 	void changePyDetectorPath();
 	void readSettingsEnd();
 	void setupTreeView();

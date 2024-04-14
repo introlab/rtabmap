@@ -40,6 +40,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/EpipolarGeometry.h>
 #include "rtabmap/core/VisualWord.h"
 #include "rtabmap/core/Features2d.h"
+#include "rtabmap/core/GlobalDescriptorExtractor.h"
 #include "rtabmap/core/RegistrationIcp.h"
 #include "rtabmap/core/Registration.h"
 #include "rtabmap/core/RegistrationVis.h"
@@ -60,9 +61,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/optimizer/OptimizerG2O.h"
 #include <pcl/io/pcd_io.h>
 #include <pcl/common/common.h>
-#include <rtabmap/core/OccupancyGrid.h>
 #include <rtabmap/core/MarkerDetector.h>
 #include <opencv2/imgproc/types_c.h>
+#include <rtabmap/core/LocalGridMaker.h>
 
 namespace rtabmap {
 
@@ -107,6 +108,7 @@ Memory::Memory(const ParametersMap & parameters) :
 	_rehearsalWeightIgnoredWhileMoving(Parameters::defaultMemRehearsalWeightIgnoredWhileMoving()),
 	_useOdometryFeatures(Parameters::defaultMemUseOdomFeatures()),
 	_useOdometryGravity(Parameters::defaultMemUseOdomGravity()),
+	_rotateImagesUpsideUp(Parameters::defaultMemRotateImagesUpsideUp()),
 	_createOccupancyGrid(Parameters::defaultRGBDCreateOccupancyGrid()),
 	_visMaxFeatures(Parameters::defaultVisMaxFeatures()),
 	_imagesAlreadyRectified(Parameters::defaultRtabmapImagesAlreadyRectified()),
@@ -131,6 +133,7 @@ Memory::Memory(const ParametersMap & parameters) :
 	_feature2D = Feature2D::create(parameters);
 	_vwd = new VWDictionary(parameters);
 	_registrationPipeline = Registration::create(parameters);
+	_globalDescriptorExtractor = GlobalDescriptorExtractor::create(parameters);
 	if(!_registrationPipeline->isImageRequired())
 	{
 		// make sure feature matching is used instead of optical flow to compute the guess
@@ -153,7 +156,7 @@ Memory::Memory(const ParametersMap & parameters) :
 	}
 	_registrationIcpMulti = new RegistrationIcp(paramsMulti);
 
-	_occupancy = new OccupancyGrid(parameters);
+	_localMapMaker = new LocalGridMaker(parameters);
 	_markerDetector = new MarkerDetector(parameters);
 	this->parseParameters(parameters);
 }
@@ -545,7 +548,7 @@ Memory::~Memory()
 	delete _registrationPipeline;
 	delete _registrationIcpMulti;
 	delete _registrationVis;
-	delete _occupancy;
+	delete _localMapMaker;
 }
 
 void Memory::parseParameters(const ParametersMap & parameters)
@@ -597,6 +600,7 @@ void Memory::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(params, Parameters::kMemRehearsalWeightIgnoredWhileMoving(), _rehearsalWeightIgnoredWhileMoving);
 	Parameters::parse(params, Parameters::kMemUseOdomFeatures(), _useOdometryFeatures);
 	Parameters::parse(params, Parameters::kMemUseOdomGravity(), _useOdometryGravity);
+	Parameters::parse(params, Parameters::kMemRotateImagesUpsideUp(), _rotateImagesUpsideUp);
 	Parameters::parse(params, Parameters::kRGBDCreateOccupancyGrid(), _createOccupancyGrid);
 	Parameters::parse(params, Parameters::kVisMaxFeatures(), _visMaxFeatures);
 	Parameters::parse(params, Parameters::kRtabmapImagesAlreadyRectified(), _imagesAlreadyRectified);
@@ -749,14 +753,30 @@ void Memory::parseParameters(const ParametersMap & parameters)
 		}
 	}
 
-	if(_occupancy)
+	if(_localMapMaker)
 	{
-		_occupancy->parseParameters(params);
+		_localMapMaker->parseParameters(params);
 	}
 
 	if(_markerDetector)
 	{
 		_markerDetector->parseParameters(params);
+	}
+
+	int globalDescriptorStrategy = -1;
+	Parameters::parse(params, Parameters::kMemGlobalDescriptorStrategy(), globalDescriptorStrategy);
+	if(globalDescriptorStrategy != -1 &&
+			(_globalDescriptorExtractor==0 || (int)_globalDescriptorExtractor->getType() != globalDescriptorStrategy))
+	{
+		if(_globalDescriptorExtractor)
+		{
+			delete _globalDescriptorExtractor;
+		}
+		_globalDescriptorExtractor = GlobalDescriptorExtractor::create(parameters_);
+	}
+	else if(_globalDescriptorExtractor)
+	{
+		_globalDescriptorExtractor->parseParameters(params);
 	}
 
 	// do this after all params are parsed
@@ -2768,6 +2788,19 @@ void Memory::removeLink(int oldId, int newId)
 			UERROR("Signatures %d and %d don't have bidirectional link!", oldS->id(), newS->id());
 		}
 	}
+	else if(this->_getSignature(newId<0?oldId:newId))
+	{
+		int landmarkId = newId<0?newId:oldId;
+		Signature * s = this->_getSignature(newId<0?oldId:newId);
+		s->removeLandmark(newId<0?newId:oldId);
+		_linksChanged = true;
+		// Update landmark index
+		std::map<int, std::set<int> >::iterator nter = _landmarksIndex.find(landmarkId);
+		if(nter!=_landmarksIndex.end())
+		{
+			nter->second.erase(s->id());
+		}
+	}
 	else
 	{
 		if(!newS)
@@ -3370,7 +3403,7 @@ bool Memory::addLink(const Link & link, bool addInDatabase)
 {
 	UASSERT(link.type() > Link::kNeighbor && link.type() != Link::kUndef);
 
-	ULOGGER_INFO("to=%d, from=%d transform: %s var=%f", link.to(), link.from(), link.transform().prettyPrint().c_str(), link.transVariance());
+	ULOGGER_INFO("to=%d, from=%d transform: %s var=%f", link.to(), link.from(), link.transform().prettyPrint().c_str(), link.transVariance(false));
 	Signature * toS = _getSignature(link.to());
 	Signature * fromS = _getSignature(link.from());
 	if(toS && fromS)
@@ -3706,7 +3739,7 @@ unsigned long Memory::getMemoryUsed() const
 	memoryUsage += sizeof(Feature2D) + _feature2D->getParameters().size()*(sizeof(std::string)*2+sizeof(ParametersMap::iterator)) + sizeof(ParametersMap);
 	memoryUsage += sizeof(Registration);
 	memoryUsage += sizeof(RegistrationIcp);
-	memoryUsage += _occupancy->getMemoryUsed();
+	memoryUsage += sizeof(LocalGridMaker);
 	memoryUsage += sizeof(MarkerDetector);
 	memoryUsage += sizeof(DBDriver);
 
@@ -4667,6 +4700,96 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 		preUpdateThread.start();
 	}
 
+	if(_rotateImagesUpsideUp && !data.imageRaw().empty() && !data.cameraModels().empty())
+	{
+		// Currently stereo is not supported
+		UASSERT(int((data.imageRaw().cols/data.cameraModels().size())*data.cameraModels().size()) == data.imageRaw().cols);
+		int subInputImageWidth = data.imageRaw().cols/data.cameraModels().size();
+		int subInputDepthWidth = data.depthRaw().cols/data.cameraModels().size();
+		int subOutputImageWidth = 0;
+		int subOutputDepthWidth = 0;
+		cv::Mat rotatedColorImages;
+		cv::Mat rotatedDepthImages;
+		std::vector<CameraModel> rotatedCameraModels;
+		bool allOutputSizesAreOkay = true;
+		for(size_t i=0; i<data.cameraModels().size(); ++i)
+		{
+			UDEBUG("Rotating camera %ld", i);
+			cv::Mat rgb = cv::Mat(data.imageRaw(), cv::Rect(subInputImageWidth*i, 0, subInputImageWidth, data.imageRaw().rows));
+			cv::Mat depth = !data.depthRaw().empty()?cv::Mat(data.depthRaw(), cv::Rect(subInputDepthWidth*i, 0, subInputDepthWidth, data.depthRaw().rows)):cv::Mat();
+			CameraModel model = data.cameraModels()[i];
+			util2d::rotateImagesUpsideUpIfNecessary(model, rgb, depth);
+			if(rotatedColorImages.empty())
+			{
+				rotatedColorImages = cv::Mat(cv::Size(rgb.cols * data.cameraModels().size(), rgb.rows), rgb.type());
+				subOutputImageWidth = rgb.cols;;
+				if(!depth.empty())
+				{
+					rotatedDepthImages = cv::Mat(cv::Size(depth.cols * data.cameraModels().size(), depth.rows), depth.type());
+					subOutputDepthWidth = depth.cols;
+				}
+			}
+			else if(rgb.cols != subOutputImageWidth || depth.cols != subOutputDepthWidth ||
+					rgb.rows != rotatedColorImages.rows || depth.rows != rotatedDepthImages.rows)
+			{
+				UWARN("Rotated image for camera index %d (rgb=%dx%d depth=%dx%d) doesn't tally "
+				      "with the first camera (rgb=%dx%d, depth=%dx%d). Aborting upside up rotation, "
+					  "will use original image orientation. Set parameter %s to false to avoid "
+					  "this warning.",
+						i,
+						rgb.cols, rgb.rows,
+						depth.cols, depth.rows,
+						subOutputImageWidth, rotatedColorImages.rows,
+						subOutputDepthWidth, rotatedDepthImages.rows,
+						Parameters::kMemRotateImagesUpsideUp().c_str());
+				allOutputSizesAreOkay = false;
+				break;
+			}
+			rgb.copyTo(cv::Mat(rotatedColorImages, cv::Rect(subOutputImageWidth*i, 0, subOutputImageWidth, rgb.rows)));
+			if(!depth.empty())
+			{
+				depth.copyTo(cv::Mat(rotatedDepthImages, cv::Rect(subOutputDepthWidth*i, 0, subOutputDepthWidth, depth.rows)));
+			}
+			rotatedCameraModels.push_back(model);
+		}
+		if(allOutputSizesAreOkay)
+		{
+			data.setRGBDImage(rotatedColorImages, rotatedDepthImages, rotatedCameraModels);
+
+			// Clear any features to avoid confusion with the rotated cameras.
+			if(!data.keypoints().empty() || !data.keypoints3D().empty() || !data.descriptors().empty())
+			{
+				if(_useOdometryFeatures)
+				{
+					static bool warned = false;
+					if(!warned)
+					{
+						UWARN("Because parameter %s is enabled, parameter %s is inhibited as "
+							"features have to be regenerated. To avoid this warning, set "
+							"explicitly %s to false. This message is only "
+							"printed once.",
+							Parameters::kMemRotateImagesUpsideUp().c_str(),
+							Parameters::kMemUseOdomFeatures().c_str(),
+							Parameters::kMemUseOdomFeatures().c_str());
+						warned = true;
+					}
+				}
+				data.setFeatures(std::vector<cv::KeyPoint>(), std::vector<cv::Point3f>(), cv::Mat());
+			}
+		}
+	}
+	else if(_rotateImagesUpsideUp)
+	{
+		static bool warned = false;
+		if(!warned)
+		{
+			UWARN("Parameter %s can only be used with RGB-only or RGB-D cameras. "
+			      "Ignoring upside up rotation. This message is only printed once.",
+				  Parameters::kMemRotateImagesUpsideUp().c_str());
+			warned = true;
+		}
+	}
+
 	unsigned int preDecimation = 1;
 	std::vector<cv::Point3f> keypoints3D;
 	SensorData decimatedData;
@@ -5221,9 +5344,17 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 		{
 			UASSERT((int)keypoints.size() == descriptors.rows);
 			int inliersCount = 0;
-			if(_feature2D->getGridRows() > 1 || _feature2D->getGridCols() > 1)
+			if((_feature2D->getGridRows() > 1 || _feature2D->getGridCols() > 1) &&
+				(decimatedData.cameraModels().size()==1 || decimatedData.stereoCameraModels().size()==1 ||
+				 data.cameraModels().size()==1 || data.stereoCameraModels().size()==1))
 			{
-				Feature2D::limitKeypoints(keypoints, inliers, _feature2D->getMaxFeatures(), decimatedData.imageRaw().size(), _feature2D->getGridRows(), _feature2D->getGridCols());
+				Feature2D::limitKeypoints(keypoints,
+						inliers,
+						_feature2D->getMaxFeatures(),
+						decimatedData.cameraModels().size()?decimatedData.cameraModels()[0].imageSize():
+						decimatedData.stereoCameraModels().size()?decimatedData.stereoCameraModels()[0].left().imageSize():
+						data.cameraModels().size()?data.cameraModels()[0].imageSize():data.stereoCameraModels()[0].left().imageSize(),
+						_feature2D->getGridRows(), _feature2D->getGridCols());
 				for(size_t i=0; i<inliers.size(); ++i)
 				{
 					if(inliers[i])
@@ -5234,6 +5365,11 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 			}
 			else
 			{
+				if(_feature2D->getGridRows() > 1 || _feature2D->getGridCols() > 1)
+				{
+					UWARN("Ignored %s and %s parameters as they cannot be used for multi-cameras setup or uncalibrated camera.",
+							Parameters::kKpGridCols().c_str(), Parameters::kKpGridRows().c_str());
+				}
 				Feature2D::limitKeypoints(keypoints, inliers, _feature2D->getMaxFeatures());
 				inliersCount = _feature2D->getMaxFeatures();
 			}
@@ -5829,7 +5965,17 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 	s->sensorData().setGroundTruth(data.groundTruth());
 	s->sensorData().setGPS(data.gps());
 	s->sensorData().setEnvSensors(data.envSensors());
-	s->sensorData().setGlobalDescriptors(data.globalDescriptors());
+
+	std::vector<GlobalDescriptor> globalDescriptors = data.globalDescriptors();
+	if(_globalDescriptorExtractor)
+	{
+		GlobalDescriptor gdescriptor = _globalDescriptorExtractor->extract(inputData);
+		if(!gdescriptor.data().empty())
+		{
+			globalDescriptors.push_back(gdescriptor);
+		}
+	}
+	s->sensorData().setGlobalDescriptors(globalDescriptors);
 
 	t = timer.ticks();
 	if(stats) stats->addStatistic(Statistics::kTimingMemCompressing_data(), t*1000.0f);
@@ -5842,14 +5988,14 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 	// Occupancy grid map stuff
 	if(_createOccupancyGrid && !isIntermediateNode)
 	{
-		if( (_occupancy->isGridFromDepth() && !data.depthOrRightRaw().empty()) ||
-			(!_occupancy->isGridFromDepth() && !data.laserScanRaw().empty()))
+		if( (_localMapMaker->isGridFromDepth() && !data.depthOrRightRaw().empty()) ||
+			(!_localMapMaker->isGridFromDepth() && !data.laserScanRaw().empty()))
 		{
 			cv::Mat ground, obstacles, empty;
 			float cellSize = 0.0f;
 			cv::Point3f viewPoint(0,0,0);
-			_occupancy->createLocalMap(*s, ground, obstacles, empty, viewPoint);
-			cellSize = _occupancy->getCellSize();
+			_localMapMaker->createLocalMap(*s, ground, obstacles, empty, viewPoint);
+			cellSize = _localMapMaker->getCellSize();
 			s->sensorData().setOccupancyGrid(ground, obstacles, empty, cellSize, viewPoint);
 
 			t = timer.ticks();

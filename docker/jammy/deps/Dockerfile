@@ -2,6 +2,10 @@
 
 FROM ubuntu:22.04
 
+ARG TARGETPLATFORM
+ENV TARGETPLATFORM=${TARGETPLATFORM:-linux/amd64}
+RUN echo "I am building for $TARGETPLATFORM"
+
 # Install ROS2
 RUN apt update && \
     apt install software-properties-common -y && \
@@ -17,9 +21,21 @@ ENV DEBIAN_FRONTEND=noninteractive
 # Install build dependencies
 RUN apt-get update && \
     apt upgrade -y && \
-    apt-get install -y git ros-humble-ros-base ros-dev-tools ros-humble-rtabmap-ros && \
-    apt-get remove -y ros-humble-rtabmap* && \
+    apt-get install -y git ros-humble-ros-base ros-dev-tools && \
     apt-get clean && rm -rf /var/lib/apt/lists/
+
+RUN if [ "$TARGETPLATFORM" = "linux/amd64" ]; then apt-get update && \
+    apt upgrade -y && \
+    apt-get install -y ros-humble-rtabmap-ros && \
+    apt-get remove -y ros-humble-rtabmap* && \
+    apt-get clean && rm -rf /var/lib/apt/lists/; fi
+
+# current issue that ros-humble-rtabmap-ros is not available on arm64
+RUN if [ "$TARGETPLATFORM" = "linux/arm64" ]; then apt-get update && \
+    apt upgrade -y && \
+    apt-get install -y ros-humble-rtabmap-launch && \
+    apt-get remove -y ros-humble-rtabmap* && \
+    apt-get clean && rm -rf /var/lib/apt/lists/; fi
 
 WORKDIR /root/
 
@@ -30,10 +46,6 @@ RUN apt-get update && apt-get install -y libpdal-dev && \
 # RealSense2
 RUN apt-get update && apt-get install -y ros-humble-librealsense2 && \
     apt-get clean && rm -rf /var/lib/apt/lists/
-
-ARG TARGETPLATFORM
-ENV TARGETPLATFORM=${TARGETPLATFORM:-linux/amd64}
-RUN echo "I am building for $TARGETPLATFORM"
 
 # libfreenect2 
 RUN if [ "$TARGETPLATFORM" = "linux/amd64" ]; then echo "Installing libfreenect2..." && \

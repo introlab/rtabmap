@@ -72,6 +72,7 @@ RegistrationVis::RegistrationVis(const ParametersMap & parameters, Registration 
 		_PnPRefineIterations(Parameters::defaultVisPnPRefineIterations()),
 		_PnPVarMedianRatio(Parameters::defaultVisPnPVarianceMedianRatio()),
 		_PnPMaxVar(Parameters::defaultVisPnPMaxVariance()),
+		_PnPSplitLinearCovarianceComponents(Parameters::defaultVisPnPSplitLinearCovComponents()),
 		_multiSamplingPolicy(Parameters::defaultVisPnPSamplingPolicy()),
 		_correspondencesApproach(Parameters::defaultVisCorType()),
 		_flowWinSize(Parameters::defaultVisCorFlowWinSize()),
@@ -130,6 +131,7 @@ void RegistrationVis::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kVisPnPRefineIterations(), _PnPRefineIterations);
 	Parameters::parse(parameters, Parameters::kVisPnPVarianceMedianRatio(), _PnPVarMedianRatio);
 	Parameters::parse(parameters, Parameters::kVisPnPMaxVariance(), _PnPMaxVar);
+	Parameters::parse(parameters, Parameters::kVisPnPSplitLinearCovComponents(), _PnPSplitLinearCovarianceComponents);
 	Parameters::parse(parameters, Parameters::kVisPnPSamplingPolicy(), _multiSamplingPolicy);
 	Parameters::parse(parameters, Parameters::kVisCorType(), _correspondencesApproach);
 	Parameters::parse(parameters, Parameters::kVisCorFlowWinSize(), _flowWinSize);
@@ -295,6 +297,7 @@ Transform RegistrationVis::computeTransformationImpl(
 	UDEBUG("%s=%f", Parameters::kVisPnPReprojError().c_str(), _PnPReprojError);
 	UDEBUG("%s=%d", Parameters::kVisPnPFlags().c_str(), _PnPFlags);
 	UDEBUG("%s=%f", Parameters::kVisPnPMaxVariance().c_str(), _PnPMaxVar);
+	UDEBUG("%s=%f", Parameters::kVisPnPSplitLinearCovComponents().c_str(), _PnPSplitLinearCovarianceComponents);
 	UDEBUG("%s=%d", Parameters::kVisCorType().c_str(), _correspondencesApproach);
 	UDEBUG("%s=%d", Parameters::kVisCorFlowWinSize().c_str(), _flowWinSize);
 	UDEBUG("%s=%d", Parameters::kVisCorFlowIterations().c_str(), _flowIterations);
@@ -1637,7 +1640,8 @@ Transform RegistrationVis::computeTransformationImpl(
 									words3B,
 									&covariances[dir],
 									&matchesV,
-									&inliersV);
+									&inliersV,
+									_PnPSplitLinearCovarianceComponents);
 							inliers[dir] = inliersV;
 							matches[dir] = matchesV;
 						}
@@ -1660,7 +1664,8 @@ Transform RegistrationVis::computeTransformationImpl(
 									words3B,
 									&covariances[dir],
 									&matchesV,
-									&inliersV);
+									&inliersV,
+									_PnPSplitLinearCovarianceComponents);
 							inliers[dir] = inliersV;
 							matches[dir] = matchesV;
 						}

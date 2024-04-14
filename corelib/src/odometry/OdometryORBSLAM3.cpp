@@ -103,7 +103,7 @@ bool OdometryORBSLAM3::canProcessAsyncIMU() const
 #endif
 }
 
-bool OdometryORBSLAM3::init(const rtabmap::CameraModel & model, double stamp,  bool stereo, double baseline)
+bool OdometryORBSLAM3::init(const rtabmap::CameraModel & model1, const rtabmap::CameraModel & model2, double stamp,  bool stereo, double baseline)
 {
 #if defined(RTABMAP_ORB_SLAM) and RTABMAP_ORB_SLAM == 3
 	std::string vocabularyPath;
@@ -138,40 +138,45 @@ bool OdometryORBSLAM3::init(const rtabmap::CameraModel & model, double stamp,  b
 
 	ofs << fixed << setprecision(13);
 
-	//# Camera calibration and distortion parameters (OpenCV)
-	ofs << "Camera1.fx: " << model.fx() << std::endl;
-	ofs << "Camera1.fy: " << model.fy() << std::endl;
-	ofs << "Camera1.cx: " << model.cx() << std::endl;
-	ofs << "Camera1.cy: " << model.cy() << std::endl;
-	ofs << std::endl;
+	for(int i=1; i<(stereo?3:2); ++i)
+	{
+		const CameraModel & model = i==1?model1:model2;
 
-	if(model.D().cols < 4)
-	{
-		ofs << "Camera1.k1: " << 0.0 << std::endl;
-		ofs << "Camera1.k2: " << 0.0 << std::endl;
-		ofs << "Camera1.p1: " << 0.0 << std::endl;
-		ofs << "Camera1.p2: " << 0.0 << std::endl;
-		if(!stereo)
+		//# Camera calibration and distortion parameters (OpenCV)
+		ofs << "Camera" << i << ".fx: " << model.fx() << std::endl;
+		ofs << "Camera" << i << ".fy: " << model.fy() << std::endl;
+		ofs << "Camera" << i << ".cx: " << model.cx() << std::endl;
+		ofs << "Camera" << i << ".cy: " << model.cy() << std::endl;
+		ofs << std::endl;
+
+		if(model.D().cols < 4)
 		{
-			ofs << "Camera1.k3: " << 0.0 << std::endl;
+			ofs << "Camera" << i << ".k1: " << 0.0 << std::endl;
+			ofs << "Camera" << i << ".k2: " << 0.0 << std::endl;
+			ofs << "Camera" << i << ".p1: " << 0.0 << std::endl;
+			ofs << "Camera" << i << ".p2: " << 0.0 << std::endl;
+			if(!stereo)
+			{
+				ofs << "Camera" << i << ".k3: " << 0.0 << std::endl;
+			}
 		}
+		if(model.D().cols >= 4)
+		{
+			ofs << "Camera" << i << ".k1: " << model.D().at<double>(0,0) << std::endl;
+			ofs << "Camera" << i << ".k2: " << model.D().at<double>(0,1) << std::endl;
+			ofs << "Camera" << i << ".p1: " << model.D().at<double>(0,2) << std::endl;
+			ofs << "Camera" << i << ".p2: " << model.D().at<double>(0,3) << std::endl;
+		}
+		if(model.D().cols >= 5)
+		{
+			ofs << "Camera" << i << ".k3: " << model.D().at<double>(0,4) << std::endl;
+		}
+		if(model.D().cols > 5)
+		{
+			UWARN("Unhandled camera distortion size %d, only 5 first coefficients used", model.D().cols);
+		}
+		ofs << std::endl;
 	}
-	if(model.D().cols >= 4)
-	{
-		ofs << "Camera1.k1: " << model.D().at<double>(0,0) << std::endl;
-		ofs << "Camera1.k2: " << model.D().at<double>(0,1) << std::endl;
-		ofs << "Camera1.p1: " << model.D().at<double>(0,2) << std::endl;
-		ofs << "Camera1.p2: " << model.D().at<double>(0,3) << std::endl;
-	}
-	if(model.D().cols >= 5)
-	{
-		ofs << "Camera1.k3: " << model.D().at<double>(0,4) << std::endl;
-	}
-	if(model.D().cols > 5)
-	{
-		UWARN("Unhandled camera distortion size %d, only 5 first coefficients used", model.D().cols);
-	}
-	ofs << std::endl;
 
 	//# IR projector baseline times fx (aprox.)
 	if(baseline <= 0.0)
@@ -179,15 +184,28 @@ bool OdometryORBSLAM3::init(const rtabmap::CameraModel & model, double stamp,  b
 		baseline = rtabmap::Parameters::defaultOdomORBSLAMBf();
 		rtabmap::Parameters::parse(parameters_, rtabmap::Parameters::kOdomORBSLAMBf(), baseline);
 	}
-	ofs << "Camera.bf: " << model.fx()*baseline << std::endl;
+	else
+	{
+		// # Transformation matrix from right camera to left camera
+		ofs << "Stereo.T_c1_c2: !!opencv-matrix" << std::endl;
+		ofs << "   rows: 4" << std::endl;
+		ofs << "   cols: 4" << std::endl;
+		ofs << "   dt: f" << std::endl;
+		ofs << "   data: [" << 1 << ", " << 0 << ", " << 0  << ", " << baseline  << ", " << std::endl;
+		ofs << "         "  << 0 << ", " << 1 << ", " << 0  << ", " << 0  << ", " << std::endl;
+		ofs << "         "  << 0 << ", " << 0 << ", " << 1 << ", " << 0 << ", " << std::endl;
+		ofs << "         0.0, 0.0, 0.0, 1.0]" << std::endl;
+		ofs << std::endl;
+	}
+	ofs << "Camera.bf: " << model1.fx()*baseline << std::endl;
 
-	ofs << "Camera.width: " << model.imageWidth() << std::endl;
-	ofs << "Camera.height: " << model.imageHeight() << std::endl;
+	ofs << "Camera.width: " << model1.imageWidth() << std::endl;
+	ofs << "Camera.height: " << model1.imageHeight() << std::endl;
 	ofs << std::endl;
 
 	//# Color order of the images (0: BGR, 1: RGB. It is ignored if images are grayscale)
 	//Camera.RGB: 1
-	ofs << "Camera.RGB: 1" << std::endl;
+	ofs << "Camera.RGB: 0" << std::endl;
 	ofs << std::endl;
 
 	float fps = rtabmap::Parameters::defaultOdomORBSLAMFps();
@@ -222,7 +240,7 @@ bool OdometryORBSLAM3::init(const rtabmap::CameraModel & model, double stamp,  b
 		//# IMU Parameters TODO: hard-coded, not used
 		//#--------------------------------------------------------------------------------------------
 		//  Transformation from camera 0 to body-frame (imu)
-		rtabmap::Transform camImuT = model.localTransform()*imuLocalTransform_;
+		rtabmap::Transform camImuT = model1.localTransform()*imuLocalTransform_;
 		ofs << "IMU.T_b_c1: !!opencv-matrix" << std::endl;
 		ofs << "   rows: 4" << std::endl;
 		ofs << "   cols: 4" << std::endl;
@@ -418,7 +436,7 @@ Transform OdometryORBSLAM3::computeTransform(
 		}
 
 		CameraModel model = data.cameraModels().size()==1?data.cameraModels()[0]:data.stereoCameraModels()[0].left();
-		if(!init(model, data.stamp(), stereo, data.cameraModels().size()==1?0.0:data.stereoCameraModels()[0].baseline()))
+		if(!init(model, !stereo?model:data.stereoCameraModels()[0].right(), data.stamp(), stereo, data.cameraModels().size()==1?0.0:data.stereoCameraModels()[0].baseline()))
 		{
 			return t;
 		}
