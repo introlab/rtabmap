@@ -162,7 +162,7 @@ std::string CameraVideo::getSerial() const
 	return _guid;
 }
 
-SensorData CameraVideo::captureImage(CameraInfo * info)
+SensorData CameraVideo::captureImage(SensorCaptureInfo * info)
 {
 	cv::Mat img;
 	if(_capture.isOpened())

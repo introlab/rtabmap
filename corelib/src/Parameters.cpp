@@ -1172,11 +1172,8 @@ ParametersMap Parameters::parseArguments(int argc, char * argv[], bool onlyParam
 	return out;
 }
 
-
-void Parameters::readINI(const std::string & configFile, ParametersMap & parameters, bool modifiedOnly)
+void readINIImpl(const CSimpleIniA & ini, const std::string & configFilePath, ParametersMap & parameters, bool modifiedOnly)
 {
-	CSimpleIniA ini;
-	ini.LoadFile(configFile.c_str());
 	const CSimpleIniA::TKeyVal * keyValMap = ini.GetSection("Core");
 	if(keyValMap)
 	{
@@ -1191,12 +1188,12 @@ void Parameters::readINI(const std::string & configFile, ParametersMap & paramet
 				{
 					if(!RTABMAP_VERSION_COMPARE(std::atoi(version[0].c_str()), std::atoi(version[1].c_str()), std::atoi(version[2].c_str())))
 					{
-						if(configFile.find(".rtabmap") != std::string::npos)
+						if(configFilePath.find(".rtabmap") != std::string::npos)
 						{
 							UWARN("Version in the config file \"%s\" is more recent (\"%s\") than "
 								   "current RTAB-Map version used (\"%s\"). The config file will be upgraded "
 								   "to new version.",
-								   configFile.c_str(),
+								   configFilePath.c_str(),
 								   (*iter).second,
 								   RTABMAP_VERSION);
 						}
@@ -1205,7 +1202,7 @@ void Parameters::readINI(const std::string & configFile, ParametersMap & paramet
 							UERROR("Version in the config file \"%s\" is more recent (\"%s\") than "
 								   "current RTAB-Map version used (\"%s\"). New parameters (if there are some) will "
 								   "be ignored.",
-								   configFile.c_str(),
+								   configFilePath.c_str(),
 								   (*iter).second,
 								   RTABMAP_VERSION);
 						}
@@ -1255,9 +1252,24 @@ void Parameters::readINI(const std::string & configFile, ParametersMap & paramet
 	else
 	{
 		ULOGGER_WARN("Section \"Core\" in %s doesn't exist... "
-				    "Ignore this warning if the ini file does not exist yet. "
-				    "The ini file will be automatically created when rtabmap will close.", configFile.c_str());
+					"Ignore this warning if the ini file does not exist yet. "
+					"The ini file will be automatically created when rtabmap will close.", configFilePath.c_str());
 	}
+}
+
+
+void Parameters::readINI(const std::string & configFile, ParametersMap & parameters, bool modifiedOnly)
+{
+	CSimpleIniA ini;
+	ini.LoadFile(configFile.c_str());
+	readINIImpl(ini, configFile, parameters, modifiedOnly);
+}
+
+void Parameters::readINIStr(const std::string & configContent, ParametersMap & parameters, bool modifiedOnly)
+{
+	CSimpleIniA ini;
+	ini.LoadData(configContent);
+	readINIImpl(ini, "", parameters, modifiedOnly);
 }
 
 void Parameters::writeINI(const std::string & configFile, const ParametersMap & parameters)

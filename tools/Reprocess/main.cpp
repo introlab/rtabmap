@@ -35,7 +35,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/global_map/CloudMap.h>
 #include <rtabmap/core/Graph.h>
 #include <rtabmap/core/Memory.h>
-#include <rtabmap/core/CameraThread.h>
+#include <rtabmap/core/SensorCaptureThread.h>
 #include <rtabmap/core/Odometry.h>
 #include <rtabmap/core/OdometryInfo.h>
 #include <rtabmap/utilite/UFile.h>
@@ -816,9 +816,9 @@ int main(int argc, char * argv[])
 	printf("Reprocessing data of \"%s\"...\n", inputDatabasePath.c_str());
 	std::map<std::string, float> globalMapStats;
 	int processed = 0;
-	CameraInfo info;
-	SensorData data = dbReader->takeImage(&info);
-	CameraThread camThread(dbReader, parameters); // take ownership of dbReader
+	SensorCaptureInfo info;
+	SensorData data = dbReader->takeData(&info);
+	SensorCaptureThread camThread(dbReader, parameters); // take ownership of dbReader
 	camThread.setScanParameters(scanFromDepth, scanDecimation, scanRangeMin, scanRangeMax, scanVoxelSize, scanNormalK, scanNormalRadius);
 	if(scanFromDepth)
 	{
@@ -849,11 +849,11 @@ int main(int argc, char * argv[])
 					while(skippedFrames-- > 0)
 					{
 						++processed;
-						data = dbReader->takeImage();
+						data = dbReader->takeData();
 					}
 				}
 
-				data = dbReader->takeImage(&info);
+				data = dbReader->takeData(&info);
 				if(scanFromDepth)
 				{
 					data.setLaserScan(LaserScan());
@@ -1099,7 +1099,7 @@ int main(int argc, char * argv[])
 			while(skippedFrames-- > 0)
 			{
 				processed++;
-				data = dbReader->takeImage(&info);
+				data = dbReader->takeData(&info);
 				if(!odometryIgnored && !info.odomCovariance.empty() && info.odomCovariance.at<double>(0,0)>=9999)
 				{
 					printf("High variance detected, triggering a new map...\n");
@@ -1113,7 +1113,7 @@ int main(int argc, char * argv[])
 			}
 		}
 
-		data = dbReader->takeImage(&info);
+		data = dbReader->takeData(&info);
 		if(scanFromDepth)
 		{
 			data.setLaserScan(LaserScan());

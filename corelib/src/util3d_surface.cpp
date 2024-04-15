@@ -3518,22 +3518,25 @@ LaserScan adjustNormalsToViewPoint(
 		int nz = ny+1;
 		cv::Mat output = scan.data().clone();
 		#pragma omp parallel for
-		for(int i=0; i<scan.size(); ++i)
+		for(int j=0; j<scan.data().rows; ++j)
 		{
-			float * ptr = output.ptr<float>(0, i);
-			if(uIsFinite(ptr[nx]) && uIsFinite(ptr[ny]) && uIsFinite(ptr[nz]))
+			for(int i=0; i<scan.data().cols; ++i)
 			{
-				Eigen::Vector3f v = viewpoint - Eigen::Vector3f(ptr[0], ptr[1], ptr[2]);
-				Eigen::Vector3f n(ptr[nx], ptr[ny], ptr[nz]);
-
-				float result = v.dot(n);
-				if(result < 0
-				 || (groundNormalsUp>0.0f && ptr[nz] < -groundNormalsUp && ptr[2] < viewpoint[3])) // some far velodyne rays on road can have normals toward ground
+				float * ptr = output.ptr<float>(j, i);
+				if(uIsFinite(ptr[nx]) && uIsFinite(ptr[ny]) && uIsFinite(ptr[nz]))
 				{
-					//reverse normal
-					ptr[nx] *= -1.0f;
-					ptr[ny] *= -1.0f;
-					ptr[nz] *= -1.0f;
+					Eigen::Vector3f v = viewpoint - Eigen::Vector3f(ptr[0], ptr[1], ptr[2]);
+					Eigen::Vector3f n(ptr[nx], ptr[ny], ptr[nz]);
+
+					float result = v.dot(n);
+					if(result < 0
+					 || (groundNormalsUp>0.0f && ptr[nz] < -groundNormalsUp && ptr[2] < viewpoint[3])) // some far velodyne rays on road can have normals toward ground
+					{
+						//reverse normal
+						ptr[nx] *= -1.0f;
+						ptr[ny] *= -1.0f;
+						ptr[nz] *= -1.0f;
+					}
 				}
 			}
 		}

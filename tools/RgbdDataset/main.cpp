@@ -28,7 +28,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/Odometry.h>
 #include "rtabmap/core/Rtabmap.h"
 #include "rtabmap/core/CameraRGBD.h"
-#include "rtabmap/core/CameraThread.h"
 #include "rtabmap/core/Graph.h"
 #include "rtabmap/core/OdometryInfo.h"
 #include "rtabmap/core/OdometryEvent.h"
@@ -41,6 +40,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/utilite/UStl.h"
 #include "rtabmap/utilite/UProcessInfo.h"
 #include <pcl/common/common.h>
+#include <rtabmap/core/SensorCaptureThread.h>
 #include <stdio.h>
 #include <signal.h>
 
@@ -200,7 +200,7 @@ int main(int argc, char * argv[])
 	//parameters.insert(ParametersPair(Parameters::kg2oBaseline(), uNumber2Str(40.0f/model.fx())));
 	model.save(path);
 
-	CameraThread cameraThread(new
+	SensorCaptureThread cameraThread(new
 		CameraRGBDImages(
 				pathRgbImages,
 				pathDepthImages,
@@ -239,8 +239,8 @@ int main(int argc, char * argv[])
 
 		UTimer totalTime;
 		UTimer timer;
-		CameraInfo cameraInfo;
-		SensorData data = cameraThread.camera()->takeImage(&cameraInfo);
+		SensorCaptureInfo cameraInfo;
+		SensorData data = cameraThread.camera()->takeData(&cameraInfo);
 		int iteration = 0;
 
 		/////////////////////////////
@@ -255,9 +255,9 @@ int main(int argc, char * argv[])
 			{
 				++skipCount;
 
-				cameraInfo = CameraInfo();
+				cameraInfo = SensorCaptureInfo();
 				timer.restart();
-				data = cameraThread.camera()->takeImage(&cameraInfo);
+				data = cameraThread.camera()->takeData(&cameraInfo);
 				continue;
 			}
 			skipCount = 0;
@@ -375,9 +375,9 @@ int main(int argc, char * argv[])
 				fflush(stdout);
 			}
 
-			cameraInfo = CameraInfo();
+			cameraInfo = SensorCaptureInfo();
 			timer.restart();
-			data = cameraThread.camera()->takeImage(&cameraInfo);
+			data = cameraThread.camera()->takeData(&cameraInfo);
 		}
 		delete odom;
 		printf("Total time=%fs\n", totalTime.ticks());

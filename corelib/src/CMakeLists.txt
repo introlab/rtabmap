@@ -13,8 +13,10 @@ SET(SRC_FILES
     
     Recovery.cpp
     
+    SensorCapture.cpp
+    SensorCaptureThread.cpp
+    
     Camera.cpp
-    CameraThread.cpp
     CameraModel.cpp
     
     camera/CameraFreenect.cpp
@@ -38,6 +40,8 @@ SET(SRC_FILES
     camera/CameraVideo.cpp
     camera/CameraMyntEye.cpp
     camera/CameraDepthAI.cpp
+    
+    lidar/LidarVLP16.cpp
     
     EpipolarGeometry.cpp
     VisualWord.cpp

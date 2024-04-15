@@ -177,8 +177,28 @@ INCLUDE_DIRECTORIES(${INCLUDE_DIRS})
 
 add_definitions(${PCL_DEFINITIONS})
 
+# Include presets
+SET(RESOURCES
+	${PROJECT_SOURCE_DIR}/data/presets/camera_tof_icp.ini
+	${PROJECT_SOURCE_DIR}/data/presets/lidar3d_icp.ini
+)
+
+foreach(arg ${RESOURCES})
+   get_filename_component(filename ${arg} NAME)
+   string(REPLACE "." "_" output ${filename})
+   set(RESOURCES_HEADERS "${RESOURCES_HEADERS}" "${CMAKE_CURRENT_BINARY_DIR}/${output}.h")
+   set_property(SOURCE "${CMAKE_CURRENT_BINARY_DIR}/${output}.h" PROPERTY SKIP_AUTOGEN ON)
+endforeach(arg ${RESOURCES})
+
+ADD_CUSTOM_COMMAND(
+	OUTPUT ${RESOURCES_HEADERS}
+	COMMAND res_tool -n rtabmap -p ${CMAKE_CURRENT_BINARY_DIR} ${RESOURCES}
+	COMMENT "[Creating resources]"
+	DEPENDS ${RESOURCES}
+)
+
 # create a library from the source files
-ADD_LIBRARY(rtabmap_gui ${SRC_FILES})
+ADD_LIBRARY(rtabmap_gui ${SRC_FILES} ${RESOURCES_HEADERS})
 ADD_LIBRARY(rtabmap::gui ALIAS rtabmap_gui)
 
 generate_export_header(rtabmap_gui

@@ -34,7 +34,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/odometry/OdometryMono.h>
 #include <rtabmap/core/OdometryThread.h>
 #include <rtabmap/gui/OdometryViewer.h>
-#include <rtabmap/core/CameraThread.h>
 #include <rtabmap/core/CameraRGBD.h>
 #include <rtabmap/core/CameraStereo.h>
 #include <rtabmap/core/DBReader.h>
@@ -42,6 +41,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QApplication>
 #include <QPushButton>
 #include <pcl/console/print.h>
+#include <rtabmap/core/SensorCaptureThread.h>
 
 void showUsage()
 {
@@ -388,7 +388,7 @@ int main (int argc, char * argv[])
 	{
 		if(camera->isCalibrated())
 		{
-			rtabmap::CameraThread cameraThread(camera, parameters);
+			rtabmap::SensorCaptureThread cameraThread(camera, parameters);
 
 			cameraThread.setScanParameters(icp, decimation<1?1:decimation, 0, maxDepth, voxelSize, normalsK, normalsRadius);
 

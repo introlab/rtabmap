@@ -284,11 +284,11 @@ void setCameraNative(const void *object, int type) {
 }
 
 void postCameraPoseEventNative(const void *object,
-        float x, float y, float z, float qx, float qy, float qz, float qw)
+        float x, float y, float z, float qx, float qy, float qz, float qw, double stamp)
 {
     if(object)
     {
-        native(object)->postCameraPoseEvent(x,y,z,qx,qy,qz,qw,0.0);
+        native(object)->postCameraPoseEvent(x,y,z,qx,qy,qz,qw,stamp);
     }
     else
     {

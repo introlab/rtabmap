@@ -22,6 +22,7 @@ ENDIF(OPENCV_NONFREE_FOUND)
 
 IF(TARGET rtabmap_gui)
 	ADD_SUBDIRECTORY( CameraRGBD )
+	ADD_SUBDIRECTORY( LidarViewer )
 	ADD_SUBDIRECTORY( DatabaseViewer )
 	ADD_SUBDIRECTORY( EpipolarGeometry )
 	ADD_SUBDIRECTORY( OdometryViewer )

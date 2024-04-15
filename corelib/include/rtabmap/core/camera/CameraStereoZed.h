@@ -76,12 +76,12 @@ public:
 	virtual bool isCalibrated() const;
 	virtual std::string getSerial() const;
 	virtual bool odomProvided() const;
-	virtual bool getPose(double stamp, Transform & pose, cv::Mat & covariance);
+	virtual bool getPose(double stamp, Transform & pose, cv::Mat & covariance, double maxWaitTime = 0.0);
 
-	void publishInterIMU(bool enabled);
+	void postInterIMUPublic(const IMU & imu, double stamp);
 
 protected:
-	virtual SensorData captureImage(CameraInfo * info = 0);
+	virtual SensorData captureImage(SensorCaptureInfo * info = 0);
 
 private:
 #ifdef RTABMAP_ZED
@@ -100,7 +100,6 @@ private:
 	bool computeOdometry_;
 	bool lost_;
 	bool force3DoF_;
-	bool publishInterIMU_;
 	ZedIMUThread * imuPublishingThread_;
 #endif
 };

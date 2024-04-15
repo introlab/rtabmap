@@ -638,7 +638,7 @@ std::string CameraDepthAI::getSerial() const
 	return "";
 }
 
-SensorData CameraDepthAI::captureImage(CameraInfo * info)
+SensorData CameraDepthAI::captureImage(SensorCaptureInfo * info)
 {
 	SensorData data;
 #ifdef RTABMAP_DEPTHAI

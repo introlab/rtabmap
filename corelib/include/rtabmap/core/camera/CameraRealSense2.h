@@ -68,7 +68,7 @@ public:
 	virtual bool isCalibrated() const;
 	virtual std::string getSerial() const;
 	virtual bool odomProvided() const;
-	virtual bool getPose(double stamp, Transform & pose, cv::Mat & covariance);
+	virtual bool getPose(double stamp, Transform & pose, cv::Mat & covariance, double maxWaitTime = 0.06);
 
 	// parameters are set during initialization
 	// D400 series
@@ -77,7 +77,7 @@ public:
 	void setResolution(int width, int height, int fps = 30);
 	void setDepthResolution(int width, int height, int fps = 30);
 	void setGlobalTimeSync(bool enabled);
-	void publishInterIMU(bool enabled);
+
 	/**
 	 * Dual mode (D400+T265 or L500+T265)
 	 * @param enabled enable dual mode
@@ -105,7 +105,7 @@ private:
 #endif
 
 protected:
-	virtual SensorData captureImage(CameraInfo * info = 0);
+	virtual SensorData captureImage(SensorCaptureInfo * info = 0);
 
 private:
 #ifdef RTABMAP_REALSENSE2
@@ -142,7 +142,6 @@ private:
 	int cameraDepthHeight_;
 	int cameraDepthFps_;
 	bool globalTimeSync_;
-	bool publishInterIMU_;
 	bool dualMode_;
 	Transform dualExtrinsics_;
 	std::string jsonConfig_;

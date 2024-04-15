@@ -455,6 +455,19 @@ RTABMAP_DEPRECATED pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_CORE_EXPORT loadC
 		int downsampleStep = 1,
 		float voxelSize = 0.0f);
 
+/**
+ * @brief Lidar deskewing
+ * @param input lidar, format should have time channel
+ * @param input stamp of the lidar
+ * @param velocity in base frame
+ * @param velocity stamp at which it has been computed
+ * @return lidar deskewed
+ */
+LaserScan RTABMAP_CORE_EXPORT deskew(
+		const LaserScan & input,
+		double inputStamp,
+		const rtabmap::Transform & velocity);
+
 } // namespace util3d
 } // namespace rtabmap
 

@@ -334,7 +334,7 @@ std::string CameraFreenect2::getSerial() const
 	return "";
 }
 
-SensorData CameraFreenect2::captureImage(CameraInfo * info)
+SensorData CameraFreenect2::captureImage(SensorCaptureInfo * info)
 {
 	SensorData data;
 #ifdef RTABMAP_FREENECT2

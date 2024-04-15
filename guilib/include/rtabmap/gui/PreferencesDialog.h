@@ -60,6 +60,8 @@ namespace rtabmap {
 class Signature;
 class LoopClosureViewer;
 class Camera;
+class SensorCapture;
+class Lidar;
 class CalibrationDialog;
 class CreateSimpleCalibrationDialog;
 
@@ -77,7 +79,7 @@ public:
 		kPanelAll = 15
 	};
 	// TODO, tried to change the name of PANEL_FLAGS to PanelFlags... but signals/slots errors appeared...
-	Q_DECLARE_FLAGS(PANEL_FLAGS, PanelFlag)
+	Q_DECLARE_FLAGS(PANEL_FLAGS, PanelFlag);
 
 	enum Src {
 		kSrcUndef = -1,
@@ -113,7 +115,10 @@ public:
 		kSrcImages         = 201,
 		kSrcVideo          = 202,
 
-		kSrcDatabase       = 300
+		kSrcDatabase       = 300,
+
+		kSrcLidar           = 400,
+		kSrcLidarVLP16      = 400,
 	};
 
 public:
@@ -253,6 +258,7 @@ public:
 	PreferencesDialog::Src getSourceDriver() const;
 	QString getSourceDriverStr() const;
 	QString getSourceDevice() const;
+	PreferencesDialog::Src getLidarSourceDriver() const;
 	PreferencesDialog::Src getOdomSourceDriver() const;
 
 	bool isSourceDatabaseStampsUsed() const;
@@ -271,6 +277,7 @@ public:
 	bool isSourceStereoDepthGenerated() const;
 	bool isSourceStereoExposureCompensation() const;
 	bool isSourceScanFromDepth() const;
+	bool isSourceScanDeskewing() const;
 	int getSourceScanDownsampleStep() const;
 	double getSourceScanRangeMin() const;
 	double getSourceScanRangeMax() const;
@@ -284,7 +291,8 @@ public:
 	QString getIMUPath() const;
 	int getIMURate() const;
 	Camera * createCamera(bool useRawImages = false, bool useColor = true); // return camera should be deleted if not null
-	Camera * createOdomSensor(Transform & extrinsics, double & timeOffset, float & scaleFactor); // return camera should be deleted if not null
+	SensorCapture * createOdomSensor(Transform & extrinsics, double & timeOffset, float & scaleFactor, double & waitTime); // return odom sensor should be deleted if not null
+	Lidar * createLidar(); // return lidar should be deleted if not null
 
 	int getIgnoredDCComponents() const;
 
@@ -324,6 +332,7 @@ public Q_SLOTS:
 	void calibrate();
 	void calibrateSimple();
 	void calibrateOdomSensorExtrinsics();
+	void testLidar();
 
 private Q_SLOTS:
 	void closeDialog ( QAbstractButton * button );
@@ -332,6 +341,7 @@ private Q_SLOTS:
 	void loadConfigFrom();
 	bool saveConfigTo();
 	void resetConfig();
+	void loadPreset();
 	void makeObsoleteGeneralPanel();
 	void makeObsoleteCloudRenderingPanel();
 	void makeObsoleteLoggingPanel();
@@ -389,6 +399,7 @@ private Q_SLOTS:
 	void selectSourceSvoPath();
 	void selectSourceRealsense2JsonPath();
 	void selectSourceDepthaiBlobPath();
+	void selectVlp16PcapPath();
 	void updateSourceGrpVisibility();
 	void testOdometry();
 	void testCamera();
@@ -417,6 +428,7 @@ private:
 	void setupKpRoiPanel();
 	bool parseModel(QList<QGroupBox*> & boxes, QStandardItem * parentItem, int currentLevel, int & absoluteIndex);
 	void resetSettings(QGroupBox * groupBox);
+	void loadPreset(const std::string & presetHexHeader);
 	void addParameter(const QObject * object, int value);
 	void addParameter(const QObject * object, bool value);
 	void addParameter(const QObject * object, double value);

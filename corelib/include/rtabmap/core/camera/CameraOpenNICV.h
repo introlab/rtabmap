@@ -51,7 +51,7 @@ public:
 	virtual std::string getSerial() const {return "";} // unknown with OpenCV
 
 protected:
-	virtual SensorData captureImage(CameraInfo * info = 0);
+	virtual SensorData captureImage(SensorCaptureInfo * info = 0);
 
 private:
 	bool _asus;

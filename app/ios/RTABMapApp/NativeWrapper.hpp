@@ -67,7 +67,7 @@ bool startCameraNative(const void *object);
 void stopCameraNative(const void *object);
 void setCameraNative(const void *object, int type);
 void postCameraPoseEventNative(const void *object,
-                         float x, float y, float z, float qx, float qy, float qz, float qw);
+                         float x, float y, float z, float qx, float qy, float qz, float qw, double stamp);
 void postOdometryEventNative(const void *object,
                        float x, float y, float z, float qx, float qy, float qz, float qw,
                        float fx, float fy, float cx, float cy,

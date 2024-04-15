@@ -69,6 +69,7 @@ RegistrationIcp::RegistrationIcp(const ParametersMap & parameters, Registration 
 	_epsilon(Parameters::defaultIcpEpsilon()),
 	_correspondenceRatio(Parameters::defaultIcpCorrespondenceRatio()),
 	_force4DoF(Parameters::defaultIcpForce4DoF()),
+	_filtersEnabled(Parameters::defaultIcpFiltersEnabled()),
 	_pointToPlane(Parameters::defaultIcpPointToPlane()),
 	_pointToPlaneK(Parameters::defaultIcpPointToPlaneK()),
 	_pointToPlaneRadius(Parameters::defaultIcpPointToPlaneRadius()),
@@ -115,6 +116,7 @@ void RegistrationIcp::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kIcpEpsilon(), _epsilon);
 	Parameters::parse(parameters, Parameters::kIcpCorrespondenceRatio(), _correspondenceRatio);
 	Parameters::parse(parameters, Parameters::kIcpForce4DoF(), _force4DoF);
+	Parameters::parse(parameters, Parameters::kIcpFiltersEnabled(), _filtersEnabled);
 	Parameters::parse(parameters, Parameters::kIcpOutlierRatio(), _outlierRatio);
 	Parameters::parse(parameters, Parameters::kIcpPointToPlane(), _pointToPlane);
 	Parameters::parse(parameters, Parameters::kIcpPointToPlaneK(), _pointToPlaneK);
@@ -337,6 +339,7 @@ Transform RegistrationIcp::computeTransformationImpl(
 	UDEBUG("Downsampling step=%d", _downsamplingStep);
 	UDEBUG("Force 3DoF=%s", this->force3DoF()?"true":"false");
 	UDEBUG("Force 4DoF=%s", _force4DoF?"true":"false");
+	UDEBUG("Enabled filters: from=%s to=%s", _filtersEnabled&1?"true":"false", _filtersEnabled&2?"true":"false");
 	UDEBUG("Min Complexity=%f", _pointToPlaneMinComplexity);
 	UDEBUG("libpointmatcher (knn=%d, outlier ratio=%f)", _libpointmatcherKnn, _outlierRatio);
 	UDEBUG("Strategy=%d", _strategy);
@@ -360,7 +363,7 @@ Transform RegistrationIcp::computeTransformationImpl(
 	int maxLaserScansFrom = dataFrom.laserScanRaw().maxPoints()>0?dataFrom.laserScanRaw().maxPoints():dataFrom.laserScanRaw().size();
 	int maxLaserScansTo = dataTo.laserScanRaw().maxPoints()>0?dataTo.laserScanRaw().maxPoints():dataTo.laserScanRaw().size();
 
-	if(!dataFrom.laserScanRaw().empty())
+	if(!dataFrom.laserScanRaw().empty() && (_filtersEnabled & 1))
 	{
 		int pointsBeforeFiltering = dataFrom.laserScanRaw().size();
 		LaserScan fromScan = util3d::commonFiltering(dataFrom.laserScanRaw(),
@@ -401,7 +404,7 @@ Transform RegistrationIcp::computeTransformationImpl(
 		float ratio = float(dataFrom.laserScanRaw().size()) / float(pointsBeforeFiltering);
 		maxLaserScansFrom = int(float(maxLaserScansFrom) * ratio);
 	}
-	if(!dataTo.laserScanRaw().empty())
+	if(!dataTo.laserScanRaw().empty() && (_filtersEnabled & 2))
 	{
 		int pointsBeforeFiltering = dataTo.laserScanRaw().size();
 		LaserScan toScan = util3d::commonFiltering(dataTo.laserScanRaw(),

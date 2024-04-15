@@ -29,7 +29,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UTimer.h>
 #include <rtabmap/utilite/UThreadC.h>
 #include <rtabmap/utilite/UConversion.h>
-#include <rtabmap/utilite/UEventsManager.h>
 #include <rtabmap/utilite/UStl.h>
 #include <opencv2/imgproc/types_c.h>
 
@@ -78,7 +77,6 @@ CameraRealSense2::CameraRealSense2(
 	cameraDepthHeight_(480),
 	cameraDepthFps_(30),
 	globalTimeSync_(true),
-	publishInterIMU_(false),
 	dualMode_(false),
 	closing_(false)
 #endif
@@ -138,12 +136,12 @@ void CameraRealSense2::imu_callback(rs2::frame frame)
 {
 	auto stream = frame.get_profile().stream_type();
 	cv::Vec3f crnt_reading = *reinterpret_cast<const cv::Vec3f*>(frame.get_data());
-	UDEBUG("%s callback! %f (%f %f %f)",
-			stream == RS2_STREAM_GYRO?"GYRO":"ACC",
-			frame.get_timestamp(),
-			crnt_reading[0],
-			crnt_reading[1],
-			crnt_reading[2]);
+	//UDEBUG("%s callback! %f (%f %f %f)",
+	//		stream == RS2_STREAM_GYRO?"GYRO":"ACC",
+	//		frame.get_timestamp(),
+	//		crnt_reading[0],
+	//		crnt_reading[1],
+	//		crnt_reading[2]);
 	UScopeMutex sm(imuMutex_);
 	if(stream == RS2_STREAM_GYRO)
 	{
@@ -194,7 +192,7 @@ void CameraRealSense2::pose_callback(rs2::frame frame)
 
 void CameraRealSense2::frame_callback(rs2::frame frame)
 {
-	UDEBUG("Frame callback! %f", frame.get_timestamp());
+	//UDEBUG("Frame callback! %f", frame.get_timestamp());
 	syncer_(frame);
 }
 void CameraRealSense2::multiple_message_callback(rs2::frame frame)
@@ -1139,14 +1137,14 @@ bool CameraRealSense2::odomProvided() const
 #endif
 }
 
-bool CameraRealSense2::getPose(double stamp, Transform & pose, cv::Mat & covariance)
+bool CameraRealSense2::getPose(double stamp, Transform & pose, cv::Mat & covariance, double maxWaitTime)
 {
 #ifdef RTABMAP_REALSENSE2
 	IMU imu;
 	unsigned int confidence = 0;
 	double rsStamp = stamp*1000.0;
 	Transform p;
-	getPoseAndIMU(rsStamp, p, confidence, imu);
+	getPoseAndIMU(rsStamp, p, confidence, imu, maxWaitTime*1000);
 
 	if(!p.isNull())
 	{
@@ -1202,13 +1200,6 @@ void CameraRealSense2::setGlobalTimeSync(bool enabled)
 #endif
 }
 
-void CameraRealSense2::publishInterIMU(bool enabled)
-{
-#ifdef RTABMAP_REALSENSE2
-	publishInterIMU_ = enabled;
-#endif
-}
-
 void CameraRealSense2::setDualMode(bool enabled, const Transform & extrinsics)
 {
 #ifdef RTABMAP_REALSENSE2
@@ -1252,7 +1243,7 @@ void CameraRealSense2::setOdomProvided(bool enabled, bool imageStreamsDisabled, 
 #endif
 }
 
-SensorData CameraRealSense2::captureImage(CameraInfo * info)
+SensorData CameraRealSense2::captureImage(SensorCaptureInfo * info)
 {
 	SensorData data;
 #ifdef RTABMAP_REALSENSE2
@@ -1466,11 +1457,11 @@ SensorData CameraRealSense2::captureImage(CameraInfo * info)
 				info->odomCovariance.rowRange(0,3) *= pow(10, 3-(int)confidence);
 				info->odomCovariance.rowRange(3,6) *= pow(10, 1-(int)confidence);
 			}
-			if(!imu.empty() && !publishInterIMU_)
+			if(!imu.empty() && !isInterIMUPublishing())
 			{
 				data.setIMU(imu);
 			}
-			else if(publishInterIMU_ && !gyroBuffer_.empty())
+			else if(isInterIMUPublishing() && !gyroBuffer_.empty())
 			{
 				if(lastImuStamp_ > 0.0)
 				{
@@ -1501,7 +1492,7 @@ SensorData CameraRealSense2::captureImage(CameraInfo * info)
 						getPoseAndIMU(stamps[i], tmp, confidence, imuTmp);
 						if(!imuTmp.empty())
 						{
-							UEventsManager::post(new IMUEvent(imuTmp, stamps[i]/1000.0));
+							this->postInterIMU(imuTmp, stamps[i]/1000.0);
 							pub++;
 						}
 						else
