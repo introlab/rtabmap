@@ -24,10 +24,12 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+// Should be first on windows to avoid "WinSock.h has already been included" error
+#include "rtabmap/core/lidar/LidarVLP16.h"
+
 #include <rtabmap/core/Odometry.h>
 #include "rtabmap/core/Rtabmap.h"
 #include "rtabmap/core/RtabmapThread.h"
-#include "rtabmap/core/lidar/LidarVLP16.h"
 #include "rtabmap/core/OdometryThread.h"
 #include "rtabmap/core/Graph.h"
 #include "rtabmap/utilite/UEventsManager.h"

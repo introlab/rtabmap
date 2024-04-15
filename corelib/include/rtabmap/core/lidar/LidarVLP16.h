@@ -26,7 +26,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef CORELIB_INCLUDE_RTABMAP_CORE_LIDAR_LIDARVLP16_H_
 #define CORELIB_INCLUDE_RTABMAP_CORE_LIDAR_LIDARVLP16_H_
 
-// include first to avoid https://stackoverflow.com/questions/9750344/boostasio-winsock-and-winsock-2-compatibility-issue
+// Should be first on windows to avoid "WinSock.h has already been included" error
 #include <pcl/io/vlp_grabber.h>
 
 #include <rtabmap/core/Lidar.h>
@@ -42,7 +42,7 @@ struct PointXYZIT {
 	float t;
 };
 
-class LidarVLP16 :public Lidar, public pcl::VLPGrabber {
+class RTABMAP_CORE_EXPORT LidarVLP16 :public Lidar, public pcl::VLPGrabber {
 public:
 	LidarVLP16(
 			const std::string& pcapFile,
