@@ -50,7 +50,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pcl/console/parse.h>
 #include <rtabmap/core/lidar/LidarVLP16.h>
 
-using namespace std::chrono_literals;
 using namespace pcl;
 using namespace pcl::console;
 using namespace pcl::visualization;
