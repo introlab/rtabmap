@@ -1215,7 +1215,10 @@ void Memory::moveSignatureToWMFromSTM(int id, int * reducedTo)
 					}
 				}
 
-				this->moveToTrash(s, false);
+				// Setting true to make sure we save all visual
+				// words that could be referenced in a previously
+				// transferred node in LTM (#979)
+				this->moveToTrash(s, true);
 				s = 0;
 			}
 		}
