@@ -62,6 +62,12 @@ void showUsage()
 			"                         and compute error based on the scaled path.\n"
 			"    --poses            Export poses to [path]_poses.txt, ground truth to [path]_gt.txt\n"
 			"                         and valid ground truth indices to [path]_indices.txt \n"
+			"    --gt FILE.txt      Use this file as ground truth (TUM RGB-D format). It will\n"
+			"                         override the ground truth set in database if there is one.\n"
+			"                         If extension is *.db, the optimized poses of that database will\n"
+			"                         be used as ground truth.\n"
+			"    --gt_max_t #       Maximum time interval (sec) to interpolate between a pose and\n"
+			"                         corresponding ground truth (default 1 sec).\n"
 			"    --inc              Incremental optimization. \n"
 			"    --stats            Show available statistics \"Statistic/Id\" to plot or get localization statistics (if path is a file). \n"
 #ifdef WITH_QT
@@ -147,6 +153,8 @@ int main(int argc, char * argv[])
 	std::string exportPrefix = "Stat";
 	int showLoc = 0;
 	float locDelay = 60;
+	std::string gtFile;
+	double gtMaxInterval = 1;
 	std::vector<std::string> statsToShow;
 #ifdef WITH_QT
 	std::map<std::string, UPlot*> figures;
@@ -224,6 +232,44 @@ int main(int argc, char * argv[])
 			else
 			{
 				printf("Missing value for \"--export_prefix\" option.\n");
+				showUsage();
+			}
+		}
+		else if(strcmp(argv[i],"--gt") == 0)
+		{
+			++i;
+			if(i<argc-1)
+			{
+				gtFile = argv[i];
+				printf("Ground truth file=%s (--gt)\n", gtFile.c_str());
+				if(UFile::getExtension(gtFile) != "db" && UFile::getExtension(gtFile) != "txt")
+				{
+					printf("Wrong file format set for \"--gt\" option.\n");
+					showUsage();
+				}
+			}
+			else
+			{
+				printf("Missing value for \"--gt\" option.\n");
+				showUsage();
+			}
+		}
+		else if(strcmp(argv[i],"--gt_max_t") == 0)
+		{
+			++i;
+			if(i<argc-1)
+			{
+				gtMaxInterval = uStr2Double(argv[i]);
+				printf("Ground truth max interval=%f sec (--gt_max_t)\n", gtMaxInterval);
+				if(gtMaxInterval<0 || gtMaxInterval>10)
+				{
+					printf("\"--gt_max_t\" option should be between 0 and 10 sec, parsed %f sec.\n", gtMaxInterval);
+					showUsage();
+				}
+			}
+			else
+			{
+				printf("Missing value for \"--gt\" option.\n");
 				showUsage();
 			}
 		}
@@ -324,6 +370,57 @@ int main(int argc, char * argv[])
 		statsToShow.clear();
 	}
 
+	// External Ground Truth
+	std::map<double, Transform> externalGtPoses;
+	if(!gtFile.empty())
+	{
+		if(UFile::getExtension(gtFile) == "db")
+		{
+			DBDriver * driver = DBDriver::create();
+			if(driver->openConnection(gtFile))
+			{
+				std::map<int, Transform> poses = driver->loadOptimizedPoses();
+				for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter)
+				{
+					Transform p, gt;
+					GPS gps;
+					int m=-1, w=-1;
+					std::string l;
+					double s;
+					std::vector<float> v;
+					EnvSensors sensors;
+					if(driver->getNodeInfo(iter->first, p, m, w, l, s, gt, v, gps, sensors))
+					{
+						externalGtPoses.insert(std::make_pair(s, iter->second));
+					}
+				}
+			}
+			delete driver;
+		}
+		else
+		{
+			// 10 can import format 1, 10 and 11.
+			std::map<int, Transform> poses;
+			std::map<int, double> stamps;
+			if(rtabmap::graph::importPoses(gtFile, 10, poses, 0, &stamps))
+			{
+				for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter)
+				{
+					externalGtPoses.insert(std::make_pair(stamps.at(iter->first), iter->second));
+				}
+			}
+		}
+		if(externalGtPoses.size() < 2)
+		{
+			printf("Failed loading ground truth poses from \"%s\" (\"--gt\" option).\n", gtFile.c_str());
+			showUsage();
+		}
+		else
+		{
+			printf("Loading %ld ground truth poses from \"%s\".\n", externalGtPoses.size(), gtFile.c_str());
+		}
+	}
+
 	std::string fileName;
 	std::list<std::string> paths;
 	paths.push_back(path);
@@ -404,6 +501,11 @@ int main(int argc, char * argv[])
 					ULogger::setLevel(logLevel);
 					std::set<int> ids;
 					driver->getAllNodeIds(ids, false, false, ignoreInterNodes);
+					std::set<int> allIds = ids;
+					if(ignoreInterNodes)
+					{
+						driver->getAllNodeIds(allIds, false, false, false);
+					}
 					std::map<int, std::pair<std::map<std::string, float>, double> > stats = driver->getAllStatistics();
 					std::map<int, Transform> odomPoses, gtPoses;
 					std::map<int, double> odomStamps;
@@ -523,7 +625,8 @@ int main(int argc, char * argv[])
 
 					std::map<std::string, std::vector<float> > localizationSessionStats;
 					double previousStamp = 0.0;
-					for(std::set<int>::iterator iter=ids.begin(); iter!=ids.end(); ++iter)
+					std::map<int, int> allWeights;
+					for(std::set<int>::iterator iter=allIds.begin(); iter!=allIds.end(); ++iter)
 					{
 						Transform p, gt;
 						GPS gps;
@@ -534,119 +637,137 @@ int main(int argc, char * argv[])
 						EnvSensors sensors;
 						if(driver->getNodeInfo(*iter, p, m, w, l, s, gt, v, gps, sensors))
 						{
-							odomPoses.insert(std::make_pair(*iter, p));
-							odomStamps.insert(std::make_pair(*iter, s));
-							if(!gt.isNull())
+							allWeights.insert(std::make_pair(*iter, w));
+							if((!ignoreInterNodes || w!=-1))
 							{
-								gtPoses.insert(std::make_pair(*iter, gt));
-							}
-
-							if(!localizationMultiStats.empty() && mappingSessionIds.find(m) != mappingSessionIds.end())
-							{
-								continue;
-							}
-
-							if(*iter >= startIdPerDb && uContains(stats, *iter))
-							{
-								const std::map<std::string, float> & stat = stats.at(*iter).first;
-								if(uContains(stat, Statistics::kGtTranslational_rmse()))
+								odomPoses.insert(std::make_pair(*iter, p));
+								odomStamps.insert(std::make_pair(*iter, s));
+								if(!externalGtPoses.empty())
 								{
-									rmse = stat.at(Statistics::kGtTranslational_rmse());
-									if(maxRMSE==-1 || maxRMSE < rmse)
+									std::map<double, rtabmap::Transform>::iterator nextIter = externalGtPoses.upper_bound(s);
+									if(nextIter!=externalGtPoses.end())
 									{
-										maxRMSE = rmse;
-									}
-								}
-								if(uContains(stat, std::string("Camera/TotalTime/ms")))
-								{
-									cameraTime.push_back(stat.at(std::string("Camera/TotalTime/ms")));
-								}
-								if(uContains(stat, std::string("Odometry/TotalTime/ms")))
-								{
-									odomTime.push_back(stat.at(std::string("Odometry/TotalTime/ms")));
-								}
-								else if(uContains(stat, std::string("Odometry/TimeEstimation/ms")))
-								{
-									odomTime.push_back(stat.at(std::string("Odometry/TimeEstimation/ms")));
-								}
-
-								if(uContains(stat, std::string("RtabmapROS/TotalTime/ms")))
-								{
-									if(w!=-1)
-									{
-										slamTime.push_back(stat.at("RtabmapROS/TotalTime/ms"));
-									}
-								}
-								else if(uContains(stat, Statistics::kTimingTotal()))
-								{
-									if(w!=-1)
-									{
-										slamTime.push_back(stat.at(Statistics::kTimingTotal()));
-									}
-								}
-
-								if(uContains(stat, std::string(Statistics::kMemoryRAM_usage())))
-								{
-									float ram = stat.at(Statistics::kMemoryRAM_usage());
-									if(maxMapRAM==-1 || maxMapRAM < ram)
-									{
-										maxMapRAM = ram;
-									}
-								}
-								if(uContains(stat, std::string("Odometry/RAM_usage/MB")))
-								{
-									float ram = stat.at("Odometry/RAM_usage/MB");
-									if(maxOdomRAM==-1 || maxOdomRAM < ram)
-									{
-										maxOdomRAM = ram;
-									}
-								}
-
-#ifdef WITH_QT
-								for(std::map<std::string, UPlotCurve*>::iterator jter=curves.begin(); jter!=curves.end(); ++jter)
-								{
-#else
-								for(std::map<std::string, std::vector<std::pair<std::string, std::vector<LocStats> > > >::iterator jter=localizationMultiStats.begin();
-									jter!=localizationMultiStats.end();
-									++jter)
-								{
-#endif
-									if(uContains(stat, jter->first))
-									{
-										double y = stat.at(jter->first);
-#ifdef WITH_QT
-										double x = s;
-										if(useIds)
+										std::map<double, rtabmap::Transform>::iterator previousIter = nextIter;
+										--previousIter;
+										if(s == previousIter->first || (nextIter->first-s <= gtMaxInterval && s-previousIter->first <= gtMaxInterval))
 										{
-											x = *iter;
+											UASSERT(s-previousIter->first >= 0);
+											gtPoses.insert(std::make_pair(*iter, previousIter->second.interpolate((s-previousIter->first)/(nextIter->first-previousIter->first),nextIter->second)));
 										}
-										jter->second->addValue(x,y);
+									}
+								}
+								else if(!gt.isNull())
+								{
+									gtPoses.insert(std::make_pair(*iter, gt));
+								}
+
+								if(!localizationMultiStats.empty() && mappingSessionIds.find(m) != mappingSessionIds.end())
+								{
+									continue;
+								}
+
+								if(*iter >= startIdPerDb && uContains(stats, *iter))
+								{
+									const std::map<std::string, float> & stat = stats.at(*iter).first;
+									if(uContains(stat, Statistics::kGtTranslational_rmse()))
+									{
+										rmse = stat.at(Statistics::kGtTranslational_rmse());
+										if(maxRMSE==-1 || maxRMSE < rmse)
+										{
+											maxRMSE = rmse;
+										}
+									}
+									if(uContains(stat, std::string("Camera/TotalTime/ms")))
+									{
+										cameraTime.push_back(stat.at(std::string("Camera/TotalTime/ms")));
+									}
+									if(uContains(stat, std::string("Odometry/TotalTime/ms")))
+									{
+										odomTime.push_back(stat.at(std::string("Odometry/TotalTime/ms")));
+									}
+									else if(uContains(stat, std::string("Odometry/TimeEstimation/ms")))
+									{
+										odomTime.push_back(stat.at(std::string("Odometry/TimeEstimation/ms")));
+									}
+
+									if(uContains(stat, std::string("RtabmapROS/TotalTime/ms")))
+									{
+										if(w!=-1)
+										{
+											slamTime.push_back(stat.at("RtabmapROS/TotalTime/ms"));
+										}
+									}
+									else if(uContains(stat, Statistics::kTimingTotal()))
+									{
+										if(w!=-1)
+										{
+											slamTime.push_back(stat.at(Statistics::kTimingTotal()));
+										}
+									}
+
+									if(uContains(stat, std::string(Statistics::kMemoryRAM_usage())))
+									{
+										float ram = stat.at(Statistics::kMemoryRAM_usage());
+										if(maxMapRAM==-1 || maxMapRAM < ram)
+										{
+											maxMapRAM = ram;
+										}
+									}
+									if(uContains(stat, std::string("Odometry/RAM_usage/MB")))
+									{
+										float ram = stat.at("Odometry/RAM_usage/MB");
+										if(maxOdomRAM==-1 || maxOdomRAM < ram)
+										{
+											maxOdomRAM = ram;
+										}
+									}
+
+#ifdef WITH_QT
+									for(std::map<std::string, UPlotCurve*>::iterator jter=curves.begin(); jter!=curves.end(); ++jter)
+									{
+#else
+									for(std::map<std::string, std::vector<std::pair<std::string, std::vector<LocStats> > > >::iterator jter=localizationMultiStats.begin();
+										jter!=localizationMultiStats.end();
+										++jter)
+									{
+#endif
+										if(uContains(stat, jter->first))
+										{
+											double y = stat.at(jter->first);
+#ifdef WITH_QT
+											double x = s;
+											if(useIds)
+											{
+												x = *iter;
+											}
+											jter->second->addValue(x,y);
 #endif
 
-										if(!localizationMultiStats.empty())
-										{
-											if(previousStamp > 0 && fabs(s - previousStamp) > locDelay && uContains(localizationSessionStats, jter->first))
+											if(!localizationMultiStats.empty())
 											{
-												// changed session
-												for(std::map<std::string, std::vector<float> >::iterator kter=localizationSessionStats.begin(); kter!=localizationSessionStats.end(); ++kter)
+												if(previousStamp > 0 && fabs(s - previousStamp) > locDelay && uContains(localizationSessionStats, jter->first))
 												{
-													LocStats values = LocStats::from(localizationSessionStats.at(kter->first));
-													localizationMultiStats.at(kter->first).rbegin()->second.push_back(values);
-													localizationSessionStats.at(kter->first).clear();
+													// changed session
+													for(std::map<std::string, std::vector<float> >::iterator kter=localizationSessionStats.begin(); kter!=localizationSessionStats.end(); ++kter)
+													{
+														LocStats values = LocStats::from(localizationSessionStats.at(kter->first));
+														localizationMultiStats.at(kter->first).rbegin()->second.push_back(values);
+														localizationSessionStats.at(kter->first).clear();
+													}
+
+													previousStamp = s;
 												}
 
-												previousStamp = s;
+												if(!uContains(localizationSessionStats, jter->first))
+												{
+													localizationSessionStats.insert(std::make_pair(jter->first, std::vector<float>()));
+												}
+												localizationSessionStats.at(jter->first).push_back(y);
 											}
-
-											if(!uContains(localizationSessionStats, jter->first))
-											{
-												localizationSessionStats.insert(std::make_pair(jter->first, std::vector<float>()));
-											}
-											localizationSessionStats.at(jter->first).push_back(y);
 										}
 									}
+									previousStamp = s;
 								}
-								previousStamp = s;
 							}
 						}
 					}
@@ -667,12 +788,54 @@ int main(int argc, char * argv[])
 					std::multimap<int, Link> links;
 					std::multimap<int, Link> allLinks;
 					driver->getAllLinks(allLinks, true, true);
+					if(ignoreInterNodes)
+					{
+						std::multimap<int, Link> allBiLinks;
+						for(std::multimap<int, Link>::iterator jter=allLinks.begin(); jter!=allLinks.end(); ++jter)
+						{
+							if(jter->second.from() != jter->second.to() &&
+							   (jter->second.type() == Link::kNeighbor ||
+							    jter->second.type() == Link::kNeighborMerged))
+							{
+								allBiLinks.insert(std::make_pair(jter->second.to(), jter->second.inverse()));
+							}
+							allBiLinks.insert(*jter);
+						}
+						allLinks=allBiLinks;
+					}
 					std::multimap<int, Link> loopClosureLinks;
 					for(std::multimap<int, Link>::iterator jter=allLinks.begin(); jter!=allLinks.end(); ++jter)
 					{
 						if(jter->second.from() == jter->second.to() || graph::findLink(links, jter->second.from(), jter->second.to(), true) == links.end())
 						{
-							links.insert(*jter);
+							Link link = jter->second;
+							// remove intermediate nodes?
+							if(link.from() != link.to() &&
+							   ignoreInterNodes && 
+							   (link.type() == Link::kNeighbor ||
+							    link.type() == Link::kNeighborMerged))
+							{
+								while(uContains(allWeights, link.to()) && allWeights.at(link.to()) < 0)
+								{
+									std::multimap<int, Link>::iterator uter = allLinks.find(link.to());
+									while(uter != allLinks.end() && 
+										uter->first==link.to() && 
+										uter->second.from()>uter->second.to())
+									{
+										++uter;
+									}
+									if(uter != allLinks.end())
+									{
+										link = link.merge(uter->second, uter->second.type());
+										allLinks.erase(uter->first);
+									}
+									else
+									{
+										break;
+									}
+								}
+							}
+							links.insert(std::make_pair(jter->first, link));
 						}
 						if( jter->second.type() != Link::kNeighbor &&
 							jter->second.type() != Link::kNeighborMerged &&
@@ -860,19 +1023,19 @@ int main(int argc, char * argv[])
 								}
 								else
 								{
-									std::vector<Transform> gtPoses;
+									std::vector<Transform> gtPosesTmp;
 									std::vector<Transform> rPoses;
 									for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter)
 									{
 										if(groundTruth.find(iter->first) != groundTruth.end())
 										{
-											gtPoses.push_back(groundTruth.at(iter->first));
+											gtPosesTmp.push_back(groundTruth.at(iter->first));
 											rPoses.push_back(poses.at(iter->first));
 										}
 									}
-									if(!gtPoses.empty())
+									if(!gtPosesTmp.empty())
 									{
-										graph::calcRelativeErrors(gtPoses, rPoses, relative_t_err, relative_r_err);
+										graph::calcRelativeErrors(gtPosesTmp, rPoses, relative_t_err, relative_r_err);
 									}
 								}
 							}
@@ -1010,12 +1173,12 @@ int main(int argc, char * argv[])
 							}
 						}
 					}
-					printf("   %s (%d, s=%.3f):\terror lin=%.3fm (max=%.3fm, odom=%.3fm) ang=%.1fdeg%s%s, %s: avg=%dms (max=%dms) loops=%d%s, odom: avg=%dms (max=%dms), camera: avg=%dms, %smap=%dMB\n",
+					printf("   %s (%d, s=%.3f):\terror lin=%.3fm (max=%s, odom=%.3fm) ang=%.1fdeg%s%s, %s: avg=%dms (max=%dms) loops=%d%s, odom: avg=%dms (max=%dms), camera: avg=%dms, %smap=%dMB\n",
 							fileName.c_str(),
 							(int)ids.size(),
 							bestScale,
 							bestRMSE,
-							maxRMSE,
+							maxRMSE!=-1?uFormat("%.3fm", maxRMSE).c_str():"NA",
 							bestVoRMSE,
 							bestRMSEAng,
 							!outputKittiError?"":uFormat(", KITTI: t_err=%.2f%% r_err=%.2f deg/100m", kitti_t_err, kitti_r_err*100).c_str(),

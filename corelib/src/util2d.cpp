@@ -2093,6 +2093,207 @@ void HSVtoRGB( float *r, float *g, float *b, float h, float s, float v )
 	}
 }
 
+void NMS(
+		const std::vector<cv::KeyPoint> & ptsIn,
+		const cv::Mat & descriptorsIn,
+		std::vector<cv::KeyPoint> & ptsOut,
+		cv::Mat & descriptorsOut,
+        int border, int dist_thresh, int img_width, int img_height)
+{
+    std::vector<cv::Point2f> pts_raw;
+
+    for (size_t i = 0; i < ptsIn.size(); i++)
+    {
+		int u = (int) ptsIn[i].pt.x;
+		int v = (int) ptsIn[i].pt.y;
+
+		pts_raw.emplace_back(cv::Point2f(u, v));
+	}
+
+    //Grid Value Legend:
+    //    255  : Kept.
+    //     0   : Empty or suppressed.
+    //    100  : To be processed (converted to either kept or suppressed).
+    cv::Mat grid = cv::Mat(cv::Size(img_width, img_height), CV_8UC1);
+    cv::Mat inds = cv::Mat(cv::Size(img_width, img_height), CV_16UC1);
+
+    cv::Mat confidence = cv::Mat(cv::Size(img_width, img_height), CV_32FC1);
+	cv::Mat dilated_conf = cv::Mat(cv::Size(img_width, img_height), CV_32FC1);
+
+    grid.setTo(0);
+    inds.setTo(0);
+    confidence.setTo(0);
+
+    for (size_t i = 0; i < pts_raw.size(); i++)
+    {
+        int uu = (int) pts_raw[i].x;
+        int vv = (int) pts_raw[i].y;
+
+        grid.at<unsigned char>(vv, uu) = 100;
+        inds.at<unsigned short>(vv, uu) = i;
+
+        confidence.at<float>(vv, uu) = ptsIn[i].response;
+    }
+
+	cv::dilate(confidence, dilated_conf, cv::Mat());
+	cv::Mat peaks = confidence == dilated_conf;
+
+    cv::copyMakeBorder(grid, grid, dist_thresh, dist_thresh, dist_thresh, dist_thresh, cv::BORDER_CONSTANT, 0);
+
+    for (size_t i = 0; i < pts_raw.size(); i++)
+    {
+    	// account for top left padding
+        int uu = (int) pts_raw[i].x + dist_thresh;
+        int vv = (int) pts_raw[i].y + dist_thresh;
+        float c = confidence.at<float>(vv-dist_thresh, uu-dist_thresh);
+
+        if (grid.at<unsigned char>(vv, uu) == 100)  // If not yet suppressed.
+        {
+			if (peaks.at<unsigned char>(vv-dist_thresh, uu-dist_thresh) == 255)
+			{
+				for(int k = -dist_thresh; k < (dist_thresh+1); k++)
+				{
+					for(int j = -dist_thresh; j < (dist_thresh+1); j++)
+					{
+						if ((j==0 && k==0) || grid.at<unsigned char>(vv + k, uu + j) == 0)
+							continue;
+
+						if (confidence.at<float>(vv + k - dist_thresh, uu + j - dist_thresh) <= c)
+							grid.at<unsigned char>(vv + k, uu + j) = 0;
+					}
+				}
+				grid.at<unsigned char>(vv, uu) = 255;
+			}
+			else
+			{
+				grid.at<unsigned char>(vv, uu) = 0;
+			}
+        }
+    }
+
+    size_t valid_cnt = 0;
+    std::vector<int> select_indice;
+
+    grid = cv::Mat(grid, cv::Rect(dist_thresh, dist_thresh, img_width, img_height));
+
+    for (int v = 0; v < img_height; v++)
+    {
+        for (int u = 0; u < img_width; u++)
+        {
+            if (grid.at<unsigned char>(v,u) == 255)
+            {
+                int select_ind = (int) inds.at<unsigned short>(v, u);
+				ptsOut.emplace_back(ptsIn[select_ind]);
+                select_indice.emplace_back(select_ind);
+                valid_cnt++;
+            }
+        }
+    }
+
+    if(!descriptorsIn.empty())
+    {
+    	UASSERT(descriptorsIn.rows == (int)ptsIn.size());
+		descriptorsOut.create(select_indice.size(), 256, CV_32F);
+
+		for (size_t i=0; i<select_indice.size(); i++)
+		{
+			descriptorsIn.row(select_indice[i]).copyTo(descriptorsOut.row(i));
+		}
+    }
+}
+
+void rotateImagesUpsideUpIfNecessary(
+	CameraModel & model,
+	cv::Mat & rgb,
+	cv::Mat & depth)
+{
+	float roll,pitch,yaw;
+	// remove optical rotation
+	Transform localTransform = model.localTransform()*CameraModel::opticalRotation().inverse();
+	localTransform.getEulerAngles(roll, pitch, yaw);
+	UDEBUG("roll=%f pitch=%f yaw=%f", roll, pitch, yaw);
+	if(fabs(pitch > M_PI/4))
+	{
+		// Return original because of ambiguity for what would be considered up...
+		UDEBUG("Ignoring image rotation as pitch(%f)>Pi/4", pitch);
+		return;
+	}
+	if(roll<0)
+	{
+		roll+=2*M_PI;
+	}
+	if(roll >= M_PI/4 && roll < 3*M_PI/4)
+	{
+		UDEBUG("ROTATION_90 (roll=%f)", roll);
+		if(!rgb.empty())
+		{
+			cv::flip(rgb,rgb,1);
+			cv::transpose(rgb,rgb);
+		}
+		if(!depth.empty())
+		{
+			cv::flip(depth,depth,1);
+			cv::transpose(depth,depth);
+		}
+		cv::Size sizet(model.imageHeight(), model.imageWidth());
+		model = CameraModel(
+				model.fy(),
+				model.fx(),
+				model.cy(),
+				model.cx()>0?model.imageWidth()-model.cx():0,
+				model.localTransform()*rtabmap::Transform(0,-1,0,0, 1,0,0,0, 0,0,1,0));
+		model.setImageSize(sizet);
+	}
+	else if(roll >= 3*M_PI/4 && roll < 5*M_PI/4)
+	{
+		UDEBUG("ROTATION_180 (roll=%f)", roll);
+		if(!rgb.empty())
+		{
+			cv::flip(rgb,rgb,1);
+			cv::flip(rgb,rgb,0);
+		}
+		if(!depth.empty())
+		{
+			cv::flip(depth,depth,1);
+			cv::flip(depth,depth,0);
+		}
+		cv::Size sizet(model.imageWidth(), model.imageHeight());
+		model = CameraModel(
+				model.fx(),
+				model.fy(),
+				model.cx()>0?model.imageWidth()-model.cx():0,
+				model.cy()>0?model.imageHeight()-model.cy():0,
+				model.localTransform()*rtabmap::Transform(0,0,0,0,0,1,0));
+		model.setImageSize(sizet);
+	}
+	else if(roll >= 5*M_PI/4 && roll < 7*M_PI/4)
+	{
+		UDEBUG("ROTATION_270 (roll=%f)", roll);
+		if(!rgb.empty())
+		{
+			cv::transpose(rgb,rgb);
+			cv::flip(rgb,rgb,1);
+		}
+		if(!depth.empty())
+		{
+			cv::transpose(depth,depth);
+			cv::flip(depth,depth,1);
+		}
+		cv::Size sizet(model.imageHeight(), model.imageWidth());
+		model = CameraModel(
+				model.fy(),
+				model.fx(),
+				model.cy()>0?model.imageHeight()-model.cy():0,
+				model.cx(),
+				model.localTransform()*rtabmap::Transform(0,1,0,0, -1,0,0,0, 0,0,1,0));
+		model.setImageSize(sizet);
+	}
+	else
+	{
+		UDEBUG("ROTATION_0 (roll=%f)", roll);
+	}
+}
+
 }
 
 }

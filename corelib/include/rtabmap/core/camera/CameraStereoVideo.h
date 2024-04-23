@@ -71,7 +71,7 @@ public:
 	void setResolution(int width, int height) {_width=width, _height=height;}
 
 protected:
-	virtual SensorData captureImage(CameraInfo * info = 0);
+	virtual SensorData captureImage(SensorCaptureInfo * info = 0);
 
 private:
 	cv::VideoCapture capture_;

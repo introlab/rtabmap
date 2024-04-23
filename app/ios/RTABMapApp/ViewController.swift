@@ -1319,7 +1319,6 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
         // update preference
         rtabmap!.setOnlineBlending(enabled: defaults.bool(forKey: "Blending"));
         rtabmap!.setNodesFiltering(enabled: defaults.bool(forKey: "NodesFiltering"));
-        rtabmap!.setRawScanSaved(enabled: defaults.bool(forKey: "SaveRawScan"));
         rtabmap!.setFullResolution(enabled: defaults.bool(forKey: "HDMode"));
         rtabmap!.setSmoothing(enabled: defaults.bool(forKey: "Smoothing"));
         rtabmap!.setAppendMode(enabled: defaults.bool(forKey: "AppendMode"));

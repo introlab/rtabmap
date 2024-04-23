@@ -34,9 +34,9 @@
  * PURPOSE.  
  **********************************************************************/
 
-#include "treeoptimizer3.hh"
 #include <fstream>
 #include <string>
+#include "treeoptimizer3.h"
 
 using namespace std;
 

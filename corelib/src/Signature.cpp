@@ -219,19 +219,70 @@ void Signature::removeVirtualLinks()
 	}
 }
 
+void Signature::addLandmark(const Link & landmark)
+{
+	UDEBUG("Add landmark %d to %d (type=%d/%s var=%f,%f)", landmark.to(), this->id(), (int)landmark.type(), landmark.typeName().c_str(), landmark.transVariance(), landmark.rotVariance());
+	UASSERT_MSG(landmark.from() == this->id(), uFormat("%d->%d for signature %d (type=%d)", landmark.from(), landmark.to(), this->id(), landmark.type()).c_str());
+	UASSERT_MSG(landmark.to() < 0, uFormat("%d->%d for signature %d (type=%d)", landmark.from(), landmark.to(), this->id(), landmark.type()).c_str());
+	UASSERT_MSG(_landmarks.find(landmark.to()) == _landmarks.end(), uFormat("Landmark %d (type=%d) already added to signature %d!", landmark.to(), landmark.type(), this->id()).c_str());
+	_landmarks.insert(std::make_pair(landmark.to(), landmark));
+	_linksModified = true;
+}
+
+void Signature::removeLandmarks()
+{
+	size_t sizeBefore = _landmarks.size();
+	_landmarks.clear();
+	if(_landmarks.size() != sizeBefore)
+		_linksModified = true;
+}
+
+void Signature::removeLandmark(int landmarkId)
+{
+	int count = (int)_landmarks.erase(landmarkId);
+	if(count)
+	{
+		UDEBUG("Removed landmark %d from %d", landmarkId, this->id());
+		_linksModified = true;
+	}
+}
+
 float Signature::compareTo(const Signature & s) const
 {
+	UASSERT(this->sensorData().globalDescriptors().size() == s.sensorData().globalDescriptors().size());
+
 	float similarity = 0.0f;
-	const std::multimap<int, int> & words = s.getWords();
+	int totalDescs = 0;
 
-	if(!s.isBadSignature() && !this->isBadSignature())
+	for(size_t i=0; i<this->sensorData().globalDescriptors().size(); ++i)
 	{
-		std::list<std::pair<int, std::pair<int, int> > > pairs;
-		int totalWords = ((int)_words.size()-_invalidWordsCount)>((int)words.size()-s.getInvalidWordsCount())?((int)_words.size()-_invalidWordsCount):((int)words.size()-s.getInvalidWordsCount());
-		UASSERT(totalWords > 0);
-		EpipolarGeometry::findPairs(words, _words, pairs);
+		if(this->sensorData().globalDescriptors()[i].type()==1 && s.sensorData().globalDescriptors()[i].type()==1)
+		{
+			// rescale dot product from -1<->1 to 0<->1 (we assume normalized vectors!)
+			float dotProd = (this->sensorData().globalDescriptors()[i].data().dot(s.sensorData().globalDescriptors()[i].data()) + 1.0f) / 2.0f;
+			UASSERT_MSG(dotProd>=0, "Global descriptors should be normalized!");
+			similarity += dotProd;
+			totalDescs += 1;
+		}
+	}
 
-		similarity = float(pairs.size()) / float(totalWords);
+	if(totalDescs)
+	{
+		similarity /= totalDescs;
+	}
+	else
+	{
+		const std::multimap<int, int> & words = s.getWords();
+
+		if(!s.isBadSignature() && !this->isBadSignature())
+		{
+			std::list<std::pair<int, std::pair<int, int> > > pairs;
+			int totalWords = ((int)_words.size()-_invalidWordsCount)>((int)words.size()-s.getInvalidWordsCount())?((int)_words.size()-_invalidWordsCount):((int)words.size()-s.getInvalidWordsCount());
+			UASSERT(totalWords > 0);
+			EpipolarGeometry::findPairs(words, _words, pairs);
+
+			similarity = float(pairs.size()) / float(totalWords);
+		}
 	}
 	return similarity;
 }
@@ -348,7 +399,7 @@ unsigned long Signature::getMemoryUsed(bool withSensorData) const // Return memo
 	total += _words.size() * (sizeof(int)*2+sizeof(std::multimap<int, cv::KeyPoint>::iterator)) + sizeof(std::multimap<int, cv::KeyPoint>);
 	total += _wordsKpts.size() * sizeof(cv::KeyPoint) + sizeof(std::vector<cv::KeyPoint>);
 	total += _words3.size() * sizeof(cv::Point3f) + sizeof(std::vector<cv::Point3f>);
-	total += _wordsDescriptors.total() * _wordsDescriptors.elemSize() + sizeof(cv::Mat);
+	total += _wordsDescriptors.empty()?0:_wordsDescriptors.total() * _wordsDescriptors.elemSize() + sizeof(cv::Mat);
 	total += _wordsChanged.size() * (sizeof(int)*2+sizeof(std::map<int, int>::iterator)) + sizeof(std::map<int, int>);
 	if(withSensorData)
 	{

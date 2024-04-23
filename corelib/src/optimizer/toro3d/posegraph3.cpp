@@ -39,7 +39,8 @@
  * such as loading, saving, merging constraints, and etc.
  **/
 
-#include "posegraph3.hh"
+#include "posegraph3.h"
+
 #include <fstream>
 #include <sstream>
 #include <string>

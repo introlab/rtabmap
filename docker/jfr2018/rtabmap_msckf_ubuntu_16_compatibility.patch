@@ -1,0 +1,13 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index c14cb659..2c370200 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -830,6 +830,8 @@ IF(NOT MSVC)
+     ENDIF()
+ ENDIF()
+ 
++set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fext-numeric-literals")
++
+ 
+ ####### OSX BUNDLE CMAKE_INSTALL_PREFIX #######
+ IF(APPLE AND BUILD_AS_BUNDLE)

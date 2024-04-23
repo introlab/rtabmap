@@ -15,12 +15,8 @@ if(NOT internal)
 	FIND_PACKAGE(RTABMap REQUIRED)
 endif()
 
-IF(QT4_FOUND)
-    QT4_WRAP_CPP(moc_srcs MapBuilder.h MapBuilderWifi.h)
-ELSEIF(Qt5_FOUND)
-    QT5_WRAP_CPP(moc_srcs MapBuilder.h MapBuilderWifi.h)
-ELSE()
-    QT6_WRAP_CPP(moc_srcs MapBuilder.h MapBuilderWifi.h)
+IF(QT4_FOUND OR Qt5_FOUND OR Qt6_FOUND)
+	SET(moc_srcs MapBuilder.h MapBuilderWifi.h)
 ENDIF()
 
 SET(srcs
@@ -45,6 +41,14 @@ ENDIF(APPLE)
 
 ADD_EXECUTABLE(wifi_mapping ${srcs} ${moc_srcs})
 TARGET_LINK_LIBRARIES(wifi_mapping rtabmap::gui ${LIBRARIES})
+
+SET_TARGET_PROPERTIES(
+     wifi_mapping
+   PROPERTIES
+	 AUTOUIC ON
+     AUTOMOC ON
+     AUTORCC ON
+)
 
 if(internal)
   SET_TARGET_PROPERTIES( wifi_mapping 

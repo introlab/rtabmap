@@ -70,7 +70,7 @@ bool CameraRGBDImages::init(const std::string & calibrationFolder, const std::st
 	return success;
 }
 
-SensorData CameraRGBDImages::captureImage(CameraInfo * info)
+SensorData CameraRGBDImages::captureImage(SensorCaptureInfo * info)
 {
 	SensorData data;
 

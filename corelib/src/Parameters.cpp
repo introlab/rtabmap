@@ -214,14 +214,14 @@ ParametersMap Parameters::getDefaultParameters(const std::string & groupIn)
 	return parameters;
 }
 
-ParametersMap Parameters::filterParameters(const ParametersMap & parameters, const std::string & group, bool remove)
+ParametersMap Parameters::filterParameters(const ParametersMap & parameters, const std::string & groupIn, bool remove)
 {
 	ParametersMap output;
 	for(rtabmap::ParametersMap::const_iterator iter=parameters.begin(); iter!=parameters.end(); ++iter)
 	{
 		UASSERT(uSplit(iter->first, '/').size()  == 2);
 		std::string group = uSplit(iter->first, '/').front();
-		bool sameGroup = group.compare(group) == 0;
+		bool sameGroup = group.compare(groupIn) == 0;
 		if((!remove && sameGroup) || (remove && !sameGroup))
 		{
 			output.insert(*iter);
@@ -235,6 +235,9 @@ const std::map<std::string, std::pair<bool, std::string> > & Parameters::getRemo
 	if(removedParameters_.empty())
 	{
 		// removed parameters
+
+		// 0.21.3
+		removedParameters_.insert(std::make_pair("GridGlobal/FullUpdate",    std::make_pair(false, "")));
 
 		// 0.20.15
 		removedParameters_.insert(std::make_pair("Grid/FromDepth",           std::make_pair(true, Parameters::kGridSensor())));
@@ -301,7 +304,7 @@ const std::map<std::string, std::pair<bool, std::string> > & Parameters::getRemo
 		removedParameters_.insert(std::make_pair("Rtabmap/VhStrategy",            std::make_pair(true,  Parameters::kVhEpEnabled())));
 
 		// 0.12.5
-		removedParameters_.insert(std::make_pair("Grid/FullUpdate",               std::make_pair(true,  Parameters::kGridGlobalFullUpdate())));
+		removedParameters_.insert(std::make_pair("Grid/FullUpdate",               std::make_pair(false,  "")));
 
 		// 0.12.1
 		removedParameters_.insert(std::make_pair("Grid/3DGroundIsObstacle",       std::make_pair(true,  Parameters::kGridGroundIsObstacle())));
@@ -812,8 +815,20 @@ ParametersMap Parameters::parseArguments(int argc, char * argv[], bool onlyParam
 #else
 				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
 #endif
-				str = "With octomap:";
+				str = "With Open3D:";
+#ifdef RTABMAP_OPEN3D
+				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
+#else
+				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
+#endif
+				str = "With OctoMap:";
 #ifdef RTABMAP_OCTOMAP
+				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
+#else
+				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
+#endif
+				str = "With GridMap:";
+#ifdef RTABMAP_GRIDMAP
 				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
 #else
 				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
@@ -1157,11 +1172,8 @@ ParametersMap Parameters::parseArguments(int argc, char * argv[], bool onlyParam
 	return out;
 }
 
-
-void Parameters::readINI(const std::string & configFile, ParametersMap & parameters, bool modifiedOnly)
+void readINIImpl(const CSimpleIniA & ini, const std::string & configFilePath, ParametersMap & parameters, bool modifiedOnly)
 {
-	CSimpleIniA ini;
-	ini.LoadFile(configFile.c_str());
 	const CSimpleIniA::TKeyVal * keyValMap = ini.GetSection("Core");
 	if(keyValMap)
 	{
@@ -1176,12 +1188,12 @@ void Parameters::readINI(const std::string & configFile, ParametersMap & paramet
 				{
 					if(!RTABMAP_VERSION_COMPARE(std::atoi(version[0].c_str()), std::atoi(version[1].c_str()), std::atoi(version[2].c_str())))
 					{
-						if(configFile.find(".rtabmap") != std::string::npos)
+						if(configFilePath.find(".rtabmap") != std::string::npos)
 						{
 							UWARN("Version in the config file \"%s\" is more recent (\"%s\") than "
 								   "current RTAB-Map version used (\"%s\"). The config file will be upgraded "
 								   "to new version.",
-								   configFile.c_str(),
+								   configFilePath.c_str(),
 								   (*iter).second,
 								   RTABMAP_VERSION);
 						}
@@ -1190,7 +1202,7 @@ void Parameters::readINI(const std::string & configFile, ParametersMap & paramet
 							UERROR("Version in the config file \"%s\" is more recent (\"%s\") than "
 								   "current RTAB-Map version used (\"%s\"). New parameters (if there are some) will "
 								   "be ignored.",
-								   configFile.c_str(),
+								   configFilePath.c_str(),
 								   (*iter).second,
 								   RTABMAP_VERSION);
 						}
@@ -1240,9 +1252,24 @@ void Parameters::readINI(const std::string & configFile, ParametersMap & paramet
 	else
 	{
 		ULOGGER_WARN("Section \"Core\" in %s doesn't exist... "
-				    "Ignore this warning if the ini file does not exist yet. "
-				    "The ini file will be automatically created when rtabmap will close.", configFile.c_str());
+					"Ignore this warning if the ini file does not exist yet. "
+					"The ini file will be automatically created when rtabmap will close.", configFilePath.c_str());
 	}
+}
+
+
+void Parameters::readINI(const std::string & configFile, ParametersMap & parameters, bool modifiedOnly)
+{
+	CSimpleIniA ini;
+	ini.LoadFile(configFile.c_str());
+	readINIImpl(ini, configFile, parameters, modifiedOnly);
+}
+
+void Parameters::readINIStr(const std::string & configContent, ParametersMap & parameters, bool modifiedOnly)
+{
+	CSimpleIniA ini;
+	ini.LoadData(configContent);
+	readINIImpl(ini, "", parameters, modifiedOnly);
 }
 
 void Parameters::writeINI(const std::string & configFile, const ParametersMap & parameters)

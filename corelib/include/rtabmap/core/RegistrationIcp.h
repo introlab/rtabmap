@@ -64,10 +64,12 @@ private:
 	float _rangeMin;
 	float _rangeMax;
 	float _maxCorrespondenceDistance;
+	bool _reciprocalCorrespondences;
 	int _maxIterations;
 	float _epsilon;
 	float _correspondenceRatio;
 	bool _force4DoF;
+	int _filtersEnabled;
 	bool _pointToPlane;
 	int _pointToPlaneK;
 	float _pointToPlaneRadius;

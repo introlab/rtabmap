@@ -78,7 +78,7 @@ then
       fi
       SCAN="--Icp/PointToPlane false --Icp/Iterations 10 --Odom/ScanKeyFrameThr 0.8 $SCAN"
    fi
-   SCAN="--scan --Reg/Strategy $REG --OdomF2M/ScanMaxSize 10000 --OdomF2M/ScanSubtractRadius 0.5 --Odom/LOAMSensor 2 --Icp/MaxTranslation 2 --Icp/Epsilon 0.0001 --Icp/MaxCorrespondenceDistance 1.5 --Icp/CorrespondenceRatio 0.01 --Icp/PM true --Icp/PMOutlierRatio 0.7 --Icp/PMMatcherKnn 3 --Icp/PMMatcherEpsilon 1  $SCAN"
+   SCAN="--scan --Reg/Strategy $REG --OdomF2M/ScanMaxSize 10000 --OdomF2M/ScanSubtractRadius 0.5 --Odom/LOAMSensor 2 --Icp/MaxTranslation 2 --Icp/Epsilon 0.0001 --Icp/MaxCorrespondenceDistance 1.5 --Icp/CorrespondenceRatio 0.01 --Icp/PM true --Icp/PMOutlierRatio 0.7 --Icp/PMMatcherKnn 3 --Icp/PMMatcherEpsilon 1 --Icp/ReciprocalCorrespondences false  $SCAN"
 fi
 
 RTABMAP_KITTI_TOOL="rtabmap-kitti_dataset"

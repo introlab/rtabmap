@@ -153,6 +153,10 @@ private:
 	GainCompensator * _compensator;
 	const DBDriver * _dbDriver;
 	bool _scansHaveRGB;
+
+    bool saveOBJFile(const QString &path, pcl::TextureMesh::Ptr &mesh) const;
+    bool saveOBJFile(const QString &path, pcl::PolygonMesh &mesh) const;
+
 };
 
 }

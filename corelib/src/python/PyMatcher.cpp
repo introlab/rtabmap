@@ -10,6 +10,8 @@
 #include <rtabmap/utilite/UConversion.h>
 #include <rtabmap/utilite/UTimer.h>
 
+#include <pybind11/embed.h>
+
 #define NPY_NO_DEPRECATED_API NPY_API_VERSION
 #include <numpy/arrayobject.h>
 
@@ -39,7 +41,7 @@ PyMatcher::PyMatcher(
 		return;
 	}
 
-	lock();
+	pybind11::gil_scoped_acquire acquire;
 
 	std::string matcherPythonDir = UDirectory::getDir(path_);
 	if(!matcherPythonDir.empty())
@@ -59,15 +61,13 @@ PyMatcher::PyMatcher(
 	if(!pModule_)
 	{
 		UERROR("Module \"%s\" could not be imported! (File=\"%s\")", scriptName.c_str(), path_.c_str());
-		UERROR("%s", getTraceback().c_str());
+		UERROR("%s", getPythonTraceback().c_str());
 	}
-
-	unlock();
 }
 
 PyMatcher::~PyMatcher()
 {
-	lock();
+	pybind11::gil_scoped_acquire acquire;
 	if(pFunc_)
 	{
 		Py_DECREF(pFunc_);
@@ -76,7 +76,6 @@ PyMatcher::~PyMatcher()
 	{
 		Py_DECREF(pModule_);
 	}
-	unlock();
 }
 
 std::vector<cv::DMatch> PyMatcher::match(
@@ -104,7 +103,7 @@ std::vector<cv::DMatch> PyMatcher::match(
 	   imageSize.width>0 && imageSize.height>0)
 	{
 
-		lock();
+		pybind11::gil_scoped_acquire acquire;
 
 		UDEBUG("matchThreshold=%f, iterations=%d, cuda=%d", matchThreshold_, iterations_, cuda_?1:0);
 
@@ -120,7 +119,7 @@ std::vector<cv::DMatch> PyMatcher::match(
 					if(result == NULL)
 					{
 						UERROR("Call to \"init(...)\" in \"%s\" failed!", path_.c_str());
-						UERROR("%s", getTraceback().c_str());
+						UERROR("%s", getPythonTraceback().c_str());
 						return matches;
 					}
 					Py_DECREF(result);
@@ -133,7 +132,7 @@ std::vector<cv::DMatch> PyMatcher::match(
 					else
 					{
 						UERROR("Cannot find method \"match(...)\" in %s", path_.c_str());
-						UERROR("%s", getTraceback().c_str());
+						UERROR("%s", getPythonTraceback().c_str());
 						if(pFunc_)
 						{
 							Py_DECREF(pFunc_);
@@ -145,7 +144,7 @@ std::vector<cv::DMatch> PyMatcher::match(
 				else
 				{
 					UERROR("Cannot call method \"init(...)\" in %s", path_.c_str());
-					UERROR("%s", getTraceback().c_str());
+					UERROR("%s", getPythonTraceback().c_str());
 					return matches;
 				}
 				Py_DECREF(pFunc);
@@ -153,7 +152,7 @@ std::vector<cv::DMatch> PyMatcher::match(
 			else
 			{
 				UERROR("Cannot find method \"init(...)\"");
-				UERROR("%s", getTraceback().c_str());
+				UERROR("%s", getPythonTraceback().c_str());
 				return matches;
 			}
 			UDEBUG("init time = %fs", timer.ticks());
@@ -216,7 +215,7 @@ std::vector<cv::DMatch> PyMatcher::match(
 			if(pReturn == NULL)
 			{
 				UERROR("Failed to call match() function!");
-				UERROR("%s", getTraceback().c_str());
+				UERROR("%s", getPythonTraceback().c_str());
 			}
 			else
 			{
@@ -260,7 +259,6 @@ std::vector<cv::DMatch> PyMatcher::match(
 
 			UDEBUG("Fill matches (%d/%d) and cleanup time = %fs", matches.size(), std::min(descriptorsQuery.rows, descriptorsTrain.rows), timer.ticks());
 		}
-		unlock();
 	}
 	else
 	{

@@ -28,7 +28,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/Odometry.h>
 #include "rtabmap/core/Rtabmap.h"
 #include "rtabmap/core/CameraStereo.h"
-#include "rtabmap/core/CameraThread.h"
 #include "rtabmap/core/Graph.h"
 #include "rtabmap/core/OdometryInfo.h"
 #include "rtabmap/core/OdometryEvent.h"
@@ -41,6 +40,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/utilite/UStl.h"
 #include "rtabmap/utilite/UProcessInfo.h"
 #include <pcl/common/common.h>
+#include <rtabmap/core/SensorCaptureThread.h>
 #include <stdio.h>
 #include <signal.h>
 
@@ -373,7 +373,7 @@ int main(int argc, char * argv[])
 					false, // assume that images are already rectified
 					0.0f);
 	}
-	CameraThread cameraThread(camera, parameters);
+	SensorCaptureThread cameraThread(camera, parameters);
 	((CameraImages*)cameraThread.camera())->setTimestamps(false, pathTimes, false);
 	if(exposureCompensation)
 	{
@@ -434,8 +434,8 @@ int main(int argc, char * argv[])
 
 		UTimer totalTime;
 		UTimer timer;
-		CameraInfo cameraInfo;
-		SensorData data = cameraThread.camera()->takeImage(&cameraInfo);
+		SensorCaptureInfo cameraInfo;
+		SensorData data = cameraThread.camera()->takeData(&cameraInfo);
 		int iteration = 0;
 
 		/////////////////////////////
@@ -491,6 +491,7 @@ int main(int argc, char * argv[])
 				externalStats.insert(std::make_pair("Camera/Disparity/ms", cameraInfo.timeDisparity*1000.0f));
 				externalStats.insert(std::make_pair("Camera/ImageDecimation/ms", cameraInfo.timeImageDecimation*1000.0f));
 				externalStats.insert(std::make_pair("Camera/Mirroring/ms", cameraInfo.timeMirroring*1000.0f));
+				externalStats.insert(std::make_pair("Camera/HistogramEqualization/ms", cameraInfo.timeHistogramEqualization*1000.0f));
 				externalStats.insert(std::make_pair("Camera/ExposureCompensation/ms", cameraInfo.timeStereoExposureCompensation*1000.0f));
 				externalStats.insert(std::make_pair("Camera/ScanFromDepth/ms", cameraInfo.timeScanFromDepth*1000.0f));
 				externalStats.insert(std::make_pair("Camera/TotalTime/ms", cameraInfo.timeTotal*1000.0f));
@@ -568,9 +569,9 @@ int main(int argc, char * argv[])
 				fflush(stdout);
 			}
 
-			cameraInfo = CameraInfo();
+			cameraInfo = SensorCaptureInfo();
 			timer.restart();
-			data = cameraThread.camera()->takeImage(&cameraInfo);
+			data = cameraThread.camera()->takeData(&cameraInfo);
 		}
 		delete odom;
 		printf("Total time=%fs\n", totalTime.ticks());

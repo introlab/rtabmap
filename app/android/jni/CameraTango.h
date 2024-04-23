@@ -52,7 +52,6 @@ public:
 	virtual void close(); // close Tango connection
 	virtual std::string getSerial() const;
 	rtabmap::Transform tangoPoseToTransform(const TangoPoseData * tangoPose) const;
-	void setColorCamera(bool enabled) {if(!this->isRunning()) colorCamera_ = enabled;}
 	void setDecimation(int value) {decimation_ = value;}
 	void setRawScanPublished(bool enabled) {rawScanPublished_ = enabled;}
 
@@ -61,7 +60,7 @@ public:
 	void tangoEventReceived(int type, const char * key, const char * value);
 
 protected:
-	virtual SensorData captureImage(CameraInfo * info = 0);
+	virtual SensorData updateDataOnRender(Transform & pose);
 
 private:
 	rtabmap::Transform getPoseAtTimestamp(double timestamp);
@@ -71,12 +70,12 @@ private:
 	bool colorCamera_;
 	int decimation_;
 	bool rawScanPublished_;
-	SensorData data_;
+	SensorData tangoData_;
 	cv::Mat tangoColor_;
 	int tangoColorType_;
 	double tangoColorStamp_;
-	boost::mutex dataMutex_;
-	USemaphore dataReady_;
+	boost::mutex tangoDataMutex_;
+	USemaphore tangoDataReady_;
 	cv::Mat fisheyeRectifyMapX_;
 	cv::Mat fisheyeRectifyMapY_;
 };

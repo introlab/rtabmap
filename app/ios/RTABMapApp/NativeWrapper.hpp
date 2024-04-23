@@ -67,7 +67,7 @@ bool startCameraNative(const void *object);
 void stopCameraNative(const void *object);
 void setCameraNative(const void *object, int type);
 void postCameraPoseEventNative(const void *object,
-                         float x, float y, float z, float qx, float qy, float qz, float qw);
+                         float x, float y, float z, float qx, float qy, float qz, float qw, double stamp);
 void postOdometryEventNative(const void *object,
                        float x, float y, float z, float qx, float qy, float qz, float qw,
                        float fx, float fy, float cx, float cy,
@@ -97,7 +97,6 @@ void setGraphOptimizationNative(const void *object, bool enabled);
 void setNodesFilteringNative(const void *object, bool enabled);
 void setGraphVisibleNative(const void *object, bool visible);
 void setGridVisibleNative(const void *object, bool visible);
-void setRawScanSavedNative(const void *object, bool enabled);
 void setFullResolutionNative(const void *object, bool enabled);
 void setSmoothingNative(const void *object, bool enabled);
 void setAppendModeNative(const void *object, bool enabled);

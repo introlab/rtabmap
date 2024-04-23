@@ -82,8 +82,8 @@ LaserScan commonFiltering(
 		float groundNormalsUp)
 {
 	LaserScan scan = scanIn;
-	UDEBUG("scan size=%d format=%d, step=%d, rangeMin=%f, rangeMax=%f, voxel=%f, normalK=%d, normalRadius=%f, groundNormalsUp=%f",
-			scan.size(), (int)scan.format(), downsamplingStep, rangeMin, rangeMax, voxelSize, normalK, normalRadius, groundNormalsUp);
+	UDEBUG("scan size=%d format=%d, organized=%d, step=%d, rangeMin=%f, rangeMax=%f, voxel=%f, normalK=%d, normalRadius=%f, groundNormalsUp=%f",
+			scan.size(), (int)scan.format(), scan.isOrganized()?1:0, downsamplingStep, rangeMin, rangeMax, voxelSize, normalK, normalRadius, groundNormalsUp);
 	if(!scan.isEmpty())
 	{
 		// combined downsampling and range filtering step
@@ -99,34 +99,44 @@ LaserScan commonFiltering(
 			int oi = 0;
 			float rangeMinSqrd = rangeMin * rangeMin;
 			float rangeMaxSqrd = rangeMax * rangeMax;
-			for(int i=0; i<scan.size()-downsamplingStep+1; i+=downsamplingStep)
+			int downsamplingRows = scan.data().rows > scan.data().cols?downsamplingStep:1;
+			int downsamplingCols = scan.data().cols > scan.data().rows?downsamplingStep:1;
+			for(int j=0; j<scan.data().rows-downsamplingRows+1; j+=downsamplingRows)
 			{
-				const float * ptr = scan.data().ptr<float>(0, i);
-
-				if(rangeMin>0.0f || rangeMax>0.0f)
+				for(int i=0; i<scan.data().cols-downsamplingCols+1; i+=downsamplingCols)
 				{
-					float r;
-					if(is2d)
+					const float * ptr = scan.data().ptr<float>(j, i);
+
+					if(rangeMin>0.0f || rangeMax>0.0f)
 					{
-						r = ptr[0]*ptr[0] + ptr[1]*ptr[1];
-					}
-					else
-					{
-						r = ptr[0]*ptr[0] + ptr[1]*ptr[1] + ptr[2]*ptr[2];
+						float r;
+						if(is2d)
+						{
+							r = ptr[0]*ptr[0] + ptr[1]*ptr[1];
+						}
+						else
+						{
+							r = ptr[0]*ptr[0] + ptr[1]*ptr[1] + ptr[2]*ptr[2];
+						}
+
+						if(!uIsFinite(r))
+						{
+							continue;
+						}
+
+						if(rangeMin > 0.0f && r < rangeMinSqrd)
+						{
+							continue;
+						}
+						if(rangeMax > 0.0f && r > rangeMaxSqrd)
+						{
+							continue;
+						}
 					}
 
-					if(rangeMin > 0.0f && r < rangeMinSqrd)
-					{
-						continue;
-					}
-					if(rangeMax > 0.0f && r > rangeMaxSqrd)
-					{
-						continue;
-					}
+					cv::Mat(scan.data(), cv::Range(j,j+1), cv::Range(i,i+1)).copyTo(cv::Mat(tmp, cv::Range::all(), cv::Range(oi,oi+1)));
+					++oi;
 				}
-
-				cv::Mat(scan.data(), cv::Range::all(), cv::Range(i,i+1)).copyTo(cv::Mat(tmp, cv::Range::all(), cv::Range(oi,oi+1)));
-				++oi;
 			}
 			int previousSize = scan.size();
 			int scanMaxPtsTmp = scan.maxPoints();

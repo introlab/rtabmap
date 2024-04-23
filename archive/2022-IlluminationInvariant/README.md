@@ -25,14 +25,14 @@ The following image shows when we do the same localization experiment at differe
 
 We provide two formats: the first one is more general and the second one is used to produce the results in this paper with RTAB-Map. Please open issue if the links are outdated.
 
-* [Images](https://usherbrooke-my.sharepoint.com/:u:/g/personal/labm2414_usherbrooke_ca/EV8F4PZUxOxLhwAyEehlzKwBjF-9xNuxR32Q4mUjx5u-rA?e=eCJ3TW):
+* [Images](https://drive.google.com/file/d/1fUm1m8oW6q8qlThx7BjrBH2vrVbNQ9bQ/view?usp=drive_link):
   * `rgb`: folder containing *.jpg color camera images
   * `depth`: folder containing *.png 16bits mm depth images
   * `calib`: folder containing calibration for each color image. Each calibration contains also the transform between `device` and `camera` frames as `local_transform`.
   * `device_poses.txt`: VIO poses of each image in `device` frame
   * `camera_poses.txt`: VIO poses of each image in `camera` frame
-* [RTAB-Map Databases](https://usherbrooke-my.sharepoint.com/:u:/g/personal/labm2414_usherbrooke_ca/EU5fb0jEKzlGhPK3OWjMGLUBnDo1BRAoZwtB2czyeVLE_A?e=Y0JyXY)
-
+* [RTAB-Map Databases](https://drive.google.com/file/d/1TklUcTKFSrcg8b0t0U80G_IpFRMVRlY5/view?usp=drive_link)
+* Dataset now also available on [Federated Research Data Repository (FRDR)](https://doi.org/10.20383/103.0931) (if links above don't work)
 
 
 ## How reproduce results shown in the paper

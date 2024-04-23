@@ -113,6 +113,14 @@ cv::Mat StereoSGBM::computeDisparity(
             mode_);
 	stereo->compute(leftMono, rightImage, disparity);
 #endif
+
+	if(minDisparity_>0)
+	{
+		cv::Mat dst;
+		cv::threshold(disparity, dst, minDisparity_*16, 0, cv::THRESH_TOZERO);
+		disparity = dst;
+	}
+
 	return disparity;
 }
 

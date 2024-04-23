@@ -28,12 +28,12 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/ULogger.h>
 #include <rtabmap/utilite/UFile.h>
 #include <rtabmap/utilite/UConversion.h>
-#include <rtabmap/core/CameraThread.h>
 #include <rtabmap/core/CameraRGBD.h>
 #include <rtabmap/core/CameraStereo.h>
 #include <rtabmap/core/Camera.h>
 #include <rtabmap/core/DBReader.h>
-#include <rtabmap/core/CameraThread.h>
+#include <rtabmap/core/SensorCaptureThread.h>
+#include <rtabmap/core/SensorCaptureThread.h>
 #include <rtabmap/gui/DataRecorder.h>
 #include <rtabmap/gui/PreferencesDialog.h>
 #include <QApplication>
@@ -55,7 +55,7 @@ void showUsage()
 	exit(1);
 }
 
-rtabmap::CameraThread * cam = 0;
+rtabmap::SensorCaptureThread * cam = 0;
 QApplication * app = 0;
 // catch ctrl-c
 void sighandler(int sig)
@@ -144,10 +144,11 @@ int main (int argc, char * argv[])
 		return -1;
 	}
 	ParametersMap parameters = dialog.getAllParameters();
-	cam = new CameraThread(camera, parameters);
+	cam = new SensorCaptureThread(camera, parameters);
 	cam->setMirroringEnabled(dialog.isSourceMirroring());
 	cam->setColorOnly(dialog.isSourceRGBDColorOnly());
 	cam->setImageDecimation(dialog.getSourceImageDecimation());
+	cam->setHistogramMethod(dialog.getSourceHistogramMethod());
 	cam->setStereoToDepth(dialog.isSourceStereoDepthGenerated());
 	cam->setStereoExposureCompensation(dialog.isSourceStereoExposureCompensation());
 	cam->setScanParameters(

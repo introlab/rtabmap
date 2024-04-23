@@ -552,50 +552,50 @@
 			<key>DefaultValue</key>
 			<true/>
 		</dict>
-        <dict>
-            <key>Type</key>
-            <string>PSGroupSpecifier</string>
-            <key>FooterText</key>
-            <string>Used only in localization mode (when clicking First-P. View during visualization). This is used to get smoother localizations and to verify localization transforms (when Max Optimization Error is not disabled) to make sure we don't teleport to a location very similar to one we previously localized on.</string>
-        </dict>
-        <dict>
-            <key>Type</key>
-            <string>PSMultiValueSpecifier</string>
-            <key>Title</key>
-            <string>Maximum odometry cache size</string>
-            <key>Key</key>
-            <string>MaximumOdometryCacheSize</string>
-            <key>DefaultValue</key>
-            <string>10</string>
-            <key>Titles</key>
-            <array>
-                <string>500</string>
-                <string>200</string>
-                <string>100</string>
-                <string>75</string>
-                <string>50</string>
-                <string>40</string>
-                <string>30</string>
-                <string>20</string>
-                <string>10</string>
-                <string>5</string>
-                <string>Disabled</string>
-            </array>
-            <key>Values</key>
-            <array>
-                <string>500</string>
-                <string>200</string>
-                <string>100</string>
-                <string>75</string>
-                <string>50</string>
-                <string>40</string>
-                <string>30</string>
-                <string>20</string>
-                <string>10</string>
-                <string>5</string>
-                <string>0</string>
-            </array>
-        </dict>
+		<dict>
+			<key>Type</key>
+			<string>PSGroupSpecifier</string>
+			<key>FooterText</key>
+			<string>Used only in localization mode (when clicking First-P. View during visualization). This is used to get smoother localizations and to verify localization transforms (when Max Optimization Error is not disabled) to make sure we don&apos;t teleport to a location very similar to one we previously localized on.</string>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSMultiValueSpecifier</string>
+			<key>Title</key>
+			<string>Maximum odometry cache size</string>
+			<key>Key</key>
+			<string>MaximumOdometryCacheSize</string>
+			<key>DefaultValue</key>
+			<string>10</string>
+			<key>Titles</key>
+			<array>
+				<string>500</string>
+				<string>200</string>
+				<string>100</string>
+				<string>75</string>
+				<string>50</string>
+				<string>40</string>
+				<string>30</string>
+				<string>20</string>
+				<string>10</string>
+				<string>5</string>
+				<string>Disabled</string>
+			</array>
+			<key>Values</key>
+			<array>
+				<string>500</string>
+				<string>200</string>
+				<string>100</string>
+				<string>75</string>
+				<string>50</string>
+				<string>40</string>
+				<string>30</string>
+				<string>20</string>
+				<string>10</string>
+				<string>5</string>
+				<string>0</string>
+			</array>
+		</dict>
 		<dict>
 			<key>Type</key>
 			<string>PSGroupSpecifier</string>
@@ -749,22 +749,6 @@
 			<string>Save All Frames in Database</string>
 			<key>Key</key>
 			<string>SaveAllFramesInDatabase</string>
-			<key>DefaultValue</key>
-			<true/>
-		</dict>
-		<dict>
-			<key>Type</key>
-			<string>PSGroupSpecifier</string>
-			<key>FooterText</key>
-			<string>Save raw point clouds in database.</string>
-		</dict>
-		<dict>
-			<key>Type</key>
-			<string>PSToggleSwitchSpecifier</string>
-			<key>Title</key>
-			<string>Save Raw Scan</string>
-			<key>Key</key>
-			<string>SaveRawScan</string>
 			<key>DefaultValue</key>
 			<true/>
 		</dict>

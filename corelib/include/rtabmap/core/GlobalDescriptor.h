@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2010-2020, Mathieu Labbe - IntRoLab - Universite de Sherbrooke
+Copyright (c) 2010-2024, Mathieu Labbe - IntRoLab - Universite de Sherbrooke
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without

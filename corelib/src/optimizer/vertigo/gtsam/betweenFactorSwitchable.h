@@ -30,9 +30,15 @@ namespace vertigo {
         betweenFactor(key1, key2, measured, model) {};
 
       gtsam::Vector evaluateError(const VALUE& p1, const VALUE& p2, const SwitchVariableLinear& s,
+#if GTSAM_VERSION_NUMERIC >= 40300
+		  OptionalMatrixType H1 = OptionalNone,
+		  OptionalMatrixType H2 = OptionalNone,
+		  OptionalMatrixType H3 = OptionalNone) const
+#else
           boost::optional<gtsam::Matrix&> H1 = boost::none,
-          boost::optional<gtsam::Matrix&> H2 =  boost::none,
-          boost::optional<gtsam::Matrix&> H3 =  boost::none) const
+          boost::optional<gtsam::Matrix&> H2 = boost::none,
+          boost::optional<gtsam::Matrix&> H3 = boost::none) const
+#endif
         {
 
           // calculate error
@@ -64,9 +70,15 @@ namespace vertigo {
         betweenFactor(key1, key2, measured, model) {};
 
       gtsam::Vector evaluateError(const VALUE& p1, const VALUE& p2, const SwitchVariableSigmoid& s,
+#if GTSAM_VERSION_NUMERIC >= 40300
+		  OptionalMatrixType H1 = OptionalNone,
+		  OptionalMatrixType H2 = OptionalNone,
+		  OptionalMatrixType H3 = OptionalNone) const
+#else
           boost::optional<gtsam::Matrix&> H1 = boost::none,
-          boost::optional<gtsam::Matrix&> H2 =  boost::none,
-          boost::optional<gtsam::Matrix&> H3 =  boost::none) const
+          boost::optional<gtsam::Matrix&> H2 = boost::none,
+          boost::optional<gtsam::Matrix&> H3 = boost::none) const
+#endif
       {
 
         // calculate error

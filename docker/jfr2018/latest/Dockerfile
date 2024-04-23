@@ -137,8 +137,8 @@ RUN /bin/bash -c 'cd /root/catkin_ws;. /opt/ros/${ROS_DISTRO}/setup.bash; catkin
 RUN git clone https://github.com/tum-vision/dvo_slam.git && cd dvo_slam && git checkout ${ROS_DISTRO}-devel && rm dvo_slam/package.xml && rm dvo_benchmark/package.xml && rm dvo_ros/package.xml
 # VISO2
 RUN git clone https://github.com/srv/viso2.git && cd viso2 && git checkout ${ROS_DISTRO}
-# MSCKF-VIO
-RUN git clone https://github.com/KumarRobotics/msckf_vio.git && cd msckf_vio && git checkout a9386c5 && wget https://gist.githubusercontent.com/matlabbe/f2518d7427e7f6740af2110e540b1f2b/raw/1b7c96b38e063bacfa77408686e4528f3d27af2e/msckf_vio_a9386c5_ros_commented.patch && git apply --ignore-space-change --ignore-whitespace msckf_vio_a9386c5_ros_commented.patch
+# MSCKF-VIO: using a patched version to be used outside ros and c++14:
+RUN git clone https://github.com/borongyuan/msckf_vio.git && cd msckf_vio && git checkout 916c917e5b481741c60732057f0141e8311962c1
 # FOVIS
 RUN git clone https://github.com/srv/libfovis.git && cd libfovis && git checkout 896acc8425e9fd7c5609153b8bad349ae1abbb50
 # LOAM
@@ -227,21 +227,55 @@ ENV ORB_SLAM2_ROOT_DIR /root/ORB_SLAM2
 
 WORKDIR /root
 
+# To make "source" working
+RUN rm /bin/sh && ln -s /bin/bash /bin/sh
+
+# Need cmake >=3.10
+RUN apt update && apt install -y wget && apt-get clean && rm -rf /var/lib/apt/lists/ && \
+    wget -nv https://github.com/Kitware/CMake/releases/download/v3.17.0/cmake-3.17.0-Linux-x86_64.tar.gz && \
+    tar -xzf cmake-3.17.0-Linux-x86_64.tar.gz && \
+    rm cmake-3.17.0-Linux-x86_64.tar.gz &&\
+    ln -s ~/cmake-3.17.0-Linux-x86_64/bin/cmake ~/cmake
+
 # Copy current source code
 COPY . /root/rtabmap
 
 # Patch for OpenCV 3.1
-RUN cd rtabmap && wget https://gist.githubusercontent.com/matlabbe/ab42b8ea5d5902ffc6177539b98d9d51/raw/87520db7a54bf2673be3fc898578cd6348dd66f0/rtabmap_opencv310_backward_compatibility.patch && git apply --ignore-space-change --ignore-whitespace rtabmap_opencv310_backward_compatibility.patch
+RUN cd rtabmap && git apply --ignore-space-change --ignore-whitespace docker/jfr2018/rtabmap_opencv310_backward_compatibility.patch
 
 # Build RTAB-Map (using standard g2o, then a version for orbslam2, which uses its own g2o version)
 RUN cp -r rtabmap rtabmap_os2 && cp -r rtabmap rtabmap_msckf && cp -r rtabmap rtabmap_loam
-RUN /bin/bash -c '. /root/catkin_ws/devel/setup.bash; cd rtabmap ;  cd build ;  cmake -DWITH_FOVIS=ON -DWITH_VISO2=ON -DWITH_DVO=ON -DWITH_OKVIS=ON -DWITH_VINS=ON -DWITH_OPENVINS=ON .. ;  make -j3 ; make install ; rm -rf * ; ldconfig'
+
+RUN source /root/catkin_ws/devel/setup.bash && \
+    cd rtabmap && \
+    cd build && \
+    ~/cmake -DWITH_FOVIS=ON -DWITH_VISO2=ON -DWITH_DVO=ON -DWITH_OKVIS=ON -DWITH_VINS=ON -DWITH_OPENVINS=ON -DWITH_OPENGV=OFF .. && \
+    make -j3 && \
+    make install && \
+    rm -rf * && \
+    ldconfig
 # Version with orb_slam2 (system g2o disabled)
-RUN /bin/bash -c '. /root/catkin_ws/devel/setup.bash; cd rtabmap_os2 ; cd build ; cmake -DWITH_G2O=OFF -DWITH_ORB_SLAM=ON .. ; make -j3 ; rm -rf *'
+RUN source /root/catkin_ws/devel/setup.bash && \
+    cd rtabmap_os2 && \
+    cd build && \
+    ~/cmake -DWITH_G2O=OFF -DWITH_ORB_SLAM=ON -DWITH_OPENGV=OFF .. && \
+    make -j3 && \
+    rm -rf *
 
 # rtabmap is crashing if LOAM and MSCKF dependencies are used at the same time, so split them
-RUN /bin/bash -c '. /root/catkin_ws/devel/setup.bash; cd rtabmap_loam ;cd build ;cmake  -DWITH_LOAM=ON -DWITH_FLOAM=ON .. ;make -j3 ;rm -rf *'
-RUN /bin/bash -c '. /root/catkin_ws/devel/setup.bash; cd rtabmap_msckf ;cd build ;cmake -DWITH_MSCKF_VIO=ON .. ;make -j3 ;rm -rf *'
+RUN source /root/catkin_ws/devel/setup.bash && \
+    cd rtabmap_loam && \
+    cd build && \
+    ~/cmake  -DWITH_LOAM=ON -DWITH_FLOAM=ON -DWITH_OPENGV=OFF .. && \
+    make -j3 && \
+    rm -rf *
+RUN source /root/catkin_ws/devel/setup.bash && \
+    cd rtabmap_msckf && \
+    git apply --ignore-space-change --ignore-whitespace docker/jfr2018/rtabmap_msckf_ubuntu_16_compatibility.patch && \
+    cd build && \
+    ~/cmake -DWITH_MSCKF_VIO=ON -DWITH_OPENGV=OFF .. && \
+    make -j3 && \
+    rm -rf *
 
 WORKDIR /root
     

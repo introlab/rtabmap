@@ -28,22 +28,17 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/odometry/OdometryOpenVINS.h"
 #include "rtabmap/core/OdometryInfo.h"
 #include "rtabmap/core/util3d_transforms.h"
+#include "rtabmap/utilite/UFile.h"
 #include "rtabmap/utilite/ULogger.h"
 #include "rtabmap/utilite/UTimer.h"
-#include "rtabmap/utilite/UStl.h"
-#include "rtabmap/utilite/UThread.h"
-#include "rtabmap/utilite/UDirectory.h"
+#include <opencv2/core/eigen.hpp>
 #include <opencv2/imgproc/types_c.h>
 
 #ifdef RTABMAP_OPENVINS
 #include "core/VioManager.h"
-#include "core/VioManagerOptions.h"
-#include "core/RosVisualizer.h"
-#include "utils/dataset_reader.h"
-#include "utils/parse_ros.h"
-#include "utils/sensor_data.h"
+#include "state/Propagator.h"
 #include "state/State.h"
-#include "types/Type.h"
+#include "state/StateHelper.h"
 #endif
 
 namespace rtabmap {
@@ -52,17 +47,111 @@ OdometryOpenVINS::OdometryOpenVINS(const ParametersMap & parameters) :
 	Odometry(parameters)
 #ifdef RTABMAP_OPENVINS
     ,
-	vioManager_(0),
 	initGravity_(false),
-	previousPose_(Transform::getIdentity())
+	previousPoseInv_(Transform::getIdentity())
 #endif
 {
-}
-
-OdometryOpenVINS::~OdometryOpenVINS()
-{
 #ifdef RTABMAP_OPENVINS
-	delete vioManager_;
+	ov_core::Printer::setPrintLevel(ov_core::Printer::PrintLevel(ULogger::level()+1));
+	int enum_index;
+	std::string left_mask_path, right_mask_path;
+	params_ = std::make_unique<ov_msckf::VioManagerOptions>();
+	Parameters::parse(parameters, Parameters::kOdomOpenVINSUseStereo(), params_->use_stereo);
+	Parameters::parse(parameters, Parameters::kOdomOpenVINSUseKLT(), params_->use_klt);
+	Parameters::parse(parameters, Parameters::kOdomOpenVINSNumPts(), params_->num_pts);
+	Parameters::parse(parameters, Parameters::kFASTThreshold(), params_->fast_threshold);
+	Parameters::parse(parameters, Parameters::kVisGridCols(), params_->grid_x);
+	Parameters::parse(parameters, Parameters::kVisGridRows(), params_->grid_y);
+	Parameters::parse(parameters, Parameters::kOdomOpenVINSMinPxDist(), params_->min_px_dist);
+	Parameters::parse(parameters, Parameters::kVisCorNNDR(), params_->knn_ratio);
+	Parameters::parse(parameters, Parameters::kOdomOpenVINSFiTriangulate1d(), params_->featinit_options.triangulate_1d);
+	Parameters::parse(parameters, Parameters::kOdomOpenVINSFiRefineFeatures(), params_->featinit_options.refine_features);
+	Parameters::parse(parameters, Parameters::kOdomOpenVINSFiMaxRuns(), params_->featinit_options.max_runs);
+	Parameters::parse(parameters, Parameters::kVisMinDepth(), params_->featinit_options.min_dist);
+	Parameters::parse(parameters, Parameters::kVisMaxDepth(), params_->featinit_options.max_dist);
+	if(params_->featinit_options.max_dist == 0)
+		params_->featinit_options.max_dist = std::numeric_limits<double>::infinity();
+	Parameters::parse(parameters, Parameters::kOdomOpenVINSFiMaxBaseline(), params_->featinit_options.max_baseline);
+	Parameters::parse(parameters, Parameters::kOdomOpenVINSFiMaxCondNumber(), params_->featinit_options.max_cond_number);
+	Parameters::parse(parameters, Parameters::kOdomOpenVINSUseFEJ(), params_->state_options.do_fej);
+	Parameters::parse(parameters, Parameters::kOdomOpenVINSIntegration(), enum_index);
+	params_->state_options.integration_method = ov_msckf::StateOptions::IntegrationMethod(enum_index);
+	Parameters::parse(parameters, Parameters::kOdomOpenVINSCalibCamExtrinsics(), params_->state_options.do_calib_camera_pose);
+	Parameters::parse(parameters, Parameters::kOdomOpenVINSCalibCamIntrinsics(), params_->state_options.do_calib_camera_intrinsics);
+	Parameters::parse(parameters, Parameters::kOdomOpenVINSCalibCamTimeoffset(), params_->state_options.do_calib_camera_timeoffset);
+	Parameters::parse(parameters, Parameters::kOdomOpenVINSCalibIMUIntrinsics(), params_->state_options.do_calib_imu_intrinsics);
+	Parameters::parse(parameters, Parameters::kOdomOpenVINSCalibIMUGSensitivity(), params_->state_options.do_calib_imu_g_sensitivity);
+	Parameters::parse(parameters, Parameters::kOdomOpenVINSMaxClones(), params_->state_options.max_clone_size);
+	Parameters::parse(parameters, Parameters::kOdomOpenVINSMaxSLAM(), params_->state_options.max_slam_features);
+	Parameters::parse(parameters, Parameters::kOdomOpenVINSMaxSLAMInUpdate(), params_->state_options.max_slam_in_update);
+	Parameters::parse(parameters, Parameters::kOdomOpenVINSMaxMSCKFInUpdate(), params_->state_options.max_msckf_in_update);
+	Parameters::parse(parameters, Parameters::kOdomOpenVINSFeatRepMSCKF(), enum_index);
+	params_->state_options.feat_rep_msckf = ov_type::LandmarkRepresentation::Representation(enum_index);
+	Parameters::parse(parameters, Parameters::kOdomOpenVINSFeatRepSLAM(), enum_index);
+	params_->state_options.feat_rep_slam = ov_type::LandmarkRepresentation::Representation(enum_index);
+	Parameters::parse(parameters, Parameters::kOdomOpenVINSDtSLAMDelay(), params_->dt_slam_delay);
+	Parameters::parse(parameters, Parameters::kOdomOpenVINSGravityMag(), params_->gravity_mag);
+	Parameters::parse(parameters, Parameters::kVisDepthAsMask(), params_->use_mask);
+	Parameters::parse(parameters, Parameters::kOdomOpenVINSLeftMaskPath(), left_mask_path);
+	if(!left_mask_path.empty())
+	{
+		if(!UFile::exists(left_mask_path))
+			UWARN("OpenVINS: invalid left mask path: %s", left_mask_path.c_str());
+		else
+			params_->masks.emplace(0, cv::imread(left_mask_path, cv::IMREAD_GRAYSCALE));
+	}
+	Parameters::parse(parameters, Parameters::kOdomOpenVINSRightMaskPath(), right_mask_path);
+	if(!right_mask_path.empty())
+	{
+		if(!UFile::exists(right_mask_path))
+			UWARN("OpenVINS: invalid right mask path: %s", right_mask_path.c_str());
+		else
+			params_->masks.emplace(1, cv::imread(right_mask_path, cv::IMREAD_GRAYSCALE));
+	}
+	Parameters::parse(parameters, Parameters::kOdomOpenVINSInitWindowTime(), params_->init_options.init_window_time);
+	Parameters::parse(parameters, Parameters::kOdomOpenVINSInitIMUThresh(), params_->init_options.init_imu_thresh);
+	Parameters::parse(parameters, Parameters::kOdomOpenVINSInitMaxDisparity(), params_->init_options.init_max_disparity);
+	Parameters::parse(parameters, Parameters::kOdomOpenVINSInitMaxFeatures(), params_->init_options.init_max_features);
+	Parameters::parse(parameters, Parameters::kOdomOpenVINSInitDynUse(), params_->init_options.init_dyn_use);
+	Parameters::parse(parameters, Parameters::kOdomOpenVINSInitDynMLEOptCalib(), params_->init_options.init_dyn_mle_opt_calib);
+	Parameters::parse(parameters, Parameters::kOdomOpenVINSInitDynMLEMaxIter(), params_->init_options.init_dyn_mle_max_iter);
+	Parameters::parse(parameters, Parameters::kOdomOpenVINSInitDynMLEMaxTime(), params_->init_options.init_dyn_mle_max_time);
+	Parameters::parse(parameters, Parameters::kOdomOpenVINSInitDynMLEMaxThreads(), params_->init_options.init_dyn_mle_max_threads);
+	Parameters::parse(parameters, Parameters::kOdomOpenVINSInitDynNumPose(), params_->init_options.init_dyn_num_pose);
+	Parameters::parse(parameters, Parameters::kOdomOpenVINSInitDynMinDeg(), params_->init_options.init_dyn_min_deg);
+	Parameters::parse(parameters, Parameters::kOdomOpenVINSInitDynInflationOri(), params_->init_options.init_dyn_inflation_orientation);
+	Parameters::parse(parameters, Parameters::kOdomOpenVINSInitDynInflationVel(), params_->init_options.init_dyn_inflation_velocity);
+	Parameters::parse(parameters, Parameters::kOdomOpenVINSInitDynInflationBg(), params_->init_options.init_dyn_inflation_bias_gyro);
+	Parameters::parse(parameters, Parameters::kOdomOpenVINSInitDynInflationBa(), params_->init_options.init_dyn_inflation_bias_accel);
+	Parameters::parse(parameters, Parameters::kOdomOpenVINSInitDynMinRecCond(), params_->init_options.init_dyn_min_rec_cond);
+	Parameters::parse(parameters, Parameters::kOdomOpenVINSTryZUPT(), params_->try_zupt);
+	Parameters::parse(parameters, Parameters::kOdomOpenVINSZUPTChi2Multiplier(), params_->zupt_options.chi2_multipler);
+	Parameters::parse(parameters, Parameters::kOdomOpenVINSZUPTMaxVelodicy(), params_->zupt_max_velocity);
+	Parameters::parse(parameters, Parameters::kOdomOpenVINSZUPTNoiseMultiplier(), params_->zupt_noise_multiplier);
+	Parameters::parse(parameters, Parameters::kOdomOpenVINSZUPTMaxDisparity(), params_->zupt_max_disparity);
+	Parameters::parse(parameters, Parameters::kOdomOpenVINSZUPTOnlyAtBeginning(), params_->zupt_only_at_beginning);
+	Parameters::parse(parameters, Parameters::kOdomOpenVINSAccelerometerNoiseDensity(), params_->imu_noises.sigma_a);
+	Parameters::parse(parameters, Parameters::kOdomOpenVINSAccelerometerRandomWalk(), params_->imu_noises.sigma_ab);
+	Parameters::parse(parameters, Parameters::kOdomOpenVINSGyroscopeNoiseDensity(), params_->imu_noises.sigma_w);
+	Parameters::parse(parameters, Parameters::kOdomOpenVINSGyroscopeRandomWalk(), params_->imu_noises.sigma_wb);
+	Parameters::parse(parameters, Parameters::kOdomOpenVINSUpMSCKFSigmaPx(), params_->msckf_options.sigma_pix);
+	Parameters::parse(parameters, Parameters::kOdomOpenVINSUpMSCKFChi2Multiplier(), params_->msckf_options.chi2_multipler);
+	Parameters::parse(parameters, Parameters::kOdomOpenVINSUpSLAMSigmaPx(), params_->slam_options.sigma_pix);
+	Parameters::parse(parameters, Parameters::kOdomOpenVINSUpSLAMChi2Multiplier(), params_->slam_options.chi2_multipler);
+	params_->vec_dw << 1, 0, 0, 1, 0, 1;
+	params_->vec_da << 1, 0, 0, 1, 0, 1;
+	params_->vec_tg << 0, 0, 0, 0, 0, 0, 0, 0, 0;
+	params_->q_ACCtoIMU << 0, 0, 0, 1;
+	params_->q_GYROtoIMU << 0, 0, 0, 1;
+	params_->use_aruco = false;
+	params_->num_opencv_threads = -1;
+	params_->histogram_method = ov_core::TrackBase::HistogramMethod::NONE;
+	params_->init_options.sigma_a = params_->imu_noises.sigma_a;
+	params_->init_options.sigma_ab = params_->imu_noises.sigma_ab;
+	params_->init_options.sigma_w = params_->imu_noises.sigma_w;
+	params_->init_options.sigma_wb = params_->imu_noises.sigma_wb;
+	params_->init_options.sigma_pix = params_->slam_options.sigma_pix;
+	params_->init_options.gravity_mag = params_->gravity_mag;
 #endif
 }
 
@@ -72,11 +161,9 @@ void OdometryOpenVINS::reset(const Transform & initialPose)
 #ifdef RTABMAP_OPENVINS
 	if(!initGravity_)
 	{
-		delete vioManager_;
-		vioManager_ = 0;
-		previousPose_.setIdentity();
-		previousLocalTransform_.setNull();
-		imuBuffer_.clear();
+		vioManager_.reset();
+		previousPoseInv_.setIdentity();
+		imuLocalTransformInv_.setNull();
 	}
 	initGravity_ = false;
 #endif
@@ -90,394 +177,305 @@ Transform OdometryOpenVINS::computeTransform(
 {
 	Transform t;
 #ifdef RTABMAP_OPENVINS
-	UTimer timer;
 
-	// Buffer imus;
-	if(!data.imu().empty())
+	if(!vioManager_)
 	{
-		imuBuffer_.insert(std::make_pair(data.stamp(), data.imu()));
-	}
-
-	// OpenVINS has to buffer image before computing transformation with IMU stamp > image stamp
-	if(!data.imageRaw().empty() && !data.rightRaw().empty() && data.stereoCameraModels().size() == 1)
-	{
-		if(imuBuffer_.empty())
+		if(!data.imu().empty())
 		{
-			UWARN("Waiting IMU for initialization...");
-			return t;
+			imuLocalTransformInv_ = data.imu().localTransform().inverse();
+			Phi_.setZero();
+			Phi_.block(0,0,3,3) = data.imu().localTransform().toEigen4d().block(0,0,3,3);
+			Phi_.block(3,3,3,3) = data.imu().localTransform().toEigen4d().block(0,0,3,3);
 		}
-		if(vioManager_ == 0)
+
+		if(!data.imageRaw().empty() && !imuLocalTransformInv_.isNull())
 		{
-			UINFO("OpenVINS Initialization");
-
-			// intialize
-			ov_msckf::VioManagerOptions params;
-
-			// ESTIMATOR ======================================================================
-
-			// Main EKF parameters
-			//params.state_options.do_fej = true;
-			//params.state_options.imu_avg =false;
-			//params.state_options.use_rk4_integration;
-			//params.state_options.do_calib_camera_pose = false;
-			//params.state_options.do_calib_camera_intrinsics = false;
-			//params.state_options.do_calib_camera_timeoffset = false;
-			//params.state_options.max_clone_size = 11;
-			//params.state_options.max_slam_features = 25;
-			//params.state_options.max_slam_in_update = INT_MAX;
-			//params.state_options.max_msckf_in_update = INT_MAX;
-			//params.state_options.max_aruco_features = 1024;
-			params.state_options.num_cameras = 2;
-			//params.dt_slam_delay = 2;
-
-			// Set what representation we should be using
-			//params.state_options.feat_rep_msckf = LandmarkRepresentation::from_string("ANCHORED_MSCKF_INVERSE_DEPTH"); // default GLOBAL_3D
-			//params.state_options.feat_rep_slam = LandmarkRepresentation::from_string("ANCHORED_MSCKF_INVERSE_DEPTH");  // default GLOBAL_3D
-			//params.state_options.feat_rep_aruco = LandmarkRepresentation::from_string("ANCHORED_MSCKF_INVERSE_DEPTH"); // default GLOBAL_3D
-			if( params.state_options.feat_rep_msckf == LandmarkRepresentation::Representation::UNKNOWN ||
-				params.state_options.feat_rep_slam == LandmarkRepresentation::Representation::UNKNOWN ||
-				params.state_options.feat_rep_aruco == LandmarkRepresentation::Representation::UNKNOWN)
+			Transform T_imu_left;
+			Eigen::VectorXd left_calib(8), right_calib(8);
+			if(!data.rightRaw().empty())
 			{
-				printf(RED "VioManager(): invalid feature representation specified:\n" RESET);
-				printf(RED "\t- GLOBAL_3D\n" RESET);
-				printf(RED "\t- GLOBAL_FULL_INVERSE_DEPTH\n" RESET);
-				printf(RED "\t- ANCHORED_3D\n" RESET);
-				printf(RED "\t- ANCHORED_FULL_INVERSE_DEPTH\n" RESET);
-				printf(RED "\t- ANCHORED_MSCKF_INVERSE_DEPTH\n" RESET);
-				printf(RED "\t- ANCHORED_INVERSE_DEPTH_SINGLE\n" RESET);
-				std::exit(EXIT_FAILURE);
-			}
+				params_->state_options.num_cameras = params_->init_options.num_cameras = 2;
+				T_imu_left = imuLocalTransformInv_ * data.stereoCameraModels()[0].localTransform();
 
-			// Filter initialization
-			//params.init_window_time = 1;
-			//params.init_imu_thresh = 1;
+				bool is_fisheye = data.stereoCameraModels()[0].left().isFisheye() && !this->imagesAlreadyRectified();
+				if(is_fisheye)
+				{
+					params_->camera_intrinsics.emplace(0, std::make_shared<ov_core::CamEqui>(
+						data.stereoCameraModels()[0].left().imageWidth(), data.stereoCameraModels()[0].left().imageHeight()));
+					params_->camera_intrinsics.emplace(1, std::make_shared<ov_core::CamEqui>(
+						data.stereoCameraModels()[0].right().imageWidth(), data.stereoCameraModels()[0].right().imageHeight()));
+				}
+				else
+				{
+					params_->camera_intrinsics.emplace(0, std::make_shared<ov_core::CamRadtan>(
+						data.stereoCameraModels()[0].left().imageWidth(), data.stereoCameraModels()[0].left().imageHeight()));
+					params_->camera_intrinsics.emplace(1, std::make_shared<ov_core::CamRadtan>(
+						data.stereoCameraModels()[0].right().imageWidth(), data.stereoCameraModels()[0].right().imageHeight()));
+				}
 
-			// Zero velocity update
-			//params.try_zupt = false;
-			//params.zupt_options.chi2_multipler = 5;
-			//params.zupt_max_velocity = 1;
-			//params.zupt_noise_multiplier = 1;
-
-			// NOISE ======================================================================
-
-			// Our noise values for inertial sensor
-			//params.imu_noises.sigma_w = 1.6968e-04;
-			//params.imu_noises.sigma_a = 2.0000e-3;
-			//params.imu_noises.sigma_wb = 1.9393e-05;
-			//params.imu_noises.sigma_ab = 3.0000e-03;
-
-			// Read in update parameters
-			//params.msckf_options.sigma_pix = 1;
-			//params.msckf_options.chi2_multipler = 5;
-			//params.slam_options.sigma_pix = 1;
-			//params.slam_options.chi2_multipler = 5;
-			//params.aruco_options.sigma_pix = 1;
-			//params.aruco_options.chi2_multipler = 5;
-
-
-			// STATE ======================================================================
-
-			// Timeoffset from camera to IMU
-			//params.calib_camimu_dt = 0.0;
-
-			// Global gravity
-			//params.gravity[2] = 9.81;
-
-
-			// TRACKERS ======================================================================
-
-			// Tracking flags
-			params.use_stereo = true;
-			//params.use_klt = true;
-			params.use_aruco = false;
-			//params.downsize_aruco = true;
-			//params.downsample_cameras = false;
-			//params.use_multi_threading = true;
-
-			// General parameters
-			//params.num_pts = 200;
-			//params.fast_threshold = 10;
-			//params.grid_x = 10;
-			//params.grid_y = 5;
-			//params.min_px_dist = 8;
-			//params.knn_ratio = 0.7;
-
-			// Feature initializer parameters
-			//nh.param<bool>("fi_triangulate_1d", params.featinit_options.triangulate_1d, params.featinit_options.triangulate_1d);
-			//nh.param<bool>("fi_refine_features", params.featinit_options.refine_features, params.featinit_options.refine_features);
-			//nh.param<int>("fi_max_runs", params.featinit_options.max_runs, params.featinit_options.max_runs);
-			//nh.param<double>("fi_init_lamda", params.featinit_options.init_lamda, params.featinit_options.init_lamda);
-			//nh.param<double>("fi_max_lamda", params.featinit_options.max_lamda, params.featinit_options.max_lamda);
-			//nh.param<double>("fi_min_dx", params.featinit_options.min_dx, params.featinit_options.min_dx);
-			///nh.param<double>("fi_min_dcost", params.featinit_options.min_dcost, params.featinit_options.min_dcost);
-			//nh.param<double>("fi_lam_mult", params.featinit_options.lam_mult, params.featinit_options.lam_mult);
-			//nh.param<double>("fi_min_dist", params.featinit_options.min_dist, params.featinit_options.min_dist);
-			//params.featinit_options.max_dist = 75;
-			//params.featinit_options.max_baseline = 500;
-			//params.featinit_options.max_cond_number = 5000;
-
-
-			// CAMERA ======================================================================
-			bool fisheye = data.stereoCameraModels()[0].left().isFisheye() && !this->imagesAlreadyRectified();
-			params.camera_fisheye.insert(std::make_pair(0, fisheye));
-			params.camera_fisheye.insert(std::make_pair(1, fisheye));
-
-			Eigen::VectorXd camLeft(8), camRight(8);
-			if(this->imagesAlreadyRectified() || data.stereoCameraModels()[0].left().D_raw().empty())
-			{
-				camLeft << data.stereoCameraModels()[0].left().fx(),
-					 data.stereoCameraModels()[0].left().fy(),
-					 data.stereoCameraModels()[0].left().cx(),
-					 data.stereoCameraModels()[0].left().cy(), 0, 0, 0, 0;
-				camRight << data.stereoCameraModels()[0].right().fx(),
-					 data.stereoCameraModels()[0].right().fy(),
-					 data.stereoCameraModels()[0].right().cx(),
-					 data.stereoCameraModels()[0].right().cy(), 0, 0, 0, 0;
+				if(this->imagesAlreadyRectified() || data.stereoCameraModels()[0].left().D_raw().empty())
+				{
+					left_calib << data.stereoCameraModels()[0].left().fx(),
+						data.stereoCameraModels()[0].left().fy(),
+					 	data.stereoCameraModels()[0].left().cx(),
+					 	data.stereoCameraModels()[0].left().cy(), 0, 0, 0, 0;
+					right_calib << data.stereoCameraModels()[0].right().fx(),
+						data.stereoCameraModels()[0].right().fy(),
+					 	data.stereoCameraModels()[0].right().cx(),
+					 	data.stereoCameraModels()[0].right().cy(), 0, 0, 0, 0;
+				}
+				else
+				{
+					UASSERT(data.stereoCameraModels()[0].left().D_raw().cols == data.stereoCameraModels()[0].right().D_raw().cols);
+					UASSERT(data.stereoCameraModels()[0].left().D_raw().cols >= 4);
+					UASSERT(data.stereoCameraModels()[0].right().D_raw().cols >= 4);
+					left_calib << data.stereoCameraModels()[0].left().K_raw().at<double>(0,0),
+					 	data.stereoCameraModels()[0].left().K_raw().at<double>(1,1),
+					 	data.stereoCameraModels()[0].left().K_raw().at<double>(0,2),
+					 	data.stereoCameraModels()[0].left().K_raw().at<double>(1,2),
+					 	data.stereoCameraModels()[0].left().D_raw().at<double>(0,0),
+					 	data.stereoCameraModels()[0].left().D_raw().at<double>(0,1),
+					 	data.stereoCameraModels()[0].left().D_raw().at<double>(0,is_fisheye?4:2),
+					 	data.stereoCameraModels()[0].left().D_raw().at<double>(0,is_fisheye?5:3);
+					right_calib << data.stereoCameraModels()[0].right().K_raw().at<double>(0,0),
+					 	data.stereoCameraModels()[0].right().K_raw().at<double>(1,1),
+					 	data.stereoCameraModels()[0].right().K_raw().at<double>(0,2),
+					 	data.stereoCameraModels()[0].right().K_raw().at<double>(1,2),
+					 	data.stereoCameraModels()[0].right().D_raw().at<double>(0,0),
+					 	data.stereoCameraModels()[0].right().D_raw().at<double>(0,1),
+					 	data.stereoCameraModels()[0].right().D_raw().at<double>(0,is_fisheye?4:2),
+					 	data.stereoCameraModels()[0].right().D_raw().at<double>(0,is_fisheye?5:3);
+				}
 			}
 			else
 			{
-				UASSERT(data.stereoCameraModels()[0].left().D_raw().cols == data.stereoCameraModels()[0].right().D_raw().cols);
-				UASSERT(data.stereoCameraModels()[0].left().D_raw().cols >= 4);
-				UASSERT(data.stereoCameraModels()[0].right().D_raw().cols >= 4);
+				params_->state_options.num_cameras = params_->init_options.num_cameras = 1;
+				T_imu_left = imuLocalTransformInv_ * data.cameraModels()[0].localTransform();
 
-				//https://github.com/ethz-asl/kalibr/wiki/supported-models
-				///	    radial-tangential (radtan)
-				//		(distortion_coeffs: [k1 k2 r1 r2])
-				///		equidistant (equi)
-				//		(distortion_coeffs: [k1 k2 k3 k4]) rtabmap: (k1,k2,p1,p2,k3,k4)
+				bool is_fisheye = data.cameraModels()[0].isFisheye() && !this->imagesAlreadyRectified();
+				if(is_fisheye)
+				{
+					params_->camera_intrinsics.emplace(0, std::make_shared<ov_core::CamEqui>(
+						data.cameraModels()[0].imageWidth(), data.cameraModels()[0].imageHeight()));
+				}
+				else
+				{
+					params_->camera_intrinsics.emplace(0, std::make_shared<ov_core::CamRadtan>(
+						data.cameraModels()[0].imageWidth(), data.cameraModels()[0].imageHeight()));
+				}
 
-				camLeft <<
-					 data.stereoCameraModels()[0].left().K_raw().at<double>(0,0),
-					 data.stereoCameraModels()[0].left().K_raw().at<double>(1,1),
-					 data.stereoCameraModels()[0].left().K_raw().at<double>(0,2),
-					 data.stereoCameraModels()[0].left().K_raw().at<double>(1,2),
-					 data.stereoCameraModels()[0].left().D_raw().at<double>(0,0),
-					 data.stereoCameraModels()[0].left().D_raw().at<double>(0,1),
-					 data.stereoCameraModels()[0].left().D_raw().at<double>(0,fisheye?4:2),
-					 data.stereoCameraModels()[0].left().D_raw().at<double>(0,fisheye?5:3);
-				camRight <<
-					 data.stereoCameraModels()[0].right().K_raw().at<double>(0,0),
-					 data.stereoCameraModels()[0].right().K_raw().at<double>(1,1),
-					 data.stereoCameraModels()[0].right().K_raw().at<double>(0,2),
-					 data.stereoCameraModels()[0].right().K_raw().at<double>(1,2),
-					 data.stereoCameraModels()[0].right().D_raw().at<double>(0,0),
-					 data.stereoCameraModels()[0].right().D_raw().at<double>(0,1),
-					 data.stereoCameraModels()[0].right().D_raw().at<double>(0,fisheye?4:2),
-					 data.stereoCameraModels()[0].right().D_raw().at<double>(0,fisheye?5:3);
-			}
-			params.camera_intrinsics.insert(std::make_pair(0, camLeft));
-			params.camera_intrinsics.insert(std::make_pair(1, camRight));
-
-			const IMU & imu = imuBuffer_.begin()->second;
-			imuLocalTransform_ = imu.localTransform();
-			Transform imuCam0 = imuLocalTransform_.inverse() * data.stereoCameraModels()[0].localTransform();
-			Transform cam0cam1;
-			if(this->imagesAlreadyRectified() || data.stereoCameraModels()[0].stereoTransform().isNull())
-			{
-				cam0cam1 = Transform(
-						1, 0, 0, data.stereoCameraModels()[0].baseline(),
-						0, 1, 0, 0,
-						0, 0, 1, 0);
-			}
-			else
-			{
-				cam0cam1 = data.stereoCameraModels()[0].stereoTransform().inverse();
-			}
-			UASSERT(!cam0cam1.isNull());
-			Transform imuCam1 = imuCam0 * cam0cam1;
-			Eigen::Matrix4d cam0_eigen = imuCam0.toEigen4d();
-			Eigen::Matrix4d cam1_eigen = imuCam1.toEigen4d();
-			Eigen::Matrix<double,7,1> cam_eigen0;
-			cam_eigen0.block(0,0,4,1) = rot_2_quat(cam0_eigen.block(0,0,3,3).transpose());
-			cam_eigen0.block(4,0,3,1) = -cam0_eigen.block(0,0,3,3).transpose()*cam0_eigen.block(0,3,3,1);
-			Eigen::Matrix<double,7,1> cam_eigen1;
-			cam_eigen1.block(0,0,4,1) = rot_2_quat(cam1_eigen.block(0,0,3,3).transpose());
-			cam_eigen1.block(4,0,3,1) = -cam1_eigen.block(0,0,3,3).transpose()*cam1_eigen.block(0,3,3,1);
-			params.camera_extrinsics.insert(std::make_pair(0, cam_eigen0));
-			params.camera_extrinsics.insert(std::make_pair(1, cam_eigen1));
-
-			params.camera_wh.insert({0, std::make_pair(data.stereoCameraModels()[0].left().imageWidth(),data.stereoCameraModels()[0].left().imageHeight())});
-			params.camera_wh.insert({1, std::make_pair(data.stereoCameraModels()[0].right().imageWidth(),data.stereoCameraModels()[0].right().imageHeight())});
-
-			vioManager_ = new ov_msckf::VioManager(params);
-		}
-
-		cv::Mat left;
-		cv::Mat right;
-		if(data.imageRaw().type() == CV_8UC3)
-		{
-			cv::cvtColor(data.imageRaw(), left, CV_BGR2GRAY);
-		}
-		else if(data.imageRaw().type() == CV_8UC1)
-		{
-			left = data.imageRaw().clone();
-		}
-		else
-		{
-			UFATAL("Not supported color type!");
-		}
-		if(data.rightRaw().type() == CV_8UC3)
-		{
-			cv::cvtColor(data.rightRaw(), right, CV_BGR2GRAY);
-		}
-		else if(data.rightRaw().type() == CV_8UC1)
-		{
-			right = data.rightRaw().clone();
-		}
-		else
-		{
-			UFATAL("Not supported color type!");
-		}
-
-		// Create the measurement
-		ov_core::CameraData message;
-		message.timestamp = data.stamp();
-		message.sensor_ids.push_back(0);
-		message.sensor_ids.push_back(1);
-		message.images.push_back(left);
-		message.images.push_back(right);
-		message.masks.push_back(cv::Mat::zeros(left.size(), CV_8UC1));
-		message.masks.push_back(cv::Mat::zeros(right.size(), CV_8UC1));
-
-		// send it to our VIO system
-		vioManager_->feed_measurement_camera(message);
-		UDEBUG("Image update stamp=%f", data.stamp());
-
-		double lastIMUstamp = 0.0;
-		while(!imuBuffer_.empty())
-		{
-			std::map<double, IMU>::iterator iter = imuBuffer_.begin();
-
-			// Process IMU data until stamp is over image stamp
-			ov_core::ImuData message;
-			message.timestamp = iter->first;
-			message.wm << iter->second.angularVelocity().val[0], iter->second.angularVelocity().val[1], iter->second.angularVelocity().val[2];
-			message.am << iter->second.linearAcceleration().val[0], iter->second.linearAcceleration().val[1], iter->second.linearAcceleration().val[2];
-
-			UDEBUG("IMU update stamp=%f", message.timestamp);
-
-			// send it to our VIO system
-			vioManager_->feed_measurement_imu(message);
-
-			lastIMUstamp = iter->first;
-
-			imuBuffer_.erase(iter);
-
-			if(lastIMUstamp > data.stamp())
-			{
-				break;
-			}
-		}
-
-		if(vioManager_->initialized())
-		{
-			// Get the current state
-			std::shared_ptr<ov_msckf::State> state = vioManager_->get_state();
-
-			if(state->_timestamp != data.stamp())
-			{
-				UWARN("OpenVINS: Stamp of the current state %f is not the same "
-						"than last image processed %f (last IMU stamp=%f). There could be "
-						"a synchronization issue between camera and IMU. ",
-						state->_timestamp,
-						data.stamp(),
-						lastIMUstamp);
-			}
-
-			Transform p(
-					(float)state->_imu->pos()(0),
-					(float)state->_imu->pos()(1),
-					(float)state->_imu->pos()(2),
-					(float)state->_imu->quat()(0),
-					(float)state->_imu->quat()(1),
-					(float)state->_imu->quat()(2),
-					(float)state->_imu->quat()(3));
-
-
-			// Finally set the covariance in the message (in the order position then orientation as per ros convention)
-			std::vector<std::shared_ptr<ov_type::Type>> statevars;
-			statevars.push_back(state->_imu->pose()->p());
-			statevars.push_back(state->_imu->pose()->q());
-
-			cv::Mat covariance = cv::Mat::eye(6,6, CV_64FC1);
-			if(this->framesProcessed() == 0)
-			{
-				covariance *= 9999;
-			}
-			else
-			{
-				Eigen::Matrix<double,6,6> covariance_posori = ov_msckf::StateHelper::get_marginal_covariance(vioManager_->get_state(),statevars);
-				for(int r=0; r<6; r++) {
-					for(int c=0; c<6; c++) {
-						((double *)covariance.data)[6*r+c] = covariance_posori(r,c);
-					}
+				if(this->imagesAlreadyRectified() || data.cameraModels()[0].D_raw().empty())
+				{
+					left_calib << data.cameraModels()[0].fx(),
+						data.cameraModels()[0].fy(),
+					 	data.cameraModels()[0].cx(),
+					 	data.cameraModels()[0].cy(), 0, 0, 0, 0;
+				}
+				else
+				{
+					UASSERT(data.cameraModels()[0].D_raw().cols >= 4);
+					left_calib << data.cameraModels()[0].K_raw().at<double>(0,0),
+					 	data.cameraModels()[0].K_raw().at<double>(1,1),
+					 	data.cameraModels()[0].K_raw().at<double>(0,2),
+					 	data.cameraModels()[0].K_raw().at<double>(1,2),
+					 	data.cameraModels()[0].D_raw().at<double>(0,0),
+					 	data.cameraModels()[0].D_raw().at<double>(0,1),
+					 	data.cameraModels()[0].D_raw().at<double>(0,is_fisheye?4:2),
+					 	data.cameraModels()[0].D_raw().at<double>(0,is_fisheye?5:3);
 				}
 			}
 
-			if(!p.isNull())
+			Eigen::Matrix4d T_LtoI = T_imu_left.toEigen4d();
+			Eigen::Matrix<double,7,1> left_eigen;
+			left_eigen.block(0,0,4,1) = ov_core::rot_2_quat(T_LtoI.block(0,0,3,3).transpose());
+			left_eigen.block(4,0,3,1) = -T_LtoI.block(0,0,3,3).transpose()*T_LtoI.block(0,3,3,1);
+			params_->camera_intrinsics.at(0)->set_value(left_calib);
+			params_->camera_extrinsics.emplace(0, left_eigen);
+			if(!data.rightRaw().empty())
 			{
-				p =  p * imuLocalTransform_.inverse();
+				Transform T_left_right;
+				if(this->imagesAlreadyRectified() || data.stereoCameraModels()[0].stereoTransform().isNull())
+				{
+					T_left_right = Transform(
+						1, 0, 0, data.stereoCameraModels()[0].baseline(),
+						0, 1, 0, 0,
+						0, 0, 1, 0);
+				}
+				else
+				{
+					T_left_right = data.stereoCameraModels()[0].stereoTransform().inverse();
+				}
+				UASSERT(!T_left_right.isNull());
+				Transform T_imu_right = T_imu_left * T_left_right;
+				Eigen::Matrix4d T_RtoI = T_imu_right.toEigen4d();
+				Eigen::Matrix<double,7,1> right_eigen;
+				right_eigen.block(0,0,4,1) = ov_core::rot_2_quat(T_RtoI.block(0,0,3,3).transpose());
+				right_eigen.block(4,0,3,1) = -T_RtoI.block(0,0,3,3).transpose()*T_RtoI.block(0,3,3,1);
+				params_->camera_intrinsics.at(1)->set_value(right_calib);
+				params_->camera_extrinsics.emplace(1, right_eigen);
+			}
+			params_->init_options.camera_intrinsics = params_->camera_intrinsics;
+			params_->init_options.camera_extrinsics = params_->camera_extrinsics;
+			vioManager_ = std::make_unique<ov_msckf::VioManager>(*params_);
+		}
+	}
+	else
+	{
+		if(!data.imu().empty())
+		{
+			ov_core::ImuData message;
+			message.timestamp = data.stamp();
+			message.wm << data.imu().angularVelocity().val[0], data.imu().angularVelocity().val[1], data.imu().angularVelocity().val[2];
+			message.am << data.imu().linearAcceleration().val[0], data.imu().linearAcceleration().val[1], data.imu().linearAcceleration().val[2];
+			vioManager_->feed_measurement_imu(message);
+		}
+
+		if(!data.imageRaw().empty())
+		{
+			bool covFilled = false;
+			Eigen::Matrix<double, 13, 1> state_plus = Eigen::Matrix<double, 13, 1>::Zero();
+			Eigen::Matrix<double, 12, 12> cov_plus = Eigen::Matrix<double, 12, 12>::Zero();
+			if(vioManager_->initialized())
+				covFilled = vioManager_->get_propagator()->fast_state_propagate(vioManager_->get_state(), data.stamp(), state_plus, cov_plus);
+
+			cv::Mat image;
+			if(data.imageRaw().type() == CV_8UC3)
+				cv::cvtColor(data.imageRaw(), image, CV_BGR2GRAY);
+			else if(data.imageRaw().type() == CV_8UC1)
+				image = data.imageRaw().clone();
+			else
+				UFATAL("Not supported color type!");
+			ov_core::CameraData message;
+			message.timestamp = data.stamp();
+			message.sensor_ids.emplace_back(0);
+			message.images.emplace_back(image);
+			if(params_->masks.find(0) != params_->masks.end())
+			{
+				message.masks.emplace_back(params_->masks[0]);
+			}
+			else if(!data.depthRaw().empty() && params_->use_mask)
+			{
+				cv::Mat mask;
+				if(data.depthRaw().type() == CV_32FC1)
+					cv::inRange(data.depthRaw(), params_->featinit_options.min_dist,
+						std::isinf(params_->featinit_options.max_dist)?std::numeric_limits<float>::max():params_->featinit_options.max_dist, mask);
+				else if(data.depthRaw().type() == CV_16UC1)
+					cv::inRange(data.depthRaw(), params_->featinit_options.min_dist*1000,
+						std::isinf(params_->featinit_options.max_dist)?std::numeric_limits<uint16_t>::max():params_->featinit_options.max_dist*1000, mask);
+				message.masks.emplace_back(255-mask);
+			}
+			else
+			{
+				message.masks.emplace_back(cv::Mat::zeros(image.size(), CV_8UC1));
+			}
+			if(!data.rightRaw().empty())
+			{
+				if(data.rightRaw().type() == CV_8UC3)
+					cv::cvtColor(data.rightRaw(), image, CV_BGR2GRAY);
+				else if(data.rightRaw().type() == CV_8UC1)
+					image = data.rightRaw().clone();
+				else
+					UFATAL("Not supported color type!");
+				message.sensor_ids.emplace_back(1);
+				message.images.emplace_back(image);
+				if(params_->masks.find(1) != params_->masks.end())
+					message.masks.emplace_back(params_->masks[1]);
+				else
+					message.masks.emplace_back(cv::Mat::zeros(image.size(), CV_8UC1));
+			}
+			vioManager_->feed_measurement_camera(message);
+
+			std::shared_ptr<ov_msckf::State> state = vioManager_->get_state();
+			Transform p((float)state->_imu->pos()(0),
+						(float)state->_imu->pos()(1),
+						(float)state->_imu->pos()(2),
+						(float)state->_imu->quat()(0),
+						(float)state->_imu->quat()(1),
+						(float)state->_imu->quat()(2),
+						(float)state->_imu->quat()(3));
+			if(!p.isNull() && !p.isIdentity())
+			{
+				p = p * imuLocalTransformInv_;
 
 				if(this->getPose().rotation().isIdentity())
 				{
 					initGravity_ = true;
-					this->reset(this->getPose()*p.rotation());
+					this->reset(this->getPose() * p.rotation());
 				}
 
-				if(previousPose_.isIdentity())
-				{
-					previousPose_ = p;
-				}
+				if(previousPoseInv_.isIdentity())
+					previousPoseInv_ = p.inverse();
 
-				// make it incremental
-				Transform previousPoseInv = previousPose_.inverse();
-				t = previousPoseInv*p;
-				previousPose_ = p;
+				t = previousPoseInv_ * p;
 
 				if(info)
 				{
-					info->type = this->getType();
-					info->reg.covariance = covariance;
+					double timestamp;
+					std::unordered_map<size_t, Eigen::Vector3d> feat_posinG, feat_tracks_uvd;
+					vioManager_->get_active_tracks(timestamp, feat_posinG, feat_tracks_uvd);
+					auto features_SLAM = vioManager_->get_features_SLAM();
+					auto good_features_MSCKF = vioManager_->get_good_features_MSCKF();
 
-					// feature map
-					Transform fixT = this->getPose()*previousPoseInv;
-					Transform camLocalTransformInv = data.stereoCameraModels()[0].localTransform().inverse()*this->getPose().inverse();
-					for (auto &it_per_id : vioManager_->get_features_SLAM())
+					info->type = this->getType();
+					info->localMapSize = feat_posinG.size();
+					info->features = features_SLAM.size() + good_features_MSCKF.size();
+					info->reg.covariance = cv::Mat::eye(6, 6, CV_64FC1);
+					if(covFilled)
 					{
-						cv::Point3f pt3d;
-						pt3d.x = it_per_id[0];
-						pt3d.y = it_per_id[1];
-						pt3d.z = it_per_id[2];
-						pt3d = util3d::transformPoint(pt3d, fixT);
-						info->localMap.insert(std::make_pair(info->localMap.size(), pt3d));
+						Eigen::Matrix<double, 6, 6> covariance = Phi_ * cov_plus.block(6,6,6,6) * Phi_.transpose();
+						cv::eigen2cv(covariance, info->reg.covariance);
+					}
+
+					if(this->isInfoDataFilled())
+					{
+						Transform fixT = this->getPose() * previousPoseInv_;
+						Transform camT;
+						if(!data.rightRaw().empty())
+							camT = data.stereoCameraModels()[0].localTransform().inverse() * t.inverse() * this->getPose().inverse() * fixT;
+						else
+							camT = data.cameraModels()[0].localTransform().inverse() * t.inverse() * this->getPose().inverse() * fixT;
+						
+						for(auto &feature : feat_posinG)
+						{
+							cv::Point3f pt3d(feature.second[0], feature.second[1], feature.second[2]);
+							pt3d = util3d::transformPoint(pt3d, fixT);
+							info->localMap.emplace(feature.first, pt3d);
+						}
 
 						if(this->imagesAlreadyRectified())
 						{
-							cv::Point2f pt;
-							pt3d = util3d::transformPoint(pt3d, camLocalTransformInv);
-							data.stereoCameraModels()[0].left().reproject(pt3d.x, pt3d.y, pt3d.z, pt.x, pt.y);
-							info->reg.inliersIDs.push_back(info->newCorners.size());
-							info->newCorners.push_back(pt);
+							for(auto &feature : features_SLAM)
+							{
+								cv::Point3f pt3d(feature[0], feature[1], feature[2]);
+								pt3d = util3d::transformPoint(pt3d, camT);
+								cv::Point2f pt;
+								if(!data.rightRaw().empty())
+									data.stereoCameraModels()[0].left().reproject(pt3d.x, pt3d.y, pt3d.z, pt.x, pt.y);
+								else
+									data.cameraModels()[0].reproject(pt3d.x, pt3d.y, pt3d.z, pt.x, pt.y);
+								info->reg.inliersIDs.emplace_back(info->newCorners.size());
+								info->newCorners.emplace_back(pt);
+							}
+
+							for(auto &feature : good_features_MSCKF)
+							{
+								cv::Point3f pt3d(feature[0], feature[1], feature[2]);
+								pt3d = util3d::transformPoint(pt3d, camT);
+								cv::Point2f pt;
+								if(!data.rightRaw().empty())
+									data.stereoCameraModels()[0].left().reproject(pt3d.x, pt3d.y, pt3d.z, pt.x, pt.y);
+								else
+									data.cameraModels()[0].reproject(pt3d.x, pt3d.y, pt3d.z, pt.x, pt.y);
+								info->reg.matchesIDs.emplace_back(info->newCorners.size());
+								info->newCorners.emplace_back(pt);
+							}
 						}
 					}
-					info->features = info->newCorners.size();
-					info->localMapSize = info->localMap.size();
 				}
-				UINFO("Odom update time = %fs p=%s", timer.elapsed(), p.prettyPrint().c_str());
+
+				previousPoseInv_ = p.inverse();
 			}
 		}
-	}
-	else if(!data.imageRaw().empty() && !data.depthRaw().empty())
-	{
-		UERROR("OpenVINS doesn't work with RGB-D data, stereo images are required!");
-	}
-	else if(!data.imageRaw().empty() && data.depthOrRightRaw().empty())
-	{
-		UERROR("OpenVINS requires stereo images!");
-	}
-	else
-	{
-		UERROR("OpenVINS requires stereo images (only one stereo camera and should be calibrated)!");
 	}
 
 #else

@@ -44,5 +44,6 @@
         <file>images/oakd.png</file>
         <file>images/oakd_lite.png</file>
         <file>images/astra.png</file>
+        <file>images/oakdpro.png</file>
     </qresource>
 </RCC>

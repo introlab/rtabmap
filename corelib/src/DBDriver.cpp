@@ -502,6 +502,16 @@ void DBDriver::updateOccupancyGrid(
 	_dbSafeAccessMutex.unlock();
 }
 
+void DBDriver::updateCalibration(int nodeId, const std::vector<CameraModel> & models, const std::vector<StereoCameraModel> & stereoModels)
+{
+	_dbSafeAccessMutex.lock();
+	this->updateCalibrationQuery(
+			nodeId,
+			models,
+			stereoModels);
+	_dbSafeAccessMutex.unlock();
+}
+
 void DBDriver::updateDepthImage(int nodeId, const cv::Mat & image)
 {
 	_dbSafeAccessMutex.lock();

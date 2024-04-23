@@ -42,8 +42,20 @@ IF(@CONF_WITH_K4A@)
     ENDIF()
 ENDIF()
 
+IF(@CONF_WITH_DEPTH_AI@)
+ find_dependency(depthai 2)
+ENDIF()
+
 IF(@CONF_WITH_OCTOMAP@)
   find_dependency(octomap)
+ENDIF()
+
+IF(@CONF_WITH_GRIDMAP@)
+  find_dependency(grid_map_core)
+ENDIF()
+
+IF(@CONF_WITH_PYTHON@)
+  find_dependency(Python3 COMPONENTS Interpreter Development NumPy)
 ENDIF()
 
 # Provide those for backward compatibilities (e.g., catkin requires them to propagate dependencies)

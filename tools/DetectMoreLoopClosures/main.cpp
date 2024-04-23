@@ -28,7 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/DBDriver.h>
 #include <rtabmap/core/Rtabmap.h>
 #include <rtabmap/core/Memory.h>
-#include <rtabmap/core/OccupancyGrid.h>
+#include <rtabmap/core/global_map/OccupancyGrid.h>
 #include <rtabmap/core/util3d.h>
 #include <rtabmap/core/util3d_filtering.h>
 #include <rtabmap/core/util3d_transforms.h>
@@ -244,14 +244,14 @@ int main(int argc, char * argv[])
 	else if(detected > 0 && haveOptimizedMap)
 	{
 		printf("The database has a global occupancy grid, regenerating one with new optimized graph!\n");
-		OccupancyGrid grid(parameters);
+		LocalGridCache cache;
+		OccupancyGrid grid(&cache, parameters);
 		std::map<int, Transform> optimizedPoses = rtabmap.getLocalOptimizedPoses();
 		for(std::map<int, Transform>::iterator iter=optimizedPoses.lower_bound(0); iter!=optimizedPoses.end(); ++iter)
 		{
-			cv::Mat occupancyGrid;
 			SensorData data = rtabmap.getMemory()->getNodeData(iter->first, false, false, false, true);
 			data.uncompressData();
-			grid.addToCache(iter->first, data.gridGroundCellsRaw(), data.gridObstacleCellsRaw(), data.gridEmptyCellsRaw());
+			cache.add(iter->first, data.gridGroundCellsRaw(), data.gridObstacleCellsRaw(), data.gridEmptyCellsRaw(), data.gridCellSize(), data.gridViewPoint());
 		}
 		grid.update(optimizedPoses);
 		cv::Mat map = grid.getMap(xMin, yMin);

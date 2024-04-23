@@ -156,11 +156,14 @@ OdometryF2M::OdometryF2M(const ParametersMap & parameters) :
 	regPipeline_ = Registration::create(bundleParameters);
 	if(bundleAdjustment_>0 && regPipeline_->isScanRequired())
 	{
-		UWARN("%s=%d cannot be used with registration not done only with images (%s=%s), disabling bundle adjustment.",
-				Parameters::kOdomF2MBundleAdjustment().c_str(),
-				bundleAdjustment_,
-				Parameters::kRegStrategy().c_str(),
-				uValue(bundleParameters, Parameters::kRegStrategy(), uNumber2Str(Parameters::defaultRegStrategy())).c_str());
+		if(regPipeline_->isImageRequired())
+		{
+			UWARN("%s=%d cannot be used with registration not done only with images (%s=%s), disabling bundle adjustment.",
+					Parameters::kOdomF2MBundleAdjustment().c_str(),
+					bundleAdjustment_,
+					Parameters::kRegStrategy().c_str(),
+					uValue(bundleParameters, Parameters::kRegStrategy(), uNumber2Str(Parameters::defaultRegStrategy())).c_str());
+		}
 		bundleAdjustment_ = 0;
 	}
 
@@ -214,6 +217,11 @@ Transform OdometryF2M::computeTransform(
 	if(sba_ && sba_->gravitySigma() > 0.0f && !imus().empty())
 	{
 		imuT = Transform::getTransform(imus(), data.stamp());
+		if(data.imu().empty())
+		{
+			Eigen::Quaternionf q = imuT.getQuaternionf();
+			data.setIMU(IMU(cv::Vec4d(q.x(), q.y(), q.z(), q.w()), cv::Mat(), cv::Vec3d(), cv::Mat(), cv::Vec3d(), cv::Mat()));
+		}
 	}
 
 	RegistrationInfo regInfo;

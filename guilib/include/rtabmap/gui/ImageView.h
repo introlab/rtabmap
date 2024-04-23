@@ -37,6 +37,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <opencv2/features2d/features2d.hpp>
 #include <map>
 #include "rtabmap/utilite/UCv2Qt.h"
+#include <rtabmap/core/CameraModel.h>
 
 class QAction;
 class QMenu;
@@ -96,7 +97,7 @@ public:
 	void setFeatures(const std::vector<cv::KeyPoint> & features, const cv::Mat & depth = cv::Mat(), const QColor & color = Qt::yellow);
 	void addFeature(int id, const cv::KeyPoint & kpt, float depth, QColor color);
 	void addLine(float x1, float y1, float x2, float y2, QColor color, const QString & text = QString());
-	void setImage(const QImage & image);
+	void setImage(const QImage & image, const std::vector<CameraModel> & models = std::vector<CameraModel>(), const Transform & pose = Transform());
 	void setImageDepth(const cv::Mat & imageDepth);
 	void setImageDepth(const QImage & image);
 	void setFeatureColor(int id, QColor color);
@@ -121,6 +122,7 @@ protected:
 	virtual void paintEvent(QPaintEvent *event);
 	virtual void resizeEvent(QResizeEvent* event);
 	virtual void contextMenuEvent(QContextMenuEvent * e);
+	virtual void mouseMoveEvent(QMouseEvent * event);
 
 private Q_SLOTS:
 	void sceneRectChanged(const QRectF &rect);
@@ -164,6 +166,7 @@ private:
 	QAction * _colorMapBlueToRed;
 	QAction * _colorMapMinRange;
 	QAction * _colorMapMaxRange;
+	QAction * _mouseTracking;
 	QMenu * _featureMenu;
 	QMenu * _scaleMenu;
 
@@ -175,6 +178,8 @@ private:
 	QPixmap _image;
 	QPixmap _imageDepth;
 	cv::Mat _imageDepthCv;
+	std::vector<CameraModel> _models;
+	Transform _pose;
 };
 
 }

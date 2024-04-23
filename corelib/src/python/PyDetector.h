@@ -1,11 +1,10 @@
 /**
- * Python interface for python matchers like:
- *  - SuperGlue: https://github.com/magicleap/SuperGluePretrainedNetwork
- *  - OANET https://github.com/zjhthu/OANet
+ * Python interface for python local feature detectors like:
+ *  - SuperPoint: https://github.com/magicleap/SuperPointPretrainedNetwork
  */
 
-#ifndef PYMATCHER_H
-#define PYMATCHER_H
+#ifndef PYDETECTOR_H
+#define PYDETECTOR_H
 
 #include <rtabmap/core/Features2d.h>
 #include <opencv2/core/types.hpp>
@@ -18,7 +17,7 @@
 namespace rtabmap
 {
 
-class PyDetector : public Feature2D, public PythonInterface
+class PyDetector : public Feature2D
 {
 public:
 	PyDetector(const ParametersMap & parameters = ParametersMap());

@@ -28,12 +28,13 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef CORELIB_INCLUDE_RTABMAP_CORE_IMUFILTER_H_
 #define CORELIB_INCLUDE_RTABMAP_CORE_IMUFILTER_H_
 
+#include "rtabmap/core/rtabmap_core_export.h" // DLL export/import defines
 #include <rtabmap/core/Parameters.h>
 #include <Eigen/Geometry>
 
 namespace rtabmap {
 
-class IMUFilter
+class RTABMAP_CORE_EXPORT IMUFilter
 {
 public:
 	enum Type {

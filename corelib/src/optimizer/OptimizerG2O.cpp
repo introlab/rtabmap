@@ -720,6 +720,39 @@ std::map<int, Transform> OptimizerG2O::optimize(
 					int idTag= id2;
 					id2 = landmarkVertexOffset - id2;
 
+#if defined(RTABMAP_VERTIGO)
+					VertexSwitchLinear * v = 0;
+					if(this->isRobust() && isLandmarkWithRotation.at(idTag))
+					{
+						// For landmark links, add switchable edges
+						// Currently supporting only constraints with rotation
+
+						// create new switch variable
+						// Sunderhauf IROS 2012:
+						// "Since it is reasonable to initially accept all loop closure constraints,
+						//  a proper and convenient initial value for all switch variables would be
+						//  sij = 1 when using the linear switch function"
+						v = new VertexSwitchLinear();
+						v->setEstimate(1.0);
+						v->setId(vertigoVertexId++);
+						UASSERT_MSG(optimizer.addVertex(v), uFormat("cannot insert switchable vertex %d!?", v->id()).c_str());
+
+						// create switch prior factor
+						// "If the front-end is not able to assign sound individual values
+						//  for Ξij , it is save to set all Ξij = 1, since this value is close
+						//  to the individual optimal choice of Ξij for a large range of
+						//  outliers."
+						EdgeSwitchPrior * prior = new EdgeSwitchPrior();
+						prior->setMeasurement(1.0);
+						prior->setVertex(0, v);
+						UASSERT_MSG(optimizer.addEdge(prior), uFormat("cannot insert switchable prior edge %d!?", v->id()).c_str());
+					}
+					else if(this->isRobust() && !isLandmarkWithRotation.at(idTag))
+					{
+						UWARN("%s cannot be used for landmark constraints without orientation.", Parameters::kOptimizerRobust().c_str());
+					}
+#endif
+
 					if(isSlam2d())
 					{
 						if(isLandmarkWithRotation.at(idTag))
@@ -737,16 +770,35 @@ std::map<int, Transform> OptimizerG2O::optimize(
 								information(2,1) = iter->second.infMatrix().at<double>(5,1); // theta-y
 								information(2,2) = iter->second.infMatrix().at<double>(5,5); // theta-theta
 							}
-							g2o::EdgeSE2 * e = new g2o::EdgeSE2();
-							g2o::VertexSE2* v1 = (g2o::VertexSE2*)optimizer.vertex(id1);
-							g2o::VertexSE2* v2 = (g2o::VertexSE2*)optimizer.vertex(id2);
-							UASSERT(v1 != 0);
-							UASSERT(v2 != 0);
-							e->setVertex(0, v1);
-							e->setVertex(1, v2);
-							e->setMeasurement(g2o::SE2(t.x(), t.y(), t.theta()));
-							e->setInformation(information);
-							edge = e;
+#if defined(RTABMAP_VERTIGO)
+							if(this->isRobust())
+							{
+								EdgeSE2Switchable * e = new EdgeSE2Switchable();
+								g2o::VertexSE2* v1 = (g2o::VertexSE2*)optimizer.vertex(id1);
+								g2o::VertexSE2* v2 = (g2o::VertexSE2*)optimizer.vertex(id2);
+								UASSERT(v1 != 0);
+								UASSERT(v2 != 0);
+								e->setVertex(0, v1);
+								e->setVertex(1, v2);
+								e->setVertex(2, v);
+								e->setMeasurement(g2o::SE2(t.x(), t.y(), t.theta()));
+								e->setInformation(information);
+								edge = e;
+							}
+							else
+#endif
+							{
+								g2o::EdgeSE2 * e = new g2o::EdgeSE2();
+								g2o::VertexSE2* v1 = (g2o::VertexSE2*)optimizer.vertex(id1);
+								g2o::VertexSE2* v2 = (g2o::VertexSE2*)optimizer.vertex(id2);
+								UASSERT(v1 != 0);
+								UASSERT(v2 != 0);
+								e->setVertex(0, v1);
+								e->setVertex(1, v2);
+								e->setMeasurement(g2o::SE2(t.x(), t.y(), t.theta()));
+								e->setInformation(information);
+								edge = e;
+							}
 						}
 						else
 						{
@@ -780,16 +832,35 @@ std::map<int, Transform> OptimizerG2O::optimize(
 							constraint = a.linear();
 							constraint.translation() = a.translation();
 
-							g2o::EdgeSE3 * e = new g2o::EdgeSE3();
-							g2o::VertexSE3* v1 = (g2o::VertexSE3*)optimizer.vertex(id1);
-							g2o::VertexSE3* v2 = (g2o::VertexSE3*)optimizer.vertex(id2);
-							UASSERT(v1 != 0);
-							UASSERT(v2 != 0);
-							e->setVertex(0, v1);
-							e->setVertex(1, v2);
-							e->setMeasurement(constraint);
-							e->setInformation(information);
-							edge = e;
+#if defined(RTABMAP_VERTIGO)
+							if(this->isRobust())
+							{
+								EdgeSE3Switchable * e = new EdgeSE3Switchable();
+								g2o::VertexSE3* v1 = (g2o::VertexSE3*)optimizer.vertex(id1);
+								g2o::VertexSE3* v2 = (g2o::VertexSE3*)optimizer.vertex(id2);
+								UASSERT(v1 != 0);
+								UASSERT(v2 != 0);
+								e->setVertex(0, v1);
+								e->setVertex(1, v2);
+								e->setVertex(2, v);
+								e->setMeasurement(constraint);
+								e->setInformation(information);
+								edge = e;
+							}
+							else
+#endif
+							{
+								g2o::EdgeSE3 * e = new g2o::EdgeSE3();
+								g2o::VertexSE3* v1 = (g2o::VertexSE3*)optimizer.vertex(id1);
+								g2o::VertexSE3* v2 = (g2o::VertexSE3*)optimizer.vertex(id2);
+								UASSERT(v1 != 0);
+								UASSERT(v2 != 0);
+								e->setVertex(0, v1);
+								e->setVertex(1, v2);
+								e->setMeasurement(constraint);
+								e->setInformation(information);
+								edge = e;
+							}
 						}
 						else
 						{
@@ -2054,7 +2125,43 @@ bool OptimizerG2O::saveGraph(
 				q.w());
 		}
 
-		int landmarkOffset = poses.size()&&poses.rbegin()->first>0?poses.rbegin()->first+1:0;
+		// For landmarks, determinate which one has observation with orientation
+		std::map<int, bool> isLandmarkWithRotation;
+		for(std::multimap<int, Link>::const_iterator iter = edgeConstraints.begin(); iter!=edgeConstraints.end(); ++iter)
+		{
+			int landmarkId = iter->second.from() < 0?iter->second.from():iter->second.to() < 0?iter->second.to():0;
+			if(landmarkId != 0 && isLandmarkWithRotation.find(landmarkId) == isLandmarkWithRotation.end())
+			{
+				if(isSlam2d())
+				{
+					if (1 / static_cast<double>(iter->second.infMatrix().at<double>(5,5)) >= 9999.0)
+					{
+						isLandmarkWithRotation.insert(std::make_pair(landmarkId, false));
+						UDEBUG("Tag %d has no orientation", landmarkId);
+					}
+					else
+					{
+						isLandmarkWithRotation.insert(std::make_pair(landmarkId, true));
+						UDEBUG("Tag %d has orientation", landmarkId);
+					}
+				}
+				else if (1 / static_cast<double>(iter->second.infMatrix().at<double>(3,3)) >= 9999.0 ||
+						 1 / static_cast<double>(iter->second.infMatrix().at<double>(4,4)) >= 9999.0 ||
+						 1 / static_cast<double>(iter->second.infMatrix().at<double>(5,5)) >= 9999.0)
+				{
+					isLandmarkWithRotation.insert(std::make_pair(landmarkId, false));
+					UDEBUG("Tag %d has no orientation", landmarkId);
+				}
+				else
+				{
+					isLandmarkWithRotation.insert(std::make_pair(landmarkId, true));
+					UDEBUG("Tag %d has orientation", landmarkId);
+				}
+
+			}
+		}
+
+		int landmarkOffset = poses.size()&&poses.rbegin()->first>0?poses.rbegin()->first:0;
 		for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
 		{
 			if (isSlam2d())
@@ -2063,18 +2170,30 @@ bool OptimizerG2O::saveGraph(
 				{
 					// VERTEX_SE2 id x y theta
 					fprintf(file, "VERTEX_SE2 %d %f %f %f\n",
-						landmarkOffset-iter->first,
+						iter->first,
 						iter->second.x(),
 						iter->second.y(),
 						iter->second.theta());
 				}
 				else if(!landmarksIgnored())
 				{
-					// VERTEX_XY id x y
-					fprintf(file, "VERTEX_XY %d %f %f\n",
-						iter->first,
-						iter->second.x(),
-						iter->second.y());
+					if(uValue(isLandmarkWithRotation, iter->first, false))
+					{
+						// VERTEX_SE2 id x y theta
+						fprintf(file, "VERTEX_SE2 %d %f %f %f\n",
+							landmarkOffset-iter->first,
+							iter->second.x(),
+							iter->second.y(),
+							iter->second.theta());
+					}
+					else
+					{
+						// VERTEX_XY id x y
+						fprintf(file, "VERTEX_XY %d %f %f\n",
+							landmarkOffset-iter->first,
+							iter->second.x(),
+							iter->second.y());
+					}
 				}
 			}
 			else
@@ -2095,12 +2214,29 @@ bool OptimizerG2O::saveGraph(
 				}
 				else if(!landmarksIgnored())
 				{
-					// VERTEX_TRACKXYZ id x y z
-					fprintf(file, "VERTEX_TRACKXYZ %d %f %f %f\n",
-						landmarkOffset-iter->first,
-						iter->second.x(),
-						iter->second.y(),
-						iter->second.z());
+					if(uValue(isLandmarkWithRotation, iter->first, false))
+					{
+						// VERTEX_SE3 id x y z qw qx qy qz
+						Eigen::Quaternionf q = iter->second.getQuaternionf();
+						fprintf(file, "VERTEX_SE3:QUAT %d %f %f %f %f %f %f %f\n",
+							landmarkOffset-iter->first,
+							iter->second.x(),
+							iter->second.y(),
+							iter->second.z(),
+							q.x(),
+							q.y(),
+							q.z(),
+							q.w());
+					}
+					else
+					{
+						// VERTEX_TRACKXYZ id x y z
+						fprintf(file, "VERTEX_TRACKXYZ %d %f %f %f\n",
+							landmarkOffset-iter->first,
+							iter->second.x(),
+							iter->second.y(),
+							iter->second.z());
+					}
 				}
 			}
 		}
@@ -2116,32 +2252,90 @@ bool OptimizerG2O::saveGraph(
 				}
 				if(isSlam2d())
 				{
-					// EDGE_SE2_XY observed_vertex_id observing_vertex_id x y inf_11 inf_12 inf_22
-					fprintf(file, "EDGE_SE2_XY %d %d %f %f %f %f %f\n",
-						iter->second.from()<0?landmarkOffset-iter->second.from():iter->second.from(),
-						iter->second.to()<0?landmarkOffset-iter->second.to():iter->second.to(),
-						iter->second.transform().x(),
-						iter->second.transform().y(),
-						iter->second.infMatrix().at<double>(0, 0),
-						iter->second.infMatrix().at<double>(0, 1),
-						iter->second.infMatrix().at<double>(1, 1));
+					if(uValue(isLandmarkWithRotation, iter->first, false))
+					{
+						// EDGE_SE2 observed_vertex_id observing_vertex_id x y qx qy qz qw inf_11 inf_12 inf_13 inf_22 inf_23 inf_33
+						fprintf(file, "EDGE_SE2 %d %d %f %f %f %f %f %f %f %f %f\n",
+								iter->second.from()<0?landmarkOffset-iter->second.from():iter->second.from(),
+								iter->second.to()<0?landmarkOffset-iter->second.to():iter->second.to(),
+								iter->second.transform().x(),
+								iter->second.transform().y(),
+								iter->second.transform().theta(),
+								iter->second.infMatrix().at<double>(0, 0),
+								iter->second.infMatrix().at<double>(0, 1),
+								iter->second.infMatrix().at<double>(0, 5),
+								iter->second.infMatrix().at<double>(1, 1),
+								iter->second.infMatrix().at<double>(1, 5),
+								iter->second.infMatrix().at<double>(5, 5));
+					}
+					else
+					{
+						// EDGE_SE2_XY observed_vertex_id observing_vertex_id x y inf_11 inf_12 inf_22
+						fprintf(file, "EDGE_SE2_XY %d %d %f %f %f %f %f\n",
+							iter->second.from()<0?landmarkOffset-iter->second.from():iter->second.from(),
+							iter->second.to()<0?landmarkOffset-iter->second.to():iter->second.to(),
+							iter->second.transform().x(),
+							iter->second.transform().y(),
+							iter->second.infMatrix().at<double>(0, 0),
+							iter->second.infMatrix().at<double>(0, 1),
+							iter->second.infMatrix().at<double>(1, 1));
+					}
 				}
 				else
 				{
-					// EDGE_SE3_TRACKXYZ observed_vertex_id observing_vertex_id param_offset x y z inf_11 inf_12 inf_13 inf_22 inf_23 inf_33
-					fprintf(file, "EDGE_SE3_TRACKXYZ %d %d %d %f %f %f %f %f %f %f %f %f\n",
-						iter->second.from()<0?landmarkOffset-iter->second.from():iter->second.from(),
-						iter->second.to()<0?landmarkOffset-iter->second.to():iter->second.to(),
-						PARAM_OFFSET,
-						iter->second.transform().x(),
-						iter->second.transform().y(),
-						iter->second.transform().z(),
-						iter->second.infMatrix().at<double>(0, 0),
-						iter->second.infMatrix().at<double>(0, 1),
-						iter->second.infMatrix().at<double>(0, 2),
-						iter->second.infMatrix().at<double>(1, 1),
-						iter->second.infMatrix().at<double>(1, 2),
-						iter->second.infMatrix().at<double>(2, 2));
+					if(uValue(isLandmarkWithRotation, iter->first, false))
+					{
+						// EDGE_SE3 observed_vertex_id observing_vertex_id x y z qx qy qz qw inf_11 inf_12 .. inf_16 inf_22 .. inf_66
+						Eigen::Quaternionf q = iter->second.transform().getQuaternionf();
+						fprintf(file, "EDGE_SE3 %d %d %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f\n",
+								iter->second.from()<0?landmarkOffset-iter->second.from():iter->second.from(),
+								iter->second.to()<0?landmarkOffset-iter->second.to():iter->second.to(),
+								iter->second.transform().x(),
+								iter->second.transform().y(),
+								iter->second.transform().z(),
+								q.x(),
+								q.y(),
+								q.z(),
+								q.w(),
+								iter->second.infMatrix().at<double>(0, 0),
+								iter->second.infMatrix().at<double>(0, 1),
+								iter->second.infMatrix().at<double>(0, 2),
+								iter->second.infMatrix().at<double>(0, 3),
+								iter->second.infMatrix().at<double>(0, 4),
+								iter->second.infMatrix().at<double>(0, 5),
+								iter->second.infMatrix().at<double>(1, 1),
+								iter->second.infMatrix().at<double>(1, 2),
+								iter->second.infMatrix().at<double>(1, 3),
+								iter->second.infMatrix().at<double>(1, 4),
+								iter->second.infMatrix().at<double>(1, 5),
+								iter->second.infMatrix().at<double>(2, 2),
+								iter->second.infMatrix().at<double>(2, 3),
+								iter->second.infMatrix().at<double>(2, 4),
+								iter->second.infMatrix().at<double>(2, 5),
+								iter->second.infMatrix().at<double>(3, 3),
+								iter->second.infMatrix().at<double>(3, 4),
+								iter->second.infMatrix().at<double>(3, 5),
+								iter->second.infMatrix().at<double>(4, 4),
+								iter->second.infMatrix().at<double>(4, 5),
+								iter->second.infMatrix().at<double>(5, 5));
+					}
+					else
+					{
+						// EDGE_SE3_TRACKXYZ observed_vertex_id observing_vertex_id param_offset x y z inf_11 inf_12 inf_13 inf_22 inf_23 inf_33
+						fprintf(file, "EDGE_SE3_TRACKXYZ %d %d %d %f %f %f %f %f %f %f %f %f\n",
+							iter->second.from()<0?landmarkOffset-iter->second.from():iter->second.from(),
+							iter->second.to()<0?landmarkOffset-iter->second.to():iter->second.to(),
+							PARAM_OFFSET,
+							iter->second.transform().x(),
+							iter->second.transform().y(),
+							iter->second.transform().z(),
+							iter->second.infMatrix().at<double>(0, 0),
+							iter->second.infMatrix().at<double>(0, 1),
+							iter->second.infMatrix().at<double>(0, 2),
+							iter->second.infMatrix().at<double>(1, 1),
+							iter->second.infMatrix().at<double>(1, 2),
+							iter->second.infMatrix().at<double>(2, 2));
+					}
 				}
 				continue;
 			}
