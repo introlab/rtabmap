@@ -18,7 +18,7 @@
 namespace rtabmap
 {
 
-class PyDetector : public Feature2D
+class PyDetector : public Feature2D, public PythonInterface
 {
 public:
 	PyDetector(const ParametersMap & parameters = ParametersMap());

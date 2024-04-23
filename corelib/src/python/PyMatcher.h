@@ -16,7 +16,7 @@
 namespace rtabmap
 {
 
-class PyMatcher
+class PyMatcher : public PythonInterface
 {
 public:
   PyMatcher(const std::string & pythonMatcherPath,

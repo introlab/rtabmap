@@ -10,8 +10,6 @@
 #include <rtabmap/utilite/UConversion.h>
 #include <rtabmap/utilite/UTimer.h>
 
-#include <pybind11/embed.h>
-
 #define NPY_NO_DEPRECATED_API NPY_API_VERSION
 #include <numpy/arrayobject.h>
 
@@ -34,7 +32,7 @@ PyDetector::PyDetector(const ParametersMap & parameters) :
 		return;
 	}
 
-	pybind11::gil_scoped_acquire acquire;
+	lock();
 	
 	std::string matcherPythonDir = UDirectory::getDir(path_);
 	if(!matcherPythonDir.empty())
@@ -56,13 +54,15 @@ PyDetector::PyDetector(const ParametersMap & parameters) :
 	if(!pModule_)
 	{
 		UERROR("Module \"%s\" could not be imported! (File=\"%s\")", scriptName.c_str(), path_.c_str());
-		UERROR("%s", getPythonTraceback().c_str());
+		UERROR("%s", getTraceback().c_str());
 	}
+
+	unlock();
 }
 
 PyDetector::~PyDetector()
 {
-	pybind11::gil_scoped_acquire acquire;
+	lock();
 
 	if(pFunc_)
 	{
@@ -72,6 +72,8 @@ PyDetector::~PyDetector()
 	{
 		Py_DECREF(pModule_);
 	}
+
+	unlock();
 }
 
 void PyDetector::parseParameters(const ParametersMap & parameters)
@@ -100,7 +102,7 @@ std::vector<cv::KeyPoint> PyDetector::generateKeypointsImpl(const cv::Mat & imag
 		return keypoints;
 	}
 
-	pybind11::gil_scoped_acquire acquire;
+	lock();
 
 	if(!pFunc_)
 	{
@@ -114,7 +116,7 @@ std::vector<cv::KeyPoint> PyDetector::generateKeypointsImpl(const cv::Mat & imag
 				if(result == NULL)
 				{
 					UERROR("Call to \"init(...)\" in \"%s\" failed!", path_.c_str());
-					UERROR("%s", getPythonTraceback().c_str());
+					UERROR("%s", getTraceback().c_str());
 					return keypoints;
 				}
 				Py_DECREF(result);
@@ -127,7 +129,7 @@ std::vector<cv::KeyPoint> PyDetector::generateKeypointsImpl(const cv::Mat & imag
 				else
 				{
 					UERROR("Cannot find method \"detect(...)\" in %s", path_.c_str());
-					UERROR("%s", getPythonTraceback().c_str());
+					UERROR("%s", getTraceback().c_str());
 					if(pFunc_)
 					{
 						Py_DECREF(pFunc_);
@@ -139,7 +141,7 @@ std::vector<cv::KeyPoint> PyDetector::generateKeypointsImpl(const cv::Mat & imag
 			else
 			{
 				UERROR("Cannot call method \"init(...)\" in %s", path_.c_str());
-				UERROR("%s", getPythonTraceback().c_str());
+				UERROR("%s", getTraceback().c_str());
 				return keypoints;
 			}
 			Py_DECREF(pFunc);
@@ -147,7 +149,7 @@ std::vector<cv::KeyPoint> PyDetector::generateKeypointsImpl(const cv::Mat & imag
 		else
 		{
 			UERROR("Cannot find method \"init(...)\"");
-			UERROR("%s", getPythonTraceback().c_str());
+			UERROR("%s", getTraceback().c_str());
 			return keypoints;
 		}
 		UDEBUG("init time = %fs", timer.ticks());
@@ -165,7 +167,7 @@ std::vector<cv::KeyPoint> PyDetector::generateKeypointsImpl(const cv::Mat & imag
 		if(pReturn == NULL)
 		{
 			UERROR("Failed to call match() function!");
-			UERROR("%s", getPythonTraceback().c_str());
+			UERROR("%s", getTraceback().c_str());
 		}
 		else
 		{
@@ -224,6 +226,8 @@ std::vector<cv::KeyPoint> PyDetector::generateKeypointsImpl(const cv::Mat & imag
 		}
 		Py_DECREF(pImageBuffer);
 	}
+
+	unlock();
 
 	return keypoints;
 }

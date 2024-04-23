@@ -11,30 +11,30 @@
 
 #include <string>
 #include <rtabmap/utilite/UMutex.h>
-
-namespace pybind11 {
-class scoped_interpreter;
-class gil_scoped_release;
-}
+#include <Python.h>
 
 namespace rtabmap {
 
-/**
- * Create a single PythonInterface on main thread at
- * global scope before any Python classes.
- */
 class PythonInterface
 {
 public:
 	PythonInterface();
 	virtual ~PythonInterface();
 
-private:
-	pybind11::scoped_interpreter* guard_;
-	pybind11::gil_scoped_release* release_;
-};
+protected:
+	std::string getTraceback(); // should be called between lock() and unlock()
+	void lock();
+	void unlock();
 
-std::string getPythonTraceback();
+private:
+	static UMutex mutex_;
+	static int refCount_;
+
+protected:
+	static PyThreadState * mainThreadState_;
+	static unsigned long mainThreadID_;
+	PyThreadState * threadState_;
+};
 
 }
 
