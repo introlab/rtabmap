@@ -539,6 +539,11 @@ IF(WITH_POINTMATCHER)
             message(STATUS "libnabo found, version ${libnabo_VERSION} (Config mode)")
             SET(libpointmatcher_LIBRARIES "${libpointmatcher_LIBRARIES};libnabo::nabo")
         ENDIF(value EQUAL -1)
+        string(FIND "${libpointmatcher_LIBRARIES}" "yaml-cpp::yaml-cpp" value)
+        IF(NOT value EQUAL -1)
+            # Find yaml-cpp (Issue #1268):
+            find_package(yaml-cpp QUIET)
+        ENDIF(NOT value EQUAL -1)
     ENDIF(libpointmatcher_FOUND)
 ENDIF(WITH_POINTMATCHER)
 

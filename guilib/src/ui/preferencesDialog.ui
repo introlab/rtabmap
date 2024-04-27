@@ -8546,7 +8546,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                            </widget>
                           </item>
                           <item row="1" column="1">
-                           <widget class="QLabel" name="label_747">
+                           <widget class="QLabel" name="label_7471">
                             <property name="text">
                              <string>Lidar deskewing. The input scan should have time channel and &quot;Visual Odometry Sensor&quot; should be used. If only IMU is available through the camera, enable publishing of inter IMU under &quot;IMU filtering&quot; above and enable deskewing in Odometry parameters instead.</string>
                             </property>
@@ -8888,7 +8888,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                </widget>
                               </item>
                               <item row="3" column="2">
-                               <widget class="QLabel" name="label_748">
+                               <widget class="QLabel" name="label_7481">
                                 <property name="toolTip">
                                  <string>This can speedup deskewing.</string>
                                 </property>
@@ -11879,7 +11879,7 @@ see Sqlite3 doc 'PRAGMA synchronous'.</string>
                        </widget>
                       </item>
                       <item row="4" column="1">
-                       <widget class="QLabel" name="label_603">
+                       <widget class="QLabel" name="label_6031">
                         <property name="text">
                          <string>Global descriptor extractor.</string>
                         </property>
@@ -12011,9 +12011,9 @@ see Sqlite3 doc 'PRAGMA synchronous'.</string>
                       <property name="title">
                        <string>PyDescriptor</string>
                       </property>
-                      <layout class="QVBoxLayout" name="verticalLayout_152">
+                      <layout class="QVBoxLayout" name="verticalLayout_1521">
                        <item>
-                        <widget class="QLabel" name="label_604">
+                        <widget class="QLabel" name="label_6041">
                          <property name="text">
                           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Python wrapper for python descriptor like &lt;a href=&quot;https://github.com/uzh-rpg/netvlad_tf_open&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;NetVLAD&lt;/span&gt;&lt;/a&gt;. Download the interface &lt;a href=&quot;https://github.com/introlab/rtabmap/tree/master/corelib/src/pydescriptor&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;script&lt;/span&gt;&lt;/a&gt; and copy it in the python folder of NetVLAD, then set its path below.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                          </property>
@@ -12029,7 +12029,7 @@ see Sqlite3 doc 'PRAGMA synchronous'.</string>
                         </widget>
                        </item>
                        <item>
-                        <layout class="QGridLayout" name="gridLayout_118" columnstretch="0,0,1">
+                        <layout class="QGridLayout" name="gridLayout_1181" columnstretch="0,0,1">
                          <item row="0" column="0">
                           <widget class="QToolButton" name="toolButton_pydescriptor_path">
                            <property name="text">
@@ -12070,7 +12070,7 @@ see Sqlite3 doc 'PRAGMA synchronous'.</string>
                           </widget>
                          </item>
                          <item row="1" column="2">
-                          <widget class="QLabel" name="label_606">
+                          <widget class="QLabel" name="label_6061">
                            <property name="text">
                             <string>Descriptor dimension.</string>
                            </property>
@@ -12085,7 +12085,7 @@ see Sqlite3 doc 'PRAGMA synchronous'.</string>
                         </layout>
                        </item>
                        <item>
-                        <spacer name="verticalSpacer_88">
+                        <spacer name="verticalSpacer_881">
                          <property name="orientation">
                           <enum>Qt::Vertical</enum>
                          </property>
@@ -15622,7 +15622,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                        </widget>
                       </item>
                       <item row="9" column="1">
-                       <widget class="QLabel" name="label_746">
+                       <widget class="QLabel" name="label_7461">
                         <property name="text">
                          <string>Lidar deskewing. If input lidar has time channel, it will be deskewed with a constant motion model (with IMU orientation and/or guess if provided).</string>
                         </property>
@@ -23227,7 +23227,7 @@ Lower the ratio -&gt; higher the precision.</string>
                        </widget>
                       </item>
                       <item row="22" column="1">
-                       <widget class="QLabel" name="label_607">
+                       <widget class="QLabel" name="label_6071">
                         <property name="text">
                          <string>Stuctural complexity strategy. If structural complexity is below the minimum complexity threshold: set to 0 to so that the transform is automatically rejected, set to 1 to limit ICP correction in axes with most constraints (e.g., for a corridor-like environment, the resulting transform will be limited in y and yaw, x will taken from the guess), set to 2 to accept &quot;as is&quot; the transform computed by PointToPoint.</string>
                         </property>
@@ -23464,7 +23464,7 @@ Lower the ratio -&gt; higher the precision.</string>
                        </widget>
                       </item>
                       <item row="8" column="1">
-                       <widget class="QLabel" name="label_745">
+                       <widget class="QLabel" name="label_7451">
                         <property name="text">
                          <string>Flag to enable filters above: 1=&quot;from&quot; cloud only, 2=&quot;to&quot; cloud only, 3=both.</string>
                         </property>
@@ -24106,7 +24106,7 @@ Lower the ratio -&gt; higher the precision.</string>
                         </widget>
                        </item>
                        <item row="1" column="1">
-                        <widget class="QLabel" name="label_742">
+                        <widget class="QLabel" name="label_7421">
                          <property name="text">
                           <string>iSAM2: Do graph optimization incrementally to increase optimization speed on loop closures. Note that only GaussNewton and Dogleg optimization algorithms are supported in this mode.</string>
                          </property>
@@ -24145,7 +24145,7 @@ Lower the ratio -&gt; higher the precision.</string>
                         </widget>
                        </item>
                        <item row="2" column="1">
-                        <widget class="QLabel" name="label_743">
+                        <widget class="QLabel" name="label_7431">
                          <property name="text">
                           <string>Only relinearize variables whose linear delta magnitude is greater than this threshold. See GTSAM::ISAM2 doc for more info.</string>
                          </property>
@@ -24175,7 +24175,7 @@ Lower the ratio -&gt; higher the precision.</string>
                         </widget>
                        </item>
                        <item row="3" column="1">
-                        <widget class="QLabel" name="label_744">
+                        <widget class="QLabel" name="label_7441">
                          <property name="text">
                           <string>Only relinearize any variables every X calls to ISAM2::update(). See GTSAM::ISAM2 doc for more info.</string>
                          </property>
