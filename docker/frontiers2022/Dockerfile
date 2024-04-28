@@ -14,7 +14,8 @@ RUN apt-get update && apt-get install -y \
       software-properties-common \
       pkg-config \ 
       wget \
-      libsuitesparse-dev
+      libsuitesparse-dev \
+      pybind11-dev
 
 # g2o (removing config because cs.h not found error: https://github.com/introlab/rtabmap/issues/835)
 RUN git clone https://github.com/RainerKuemmerle/g2o.git && \
