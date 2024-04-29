@@ -28,6 +28,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QApplication>
 #include "rtabmap/gui/DatabaseViewer.h"
 #include "rtabmap/utilite/ULogger.h"
+#ifdef RTABMAP_PYTHON
+#include <rtabmap/core/PythonInterface.h>
+#endif
 
 #include <vtkObject.h>
 #include <vtkVersionMacros.h>
@@ -48,6 +51,10 @@ int main(int argc, char * argv[])
 #if VTK_MAJOR_VERSION > 9 || (VTK_MAJOR_VERSION==9 && VTK_MINOR_VERSION >= 1)
     // needed to ensure appropriate OpenGL context is created for VTK rendering.
     QSurfaceFormat::setDefaultFormat(QVTKRenderWidget::defaultFormat());
+#endif
+
+#ifdef RTABMAP_PYTHON
+	rtabmap::PythonInterface pythonInterface;
 #endif
 
 	QApplication * app = new QApplication(argc, argv);
