@@ -37,6 +37,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <set>
 #include <string_view>
 #include "rtabmap/core/Parameters.h"
+#include <fstream>
 
 namespace rtabmap
 {
