@@ -32,6 +32,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <filesystem>
 #include <list>
 #include <opencv2/opencv.hpp>
+#include <fstream>
 
 namespace rtabmap {
 
