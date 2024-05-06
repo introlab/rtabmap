@@ -192,16 +192,17 @@ public:
 			const cv::Mat & disparity,
 			float minDisparity);
 
-	static void limitKeypoints(std::vector<cv::KeyPoint> & keypoints, int maxKeypoints);
-	static void limitKeypoints(std::vector<cv::KeyPoint> & keypoints, cv::Mat & descriptors, int maxKeypoints);
-	static void limitKeypoints(std::vector<cv::KeyPoint> & keypoints, std::vector<cv::Point3f> & keypoints3D, cv::Mat & descriptors, int maxKeypoints);
-	static void limitKeypoints(const std::vector<cv::KeyPoint> & keypoints, std::vector<bool> & inliers, int maxKeypoints);
-	static void limitKeypoints(const std::vector<cv::KeyPoint> & keypoints, std::vector<bool> & inliers, int maxKeypoints, const cv::Size & imageSize, int gridRows, int gridCols);
+	static void limitKeypoints(std::vector<cv::KeyPoint> & keypoints, int maxKeypoints, const cv::Size & imageSize = cv::Size(), bool ssc = false);
+	static void limitKeypoints(std::vector<cv::KeyPoint> & keypoints, cv::Mat & descriptors, int maxKeypoints, const cv::Size & imageSize = cv::Size(), bool ssc = false);
+	static void limitKeypoints(std::vector<cv::KeyPoint> & keypoints, std::vector<cv::Point3f> & keypoints3D, cv::Mat & descriptors, int maxKeypoints, const cv::Size & imageSize = cv::Size(), bool ssc = false);
+	static void limitKeypoints(const std::vector<cv::KeyPoint> & keypoints, std::vector<bool> & inliers, int maxKeypoints, const cv::Size & imageSize = cv::Size(), bool ssc = false);
+	static void limitKeypoints(const std::vector<cv::KeyPoint> & keypoints, std::vector<bool> & inliers, int maxKeypoints, const cv::Size & imageSize, int gridRows, int gridCols, bool ssc = false);
 
 	static cv::Rect computeRoi(const cv::Mat & image, const std::string & roiRatios);
 	static cv::Rect computeRoi(const cv::Mat & image, const std::vector<float> & roiRatios);
 
 	int getMaxFeatures() const {return maxFeatures_;}
+	bool getSSC() const {return SSC_;}
 	float getMinDepth() const {return _minDepth;}
 	float getMaxDepth() const {return _maxDepth;}
 	int getGridRows() const {return gridRows_;}
@@ -234,6 +235,7 @@ private:
 private:
 	ParametersMap parameters_;
 	int maxFeatures_;
+	bool SSC_;
 	float _maxDepth; // 0=inf
 	float _minDepth;
 	std::vector<float> _roiRatios; // size 4
