@@ -266,7 +266,7 @@ RUN source /root/catkin_ws/devel/setup.bash && \
 RUN source /root/catkin_ws/devel/setup.bash && \
     cd rtabmap_loam && \
     cd build && \
-    ~/cmake  -DWITH_LOAM=ON -DWITH_FLOAM=ON -DWITH_OPENGV=OFF .. && \
+    ~/cmake  -DWITH_LOAM=ON -DWITH_FLOAM=ON -DWITH_OPENGV=OFF -DWITH_CERES=ON .. && \
     make -j3 && \
     rm -rf *
 RUN source /root/catkin_ws/devel/setup.bash && \

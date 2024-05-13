@@ -26,8 +26,11 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+#include <pcl/pcl_config.h>
+#if PCL_VERSION_COMPARE(>=, 1, 8, 0)
 // Should be first on windows to avoid "WinSock.h has already been included" error
 #include "rtabmap/core/lidar/LidarVLP16.h"
+#endif
 
 #include "rtabmap/gui/PreferencesDialog.h"
 #include "rtabmap/gui/DatabaseViewer.h"
@@ -6950,6 +6953,7 @@ Lidar * PreferencesDialog::createLidar()
 	Src driver = getLidarSourceDriver();
 	if(driver == kSrcLidarVLP16)
 	{
+#if PCL_VERSION_COMPARE(>=, 1, 8, 0)
 		Transform localTransform = Transform::fromString(_ui->lineEdit_lidar_local_transform->text().replace("PI_2", QString::number(3.141592/2.0)).toStdString());
 		if(localTransform.isNull())
 		{
@@ -6994,6 +6998,12 @@ Lidar * PreferencesDialog::createLidar()
 			delete lidar;
 			lidar = 0;
 		}
+#else
+		UWARN("Lidar cannot be used with rtabmap built with PCL < 1.8... ");
+		QMessageBox::warning(this,
+				   tr("RTAB-Map"),
+				   tr("Lidar initialization failed..."));
+#endif
 	}
 	return lidar;
 }

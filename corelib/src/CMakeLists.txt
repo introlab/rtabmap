@@ -41,8 +41,6 @@ SET(SRC_FILES
     camera/CameraMyntEye.cpp
     camera/CameraDepthAI.cpp
     
-    lidar/LidarVLP16.cpp
-    
     EpipolarGeometry.cpp
     VisualWord.cpp
     VWDictionary.cpp
@@ -137,6 +135,13 @@ SET(SRC_FILES
     opencv/solvepnp.cpp
     opencv/five-point.cpp
 )
+
+IF(PCL_VERSION VERSION_GREATER_EQUAL "1.8")
+SET(SRC_FILES
+    ${SRC_FILES}
+    lidar/LidarVLP16.cpp
+)
+ENDIF(PCL_VERSION VERSION_GREATER_EQUAL "1.8")
 
 IF(OpenCV_VERSION_MAJOR EQUAL 2)
 SET(SRC_FILES
