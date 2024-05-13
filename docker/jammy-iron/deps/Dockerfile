@@ -17,7 +17,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 # Install build dependencies
 RUN apt-get update && \
     apt upgrade -y && \
-    apt-get install -y git ros-iron-ros-base ros-dev-tools ros-iron-rtabmap-ros && \
+    apt-get install -y git libtbb-dev ros-iron-ros-base ros-dev-tools ros-iron-rtabmap-ros && \
     apt-get remove -y ros-iron-rtabmap* && \
     apt-get clean && rm -rf /var/lib/apt/lists/
 

@@ -21,7 +21,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 # Install build dependencies
 RUN apt-get update && \
     apt upgrade -y && \
-    apt-get install -y git ros-humble-ros-base ros-dev-tools && \
+    apt-get install -y git libtbb-dev ros-humble-ros-base ros-dev-tools && \
     apt-get clean && rm -rf /var/lib/apt/lists/
 
 RUN if [ "$TARGETPLATFORM" = "linux/amd64" ]; then apt-get update && \
