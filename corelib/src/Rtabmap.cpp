@@ -5275,15 +5275,14 @@ void Rtabmap::adjustLikelihood(std::map<int, float> & likelihood) const
 
 
 	//Adjust likelihood with mean and standard deviation (see Angeli phd)
-	float epsilon = 0.0001;
 	float max = 0.0f;
 	int maxId = 0;
 	for(std::map<int, float>::iterator iter=++likelihood.begin(); iter!= likelihood.end(); ++iter)
 	{
 		float value = iter->second;
-		if(value > mean+stdDev && mean)
+		if(value > mean+stdDev && stdDev)
 		{
-			iter->second = (value-(stdDev-epsilon))/mean;
+			iter->second = (value-mean)/stdDev;
 			if(value > max)
 			{
 				max = value;
@@ -5305,9 +5304,9 @@ void Rtabmap::adjustLikelihood(std::map<int, float> & likelihood) const
 		}
 	}
 
-	if(stdDev > epsilon && max)
+	if(max > mean)
 	{
-		likelihood.begin()->second = mean/stdDev + 1.0f;
+		likelihood.begin()->second = stdDev/(max-mean) + 1.0f;
 	}
 	else
 	{
