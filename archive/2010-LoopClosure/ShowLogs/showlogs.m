@@ -22,6 +22,8 @@ function [LogF LogI] = showlogs(PathPrefix, GT_file)
 set(0,'defaultAxesFontName', 'Times')
 set(0,'defaultTextFontName', 'Times')
 
+close all
+
 if nargin < 2, GT_file = ''; end
 if nargin < 1, PathPrefix = '.'; end
 
@@ -325,7 +327,7 @@ y(LogI(:, 1) == 0) = [];
 x(LogI(:, 1) == 0) = [];
 plot(x,y, 'g.')
 
-set(datacursormode,'UpdateFcn',@(Y,X){sprintf('X: %0.2f',X.Position(1)),sprintf('Y: %0.2f',X.Position(2))})
+%set(datacursormode,'UpdateFcn',@(Y,X){sprintf('X: %0.2f',X.Position(1)),sprintf('Y: %0.2f',X.Position(2))})
 % %matched sign words
 % y = LogI(:,2);
 % x = 1:length(y);

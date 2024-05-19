@@ -32,8 +32,7 @@ if ~isempty(GroundTruth)
     if size(GroundTruth, 1) ~=  length(LogF(:,1)) ||  size(GroundTruth, 1) ~=  length(LogI(:,1))
         error(['The ground truth size doesn''t match the log files (LogI=' num2str(length(LogI(:,1))) ', LogF=' num2str(length(LogF(:,1))) ', GT=' num2str(size(GroundTruth, 1)) ')'])
     end
-    
-    
+
     %[highestHypot, CorrespondingID, GT, Accepted, Good, Index, UnderLoopRatio] descending order
     if(sum(LogI(:,8) == 10) > 0)
         %OLD
@@ -111,14 +110,14 @@ if ~isempty(GroundTruth)
     index = find(PR(:,1) == 1);
     if ~isempty(index)
         maxRecall = PR(index(end),2) * 100;
-        display(['Recall max (Precision=100%) = ' num2str(maxRecall) '% (p=' num2str(lc(index(end),1)) '), accepted=' num2str(sum(lc(1:index(end),5) & ~lc(1:index(end),7) & lc(1:index(end),2)))])
+        display(['Recall max (Precision=100%) = ' num2str(maxRecall) '% (p=' num2str(lc(index(end),1)) '), accepted=' num2str(sum(lc(1:index(end),5) & ~lc(1:index(end),7) & lc(1:index(end),2))) '/' num2str(GT_total_positives)])
     else
         display('Recall max (Precision=100%) = 0')
     end
     indexAccepted = find(PR(:,3) == 1);
     if ~isempty(indexAccepted)
         maxRecall = PR(indexAccepted(end),2) * 100;
-        display(['Recall max accepted (Precision=100%) = ' num2str(maxRecall) '% (p=' num2str(lc(indexAccepted(end),1)) '), accepted=' num2str(sum(lc(1:indexAccepted(end),5) & ~lc(1:indexAccepted(end),7) & lc(1:indexAccepted(end),2)))])
+        display(['Recall max accepted (Precision=100%) = ' num2str(maxRecall) '% (p=' num2str(lc(indexAccepted(end),1)) '), accepted=' num2str(sum(lc(1:indexAccepted(end),5) & ~lc(1:indexAccepted(end),7) & lc(1:indexAccepted(end),2))) '/' num2str(GT_total_positives)])
     else
         display('Recall max accepted (Precision=100%) = 0')
     end

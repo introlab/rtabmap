@@ -2532,37 +2532,37 @@ bool Rtabmap::process(
 			// insert them first to make sure they are loaded.
 			reactivatedIds.insert(reactivatedIds.begin(), retrievalLocalIds.begin(), retrievalLocalIds.end());
 		}
-
-		//============================================================
-		// RETRIEVAL 3/3 : Load signatures from the database
-		//============================================================
-		if(reactivatedIds.size())
-		{
-			// Not important if the loop closure hypothesis don't have all its neighbors loaded,
-			// only a loop closure link is added...
-			signaturesRetrieved = _memory->reactivateSignatures(
-					reactivatedIds,
-					_maxRetrieved+(unsigned int)retrievalLocalIds.size(), // add path retrieved
-					timeRetrievalDbAccess);
-
-			ULOGGER_INFO("retrieval of %d (db time = %fs)", (int)signaturesRetrieved.size(), timeRetrievalDbAccess);
-
-			timeRetrievalDbAccess += timeGetNeighborsTimeDb + timeGetNeighborsSpaceDb;
-			UINFO("total timeRetrievalDbAccess=%fs", timeRetrievalDbAccess);
-
-			// Immunize just retrieved signatures
-			immunizedLocations.insert(signaturesRetrieved.begin(), signaturesRetrieved.end());
-
-			if(!signaturesRetrieved.empty() && !_globalScanMap.empty())
-			{
-				UWARN("Some signatures have been retrieved from memory management, clearing global scan map...");
-				_globalScanMap.clear();
-				_globalScanMapPoses.clear();
-			}
-		}
-		timeReactivations = timer.ticks();
-		ULOGGER_INFO("timeReactivations=%fs", timeReactivations);
 	}
+
+	//============================================================
+	// RETRIEVAL 3/3 : Load signatures from the database
+	//============================================================
+	if(reactivatedIds.size())
+	{
+		// Not important if the loop closure hypothesis don't have all its neighbors loaded,
+		// only a loop closure link is added...
+		signaturesRetrieved = _memory->reactivateSignatures(
+				reactivatedIds,
+				_maxRetrieved+(unsigned int)retrievalLocalIds.size(), // add path retrieved
+				timeRetrievalDbAccess);
+
+		ULOGGER_INFO("retrieval of %d (db time = %fs)", (int)signaturesRetrieved.size(), timeRetrievalDbAccess);
+
+		timeRetrievalDbAccess += timeGetNeighborsTimeDb + timeGetNeighborsSpaceDb;
+		UINFO("total timeRetrievalDbAccess=%fs", timeRetrievalDbAccess);
+
+		// Immunize just retrieved signatures
+		immunizedLocations.insert(signaturesRetrieved.begin(), signaturesRetrieved.end());
+
+		if(!signaturesRetrieved.empty() && !_globalScanMap.empty())
+		{
+			UWARN("Some signatures have been retrieved from memory management, clearing global scan map...");
+			_globalScanMap.clear();
+			_globalScanMapPoses.clear();
+		}
+	}
+	timeReactivations = timer.ticks();
+	ULOGGER_INFO("timeReactivations=%fs", timeReactivations);
 
 	//============================================================
 	// Proximity detections
@@ -4737,6 +4737,16 @@ void Rtabmap::setTimeThreshold(float maxTimeAllowed)
 	else if(_maxTimeAllowed > 0.0f && _maxTimeAllowed < 1.0f)
 	{
 		ULOGGER_WARN("Time threshold set to %fms, it is not in seconds!", _maxTimeAllowed);
+	}
+}
+void Rtabmap::setMemoryThreshold(int maxMemoryAllowed)
+{
+	//must be positive, 0 mean inf memory allowed (no memory limit)
+	_maxMemoryAllowed = maxMemoryAllowed;
+	if(_maxMemoryAllowed < 0)
+	{
+		ULOGGER_WARN("maxMemoryAllowed < 0, then setting it to 0 (inf).");
+		_maxMemoryAllowed = 0;
 	}
 }
 

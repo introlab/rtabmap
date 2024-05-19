@@ -49,17 +49,36 @@ void showUsage()
 			"  path                            For images, use the directory path. For videos or databases, use full\n "
 			"                                  path name\n"
 			"Options:\n"
+			"  -quiet                          Don't show log for every images.\n"
 			"  -rate #.##                      Acquisition time (seconds)\n"
 			"  -rateHz #.##                    Acquisition rate (Hz), for convenience\n"
 			"  -repeat #                       Repeat the process on the data set # times (minimum of 1)\n"
 			"  -createGT                       Generate a ground truth file\n"
+			"  -gt \"path\"                      Compute precision/recall with ground truth matrix.\n"
 			"  -start_at #                     When \"path\" is a directory of images, set this parameter\n"
 			"                                   to start processing at image # (default 0).\n"
 			"  -skip #                         Skip X images while reading directory (default 0).\n"
 			"  -v                              Get version of RTAB-Map\n"
-			"  -input \"path\"                 Load previous database if it exists.\n"
-			"%s\n",
-			rtabmap::Parameters::showUsage());
+			"  -input \"path\"                   Load previous database if it exists.\n"
+			"%s\n"
+			"Example (generating LogI.txt and LogF.txt for rtabmap/archive/2010-LoopClosure/ShowLogs script, and with 2013 paper parameters):\n\n"
+			"   $ rtabmap-console \\\n"
+			"       --Rtabmap/StatisticLogged true\\\n"
+			"       --Rtabmap/StatisticLoggedHeaders false\\\n"
+			"       --Kp/DetectorStrategy 0\\\n"
+			"       --SURF/HessianThreshold 150\\\n"
+			"       --Rtabmap/MemoryThr 300\\\n"
+			"       --Rtabmap/LoopRatio 0.9\\\n"
+			"       --Mem/STMSize 30\\\n"
+			"       --Vis/MaxFeatures 400\\\n"
+			"       --Kp/TfIdfLikelihoodUsed false\\\n"
+			"       --Kp/MaxFeatures 400\\\n"
+			"       --Kp/BadSignRatio 0.25\\\n"
+			"       --Mem/BadSignaturesIgnored true\\\n"
+			"       --Mem/RehearsalSimilarity 0.20\\\n"
+			"       --Mem/RecentWmRatio 0.20\\\n"
+			"       -gt \"~/Downloads/UdeS_1Hz.png\"\\\n"
+			"       ~/Downloads/UdeS_1Hz\n\n", rtabmap::Parameters::showUsage());
 	exit(1);
 }
 
@@ -100,8 +119,10 @@ int main(int argc, char * argv[])
 	int repeat = 0;
 	bool createGT = false;
 	std::string inputDbPath;
+	std::string gtPath;
 	int startAt = 0;
 	int skip = 0;
+	bool quiet = false;
 
 	for(int i=1; i<argc; ++i)
 	{
@@ -206,9 +227,27 @@ int main(int argc, char * argv[])
 			}
 			continue;
 		}
+		if(strcmp(argv[i], "-quiet") == 0)
+		{
+			quiet = true;
+			continue;
+		}
 		if(strcmp(argv[i], "-createGT") == 0)
 		{
 			createGT = true;
+			continue;
+		}
+		if(strcmp(argv[i], "-gt") == 0)
+		{
+			++i;
+			if(i < argc)
+			{
+				gtPath = uReplaceChar(argv[i], '~', UDirectory::homeDir());
+			}
+			else
+			{
+				showUsage();
+			}
 			continue;
 		}
 		if(strcmp(argv[i], "-input") == 0)
@@ -241,6 +280,7 @@ int main(int argc, char * argv[])
 	std::queue<double> iterationMeanTime;
 
 	Camera * camera = 0;
+	int totalImages = 0;
 	if(UDirectory::exists(path))
 	{
 		camera = new CameraImages(path, rate>0.0f?1.0f/rate:0.0f);
@@ -257,7 +297,10 @@ int main(int argc, char * argv[])
 		exit(1);
 	}
 
-	std::map<int, int> groundTruth;
+	if(dynamic_cast<CameraImages*>(camera))
+		totalImages = ((CameraImages*)camera)->imagesCount();
+
+	std::map<int, int> generatedGroundTruth;
 
 	// Create tasks
 	Rtabmap rtabmap;
@@ -274,8 +317,7 @@ int main(int argc, char * argv[])
 		printf("Loading database \"%s\".\n", inputDbPath.c_str());
 	}
 
-	// Disable statistics (we don't need them)
-	uInsert(pm, ParametersPair(Parameters::kRtabmapPublishStats(), "false"));
+	// Disable RGB-D mode
 	uInsert(pm, ParametersPair(Parameters::kRGBDEnabled(), "false"));
 
 	// Process an empty image to make sure every libraries are loaded.
@@ -287,6 +329,11 @@ int main(int argc, char * argv[])
 	rtabmap.close(false);
 	ULogger::setLevel(level);
 
+	if(quiet)
+	{
+		ULogger::setLevel(ULogger::kError);
+	}
+
 	rtabmap.init(pm, inputDbPath);
 
 	printf("rtabmap init time = %fs\n", timer.ticks());
@@ -295,14 +342,27 @@ int main(int argc, char * argv[])
 	int loopClosureId;
 	int count = 0;
 	int countLoopDetected=0;
-
 	printf("\nParameters : \n");
 	printf(" Data set : %s\n", path.c_str());
 	printf(" Time threshold = %1.2f ms\n", rtabmap.getTimeThreshold());
+	printf(" Memory threshold = %d nodes\n", rtabmap.getMemoryThreshold());
 	printf(" Image rate = %1.2f s (%1.2f Hz)\n", rate, 1/rate);
 	printf(" Repeating data set = %s\n", repeat?"true":"false");
 	printf(" Camera starts at image %d (default 0)\n", startAt);
 	printf(" Skip image = %d\n", skip);
+	cv::Mat inputGT;
+	if(!gtPath.empty())
+	{
+		if(startAt != 0 || repeat || skip>0)
+		{
+			printf(" Cannot input ground truth if startAt,repeat,skip options are used.\n");
+			gtPath.clear();
+		}
+		inputGT = cv::imread(gtPath, cv::IMREAD_GRAYSCALE);
+		printf(" Input ground truth : %s (%dx%d)\n", gtPath.c_str(), inputGT.cols, inputGT.rows);
+		UASSERT(inputGT.cols == inputGT.rows);
+		UASSERT(totalImages == 0 || totalImages == inputGT.cols);
+	}
 	if(createGT)
 	{
 		printf(" Creating the ground truth matrix.\n");
@@ -326,6 +386,7 @@ int main(int argc, char * argv[])
 	UTimer rtabmapTimer;
 	int imagesProcessed = 0;
 	std::list<std::vector<float> > teleopActions;
+	std::map<float, bool> loopClosureStats;
 	while(loopDataset <= repeat && g_forever)
 	{
 		SensorData data = camera->takeImage();
@@ -340,15 +401,32 @@ int main(int argc, char * argv[])
 			rtabmap.process(data.imageRaw());
 			double rtabmapTime = rtabmapTimer.elapsed();
 			loopClosureId = rtabmap.getLoopClosureId();
-			if(rtabmap.getLoopClosureId())
+			if(loopClosureId)
 			{
 				++countLoopDetected;
 			}
+
+			if(!gtPath.empty() && rtabmap.getHighestHypothesisValue() > 0.0f)
+			{
+				if(i>inputGT.rows ||
+				   rtabmap.getHighestHypothesisId()-1 > inputGT.cols)
+				{
+					printf("ERROR: Incompatible ground truth file (size=%dx%d, current image index=%d, loop index=%d)!", inputGT.cols, inputGT.rows, i, rtabmap.getHighestHypothesisId()-1);
+					exit(1);
+				}
+				bool rejectedHypothesis = uValue(rtabmap.getStatistics().data(), Statistics::kLoopRejectedHypothesis(), 0.0f) != 0.0f;
+				unsigned char gtValue = inputGT.at<unsigned char>(i, rtabmap.getHighestHypothesisId()-1);
+				if((gtValue==0 || gtValue == 255) && !rejectedHypothesis)
+				{
+					loopClosureStats.insert(std::make_pair(rtabmap.getHighestHypothesisValue(), gtValue==255));
+				}
+			}
+
 			for(int j=0; j<=skip; ++j)
 			{
 				data = camera->takeImage();
 			}
-			if(++count % 100 == 0)
+			if(!quiet && ++count % 100 == 0)
 			{
 				printf(" count = %d, loop closures = %d, max time (at %d) = %fs\n",
 						count, countLoopDetected, maxIterationTimeId, maxIterationTime);
@@ -372,7 +450,7 @@ int main(int argc, char * argv[])
 			{
 				if(loopClosureId > 0)
 				{
-					groundTruth.insert(std::make_pair(i, loopClosureId-1));
+					generatedGroundTruth.insert(std::make_pair(i, loopClosureId-1));
 				}
 			}
 
@@ -388,25 +466,33 @@ int main(int argc, char * argv[])
 
 			ULogger::flush();
 
-			if(rtabmap.getLoopClosureId())
+			if(!quiet)
 			{
-				printf(" iteration(%d) loop(%d) hyp(%.2f) time=%fs/%fs *\n",
-						count, rtabmap.getLoopClosureId(), rtabmap.getLoopClosureValue(), rtabmapTime, iterationTime);
-			}
-			else if(rtabmap.getHighestHypothesisId())
-			{
-				printf(" iteration(%d) high(%d) hyp(%.2f) time=%fs/%fs\n",
-						count, rtabmap.getHighestHypothesisId(), rtabmap.getHighestHypothesisValue(), rtabmapTime, iterationTime);
-			}
-			else
-			{
-				printf(" iteration(%d) time=%fs/%fs\n", count, rtabmapTime, iterationTime);
-			}
+				if(rtabmap.getLoopClosureId())
+				{
+					printf(" iteration(%d) loop(%d) hyp(%.2f) time=%fs/%fs *\n",
+							count, rtabmap.getLoopClosureId(), rtabmap.getLoopClosureValue(), rtabmapTime, iterationTime);
+				}
+				else if(rtabmap.getHighestHypothesisId())
+				{
+					printf(" iteration(%d) high(%d) hyp(%.2f) time=%fs/%fs\n",
+							count, rtabmap.getHighestHypothesisId(), rtabmap.getHighestHypothesisValue(), rtabmapTime, iterationTime);
+				}
+				else
+				{
+					printf(" iteration(%d) time=%fs/%fs\n", count, rtabmapTime, iterationTime);
+				}
 
-			if(rtabmap.getTimeThreshold() && rtabmapTime > rtabmap.getTimeThreshold()*100.0f)
+				if(rtabmap.getTimeThreshold() && rtabmapTime > rtabmap.getTimeThreshold()*100.0f)
+				{
+					printf(" ERROR,  there is  problem, too much time taken... %fs", rtabmapTime);
+					break; // there is  problem, don't continue
+				}
+			}
+			else if(totalImages>0 && i % (totalImages/10) == 0)
 			{
-				printf(" ERROR,  there is  problem, too much time taken... %fs", rtabmapTime);
-				break; // there is  problem, don't continue
+				printf(".");
+				fflush(stdout);
 			}
 		}
 		++loopDataset;
@@ -419,18 +505,52 @@ int main(int argc, char * argv[])
 	printf("Processing images completed. Loop closures found = %d\n", countLoopDetected);
 	printf(" Total time = %fs\n", timer.ticks());
 
+	if(!loopClosureStats.empty())
+	{
+		int totalGoodLoopClosures = 0;
+		float loopThr = 0.0f;
+		for(std::map<float, bool>::reverse_iterator iter=loopClosureStats.rbegin(); iter!=loopClosureStats.rend(); ++iter)
+		{
+			if(!iter->second)
+			{
+				break;
+			}
+			loopThr = iter->first;
+			++totalGoodLoopClosures;
+		}
+		int totalGtLoopClosures = 0;
+		for(int i=0; i<inputGT.rows; ++i)
+		{
+			for(int j=0; j<inputGT.cols; ++j)
+			{
+				if(inputGT.at<unsigned char>(i,j) == 255)
+				{
+					++totalGtLoopClosures;
+					break;
+				}
+			}
+		}
+
+		printf(" Recall (100%% Precision): %.2f%% (with %s=%f, accepted=%d/%d)\n",
+				float(totalGoodLoopClosures)/float(totalGtLoopClosures)*100.0f,
+				Parameters::kRtabmapLoopThr().c_str(),
+				loopThr,
+				totalGoodLoopClosures,
+				totalGtLoopClosures);
+	}
+
 	if(imagesProcessed && createGT)
 	{
-		cv::Mat groundTruthMat = cv::Mat::zeros(imagesProcessed, imagesProcessed, CV_8U);
+		cv::Mat generatedGroundTruthMat = cv::Mat::zeros(imagesProcessed, imagesProcessed, CV_8U);
 
-		for(std::map<int, int>::iterator iter = groundTruth.begin(); iter!=groundTruth.end(); ++iter)
+		for(std::map<int, int>::iterator iter = generatedGroundTruth.begin(); iter!=generatedGroundTruth.end(); ++iter)
 		{
-			groundTruthMat.at<unsigned char>(iter->first, iter->second) = 255;
+			generatedGroundTruthMat.at<unsigned char>(iter->first, iter->second) = 255;
 		}
 
 		// Generate the ground truth file
-		printf("Generate ground truth to file %s, size of %d\n", GENERATED_GT_NAME, groundTruthMat.rows);
-		cv::imwrite(GENERATED_GT_NAME, groundTruthMat);
+		printf("Generate ground truth to file %s, size of %d\n", GENERATED_GT_NAME, generatedGroundTruthMat.rows);
+		cv::imwrite(GENERATED_GT_NAME, generatedGroundTruthMat);
 		printf(" Creating ground truth file = %fs\n", timer.ticks());
 	}
 
