@@ -111,6 +111,7 @@ Memory::Memory(const ParametersMap & parameters) :
 	_rotateImagesUpsideUp(Parameters::defaultMemRotateImagesUpsideUp()),
 	_createOccupancyGrid(Parameters::defaultRGBDCreateOccupancyGrid()),
 	_visMaxFeatures(Parameters::defaultVisMaxFeatures()),
+	_visSSC(Parameters::defaultVisSSC()),
 	_imagesAlreadyRectified(Parameters::defaultRtabmapImagesAlreadyRectified()),
 	_rectifyOnlyFeatures(Parameters::defaultRtabmapRectifyOnlyFeatures()),
 	_covOffDiagonalIgnored(Parameters::defaultMemCovOffDiagIgnored()),
@@ -603,6 +604,7 @@ void Memory::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(params, Parameters::kMemRotateImagesUpsideUp(), _rotateImagesUpsideUp);
 	Parameters::parse(params, Parameters::kRGBDCreateOccupancyGrid(), _createOccupancyGrid);
 	Parameters::parse(params, Parameters::kVisMaxFeatures(), _visMaxFeatures);
+	Parameters::parse(params, Parameters::kVisSSC(), _visSSC);
 	Parameters::parse(params, Parameters::kRtabmapImagesAlreadyRectified(), _imagesAlreadyRectified);
 	Parameters::parse(params, Parameters::kRtabmapRectifyOnlyFeatures(), _rectifyOnlyFeatures);
 	Parameters::parse(params, Parameters::kMemCovOffDiagIgnored(), _covOffDiagonalIgnored);
@@ -5131,9 +5133,13 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 		UASSERT(keypoints3D.empty() || keypoints3D.size() == keypoints.size());
 
 		int maxFeatures = _rawDescriptorsKept&&!pose.isNull()&&_feature2D->getMaxFeatures()>0&&_feature2D->getMaxFeatures()<_visMaxFeatures?_visMaxFeatures:_feature2D->getMaxFeatures();
+		bool ssc = _rawDescriptorsKept&&!pose.isNull()&&_feature2D->getMaxFeatures()>0&&_feature2D->getMaxFeatures()<_visMaxFeatures?_visSSC:_feature2D->getSSC();
 		if((int)keypoints.size() > maxFeatures)
 		{
-			_feature2D->limitKeypoints(keypoints, keypoints3D, descriptors, maxFeatures);
+			if(data.cameraModels().size()==1 || data.stereoCameraModels().size()==1)
+				_feature2D->limitKeypoints(keypoints, keypoints3D, descriptors, maxFeatures, data.cameraModels().size()?data.cameraModels()[0].imageSize():data.stereoCameraModels()[0].left().imageSize(), ssc);
+			else
+				_feature2D->limitKeypoints(keypoints, keypoints3D, descriptors, maxFeatures);
 		}
 		t = timer.ticks();
 		if(stats) stats->addStatistic(Statistics::kTimingMemKeypoints_detection(), t*1000.0f);
@@ -5349,22 +5355,13 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 			int inliersCount = 0;
 			if((_feature2D->getGridRows() > 1 || _feature2D->getGridCols() > 1) &&
 				(decimatedData.cameraModels().size()==1 || decimatedData.stereoCameraModels().size()==1 ||
-				 data.cameraModels().size()==1 || data.stereoCameraModels().size()==1))
+					data.cameraModels().size()==1 || data.stereoCameraModels().size()==1))
 			{
-				Feature2D::limitKeypoints(keypoints,
-						inliers,
-						_feature2D->getMaxFeatures(),
-						decimatedData.cameraModels().size()?decimatedData.cameraModels()[0].imageSize():
-						decimatedData.stereoCameraModels().size()?decimatedData.stereoCameraModels()[0].left().imageSize():
-						data.cameraModels().size()?data.cameraModels()[0].imageSize():data.stereoCameraModels()[0].left().imageSize(),
-						_feature2D->getGridRows(), _feature2D->getGridCols());
-				for(size_t i=0; i<inliers.size(); ++i)
-				{
-					if(inliers[i])
-					{
-						++inliersCount;
-					}
-				}
+				Feature2D::limitKeypoints(keypoints, inliers, _feature2D->getMaxFeatures(),
+					decimatedData.cameraModels().size()?decimatedData.cameraModels()[0].imageSize():
+					decimatedData.stereoCameraModels().size()?decimatedData.stereoCameraModels()[0].left().imageSize():
+					data.cameraModels().size()?data.cameraModels()[0].imageSize():data.stereoCameraModels()[0].left().imageSize(),
+					_feature2D->getGridRows(), _feature2D->getGridCols(), _feature2D->getSSC());
 			}
 			else
 			{
@@ -5373,8 +5370,24 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 					UWARN("Ignored %s and %s parameters as they cannot be used for multi-cameras setup or uncalibrated camera.",
 							Parameters::kKpGridCols().c_str(), Parameters::kKpGridRows().c_str());
 				}
-				Feature2D::limitKeypoints(keypoints, inliers, _feature2D->getMaxFeatures());
-				inliersCount = _feature2D->getMaxFeatures();
+				if(decimatedData.cameraModels().size()==1 || decimatedData.stereoCameraModels().size()==1 ||
+					data.cameraModels().size()==1 || data.stereoCameraModels().size()==1)
+				{
+					Feature2D::limitKeypoints(keypoints, inliers, _feature2D->getMaxFeatures(),
+						decimatedData.cameraModels().size()?decimatedData.cameraModels()[0].imageSize():
+						decimatedData.stereoCameraModels().size()?decimatedData.stereoCameraModels()[0].left().imageSize():
+						data.cameraModels().size()?data.cameraModels()[0].imageSize():data.stereoCameraModels()[0].left().imageSize(),
+						_feature2D->getSSC());
+				}
+				else
+				{
+					Feature2D::limitKeypoints(keypoints, inliers, _feature2D->getMaxFeatures());
+				}
+			}
+			for(size_t i=0; i<inliers.size(); ++i)
+			{
+				if(inliers[i])
+					++inliersCount;
 			}
 
 			descriptorsForQuantization = cv::Mat(inliersCount, descriptors.cols, descriptors.type());

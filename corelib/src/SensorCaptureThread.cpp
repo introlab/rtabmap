@@ -241,6 +241,7 @@ void SensorCaptureThread::enableFeatureDetection(const ParametersMap & parameter
 	ParametersMap defaultParams = Parameters::getDefaultParameters("Vis");
 	uInsert(params, ParametersPair(Parameters::kKpDetectorStrategy(), uValue(params, Parameters::kVisFeatureType(), defaultParams.at(Parameters::kVisFeatureType()))));
 	uInsert(params, ParametersPair(Parameters::kKpMaxFeatures(), uValue(params, Parameters::kVisMaxFeatures(), defaultParams.at(Parameters::kVisMaxFeatures()))));
+	uInsert(params, ParametersPair(Parameters::kKpSSC(), uValue(params, Parameters::kVisSSC(), defaultParams.at(Parameters::kVisSSC()))));
 	uInsert(params, ParametersPair(Parameters::kKpMaxDepth(), uValue(params, Parameters::kVisMaxDepth(), defaultParams.at(Parameters::kVisMaxDepth()))));
 	uInsert(params, ParametersPair(Parameters::kKpMinDepth(), uValue(params, Parameters::kVisMinDepth(), defaultParams.at(Parameters::kVisMinDepth()))));
 	uInsert(params, ParametersPair(Parameters::kKpRoiRatios(), uValue(params, Parameters::kVisRoiRatios(), defaultParams.at(Parameters::kVisRoiRatios()))));

@@ -334,6 +334,7 @@ private:
 	bool _rotateImagesUpsideUp;
 	bool _createOccupancyGrid;
 	int _visMaxFeatures;
+	bool _visSSC;
 	bool _imagesAlreadyRectified;
 	bool _rectifyOnlyFeatures;
 	bool _covOffDiagonalIgnored;

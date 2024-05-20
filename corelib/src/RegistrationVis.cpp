@@ -102,6 +102,7 @@ RegistrationVis::RegistrationVis(const ParametersMap & parameters, Registration 
 	uInsert(_featureParameters, ParametersPair(Parameters::kKpNndrRatio(), _featureParameters.at(Parameters::kVisCorNNDR())));
 	uInsert(_featureParameters, ParametersPair(Parameters::kKpDetectorStrategy(), _featureParameters.at(Parameters::kVisFeatureType())));
 	uInsert(_featureParameters, ParametersPair(Parameters::kKpMaxFeatures(), _featureParameters.at(Parameters::kVisMaxFeatures())));
+	uInsert(_featureParameters, ParametersPair(Parameters::kKpSSC(), _featureParameters.at(Parameters::kVisSSC())));
 	uInsert(_featureParameters, ParametersPair(Parameters::kKpMaxDepth(), _featureParameters.at(Parameters::kVisMaxDepth())));
 	uInsert(_featureParameters, ParametersPair(Parameters::kKpMinDepth(), _featureParameters.at(Parameters::kVisMinDepth())));
 	uInsert(_featureParameters, ParametersPair(Parameters::kKpRoiRatios(), _featureParameters.at(Parameters::kVisRoiRatios())));
@@ -233,6 +234,10 @@ void RegistrationVis::parseParameters(const ParametersMap & parameters)
 	if(uContains(parameters, Parameters::kVisMaxFeatures()))
 	{
 		uInsert(_featureParameters, ParametersPair(Parameters::kKpMaxFeatures(), parameters.at(Parameters::kVisMaxFeatures())));
+	}
+	if(uContains(parameters, Parameters::kVisSSC()))
+	{
+		uInsert(_featureParameters, ParametersPair(Parameters::kKpSSC(), parameters.at(Parameters::kVisSSC())));
 	}
 	if(uContains(parameters, Parameters::kVisMaxDepth()))
 	{
