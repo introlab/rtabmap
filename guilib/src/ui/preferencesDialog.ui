@@ -95,7 +95,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>5</number>
+                <number>11</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,0">
@@ -11789,10 +11789,70 @@ see Sqlite3 doc 'PRAGMA synchronous'.</string>
                     </item>
                     <item>
                      <layout class="QGridLayout" name="gridLayout_22" columnstretch="0,1">
+                      <item row="3" column="0">
+                       <widget class="QCheckBox" name="checkBox_rtabmap_loopGPS">
+                        <property name="text">
+                         <string/>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="5" column="0">
+                       <widget class="QComboBox" name="comboBox_globalDescriptorExtractor">
+                        <property name="sizeAdjustPolicy">
+                         <enum>QComboBox::AdjustToContents</enum>
+                        </property>
+                        <item>
+                         <property name="text">
+                          <string>Disabled</string>
+                         </property>
+                        </item>
+                        <item>
+                         <property name="text">
+                          <string>PyDescriptor</string>
+                         </property>
+                        </item>
+                       </widget>
+                      </item>
+                      <item row="0" column="1">
+                       <widget class="QLabel" name="label_142">
+                        <property name="text">
+                         <string>Regenerate all the prediction matrix on each iteration (otherwise only removed/added ids are updated).</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="3" column="1">
+                       <widget class="QLabel" name="label_502">
+                        <property name="text">
+                         <string>Use GPS to filter likelihood (if GPS is recorded). Only locations inside the Local Radius (see RGBD-SLAM panel) of the current GPS location are considered for loop closure detection.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
                       <item row="0" column="0">
                        <widget class="QCheckBox" name="checkBox_bayes_fullPredictionUpdate">
                         <property name="text">
                          <string/>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="2" column="0">
+                       <widget class="QCheckBox" name="checkBox_kp_tfIdfLikelihoodUsed">
+                        <property name="text">
+                         <string/>
+                        </property>
+                        <property name="checked">
+                         <bool>true</bool>
                         </property>
                        </widget>
                       </item>
@@ -11822,19 +11882,6 @@ see Sqlite3 doc 'PRAGMA synchronous'.</string>
                         </property>
                        </widget>
                       </item>
-                      <item row="0" column="1">
-                       <widget class="QLabel" name="label_142">
-                        <property name="text">
-                         <string>Regenerate all the prediction matrix on each iteration (otherwise only removed/added ids are updated).</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                        <property name="textInteractionFlags">
-                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                        </property>
-                       </widget>
-                      </item>
                       <item row="2" column="1">
                        <widget class="QLabel" name="label_82">
                         <property name="text">
@@ -11848,37 +11895,7 @@ see Sqlite3 doc 'PRAGMA synchronous'.</string>
                         </property>
                        </widget>
                       </item>
-                      <item row="2" column="0">
-                       <widget class="QCheckBox" name="checkBox_kp_tfIdfLikelihoodUsed">
-                        <property name="text">
-                         <string/>
-                        </property>
-                        <property name="checked">
-                         <bool>true</bool>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="3" column="1">
-                       <widget class="QLabel" name="label_502">
-                        <property name="text">
-                         <string>Use GPS to filter likelihood (if GPS is recorded). Only locations inside the Local Radius (see RGBD-SLAM panel) of the current GPS location are considered for loop closure detection.</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                        <property name="textInteractionFlags">
-                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="3" column="0">
-                       <widget class="QCheckBox" name="checkBox_rtabmap_loopGPS">
-                        <property name="text">
-                         <string/>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="4" column="1">
+                      <item row="5" column="1">
                        <widget class="QLabel" name="label_6031">
                         <property name="text">
                          <string>Global descriptor extractor.</string>
@@ -11891,19 +11908,32 @@ see Sqlite3 doc 'PRAGMA synchronous'.</string>
                         </property>
                        </widget>
                       </item>
+                      <item row="4" column="1">
+                       <widget class="QLabel" name="label_755">
+                        <property name="text">
+                         <string>Likelihood ratio for VP.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
                       <item row="4" column="0">
-                       <widget class="QComboBox" name="comboBox_globalDescriptorExtractor">
+                       <widget class="QComboBox" name="comboBox_virtualPlaceLikelihoodRatio">
                         <property name="sizeAdjustPolicy">
-                         <enum>QComboBox::AdjustToContents</enum>
+                         <enum>QComboBox::AdjustToContentsOnFirstShow</enum>
                         </property>
                         <item>
                          <property name="text">
-                          <string>Disabled</string>
+                          <string>Mean / StdDev</string>
                          </property>
                         </item>
                         <item>
                          <property name="text">
-                          <string>PyDescriptor</string>
+                          <string>StdDev / (Max-Mean)</string>
                          </property>
                         </item>
                        </widget>

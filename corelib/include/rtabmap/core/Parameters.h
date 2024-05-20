@@ -197,6 +197,7 @@ class RTABMAP_CORE_EXPORT Parameters
     RTABMAP_PARAM(Rtabmap, LoopThr,           float, 0.11,      "Loop closing threshold.");
     RTABMAP_PARAM(Rtabmap, LoopRatio,         float, 0,         "The loop closure hypothesis must be over LoopRatio x lastHypothesisValue.");
     RTABMAP_PARAM(Rtabmap, LoopGPS,           bool,  true,      uFormat("Use GPS to filter likelihood (if GPS is recorded). Only locations inside the local radius \"%s\" of the current GPS location are considered for loop closure detection.", kRGBDLocalRadius().c_str()));
+    RTABMAP_PARAM(Rtabmap, VirtualPlaceLikelihoodRatio, int, 0,  "Likelihood ratio for virtual place (for no loop closure hypothesis): 0=Mean / StdDev, 1=StdDev / (Max-Mean)");
 
     // Memory
     RTABMAP_PARAM(Mem, RehearsalSimilarity,         float, 0.6,     "Rehearsal similarity.");
