@@ -1006,6 +1006,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	// Create hypotheses
 	_ui->general_doubleSpinBox_hardThr->setObjectName(Parameters::kRtabmapLoopThr().c_str());
 	_ui->general_doubleSpinBox_loopRatio->setObjectName(Parameters::kRtabmapLoopRatio().c_str());
+	_ui->comboBox_virtualPlaceLikelihoodRatio->setObjectName(Parameters::kRtabmapVirtualPlaceLikelihoodRatio().c_str());
 	_ui->comboBox_globalDescriptorExtractor->setObjectName(Parameters::kMemGlobalDescriptorStrategy().c_str());
 	connect(_ui->comboBox_globalDescriptorExtractor, SIGNAL(currentIndexChanged(int)), this, SLOT(updateGlobalDescriptorVisibility()));
 
