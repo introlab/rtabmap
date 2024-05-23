@@ -43,7 +43,11 @@ IF(@CONF_WITH_K4A@)
 ENDIF()
 
 IF(@CONF_WITH_DEPTH_AI@)
- find_dependency(depthai 2)
+  find_dependency(depthai 2.24)
+ENDIF()
+
+IF(@CONF_WITH_XVSDK@)
+  find_dependency(xvsdk)
 ENDIF()
 
 IF(@CONF_WITH_OCTOMAP@)
