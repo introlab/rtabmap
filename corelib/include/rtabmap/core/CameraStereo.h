@@ -36,3 +36,4 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/camera/CameraStereoTara.h>
 #include <rtabmap/core/camera/CameraMyntEye.h>
 #include <rtabmap/core/camera/CameraDepthAI.h>
+#include <rtabmap/core/camera/CameraSeerSense.h>
