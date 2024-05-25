@@ -701,6 +701,7 @@ public class ARCoreSharedCamera {
 							mToast.setText(msg);
 						}
 						previousAnchorPose = null;
+						arCoreCorrection = Pose.IDENTITY;
 					}
 				}
 			});
@@ -721,7 +722,8 @@ public class ARCoreSharedCamera {
 				final double speed = Math.sqrt(t[0]*t[0]+t[1]*t[1]+t[2]*t[2])/((double)(frame.getTimestamp()-previousAnchorTimeStamp)/10e8);
 				if(speed>=mARCoreLocalizationFilteringSpeed)
 				{
-					arCoreCorrection = arCoreCorrection.compose(previousAnchorPose).compose(pose.inverse());
+					// Only correct the translation to not lose rotation aligned with gravity
+					arCoreCorrection = arCoreCorrection.compose(previousAnchorPose.compose(pose.inverse()).extractTranslation());
 					t = arCoreCorrection.getTranslation();
 					Log.e(TAG, String.format("POTENTIAL TELEPORTATION!!!!!!!!!!!!!! previous anchor moved (speed=%f), new arcorrection: %f %f %f", speed, t[0], t[1], t[2]));
 					
@@ -747,7 +749,6 @@ public class ARCoreSharedCamera {
 								{
 									mToast.setText(msg);
 								}
-								previousAnchorPose = null;
 							}
 						}
 					});
@@ -758,7 +759,7 @@ public class ARCoreSharedCamera {
 			previousAnchorTimeStamp = frame.getTimestamp();
 			
 			double stamp = (double)frame.getTimestamp()/10e8;
-			if(!RTABMapActivity.DISABLE_LOG) Log.d(TAG, String.format("pose=%f %f %f q=%f %f %f %f stamp=%f", odomPose.tx(), odomPose.ty(), odomPose.tz(), odomPose.qx(), odomPose.qy(), odomPose.qz(), odomPose.qw(), stamp));
+			if(!RTABMapActivity.DISABLE_LOG) Log.d(TAG, String.format("pose=%f %f %f arcore %f %f %f cor= %f %f %f stamp=%f", odomPose.tx(), odomPose.ty(), odomPose.tz(), pose.tx(), pose.ty(), pose.tz(), arCoreCorrection.tx(), arCoreCorrection.ty(), arCoreCorrection.tz(), stamp));
 			RTABMapLib.postCameraPoseEvent(RTABMapActivity.nativeApplication, odomPose.tx(), odomPose.ty(), odomPose.tz(), odomPose.qx(), odomPose.qy(), odomPose.qz(), odomPose.qw(), stamp);
 			CameraIntrinsics intrinsics = camera.getImageIntrinsics();
 			try{
