@@ -84,7 +84,7 @@
     <string name="pref_key_depth_from_motion">pref_key_depth_from_motion</string>
     <string name="pref_default_depth_from_motion">false</string>
     <string name="pref_key_arcore_localization_filtering_speed">pref_key_arcore_localization_filtering_speed</string>
-    <string name="pref_default_arcore_localization_filtering_speed">1</string>
+    <string name="pref_default_arcore_localization_filtering_speed">0</string>
     <string name="pref_key_update_rate">pref_key_update_rate</string>
     <string name="pref_default_update_rate">1</string>
     <string name="pref_key_max_speed">pref_key_max_speed</string>
