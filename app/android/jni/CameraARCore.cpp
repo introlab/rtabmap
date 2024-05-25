@@ -402,7 +402,7 @@ SensorData CameraARCore::updateDataOnRender(Transform & pose)
 		ArCamera_getPose(arSession_, ar_camera, arPose_);
 		ArPose_getPoseRaw(arSession_, arPose_, pose_raw);
 		Transform poseArCore = Transform(pose_raw[4], pose_raw[5], pose_raw[6], pose_raw[0], pose_raw[1], pose_raw[2], pose_raw[3]);
-		poseArCore = rtabmap::rtabmap_world_T_opengl_world * pose * rtabmap::opengl_world_T_rtabmap_world;
+		poseArCore = rtabmap::rtabmap_world_T_opengl_world * poseArCore * rtabmap::opengl_world_T_rtabmap_world;
 
 		if(poseArCore.isNull())
 		{
